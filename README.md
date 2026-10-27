@@ -25,5 +25,6 @@ The whole game is one file, `index.html`. Open it in any modern browser and you'
 5. **Road Trip**: Two-Seat Car, Pizza Delivery, Ice Slide, Rising Lava
 6. **Backyard Bash**: Monster Feeding, Tug of War, Train Tracks, Sumo Bounce
 7. **Castle Quest**: Cannon Crew, Seesaw Climb, Laser Vault, Bumper Cars
+8. **Lucky Casino** (pretend tickets and chips): Plinko Drop, Roulette Wheel, Slot Machine Run, Coin Pusher
 
-More worlds are on the way.
+Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
