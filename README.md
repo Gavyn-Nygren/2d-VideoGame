@@ -6,14 +6,14 @@ A 2D local co-op game for two players on one screen, made for playing with frien
 
 ## How to play
 
-The whole game is one file, `index.html`. Open it in any modern browser and you're playing. Nothing to install.
+Download this repository (Code > Download ZIP), unzip it, and double-click `index.html`. It opens in any modern browser. Nothing to install. Keep the `css/` and `js/` folders next to `index.html`, because the game loads them.
 
 | | Move / jump | Action |
 |---|---|---|
 | **Pip** (orange) | W A S D | F or E |
 | **Bo** (blue) | Arrow keys | / or . or Enter |
 
-- **Controllers:** Xbox and most other gamepads work. Action is X, RB or RT. If a controller isn't picked up in the online demo, download `index.html` and open it straight from your computer.
+- **Controllers:** Xbox and most other gamepads work. Action is X, RB or RT. If a controller isn't picked up in the online demo, download the game and open `index.html` straight from your computer.
 - **Touch:** on-screen buttons show up on phones and tablets.
 
 ## Worlds
@@ -27,3 +27,34 @@ The whole game is one file, `index.html`. Open it in any modern browser and you'
 7. **Castle Quest**: Cannon Crew, Seesaw Climb, Laser Vault, Bumper Cars
 
 More worlds are on the way.
+
+## How the code is organized
+
+| File | What's in it |
+|---|---|
+| `index.html` | The page: top bar, game screen, touch buttons, and the list of scripts in load order |
+| `css/style.css` | All styling |
+| `js/core.js` | Shared constants, colors, themes, small helpers |
+| `js/saving.js` | Best times and settings saved in the browser |
+| `js/audio.js` | The sound effects engine |
+| `js/player.js` | Pip and Bo: movement, collisions, jumping, stomps, respawns, and the cord between them |
+| `js/versus.js` | Level-mode hooks and best-of rounds for versus levels (the game has no enemies; the robot in Robo Pong lives with its level) |
+| `js/levels/level-list.js` | Every level's map, rules and hints, and the list of worlds |
+| `js/levels/block-building.js`, `golf.js`, `robo-pong.js` | World 2 and 3 levels that need their own code |
+| `js/levels/world4/` to `world7/` | One file per level, with its rules, sounds and drawing |
+| `js/input.js` | Keyboard, controllers and touch buttons |
+| `js/ui.js` | Menus, result cards, pause screen, controls legend, notices |
+| `js/render.js` | Shared drawing: background, tiles, players, HUD, particles |
+| `js/main.js` | The main loop: game state, loading levels, each game tick, finishing levels, screen sizing, startup |
+
+The scripts are plain `<script src>` tags and share one set of names, so their order in `index.html` matters: a file can only use, while it loads, things from files above it. A new level gets its own file in `js/levels/worldN/` and a `<script>` tag after the other level files (before `js/input.js`).
+
+## Building the single-file version
+
+The online demo has to be one HTML file. To make it, run this from the repository folder (needs Node.js):
+
+```
+node tools/bundle.js
+```
+
+It writes `build/pip-and-bo.html`, with the CSS and every script put back inside one file. Don't edit that file; edit the files above and rebuild.
