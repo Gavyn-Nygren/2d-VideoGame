@@ -24,6 +24,7 @@ const QUAKE = {
   // (on its own it settles back to the middle; a partner's weight or a rumble pushes it out, the holder pushes it back)
   Kin: 5.5, Kload: 3.6, Kcrate: 1.0, Ks: 0.4, D: 2.2, green: 0.35, red: 0.7, redHold: 0.7,   // in the red this long (or at the end) = a slip
   slideAt: 0.4, slideV: 70,                  // past 0.4 tilt the crosser slides downhill (px/s at full tilt)
+  thump: 0.4,                                // a hop landing at the very end of a plank kicks the ball this hard
   whoaT: 0.55, settleT: 1.0, settleQ: 0.3,   // the slide back; after a whoa the rumble is weaker on that bridge for a moment
   // rumble waves
   warnT: 1.5, firstUp: 1.5, firstMax: 12, calmQ: 0.3, shakeK: 1.6, joltEvery: [0.5, 0.9], joltK: 0.3,
@@ -32,7 +33,8 @@ const QUAKE = {
   // crates
   crateW: 26, crateH: 24, crateAcc: 900, crateFric: 1.4, crateStick: 0.22, pushV: 70, bonkV: 70, boingV: 520,
   // help (gold, announced)
-  goldAfter: 2, goldQ: 0.45, goldLoad: 0.6,
+  goldAfter: 2, goldQ: 0.45, goldLoad: 0.6, goldD: 1.8,   // gold braces: weaker rumble, lighter crossers, steadier ball
+  settleD: 4, settleK: 6,                    // for a moment after a whoa (nobody on) the ball swings back to the middle
   // soft failure
   fallDepth: 45, rescueT: 0.6, edgeSafe: 16,
   // hints (s)
@@ -77,7 +79,7 @@ function quakeRoom(st, L) {
   const def = L.def, grid = L.grid;
   st.cfg = Object.assign({ amp: 1.4, calm: [6, 8], len: [2.4, 3.0] }, def.quake || {});
   st.deco = def.deco || 'nob'; st.look = QUAKE_LOOK[st.deco] || QUAKE_LOOK.nob;
-  st.bridges = []; st.gate = []; st.gateOpen = false; st.gateT = 0; st.roomN = ++quakeRoomN;
+  st.bridges = []; st.gate = []; st.gateOpen = false; st.gateT = 0; st.gateSay = 0; st.roomN = ++quakeRoomN;
   for (const [row, ln] of [[8, 0], [16, 1]]) {
     for (let c = 0; c < COLS; c++) {
       const ch = grid[row][c];
@@ -254,7 +256,7 @@ function quakePlankStep(st, br, dt) {
   else if (br.up > 0) {
     if (br.up >= 1) {
       // let go with someone on the plank: they slide back to the start, never into the crack
-      for (const p of G.players) if (st.pl[p.id].on === br && quakeOverCrack(br, p)) quakeWhoa(st, p, br, 'letgo');
+      for (const p of G.players) if (quakeRiding(st, p, br)) quakeWhoa(st, p, br, 'letgo');
       Sfx.play('quakeDroop');
     }
     br.up = Math.max(0, br.up - dt / QUAKE.droopT); br.v = 0;
@@ -262,12 +264,14 @@ function quakePlankStep(st, br, dt) {
   }
   if (br.up >= 1) {
     br.upT += dt;
-    let load = 0, crates = 0;
-    for (const p of G.players) if (p.alive && st.pl[p.id].on === br && quakeOverCrack(br, p)) load += clamp((p.x + p.w / 2 - br.cx) / br.hw, -1, 1);
+    let load = 0, crates = 0, riders = 0;
+    for (const p of G.players) if (quakeRiding(st, p, br)) { load += clamp((p.x + p.w / 2 - br.cx) / br.hw, -1, 1); riders++; }
     for (const c of br.crates) if (!c.gone) crates += clamp(c.u / br.hw, -1, 1);
     const lw = br.gold ? QUAKE.goldLoad : 1, qk = (br.gold ? QUAKE.goldQ : 1) * (br.settle > 0 ? QUAKE.settleQ : 1);
     const inp = H ? (H.input.right ? 1 : 0) - (H.input.left ? 1 : 0) : 0;
-    const a = (load * QUAKE.Kload + crates * QUAKE.Kcrate) * lw + quakeForce(st, br) * qk + inp * QUAKE.Kin - br.b * QUAKE.Ks - br.v * QUAKE.D;
+    // gold braces also steady it (more damping); just after a whoa, with nobody on, it settles back to the middle
+    const damp = QUAKE.D * (br.gold ? QUAKE.goldD : 1) + (br.settle > 0 && !riders ? QUAKE.settleD : 0);
+    const a = (load * QUAKE.Kload + crates * QUAKE.Kcrate) * lw + quakeForce(st, br) * qk + inp * QUAKE.Kin - br.b * (QUAKE.Ks + (br.settle > 0 && !riders ? QUAKE.settleK : 0)) - br.v * damp;
     br.v += a * dt; br.b += br.v * dt;
     if (Math.abs(br.b) > 1) {
       if (Math.abs(br.v) > 0.6) Sfx.play('quakeClonk');
@@ -279,7 +283,7 @@ function quakePlankStep(st, br, dt) {
 // the ball's state for feedback: red with a crosser on (warning blip), back to green = a wobble saved
 function quakeBallWatch(st, br, dt) {
   if (br.kind !== 'plank' || br.done || br.up < 1) { br.saveArm = false; br.redT = 0; return; }
-  const crosser = G.players.find(p => p.alive && st.pl[p.id].on === br && quakeOverCrack(br, p));
+  const crosser = G.players.find(p => quakeRiding(st, p, br));
   const ab = Math.abs(br.b);
   if (crosser && ab >= QUAKE.red) {
     if (!br.saveArm) { br.saveArm = true; Sfx.play('quakeWobble'); if (br.held >= 0) rumble(br.held, 0.25, 0.4, 120); }
@@ -317,8 +321,10 @@ function quakeWhoa(st, p, br, why) {
     else quakeSay(st, h, 'Keep the ball in the green!', 'green');
   }
   if (why === 'slip' && st.wave.phase === 'shake') quakeSay(st, p.id, 'Wait for the calm, then go!', 'calm');
-  if (br.whoas >= QUAKE.goldAfter && !br.gold) {
+  // gold braces after 2 whoas on a bridge, or after 1 for a holder whose last bridge needed them too
+  if (br.whoas >= (h >= 0 && st.help[h] ? 1 : QUAKE.goldAfter) && !br.gold) {
     br.gold = true; st.stats.golds++;
+    if (h >= 0) st.help[h] = true;
     quakeBanner(st, 'Gold braces: less wobble!');
     Sfx.play('quakeGold'); quakeBurst(br.cx, br.cy, C.gold, 14);
   }
@@ -342,7 +348,9 @@ function quakeCarStep(st, br, dt) {
     const H = br.held >= 0 ? G.players[br.held] : null, w = st.wave;
     if (H) {
       const inp = (H.input.right ? 1 : 0) - (H.input.left ? 1 : 0);
-      br.vel = approach(br.vel, inp * QUAKE.carV * (br.gold ? QUAKE.goldCar : 1), QUAKE.carAcc * dt);
+      // an empty car the holder isn't pulling rolls back down to the rider (so it can't be left out over the crack)
+      const want = !riders.length && inp <= 0 && br.s > 0 ? -QUAKE.carBack : inp * QUAKE.carV * (br.gold ? QUAKE.goldCar : 1);
+      br.vel = approach(br.vel, want, QUAKE.carAcc * dt);
       if (!br.gold) br.vel += quakeForce(st, br) * QUAKE.carJolt * dt * 2;
     } else if (br.s > 0) br.vel = approach(br.vel, br.gold ? 0 : -QUAKE.carBack, 200 * dt);
     else br.vel = Math.max(0, br.vel);
@@ -416,17 +424,41 @@ function quakeResolve(st) {
     if (landed && P.prevVy > 260) { p.sx = 1.2; p.sy = 0.82; quakePuff(cx, bestY, 4, 'rgba(255,255,255,0.75)'); Sfx.play('land'); }
   }
 }
-// on a wobbly plank: tiptoe, and slide downhill when it tips
+// the wobbly plank over the crack in this player's street that they are on, or in the air just over (while it is held up)
+function quakeOverPlank(st, p) {
+  const P = st.pl[p.id];
+  if (P.on) return P.on.kind === 'plank' && quakeOverCrack(P.on, p) ? P.on : null;
+  const ln = quakeLaneOf(p), feet = p.y + p.h;
+  for (const br of st.bridges) {
+    if (br.kind !== 'plank' || br.done || br.up < 1 || br.lane !== ln || !quakeOverCrack(br, p)) continue;
+    if (feet <= quakeSurf(br, p.x + p.w / 2) + 2) return br;
+  }
+  return null;
+}
+// on this plank over its crack, or hopping just above it: their weight counts (so a hop doesn't make you weightless)
+const quakeRiding = (st, p, br) => p.alive && !st.pl[p.id].whoa && quakeOverPlank(st, p) === br;
+// over a wobbly plank: tiptoe (in a hop too, so hopping or bouncing off a crate is no faster than walking),
+// a hard landing near an end gives the ball a bump, and the crosser slides downhill when it tips
 function quakeWobbleWalk(st, dt) {
   for (const p of G.players) {
-    const P = st.pl[p.id], br = P.on;
-    if (!br || br.kind !== 'plank' || P.whoa) continue;
-    if (!quakeOverCrack(br, p)) continue;
+    const P = st.pl[p.id], br = p.alive && !P.whoa ? quakeOverPlank(st, p) : null;
+    if (P.floaty && (p.grounded || !p.alive || P.whoa)) P.floaty = false;
+    if (!br) {
+      if (P.floaty) { const dx = p.x - P.prevX; if (dx) p.x -= dx * (1 - QUAKE.tiptoe); }
+      P.wasOn = P.on; continue;
+    }
     if (P.enter === 0) P.enter = P.prevCx < br.cx ? -1 : 1;
-    if (br.crossT0 == null) br.crossT0 = G.time;
-    if (br.done) continue;
+    if (br.crossT0 == null && P.on === br) br.crossT0 = G.time;
+    if (br.done) { P.wasOn = P.on; continue; }
     const dx = p.x - P.prevX;
     if (dx) p.x -= dx * (1 - QUAKE.tiptoe);
+    if (P.on === br && P.wasOn !== br && P.prevVy > 200) {
+      const off = clamp((p.x + p.w / 2 - br.cx) / br.hw, -1, 1);
+      br.v += off * QUAKE.thump * clamp(P.prevVy / 650, 0, 1) * (br.gold ? QUAKE.goldQ : 1);
+      if (Math.abs(off) > 0.3) Sfx.play('quakeClonk');
+    }
+    P.wasOn = P.on;
+    if (P.on !== br) continue;
     const ab = Math.abs(br.b);
     if (ab > QUAKE.slideAt) moveX(p, Math.sign(br.b) * QUAKE.slideV * (ab - QUAKE.slideAt) / (1 - QUAKE.slideAt) * dt, true);
   }
@@ -482,7 +514,7 @@ function quakeCrateHits(st, br, c) {
     if (P.prevFeet <= top + 5 && p.vy >= -1) {
       // on top: boing!
       p.y = top - p.h; p.vy = -QUAKE.boingV; p.grounded = false; p.jumping = false; p.coyote = 0; p.jumpBuf = 0;
-      p.sx = 0.8; p.sy = 1.25; P.on = null; c.boing = 0.25; st.stats.boings++;
+      p.sx = 0.8; p.sy = 1.25; P.on = null; P.floaty = true; c.boing = 0.25; st.stats.boings++;   // (a boing is straight up: it never flings you off over the street)
       Sfx.play('quakeBoing', p.id); quakePuff(bx, top, 5, 'rgba(255,255,255,0.8)');
       if (P.boingCD <= 0) { quakePop(st, bx, top - 30, 'Boing!', C.gold, 16); P.boingCD = 1.2; }
       continue;
@@ -516,9 +548,11 @@ function quakeDone(st, br, p) {
   if (h >= 0 && h !== p.id) S.held[h]++;
   if (br.saveArm) quakeSaved(st, br);
   if (br.clean) { st.streak++; S.bestStreak = Math.max(S.bestStreak, st.streak); }
+  if (br.kind === 'plank' && h >= 0 && br.clean && !br.gold) st.help[h] = false;   // steady on your own: back to the usual 2
   if (br.crossT0 != null) { const t = G.time - br.crossT0; if (!S.fast || t < S.fast.t) S.fast = { t, id: p.id }; }
   if (br.kind === 'car') S.rides[p.id]++;
-  quakePop(st, br.x1 + 10, br.cy - 40, br.kind === 'car' ? 'Off we hop!' : 'Across!', PCOL[p.id], 20);
+  // over the plank just crossed (the far end is where the crosser often picks up the next crank, gauge and badge)
+  quakePop(st, br.kind === 'car' ? br.x1 + 10 : br.cx, br.cy - 40, br.kind === 'car' ? 'Off we hop!' : 'Across!', PCOL[p.id], 20);
   if (h >= 0 && h !== p.id) { const q = G.players[h]; quakePop(st, q.x + q.w / 2, q.y - 82, 'Nice holding!', C.gold, 16); }
   Sfx.play('quakeAcross');
   for (let k = 0; k < 16; k++) confetti(br.kind === 'car' ? br.x1 : br.cx, br.cy - 20);
@@ -533,8 +567,7 @@ function quakeOpenGate(st) {
   if (st.gate.length) {
     const gx = st.gate[0].c * T + T;
     quakeBurst(gx, QUAKE.upY + 20, '#c98b5a', 12);
-    const up = G.players[st.lanePl[0]];
-    if (up && quakeLaneOf(up) === 0) quakeSay(st, up.id, 'All across! Hop down the gap ▶', null, 3);
+    st.gateSay = 1.0;   // the hint waits until the "Across!" pop has floated away
   }
   Sfx.play('quakeGate');
 }
@@ -624,7 +657,7 @@ MODES.quake = {
   rand: Math.random,   // wave timing and cosmetic randomness; tests swap in a seeded one
   setup(st, L) {
     st.stats = { held: [0, 0], saved: [0, 0], whoas: 0, oops: [0, 0], bestStreak: 0, fast: null, crates: 0, boings: 0, bonks: 0, golds: 0, rides: [0, 0], roomT: [] };
-    st.streak = 0;
+    st.streak = 0; st.help = [false, false];
     quakeRoom(st, L);
   },
   room(k, L) { const st = G.mst; st.stats.roomT.push(G.time); quakeRoom(st, L); },
@@ -642,6 +675,10 @@ MODES.quake = {
     const st = G.mst;
     if (!st.bridges) return;
     st.roomT += dt; st.crackFx = Math.max(0, st.crackFx - dt); st.gateT += dt;
+    if (st.gateSay > 0 && (st.gateSay -= dt) <= 0) {
+      const up = G.players[st.lanePl[0]];
+      if (up && up.alive && quakeLaneOf(up) === 0) quakeSay(st, up.id, 'All across! Hop down the gap ▶', null, 3);
+    }
     if (G.introT <= 0) st.liveT += dt;
     quakeWaveStep(st, dt);
     quakeGrips(st, dt);
