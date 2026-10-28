@@ -120,7 +120,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .ghost:hover { border-color: var(--muted); }
 .actions-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .hint { font-size: 13px; color: var(--muted); margin: 0; }
-.worlds { display: grid; gap: 14px; }
+div.worlds { display: grid; gap: 14px; }
 .world { display: grid; gap: 8px; }
 .world-h { margin: 0; font: 400 21px/1 var(--font-display); display: flex; align-items: baseline; gap: 10px; }
 .world-h .wn { font: 700 12px var(--font-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); }
@@ -2329,7 +2329,7 @@ const LEVELS = [
     tip: 'One stops the reels, one hops across on the pictures. Reach the JACKPOT ledge!',
     switches: {}, signs: [],
     rooms: [
-      { title: 'First Spin', stopper: 1, tip: 'Bo: stand under a reel and press stop. Pip: hop across on the pictures!', switches: {}, signs: [],
+      { title: 'First Spin', stopper: 1, act: { label: 'stop', labels: ['shout', 'stop'] }, tip: 'Bo: stand under a reel and press stop. Pip: hop across on the pictures!', switches: {}, signs: [],
         slots: { speed: 1.2, holdT: null, reels: [{ strip: 'B7BbLB' }, { strip: 'BLBb7B' }, { strip: 'B7LBbB' }] },
         map: [
           '################################',
@@ -2351,7 +2351,7 @@ const LEVELS = [
           '######....2...........S#########',
           '################################',
         ] },
-      { title: 'Super Sevens', stopper: 0, tip: 'Swap! Pip stops, Bo hops. A tall 7 is a step up to the balcony!', switches: {}, signs: [],
+      { title: 'Super Sevens', stopper: 0, act: { label: 'stop', labels: ['stop', 'shout'] }, tip: 'Swap! Pip stops, Bo hops. A tall 7 is a step up to the balcony!', switches: {}, signs: [],
         slots: { speed: 1.6, holdT: 10, reels: [{ strip: 'B7bBLB' }, { strip: 'B7LbB7LB', need: '7' }, { strip: 'B7bBLB' }, { strip: 'BL7bBL7B', need: '7' }] },
         map: [
           '################################',
@@ -2373,7 +2373,7 @@ const LEVELS = [
           '###.....1.................S#####',
           '################################',
         ] },
-      { title: 'Cherry Hill', stopper: 1, tip: 'Swap! Bo stops, Pip hops. Cherries bounce you sky high!', switches: {}, signs: [],
+      { title: 'Cherry Hill', stopper: 1, act: { label: 'stop', labels: ['shout', 'stop'] }, tip: 'Swap! Bo stops, Pip hops. Cherries bounce you sky high!', switches: {}, signs: [],
         slots: { speed: 2.0, holdT: 8, reels: [{ strip: 'B7bBLB' }, { strip: 'CBLbCB7L', need: 'C' }, { strip: 'BbBLBL' }, { strip: 'CBLCbL7B', need: 'C' }] },
         map: [
           '################################',
@@ -2395,7 +2395,7 @@ const LEVELS = [
           '####....2................S######',
           '################################',
         ] },
-      { title: 'Turbo Spin', stopper: 0, tip: 'Swap! Pip stops, Bo hops. Super fast reels! Jump, then stop the reel under Bo!', switches: {}, signs: [],
+      { title: 'Turbo Spin', stopper: 0, act: { label: 'stop', labels: ['stop', 'shout'] }, tip: 'Swap! Pip stops, Bo hops. Super fast reels! Jump, then stop the reel under Bo!', switches: {}, signs: [],
         slots: { speed: 2.8, holdT: 2.5, reels: [{ strip: 'B7BbLB' }, { strip: 'BbB7LB' }, { strip: 'B7LBbB' }, { strip: 'BLB7bB' }] },
         map: [
           '################################',
@@ -2417,7 +2417,7 @@ const LEVELS = [
           '####...1.................S######',
           '################################',
         ] },
-      { title: 'Topsy Turvy', stopper: 1, tip: 'Swap! Bo stops, Pip hops. Two reels spin upward: watch below the line!', switches: {}, signs: [],
+      { title: 'Topsy Turvy', stopper: 1, act: { label: 'stop', labels: ['shout', 'stop'] }, tip: 'Swap! Bo stops, Pip hops. Two reels spin upward: watch below the line!', switches: {}, signs: [],
         slots: { speed: 2.4, holdT: 6, reels: [{ strip: 'B7LbBL' }, { strip: 'B7LBL7bL', need: '7' }, { strip: 'BLbBLB', dir: -1 }, { strip: 'CLBbLCL7', need: 'C', dir: -1 }] },
         map: [
           '################################',
@@ -2439,7 +2439,7 @@ const LEVELS = [
           '####...2...............S########',
           '################################',
         ] },
-      { title: 'Grand Jackpot', stopper: 0, tip: 'Swap! Pip stops, Bo hops. Everything at once: go for the GRAND JACKPOT!', switches: {}, signs: [],
+      { title: 'Grand Jackpot', stopper: 0, act: { label: 'stop', labels: ['stop', 'shout'] }, tip: 'Swap! Pip stops, Bo hops. Everything at once: go for the GRAND JACKPOT!', switches: {}, signs: [],
         slots: { speed: 2.6, holdT: 5, reels: [{ strip: 'B7bBLB', dir: -1 }, { strip: 'CBLbCB7L', need: 'C' }, { strip: 'BLbBLB', dir: -1 }, { strip: 'BbLBBL' }, { strip: 'CLBbLCL7', need: 'C', dir: -1 }] },
         map: [
           '################################',
@@ -2465,8 +2465,8 @@ const LEVELS = [
   {
     name: 'Coin Pusher', world: 7, kind: 'versus', mode: 'coin',
     match: { bestOf: 5, roundTime: 60 },
-    act: { label: 'coin' },
-    tip: 'Grab coins, then press coin on your color. The pusher shoves them into your tube!',
+    act: { label: 'coin', labels: ['put a coin in', 'put a coin in'] },
+    tip: 'Grab coins, then put them in on your color of glass. The pusher shoves them into your tube!',
     switches: {}, signs: [],
     map: [
       '................................', // 0
@@ -4249,10 +4249,10 @@ function fitMatchCard() {
   card.classList.remove('tight');
   if (overlay.scrollHeight > overlay.clientHeight + 1) card.classList.add('tight');
 }
+// each player's own device: a player with a controller assigned is shown its button, whoever pressed last
 function actKey(id) {
-  const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-  const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
-  return pad ? 'pad' : touch ? 'touch' : 'kb';
+  if (padFor(padSlots(), id)) return 'pad';
+  return document.documentElement.classList.contains('has-touch') && Pads.lastNonPad === 'touch' ? 'touch' : 'kb';
 }
 // one line for the level intro card: how to use the action button
 // def.act.padGlyph names another controller button here (e.g. 'a' where A does the action for a seated role)
@@ -22169,7 +22169,7 @@ Sfx.extra.bumperGold = function (p) { this.tone(784 * p, 0.1, 'triangle', 0.05);
     // how it was won (for the round banner): a bump by the winner on the loser in the last bumpCredit s counts
     const bumped = o.hitBy === k && o.hitAgo <= P.bumpCredit, offIt = rouletteWedgeOf(o) !== b.wedge;
     const nm = ROULETTE_WEDGES[b.wedge].name;
-    const how = bumped && offIt && o.hitOn === b.wedge ? 'Bumped off the ' + nm + '!' : bumped && b.lead1 === j ? 'Last-second bump!' :
+    const how = bumped && offIt && o.hitOn === b.wedge ? 'Bumped ' + NAMES[j] + ' off the ' + nm + '!' : bumped && b.lead1 === j ? 'Last-second bump!' :
       w.how === 'alone' ? 'Alone on the ' + nm + '!' : w.how === 'near' ? 'Nearest to the ball!' : 'Closest to the ball!';
     if (bumped && ((offIt && o.hitOn === b.wedge) || b.lead1 === j)) st.stat.steals[k]++;
     st.flying.push({ k, t: 0, x0: q.x, y0: q.y - 8, slot: st.chips[k] - 1 });
@@ -24869,6 +24869,7 @@ function padFor(states, player) {
   return states[(player === 0) !== Pads.swap ? 0 : 1] || null;
 }
 function setKind(k) {
+  if (k !== 'pad') Pads.lastNonPad = k;
   if (Pads.kind === k) return;
   Pads.kind = k;
   document.documentElement.classList.toggle('use-pad', k === 'pad');
@@ -24919,7 +24920,7 @@ function rumble(player, strong, weak, ms) {
 
 // moving focus between menu buttons with the stick or d-pad
 function menuMove(dir) {
-  const btns = Array.from(overlay.querySelectorAll('button')).filter(b => b.offsetParent !== null);
+  const btns = Array.from(overlay.querySelectorAll('button, details > summary')).filter(b => b.offsetParent !== null);
   if (!btns.length) return;
   const cur = overlay.contains(document.activeElement) ? document.activeElement : null;
   if (!cur) { (overlay.querySelector('[data-primary]') || btns[0]).focus(); return; }
@@ -24935,10 +24936,11 @@ function menuMove(dir) {
     if (score < bestScore) { bestScore = score; best = b; }
   }
   if (best) { best.focus({ preventScroll: true }); best.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+  else if (dir === 'up' || dir === 'down') overlay.scrollBy(0, dir === 'down' ? 120 : -120); // a long card: read past the last button
 }
 function menuActivate() {
   const ae = document.activeElement;
-  if (ae && overlay.contains(ae) && ae.tagName === 'BUTTON') ae.click(); else primaryAction();
+  if (ae && overlay.contains(ae) && (ae.tagName === 'BUTTON' || ae.tagName === 'SUMMARY')) ae.click(); else primaryAction();
 }
 
 function pollInput(dt = 1 / 60) {
@@ -25014,7 +25016,7 @@ window.addEventListener('keydown', e => {
     if (performance.now() < overlayArmAt) { e.preventDefault(); armSwallowed.add(code); if (!e.repeat) extendArm(); return; }
     if (e.repeat) { e.preventDefault(); return; } // holding Enter must not click through the next card
     const ae = document.activeElement;
-    if (ae && ae.tagName === 'BUTTON') return; // the focused button (menu card or header) handles it
+    if (ae && (ae.tagName === 'BUTTON' || ae.tagName === 'SUMMARY')) return; // the focused button (or a fold's summary) handles it
     e.preventDefault();
     if (!e.repeat) primaryAction();
     return;
@@ -25218,7 +25220,7 @@ function showResult() {
   G.mode = 'result';
   const i = G.levelIndex, r = G.results[i], l = LEVELS[i];
   const last = i === LEVELS.length - 1;
-  const nextLabel = last ? 'See your results' : lastInWorld(i) ? `Finish World ${l.world + 1}` : 'Next level';
+  const nextLabel = lastInWorld(i) ? `Finish World ${l.world + 1}` : last ? 'See your results' : 'Next level';
   let body;
   if (r.kind === 'versus' && r.rounds) {
     body = matchResultBody(r);
@@ -25391,8 +25393,8 @@ overlay.addEventListener('click', e => {
   else if (a === 'level') loadLevel(+b.dataset.i);
   else if (a === 'next') {
     const i = G.levelIndex;
-    if (i + 1 >= LEVELS.length) showFinal();
-    else if (lastInWorld(i)) showWorldDone(LEVELS[i].world);
+    if (lastInWorld(i)) showWorldDone(LEVELS[i].world); // the last world gets its card too; its button opens the final card
+    else if (i + 1 >= LEVELS.length) showFinal();
     else loadLevel(i + 1);
   }
   else if (a === 'world') loadLevel(worldLevels(+b.dataset.w)[0]);
