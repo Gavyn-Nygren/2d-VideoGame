@@ -11,7 +11,7 @@ Demo: https://claude.ai/artifact/5jJ7SJw7gwSttznxFP56TG
 - Head-to-head levels are best of 3, 5 or 7 rounds. Every level lasts a few minutes.
 - Gavyn picks the levels. Offer him a list of ideas and build the ones he chooses, with his rules. Keep his names (he kept "Castle Quest" over a suggested "Castle Capers").
 - Keyboard, controller (Xbox mainly, others ideally) and touch must all work on every level.
-- Family-friendly. World 8 uses pretend tickets and chips only: no money look, no betting, nothing that rewards risking your score.
+- Family-friendly. World 8 uses pretend tickets and chips only: no money look, no betting, nothing that rewards risking your score. World 9's disasters stay cartoony: nobody gets hurt and nothing is scary.
 - Publish each finished world to the same demo link, push it to this repo, and update the README world list.
 - Build each new world or major feature in a fresh thread, briefed to read this file first.
 
@@ -85,6 +85,14 @@ Rules below are as built. "(Gavyn)" marks what he asked for himself.
 - **8-4 Coin Pusher** (versus, best of 5, 60 s rounds): Drop coins onto a moving shelf to push the pile off your side for points (Gavyn). Grab coins from the fountain, then press the action standing on the glass on your colour (a low hop is fine; higher is refused). First to 32, or most at the bell. Bonus Cup = 2 points and a Big Shove on your side. Whoever is behind in rounds starts with 2 coins in their tube (Lucky start). The game pauses itself after 40 s with no input.
 - Pretend tickets and chips only; coins are drawn as star tokens; no money or betting words (Gavyn). Gold catch-up help is named "Lucky ..." (Lucky paddles, Lucky chip, Lucky slow-mo, Lucky shove).
 
+### World 9: Great Escapes (team)
+Famous natural disasters from history, kept light and cartoony: nobody gets hurt, lava is a "Hot foot!", ash is fluffy, quakes rattle teacups. Gavyn picked the four levels and their order; the world name was Claude's pick. Each level has 4 rooms and a small history sign (79 AD, 1906, 1883, Ice Age).
+- **9-1 Pompeii Escape**: Ash falls and lava creeps in; help each other climb the rooftops to the harbor boat (Gavyn). Action = help: stand at a roof edge and press it, an arm reaches down and pulls your partner up. Every teamwork wall is 4-5 tiles, so the first one up boosts off the partner's head (a head jump goes about 152 px and can't be cut short) and the last one up always needs the hand; on 5-tile walls you jump for the hand. Jobs swap at every wall (`def.leads` per room; 10 walls, each player the step 5 times), shown by "Climb up!" / "Be the step!" badges. The lava creeps sideways along the street, never closer than 56 px behind the rearmost player; walking back into it or into a pool is a hot foot: back to your own banner, the lava backs off and slows. Ash clumps with landing shadows make you sneeze (a small hop, never during teamwork). Set pieces: a wobbly column that tips into a bridge once you both stand on it (Room 2), a cart that rolls only when you both push (Room 4), and the ship that sails when you're both on deck. Gold help: Super boost (22 s stuck), Super stretch (3 missed reaches), Cool breeze (2nd hot foot). Medal by time and hot foots.
+- **9-2 San Francisco 1906 Quake**: The ground cracks; hold up a wobbly bridge for each other to cross (Gavyn). Each crack has a plank worked from a crank on the OTHER street. The holder stands on the crank and holds the action (hold); left/right then balance a ball on a gauge over their head against the crosser's weight, sliding crates and the rumble. Too long in the red, or the ball at the end, is a gentle "Whoa!": the crosser slides back. Rumbles come in waves with a warning on the HUD seismograph, so patient crossers wait for the calm. Crossing is tiptoe speed whether walking or hopping, so jumping is never a shortcut, and the gate at the end opens only when every crossing is done. Roles swap every bridge (8 holds each). Rooms: Nob Hill, Cable Car Line (the holder pulls a cable car), Market Street (crates), The Ferry Building. Gold braces after 2 whoas on a plank (sooner for a holder who needed them before), gold cable for the cable car.
+- **9-3 Ice Age Glacier**: Slide down a cracking glacier and swap who steers each time the ice splits (Gavyn). Both ride one ice floe on a scrolling run the mode draws itself. The steerer brakes (◀) for bump fields and pushes (▶) for big gaps, and picks the high or low shelf at forks (▲/▼); the hopper hops (▲) crevasses and ducks (▼) icicle arches. The floe cracks at each split: Pip steers rooms 1 and 3, Bo rooms 2 and 4. No action button. A missed gap is a snowball pop 460 px back; a bump at speed is a bonk spin. Mammo the mammoth packs and then bridges a gap only after tries both players took part in, so nobody is carried alone. 10 s with no input pauses the floe ("Brrr, chilly!"). Snowflakes x of 99; medal by bonks and flakes. The longest World 9 level (about 3-4.5 min).
+- **9-4 Krakatoa Ash Run**: Ash hides the way; one clears a path with a fan, the other leads (Gavyn). Thick ash is drawn over the level. The fanner holds the action (fan) to blow a cone of ash away and blow off ash drifts; the leader follows the footprints, pulls levers (pull) that open bamboo gates and drop rope bridges for the fanner, and presses the action elsewhere to shout "This way!". At windsock gaps (7 tiles) only the fanner's gust carries the leader across (an updraft while over the gap, so a tap jump or walk-off floats too). Roles swap every room: Jungle Trail, Lava Rocks, Cliff Path, Beach to the Ship. Camps are checkpoints; hold ▼ 1 s to go back to camp. The act labels switch per role every room. Help: quick nudges at gaps and drifts, a parrot with hints, Lucky gust after 2 misses, Lucky breeze when stuck.
+- Every World 9 level was bot-tested on keyboard, a stubbed controller and touch (844x390 and 390x844), and with solo, idle and button-mashing bots: none can be cleared by one player, and none gets stuck. Bot times for a perfect pair: 9-1 about 50 s, 9-2 about 88 s, 9-3 about 172 s, 9-4 about 51 s; slower human-like bots take 2-4.5 min. Real playtests may show the medal limits need tuning.
+
 ## How the game is built
 
 ### Conventions for every level
@@ -95,6 +103,8 @@ Rules below are as built. "(Gavyn)" marks what he asked for himself.
 - Every level has a short `tip` (about 100 characters; rooms can have their own). The intro card shows it with the action keys; the pause card shows the current room's tip.
 - Results card: `stats()` returns about 4 tiles and 1-2 lines. A team level scored by something other than time sets `noTime: true` (no time record or Time tile).
 - No leaks between levels: level state lives in `G.mst` (fresh on every `loadLevel`), and match levels reset per-round state in `resetRound`. Prefix every top-level name and `Sfx.extra` sound with the level's mode name.
+- Mode map characters: `parseLevel` takes `1 2 a b c E k F * G T H J R L M O Q U V @` (and `w s X ^ = o u #`, plus any letter in `switches`) before a mode sees the grid, so pick other characters for your own markers (9-4 lost its first dock plank to `k`, the key).
+- Per-role action words: `act.labels` is per player, so a level whose roles swap every room gives each room its own `act` (as 8-3 does) or updates the labels itself (9-4 rewrites the `[data-actlabel]` text when the room changes).
 - Never rename a shipped level: records are saved in localStorage by level name (`pipbo:best:<name>`, `pipbo:golf:<name>`).
 - Catch-up help is gold and announced, never hidden.
 
@@ -112,7 +122,7 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 | `js/player.js` | `makePlayer`, tile collision (`solidFor`), movement, tether rope/chain/bungee, stomp, `kill`/`respawn` |
 | `js/levels/block-building.js`, `golf.js`, `robo-pong.js` | World 2-3 mechanics (`BUILD`, `GOLF`, `PONG`) and their drawing |
 | `js/versus.js` | `MODES` registry, `hook`/`drawHook`, the best-of-N framework (`MATCH`, `matchRoundEnd`), `knock` |
-| `js/levels/world4/` to `world8/` | One file per level: its `MODES.<name>` block, its own drawing and `Sfx.extra` sounds, e.g. `world7/bumper-cars.js` |
+| `js/levels/world4/` to `world9/` | One file per level: its `MODES.<name>` block, its own drawing and `Sfx.extra` sounds, e.g. `world7/bumper-cars.js` |
 | `js/input.js` | Keyboard (`keys`, `BIND`), controllers (`Pads`, `readPad`), touch, `pollInput` |
 | `js/ui.js` | Overlay cards (`showTitle`, `pause`, `showResult`, `showWorldDone`, `showFinal`, `armOverlay`), legend (`setLegend`, `setActUI`), toast, mute |
 | `js/render.js` | Shared drawing (`render`, `drawHUD`, `drawIntro`) and particles |
@@ -134,5 +144,6 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 - Then push to `main` here and update the README's world list and this file.
 
 ## Open questions for Gavyn
+- World 9 is called "Great Escapes" (Claude's pick). Keep it or rename it?
 - Crown Keep (2-4) is one 90-second game, not best of 3/5/7. It was built before that rule. Should it become a best-of match?
 - Boost rings exist in the golf engine but no hole uses them. Want a hole with rings?

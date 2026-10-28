@@ -26,6 +26,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 6. **Backyard Bash**: Monster Feeding, Tug of War, Train Tracks, Sumo Bounce
 7. **Castle Quest**: Cannon Crew, Seesaw Climb, Laser Vault, Bumper Cars
 8. **Lucky Casino** (pretend tickets and chips): Plinko Drop, Roulette Wheel, Slot Machine Run, Coin Pusher
+9. **Great Escapes** (famous natural disasters, kept cartoony): Pompeii Escape, San Francisco 1906 Quake, Ice Age Glacier, Krakatoa Ash Run
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
@@ -42,7 +43,7 @@ Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md
 | `js/versus.js` | Level-mode hooks and best-of rounds for versus levels (the game has no enemies; the robot in Robo Pong lives with its level) |
 | `js/levels/level-list.js` | Every level's map, rules and hints, and the list of worlds |
 | `js/levels/block-building.js`, `golf.js`, `robo-pong.js` | World 2 and 3 levels that need their own code |
-| `js/levels/world4/` to `world8/` | One file per level, with its rules, sounds and drawing |
+| `js/levels/world4/` to `world9/` | One file per level, with its rules, sounds and drawing |
 | `js/input.js` | Keyboard, controllers and touch buttons |
 | `js/ui.js` | Menus, result cards, pause screen, controls legend, notices |
 | `js/render.js` | Shared drawing: background, tiles, players, HUD, particles |
