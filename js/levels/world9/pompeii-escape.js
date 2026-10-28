@@ -24,13 +24,13 @@
 const POMPEII = {
   // teamwork
   boostV: 780, superV: 900, boostCredit: 100,
-  reachLen: 100, longLen: 140, reachGrow: 0.12, reachLife: 1.1, zoneW: 44, edgeNear: 14,
+  reachLen: 100, longLen: 140, longW: 72, reachGrow: 0.12, reachLife: 1.1, zoneW: 44, edgeNear: 14,
   pullT: 0.55, gripT: 0.1, riseT: 0.38, stepBackV: 190,
   // lava (the street band and the pools)
   lavaTop: 466, hotLine: 469, heatGap: 70, stopGap: 56, backOff: 90, backWait: 2.5, assistStep: 0.85, assistMin: 0.5,
   catchGap: 300, catchMul: 2.2, breezeAt: 2, breezeMul: 0.7, hotV: 520, hotT: 0.6, cartLag: 4,
   // ash
-  ashR: 9, ashV: 165, sneezeT: 0.45, sneezeV: 230, sneezeCD: 2.0,
+  ashR: 9, ashV: 165, sneezeT: 0.45, sneezeV: 230, sneezeCD: 3.0,
   // the world's moving bits
   awnB: 70, colBoth: 0.35, creakT: 0.5, fallT: 0.7, colNoJump: 0.15,
   heaveT: 0.28, slideT: 0.18, aloneT: 0.5, boardT: 0.3, sailT: 3.6,
@@ -47,6 +47,7 @@ function pompeiiKey(id, what) {
   const how = actKey(id);
   if (what === 'act') return how === 'pad' ? glyph('act') : how === 'touch' ? 'help' : id === 0 ? 'F' : '/';
   if (what === 'jump') return how === 'pad' ? glyph('a') : how === 'touch' ? '▲' : id === 0 ? 'W' : '↑';
+  if (what === 'right') return how === 'pad' ? 'stick →' : how === 'touch' ? '▶' : id === 0 ? 'D' : '→';
   return how === 'pad' ? 'stick ↓' : how === 'touch' ? '▼' : id === 0 ? 'S' : '↓';
 }
 
@@ -126,8 +127,8 @@ function pompeiiRoom(st, L) {
   st.spawns = L.spawns.map(s => ({ ...s }));
   st.pl = [0, 1].map(k => ({ lock: null, lockT: 0, reach: null, banner: -1, sneezeCD: 0, downT: 0, sepT: 0, sepHinted: false,
     headPre: false, boost: null, waitJump: false, prevFeet: st.spawns[k].y + PH, hint: null, hintCD: 0, saved: null, heat: false,
-    colT: 9, sayCD: 0 }));
-  st.pull = null; st.badgeT = 0; st.badgeArmed = true; st.stuckT = 0; st.upT = 0; st.superBoost = false;
+    colT: 9, sayCD: 0, cartT: 0 }));
+  st.pull = null; st.badgeT = 0; st.badgeWait = 0; st.badgeArmed = true; st.stuckT = 0; st.upT = 0; st.superBoost = false;
   st.news = null; st.newsNext = null; st.pops = []; st.embers = []; st.embT = 0; st.swapT = 0; st.roomStart = G.time; st.shake = 0;
   const first = st.objs[0];
   st.lastLead = first && first.lead != null ? first.lead : null;
@@ -163,9 +164,10 @@ function pompeiiEdge(st, p) {
   return null;
 }
 // q's body touches the hand's reach: the strip beside the wall from the top down to the hand
+// (gold "Super stretch!" reaches further down and further out from the wall)
 function pompeiiInZone(q, s, len) {
-  const zx = s.dir < 0 ? s.edgeX - POMPEII.zoneW : s.edgeX;
-  return q.alive && q.y + q.h > s.top + 4 && rectHit(q, zx, s.top, POMPEII.zoneW, len + 2);
+  const zw = s.longArm ? POMPEII.longW : POMPEII.zoneW, zx = s.dir < 0 ? s.edgeX - zw : s.edgeX;
+  return q.alive && q.y + q.h > s.top + 4 && rectHit(q, zx, s.top, zw, len + 2);
 }
 // the hand can't reach the head of a partner standing at the foot: they have to jump for it
 function pompeiiTall(s) { return pompeiiBaseY(s) - PH - 2 > s.top + (s.longArm ? POMPEII.longLen : POMPEII.reachLen); }
@@ -186,6 +188,15 @@ function pompeiiUp(p, s) {
 function pompeiiOnColumn(st, p) {
   const col = st.column;
   return !!col && col.phase === 'stand' && p.alive && p.grounded && p.tileGround && Math.abs(p.y + p.h - col.y) < 1.5 && p.x + p.w > col.x && p.x < col.x + col.w;
+}
+// p stands on the partner's head (the partner is under them)
+const pompeiiOnHead = p => p.alive && p.onPartner && !p.tileGround && other(p).alive && other(p).y > p.y;
+// standing on `where` (column top, ship deck), or on the head of a partner who is: a stacked pair counts too
+const pompeiiStackOn = (p, where) => where(p) || (pompeiiOnHead(p) && where(other(p)));
+// in the middle of teamwork (reaching, being reached for, a pull, standing on or carrying a partner): ash doesn't make you sneeze
+function pompeiiBusy(st, p) {
+  const o = other(p);
+  return !!st.pull || !!st.pl[p.id].reach || !!st.pl[o.id].reach || pompeiiOnHead(p) || pompeiiOnHead(o);
 }
 function pompeiiStage(st) {
   for (let i = 0; i < st.objs.length; i++) if (!st.objs[i].done) return i;
@@ -228,7 +239,15 @@ function pompeiiNews(st, text, gold, life = 3) {
   st.news = n;
   if (gold) Sfx.play('pompeiiGold');
 }
-function pompeiiPop(st, x, y, text, col, size = 18) { st.pops.push({ x, y, text, col, size, t: 0, life: 1.1 }); }
+function pompeiiPop(st, x, y, text, col, size = 18) {
+  // a fresh pop steps up over any young one in the same place (Boost! then Hand-up! a moment later)
+  for (let n = 0; n < 3; n++) {
+    const q = st.pops.find(o => o.t < 0.8 && Math.abs(o.x - x) < 80 && Math.abs(o.y - o.t / o.life * 26 - y) < 24);
+    if (!q) break;
+    y = q.y - q.t / q.life * 26 - 26;
+  }
+  st.pops.push({ x, y, text, col, size, t: 0, life: 1.1 });
+}
 
 /* ---------- the hand-up ---------- */
 function pompeiiStartReach(st, p, s, auto) {
@@ -367,20 +386,21 @@ function pompeiiAwnings(st) {
 }
 // the wobbly column: both on top -> it creaks, then tips over the lava river and lies there as a bridge
 function pompeiiColRider(col, r, a) {
-  const c = Math.cos(a), s = Math.sin(a);
-  return { x: col.px + r.rx * c + col.h * s, y: col.py + r.rx * s - col.h * c };
+  const c = Math.cos(a), s = Math.sin(a), d = col.h + (r.lift || 0);   // (a rider on the partner's head rides one body higher)
+  return { x: col.px + r.rx * c + d * s, y: col.py + r.rx * s - d * c };
 }
 function pompeiiColumnStep(st, dt) {
   const col = st.column, cfg = POMPEII;
   if (!col || col.phase === 'down') return;
   const ps = G.players, g = G.level.grid;
   if (col.phase === 'stand') {
-    const on = ps.every(p => pompeiiOnColumn(st, p) && !st.pl[p.id].lock) && !st.pull;
+    // both up there: side by side, or one on the other's head
+    const on = ps.every(p => pompeiiStackOn(p, q => pompeiiOnColumn(st, q)) && !st.pl[p.id].lock) && !st.pull;
     col.both = on ? col.both + dt : 0;
     if (col.both < cfg.colBoth) return;
     col.phase = 'creak'; col.t = 0;
     const order = ps.slice().sort((a, b) => a.x - b.x);
-    col.riders = order.map((p, k) => ({ id: p.id, rx: pompeiiCx(p) - col.px, lx: col.land[k] }));
+    col.riders = order.map((p, k) => ({ id: p.id, rx: pompeiiCx(p) - col.px, lx: col.land[k], lift: pompeiiOnHead(p) ? PH : 0 }));
     for (const p of ps) { const P = st.pl[p.id]; P.lock = 'ride'; P.reach = null; P.colT = 9; P.hint = null; }
     Sfx.play('pompeiiCreak');
     pompeiiPop(st, col.x + col.w / 2, col.y - 48, 'Wobble wobble!', '#fff3df', 16);
@@ -459,16 +479,34 @@ function pompeiiCartStep(st, dt) {
       if (cart.alone > POMPEII.aloneT) { cart.alone = -1.5; pompeiiSay(st, front, 'Too heavy! Push together!', true); Sfx.play('pompeiiHeavy', front.id); }
     } else cart.alone = 0;
   }
+  if (G.introT > 0 || cart.done) return;
+  // the one who isn't pushing gets told how to help: off the crates, off the cart, back behind it, or push too
+  for (const p of G.players) {
+    const P = st.pl[p.id], o = other(p), feet = p.y + p.h, cw = cart.w * T;
+    // (someone who fell back behind the crates gets the "Fell down?" help instead)
+    if (!p.alive || P.lock || !p.grounded || st.spots.some(s2 => s2.done && pompeiiBehind(pompeiiCx(p), feet, s2))) { P.cartT = 0; continue; }
+    const onTop = Math.abs(feet - cart.r * T) < 2 && p.x + p.w > x0 && p.x < x0 + cw;
+    const ahead = p.x >= x0 + cw - 4 && Math.abs(feet - floor) < 2;
+    const high = !onTop && feet < floor - 2;   // still up on the crates (or on a head)
+    const idle = !onTop && !ahead && !high && front === o && !p.input.right && p.x + p.w <= o.x + 1;
+    if (!(onTop || ahead || high || idle)) { P.cartT = 0; continue; }
+    P.cartT += dt;
+    if (P.cartT < 2.5) continue;
+    P.cartT = -4;
+    pompeiiSay(st, p, onTop ? 'Hop down behind the cart!' : ahead ? 'Hop back behind the cart!' : high ? 'Hop down and push the cart!'
+      : 'Push ' + NAMES[o.id] + ' and the cart! (' + pompeiiKey(p.id, 'right') + ')', true);
+  }
 }
 // both on the deck: all aboard, the ship sails off (the clock stops at boarding)
 function pompeiiShipStep(st, dt) {
   const sh = st.ship;
   if (!sh || sh.sail) return false;
-  const on = p => p.alive && !st.pl[p.id].lock && p.grounded && p.tileGround && Math.abs(p.y + p.h - sh.top) < 1.5 && p.x >= sh.x - 4;
+  const deck = p => p.grounded && p.tileGround && Math.abs(p.y + p.h - sh.top) < 1.5 && p.x >= sh.x - 4;
+  const on = p => p.alive && !st.pl[p.id].lock && pompeiiStackOn(p, deck);   // (one on the other's head counts too)
   sh.board = G.players.every(on) ? sh.board + dt : 0;
   if (sh.board < POMPEII.boardT) return false;
   for (const s of st.spots) if (s.kind === 'ship') s.done = true;
-  sh.sail = { t: 0, at: G.time, base: G.players.map(p => p.x), barks: 0 };
+  sh.sail = { t: 0, at: G.time, base: G.players.map(p => p.x), lift: G.players.map(p => (pompeiiOnHead(p) ? PH : 0)), barks: 0 };
   for (const p of G.players) { const P = st.pl[p.id]; P.lock = 'sail'; P.reach = null; P.hint = null; }
   Sfx.play('pompeiiBark');
   pompeiiNews(st, 'All aboard! Bye bye, Vesuvius!', false, 4);
@@ -480,7 +518,7 @@ function pompeiiSail(st, dt) {
   const sh = st.ship, sl = sh.sail;
   sl.t += dt; G.time = sl.at;
   sh.off = sl.t > 0.9 ? 95 * (sl.t - 0.9) * (sl.t - 0.9) : 0;
-  G.players.forEach((p, k) => { p.x = sl.base[k] + sh.off; p.y = sh.top - PH; p.vx = 0; p.vy = 0; p.face = 1; });
+  G.players.forEach((p, k) => { p.x = sl.base[k] + sh.off; p.y = sh.top - PH - sl.lift[k]; p.vx = 0; p.vy = 0; p.face = 1; });
   if (sl.barks === 0 && sl.t > 0.45) { sl.barks = 1; Sfx.play('pompeiiBark'); pompeiiPop(st, sh.x + 300 + sh.off, sh.top - 50, 'Woof woof!', '#fff3df', 18); }
   if (sl.barks === 1 && sl.t > 0.9) { sl.barks = 2; Sfx.play('pompeiiHorn'); }
   if (sl.t >= POMPEII.sailT) { st.stats.roomT.push(sl.at - st.roomStart); levelClear(); }
@@ -585,7 +623,7 @@ function pompeiiAshStep(st, dt) {
     st.ashT -= dt;
     if (st.ashT <= 0) {
       st.ashT = ac.every * (0.75 + R() * 0.5);
-      const tg = G.players.filter(p => p.alive && !st.pl[p.id].lock);
+      const tg = G.players.filter(p => p.alive && !st.pl[p.id].lock && !pompeiiBusy(st, p));   // (not at someone mid-teamwork)
       let x = 30 + R() * (W - 60);
       if (tg.length && R() < ac.aim) { const p = tg[Math.floor(R() * tg.length) % tg.length]; x = pompeiiCx(p) + (R() - 0.5) * 40; }
       x = clamp(x, 12, W - 12);
@@ -604,7 +642,7 @@ function pompeiiAshStep(st, dt) {
       if ((a.x - nx) * (a.x - nx) + (a.y - ny) * (a.y - ny) > a.r * a.r) continue;
       hit = true;
       const P = st.pl[p.id];
-      if (!P.lock && p.grounded && P.sneezeCD <= 0) pompeiiSneeze(st, p);
+      if (!P.lock && p.grounded && P.sneezeCD <= 0 && !pompeiiBusy(st, p)) pompeiiSneeze(st, p);
       else puff(a.x, a.y, 6, 'rgba(205,203,210,0.9)');
       break;
     }
@@ -680,14 +718,14 @@ function pompeiiObjectives(st, dt) {
     st.stage = stage; st.stuckT = 0; st.upT = 0; st.superBoost = false;
     for (const P of st.pl) P.hint = null;   // (hints were about the last job)
     const nx = st.objs[stage];
-    if (nx) st.badgeT = G.introT > 0 ? 0 : cfg.badgeT - 1;
+    if (nx) { st.badgeT = G.introT > 0 ? 0 : cfg.badgeT - 0.2; st.badgeWait = 0.8; }
     if (nx && nx.lead != null) {
       if (st.lastLead != null && nx.lead !== st.lastLead) { st.swapT = 2.2; Sfx.play('pompeiiSwap'); }
       st.lastLead = nx.lead;
     }
   }
   if (st.badgeArmed && G.introT <= 0) { st.badgeArmed = false; st.badgeT = cfg.badgeT; }
-  st.badgeT = Math.max(0, st.badgeT - dt);
+  st.badgeT = Math.max(0, st.badgeT - dt); st.badgeWait = Math.max(0, st.badgeWait - dt);
   st.swapT = Math.max(0, st.swapT - dt);
   pompeiiHints(st, dt);
 }
@@ -705,7 +743,7 @@ function pompeiiHints(st, dt) {
     if (st.stuckT < cfg.hintGap) return;
     const jk = '(' + pompeiiKey(lead.id, 'jump') + ')';
     if (!pompeiiAtFoot(step, s)) {
-      pompeiiSay(st, step, s.kind === 'ship' ? 'Stand on the cart, by the ship!' : 'Stand by the wall: be the step!');
+      pompeiiSay(st, step, s.kind === 'ship' ? 'Stand on the cart, by the ship!' : s.kind === 'column' ? 'Stand by the column: be the step!' : 'Stand by the wall: be the step!');
       pompeiiSay(st, lead, 'Hop on ' + NAMES[step.id] + '’s head!');
     } else if (!(lead.onPartner && !lead.tileGround)) pompeiiSay(st, lead, 'Hop on ' + NAMES[step.id] + '’s head! ' + jk);
     else pompeiiSay(st, lead, 'Jump off ' + NAMES[step.id] + '’s head! ' + jk);
@@ -715,7 +753,10 @@ function pompeiiHints(st, dt) {
     const U = up[0], D = other(U), R = st.pl[U.id].reach;
     if (pompeiiEdge(st, U) !== s) pompeiiSay(st, U, 'Go to the edge, by ' + NAMES[D.id] + '!');
     else if (!R) pompeiiSay(st, U, 'Press ' + pompeiiKey(U.id, 'act') + ' to help ' + NAMES[D.id] + ' up!');
-    if (!pompeiiNear(D, s)) pompeiiSay(st, D, 'Come to the wall!');
+    const onBase = D.grounded && D.tileGround && Math.abs(D.y + D.h - pompeiiBaseY(s)) < 2;
+    if (s.kind === 'ship' && D.grounded && !onBase && !pompeiiUp(D, s)) pompeiiSay(st, D, 'Hop on the cart, by the ship!');
+    else if (!pompeiiNear(D, s)) pompeiiSay(st, D, s.kind === 'column' ? 'Come to the column!' : 'Come to the wall!');
+    else if (onBase && !pompeiiAtFoot(D, s) && !pompeiiInZone(D, s, H)) pompeiiSay(st, D, s.kind === 'column' ? 'Stand right by the column!' : 'Stand right by the wall!');
     else if (R && pompeiiTall(s)) pompeiiSay(st, D, 'Jump for the hand! (' + pompeiiKey(D.id, 'jump') + ')');
   } else { st.stuckT = 0; st.upT = 0; }
 }
@@ -834,10 +875,12 @@ MODES.pompeii = {
     const s = G.mst.stats;
     if (!s) return [];
     const hot = s.hot[0] + s.hot[1], sn = s.sneezes[0] + s.sneezes[1], time = G.time;
+    // (distances in steps: one step is one tile)
+    const steps = Math.round(s.closest / T);
     const closest = hot > 0 ? 'Closest call: ' + NAMES[s.closeWho] + '’s toes touched the lava. Hot foot!'
       : s.closest >= 999 ? 'The lava never even got close. Cool!'
-      : s.closest < 40 ? 'Closest call: ' + NAMES[s.closeWho] + ', just ' + Math.round(s.closest) + ' px from the lava!'
-      : 'Never closer than ' + Math.round(s.closest) + ' px to the lava. Cool!';
+      : steps <= 1 ? 'Closest call: ' + NAMES[s.closeWho] + ', just one step from the lava!'
+      : 'The lava never got closer than ' + steps + ' steps. Cool!';
     const medal = time <= 180 && hot <= 1 ? 'Gold' : time <= 300 && hot <= 5 ? 'Silver' : 'Bronze';
     const words = hot === 0 ? 'Not one toe toasted!' : hot <= 3 ? 'Warm toes, cool heads!' : 'Hot stuff, and you made it together!';
     return [
@@ -958,8 +1001,14 @@ function pompeiiCell(st, ch, c, r) {
     const below = tile(c, r + 1) === '#' && st.sty[r + 1] && st.sty[r + 1][c] !== ch;
     if (below || r === ROWS - 1) { ctx.fillStyle = '#b8463a'; ctx.fillRect(x, y + T - 11, T, 11); ctx.fillStyle = '#8f3229'; ctx.fillRect(x, y + T - 12, T, 2); }
     else if (!top && h % 5 === 0 && !lft && !rgt && !(st.boardBox || []).some(k => x + T > k[0] && x < k[2] && y + T > k[1] && y < k[3])) {   // a window with shutters
-      ctx.fillStyle = '#6a3f31'; rr(x + 9, y + 7, 12, 15, 5); ctx.fill();
-      ctx.fillStyle = trim; ctx.fillRect(x + 7, y + 22, 16, 3);
+      ctx.fillStyle = '#6f9e86'; ctx.fillRect(x + 3, y + 7, 6, 15); ctx.fillRect(x + 21, y + 7, 6, 15);
+      ctx.fillStyle = 'rgba(40,60,50,0.35)'; ctx.fillRect(x + 3, y + 14, 6, 1.5); ctx.fillRect(x + 21, y + 14, 6, 1.5);
+      ctx.fillStyle = '#5a3426'; rr(x + 9, y + 6, 12, 16, 6); ctx.fill();
+      ctx.fillStyle = trim; ctx.fillRect(x + 5, y + 22, 20, 3);
+      if ((h >> 6) % 3 === 0) {   // a little pot of flowers on the sill
+        ctx.fillStyle = '#5fa65a'; circle(x + 12, y + 20, 2.6); ctx.fill(); circle(x + 18, y + 20, 2.6); ctx.fill();
+        ctx.fillStyle = '#ff6f61'; circle(x + 11, y + 19, 2); ctx.fill(); circle(x + 15, y + 18, 2); ctx.fill(); circle(x + 19, y + 19, 2); ctx.fill();
+      }
     }
     if (lft) { ctx.fillStyle = trim; ctx.fillRect(x, y, 3, T); }
     if (rgt) { ctx.fillStyle = trim; ctx.fillRect(x + T - 3, y, 3, T); }
@@ -1091,8 +1140,9 @@ function pompeiiShipShape(st, t) {
   ctx.fillStyle = C.ink; circle(dx - 16, dy - 18, 1.6); ctx.fill(); circle(dx - 20, dy - 15, 1.8); ctx.fill();
   ctx.restore();
   // the water line over the hull
-  ctx.fillStyle = 'rgba(63,127,163,0.55)'; ctx.fillRect(Math.max(0, x0 - 10), 478, W, H - 478);
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2;
+  ctx.fillStyle = 'rgba(66,142,188,0.84)'; ctx.fillRect(Math.max(0, x0 - 10), 478, W, H - 478);
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; for (let k = 0; k < 4; k++) ctx.fillRect(x0 + 40 + ((k * 97 + t * 12) % 360), 496 + (k % 2) * 18, 22, 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = 2;
   ctx.beginPath(); for (let x = Math.max(0, x0 - 10); x <= W; x += 10) ctx.lineTo(x, 478 + Math.sin(x / 14 + t * 2) * 1.5); ctx.stroke();
 }
 function pompeiiArchShape(st, d, label, t) {
@@ -1188,7 +1238,9 @@ function pompeiiLavaFill(x0, x1, top, bot, t, key) {
     pompeiiPoolG[key] = g;
   }
   const amp = reduceMotion ? 0.5 : 1.4, wv = x => top + amp * Math.sin(x / 13 + t * 2.4) + amp * 0.5 * Math.sin(x / 7 - t * 3.3);
-  ctx.fillStyle = 'rgba(255,140,60,0.22)'; ctx.fillRect(x0, top - 20, x1 - x0, 20);
+  let gl = pompeiiPoolG[key + 'g'];
+  if (!gl) { gl = pompeiiPoolG[key + 'g'] = ctx.createLinearGradient(0, top - 22, 0, top); gl.addColorStop(0, 'rgba(255,140,60,0)'); gl.addColorStop(1, 'rgba(255,140,60,0.3)'); }
+  ctx.fillStyle = gl; rr(x0 + 1, top - 22, x1 - x0 - 2, 30, 8); ctx.fill();
   ctx.beginPath(); ctx.moveTo(x0, bot);
   for (let x = x0; x <= x1; x += 6) ctx.lineTo(x, wv(x));
   ctx.lineTo(x1, wv(x1)); ctx.lineTo(x1, bot); ctx.closePath();
@@ -1224,7 +1276,7 @@ function pompeiiDrawBand(st, t) {
   }
   const amp = reduceMotion ? 0.6 : 1.8;
   const wave = x => y0 + amp * Math.sin(x / 26 + t * 2.2) + amp * 0.6 * Math.sin(x / 11 - t * 3.1);
-  ctx.fillStyle = pompeiiGlowG; ctx.fillRect(0, y0 - 44, fx + 16, 44);
+  ctx.fillStyle = pompeiiGlowG; rr(-40, y0 - 44, fx + 62, 60, 28); ctx.fill();
   const nose = Math.max(0, fx - 16);
   ctx.beginPath(); ctx.moveTo(-10, H + 2); ctx.lineTo(-10, wave(-10));
   for (let x = 0; x <= nose; x += 8) ctx.lineTo(x, wave(x));
@@ -1283,7 +1335,7 @@ function pompeiiDraw(st) {
 function pompeiiArm(st, p, s, len, grip) {
   const sx = s.dir < 0 ? p.x + 5 : p.x + p.w - 5, sy = p.y + 15;
   const ex = s.edgeX + s.dir * 3, ey = s.top + 3;
-  const hx = grip ? grip.x : s.edgeX + s.dir * 12, hy = grip ? grip.y : s.top + Math.max(6, len);
+  const hx = grip ? grip.x : s.edgeX + s.dir * (s.longArm ? 26 : 12), hy = grip ? grip.y : s.top + Math.max(6, len);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   const path = () => { ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.lineTo(hx, hy); };
   if (s.longArm) { ctx.strokeStyle = 'rgba(255,197,61,0.6)'; ctx.lineWidth = 14; path(); ctx.stroke(); }
@@ -1420,7 +1472,7 @@ function pompeiiHud(st) {
     return { y, under };
   };
   const heads = G.players.filter(p => p.alive).map(p => ({ p, px: p.x + p.w / 2, by: pompeiiHead(st, p).top, below: p.y + p.h + 10 }));
-  if (st.badgeT > 0 && ob) for (const k of heads) {
+  if (st.badgeT > 0 && st.badgeWait <= 0 && ob) for (const k of heads) {
     const p = k.p;
     if (st.pl[p.id].lock) continue;
     const word = ob.kind === 'cart' ? 'Push the cart!' : ob.lead === p.id ? 'Climb up!' : 'Be the step!';
