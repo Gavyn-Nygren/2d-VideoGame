@@ -2179,6 +2179,116 @@ const LEVELS = [
       '................................', // 17
     ],
   },
+  /* ===== World 9 (Great Escapes, team): historic natural disasters, kept light and cartoony. Levels in order
+     9-1 Pompeii Escape, 9-2 San Francisco 1906 Quake, 9-3 Ice Age Glacier, 9-4 Krakatoa Ash Run (Gavyn's picks and order).
+     Each level's def sits between its own BEGIN/END lines. world: 8 ===== */
+  // ----- BEGIN 9-1 Pompeii Escape (mode 'pompeii', js/levels/world9/pompeii-escape.js) -----
+  { name: 'Pompeii Escape', world: 8, kind: 'team', mode: 'pompeii',
+    tip: 'Help each other over the rooftops to the harbor boat before the lava gets there!',
+    switches: {}, signs: [],
+      map: [
+        '################################',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#.1.2.......................E..#',
+        '################################',
+        '################################',
+      ],
+  },
+  // ----- END 9-1 Pompeii Escape -----
+
+  // ----- BEGIN 9-2 San Francisco 1906 Quake (mode 'quake', js/levels/world9/san-francisco-quake.js) -----
+  { name: 'San Francisco 1906 Quake', world: 8, kind: 'team', mode: 'quake',
+    tip: 'The ground shakes and cracks! Hold up the wobbly bridge so your partner can cross.',
+    switches: {}, signs: [],
+      map: [
+        '################################',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#.1.2.......................E..#',
+        '################################',
+        '################################',
+      ],
+  },
+  // ----- END 9-2 San Francisco 1906 Quake -----
+
+  // ----- BEGIN 9-3 Ice Age Glacier (mode 'glacier', js/levels/world9/ice-age-glacier.js) -----
+  { name: 'Ice Age Glacier', world: 8, kind: 'team', mode: 'glacier',
+    tip: 'Slide down the cracking glacier together. Each time the ice splits, swap who steers!',
+    switches: {}, signs: [],
+      map: [
+        '################################',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#.1.2.......................E..#',
+        '################################',
+        '################################',
+      ],
+  },
+  // ----- END 9-3 Ice Age Glacier -----
+
+  // ----- BEGIN 9-4 Krakatoa Ash Run (mode 'ash', js/levels/world9/krakatoa-ash-run.js) -----
+  { name: 'Krakatoa Ash Run', world: 8, kind: 'team', mode: 'ash',
+    tip: 'The ash cloud hides the way! One blows it clear with a fan, the other leads the way.',
+    switches: {}, signs: [],
+      map: [
+        '################################',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#..............................#',
+        '#.1.2.......................E..#',
+        '################################',
+        '################################',
+      ],
+  },
+  // ----- END 9-4 Krakatoa Ash Run -----
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -2208,6 +2318,10 @@ const WORLDS = [
   { name: 'Lucky Casino', blurb: 'Drop, spin, hop and push your way to the jackpot!',
     theme: { skyTop: '#6c54d8', skyBot: '#ffb3d1', hillFar: '#62cdbf', hillNear: '#e283bd', sun: 'rgba(255, 240, 190, 0.95)', sunGlow: 'rgba(255, 180, 220, 0.4)',
       stone: '#5a3d8c', stoneLight: '#6d4ea6', stoneEdge: '#3c2766', grass: '#ffc53d', grassDark: '#c98a12', plank: '#e8955a', plankDark: '#9a5a2e', rope: '#ffd75e', ropeDark: '#8a5a12' } },
+  // teamwork world: four escapes from famous natural disasters, cartoony and family-friendly (hidden until it has levels)
+  { name: 'Great Escapes', blurb: 'Volcanoes, quakes, glaciers and ash clouds: escape them together!',
+    theme: { skyTop: '#f2a477', skyBot: '#ffe6bd', hillFar: '#c9a08e', hillNear: '#a98272', sun: 'rgba(255, 236, 180, 0.95)', sunGlow: 'rgba(255, 180, 120, 0.38)',
+      stone: '#5d4b5f', stoneLight: '#705c73', stoneEdge: '#3e3143', grass: '#a9d870', grassDark: '#6a9c45', plank: '#d39a62', plankDark: '#8a5a32', rope: '#f0d08a', ropeDark: '#7a5432' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
