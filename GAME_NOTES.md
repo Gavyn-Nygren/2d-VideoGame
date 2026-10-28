@@ -99,7 +99,7 @@ Rules below are as built. "(Gavyn)" marks what he asked for himself.
 - Catch-up help is gold and announced, never hidden.
 
 ### Code map
-The code is being split from one `index.html` into `css/` and `js/` files (on branch `claude/project-thread-e0ji4c`, whose README has the full table). Until that merges, the same parts sit in this order inside `index.html`'s single script.
+The code is split into `css/` and `js/` files (the README has the same table). `index.html` loads the scripts in this order.
 
 | File | What's in it |
 |---|---|
@@ -118,7 +118,7 @@ The code is being split from one `index.html` into `css/` and `js/` files (on br
 | `js/render.js` | Shared drawing (`render`, `drawHUD`, `drawIntro`) and particles |
 | `js/main.js` | `G`, `parseLevel`, `roomDef`, `loadLevel`, `step`, `nextRoom`, `levelClear`, `frame`, `fit`, `window.__pipbo`, startup (loads last) |
 
-- After the split there is no wrapper function: all files share globals, so a file may use at load time only what the files above it define.
+- There is no wrapper function: all files share globals, so a file may use at load time only what the files above it define.
 - New level: a new `js/levels/worldN/<slug>.js` with a `MODES.<name>` block (hooks: `setup` required; `resetRound`, `go`, `pre`, `step`, `draw`, `drawTop`, `hud`, `stats`, `timeUp`, `tiebreak`, `onKill`, `onRespawn`, `onStomp`, `room` optional), its def in `LEVELS` after its world's marker (`name`, `world` 0-based, `kind`, `mode`, `tip`, `map` or `rooms`), and a script tag after the last level file, before `js/input.js`. Level codes follow the order in `LEVELS`.
 - New world: a `WORLDS` entry with a theme plus a marker at the end of `LEVELS`. A world with no levels stays hidden.
 
@@ -130,7 +130,7 @@ The code is being split from one `index.html` into `css/` and `js/` files (on br
 
 ### Publishing
 - The demo is a claude.ai Artifact at https://claude.ai/artifact/5jJ7SJw7gwSttznxFP56TG. Always republish to that same link, never a new one.
-- After the split: `node tools/bundle.js` (needs only Node) writes `build/pip-and-bo.html`, one self-contained file that is not committed. Publish that file. Like today's `index.html`, it is the page body without the outer html/head/body tags, which the publisher adds.
+- `node tools/bundle.js` (needs only Node) writes `build/pip-and-bo.html`, one self-contained file that is not committed. Publish that file. Like `index.html`, it is the page body without the outer html/head/body tags, which the publisher adds.
 - Then push to `main` here and update the README's world list and this file.
 
 ## Open questions for Gavyn
