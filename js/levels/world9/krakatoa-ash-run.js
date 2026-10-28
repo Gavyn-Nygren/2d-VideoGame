@@ -31,7 +31,10 @@ const ASH = {
   driftT: 0.8, driftRange: 175,
   // gusts: over a gust gap, a leader in mid-air glides (fall speed capped) and is pushed along while the fan reaches
   // the gap (gustR: how far behind its edge the fan may stand)
-  gustR: 260, gustX: 170, glideV: 85, gustHalf: 0.72, gustH: 150, luckyGust: 1.35, gustMin: 0.15, gustDist: 150,
+  gustR: 260, gustX: 170, glideV: 85, gustHalf: 0.72, gustH: 150, luckyGust: 1.35, luckyReach: 1.3, gustMin: 0.15, gustDist: 150,
+  // the updraft over a gust gap: a leader in the wind below liftH above the gap's ground is lifted (rise speed liftV), so a
+  // quick tap of jump, or just stepping off the edge, floats across too
+  liftH: 40, liftV: 110, liftA: 3400,
   // the leader
   seeR: 165, hatSee: 36, hatMax: 3, hatEvery: 9, hatJitter: 5, hatOffT: 0.25, clumpV: 230,
   reach: 34, callCD: 0.7, callLife: 1.6,
@@ -133,9 +136,9 @@ function ashRoom(st, L) {
   st.camp = [-1, -1];
   st.roomT = 0; st.exitT = 0; st.progT = 0; st.hintN = 0; st.roomFalls = 0; st.luckyT = 0; st.luckyUsed = false; st.luckyGust = false;
   st.hat = 0; st.hatT = ASH.hatEvery + 4; st.hatOff = 0; st.clumps = [];
-  st.pops = []; st.bubbles = []; st.news = null; st.calls = [];
+  st.pops = []; st.bubbles = []; st.news = null; st.calls = []; st.nudge = { kind: '', t: 0, cd: 0 };
   st.fan = { on: false, t: 0, snd: 0, ph: 0 };
-  st.gust = { t: 0, x0: 0, air: false, on: false };
+  st.gust = { t: 0, x0: 0, air: false, on: false, gp: null };
   st.pl = [0, 1].map(() => ({ downT: 0, downOk: false, prevDown: true, why: '', nearLever: 0 }));
   const lp = G.players[st.leader];
   for (const p of G.players) p.face = 1;   // the way out is to the right: the fan starts blowing that way
@@ -189,7 +192,7 @@ function ashFanStep(st, dt) {
   f.pendingAct = false;   // the fan is a hold; a fresh press means nothing else
   if (on && !st.fan.on) { Sfx.play('ashFanOn', f.id); rumble(f.id, 0, 0.18, 60); }
   st.fan.on = on; st.fan.ph += dt * (on ? 16 : 3);
-  if (!on) { st.gust.on = false; return; }
+  if (!on) { st.gust.on = false; st.gust.gp = null; return; }
   st.fan.t += dt; st.fan.snd -= dt;
   if (st.fan.snd <= 0) { st.fan.snd = 0.22; Sfx.play('ashWhoosh', f.id); }
   const o = ashFanO(f), R = ASH.range;
@@ -223,6 +226,7 @@ function ashFanStep(st, dt) {
   // while the fan blows at the gap from behind its edge, it carries the leader all the way over (any height up to gustH)
   const gp = ld.alive ? ashGapAt(st, lc.x) : null;
   st.gust.on = !!gp && ashGustReach(st, gp, f) && (lc.x - o.x) * o.dir > -12 && Math.abs(lc.y - o.y) < ASH.gustH;
+  st.gust.gp = st.gust.on ? gp : null;
   if (k > 0 && st.hat > 0) {
     st.hatOff += dt;
     if (st.hatOff >= ASH.hatOffT) {
@@ -251,7 +255,7 @@ function ashBlowDrift(st, d, dir) {
 function ashGustReach(st, gp, f) {
   if (!st.fan.on || !f.alive) return false;
   const o = ashFanO(f), back = o.dir > 0 ? gp.x0 - o.x : o.x - gp.x1;
-  return back > -30 && back < ASH.gustR;
+  return back > -30 && back < ASH.gustR * (st.luckyGust ? ASH.luckyReach : 1);   // a Lucky gust also reaches further
 }
 // the gust gap (bridge not down yet) the point x is over, from a little before its edge
 function ashGapAt(st, x) {
@@ -267,6 +271,10 @@ function ashGustStep(st, dt) {
       const mul = st.luckyGust ? ASH.luckyGust : 1;
       moveX(ld, f.face * ASH.gustX * mul * dt, true);
       if (ld.vy > ASH.glideV) ld.vy = ASH.glideV;
+      // the updraft: below float height with the whole body over the open gap, the wind lifts the leader (a full jump still
+      // rises higher); over the ground at either edge it only glides, so nobody hovers above a ledge without landing
+      const gp = gs.gp;
+      if (gp && ld.x >= gp.x0 - 2 && ld.x + ld.w <= gp.x1 + 2 && ld.y + ld.h > gp.r * T - ASH.liftH && ld.vy > -ASH.liftV) ld.vy = Math.max(-ASH.liftV, ld.vy - ASH.liftA * dt);
       gs.t += dt;
       if (Math.floor(gs.t * 8) !== Math.floor((gs.t - dt) * 8)) puff(ld.x + ld.w / 2 - f.face * 12, ld.y + ld.h / 2, 1, 'rgba(255,255,255,0.85)');
       if (gs.t > 0 && gs.t - dt <= 0) Sfx.play('ashGust', ld.id);
@@ -297,7 +305,7 @@ function ashPull(st, lv) {
   for (const b of bridges) b.t = -b.at;
   Sfx.play('ashLever'); rumble(st.leader, 0.25, 0.4, 120);
   if (gates.length) { Sfx.play('ashGate'); ashNews(st, 'Gate open!'); const gx = gates[0].c * T + 15; for (const g of gates) puff(gx, g.r * T + 15, 4, '#d9c07a'); }
-  if (bridges.length) ashNews(st, 'Rope bridge down! ' + NAMES[st.fanner] + ', come across!');
+  if (bridges.length) ashNews(st, (st.exitKind === 'ship' ? 'Gangplank down! ' : 'Rope bridge down! ') + NAMES[st.fanner] + ', come across!');
   ashPop(st, lv.x, lv.y - 50, 'Clunk!', '#fff', 18);
   // the leader's pull also fans out the ash around the lever a little (a puff of air)
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (Math.hypot(c * T + 15 - lv.x, r * T + 15 - (lv.y - 20)) < 50) { const i = ashIdx(c, r); st.dens[i] = Math.min(st.dens[i], 0.2); st.since[i] = 0; }
@@ -527,10 +535,32 @@ function ashHelpStep(st, dt) {
 function ashHint(st, job) {
   const L = st.leader, F = st.fanner, fk = ashKey(F, 'act'), lk = ashKey(L, 'act');
   if (job.kind === 'drift') { ashSay(st, F, 'Hold ' + fk + ': blow the drift away!'); ashSay(st, L, 'A drift! ' + NAMES[F] + ' can blow it away'); }
-  else if (job.kind === 'gap') { ashSay(st, F, 'Fan ' + NAMES[L] + ' across the gap!'); ashSay(st, L, 'Jump while ' + NAMES[F] + ' fans you!'); }
+  else if (job.kind === 'gap') { ashSay(st, F, 'Hold ' + fk + ' by the windsock to blow ' + NAMES[L] + ' over!'); ashSay(st, L, 'Jump when the windsock blows!'); }
   else if (job.kind === 'lever') { ashSay(st, L, 'Find the lever, press ' + lk + '!'); ashSay(st, F, 'Clear the ash so ' + NAMES[L] + ' can see!'); }
   else if (job.kind === 'climb') { ashSay(st, L, 'Climb the rocks up to the high path!'); ashSay(st, F, 'Follow ' + NAMES[L] + ' up the rocks!'); }
   else { ashSay(st, L, 'The way out is over there!'); ashSay(st, F, 'Stay close and keep fanning!'); }
+}
+// quick nudges (sooner than the stuck hints) when the leader waits at a gust gap's edge or pushes on a drift
+function ashNudgeStep(st, dt) {
+  const ld = G.players[st.leader], f = G.players[st.fanner], N = st.nudge;
+  N.cd = Math.max(0, N.cd - dt);
+  let want = '';
+  if (ld.alive && ld.grounded && !st.done && G.introT <= 0) {
+    const cx = ld.x + ld.w / 2, feet = ld.y + ld.h;
+    const gp = st.gaps.find(g => !g.crossed && !st.levers.some(l => l.id === g.lever && l.on) && cx > g.x0 - 70 && cx < g.x0 + 4 && Math.abs(feet - g.r * T) < 4);
+    if (gp) want = ashGustReach(st, gp, f) ? 'jump' : 'fan';
+    else if (st.drifts.some(d => !d.gone && d.wob <= 0 && feet > d.r0 * T && feet <= (d.r1 + 1) * T + 1
+      && (Math.abs(ld.x + ld.w - d.c0 * T) < 4 || Math.abs(ld.x - (d.c1 + 1) * T) < 4))) want = 'drift';
+  }
+  if (want !== N.kind) { N.kind = want; N.t = 0; }
+  if (!want) return;
+  N.t += dt;
+  if (N.t < 1.8 || N.cd > 0) return;
+  N.cd = 9; N.t = 0;
+  const fk = ashKey(st.fanner, 'act');
+  if (want === 'fan') ashSay(st, st.fanner, 'Hold ' + fk + ' by the windsock to blow ' + NAMES[st.leader] + ' over!');
+  else if (want === 'jump') ashSay(st, st.leader, 'Jump! The wind will carry you over');
+  else ashSay(st, st.fanner, 'Hold ' + fk + ': blow the drift away!');
 }
 // the cloud drifts back where the wind left it (not while a Lucky breeze blows)
 function ashRegrow(st, dt) {
@@ -579,6 +609,7 @@ MODES.ash = {
     ashHopStep(st, dt);
     ashHatStep(st, dt);
     ashHelpStep(st, dt);
+    ashNudgeStep(st, dt);
     ashRegrow(st, dt);
     ashFx(st, dt);
     ashExitStep(st, dt);
@@ -1102,13 +1133,20 @@ function ashDrawTop(st) {
     const fs = big ? 19 : 13, a = clamp(Math.min(b.t, b.life - b.t) / 0.2, 0, 1);
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
     const w = ctx.measureText(b.s).width + 20, th = fs + (big ? 14 : 10), px = p.x + p.w / 2, x = clamp(px, w / 2 + 4, W - w / 2 - 4);
-    const by = Math.max(th + 6, p.y - (b.id === st.leader ? 40 : 20) - (big ? 8 : 0));
+    let by = Math.max(th + 6, p.y - (b.id === st.leader ? 40 : 20) - (big ? 8 : 0));
+    // two players side by side with a hint each: the second bubble stacks above the first (and above any badge)
+    const by0 = by;
+    for (let pass = 0; pass < 3; pass++) for (const q of boxes) if (x + w / 2 > q.x0 && x - w / 2 < q.x1 && by + 5 > q.y0 && by - th < q.y1) by = q.y0 - 7;
+    by = Math.max(th + 6, by);
+    // the tail points at its player; a lifted bubble has no tail, so it gets a dot in its player's colour instead
+    const lifted = by !== by0, dot = lifted ? th * 0.55 : 0, bw = w + dot, bx0 = clamp(x - bw / 2, 4, W - bw - 4);
     ctx.save(); ctx.globalAlpha = a;
     ctx.fillStyle = '#fff'; ctx.strokeStyle = PCOL[b.id]; ctx.lineWidth = 2;
-    rr(x - w / 2, by - th, w, th, th / 2); ctx.fill(); ctx.stroke();
-    boxes.push({ x0: x - w / 2, y0: by - th, x1: x + w / 2, y1: by + 5 });
-    ctx.beginPath(); ctx.moveTo(px - 5, by - 1); ctx.lineTo(px + 5, by - 1); ctx.lineTo(px, by + 5); ctx.closePath(); ctx.fill();
-    text(b.s, x, by - th / 2 + 0.5, fs, C.ink, 'center', 'body');
+    rr(bx0, by - th, bw, th, th / 2); ctx.fill(); ctx.stroke();
+    boxes.push({ x0: bx0, y0: by - th, x1: bx0 + bw, y1: by + 5 });
+    if (!lifted) { ctx.beginPath(); ctx.moveTo(px - 5, by - 1); ctx.lineTo(px + 5, by - 1); ctx.lineTo(px, by + 5); ctx.closePath(); ctx.fill(); }
+    else { ctx.fillStyle = PCOL[b.id]; circle(bx0 + th * 0.5, by - th / 2, th * 0.2); ctx.fill(); }
+    text(b.s, bx0 + dot + bw / 2 - dot / 2, by - th / 2 + 0.5, fs, C.ink, 'center', 'body');
     ctx.restore();
   }
   // pops ("Poof!", "Camp!"): kept on screen, and lifted above any badge, bubble or older pop they would cover
