@@ -2187,12 +2187,12 @@ const LEVELS = [
   // and pull your partner up; lava creeps in sideways, ash makes you sneeze. Map chars and rules: the top of the file.
   { name: 'Pompeii Escape', world: 8, kind: 'team', mode: 'pompeii', ownHUD: true, noFalls: true,
     act: { label: 'help' },
-    legend: { down: 'hold: go back', padDown: 'hold down: go back' },
+    legend: { down: 'hold: hop back', padDown: 'hold down: hop back' },
     tip: 'Boost each other up the walls, then press help at the edge to pull your partner up. Run to the boat!',
     switches: {}, signs: [],
     rooms: [
-      { // ---------- Room 1: Market Street (learn the boost and the hand-up) ----------
-        title: 'Market Street', bg: 'town', leads: [0, 1], awnB: [58, 70], exitLabel: 'PORTA MARINA',
+      { // ---------- Room 1: Market Square (learn the boost and the hand-up) ----------
+        title: 'Market Square', bg: 'town', leads: [0, 1], awnB: [58, 70], exitLabel: 'PORTA MARINA',
         tip: 'Bo, be the step! Pip hops on Bo’s head, jumps up, then presses help at the edge to pull Bo up.',
         lava: { delay: 4, speed: 10, caps: [6, 12, 20] }, ash: { every: 2.6, aim: 0.4 },
         boards: [{ x: 420, y: 420, text: 'POMPEII', size: 26, paint: true }, { x: 420, y: 448, text: '79 AD', size: 17, paint: true },
@@ -2272,7 +2272,7 @@ const LEVELS = [
         ] },
       { // ---------- Room 4: Harbor (push the cart to the ship together, climb aboard, sail away) ----------
         title: 'Harbor', bg: 'harbor', leads: [1, 0],
-        tip: 'Push the cart to the ship together (it’s too heavy for one!), then climb aboard. All aboard!',
+        tip: 'Push the cart to the ship together (it’s too heavy for one!), then hop on deck. All aboard!',
         lava: { delay: 2, speed: 15, caps: [1, 'cart', 16, 20] }, ash: { every: 1.9, aim: 0.5 },
         boards: [{ x: 225, y: 450, text: 'TO THE SHIP →', size: 13, sign: true }],
         switches: {}, signs: [],
@@ -2335,7 +2335,7 @@ const LEVELS = [
           '####~~~~~~~###~~~~~~~###########',  // 17
         ] },
       { title: 'Cable Car Line', deco: 'cable', quake: { amp: 1.7, calm: [5, 7], len: [2.6, 3.2] },
-        tip: 'Hop in the cable car! The one at the winch holds the action button and pushes right to pull it across.',
+        tip: 'Hop in the cable car! The one at the crank holds the action button and pushes right to pull it across.',
         map: [
           '................................',  // 0
           '................................',  // 1
@@ -2436,7 +2436,7 @@ const LEVELS = [
       },
       {
         title: 'Mammoth Meadow', steer: 1, herd: true,
-        tip: 'Swap! Bo steers now and Pip hops. Big gaps need FAST, bumps need SLOW. Pick a road!',
+        tip: 'Swap! Bo steers now and Pip hops. Big gaps need FAST, bumps need SLOW. Forks: ▲ high road, ▼ low road!',
         course: ['r480', 'D:mammoth', 'r150', 'f4', 'r150', 'g80', 'r300', 'm4', 'r460', 'G160', 'r320', 'a', 'r260', 'h4', 'r220', 'g90', 'r360',
           { up: ['r200', 'f5', 'r260', 'a', 'r200', 'h4', 'r200', 'o', 'r200'], down: ['r180', 'm4', 'r300', 'g80', 'r280', 'f4', 'r200'] },
           'r360', 'G170', 'r340', 'm3', 'r400', 'a', 'r240', 'g80', 'r280', 'D:mammoth', 'f5', 'r460', 'G160', 'r340', 'X'],
@@ -2452,7 +2452,7 @@ const LEVELS = [
       },
       {
         title: 'Sabre-tooth Snooze', steer: 0,
-        tip: 'Pip steers again! Shh, a sabre-tooth cat is napping. At a fork: ▲ high road, ▼ low road.',
+        tip: 'Pip steers again! Shh, a sabre-tooth cat is napping. Tiptoe past, and pick a road at the fork.',
         course: ['r520', 'D:cat', 'r280', 'g90', 'r280', 'a', 'r280', 'm4', 'r460', 'G170', 'r280', 'h4', 'r200', 'a', 'r340',
           { up: ['r200', 'G160', 'r280', 'h5', 'r200', 'o', 'r200'], down: ['r420', 'f5', 'r300', 'a', 'r300', 'm3', 'r160'] },
           'r300', 'g80', 'r260', 'a', 'r260', 'm4', 'r460', 'G170', 'r130', 'D:sloth', 'r170', 'g90', 'r300', 'f4', 'r360', 'X'],

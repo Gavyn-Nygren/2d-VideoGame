@@ -47,8 +47,8 @@ function pompeiiKey(id, what) {
   const how = actKey(id);
   if (what === 'act') return how === 'pad' ? glyph('act') : how === 'touch' ? 'help' : id === 0 ? 'F' : '/';
   if (what === 'jump') return how === 'pad' ? glyph('a') : how === 'touch' ? '▲' : id === 0 ? 'W' : '↑';
-  if (what === 'right') return how === 'pad' ? 'stick →' : how === 'touch' ? '▶' : id === 0 ? 'D' : '→';
-  return how === 'pad' ? 'stick ↓' : how === 'touch' ? '▼' : id === 0 ? 'S' : '↓';
+  if (what === 'right') return how === 'pad' ? 'stick ▶' : how === 'touch' ? '▶' : id === 0 ? 'D' : '→';
+  return how === 'pad' ? 'stick ▼' : how === 'touch' ? '▼' : id === 0 ? 'S' : '↓';
 }
 
 /* ---------- the room: parse the map, set up the lava, ash and helpers ---------- */

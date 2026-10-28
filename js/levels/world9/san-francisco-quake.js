@@ -144,7 +144,7 @@ function quakeSay(st, id, s, key, life) {
 function quakeKey(id, what) {
   const how = actKey(id);
   if (what === 'act') return how === 'pad' ? glyph('act') : how === 'touch' ? 'hold' : id === 0 ? 'F' : '/';
-  return how === 'kb' ? (id === 0 ? 'D' : '→') : '▶';
+  return how === 'kb' ? (id === 0 ? 'D' : '→') : how === 'pad' ? 'stick ▶' : '▶';
 }
 function quakeHoldWords(id, keep) { const k = quakeKey(id, 'act'); return (keep ? 'Keep holding ' : 'Hold ') + (k === 'hold' ? 'the round button' : k) + '!'; }
 // the next crossing still to do (they go left to right) and who does what for it

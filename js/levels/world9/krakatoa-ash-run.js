@@ -4,7 +4,7 @@
 /* ===== MODES.ash — 9-4 Krakatoa Ash Run (World 9 "Great Escapes", team) =====
    Gavyn's idea: a sky full of ash blocks your view, so one player clears a path with a fan while the other leads the way.
    A cartoony Krakatoa, 1883: palms, jungle, lava rocks, sea cliffs and a rescue ship. Nobody gets hurt: the ash is
-   fluffy grey clumps, lava is a "Hot foot!" and the sea a "Splash!", and both just pop back at their last camp torch.
+   fluffy grey clumps, lava is "Toasty toes!" and the sea a "Splash!", and both just pop back at their last camp torch.
    - The FANNER holds the action ('fan') to blow a wind cone the way they face. The wind clears the ash cloud (it
      drifts back a few seconds later), blows away soft ash drifts (solid piles in tunnels: only the fan moves them),
      gusts the leader through the air (glide + push: the 7-tile gust gaps, marked by a windsock, need it; even a
@@ -12,7 +12,7 @@
    - The LEADER knows the way: glowing footprints and levers show through the ash only near the leader. The action
      ('pull') pulls a lever (a bamboo gate opens, a rope bridge drops for the fanner); anywhere else it is a
      "This way!" call. Volcano puffs drop ash clumps on the leader's head (an ash hat): the more ash, the less they see.
-   Roles swap every room. A parrot perches over the next job; hints after 12 s stuck; gold "Lucky breeze" / "Lucky
+   Roles swap every room. A parrot perches over the next job; hints after 12 s stuck; gold "Sea breeze" / "Super
    gust" help is always announced.
    Map chars (parsed here; replaced by '#' or '.'):
      #  rock / earth (drawn in the room's style)   z  sand   w  ship / dock planks   d  ash drift (solid, the fan blows it)
@@ -52,7 +52,7 @@ function ashHow(id) { try { return actKey(id); } catch (e) { return 'kb'; } }
 function ashKey(id, what) {
   const how = ashHow(id);
   if (what === 'act') return how === 'pad' ? glyph('act') : how === 'touch' ? 'the ' + (G.mst && G.mst.fanner === id ? 'fan' : 'pull') + ' button' : id === 0 ? 'F' : '/';
-  return how === 'pad' ? 'down' : how === 'touch' ? '▼' : id === 0 ? 'S' : '↓';
+  return how === 'pad' ? 'stick ▼' : how === 'touch' ? '▼' : id === 0 ? 'S' : '↓';
 }
 
 /* ---------- the room: parse the map, set up the ash cloud, levers, drifts, camps ---------- */
@@ -519,7 +519,7 @@ function ashHelpStep(st, dt) {
   // gold help: Lucky breeze (stuck a long time, or 3 Oops in this room)
   if (!st.luckyUsed && (st.progT > ASH.stuckLucky || st.roomFalls >= ASH.luckyFalls)) {
     st.luckyUsed = true; st.luckyT = ASH.luckyT; pr.gold = true;
-    ashNews(st, 'Lucky breeze! The ash thins for a bit', true, 4);
+    ashNews(st, 'Sea breeze! The ash thins for a bit', true, 4);
     Sfx.play('ashLucky'); rumble(0, 0, 0.3, 120); rumble(1, 0, 0.3, 120);
   }
   if (st.luckyT > 0) {
@@ -619,7 +619,7 @@ MODES.ash = {
     st.roomFalls++; st.stats.oops[p.id]++;
     const x = p.x + p.w / 2, y = Math.min(p.y + p.h / 2, H - 20);
     if (P.why === 'hot') {
-      st.stats.hot++; ashPop(st, x, y - 30, 'Hot foot!', '#ffb347', 22); Sfx.play('ashSizzle');
+      st.stats.hot++; ashPop(st, x, y - 30, 'Toasty toes!', '#ffb347', 22); Sfx.play('ashSizzle');
       for (let i = 0; i < 8; i++) G.particles.push({ x: x + (R() - 0.5) * 16, y, vx: (R() * 2 - 1) * 30, vy: -60 - R() * 50, life: 0.9, max: 0.9, col: 'rgba(120,110,120,0.6)', size: 5 + R() * 3, grav: -40, kind: 'dot' });
     } else if (P.why === 'splash') {
       st.stats.splash++; ashPop(st, x, y - 30, 'Splash!', '#bfe9ff', 22); Sfx.play('splash');
@@ -632,7 +632,7 @@ MODES.ash = {
       gp.falls++;
       if (gp.falls >= ASH.gapFalls && !st.luckyGust) {
         st.luckyGust = true; st.parrot.gold = true;
-        ashNews(st, 'Lucky gust! ' + NAMES[st.fanner] + '’s fan blows extra strong', true, 4);
+        ashNews(st, 'Super gust! ' + NAMES[st.fanner] + '’s fan blows extra strong', true, 4);
         Sfx.play('ashLucky');
       }
     }
@@ -653,7 +653,7 @@ MODES.ash = {
     const words = falls === 0 ? 'Not one Oops! Super teamwork!' : falls <= 3 ? 'A few Oops, lots of teamwork!' : 'Ash everywhere, and you made it together!';
     const extra = [s.hatsOff ? 'Ash hats blown off: ' + s.hatsOff : '', 'Levers pulled: ' + s.levers, s.calls ? '“This way!” calls: ' + s.calls : ''].filter(Boolean).join(' · ');
     return [
-      { label: 'Ash fanned away', values: [Math.round(s.ash[0]), Math.round(s.ash[1])] },
+      { label: 'Ash puffs blown', values: [Math.round(s.ash[0] / 100), Math.round(s.ash[1] / 100)] },
       { label: 'Gust jumps', value: s.gusts },
       { label: 'Drifts blown', value: s.drifts },
       { label: 'Footprints found', value: s.marks + ' of ' + s.markTotal },
@@ -1208,7 +1208,7 @@ function ashParrot(st, t) {
 function ashHud(st) {
   const big = hudBig(), fs = big ? 20 : 14, h = big ? 40 : 28;
   const found = st.marks.filter(m => m.found).length;
-  const parts = [fmtTime(G.time), 'Oops ' + G.falls, found + '/' + st.marks.length];
+  const parts = [fmtTime(G.time), 'Falls ' + G.falls, found + '/' + st.marks.length];
   ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
   const ws = parts.map(s => ctx.measureText(s).width), gap = fs * 1.1, icon = fs * 1.2;
   const w = ws[0] + ws[1] + ws[2] + gap * 2 + icon + 30, x0 = pill(W - 14, 12, w, h, 'right'), cy = 12 + h / 2 + 0.5;
