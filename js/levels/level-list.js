@@ -2487,29 +2487,122 @@ const LEVELS = [
   // ----- END 9-3 Ice Age Glacier -----
 
   // ----- BEGIN 9-4 Krakatoa Ash Run (mode 'ash', js/levels/world9/krakatoa-ash-run.js) -----
-  { name: 'Krakatoa Ash Run', world: 8, kind: 'team', mode: 'ash',
+  { name: 'Krakatoa Ash Run', world: 8, kind: 'team', mode: 'ash', ownHUD: true,
+    act: { label: 'fan' },
+    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> hold: camp', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> hold: camp',
+      pad: 'stick or d-pad move, <span data-glyph="a"></span> jump, hold down: camp,' },
     tip: 'The ash cloud hides the way! One blows it clear with a fan, the other leads the way.',
     switches: {}, signs: [],
-      map: [
-        '################################',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#.1.2.......................E..#',
-        '################################',
-        '################################',
-      ],
+    rooms: [
+      { // ---------- Room 1: Jungle Trail (Pip leads, Bo fans) ----------
+        title: 'Jungle Trail', leader: 0, style: 'jungle', exitKind: 'arch',
+        act: { label: 'fan', labels: ['pull', 'fan'] },
+        tip: 'Bo: hold the action to fan the ash away. Pip: lead the way and pull the lever!',
+        ash: { clear: [[0, 0, 4, 17], [29, 0, 31, 17]] },
+        boards: [{ x: 74, y: 394, post: 56, text: 'Krakatoa, 1883' }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '..............#####.............', //  9  rock overhang over the tunnel
+          '..............#####.............', // 10
+          '..............#####.............', // 11
+          '..............#####.............', // 12
+          '................d...............', // 13  a soft ash drift fills the tunnel
+          '.2.1.p.m.....mf.d..tm.......A.E.', // 14  camp t, lever A drops the rope bridge 6
+          '#########...#########6666666####', // 15  a small pit, then the gust gap
+          '#########...#########.......####', // 16
+          '#########...#########.......####', // 17
+        ] },
+      { // ---------- Room 2: Lava Rocks (Bo leads, Pip fans) ----------
+        title: 'Lava Rocks', leader: 1, style: 'lava', exitKind: 'cave',
+        act: { label: 'fan', labels: ['fan', 'pull'] },
+        tip: 'Swap! Pip fans, Bo leads. Hop the hot rocks and fan Bo across the lava river.',
+        ash: { hats: true, clear: [[0, 0, 3, 17], [29, 0, 31, 17]] },
+        boards: [{ x: 62, y: 366, post: 54, text: 'Hot rocks!' }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '......................######....', //  3  tunnel roof
+          '......................######....', //  4
+          '......................######....', //  5
+          '......................######....', //  6
+          '......................######....', //  7
+          '......................######....', //  8
+          '......................######....', //  9
+          '.......................d...4....', // 10  drift, bamboo gate
+          '..........t.m.......A..d.B.4m.E.', // 11  lever A drops the bridge 6; lever B (in the tunnel) opens gate 4
+          '......m...###6666666############', // 12  the lava river (gust gap)
+          '.1.2..##..###.......############', // 13
+          '####..##..###.......############', // 14
+          '####..##..###.......############', // 15
+          '####vv##vv###vvvvvvv############', // 16  lava: hot foot!
+          '####vv##vv###vvvvvvv############', // 17
+        ] },
+      { // ---------- Room 3: Cliff Path (Pip leads, Bo fans) ----------
+        title: 'Cliff Path', leader: 0, style: 'cliff', exitKind: 'arch',
+        act: { label: 'fan', labels: ['pull', 'fan'] },
+        tip: 'Swap! Bo fans, Pip leads. Windy: the ash blows back fast! Climb up, then take the high path back.',
+        ash: { windy: true, hats: true, top: 2, turn: 9, climb: [26, 8], clear: [[0, 9, 4, 13]] },
+        boards: [{ x: 906, y: 276, post: 24, text: '← High path' }],
+        switches: {}, signs: [],
+        map: [
+          '########........................', //  0  cliff rock over the way out
+          '########........................', //  1
+          '########........###.............', //  2  an overhang
+          '########........###.............', //  3
+          '.......4.........d..............', //  4  gate 4 under the cliff; a drift under the overhang
+          '.......4.........d..............', //  5
+          '.......4.........d...##.........', //  6
+          '.m.E...4.B.##.m..d.m.##..t......', //  7  the high path, walked right to left: lever B opens gate 4
+          '###########################.....', //  8  the high path (also the roof of the low path)
+          '............d...................', //  9  a drift fills the low path
+          '............d................###', // 10  the climb: two steps up on the right,
+          '............d................###', // 11  then a jump up and left onto the high path
+          '............d..............#####', // 12
+          '.2.1.....m..d..t.m........A#####', // 13  lever A drops the rope bridge 6
+          '#####...##########6666666#######', // 14  the low path: a hop, then the gust gap
+          '#####...##########.......#######', // 15
+          '#####~~~##########~~~~~~~#######', // 16  the sea: splash!
+          '#####~~~##########~~~~~~~#######', // 17
+        ] },
+      { // ---------- Room 4: Beach to the Ship (Bo leads, Pip fans) ----------
+        title: 'Beach to the Ship', leader: 1, style: 'beach', exitKind: 'ship',
+        act: { label: 'fan', labels: ['fan', 'pull'] },
+        tip: 'Swap! Pip fans, Bo leads. Fan Bo over the water to the ship, then lower the plank!',
+        ash: { hats: true, clear: [[0, 0, 4, 17], [29, 0, 31, 17]] },
+        boards: [{ x: 84, y: 372, post: 48, text: 'To the ship!' }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '..........###....3..............', //  8  beach rocks; the tall bamboo fence (gate 3)
+          '..........###....3..............', //  9
+          '..........###....3..............', // 10
+          '..........###....3..............', // 11
+          '...........d.....3..............', // 12  drift under the rocks
+          'p1.2.p...m.d..tA.3mt.......Bm.E.', // 13  lever A opens the fence, lever B lowers the gangplank 7
+          'zzzzzz...zzzzzzzzzzz7777777wwwww', // 14  a tide pool, then the gust gap to the ship's deck
+          'zzzzzz...zzzzzzzzzzz............', // 15  (the hull is drawn over the water)
+          'zzzzzz~~~zzzzzzzzzzz~~~~~~~~~~~~', // 16
+          'zzzzzz~~~zzzzzzzzzzz~~~~~~~~~~~~', // 17
+        ] },
+    ],
   },
   // ----- END 9-4 Krakatoa Ash Run -----
 ];
