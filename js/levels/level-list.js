@@ -2183,30 +2183,120 @@ const LEVELS = [
      9-1 Pompeii Escape, 9-2 San Francisco 1906 Quake, 9-3 Ice Age Glacier, 9-4 Krakatoa Ash Run (Gavyn's picks and order).
      Each level's def sits between its own BEGIN/END lines. world: 8 ===== */
   // ----- BEGIN 9-1 Pompeii Escape (mode 'pompeii', js/levels/world9/pompeii-escape.js) -----
-  { name: 'Pompeii Escape', world: 8, kind: 'team', mode: 'pompeii',
-    tip: 'Help each other over the rooftops to the harbor boat before the lava gets there!',
+  // 9-1 Pompeii Escape (mode 'pompeii', team): boost each other up the walls, then reach down from the edge (help)
+  // and pull your partner up; lava creeps in sideways, ash makes you sneeze. Map chars and rules: the top of the file.
+  { name: 'Pompeii Escape', world: 8, kind: 'team', mode: 'pompeii', ownHUD: true, noFalls: true,
+    act: { label: 'help' },
+    legend: { down: 'hold: go back', padDown: 'hold down: go back' },
+    tip: 'Boost each other up the walls, then press help at the edge to pull your partner up. Run to the boat!',
     switches: {}, signs: [],
-      map: [
-        '################################',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#..............................#',
-        '#.1.2.......................E..#',
-        '################################',
-        '################################',
-      ],
-  },
+    rooms: [
+      { // ---------- Room 1: Market Street (learn the boost and the hand-up) ----------
+        title: 'Market Street', bg: 'town', leads: [0, 1], awnB: [58, 70], exitLabel: 'PORTA MARINA',
+        tip: 'Bo, be the step! Pip hops on Bo’s head, jumps up, then presses help at the edge to pull Bo up.',
+        lava: { delay: 4, speed: 10, caps: [6, 12, 20] }, ash: { every: 2.6, aim: 0.4 },
+        boards: [{ x: 420, y: 420, text: 'POMPEII', size: 26, paint: true }, { x: 420, y: 448, text: '79 AD', size: 17, paint: true },
+          { x: 600, y: 300, text: 'Swap jobs!', size: 18, paint: true }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '.................!..N...........', //  7
+          '.................qqqqqq.........', //  8
+          '.................qqqqqq.........', //  9
+          '.................qqqqqq.........', // 10
+          '...........!..N..qqqqqq.........', // 11
+          '...........hhhhhhqqqqqq.........', // 12
+          '....AAA....hhhhhhqqqqqq.AAA.....', // 13
+          '...........hhhhhhqqqqqq.........', // 14
+          '.1.2.......hhhhhhqqqqqq.....E...', // 15
+          '################################', // 16
+          '################################', // 17
+        ] },
+      { // ---------- Room 2: Forum Columns (ride the wobbly column over the lava river, then the podium and the temple) ----------
+        title: 'Forum Columns', bg: 'forum', leads: [1, 0, 1], exitLabel: 'VIA ABBONDANZA',
+        tip: 'Climb the wobbly column together to ride it over the lava, then help each other up the temple steps!',
+        lava: { delay: 3, speed: 12, caps: [4, 15, 15, 15] }, ash: { every: 2.2, aim: 0.5 },
+        boards: [{ x: 810, y: 400, text: 'FORUM', size: 30, carve: true }, { x: 870, y: 246, text: 'APOLLO', size: 18, carve: true }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '..........................!N.E..', //  5
+          '..........................mmmmmm', //  6
+          '..........................mmmmmm', //  7
+          '..........................mmmmmm', //  8
+          '......................!.N.mmmmmm', //  9
+          '.........!............mmmmmmmmmm', // 10
+          '.........KK...........mmmmmmmmmm', // 11
+          '.........KK...........mmmmmmmmmm', // 12
+          '.........KK.....N.....mmmmmmmmmm', // 13
+          '.........KK.....mm~~mmmmmmmmmmmm', // 14
+          '.2.1.....KK.....mm~~mmmmmmmmmmmm', // 15
+          'mmmmmmmmmmm~~~~~mmmmmmmmmmmmmmmm', // 16
+          'mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm', // 17
+        ] },
+      { // ---------- Room 3: Rooftop Run (an awning bounce over a lava stream, two houses and a tall tower) ----------
+        title: 'Rooftop Run', bg: 'town', leads: [0, 1, 0], awnB: [90], exitLabel: 'TO THE HARBOR',
+        tip: 'Bounce on the awning over the hot stream, then help each other up two houses and the tall tower!',
+        lava: { delay: 2, speed: 16, caps: [1, 15, 20, 26] }, ash: { every: 1.8, aim: 0.5 },
+        boards: [{ x: 705, y: 340, text: 'CAVE CANEM', size: 14, paint: true, dog: true }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '..........................!.N...', //  4
+          '..........................hhh...', //  5
+          '..........................hhh...', //  6
+          '..........................hhh...', //  7
+          '.....................!..N.hhh...', //  8
+          '.....................vvvvvhhh...', //  9
+          '.....................vvvvvhhh...', // 10
+          '.....!..N............vvvvvhhh...', // 11
+          '.....hhhhhh.......N..vvvvvhhh...', // 12
+          '.....hhhhhh.....qqqqqvvvvvhhh...', // 13
+          '.....hhhhhhAAAAAqqqqqvvvvvhhh...', // 14
+          '.1.2.hhhhhh.....qqqqqvvvvvhhhE..', // 15
+          '###########~~~~~################', // 16
+          '################################', // 17
+        ] },
+      { // ---------- Room 4: Harbor (push the cart to the ship together, climb aboard, sail away) ----------
+        title: 'Harbor', bg: 'harbor', leads: [1, 0],
+        tip: 'Push the cart to the ship together (it’s too heavy for one!), then climb aboard. All aboard!',
+        lava: { delay: 2, speed: 15, caps: [1, 'cart', 16, 20] }, ash: { every: 1.9, aim: 0.5 },
+        boards: [{ x: 225, y: 450, text: 'TO THE SHIP →', size: 13, sign: true }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '....................!...........', //  8
+          '....................BBBBBBBBBBBB', //  9
+          '....................BBBBBBBBBBBB', // 10
+          '.....!.N............BBBBBBBBBBBB', // 11
+          '.....jjjjj..........BBBBBBBBBBBB', // 12
+          '.....jjjjj..........BBBBBBBBBBBB', // 13
+          '.....jjjjj..YY......BBBBBBBBBBBB', // 14
+          '.2.1.jjjjj..YY.....yBBBBBBBBBBBB', // 15
+          '##########ddddddddddBBBBBBBBBBBB', // 16
+          '##########ddddddddddBBBBBBBBBBBB', // 17
+        ] },
+    ] },
   // ----- END 9-1 Pompeii Escape -----
 
   // ----- BEGIN 9-2 San Francisco 1906 Quake (mode 'quake', js/levels/world9/san-francisco-quake.js) -----
