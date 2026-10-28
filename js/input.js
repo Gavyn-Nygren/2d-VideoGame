@@ -107,6 +107,7 @@ function padFor(states, player) {
   return states[(player === 0) !== Pads.swap ? 0 : 1] || null;
 }
 function setKind(k) {
+  if (k !== 'pad') Pads.lastNonPad = k;
   if (Pads.kind === k) return;
   Pads.kind = k;
   document.documentElement.classList.toggle('use-pad', k === 'pad');
@@ -154,7 +155,7 @@ function rumble(player, strong, weak, ms) {
 
 // moving focus between menu buttons with the stick or d-pad
 function menuMove(dir) {
-  const btns = Array.from(overlay.querySelectorAll('button')).filter(b => b.offsetParent !== null);
+  const btns = Array.from(overlay.querySelectorAll('button, details > summary')).filter(b => b.offsetParent !== null);
   if (!btns.length) return;
   const cur = overlay.contains(document.activeElement) ? document.activeElement : null;
   if (!cur) { (overlay.querySelector('[data-primary]') || btns[0]).focus(); return; }
@@ -170,10 +171,11 @@ function menuMove(dir) {
     if (score < bestScore) { bestScore = score; best = b; }
   }
   if (best) { best.focus({ preventScroll: true }); best.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+  else if (dir === 'up' || dir === 'down') overlay.scrollBy(0, dir === 'down' ? 120 : -120); // a long card: read past the last button
 }
 function menuActivate() {
   const ae = document.activeElement;
-  if (ae && overlay.contains(ae) && ae.tagName === 'BUTTON') ae.click(); else primaryAction();
+  if (ae && overlay.contains(ae) && (ae.tagName === 'BUTTON' || ae.tagName === 'SUMMARY')) ae.click(); else primaryAction();
 }
 
 function pollInput(dt = 1 / 60) {
@@ -239,7 +241,7 @@ window.addEventListener('keydown', e => {
     if (performance.now() < overlayArmAt) { e.preventDefault(); armSwallowed.add(code); if (!e.repeat) extendArm(); return; }
     if (e.repeat) { e.preventDefault(); return; } // holding Enter must not click through the next card
     const ae = document.activeElement;
-    if (ae && ae.tagName === 'BUTTON') return; // the focused button (menu card or header) handles it
+    if (ae && (ae.tagName === 'BUTTON' || ae.tagName === 'SUMMARY')) return; // the focused button (or a fold's summary) handles it
     e.preventDefault();
     if (!e.repeat) primaryAction();
     return;

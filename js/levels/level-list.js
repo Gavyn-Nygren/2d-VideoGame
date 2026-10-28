@@ -2019,7 +2019,7 @@ const LEVELS = [
     tip: 'One stops the reels, one hops across on the pictures. Reach the JACKPOT ledge!',
     switches: {}, signs: [],
     rooms: [
-      { title: 'First Spin', stopper: 1, tip: 'Bo: stand under a reel and press stop. Pip: hop across on the pictures!', switches: {}, signs: [],
+      { title: 'First Spin', stopper: 1, act: { label: 'stop', labels: ['shout', 'stop'] }, tip: 'Bo: stand under a reel and press stop. Pip: hop across on the pictures!', switches: {}, signs: [],
         slots: { speed: 1.2, holdT: null, reels: [{ strip: 'B7BbLB' }, { strip: 'BLBb7B' }, { strip: 'B7LBbB' }] },
         map: [
           '################################',
@@ -2041,7 +2041,7 @@ const LEVELS = [
           '######....2...........S#########',
           '################################',
         ] },
-      { title: 'Super Sevens', stopper: 0, tip: 'Swap! Pip stops, Bo hops. A tall 7 is a step up to the balcony!', switches: {}, signs: [],
+      { title: 'Super Sevens', stopper: 0, act: { label: 'stop', labels: ['stop', 'shout'] }, tip: 'Swap! Pip stops, Bo hops. A tall 7 is a step up to the balcony!', switches: {}, signs: [],
         slots: { speed: 1.6, holdT: 10, reels: [{ strip: 'B7bBLB' }, { strip: 'B7LbB7LB', need: '7' }, { strip: 'B7bBLB' }, { strip: 'BL7bBL7B', need: '7' }] },
         map: [
           '################################',
@@ -2063,7 +2063,7 @@ const LEVELS = [
           '###.....1.................S#####',
           '################################',
         ] },
-      { title: 'Cherry Hill', stopper: 1, tip: 'Swap! Bo stops, Pip hops. Cherries bounce you sky high!', switches: {}, signs: [],
+      { title: 'Cherry Hill', stopper: 1, act: { label: 'stop', labels: ['shout', 'stop'] }, tip: 'Swap! Bo stops, Pip hops. Cherries bounce you sky high!', switches: {}, signs: [],
         slots: { speed: 2.0, holdT: 8, reels: [{ strip: 'B7bBLB' }, { strip: 'CBLbCB7L', need: 'C' }, { strip: 'BbBLBL' }, { strip: 'CBLCbL7B', need: 'C' }] },
         map: [
           '################################',
@@ -2085,7 +2085,7 @@ const LEVELS = [
           '####....2................S######',
           '################################',
         ] },
-      { title: 'Turbo Spin', stopper: 0, tip: 'Swap! Pip stops, Bo hops. Super fast reels! Jump, then stop the reel under Bo!', switches: {}, signs: [],
+      { title: 'Turbo Spin', stopper: 0, act: { label: 'stop', labels: ['stop', 'shout'] }, tip: 'Swap! Pip stops, Bo hops. Super fast reels! Jump, then stop the reel under Bo!', switches: {}, signs: [],
         slots: { speed: 2.8, holdT: 2.5, reels: [{ strip: 'B7BbLB' }, { strip: 'BbB7LB' }, { strip: 'B7LBbB' }, { strip: 'BLB7bB' }] },
         map: [
           '################################',
@@ -2107,7 +2107,7 @@ const LEVELS = [
           '####...1.................S######',
           '################################',
         ] },
-      { title: 'Topsy Turvy', stopper: 1, tip: 'Swap! Bo stops, Pip hops. Two reels spin upward: watch below the line!', switches: {}, signs: [],
+      { title: 'Topsy Turvy', stopper: 1, act: { label: 'stop', labels: ['shout', 'stop'] }, tip: 'Swap! Bo stops, Pip hops. Two reels spin upward: watch below the line!', switches: {}, signs: [],
         slots: { speed: 2.4, holdT: 6, reels: [{ strip: 'B7LbBL' }, { strip: 'B7LBL7bL', need: '7' }, { strip: 'BLbBLB', dir: -1 }, { strip: 'CLBbLCL7', need: 'C', dir: -1 }] },
         map: [
           '################################',
@@ -2129,7 +2129,7 @@ const LEVELS = [
           '####...2...............S########',
           '################################',
         ] },
-      { title: 'Grand Jackpot', stopper: 0, tip: 'Swap! Pip stops, Bo hops. Everything at once: go for the GRAND JACKPOT!', switches: {}, signs: [],
+      { title: 'Grand Jackpot', stopper: 0, act: { label: 'stop', labels: ['stop', 'shout'] }, tip: 'Swap! Pip stops, Bo hops. Everything at once: go for the GRAND JACKPOT!', switches: {}, signs: [],
         slots: { speed: 2.6, holdT: 5, reels: [{ strip: 'B7bBLB', dir: -1 }, { strip: 'CBLbCB7L', need: 'C' }, { strip: 'BLbBLB', dir: -1 }, { strip: 'BbLBBL' }, { strip: 'CLBbLCL7', need: 'C', dir: -1 }] },
         map: [
           '################################',
@@ -2155,8 +2155,8 @@ const LEVELS = [
   {
     name: 'Coin Pusher', world: 7, kind: 'versus', mode: 'coin',
     match: { bestOf: 5, roundTime: 60 },
-    act: { label: 'coin' },
-    tip: 'Grab coins, then press coin on your color. The pusher shoves them into your tube!',
+    act: { label: 'coin', labels: ['put a coin in', 'put a coin in'] },
+    tip: 'Grab coins, then put them in on your color of glass. The pusher shoves them into your tube!',
     switches: {}, signs: [],
     map: [
       '................................', // 0

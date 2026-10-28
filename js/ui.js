@@ -51,10 +51,10 @@ function fitMatchCard() {
   card.classList.remove('tight');
   if (overlay.scrollHeight > overlay.clientHeight + 1) card.classList.add('tight');
 }
+// each player's own device: a player with a controller assigned is shown its button, whoever pressed last
 function actKey(id) {
-  const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-  const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
-  return pad ? 'pad' : touch ? 'touch' : 'kb';
+  if (padFor(padSlots(), id)) return 'pad';
+  return document.documentElement.classList.contains('has-touch') && Pads.lastNonPad === 'touch' ? 'touch' : 'kb';
 }
 // one line for the level intro card: how to use the action button
 // def.act.padGlyph names another controller button here (e.g. 'a' where A does the action for a seated role)
@@ -221,7 +221,7 @@ function showResult() {
   G.mode = 'result';
   const i = G.levelIndex, r = G.results[i], l = LEVELS[i];
   const last = i === LEVELS.length - 1;
-  const nextLabel = last ? 'See your results' : lastInWorld(i) ? `Finish World ${l.world + 1}` : 'Next level';
+  const nextLabel = lastInWorld(i) ? `Finish World ${l.world + 1}` : last ? 'See your results' : 'Next level';
   let body;
   if (r.kind === 'versus' && r.rounds) {
     body = matchResultBody(r);
@@ -394,8 +394,8 @@ overlay.addEventListener('click', e => {
   else if (a === 'level') loadLevel(+b.dataset.i);
   else if (a === 'next') {
     const i = G.levelIndex;
-    if (i + 1 >= LEVELS.length) showFinal();
-    else if (lastInWorld(i)) showWorldDone(LEVELS[i].world);
+    if (lastInWorld(i)) showWorldDone(LEVELS[i].world); // the last world gets its card too; its button opens the final card
+    else if (i + 1 >= LEVELS.length) showFinal();
     else loadLevel(i + 1);
   }
   else if (a === 'world') loadLevel(worldLevels(+b.dataset.w)[0]);

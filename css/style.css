@@ -114,7 +114,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .ghost:hover { border-color: var(--muted); }
 .actions-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .hint { font-size: 13px; color: var(--muted); margin: 0; }
-.worlds { display: grid; gap: 14px; }
+div.worlds { display: grid; gap: 14px; }
 .world { display: grid; gap: 8px; }
 .world-h { margin: 0; font: 400 21px/1 var(--font-display); display: flex; align-items: baseline; gap: 10px; }
 .world-h .wn { font: 700 12px var(--font-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); }

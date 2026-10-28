@@ -436,7 +436,7 @@
     // how it was won (for the round banner): a bump by the winner on the loser in the last bumpCredit s counts
     const bumped = o.hitBy === k && o.hitAgo <= P.bumpCredit, offIt = rouletteWedgeOf(o) !== b.wedge;
     const nm = ROULETTE_WEDGES[b.wedge].name;
-    const how = bumped && offIt && o.hitOn === b.wedge ? 'Bumped off the ' + nm + '!' : bumped && b.lead1 === j ? 'Last-second bump!' :
+    const how = bumped && offIt && o.hitOn === b.wedge ? 'Bumped ' + NAMES[j] + ' off the ' + nm + '!' : bumped && b.lead1 === j ? 'Last-second bump!' :
       w.how === 'alone' ? 'Alone on the ' + nm + '!' : w.how === 'near' ? 'Nearest to the ball!' : 'Closest to the ball!';
     if (bumped && ((offIt && o.hitOn === b.wedge) || b.lead1 === j)) st.stat.steals[k]++;
     st.flying.push({ k, t: 0, x0: q.x, y0: q.y - 8, slot: st.chips[k] - 1 });
