@@ -19,7 +19,7 @@
 const GLACIER = {
   FL: 128, FT: 22, seatX: [-32, 32],          // floe length and thickness; the back (steerer) and front (hopper) seats
   vMin: 110, cruise: 215, vMax: 360,          // speeds (px/s); with no lean the floe drifts back to cruise (190-245 by slope)
-  push: 260, brake: 340, brakeTo: 160, drift: 150, slopeK: 160, cruiseLo: 190, cruiseHi: 245,
+  push: 260, brake: 340, brakeTo: 165, drift: 150, slopeK: 160, cruiseLo: 190, cruiseHi: 245,
   slowMax: 170, fastMin: 270, tol: 5,         // SLOW and FAST zones; bumps and wide gaps check them with this slack
   slopes: { r: 0.17, s: 0.3, l: 0.07 },
   hopV: 520, g: 1900,                         // a plain hop: 0.55 s in the air, 71 px high
@@ -27,9 +27,10 @@ const GLACIER = {
   zone: 150, zoneT: 0.62, zoneExtra: 0.25,    // the zone: the arrows (150 px, or 0.62 s) plus a hidden 0.25 s
   coyote: 12, land: 28, hopBuf: 0.16,
   duckRate: 10, duckMax: 2.5, archW: 110, archClear: 44, mogW: 64, mogH: 15,
-  spinT: 0.9, spinLock: 0.6, bonkV: 25, fallT: 0.75, resetBack: 460, popLock: 0.35,
+  spinT: 1.0, spinLock: 0.75, bonkV: 15,       // a bonk spins you nearly to a stop: braking for bumps beats bonking through them
+  fallT: 0.75, resetBack: 460, popLock: 0.35,
   forkOff: 170, forkRamp: 420, forkLock: 30, forkWin: 820, shelfTh: 38,
-  pushWait: 3, afkT: 10,
+  pushWait: 3, afkT: 10, tryWin: 5,           // a fall counts as a try (for Mammo) if each player it needed pressed something in the last 5 s
   flakeR: 14, flakeLow: 40, goldH: 112, goldVal: 5, softStop: 5,
   leadSlow: 300, leadFast: 205, camY: 335,
   crackAt: 250, splitT: 2.1, finT: 2.2,
@@ -64,7 +65,7 @@ function glacierCompile(def) {
       const t = String(tk), ch = t[0], n = parseInt(t.slice(1), 10) || 0;
       if (ch === 'r' || ch === 's' || ch === 'l') { if (!fork) knots.push({ x, s: Gc.slopes[ch] }); x += n; }
       else if (ch === 'g' || ch === 'G') {
-        c.gaps[path].push({ kind: 'gap', x0: x, x1: x + n, ox0: x, ox1: x + n, wide: ch === 'G', big: ch === 'G', path, fails: 0, help: 0, done: false });
+        c.gaps[path].push({ kind: 'gap', x0: x, x1: x + n, ox0: x, ox1: x + n, wide: ch === 'G', big: ch === 'G', path, fails: 0, tries: 0, help: 0, done: false });
         x += n;
       } else if (ch === 'm') {
         const crests = [];
@@ -104,14 +105,24 @@ function glacierCompile(def) {
   }
   // hazards per path, in order (prompts and the bot read these)
   c.haz = [0, 1].map(p => [].concat(c.gaps[p], c.mogs[p], c.arches[p]).sort((a, b) => a.x0 - b.x0));
-  // speed signs before bumps (SLOW) and wide crevasses (FAST), unless a text sign already says it; never in a hole
+  // speed signs before bumps (SLOW) and wide crevasses (FAST), unless a text sign already says it. A sign stands where
+  // nothing that needs the other speed comes between it and its hazard, never in a hole or under an arch, and inside a
+  // fork only where the roads are apart (the prompts over the heads warn anyway when there is no room for a sign)
   const forkOf = x => c.forks.find(fk => x >= fk.x0 && x <= fk.x1) || null;
+  const inHaz = (p, x) => c.gaps[p].some(g => x > g.x0 - 40 && x < g.x1 + 40) || c.arches[p].some(a => x > a.x0 - 70 && x < a.x1 + 70);
   for (const p of [0, 1]) for (const h of c.haz[p]) {
     if (h.kind !== 'mog' && !(h.kind === 'gap' && h.wide)) continue;
-    const sx = h.x0 - (h.kind === 'mog' ? 470 : 520), fk = forkOf(h.x0);
     if (c.signs.some(s => s.text && s.path === p && s.x > h.x0 - 760 && s.x < h.x0)) continue;
-    if (fk && (sx < fk.x0 + Gc.forkRamp || sx > fk.x1 - Gc.forkRamp)) continue;   // in a fork only where the roads are apart (the prompts warn anyway)
-    c.signs.push({ x: sx, path: fk ? p : 0, icon: h.kind === 'mog' ? 'slow' : 'fast' });
+    const fk = forkOf(h.x0), slow = h.kind === 'mog';
+    const other = c.haz[p].filter(o => o.x1 <= h.x0 && (slow ? o.kind === 'gap' && o.wide : o.kind === 'mog'));
+    let sx = null;
+    for (let x = h.x0 - (slow ? 470 : 520); x <= h.x0 - 140 && sx === null; x += 10) {
+      if (other.some(o => o.x1 + 30 > x) || inHaz(p, x)) continue;
+      const xf = forkOf(x);
+      if (fk ? x < fk.x0 + Gc.forkRamp || x > fk.x1 - Gc.forkRamp : xf) continue;
+      sx = x;
+    }
+    if (sx !== null) c.signs.push({ x: sx, path: fk ? p : 0, icon: slow ? 'slow' : 'fast' });
   }
   for (const s of c.signs) for (let k = 0; k < 6; k++) {
     const g = c.gaps[s.path].find(g => s.x > g.x0 - 30 && s.x < g.x1 + 30) || c.arches[s.path].find(a => s.x > a.x0 - 60 && s.x < a.x1 + 60);
@@ -171,9 +182,10 @@ function glacierFeet(st, id) {
   return { x: f.x + lx * Math.cos(a) + Gc.FT * Math.sin(a), y: f.y + lx * Math.sin(a) - Gc.FT * Math.cos(a) };
 }
 // each player's own keys, for bubbles and the HUD
+// (the same choice as the engine's actKey: a player with a controller is shown its buttons, so with one player on a
+// controller and one on the keyboard, neither prompt flickers between the two)
 function glacierKey(id, what) {
-  const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-  const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
+  const how = actKey(id), touch = how === 'touch', pad = how === 'pad';
   if (what === 'hop' || what === 'up') return pad ? glyph('a') : touch ? '▲' : id === 0 ? 'W' : '↑';
   if (what === 'duck' || what === 'down') return pad ? 'stick ▼' : touch ? '▼' : id === 0 ? 'S' : '↓';
   if (what === 'left') return pad ? 'stick ◀' : touch ? '◀' : id === 0 ? 'A' : '←';
@@ -196,6 +208,7 @@ function glacierRoom(st, L, k) {
   st.idle = 0; st.afk = false; st.waitT = 0; st.roomT = 0; st.segStart = G.time; st.wrongT = [0, 0]; st.wrongN = [0, 0];
   st.prevDown = [true, true]; st.prevUp = [true, true]; st.short = null; st.split = null; st.fin = null; st.crackT = -1;
   st.streak = 0; st.streakT = 0; st.sprayT = 0; st.zone = 'ok'; st.scrapeT = 0;
+  st.inT = [-99, -99];   // when each player last pressed anything (Mammo only helps a fall that both needed players tried)
   glacierMirror(st);
 }
 
@@ -208,8 +221,9 @@ function glacierStep(st, dt) {
   ps[0].pendingJump = false; ps[1].pendingJump = false;
   const downP = ps.map(p => p.input.down && !st.prevDown[p.id]), upP = ps.map(p => p.input.up && !st.prevUp[p.id]);
   st.prevDown = ps.map(p => p.input.down); st.prevUp = ps.map(p => p.input.up);
-  const any = press[0] || press[1] || ps.some(p => p.input.left || p.input.right || p.input.jump || p.input.down || p.input.up);
-  st.idle = any ? 0 : st.idle + dt;
+  const busy = ps.map((p, k) => press[k] || p.input.left || p.input.right || p.input.jump || p.input.down || p.input.up);
+  for (const k of [0, 1]) if (busy[k]) st.inT[k] = G.time;
+  st.idle = busy[0] || busy[1] ? 0 : st.idle + dt;
   st.roomT += dt;
   if (f.state === 'wait') glacierWait(st, dt);
   else if (f.state === 'slide' || f.state === 'crack') glacierSlide(st, dt, press, downP, upP);
@@ -240,8 +254,10 @@ function glacierSlide(st, dt, press, downP, upP) {
   if (f.appear > 0) f.appear = Math.max(0, f.appear - dt);
   const locked = f.lock > 0;
   // nobody has pressed anything for a long time: the floe brakes to a stop and waits
-  if (!st.afk && st.idle > Gc.afkT && !f.air && f.state === 'slide') { st.afk = true; glacierMsg(st, 'Brrr, chilly! Press any button to slide on', '#c8f1ff', 999); }
-  if (st.afk && st.idle === 0) { st.afk = false; st.msg = null; }
+  const chilly = 'Brrr, chilly! Press any button to slide on';
+  if (!st.afk && st.idle > Gc.afkT && !f.air && f.state === 'slide') st.afk = true;
+  if (st.afk && st.idle === 0) { st.afk = false; if (st.msg && st.msg.text === chilly) st.msg = null; }
+  if (st.afk && !st.msg) glacierMsg(st, chilly, '#c8f1ff', 999);
   // the steerer: lean (back = brake, forward = push); at a fork ▲ / ▼ pick the road
   const lean = locked || st.afk ? 0 : (si.right ? 1 : 0) - (si.left ? 1 : 0);
   f.leanIn = lean;
@@ -315,7 +331,7 @@ function glacierSlide(st, dt, press, downP, upP) {
     if (!m.bonked) for (const cx of m.crests) if (xPrev < cx && f.x >= cx && f.v > Gc.slowMax + Gc.tol) { m.bonked = true; glacierBonk(st, 'mog'); break; }
     if (xPrev < m.x1 && f.x >= m.x1 && !m.done) {
       m.done = true;
-      if (!m.bonked) { st.stats.smooth[st.steer]++; const fe = glacierFeet(st, S.id); glacierPop(st, fe.x - 30, fe.y - 90, 'Smooth!', '#8fe3b0', 17); Sfx.play('glacierGood'); }
+      if (!m.bonked) { if (!m.scored) st.stats.smooth[st.steer]++; m.scored = true; const fe = glacierFeet(st, S.id); glacierPop(st, fe.x - 30, fe.y - 90, 'Smooth!', '#8fe3b0', 17); Sfx.play('glacierGood'); }
     }
   }
   // icicle arches: anyone's head up in the icicles is a bonk (the icicles break, so you pass anyway)
@@ -326,7 +342,7 @@ function glacierSlide(st, dt, press, downP, upP) {
     if (!a.broken && f.x >= lo && f.x <= hiX && head > Gc.archClear) { a.broken = true; a.hit = true; a.shake = 0.4; glacierShatter(st, a); glacierBonk(st, 'arch'); }
     if (xPrev < hiX && f.x >= hiX && !a.done) {
       a.done = true;
-      if (!a.hit) { st.stats.ducks[st.hop]++; const fe = glacierFeet(st, Hp.id); glacierPop(st, fe.x + 30, fe.y - 90, 'Ducked!', '#bfeaff', 17); Sfx.play('glacierGood'); }
+      if (!a.hit && !a.broken) { if (!a.scored) st.stats.ducks[st.hop]++; a.scored = true; const fe = glacierFeet(st, Hp.id); glacierPop(st, fe.x + 30, fe.y - 90, 'Ducked!', '#bfeaff', 17); Sfx.play('glacierGood'); }
     }
   }
   // crevasses passed
@@ -334,9 +350,11 @@ function glacierSlide(st, dt, press, downP, upP) {
     if (!(xPrev < gp.x1 && f.x >= gp.x1) || gp.done) continue;
     gp.done = true;
     if (gp.help >= 2) continue;
-    st.stats.hops[st.hop]++;
+    // (a retry after a snowball pop cheers again but counts each crevasse, bump set and arch once in the stats)
+    if (!gp.scored) { st.stats.hops[st.hop]++; if (gp.wide) { st.stats.smooth[st.steer]++; st.stats.bigHops++; } }
+    gp.scored = true;
     const fe = glacierFeet(st, Hp.id);
-    if (gp.wide) { st.stats.smooth[st.steer]++; st.stats.bigHops++; glacierPop(st, fe.x, fe.y - 94, 'WHOOSH! Big hop!', C.gold, 20); Sfx.play('glacierBig'); }
+    if (gp.wide) { glacierPop(st, fe.x, fe.y - 94, 'WHOOSH! Big hop!', C.gold, 20); Sfx.play('glacierBig'); }
     else { glacierPop(st, fe.x + 30, fe.y - 90, 'Nice hop!', '#ffffff', 17); Sfx.play('glacierGood'); }
   }
   glacierFlakes(st);
@@ -407,6 +425,10 @@ function glacierStartFall(st, gap) {
   S.bonks++; S.segBonks[st.k]++;
   const slow = st.short === gap;
   st.short = null;
+  // Mammo only counts a try that both needed players took part in (the hopper always, the steerer too at a big gap),
+  // so one player can't get every crevasse bridged alone; whoever sat it out gets a friendly nudge instead
+  const idle = (gap.wide ? [st.hop, st.steer] : [st.hop]).filter(k => G.time - st.inT[k] > GLACIER.tryWin);
+  if (!idle.length) gap.tries++;
   if (gap.path === 1) {
     // a hole in the high road: down to the low road below (it lands on its own, or in a crevasse there)
     f.path = 0; f.air = true; f.hopGap = null; f.vAir = 0; f.g = GLACIER.g; f.vy = Math.max(0, f.vy);
@@ -420,6 +442,10 @@ function glacierStartFall(st, gap) {
   Sfx.play('glacierOops'); rumble(0, 0.4, 0.5, 200); rumble(1, 0.4, 0.5, 200);
   if (slow) glacierHintOnce(st, 'fast', st.steer, 'Big gaps: hold ' + glacierKey(st.steer, 'right') + ' for FAST!');
   else glacierHintOnce(st, 'hop', st.hop, 'Press ' + glacierKey(st.hop, 'hop') + ' on the arrows!');
+  if (idle.length) {
+    for (const k of idle) glacierHint(st, k, k === st.hop ? 'Your turn! Press ' + glacierKey(k, 'hop') + ' to hop' : 'Your turn! Hold ' + glacierKey(k, 'right') + ' for FAST', 3.4);
+    if (!st.afk) glacierMsg(st, 'Mammo can help once you both try!', '#c8f1ff', 3.2);
+  }
 }
 function glacierFall(st, dt) {
   const f = st.f;
@@ -432,11 +458,11 @@ function glacierFall(st, dt) {
 function glacierPopBack(st) {
   const Gc = GLACIER, f = st.f, gap = f.fallGap, c = st.c;
   let help = 0;
-  if (gap.big && gap.help === 0 && gap.fails >= 2) {
+  if (gap.big && gap.help === 0 && gap.tries >= 2) {
     help = 1; gap.help = 1; gap.wide = false;
     const w = gap.x1 - gap.x0, cut = Math.max(0, (w - 80) / 2);
     gap.x0 += cut; gap.x1 -= cut;
-  } else if (gap.help < 2 && gap.fails >= (gap.big ? 3 : 2)) { help = 2; gap.help = 2; }
+  } else if (gap.help < 2 && gap.tries >= (gap.big ? 3 : 2)) { help = 2; gap.help = 2; }
   if (help) {
     st.stats.helps++;
     glacierMsg(st, help === 1 ? 'Mammo the mammoth packed the gap smaller: just hop!' : 'Mammo the mammoth built a snow bridge!', C.gold, 3.2);
@@ -658,7 +684,7 @@ MODES.glacier = {
     const out = [
       { label: 'Snowflakes', value: s.flakes + ' of ' + max },
       { label: 'Bonks', value: s.bonks },
-      { label: 'Clean hops & ducks', values: [s.hops[0] + s.ducks[0], s.hops[1] + s.ducks[1]] },
+      { label: 'Hops & ducks', values: [s.hops[0] + s.ducks[0], s.hops[1] + s.ducks[1]] },
       { label: 'Smooth steering', values: s.smooth.slice() },
     ];
     let best = -1;
@@ -668,7 +694,7 @@ MODES.glacier = {
       out.push('Smoothest stretch: ' + s.segTitles[best] + (b === 0 ? ', not one bonk!' : b === 1 ? ', just 1 bonk' : ', ' + b + ' bonks'));
     }
     const ratio = max > 0 ? s.flakes / max : 0;
-    const medal = s.bonks <= 2 && ratio >= 0.75 ? 'Gold' : s.bonks <= 8 ? 'Silver' : 'Bronze';
+    const medal = s.bonks <= 2 && ratio >= 0.75 ? 'Gold' : s.bonks <= 10 ? 'Silver' : 'Bronze';
     const words = s.bonks === 0 ? 'Cool as ice!' : s.bonks <= 4 ? 'Slick sliding!' : 'Brrr-illiant, you made it together!';
     out.push(medal + ' medal · ' + words);
     return out;
@@ -1026,7 +1052,8 @@ function glacierDrawDeco(st) {
       ctx.fillStyle = '#ffffff'; rr(x - bw / 2 + 4, y - 58 - bh - 4, bw - 8, 8, 4); ctx.fill();
       text('ICE AGE', x, y - 58 - bh * 0.64, big ? 28 : 24, '#5a3416', 'center');
       text('20,000 years ago', x, y - 58 - bh * 0.24, big ? 16 : 13, '#5a3416', 'center', 'body');
-    } else if (d.kind === 'mammoth') glacierMammoth(x, y, 0.8, -1, t, { toot: Math.sin(t * 1.3 + d.x) > 0.55 });   // a friendly toot now and then
+    // the animals by the track stand a little way back on the far side of the ice, so the floe slides past in front of them
+    } else if (d.kind === 'mammoth') glacierMammoth(x, y - 18, 0.66, -1, t, { toot: Math.sin(t * 1.3 + d.x) > 0.55 });   // a friendly toot now and then
     else if (d.kind === 'owl') {
       ctx.fillStyle = '#8a5833'; ctx.fillRect(x - 3, y - 46, 6, 46);
       const by = y - 46, blink = Math.sin(t * 1.7 + d.x) > 0.96;
@@ -1036,7 +1063,7 @@ function glacierDrawDeco(st) {
       for (const s of [-1, 1]) { ctx.fillStyle = '#ffc53d'; circle(x + s * 5.5, by - 18, 4.5); ctx.fill(); ctx.fillStyle = C.ink; if (blink) ctx.fillRect(x + s * 5.5 - 3, by - 18.5, 6, 1.6); else { circle(x + s * 5.5, by - 18, 2); ctx.fill(); } }
       ctx.fillStyle = '#e8a23a'; ctx.beginPath(); ctx.moveTo(x - 2.5, by - 13); ctx.lineTo(x + 2.5, by - 13); ctx.lineTo(x, by - 8); ctx.fill();
     } else if (d.kind === 'sloth') glacierSloth(x, y, t);
-    else if (d.kind === 'cat') glacierCat(x, y, t);
+    else if (d.kind === 'cat') { ctx.save(); ctx.translate(x, y - 16); ctx.scale(0.85, 0.85); glacierCat(0, 0, t); ctx.restore(); }
   }
 }
 // a friendly woolly mammoth (x, y = between the feet; s = size; dir 1 faces right)
@@ -1251,6 +1278,7 @@ function glacierNeeds(st) {
 function glacierHud(st) {
   const Gc = GLACIER, f = st.f, big = hudBig(), ps = G.players, play = G.mode === 'play' || G.mode === 'paused';
   // top right: the clock and the snowflakes
+  let timeX0 = W - 14;
   {
     const fs = big ? 20 : 14, h = big ? 40 : 28, tm = fmtTime(G.time), n = String(st.stats.flakes);
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
@@ -1259,6 +1287,7 @@ function glacierHud(st) {
     text(tm, x0 + 15, cy, fs, C.paper, 'left', 'body');
     glacierFlake(x0 + 15 + tw + gap + icon / 2, cy, fs * 0.5, false, 0.3);
     text(n, x0 + 15 + tw + gap + icon + fs * 0.4, cy, fs, '#c8f1ff', 'left', 'body');
+    timeX0 = x0;
   }
   if (!play || !f) return;
   const nd = glacierNeeds(st), z = big ? 1.4 : 1, t = G.clock;
@@ -1274,16 +1303,17 @@ function glacierHud(st) {
       text(glacierKey(id, 'left') + ' slow · ' + glacierKey(id, 'right') + ' fast', px + pw - 12 * z, py + 15 * z, 11 * z, '#d9d3ef', 'right', 'body');
       const bx = px + 12 * z, bw = pw - 24 * z, by = py + 30 * z, bh = 16 * z, X = v => bx + bw * clamp(v / 380, 0, 1);
       const zones = [[0, Gc.slowMax, '#5aa9e6', 'SLOW', 'slow'], [Gc.slowMax, Gc.fastMin, '#e8f4ff', 'OK', null], [Gc.fastMin, 380, '#ff8a3d', 'FAST', 'fast']];
-      for (const [a, b, col, lab, key] of zones) {
+      for (const [a, b, col, , key] of zones) {
         const want = nd.speed && nd.speed.need === key;
         ctx.fillStyle = col; ctx.globalAlpha = want ? 1 : 0.55; rr(X(a) + 1, by, X(b) - X(a) - 2, bh, bh / 2); ctx.fill(); ctx.globalAlpha = 1;
         if (want) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2.5 + 1.5 * Math.abs(Math.sin(t * 8)); rr(X(a) - 1, by - 2, X(b) - X(a) + 2, bh + 4, bh / 2 + 2); ctx.stroke(); }
-        text(lab, (X(a) + X(b)) / 2, by + bh / 2 + 0.5, 10 * z, key ? '#ffffff' : '#3a4a66', 'center', 'body');
       }
+      // the speed needle, then the zone words on top of it (so it never hides "OK"), then its pointer
       const mx = X(f.v);
+      ctx.fillStyle = PCOL[id]; ctx.fillRect(mx - 1.5, by - 2, 3, bh + 4);
+      for (const [a, b, , lab, key] of zones) text(lab, (X(a) + X(b)) / 2, by + bh / 2 + 0.5, 10 * z, key ? '#ffffff' : '#3a4a66', 'center', 'body');
       ctx.fillStyle = PCOL[id]; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(mx, by + bh + 1); ctx.lineTo(mx - 6 * z, by + bh + 8 * z); ctx.lineTo(mx + 6 * z, by + bh + 8 * z); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillRect(mx - 1.5, by - 2, 3, bh + 4);
     } else {
       const chips = [['hop', 'HOP', nd.hop, nd.hopNow], ['duck', 'DUCK', nd.duck, nd.duckNow]];
       const cw = (pw - 34 * z) / 2;
@@ -1295,19 +1325,30 @@ function glacierHud(st) {
       });
     }
   }
-  // the message line, top centre (gold help, "chilly")
+  // the message line (gold help, "chilly"): in the top row between the level pill and the clock when it fits there,
+  // otherwise centred under the room pill (phones, where the HUD is bigger)
   if (st.msg) {
-    const fs = big ? 20 : 14, h = big ? 32 : 26;
-    ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-    const w = ctx.measureText(st.msg.text).width + 30, a = clamp((st.msg.life - st.msg.t) / 0.3, 0, 1);
-    ctx.globalAlpha = a; pill(W / 2 + 40, 12, w, h, 'center'); text(st.msg.text, W / 2 + 40, 12 + h / 2 + 0.5, fs, st.msg.col, 'center', 'body'); ctx.globalAlpha = 1;
+    let fs = big ? 20 : 14;
+    const h = big ? 32 : 26, font = n => '700 ' + n + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+    ctx.font = font(14);
+    const left = 14 + ctx.measureText(levelCode(G.levelIndex) + ' · ' + G.level.def.name).width + 28 + 10, right = timeX0 - 10;
+    ctx.font = font(fs);
+    let w = ctx.measureText(st.msg.text).width + 30, cx = W / 2 + 40, y = 12;
+    if (w <= right - left) cx = clamp(cx, left + w / 2, right - w / 2);
+    else {
+      cx = W / 2; y = 80;
+      while (w > W - 40 && fs > 11) { fs--; ctx.font = font(fs); w = ctx.measureText(st.msg.text).width + 30; }
+    }
+    ctx.globalAlpha = clamp((st.msg.life - st.msg.t) / 0.3, 0, 1);
+    pill(cx, y, w, h, 'center'); text(st.msg.text, cx, y + h / 2 + 0.5, fs, st.msg.col, 'center', 'body'); ctx.globalAlpha = 1;
   }
   if (G.introT > 0) return;
   // prompts over the heads: the steerer's open to the left, the hopper's to the right, so they never overlap
   const S = ps[st.steer], Hp = ps[st.hop], fs = 14 * z;
+  const yMax = H - Math.round(56 * z) - 18;   // above the job panels, even while the floe tips into a crevasse
   const say = (p, str, col, left, lift, pulse) => {
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-    const w = ctx.measureText(str).width + 20 * z, h = fs + 12 * z, hx = p.x + PW / 2, y = p.y - 12 * z - lift - h;
+    const w = ctx.measureText(str).width + 20 * z, h = fs + 12 * z, hx = p.x + PW / 2, y = clamp(p.y - 12 * z - lift - h, 4, yMax - lift - h);
     let x = left ? hx + 14 * z - w : hx - 14 * z;
     x = clamp(x, 4, W - w - 4);
     const s = pulse ? 1 + 0.06 * Math.sin(t * 14) : 1;
@@ -1320,7 +1361,7 @@ function glacierHud(st) {
   };
   const bubble = (p, str, left, lift) => {
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-    const w = ctx.measureText(str).width + 22 * z, h = fs + 14 * z, hx = p.x + PW / 2, y = Math.max(4, p.y - 12 * z - lift - h);
+    const w = ctx.measureText(str).width + 22 * z, h = fs + 14 * z, hx = p.x + PW / 2, y = clamp(p.y - 12 * z - lift - h, 4, yMax - lift - h);
     const x = clamp(left ? hx + 18 * z - w : hx - 18 * z, 4, W - w - 4);
     ctx.fillStyle = '#ffffff'; ctx.strokeStyle = PCOL[p.id]; ctx.lineWidth = 2.5;
     rr(x, y, w, h, h / 2); ctx.fill(); ctx.stroke();
