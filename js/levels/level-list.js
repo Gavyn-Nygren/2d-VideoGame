@@ -2688,27 +2688,30 @@ const LEVELS = [
         ] },
       // ----- END 10-1 room 2 -----
       // ----- BEGIN 10-1 room 3 (lava) -----
-      { // Hot Floor Climb (Great Escapes look). PLACEHOLDER: the phase 3 builder replaces this room.
+      { // Hot Floor Climb (Great Escapes look): every button builds steps or a bridge for the partner, then turn the steam valves together
         title: 'Hot Floor Climb', phase: 'lava', pieces: [5, 9], look: 8,
-        act: { label: 'push', labels: ['push', 'push'] },
-        tip: 'Placeholder: both stand on your star and press the action together.',
+        act: { label: 'turn', labels: ['turn', 'turn'] },
+        tip: 'Your buttons make steps for your partner. Climb up, then turn your steam valves together!',
+        floors: [16, 12, 8, 4],   // the tile rows of the four floors' tops, bottom first
+        // buttons (owner, what they build): d Pip > 3, h Bo > 4, e Bo > bridge 9, m Bo plate > 5, f Pip plate > 6,
+        // g Pip > 7, j Bo > 8, l Pip > bridge 0. Valves: q Pip's, r Bo's. Z = his seat on the boiler.
         map: [
-          '................................', //  0
-          '................................', //  1
-          '................................', //  2
-          '................................', //  3
-          '................................', //  4
-          '................................', //  5
-          '................................', //  6
-          '................................', //  7
-          '................................', //  8
-          '................................', //  9
-          '................................', // 10
-          '................................', // 11
-          '...........====.................', // 12
-          '................................', // 13
-          '..1.y......z.2..........Z.......', // 14  y Pip's star, z Bo's star, Z his feet
-          '################################', // 15
+          '#........................#......', //  0
+          '#........................#......', //  1
+          '#........................#......', //  2
+          '#..j.............l...r.q.#......', //  3  floor 4: j, l, the second valves
+          '#========0000000=========#......', //  4  floor 4 and its gap (Bo's bridge)
+          '#........................#......', //  5
+          '#.....77..........88.....#......', //  6  steps to floor 4: 7 Bo's, 8 Pip's
+          '#.............g........f.#..Z...', //  7  floor 3: g, f
+          '#========================#......', //  8  floor 3
+          '#........................#......', //  9
+          '#..66..............55....#......', // 10  steps to floor 3: 6 Bo's, 5 Pip's
+          '#.r..q.me.h..............#......', // 11  floor 2: the first valves, m, e, h
+          '#==========9999999=======#......', // 12  floor 2 and its gap (Pip's bridge)
+          '#........................#......', // 13
+          '#.......33..........44...#......', // 14  steps to floor 2: 3 Bo's, 4 Pip's
+          '#.12.d...................#......', // 15  floor 1: d
           '################################', // 16
           '################################', // 17
         ] },
