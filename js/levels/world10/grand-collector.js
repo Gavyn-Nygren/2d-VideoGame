@@ -23,13 +23,15 @@
      drawBack(st)      behind the boss.   draw(st)  in front of the boss, behind the players.   drawTop(st)  over them.
      hud(st)           extra HUD.   hudText(st) -> a short text for the top-right pill (e.g. 'Shots 4').
      labels(st)        -> [pip word, bo word]: the action button's word per player (lowercase, 6 letters or fewer).
+     legend(st)        -> a setLegend object for the top bar when the keys change with the job (read with labels).
      roles(st)         -> [pip badge, bo badge] ('Load!', 'Fire!') or null: shown over heads when the phase starts and
                        on gcSwap(st).
      busy(st, p)       -> true while p is mid-teamwork (at the cannon, on a valve...): shared attacks never target or bonk p.
      headLift(st, p)   -> px of things the phase draws over p's head, so badges and hints sit above them.
      onBonk(st, p)  onKill(st, p)  onRespawn(st, p)
      stat(st)          -> one results tile { label, value } or null.  statLine(st) -> a short results line or ''.
-                       (These run at the end: read st.stats.<phase>, not st.ph, which then holds the last phase.)
+                       (These run at the end: read st.stats.<phase>, not st.ph, which then holds the last phase.
+                       The card keeps to 4 tiles and 1 line: only cannons gives a tile, only finale a line.)
    A phase calls gcWinPiece(st, worldNo) for each hit and gcPhaseDone(st) when it is over. In the last room
    gcPhaseDone plays the ending (gcEnding) and then levelClear().
    The core reads one map char: 'Z' (the boss's feet). Test hook: MODES.collector.test. */
@@ -185,7 +187,7 @@ function gcPhaseDone(st) {
   return true;
 }
 // The ending (call it after the last piece): a nap, a friendly wake-up, "You can play with us!", a wave, every piece
-// flies home, confetti, then levelClear(). About 5 s after the last piece lands.
+// flies home, confetti, then levelClear(). About 6.5 s after the last piece lands.
 function gcEnding(st) {
   if (st.cut && st.cut.kind === 'end') return false;
   st.cut = { kind: 'end', t: 0, wait: true, step: 0 };
@@ -208,21 +210,24 @@ function gcCutStep(st, dt) {
   }
   // the ending
   const at = (n, time) => c.step === n && c.t >= time && ++c.step;
+  // a happy hop toward him (jumping = false: nobody holds jump in a cutscene, so the short-hop cut must not apply)
+  const hop = () => { for (const p of G.players) if (p.alive && p.grounded) { p.face = b.x > p.x ? 1 : -1; jump(p, PHYS.jumpV * 0.7); p.jumping = false; } };
   if (at(0, 0)) { b.pose = 'nap'; b.mood = 'sleepy'; }
   if (at(1, 0.9)) { b.pose = 'sit'; b.mood = 'happy'; gcSay(st, 'I just wanted someone to play with...', 2.2); Sfx.play('gcWake'); }
   if (at(2, 2.2)) {
     gcHint(st, 0, 'You can play with us!', 2); gcHint(st, 1, 'Yes, play with us!', 2);
-    for (const p of G.players) if (p.alive && p.grounded) jump(p, PHYS.jumpV * 0.7);
+    hop();
   }
   if (at(3, 3.1)) {
-    b.pose = 'wave'; gcSay(st, 'Really? Yay! Thank you!', 2); st.home = { t: 0 };
+    b.pose = 'wave'; gcSay(st, 'Really? Yay! Thank you!', 2.4); st.home = { t: 0 };
+    hop(); const jar = gcBossPts(b).jar; for (let n = 0; n < 24; n++) confetti(jar.x + (gcRand() - 0.5) * 60, jar.y - 20);   // a burst from his opened jar
     Sfx.play('gcHome'); rumble(0, 0.3, 0.5, 200); rumble(1, 0.3, 0.5, 200);
   }
   if (st.home) {
     st.home.t += dt;
     if ((G.tickN % 6) === 0) confetti(120 + gcRand() * (W - 240), 60 + gcRand() * 80);
   }
-  if (at(4, 5.0)) levelClear();
+  if (at(4, 6.5)) levelClear();
 }
 // where piece n (0-8) flies to when it goes home: off the top of the screen, spread out
 function gcHomePos(st, i) {
@@ -282,11 +287,10 @@ function gcPadJump(id) {
     return !!padFor(padSlots(), id) && !BIND[id].jump.some(gcKeyHeld) && !touchJump;
   } catch (e) { return false; }
 }
-// the hint text for how to aim on this player's device (seated roles that aim with ▲▼ and set power with ◀▶)
+// the hint text for how to aim on this player's own device (seated roles that aim with ▲▼ and set power with ◀▶)
 function gcAimKeys(id) {
-  const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-  const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
-  return pad ? 'stick ▲▼ aim, ◀▶ power, ' + glyph('a') + ' fire' : touch ? '▲▼ aim, ◀▶ power, round button fires'
+  const k = actKey(id);
+  return k === 'pad' ? 'stick ▲▼ aim, ◀▶ power, ' + glyph('a') + ' fire' : k === 'touch' ? '▲▼ aim, ◀▶ power, round button fires'
     : id === 0 ? 'W S aim, A D power, F fires' : '↑ ↓ aim, ← → power, / fires';
 }
 
@@ -397,6 +401,8 @@ function gcActLabels(st) {
   st.labKey = key;
   def.act = Object.assign({}, def.act, { labels: [want[0], want[1]] }); // (a copy: the room's own def stays as written)
   try {
+    const lg = gcCall(gcPh(st), 'legend', st);   // a phase whose keys change with the job sets its legend here
+    if (lg && G.mode === 'play') setLegend(lg);
     if (!gcLabelEls || !gcLabelEls.every(o => document.contains(o.el))) gcLabelEls = Array.from(document.querySelectorAll('[data-actlabel]')).map(el => {
       const box = el.closest('[data-p]') || el.closest('.kb-only') || el.closest('.pad-only');
       const id = box && box.dataset.p !== undefined ? +box.dataset.p : box && box.querySelector('.nm-bo') ? 1 : box && box.querySelector('.nm-pip') ? 0 : -1;
@@ -501,8 +507,8 @@ function gcStats(st) {
     if (tile) out.push(tile);
     if (line) lines.push(line);
   }
-  out.push(medal + ' trophy! ' + (bonks === 0 ? 'Not one bonk. ' : bonks <= 4 ? 'Hardly a bonk. ' : '') + 'The Grand Collector wants a rematch!');
-  if (lines.length) out.push(lines.join(' · '));
+  // one short line (a phone shows it without scrolling): the trophy, the phases' fun fact, his rematch wish
+  out.push(medal + ' trophy! ' + (bonks === 0 ? 'Not one bonk. ' : bonks <= 4 ? 'Hardly a bonk. ' : '') + lines.map(l => l + '. ').join('') + 'He wants a rematch!');
   return out;
 }
 
@@ -793,15 +799,10 @@ function gcDrawTop(st) {
     bigText('!', p.x + p.w / 2, p.y - 24 - bob - gcHeadLift(st, p), 30 * z, '#ff5f6d', 1);
   }
   // his speech bubble
-  if (st.say && !b.hidden) {
-    const P = gcBossPts(b), fs = Math.round(16 * z), a = clamp(Math.min(st.say.t / 0.12, (st.say.life - st.say.t) / 0.25), 0, 1);
+  const sb = gcSayBox(st);
+  if (sb) {
+    const { P, fs, tw, th, side, bx, by } = sb, a = clamp(Math.min(st.say.t / 0.12, (st.say.life - st.say.t) / 0.25), 0, 1);
     ctx.font = '400 ' + fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
-    const tw = ctx.measureText(st.say.text).width + 26 * z, th = fs + 16 * z, B = gcStripBox();
-    // beside his head on the side he faces (the other side if that is off the screen)
-    let side = b.face, gap = P.head.r + 18 * z;
-    if ((side < 0 && P.head.x - gap - tw < 6) || (side > 0 && P.head.x + gap + tw > W - 6)) side = -side;
-    const bx = clamp(P.head.x + side * (gap + tw / 2), tw / 2 + 6, W - tw / 2 - 6);
-    const by = clamp(P.head.y - P.head.r * 0.55, B.y0 + B.h + th / 2 + 10, H - th / 2 - 10);
     ctx.save(); ctx.globalAlpha = a;
     ctx.fillStyle = '#ffffff'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
     rr(bx - tw / 2, by - th / 2, tw, th, th / 2); ctx.fill(); ctx.stroke();
@@ -821,6 +822,34 @@ function gcDrawTop(st) {
   }
 }
 const gcHeadLift = (st, p) => gcCall(gcPh(st), 'headLift', st, p) || 0;
+// where his speech bubble goes: beside his head on the side he faces (the other side if that is off the screen),
+// under the pieces strip, and under the news banner when they would overlap. Null when he says nothing.
+function gcSayBox(st) {
+  const b = st.boss;
+  if (!st.say || b.hidden) return null;
+  const z = hudBig() ? 1.4 : 1, P = gcBossPts(b), fs = Math.round(16 * z);
+  ctx.font = '400 ' + fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+  const tw = ctx.measureText(st.say.text).width + 26 * z, th = fs + 16 * z, B = gcStripBox();
+  let side = b.face;
+  const gap = P.head.r + 18 * z;
+  if ((side < 0 && P.head.x - gap - tw < 6) || (side > 0 && P.head.x + gap + tw > W - 6)) side = -side;
+  const bx = clamp(P.head.x + side * (gap + tw / 2), tw / 2 + 6, W - tw / 2 - 6);
+  let by = clamp(P.head.y - P.head.r * 0.55, B.y0 + B.h + th / 2 + 10, H - th / 2 - 10);
+  const nb = gcNewsBox(st);
+  if (nb && bx + tw / 2 > nb.x0 - 4 && bx - tw / 2 < nb.x1 + 4 && by - th / 2 < nb.y1 + 6) by = Math.min(H - th / 2 - 10, nb.y1 + th / 2 + 8);
+  return { P, fs, tw, th, side, bx, by };
+}
+// the news banner's box (under the strip), or null
+function gcNewsBox(st) {
+  const n = st.news;
+  if (!n || G.introT > 0) return null;
+  const big = hudBig(), B = gcStripBox(), fs = big ? 19 : 14, h = big ? 36 : 28, y = B.y0 + B.h + 6;
+  ctx.font = gcFont(fs);
+  const w = Math.min(ctx.measureText(n.text).width + 34, W - 40);
+  return { x0: W / 2 - w / 2, x1: W / 2 + w / 2, y0: y, y1: y + h, fs, h };
+}
+// a live player inside (or touching) this box: HUD bits there fade so you can still see yourself
+const gcUnder = (x0, y0, x1, y1) => G.players.some(p => p.alive && p.x + p.w > x0 - 4 && p.x < x1 + 4 && p.y + p.h > y0 - 4 && p.y - 8 < y1 + 4);
 
 /* --- drawing: the HUD --- */
 // the pieces strip, top centre: "The Grand Collector" and 9 slots
@@ -831,9 +860,10 @@ function gcStripBox() {
 function gcSlotPos(i) { const B = gcStripBox(); return { x: B.x0 + 12 + i * (B.sw + B.gap) + B.sw / 2, y: B.slotY + B.sw / 2, r: B.sw / 2 }; }
 function gcDrawStrip(st) {
   const B = gcStripBox();
+  ctx.save(); if (gcUnder(B.x0, B.y0, B.x0 + B.w, B.y0 + B.h)) ctx.globalAlpha = 0.45;
   ctx.fillStyle = 'rgba(28,26,54,0.82)'; rr(B.x0, B.y0, B.w, B.h, 14); ctx.fill();
   ctx.strokeStyle = 'rgba(224,171,69,0.7)'; ctx.lineWidth = 2; rr(B.x0, B.y0, B.w, B.h, 14); ctx.stroke();
-  text('The Grand Collector', W / 2, B.labY, B.big ? 14 : 11, C.gold, 'center', 'body');
+  text('The Grand Collector', W / 2, B.labY, B.big ? 16 : 11, C.gold, 'center', 'body');
   for (let i = 0; i < 9; i++) {
     const sp = gcSlotPos(i), x = sp.x - B.sw / 2, y = sp.y - B.sw / 2, home = st.home && gcHomePos(st, i).k > 0;
     const got = st.slotIn[i] && !home, pop = st.slotPop[i];
@@ -844,6 +874,7 @@ function gcDrawStrip(st) {
     gcIcon(i + 1, sp.x, sp.y, B.sw * 0.36 * (1 + 0.5 * Math.sin(pop * Math.PI)));
     ctx.restore();
   }
+  ctx.restore();
 }
 // what draws over and under each player's head: role badges, then hint bubbles; under the feet when the top is taken
 function gcDrawHeads(st, rightBox, newsBox) {
@@ -853,11 +884,14 @@ function gcDrawHeads(st, rightBox, newsBox) {
     let y = 4;
     if (x0 < 290) y = 80;                                                     // the level and room pills
     if (x1 > B.x0 - 4 && x0 < B.x0 + B.w + 4) y = Math.max(y, B.y0 + B.h + 6); // the pieces strip
-    if (newsBox && x1 > newsBox[0] - 4 && x0 < newsBox[1] + 4) y = Math.max(y, newsBox[2] + 6);
+    if (newsBox && x1 > newsBox.x0 - 4 && x0 < newsBox.x1 + 4) y = Math.max(y, newsBox.y1 + 6);
     if (rightBox && x1 > rightBox[0] - 4) y = Math.max(y, rightBox[1] + 6);
     return y;
   };
-  const placed = [];
+  // his speech bubble and the big "Swap jobs!" are taken too
+  const placed = [], sb = gcSayBox(st);
+  if (sb) placed.push([sb.bx - sb.tw / 2, sb.by - sb.th / 2, sb.tw, sb.th]);
+  if (st.swapT > 0) { const fs = big ? 46 : 36; ctx.font = '400 ' + fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif'; const w = ctx.measureText('Swap jobs!').width * 1.1; placed.push([W / 2 - w / 2, 150 - fs * 0.65, w, fs * 1.3]); }
   const hit = (x0, y0, w, h) => placed.find(r => x0 < r[0] + r[2] + 3 && x0 + w > r[0] - 3 && y0 < r[1] + r[3] + 3 && y0 + h > r[1] - 3);
   const place = (x0, w, h, k) => {
     let y = k.top - h, under = false;
@@ -875,9 +909,12 @@ function gcDrawHeads(st, rightBox, newsBox) {
   if (roles) for (const k of heads) {
     const word = roles[k.p.id];
     if (!word) continue;
-    const fs = big ? 17 : 12, bh = fs + (big ? 10 : 8), a = clamp(st.badgeT / 0.4, 0, 1);
+    const fs = big ? 20 : 12, bh = fs + (big ? 10 : 8), a = clamp(st.badgeT / 0.4, 0, 1);
     ctx.font = gcFont(fs);
-    const bw = ctx.measureText(word).width + 16, bx = clamp(k.px, bw / 2 + 4, W - bw / 2 - 4), y0 = place(bx - bw / 2, bw, bh, k).y;
+    const bw = ctx.measureText(word).width + 16, bx = clamp(k.px, bw / 2 + 4, W - bw / 2 - 4), was = [k.top, k.below];
+    const pl = place(bx - bw / 2, bw, bh, k), y0 = pl.y;
+    // no room over the head and a hint wants it too: the hint says more, so the badge sits this one out
+    if (pl.under && st.hints[k.p.id]) { placed.pop(); [k.top, k.below] = was; continue; }
     ctx.save(); ctx.globalAlpha = a;
     ctx.fillStyle = PCOL[k.p.id]; rr(bx - bw / 2, y0, bw, bh, bh / 2); ctx.fill();
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke();
@@ -887,7 +924,7 @@ function gcDrawHeads(st, rightBox, newsBox) {
   for (const k of heads) {
     const h = st.hints[k.p.id];
     if (!h) continue;
-    const a = clamp(Math.min(h.t, h.life - h.t) / 0.2, 0, 1), fs = big ? 19 : 12;
+    const a = clamp(Math.min(h.t, h.life - h.t) / 0.2, 0, 1), fs = big ? 23 : 12;
     ctx.font = gcFont(fs);
     const tw = ctx.measureText(h.text).width + (big ? 22 : 16), th = fs + (big ? 14 : 10), cx = clamp(k.px, tw / 2 + 4, W - tw / 2 - 4);
     const pl = place(cx - tw / 2, tw, th + 6, k), top = pl.under ? pl.y + 6 : pl.y;
@@ -912,21 +949,22 @@ function gcHud(st) {
   const rw = ctx.measureText(s).width + 28, rx = pill(W - 14, 12, rw, h, 'right');
   text(s, W - 28, 12 + h / 2 + 0.5, fs, C.paper, 'right', 'body');
   const rightBox = [rx, 12 + h];
-  // news (gold for help), under the strip
-  let newsBox = null;
-  const n = st.news;
-  if (n && G.introT <= 0) {
-    const nfs = big ? 19 : 14, nh = big ? 36 : 28, y = B.y0 + B.h + 6;
-    ctx.font = gcFont(nfs);
-    const w = Math.min(ctx.measureText(n.text).width + 34, W - 40), x = W / 2;
-    newsBox = [x - w / 2, x + w / 2, y + nh];
-    ctx.save(); ctx.globalAlpha = clamp(Math.min(n.t / 0.15, (n.life - n.t) / 0.3), 0, 1);
-    ctx.fillStyle = 'rgba(28,26,54,0.85)'; rr(x - w / 2, y, w, nh, nh / 2); ctx.fill();
-    if (n.gold) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x - w / 2, y, w, nh, nh / 2); ctx.stroke(); }
-    text(n.text, x, y + nh / 2 + 0.5, nfs, n.gold ? C.gold : C.paper, 'center', 'body');
+  // news (gold for help), under the strip; see-through while a player is under it
+  const n = st.news, newsBox = gcNewsBox(st);
+  if (newsBox) {
+    const { x0, x1, y0, h: nh, fs: nfs } = newsBox, w = x1 - x0;
+    ctx.save(); ctx.globalAlpha = clamp(Math.min(n.t / 0.15, (n.life - n.t) / 0.3), 0, 1) * (gcUnder(x0, y0, x1, newsBox.y1) ? 0.35 : 1);
+    ctx.fillStyle = 'rgba(28,26,54,0.85)'; rr(x0, y0, w, nh, nh / 2); ctx.fill();
+    if (n.gold) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x0, y0, w, nh, nh / 2); ctx.stroke(); }
+    text(n.text, W / 2, y0 + nh / 2 + 0.5, nfs, n.gold ? C.gold : C.paper, 'center', 'body');
     ctx.restore();
   }
   gcCall(ph, 'hud', st);
+  // a player up under the level / room pills or the time pill: draw them again, a little see-through, on top
+  for (const p of G.players) {
+    if (!p.alive || p.y - 8 > 80) continue;
+    if (p.x < 294 || p.x + p.w > rightBox[0] - 4 && p.y - 8 < rightBox[1] + 4) { ctx.save(); ctx.globalAlpha = 0.75; drawPlayer(p); ctx.restore(); }
+  }
   gcDrawHeads(st, rightBox, newsBox);
   if (st.swapT > 0 && G.introT <= 0) {
     const k = 1 - st.swapT / GC.swapT, a = clamp(st.swapT / 0.4, 0, 1);
@@ -990,7 +1028,7 @@ const GC1 = {
   peek: 0.32, peekLucky: 0.8, luckyAfter: 3,   // s of flight the aim dots show; Lucky aim after luckyAfter misses in a row
   attackFirst: 6, attackGap: [6, 8.5],          // s before his first attack, then between attacks
   blockG: 1800, rebuildT: 2.6, swapAt: 1.3,     // the bigger wall drops in over rebuildT s; jobs swap at swapAt
-  hintT: 6, loaderHint: 8, fireHint: 10, carryLift: 18,
+  hintT: 6, loaderHint: 8, fireHint: 10, carryLift: 18, lockT: 0.4,
 };
 function gc1Wall(spec, floor, drop) {
   const rows = spec.rows, cols = [];
@@ -1042,11 +1080,20 @@ function gc1Trace(st, ang, pow, maxT = 4) {
   }
   return { kind: 'off', x, y, t: maxT };
 }
-// each castle start and swap: a player's keys must all be let go once before they count
-function gc1Input(ph, p) {
-  const i = p.input, any = i.left || i.right || i.jump || i.down || i.up || i.act;
-  if (ph.lock[p.id]) { if (!any) ph.lock[p.id] = false; p.pendingJump = false; p.pendingAct = false; return NO_INPUT; }
-  return i;
+// each castle start and swap: a key already held then waits until it is let go, or GC1.lockT s (so a key held for
+// the old job doesn't carry over); every other key works at once
+function gc1Input(ph, p, dt) {
+  const i = p.input;
+  if (!ph.lock[p.id]) return i;
+  if (ph.lock[p.id] === true) { const keys = {}; for (const k of ['left', 'right', 'jump', 'down', 'up', 'act']) if (i[k]) keys[k] = true; ph.lock[p.id] = { keys, t: GC1.lockT }; }
+  const lk = ph.lock[p.id], keys = lk.keys;
+  for (const k in keys) if (!i[k]) delete keys[k];
+  if (!Object.keys(keys).length || (lk.t -= dt) <= 0) { ph.lock[p.id] = false; return i; }
+  if (keys.jump) p.pendingJump = false;
+  if (keys.act) p.pendingAct = false;
+  const out = Object.assign({}, i);
+  for (const k in keys) out[k] = false;
+  return out;
 }
 function gc1Fire(st) {
   const ph = st.ph, cn = ph.cn, gn = G.players[ph.gunner], a = cn.ang * Math.PI / 180, v = GC1.vMin + (GC1.vMax - GC1.vMin) * cn.pow;
@@ -1060,7 +1107,7 @@ function gc1Fire(st) {
   gn.sx = 1.15; gn.sy = 0.86;
 }
 function gc1Gunner(st, dt) {
-  const ph = st.ph, cn = ph.cn, gn = G.players[ph.gunner], inp = gc1Input(ph, gn);
+  const ph = st.ph, cn = ph.cn, gn = G.players[ph.gunner], inp = gc1Input(ph, gn, dt);
   Object.assign(gn, { x: ph.seat.x, y: ph.seat.y, vx: 0, vy: 0, grounded: true, face: 1, jumping: false, alive: true });
   const onPad = gcPadJump(gn.id), spaceFire = !onPad && gn.id === 0 && gcKeyHeld('Space') && !gcKeyHeld('KeyW');
   const padFire = (onPad || spaceFire) && gn.pendingJump;
@@ -1083,7 +1130,7 @@ function gc1Gunner(st, dt) {
 }
 function gc1Loader(st, dt) {
   const ph = st.ph, ld = G.players[ph.loader], gn = G.players[ph.gunner];
-  const real = ld.input, inp = gc1Input(ph, ld);
+  const real = ld.input, inp = gc1Input(ph, ld, dt);
   ld.input = inp; gn.alive = false;   // the gunner sits in the seat: the loader passes by
   try {
     control(ld, dt);
@@ -1094,7 +1141,6 @@ function gc1Loader(st, dt) {
       postStep(ld);
     }
   } finally { gn.alive = true; ld.input = real; }
-  if (inp === NO_INPUT) ld.pendingAct = false;
   if (ld.pendingAct && ld.alive) { ld.pendingAct = false; gc1LoaderAct(st, ld); }
   ph.shoutT = Math.max(0, ph.shoutT - dt); ph.shout = Math.max(0, ph.shout - dt);
   const cn = ph.cn, carrying = ph.carry.powder || ph.carry.ball;
@@ -1217,7 +1263,7 @@ function gc1Belly(st, ball) {
   Sfx.play('gcClang'); gcPop(st, ball.x + 20, ball.y - 30, 'CLANG!', C.gold, 34);
   rumble(0, 0.7, 0.7, 300); rumble(1, 0.7, 0.7, 300);
   gcWinPiece(st, pieces[ph.hits - 1], { say: ph.hits === 1 ? 'Ow, my hat! My crown!' : 'Not my blocks! Hmph!' });
-  for (const b of ph.balls) b.dead = true;
+  for (const b of ph.balls) { b.dead = true; if (b !== ball) b.ended = true; }   // (other balls still flying are not misses)
   ph.stage = ph.hits === 1 ? 'hit1' : 'done'; ph.stageT = 0;
   if (ph.hits >= 2) gcPhaseDone(st);
 }
@@ -1279,7 +1325,7 @@ GC_PHASES.cannons = {
     const ph = st.ph;
     if (!ph.started) {
       ph.started = true;
-      gcSay(st, 'Mine! All mine!', 2);
+      gcSay(st, 'I took a piece of every world! Mine!', 2.5);
       gcHint(st, ph.gunner, NAMES[ph.gunner] + ': ' + gcAimKeys(ph.gunner), GC1.hintT);
       gcHint(st, ph.loader, NAMES[ph.loader] + ': bring powder and a ball', GC1.hintT);
     }
@@ -1305,12 +1351,19 @@ GC_PHASES.cannons = {
     }
   },
   labels(st) { const ph = st.ph; return ph.gunner === 0 ? ['fire', 'load'] : ['load', 'fire']; },
+  // the top-bar keys for each player's job now (the action key and word follow it)
+  legend(st) {
+    const L = G.level.def.legend || {}, g = st.ph.gunner;
+    return Object.assign({}, L, {
+      pip: g === 0 ? '<kbd>W</kbd><kbd>S</kbd> aim <kbd>A</kbd><kbd>D</kbd> power <kbd>Space</kbd> or' : '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      bo: g === 1 ? '<kbd>↑</kbd><kbd>↓</kbd> aim <kbd>←</kbd><kbd>→</kbd> power' : '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump',
+    });
+  },
   roles(st) { const ph = st.ph; const r = []; r[ph.gunner] = 'Fire!'; r[ph.loader] = 'Load!'; return r; },
   busy(st, p) { const ph = st.ph; return p.id === ph.gunner || rectHit(p, ph.hop.x, ph.hop.y, ph.hop.w, ph.hop.h); },
   headLift(st, p) { const ph = st.ph; return p.id === ph.loader ? (ph.carry.powder && ph.carry.ball ? 44 : ph.carry.powder || ph.carry.ball ? 24 : 0) : 0; },
   hudText(st) { return 'Shots ' + st.ph.shots; },
   stat(st) { const s = st.stats.cannons; return s ? { label: 'Cannon shots', values: [s.fired[0], s.fired[1]] } : null; },
-  statLine(st) { const s = st.stats.cannons; return s ? 'Castle blocks popped: ' + s.pops + (s.yoinks ? ' · Yoinks: ' + s.yoinks : '') : ''; },
   drawBack(st) { gc1DrawBack(st); },
   draw(st) { gc1Draw(st); },
   drawTop(st) { gc1DrawTop(st); },
@@ -1449,8 +1502,9 @@ function gc1DrawTop(st) {
    Stopper: walks the button deck under the reels; the action (or jump) under a reel stops it. The picture on the
    payline is the step: BAR a step, 7 a tall step, cherry a trampoline, lemon nothing. Some reels need one picture.
    Runner: hops up the stopped reels. The top reel's cherry springs them in an arc onto his hat. The button there
-   sits under a glass dome: the first bop pops the dome and the jobs swap, the second bop presses the button = a
-   piece (8, then 3). Then he flies to the other side, the reels slide into stairs the other way, and it all happens
+   sits under a glass dome: the first bop pops the dome and the jobs swap (the lower stopped reels stay, so the new
+   runner's climb needs only the top cherry), the second bop presses the button = a piece (8, then 3). Then he flies
+   to the other side, the reels slide into stairs the other way, and it all happens
    again (no swap at the fly-over, so each player stops twice, runs twice and wins one piece).
    The runner's action shouts "STOP!" (a cue). A drop into the tray is a "Gulp!": back to the start ledge.
    Only the runner can bop, and only the stopper's presses stop reels (stopped reels spin again if the stopper leaves
@@ -1462,10 +1516,11 @@ function gc1DrawTop(st) {
    reels { speed: [hit 1, hit 2], holdT: [hit 1, hit 2] (s a stop lasts; null = no timer), stairs: [{ row (window
    top tile row), strip, need, speedK, dir: [hit 1, hit 2] (-1 spins up) }] in climbing order }. Stats in st.stats.reels. */
 const GC2 = {
-  s: 0.75, lift: 4,                 // his size here, and how far he hovers over his ledge
+  s: 0.75, lift: 4, edgeIn: 25,     // his size here, how far he hovers over his ledge, and how far in from the edge
   cellH: 60, panelY: 390,           // a picture's height; the top of the button panel (a runner who drops to it is gulped)
   grace: 0.1, settleT: 0.15, spinUp: 0.25, sourT: 1.4, leaveGrace: 0.5, catchGrace: 20, zonePad: 15,
   syms: { B: { top: 30 }, '7': { top: 0 }, C: { top: 34, bounce: true }, L: { top: null } },
+  keepLow: 3,                       // after a dome pop the lowest good stops stay (only the top cherry spins again)
   launchApex: 40, bopW: 34, bopVy: 480, gulpT: 0.7, shoutCD: 0.8, whirr: 3.5, dome: 14, popT: 1.1,   // dome: px it adds on top
   slowAfter: 3, slowX: 0.6, magnetAfter: 6, holdAfter: 2,       // gold help: sour stops in a row / gulps in one hit
   attackFirst: 6, attackGap: [8, 11], tossIdle: 5, // s; no tosses at a runner who stood still tossIdle s
@@ -1571,7 +1626,7 @@ function gc2At(st, p) {
   const ph = st.ph, P = ph.P[p.id];
   if (!p.alive || !p.grounded) return null;
   if (P.on) return P.on.stair;
-  const feet = p.y + p.h, cx = p.x + p.w / 2, near = (lg) => Math.abs(feet - lg.y) < 2 && cx >= lg.x0 - 4 && cx <= lg.x1 + 4;
+  const feet = p.y + p.h, near = (lg) => Math.abs(feet - lg.y) < 2 && p.x + p.w >= lg.x0 && p.x <= lg.x1;   // (any part of you: the very lip counts)
   if (near(ph.ledges[ph.side])) return -1;
   if (near(ph.ledges[1 - ph.side])) return 9;
   return null;
@@ -1655,7 +1710,8 @@ function gc2Bop(st, p, top) {
   const ph = st.ph, pieces = G.level.def.pieces || [8, 3], H = gc2Hat(st.boss), dome = ph.dome;
   Object.assign(p, { y: top - p.h, vy: -GC2.bopVy, vx: 0, carryVx: 0, jumping: false, grounded: false, sx: 1.3, sy: 0.75 });
   ph.P[p.id].launch = null; ph.bopT = 0.5; ph.bops++;
-  for (const r of ph.reels) if (r.state !== 'spin') gc2Respin(r);    // the reels whirr off again
+  // the reels whirr off again; after a dome pop the lower good steps stay, so the swapped climb needs one new stop
+  for (const r of ph.reels) if (r.state !== 'spin' && !(dome && r.stair < GC2.keepLow && gc2Plat(r))) gc2Respin(r);
   rumble(0, 0.6, 0.6, 260); rumble(1, 0.6, 0.6, 260);
   ph.stageT = 0;
   if (dome) {
@@ -1702,6 +1758,7 @@ function gc2Swap(st) {
     burst(p.x + p.w / 2, p.y + p.h / 2, 'rgba(255,255,255,0.9)', 10);
   }
   ph.missRow = 0; ph.slow = 1; ph.magnet = false; ph.gulpsHit = 0; ph.luckyHold = false; ph.waitT = 0; ph.hopT = 0; ph.farT = 0;
+  for (const r of ph.reels) if (r.state !== 'spin') r.holdLeft = ph.holdT == null ? Infinity : ph.holdT;   // the steps that stayed wait for the new runner
   gcSwap(st);
   gcHint(st, ph.stopper, NAMES[ph.stopper] + ': ' + gc2StopKeys(ph.stopper), GC2.hintT);
   gcHint(st, ph.runner, NAMES[ph.runner] + ': hop up to his hat!', GC2.hintT);
@@ -1772,7 +1829,7 @@ GC_PHASES.reels = {
     ph.waitT = 0; ph.waitSaid = false; ph.hopT = 0; ph.farT = 0; ph.arrowR = null; ph.bopT = 0; ph.rnIdle = 0;
     gc2Side(st, 0, false);
     const b = st.boss;
-    b.s = GC2.s; b.pose = 'hover'; b.face = -1; b.gy = b.y; b.y -= GC2.lift;
+    b.s = GC2.s; b.pose = 'hover'; b.face = -1; b.gy = b.y; b.y -= GC2.lift; b.x -= GC2.edgeIn;
     ph.home = [{ x: b.x, y: b.y }, { x: W - b.x, y: b.y }];
     for (const [id, spot] of [[ph.stopper, ph.deck[0]], [ph.runner, ph.start[0]]]) {
       Object.assign(G.players[id], { x: spot.x, y: spot.y, face: 1 });
@@ -1780,7 +1837,13 @@ GC_PHASES.reels = {
       ph.P[id].prevFeet = spot.y + PH;
     }
   },
-  wait(st, dt) { gc2Reels(st, dt, false); for (const p of G.players) st.ph.P[p.id].prevFeet = p.y + p.h; },
+  wait(st, dt) {
+    gc2Reels(st, dt, false);
+    // the room card: the runner can walk about the start ledge but not off it (the tray would gulp them at once)
+    const ph = st.ph, rn = G.players[ph.runner], lg = ph.ledges[ph.side];
+    if (rn.alive) { const x = clamp(rn.x, lg.x0, lg.x1 - rn.w); if (x !== rn.x) { rn.x = x; rn.vx = 0; } }
+    for (const p of G.players) ph.P[p.id].prevFeet = p.y + p.h;
+  },
   pre(st, dt) {
     const ph = st.ph, s = G.players[ph.stopper], rn = G.players[ph.runner], P = ph.P[rn.id];
     // the stopper: the action, or a jump while under a reel, presses that reel's STOP button
@@ -1867,13 +1930,6 @@ GC_PHASES.reels = {
     if (p.id === ph.runner) { p.vy = -260; Sfx.play('gc2Spit', p.id); }
   },
   hudText(st) { return 'Bops ' + st.ph.bops + '/4'; },
-  stat(st) { const s = st.stats.reels; return s ? { label: 'Good reel stops', values: [s.stops[0], s.stops[1]] } : null; },
-  statLine(st) {
-    const s = st.stats.reels;
-    if (!s) return '';
-    const g = s.gulps[0] + s.gulps[1];
-    return 'Hat bops: ' + (s.pops[0] + s.pops[1] + s.bops[0] + s.bops[1]) + (g ? ' · Gulps: ' + g : ' · Not one gulp!');
-  },
   drawBack(st) { gc2DrawBack(st); },
   draw(st) { gc2Draw(st); },
   drawTop(st) { gc2DrawTop(st); },
@@ -2095,9 +2151,8 @@ const gc3AtValve = (p, v) => p.alive && p.grounded && Math.abs(gc3Cx(p) - v.x) <
 const gc3Pair = ph => (ph.stage === 'leg' && gc3Leg(ph) === 'valve' ? ph.valves[ph.vi] : null);
 function gc3ActKey(id) {
   try {
-    const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-    const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
-    return pad ? glyph('act') : touch ? 'the round button' : id === 0 ? 'F' : '/';
+    const k = actKey(id);
+    return k === 'pad' ? glyph('act') : k === 'touch' ? 'the round button' : id === 0 ? 'F' : '/';
   } catch (e) { return id === 0 ? 'F' : '/'; }
 }
 const gc3Arrow = (ph, id, x, y, life = 3) => { ph.arrow[id] = { x, y, t: 0, life }; };
@@ -2109,6 +2164,11 @@ function gc3SetGroup(gr, on) {
   }
 }
 const gc3CellBlocked = (gr, cl) => G.players.some(p => p.alive && solidFor(gr.tile, p) && rectHit(p, cl.c * T, cl.r * T, T, T));
+// someone the steps hold stands right under them: Super steps' low cells on each side would box them in, so they wait
+function gc3Pocket(gr) {
+  const main = gr.cells.filter(cl => !cl.extra), r = main[0].r, x0 = Math.min(...main.map(cl => cl.c)) * T, x1 = (Math.max(...main.map(cl => cl.c)) + 1) * T;
+  return G.players.some(p => p.alive && solidFor(gr.tile, p) && rectHit(p, x0, (r + 1) * T, x1 - x0, T));
+}
 const gc3OnGroup = (q, gr) => q.alive && q.grounded && gr.cells.some(cl => cl.on && Math.abs(q.y + q.h - cl.r * T) < 1.5 && q.x < cl.c * T + T && q.x + q.w > cl.c * T);
 // standing on a floor with an unbuilt gap between you and x
 const gc3Across = (ph, p, x) => { const f = gc3FloorOf(ph, p), cx = gc3Cx(p);
@@ -2192,7 +2252,8 @@ function gc3Lava(st, dt) {
   if (ph.stage === 'intro' || ph.stage === 'done' || st.idle) return;
   if (ph.lavaWait > 0) { ph.lavaWait -= dt; return; }
   if (!ph.lavaOn) { ph.lavaOn = true; gcNews(st, 'Here comes the lava! Climb up!'); Sfx.play('gc3Rumble'); }
-  const cap = ph.floors[Math.min(ph.ckpt[0], ph.ckpt[1])] + GC3.gap;
+  // never past the lower checkpoint floor, and never over floor 3 (on the top floor he and his boiler stay in view)
+  const cap = Math.max(ph.floors[Math.min(ph.ckpt[0], ph.ckpt[1])], ph.floors[ph.floors.length - 2]) + GC3.gap;
   let v = GC3.speed * ph.assist * ph.breeze;
   if (ph.lavaY - cap > GC3.catchGap) v *= GC3.catchMul;
   if (ph.lavaY > cap) ph.lavaY = Math.max(cap, ph.lavaY - v * dt);
@@ -2211,8 +2272,15 @@ function gc3Hot(st, p) {
   if (ph.hotN === GC3.breezeAt) { ph.breeze = GC3.breezeMul; gcHelp(st, 'Cool breeze! The lava slows down.'); }
   else gcNews(st, 'Phew! The lava backs off a bit.', false, 2.4);
 }
+// the floor a player's job is on (a button, a plate or a valve to stand at), or null (climbing, crossing, waiting)
+function gc3JobFloor(ph, job) {
+  if (!job || !job.target) return null;
+  if (job.what === 'press' || job.what === 'hold') return job.target.floor;
+  if (job.what === 'turn') { const f = ph.floors.indexOf(job.target.feet); return f >= 0 ? f : null; }
+  return null;
+}
 function gc3Players(st, dt) {
-  const ph = st.ph;
+  const ph = st.ph, jobs = gc3Jobs(st);
   for (const p of G.players) {
     const k = p.id, h = ph.hot[k];
     if (h) {
@@ -2220,14 +2288,22 @@ function gc3Players(st, dt) {
       continue;
     }
     if (p.alive && p.y + p.h > ph.lavaY + GC3.hotDepth) { gc3Hot(st, p); continue; }
-    // a new, higher floor is your checkpoint (you come back here after a hot foot)
-    const f = gc3FloorOf(ph, p);
-    // fell down a gap (or dropped) below your checkpoint: a puff and back up, so nobody has to climb it twice
-    ph.fallT[k] = f >= 0 && f < ph.ckpt[k] ? ph.fallT[k] + dt : 0;
+    const f = gc3FloorOf(ph, p), job = jobs && jobs[k], cap = gc3JobFloor(ph, job);
+    // up past your job's floor (a head boost can do that): your checkpoint comes back down to it, so you can go back
+    if (cap != null && ph.ckpt[k] > cap) {
+      ph.ckpt[k] = cap;
+      const jx = job.what === 'turn' ? job.target.x : job.target.c * T + T / 2;
+      G.spawnPts[k] = cap === 0 ? { ...ph.spawn0[k] } : { x: clamp(jx - PW / 2, 34, 24 * T + T - 4 - PW), y: ph.floors[cap] - PH };
+    }
+    // fell down a gap (or dropped, or hops about) below your checkpoint: a puff and back up, so nobody climbs it twice
+    const below = p.alive && (f >= 0 ? f < ph.ckpt[k] : p.y + p.h > ph.floors[ph.ckpt[k]] + 8);
+    ph.fallT[k] = below ? ph.fallT[k] + dt : 0;
     if (ph.fallT[k] >= 0.4) { ph.fallT[k] = 0; respawn(p); Sfx.play('gc3Floor', k); gcHint(st, k, 'Whoops! Back up you go.', 2); continue; }
-    if (f > ph.ckpt[k]) {
-      const hx = ph.home[f][k];
-      ph.ckpt[k] = f; G.spawnPts[k] = { x: hx != null ? hx : clamp(p.x, 34, 24 * T + T - 4 - p.w), y: ph.floors[f] - PH };
+    // a new, higher floor is your checkpoint (you come back here after a hot foot), up to your job's floor
+    const up = cap != null ? Math.min(f, cap) : f;
+    if (up > ph.ckpt[k]) {
+      const hx = ph.home[up][k];
+      ph.ckpt[k] = up; G.spawnPts[k] = { x: hx != null ? hx : clamp(p.x, 34, 24 * T + T - 4 - p.w), y: ph.floors[up] - PH };
       Sfx.play('gc3Floor', k); puff(gc3Cx(p), p.y + p.h, 6, C.gold);
       if (!st.say && gcRand() < 0.6) gcSay(st, ['Hey! Get down from there!', 'Ooh, you are good at climbing!', 'It’s getting toasty in here!'][(ph.lines++) % 3], 1.8);
     }
@@ -2271,7 +2347,7 @@ function gc3Buttons(st, dt) {
       const want = Math.min(gr.cells.length, 1 + Math.floor(gr.buildT / GC3.buildStep));
       for (let i = 0; i < want; i++) {
         const cl = gr.cells[i];
-        if (cl.on || gc3CellBlocked(gr, cl)) continue;
+        if (cl.on || gc3CellBlocked(gr, cl) || (cl.extra && gc3Pocket(gr))) continue;
         cl.on = true; cl.flash = 0.15; G.level.grid[cl.r][cl.c] = gr.tile; S.steps++;
         Sfx.play('gc3Step'); puff(cl.c * T + T / 2, cl.r * T + T / 2, 5, PCOL[gr.holder]);
       }
@@ -2377,6 +2453,10 @@ function gc3Guide(st, dt) {
     if (tx != null && gc3Across(ph, p, tx)) {
       if ((ph.wrongT[k] += dt) >= 1.5 && !ph.hinted['wrong' + k]) { ph.hinted['wrong' + k] = true; gcHint(st, k, 'Wrong side! Drop down to go back.', 3); }
     } else ph.wrongT[k] = 0;
+    // up above your job's floor (a head boost again): go back down to it
+    const jf = gc3JobFloor(ph, j), high = jf != null && gc3FloorOf(ph, p) > jf;
+    ph.highT[k] = high ? ph.highT[k] + dt : Math.min(0, ph.highT[k] + dt);   // (negative: a wait after the hint)
+    if (ph.highT[k] >= 1.5) { ph.highT[k] = -4; gcHint(st, k, j.what === 'turn' ? 'Drop down to your valve! Press ▼' : 'Drop down to your button! Press ▼', 3); }
     // stuck at your steps for a while (and still trying): Super steps
     if (j && j.what === 'climb' && !j.target.super && p.alive) {
       const i = p.input;
@@ -2428,12 +2508,14 @@ GC_PHASES.lava = {
     ph.valves = Object.keys(valves).map(Number).sort((a, b) => b - a).map(r => valves[r].sort((a, b) => a.owner - b.owner));
     // each leg's buttons (a climb: [low, high])
     ph.legBtns = GC3_LEGS.map((_, i) => ph.btns.filter(b => b.leg === i).sort((a, b) => b.r - a.r));
-    // your spot on each floor: above your own steps up to it (so a head-boost up the wrong side, then a drop, puts you right)
+    // your spot on each floor: where your own steps up to it arrive (so a head boost up the wrong side, then a drop,
+    // puts you on your side). Steps sit 2 rows under the floor they lead up to.
     ph.home = ph.floors.map(fy => [0, 1].map(k => {
-      const gr = ph.groups.find(g => !g.bridge && g.holder === k && (g.cells[0].r + 2) * T === fy);
+      const gr = ph.groups.find(g => !g.bridge && g.holder === k && (g.cells[0].r - 2) * T === fy);
       return gr ? gr.cells.reduce((s, cl) => s + cl.c, 0) / gr.cells.length * T + T / 2 - PW / 2 : null;
     }));
     // he starts on the ground under his seat, stomps, then flies up to the boiler
+    ph.spawn0 = G.spawnPts.map(sp => ({ ...sp }));
     const b = st.boss;
     ph.seat = { x: b.x, y: b.y };
     Object.assign(b, { s: GC3.bossS, face: -1, pose: 'stand', y: ph.floors[0] });
@@ -2441,7 +2523,7 @@ GC_PHASES.lava = {
     ph.crackX = [140, 300, 470, 640];
     Object.assign(ph, { stage: 'intro', stageT: 0, intro: { t: 0, n: 0, said: false, fly: false }, cracks: 0, leg: 0, vi: 0, vMeter: 0, soloT: 0, lastA: null,
       ckpt: [0, 0], hot: [null, null], hotN: 0, lavaY: GC3.startY, lavaWait: 0, lavaOn: false, assist: 1, breeze: 1, coolT: 0, sink: false,
-      tossT: GC3.tossFirst, zips: [], arrow: [null, null], hinted: {}, jobKey: '', jobT: [0, 0], nudged: [false, false], climbT: [0, 0], fallT: [0, 0], wrongT: [0, 0], lines: 0 });
+      tossT: GC3.tossFirst, zips: [], arrow: [null, null], hinted: {}, jobKey: '', jobT: [0, 0], nudged: [false, false], climbT: [0, 0], fallT: [0, 0], wrongT: [0, 0], highT: [0, 0], lines: 0 });
   },
   pre(st) {
     const ph = st.ph;
@@ -2473,8 +2555,6 @@ GC_PHASES.lava = {
   },
   headLift(st, p) { const ph = st.ph; return ph.valves.some(pr => pr.some(v => gc3AtValve(p, v))) ? 34 : 0; },
   hudText(st) { const ph = st.ph; return 'Floor ' + (Math.min(ph.ckpt[0], ph.ckpt[1]) + 1) + ' / ' + ph.floors.length; },
-  stat(st) { const s = st.stats.lava; return s ? { label: 'Hot foots', values: [s.hot[0], s.hot[1]] } : null; },
-  statLine(st) { const s = st.stats.lava; return s ? 'Steps built for each other: ' + s.steps : ''; },
   drawBack(st) { gc3DrawBack(st); },
   draw(st) { gc3Draw(st); },
   drawTop(st) { gc3DrawTop(st); },
@@ -2706,9 +2786,10 @@ function gc3DrawTop(st) {
 /* Grand Finale (a bright mix of Sunny Meadow, Rumble Park and Backyard Bash; borrows 4-3 Hot Potato Volleyball and
    6-2 Tug of War). Part A, set and spike: he hovers over the net and serves big bouncy balls. The setter bumps a ball
    up (action): "Set!", it glows gold and floats to the partner. The spiker hits a gold ball (action; jump + action is
-   a SPIKE) and it flies into his belly: BONK. Three bonks knock a piece out (4, then 6). Whoever spiked last sets next,
-   so the jobs swap after every bonk. A ball the spiker touches first, or one the setter touches twice, just plinks
-   ("Pass it!"); after three bounces it rolls away and he serves again. He tosses soft socks at whoever is waiting.
+   a SPIKE) and it flies into his belly: BOING, a hit ("bonk" only ever means a player got hit). Three hits knock a
+   piece out (4, then 6). Whoever spiked last sets next, so the jobs swap after every hit. A ball the spiker touches
+   first, or one the setter touches twice, just plinks ("Pass it!"); after three bounces it rolls away and he serves
+   again. Misses in a row (mashing) make the next swing wait a moment. He tosses soft socks at whoever is waiting.
    Part B, pull the plug: dizzy, he lands and sits; his power cord runs from his side to the wall. Both grab a knot on
    the cord (action) and pull (hold or mash the action, or hold ◀). He tugs back now and then (a telegraphed yank). Only both
    pulling together moves the plug; when it pops out he naps and piece 1 flies home, then the ending.
@@ -2721,13 +2802,14 @@ const GC4 = {
   serveGap: 1.4, swapGap: 2.0, firstServe: 1.2, serveDev: 70,           // s between balls (after a swap: time to read the badges)
   setApex: 185, setMaxVx: 250, plinkVy: 300, headVy: 330,                 // a set rises this high and drifts to the spiker
   swingT: 0.28, touchCD: 0.25, reachX: 22, reachUp: 40, mittsPx: 14,      // a press swings for swingT s
+  whiffLock: 0.45, whiffGap: 1.2,       // misses in a row (each within whiffGap s): the next swing waits whiffLock s per extra miss, up to 3 (mashing loses)
   spikeT: 0.4, bumpT: 0.8, bonksPer: 3,                                   // shot flight time; bonks per piece
   mittsAfter: 3, slowAfter: 6, magnetAfter: 9, magnet: 3,                  // rallies in a row with no bonk before help
   hoverX: 790, hoverY: 360, swapAfter: 0.8, landT: 1.6, plugT: 0.7, swoop: [22, 60],   // px he drifts (second piece: wider)
   tossFirst: 7, tossGap: [8, 11],
   // the pull: knots on the cord, rate per s while both pull, plus per press (presses closer than pressGap add nothing)
-  knots: [470, 400], knotShift: 64, grabR: 34, pullHold: 0.4, rate: 0.05, perPress: 0.012, pressGap: 0.12,
-  yankGap: [3.2, 4.2], yankWarn: 0.7, yankBoth: 0.025, yankOne: 0.06, gripAfter: 14, gripRate: 1.5, gripYank: 0.4,
+  knots: [470, 400], knotShift: 64, grabR: 34, pullHold: 0.4, rate: 0.035, perPress: 0.008, pressGap: 0.12,
+  yankGap: [3.2, 4.2], yankWarn: 0.7, yankBoth: 0.025, yankOne: 0.06, gripAfter: 22, gripRate: 1.5, gripYank: 0.4,
   hintGap: 3.5,
 };
 // his serves, in turn: T = s in the air; aim = px past the setter toward the net (a bouncer lands short and bounces on)
@@ -2788,7 +2870,12 @@ function gc4Serve(st) {
   if (ph.serves === 1) gcSay(st, 'Catch! If you can!', 1.6);
   else if (kind.say && !st.say) gcSay(st, kind.say, 1.5);
 }
-// a player's swing meets the ball
+// a swing that missed (or only plinked): a few in a row and the next swing waits a little
+function gc4Whiff(ph, k) {
+  ph.whiffN[k] = ph.t - ph.whiffT[k] < GC4.whiffGap ? ph.whiffN[k] + 1 : 1; ph.whiffT[k] = ph.t;
+  ph.lock[k] = GC4.whiffLock * Math.min(3, ph.whiffN[k] - 1);
+}
+// a player's swing meets the ball: true for a good touch (a set or a shot), false for a plink
 function gc4Touch(st, p, b) {
   const ph = st.ph, S = st.stats.finale, k = p.id, sp = 1 - ph.setter, cx = p.x + p.w / 2;
   b.cd[k] = GC4.touchCD;
@@ -2801,19 +2888,20 @@ function gc4Touch(st, p, b) {
       gcPop(st, b.x, b.y - 30, 'Set!', C.gold, 24);
       Sfx.play('gc4Set', k); rumble(k, 0.15, 0.35, 60); burst(b.x, b.y, C.gold, 8);
       if (ph.setHints < 2) { ph.setHints++; gcHint(st, sp, 'Hit it! Jump for a SPIKE!', 2.2); }
+      return true;
     } else {                 // the spiker touched it first: a little plink
       b.vy = -GC4.plinkVy; b.vx = clamp((G.players[ph.setter].x - b.x) * 0.6, -120, 120);
       gcPop(st, b.x, b.y - 26, 'Plink!', '#ffffff', 18); Sfx.play('gc4Plink', k);
       if (ph.plinkHintT <= 0) { ph.plinkHintT = GC4.hintGap; gcHint(st, k, NAMES[ph.setter] + ' sets it first!', 2); }
     }
-    return;
+    return false;
   }
-  if (b.state !== 'set') return;
+  if (b.state !== 'set') return false;
   if (k === ph.setter) {     // hit twice by the same player: it plinks off (still gold)
     b.vy = -GC4.plinkVy; b.vx = clamp((G.players[sp].x - b.x) * 0.6, -140, 140);
     gcPop(st, b.x, b.y - 26, 'Pass it!', C.gold, 20); Sfx.play('gc4Plink', k);
     if (ph.plinkHintT <= 0) { ph.plinkHintT = GC4.hintGap; gcHint(st, k, 'Pass it! ' + NAMES[sp] + ' hits it!', 2); }
-    return;
+    return false;
   }
   // the spiker hits a gold ball: it flies into his belly
   const spike = !p.grounded && b.y < p.y + p.h * 0.5;
@@ -2822,6 +2910,7 @@ function gc4Touch(st, p, b) {
   if (spike) { S.spikes[k]++; gcPop(st, cx, p.y - 30, 'SPIKE!', PCOL[k], 30); Sfx.play('gc4Spike', k); rumble(k, 0.5, 0.6, 140); burst(b.x, b.y, PCOL[k], 12); }
   else { S.bumps[k]++; gcPop(st, cx, p.y - 30, 'Nice hit!', PCOL[k], 24); Sfx.play('gc4Bump', k); rumble(k, 0.25, 0.4, 90); puff(b.x, b.y, 6, 'rgba(255,255,255,0.9)'); }
   if (!reduceMotion && spike) G.shake = Math.max(G.shake, 0.08);
+  return true;
 }
 // a ball that leaves play without a bonk: a miss (help after a few in a row)
 function gc4BallGone(st, why) {
@@ -2841,14 +2930,14 @@ function gc4Bonk(st) {
   const ph = st.ph, b = ph.ball, S = st.stats.finale, pieces = G.level.def.pieces || [4, 6, 1];
   const jar = gcBossPts(st.boss).jar;
   ph.ball = null; ph.bonks++; ph.missRow = 0; S.hits[b.shot.by]++;
-  gcPop(st, jar.x - 20, jar.y - jar.r - 16, 'BONK!', C.gold, 36);
+  gcPop(st, jar.x - 20, jar.y - jar.r - 16, 'BOING!', C.gold, 36);
   Sfx.play('gc4Boink'); rumble(0, 0.5, 0.6, 220); rumble(1, 0.5, 0.6, 220);
   burst(jar.x, jar.y, '#ffffff', 10);
   const n = Math.floor((ph.bonks - 1) / GC4.bonksPer), piece = pieces[n];
   const left = GC4.bonksPer - ph.bonks % GC4.bonksPer;
   if (left < GC4.bonksPer) {   // the piece wiggles loose: more bonks to knock it out
     gcBossHit(st, gcRand() < 0.5 ? 'Ow! My tummy!' : 'Hey! Watch the jar!');
-    ph.wiggle = piece; gcNews(st, left === 1 ? 'One more bonk knocks it out!' : 'It wiggles! ' + left + ' more bonks!');
+    ph.wiggle = piece; gcNews(st, left === 1 ? 'One more hit knocks it out!' : 'It wiggles! ' + left + ' more hits!');
   } else {
     ph.wiggle = 0;
     gcWinPiece(st, piece, { say: n === 0 ? 'Ow! My boxing glove!' : 'Not my cupcake! Whoa...' });
@@ -2887,7 +2976,7 @@ function gc4BallStep(st, dt) {
   // swings and heads
   for (const p of G.players) {
     if (!p.alive || b.cd[p.id] > 0) continue;
-    if (ph.sw[p.id] > 0 && p.stun <= 0 && gc4InReach(ph, p, b)) { ph.sw[p.id] = 0; gc4Touch(st, p, b); continue; }
+    if (ph.sw[p.id] > 0 && p.stun <= 0 && gc4InReach(ph, p, b)) { ph.sw[p.id] = 0; if (gc4Touch(st, p, b)) ph.whiffN[p.id] = 0; else gc4Whiff(ph, p.id); continue; }
     // a ball dropping on a head bounces up again (a free second chance, no set)
     if (b.vy > 0 && b.x > p.x - 6 && b.x < p.x + p.w + 6 && b.y + b.r > p.y && b.y < p.y + 4) {
       b.y = p.y - b.r; b.vy = -GC4.headVy; b.vx = b.vx * 0.5 + p.vx * 0.3; b.cd[p.id] = 0.12;
@@ -3082,7 +3171,7 @@ GC_PHASES.finale = {
     ph.setter = def.setter == null ? 0 : def.setter;
     ph.stage = 'rally'; ph.stageT = 0; ph.t = 0; ph.started = false;
     ph.ball = null; ph.serveT = GC4.firstServe; ph.serves = 0; ph.bonks = 0; ph.missRow = 0; ph.mitts = 0; ph.wiggle = 0;
-    ph.sw = [0, 0]; ph.swA = [0, 0]; ph.setHints = 0; ph.plinkHintT = 0; ph.tossT = GC4.tossFirst;
+    ph.sw = [0, 0]; ph.swA = [0, 0]; ph.lock = [0, 0]; ph.whiffT = [-9, -9]; ph.whiffN = [0, 0]; ph.setHints = 0; ph.plinkHintT = 0; ph.tossT = GC4.tossFirst;
     ph.u = 0; ph.hold = [-1, -1]; ph.pull = [false, false]; ph.lastPress = [-9, -9]; ph.jolt = [0, 0]; ph.yank = null; ph.arrowT = 0;
     ph.landing = null; ph.popped = null;
     const b = st.boss;
@@ -3094,7 +3183,8 @@ GC_PHASES.finale = {
     for (const p of G.players) {
       if (!p.pendingAct) continue;
       p.pendingAct = false;
-      if (gc4Live(ph) && p.alive && p.stun <= 0) { ph.sw[p.id] = GC4.swingT; ph.swA[p.id] = 0.22; Sfx.play('gc4Swing', p.id); }
+      // a swing (a press mid-swing doesn't stretch it, and none during a whiff lock)
+      if (gc4Live(ph) && p.alive && p.stun <= 0 && ph.lock[p.id] <= 0 && ph.sw[p.id] <= 0) { ph.sw[p.id] = GC4.swingT; ph.swA[p.id] = 0.22; Sfx.play('gc4Swing', p.id); }
     }
   },
   step(st, dt) {
@@ -3109,7 +3199,11 @@ GC_PHASES.finale = {
     }
     // nobody crosses the net
     for (const p of G.players) { const edge = ph.netX - GC4.netHalf - p.w; if (p.x > edge) { p.x = edge; p.vx = Math.min(0, p.vx); } }
-    for (let k = 0; k < 2; k++) { ph.sw[k] = Math.max(0, ph.sw[k] - dt); ph.swA[k] = Math.max(0, ph.swA[k] - dt); }
+    for (let k = 0; k < 2; k++) {
+      ph.swA[k] = Math.max(0, ph.swA[k] - dt); ph.lock[k] = Math.max(0, ph.lock[k] - dt);
+      // a swing that ran out without touching the ball is a miss; two close together and the next swing waits a bit
+      if (ph.sw[k] > 0 && (ph.sw[k] -= dt) <= 0) { ph.sw[k] = 0; gc4Whiff(ph, k); }
+    }
     if (ph.plinkHintT > 0) ph.plinkHintT -= dt;
     gc4BossStep(st, dt);
     if (ph.stage === 'pull') { gc4PullStep(st, dt); return; }
@@ -3137,13 +3231,7 @@ GC_PHASES.finale = {
     return ph.stage === 'pull' || ph.stage === 'done' ? '' : 'Hits ' + Math.min(ph.bonks, n) + ' / ' + n;
   },
   hud(st) { gc4Hud(st); },
-  stat(st) { const s = st.stats.finale; return s ? { label: 'Ball hits', values: [s.hits[0], s.hits[1]] } : null; },
-  statLine(st) {
-    const s = st.stats.finale;
-    if (!s) return '';
-    const sp = s.spikes[0] + s.spikes[1];
-    return (sp ? 'Super spikes: ' + sp : 'Sets: ' + (s.sets[0] + s.sets[1])) + (s.unplugT ? ' · Plug pulled in ' + s.unplugT.toFixed(1) + ' s' : '');
-  },
+  statLine(st) { const s = st.stats.finale; return s && s.unplugT ? 'Plug pulled in ' + s.unplugT.toFixed(1) + ' s' : ''; },
   drawBack(st) { gc4DrawBack(st); },
   draw(st) { gc4Draw(st); },
   drawTop(st) { gc4DrawTop(st); },

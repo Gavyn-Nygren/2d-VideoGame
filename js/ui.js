@@ -174,6 +174,9 @@ function actKeysHTML() {
     const one = k => { const l = k ? l1 : l0; return ks[k] === 'pad' ? `<span data-glyph="${pg}"></span> ${l}` : ks[k] === 'touch' ? `round button ${l}` : `<kbd>${k ? '/' : 'F'}</kbd> ${l}`; };
     return `<p class="act-keys"><span><b class="nm-pip">Pip</b> ${one(0)}</span><span><b class="nm-bo">Bo</b> ${one(1)}</span></p>`;
   }
+  // both on controllers, or both on touch: just that line (a touch page with pads would show the touch line too)
+  if (ks[0] === 'pad') return `<p class="act-keys"><span><span data-glyph="${pg}"></span> ${lab}</span></p>`;
+  if (ks[0] === 'touch') return `<p class="act-keys"><span>Round button: ${lab}</span></p>`;
   return `<p class="act-keys"><span class="kb-only"><b class="nm-pip">Pip</b> <kbd>F</kbd> ${l0}</span><span class="kb-only"><b class="nm-bo">Bo</b> <kbd>/</kbd> ${l1}</span><span class="pad-only"><span data-glyph="${pg}"></span> ${lab}</span><span class="touch-only">Round button: ${lab}</span></p>`;
 }
 function pause() {
@@ -295,9 +298,10 @@ function showResult() {
   armOverlay();
 }
 
-// one table row per level, plus running totals for a group of levels
-function resultRows(idxs, showFalls = idxs.some(i => LEVELS[i].kind === 'team')) {
-  const tot = { time: 0, falls: 0, done: 0, team: 0, timed: 0, strokes: 0, par: 0, vsLevels: 0, vsWins: [0, 0] };
+// one table row per level, plus running totals for a group of levels. Falls show only where a team level counts them.
+const countsFalls = idxs => idxs.some(i => LEVELS[i].kind === 'team' && !LEVELS[i].noFalls);
+function resultRows(idxs, showFalls = countsFalls(idxs)) {
+  const tot = { time: 0, falls: 0, done: 0, team: 0, timed: 0, strokes: 0, par: 0, vsLevels: 0, vsWins: [0, 0], showFalls };
   const rows = idxs.map(i => {
     const l = LEVELS[i], r = G.results[i];
     if (l.kind === 'team') tot.team++;
@@ -330,8 +334,8 @@ function totalsStats(tot) {
   if (!tot.team) return `<div class="stats">${vs}</div>`;
   return `<div class="stats">
     <div class="stat"><span class="k">Team levels cleared</span><span class="v">${tot.done} of ${tot.team}</span></div>
-    ${tot.timed ? `<div class="stat"><span class="k">Team time</span><span class="v">${fmtTime(tot.time)}</span></div>
-    <div class="stat"><span class="k">Falls</span><span class="v">${tot.falls}</span></div>` : ''}
+    ${tot.timed ? `<div class="stat"><span class="k">Team time</span><span class="v">${fmtTime(tot.time)}</span></div>` : ''}
+    ${tot.timed && tot.showFalls ? `<div class="stat"><span class="k">Falls</span><span class="v">${tot.falls}</span></div>` : ''}
     ${tot.par ? `<div class="stat"><span class="k">Golf strokes</span><span class="v">${tot.strokes} <small>par ${tot.par}</small></span></div>` : ''}${vs}
   </div>`;
 }
@@ -346,7 +350,7 @@ function showWorldDone(w) {
       <p class="eyebrow">World ${w + 1} complete</p>
       <h2>${esc(WORLDS[w].name)}: done!</h2>
       ${totalsStats(tot)}
-      ${summaryTable(rows, tot.team > 0)}
+      ${summaryTable(rows, tot.showFalls)}
       <div class="actions-row">
         ${nxt !== null ? `<button class="primary" type="button" data-act="world" data-w="${nxt}" data-primary>On to World ${nxt + 1}: ${esc(WORLDS[nxt].name)}</button>`
           : '<button class="primary" type="button" data-act="final" data-primary>See your results</button>'}
@@ -358,7 +362,7 @@ function showWorldDone(w) {
 function showFinal() {
   G.mode = 'final';
   setActUI(false); setLegend(null);
-  const all = resultRows(LEVELS.map((l, i) => i)), fl = all.tot.team > 0;
+  const all = resultRows(LEVELS.map((l, i) => i)), fl = all.tot.showFalls, beat = !!G.results[LEVELS.length - 1];
   const rows = liveWorlds().flatMap(w => [`<tr class="wrow"><td colspan="${fl ? 4 : 3}">World ${w + 1}: ${esc(WORLDS[w].name)}</td></tr>`].concat(resultRows(worldLevels(w), fl).rows));
   // one line per world up top; every level's row folds away below it (a long table on a phone otherwise)
   const worldRows = liveWorlds().map(w => {
@@ -370,8 +374,8 @@ function showFinal() {
   });
   showOverlay(`
     <div class="card fit-card">
-      <p class="eyebrow">Demo complete</p>
-      <h2>Nice teamwork, <span class="nm-pip">Pip</span> &amp; <span class="nm-bo">Bo</span></h2>
+      <p class="eyebrow">${beat ? 'The end' : 'Demo complete'}</p>
+      <h2>${beat ? 'You beat the whole game' : 'Nice teamwork'}, <span class="nm-pip">Pip</span> &amp; <span class="nm-bo">Bo</span>${beat ? '!' : ''}</h2>
       ${totalsStats(all.tot)}
       <div class="table-wrap"><table class="summary worlds">
         <thead><tr><th>World</th><th style="text-align:right">Result</th></tr></thead>

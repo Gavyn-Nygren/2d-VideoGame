@@ -2621,8 +2621,7 @@ const LEVELS = [
         title: 'Castle Cannons', phase: 'cannons', pieces: [7, 2], look: 6, ownStep: true,
         gunner: 1, fence: 13,
         act: { label: 'fire', labels: ['load', 'fire'], padGlyph: 'act' },
-        legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move · power <kbd>W</kbd><kbd>S</kbd> jump · aim', bo: '<kbd>←</kbd><kbd>→</kbd> move · power <kbd>↑</kbd><kbd>↓</kbd> jump · aim',
-          pad: 'stick: move or aim, <span data-glyph="a"></span> jump or fire,' },
+        legend: { pad: 'stick: move or aim, <span data-glyph="a"></span> jump or fire,' },   // (the pip / bo keys follow the jobs: GC_PHASES.cannons.legend)
         tip: 'One brings powder and a ball to the cannon, one aims and fires. Break the wall, then hit his belly!',
         // the walls he hides behind: x = first tile column, rows top to bottom (n wood, B stone), standing on the floor
         wall1: { x: 21, rows: ['nn', 'nn', 'nn', 'nn', 'nn'] },
