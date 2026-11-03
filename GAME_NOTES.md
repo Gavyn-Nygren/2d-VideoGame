@@ -93,6 +93,17 @@ Famous natural disasters from history, kept light and cartoony: nobody gets hurt
 - **9-4 Krakatoa Ash Run**: Ash hides the way; one clears a path with a fan, the other leads (Gavyn). Thick ash is drawn over the level. The fanner holds the action (fan) to blow a cone of ash away and blow off ash drifts; the leader follows the footprints, pulls levers (pull) that open bamboo gates and drop rope bridges for the fanner, and presses the action elsewhere to shout "This way!". At windsock gaps (7 tiles) only the fanner's gust carries the leader across (an updraft while over the gap, so a tap jump or walk-off floats too). Roles swap every room: Jungle Trail, Lava Rocks, Cliff Path, Beach to the Ship. Camps are checkpoints; hold ▼ 1 s to go back to camp. The act labels switch per role every room. Help: quick nudges at gaps and drifts, a parrot with hints, a gold Super gust after 2 misses at a gap, a gold Sea breeze when stuck. Lava is "Toasty toes!" here (9-1 says "Hot foot!").
 - Every World 9 level was bot-tested on keyboard, a stubbed controller and touch (844x390 and 390x844), and with solo, idle and button-mashing bots: none can be cleared by one player, and none gets stuck. Bot times for a perfect pair: 9-1 about 50 s, 9-2 about 88 s, 9-3 about 172 s, 9-4 about 51 s; slower human-like bots take 2-4.5 min. Real playtests may show the medal limits need tuning.
 
+### World 10: Grand Finale (team boss)
+One big boss level (Gavyn picked "The Grand Collector"); the world name is Claude's pick. A goofy brass-and-purple robot took a piece of every world and keeps them in his glass belly-jar. The 9 pieces are his health bar (a HUD strip, top centre). He is never hurt: hits make him wobble and pop his monocle. At the end he naps, wakes up friendly, waves, and every piece flies home.
+- **10-1 The Grand Collector**: 4 rooms, one phase each, every phase borrowing an earlier world's look and tricks. Every hit needs both players, and jobs swap inside each phase ("Swap jobs!", badges, per-role act labels).
+  - **Castle Cannons** (7-1): the loader brings powder and a ball, the gunner aims and fires at his wall, then his belly. Pieces 7, 2.
+  - **Jackpot Reels** (8-3): the stopper stops reels from the deck below, the runner hops up them; the top cherry bounces the runner onto his hat (pop the dome, then bop the button). Pieces 8, 3.
+  - **Hot Floor Climb** (5-4, 9-1): buttons build steps in the partner's colour while cartoon lava rises; turn the steam valves together. Pieces 5, 9.
+  - **Grand Finale** (4-3, 6-2): set and spike his balls back (whoever spiked sets next), then pull his plug together. Pieces 4, 6, 1.
+- Soft failure only: his tosses and claw are telegraphed and cause a "Bonk!" (counted, never death). He waits during cards, cutscenes, celebrations and when nobody plays for 10 s. Gold help per phase (Lucky aim, Lucky slow-mo / magnet / hold, Cool breeze, Super steps, Big mitts, Floaty balls, Magnet balls, Super grip).
+- Code: one file, `js/levels/world10/grand-collector.js`, in marked sections (GC CORE, then GC PHASE 1-4). Each room def names its `phase`; the core owns `MODES.collector` and calls `GC_PHASES[phase]` hooks. R restarts the whole level from phase 1.
+- Bot times: perfect pair about 3:00, good pair 4:05-4:40 (phases about 55, 55-85, 50-55, 50-90 s). Trophy: Gold up to 5:30 and 5 bonks, Silver up to 9:00 and 14 bonks. Real playtests may show these need tuning.
+
 ## How the game is built
 
 ### Conventions for every level

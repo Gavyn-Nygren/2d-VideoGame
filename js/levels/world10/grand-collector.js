@@ -45,7 +45,7 @@ const GC = {
   bonk: { vx: 230, vy: 300, stun: 0.75, slide: 0.3, safe: 1.4 },     // knock() speeds, dizzy time, no second bonk for safe s
   toss: { flight: 1.15, min: 0.9, g: 900, hitW: 22, hitH: 36, lead: 0.2, warn: 0.6 }, // junk: flight s (shadow shows all of it)
   claw: { warn: 0.85, reach: 0.32, grab: 0.28, back: 0.55, w: 26, h: 40 },           // warn = the telegraph before it zips out
-  medal: { gold: { t: 270, bonks: 4 }, silver: { t: 420, bonks: 12 } },              // s and bonks (tune once every phase is in)
+  medal: { gold: { t: 330, bonks: 5 }, silver: { t: 540, bonks: 14 } },              // s and bonks (bots: perfect 3:00, good 4:05-4:40)
   boss: { s: 0.9 },          // default scale: about 7 tiles wide with his arms, 9 tiles to the top of his hat
 };
 // the nine stolen pieces, one per world (index = world number - 1)
@@ -945,69 +945,6 @@ function gcHud(st) {
     ctx.fillStyle = 'rgba(255,240,180,0.4)'; circle(q.x, q.y, 18); ctx.fill();
     gcIcon(i + 1, q.x, q.y, 12);
   }
-}
-
-/* --- a simple phase, used as the placeholder for phases not built yet --- */
-// Both players stand on their own star ('y' Pip, 'z' Bo in the map) and press the action at the same moment: that
-// wins the room's next piece. A junk toss now and then goes at whoever is off their star.
-// o: { pose, lift (px he hovers over his feet), junk (kind), say (his first line), ending (true: the last phase) }
-const gcOnStar = (ph, p) => { const s = ph.stars && ph.stars[p.id]; return !!s && p.alive && p.grounded && Math.abs(p.x + p.w / 2 - s.x) < 20 && Math.abs(p.y + p.h - s.y) < 4; };
-function gcPlaceholderPhase(o) {
-  return {
-    setup(st, L) {
-      const ph = st.ph;
-      ph.stars = [null, null]; ph.n = 0; ph.press = [-9, -9]; ph.t = 0; ph.tossT = 5; ph.pieces = (L.def.pieces || []).slice(); ph.over = false;
-      for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
-        const ch = L.grid[ty][tx];
-        if (ch === 'y' || ch === 'z') { ph.stars[ch === 'y' ? 0 : 1] = { x: tx * T + T / 2, y: (ty + 1) * T }; L.grid[ty][tx] = '.'; }
-      }
-      const b = st.boss;
-      b.pose = o.pose || 'stand';
-      if (o.lift) { b.gy = b.y; b.y -= o.lift; }
-      ph.said = false;
-    },
-    step(st, dt) {
-      const ph = st.ph;
-      ph.t += dt;
-      if (!ph.said) { ph.said = true; if (o.say) gcSay(st, o.say); }
-      if (ph.over) return;
-      for (const p of G.players) {
-        if (!p.pendingAct) continue;
-        p.pendingAct = false;
-        if (gcOnStar(ph, p)) { ph.press[p.id] = ph.t; Sfx.play('press'); } else gcHint(st, p.id, 'Stand on your star!', 1.5);
-      }
-      const both = G.players.every(p => gcOnStar(ph, p)), fresh = ph.press.every(t => ph.t - t < 0.6);
-      if (both && fresh && st.celebT <= 0) {
-        ph.press = [-9, -9];
-        gcWinPiece(st, ph.pieces[ph.n++]);
-        if (ph.n >= ph.pieces.length) {
-          ph.over = true;
-          if (o.ending) { st.boss.pose = 'nap'; gcSay(st, 'Bzzzt... nap time.', 2); gcEnding(st); } else gcPhaseDone(st);
-        } else if (o.ending && ph.n === ph.pieces.length - 1) { st.boss.pose = 'sit'; st.boss.y = st.boss.gy != null ? st.boss.gy : st.boss.y; st.boss.gy = null; }
-      } else for (const p of G.players) {
-        const q = G.players[1 - p.id];
-        if (ph.t - ph.press[p.id] > 0.3 && ph.t - ph.press[p.id] < 0.35 && ph.t - ph.press[q.id] > 0.6) gcHint(st, q.id, 'Press together!', 1.5);
-      }
-      if ((ph.tossT -= dt) <= 0) {
-        ph.tossT = 7;
-        const off = G.players.filter(p => p.alive && !gcOnStar(ph, p));
-        if (off.length) gcToss(st, off[(gcRand() * off.length) | 0].id, { kind: o.junk || 'boot' });
-      }
-    },
-    draw(st) {
-      const ph = st.ph;
-      for (let k = 0; k < 2; k++) {
-        const s = ph.stars[k];
-        if (!s) continue;
-        const on = gcOnStar(ph, G.players[k]), glow = 0.5 + 0.5 * Math.sin(G.clock * 4 + k);
-        ctx.fillStyle = on ? PCOL[k] : `rgba(255,255,255,${0.25 + 0.2 * glow})`; ctx.beginPath(); ctx.ellipse(s.x, s.y - 2, 22, 6, 0, 0, Math.PI * 2); ctx.fill();
-        gcStar(s.x, s.y - 18 - glow * 4, 11, PCOL[k]);
-      }
-    },
-    labels: () => ['push', 'push'],
-    roles: () => ['Your star!', 'Your star!'],
-    busy: (st, p) => gcOnStar(st.ph, p),
-  };
 }
 
 /* --- sounds --- */
@@ -3425,5 +3362,4 @@ MODES.collector.test = {
   won: () => G.mst.won.map((w, i) => (w ? i + 1 : 0)).filter(Boolean),
   win: n => gcWinPiece(G.mst, n), done: () => gcPhaseDone(G.mst), ending: () => gcEnding(G.mst),
   toss: (id, o) => gcToss(G.mst, id, o), claw: (id, o) => gcClaw(G.mst, id, o), bonk: (id, x) => gcBonk(G.mst, G.players[id], x),
-  onStar: id => gcOnStar(G.mst.ph, G.players[id]),
 };
