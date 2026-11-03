@@ -2605,6 +2605,129 @@ const LEVELS = [
     ],
   },
   // ----- END 9-4 Krakatoa Ash Run -----
+
+  /* ===== World 10 (Grand Finale, team boss): one big boss level, 10-1 The Grand Collector (mode 'collector',
+     js/levels/world10/grand-collector.js). Each room is one phase of the fight, run by GC_PHASES[room.phase].
+     Room fields the core reads: title, tip, phase, pieces (the world numbers this phase wins back, in order),
+     look (the world index whose colours the room uses; theme adds to them), act (labels per player), legend, map.
+     Each phase builder edits only its own room block below (between its BEGIN and END lines). ===== */
+  { name: 'The Grand Collector', world: 9, kind: 'team', mode: 'collector', ownHUD: true, noFalls: true,
+    act: { label: 'act' },
+    tip: 'A giant robot took a piece of every world! Team up and win all nine back.',
+    switches: {}, signs: [],
+    rooms: [
+      // ----- BEGIN 10-1 room 1 (cannons) -----
+      { // Castle Cannons (Castle Quest look): one loads the cannon, one aims and fires at the wall and his belly
+        title: 'Castle Cannons', phase: 'cannons', pieces: [7, 2], look: 6, ownStep: true,
+        gunner: 1, fence: 13,
+        act: { label: 'fire', labels: ['load', 'fire'], padGlyph: 'act' },
+        legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move · power <kbd>W</kbd><kbd>S</kbd> jump · aim', bo: '<kbd>←</kbd><kbd>→</kbd> move · power <kbd>↑</kbd><kbd>↓</kbd> jump · aim',
+          pad: 'stick: move or aim, <span data-glyph="a"></span> jump or fire,' },
+        tip: 'One brings powder and a ball to the cannon, one aims and fires. Break the wall, then hit his belly!',
+        // the walls he hides behind: x = first tile column, rows top to bottom (n wood, B stone), standing on the floor
+        wall1: { x: 21, rows: ['nn', 'nn', 'nn', 'nn', 'nn'] },
+        wall2: { x: 20, rows: ['.nn', 'nnn', 'nBn', 'nnn', 'nnn', 'nnn'] },
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '..........ii....................', // 11  cannonballs up on the shelf
+          '.........====...................', // 12
+          '................................', // 13
+          '.pp.1.2Y.................Z......', // 14  powder kegs, the cannon (Y), his feet (Z)
+          '##############wwwww#############', // 15  the moat
+          '################################', // 16
+          '################################', // 17
+        ] },
+      // ----- END 10-1 room 1 -----
+      // ----- BEGIN 10-1 room 2 (reels) -----
+      { // Jackpot Reels (Lucky Casino look). PLACEHOLDER: the phase 2 builder replaces this room.
+        title: 'Jackpot Reels', phase: 'reels', pieces: [8, 3], look: 7,
+        act: { label: 'push', labels: ['push', 'push'] },
+        tip: 'Placeholder: both stand on your star and press the action together.',
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '................................', // 11
+          '.......====.....................', // 12
+          '................................', // 13
+          '..1.y......z.2..........Z.......', // 14  y Pip's star, z Bo's star, Z his feet
+          '################################', // 15
+          '################################', // 16
+          '################################', // 17
+        ] },
+      // ----- END 10-1 room 2 -----
+      // ----- BEGIN 10-1 room 3 (lava) -----
+      { // Hot Floor Climb (Great Escapes look). PLACEHOLDER: the phase 3 builder replaces this room.
+        title: 'Hot Floor Climb', phase: 'lava', pieces: [5, 9], look: 8,
+        act: { label: 'push', labels: ['push', 'push'] },
+        tip: 'Placeholder: both stand on your star and press the action together.',
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '................................', // 11
+          '...........====.................', // 12
+          '................................', // 13
+          '..1.y......z.2..........Z.......', // 14  y Pip's star, z Bo's star, Z his feet
+          '################################', // 15
+          '################################', // 16
+          '################################', // 17
+        ] },
+      // ----- END 10-1 room 3 -----
+      // ----- BEGIN 10-1 room 4 (finale) -----
+      { // Grand Finale (Sunny Meadow look, bright). PLACEHOLDER: the phase 4 builder replaces this room.
+        title: 'Grand Finale', phase: 'finale', pieces: [4, 6, 1], look: 0,
+        act: { label: 'push', labels: ['push', 'push'] },
+        tip: 'Placeholder: both stand on your star and press the action together.',
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '................................', // 11
+          '.....====.......................', // 12
+          '................................', // 13
+          '..1.y......z.2..........Z.......', // 14  y Pip's star, z Bo's star, Z his feet
+          '################################', // 15
+          '################################', // 16
+          '################################', // 17
+        ] },
+      // ----- END 10-1 room 4 -----
+    ],
+  },
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -2638,6 +2761,10 @@ const WORLDS = [
   { name: 'Great Escapes', blurb: 'Volcanoes, quakes, glaciers and ash clouds: escape them together!',
     theme: { skyTop: '#f2a477', skyBot: '#ffe6bd', hillFar: '#c9a08e', hillNear: '#a98272', sun: 'rgba(255, 236, 180, 0.95)', sunGlow: 'rgba(255, 180, 120, 0.38)',
       stone: '#5d4b5f', stoneLight: '#705c73', stoneEdge: '#3e3143', grass: '#a9d870', grassDark: '#6a9c45', plank: '#d39a62', plankDark: '#8a5a32', rope: '#f0d08a', ropeDark: '#7a5432' } },
+  // the finale: one big boss level (a dusky purple and brass junk vault; each phase also takes the look of an earlier world)
+  { name: 'Grand Finale', blurb: 'A giant robot stole a piece of every world. Win them all back together!',
+    theme: { skyTop: '#3d2f6e', skyBot: '#e3a978', hillFar: '#6b5294', hillNear: '#56407c', sun: 'rgba(255, 222, 160, 0.92)', sunGlow: 'rgba(255, 190, 120, 0.32)',
+      stone: '#55467a', stoneLight: '#685894', stoneEdge: '#372c58', grass: '#d9b55a', grassDark: '#a37f30', plank: '#c9955a', plankDark: '#7d5530', rope: '#f0c75e', ropeDark: '#7a5520' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);

@@ -570,7 +570,7 @@ function drawIntro() {
   ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(W / 2 - tw / 2, 168, tw, actLine ? 120 : 92, 18); ctx.fill();
   const code = levelCode(G.levelIndex), wd = WORLDS[LEVELS[G.levelIndex].world];
   const first = code.endsWith('-1') && (!def.rooms || def.roomIndex === 0);
-  const sub = (first ? `World ${code[0]}: ${wd.name} · ` : '') + (def.golf ? `Level ${code} · Hole ${def.roomIndex + 1} of ${def.roomCount} · Par ${def.par}`
+  const sub = (first ? `World ${LEVELS[G.levelIndex].world + 1}: ${wd.name} · ` : '') + (def.golf ? `Level ${code} · Hole ${def.roomIndex + 1} of ${def.roomCount} · Par ${def.par}`
     : def.rooms ? `Level ${code} · ${def.name} · Room ${def.roomIndex + 1} of ${def.roomCount}` : `Level ${code}${def.kind === 'versus' ? ' · Versus' : ''}`);
   text(sub, W / 2, 190, 13, C.gold, 'center', 'body');
   text(def.rooms ? def.title + '!' : def.name, W / 2, 216, 30, C.paper, 'center');
