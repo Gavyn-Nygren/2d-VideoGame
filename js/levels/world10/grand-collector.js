@@ -1513,9 +1513,657 @@ GC_PHASES.reels = gcPlaceholderPhase({ pose: 'hover', lift: 120, junk: 'dice', s
 /* ===== END GC PHASE 2 ===== */
 
 /* ===== GC PHASE 3: LAVA ===== */
-// PLACEHOLDER: the phase 3 builder replaces everything between this line and END GC PHASE 3 with the real phase
-// (Hot Floor Climb, Great Escapes look). It wins pieces 5 then 9 and ends with gcPhaseDone(st).
-GC_PHASES.lava = gcPlaceholderPhase({ pose: 'sit', junk: 'pan', say: 'It’s getting toasty in here!' });
+/* Hot Floor Climb (Great Escapes look, borrows 5-4 Rising Lava and 9-1 Pompeii Escape). He stomps, the floor cracks,
+   and cartoon lava rises while he sits on a big steam boiler at the top right. Climb the tower's four floors.
+   Every button builds steps in the PARTNER's colour (orange 'o' holds only Pip, blue 'u' only Bo), so you leapfrog:
+   I press, you climb, then you press for me. Floors 2 and 4 have a wide gap over the lava that the partner bridges
+   (in your colour), and a valve pair: both hold the action on your own valve together for GC3.turnT s -> steam,
+   "Cool down!", a piece (5, then 9). The first gives the lava a breather, the second ends the phase.
+   The phase runs in legs (GC3_LEGS): climb, bridge, valves, climb (hold plates: the steps stay while you stand on it),
+   climb, bridge, valves. A button only works from its leg on. Who presses first changes each climb ("Swap jobs!").
+   Kid-friendly lava: waits for the card and his stomp, never rises past GC3.gap px under the lower checkpoint floor
+   (nobody standing on their floor is ever caught), backs off and slows after a "Hot foot!" (a hop, then back to your
+   floor), pauses when nobody plays. Now and then he drops a soft pot or pan (shadow first), never at anyone on a
+   button, plate or valve, up on the steps, or near a gap.
+   Gold help: Cool breeze (the 2nd hot foot: slower lava), Super steps (stuck at your steps a while: an extra step).
+   Map chars (this phase parses them): d h e m f g j l buttons (GC3_BTN), 0 3-9 their cells, q Pip's valve, r Bo's
+   valve (one pair per valve floor). Room def: floors = the tile rows of the four floor tops, bottom first. 'Z' = his
+   seat on the boiler; he starts on the ground under it. Stats in st.stats.lava. */
+const GC3 = {
+  bossS: 0.62,
+  gap: 40, speed: 9, catchGap: 200, catchMul: 2.4, startY: H + 24, sinkV: 150, delay: 1.2,  // lava (px, px/s, s)
+  hotDepth: 6, hotHop: 470, hotT: 0.55, backOff: 90, backWait: 2.2, assistStep: 0.85, assistMin: 0.55,
+  breezeAt: 2, breezeMul: 0.65, breatherT: 5,
+  turnT: 2, drain: 0.6, valveR: 22,                   // s both must hold, meter drain /s when not both, reach px
+  buildStep: 0.07, holdGrace: 0.5, superAfter: 12,    // s per cell, s a hold group stays after you step off
+  tossFirst: 12, tossGap: [9, 13], gapSafe: 70, nudgeT: 7, soloT: 1, notYetT: 0.6, introT: 2.9,
+};
+const GC3_LEGS = ['climb', 'bridge', 'valve', 'climb', 'climb', 'bridge', 'valve'];
+// button char -> [owner, cells, leg, hold]: Pip's buttons build blue (Bo's) cells, Bo's build orange (Pip's)
+const GC3_BTN = { d: [0, '3', 0, false], h: [1, '4', 0, false], e: [1, '9', 1, false], m: [1, '5', 3, true], f: [0, '6', 3, true],
+  g: [0, '7', 4, false], j: [1, '8', 4, false], l: [0, '0', 5, false] };
+// which floor (index into ph.floors) p stands on, or -1 (in the air, on steps, on a head)
+function gc3FloorOf(ph, p) {
+  if (!p.alive || !p.grounded || !p.tileGround) return -1;
+  const feet = p.y + p.h;
+  return ph.floors.findIndex(f => Math.abs(feet - f) < 1.5);
+}
+const gc3Cx = p => p.x + p.w / 2;
+// standing on a button: on the floor of the button's cell (vy >= 0: not passing up through a plank)
+function gc3StandOn(p, c, r) {
+  return p.alive && p.grounded && p.tileGround && p.vy >= 0 && Math.abs(p.y + p.h - (r + 1) * T) < 1.5 && p.x < c * T + T - 4 && p.x + p.w > c * T + 4;
+}
+const gc3Leg = ph => GC3_LEGS[ph.leg];
+const gc3BtnOn = (ph, b) => b.leg <= ph.leg && ph.stage !== 'done';
+const gc3AtValve = (p, v) => p.alive && p.grounded && Math.abs(gc3Cx(p) - v.x) <= GC3.valveR && Math.abs(p.y + p.h - v.feet) < 1.5;
+const gc3Pair = ph => (ph.stage === 'leg' && gc3Leg(ph) === 'valve' ? ph.valves[ph.vi] : null);
+function gc3ActKey(id) {
+  try {
+    const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
+    const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
+    return pad ? glyph('act') : touch ? 'the round button' : id === 0 ? 'F' : '/';
+  } catch (e) { return id === 0 ? 'F' : '/'; }
+}
+const gc3Arrow = (ph, id, x, y, life = 3) => { ph.arrow[id] = { x, y, t: 0, life }; };
+function gc3SetGroup(gr, on) {
+  if (on) { if (gr.state === 'hidden' || gr.state === 'fading') { if (gr.state === 'hidden') gr.buildT = 0; gr.state = 'building'; } }
+  else if (gr.state === 'building' || gr.state === 'on') {
+    gr.state = 'fading'; gr.fadeT = GC3.holdGrace;
+    if (gr.cells.some(cl => cl.on)) Sfx.play('gc3Blink');
+  }
+}
+const gc3CellBlocked = (gr, cl) => G.players.some(p => p.alive && solidFor(gr.tile, p) && rectHit(p, cl.c * T, cl.r * T, T, T));
+const gc3OnGroup = (q, gr) => q.alive && q.grounded && gr.cells.some(cl => cl.on && Math.abs(q.y + q.h - cl.r * T) < 1.5 && q.x < cl.c * T + T && q.x + q.w > cl.c * T);
+// standing on a floor with an unbuilt gap between you and x
+const gc3Across = (ph, p, x) => { const f = gc3FloorOf(ph, p), cx = gc3Cx(p);
+  return f >= 0 && ph.groups.some(gr => gr.bridge && gr.floor === f && gr.state !== 'on' && (cx < gr.x0) !== (x < gr.x0)); };
+// a bridge's far side for the crosser: the side of the gap its button is on
+function gc3FarSide(gr) {
+  const cs = gr.cells.map(cl => cl.c), x0 = Math.min(...cs) * T, x1 = (Math.max(...cs) + 1) * T, bx = gr.btn.c * T + T / 2;
+  return bx < x0 ? { dir: -1, edge: x0, x: x0 - 45 } : { dir: 1, edge: x1, x: x1 + 45 };
+}
+// what each player should be doing now: [{ what, target }] (press, hold, wait, climb, steps (wait for them), cross,
+// bridge (wait for it), turn) or null between legs
+function gc3Jobs(st) {
+  const ph = st.ph;
+  if (ph.stage !== 'leg') return null;
+  const leg = gc3Leg(ph), bs = ph.legBtns[ph.leg], out = [];
+  const presser = b => ({ what: b.hold ? 'hold' : b.latched ? 'wait' : 'press', target: b });
+  if (leg === 'valve') return ph.valves[ph.vi].map(v => ({ what: 'turn', target: v }));
+  if (leg === 'bridge') {
+    const b = bs[0], gr = b.gr;
+    out[b.owner] = presser(b); out[1 - b.owner] = { what: gr.state === 'on' ? 'cross' : 'bridge', target: gr };
+    return out;
+  }
+  // a climb: low = on floor k (A presses for B), high = on floor k + 1 (B presses for A)
+  const [low, high] = bs, A = low.owner, B = 1 - A, up = high.floor;
+  const climber = gr => ({ what: gr.state === 'on' ? 'climb' : 'steps', target: gr });
+  if (ph.ckpt[B] < up) { out[A] = presser(low); out[B] = climber(low.gr); }
+  else { out[B] = presser(high); out[A] = ph.ckpt[A] < up ? climber(high.gr) : { what: 'wait' }; }
+  return out;
+}
+const GC3_BADGE = { press: 'Press!', hold: 'Stay on!', climb: 'Climb!', steps: 'Climb!', cross: 'Cross!', bridge: 'Cross!', turn: 'Turn!' };
+function gc3Target(job) {
+  const o = job.target;
+  if (!o) return null;
+  if (o.cells) { const cs = o.cells.filter(cl => !cl.extra), cl = cs[(cs.length / 2) | 0]; return { x: cl.c * T + T / 2, y: cl.r * T - 4 }; }
+  if (o.feet != null) return { x: o.x, y: o.feet - 58 };
+  return { x: o.c * T + T / 2, y: o.r * T + 8 };
+}
+// a hint (and, when asked, a bouncing arrow) for what this player should do
+function gc3Nudge(st, id, job, arrow) {
+  const ph = st.ph, p = G.players[id];
+  if (!job || !p.alive || ph.hot[id]) return;
+  const msg = {
+    press: 'Step on your button!', hold: 'Stand on your button and stay!', steps: 'Wait for your steps!', bridge: 'Wait for your bridge!',
+    climb: arrow ? 'Jump onto your steps!' : 'Your steps! Climb up!', cross: 'Your bridge! Walk across!',
+    turn: 'Hold ' + gc3ActKey(id) + ' on your valve!',
+  }[job.what];
+  if (!msg || (arrow && (job.what === 'steps' || job.what === 'bridge'))) return;
+  gcHint(st, id, msg, 3);
+  const tg = gc3Target(job);
+  if (arrow && tg) gc3Arrow(ph, id, tg.x, tg.y);
+}
+
+/* --- phase 3 steps --- */
+function gc3Intro(st, dt) {
+  const ph = st.ph, b = st.boss, I = ph.intro;
+  I.t += dt;
+  if (!I.said) { I.said = true; b.pose = 'stomp'; gcSay(st, 'Hot floor! Stomp, stomp!', 1.8); }
+  if (I.n < 3 && I.t >= 0.35 + I.n * 0.6) {
+    I.n++; ph.cracks = I.n;
+    Sfx.play('gc3Stomp'); rumble(0, 0.5, 0.4, 160); rumble(1, 0.5, 0.4, 160);
+    if (!reduceMotion) G.shake = Math.max(G.shake, 0.16);
+    puff(b.x - 30, b.y - 2, 5, 'rgba(255,255,255,0.8)'); puff(b.x + 30, b.y - 2, 5, 'rgba(255,255,255,0.8)');
+    for (const cx of ph.crackX.slice(0, I.n + 1)) burst(cx, ph.floors[0] + 4, '#ff9a3d', 5);
+  }
+  if (I.t >= 1.9 && !I.fly) { I.fly = true; b.pose = 'hover'; b.gy = ph.floors[0]; I.x0 = b.x; I.y0 = b.y; Sfx.play('gcFly'); gcSay(st, 'Hmph! Try THIS!', 1.6); }
+  if (I.fly) {
+    const k = clamp((I.t - 1.9) / (GC3.introT - 1.9), 0, 1), e = k * k * (3 - 2 * k);
+    b.x = I.x0 + (ph.seat.x - I.x0) * e; b.y = I.y0 + (ph.seat.y - I.y0) * e - Math.sin(k * Math.PI) * 50;
+  }
+  if (I.t >= GC3.introT) {
+    Object.assign(b, { x: ph.seat.x, y: ph.seat.y, gy: null, pose: 'sit' });
+    puff(b.x, b.y, 8, 'rgba(255,255,255,0.85)'); Sfx.play('gcThud');
+    gcSay(st, 'Ha! Come up and get me!', 2.2);
+    ph.stage = 'leg'; ph.lavaWait = GC3.delay;
+  }
+}
+function gc3Lava(st, dt) {
+  const ph = st.ph;
+  if (ph.coolT > 0) ph.coolT = Math.max(0, ph.coolT - dt);
+  if (ph.sink) { ph.lavaY = Math.min(GC3.startY, ph.lavaY + GC3.sinkV * dt); if (ph.lavaY >= GC3.startY) ph.sink = false; }
+  if (ph.stage === 'intro' || ph.stage === 'done' || st.idle) return;
+  if (ph.lavaWait > 0) { ph.lavaWait -= dt; return; }
+  if (!ph.lavaOn) { ph.lavaOn = true; gcNews(st, 'Here comes the lava! Climb up!'); Sfx.play('gc3Rumble'); }
+  const cap = ph.floors[Math.min(ph.ckpt[0], ph.ckpt[1])] + GC3.gap;
+  let v = GC3.speed * ph.assist * ph.breeze;
+  if (ph.lavaY - cap > GC3.catchGap) v *= GC3.catchMul;
+  if (ph.lavaY > cap) ph.lavaY = Math.max(cap, ph.lavaY - v * dt);
+}
+// "Hot foot!": feet in the lava. A hop with smoke, then back to your floor. The lava backs off and slows a little.
+function gc3Hot(st, p) {
+  const ph = st.ph, S = st.stats.lava;
+  ph.hot[p.id] = { t: 0 }; ph.hotN++; S.hot[p.id]++;
+  p.vy = -GC3.hotHop; p.vx = 0; p.jumping = false; p.grounded = false;
+  gcPop(st, gc3Cx(p), p.y - 18, 'Hot foot!', '#ffcf6b', 24);
+  Sfx.play('gc3Hot', p.id); rumble(p.id, 0.5, 0.3, 180);
+  for (let k = 0; k < 3; k++) puff(gc3Cx(p), p.y + p.h, 5, 'rgba(120,110,115,0.8)');
+  ph.lavaY = Math.min(GC3.startY, ph.lavaY + GC3.backOff);
+  ph.lavaWait = Math.max(ph.lavaWait, GC3.backWait);
+  ph.assist = Math.max(GC3.assistMin, ph.assist * GC3.assistStep);
+  if (ph.hotN === GC3.breezeAt) { ph.breeze = GC3.breezeMul; gcHelp(st, 'Cool breeze! The lava slows down.'); }
+  else gcNews(st, 'Phew! The lava backs off a bit.', false, 2.4);
+}
+function gc3Players(st, dt) {
+  const ph = st.ph;
+  for (const p of G.players) {
+    const k = p.id, h = ph.hot[k];
+    if (h) {
+      if ((h.t += dt) >= GC3.hotT) { ph.hot[k] = null; respawn(p); gcHint(st, k, 'Hot foot! Back up you go.', 2); }
+      continue;
+    }
+    if (p.alive && p.y + p.h > ph.lavaY + GC3.hotDepth) { gc3Hot(st, p); continue; }
+    // a new, higher floor is your checkpoint (you come back here after a hot foot)
+    const f = gc3FloorOf(ph, p);
+    // fell down a gap (or dropped) below your checkpoint: a puff and back up, so nobody has to climb it twice
+    ph.fallT[k] = f >= 0 && f < ph.ckpt[k] ? ph.fallT[k] + dt : 0;
+    if (ph.fallT[k] >= 0.4) { ph.fallT[k] = 0; respawn(p); Sfx.play('gc3Floor', k); gcHint(st, k, 'Whoops! Back up you go.', 2); continue; }
+    if (f > ph.ckpt[k]) {
+      const hx = ph.home[f][k];
+      ph.ckpt[k] = f; G.spawnPts[k] = { x: hx != null ? hx : clamp(p.x, 34, 24 * T + T - 4 - p.w), y: ph.floors[f] - PH };
+      Sfx.play('gc3Floor', k); puff(gc3Cx(p), p.y + p.h, 6, C.gold);
+      if (!st.say && gcRand() < 0.6) gcSay(st, ['Hey! Get down from there!', 'Ooh, you are good at climbing!', 'It’s getting toasty in here!'][(ph.lines++) % 3], 1.8);
+    }
+  }
+}
+function gc3Buttons(st, dt) {
+  const ph = st.ph, S = st.stats.lava;
+  for (const b of ph.btns) {
+    const p = G.players[b.owner], q = G.players[1 - b.owner], gr = b.gr, active = gc3BtnOn(ph, b);
+    if (b.wig > 0) b.wig -= dt;
+    const on = gc3StandOn(p, b.c, b.r);
+    if (on && !b.live && active && (b.hold || !b.latched)) {
+      S.presses[b.owner]++; Sfx.play('gc3Press', b.owner); rumble(b.owner, 0.1, 0.35, 80);
+      if (gr.state === 'hidden') { const c0 = gr.cells[0]; ph.zips.push({ x0: b.c * T + T / 2, y0: b.r * T + 20, x1: c0.c * T + T / 2, y1: c0.r * T + T / 2, t: 0, col: PCOL[gr.holder] }); }
+    }
+    // a button that works later: standing on it a moment says so (once)
+    b.idleOn = on && !active ? b.idleOn + dt : 0;
+    if (b.idleOn >= GC3.notYetT && !ph.hinted['ny' + b.ch]) {
+      ph.hinted['ny' + b.ch] = true; b.wig = 0.3; Sfx.play('gc3Nope', p.id);
+      gcHint(st, p.id, GC3_LEGS.slice(ph.leg, b.leg).includes('valve') ? 'Not yet! Turn the valves first.' : 'Not yet!', 2.2);
+    }
+    // a hold plate let go while the partner is up on its steps
+    if (active && b.hold && b.down && !on && gc3OnGroup(q, gr)) gcHint(st, b.owner, 'Stay on it!', 2);
+    b.down = on; b.live = on && active;
+    // the partner on it: nothing happens (a wiggle, and once a "whose is it")
+    const qOn = gc3StandOn(q, b.c, b.r);
+    b.qOn = qOn ? b.qOn + dt : 0;
+    if (b.qOn >= GC3.notYetT && !ph.hinted['nope' + q.id]) {
+      ph.hinted['nope' + q.id] = true; b.wig = 0.3; Sfx.play('gc3Nope', q.id);
+      gcHint(st, q.id, 'That’s ' + NAMES[b.owner] + '’s button!', 2.2);
+    }
+    if (!active) continue;
+    if (b.hold) gc3SetGroup(gr, on);
+    else if (on && !b.latched) { b.latched = true; gc3SetGroup(gr, true); }
+  }
+  // cells: one per buildStep, in order (a cell the holder is inside waits until they move); fading
+  for (const gr of ph.groups) {
+    for (const cl of gr.cells) if (cl.flash > 0) cl.flash -= dt;
+    if (gr.state === 'building') {
+      gr.buildT += dt;
+      const want = Math.min(gr.cells.length, 1 + Math.floor(gr.buildT / GC3.buildStep));
+      for (let i = 0; i < want; i++) {
+        const cl = gr.cells[i];
+        if (cl.on || gc3CellBlocked(gr, cl)) continue;
+        cl.on = true; cl.flash = 0.15; G.level.grid[cl.r][cl.c] = gr.tile; S.steps++;
+        Sfx.play('gc3Step'); puff(cl.c * T + T / 2, cl.r * T + T / 2, 5, PCOL[gr.holder]);
+      }
+      if (gr.cells.every(cl => cl.on)) { gr.state = 'on'; Sfx.play('gc3Ready', gr.holder); rumble(gr.holder, 0, 0.3, 90); }
+    } else if (gr.state === 'fading') {
+      gr.fadeT -= dt;
+      if (gr.fadeT <= 0) { gr.state = 'hidden'; for (const cl of gr.cells) { cl.on = false; G.level.grid[cl.r][cl.c] = '.'; } Sfx.play('gc3Fade'); }
+    }
+  }
+  for (const z of ph.zips) z.t += dt;
+  if (ph.zips.length && ph.zips[0].t > 0.25) ph.zips = ph.zips.filter(z => z.t <= 0.25);
+}
+// Super steps (gold help): an extra low step on each side, so the first hop is only one tile
+function gc3Super(st, gr) {
+  const g = G.level.grid, r = gr.cells[0].r + 1, cs = gr.cells.map(cl => cl.c);
+  gr.super = true; st.stats.lava.supers++;
+  for (const c of [Math.min(...cs) - 1, Math.max(...cs) + 1]) if (c > 0 && c < 25 && g[r] && g[r][c] === '.') gr.cells.push({ c, r, on: false, flash: 0, extra: true });
+  if (gr.state === 'on') gr.state = 'building';
+  gcHelp(st, 'Super steps! An extra step for ' + NAMES[gr.holder] + '.');
+}
+function gc3Valves(st, dt) {
+  const ph = st.ph, pair = gc3Pair(ph);
+  for (const pr of ph.valves) for (const v of pr) { v.turn = false; if (v.wig > 0) v.wig -= dt; }
+  if (!pair) return;
+  for (const v of pair) {
+    const p = G.players[v.owner], q = G.players[1 - v.owner];
+    v.turn = gc3AtValve(p, v) && p.input.act && p.stun <= 0 && !ph.hot[p.id];
+    if (v.turn) { v.ang += dt * 7; if ((v.sq -= dt) <= 0) { v.sq = 0.28; Sfx.play('gc3Turn', p.id); } }
+    // the partner tries this one
+    const qTry = gc3AtValve(q, v) && q.input.act;
+    if (qTry && !v.qTry) { v.wig = 0.3; Sfx.play('gc3Nope', q.id); gcHint(st, q.id, 'That’s ' + NAMES[v.owner] + '’s valve!', 2); }
+    v.qTry = qTry;
+  }
+  const both = pair.every(v => v.turn), one = pair.find(v => v.turn);
+  if (both) ph.vMeter = Math.min(1, ph.vMeter + dt / GC3.turnT);
+  else ph.vMeter = Math.max(0, ph.vMeter - GC3.drain * dt);
+  // only one turning: call the other one over
+  ph.soloT = !both && one ? ph.soloT + dt : Math.min(0, ph.soloT + dt);
+  if (ph.soloT >= GC3.soloT) {
+    ph.soloT = -2;
+    const v = pair.find(w => !w.turn), id = v.owner;
+    gcHint(st, id, 'Turn your valve too!', 2.5); gc3Arrow(ph, id, v.x, v.feet - 58, 2.5);
+    gcHint(st, one.owner, 'Keep holding! Wait for ' + NAMES[id] + '.', 2.5);
+  }
+  if (ph.vMeter >= 1) gc3ValveWin(st);
+}
+function gc3ValveWin(st) {
+  const ph = st.ph, pieces = G.level.def.pieces, first = ph.vi === 0, pair = ph.valves[ph.vi];
+  ph.vMeter = 0;
+  Sfx.play('gc3Steam'); rumble(0, 0.6, 0.6, 300); rumble(1, 0.6, 0.6, 300);
+  // steam out of the boiler's whistle and the two valves
+  const puffAt = (x, y, n, vy) => { for (let i = 0; i < n; i++) G.particles.push({ x: x + (gcRand() - 0.5) * 16, y, vx: (gcRand() - 0.5) * 120, vy: vy - gcRand() * 120, life: 1, max: 1, col: 'rgba(255,255,255,0.85)', size: 8 + gcRand() * 8, grav: -60, kind: 'dot' }); };
+  puffAt(ph.boiler.x1 - 17, ph.boiler.top - 18, 14, -160);
+  for (const v of pair) puffAt(v.x, v.feet - 58, 8, -90);
+  gcPop(st, 380, clamp(ph.lavaY - 30, 150, 400), 'Cool down!', '#c8f1ff', 34);
+  gcWinPiece(st, pieces[ph.vi], { say: first ? 'Whoa! Too much steam!' : 'My volcano! Hmph!' });
+  ph.coolT = first ? GC3.breatherT + 2 : 99; ph.sink = true;
+  if (first) { ph.stage = 'cool'; ph.stageT = 0; ph.lavaWait = GC3.breatherT; ph.lavaOn = false; gcNews(st, 'Cool down! The lava takes a breather.', false, 3); }
+  else { ph.stage = 'done'; ph.sinkT0 = G.time; ph.sinkY0 = ph.lavaY; gcPhaseDone(st); }
+}
+// the next leg (after a climb leg that changes who presses first: "Swap jobs!")
+function gc3NextLeg(st) {
+  const ph = st.ph;
+  ph.leg++; ph.stage = 'leg'; ph.stageT = 0;
+  const leg = gc3Leg(ph), bs = ph.legBtns[ph.leg];
+  if (leg === 'climb') {
+    if (ph.lastA != null && bs[0].owner !== ph.lastA) gcSwap(st);
+    ph.lastA = bs[0].owner;
+  } else if (leg === 'bridge') gcNews(st, 'A gap! ' + NAMES[bs[0].owner] + ', build a bridge for ' + NAMES[1 - bs[0].owner] + '!', false, 3);
+  else if (leg === 'valve') { ph.vi = ph.leg === GC3_LEGS.indexOf('valve') ? 0 : 1; ph.vMeter = 0; ph.soloT = 0; gcNews(st, 'Turn your steam valves together!', false, 3); }
+}
+function gc3Flow(st, dt) {
+  const ph = st.ph;
+  ph.stageT += dt;
+  if (ph.stage === 'cool') { if (st.celebT <= 0 && !st.fly.length && ph.stageT > 1) gc3NextLeg(st); return; }
+  if (ph.stage !== 'leg') return;
+  const leg = gc3Leg(ph), bs = ph.legBtns[ph.leg];
+  if (ph.lastA == null && leg === 'climb') ph.lastA = bs[0].owner;
+  if (leg === 'climb' && ph.ckpt[0] >= bs[1].floor && ph.ckpt[1] >= bs[1].floor) gc3NextLeg(st);
+  else if (leg === 'bridge') {
+    const b = bs[0], q = G.players[1 - b.owner], far = gc3FarSide(b.gr);
+    if (gc3FloorOf(ph, q) === b.floor && (gc3Cx(q) - far.edge) * far.dir > 0) gc3NextLeg(st);
+  }
+}
+// badges and hints follow the jobs; a second nudge (with an arrow) after GC3.nudgeT s; Super steps when stuck
+function gc3Guide(st, dt) {
+  const ph = st.ph, jobs = gc3Jobs(st);
+  const key = jobs ? jobs.map(j => j.what + ':' + (j.target ? (j.target.ch || j.target.g || j.target.x) : '')).join('|') : '';
+  if (key !== ph.jobKey) {
+    ph.jobKey = key; ph.jobT = [0, 0]; ph.nudged = [false, false];
+    if (jobs) { gcShowBadges(st); for (const k of [0, 1]) gc3Nudge(st, k, jobs[k], false); }
+  }
+  if (!jobs) return;
+  for (const k of [0, 1]) {
+    const j = jobs[k], p = G.players[k];
+    ph.jobT[k] += dt;
+    if (!ph.nudged[k] && ph.jobT[k] >= GC3.nudgeT && j && ['press', 'hold', 'climb', 'cross', 'turn'].includes(j.what)) {
+      const doing = (j.what === 'hold' && j.target.down) || (j.what === 'turn' && j.target.turn);
+      if (!doing) { ph.nudged[k] = true; gc3Nudge(st, k, j, true); }
+    }
+    // up on the wrong side of a gap (a head boost can do that): drop down and you pop up on your side
+    const tx = j && (j.what === 'press' || j.what === 'hold') ? j.target.c * T + T / 2 : j && j.what === 'turn' ? j.target.x : null;
+    if (tx != null && gc3Across(ph, p, tx)) {
+      if ((ph.wrongT[k] += dt) >= 1.5 && !ph.hinted['wrong' + k]) { ph.hinted['wrong' + k] = true; gcHint(st, k, 'Wrong side! Drop down to go back.', 3); }
+    } else ph.wrongT[k] = 0;
+    // stuck at your steps for a while (and still trying): Super steps
+    if (j && j.what === 'climb' && !j.target.super && p.alive) {
+      const i = p.input;
+      if (i.left || i.right || i.jump) ph.climbT[k] += dt;
+      if (ph.climbT[k] >= GC3.superAfter) { ph.climbT[k] = 0; gc3Super(st, j.target); }
+    } else ph.climbT[k] = 0;
+  }
+}
+function gc3Attacks(st, dt) {
+  const ph = st.ph;
+  if (ph.stage !== 'leg' || gcCalm(st) || st.junk.length) return;
+  if ((ph.tossT -= dt) > 0) return;
+  // only at someone standing on a floor, doing nothing special, and not near a gap (a bonk there could tip them in)
+  const nearGap = p => ph.groups.some(gr => gr.bridge && gr.floor === gc3FloorOf(ph, p) && gc3Cx(p) > gr.x0 - GC3.gapSafe && gc3Cx(p) < gr.x1 + GC3.gapSafe);
+  const ok = G.players.filter(p => p.alive && !ph.hot[p.id] && gc3FloorOf(ph, p) >= 0 && !gcBusy(st, p) && !nearGap(p));
+  const p = ok.length ? ok[(gcRand() * ok.length) | 0] : null;
+  const j = p && gcToss(st, p.id, { kind: gcRand() < 0.5 ? 'pan' : 'pot', flight: 1.3, minX: 45, maxX: 24 * T + 15 });
+  ph.tossT = j ? GC3.tossGap[0] + gcRand() * (GC3.tossGap[1] - GC3.tossGap[0]) : 1;
+  if (j && !st.say && gcRand() < 0.5) gcSay(st, gcRand() < 0.5 ? 'Oops! My pots!' : 'Catch! Ha ha!', 1.6);
+}
+
+GC_PHASES.lava = {
+  setup(st, L) {
+    const ph = st.ph, def = L.def;
+    if (!st.stats.lava) st.stats.lava = { hot: [0, 0], presses: [0, 0], steps: 0, supers: 0 };
+    ph.floors = (def.floors || [16, 12, 8, 4]).map(r => r * T);
+    ph.btns = []; ph.groups = [];
+    const groups = {}, valves = {}, holderOf = ch => { const v = Object.values(GC3_BTN).find(x => x[1] === ch); return v ? 1 - v[0] : 0; };
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      const ch = def.map[r][c];
+      if (GC3_BTN[ch]) {
+        const [owner, g, leg, hold] = GC3_BTN[ch];
+        ph.btns.push({ ch, c, r, owner, g, leg, hold, floor: ph.floors.indexOf((r + 1) * T), down: false, latched: false, wig: 0, idleOn: 0, qOn: 0, plank: def.map[r + 1] && def.map[r + 1][c] === '=' });
+      } else if ('03456789'.includes(ch)) {
+        (groups[ch] = groups[ch] || { g: ch, cells: [], state: 'hidden', buildT: 0, fadeT: 0, holder: holderOf(ch), super: false }).cells.push({ c, r, on: false, flash: 0 });
+      } else if (ch === 'q' || ch === 'r') {
+        (valves[r] = valves[r] || []).push({ owner: ch === 'q' ? 0 : 1, c, r, x: c * T + T / 2, feet: (r + 1) * T, turn: false, ang: c, sq: 0, wig: 0, qTry: false });
+      } else continue;
+      L.grid[r][c] = '.';
+    }
+    for (const b of ph.btns) {
+      const gr = groups[b.g];
+      Object.assign(gr, { btn: b, tile: gr.holder === 0 ? 'o' : 'u', leg: b.leg, bridge: GC3_LEGS[b.leg] === 'bridge' });
+      b.gr = gr;
+      if (gr.bridge) { const cs = gr.cells.map(cl => cl.c); Object.assign(gr, { floor: b.floor, x0: Math.min(...cs) * T, x1: (Math.max(...cs) + 1) * T }); }
+      gr.cells.sort((p, q) => Math.abs(p.c - b.c) - Math.abs(q.c - b.c));   // build from the button's side
+      ph.groups.push(gr);
+    }
+    ph.valves = Object.keys(valves).map(Number).sort((a, b) => b - a).map(r => valves[r].sort((a, b) => a.owner - b.owner));
+    // each leg's buttons (a climb: [low, high])
+    ph.legBtns = GC3_LEGS.map((_, i) => ph.btns.filter(b => b.leg === i).sort((a, b) => b.r - a.r));
+    // your spot on each floor: above your own steps up to it (so a head-boost up the wrong side, then a drop, puts you right)
+    ph.home = ph.floors.map(fy => [0, 1].map(k => {
+      const gr = ph.groups.find(g => !g.bridge && g.holder === k && (g.cells[0].r + 2) * T === fy);
+      return gr ? gr.cells.reduce((s, cl) => s + cl.c, 0) / gr.cells.length * T + T / 2 - PW / 2 : null;
+    }));
+    // he starts on the ground under his seat, stomps, then flies up to the boiler
+    const b = st.boss;
+    ph.seat = { x: b.x, y: b.y };
+    Object.assign(b, { s: GC3.bossS, face: -1, pose: 'stand', y: ph.floors[0] });
+    ph.boiler = { x0: ph.seat.x - 62, x1: ph.seat.x + 68, top: ph.seat.y + 4, bot: ph.floors[0] - 4 };
+    ph.crackX = [140, 300, 470, 640];
+    Object.assign(ph, { stage: 'intro', stageT: 0, intro: { t: 0, n: 0, said: false, fly: false }, cracks: 0, leg: 0, vi: 0, vMeter: 0, soloT: 0, lastA: null,
+      ckpt: [0, 0], hot: [null, null], hotN: 0, lavaY: GC3.startY, lavaWait: 0, lavaOn: false, assist: 1, breeze: 1, coolT: 0, sink: false,
+      tossT: GC3.tossFirst, zips: [], arrow: [null, null], hinted: {}, jobKey: '', jobT: [0, 0], nudged: [false, false], climbT: [0, 0], fallT: [0, 0], wrongT: [0, 0], lines: 0 });
+  },
+  pre(st) {
+    const ph = st.ph;
+    for (const p of G.players) {
+      // a hot foot hop: no steering
+      if (ph.hot[p.id]) { for (const k in p.input) p.input[k] = false; p.pendingJump = false; p.pendingAct = false; p.jumpBuf = 0; continue; }
+      // kids hold ▼ to "press harder": it never drops you through the plank on a button or at a valve
+      if (p.alive && p.grounded && p.onOneWay && (ph.btns.some(b => b.plank && gc3StandOn(p, b.c, b.r)) || ph.valves.some(pr => pr.some(v => gc3AtValve(p, v))))) p.downLatch = true;
+    }
+  },
+  step(st, dt) {
+    const ph = st.ph;
+    for (const k of [0, 1]) { const a = ph.arrow[k]; if (a && (a.t += dt) >= a.life) ph.arrow[k] = null; }
+    if (ph.stage === 'intro') gc3Intro(st, dt);
+    gc3Players(st, dt);
+    gc3Buttons(st, dt);
+    gc3Valves(st, dt);
+    gc3Lava(st, dt);
+    if (ph.stage === 'done') return;
+    gc3Flow(st, dt);
+    gc3Guide(st, dt);
+    gc3Attacks(st, dt);
+  },
+  labels: () => ['turn', 'turn'],
+  roles(st) { const jobs = gc3Jobs(st); return jobs ? jobs.map(j => GC3_BADGE[j.what] || '') : null; },
+  busy(st, p) {
+    const ph = st.ph, pair = gc3Pair(ph);
+    return !!ph.hot[p.id] || ph.btns.some(b => b.owner === p.id && gc3BtnOn(ph, b) && gc3StandOn(p, b.c, b.r)) || !!(pair && gc3AtValve(p, pair[p.id]));
+  },
+  headLift(st, p) { const ph = st.ph; return ph.valves.some(pr => pr.some(v => gc3AtValve(p, v))) ? 34 : 0; },
+  hudText(st) { const ph = st.ph; return 'Floor ' + (Math.min(ph.ckpt[0], ph.ckpt[1]) + 1) + ' / ' + ph.floors.length; },
+  stat(st) { const s = st.stats.lava; return s ? { label: 'Hot foots', values: [s.hot[0], s.hot[1]] } : null; },
+  statLine(st) { const s = st.stats.lava; return s ? 'Steps built for each other: ' + s.steps : ''; },
+  drawBack(st) { gc3DrawBack(st); },
+  draw(st) { gc3Draw(st); },
+  drawTop(st) { gc3DrawTop(st); },
+};
+GC_PHASES.lava.test = { GC3, GC3_BTN, GC3_LEGS, floorOf: id => gc3FloorOf(G.mst.ph, G.players[id]), jobs: () => gc3Jobs(G.mst), farSide: gc3FarSide, across: (id, x) => gc3Across(G.mst.ph, G.players[id], x) };
+
+// phase 3 sounds
+Sfx.extra.gc3Stomp = function () { this.tone(90, 0.18, 'square', 0.07, 50); this.tone(160, 0.08, 'triangle', 0.05, 80, 0.02); };
+Sfx.extra.gc3Rumble = function () { this.tone(110, 0.45, 'sawtooth', 0.035, 165); this.tone(70, 0.5, 'triangle', 0.06, 55, 0.05); };
+Sfx.extra.gc3Press = function (p) { this.tone(520 * p, 0.05, 'square', 0.04); this.tone(780 * p, 0.09, 'triangle', 0.04, null, 0.04); };
+Sfx.extra.gc3Step = function () { this.tone(560, 0.06, 'triangle', 0.04, 640); };
+Sfx.extra.gc3Ready = function (p) { [784, 988, 1175].forEach((f, i) => this.tone(f * p, 0.09, 'triangle', 0.05, null, i * 0.06)); };
+Sfx.extra.gc3Blink = function () { this.tone(700, 0.03, 'square', 0.02); this.tone(700, 0.03, 'square', 0.02, null, 0.12); };
+Sfx.extra.gc3Fade = function () { this.tone(520, 0.12, 'triangle', 0.035, 260); };
+Sfx.extra.gc3Nope = function (p) { this.tone(240 * p, 0.07, 'square', 0.03, 180 * p); };
+Sfx.extra.gc3Floor = function (p) { this.tone(660 * p, 0.07, 'triangle', 0.045); this.tone(990 * p, 0.1, 'triangle', 0.045, null, 0.06); };
+Sfx.extra.gc3Hot = function () { this.tone(1400, 0.3, 'sawtooth', 0.018, 300); this.tone(500, 0.12, 'square', 0.03, 900, 0.05); };
+Sfx.extra.gc3Turn = function (p) { this.tone(300 * p, 0.06, 'square', 0.018, 360 * p); };
+Sfx.extra.gc3Steam = function () { this.tone(2400, 0.7, 'sawtooth', 0.012, 1800); this.tone(1200, 0.5, 'triangle', 0.03, 2400, 0.05); this.tone(140, 0.4, 'sine', 0.05, 90); };
+
+/* --- phase 3 drawing --- */
+// behind him: the tower's back wall (then its tiles again, on top of it), the pipes and the boiler
+function gc3DrawBack(st) {
+  const ph = st.ph, t = G.clock, x1 = 25 * T, bot = ph.floors[0];
+  ctx.fillStyle = 'rgba(62,44,66,0.5)'; ctx.fillRect(T, 0, x1 - T, bot);
+  ctx.strokeStyle = 'rgba(255,220,190,0.07)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let y = 15, n = 0; y < bot; y += 15, n++) {
+    ctx.moveTo(T, y); ctx.lineTo(x1, y);
+    for (let x = T + (n % 2 ? 15 : 0); x < x1; x += 30) { ctx.moveTo(x, y); ctx.lineTo(x, y + 15); }
+  }
+  ctx.stroke();
+  // round windows with the volcano's glow
+  for (const [wx, wy] of [[150, 190], [600, 190], [375, 430]]) {
+    ctx.fillStyle = 'rgba(255,170,100,0.35)'; circle(wx, wy, 22); ctx.fill();
+    ctx.strokeStyle = 'rgba(28,26,54,0.45)'; ctx.lineWidth = 4; circle(wx, wy, 22); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(wx - 22, wy); ctx.lineTo(wx + 22, wy); ctx.moveTo(wx, wy - 22); ctx.lineTo(wx, wy + 22); ctx.lineWidth = 3; ctx.stroke();
+  }
+  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx <= 25; tx++) {
+    const ch = G.level.grid[ty][tx], x = tx * T, y = ty * T;
+    if (ch === '#') drawStone(tx, ty);
+    else if (ch === '=') drawPlank(x, y, tx, ty);
+    else if (ch === 'o' || ch === 'u') drawColorBlock(x, y, ch === 'o' ? 0 : 1, tx, ty);
+  }
+  // pipes from each valve pair to the boiler (along the tower's top, through its wall)
+  const B = ph.boiler;
+  ph.valves.forEach((pr, i) => {
+    const py = pr[0].feet - 75, xs = Math.min(...pr.map(v => v.x)) - 8, wx = 25 * T + 12 - i * 6, yin = i === 0 ? Math.max(py, B.top + 40) : B.top + 18;
+    const path = () => { ctx.beginPath(); ctx.moveTo(xs, py); ctx.lineTo(wx, py); ctx.lineTo(wx, yin); ctx.lineTo(B.x0 + 4, yin); };
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    path(); ctx.strokeStyle = GCB.brassDk; ctx.lineWidth = 11; ctx.stroke();
+    path(); ctx.strokeStyle = GCB.brass; ctx.lineWidth = 6; ctx.stroke();
+    for (const v of pr) { ctx.strokeStyle = GCB.brassDk; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(v.x, py); ctx.lineTo(v.x, v.feet - 42); ctx.stroke(); }
+    ctx.lineCap = 'butt';
+  });
+  // the boiler: a big brass tank with purple bands, a steam gauge and a glowing firebox
+  const w = B.x1 - B.x0, cx = (B.x0 + B.x1) / 2;
+  ctx.fillStyle = GCB.brassDk; rr(B.x0 + 14, B.bot - 8, 22, 12, 4); ctx.fill(); rr(B.x1 - 36, B.bot - 8, 22, 12, 4); ctx.fill();
+  const g = ctx.createLinearGradient(B.x0, 0, B.x1, 0);
+  g.addColorStop(0, GCB.brassDk); g.addColorStop(0.35, GCB.brassLt); g.addColorStop(1, GCB.brass);
+  ctx.fillStyle = g; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; rr(B.x0, B.top, w, B.bot - B.top - 4, 34); ctx.fill(); ctx.stroke();
+  for (const by of [B.top + 52, B.bot - 70]) {
+    ctx.fillStyle = GCB.purple; ctx.fillRect(B.x0 + 1.5, by, w - 3, 14);
+    ctx.fillStyle = GCB.brassLt; for (let x = B.x0 + 12; x < B.x1 - 6; x += 18) { circle(x, by + 7, 2.2); ctx.fill(); }
+  }
+  // the gauge: its needle climbs while you turn the valves
+  const gy = B.top + 112, val = gc3Pair(ph) ? 0.12 + 0.82 * ph.vMeter : 0.15 + 0.05 * Math.sin(t * 3);
+  ctx.fillStyle = '#fff7e6'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; circle(cx, gy, 26); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#ff5f6d'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx, gy, 19, -0.5, 0.75); ctx.stroke();
+  const a = Math.PI * 0.75 + val * Math.PI * 1.5;
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx, gy); ctx.lineTo(cx + Math.cos(a) * 20, gy + Math.sin(a) * 20); ctx.stroke();
+  ctx.fillStyle = C.ink; circle(cx, gy, 4); ctx.fill();
+  const fy = B.bot - 46, fl = 0.55 + 0.25 * Math.sin(t * 9) + 0.1 * Math.sin(t * 23);
+  ctx.fillStyle = '#4a2f3a'; rr(cx - 28, fy - 16, 56, 34, 12); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = `rgba(255,150,60,${fl})`; rr(cx - 20, fy - 9, 40, 20, 8); ctx.fill();
+  // the whistle on top, puffing a little
+  ctx.fillStyle = GCB.brass; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(B.x1 - 24, B.top - 16, 14, 20, 4); ctx.fill(); ctx.stroke();
+  for (let k = 0; k < 3; k++) {
+    const u = (t * 0.6 + k / 3) % 1;
+    ctx.fillStyle = `rgba(255,255,255,${0.45 * (1 - u)})`; circle(B.x1 - 17 + u * 14, B.top - 22 - u * 40, 5 + u * 9); ctx.fill();
+  }
+}
+function gc3DrawWheel(v, glow, z) {
+  const x = v.x + (v.wig > 0 ? Math.sin(v.wig * 60) * 1.5 : 0), y = v.feet - 42, r = 12;
+  if (glow) { ctx.fillStyle = `rgba(255,214,90,${0.25 + 0.15 * Math.sin(G.clock * 6)})`; circle(x, y, r + 8 * z); ctx.fill(); }
+  ctx.save(); ctx.translate(x, y); ctx.rotate(v.ang);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 7; circle(0, 0, r); ctx.stroke();
+  ctx.strokeStyle = PCOL[v.owner]; ctx.lineWidth = 4.5; circle(0, 0, r); ctx.stroke();
+  ctx.lineWidth = 3; ctx.beginPath(); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.stroke();
+  ctx.fillStyle = PDARK[v.owner]; circle(0, 0, 4); ctx.fill();
+  ctx.restore();
+}
+function gc3DrawButton(ph, b) {
+  const x = b.c * T, y = b.r * T, own = PCOL[b.owner], par = PCOL[1 - b.owner], t = G.clock, wig = b.wig > 0 ? Math.sin(b.wig * 60) * 1.5 : 0;
+  const active = gc3BtnOn(ph, b);
+  ctx.save(); if (!active) ctx.globalAlpha = 0.4;
+  if (b.hold) {   // a hold plate: flat, with two little feet marks
+    const py = y + 24 + (b.down ? 2 : 0);
+    ctx.fillStyle = C.stoneEdge; rr(x + 1, y + 27, T - 2, 3, 1.5); ctx.fill();
+    if (b.down) { ctx.shadowColor = own; ctx.shadowBlur = 8; }
+    ctx.fillStyle = b.gr.state === 'fading' && Math.floor(t * 16) % 2 ? '#ffffff' : own; rr(x + 2 + wig, py, 26, 4, 2); ctx.fill();
+    ctx.shadowBlur = 0; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; rr(x + 2 + wig, py, 26, 4, 2); ctx.stroke();
+    ctx.fillStyle = par; ctx.fillRect(x + 13 + wig, py + 1, 4, 2);
+    if (!b.down) { ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 10 + wig, y + 14, 3, 7); ctx.fillRect(x + 17 + wig, y + 14, 3, 7); }
+  } else {
+    ctx.fillStyle = C.stoneEdge; rr(x + 2, y + 25, 26, 5, 2); ctx.fill();
+    if (b.latched) {
+      ctx.fillStyle = own; rr(x + 4 + wig, y + 23, 22, 3, 2); ctx.fill();
+      ctx.fillStyle = par; circle(x + 15, y + 13, 3.5); ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.stroke();
+    } else {
+      const bob = active && !reduceMotion ? (Math.sin(t * Math.PI * 4) > 0 ? -1 : 0) : 0, cy = y + 15 + bob;
+      ctx.fillStyle = PDARK[b.owner]; rr(x + 4 + wig, cy + 2, 22, 9, 4); ctx.fill();
+      ctx.fillStyle = own; rr(x + 4 + wig, cy, 22, 9, 4); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x + 7 + wig, cy + 1, 16, 2);
+      ctx.fillStyle = par; rr(x + 9.5 + wig, cy + 2, 11, 6, 1.5); ctx.fill();   // a little block in the partner's colour
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+// in front of him, behind the players: cracks, the cells to come, buttons, valves
+function gc3Draw(st) {
+  const ph = st.ph, t = G.clock, z = hudBig() ? 1.3 : 1;
+  // the stomp cracks in the ground floor, glowing
+  if (ph.cracks > 0) for (const cx of ph.crackX.slice(0, ph.cracks + 1)) {
+    const y = ph.floors[0];
+    ctx.strokeStyle = 'rgba(255,140,60,0.6)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(cx - 26, y + 2); ctx.lineTo(cx - 10, y + 12); ctx.lineTo(cx + 4, y + 4); ctx.lineTo(cx + 22, y + 16); ctx.stroke();
+    ctx.strokeStyle = '#3a2430'; ctx.lineWidth = 2.5; ctx.stroke();
+  }
+  // cells an active button will build: dashed, in the colour of the player they hold
+  ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+  for (const gr of ph.groups) {
+    if (!gc3BtnOn(ph, gr.btn)) continue;
+    for (const cl of gr.cells) {
+      if (cl.on) continue;
+      ctx.globalAlpha = 0.09; ctx.fillStyle = PCOL[gr.holder]; ctx.fillRect(cl.c * T + 2, cl.r * T + 2, T - 4, T - 4);
+      ctx.globalAlpha = 0.55; ctx.strokeStyle = PCOL[gr.holder]; ctx.strokeRect(cl.c * T + 2, cl.r * T + 2, T - 4, T - 4);
+    }
+  }
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  // pop-in flashes, and the blink of a hold group about to vanish
+  const blink = Math.floor(t * 16) % 2 === 0;
+  for (const gr of ph.groups) for (const cl of gr.cells) {
+    if (!cl.on) continue;
+    let a = cl.flash > 0 ? 0.7 * cl.flash / 0.15 : 0;
+    if (gr.state === 'fading' && blink) a = Math.max(a, 0.5);
+    if (a > 0) { ctx.globalAlpha = a; ctx.fillStyle = '#fff'; ctx.fillRect(cl.c * T, cl.r * T, T, T); ctx.globalAlpha = 1; }
+  }
+  for (const b of ph.btns) gc3DrawButton(ph, b);
+  const pair = gc3Pair(ph);
+  for (const pr of ph.valves) for (const v of pr) gc3DrawWheel(v, pr === pair && !v.turn, z);
+  for (const zp of ph.zips) {
+    const f = Math.min(1, zp.t / 0.25), x = zp.x0 + (zp.x1 - zp.x0) * f, y = zp.y0 + (zp.y1 - zp.y0) * f - Math.sin(f * Math.PI) * 30;
+    ctx.fillStyle = zp.col; circle(x, y, 5); ctx.fill(); ctx.fillStyle = '#ffffff'; circle(x, y, 2.4); ctx.fill();
+  }
+}
+// where the lava's top is drawn (after the last valve it sinks away while the phase steps have stopped)
+const gc3LavaShown = ph => (ph.stage === 'done' && ph.sinkT0 != null ? Math.min(GC3.startY + 40, ph.sinkY0 + (G.time - ph.sinkT0) * GC3.sinkV) : ph.lavaY);
+function gc3DrawLava(st) {
+  const ph = st.ph, y0 = gc3LavaShown(ph);
+  if (y0 >= H + 4) return;
+  const t = G.clock, cool = ph.coolT > 0, amp = cool ? 0.3 : reduceMotion ? 0.4 : 1;
+  const wave = x => y0 + amp * (3 * Math.sin(2 * Math.PI * (x / 60 + 0.7 * t)) + 1.5 * Math.sin(2 * Math.PI * (x / 23 - 1.3 * t)));
+  const gl = ctx.createLinearGradient(0, y0 - 60, 0, y0);
+  gl.addColorStop(0, cool ? 'rgba(170,225,255,0)' : 'rgba(255,140,60,0)'); gl.addColorStop(1, cool ? 'rgba(170,225,255,0.22)' : 'rgba(255,140,60,0.3)');
+  ctx.fillStyle = gl; ctx.fillRect(0, y0 - 60, W, 60);
+  const span = Math.max(1, H - y0 + 8), sp = v => clamp(v / span, 0, 1), g = ctx.createLinearGradient(0, y0 - 8, 0, H);
+  if (cool) { g.addColorStop(0, '#9a7088'); g.addColorStop(sp(20), '#7a5068'); g.addColorStop(1, '#4b3550'); }
+  else { g.addColorStop(0, '#ffb347'); g.addColorStop(sp(32), '#ff6a2a'); g.addColorStop(sp(88), '#d8431f'); g.addColorStop(1, '#a8301c'); }
+  ctx.beginPath(); ctx.moveTo(0, H + 2);
+  for (let x = 0; x <= W; x += 8) ctx.lineTo(x, wave(x));
+  ctx.lineTo(W, H + 2); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+  if (!cool && H - y0 > 24) {   // slow glowing blobs
+    ctx.fillStyle = 'rgba(255,214,120,0.18)';
+    for (let i = 0; i < 7; i++) {
+      const bx = ((i * 157 + t * (12 + i * 3)) % (W + 80)) - 40, by = y0 + 16 + ((i * 37) % 40) + Math.sin(t * 0.8 + i) * 4;
+      if (by < H) { ctx.beginPath(); ctx.ellipse(bx, by, 26 + (i % 3) * 8, 5, 0, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
+  ctx.strokeStyle = cool ? '#c8f1ff' : '#ffe28a'; ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.beginPath();
+  for (let x = 0; x <= W; x += 8) { const y = wave(x) + 1.5; if (x) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+  ctx.stroke();
+  if (cool) {   // cracks in the cooled crust
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2;
+    for (const cx of [120, 350, 610, 840]) { const y = wave(cx) + 3; ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx + 6, y + 10); ctx.lineTo(cx - 3, y + 20); ctx.lineTo(cx + 5, y + 32); ctx.stroke(); }
+  } else if (!reduceMotion) {   // bubbles that rise and pop (from the clock: no random)
+    for (let i = 0; i < 9; i++) {
+      const u = (t * 0.5 + i * 0.237) % 1, bx = (i * 113 + 40) % W, by = y0 + 4 + (1 - u) * 20;
+      if (by > H) continue;
+      ctx.fillStyle = '#ffcf6b'; circle(bx, by, 2.5 + (i % 3)); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(bx - 1, by - 1, 1); ctx.fill();
+    }
+  }
+}
+function gc3DrawTop(st) {
+  const ph = st.ph, t = G.clock, z = hudBig() ? 1.4 : 1;
+  gc3DrawLava(st);
+  // a held plate under your feet: a glow that shows it is held
+  for (const b of ph.btns) {
+    if (!b.hold || !b.down || !gc3BtnOn(ph, b)) continue;
+    const x = b.c * T, y = b.r * T + 26;
+    ctx.shadowColor = PCOL[b.owner]; ctx.shadowBlur = 10; ctx.fillStyle = PCOL[b.owner]; rr(x, y, T, 4, 2); ctx.fill(); ctx.shadowBlur = 0;
+  }
+  // the valve meter: a gold ring round both wheels of the pair being turned
+  const pair = gc3Pair(ph);
+  if (pair && ph.vMeter > 0) for (const v of pair) {
+    const y = v.feet - 42;
+    ctx.strokeStyle = 'rgba(28,26,54,0.5)'; ctx.lineWidth = 6 * z; circle(v.x, y, 18 * z); ctx.stroke();
+    ctx.strokeStyle = C.gold; ctx.lineWidth = 4 * z; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(v.x, y, 18 * z, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ph.vMeter); ctx.stroke(); ctx.lineCap = 'butt';
+  }
+  for (const pr of ph.valves) for (const v of pr) if (v.turn && (G.tickN % 10) < 5) {
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(v.x + 16, v.feet - 52 - (G.tickN % 10), 4); ctx.fill();
+  }
+  // bouncing arrows at what a player should go to
+  for (const k of [0, 1]) {
+    const a = ph.arrow[k];
+    if (!a) continue;
+    const bob = reduceMotion ? 0 : Math.abs(Math.sin(t * 7)) * 6, s = z, ay = a.y - bob;
+    ctx.save(); ctx.globalAlpha = clamp((a.life - a.t) / 0.3, 0, 1);
+    ctx.fillStyle = PCOL[k]; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(a.x - 5 * s, ay - 18 * s); ctx.lineTo(a.x + 5 * s, ay - 18 * s); ctx.lineTo(a.x + 5 * s, ay - 9 * s); ctx.lineTo(a.x + 11 * s, ay - 9 * s);
+    ctx.lineTo(a.x, ay); ctx.lineTo(a.x - 11 * s, ay - 9 * s); ctx.lineTo(a.x - 5 * s, ay - 9 * s); ctx.closePath(); ctx.stroke(); ctx.fill();
+    ctx.restore();
+  }
+}
 /* ===== END GC PHASE 3 ===== */
 
 /* ===== GC PHASE 4: FINALE ===== */
