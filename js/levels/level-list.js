@@ -2717,10 +2717,13 @@ const LEVELS = [
         ] },
       // ----- END 10-1 room 3 -----
       // ----- BEGIN 10-1 room 4 (finale) -----
-      { // Grand Finale (Sunny Meadow look, bright). PLACEHOLDER: the phase 4 builder replaces this room.
-        title: 'Grand Finale', phase: 'finale', pieces: [4, 6, 1], look: 0,
-        act: { label: 'push', labels: ['push', 'push'] },
-        tip: 'Placeholder: both stand on your star and press the action together.',
+      { // Grand Finale (a bright Sunny Meadow + Rumble Park + Backyard Bash mix): set and spike his balls back, then
+        // pull his plug together. setter = who sets first (the jobs swap after every bonk)
+        title: 'Grand Finale', phase: 'finale', pieces: [4, 6, 1], look: 0, setter: 0,
+        theme: { skyTop: '#8fd3ff', skyBot: '#fff1d6', hillFar: '#b8e6a0', hillNear: '#94d27f', grass: '#7fdc6a', grassDark: '#47a84a',
+          stone: '#6b5a8f', stoneLight: '#7d6ba3', stoneEdge: '#4a3d6b' },
+        act: { label: 'set', labels: ['set', 'spike'] },
+        tip: 'One bumps his ball up, the other hits the gold ball back at him. Then pull his plug together!',
         map: [
           '................................', //  0
           '................................', //  1
@@ -2734,9 +2737,9 @@ const LEVELS = [
           '................................', //  9
           '................................', // 10
           '................................', // 11
-          '.....====.......................', // 12
+          '................................', // 12
           '................................', // 13
-          '..1.y......z.2..........Z.......', // 14  y Pip's star, z Bo's star, Z his feet
+          'K..1......2.........N.....Z.....', // 14  K the wall socket, N the net, Z his feet (he hovers over them)
           '################################', // 15
           '################################', // 16
           '################################', // 17
