@@ -2649,10 +2649,23 @@ const LEVELS = [
         ] },
       // ----- END 10-1 room 1 -----
       // ----- BEGIN 10-1 room 2 (reels) -----
-      { // Jackpot Reels (Lucky Casino look). PLACEHOLDER: the phase 2 builder replaces this room.
+      { // Jackpot Reels (Lucky Casino look): one stops the reels from the deck below, one hops up them to bop his hat
         title: 'Jackpot Reels', phase: 'reels', pieces: [8, 3], look: 7,
-        act: { label: 'push', labels: ['push', 'push'] },
-        tip: 'Placeholder: both stand on your star and press the action together.',
+        stopper: 0,
+        act: { label: 'stop', labels: ['stop', 'shout'] },
+        legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump',
+          pad: 'stick or d-pad move, <span data-glyph="a"></span> jump,' },   // (nothing drops here)
+        tip: 'One stops the reels, one hops up them. The top cherry bounces you onto his hat: pop his dome, then bop!',
+        // the reels as stairs, from the runner's ledge up to him (side 2 is the same, the other way round).
+        // row: the window's top tile row; the payline picture is the step (B bar, 7 tall step, C cherry, L lemon).
+        // dir: [hit 1, hit 2], 1 spins down, -1 up. holdT: s a good stop lasts while the runner is elsewhere.
+        reels: { speed: [1.9, 2.2], holdT: [9, 6],
+          stairs: [
+            { row: 7, strip: 'BL7LBLL' },                          // a low step: any bar or 7
+            { row: 5, strip: 'LBL7LBL', dir: [1, -1] },
+            { row: 4, need: '7', strip: '7BLBL7LB', speedK: 0.9 }, // the tall step: needs a 7
+            { row: 5, need: 'C', strip: 'CLBLBCL7', speedK: 0.85 }, // the top cherry: it springs the runner onto his hat
+          ] },
         map: [
           '................................', //  0
           '................................', //  1
@@ -2665,12 +2678,12 @@ const LEVELS = [
           '................................', //  8
           '................................', //  9
           '................................', // 10
-          '................................', // 11
-          '.......====.....................', // 12
-          '................................', // 13
-          '..1.y......z.2..........Z.......', // 14  y Pip's star, z Bo's star, Z his feet
-          '################################', // 15
-          '################################', // 16
+          '..2..........................Z..', // 11  the runner's ledge (2), his feet (Z) over the far ledge
+          '#####......................#####', // 12
+          '#######r####r####r####r#########', // 13  the button panel; r = each reel's first column
+          '#####......................#####', // 14  the button deck
+          '#####......................#####', // 15
+          '#####...1..................#####', // 16  the stopper (1)
           '################################', // 17
         ] },
       // ----- END 10-1 room 2 -----
