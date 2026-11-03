@@ -14,6 +14,7 @@ Demo: https://claude.ai/artifact/5jJ7SJw7gwSttznxFP56TG
 - Family-friendly. World 8 uses pretend tickets and chips only: no money look, no betting, nothing that rewards risking your score. World 9's disasters stay cartoony: nobody gets hurt and nothing is scary.
 - Publish each finished world to the same demo link, push it to this repo, and update the README world list.
 - Build each new world or major feature in a fresh thread, briefed to read this file first.
+- 1-player mode (Nov 2026): one person plays Pip or Bo and the computer plays the other. In team levels the computer is a helpful teammate; in versus levels it is the opponent (Easy, Normal or Hard). Every new level needs a computer brain too (see "Computer partner" below).
 
 ## Controls
 
@@ -145,9 +146,21 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 - New level: a new `js/levels/worldN/<slug>.js` with a `MODES.<name>` block (hooks: `setup` required; `resetRound`, `go`, `pre`, `step`, `draw`, `drawTop`, `hud`, `stats`, `timeUp`, `tiebreak`, `onKill`, `onRespawn`, `onStomp`, `room` optional), its def in `LEVELS` after its world's marker (`name`, `world` 0-based, `kind`, `mode`, `tip`, `map` or `rooms`), and a script tag after the last level file, before `js/input.js`. Level codes follow the order in `LEVELS`.
 - New world: a `WORLDS` entry with a theme plus a marker at the end of `LEVELS`. A world with no levels stays hidden.
 
+
+### Computer partner (1-player mode)
+- Settings: the title and pause cards have Players (2 players / 1 player + computer), You play (Pip / Bo) and Computer (Easy / Normal / Hard). Saved in the browser (`store` key `cpu`). `G.cpuOn = [pip, bo]` says who the computer plays.
+- In 1-player mode the person can use either player's keys, the first controller is theirs, the computer's touch pad and legend line are hidden, and the computer's name tag reads "Bo · CPU". It talks in short speech bubbles ("Hop on my head!") only in 1-player mode.
+- The computer presses buttons like a person: each physics step `cpuTick` asks the level's brain for `{ left, right, jump, down, up, act }` and turns it into `p.input` / `p.pendingJump` / `p.pendingAct`. Levels never need to know who is playing. It never cheats with level state, except where noted in its brain file.
+- It can't finish a team level alone: if the person presses nothing for 30 s (`CPU.idleStop`), it waits too.
+- Files: `js/cpu/cpu-core.js` (settings, brain registry, `cpuTick`, helpers, bubbles; its header explains the brain API), `js/cpu/cpu-nav.js` (`cpuNav`: path finding over the tile map with walk, drop and jump moves, used by platform levels), and `js/cpu/levels/` with one brain file per level file (World 1 in `world1.js`). Script tags go after the level files and before `js/input.js`.
+- Brain key: the level's `def.mode`; older levels use `level:<name>` (World 1), `build`, `pong`, `crown`, `golf`. A level with no brain falls back to `follow` (stay near the partner), so a new level works but plays badly until it gets a brain.
+- Skill: `info.skill` is 0.35 / 0.7 / 1. Team brains play well at every skill; versus brains use it for reaction time, aim and mistakes.
+- World 1 approach: the brain works out who does which job (holder or crosser, carrier or rider) from where the partner stands, waits for a person who is slow, and asks for help in a bubble.
+
 ### Testing
 - `window.__pipbo` exposes the game state and functions (`G`, `LEVELS`, `MODES`, `loadLevel`, `step`, `matchRoundEnd`, `pause`, and more) for bot tests.
 - Bot tests run in headless Chromium with Playwright: set `G.manual = true`, write each player's input, and call `step(DT)`. Set `G.introT = 0` to skip the intro card. Controller tests stub `navigator.getGamepads`.
+- `node tools/cpu-test.js [levels|all] --who=pair|noisy|idle|solo [--clumsy=1] [--skills=easy,hard] [--seeds=1,2,3]` plays levels with the computer at the controls. `pair`: computer plays both (team levels must clear). `noisy`: one side is made clumsy like a distracted person (pauses, wanders, random presses) and the level must still clear. `idle`: the person presses nothing and a team level must not clear. `--skills=easy,hard` checks that Hard beats Easy in versus levels.
 - Test every new level with a keyboard, a controller and touch, on desktop and phone sizes, and play it through to the results card.
 - For refactors: `/mnt/project-files/pip-and-bo/refactor-tools/` (in the Claude project files) has a deterministic old-vs-new play-through (`harness.js` + `cmp.js`, run with `runall.sh`): fake clock, seeded random, every level, all three input types, comparing canvas, game state, menus, audio and saves.
 
