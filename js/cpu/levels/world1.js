@@ -277,4 +277,176 @@
       return cpuNav(st, p, tileX(3), floorAt(15), { tol: 6 });
     },
   });
+
+  /* ---------- 1-4 Rope, Chain & Bungee ----------
+     Tied together, three rooms. */
+  // the rope room's platforms: [first column, last column, standing row]
+  const ROPE_PLATS = [[1, 4, 9], [8, 11, 9], [15, 17, 8], [21, 23, 9], [27, 30, 9]];
+  const platOf = q => {
+    if (!q.alive || !q.grounded) return -1;
+    const tx = Math.floor(cpuCx(q) / T), ty = Math.floor((cpuFeet(q) - 1) / T);
+    return ROPE_PLATS.findIndex(([a, b, r]) => tx >= a && tx <= b && ty === r);
+  };
+  // Rope: gather at the edge of each gap, one jumps across, the other follows; whoever falls holds jump to climb
+  // back up while the other stands still and holds on.
+  function ropeRoom(st, p, o, dt, info) {
+    const out = {}, L = info.L, d = L.door;
+    if (!p.alive) return out;
+    // fell into a pit (below every platform): hold jump to climb. Swinging at platform height, just steer for it.
+    if (dangling(p) && cpuFeet(p) > floorAt(9) + 10) { out.jump = true; cpuSteer(out, p, cpuCx(o), 4); cpuSay(p, 'Climbing up!', 1.2); return out; }
+    if (!p.grounded) return cpuNav(st, p, st.goX || cpuCx(p), st.goFeet || cpuFeet(p), { noHop: true });
+    if (dangling(o)) { cpuSay(p, 'Hold jump to climb!', 2); return out; }   // be the anchor
+    if (!o.grounded) return out;                                             // partner mid-jump: stand still
+    const kp = platOf(p), ko = platOf(o), last = ROPE_PLATS.length - 1;
+    // jump for the near end of the next platform (the rope is only 120 px: the one holding stands right at the edge)
+    const go = k => { const [a, , r] = ROPE_PLATS[k]; st.goX = a * T + 10; st.goFeet = floorAt(r); return cpuNav(st, p, st.goX, st.goFeet, { tol: 4, noHop: true }); };
+    if (kp < 0 || ko < 0) return cpuNav(st, p, cpuCx(o), cpuFeet(o), { tol: 10, noHop: true });
+    if (kp === last && ko === last) return cpuNav(st, p, d.x + d.w / 2 + (p.id ? 6 : -6), d.y + d.h, { tol: 6, noHop: true });
+    if (ko > kp) return go(kp + 1);                                          // the partner crossed: follow
+    if (kp > ko) {                                                           // I crossed: wait at this edge
+      const [a, , r] = ROPE_PLATS[kp];
+      if (cpuFor(st, 'call', true, dt) > 2) cpuSay(p, 'Jump across!', 2);
+      return cpuNav(st, p, a * T + 6, floorAt(r), { tol: 4, noHop: true });
+    }
+    cpuFor(st, 'call', false, dt);
+    // same platform: meet at its right edge, then one jumps
+    const [, b, r] = ROPE_PLATS[kp], edge = (b + 1) * T - 6;
+    const atEdge = q => Math.abs(cpuCx(q) - edge) < 12;
+    if (!atEdge(p)) return cpuNav(st, p, edge, floorAt(r), { tol: 4, noHop: true });
+    if (!atEdge(o)) { if (cpuFor(st, 'wait', true, dt) > 2.5) cpuSay(p, 'Come to the edge!', 2); return out; }
+    cpuFor(st, 'wait', false, dt);
+    const lead = info.partnerCpu ? p.id === 0 : cpuFor(st, 'both', true, dt) > 1.2; // a person gets a moment to go first
+    if (lead) return go(kp + 1);
+    return out;
+  }
+  // Chain: one holds, the other hangs at the end and swings around the holder.
+  // swing toward angle th (the chain's angle from the holder, screen coordinates: 0 right, PI/2 down, PI left)
+  function chainSwing(out, p, th) {
+    const h = G.held;
+    if (!h || h.hanger !== p.id) return false;
+    let d = Math.atan2(Math.sin(th - h.th), Math.cos(th - h.th));
+    const dir = Math.abs(d) < 0.04 ? 0 : Math.sign(d);
+    const s = Math.sin(h.th), c = Math.cos(h.th);
+    // w = spin * (ix * -sin + iy * cos): push the way that turns the chain toward th
+    if (dir) {
+      if (Math.abs(s) > 0.25) { const ix = Math.sign(-s) * dir; out.right = ix > 0; out.left = ix < 0; }
+      if (Math.abs(c) > 0.25) { const iy = Math.sign(c) * dir; out.down = iy > 0; out.jump = iy < 0; }
+    } else if (c < -0.2) out.jump = true; // hold it there against the sag (left side)
+    else if (c > 0.2) out.down = true;    // (right side)
+    return true;
+  }
+  function chainRoom(st, p, o, dt, info) {
+    const out = {}, L = info.L, d = L.door;
+    if (!p.alive || !o.alive) return out;
+    const left = q => cpuCx(q) < 19 * T, right = q => cpuCx(q) >= 20 * T;
+    const holding = G.held && G.held.hanger === o.id, hanging = G.held && G.held.hanger === p.id;
+    if (holding) return out; // hold still while the partner swings
+    if (!L.key.got) {
+      // the key hangs over the pit: one holds at the pit's edge, the other drops off and swings up to it
+      const iHang = info.partnerCpu ? p.id === 0 : !st.iHold;
+      if (hanging) { chainSwing(out, p, cpuCx(p) < 8 * T ? Math.PI + 0.22 : Math.PI); return out; }
+      if (!info.partnerCpu && !st.decided) {
+        // a person who walks to the pit edge first is the holder... unless they keep going over it
+        st.iHold = cpuCx(o) < cpuCx(p) - 10 && !(o.y > 12 * T);
+        if (cpuFor(st, 'look', true, dt) > 0.6) st.decided = true;
+      }
+      if (iHang) {
+        if (Math.abs(cpuCx(o) - tileX(8)) > 14 || !o.grounded) { cpuSay(p, 'Hold me at the edge!', 2); return cpuNav(st, p, tileX(10), floorAt(11), { tol: 8, noHop: true }); }
+        out.left = true; return out; // walk off into the pit
+      }
+      if (!p.grounded) return out;
+      const ok = cpuNav(st, p, tileX(8) + 6, floorAt(11), { tol: 3, noHop: true });
+      if (st.nav && st.nav.status === 'arrived' && cpuFor(st, 'atEdge', true, dt) > 1) cpuSay(p, 'Drop down and swing!', 2);
+      return ok;
+    }
+    // key in hand: the tall wall. Swing over it, one at a time.
+    if (hanging) {
+      // the holder isn't at the wall yet (just got the key): swing round to the floor on the right and land
+      const hx0 = cpuCx(o);
+      if (Math.abs(hx0 - tileX(18)) > 14 && Math.abs(hx0 - tileX(20)) > 14) {
+        // still on the pit side: up over the holder's head first (the pit wall is in the way underneath)
+        const th = G.held.th, up = Math.sin(th) < -0.5 && Math.cos(th) > -0.3;
+        if (cpuCx(p) < hx0 - 4 || (!up && Math.cos(th) < 0.3)) st.overTop = true;
+        if (st.overTop && up) st.overTop = false;
+        chainSwing(out, p, st.overTop ? Math.PI * 1.5 : 0.45);
+        return out;
+      }
+      // over the top of the holder to the far side
+      const goRight = true; // the door is on the right: everyone ends up there
+      // past the wall: swing down to the floor on that side and land
+      const past = goRight ? cpuCx(p) > 20 * T + 8 : cpuCx(p) < 19 * T - 8;
+      chainSwing(out, p, past ? (goRight ? 0.5 : Math.PI - 0.5) : (goRight ? Math.PI * 1.5 + 0.9 : Math.PI * 1.5 - 0.9));
+      return out;
+    }
+    if (right(p) && right(o)) return cpuNav(st, p, d.x + d.w / 2 + (p.id ? 6 : -6), d.y + d.h, { tol: 6, noHop: true });
+    const spot = left(o) && left(p) ? tileX(18) : tileX(20); // the holder stands by the wall
+    const iHold = right(p) ? true : right(o) ? false : (info.partnerCpu ? p.id === 1 : true);
+    if (iHold) {
+      if (!left(p) && left(o)) { if (cpuFor(st, 'tell', true, dt) > 2) cpuSay(p, 'Back up and jump!', 2); }
+      return cpuNav(st, p, right(p) ? tileX(20) : tileX(18), floorAt(11), { tol: 4, noHop: true });
+    }
+    // the swinger: wait for the holder at the wall, stand a chain's length away, then jump
+    const hx = cpuCx(o);
+    if (Math.abs(hx - spot) > 14 || !o.grounded) return cpuNav(st, p, spot - 90, floorAt(11), { tol: 10, noHop: true });
+    const away = spot - 132;
+    if (Math.abs(cpuCx(p) - away) > 8 && p.grounded) return cpuNav(st, p, away, floorAt(11), { tol: 5, noHop: true });
+    if (p.grounded && !CPU.last[p.id].jump) { out.jump = true; out.left = true; }
+    else if (!p.grounded) { out.jump = p.vy < 0; out.left = true; }
+    return out;
+  }
+  // Bungee: drop into the pit for the key while the other holds, then bounce up to the high ledge by pressing jump
+  // at the bottom of each bounce; the one on top holds while the other bounces up after.
+  function bungeeRoom(st, p, o, dt, info) {
+    const out = {}, L = info.L, d = L.door;
+    if (!p.alive || !o.alive) return out;
+    const up = q => cpuFeet(q) <= floorAt(4) + 2 && cpuCx(q) >= 21 * T - 4;   // on the high ledge
+    const mid = q => q.grounded && cpuCx(q) >= 12 * T - 10 && cpuCx(q) < 19 * T + 12;   // on the middle block
+    if (!p.grounded) {
+      // bouncing: kick at the bottom of every bounce, and steer for where we're going
+      const below = cpuCy(p) > cpuCy(o) + 20;
+      if (below && p.vy > 60 && G.stretch > 20) out.jump = 'tap';
+      // got the key down in the pit: aim for the middle block once we're up out of it
+      if (st.bx != null && !st.goLedge && L.key.got) st.bx = cpuFeet(p) < floorAt(8) - 10 ? tileX(13) : tileX(10);
+      // no plan (fell in on the way): bounce, and once up above the partner come down beside them
+      const tx = st.bx != null ? st.bx : cpuFeet(p) < cpuFeet(o) - 10 ? cpuCx(o) + (cpuCx(o) > cpuCx(p) ? -24 : 24) : cpuCx(p);
+      // high enough to land on the ledge: steer onto it
+      if (st.bx != null && st.goLedge && cpuFeet(p) < floorAt(4) - 10) cpuSteer(out, p, 23 * T, 4);
+      else cpuSteer(out, p, tx, 4);
+      return out;
+    }
+    if (!o.grounded) return out; // the partner is bouncing: be the anchor
+    st.bx = null; st.goLedge = false;
+    if (up(p) && up(o)) return cpuNav(st, p, d.x + d.w / 2 + (p.id ? 6 : -6), d.y + d.h, { tol: 6, noHop: true });
+    if (!L.key.got) {
+      // the key: one holds at the pit edge, the other drops in
+      const iDrop = info.partnerCpu ? p.id === 0 : cpuCx(o) <= tileX(8) + 14 && cpuCx(o) < cpuCx(p) - 4;
+      if (iDrop) {
+        if (Math.abs(cpuCx(o) - tileX(8)) > 16) { cpuSay(p, 'Hold me at the edge!', 2); return cpuNav(st, p, tileX(6), floorAt(8), { tol: 8, noHop: true }); }
+        st.bx = L.key.x; out.right = true; return out; // walk off into the pit
+      }
+      if (cpuFor(st, 'tell', true, dt) > 2.5) cpuSay(p, 'Drop in for the key!', 2);
+      return cpuNav(st, p, tileX(8), floorAt(8), { tol: 4, noHop: true });
+    }
+    // to the middle block first (both), then bounce up to the ledge from the gap beside it
+    if (!mid(p) && !up(p)) return cpuNav(st, p, tileX(14), floorAt(8), { tol: 10, noHop: true });
+    if (up(p)) {
+      // on top: hold at the ledge edge while the partner bounces up
+      if (cpuFor(st, 'tell', true, dt) > 2.5) cpuSay(p, 'Bounce up to me!', 2);
+      return cpuNav(st, p, tileX(21) + 4, floorAt(4), { tol: 4, noHop: true });
+    }
+    if (!mid(o) && !up(o)) return cpuNav(st, p, tileX(15), floorAt(8), { tol: 10, noHop: true });
+    const iBounce = up(o) || (info.partnerCpu ? p.id === 0 : cpuCx(o) >= tileX(18) - 10);
+    if (iBounce) {
+      if (!up(o) && Math.abs(cpuCx(o) - tileX(18)) > 14) { cpuSay(p, 'Stand at the edge!', 2); return cpuNav(st, p, tileX(15), floorAt(8), { tol: 8, noHop: true }); }
+      st.bx = 19.5 * T + 2; st.goLedge = true; out.right = true; return out; // off into the gap
+    }
+    if (cpuFor(st, 'tell2', true, dt) > 2.5) cpuSay(p, 'Drop in and bounce!', 2);
+    return cpuNav(st, p, tileX(18), floorAt(8), { tol: 4, noHop: true });
+  }
+  cpuBrain('level:Rope, Chain & Bungee', {
+    think(st, p, o, dt, info) {
+      const c = info.def.cord;
+      return c === 'chain' ? chainRoom(st, p, o, dt, info) : c === 'bungee' ? bungeeRoom(st, p, o, dt, info) : ropeRoom(st, p, o, dt, info);
+    },
+  });
 })();
