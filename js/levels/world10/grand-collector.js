@@ -1507,9 +1507,608 @@ function gc1DrawTop(st) {
 /* ===== END GC PHASE 1 ===== */
 
 /* ===== GC PHASE 2: REELS ===== */
-// PLACEHOLDER: the phase 2 builder replaces everything between this line and END GC PHASE 2 with the real phase
-// (Jackpot Reels, Lucky Casino look). It wins pieces 8 then 3 (the room def's pieces) and ends with gcPhaseDone(st).
-GC_PHASES.reels = gcPlaceholderPhase({ pose: 'hover', lift: 120, junk: 'dice', say: 'Ha! You can’t reach me up here!' });
+/* Jackpot Reels (Lucky Casino look, borrows 8-3 Slot Machine Run). He hovers over the far ledge with a big red button
+   on his top hat, and four giant slot reels stand like stairs up to him.
+   Stopper: walks the button deck under the reels; the action (or jump) under a reel stops it. The picture on the
+   payline is the step: BAR a step, 7 a tall step, cherry a trampoline, lemon nothing. Some reels need one picture.
+   Runner: hops up the stopped reels. The top reel's cherry springs them in an arc onto his hat. The button there
+   sits under a glass dome: the first bop pops the dome and the jobs swap, the second bop presses the button = a
+   piece (8, then 3). Then he flies to the other side, the reels slide into stairs the other way, and it all happens
+   again (no swap at the fly-over, so each player stops twice, runs twice and wins one piece).
+   The runner's action shouts "STOP!" (a cue). A drop into the tray is a "Gulp!": back to the start ledge.
+   Only the runner can bop, and only the stopper's presses stop reels (stopped reels spin again if the stopper leaves
+   the deck), so nobody wins it alone. He tosses foam dice and rubber ducks at the runner (shadows first, softer
+   bonks that keep you on your reel, never mid-launch). Gold help: Lucky slow-mo after 3 sour stops in a row, Lucky
+   magnet after 6, Lucky hold after 2 gulps (when the reels have a hold timer).
+   Map chars: r = a reel's first column, on the panel row (it turns back into '#'). The spawn above the panel is the
+   runner's start, the one below it the stopper's (side 2 mirrors both). Room def: stopper (who stops first),
+   reels { speed: [hit 1, hit 2], holdT: [hit 1, hit 2] (s a stop lasts; null = no timer), stairs: [{ row (window
+   top tile row), strip, need, speedK, dir: [hit 1, hit 2] (-1 spins up) }] in climbing order }. Stats in st.stats.reels. */
+const GC2 = {
+  s: 0.75, lift: 4,                 // his size here, and how far he hovers over his ledge
+  cellH: 60, panelY: 390,           // a picture's height; the top of the button panel (a runner who drops to it is gulped)
+  grace: 0.1, settleT: 0.15, spinUp: 0.25, sourT: 1.4, leaveGrace: 0.5, catchGrace: 20, zonePad: 15,
+  syms: { B: { top: 30 }, '7': { top: 0 }, C: { top: 34, bounce: true }, L: { top: null } },
+  launchApex: 40, bopW: 34, bopVy: 480, gulpT: 0.7, shoutCD: 0.8, whirr: 3.5, dome: 14, popT: 1.1,   // dome: px it adds on top
+  slowAfter: 3, slowX: 0.6, magnetAfter: 6, holdAfter: 2,       // gold help: sour stops in a row / gulps in one hit
+  attackFirst: 6, attackGap: [8, 11], tossIdle: 5, // s; no tosses at a runner who stood still tossIdle s
+  softKnock: 0.2,                   // a bonk's sideways push is cut to this much (you stay on your reel)
+  waitArrow: [1.2, 2.5], waitHint: 4.5, hopHint: 4, farHint: 1.5, hintT: 6,
+  crossT: 2, slideAt: 0.35, slideT: 1.2,                         // the fly to the other side; the reels slide meanwhile
+};
+const gc2Sym = (r, k) => r.strip[((k % r.n) + r.n) % r.n];
+const gc2Good = (r, ch) => (r.need ? ch === r.need : ch !== 'L');
+const gc2Live = ph => ph.stage === 'live';
+// a stopped reel's step: { top, bounce, ch }, or null (spinning, or a picture it can't use)
+function gc2Plat(r) {
+  if (!r || (r.state !== 'stop' && r.state !== 'settle')) return null;
+  const ch = gc2Sym(r, r.target);
+  if (!gc2Good(r, ch)) return null;
+  const S = GC2.syms[ch];
+  return { top: r.wy + GC2.cellH + S.top, bounce: !!S.bounce, ch };
+}
+// the top centre of his hat (the red button sits on it), with his hover bob and the hop a hit gives the hat
+function gc2Hat(b) {
+  const o = gcBossOff(b), hop = b.hitT > 0 ? Math.sin((0.9 - b.hitT) / 0.9 * Math.PI) * 22 : 0;
+  return { x: b.x - 9.8 * b.s * b.face, y: b.y + (o - 308 - hop) * b.s };
+}
+// the reel the stopper stands under (-1 if none)
+function gc2Zone(st, p) {
+  if (!p.alive || p.y < GC2.panelY) return -1;
+  const cx = p.x + p.w / 2;
+  for (const r of st.ph.reels) if (cx >= r.x0 - GC2.zonePad && cx < r.x1 + GC2.zonePad) return r.i;
+  return -1;
+}
+// the runner stands on this reel or is in the air just over it
+function gc2Over(st, r) {
+  const p = G.players[st.ph.runner];
+  if (!p.alive) return false;
+  const cx = p.x + p.w / 2;
+  return cx >= r.x0 - 6 && cx <= r.x1 + 6 && p.y + p.h <= r.wy + GC2.cellH + 40;
+}
+// side 0: stairs climb left to right up to him on the right; side 1: the other way. slide: the reels move there.
+function gc2Side(st, side, slide) {
+  const ph = st.ph, cfg = ph.cfg, n = ph.reels.length;
+  ph.side = side; ph.order = ph.reels.map((r, k) => (side ? n - 1 - k : k));
+  ph.holdT = cfg.holdT[ph.hit] == null ? null : cfg.holdT[ph.hit];
+  ph.order.forEach((ri, k) => {
+    const r = ph.reels[ri], s = cfg.stairs[k] || {};
+    r.stair = k; r.need = s.need || null; r.strip = (s.strip || 'B7BL').split(''); r.n = r.strip.length;
+    r.speed = (cfg.speed[ph.hit] || 1.4) * (s.speedK || 1); r.dir = (s.dir && s.dir[ph.hit]) || 1;
+    r.wyFrom = r.wy == null ? (s.row || 6) * T : r.wy; r.wyTo = (s.row || 6) * T;
+    if (!slide || r.wy == null) r.wy = r.wyTo;
+    r.state = 'spin'; r.ramp = 1; r.pos = gcRand() * r.n; r.holdLeft = 0; r.badT = 0;
+  });
+}
+function gc2Respin(r) { r.state = 'spin'; r.ramp = 0; r.pos = r.target; Sfx.play('gc2Respin'); }
+function gc2Stop(st, r, by) {
+  const ph = st.ph, S = st.stats.reels, cx = (r.x0 + r.x1) / 2;
+  let k = Math.round(r.pos - GC2.grace * r.dir);
+  if (ph.magnet && !gc2Good(r, gc2Sym(r, k)))      // Lucky magnet: the nearest good picture (the one just passed first)
+    for (let d = 1, done = false; d <= r.n >> 1 && !done; d++) for (const j of [k - r.dir * d, k + r.dir * d]) if (gc2Good(r, gc2Sym(r, j))) { k = j; done = true; break; }
+  r.state = 'settle'; r.from = r.pos; r.target = k; r.t = 0;
+  const ch = gc2Sym(r, k);
+  Sfx.play('gc2Stop'); rumble(by, 0.15, 0.3, 60);
+  if (gc2Good(r, ch)) {
+    S.stops[by]++; ph.missRow = 0; r.flash = 0.4;
+    r.holdLeft = ph.holdT == null ? Infinity : ph.holdT;
+    Sfx.play('gc2Ding');
+    // a stop a moment too late still catches a runner falling past this reel's picture
+    const p = G.players[ph.runner], top = r.wy + GC2.cellH + GC2.syms[ch].top, pcx = p.x + p.w / 2, feet = p.y + p.h;
+    if (p.alive && !p.grounded && p.vy > 0 && pcx >= r.x0 && pcx <= r.x1 && feet > top + 2 && feet <= top + GC2.catchGrace) {
+      moveY(p, top - p.h - p.y, true);
+      if (Math.abs(p.y + p.h - top) < 0.5) ph.P[p.id].prevFeet = top;
+    }
+  } else {
+    S.sour[by]++; ph.missRow++; r.badT = GC2.sourT;
+    Sfx.play('gc2Sour');
+    gcPop(st, cx, r.wy - 6, ch === 'L' ? 'Sour!' : r.need === 'C' ? 'Need a cherry!' : 'Need a 7!', '#ffe36b', 18);
+    if (ph.missRow >= GC2.slowAfter && ph.slow === 1) { ph.slow = GC2.slowX; gcHelp(st, 'Lucky slow-mo! The reels spin slower now.'); }
+    if (ph.missRow >= GC2.magnetAfter && !ph.magnet) { ph.magnet = true; gcHelp(st, 'Lucky magnet! Your stops snap to a good picture.'); }
+  }
+}
+// the stopper pressed: stop the reel overhead (a sour one spins again at once; a good one gets its hold back)
+function gc2Press(st, s) {
+  const ph = st.ph;
+  if (!gc2Live(ph)) return;
+  const z = gc2Zone(st, s);
+  if (z < 0) { gc2Where(st, s); return; }
+  const r = ph.reels[z];
+  if (r.state === 'spin') gc2Stop(st, r, s.id);
+  else if (r.state === 'stop') {
+    if (gc2Plat(r)) { r.holdLeft = ph.holdT == null ? Infinity : ph.holdT; r.holdFlash = 0.3; Sfx.play('gc2Hold'); }
+    else gc2Respin(r);
+  }
+}
+// "Stand under a reel!" with an arrow to the reel the runner waits for (else the nearest), and its light blinks
+function gc2Where(st, s) {
+  const ph = st.ph, cx = s.x + s.w / 2;
+  let near = ph.arrowR;
+  if (!near) for (const r of ph.reels) if (!near || Math.abs((r.x0 + r.x1) / 2 - cx) < Math.abs((near.x0 + near.x1) / 2 - cx)) near = r;
+  if (!near) return;
+  gcHint(st, s.id, (near.x0 + near.x1) / 2 < cx ? '◀ Stand under a reel!' : 'Stand under a reel! ▶', 1.6);
+  near.beamT = 1.3;
+}
+// where the runner stands: a reel's stair number, -1 on the start ledge, 9 on his ledge, null in the air
+function gc2At(st, p) {
+  const ph = st.ph, P = ph.P[p.id];
+  if (!p.alive || !p.grounded) return null;
+  if (P.on) return P.on.stair;
+  const feet = p.y + p.h, cx = p.x + p.w / 2, near = (lg) => Math.abs(feet - lg.y) < 2 && cx >= lg.x0 - 4 && cx <= lg.x1 + 4;
+  if (near(ph.ledges[ph.side])) return -1;
+  if (near(ph.ledges[1 - ph.side])) return 9;
+  return null;
+}
+// a surface the runner stands on, for a toss: { x0, x1, y } (null in the air or mid-launch)
+function gc2Spot(st, p) {
+  const ph = st.ph, P = ph.P[p.id], at = gc2At(st, p);
+  if (at == null || P.launch) return null;
+  if (P.on) { const pl = gc2Plat(P.on); return pl ? { x0: P.on.x0 + 14, x1: P.on.x1 - 14, y: pl.top } : null; }
+  const lg = ph.ledges[at === -1 ? ph.side : 1 - ph.side];
+  return { x0: lg.x0 + 14, x1: lg.x1 - 14, y: lg.y };
+}
+function gc2Reels(st, dt, live) {
+  const ph = st.ph, fast = ph.stage !== 'live' ? GC2.whirr : 1;
+  for (const r of ph.reels) {
+    r.flash = Math.max(0, r.flash - dt); r.holdFlash = Math.max(0, r.holdFlash - dt); r.beamT = Math.max(0, r.beamT - dt);
+    if (r.state === 'spin') {
+      r.ramp = Math.min(1, r.ramp + dt / GC2.spinUp);
+      r.pos += r.dir * r.speed * ph.slow * fast * r.ramp * dt;
+      if (Math.abs(r.pos) > 1e4) r.pos = ((r.pos % r.n) + r.n) % r.n;
+    } else if (r.state === 'settle') {
+      r.t += dt;
+      const u = Math.min(1, r.t / GC2.settleT), e = 1 + 2.2 * Math.pow(u - 1, 3) + 1.2 * Math.pow(u - 1, 2);   // ease out, a small overshoot
+      r.pos = r.from + (r.target - r.from) * e;
+      if (u >= 1) { r.pos = r.target; r.state = 'stop'; }
+    }
+    if (!live || r.state === 'spin') continue;
+    if (!gc2Plat(r)) { r.badT -= dt; if (r.badT <= 0 && r.state === 'stop') gc2Respin(r); continue; }
+    if (ph.holdT == null || ph.luckyHold || st.idle) continue;
+    if (gc2Over(st, r)) r.holdLeft = Math.max(r.holdLeft, GC2.leaveGrace); else r.holdLeft -= dt;
+    if (r.holdLeft <= 0 && r.state === 'stop') gc2Respin(r);
+  }
+}
+// stopped reels are one-way steps the mode owns: land on them from above, never bump them from below or the side
+function gc2Resolve(st) {
+  const ph = st.ph;
+  for (const p of G.players) {
+    const P = ph.P[p.id];
+    if (!p.alive) { P.on = null; continue; }
+    const feet = p.y + p.h;
+    let best = null;
+    if (p.vy >= -1) for (const r of ph.reels) {
+      const pl = gc2Plat(r);
+      if (!pl || !(p.x + 4 < r.x1 && p.x + p.w - 4 > r.x0)) continue;
+      const sticky = P.on === r;
+      if (P.prevFeet > pl.top + (sticky ? 6 : 2)) continue;
+      if (feet < pl.top - (sticky ? 7 : 0.5)) continue;
+      if (!best || pl.top < best.pl.top) best = { r, pl };
+    }
+    if (!best) { P.on = null; continue; }
+    moveY(p, best.pl.top - p.h - p.y, true);
+    if (Math.abs(p.y + p.h - best.pl.top) > 1) { P.on = null; continue; }
+    if (best.pl.bounce) { P.on = null; gc2Boing(st, p, best.r, best.pl.top); continue; }
+    const landed = P.on !== best.r;
+    p.vy = 0; p.grounded = true; p.tileGround = true; p.onOneWay = false; p.onPartner = false; p.jumping = false; p.coyote = PHYS.coyote;
+    P.on = best.r;
+    if (landed) {
+      P.launch = null;
+      if (P.prevVy > 260) { p.sx = 1.25; p.sy = 0.78; puff(p.x + p.w / 2, best.pl.top, 5, 'rgba(255,255,255,0.75)'); Sfx.play('land'); }
+    }
+  }
+}
+// a cherry: on the top reel it springs the runner in an arc onto his hat; anywhere else it is a plain bounce
+function gc2Boing(st, p, r, top) {
+  const ph = st.ph, P = ph.P[p.id];
+  p.grounded = false; p.jumping = false; p.coyote = 0; p.jumpBuf = 0; p.sx = 0.75; p.sy = 1.3;
+  Sfx.play('gc2Boing', p.id); puff(p.x + p.w / 2, top, 6, 'rgba(255,90,110,0.85)'); rumble(p.id, 0, 0.35, 70);
+  if (!(gc2Live(ph) && p.id === ph.runner && r.stair === ph.reels.length - 1)) { p.vy = -900; return; }
+  const H = gc2Hat(st.boss), g = PHYS.g, yt = gc2BopY(st), ya = yt - GC2.launchApex;
+  const vy = Math.sqrt(2 * g * Math.max(40, top - ya)), tt = vy / g + Math.sqrt(2 * (yt - ya) / g);
+  const vx = (H.x - (p.x + p.w / 2)) / tt;
+  p.vy = -vy; p.vx = vx; p.carryVx = vx;
+  P.launch = { vx, t: 0 };
+  st.stats.reels.launches++;
+  if (!st.say || st.say.t > 0.8) gcSay(st, gcRand() < 0.5 ? 'Eek! Not my hat!' : 'Hey! Get down!', 1.4);
+}
+// where a bop lands: the top of the dome while it is on, else the top of the button
+const gc2BopY = st => gc2Hat(st.boss).y - 8 - (st.ph.dome ? GC2.dome : 0);
+// BOP: the runner came down on his hat. With the dome on it pops (and the jobs swap); without, it is a piece.
+function gc2Bop(st, p, top) {
+  const ph = st.ph, pieces = G.level.def.pieces || [8, 3], H = gc2Hat(st.boss), dome = ph.dome;
+  Object.assign(p, { y: top - p.h, vy: -GC2.bopVy, vx: 0, carryVx: 0, jumping: false, grounded: false, sx: 1.3, sy: 0.75 });
+  ph.P[p.id].launch = null; ph.bopT = 0.5; ph.bops++;
+  for (const r of ph.reels) if (r.state !== 'spin') gc2Respin(r);    // the reels whirr off again
+  rumble(0, 0.6, 0.6, 260); rumble(1, 0.6, 0.6, 260);
+  ph.stageT = 0;
+  if (dome) {
+    ph.dome = false; ph.stage = 'pop'; st.stats.reels.pops[p.id]++;
+    gcPop(st, H.x, top - 34, 'POP!', '#bfe9ff', 36);
+    for (let n = 0; n < 14; n++) G.particles.push({ x: H.x + (gcRand() - 0.5) * 24, y: H.y - 12, vx: (gcRand() - 0.5) * 320, vy: -120 - gcRand() * 240, life: 0.8, max: 0.8, col: n % 2 ? 'rgba(205,236,255,0.95)' : '#ffffff', size: 4 + gcRand() * 3, grav: 900, kind: 'conf', rot: gcRand() * 6, vr: (gcRand() - 0.5) * 12 });
+    Sfx.play('gc2Pop');
+    gcCancelAttacks(st);
+    gcBossHit(st, ph.hit === 0 ? 'Hey! My shiny dome!' : 'Not my dome again!');
+    gcNews(st, 'The dome is off! Now bop the button!');
+    return;
+  }
+  st.stats.reels.bops[p.id]++;
+  gcPop(st, H.x, top - 34, 'BOP!', C.gold, 36);
+  Sfx.play('gc2Bop');
+  gcWinPiece(st, pieces[ph.hit], { say: ph.hit === 0 ? 'Ow, my hat! My cherry!' : 'Not my golf flag! Hmph!' });
+  ph.stage = ph.hit === 0 ? 'bop' : 'done';
+  if (ph.stage === 'done') gcPhaseDone(st);
+}
+function gc2Gulp(st, p) {
+  const ph = st.ph, x = p.x + p.w / 2;
+  p.alive = false; p.respawnT = GC2.gulpT; p.pendingJump = false;
+  G.spawnPts[p.id] = { ...ph.start[ph.side] };
+  ph.P[p.id].launch = null; ph.gulpsHit++;
+  st.stats.reels.gulps[p.id]++;
+  for (let n = 0; n < 10; n++) G.particles.push({ x, y: GC2.panelY, vx: (gcRand() - 0.5) * 200, vy: -100 - gcRand() * 200, life: 0.6, max: 0.6, col: n % 3 ? C.gold : PCOL[p.id], size: 4, grav: 700, kind: 'dot' });
+  Sfx.play('gc2Gulp', p.id); rumble(p.id, 0.35, 0.3, 120);
+  gcPop(st, x, GC2.panelY - 20, 'Gulp!', '#ffffff', 22);
+  // the machine waits for you: every good stopped reel gets a full hold again
+  for (const r of ph.reels) if (r.state === 'stop' && gc2Plat(r) && ph.holdT != null) r.holdLeft = Math.max(r.holdLeft, ph.holdT);
+  if (ph.gulpsHit >= GC2.holdAfter && ph.holdT != null && !ph.luckyHold && gc2Live(ph)) { ph.luckyHold = true; gcHelp(st, 'Lucky hold! Stopped reels wait for you now.'); }
+}
+// the jobs swap (after a dome pop): poof, the new runner on the start ledge, the new stopper on the deck
+function gc2Swap(st) {
+  const ph = st.ph;
+  [ph.stopper, ph.runner] = [ph.runner, ph.stopper];
+  const s = G.players[ph.stopper], rn = G.players[ph.runner];
+  for (const [p, spot] of [[s, ph.deck[ph.side]], [rn, ph.start[ph.side]]]) {
+    if (p.alive) burst(p.x + p.w / 2, p.y + p.h / 2, 'rgba(255,255,255,0.9)', 10);
+    Object.assign(p, { x: spot.x, y: spot.y, vx: 0, vy: 0, carryVx: 0, stun: 0, knockT: 0, alive: true, respawnT: 0, grounded: false, jumping: false, jumpBuf: 0, sx: 0.6, sy: 1.4 });
+    p.pendingJump = false; p.pendingAct = false; p.face = ph.side ? -1 : 1;
+    G.spawnPts[p.id] = { ...spot };
+    Object.assign(ph.P[p.id], { prevFeet: p.y + p.h, on: null, launch: null });
+    burst(p.x + p.w / 2, p.y + p.h / 2, 'rgba(255,255,255,0.9)', 10);
+  }
+  ph.missRow = 0; ph.slow = 1; ph.magnet = false; ph.gulpsHit = 0; ph.luckyHold = false; ph.waitT = 0; ph.hopT = 0; ph.farT = 0;
+  gcSwap(st);
+  gcHint(st, ph.stopper, NAMES[ph.stopper] + ': ' + gc2StopKeys(ph.stopper), GC2.hintT);
+  gcHint(st, ph.runner, NAMES[ph.runner] + ': hop up to his hat!', GC2.hintT);
+}
+function gc2StopKeys(id) {
+  const k = actKey(id);
+  return k === 'pad' ? 'under a reel, ' + glyph('a') + ' or ' + glyph('act') + ' stops it' : k === 'touch' ? 'under a reel, tap stop' : 'under a reel, ' + (id === 0 ? 'F' : '/') + ' stops it';
+}
+// tosses go only at a runner on a reel who is playing (the start ledge is a safe spot, and so is standing still a while)
+function gc2Attacks(st, dt) {
+  const ph = st.ph, ri = G.players[ph.runner].input;
+  ph.rnIdle = ri.left || ri.right || ri.jump || ri.down || ri.up || ri.act ? 0 : ph.rnIdle + dt;
+  if (!gc2Live(ph) || gcCalm(st) || st.junk.length) return;
+  if ((ph.attackT -= dt) > 0) return;
+  const rn = G.players[ph.runner], spot = ph.P[rn.id].on && ph.rnIdle < GC2.tossIdle ? gc2Spot(st, rn) : null;
+  const j = spot && gcToss(st, rn.id, { kind: ph.next, x: clamp(rn.x + rn.w / 2 + rn.vx * GC.toss.lead, spot.x0, spot.x1), y: spot.y });
+  if (!j) { ph.attackT = 0.5; return; }
+  ph.next = ph.next === 'dice' ? 'duck' : 'dice';
+  ph.attackT = GC2.attackGap[0] + gcRand() * (GC2.attackGap[1] - GC2.attackGap[0]);
+  if (!st.say && gcRand() < 0.5) gcSay(st, j.kind === 'duck' ? 'Quack! Catch!' : 'Catch!', 1.4);
+}
+// nudges: the stopper's arrow and hint when the runner waits for the next reel, "Hop up!", and the way back
+function gc2Nudges(st, dt) {
+  const ph = st.ph, rn = G.players[ph.runner], at = gc2At(st, rn), n = ph.reels.length;
+  const next = at != null && at < n - 1 ? ph.reels[ph.order[at + 1]] : null;
+  const live = gc2Live(ph) && rn.alive && !st.idle;
+  if (live && next && !gc2Plat(next)) ph.waitT += dt; else ph.waitT = 0;
+  ph.arrowR = ph.waitT > GC2.waitArrow[st.stats.reels.stops[ph.stopper] === 0 ? 0 : 1] ? next : null;
+  if (ph.arrowR && ph.waitT > GC2.waitHint && !ph.waitSaid) {
+    ph.waitSaid = true;
+    const s = G.players[ph.stopper], dx = (next.x0 + next.x1) / 2 - (s.x + s.w / 2);
+    gcHint(st, ph.stopper, Math.abs(dx) < 50 ? 'Stop this reel!' : dx < 0 ? '◀ Stop the next reel!' : 'Stop the next reel! ▶', 2.5);
+  }
+  if (!ph.waitT) ph.waitSaid = false;
+  if (live && next && gc2Plat(next) && rn.grounded && Math.abs(rn.vx) < 5) ph.hopT += dt; else ph.hopT = 0;
+  if (ph.hopT > GC2.hopHint) { ph.hopT = 0; gcHint(st, rn.id, ph.side ? '◀ Hop up!' : 'Hop up! ▶', 2); }
+  if (live && at === 9) ph.farT += dt; else ph.farT = 0;
+  if (ph.farT > GC2.farHint) { ph.farT = -4; gcHint(st, rn.id, 'Jump down to go back!', 2.5); }
+}
+
+GC_PHASES.reels = {
+  setup(st, L) {
+    const ph = st.ph, def = L.def, cfg = def.reels || {};
+    if (!st.stats.reels) st.stats.reels = { stops: [0, 0], sour: [0, 0], pops: [0, 0], bops: [0, 0], gulps: [0, 0], launches: 0, shouts: 0 };
+    ph.cfg = { speed: cfg.speed || [1.3, 1.6], holdT: cfg.holdT || [null, 8], stairs: cfg.stairs || [] };
+    ph.reels = [];
+    for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+      if (def.map[ty][tx] !== 'r') continue;
+      ph.reels.push({ x0: tx * T, x1: (tx + 3) * T, wy: null, dir: 1, pos: 0, state: 'spin', ramp: 1, from: 0, target: 0, t: 0, flash: 0, holdFlash: 0, beamT: 0 });
+      L.grid[ty][tx] = '#';
+    }
+    if (!ph.reels.length) throw new Error('Jackpot Reels: no reels (r) in the map');
+    ph.reels.sort((a, b) => a.x0 - b.x0).forEach((r, i) => { r.i = i; });
+    // the runner's start (the spawn above the panel) and the stopper's (below it), and both mirrored for side 1
+    const up = L.spawns.find(s => s.y < GC2.panelY) || L.spawns[0], dn = L.spawns.find(s => s.y > GC2.panelY) || L.spawns[1];
+    ph.start = [{ x: up.x, y: up.y }, { x: W - up.x - PW, y: up.y }];
+    ph.deck = [{ x: dn.x, y: dn.y }, { x: W - dn.x - PW, y: dn.y }];
+    // the ledges (the start one on each side): the solid run of tiles under the start spot
+    const fy = Math.round((up.y + PH) / T), tx0 = Math.floor((up.x + PW / 2) / T);
+    let a = tx0, z = tx0;
+    while (a > 0 && tile(a - 1, fy) === '#') a--;
+    while (z < COLS - 1 && tile(z + 1, fy) === '#' && tile(z + 1, fy - 1) !== '#') z++;
+    ph.ledges = [{ x0: a * T, x1: (z + 1) * T, y: fy * T }, { x0: W - (z + 1) * T, x1: W - a * T, y: fy * T }];
+    ph.stopper = def.stopper == null ? 0 : def.stopper; ph.runner = 1 - ph.stopper;
+    ph.P = [0, 1].map(k => ({ prevFeet: G.players[k].y + G.players[k].h, prevVy: 0, on: null, launch: null, shoutT: 0, cool: 0 }));
+    ph.stage = 'live'; ph.stageT = 0; ph.hit = 0; ph.bops = 0; ph.dome = true; ph.started = false;
+    ph.attackT = GC2.attackFirst; ph.next = 'dice'; ph.missRow = 0; ph.slow = 1; ph.magnet = false; ph.gulpsHit = 0; ph.luckyHold = false;
+    ph.waitT = 0; ph.waitSaid = false; ph.hopT = 0; ph.farT = 0; ph.arrowR = null; ph.bopT = 0; ph.rnIdle = 0;
+    gc2Side(st, 0, false);
+    const b = st.boss;
+    b.s = GC2.s; b.pose = 'hover'; b.face = -1; b.gy = b.y; b.y -= GC2.lift;
+    ph.home = [{ x: b.x, y: b.y }, { x: W - b.x, y: b.y }];
+    for (const [id, spot] of [[ph.stopper, ph.deck[0]], [ph.runner, ph.start[0]]]) {
+      Object.assign(G.players[id], { x: spot.x, y: spot.y, face: 1 });
+      G.spawnPts[id] = { ...spot };
+      ph.P[id].prevFeet = spot.y + PH;
+    }
+  },
+  wait(st, dt) { gc2Reels(st, dt, false); for (const p of G.players) st.ph.P[p.id].prevFeet = p.y + p.h; },
+  pre(st, dt) {
+    const ph = st.ph, s = G.players[ph.stopper], rn = G.players[ph.runner], P = ph.P[rn.id];
+    // the stopper: the action, or a jump while under a reel, presses that reel's STOP button
+    let press = false;
+    if (s.pendingAct) { s.pendingAct = false; press = true; }
+    if (s.pendingJump && gc2Live(ph) && gc2Zone(st, s) >= 0) { s.pendingJump = false; s.jumpBuf = 0; press = true; }
+    if (press) gc2Press(st, s);
+    // the runner: the action shouts "STOP!" (a cue for the stopper)
+    P.cool = Math.max(0, P.cool - dt);
+    if (rn.pendingAct) {
+      rn.pendingAct = false;
+      if (P.cool <= 0 && rn.alive) { P.cool = GC2.shoutCD; P.shoutT = 0.9; st.stats.reels.shouts++; Sfx.play('gc2Shout', rn.id); rumble(ph.stopper, 0, 0.35, 80); }
+    }
+    for (const p of G.players) ph.P[p.id].prevVy = p.vy;
+  },
+  step(st, dt) {
+    const ph = st.ph, b = st.boss, rn = G.players[ph.runner], s = G.players[ph.stopper], P = ph.P[rn.id];
+    if (!ph.started) {
+      ph.started = true;
+      gcSay(st, 'Ha! You can’t reach me up here!', 2.2);
+      gcHint(st, ph.stopper, NAMES[ph.stopper] + ': ' + gc2StopKeys(ph.stopper), GC2.hintT);
+      gcHint(st, ph.runner, NAMES[ph.runner] + ': hop up to his hat!', GC2.hintT);
+    }
+    ph.stageT += dt; ph.bopT = Math.max(0, ph.bopT - dt);
+    for (const q of ph.P) q.shoutT = Math.max(0, q.shoutT - dt);
+    gc2Reels(st, dt, gc2Live(ph));
+    gc2Resolve(st);
+    // the launch arc: the cherry's push carries the runner to his hat (a held direction can't steer them off it)
+    if (P.launch) {
+      P.launch.t += dt;
+      if (!rn.alive || rn.grounded || P.launch.t > 1.6) P.launch = null;
+      else {
+        rn.vx = P.launch.vx; rn.carryVx = P.launch.vx;
+        if ((G.tickN % 3) === 0) G.particles.push({ x: rn.x + rn.w / 2, y: rn.y + rn.h, vx: 0, vy: 0, life: 0.35, max: 0.35, col: C.gold, size: 3, grav: 0, kind: 'dot' });
+      }
+    }
+    // BOP: the runner comes down on his hat button
+    const H = gc2Hat(b), top = gc2BopY(st);
+    if (gc2Live(ph) && rn.alive && rn.vy > 0 && P.prevFeet <= top + 3 && rn.y + rn.h >= top && Math.abs(rn.x + rn.w / 2 - H.x) <= GC2.bopW) gc2Bop(st, rn, top);
+    // the tray: a runner who drops to the panel is gulped and comes back on the start ledge
+    if (rn.alive && rn.y + rn.h >= GC2.panelY - 1) gc2Gulp(st, rn);
+    // stopped reels spin again when the stopper leaves the deck
+    if (gc2Live(ph) && !(s.alive && s.y + s.h > GC2.panelY + 2)) for (const r of ph.reels) if (r.state !== 'spin') gc2Respin(r);
+    gc2Attacks(st, dt);
+    gc2Nudges(st, dt);
+    // a dome pop: the runner bounces off, then the jobs swap and the climb starts again
+    if (ph.stage === 'pop' && ph.stageT >= GC2.popT) {
+      gc2Swap(st);
+      ph.stage = 'live'; ph.stageT = 0; ph.attackT = GC2.attackFirst;
+    }
+    // after the first piece: he flies to the other side, and the reels slide into stairs the other way. The runner
+    // is already on the new start ledge (his old one), so the jobs stay as they are and the dome is back on.
+    if (ph.stage === 'bop' && st.celebT <= 0 && !st.fly.length) {
+      ph.stage = 'cross'; ph.stageT = 0; ph.hit = 1; ph.dome = true;
+      ph.cross = { x0: b.x, y0: b.y, x1: ph.home[1].x, y1: ph.home[1].y };
+      gcSay(st, 'Hmph! Try THIS side!', 2.2); b.mood = 'grumpy'; b.moodT = 2;
+      Sfx.play('gcFly');
+      gc2Side(st, 1, true);
+      G.spawnPts[ph.runner] = { ...ph.start[1] }; G.spawnPts[ph.stopper] = { ...ph.deck[1] };
+      ph.missRow = 0; ph.slow = 1; ph.magnet = false; ph.gulpsHit = 0; ph.luckyHold = false;
+    } else if (ph.stage === 'cross') {
+      const c = ph.cross, k = clamp(ph.stageT / GC2.crossT, 0, 1), e = k * k * (3 - 2 * k);
+      b.x = c.x0 + (c.x1 - c.x0) * e; b.y = c.y0 + (c.y1 - c.y0) * e - Math.sin(k * Math.PI) * 150;
+      if (k > 0.5) b.face = 1;
+      const u = clamp((ph.stageT - GC2.slideAt) / GC2.slideT, 0, 1), eu = u * u * (3 - 2 * u);
+      for (const r of ph.reels) r.wy = r.wyFrom + (r.wyTo - r.wyFrom) * eu;
+      if (u > 0 && !ph.slid) { ph.slid = true; Sfx.play('gc2Slide'); }
+      if (k >= 1) {
+        ph.stage = 'live'; ph.stageT = 0; ph.attackT = GC2.attackFirst; b.x = c.x1; b.y = c.y1; b.face = 1;
+        gcShowBadges(st);
+        gcHint(st, ph.runner, NAMES[ph.runner] + ': now hop up this way! ◀', GC2.hintT);
+        gcHint(st, ph.stopper, NAMES[ph.stopper] + ': ' + gc2StopKeys(ph.stopper), GC2.hintT);
+      }
+    }
+    for (const p of G.players) ph.P[p.id].prevFeet = p.y + p.h;
+  },
+  labels(st) { return st.ph.stopper === 0 ? ['stop', 'shout'] : ['shout', 'stop']; },
+  roles(st) { const ph = st.ph, r = []; r[ph.stopper] = 'Stop!'; r[ph.runner] = 'Hop up!'; return r; },
+  busy(st, p) { const ph = st.ph; return p.id === ph.stopper || !!(ph.P && ph.P[p.id].launch); },
+  onBonk(st, p) { p.vx *= GC2.softKnock; },    // a soft bonk: you wobble, but stay on your reel
+  onRespawn(st, p) {
+    const ph = st.ph, P = ph.P[p.id];
+    Object.assign(P, { on: null, launch: null, prevFeet: p.y + p.h });
+    if (p.id === ph.runner) { p.vy = -260; Sfx.play('gc2Spit', p.id); }
+  },
+  hudText(st) { return 'Bops ' + st.ph.bops + '/4'; },
+  stat(st) { const s = st.stats.reels; return s ? { label: 'Good reel stops', values: [s.stops[0], s.stops[1]] } : null; },
+  statLine(st) {
+    const s = st.stats.reels;
+    if (!s) return '';
+    const g = s.gulps[0] + s.gulps[1];
+    return 'Hat bops: ' + (s.pops[0] + s.pops[1] + s.bops[0] + s.bops[1]) + (g ? ' · Gulps: ' + g : ' · Not one gulp!');
+  },
+  drawBack(st) { gc2DrawBack(st); },
+  draw(st) { gc2Draw(st); },
+  drawTop(st) { gc2DrawTop(st); },
+};
+GC_PHASES.reels.test = { GC2, sym: gc2Sym, good: gc2Good, plat: gc2Plat, hat: () => gc2Hat(G.mst.boss), zone: id => gc2Zone(G.mst, G.players[id]), at: id => gc2At(G.mst, G.players[id]) };
+
+// phase 2 sounds
+Sfx.extra.gc2Stop = function () { this.tone(180, 0.07, 'square', 0.06, 90); this.tone(900, 0.03, 'square', 0.03, null, 0.02); };
+Sfx.extra.gc2Ding = function () { this.tone(988, 0.08, 'triangle', 0.05); this.tone(1319, 0.1, 'triangle', 0.045, null, 0.06); };
+Sfx.extra.gc2Sour = function () { this.tone(300, 0.18, 'sawtooth', 0.035, 190); };
+Sfx.extra.gc2Respin = function () { this.tone(260, 0.12, 'triangle', 0.03, 520); };
+Sfx.extra.gc2Hold = function () { this.tone(660, 0.06, 'square', 0.035); this.tone(660, 0.06, 'square', 0.035, null, 0.08); };
+Sfx.extra.gc2Boing = function (p) { this.tone(200 * p, 0.3, 'sine', 0.08, 820 * p); };
+Sfx.extra.gc2Pop = function () { this.tone(1800, 0.05, 'square', 0.035, 900); [2093, 2637, 3136].forEach((f, i) => this.tone(f, 0.08, 'triangle', 0.03, null, 0.03 + i * 0.04)); };
+Sfx.extra.gc2Bop = function () { this.tone(520, 0.08, 'square', 0.05, 260); this.tone(1046, 0.12, 'triangle', 0.05, 1568, 0.06); this.tone(160, 0.2, 'sine', 0.07, 90); };
+Sfx.extra.gc2Gulp = function (p) { this.tone(420 * p, 0.12, 'sine', 0.07, 140 * p); this.tone(1200, 0.2, 'triangle', 0.02, 600, 0.08); };
+Sfx.extra.gc2Spit = function (p) { this.tone(300 * p, 0.1, 'triangle', 0.05, 700 * p); };
+Sfx.extra.gc2Shout = function (p) { this.tone(740 * p, 0.09, 'square', 0.05); this.tone(988 * p, 0.12, 'square', 0.045, null, 0.08); };
+Sfx.extra.gc2Slide = function () { this.tone(120, 0.6, 'sawtooth', 0.025, 260); this.tone(240, 0.5, 'triangle', 0.02, 180, 0.3); };
+
+/* --- phase 2 drawing --- */
+function gc2DrawSym(ch, x, y, a) {   // one 90 x 60 picture with its top-left at (x, y)
+  ctx.save(); ctx.globalAlpha *= a == null ? 1 : a;
+  const cx = x + 45;
+  if (ch === 'B') {
+    ctx.fillStyle = '#b9850f'; rr(cx - 36, y + 30, 72, 24, 5); ctx.fill();
+    ctx.fillStyle = C.gold; rr(cx - 36, y + 30, 72, 20, 5); ctx.fill();
+    text('BAR', cx, y + 41, 15, '#7a4a10', 'center');
+  } else if (ch === '7') {
+    ctx.fillStyle = '#e8344e'; ctx.strokeStyle = '#9c1730'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx - 24, y + 2); ctx.lineTo(cx + 24, y + 2); ctx.lineTo(cx + 24, y + 13); ctx.lineTo(cx + 2, y + 56); ctx.lineTo(cx - 12, y + 56); ctx.lineTo(cx + 8, y + 14); ctx.lineTo(cx - 24, y + 14); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+  } else if (ch === 'C') {
+    ctx.strokeStyle = '#3f8f3c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - 12, y + 40); ctx.quadraticCurveTo(cx - 4, y + 14, cx + 6, y + 8); ctx.moveTo(cx + 13, y + 42); ctx.quadraticCurveTo(cx + 10, y + 18, cx + 6, y + 8); ctx.stroke();
+    ctx.fillStyle = '#e8344e'; circle(cx - 13, y + 45, 11); ctx.fill(); circle(cx + 14, y + 46, 11); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(cx - 17, y + 41, 3); ctx.fill(); circle(cx + 10, y + 42, 3); ctx.fill();
+  } else if (ch === 'L') {
+    ctx.fillStyle = '#ffe36b'; ctx.strokeStyle = '#c9a62a'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.ellipse(cx, y + 34, 26, 18, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#5a4a10'; circle(cx - 8, y + 31, 2.5); ctx.fill(); circle(cx + 8, y + 31, 2.5); ctx.fill();
+    ctx.strokeStyle = '#5a4a10'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx - 7, y + 42); ctx.quadraticCurveTo(cx, y + 37, cx + 7, y + 42); ctx.stroke();
+  }
+  ctx.restore();
+}
+function gc2DrawBack(st) {
+  const ph = st.ph, t = G.clock, rs = ph.reels;
+  if (!rs) return;
+  // the big machine behind the reels, with marquee bulbs along its top
+  const x0 = rs[0].x0 - 24, x1 = rs[rs.length - 1].x1 + 24, y0 = Math.max(84, Math.min(...rs.map(r => r.wy)) - 36);
+  ctx.fillStyle = 'rgba(120,20,60,0.5)'; rr(x0, y0, x1 - x0, GC2.panelY - y0, 18); ctx.fill();
+  for (let x = x0 + 14, k = 0; x < x1 - 8; x += 24, k++) {
+    const on = ((k + Math.floor(t * 6)) % 3) === 0;
+    ctx.fillStyle = on ? '#fff6c2' : 'rgba(255,197,61,0.55)'; circle(x, y0 + 10, on ? 4.5 : 3.5); ctx.fill();
+  }
+  // the button deck under the panel: a dim room with a dotted carpet
+  const d0 = ph.ledges[0].x1, d1 = ph.ledges[1].x0, dy = GC2.panelY + T;
+  ctx.fillStyle = 'rgba(40,14,52,0.6)'; ctx.fillRect(d0, dy, d1 - d0, 3 * T);
+  ctx.fillStyle = 'rgba(255,143,199,0.18)';
+  for (let x = d0 + 15, k = 0; x < d1; x += 30, k++) for (let y = dy + 18 + (k % 2) * 15; y < dy + 3 * T - 6; y += 30) { circle(x, y, 3); ctx.fill(); }
+}
+function gc2Draw(st) {
+  const ph = st.ph, t = G.clock, big = hudBig(), live = gc2Live(ph);
+  if (!ph.reels) return;
+  for (const r of ph.reels) {
+    const cx = (r.x0 + r.x1) / 2, wb = r.wy + 180;
+    // the stand under the window, down to the panel
+    if (wb < GC2.panelY) { ctx.fillStyle = '#7a1838'; rr(cx - 30, wb - 6, 60, GC2.panelY - wb + 6, 6); ctx.fill(); ctx.fillStyle = 'rgba(255,215,94,0.35)'; ctx.fillRect(cx - 30, wb + 4, 60, 3); }
+    // the window and its strip
+    ctx.fillStyle = r.stair === ph.reels.length - 1 ? '#ff8fa3' : '#ffd75e'; rr(r.x0 - 6, r.wy - 6, 102, 192, 10); ctx.fill();
+    ctx.fillStyle = '#fffaf0'; rr(r.x0, r.wy, 90, 180, 6); ctx.fill();
+    ctx.save(); rr(r.x0, r.wy, 90, 180, 6); ctx.clip();
+    const base = Math.floor(r.pos);
+    for (let k = base - 2; k <= base + 3; k++) {
+      const y = r.wy + GC2.cellH + (r.pos - k) * GC2.cellH;
+      if (y < r.wy - 60 || y > r.wy + 180) continue;
+      const ch = gc2Sym(r, k), stopped = r.state !== 'spin' && k === r.target;
+      gc2DrawSym(ch, r.x0, y, r.state === 'spin' ? 0.85 : stopped ? 1 : 0.4);
+      if (ph.slow < 1 && r.state === 'spin' && gc2Good(r, ch)) { ctx.strokeStyle = C.gold; ctx.lineWidth = 3; rr(r.x0 + 6, y + 4, 78, 52, 8); ctx.stroke(); }
+      if (stopped && !gc2Good(r, ch)) { ctx.strokeStyle = 'rgba(200,40,60,0.8)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(r.x0 + 25, y + 15); ctx.lineTo(r.x0 + 65, y + 50); ctx.moveTo(r.x0 + 65, y + 15); ctx.lineTo(r.x0 + 25, y + 50); ctx.stroke(); }
+    }
+    if (r.state === 'spin') { ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(r.x0, r.wy, 90, 180); }
+    const g = ctx.createLinearGradient(0, r.wy, 0, r.wy + 180);
+    g.addColorStop(0, 'rgba(60,20,60,0.35)'); g.addColorStop(0.3, 'rgba(60,20,60,0)'); g.addColorStop(0.7, 'rgba(60,20,60,0)'); g.addColorStop(1, 'rgba(60,20,60,0.35)');
+    ctx.fillStyle = g; ctx.fillRect(r.x0, r.wy, 90, 180);
+    ctx.restore();
+    // the payline (gold while it is a step) and its arrows
+    const pl = gc2Plat(r), yp = r.wy + GC2.cellH;
+    ctx.strokeStyle = pl ? C.gold : 'rgba(232,52,78,0.75)'; ctx.lineWidth = r.flash > 0 ? 4 : 2.5;
+    rr(r.x0 + 1, yp, 88, 60, 4); ctx.stroke();
+    ctx.fillStyle = C.gold;
+    for (const sx of [r.x0 - 6, r.x1 + 6]) { const d = sx < r.x0 ? 1 : -1; ctx.beginPath(); ctx.moveTo(sx, yp + 22); ctx.lineTo(sx + 7 * d, yp + 30); ctx.lineTo(sx, yp + 38); ctx.fill(); }
+    // the need tag, on the stand under the window (over the window if there is no room)
+    if (r.need) {
+      const nw = big ? 80 : 64, nh = big ? 30 : 24, ny = wb + 8 + nh <= GC2.panelY - 2 ? wb + 8 : r.wy - 12 - nh;
+      ctx.fillStyle = 'rgba(28,26,54,0.85)'; rr(cx - nw / 2, ny, nw, nh, 10); ctx.fill();
+      text('need', cx - nw / 2 + (big ? 23 : 19), ny + nh / 2, big ? 16 : 12, C.paper, 'center', 'body');
+      ctx.save(); ctx.translate(cx + nw / 2 - 16, ny + nh / 2); ctx.scale(0.3, 0.3); gc2DrawSym(r.need, -45, -32); ctx.restore();
+    }
+    // an upward reel: a gold ▲ badge on both top corners of its frame
+    if (r.dir < 0) for (const ux of [r.x0 - 2, r.x1 + 2]) {
+      const ur = big ? 12 : 9;
+      ctx.fillStyle = C.gold; circle(ux, r.wy - 2, ur); ctx.fill(); ctx.strokeStyle = '#7a1838'; ctx.lineWidth = 2; ctx.stroke();
+      text('▲', ux, r.wy - 1.5, big ? 15 : 11, '#7a1838', 'center');
+    }
+    // hold bulbs (time left before it spins again)
+    if (ph.holdT != null && !ph.luckyHold && r.state === 'stop' && live && pl) {
+      const f = clamp(r.holdLeft / ph.holdT, 0, 1), warn = f < 0.3, blink = warn && Math.floor(t * 8) % 2;
+      ctx.fillStyle = warn ? 'rgba(122,20,40,0.88)' : 'rgba(28,26,54,0.8)'; rr(r.x0 + 7, r.wy + 160, 76, 16, 8); ctx.fill();
+      for (let k = 0; k < 6; k++) { const on = k < Math.ceil(f * 6); ctx.fillStyle = on ? (blink ? '#fff' : C.gold) : 'rgba(255,255,255,0.22)'; circle(r.x0 + 15 + k * 12, r.wy + 168, on ? 4.2 : 3.2); ctx.fill(); }
+    }
+  }
+  // the top reel's cherry: dots show the boing arc to his hat
+  const top = ph.reels[ph.order[ph.reels.length - 1]], tp = gc2Plat(top), rnP = ph.P[ph.runner];
+  if (live && tp && tp.bounce && !rnP.launch) {
+    const H = gc2Hat(st.boss), x0 = (top.x0 + top.x1) / 2, y0 = tp.top, yt = gc2BopY(st), ya = yt - GC2.launchApex, g = PHYS.g;
+    const vy = Math.sqrt(2 * g * Math.max(40, y0 - ya)), tt = vy / g + Math.sqrt(2 * (yt - ya) / g), vx = (H.x - x0) / tt;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.2;
+    for (let i = 1; i < 12; i++) {
+      const tm = tt * i / 12, lit = (t * 1.6 + 1 - i / 12) % 1 < 0.14;   // a sparkle runs along the dots toward his hat
+      ctx.globalAlpha = lit ? 0.95 : 0.55; ctx.fillStyle = lit ? C.gold : '#fff6c2';
+      circle(x0 + vx * tm, y0 - vy * tm + 0.5 * g * tm * tm, (big ? 5.5 : 4) * (lit ? 1.3 : 1)); ctx.fill(); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  // the STOP buttons on the panel, and a light from each down to the deck (bright under the stopper)
+  const sz = gc2Zone(st, G.players[ph.stopper]);
+  for (const r of ph.reels) {
+    const bx = (r.x0 + r.x1) / 2, here = sz === r.i && live, blink = r.beamT > 0 || ph.arrowR === r;
+    if (live) {
+      ctx.globalAlpha = here ? 0.38 : blink ? 0.16 + 0.16 * Math.abs(Math.sin(t * 7)) : 0.1;
+      ctx.fillStyle = '#ffec96'; ctx.beginPath();
+      ctx.moveTo(bx - 22, GC2.panelY + T); ctx.lineTo(bx + 22, GC2.panelY + T); ctx.lineTo(r.x1 + 8, GC2.panelY + 4 * T); ctx.lineTo(r.x0 - 8, GC2.panelY + 4 * T); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = here ? 'rgba(255,215,94,0.95)' : 'rgba(255,215,94,' + (blink ? 0.75 : 0.5) + ')';
+      ctx.beginPath(); ctx.ellipse(bx, GC2.panelY + 4 * T - 1, 50, here ? 6 : 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    const by = GC2.panelY + 16, pulse = here ? 1 + 0.08 * Math.sin(t * 9) : 1;
+    ctx.fillStyle = here ? '#ff6b7c' : '#d83a50'; ctx.strokeStyle = here ? '#fff3c4' : '#7a1428'; ctx.lineWidth = here ? 2.5 : 2;
+    ctx.beginPath(); ctx.ellipse(bx, by, (big ? 34 : 26) * pulse, (big ? 12 : 10) * pulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    text('STOP', bx, by + 0.5, big ? 16 : 12, '#fff', 'center', 'body');
+  }
+  // the big red button on his hat
+  const b = st.boss;
+  if (!b.hidden) {
+    const H = gc2Hat(b), sq = ph.bopT > 0 ? Math.sin(ph.bopT / 0.5 * Math.PI) * 0.5 : 0, glow = live ? 0.5 + 0.5 * Math.sin(t * 5) : 0;
+    if (glow) { ctx.fillStyle = `rgba(255,236,150,${0.25 * glow})`; circle(H.x, H.y - 6, 22); ctx.fill(); }
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+    ctx.fillStyle = '#d9dbe8'; rr(H.x - 15, H.y - 4, 30, 6, 3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ff4d5e'; ctx.beginPath(); ctx.ellipse(H.x, H.y - 4, 13, 10 * (1 - sq), 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.ellipse(H.x - 4, H.y - 9 + sq * 5, 4, 2.5 * (1 - sq * 0.6), -0.3, 0, Math.PI * 2); ctx.fill();
+    // the glass dome over it (the first bop pops it)
+    if (ph.dome) {
+      const dh = 8 + GC2.dome;
+      ctx.fillStyle = 'rgba(205,236,255,0.38)'; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(H.x, H.y - 2, 18, dh, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(H.x - 1, H.y - 2, 13, -2.7, -2.0); ctx.stroke();
+    }
+  }
+}
+function gc2DrawTop(st) {
+  const ph = st.ph, big = hudBig();
+  if (!ph.reels) return;
+  // the reel the runner waits for: a ▼ over its STOP button, in the stopper's colour
+  if (ph.arrowR) {
+    const r = ph.arrowR, bx = (r.x0 + r.x1) / 2, y = GC2.panelY + 46 + Math.abs(Math.sin(G.clock * 5)) * 6;
+    bigText('▼', bx, y, big ? 28 : 22, PCOL[ph.stopper]);
+  }
+  for (const p of G.players) {
+    const P = ph.P[p.id];
+    if (P.shoutT > 0 && p.alive) bigText('STOP!', p.x + p.w / 2, p.y - 34 - gcHeadLift(st, p), big ? 26 : 20, PCOL[p.id], 1 + 0.15 * Math.sin(P.shoutT * 20));
+  }
+}
 /* ===== END GC PHASE 2 ===== */
 
 /* ===== GC PHASE 3: LAVA ===== */
