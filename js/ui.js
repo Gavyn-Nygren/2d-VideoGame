@@ -375,7 +375,7 @@ function showFinal() {
   showOverlay(`
     <div class="card fit-card">
       <p class="eyebrow">${beat ? 'The end' : 'Demo complete'}</p>
-      <h2>${beat ? 'You beat the whole game' : 'Nice teamwork'}, <span class="nm-pip">Pip</span> &amp; <span class="nm-bo">Bo</span>${beat ? '!' : ''}</h2>
+      <h2>${beat ? 'You beat the Grand Collector' : 'Nice teamwork'}, <span class="nm-pip">Pip</span> &amp; <span class="nm-bo">Bo</span>${beat ? '!' : ''}</h2>
       ${totalsStats(all.tot)}
       <div class="table-wrap"><table class="summary worlds">
         <thead><tr><th>World</th><th style="text-align:right">Result</th></tr></thead>

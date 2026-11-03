@@ -102,9 +102,9 @@ One big boss level (Gavyn picked "The Grand Collector"); the world name is Claud
   - **Grand Finale** (4-3, 6-2): set and spike his balls back (whoever spiked sets next), then pull his plug together. Pieces 4, 6, 1.
 - Soft failure only: his tosses and claw are telegraphed and cause a "Bonk!" (counted, never death). He waits during cards, cutscenes, celebrations and when nobody plays for 10 s. Gold help per phase (Lucky aim, Lucky slow-mo / magnet / hold, Cool breeze, Super steps, Big mitts, Floaty balls, Magnet balls, Super grip).
 - Fairness rules from QA: in Room 1 a key held from before a swap is ignored until let go (or 0.4 s). In Room 2 the low good reels stay stopped after a dome pop, so a miss costs one climb, not all of it. In Room 3 the checkpoint never rises above your own button or valve floor, the lava never rises past floor 3, a hint says "Drop down to your button!" when you climb too high, and Super steps wait while someone stands under them. In Room 4 the ball rally is "BOING!" and "N more hits!", fast whiffs add a short lock (so mashing is slow), and the plug pull is tuned so a pair wins in about 10-13 s.
-- Hints, HUD and cards: the per-room keys in the top legend and the in-world hints follow each player's own device (keyboard, controller or touch). The news line, health strip and pills fade while a player is under them. The results card is 4 tiles and 1 line, with no Falls tile. The ending is about 6.5 s (hops and confetti), and beating this last level turns the final card into "The end".
+- Hints, HUD and cards: the per-room keys in the top legend and the in-world hints follow each player's own device (keyboard, controller or touch). The news line, health strip and pills fade while a player is under them. The results card is 4 tiles and 1 line, with no Falls tile. The ending is about 6.5 s (hops and confetti), and beating this last level turns the final card into "The end" ("You beat the Grand Collector").
 - Code: one file, `js/levels/world10/grand-collector.js`, in marked sections (GC CORE, then GC PHASE 1-4). Each room def names its `phase`; the core owns `MODES.collector` and calls `GC_PHASES[phase]` hooks. R restarts the whole level from phase 1.
-- Bot times: perfect pair about 3:00, good pair 4:05-4:40 (phases about 55, 45-80, 50-55, 58-91 s). Trophy: Gold up to 5:30 and 5 bonks, Silver up to 9:00 and 14 bonks. Real playtests may show these need tuning.
+- Bot times: perfect pair about 3:00, good pair 4:18-4:58 (phases about 55-74, 51-81, 52-58, 57-102 s), human-like parent + kid bots 4:51-5:40. Trophy: Gold up to 5:30 and 5 bonks, Silver up to 9:00 and 14 bonks. Real playtests may show these need tuning.
 
 ## How the game is built
 
@@ -157,6 +157,6 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 - Then push to `main` here and update the README's world list and this file.
 
 ## Open questions for Gavyn
-- World 9 is called "Great Escapes" (Claude's pick). Keep it or rename it?
+- World 9 is called "Great Escapes" and World 10 "Grand Finale" (Claude's picks). Keep them or rename them?
 - Crown Keep (2-4) is one 90-second game, not best of 3/5/7. It was built before that rule. Should it become a best-of match?
 - Boost rings exist in the golf engine but no hole uses them. Want a hole with rings?
