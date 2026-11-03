@@ -13,6 +13,9 @@
      key       the level's def.mode ('koth', 'pizza'...), or for the older levels without a mode: 'level:<name>' for each
                World 1 level, 'build' (2-1, 2-2), 'pong' (2-3), 'crown' (2-4), 'golf' (World 3).
      reset(st, p, info)            optional: a level loaded or a new room started (st is a fresh {} for this player)
+     bubblePos(p)                  optional: { x, y } of the top centre of where the level draws this player, for levels
+                                   that draw players somewhere other than p.x / p.y (cars, a floe...)
+     noIdleStop                    optional: true to keep playing when the person has pressed nothing for CPU.idleStop s
      think(st, p, o, dt, info)     every step while a level is playing (also during intro cards, countdowns and banners,
                                    when presses are ignored anyway). Returns { left, right, jump, down, up, act }.
                                    jump / act may be true (held), false, or 'tap' (a fresh press: pressed this step if it
@@ -28,12 +31,15 @@ const CPU = {
   idle: [0, 0],        // seconds since each person last pressed anything
   bubbles: [null, null], // speech bubbles: { text, t, max }
   errs: new Set(),
+  skillOf: [null, null], // bot tests: a skill name per player instead of the setting
+  filter: null,          // bot tests: (p, out, dt) -> out, to make a computer player clumsy or slow on purpose
+  idleStop: 30,          // 1-player mode: after this many seconds with the person pressing nothing, the computer waits too
   // the 1-player settings, saved in the browser
   cfg: { players: 2, human: 0, skill: 'normal' },
 };
 const CPU_SKILL = { easy: 0.35, normal: 0.7, hard: 1 };
 const CPU_SKILL_NAMES = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
-const cpuSkill = () => CPU_SKILL[CPU.cfg.skill] || 0.7;
+const cpuSkill = id => CPU_SKILL[(id != null && CPU.skillOf[id]) || CPU.cfg.skill] || 0.7;
 const cpuOn = id => !!(G.cpuOn && G.cpuOn[id]);
 const cpuSolo = () => !!(G.cpuOn && (G.cpuOn[0] !== G.cpuOn[1]));
 // the person in 1-player mode (null with two people or two computers)
@@ -66,7 +72,7 @@ const cpuBrainFor = def => CPU.brains[cpuBrainKey(def)] || CPU.brains.follow;
 function cpuInfo(p) {
   const o = G.players[1 - p.id];
   return {
-    L: G.level, def: G.level.def, mst: G.mst, room: G.room || 0, skill: cpuSkill(),
+    L: G.level, def: G.level.def, mst: G.mst, room: G.room || 0, skill: cpuSkill(p.id),
     partnerCpu: cpuOn(o.id), partnerIdle: cpuOn(o.id) ? 0 : CPU.idle[o.id],
     frozen: matchFrozen(), intro: G.introT > 0, time: G.time,
   };
@@ -108,8 +114,11 @@ function cpuTick(dt) {
   if (G.mode !== 'play') return;
   for (const p of G.players) {
     if (!cpuOn(p.id)) continue;
-    const brain = cpuBrainFor(G.level.def);
-    const out = (brain && cpuCall(brain, 'think', [CPU.st[p.id], p, G.players[1 - p.id], dt, cpuInfo(p)])) || {};
+    const brain = cpuBrainFor(G.level.def), o = G.players[1 - p.id];
+    let out = (brain && cpuCall(brain, 'think', [CPU.st[p.id], p, o, dt, cpuInfo(p)])) || {};
+    // the person walked away: the computer waits too (a level can opt out with brain.noIdleStop)
+    if (!cpuOn(o.id) && CPU.idle[o.id] > CPU.idleStop && !(brain && brain.noIdleStop)) out = {};
+    if (CPU.filter) out = CPU.filter(p, out, dt) || out;
     cpuApply(p, out);
   }
 }
@@ -238,7 +247,8 @@ function cpuDraw() {
     ctx.save(); ctx.globalAlpha = a;
     ctx.font = '700 13px "Atkinson Hyperlegible", sans-serif';
     const tw = ctx.measureText(b.text).width, w = tw + 16, h = 22;
-    const px = cpuCx(p), x = clamp(px - w / 2, 4, W - w - 4), y = clamp(p.y - 44, 4, H - h - 4);
+    const br = cpuBrainFor(G.level.def), at = (br && br.bubblePos && cpuCall(br, 'bubblePos', [p])) || { x: cpuCx(p), y: p.y };
+    const px = at.x, x = clamp(px - w / 2, 4, W - w - 4), y = clamp(at.y - 44, 4, H - h - 4);
     ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = PDARK[p.id]; ctx.lineWidth = 2;
     rr(x, y, w, h, 10); ctx.fill(); ctx.stroke();
     const tx = clamp(px, x + 10, x + w - 10);
