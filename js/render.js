@@ -480,9 +480,10 @@ function drawNameTags(alpha) {
     if (!p.alive) continue;
     const x = p.x + p.w / 2, y = p.y - 16 - ((LEVELS[G.levelIndex] || {}).tagLift || 0); // tagLift: a level that carries things overhead
     ctx.save(); ctx.globalAlpha = alpha;
-    ctx.fillStyle = PCOL[p.id]; rr(x - 18, y - 11, 36, 18, 9); ctx.fill();
+    const cpu = cpuSolo() && cpuOn(p.id), hw = cpu ? 30 : 18; // the computer's tag says so
+    ctx.fillStyle = PCOL[p.id]; rr(x - hw, y - 11, hw * 2, 18, 9); ctx.fill();
     ctx.beginPath(); ctx.moveTo(x - 4, y + 7); ctx.lineTo(x + 4, y + 7); ctx.lineTo(x, y + 11); ctx.fill();
-    text(NAMES[p.id], x, y - 1.5, 12, '#fff', 'center', 'body');
+    text(cpu ? NAMES[p.id] + ' · CPU' : NAMES[p.id], x, y - 1.5, 12, '#fff', 'center', 'body');
     ctx.restore();
   }
 }
@@ -626,6 +627,7 @@ function render(dt) {
   if (G.golf && G.mode !== 'title') { drawGolfClub(); drawGolfBall(); }
   drawCrown();
   drawHook('drawTop');
+  cpuDraw();
   for (const q of G.particles) {
     ctx.globalAlpha = clamp(q.life / q.max, 0, 1);
     ctx.fillStyle = q.col;

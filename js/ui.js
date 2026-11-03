@@ -59,6 +59,10 @@ function actKey(id) {
 // one line for the level intro card: how to use the action button
 // def.act.padGlyph names another controller button here (e.g. 'a' where A does the action for a seated role)
 function actHintLine() {
+  if (cpuSolo()) {
+    const h = cpuHuman(), k = actKey(h), a = G.level && G.level.def.act, lab = actLabel(h);
+    return k === 'pad' ? 'Press ' + glyph((a && a.padGlyph) || 'act') + ' to ' + lab : k === 'touch' ? 'Tap the round button to ' + lab : 'Press F or / to ' + lab;
+  }
   const ks = [0, 1].map(actKey), a = G.level && G.level.def.act, pg = glyph((a && a.padGlyph) || 'act');
   const one = (k, how) => { const lab = actLabel(k); return how === 'pad' ? pg + ' to ' + lab : how === 'touch' ? 'round button to ' + lab : (k === 0 ? 'F' : '/') + ' to ' + lab; };
   if (ks[0] === ks[1] && ks[0] !== 'kb' && actLabel(0) === actLabel(1)) return ks[0] === 'pad' ? 'Press ' + one(0, 'pad') : 'Tap the ' + one(0, 'touch');
@@ -144,13 +148,14 @@ function showTitle() {
   loadLevel(0, 'title');
   showOverlay(`
     <div class="card">
-      <p class="eyebrow">Playable demo · 2 players · 1 screen</p>
+      <p class="eyebrow">Playable demo · <span data-cpu-eyebrow>${CPU.cfg.players === 1 ? '1 player + computer' : '2 players'}</span> · 1 screen</p>
       <h1><span class="nm-pip">Pip</span> <span style="color:var(--gold)">&amp;</span> <span class="nm-bo">Bo</span></h1>
       <p class="lede">${titleLede()}</p>
       <div class="duo kb-only">
         <div class="pcard pip"><div class="nm nm-pip">Pip</div><div class="keys"><span><kbd>A</kbd><kbd>D</kbd> move</span><span><kbd>W</kbd> jump</span><span><kbd>S</kbd> drop down</span></div></div>
         <div class="pcard bo"><div class="nm nm-bo">Bo</div><div class="keys"><span><kbd>←</kbd><kbd>→</kbd> move</span><span><kbd>↑</kbd> jump</span><span><kbd>↓</kbd> drop down</span></div></div>
       </div>
+      ${cpuCfgHTML()}
       <div class="actions-row"><button class="primary" type="button" data-act="start" data-primary>Start World 1</button><span class="hint kb-only">or press Enter</span></div>
       <p class="hint touch-only">Pip uses the orange buttons on the left, Bo uses the blue buttons on the right. ▲ jumps, ▼ drops through planks.</p>
       <div class="pcard pad-only">
@@ -166,6 +171,7 @@ function showTitle() {
 
 // the action button's keys, for cards (only levels with def.act)
 function actKeysHTML() {
+  if (cpuSolo()) return actKeysSoloHTML();
   const l0 = esc(actLabel(0)), l1 = esc(actLabel(1)), lab = l0 === l1 ? l0 : `<span class="nm-pip">Pip</span> ${l0}, <span class="nm-bo">Bo</span> ${l1}`;
   const a = G.level && G.level.def.act, pg = esc((a && a.padGlyph) || 'act');
   // mixed input (one on a controller, one on the keyboard or touch): each player's own key, shown whatever the page mode
@@ -178,6 +184,13 @@ function actKeysHTML() {
   if (ks[0] === 'pad') return `<p class="act-keys"><span><span data-glyph="${pg}"></span> ${lab}</span></p>`;
   if (ks[0] === 'touch') return `<p class="act-keys"><span>Round button: ${lab}</span></p>`;
   return `<p class="act-keys"><span class="kb-only"><b class="nm-pip">Pip</b> <kbd>F</kbd> ${l0}</span><span class="kb-only"><b class="nm-bo">Bo</b> <kbd>/</kbd> ${l1}</span><span class="pad-only"><span data-glyph="${pg}"></span> ${lab}</span><span class="touch-only">Round button: ${lab}</span></p>`;
+}
+// 1-player mode: the person's action key (either player's key works), and the computer's word for its own job
+function actKeysSoloHTML() {
+  const h = cpuHuman(), c = 1 - h, lh = esc(actLabel(h)), lc = esc(actLabel(c)), k = actKey(h);
+  const a = G.level && G.level.def.act, pg = esc((a && a.padGlyph) || 'act');
+  const mine = k === 'pad' ? `<span data-glyph="${pg}"></span> ${lh}` : k === 'touch' ? `round button ${lh}` : `<kbd>F</kbd> or <kbd>/</kbd> ${lh}`;
+  return `<p class="act-keys"><span>${nameSpan(h)} ${mine}</span>${lc !== lh ? `<span>${nameSpan(c)} (computer) ${lc}</span>` : ''}</p>`;
 }
 function pause() {
   if (G.mode !== 'play') return;
@@ -196,6 +209,7 @@ function pause() {
         <button class="ghost" type="button" data-act="replay">${m ? 'Restart match' : 'Restart level'}</button>
         <button class="ghost" type="button" data-act="menu">Title screen</button>
       </div>
+      ${cpuCfgHTML()}
       ${levelList()}
     </div>`);
 }
@@ -407,6 +421,7 @@ overlay.addEventListener('click', e => {
   else if (a === 'replay') loadLevel(G.levelIndex, 'play', { rematch: b.dataset.rematch === '1' });
   else if (a === 'resume') resume();
   else if (a === 'menu') showTitle();
+  else if (a === 'cpucfg') { const v = b.dataset.v; cpuSetCfg(b.dataset.k, /^\d+$/.test(v) ? +v : v); const pb = overlay.querySelector('[data-primary]'); (pb || b).focus({ preventScroll: true }); }
 });
 
 const muteBtn = document.getElementById('muteBtn');

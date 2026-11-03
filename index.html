@@ -10,8 +10,8 @@
   <header class="bar">
     <div class="brand" aria-label="Pip and Bo"><span class="pip">Pip</span> <span class="amp">&amp;</span> <span class="bo">Bo</span></div>
     <div class="legend" aria-label="Controls">
-      <span class="kb-only"><b class="nm-pip">Pip</b> <span data-leg="pip"><kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop</span><em class="acth"><kbd>F</kbd> <span data-actlabel>act</span></em></span>
-      <span class="kb-only"><b class="nm-bo">Bo</b> <span data-leg="bo"><kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> drop</span><em class="acth"><kbd>/</kbd> <span data-actlabel>act</span></em></span>
+      <span class="kb-only" data-legp="0"><b class="nm-pip">Pip</b> <span data-leg="pip"><kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop</span><em class="acth"><kbd>F</kbd> <span data-actlabel>act</span></em></span>
+      <span class="kb-only" data-legp="1"><b class="nm-bo">Bo</b> <span data-leg="bo"><kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> drop</span><em class="acth"><kbd>/</kbd> <span data-actlabel>act</span></em></span>
       <span class="kb-only"><kbd>R</kbd> restart <kbd>Esc</kbd> pause</span>
       <span class="pad-only">Controller: <span data-leg="pad">stick or d-pad move, <span data-glyph="a"></span> jump, down drops,</span><em class="acth"><span data-glyph="act"></span> <span data-actlabel>act</span>,</em> <span data-glyph="start"></span> pause</span>
     </div>
@@ -76,6 +76,9 @@
 <script src="js/levels/world9/ice-age-glacier.js"></script>
 <script src="js/levels/world9/krakatoa-ash-run.js"></script>
 <script src="js/levels/world10/grand-collector.js"></script>
+<script src="js/cpu/cpu-core.js"></script>
+<script src="js/cpu/cpu-nav.js"></script>
+<!-- CPU-BRAINS -->
 <script src="js/input.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/render.js"></script>

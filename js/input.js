@@ -103,6 +103,8 @@ const padSlots = () => Pads.slots.map(ix => (ix === null ? null : { ix }));
 // which controller belongs to which player (slot list may have gaps)
 function padFor(states, player) {
   if (!states.length) return null;
+  // 1-player mode: the first connected controller plays the person, never the computer
+  if (cpuSolo()) return player === cpuHuman() ? states.find(Boolean) || null : null;
   if (states.length === 1) return player === (Pads.swap ? 1 : 0) ? states[0] : null;
   return states[(player === 0) !== Pads.swap ? 0 : 1] || null;
 }
@@ -124,6 +126,7 @@ function refreshGlyphs() {
   const who = document.querySelectorAll('[data-padwho]');
   who.forEach(el => {
     const has = [0, 1].map(k => !!padFor(padSlots(), k));
+    if (cpuSolo()) { el.textContent = has[cpuHuman()] ? `The controller plays ${NAMES[cpuHuman()]}. The computer plays ${NAMES[1 - cpuHuman()]}.` : 'No controller yet: press any button on one to connect it.'; return; }
     el.textContent = has[0] && has[1] ? `Controller 1 plays ${NAMES[Pads.swap ? 1 : 0]}, controller 2 plays ${NAMES[Pads.swap ? 0 : 1]}.`
       : has[0] || has[1] ? `The controller plays ${NAMES[has[0] ? 0 : 1]}. ${NAMES[has[0] ? 1 : 0]} can use the keyboard (${has[0] ? 'arrow keys' : 'W A S D'}) or press a button on a second controller.`
       : 'No controller yet: press any button on one to connect it.';
@@ -181,8 +184,13 @@ function menuActivate() {
 function pollInput(dt = 1 / 60) {
   const pads = readPads();
   if (pads.some(p => p && p.s.active)) setKind('pad');
+  const solo = cpuSolo();
   G.players.forEach((p, i) => {
-    const bind = BIND[i], pad = padFor(pads, i), ps = pad ? pad.s : {}, t = touchState[i];
+    if (cpuOn(i)) return; // the computer's presses come from cpuTick (js/cpu/cpu-core.js)
+    // 1-player mode: the person can use either player's keys
+    const bind = solo ? { left: BIND[0].left.concat(BIND[1].left), right: BIND[0].right.concat(BIND[1].right), jump: BIND[0].jump.concat(BIND[1].jump),
+      down: BIND[0].down.concat(BIND[1].down), act: BIND[0].act.concat(BIND[1].act) } : BIND[i];
+    const pad = padFor(pads, i), ps = pad ? pad.s : {}, t = touchState[i];
     const any = k => bind[k].some(c => keys.has(c) || tapLive(keysTapped, c)) || !!ps[k] || !!t[k] || tapLive(touchTapped[i], k);
     p.input.left = any('left'); p.input.right = any('right'); p.input.down = any('down'); p.input.up = !!ps.up;
     const j = any('jump');

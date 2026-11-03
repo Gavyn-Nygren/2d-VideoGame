@@ -7,6 +7,7 @@ const G = {
   time: 0, falls: 0, doorHold: 0, doorIn: [false, false], clearT: 0, introT: 0,
   crown: null, vs: null, results: [], particles: [], shake: 0, clock: 0, taut: false, spawnPts: [],
   mst: {}, lmode: null, match: null, // level mode state (G.mst), the level's MODES entry, best-of-N match state
+  cpuOn: [false, false], // where the computer plays that character (1-player mode, js/cpu/cpu-core.js)
 };
 function parseLevel(def) {
   const grid = def.map.map(r => r.split(''));
@@ -93,12 +94,14 @@ function loadLevel(i, mode = 'play', opts = {}) {
   if (G.match) G.match.phase = G.introT > 0 ? 'intro' : 'ready'; // what round 1 starts with (setup may read it)
   hook('setup', G.mst, L);
   if (G.match) startMatchRound(true);
+  cpuReset();
   if (mode === 'play') hideOverlay();
 }
 
 function step(dt) {
   const L = G.level, ps = G.players;
   G.time += dt; G.tickN = (G.tickN || 0) + 1; tapClock++;
+  cpuTick(dt); // the computer player's presses for this step (1-player mode)
   if (G.introT > 0) G.introT -= dt;
   if (G.build) { buildStep(dt); if (G.mode !== 'play') return; }
   if (G.golf) { golfStep(dt); return; }
@@ -263,6 +266,7 @@ function nextRoom() {
   applyTheme(LEVELS[G.levelIndex].world, L.def.theme); // a room can have its own def.theme
   Sfx.play('room'); rumble(0, 0.2, 0.4, 120); rumble(1, 0.2, 0.4, 120);
   hook('room', G.room, L);
+  cpuRoom();
 }
 
 // Nudge a checkpoint spawn sideways so nobody respawns standing on a button.
@@ -437,8 +441,11 @@ try { new ResizeObserver(fit).observe(stageWrap); } catch (e) { /* older browser
 window.__pipbo = { PONG, G, LEVELS, loadLevel, nextRoom, BUNGEE, CHAIN, GOLF, step, parseLevel, PHYS, T, DT, showTitle, pause, resume,
   // versus framework
   MODES, WORLDS, MATCH, C, Sfx, matchRoundEnd, versusEnd, levelClear, showResult, knock, rumble, burst, puff, confetti, applyTheme,
-  pollInput, readPad, fit, liveWorlds, worldLevels, levelCode, makePlayer, NO_INPUT, keys };
+  pollInput, readPad, fit, liveWorlds, worldLevels, levelCode, makePlayer, NO_INPUT, keys,
+  // computer partner
+  CPU, cpuBrain, cpuBrainKey, cpuApplyCfg, cpuSetCfg, cpuNav, cpuNavReach, cpuNavCell, NAV };
 
 fit();
+cpuLoadCfg();
 showTitle();
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
