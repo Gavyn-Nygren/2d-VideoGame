@@ -146,6 +146,20 @@ function cpuSteer(out, p, x, dead = 4) {
   out.left = d < -dead; out.right = d > dead;
   return Math.abs(d) <= dead;
 }
+// like cpuSteer, but for a platformer player: it lets go (or pushes back) early enough not to overshoot x, using the
+// game's acceleration (on the ground or in the air), so it can stop on a button or land on a partner's head
+function cpuSeek(out, p, x, dead = 3) {
+  const d = x - cpuCx(p), v = p.vx, acc = p.grounded ? PHYS.fricG : PHYS.accA;
+  out.left = out.right = false;
+  if (Math.abs(d) <= dead) {
+    if (Math.abs(v) > 40) { out.left = v > 0; out.right = v < 0; }
+    return Math.abs(v) <= 40;
+  }
+  const toward = Math.sign(d);
+  if (Math.sign(v) === toward && (v * v) / (2 * acc) >= Math.abs(d) - dead * 0.5) { out.left = v > 0; out.right = v < 0; }
+  else { out.left = toward < 0; out.right = toward > 0; }
+  return false;
+}
 // a short speech bubble over the computer player ("Your turn!", "Hop on!"); the same text again only refreshes it
 function cpuSay(p, text, secs = 1.8) {
   if (!cpuOn(p.id) || !cpuSolo()) return;

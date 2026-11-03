@@ -443,7 +443,7 @@ window.__pipbo = { PONG, G, LEVELS, loadLevel, nextRoom, BUNGEE, CHAIN, GOLF, st
   MODES, WORLDS, MATCH, C, Sfx, matchRoundEnd, versusEnd, levelClear, showResult, knock, rumble, burst, puff, confetti, applyTheme,
   pollInput, readPad, fit, liveWorlds, worldLevels, levelCode, makePlayer, NO_INPUT, keys,
   // computer partner
-  CPU, cpuBrain, cpuBrainKey, cpuApplyCfg, cpuSetCfg, cpuNav, cpuNavReach, cpuNavCell, NAV };
+  CPU, cpuBrain, cpuBrainKey, cpuSeek, cpuApplyCfg, cpuSetCfg, cpuNav, cpuNavReach, cpuNavCell, NAV };
 
 fit();
 cpuLoadCfg();

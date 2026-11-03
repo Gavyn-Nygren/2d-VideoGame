@@ -10,9 +10,10 @@
 //   --who=idle   the computer plays Bo, Pip presses nothing: the computer must not clear a team level alone (and must
 //                not get stuck in an error); versus: the computer should win
 //   --who=noisy  the computer plays both, but Pip is made clumsy like a distracted person: it stops for 1-4 s now and
-//                then, reacts 0.25 s late, and sometimes jumps or presses the action for no reason. Bo must still get
+//                then, wanders the wrong way for a moment, and sometimes jumps or presses the action for no reason. Bo must still get
 //                the level done with this partner (team) or beat it most of the time (versus, at the same skill).
 //   --who=solo   the computer plays Bo, Pip is the simple "follow and copy" test bot below (rough stand-in for a person)
+//   --clumsy=1   with --who=noisy, Bo is the clumsy one instead of Pip
 //   --skills     a skill per player (Pip,Bo), e.g. --skills=easy,hard to check that Hard beats Easy in versus levels
 //   --max        simulated seconds before giving up (default 600)
 //   --seeds      runs every level once per seed, with Math.random made repeatable (default: one run, seed 1)
@@ -28,6 +29,7 @@ const levelsArg = args.find(a => !a.startsWith('--')) || 'all';
 const who = opt('who', 'pair'), skill = opt('skill', 'normal'), maxT = +opt('max', 600);
 const seeds = opt('seeds', opt('seed', '1')).split(',').map(Number);
 const skills = (opt('skills', '') || skill + ',' + skill).split(',');
+const clumsy = +opt('clumsy', 0);
 
 (async () => {
   const browser = await chromium.launch();
@@ -45,7 +47,7 @@ const skills = (opt('skills', '') || skill + ',' + skill).split(',');
   for (const lv of want) for (const seed of seeds) {
     errors.length = 0;
     const t0 = Date.now();
-    const r = await page.evaluate(async ({ i, who, skills, maxT, seed }) => {
+    const r = await page.evaluate(async ({ i, who, skills, maxT, seed, clumsy }) => {
       const P = window.__pipbo, G = P.G;
       window.__seed(seed * 7919);
       G.manual = true;
@@ -53,14 +55,17 @@ const skills = (opt('skills', '') || skill + ',' + skill).split(',');
       P.CPU.errs.clear();
       G.cpuOn = who === 'pair' || who === 'noisy' ? [true, true] : [false, true];
       // the clumsy partner for --who=noisy (Pip only)
-      const nz = { pause: 0, next: 3 + Math.random() * 6, lag: [] };
+      const nz = { pause: 0, next: 3 + Math.random() * 6, wander: 0, wdir: 0, wnext: 6 + Math.random() * 8 };
       P.CPU.filter = who !== 'noisy' ? null : (p, out, dt) => {
-        if (p.id !== 0) return out;
-        nz.lag.push(Object.assign({}, out));
-        if (nz.lag.length > 30) out = nz.lag.shift(); else out = {};
+        if (p.id !== clumsy) return out;
+        // stops now and then (looks away from the screen)
         if (nz.pause > 0) { nz.pause -= dt; return {}; }
         nz.next -= dt;
         if (nz.next <= 0) { nz.pause = 1 + Math.random() * 3; nz.next = 4 + Math.random() * 8; }
+        // wanders off the wrong way for a moment
+        nz.wnext -= dt;
+        if (nz.wnext <= 0) { nz.wander = 0.4 + Math.random() * 1; nz.wdir = Math.random() < 0.5 ? -1 : 1; nz.wnext = 6 + Math.random() * 10; }
+        if (nz.wander > 0) { nz.wander -= dt; return { left: nz.wdir < 0, right: nz.wdir > 0 }; }
         if (Math.random() < 0.15 * dt) out.jump = true;
         if (Math.random() < 0.1 * dt) out.act = true;
         return out;
@@ -103,7 +108,7 @@ const skills = (opt('skills', '') || skill + ',' + skill).split(',');
       }
       if (G.match) out.match = { round: G.match.round, wins: G.match.wins, phase: G.match.phase };
       return out;
-    }, { i: lv.i, who, skills, maxT, seed });
+    }, { i: lv.i, who, skills, maxT, seed, clumsy });
     r.seed = seed; r.code = lv.code; r.name = lv.name; r.levelKind = lv.kind; r.errors = errors.slice(0, 5); r.wallS = Math.round((Date.now() - t0) / 100) / 10;
     results.push(r);
     if (!flag('json')) {

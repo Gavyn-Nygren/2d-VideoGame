@@ -19,7 +19,8 @@
      whenever avoid changes its answer (so the map is rebuilt), solid(ch, p): replaces solidFor for the map,
      maxDx / maxUp / maxDown: how far one move may go in tiles (6, 4, 10), tol: px.
    cpuNavCell(p) -> { tx, ty } the cell the player stands in (or null in the air).
-   cpuNavReach(p, x, feetY, opts) -> seconds the way takes from the player's cell, or Infinity. */
+   cpuNavReach(p, x, feetY, opts) -> seconds the way takes from the player's cell, or Infinity.
+   While walking, a partner standing right in the way is hopped over (opts.noHop turns that off). */
 const NAV = { maxT: 2.4, hold: 0.06, cache: [null, null] };
 
 function navSolid(opts, ch, p) { return opts.solid ? opts.solid(ch, p) : solidFor(ch, p); }
@@ -217,9 +218,10 @@ function cpuNav(st, p, x, feetY, opts = {}) {
     if (b && e.kind !== 'walk') {
       const m = navSteer(e.kind, { x: p.x, vy: p.vy }, b.tx, true); out.left = m < 0; out.right = m > 0;
       out.jump = p.vy < 0 && (e.kind === 'jump' || e.kind === 'high' || e.kind === 'run');
-    } else cpuSteer(out, p, x, tol);
+    } else { cpuSteer(out, p, x, tol); out.jump = p.vy < 0 && N.hop; } // a hop over the partner (or a stuck hop) is a full jump
     return out;
   }
+  N.hop = false;
   const here = navFrom(g, p);
   const gk = goal ? goal.i + ':' + g.key : '';
   // just landed: did the move work?
@@ -231,8 +233,8 @@ function cpuNav(st, p, x, feetY, opts = {}) {
   // arrived at the goal cell: fine steering
   if (here.i === goal.i) {
     N.plan = null; N.cur = null;
-    const ok = cpuSteer(out, p, x, tol);
-    N.status = ok ? 'arrived' : 'moving';
+    const ok = cpuSeek(out, p, x, tol);
+    N.status = ok || Math.abs(cpuCx(p) - x) <= tol ? 'arrived' : 'moving';
     return out;
   }
   // the move under way: done, still going, or knocked off course?
@@ -252,9 +254,13 @@ function cpuNav(st, p, x, feetY, opts = {}) {
   const e = N.cur, a = g.cells[e.from], b = g.cells[e.to], dir = Math.sign(b.tx - a.tx), cx = cpuCx(p), ax = navCellX(a.tx);
   // stuck (a partner in the way, a moving thing): hop
   N.stuckT = Math.abs(cx - N.lastX) < 0.3 && (e.kind === 'walk' || e.kind === 'off') ? N.stuckT + dt : 0; N.lastX = cx;
-  if (N.stuckT > 0.9) { N.stuckT = 0; N.cur = null; N.plan = null; out.jump = !CPU.last[p.id].jump; out.left = dir < 0; out.right = dir > 0; return out; }
-  if (e.kind === 'walk') { out.left = dir < 0; out.right = dir > 0; return out; }
-  if (e.kind === 'off') { out.left = dir < 0; out.right = dir > 0; return out; }
+  if (N.stuckT > 0.9) { N.stuckT = 0; N.cur = null; N.plan = null; out.jump = !CPU.last[p.id].jump; N.hop = true; out.left = dir < 0; out.right = dir > 0; return out; }
+  if (e.kind === 'walk' || e.kind === 'off') {
+    out.left = dir < 0; out.right = dir > 0;
+    // the partner stands right in the way: hop over (or onto) them
+    if (!opts.noHop && navPartnerAhead(p, dir)) { out.jump = !CPU.last[p.id].jump; N.hop = true; }
+    return out;
+  }
   if (e.kind === 'drop') {
     if (N.phase !== 'go' && !cpuSteer(out, p, ax, 3)) return out;
     N.phase = 'go'; out.left = out.right = false; out.down = true; return out;
@@ -277,6 +283,13 @@ function cpuNav(st, p, x, feetY, opts = {}) {
   out.jump = true;
   const m = navSteer(e.kind, { x: p.x, vy: -PHYS.jumpV }, b.tx, true); out.left = m < 0; out.right = m > 0;
   return out;
+}
+// is the other player standing right in front of p, at the same height, in the way of walking `dir`?
+function navPartnerAhead(p, dir) {
+  const o = other(p);
+  if (!o.alive || !solidPartners() || Math.abs(cpuFeet(o) - cpuFeet(p)) > 8) return false;
+  const gap = dir > 0 ? o.x - (p.x + p.w) : p.x - (o.x + o.w);
+  return gap > -2 && gap < 12;
 }
 // no map way: walk straight at the point, jumping at walls and gaps
 function navGreedy(N, p, x, out, tol) {
