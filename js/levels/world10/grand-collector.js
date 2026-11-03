@@ -1519,9 +1519,641 @@ GC_PHASES.lava = gcPlaceholderPhase({ pose: 'sit', junk: 'pan', say: 'It’s get
 /* ===== END GC PHASE 3 ===== */
 
 /* ===== GC PHASE 4: FINALE ===== */
-// PLACEHOLDER: the phase 4 builder replaces everything between this line and END GC PHASE 4 with the real phase
-// (Grand Finale: set and spike, then pull the plug). It wins pieces 4, 6, then 1, and ends the level with gcEnding(st).
-GC_PHASES.finale = gcPlaceholderPhase({ pose: 'hover', lift: 90, junk: 'sock', say: 'You’ll never get the last ones!', ending: true });
+/* Grand Finale (a bright mix of Sunny Meadow, Rumble Park and Backyard Bash; borrows 4-3 Hot Potato Volleyball and
+   6-2 Tug of War). Part A, set and spike: he hovers over the net and serves big bouncy balls. The setter bumps a ball
+   up (action): "Set!", it glows gold and floats to the partner. The spiker hits a gold ball (action; jump + action is
+   a SPIKE) and it flies into his belly: BONK. Three bonks knock a piece out (4, then 6). Whoever spiked last sets next,
+   so the jobs swap after every bonk. A ball the spiker touches first, or one the setter touches twice, just plinks
+   ("Pass it!"); after three bounces it rolls away and he serves again. He tosses soft socks at whoever is waiting.
+   Part B, pull the plug: dizzy, he lands and sits; his power cord runs from his side to the wall. Both grab a knot on
+   the cord (action) and pull (hold or mash the action, or hold ◀). He tugs back now and then (a telegraphed yank). Only both
+   pulling together moves the plug; when it pops out he naps and piece 1 flies home, then the ending.
+   Help (gold): Big mitts (a bigger reach) after 3 rallies with no bonk, Floaty balls after 6, Magnet balls (they
+   drift to whoever is next) after 9; Super grip when the pull takes long. Map chars: K the wall socket, N the net (room def: setter = who sets first).
+   Stats in st.stats.finale. */
+const GC4 = {
+  floor: 450, ballR: 17, g: 620, gSlow: 470, floorE: 0.62, wallE: 0.8, netE: 0.5, maxBounce: 3, rollT: 0.6,
+  netH: 92, netHalf: 4,
+  serveGap: 1.4, swapGap: 2.0, firstServe: 1.2, serveDev: 70,           // s between balls (after a swap: time to read the badges)
+  setApex: 185, setMaxVx: 250, plinkVy: 300, headVy: 330,                 // a set rises this high and drifts to the spiker
+  swingT: 0.28, touchCD: 0.25, reachX: 22, reachUp: 40, mittsPx: 14,      // a press swings for swingT s
+  spikeT: 0.4, bumpT: 0.8, bonksPer: 3,                                   // shot flight time; bonks per piece
+  mittsAfter: 3, slowAfter: 6, magnetAfter: 9, magnet: 3,                  // rallies in a row with no bonk before help
+  hoverX: 790, hoverY: 360, swapAfter: 0.8, landT: 1.6, plugT: 0.7, swoop: [22, 60],   // px he drifts (second piece: wider)
+  tossFirst: 7, tossGap: [8, 11],
+  // the pull: knots on the cord, rate per s while both pull, plus per press (presses closer than pressGap add nothing)
+  knots: [470, 400], knotShift: 64, grabR: 34, pullHold: 0.4, rate: 0.05, perPress: 0.012, pressGap: 0.12,
+  yankGap: [3.2, 4.2], yankWarn: 0.7, yankBoth: 0.025, yankOne: 0.06, gripAfter: 14, gripRate: 1.5, gripYank: 0.4,
+  hintGap: 3.5,
+};
+// his serves, in turn: T = s in the air; aim = px past the setter toward the net (a bouncer lands short and bounces on)
+const GC4_SERVES = [{ T: 1.45, aim: 0 }, { T: 1.95, aim: 0, say: 'A big high one!' }, { T: 1.45, aim: 0 }, { T: 0.95, aim: 110, say: 'A bouncy one!' }];
+const gc4Next = ph => (!ph.ball || ph.ball.state === 'shot' ? -1 : ph.ball.state === 'set' ? 1 - ph.setter : ph.setter);
+const gc4Live = ph => ph.stage === 'rally';
+const gc4G = ph => (ph.mitts >= 2 ? GC4.gSlow : GC4.g);
+// short how-to words for each device: 'press F', 'press X', or 'tap set' (the touch button shows its own word)
+function gc4Do(id) {
+  const k = actKey(id);
+  return k === 'touch' ? 'tap ' + actLabel(id) : 'press ' + (k === 'pad' ? glyph('act') : id === 0 ? 'F' : '/');
+}
+function gc4Spike(id) {
+  const k = actKey(id);
+  return k === 'touch' ? 'jump, then tap ' + actLabel(id) : (k === 'pad' ? glyph('a') + ' + ' + glyph('act') : id === 0 ? 'W + F' : '↑ + /');
+}
+// the plug in his side (it slides out as they pull)
+function gc4PlugPos(st) {
+  const ph = st.ph, P = gcBossPts(st.boss), out = ph.stage === 'pull' ? ph.u * 34 : 0;
+  return { x: P.body.x0 - 8 - out, y: Math.min(P.band.y1 + 4, GC4.floor - 22) };
+}
+// the knots on the cord (they slide left as the plug comes out)
+const gc4KnotX = (ph, i) => GC4.knots[i] - ph.u * GC4.knotShift;
+// a player's swing reaches this box (bigger with Big mitts)
+function gc4Reach(ph, p) {
+  const m = Math.min(ph.mitts, 1) * GC4.mittsPx;
+  return { x0: p.x - GC4.reachX - m, x1: p.x + p.w + GC4.reachX + m, y0: p.y - GC4.reachUp - m, y1: p.y + p.h + 6 };
+}
+function gc4InReach(ph, p, b) {
+  const hb = gc4Reach(ph, p), hx = clamp(b.x, hb.x0, hb.x1), hy = clamp(b.y, hb.y0, hb.y1);
+  return (b.x - hx) ** 2 + (b.y - hy) ** 2 <= b.r * b.r;
+}
+// where a free ball first comes down through height y (walls and floor bounces included, the net left out): { x, t }
+function gc4Predict(ph, b, y, maxT = 4) {
+  if (!b || b.state === 'shot') return null;
+  const g = gc4G(ph), r = b.r, F = GC4.floor;
+  let x = b.x, yy = b.y, vx = b.vx, vy = b.vy, bounces = b.bounces;
+  const dt = 1 / 120;
+  for (let t = 0; t < maxT; t += dt) {
+    vy += g * dt; x += vx * dt; yy += vy * dt;
+    if (x - r < 0) { x = r; vx = Math.abs(vx) * GC4.wallE; }
+    if (vy > 0 && yy >= y) return { x, t };
+    if (yy + r >= F) { yy = F - r; vy = -vy * GC4.floorE; vx *= 0.85; if (++bounces >= GC4.maxBounce) return { x, t, dead: true }; }
+  }
+  return null;
+}
+function gc4Ball(x, y, vx, vy) {
+  return { x, y, vx, vy, r: GC4.ballR, state: 'free', bounces: 0, t: 0, cd: [0, 0], spin: 0, roll: 0, setT: 0, shot: null, trail: [] };
+}
+// he serves a ball at the setter (over the net, landing near them)
+function gc4Serve(st) {
+  const ph = st.ph, s = G.players[ph.setter], hand = gcBossPts(st.boss).hand, g = gc4G(ph);
+  const kind = GC4_SERVES[ph.serves % GC4_SERVES.length], dir = s.x + s.w / 2 < ph.netX - 140 ? 1 : -1;
+  const tx = clamp(s.x + s.w / 2 + dir * kind.aim + (gcRand() * 2 - 1) * GC4.serveDev, 70, ph.netX - 70), ty = GC4.floor - GC4.ballR, T0 = kind.T;
+  ph.ball = gc4Ball(hand.x, hand.y, (tx - hand.x) / T0, (ty - hand.y - 0.5 * g * T0 * T0) / T0);
+  st.boss.throwT = 0.45; ph.serves++; st.stats.finale.serves++;
+  Sfx.play('gc4Serve');
+  if (ph.serves === 1) gcSay(st, 'Catch! If you can!', 1.6);
+  else if (kind.say && !st.say) gcSay(st, kind.say, 1.5);
+}
+// a player's swing meets the ball
+function gc4Touch(st, p, b) {
+  const ph = st.ph, S = st.stats.finale, k = p.id, sp = 1 - ph.setter, cx = p.x + p.w / 2;
+  b.cd[k] = GC4.touchCD;
+  if (b.state === 'free') {
+    if (k === ph.setter) {   // a set: up it goes, gold, drifting toward the spiker
+      const q = G.players[sp], g = gc4G(ph), v = Math.sqrt(2 * g * GC4.setApex), ft = 2 * v / g;
+      const tx = clamp(q.x + q.w / 2, 60, ph.netX - 60);
+      b.vy = -v; b.vx = clamp((tx - b.x) / ft, -GC4.setMaxVx, GC4.setMaxVx); b.state = 'set'; b.setT = 0; b.bounces = 0;
+      S.sets[k]++;
+      gcPop(st, b.x, b.y - 30, 'Set!', C.gold, 24);
+      Sfx.play('gc4Set', k); rumble(k, 0.15, 0.35, 60); burst(b.x, b.y, C.gold, 8);
+      if (ph.setHints < 2) { ph.setHints++; gcHint(st, sp, 'Hit it! Jump for a SPIKE!', 2.2); }
+    } else {                 // the spiker touched it first: a little plink
+      b.vy = -GC4.plinkVy; b.vx = clamp((G.players[ph.setter].x - b.x) * 0.6, -120, 120);
+      gcPop(st, b.x, b.y - 26, 'Plink!', '#ffffff', 18); Sfx.play('gc4Plink', k);
+      if (ph.plinkHintT <= 0) { ph.plinkHintT = GC4.hintGap; gcHint(st, k, NAMES[ph.setter] + ' sets it first!', 2); }
+    }
+    return;
+  }
+  if (b.state !== 'set') return;
+  if (k === ph.setter) {     // hit twice by the same player: it plinks off (still gold)
+    b.vy = -GC4.plinkVy; b.vx = clamp((G.players[sp].x - b.x) * 0.6, -140, 140);
+    gcPop(st, b.x, b.y - 26, 'Pass it!', C.gold, 20); Sfx.play('gc4Plink', k);
+    if (ph.plinkHintT <= 0) { ph.plinkHintT = GC4.hintGap; gcHint(st, k, 'Pass it! ' + NAMES[sp] + ' hits it!', 2); }
+    return;
+  }
+  // the spiker hits a gold ball: it flies into his belly
+  const spike = !p.grounded && b.y < p.y + p.h * 0.5;
+  b.state = 'shot'; b.shot = { t: 0, d: spike ? GC4.spikeT : GC4.bumpT, x0: b.x, y0: b.y, spike, by: k };
+  b.trail = [];
+  if (spike) { S.spikes[k]++; gcPop(st, cx, p.y - 30, 'SPIKE!', PCOL[k], 30); Sfx.play('gc4Spike', k); rumble(k, 0.5, 0.6, 140); burst(b.x, b.y, PCOL[k], 12); }
+  else { S.bumps[k]++; gcPop(st, cx, p.y - 30, 'Nice hit!', PCOL[k], 24); Sfx.play('gc4Bump', k); rumble(k, 0.25, 0.4, 90); puff(b.x, b.y, 6, 'rgba(255,255,255,0.9)'); }
+  if (!reduceMotion && spike) G.shake = Math.max(G.shake, 0.08);
+}
+// a ball that leaves play without a bonk: a miss (help after a few in a row)
+function gc4BallGone(st, why) {
+  const ph = st.ph, b = ph.ball, S = st.stats.finale;
+  ph.ball = null; ph.serveT = GC4.serveGap;
+  if (!b || st.idle || !gc4Live(ph)) return;
+  ph.missRow++; S.misses++;
+  if (why === 'his') gcSay(st, gcRand() < 0.5 ? 'Mine! Ha!' : 'Ooh, a ball for me!', 1.5);
+  if (b.state === 'set') gcHint(st, 1 - ph.setter, 'So close! Get under the gold ball.', 2.4);
+  else gcHint(st, ph.setter, 'Bump it up before it rolls away!', 2.6);
+  if (ph.missRow >= GC4.mittsAfter && ph.mitts < 1) { ph.mitts = 1; gcHelp(st, 'Big mitts! You can reach the ball from further away.'); }
+  else if (ph.missRow >= GC4.slowAfter && ph.mitts < 2) { ph.mitts = 2; gcHelp(st, 'Floaty balls! They fall slower now.'); }
+  else if (ph.missRow >= GC4.magnetAfter && ph.mitts < 3) { ph.mitts = 3; gcHelp(st, 'Magnet balls! They float right to you.'); }
+}
+// BONK: a shot reached his belly
+function gc4Bonk(st) {
+  const ph = st.ph, b = ph.ball, S = st.stats.finale, pieces = G.level.def.pieces || [4, 6, 1];
+  const jar = gcBossPts(st.boss).jar;
+  ph.ball = null; ph.bonks++; ph.missRow = 0; S.hits[b.shot.by]++;
+  gcPop(st, jar.x - 20, jar.y - jar.r - 16, 'BONK!', C.gold, 36);
+  Sfx.play('gc4Boink'); rumble(0, 0.5, 0.6, 220); rumble(1, 0.5, 0.6, 220);
+  burst(jar.x, jar.y, '#ffffff', 10);
+  const n = Math.floor((ph.bonks - 1) / GC4.bonksPer), piece = pieces[n];
+  const left = GC4.bonksPer - ph.bonks % GC4.bonksPer;
+  if (left < GC4.bonksPer) {   // the piece wiggles loose: more bonks to knock it out
+    gcBossHit(st, gcRand() < 0.5 ? 'Ow! My tummy!' : 'Hey! Watch the jar!');
+    ph.wiggle = piece; gcNews(st, left === 1 ? 'One more bonk knocks it out!' : 'It wiggles! ' + left + ' more bonks!');
+  } else {
+    ph.wiggle = 0;
+    gcWinPiece(st, piece, { say: n === 0 ? 'Ow! My boxing glove!' : 'Not my cupcake! Whoa...' });
+  }
+  ph.stage = ph.bonks >= GC4.bonksPer * 2 ? 'land' : 'swap'; ph.stageT = 0; ph.serveT = GC4.serveGap;
+}
+function gc4SwapRoles(st) {
+  const ph = st.ph;
+  ph.setter = 1 - ph.setter; ph.setHints = 0; ph.serveT = GC4.swapGap;
+  gcSwap(st);
+  gcHint(st, ph.setter, NAMES[ph.setter] + ': now you set! ' + gc4Do(ph.setter), 3.5);
+  gcHint(st, 1 - ph.setter, NAMES[1 - ph.setter] + ': now you spike! ' + gc4Spike(1 - ph.setter), 3.5);
+}
+function gc4BallStep(st, dt) {
+  const ph = st.ph, b = ph.ball;
+  if (!b) return;
+  b.t += dt; b.spin += b.vx * dt * 0.03;
+  for (let k = 0; k < 2; k++) b.cd[k] = Math.max(0, b.cd[k] - dt);
+  if (b.state === 'shot') {   // flying into his belly (a curve that follows him)
+    const s = b.shot, jar = gcBossPts(st.boss).jar;
+    s.t += dt;
+    const k = Math.min(1, s.t / s.d), e = s.spike ? k : k * (2 - k) * 0.5 + k * 0.5, u = 1 - e;
+    const cx = (s.x0 + jar.x) / 2, cy = Math.min(s.y0, jar.y) - (s.spike ? 30 : 150);
+    b.x = u * u * s.x0 + 2 * u * e * cx + e * e * jar.x; b.y = u * u * s.y0 + 2 * u * e * cy + e * e * jar.y;
+    b.spin += dt * 14;
+    if ((G.tickN % 2) === 0) { b.trail.push([b.x, b.y]); if (b.trail.length > 8) b.trail.shift(); }
+    if (k >= 1) gc4Bonk(st);
+    return;
+  }
+  if (b.roll > 0) {            // three bounces: it rolls away and poofs
+    b.roll -= dt; b.x += b.vx * dt; b.vx *= 0.99;
+    if (b.roll <= 0) { puff(b.x, b.y, 8, 'rgba(255,255,255,0.85)'); gc4BallGone(st, 'roll'); }
+    return;
+  }
+  if (b.state === 'set') b.setT += dt;
+  // swings and heads
+  for (const p of G.players) {
+    if (!p.alive || b.cd[p.id] > 0) continue;
+    if (ph.sw[p.id] > 0 && p.stun <= 0 && gc4InReach(ph, p, b)) { ph.sw[p.id] = 0; gc4Touch(st, p, b); continue; }
+    // a ball dropping on a head bounces up again (a free second chance, no set)
+    if (b.vy > 0 && b.x > p.x - 6 && b.x < p.x + p.w + 6 && b.y + b.r > p.y && b.y < p.y + 4) {
+      b.y = p.y - b.r; b.vy = -GC4.headVy; b.vx = b.vx * 0.5 + p.vx * 0.3; b.cd[p.id] = 0.12;
+      Sfx.play('gc4Bounce'); puff(b.x, b.y + b.r, 3, 'rgba(255,255,255,0.8)');
+    }
+  }
+  // Magnet balls: a falling ball drifts toward whoever should touch it next
+  const nx = gc4Next(ph);
+  if (ph.mitts >= 3 && nx >= 0 && b.vy > 0 && b.x < ph.netX) { const q = G.players[nx]; b.vx = clamp(b.vx + clamp((q.x + q.w / 2 - b.x) * GC4.magnet, -500, 500) * dt, -260, 260); }
+  const g = gc4G(ph), r = b.r, n = 2, sdt = dt / n, nx0 = ph.netX - GC4.netHalf, nx1 = ph.netX + GC4.netHalf, nt = GC4.floor - GC4.netH;
+  for (let i = 0; i < n; i++) {
+    b.vy += g * sdt; b.x += b.vx * sdt; b.y += b.vy * sdt;
+    if (b.x - r < 0) { b.x = r; b.vx = Math.abs(b.vx) * GC4.wallE; Sfx.play('gc4Bounce'); }
+    if (b.y + r >= GC4.floor && b.vy > 0) {
+      b.y = GC4.floor - r; b.vy = -b.vy * GC4.floorE; b.vx *= 0.85; b.bounces++;
+      Sfx.play('gc4Bounce'); puff(b.x, GC4.floor - 2, 4, 'rgba(255,255,255,0.8)');
+      if (b.state === 'set') { b.state = 'free'; gcPop(st, b.x, b.y - 30, 'Oops!', '#ffffff', 18); }
+      if (b.bounces >= GC4.maxBounce || Math.abs(b.vy) < 120) { b.roll = GC4.rollT; b.vy = 0; b.vx = (b.vx >= 0 ? 1 : -1) * Math.max(90, Math.abs(b.vx)); return; }
+    }
+    // the net pole and tape: it bounces back to your side
+    const cx = clamp(b.x, nx0, nx1), cy = clamp(b.y, nt, GC4.floor), dx = b.x - cx, dy = b.y - cy;
+    if (dx * dx + dy * dy < r * r && b.x < ph.netX + r) {
+      if (b.y >= nt) { b.x = nx0 - r; b.vx = -Math.max(60, Math.abs(b.vx) * GC4.netE); }
+      else { b.vy = -Math.abs(b.vy) * GC4.netE - 120; b.vx = -Math.max(60, Math.abs(b.vx) * GC4.netE); }
+      Sfx.play('gc4Net');
+    }
+  }
+  // over the net to his side, or lost: he keeps it
+  if (b.x - r > ph.netX + 4 && b.t > 0.4 && b.vx >= 0) { burst(b.x, b.y, '#ffffff', 6); gc4BallGone(st, 'his'); return; }
+  if (b.t > 14) gc4BallGone(st, 'roll');
+}
+// soft socks at whoever is waiting (never at the next player to touch the ball)
+function gc4Attacks(st, dt) {
+  const ph = st.ph;
+  if (!gc4Live(ph) || !ph.ball || gcCalm(st) || st.junk.length) return;
+  if ((ph.tossT -= dt) > 0) return;
+  const next = gc4Next(ph), who = G.players.filter(p => p.alive && p.id !== next && !gcBusy(st, p));
+  const j = who.length ? gcToss(st, who[0].id, { kind: gcRand() < 0.6 ? 'sock' : 'duck', maxX: ph.netX - 20, minX: 20 }) : null;
+  ph.tossT = j ? GC4.tossGap[0] + gcRand() * (GC4.tossGap[1] - GC4.tossGap[0]) : 0.6;
+}
+// his hover over the net (part A), the dizzy landing, sitting for the pull
+function gc4BossStep(st, dt) {
+  const ph = st.ph, b = st.boss;
+  if (ph.stage === 'land' && st.celebT <= 0 && !st.fly.length) {
+    if (!ph.landing) { ph.landing = { t: 0, x0: b.x, y0: b.y }; b.pose = 'dizzy'; gcSay(st, 'Whoa... so dizzy...', 2); Sfx.play('gc4Dizzy'); }
+    const L = ph.landing;
+    L.t += dt;
+    const k = Math.min(1, L.t / GC4.landT), e = k * k;
+    b.x = L.x0 + (GC4.hoverX + 10 - L.x0) * k + Math.sin(L.t * 7) * 16 * (1 - k); b.y = L.y0 + (GC4.floor - L.y0) * e;
+    if (k >= 1 && !L.down) {
+      L.down = true; b.pose = 'sit'; b.gy = null; b.y = GC4.floor;
+      Sfx.play('gcThud'); puff(b.x, GC4.floor - 4, 14, 'rgba(255,255,255,0.85)');
+      if (!reduceMotion) G.shake = Math.max(G.shake, 0.2);
+      rumble(0, 0.4, 0.4, 160); rumble(1, 0.4, 0.4, 160);
+    }
+    if (L.down && L.t >= GC4.landT + GC4.plugT) gc4StartPull(st);
+    return;
+  }
+  if (ph.stage === 'pull' || ph.stage === 'done' || ph.landing) return;
+  b.pose = 'hover'; b.gy = GC4.floor;
+  const sw = GC4.swoop[ph.bonks >= GC4.bonksPer ? 1 : 0];
+  b.x = GC4.hoverX + Math.sin(ph.t * 0.7) * sw; b.y = GC4.hoverY + Math.sin(ph.t * 1.1) * 12;
+  b.face = -1;
+}
+
+/* --- part B: pull the plug --- */
+function gc4StartPull(st) {
+  const ph = st.ph;
+  ph.stage = 'pull'; ph.stageT = 0; ph.u = 0; ph.hold = [-1, -1]; ph.lastPress = [-9, -9]; ph.pull = [false, false];
+  ph.yank = null; ph.yankT = GC4.yankGap[0] + 1; ph.pullT = 0; ph.grip = false; ph.loneT = 0; ph.jolt = [0, 0]; ph.arrowT = 4; ph.nudgeT = 0;
+  st.boss.armHidden = true; st.boss.mood = 'grumpy'; st.boss.moodT = 3;
+  gcNews(st, 'He’s plugged in! Grab the cord and pull together!', false, 4);
+  gcSay(st, 'Hey! That’s my power cord!', 2.2);
+  gcActLabels(st); gcShowBadges(st);
+  for (const p of G.players) gcHint(st, p.id, 'Stand on a knot, ' + gc4Do(p.id), 3.5);
+}
+// presses and grabs (before the players move). Holders keep their input (so the idle wait sees them pull); step pins
+// them to their knot. Holding the action, a fresh press, or holding ◀ (away from him) all count as pulling.
+function gc4PullPre(st, dt) {
+  const ph = st.ph;
+  for (const p of G.players) {
+    const k = p.id, inp = p.input;
+    if (ph.hold[k] >= 0) {
+      if (p.pendingJump || !p.alive) { ph.hold[k] = -1; ph.pull[k] = false; continue; }   // jump lets go (and jumps)
+      if (p.pendingAct) { p.pendingAct = false; gc4Press(st, p); }
+      ph.pull[k] = inp.act || inp.left || ph.t - ph.lastPress[k] < GC4.pullHold;
+      p.jumpBuf = 0;
+      continue;
+    }
+    ph.pull[k] = false;
+    if (!p.pendingAct) continue;
+    p.pendingAct = false;
+    if (!p.alive || p.stun > 0) continue;
+    // grab the nearest free knot in reach
+    let best = -1, bd = GC4.grabR;
+    for (let i = 0; i < 2; i++) {
+      if (ph.hold[1 - k] === i) continue;
+      const d = Math.abs(p.x + p.w / 2 - gc4KnotX(ph, i));
+      if (d < bd && p.grounded) { bd = d; best = i; }
+    }
+    if (best < 0) { gcHint(st, k, 'Walk to a knot on the cord!', 1.8); ph.arrowT = 2.5; continue; }
+    ph.hold[k] = best; ph.lastPress[k] = ph.t; st.stats.finale.grabs[k]++; st.hints[k] = null;
+    Sfx.play('gc4Grab', k); rumble(k, 0.1, 0.3, 60);
+    if (ph.hold[1 - k] < 0) gcHint(st, 1 - k, NAMES[1 - k] + ', grab the cord too!', 2.5);
+  }
+}
+function gc4Press(st, p) {
+  const ph = st.ph, k = p.id;
+  // a press adds a tug while the partner pulls too; presses closer than pressGap add pro rata (a turbo gains nothing)
+  const share = Math.min(1, (ph.t - ph.lastPress[k]) / GC4.pressGap), partner = ph.pull[1 - k] || ph.t - ph.lastPress[1 - k] < GC4.pullHold;
+  ph.lastPress[k] = ph.t; st.stats.finale.pulls[k]++;
+  if (ph.hold[0] >= 0 && ph.hold[1] >= 0 && partner) ph.u = Math.min(1, ph.u + GC4.perPress * share * (ph.grip ? GC4.gripRate : 1));
+  Sfx.play('gc4Pull', k);
+}
+function gc4PullStep(st, dt) {
+  const ph = st.ph, S = st.stats.finale, both = ph.hold[0] >= 0 && ph.hold[1] >= 0, together = both && ph.pull[0] && ph.pull[1];
+  ph.stageT += dt;
+  if (ph.arrowT > 0) ph.arrowT -= dt;
+  for (let k = 0; k < 2; k++) ph.jolt[k] = Math.max(0, ph.jolt[k] - dt * 4);
+  // holders stand at their knot, facing him and leaning back
+  for (const p of G.players) {
+    const i = ph.hold[p.id];
+    if (i < 0 || !p.alive) continue;
+    const lean = ph.pull[p.id] ? 3 + Math.sin(ph.t * 14 + p.id) * 1.5 : 0;
+    p.x = gc4KnotX(ph, i) - p.w / 2 - lean + ph.jolt[p.id] * 8; p.vx = 0; p.face = 1;
+  }
+  if (both) { ph.pullT += dt; S.pullT += dt; }
+  if (together) ph.u = Math.min(1, ph.u + GC4.rate * (ph.grip ? GC4.gripRate : 1) * dt);
+  // one pulling alone: a hint, never progress
+  const lone = G.players.find(p => ph.hold[p.id] >= 0 && ph.pull[p.id] && !(ph.hold[1 - p.id] >= 0 && ph.pull[1 - p.id]));
+  ph.loneT = lone && !gcCalm(st) ? ph.loneT + dt : 0;
+  if (ph.loneT > 1.2) {
+    ph.loneT = -GC4.hintGap;
+    const q = G.players[1 - lone.id];
+    gcHint(st, lone.id, 'Pull together!', 2);
+    gcHint(st, q.id, ph.hold[q.id] >= 0 ? 'Pull! ' + gc4Do(q.id) : NAMES[q.id] + ', grab the cord!', 2.4);
+    if (ph.hold[q.id] < 0) ph.arrowT = 2.5;
+  }
+  // someone not on the cord yet: a nudge now and then, with arrows at the free knots
+  ph.nudgeT = both || gcCalm(st) ? 0 : ph.nudgeT + dt;
+  if (ph.nudgeT > 6) { ph.nudgeT = 0; ph.arrowT = 2.5; for (const p of G.players) if (ph.hold[p.id] < 0) gcHint(st, p.id, 'Grab a knot on the cord!', 2.4); }
+  if (!ph.grip && ph.pullT >= GC4.gripAfter) { ph.grip = true; S.grip = true; gcHelp(st, 'Super grip! Every pull counts more now.'); }
+  // he tugs back now and then: his hand grabs the cord ("!"), then a yank
+  if (ph.yank) {
+    const y = ph.yank;
+    y.t += dt;
+    if (gcCalm(st) && !y.done) ph.yank = null;
+    else if (!y.done && y.t >= GC4.yankWarn) {
+      y.done = true;
+      const loss = (together ? GC4.yankBoth : GC4.yankOne) * (ph.grip ? GC4.gripYank : 1);
+      ph.u = Math.max(0, ph.u - loss); S.yanks++;
+      for (const p of G.players) if (ph.hold[p.id] >= 0) { ph.jolt[p.id] = 1; rumble(p.id, 0.3, 0.3, 120); }
+      Sfx.play('gc4Yank');
+      gcPop(st, (gc4KnotX(ph, 0) + gc4PlugPos(st).x) / 2, GC4.floor - 70, together ? 'Hold tight!' : 'Whoa!', together ? C.gold : '#ffffff', 22);
+    }
+    if (y.t >= GC4.yankWarn + 0.45) ph.yank = null;
+  } else if (both && !gcCalm(st) && ph.u < 0.92 && (ph.yankT -= dt) <= 0) {
+    ph.yank = { t: 0, done: false };
+    ph.yankT = GC4.yankGap[0] + gcRand() * (GC4.yankGap[1] - GC4.yankGap[0]);
+    if (!st.say) gcSay(st, gcRand() < 0.5 ? 'Hmph! Mine!' : 'Give it back!', 1.2);
+    Sfx.play('gcWhirr');
+  }
+  if (ph.u >= 1) gc4Unplug(st);
+}
+// the plug pops out: he powers down, his jar opens, the last piece flies home
+function gc4Unplug(st) {
+  const ph = st.ph, b = st.boss, pl = gc4PlugPos(st);
+  ph.stage = 'done'; ph.yank = null; ph.popped = { t0: st.phT, x0: pl.x, y0: pl.y, x: pl.x, y: pl.y, vx: -260, vy: -320 };
+  for (const p of G.players) if (ph.hold[p.id] >= 0) { ph.hold[p.id] = -1; p.vx = -200; p.vy = -260; p.grounded = false; }
+  ph.pull = [false, false];
+  st.stats.finale.unplugT = Math.round(ph.stageT * 10) / 10;
+  gcPop(st, pl.x, pl.y - 40, 'POP!', C.gold, 38);
+  Sfx.play('gc4Pop'); Sfx.play('gc4Bzzt');
+  for (let n = 0; n < 16; n++) G.particles.push({ x: pl.x, y: pl.y, vx: (gcRand() - 0.5) * 300, vy: -60 - gcRand() * 240, life: 0.6, max: 0.6, col: gcRand() < 0.5 ? '#fff1a8' : '#7ec8ff', size: 2 + gcRand() * 2, grav: 600, kind: 'dot' });
+  rumble(0, 0.7, 0.7, 260); rumble(1, 0.7, 0.7, 260);
+  b.armHidden = false; b.pose = 'nap'; b.mood = 'sleepy';
+  gcWinPiece(st, (G.level.def.pieces || [4, 6, 1])[2], { quiet: true });
+  gcSay(st, 'Bzzzt... nap time...', 2.6);
+  gcPhaseDone(st);
+}
+
+GC_PHASES.finale = {
+  setup(st, L) {
+    const ph = st.ph, def = L.def;
+    if (!st.stats.finale) st.stats.finale = { sets: [0, 0], spikes: [0, 0], bumps: [0, 0], hits: [0, 0], serves: 0, misses: 0, grabs: [0, 0], pulls: [0, 0], yanks: 0, pullT: 0, unplugT: 0, grip: false };
+    ph.netX = 600; ph.socket = { x: 0, y: GC4.floor - 30 };
+    for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+      const ch = def.map[ty][tx];
+      if (ch === 'N') { ph.netX = tx * T + T / 2; L.grid[ty][tx] = '.'; }
+      else if (ch === 'K') { ph.socket = { x: tx * T, y: (ty + 1) * T - 18 }; L.grid[ty][tx] = '.'; }
+    }
+    ph.setter = def.setter == null ? 0 : def.setter;
+    ph.stage = 'rally'; ph.stageT = 0; ph.t = 0; ph.started = false;
+    ph.ball = null; ph.serveT = GC4.firstServe; ph.serves = 0; ph.bonks = 0; ph.missRow = 0; ph.mitts = 0; ph.wiggle = 0;
+    ph.sw = [0, 0]; ph.swA = [0, 0]; ph.setHints = 0; ph.plinkHintT = 0; ph.tossT = GC4.tossFirst;
+    ph.u = 0; ph.hold = [-1, -1]; ph.pull = [false, false]; ph.lastPress = [-9, -9]; ph.jolt = [0, 0]; ph.yank = null; ph.arrowT = 0;
+    ph.landing = null; ph.popped = null;
+    const b = st.boss;
+    b.pose = 'hover'; b.face = -1; b.x = GC4.hoverX; b.y = GC4.hoverY; b.gy = GC4.floor; b.armHidden = false;
+  },
+  pre(st, dt) {
+    const ph = st.ph;
+    if (ph.stage === 'pull') { gc4PullPre(st, dt); return; }
+    for (const p of G.players) {
+      if (!p.pendingAct) continue;
+      p.pendingAct = false;
+      if (gc4Live(ph) && p.alive && p.stun <= 0) { ph.sw[p.id] = GC4.swingT; ph.swA[p.id] = 0.22; Sfx.play('gc4Swing', p.id); }
+    }
+  },
+  step(st, dt) {
+    const ph = st.ph;
+    ph.t += dt;
+    if (!ph.started) {
+      ph.started = true;
+      gcSay(st, 'You’ll never get the last ones!', 2.2);
+      gcHint(st, ph.setter, NAMES[ph.setter] + ': ' + gc4Do(ph.setter) + ' to bump it up!', 4.5);
+      const sp = 1 - ph.setter;
+      gcHint(st, sp, NAMES[sp] + ': ' + gc4Spike(sp) + (actKey(sp) === 'touch' ? ' on gold balls!' : ' spikes gold balls!'), 4.5);
+    }
+    // nobody crosses the net
+    for (const p of G.players) { const edge = ph.netX - GC4.netHalf - p.w; if (p.x > edge) { p.x = edge; p.vx = Math.min(0, p.vx); } }
+    for (let k = 0; k < 2; k++) { ph.sw[k] = Math.max(0, ph.sw[k] - dt); ph.swA[k] = Math.max(0, ph.swA[k] - dt); }
+    if (ph.plinkHintT > 0) ph.plinkHintT -= dt;
+    gc4BossStep(st, dt);
+    if (ph.stage === 'pull') { gc4PullStep(st, dt); return; }
+    if (ph.stage === 'done' || ph.stage === 'land') return;
+    ph.stageT += dt;
+    if (ph.stage === 'swap' && ph.stageT >= GC4.swapAfter && st.celebT <= 0) { ph.stage = 'rally'; ph.stageT = 0; gc4SwapRoles(st); }
+    if (gc4Live(ph) && !ph.ball && !gcCalm(st) && (ph.serveT -= dt) <= 0) gc4Serve(st);
+    gc4BallStep(st, dt);
+    gc4Attacks(st, dt);
+  },
+  labels(st) {
+    const ph = st.ph;
+    if (ph.stage === 'pull' || ph.stage === 'land' || ph.stage === 'done') return ['pull', 'pull'];
+    return ph.setter === 0 ? ['set', 'spike'] : ['spike', 'set'];
+  },
+  roles(st) {
+    const ph = st.ph;
+    if (ph.stage === 'pull' || ph.stage === 'land' || ph.stage === 'done') return ['Pull!', 'Pull!'];
+    const r = []; r[ph.setter] = 'Set!'; r[1 - ph.setter] = 'Spike!'; return r;
+  },
+  busy(st, p) { const ph = st.ph; return ph.stage === 'pull' ? ph.hold[p.id] >= 0 : gc4Next(ph) === p.id; },
+  hudText(st) {
+    const ph = st.ph;
+    const n = GC4.bonksPer * 2;
+    return ph.stage === 'pull' || ph.stage === 'done' ? '' : 'Hits ' + Math.min(ph.bonks, n) + ' / ' + n;
+  },
+  hud(st) { gc4Hud(st); },
+  stat(st) { const s = st.stats.finale; return s ? { label: 'Ball hits', values: [s.hits[0], s.hits[1]] } : null; },
+  statLine(st) {
+    const s = st.stats.finale;
+    if (!s) return '';
+    const sp = s.spikes[0] + s.spikes[1];
+    return (sp ? 'Super spikes: ' + sp : 'Sets: ' + (s.sets[0] + s.sets[1])) + (s.unplugT ? ' · Plug pulled in ' + s.unplugT.toFixed(1) + ' s' : '');
+  },
+  drawBack(st) { gc4DrawBack(st); },
+  draw(st) { gc4Draw(st); },
+  drawTop(st) { gc4DrawTop(st); },
+};
+GC_PHASES.finale.test = { GC4, predict: y => gc4Predict(G.mst.ph, G.mst.ph.ball, y), knotX: i => gc4KnotX(G.mst.ph, i), reach: (id, b) => gc4InReach(G.mst.ph, G.players[id], b || G.mst.ph.ball) };
+
+// phase 4 sounds
+Sfx.extra.gc4Serve = function () { this.tone(260, 0.12, 'triangle', 0.05, 520); this.tone(700, 0.06, 'square', 0.02, null, 0.06); };
+Sfx.extra.gc4Swing = function (p) { this.tone(900 * p, 0.05, 'sine', 0.018, 1300 * p); };
+Sfx.extra.gc4Set = function (p) { this.tone(520 * p, 0.08, 'triangle', 0.06, 880 * p); this.tone(1320, 0.12, 'sine', 0.03, 1760, 0.06); };
+Sfx.extra.gc4Spike = function (p) { this.tone(240 * p, 0.12, 'sawtooth', 0.05, 90); this.tone(1400, 0.08, 'triangle', 0.04, 600, 0.02); };
+Sfx.extra.gc4Bump = function (p) { this.tone(300 * p, 0.1, 'triangle', 0.06, 500 * p); };
+Sfx.extra.gc4Plink = function (p) { this.tone(1500 * p, 0.05, 'square', 0.03, 1100 * p); };
+Sfx.extra.gc4Bounce = function () { this.tone(180, 0.09, 'sine', 0.05, 320); };
+Sfx.extra.gc4Net = function () { this.tone(420, 0.08, 'triangle', 0.04, 260); };
+Sfx.extra.gc4Boink = function () { this.tone(160, 0.25, 'sine', 0.08, 420); this.tone(620, 0.12, 'square', 0.03, 900, 0.04); };
+Sfx.extra.gc4Dizzy = function () { [660, 560, 470, 400].forEach((f, i) => this.tone(f, 0.14, 'triangle', 0.04, f * 0.9, i * 0.12)); };
+Sfx.extra.gc4Grab = function (p) { this.tone(400 * p, 0.06, 'triangle', 0.05, 600 * p); };
+Sfx.extra.gc4Pull = function (p) { this.tone(200 * p, 0.05, 'triangle', 0.035, 150 * p); };
+Sfx.extra.gc4Yank = function () { this.tone(300, 0.16, 'sawtooth', 0.04, 140); };
+Sfx.extra.gc4Pop = function () { this.tone(900, 0.06, 'square', 0.06, 300); this.tone(140, 0.2, 'sine', 0.07, 70, 0.03); };
+Sfx.extra.gc4Bzzt = function () { this.tone(110, 0.5, 'sawtooth', 0.04, 60, 0.05); this.tone(220, 0.3, 'square', 0.015, 90, 0.1); };
+
+/* --- phase 4 drawing --- */
+function gc4DrawBack(st) {
+  const F = GC4.floor, t = G.clock;
+  // a backyard fence (Backyard Bash) with party bunting
+  ctx.fillStyle = '#e8c896'; ctx.fillRect(0, F - 118, W, 118);
+  ctx.fillStyle = 'rgba(138,88,51,0.28)';
+  for (let x = 0; x < W; x += 36) ctx.fillRect(x, F - 118, 3, 118);
+  ctx.fillStyle = '#d9b37a'; ctx.fillRect(0, F - 96, W, 8); ctx.fillRect(0, F - 40, W, 8);
+  ctx.fillStyle = '#f0d7aa';
+  for (let x = 0; x < W; x += 36) { ctx.beginPath(); ctx.moveTo(x + 2, F - 118); ctx.lineTo(x + 19, F - 132); ctx.lineTo(x + 35, F - 118); ctx.closePath(); ctx.fill(); }
+  const cols = [C.pip, C.gold, C.bo, '#7fd36b', '#ff8fc7'];
+  for (const [x0, x1, y0] of [[0, 330, 96], [630, 960, 96]]) {
+    ctx.strokeStyle = 'rgba(28,26,54,0.45)'; ctx.lineWidth = 1.5; ctx.beginPath();
+    const sag = k => y0 + Math.sin(k * Math.PI) * 26;
+    for (let k = 0; k <= 1.001; k += 0.05) ctx.lineTo(x0 + (x1 - x0) * k, sag(k));
+    ctx.stroke();
+    for (let i = 0; i < 9; i++) {
+      const k = (i + 0.5) / 9, x = x0 + (x1 - x0) * k, y = sag(k), sw = Math.sin(t * 2 + i) * 2;
+      ctx.fillStyle = cols[i % cols.length]; ctx.beginPath(); ctx.moveTo(x - 10, y); ctx.lineTo(x + 10, y); ctx.lineTo(x + sw, y + 20); ctx.closePath(); ctx.fill();
+    }
+  }
+  // sunflowers in front of the fence (Sunny Meadow)
+  for (const fx of [120, 260, 470, 880]) {
+    const h = 70 + (fx % 3) * 12, sw = Math.sin(t * 1.5 + fx) * 3;
+    ctx.strokeStyle = '#3f8f5c'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(fx, F); ctx.quadraticCurveTo(fx + sw, F - h / 2, fx + sw, F - h); ctx.stroke();
+    ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(fx + 8, F - h * 0.45, 10, 4, -0.5, 0, Math.PI * 2); ctx.fill();
+    gcIcon(1, fx + sw, F - h, 15);
+  }
+  // the wall socket his cord is plugged into: a brass plate with a bolt in each corner and the cord's plug in it
+  const s = st.ph.socket;
+  ctx.fillStyle = GCB.brass; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(s.x - 8, s.y - 30, 30, 50, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = GCB.brassDk; for (const [bx, by] of [[s.x - 2, s.y - 24], [s.x + 16, s.y - 24], [s.x - 2, s.y + 14], [s.x + 16, s.y + 14]]) { circle(bx, by, 2.2); ctx.fill(); }
+  ctx.fillStyle = '#ff9a3d'; rr(s.x + 4, s.y - 9, 18, 18, 5); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = C.gold; circle(s.x + 7, s.y - 22, 3.5); ctx.fill();   // a little "on" light
+}
+// his power cord: from the wall socket along the floor to the plug in his side
+function gc4CordPts(st) {
+  const ph = st.ph, pl = gc4PlugPos(st);
+  return { sx: ph.socket.x + 14, sy: ph.socket.y + 2, px: pl.x, py: pl.y };
+}
+// the popped plug's flight (from the time it popped): it lands on the floor and stays there
+function gc4PoppedPos(st, q) {
+  const t = Math.max(0, st.phT - q.t0), F = GC4.floor - 12, a = 900;
+  const tl = (-q.vy + Math.sqrt(q.vy * q.vy + 2 * a * (F - q.y0))) / a, u = Math.min(t, tl);
+  q.x = q.x0 + q.vx * u; q.y = Math.min(F, q.y0 + q.vy * u + 0.5 * a * u * u);
+  return q;
+}
+function gc4DrawCord(st) {
+  const ph = st.ph, F = GC4.floor, c = gc4CordPts(st);
+  const line = (pts, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); };
+  let pts;
+  if (ph.stage === 'pull') {
+    const k0 = gc4KnotX(ph, 0), k1 = gc4KnotX(ph, 1), hy = F - 13;
+    pts = [[c.sx, c.sy], [c.sx + 16, F - 4]];
+    for (let x = c.sx + 40; x < k1 - 40; x += 30) pts.push([x, F - 4 + Math.sin(x * 0.07) * 1.5]);
+    pts.push([k1 - 20, F - 6], [k1, hy], [k0, hy], [c.px, c.py]);
+  } else if (ph.popped) {
+    const q = gc4PoppedPos(st, ph.popped);
+    pts = [[c.sx, c.sy], [c.sx + 16, F - 4], [q.x - 60, F - 4], [q.x, q.y]];
+  } else {
+    // hanging from him (hovering or sitting) down to the floor, then along it to the wall
+    const fx = Math.min(c.px - 30, ph.netX + 30);
+    pts = [[c.sx, c.sy], [c.sx + 16, F - 4], [fx - 60, F - 4]];
+    for (let k = 0; k <= 1.001; k += 0.1) { const u = 1 - k; pts.push([u * u * (fx - 60) + 2 * u * k * (fx + 30) + k * k * c.px, u * u * (F - 4) + 2 * u * k * (F - 4) + k * k * c.py]); }
+  }
+  line(pts, 9, '#4a2a5e'); line(pts, 5.5, '#ff9a3d');
+  if (ph.stage === 'pull') {
+    // the knots to grab, with a soft glow when free
+    for (let i = 0; i < 2; i++) {
+      const x = gc4KnotX(ph, i), y = F - 13, held = ph.hold.indexOf(i);
+      if (held < 0) { ctx.fillStyle = `rgba(255,255,255,${0.35 + 0.25 * Math.sin(G.clock * 5 + i)})`; circle(x, y, 16); ctx.fill(); }
+      ctx.fillStyle = held < 0 ? '#ffb347' : PCOL[held]; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(x, y, 9); ctx.fill(); ctx.stroke();
+    }
+  }
+  // the plug (in his side, sliding out, or flying off)
+  const q = ph.popped && gc4PoppedPos(st, ph.popped), x = q ? q.x : c.px, y = q ? q.y : c.py;
+  ctx.save(); ctx.translate(x, y); if (q) ctx.rotate(Math.min(st.phT - q.t0, 0.7) * 9);
+  ctx.fillStyle = '#d9dbe8'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5;
+  const prong = q ? 14 : 8 + (ph.stage === 'pull' ? ph.u * 34 : 0);
+  ctx.fillRect(10, -7, prong, 4); ctx.strokeRect(10, -7, prong, 4); ctx.fillRect(10, 3, prong, 4); ctx.strokeRect(10, 3, prong, 4);
+  ctx.fillStyle = '#ff9a3d'; ctx.lineWidth = 2; rr(-12, -12, 24, 24, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; rr(-9, -9, 8, 18, 3); ctx.fill();
+  ctx.restore();
+  if (!q && ph.stage === 'pull' && G.tickN % 10 === 0 && ph.u > 0.4) G.particles.push({ x: c.px + 16, y: c.py, vx: (gcRand() - 0.2) * 90, vy: -40 - gcRand() * 80, life: 0.35, max: 0.35, col: '#fff1a8', size: 2, grav: 300, kind: 'dot' });
+}
+function gc4DrawNet(st) {
+  const ph = st.ph, F = GC4.floor, nx = ph.netX, top = F - GC4.netH;
+  ctx.fillStyle = '#8a5833'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(nx - GC4.netHalf, top - 4, GC4.netHalf * 2, GC4.netH + 4, 3); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let y = top + 8; y <= top + 44; y += 9) { ctx.moveTo(nx - 28, y); ctx.lineTo(nx + 28, y); }
+  for (let x = nx - 28; x <= nx + 28; x += 8) { ctx.moveTo(x, top + 4); ctx.lineTo(x, top + 44); }
+  ctx.stroke();
+  ctx.fillStyle = '#ffffff'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; rr(nx - 30, top, 60, 6, 3); ctx.fill(); ctx.stroke();
+}
+// the bouncy ball: white with coloured stripes; gold glow when set
+function gc4DrawBall(st, b) {
+  const set = b.state === 'set' || (b.state === 'shot');
+  if (b.state === 'shot') for (let i = 0; i < b.trail.length; i++) { ctx.globalAlpha = (i + 1) / b.trail.length * 0.4; ctx.fillStyle = C.gold; circle(b.trail[i][0], b.trail[i][1], b.r * (0.5 + i / b.trail.length * 0.5)); ctx.fill(); }
+  ctx.globalAlpha = b.roll > 0 ? clamp(b.roll / GC4.rollT, 0, 1) : 1;
+  if (set) { ctx.fillStyle = `rgba(255,214,90,${0.35 + 0.2 * Math.sin(G.clock * 12)})`; circle(b.x, b.y, b.r + 9); ctx.fill(); }
+  ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.spin);
+  ctx.fillStyle = '#ffffff'; circle(0, 0, b.r); ctx.fill();
+  const stripes = set ? [C.gold, '#ffe58a', C.gold] : ['#ff5f6d', '#5b95ff', '#ffd23f'];
+  for (let i = 0; i < 3; i++) { ctx.fillStyle = stripes[i]; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, b.r, i * 2.094, i * 2.094 + 0.9); ctx.closePath(); ctx.fill(); }
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(0, 0, b.r); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(-5, -6, 4); ctx.fill();
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+function gc4Draw(st) {
+  const ph = st.ph, F = GC4.floor, b = ph.ball;
+  gc4DrawNet(st);
+  gc4DrawCord(st);
+  // the piece that wiggles loose in the jar's neck after a first bonk
+  if (ph.wiggle && !st.won[ph.wiggle - 1]) { const P = gcBossPts(st.boss); gcIcon(ph.wiggle, P.jar.x + Math.sin(G.clock * 20) * 3, P.jar.y - P.jar.r + 4, 11); }
+  // where a free ball comes down: a ring in the colour of whoever touches it next
+  if (b && b.state !== 'shot' && b.roll <= 0) {
+    const pr = gc4Predict(ph, b, F - b.r - 1), nx = gc4Next(ph);
+    const sx = b.x, k = clamp(1 - (F - b.y) / 300, 0.2, 1);
+    ctx.fillStyle = `rgba(28,26,54,${0.12 + 0.18 * k})`; ctx.beginPath(); ctx.ellipse(sx, F - 1, 10 + 12 * k, 3 + 2 * k, 0, 0, Math.PI * 2); ctx.fill();
+    if (pr && nx >= 0) {
+      ctx.strokeStyle = PCOL[nx]; ctx.globalAlpha = 0.55 + 0.35 * Math.sin(G.clock * 10); ctx.lineWidth = 3; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.ellipse(pr.x, F - 2, 24, 6, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    }
+  }
+  // his grabby arm holds the cord while he sits (it tugs back)
+  if (ph.stage === 'pull') {
+    const P = gcBossPts(st.boss), y = ph.yank, gx = gc4PlugPos(st).x - 40, gy = F - 16;
+    let hx = gx, hy = gy, open = 0.1;
+    if (y) {
+      const k = Math.min(1, y.t / GC4.yankWarn);
+      if (!y.done) { hx = gx + Math.sin(y.t * 30) * 2; hy = gy - 28 * k; open = k; }
+      else { const j = Math.min(1, (y.t - GC4.yankWarn) / 0.2); hx = gx + 26 * Math.sin(j * Math.PI); hy = gy; open = 0; }
+    }
+    gcDrawArm(P.shoulder.x, P.shoulder.y, hx, hy, st.boss.s, open, null);
+  }
+}
+function gc4DrawTop(st) {
+  const ph = st.ph, big = hudBig(), z = big ? 1.4 : 1, b = ph.ball;
+  if (b) gc4DrawBall(st, b);
+  // swing swooshes over the hitter's head
+  for (const p of G.players) {
+    const a = ph.swA[p.id];
+    if (a <= 0 || !p.alive) continue;
+    ctx.strokeStyle = `rgba(255,255,255,${a / 0.22})`; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(p.x + p.w / 2, p.y + 6, 24 + (0.22 - a) * 40, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+  }
+  if (ph.stage === 'pull') {
+    // the yank warning over the cord, and an arrow at a free knot after a nudge
+    if (ph.yank && !ph.yank.done) bigText('!', gc4PlugPos(st).x - 40, GC4.floor - 66 - Math.abs(Math.sin(G.clock * 12)) * 5, 30 * z, '#ff5f6d', 1);
+    if (ph.arrowT > 0) for (let i = 0; i < 2; i++) {
+      if (ph.hold.includes(i)) continue;
+      const ax = gc4KnotX(ph, i), ay = GC4.floor - 40 - (1 + Math.sin(G.clock * 7)) * 4;
+      ctx.fillStyle = C.gold; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ax - 10 * z, ay - 13 * z); ctx.lineTo(ax + 10 * z, ay - 13 * z); ctx.lineTo(ax, ay); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  }
+}
+// the plug meter (part B), over the players' side
+function gc4Hud(st) {
+  const ph = st.ph;
+  if ((ph.stage !== 'pull' && ph.stage !== 'done') || G.introT > 0 || (st.cut && !st.cut.wait)) return;
+  const big = hudBig(), w = big ? 300 : 240, h = big ? 22 : 16, x = 300 - w / 2, y = big ? 168 : 150, u = ph.stage === 'done' ? 1 : ph.u;
+  text('Pull the plug!', 300, y - (big ? 18 : 14), big ? 22 : 17, C.ink, 'center');
+  ctx.fillStyle = 'rgba(28,26,54,0.8)'; rr(x - 4, y - 4, w + 8, h + 8, (h + 8) / 2); ctx.fill();
+  ctx.fillStyle = ph.grip ? C.gold : '#ff9a3d'; rr(x, y, Math.max(h, w * u), h, h / 2); ctx.fill();
+  for (let k = 0; k < 2; k++) {   // a light per puller: lit while pulling
+    const on = ph.hold[k] >= 0 && ph.pull[k], cx = x + (k === 0 ? -20 : w + 20);
+    ctx.fillStyle = on ? PCOL[k] : 'rgba(28,26,54,0.35)'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; circle(cx, y + h / 2, big ? 11 : 8); ctx.fill(); ctx.stroke();
+  }
+}
 /* ===== END GC PHASE 4 ===== */
 
 /* ===== GC TEST HOOK (bots: window.__pipbo.MODES.collector.test) ===== */
