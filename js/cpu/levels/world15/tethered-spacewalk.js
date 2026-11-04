@@ -29,6 +29,7 @@
   function arcBlocked(m, ax, ay, r, a0, span) {
     const R = K().bodyR + 6, n = Math.max(2, Math.ceil(Math.abs(span) / 0.12));
     for (let i = 1; i <= n; i++) {
+      if (Math.abs(span * i / n) < 0.3) continue;   // (where it is now doesn't count: it may be touching something)
       const a = a0 + span * i / n, x = ax + Math.cos(a) * r, y = ay + Math.sin(a) * r;
       for (const k of m.rocks) if (k.solid && Math.hypot(x - k.cx, y - k.cy) < k.r + R) return true;
       for (const s of m.sats) if (Math.hypot(x - s.x, y - s.y) < s.r + R) return true;
@@ -54,17 +55,25 @@
     if (m.L > Lw + 3) out.jump = true; else if (m.L < Lw - 3) out.down = true;
     // the angle to go
     const th = Math.atan2(dy, dx), thT = Math.atan2(ty, tx), e = wrap(thT - th);
-    const vt = (f.vx * -dy + f.vy * dx) / d, w = vt / d;   // the floater's turn rate (+ = the ▶ way)
+    const vt = ((f.vx - me.vx) * -dy + (f.vy - me.vy) * dx) / d, w = vt / d;   // the floater's turn rate round me (+ = the ▶ way)
     if (d < 22) return out;
-    // the short way, unless something is in the way and the long way is clear (decided once per target)
+    // the short way, unless something is in the way and the long way is clear; looked at again while it turns (a
+    // satellite or a rock moves), keeping the way it goes unless that way gets blocked and the other is clear
     const key = tg.kind + ':' + (tg.hold ? tg.hold.id : tg.panel ? tg.panel.id : 'lk');
-    if (st.dirKey !== key || Math.abs(e) < 0.05) {
+    if (Math.abs(e) < 0.05) st.dir = 0;
+    else {
       const r = Math.max(d, Lw), sh = e, lg = e > 0 ? e - Math.PI * 2 : e + Math.PI * 2;
-      st.dir = Math.abs(e) < 0.05 ? 0 : arcBlocked(m, me.x, me.y, r, th, sh) && !arcBlocked(m, me.x, me.y, r, th, lg) ? Math.sign(lg) : Math.sign(sh);
+      const span = d2 => (Math.sign(d2) === Math.sign(sh) ? sh : lg);
+      if (st.dirKey !== key || !st.dir) st.dir = arcBlocked(m, me.x, me.y, r, th, sh) && !arcBlocked(m, me.x, me.y, r, th, lg) ? Math.sign(lg) : Math.sign(sh);
+      else if ((st.chk = (st.chk || 0) + dt) > 0.25) {
+        st.chk = 0;
+        if (arcBlocked(m, me.x, me.y, r, th, span(st.dir)) && !arcBlocked(m, me.x, me.y, r, th, span(-st.dir))) st.dir = -st.dir;
+      }
+      // a little overshoot: come back the short way (unless that's blocked)
+      if (Math.sign(e) !== st.dir && Math.abs(e) < 0.6 && !arcBlocked(m, me.x, me.y, r, th, sh)) st.dir = Math.sign(e);
       st.dirKey = key;
     }
     let left = st.dir > 0 ? (e >= 0 ? e : e + Math.PI * 2) : st.dir < 0 ? (e <= 0 ? -e : Math.PI * 2 - e) : 0;
-    if (left > Math.PI * 1.9) left = 0;
     const r = Math.max(d, 30), k = clamp((d / m.L - 0.25) / 0.5, 0.35, 1), alpha = S.spinA * k / r, wMax = (st.fast ? 280 : 250) / r;
     let wDes = st.dir * Math.min(wMax, Math.sqrt(2 * alpha * 0.7 * left));
     if (left < 0.05) wDes = 0;
