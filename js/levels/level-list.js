@@ -2780,6 +2780,26 @@ const LEVELS = [
   // ----- END 13-3 Haunted Mansion -----
   //
   // ----- BEGIN 13-4 Broomstick Race (mode 'broom', js/levels/world13/broomstick-race.js) -----
+  { name: 'Broomstick Race', world: 12, kind: 'versus', mode: 'broom', ownStep: true,
+    // side-on broom race (MODES.broom): the map is only the two spawns, the mode builds each round's course
+    match: { bestOf: 5 },
+    act: { label: 'zoom', padGlyph: 'a' },   // padGlyph: on a controller A zooms too (the stick climbs and dives)
+    legend: {
+      pip: '<kbd>W</kbd><kbd>S</kbd> up · down <kbd>A</kbd><kbd>D</kbd> slow · fast',
+      bo: '<kbd>↑</kbd><kbd>↓</kbd> up · down <kbd>←</kbd><kbd>→</kbd> slow · fast',
+      pad: 'stick: fly, <span data-glyph="a"></span> or',
+    },
+    tip: 'Fly through the glowing rings for speed, grab a star and zoom! Bumping a friendly bat slows you.',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '.....1..........................', '................................', '................................',
+      '.....2..........................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+    ],
+  },
   // ----- END 13-4 Broomstick Race -----
   //
   // ===== END World 13 =====
