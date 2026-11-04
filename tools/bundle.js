@@ -19,7 +19,7 @@ html = html.replace(/<link rel="stylesheet" href="((?!https?:)[^"]+)">/g, (m, hr
   '<style>\n' + read(path.join(root, href)) + '</style>');
 
 // 2. every script (files and inline blocks), in order, becomes one
-const STRICT = /^(\/\*[\s\S]*?\*\/\n)?'use strict';\n/; // each script starts with an optional title comment and 'use strict'
+const STRICT = /^(\/\*[\s\S]*?\*\/\n)?'use strict';(\n|$)/; // each script starts with an optional title comment and 'use strict' (a placeholder file may end right after it)
 const parts = [];
 let first = -1;
 html = html.replace(/<script( src="([^"]+)")?>([\s\S]*?)<\/script>(\n?)/g, (m, a, src, inline, nl, offset) => {

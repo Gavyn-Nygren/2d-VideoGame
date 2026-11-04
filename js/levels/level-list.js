@@ -3377,6 +3377,27 @@ const LEVELS = [
   // ----- END 14-4 Raptor Race -----
   //
   // ===== END World 14 =====
+
+  /* ===== World 15 (Orbit Outpost, mixed): the space world, world index 14 (js/levels/world15/), friendly and floaty, nothing
+     scary. Gavyn's picks (Nov 2026): 15-1 Tethered Spacewalk (team), 15-2 Gravity Flip Station (team), 15-3 Moon Buggy Crew
+     (team), 15-4 Planet Hop Race (versus). Each level's def sits between its own BEGIN/END lines. world: 14 ===== */
+  // ----- BEGIN 15-1 Tethered Spacewalk (mode 'spacewalk', js/levels/world15/tethered-spacewalk.js) -----
+  // (def goes here)
+  // ----- END 15-1 Tethered Spacewalk -----
+  //
+  // ----- BEGIN 15-2 Gravity Flip Station (mode 'gravflip', js/levels/world15/gravity-flip-station.js) -----
+  // (def goes here)
+  // ----- END 15-2 Gravity Flip Station -----
+  //
+  // ----- BEGIN 15-3 Moon Buggy Crew (mode 'buggy', js/levels/world15/moon-buggy-crew.js) -----
+  // (def goes here)
+  // ----- END 15-3 Moon Buggy Crew -----
+  //
+  // ----- BEGIN 15-4 Planet Hop Race (mode 'planethop', js/levels/world15/planet-hop-race.js) -----
+  // (def goes here)
+  // ----- END 15-4 Planet Hop Race -----
+  //
+  // ===== END World 15 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -3430,6 +3451,10 @@ const WORLDS = [
   { name: 'Dino Valley', blurb: 'Carry, fly, pull and race through the land of the dinosaurs!',
     theme: { skyTop: '#f6b26b', skyBot: '#fff1c9', hillFar: '#9fbf7a', hillNear: '#6fa45a', sun: 'rgba(255, 238, 170, 0.95)', sunGlow: 'rgba(255, 190, 110, 0.38)',
       stone: '#6b5a4a', stoneLight: '#806c58', stoneEdge: '#4a3c30', grass: '#7ccf4f', grassDark: '#3f8f3a', plank: '#c9925a', plankDark: '#7d5530', rope: '#b9d36a', ropeDark: '#5a6e2a' } },
+  // World 15: space, friendly and floaty (a deep blue-violet starry sky with a big ringed planet; grey moon rock with lilac dust)
+  { name: 'Orbit Outpost', blurb: 'Swing, flip, drive and hop your way across the stars!',
+    theme: { skyTop: '#0d1033', skyBot: '#3a2c6e', hillFar: '#4a4a7a', hillNear: '#363660', sun: 'rgba(255, 214, 150, 0.95)', sunGlow: 'rgba(190, 160, 255, 0.35)',
+      stone: '#6a6f8c', stoneLight: '#7f84a3', stoneEdge: '#474b66', grass: '#c9c3f0', grassDark: '#8f88c4', plank: '#9aa6c4', plankDark: '#5c6688', rope: '#f2f2ff', ropeDark: '#8a8fb0' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
