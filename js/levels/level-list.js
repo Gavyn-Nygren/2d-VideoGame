@@ -3361,7 +3361,47 @@ const LEVELS = [
      dinosaurs, nothing scary. Gavyn's picks (Nov 2026): 14-1 Egg Rescue (team), 14-2 Pterodactyl Express (team),
      14-3 Tar Pit Pull (team), 14-4 Raptor Race (versus). Each level's def sits between its own BEGIN/END lines. world: 13 ===== */
   // ----- BEGIN 14-1 Egg Rescue (mode 'eggrescue', js/levels/world14/egg-rescue.js) -----
-  // (def goes here)
+  // 14-1 Egg Rescue (team): carry Mama Dino's giant wobbly egg home on a leaf stretcher, one at each end. Walk together,
+  // hop together, keep the leaf level. Course tokens and rules: the top of the level file.
+  { name: 'Egg Rescue', world: 13, kind: 'team', mode: 'eggrescue', ownStep: true, ownHUD: true, noFalls: true,
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> hop <kbd>S</kbd> low',
+      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> hop <kbd>↓</kbd> low',
+      pad: 'stick: walk · down: low, <span data-glyph="a"></span> hop,',
+    },
+    tip: 'Carry the egg home on a leaf! Walk together, hop together and keep the leaf level so the egg stays on.',
+    act: { label: 'lift' },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Fern Path', front: 0,
+        tip: 'Pip leads at the front, Bo follows. Hold ▲ to get ready: you hop when you are BOTH ready!',
+        course: ['f240', 'S:Walk together! The leaf only stretches a little', 'f160', 'D:flowers', 'f120', 'S:A log! Hold hop: you jump when BOTH are ready', 'f90', 'L',
+          'f200', 'D:trike', 'f140', 'S:Uphill! The low end lifts, the high end goes low', 'f60', 'u260', 'f140', 'n', 'f110', 'd220', 'f150', 'D:mush', 'c44', 'f170',
+          'D:palm', 'f90', 'T', 'f190', 'S:Steep! Level the leaf together', 'f50', 'U200', 'f120', 'n', 'f100', 'D220', 'f150', 'L', 'f120', 'L', 'f150', 'D:mush', 'f100', 'X'],
+      },
+      {
+        title: 'River Stepping Stones', front: 1,
+        tip: 'Swap! Bo leads now. Hop stone to stone together. Stones bob and dip, so keep lifting and lowering!',
+        course: ['f240', 'S:Hop stone to stone together!', 'f110', 'R:4,6,3.2,5', 'f150', 'D:stego', 'n', 'f160', 'S:Bobbing stones! Keep the leaf level', 'f90',
+          'R:5,12,2.8,7', 'f140', 'n', 'f110', 'u200', 'f100', 'D:flowers', 'd200', 'f90', 'L', 'f150', 'D:dragonfly', 'R:6,15,2.4,9', 'f160', 'D:flowers', 'f120', 'X'],
+      },
+      {
+        title: 'Geyser Field', front: 0,
+        tip: 'Pip leads again. Warm steam vents bubble, then PUFF! Cross while they rest. If the egg pops up, stop!',
+        course: ['f240', 'S:Steam vents puff! Cross while they rest', 'f90', 'v:0', 'f200', 'D:pool', 'v:2.4', 'f160', 'n', 'f140', 'S:Two in a row: watch them both!', 'f40',
+          'v:0.6', 'f120', 'v:3.0', 'f60', 'D:trike', 'f140', 'L', 'f160', 'n', 'f100', 'u180', 'f60', 'v:1.2', 'f120', 'd180', 'f150', 'S:Old Steamy! The big one', 'f70',
+          'v:0,1', 'f220', 'D:pool', 'f100', 'X'],
+      },
+      {
+        title: "Mama's Nest", front: 1,
+        tip: 'Bo leads up the hill to Mama! Hop up the ledges one at a time and level the leaf on the saggy bridge.',
+        course: ['f220', "S:Up to Mama's nest!", 'f70', 'u240', 'f120', 'S:A ledge! Hop up, then level the leaf', 'f50', 'e28', 'f140', 'U220', 'f100', 'n', 'f110',
+          'S:Wobbly vine bridge! It sags in the middle', 'f50', 'B:300,34', 'f140', 'n', 'f100', 'e26', 'f100', 'e26', 'f90', 'U200', 'f120', 'L', 'f120', 'n', 'f100',
+          'U180', 'f100', 'D:flowers', 'f60', 'E'],
+      },
+    ],
+  },
   // ----- END 14-1 Egg Rescue -----
   //
   // ----- BEGIN 14-2 Pterodactyl Express (mode 'ptero', js/levels/world14/pterodactyl-express.js) -----
