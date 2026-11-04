@@ -67,6 +67,10 @@ const planethopHash = (a, b) => (((Math.imul(a + 7, 73856093) ^ Math.imul(b + 3,
 const planethopWrap = a => { a %= PLANETHOP_TAU; return a > Math.PI ? a - PLANETHOP_TAU : a < -Math.PI ? a + PLANETHOP_TAU : a; };
 // 1-player mode: the computer plays this runner (no key reminders for it)
 const planethopCpu = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
+// phones: this mode's HUD and camera go bigger a little sooner than the shared HUD (a landscape phone is about 0.6-0.7)
+const planethopBig = () => (typeof stageScale === 'number' ? stageScale < 0.72 : hudBig());
+// zoomed far out on a small screen the runners would be specks: draw them up to 1.7x bigger (looks only)
+const planethopRunK = cam => clamp(0.6 / (cam.z * (typeof stageScale === 'number' ? stageScale : 1)), 1, 1.7);
 
 /* ---------- the course ---------- */
 function planethopPlanet(c, o) {
@@ -524,8 +528,9 @@ function planethopRunnerProg(c, r) {
   return planethopProgAt(c, r.x, r.y);
 }
 // the shared camera: fits both runners and the leader's next planet; too far apart, it keeps the leader in view
-function planethopCamera(st, dt, snap) {
-  const c = st.c, cam = st.cam, big = hudBig(), [A, B] = st.run;
+// pre: before GO, the runners stand left of the middle so the round banner and the 3-2-1 don't cover them
+function planethopCamera(st, dt, snap, pre) {
+  const c = st.c, cam = st.cam, big = planethopBig(), [A, B] = st.run;
   const zMin = big ? 0.58 : 0.5, zMax = big ? 1.12 : 1;
   const lead = A.prog >= B.prog ? A : B, lci = lead.mode === 'ground' ? c.pl[lead.pi].ci : lead.reach;
   const nq = c.byCi[Math.min(c.n, lci + 1)];
@@ -537,6 +542,7 @@ function planethopCamera(st, dt, snap) {
   // keep the leader on screen
   const hx = (W / 2 - mx) / z, hyT = (H / 2 - top) / z, hyB = (H / 2 - bot) / z;
   cx = clamp(cx, lead.x - hx, lead.x + hx); cy = clamp(cy, lead.y - hyB, lead.y + hyT);
+  if (pre) cx = (A.x + B.x) / 2 + (W / 2 - W * 0.22) / z;
   if (snap || cam.z == null) { cam.x = cx; cam.y = cy; cam.z = z; return; }
   const kp = 1 - Math.exp(-dt * 3.2), kz = 1 - Math.exp(-dt * 2);
   cam.x += (cx - cam.x) * kp; cam.y += (cy - cam.y) * kp; cam.z += (z - cam.z) * kz;
@@ -556,12 +562,15 @@ function planethopDust(st, x, y, n, q) {
 function planethopVisNew() { return { fx: [], words: [], warps: [], trailT: 0 }; }
 function planethopVisTick(st, dt) {
   const v = st.vis; if (!v) return;
-  for (const q of v.fx) { q.life -= dt; q.vx *= Math.exp(-1.5 * dt); q.vy *= Math.exp(-1.5 * dt); q.vy += q.grav * dt; q.x += q.vx * dt; q.y += q.vy * dt; }
-  v.fx = v.fx.filter(q => q.life > 0);
-  for (const w of v.words) w.t += dt;
-  v.words = v.words.filter(w => w.t < 0.8);
-  for (const w of v.warps) w.t += dt;
-  v.warps = v.warps.filter(w => w.t < 0.6);
+  // (kept in place: no new arrays every tick)
+  const fr = Math.exp(-1.5 * dt);
+  let n = 0;
+  for (const q of v.fx) { q.life -= dt; q.vx *= fr; q.vy *= fr; q.vy += q.grav * dt; q.x += q.vx * dt; q.y += q.vy * dt; if (q.life > 0) v.fx[n++] = q; }
+  v.fx.length = n; n = 0;
+  for (const w of v.words) { w.t += dt; if (w.t < 0.8) v.words[n++] = w; }
+  v.words.length = n; n = 0;
+  for (const w of v.warps) { w.t += dt; if (w.t < 0.6) v.warps[n++] = w; }
+  v.warps.length = n;
   for (const q of st.c.pl) if (q.wob > 0) q.wob = Math.max(0, q.wob - dt);
   for (const s of st.c.stars) if (s.taken >= 0) s.t = (s.t || 0) + dt;
   for (const r of st.run) {
@@ -606,7 +615,7 @@ function planethopTick(dt, live) {
   if (done.length) {
     if (done.length === 2) { matchRoundEnd(-1, 'Both at the rocket: a dead heat!'); return; }
     const w = done[0], l = st.run[1 - w.id], rt = st.t - st.t0;
-    if (st.stat.best[w.id] == null || rt < st.stat.best[w.id]) st.stat.best[w.id] = rt;
+    if (st.stat.best[w.id] == null || rt < st.stat.best[w.id]) { st.stat.best[w.id] = rt; st.stat.bestTw[w.id] = st.twist; }
     const lci = l.mode === 'ground' ? c.pl[l.pi].ci : l.reach, left = c.n - lci;
     const why = left <= 0 ? 'Rocket first, by a whisker!' : left === 1 ? 'Rocket first, one planet ahead!' : 'Rocket first, ' + left + ' planets ahead!';
     if (left <= 0) st.stat.whiskers++;
@@ -616,7 +625,8 @@ function planethopTick(dt, live) {
   // the safety bell: a round that somehow runs this long goes to whoever is farther along
   if (st.t - st.t0 > PLANETHOP.capT) {
     const [A, B] = st.run;
-    matchRoundEnd(Math.abs(A.prog - B.prog) < 2 ? -1 : A.prog > B.prog ? 0 : 1, 'Farther along at the bell!');
+    const tie = Math.abs(A.prog - B.prog) < 2;
+    matchRoundEnd(tie ? -1 : A.prog > B.prog ? 0 : 1, tie ? 'Neck and neck at the bell!' : 'Farther along at the bell!');
   }
 }
 
@@ -625,7 +635,7 @@ MODES.planethop = {
   setup(st, L) {
     for (const row of L.grid) row.fill('.');
     st.stat = { jumps: [0, 0], hops: [0, 0], puffs: [0, 0], stars: [0, 0], tows: [0, 0], lifts: [0, 0], worms: [0, 0], boings: [0, 0],
-      comets: [0, 0], bonks: [0, 0], best: [null, null], bumps: 0, whiskers: 0 };
+      comets: [0, 0], bonks: [0, 0], best: [null, null], bestTw: [null, null], bumps: 0, whiskers: 0 };
     const mix = PLANETHOP_MIX.slice();
     for (let i = mix.length - 1; i > 0; i--) { const j = Math.floor(this.rand() * (i + 1)); [mix[i], mix[j]] = [mix[j], mix[i]]; }
     st.order = ['plain', ...mix.slice(0, 4)];
@@ -650,7 +660,7 @@ MODES.planethop = {
       if (r.gold >= 2) r.runK = PLANETHOP.goldRun;
     }
     for (const r of st.run) r.prog = planethopRunnerProg(st.c, r);
-    planethopCamera(st, 0, true);
+    planethopCamera(st, 0, true, true);
     // the runners are the players: hide the platformer bodies every round (matchResetPlayers revives them)
     for (const p of G.players) Object.assign(p, { alive: false, respawnT: Infinity });
     G.particles.length = 0; // (and the puff it makes where those hidden bodies stand)
@@ -673,7 +683,7 @@ MODES.planethop = {
     planethopMove(st.c, st.t);
     for (const r of st.run) planethopPlace(st.c, r);
     planethopVisTick(st, dt);
-    planethopCamera(st, dt, true);
+    planethopCamera(st, dt, true, true);
     if (m.phase === 'count' && !st.goldSaid) { st.goldSaid = true; if (st.run.some(r => r.gold)) Sfx.play('planethopGold'); }
   },
   tiebreak() {
@@ -692,7 +702,7 @@ MODES.planethop = {
       { label: 'Tow-bot rides', values: [s.tows[0] + s.lifts[0], s.tows[1] + s.lifts[1]] },
     ];
     const fast = s.best[0] == null && s.best[1] == null ? null : s.best[1] == null || (s.best[0] != null && s.best[0] <= s.best[1]) ? 0 : 1;
-    if (fast != null) out.push('Fastest race: ' + NAMES[fast] + ', ' + f(s.best[fast]) + ' s.' + (s.whiskers ? ' Won by a whisker: ' + s.whiskers + '!' : ''));
+    if (fast != null) out.push('Fastest race: ' + NAMES[fast] + ', ' + f(s.best[fast]) + ' s (' + PLANETHOP_TWISTS[s.bestTw[fast]].name + ').' + (s.whiskers ? ' Won by a whisker: ' + s.whiskers + '!' : ''));
     const wm = s.worms[0] + s.worms[1], bk = s.bonks[0] + s.bonks[1];
     if (wm > 0) out.push('Wormhole shortcuts: ' + wm + '. Wheee!');
     else if (bk > 0) out.push('Jet-puff bonks: ' + bk + ' (all bouncy, nobody hurt).');
@@ -751,8 +761,8 @@ function planethopDrawSky(st) {
   if (sx > -80 && sx < W + 80) planethopDrawStation(sx, sy);
 }
 function planethopDrawRinged(x, y) {
-  ctx.save(); ctx.translate(x, y); ctx.rotate(-0.28); ctx.scale(0.8, 0.8);
-  ctx.globalAlpha = 0.42; // far away: faint, so it never looks like a planet to land on
+  ctx.save(); ctx.translate(x, y); ctx.rotate(-0.28); ctx.scale(0.5, 0.5);
+  ctx.globalAlpha = 0.22; // far away: small and faint, so it never looks like a planet to land on
   ctx.strokeStyle = 'rgba(255,214,170,0.45)'; ctx.lineWidth = 7;
   ctx.beginPath(); ctx.ellipse(0, 0, 112, 26, 0, Math.PI, Math.PI * 2); ctx.stroke();
   const g = ctx.createRadialGradient(-22, -24, 8, 0, 0, 66);
@@ -1002,8 +1012,9 @@ function planethopDrawFlag(q, a, col) {
 // a runner: Pip or Bo in a bubble helmet with a little jet pack, feet on the planet
 function planethopDrawRunner(st, r) {
   if (r.hidden) return;
-  const col = PCOL[r.id], dk = PDARK[r.id], pos = planethopDrawPos(st, r);
+  const col = PCOL[r.id], dk = PDARK[r.id], pos = planethopDrawPos(st, r), zk = planethopRunK(st.cam);
   ctx.save(); ctx.translate(pos.x, pos.y); ctx.rotate(r.vu + Math.PI / 2);
+  if (zk > 1) { ctx.translate(0, 13); ctx.scale(zk, zk); ctx.translate(0, -13); } // (bigger round the feet)
   if (r.puffT > 0) {
     // the jet puff's flame, pointing away from where it pushes
     const k = r.puffT / 0.35;
@@ -1045,7 +1056,7 @@ function planethopDrawRunner(st, r) {
   ctx.strokeStyle = 'rgba(235,248,255,0.8)'; ctx.lineWidth = 1.6; circle(0, -3, 16.5); ctx.stroke();
   ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(0, -3, 13, -2.6, -1.9); ctx.stroke();
   ctx.restore();
-  if (r.dizzy > 0) for (let i = 0; i < 3; i++) { const a = G.clock * 9 + i * 2.1; planethopStarShape(pos.x + Math.cos(a) * 16 + Math.cos(r.vu) * 24, pos.y + Math.sin(a) * 5 + Math.sin(r.vu) * 24, 4, C.gold, 0); }
+  if (r.dizzy > 0) for (let i = 0; i < 3; i++) { const a = G.clock * 9 + i * 2.1; planethopStarShape(pos.x + Math.cos(a) * 16 * zk + Math.cos(r.vu) * 24 * zk, pos.y + Math.sin(a) * 5 * zk + Math.sin(r.vu) * 24 * zk, 4 * zk, C.gold, 0); }
 }
 // Tow-bot: a round friendly robot with one big eye and a little propeller, holding a tractor beam
 function planethopDrawTowBot(st, r) {
@@ -1079,7 +1090,7 @@ function planethopWordY(x, y, below) {
 }
 function planethopDrawTop() {
   const st = G.mst, m = G.match; if (!st.c || !st.run || !st.cam) return;
-  const cam = st.cam, big = hudBig();
+  const cam = st.cam, big = planethopBig();
   ctx.save(); planethopCamXform(cam);
   const order = st.run.slice().sort((a, b) => a.prog - b.prog);
   for (const r of order) planethopDrawRunner(st, r);
@@ -1101,6 +1112,20 @@ function planethopDrawTop() {
     ctx.globalAlpha = 1;
   }
   for (const w of st.vis.words) { const k = w.t / 0.8, s = planethopToScreen(cam, w.x, w.y); ctx.globalAlpha = 1 - k; bigText(w.text, s.x, s.y - 24 - 18 * k, big ? 22 : 16, w.col); ctx.globalAlpha = 1; }
+  // zoomed out: a little pin over each runner, so who is who reads at a glance
+  const pinA = clamp((0.78 - cam.z) / 0.12, 0, 1);
+  if (pinA > 0 && m && m.phase !== 'ready' && m.phase !== 'count') for (const r of st.run) {
+    if (r.hidden) continue;
+    const s = planethopToScreen(cam, r.x, r.y), up = r.mode === 'ground' ? r.a : r.vu, zk = planethopRunK(cam);
+    const rr0 = big ? 11 : 8, d = (26 * zk) * cam.z + rr0 + 6, px = s.x + Math.cos(up) * d, py = s.y + Math.sin(up) * d;
+    if (px < -20 || px > W + 20 || py < -20 || py > H + 20) continue;
+    ctx.globalAlpha = pinA;
+    ctx.fillStyle = PCOL[r.id]; ctx.beginPath(); ctx.moveTo(px - Math.cos(up) * (rr0 + 6), py - Math.sin(up) * (rr0 + 6));
+    ctx.lineTo(px + Math.cos(up + 1.9) * rr0, py + Math.sin(up + 1.9) * rr0); ctx.lineTo(px + Math.cos(up - 1.9) * rr0, py + Math.sin(up - 1.9) * rr0); ctx.fill();
+    circle(px, py, rr0); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5; circle(px, py, rr0); ctx.stroke();
+    text(NAMES[r.id][0], px, py + 0.5, big ? 14 : 11, '#fff', 'center');
+    ctx.globalAlpha = 1;
+  }
   // a runner off the screen: a marker at the edge pointing to them
   for (const r of st.run) {
     if (r.hidden) continue;
@@ -1116,7 +1141,7 @@ function planethopDrawTop() {
   const tagA = G.introT > 0 ? 1 - clamp(G.introT / 0.5, 0, 1) : m && (m.phase === 'ready' || m.phase === 'count') ? 1 : 0;
   if (tagA > 0) for (const r of st.run) {
     const p0 = planethopDrawPos(st, r), s = planethopToScreen(cam, p0.x, p0.y), cpu = planethopCpu(r.id), hw = cpu ? 30 : 18;
-    const x = s.x + (st.ghost ? (r.id ? 1 : -1) * (hw + 2) : 0), y = s.y - 30 * cam.z - 16;
+    const x = s.x + (st.ghost ? (r.id ? 1 : -1) * (hw + 2) : 0), y = s.y - 30 * cam.z * planethopRunK(cam) - 16;
     ctx.globalAlpha = tagA; ctx.fillStyle = PCOL[r.id]; rr(x - hw, y - 11, hw * 2, 18, 9); ctx.fill();
     ctx.beginPath(); ctx.moveTo(x - 4, y + 7); ctx.lineTo(x + 4, y + 7); ctx.lineTo(x, y + 11); ctx.fill();
     text(cpu ? NAMES[r.id] + ' · CPU' : NAMES[r.id], x, y - 1.5, 12, '#fff', 'center', 'body'); ctx.globalAlpha = 1;
@@ -1154,7 +1179,7 @@ function planethopFlameIcon(x, y, s, on, gold) {
 }
 function planethopHud() {
   const st = G.mst, m = G.match; if (!st.run || !st.c || !st.cam) return;
-  const big = hudBig(), tw = PLANETHOP_TWISTS[st.twist], c = st.c, cam = st.cam;
+  const big = planethopBig(), tw = PLANETHOP_TWISTS[st.twist], c = st.c, cam = st.cam;
   // bottom corners: each runner's jet puffs (gold edge with gold jets)
   for (const r of st.run) {
     const left = r.id === 0, sz = big ? 1.45 : 1, slots = Math.max(r.puffMax, r.puffs), pw = (64 + slots * 20) * sz, ph = 34 * sz, y = H - 8 - ph, x = left ? 12 : W - 12 - pw;
@@ -1203,7 +1228,7 @@ function planethopHud() {
     for (const k of [0, 1]) {
       const h = st.hint[k], r = st.run[k]; if (!h || r.hidden || planethopCpu(k)) continue;
       const kk = planethopKeys(k), s = planethopToScreen(cam, r.x, r.y);
-      const lab = h.n === 1 ? 'Jump from near the top, running!' : 'In the air, ' + kk.boost + ' = jet puff!';
+      const lab = h.n === 1 ? 'Run toward the next planet, then jump!' : 'In the air, ' + kk.boost + ' = jet puff!';
       ctx.globalAlpha = clamp(Math.min(h.t / 0.2, (4.5 - h.t) / 0.4), 0, 1);
       const box = G.matchHudBox, up = s.y - (big ? 86 : 70);
       planethopChip(lab, s.x, box && up < box.y1 + 24 ? s.y + (big ? 70 : 56) : up, big, PCOL[k], false); // (under the runner near the top)
