@@ -2771,6 +2771,46 @@ const LEVELS = [
      Gavyn's picks (Nov 2026): 13-1 Pumpkin Patch Roll (team), 13-2 Graveyard Bone Hunt (team), 13-3 Haunted Mansion (team,
      Gavyn's own idea), 13-4 Broomstick Race (versus). Each level's def sits between its own BEGIN/END lines. world: 12 ===== */
   // ----- BEGIN 13-1 Pumpkin Patch Roll (mode 'pumpkin', js/levels/world13/pumpkin-patch-roll.js) -----
+  { name: 'Pumpkin Patch Roll', world: 12, kind: 'team', mode: 'pumpkin', ownStep: true, ownHUD: true, noFalls: true,
+    // side-on giant-pumpkin roll (MODES.pumpkin): the map is only the two spawns, the mode builds each room from its course
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> push · balance <kbd>W</kbd> leapfrog <kbd>S</kbd> hug',
+      bo: '<kbd>←</kbd><kbd>→</kbd> push · balance <kbd>↑</kbd> leapfrog <kbd>↓</kbd> hug',
+      pad: 'stick: push · balance, <span data-glyph="a"></span> leapfrog, down hugs,',
+    },
+    tip: 'Roll the giant pumpkin to the hayride! One pushes, one rides on top and leans. Big hills need you both.',
+    act: { label: 'push', labels: ['push', 'hug'] },
+    theme: { skyTop: '#241b4d', skyBot: '#f0915a' },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Patch Hills', pusher: 0, act: { label: 'push', labels: ['push', 'hug'] },
+        tip: 'Pip pushes ▶. Bo rides: walk against the roll, lean ▶ uphill, ◀ downhill. Steep hills need you both!',
+        course: ['f300', 'S:{P}: walk into it to push!', 'f240', 'D:crows', 'f220', 'k', 'f240', 'u260', 'f200', 'b', 'S:Steep! {P} pushes, {R} leans ▶', 'f170',
+          'U360', 'f200', 'D:scarecrow', 'd220', 'f200', 'k', 'f220', 'b', 'U300', 'f100', 'b', 'f60', 'S:Mud! {P}: leapfrog in front', 'f140', 'D360', 'm130',
+          'f260', 'D:ghost', 'f240', 'b', 'u220', 'f220', 'k', 'f180', 'D:jacks', 'f200', 'X'],
+      },
+      {
+        title: 'Pond Bridge', pusher: 1, act: { label: 'push', labels: ['hug', 'push'] },
+        tip: 'Swap! Bo pushes, Pip rides. Bridges only hold a SLOW pumpkin: leapfrog in front, hold ◀ and lean back!',
+        course: ['f300', 'D:frog', 'f240', 'u220', 'f160', 'b', 'U320', 'f100', 'b', 'f60', 'S:Pond! Go SLOW over the bridge', 'f140', 'D350', 'p160', 'f240', 'D:cattails',
+          'f60', 'k', 'f220', 'b', 'U340', 'f100', 'b', 'f40', 'D:willow', 'f170', 'D380', 'p180', 'f200', 'D:frog', 'f60', 'k', 'f180', 'b', 'u220', 'f180', 'D:crows', 'f200', 'X'],
+      },
+      {
+        title: 'Scarecrow Ridge', pusher: 0, act: { label: 'push', labels: ['push', 'hug'] },
+        tip: 'Pip pushes again. Windy ridge! Bo, lean into the gusts. Zoom down one hill and up the next!',
+        course: ['f300', 'D:scarecrow', 'f180', 'b', 'U300', 'f60', 'b', 'f80', 'S:Windy ridge! {R}: lean into the gusts', 'g<', 'f220', 'D:crows', 'g>', 'f150', 'D320', 'p150',
+          'f220', 'b', 'U260', 'f120', 'g<', 'f140', 'D:scarecrow', 'f100', 'S:Zoom down, roll up!', 'f80', 'D240', 'f30', 'U220', 'f170', 'g>', 'f70', 'b',
+          'f180', 'D330', 'm140', 'f220', 'k', 'f180', 'D:ghost', 'f200', 'X'],
+      },
+      {
+        title: 'Hayride Hill', pusher: 1, act: { label: 'push', labels: ['hug', 'push'] },
+        tip: 'Bo pushes to the top! One last pond, then the big climb up Hayride Hill and onto the wagon.',
+        course: ['f300', 'D:jacks', 'f200', 'b', 'U300', 'f100', 'b', 'f60', 'D:willow', 'f150', 'D350', 'p170', 'f220', 'D:frog', 'f60', 'k', 'f200', 'b', 'U280', 'f150',
+          'D:scarecrow', 'f80', 'U280', 'f180', 'b', 'u220', 'f140', 'k', 'f160', 'S:Hayride! Up the ramp!', 'U300', 'f220', 'D:jacks', 'f120', 'E'],
+      },
+    ],
+  },
   // ----- END 13-1 Pumpkin Patch Roll -----
   //
   // ----- BEGIN 13-2 Graveyard Bone Hunt (mode 'bonehunt', js/levels/world13/graveyard-bone-hunt.js) -----
