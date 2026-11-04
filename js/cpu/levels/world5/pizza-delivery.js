@@ -151,7 +151,11 @@
     // (it stays ducked meanwhile, to show how, rather than standing up to steady a push lean)
     const awnWait = hits(Math.max(14, v * 0.4), 0, 0) && myDucks(Math.max(14, v * 0.4), 1) && !hits(0, 0, 0);
     S.awnT = awnWait ? (S.awnT || 0) + dt : 0;
-    if (awnWait) stopHard();
+    // a person who keeps walking into it without ducking (after a few "Duck with me!"s) gets their way: the bump
+    // knocks a box off and the level shows DUCK!, then it waits for them again (the level retries a room with a
+    // smaller order if too many fall), so the pair never stands there forever
+    S.awnPush = !awnWait || m.awnBonkT > 2.3 ? 0 : (S.awnPush || 0) + (theyWalk ? dt : 0);
+    if (awnWait) { if (person && S.awnPush > 5) go = true; else stopHard(); }
     // in the wind with a gust coming: stop and steady
     const windy = calmFor(m) < 0.5 && m.X > m.R.wind.x0 - 20 && m.X < m.R.wind.x1 + 10;
     if (windy && S.safe !== 'walk') stopHard();
@@ -169,24 +173,29 @@
         if (pal.ready >= 0) hop = true;                                          // they pressed hop: join at once
         else if (gap < v * v / (2 * Z.dec) + 6 || (v < 5 && gap < 22)) {
           stopHard();
-          // waiting at the wall: count them in, then hold hop (it waits 0.6 s for them); never into a gust
+          // waiting at the wall: count them in, then hold hop (it waits 0.6 s for them); never into a gust. If they
+          // don't join, the hop goes alone and jolts the stack, so at most twice per crate, 6 s apart, and only
+          // while they are pressing keys (walking into the crate, not sure how to get over); otherwise it just waits
+          // for their hop (the level shows them the key)
           const calm = calmFor(m) > 1.2;
-          if (!(v < 5 && gap < 22)) S.crateT = 0;
+          if (!(v < 5 && gap < 22)) S.crateT = Math.min(S.crateT || 0, 0);
           else if (calm || S.crateT < 1) S.crateT = (S.crateT || 0) + dt;
-          if (S.crateT > 0.9 && S.crateT < 2.2 && info.partnerIdle < 3) say(S, p, 'Hop with me!', 1.4, 6);
-          if (S.crateT > 1.8 && calm && !m.teeter && Math.abs(m.lean) < 0.55 && Math.abs(m.leanV) < 1.5) { hop = true; S.holdHop = 0.6; S.crateT = -2.5; }
+          if (S.crateT > 0.9 && info.partnerIdle < 3) say(S, p, 'Hop with me!', 1.4, 8);
+          if (S.crateT > 1.8 && (S.countN || 0) < 2 && info.partnerIdle < 0.5 && calm && !m.teeter && Math.abs(m.lean) < 0.55 && Math.abs(m.leanV) < 1.5) {
+            hop = true; S.holdHop = 0.6; S.crateT = -4; S.countN = (S.countN || 0) + 1;
+          }
         }
       } else if (v > 130 && gap >= 10 && gap <= 15 && go) hop = true;           // two computers: hop on the run
       else if (gap < v * v / (2 * Z.dec) + 10) {                                // or stop at the wall and hop
         if (v < 5 && gap < 22) hop = true; else stopHard();
       }
-    } else S.crateT = 0;
+    } else if (gap === Infinity) S.crateT = S.countN = 0;                      // (past it; a hop in the air keeps count)
     if (S.holdHop > 0) { S.holdHop -= dt; if (me.grounded && me.ready >= 0) hop = true; else if (!me.grounded) S.holdHop = 0; }
 
     // ----- with a person: walk when they walk, take the first step after a short wait, don't push alone for long
     if (person) {
       if (go && !theyWalk && !air && !hop) {
-        S.lead = (S.lead || 0) + dt;
+        S.lead = info.intro ? 0 : (S.lead || 0) + dt;                         // (not while the room card shows)
         // wait a moment, lean on the tray for a moment (the level then shows them the way), then let go again:
         // pushing alone never moves it and only shakes the stack
         if (info.intro || S.lead < 0.5 || S.lead % 2.6 > 1.4 || Math.abs(m.lean) > 0.4 || info.partnerIdle > 20) go = false;
@@ -196,8 +205,8 @@
       S.refuse = theyWalk && !go && !hard ? (S.refuse || 0) + dt : 0;
       if (S.refuse > 0.6) go = true;
       else if (S.refuse > 0.25) say(S, p, 'Slow down!', 1.2, 10);
-      if (theyWalk && hard && m.teeter) say(S, p, 'Stop! Hold steady!', 1.2, 3, true);
-      else if (m.teeter && !pal.steady && pal.idleT < Z.afkSave) say(S, p, 'Hold steady!', 1.2, 3, true);
+      // (one bubble per teeter: the level's own STOP! / STEADY! says the rest)
+      if (m.teeter && (theyWalk || (!pal.steady && pal.idleT < Z.afkSave))) say(S, p, 'Hold steady!', 1.2, 3, true);
       else if (S.awnT > 0.8 && pal.duck < 0.5) say(S, p, 'Duck with me!', 1.6, 6);
     } else if (info.intro) go = false;
 

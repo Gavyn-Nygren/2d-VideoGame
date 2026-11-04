@@ -216,6 +216,11 @@ function pollInput(dt = 1 / 60) {
     else if (inMenu) {
       if (pressed('ok')) { Sfx.init(); menuActivate(); }
       else if (pressed('back') && G.mode === 'paused') resume();
+      else if (pressed('view') && (G.mode === 'title' || G.mode === 'paused') && cpuSolo()) {
+        // 1-player mode: swap which character the person plays (the computer takes the other one)
+        cpuSetCfg('human', 1 - CPU.cfg.human); refreshGlyphs();
+        toast(`You now play ${NAMES[CPU.cfg.human]}`);
+      }
       else if (pressed('view') && (G.mode === 'title' || G.mode === 'paused')) {
         Pads.swap = !Pads.swap; refreshGlyphs();
         toast(Pads.slots.length >= 2 ? `Swapped: controller 1 plays ${NAMES[Pads.swap ? 1 : 0]}` : `Controller now plays ${NAMES[Pads.swap ? 1 : 0]}`);

@@ -15,11 +15,12 @@
        crosses before the BOOM but leaves you too little time to send it back, or one that hands you the potato with
        too much fuse to win it back right away (see chooseShot).
      - Set and spike (normal and hard, now and then): ▼ + hit pops the potato up by the net, then it jumps and spikes.
-     Skill: easy sees late, misjudges where the potato comes down (and fixes it late), swings too early now and then,
-     stumbles while chasing, mostly bumps and never aims or plays the fuse; hard sees quickly, picks the shot that is
+     Skill: easy sees late, often notices a potato coming over the net a moment late (like a kid looking elsewhere),
+     misjudges where it comes down (and fixes it late), swings too early now and then, stumbles while chasing, mostly
+     bumps and never aims or plays the fuse; hard sees quickly, picks the shot that is
      hardest for you to reach, spikes whenever it can and always plays the fuse. */
   const SK = s => ({
-    lag: 0.42 - 0.35 * s,                 // how late it sees the potato: easy 0.30 s, normal 0.18 s, hard 0.07 s
+    lag: s > 0.9 ? 0.12 : 0.42 - 0.35 * s, // how late it sees the potato: easy 0.30 s, normal 0.18 s, hard 0.12 s
     err: 4 + 70 * (1 - s),                // how far off its first guess of the landing spot is (px, shrinks as it comes)
     resid: 0.9 * (1 - s) * (1 - s),       // ...down to this part of it (easy can end up a step off)
     whiff: 0.01 + 0.55 * (1 - s) * (1 - s), // chance a swing goes off too early (easy 24 %, normal 6 %, hard 1 %)
@@ -31,6 +32,7 @@
     dawdle: 0.5 * (1 - s),                // a short stop this often per second while nothing is coming (none on hard)
     fuse: s < 0.5 ? 0 : s < 0.9 ? 0.65 : 1, // chance it plays the fuse on a shot (see chooseShot)
     stumble: 0.9 * (1 - s) * (1 - s),     // easy stops for a moment while chasing this often per second
+    late: s < 0.5 ? 0.4 : s < 0.9 ? 0.06 : 0, // chance it notices a potato coming over the net late (easy 40 %)
   });
   const HOR = 2.5;                        // seconds of flight it looks ahead
   const K = () => MODES.potato.K;
@@ -39,7 +41,7 @@
 
   // what it sees of a potato (cpuLag keeps these a moment)
   const look = pt => ({ x: pt.x, y: pt.y, vx: pt.vx, vy: pt.vy, r: pt.r, g: pt.g, rest: pt.rest, hover: pt.hover, alive: pt.alive,
-    fuse: pt.fuse, setUsed: pt.setUsed.slice(), ramp: pt.ramp, tMul: pt.tMul, cd: pt.cd.slice(), t: G.time });
+    fuse: pt.fuse, setUsed: pt.setUsed.slice(), ramp: pt.ramp, tMul: pt.tMul, cd: pt.cd.slice(), cross: pt.crossings, t: G.time });
   // the potato's flight from a seen state: positions once per physics step
   function predict(s) {
     const n = Math.round(HOR / DT), xs = new Float32Array(n + 1), ys = new Float32Array(n + 1);
@@ -196,7 +198,7 @@
       // a new round (or a replay): forget the old potatoes
       if (st.pots !== mst.pots) {
         st.pots = mst.pots; st.paths = []; st.shot = null; st.shotFor = ''; st.hold = 0; st.err = 0; st.errFor = 0;
-        st.dawT = 0; st.whiff = null; st.spikeFor = 0; st.jumped = false; st.forceSpike = false;
+        st.dawT = 0; st.whiff = null; st.spikeFor = 0; st.jumped = false; st.forceSpike = false; st.lateFor = []; st.lateT = 0;
         for (const key in st) if (key.startsWith('_lag_')) delete st[key];
       }
       if (M.phase !== 'live') { st.hold = 0; return out; }
@@ -223,8 +225,11 @@
         const key = plan.P.id;
         if (st.errFor !== key) { st.errFor = key; st.err = gauss() * sk.err; }
         tx = plan.sx + st.err * Math.max(sk.resid, clamp((plan.t - 0.2) / 0.8, 0, 1));
+        // a potato that just came over the net: easy sometimes notices it late (like a kid looking elsewhere)
+        if (st.lateFor[pi] !== plan.s.cross) { st.lateFor[pi] = plan.s.cross; st.lateT = Math.random() < sk.late ? 0.3 + Math.random() * 0.5 : 0; }
+        if (st.lateT > 0) { st.lateT -= dt; tx = cpuCx(p); }
         // easy stumbles now and then on the way
-        if (st.dawT > 0) { st.dawT -= dt; tx = cpuCx(p); }
+        else if (st.dawT > 0) { st.dawT -= dt; tx = cpuCx(p); }
         else if (cpuChance(sk.stumble, dt)) st.dawT = 0.12 + Math.random() * 0.12;
       } else {
         // nothing coming: back to the middle of its half (a little toward the net)
@@ -261,7 +266,7 @@
       } else {
         st.hold = 0;
         if (plan && shot && ready) {
-          if (shot.mode === 'pow' && plan.t <= KK.tapWin + KK.chargeT * Math.pow(KK.helpCharge, mst.help[k]) * shot.P + 0.03
+          if (shot.mode === 'pow' && st.lateT <= 0 && plan.t <= KK.tapWin + KK.chargeT * Math.pow(KK.helpCharge, mst.help[k]) * shot.P + 0.03
               && Math.abs(cpuCx(p) - tx) < 30) { out.act = true; st.hold = dt; }
           else if (st.whiff !== null && plan.t <= st.whiff && plan.t > 0.12) { out.act = 'tap'; st.whiff = null; }
           else if (inReach) out.act = 'tap';

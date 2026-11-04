@@ -157,11 +157,11 @@ function showTitle() {
       </div>
       ${cpuCfgHTML()}
       <div class="actions-row"><button class="primary" type="button" data-act="start" data-primary>Start World 1</button><span class="hint kb-only">or press Enter</span></div>
-      <p class="hint touch-only">Pip uses the orange buttons on the left, Bo uses the blue buttons on the right. ▲ jumps, ▼ drops through planks.</p>
+      <p class="hint touch-only" data-two-only${CPU.cfg.players === 1 ? ' hidden' : ''}>Pip uses the orange buttons on the left, Bo uses the blue buttons on the right. ▲ jumps, ▼ drops through planks.</p>
       <div class="pcard pad-only">
         <div class="keys"><span>Stick or d-pad: move</span><span><span data-glyph="a"></span> jump</span><span>Down: drop through planks</span><span><span data-glyph="start"></span> pause</span></div>
         <p class="hint" data-padwho></p>
-        <p class="hint">Press <span data-glyph="view"></span> to swap who plays which character. In menus, the stick moves between buttons and <span data-glyph="a"></span> picks.</p>
+        <p class="hint">Press <span data-glyph="view"></span> to swap who plays which character<span data-solo-only${CPU.cfg.players === 1 ? '' : ' hidden'}> (you and the computer)</span>. In menus, the stick moves between buttons and <span data-glyph="a"></span> picks.</p>
       </div>
       ${levelList()}
       <p class="hint kb-only">Controllers work too (Xbox, PlayStation, Switch and others): press any button on one to connect it. The first is Pip, the second is Bo.</p>
@@ -203,6 +203,7 @@ function pause() {
       <p class="eyebrow">Paused · World ${l.world + 1}: ${esc(WORLDS[l.world].name)} · Level ${levelCode(G.levelIndex)}</p>
       <h2>${esc(l.name)}</h2>
       <p class="lede">${esc((G.level && G.level.def.tip) || l.tip)}</p>
+      ${cpuTipNote((G.level && G.level.def.tip) || l.tip) ? `<p class="hint">${esc(cpuTipNote((G.level && G.level.def.tip) || l.tip))}</p>` : ''}
       ${l.act ? actKeysHTML() : ''}${matchLine}
       <div class="actions-row">
         <button class="primary" type="button" data-act="resume" data-primary>Keep playing</button>

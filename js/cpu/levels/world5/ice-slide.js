@@ -17,7 +17,7 @@
     budgetIntro: 4,
     maxSim: 8,          // s: a move that takes longer than this doesn't count
     yourTurn: 4,        // s the partner stands still on their turn before "Your turn!"
-    tellWay: 12,        // ... before saying which way
+    tellWay: 20,        // ... before saying which way (well before the level's own arrows, but not giving the puzzle away)
     sayEvery: 9,        // s between those bubbles
     courtesy: 1.2,      // s a person gets to take a move either of you could make
   };
@@ -310,7 +310,8 @@
   // a player standing still, as the mode sees it (resting on ice, or standing on snow in the middle of a tile)
   function iceStill(p) {
     const s = G.mst.ps && G.mst.ps[p.id];
-    if (!s || !p.alive || !p.grounded || s.boing || Math.abs(p.vy) > 1) return false; // (vy: landing on a shelf is still for a tick)
+    // (vy: landing on a shelf is still for a tick; standing on a head keeps the partner's one step of gravity)
+    if (!s || !p.alive || !p.grounded || s.boing || Math.abs(p.vy) > (p.onPartner ? PHYS.g * DT + 1 : 1)) return false;
     if (s.mode === 'rest') return true;
     return s.mode === 'free' && Math.abs(p.vx) < 1 && !s.walk && wCentred(p);
   }
@@ -358,7 +359,7 @@
         return es.filter(e => e.to.d === dmin).sort((a, b) => a.t - b.t);
       };
       const mine = best(p.id), theirs = best(o.id);
-      const react = 0.25 + (1 - info.skill) * 0.6;
+      const react = 0.2 + (1 - info.skill) * 0.35; // (quick enough to get a turn with a partner who keeps sliding about)
       let go = null;
       if (mine.length && !theirs.length) go = mine[0];
       else if (mine.length && theirs.length) {

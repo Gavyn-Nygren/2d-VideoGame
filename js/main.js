@@ -381,6 +381,8 @@ function fit() {
   // with touch, pads go in the side gutters when there's room, otherwise under the stage
   const fitIn = (aw, ah) => Math.max(0, Math.min(aw, ah * 16 / 9));
   let mode = 'none', availW = wrapW, availH = wrapH, tb = tb0, shape = 'rows', padW = 0, padH = 0;
+  // 1-player mode: only the person's pad is shown, so only one side gutter is needed
+  const one = cpuSolo(), humanLeft = cpuHuman() === 0;
   if (touch) {
     // pick whichever layout gives the bigger game screen (ties: pads beside it, then the act button on a third row)
     let best = null;
@@ -389,7 +391,7 @@ function fit() {
       if (md === 'side' && actOn && ph > wrapH) continue;
       // two wide 3-column pads side by side under the screen: on a very narrow phone the buttons shrink a little to fit
       if (md === 'below' && sh === 'cols') while (b > 36 && 2 * pw + 12 > wrapW + 16) { b--; [pw, ph] = padSize(b, sh); }
-      const aw = md === 'side' ? wrapW - 2 * (pw + 12) : wrapW, ah = md === 'side' ? wrapH : wrapH - ph - 10;
+      const aw = md === 'side' ? wrapW - (one ? 1 : 2) * (pw + 12) : wrapW, ah = md === 'side' ? wrapH : wrapH - ph - 10;
       const sw = fitIn(aw, ah);
       if (!best || sw > best.sw) best = { sw, md, sh, b, pw, ph, aw, ah };
     }
@@ -399,7 +401,9 @@ function fit() {
   let w = fitIn(availW, availH), h = w * 9 / 16;
   w = Math.max(160, Math.floor(w)); h = Math.max(90, Math.floor(w * 9 / 16));
   stageScale = w / W;
-  const left = Math.round((wrapW - w) / 2);
+  // (1-player side layout: centred when there's room, otherwise pushed over to make room for the one pad)
+  const mid = Math.round((wrapW - w) / 2);
+  const left = !(one && mode === 'side') ? mid : humanLeft ? Math.max(padW + 12, mid) : Math.min(wrapW - padW - 12 - w, mid);
   const top = mode === 'below' ? Math.max(0, Math.round((availH - h) / 2)) : Math.max(0, Math.round((wrapH - h) / 2));
   Object.assign(stage.style, { width: w + 'px', height: h + 'px', left: left + 'px', top: top + 'px' });
   if (touch) {

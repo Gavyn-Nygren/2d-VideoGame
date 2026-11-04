@@ -16,17 +16,21 @@
        that lands just before the bell (too late for Super Paint to answer).
      - The golden bucket: it races for it when it can get there about as fast as you. A head-splat when it happens to
        be right above you. In the way of each other: it hops over you (two computers take turns).
-     Skill: easy decides slowly, picks a so-so plan, stops now and then, rarely splats on purpose, sometimes dives too
-     early and doesn't make use of Super Paint; hard decides quickly, picks the best plan, splats a lot, plays the bell
+     Skill: easy decides slowly, picks a so-so plan, runs off anywhere now and then, stops now and then, rarely splats on
+     purpose, often just lands from a jump, sometimes dives too early and hardly uses its Super Paint (so a young kid
+     who splats can win); hard decides quickly, picks the best plan, splats a lot, plays the bell
      and goes for your head and the bucket whenever it can. */
   const SK = s => ({
     think: 1.2 - 0.9 * s,                // seconds between choosing where to go (easy 0.89, normal 0.57, hard 0.3)
     pick: s > 0.9 ? 1 : s > 0.6 ? 2 : 6, // chooses among this many of the best plans
     stray: s < 0.5 ? 0.3 : 0,            // easy: chance it goes off to any spot worth painting at all (like a kid)
+    wander: s < 0.5 ? 0.2 : 0,           // easy: chance it just runs off somewhere (anywhere) when it chooses again
     dawdle: 1.6 * Math.pow(1 - s, 1.5),  // a short stop this often per second (easy 0.84, normal 0.26, none on hard)
     jumpSplat: 0.1 + 0.9 * s * s,        // chance it thinks of splats when choosing where to go, or jump-splats a good
                                          // patch on the way (easy 21 %, normal 54 %, hard 100 %)
     early: 0.5 * (1 - s),                // chance a dive goes off too early (on the way up)
+    airDive: s < 0.5 ? 0.4 : s < 0.9 ? 0.85 : 1, // chance it thinks of diving at all in a jump (easy often just lands;
+                                         // with Super Paint on, easy only a third as often: the catch-up is for you)
     head: s < 0.5 ? 0.1 : s * s,         // chance it dives onto your head when it is right above you
     bucket: 0.3 + 0.7 * s,               // chance it goes for the golden bucket
     steal: s * s,                        // how much more it values painting over your colour than fresh floor
@@ -188,7 +192,7 @@
         if (M.phase !== 'live') return out;
       }
       if (!p.alive || p.stun > 0) return out;
-      const cx = cpuCx(p), feet = cpuFeet(p), canSplat = mst.cool[k] <= 0 && mst.dive[k] === 0, cbK = sk.super && mst.cb[k];
+      const cx = cpuCx(p), feet = cpuFeet(p), canSplat = mst.cool[k] <= 0 && mst.dive[k] === 0, cbOn = mst.cb[k], cbK = sk.super && cbOn;
 
       /* ---- in the air: dive when the splash below is worth it ---- */
       if (!p.grounded) {
@@ -205,9 +209,9 @@
             const gain = splashGain(mst, k, cx, ty, sp.half, sp.rows, sk.steal);
             const need = (cbK ? 4 : 7) + sp.big * 2;
             // wait for the top of the jump (a bigger splash), unless it decided to dive early (easy)
-            if (st.earlyFor !== st.airN) { st.earlyFor = st.airN; st.early = Math.random() < sk.early; }
+            if (st.earlyFor !== st.airN) { st.earlyFor = st.airN; st.early = Math.random() < sk.early; st.airGo = Math.random() < sk.airDive * (cbOn && !sk.super ? 0.3 : 1); }
             const top = p.vy > -60 || (st.early && p.vy > -260);
-            if (gain >= need && top) out.act = 'tap';
+            if (gain >= need && top && st.airGo) out.act = 'tap';
           }
         }
         // keep steering along the run while in the air (unless diving), or the way it was walking to
@@ -274,9 +278,15 @@
       st.progT += dt;
       const stuck = r0 && st.progT > (r0.phase === 'run' ? 0.6 : 1.4);
       const done = r0 && r0.phase === 'run' && (Math.abs(cx - r0.x1) < 6 || (cx - r0.x1) * r0.dir > 0);
-      if (!st.fin && (!r0 || stuck || done || st.thinkT <= 0)) {
+      if (!st.fin && (!r0 || stuck || done || (st.thinkT <= 0 && r0.kind !== 'wander'))) {
         st.thinkT = sk.think * (0.7 + Math.random() * 0.6) * (sk.bell && M.timeLeft < 4 ? 0.5 : 1);
-        const nr = choosePlan(st, p, o, mst, sk, M.timeLeft);
+        let nr;
+        // easy: now and then it just runs off somewhere, like a kid (it still paints on the way)
+        if (Math.random() < sk.wander) {
+          const cs = navGraph(p, {}).cells, c = cs[Math.floor(Math.random() * cs.length)];
+          if (c) nr = { kind: 'wander', x0: navCellX(c.tx), feet: navFeet(c.ty), ty: c.ty, rate: 0, phase: 'go' };
+        }
+        if (!nr) nr = choosePlan(st, p, o, mst, sk, M.timeLeft);
         // keep the run under way unless what is left of it is poor next to the new one
         let left = 0;
         if (r0 && r0.kind === 'run' && r0.phase === 'run' && !stuck && !done) {
@@ -291,7 +301,10 @@
         const mv = go(st, p, run.x0, run.feet, run.kind === 'run' ? 8 : 5, info);
         out.left = mv.left; out.right = mv.right; out.jump = mv.jump; out.down = mv.down;
         const there = Math.abs(feet - run.feet) < 2 && Math.abs(cx - run.x0) < 10;
-        if (there || (st.nav && st.nav.status === 'arrived')) run.phase = run.kind === 'run' ? 'run' : 'do';
+        if (there || (st.nav && st.nav.status === 'arrived')) {
+          if (run.kind === 'wander') { st.run = null; return out; }
+          run.phase = run.kind === 'run' ? 'run' : 'do';
+        }
       }
       if (run.phase === 'do') {
         // a splat plan: wait for the splat to recharge, then jump (or drop through the plank) and dive

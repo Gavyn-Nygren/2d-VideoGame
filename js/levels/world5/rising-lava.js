@@ -720,7 +720,7 @@ MODES.lava = {
       else if (st.breatherT > 0) msg = 'Phew! The lava takes a breather';
       else if (st.freezeT > 0) { msg = 'Frozen ' + Math.ceil(st.freezeT); icon = 'snow'; }
       else if (st.warned) { msg = 'Rumble!'; shake = reduceMotion ? 0 : 1; }
-      else if (st.waitingFor >= 0) msg = NAMES[st.waitingFor] + ', still there? The lava waits for you';
+      else if (st.waitingFor >= 0 && !(cpuSolo() && cpuOn(st.waitingFor))) msg = NAMES[st.waitingFor] + ', still there? The lava waits for you'; // (1-player: the computer standing still is waiting for you, not gone)
       else if (st.startT > 0) msg = 'Here comes the lava!';
     }
     if (msg) {

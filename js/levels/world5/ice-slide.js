@@ -707,7 +707,7 @@
       }
       for (const p of G.players) {
         const s = st.ps[p.id], o = st.ps[1 - p.id];
-        if (!p.alive || st.stuckT > 0 || p.id === arrowFor) continue;
+        if (!p.alive || st.stuckT > 0 || p.id === arrowFor || (cpuSolo() && cpuOn(p.id))) continue; // (1-player: no zzz over the computer waiting for you)
         const by = tops[p.id];
         if (s.idleT >= ICE.idleZzz && o.idleT < 8) {
           const bob = Math.sin(G.clock * 2.5) * 2;

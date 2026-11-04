@@ -143,19 +143,40 @@
     //    the way to them, so press when the partner stands by the lowest new step, or waits for me, or after politeMax s
     const mine = S.buttons.filter(b => b.owner === k && !b.hold && !b.latched && S.groups[b.group]);
     const oc = Math.floor(cpuCx(o) / T), orow = Math.floor((cpuFeet(o) - 1) / T);
-    const waiting = info.partnerCpu ? st.oStill > 1 : info.partnerIdle > 5;
+    const waiting = info.partnerIdle > 5;
     const rude = b => {
-      if ((st.polite[b.ch] || 0) >= LV_K.politeMax) return false;
+      // (two computers don't wait for each other: a computer gets past a low ceiling with a short hop, see below)
+      if (info.partnerCpu || (st.polite[b.ch] || 0) >= LV_K.politeMax) return false;
       if (!o.alive) return true; // (an ouch: wait to see where they pop back)
       const cells = S.groups[b.group].cells, low = Math.max(...cells.map(cl => cl.r));
-      if (waiting && orow <= low + 4) return false; // (standing still up near them: waiting for me)
-      return !(o.grounded && orow >= low && orow <= low + 2 && cells.some(cl => cl.r === low && Math.abs(cl.c - oc) <= 3));
+      // (standing still up level with them, not under them: waiting for me. Not while they still climb up to that level
+      //  or stand under the new steps: those make a low ceiling over the way up)
+      const under = cells.some(cl => Math.abs(cl.c - oc) <= 1 && cl.r < orow - 1 && cl.r >= orow - 5);
+      if (waiting && orow <= low + 1 && !under) return false;
+      // (a partner who hasn't climbed yet this floor and stands about level with the steps counts as near from anywhere
+      //  on that level: the opening presses, where you both press at once and then climb, must not wait)
+      const fresh = S.best[o.id] >= G.level.spawns[o.id].y + PH - T / 2, span = fresh ? COLS : 3;
+      return !(o.grounded && orow >= low && orow <= low + 2 && cells.some(cl => cl.r === low && Math.abs(cl.c - oc) <= span));
     };
     let j = cat(mine.filter(b => !rude(b)).map(b => ({ c: b.c, r: b.r, kind: 'press' })));
     if (j) return j;
-    // (wait on my side of the button, so the way there never crosses it)
-    for (const b of mine.filter(rude)) for (const s of cpuCx(p) < b.c * T + T / 2 ? [-1, 1] : [1, -1]) {
-      if (reach(b.c + s, b.r) < Infinity) return { c: b.c + s, r: b.r, kind: 'polite', ch: b.ch };
+    // (wait on my side of the button, a cell or two away from it: a jump that lands right next to it can slide onto it.
+    //  Not on any button or on a cell where my own steps will pop in)
+    const btnAt = (c, r) => S.buttons.some(b => b.c === c && b.r === r) || S.twins.some(tw => tw.c === c && tw.r === r);
+    const myGhost = (c, r) => Object.values(S.groups).some(gr => gr.holder === k && gr.state !== 'on' && gr.cells.some(cl => cl.c === c && cl.r === r));
+    for (const b of mine.filter(rude)) {
+      if (reach(b.c, b.r) === Infinity) continue;
+      const s = cpuCx(p) < b.c * T + T / 2 ? -1 : 1;
+      let best = null;
+      for (const cell of g.cells) {
+        const t = D[cell.i], dx = (cell.tx - b.c) * s, dy = cell.ty - b.r;
+        if (t === Infinity || dx < (dy ? 1 : 2) || dx > 6 || Math.abs(dy) > 4 || btnAt(cell.tx, cell.ty) || myGhost(cell.tx, cell.ty)) continue;
+        const hot = (cell.ty + 1) * T > S.lavaY - LV_K.lavaGap;
+        const score = dx + Math.abs(dy) * 1.5 + t * 0.3 + (hot ? 40 : 0);
+        if (!best || score < best.score) best = { c: cell.tx, r: cell.ty, kind: 'polite', ch: b.ch, side: s, score };
+      }
+      if (best) return best;
+      return { c: b.c, r: b.r, kind: 'press' }; // (nowhere to wait on my side: just press it)
     }
     // 2. my hold plates the partner still needs
     j = cat(S.buttons.filter(b => b.owner === k && b.hold && S.groups[b.group] && !lvPast(S, S.groups[b.group], o)).map(b => ({ c: b.c, r: b.r, kind: 'hold' })));
@@ -199,13 +220,12 @@
   }
 
   cpuBrain('lava', {
-    reset(st) { st.job = null; st.planT = 0; st.key = ''; st.back = 0; st.sayT = 0; st.waitT = 0; st.D = null; st.want = []; st.hops = null; st.hopBan = {}; st.polite = {}; st.oStill = 0; st.react = 0; st.yieldT = 0; st.yieldCD = 0; st.stuckT = 0; },
+    reset(st) { st.job = null; st.planT = 0; st.key = ''; st.back = 0; st.sayT = 0; st.waitT = 0; st.D = null; st.want = []; st.hops = null; st.hopBan = {}; st.polite = {}; st.react = 0; st.yieldT = 0; st.yieldCD = 0; st.stuckT = 0; },
     think(st, p, o, dt, info) {
       const out = {};
       const S = G.mst, M = MODES.lava;
       if (!S.buttons || !S.cfg || !p.alive) { st.job = null; return out; }
       if (st.sayT > 0) st.sayT -= dt;
-      st.oStill = o.grounded && Math.abs(o.vx) < 15 ? st.oStill + dt : 0;
       // hop back: let go a moment, then hold ▼ for a second
       if (st.back > 0) {
         st.back -= dt;
@@ -265,7 +285,8 @@
         if (canHold) { st.back = 1.3; st.job = null; }
         return out;
       }
-      if (j.kind === 'polite' && S.sinceUp[o.id] > 8) st.polite[j.ch] = (st.polite[j.ch] || 0) + dt; // (not while they climb on)
+      // (not while they climb on; slowly while they move about down below, so a slow starter isn't rushed)
+      if (j.kind === 'polite' && S.sinceUp[o.id] > 8) st.polite[j.ch] = (st.polite[j.ch] || 0) + dt * (info.partnerIdle > 1.5 ? 1 : 0.25);
       // a short think before setting off to a new job (longer on easy)
       if (st.react > 0 && p.grounded) { st.react -= dt; return out; }
       // stuck nose to nose with the partner (the criss-cross stairs): one of us stands aside for a moment and lets the
@@ -275,12 +296,14 @@
       const near = o.alive && Math.abs(cpuCx(o) - cpuCx(p)) < 50 && Math.abs(cpuFeet(o) - cpuFeet(p)) < 60;
       st.stuckT = near && st.nav && st.nav.status !== 'arrived' ? st.stuckT + dt : Math.max(0, st.stuckT - dt);
       if (st.stuckT > 0.8 && st.yieldCD <= 0 && (!info.partnerCpu || p.id === 0)) { st.stuckT = 0; st.yieldT = 1.4; st.yieldCD = 3.5; return out; }
-      const res = cpuNav(st, p, j.c * T + T / 2, (j.r + 1) * T, { tol: j.kind === 'wait' || j.kind === 'polite' ? 10 : 5 });
+      // (waiting by my button: the far half of the next cell, so I never stand on the button by mistake)
+      const jx = j.c * T + T / 2 + (j.kind === 'polite' ? j.side * 5 : 0);
+      const res = cpuNav(st, p, jx, (j.r + 1) * T, { tol: j.kind === 'wait' ? 6 : j.kind === 'polite' ? 4 : 5 });
       const there = st.nav.status === 'arrived';
       st.waitT = there ? st.waitT + dt : 0;
       // a few words for a person who seems unsure (1-player mode only)
       if (there && !info.partnerCpu && st.sayT <= 0 && st.waitT > LV_K.nudge && info.partnerIdle > 3) {
-        const line = j.kind === 'wait' ? 'Press your button!' : j.kind === 'hold' ? 'Go! I’m holding!' : j.kind === 'star' ? 'Stand on your star!' : j.kind === 'door' ? 'Meet at the door!' : null;
+        const line = j.kind === 'wait' ? 'Press your button!' : j.kind === 'polite' ? 'Come on up!' : j.kind === 'hold' ? 'Go! I’m holding!' : j.kind === 'star' ? 'Stand on your star!' : j.kind === 'door' ? 'Meet at the door!' : null;
         if (line) { cpuSay(p, line, 2.5); st.sayT = LV_K.sayEvery; }
       }
       return res;

@@ -29,7 +29,7 @@
         // jump with the rider on (again every so often if they didn't make it)
         if (st.rideT > (info.partnerCpu ? 0.3 : 0.6)) { out.jump = !CPU.last[p.id].jump; st.rideT = -0.6; cpuSay(p, 'Jump at the top!', 1.6); }
         else if (st.rideT > 0) cpuSay(p, 'Hold on...', 1);
-      }
+      } else if (st.rideT > 2.5) cpuSay(p, 'Jump off my head!', 2); // (a rider who doesn't know what's next)
     } else if (!p.grounded) {
       out.jump = p.vy < 0; // a full jump for the rider
     } else {
@@ -345,6 +345,11 @@
       // the key hangs over the pit: one holds at the pit's edge, the other drops off and swings up to it
       const iHang = info.partnerCpu ? p.id === 0 : !st.iHold;
       if (hanging) { chainSwing(out, p, cpuCx(p) < 8 * T ? Math.PI + 0.22 : Math.PI); return out; }
+      // a person who took the same job as me (both waiting at the edge, or both trying to hang): after a while, swap mine
+      const byEdge = q => q.grounded && Math.abs(cpuCx(q) - tileX(9)) < 60;
+      if (!info.partnerCpu && st.decided && cpuFor(st, 'stall', byEdge(p) && byEdge(o), dt) > 8) {
+        st.iHold = !st.iHold; st._for_stall = 0; cpuSay(p, st.iHold ? 'OK, I\u2019ll hold you!' : 'OK, I\u2019ll swing!', 2);
+      }
       if (!info.partnerCpu && !st.decided) {
         // a person who walks to the pit edge first is the holder... unless they keep going over it
         st.iHold = cpuCx(o) < cpuCx(p) - 10 && !(o.y > 12 * T);

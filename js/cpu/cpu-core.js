@@ -37,7 +37,9 @@ const CPU = {
   errs: new Set(),
   skillOf: [null, null], // bot tests: a skill name per player instead of the setting
   filter: null,          // bot tests: (p, out, dt) -> out, to make a computer player clumsy or slow on purpose
-  idleStop: 30,          // 1-player mode: after this many seconds with the person pressing nothing, the computer waits too
+  idleStop: 30,
+  quiet: [{}, {}],       // speech: text -> time it may be said again (a bubble shown for a while takes a rest)
+  clock: 0,          // 1-player mode: after this many seconds with the person pressing nothing, the computer waits too
   // the 1-player settings, saved in the browser
   cfg: { players: 2, human: 0, skill: 'normal' },
 };
@@ -84,7 +86,7 @@ function cpuInfo(p) {
 
 // a level was loaded (or restarted): fresh brain state for both players
 function cpuReset() {
-  CPU.st = [{}, {}]; CPU.last = [{}, {}]; CPU.bubbles = [null, null]; CPU.idle = [0, 0];
+  CPU.st = [{}, {}]; CPU.last = [{}, {}]; CPU.bubbles = [null, null]; CPU.idle = [0, 0]; CPU.quiet = [{}, {}];
   cpuResetBrains();
 }
 // a new room started: fresh brain state, bubbles kept
@@ -119,7 +121,12 @@ function cpuTick(dt) {
     const i = p.input;
     CPU.idle[p.id] = i.left || i.right || i.jump || i.down || i.up || i.act ? 0 : CPU.idle[p.id] + dt;
   }
-  for (const b of CPU.bubbles) if (b) b.t -= dt;
+  CPU.clock += dt;
+  CPU.bubbles.forEach((b, k) => {
+    if (!b || b.t <= 0) return;
+    b.t -= dt; b.up = (b.up || 0) + dt;
+    if (b.t <= 0) CPU.quiet[k][b.text] = CPU.clock + 5; // (the same words again only after a rest)
+  });
   if (G.mode !== 'play') return;
   for (const p of G.players) {
     if (!cpuOn(p.id)) continue;
@@ -173,9 +180,13 @@ function cpuSeek(out, p, x, dead = 3) {
 function cpuSay(p, text, secs = 1.8) {
   if (!cpuOn(p.id) || !cpuSolo()) return;
   if (cpuPartnerAway(1 - p.id)) return; // the person walked away: no chatter while the computer waits
+  if (G.introT > 0) return;              // (the level's intro card is up)
+  text = String(text);
+  if ((CPU.quiet[p.id][text] || 0) > CPU.clock) return;
   const b = CPU.bubbles[p.id];
-  if (b && b.text === text && b.t > 0) { b.t = Math.max(b.t, secs * 0.5); return; }
-  CPU.bubbles[p.id] = { text: String(text), t: secs, max: secs };
+  // asked again while showing: keep it up, but not for ever (a bubble that has been up 4 s lets go and rests)
+  if (b && b.text === text && b.t > 0) { if (b.up < 4) b.t = Math.max(b.t, secs * 0.5); return; }
+  CPU.bubbles[p.id] = { text, t: secs, max: secs, up: 0 };
 }
 // a value as the computer saw it `delay` seconds ago (human-like reaction time). key names the value in st.
 // (a value not asked for since longer ago than the delay starts fresh, so it never returns a stale one)
@@ -220,6 +231,7 @@ function cpuApplyCfg() {
   root.classList.toggle('solo', cpuSolo());
   root.classList.toggle('cpu-pip', !!G.cpuOn[0]); root.classList.toggle('cpu-bo', !!G.cpuOn[1]);
   if (typeof refreshGlyphs === 'function') refreshGlyphs();
+  if (typeof fit === 'function' && typeof stage !== 'undefined') fit(); // (touch: one pad gutter instead of two)
 }
 function cpuLoadCfg() {
   const s = store.get('cpu');
@@ -254,13 +266,20 @@ function cpuSoloLine() {
   return `The computer plays ${cpuName}: it helps in team levels and plays against you in versus levels. ` +
     `Use ${h === 0 ? 'W A S D or the arrow keys' : 'the arrow keys or W A S D'}, any controller, or the ${h === 0 ? 'left' : 'right'} touch buttons.`;
 }
+// 1-player mode: a tip that names the computer's character gets this note, so the person knows that part isn't theirs
+function cpuTipNote(tip) {
+  if (!cpuSolo()) return '';
+  const h = cpuHuman(), c = NAMES[1 - h];
+  return new RegExp('\\b' + c + '\\b').test(tip || '') ? `You play ${NAMES[h]}. The computer does ${c}'s part.` : '';
+}
 function cpuSyncCfgUI() {
   const c = CPU.cfg;
   overlay.querySelectorAll('[data-act="cpucfg"]').forEach(b => {
     const v = b.dataset.v, val = /^\d+$/.test(v) ? +v : v;
     b.setAttribute('aria-pressed', String(c[b.dataset.k] === val));
   });
-  overlay.querySelectorAll('.cpu-more').forEach(el => { el.hidden = c.players !== 1; });
+  overlay.querySelectorAll('.cpu-more, [data-solo-only]').forEach(el => { el.hidden = c.players !== 1; });
+  overlay.querySelectorAll('[data-two-only]').forEach(el => { el.hidden = c.players === 1; });
   overlay.querySelectorAll('.cpu-cfg .hint').forEach(el => { el.textContent = cpuSoloLine(); });
   overlay.querySelectorAll('[data-cpu-eyebrow]').forEach(el => { el.textContent = c.players === 1 ? '1 player + computer' : '2 players'; });
 }
@@ -277,9 +296,10 @@ function cpuDraw() {
     if (!at) continue;
     const a = clamp(Math.min(b.t / 0.3, (b.max - b.t) / 0.15, 1), 0, 1);
     ctx.save(); ctx.globalAlpha = a;
-    ctx.font = '700 13px "Atkinson Hyperlegible", sans-serif';
-    const tw = ctx.measureText(b.text).width, w = tw + 16, h = 22;
-    const px = at.x, x = clamp(px - w / 2, 4, W - w - 4), y = clamp(at.y - 44, 4, H - h - 4);
+    const big = typeof hudBig === 'function' && hudBig(); // (phones: bigger, like the HUD)
+    ctx.font = `700 ${big ? 19 : 13}px "Atkinson Hyperlegible", sans-serif`;
+    const tw = ctx.measureText(b.text).width, w = tw + (big ? 22 : 16), h = big ? 30 : 22;
+    const px = at.x, x = clamp(px - w / 2, 4, W - w - 4), y = clamp(at.y - 22 - h, 4, H - h - 4);
     ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = PDARK[p.id]; ctx.lineWidth = 2;
     rr(x, y, w, h, 10); ctx.fill(); ctx.stroke();
     const tx = clamp(px, x + 10, x + w - 10);

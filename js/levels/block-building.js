@@ -398,7 +398,7 @@ function drawBuildHUD() {
       ctx.restore();
     } else if ((B.trapped || B.stuckT > 3) && cl.alive && B.phase === 'play') {
       const left = BUILD.trapPop - B.trapHeld;
-      const s = !B.trapped ? (B.popLeft < 3 ? 'Popping you out in ' + Math.ceil(B.popLeft) + '\u2026' : 'Too high to jump! ' + bn + ', build ' + cn + ' some steps')
+      const s = !B.trapped ? (B.popLeft < 3 ? 'Popping you out in ' + Math.ceil(B.popLeft) + '\u2026' : (cpuSolo() && cpuOn(B.builder) ? 'Too high to jump! ' + bn + ' is building you steps\u2026' : 'Too high to jump! ' + bn + ', build ' + cn + ' some steps'))
         : left < 3 ? 'Popping you out in ' + Math.ceil(left) + '\u2026' : 'Trapped? Jump into a block twice to break it!';
       ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
       const w = ctx.measureText(s).width + 24, px = clamp(cl.x + cl.w / 2, w / 2 + 8, W - w / 2 - 8);

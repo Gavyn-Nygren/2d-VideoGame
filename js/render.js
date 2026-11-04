@@ -564,11 +564,11 @@ function drawIntro() {
   if (G.introT <= 0 || G.mode !== 'play') return;
   const a = clamp(G.introT / 0.5, 0, 1);
   const def = G.level.def;
-  const actLine = def.act ? actHintLine() : null;
+  const actLine = def.act ? actHintLine() : null, note = cpuTipNote(def.tip);
   ctx.save(); ctx.globalAlpha = a;
   ctx.font = '14px "Atkinson Hyperlegible", system-ui, sans-serif';
-  const tw = Math.max(380, ctx.measureText(def.tip).width + 60, actLine ? ctx.measureText(actLine).width + 80 : 0);
-  ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(W / 2 - tw / 2, 168, tw, actLine ? 120 : 92, 18); ctx.fill();
+  const tw = Math.max(380, ctx.measureText(def.tip).width + 60, actLine ? ctx.measureText(actLine).width + 80 : 0, note ? ctx.measureText(note).width + 60 : 0);
+  ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(W / 2 - tw / 2, 168, tw, (actLine ? 120 : 92) + (note ? 22 : 0), 18); ctx.fill();
   const code = levelCode(G.levelIndex), wd = WORLDS[LEVELS[G.levelIndex].world];
   const first = code.endsWith('-1') && (!def.rooms || def.roomIndex === 0);
   const sub = (first ? `World ${LEVELS[G.levelIndex].world + 1}: ${wd.name} · ` : '') + (def.golf ? `Level ${code} · Hole ${def.roomIndex + 1} of ${def.roomCount} · Par ${def.par}`
@@ -577,6 +577,8 @@ function drawIntro() {
   text(def.rooms ? def.title + '!' : def.name, W / 2, 216, 30, C.paper, 'center');
   ctx.font = '400 14px "Atkinson Hyperlegible", system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.fillStyle = '#d9d3ef'; ctx.fillText(def.tip, W / 2, 244);
+  // (1-player mode: the tip talks to the computer's character too)
+  if (note) { ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.fillStyle = C.paper; ctx.fillText(note, W / 2, actLine ? 297 : 266); }
   if (actLine) {
     // the action button, in a little gold pill
     ctx.font = '700 14px "Atkinson Hyperlegible", system-ui, sans-serif';

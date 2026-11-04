@@ -2426,7 +2426,7 @@ function gc3NextLeg(st) {
   if (leg === 'climb') {
     if (ph.lastA != null && bs[0].owner !== ph.lastA) gcSwap(st);
     ph.lastA = bs[0].owner;
-  } else if (leg === 'bridge') gcNews(st, 'A gap! ' + NAMES[bs[0].owner] + ', build a bridge for ' + NAMES[1 - bs[0].owner] + '!', false, 3);
+  } else if (leg === 'bridge') gcNews(st, cpuSolo() && cpuOn(bs[0].owner) ? 'A gap! ' + NAMES[bs[0].owner] + ' is building you a bridge!' : 'A gap! ' + NAMES[bs[0].owner] + ', build a bridge for ' + NAMES[1 - bs[0].owner] + '!', false, 3);
   else if (leg === 'valve') { ph.vi = ph.leg === GC3_LEGS.indexOf('valve') ? 0 : 1; ph.vMeter = 0; ph.soloT = 0; gcNews(st, 'Turn your steam valves together!', false, 3); }
 }
 function gc3Flow(st, dt) {

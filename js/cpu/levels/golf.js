@@ -341,7 +341,7 @@ function golferThink(st, p, o, info, g, m) {
   // a person who has been away a long time: wait for them before swinging
   const away = !info.partnerCpu && info.partnerIdle > 24;
   if (P.stage === 'wait') {
-    if (away) { cpuSay(p, 'Ready? Press a key!', 2); P.R = 0; return out; }
+    if (away) { cpuSay(p, 'Ready when you are!', 2); P.R = 0; return out; }
     const earliest = G.tickN + P.kGo + 2 + (G.introT > 0.55 ? Math.ceil((G.introT - 0.55) / DT) : 0) + Math.max(0, Math.ceil((nz.think - st.aimT) / DT));
     if (!P.R || P.R - P.kGo < G.tickN) P.R = releaseStep(m, P, earliest);
     if (G.tickN >= P.R - P.kGo && G.introT <= 0.55) { P.stage = 'charge'; out.jump = !(CPU.last[p.id] && CPU.last[p.id].jump); return out; }

@@ -139,6 +139,12 @@
     return sx || sy ? Math.atan2(sy, sx) : null;
   }
 
+  // a reminder for a person who is waiting: 2 s, then quiet for a while (the level's own nudge stays up meanwhile)
+  function say(S, p, text) {
+    if (G.time - (S.sayAt == null ? -99 : S.sayAt) < 8) return;
+    S.sayAt = G.time; cpuSay(p, text, 2);
+  }
+
   /* ---------- the wheel ---------- */
   function steer(S, p, m, c, info, out) {
     const t = track(S, m, c), R = t.R;
@@ -155,7 +161,7 @@
     // a person on the pedals: the wheel honks at the ducks for them
     if (!info.partnerCpu) honk(S, p, m, c, out, duckAhead(m, c, R, t.i));
     // a person on the pedals who does nothing: wait (the level's hint tells them which key)
-    if (!info.partnerCpu && Math.abs(c.v) < 3 && info.partnerIdle > 4 && !carWaitReason(m)) cpuSay(p, 'Hit the gas!', 2);
+    if (!info.partnerCpu && Math.abs(c.v) < 3 && info.partnerIdle > 4 && !carWaitReason(m)) say(S, p, 'Hit the gas!');
   }
 
   /* ---------- the pedals ---------- */
@@ -218,8 +224,17 @@
     const nobody = partnerSteers && info.partnerIdle > 3;
     if (nobody) {
       S.stuckT = 0; S.rev = 0; S.pivot = 0;
-      if (hz.d < 70) { vT = 0; if (Math.abs(c.v) < 3) cpuSay(p, 'Point the way!', 2); }
-    } else if ((S.stuckT > 0.7 || blocked) && !(S.rev > 0) && dk > 80) { S.rev = 1.4; S.stuckT = 0; }
+      if (hz.d < 70) { vT = 0; if (Math.abs(c.v) < 3) say(S, p, 'Point the way!'); }
+    } else if ((S.stuckT > 0.7 || blocked) && !(S.rev > 0) && !(S.pivot > 0) && dk > 80) {
+      // a person pointing somewhere open: hold a little gas so the nose swings round to it on the spot (backing up
+      // makes many people steer the other way, and the car ends up shuttling across the road); a couple of tries,
+      // then back up after all
+      if (partnerSteers && sd != null && Math.abs(wrap(sd - c.a)) > 0.3 && (S.pivN || 0) < 3 && castHaz(m, { x: c.x, y: c.y, a: sd }).d > 40) {
+        S.pivot = 0.7; S.pivN = (S.pivN || 0) + 1;
+      } else { S.rev = 1.4; S.pivN = 0; }
+      S.stuckT = 0;
+    }
+    if (Math.abs(c.v) > 40) S.pivN = 0;
     // standing still with nothing to wait for (the car can't turn standing still): back up a moment
     S.stallT = !nobody && !inBox && vT < 1 && Math.abs(c.v) < 3 && !(S.rev > 0) && !(S.pivot > 0) && !carWaitReason(m) ? (S.stallT || 0) + dt : 0;
     if (S.stallT > 2.5) { S.stallT = 0; S.rev = 1.2; }

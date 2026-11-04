@@ -34,5 +34,5 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const overlap = (a, b) => a.x < b.x + b.w - 0.001 && a.x + a.w > b.x + 0.001 && a.y < b.y + b.h - 0.001 && a.y + a.h > b.y + 0.001;
 const rectHit = (p, x, y, w, h) => p.x < x + w && p.x + p.w > x && p.y < y + h && p.y + p.h > y;
 const hash = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return (h ^ (h >>> 16)) >>> 0; };
-const fmtTime = s => { const m = Math.floor(s / 60); const r = s - m * 60; return m + ':' + (r < 10 ? '0' : '') + r.toFixed(1); };
+const fmtTime = s => { const t = Math.round(s * 10) / 10, m = Math.floor(t / 60), r = (t - m * 60).toFixed(1); return m + ':' + (+r < 10 ? '0' : '') + r; };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
