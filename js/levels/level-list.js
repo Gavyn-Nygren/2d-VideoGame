@@ -3581,7 +3581,26 @@ const LEVELS = [
   // ----- END 14-3 Tar Pit Pull -----
   //
   // ----- BEGIN 14-4 Raptor Race (mode 'raptor', js/levels/world14/raptor-race.js) -----
-  // (def goes here)
+  { name: 'Raptor Race', world: 13, kind: 'versus', mode: 'raptor', ownStep: true,
+    // side-on jungle race (MODES.raptor): the map is only the two spawns, the mode builds each round's course
+    match: { bestOf: 5 },
+    act: { label: 'dash' },
+    legend: {
+      pip: '<kbd>W</kbd> jump <kbd>S</kbd> duck <kbd>A</kbd><kbd>D</kbd> slow · fast',
+      bo: '<kbd>↑</kbd> jump <kbd>↓</kbd> duck <kbd>←</kbd><kbd>→</kbd> slow · fast',
+      pad: 'stick ◀ ▶ slow · fast, ▲ ▼ pick a path, <span data-glyph="a"></span> jump, down ducks,',
+    },
+    tip: 'Raptors run by themselves! Jump logs, duck branches, pick a path at forks, grab a speed egg and dash.',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '.....1..2.......................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+    ],
+  },
   // ----- END 14-4 Raptor Race -----
   //
   // ===== END World 14 =====
