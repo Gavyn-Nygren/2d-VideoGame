@@ -104,7 +104,7 @@
       const da = plan.dist[a.hold];
       for (const h of m.holds) if (plan.dist[h.i] < da && !m.pl.some(q => q.hold === h.i) && Math.hypot(h.x - me.x, h.y - me.y) < gR * 0.7) out.act = true;
     }
-    if (tg.kind === 'panel' && dist < fR * 0.85) out.act = true;
+    if (tg.kind === 'panel' && dist < fR * 0.95) out.act = true;
     // the suit puff: the last bit to the target, a brake on a panel, or all the way when the anchor doesn't spin
     if (a.spin || st.spinSeen == null) st.spinSeen = G.time;
     const anchorSpins = info.partnerCpu || G.time - st.spinSeen < 2.5;
@@ -114,7 +114,7 @@
     else if (tg.kind === 'lock' || dist < 60 || !anchorSpins) {
       const vWant = Math.min(tg.kind === 'lock' ? 90 : 110, dist * 2.2), ux = (tg.x - me.x) / (dist || 1), uy = (tg.y - me.y) / (dist || 1);
       push = { x: ux * vWant - me.vx, y: uy * vWant - me.vy };
-      if (!anchorSpins && dist > 60 && !info.partnerCpu) say(st, p, 'Spin me round! ◀ ▶', 8);
+      if (!anchorSpins && dist > 60 && !info.partnerCpu) say(st, p, 'Spin me round! ' + MODES.spacewalk.key(o.id, 'lr'), 8);
     }
     if (push && Math.hypot(push.x, push.y) > 30 && me.fuel > (dist < 60 ? 0.05 : 0.35)) {
       const n = Math.hypot(push.x, push.y), px = push.x / n, py = push.y / n;

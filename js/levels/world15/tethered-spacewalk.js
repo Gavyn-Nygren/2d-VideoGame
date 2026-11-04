@@ -7,7 +7,8 @@
    GRAB (hold the action): next to a handhold (station rails, asteroid grips, satellite arms) you hold on while the button
    is held. A player holding on is the ANCHOR; the other is the FLOATER on the tether.
    The anchor swings the floater: ◀ ▶ spin it round (◀ one way, ▶ the other, with momentum), ▲ ▼ reel the tether in and
-   out. The floater only has a tiny suit puff (◀ ▶ ▲ ▼, a small tank that refills), so nobody travels alone.
+   out. The floater only has a tiny suit puff (◀ ▶ ▲ ▼, a small tank that refills fast only while holding on), so
+   swinging is the way to travel: puffing alone is slow.
    Leapfrog: the floater holds grab as it passes the next handhold and holds on; then the old anchor lets go and becomes
    the floater, so the jobs swap all the time. A guide ring shows the next handhold (or panel) on the way.
    Broken solar panels: the floater holds grab near one and keeps still (no puffing) while the partner holds on; after a
@@ -27,11 +28,11 @@
 const SPACEWALK = {
   Lmax: 150, Lmin: 40, reelV: 130, Lhelp: 176,       // tether length (px), reel speed; Super gold grip lets it out further
   spinA: 440, vMax: 340, damp: 0.4, dampFree: 0.22,  // the anchor's spin push (px/s²), top speed, space "friction"
-  puffA: 200, fuel: 1.3, fuelBack: 0.55, fuelHold: 2.2, // the floater's suit puff, its tank (s), refill per s (free / holding)
+  puffA: 140, fuel: 0.6, fuelBack: 0.1, fuelHold: 2.2,  // the floater's tiny suit puff, its tank (s), refill per s (floating / holding)
   grabR: 28, grabR1: 42, grabR2: 54,                  // grab reach: normal, Gold grip, Super gold grip
   fixR: 34, fixR1: 46, fixR2: 54, fixNeed: 0.85, fixNeed1: 0.5, fixDecay: 1.5,
   steady: 0.5, still: 0.25,                          // a bolt needs the anchor holding on, and the floater still, this long
-  bodyR: 12, out: 13, grace: 0.12, regrab: 0.35, bonkV: 70, bounce: 0.55,
+  bodyR: 12, out: 13, grace: 0.12, regrab: 0.35, regrabNear: 1.2, bonkV: 70, bounce: 0.55,
   towWait: 3.2, towCall: 1.0, parkV: 14,
   lockR: 56, lockHold: 0.35, finT: 1.7,
   help1Tows: 2, help2Tows: 4, stuck: 45,
@@ -254,7 +255,12 @@ function spacewalkFloat(st, dt) {
     q.ix = (i.right ? 1 : 0) - (i.left ? 1 : 0); q.iy = (i.down ? 1 : 0) - (i.jump || i.up ? 1 : 0);
     q.stillT = q.want && !q.ix && !q.iy ? (q.stillT || 0) + dt : 0;
     q.bonkCD = Math.max(0, q.bonkCD - dt);
-    if (q.regrab && (q.regrab.t -= dt) <= 0) q.regrab = null;
+    // the handle you just let go of stays out of reach for a moment, longer while your partner holds you and you're
+    // still beside it (so holding grab right after letting go doesn't grab it straight back)
+    if (q.regrab && (q.regrab.t -= dt) <= 0) {
+      const h = st.holds[q.regrab.h];
+      if (q.regrab.t < -S.regrabNear || pl[1 - q.id].hold == null || Math.hypot(h.x - q.x, h.y - q.y) > gR + 8) q.regrab = null;
+    }
   }
   // holding on follows the handhold (rocks and satellites move)
   for (const q of pl) if (q.hold != null) { const h = st.holds[q.hold]; q.x = h.x; q.y = h.y; q.vx = h.vx; q.vy = h.vy; }
@@ -351,7 +357,8 @@ function spacewalkFloat(st, dt) {
       const a = pl[1 - q.id];
       if (q.hold != null || !q.want || a.hold == null || Math.hypot(p.x - q.x, p.y - q.y) >= fR) continue;
       if (q.ix || q.iy) continue;
-      q.vx *= Math.exp(-2.5 * dt); q.vy *= Math.exp(-2.5 * dt);   // (a hand on the panel slows you down a little)
+      const slow = Math.exp(-(st.help ? 5 : 2.5) * dt);   // (a hand on the panel slows you down; a gold grip more)
+      q.vx *= slow; q.vy *= slow;
       if (G.time - a.since < S.steady || q.stillT < S.still) wait = true; else on = q;
     }
     p.work = Math.max(0, p.work - dt * 3);
@@ -376,10 +383,11 @@ function spacewalkFloat(st, dt) {
   }
   // drifting: Bleep tows you back to the last rail (hold ▼ to call him right away)
   if (!anc.length) {
-    const parked = pl.every(q => Math.hypot(q.vx, q.vy) < S.parkV) && st.holds.some(h => pl.some(q => Math.hypot(h.x - q.x, h.y - q.y) <= gR + 6));
+    // (parked: slow, with a handhold in grab reach, so no tow yet; holding ▼ always calls him)
+    const parked = pl.every(q => Math.hypot(q.vx, q.vy) < S.parkV) && st.holds.some(h => pl.some(q => Math.hypot(h.x - q.x, h.y - q.y) < gR - 1));
     st.freeT = parked ? 0 : st.freeT + dt;
     for (const q of pl) q.callT = inp[q.id].down ? q.callT + dt : 0;
-    if (st.freeT > S.towWait || pl.some(q => q.callT >= S.towCall && !parked)) spacewalkStartTow(st);
+    if (st.freeT > S.towWait || pl.some(q => q.callT >= S.towCall)) spacewalkStartTow(st);
   } else { st.freeT = 0; for (const q of pl) q.callT = 0; }
   // no way on from here (a moving handhold drifted off): after a while, say to let go
   const plan = spacewalkPlan(st);
@@ -500,7 +508,7 @@ function spacewalkTowStep(st, dt) {
     }
     const m2 = { x: (pl[0].x + pl[1].x) / 2, y: (pl[0].y + pl[1].y) / 2 };
     tw.x = m2.x; tw.y = m2.y - 30;
-    if (u >= 1) { tw.phase = 'go'; tw.t = 0; for (const q of pl) { q.vx = 0; q.vy = 0; } st.L = SPACEWALK.Lmax; Sfx.play('spacewalkBeep'); }
+    if (u >= 1) { tw.phase = 'go'; tw.t = 0; for (const q of pl) { q.vx = 0; q.vy = 0; } st.L = spacewalkLmax(st); Sfx.play('spacewalkBeep'); }
   } else {
     const u = clamp(tw.t / 0.8, 0, 1);
     tw.x += (tw.bx - tw.x) * Math.min(1, dt * 4); tw.y += (tw.by - tw.y) * Math.min(1, dt * 4) - 40 * dt;
@@ -1024,7 +1032,7 @@ function spacewalkHud(st) {
     const chips = [];
     if (!quiet) {
       if (role === 'anchor') chips.push([spacewalkKey(id, 'act') + ' hold', q.want, false], [spacewalkKey(id, 'lr') + ' spin', !!q.spin, plan.target && Math.hypot(o.vx, o.vy) < 50], [spacewalkKey(id, 'ud') + ' reel', !!q.reel, false]);
-      else if (role === 'hold') chips.push([spacewalkKey(id, 'act') + ' hold', q.want, false], ['let go: release', false, plan.releaser === id]);
+      else if (role === 'hold') chips.push([spacewalkKey(id, 'act') + ' hold', q.want, false], ['let go of ' + spacewalkKey(id, 'act'), false, plan.releaser === id]);
       else if (role === 'float') chips.push([spacewalkKey(id, 'act') + ' grab · fix', q.want, false], [spacewalkKey(id, 'all') + ' puff', q.puff > 0.5, false]);
       else if (role === 'drift') chips.push([spacewalkKey(id, 'act') + ' grab', q.want, plan.target && Math.hypot(plan.target.x - q.x, plan.target.y - q.y) < spacewalkGrabR(st) * 1.6], st.freeT > 0 ? ['hold ' + spacewalkKey(id, 'down') + ': Bleep', q.callT > 0, st.freeT > 1.5] : ['wait for a swing', false, false]);
     }
