@@ -4,8 +4,8 @@
 
 /* ----- BEGIN 13-1 Pumpkin Patch Roll ----- */
 // side-on: Pip pushes the giant pumpkin up the hill while Bo rides on top leaning forward; on the crest Pip leapfrogs
-// over to the front and holds it back down the steep slope and over the pond bridge; then Bo leans it up the ramp onto
-// the hayride wagon, where it gets its big goofy carved grin
+// over to the front and holds it back down the steep slope and over the pond bridge; then Pip leapfrogs back behind it
+// and both of them get it up the ramp onto the hayride wagon (Pip pushing, Bo leaning), where it gets its carved grin
 const pw13PumpkinR = 24, pw13PumpkinL = 6.5;
 // the rolling surface: hill, crest, steep drop, the bridge (y 150), a plank ramp and the wagon bed (y 128)
 function pw13PumpkinGY(x) {
@@ -155,26 +155,31 @@ function pw13PumpkinPose(v, t) {
   let px;
   if (t < 2.0) px = v.lerp(50, 126, e.inOut(v.seg(t, 0.25, 2.0)));
   else if (t < 2.6) px = v.lerp(126, 132, v.seg(t, 2.0, 2.6));
-  else if (t < 3.9) px = v.lerp(132, 206, e.inOut(v.seg(t, 2.6, 3.9)));
-  else px = v.lerp(206, 277, e.inOut(v.seg(t, 4.0, 4.9)));
+  else if (t < 3.7) px = v.lerp(132, 206, e.inOut(v.seg(t, 2.6, 3.7)));
+  else px = v.lerp(206, 270, e.inOut(v.seg(t, 4.15, 4.9)));
   const s = { px, py: pw13PumpkinCY(px), ang: (px - 50) / R, sag: 0, carve: v.seg(t, 5.0, 5.35), sparkle: v.seg(t, 4.85, 5.15) };
   if (px > 180 && px < 236) s.sag = 2.5 * Math.sin(Math.PI * (px - 180) / 56);
   if (px > 180 && px < 236) s.py += s.sag;
   // Bo on top: phi is where on the top Bo stands (+ forward), lean tips the body
   const joy = t > 5.0;
-  s.bo = t < 2.0 ? { phi: 0.14, lean: 0.28, mood: 'grit' } : t < 2.6 ? { phi: 0.05, lean: 0, mood: 'wow' } : t < 3.95 ? { phi: -0.14, lean: -0.32, mood: 'grit' }
-    : t < 4.9 ? { phi: 0.16, lean: 0.3, mood: 'grit' } : { phi: 0, lean: 0, mood: joy ? 'joy' : 'happy' };
-  // Pip: pushes from behind, leapfrogs over (a flip over Bo's head), holds it back from the front, hops onto the wagon
+  s.bo = t < 2.0 ? { phi: 0.14, lean: 0.28, mood: 'grit' } : t < 2.6 ? { phi: 0.05, lean: 0, mood: 'wow' } : t < 3.7 ? { phi: -0.14, lean: -0.32, mood: 'grit' }
+    : t < 4.15 ? { phi: 0, lean: 0, mood: 'wow' } : t < 4.9 ? { phi: 0.16, lean: 0.3, mood: 'grit' } : { phi: 0, lean: 0, mood: joy ? 'joy' : 'happy' };
+  // Pip: pushes from behind, leapfrogs over (a flip over Bo's head), holds it back from the front, leapfrogs back,
+  // pushes it up the wagon ramp (a climb takes both of them), then steps back and cheers
   const front = px + R + 6, back = px - R - 7;
   if (t < 2.0) s.pip = { x: back, y: pw13PumpkinGY(back), rot: 0.3, face: 1, mood: 'grit', step: 1 };
   else if (t < 2.6) {
     const u = v.seg(t, 2.0, 2.6), x = v.lerp(back, front, e.inOut(u));
     s.pip = { x, y: v.lerp(pw13PumpkinGY(back), pw13PumpkinGY(front), u) + v.hop(u, 100), rot: e.inOut(v.seg(u, 0.15, 0.85)) * Math.PI * 2, face: 1, mood: 'joy', air: 1 };
-  } else if (t < 3.9) s.pip = { x: front, y: pw13PumpkinGY(front) + (front > 180 && front < 236 ? s.sag * 0.4 : 0), rot: -0.3, face: -1, mood: 'grit', step: 1 };
-  else if (t < 4.35) {
-    const u = v.seg(t, 3.9, 4.35), x0 = 206 + R + 6;
-    s.pip = { x: v.lerp(x0, 312, u), y: v.lerp(150, 110, u) + v.hop(u, 30), rot: 0, face: 1, mood: 'happy', air: 1 };
-  } else s.pip = { x: 312, y: 110, rot: 0, face: -1, mood: joy ? 'joy' : 'happy', cheer: joy };
+  } else if (t < 3.7) s.pip = { x: front, y: pw13PumpkinGY(front) + (front > 180 && front < 236 ? s.sag * 0.4 : 0), rot: -0.3, face: -1, mood: 'grit', step: 1 };
+  else if (t < 4.15) {
+    const u = v.seg(t, 3.7, 4.15), x = v.lerp(front, back, e.inOut(u));
+    s.pip = { x, y: 150 + v.hop(u, 100), rot: -e.inOut(v.seg(u, 0.15, 0.85)) * Math.PI * 2, face: -1, mood: 'joy', air: 1 };
+  } else if (t < 4.9) s.pip = { x: back, y: pw13PumpkinGY(back) + (back > 180 && back < 236 ? s.sag * 0.4 : 0), rot: 0.3, face: 1, mood: 'grit', step: 1 };
+  else {
+    const u = e.inOut(v.seg(t, 4.9, 5.15)), x = v.lerp(back, 226, u);
+    s.pip = { x, y: pw13PumpkinGY(x), rot: 0, face: 1, mood: joy ? 'joy' : 'happy', cheer: joy };
+  }
   return s;
 }
 definePreview('Pumpkin Patch Roll', {
@@ -204,7 +209,9 @@ definePreview('Pumpkin Patch Roll', {
     // the beats, big and short
     if (t > 0.35 && t < 1.9) v.label('PUSH!', Math.max(30, p.x - 6), p.y - 38, 15, v.c.gold);
     if (t > 2.0 && t < 2.65) v.label('LEAPFROG!', 214, 52, 15, '#bfe8ff');
-    if (t > 2.75 && t < 3.85) v.label('SLOW...', 200, 44, 15, '#bfe8ff');
+    if (t > 2.75 && t < 3.65) v.label('SLOW...', 200, 44, 15, '#bfe8ff');
+    if (t > 3.7 && t < 4.15) v.label('LEAPFROG!', 112, 60, 15, '#bfe8ff');
+    if (t > 4.2 && t < 4.9) v.label('PUSH!', 190, 112, 15, v.c.gold);
     if (t > 5.05) {
       const pop = v.ease.back(v.seg(t, 5.05, 5.35));
       v.label('HAYRIDE!', 196, 30, 18 * pop, v.c.gold);
