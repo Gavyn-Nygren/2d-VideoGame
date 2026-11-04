@@ -29,7 +29,8 @@ const SPACEWALK = {
   spinA: 440, vMax: 340, damp: 0.4, dampFree: 0.22,  // the anchor's spin push (px/s²), top speed, space "friction"
   puffA: 200, fuel: 1.3, fuelBack: 0.55, fuelHold: 2.2, // the floater's suit puff, its tank (s), refill per s (free / holding)
   grabR: 28, grabR1: 42, grabR2: 54,                  // grab reach: normal, Gold grip, Super gold grip
-  fixR: 34, fixR1: 46, fixR2: 54, fixNeed: 0.85, fixNeed1: 0.5, fixDecay: 0.12,
+  fixR: 34, fixR1: 46, fixR2: 54, fixNeed: 0.85, fixNeed1: 0.5, fixDecay: 1.5,
+  steady: 0.5, still: 0.25,                          // a bolt needs the anchor holding on, and the floater still, this long
   bodyR: 12, out: 13, grace: 0.12, regrab: 0.35, bonkV: 70, bounce: 0.55,
   towWait: 3.2, towCall: 1.0, parkV: 14,
   lockR: 56, lockHold: 0.35, finT: 1.7,
@@ -251,6 +252,7 @@ function spacewalkFloat(st, dt) {
     if (i.act) q.grace = S.grace; else q.grace = Math.max(0, q.grace - dt);
     q.want = i.act || q.grace > 0;
     q.ix = (i.right ? 1 : 0) - (i.left ? 1 : 0); q.iy = (i.down ? 1 : 0) - (i.jump || i.up ? 1 : 0);
+    q.stillT = q.want && !q.ix && !q.iy ? (q.stillT || 0) + dt : 0;
     q.bonkCD = Math.max(0, q.bonkCD - dt);
     if (q.regrab && (q.regrab.t -= dt) <= 0) q.regrab = null;
   }
@@ -343,15 +345,21 @@ function spacewalkFloat(st, dt) {
   const need = spacewalkFixNeed(st);
   for (const p of st.panels) {
     if (p.fixed) { p.fixT += dt; continue; }
-    let on = null;
-    for (const q of pl) if (q.hold == null && q.want && pl[1 - q.id].hold != null && Math.hypot(p.x - q.x, p.y - q.y) < fR) on = q;
+    // a steady job: the floater holds grab and keeps still (a puff slips the bolt), the anchor has held on a moment
+    let on = null, wait = false;
+    for (const q of pl) {
+      const a = pl[1 - q.id];
+      if (q.hold != null || !q.want || a.hold == null || Math.hypot(p.x - q.x, p.y - q.y) >= fR) continue;
+      if (q.ix || q.iy) continue;
+      q.vx *= Math.exp(-2.5 * dt); q.vy *= Math.exp(-2.5 * dt);   // (a hand on the panel slows you down a little)
+      if (G.time - a.since < S.steady || q.stillT < S.still) wait = true; else on = q;
+    }
     p.work = Math.max(0, p.work - dt * 3);
     if (on) {
       p.prog += dt; p.who = on.id; p.work = 1;
-      on.vx *= Math.exp(-2.5 * dt); on.vy *= Math.exp(-2.5 * dt);   // (a bolting hand slows you down a little)
       if ((st.boltSnd -= dt) <= 0) { st.boltSnd = 0.13; Sfx.play('spacewalkBolt', on.id); spacewalkSparks(st, p.x + (Math.random() - 0.5) * 30, p.y + (Math.random() - 0.5) * 16, '#ffe27a', 3); }
       if (p.prog >= need) spacewalkFixed(st, p, on);
-    } else p.prog = Math.max(0, p.prog - S.fixDecay * dt);
+    } else if (!wait) p.prog = Math.max(0, p.prog - S.fixDecay * dt);
   }
   // the airlock
   const lk = st.lock;
@@ -1075,7 +1083,7 @@ function spacewalkHud(st) {
       } else if (tg && tg.kind === 'lock' && Math.hypot(o.x - lk.x, o.y - lk.y) > S.lockR - 4) say(id, 'Reel ' + NAMES[1 - id] + ' in ' + spacewalkKey(id, 'up'), C.gold, true);
     } else if (o.hold != null) {
       const nearP = st.panels.find(p => !p.fixed && Math.hypot(p.x - q.x, p.y - q.y) < fR + 16);
-      if (nearP) say(id, (q.want ? 'Bolting...' : 'Hold ' + spacewalkKey(id, 'act') + ': fix it!'), C.gold, !q.want);
+      if (nearP) say(id, !q.want ? 'Hold ' + spacewalkKey(id, 'act') + ': fix it!' : q.ix || q.iy ? 'Keep still to bolt!' : 'Bolting...', C.gold, !q.want || !!(q.ix || q.iy));
       else if (tg && tg.kind === 'hold' && Math.hypot(tg.x - q.x, tg.y - q.y) < gR * 2.2) say(id, 'Hold ' + spacewalkKey(id, 'act') + ': grab!', C.gold, true);
     } else if (tg && Math.hypot(tg.x - q.x, tg.y - q.y) < gR * 1.6) say(id, 'Hold ' + spacewalkKey(id, 'act') + ' to grab!', C.gold, true);
   }

@@ -8,7 +8,7 @@
    - Anchor (holding on, partner floating): keeps holding the action, reels the tether to the target's distance and spins
      the floater the short way round (the long way when a rock, the satellite core or the hull is in the way), easing
      off as it gets there so the floater stops on the target. On a panel it holds the floater there while it bolts.
-   - Floater: holds the action as it reaches the target handhold (or a panel: it keeps holding until the panel is
+   - Floater: holds the action as it reaches the target handhold (or a panel: it keeps holding, and keeps still, until it is
      fixed), and uses its small suit puff to finish the last bit or brake. With a person anchor who doesn't spin, it
      puffs the whole way, slowly, and asks "Spin me round!".
    - Both holding: the one further back lets go (as the plan says). With a person who should let go, it waits and says
@@ -109,7 +109,8 @@
     if (a.spin || st.spinSeen == null) st.spinSeen = G.time;
     const anchorSpins = info.partnerCpu || G.time - st.spinSeen < 2.5;
     let push = null;
-    if (tg.kind === 'panel' && dist < fR) push = { x: (tg.x - me.x) * 3 - me.vx, y: (tg.y - me.y) * 3 - me.vy };
+    // (bolting needs keeping still: a puff only when drifting off the panel)
+    if (tg.kind === 'panel' && dist < fR) { if (!out.act || (dist > fR * 0.7 && me.vx * (me.x - tg.x) + me.vy * (me.y - tg.y) > 0)) push = { x: (tg.x - me.x) * 3 - me.vx, y: (tg.y - me.y) * 3 - me.vy }; }
     else if (tg.kind === 'lock' || dist < 60 || !anchorSpins) {
       const vWant = Math.min(tg.kind === 'lock' ? 90 : 110, dist * 2.2), ux = (tg.x - me.x) / (dist || 1), uy = (tg.y - me.y) / (dist || 1);
       push = { x: ux * vWant - me.vx, y: uy * vWant - me.vy };
