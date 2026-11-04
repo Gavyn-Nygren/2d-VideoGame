@@ -164,8 +164,10 @@
       }
       case 'hatch': {
         const pad = st.c.pad, d = clawTo(out, st, t.x, t.y, 4);
-        const R = (st.hatchMag ? BG.hatchRGold : BG.hatchR) - 12;
-        if (pad && pad.open && settle('gH', d < R && Math.abs(arm.vx) < 80 && Math.abs(arm.vy) < 80)) out.act = 'tap';
+        // (let go once the crate under the claw is well inside the hatch, even if the claw can't reach the middle)
+        const R = (st.hatchMag ? BG.hatchRGold : BG.hatchR) - 10, hx = pad ? pad.rocket - 58 : 0, hy = pad ? M().ground(st, pad.rocket) - 150 : 0;
+        const inHatch = Math.hypot(arm.wx - hx, arm.wy + 26 - hy) < R;
+        if (pad && pad.open && settle('gH', (d < R || inHatch) && Math.abs(arm.vx) < 80 && Math.abs(arm.vy) < 80)) out.act = 'tap';
         if (pad && !pad.open && human && d < 60) cpuSay(p, 'Honk to open the hatch! ' + M().key(D, 'act'), 2.2);
         break;
       }

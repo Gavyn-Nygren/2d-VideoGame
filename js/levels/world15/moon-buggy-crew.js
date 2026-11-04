@@ -42,7 +42,7 @@ const BUGGY = {
   mossV: 390, rampH: 46, rampL: 110, rampKick: 0.45, pitD: 150, fillD: 110, fillNeed: 3,
   pivot: [-36, -27], clawMin: 26, clawMax: 168, clawSp: 290, clawHeavy: 215, clawAcc: 2600,
   grabR: 26, grabRGold: 44, rockR: 9, boulderR: 28, critterR: 18,
-  boxW: 34, boxWGold: 80, hatchR: 40, hatchRGold: 90,
+  boxW: 34, boxWGold: 80, boxBackGold: 36, hatchR: 40, hatchRGold: 90,
   towHold: 1.2, oopsT: 2.9, swapT: 1.9, finT: 5.2, hintLife: 2.8,
   helpHop: 2, helpHopBridge: 3, helpRamp: 2, helpRampBridge: 4, magnetT: 20, fillHelpT: 35, fillHelpEvery: 12,
   gyroFlips: 3, parkHelpT: 15, hatchHelpT: 20, tryWin: 5,
@@ -365,7 +365,7 @@ function buggyHonk(st) {
   Sfx.play('buggyHonk');
   buggyPop(st, b.x + 60, b.y - 70, 'Beep beep!', '#fff3a8', 20);
   let woke = false;
-  for (const o of st.c.critters) if (o.state === 'sleep' && o.x > b.x - 40 && o.x - b.x < 340) {
+  for (const o of st.c.critters) if (o.state === 'sleep' && o.x > b.x - 40 && o.x - b.x < 400) {
     o.state = 'wake'; o.t = 0; woke = true; st.stats.critters++;
   }
   if (woke) Sfx.play('buggyCritter');
@@ -540,11 +540,17 @@ function buggyPad(st, dt) {
   if (pad.open) pad.openT += dt;
   if (b.x > pad.x0 - 100) st.padT += dt;
   if (st.parked) { st.parkT += dt; return; }
-  const W = st.wideBox ? BUGGY.boxWGold : BUGGY.boxW;
-  if (Math.abs(b.x - pad.box) < W && Math.abs(b.vf) < 25 && b.contacts === 2) {
+  const bx = buggyBox(st);
+  if (b.x > bx.lo && b.x < bx.hi && Math.abs(b.vf) < 25 && b.contacts === 2) {
     st.parked = true; st.parkT = 0;
     Sfx.play('buggyPark'); buggyPop(st, b.x, b.y - 80, 'Parked!', '#8fe3b0', 26);
   }
+}
+// where the buggy's middle may stop to count as parked (the gold box reaches further toward the rocket than back,
+// so the claw always reaches the hatch from it)
+function buggyBox(st) {
+  const B = BUGGY, box = st.c.pad.box;
+  return st.wideBox ? { lo: box - B.boxBackGold, hi: box + B.boxWGold } : { lo: box - B.boxW, hi: box + B.boxW };
 }
 
 /* ---------- fails: Tow-Bot to the rescue ---------- */
@@ -714,11 +720,11 @@ function buggyNeeds(st) {
   const pad = c.pad;
   if (b.air || b.contacts === 0) out.drv = Math.abs(b.a) > 0.22 ? 'level' : 'air';
   else if (pad && b.x > pad.x0 - 250) {
-    const d = pad.box - b.x, Wb = st.wideBox ? B.boxWGold : B.boxW;
-    out.drv = st.parked ? (pad.open ? 'wait' : 'honkHatch') : d < -Wb + 6 ? 'back' : Math.abs(d) < Wb - 6 ? 'stop' : 'park';
+    const bx = buggyBox(st);
+    out.drv = st.parked ? (pad.open ? 'wait' : 'honkHatch') : b.x > bx.hi - 6 ? 'back' : b.x > bx.lo + 6 ? 'stop' : 'park';
   } else if (out.block && out.block.kind === 'critter' && out.honkD < 300) out.drv = 'honk';
   else if (out.block && out.blockD < 70 && out.block.kind === 'boulder') out.drv = 'waitArm';
-  else if (out.fill && out.fillD < 260 && (!out.pit || out.fillD < out.pitD)) out.drv = out.fillD < 34 ? 'waitArm' : 'stopEdge';
+  else if (out.fill && out.fillD < 260 && (!out.pit || out.fillD < out.pitD)) { out.drv = out.fillD < 34 ? 'waitArm' : 'stopEdge'; out.waitFill = true; }
   else if (out.pit && out.pit.kind === 'hop' && out.pitD < 260) out.drv = out.pitD < 34 + Math.max(0, b.vf) * 0.12 ? 'hop' : b.vf < 175 ? 'speed' : 'go';
   else if (out.pit && out.pit.kind === 'ramp' && out.pitD < 520) out.drv = front > out.pit.x0 - 34 ? 'hop' : b.vf < 230 ? 'full' : 'go';
   else out.drv = 'go';
@@ -730,7 +736,7 @@ function buggyNeeds(st) {
   } else if (hold && hold.kind === 'crate') { out.arm = 'hatch'; out.target = pad ? { x: pad.rocket - 58, y: buggyGround(st, pad.rocket) - 176 } : null; }
   else if (st.parked && st.crate.where !== 'in') { out.arm = 'crate'; const cp = buggyCratePos(st); out.target = { x: cp.x, y: cp.y - 16 }; }
   else if (out.block && out.block.kind === 'boulder' && out.blockD < 150) { out.arm = 'boulder'; out.target = { x: out.block.o.x, y: out.block.o.y }; }
-  else if (out.fill && out.fillD < 70) { const pl = c.piles.find(q => q.pit === out.fill); out.arm = 'pile'; out.target = pl ? { x: pl.x, y: buggyGround(st, pl.x) - 40 } : null; }
+  else if (out.fill && out.fillD < 70) { const pl = c.piles.find(q => q.pit === out.fill); out.arm = 'pile'; out.target = pl ? { x: pl.x, y: buggyGround(st, pl.x) - 66 } : null; }
   else {
     let best = null;
     for (const r of c.rocks) {
@@ -1176,13 +1182,13 @@ function buggyDrawGate(st, front) {
   } else { ctx.fillStyle = '#7f88aa'; rr(gx + 58, g - 150, 12, 150, 4); ctx.fill(); }
 }
 function buggyDrawPad(st) {
-  const pad = st.c.pad, g = buggyGround(st, pad.box), Wb = st.wideBox ? BUGGY.boxWGold : BUGGY.boxW;
+  const pad = st.c.pad, g = buggyGround(st, pad.box), bx = buggyBox(st);
   ctx.fillStyle = '#4f4b74'; ctx.fillRect(pad.x0 + 200, g, pad.x1 - pad.x0 - 200, 10);
   ctx.fillStyle = '#ffc53d'; for (let x = pad.x0 + 204; x < pad.x1; x += 30) ctx.fillRect(x, g + 2, 14, 4);
   // the parking box under the hatch
   const on = st.parked;
   ctx.strokeStyle = on ? '#8fe3b0' : st.wideBox ? C.gold : '#ffffff'; ctx.lineWidth = 3; ctx.setLineDash([10, 7]);
-  rr(pad.box - Wb - BUGGY.half, g - 6, (Wb + BUGGY.half) * 2, 12, 4); ctx.stroke(); ctx.setLineDash([]);
+  rr(bx.lo - BUGGY.half, g - 6, bx.hi - bx.lo + BUGGY.half * 2, 12, 4); ctx.stroke(); ctx.setLineDash([]);
   if (!on) text('PARK', pad.box, g + 26, 16, st.wideBox ? C.gold : '#ffffff', 'center');
 }
 function buggyDrawRocket(st, back) {
@@ -1505,7 +1511,7 @@ function buggyHud(st) {
   else if (nd.drv === 'speed') say(Dp, 'Crater! Speed up ' + buggyKey(D, 'right'), '#ffe7a8', false);
   else if (nd.drv === 'full') say(Dp, 'Ramp! Full speed ' + buggyKey(D, 'right'), '#ffe7a8', true);
   else if (nd.drv === 'stopEdge') say(Dp, b.vf > 60 ? 'Slow down! Stop at the edge ' + buggyKey(D, 'left') : 'Creep up to the edge ' + buggyKey(D, 'right'), C.gold, b.vf > 60);
-  else if (nd.drv === 'waitArm' && nd.fill) say(Dp, 'Wait here: ' + NAMES[A] + ' fills the crater', '#d9d3ef', false);
+  else if (nd.drv === 'waitArm' && nd.waitFill) say(Dp, 'Wait here: ' + NAMES[A] + ' fills the crater', '#d9d3ef', false);
   else if (nd.drv === 'waitArm') say(Dp, 'Wait for ' + NAMES[A] + '\'s claw', '#d9d3ef', false);
   else if (nd.drv === 'park') say(Dp, 'Park in the box ' + buggyKey(D, 'right'), C.gold, false);
   else if (nd.drv === 'back') say(Dp, buggyKey(D, 'left') + ' Back up into the box', C.gold, true);
