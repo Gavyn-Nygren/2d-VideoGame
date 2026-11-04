@@ -196,16 +196,27 @@ definePreview('Haunted Mansion', {
   draw(v, t) {
     const L = pw13MansionL, k = t / L, from = 0.952, ctx = v.ctx;
     pw13MansionBack(v, t);
-    if (k <= from) { this.scene(v, t); return; }
+    if (k <= from) { this.scene(v, t, 3); return; }
+    // the crossfade back to the start: the props that never move are drawn once at full strength (the ghosts are
+    // asleep and bob on a 1.8 s beat that fits the loop; the portrait's eyes swing back to Bo, the door's glow dims),
+    // and only Pip, Bo and the cheering fade between the two passes
     const a = v.ease.inOut(v.seg(k, from, 1));
-    ctx.save(); ctx.globalAlpha *= 1 - a; this.scene(v, t); ctx.restore();
-    ctx.save(); ctx.globalAlpha *= a; this.scene(v, 0); ctx.restore();
+    this.props(v, t, v.lerp(250, 108, a), 0, 1 - a);
+    ctx.save(); ctx.globalAlpha *= 1 - a; this.scene(v, t, 2); ctx.restore();
+    ctx.save(); ctx.globalAlpha *= a; this.scene(v, 0, 2); ctx.restore();
   },
-  scene(v, t) {
+  // the ghosts, the portrait (eyes on lookX, glow pg) and the door (open 0..1)
+  props(v, t, lookX, pg, open) {
+    for (const g of pw13MansionGhosts) pw13MansionGhost(v, g, t);
+    pw13MansionPortrait(v, 200, 12, pg, lookX, t);
+    pw13MansionDoor(v, 302, pw13MansionLedge, open);
+  },
+  // parts: 1 the props, 2 Pip, Bo, the light and the effects, 3 both
+  scene(v, t, parts) {
     const ctx = v.ctx, F = pw13MansionFloor, Lg = pw13MansionLedge, E = pw13MansionEdge, Gs = pw13MansionGhosts;
     const G1 = Gs[0], G2 = Gs[1], bob = g => Math.sin(t * Math.PI * 2 / 1.8 + g.ph) * 1.2;
     const top1 = G1.y + bob(G1), top2 = G2.y + bob(G2), c1 = G1.x + G1.w / 2, c2 = G2.x + G2.w / 2;
-    const DOOR = 302, PORT = 254;
+    const SWAP = 242;   // where Bo stands under the portrait when it swaps him with Pip
     // ----- Bo (the mover): where his feet are
     const hop = (a, b, x0, y0, x1, y1) => { const kk = v.ease.inOut(v.seg(t, a, b)); return pw13MansionHop(v, kk, x0, y0, x1, y1); };
     let bx, by, bAir = false, bLand = -9, bFace = 1;
@@ -215,15 +226,15 @@ definePreview('Haunted Mansion', {
     else if (t < 2.42) { [bx, by] = hop(2.05, 2.42, c1, top1, c2, top2); bAir = true; }
     else if (t < 2.5) { bx = c2; by = top2; bLand = 2.42; }
     else if (t < 2.88) { [bx, by] = hop(2.5, 2.88, c2, top2, 238, Lg); bAir = true; }
-    else if (t < 3.24) { bx = v.lerp(238, PORT, v.ease.out(v.seg(t, 2.88, 3.05))); by = Lg; bLand = 2.88; }
+    else if (t < 3.24) { bx = v.lerp(238, SWAP, v.ease.out(v.seg(t, 2.88, 3.0))); by = Lg; bLand = 2.88; }
     else if (t < 4.5) { bx = 92; by = F; }
     else if (t < 4.88) { [bx, by] = hop(4.5, 4.88, 92, F, c1, top1); bAir = true; }
     else if (t < 4.98) { bx = c1; by = top1; bLand = 4.88; }
     else if (t < 5.34) { [bx, by] = hop(4.98, 5.34, c1, top1, c2, top2); bAir = true; }
     else if (t < 5.42) { bx = c2; by = top2; bLand = 5.34; }
     else if (t < 5.8) { [bx, by] = hop(5.42, 5.8, c2, top2, 240, Lg); bAir = true; }
-    else { bx = v.lerp(240, 254, v.ease.inOut(v.seg(t, 5.8, 6.0))); by = Lg; bLand = 5.8; }
-    if (t > 3.05 && t < 3.24) bFace = -1;   // turns to the portrait... and to Pip
+    else { bx = v.lerp(240, 250, v.ease.inOut(v.seg(t, 5.8, 6.0))); by = Lg; bLand = 5.8; }
+    if (t > 2.95 && t < 3.24) bFace = -1;   // turns to the portrait... and to Pip
     // ----- Pip (the holder): where Pip is and what the light does
     let px, py, pFace = 1, pRot = 0, light = 0, lx, ly, la, len, sx, sy, half = 0.19;
     if (t < 3.24) {
@@ -236,7 +247,7 @@ definePreview('Haunted Mansion', {
     } else {
       // after the swap: Pip is on the balcony, walks to the edge, leans over and shines down
       const walk = v.ease.inOut(v.seg(t, 3.45, 3.78)), go = v.ease.inOut(v.seg(t, 4.5, 5.3));
-      px = go > 0 ? v.lerp(230, 278, go) : v.lerp(PORT, 230, walk); py = Lg;
+      px = go > 0 ? v.lerp(230, 276, go) : v.lerp(SWAP, 230, walk); py = Lg;
       pFace = go > 0 ? 1 : -1;
       const lean = v.ease.out(v.seg(t, 3.78, 3.92)) * (1 - v.ease.inOut(v.seg(t, 4.4, 4.55)));
       pRot = -0.32 * lean;
@@ -248,12 +259,9 @@ definePreview('Haunted Mansion', {
     }
     const eep = t > 0.38 && t < 1.2;
     // ----- the light, the ghosts, the portrait and the door
-    pw13MansionBeam(v, lx, ly, la, half, len, light);
-    for (const g of Gs) pw13MansionGhost(v, g, t);
-    const pg = v.seg(t, 2.95, 3.12) * (1 - v.seg(t, 3.4, 3.6));
-    pw13MansionPortrait(v, PORT, 10, pg, bx, t);
-    const open = v.ease.out(v.seg(t, 6.0, 6.25));
-    pw13MansionDoor(v, DOOR, Lg, open);
+    if (parts & 2) pw13MansionBeam(v, lx, ly, la, half, len, light);
+    if (parts & 1) this.props(v, t, bx, v.seg(t, 2.95, 3.12) * (1 - v.seg(t, 3.4, 3.6)), v.ease.out(v.seg(t, 6.0, 6.25)));
+    if (!(parts & 2)) return;
     // ----- the swap: both vanish in purple smoke and come back in each other's place
     const sw = v.seg(t, 3.12, 3.62), gone = t > 3.2 && t < 3.3;
     const fadeOut = 1 - v.seg(t, 3.12, 3.22), fadeIn = v.seg(t, 3.28, 3.4);
@@ -279,20 +287,20 @@ definePreview('Haunted Mansion', {
       const pop = v.ease.back(v.seg(t, 0.4, 0.55));
       v.label('Eep!', bx + 2, by - 44, 17 * pop, '#fff');
     }
-    pw13MansionSmoke(v, 92, F - 12, sw); pw13MansionSmoke(v, PORT, Lg - 12, sw);
+    pw13MansionSmoke(v, 92, F - 12, sw); pw13MansionSmoke(v, SWAP, Lg - 12, sw);
     if (sw > 0 && sw < 1) {
       // two sparks cross over on a purple arc: Pip's goes up, Bo's comes down
       const u = v.ease.inOut(v.seg(t, 3.18, 3.36));
-      const arc = (q) => [v.lerp(92, PORT, q), v.lerp(F - 14, Lg - 14, q) - Math.sin(q * Math.PI) * 40];
+      const arc = (q) => [v.lerp(92, SWAP, q), v.lerp(F - 14, Lg - 14, q) - Math.sin(q * Math.PI) * 40];
       if (u > 0 && u < 1) { const [ax, ay] = arc(u), [cx2, cy2] = arc(1 - u); v.fillCircle(ax, ay, 5, v.c.pip); v.fillCircle(cx2, cy2, 5, v.c.bo); v.star(ax, ay, 3, '#fff'); v.star(cx2, cy2, 3, '#fff'); }
-      v.label('Swap!', 172, 40, 15 * v.ease.back(v.seg(t, 3.15, 3.3)), '#d6b8ff');
+      v.label('Swap!', 150, 34, 15 * v.ease.back(v.seg(t, 3.15, 3.3)), '#d6b8ff');
     }
-    if (t > 2.95 && t < 3.16) v.pill('⇄', PORT, Lg - 38, { size: 11, col: v.c.gold });
+    if (t > 2.95 && t < 3.16) v.pill('⇄', 236, 20, { size: 11, col: v.c.gold });
     // ----- the payoff: the door glows open, hearts and confetti
     if (t > 6.0) {
-      v.heart(266, 20 - v.seg(t, 6.1, 6.9) * 6, 6 * v.ease.back(v.seg(t, 6.05, 6.25)));
+      v.heart(263, 30 - v.seg(t, 6.1, 6.9) * 6, 5 * v.ease.back(v.seg(t, 6.05, 6.25)));
       v.confetti(302, 36, v.seg(t, 6.05, 6.95), 18);
-      v.label('Hooray!', 150, 40, 18 * v.ease.back(v.seg(t, 6.05, 6.25)), v.c.gold);
+      v.label('Hooray!', 262, 13, 17 * v.ease.back(v.seg(t, 6.05, 6.25)), v.c.gold);
     }
   },
 });
