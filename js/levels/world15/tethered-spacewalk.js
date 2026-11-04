@@ -10,8 +10,8 @@
    out. The floater only has a tiny suit puff (◀ ▶ ▲ ▼, a small tank that refills), so nobody travels alone.
    Leapfrog: the floater holds grab as it passes the next handhold and holds on; then the old anchor lets go and becomes
    the floater, so the jobs swap all the time. A guide ring shows the next handhold (or panel) on the way.
-   Broken solar panels: the floater holds grab near one while the partner holds on (bolt it: about 0.85 s near it, in
-   one go or over a few passes), sparks, then a happy glow. Every panel in the room fixed opens the airlock; both inside
+   Broken solar panels: the floater holds grab near one and keeps still (no puffing) while the partner holds on; after a
+   quarter second it bolts (about 0.85 s more), sparks, then a happy glow. A puff or letting go slips the bolt back. Every panel in the room fixed opens the airlock; both inside
    ends the room.
    Nothing hurts: rocks, satellite cores and the hull just bounce you ("Boing!", counted as bonks when fast). If both let
    go you drift; Bleep the tow robot tows you back to the last station rail after a few seconds (or right away: hold ▼).
