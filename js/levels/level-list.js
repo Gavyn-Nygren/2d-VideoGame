@@ -2751,15 +2751,151 @@ const LEVELS = [
      order: 11-1 Synchro Diving (team), 11-2 Tandem Velodrome (team), 11-3 Hurdle Dash (versus), 11-4 Javelin Throw (versus).
      Each level's def sits between its own BEGIN/END lines. world: 10 ===== */
   // ----- BEGIN 11-1 Synchro Diving (mode 'dive', js/levels/world11/synchro-diving.js) -----
+  { name: 'Synchro Diving', world: 10, kind: 'team', mode: 'dive', ownStep: true, ownHUD: true, noFalls: true, noTime: true,
+    // a twin diving tower over a pool (MODES.dive draws it all): the map is only the two spawns
+    tip: 'Dive off together! ▲ flip, ◀ ▶ twist, hold ▼ to tuck. Match the call, stay in sync, enter straight!',
+    legend: {
+      pip: '<kbd>W</kbd> ready · go · flip <kbd>A</kbd><kbd>D</kbd> twist <kbd>S</kbd> tuck',
+      bo: '<kbd>↑</kbd> ready · go · flip <kbd>←</kbd><kbd>→</kbd> twist <kbd>↓</kbd> tuck',
+      pad: '<span data-glyph="a"></span> ready · go · flip, stick ◀ ▶ twist, down tucks,',
+    },
+    // six dives, higher and harder each time. call: the moves in order; mirror: who picks the moves (the other copies),
+    // max: how many moves the picker is scored for. air: seconds from takeoff to the water (springboard bounces add more)
+    dives: [
+      { title: 'Warm-up', h: 3, spring: true, call: ['flip'], air: 1.15, dd: 1.0 },
+      { title: 'Double flip', h: 3, spring: true, call: ['flip', 'flip'], air: 1.15, dd: 1.2 },
+      { title: 'Mirror dive', h: 5, mirror: 0, max: 2, air: 1.7, dd: 1.4 },
+      { title: 'Mirror dive', h: 7.5, mirror: 1, max: 3, air: 2.0, dd: 1.6 },
+      { title: 'Flip-twist-flip', h: 10, call: ['flip', 'twist', 'flip'], air: 2.0, dd: 1.8 },
+      { title: 'Grand finale', h: 10, call: ['flip', 'flip', 'twist', 'flip'], air: 2.05, dd: 2.0 },
+    ],
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '..........1..........2..........', '................................', '................................',
+    ],
+  },
   // ----- END 11-1 Synchro Diving -----
   //
   // ----- BEGIN 11-2 Tandem Velodrome (mode 'tandem', js/levels/world11/tandem-velodrome.js) -----
+  // a top-down banked velodrome (MODES.tandem): one tandem, one pedals on the beat and one leans; 4 races, jobs swap each
+  // race; scored by place (noTime). Room fields: ped (who pedals), laps, rivals [{ team, v, pos, p }], us, sprint, pacer.
+  // The tip is rebuilt by the mode from ped (and the twist); the map is only the two spawns.
+  { name: 'Tandem Velodrome', world: 10, kind: 'team', mode: 'tandem', ownStep: true, ownHUD: true, noFalls: true, noTime: true,
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> pedal · <kbd>W</kbd><kbd>S</kbd> lean',
+      bo: '<kbd>←</kbd><kbd>→</kbd> pedal · <kbd>↑</kbd><kbd>↓</kbd> lean',
+      pad: 'stick ◀ ▶ pedal, <span data-glyph="a"></span> leans in, down sits up,',
+    },
+    tip: 'One tandem, two jobs: one pedals on the drum beat, one leans into the banked turns. Swap every race!',
+    switches: {}, signs: [],
+    map: [
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '..........1.2...................',
+      '................................',
+      '................................',
+      '................................',
+    ],
+    rooms: [
+      { title: 'Warm-up Laps', ped: 0, laps: 3, twist: 'Race the Toucans and Lizards!',
+        us: { pos: 0.2, p: -6 }, rivals: [{ team: 0, v: 198, pos: 0.56, p: -6 }, { team: 1, v: 224, pos: 0.92, p: -6 }],
+        switches: {}, signs: [] },
+      { title: 'Draft Line', ped: 1, laps: 5, twist: 'Ride close behind a bike to draft!',
+        us: { pos: 0.32, p: -46 }, rivals: [{ team: 2, v: 228, pos: 0.32, p: 80 }, { team: 0, v: 228, pos: 0.32, p: 38 }, { team: 3, v: 228, pos: 0.32, p: -4 }],
+        switches: {}, signs: [] },
+      { title: 'Sprint Finish', ped: 0, laps: 5, sprint: 1.14, twist: 'Bell lap: the drum gets faster. Sprint!',
+        us: { pos: 0.2, p: -6 }, rivals: [{ team: 1, v: 218, pos: 0.56, p: -6 }, { team: 3, v: 230, pos: 0.92, p: -6 }, { team: 2, v: 240, pos: 0.32, p: 36 }],
+        switches: {}, signs: [] },
+      { title: 'Keirin Final', ped: 1, laps: 6, sprint: 1.1, pacer: { pullAt: 3 }, twist: 'Stay behind the pace bike, then sprint!',
+        us: { pos: 0.32, p: -126 }, rivals: [{ team: 3, v: 240, pos: 0.32, p: 6 }, { team: 0, v: 248, pos: 0.32, p: -38 }, { team: 2, v: 256, pos: 0.32, p: -82 }],
+        switches: {}, signs: [] },
+    ],
+  },
   // ----- END 11-2 Tandem Velodrome -----
   //
   // ----- BEGIN 11-3 Hurdle Dash (mode 'hurdles', js/levels/world11/hurdle-dash.js) -----
+  { name: 'Hurdle Dash', world: 10, kind: 'versus', mode: 'hurdles', ownStep: true,
+    // no round clock: each race has its own stopwatch and a safety bell (the mode ends a race nobody finishes)
+    match: { bestOf: 5, roundTime: 0 },
+    act: { label: 'dip' },
+    legend: { pip: '<kbd>D</kbd> run <kbd>W</kbd> jump', bo: '<kbd>→</kbd> run <kbd>↑</kbd> jump',
+      pad: 'stick or d-pad ▶ run, <span data-glyph="a"></span> jump,' },
+    stomp: false,
+    tip: 'Hold ▶ to run. Jump in the gold zone for a SPEED BURST! At the finish, press dip to lean.',
+    switches: {}, signs: [],
+    // the mode draws the whole race (two lane strips, each with its own camera); the grid only holds the spawns
+    map: [
+      '................................', // 0
+      '................................', // 1
+      '................................', // 2
+      '................................', // 3
+      '................................', // 4
+      '................................', // 5
+      '................................', // 6
+      '.......1........................', // 7
+      '................................', // 8
+      '................................', // 9
+      '................................', // 10
+      '................................', // 11
+      '................................', // 12
+      '.......2........................', // 13
+      '................................', // 14
+      '................................', // 15
+      '................................', // 16
+      '................................', // 17
+    ],
+  },
   // ----- END 11-3 Hurdle Dash -----
   //
   // ----- BEGIN 11-4 Javelin Throw (mode 'javelin', js/levels/world11/javelin-throw.js) -----
+  // Both throw at once on two runways (Pip far, Bo near); 3 throws a round, the longer best mark wins. The mode draws
+  // everything itself (the platformer bodies are hidden), so the map is empty: the spawns only place the round-start puffs.
+  // roundTime 0: each throw has its own 10 s clock (drawn over the athlete), so a round always ends.
+  { name: 'Javelin Throw', world: 10, kind: 'versus', mode: 'javelin', ownStep: true,
+    match: { bestOf: 5, roundTime: 0 },
+    act: { label: 'throw' },
+    legend: { pip: '<kbd>D</kbd> run <kbd>A</kbd> brake', bo: '<kbd>→</kbd> run <kbd>←</kbd> brake',
+      pad: 'stick ▶ run, ◀ brake, <span data-glyph="a"></span> or' },
+    tip: 'Hold ▶ to run, press throw at the top of the meter, hold it to aim higher, let go before the line!',
+    switches: {}, signs: [],
+    map: [
+      '................................', //  0
+      '................................', //  1
+      '................................', //  2
+      '................................', //  3
+      '................................', //  4
+      '................................', //  5
+      '................................', //  6
+      '................................', //  7
+      '................................', //  8
+      '................................', //  9
+      '................................', // 10
+      '.1..............................', // 11  Pip's runway start (far lane)
+      '................................', // 12
+      '................................', // 13
+      '.2..............................', // 14  Bo's runway start (near lane)
+      '................................', // 15
+      '................................', // 16
+      '................................', // 17
+    ],
+  },
   // ----- END 11-4 Javelin Throw -----
   //
   // ===== END World 11 =====
