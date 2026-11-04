@@ -3394,7 +3394,26 @@ const LEVELS = [
   // ----- END 15-3 Moon Buggy Crew -----
   //
   // ----- BEGIN 15-4 Planet Hop Race (mode 'planethop', js/levels/world15/planet-hop-race.js) -----
-  // (def goes here)
+  { name: 'Planet Hop Race', world: 14, kind: 'versus', mode: 'planethop', ownStep: true,
+    // a race over tiny round planets (MODES.planethop): the map is only the two spawns, the mode builds each round's course
+    match: { bestOf: 5 },
+    act: { label: 'boost' },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>S</kbd> dive',
+      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump <kbd>↓</kbd> dive',
+      pad: 'stick run, <span data-glyph="a"></span> jump, down dives,',
+    },
+    tip: 'Run round each little planet and jump to the next! Boost is a jet puff, one per jump. First to the rocket wins!',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '.....1..........................', '................................', '................................',
+      '.....2..........................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+    ],
+  },
   // ----- END 15-4 Planet Hop Race -----
   //
   // ===== END World 15 =====
