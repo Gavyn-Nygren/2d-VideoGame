@@ -10,8 +10,8 @@
      (Easy a lot, Hard almost none), and Easy sometimes jumps late or early and has to fix it in the air or go round.
      Normal and Hard check a jump just before pressing it, so they don't take a jump that would fall short.
      In the air: every reaction time it guesses where the flight ends; if that is back where it came from or out into
-     space (Tow-bot), it tries a jet puff in each direction, a dive and an air nudge, and uses whichever lands it farthest
-     along. Hard does this almost every time, Normal most times, Easy now and then.
+     space (Tow-bot), it tries a jet puff in each of the 8 screen directions (and with none held), a dive and an air
+     nudge either way, and uses whichever lands it farthest along. Hard does this almost every time, Normal most times, Easy now and then.
      Wormhole rounds: it may stop on top of the wormhole planet and jump straight up into the swirl (Hard always, Normal
      often, Easy sometimes). On a moving moon it jumps when a jump from right there would land farther along.
      What it reads: the course (planets, wells, the wormhole), its own runner, and nothing about the other player's keys.
@@ -39,10 +39,9 @@
   }
   // the puff a runner would get with these keys (same rule as the mode's planethopPuff)
   function puffV(c, me, ku, kr) {
-    const P = T().PLANETHOP, q = c.pl[me.well >= 0 ? me.well : me.from], dx = me.x - q.cx, dy = me.y - q.cy, d = Math.hypot(dx, dy) || 1;
-    const nx = dx / d, ny = dy / d, tx = -ny, ty = nx;
-    let ux = nx * ku + tx * kr, uy = ny * ku + ty * kr;
-    if (!ku && !kr) { ux = tx * me.face + nx * 0.6; uy = ty * me.face + ny * 0.6; }
+    const P = T().PLANETHOP, q = c.pl[me.well >= 0 ? me.well : me.from], dx = me.x - q.cx;
+    let ux = kr, uy = -ku;
+    if (!ku && !kr) { ux = Math.sign(me.vx) || (dx >= 0 ? 1 : -1); uy = -0.6; }
     const L = Math.hypot(ux, uy) || 1, V = P.puffV * me.puffK;
     let vx = me.vx + ux / L * V, vy = me.vy + uy / L * V;
     const sp = Math.hypot(vx, vy); if (sp > P.vAir) { vx *= P.vAir / sp; vy *= P.vAir / sp; }
@@ -56,7 +55,8 @@
     if (now.ci > curCi) { S.hold = null; return null; }
     let best = null, pick = null;
     const tryOne = (res, what) => { if (res.ci > curCi && better(res, best)) { best = res; pick = what; } };
-    tryOne(fly(c, me, { right: me.face > 0, left: me.face < 0, down: false }), { hold: { right: me.face > 0, left: me.face < 0 } });
+    tryOne(fly(c, me, { right: true }), { hold: { right: true } });
+    tryOne(fly(c, me, { left: true }), { hold: { left: true } });
     tryOne(fly(c, me, { down: true }), { hold: { down: true } });
     if (me.puffs > 0) for (const [ku, kr] of [[0, 0], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]) {
       const v = puffV(c, me, ku, kr);

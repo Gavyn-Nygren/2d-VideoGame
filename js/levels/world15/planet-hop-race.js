@@ -9,9 +9,10 @@
              (clockwise), so it still feels right upside down.
      jump    ▲ pushes you straight out from the planet, plus your run speed along it. Each planet has its own gravity well
              (the faint dotted ring); in flight the planet whose well you are deepest in pulls you, so a good running
-             jump gets caught by the next planet. ◀ ▶ nudge you a little in the air, ▼ dives (stronger pull).
-     boost   the action: a jet puff, one per jump (refilled when you land). It pushes the way you hold (▲ out from the
-             planet, ▼ in, ◀ ▶ along it), or forward-and-up with no direction held. On the ground it is a jet hop.
+             jump gets caught by the next planet. In the air ◀ ▶ nudge you a little the way they point on the screen
+             (toward the next planet), ▼ dives (stronger pull).
+     boost   the action: a jet puff, one per jump (refilled when you land). It pushes the way you hold on the screen
+             (◀ ▶ ▲ ▼ and diagonals), or forward-and-up with no direction held. On the ground it is a jet hop.
    Soft failures only: drifting outside every well for a moment, flying too long or too far brings Tow-bot, the friendly
    robot, who tows you gently back to the last planet you stood on ("Whoopsie!"). Bumping each other is a little "Bump!";
    a puffing runner bonks the other off ("Boing!"). Nobody is ever hurt.
@@ -114,7 +115,8 @@ function planethopAir(c, b, inp, dt, list) {
     const q = pl[best], dx = q.cx - b.x, dy = q.cy - b.y, d = Math.hypot(dx, dy) || 1, nx = dx / d, ny = dy / d;
     const g = q.g * (inp && inp.down && !b.dizzy ? 1 + P.dive : 1);
     let ax = nx * g, ay = ny * g;
-    if (inp && !b.dizzy) { const k = (inp.right ? 1 : 0) - (inp.left ? 1 : 0); ax += ny * k * P.airCtl; ay -= nx * k * P.airCtl; }
+    // ◀ ▶ nudge the way they point on the screen (in the air, "right" is the way to the next planet, not round this one)
+    if (inp && !b.dizzy) ax += ((inp.right ? 1 : 0) - (inp.left ? 1 : 0)) * P.airCtl;
     b.vx += ax * dt; b.vy += ay * dt;
     if (best !== b.from) { const f = Math.exp(-P.catchDrag * dt); b.vx *= f; b.vy *= f; }
   }
@@ -315,16 +317,16 @@ function planethopJump(st, r, live) {
   Sfx.play(q.kind === 'jelly' ? 'planethopJelly' : 'planethopJump', r.id);
   planethopDust(st, r.x - Math.cos(r.a) * 12, r.y - Math.sin(r.a) * 12, 4, q);
 }
-// the jet puff: the way you hold (relative to the planet pulling you), or forward-and-up
+// the jet puff: the way you hold on the screen (like the air nudge), or forward-and-up with nothing held
 function planethopPuff(st, r, inp, live) {
   const P = PLANETHOP, c = st.c;
   if (r.puffs <= 0) { if (r.nopeT <= 0) { r.nopeT = 0.5; Sfx.play('planethopNope', r.id); planethopPop(r, 'No puff left!', '#d9d3ef'); } return; }
   if (r.mode === 'ground') planethopJump(st, r, live); // a jet hop: jump, then puff
-  const q = c.pl[r.well >= 0 ? r.well : r.from], dx = r.x - q.cx, dy = r.y - q.cy, d = Math.hypot(dx, dy) || 1;
-  const nx = dx / d, ny = dy / d, tx = -ny, ty = nx;
+  const q = c.pl[r.well >= 0 ? r.well : r.from], dx = r.x - q.cx;
   const ku = inp ? (inp.up ? 1 : 0) - (inp.down ? 1 : 0) : 0, kr = inp ? (inp.right ? 1 : 0) - (inp.left ? 1 : 0) : 0;
-  let ux = nx * ku + tx * kr, uy = ny * ku + ty * kr;
-  if (!ku && !kr) { ux = tx * r.face + nx * 0.6; uy = ty * r.face + ny * 0.6; }
+  // (bot tests: holding ▶ toward the next planet saves a short jump about 3 times as often this way as "clockwise")
+  let ux = kr, uy = -ku;
+  if (!ku && !kr) { ux = Math.sign(r.vx) || (dx >= 0 ? 1 : -1); uy = -0.6; }
   const L = Math.hypot(ux, uy) || 1, V = P.puffV * r.puffK;
   ux /= L; uy /= L;
   r.vx += ux * V; r.vy += uy * V;
@@ -1228,7 +1230,7 @@ function planethopHud() {
     for (const k of [0, 1]) {
       const h = st.hint[k], r = st.run[k]; if (!h || r.hidden || planethopCpu(k)) continue;
       const kk = planethopKeys(k), s = planethopToScreen(cam, r.x, r.y);
-      const lab = h.n === 1 ? 'Run toward the next planet, then jump!' : 'In the air, ' + kk.boost + ' = jet puff!';
+      const lab = h.n === 1 ? 'Run toward the next planet, then jump!' : 'Jet puff: hold where to go, then ' + kk.boost + '!';
       ctx.globalAlpha = clamp(Math.min(h.t / 0.2, (4.5 - h.t) / 0.4), 0, 1);
       const box = G.matchHudBox, up = s.y - (big ? 86 : 70);
       planethopChip(lab, s.x, box && up < box.y1 + 24 ? s.y + (big ? 70 : 56) : up, big, PCOL[k], false); // (under the runner near the top)
