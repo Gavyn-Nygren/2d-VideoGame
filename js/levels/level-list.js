@@ -2766,6 +2766,23 @@ const LEVELS = [
 
   /* ===== World 12 (Winter Games): the Winter Olympics world, world index 11 (js/levels/world12/). ===== */
   // ===== END World 12 =====
+
+  /* ===== World 13 (Spooky Hollow, mixed): the Halloween world, world index 12 (js/levels/world13/), silly-spooky, never scary.
+     Gavyn's picks (Nov 2026): 13-1 Pumpkin Patch Roll (team), 13-2 Graveyard Bone Hunt (team), 13-3 Haunted Mansion (team,
+     Gavyn's own idea), 13-4 Broomstick Race (versus). Each level's def sits between its own BEGIN/END lines. world: 12 ===== */
+  // ----- BEGIN 13-1 Pumpkin Patch Roll (mode 'pumpkin', js/levels/world13/pumpkin-patch-roll.js) -----
+  // ----- END 13-1 Pumpkin Patch Roll -----
+  //
+  // ----- BEGIN 13-2 Graveyard Bone Hunt (mode 'bonehunt', js/levels/world13/graveyard-bone-hunt.js) -----
+  // ----- END 13-2 Graveyard Bone Hunt -----
+  //
+  // ----- BEGIN 13-3 Haunted Mansion (mode 'mansion', js/levels/world13/haunted-mansion.js) -----
+  // ----- END 13-3 Haunted Mansion -----
+  //
+  // ----- BEGIN 13-4 Broomstick Race (mode 'broom', js/levels/world13/broomstick-race.js) -----
+  // ----- END 13-4 Broomstick Race -----
+  //
+  // ===== END World 13 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -2809,6 +2826,10 @@ const WORLDS = [
       stone: '#3f5a86', stoneLight: '#4f6c9c', stoneEdge: '#2b3f63', grass: '#8fdc6a', grassDark: '#4fa24a', plank: '#f0c070', plankDark: '#9a6a2e', rope: '#ffe08a', ropeDark: '#8a6420' } },
   // World 12: the Winter Olympics (hidden until it has levels)
   { name: 'Winter Games', blurb: 'Winter Olympics fun for two!', theme: {} },
+  // World 13: Halloween, silly-spooky (a dusky purple night with an orange harvest moon; hidden until it has levels)
+  { name: 'Spooky Hollow', blurb: 'Roll, dig, sneak and fly through a not-too-spooky Halloween night!',
+    theme: { skyTop: '#2b2155', skyBot: '#f0915a', hillFar: '#5a3f78', hillNear: '#44305f', sun: 'rgba(255, 196, 110, 0.95)', sunGlow: 'rgba(255, 150, 70, 0.38)',
+      stone: '#4a4060', stoneLight: '#5c5276', stoneEdge: '#302944', grass: '#8bc46a', grassDark: '#4f8a44', plank: '#c98650', plankDark: '#7a4a2a', rope: '#f2b45a', ropeDark: '#7a4a1a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
