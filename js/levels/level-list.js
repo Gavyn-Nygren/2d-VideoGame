@@ -3772,7 +3772,52 @@ const LEVELS = [
   // ----- END 15-2 Gravity Flip Station -----
   //
   // ----- BEGIN 15-3 Moon Buggy Crew (mode 'buggy', js/levels/world15/moon-buggy-crew.js) -----
-  // (def goes here)
+  // 15-3: side-on moon buggy (MODES.buggy): one drives, one works the grabber arm; jobs swap every room. The map is only the
+  // two spawns, the mode builds each room from its course (tokens: see the top of the level file).
+  { name: 'Moon Buggy Crew', world: 14, kind: 'team', mode: 'buggy', ownStep: true, ownHUD: true, noFalls: true,
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> drive <kbd>W</kbd> hop · claw <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>',
+      bo: '<kbd>←</kbd><kbd>→</kbd> drive <kbd>↑</kbd> hop · claw <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>',
+      pad: 'stick: drive · claw, <span data-glyph="a"></span> hop,',
+    },
+    tip: 'One drives the moon buggy, one works the grabber arm: toss boulders away and grab shiny moon rocks!',
+    act: { label: 'grab', labels: ['honk', 'grab'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Crater Flats', driver: 0, act: { label: 'grab', labels: ['honk', 'grab'] },
+        tip: 'Pip drives: ◀ ▶ go, ▲ hops craters, honk at critters. Bo moves the claw: grab rocks, toss boulders back!',
+        course: ['f300', 'S:{D} drives  ·  {A} works the claw', 'f140', 'r0+60', 'f200', 'r0+30', 'f150', 'h390', 'f80',
+          'S:Boulder! {A}: grab it, swing it back, let go', 'f220', 'b', 'f280', 'r0+70', 'f160', 's90', 'f120', 'R+50', 'f220',
+          'F', 'f150', 'S:Crater! {D}: hop at the edge', 'f230', 'r105+55', 'c105', 'f220', 'S:A sleepy critter! {D}: honk', 'f160',
+          'k', 'f260', 'r0+40', 'u200', 'f120', 'R+30', 'd200', 'f160', 'F', 'f150', 'b', 'f260', 'r95+50', 'c100', 'f200', 'r0+40',
+          'f160', 'X'],
+      },
+      {
+        title: 'Boulder Alley', driver: 1, act: { label: 'grab', labels: ['grab', 'honk'] },
+        tip: 'Swap! Bo drives, Pip works the claw. A huge crater? Stop at the edge and fill it up with boulders!',
+        course: ['f300', 'S:Swap! {D} drives, {A} works the claw', 'f120', 'r0+80', 'f200', 'u160', 'f80', 'R+30', 'd160', 'f160',
+          'b', 'f150', 'b+95', 'f330', 'r0+40', 'f150', 'R+50', 'f200', 'F', 'f150', 'h260', 'f100', 'r105+60', 'c115', 'f260',
+          'S:Too wide to jump! Fill it with boulders', 'f260', 'w340', 'f240', 'r0+30', 'f150', 'F', 'f150', 'k', 'f260', 'r0+50',
+          'f120', 'b', 'f280', 'R+20', 'f200', 'r0+40', 'f160', 'X'],
+      },
+      {
+        title: 'Dark Side', driver: 0, dark: true, act: { label: 'grab', labels: ['honk', 'grab'] },
+        tip: 'Pip drives in the dark: the headlight shows the way. Bouncy moss goes BOING! Full speed at the ramp!',
+        course: ['f300', 'S:The dark side! Lights on', 'f160', 'r0+40', 'f200', 'S:Bouncy moss! Boing!', 'f150', 'r120+190', 'o140',
+          'f340', 'r125+190', 'o140', 'f300', 'F', 'f150', 'b', 'f280', 'k', 'f280', 'r0+50', 'f180',
+          'S:Ramp! {D}: full speed, hop at the top', 'f460', 'r150+210', 'j230', 'f300', 'r0+40', 'f160', 'F', 'f160', 'h260',
+          'b', 'f280', 'r0+30', 'f120', 'r100+50', 'c105', 'f200', 'R+40', 'f180', 'X'],
+      },
+      {
+        title: 'Rocket Pad', driver: 1, act: { label: 'grab', labels: ['grab', 'honk'] },
+        tip: 'Bo drives to the rocket! Park in the box, honk to open the hatch, and Pip lifts the rock crate in.',
+        course: ['f300', 'S:Last stretch! The rocket is waiting', 'f120', 'r0+60', 'f200', 'h260', 'f60', 'r105+50', 'c110', 'f240',
+          'b', 'f260', 'F', 'f150', 'r120+190', 'o140', 'f560', 'w340', 'f240', 'r0+40', 'f140', 'F', 'f200', 'S:Ramp! Full speed!',
+          'f400', 'r150+210', 'j230', 'f280', 'b', 'f260', 'k', 'f220', 'r0+40', 'f160', 'S:Park in the box under the rocket!', 'E'],
+      },
+    ],
+  },
   // ----- END 15-3 Moon Buggy Crew -----
   //
   // ----- BEGIN 15-4 Planet Hop Race (mode 'planethop', js/levels/world15/planet-hop-race.js) -----
