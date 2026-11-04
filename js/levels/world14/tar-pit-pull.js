@@ -7,7 +7,8 @@
    - TAR (map 't', a pool of goo below the banks). Step in and you wade slowly and sink to the knees; after TAR.gooStuck s
      in the goo you are STUCK ("Stuck!", a silly face): no walking, no hopping, only wiggling (◀ ▶ in turn), which slows
      the sinking. Deep tar slowly swallows you: fully under is a "Bloop!" and you pop back on your last safe rock (counted,
-     never a fail). Shallow puddles (one tile deep) only hold you: wiggle out, or be pulled.
+     never a fail). Fresh in the goo you can make a weak sticky hop, each one stickier (no hopping across a pit, and too
+     low to climb a bank). Shallow puddles (one tile deep) only hold you: hop or wiggle out, or be pulled.
    - VINES hang from the jungle canopy. Jump into a vine's leafy handle to grab it, ◀ ▶ pump the swing, jump (or the action)
      lets go and you fly. At rest a vine dangles high out of reach; it starts tied to a stake by the near bank (rooms 1, 3,
      4), or it has to be HOOKED: hold the action at a hook stump and the hook stick draws the vine to your edge for your
@@ -19,8 +20,9 @@
    - So every crossing takes turns: one swings across on the vine, the other hops into the goo and gets pulled out, and
      at the next crossing the other one swings. Rooms: 1 Sticky Steps (two tied vines, a sticky puddle), 2 Vine Swing
      Gully (hook the vine and throw it back to each other; then a vine that needs a "Push!" from the partner), 3 Sinking
-     Logs (a log sinks slowly under one of you and fast under two, so keep moving; big tar bubbles pop stuck friends up
-     and give them more time), 4 Gerty's Tail (a friendly brontosaurus makes a bridge only while somebody blows her leaf
+     Logs (a log sinks slowly under one of you and fast under two, so keep moving; one that goes "Glug!" drops you in the
+     goo and bobs all the way back up before it holds anyone again, lifting out whoever is stuck above it; big tar
+     bubbles pop stuck friends up and give them more time), 4 Gerty's Tail (a friendly brontosaurus makes a bridge only while somebody blows her leaf
      horn; the horns are far from her, so each of you calls for the other; then one last vine).
    - Gold help, always announced: Slow tar (2 bloops in a room), Long lasso (2 "Too far!"), Gold vines (they drop you
      on the far bank, after 2 falls off a vine), Patient Gerty (after 2 slides off her), all of it after a long time stuck.
@@ -415,7 +417,7 @@ function tarGrab(st, p, ps, v) {
   p.vx = 0; p.vy = 0; p.jumping = false; p.pendingJump = false; p.jumpBuf = 0; p.grounded = false;
   p.x = tp.x - p.w / 2; p.y = tp.y - 2;
   p.sx = 0.8; p.sy = 1.2;
-  st.stats.swings++; st.noProg = 0;
+  st.stats.swings++;
   tarPop(st, tp.x, tp.y - 22, 'Wheee!', '#c8ffd8', 18);
   Sfx.play('tarGrab', p.id); rumble(p.id, 0.2, 0.3, 80);
 }
@@ -601,7 +603,7 @@ function tarShlorp(st, pu, sp, pp, sq) {
   sq.fly = { x0: sp.x, y0: sp.y, x1: lx - sp.w / 2, y1: top - sp.h, t: 0, T: TAR.shlorpT, h: Math.max(60, sp.y - (top - sp.h) + 46) };
   Object.assign(sq, { inTar: false, stuck: false, depth: 0, goo: 0, sinkT: 0, gooey: false, drip: 2.2 });
   sp.vx = 0; sp.vy = 0;
-  st.stats.shlorps++; st.noProg = 0;
+  st.stats.shlorps++;
   tarPop(st, cx, surf - 30, 'SHLORP!', '#ffe3a8', 26);
   for (let i = 0; i < 14; i++) G.particles.push({ x: cx + (Math.random() - 0.5) * 18, y: surf, vx: (Math.random() - 0.5) * 220, vy: -120 - Math.random() * 200, life: 0.7, max: 0.7, col: i % 3 ? '#2a2038' : '#6a5590', size: 3 + Math.random() * 4, grav: 700, kind: 'dot' });
   st.ripples.push({ x: cx, y: surf, t: 0, big: true });
@@ -694,7 +696,7 @@ function tarGertyStep(st, dt) {
   const was = gt.d;
   if (called) gt.d = Math.min(1, gt.d + TAR.gDown * dt);
   else if (gt.calm > grace) gt.d = Math.max(0, gt.d - TAR.gUp * dt);
-  if (was < 1 && gt.d >= 1) { gt.say = 'Mmm-hmm! Hop on!'; gt.sayT = 1.6; Sfx.play('tarGerty'); gt.bridges++; st.noProg = 0; }
+  if (was < 1 && gt.d >= 1) { gt.say = 'Mmm-hmm! Hop on!'; gt.sayT = 1.6; Sfx.play('tarGerty'); gt.bridges++; }
   if (was >= TAR.gSolid && gt.d < TAR.gSolid) { gt.say = 'Hmm?'; gt.sayT = 1; }
   if (gt.sayT > 0) gt.sayT -= dt;
   gt.blink -= dt; if (gt.blink < -3 - (hash(gt.bridges, 3) % 3)) gt.blink = 0.15;
@@ -878,12 +880,12 @@ function tarPaintBack(c, st, L) {
   }
   c.fillStyle = 'rgba(30,80,30,0.25)'; for (let i = 0; i < 26; i++) { const x = i * 40 + 6; c.beginPath(); c.arc(x, 10 + (hash(i, 5) % 10), 10, 0, Math.PI * 2); c.fill(); }
   // dark goo stains inside the pits (behind the tar)
-  for (const rg of st.regions) { c.fillStyle = 'rgba(40,28,52,0.55)'; c.fillRect(rg.x0, rg.surf - 30, rg.x1 - rg.x0, 30); }
+  for (const rg of st.regions) if (!rg.shallow) { c.fillStyle = 'rgba(40,28,52,0.55)'; c.fillRect(rg.x0, rg.surf - 30, rg.x1 - rg.x0, 30); }
   // the banks: warm rock with moss on top
   for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
     if (L.grid[ty][tx] !== '#') continue;
     const x = tx * T, y = ty * T, open = (a, b) => tile(a, b) !== '#';
-    let depth = 0; while (depth < 6 && ty - depth - 1 >= 0 && L.grid[ty - depth - 1][tx] === '#') depth++;
+    let depth = 0; while (depth < 6 && ty - depth - 1 >= 0 && (L.grid[ty - depth - 1][tx] === '#' || L.grid[ty - depth - 1][tx] === 't')) depth++;   // (tar counts: rock under a pit is as deep as the banks)
     c.fillStyle = ['#a07a52', '#916c48', '#80603f', '#715438', '#634a32', '#58422d'][Math.min(5, depth)];
     c.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
     const h = hash(tx, ty);
@@ -1059,6 +1061,13 @@ function tarDrawLog(st, lg, t) {
   // a little mushroom friend on top
   ctx.fillStyle = '#ff7a6a'; ctx.beginPath(); ctx.ellipse(x1 - 16, top, 6, 5, 0, Math.PI, 0); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.fillRect(x1 - 17.5, top, 3, 3); circle(x1 - 18, top - 2.5, 1.1); ctx.fill();
+  // its lower half sits in the goo (all of it, once it has gone glug)
+  const wl = (tarSurfAt(st, (lg.x0 + lg.x1) / 2) || 394) + 8, sub = Math.max(top, wl);
+  if (sub < top + h) {
+    ctx.fillStyle = 'rgba(36,26,50,0.82)'; ctx.fillRect(x0 - 1, sub, x1 - x0 + 2, top + h - sub + 1);
+    ctx.strokeStyle = 'rgba(170,150,210,0.45)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0 - 2, sub); ctx.lineTo(x1 + 2, sub); ctx.stroke();
+  }
+  if (lg.down) { ctx.fillStyle = 'rgba(36,26,50,0.55)'; rr(x0, top, x1 - x0, h, 10); ctx.fill(); }
   // two on it: worried sweat drops
   if (lg.load === 2 && !reduceMotion) { ctx.fillStyle = '#8fd8ff'; for (const ox of [-8, 8]) { const yy = top - 20 - ((t * 30 + ox + 20) % 14); ctx.beginPath(); ctx.ellipse((x0 + x1) / 2 + ox, yy, 2, 3, 0, 0, Math.PI * 2); ctx.fill(); } }
 }
@@ -1292,7 +1301,6 @@ function tarDraw() {
   for (const s of st.stumps) tarDrawStump(st, s, t);
   for (const h of st.horns) tarDrawHorn(st, h, t);
   if (st.gerty) tarDrawGerty(st, st.gerty, t);
-  for (const lg of st.logs) tarDrawLog(st, lg, t);
   for (const v of st.vines) tarDrawVine(st, v, t);
 }
 
@@ -1383,6 +1391,7 @@ function tarDrawTop() {
   const st = G.mst; if (!st.zones) return;
   const t = G.clock, z = tarBig() ? 1.4 : 1;
   tarDrawTar(st, t);
+  for (const lg of st.logs) tarDrawLog(st, lg, t);   // (over the tar, so they float)
   tarDrawStuck(st, t);
   tarDrawLine(st, t);
   tarDrawPetey(st, t);
@@ -1463,7 +1472,7 @@ MODES.tarpit = {
   hud() { tarHud(); },
   stats() {
     const s = G.mst.stats, stuck = s.stuck[0] + s.stuck[1], time = G.time, bl = s.bloops[0] + s.bloops[1];
-    const medal = time <= 240 && stuck <= 11 ? 'Gold' : time <= 420 && stuck <= 20 ? 'Silver' : 'Bronze';
+    const medal = time <= 270 && stuck <= 12 ? 'Gold' : time <= 480 && stuck <= 28 ? 'Silver' : 'Bronze';
     const words = medal === 'Gold' ? 'Sticky-quick teamwork!' : medal === 'Silver' ? 'Great pulling, partners!' : 'Gooey, but you made it together!';
     return [
       { label: 'Times stuck', values: s.stuck.slice() },

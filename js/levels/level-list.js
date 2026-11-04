@@ -3465,7 +3465,7 @@ const LEVELS = [
         title: "Gerty's Tail", style: 'gerty', act: { label: 'call' },
         tip: 'Gerty the brontosaurus makes a bridge while someone blows her leaf horn. Take turns calling!',
         cross: [{ kind: 'gerty', lead: 1 }, { kind: 'tied', lead: 0 }],
-        deco: [{ k: 'sign', x: 100, y: 360, text: 'Blow the horn!' }, { k: 'fern', x: 600, y: 360, s: 0.8 }, { k: 'eggs', x: 905, y: 360 }],
+        deco: [{ k: 'fern', x: 125, y: 360, s: 0.7 }, { k: 'fern', x: 600, y: 360, s: 0.8 }, { k: 'eggs', x: 905, y: 360 }],
         switches: {}, signs: [],
         map: [
           '................................', //  0
