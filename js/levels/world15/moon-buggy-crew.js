@@ -39,7 +39,7 @@ const BUGGY = {
   k: 34, kd: 3.4, kdUp: 6, kHard: 900, wallPen: 14, I: 1100, angDampG: 4, angDampA: 0.6,
   acc: 300, vMax: 255, brake: 560, vRev: 120, roll: 35, hold: 460, vCap: 290,
   hopV: 245, hopCD: 0.45, tiltA: 5.5, gyro: 1.4, gyroGold: 5,
-  mossV: 390, rampH: 46, rampL: 110, pitD: 150, fillD: 110, fillNeed: 3,
+  mossV: 390, rampH: 46, rampL: 110, rampKick: 0.45, pitD: 150, fillD: 110, fillNeed: 3,
   pivot: [-36, -27], clawMin: 26, clawMax: 168, clawSp: 290, clawHeavy: 215, clawAcc: 2600,
   grabR: 26, grabRGold: 44, rockR: 9, boulderR: 28, critterR: 18,
   boxW: 34, boxWGold: 80, hatchR: 40, hatchRGold: 90,
@@ -94,7 +94,7 @@ function buggyCompile(def) {
     else if (ch === 'R') { c.ledges.push({ x: x + dx }); c.rocks.push({ x: x + dx, h: 136, got: false, float: false, ledge: true, ph: c.rocks.length * 1.3, t: 0 }); }
     else if (ch === 'F') c.flags.push({ x, on: false, t: 0 });
     else if (ch === 'X') { c.gate = { x: x + 40 }; seg(700, () => y0); }
-    else if (ch === 'E') { c.pad = { x0: x, x1: x + 820, box: x + 440, rocket: x + 640, open: false, openT: 0 }; seg(1100, () => y0); }
+    else if (ch === 'E') { c.pad = { x0: x, x1: x + 820, box: x + 500, rocket: x + 640, open: false, openT: 0 }; seg(1100, () => y0); }
   }
   seg(1400, () => y);
   c.gy = Float32Array.from(ys);
@@ -257,6 +257,8 @@ function buggyPhysics(st, dt, thr, hop) {
     w.cp = Math.max(0, c); w.c = Math.max(0, c);
     w.x = s.mx + dx * (B.ext - Math.min(B.ext, w.c)); w.y = s.my + dy * (B.ext - Math.min(B.ext, w.c));
   }
+  // leaving a jump ramp's lip: the ramp kicks the buggy up (a hop on top of it carries it over the crater)
+  if (!n && b.contacts) { const rp = st.c.pits.find(p => p.kind === 'ramp' && b.x > p.x0 - 80 && b.x < p.x0 + 30); if (rp && b.vx > 0) b.vy -= b.vx * B.rampKick; }
   b.contacts = n;
   const vf = b.vx * fx + b.vy * fy;
   if (n) {
@@ -275,7 +277,7 @@ function buggyPhysics(st, dt, thr, hop) {
     let v = B.hopV * (n === 2 ? 1 : 0.85);
     const gp = st.c.pits.find(p => (p.kind === 'hop' || p.kind === 'ramp') && p.gold >= 1 && b.x > (p.kind === 'ramp' ? p.rampX0 : p.x0 - 240) - 20 && b.x < p.x0 + 20);
     if (gp) v *= gp.kind === 'ramp' ? 1.3 : 1.35;
-    b.vx -= dx * v; b.vy -= dy * v; b.hopCD = B.hopCD;
+    b.vy = Math.min(b.vy, 0) - v; b.hopCD = B.hopCD;   // (straight up: a hop on a ramp keeps its speed)
     Sfx.play('buggyHop', st.drv); st.stats.hops++;
     if (gp) buggySpark(st, b.x, b.y + 30, C.gold, 10);
   }
@@ -383,7 +385,11 @@ function buggyArmStep(st, dt, ai, grab) {
   // the arm's reach, and the claw stays above the ground (higher when something hangs from it)
   let d = Math.hypot(arm.ox, arm.oy);
   if (d > B.clawMax) { arm.ox *= B.clawMax / d; arm.oy *= B.clawMax / d; }
-  else if (d < B.clawMin) { const s = B.clawMin / Math.max(1, d); arm.ox *= s; arm.oy *= s; if (d < 1) arm.oy = -B.clawMin; }
+  else if (d < B.clawMin) {
+    // (over the top of the pivot rather than straight out, so the claw slides across it instead of sticking there)
+    if (Math.abs(arm.ox) < B.clawMin) arm.oy = -Math.sqrt(B.clawMin * B.clawMin - arm.ox * arm.ox);
+    else { const s = B.clawMin / Math.max(1, d); arm.ox *= s; arm.oy *= s; }
+  }
   const pv = buggyPivot(st), lift = hold ? (hold.kind === 'boulder' ? B.boulderR * 2 + 8 : hold.kind === 'crate' ? 44 : 8) : 8;
   const gy = buggyGround(st, pv.x + arm.ox) - lift;
   if (pv.y + arm.oy > gy) arm.oy = gy - pv.y;
@@ -412,7 +418,7 @@ function buggyArmStep(st, dt, ai, grab) {
   const extra = st.magnet ? 24 : 0;
   for (const o of st.c.boulders) if (o.state === 'track') near(o.x, o.y, o.r + 16 + extra, { kind: 'boulder', o });
   for (const pl of st.c.piles) if (buggyOpen(pl.pit)) near(pl.x, buggyGround(st, pl.x) - 40, 50 + extra, { kind: 'pile', pl });
-  if (st.parked && (st.crate.where === 'hopper' || st.crate.where === 'ground')) { const cp = buggyCratePos(st); near(cp.x, cp.y, 34 + extra, { kind: 'crate' }); }
+  if (st.parked && (st.crate.where === 'hopper' || st.crate.where === 'ground')) { const cp = buggyCratePos(st); near(cp.x, cp.y - 16, 34 + extra, { kind: 'crate' }); }   // (by its handle)
   for (const o of st.c.critters) if (o.state === 'sleep') near(o.x, buggyGround(st, o.x) - 16, 30, { kind: 'critter', o });
   if (!best) { arm.miss = 0.25; Sfx.play('buggyClack'); return; }
   const w = best.what;
@@ -706,8 +712,8 @@ function buggyNeeds(st) {
     const fp = out.fill;
     if (fp && fp.x0 - front < 120) { out.arm = 'drop'; out.target = { x: Math.max(fp.x0 + 40, pv.x + 60), y: Math.min(pv.y - 50, fp.rim - 90) }; }
     else { out.arm = 'toss'; out.target = { x: b.x - 140, y: pv.y - 40 }; }
-  } else if (hold && hold.kind === 'crate') { out.arm = 'hatch'; out.target = pad ? { x: pad.rocket - 58, y: buggyGround(st, pad.rocket) - 150 } : null; }
-  else if (st.parked && st.crate.where !== 'in') { out.arm = 'crate'; out.target = buggyCratePos(st); }
+  } else if (hold && hold.kind === 'crate') { out.arm = 'hatch'; out.target = pad ? { x: pad.rocket - 58, y: buggyGround(st, pad.rocket) - 176 } : null; }
+  else if (st.parked && st.crate.where !== 'in') { out.arm = 'crate'; const cp = buggyCratePos(st); out.target = { x: cp.x, y: cp.y - 16 }; }
   else if (out.block && out.block.kind === 'boulder' && out.blockD < 150) { out.arm = 'boulder'; out.target = { x: out.block.o.x, y: out.block.o.y }; }
   else if (out.fill && out.fillD < 70) { const pl = c.piles.find(q => q.pit === out.fill); out.arm = 'pile'; out.target = pl ? { x: pl.x, y: buggyGround(st, pl.x) - 40 } : null; }
   else {
@@ -992,10 +998,10 @@ function buggyDrawBack(st) {
     const g = buggyGround(st, s.x);
     ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
     const w = ctx.measureText(s.text).width + 24;
-    ctx.fillStyle = '#5c6688'; ctx.fillRect(s.x - 2, g - 70, 4, 70);
-    ctx.fillStyle = st.dark ? 'rgba(40,38,80,0.95)' : 'rgba(28,26,54,0.88)'; rr(s.x - w / 2, g - 98, w, 30, 9); ctx.fill();
-    ctx.strokeStyle = '#9aa6c4'; ctx.lineWidth = 2; rr(s.x - w / 2, g - 98, w, 30, 9); ctx.stroke();
-    text(s.text, s.x, g - 82.5, 13, C.paper, 'center', 'body');
+    ctx.fillStyle = '#5c6688'; ctx.fillRect(s.x - 2, g - 34, 4, 34);
+    ctx.fillStyle = st.dark ? 'rgba(40,38,80,0.95)' : 'rgba(28,26,54,0.88)'; rr(s.x - w / 2, g - 62, w, 30, 9); ctx.fill();
+    ctx.strokeStyle = '#9aa6c4'; ctx.lineWidth = 2; rr(s.x - w / 2, g - 62, w, 30, 9); ctx.stroke();
+    text(s.text, s.x, g - 46.5, 13, C.paper, 'center', 'body');
   }
   for (const f of c.flags) if (vis(f.x)) {
     const g = buggyGround(st, f.x), up = f.on ? Math.min(1, f.t * 3) : 0, top = g - 40 - up * 34;
