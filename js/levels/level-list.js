@@ -3356,6 +3356,27 @@ const LEVELS = [
   // ----- END 13-4 Broomstick Race -----
   //
   // ===== END World 13 =====
+
+  /* ===== World 14 (Dino Valley, mixed): the prehistoric dinosaur world, world index 13 (js/levels/world14/), friendly
+     dinosaurs, nothing scary. Gavyn's picks (Nov 2026): 14-1 Egg Rescue (team), 14-2 Pterodactyl Express (team),
+     14-3 Tar Pit Pull (team), 14-4 Raptor Race (versus). Each level's def sits between its own BEGIN/END lines. world: 13 ===== */
+  // ----- BEGIN 14-1 Egg Rescue (mode 'eggrescue', js/levels/world14/egg-rescue.js) -----
+  // (def goes here)
+  // ----- END 14-1 Egg Rescue -----
+  //
+  // ----- BEGIN 14-2 Pterodactyl Express (mode 'ptero', js/levels/world14/pterodactyl-express.js) -----
+  // (def goes here)
+  // ----- END 14-2 Pterodactyl Express -----
+  //
+  // ----- BEGIN 14-3 Tar Pit Pull (mode 'tarpit', js/levels/world14/tar-pit-pull.js) -----
+  // (def goes here)
+  // ----- END 14-3 Tar Pit Pull -----
+  //
+  // ----- BEGIN 14-4 Raptor Race (mode 'raptor', js/levels/world14/raptor-race.js) -----
+  // (def goes here)
+  // ----- END 14-4 Raptor Race -----
+  //
+  // ===== END World 14 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -3405,6 +3426,10 @@ const WORLDS = [
   { name: 'Spooky Hollow', blurb: 'Roll, dig, sneak and fly through a not-too-spooky Halloween night!',
     theme: { skyTop: '#2b2155', skyBot: '#f0915a', hillFar: '#5a3f78', hillNear: '#44305f', sun: 'rgba(255, 196, 110, 0.95)', sunGlow: 'rgba(255, 150, 70, 0.38)',
       stone: '#4a4060', stoneLight: '#5c5276', stoneEdge: '#302944', grass: '#8bc46a', grassDark: '#4f8a44', plank: '#c98650', plankDark: '#7a4a2a', rope: '#f2b45a', ropeDark: '#7a4a1a' } },
+  // World 14: prehistoric dinosaurs, friendly and sunny (a warm jungle valley with a sleepy smoking volcano far away)
+  { name: 'Dino Valley', blurb: 'Carry, fly, pull and race through the land of the dinosaurs!',
+    theme: { skyTop: '#f6b26b', skyBot: '#fff1c9', hillFar: '#9fbf7a', hillNear: '#6fa45a', sun: 'rgba(255, 238, 170, 0.95)', sunGlow: 'rgba(255, 190, 110, 0.38)',
+      stone: '#6b5a4a', stoneLight: '#806c58', stoneEdge: '#4a3c30', grass: '#7ccf4f', grassDark: '#3f8f3a', plank: '#c9925a', plankDark: '#7d5530', rope: '#b9d36a', ropeDark: '#5a6e2a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
