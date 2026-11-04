@@ -15,6 +15,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 
 - **Controllers:** Xbox and most other gamepads work. Action is X, RB or RT. If a controller isn't picked up in the online demo, download the game and open `index.html` straight from your computer.
 - **Touch:** on-screen buttons show up on phones and tablets.
+- **Pick any level:** press Play, choose a world, and every level shows a little moving preview of what happens in it.
 - **1 player:** on the title screen pick "1 player + computer", choose who you play, and the computer plays the other character: a teammate in team levels, your opponent in versus levels (Easy, Normal or Hard). You can use either set of keys.
 
 ## Worlds
@@ -32,6 +33,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 11. **Summer Games** (summer sports): Synchro Diving, Tandem Velodrome, Hurdle Dash, Javelin Throw
 12. **Winter Games** (winter sports): Curling, Bobsled, Ski Jump, Ice Hockey
 13. **Spooky Hollow** (Halloween, silly-spooky): Pumpkin Patch Roll, Graveyard Bone Hunt, Haunted Mansion, Broomstick Race
+14. **Dino Valley** (friendly dinosaurs): Egg Rescue, Pterodactyl Express, Tar Pit Pull, Raptor Race
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
@@ -51,8 +53,10 @@ Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md
 | `js/levels/world4/` to `world13/` | One file per level, with its rules, sounds and drawing |
 | `js/cpu/` | The computer player for 1-player mode: `cpu-core.js` (settings and the brain framework), `cpu-nav.js` (path finding), and one brain per level in `js/cpu/levels/` |
 | `js/input.js` | Keyboard, controllers and touch buttons |
-| `js/ui.js` | Menus, result cards, pause screen, controls legend, notices |
+| `js/ui.js` | Result cards, pause screen, controls legend, notices |
 | `js/render.js` | Shared drawing: background, tiles, players, HUD, particles |
+| `js/previews/` | The little animated scene of each level on the world pages: `preview-core.js` (the drawing kit) and one file per world |
+| `js/home.js` | The title screen, the world map and each world's page |
 | `js/main.js` | The main loop: game state, loading levels, each game tick, finishing levels, screen sizing, startup |
 
 The scripts are plain `<script src>` tags and share one set of names, so their order in `index.html` matters: a file can only use, while it loads, things from files above it. A new level gets its own file in `js/levels/worldN/` and a `<script>` tag after the other level files (before `js/cpu/`), plus a computer brain in `js/cpu/levels/worldN/`. `node tools/cpu-test.js` checks the computer can play every level.

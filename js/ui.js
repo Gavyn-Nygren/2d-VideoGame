@@ -126,49 +126,11 @@ function hideOverlay() {
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
 }
 function primaryAction() { const b = overlay.querySelector('[data-primary]'); if (b && !overlay.hidden) b.click(); }
+// Esc or controller B on a menu screen with a Back button (js/home.js): presses it. False when there is none.
+function menuBack() { const b = overlay.hidden ? null : overlay.querySelector('[data-back]'); if (b) b.click(); return !!b; }
 
 const kindTag = (k, l) => k === 'versus' ? '<span class="tag versus">Versus</span>' : l && l.pong ? '<span class="tag team">vs Robo</span>' : '<span class="tag team">Team</span>';
-const levelList = () => '<div class="worlds">' + liveWorlds().map(w => { const wd = WORLDS[w]; return `
-  <section class="world" aria-label="World ${w + 1}: ${esc(wd.name)}">
-    <p class="world-h"><span class="wn">World ${w + 1}</span>${esc(wd.name)}</p>
-    <ol class="levels">${worldLevels(w).map(i =>
-      `<li><button type="button" data-act="level" data-i="${i}"><span class="n">${levelCode(i)}</span><span class="t">${esc(LEVELS[i].name)}</span>${kindTag(LEVELS[i].kind, LEVELS[i])}</button></li>`).join('')}</ol>
-  </section>`; }).join('') + '</div>';
-const NUM_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen',
-  'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'];
-// "One pits you against each other" / "Five pit you against each other", counted from the levels that exist
-function titleLede() {
-  const nVs = LEVELS.filter(l => l.kind === 'versus').length;
-  const vs = nVs === 1 ? 'One pits you' : (NUM_WORDS[nVs] || nVs) + ' pit you';
-  return `A couch co-op game for two, in ${liveWorlds().length} worlds. Every level has its own trick, and most of them need you both. ${vs} against each other, and one against a robot.`;
-}
-
-function showTitle() {
-  G.mode = 'title';
-  G.results = [];
-  loadLevel(0, 'title');
-  showOverlay(`
-    <div class="card">
-      <p class="eyebrow">Playable demo · <span data-cpu-eyebrow>${CPU.cfg.players === 1 ? '1 player + computer' : '2 players'}</span> · 1 screen</p>
-      <h1><span class="nm-pip">Pip</span> <span style="color:var(--gold)">&amp;</span> <span class="nm-bo">Bo</span></h1>
-      <p class="lede">${titleLede()}</p>
-      <div class="duo kb-only">
-        <div class="pcard pip"><div class="nm nm-pip">Pip</div><div class="keys"><span><kbd>A</kbd><kbd>D</kbd> move</span><span><kbd>W</kbd> jump</span><span><kbd>S</kbd> drop down</span></div></div>
-        <div class="pcard bo"><div class="nm nm-bo">Bo</div><div class="keys"><span><kbd>←</kbd><kbd>→</kbd> move</span><span><kbd>↑</kbd> jump</span><span><kbd>↓</kbd> drop down</span></div></div>
-      </div>
-      ${cpuCfgHTML()}
-      <div class="actions-row"><button class="primary" type="button" data-act="start" data-primary>Start World 1</button><span class="hint kb-only">or press Enter</span></div>
-      <p class="hint touch-only" data-two-only${CPU.cfg.players === 1 ? ' hidden' : ''}>Pip uses the orange buttons on the left, Bo uses the blue buttons on the right. ▲ jumps, ▼ drops through planks.</p>
-      <div class="pcard pad-only">
-        <div class="keys"><span>Stick or d-pad: move</span><span><span data-glyph="a"></span> jump</span><span>Down: drop through planks</span><span><span data-glyph="start"></span> pause</span></div>
-        <p class="hint" data-padwho></p>
-        <p class="hint">Press <span data-glyph="view"></span> to swap who plays which character<span data-solo-only${CPU.cfg.players === 1 ? '' : ' hidden'}> (you and the computer)</span>. In menus, the stick moves between buttons and <span data-glyph="a"></span> picks.</p>
-      </div>
-      ${levelList()}
-      <p class="hint kb-only">Controllers work too (Xbox, PlayStation, Switch and others): press any button on one to connect it. The first is Pip, the second is Bo.</p>
-      <p class="hint" data-padblocked hidden>This page isn’t allowed to read controllers. To play with one, download the game file and open it directly in Chrome, Edge or Firefox.</p>
-    </div>`);
-}
+// (the title, world map and world pages are in js/home.js)
 
 // the action button's keys, for cards (only levels with def.act)
 function actKeysHTML() {
@@ -197,6 +159,11 @@ function pause() {
   if (G.mode !== 'play') return;
   G.mode = 'paused';
   if (G.golf) { G.golf.charging = false; G.golf.power = 0; } // a held swing doesn't fire on resume
+  showPauseCard();
+}
+// (also where Back from the level picker returns to while paused)
+function showPauseCard() {
+  Home.screen = 'pause';
   const l = LEVELS[G.levelIndex], m = G.match;
   const matchLine = m ? `<p class="hint">Round ${m.round} · Best of ${m.bestOf} · ${nameSpan(0)} ${m.wins[0]} – ${m.wins[1]} ${nameSpan(1)}</p>` : '';
   showOverlay(`
@@ -209,10 +176,10 @@ function pause() {
       <div class="actions-row">
         <button class="primary" type="button" data-act="resume" data-primary>Keep playing</button>
         <button class="ghost" type="button" data-act="replay">${m ? 'Restart match' : 'Restart level'}</button>
+        <button class="ghost" type="button" data-act="worlds">Choose a level</button>
         <button class="ghost" type="button" data-act="menu">Title screen</button>
       </div>
       ${cpuCfgHTML()}
-      ${levelList()}
     </div>`);
 }
 function resume() { if (G.mode !== 'paused') return; G.mode = 'play'; hideOverlay(); G.players.forEach(p => { p.prevJump = true; p.prevAct = true; }); }
@@ -239,6 +206,8 @@ function matchResultBody(r) {
 function showResult() {
   G.mode = 'result';
   const i = G.levelIndex, r = G.results[i], l = LEVELS[i];
+  // the world pages tick a level once it's cleared (a team level) or a match is finished (versus); a lost Robo Pong doesn't count
+  if (!(r.pong && !r.pong.won && !r.pong.beaten)) store.set('done:' + l.name, true);
   const last = i === LEVELS.length - 1;
   const nextLabel = lastInWorld(i) ? `Finish World ${l.world + 1}` : last ? 'See your results' : 'Next level';
   let body;
@@ -439,6 +408,6 @@ if (store.get('muted') === true) toggleMute();
 document.getElementById('menuBtn').addEventListener('click', e => {
   Sfx.init();
   e.currentTarget.blur();
-  if (G.mode === 'play') pause(); else if (G.mode !== 'title') showTitle();
+  if (G.mode === 'play') pause(); else if (G.mode !== 'title' || Home.screen !== 'title') showTitle();
 });
 
