@@ -45,6 +45,8 @@
   const pzBurst = (x, y, col, n) => { if (G.particles.length < 500) burst(x, y, col, n); };
   const pzRumble = (s, w, ms, id) => { if (id === undefined) { rumble(0, s, w, ms); rumble(1, s, w, ms); } else rumble(id, s, w, ms); };
   const pzShake = v => { if (!reduceMotion) G.shake = Math.max(G.shake, v); };
+  // 1-player mode: the computer's holder gets no key hints (it says what it needs in its own bubbles)
+  const pzCpu = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
 
   // the player's real keys, for hint bubbles (like golfKeys)
   function pzKey(id, what) {
@@ -1079,7 +1081,7 @@
       const steadying = ps.some(pc => pc.steadyHeld) && Math.abs(st.lean) > 0.3;
       if (st.mode === 'push' && st.pushT > 0.5 && !steadyTime && !steadying) out.push('push');
       if (st.mode === 'tug' && st.tugT > 0.6 && !steadyTime) out.push('tug');
-      const afk = ps.find(pc => pc.idleT >= PZ.afkT && ps[1 - pc.id].idleT < 3);
+      const afk = ps.find(pc => pc.idleT >= PZ.afkT && ps[1 - pc.id].idleT < 3 && !pzCpu(pc.id));
       if (afk) out.push('afk');
       if (R.door && Math.abs(st.X - R.door.cx) < 160) out.push('door');
     }
@@ -1100,7 +1102,7 @@
     let slot = 0;
     const main = (label, col) => { pzBubble(st.X, top - slot * 38 * sc, label, col, sc); slot++; };
     const keyed = new Set();
-    const key = (pc, what, word) => { if (keyed.has(pc.id)) return; keyed.add(pc.id); pzKeyBubble(st, pc, pzKey(pc.id, what), sc, word); };
+    const key = (pc, what, word) => { if (keyed.has(pc.id) || pzCpu(pc.id)) return; keyed.add(pc.id); pzKeyBubble(st, pc, pzKey(pc.id, what), sc, word); };
     for (const pr of list) {
       if (pr === 'teeter') {
         main(Math.abs(st.V) > PZ.steadyMaxV ? 'STOP!' : 'STEADY!', '#e4572e');
@@ -1120,7 +1122,7 @@
         for (const pc of ps) if (pc.ready < 0) key(pc, 'hop', 'HOP!');
       } else if (pr === 'push') {
         const idle = ps.find(pc => pc.id !== st.pusher);
-        if (idle) {
+        if (idle && !pzCpu(idle.id)) {
           pzArrow(idle.xc, idle.feet + 52 * sc, st.pushDir, PCOL[st.pusher], 34 * sc);
           key(idle, st.pushDir > 0 ? 'right' : 'left');
         }

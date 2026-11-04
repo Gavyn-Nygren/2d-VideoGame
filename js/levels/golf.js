@@ -427,10 +427,11 @@ function drawGolfBall() {
   // name tag during the intro card
   if (G.introT > 0 && G.mode === 'play') {
     const a = clamp(G.introT / 0.5, 0, 1), x = b.x + golfDir() * 14, y = b.y - r - 24;
+    const cpu = typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id), hw = cpu ? 30 : 18; // like the players' tags
     ctx.save(); ctx.globalAlpha = a;
-    ctx.fillStyle = col; rr(x - 18, y - 11, 36, 18, 9); ctx.fill();
+    ctx.fillStyle = col; rr(x - hw, y - 11, hw * 2, 18, 9); ctx.fill();
     ctx.beginPath(); ctx.moveTo(x - 4, y + 7); ctx.lineTo(x + 4, y + 7); ctx.lineTo(x, y + 11); ctx.fill();
-    text(NAMES[id], x, y - 1.5, 12, '#fff', 'center', 'body');
+    text(cpu ? NAMES[id] + ' · CPU' : NAMES[id], x, y - 1.5, 12, '#fff', 'center', 'body');
     ctx.restore();
   }
 }
@@ -461,8 +462,10 @@ function drawGolfHUD() {
   for (const [t, c] of parts) { text(t, x, 26.5, 14, c, 'left', 'body'); x += ctx.measureText(t).width; }
   // what to press right now
   let hint = null, hc = C.paper;
-  if (g.phase === 'aim') { hint = gn + ', your shot:  ' + golfKeys(g.golfer, 'aim'); hc = PCOL[g.golfer]; }
-  else if (g.phase === 'fly' && g.b.fuel > 0 && !(g.b.ground && G.level.def.airBoost)) { hint = bn + ', steer!  ' + golfKeys(g.ball, 'boost'); hc = PCOL[g.ball]; }
+  // in 1-player mode the computer's job gets a plain line instead of its keys
+  const cpu = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
+  if (g.phase === 'aim') { hint = cpu(g.golfer) ? gn + ' is lining up the shot...' : gn + ', your shot:  ' + golfKeys(g.golfer, 'aim'); hc = PCOL[g.golfer]; }
+  else if (g.phase === 'fly' && g.b.fuel > 0 && !(g.b.ground && G.level.def.airBoost)) { hint = cpu(g.ball) ? bn + ' is steering the ball!' : bn + ', steer!  ' + golfKeys(g.ball, 'boost'); hc = PCOL[g.ball]; }
   if (hint && G.introT <= 0) {
     ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
     const sw = ctx.measureText(hint).width + 28;

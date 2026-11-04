@@ -80,7 +80,17 @@ function gcSay(st, text, life = GC.sayLife) { st.say = { text, t: 0, life }; Sfx
 function gcNews(st, text, gold = false, life = GC.newsLife) { st.news = { text, gold, t: 0, life }; }
 // gold catch-up help: always announced (gold banner and sound) and listed in st.stats.help
 function gcHelp(st, text, life = 4) { gcNews(st, text, true, life); Sfx.play('gcGold'); st.stats.help.push(text); }
-function gcHint(st, id, text, life = GC.hintLife, gold = false) { st.hints[id] = { text, t: 0, life, gold }; }
+function gcHint(st, id, text, life = GC.hintLife, gold = false) { text = gcCpuHint(id, text); if (text) st.hints[id] = { text, t: 0, life, gold }; }
+// 1-player mode: no key tips or nudges over the computer's head (it says its own lines); its job line says it is the
+// computer and what it does instead of which keys to press
+function gcCpuHint(id, text) {
+  if (!(typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id))) return text;
+  if (/^(Hot foot|Whoops|You can play|Yes, play)/.test(text)) return text;
+  if (!text.startsWith(NAMES[id] + ':')) return null;
+  const job = /aim/.test(text) ? 'aims and fires' : /powder/.test(text) ? 'brings powder and balls' : /stop/.test(text) ? 'stops the reels'
+    : /hop up/.test(text) ? 'hops up to his hat' : /spike|gold/.test(text) ? 'spikes gold balls' : /set|bump/.test(text) ? 'sets the ball' : '';
+  return job ? NAMES[id] + ' (computer) ' + job : null;
+}
 function gcPop(st, x, y, text, col = C.paper, size = 22) { st.pops.push({ x, y, text, col, size, t: 0 }); }
 function gcShowBadges(st, t = GC.badgeT) { st.badgeT = t; }
 // the roles swap: a big "Swap jobs!", the badges again, the new action words
@@ -2155,7 +2165,7 @@ function gc3ActKey(id) {
     return k === 'pad' ? glyph('act') : k === 'touch' ? 'the round button' : id === 0 ? 'F' : '/';
   } catch (e) { return id === 0 ? 'F' : '/'; }
 }
-const gc3Arrow = (ph, id, x, y, life = 3) => { ph.arrow[id] = { x, y, t: 0, life }; };
+const gc3Arrow = (ph, id, x, y, life = 3) => { if (!(typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id))) ph.arrow[id] = { x, y, t: 0, life }; };   // (none for the computer in 1-player mode)
 function gc3SetGroup(gr, on) {
   if (on) { if (gr.state === 'hidden' || gr.state === 'fading') { if (gr.state === 'hidden') gr.buildT = 0; gr.state = 'building'; } }
   else if (gr.state === 'building' || gr.state === 'on') {

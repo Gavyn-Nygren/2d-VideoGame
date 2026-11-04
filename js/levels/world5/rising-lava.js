@@ -157,7 +157,10 @@ MODES.lava = {
       if (gr.cells.some(cl => cl.on)) { Sfx.play('lavaBlink'); rumble(gr.holder, 0.2, 0.4, 150); }
     }
   },
-  hint(k, text, opt = {}) { G.mst.hints[k] = { text, t: 0, life: opt.life || G.mst.cfg.hintLife, group: opt.group || null }; },
+  hint(k, text, opt = {}) {
+    if (cpuSolo() && cpuOn(k) && !opt.always) return; // (1-player mode: no how-to hints over the computer's head)
+    G.mst.hints[k] = { text, t: 0, life: opt.life || G.mst.cfg.hintLife, group: opt.group || null };
+  },
   hintOnce(key, k, text) { const st = G.mst; if (st.hinted[key]) return; st.hinted[key] = true; MODES.lava.hint(k, text); },
   // pop back to your checkpoint (▼ hold, stranded, far below): no ouch
   hopBack(p) {
@@ -451,7 +454,7 @@ MODES.lava = {
   onRespawn(p) {
     const st = G.mst;
     MODES.lava.fixSpawn(p);
-    if (st.ouchHint[p.id]) { st.ouchHint[p.id] = false; MODES.lava.hint(p.id, 'Ouch! Hot toes!', { life: 1.6 }); }
+    if (st.ouchHint[p.id]) { st.ouchHint[p.id] = false; MODES.lava.hint(p.id, 'Ouch! Hot toes!', { life: 1.6, always: true }); }
   },
   // a block may have appeared on the checkpoint: slide to the nearest free spot on that row (right first), then rows above
   fixSpawn(p) {

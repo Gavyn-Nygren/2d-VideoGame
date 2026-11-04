@@ -504,7 +504,8 @@ MODES.coin = {
       }
       // kid help: loaded, standing on your own color and not pressing -> a "Press F!" bubble (until you've put 6 coins in)
       const cx = p.x + p.w / 2;
-      if (p.alive && p.grounded && st.carry[k].length && st.stats.coins[k] < COIN.hintUntil && coinOnGlass(p)) {
+      // (1-player mode: never over the computer's character)
+      if (p.alive && p.grounded && st.carry[k].length && st.stats.coins[k] < COIN.hintUntil && coinOnGlass(p) && !(typeof cpuSolo === 'function' && cpuSolo() && cpuOn(k))) {
         const pr = coinPredict(cx, p.y + p.h);
         st.hintT[k] = pr.cup || pr.side === k ? st.hintT[k] + dt : 0;
       } else st.hintT[k] = 0;

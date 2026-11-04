@@ -475,6 +475,8 @@
 
   // ---------- key names for hints (like golfKeys) ----------
   function plinkoKeys(id, what) {
+    // 1 player + computer: the computer's part of the hint says what it does instead of which keys to press
+    if (typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id)) return what === 'aim' ? 'rolls and drops' : what === 'fall' ? 'leans to the shine' : 'slides the paddles';
     const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
     const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
     const A = pad ? glyph('a') : '';
@@ -789,8 +791,10 @@
     let hint = null, hc = C.paper;
     if (G.introT <= 0 && st.phase === 'aim') { hint = NAMES[st.ball] + ': ' + plinkoKeys(st.ball, 'aim') + '   ' + NAMES[st.steer] + ': ' + plinkoKeys(st.steer, 'pad'); hc = PCOL[st.ball]; }
     else if (st.phase === 'fall') {
-      if (st.cuePow && st.shadow !== null) { hint = NAMES[st.steer] + ': ' + plinkoKeys(st.steer, 'pow'); hc = PCOL[st.steer]; }
-      else if (st.b.fallT < 2.5 || st.idle[st.ball] > 4) { hint = NAMES[st.ball] + ': ' + plinkoKeys(st.ball, 'fall'); hc = PCOL[st.ball]; }
+      // 1 player + computer: while the chip falls the hint is always the person's own line, never the computer's
+      const solo = typeof cpuSolo === 'function' && cpuSolo(), cpuB = solo && cpuOn(st.ball), cpuS = solo && cpuOn(st.steer);
+      if (st.cuePow && st.shadow !== null && !cpuS) { hint = NAMES[st.steer] + ': ' + plinkoKeys(st.steer, 'pow'); hc = PCOL[st.steer]; }
+      else if ((st.b.fallT < 2.5 || st.idle[st.ball] > 4 || cpuS) && !cpuB) { hint = NAMES[st.ball] + ': ' + plinkoKeys(st.ball, 'fall'); hc = PCOL[st.ball]; }
       else { hint = NAMES[st.steer] + ': ' + plinkoKeys(st.steer, 'pad'); hc = PCOL[st.steer]; }
     }
     if (hint) {

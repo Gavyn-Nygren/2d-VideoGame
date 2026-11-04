@@ -55,6 +55,7 @@ function carPadState(id) { const sl = padFor(padSlots(), id); return (sl && Pads
 function carHow(id) { return carOnPad(id) ? 'pad' : document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch' ? 'touch' : 'kb'; }
 // the key hint for a seat: 'steer' or 'pedals'
 function carKeys(id, role) {
+  if (typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id)) return role === 'steer' ? 'the computer steers' : 'the computer does gas and brake';
   const h = carHow(id);
   if (role === 'steer') return h === 'pad' ? 'stick: point the way' : h === 'touch' ? '◀ ▶ ▲ ▼ point the way' : id === 0 ? 'W A S D point the way' : '← ↑ → ↓ point the way';
   return h === 'pad' ? glyph('a') + ' go · ' + (carPadB(id) ? glyph('b') : 'stick ↓') + ' brake' : h === 'touch' ? '▲ go · ▼ brake' : id === 0 ? 'W go · S brake' : '↑ go · ↓ brake';
@@ -72,8 +73,18 @@ function carPart(x, y, vx, vy, life, col, size, grav = 0) {
 function carRumble(strong, weak, ms, who) { if (who === 0 || who === 1) rumble(who, strong, weak, ms); else { rumble(0, strong, weak, ms); rumble(1, strong, weak, ms); } }
 
 /* ----- room setup ----- */
+// 1-player mode: a room-card tip or road sign that gives the computer's seat its keys ("Bo: hold ▲ to go") says
+// what the computer does instead (def is this room's own copy, roomDef in main.js; the signs array is shared, so
+// it gets a new one)
+function carSoloText(def) {
+  if (typeof cpuSolo !== 'function' || !cpuSolo()) return;
+  const id = cpuOn(0) ? 0 : 1, nm = NAMES[id], job = (def.steer | 0) === id ? 'steers' : 'does gas and brake';
+  if (def.signs) def.signs = def.signs.map(sg => (sg.text.startsWith(nm + ':') ? Object.assign({}, sg, { text: nm + ' (computer) ' + job }) : sg));
+  if (def.tip) def.tip = def.tip.replace(new RegExp(nm + '( steers)?: [^.!]*[.!]'), nm + ' (computer) ' + job + '.');
+}
 function carRoom(st, L, k) {
   const def = L.def, map = def.map;
+  carSoloText(def);
   Object.assign(st, {
     k, n: def.roomCount || 1, def, grid: [], cones: [], flags: [], ducks: [], park: null, start: null,
     rampGroup: [], rampGroups: [], rampFails: {}, tr: null, gatesClosed: false, gateA: 0,
@@ -694,6 +705,7 @@ function carCoach(st, dt, steer, gas, brake) {
   else if (st.lock[sk] && st.lockT[sk] > 0.6) n = { id: sk, text: `${NAMES[sk]}, let go first! ${now ? 'Now you' : 'You'} steer` };
   else if (st.pedalIdle >= 5 && !moving && !carWaitReason(st)) n = { id: pk, text: `${NAMES[pk]}, you're on the pedals!  ${carKey(pk, 'gas')} to go` };
   else if (st.steerIdle >= 6 && st.steerBump) n = { id: sk, text: `${NAMES[sk]}, you steer! Point the way` };
+  if (n && typeof cpuSolo === 'function' && cpuSolo() && cpuOn(n.id)) n = null; // (1-player mode: no key nudges for the computer's seat)
   st.nudge = n;
 }
 

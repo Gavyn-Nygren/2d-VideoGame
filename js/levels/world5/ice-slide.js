@@ -691,11 +691,12 @@
         const keys = [0, 1].map(iceKey), [a, b2] = G.players, cx = p => p.x + p.w / 2;
         const one = k => [['Stuck? Hold ', C.ink], [keys[k], PDARK[k]], [' to go back', C.ink]];
         const ws = [0, 1].map(k => iceBubbleSize(one(k), fs).w);
-        const close = a.alive && b2.alive && Math.abs(cx(a) - cx(b2)) < (ws[0] + ws[1]) / 2 + 4 && Math.abs(tops[0] - tops[1]) < fs * 2.4;
+        const solo = cpuSolo(); // (1-player mode: only the person's key; the computer goes back by itself)
+        const close = !solo && a.alive && b2.alive && Math.abs(cx(a) - cx(b2)) < (ws[0] + ws[1]) / 2 + 4 && Math.abs(tops[0] - tops[1]) < fs * 2.4;
         if (close) { // side by side: one bubble for the two of you (never two stacked up into the room)
           place((cx(a) + cx(b2)) / 2, Math.min(tops[0], tops[1]), keys[0] === keys[1] ? [['Stuck? Hold ' + keys[0] + ' to go back', C.ink]]
             : [['Stuck? Hold ', C.ink], [keys[0], PDARK[0]], [' / ', C.ink], [keys[1], PDARK[1]], [' to go back', C.ink]]);
-        } else for (const p of G.players) if (p.alive) place(cx(p), tops[p.id], one(p.id), PCOL[p.id]);
+        } else for (const p of G.players) if (p.alive && !(solo && cpuOn(p.id))) place(cx(p), tops[p.id], one(p.id), PCOL[p.id]);
         ctx.globalAlpha = 1;
       }
       // who moves next (after ice.arrowAfter s in the room)

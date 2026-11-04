@@ -224,7 +224,7 @@ function snowAnim(dt) {
 // "S to make snow!" over a player who pressed throw with empty hands (twice a match)
 function snowHint(p) {
   const st = G.mst, k = p.id;
-  if (st.hintShown[k] >= SNOW.hints) return;
+  if (st.hintShown[k] >= SNOW.hints || cpuOn(k)) return; // (the computer catches with empty hands on purpose: no key hint over it)
   st.hintShown[k]++;
   const how = actKey(k), key = how === 'pad' ? 'Down' : how === 'touch' ? '▼' : (k === 0 ? 'S' : '↓');
   st.pl[k].hint = { text: key + ' to make snow!', t: 1.2 };

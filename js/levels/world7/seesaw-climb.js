@@ -433,7 +433,7 @@ function seesawPrompts(st, dt) {
   for (const p of G.players) {
     const P = st.pl[p.id], q = other(p), Q = st.pl[q.id], i = p.input;
     if (i.left || i.right || i.jump || i.down || i.up) P.lastIn = G.time;
-    if (G.time - P.lastIn >= SEESAW.idleT && G.time - Q.lastIn < SEESAW.idlePartner && G.time >= P.nudgeAt && p.alive) {
+    if (G.time - P.lastIn >= SEESAW.idleT && G.time - Q.lastIn < SEESAW.idlePartner && G.time >= P.nudgeAt && p.alive && !seesawCpu(p.id)) {
       P.nudgeUntil = G.time + SEESAW.nudgeShow; P.nudgeAt = G.time + SEESAW.idleAgain; Sfx.play('seesawNudge', p.id);
     }
     if (G.time - P.lastIn < 0.05) P.nudgeUntil = 0;
@@ -1069,7 +1069,7 @@ function seesawDrawTop(st) {
   // prompts over players: super "W!", "hop!", "Your turn!"
   const pump = st.cfg.pumpHint;
   for (const q of G.players) {
-    if (!q.alive) continue;
+    if (!q.alive || seesawCpu(q.id)) continue;   // (1-player mode: no key prompts over the computer's head)
     const Q = st.pl[q.id], x = q.x + q.w / 2, bob = Math.abs(Math.sin(G.clock * 14)) * 4;
     let shown = false;
     if (pump) {
@@ -1105,6 +1105,8 @@ Sfx.extra.seesawSplash = function () { this.tone(700, 0.25, 'sawtooth', 0.02, 14
 Sfx.extra.seesawCheck = function (pitch) { [660, 990].forEach((f, i) => this.tone(f * pitch, 0.1, 'triangle', 0.04, null, i * 0.07)); };
 Sfx.extra.seesawHint = function () { this.tone(880, 0.07, 'triangle', 0.03); this.tone(1175, 0.09, 'triangle', 0.03, null, 0.08); };
 Sfx.extra.seesawNudge = function (pitch) { this.tone(520 * pitch, 0.08, 'triangle', 0.03); this.tone(700 * pitch, 0.1, 'triangle', 0.03, null, 0.1); };
+// 1-player mode: the computer plays this character (it gets no key prompts or "Your turn!" nudges)
+const seesawCpu = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
 function seesawKeys(id) {   // the player's own jump key (like golfKeys)
   const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
   const pad = Pads.kind === 'pad' && padFor(padSlots(), id);

@@ -226,6 +226,7 @@ function pompeiiToBanner(st, p) {
 /* ---------- words over heads, news, pops ---------- */
 // a hint bubble over p (hints repeat at most every hintGap; force = say it now)
 function pompeiiSay(st, p, text, force) {
+  if (!force && cpuSolo() && cpuOn(p.id)) return;   // (1-player mode: no key hints over the computer's head)
   const P = st.pl[p.id];
   if (!force && P.hintCD > 0) return;
   if (P.hint && P.hint.text === text && P.hint.t < P.hint.life - 0.4) return;
@@ -257,7 +258,7 @@ function pompeiiStartReach(st, p, s, auto) {
   else { P.reach.t = Math.min(P.reach.t, POMPEII.reachGrow); P.reach.auto = !!auto && P.reach.auto; }
   // a tall wall: the partner below has to jump for the hand (told the first time)
   const q = other(p);
-  if (pompeiiNear(q, s) && pompeiiTall(s)) pompeiiSay(st, q, 'Jump for the hand! (' + pompeiiKey(q.id, 'jump') + ')', !s.toldJump);
+  if (pompeiiNear(q, s) && pompeiiTall(s)) pompeiiSay(st, q, 'Jump for the hand! (' + pompeiiKey(q.id, 'jump') + ')', !s.toldJump && !(cpuSolo() && cpuOn(q.id)));
   s.toldJump = true;
 }
 function pompeiiPress(st, p) {
@@ -493,6 +494,7 @@ function pompeiiCartStep(st, dt) {
     P.cartT += dt;
     if (P.cartT < 2.5) continue;
     P.cartT = -4;
+    if (cpuSolo() && cpuOn(p.id)) continue;   // (1-player mode: no key hints over the computer's head)
     pompeiiSay(st, p, onTop ? 'Hop down behind the cart!' : ahead ? 'Hop back behind the cart!' : high ? 'Hop down and push the cart!'
       : 'Push ' + NAMES[o.id] + ' and the cart! (' + pompeiiKey(p.id, 'right') + ')', true);
   }
@@ -695,7 +697,7 @@ function pompeiiHelpers(st, dt) {
     P.sepT += dt;
     if (P.sepT >= cfg.sepHint && !P.sepHinted) {
       P.sepHinted = true;
-      pompeiiSay(st, p, (away ? 'Too far! Hold ' : 'Fell down? Hold ') + pompeiiKey(p.id, 'down') + (away ? ' to hop back' : ' to hop back up'), true);
+      if (!(cpuSolo() && cpuOn(p.id))) pompeiiSay(st, p, (away ? 'Too far! Hold ' : 'Fell down? Hold ') + pompeiiKey(p.id, 'down') + (away ? ' to hop back' : ' to hop back up'), true);
     }
     if (P.sepT >= cfg.sepAuto) {
       P.sepT = 0; P.sepHinted = false;

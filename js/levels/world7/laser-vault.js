@@ -717,11 +717,17 @@ function laserDrawTop() {
     const goal = st.phase === 'escape' ? 'door' : (G.level.def.prize === 'crown' ? 'crown' : 'gem');
     const locked = id => st.lock[id] && st.lockT[id] > LASER.lockChip;
     const runChip = (t1, t2) => { if (r.alive && !st.zap) runTop = laserBubble(t1, t2, rx, ry, PCOL[st.runner]); };
-    if (locked(st.runner)) runChip(NAMES[st.runner] + ': let go of the buttons!', 'then you can move');
+    // (1-player mode: the computer's role is named, with no keys and no nudges)
+    const cpu = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
+    if (cpu(st.runner)) {
+      if (st.hint > 0) runChip(NAMES[st.runner] + ' sneaks to the ' + goal + '!', 'the computer runs');
+      else if (st.escHint > 0) runChip(NAMES[st.runner] + ' runs back to the door!', null);
+    } else if (locked(st.runner)) runChip(NAMES[st.runner] + ': let go of the buttons!', 'then you can move');
     else if (st.hint > 0) runChip(NAMES[st.runner] + ': sneak to the ' + goal + '!', laserKeys(st.runner, 'run'));
     else if (st.escHint > 0) runChip(NAMES[st.runner] + ': run back to the door!', laserKeys(st.runner, 'run'));
     else if (st.runIdle > LASER.runNudge) runChip(NAMES[st.runner] + ': sneak on!', null);
-    if (locked(st.look)) laserBubble(NAMES[st.look] + ': let go of the buttons!', 'then you can move the light', bx2, hy, PCOL[st.look]);
+    if (cpu(st.look)) { if (st.hint > 0) laserBubble(NAMES[st.look] + ' shines the light!', 'the computer looks out', bx2, hy, PCOL[st.look]); }
+    else if (locked(st.look)) laserBubble(NAMES[st.look] + ': let go of the buttons!', 'then you can move the light', bx2, hy, PCOL[st.look]);
     else if (st.hint > 0) laserBubble(NAMES[st.look] + ': shine the light!', laserKeys(st.look, 'look'), bx2, hy, PCOL[st.look]);
     else if (st.escHint <= 0 && st.lookNudgeOn) {
       ctx.save(); ctx.globalAlpha = 0.75 + 0.25 * Math.sin(G.clock * 6);

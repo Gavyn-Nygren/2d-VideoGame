@@ -49,6 +49,8 @@ const PAINT_CARDS = {
 const paintRow = p => Math.floor((p.y + p.h + 1) / T);
 // both players, in the engine's alternating versus order (same-tick ties are a fair coin flip)
 const paintOrder = () => (G.tickN & 1 ? [G.players[1], G.players[0]] : [G.players[0], G.players[1]]);
+// 1-player mode: no "press this key" tips over the computer's character (the computer doesn't need them)
+const paintTips = k => !(typeof cpuSolo === 'function' && cpuSolo() && cpuOn(k));
 const paintPct = (c, n, dec) => (dec ? (Math.round(1000 * c / n) / 10).toFixed(1) : String(Math.round(100 * c / n)));
 
 MODES.paint = {
@@ -237,7 +239,7 @@ MODES.paint = {
     st.tinkT[k] = st.K.tinkGap;
     Sfx.play('paintTink', k);
     puff(p.x + p.w / 2 - p.face * 6, p.y + p.h, 2, 'rgba(255,255,255,0.9)');
-    if (!st.hintTink[k]) { st.hintTink[k] = true; st.bub[k] = { txt: 'Shiny paint: SPLAT it!', t0: G.time, life: 1.6, kind: 'tink' }; }
+    if (!st.hintTink[k] && paintTips(k)) { st.hintTink[k] = true; st.bub[k] = { txt: 'Shiny paint: SPLAT it!', t0: G.time, life: 1.6, kind: 'tink' }; }
   },
   actHint(k) {
     const how = actKey(k);
@@ -259,7 +261,7 @@ MODES.paint = {
           st.cbShown[k] = true; Sfx.play('paintSuper', k); rumble(k, 0.1, 0.4, 120);
           st.pops.push({ txt: 'SUPER PAINT!', k, dy: -34, t0: G.time, life: 0.9, size: 18, col: C.gold, rise: 30 });
           // never splatted yet? Super Paint only comes from splats, so show how right now (uses one of the 2 hints)
-          if (m && !st.pressed[k] && st.hintSplat[k] < K.hints && !st.bub[k] && p.alive) {
+          if (m && !st.pressed[k] && st.hintSplat[k] < K.hints && !st.bub[k] && p.alive && paintTips(k)) {
             st.hintSplat[k]++; st.hintRd[k] = m.round;
             st.bub[k] = { txt: this.actHint(k), t0: G.time, life: 2.6, kind: 'splat' };
           }
@@ -318,7 +320,7 @@ MODES.paint = {
         }
       }
       // never splatted yet, 8 s into a round: show how (at most once a round, twice a match)
-      if (m && !st.pressed[k] && st.hintSplat[k] < K.hints && st.hintRd[k] !== m.round && m.roundT >= K.hintAt && !st.bub[k] && p.alive) {
+      if (m && !st.pressed[k] && st.hintSplat[k] < K.hints && st.hintRd[k] !== m.round && m.roundT >= K.hintAt && !st.bub[k] && p.alive && paintTips(k)) {
         st.hintSplat[k]++; st.hintRd[k] = m.round;
         st.bub[k] = { txt: this.actHint(k), t0: G.time, life: 2.6, kind: 'splat' };
       }

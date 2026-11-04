@@ -1235,17 +1235,20 @@ function bumperDrawTop() {
   // name tags through "Round N" and 3-2-1 (the framework draws none for hidden players)
   const tagA = G.introT > 0 ? 1 - clamp(G.introT / 0.5, 0, 1) : m && (m.phase === 'ready' || m.phase === 'count') ? 1 : 0;
   if (tagA > 0) for (const c of st.cars) {
-    ctx.globalAlpha = tagA; const x = c.x, y = c.y - 50;
-    ctx.fillStyle = PCOL[c.id]; rr(x - 18, y - 11, 36, 18, 9); ctx.fill();
+    ctx.globalAlpha = tagA; const x = c.x, y = c.y - 50, cpu = bumperCpu(c.id), hw = cpu ? 30 : 18;   // (the computer's tag says so)
+    ctx.fillStyle = PCOL[c.id]; rr(x - hw, y - 11, hw * 2, 18, 9); ctx.fill();
     ctx.beginPath(); ctx.moveTo(x - 4, y + 7); ctx.lineTo(x + 4, y + 7); ctx.lineTo(x, y + 11); ctx.fill();
-    text(NAMES[c.id], x, y - 1.5, 12, '#fff', 'center', 'body'); ctx.globalAlpha = 1;
+    text(cpu ? NAMES[c.id] + ' · CPU' : NAMES[c.id], x, y - 1.5, 12, '#fff', 'center', 'body'); ctx.globalAlpha = 1;
   }
   if (m && m.phase === 'count' && m.t < 0.9) for (const c of st.cars) if (c.gold > 0) {
     const k = m.t / 0.9; ctx.globalAlpha = 1 - k * k; bigText('Gold flag!', c.x, bumperWordY(c.x, c.y - 72 - 30 * k, c.y + 56 + 24 * k), 17, C.gold); ctx.globalAlpha = 1;
   }
 }
 // key reminder under each car before rounds 1 and 2 ("F boost", "Ⓐ boost"); touch players have the labelled button
+// 1-player mode: the computer drives this car (no key reminder under it)
+const bumperCpu = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
 function bumperKeyChip(c, big) {
+  if (bumperCpu(c.id)) return;
   let k = 'kb'; try { k = actKey(c.id); } catch (e) { k = 'kb'; }
   if (k === 'touch') return;
   const label = (k === 'pad' ? glyph('a') : c.id === 0 ? 'F' : '/') + ' boost';

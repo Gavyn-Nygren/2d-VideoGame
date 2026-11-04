@@ -505,6 +505,7 @@
     const st = G.mst, s = st.stat;
     for (const k of [0, 1]) {
       if (s.tries[k] > 0) { st.hintT[k] = 0; continue; }
+      if (typeof cpuSolo === 'function' && cpuSolo() && cpuOn(k)) continue;   // 1-player mode: no key hint over the computer
       st.noBumpT[k] += dt;
       if (st.hintT[k] > 0) { st.hintT[k] -= dt; continue; }
       if (!st.hinted[k] && st.noBumpT[k] > 10) {

@@ -1085,13 +1085,15 @@ function monDrawPrompts(st) {
   const ps = G.players, th = ps[st.thrower], c = ps[st.catcher], k = hudBig() ? 1.3 : 1, touch = monTouchHint();
   const list = [], room = G.level.def.roomIndex;
   // AFK first, so an idle partner always gets "Your turn!" (at most 2 bubbles per player, stacked)
-  if (st.afk) for (const p of ps) if (st.idle[p.id] >= MONSTER.afkT) list.push([p, NAMES[p.id] + '! Your turn!']);
+  // (1-player mode: the key hints are for the person only, never over the computer's character)
+  const cpu = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
+  if (st.afk) for (const p of ps) if (st.idle[p.id] >= MONSTER.afkT && !cpu(p.id)) list.push([p, NAMES[p.id] + '! Your turn!']);
   // 1. first throw (each player's first chef room)
-  if (room < 2 && !st.thrown && st.hand) list.push([th, (touch ? 'Hold throw' : 'Hold ' + monKey(th.id)) + ', let go!']);
+  if (room < 2 && !st.thrown && st.hand && !cpu(th.id)) list.push([th, (touch ? 'Hold throw' : 'Hold ' + monKey(th.id)) + ', let go!']);
   // 2. pick the crate
-  if (st.grabMsg > 0 && !st.hand) list.push([th, 'Grab ' + MONSTER_FOOD_NAME[st.want] + ' from a crate!']);
+  if (st.grabMsg > 0 && !st.hand && !cpu(th.id)) list.push([th, 'Grab ' + MONSTER_FOOD_NAME[st.want] + ' from a crate!']);
   // 3. toss
-  if (st.tossMsgT > 0 && st.tossable) list.push([c, (touch ? 'Tap throw' : monKey(c.id)) + ' to toss it in!']);
+  if (st.tossMsgT > 0 && st.tossable && !cpu(c.id)) list.push([c, (touch ? 'Tap throw' : monKey(c.id)) + ' to toss it in!']);
   // 6. shrug
   if (st.shrugMsg > 0) list.push([th, G.level.def.bins ? 'Grab food from a crate!' : 'Wait for the pot!']);
   const used = {}, count = [0, 0], avoid = monAvoid(st);

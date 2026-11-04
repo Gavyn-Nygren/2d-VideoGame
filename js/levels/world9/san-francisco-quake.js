@@ -136,6 +136,7 @@ function quakeBanner(st, s) { st.banner = { s, t: 0 }; }
 function quakePop(st, x, y, s, col, size) { st.pops.push({ x, y, s, col: col || C.gold, size: size || 18, t: 0 }); }
 // a hint bubble over a player; key: only once per room
 function quakeSay(st, id, s, key, life) {
+  if (cpuSolo() && cpuOn(id)) return;   // (1-player mode: no key hints over the computer's head)
   const P = st.pl[id];
   if (key) { if (P.said[key]) return; P.said[key] = true; }
   P.hint = { s, t: 0, life: life || QUAKE.hintLife };

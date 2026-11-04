@@ -325,6 +325,8 @@ function trainHow(id) {
   return trainOnPad(id) ? 'pad' : touch ? 'touch' : 'kb';
 }
 function trainKey(id) { const h = trainHow(id); return h === 'pad' ? glyph('act') : h === 'touch' ? 'tap' : id === 0 ? 'F' : '/'; }
+// 1 player + computer: true for the computer's character (no key hints over it)
+const trainCpu = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
 function trainWalkKeys(id) { const h = trainHow(id); return h === 'pad' ? 'stick' : h === 'touch' ? '◀ ▶ ▲ ▼' : id === 0 ? 'W A S D' : '← ↑ → ↓'; }
 function trainSolid(st, x, y) {
   const c = trainCell(x, y);
@@ -505,7 +507,7 @@ function trainTrain(st, dt) {
   } else tr.waitAny = 0;
   if (atGap) {
     tr.waitGap += dt;
-    if (tr.waitGap >= TRAIN.grabHint && st.carry === 0 && !st.grabHinted) { st.grabHinted = true; trainBubble(st, st.builder, 'Grab track from the wagon!', 2.5, true); }
+    if (tr.waitGap >= TRAIN.grabHint && st.carry === 0 && !st.grabHinted) { st.grabHinted = true; if (!trainCpu(st.builder)) trainBubble(st, st.builder, 'Grab track from the wagon!', 2.5, true); }
   } else { tr.waitGap = 0; st.grabHinted = false; }
   // waiting at a red lamp: the bell, then after redWait the train goes the set (wrong) way
   if (waiting && sd.kind === 'red') {
@@ -1499,9 +1501,9 @@ MODES.train = {
         else trainIconBubble(P.x + (hut.face === 'E' ? 16 : -16), P.y - 24, next);
       }
     }
-    // lever key hint for the switcher near a red lamp
+    // lever key hint for the switcher near a red lamp (none over the computer in 1-player mode)
     const s = G.players[st.switcher], sx = s.x + s.w / 2, sy = s.y + s.h / 2;
-    for (const j of st.junctions) {
+    if (!trainCpu(st.switcher)) for (const j of st.junctions) {
       if (pv.lamps.get(j) !== 'red') continue;
       const lx = j.lx * T + 15, ly = j.ly * T + 15;
       if (Math.hypot(sx - lx, sy - ly) < 90) trainBubbleBox(lx, ly - 18, trainKey(st.switcher) + ' flip', big, '#ff4a4a', -(j.x - j.lx) * 20);
@@ -1611,7 +1613,8 @@ function trainHudHint(st, big) {
   const a = clamp((TRAIN.hintT - st.cardT) / 0.5, 0, 1), b = st.builder, s = st.switcher;
   // phones: at the bottom (rows 16-17: hedge and lawn), so the bigger pill never covers a station badge near the top
   const fs = big ? 16 : 13, h = big ? 30 : 26, y = big ? H - 14 - h : 46;
-  const parts = [[NAMES[b] + ': ', PCOL[b]], [trainWalkKeys(b) + ' walk onto the dots', C.paper], ['   ·   ', 'rgba(246,239,223,0.6)'], [NAMES[s] + ': ', PCOL[s]], [trainKey(s) + ' flip', C.paper]];
+  // 1 player + computer: the computer's half says what it does instead of which keys to press
+  const parts = [[NAMES[b] + ': ', PCOL[b]], [trainCpu(b) ? 'lays the track' : trainWalkKeys(b) + ' walk onto the dots', C.paper], ['   ·   ', 'rgba(246,239,223,0.6)'], [NAMES[s] + ': ', PCOL[s]], [trainCpu(s) ? 'flips the levers' : trainKey(s) + ' flip', C.paper]];
   ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
   const ws = parts.map(p => ctx.measureText(p[0]).width), w = Math.round(ws.reduce((m, v) => m + v, 0) + 28);
   ctx.save(); ctx.globalAlpha = a;

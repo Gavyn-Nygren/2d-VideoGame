@@ -605,6 +605,8 @@ function slotsDrawTop(st) {
   if (st.phase === 'jackpot' && st.jackT > 0.25) bigText('JACKPOT!', W / 2, 150, big ? 52 : 44, C.gold, Math.min(1, (st.jackT - 0.25) / 0.15) * (1 + 0.06 * Math.sin(st.jackT * 12)));
 }
 function slotsKeys(id) {
+  // 1 player + computer: the computer's badge says what it does instead of which key to press
+  if (typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id)) return 'I stop the reels for you!';
   const k = actKey(id);
   return k === 'pad' ? 'Under a reel: ' + glyph('a') + ' or ' + glyph('act') + ' stops it' : k === 'touch' ? 'Under a reel: tap stop' : 'Under a reel: ' + (id === 0 ? 'F' : '/') + ' stops it';
 }

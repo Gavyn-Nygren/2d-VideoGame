@@ -491,6 +491,8 @@ function cannonActLabels(st) {
 }
 // the hint text: how this player aims and fires (device-aware, like golfKeys)
 function cannonKeys(id, what) {
+  // 1 player + computer: the computer's bubble says what it does instead of which keys to press
+  if (typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id)) return what === 'gunner' ? 'aims and fires' : 'brings powder and balls';
   if (what !== 'gunner') return 'bring powder and a ball to the cannon';
   const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
   const pad = Pads.kind === 'pad' && padFor(padSlots(), id);

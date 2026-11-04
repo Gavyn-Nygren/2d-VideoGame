@@ -151,6 +151,7 @@ function ashRoom(st, L) {
 /* ---------- little feedback helpers ---------- */
 function ashPop(st, x, y, s, col, size) { st.pops.push({ x, y, s, col: col || C.gold, size: size || 18, t: 0 }); }
 function ashSay(st, id, s, life) {
+  if (typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id)) return;   // 1-player mode: no key hints for the computer's character
   st.bubbles = st.bubbles.filter(b => b.id !== id);
   st.bubbles.push({ id, s, t: 0, life: life || ASH.hintLife });
 }
@@ -1111,8 +1112,9 @@ function ashDrawTop(st) {
     ctx.save(); ctx.globalAlpha = a;
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
     const bh = fs * 1.85;
-    const tags = [[f, ashHow(f.id) === 'touch' ? 'Hold the fan button!' : 'Hold ' + ashKey(f.id, 'act') + ' to fan the ash'],
-      [ld, ashHow(ld.id) === 'touch' ? 'Lead the way! Tap pull at levers' : 'Lead the way! Press ' + ashKey(ld.id, 'act') + ' at levers']].map(([p, msg]) => {
+    const cpuSeat = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);   // 1-player mode: no keys for the computer
+    const tags = [[f, cpuSeat(f.id) ? NAMES[f.id] + ' (computer) fans the ash' : ashHow(f.id) === 'touch' ? 'Hold the fan button!' : 'Hold ' + ashKey(f.id, 'act') + ' to fan the ash'],
+      [ld, cpuSeat(ld.id) ? NAMES[ld.id] + ' (computer) leads the way' : ashHow(ld.id) === 'touch' ? 'Lead the way! Tap pull at levers' : 'Lead the way! Press ' + ashKey(ld.id, 'act') + ' at levers']].map(([p, msg]) => {
       const w = ctx.measureText(msg).width + 20;
       return { p, msg, w, x: clamp(p.x + p.w / 2, w / 2 + 4, W - w / 2 - 4), y: p.y - 40 - (big ? 10 : 0) };
     });

@@ -583,7 +583,10 @@ function glacierWrong(st, id, steerer) {
   if (steerer) glacierHint(st, id, NAMES[st.hop] + ' hops! You steer ' + glacierKey(id, 'lr'));
   else glacierHint(st, id, NAMES[st.steer] + ' steers! You hop ' + glacierKey(id, 'hop') + ' and duck ' + glacierKey(id, 'duck'));
 }
-function glacierHint(st, id, text, life) { st.hints[id] = { text, t: 0, life: life || GLACIER.hintLife }; }
+// 1-player mode: the computer's own seat gets no key hints or prompts (it knows its job; the person might think the
+// keys were meant for them)
+const glacierQuiet = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
+function glacierHint(st, id, text, life) { if (glacierQuiet(id)) return; st.hints[id] = { text, t: 0, life: life || GLACIER.hintLife }; }
 function glacierHintOnce(st, key, id, text) { if (st.hinted[key]) return; st.hinted[key] = true; glacierHint(st, id, text); }
 function glacierMsg(st, text, col, life) { st.msg = { text, col, t: 0, life }; }
 function glacierPop(st, x, y, s, col, size) { st.pops.push({ x, y, s, col: col || '#ffffff', size: size || 18, t: 0 }); if (st.pops.length > 14) st.pops.shift(); }
@@ -1298,9 +1301,10 @@ function glacierHud(st) {
     const px = id === 0 ? 12 : W - 12 - pw;
     ctx.fillStyle = 'rgba(28,26,54,0.8)'; rr(px, py, pw, ph, 14 * z); ctx.fill();
     ctx.strokeStyle = PCOL[id]; ctx.lineWidth = 2.5; rr(px, py, pw, ph, 14 * z); ctx.stroke();
-    text(NAMES[id] + (steer ? ' steers' : ' hops'), px + 12 * z, py + 15 * z, 15 * z, PCOL[id], 'left');
+    const cpuSeat = glacierQuiet(id);   // 1-player mode: the computer's panel names no keys
+    text(NAMES[id] + (steer ? ' steers' : ' hops') + (cpuSeat ? ' (computer)' : ''), px + 12 * z, py + 15 * z, 15 * z, PCOL[id], 'left');
     if (steer) {
-      text(glacierKey(id, 'left') + ' slow · ' + glacierKey(id, 'right') + ' fast', px + pw - 12 * z, py + 15 * z, 11 * z, '#d9d3ef', 'right', 'body');
+      if (!cpuSeat) text(glacierKey(id, 'left') + ' slow · ' + glacierKey(id, 'right') + ' fast', px + pw - 12 * z, py + 15 * z, 11 * z, '#d9d3ef', 'right', 'body');
       const bx = px + 12 * z, bw = pw - 24 * z, by = py + 30 * z, bh = 16 * z, X = v => bx + bw * clamp(v / 380, 0, 1);
       const zones = [[0, Gc.slowMax, '#5aa9e6', 'SLOW', 'slow'], [Gc.slowMax, Gc.fastMin, '#e8f4ff', 'OK', null], [Gc.fastMin, 380, '#ff8a3d', 'FAST', 'fast']];
       for (const [a, b, col, , key] of zones) {
@@ -1321,7 +1325,7 @@ function glacierHud(st) {
         const cx = px + 12 * z + i * (cw + 10 * z), cy = py + 26 * z, chh = 24 * z;
         ctx.fillStyle = on ? (now && Math.sin(t * 14) > -0.3 ? C.gold : 'rgba(255,197,61,0.55)') : 'rgba(255,255,255,0.12)';
         rr(cx, cy, cw, chh, chh / 2); ctx.fill();
-        text(glacierKey(id, k) + ' ' + lab, cx + cw / 2, cy + chh / 2 + 0.5, 13 * z, on ? C.ink : '#d9d3ef', 'center', 'body');
+        text((cpuSeat ? '' : glacierKey(id, k) + ' ') + lab, cx + cw / 2, cy + chh / 2 + 0.5, 13 * z, on ? C.ink : '#d9d3ef', 'center', 'body');
       });
     }
   }
@@ -1347,6 +1351,7 @@ function glacierHud(st) {
   const S = ps[st.steer], Hp = ps[st.hop], fs = 14 * z;
   const yMax = H - Math.round(56 * z) - 18;   // above the job panels, even while the floe tips into a crevasse
   const say = (p, str, col, left, lift, pulse) => {
+    if (glacierQuiet(p.id)) return 0;
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
     const w = ctx.measureText(str).width + 20 * z, h = fs + 12 * z, hx = p.x + PW / 2, y = clamp(p.y - 12 * z - lift - h, 4, yMax - lift - h);
     let x = left ? hx + 14 * z - w : hx - 14 * z;

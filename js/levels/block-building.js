@@ -428,7 +428,9 @@ function drawBuildHUD() {
   const keysTxt = hasPad ? 'stick move   ' + glyph('a') + ' turn   down faster'
     : touch ? '\u25c0 \u25b6 move   \u25b2 turn   \u25bc faster'
     : (B.builder === 0 ? 'A D move   W turn   S faster' : '\u2190 \u2192 move   \u2191 turn   \u2193 faster');
-  const s2 = bn + ', you\u2019re building:  ' + keysTxt;
+  // (1-player mode, the computer builds: it has no body for a speech bubble, so what it says goes here)
+  const said = cpuSolo() && cpuOn(B.builder) && CPU.bubbles[B.builder], sayTxt = said && said.t > 0 ? ': ' + said.text : ' is building';
+  const s2 = cpuSolo() && cpuOn(B.builder) ? bn + ' (computer)' + sayTxt : bn + ', you\u2019re building:  ' + keysTxt;
   ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
   const sw = ctx.measureText(s2).width + 28;
   pill(W / 2, 500, sw, 26, 'center');

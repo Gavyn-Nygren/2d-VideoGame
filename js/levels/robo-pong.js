@@ -291,7 +291,7 @@ function drawPong() {
   if (P.hintT > 0) {
     ctx.save(); ctx.globalAlpha = clamp(P.hintT / 0.6, 0, 1);
     for (let k = 0; k < 2; k++) {
-      const s = NAMES[k] + ': ' + pongKeys(k) + ' to move';
+      const s = NAMES[k] + (cpuSolo() && cpuOn(k) ? ' is the computer' : ': ' + pongKeys(k) + ' to move');
       ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
       const w = ctx.measureText(s).width + 26, y = k === 0 ? (PONG.top + PONG.mid) / 2 : (PONG.mid + PONG.bot) / 2;
       pill(PONG.padX + 34, y - 13, w, 26);
