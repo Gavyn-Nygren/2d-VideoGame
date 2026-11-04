@@ -220,7 +220,7 @@ function pollInput(dt = 1 / 60) {
     if (pressed('start')) { Sfx.init(); if (G.mode === 'play') pause(); else if (G.mode === 'paused') resume(); else if (inMenu) primaryAction(); }
     else if (inMenu) {
       if (pressed('ok')) { Sfx.init(); menuActivate(); }
-      else if (pressed('back') && G.mode === 'paused') resume();
+      else if (pressed('back')) { if (!menuBack() && G.mode === 'paused') resume(); }
       else if (pressed('view') && (G.mode === 'title' || G.mode === 'paused') && cpuSolo()) {
         // 1-player mode: swap which character the person plays (the computer takes the other one)
         cpuSetCfg('human', 1 - CPU.cfg.human); refreshGlyphs();
@@ -240,6 +240,7 @@ function pollInput(dt = 1 / 60) {
   }
 }
 
+const MENU_NAV_KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', KeyW: 'up', KeyS: 'down', KeyA: 'left', KeyD: 'right' };
 window.addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const code = e.code;
@@ -249,6 +250,8 @@ window.addEventListener('keydown', e => {
   setKind('kb');
   if (code === 'Escape') {
     e.preventDefault();
+    if (e.repeat) return;
+    if (inMenu && menuBack()) return; // the home screens' Back button (js/home.js)
     if (G.mode === 'play') pause(); else if (G.mode === 'paused') resume();
     return;
   }
@@ -262,6 +265,12 @@ window.addEventListener('keydown', e => {
     if (ae && (ae.tagName === 'BUTTON' || ae.tagName === 'SUMMARY')) return; // the focused button (or a fold's summary) handles it
     e.preventDefault();
     if (!e.repeat) primaryAction();
+    return;
+  }
+  // the home screens (cards marked data-nav): arrows or W A S D move between buttons, like a controller's stick
+  if (inMenu && MENU_NAV_KEYS[code] && overlay.querySelector('[data-nav]')) {
+    e.preventDefault();
+    if (performance.now() >= overlayArmAt) menuMove(MENU_NAV_KEYS[code]);
     return;
   }
   if (inMenu && (code === 'ArrowUp' || code === 'ArrowDown' || code === 'ArrowLeft' || code === 'ArrowRight')) {
