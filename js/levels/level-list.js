@@ -2606,7 +2606,21 @@ const LEVELS = [
   },
   // ----- END 9-4 Krakatoa Ash Run -----
 
-  /* ===== World 10 (Summer Games): the Summer Olympics world, world index 9 (js/levels/world10/). ===== */
+  /* ===== World 10 (Summer Games, mixed): the Summer Olympics world, world index 9 (js/levels/world10/). Gavyn's picks and
+     order: 10-1 Synchro Diving (team), 10-2 Tandem Velodrome (team), 10-3 Hurdle Dash (versus), 10-4 Javelin Throw (versus).
+     Each level's def sits between its own BEGIN/END lines. world: 9 ===== */
+  // ----- BEGIN 10-1 Synchro Diving (mode 'dive', js/levels/world10/synchro-diving.js) -----
+  // ----- END 10-1 Synchro Diving -----
+  //
+  // ----- BEGIN 10-2 Tandem Velodrome (mode 'tandem', js/levels/world10/tandem-velodrome.js) -----
+  // ----- END 10-2 Tandem Velodrome -----
+  //
+  // ----- BEGIN 10-3 Hurdle Dash (mode 'hurdles', js/levels/world10/hurdle-dash.js) -----
+  // ----- END 10-3 Hurdle Dash -----
+  //
+  // ----- BEGIN 10-4 Javelin Throw (mode 'javelin', js/levels/world10/javelin-throw.js) -----
+  // ----- END 10-4 Javelin Throw -----
+  //
   // ===== END World 10 =====
 
   /* ===== World 11 (Winter Games): the Winter Olympics world, world index 10 (js/levels/world11/). ===== */
@@ -2786,7 +2800,9 @@ const WORLDS = [
     theme: { skyTop: '#f2a477', skyBot: '#ffe6bd', hillFar: '#c9a08e', hillNear: '#a98272', sun: 'rgba(255, 236, 180, 0.95)', sunGlow: 'rgba(255, 180, 120, 0.38)',
       stone: '#5d4b5f', stoneLight: '#705c73', stoneEdge: '#3e3143', grass: '#a9d870', grassDark: '#6a9c45', plank: '#d39a62', plankDark: '#8a5a32', rope: '#f0d08a', ropeDark: '#7a5432' } },
   // World 10: the Summer Olympics (hidden until it has levels)
-  { name: 'Summer Games', blurb: 'Summer Olympics fun for two!', theme: {} },
+  { name: 'Summer Games', blurb: 'Dive, pedal, hurdle and throw: go for gold together!',
+    theme: { skyTop: '#4fb6f0', skyBot: '#e9f8ff', hillFar: '#9fd4a0', hillNear: '#7cc27e', sun: 'rgba(255, 246, 190, 0.96)', sunGlow: 'rgba(255, 222, 140, 0.4)',
+      stone: '#3f5a86', stoneLight: '#4f6c9c', stoneEdge: '#2b3f63', grass: '#8fdc6a', grassDark: '#4fa24a', plank: '#f0c070', plankDark: '#9a6a2e', rope: '#ffe08a', ropeDark: '#8a6420' } },
   // World 11: the Winter Olympics (hidden until it has levels)
   { name: 'Winter Games', blurb: 'Winter Olympics fun for two!', theme: {} },
   // the finale: one big boss level (a dusky purple and brass junk vault; each phase also takes the look of an earlier world)
