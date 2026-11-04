@@ -13,8 +13,9 @@
      on any of them (it looks a couple of seconds ahead at the vent's bubbling and its rest ring, the same a person
      sees), and go right after it puffs.
    - Hop: at a log, gap or ledge it holds ▲ (ready) once the egg has settled and waits for the partner; when the partner
-     gets ready first (even a random tap) it joins in quickly if a hop is safe there, so a stray tap is a together hop,
-     not a solo one. It never hops alone on purpose.
+     gets ready first there it joins in quickly if a hop is safe. Away from an obstacle it joins only a partner who holds
+     ▲ on purpose, never a stray tap, so mashing ▲ is no shortcut. Once ready it keeps holding past the tap window
+     (a let-go tap would become a solo hop), so it never hops alone.
    Waiting for a slow person: it never walks off alone (the leaf stops it anyway) and it holds ready for as long as it
    takes. With a person it says what it needs in a short bubble ("Hop with me!", "Lift your end!"), not too often.
    Skill only changes how quickly it reacts. */
@@ -59,7 +60,14 @@
 
   cpuBrain('eggrescue', {
     reset(st) { st.lvl = 0; st.join = 0; st.settle = 0; st.noDxT = 0; st.backT = 0; st.wasAir = false; },
+    // a press of ▲ let go of within the tap window is a tap, and a tap with no partner turns into a SOLO hop that jolts
+    // the egg; so once it is ready it keeps holding past the tap window (letting go after that just stands it back up)
     think(st, p, o, dt, info) {
+      const out = this.plan(st, p, o, dt, info), m = info.mst, me = m && m.cr && m.cr[p.id];
+      if (me && me.ready && me.ready.held && me.ready.t < P().tapMax + 0.1 && m.state === 'walk') out.jump = true;
+      return out;
+    },
+    plan(st, p, o, dt, info) {
       const m = info.mst, Em = E(), Pc = P();
       if (!m || !m.cr || info.intro || m.state !== 'walk' || m.lock > 0) { if (m && m.lock > 0) st.wasAir = true; return {}; }
       const nd = Em.needs(m), me = m.cr[p.id], pa = m.cr[o.id], isF = p.id === m.front, e = m.egg, out = {};

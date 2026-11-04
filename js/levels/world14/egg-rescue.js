@@ -57,7 +57,7 @@ const EGG = {
   // steam vents: rest, bubble (warning), puff; r: how wide a puff reaches
   vent: { quiet: 2.7, warn: 1.25, puff: 0.85, r: 26, lift: 38 },
   soloHelp: 3, dropHelp: 2, dropHelp2: 4, ventHelp: 2, stoneHelp: 2, tryWin: 6,
-  medal: [300, 480],               // Gold up to medal[0] s and 2 drops, Silver up to medal[1] s and 7 drops
+  medal: [260, 480],               // Gold up to medal[0] s (the egg is home before the hatch clock runs out) and 2 drops, Silver up to medal[1] s and 7 drops
   hatchT: 260, dropT: 1.45, backT: 1.0, swapT: 1.9, finT: 6.2, hintLife: 2.8,
   camLead: 340, camY: 362, introDrop: 40,
 };
@@ -761,11 +761,20 @@ function eggNeeds(st) {
   out.busy = st.lock > 0;
   const F = eggF(st), B = eggB(st), e = st.egg;
   out.eggAir = e.air; out.s = e.s; out.v = e.v; out.tilt = eggTilt(st);
-  // keep it level: the lower end lifts, the higher end carries it low
+  // keep it level: the lower end lifts, the higher end carries it low. Lifting moves a hand 24 px and carrying low 16,
+  // so a gentle slope needs only one of them (both would tip the egg the other way) and a steep one needs both: pick
+  // whichever mix leaves the hands closest to level, with a small cost per job so nobody is asked for nothing
   const diff = F.air || B.air ? 0 : F.y - B.y;
   out.diff = diff;
-  if (diff > 7) { out.level[st.front] = 'lift'; out.level[st.back] = 'low'; }
-  else if (diff < -7) { out.level[st.front] = 'low'; out.level[st.back] = 'lift'; }
+  let bestSc = Infinity;
+  for (const lf of [0, P.liftY, -P.lowY]) for (const lb of [0, P.liftY, -P.lowY]) {
+    const sc = Math.abs(diff - (lf - lb)) + 3 * ((lf ? 1 : 0) + (lb ? 1 : 0));
+    if (sc < bestSc - 0.01) {
+      bestSc = sc;
+      out.level[st.front] = lf > 0 ? 'lift' : lf < 0 ? 'low' : null;
+      out.level[st.back] = lb > 0 ? 'lift' : lb < 0 ? 'low' : null;
+    }
+  }
   // a log, a gap or a ledge at someone's feet: hop together
   if (!F.air && !B.air) {
     if (F.atEdge) out.hopEdge = st.front; else if (B.atEdge) out.hopEdge = st.back;
@@ -774,7 +783,7 @@ function eggNeeds(st) {
   // what's coming next for the front (the front leads and sees it first)
   const fx = F.x, c = st.c, cand = [];
   for (const o of c.obst) if (o.x1 > fx - 4) cand.push({ kind: o.kind, x: o.x0 });
-  for (const g of c.gaps) if (g.x1 > fx - 4) cand.push({ kind: g.kind, x: g.x0, g });
+  for (const g of c.gaps) if (g.x0 > fx - 4) cand.push({ kind: g.kind, x: g.x0, g });
   for (const l of c.ledges) if (l.x > fx - 4) cand.push({ kind: 'ledge', x: l.x });
   for (const v of c.vents) if (v.x > fx - 30) cand.push({ kind: 'vent', x: v.x, v });
   if (c.mama) cand.push({ kind: 'mama', x: c.mama.nestX - 96 });
@@ -799,11 +808,11 @@ function eggNeeds(st) {
 function eggNudges(st, dt) {
   const nd = eggNeeds(st), F = eggF(st), B = eggB(st), fr = st.front, bk = st.back;
   if (nd.busy) return;
-  if (nd.hop) eggHintOnce(st, 'hop' + st.k, st.k === 0 ? fr : nd.hopEdge, 'Hold ' + eggKey(nd.hopEdge, 'jump') + ': you hop when you are BOTH ready');
+  if (nd.hop && st.k < 2) for (const id of [fr, bk]) eggHintOnce(st, 'hop' + st.k + id, id, 'Hold ' + eggKey(id, 'jump') + ': you hop when you are BOTH ready');
   if (Math.abs(nd.diff) > 12) {
     const lo = nd.diff > 0 ? fr : bk, hi = 1 - lo;
-    eggHintOnce(st, 'lvl' + st.k + lo, lo, 'Your end is low: lift it ' + eggKey(lo, 'act'));
-    eggHintOnce(st, 'lvl' + st.k + hi, hi, 'Your end is high: carry it low ' + eggKey(hi, 'down'));
+    if (nd.level[lo] === 'lift') eggHintOnce(st, 'lvl' + st.k + lo, lo, 'Your end is low: lift it ' + eggKey(lo, 'act'));
+    if (nd.level[hi] === 'low') eggHintOnce(st, 'lvl' + st.k + hi, hi, 'Your end is high: carry it low ' + eggKey(hi, 'down'));
   }
   if (nd.vent && nd.ventInfo.state === 'warn' && nd.vent.x > F.x - 10) eggHintOnce(st, 'vent' + st.k, fr, 'Bubbling! Wait for the puff, then go');
   void B; void dt;
@@ -1621,14 +1630,23 @@ function eggHud(st) {
     ctx.fillStyle = 'rgba(28,26,54,0.8)'; rr(px, py, pw, ph, 14 * z); ctx.fill();
     ctx.strokeStyle = PCOL[id]; ctx.lineWidth = 2.5; rr(px, py, pw, ph, 14 * z); ctx.stroke();
     const cpuSeat = eggQuiet(id);
-    text(NAMES[id] + (isF ? ' leads (front)' : ' follows (back)') + (cpuSeat ? ' · computer' : ''), px + 12 * z, py + 14 * z, 14 * z, PCOL[id], 'left');
+    const title = NAMES[id] + (isF ? ' leads' : ' follows') + (cpuSeat ? ' (computer)' : isF ? ' (front)' : ' (back)');
+    text(title, px + 12 * z, py + 14 * z, 14 * z, PCOL[id], 'left');
+    ctx.font = 14 * z + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+    const room = pw - 24 * z - ctx.measureText(title).width - 10 * z;   // what's left of the top line beside the title
     if (isF) {
-      // the front sees what's coming
-      const nx = nd.next, nt = nx && nx.d < 420 ? 'Next: ' + (EGG_NEXT[nx.kind] || nx.kind) : 'All clear ahead';
-      text(nt, px + pw - 12 * z, py + 14 * z, 11 * z, nx && nx.d < 160 ? C.gold : '#d9d3ef', 'right', 'body');
+      // the front sees what's coming (shortened, then smaller, until it fits beside the title)
+      const nx = nd.next, what = nx && nx.d < 420 ? EGG_NEXT[nx.kind] || nx.kind : null;
+      const tries = what ? ['Next: ' + what, what, what.split(':')[0]] : ['All clear ahead', 'All clear'];
+      let nt = tries[tries.length - 1], nfs = 9 * z;
+      found: for (const s of [11, 10, 9]) for (const tt of tries) {
+        ctx.font = '700 ' + s * z + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+        if (ctx.measureText(tt).width <= room) { nt = tt; nfs = s * z; break found; }
+      }
+      text(nt, px + pw - 12 * z, py + 14 * z, nfs, nx && nx.d < 160 ? C.gold : '#d9d3ef', 'right', 'body');
     } else {
       // the back watches the egg: where it sits on the leaf
-      const bw = 92 * z, bx = px + pw - 12 * z - bw, by = py + 9 * z, bh = 10 * z;
+      const bw = clamp(room, 40 * z, 92 * z), bx = px + pw - 12 * z - bw, by = py + 9 * z, bh = 10 * z;
       ctx.fillStyle = 'rgba(255,255,255,0.14)'; rr(bx, by, bw, bh, bh / 2); ctx.fill();
       ctx.fillStyle = 'rgba(143,227,176,0.6)'; rr(bx + bw * 0.3, by, bw * 0.4, bh, bh / 2); ctx.fill();
       const u = 0.5 + 0.5 * clamp((st.egg.air ? 0 : st.egg.s) / P.sMax, -1, 1), danger = Math.abs(st.egg.s) > P.sMax * 0.7;
