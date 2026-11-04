@@ -2,7 +2,7 @@
 
 Read this before building a new world, level or feature, then read the code files named under "How the game is built". Update this file in the same push whenever a design decision, level or convention changes.
 
-Demo: https://claude.ai/artifact/5jJ7SJw7gwSttznxFP56TG
+Demo: https://claude.ai/artifact/3KFgRXoujADJ9PMR1rTErY
 
 ## Gavyn's standing decisions
 
@@ -170,7 +170,7 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 - For refactors: `/mnt/project-files/pip-and-bo/refactor-tools/` (in the Claude project files) has a deterministic old-vs-new play-through (`harness.js` + `cmp.js`, run with `runall.sh`): fake clock, seeded random, every level, all three input types, comparing canvas, game state, menus, audio and saves.
 
 ### Publishing
-- The demo is a claude.ai Artifact at https://claude.ai/artifact/5jJ7SJw7gwSttznxFP56TG. Always republish to that same link, never a new one.
+- The demo is a claude.ai Artifact at https://claude.ai/artifact/3KFgRXoujADJ9PMR1rTErY. Always republish to that same link, never a new one. (It moved here from https://claude.ai/artifact/5jJ7SJw7gwSttznxFP56TG in Nov 2026, with Gavyn's OK, when the old page could no longer be updated.)
 - `node tools/bundle.js` (needs only Node) writes `build/pip-and-bo.html`, one self-contained file that is not committed. Publish that file. Like `index.html`, it is the page body without the outer html/head/body tags, which the publisher adds.
 - Then push to `main` here and update the README's world list and this file.
 

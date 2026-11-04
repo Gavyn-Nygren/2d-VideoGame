@@ -2,7 +2,7 @@
 
 A 2D local co-op game for two players on one screen, made for playing with friends and family. It's a run of short levels with a different twist each time. Most are teamwork, and a few are head-to-head.
 
-**Play it now:** https://claude.ai/artifact/5jJ7SJw7gwSttznxFP56TG
+**Play it now:** https://claude.ai/artifact/3KFgRXoujADJ9PMR1rTErY
 
 ## How to play
 
