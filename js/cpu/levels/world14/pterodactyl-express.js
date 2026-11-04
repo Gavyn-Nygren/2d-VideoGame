@@ -9,7 +9,8 @@
      puff in the way) and flaps only when the wings are at the gold TOP and Petra would sink below that height. It dives
      (▼) when far too high, slows down (◀) when the hanger is about to grab or drop something and isn't lined up yet,
      waits out a headwind that is about to blow, and speeds up (▶) on empty stretches. On the ground it waits for the
-     TOP and flaps to take off.
+     TOP and flaps to take off. With a person hanging, it keeps the bob of its flaps centred on the height of the fruit
+     or rock coming up (the usual rule keeps her above it, and a person's hand then sweeps past over the top).
    - Hanger: swings (◀ ▶) toward the next fruit or rock as it comes up and grabs it once it's in reach; with something
      in hand it keeps the swing calm and lets go when the dotted drop line ends in a hungry nest or on the switch.
    Waiting for a slow person: it never does the person's job. As the flyer it slows down by fruit and rocks the person
@@ -18,6 +19,7 @@
    how calm its swing is; it plays well at every skill. */
 (() => {
   const P = () => PTERO;
+  const BOB = 40;   // (with a person hanging: flap once she is this far below the height wanted, so the bob is centred on it)
   function say(st, p, text, gap = 6) {
     const n = st.sayN && st.sayN.text === text ? st.sayN.n : 0, all = st.sayAll || 0;
     if (G.time - (st.saidT == null ? -99 : st.saidT) < gap * (1 + Math.floor(n / 3) + Math.floor(all / 8))) return;
@@ -76,7 +78,11 @@
     for (let x = pt.x - 30; x <= pt.x + 170; x += 20) roof = Math.max(roof, MODES.ptero.cy(m, x));
     const roomUp = roof <= Pc.ceil0 + 2 || pt.y - riseOf(Pc.jPerfect * wc.j, pt.vy, rock) - Pc.top - 6 > roof, yNow = pt.y + pt.vy * 0.25;
     const closing = pt.wst === 'top' && pt.wt >= Pc.topWin * wc.win - 0.04 - lag * 0.5;
-    const wantFlap = yNow > want + 15 || low || (closing && pt.y + 85 > want + 45);
+    // fruit or a rock coming up: a PERFECT flap bobs her about 70 px, so keep that bob centred on the height the hanger
+    // needs (flapping by the usual rule keeps her above it, and a person's hand would sweep past over the top)
+    const hcG = MODES.ptero.hangPos(m), tkG = nd.task;
+    const grabNear = !info.partnerCpu && tkG && (tkG.kind === 'fruit' || tkG.kind === 'rock') && tkG.x - hcG.x > -25 && tkG.x - hcG.x < 260;
+    const wantFlap = grabNear ? (yNow > want + BOB || low) : (yNow > want + 15 || low || (closing && pt.y + 85 > want + 45));
     // the hanger is about to drop something: hold steady (no flaps unless we're sinking too low)
     const hc0 = MODES.ptero.hangPos(m), tk0 = nd.task, aiming = tk0 && (tk0.kind === 'switch' || tk0.kind === 'nest') && tk0.x - hc0.x > -30 && tk0.x - hc0.x < 200;
     const inUp = m.c.zones.some(z => z.kind === 'up' && pt.x > z.x0 - 30 && pt.x < z.x1 + 30);
@@ -112,7 +118,7 @@
     // a person hanger: say what they should do
     if (!info.partnerCpu && tk) {
       const d = Math.hypot(tk.x - hc.x, tk.y - hc.y);
-      if ((tk.kind === 'fruit' || tk.kind === 'rock') && d < Pc.reach + 20) say(st, p, tk.kind === 'rock' ? 'Grab the rock!' : 'Grab the fruit!');
+      if ((tk.kind === 'fruit' || tk.kind === 'rock') && d < MODES.ptero.reach(m) + 20) say(st, p, tk.kind === 'rock' ? 'Grab the rock!' : 'Grab the fruit!');
       else if (tk.kind === 'switch' && Math.abs(tk.x - hc.x) < 150) say(st, p, 'Drop it on the switch!');
       else if (tk.kind === 'nest' && Math.abs(tk.x - hc.x) < 150) say(st, p, 'Drop it in the nest!');
     }
@@ -132,7 +138,7 @@
       if (Math.abs(dx) < 120 && dy > -10) thWant = clamp(Math.atan2(dx, Math.max(10, dy)), -1.05, 1.05);
       else if (dx >= 120 && dx < 320) thWant = 0.25;
       const d = Math.hypot(tk.x - hc.x, tk.y - hc.y);
-      if (d < Pc.reach * 0.82) out.act = 'tap';
+      if (d < M.reach(m) * 0.82) out.act = 'tap';
       // a person flyer: ask for the height we need
       if (!info.partnerCpu && Math.abs(dx) < 300 && dx > 0) {
         if (tk.y - hc.y > 55) say(st, p, 'Lower, please!');

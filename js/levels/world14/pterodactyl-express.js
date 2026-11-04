@@ -50,7 +50,7 @@ const PTERO = {
   gustCalm: 2.4, gustWarn: 1.1, gustBlow: 2.0,
   puffEvery: 4.4, puffWarn: 0.9, puffV: 190, puffR: 40, puffLife: 3.4,
   ground0: 430, ceil0: 70,
-  tryWin: 6, landHelp: 2, landHelp2: 4, gateHelp: 2, gateHelp2: 4, missHelp: 3, sneezeHelp: 3, windHelp: 2,
+  tryWin: 6, grabHelp: 2, grabGoldK: 1.45, landHelp: 2, landHelp2: 4, gateHelp: 2, gateHelp2: 4, missHelp: 3, sneezeHelp: 3, windHelp: 2,
   wingGold: [{ win: 1, good: 0.72, j: 1 }, { win: 1.75, good: 0.62, j: 1.12 }, { win: 2.4, good: 0.52, j: 1.24 }],
   basket: 3, swapT: 2.5, finT: 4.6, hintLife: 2.8, camLead: 300,
 };
@@ -151,6 +151,8 @@ function pteroKey(id, what) {
 const pteroQuiet = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
 const pteroBoth = st => G.time - st.inT[0] < PTERO.tryWin && G.time - st.inT[1] < PTERO.tryWin;
 const pteroWingCfg = st => PTERO.wingGold[st.wingGold || 0];
+// how far the hanger can grab from (further with the gold Grabby net)
+const pteroReach = st => PTERO.reach * (st.grabGold ? PTERO.grabGoldK : 1);
 
 /* ---------- a route ---------- */
 function pteroRoom(st, L, k) {
@@ -160,6 +162,7 @@ function pteroRoom(st, L, k) {
   st.c = pteroCompile(def);
   st.stats.roomT[k] = null; st.stats.roomFed[k] = 0; st.stats.roomTitles[k] = st.title;
   st.wingGold = 0; st.roomLands = 0; st.roomMiss = 0; st.roomSneeze = 0; st.nestGold = false; st.puffGold = false; st.windGold = false;
+  st.grabGold = false; st.roomGrabMiss = 0; st.grabWatch = null;
   const x = 150, gy = pteroGY({ c: st.c }, x);
   st.pt = { x, y: gy - PTERO.standH, vx: 0, vy: 0, state: 'landed', t: 0, wing: 0.2, wst: 'rise', wt: 0, flapA: 0, flapKind: null, flapShow: 0,
     tilt: 0, sneeze: 0, immune: 0, bonkT: 0, backTo: 0, ax: 0, blink: 0, first: true, glide: null };
@@ -402,7 +405,7 @@ function pteroLand(st) {
 function pteroGrab(st) {
   const P = PTERO, hg = st.hg, hc = pteroHangPos(st), id = st.hanger, c = st.c;
   // (with fruit in the basket, a press next to another fruit picks it too; anywhere else it drops one)
-  let best = null, bd = P.reach;
+  let best = null, bd = pteroReach(st);
   const fruitIn = hg.item && hg.item.kind === 'fruit';
   if (!hg.item || (fruitIn && hg.item.list.length < P.basket)) for (const t of c.trees) if (!t.taken) { const d = Math.hypot(t.x - hc.x, t.y - hc.y); if (d < bd) { bd = d; best = { t }; } }
   if (!hg.item) for (const p of c.piles) { const d = Math.hypot(p.x - hc.x, p.y - 14 - hc.y); if (d < bd) { bd = d; best = { p }; } }
@@ -718,6 +721,7 @@ function pteroPart(st, x, y, vx, vy, life, col, size, grav, kind) {
 // gentle lessons when they first matter (once each route)
 function pteroNudges(st) {
   const pt = st.pt, nd = pteroNeeds(st), hc = pteroHangPos(st), tk = nd.task;
+  pteroGrabWatch(st, tk, hc);
   if (pt.state !== 'fly') return;
   if (tk && (tk.kind === 'fruit' || tk.kind === 'rock') && Math.abs(tk.x - hc.x) < 160) {
     if (tk.y - hc.y > 60) pteroHintOnce(st, 'low' + tk.kind + st.k, st.flyer, 'Fly lower so ' + NAMES[st.hanger] + ' can reach! ' + pteroKey(st.flyer, 'down') + ' dives');
@@ -725,6 +729,27 @@ function pteroNudges(st) {
   }
   if (tk && tk.kind === 'fruit' && Math.abs(tk.x - hc.x) < 50 && Math.abs(tk.y - hc.y) < 50) pteroHintOnce(st, 'fruitNudge' + st.k, st.hanger, 'Grab the fruit! ' + pteroKey(st.hanger, 'act'));
   if (tk && tk.kind === 'rock' && Math.abs(tk.x - hc.x) < 50 && Math.abs(tk.y - hc.y) < 50) pteroHintOnce(st, 'rockNudge' + st.k, st.hanger, 'Grab a rock! ' + pteroKey(st.hanger, 'act'));
+}
+// a fruit or rock the hanger needed went by close but ungrabbed (twice in a route, with both playing): the gold
+// Grabby net, announced, reaches further
+function pteroGrabWatch(st, tk, hc) {
+  const P = PTERO, cur = tk && (tk.kind === 'fruit' || tk.kind === 'rock') ? tk.ref : null, w = st.grabWatch;
+  if (w && w.ref !== cur) {
+    const missed = w.kind === 'fruit' ? !w.ref.taken : !(st.hg.item && st.hg.item.kind === 'rock');
+    if (missed && w.both && w.minD < 110 && w.ref.x < hc.x - 10 && st.pt.state === 'fly') {
+      st.roomGrabMiss++;
+      if (st.roomGrabMiss >= P.grabHelp && !st.grabGold) {
+        st.grabGold = true; st.stats.helps++;
+        pteroMsg(st, 'Grabby net! ' + NAMES[st.hanger] + ' grabs fruit and rocks from further away', C.gold, 3.8); Sfx.play('pteroHelp');
+      }
+    }
+    st.grabWatch = null;
+  }
+  if (cur) {
+    if (!st.grabWatch) st.grabWatch = { ref: cur, kind: tk.kind, minD: 1e9, both: false };
+    st.grabWatch.minD = Math.min(st.grabWatch.minD, Math.hypot(tk.x - hc.x, tk.y - hc.y));
+    if (pteroBoth(st)) st.grabWatch.both = true;
+  }
 }
 // the touch buttons and the top-bar legend name each player's own action this route: the flyer flaps, the hanger grabs
 let pteroLabelEls = null;
@@ -790,7 +815,7 @@ function pteroMirror(st) {
 
 MODES.ptero = {
   PTERO,
-  needs: pteroNeeds, gy: pteroGY, cy: pteroCY, hangPos: pteroHangPos, hangVel: pteroHangVel, predict: pteroPredict, pathHit: (st, pts) => pteroPathHit(st, pts), pivot: pteroPivot, wingCfg: pteroWingCfg,
+  needs: pteroNeeds, reach: pteroReach, gy: pteroGY, cy: pteroCY, hangPos: pteroHangPos, hangVel: pteroHangVel, predict: pteroPredict, pathHit: (st, pts) => pteroPathHit(st, pts), pivot: pteroPivot, wingCfg: pteroWingCfg,
   setup(st, L) {
     // how many babies wait in all four routes (for the medal)
     let wanted = 0;
@@ -1525,15 +1550,6 @@ function pteroDrawPtero(st) {
   // a leafy saddle
   ctx.fillStyle = '#7ccf4f'; ctx.beginPath(); ctx.ellipse(P.seatX, -16, 16, 6, 0, Math.PI, 0); ctx.fill();
   ctx.fillStyle = '#3f8f3a'; ctx.fillRect(P.seatX - 16, -17, 32, 3);
-  // the flyer rides on top
-  if (pt.state !== 'swap' || st.swap.t < 1.35) {
-    const fp = ps[st.flyer];
-    ctx.save(); ctx.translate(P.seatX, P.seatY + 4);
-    const bounce = pt.wst === 'flap' ? -pt.flapA * 3 : 0;
-    ctx.translate(0, bounce);
-    pteroBody(fp, 0, pt.flapA > 0 ? 1.08 : 1, pt.flapA > 0 ? 0.9 : 1, { blink: pt.blink > 0 ? 1 : 0 });
-    ctx.restore();
-  }
   // neck and head
   ctx.fillStyle = '#3fb7a8';
   ctx.beginPath(); ctx.moveTo(26, -10); ctx.quadraticCurveTo(40, -24, 44, -30); ctx.lineTo(54, -22); ctx.quadraticCurveTo(44, -8, 34, 4); ctx.fill();
@@ -1549,6 +1565,15 @@ function pteroDrawPtero(st) {
   ctx.restore();
   // the near wing in front
   pteroWingShape(-4, -6, up, 1, '#36a89a', '#6fd0c2');
+  // the flyer rides on top (in front of the near wing, so the raised wing never hides them)
+  if (pt.state !== 'swap' || st.swap.t < 1.35) {
+    const fp = ps[st.flyer];
+    ctx.save(); ctx.translate(P.seatX, P.seatY + 4);
+    const bounce = pt.wst === 'flap' ? -pt.flapA * 3 : 0;
+    ctx.translate(0, bounce);
+    pteroBody(fp, 0, pt.flapA > 0 ? 1.08 : 1, pt.flapA > 0 ? 0.9 : 1, { blink: pt.blink > 0 ? 1 : 0 });
+    ctx.restore();
+  }
   ctx.restore();
   // the hanger
   pteroDrawHanger(st);
@@ -1597,6 +1622,11 @@ function pteroDrawHanger(st) {
   const wig = Math.sin(G.clock * 7) * 0.04;
   pteroBody(p, wig, 1, 1.05);
   ctx.restore();
+  // the gold Grabby net: a soft gold ring shows how far the hanger can grab
+  if (st.grabGold && !hg.item) {
+    ctx.strokeStyle = C.gold; ctx.globalAlpha = 0.35 + 0.15 * Math.sin(G.clock * 5); ctx.lineWidth = 2.5; ctx.setLineDash([6, 6]);
+    circle(hc.x - cam.x, hc.y, pteroReach(st)); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+  }
   // what the hanger holds, in one hand by their side
   if (hg.item) {
     const ix = hc.x - cam.x + 12 * Math.cos(hg.th), iy = hc.y + 10;
@@ -1647,13 +1677,13 @@ function pteroHud(st) {
     ctx.strokeStyle = PCOL[id]; ctx.lineWidth = 2.5; rr(px, py, pw, ph, 14 * z); ctx.stroke();
     text(NAMES[id] + (flyer ? ' flies' : ' hangs') + (cpuSeat ? ' (computer)' : ''), px + 12 * z, py + 14 * z, 15 * z, PCOL[id], 'left');
     if (flyer) {
-      if (!cpuSeat) text(pteroKey(id, 'act') + ' flap · ' + pteroKey(id, 'lr') + ' speed · ' + pteroKey(id, 'down') + ' dive', px + pw - 10 * z, py + 14 * z, 10.5 * z, '#d9d3ef', 'right', 'body');
+      if (!cpuSeat) text(pteroKey(id, 'act') + ' flap · ' + pteroKey(id, 'lr') + ' speed · ' + pteroKey(id, 'down') + ' dive', px + pw - 10 * z, py + 14 * z, 11.5 * z, '#d9d3ef', 'right', 'body');
       // the wing meter: the wings rise from DOWN to UP; flap in the gold TOP
       const wc = pteroWingCfg(st), bx = px + 12 * z, bw = pw - 24 * z - 58 * z, by = py + 28 * z, bh = 16 * z, top = pt.wst === 'top';
       ctx.fillStyle = 'rgba(255,255,255,0.14)'; rr(bx, by, bw, bh, bh / 2); ctx.fill();
       ctx.fillStyle = 'rgba(255,197,61,0.35)'; rr(bx + bw * wc.good, by, bw * (1 - wc.good), bh, bh / 2); ctx.fill();
-      ctx.fillStyle = top ? C.gold : '#ffffff'; rr(bx, by, Math.max(bh, bw * pt.wing), bh, bh / 2); ctx.fill();
-      text('wings up', bx + 8 * z, by + bh / 2 + 0.5, 10 * z, bw * pt.wing > 52 * z ? '#3a2a40' : '#ffffff', 'left', 'body');
+      if (bw * pt.wing >= bh) { ctx.fillStyle = top ? C.gold : '#ffffff'; rr(bx, by, bw * pt.wing, bh, bh / 2); ctx.fill(); }
+      text('wings up', bx + 8 * z, by + bh / 2 + 0.5, 10.5 * z, bw * pt.wing > 52 * z ? '#3a2a40' : '#ffffff', 'left', 'body');
       const tx = bx + bw + 6 * z, tw2 = 50 * z;
       ctx.fillStyle = top ? (Math.sin(t * 18) > -0.2 ? C.gold : '#ffe39a') : 'rgba(255,197,61,0.3)'; rr(tx, by - 2 * z, tw2, bh + 4 * z, (bh + 4 * z) / 2); ctx.fill();
       // (just after a flap the TOP box says how good it was)
@@ -1664,12 +1694,12 @@ function pteroHud(st) {
       text(lab, tx + tw2 / 2, by + bh / 2 + 0.5, (shown && pt.flapKind === 'perfect' ? 9.5 : 12) * z, lc, 'center', 'body');
       ctx.globalAlpha = 1;
     } else {
-      if (!cpuSeat) text(pteroKey(id, 'lr') + ' swing · ' + pteroKey(id, 'act') + ' grab / drop', px + pw - 10 * z, py + 14 * z, 10.5 * z, '#d9d3ef', 'right', 'body');
+      if (!cpuSeat) text(pteroKey(id, 'lr') + ' swing · ' + pteroKey(id, 'act') + ' grab / drop', px + pw - 10 * z, py + 14 * z, 11.5 * z, '#d9d3ef', 'right', 'body');
       const item = st.hg.item, nd = pteroNeeds(st), tk = nd.task;
       const cx = px + 12 * z, cy = py + 37 * z;
       ctx.fillStyle = 'rgba(255,255,255,0.12)'; circle(cx + 12 * z, cy, 12 * z); ctx.fill();
       if (item) { if (item.kind === 'rock') pteroRock(cx + 12 * z, cy, 8 * z); else pteroBasket(cx + 12 * z, cy + 2, item.list, 0.8 * z); }
-      const job = !tk ? (nd.gate && item !== 'rock' ? 'Wait for the next rocks' : 'Look out for fruit!') : tk.kind === 'fruit' ? 'Grab the fruit' : tk.kind === 'rock' ? 'Grab a rock' : tk.kind === 'nest' ? 'Feed the hungry babies' : tk.kind === 'switch' ? 'Drop it on the switch' : 'Let go of it';
+      const job = pt.state === 'swap' ? 'Swap jobs!' : pt.state === 'finish' ? 'Special delivery!' : !tk ? (item && item.kind === 'rock' ? 'Carry it to the next switch' : nd.gate && nd.gate.sw.some(s => !s.down) ? 'Wait for the next rocks' : 'Look out for fruit!') : tk.kind === 'fruit' ? 'Grab the fruit' : tk.kind === 'rock' ? 'Grab a rock' : tk.kind === 'nest' ? 'Feed the hungry babies' : tk.kind === 'switch' ? 'Drop it on the switch' : 'Let go of it';
       text(item ? (item.kind === 'rock' ? 'Rock: ' : 'Fruit x' + item.list.length + ': ') + job : job, cx + 30 * z, cy + 0.5, 12.5 * z, tk ? '#ffe7a8' : '#d9d3ef', 'left', 'body');
     }
   }
@@ -1733,7 +1763,7 @@ function pteroHud(st) {
       else if (tk && tk.kind === 'drop') box(Hh, 'Let go of it ' + pteroKey(Hh, 'act'), '#ffe7a8', false);
     } else if (tk && (tk.kind === 'fruit' || tk.kind === 'rock')) {
       const d = Math.hypot(tk.x - hc.x, tk.y - hc.y);
-      if (d < P.reach) box(Hh, 'Grab it! ' + pteroKey(Hh, 'act'), C.gold, true);
+      if (d < pteroReach(st)) box(Hh, 'Grab it! ' + pteroKey(Hh, 'act'), C.gold, true);
       else if (Math.abs(tk.x - hc.x) < 90 && Math.abs(tk.y - hc.y) < 70) box(Hh, 'Swing ' + pteroKey(Hh, 'lr') + ' to reach', '#ffe7a8', false);
     }
   }
