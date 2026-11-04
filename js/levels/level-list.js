@@ -2845,7 +2845,7 @@ const LEVELS = [
         tip: 'Climb Mr. Bones up the old tree. The giant ribcage only digs up when you both dig at once!',
         mounds: [{ piece: 'funny', how: 'ladder' }, { piece: 'ribs', how: 'big', len: 120, together: true }],
         plan: ['ladder:0', 'big:1', 'exit'],
-        decor: [{ k: 'owl', x: 52, y: 252 }, { k: 'pumpkins', x: 260 }, { k: 'grave', x: 470, text: ['Ate too', 'many sweets'] },
+        decor: [{ k: 'owl', x: 14, y: 254 }, { k: 'pumpkins', x: 260 }, { k: 'grave', x: 470, text: ['Ate too', 'many sweets'] },
           { k: 'pumpkins', x: 700 }, { k: 'ghost', x: 760, y: 300 }, { k: 'fence', x0: 160, x1: 640 },
           { k: 'sign', x: 790, y: 430, text: 'OPEN GRAVE · BOING!' }],
         switches: {}, signs: [],
@@ -2872,10 +2872,10 @@ const LEVELS = [
       { // ---------- Room 4: Old Bell Tower (bridge the grave, stack up for the arm, ring the bell together) ----------
         title: 'Old Bell Tower', unlock: 'done', bellPiece: 'hand', bellY: 92, finale: { x: 840, feet: 210 },
         tip: 'Bridge the big grave, stack up for the arm bone, then climb to the bell and pull both ropes together!',
-        mounds: [{ piece: 'arm', how: 'tower', foot: { x: 495, feet: 480 }, land: 520 }],
+        mounds: [{ piece: 'arm', how: 'tower', foot: { x: 435, feet: 480 }, land: 410 }],
         plan: ['cross', 'tower:0', 'bell', 'finale'],
-        decor: [{ k: 'grave', x: 560, text: ['Here lies', 'Steve’s homework'] }, { k: 'tree', x: 640, s: 0.8 }, { k: 'owl', x: 668, y: 356 },
-          { k: 'ghost', x: 300, y: 330 }, { k: 'fence', x0: 400, x1: 700 }, { k: 'pumpkins', x: 520 }],
+        decor: [{ k: 'grave', x: 594, text: ['Here lies', 'Steve’s homework'] }, { k: 'tree', x: 655, s: 0.8 }, { k: 'owl', x: 624, y: 346 },
+          { k: 'ghost', x: 270, y: 300 }, { k: 'fence', x0: 380, x1: 700 }, { k: 'pumpkins', x: 494 }],
         switches: {}, signs: [],
         map: [
           '................................', //  0
@@ -2888,14 +2888,14 @@ const LEVELS = [
           '........................BBBBBBBB', //  7
           '........................BBBBBBBB', //  8
           '........................BBBBBBBB', //  9
-          '.................d......BBBBBBBB', // 10
-          '...............====.....BBBBBBBB', // 11
+          '.............d..........BBBBBBBB', // 10
+          '............====........BBBBBBBB', // 11
           '........................BBBBBBBB', // 12
           '........................BBBBBBBB', // 13
           '........................BBBBBBBB', // 14
-          '.h.12z........N.x......yBBBBBBBB', // 15
-          '######~~~~~~~###################', // 16
-          '######~~~~~~~###################', // 17
+          '.h.12z........x..N.....yBBBBBBBB', // 15
+          '######~~~~~~####################', // 16
+          '######~~~~~~####################', // 17
         ] },
     ] },
   // ----- END 13-2 Graveyard Bone Hunt -----

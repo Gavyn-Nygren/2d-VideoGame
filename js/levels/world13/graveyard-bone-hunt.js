@@ -18,9 +18,13 @@
    your head. Touch Mr. Bones with a bone to put it back.
    While two carry a big bone, a jump by either is a jump for both, and carrying is a bit slower.
    On Mr. Bones the ladder, hold jump to climb and down to go down; at the top you step onto the ledge.
-   Soft fails only: an open grave is "Boing!" (a springy coffin bounces you out, a puff of purple smoke, back to the
-   last lit jack-o'-lantern); holding down 1.2 s on the ground hops you back there too (stuck in a crypt). A dropped big
-   bone lies where it fell (over a grave it pops back to where you lifted it).
+   Soft fails only: an open grave is "Boing!" (a springy mattress bounces you out, a puff of purple smoke, back to the
+   last jack-o'-lantern YOU passed, or the room start: never across a grave to a lantern only the partner reached);
+   holding down 1.2 s on the ground hops you back there too (stuck in a crypt). A dropped big bone lies where it fell
+   (over a grave it pops back to where you lifted it). Mr. Bones won't move while someone is on him: "Hop off me
+   first!" to the one on him, "Bo is on me! Hop off, Bo!" when it's the partner.
+   Room 4's balcony (the arm bone) is out of jump reach from the tower top (a running jump falls about 25 px short),
+   so it needs the stool and a head.
    Help, always gold and announced: after 30 s with no progress a gold arrow points at the next job and the next
    mound digs up at once (the giant ribcage then also takes lone digs); after 3 clatters a bone gets gold glue and
    can't slip; once Mr. Bones has a new shape, his chalk X glows gold if nobody calls him for a while.
@@ -72,6 +76,10 @@ function bonehuntPress(id, verb, hold) {
   const how = actKey(id), k = bonehuntKey(id, 'act');
   if (how === 'touch') return (hold ? 'Hold the dig button' : 'Tap dig') + ' to ' + verb;
   return (hold ? 'Hold ' : 'Press ') + k + ' to ' + verb;
+}
+// "Press W to jump up!" / "Tap ▲ to jump up!" (what: 'jump' or 'down')
+function bonehuntPressKey(id, what, verb) {
+  return (actKey(id) === 'touch' ? 'Tap ' : 'Press ') + bonehuntKey(id, what) + ' to ' + verb;
 }
 const bonehuntCx = p => p.x + p.w / 2;
 const bonehuntFeet = p => p.y + p.h;
@@ -140,10 +148,10 @@ function bonehuntRoom(st, L) {
   // the exit arch: the engine's door, taken over (drawn and checked here)
   st.exit = L.door ? { ...L.door } : null; L.door = null; st.exitT = 0; st.inExit = [false, false]; st.leaving = null;
   st.spawns = L.spawns.map(s => ({ ...s }));
-  st.check = -1;   // the last lit jack-o'-lantern
+  st.check = -1;   // the last lit jack-o'-lantern (each player hops back to the last one they passed: st.pl[id].check)
   st.roomPieces = st.mounds.map(m => m.piece).concat(def.bellPiece ? [def.bellPiece] : []);
   st.roomDone = false; st.finale = null;
-  st.pl = [0, 1].map(() => ({ lock: null, lockT: 0, climb: false, carry: null, hold: null, digT: 9, digCD: 0, lastDig: null,
+  st.pl = [0, 1].map(() => ({ lock: null, lockT: 0, climb: false, carry: null, hold: null, digT: 9, digCD: 0, lastDig: null, check: -1,
     hint: null, hintCD: 0, sayCD: 0, downT: 0, saved: null, waitJump: false, told: {}, idleT: 0, trapT: 0, boingY: 0 }));
   st.news = null; st.newsNext = null; st.pops = []; st.dirt = []; st.stuckT = 0; st.goldArrow = null; st.unlockT = 0;
   st.roomStart = G.time; st.tellT = 0; st.mrShakeT = 0;
@@ -222,32 +230,35 @@ function bonehuntLadder(st) {
 function bonehuntOnLadderCol(s, p) {
   return !!s && p.alive && Math.abs(bonehuntCx(p) - s.x) <= 13 && bonehuntFeet(p) > s.top - 1 && p.y < s.feet;
 }
-// is anyone standing on, climbing or inside Mr. Bones right now?
-function bonehuntOnMr(st) {
+// is anyone standing on, climbing or inside Mr. Bones right now? (bonehuntWhoOnMr: their ids)
+const bonehuntOnMr = st => bonehuntWhoOnMr(st).length > 0;
+function bonehuntWhoOnMr(st) {
   const mr = st.mr, s = st.spots[mr.spot];
-  if (!s || mr.form === 'sit' || mr.form === 'hop' || mr.form === 'dance') return false;
-  return G.players.some(p => {
+  if (!s || mr.form === 'sit' || mr.form === 'hop' || mr.form === 'dance') return [];
+  return G.players.filter(p => {
     if (!p.alive) return false;
     const P = st.pl[p.id], f = bonehuntFeet(p);
     if (mr.form === 'ladder') return P.climb;
-    if (mr.form === 'stool') return rectHit(p, s.c * T - 1, s.r * T - 3, T + 2, T + 3) || (other(p).alive && p.onPartner && rectHit(other(p), s.c * T - 1, s.r * T - 3, T + 2, T + 3));
+    // (standing on top, or stacked on someone who is; leaning on his side doesn't count)
+    if (mr.form === 'stool') return rectHit(p, s.c * T, s.r * T - 3, T, 6) || (other(p).alive && p.onPartner && rectHit(other(p), s.c * T, s.r * T - 3, T, 6));
     return f <= s.y0 + 2 && f >= s.y0 - 3 && p.x + p.w > s.x0 && p.x < s.x1;
-  });
+  }).map(p => p.id);
 }
-// the hop-back point: the last lit jack-o'-lantern, or the room's start
+// the hop-back point: the last jack-o'-lantern this player passed (not one a partner lit across a grave), or the start
 function bonehuntSpawnFor(st, id) {
-  const ln = st.lanterns[st.check];
+  const ln = st.lanterns[st.pl[id].check];
   if (!ln) return { ...st.spawns[id] };
   return { x: ln.x + (id === 0 ? -34 : 12), y: ln.feet - PH };
 }
 
 /* ---------- words over heads, news, pops ---------- */
-function bonehuntSay(st, p, text, force) {
+// ok (optional): the hint fades out as soon as it stops being true (the mound is dug, the bone is lifted...)
+function bonehuntSay(st, p, text, force, ok) {
   if (!force && bonehuntSolo(p.id)) return;   // (1-player mode: no key hints over the computer's head)
   const P = st.pl[p.id];
   if (!force && P.hintCD > 0) return;
   if (P.hint && P.hint.text === text && P.hint.t < P.hint.life - 0.4) return;
-  P.hint = { text, t: 0, life: BONEHUNT.hintLife };
+  P.hint = { text, t: 0, life: BONEHUNT.hintLife, ok: ok || null };
   P.hintCD = BONEHUNT.hintGap;
 }
 // a hint said only once per room (per player and key)
@@ -530,7 +541,13 @@ function bonehuntCall(st, p, k) {
   const mr = st.mr, s = st.spots[k];
   if (mr.form === 'hop' || mr.form === 'dance' || st.leaving || st.finale) return;
   if (mr.spot === k) { bonehuntMrSay(st, 'I’m right here!', 1.6); return; }
-  if (bonehuntOnMr(st)) { bonehuntMrSay(st, 'Hop off me first!', 2); Sfx.play('bonehuntNope'); return; }
+  const on = bonehuntWhoOnMr(st);
+  if (on.length) {
+    // (the caller is on him, or only the partner is: then say who to wait for)
+    bonehuntMrSay(st, on.includes(p.id) ? 'Hop off me first!' : NAMES[on[0]] + ' is on me! Hop off, ' + NAMES[on[0]] + '!', 2.2);
+    Sfx.play('bonehuntNope');
+    return;
+  }
   const x = s.type === 'bridge' ? (s.x0 + s.x1) / 2 : s.x;
   bonehuntHopTo(st, x, s.feet, k);
   bonehuntMrSay(st, s.type === 'stool' ? 'One stepstool, coming up!' : s.type === 'ladder' ? 'Ladder time! Stretch...' : 'Bridge time! Lie down...', 2.2);
@@ -652,7 +669,7 @@ function bonehuntBellStep(st, dt) {
     bonehuntProgress(st);
     st.owlAwake = 2.5;
     const bx = (st.ropes[0].x + st.ropes[st.ropes.length - 1].x) / 2, by = st.cfg.bellY || 150;
-    bonehuntPop(st, bx, by - 30, 'BONG!', C.gold, 30);
+    bonehuntPop(st, bx, by + 52, 'BONG!', C.gold, 30);
     if (st.cfg.bellPiece) st.flyers.push({ kind: 'piece', piece: st.cfg.bellPiece, x0: bx, y0: by + 20, t: 0, dur: 1.3, who: [0, 1], big: false });
     st.flyers.push({ kind: 'hat', x0: bx, y0: by - 30, t: 0, dur: 1.7 });
     bonehuntMrSay(st, 'My hand! I was the bell’s clapper!', 2.8);
@@ -691,7 +708,11 @@ function bonehuntLocks(st, dt) {
   for (const p of G.players) {
     const P = st.pl[p.id];
     P.digCD = Math.max(0, P.digCD - dt); P.digT += dt; P.hintCD = Math.max(0, P.hintCD - dt); P.sayCD = Math.max(0, P.sayCD - dt);
-    if (P.hint) { P.hint.t += dt; if (P.hint.t >= P.hint.life) P.hint = null; }
+    if (P.hint) {
+      P.hint.t += dt;
+      if (P.hint.ok && !P.hint.ok()) { P.hint.ok = null; P.hint.t = Math.max(P.hint.t, P.hint.life - 0.2); P.hintCD = Math.min(P.hintCD, 0.6); }
+      if (P.hint.t >= P.hint.life) P.hint = null;
+    }
     if (!P.lock) continue;
     P.lockT -= dt;
     if (P.lock === 'boing') p.vx = 0;
@@ -707,8 +728,10 @@ function bonehuntLocks(st, dt) {
 function bonehuntLanterns(st, dt) {
   st.lanterns.forEach((ln, i) => {
     ln.t += dt;
-    if (ln.lit) return;
-    if (G.players.some(p => p.alive && Math.abs(bonehuntCx(p) - ln.x) < 40 && Math.abs(bonehuntFeet(p) - ln.feet) < 50)) {
+    for (const p of G.players) {
+      if (!p.alive || Math.abs(bonehuntCx(p) - ln.x) >= 40 || Math.abs(bonehuntFeet(p) - ln.feet) >= 50) continue;
+      st.pl[p.id].check = i;
+      if (ln.lit) continue;
       ln.lit = true; ln.t = 0; st.check = i;
       Sfx.play('bonehuntLantern');
       burst(ln.x, ln.feet - 40, '#ffb347', 10);
@@ -831,40 +854,45 @@ function bonehuntHints(st, dt) {
     const lad = bonehuntLadder(st);
     if (P.climb) { bonehuntTell(st, p, 'climb', 'Hold ' + bonehuntKey(p.id, 'jump') + ' to climb, ' + bonehuntKey(p.id, 'down') + ' to go down'); continue; }
     if (P.hold) {
-      const b = P.hold;
-      if (b.state === 'ground' && P.idleT > 1.4) bonehuntSay(st, p, bonehuntSolo(o.id) ? NAMES[o.id] + ' will grab the other end!' : NAMES[o.id] + ', grab the other end!');
+      const b = P.hold, lying = () => P.hold === b && b.state === 'ground';
+      if (b.state === 'ground' && P.idleT > 1.4) bonehuntSay(st, p, bonehuntSolo(o.id) ? NAMES[o.id] + ' is coming for the other end!' : NAMES[o.id] + ', grab the other end!', false, lying);
       if (b.state === 'carried' && !b.toldWalk) { b.toldWalk = true; bonehuntSay(st, p, 'Walk together! Jumps are shared', true); }
       continue;
     }
     const m = bonehuntMoundAt(st, p);
     if (m && P.idleT > 1.2) {
-      if (m.together && !m.gold) bonehuntSay(st, p, bonehuntSolo(o.id) ? 'Dig together with ' + NAMES[o.id] + '! ' + bonehuntKey(p.id, 'act') : 'Dig together, both at once! ' + bonehuntKey(p.id, 'act'));
-      else bonehuntSay(st, p, bonehuntPress(p.id, 'dig!'));
+      const onIt = () => !m.done && bonehuntMoundAt(st, p) === m;
+      if (m.together && !m.gold) bonehuntSay(st, p, (actKey(p.id) === 'touch' ? 'Tap dig' : 'Press ' + bonehuntKey(p.id, 'act')) + ' at the same time as ' + NAMES[o.id] + '!', false, onIt);
+      else bonehuntSay(st, p, bonehuntPress(p.id, 'dig!'), false, onIt);
       continue;
     }
     const e = bonehuntEndAt(st, p);
-    if (e && P.idleT > 0.8) { bonehuntSay(st, p, bonehuntPress(p.id, 'grab an end')); continue; }
+    if (e && P.idleT > 0.8) { bonehuntSay(st, p, bonehuntPress(p.id, 'grab an end'), false, () => !P.hold && e.b.state === 'ground' && !!bonehuntEndAt(st, p)); continue; }
     if (st.gate && Math.abs(bonehuntCx(p) - st.gate.crank.x) < 50 && !st.gate.pass && Math.abs(bonehuntFeet(p) - st.gate.crank.feet) < 4) {
-      bonehuntSay(st, p, bonehuntPress(p.id, 'crank the gate open', true));
+      bonehuntSay(st, p, bonehuntPress(p.id, 'crank the gate open', true), false, () => Math.abs(bonehuntCx(p) - st.gate.crank.x) < 60 && st.gate.held !== p.id);
       continue;
     }
     if (st.gate && st.gate.held === o.id && !bonehuntInCrypt(st, p) && Math.abs(bonehuntCx(p) - st.gate.x) < 110) { bonehuntTell(st, p, 'gatein', 'Quick, in you go! Dig it up!'); continue; }
     const k = bonehuntSpotAt(st, p);
-    if (k >= 0 && st.mr.spot !== k && P.idleT > 0.6) { bonehuntSay(st, p, bonehuntPress(p.id, 'call Mr. Bones')); continue; }
-    if (lad && Math.abs(bonehuntCx(p) - lad.x) < 30 && Math.abs(bonehuntFeet(p) - lad.feet) < 4 && P.idleT > 0.5) { bonehuntSay(st, p, 'Hold ' + bonehuntKey(p.id, 'jump') + ' to climb Mr. Bones!'); continue; }
+    if (k >= 0 && st.mr.spot !== k && P.idleT > 0.6) { bonehuntSay(st, p, bonehuntPress(p.id, 'call Mr. Bones'), false, () => st.mr.spot !== k && st.mr.form !== 'hop' && bonehuntSpotAt(st, p) === k); continue; }
+    if (lad && Math.abs(bonehuntCx(p) - lad.x) < 30 && Math.abs(bonehuntFeet(p) - lad.feet) < 4 && P.idleT > 0.5) { bonehuntSay(st, p, 'Hold ' + bonehuntKey(p.id, 'jump') + ' to climb Mr. Bones!', false, () => !P.climb && bonehuntLadder(st) === lad && bonehuntFeet(p) > lad.top + 30); continue; }
     const rp = bonehuntRopeAt(st, p);
-    if (rp >= 0 && st.bell && !st.bell.rung && !p.input.act) { bonehuntSay(st, p, bonehuntPress(p.id, 'pull the rope', true)); continue; }
+    if (rp >= 0 && st.bell && !st.bell.rung && !p.input.act) { bonehuntSay(st, p, bonehuntPress(p.id, 'pull the rope', true), false, () => !st.bell.rung && bonehuntRopeAt(st, p) === rp); continue; }
     // mounds that need a boost or a stack: said near the foot of the wall
     for (const mm of st.mounds) {
       if (mm.done || !mm.cfg.foot || st.pieces[mm.piece]) continue;
       const f = mm.cfg.foot;
       if (Math.abs(bonehuntCx(p) - f.x) > 70 || Math.abs(bonehuntFeet(p) - f.feet) > 40 || bonehuntFeet(p) <= mm.feet + 2) continue;
-      if (mm.how === 'boost') bonehuntSay(st, p, p.onPartner ? 'Now jump up! ' + bonehuntKey(p.id, 'jump') : 'Too high! Hop on ' + NAMES[o.id] + '’s head');
+      const unDug = () => !mm.done && bonehuntFeet(p) > mm.feet + 2;
+      const onMe = () => o.alive && o.onPartner && Math.abs(bonehuntFeet(o) - p.y) < 3;   // (the partner is on my head)
+      const was = p.onPartner, same = () => unDug() && p.onPartner === was && !onMe();
+      if (onMe()) { bonehuntSay(st, p, 'Hold still! ' + NAMES[o.id] + ' jumps from your head', false, () => unDug() && onMe()); break; }
+      if (mm.how === 'boost') bonehuntSay(st, p, p.onPartner ? bonehuntPressKey(p.id, 'jump', 'jump up!') : 'Too high! Hop on ' + NAMES[o.id] + '’s head', false, same);
       else if (mm.how === 'tower') {
         const s = st.spots.find(s2 => s2.type === 'stool');
-        if (st.mr.form !== 'stool') bonehuntSay(st, p, 'Too high! Call Mr. Bones the stepstool here');
-        else bonehuntSay(st, p, p.onPartner ? 'Now jump up! ' + bonehuntKey(p.id, 'jump') : (s && O && !o.onPartner && Math.abs(bonehuntFeet(o) - s.r * T) < 3 ? 'Hop on ' + NAMES[o.id] + '’s head!' : 'Stack up: one on Mr. Bones, one on top!'));
-      } else if (mm.how === 'ladder' && st.mr.form !== 'ladder') bonehuntSay(st, p, 'Way up there! Call Mr. Bones the ladder');
+        if (st.mr.form !== 'stool') bonehuntSay(st, p, 'Too high! Call Mr. Bones the stepstool here', false, () => unDug() && st.mr.form !== 'stool');
+        else bonehuntSay(st, p, p.onPartner ? bonehuntPressKey(p.id, 'jump', 'jump up!') : (s && O && !o.onPartner && Math.abs(bonehuntFeet(o) - s.r * T) < 3 ? 'Hop on ' + NAMES[o.id] + '’s head!' : 'Stack up: one on Mr. Bones, one on top!'), false, same);
+      } else if (mm.how === 'ladder' && st.mr.form !== 'ladder') bonehuntSay(st, p, 'Way up there! Call Mr. Bones the ladder', false, () => unDug() && st.mr.form !== 'ladder');
       break;
     }
   }
@@ -995,6 +1023,9 @@ function bonehuntFx(st, dt) {
   if (st.dirt.length > 160) st.dirt.splice(0, st.dirt.length - 160);
   if (st.springT) for (const c in st.springT) st.springT[c] = Math.max(0, st.springT[c] - dt * 2.2);
   st.owlAwake = Math.max(0, (st.owlAwake || 0) - dt);
+  // the top-right pills fade while someone is up at the bell (it hangs right under them) and while it rings
+  const bl = st.bell, upTop = bl && G.players.some(p => p.alive && bonehuntFeet(p) <= st.ropes[0].feet + 4 && bonehuntCx(p) > st.ropes[0].x - 60);
+  st.pillA = approach(st.pillA == null ? 1 : st.pillA, upTop || (bl && (bl.bongT > 0 || st.finale)) ? 0.22 : 1, dt * 3);
 }
 
 /* ---------- drawing ---------- */
@@ -1176,7 +1207,7 @@ function bonehuntDrawBack(st, t) {
     ctx.fillRect(x, y, (h >> 20) % 3 === 0 ? 2.4 : 1.6, (h >> 20) % 3 === 0 ? 2.4 : 1.6);
   }
   // the big friendly harvest moon
-  const mx = 810, my = 96;
+  const mx = st.bell ? 560 : 810, my = 96;   // (Room 4: off to the side, so the gold bell isn't on the gold moon)
   ctx.fillStyle = 'rgba(255,170,90,0.12)'; circle(mx, my, 92); ctx.fill();
   ctx.fillStyle = 'rgba(255,170,90,0.18)'; circle(mx, my, 70); ctx.fill();
   ctx.fillStyle = '#ffb867'; circle(mx, my, 50); ctx.fill();
@@ -1391,18 +1422,28 @@ function bonehuntDrawPits(st, t) {
   for (const o of list) { const r = runs[runs.length - 1]; if (r && r.c1 === o.c - 1 && r.top === o.top) r.c1 = o.c; else runs.push({ c0: o.c, c1: o.c, top: o.top }); }
   for (const r of runs) {
     const x0 = r.c0 * T, x1 = (r.c1 + 1) * T, y0 = r.top * T;
-    ctx.fillStyle = '#140d22'; ctx.fillRect(x0, y0, x1 - x0, H - y0);
-    ctx.fillStyle = '#2b1f3a'; ctx.fillRect(x0, y0, 6, H - y0); ctx.fillRect(x1 - 6, y0, 6, H - y0);
+    ctx.fillStyle = '#2a1c42'; ctx.fillRect(x0, y0, x1 - x0, H - y0);
+    ctx.fillStyle = 'rgba(255,170,90,0.08)'; ctx.fillRect(x0, H - 22, x1 - x0, 22);
+    ctx.fillStyle = '#46305a'; ctx.fillRect(x0, y0, 6, H - y0); ctx.fillRect(x1 - 6, y0, 6, H - y0);
     ctx.fillStyle = '#5f9a52'; ctx.fillRect(x0 - 2, y0 - 1, 6, 4); ctx.fillRect(x1 - 4, y0 - 1, 6, 4);
-    // the coffin on its spring
+    // a squishy striped mattress on two big springs (it bounces whoever lands on it): cosy, not a coffin
     const mid = (x0 + x1) / 2, sq = st.springT ? Math.max(...Array.from({ length: r.c1 - r.c0 + 1 }, (_, k) => st.springT[r.c0 + k] || 0)) : 0;
-    const cy = H - 14 - (reduceMotion ? 0 : Math.sin(sq * Math.PI) * 18);
-    ctx.strokeStyle = '#c9c2d8'; ctx.lineWidth = 2.5; ctx.beginPath();
-    for (let k = 0; k <= 6; k++) ctx.lineTo(mid + (k % 2 ? 9 : -9), H - (k / 6) * (H - cy - 4));
-    ctx.stroke();
-    ctx.fillStyle = '#7a4a2e'; ctx.strokeStyle = '#3f2416'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(mid - 40, cy); ctx.lineTo(mid - 30, cy - 10); ctx.lineTo(mid + 30, cy - 10); ctx.lineTo(mid + 40, cy); ctx.lineTo(mid + 30, cy + 6); ctx.lineTo(mid - 30, cy + 6); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#ffd77a'; ctx.fillRect(mid - 1.5, cy - 8, 3, 12); ctx.fillRect(mid - 5, cy - 4, 10, 3);
+    const mw = Math.min(x1 - x0 - 24, 130), cy = H - 24 - (reduceMotion ? 0 : Math.sin(sq * Math.PI) * 16);
+    ctx.strokeStyle = '#d9d2ea'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+    for (const sx of [mid - mw * 0.3, mid + mw * 0.3]) {
+      ctx.beginPath(); ctx.moveTo(sx, H);
+      for (let k = 1; k <= 5; k++) ctx.lineTo(sx + (k % 2 ? 8 : -8), H - (k / 5) * (H - cy - 8));
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#ff9fca'; ctx.strokeStyle = '#a2527f'; ctx.lineWidth = 2;
+    rr(mid - mw / 2, cy - 6, mw, 15, 7); ctx.fill(); ctx.stroke();
+    ctx.save(); rr(mid - mw / 2 + 1, cy - 5, mw - 2, 13, 6); ctx.clip();
+    ctx.fillStyle = '#ffd6ea'; for (let xx = mid - mw / 2 + 6; xx < mid + mw / 2; xx += 14) ctx.fillRect(xx, cy - 6, 6, 16);
+    ctx.restore();
+    ctx.fillStyle = '#a2527f'; for (let xx = mid - mw / 2 + 16; xx < mid + mw / 2 - 8; xx += 22) { circle(xx, cy + 1.5, 1.6); ctx.fill(); }
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#b8aed0'; ctx.lineWidth = 1.5;
+    rr(mid - mw / 2 + 4, cy - 13, 26, 10, 5); ctx.fill(); ctx.stroke();
+    if (sq > 0.2 && !reduceMotion) { ctx.globalAlpha = sq; for (const d of [-1, 1]) text('✦', mid + d * (mw / 2 + 2), cy - 16 - sq * 8, 12, C.gold, 'center', 'body'); ctx.globalAlpha = 1; }
   }
 }
 function bonehuntDrawLantern(ln, t) {
@@ -1507,6 +1548,19 @@ function bonehuntDrawBell(st, t) {
   const bl = st.bell;
   if (!bl) return;
   const x0 = st.ropes[0].x, x1 = st.ropes[st.ropes.length - 1].x, bx = (x0 + x1) / 2, top = 60, by = st.cfg.bellY || 92;
+  // the belfry's cosy back wall (so the bell reads clearly), lit warm once it rings
+  const wx0 = x0 - 15, wx1 = x1 + 15, wy1 = st.ropes[0].feet;
+  ctx.fillStyle = '#3b3358'; ctx.fillRect(wx0, top, wx1 - wx0, wy1 - top);
+  ctx.strokeStyle = '#332c4e'; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let y = top + 15, k = 0; y < wy1; y += 15, k++) {
+    ctx.moveTo(wx0, y); ctx.lineTo(wx1, y);
+    for (let x = wx0 + (k % 2 ? 0 : 15); x < wx1; x += 30) { ctx.moveTo(x, y - 15); ctx.lineTo(x, y); }
+  }
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,200,120,' + (bl.rung ? 0.22 : 0.08).toFixed(3) + ')'; circle(bx, by - 6, 56); ctx.fill();
+  // a little round window with a star in it
+  ctx.fillStyle = '#2a1f45'; circle(bx, wy1 - 52, 13); ctx.fill();
+  ctx.fillStyle = 'rgba(255,240,200,0.8)'; circle(bx + 3, wy1 - 55, 1.6); ctx.fill();
   // ropes from the yoke down to each handle
   st.ropes.forEach(r => {
     const end = r.feet - 34 + r.pull * 10;
@@ -1725,6 +1779,7 @@ function bonehuntHud(st) {
   const big = hudBig(), fs = big ? 20 : 14, h = big ? 40 : 28, font = n => '700 ' + n + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
   // top right: time and Mr. Bones' bones (and his hat)
   const tm = fmtTime(G.time), got = BONEHUNT_ALL.filter(k => st.pieces[k]).length, cnt = got + '/' + BONEHUNT_ALL.length;
+  ctx.save(); ctx.globalAlpha = st.pillA == null ? 1 : st.pillA;
   ctx.font = font(fs);
   const tw = ctx.measureText(tm).width, nw = ctx.measureText(cnt).width, icon = fs * 1.4, gap = fs;
   const rw = 15 + tw + gap + icon + fs * 0.35 + nw + 15, rx = pill(W - 14, 12, rw, h, 'right'), cy = 12 + h / 2 + 0.5;
@@ -1740,6 +1795,7 @@ function bonehuntHud(st) {
     const u = st.cfg.unlock;
     if (u && BONEHUNT_FORMS[u]) text(st.roomDone ? BONEHUNT_FORMS[u] + '!' : '→ ' + u, px + 8 + iw * rp.length + 4, 12 + h + 6 + rh / 2 + 0.5, big ? 15 : 11, st.roomDone ? C.gold : '#d9d3ef', 'left', 'body');
   }
+  ctx.restore();
   // top centre: news and gold help
   const n = st.news;
   let newsBox = null;

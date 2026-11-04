@@ -19,6 +19,12 @@
      join), then grab the end on my side.
    - cross: call the bridge and walk over. bell: call the ladder, climb, hold dig at the rope the partner isn't at.
    - exit: call Mr. Bones to the room's exit shape, then into the arch side by side.
+   With a person, before the plan it first helps with whatever job the person has started (follow()): the person holds
+   a big bone's end -> grab the other end; the person is on the giant ribcage -> dig with them; the person cranks, waits
+   at the crypt gate or is inside -> the other part of the crypt job; the person climbs to the belfry -> the other bell
+   rope. It hops off Mr. Bones the stool when the person stands on another chalk X, and doesn't call him away from a
+   spot the person just called him to while they are near it or using him (watchCalls). Shut in the crypt with nothing
+   to do, it holds down to hop back out.
    Walking uses cpuNav (Mr. Bones the stool and the bridge are tiles; the ladder isn't, so climbing is done here). It
    reads only what is on screen: positions, Mr. Bones' shape, the mounds, the bones, the gate and the ropes. */
 (() => {
@@ -57,7 +63,7 @@
   // go somewhere; up to the top of Mr. Bones the ladder by climbing him
   function go(st, p, m, x, feet, tol = 5, noHop) {
     const L = bonehuntLadder(m), P = m.pl[p.id];
-    if (L && feet <= L.top + 4 && cpuFeet(p) > L.top + 6) return climb(st, p, m, L);
+    if (L && feet <= L.top + 4 && (cpuFeet(p) > L.top + 6 || (P.climb && cpuFeet(p) > L.top + 0.5))) return climb(st, p, m, L);   // (up to the very top: it steps off there)
     if (P.climb) { const out = {}; out.left = x < cpuCx(p); out.right = !out.left; return out; }   // (let go of the ladder)
     return nav(st, p, m, x, feet, tol, noHop);
   }
@@ -97,6 +103,12 @@
     if (mr.spot === k && mr.form === s.type) return null;
     const out = {};
     if (mr.form === 'hop' && mr.hop && mr.hop.to === k) return out;   // on his way
+    // the person just called him somewhere else and is still using him there: don't call him away, wait near them
+    const kp = st.keep;
+    if (kp && kp.k !== k && (mr.spot === kp.k || (mr.form === 'hop' && mr.hop && mr.hop.to === kp.k))) {
+      const ks = m.spots[kp.k];
+      return go(st, p, m, ks.x + (cpuCx(p) < ks.x ? -46 : 46), ks.feet, 10, true);
+    }
     if (bonehuntSpotAt(m, p) === k) {
       cpuSeek(out, p, s.x, 8);
       if (onMr(m, o)) { say(st, p, info, 'Hop off Mr. Bones!'); return out; }
@@ -268,11 +280,13 @@
     if (!gt) return null;
     const carrier = G.players.find(q => m.pl[q.id].carry && m.pl[q.id].carry.piece === mound.piece);
     const out1 = q => (cpuCx(q) - gt.x) * gt.dir < -8;
-    // who does what
-    if (st.gateFor !== mound) { st.gateFor = mound; st.gate = info.partnerCpu ? (p.id === 0 ? 'run' : 'hold') : 'hold'; }
+    // who does what (a person already at the crank or in the crypt keeps that part)
+    const oCrank = o.alive && near(cpuCx(o), gt.crank.x, 34) && near(cpuFeet(o), gt.crank.feet, 4) && o.grounded;
+    if (st.gateFor !== mound) { st.gateFor = mound; st.gate = info.partnerCpu ? (p.id === 0 ? 'run' : 'hold') : (oCrank || gt.held === o.id) && !bonehuntInCrypt(m, p) ? 'run' : 'hold'; }
     if (!info.partnerCpu) {
-      const oCrank = o.alive && near(cpuCx(o), gt.crank.x, 34) && near(cpuFeet(o), gt.crank.feet, 4) && o.grounded;
-      if (st.gate === 'hold' && oCrank && !bonehuntAtCrank(m, p) && cpuFor(st, 'oCrank', true, dt) > 0.6) st.gate = 'run';
+      // (the person at the crank too: they want it, so I run; both standing at it a while, I give way)
+      if (st.gate === 'hold' && oCrank && cpuFor(st, 'oCrank', true, dt) > (bonehuntAtCrank(m, p) ? 2 : 0.6)) st.gate = 'run';
+      else if (st.gate === 'hold' && cpuFor(st, 'oOnMe', headOn(o, p) && !mound.done, dt) > 3) st.gate = 'run';   // (stood on my head at the crank: they want it)
       else if (st.gate === 'run' && !oCrank && (bonehuntInCrypt(m, o) || (info.partnerIdle > 4 && !bonehuntInCrypt(m, p)))) st.gate = 'hold';
       if (!oCrank) cpuFor(st, 'oCrank', false, dt);
     }
@@ -351,10 +365,10 @@
   function cross(st, p, o, m, dt, info) {
     const { k, s } = bridgeSpot(m);
     if (!s) return null;
-    const farX = (s.side > 0 ? s.x1 : s.x0) + s.side * 50;
+    const farX = (s.side > 0 ? s.x1 : s.x0) + s.side * 26;
     if (over(s, p)) {
       if (!over(s, o) && cpuFor(st, 'askCross', true, dt) > 4) say(st, p, info, 'Come across!');
-      return go(st, p, m, farX + s.side * 30, s.feet, 10, true);
+      return go(st, p, m, farX, s.feet, 10, true);
     }
     const c = call(st, p, o, m, k, info);
     if (c) return c;
@@ -397,8 +411,73 @@
     return go(st, p, m, doorX(p, o, d), d.y + d.h, 4);
   }
 
+  /* ---------- adapting to the person: help with the job they have started, whatever the plan says ---------- */
+  // remember when the person calls Mr. Bones somewhere (seen: he hops to the chalk X they stand on), and keep out of
+  // the way of that choice while they are near it or using him there
+  function watchCalls(st, p, o, m, dt) {
+    const mr = m.mr;
+    if (mr.form === 'hop' && mr.hop && typeof mr.hop.to === 'number' && bonehuntSpotAt(m, o) === mr.hop.to && bonehuntSpotAt(m, p) !== mr.hop.to) st.keep = { k: mr.hop.to, idle: 0 };
+    const kp = st.keep;
+    if (!kp) return;
+    const ks = m.spots[kp.k], O = m.pl[o.id];
+    const using = O.climb || onMr(m, o) || (o.alive && near(cpuCx(o), ks.x, 150) && near(cpuFeet(o), ks.feet, 60)) || (mr.form === 'ladder' && mr.spot === kp.k && cpuFeet(o) <= ks.top + 4);
+    // (given up once they wander off, or after a good while near him without using him)
+    kp.idle = O.climb || onMr(m, o) || mr.form === 'hop' ? 0 : kp.idle + dt;
+    if (cpuFor(st, 'keepGone', !using, dt) > 2.5 || kp.idle > 9 || (mr.spot !== kp.k && mr.form !== 'hop')) st.keep = null;
+  }
+  function follow(st, p, o, m, dt, info) {
+    if (info.partnerCpu || !o.alive || !p.alive) return null;
+    const P = m.pl[p.id], O = m.pl[o.id];
+    watchCalls(st, p, o, m, dt);
+    if (O.lock) return null;
+    // the person stands on another chalk X while I'm on Mr. Bones: hop off so they can call him
+    const ko = bonehuntSpotAt(m, o);
+    if (onMr(m, p) && m.mr.form !== 'ladder' && ko >= 0 && ko !== m.mr.spot && cpuFor(st, 'oOnX', still(o), dt) > 0.3) st.yieldT = 3;
+    else if (ko < 0) cpuFor(st, 'oOnX', false, dt);
+    if (st.yieldT > 0) {
+      st.yieldT -= dt;
+      if (m.mr.form === 'hop' || !onMr(m, p) && !near(cpuCx(p), m.mr.x, 40)) { if (m.mr.form === 'hop') st.yieldT = 0; return {}; }
+      const out = {}, d = cpuCx(o) < cpuCx(p) ? -1 : 1;
+      out.left = d < 0; out.right = d > 0;
+      return out;
+    }
+    // the person climbs to the belfry before the arm bone: ring the bell with them first
+    const lad = bonehuntLadder(m);
+    if (m.bell && !m.bell.rung && lad && (O.climb || cpuFeet(o) <= lad.top + 4)) return bell(st, p, o, m, dt, info);
+    // in the middle of my own part of a job (climbing, stacked, digging up high): finish it first
+    if (P.climb || headOn(o, p) || headOn(p, o)) return null;
+    const mine = bonehuntMoundAt(m, p);
+    if (mine && !mine.big && cpuFeet(p) < H - 2 * T - 4) return null;
+    // the person cranks the gate, waits at it or is inside the crypt: the crypt job (theirs is the other part)
+    const gt = m.gate, gm = gt && m.mounds.find(q => q.how === 'gate' && !m.pieces[q.piece]);
+    if (gm) {
+      const atGate = gt.held === o.id || bonehuntAtCrank(m, o) || bonehuntInCrypt(m, o) || (!gm.done && still(o) && near(cpuFeet(o), gt.y1, 4) && near(cpuCx(o), gt.x - gt.dir * 40, 50));
+      if (cpuFor(st, 'oGate', atGate, dt) > 0.6) st.gateT = G.time;
+      const carried = G.players.some(q => m.pl[q.id].carry && m.pl[q.id].carry.piece === gm.piece);
+      if (st.gateT != null && G.time - st.gateT < 3 && (!gm.done || carried)) { const g = gate(st, p, o, m, gm, dt, info); if (g) return g; }
+    }
+    if (gt && bonehuntInCrypt(m, p)) {
+      // inside the crypt anyway: dig its bone; with nothing to do in here and the gate shut, hop back out
+      if (gm && !gm.done) return dig(st, p, m, gm);
+      if (gt.pass) return go(st, p, m, gt.x - gt.dir * 50, gt.y1, 8, true);
+      const t = cpuFor(st, 'shutIn', true, dt);
+      if (t > 1.5) say(st, p, info, 'Open the gate!');
+      return t > 4 ? { down: true } : nav(st, p, m, gt.x + gt.dir * 44, gt.y1, 6, true);
+    }
+    cpuFor(st, 'shutIn', false, dt);
+    // the person holds one end of a big bone: grab the other end
+    if (O.hold && O.hold.state === 'ground' && O.hold.m) return big(st, p, o, m, O.hold.m, dt, info);
+    // the person is on the giant ribcage: dig it with them
+    const om = bonehuntMoundAt(m, o);
+    if (om && om.together && !om.done && !m.pieces[om.piece] && cpuFor(st, 'oRibs', true, dt) > 0.5) return together(st, p, o, m, om, dt, info);
+    if (!om || !om.together) cpuFor(st, 'oRibs', false, dt);
+    return null;
+  }
+
   // the first job not done yet; while the partner does one, only a job that can be done at the same time
   function jobs(st, p, o, m, dt, info) {
+    const f = follow(st, p, o, m, dt, info);
+    if (f) return f;
     let busy = false;
     for (const it of m.cfg.plan || []) {
       const [kind, ix] = it.split(':'), mound = ix != null ? m.mounds[+ix] : null;
