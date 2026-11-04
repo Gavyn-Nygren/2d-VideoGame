@@ -290,13 +290,17 @@ cpuBrain('gravflip', {
   think(S, p, o, dt, info) {
     const st = info.mst;
     if (!st || !st.switches || st.phase !== 'play' || info.intro || G.introT > GRAVFLIP.introHold) return {};
-    if (!p.alive) { S.tgt = null; S.jmp = null; S.nav = null; return {}; }
+    if (!p.alive) { S.tgt = null; S.jmp = null; S.nav = null; S.waitJump = false; return {}; }
+    // a person flipped me while I stood waiting to jump: tell them when
+    if (S.lastG != null && S.lastG !== st.grav[p.id] && S.waitJump && !info.partnerCpu) cpuSay(p, 'Not yet! Flip me when I jump!');
+    S.lastG = st.grav[p.id]; S.waitJump = false;
     // going back (hold ▼)
     if (S.backT > 0) { S.backT -= dt; return { down: true }; }
     // a jump under way goes on until it lands
     const run = gravflipBotRun(S, p, dt);
     if (run) return run;
     const pl = gravflipPlan(st), job = gravflipJob(st, pl, p.id), R = pl.role(p.id), step = pl.step;
+    S.waitJump = !!(step.jump && job === 'flip' && p.grounded && !(S.jmp && S.jmp.phase === 'run') && !gravflipRoute(st, pl, p.id));
     const mine = step[R], theirs = step[R === 'A' ? 'B' : 'A'];
     // a fresh choice of where to go when the job changes, and now and then (only on the ground)
     const fld = G.level.sw.f ? (G.level.sw.f.on ? 1 : 0) : 2;

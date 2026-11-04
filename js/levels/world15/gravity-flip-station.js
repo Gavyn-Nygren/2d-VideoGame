@@ -869,7 +869,7 @@ function gravflipDrawTop() {
   for (const p of G.players) {
     const sw = gravflipSwitchAt(st, p);
     if (!sw || sw.owner !== p.id || gravflipCpu(p.id) || st.phase !== 'play' || G.introT > GRAVFLIP.introHold) continue;
-    if (show && line[p.id] && gravflipJob(st, pl, p.id) !== 'flipper') continue;
+    if (show && line[p.id] && (line.back || gravflipJob(st, pl, p.id) !== 'flipper')) continue;
     const s = gravflipKey(p.id) + ': flip ' + NAMES[1 - p.id], fs = Math.round(13 * z);
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
     const w = ctx.measureText(s).width + 16, h = fs + 10, x0 = clamp(sw.x - w / 2, 6, W - 6 - w), y0 = sw.ceil ? sw.surf + 44 : sw.surf - 52 - h;
@@ -894,7 +894,9 @@ function gravflipDrawTop() {
     } else for (const id of [pl.A, pl.B]) {
       const p = G.players[id];
       if (!p.alive || !line[id] || gravflipCpu(id)) continue;
-      const up = st.grav[id] === 1, stuck = st.stepT > 30 && gravflipJob(st, pl, id) && !line.back;
+      // (going back only helps someone who is flipped or away from their beacon)
+      const up = st.grav[id] === 1, sp = st.pl[id].spot, away = up || Math.abs(p.x - sp.x) > 60 || Math.abs(p.y - sp.y) > 40;
+      const stuck = st.stepT > 30 && away && gravflipJob(st, pl, id) && !line.back;
       boxes.push(gravflipChip(NAMES[id] + ': ' + line[id], stuck ? 'Stuck? ' + gravflipBackKey(id) + ' to go back' : '', p.x + p.w / 2, up ? p.y + p.h + 18 : p.y - 20, PCOL[id], boxes, up));
     }
     ctx.restore();
