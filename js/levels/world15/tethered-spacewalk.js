@@ -91,6 +91,13 @@ function spacewalkRoom(st, L, k) {
   // masts: a static handhold or panel stands on a strut from the nearest hull below/behind it, or floats on a buoy
   for (const h of st.holds) if (h.static && !h.lock) h.mast = spacewalkMast(st, h.gx, h.gy, -h.ox, -h.oy);
   for (const p of st.panels) if (p.static) p.mast = spacewalkMast(st, p.x, p.y + 15, 0, 1);
+  // a strut that runs down past another strut's top joins it there (no double struts)
+  const masts = st.holds.concat(st.panels).map(o => o.mast).filter(m => m && m.x0 === m.x1 && m.y1 > m.y0);
+  for (const m of masts) {
+    let j = null;
+    for (const o of masts) if (o !== m && Math.abs(o.x0 - m.x0) < 18 && o.y0 > m.y0 + 10 && o.y0 < m.y1 && (!j || o.y0 < j.y0)) j = o;
+    if (j) { m.x1 = j.x0; m.y1 = j.y0; }
+  }
   st.dock = def.dock ? { x: def.dock[0], y: def.dock[1] } : { x: 32, y: 120 };
   st.bt = 0;
   spacewalkBodies(st, 0);
@@ -604,7 +611,7 @@ MODES.spacewalk = {
     const s = G.mst.stats;
     if (!s) return [];
     const oops = s.bonks + s.tows, t = G.time;
-    const medal = t <= 200 && oops <= 4 ? 'Gold' : t <= 360 && oops <= 12 ? 'Silver' : 'Bronze';
+    const medal = t <= 210 && oops <= 6 ? 'Gold' : t <= 400 && oops <= 15 ? 'Silver' : 'Bronze';
     const out = [
       { label: 'Panels fixed', values: s.fixes.slice() },
       { label: 'Bonks', value: s.bonks },
@@ -682,7 +689,7 @@ function spacewalkDrawSky(st) {
   }
   ctx.globalAlpha = 1;
   // a big friendly ringed planet, and a little moon
-  const px = 780 + (st.k % 2 ? -560 : 0), py = 118 + (st.k >= 2 ? 300 : 0) * 0;
+  const px = [780, 220, 360, 220][st.k] || 780, py = [118, 118, 95, 118][st.k] || 118;
   ctx.save(); ctx.translate(px, py);
   ctx.strokeStyle = 'rgba(255,214,160,0.55)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(0, 0, 92, 20, -0.35, Math.PI * 1.02, Math.PI * 1.98); ctx.stroke();
   const pg = ctx.createRadialGradient(-16, -18, 6, 0, 0, 56);
