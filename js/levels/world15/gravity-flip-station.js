@@ -465,9 +465,9 @@ function gravflipPaintBack(c, st, L) {
   c.fillStyle = 'rgba(255,255,255,0.08)';
   for (let x = 66; x < W - 120; x += 120) for (let y = 70; y < H - 120; y += 140) for (const [dx, dy] of [[5, 5], [103, 5], [5, 121], [103, 121]]) { c.beginPath(); c.arc(x + dx, y + dy, 2, 0, Math.PI * 2); c.fill(); }
   // round windows onto space (and the ringed planet)
-  const wins = { dock: [[200, 160], [500, 130], [770, 170]], garden: [[150, 130], [420, 280], [650, 140]], lab: [[110, 160], [640, 120], [840, 260]], deck: [[300, 150], [520, 330]] }[st.style] || [];
+  const wins = { dock: [[200, 180], [500, 160], [770, 190]], garden: [[150, 165], [420, 290], [650, 170]], lab: [[110, 180], [640, 150], [840, 270]], deck: [[300, 180], [520, 340]] }[st.style] || [];
   wins.forEach(([x, y], i) => gravflipWindow(c, x, y, 34, i + st.k * 3));
-  if (st.style === 'deck') gravflipBigWindow(c, 610, 150);
+  if (st.style === 'deck') gravflipBigWindow(c, 610, 190);
   gravflipDeco(c, st);
   // the hull: metal panels, a lit walkway trim on every floor AND every ceiling (people walk on both here)
   for (let r = 0; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) {
@@ -526,9 +526,9 @@ function gravflipDeco(c, st) {
   } else if (st.style === 'garden') {
     // hanging planters (they hang from the ceiling, of course) and floor pots
     for (const x of [140, 300, 560]) {
-      c.strokeStyle = 'rgba(200,255,220,0.35)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, 60); c.lineTo(x, 104); c.stroke();
-      c.fillStyle = '#c47a4a'; c.beginPath(); c.moveTo(x - 14, 104); c.lineTo(x + 14, 104); c.lineTo(x + 10, 122); c.lineTo(x - 10, 122); c.closePath(); c.fill();
-      c.fillStyle = '#5fd18a'; for (let k = -2; k <= 2; k++) { c.beginPath(); c.ellipse(x + k * 6, 128 + Math.abs(k) * 4, 4, 10, k * 0.3, 0, Math.PI * 2); c.fill(); }
+      c.strokeStyle = 'rgba(200,255,220,0.35)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, 90); c.lineTo(x, 124); c.stroke();
+      c.fillStyle = '#c47a4a'; c.beginPath(); c.moveTo(x - 14, 124); c.lineTo(x + 14, 124); c.lineTo(x + 10, 142); c.lineTo(x - 10, 142); c.closePath(); c.fill();
+      c.fillStyle = '#5fd18a'; for (let k = -2; k <= 2; k++) { c.beginPath(); c.ellipse(x + k * 6, 148 + Math.abs(k) * 4, 4, 10, k * 0.3, 0, Math.PI * 2); c.fill(); }
     }
     for (const x of [90, 220, 800]) {
       c.fillStyle = '#b8693e'; c.fillRect(x - 12, 462, 24, 18);
@@ -537,7 +537,7 @@ function gravflipDeco(c, st) {
     }
   } else if (st.style === 'lab') {
     // screens with wiggly graphs and bubbling tubes
-    for (const [x, y] of [[250, 300], [760, 110]]) {
+    for (const [x, y] of [[250, 300], [760, 140]]) {
       c.fillStyle = '#141236'; c.fillRect(x - 40, y - 26, 80, 52); c.strokeStyle = '#8f95bf'; c.lineWidth = 3; c.strokeRect(x - 40, y - 26, 80, 52);
       c.strokeStyle = '#7dffb0'; c.lineWidth = 2; c.beginPath(); for (let k = 0; k <= 16; k++) c.lineTo(x - 34 + k * 4.25, y + Math.sin(k * 0.9 + x) * 12); c.stroke();
     }
@@ -548,7 +548,6 @@ function gravflipDeco(c, st) {
   } else if (st.style === 'deck') {
     // control consoles with blinking-light panels (the lights are drawn live)
     for (const x of [120, 330]) { c.fillStyle = '#3d4472'; c.fillRect(x - 40, 440, 80, 40); c.fillStyle = '#2a2f55'; c.fillRect(x - 36, 444, 72, 14); }
-    c.fillStyle = 'rgba(255,215,120,0.2)'; c.font = '700 13px "Atkinson Hyperlegible", sans-serif'; c.textAlign = 'center'; c.fillText('SHUTTLE ↑', 812, 160);
   }
 }
 function gravflipDrawBack(st) {
@@ -791,6 +790,9 @@ function gravflipDrawTop() {
   if (st.hid) { G.players.forEach((p, i) => { p.alive = st.hid[i]; }); st.hid = null; }
   if (!st.switches) return;
   const t = G.clock, big = gravflipBig(), z = big ? 1.4 : 1, boxes = [];
+  // (hint chips keep clear of the exit's who-is-in lights)
+  const d = st.exit;
+  if (d) boxes.push(st.hatch ? { x0: d.x - 8, y0: d.y + d.h, x1: d.x + d.w + 8, y1: d.y + d.h + 40 } : { x0: d.x - 8, y0: d.y - 26, x1: d.x + d.w + 8, y1: d.y - 6 });
   // the switch prompt under a person standing at their own switch
   for (const p of G.players) {
     const sw = gravflipSwitchAt(st, p);
@@ -808,7 +810,12 @@ function gravflipDrawTop() {
     const show = st.k === 0 ? st.stepT < 40 : (st.stepT < GRAVFLIP.chipT || st.stepT > GRAVFLIP.chipAgain);
     if (show) {
       ctx.save(); if (st.stepT > GRAVFLIP.chipAgain) ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 5);
-      for (const id of [pl.A, pl.B]) {
+      const pa = G.players[pl.A], pb = G.players[pl.B];
+      // the same words for both people: one chip between them
+      if (say.A && say.A === say.B && pa.alive && pb.alive && !gravflipCpu(pa.id) && !gravflipCpu(pb.id)) {
+        const up = st.grav[pa.id] === 1 && st.grav[pb.id] === 1, x = (pa.x + pb.x + PW) / 2;
+        boxes.push(gravflipChip(gravflipFill(st, say.A, pl), '', x, up ? Math.max(pa.y, pb.y) + PH + 18 : Math.min(pa.y, pb.y) - 20, C.gold, boxes, up));
+      } else for (const id of [pl.A, pl.B]) {
         const p = G.players[id], s = say[pl.role(id)];
         if (!p.alive || !s || gravflipCpu(id)) continue;
         const up = st.grav[id] === 1, stuck = st.stepT > 30 && gravflipJob(st, pl, id);
