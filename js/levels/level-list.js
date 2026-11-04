@@ -2794,7 +2794,7 @@ const LEVELS = [
         act: { label: 'light', labels: ['light', 'swap'] },
         tip: 'Pip, shine the light on the sleepy ghosts so Bo can hop up. Keep it off Bo, or Eep!',
         cat: [27, 14, -1],
-        plan: [{ portrait: 0 }],
+        plan: [{ portrait: 0 }, { lean: [23, 6, 1] }],
         deco: [
           { kind: 'window', x: 450, y: 292, moon: true }, { kind: 'window', x: 690, y: 300 },
           { kind: 'frame', x: 300, y: 104, w: 44, h: 54 }, { kind: 'frame', x: 630, y: 100, art: 'moon', bg: '#2e3f66' },
@@ -2828,10 +2828,10 @@ const LEVELS = [
         title: 'The Library',
         holder: 1, style: 'library',
         act: { label: 'light', labels: ['swap', 'light'] },
-        tip: 'Swap jobs! Bo has the light now. Wake the floating ghost book so Pip can ride it up.',
+        tip: 'Swap jobs! Bo has the light. Wake the ghost book so Pip rides up. From up top, aim down over the edge.',
         cat: [21, 14, 1],
         books: [{ c: 13, w: 3, low: 15, high: 5, period: 7.2, pause: 1.4 }],
-        plan: [{ book: 0 }, { portrait: 0 }],
+        plan: [{ book: 0 }, { portrait: 0 }, { lean: [16, 4, -1] }],
         deco: [
           { kind: 'shelf', x: 66, y: 196, w: 150, h: 254 }, { kind: 'shelf', x: 232, y: 256, w: 124, h: 194 },
           { kind: 'shelf', x: 530, y: 210, w: 150, h: 240 }, { kind: 'shelf', x: 700, y: 40, w: 110, h: 110 },
@@ -2865,7 +2865,7 @@ const LEVELS = [
         act: { label: 'light', labels: ['light', 'swap'] },
         tip: 'Two magic paintings! Bo swaps places with Pip to carry the light up, one floor at a time.',
         cat: [26, 14, -1],
-        plan: [{ portrait: 1 }, { portrait: 0 }],
+        plan: [{ portrait: 1 }, { lean: [13, 9, 1] }, { portrait: 0 }, { lean: [17, 4, -1] }],
         deco: [
           { kind: 'frame', x: 130, y: 150, art: 'moon', bg: '#2e3f66' }, { kind: 'frame', x: 250, y: 140, w: 46, h: 58 },
           { kind: 'frame', x: 370, y: 160, art: 'cat', bg: '#6a4a7a' }, { kind: 'frame', x: 150, y: 390, art: 'pumpkin', bg: '#3a2a5a' },
@@ -2901,7 +2901,7 @@ const LEVELS = [
         tip: 'Race Bertie the ghost to the attic door! You both have to get there before he does.',
         cat: [20, 4, -1],
         race: { route: [[84, 420], [84, 104], [420, 92], [840, 112]], time: 40 },
-        plan: [{ portrait: 0, hold: [27, 8] }],
+        plan: [{ portrait: 0, hold: [27, 8] }, { lean: [22, 4, 1] }],
         deco: [
           { kind: 'round', x: 480, y: 84 }, { kind: 'trunk', x: 360, y: 450 }, { kind: 'boxes', x: 520, y: 450 },
           { kind: 'boxes', x: 560, y: 150 }, { kind: 'trunk', x: 380, y: 150 },

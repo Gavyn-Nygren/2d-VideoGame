@@ -16,8 +16,13 @@
        ones whose centre ray reaches that ghost, checks the whole beam against the mover (an Eep costs a lot) and goes
        for the cheapest. There it turns the light on, tilts to the angle and holds it until the ghosts are charged, then
        turns it off so the mover can hop. It never turns the light on while the mover is in the air. Nothing to light:
-       it walks to the plan's waiting spot or, once the mover's way there is all stone, to the door. */
+       it walks to the plan's waiting spot or, once the mover's way there is all stone, to the door. It aims from where
+       the game puts the lamp (MODES.mansion.test.mansionHand: leaning out over an edge when aiming down).
+     Its notes (which ghosts it found no way to light, the last map cells) live in this file, so they are wiped when the
+     level loads again (a fresh G.mst) or the room changes. It keeps quiet while the room's role chips are up. */
   const M = () => MODES.mansion.test;
+  // no chatter while the room's role chips are up (a bubble would cover them), except on a race retry (no chips then)
+  const say = (st, p, text) => { if (st.roomT >= MANSION.badgeT || (st.race && st.race.misses > 0)) cpuSay(p, text); };
   const AHEAD = 2.0, UNDER = 0.9, RELIGHT = 1.0;   // awake seconds the holder charges to, and re-lights below
 
   /* ---------- the tile map with the ghosts as planks (mover) or as air (holder) ---------- */
@@ -47,11 +52,13 @@
   }
 
   /* ---------- the shared plan: where the mover is going, and what it needs lit ---------- */
-  const SH = { t: -1, k: -1, lvl: -1 };
+  // (module state, so it is wiped whenever the level loads again (R restart, quit and come back: G.mst is a fresh
+  // object then) or the room changes; its times are G.time, which loadLevel sets back to 0)
+  const SH = { t: -1, k: -1, mst: null };
   function shared(st) {
-    if (SH.t === G.time && SH.k === st.k && SH.lvl === G.levelIndex) return SH;
-    if (SH.k !== st.k || SH.lvl !== G.levelIndex) { SH.lastCell = null; NOLIGHT.clear(); }
-    SH.t = G.time; SH.k = st.k; SH.lvl = G.levelIndex;
+    if (SH.t === G.time && SH.k === st.k && SH.mst === st) return SH;
+    if (SH.k !== st.k || SH.mst !== st) { SH.lastCell = null; SH.desperate = 0; NOLIGHT.clear(); }
+    SH.t = G.time; SH.k = st.k; SH.mst = st;
     const h = G.players[st.holder], m = G.players[st.mover];
     const d = st.exit, doorX = d.x + d.w / 2, doorFeet = d.y + d.h;
     // can the holder walk (stone only) to the door?
@@ -166,11 +173,13 @@
       if (Math.abs(cx - cpuCx(m)) < 34 && Math.abs(feet - cpuFeet(m)) < 30) return;   // (not on top of the mover)
       if (bad.some(q => Math.abs(q.x - cx) < 20 && Math.abs(q.feet - feet) < 6)) return;
       for (const face of [-1, 1]) {
-        const ox = cx + face * MANSION.handX, oy = feet - PH + MANSION.handY;
+        const hand0 = M().mansionHand(cx, feet, face, null, true);
         for (const ax of aims) for (const ay of [by + 4, by + 9]) {
+          // (aiming down near an edge the holder leans out, which moves the lamp: aim again from there)
+          let ox = hand0.x, oy = hand0.y, tilt = Math.atan2(oy - ay, (ax - ox) * face);
+          for (let k = 0; k < 2; k++) { const o = M().mansionHand(cx, feet, face, tilt, true); ox = o.x; oy = o.y; tilt = Math.atan2(oy - ay, (ax - ox) * face); }
           const dx = (ax - ox) * face;
           if (dx < 8) continue;
-          const tilt = Math.atan2(oy - ay, dx);
           if (Math.abs(tilt) > MANSION.tiltMax - 0.02 || Math.hypot(ax - ox, ay - oy) > MANSION.range - 8) continue;
           if (!pl.book && ray(st, ox, oy, face, tilt) !== pl.id) continue;
           if (pl.book) { // the book moves: check the ray against where it will be
@@ -214,7 +223,7 @@
     for (const n of sh.needs) { const pl = st.plats[n.id]; if (pl.t < n.want && (!need || pl.t - n.want < st.plats[need.id].t - need.want)) need = n; }
     // satisfied (and the light off): wait for the mover to go; re-light only when a need runs low
     if (S.hush && need && !need.book) { const pl = st.plats[need.id]; if (pl.t > (need.under ? 0.6 : RELIGHT) && G.time - S.hushT < 3) need = null; }
-    if (!need && sh.needs.length) { if (st.light) { S.hush = true; S.hushT = G.time; if (st.plats[sh.needs[sh.needs.length - 1].id].t > 1) cpuSay(h, 'Go! Hop on!'); } light(false); return out; }
+    if (!need && sh.needs.length) { if (st.light) { S.hush = true; S.hushT = G.time; if (st.plats[sh.needs[sh.needs.length - 1].id].t > 1) say(st, h, 'Go! Hop on!'); } light(false); return out; }
     if (need) S.hush = false;
     if (!need) S.aim = null;
     const mAir = !m.grounded;
@@ -224,7 +233,7 @@
       const a = S.aim;
       if (!a) {
         light(false);
-        if (!need.book && !need.under) { NOLIGHT.set(need.id, G.time + 8); cpuSay(h, 'I can’t light that one from here!'); }
+        if (!need.book && !need.under) { NOLIGHT.set(need.id, G.time + 8); say(st, h, 'I can’t light that one from here!'); }
         return out;
       }
       const atX = Math.abs(cpuCx(h) - a.cx) <= 5 && Math.abs(cpuFeet(h) - a.feet) < 4 && h.grounded;
@@ -239,7 +248,7 @@
       // the beam comes on at the angle it had: if that would spook the mover, tilt it facing the other way first
       const tiltOK = Math.abs(st.tilt - a.tilt) <= 0.04;
       if (!st.light && !tiltOK && !S.away) {
-        const mr = m.alive ? m : null, hit = f => { const o = M().mansionOrigin(h, f); return M().mansionCast(st, o.x, o.y, f, st.tilt, M().mansionHalf(st), mr).hit; };
+        const mr = m.alive ? m : null, hit = f => M().mansionCastFor(st, h, f, st.tilt, mr).hit;
         if (hit(a.face) && !hit(-a.face)) S.away = true;
       }
       if (tiltOK) S.away = false;
@@ -268,7 +277,7 @@
     if (gx != null) {
       const o = withGrid(st, false, () => cpuNav(S, h, gx, gf, Object.assign({ tol: 8 }, OPTS_H)));
       Object.assign(out, o, { act: out.act });
-      if (stop && stop.kind === 'door' && gx === st.exit.x + st.exit.w / 2) cpuSay(h, 'To the door!');
+      if (stop && stop.kind === 'door' && gx === st.exit.x + st.exit.w / 2) say(st, h, 'To the door!');
     }
     return out;
   }
@@ -295,8 +304,8 @@
         S.portT = (S.portT || 0) + DT;
         const hold = stop.step && stop.step.hold;
         const placed = !hold || (Math.abs(cpuCx(h) - navCellX(hold[0])) < 20 && Math.abs(cpuFeet(h) - navFeet(hold[1])) < 6) || S.portT > (holderCpu ? 25 : 6);
-        if (h.alive && h.grounded && Math.abs(h.vx) < 30 && placed && S.portT > 0.4 && stop.pt.cd <= 0) { out.act = 'tap'; cpuSay(m, 'Swap!'); }
-        else if (hold && !placed) cpuSay(m, 'Climb up the steps first!');
+        if (h.alive && h.grounded && Math.abs(h.vx) < 30 && placed && S.portT > 0.4 && stop.pt.cd <= 0) { out.act = 'tap'; say(st, m, 'Swap!'); }
+        else if (hold && !placed) say(st, m, 'Climb up the steps first!');
         return out;
       }
       S.portT = 0;
@@ -323,7 +332,7 @@
         if (e.kind === 'walk' || e.kind === 'off') { cpuSeek(out, m, navCellX(a.tx), 4); }
         else if (Math.abs(cpuCx(m) - navCellX(a.tx)) <= 3) out.left = out.right = false;
         S.waitT = (S.waitT || 0) + DT;
-        if (!ready) { if (S.waitT > 1.2) cpuSay(m, gi >= 0 ? 'Light that ghost!' : 'Light, please!'); if (!holderCpu && S.waitT > 3 && !M().mansionPortraitAt(st, m) && st.callCD <= 0) out.act = 'tap'; }
+        if (!ready) { if (S.waitT > 1.2) say(st, m, gi >= 0 ? 'Light that ghost!' : 'Light, please!'); if (!holderCpu && S.waitT > 3 && !M().mansionPortraitAt(st, m) && st.callCD <= 0) out.act = 'tap'; }
         return out;
       }
     }
@@ -352,7 +361,7 @@
     if (ready || (Math.abs(cpuCx(m) - bx) < b.w / 2 && M().mansionSolid(b) && atBottom)) { cpuSeek(out, m, bx, 6); S.waitT = 0; return out; }
     cpuSeek(out, m, waitX, 5);
     S.waitT = (S.waitT || 0) + DT;
-    if (S.waitT > 2) cpuSay(m, 'Wake the book up!');
+    if (S.waitT > 2) say(st, m, 'Wake the book up!');
     return out;
   }
 

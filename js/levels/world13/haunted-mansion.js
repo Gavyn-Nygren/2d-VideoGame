@@ -6,7 +6,9 @@
    them; portraits that swap players; a ghost race." Silly-spooky, nobody gets hurt.
    - The HOLDER has the flashlight. The action ('light') turns it on and off. While it is on, ▲ / ▼ tilt the beam (so no
      jumping with the light on) and ◀ ▶ walk and turn it. The beam is a soft yellow cone: stone walls and floors stop it,
-     and so do the ghosts it lands on.
+     and so do the ghosts it lands on. With the light on the holder has careful feet: they stop at a floor's edge (a
+     little teeter, "Whoa, careful!") instead of walking off, and aiming down near an edge they lean over it, so the lamp
+     moves out past the edge and the beam reaches what lies below (light off to hop down).
    - Sleepy ghosts lie about as platforms (faint outlines). Light one and it wakes up, glows minty and holds the MOVER up
      (only the mover: the holder falls through with a "Tee-hee! Not you!"). It stays awake MANSION.awake s after the
      beam leaves (flickering at the end), then dozes off again.
@@ -24,11 +26,16 @@
    Map chars (parsed here): g ghost platform (a run of them is one ghost), p haunted portrait (the mover stands at it),
    d candle stand, E the door (the engine's door rect, taken over here). Room def: { title, tip, holder: 0|1, style:
    'foyer'|'library'|'gallery'|'attic', act, deco: [...], cat: [c, r], books: [{ c, w, low, high, period, pause }],
-   race: { route: [[x, y]...], time }, plan: [...] (the designed route: the bat and the computer use it) }.
+   race: { route: [[x, y]...], time }, plan: [...] (the designed route: the bat and the computer use it. A step is
+   { portrait: i, hold?: [c, r] } or { lean: [c, r, face] }: the holder's floor cell at an edge to light the next ghosts
+   from above, which the bat shows ("Shine down here!") and the holder's chip explains) }.
    Every top-level name starts with mansion / MANSION (Sfx.extra.mansion* too); level state lives in G.mst. */
 const MANSION = {
   // the flashlight beam
   range: 330, half: 0.25, halfNarrow: 0.16, rays: 27, step: 4, tiltV: 1.9, tiltMax: 1.45, handX: 8, handY: 11,
+  // leaning over a floor's edge to shine down (beam tilted below -leanTilt, fully leaned at -leanFull), and careful
+  // feet: with the light on, the holder stops at a floor's edge with the centre at most `lip` px over it
+  leanReach: 34, leanTilt: 0.2, leanFull: 0.55, lip: 6, teeterCD: 2.5,
   // the ghosts
   awake: 3.0, wideAwake: 6.0, flicker: 0.8, slab: 12,
   // the mover's freeze
@@ -56,6 +63,11 @@ function mansionKeys(id, role) {
   return dev === 'pad' ? 'stick move · ' + glyph('a') + ' jump · ' + glyph('act') + ' at a painting: swap'
     : dev === 'touch' ? '◀ ▶ move · ▲ jump · swap button at a painting'
     : id === 0 ? 'A D move · W jump · F at a painting: swap' : '← → move · ↑ jump · / at a painting: swap';
+}
+function mansionLeanKeys(id) {
+  const dev = mansionDev(id);
+  return 'walk to the edge · ' + (dev === 'pad' ? glyph('act') + ' light · stick ▼ aims down' : dev === 'touch' ? 'light button · ▼ aims down'
+    : id === 0 ? 'F light · S aims down' : '/ light · ↓ aims down');
 }
 const mansionActKey = id => { const d = mansionDev(id); return d === 'pad' ? glyph('act') : d === 'touch' ? 'the swap button' : id === 0 ? 'F' : '/'; };
 // the top-bar legend shows each player's keys for their job in this room (the framework adds "F <act label>")
@@ -125,6 +137,7 @@ function mansionRoom(st, L) {
   st.pops = []; st.news = null; st.nudge = { frozenT: 0, portT: 0 };
   st.bat = { x: W / 2, y: -40, on: false, t: 0, flap: 0 };
   st.giggleCD = 0; st.drops = 0; st.wasOn = -1;
+  st.teeter = 0; st.teeterCD = 0; st.leanStep = null; st.leanT = 0; st.winTick = 0;
   st.race = def.race ? mansionNewRace(def.race, st.raceMisses || 0) : null;
   st.stats.roomT[st.k] = 0;
   for (const p of G.players) p.face = 1;
@@ -140,7 +153,31 @@ function mansionNewRace(rd, misses) {
 const mansionSolid = pl => pl.t > 0 || (MODES.mansion.debug && !pl.book);
 
 /* ---------- the beam: rays from the holder's hand, stopped by stone, ghosts and the mover ---------- */
-function mansionOrigin(h, face) { return { x: h.x + h.w / 2 + face * MANSION.handX, y: h.y + MANSION.handY }; }
+// where the beam starts: the hand in front of the holder. Shining down (tilt below -leanTilt) near a floor's edge, the
+// holder leans over it and the lamp moves out past the edge (so a holder near the edge can light what lies below).
+function mansionHand(cx, feet, face, tilt, grounded) {
+  const base = { x: cx + face * MANSION.handX, y: feet - PH + MANSION.handY, lean: 0 };
+  if (tilt == null || !grounded || tilt > -MANSION.leanTilt) return base;
+  const r = Math.floor((feet + 1) / T), stone = x => tile(Math.floor(x / T), r) === '#';
+  let seen = false;
+  for (let d = -PW / 2; d <= MANSION.leanReach; d += 2) {
+    const x = cx + face * d;
+    if (stone(x)) { seen = true; continue; }
+    if (!seen) continue;
+    const c = Math.floor(x / T), edge = face > 0 ? c * T : (c + 1) * T;
+    if (tile(c, r - 1) === '#') return base;   // (a wall there, not an edge)
+    const k = clamp((-tilt - MANSION.leanTilt) / (MANSION.leanFull - MANSION.leanTilt), 0, 1);
+    const lx = edge + face * 4, ly = feet - 6;
+    return { x: base.x + (lx - base.x) * k, y: base.y + (ly - base.y) * k, lean: k, edge };
+  }
+  return base;
+}
+function mansionOrigin(h, face, tilt) { return mansionHand(h.x + h.w / 2, h.y + h.h, face, tilt, h.grounded); }
+// the cast the game makes for a holder facing `face` with the beam at `tilt` (tests and the computer use it too)
+function mansionCastFor(st, h, face, tilt, mover) {
+  const o = mansionOrigin(h, face, tilt);
+  return mansionCast(st, o.x, o.y, face, tilt, mansionHalf(st), mover || null);
+}
 // cast from (ox, oy) facing face (+1 right, -1 left), tilt radians up; mover = a rect the beam spooks (or null).
 // Returns { pts: [x0, y0, x1, y1, ...] ray ends, plats: Set of ghost ids lit, hit: the mover was touched, ox, oy }
 function mansionCast(st, ox, oy, face, tilt, half, mover) {
@@ -182,8 +219,7 @@ function mansionBeam(st, h, m, dt) {
   st.cast = null;
   for (const pl of st.plats) pl.lit = false;
   if (st.light && h.alive && st.phase === 'play') {
-    const o = mansionOrigin(h, h.face);
-    st.cast = mansionCast(st, o.x, o.y, h.face, st.tilt, mansionHalf(st), m.alive && st.safeT <= 0 ? m : null);
+    st.cast = mansionCastFor(st, h, h.face, st.tilt, m.alive && st.safeT <= 0 ? m : null);
     for (const id of st.cast.plats) st.plats[id].lit = true;
   }
   const awake = st.wide ? MANSION.wideAwake : MANSION.awake;
@@ -253,13 +289,31 @@ function mansionMove(st, p, dt, isMover) {
     control(p, dt);
     if (isMover && st.frz.on) p.vx = 0;
     if (p.alive) {
-      const prevB = p.y + p.h;
-      moveX(p, p.vx * dt, true); moveY(p, p.vy * dt, true);
+      const prevB = p.y + p.h, careful = !isMover && st.light && p.grounded;
+      const cx0 = p.x + p.w / 2;
+      moveX(p, p.vx * dt, true);
+      if (careful) mansionCareful(st, p, cx0);
+      moveY(p, p.vy * dt, true);
       if (isMover) mansionBookLand(st, p, prevB);
       postStep(p);
       if (isMover) mansionBookGround(st, p);
     }
   } finally { p.input = saved; o.alive = oa; if (hide) mansionHide(st, false); }
+}
+
+// careful feet: with the light on, the holder never walks off a floor. They stop at its edge (the centre at most
+// MANSION.lip px over it) and teeter, so they can lean the beam over the edge; light off to hop down.
+function mansionCareful(st, p, cx0) {
+  const r = Math.floor((p.y + p.h + 1) / T), cx = p.x + p.w / 2, L = MANSION.lip;
+  const stone = x => tile(Math.floor(x / T), r) === '#';
+  const dir = Math.sign(cx - cx0);
+  if (!dir) return;
+  const back = cx - dir * L;           // the point that must stay over the floor
+  if (stone(back) || !stone(cx0 - dir * L)) return;
+  const c = Math.floor((cx0 - dir * L) / T), edge = dir > 0 ? (c + 1) * T : c * T;
+  p.x = edge + dir * (L - 0.01) - p.w / 2; p.vx = 0;
+  st.teeter = 0.35;
+  if (st.teeterCD <= 0) { st.teeterCD = MANSION.teeterCD; mansionPop(st, cx, p.y - 14, 'Whoa, careful!', '#ffe9a8', 15); Sfx.play('mansionTeeter', p.id); }
 }
 
 /* ---------- the holder's flashlight and the mover's freeze ---------- */
@@ -445,9 +499,27 @@ function mansionRaceReset(st) {
 /* ---------- help: gold, the bat, nudges ---------- */
 function mansionNews(st, s, gold, life) { st.news = { s, gold: !!gold, t: 0, life: life || MANSION.newsLife }; }
 function mansionPop(st, x, y, s, col, size) { st.pops.push({ x, y, s, col: col || C.gold, size: size || 18, t: 0 }); }
-// the designed route's next stop: the first portrait in the plan nobody has used yet, else the door
+// the designed route's next stop: the first portrait in the plan nobody has used yet, else the door. A plan step
+// { lean: [c, r, face] } (the holder's last floor cell before an edge, and which way the edge is) is the "light it from
+// above" stop: it counts once every portrait before it is used and none after it, while the mover is still below
+// that floor (the bat then shows the edge, and the holder gets a chip about leaning the beam down).
+function mansionLeanStep(st) {
+  const m = G.players[st.mover], plan = st.plan;
+  for (let i = 0; i < plan.length; i++) {
+    const s = plan[i];
+    if (!s.lean) continue;
+    const usedBefore = plan.slice(0, i).every(q => q.portrait == null || (st.portraits[q.portrait] && st.portraits[q.portrait].used));
+    const usedAfter = plan.slice(i + 1).some(q => q.portrait != null && st.portraits[q.portrait] && st.portraits[q.portrait].used);
+    const feet = (s.lean[1] + 1) * T;
+    if (usedBefore && !usedAfter && m.alive && m.y + m.h > feet + 6) return { step: s, x: s.lean[0] * T + T / 2 + s.lean[2] * 12, feet, face: s.lean[2] };
+  }
+  return null;
+}
 function mansionNextStop(st) {
-  for (const step of st.plan) if (step.portrait != null) { const pt = st.portraits[step.portrait]; if (pt && !pt.used) return { x: pt.x, y: pt.y - 70, kind: 'portrait', pt }; }
+  for (const step of st.plan) {
+    if (step.portrait != null) { const pt = st.portraits[step.portrait]; if (pt && !pt.used) return { x: pt.x, y: pt.y - 70, kind: 'portrait', pt }; }
+    else if (step.lean) { const ln = mansionLeanStep(st); if (ln && ln.step === step) return { x: ln.x + ln.face * 26, y: ln.feet + 46, kind: 'lean', lean: ln }; }
+  }
   const d = st.exit;
   return d ? { x: d.x + d.w / 2, y: d.y - 34, kind: 'door' } : null;
 }
@@ -458,6 +530,10 @@ function mansionHelp(st, dt) {
   bat.flap += dt;
   const stop = mansionNextStop(st);
   bat.on = st.stuckT >= MANSION.batAfter && !!stop && st.phase === 'play' && !(st.race && st.race.phase !== 'go');
+  if (bat.on) bat.say = stop.kind === 'lean' ? 'Shine down here!' : 'This way!';
+  // the "light it from above" step: how long it has been the next stop (for the holder's chip)
+  const ln = stop && stop.kind === 'lean' ? stop.lean.step : null;
+  if (ln !== st.leanStep) { st.leanStep = ln; st.leanT = 0; } else st.leanT = (st.leanT || 0) + dt;
   if (bat.on) { bat.t += dt; bat.x += (stop.x - bat.x) * Math.min(1, dt * 2); bat.y += (stop.y + Math.sin(bat.t * 3) * 6 - bat.y) * Math.min(1, dt * 2); if (Math.floor(bat.t / 3) !== Math.floor((bat.t - dt) / 3)) Sfx.play('mansionSqueak'); }
   else { bat.t = 0; bat.x += (W / 2 - bat.x) * Math.min(1, dt); bat.y += (-40 - bat.y) * Math.min(1, dt); }
   const m = G.players[st.mover];
@@ -481,8 +557,8 @@ function mansionStep(st, dt) {
   const h = G.players[st.holder], m = G.players[st.mover];
   mansionLegendTick(st);
   if (st.phase === 'won') {
-    st.winT += dt;
-    if (st.winT < 1.0 && G.tickN % 14 === 0 && st.exit) confetti(st.exit.x + st.exit.w / 2, st.exit.y);
+    st.winT += dt; st.winTick = (st.winTick || 0) + 1;   // (the level's own tick count, so a seeded run repeats)
+    if (st.winT < 1.0 && st.winTick % 14 === 0 && st.exit) confetti(st.exit.x + st.exit.w / 2, st.exit.y);
     if (st.winT >= MANSION.winHold) { const L = G.level; if (L.def.roomIndex < L.def.roomCount - 1) nextRoom(); else levelClear(); }
     return;
   }
@@ -490,8 +566,19 @@ function mansionStep(st, dt) {
   st.roomT += dt;
   if (st.race) {
     mansionRaceStep(st, dt);
-    if (st.race.phase === 'lost') { for (const p of G.players) { p.pendingAct = false; p.pendingJump = false; } mansionFx(st, dt); return; }
+    if (st.race.phase === 'lost') {
+      // Bertie won: nobody steers until the race starts again, but anyone in the air still lands (gravity keeps going)
+      st.light = false;
+      for (const p of G.players) {
+        p.pendingAct = false; p.pendingJump = false;
+        const saved = p.input; p.input = NO_INPUT;
+        try { mansionMove(st, p, dt, p.id === st.mover); } finally { p.input = saved; }
+      }
+      mansionFx(st, dt); return;
+    }
   }
+  st.teeter = Math.max(0, (st.teeter || 0) - dt); st.teeterCD = (st.teeterCD || 0) - dt;
+  if (st.teeter > 0 && h.alive && !reduceMotion) { const k = Math.sin(G.clock * 28) * 0.06; h.sx = 1 - k; h.sy = 1 + k; }
   mansionBooks(st, dt);
   mansionHolder(st, h, dt);
   mansionBeam(st, h, m, dt);
@@ -650,15 +737,23 @@ function mansionDrawGhost(pl, t) {
   const bob = reduceMotion ? 0 : Math.sin(t * 2.2 + pl.ph) * (awake ? 0.8 : 1.6), yy = y + bob - pl.wake * 4;
   ctx.save();
   if (!awake) {
-    // asleep: a faint dotted outline with closed eyes (and a little "z" now and then)
-    ctx.globalAlpha = 0.32 + 0.1 * Math.sin(t * 1.5 + pl.ph);
-    ctx.strokeStyle = '#d7f7ff'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
-    mansionGhostPath(x, yy, w, pl.book); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(215,247,255,0.08)'; mansionGhostPath(x, yy, w, pl.book); ctx.fill();
-    ctx.strokeStyle = '#d7f7ff'; ctx.lineWidth = 1.5;
-    for (const ex of [x + w / 2 - 7, x + w / 2 + 7]) { ctx.beginPath(); ctx.arc(ex, yy + 5, 2.5, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); }
+    // asleep: a faint dotted outline with closed eyes (and a little "z" now and then). The line keeps about 1.5 screen
+    // pixels on a small phone screen, and a soft halo lifts it off the wallpaper.
+    const lw = Math.max(1.8, 1.6 / mansionScreenScale());
+    ctx.globalAlpha = 0.5 + 0.1 * Math.sin(t * 1.5 + pl.ph);
+    ctx.fillStyle = 'rgba(190,255,235,0.07)'; rr(x - 3, yy - 4, w + 6, MANSION.slab + 10, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(215,247,255,0.14)'; mansionGhostPath(x, yy, w, pl.book, true); ctx.fill();
+    ctx.strokeStyle = '#d7f7ff'; ctx.lineWidth = lw; ctx.setLineDash([5, 4]);
+    mansionGhostPath(x, yy, w, pl.book, true); ctx.stroke(); ctx.setLineDash([]);
+    if (pl.book) {   // a closed storybook: spine, page edges and a little moon on the cover
+      ctx.lineWidth = Math.max(1.2, lw * 0.7);
+      ctx.beginPath(); ctx.moveTo(x + 8, yy + 1); ctx.lineTo(x + 8, yy + MANSION.slab + 1); ctx.stroke();
+      for (const k of [3, 6]) { ctx.beginPath(); ctx.moveTo(x + 12, yy + MANSION.slab + 2 - k * 0.5); ctx.lineTo(x + w - 4, yy + MANSION.slab + 2 - k * 0.5); ctx.stroke(); }
+    }
+    ctx.lineWidth = Math.max(1.5, lw * 0.85);
+    for (const ex of [x + w / 2 - 7, x + w / 2 + 7]) { ctx.beginPath(); ctx.arc(ex, yy + 4, 2.6, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); }
     const zp = (t * 0.6 + pl.ph) % 3;
-    if (zp < 1.2) { ctx.globalAlpha = 0.45 * Math.sin(zp / 1.2 * Math.PI); text('z', x + w - 6 + zp * 6, yy - 6 - zp * 10, 12, '#d7f7ff', 'center', 'body'); }
+    if (zp < 1.2) { ctx.globalAlpha = 0.6 * Math.sin(zp / 1.2 * Math.PI); text('z', x + w - 6 + zp * 6, yy - 6 - zp * 10, mansionBig() ? 15 : 12, '#d7f7ff', 'center', 'body'); }
   } else {
     ctx.globalAlpha = a;
     ctx.fillStyle = 'rgba(140,255,215,0.22)'; rr(x - 4, yy - 6, w + 8, MANSION.slab + 14, 10); ctx.fill();
@@ -676,9 +771,29 @@ function mansionDrawGhost(pl, t) {
   }
   ctx.restore();
 }
-function mansionGhostPath(x, y, w, book) {
+// how big the stage is drawn on screen (1 = 960 px wide); thin lines get thicker on a small phone screen
+let mansionScaleMemo = { t: -1, v: 1 };
+function mansionScreenScale() {
+  if (mansionScaleMemo.t === G.clock) return mansionScaleMemo.v;
+  let v = 1; try { v = (canvas.clientWidth || W) / W; } catch (e) { /* (no layout: full size) */ }
+  mansionScaleMemo = { t: G.clock, v: clamp(v, 0.3, 2) };
+  return mansionScaleMemo.v;
+}
+// the ghost book's way up: a faint dotted track with little arrows, so a sleeping book reads as something that floats
+function mansionDrawBookTrack(b, t) {
+  if (!(b.y1 < b.y0)) return;
+  const x = b.x + b.w / 2, top = b.y1 - 4, bot = b.y0 - 6;
+  ctx.save();
+  ctx.globalAlpha = 0.32; ctx.strokeStyle = '#d7f7ff'; ctx.lineWidth = Math.max(1.5, 1.4 / mansionScreenScale()); ctx.setLineDash([2, 8]);
+  ctx.lineDashOffset = reduceMotion ? 0 : -t * 14;
+  ctx.beginPath(); ctx.moveTo(x, bot); ctx.lineTo(x, top); ctx.stroke(); ctx.setLineDash([]);
+  for (let y = bot - 40; y > top + 20; y -= 70) { ctx.beginPath(); ctx.moveTo(x - 6, y + 5); ctx.lineTo(x, y - 1); ctx.lineTo(x + 6, y + 5); ctx.stroke(); }
+  ctx.restore();
+}
+function mansionGhostPath(x, y, w, book, closed) {
   const h = MANSION.slab;
   ctx.beginPath();
+  if (book && closed) { rr(x + 3, y, w - 6, h + 2, 3); return; }
   if (book) { ctx.moveTo(x + 2, y + 2); ctx.quadraticCurveTo(x + w / 4, y - 4, x + w / 2, y + 2); ctx.quadraticCurveTo(x + 3 * w / 4, y - 4, x + w - 2, y + 2); ctx.lineTo(x + w - 2, y + h); ctx.lineTo(x + 2, y + h); ctx.closePath(); return; }
   ctx.moveTo(x + 2, y + h); ctx.lineTo(x + 2, y + 5); ctx.quadraticCurveTo(x + 2, y, x + 8, y); ctx.lineTo(x + w - 8, y); ctx.quadraticCurveTo(x + w - 2, y, x + w - 2, y + 5); ctx.lineTo(x + w - 2, y + h);
   const n = Math.max(3, Math.round(w / 10)), sw = (w - 4) / n;
@@ -776,6 +891,7 @@ function mansionDraw() {
   for (const pt of st.portraits) mansionDrawPortrait(st, pt, t);
   mansionDrawDoor(st, t);
   if (st.cat) mansionDrawCat(st.cat, t);
+  for (const b of st.books) mansionDrawBookTrack(b, t);
   mansionDrawBeam(st);
   for (const pl of st.plats) mansionDrawGhost(pl, t);
 }
@@ -825,11 +941,17 @@ function mansionDrawBat(b, t) {
   ctx.fillStyle = C.ink; circle(-2.4, -0.6, 1.2); ctx.fill(); circle(2.4, -0.6, 1.2); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.fillRect(-2, 3, 1.5, 2); ctx.fillRect(0.6, 3, 1.5, 2);
   ctx.restore();
-  if (b.on && (b.t % 3) < 1.4) { ctx.save(); ctx.globalAlpha = Math.min(1, (b.t % 3) * 3); bigText('This way!', b.x, b.y - 22 * s, mansionBig() ? 17 : 13, C.gold); ctx.restore(); }
+  if (b.on && (b.t % 3) < 1.4) { ctx.save(); ctx.globalAlpha = Math.min(1, (b.t % 3) * 3); bigText(b.say || 'This way!', b.x, b.y - 22 * s, mansionBig() ? 17 : 13, C.gold); ctx.restore(); }
 }
 function mansionFlashlight(st, h) {
   if (!h.alive) return;
-  const o = mansionOrigin(h, h.face), a = h.face > 0 ? -st.tilt : Math.PI + st.tilt;
+  const o = mansionOrigin(h, h.face, st.light ? st.tilt : null), a = h.face > 0 ? -st.tilt : Math.PI + st.tilt;
+  if (o.lean > 0.05) {   // leaning over the edge: an arm reaches out with the lamp
+    const sx = h.x + h.w / 2 + h.face * 6, sy = h.y + MANSION.handY;
+    ctx.strokeStyle = PDARK[h.id]; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(o.x - h.face * 3, o.y); ctx.stroke();
+    ctx.strokeStyle = PCOL[h.id]; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(o.x - h.face * 3, o.y); ctx.stroke(); ctx.lineCap = 'butt';
+  }
   ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(a);
   ctx.fillStyle = '#5a5a72'; rr(-9, -3.5, 13, 7, 2); ctx.fill();
   ctx.fillStyle = '#8a8aa8'; rr(2, -5, 6, 10, 2); ctx.fill();
@@ -871,16 +993,6 @@ function mansionDrawTop() {
   mansionDrawSpooked(st, m, t);
   if (st.race) mansionDrawBertie(st.race, t);
   mansionDrawBat(st.bat, t);
-  // the mover's call for light
-  if (st.call && m.alive) {
-    const k = st.call.t / MANSION.callLife, fs = Math.round(15 * z);
-    ctx.save(); ctx.globalAlpha = Math.min(1, (1 - k) * 3);
-    ctx.font = fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
-    const bw = ctx.measureText(st.call.text).width + 18 * z, bh = 24 * z, bx = clamp(m.x + m.w / 2 - bw / 2, 6, W - 6 - bw), by = Math.max(78, m.y - 22 - bh - k * 8);
-    ctx.fillStyle = '#fff6e0'; ctx.strokeStyle = PDARK[m.id]; ctx.lineWidth = 2.5; rr(bx, by, bw, bh, 10); ctx.fill(); ctx.stroke();
-    text(st.call.text, bx + bw / 2, by + bh / 2, fs, PDARK[m.id], 'center');
-    ctx.restore();
-  }
   // role badges in the first seconds of the room, then nudges
   const boxes = [];
   if (st.phase === 'play' && G.introT <= MANSION.introHold) {
@@ -899,8 +1011,23 @@ function mansionDrawTop() {
       ctx.save(); ctx.globalAlpha = 0.75 + 0.25 * Math.sin(t * 6);
       if (st.nudge.frozenT > MANSION.nudgeFrozen && h.alive && !st.ride && !mansionCpu(h.id)) boxes.push(mansionChip(NAMES[h.id] + ': light off ' + NAMES[m.id] + '!', NAMES[m.id] + ' can’t move in the light', hx, hy, PCOL[h.id]));
       else if (st.nudge.portT > MANSION.nudgePortrait && m.alive && !mansionCpu(m.id)) boxes.push(mansionChip(NAMES[m.id] + ': press ' + mansionActKey(m.id) + ' to swap!', 'the light goes with ' + NAMES[h.id], mx, my, PCOL[m.id]));
+      else if (st.leanStep && h.alive && !mansionCpu(h.id) && (st.leanT < 5 || st.stuckT > 12) && !(st.light && st.tilt < -0.3 && mansionOrigin(h, h.face, st.tilt).lean > 0.5))
+        boxes.push(mansionChip(NAMES[h.id] + ': shine down from the edge!', mansionLeanKeys(h.id), hx, hy, PCOL[h.id]));
       ctx.restore();
     }
+  }
+  // the mover's call for light (lifted above any chip it would cover)
+  if (st.call && m.alive) {
+    const k = st.call.t / MANSION.callLife, fs = Math.round(15 * z);
+    ctx.save(); ctx.globalAlpha = Math.min(1, (1 - k) * 3);
+    ctx.font = fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+    const bw = ctx.measureText(st.call.text).width + 18 * z, bh = 24 * z, bx = clamp(m.x + m.w / 2 - bw / 2, 6, W - 6 - bw);
+    let by = Math.max(78, m.y - 22 - bh - k * 8);
+    for (let pass = 0; pass < 2; pass++) for (const b of boxes) if (bx < b.x1 + 3 && bx + bw > b.x0 - 3 && by < b.y1 + 3 && by + bh > b.y0 - 3) by = b.y0 - bh - 5 >= 70 ? b.y0 - bh - 5 : b.y1 + 5;
+    ctx.fillStyle = '#fff6e0'; ctx.strokeStyle = PDARK[m.id]; ctx.lineWidth = 2.5; rr(bx, by, bw, bh, 10); ctx.fill(); ctx.stroke();
+    text(st.call.text, bx + bw / 2, by + bh / 2, fs, PDARK[m.id], 'center');
+    ctx.restore();
+    boxes.push({ x0: bx, y0: by, x1: bx + bw, y1: by + bh });
   }
   // pops ("Eep!", "Poof!", "Whoops!"), lifted above any chip they would cover
   for (const q of st.pops) {
@@ -1029,5 +1156,6 @@ Sfx.extra.mansionTick = function () { this.tone(880, 0.08, 'triangle', 0.04); };
 Sfx.extra.mansionGo = function () { this.tone(330, 0.3, 'sine', 0.06, 880); this.tone(990, 0.2, 'triangle', 0.04, null, 0.1); };
 Sfx.extra.mansionLose = function () { [523, 440, 392, 330].forEach((f, i) => this.tone(f, 0.18, 'triangle', 0.045, null, i * 0.14)); };
 Sfx.extra.mansionMew = function () { this.tone(900, 0.18, 'sine', 0.03, 600); };
+Sfx.extra.mansionTeeter = function (p) { this.tone(620 * p, 0.09, 'triangle', 0.03, 760 * p); this.tone(560 * p, 0.1, 'triangle', 0.03, 700 * p, 0.11); };
 Sfx.extra.mansionSqueak = function () { this.tone(2200, 0.05, 'square', 0.018); this.tone(2600, 0.05, 'square', 0.015, null, 0.07); };
-MODES.mansion.test = { MANSION, mansionCast, mansionLitAt, mansionOrigin, mansionHalf, mansionSolid, mansionPortraitAt, mansionNextStop, mansionBookY };
+MODES.mansion.test = { MANSION, mansionCast, mansionCastFor, mansionHand, mansionLitAt, mansionOrigin, mansionHalf, mansionSolid, mansionPortraitAt, mansionNextStop, mansionLeanStep, mansionBookY };
