@@ -3609,7 +3609,69 @@ const LEVELS = [
      scary. Gavyn's picks (Nov 2026): 15-1 Tethered Spacewalk (team), 15-2 Gravity Flip Station (team), 15-3 Moon Buggy Crew
      (team), 15-4 Planet Hop Race (versus). Each level's def sits between its own BEGIN/END lines. world: 14 ===== */
   // ----- BEGIN 15-1 Tethered Spacewalk (mode 'spacewalk', js/levels/world15/tethered-spacewalk.js) -----
-  // (def goes here)
+  // 15-1 Tethered Spacewalk (mode 'spacewalk', team, Gavyn's pick): tied together outside the station, one holds a
+  // handhold and spins the other round to the next one, then they swap; fix the broken solar panels, then the airlock.
+  // Room layout (holds, panels, rocks, satellites, hull, airlock): read by the mode, see the top of its level file.
+  { name: 'Tethered Spacewalk', world: 14, kind: 'team', mode: 'spacewalk', ownStep: true, ownHUD: true, noFalls: true,
+    act: { label: 'grab' },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> spin · puff <kbd>W</kbd><kbd>S</kbd> reel · puff',
+      bo: '<kbd>←</kbd><kbd>→</kbd> spin · puff <kbd>↑</kbd><kbd>↓</kbd> reel · puff',
+      pad: 'stick: spin, reel, puff,',
+    },
+    tip: 'Tied together in space! One holds a handle and spins the other to the next one. Grab, let go, swap!',
+    map: [...Array(8).fill('.'.repeat(32)), '..1..2' + '.'.repeat(26), ...Array(9).fill('.'.repeat(32))],
+    rooms: [
+      {
+        title: 'Station Hull',
+        tip: 'Hold grab on a rail and spin your partner with ◀ ▶. They grab the next rail, you let go. Fix 2 panels!',
+        hull: [[0, 130, 64, 346, 'module'], [896, 130, 64, 346, 'module'], [0, 476, 960, 30, 'truss']],
+        holds: [['s0', 85, 250, 'r'], ['s1', 85, 350, 'r'], ['h1', 200, 180, 'u'], ['h2', 305, 262, 'u'], ['h3', 430, 215, 'u'],
+          ['h4', 530, 300, 'u'], ['h5', 655, 250, 'u'], ['h6', 760, 330, 'u']],
+        panels: [['p1', 300, 140], ['p2', 620, 395]],
+        lock: [896, 300, -1], start: ['s0', 's1'], dock: [32, 180],
+      },
+      {
+        title: 'Asteroid Belt',
+        tip: 'The rocks drift up and down and carry grips. Wait for a close one, then swing over. Rocks go boing!',
+        hull: [[0, 130, 64, 346, 'module'], [896, 130, 64, 346, 'module'], [0, 476, 960, 30, 'truss']],
+        holds: [['s0', 85, 250, 'r'], ['s1', 85, 350, 'r'], ['h1', 200, 190, 'u'], ['h2', 215, 330, 'u'], ['h3', 760, 200, 'u'], ['h4', 760, 340, 'u']],
+        rocks: [
+          { x: 330, y: 270, r: 28, ay: 105, per: 13, ph: 0, grips: ['l', 'r'] },
+          { x: 480, y: 270, r: 28, ay: 105, per: 13, ph: Math.PI, grips: ['l', 'r'] },
+          { x: 630, y: 270, r: 28, ay: 105, per: 13, ph: 0, grips: ['l', 'r'] },
+        ],
+        panels: [['p1', 405, 115], ['p2', 555, 430], ['p3', 820, 120]],
+        lock: [896, 300, -1], start: ['s0', 's1'], dock: [32, 180],
+      },
+      {
+        title: 'Spinning Satellite',
+        tip: 'The satellite turns! Grab its arms as they come round, and bolt the panels on its wings.',
+        hull: [[0, 130, 64, 346, 'module'], [896, 130, 64, 346, 'module'], [0, 476, 960, 30, 'truss']],
+        holds: [['s0', 85, 250, 'r'], ['s1', 85, 350, 'r'], ['h1', 200, 185, 'u'], ['h2', 205, 370, 'u'], ['hm', 290, 275, 'u'],
+          ['h3', 650, 190, 'u'], ['h4', 655, 370, 'u'], ['h5', 765, 225, 'u'], ['h6', 770, 360, 'u']],
+        sats: [{ x: 470, y: 280, r: 30, w: 0.3, a0: 0.4, arms: [[0, 106], [Math.PI / 2, 104, true], [Math.PI, 106], [Math.PI * 1.5, 104, true]],
+          holds: [['sa', 0, 118], ['sb', Math.PI, 118]], panels: [['p1', Math.PI / 2, 72], ['p2', Math.PI * 1.5, 72]] }],
+        panels: [['p3', 720, 118]],
+        lock: [896, 300, -1], start: ['s0', 's1'], dock: [32, 180],
+      },
+      {
+        title: 'Comet Run Home',
+        tip: 'Last job, the other way round: drifting rocks, a spinner and 4 panels. Then home to the airlock!',
+        hull: [[0, 130, 64, 346, 'module'], [896, 130, 64, 346, 'module'], [0, 476, 960, 30, 'truss']],
+        holds: [['s0', 875, 250, 'l'], ['s1', 875, 350, 'l'], ['h1', 760, 180, 'u'], ['h2', 755, 375, 'u'], ['h3', 330, 200, 'u'],
+          ['h4', 335, 365, 'u'], ['h5', 225, 290, 'u']],
+        rocks: [
+          { x: 470, y: 165, r: 26, ax: 60, per: 11, ph: 0, grips: ['l', 'r', 'd'] },
+          { x: 470, y: 390, r: 26, ay: 40, per: 9, ph: 1, grips: ['l', 'r', 'u'] },
+        ],
+        sats: [{ x: 620, y: 280, r: 20, w: -0.45, a0: 0, arms: [[0, 74], [Math.PI / 2, 66, true], [Math.PI, 74], [Math.PI * 1.5, 66, true]],
+          holds: [['xa', 0, 86], ['xb', Math.PI, 86]], panels: [['p1', Math.PI / 2, 52], ['p2', Math.PI * 1.5, 52]] }],
+        panels: [['p3', 400, 105], ['p4', 300, 440]],
+        lock: [64, 300, 1], start: ['s0', 's1'], dock: [928, 180],
+      },
+    ],
+  },
   // ----- END 15-1 Tethered Spacewalk -----
   //
   // ----- BEGIN 15-2 Gravity Flip Station (mode 'gravflip', js/levels/world15/gravity-flip-station.js) -----
