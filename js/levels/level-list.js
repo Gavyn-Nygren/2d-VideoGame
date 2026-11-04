@@ -3356,6 +3356,254 @@ const LEVELS = [
   // ----- END 13-4 Broomstick Race -----
   //
   // ===== END World 13 =====
+
+  /* ===== World 14 (Dino Valley, mixed): the prehistoric dinosaur world, world index 13 (js/levels/world14/), friendly
+     dinosaurs, nothing scary. Gavyn's picks (Nov 2026): 14-1 Egg Rescue (team), 14-2 Pterodactyl Express (team),
+     14-3 Tar Pit Pull (team), 14-4 Raptor Race (versus). Each level's def sits between its own BEGIN/END lines. world: 13 ===== */
+  // ----- BEGIN 14-1 Egg Rescue (mode 'eggrescue', js/levels/world14/egg-rescue.js) -----
+  // 14-1 Egg Rescue (team): carry Mama Dino's giant wobbly egg home on a leaf stretcher, one at each end. Walk together,
+  // hop together, keep the leaf level. Course tokens and rules: the top of the level file.
+  { name: 'Egg Rescue', world: 13, kind: 'team', mode: 'eggrescue', ownStep: true, ownHUD: true, noFalls: true,
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> hop <kbd>S</kbd> low',
+      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> hop <kbd>↓</kbd> low',
+      pad: 'stick: walk · down: low, <span data-glyph="a"></span> hop,',
+    },
+    tip: 'Carry the egg home on a leaf! Walk together, hop together and keep the leaf level so the egg stays on.',
+    act: { label: 'lift' },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Fern Path', front: 0,
+        tip: 'Pip leads at the front, Bo follows. Hold ▲ to get ready: you hop when you are BOTH ready!',
+        course: ['f240', 'S:Walk together! The leaf only stretches a little', 'f160', 'D:flowers', 'f120', 'S:A log! Hold hop: you jump when BOTH are ready', 'f90', 'L',
+          'f200', 'D:trike', 'f140', 'S:Uphill! The low end lifts, the high end goes low', 'f60', 'u260', 'f140', 'n', 'f110', 'd220', 'f150', 'D:mush', 'c44', 'f170',
+          'D:palm', 'f90', 'T', 'f190', 'S:Steep! Level the leaf together', 'f50', 'U200', 'f120', 'n', 'f100', 'D220', 'f150', 'L', 'f120', 'L', 'f150', 'D:mush', 'f100', 'X'],
+      },
+      {
+        title: 'River Stepping Stones', front: 1,
+        tip: 'Swap! Bo leads now. Hop stone to stone together. Stones bob and dip, so keep lifting and lowering!',
+        course: ['f240', 'S:Hop stone to stone together!', 'f110', 'R:4,6,3.2,5', 'f150', 'D:stego', 'n', 'f160', 'S:Bobbing stones! Keep the leaf level', 'f90',
+          'R:5,12,2.8,7', 'f140', 'n', 'f110', 'u200', 'f100', 'D:flowers', 'd200', 'f90', 'L', 'f150', 'D:dragonfly', 'R:6,15,2.4,9', 'f160', 'D:flowers', 'f120', 'X'],
+      },
+      {
+        title: 'Geyser Field', front: 0,
+        tip: 'Pip leads again. Warm steam vents bubble, then PUFF! Cross while they rest. If the egg pops up, stop!',
+        course: ['f240', 'S:Steam vents puff! Cross while they rest', 'f90', 'v:0', 'f200', 'D:pool', 'v:2.4', 'f160', 'n', 'f140', 'S:Two in a row: watch them both!', 'f40',
+          'v:0.6', 'f120', 'v:3.0', 'f60', 'D:trike', 'f140', 'L', 'f160', 'n', 'f100', 'u180', 'f60', 'v:1.2', 'f120', 'd180', 'f150', 'S:Old Steamy! The big one', 'f70',
+          'v:0,1', 'f220', 'D:pool', 'f100', 'X'],
+      },
+      {
+        title: "Mama's Nest", front: 1,
+        tip: 'Bo leads up the hill to Mama! Hop up the ledges one at a time and level the leaf on the saggy bridge.',
+        course: ['f220', "S:Up to Mama's nest!", 'f70', 'u240', 'f120', 'S:A ledge! Hop up, then level the leaf', 'f50', 'e28', 'f140', 'U220', 'f100', 'n', 'f110',
+          'S:Wobbly vine bridge! It sags in the middle', 'f50', 'B:300,34', 'f140', 'n', 'f100', 'e26', 'f100', 'e26', 'f90', 'U200', 'f120', 'L', 'f120', 'n', 'f100',
+          'U180', 'f100', 'D:flowers', 'f60', 'E'],
+      },
+    ],
+  },
+  // ----- END 14-1 Egg Rescue -----
+  //
+  // ----- BEGIN 14-2 Pterodactyl Express (mode 'ptero', js/levels/world14/pterodactyl-express.js) -----
+  // 14-2 Pterodactyl Express (team, Gavyn's pick): Petra the pterodactyl carries both. The flyer flaps her wings at the
+  // TOP of each wingbeat; the hanger swings from her feet, grabs fruit for the baby dinos and drops rocks on the
+  // switches that open the log gates. Course tokens: the top of the level file. The map is only the two spawns.
+  { name: 'Pterodactyl Express', world: 13, kind: 'team', mode: 'ptero', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Route',
+    act: { label: 'flap', labels: ['flap', 'grab'] },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> speed · swing <kbd>W</kbd> flap · grab <kbd>S</kbd> dive',
+      bo: '<kbd>←</kbd><kbd>→</kbd> speed · swing <kbd>↑</kbd> flap · grab <kbd>↓</kbd> dive',
+      pad: 'stick: speed · swing, <span data-glyph="a"></span> flap · grab, down dives,',
+    },
+    tip: 'Petra the pterodactyl gives you a ride! One flaps her wings, one hangs below and grabs fruit and rocks.',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Morning Delivery', flyer: 0, pal: 'morning', act: { label: 'flap', labels: ['flap', 'grab'] },
+        tip: 'Pip flies: flap at the gold TOP of the wingbeat. Bo hangs: grab fruit and drop it to the babies!',
+        course: ['f360', 'S:{F}: flap at the gold TOP!', 'f100', 'D:ferns', 'f90', 't:mango:330', 'f190', 'S:{H}: grab fruit, feed the babies!', 'f170', 'n:360:1',
+          'f220', 'D:bronto', 'f110', 't:banana:280', 'f170', 't:apple:340', 'f150', 't:mango:300', 'f200', 'n:370:2', 'f240', 'D:trike', 'f150', 'g400',
+          't:berry:290', 'f230', 'n:350:1', 'f200', 'g430', 'f150', 'S:Rocks! {H}: drop one on the switch', 'f170', 'r:310', 'f380', 's', 'f360', 'G',
+          'f220', 't:melon:300', 'f220', 'n:350:1', 'f180', 'D:eggs', 'f220', 'P'],
+      },
+      {
+        title: 'Canyon Gates', flyer: 1, pal: 'canyon', act: { label: 'flap', labels: ['grab', 'flap'] },
+        tip: 'Swap! Bo flies, Pip hangs. Mind the low canyon roofs, and drop rocks on the switches to open the gates.',
+        course: ['f360', 'S:Canyon! Mind the low roofs', 'f200', 't:apple:320', 'f150', 'c180', 'f120', 't:berry:310', 'f190', 'n:370:1', 'f170', 't:apple:330',
+          'f150', 'c70', 'f190', 'n:380:1', 'f220', 'r:300', 'f400', 's', 'f360', 'G',
+          'f200', 'g380', 'f180', 't:mango:260', 'f210', 'n:330:1', 'f150', 'g430', 'f150', 'S:Two switches! Two rocks!', 'f150', 'r:300', 'f380', 's',
+          'f220', 'r:300', 'f380', 's', 'f340', 'G',
+          'f200', 'D:stego', 'f60', 'c170', 'f110', 't:melon:310', 'f150', 't:mango:320', 'f200', 'n:380:2', 'f200', 'c70', 'f80', 'D:ferns', 'f160', 'P'],
+      },
+      {
+        title: 'Windy Cliffs', flyer: 0, pal: 'cliffs', act: { label: 'flap', labels: ['flap', 'grab'] },
+        tip: 'Pip flies again. Ride the updrafts, flap PERFECT flaps through downdrafts, and wait out headwinds!',
+        course: ['f360', 'S:Updraft! Ride it up', 'f160', 't:apple:330', 'f150', 'u:170', 'f230', 't:mango:200', 'f170', 'g340', 'f210', 'n:310:1',
+          'f200', 'S:Downdraft! PERFECT flaps only', 'f100', 'd:320', 'f170', 't:berry:240', 'f260', 'g430', 'f170', 'n:380:2',
+          'f200', 'D:bronto', 'f120', 'S:Headwind! Wait, or push on', 'f60', 'w:440', 'f220', 't:banana:300', 'f270', 'n:360:1',
+          'f240', 'r:300', 'f180', 'u:140', 'f220', 's', 'f340', 'G',
+          'f200', 'g330', 'f150', 't:melon:230', 'f190', 'd:260', 'f170', 'n:300:1', 'f190', 'g430', 'f260', 'P'],
+      },
+      {
+        title: 'Volcano Smoke Run', flyer: 1, pal: 'volcano', act: { label: 'flap', labels: ['grab', 'flap'] },
+        tip: 'Bo flies to the Big Nest! Fly over or under the sleepy smoke puffs, or Petra sneezes. ACHOO!',
+        course: ['f360', 'S:Sleepy smoke puffs! Fly around', 'f140', 'v', 'f220', 't:mango:300', 'f200', 'v', 'f170', 'n:360:1', 'f190', 't:berry:260',
+          'f170', 'v', 'f200', 'n:370:1', 'f220', 'r:300', 'f180', 'v', 'f220', 's', 'f340', 'G',
+          'f200', 't:apple:320', 'f150', 'v', 'f170', 't:banana:250', 'f200', 'n:350:2', 'f190', 'v', 'f170', 'r:310', 'f220', 'v', 'f200', 's', 'f340', 'G',
+          'f220', 't:melon:300', 'f200', 'n:380:1', 'f200', 'D:trike', 'f200', 'E'],
+      },
+    ],
+  },
+  // ----- END 14-2 Pterodactyl Express -----
+  //
+  // ----- BEGIN 14-3 Tar Pit Pull (mode 'tarpit', js/levels/world14/tar-pit-pull.js) -----
+  { name: 'Tar Pit Pull', world: 13, kind: 'team', mode: 'tarpit', ownStep: true, ownHUD: true, noFalls: true,
+    act: { label: 'pull' },
+    tip: 'Tar is sticky! Swing across on vines, then pull your partner out of the goo. Take turns!',
+    theme: { grass: '#7fbf5a', grassDark: '#5a9a44' },   // the mode paints its own swamp; this is only for core uses
+    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move · wiggle, <kbd>W</kbd> jump · grab · let go,', bo: '<kbd>←</kbd><kbd>→</kbd> move · wiggle, <kbd>↑</kbd> jump · grab · let go,',
+      pad: 'stick move · wiggle, <span data-glyph="a"></span> jump · grab · let go,' },
+    switches: {}, signs: [],
+    rooms: [
+      { // Room 1: plain vines, plain pulling
+        title: 'Sticky Steps', style: 'steps', act: { label: 'pull' },
+        tip: 'Jump to grab the vine, jump again to let go. Then your partner hops in the tar and you pull them out!',
+        cross: [{ kind: 'tied', lead: 0 }, { kind: 'tied', lead: 1 }],
+        deco: [{ k: 'palm', x: 40, y: 360, h: 170, lean: 0.2 }, { k: 'fern', x: 150, y: 360 }, { k: 'sign', x: 120, y: 360, text: 'Sticky!' },
+          { k: 'rock', x: 420, y: 360, w: 20 }, { k: 'reeds', x: 520, y: 360 }, { k: 'bones', x: 820, y: 360 }, { k: 'palm', x: 930, y: 360, h: 150, lean: -0.2 }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '.1.2........................E...', // 11
+          '######.......##tt##.......######', // 12
+          '######ttttttt######ttttttt######', // 13
+          '######ttttttt######ttttttt######', // 14
+          '######ttttttt######ttttttt######', // 15
+          '################################', // 16
+          '################################', // 17
+        ],
+      },
+      { // Room 2: vines out of reach; hook one in, swing, throw it back
+        title: 'Vine Swing Gully', style: 'gully', act: { label: 'hook' },
+        tip: 'These vines are out of reach. One hooks the vine with the hook stick, the other swings. Then throw it back!',
+        cross: [{ kind: 'pass', lead: 0 }, { kind: 'push', lead: 1 }],
+        deco: [{ k: 'fern', x: 30, y: 360, s: 0.9 }, { k: 'eggs', x: 480, y: 300 }, { k: 'palm', x: 528, y: 300, h: 130, lean: 0.15 },
+          { k: 'reeds', x: 830, y: 360 }, { k: 'fern', x: 950, y: 360, s: 1.1 }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '..............h.................', //  9
+          '.............######.............', // 10
+          '.1.2h........######.........E...', // 11
+          '######.......######.......######', // 12
+          '######ttttttt######ttttttt######', // 13
+          '######ttttttt######ttttttt######', // 14
+          '######ttttttt######ttttttt######', // 15
+          '################################', // 16
+          '################################', // 17
+        ],
+      },
+      { // Room 3: sinking logs and bubble vents
+        title: 'Sinking Logs', style: 'logs', act: { label: 'pull' },
+        tip: 'Logs sink if you both stand on them too long, so keep moving! Big tar bubbles give stuck friends a pop.',
+        cross: [{ kind: 'tied', lead: 0 }, { kind: 'tied', lead: 1 }, { kind: 'tied', lead: 0 }],
+        logs: [{ c: 12, w: 2 }, { c: 20, w: 2 }],
+        deco: [{ k: 'palm', x: 26, y: 360, h: 160, lean: 0.25 }, { k: 'sign', x: 100, y: 360, text: 'Logs sink!' }, { k: 'fern', x: 900, y: 360 }, { k: 'rock', x: 945, y: 360, w: 16 }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '.1.2.........................E..', // 11
+          '#####.......................####', // 12
+          '#####ttttttttttttttttttttttt####', // 13
+          '#####ttttttttttttttttttttttt####', // 14
+          '#####tttzttttttttztttttttztt####', // 15
+          '################################', // 16
+          '################################', // 17
+        ],
+      },
+      { // Room 4: Gerty the brontosaurus is the bridge, then one last pull
+        title: "Gerty's Tail", style: 'gerty', act: { label: 'call' },
+        tip: 'Gerty the brontosaurus makes a bridge while someone blows her leaf horn. Take turns calling!',
+        cross: [{ kind: 'gerty', lead: 1 }, { kind: 'tied', lead: 0 }],
+        deco: [{ k: 'fern', x: 125, y: 360, s: 0.7 }, { k: 'fern', x: 600, y: 360, s: 0.8 }, { k: 'eggs', x: 905, y: 360 }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '.n12.............n...........E..', // 11
+          '#####..........######.......####', // 12
+          '#####tttttttttt######ttttttt####', // 13
+          '#####tttttttttt######ttttttt####', // 14
+          '#####tttttttttt######ttttttt####', // 15
+          '################################', // 16
+          '################################', // 17
+        ],
+      },
+    ],
+  },
+  // ----- END 14-3 Tar Pit Pull -----
+  //
+  // ----- BEGIN 14-4 Raptor Race (mode 'raptor', js/levels/world14/raptor-race.js) -----
+  { name: 'Raptor Race', world: 13, kind: 'versus', mode: 'raptor', ownStep: true,
+    // side-on jungle race (MODES.raptor): the map is only the two spawns, the mode builds each round's course
+    match: { bestOf: 5 },
+    act: { label: 'dash' },
+    legend: {
+      pip: '<kbd>W</kbd> jump <kbd>S</kbd> duck <kbd>A</kbd><kbd>D</kbd> slow · fast',
+      bo: '<kbd>↑</kbd> jump <kbd>↓</kbd> duck <kbd>←</kbd><kbd>→</kbd> slow · fast',
+      pad: 'stick ◀ ▶ slow · fast, ▲ ▼ pick a path, <span data-glyph="a"></span> jump, down ducks,',
+    },
+    tip: 'Raptors run by themselves! Jump logs, duck branches, pick a path at forks, grab a speed egg and dash.',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '.....1..2.......................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+    ],
+  },
+  // ----- END 14-4 Raptor Race -----
+  //
+  // ===== END World 14 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -3405,6 +3653,10 @@ const WORLDS = [
   { name: 'Spooky Hollow', blurb: 'Roll, dig, sneak and fly through a not-too-spooky Halloween night!',
     theme: { skyTop: '#2b2155', skyBot: '#f0915a', hillFar: '#5a3f78', hillNear: '#44305f', sun: 'rgba(255, 196, 110, 0.95)', sunGlow: 'rgba(255, 150, 70, 0.38)',
       stone: '#4a4060', stoneLight: '#5c5276', stoneEdge: '#302944', grass: '#8bc46a', grassDark: '#4f8a44', plank: '#c98650', plankDark: '#7a4a2a', rope: '#f2b45a', ropeDark: '#7a4a1a' } },
+  // World 14: prehistoric dinosaurs, friendly and sunny (a warm jungle valley with a sleepy smoking volcano far away)
+  { name: 'Dino Valley', blurb: 'Carry, fly, pull and race through the land of the dinosaurs!',
+    theme: { skyTop: '#f6b26b', skyBot: '#fff1c9', hillFar: '#9fbf7a', hillNear: '#6fa45a', sun: 'rgba(255, 238, 170, 0.95)', sunGlow: 'rgba(255, 190, 110, 0.38)',
+      stone: '#6b5a4a', stoneLight: '#806c58', stoneEdge: '#4a3c30', grass: '#7ccf4f', grassDark: '#3f8f3a', plank: '#c9925a', plankDark: '#7d5530', rope: '#b9d36a', ropeDark: '#5a6e2a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);

@@ -33,6 +33,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 11. **Summer Games** (summer sports): Synchro Diving, Tandem Velodrome, Hurdle Dash, Javelin Throw
 12. **Winter Games** (winter sports): Curling, Bobsled, Ski Jump, Ice Hockey
 13. **Spooky Hollow** (Halloween, silly-spooky): Pumpkin Patch Roll, Graveyard Bone Hunt, Haunted Mansion, Broomstick Race
+14. **Dino Valley** (friendly dinosaurs): Egg Rescue, Pterodactyl Express, Tar Pit Pull, Raptor Race
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
