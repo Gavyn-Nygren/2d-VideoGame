@@ -38,7 +38,7 @@ const BUGGY = {
   half: 48, wx: 31, wy: 10, wr: 14, ext: 20,     // body half-length; wheel mounts (local), wheel radius, spring travel
   k: 34, kd: 3.4, kdUp: 6, kHard: 900, wallPen: 14, I: 1100, angDampG: 4, angDampA: 0.6,
   acc: 300, vMax: 255, brake: 560, vRev: 120, roll: 35, hold: 460, vCap: 290,
-  hopV: 245, hopCD: 0.45, tiltA: 3.2, gyro: 4.5, gyroGold: 9,
+  hopV: 245, hopCD: 0.45, springUp: 260, fMax: 6000, tiltA: 3.2, gyro: 4.5, gyroGold: 9,
   mossV: 390, rampH: 46, rampL: 110, rampKick: 0.45, pitD: 150, fillD: 110, fillNeed: 3,
   pivot: [-36, -27], clawMin: 26, clawMax: 168, clawSp: 290, clawHeavy: 215, clawAcc: 2600,
   grabR: 26, grabRGold: 44, rockR: 9, boulderR: 28, critterR: 18,
@@ -252,7 +252,7 @@ function buggyPhysics(st, dt, thr, hop) {
       const dc = (c - w.cp) / dt;
       let F = B.k * c + (dc > 0 ? B.kd : B.kdUp) * dc;
       if (c > B.ext) F += B.kHard * (c - B.ext);
-      F = Math.max(0, F);
+      F = clamp(F, 0, B.fMax);   // (a wheel jammed against a crater wall never catapults the buggy)
       const Fx = -dx * F, Fy = -dy * F;
       ax += Fx; ay += Fy;
       al += ((s.mx - b.x) * Fy - (s.my - b.y) * Fx) / B.I;
@@ -276,7 +276,8 @@ function buggyPhysics(st, dt, thr, hop) {
     const rp = st.c.pits.find(p => p.kind === 'ramp' && p.gold >= 1 && b.x > p.rampX0 - 60 && b.x < p.x0);
     if (rp && thr > 0 && vf < 275) { ax += fx * 500; ay += fy * 500; }
   }
-  if (hop && b.hopCD <= 0 && n) {
+  // (no hop on top of a moss bounce: the two together would fly over anything)
+  if (hop && b.hopCD <= 0 && n && !(b.mossT > 0)) {
     let v = B.hopV * (n === 2 ? 1 : 0.85);
     const gp = st.c.pits.find(p => (p.kind === 'hop' || p.kind === 'ramp') && p.gold >= 1 && b.x > (p.kind === 'ramp' ? p.rampX0 : p.x0 - 240) - 20 && b.x < p.x0 + 20);
     if (gp) v *= gp.kind === 'ramp' ? 1.3 : 1.35;
@@ -285,6 +286,7 @@ function buggyPhysics(st, dt, thr, hop) {
     if (gp) buggySpark(st, b.x, b.y + 30, C.gold, 10);
   }
   if (b.hopCD > 0) b.hopCD -= dt;
+  if (b.mossT > 0) b.mossT -= dt;
   // in the air: ◀ ▶ tilt; a little gyro keeps it from spinning (the gold gyro much more)
   if (!n) {
     al += thr * B.tiltA;
@@ -296,13 +298,16 @@ function buggyPhysics(st, dt, thr, hop) {
   for (const m of st.c.moss) {
     if (m.cd > 0) { m.cd -= dt; continue; }
     if (n && b.x > m.x0 + (m.x1 - m.x0) * 0.25 && b.x < m.x1 - (m.x1 - m.x0) * 0.25 && b.vy > -100) {
-      b.vy = -B.mossV; m.cd = 0.6; b.w *= 0.3;
+      b.vy = -B.mossV; m.cd = 0.6; b.w *= 0.3; b.mossT = 0.4;
       Sfx.play('buggyBoing'); buggyPop(st, b.x, b.y - 60, 'BOING!', '#d6a8ff', 28);
       for (let i = 0; i < 14; i++) buggyPart(st, b.x + (Math.random() - 0.5) * 60, b.y + 36, (Math.random() - 0.5) * 160, -60 - Math.random() * 120, 0.6, i % 2 ? '#c58cff' : '#ffb3f0', 3 + Math.random() * 3, 300);
     }
   }
   b.px = b.x;
+  // (the springs can push the body up only so fast: a wheel jammed deep against a crater wall never catapults it)
+  const vy0 = b.vy;
   b.vx += ax * dt; b.vy += ay * dt; b.w += al * dt;
+  if (b.vy < vy0 && b.vy < -B.springUp) b.vy = Math.min(vy0, -B.springUp);
   // (a speed cap: nothing can fly over a crater that is too wide)
   const sp = Math.hypot(b.vx, b.vy);
   if (Math.abs(b.vx) > B.vCap) b.vx = Math.sign(b.vx) * B.vCap;
@@ -517,7 +522,14 @@ function buggyObjects(st, dt) {
   if (cr.where === 'fly') {
     cr.vy += B.g * dt; cr.y += cr.vy * dt;
     const g = buggyGround(st, cr.x) - 14;
-    if (cr.y >= g) { cr.y = g; cr.where = 'ground'; Sfx.play('buggyThud'); }
+    // dropped over the buggy: it lands back in the hopper (the claw can't reach under the buggy)
+    if (Math.abs(cr.x - b.x) < B.half + 6 && cr.y >= b.y - 18) { cr.where = 'hopper'; Sfx.play('buggyThud'); buggyPop(st, b.x, b.y - 60, 'Clunk! Back in the hopper', '#ffffff', 18); }
+    else if (cr.y >= g) { cr.y = g; cr.where = 'ground'; cr.t = 0; Sfx.play('buggyThud'); }
+  } else if (cr.where === 'ground') {
+    // out of the claw's reach for a moment: Tow-Bot pops it back in the hopper
+    const pv = buggyPivot(st);
+    cr.t = Math.hypot(cr.x - pv.x, cr.y - 16 - pv.y) > B.clawMax ? (cr.t || 0) + dt : 0;
+    if (cr.t > 2) { cr.where = 'hopper'; Sfx.play('buggyTow'); buggyPop(st, b.x, b.y - 60, 'Tow-Bot put the crate back', '#bfe8ff', 18); }
   }
 }
 

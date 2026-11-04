@@ -3416,7 +3416,7 @@ const LEVELS = [
         tip: 'Swap! Bo drives, Pip works the claw. A huge crater? Stop at the edge and fill it up with boulders!',
         course: ['f300', 'S:Swap! {D} drives, {A} works the claw', 'f120', 'r0+80', 'f200', 'u160', 'f80', 'R+30', 'd160', 'f160',
           'b', 'f150', 'b+95', 'f330', 'r0+40', 'f150', 'R+50', 'f200', 'F', 'f150', 'h260', 'f100', 'r105+60', 'c115', 'f260',
-          'S:Too wide to jump! Fill it with boulders', 'f260', 'w220', 'f240', 'r0+30', 'f150', 'F', 'f150', 'k', 'f260', 'r0+50',
+          'S:Too wide to jump! Fill it with boulders', 'f260', 'w340', 'f240', 'r0+30', 'f150', 'F', 'f150', 'k', 'f260', 'r0+50',
           'f120', 'b', 'f280', 'R+20', 'f200', 'r0+40', 'f160', 'X'],
       },
       {
@@ -3431,7 +3431,7 @@ const LEVELS = [
         title: 'Rocket Pad', driver: 1, act: { label: 'grab', labels: ['grab', 'honk'] },
         tip: 'Bo drives to the rocket! Park in the box, honk to open the hatch, and Pip lifts the rock crate in.',
         course: ['f300', 'S:Last stretch! The rocket is waiting', 'f120', 'r0+60', 'f200', 'h260', 'f60', 'r105+50', 'c110', 'f240',
-          'b', 'f260', 'F', 'f150', 'r120+190', 'o140', 'f300', 'w200', 'f240', 'r0+40', 'f140', 'F', 'f200', 'S:Ramp! Full speed!',
+          'b', 'f260', 'F', 'f150', 'r120+190', 'o140', 'f300', 'w340', 'f240', 'r0+40', 'f140', 'F', 'f200', 'S:Ramp! Full speed!',
           'f400', 'r150+210', 'j230', 'f280', 'b', 'f260', 'k', 'f220', 'r0+40', 'f160', 'S:Park in the box under the rocket!', 'E'],
       },
     ],
