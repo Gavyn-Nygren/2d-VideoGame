@@ -653,6 +653,7 @@ MODES.planethop = {
     planethopCamera(st, 0, true);
     // the runners are the players: hide the platformer bodies every round (matchResetPlayers revives them)
     for (const p of G.players) Object.assign(p, { alive: false, respawnT: Infinity });
+    G.particles.length = 0; // (and the puff it makes where those hidden bodies stand)
   },
   go() {
     const st = G.mst; st.t0 = st.t;
@@ -702,7 +703,557 @@ MODES.planethop = {
   test: { PLANETHOP, PLANETHOP_TWISTS, build: planethopBuild, sim: planethopSim, launch: planethopLaunch, plan: planethopPlan, arcT: planethopArcT, wrap: planethopWrap, air: planethopAir, comet: planethopComet, rocket: planethopRocket },
 };
 
+
 /* ---------- drawing ---------- */
-function planethopDrawWorld() {}
-function planethopDrawTop() {}
-function planethopHud() {}
+function planethopStarShape(x, y, r, col, rot = 0) {
+  ctx.fillStyle = col; ctx.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + rot + i * Math.PI / 5, q = i % 2 ? r * 0.48 : r; ctx.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); }
+  ctx.closePath(); ctx.fill();
+}
+function planethopCamXform(cam) { ctx.translate(W / 2, H / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y); }
+function planethopView(cam, pad = 0) { const hw = W / 2 / cam.z + pad, hh = H / 2 / cam.z + pad; return { x0: cam.x - hw, x1: cam.x + hw, y0: cam.y - hh, y1: cam.y + hh }; }
+const planethopSeen = (v, x, y, r) => x + r > v.x0 && x - r < v.x1 && y + r > v.y0 && y - r < v.y1;
+// where a runner is drawn: at the start both stand on one spot, so the picture nudges them apart until they separate
+function planethopDrawPos(st, r) {
+  if (!st.ghost) return { x: r.x, y: r.y };
+  const o = st.run[1 - r.id], sep = Math.hypot(o.x - r.x, o.y - r.y), k = clamp(1 - sep / (2 * PLANETHOP.R), 0, 1) * 10 * (r.id ? 1 : -1);
+  return { x: r.x - Math.sin(r.vu) * k, y: r.y + Math.cos(r.vu) * k };
+}
+
+function planethopDrawSky(st) {
+  const cam = st.cam;
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#0b0e2e'); g.addColorStop(0.55, '#221b56'); g.addColorStop(1, '#43306e');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // nebula: soft clouds of colour, far away
+  [['rgba(255,120,200,0.13)', 0], ['rgba(90,220,230,0.10)', 1], ['rgba(180,140,255,0.13)', 2]].forEach(([col, k]) => {
+    const px = ((k * 520 + 240 - cam.x * 0.03) % 1560 + 1560) % 1560 - 300, py = 120 + k * 130 - cam.y * 0.03;
+    const rg = ctx.createRadialGradient(px, py, 10, px, py, 240);
+    rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg; ctx.fillRect(px - 240, py - 240, 480, 480);
+  });
+  // stars in three layers (nearer ones drift more as the camera moves)
+  for (const [par, n, sz, seed] of [[0.02, 70, 1.1, 1], [0.06, 44, 1.5, 2], [0.13, 24, 2, 3]]) {
+    for (let i = 0; i < n; i++) {
+      const hx = planethopHash(i, seed * 31) * (W + 60), hy = planethopHash(i + 500, seed * 17) * (H + 60);
+      const x = ((hx - cam.x * par) % (W + 60) + W + 60) % (W + 60) - 30, y = ((hy - cam.y * par) % (H + 60) + H + 60) % (H + 60) - 30;
+      const tw = reduceMotion ? 1 : 0.5 + 0.5 * Math.abs(Math.sin(G.clock * (0.7 + (i % 5) * 0.35) + i));
+      ctx.globalAlpha = 0.35 + 0.65 * tw;
+      const col = i % 9 === 0 ? '#ffe3a0' : i % 7 === 0 ? '#bfe8ff' : '#ffffff';
+      if (seed === 3 && i % 4 === 0) planethopStarShape(x, y, sz * 2.2, col, 0); else { ctx.fillStyle = col; circle(x, y, sz); ctx.fill(); }
+    }
+  }
+  ctx.globalAlpha = 1;
+  // the big ringed planet far away and the little Orbit Outpost space station
+  const span = 2600, bx = ((780 - cam.x * 0.015) % span + span) % span - 400, by = 110 - cam.y * 0.012;
+  if (bx > -180 && bx < W + 180) planethopDrawRinged(bx, by);
+  const sx = ((260 - cam.x * 0.025) % 2000 + 2000) % 2000 - 300, sy = 70 - cam.y * 0.02;
+  if (sx > -80 && sx < W + 80) planethopDrawStation(sx, sy);
+}
+function planethopDrawRinged(x, y) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(-0.28); ctx.scale(0.8, 0.8);
+  ctx.globalAlpha = 0.42; // far away: faint, so it never looks like a planet to land on
+  ctx.strokeStyle = 'rgba(255,214,170,0.45)'; ctx.lineWidth = 7;
+  ctx.beginPath(); ctx.ellipse(0, 0, 112, 26, 0, Math.PI, Math.PI * 2); ctx.stroke();
+  const g = ctx.createRadialGradient(-22, -24, 8, 0, 0, 66);
+  g.addColorStop(0, '#f7d9ff'); g.addColorStop(0.6, '#c39be8'); g.addColorStop(1, '#8a64c0');
+  ctx.fillStyle = g; circle(0, 0, 64); ctx.fill();
+  ctx.save(); circle(0, 0, 64); ctx.clip();
+  ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(-70, -26, 140, 10); ctx.fillRect(-70, 4, 140, 7); ctx.fillRect(-70, 26, 140, 12);
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(255,214,170,0.6)'; ctx.lineWidth = 7;
+  ctx.beginPath(); ctx.ellipse(0, 0, 112, 26, 0, 0, Math.PI); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,240,215,0.35)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(0, 0, 100, 21, 0, 0, Math.PI); ctx.stroke();
+  ctx.restore();
+}
+function planethopDrawStation(x, y) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(G.clock * 0.15);
+  ctx.strokeStyle = 'rgba(200,210,240,0.55)'; ctx.lineWidth = 3; circle(0, 0, 18); ctx.stroke();
+  ctx.lineWidth = 1.5; for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 18, Math.sin(a) * 18); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(200,210,240,0.7)'; circle(0, 0, 5); ctx.fill();
+  ctx.fillStyle = 'rgba(120,170,255,0.55)'; ctx.fillRect(-36, -4, 14, 8); ctx.fillRect(22, -4, 14, 8);
+  const on = Math.sin(G.clock * 4) > 0.3;
+  ctx.fillStyle = on ? '#ff8a8a' : 'rgba(255,138,138,0.25)'; circle(18, 0, 2); ctx.fill();
+  ctx.fillStyle = !on ? '#8affb8' : 'rgba(138,255,184,0.25)'; circle(-18, 0, 2); ctx.fill();
+  ctx.restore();
+}
+
+function planethopCols(q) {
+  if (q.kind === 'rock') return PLANETHOP_COLS.rock[q.col % PLANETHOP_COLS.rock.length];
+  return PLANETHOP_COLS[q.kind] || PLANETHOP_COLS.rock[0];
+}
+// a planet: shaded ball, craters (they turn with a spinny planet), a face on some, a checkered band on the finish
+function planethopDrawPlanet(st, q) {
+  const [base, dark, hi] = planethopCols(q), x = q.cx, y = q.cy, r = q.r;
+  const wob = q.wob > 0 ? Math.sin(q.wob * 38) * 5 * q.wob / 0.5 : 0;
+  ctx.fillStyle = 'rgba(255,255,255,0.05)'; circle(x, y, r + 9); ctx.fill();
+  const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.42, r * 0.08, x, y, r * 1.02);
+  g.addColorStop(0, hi); g.addColorStop(0.55, base); g.addColorStop(1, dark);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.ellipse(x, y, r + wob, r - wob, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.ellipse(x, y, r + wob, r - wob, 0, 0, Math.PI * 2); ctx.clip();
+  if (q.kind === 'jelly') {
+    // bubbles drifting up inside the jelly, and a shine
+    for (let k = 0; k < 6; k++) {
+      const bx = x + (planethopHash(q.seed, k) - 0.5) * r * 1.3, ph = ((G.clock * 0.25 + planethopHash(k, q.seed)) % 1), byy = y + r * 0.8 - ph * r * 1.6;
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 * (1 - ph)) + ')'; ctx.lineWidth = 1.5; circle(bx, byy, 2.5 + planethopHash(k + 3, q.seed) * 4); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(x - r * 0.4, y - r * 0.45, r * 0.28, r * 0.13, -0.6, 0, Math.PI * 2); ctx.fill();
+  } else {
+    // craters turn with the planet
+    const nC = q.kind === 'finish' || q.kind === 'start' ? 2 : q.r < 40 ? 3 : 4;
+    for (let k = 0; k < nC; k++) {
+      const a = planethopHash(q.seed, k * 3) * 6.28 + q.rot, dd = r * (0.3 + planethopHash(q.seed, k * 3 + 1) * 0.45), cr = r * (0.09 + planethopHash(q.seed, k * 3 + 2) * 0.1);
+      const cx = x + Math.cos(a) * dd, cy = y + Math.sin(a) * dd;
+      if (q.face && Math.hypot(cx - x, cy - y + r * 0.05) < r * 0.5) continue; // keep the face clear
+      ctx.fillStyle = 'rgba(40,30,80,0.18)'; ctx.beginPath(); ctx.ellipse(cx, cy, cr, cr * 0.8, a, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx - 1, cy - 1, cr, cr * 0.8, a, Math.PI, Math.PI * 1.8); ctx.stroke();
+    }
+    if (q.spin) {
+      // swirly stripes that show the spin
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = r * 0.12;
+      for (let k = 0; k < 3; k++) { const a = q.rot + k * 2.09; ctx.beginPath(); ctx.arc(x, y, r * 0.72, a, a + 0.9); ctx.stroke(); }
+    }
+    if (q.kind === 'finish') {
+      // a checkered band round the middle
+      const n = 16;
+      for (let k = 0; k < n; k++) for (let j = 0; j < 2; j++) {
+        ctx.fillStyle = (k + j) % 2 ? '#ffffff' : '#2b2850';
+        ctx.fillRect(x - r + k * (2 * r / n), y - 8 + j * 8, 2 * r / n + 0.5, 8.5);
+      }
+    }
+    if (q.kind === 'start') { ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x - r, y - 20, 2 * r, 6); ctx.fillRect(x - r, y + 14, 2 * r, 6); }
+  }
+  // the shady side
+  const sh = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.75, x - r * 0.3, y - r * 0.35, r * 1.6);
+  sh.addColorStop(0, 'rgba(30,20,70,0)'); sh.addColorStop(1, 'rgba(30,20,70,0.32)');
+  ctx.fillStyle = sh; ctx.fillRect(x - r - 8, y - r - 8, 2 * r + 16, 2 * r + 16);
+  ctx.restore();
+  ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, y, r + wob, r - wob, 0, 0, Math.PI * 2); ctx.stroke();
+  if (q.face) planethopDrawFace(st, q, x, y + (q.kind === 'finish' ? -r * 0.32 : 0), r);
+  if (q.kind === 'start') text('START', x, y + 2, Math.round(r * 0.3), 'rgba(255,255,255,0.85)', 'center');
+  if (q.spin) {
+    // three chevrons round the outside, turning with it
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (let k = 0; k < 3; k++) {
+      const a = q.rot + k * 2.09 + 0.6, s = Math.sign(q.spin), R0 = r + 7;
+      const ax = x + Math.cos(a) * R0, ay = y + Math.sin(a) * R0, tx = -Math.sin(a) * s, ty = Math.cos(a) * s, nx = Math.cos(a), ny = Math.sin(a);
+      ctx.beginPath(); ctx.moveTo(ax - tx * 6 + nx * 5, ay - ty * 6 + ny * 5); ctx.lineTo(ax, ay); ctx.lineTo(ax - tx * 6 - nx * 5, ay - ty * 6 - ny * 5); ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+}
+// a friendly face: eyes that follow the nearer runner, a blink, a smile (an "o" when someone lands on it)
+function planethopDrawFace(st, q, x, y, r) {
+  let tx = x, ty = y + 50, bd = 1e9;
+  for (const rn of st.run) { const d = Math.hypot(rn.x - x, rn.y - y); if (d < bd) { bd = d; tx = rn.x; ty = rn.y; } }
+  const la = Math.atan2(ty - y, tx - x), lk = Math.min(1, bd / 200) * r * 0.035;
+  const s = r / 60, ex = 13 * s, ey = y - 6 * s, er = 5.2 * s;
+  const blink = q.face === 2 || ((G.clock * 0.9 + q.seed * 0.013) % 3.6) < 0.13;
+  for (const sx of [-1, 1]) {
+    if (blink) { ctx.strokeStyle = 'rgba(40,30,70,0.75)'; ctx.lineWidth = 2.2 * s; ctx.beginPath(); ctx.arc(x + sx * ex, ey, er * 0.8, 0.2, Math.PI - 0.2); ctx.stroke(); }
+    else {
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(x + sx * ex, ey, er, er * 1.15, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = C.ink; circle(x + sx * ex + Math.cos(la) * lk * 1.6, ey + Math.sin(la) * lk * 1.6, er * 0.52); ctx.fill();
+      ctx.fillStyle = '#ffffff'; circle(x + sx * ex + Math.cos(la) * lk * 1.6 - er * 0.18, ey + Math.sin(la) * lk * 1.6 - er * 0.2, er * 0.17); ctx.fill();
+    }
+  }
+  ctx.fillStyle = 'rgba(255,120,150,0.4)'; circle(x - ex - 6 * s, ey + 9 * s, 4 * s); ctx.fill(); circle(x + ex + 6 * s, ey + 9 * s, 4 * s); ctx.fill();
+  const oh = q.wob > 0 || st.run.some(rn => rn.mode === 'ground' && rn.pi === q.i && rn.sq > 0.12);
+  ctx.strokeStyle = 'rgba(40,30,70,0.8)'; ctx.lineWidth = 2.2 * s; ctx.lineCap = 'round';
+  if (oh) { ctx.fillStyle = 'rgba(60,30,60,0.8)'; ctx.beginPath(); ctx.ellipse(x, ey + 12 * s, 3.5 * s, 4.5 * s, 0, 0, Math.PI * 2); ctx.fill(); }
+  else if (q.face === 3) { ctx.fillStyle = 'rgba(60,30,60,0.75)'; ctx.beginPath(); ctx.arc(x, ey + 8 * s, 7 * s, 0.1, Math.PI - 0.1); ctx.closePath(); ctx.fill(); }
+  else { ctx.beginPath(); ctx.arc(x, ey + 7 * s, 6 * s, 0.35, Math.PI - 0.35); ctx.stroke(); }
+  ctx.lineCap = 'butt';
+  if (q.face === 2 && !oh) text('z', x + ex + 14 * s, ey - 14 * s - Math.sin(G.clock * 2) * 3, Math.round(12 * s), 'rgba(255,255,255,0.7)', 'center');
+}
+// the finish rocket: white and red, a round window; at the end it carries the winner up and away
+function planethopDrawRocket(st) {
+  const rk = planethopRocket(st.c), ce = st.cele;
+  let lift = 0, flame = 0, shake = 0;
+  if (ce) { const t = ce.t; lift = t < 0.45 ? 0 : Math.pow(t - 0.45, 2) * 320; flame = t > 0.2 ? 1 : t / 0.2; shake = t < 0.45 ? Math.sin(t * 90) * 1.5 : 0; }
+  ctx.save(); ctx.translate(rk.fx, rk.fy); ctx.rotate(rk.a + Math.PI / 2);
+  // the launch pad stays put
+  ctx.fillStyle = '#6a6f8c'; rr(-24, -5, 48, 8, 3); ctx.fill();
+  ctx.fillStyle = '#ffd77a'; for (let k = -2; k <= 2; k++) { circle(k * 10, -1, 1.6); ctx.fill(); }
+  ctx.translate(shake, -lift - 4);
+  if (flame > 0) {
+    const fl = 26 + Math.sin(G.clock * 40) * 6 + (ce && ce.t > 0.45 ? 26 : 0);
+    ctx.fillStyle = 'rgba(255,170,60,0.9)'; ctx.beginPath(); ctx.moveTo(-9, -4); ctx.quadraticCurveTo(0, fl * flame * 1.1, 9, -4); ctx.fill();
+    ctx.fillStyle = 'rgba(255,240,150,0.95)'; ctx.beginPath(); ctx.moveTo(-5, -4); ctx.quadraticCurveTo(0, fl * flame * 0.6, 5, -4); ctx.fill();
+  }
+  // fins
+  ctx.fillStyle = '#ff5f6d'; ctx.strokeStyle = '#a3313e'; ctx.lineWidth = 2;
+  for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * 12, -28); ctx.quadraticCurveTo(s * 26, -14, s * 24, 2); ctx.lineTo(s * 10, -6); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  // body
+  ctx.fillStyle = '#f7f4ff'; ctx.strokeStyle = '#8f8ab0'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(-13, -4); ctx.quadraticCurveTo(-17, -46, 0, -84); ctx.quadraticCurveTo(17, -46, 13, -4); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ff5f6d'; ctx.beginPath(); ctx.moveTo(-7.5, -70); ctx.quadraticCurveTo(0, -76, 7.5, -70); ctx.quadraticCurveTo(4, -80, 0, -84); ctx.quadraticCurveTo(-4, -80, -7.5, -70); ctx.fill();
+  ctx.fillStyle = '#ff5f6d'; ctx.fillRect(-14, -14, 28, 5);
+  // the window, with the winner waving inside
+  ctx.fillStyle = '#2b3f63'; circle(0, -44, 9.5); ctx.fill(); ctx.strokeStyle = '#ffc53d'; ctx.lineWidth = 3; circle(0, -44, 9.5); ctx.stroke();
+  if (ce) { ctx.fillStyle = PCOL[ce.id]; circle(0, -42, 7); ctx.fill(); ctx.fillStyle = '#fff'; circle(-2.5, -44, 1.8); ctx.fill(); circle(2.5, -44, 1.8); ctx.fill(); ctx.fillStyle = C.ink; circle(-2.3, -43.7, 0.9); ctx.fill(); circle(2.7, -43.7, 0.9); ctx.fill(); }
+  else { ctx.fillStyle = 'rgba(190,230,255,0.6)'; ctx.beginPath(); ctx.ellipse(-3, -47, 3, 4.5, -0.5, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+}
+// a little alien cheering on a planet at angle a
+function planethopDrawAlien(q, a, col, ph, cheer) {
+  const bob = reduceMotion ? 0 : Math.abs(Math.sin(G.clock * (cheer ? 9 : 2.2) + ph)) * (cheer ? 7 : 2);
+  ctx.save(); ctx.translate(q.cx + Math.cos(a) * q.r, q.cy + Math.sin(a) * q.r); ctx.rotate(a + Math.PI / 2); ctx.translate(0, -bob);
+  ctx.fillStyle = col; ctx.strokeStyle = 'rgba(30,60,30,0.6)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.ellipse(0, -11, 9, 11, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -21); ctx.lineTo(Math.sin(G.clock * 3 + ph) * 3, -30); ctx.stroke();
+  ctx.fillStyle = '#ffd77a'; circle(Math.sin(G.clock * 3 + ph) * 3, -31, 2.6); ctx.fill();
+  ctx.fillStyle = '#fff'; circle(0, -13, 5); ctx.fill(); ctx.fillStyle = C.ink; circle(0.8, -12.5, 2.4); ctx.fill();
+  ctx.strokeStyle = 'rgba(30,60,30,0.8)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(0, -6, 3, 0.2, Math.PI - 0.2); ctx.stroke();
+  const wv = Math.sin(G.clock * (cheer ? 14 : 4) + ph) * (cheer ? 0.8 : 0.3);
+  ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-8, -10); ctx.lineTo(-15, -18 + wv * 6); ctx.moveTo(8, -10); ctx.lineTo(15, -18 - wv * 6); ctx.stroke();
+  ctx.lineCap = 'butt';
+  ctx.restore();
+}
+function planethopDrawWorm(st) {
+  const w = st.c.worm; if (!w) return;
+  for (const [x, y, s, k] of [[w.x, w.y, 1, 0], [w.ex, w.ey, 0.6, 1]]) {
+    ctx.save(); ctx.translate(x, y);
+    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 42 * s);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)'); g.addColorStop(0.35, 'rgba(160,110,255,0.6)'); g.addColorStop(1, 'rgba(90,220,230,0)');
+    ctx.fillStyle = g; circle(0, 0, 42 * s); ctx.fill();
+    ctx.rotate(G.clock * (k ? -2.4 : 2.4));
+    ctx.lineWidth = 3.5 * s; ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      ctx.strokeStyle = ['#b98cff', '#7ff0e0', '#ffffff'][i];
+      ctx.beginPath();
+      for (let j = 0; j <= 18; j++) { const u = j / 18, a = u * 4.4 + i * 2.09, rr0 = (4 + u * 28) * s; ctx.lineTo(Math.cos(a) * rr0, Math.sin(a) * rr0); }
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+    ctx.restore();
+  }
+  text('Shortcut!', w.x, w.y - 46, 15, '#d9c8ff', 'center');
+}
+function planethopDrawComet(cm, t) {
+  const q = planethopComet(cm, t); if (!q) return;
+  const sp = Math.hypot(cm.vx, cm.vy), ux = cm.vx / sp, uy = cm.vy / sp;
+  const g = ctx.createLinearGradient(q.x, q.y, q.x - ux * 110, q.y - uy * 110);
+  g.addColorStop(0, 'rgba(190,232,255,0.8)'); g.addColorStop(1, 'rgba(190,232,255,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(q.x - uy * 14, q.y + ux * 14); ctx.lineTo(q.x - ux * 110, q.y - uy * 110); ctx.lineTo(q.x + uy * 14, q.y - ux * 14); ctx.closePath(); ctx.fill();
+  for (let k = 0; k < 4; k++) { const d = 30 + k * 22 + ((G.clock * 60) % 22); planethopStarShape(q.x - ux * d + Math.sin(k * 3 + G.clock * 5) * 6, q.y - uy * d + Math.cos(k * 3 + G.clock * 5) * 6, 3, 'rgba(255,255,255,0.7)', G.clock); }
+  ctx.fillStyle = '#e8f6ff'; circle(q.x, q.y, PLANETHOP.cometR); ctx.fill();
+  ctx.strokeStyle = '#8fcdf0'; ctx.lineWidth = 2; circle(q.x, q.y, PLANETHOP.cometR); ctx.stroke();
+  ctx.fillStyle = C.ink; circle(q.x - 4 + ux * 3, q.y - 3 + uy * 3, 2); ctx.fill(); circle(q.x + 4 + ux * 3, q.y - 3 + uy * 3, 2); ctx.fill();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(q.x + ux * 3, q.y + 2 + uy * 3, 4, 0.2, Math.PI - 0.2); ctx.stroke();
+}
+function planethopDrawWorld() {
+  const st = G.mst; if (!st.c || !st.cam) return;
+  const c = st.c, cam = st.cam;
+  planethopDrawSky(st);
+  ctx.save(); planethopCamXform(cam);
+  const v = planethopView(cam, 40);
+  // gravity wells: a faint dotted ring (in a runner's colour while it pulls that runner)
+  ctx.setLineDash([4, 10]); ctx.lineWidth = 2;
+  for (const q of c.pl) {
+    const wr = q.r + q.well;
+    if (!planethopSeen(v, q.cx, q.cy, wr)) continue;
+    const who = st.run.filter(r => r.mode === 'air' && r.well === q.i);
+    ctx.strokeStyle = who.length ? (who.length === 2 ? 'rgba(255,215,122,0.55)' : PCOL[who[0].id]) : 'rgba(200,190,255,0.16)';
+    ctx.globalAlpha = who.length ? 0.6 : 1;
+    circle(q.cx, q.cy, wr); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  // moon orbits
+  ctx.strokeStyle = 'rgba(220,210,255,0.18)'; ctx.setLineDash([2, 8]);
+  for (const q of c.pl) if (q.host >= 0) { const h = c.pl[q.host]; if (planethopSeen(v, h.cx, h.cy, q.orb.rad + 30)) { circle(h.cx, h.cy, q.orb.rad); ctx.stroke(); } }
+  ctx.setLineDash([]);
+  planethopDrawWorm(st);
+  for (const q of c.pl) if (planethopSeen(v, q.cx, q.cy, q.r + 20)) planethopDrawPlanet(st, q);
+  // the finish: rocket, a flag and two cheering aliens; a flag at the start
+  const fin = c.byCi[c.n];
+  if (planethopSeen(v, fin.cx, fin.cy, fin.r + 140)) {
+    const cheer = !!st.cele;
+    planethopDrawAlien(fin, c.rocketA - 0.95, '#8fe36a', 0, cheer);
+    planethopDrawAlien(fin, c.rocketA + 0.95, '#6ad3c4', 1.7, cheer);
+    planethopDrawFlag(fin, c.rocketA + 0.5, '#ffc53d');
+    planethopDrawRocket(st);
+  }
+  const s0 = c.byCi[0];
+  if (planethopSeen(v, s0.cx, s0.cy, s0.r + 80)) { planethopDrawFlag(s0, -Math.PI / 2 - 0.55, '#7fd6ff'); planethopDrawAlien(s0, -Math.PI / 2 + 0.75, '#b28dff', 3, false); }
+  // stars to grab
+  for (const s of c.stars) {
+    if (!planethopSeen(v, s.x, s.y, 40)) continue;
+    if (s.taken >= 0) continue;
+    const y = s.y + Math.sin(G.clock * 2.4 + s.ph) * 5, rot = Math.sin(G.clock * 1.5 + s.ph) * 0.25;
+    const gl = ctx.createRadialGradient(s.x, y, 2, s.x, y, 30); gl.addColorStop(0, 'rgba(255,215,122,0.55)'); gl.addColorStop(1, 'rgba(255,215,122,0)');
+    ctx.fillStyle = gl; circle(s.x, y, 30); ctx.fill();
+    planethopStarShape(s.x, y + 1, 16, '#b9850f', rot); planethopStarShape(s.x, y, 15, C.gold, rot);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(s.x - 4, y - 4, 2.4); ctx.fill();
+  }
+  for (const cm of c.comets) planethopDrawComet(cm, st.t);
+  ctx.restore();
+}
+function planethopDrawFlag(q, a, col) {
+  ctx.save(); ctx.translate(q.cx + Math.cos(a) * q.r, q.cy + Math.sin(a) * q.r); ctx.rotate(a + Math.PI / 2);
+  ctx.fillStyle = '#e6e1f7'; ctx.fillRect(-1.5, -46, 3, 46);
+  const wv = Math.sin(G.clock * 5) * 3;
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(1.5, -46); ctx.quadraticCurveTo(14, -42 + wv, 26, -38); ctx.lineTo(1.5, -28); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+// a runner: Pip or Bo in a bubble helmet with a little jet pack, feet on the planet
+function planethopDrawRunner(st, r) {
+  if (r.hidden) return;
+  const col = PCOL[r.id], dk = PDARK[r.id], pos = planethopDrawPos(st, r);
+  ctx.save(); ctx.translate(pos.x, pos.y); ctx.rotate(r.vu + Math.PI / 2);
+  if (r.puffT > 0) {
+    // the jet puff's flame, pointing away from where it pushes
+    const k = r.puffT / 0.35;
+    ctx.save(); ctx.rotate(r.puffAng - r.vu - Math.PI / 2 + Math.PI);
+    ctx.fillStyle = r.puffK > 1 ? 'rgba(255,215,122,0.9)' : 'rgba(255,160,70,0.9)';
+    ctx.beginPath(); ctx.moveTo(8, -6); ctx.quadraticCurveTo(14 + 34 * k, 0, 8, 6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,250,210,0.95)'; ctx.beginPath(); ctx.moveTo(8, -3); ctx.quadraticCurveTo(12 + 18 * k, 0, 8, 3); ctx.fill();
+    ctx.restore();
+  }
+  const sq = r.sq;
+  ctx.translate(0, 13); ctx.scale(r.face * (1 + sq * 0.35), 1 - sq * 0.3); ctx.translate(0, -13);
+  // jet pack on the back
+  ctx.fillStyle = '#b8bdd6'; ctx.strokeStyle = '#6a6f8c'; ctx.lineWidth = 1.5; rr(-16, -9, 7, 15, 3); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = r.gold ? C.gold : '#ff8a5c'; circle(-12.5, -5, 1.8); ctx.fill();
+  // feet: a little run cycle on the ground, tucked in the air
+  const ground = r.mode === 'ground', ph = ground && Math.abs(r.s) > 20 ? Math.sin(r.step / 7) : 0;
+  ctx.fillStyle = dk;
+  ctx.beginPath(); ctx.ellipse(-4 + ph * 4, ground ? 11 : 9, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(5 - ph * 4, ground ? 11 : 9, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+  // ears (Bo) under the helmet
+  if (r.id === 1) { ctx.fillStyle = col; ctx.strokeStyle = dk; ctx.lineWidth = 2; for (const ex of [-6, 6]) { circle(ex, -12, 4.2); ctx.fill(); ctx.stroke(); } }
+  // body
+  ctx.fillStyle = col; ctx.strokeStyle = dk; ctx.lineWidth = 2.2;
+  rr(-10, -12, 20, 22, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; rr(-7, -9, 7, 8, 4); ctx.fill();
+  if (r.id === 0) { ctx.strokeStyle = '#3f8f5c'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(1, -16); ctx.stroke(); ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(4.5, -17, 4.5, 2.2, -0.5, 0, Math.PI * 2); ctx.fill(); }
+  // face (looks ahead)
+  const ey = -4;
+  if (r.dizzy > 0 || (r.mode === 'tow' && r.tow && r.tow.kind === 'tow')) {
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.6;
+    for (const ex of [-2, 5]) { ctx.beginPath(); ctx.moveTo(ex - 2, ey - 2); ctx.lineTo(ex + 2, ey + 2); ctx.moveTo(ex + 2, ey - 2); ctx.lineTo(ex - 2, ey + 2); ctx.stroke(); }
+  } else {
+    for (const ex of [-2, 5]) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(ex, ey, 2.8, 3.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = C.ink; circle(ex + 1, ey + 0.5, 1.5); ctx.fill(); }
+  }
+  ctx.fillStyle = 'rgba(255,120,140,0.45)'; circle(-5, ey + 5, 1.8); ctx.fill(); circle(8, ey + 5, 1.8); ctx.fill();
+  if (r.popT < 0.9 || r.mode === 'air') { ctx.strokeStyle = C.ink; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(2, ey + 4, 2.4, 0.2, Math.PI - 0.2); ctx.stroke(); }
+  // the bubble helmet
+  ctx.fillStyle = 'rgba(200,235,255,0.16)'; circle(0, -3, 16.5); ctx.fill();
+  ctx.strokeStyle = 'rgba(235,248,255,0.8)'; ctx.lineWidth = 1.6; circle(0, -3, 16.5); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(0, -3, 13, -2.6, -1.9); ctx.stroke();
+  ctx.restore();
+  if (r.dizzy > 0) for (let i = 0; i < 3; i++) { const a = G.clock * 9 + i * 2.1; planethopStarShape(pos.x + Math.cos(a) * 16 + Math.cos(r.vu) * 24, pos.y + Math.sin(a) * 5 + Math.sin(r.vu) * 24, 4, C.gold, 0); }
+}
+// Tow-bot: a round friendly robot with one big eye and a little propeller, holding a tractor beam
+function planethopDrawTowBot(st, r) {
+  if (r.mode !== 'tow' || !r.tow) return;
+  const gold = r.tow.kind === 'lift', k = r.tow.t / r.tow.T, a = Math.min(1, k * 5, (1 - k) * 6 + 0.3);
+  const bx = r.x + Math.sin(G.clock * 3) * 3, by = r.y - 48 + Math.sin(G.clock * 6) * 2;
+  ctx.save(); ctx.globalAlpha = clamp(a, 0, 1);
+  const g = ctx.createLinearGradient(bx, by, r.x, r.y);
+  g.addColorStop(0, gold ? 'rgba(255,215,122,0.75)' : 'rgba(255,150,210,0.7)'); g.addColorStop(1, gold ? 'rgba(255,215,122,0.15)' : 'rgba(255,150,210,0.12)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(bx - 6, by + 8); ctx.lineTo(r.x - 20, r.y + 6); ctx.lineTo(r.x + 20, r.y + 6); ctx.lineTo(bx + 6, by + 8); ctx.closePath(); ctx.fill();
+  // propeller
+  const pw = Math.abs(Math.sin(G.clock * 30)) * 14 + 3;
+  ctx.fillStyle = '#6a6f8c'; ctx.fillRect(bx - 1.5, by - 20, 3, 7);
+  ctx.fillStyle = gold ? '#ffd77a' : '#ff8fc7'; ctx.beginPath(); ctx.ellipse(bx, by - 20, pw, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  // body
+  const bg = ctx.createRadialGradient(bx - 4, by - 5, 2, bx, by, 15);
+  bg.addColorStop(0, '#ffffff'); bg.addColorStop(1, gold ? '#e8c46a' : '#b8bdd6');
+  ctx.fillStyle = bg; circle(bx, by, 14); ctx.fill();
+  ctx.strokeStyle = '#6a6f8c'; ctx.lineWidth = 2; circle(bx, by, 14); ctx.stroke();
+  ctx.fillStyle = '#2b2850'; rr(bx - 9, by - 7, 18, 10, 5); ctx.fill();
+  ctx.fillStyle = '#7ff0e0'; circle(bx + 1, by - 2, 3.3); ctx.fill(); ctx.fillStyle = '#ffffff'; circle(bx + 2, by - 3, 1.2); ctx.fill();
+  ctx.strokeStyle = '#2b2850'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(bx, by + 6, 3.5, 0.2, Math.PI - 0.2); ctx.stroke();
+  ctx.strokeStyle = '#8f94b3'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(bx - 12, by + 4); ctx.lineTo(bx - 16, by + 13); ctx.moveTo(bx + 12, by + 4); ctx.lineTo(bx + 16, by + 13); ctx.stroke();
+  ctx.lineCap = 'butt';
+  ctx.restore();
+}
+function planethopWordY(x, y, below) {
+  const b = G.matchHudBox; if (!b) return y;
+  return y < (hudBig() ? 104 : 86) && x > b.x0 - 60 && x < b.x1 + 60 ? Math.max(y, below) : y;
+}
+function planethopDrawTop() {
+  const st = G.mst, m = G.match; if (!st.c || !st.run || !st.cam) return;
+  const cam = st.cam, big = hudBig();
+  ctx.save(); planethopCamXform(cam);
+  const order = st.run.slice().sort((a, b) => a.prog - b.prog);
+  for (const r of order) planethopDrawRunner(st, r);
+  for (const r of st.run) planethopDrawTowBot(st, r);
+  for (const q of st.vis.fx) {
+    const a = clamp(q.life / q.max, 0, 1); ctx.globalAlpha = a; ctx.fillStyle = q.col;
+    if (q.kind === 'spark') planethopStarShape(q.x, q.y, q.size * (0.6 + 0.6 * a), q.col, q.life * 4);
+    else if (q.kind === 'smoke') { circle(q.x, q.y, q.size * (1.6 - 0.6 * a)); ctx.fill(); }
+    else { circle(q.x, q.y, q.size * (0.5 + 0.5 * a)); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+  for (const w of st.vis.warps) { const k = w.t / 0.6; ctx.strokeStyle = 'rgba(185,140,255,' + (1 - k) + ')'; ctx.lineWidth = 4 * (1 - k) + 1; circle(w.x, w.y, 10 + 50 * k); ctx.stroke(); }
+  ctx.restore();
+  // words over the runners (screen space, so they read the same at any zoom)
+  for (const r of st.run) if (r.popT < 1 && r.pop && !r.hidden) {
+    const k = r.popT / 1, s = planethopToScreen(cam, r.x, r.y);
+    ctx.globalAlpha = 1 - k * k;
+    bigText(r.pop, s.x, planethopWordY(s.x, s.y - 34 - 24 * k, s.y + 40 + 20 * k), big ? 24 : 18, r.popCol, 1 + 0.3 * Math.max(0, 1 - k * 5));
+    ctx.globalAlpha = 1;
+  }
+  for (const w of st.vis.words) { const k = w.t / 0.8, s = planethopToScreen(cam, w.x, w.y); ctx.globalAlpha = 1 - k; bigText(w.text, s.x, s.y - 24 - 18 * k, big ? 22 : 16, w.col); ctx.globalAlpha = 1; }
+  // a runner off the screen: a marker at the edge pointing to them
+  for (const r of st.run) {
+    if (r.hidden) continue;
+    const s = planethopToScreen(cam, r.x, r.y), pad = big ? 34 : 26;
+    if (s.x > -10 && s.x < W + 10 && s.y > -10 && s.y < H + 10) continue;
+    const ex = clamp(s.x, pad, W - pad), ey = clamp(s.y, pad + (big ? 60 : 50), H - pad - (big ? 60 : 46)), a = Math.atan2(s.y - ey, s.x - ex), rr0 = big ? 20 : 15;
+    ctx.fillStyle = 'rgba(28,26,54,0.85)'; circle(ex, ey, rr0 + 3); ctx.fill();
+    ctx.fillStyle = PCOL[r.id]; circle(ex, ey, rr0); ctx.fill();
+    ctx.fillStyle = PCOL[r.id]; ctx.beginPath(); ctx.moveTo(ex + Math.cos(a) * (rr0 + 12), ey + Math.sin(a) * (rr0 + 12)); ctx.lineTo(ex + Math.cos(a + 0.5) * (rr0 + 2), ey + Math.sin(a + 0.5) * (rr0 + 2)); ctx.lineTo(ex + Math.cos(a - 0.5) * (rr0 + 2), ey + Math.sin(a - 0.5) * (rr0 + 2)); ctx.closePath(); ctx.fill();
+    text(NAMES[r.id][0], ex, ey + 1, big ? 20 : 15, '#fff', 'center');
+  }
+  // name tags through the intro card, "Round N" and 3-2-1 (the framework draws none for hidden players)
+  const tagA = G.introT > 0 ? 1 - clamp(G.introT / 0.5, 0, 1) : m && (m.phase === 'ready' || m.phase === 'count') ? 1 : 0;
+  if (tagA > 0) for (const r of st.run) {
+    const p0 = planethopDrawPos(st, r), s = planethopToScreen(cam, p0.x, p0.y), cpu = planethopCpu(r.id), hw = cpu ? 30 : 18;
+    const x = s.x + (st.ghost ? (r.id ? 1 : -1) * (hw + 2) : 0), y = s.y - 30 * cam.z - 16;
+    ctx.globalAlpha = tagA; ctx.fillStyle = PCOL[r.id]; rr(x - hw, y - 11, hw * 2, 18, 9); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x - 4, y + 7); ctx.lineTo(x + 4, y + 7); ctx.lineTo(x, y + 11); ctx.fill();
+    text(cpu ? NAMES[r.id] + ' · CPU' : NAMES[r.id], x, y - 1.5, 12, '#fff', 'center', 'body'); ctx.globalAlpha = 1;
+  }
+  // the winner's rocket blasts off: smoke and stars
+  if (st.cele && st.cele.t > 0.2 && st.cele.t < 2.2 && planethopVR() < 0.6) {
+    const rk = planethopRocket(st.c), t = st.cele.t, lift = t < 0.45 ? 0 : Math.pow(t - 0.45, 2) * 320;
+    const bx = rk.fx + Math.cos(rk.a) * (lift + 2), by = rk.fy + Math.sin(rk.a) * (lift + 2);
+    planethopFx(st, bx, by, (planethopVR() - 0.5) * 120 - Math.cos(rk.a) * 60, (planethopVR() - 0.5) * 120 - Math.sin(rk.a) * 60, 0.7, planethopVR() < 0.5 ? 'rgba(255,255,255,0.8)' : 'rgba(255,200,120,0.8)', 5, 0, 'smoke');
+    if (planethopVR() < 0.3) planethopFx(st, bx, by, (planethopVR() - 0.5) * 300, (planethopVR() - 0.5) * 300, 0.8, [C.gold, PCOL[st.cele.id], '#ffffff'][Math.floor(planethopVR() * 3)], 4, 0, 'spark');
+  }
+}
+
+/* ---------- HUD ---------- */
+// each player's own keys (none for the computer)
+function planethopKeys(id) {
+  let k = 'kb'; try { k = actKey(id); } catch (e) { k = 'kb'; }
+  if (k === 'pad') return { run: 'stick', jump: glyph('a'), boost: glyph('act'), dive: 'stick ▼', boostIs: glyph('act') + ' boost' };
+  if (k === 'touch') return { run: '◀ ▶', jump: '▲', boost: 'the boost button', dive: '▼', boostIs: 'boost button' };
+  return id === 0 ? { run: 'A D', jump: 'W', boost: 'F', dive: 'S', boostIs: 'F boost' } : { run: '← →', jump: '↑', boost: '/', dive: '↓', boostIs: '/ boost' };
+}
+function planethopChip(label, x, y, big, col, gold) {
+  const fs = big ? 18 : 13, h = big ? 30 : 22;
+  ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+  const w = ctx.measureText(label).width + (big ? 26 : 20), cx = clamp(x, w / 2 + 6, W - w / 2 - 6), cy = clamp(y, h / 2 + 4, H - h / 2 - 4);
+  ctx.fillStyle = 'rgba(28,26,54,0.88)'; rr(cx - w / 2, cy - h / 2, w, h, h / 2); ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 2; rr(cx - w / 2, cy - h / 2, w, h, h / 2); ctx.stroke();
+  text(label, cx, cy + 0.5, fs, gold ? C.gold : C.paper, 'center', 'body');
+}
+// a little jet flame icon for the puff slots
+function planethopFlameIcon(x, y, s, on, gold) {
+  if (!on) { ctx.strokeStyle = 'rgba(246,239,223,0.35)'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); circle(x, y, 7 * s); ctx.stroke(); ctx.setLineDash([]); return; }
+  ctx.fillStyle = gold ? C.gold : '#ff9a5c'; ctx.beginPath(); ctx.moveTo(x, y - 10 * s); ctx.quadraticCurveTo(x + 9 * s, y + 2 * s, x, y + 9 * s); ctx.quadraticCurveTo(x - 9 * s, y + 2 * s, x, y - 10 * s); ctx.fill();
+  ctx.fillStyle = gold ? '#fff3b0' : '#ffe08a'; ctx.beginPath(); ctx.moveTo(x, y - 3 * s); ctx.quadraticCurveTo(x + 4.5 * s, y + 3 * s, x, y + 7 * s); ctx.quadraticCurveTo(x - 4.5 * s, y + 3 * s, x, y - 3 * s); ctx.fill();
+}
+function planethopHud() {
+  const st = G.mst, m = G.match; if (!st.run || !st.c || !st.cam) return;
+  const big = hudBig(), tw = PLANETHOP_TWISTS[st.twist], c = st.c, cam = st.cam;
+  // bottom corners: each runner's jet puffs (gold edge with gold jets)
+  for (const r of st.run) {
+    const left = r.id === 0, sz = big ? 1.45 : 1, slots = Math.max(r.puffMax, r.puffs), pw = (64 + slots * 20) * sz, ph = 34 * sz, y = H - 8 - ph, x = left ? 12 : W - 12 - pw;
+    ctx.fillStyle = 'rgba(28,26,54,0.82)'; rr(x, y, pw, ph, ph / 2); ctx.fill();
+    if (r.gold) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x, y, pw, ph, ph / 2); ctx.stroke(); }
+    text(NAMES[r.id], left ? x + 13 * sz : x + pw - 13 * sz, y + ph / 2 + 0.5, 17 * sz, PCOL[r.id], left ? 'left' : 'right');
+    for (let k = 0; k < slots; k++) {
+      const ix = left ? x + pw - (16 + k * 20) * sz : x + (16 + k * 20) * sz;
+      planethopFlameIcon(ix, y + ph / 2 + 1, sz, k < r.puffs, r.gold > 0 && k < r.puffMax || k >= r.puffMax);
+    }
+  }
+  // bottom centre: the course map, start to rocket, with both runners
+  {
+    const mw = big ? 340 : 380, mh = big ? 30 : 22, x0 = W / 2 - mw / 2, y = H - (big ? 6 : 6) - mh;
+    const a = x0 + 16, b = x0 + mw - 30, cy = y + mh / 2, len = c.cum[c.n];
+    ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(x0, y, mw, mh, mh / 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(246,239,223,0.25)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a, cy); ctx.lineTo(b, cy); ctx.stroke();
+    for (let k = 0; k <= c.n; k++) {
+      const px = a + (b - a) * c.cum[k] / len, q = c.byCi[k], wk = c.worm && (c.worm.from === q.i || c.worm.exit === q.i);
+      ctx.fillStyle = k === 0 ? '#8fdcff' : wk ? '#b98cff' : planethopCols(q)[0]; circle(px, cy, (big ? 3.4 : 2.6) * (q.r > 60 ? 1.2 : 1)); ctx.fill();
+    }
+    // a tiny rocket at the end
+    ctx.save(); ctx.translate(b + (big ? 14 : 12), cy); ctx.scale(big ? 0.28 : 0.22, big ? 0.28 : 0.22); ctx.translate(0, 40);
+    ctx.fillStyle = '#f7f4ff'; ctx.beginPath(); ctx.moveTo(-13, -4); ctx.quadraticCurveTo(-17, -46, 0, -84); ctx.quadraticCurveTo(17, -46, 13, -4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ff5f6d'; ctx.fillRect(-20, -14, 40, 12); ctx.restore();
+    for (const r of st.run) {
+      const k = clamp(r.prog / len, 0, 1), px = a + (b - a) * k, py = cy + (r.id ? 3 : -3) * (big ? 1.3 : 1), rad = big ? 7.5 : 6;
+      ctx.fillStyle = PCOL[r.id]; circle(px, py, rad); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; circle(px, py, rad); ctx.stroke();
+    }
+  }
+  // the twist's name, top left under the level pill (not in the plain round)
+  if (st.twist !== 'plain') {
+    const fs = big ? 20 : 13, h = big ? 36 : 26, y0 = 46;
+    ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+    const w = ctx.measureText(tw.name).width + (big ? 36 : 28); pill(14, y0, w, h); text(tw.name, 14 + (big ? 18 : 14), y0 + h / 2 + 0.5, fs, C.gold, 'left', 'body');
+  }
+  if (m.phase === 'live' || m.phase === 'end') {
+    // top right: a Comet lift just given (gold)
+    if (st.liftSay) {
+      const fs = big ? 20 : 13, h = big ? 36 : 28, lab = 'Comet lift for ' + NAMES[st.liftSay.id] + '!';
+      ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+      const w = ctx.measureText(lab).width + (big ? 36 : 28), x1 = W - 14, box = G.matchHudBox, yy = box && x1 - w < box.x1 + 8 ? box.y1 + 6 : 12;
+      pill(x1 - w, yy, w, h); text(lab, x1 - (big ? 18 : 14), yy + h / 2 + 0.5, fs, C.gold, 'right', 'body');
+    }
+    // after a person's first tows: a tip over their runner, in their own keys (never for the computer)
+    for (const k of [0, 1]) {
+      const h = st.hint[k], r = st.run[k]; if (!h || r.hidden || planethopCpu(k)) continue;
+      const kk = planethopKeys(k), s = planethopToScreen(cam, r.x, r.y);
+      const lab = h.n === 1 ? 'Jump from near the top, running!' : 'In the air, ' + kk.boost + ' = jet puff!';
+      ctx.globalAlpha = clamp(Math.min(h.t / 0.2, (4.5 - h.t) / 0.4), 0, 1);
+      const box = G.matchHudBox, up = s.y - (big ? 86 : 70);
+      planethopChip(lab, s.x, box && up < box.y1 + 24 ? s.y + (big ? 70 : 56) : up, big, PCOL[k], false); // (under the runner near the top)
+      ctx.globalAlpha = 1;
+    }
+  }
+  if (m.phase === 'ready' || m.phase === 'count') {
+    // the round card: this round's twist, and any gold help announced
+    const lines = [];
+    for (const r of st.run) if (r.gold) lines.push(r.gold >= 2 ? 'Gold jets and gold boots for ' + NAMES[r.id] + '!' : 'Gold jets for ' + NAMES[r.id] + ': two puffs every jump!');
+    const nf = big ? 30 : 26, hf = big ? 19 : 14, lh = big ? 26 : 20, ch = (big ? 78 : 60) + lines.length * lh, cy = H - (big ? 64 : 50) - ch - 6;
+    ctx.font = hf + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+    let w = Math.max(big ? 380 : 300, ctx.measureText(tw.hint).width + 48);
+    ctx.font = '700 ' + hf + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+    for (const l of lines) w = Math.max(w, ctx.measureText(l).width + 48);
+    w = Math.min(W - 20, w);
+    const a = m.phase === 'ready' ? clamp(m.t / 0.25, 0, 1) : 1, cx = W / 2;
+    ctx.globalAlpha = a; ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(cx - w / 2, cy, w, ch, 16); ctx.fill();
+    if (lines.length) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(cx - w / 2, cy, w, ch, 16); ctx.stroke(); }
+    text(tw.name, cx, cy + (big ? 25 : 21), nf, C.gold, 'center'); text(tw.hint, cx, cy + (big ? 57 : 46), hf, C.paper, 'center', 'body');
+    lines.forEach((l, i) => text(l, cx, cy + (big ? 57 : 46) + (i + 1) * lh, hf, C.gold, 'center', 'body'));
+    ctx.globalAlpha = 1;
+    // key reminders just above that card before rounds 1 and 2 (each player's own device; never the computer's)
+    if (m.round <= 2) {
+      ctx.globalAlpha = a;
+      const who = st.run.filter(r => !planethopCpu(r.id)), step = big ? 36 : 28;
+      let yy = cy - 6 - step / 2 - (who.length - 1) * step;
+      for (const r of who) {
+        const kk = planethopKeys(r.id);
+        planethopChip(NAMES[r.id] + ': ' + kk.run + ' run · ' + kk.jump + ' jump · ' + kk.boostIs, cx, yy, big, PCOL[r.id], false);
+        yy += step;
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+Sfx.extra.planethopJump = function (p) { this.tone(300 * p, 0.12, 'triangle', 0.05, 640 * p); };
+Sfx.extra.planethopJelly = function (p) { this.tone(220 * p, 0.2, 'sine', 0.07, 760 * p); this.tone(500 * p, 0.12, 'triangle', 0.03, 900 * p, 0.05); };
+Sfx.extra.planethopLand = function (p) { this.tone(180 * p, 0.07, 'triangle', 0.05, 110 * p); };
+Sfx.extra.planethopPuff = function (p) { this.tone(160 * p, 0.22, 'sawtooth', 0.035, 520 * p); this.tone(900 * p, 0.12, 'triangle', 0.02, 1400 * p, 0.03); };
+Sfx.extra.planethopNope = function (p) { this.tone(260 * p, 0.08, 'triangle', 0.03, 200 * p); };
+Sfx.extra.planethopBoing = function (p) { this.tone(170 * p, 0.26, 'sine', 0.08, 560 * p); };
+Sfx.extra.planethopComet = function (p) { this.tone(1300, 0.08, 'triangle', 0.03, 1900); this.tone(170 * p, 0.28, 'sine', 0.08, 560 * p, 0.03); };
+Sfx.extra.planethopBump = function () { this.tone(300, 0.07, 'triangle', 0.05, 200); };
+Sfx.extra.planethopTow = function (p) { [660, 520, 400].forEach((f, i) => this.tone(f * p, 0.09, 'triangle', 0.035, null, i * 0.07)); this.tone(880, 0.3, 'sine', 0.02, 1200, 0.2); };
+Sfx.extra.planethopLift = function (p) { [523, 659, 784, 1047].forEach((f, i) => this.tone(f * p, 0.1, 'triangle', 0.045, null, i * 0.06)); };
+Sfx.extra.planethopStar = function (p) { [1046, 1318, 1568, 2093].forEach((f, i) => this.tone(f * p, 0.08, 'triangle', 0.04, null, i * 0.045)); };
+Sfx.extra.planethopWorm = function (p) { this.tone(300 * p, 0.35, 'sine', 0.06, 1400 * p); this.tone(1200 * p, 0.3, 'triangle', 0.03, 300 * p, 0.12); };
+Sfx.extra.planethopGo = function () { this.tone(200, 0.3, 'sawtooth', 0.02, 600); };
+Sfx.extra.planethopRocket = function () { this.tone(120, 0.9, 'sawtooth', 0.035, 600); this.tone(600, 0.5, 'triangle', 0.03, 1500, 0.3); };
+Sfx.extra.planethopGold = function () { this.tone(784, 0.1, 'triangle', 0.05); this.tone(1046, 0.12, 'triangle', 0.045, null, 0.08); this.tone(1318, 0.16, 'triangle', 0.04, null, 0.16); };
+/* ===== end of 15-4 Planet Hop Race ===== */
