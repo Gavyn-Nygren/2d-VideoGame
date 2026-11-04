@@ -104,12 +104,15 @@
     else if (vWant < 5 && b.vf > 12) out.left = true;
     if (hop) out.jump = 'tap';
     // with a person on the claw: say what the claw has to do
+    // (only once the person has been on that step a while: the prompt over their head says it first)
     if (human && info.partnerIdle < 20) {
-      if (nd.arm === 'boulder' && nd.blockD < 60 && cpuFor(S, 'waitB', true, dt) > 1.5) cpuSay(p, 'Grab the boulder with the claw!', 2.2);
-      else if (nd.arm === 'toss') cpuSay(p, 'Swing it back behind us, then let go!', 2.2);
-      else if (nd.arm === 'pile' && nd.fillD < 40) cpuSay(p, 'Grab a boulder from the rock pile!', 2.2);
-      else if (nd.arm === 'drop') cpuSay(p, 'Drop it in the crater!', 2.2);
-      if (nd.arm !== 'boulder') cpuFor(S, 'waitB', false, dt);
+      if (S.armNeed !== nd.arm) { S.armNeed = nd.arm; S.armNeedT = 0; }
+      S.armNeedT += dt;
+      const slow = S.armNeedT > 3;
+      if (nd.arm === 'boulder' && nd.blockD < 60 && slow) cpuSay(p, 'Grab the boulder with the claw!', 2.2);
+      else if (nd.arm === 'toss' && slow) cpuSay(p, 'Swing it back behind us, then let go!', 2.2);
+      else if (nd.arm === 'pile' && nd.fillD < 40 && slow) cpuSay(p, 'Grab a boulder from the rock pile!', 2.2);
+      else if (nd.arm === 'drop' && slow) cpuSay(p, 'Drop it in the crater!', 2.2);
     }
     return out;
   }

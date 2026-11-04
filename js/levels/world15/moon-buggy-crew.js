@@ -320,7 +320,10 @@ function buggyPhysics(st, dt, thr, hop) {
   // the belly scrapes the ground instead of sinking into it
   for (const s of [-1, 1]) {
     const px = b.x + Math.cos(b.a) * s * 44 - Math.sin(b.a) * 10, py = b.y + Math.sin(b.a) * s * 44 + Math.cos(b.a) * 10, g = buggyGround(st, px);
-    if (py > g) { b.y -= (py - g); if (b.vy > 0) b.vy = 0; b.w += -s * 0.6 * dt * 60 * 0.02; }
+    if (py <= g) continue;
+    // (the nose running into a crater's far wall bumps off it: it never lifts the buggy out of the crater)
+    if (py - g > 6 && s * b.vx > 0 && buggyGround(st, px - s * 8) - g > 10) { b.x = b.px; b.vx = -b.vx * 0.25; continue; }
+    b.y -= (py - g); if (b.vy > 0) b.vy = 0; b.w += -s * 0.6 * dt * 60 * 0.02;
   }
   // landing: a squishy thud
   const wasAir = b.air;
@@ -603,7 +606,13 @@ function buggyOopsStep(st, dt) {
   o.t += dt;
   // 0-0.8 s: it settles (falls into the crater, lies on its roof); then Tow-Bot flies in, lifts it up and away,
   // and sets it down at the flag (or right here, the right way up)
-  if (o.t < 0.8) { buggyPhysics(st, dt, 0, false); o.x0 = b.x; o.y0 = b.y; o.a0 = b.a; return; }
+  if (o.t < 0.8) {
+    buggyPhysics(st, dt, 0, false);
+    // (lying on its side the springs don't hold it up: it rests on the ground, never sinks through)
+    const gmin = buggyGround(st, b.x) - 22;
+    if (b.y > gmin) { b.y = gmin; b.vy = Math.min(b.vy, 0); b.vx *= 0.9; }
+    o.x0 = b.x; o.y0 = b.y; o.a0 = b.a; return;
+  }
   const u1 = clamp((o.t - 1.3) / 0.6, 0, 1), u2 = clamp((o.t - 2.0) / 0.7, 0, 1);
   if (!o.lifted && o.t > 1.3) { o.lifted = true; Sfx.play('buggyTow'); }
   if (o.t < 1.9 || o.here) {
@@ -1484,7 +1493,10 @@ function buggyHud(st) {
   const fs = 14 * z, yMax = H - Math.round(56 * z) - 18;
   const place = (p, w, h) => {
     const hx = p.x + PW / 2, right = p.id === D;
-    const y = clamp(p.y - 30 * z - h, big ? 60 : 46, yMax - h);
+    let top = p.y - 30 * z - h;
+    // 1-player: above the computer's speech bubble while it talks
+    if (typeof CPU === 'object' && cpuSolo() && !cpuOn(p.id)) { const cb = CPU.bubbles[1 - p.id]; if (cb && cb.t > 0) top = Math.min(top, p.y - 22 - (big ? 30 : 22) - 10 - h); }
+    const y = clamp(top, big ? 60 : 46, yMax - h);
     return { x: clamp(right ? hx - 10 * z : hx + 10 * z - w, 4, W - w - 4), y };
   };
   const say = (p, str, col, pulse) => {
