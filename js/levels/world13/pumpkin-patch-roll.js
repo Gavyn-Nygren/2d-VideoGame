@@ -5,20 +5,26 @@
    Roll one GIANT pumpkin over the hilly pumpkin patch to the hayride wagon. Side-on and scrolling: the mode owns the
    tick, the camera, the whole picture and the HUD (def.ownStep + def.ownHUD); the engine grid is empty apart from the
    two spawns.
-   The PUSHER walks on the ground. Walking into the pumpkin (or holding the action, push) pushes it from behind; from
-   in front the same press holds it back (it can't make it go faster than a slow walk downhill). Jump while touching
-   the pumpkin = LEAPFROG right over it (and over the rider's head) to its other side.
-   The RIDER stands on top. The pumpkin's roll carries the rider's feet the way it rolls, so the rider walks against
-   it (◀ ▶). Standing forward of the top adds roll force (lean ▶), standing behind it brakes (lean ◀). ▼ or the action
-   (hug) hugs the stem: no lean, much less wobble (for rocks). Off the edge of the balance bar is a "Whoa!" tumble.
-   Both jobs are needed: steep climbs are too much for the pusher alone (push + lean ▶ gets it up), and a steep
-   downhill into a pond or a mud ditch is too fast unless the pusher leapfrogs in front and holds AND the rider leans
-   back; a bridge only holds a slow pumpkin ("Sploosh!"). Fails are soft: a puff of purple smoke and back to the last
-   hay bale (its jack-o'-lantern lights up when you pass it). Rolling back down a hill stops at that bale.
-   Rooms swap the jobs at the corn gate ("Swap jobs!"). Room 3 has gusts that blow the rider; room 4 ends with a ramp
-   onto the hayride wagon, where the pumpkin gets its big goofy carved smile.
-   Gold help (announced): Gold planks on a bridge after 2 splashes there that both of you took part in; Mister Straw
-   the scarecrow pushes too on a climb you have both been stuck on for a while; Sticky boots after 3 tumbles in a room.
+   The PUSHER walks on the ground. Walking into the pumpkin (or holding the action, push) pushes it from behind (it
+   fades out at a brisk walk); from in front the same press holds it back to a slow walk. Jump while touching the
+   pumpkin = LEAPFROG right over it (and over the rider's head) to its other side; only when it is rolling slower than
+   frogV and not from behind on a climb (there a jump is just a hop). Rocks block the pusher's feet: hop them (▲).
+   The RIDER stands on top and balances like a log-roll. The pumpkin's roll carries the rider's feet the way it rolls,
+   and off the flat spot on top you slowly slide on down the side (faster in the red), so the rider keeps stepping
+   against it (◀ ▶ walk at a steady pace; nothing holds you in place). Where you stand is your lean: forward of the top
+   (LEAN) adds roll force, fading out above vLean; behind it (BRAKE) slows a forward roll and never rolls it backward.
+   ▼ or the action (hug) grabs the stem: half the carry, no sliding, much less jolt from a rock, but no lean and no
+   walking, and the arms tire after hugMax s (let go and rest). Off the end of the balance bar is a "Whoa!" tumble.
+   Both jobs are needed: steep climbs are too much for the pusher alone (push + lean gets it up), and a steep downhill
+   into a pond or a mud ditch is too fast unless the pusher leapfrogs in front and holds AND the rider leans back; a
+   bridge only holds a slow pumpkin ("Sploosh!"). Fails are soft: a puff of purple smoke and back to the last hay bale
+   (its jack-o'-lantern lights up when you pass it); a tumble on level ground climbs straight back on where it happened.
+   Rolling back down a hill stops at the bale.
+   Rooms swap the jobs at the corn gate ("Swap jobs!"). Room 3 has gusts that blow the rider (weaker on each replay);
+   room 4 ends with a ramp onto the hayride wagon, where the pumpkin gets its big goofy carved smile and rides off.
+   Gold help (announced, only for tries you both took part in): Gold planks on a bridge after 2 splashes there, super
+   gold planks after 3, and after 5 Mister Straw piles hay on it (any speed); Mister Straw the scarecrow pushes too on a
+   climb you have both been stuck on for a while; Sticky boots after 3 tumbles in a room, super sticky boots after 6.
    Room def: { title, pusher: 0|1, tip, act, course: [tokens], map (spawns only) }. Course tokens (lengths in px):
      fN uN UN dN DN   flat / gentle up / steep up / gentle down / steep down for N px
      pN mN            a pond / mud ditch N px wide with a plank bridge (put it right at the foot of a steep down)
@@ -29,17 +35,22 @@
 const PUMPKIN = {
   R: 46, D: 50, touch: 10,                     // pumpkin radius; pusher centre to pumpkin centre when touching (+ slack)
   Kg: 1000, fr: 45, vMax: 280,                 // gravity along the slope (x slope), rolling friction, top speed (px/s)
-  push: 320, vPush: 125, pushFade: 30,         // a push: force, and the speed where it fades out (a brisk walk)
-  block: 270, vBack: 55, blockFade: 25,        // holding it back from the front: force, and the slow walk it allows
-  lean: 150, brake: 230, leanFull: 0.36, leanTo: 0.5,   // the rider's lean ▶ force and lean ◀ brake (full from 0.36 rad off the top); ◀ ▶ walk to ±0.5
-  carry: 0.16, walk: 1.25, settle: 0.22, phiMax: 0.95, hugCarry: 0.4, hugWalk: 0.7,
+  push: 320, vPush: 160, pushFade: 30,         // a push: force, and the speed where it fades out (a brisk walk)
+  block: 270, vBack: 80, blockFade: 25,        // holding it back from the front: force, and the slow walk it allows
+  lean: 150, vLean: 110, leanFade: 30,         // the rider standing forward of the top: roll force (full from leanFull), fading out above vLean
+  brake: 230, leanFull: 0.3, leanDead: 0.1,    // standing behind the top: a brake (it never rolls the pumpkin backward)
+  // the balance (phi: the rider's angle off the top, + = forward). The roll carries the feet (carry x the pumpkin's
+  // spin), off the flat spot on top you slide further (tip, faster in the red), and ◀ ▶ walk at a steady pace
+  carry: 0.11, walk: 0.75, redWalk: 0.35, tip: 0.2, redTip: 0.4, flat: 0.1, phiMax: 1.1, red: 0.8,
+  hugCarry: 0.5, hugMax: 1.2, hugOk: 0.4,      // a hug (▼): less carry, no slide, no lean; arms tire after hugMax s (rest to hugOk)
   jolt: 0.34, gustPush: 0.62, gustT: 0.95, gustWarn: 1.3,
   slopes: { f: 0, u: -0.14, U: -0.36, d: 0.14, D: 0.36 }, blend: 50,
-  vSafe: 130, vSafeGold: 175, vSafeGold2: 240, // the most a bridge holds (gold planks: more; after 4 shared splashes, much more)
-  run: 185, acc: 2200, fric: 2600, hopV: 430, g: 1900, frogT: 0.62, frogH: 150, leash: 430,
-  tryWin: 5, bridgeTries: 2, bridgeTries2: 4, climbStuck: 22, tumbleHelp: 3, helpPush: 60, stickyCarry: 0.6, stickyMax: 1.15,
-  splashT: 1.55, tumbleT: 1.3, swapT: 1.7, finT: 4.6, hintLife: 2.8,
-  camLead: 380, camY: 300,
+  vSafe: 130, vSafeGold: 205, vSafeGold2: 250, // the most a bridge holds (gold planks: more; after more shared splashes, much more; then anything)
+  run: 200, acc: 2200, fric: 2600, hopV: 430, g: 1900, frogT: 0.62, frogH: 150, frogReach: 22, frogD: 240, frogV: 110, leash: 430, rockW: 13,
+  tryWin: 5, bridgeTries: 2, bridgeTries2: 3, bridgeTries3: 5, climbStuck: 22, tumbleHelp: 3, tumbleHelp2: 6, helpPush: 60,
+  sticky: [null, { carry: 0.6, tip: 0.5, lim: 1.3 }, { carry: 0.35, tip: 0, lim: 1.5 }],   // sticky boots, then super sticky boots
+  splashT: 1.55, tumbleT: 1.3, swapT: 1.7, finT: 4.6, hintLife: 2.8, boardT: 0.45,
+  camLead: 380, camY: 300, introDrop: 50,
 };
 const pumpkinLerp = (a, b, u) => a + (b - a) * u;
 const pumpkinSmooth = u => u * u * (3 - 2 * u);
@@ -56,7 +67,7 @@ function pumpkinCompile(def) {
     if ('fuUdD'.includes(ch) && !t.includes(':')) {
       knots.push({ x, s: P.slopes[ch] });
       if (ch === 'U') c.ups.push({ x0: x, x1: x + n, t: 0, help: false });
-      if (ch === 'D') c.downs.push({ x0: x, x1: x + n, wet: false });
+      if (ch === 'D' || ch === 'd') c.downs.push({ x0: x, x1: x + n, wet: false, gentle: ch === 'd' });
       x += n;
     } else if ((ch === 'p' || ch === 'm') && n) {
       knots.push({ x, s: 0 });
@@ -83,7 +94,7 @@ function pumpkinCompile(def) {
   // the bale behind the start is checkpoint 0
   c.bales.unshift({ x: -118, lit: true, litT: 1, start: true });
   // a steep down that ends at a bridge is "wet": the pusher holds it back in front
-  for (const d of c.downs) d.wet = c.bridges.some(b => Math.abs(b.x0 - d.x1) < 40);
+  for (const d of c.downs) d.wet = !d.gentle && c.bridges.some(b => Math.abs(b.x0 - d.x1) < 40);
   // ground y every 2 px: the slope of each stretch, blended over P.blend px at each change
   const N = Math.ceil((c.len - X0) / 2) + 2, gy = new Float32Array(N);
   const slopeAt = xx => {
@@ -131,11 +142,28 @@ function pumpkinPC(st, x) {
 }
 const pumpkinSlope = (st, x) => (pumpkinPC(st, x + 4) - pumpkinPC(st, x - 4)) / 8;
 const pumpkinGSlope = (st, x) => (pumpkinGY(st, x + 6) - pumpkinGY(st, x - 6)) / 12;
-// a small rock under x: the bump the pusher steps over (px)
+// a small rock under x: its height there (px), for a pusher who lands on top of one
 function pumpkinRockH(st, x) {
   for (const r of st.c.rocks) { const d = Math.abs(x - r.x); if (d < 16) return 11 * Math.cos(d / 16 * Math.PI / 2); }
   return 0;
 }
+// a rock the pusher walked into going from xa to xb on the ground (rocks are hopped over, never walked through)
+function pumpkinRockHit(st, xa, xb) {
+  const w = PUMPKIN.rockW;
+  for (const r of st.c.rocks) {
+    if (xb > xa && xa <= r.x - w + 0.01 && xb > r.x - w) return { r, x: r.x - w };
+    if (xb < xa && xa >= r.x + w - 0.01 && xb < r.x + w) return { r, x: r.x + w };
+  }
+  return null;
+}
+// a rock just ahead of the pusher's feet (dir: the way they walk), so ▲ hops it instead of leapfrogging
+function pumpkinRockAhead(st, x, dir, reach) {
+  const w = PUMPKIN.rockW;
+  return st.c.rocks.find(r => { const d = dir > 0 ? r.x - w - x : x - (r.x + w); return d > -2 && d < reach; }) || null;
+}
+// the balance limits: where the red starts and where you tip off (sticky boots make it wider)
+const pumpkinBoots = st => PUMPKIN.sticky[st.sticky || 0] || { carry: 1, tip: 1, lim: PUMPKIN.phiMax };
+const pumpkinLim = st => pumpkinBoots(st).lim;
 // each player's own keys, for prompts and the HUD (a player with a controller is shown its buttons)
 function pumpkinKey(id, what) {
   const how = actKey(id), touch = how === 'touch', pad = how === 'pad';
@@ -155,9 +183,10 @@ function pumpkinRoom(st, L, k) {
   st.k = k; st.pusher = def.pusher || 0; st.rider = 1 - st.pusher; st.title = def.title || '';
   st.c = pumpkinCompile(def);
   st.stats.roomT[k] = null; st.stats.roomFails[k] = 0; st.stats.roomTitles[k] = st.title;
-  st.cp = 0; st.roomTumbles = 0; st.sticky = false;
+  st.cp = 0; st.roomTumbles = 0; st.sticky = 0;
   pumpkinPlace(st, 0);
-  st.cam = { x: st.pk.x - P.camLead, y: st.pk.y - P.camY };
+  st.rd.board = -1;   // the rider waits beside the pumpkin during the room card, then hops on
+  st.cam = { x: st.pk.x - P.camLead, y: st.pk.y - P.camY - P.introDrop };
   st.parts = []; st.pops = []; st.hints = [null, null]; st.hinted = {}; st.msg = null;
   st.roomT = 0; st.segStart = G.time; st.inT = [-99, -99]; st.swap = null; st.fin = null; st.wrongT = [0, 0];
   st.rollSnd = 0; st.dustT = 0; st.gustNow = null;
@@ -165,10 +194,11 @@ function pumpkinRoom(st, L, k) {
   pumpkinMirror(st);
 }
 // put the pumpkin (and both players) at checkpoint bale i, standing still
-function pumpkinPlace(st, i) {
-  const P = PUMPKIN, b = st.c.bales[i], x = b.x + 118;
+function pumpkinPlace(st, i, atX) {
+  const P = PUMPKIN, b = st.c.bales[i], x = atX != null ? atX : b.x + 118, pu0 = atX != null && st.pu;
   st.pk = { x, y: pumpkinPC(st, x), v: 0, ang: (st.pk && st.pk.ang) || 0, state: 'roll', t: 0, bob: 0, lock: 0.35, appear: 0.5, drop: 0, splashB: null, wob: 0 };
-  st.rd = { phi: 0, lean: 0, hug: 0, hopT: 0, fly: null, wob: 0 };
+  st.rd = { phi: 0, lean: 0, hug: 0, hugT: 0, tired: false, hopT: 0, fly: null, wob: 0, board: st.rd && st.rd.board };
+  if (pu0) { pu0.vx = 0; pu0.vy = 0; pu0.frog = null; pu0.air = false; pu0.y = pumpkinGY(st, pu0.x); return; }   // (a tumble on the level: the pusher stays put)
   const px = x - P.D - 6;
   st.pu = { x: px, y: pumpkinGY(st, px), vx: 0, vy: 0, air: false, side: -1, face: 1, frog: null, act: 0, actVis: 0, step: 0, stun: 0, shove: 0 };
 }
@@ -182,7 +212,11 @@ function pumpkinStep(st, dt) {
     if (i.left || i.right || i.jump || i.down || i.act || ps[k].pendingJump) st.inT[k] = G.time;
   }
   st.roomT += dt;
-  const pk = st.pk;
+  const pk = st.pk, rd = st.rd;
+  if (pk.appear > 0) pk.appear = Math.max(0, pk.appear - dt);
+  // after the room card the rider hops up onto the pumpkin
+  if (rd.board < 0 && G.introT <= 0) { rd.board = 0; pk.lock = Math.max(pk.lock, PUMPKIN.boardT + 0.1); Sfx.play('pumpkinHop', st.rider); }
+  else if (rd.board >= 0 && rd.board < PUMPKIN.boardT) rd.board = Math.min(PUMPKIN.boardT, rd.board + dt);
   if (G.introT > 0) { for (const p of ps) { p.pendingJump = false; p.pendingAct = false; } }
   else if (pk.state === 'roll') pumpkinRoll(st, dt);
   else if (pk.state === 'splash') pumpkinSplashStep(st, dt);
@@ -197,14 +231,13 @@ function pumpkinRoll(st, dt) {
   const P = PUMPKIN, pk = st.pk, rd = st.rd, pu = st.pu, ps = G.players, c = st.c;
   const R = ps[st.rider], U = ps[st.pusher], ri = R.input, ui = U.input;
   pk.lock = Math.max(0, pk.lock - dt);
-  if (pk.appear > 0) pk.appear = Math.max(0, pk.appear - dt);
   const locked = pk.lock > 0;
   const rJump = R.pendingJump, uJump = U.pendingJump;
   R.pendingJump = false; U.pendingJump = false; R.pendingAct = false; U.pendingAct = false;
 
   /* -- the pusher: walk, hop, leapfrog -- */
   if (pu.stun > 0) pu.stun -= dt;
-  const touching = Math.abs(pu.x - (pk.x + pu.side * P.D)) <= P.touch && !pu.frog && !pu.air;
+  const touching = Math.abs(pu.x - (pk.x + pu.side * P.D)) <= P.frogReach && !pu.frog && !pu.air;   // (a leapfrog works from a step away too)
   let pushing = 0;
   if (pu.frog) {
     const fr = pu.frog;
@@ -220,7 +253,10 @@ function pumpkinRoll(st, dt) {
     const dir = locked || pu.stun > 0 ? 0 : (ui.right ? 1 : 0) - (ui.left ? 1 : 0);
     if (dir) pu.face = dir;
     if (uJump && !locked && !pu.air) {
-      if (touching) {
+      const rockNear = pumpkinRockAhead(st, pu.x, dir || pu.face, 26);
+      // (a pumpkin rolling by at full speed is too quick to leapfrog, and on a climb you'd let go of it: those are just hops)
+      const frogOk = Math.abs(pk.v) < P.frogV && !(pu.side < 0 && pumpkinSlope(st, pk.x) < -0.05);
+      if (touching && !rockNear && frogOk) {
         pu.frog = { t: 0, from: pu.x - pk.x, to: -pu.side * (P.D + 4), y0: pu.y };
         pu.face = -pu.side; pu.side = 0;
         st.stats.frogs[st.pusher]++;
@@ -233,7 +269,14 @@ function pumpkinRoll(st, dt) {
     if (!pu.frog) {
       const target = dir * P.run, a = pu.air ? P.acc * 0.6 : dir ? P.acc : P.fric;
       pu.vx = approach(pu.vx, target, a * dt);
+      const xa = pu.x;
       pu.x += pu.vx * dt;
+      // a rock blocks your feet: hop it (▲)
+      const hit = !pu.air && pumpkinRockHit(st, xa, pu.x);
+      if (hit) {
+        pu.x = hit.x; pu.vx = 0; pu.rockT = (pu.rockT || 0) + dt;
+        if (pu.rockT > 0.25) pumpkinHintOnce(st, 'rock' + st.k, st.pusher, 'A rock! Hop over it: ' + pumpkinKey(st.pusher, 'jump'));
+      } else if (!pu.air) pu.rockT = 0;
       if (pu.air) {
         pu.vy += P.g * dt; pu.y += pu.vy * dt;
         const gy = pumpkinGY(st, pu.x) - pumpkinRockH(st, pu.x);
@@ -249,21 +292,29 @@ function pumpkinRoll(st, dt) {
   pu.act = pushing;
   pu.actVis = approach(pu.actVis, pushing ? 1 : 0, dt * 8);
 
-  /* -- the rider: walk against the roll, lean, hug, hop -- */
-  const hug = !locked && (ri.down || ri.act);
+  /* -- the rider: balance like a log-roll (walk against the roll), lean, hug for a moment, hop -- */
+  const hugKey = !locked && (ri.down || ri.act);
+  // arms tire: a hug lasts hugMax s, then you must let go and rest (so hugging is for rocks, not for the whole ride)
+  if (hugKey && !rd.tired) { rd.hugT += dt; if (rd.hugT >= P.hugMax) { rd.tired = true; pumpkinHint(st, st.rider, 'Arms tired! Let go and balance ' + pumpkinKey(st.rider, 'lr'), 2.2); } }
+  else { rd.hugT = Math.max(0, rd.hugT - dt); if (rd.tired && !hugKey && rd.hugT <= P.hugOk) rd.tired = false; }
+  const hug = hugKey && !rd.tired;
   rd.hug = approach(rd.hug, hug ? 1 : 0, dt * 8);
   if (rJump && !locked && rd.hopT <= 0) { rd.hopT = 0.34; Sfx.play('pumpkinHop', st.rider); R.sx = 0.85; R.sy = 1.2; }
   if (rd.hopT > 0) rd.hopT = Math.max(0, rd.hopT - dt);
-  const sticky = st.sticky ? P.stickyCarry : 1, omega = pk.v / P.R;
+  const boots = pumpkinBoots(st), sticky = boots.carry, omega = pk.v / P.R, lim = boots.lim, red = lim * P.red;
+  // the pumpkin turning under your feet carries you the way it rolls
   let dphi = P.carry * omega * (hug ? P.hugCarry : 1) * sticky;
-  if (st.gustNow) dphi += st.gustNow.dir * P.gustPush * (hug ? 0.45 : 1) * sticky;
+  if (st.gustNow) dphi += st.gustNow.dir * P.gustPush * (st.gustNow.str || 1) * (hug ? 0.5 : 1) * sticky;
+  // off the flat spot on top you slide on down the side (faster in the red), unless you hug
+  const off = Math.abs(rd.phi);
+  if (!hug && off > P.flat) dphi += Math.sign(rd.phi) * (P.tip * (off - P.flat) + (off > red ? P.redTip * (off - red) : 0)) * boots.tip;
+  // ◀ ▶ walk (hugging, you hold still)
+  const rdir = locked || hug ? 0 : (ri.right ? 1 : 0) - (ri.left ? 1 : 0);
+  dphi += rdir * P.walk * (rdir * rd.phi > red ? P.redWalk : 1);   // (stepping further out in the red is slow)
   rd.phi += dphi * dt;
-  const rdir = locked ? 0 : (ri.right ? 1 : 0) - (ri.left ? 1 : 0);
-  if (hug) rd.phi = approach(rd.phi, 0, P.hugWalk * dt);
-  else if (rdir) rd.phi = approach(rd.phi, rdir * P.leanTo, P.walk * dt);
-  else rd.phi = approach(rd.phi, 0, P.settle * dt);
-  // the lean only works while the rider leans on purpose (holding ◀ or ▶): standing there, you just get carried
-  const L = hug ? 0 : rdir > 0 ? clamp(rd.phi / P.leanFull, 0, 1) : rdir < 0 ? clamp(rd.phi / P.leanFull, -1, 0) : 0;
+  if (locked) rd.phi = approach(rd.phi, 0, dt);
+  // where you stand is your lean: forward of the top rolls it on, behind the top brakes
+  const L = hug || off < P.leanDead ? 0 : clamp((rd.phi - Math.sign(rd.phi) * P.leanDead) / (P.leanFull - P.leanDead), -1, 1);
   rd.lean = approach(rd.lean, L, dt * 6);
   if (rdir || hug) { st.stats.leanT[st.rider] += dt; }
   if (pushing) st.stats.pushT[st.pusher] += dt;
@@ -271,7 +322,7 @@ function pumpkinRoll(st, dt) {
   /* -- the pumpkin -- */
   const s = pumpkinSlope(st, pk.x);
   // leaning forward pushes the roll on; leaning back is a brake (it slows a forward roll, it never rolls it backward)
-  let F = P.Kg * s + (L > 0 ? P.lean * L : P.brake * L * clamp(pk.v / 20, 0, 1));
+  let F = P.Kg * s + (L > 0 ? P.lean * L * clamp((P.vLean - pk.v) / P.leanFade, 0, 1) : P.brake * L * clamp(pk.v / 20, 0, 1));
   if (pushing > 0) {
     F += P.push * clamp((P.vPush - pk.v) / P.pushFade, 0, 1);
     const up = c.ups.find(u => u.help && pk.x > u.x0 - 60 && pk.x < u.x1 + 20);
@@ -293,8 +344,14 @@ function pumpkinRoll(st, dt) {
   pk.y = pumpkinPC(st, pk.x);
   // keep the pusher out of the pumpkin (it shoves them along), and near it
   if (!pu.frog) {
+    const xs = pu.x;
     if (pu.side < 0 && pu.x > pk.x - P.D) { pu.shove = Math.max(pu.shove, (pu.x - (pk.x - P.D)) / dt); pu.x = pk.x - P.D; pu.vx = Math.min(pu.vx, pk.v); }
     else if (pu.side > 0 && pu.x < pk.x + P.D) { pu.shove = Math.max(pu.shove, ((pk.x + P.D) - pu.x) / dt); pu.x = pk.x + P.D; pu.vx = Math.max(pu.vx, pk.v); }
+    // shoved into a rock by the pumpkin: a little trip-hop over it
+    if (!pu.air && pu.x !== xs && pumpkinRockHit(st, xs, pu.x)) {
+      pu.air = true; pu.vy = -P.hopV * 0.8; U.sx = 0.85; U.sy = 1.2;
+      pumpkinPop(st, pu.x, pu.y - 50, 'Oops! Hop!', '#ffe7a8', 16); Sfx.play('jump', st.pusher);
+    }
     if (pu.x < pk.x - P.leash) { pu.x = pk.x - P.leash; pu.vx = Math.max(0, pu.vx); pumpkinHintOnce(st, 'leash', st.pusher, 'Stay with your pumpkin!'); }
     if (pu.x > pk.x + P.leash) { pu.x = pk.x + P.leash; pu.vx = Math.min(0, pu.vx); pumpkinHintOnce(st, 'leash', st.pusher, 'Stay with your pumpkin!'); }
     if (!pu.air) pu.y = pumpkinGY(st, pu.x) - pumpkinRockH(st, pu.x);
@@ -320,7 +377,7 @@ function pumpkinRoll(st, dt) {
   st.gustNow = null;
   for (const gu of c.gusts) {
     if (gu.state === 'wait' && pk.x > gu.x - 330) { gu.state = 'warn'; gu.t = 0; Sfx.play('pumpkinGustWarn'); }
-    else if (gu.state === 'warn') { gu.t += dt; if (gu.t >= P.gustWarn) { gu.state = 'blow'; gu.t = 0; Sfx.play('pumpkinGust'); pumpkinPop(st, pk.x, pk.y - P.R - 110, gu.dir > 0 ? 'WHOOSH! →' : '← WHOOSH!', '#d8f0ff', 22); } }
+    else if (gu.state === 'warn') { gu.t += dt; if (gu.t >= P.gustWarn) { gu.state = 'blow'; gu.t = 0; gu.str = [1, 0.75, 0.5][Math.min(2, gu.n || 0)]; gu.n = (gu.n || 0) + 1; Sfx.play('pumpkinGust'); pumpkinPop(st, pk.x, pk.y - P.R - 110, gu.dir > 0 ? 'WHOOSH! →' : '← WHOOSH!', '#d8f0ff', 22); } }
     else if (gu.state === 'blow') { gu.t += dt; st.gustNow = gu; if (gu.t >= P.gustT) { gu.state = 'done'; } }
   }
 
@@ -345,9 +402,8 @@ function pumpkinRoll(st, dt) {
     }
   }
   /* -- the rider's balance -- */
-  const lim = st.sticky ? P.stickyMax : P.phiMax;
   if (Math.abs(rd.phi) > lim) { pumpkinStartTumble(st); return; }
-  if (Math.abs(rd.phi) > lim * 0.72) pumpkinHintOnce(st, 'wobble' + (rd.phi > 0 ? 1 : 0), st.rider, rd.phi > 0 ? 'Wobbly! Walk back ' + pumpkinKey(st.rider, 'left') : 'Wobbly! Walk forward ' + pumpkinKey(st.rider, 'right'));
+  if (Math.abs(rd.phi) > lim * P.red) pumpkinHintOnce(st, 'wobble' + (rd.phi > 0 ? 1 : 0), st.rider, rd.phi > 0 ? 'Wobbly! Walk back ' + pumpkinKey(st.rider, 'left') : 'Wobbly! Walk forward ' + pumpkinKey(st.rider, 'right'));
   /* -- bridges -- */
   for (const b of c.bridges) {
     if (pk.x < b.x0 - 4 || pk.x > b.x1 + 4) continue;
@@ -389,7 +445,7 @@ function pumpkinWrong(st, id, what) {
 // the gentle lessons, once each room, when they first matter
 function pumpkinNudges(st) {
   const nd = pumpkinNeeds(st), pk = st.pk;
-  if (nd.pusher === 'front' && nd.downD < 140) pumpkinHintOnce(st, 'front', st.pusher, 'Downhill! Leapfrog in front: ' + pumpkinKey(st.pusher, 'jump'));
+  if (nd.pusher === 'front') pumpkinHintOnce(st, 'front', st.pusher, 'Downhill! Leapfrog in front: ' + pumpkinKey(st.pusher, 'jump'));
   if (nd.pusher === 'hold' && pk.v > PUMPKIN.vBack + 25) pumpkinHintOnce(st, 'hold', st.pusher, 'Hold it back: ' + pumpkinKey(st.pusher, 'left') + ' into it');
   if (nd.rider === 'fwd' && nd.onUp && pk.v < 10 && st.pu.act > 0) pumpkinHintOnce(st, 'fwd', st.rider, 'Too steep! Lean forward ' + pumpkinKey(st.rider, 'right'));
   if (nd.rider === 'back' && nd.onDown && pk.v > 90) pumpkinHintOnce(st, 'back', st.rider, 'Too fast! Lean back ' + pumpkinKey(st.rider, 'left'));
@@ -417,20 +473,21 @@ function pumpkinNeeds(st) {
   if (rock) out.rockD = Math.abs(rock.x - x);
   const slope = pumpkinSlope(st, x);
   if (out.onUp) out.rider = 'fwd';
-  else if (pu.side > 0 && dn && out.downD > -30 && out.downD < 260 && v < 25 && slope < 0.1) out.rider = 'fwd';   // the pusher waits in front: roll it to the edge
-  else if (out.onDown && dn.br && x > dn.d.x1 - 6) out.rider = v < 40 ? 'fwd' : v > 85 ? 'back' : 'center';   // on the bridge: roll it across gently
-  else if (out.onDown || out.downD < 20 + Math.max(0, v) * 0.35) out.rider = 'back';
-  else if (dry && v > 150) out.rider = 'back';
+  else if (pu.side <= 0 && dn && !out.onDown && out.downD < P.frogD && v > P.frogV - 20) out.rider = 'back';   // slow it on the crest, so the pusher can leapfrog in front
+  else if (pu.side > 0 && dn && out.downD > -30 && out.downD < P.frogD + 60 && slope < 0.1 && v < (out.downD > 70 ? 70 : 40)) out.rider = out.downD > 70 ? 'fwd' : 'nudge';   // the pusher waits in front: roll it to the edge, then tip it over gently
+  else if (out.onDown && dn.br && x > dn.d.x1 - 6) out.rider = v < 70 ? 'fwd' : v > 108 ? 'back' : 'center';   // on the bridge: roll it across at a steady walk
+  else if (out.onDown || out.downD < 20 + Math.max(0, v) * 0.35) out.rider = v < 40 && slope < 0.12 && pu.side > 0 ? 'nudge' : 'back';   // (at the very top it still needs tipping over)
+  else if (dry && v > 135) out.rider = 'back';   // a dry hill: brake when it gets too fast to stand on
   else if (rock && !out.onUp) out.rider = 'hug';
   for (const g of c.gusts) if (g.state === 'warn' || g.state === 'blow') out.gust = g;
   // the pusher
-  if (pu.side < 0 || pu.frog && pu.frog.to < 0) out.pusher = dn && out.downD < 170 && !out.onUp ? 'front' : 'push';
-  else out.pusher = dn && (out.onDown || out.downD < 300) ? 'hold' : 'behind';
+  if (pu.side < 0 || pu.frog && pu.frog.to < 0) out.pusher = dn && out.downD < P.frogD && !out.onUp ? 'front' : 'push';
+  else out.pusher = dn && (out.onDown || out.downD < P.frogD + 60) ? 'hold' : 'behind';
   return out;
 }
 
 /* ---------- fails: a sploosh at a bridge, a tumble off the top ---------- */
-const pumpkinSafe = b => (b.gold === 2 ? PUMPKIN.vSafeGold2 : b.gold ? PUMPKIN.vSafeGold : PUMPKIN.vSafe);
+const pumpkinSafe = b => (b.gold === 3 ? Infinity : b.gold === 2 ? PUMPKIN.vSafeGold2 : b.gold ? PUMPKIN.vSafeGold : PUMPKIN.vSafe);
 // did each player press something lately? (gold help only counts tries you both took part in)
 const pumpkinBoth = st => G.time - st.inT[0] < PUMPKIN.tryWin && G.time - st.inT[1] < PUMPKIN.tryWin;
 function pumpkinStartSplash(st, b) {
@@ -445,8 +502,11 @@ function pumpkinStartSplash(st, b) {
   if (!reduceMotion) G.shake = Math.max(G.shake, 0.2);
   const feet = pumpkinRiderFeet(st);
   rd.fly = { t: 0, x0: feet.x, y0: feet.y, x1: b.x0 - 40, y1: pumpkinGY(st, b.x0 - 40), spin: 1 };
-  pumpkinHintOnce(st, 'slowBridge', st.pusher, 'Bridges need SLOW: leapfrog in front and hold ' + pumpkinKey(st.pusher, 'left'));
-  pumpkinHintOnce(st, 'slowBridgeR', st.rider, 'Lean back ' + pumpkinKey(st.rider, 'left') + ' all the way down!');
+  // what went wrong, said to whoever can fix it (each splash)
+  const pu = st.pu, U = st.pusher, Rr = st.rider;
+  if (pu.side <= 0 && !pu.frog) pumpkinHint(st, U, 'Leapfrog in front first! ' + pumpkinKey(U, 'jump') + ' next to it', 3.2);
+  else if (pu.act >= 0) pumpkinHint(st, U, 'Hold it back: walk ' + pumpkinKey(U, 'left') + ' into it', 3.2);
+  if (rd.lean > -0.5) pumpkinHint(st, Rr, 'Lean back ' + pumpkinKey(Rr, 'left') + ' all the way down!', 3.2);
   if (!pumpkinBoth(st)) {
     const lazy = [0, 1].filter(k => G.time - st.inT[k] >= P.tryWin);
     for (const k of lazy) pumpkinHint(st, k, k === st.pusher ? 'Your turn! Hold it back from in front' : 'Your turn! Lean back to brake', 3.4);
@@ -472,15 +532,17 @@ function pumpkinSplashStep(st, dt) {
 function pumpkinStartTumble(st) {
   const pk = st.pk, rd = st.rd;
   pk.state = 'tumble'; pk.t = 0; pk.v0 = pk.v;
-  st.stats.tumbles++; st.stats.roomFails[st.k]++; st.roomTumbles++;
+  st.stats.tumbles++; st.stats.roomFails[st.k]++;
+  if (G.time - st.inT[st.rider] < PUMPKIN.tryWin) st.roomTumbles++;   // (sticky boots only count falls while the rider was trying)
   const dir = Math.sign(rd.phi) || 1, feet = pumpkinRiderFeet(st);
   rd.fly = { t: 0, x0: feet.x, y0: feet.y, x1: pk.x + dir * 120, y1: pumpkinGY(st, pk.x + dir * 120), spin: dir };
   pumpkinPop(st, feet.x, feet.y - 60, 'Whoa!', '#ffffff', 30);
   Sfx.play('pumpkinWhoa'); rumble(st.rider, 0.4, 0.5, 220);
   pumpkinHintOnce(st, 'tumble', st.rider, dir > 0 ? 'Walk back ' + pumpkinKey(st.rider, 'left') + ' as it rolls!' : 'Walk forward ' + pumpkinKey(st.rider, 'right') + ' as it rolls back!');
-  if (st.roomTumbles >= PUMPKIN.tumbleHelp && !st.sticky) {
-    st.sticky = true; st.stats.helps++;
-    pumpkinMsg(st, 'Sticky boots! Balancing is easier now', C.gold, 3.4);
+  const want = st.roomTumbles >= PUMPKIN.tumbleHelp2 ? 2 : st.roomTumbles >= PUMPKIN.tumbleHelp ? 1 : 0;
+  if (want > st.sticky) {
+    st.sticky = want; st.stats.helps++;
+    pumpkinMsg(st, want === 1 ? 'Sticky boots! Balancing is easier now' : 'Super sticky boots! No more sliding off', C.gold, 3.4);
     Sfx.play('pumpkinHelp');
   }
 }
@@ -506,15 +568,18 @@ function pumpkinPoofBack(st) {
   const pk = st.pk, b = pk.splashB;
   if (b) {
     b.broke = 0;
-    const want = b.tries >= PUMPKIN.bridgeTries2 ? 2 : b.tries >= PUMPKIN.bridgeTries ? 1 : 0;
+    const P = PUMPKIN, want = b.tries >= P.bridgeTries3 ? 3 : b.tries >= P.bridgeTries2 ? 2 : b.tries >= P.bridgeTries ? 1 : 0;
     if (want > (b.gold || 0)) {
       b.gold = want; st.stats.helps++;
-      pumpkinMsg(st, want === 1 ? 'Gold planks! This bridge holds a faster pumpkin now' : 'Super gold planks! Extra strong for you two', C.gold, 3.6);
+      pumpkinMsg(st, ['', 'Gold planks! This bridge holds a faster pumpkin now', 'Super gold planks! Extra strong for you two', 'Mister Straw piled hay on the bridge! Nothing sinks now'][want], C.gold, 3.6);
       Sfx.play('pumpkinHelp');
     }
   }
   for (let i = 0; i < 26; i++) { const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 150; pumpkinPart(st, pk.x, pk.y, Math.cos(a) * s, Math.sin(a) * s - 30, 0.8, i % 2 ? '#b48cff' : '#d9c2ff', 8 + Math.random() * 8, -40, 'smoke'); }
-  pumpkinPlace(st, st.cp);
+  // a tumble on level ground: the rider just climbs back on right there. Anything else: back to the last bale
+  const here = !b && pk.x > st.c.bales[st.cp].x + 100 && [-60, -30, 0, 30, 60].every(d => Math.abs(pumpkinSlope(st, pk.x + d)) < 0.05)
+    && !st.c.bridges.some(br => pk.x > br.x0 - 60 && pk.x < br.x1 + 60) && Math.abs(st.pu.x - pk.x) < 120 && !st.pu.frog;
+  pumpkinPlace(st, st.cp, here ? pk.x : null);
   const np = st.pk;
   for (let i = 0; i < 26; i++) { const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 150; pumpkinPart(st, np.x, np.y, Math.cos(a) * s, Math.sin(a) * s - 30, 0.8, i % 2 ? '#b48cff' : '#d9c2ff', 8 + Math.random() * 8, -40, 'smoke'); }
   pumpkinPop(st, np.x, np.y - 100, 'Poof!', '#d9c2ff', 26);
@@ -561,11 +626,14 @@ function pumpkinStartFinish(st) {
 function pumpkinFinStep(st, dt) {
   const P = PUMPKIN, pk = st.pk, fin = st.fin;
   fin.t += dt;
-  pk.v = approach(pk.v, 0, 400 * dt); pk.x += pk.v * dt; pk.x = Math.min(pk.x, fin.bedX + 30);
+  // it rolls to a stop on the wagon bed, then rides along with the wagon when it drives off
+  pk.v = approach(pk.v, 0, 400 * dt);
+  fin.restX = Math.min((fin.restX == null ? pk.x : fin.restX) + pk.v * dt, fin.bedX + 30);
+  pk.x = fin.restX + (fin.driveX || 0);
   // the pumpkin turns stem-up, then: chop chop, a big goofy smile, lit from inside
   const want = Math.round(pk.ang / (Math.PI * 2)) * Math.PI * 2;
   pk.ang = approach(pk.ang, want, dt * 3);
-  pk.y = pumpkinPC(st, pk.x);
+  pk.y = pumpkinPC(st, fin.restX);
   if (fin.t > 1.0 && !fin.chop) { fin.chop = true; Sfx.play('pumpkinChop'); }
   if (fin.t > 1.55 && !fin.carved) {
     fin.carved = true;
@@ -580,7 +648,7 @@ function pumpkinFinStep(st, dt) {
 }
 function pumpkinClear(st) {
   const pk = st.pk;
-  G.level.goal = { x: pk.x + (st.fin ? st.fin.driveX || 0 : 0) - st.cam.x, y: pk.y - 80 - st.cam.y };
+  G.level.goal = { x: pk.x - st.cam.x, y: pk.y - 80 - st.cam.y };
   levelClear();
 }
 
@@ -615,7 +683,13 @@ function pumpkinCam(st, dt) {
   let tx = pk.x - P.camLead + clamp(pk.v * 0.4, -60, 90);
   // look a little down the hill ahead (or up it), so a steep down and its bridge stay above the job panels
   let ty = pk.y * 0.55 + pumpkinPC(st, Math.min(pk.x + 320, st.c.len)) * 0.45 - P.camY;
+  // a bridge coming up: keep its planks above the job panels (but the rider and the prompts stay on screen)
+  if (pk.state === 'roll') {
+    const b = st.c.bridges.find(br => br.x1 > pk.x - 20 && br.x0 < pk.x + 620);
+    if (b) { const panel = Math.round(56 * (hudBig() ? 1.4 : 1)) + 10; ty = Math.min(Math.max(ty, pumpkinGY(st, b.x0) + 40 - (H - panel - 30)), pk.y - 240); }
+  }
   if (pk.state === 'splash') ty = pumpkinPC(st, pk.x) - P.camY;
+  if (G.introT > 0) ty -= P.introDrop;   // (during the room card the pumpkin sits lower, under the card)
   if (pk.state === 'finish') { tx = st.fin.bedX - 420 + (st.fin.driveX || 0) * 0.6; ty = pumpkinPC(st, st.fin.bedX) - P.camY - 10; }
   cam.x += (tx - cam.x) * Math.min(1, dt * 5);
   cam.y += (ty - cam.y) * Math.min(1, dt * 4);
@@ -654,6 +728,10 @@ function pumpkinMirror(st) {
   const rf = pumpkinRiderFeet(st);
   feet[st.rider] = rf; feet[st.pusher] = { x: st.pu.x, y: st.pu.y };
   if (st.rd.fly && (pk.state === 'splash' || pk.state === 'tumble')) feet[st.rider] = pumpkinFlyPos(st);
+  if (pumpkinBoarding(st)) {
+    const gx = pk.x + 62, ground = { x: gx, y: pumpkinGY(st, gx) };
+    feet[st.rider] = st.rd.board < 0 ? ground : pumpkinArc(ground, rf, st.rd.board / P.boardT, 46);
+  }
   if (pk.state === 'swap') {
     const u = clamp((st.swap.t - 0.45) / 0.8, 0, 1), sw = st.swap;
     feet[st.rider] = pumpkinArc(sw.r0, { x: pk.x - P.D - 6, y: pumpkinGY(st, pk.x - P.D - 6) }, u, 90);
@@ -661,8 +739,9 @@ function pumpkinMirror(st) {
   }
   if (pk.state === 'finish') {
     const fin = st.fin, u = clamp((fin.t - 0.3) / 0.7, 0, 1), dx = fin.driveX || 0, bedY = pumpkinGY(st, fin.bedX);
-    feet[st.rider] = pumpkinArc(fin.r0, { x: pk.x + 70, y: bedY }, u, 70);
-    feet[st.pusher] = pumpkinArc(fin.u0, { x: pk.x - 70, y: bedY }, u, 110);
+    const rx = fin.restX == null ? pk.x : fin.restX;
+    feet[st.rider] = pumpkinArc(fin.r0, { x: rx + 70, y: bedY }, u, 70);
+    feet[st.pusher] = pumpkinArc(fin.u0, { x: rx - 70, y: bedY }, u, 110);
     for (const k of [0, 1]) { feet[k].x += dx; if (u >= 1) feet[k].y -= Math.abs(Math.sin((fin.t - 1) * 7 + k * 1.4)) * 12; }
   }
   for (const p of ps) {
@@ -674,6 +753,7 @@ function pumpkinMirror(st) {
     p.stun = (pk.state === 'tumble' || pk.state === 'splash') && p.id === st.rider ? 0.5 : 0;
   }
 }
+const pumpkinBoarding = st => st.rd.board != null && st.rd.board < PUMPKIN.boardT && st.pk.state === 'roll';
 function pumpkinFlyPos(st) {
   const fl = st.rd.fly, dur = st.pk.state === 'splash' ? 0.9 : 0.75, u = clamp(fl.t / dur, 0, 1);
   return pumpkinArc({ x: fl.x0, y: fl.y0 }, { x: fl.x1, y: fl.y1 }, u, 80);
@@ -685,7 +765,7 @@ function pumpkinArc(a, b, u, h) {
 
 MODES.pumpkin = {
   PUMPKIN,
-  compile: pumpkinCompile, gy: pumpkinGY, pc: pumpkinPC, needs: pumpkinNeeds, key: pumpkinKey, riderFeet: pumpkinRiderFeet,
+  compile: pumpkinCompile, gy: pumpkinGY, pc: pumpkinPC, needs: pumpkinNeeds, key: pumpkinKey, riderFeet: pumpkinRiderFeet, lim: pumpkinLim, boots: pumpkinBoots, rockAhead: pumpkinRockAhead, slope: pumpkinSlope,
   setup(st, L) {
     st.stats = { splashes: 0, tumbles: 0, frogs: [0, 0], pushT: [0, 0], leanT: [0, 0], helps: 0, roomT: [], roomFails: [], roomTitles: [] };
     pumpkinRoom(st, L, 0);
@@ -711,7 +791,7 @@ MODES.pumpkin = {
     const s = G.mst.stats;
     if (!s) return [];
     const fails = s.splashes + s.tumbles, t = G.time;
-    const medal = t <= 300 && fails <= 2 ? 'Gold' : t <= 480 && fails <= 8 ? 'Silver' : 'Bronze';
+    const medal = t <= 240 && fails <= 2 ? 'Gold' : t <= 390 && fails <= 8 ? 'Silver' : 'Bronze';
     const out = [
       { label: 'Splashes', value: s.splashes },
       { label: 'Tumbles', value: s.tumbles },
@@ -970,6 +1050,13 @@ function pumpkinDrawBridge(st, b) {
     rr(x - cam.x - (b.x1 - b.x0) / n / 2 + 1, y - 2, (b.x1 - b.x0) / n - 2, 9, 2); ctx.fill();
     ctx.fillStyle = gold ? '#a77b15' : '#7a4c2c'; ctx.fillRect(x - cam.x - 1, y + 1, 2, 2);
   }
+  if (gold === 3) {   // Mister Straw's hay piled along it
+    for (let k = 0; k < n; k += 2) {
+      const x = b.x0 + (k + 1) * (b.x1 - b.x0) / n, y = pumpkinGY(st, x) + sag(x) - cam.y;
+      ctx.fillStyle = '#e8bd55'; rr(x - cam.x - 15, y - 9, 30, 9, 4); ctx.fill();
+      ctx.strokeStyle = '#b8862a'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x - cam.x - 8, y - 8); ctx.lineTo(x - cam.x - 6, y - 1); ctx.moveTo(x - cam.x + 5, y - 8); ctx.lineTo(x - cam.x + 7, y - 1); ctx.stroke();
+    }
+  }
   // the SLOW turtle sign before it
   const sx = b.x0 - 150, sy = pumpkinGY(st, sx) - cam.y;
   if (sx - cam.x > -60 && sx - cam.x < W + 60) {
@@ -979,7 +1066,7 @@ function pumpkinDrawBridge(st, b) {
     // a little turtle
     ctx.fillStyle = '#3f7a3c'; ctx.beginPath(); ctx.ellipse(sx - cam.x, sy - 63, 8, 5.5, 0, Math.PI, 0); ctx.fill();
     circle(sx - cam.x + 9, sy - 64, 3); ctx.fill(); ctx.fillRect(sx - cam.x - 7, sy - 63, 3, 4); ctx.fillRect(sx - cam.x + 4, sy - 63, 3, 4);
-    text(gold ? 'GOLD' : 'SLOW', sx - cam.x, sy - 88, 13, '#ffe7a8', 'center', 'body');
+    text(gold === 3 ? 'HAY!' : gold ? 'GOLD' : 'SLOW', sx - cam.x, sy - 88, 13, '#ffe7a8', 'center', 'body');
   }
 }
 // the patch: vines, leaves and little pumpkins along the ground
@@ -1321,7 +1408,7 @@ function pumpkinDrawPusher(st) {
 }
 function pumpkinDrawRider(st) {
   const pk = st.pk, rd = st.rd, p = G.players[st.rider];
-  if (pk.state === 'swap' || pk.state === 'finish' || ((pk.state === 'splash' || pk.state === 'tumble') && rd.fly)) {
+  if (pk.state === 'swap' || pk.state === 'finish' || ((pk.state === 'splash' || pk.state === 'tumble') && rd.fly) || pumpkinBoarding(st)) {
     ctx.save(); ctx.translate(p.x + PW / 2, p.y + PH);
     if (rd.fly && !rd.fly.landed) ctx.rotate(rd.fly.spin * rd.fly.t * 9);
     pumpkinDrawBody(p, 0, rd.fly && rd.fly.landed ? 1.2 : 1, rd.fly && rd.fly.landed ? 0.8 : 1);
@@ -1329,7 +1416,7 @@ function pumpkinDrawRider(st) {
     return;
   }
   const f = pumpkinRiderFeet(st), cam = st.cam;
-  const wob = rd.wob > 0 ? Math.sin(rd.wob * 40) * 0.15 : 0, danger = Math.abs(rd.phi) / (st.sticky ? PUMPKIN.stickyMax : PUMPKIN.phiMax);
+  const wob = rd.wob > 0 ? Math.sin(rd.wob * 40) * 0.15 : 0, danger = Math.abs(rd.phi) / (pumpkinLim(st));
   ctx.save(); ctx.translate(f.x - cam.x, f.y - cam.y);
   // arms flail when wobbly
   if (danger > 0.65 && rd.hug < 0.5) {
@@ -1389,11 +1476,11 @@ function pumpkinDrawPumpkin(st) {
   if (pk.state === 'roll' && G.introT <= 0) pumpkinDrawArc(st, x, y);
 }
 function pumpkinDrawArc(st, x, y) {
-  const P = PUMPKIN, rd = st.rd, lim = st.sticky ? P.stickyMax : P.phiMax, r = P.R + 6;
+  const P = PUMPKIN, rd = st.rd, lim = pumpkinLim(st), r = P.R + 6;
   const seg = (a0, a1, col, lw) => { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.arc(x, y, r, -Math.PI / 2 + a0, -Math.PI / 2 + a1); ctx.stroke(); };
   ctx.globalAlpha = 0.85;
-  seg(-lim, -lim * 0.72, '#ff6b6b', 5); seg(lim * 0.72, lim, '#ff6b6b', 5);
-  seg(-lim * 0.72, -P.leanFull, 'rgba(255,197,61,0.9)', 5); seg(P.leanFull, lim * 0.72, 'rgba(255,197,61,0.9)', 5);
+  seg(-lim, -lim * P.red, '#ff6b6b', 5); seg(lim * P.red, lim, '#ff6b6b', 5);
+  seg(-lim * P.red, -P.leanFull, 'rgba(255,197,61,0.9)', 5); seg(P.leanFull, lim * P.red, 'rgba(255,197,61,0.9)', 5);
   seg(-P.leanFull, P.leanFull, 'rgba(143,227,176,0.85)', 5);
   ctx.globalAlpha = 1;
   // the needed lean glows
@@ -1401,7 +1488,7 @@ function pumpkinDrawArc(st, x, y) {
   if (nd.rider === 'fwd' || nd.rider === 'back') {
     const s = nd.rider === 'fwd' ? 1 : -1;
     ctx.globalAlpha = 0.5 + 0.5 * Math.abs(Math.sin(G.clock * 7));
-    seg(s > 0 ? P.leanFull : -lim * 0.72, s > 0 ? lim * 0.72 : -P.leanFull, C.gold, 9);
+    seg(s > 0 ? P.leanFull : -lim * P.red, s > 0 ? lim * P.red : -P.leanFull, C.gold, 9);
     ctx.globalAlpha = 1;
   }
   // the rider's marker
@@ -1437,11 +1524,11 @@ function pumpkinHud(st) {
     const cpuSeat = pumpkinQuiet(id);
     text(NAMES[id] + (rider ? ' rides' : ' pushes') + (cpuSeat ? ' (computer)' : ''), px + 12 * z, py + 15 * z, 15 * z, PCOL[id], 'left');
     if (rider) {
-      if (!cpuSeat) text(pumpkinKey(id, 'lr') + ' balance · ' + pumpkinKey(id, 'down') + ' hug', px + pw - 12 * z, py + 15 * z, 11 * z, '#d9d3ef', 'right', 'body');
+      if (!cpuSeat) text(pumpkinKey(id, 'lr') + ' balance · ' + pumpkinKey(id, 'down') + (st.rd.tired ? ' hug: resting' : ' hug'), px + pw - 12 * z, py + 15 * z, 11 * z, st.rd.tired ? '#ff9a9a' : '#d9d3ef', 'right', 'body');
       // the balance bar: back ... forward
-      const lim = st.sticky ? P.stickyMax : P.phiMax, bx = px + 12 * z, bw = pw - 24 * z, by = py + 30 * z, bh = 16 * z;
+      const lim = pumpkinLim(st), bx = px + 12 * z, bw = pw - 24 * z, by = py + 30 * z, bh = 16 * z;
       const X = a => bx + bw * (0.5 + 0.5 * clamp(a / lim, -1, 1));
-      const zones = [[-lim, -lim * 0.72, '#ff6b6b', '', null], [-lim * 0.72, -P.leanFull, '#ffc53d', 'BRAKE', 'back'], [-P.leanFull, P.leanFull, '#8fe3b0', 'OK', 'center'], [P.leanFull, lim * 0.72, '#ffc53d', 'LEAN', 'fwd'], [lim * 0.72, lim, '#ff6b6b', '', null]];
+      const zones = [[-lim, -lim * P.red, '#ff6b6b', '', null], [-lim * P.red, -P.leanFull, '#ffc53d', 'BRAKE', 'back'], [-P.leanFull, P.leanFull, '#8fe3b0', 'OK', 'center'], [P.leanFull, lim * P.red, '#ffc53d', 'LEAN', 'fwd'], [lim * P.red, lim, '#ff6b6b', '', null]];
       for (const [a, b, col, , key] of zones) {
         const want = key && nd.rider === key && key !== 'center';
         ctx.fillStyle = col; ctx.globalAlpha = want ? 1 : 0.55; rr(X(a) + 1, by, X(b) - X(a) - 2, bh, bh / 2); ctx.fill(); ctx.globalAlpha = 1;
@@ -1467,11 +1554,14 @@ function pumpkinHud(st) {
     }
   }
   // the speed gauge over a bridge ahead: SLOW is safe
+  // (it sits at the top, under the pills, so it never covers the bridge it warns about)
+  let gaugeBot = 0;
   if (nd.bridge && pk.state === 'roll' && (nd.onDown || nd.downD < 420)) {
-    const b = nd.bridge, safe = pumpkinSafe(b), gw = 150 * z, gh = 14 * z, gx = W / 2 - gw / 2, gy = H - Math.round(56 * z) - 10 - gh - 16 * z;
+    const b = nd.bridge, safe = pumpkinSafe(b), gw = 150 * z, gh = 14 * z, gx = W / 2 - gw / 2, gy = (big ? 52 : 44) + 18 * z;
+    gaugeBot = gy + gh + 6 * z + 6;
     const X = v => gx + gw * clamp(v / 280, 0, 1);
     ctx.fillStyle = 'rgba(28,26,54,0.75)'; rr(gx - 8 * z, gy - 18 * z, gw + 16 * z, gh + 24 * z, 10); ctx.fill();
-    text(b.kind === 'pond' ? 'Bridge: go SLOW' : 'Mud ditch: go SLOW', W / 2, gy - 9 * z, 11 * z, b.gold ? C.gold : '#d9d3ef', 'center', 'body');
+    text(b.gold === 3 ? 'Hay bridge: any speed!' : b.kind === 'pond' ? 'Bridge: go SLOW' : 'Mud ditch: go SLOW', W / 2, gy - 9 * z, 11 * z, b.gold ? C.gold : '#d9d3ef', 'center', 'body');
     ctx.fillStyle = b.gold ? C.gold : '#8fe3b0'; rr(gx, gy, X(safe) - gx, gh, gh / 2); ctx.fill();
     ctx.fillStyle = '#ff6b6b'; rr(X(safe), gy, gx + gw - X(safe), gh, gh / 2); ctx.fill();
     const mx = X(Math.abs(pk.v));
@@ -1487,61 +1577,60 @@ function pumpkinHud(st) {
     let w = ctx.measureText(st.msg.text).width + 30, cx = W / 2 + 40, y = 12;
     if (w <= right - left) cx = clamp(cx, left + w / 2, right - w / 2);
     else {
-      cx = W / 2; y = big ? 96 : 80;
+      cx = W / 2; y = Math.max(big ? 96 : 80, gaugeBot);
       while (w > W - 40 && fs > 11) { fs--; ctx.font = font(fs); w = ctx.measureText(st.msg.text).width + 30; }
     }
     ctx.globalAlpha = clamp((st.msg.life - st.msg.t) / 0.3, 0, 1);
     pill(cx, y, w, h, 'center'); text(st.msg.text, cx, y + h / 2 + 0.5, fs, st.msg.col, 'center', 'body'); ctx.globalAlpha = 1;
   }
   if (G.introT > 0 || pk.state !== 'roll') return;
-  // prompts over the heads: the rider's open to the right, the pusher's to the left
+  // prompts over the heads: the rider's sits right above the rider, the pusher's opens away from the pumpkin (so the
+  // two never cover each other or the balance arc). A hint bubble replaces that player's prompt while it shows.
   const Rp = ps[st.rider], Up = ps[st.pusher], fs = 14 * z;
-  const yMax = H - Math.round(56 * z) - 18;
-  const say = (p, str, col, left, lift, pulse) => {
-    if (pumpkinQuiet(p.id)) return 0;
+  const yMax = H - Math.round(56 * z) - 18, uSide = st.pu.side > 0 ? 'r' : 'l';
+  const place = (p, w, h, at, lift) => {
+    const hx = p.x + PW / 2, rider = p.id === st.rider;
+    const y = clamp(p.y - (rider ? 26 : 12) * z - lift - h, Math.max(46, gaugeBot), yMax - lift - h);
+    const x = at === 'c' ? hx - w / 2 : at === 'l' ? hx + 6 * z - w : hx - 6 * z;
+    return { x: clamp(x, 4, W - w - 4), y };
+  };
+  const say = (p, str, col, lift, pulse) => {
+    if (pumpkinQuiet(p.id) || st.hints[p.id]) return 0;
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-    const w = ctx.measureText(str).width + 20 * z, h = fs + 12 * z, hx = p.x + PW / 2;
-    const y = clamp(p.y - 14 * z - lift - h - (p.id === st.rider ? 10 : 0), 46, yMax - lift - h);
-    let x = left ? hx + 14 * z - w : hx - 14 * z;
-    x = clamp(x, 4, W - w - 4);
+    const w = ctx.measureText(str).width + 20 * z, h = fs + 12 * z, at = p.id === st.rider ? 'c' : uSide, o = place(p, w, h, at, lift);
     const s = pulse ? 1 + 0.06 * Math.sin(t * 14) : 1;
-    ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.scale(s, s);
+    ctx.save(); ctx.translate(o.x + w / 2, o.y + h / 2); ctx.scale(s, s);
     ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(-w / 2, -h / 2, w, h, h / 2); ctx.fill();
     ctx.strokeStyle = col; ctx.lineWidth = 2; rr(-w / 2, -h / 2, w, h, h / 2); ctx.stroke();
     text(str, 0, 0.5, fs, col, 'center', 'body');
     ctx.restore();
     return h + 6;
   };
-  const bubble = (p, str, left, lift) => {
+  const bubble = (p, str) => {
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-    const w = ctx.measureText(str).width + 22 * z, h = fs + 14 * z, hx = p.x + PW / 2;
-    const y = clamp(p.y - 14 * z - lift - h - (p.id === st.rider ? 10 : 0), 46, yMax - lift - h);
-    const x = clamp(left ? hx + 18 * z - w : hx - 18 * z, 4, W - w - 4);
+    const w = ctx.measureText(str).width + 22 * z, h = fs + 14 * z, o = place(p, w, h, p.id === st.rider ? 'c' : uSide, 0);
     ctx.fillStyle = '#ffffff'; ctx.strokeStyle = PCOL[p.id]; ctx.lineWidth = 2.5;
-    rr(x, y, w, h, h / 2); ctx.fill(); ctx.stroke();
-    text(str, x + w / 2, y + h / 2 + 0.5, fs, C.ink, 'center', 'body');
+    rr(o.x, o.y, w, h, h / 2); ctx.fill(); ctx.stroke();
+    text(str, o.x + w / 2, o.y + h / 2 + 0.5, fs, C.ink, 'center', 'body');
   };
-  let liftR = 0, liftU = 0;
-  const R = Rp.id, U = Up.id, lim = st.sticky ? P.stickyMax : P.phiMax;
+  const R = Rp.id, U = Up.id, lim = pumpkinLim(st), phi = st.rd.phi;
   // the rider
-  if (Math.abs(st.rd.phi) > lim * 0.7) liftR += say(Rp, st.rd.phi > 0 ? pumpkinKey(R, 'left') + ' Wobbly!' : 'Wobbly! ' + pumpkinKey(R, 'right'), '#ff8a8a', false, liftR, true);
-  else if (nd.gust && nd.gust.state === 'warn') liftR += say(Rp, nd.gust.dir > 0 ? pumpkinKey(R, 'left') + ' Gust coming!' : 'Gust coming! ' + pumpkinKey(R, 'right'), '#d8f0ff', false, liftR, true);
-  else if (nd.rider === 'fwd' && nd.onUp && st.rd.phi < P.leanFull) liftR += say(Rp, 'Lean forward! ' + pumpkinKey(R, 'right'), C.gold, false, liftR, true);
-  else if (nd.rider === 'back' && st.rd.phi > -P.leanFull && (nd.onDown || Math.abs(pk.v) > 60)) liftR += say(Rp, pumpkinKey(R, 'left') + ' Lean back!', C.gold, false, liftR, true);
-  else if (nd.rider === 'hug' && st.rd.hug < 0.5) liftR += say(Rp, 'Rock! Hug ' + pumpkinKey(R, 'down'), '#ffe7a8', false, liftR, true);
-  else if (nd.rider === 'fwd' && !nd.onUp && st.rd.phi < P.leanFull) liftR += say(Rp, 'Roll it on! ' + pumpkinKey(R, 'right'), '#ffe7a8', false, liftR, false);
+  if (Math.abs(phi) > lim * P.red) say(Rp, phi > 0 ? pumpkinKey(R, 'left') + ' Wobbly!' : 'Wobbly! ' + pumpkinKey(R, 'right'), '#ff8a8a', 0, true);
+  else if (nd.gust && nd.gust.state === 'warn') say(Rp, nd.gust.dir > 0 ? pumpkinKey(R, 'left') + ' Gust coming!' : 'Gust coming! ' + pumpkinKey(R, 'right'), '#d8f0ff', 0, true);
+  else if (nd.rider === 'fwd' && phi < P.leanFull) say(Rp, (nd.onUp ? 'Lean forward! ' : 'Roll it on! ') + pumpkinKey(R, 'right'), nd.onUp ? C.gold : '#ffe7a8', 0, nd.onUp);
+  else if (nd.rider === 'back' && phi > -P.leanFull && (nd.onDown || Math.abs(pk.v) > 60)) say(Rp, pumpkinKey(R, 'left') + ' Lean back!', C.gold, 0, true);
+  else if (nd.rider === 'nudge' && phi < P.leanDead) say(Rp, 'Tip it over: a little ' + pumpkinKey(R, 'right'), '#ffe7a8', 0, false);
+  else if (nd.rider === 'hug' && st.rd.hug < 0.5 && !st.rd.tired) say(Rp, 'Rock! Hug ' + pumpkinKey(R, 'down'), '#ffe7a8', 0, true);
+  else if (nd.rider === 'center' && Math.abs(phi) > P.leanFull) say(Rp, phi > 0 ? pumpkinKey(R, 'left') + ' Walk back to the top' : 'Walk back to the top ' + pumpkinKey(R, 'right'), '#ffe7a8', 0, false);
   // the pusher
   if (!st.pu.frog) {
-    if (nd.pusher === 'front' && nd.downD < 200) liftU += say(Up, 'Leapfrog in front! ' + pumpkinKey(U, 'jump'), C.gold, true, liftU, true);
-    else if (nd.pusher === 'hold' && st.pu.act >= 0 && (nd.onDown || pk.v > 20)) liftU += say(Up, pumpkinKey(U, 'left') + ' Hold it back!', C.gold, true, liftU, true);
-    else if (nd.pusher === 'behind' && Math.abs(pk.v) < 40) liftU += say(Up, 'Leapfrog back! ' + pumpkinKey(U, 'jump'), '#ffe7a8', true, liftU, false);
-    else if (nd.pusher === 'push' && st.pu.act <= 0 && (nd.onUp || Math.abs(pk.v) < 20)) liftU += say(Up, 'Push! ' + pumpkinKey(U, 'right'), '#ffe7a8', true, liftU, nd.onUp);
+    if ((st.pu.rockT || 0) > 0.25) say(Up, 'Hop the rock! ' + pumpkinKey(U, 'jump'), '#ffe7a8', 0, true);
+    else if (nd.pusher === 'front') say(Up, 'Leapfrog in front! ' + pumpkinKey(U, 'jump'), C.gold, 0, true);
+    else if (nd.pusher === 'hold' && st.pu.act >= 0 && (nd.onDown || pk.v > 20)) say(Up, pumpkinKey(U, 'left') + ' Hold it back!', C.gold, 0, true);
+    else if (nd.pusher === 'behind' && Math.abs(pk.v) < 40) say(Up, 'Leapfrog back! ' + pumpkinKey(U, 'jump'), '#ffe7a8', 0, false);
+    else if (nd.pusher === 'push' && st.pu.act <= 0 && (nd.onUp || Math.abs(pk.v) < 20)) say(Up, 'Push! ' + pumpkinKey(U, 'right'), '#ffe7a8', 0, nd.onUp);
   }
-  for (const p of ps) {
-    const h = st.hints[p.id];
-    if (!h) continue;
-    bubble(p, h.text, p.id === st.pusher, p.id === st.pusher ? liftU : liftR);
-  }
+  for (const p of ps) if (st.hints[p.id]) bubble(p, st.hints[p.id].text);
 }
 
 /* ---------- sounds ---------- */
