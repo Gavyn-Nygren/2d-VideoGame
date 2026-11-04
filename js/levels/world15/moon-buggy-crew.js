@@ -148,7 +148,7 @@ function buggyRoom(st, L, k) {
   st.cp = { x: 0 }; st.flips = 0; st.gyro = false; st.magnet = false;
   st.state = 'drive'; st.t = 0; st.oops = null; st.swap = null; st.fin = null; st.parked = false; st.parkT = 0; st.padT = 0;
   st.crate = { where: 'hopper', x: 0, y: 0, vy: 0 };
-  st.blockT = 0; st.towHold = 0; st.hornT = 0; st.honkVis = 0; st.stuckT = 0;
+  st.blockT = 0; st.towHold = 0; st.hornT = 0; st.honkVis = 0; st.stuckT = 0; st.bestX = 0; st.noProgT = 0;
   buggyPlace(st, 0);
   st.cam = { x: st.bg.x - BUGGY.camLead, y: st.bg.y - BUGGY.camY + 40 };
   st.parts = []; st.pops = []; st.hints = [null, null]; st.hinted = {}; st.msg = null; st.wrongT = [0, 0];
@@ -213,7 +213,10 @@ function buggyDrive(st, dt) {
   if (st.state !== 'drive') return;
   // whoopsies: down a crater, or tipped over
   const pit = buggyPitAt(st, b.x);
-  if (pit && buggyOpen(pit) && b.y > pit.rim + 40) { buggyStartOops(st, 'pit', pit); return; }
+  // (a crater still being filled counts as soon as the buggy dips into it: half full, it would sit stuck inside)
+  if (pit && buggyOpen(pit) && (b.y > pit.rim + 40 || (pit.kind === 'fill' && b.y > pit.rim - 12 && b.x > pit.x0 + 8 && b.x < pit.x1 - 8))) { buggyStartOops(st, 'pit', pit); return; }
+  // no headway for a long time (and not parked): the Tow-Bot prompt shows whatever else is up
+  if (b.x > st.bestX + 30 || st.parked) { st.bestX = b.x; st.noProgT = 0; } else st.noProgT += dt;
   if (buggyTipped(st)) { buggyStartOops(st, 'flip'); return; }
   buggyHelp(st, dt);
   buggyNudges(st, dt, di, ai);
@@ -614,7 +617,7 @@ function buggyOopsStep(st, dt) {
   }
   if (o.t >= B.oopsT) {
     const x = o.here ? o.x0 : o.toX;
-    buggyPlace(st, x);
+    buggyPlace(st, x); st.bestX = x; st.noProgT = 0;
     st.state = 'drive'; st.oops = null;
     Sfx.play('buggyLand');
     buggyPop(st, x, st.bg.y - 70, o.kind === 'tow' ? 'Here you go!' : 'Back on track!', '#bfe8ff', 20);
@@ -1505,6 +1508,7 @@ function buggyHud(st) {
   const Dp = ps[D], Ap = ps[A], b = st.bg;
   // the driver
   if (st.towHold > 0.15) say(Dp, 'Calling Tow-Bot... ' + Math.ceil((B.towHold - st.towHold) * 10) / 10 + 's', '#bfe8ff', false);
+  else if (st.noProgT > 25 && !['waitArm', 'honk', 'wait', 'honkHatch', 'stop'].includes(nd.drv)) say(Dp, 'Stuck? Hold ' + buggyKey(D, 'down') + ' for Tow-Bot', '#bfe8ff', true);
   else if (nd.drv === 'level') say(Dp, 'Level out! ' + buggyKey(D, b.a > 0 ? 'left' : 'right'), C.gold, true);
   else if (nd.drv === 'honk') say(Dp, 'A sleepy critter! Honk ' + buggyKey(D, 'act'), C.gold, true);
   else if (nd.drv === 'hop') say(Dp, 'Hop! ' + buggyKey(D, 'jump'), C.gold, true);

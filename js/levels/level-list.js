@@ -3431,7 +3431,7 @@ const LEVELS = [
         title: 'Rocket Pad', driver: 1, act: { label: 'grab', labels: ['grab', 'honk'] },
         tip: 'Bo drives to the rocket! Park in the box, honk to open the hatch, and Pip lifts the rock crate in.',
         course: ['f300', 'S:Last stretch! The rocket is waiting', 'f120', 'r0+60', 'f200', 'h260', 'f60', 'r105+50', 'c110', 'f240',
-          'b', 'f260', 'F', 'f150', 'r120+190', 'o140', 'f300', 'w340', 'f240', 'r0+40', 'f140', 'F', 'f200', 'S:Ramp! Full speed!',
+          'b', 'f260', 'F', 'f150', 'r120+190', 'o140', 'f560', 'w340', 'f240', 'r0+40', 'f140', 'F', 'f200', 'S:Ramp! Full speed!',
           'f400', 'r150+210', 'j230', 'f280', 'b', 'f260', 'k', 'f220', 'r0+40', 'f160', 'S:Park in the box under the rocket!', 'E'],
       },
     ],
