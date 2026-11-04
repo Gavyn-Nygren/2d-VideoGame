@@ -96,9 +96,14 @@
     const helper = o.alive && !os.inTar && !os.fly;
     const rg0 = tarRegionAt(S, cpuCx(p));
     if (rg0 && rg0.shallow) {
-      // a puddle: hop out toward the side I was heading (sticky hops while fresh, else wiggle-pop)
-      const dir = cpuCx(p) > (rg0.x0 + rg0.x1) / 2 ? 1 : -1;   // (the nearer edge)
-      if (!ps.stuck) { out.right = dir > 0; out.left = dir < 0; if (ps.goo < TAR.gooStuck - 0.1) out.jump = 'tap'; return out; }
+      // a puddle: out on the side I was heading (wade to that edge and hop while fresh, else wiggle: the pop goes that way)
+      const dir = st.exitDir || (cpuCx(p) > (rg0.x0 + rg0.x1) / 2 ? 1 : -1);
+      if (!ps.stuck) {
+        out.right = dir > 0; out.left = dir < 0;
+        const edge = dir > 0 ? rg0.x1 - (p.x + p.w) : p.x - rg0.x0;
+        if (edge < 10 && ps.goo < TAR.gooStuck - 0.1) out.jump = 'tap';
+        return out;
+      }
       st.wigT = (st.wigT || 0) - dt;
       if (st.wigT <= 0) { st.wigT = 0.13; st.wigD = st.wigD > 0 ? -1 : 1; }
       out.right = st.wigD > 0; out.left = st.wigD < 0;
@@ -259,7 +264,9 @@
     const oAt = !os.inTar && o.grounded && os.zone === cr.k + 1 && cpuCx(o) - cr.x1 < 80;
     const edge = spot(S, cr.k, cr.x0 - 16);
     if (oAt && cpuFor(st, 'wadeIn', true, dt) > react(info) + 0.2) {
-      out.right = true;   // (walk off the edge into the goo)
+      // walk to the edge (hopping any puddle on the way), then off it into the goo
+      if (edge - cpuCx(p) > 30) go(S, out, p, cr.x0 + 30, 2);
+      else out.right = true;
       return out;
     }
     if (!oAt) st['_for_wadeIn'] = 0;
@@ -326,7 +333,7 @@
       // a sticky hop or pop out of a puddle: steer onto the bank beside it
       if (ps.gooey && !p.grounded) {
         for (const rg of S.regions) if (rg.shallow && cpuCx(p) > rg.x0 - 14 && cpuCx(p) < rg.x1 + 14) {
-          const dir = cpuCx(p) > (rg.x0 + rg.x1) / 2 ? 1 : -1;
+          const dir = st.exitDir || (cpuCx(p) > (rg.x0 + rg.x1) / 2 ? 1 : -1);
           cpuSteer(out, p, dir > 0 ? rg.x1 + 18 : rg.x0 - 18, 2);
           return out;
         }
@@ -335,6 +342,15 @@
       if (st.land != null) {
         if (p.grounded) st.land = null;
         else { cpuSteer(out, p, st.land, 4); return out; }
+      }
+      if (os.inTar && !os.fly && !S.line) {
+        // the partner hopped into the goo of a tied crossing before anyone swung: take the vine over and pull them out
+        // on the far side (a pull from here would only put them back where they started)
+        const g = gooOf(S, o), v = g && g.cr && g.cr.vine;
+        if (v && g.cr.kind === 'tied' && v.state === 'tied' && ps.zone === g.zN && os.zone === g.zN && tarGrabOk(S, p, v)) {
+          say(S, p, 'I’ll swing over and pull!');
+          return grabTied(S, st, p, o, os, g.cr, out, info, dt);
+        }
       }
       if (os.inTar && !os.fly) { const r = pull(S, st, p, o, ps, os, out, dt, info); if (r) return r; }
       if (os.fly) return out;

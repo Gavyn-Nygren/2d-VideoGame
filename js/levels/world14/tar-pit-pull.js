@@ -35,12 +35,12 @@
 const TAR = {
   // tar
   surfOff: 4, wadeV: 58, wadeAcc: 520, wadeAir: 70, hopV: 250, gooStuck: 0.65, wadeDepth: 8, stuckDepth: 10, fullDepth: 28,
-  sinkT: 7.5, sinkGold: 13, wiggleBack: 0.2, shallowWiggles: 5,
+  sinkT: 7.5, sinkGold: 13, wiggleBack: 0.2, shallowWiggles: 5, puddlePop: 6,
   // pulling
   reach: 225, reachGold: 300, reachDy: 170, pullAway: 34, pullHold: 0.42, pullWiggle: 0.3, pullSpeed: 105, shlorpT: 0.62,
   // vines
   vineG: 2000, rest: 100, anchorY: 40, grabPad: 10, pump: 1.5, capMul: 1.06, rideDamp: 0.03, hookT: 0.45, hookReach: 26,
-  retie: 1.2, pushReach: 64, pushCD: 0.8, grabCD: 0.4, freeDamp: 1.6,
+  retie: 1.2, holdOn: 0.3, pushReach: 64, pushCD: 0.8, grabCD: 0.4, freeDamp: 1.6,
   // logs and bubbles
   logTop: 388, logSinkPx: 34, logOne: 0.045, logTwo: 0.2, logRise: 0.3, ventMin: 2.6, ventMax: 4.0, ventPop: 470,
   // Gerty
@@ -126,7 +126,7 @@ function tarRoom(st, L) {
   // per-room state
   st.pl = G.players.map(p => ({
     inTar: false, stuck: false, depth: 0, goo: 0, sinkT: 0, gooey: false, visitStuck: false, wig: 0, wigDir: 0, wigShake: 0,
-    ride: null, fly: null, onLog: -1, onG: false, drip: 0, grabCD: 0, safe: { x: p.x, y: p.y, log: -1 }, zone: tarZoneAt(st, tarCx(p)),
+    ride: null, rideT: 0, fly: null, inDir: 0, onLog: -1, onG: false, drip: 0, grabCD: 0, safe: { x: p.x, y: p.y, log: -1 }, zone: tarZoneAt(st, tarCx(p)),
     helpCD: 0, shoutCD: 0, waitCD: 0, fallVine: 0, hooking: null, calling: false, tooFarCD: 0, bonkCD: 0,
   }));
   st.line = null; st.throwFx = []; st.pops = []; st.news = null;
@@ -253,14 +253,15 @@ function tarMoveNormal(st, p, ps, dt) {
         }
       }
     }
-    // into the goo?
-    if (!p.grounded) {
+    // into the goo? (only on the way down, so a hop or pop out of it isn't swallowed again at once)
+    if (!p.grounded && p.vy >= 0) {
       const s = tarSurfAt(st, tarCx(p));
       if (s != null && p.y + p.h >= s + 0.5) tarEnter(st, p, ps, s, lastVy);
     }
   } finally { o.alive = oa; }
 }
 function tarEnter(st, p, ps, surf, vy) {
+  if (!ps.gooey) ps.inDir = Math.abs(p.vx) > 5 ? Math.sign(p.vx) : p.face;   // (the way you were going: a puddle pops you out that side)
   ps.inTar = true; ps.stuck = false; ps.depth = clamp(p.y + p.h - surf, 0, TAR.wadeDepth); ps.sinkT = 0; ps.wig = 0;
   p.vx *= 0.25; p.vy = 0; p.jumping = false; p.grounded = false;
   p.sx = 1.32; p.sy = 0.7;
@@ -329,11 +330,15 @@ function tarWade(st, p, ps, dt) {
     if (p.pendingJump) { p.pendingJump = false; tarShout(st, p, ps); }
     if (shallow) {
       ps.depth = approach(ps.depth, Math.min(TAR.stuckDepth, maxD), 20 * dt);
-      if (ps.wig >= TAR.shallowWiggles) {
-        // wiggled free: a sticky pop out of the puddle
-        ps.inTar = false; ps.stuck = false; ps.gooey = true; ps.goo = 0;
-        p.y = surf + ps.depth - p.h; p.vy = -330; p.vx = p.face * 60; p.grounded = false; p.coyote = 0;
-        tarPop(st, tarCx(p), p.y - 12, 'Wiggle-pop!', '#ffe3a8', 19); Sfx.play('tarPop', p.id);
+      ps.sinkT += dt;   // (a puddle never swallows you: after a while it burps you out anyway)
+      if (ps.wig >= TAR.shallowWiggles || ps.sinkT >= TAR.puddlePop) {
+        // wiggled free: a sticky pop out of the puddle, onto the bank at its nearer edge (always out, never back in)
+        const side = ps.inDir || (cx - rg.x0 < rg.x1 - cx ? -1 : 1);
+        const lx = side < 0 ? rg.x0 - 14 : rg.x1 + 14, top = tarGroundAt(st, lx);
+        ps.fly = { x0: p.x, y0: p.y, x1: lx - p.w / 2, y1: top - p.h, t: 0, T: 0.42, h: Math.max(30, p.y - (top - p.h) + 24) };
+        Object.assign(ps, { inTar: false, stuck: false, gooey: false, goo: 0, depth: 0, drip: 1.2 });
+        p.vx = 0; p.vy = 0; p.grounded = false; p.coyote = 0;
+        tarPop(st, tarCx(p), p.y - 12, ps.wig >= TAR.shallowWiggles ? 'Wiggle-pop!' : 'Burp! Pop!', '#ffe3a8', 19); Sfx.play('tarPop', p.id);
         if (st.line && st.line.to === p.id) st.line = null;
         return;
       }
@@ -413,7 +418,7 @@ function tarGrab(st, p, ps, v) {
   const own = clamp((p.vx * c - p.vy * s) / v.r, -0.9, 0.9);
   v.om = wasFree ? v.om * 0.9 + own * 0.1 : own * 0.6;
   v.Acap = Math.max(tarAmp(v), Math.abs(v.th)) * TAR.capMul + 0.02;
-  ps.ride = v; ps.gooey = false; ps.grab0 = v.th;
+  ps.ride = v; ps.gooey = false; ps.grab0 = v.th; ps.rideT = 0;
   p.vx = 0; p.vy = 0; p.jumping = false; p.pendingJump = false; p.jumpBuf = 0; p.grounded = false;
   p.x = tp.x - p.w / 2; p.y = tp.y - 2;
   p.sx = 0.8; p.sy = 1.2;
@@ -423,7 +428,14 @@ function tarGrab(st, p, ps, v) {
 }
 function tarRide(st, p, ps, dt) {
   const v = ps.ride, inp = p.input;
-  if (p.pendingJump || p.pendingAct) { p.pendingJump = false; p.pendingAct = false; tarRelease(st, p, ps, false); return; }
+  ps.rideT += dt;
+  if (p.pendingJump || p.pendingAct) {
+    p.pendingJump = false; p.pendingAct = false;
+    // a second press just after the grab (a double tap) doesn't drop you; gold vines only let go over solid ground
+    const cx = tarCx(p), lx = cx + clamp(v.r * v.om * Math.cos(v.th), -330, 330) * 0.3;
+    const overGround = st.zones.some(z => cx > z.x0 + 4 && cx < z.x1 - 4 && lx > z.x0 + 4 && lx < z.x1 - 4);
+    if (ps.rideT >= TAR.holdOn && (!st.help.vine || overGround)) { tarRelease(st, p, ps, false); return; }
+  }
   const g = TAR.vineG, th0 = v.th;
   const mv = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
   let acc = -(g / v.r) * Math.sin(v.th);
@@ -756,12 +768,16 @@ function tarHint(st) {
   if (!cr) { const d = st.exit; return d ? { s: 'Both into the cave!', x: d.x + d.w / 2, y: d.y - 40 } : null; }
   const [a, b] = G.players, sa = st.pl[0], sb = st.pl[1];
   const stuck = [0, 1].find(k => st.pl[k].inTar);
-  if (stuck != null) { const q = G.players[stuck]; return { s: 'Pull ' + NAMES[stuck] + ' out with the action!', x: tarCx(q), y: q.y - 60 }; }
+  // (in 1-player mode a hint never asks the person to do the computer's part: it says what the computer does)
+  if (stuck != null) {
+    const q = G.players[stuck], helper = 1 - stuck;
+    return { s: tarCpu(helper) ? 'Hang on! ' + NAMES[helper] + ' will pull you out!' : 'Pull ' + NAMES[stuck] + ' out with the action!', x: tarCx(q), y: q.y - 60 };
+  }
   if (sa.zone !== sb.zone) {
-    const behind = sa.zone < sb.zone ? 0 : 1, q = G.players[behind];
-    if (cr.kind === 'gerty') return { s: 'Blow the horn for ' + NAMES[behind] + '!', x: (st.horns.find(h => h.cross === cr.k && h.side === 'F') || { x: W / 2 }).x, y: 280 };
-    if (cr.kind === 'pass') return { s: 'Hook the vine and throw it back!', x: cr.x1 + 30, y: 280 };
-    return { s: NAMES[behind] + ': hop in the tar, get pulled!', x: tarCx(q) + 40, y: q.y - 60 };
+    const behind = sa.zone < sb.zone ? 0 : 1, ahead = 1 - behind, q = G.players[behind];
+    if (cr.kind === 'gerty') return { s: tarCpu(ahead) ? 'Walk over Gerty when she lies down!' : 'Blow the horn for ' + NAMES[behind] + '!', x: (st.horns.find(h => h.cross === cr.k && h.side === 'F') || { x: W / 2 }).x, y: 280 };
+    if (cr.kind === 'pass') return { s: tarCpu(ahead) ? 'Wait at the edge and jump for the vine!' : 'Hook the vine and throw it back!', x: cr.x1 + 30, y: 280 };
+    return { s: tarCpu(behind) ? 'Wait at the edge, then pull ' + NAMES[behind] + ' out!' : NAMES[behind] + ': hop in the tar, get pulled!', x: tarCx(q) + 40, y: q.y - 60 };
   }
   if (cr.kind === 'gerty') return { s: 'One blows the horn, one crosses!', x: (st.horns.find(h => h.cross === cr.k && h.side === 'N') || { x: 60 }).x + 40, y: 280 };
   if (cr.kind === 'pass') return { s: 'Hold the hook stump, the other swings!', x: cr.x0 - 30, y: 260 };
@@ -1411,13 +1427,14 @@ function tarDrawTop() {
       }
     }
   }
-  // pops ("Stuck!", "SHLORP!", "Bloop!"), lifted above any chip they would cover
+  // pops ("Stuck!", "SHLORP!", "Bloop!"), lifted above any chip or earlier pop they would cover
   for (const q of st.pops) {
     const size = q.size * (tarBig() ? 1.3 : 1);
     ctx.font = size + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
     const w = ctx.measureText(q.s).width + size * 0.3, hh = size * 1.1, x = clamp(q.x, w / 2 + 6, W - w / 2 - 6);
     let y = Math.max(86, q.y - q.t * 26);
-    for (let pass = 0; pass < 2; pass++) for (const b of boxes) if (x + w / 2 > b.x0 && x - w / 2 < b.x1 && y + hh / 2 > b.y0 && y - hh / 2 < b.y1) y = b.y0 - hh / 2 - 3;
+    for (let pass = 0; pass < 3; pass++) for (const b of boxes) if (x + w / 2 > b.x0 && x - w / 2 < b.x1 && y + hh / 2 > b.y0 && y - hh / 2 < b.y1) y = b.y0 - hh / 2 - 3;
+    if (q.t < 1.15) boxes.push({ x0: x - w / 2, x1: x + w / 2, y0: y - hh / 2, y1: y + hh / 2 });
     ctx.save(); ctx.globalAlpha = clamp(Math.min(q.t / 0.1, (1.3 - q.t) / 0.4), 0, 1);
     bigText(q.s, x, y, Math.round(size), q.col, q.t < 0.12 ? 0.7 + q.t * 2.5 : 1);
     ctx.restore();
