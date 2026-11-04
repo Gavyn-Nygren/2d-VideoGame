@@ -52,7 +52,7 @@ function gravflipKey(id) {
   const d = gravflipDev(id);
   if (d === 'pad') return glyph('act');
   if (d === 'touch') return 'the flip button';
-  if (typeof cpuSolo === 'function' && cpuSolo()) return 'F';
+  if (typeof cpuSolo === 'function' && cpuSolo()) return 'F or /';
   return id === 0 ? 'F' : '/';
 }
 function gravflipBackKey(id) {
@@ -233,12 +233,20 @@ function gravflipItems(st) {
     }
   }
 }
+// standing by beacon b: on its own floor, or (flipped) on the ceiling right above it, not under a ledge it stands on
+function gravflipByBeacon(st, p, b) {
+  if (Math.abs(p.x + p.w / 2 - b.x) > 40) return false;
+  if (!st.grav[p.id]) return Math.abs(p.y + p.h - b.feet) < 4;
+  if (p.y >= b.feet) return false;
+  for (let r = Math.floor(p.y / T); r < Math.floor(b.feet / T); r++) if (gravflipSolid(b.c, r)) return false;
+  return true;
+}
 function gravflipBeacons(st) {
   for (const p of G.players) {
     if (!p.alive || !p.grounded) continue;
-    const P = st.pl[p.id], cx = p.x + p.w / 2;
+    const P = st.pl[p.id];
     st.beacons.forEach((b, i) => {
-      if (i <= P.beacon || Math.abs(cx - b.x) > 40) return;
+      if (i <= P.beacon || !gravflipByBeacon(st, p, b)) return;
       P.beacon = i; P.spot = b.spots[p.id]; b.on[p.id] = true;
       Sfx.play('gravflipBeacon', p.id);
       burst(b.x, b.feet - 46, PCOL[p.id], 8);
@@ -247,17 +255,21 @@ function gravflipBeacons(st) {
 }
 
 /* ---------- whoopsies (goo, space) and going back ---------- */
-function gravflipHazards(st, p) {
-  if (!p.alive) return;
-  if (p.y > H + GRAVFLIP.space || p.y + p.h < -GRAVFLIP.space) { gravflipWhoops(st, p, 'space'); return; }
-  const c1 = Math.floor((p.x + 2) / T), c2 = Math.floor((p.x + p.w - 2) / T), r1 = Math.floor(p.y / T), r2 = Math.floor((p.y + p.h) / T);
+// does a box (x, y, w, h) touch the fizzy layer of the goo (the 12 px next to the floor or the ceiling)?
+function gravflipGooHit(st, box) {
+  const c1 = Math.floor((box.x + 2) / T), c2 = Math.floor((box.x + box.w - 2) / T), r1 = Math.floor(box.y / T), r2 = Math.floor((box.y + box.h) / T);
   for (let r = Math.max(0, r1); r <= Math.min(ROWS - 1, r2); r++) for (let c = Math.max(0, c1); c <= Math.min(COLS - 1, c2); c++) {
     const gz = st.goo[gravflipIx(c, r)];
     if (!gz) continue;
-    // the fizzy layer is the 12 px next to the floor (or the ceiling)
     const y0 = gz === 2 ? r * T : (r + 1) * T - 12;
-    if (rectHit(p, c * T + 3, y0, T - 6, 12)) { gravflipWhoops(st, p, 'goo'); return; }
+    if (rectHit(box, c * T + 3, y0, T - 6, 12)) return true;
   }
+  return false;
+}
+function gravflipHazards(st, p) {
+  if (!p.alive) return;
+  if (p.y > H + GRAVFLIP.space || p.y + p.h < -GRAVFLIP.space) { gravflipWhoops(st, p, 'space'); return; }
+  if (gravflipGooHit(st, p)) gravflipWhoops(st, p, 'goo');
 }
 function gravflipWhoops(st, p, why) {
   if (!p.alive) return;
@@ -340,11 +352,56 @@ function gravflipJob(st, pl, id) {
   if (cMe && !gravflipCondOk(st, p, cMe)) return 'move';
   return '';
 }
+// where a flip right now sends a standing player: straight up (or down) to the first hull, as a box; null: out into space
+function gravflipStraight(st, p) {
+  const c1 = Math.floor((p.x + 0.01) / T), c2 = Math.floor((p.x + p.w - 0.01) / T);
+  const hit = r => { for (let c = c1; c <= c2; c++) if (solidFor(tile(c, r), p)) return true; return false; };
+  if (st.grav[p.id] === 0) { for (let r = Math.floor(p.y / T); r >= 0; r--) if (hit(r)) return { x: p.x, y: (r + 1) * T, w: p.w, h: p.h }; }
+  else for (let r = Math.floor((p.y + p.h - 0.01) / T); r < ROWS; r++) if (hit(r)) return { x: p.x, y: r * T - p.h, w: p.w, h: p.h };
+  return null;
+}
+// can a standing player walk along their floor (or ceiling) to column col, with no goo or hole on the way?
+function gravflipWalkable(st, p, col) {
+  const up = st.grav[p.id] === 1, sr = up ? Math.floor((p.y - 1) / T) : Math.floor((p.y + p.h + 1) / T), br = up ? sr + 1 : sr - 1;
+  const c0 = Math.floor((p.x + p.w / 2) / T), d = col >= c0 ? 1 : -1;
+  for (let c = c0; ; c += d) {
+    if (!solidFor(tile(c, sr), p) || solidFor(tile(c, br), p) || st.goo[gravflipIx(c, br)]) return false;
+    if (c === col) return true;
+  }
+}
+// a jump step's jumper may stand where a plain flip already does the job ('plain'), or where no take-off spot can be
+// walked to, like under the island ('back': go back to the beacon). '' means the jump as planned
+function gravflipRoute(st, pl, id) {
+  const step = pl.step, p = G.players[id];
+  if (!step.jump || !p.alive || !p.grounded || gravflipJob(st, pl, id) !== 'flip') return '';
+  const land = gravflipStraight(st, p);
+  if (land && !gravflipGooHit(st, land) && gravflipCondAt(st, step[pl.role(id)], land, st.grav[id] ^ 1, true)) return 'plain';
+  return step.jump.some(j => gravflipWalkable(st, p, Math.floor(j.x / T))) ? '' : 'back';
+}
 // a hint line with names and each player's own keys filled in
 function gravflipFill(st, s, pl) {
   const a = pl.A, b = pl.B;
   return s.replace(/\{A\}/g, NAMES[a]).replace(/\{B\}/g, NAMES[b]).replace(/\{Akey\}/g, gravflipKey(a)).replace(/\{Bkey\}/g, gravflipKey(b))
     .replace(/\{Acol\}/g, gravflipColWord(a)).replace(/\{Bcol\}/g, gravflipColWord(b));
+}
+// each player's hint line for the step ([pip, bo], '' for none); on a jump step whose jumper stands somewhere else
+// (gravflipRoute) the lines say what works from there instead. .back is true while a jumper should go back
+function gravflipLines(st, pl) {
+  const say = pl.step.say || {}, out = [0, 1].map(id => (say[pl.role(id)] ? gravflipFill(st, say[pl.role(id)], pl) : ''));
+  out.back = false;
+  for (const j of [pl.A, pl.B]) {
+    const route = gravflipRoute(st, pl, j), o = 1 - j, way = st.grav[j] ? 'down' : 'up';
+    if (route === 'plain') {
+      out[j] = 'Wait here: ' + NAMES[o] + ' flips you ' + way + '!';
+      out[o] = 'Flip ' + NAMES[j] + ' ' + way + ': ' + gravflipKey(o) + ' at your ' + gravflipColWord(o) + ' switch!';
+    } else if (route === 'back') {
+      out[j] = 'No take-off spot from here: ' + gravflipBackKey(j) + ' to go back';
+      out[o] = 'Wait: ' + NAMES[j] + ' goes back to try again';
+      out.back = true;
+    }
+    if (route) break;
+  }
+  return out;
 }
 
 /* ---------- help: gold float, Blip the robot, news ---------- */
@@ -533,12 +590,12 @@ function gravflipDeco(c, st) {
     c.fillStyle = 'rgba(255,215,120,0.18)'; c.font = '700 13px "Atkinson Hyperlegible", sans-serif'; c.textAlign = 'center'; c.fillText('DOCK 7', 560, 300);
   } else if (st.style === 'garden') {
     // hanging planters (they hang from the ceiling, of course) and floor pots
-    for (const x of [140, 300, 560]) {
+    for (const x of [140, 300, 440]) {
       c.strokeStyle = 'rgba(200,255,220,0.35)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, 90); c.lineTo(x, 124); c.stroke();
       c.fillStyle = '#c47a4a'; c.beginPath(); c.moveTo(x - 14, 124); c.lineTo(x + 14, 124); c.lineTo(x + 10, 142); c.lineTo(x - 10, 142); c.closePath(); c.fill();
       c.fillStyle = '#5fd18a'; for (let k = -2; k <= 2; k++) { c.beginPath(); c.ellipse(x + k * 6, 148 + Math.abs(k) * 4, 4, 10, k * 0.3, 0, Math.PI * 2); c.fill(); }
     }
-    for (const x of [90, 220, 800]) {
+    for (const x of [90, 220]) {
       c.fillStyle = '#b8693e'; c.fillRect(x - 12, 462, 24, 18);
       c.fillStyle = '#4fc47c'; for (let k = -2; k <= 2; k++) { c.beginPath(); c.ellipse(x + k * 5, 452 - Math.abs(k) * 3, 4, 11, k * 0.3, 0, Math.PI * 2); c.fill(); }
       c.fillStyle = '#ff8fc7'; c.beginPath(); c.arc(x, 440, 4, 0, Math.PI * 2); c.fill();
@@ -549,13 +606,15 @@ function gravflipDeco(c, st) {
       c.fillStyle = '#141236'; c.fillRect(x - 40, y - 26, 80, 52); c.strokeStyle = '#8f95bf'; c.lineWidth = 3; c.strokeRect(x - 40, y - 26, 80, 52);
       c.strokeStyle = '#7dffb0'; c.lineWidth = 2; c.beginPath(); for (let k = 0; k <= 16; k++) c.lineTo(x - 34 + k * 4.25, y + Math.sin(k * 0.9 + x) * 12); c.stroke();
     }
+    // (the tubes stand on a wall shelf, clear of the switches and the airlock)
+    c.fillStyle = '#4a4e7e'; c.fillRect(772, 380, 96, 5);
     for (const x of [790, 820, 850]) {
-      c.fillStyle = 'rgba(200,220,255,0.25)'; c.fillRect(x - 6, 430, 12, 50);
-      c.fillStyle = x === 820 ? '#ff8fc7' : '#7dd6ff'; c.fillRect(x - 5, 452, 10, 27);
+      c.fillStyle = 'rgba(200,220,255,0.25)'; c.fillRect(x - 6, 330, 12, 50);
+      c.fillStyle = x === 820 ? '#ff8fc7' : '#7dd6ff'; c.fillRect(x - 5, 352, 10, 27);
     }
   } else if (st.style === 'deck') {
-    // control consoles with blinking-light panels (the lights are drawn live)
-    for (const x of [120, 330]) { c.fillStyle = '#3d4472'; c.fillRect(x - 40, 440, 80, 40); c.fillStyle = '#2a2f55'; c.fillRect(x - 36, 444, 72, 14); }
+    // a control console with a blinking-light panel (the lights are drawn live)
+    for (const x of [120]) { c.fillStyle = '#3d4472'; c.fillRect(x - 40, 440, 80, 40); c.fillStyle = '#2a2f55'; c.fillRect(x - 36, 444, 72, 14); }
   }
 }
 function gravflipDrawBack(st) {
@@ -781,7 +840,7 @@ function gravflipDraw() {
   const t = G.clock;
   gravflipDrawBack(st);
   // live bits: blinking console lights on the deck, a glow at each window
-  if (st.style === 'deck') for (const x0 of [90, 300]) for (let k = 0; k < 6; k++) { ctx.fillStyle = ['#ff6b8a', '#7fe3ff', '#ffd84a'][(k + Math.floor(t * 2 + x0)) % 3]; ctx.globalAlpha = 0.55 + 0.45 * ((Math.floor(t * 3) + k) % 2); circle(x0 + 6 + k * 10, 451, 2.6); ctx.fill(); }
+  if (st.style === 'deck') for (const x0 of [90]) for (let k = 0; k < 6; k++) { ctx.fillStyle = ['#ff6b8a', '#7fe3ff', '#ffd84a'][(k + Math.floor(t * 2 + x0)) % 3]; ctx.globalAlpha = 0.55 + 0.45 * ((Math.floor(t * 3) + k) % 2); circle(x0 + 6 + k * 10, 451, 2.6); ctx.fill(); }
   ctx.globalAlpha = 1;
   for (const b of st.beacons) gravflipDrawBeacon(b, t);
   gravflipDrawExit(st, t);
@@ -804,10 +863,13 @@ function gravflipDrawTop() {
   // (hint chips keep clear of the exit's who-is-in lights)
   const d = st.exit;
   if (d) boxes.push(st.hatch ? { x0: d.x - 8, y0: d.y + d.h, x1: d.x + d.w + 8, y1: d.y + d.h + 40 } : { x0: d.x - 8, y0: d.y - 26, x1: d.x + d.w + 8, y1: d.y - 6 });
-  // the switch prompt under a person standing at their own switch
+  const pl = gravflipPlan(st), line = gravflipLines(st, pl);
+  const show = st.phase === 'play' && G.introT <= GRAVFLIP.introHold && (st.k === 0 ? st.stepT < 40 : (st.stepT < GRAVFLIP.chipT || st.stepT > GRAVFLIP.chipAgain));
+  // the switch prompt under a person standing at their own switch (not while their hint says to wait)
   for (const p of G.players) {
     const sw = gravflipSwitchAt(st, p);
     if (!sw || sw.owner !== p.id || gravflipCpu(p.id) || st.phase !== 'play' || G.introT > GRAVFLIP.introHold) continue;
+    if (show && line[p.id] && gravflipJob(st, pl, p.id) !== 'flipper') continue;
     const s = gravflipKey(p.id) + ': flip ' + NAMES[1 - p.id], fs = Math.round(13 * z);
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
     const w = ctx.measureText(s).width + 16, h = fs + 10, x0 = clamp(sw.x - w / 2, 6, W - 6 - w), y0 = sw.ceil ? sw.surf + 44 : sw.surf - 52 - h;
@@ -818,28 +880,24 @@ function gravflipDrawTop() {
   // Blip first, so the hint chips keep clear of him
   for (const q of gravflipDrawBlip(st.blip, t)) boxes.push(q);
   if (st.blip.on) {
-    const pl = gravflipPlan(st), f = gravflipFocus(st, pl);
+    const f = gravflipFocus(st, pl);
     st.blip.hint = f ? (gravflipJob(st, pl, f.id) === 'flipper' ? (gravflipCpu(f.id) ? NAMES[f.id] + ' flips from here!' : NAMES[f.id] + ': flip from here!') : (gravflipCpu(f.id) ? NAMES[f.id] + ' goes here!' : NAMES[f.id] + ': over here!')) : '';
   }
   // the step hints, over each person who has a job in it
-  if (st.phase === 'play' && G.introT <= GRAVFLIP.introHold) {
-    const pl = gravflipPlan(st), say = pl.step.say || {};
-    const show = st.k === 0 ? st.stepT < 40 : (st.stepT < GRAVFLIP.chipT || st.stepT > GRAVFLIP.chipAgain);
-    if (show) {
-      ctx.save(); if (st.stepT > GRAVFLIP.chipAgain) ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 5);
-      const pa = G.players[pl.A], pb = G.players[pl.B];
-      // the same words for both people: one chip between them
-      if (say.A && say.A === say.B && pa.alive && pb.alive && !gravflipCpu(pa.id) && !gravflipCpu(pb.id)) {
-        const up = st.grav[pa.id] === 1 && st.grav[pb.id] === 1, x = (pa.x + pb.x + PW) / 2;
-        boxes.push(gravflipChip(gravflipFill(st, say.A, pl), '', x, up ? Math.max(pa.y, pb.y) + PH + 18 : Math.min(pa.y, pb.y) - 20, C.gold, boxes, up));
-      } else for (const id of [pl.A, pl.B]) {
-        const p = G.players[id], s = say[pl.role(id)];
-        if (!p.alive || !s || gravflipCpu(id)) continue;
-        const up = st.grav[id] === 1, stuck = st.stepT > 30 && gravflipJob(st, pl, id);
-        boxes.push(gravflipChip(NAMES[id] + ': ' + gravflipFill(st, s, pl), stuck ? 'Stuck? ' + gravflipBackKey(id) + ' to go back' : '', p.x + p.w / 2, up ? p.y + p.h + 18 : p.y - 20, PCOL[id], boxes, up));
-      }
-      ctx.restore();
+  if (show) {
+    ctx.save(); if (st.stepT > GRAVFLIP.chipAgain) ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 5);
+    const pa = G.players[pl.A], pb = G.players[pl.B];
+    // the same words for both people: one chip between them
+    if (line[0] && line[0] === line[1] && pa.alive && pb.alive && !gravflipCpu(0) && !gravflipCpu(1)) {
+      const up = st.grav[pa.id] === 1 && st.grav[pb.id] === 1, x = (pa.x + pb.x + PW) / 2;
+      boxes.push(gravflipChip(line[0], '', x, up ? Math.max(pa.y, pb.y) + PH + 18 : Math.min(pa.y, pb.y) - 20, C.gold, boxes, up));
+    } else for (const id of [pl.A, pl.B]) {
+      const p = G.players[id];
+      if (!p.alive || !line[id] || gravflipCpu(id)) continue;
+      const up = st.grav[id] === 1, stuck = st.stepT > 30 && gravflipJob(st, pl, id) && !line.back;
+      boxes.push(gravflipChip(NAMES[id] + ': ' + line[id], stuck ? 'Stuck? ' + gravflipBackKey(id) + ' to go back' : '', p.x + p.w / 2, up ? p.y + p.h + 18 : p.y - 20, PCOL[id], boxes, up));
     }
+    ctx.restore();
   }
   // pops (Wheee!, Whoopsie!, That's Bo's switch!)
   for (const q of st.pops) {
@@ -934,4 +992,4 @@ Sfx.extra.gravflipFieldOn = function () { this.tone(200, 0.16, 'sine', 0.035, 52
 Sfx.extra.gravflipGold = function () { [784, 988, 1319].forEach((f, i) => this.tone(f, 0.1, 'triangle', 0.05, null, i * 0.06)); };
 Sfx.extra.gravflipRoom = function () { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.16, 'triangle', 0.06, null, i * 0.09)); };
 Sfx.extra.gravflipBlip = function () { this.tone(1500, 0.05, 'square', 0.015); this.tone(2000, 0.06, 'square', 0.012, null, 0.07); };
-MODES.gravflip.test = { GRAVFLIP, gravflipPlan, gravflipJob, gravflipCondAt, gravflipCondOk, gravflipSwitchAt, gravflipStandsOn, gravflipFlip, gravflipPhys };
+MODES.gravflip.test = { GRAVFLIP, gravflipPlan, gravflipJob, gravflipLines, gravflipRoute, gravflipCondAt, gravflipCondOk, gravflipSwitchAt, gravflipStandsOn, gravflipFlip, gravflipPhys };

@@ -179,7 +179,10 @@ function gravflipBotFlipper(S, st, p, o, c, step, dt, info, mine) {
     S.ready = 0;
   } else if (!info.partnerCpu) {
     if (step.jump && !o.grounded) { /* (watching the jump) */ }
-    else if (cpuFor(S, 'wait', true, dt) > 3) cpuSay(p, step.jump ? 'Run and jump, I’ll flip you!' : 'Ready to flip you!');
+    else if (cpuFor(S, 'wait', true, dt) > 3) {
+      const route = step.jump ? gravflipRoute(st, gravflipPlan(st), o.id) : '';
+      cpuSay(p, route === 'back' ? 'Hold down to go back, then jump!' : step.jump && route !== 'plain' ? 'Run and jump, I’ll flip you!' : 'Ready to flip you!');
+    }
   }
   return out;
 }
@@ -302,6 +305,10 @@ cpuBrain('gravflip', {
     if (key !== S.tkey) { S.tkey = key; S.tgt = null; S.tgtKind = ''; S.jmp = null; S.ready = 0; }
     else if (S.tT <= 0 && p.grounded && !(S.jmp && S.jmp.phase !== 'go')) { S.tT = GRAVFLIP_BOT.retarget; S.tgt = null; S.tgtKind = ''; }
     if (!p.grounded && !S.tgt && job !== 'flipper') return {};
+    // a jumper with no take-off spot it can walk to (under the island): straight back to the beacon
+    const noway = job === 'flip' && gravflipRoute(st, pl, p.id) === 'back';
+    if (cpuFor(S, 'noway', noway, dt) > 0.6) { S.backT = GRAVFLIP.backHold + 0.15; S.tgt = null; return { down: true }; }
+    if (noway) return {};
     if (job === 'flipper') return gravflipBotFlipper(S, st, p, o, theirs, step, dt, info, mine);
     if (job === 'flip') return gravflipBotFlipMe(S, st, p, o, mine, step, dt, info);
     if (job === 'move' || (step.key && !st.keyGot)) return gravflipBotMove(S, st, p, o, mine, step, dt, info, pl);
@@ -309,6 +316,11 @@ cpuBrain('gravflip', {
     // my part is done: stand still (off any switch prompt bother), stop sliding
     const out = {};
     if (Math.abs(p.vx) > 30 && p.grounded) { out.left = p.vx > 0; out.right = p.vx < 0; }
+    // in the exit: my own half of it, so nobody hides behind the other
+    if (step.exit && st.exit && p.grounded) {
+      const dx = st.exit.x + st.exit.w / 2 + (p.id === 0 ? -10 : 10) - cpuCx(p);
+      if (Math.abs(dx) > 3) { out.left = dx < 0; out.right = dx > 0; }
+    }
     return out;
   },
   // the speech bubble goes under a flipped player (their feet are up)

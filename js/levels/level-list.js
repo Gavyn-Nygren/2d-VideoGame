@@ -3476,10 +3476,10 @@ const LEVELS = [
         tip: 'Zap goo on the ceiling! Jump off it and get flipped in mid-air to land on the floating island.',
         plan: [
           { A: { g: 1 }, say: { A: 'Wait here: {B} flips you up!', B: 'Flip {A} up: {Bkey} at your {Bcol} switch!' } },
-          { A: { g: 0, zone: [12, 18] }, jump: [{ x: 280, dir: 1 }, { x: 680, dir: -1 }], say: { A: 'Jump off the ceiling edge toward the island', B: 'Flip {A} when the jump is over the island!' } },
+          { A: { g: 0, zone: [12, 18] }, jump: [{ x: 280, dir: 1 }, { x: 680, dir: -1 }], say: { A: 'Jump off the ceiling before the goo, toward the island', B: 'Flip {A} when the jump is over the island ({Bkey})!' } },
           { A: { g: 0, zone: [23, 29] }, key: true, say: { A: 'Grab the keycard, then hop over to the right ▶' } },
           { A: { g: 0, zone: [23, 29] }, B: { g: 1 }, key: true, say: { A: 'Flip {B} up: {Akey} at your {Acol} switch!', B: 'Wait here: {A} flips you up!' } },
-          { A: { g: 0, zone: [23, 29] }, B: { g: 0, zone: [12, 18] }, jump: [{ x: 280, dir: 1 }, { x: 680, dir: -1 }], key: true, say: { A: 'Flip {B} when the jump is over the island!', B: 'Jump off the ceiling edge toward the island' } },
+          { A: { g: 0, zone: [23, 29] }, B: { g: 0, zone: [12, 18] }, jump: [{ x: 280, dir: 1 }, { x: 680, dir: -1 }], key: true, say: { A: 'Flip {B} when the jump is over the island ({Akey})!', B: 'Jump off the ceiling before the goo, toward the island' } },
           { A: { g: 0, zone: [23, 29] }, B: { g: 0, zone: [23, 29] }, key: true, say: { B: 'Hop over to the right ▶' } },
         ],
         doorSay: 'Both into the airlock!',
@@ -3508,8 +3508,8 @@ const LEVELS = [
         title: 'Command Deck', goer: 1, style: 'deck',
         tip: 'The shuttle hatch is on the ceiling! Run, jump, get flipped up over the goo, then help each other through.',
         plan: [
-          { A: { g: 1, zone: [18, 29] }, jump: [{ x: 338, dir: 1 }], say: { A: 'Run and jump ▶ off the edge: {B} flips you up!', B: 'Flip {A} at the top of the jump!' } },
-          { A: { g: 1, zone: [18, 29] }, B: { g: 1, zone: [18, 29] }, jump: [{ x: 338, dir: 1 }], say: { A: 'Flip {B} at the top of the jump ({Akey})!', B: 'Run and jump ▶ off the edge!' } },
+          { A: { g: 1, zone: [18, 29] }, jump: [{ x: 338, dir: 1 }], say: { A: 'Run and jump ▶ over the goo: {B} flips you up!', B: 'Flip {A} at the top of the jump ({Bkey})!' } },
+          { A: { g: 1, zone: [18, 29] }, B: { g: 1, zone: [18, 29] }, jump: [{ x: 338, dir: 1 }], say: { A: 'Flip {B} at the top of the jump ({Akey})!', B: 'Run and jump ▶ over the goo!' } },
           { A: { g: 1, zone: [18, 23] }, B: { g: 0, zone: [20, 21] }, say: { A: 'Flip {B} down onto the little floor ({Akey})!', B: 'Wait over the clean floor: {A} flips you down' } },
           { A: { g: 1, zone: [18, 23] }, B: { g: 0, hold: 1 }, say: { B: 'Stand on the floor button: it opens the field!' } },
           { A: { g: 1, zone: [24, 29] }, B: { g: 0, hold: 1 }, say: { A: 'Walk the ceiling through the field ▶', B: 'Keep standing on the button!' } },
