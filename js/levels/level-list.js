@@ -3405,7 +3405,55 @@ const LEVELS = [
   // ----- END 14-1 Egg Rescue -----
   //
   // ----- BEGIN 14-2 Pterodactyl Express (mode 'ptero', js/levels/world14/pterodactyl-express.js) -----
-  // (def goes here)
+  // 14-2 Pterodactyl Express (team, Gavyn's pick): Petra the pterodactyl carries both. The flyer flaps her wings at the
+  // TOP of each wingbeat; the hanger swings from her feet, grabs fruit for the baby dinos and drops rocks on the
+  // switches that open the log gates. Course tokens: the top of the level file. The map is only the two spawns.
+  { name: 'Pterodactyl Express', world: 13, kind: 'team', mode: 'ptero', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Route',
+    act: { label: 'flap', labels: ['flap', 'grab'] },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> speed · swing <kbd>W</kbd> flap · grab <kbd>S</kbd> dive',
+      bo: '<kbd>←</kbd><kbd>→</kbd> speed · swing <kbd>↑</kbd> flap · grab <kbd>↓</kbd> dive',
+      pad: 'stick: speed · swing, <span data-glyph="a"></span> flap · grab, down dives,',
+    },
+    tip: 'Petra the pterodactyl gives you a ride! One flaps her wings, one hangs below and grabs fruit and rocks.',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Morning Delivery', flyer: 0, pal: 'morning', act: { label: 'flap', labels: ['flap', 'grab'] },
+        tip: 'Pip flies: flap at the gold TOP of the wingbeat. Bo hangs: grab fruit and drop it to the babies!',
+        course: ['f360', 'S:{F}: flap at the gold TOP!', 'f100', 'D:ferns', 'f90', 't:mango:330', 'f190', 'S:{H}: grab fruit, feed the babies!', 'f170', 'n:360:1',
+          'f220', 'D:bronto', 'f110', 't:banana:280', 'f170', 't:apple:340', 'f150', 't:mango:300', 'f200', 'n:370:2', 'f240', 'D:trike', 'f150', 'g400',
+          't:berry:290', 'f230', 'n:350:1', 'f200', 'g430', 'f150', 'S:Rocks! {H}: drop one on the switch', 'f170', 'r:310', 'f380', 's', 'f360', 'G',
+          'f220', 't:melon:300', 'f220', 'n:350:1', 'f180', 'D:eggs', 'f220', 'P'],
+      },
+      {
+        title: 'Canyon Gates', flyer: 1, pal: 'canyon', act: { label: 'flap', labels: ['grab', 'flap'] },
+        tip: 'Swap! Bo flies, Pip hangs. Mind the low canyon roofs, and drop rocks on the switches to open the gates.',
+        course: ['f360', 'S:Canyon! Mind the low roofs', 'f200', 't:apple:320', 'f150', 'c180', 'f120', 't:berry:310', 'f190', 'n:370:1', 'f170', 't:apple:330',
+          'f150', 'c70', 'f190', 'n:380:1', 'f220', 'r:300', 'f400', 's', 'f360', 'G',
+          'f200', 'g380', 'f180', 't:mango:260', 'f210', 'n:330:1', 'f150', 'g430', 'f150', 'S:Two switches! Two rocks!', 'f150', 'r:300', 'f380', 's',
+          'f220', 'r:300', 'f380', 's', 'f340', 'G',
+          'f200', 'D:stego', 'f60', 'c170', 'f110', 't:melon:310', 'f150', 't:mango:320', 'f200', 'n:380:2', 'f200', 'c70', 'f80', 'D:ferns', 'f160', 'P'],
+      },
+      {
+        title: 'Windy Cliffs', flyer: 0, pal: 'cliffs', act: { label: 'flap', labels: ['flap', 'grab'] },
+        tip: 'Pip flies again. Ride the updrafts, flap PERFECT flaps through downdrafts, and wait out headwinds!',
+        course: ['f360', 'S:Updraft! Ride it up', 'f160', 't:apple:330', 'f150', 'u:170', 'f230', 't:mango:200', 'f170', 'g340', 'f210', 'n:310:1',
+          'f200', 'S:Downdraft! PERFECT flaps only', 'f100', 'd:320', 'f170', 't:berry:240', 'f260', 'g430', 'f170', 'n:380:2',
+          'f200', 'D:bronto', 'f120', 'S:Headwind! Wait, or push on', 'f60', 'w:440', 'f220', 't:banana:300', 'f270', 'n:360:1',
+          'f240', 'r:300', 'f180', 'u:140', 'f220', 's', 'f340', 'G',
+          'f200', 'g330', 'f150', 't:melon:230', 'f190', 'd:260', 'f170', 'n:300:1', 'f190', 'g430', 'f260', 'P'],
+      },
+      {
+        title: 'Volcano Smoke Run', flyer: 1, pal: 'volcano', act: { label: 'flap', labels: ['grab', 'flap'] },
+        tip: 'Bo flies to the Big Nest! Fly over or under the sleepy smoke puffs, or Petra sneezes. ACHOO!',
+        course: ['f360', 'S:Sleepy smoke puffs! Fly around', 'f140', 'v', 'f220', 't:mango:300', 'f200', 'v', 'f170', 'n:360:1', 'f190', 't:berry:260',
+          'f170', 'v', 'f200', 'n:370:1', 'f220', 'r:300', 'f180', 'v', 'f220', 's', 'f340', 'G',
+          'f200', 't:apple:320', 'f150', 'v', 'f170', 't:banana:250', 'f200', 'n:350:2', 'f190', 'v', 'f170', 'r:310', 'f220', 'v', 'f200', 's', 'f340', 'G',
+          'f220', 't:melon:300', 'f200', 'n:380:1', 'f200', 'D:trike', 'f200', 'E'],
+      },
+    ],
+  },
   // ----- END 14-2 Pterodactyl Express -----
   //
   // ----- BEGIN 14-3 Tar Pit Pull (mode 'tarpit', js/levels/world14/tar-pit-pull.js) -----
