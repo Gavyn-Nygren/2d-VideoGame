@@ -1,7 +1,7 @@
 /* Pip & Bo - Computer partner: grand collector. */
 'use strict';
 
-/* 10-1 The Grand Collector (mode 'collector'): one brain for the four phases. Every phase gives each player a job
+/* 12-1 The Grand Collector (mode 'collector'): one brain for the four phases. Every phase gives each player a job
    (the level's own badges), and the jobs swap inside each phase, so the brain reads the job every step and plays it:
      Cannons   loader: fetch a keg and a ball (both before walking back), load, then wait in the safe spot by the
                cannon with the next load ready. gunner: try shots in its head (the game's own trace) while the loader

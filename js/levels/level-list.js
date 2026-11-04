@@ -2606,12 +2606,18 @@ const LEVELS = [
   },
   // ----- END 9-4 Krakatoa Ash Run -----
 
-  /* ===== World 10 (Grand Finale, team boss): one big boss level, 10-1 The Grand Collector (mode 'collector',
-     js/levels/world10/grand-collector.js). Each room is one phase of the fight, run by GC_PHASES[room.phase].
+  /* ===== World 10 (Summer Games): the Summer Olympics world, world index 9 (js/levels/world10/). ===== */
+  // ===== END World 10 =====
+
+  /* ===== World 11 (Winter Games): the Winter Olympics world, world index 10 (js/levels/world11/). ===== */
+  // ===== END World 11 =====
+
+  /* ===== World 12 (Grand Finale, team boss): one big boss level, 12-1 The Grand Collector (mode 'collector',
+     js/levels/world12/grand-collector.js). It stays the last level in LEVELS. Each room is one phase of the fight, run by GC_PHASES[room.phase].
      Room fields the core reads: title, tip, phase, pieces (the world numbers this phase wins back, in order),
      look (the world index whose colours the room uses; theme adds to them), act (labels per player), legend, map.
      Each phase builder edits only its own room block below (between its BEGIN and END lines). ===== */
-  { name: 'The Grand Collector', world: 9, kind: 'team', mode: 'collector', ownHUD: true, noFalls: true,
+  { name: 'The Grand Collector', world: 11, kind: 'team', mode: 'collector', ownHUD: true, noFalls: true,
     act: { label: 'act' },
     tip: 'A giant robot took a piece of every world! Team up and win all nine back.',
     switches: {}, signs: [],
@@ -2779,6 +2785,10 @@ const WORLDS = [
   { name: 'Great Escapes', blurb: 'Volcanoes, quakes, glaciers and ash clouds: escape them together!',
     theme: { skyTop: '#f2a477', skyBot: '#ffe6bd', hillFar: '#c9a08e', hillNear: '#a98272', sun: 'rgba(255, 236, 180, 0.95)', sunGlow: 'rgba(255, 180, 120, 0.38)',
       stone: '#5d4b5f', stoneLight: '#705c73', stoneEdge: '#3e3143', grass: '#a9d870', grassDark: '#6a9c45', plank: '#d39a62', plankDark: '#8a5a32', rope: '#f0d08a', ropeDark: '#7a5432' } },
+  // World 10: the Summer Olympics (hidden until it has levels)
+  { name: 'Summer Games', blurb: 'Summer Olympics fun for two!', theme: {} },
+  // World 11: the Winter Olympics (hidden until it has levels)
+  { name: 'Winter Games', blurb: 'Winter Olympics fun for two!', theme: {} },
   // the finale: one big boss level (a dusky purple and brass junk vault; each phase also takes the look of an earlier world)
   { name: 'Grand Finale', blurb: 'A giant robot stole a piece of every world. Win them all back together!',
     theme: { skyTop: '#3d2f6e', skyBot: '#e3a978', hillFar: '#6b5294', hillNear: '#56407c', sun: 'rgba(255, 222, 160, 0.92)', sunGlow: 'rgba(255, 190, 120, 0.32)',
