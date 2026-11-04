@@ -38,7 +38,7 @@ const BUGGY = {
   half: 48, wx: 31, wy: 10, wr: 14, ext: 20,     // body half-length; wheel mounts (local), wheel radius, spring travel
   k: 34, kd: 3.4, kdUp: 6, kHard: 900, wallPen: 14, I: 1100, angDampG: 4, angDampA: 0.6,
   acc: 300, vMax: 255, brake: 560, vRev: 120, roll: 35, hold: 460, vCap: 290,
-  hopV: 245, hopCD: 0.45, tiltA: 5.5, gyro: 1.4, gyroGold: 5,
+  hopV: 245, hopCD: 0.45, tiltA: 3.2, gyro: 4.5, gyroGold: 9,
   mossV: 390, rampH: 46, rampL: 110, rampKick: 0.45, pitD: 150, fillD: 110, fillNeed: 3,
   pivot: [-36, -27], clawMin: 26, clawMax: 168, clawSp: 290, clawHeavy: 215, clawAcc: 2600,
   grabR: 26, grabRGold: 44, rockR: 9, boulderR: 28, critterR: 18,
@@ -199,7 +199,7 @@ function buggyDrive(st, dt) {
   if (honk) buggyHonk(st);
   buggyPhysics(st, dt, thr, hop && !st.parked);
   buggyBlockers(st, dt);
-  if (thr && Math.abs(b.vf) < 6 && b.contacts) st.stuckT += dt; else st.stuckT = 0;
+  if (thr && Math.abs(b.vf) < 6 && (b.contacts || Math.abs(b.vy) < 8)) st.stuckT += dt; else st.stuckT = 0;
   if (thr || Math.abs(b.vf) > 40) { st.puttT = (st.puttT || 0) - dt; if (st.puttT <= 0) { st.puttT = thr ? 0.15 : 0.3; Sfx.play('buggyPutt'); } }
   buggyArmStep(st, dt, ai, grab);
   buggyObjects(st, dt);
@@ -229,17 +229,20 @@ function buggyPhysics(st, dt, thr, hop) {
     const w = b.wh[k], s = k ? 1 : -1;
     const mx = b.x + fx * s * B.wx + dx * B.wy, my = b.y + fy * s * B.wx + dy * B.wy;
     let c = 0;
+    const prx = w.rx;
     if (dy > 0.3) {
-      const gc = buggyWheelGround(st, mx + dx * (B.ext - w.c));
+      const rx = mx + dx * (B.ext - w.c), gc = buggyWheelGround(st, rx);
       c = B.ext - (gc - my) / dy;
-    }
-    if (c - w.cp > B.wallPen && c > B.ext * 0.6) wall = true;
-    springs.push({ w, mx, my, c });
+      // a wall: the ground under the wheel rose sharply since the last step (a crater's far side), not a body sinking
+      if (w.rx != null && c - w.cp > B.wallPen && c > B.ext * 0.6 && buggyWheelGround(st, w.rx) - gc > 3) wall = true;
+      w.rx = rx;
+    } else w.rx = null;
+    springs.push({ w, mx, my, c, prx });
   }
   if (wall) {
     // a wheel ran into a crater wall: back to where we were, bounce off it a little
     b.x = b.px; b.vx = -b.vx * 0.25;
-    for (const s of springs) s.c = s.w.cp;
+    for (const s of springs) { s.c = s.w.cp; s.w.rx = s.prx; }
   }
   for (const s of springs) {
     const w = s.w, c = s.c;
