@@ -3407,7 +3407,7 @@ const LEVELS = [
         tip: 'Pip drives: ◀ ▶ go, ▲ hops craters, honk at critters. Bo moves the claw: grab rocks, toss boulders back!',
         course: ['f300', 'S:{D} drives  ·  {A} works the claw', 'f140', 'r0+60', 'f200', 'r0+30', 'f150', 'h390', 'f80',
           'S:Boulder! {A}: grab it, swing it back, let go', 'f220', 'b', 'f280', 'r0+70', 'f160', 's90', 'f120', 'R+50', 'f220',
-          'F', 'f150', 'S:Crater! {D}: hop ▲ at the edge', 'f230', 'r105+55', 'c105', 'f220', 'S:A sleepy critter! {D}: honk', 'f160',
+          'F', 'f150', 'S:Crater! {D}: hop at the edge', 'f230', 'r105+55', 'c105', 'f220', 'S:A sleepy critter! {D}: honk', 'f160',
           'k', 'f260', 'r0+40', 'u200', 'f120', 'R+30', 'd200', 'f160', 'F', 'f150', 'b', 'f260', 'r95+50', 'c100', 'f200', 'r0+40',
           'f160', 'X'],
       },
