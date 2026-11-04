@@ -31,6 +31,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 10. **Collector's Vault** (one big boss level): The Grand Collector
 11. **Summer Games** (summer sports): Synchro Diving, Tandem Velodrome, Hurdle Dash, Javelin Throw
 12. **Winter Games** (winter sports): Curling, Bobsled, Ski Jump, Ice Hockey
+13. **Spooky Hollow** (Halloween, silly-spooky): Pumpkin Patch Roll, Graveyard Bone Hunt, Haunted Mansion, Broomstick Race
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
@@ -47,7 +48,7 @@ Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md
 | `js/versus.js` | Level-mode hooks and best-of rounds for versus levels (the game has no enemies; the robot in Robo Pong lives with its level) |
 | `js/levels/level-list.js` | Every level's map, rules and hints, and the list of worlds |
 | `js/levels/block-building.js`, `golf.js`, `robo-pong.js` | World 2 and 3 levels that need their own code |
-| `js/levels/world4/` to `world12/` | One file per level, with its rules, sounds and drawing |
+| `js/levels/world4/` to `world13/` | One file per level, with its rules, sounds and drawing |
 | `js/cpu/` | The computer player for 1-player mode: `cpu-core.js` (settings and the brain framework), `cpu-nav.js` (path finding), and one brain per level in `js/cpu/levels/` |
 | `js/input.js` | Keyboard, controllers and touch buttons |
 | `js/ui.js` | Menus, result cards, pause screen, controls legend, notices |
