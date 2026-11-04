@@ -3604,6 +3604,308 @@ const LEVELS = [
   // ----- END 14-4 Raptor Race -----
   //
   // ===== END World 14 =====
+
+  /* ===== World 15 (Orbit Outpost, mixed): the space world, world index 14 (js/levels/world15/), friendly and floaty, nothing
+     scary. Gavyn's picks (Nov 2026): 15-1 Tethered Spacewalk (team), 15-2 Gravity Flip Station (team), 15-3 Moon Buggy Crew
+     (team), 15-4 Planet Hop Race (versus). Each level's def sits between its own BEGIN/END lines. world: 14 ===== */
+  // ----- BEGIN 15-1 Tethered Spacewalk (mode 'spacewalk', js/levels/world15/tethered-spacewalk.js) -----
+  // 15-1 Tethered Spacewalk (mode 'spacewalk', team, Gavyn's pick): tied together outside the station, one holds a
+  // handhold and spins the other round to the next one, then they swap; fix the broken solar panels, then the airlock.
+  // Room layout (holds, panels, rocks, satellites, hull, airlock): read by the mode, see the top of its level file.
+  { name: 'Tethered Spacewalk', world: 14, kind: 'team', mode: 'spacewalk', ownStep: true, ownHUD: true, noFalls: true,
+    act: { label: 'grab' },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> spin · puff <kbd>W</kbd><kbd>S</kbd> reel · puff',
+      bo: '<kbd>←</kbd><kbd>→</kbd> spin · puff <kbd>↑</kbd><kbd>↓</kbd> reel · puff',
+      pad: 'stick: spin, reel, puff,',
+    },
+    tip: 'Tied together in space! One holds a handle and spins the other to the next one. Grab, let go, swap!',
+    map: [...Array(8).fill('.'.repeat(32)), '..1..2' + '.'.repeat(26), ...Array(9).fill('.'.repeat(32))],
+    rooms: [
+      {
+        title: 'Station Hull',
+        tip: 'Hold grab on a rail and spin your partner with ◀ ▶. They grab the next rail, you let go. Fix 2 panels!',
+        hull: [[0, 130, 64, 346, 'module'], [896, 130, 64, 346, 'module'], [0, 476, 960, 30, 'truss']],
+        holds: [['s0', 85, 250, 'r'], ['s1', 85, 350, 'r'], ['h1', 200, 180, 'u'], ['h2', 305, 262, 'u'], ['h3', 430, 215, 'u'],
+          ['h4', 530, 300, 'u'], ['h5', 655, 250, 'u'], ['h6', 760, 330, 'u']],
+        panels: [['p1', 300, 140], ['p2', 620, 395]],
+        lock: [896, 300, -1], start: ['s0', 's1'], dock: [32, 180],
+      },
+      {
+        title: 'Asteroid Belt',
+        tip: 'The rocks drift up and down and carry grips. Wait for a close one, then swing over. Rocks go boing!',
+        hull: [[0, 130, 64, 346, 'module'], [896, 130, 64, 346, 'module'], [0, 476, 960, 30, 'truss']],
+        holds: [['s0', 85, 250, 'r'], ['s1', 85, 350, 'r'], ['h1', 200, 190, 'u'], ['h2', 215, 330, 'u'], ['h3', 760, 200, 'u'], ['h4', 760, 340, 'u']],
+        rocks: [
+          { x: 330, y: 270, r: 28, ay: 105, per: 13, ph: 0, grips: ['l', 'r'] },
+          { x: 480, y: 270, r: 28, ay: 105, per: 13, ph: Math.PI, grips: ['l', 'r'] },
+          { x: 630, y: 270, r: 28, ay: 105, per: 13, ph: 0, grips: ['l', 'r'] },
+        ],
+        panels: [['p1', 405, 115], ['p2', 555, 430], ['p3', 820, 120]],
+        lock: [896, 300, -1], start: ['s0', 's1'], dock: [32, 180],
+      },
+      {
+        title: 'Spinning Satellite',
+        tip: 'The satellite turns! Grab its arms as they come round, and bolt the panels on its wings.',
+        hull: [[0, 130, 64, 346, 'module'], [896, 130, 64, 346, 'module'], [0, 476, 960, 30, 'truss']],
+        holds: [['s0', 85, 250, 'r'], ['s1', 85, 350, 'r'], ['h1', 200, 185, 'u'], ['h2', 205, 370, 'u'], ['hm', 290, 275, 'u'],
+          ['h3', 650, 190, 'u'], ['h4', 655, 370, 'u'], ['h5', 765, 225, 'u'], ['h6', 770, 360, 'u']],
+        sats: [{ x: 470, y: 280, r: 30, w: 0.3, a0: 0.4, arms: [[0, 106], [Math.PI / 2, 104, true], [Math.PI, 106], [Math.PI * 1.5, 104, true]],
+          holds: [['sa', 0, 118], ['sb', Math.PI, 118]], panels: [['p1', Math.PI / 2, 72], ['p2', Math.PI * 1.5, 72]] }],
+        panels: [['p3', 720, 118]],
+        lock: [896, 300, -1], start: ['s0', 's1'], dock: [32, 180],
+      },
+      {
+        title: 'Comet Run Home',
+        tip: 'Last job, the other way round: drifting rocks, a spinner and 4 panels. Then home to the airlock!',
+        hull: [[0, 130, 64, 346, 'module'], [896, 130, 64, 346, 'module'], [0, 476, 960, 30, 'truss']],
+        holds: [['s0', 875, 250, 'l'], ['s1', 875, 350, 'l'], ['h1', 760, 180, 'u'], ['h2', 755, 375, 'u'], ['h3', 330, 200, 'u'],
+          ['h4', 335, 365, 'u'], ['h5', 225, 290, 'u']],
+        rocks: [
+          { x: 470, y: 165, r: 26, ax: 60, per: 11, ph: 0, grips: ['l', 'r', 'd'] },
+          { x: 470, y: 390, r: 26, ay: 40, per: 9, ph: 1, grips: ['l', 'r', 'u'] },
+        ],
+        sats: [{ x: 620, y: 280, r: 20, w: -0.45, a0: 0, arms: [[0, 74], [Math.PI / 2, 66, true], [Math.PI, 74], [Math.PI * 1.5, 66, true]],
+          holds: [['xa', 0, 86], ['xb', Math.PI, 86]], panels: [['p1', Math.PI / 2, 52], ['p2', Math.PI * 1.5, 52]] }],
+        panels: [['p3', 400, 105], ['p4', 300, 440]],
+        lock: [64, 300, 1], start: ['s0', 's1'], dock: [928, 180],
+      },
+    ],
+  },
+  // ----- END 15-1 Tethered Spacewalk -----
+  //
+  // ----- BEGIN 15-2 Gravity Flip Station (mode 'gravflip', js/levels/world15/gravity-flip-station.js) -----
+  // 15-2 Gravity Flip Station (mode 'gravflip', team): a low-gravity space station where your switches flip your
+  // PARTNER's gravity (Gavyn's pick). Pip's orange switches flip Bo, Bo's blue ones flip Pip; a flipped player falls up
+  // and walks on the ceiling. Map chars (read by the mode): x Pip's switch, y Bo's switch (on a floor or a ceiling),
+  // m button (floor or ceiling) that opens the f force fields, z fizzy zap goo, K keycard, S star, F beacon
+  // (checkpoint), E the exit (a floor airlock, or a ceiling hatch). Room plans: see the top of the level file.
+  { name: 'Gravity Flip Station', world: 14, kind: 'team', mode: 'gravflip', ownStep: true, ownHUD: true, noFalls: true,
+    act: { label: 'flip' },
+    legend: { down: 'hold: go back', padDown: 'hold down: go back' },
+    tip: 'Your switch flips your PARTNER’s gravity! Pip’s orange switches flip Bo, Bo’s blue ones flip Pip.',
+    switches: { f: { plate: 'm', type: 'gate' } }, signs: [],
+    rooms: [
+      { // ---------- Room 1: Docking Bay (Bo flips Pip over the wall, then Pip flips Bo) ----------
+        title: 'Docking Bay', goer: 0, style: 'dock',
+        tip: 'Bo, flip Pip up to the ceiling! Pip walks over the wall, then flips Bo the same way.',
+        plan: [
+          { A: { g: 1 }, say: { A: 'Wait here: {B} flips you up!', B: 'Press {Bkey} at your {Bcol} switch to flip {A}!' } },
+          { A: { g: 1, zone: [17, 29] }, key: true, say: { A: 'Walk the ceiling over the wall ▶ and grab the keycard!' } },
+          { A: { g: 0, zone: [17, 29] }, key: true, say: { A: 'Wait past the wall: {B} flips you down', B: 'Flip {A} down past the wall ({Bkey} at your switch)!' } },
+          { A: { g: 0, zone: [17, 29] }, B: { g: 1 }, key: true, say: { A: 'Your turn: flip {B} at your {Acol} switch ({Akey})!', B: 'Wait here: {A} flips you up!' } },
+          { A: { g: 0, zone: [17, 29] }, B: { g: 1, zone: [17, 29] }, key: true, say: { B: 'Walk the ceiling over the wall ▶' } },
+          { A: { g: 0, zone: [17, 29] }, B: { g: 0, zone: [17, 29] }, key: true, say: { A: 'Flip {B} back down ({Akey} at your switch)!', B: 'Wait past the wall: {A} flips you down' } },
+        ],
+        doorSay: 'Both into the airlock!',
+        map: [
+          '################################',
+          '################################',
+          '################################',
+          '##......S.....K.....S.........##',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##............S...............##',
+          '##...........###..............##',
+          '##...........###..............##',
+          '##...........###..............##',
+          '##...........###..............##',
+          '##...........###..............##',
+          '##...........###..............##',
+          '##...........###..............##',
+          '##1.2..y.x...###.F..y.x...E...##',
+          '################################',
+          '################################',
+        ],
+      },
+      { // ---------- Room 2: Hydro Garden (a gap into space, a ceiling button and a floor button) ----------
+        title: 'Hydro Garden', goer: 1, style: 'garden',
+        tip: 'Cross the gap on the ceiling. Stand on a button to open the force field for your partner.',
+        plan: [
+          { A: { g: 1 }, say: { A: 'Wait here: {B} flips you up!', B: 'Flip {A} up: {Bkey} at your {Bcol} switch!' } },
+          { A: { g: 1, zone: [18, 21] }, key: true, say: { A: 'Walk the ceiling over the gap ▶ and grab the keycard!' } },
+          { A: { g: 1, zone: [18, 21] }, B: { g: 1 }, key: true, say: { A: 'Flip {B} up from your switch up there ({Akey})!', B: 'Wait here: {A} flips you up!' } },
+          { A: { g: 1, zone: [18, 21] }, B: { g: 1, zone: [18, 21] }, key: true, say: { B: 'Walk the ceiling over the gap ▶' } },
+          { A: { g: 0, zone: [18, 21] }, B: { g: 1, zone: [18, 21] }, key: true, say: { A: 'Wait over the floor: {B} flips you down', B: 'Flip {A} down onto the floor ({Bkey})!' } },
+          { A: { g: 0, zone: [18, 23] }, B: { g: 1, hold: 0 }, key: true, say: { B: 'Stand on the ceiling button: it opens the field!' } },
+          { A: { g: 0, zone: [24, 29] }, B: { g: 1, hold: 0 }, key: true, say: { A: 'Go through the open field ▶', B: 'Keep standing on the button!' } },
+          { A: { g: 0, zone: [24, 29] }, key: true },
+          { A: { g: 0, zone: [24, 29] }, B: { g: 1 }, key: true, say: { A: 'Flip {B} up: {Akey} at your {Acol} switch!', B: 'Wait here: {A} flips you up!' } },
+          { A: { g: 0, zone: [24, 29] }, B: { g: 1, zone: [18, 21] }, key: true, say: { B: 'Walk the ceiling over the gap ▶' } },
+          { A: { g: 0, zone: [24, 29] }, B: { g: 0, zone: [18, 21] }, key: true, say: { A: 'Flip {B} down: {Akey} at your {Acol} switch!', B: 'Wait here: {A} flips you down' } },
+          { A: { g: 0, hold: 1 }, B: { g: 0, zone: [18, 23] }, key: true, say: { A: 'Stand on the floor button to open the field!', B: 'Wait for the field to open' } },
+          { A: { g: 0, hold: 1 }, B: { g: 0, zone: [24, 29] }, key: true, say: { A: 'Keep standing on the button!', B: 'Go through the open field ▶' } },
+          { A: { g: 0, zone: [24, 29] }, B: { g: 0, zone: [24, 29] }, key: true },
+        ],
+        doorSay: 'Both into the airlock!',
+        map: [
+          '################################',
+          '################################',
+          '################################',
+          '##..S........K....xym.##...S..##',
+          '##....................##......##',
+          '##....................##......##',
+          '##.............S......##......##',
+          '##....................##......##',
+          '##....................##......##',
+          '##....................##......##',
+          '##....................##......##',
+          '##....................ff......##',
+          '##....................ff......##',
+          '##....................ff......##',
+          '##....................ff......##',
+          '##1.2.x.y.........xF.yffmFxyE.##',
+          '#########.........##############',
+          '#########.........##############',
+        ],
+      },
+      { // ---------- Room 3: Star Lab (jump off the ceiling and get flipped mid-air onto the island) ----------
+        title: 'Star Lab', goer: 0, style: 'lab',
+        tip: 'Zap goo on the ceiling! Jump off the ceiling before it, and get flipped in mid-air onto the floating island.',
+        plan: [
+          { A: { g: 1 }, say: { A: 'Wait here: {B} flips you up!', B: 'Flip {A} up: {Bkey} at your {Bcol} switch!' } },
+          { A: { g: 0, zone: [12, 18] }, jump: [{ x: 280, dir: 1 }, { x: 680, dir: -1 }], say: { A: 'Jump off the ceiling before the goo, toward the island', B: 'Flip {A} when the jump is over the island ({Bkey})!' } },
+          { A: { g: 0, zone: [23, 29] }, key: true, say: { A: 'Grab the keycard, then hop over to the right ▶' } },
+          { A: { g: 0, zone: [23, 29] }, B: { g: 1 }, key: true, say: { A: 'Flip {B} up: {Akey} at your {Acol} switch!', B: 'Wait here: {A} flips you up!' } },
+          { A: { g: 0, zone: [23, 29] }, B: { g: 0, zone: [12, 18] }, jump: [{ x: 280, dir: 1 }, { x: 680, dir: -1 }], key: true, say: { A: 'Flip {B} when the jump is over the island ({Akey})!', B: 'Jump off the ceiling before the goo, toward the island' } },
+          { A: { g: 0, zone: [23, 29] }, B: { g: 0, zone: [23, 29] }, key: true, say: { B: 'Hop over to the right ▶' } },
+        ],
+        doorSay: 'Both into the airlock!',
+        map: [
+          '################################',
+          '################################',
+          '################################',
+          '##........zzzzzzzzzzzz.....S..##',
+          '##............................##',
+          '##............................##',
+          '##.........S..................##',
+          '##............................##',
+          '##...........F..K.............##',
+          '##..........#######...........##',
+          '##..........#######...........##',
+          '##............................##',
+          '##..................S.........##',
+          '##............................##',
+          '##............................##',
+          '##1.2.x.y..............F.xy.E.##',
+          '#########..............#########',
+          '#########..............#########',
+        ],
+      },
+      { // ---------- Room 4: Command Deck (flipped up mid-air over the goo, two buttons, the ceiling hatch) ----------
+        title: 'Command Deck', goer: 1, style: 'deck',
+        tip: 'The shuttle hatch is on the ceiling! Run, jump, get flipped up over the goo, then help each other through.',
+        plan: [
+          { A: { g: 1, zone: [18, 29] }, jump: [{ x: 338, dir: 1 }], say: { A: 'Run and jump ▶ over the goo: {B} flips you up!', B: 'Flip {A} at the top of the jump ({Bkey})!' } },
+          { A: { g: 1, zone: [18, 29] }, B: { g: 1, zone: [18, 29] }, jump: [{ x: 338, dir: 1 }], say: { A: 'Flip {B} at the top of the jump ({Akey})!', B: 'Run and jump ▶ over the goo!' } },
+          { A: { g: 1, zone: [18, 23] }, B: { g: 0, zone: [20, 21] }, say: { A: 'Flip {B} down onto the little floor ({Akey})!', B: 'Wait over the clean floor: {A} flips you down' } },
+          { A: { g: 1, zone: [18, 23] }, B: { g: 0, hold: 1 }, say: { B: 'Stand on the floor button: it opens the field!' } },
+          { A: { g: 1, zone: [24, 29] }, B: { g: 0, hold: 1 }, say: { A: 'Walk the ceiling through the field ▶', B: 'Keep standing on the button!' } },
+          { A: { g: 1, zone: [24, 29] }, B: { g: 1, zone: [18, 23] }, say: { A: 'Flip {B} up: {Akey} at your {Acol} switch!', B: 'Wait here: {A} flips you up!' } },
+          { A: { g: 1, hold: 0 }, B: { g: 1, zone: [18, 23] }, say: { A: 'Stand on the ceiling button to open the field!', B: 'Wait for the field to open' } },
+          { A: { g: 1, hold: 0 }, B: { g: 1, zone: [24, 29] }, say: { A: 'Keep standing on the button!', B: 'Walk through the field ▶' } },
+          { A: { g: 1, zone: [24, 29] }, B: { g: 1, zone: [24, 29] } },
+        ],
+        doorSay: 'Both into the ceiling hatch!',
+        map: [
+          '################################',
+          '################################',
+          '################################',
+          '##..S.......zzzzzzxy..ffmx..yS##',
+          '##....................ff..E...##',
+          '##....................ff......##',
+          '##....................ff......##',
+          '##....................ff......##',
+          '##...............S....ff......##',
+          '##....................##......##',
+          '##....................##......##',
+          '##....................##......##',
+          '##....................##......##',
+          '##....................##......##',
+          '##....................##......##',
+          '##1.2..x.y..zzzzzzzz.m##x.F.y.##',
+          '################################',
+          '################################',
+        ],
+      },
+    ],
+  },
+  // ----- END 15-2 Gravity Flip Station -----
+  //
+  // ----- BEGIN 15-3 Moon Buggy Crew (mode 'buggy', js/levels/world15/moon-buggy-crew.js) -----
+  // 15-3: side-on moon buggy (MODES.buggy): one drives, one works the grabber arm; jobs swap every room. The map is only the
+  // two spawns, the mode builds each room from its course (tokens: see the top of the level file).
+  { name: 'Moon Buggy Crew', world: 14, kind: 'team', mode: 'buggy', ownStep: true, ownHUD: true, noFalls: true,
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> drive <kbd>W</kbd> hop · claw <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>',
+      bo: '<kbd>←</kbd><kbd>→</kbd> drive <kbd>↑</kbd> hop · claw <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>',
+      pad: 'stick: drive · claw, <span data-glyph="a"></span> hop,',
+    },
+    tip: 'One drives the moon buggy, one works the grabber arm: toss boulders away and grab shiny moon rocks!',
+    act: { label: 'grab', labels: ['honk', 'grab'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Crater Flats', driver: 0, act: { label: 'grab', labels: ['honk', 'grab'] },
+        tip: 'Pip drives: ◀ ▶ go, ▲ hops craters, honk at critters. Bo moves the claw: grab rocks, toss boulders back!',
+        course: ['f300', 'S:{D} drives  ·  {A} works the claw', 'f140', 'r0+60', 'f200', 'r0+30', 'f150', 'h390', 'f80',
+          'S:Boulder! {A}: grab it, swing it back, let go', 'f220', 'b', 'f280', 'r0+70', 'f160', 's90', 'f120', 'R+50', 'f220',
+          'F', 'f150', 'S:Crater! {D}: hop at the edge', 'f230', 'r105+55', 'c105', 'f220', 'S:A sleepy critter! {D}: honk', 'f160',
+          'k', 'f260', 'r0+40', 'u200', 'f120', 'R+30', 'd200', 'f160', 'F', 'f150', 'b', 'f260', 'r95+50', 'c100', 'f200', 'r0+40',
+          'f160', 'X'],
+      },
+      {
+        title: 'Boulder Alley', driver: 1, act: { label: 'grab', labels: ['grab', 'honk'] },
+        tip: 'Swap! Bo drives, Pip works the claw. A huge crater? Stop at the edge and fill it up with boulders!',
+        course: ['f300', 'S:Swap! {D} drives, {A} works the claw', 'f120', 'r0+80', 'f200', 'u160', 'f80', 'R+30', 'd160', 'f160',
+          'b', 'f150', 'b+95', 'f330', 'r0+40', 'f150', 'R+50', 'f200', 'F', 'f150', 'h260', 'f100', 'r105+60', 'c115', 'f260',
+          'S:Too wide to jump! Fill it with boulders', 'f260', 'w340', 'f240', 'r0+30', 'f150', 'F', 'f150', 'k', 'f260', 'r0+50',
+          'f120', 'b', 'f280', 'R+20', 'f200', 'r0+40', 'f160', 'X'],
+      },
+      {
+        title: 'Dark Side', driver: 0, dark: true, act: { label: 'grab', labels: ['honk', 'grab'] },
+        tip: 'Pip drives in the dark: the headlight shows the way. Bouncy moss goes BOING! Full speed at the ramp!',
+        course: ['f300', 'S:The dark side! Lights on', 'f160', 'r0+40', 'f200', 'S:Bouncy moss! Boing!', 'f150', 'r120+190', 'o140',
+          'f340', 'r125+190', 'o140', 'f300', 'F', 'f150', 'b', 'f280', 'k', 'f280', 'r0+50', 'f180',
+          'S:Ramp! {D}: full speed, hop at the top', 'f460', 'r150+210', 'j230', 'f300', 'r0+40', 'f160', 'F', 'f160', 'h260',
+          'b', 'f280', 'r0+30', 'f120', 'r100+50', 'c105', 'f200', 'R+40', 'f180', 'X'],
+      },
+      {
+        title: 'Rocket Pad', driver: 1, act: { label: 'grab', labels: ['grab', 'honk'] },
+        tip: 'Bo drives to the rocket! Park in the box, honk to open the hatch, and Pip lifts the rock crate in.',
+        course: ['f300', 'S:Last stretch! The rocket is waiting', 'f120', 'r0+60', 'f200', 'h260', 'f60', 'r105+50', 'c110', 'f240',
+          'b', 'f260', 'F', 'f150', 'r120+190', 'o140', 'f560', 'w340', 'f240', 'r0+40', 'f140', 'F', 'f200', 'S:Ramp! Full speed!',
+          'f400', 'r150+210', 'j230', 'f280', 'b', 'f260', 'k', 'f220', 'r0+40', 'f160', 'S:Park in the box under the rocket!', 'E'],
+      },
+    ],
+  },
+  // ----- END 15-3 Moon Buggy Crew -----
+  //
+  // ----- BEGIN 15-4 Planet Hop Race (mode 'planethop', js/levels/world15/planet-hop-race.js) -----
+  { name: 'Planet Hop Race', world: 14, kind: 'versus', mode: 'planethop', ownStep: true,
+    // a race over tiny round planets (MODES.planethop): the map is only the two spawns, the mode builds each round's course
+    match: { bestOf: 5 },
+    act: { label: 'boost' },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>S</kbd> dive',
+      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump <kbd>↓</kbd> dive',
+      pad: 'stick run, <span data-glyph="a"></span> jump, down dives,',
+    },
+    tip: 'Run round each little planet and jump to the next! Boost is a jet puff, one per jump. First to the rocket wins!',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '.....1..........................', '................................', '................................',
+      '.....2..........................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+    ],
+  },
+  // ----- END 15-4 Planet Hop Race -----
+  //
+  // ===== END World 15 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -3657,6 +3959,10 @@ const WORLDS = [
   { name: 'Dino Valley', blurb: 'Carry, fly, pull and race through the land of the dinosaurs!',
     theme: { skyTop: '#f6b26b', skyBot: '#fff1c9', hillFar: '#9fbf7a', hillNear: '#6fa45a', sun: 'rgba(255, 238, 170, 0.95)', sunGlow: 'rgba(255, 190, 110, 0.38)',
       stone: '#6b5a4a', stoneLight: '#806c58', stoneEdge: '#4a3c30', grass: '#7ccf4f', grassDark: '#3f8f3a', plank: '#c9925a', plankDark: '#7d5530', rope: '#b9d36a', ropeDark: '#5a6e2a' } },
+  // World 15: space, friendly and floaty (a deep blue-violet starry sky with a big ringed planet; grey moon rock with lilac dust)
+  { name: 'Orbit Outpost', blurb: 'Swing, flip, drive and hop your way across the stars!',
+    theme: { skyTop: '#0d1033', skyBot: '#3a2c6e', hillFar: '#4a4a7a', hillNear: '#363660', sun: 'rgba(255, 214, 150, 0.95)', sunGlow: 'rgba(190, 160, 255, 0.35)',
+      stone: '#6a6f8c', stoneLight: '#7f84a3', stoneEdge: '#474b66', grass: '#c9c3f0', grassDark: '#8f88c4', plank: '#9aa6c4', plankDark: '#5c6688', rope: '#f2f2ff', ropeDark: '#8a8fb0' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
