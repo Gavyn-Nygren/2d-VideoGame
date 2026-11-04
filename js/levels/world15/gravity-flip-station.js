@@ -23,7 +23,7 @@
    - Help: Blip the friendly robot shows the next job when you are stuck on a step; Gold float (announced) after 3
      whoopsies in a room, or a long time on one step: everything drifts slower (same heights), so mid-air flips are easier.
    Room def: { title, tip, goer: 0|1 (who goes up first, role A), style, plan: [step...], doorSay }. A plan step is
-   { A: cond, B: cond, key: true (needs the keycard), jump: true (a mid-air flip), say: { A: text, B: text } }; a cond is
+   { A: cond, B: cond, key: true (needs the keycard), jump: [{ x, dir }] (a mid-air flip: where a jumper takes off, for the computer), say: { A: text, B: text } }; a cond is
    { g: 0|1 (gravity: 1 = on the ceiling), zone: [col0, col1] (standing with your centre in those columns), hold: i
    (standing on button i, in reading order), door: true }. The room's progress is the last step whose conds hold (roles
    A and B go to whichever player fits better), worked out only while both are standing. Hints, Blip and the computer
@@ -275,7 +275,7 @@ function gravflipRespawn(st, p, tow) {
   st.grav[p.id] = 0;
   Object.assign(p, { x: s.x, y: s.y, vx: 0, vy: 0, alive: true, grounded: false, jumping: false, jumpBuf: 0, pendingJump: false, coyote: 0, stun: 0, dropT: 0, sx: 0.6, sy: 1.4, carryVx: 0, offT: 0, knockT: 0, input });
   p.pendingAct = false; p.downLatch = true;
-  P.dead = false; P.downT = 0;
+  P.dead = false; P.downT = 0; st.fresh = true;   // (a fresh look at the plan: someone is back at a beacon)
   for (let i = 0; i < 12; i++) G.particles.push({ x: p.x + p.w / 2, y: p.y + p.h / 2, vx: (Math.random() - 0.5) * 140, vy: (Math.random() - 0.5) * 140, life: 0.5, max: 0.5, col: tow ? '#9fe8ff' : 'rgba(255,255,255,0.9)', size: 3 + Math.random() * 3, grav: 0, kind: 'dot' });
   gravflipPop(st, p.x + p.w / 2, p.y - 14, tow ? 'Tow!' : 'Boing!', '#9fe8ff', 17, -1);
   Sfx.play('gravflipBack', p.id);
@@ -305,6 +305,11 @@ function gravflipInExit(st, box) {
   return cx > d.x + 2 && cx < d.x + d.w - 2 && cy > d.y && cy < d.y + d.h;
 }
 function gravflipMet(st, s, A, B) { return (!s.key || st.keyGot) && gravflipCondOk(st, A, s.A) && gravflipCondOk(st, B, s.B); }
+// only the gravity part of a step (and the keycard)
+function gravflipSoftMet(st, s, A, B) {
+  const ok = (p, c) => !c || c.g == null || (p.alive && st.grav[p.id] === c.g);
+  return !!s && (!s.key || st.keyGot) && ok(A, s.A) && ok(B, s.B);
+}
 // { idx (the last step done, -1 none), si (the step to do), step, A, B (player ids in those roles), role(id) }
 function gravflipPlan(st) {
   if (st.plan && st.planTick === G.tickN) return st.plan;
@@ -316,8 +321,11 @@ function gravflipPlan(st) {
     const pg = prog(st.goer), po = prog(1 - st.goer);
     let a = st.mapA;
     if (pg > po) a = st.goer; else if (po > pg) a = 1 - st.goer;
-    const idx = a === st.goer ? pg : po;
+    let idx = a === st.goer ? pg : po;
+    // on the way between two zones nothing is met: the step done stays done while its gravity still holds
+    if (a === st.mapA && !st.fresh && idx < st.idx && gravflipSoftMet(st, st.steps[st.idx], ps[a], ps[1 - a])) idx = st.idx;
     if (idx !== st.idx || a !== st.mapA) { st.idx = idx; st.mapA = a; st.stepT = 0; }
+    st.fresh = false;
   }
   const si = Math.min(st.idx + 1, st.steps.length - 1), a = st.mapA;
   st.plan = { idx: st.idx, si, step: st.steps[si], A: a, B: 1 - a, role: id => (id === a ? 'A' : 'B') };
