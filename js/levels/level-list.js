@@ -2814,6 +2814,130 @@ const LEVELS = [
   // ----- END 13-1 Pumpkin Patch Roll -----
   //
   // ----- BEGIN 13-2 Graveyard Bone Hunt (mode 'bonehunt', js/levels/world13/graveyard-bone-hunt.js) -----
+  // 13-2 Graveyard Bone Hunt (mode 'bonehunt', team): dig up Mr. Bones' lost bones and put him back together; each
+  // room's bones give him a new shape (stool, ladder, bridge). Map chars and rules: the top of the level file.
+  { name: 'Graveyard Bone Hunt', world: 12, kind: 'team', mode: 'bonehunt', ownHUD: true, noFalls: true,
+    act: { label: 'dig' },
+    legend: { jump: 'jump · climb', down: 'down · hold: back', padJump: 'jump · climb', padDown: 'hold down: back' },
+    tip: 'Dig up Mr. Bones’s lost bones and bring them back. Every bone makes him a better helper!',
+    switches: {}, signs: [],
+    rooms: [
+      { // ---------- Room 1: Front Gate (a head boost for the leg bone, carry the backbone together) ----------
+        title: 'Front Gate', unlock: 'stool', exitVia: 'stool', exitLabel: 'CROOKED CRYPTS',
+        tip: 'Boost each other up to dig the leg bone, then carry the big backbone together. Don’t pull apart!',
+        mounds: [{ piece: 'leg1', how: 'boost', foot: { x: 136, feet: 480 }, land: 66 }, { piece: 'spine', how: 'big', len: 90 }],
+        plan: ['boost:0', 'big:1', 'exit'], stones: ['BRB'],
+        decor: [{ k: 'tree', x: 300, s: 1 }, { k: 'owl', x: 336, y: 318 }, { k: 'grave', x: 380, text: ['Here lies', 'my left sock'] },
+          { k: 'grave', x: 560, text: ['R.I.P.', 'Pizza crust'], tilt: -0.05 }, { k: 'ghost', x: 470, y: 380 },
+          { k: 'fence', x0: 230, x1: 760 }, { k: 'sign', x: 112, y: 300, text: 'MR. BONES · BACK SOON!' }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '.d...........................E..', // 11
+          'BBBB......................######', // 12
+          'BBBB......................######', // 13
+          'BBBB......................######', // 14
+          'BBBB..h.1.2..N..S.....D..x######', // 15
+          '################################', // 16
+          '################################', // 17
+        ] },
+      { // ---------- Room 2: Crooked Crypts (stack up on the stool for the hip bone, hold the crank for the other leg) ----------
+        title: 'Crooked Crypts', unlock: 'ladder', exitVia: 'ladder', exitLabel: 'PUMPKIN PLOT',
+        tip: 'Stack up on Mr. Bones to reach the high roof. One holds the crank while the other digs in the crypt!',
+        mounds: [{ piece: 'hips', how: 'tower', foot: { x: 136, feet: 480 }, land: 60 }, { piece: 'leg2', how: 'gate' }],
+        plan: ['tower:0', 'gate:1', 'exit'], stones: ['BOO!'],
+        decor: [{ k: 'grave', x: 300, text: ['Gone to', 'lunch'] }, { k: 'tree', x: 460, s: 0.9 }, { k: 'owl', x: 494, y: 330 },
+          { k: 'grave', x: 640, text: ['Napping.', 'Do not disturb'], tilt: 0.06 }, { k: 'ghost', x: 380, y: 360 },
+          { k: 'fence', x0: 150, x1: 700 }, { k: 'sign', x: 752, y: 228, text: 'THE CRYPT' }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '............................E...', //  9
+          '.d......................BBBBBBBB', // 10
+          'BBBB....................BBBBBBBB', // 11
+          'BBBB....................BBBBBBBB', // 12
+          'BBBB....................g......B', // 13
+          'BBBB....................g......B', // 14
+          'BBBBx.h.1.2N.S....r....yg....d.B', // 15
+          '################################', // 16
+          '################################', // 17
+        ] },
+      { // ---------- Room 3: Pumpkin Plot (climb Mr. Bones up the old tree, dig the giant ribcage together) ----------
+        title: 'Pumpkin Plot', unlock: 'bridge', exitVia: 'bridge', exitLabel: 'BELL TOWER',
+        tip: 'Climb Mr. Bones up the old tree. The giant ribcage only digs up when you both dig at once!',
+        mounds: [{ piece: 'funny', how: 'ladder' }, { piece: 'ribs', how: 'big', len: 120, together: true }],
+        plan: ['ladder:0', 'big:1', 'exit'],
+        decor: [{ k: 'owl', x: 14, y: 254 }, { k: 'pumpkins', x: 260 }, { k: 'grave', x: 470, text: ['Ate too', 'many sweets'] },
+          { k: 'pumpkins', x: 700 }, { k: 'ghost', x: 760, y: 300 }, { k: 'fence', x0: 160, x1: 640 },
+          { k: 'sign', x: 790, y: 430, text: 'OPEN GRAVE · BOING!' }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '.d..............................', //  8
+          'WWW.............................', //  9
+          'WWW.............................', // 10
+          'WWW.............................', // 11
+          'WWW.............................', // 12
+          'WWW...........................E.', // 13
+          'WWW..........................###', // 14
+          'WWWy.h.1.2.p.p...D..Nz.......###', // 15
+          '######################~~~~~~~###', // 16
+          '######################~~~~~~~###', // 17
+        ] },
+      { // ---------- Room 4: Old Bell Tower (bridge the grave, stack up for the arm, ring the bell together) ----------
+        title: 'Old Bell Tower', unlock: 'done', bellPiece: 'hand', bellY: 92, finale: { x: 840, feet: 210 },
+        tip: 'Bridge the big grave, stack up for the arm bone, then climb to the bell and pull both ropes together!',
+        mounds: [{ piece: 'arm', how: 'tower', foot: { x: 435, feet: 480 }, land: 410 }],
+        plan: ['cross', 'tower:0', 'bell', 'finale'],
+        decor: [{ k: 'grave', x: 594, text: ['Here lies', 'Steve’s homework'] }, { k: 'tree', x: 655, s: 0.8 }, { k: 'owl', x: 624, y: 346 },
+          { k: 'ghost', x: 270, y: 300 }, { k: 'fence', x0: 380, x1: 700 }, { k: 'pumpkins', x: 494 }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '........................BBBBBBBB', //  1
+          '........................B......B', //  2
+          '........................B......B', //  3
+          '...............................B', //  4
+          '...............................B', //  5
+          '.........................!....!B', //  6
+          '........................BBBBBBBB', //  7
+          '........................BBBBBBBB', //  8
+          '........................BBBBBBBB', //  9
+          '.............d..........BBBBBBBB', // 10
+          '............====........BBBBBBBB', // 11
+          '........................BBBBBBBB', // 12
+          '........................BBBBBBBB', // 13
+          '........................BBBBBBBB', // 14
+          '.h.12z........x..N.....yBBBBBBBB', // 15
+          '######~~~~~~####################', // 16
+          '######~~~~~~####################', // 17
+        ] },
+    ] },
   // ----- END 13-2 Graveyard Bone Hunt -----
   //
   // ----- BEGIN 13-3 Haunted Mansion (mode 'mansion', js/levels/world13/haunted-mansion.js) -----
