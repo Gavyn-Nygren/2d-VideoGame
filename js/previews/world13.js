@@ -6,8 +6,9 @@
 /* ----- END 13-1 Pumpkin Patch Roll ----- */
 
 /* ----- BEGIN 13-2 Graveyard Bone Hunt ----- */
-// Pip and Bo dig up a big bone, carry it together on their heads to Mr. Bones (a skull sitting on his hips), it snaps
-// in as his backbone, he stretches up tall, tips over the open grave as a bridge, and they hop across him to cheer.
+// Pip and Bo dig up a big bone, carry it together on their heads and toss it over the open grave to Mr. Bones (a skull
+// sitting on his hips), it snaps in as his backbone, he stretches up tall and tips back over the grave as a bridge (head
+// on the near bank, toes on the far one, like the real level), and they hop across him to cheer.
 const PW13BH_BONE = '#f6f0de', PW13BH_EDGE = '#7d6f96', PW13BH_INK = '#2a1f45', PW13BH_L = 7;
 // a cartoon bone from (x1, y1) to (x2, y2), w thick, with knobby ends
 function pw13BhBone(v, x1, y1, x2, y2, w) {
@@ -41,9 +42,9 @@ function pw13BhSkull(v, x, y, r, look, blink, happy) {
   ctx.lineWidth = 1;
   for (const tx of [-0.2, 0, 0.2]) { ctx.beginPath(); ctx.moveTo(x + tx * r, y + r * 0.7); ctx.lineTo(x + tx * r, y + r * (0.83 + happy * 0.04)); ctx.stroke(); }
 }
-// Mr. Bones, feet at (x, feet): grow 0..1 is his new backbone (with ribs and arms), tip 0..1 lays him down to the right
+// Mr. Bones, feet at (x, feet): grow 0..1 is his new backbone (with ribs and arms), tip 0..1 lays him down to the left
 function pw13BhMr(v, x, feet, grow, tip, t, look) {
-  const ctx = v.ctx, sp = 28 * grow, rot = tip * Math.PI / 2, hipY = -27;
+  const ctx = v.ctx, sp = 28 * grow, rot = -tip * Math.PI / 2, hipY = -27;
   ctx.save(); ctx.translate(x, feet); ctx.rotate(rot);
   ctx.lineCap = 'round';
   // arms: up and waving once he's tall, folded along his sides as he lies down
@@ -74,12 +75,13 @@ function pw13BhMr(v, x, feet, grow, tip, t, look) {
   pw13BhSkull(v, 0, 0, 13, look, v.phase(t, 3.5) > 0.94, grow);
   ctx.restore(); ctx.lineCap = 'butt';
 }
-// a shovel held at hand (hx, hy) with its blade at (bx, by)
-function pw13BhShovel(v, hx, hy, bx, by) {
-  const ctx = v.ctx;
-  v.line(hx, hy, bx, by, '#8a5c3a', 2.6);
-  ctx.save(); ctx.translate(bx, by); ctx.rotate(Math.atan2(by - hy, bx - hx));
-  ctx.fillStyle = '#c3bdd6'; ctx.strokeStyle = '#5c5276'; ctx.lineWidth = 1.2;
+// a shovel held at hand (hx, hy) with its blade at (bx, by), s scales the blade and grip
+function pw13BhShovel(v, hx, hy, bx, by, s) {
+  const ctx = v.ctx, a = Math.atan2(by - hy, bx - hx);
+  v.line(hx, hy, bx, by, '#3a2418', 3.4 * s + 1.6); v.line(hx, hy, bx, by, '#b07a4c', 3.4 * s);
+  ctx.save(); ctx.translate(hx, hy); ctx.rotate(a); v.line(0, -3.5 * s, 0, 3.5 * s, '#3a2418', 2.6 * s); ctx.restore();
+  ctx.save(); ctx.translate(bx, by); ctx.rotate(a); ctx.scale(s, s);
+  ctx.fillStyle = '#dcd6ee'; ctx.strokeStyle = '#3f3560'; ctx.lineWidth = 1.4;
   ctx.beginPath(); ctx.moveTo(-2, -4.5); ctx.lineTo(5, -4); ctx.quadraticCurveTo(10, 0, 5, 4); ctx.lineTo(-2, 4.5); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.restore();
 }
@@ -105,16 +107,17 @@ function pw13BhLantern(v, x, y, r, glow) {
   for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + d * r * 0.45, y - r * 0.15); ctx.lineTo(x + d * r * 0.2, y - r * 0.42); ctx.lineTo(x + d * r * 0.08, y - r * 0.1); ctx.fill(); }
   ctx.beginPath(); ctx.moveTo(x - r * 0.5, y + r * 0.15); ctx.quadraticCurveTo(x, y + r * 0.75, x + r * 0.5, y + r * 0.15); ctx.quadraticCurveTo(x, y + r * 0.4, x - r * 0.5, y + r * 0.15); ctx.fill();
 }
-// one hero's trip over Mr. Bones the bridge (u 0..1): walk to the edge, hop on, walk across, hop over his head
+// one hero's trip over Mr. Bones the bridge (u 0..1): walk to the edge, hop over his head onto his ribs, walk across,
+// hop down off his toes
 function pw13BhCross(v, x0, x1, u, gy) {
-  const top = gy - 15;
-  if (u < 0.3) { const s = v.seg(u, 0, 0.3); return { x: v.lerp(x0, 166, s), y: gy + v.hop(v.phase(s, 0.5), 3) }; }
-  if (u < 0.45) { const s = v.seg(u, 0.3, 0.45); return { x: v.lerp(166, 196, s), y: v.lerp(gy, top, s) + v.hop(s, 12) }; }
-  if (u < 0.62) { const s = v.seg(u, 0.45, 0.62); return { x: v.lerp(196, 226, s), y: top + v.hop(v.phase(s, 0.5), 3) }; }
-  const s = v.seg(u, 0.62, 1); return { x: v.lerp(226, x1, s), y: v.lerp(top, gy, s) + v.hop(s, 24) };
+  const top = gy - 16;
+  if (u < 0.3) { const s = v.seg(u, 0, 0.3); return { x: v.lerp(x0, 140, s), y: gy + v.hop(v.phase(s, 0.5), 3) }; }
+  if (u < 0.5) { const s = v.seg(u, 0.3, 0.5); return { x: v.lerp(140, 180, s), y: v.lerp(gy, top, s) + v.hop(s, 22) }; }
+  if (u < 0.72) { const s = v.seg(u, 0.5, 0.72); return { x: v.lerp(180, 214, s), y: top + v.hop(v.phase(s, 0.5), 3) }; }
+  const s = v.seg(u, 0.72, 1); return { x: v.lerp(214, x1, s), y: v.lerp(top, gy, s) + v.hop(s, 16) };
 }
 function pw13BhScene(v, t) {
-  const ctx = v.ctx, gy = 146, L = PW13BH_L, mrX = 176, g0 = 188, g1 = 242, mx = 58;
+  const ctx = v.ctx, gy = 146, L = PW13BH_L, mrX = 230, g0 = 168, g1 = 218, mx = 58;
   const w1 = Math.PI * 2 / L;
   // the night sky: deep purple down to a pumpkin-orange glow, stars and a big friendly harvest moon
   const sky = ctx.createLinearGradient(0, 0, 0, gy);
@@ -125,7 +128,7 @@ function pw13BhScene(v, t) {
     ctx.fillStyle = 'rgba(255,245,220,' + tw.toFixed(3) + ')';
     ctx.fillRect(v.rand(i * 3 + 1) * v.W, 4 + v.rand(i * 3 + 2) * 80, 1.8, 1.8);
   }
-  const ox = 262, oy = 38;
+  const ox = 284, oy = 38;
   v.fillCircle(ox, oy, 34, 'rgba(255,170,90,0.14)'); v.fillCircle(ox, oy, 26, 'rgba(255,170,90,0.2)'); v.fillCircle(ox, oy, 20, '#ffb867');
   v.fillCircle(ox - 8, oy - 8, 4, '#f7a352'); v.fillCircle(ox + 10, oy + 8, 3, '#f7a352');
   ctx.strokeStyle = 'rgba(150,80,40,0.6)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
@@ -169,7 +172,7 @@ function pw13BhScene(v, t) {
   const boing = v.seg(t, 4.15, 4.6), mb = Math.sin(boing * Math.PI * 3) * (1 - boing) * 2.5;
   ctx.fillStyle = '#ff8fb1'; v.rr(g0 + 6, 165 + mb, g1 - g0 - 12, 11, 4); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.7)'; for (let x = g0 + 12; x < g1 - 10; x += 9) ctx.fillRect(x, 166 + mb, 3, 9);
-  pw13BhLantern(v, 312, gy - 8, 9, 0.5 + 0.5 * Math.sin(t * w1 * 6) * (t > 5.4 ? 1 : 0.3));
+  pw13BhLantern(v, 128, gy - 29, 8, 0.5 + 0.5 * Math.sin(t * w1 * 6) * (t > 5.5 ? 1 : 0.3));   // sat on the headstone
 
   // ---- the story ----
   const popT = 1.1, carry0 = 1.6, carry1 = 2.6, inT = 2.85, tip0 = 3.75, tip1 = 4.15;
@@ -177,15 +180,17 @@ function pw13BhScene(v, t) {
   const tipK = v.ease.in(v.seg(t, tip0, tip1)) - Math.sin(v.seg(t, tip1, tip1 + 0.22) * Math.PI) * 0.07;
   // the dig mound: shrinks as they dig, then a ring of loose dirt with the two shovels stuck in it
   const dug = v.seg(t, 0, popT), ms = 1 - dug * 0.45;
-  ctx.fillStyle = '#6b4a3a'; ctx.strokeStyle = '#4a3324'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.ellipse(mx, gy + 1, 22 * ms + 4, 12 * ms, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
-  if (t < popT) pw13BhBone(v, mx - 4, gy - 9 * ms + 2, mx + 9, gy - 13 * ms + 2, 6);
+  ctx.fillStyle = '#7a5440'; ctx.strokeStyle = '#3e2a1e'; ctx.lineWidth = 2.4;
+  ctx.beginPath(); ctx.ellipse(mx, gy + 1, 26 * ms + 4, 17 * ms, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#946a50'; ctx.beginPath(); ctx.ellipse(mx - 6 * ms, gy - 9 * ms, 9 * ms, 3.5 * ms, -0.2, 0, Math.PI * 2); ctx.fill();
+  if (t < popT) pw13BhBone(v, mx - 6, gy - 13 * ms + 2, mx + 10, gy - 18 * ms + 2, 8);
   else { ctx.fillStyle = '#2a1d30'; ctx.beginPath(); ctx.ellipse(mx, gy - 4, 9, 3, 0, 0, Math.PI * 2); ctx.fill(); }
   // Mr. Bones (behind the heroes: they walk over him once he's a bridge)
-  const lookAt = t < inT ? -0.8 : t < tip0 ? -0.5 : 0.6;
+  const lookAt = t < tip0 ? -0.8 : t < 5.1 ? -0.6 : 0.7;
   pw13BhMr(v, mrX, gy - 7 * v.ease.out(v.seg(t, tip0, tip1)), Math.max(0, grow), tipK, t, lookAt);
   // the heroes
-  let pip = { x: 36, y: gy, face: 1, sq: 0, mood: 'happy' }, bo = { x: 80, y: gy, face: -1, sq: 0, mood: 'happy' };
+  const gather = v.ease.inOut(v.seg(t, popT, 1.5));   // step in from the dig spots to stand under the bone
+  let pip = { x: v.lerp(20, 36, gather), y: gy, face: 1, sq: 0, mood: 'happy' }, bo = { x: v.lerp(96, 80, gather), y: gy, face: -1, sq: 0, mood: 'happy' };
   const digs = [];
   if (t < popT + 0.05) {
     for (const [h, off] of [[pip, 0], [bo, 0.22]]) {
@@ -198,17 +203,17 @@ function pw13BhScene(v, t) {
     if (land > 0 && land < 1) { pip.sq = bo.sq = Math.sin(land * Math.PI) * 0.3; }
     pip.mood = bo.mood = t < 1.42 ? 'wow' : 'joy';
   } else if (t < tip1 + 0.15) {
-    const d = 76 * v.ease.inOut(v.seg(t, carry0, carry1)), bob = t < carry1 ? v.hop(v.phase(t - carry0, 0.3), 4) : 0;
+    const d = 60 * v.ease.inOut(v.seg(t, carry0, carry1)), bob = t < carry1 ? v.hop(v.phase(t - carry0, 0.3), 4) : 0;
     pip = { x: 36 + d, y: gy + bob, face: 1, sq: 0, mood: 'happy' };
     bo = { x: 80 + d, y: gy + bob, face: 1, sq: 0, mood: 'happy' };
     if (t > inT) { pip.mood = bo.mood = t < tip0 ? 'joy' : 'wow'; pip.y = bo.y = gy + v.hop(v.seg(t, inT + 0.05, inT + 0.4), 9); }
   } else {
-    const ub = v.seg(t, 4.3, 5.2), up = v.seg(t, 4.5, 5.45);
-    const b = pw13BhCross(v, 156, 294, ub, gy), p = pw13BhCross(v, 112, 266, up, gy);
-    bo = { x: b.x, y: b.y, face: 1, sq: 0, mood: ub > 0.6 && ub < 1 ? 'joy' : 'happy' };
-    pip = { x: p.x, y: p.y, face: 1, sq: 0, mood: up > 0.6 && up < 1 ? 'joy' : 'happy' };
-    if (t > 5.45) {   // made it! hop and cheer
-      for (const [h, off, f] of [[pip, 0, 1], [bo, 0.25, -1]]) { h.y = gy + v.hop(v.phase(t - 5.45 + off, 0.5), 10); h.mood = 'joy'; h.face = f; }
+    const ub = v.seg(t, 4.35, 5.35), up = v.seg(t, 4.54, 5.54);
+    const b = pw13BhCross(v, 140, 288, ub, gy), p = pw13BhCross(v, 96, 254, up, gy);
+    bo = { x: b.x, y: b.y, face: 1, sq: 0, mood: ub > 0.7 && ub < 1 ? 'joy' : 'happy' };
+    pip = { x: p.x, y: p.y, face: 1, sq: 0, mood: up > 0.7 && up < 1 ? 'joy' : 'happy' };
+    if (t > 5.55) {   // made it! hop and cheer
+      for (const [h, off, f] of [[pip, 0, 1], [bo, 0.25, -1]]) { h.y = gy + v.hop(v.phase(t - 5.55 + off, 0.5), 10); h.mood = 'joy'; h.face = f; }
     }
   }
   // the big bone: pops out of the mound, lands across both heads, rides along, then flies into Mr. Bones
@@ -221,20 +226,20 @@ function pw13BhScene(v, t) {
     const cx = Math.cos(ang) * len / 2, cy = Math.sin(ang) * len / 2;
     pw13BhBone(v, bx - cx, by - cy, bx + cx, by + cy, 10);
   }
-  for (const d of digs) {   // shovels in hand while digging
-    const h = d.h, f = h.face, hy = h.y - 12;
-    pw13BhShovel(v, h.x + f * 6, hy, mx - f * (14 - d.down * 6), gy - 18 + d.down * 14);
-  }
-  if (t >= popT + 0.05) { pw13BhShovel(v, mx - 13, gy - 24, mx - 5, gy - 4); pw13BhShovel(v, mx + 14, gy - 23, mx + 6, gy - 4); }
+  if (t >= popT + 0.05) { pw13BhShovel(v, mx - 15, gy - 28, mx - 6, gy - 5, 1.2); pw13BhShovel(v, mx + 16, gy - 27, mx + 7, gy - 5, 1.2); }
   v.hero(0, pip.x, pip.y, { s: 1.1, face: pip.face, sq: pip.sq, mood: pip.mood });
   v.hero(1, bo.x, bo.y, { s: 1.1, face: bo.face, sq: bo.sq, mood: bo.mood });
+  for (const d of digs) {   // big shovels in hand while digging, drawn over the heroes so they always show
+    const h = d.h, f = h.face;
+    pw13BhShovel(v, h.x + f * 4, h.y - 30 + d.down * 8, mx - f * (24 - d.down * 10), gy - 18 + d.down * 13, 1.5);
+  }
   // flung dirt: each dig tosses clods back over the digger's head
   for (const d of digs) {
     for (let q = 0; q < 2; q++) {
       const u = v.seg(d.u, 0.4 + q * 0.1, 0.95);
       if (u <= 0 || u >= 1) continue;
       const f = d.h.face, x = mx - f * (8 + u * (30 + q * 14)), y = v.lerp(gy - 10, gy - 2, u) + v.hop(u, 26 + q * 8);
-      v.fillCircle(x, y, 2.6 - q * 0.5, '#7a5844');
+      v.fillCircle(x, y, 4 - q * 0.8, '#946a50');
     }
   }
   // words and sparkles
@@ -247,26 +252,26 @@ function pw13BhScene(v, t) {
   if (t > 0.15 && t < carry1) {   // Mr. Bones dreams of his missing backbone
     const a = Math.min(v.seg(t, 0.15, 0.4), 1 - v.seg(t, carry1 - 0.25, carry1)), bob = Math.sin(t * w1 * 4) * 2;
     ctx.save(); ctx.globalAlpha *= a; ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    v.circle(mrX + 9, gy - 56, 2.5); ctx.fill(); v.circle(mrX + 14, gy - 63, 3.5); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(mrX + 30, gy - 80 + bob, 21, 13, 0, 0, Math.PI * 2); ctx.fill();
-    pw13BhBone(v, mrX + 20, gy - 75 + bob, mrX + 40, gy - 85 + bob, 7);
+    v.circle(mrX - 9, gy - 56, 2.5); ctx.fill(); v.circle(mrX - 14, gy - 63, 3.5); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(mrX - 30, gy - 80 + bob, 21, 13, 0, 0, Math.PI * 2); ctx.fill();
+    pw13BhBone(v, mrX - 40, gy - 75 + bob, mrX - 20, gy - 85 + bob, 7);
     ctx.restore();
   }
   if (t > inT && t < inT + 0.6) { const f = v.seg(t, inT, inT + 0.6); v.label('Clack!', mrX - 52, gy - 78 - f * 8, 15, '#fff'); }
-  if (t > 3.05 && t < 3.75) v.bubble('My backbone!', mrX, gy - 90, { size: 11 });
+  if (t > 3.05 && t < 3.75) v.bubble('My backbone!', mrX - 22, gy - 90, { size: 11 });
   if (t > tip1 && t < 4.7) {
     const f = v.ease.back(v.seg(t, tip1, tip1 + 0.25));
     ctx.save(); ctx.translate((g0 + g1) / 2, 86); ctx.scale(f, f); v.label('BRIDGE!', 0, 0, 20, v.c.gold); ctx.restore();
   }
-  v.puff(g1 + 4, gy - 4, v.seg(t, tip1 - 0.05, tip1 + 0.4));
-  if (t > 5.4) {
-    v.confetti(280, gy - 34, v.seg(t, 5.4, 6.6), 18);
-    for (let q = 0; q < 2; q++) { const f = v.seg(t, 5.55 + q * 0.35, 6.4 + q * 0.35); if (f > 0 && f < 1) { ctx.save(); ctx.globalAlpha *= 1 - f; v.heart(242 + q * 8, gy - 26 - f * 30, 5); ctx.restore(); } }
+  v.puff(g0 - 6, gy - 4, v.seg(t, tip1 - 0.05, tip1 + 0.4));
+  if (t > 5.5) {
+    v.confetti(271, gy - 36, v.seg(t, 5.5, 6.6), 18);
+    for (let q = 0; q < 2; q++) { const f = v.seg(t, 5.6 + q * 0.35, 6.4 + q * 0.3); if (f > 0 && f < 1) { ctx.save(); ctx.globalAlpha *= 1 - f; v.heart(258 + q * 14, gy - 26 - f * 30, 5); ctx.restore(); } }
   }
 }
 definePreview('Graveyard Bone Hunt', {
   blurb: 'Dig up Mr. Bones’ lost bones: each one makes him a better helper!',
-  loop: PW13BH_L, still: 4.85,
+  loop: PW13BH_L, still: 5.04,
   draw(v, t) {
     pw13BhScene(v, t);
     const f = v.seg(t, PW13BH_L - 0.45, PW13BH_L);   // fade the opening frame in over the end: no seam
