@@ -433,6 +433,7 @@ cpuBrain('golf', {
     return ballThink(st, p, o, info, g, m);
   },
   // the ball player is drawn as the ball
+  bubbleHidden: true,
   bubblePos(p) {
     const g = G.golf;
     if (g && g.ball === p.id && g.b) return { x: g.b.x, y: g.b.y - GOLF.r - 8 };

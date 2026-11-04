@@ -79,6 +79,7 @@
   cpuBrain('plinko', {
     reset(st) { st.aimX = null; st.noise = null; },
     // the players are not drawn in this level: the chip is, and the paddles are
+    bubbleHidden: true,
     bubblePos(p) {
       const M = G.mst;
       if (!M || !M.b) return null;

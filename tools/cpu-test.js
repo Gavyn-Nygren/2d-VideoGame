@@ -12,7 +12,8 @@
 //   --who=noisy  the computer plays both, but Pip is made clumsy like a distracted person: it stops for 1-4 s now and
 //                then, wanders the wrong way for a moment, and sometimes jumps or presses the action for no reason. Bo must still get
 //                the level done with this partner (team) or beat it most of the time (versus, at the same skill).
-//   --who=solo   the computer plays Bo, Pip is the simple "follow and copy" test bot below (rough stand-in for a person)
+//   --who=solo   the computer plays Bo, Pip is the simple "follow and copy" test bot below (rough stand-in for a person;
+//                it can't golf, carry the pizza or do any level's special job, so only platform levels mean much here)
 //   --clumsy=1   with --who=noisy, Bo is the clumsy one instead of Pip
 //   --skills     a skill per player (Pip,Bo), e.g. --skills=easy,hard to check that Hard beats Easy in versus levels
 //   --max        simulated seconds before giving up (default 600)
@@ -37,8 +38,15 @@ const clumsy = +opt('clumsy', 0);
   const errors = [];
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', e => errors.push(String(e)));
-  // a repeatable Math.random; window.__seed(n) restarts it
-  await page.addInitScript(() => { let x = 1; window.__seed = s => { x = (s >>> 0) || 1; }; Math.random = () => { x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; });
+  // a repeatable Math.random; window.__seed(n) restarts it. Only the game steps we run use the seeded numbers: the live
+  // drawing loop (particles, wobble) gets its own, so how often the page happens to draw can't change a run.
+  await page.addInitScript(() => {
+    const gen = s => () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+    let seeded = gen(1); const other = gen(12345);
+    window.__inStep = false;
+    window.__seed = n => { seeded = gen((n >>> 0) || 1); };
+    Math.random = () => (window.__inStep ? seeded() : other());
+  });
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
   const list = await page.evaluate(() => window.__pipbo.LEVELS.map((l, i) => ({ i, code: window.__pipbo.levelCode(i), name: l.name, kind: l.kind })));
@@ -50,6 +58,7 @@ const clumsy = +opt('clumsy', 0);
     const r = await page.evaluate(async ({ i, who, skills, maxT, seed, clumsy }) => {
       const P = window.__pipbo, G = P.G;
       window.__seed(seed * 7919);
+      window.__inStep = true;
       G.manual = true;
       P.CPU.skillOf = skills.slice();
       P.CPU.errs.clear();
@@ -70,7 +79,9 @@ const clumsy = +opt('clumsy', 0);
         if (Math.random() < 0.1 * dt) out.act = true;
         return out;
       };
+      delete G.results[i]; // (so a run that doesn't finish can't report an earlier run's result)
       P.loadLevel(i);
+      window.__inStep = false;
       const pip = G.players[0];
       // the simple test person for --who=solo: walk toward the partner, jump when the partner jumps or when blocked,
       // press the action now and then
@@ -91,9 +102,11 @@ const clumsy = +opt('clumsy', 0);
       let n = 0, rooms = 0, lastRoom = 0;
       while (n < steps && G.mode === 'play') {
         for (let k = 0; k < 600 && n < steps && G.mode === 'play'; k++, n++) {
+          window.__inStep = true;
           if (who === 'solo') solo();
           else if (who === 'idle') { for (const key in pip.input) pip.input[key] = false; }
           P.step(P.DT);
+          window.__inStep = false;
           if (G.room !== lastRoom) { rooms++; lastRoom = G.room; }
         }
         await new Promise(r => setTimeout(r, 0));

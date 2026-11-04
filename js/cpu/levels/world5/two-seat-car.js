@@ -254,6 +254,7 @@
 
   cpuBrain('car', {
     reset(S) { S.i = null; S.rev = 0; },
+    bubbleHidden: true,
     bubblePos() { const c = G.mst && G.mst.car; return c ? { x: c.x, y: c.y - 14 } : { x: W / 2, y: H / 2 }; },
     think(S, p, o, dt, info) {
       const m = info.mst, out = {};

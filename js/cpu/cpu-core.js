@@ -16,6 +16,10 @@
      bubblePos(p)                  optional: { x, y } of the top centre of where the level draws this player, for levels
                                    that draw players somewhere other than p.x / p.y (cars, a floe...)
      noIdleStop                    optional: true to keep playing when the person has pressed nothing for CPU.idleStop s
+     idleStop                      optional: a number of seconds to use instead of CPU.idleStop for this level
+     bubbleHidden                  optional: true when the level hides the players' bodies (p.alive false all level:
+                                   the golf ball, plinko, the car), so bubbles are drawn at bubblePos(p) anyway.
+                                   bubblePos may return null to hide a bubble.
      think(st, p, o, dt, info)     every step while a level is playing (also during intro cards, countdowns and banners,
                                    when presses are ignored anyway). Returns { left, right, jump, down, up, act }.
                                    jump / act may be true (held), false, or 'tap' (a fresh press: pressed this step if it
@@ -101,6 +105,11 @@ function cpuCall(b, name, args) {
   }
 }
 
+// the person has pressed nothing for longer than this level's idle stop (never, with brain.noIdleStop)
+function cpuPartnerAway(id, brain = cpuBrainFor(G.level && G.level.def)) {
+  if (brain && brain.noIdleStop) return false;
+  return CPU.idle[id] > ((brain && brain.idleStop) || CPU.idleStop);
+}
 // once per physics step, before anything moves
 function cpuTick(dt) {
   if (!G.level || !G.cpuOn) return;
@@ -117,7 +126,7 @@ function cpuTick(dt) {
     const brain = cpuBrainFor(G.level.def), o = G.players[1 - p.id];
     let out = (brain && cpuCall(brain, 'think', [CPU.st[p.id], p, o, dt, cpuInfo(p)])) || {};
     // the person walked away: the computer waits too (a level can opt out with brain.noIdleStop)
-    if (!cpuOn(o.id) && CPU.idle[o.id] > CPU.idleStop && !(brain && brain.noIdleStop)) out = {};
+    if (!cpuOn(o.id) && cpuPartnerAway(o.id, brain)) out = {};
     if (CPU.filter) out = CPU.filter(p, out, dt) || out;
     cpuApply(p, out);
   }
@@ -163,17 +172,22 @@ function cpuSeek(out, p, x, dead = 3) {
 // a short speech bubble over the computer player ("Your turn!", "Hop on!"); the same text again only refreshes it
 function cpuSay(p, text, secs = 1.8) {
   if (!cpuOn(p.id) || !cpuSolo()) return;
+  if (cpuPartnerAway(1 - p.id)) return; // the person walked away: no chatter while the computer waits
   const b = CPU.bubbles[p.id];
   if (b && b.text === text && b.t > 0) { b.t = Math.max(b.t, secs * 0.5); return; }
   CPU.bubbles[p.id] = { text: String(text), t: secs, max: secs };
 }
 // a value as the computer saw it `delay` seconds ago (human-like reaction time). key names the value in st.
+// (a value not asked for since longer ago than the delay starts fresh, so it never returns a stale one)
 function cpuLag(st, key, value, delay) {
-  const q = st['_lag_' + key] || (st['_lag_' + key] = []);
+  let q = st['_lag_' + key];
+  if (!q || !q.length || q[q.length - 1][0] < G.time - delay - 0.05 || q[q.length - 1][0] > G.time) q = st['_lag_' + key] = [];
   q.push([G.time, value]);
   while (q.length > 1 && q[1][0] <= G.time - delay) q.shift();
   return q[0][1];
 }
+// forget what cpuLag remembered for key (a new round)
+function cpuLagReset(st, key) { delete st['_lag_' + key]; }
 // a timer in st that counts up while cond is true and resets to 0 otherwise; returns the seconds
 function cpuFor(st, key, cond, dt) { st['_for_' + key] = cond ? (st['_for_' + key] || 0) + dt : 0; return st['_for_' + key]; }
 // true roughly `perSec` times per second (random), for wobble and mistakes
@@ -256,12 +270,15 @@ function cpuDraw() {
   if (!cpuSolo() || G.mode === 'title') return;
   for (const p of G.players) {
     const b = CPU.bubbles[p.id];
-    if (!b || b.t <= 0 || !p.alive) continue;
+    if (!b || b.t <= 0) continue;
+    const br = cpuBrainFor(G.level.def);
+    if (!p.alive && !(br && br.bubbleHidden)) continue;
+    const at = br && br.bubblePos ? cpuCall(br, 'bubblePos', [p]) : { x: cpuCx(p), y: p.y };
+    if (!at) continue;
     const a = clamp(Math.min(b.t / 0.3, (b.max - b.t) / 0.15, 1), 0, 1);
     ctx.save(); ctx.globalAlpha = a;
     ctx.font = '700 13px "Atkinson Hyperlegible", sans-serif';
     const tw = ctx.measureText(b.text).width, w = tw + 16, h = 22;
-    const br = cpuBrainFor(G.level.def), at = (br && br.bubblePos && cpuCall(br, 'bubblePos', [p])) || { x: cpuCx(p), y: p.y };
     const px = at.x, x = clamp(px - w / 2, 4, W - w - 4), y = clamp(at.y - 44, 4, H - h - 4);
     ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = PDARK[p.id]; ctx.lineWidth = 2;
     rr(x, y, w, h, 10); ctx.fill(); ctx.stroke();

@@ -348,10 +348,9 @@
     reset(st) { st.round = -1; },
     // the builder has no body: its words go over the falling piece (or the top of the build area)
     bubblePos(p) {
-      const B = G.build, a = G.level.def.build;
+      const B = G.build;
       if (!B || p.id !== B.builder) return { x: cpuCx(p), y: p.y };
-      const pc = B.piece;
-      return pc ? { x: (pc.x + pc.n / 2) * T, y: pc.y * T + 40 } : { x: (a.spawnCol + 0.5) * T, y: 80 };
+      return null; // the builder's words show on the HUD line at the bottom (drawBuildHUD)
     },
     think(st, p, o, dt, info) {
       const B = G.build;
