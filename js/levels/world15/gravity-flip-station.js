@@ -725,9 +725,10 @@ function gravflipDrawPlayer(st, p, t) {
   }
 }
 // Blip, the friendly helper robot: a round body, a screen face, a little antenna and a jet
+// (returns the boxes it covers, for the hint chips to keep clear of)
 function gravflipDrawBlip(b, t) {
-  if (b.y < -30) return;
-  const s = gravflipBig() ? 1.3 : 1, x = b.x, y = b.y;
+  if (b.y < -30) return [];
+  const s = gravflipBig() ? 1.3 : 1, x = b.x, y = b.y, boxes = [{ x0: x - 18 * s, y0: y - 28 * s, x1: x + 18 * s, y1: y + 26 * s }];
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
   if (!reduceMotion) { ctx.fillStyle = 'rgba(255,190,90,0.8)'; ctx.beginPath(); ctx.moveTo(-5, 14); ctx.lineTo(5, 14); ctx.lineTo(0, 22 + Math.sin(t * 30) * 3); ctx.closePath(); ctx.fill(); }
   ctx.fillStyle = '#e9ecff'; ctx.strokeStyle = '#6a6f9c'; ctx.lineWidth = 2; circle(0, 0, 15); ctx.fill(); ctx.stroke();
@@ -754,7 +755,9 @@ function gravflipDrawBlip(b, t) {
     const by = b.dir < 0 ? y - 26 * s - h - 6 : y - 26 * s - h - 6;
     ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(bx, Math.max(76, by), w, h, 9); ctx.fill(); ctx.stroke();
     text(say, bx + w / 2, Math.max(76, by) + h / 2 + 0.5, fs, '#3a3070', 'center', 'body');
+    boxes.push({ x0: bx, y0: Math.max(76, by), x1: bx + w, y1: Math.max(76, by) + h });
   }
+  return boxes;
 }
 // a dark chip with a coloured title and an optional key line (step hints)
 function gravflipChip(t1, t2, x, y, col, avoid, below) {
@@ -812,6 +815,12 @@ function gravflipDrawTop() {
     text(s, x0 + w / 2, y0 + h / 2 + 0.5, fs, PCOL[p.id], 'center', 'body');
     boxes.push({ x0, y0, x1: x0 + w, y1: y0 + h });
   }
+  // Blip first, so the hint chips keep clear of him
+  for (const q of gravflipDrawBlip(st.blip, t)) boxes.push(q);
+  if (st.blip.on) {
+    const pl = gravflipPlan(st), f = gravflipFocus(st, pl);
+    st.blip.hint = f ? (gravflipJob(st, pl, f.id) === 'flipper' ? (gravflipCpu(f.id) ? NAMES[f.id] + ' flips from here!' : NAMES[f.id] + ': flip from here!') : (gravflipCpu(f.id) ? NAMES[f.id] + ' goes here!' : NAMES[f.id] + ': over here!')) : '';
+  }
   // the step hints, over each person who has a job in it
   if (st.phase === 'play' && G.introT <= GRAVFLIP.introHold) {
     const pl = gravflipPlan(st), say = pl.step.say || {};
@@ -831,11 +840,6 @@ function gravflipDrawTop() {
       }
       ctx.restore();
     }
-  }
-  gravflipDrawBlip(st.blip, t);
-  if (st.blip.on) {
-    const pl = gravflipPlan(st), f = gravflipFocus(st, pl);
-    st.blip.hint = f ? (gravflipJob(st, pl, f.id) === 'flipper' ? (gravflipCpu(f.id) ? NAMES[f.id] + ' flips from here!' : NAMES[f.id] + ': flip from here!') : (gravflipCpu(f.id) ? NAMES[f.id] + ' goes here!' : NAMES[f.id] + ': over here!')) : '';
   }
   // pops (Wheee!, Whoopsie!, That's Bo's switch!)
   for (const q of st.pops) {

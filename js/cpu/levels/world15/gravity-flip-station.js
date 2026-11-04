@@ -220,7 +220,7 @@ function gravflipBotJumper(S, st, p, o, c, step, dt, info) {
     }
     if (!S.tgt) return gravflipBotStuck(S, st, p, dt, J.wait);
     const out = gravflipBotGo(S, st, p, S.tgt, S.tgt.x0);
-    if (S.nav && S.nav.status === 'arrived' && p.grounded && Math.abs(p.vx) < 20) { J.phase = 'wait'; J.t = 0; S.stuckT = 0; }
+    if (p.grounded && Math.abs(cpuCx(p) - S.tgt.x0) <= 12 && Math.abs(p.vx) < 40) { J.phase = 'wait'; J.t = 0; S.stuckT = 0; }
     return out;
   }
   const j = J.j, cx = cpuCx(p);
