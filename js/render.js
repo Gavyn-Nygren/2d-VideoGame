@@ -392,7 +392,7 @@ function drawHUD() {
   pill(14, 12, lw, 28);
   text(label, 28, 26.5, 14, C.paper, 'left', 'body');
   if (L.def.rooms && !L.def.golf) {
-    const rl = `Room ${L.def.roomIndex + 1} of ${L.def.roomCount}: ${L.def.title}`;
+    const rl = `${L.def.roomWord || 'Room'} ${L.def.roomIndex + 1} of ${L.def.roomCount}: ${L.def.title}`;
     ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
     pill(14, 46, ctx.measureText(rl).width + 44, 26);
     const col = { rope: C.rope, chain: '#d9dbe8', bungee: '#ff5fa2' }[cordType()];
@@ -572,7 +572,7 @@ function drawIntro() {
   const code = levelCode(G.levelIndex), wd = WORLDS[LEVELS[G.levelIndex].world];
   const first = code.endsWith('-1') && (!def.rooms || def.roomIndex === 0);
   const sub = (first ? `World ${LEVELS[G.levelIndex].world + 1}: ${wd.name} · ` : '') + (def.golf ? `Level ${code} · Hole ${def.roomIndex + 1} of ${def.roomCount} · Par ${def.par}`
-    : def.rooms ? `Level ${code} · ${def.name} · Room ${def.roomIndex + 1} of ${def.roomCount}` : `Level ${code}${def.kind === 'versus' ? ' · Versus' : ''}`);
+    : def.rooms ? `Level ${code} · ${def.name} · ${def.roomWord || 'Room'} ${def.roomIndex + 1} of ${def.roomCount}` : `Level ${code}${def.kind === 'versus' ? ' · Versus' : ''}`);
   text(sub, W / 2, 190, 13, C.gold, 'center', 'body');
   text(def.rooms ? def.title + '!' : def.name, W / 2, 216, 30, C.paper, 'center');
   ctx.font = '400 14px "Atkinson Hyperlegible", system-ui, sans-serif';

@@ -126,7 +126,7 @@ function tandemRoom(st, L, k) {
   st.raceRails = 0; st.raceAprons = 0; st.raceOff = 0; st.helpLean = false; st.helpDrum = false; st.helpWind = false;
   st.prevLR = [[true, true], [true, true]]; st.prevUD = [[true, true], [true, true]];
   st.lastStroke = -99; st.grade = null; st.streak = 0;
-  st.pops = []; st.parts = []; st.hints = [null, null]; st.hinted = {}; st.msg = null; st.big = null;
+  st.pops = []; st.parts = []; st.hints = [null, null]; st.hinted = {}; st.hintPend = null; st.msg = null; st.big = null;
   st.wrongT = [0, 0];
   tandemTip(st, def);
   tandemMirror(st);
@@ -190,6 +190,7 @@ function tandemStep(st, dt) {
       return;
     }
   }
+  if (st.hintPend && st.rt >= st.hintPend.at) { const q = st.hintPend; st.hintPend = null; tandemHintOnce(st, q.key, q.id, q.text, q.life); }
   tandemFx(st, dt);
   tandemMirror(st);
 }
@@ -304,7 +305,7 @@ function tandemRide(st, dt) {
       b.rail = false; b.wob = K.wobT; b.down = 0.45; b.pos = 0.97;
       tandemPop(st, 'Phew!', '#8fe3b0', 20);
       Sfx.play('tandemPhew');
-    } else if (b.railT > 1.4) tandemHintOnce(st, 'rail' + st.k, st.lean, 'Lean in ' + tandemKey(st.lean, 'in') + ' to get off the rail!', 3);
+    } else if (b.railT > 1.4 && !st.hintPend && !st.hints[st.lean]) tandemHintOnce(st, 'rail' + st.k, st.lean, 'Lean in ' + tandemKey(st.lean, 'in') + ' to get off the rail!', 3);
   } else if (b.down > 0) {
     b.down -= dt; b.pos -= 0.8 * dt;
   } else if (e > tol) b.pos += drift * (e - tol) * dt;
@@ -339,7 +340,8 @@ function tandemRail(st) {
   if (!reduceMotion) G.shake = Math.max(G.shake, 0.15);
   for (const p of G.players) { p.sx = 1.3; p.sy = 0.7; }
   for (let i = 0; i < 12; i++) tandemPart(st, at.x, at.y, (Math.random() - 0.5) * 160, (Math.random() - 0.5) * 160, 0.5, i % 2 ? '#ffffff' : '#f3d9a8', 2 + Math.random() * 2.5);
-  tandemHintOnce(st, 'railA' + st.k, st.lean, 'Turns: hold ' + tandemKey(st.lean, 'in') + ' to lean in!', 3);
+  // (the hint pill waits until the big "Wobble!" has faded, so only one message is up at a time)
+  if (!st.hinted['railA' + st.k]) st.hintPend = { at: st.rt + 1.05, key: 'railA' + st.k, id: st.lean, text: 'Turns: hold ' + tandemKey(st.lean, 'in') + ' to lean in!', life: 3 };
   if (st.raceRails >= K.helpRails) tandemSteady(st);
 }
 // gold help after 2 rail wobbles or 6 trips onto the apron in a race: a wider lean wedge, and the bike slides more slowly
@@ -536,13 +538,14 @@ MODES.tandem = {
   stats() {
     const s = G.mst.stats;
     if (!s) return [];
-    const pct = (a, b) => (b > 0 ? Math.round(100 * a / b) + '%' : '–');
+    // (compact values so each tile fits on one line on a phone: whole percentages, places as 1-1-2-1)
+    const pct = (a, b) => (b > 0 ? String(Math.round(100 * a / b)) : '–');
     const max = TANDEM.pts[0] * (G.mst.n || 4);
     const out = [
       { label: 'Podium points', value: s.pts + ' of ' + max },
-      { label: 'Places', value: s.places.map(n => (n ? tandemOrd(n) : '–')).join(' · ') || '–' },
-      { label: 'Pedals on the beat', values: [pct(s.onBeat[0], s.strokes[0]), pct(s.onBeat[1], s.strokes[1])] },
-      { label: 'Leaning in the groove', values: [pct(s.grooveT[0], s.leanT[0]), pct(s.grooveT[1], s.leanT[1])] },
+      { label: 'Places', value: s.places.map(n => (n ? String(n) : '·')).join('-') || '–' },
+      { label: 'Pedals on the beat %', values: [pct(s.onBeat[0], s.strokes[0]), pct(s.onBeat[1], s.strokes[1])] },
+      { label: 'Leaning in the groove %', values: [pct(s.grooveT[0], s.leanT[0]), pct(s.grooveT[1], s.leanT[1])] },
     ];
     const medal = s.pts >= 10 ? 'Gold' : s.pts >= 6 ? 'Silver' : 'Bronze';
     const words = medal === 'Gold' ? 'Champions of the boards!' : medal === 'Silver' ? 'A super team ride!' : 'You rode it together!';
@@ -896,8 +899,9 @@ function tandemDrawCam(st) {
   const cr = b.crank, mood = b.rail ? 'dizzy' : st.phase === 'done' || st.phase === 'podium' ? 'happy' : st.sprint ? 'push' : null;
   const bob = st.phase === 'race' && !b.rail ? Math.abs(Math.sin(cr)) * 1.6 : 0;
   // the stoker (pedaler) peeks over the captain's shoulder, a little behind, bobbing with every push
-  ctx.fillStyle = '#26243f'; rr(10, -50, 14, 5, 2.5); ctx.fill();   // the back saddle
-  tandemRiderFront(st.ped, 17, -47 - bob, 0.86, mood, -0.6);
+  // (offset up and out past the captain's shoulder and handlebar grip, so both riders and their colours show)
+  ctx.fillStyle = '#26243f'; rr(19, -58, 14, 5, 2.5); ctx.fill();   // the back saddle
+  tandemRiderFront(st.ped, 27, -56 - bob, 0.86, mood, -0.6);
   // wheel (head on): a fat tyre and the hub, the fork
   ctx.fillStyle = '#26243f'; rr(-5.5, -40, 11, 40, 5.5); ctx.fill();
   ctx.fillStyle = '#4a4766'; rr(-2.5, -36, 5, 32, 2.5); ctx.fill();
@@ -1001,7 +1005,8 @@ function tandemRivalHead(team, x, y, s) {
 // a tandem seen from above at s, pos: two wheels, the frame, two riders (heading along the track)
 function tandemDrawBike(at, frame, riders, crank, opts) {
   opts = opts || {};
-  ctx.save(); ctx.translate(at.x, at.y); ctx.rotate(at.a); ctx.scale(1.12, 1.12);
+  const sc = opts.scale || 1.12;
+  ctx.save(); ctx.translate(at.x, at.y); ctx.rotate(at.a); ctx.scale(sc, sc);
   if (opts.shake) ctx.translate(0, Math.sin(G.clock * 40) * 1.6);
   ctx.fillStyle = 'rgba(28,26,54,0.25)'; ctx.beginPath(); ctx.ellipse(1.5, 3, 20, 6.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#26243f'; rr(9, -1.6, 13, 3.2, 1.6); ctx.fill(); rr(-22, -1.6, 13, 3.2, 1.6); ctx.fill();
@@ -1051,11 +1056,16 @@ function tandemDrawFront(st) {
   }
   const sw = b.swapT > 0 ? Math.sin(Math.min(1, b.swapT / 1.1) * Math.PI) : 0;
   const lift = id => sw * 5 * (id === st.lean ? 1 : -1);
+  // (a bit bigger than the rivals' bikes, and bigger still on a small stage such as a phone)
+  const small = typeof stageScale === 'number' && stageScale < 0.8;
   tandemDrawBike(at, C.gold, [[-7, () => tandemOurRider(st.ped, b, lift(st.ped))], [6, () => tandemOurRider(st.lean, b, lift(st.lean))]], b.crank,
-    { lean: Math.min(1.3, b.lean), shake: b.rail || b.shake > 0 });
-  // a ring round our bike so it is easy to spot
-  ctx.strokeStyle = 'rgba(255,197,61,' + (0.35 + 0.25 * Math.sin(G.clock * 4)).toFixed(3) + ')'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.ellipse(at.x, at.y, 28, 28, 0, 0, Math.PI * 2); ctx.stroke();
+    { lean: Math.min(1.3, b.lean), shake: b.rail || b.shake > 0, scale: small ? 1.55 : 1.32 });
+  // a bright ring round our bike so it is easy to spot (a dark edge so it shows on the boards and on the crowd)
+  const ringR = small ? 35 : 31, ringA = 0.75 + 0.25 * Math.sin(G.clock * 4);
+  ctx.strokeStyle = 'rgba(28,26,54,0.55)'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(at.x, at.y, ringR, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,214,92,' + ringA.toFixed(3) + ')'; ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.arc(at.x, at.y, ringR, 0, Math.PI * 2); ctx.stroke();
   // particles and pops
   for (const q of st.parts) {
     ctx.globalAlpha = clamp(q.life / q.max, 0, 1); ctx.fillStyle = q.col;
@@ -1151,8 +1161,8 @@ function tandemHud(st) {
     const fs = 13 * z;
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
     const w = ctx.measureText(str).width + 20 * z, h = fs + 11 * z, hx = p.x + PW / 2;
-    const y = clamp(p.y - 12 * z - lift - h, 4, H - Math.round(58 * z) - 20 - h);
-    const x = clamp(hx - w / 2, 4, W - w - 4), sc = pulse ? 1 + 0.06 * Math.sin(t * 14) : 1;
+    const y = clamp(p.y - 12 * z - lift - h, 12, H - Math.round(58 * z) - 20 - h);
+    const x = clamp(hx - w / 2, 18, W - w - 18), sc = pulse ? 1 + 0.06 * Math.sin(t * 14) : 1;
     ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.scale(sc, sc);
     ctx.fillStyle = 'rgba(28,26,54,0.88)'; rr(-w / 2, -h / 2, w, h, h / 2); ctx.fill();
     ctx.strokeStyle = col; ctx.lineWidth = 2; rr(-w / 2, -h / 2, w, h, h / 2); ctx.stroke();
@@ -1162,16 +1172,20 @@ function tandemHud(st) {
   };
   const P = ps[st.ped], Ln = ps[st.lean];
   let liftP = 0, liftL = 0;
+  // 1-player mode: while the computer's speech bubble is up, the person's own prompt waits (one message at a time)
+  const talking = id => typeof CPU !== 'undefined' && CPU.bubbles && CPU.bubbles[id] && CPU.bubbles[id].t > 0;
   // (the bike's two riders are close together, so the prompts stack: the leaner's first, the pedaler's above it)
   const hp = st.hints[Ln.id], hpp = st.hints[P.id];
   if (hp) liftL += say(Ln, hp.text, '#ffffff', false, liftL);
+  else if (talking(P.id)) { /* (the computer pedaler is saying it) */ }
   else if (st.phase === 'race' && !b.rail) {
     const ahead = tandemNeed(s + b.v * 0.45, b.v);
     if (need - b.lean > tol * 0.7 || ahead - b.lean > tol + 0.12) liftL += say(Ln, 'Lean in! ' + tandemKey(Ln.id, 'in'), C.gold, need - b.lean > tol, liftL);
     else if (b.lean - need > tol * 0.7 && b.lean - ahead > tol * 0.5) liftL += say(Ln, 'Sit up! ' + tandemKey(Ln.id, 'out'), '#bfeaff', b.lean - need > tol, liftL);
-  } else if (b.rail) liftL += say(Ln, 'Lean in! ' + tandemKey(Ln.id, 'in'), C.gold, true, liftL);
+  } else if (b.rail && b.railT > 0.9 && !st.hintPend) liftL += say(Ln, 'Lean in! ' + tandemKey(Ln.id, 'in'), C.gold, true, liftL);
   const liftBase = liftL + (liftL ? 2 : 0);
   if (hpp) say(P, hpp.text, '#ffffff', false, liftBase);
+  else if (talking(Ln.id)) { /* (the computer leaner is saying it) */ }
   else if (st.phase === 'count' && st.phT > 0.2) say(P, 'Pedal on the beat! ' + tandemKey(P.id, 'pedal'), C.gold, true, liftBase);
   else if (st.phase === 'race' && !b.rail && st.rt - st.lastStroke > 1.8) say(P, 'Pedal! ' + tandemKey(P.id, 'pedal'), C.gold, true, liftBase);
 }
@@ -1194,10 +1208,13 @@ function tandemBeatLane(st, id, x, y, w, h, z, quiet) {
     const tt = bt.base + k * bt.P - now, nx = hx + tt / bt.P * px;
     if (nx > x + w + 20) break;
     const f = (foot + n) % 2, lab = quiet ? (f ? '▶' : '◀') : tandemKey(id, f ? 'right' : 'left');
+    // (neutral colours, not Pip's orange or Bo's blue, so nobody reads a key as the other player's job: the left foot is
+    // a white circle, the right foot a mint rounded square)
     const r = h * 0.36, near = Math.abs(tt) < K.good * (help ? K.bigDrum : 1);
-    ctx.fillStyle = near ? C.gold : f ? '#5b95ff' : '#ff8a6a';
+    ctx.fillStyle = near ? C.gold : f ? '#7fe0c8' : '#f6efdf';
     if (k < K.count - 1 && st.phase !== 'race') ctx.fillStyle = 'rgba(217,211,239,0.55)';
-    circle(nx, cy, r); ctx.fill();
+    if (f) rr(nx - r, cy - r, r * 2, r * 2, r * 0.45); else circle(nx, cy, r);
+    ctx.fill();
     text(lab, nx, cy + 0.5, 11 * z, C.ink, 'center', 'body');
   }
   ctx.restore();

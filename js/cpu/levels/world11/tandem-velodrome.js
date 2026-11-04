@@ -13,7 +13,7 @@
      apron) inside the wedge; on the rail it leans in until the bike pushes off.
    - With a person: the computer's seat helps from its own side only (it never presses the other job's keys). It waits
      for a slow pedaler (the lean follows whatever speed the bike has) and talks only when it helps: a leaner who left
-     the bike on the rail ("Lean in!"), a pedaler who stopped ("Pedal on the beat!"), mashes ("One press a beat!") or
+     the bike on the rail ("Lean in!", only while the level's own hint pill is not up), a pedaler who stopped ("Pedal on the beat!"), mashes ("One press a beat!") or
      keeps pressing the same foot, a leaner leaning far too much ("Sit up a bit!"). At most one bubble every few seconds, less often when repeated.
    Reads only what is on screen: the beat lane and drum, the lean gauge and its wedge (the bank and speed), the bike. */
 (() => {
@@ -24,6 +24,8 @@
     if (G.time - (st.saidT == null ? -99 : st.saidT) < gap * (1 + Math.floor(n / 3))) return;
     st.saidT = G.time; st.sayN = { text, n: n + 1 }; cpuSay(p, text, 1.8);
   }
+  // the level is showing (or about to show) the leaner a hint pill (on the rail it shows two in a row)
+  const leanHint = m => !!(m.hints[m.lean] || m.hintPend || (m.bike.rail && !m.hinted['rail' + m.k]));
   const gauss = () => { let u = 0; for (let i = 0; i < 4; i++) u += Math.random(); return (u - 2) / 0.577; };
 
   /* ---------- the pedaler ---------- */
@@ -33,7 +35,8 @@
     if (st.hold > 0) { st.hold -= dt; out[st.holdKey] = true; return out; }
     if (b.rail) {
       st.plan = null;
-      if (!info.partnerCpu && b.railT > 0.8) say(st, p, 'Lean in!', 4);
+      // (not while the level's own hint pill for the leaner is up or about to show: one message at a time)
+      if (!info.partnerCpu && b.railT > 0.8 && !leanHint(m)) say(st, p, 'Lean in!', 4);
       return out;
     }
     // the next beat to aim at: from the GO beat on, one after the last press
@@ -53,7 +56,7 @@
     if (!info.partnerCpu && m.phase === 'race') {
       const need = tandemNeed(tandemWrap(b.s0 + b.d), b.v), tol = m.helpLean ? K().tolHelp : K().tol;
       if (b.lean - need > tol + 0.25 && b.apron) say(st, p, 'Sit up a bit!');
-      else if (need - b.lean > tol + 0.2 && b.pos > 0.8) say(st, p, 'Lean in!');
+      // (no "Lean in!" before the rail: the level's own gold "Lean in! ↑" prompt is already over the leaner's head)
     }
     return out;
   }

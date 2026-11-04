@@ -29,6 +29,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 8. **Lucky Casino** (pretend tickets and chips): Plinko Drop, Roulette Wheel, Slot Machine Run, Coin Pusher
 9. **Great Escapes** (famous natural disasters, kept cartoony): Pompeii Escape, San Francisco 1906 Quake, Ice Age Glacier, Krakatoa Ash Run
 10. **Collector's Vault** (one big boss level): The Grand Collector
+11. **Summer Games** (summer sports): Synchro Diving, Tandem Velodrome, Hurdle Dash, Javelin Throw
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 

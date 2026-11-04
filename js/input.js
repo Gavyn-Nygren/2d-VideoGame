@@ -168,8 +168,13 @@ function menuMove(dir) {
     if (b === cur) continue;
     const q = b.getBoundingClientRect(), dx = q.left + q.width / 2 - cx, dy = q.top + q.height / 2 - cy;
     const along = dir === 'left' ? -dx : dir === 'right' ? dx : dir === 'up' ? -dy : dy;
-    const across = dir === 'left' || dir === 'right' ? Math.abs(dy) : Math.abs(dx);
+    // across = the gap between the two buttons sideways (0 when they overlap), so a wide button right below wins
+    // (a world with one level stretches its button across the row)
+    const across = dir === 'left' || dir === 'right' ? Math.max(0, q.top - r.bottom, r.top - q.bottom)
+      : Math.max(0, q.left - r.right, r.left - q.right);
     if (along <= 4) continue;
+    // a button in the same row (or column) is not "below" (or beside) even when it is a little taller
+    if (dir === 'down' ? q.top < cy : dir === 'up' ? q.bottom > cy : dir === 'right' ? q.left < cx : q.right > cx) continue;
     const score = along + across * 2.5;
     if (score < bestScore) { bestScore = score; best = b; }
   }

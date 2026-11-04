@@ -134,7 +134,8 @@ const levelList = () => '<div class="worlds">' + liveWorlds().map(w => { const w
     <ol class="levels">${worldLevels(w).map(i =>
       `<li><button type="button" data-act="level" data-i="${i}"><span class="n">${levelCode(i)}</span><span class="t">${esc(LEVELS[i].name)}</span>${kindTag(LEVELS[i].kind, LEVELS[i])}</button></li>`).join('')}</ol>
   </section>`; }).join('') + '</div>';
-const NUM_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+const NUM_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen',
+  'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'];
 // "One pits you against each other" / "Five pit you against each other", counted from the levels that exist
 function titleLede() {
   const nVs = LEVELS.filter(l => l.kind === 'versus').length;
@@ -390,7 +391,8 @@ function showFinal() {
   showOverlay(`
     <div class="card fit-card">
       <p class="eyebrow">${beat ? 'The end' : 'Demo complete'}</p>
-      <h2>${beat ? 'You beat the Grand Collector' : 'Nice teamwork'}, <span class="nm-pip">Pip</span> &amp; <span class="nm-bo">Bo</span>${beat ? '!' : ''}</h2>
+      <h2>Nice teamwork, <span class="nm-pip">Pip</span> &amp; <span class="nm-bo">Bo</span>${beat ? '!' : ''}</h2>
+      ${beat ? '<p class="lede">You beat the Grand Collector!</p>' : ''}
       ${totalsStats(all.tot)}
       <div class="table-wrap"><table class="summary worlds">
         <thead><tr><th>World</th><th style="text-align:right">Result</th></tr></thead>

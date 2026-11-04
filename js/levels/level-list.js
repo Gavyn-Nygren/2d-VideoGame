@@ -2785,7 +2785,7 @@ const LEVELS = [
   // a top-down banked velodrome (MODES.tandem): one tandem, one pedals on the beat and one leans; 4 races, jobs swap each
   // race; scored by place (noTime). Room fields: ped (who pedals), laps, rivals [{ team, v, pos, p }], us, sprint, pacer.
   // The tip is rebuilt by the mode from ped (and the twist); the map is only the two spawns.
-  { name: 'Tandem Velodrome', world: 10, kind: 'team', mode: 'tandem', ownStep: true, ownHUD: true, noFalls: true, noTime: true,
+  { name: 'Tandem Velodrome', world: 10, roomWord: 'Race', kind: 'team', mode: 'tandem', ownStep: true, ownHUD: true, noFalls: true, noTime: true,
     legend: {
       pip: '<kbd>A</kbd><kbd>D</kbd> pedal · <kbd>W</kbd><kbd>S</kbd> lean',
       bo: '<kbd>←</kbd><kbd>→</kbd> pedal · <kbd>↑</kbd><kbd>↓</kbd> lean',

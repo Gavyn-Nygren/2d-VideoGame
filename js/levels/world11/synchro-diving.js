@@ -352,7 +352,7 @@ function diveMoveDiver(st, d, dt, now) {
     else {
       if (!d.popped) { d.popped = true; for (let i = 0; i < 8; i++) divePart(st, d.x, Dv.waterY, (Math.random() - 0.5) * 80, -60 - Math.random() * 80, 0.5, '#e9f8ff', 2 + Math.random() * 2, 500); Sfx.play('divePop', d.id); }
       // swim a little toward the tower; on phones the corner panels are bigger, so swim out from under them
-      const big = hudBig(), to = big ? (d.id === 0 ? Math.max(d.ex + 18, 348) : Math.min(d.ex - 18, W - 348)) : d.ex - d.dir * 18;
+      const big = hudBig(), to = big ? (d.id === 0 ? Math.max(d.ex + 18, 356) : Math.min(d.ex - 18, W - 356)) : d.ex - d.dir * 18;
       d.x = approach(d.x, to, dt * (big ? 80 : 12)); d.y = Dv.waterY + 1 + Math.sin(w * 3 + d.id) * 1.6;
     }
     return;
@@ -440,7 +440,7 @@ MODES.dive = {
 };
 
 /* ---------- drawing: the stadium ---------- */
-const DIVE_FLAGS = [['#2ec4b6', '#ffffff', '#ff6b6b'], ['#8e6cff', '#ffd23f', '#8e6cff'], ['#ff9f1c', '#2ec4b6'], ['#5bd16f', '#ffffff', '#5bd16f'],
+const DIVE_FLAGS = [['#ff9fd0', '#ffffff', '#8e6cff'], ['#8e6cff', '#ffd23f', '#8e6cff'], ['#ff9f1c', '#2ec4b6'], ['#5bd16f', '#ffd23f', '#5bd16f'],
   ['#ff5fa2', '#ffe28a'], ['#3d7cff', '#ffd23f', '#ff6b4a']];
 const DIVE_SKIN = ['#f6d3b3', '#e8b48a', '#c98d5e', '#8d5a3b', '#ffe0c2', '#b07a52'];
 const DIVE_SHIRT = ['#ff6b6b', '#2ec4b6', '#ffd23f', '#8e6cff', '#5bd16f', '#ff9f1c', '#3d7cff', '#ff5fa2', '#ffffff'];
@@ -591,6 +591,7 @@ function diveDrawTower(st) {
   }
   // the height signs
   for (const h of DIVE.heights) {
+    if (st.phase === 'podium') break;   // (hidden on the podium: the 3 m sign would peek out between Pip and Bo)
     const y = diveBoardY(h) + 18;
     const lab = (h === 7.5 ? '7.5' : String(h)) + ' m';
     ctx.fillStyle = h === act ? '#ffc53d' : '#2b3f63'; rr(480 - 17, y - 8, 34, 16, 8); ctx.fill();
@@ -598,16 +599,16 @@ function diveDrawTower(st) {
   }
   // the boards on both sides
   for (const h of DIVE.heights) for (const id of [0, 1]) diveDrawBoard(st, h, id, h === act);
-  // the flag on top (made-up colours)
+  // the pennant on top: a made-up purple pennant with a yellow star (a shape and colours no real flag uses)
   const fx = 480, fy = top - 4;
   ctx.fillStyle = '#8f9bb0'; ctx.fillRect(fx - 1.5, fy - 44, 3, 44);
-  const cols = ['#2ec4b6', '#ffffff', '#ff6b4a'];
-  for (let k = 0; k < 3; k++) {
-    ctx.fillStyle = cols[k]; ctx.beginPath();
-    for (let i = 0; i <= 8; i++) { const x = fx + 1.5 + i * 5, y = fy - 42 + k * 6 + Math.sin(t * 5 - i * 0.6) * (i * 0.4); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
-    for (let i = 8; i >= 0; i--) { const x = fx + 1.5 + i * 5, y = fy - 36 + k * 6 + Math.sin(t * 5 - i * 0.6) * (i * 0.4); ctx.lineTo(x, y); }
-    ctx.closePath(); ctx.fill();
-  }
+  const pen = i => { const u = i / 8; return { x: fx + 1.5 + i * 5.5, y: fy - 34 + Math.sin(t * 5 - i * 0.6) * (i * 0.4), hh: 9.5 * (1 - u) + 0.6 }; };
+  ctx.fillStyle = '#8e6cff'; ctx.strokeStyle = '#5a3fc0'; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let i = 0; i <= 8; i++) { const q = pen(i); if (i === 0) ctx.moveTo(q.x, q.y - q.hh); else ctx.lineTo(q.x, q.y - q.hh); }
+  for (let i = 8; i >= 0; i--) { const q = pen(i); ctx.lineTo(q.x, q.y + q.hh); }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  const sq = pen(2.6);
+  ctx.fillStyle = '#ffd23f'; diveStarPath(sq.x, sq.y, 5.5, 2.4); ctx.fill();
   ctx.fillStyle = '#ffd23f'; circle(fx, fy - 46, 3); ctx.fill();
 }
 function diveDrawBoard(st, h, id, active) {
@@ -665,7 +666,8 @@ function divePose(st, d) {
     else if (st.phase === 'judge' || st.phase === 'splash') o.arms = 'down';
     else { o.arms = 'down'; o.armT = Math.sin(t * 2 + d.id) * 0.15; }
   } else if (d.state === 'climb') {
-    o.arms = d.pose === 'climb' ? 'climb' : d.pose === 'swim' ? 'swim' : 'down'; o.armT = t * 9;
+    // (climb and swim use armT as a phase inside sin/cos; the walk's arms only swing a little)
+    o.arms = d.pose === 'climb' ? 'climb' : d.pose === 'swim' ? 'swim' : 'down'; o.armT = o.arms === 'down' ? Math.sin(t * 9) * 0.3 : t * 9;
   } else if (d.state === 'air') {
     const c = d.cur;
     o.ang = d.ang; o.twist = d.twistA; o.tuck = d.tuck;
@@ -682,7 +684,7 @@ function divePose(st, d) {
       o.mouth = d.kind === 'flop' && d.wt < 1.4 ? 'o' : 'grin';
       if (st.phase === 'judge' && st.t > 1.9) { o.arms = 'wave'; o.eyes = 'happy'; }
     }
-  } else if (d.state === 'podium') { o.arms = st.t > 0.8 ? 'wave' : 'up'; o.armT = t * 8; o.eyes = 'happy'; o.mouth = 'grin'; o.medal = diveMedal(st.total); }
+  } else if (d.state === 'podium') { o.arms = st.t > 0.8 ? 'wave' : 'up'; o.armT = st.t > 0.8 ? t * 8 : 0; o.eyes = 'happy'; o.mouth = 'grin'; o.medal = diveMedal(st.total); }
   return o;
 }
 function diveDrawDiverAt(st, d) {
@@ -722,7 +724,7 @@ function diveDrawDiver(id, o, glow) {
   };
   const a = o.armT || 0, hands = [];
   switch (o.arms) {
-    case 'up': hands.push([-sh.x, -w * 0.26 + a * 6, -h / 2 - 12], [sh.x, w * 0.26 - a * 6, -h / 2 - 12]); break;
+    case 'up': { const u = clamp(a, -0.5, 0.5); hands.push([-sh.x, -w * 0.26 + u * 6, -h / 2 - 12], [sh.x, w * 0.26 - u * 6, -h / 2 - 12]); break; }
     case 'forward': hands.push([-sh.x, w * 0.5 + 9, -2], [sh.x, w * 0.5 + 11, 3]); break;
     case 'wide': hands.push([-sh.x, -w / 2 - 13, -h * 0.3], [sh.x, w / 2 + 13, -h * 0.3]); break;
     case 'swim': hands.push([-sh.x, -w / 2 - 8 + Math.sin(a) * 4, -2 + Math.cos(a) * 3], [sh.x, w / 2 + 8 - Math.sin(a) * 4, -2 - Math.cos(a) * 3]); break;
@@ -730,7 +732,8 @@ function diveDrawDiver(id, o, glow) {
     case 'wave': hands.push([-sh.x, -w * 0.4, -h / 2 - 12], [sh.x, w * 0.42 + Math.sin(a) * 6, -h / 2 - 13]); break;
     default: break;
   }
-  if (o.arms === 'down') hands.push([-sh.x, -w / 2 - 3 + a * 3, h * 0.3], [sh.x, w / 2 + 3 - a * 3, h * 0.3]);
+  // ('up' and 'down' use armT as a small swing, never a phase: clamped so no pose can stretch the arms)
+  if (o.arms === 'down') { const u = clamp(a, -0.5, 0.5); hands.push([-sh.x, -w / 2 - 3 + u * 3, h * 0.3], [sh.x, w / 2 + 3 - u * 3, h * 0.3]); }
   // arms behind the body for up / wave / climb, in front for the rest
   const behind = ['up', 'wave', 'climb'].includes(o.arms);
   if (behind) for (const [sx, hx, hy] of hands) arm(sx, hx, hy);
@@ -991,17 +994,27 @@ function diveHud(st) {
   if (G.introT > 0) return;
   diveDrawPrompts(st, z);
 }
+// body text that shrinks to fit maxW (the panel's small text is bigger on phones, where room is tight)
+function diveFit(str, x, y, size, maxW, col, align) {
+  ctx.font = '700 ' + size + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+  const w = ctx.measureText(str).width;
+  text(str, x, y, w > maxW ? Math.max(8, size * maxW / w) : size, col, align, 'body');
+}
 function diveDrawPanel(st, id, z) {
-  const d = st.d[id], dv = st.dv, t = G.clock, quiet = diveQuiet(id);
-  const pw = Math.round(226 * z), ph = Math.round(58 * z), py = H - ph - 10, px = id === 0 ? 12 : W - 12 - pw;
+  const d = st.d[id], dv = st.dv, t = G.clock, quiet = diveQuiet(id), big = z > 1;
+  // small text: bigger on phones (fitted to the room it has, so nothing overlaps)
+  const fz = big ? z * 1.3 : z;
+  const pw = Math.round((big ? 232 : 226) * z), ph = Math.round(58 * z), py = H - ph - 10, px = id === 0 ? 12 : W - 12 - pw;
   ctx.fillStyle = 'rgba(28,26,54,0.82)'; rr(px, py, pw, ph, 14 * z); ctx.fill();
   ctx.strokeStyle = PCOL[id]; ctx.lineWidth = 2.5; rr(px, py, pw, ph, 14 * z); ctx.stroke();
   const lead = dv.mirror === id, copy = dv.mirror === 1 - id;
-  text(NAMES[id] + (quiet ? ' (computer)' : ''), px + 12 * z, py + 14 * z, 15 * z, PCOL[id], 'left');
+  const name = NAMES[id] + (quiet ? ' (computer)' : '');
+  text(name, px + 12 * z, py + 14 * z, 15 * z, PCOL[id], 'left');
+  const topRoom = pw - 24 * z - ctx.measureText(name).width - (big ? 14 : 10) * z;   // (text() left ctx.font set to the name's font)
   // the right side of the top row: the job or the keys
   const job = lead ? ['★ You lead', C.gold] : copy ? ['Copy ' + NAMES[1 - id] + '!', PCOL[1 - id]] : null;
-  if (!quiet) text(diveKey(id, 'jump') + ' flip · ' + diveKey(id, 'lr') + ' twist · ' + diveKey(id, 'down') + ' tuck', px + pw - 12 * z, py + 14 * z, 11 * z, '#d9d3ef', 'right', 'body');
-  else if (job) text(job[0], px + pw - 12 * z, py + 14 * z, 12 * z, job[1], 'right', 'body');
+  if (!quiet) diveFit(diveKey(id, 'jump') + ' flip · ' + diveKey(id, 'lr') + ' twist · ' + diveKey(id, 'down') + ' tuck', px + pw - 12 * z, py + 14 * z, 11 * fz, topRoom, '#d9d3ef', 'right');
+  else if (job) diveFit(job[0], px + pw - 12 * z, py + 14 * z, 12 * fz, topRoom, job[1], 'right');
   // the bottom row: the moves (done against the call), or what to do now
   const ry = py + 38 * z, r = 10 * z;
   if (st.phase === 'judge' && st.cards) {
@@ -1033,12 +1046,13 @@ function diveDrawPanel(st, id, z) {
     diveIcon(type, x, ry, r, col, fill);
     x += r * 2 + 6 * z;
   }
+  const botRoom = px + pw - 12 * z - (x - r) - 4 * z;   // (right of the last icon)
   if (d.state === 'board' && st.phase === 'count') {
     const now = G.time, go = diveGo(st);
     const s = now >= go - DIVE.goWin ? (quiet ? 'GO!' : diveKey(id, 'jump') + ' GO!') : dv.spring && !quiet ? diveKey(id, 'jump') + ' bounce on the beat' : 'Wait for GO…';
-    text(s, px + pw - 12 * z, ry, 13 * z, now >= go - DIVE.goWin ? C.gold : '#d9d3ef', 'right', 'body');
-  } else if (job && !quiet) text(job[0], px + pw - 12 * z, ry, 13 * z, job[1], 'right', 'body');
-  else if (dv.spring && d.bounce > 0) text('Bounce ' + '●'.repeat(d.bounce) + '○'.repeat(DIVE.maxBounce - d.bounce), px + pw - 12 * z, ry, 12 * z, C.gold, 'right', 'body');
+    diveFit(s, px + pw - 12 * z, ry, 13 * fz, botRoom, now >= go - DIVE.goWin ? C.gold : '#d9d3ef', 'right');
+  } else if (job && !quiet) diveFit(job[0], px + pw - 12 * z, ry, 13 * fz, botRoom, job[1], 'right');
+  else if (dv.spring && d.bounce > 0) diveFit('Bounce ' + '●'.repeat(d.bounce) + '○'.repeat(DIVE.maxBounce - d.bounce), px + pw - 12 * z, ry, 12 * fz, botRoom, C.gold, 'right');
 }
 // prompts over the heads: Pip's open to the left, Bo's to the right, so they never cover each other or the card
 function diveDrawPrompts(st, z) {

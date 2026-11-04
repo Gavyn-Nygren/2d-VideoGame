@@ -33,7 +33,8 @@ const JAV = {
   slowT: 0.45, slowK: 0.22,
   idlePause: 40,                           // nobody pressed anything for 40 s of live play: pause (family touch, like 8-4)
 };
-const JAV_GY = [347, 458];                 // ground line (screen y) of Pip's far lane and Bo's near lane
+const JAV_GY = [359, 464];                 // ground line (screen y) of Pip's far lane and Bo's near lane (the far lane sits
+                                           // low enough that Pip's meter and dial stay on the grass, under the banner)
 // the athletes are drawn this much bigger than the platformer bodies (more on phones, like the HUD); looks only
 const javS = () => (hudBig() ? 1.7 : 1.35);
 const JAV_JL = 58;                         // a javelin's drawn length (px)
@@ -185,7 +186,7 @@ function javAthStep(st, a, p, dt) {
       a.meterAt = m; a.speedAt = a.v; a.power = clamp(m * sf, 0, 1);
       a.phase = 'aim'; a.ang = JAV.ang0; a.pt = 0;
       Sfx.play('javelinAim', a.k);
-      if (a.power >= JAV.perfect) { st.stat.perfect[a.k]++; javPop(a.x, a.k, 36, 'Perfect!', C.gold, 20, 1.0, 74); Sfx.play('javelinPerfect', a.k); }
+      if (a.power >= JAV.perfect) { st.stat.perfect[a.k]++; javPop(a.x, a.k, 64, 'Perfect!', C.gold, 20, 1.0, 40); Sfx.play('javelinPerfect', a.k); }   // (the word over the angle dial)
       if (st.gold[a.k] >= 2) a.guide = javBestAngle(JAV.vMin + (JAV.vMax - JAV.vMin) * a.power, st.wind);
     } else if (a.x > 0) javFoul(st, a, 'Foul!');
     else if (a.clock >= JAV.shot) {
@@ -352,11 +353,12 @@ MODES.javelin = {
   drawTop() { javDrawTop(); },
   hud() { javHud(); },
   stats() {
-    // (whole metres on the tiles, so two numbers fit side by side on a phone; the exact longest is in the line)
-    const s = G.mst.stat, avg = k => (s.marksN[k] ? String(Math.round(s.total[k] / s.marksN[k])) : '–');
+    // (the unit goes in the value, as the tile labels are upper-cased and "(m)" would read "(M)"; a no-break space keeps
+    // it with its number when the two values wrap onto two lines in a narrow tile)
+    const s = G.mst.stat, mt = v => v.toFixed(1) + '\u00a0m', avg = k => (s.marksN[k] ? mt(s.total[k] / s.marksN[k]) : '–');
     const out = [
-      { label: 'Longest throw (m)', values: s.longest.map(v => (v ? String(Math.round(v)) : '–')) },
-      { label: 'Average throw (m)', values: [avg(0), avg(1)] },
+      { label: 'Longest throw', values: s.longest.map(v => (v ? mt(v) : '–')) },
+      { label: 'Average throw', values: [avg(0), avg(1)] },
       { label: 'Perfect meters', values: s.perfect.slice() },
       s.rings[0] + s.rings[1] ? { label: 'Ring hits', values: s.rings.slice() } : { label: 'Fouls', values: s.fouls.slice() },
     ];
@@ -374,12 +376,14 @@ const JAV_COL = { track: '#d0603f', trackDk: '#a9472d', trackHi: '#e27a57', gras
   seat: ['#2fb3a6', '#ff9a52', '#ffd34d', '#8a7cf0'], stand: '#5c6ea8', standDk: '#3f4f86', roof: '#e9eef8', roofDk: '#b7c0d6',
   crowd: ['#ffd166', '#ff8fc7', '#b28dff', '#8fe3b0', '#ffffff', '#7fd4ff'], skin: ['#f6d2b0', '#e0a97c', '#b97a53', '#8a5636'],
   flags: [['#ff6f91', '#ffe066'], ['#3ec7a8', '#ffffff'], ['#8a7cf0', '#ffd34d'], ['#ff9a52', '#2fb3a6']] };
-const javCache = { s: 0, stands: null };
+const javCache = { s: 0, stands: null, lab: '' };
 // the stands (everything about them that never moves) drawn once per screen size
 function javStandsLayer() {
-  const s = Math.max(0.1, canvas.width / W);
-  if (javCache.s !== s || !javCache.stands) {
-    javCache.s = s;
+  const s = Math.max(0.1, canvas.width / W), st = G.mst, m = G.match;
+  // the scoreboard names the round ("FINAL" only for the last throw round and sudden death)
+  const lab = 'JAVELIN  ·  ' + (st.twist === 'last' ? 'FINAL' : 'ROUND ' + (m ? m.round : 1));
+  if (javCache.s !== s || !javCache.stands || javCache.lab !== lab) {
+    javCache.s = s; javCache.lab = lab;
     const y0 = 118, h = 300 - y0, c = document.createElement('canvas');
     c.width = Math.ceil(W * s); c.height = Math.ceil(h * s);
     const g = c.getContext('2d'); g.setTransform(c.width / W, 0, 0, c.height / h, 0, -y0 * c.height / h);
@@ -409,7 +413,7 @@ function javStandsLayer() {
     g.fillStyle = '#1c1a36'; javRR(g, 584, 150, 168, 58, 8); g.fill();
     g.strokeStyle = '#ffd34d'; g.lineWidth = 3; javRR(g, 584, 150, 168, 58, 8); g.stroke();
     g.fillStyle = '#ffd34d'; g.font = '17px "Lilita One", "Arial Rounded MT Bold", sans-serif'; g.fillText('SUMMER GAMES', 668, 166);
-    g.fillStyle = '#f6efdf'; g.font = '700 12px "Atkinson Hyperlegible", system-ui, sans-serif'; g.fillText('JAVELIN  ·  FINAL', 668, 186);
+    g.fillStyle = '#f6efdf'; g.font = '700 12px "Atkinson Hyperlegible", system-ui, sans-serif'; g.fillText(lab, 668, 186);
     for (let i = 0; i < 9; i++) { g.fillStyle = i % 2 ? '#ff6f91' : '#3ec7a8'; g.fillRect(596 + i * 17, 198, 9, 3); }
     g.fillStyle = '#3b4672'; g.fillRect(660, 208, 16, 20);
     javCache.stands = c;
@@ -608,11 +612,11 @@ function javDrawJudge(x, y, jd) {
 }
 // where an athlete's front toe is on screen this frame
 function javToePx(k) { const a = G.mst.ath[k]; return { x: javSX(a.x), y: JAV_GY[k] }; }
-// the javelin hand (screen px) for a pose
+// the javelin hand (screen px) for a pose: raised behind the head, so the javelin passes over the head and the face shows
 // (local: in the athlete's own unscaled drawing space, see javDrawAthlete)
 function javHandPx(a, pose, local) {
   const tx = javSX(a.x), gy = JAV_GY[a.k], S = local ? 1 : javS();
-  return pose === 'aim' ? { x: tx - 22 * S, y: gy - 17 * S } : { x: tx - 10 * S, y: gy - 22 * S };
+  return pose === 'aim' ? { x: tx - 26 * S, y: gy - 31 * S } : { x: tx - 18 * S, y: gy - 33 * S };
 }
 function javDrawAthlete(a) {
   const tx = javSX(a.x), gy = JAV_GY[a.k];
@@ -674,40 +678,45 @@ function javDrawAthleteBody(a) {
   const holding = a.phase === 'ready' || a.phase === 'run' || a.phase === 'aim';
   ctx.lineCap = 'round'; ctx.lineWidth = 4;
   const arm = (x0, y0, x1, y1) => { ctx.strokeStyle = dark; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); ctx.fillStyle = col; circle(x1, y1, 3); ctx.fill(); };
+  // a point of the unrotated drawing space (dx, dy from the body's pivot) in the leaning body's own frame, for the hand
+  const toBody = (dx, dy) => ({ x: dx * Math.cos(lean) + dy * Math.sin(lean), y: -dx * Math.sin(lean) + dy * Math.cos(lean) });
   if (pose === 'aim') {
     const r = a.ang * Math.PI / 180;
     ctx.restore(); ctx.save();
     const hp = javHandPx(a, 'aim', true);
     javDrawJav(hp.x + Math.cos(-r) * 4, hp.y + Math.sin(-r) * 4, -r, k);
     ctx.translate(cx, gy - 3); ctx.rotate(lean);
-    arm(-5, -h + 13, hp.x - cx + 2, hp.y - gy + 3);
+    const bh = toBody(hp.x - cx, hp.y - gy + 3);
+    arm(-8, -h + 14, bh.x, bh.y);   // (up the back of the head, clear of the eyes)
     arm(6, -h + 13, 13, -h + 16);
   } else if (holding) {
     ctx.restore(); ctx.save();
     const hp = javHandPx(a, 'run', true), r = 0.16 + Math.sin(a.stride) * 0.04 * Math.min(1, a.v / 3);
     javDrawJav(hp.x + 2, hp.y - bob, -r, k);
     ctx.translate(cx, gy - 3 - bob); ctx.rotate(lean);
-    arm(-3, -h + 13, hp.x - cx + 1, hp.y - gy + 4);
+    const bh = toBody(hp.x - cx, hp.y - gy + 3);
+    arm(-8, -h + 14, bh.x, bh.y);
     arm(6, -h + 14, 11 + Math.sin(a.stride) * 3, -h + 21);
   } else if (pose === 'throw') {
-    arm(4, -h + 12, 15, -h - 2); arm(-5, -h + 13, -12, -h + 18);
+    arm(9, -h + 13, 18, -h - 2); arm(-5, -h + 13, -12, -h + 18);
   } else if (pose === 'cheer') {
     arm(-7, -h + 12, -12, -h - 6); arm(7, -h + 12, 12, -h - 6);
   } else if (pose === 'whoa') {
     const sw = Math.sin(st.vt * 16) * 6;
     arm(-7, -h + 12, -15, -h + 2 + sw); arm(7, -h + 12, 15, -h + 2 - sw);
-    if (a.pt < 0.6) javDrawJav(14 + a.pt * 30, -h + 18 + a.pt * 30, 0.6 + a.pt * 2, k, 40);
+    if (a.pt < 0.6) javDrawJav(20 + a.pt * 30, -h + 4 + a.pt * 34, 0.6 + a.pt * 2, k, 40);   // (tumbling away over the head)
   } else {
     arm(-6, -h + 13, -10, -h + 22); arm(6, -h + 13, 10, -h + 22);
   }
   ctx.restore();
 }
 function javDrawMeter(a, big) {
+  // (it stands on the runway beside the athlete: the same in both lanes, and the far lane's top stays under the banner)
   const st = G.mst, k = a.k, tx = javSX(a.x), gy = JAV_GY[k], sc = big ? 1.3 : 1;
-  const bw = 11 * sc, bh = 58 * sc, x = Math.max(8, tx - 12 * javS() - 26 * sc - bw / 2), y = gy - 18 - bh;
+  const bw = big ? 15 : 11, bh = big ? 60 : 56, x = Math.max(8, tx - 12 * javS() - 26 * sc - bw / 2), y = gy + 4 - bh;
   const gold = st.gold[k] >= 1;
   const cap = javSpeedF(a.v), m = a.phase === 'aim' || a.phase === 'thrown' ? a.power : javMeter(a) * cap;
-  ctx.fillStyle = 'rgba(28,26,54,0.78)'; rr(x - 3, y - 3, bw + 6, bh + 6, 5); ctx.fill();
+  ctx.fillStyle = 'rgba(28,26,54,0.88)'; rr(x - 3, y - 3, bw + 6, bh + 6, 5); ctx.fill();
   if (gold) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x - 3, y - 3, bw + 6, bh + 6, 5); ctx.stroke(); }
   // the speed cap: the meter can't swing above it
   ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, y + bh * (1 - cap), bw, bh * cap);
@@ -720,19 +729,23 @@ function javDrawMeter(a, big) {
   ctx.fillStyle = hue; ctx.fillRect(x - 2, y + bh - fh - 1.5, bw + 4, 3);
   ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + bh * (1 - JAV.perfect)); ctx.lineTo(x + bw, y + bh * (1 - JAV.perfect)); ctx.stroke();
 }
+// where the angle dial's pivot is: just ahead of the athlete, on the grass above its runway (the same in both lanes; it
+// stays clear of the banner over the far lane and of the foul line's red glow on the runway)
+function javDialPos(a, big) { const R = big ? 40 : 32; return { x: javSX(a.x) + 12 * javS(), y: JAV_GY[a.k] - 16, R }; }
 function javDrawDial(a, big) {
-  const st = G.mst, k = a.k, R = (big ? 40 : 32), x = javSX(a.x) - 4 * javS(), y = JAV_GY[k] - 44 * javS();   // (over the athlete's head)
-  ctx.fillStyle = 'rgba(28,26,54,0.55)'; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, R + 4, -Math.PI / 2, 0); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5;
+  const k = a.k, { x, y, R } = javDialPos(a, big);
+  ctx.fillStyle = 'rgba(28,26,54,0.88)'; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, R + 4, -Math.PI / 2, 0); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.5;
   for (let d = 0; d <= 90; d += 15) { const r = -d * Math.PI / 180; ctx.beginPath(); ctx.moveTo(x + Math.cos(r) * (R - 6), y + Math.sin(r) * (R - 6)); ctx.lineTo(x + Math.cos(r) * R, y + Math.sin(r) * R); ctx.stroke(); }
   if (a.guide) { const r = -a.guide * Math.PI / 180; ctx.strokeStyle = C.gold; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x + Math.cos(r) * (R - 10), y + Math.sin(r) * (R - 10)); ctx.lineTo(x + Math.cos(r) * (R + 3), y + Math.sin(r) * (R + 3)); ctx.stroke(); }
   const r = -a.ang * Math.PI / 180;
   ctx.strokeStyle = PCOL[k]; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(r) * (R - 2), y + Math.sin(r) * (R - 2)); ctx.stroke();
   const fs = big ? 17 : 13;
   ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-  const lab = Math.round(a.ang) + '°', lw = ctx.measureText(lab).width + 12;
-  ctx.fillStyle = 'rgba(28,26,54,0.82)'; rr(x + R * 0.55, y - R - fs - 4, lw, fs + 6, 6); ctx.fill();
-  text(lab, x + R * 0.55 + lw / 2, y - R - fs / 2 - 0.5, fs, '#ffffff', 'center', 'body');
+  // the degrees, right of the dial's foot
+  const lab = Math.round(a.ang) + '°', lw = ctx.measureText(lab).width + 12, lx = x + R + 8, lh = fs + 6;
+  ctx.fillStyle = 'rgba(28,26,54,0.9)'; rr(lx, y - lh, lw, lh, 6); ctx.fill();
+  text(lab, lx + lw / 2, y - lh / 2 + 0.5, fs, '#ffffff', 'center', 'body');
 }
 // the key reminder over an athlete (rounds 1-2, before the run): each player's own device; nothing over the computer
 function javKeyChip(a, big, line, side) {
@@ -747,8 +760,9 @@ function javKeyChip(a, big, line, side) {
   }
   const fs = big ? 18 : 13, h = big ? 30 : 22;
   ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-  const w = ctx.measureText(label).width + (big ? 26 : 20), tx = javSX(a.x);
-  const x = clamp(side ? tx + (big ? 52 : 42) + w / 2 : tx + 40, 8 + w / 2, W - 8 - w / 2), y = JAV_GY[a.k] - (side ? (big ? 62 : 56) : (big ? 96 : 84));
+  const w = ctx.measureText(label).width + (big ? 26 : 20), tx = javSX(a.x), dp = javDialPos(a, big);
+  // (side: the aim reminder, right of the angle dial and its degrees)
+  const x = clamp(side ? dp.x + dp.R + (big ? 76 : 64) + w / 2 : tx + 40, 8 + w / 2, W - 8 - w / 2), y = side ? dp.y - (dp.R + 4) / 2 : JAV_GY[a.k] - (big ? 96 : 84);
   ctx.fillStyle = 'rgba(28,26,54,0.82)'; rr(x - w / 2, y - h / 2, w, h, h / 2); ctx.fill();
   ctx.strokeStyle = PCOL[a.k]; ctx.lineWidth = 2; rr(x - w / 2, y - h / 2, w, h, h / 2); ctx.stroke();
   text(label, x, y + 0.5, fs, C.gold, 'center', 'body');
@@ -812,7 +826,7 @@ function javDrawTop() {
   // name tags through the intro, "Round N" and 3-2-1 (the framework draws none for hidden players)
   const tagA = G.introT > 0 || (m && (m.phase === 'intro' || m.phase === 'ready' || m.phase === 'count')) ? 1 : 0;
   if (tagA > 0) for (const a of st.ath) {
-    const x = Math.max(32, javSX(a.x) - 12 * javS()), y = JAV_GY[a.k] - 32 * javS() - 14, cpu = javCpu(a.k), hw = cpu ? 30 : 18;
+    const x = Math.max(32, javSX(a.x) - 12 * javS()), y = JAV_GY[a.k] - 34 * javS() - 14, cpu = javCpu(a.k), hw = cpu ? 30 : 18;
     ctx.globalAlpha = tagA; ctx.fillStyle = PCOL[a.k]; rr(x - hw, y - 11, hw * 2, 18, 9); ctx.fill();
     ctx.beginPath(); ctx.moveTo(x - 4, y + 7); ctx.lineTo(x + 4, y + 7); ctx.lineTo(x, y + 11); ctx.fill();
     text(cpu ? NAMES[a.k] + ' · CPU' : NAMES[a.k], x, y - 1.5, 12, '#fff', 'center', 'body'); ctx.globalAlpha = 1;
