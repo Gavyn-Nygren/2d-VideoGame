@@ -3002,6 +3002,360 @@ const LEVELS = [
     map: Array.from({ length: 18 }, (_, y) => (y === 10 ? '.'.repeat(12) + '1' + '.'.repeat(6) + '2' + '.'.repeat(12) : '.'.repeat(32))) },
   // ----- END 12-4 Ice Hockey -----
   // ===== END World 12 =====
+
+  /* ===== World 13 (Spooky Hollow, mixed): the Halloween world, world index 12 (js/levels/world13/), silly-spooky, never scary.
+     Gavyn's picks (Nov 2026): 13-1 Pumpkin Patch Roll (team), 13-2 Graveyard Bone Hunt (team), 13-3 Haunted Mansion (team,
+     Gavyn's own idea), 13-4 Broomstick Race (versus). Each level's def sits between its own BEGIN/END lines. world: 12 ===== */
+  // ----- BEGIN 13-1 Pumpkin Patch Roll (mode 'pumpkin', js/levels/world13/pumpkin-patch-roll.js) -----
+  { name: 'Pumpkin Patch Roll', world: 12, kind: 'team', mode: 'pumpkin', ownStep: true, ownHUD: true, noFalls: true,
+    // side-on giant-pumpkin roll (MODES.pumpkin): the map is only the two spawns, the mode builds each room from its course
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> push · balance <kbd>W</kbd> leapfrog <kbd>S</kbd> hug',
+      bo: '<kbd>←</kbd><kbd>→</kbd> push · balance <kbd>↑</kbd> leapfrog <kbd>↓</kbd> hug',
+      pad: 'stick: push · balance, <span data-glyph="a"></span> leapfrog, down hugs,',
+    },
+    tip: 'Roll the giant pumpkin to the hayride! One pushes, one rides on top and leans. Big hills need you both.',
+    act: { label: 'push', labels: ['push', 'hug'] },
+    theme: { skyTop: '#241b4d', skyBot: '#f0915a' },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Patch Hills', pusher: 0, act: { label: 'push', labels: ['push', 'hug'] },
+        tip: 'Pip pushes ▶. Bo rides: walk against the roll, lean ▶ uphill, ◀ downhill. Steep hills need you both!',
+        course: ['f170', 'S:{P}: walk into it to push!', 'f140', 'D:crows', 'f120', 'k', 'f160', 'u240', 'f140', 'b', 'S:Steep! {P} pushes, {R} leans ▶', 'f150',
+          'U340', 'f160', 'D:scarecrow', 'd200', 'f160', 'k', 'f160', 'b', 'U280', 'f100', 'b', 'f60', 'S:Mud! {P}: leapfrog in front', 'f120', 'D340', 'm130',
+          'f200', 'D:ghost', 'f160', 'k', 'f120', 'D:jacks', 'f150', 'X'],
+      },
+      {
+        title: 'Pond Bridge', pusher: 1, act: { label: 'push', labels: ['hug', 'push'] },
+        tip: 'Swap! Bo pushes, Pip rides. Bridges only hold a SLOW pumpkin: leapfrog in front, hold ◀ and lean back!',
+        course: ['f170', 'D:frog', 'f130', 'u200', 'f120', 'b', 'U300', 'f100', 'b', 'f60', 'S:Pond! Go SLOW over the bridge', 'f120', 'D340', 'p160', 'f200', 'D:cattails',
+          'f60', 'k', 'f160', 'b', 'U320', 'f100', 'b', 'f40', 'D:willow', 'f140', 'D360', 'p170', 'f160', 'D:frog', 'f60', 'k', 'f140', 'D:crows', 'f150', 'X'],
+      },
+      {
+        title: 'Scarecrow Ridge', pusher: 0, act: { label: 'push', labels: ['push', 'hug'] },
+        tip: 'Pip pushes again. Windy ridge! Bo, lean into the gusts. Zoom down one hill and up the next!',
+        course: ['f170', 'D:scarecrow', 'f120', 'b', 'U300', 'f60', 'b', 'f80', 'S:Windy ridge! {R}: lean into the gusts', 'g<', 'f170', 'D:crows', 'g>', 'f120', 'D320', 'p150',
+          'f180', 'b', 'U260', 'f100', 'g<', 'f120', 'D:scarecrow', 'f80', 'S:Zoom down, roll up!', 'f80', 'D240', 'f30', 'U220', 'f150', 'g>', 'f70', 'b',
+          'f160', 'D320', 'm140', 'f180', 'k', 'f140', 'D:ghost', 'f150', 'X'],
+      },
+      {
+        title: 'Hayride Hill', pusher: 1, act: { label: 'push', labels: ['hug', 'push'] },
+        tip: 'Bo pushes to the top! One last pond, then the big climb up Hayride Hill and onto the wagon.',
+        course: ['f170', 'D:jacks', 'f120', 'b', 'U300', 'f100', 'b', 'f60', 'D:willow', 'f120', 'D340', 'p170', 'f180', 'D:frog', 'f60', 'k', 'f160', 'b', 'U280', 'f120',
+          'D:scarecrow', 'f80', 'U260', 'f150', 'b', 'u200', 'f120', 'k', 'f140', 'S:Hayride! Up the ramp!', 'U300', 'f180', 'D:jacks', 'f100', 'E'],
+      },
+    ],
+  },
+  // ----- END 13-1 Pumpkin Patch Roll -----
+  //
+  // ----- BEGIN 13-2 Graveyard Bone Hunt (mode 'bonehunt', js/levels/world13/graveyard-bone-hunt.js) -----
+  // 13-2 Graveyard Bone Hunt (mode 'bonehunt', team): dig up Mr. Bones' lost bones and put him back together; each
+  // room's bones give him a new shape (stool, ladder, bridge). Map chars and rules: the top of the level file.
+  { name: 'Graveyard Bone Hunt', world: 12, kind: 'team', mode: 'bonehunt', ownHUD: true, noFalls: true,
+    act: { label: 'dig' },
+    legend: { jump: 'jump · climb', down: 'down · hold: back', padJump: 'jump · climb', padDown: 'hold down: back' },
+    tip: 'Dig up Mr. Bones’s lost bones and bring them back. Every bone makes him a better helper!',
+    switches: {}, signs: [],
+    rooms: [
+      { // ---------- Room 1: Front Gate (a head boost for the leg bone, carry the backbone together) ----------
+        title: 'Front Gate', unlock: 'stool', exitVia: 'stool', exitLabel: 'CROOKED CRYPTS',
+        tip: 'Boost each other up to dig the leg bone, then carry the big backbone together. Don’t pull apart!',
+        mounds: [{ piece: 'leg1', how: 'boost', foot: { x: 136, feet: 480 }, land: 66 }, { piece: 'spine', how: 'big', len: 90 }],
+        plan: ['boost:0', 'big:1', 'exit'], stones: ['BRB'],
+        decor: [{ k: 'tree', x: 300, s: 1 }, { k: 'owl', x: 336, y: 318 }, { k: 'grave', x: 380, text: ['Here lies', 'my left sock'] },
+          { k: 'grave', x: 560, text: ['R.I.P.', 'Pizza crust'], tilt: -0.05 }, { k: 'ghost', x: 470, y: 380 },
+          { k: 'fence', x0: 230, x1: 760 }, { k: 'sign', x: 112, y: 300, text: 'MR. BONES · BACK SOON!' }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '.d...........................E..', // 11
+          'BBBB......................######', // 12
+          'BBBB......................######', // 13
+          'BBBB......................######', // 14
+          'BBBB..h.1.2..N..S.....D..x######', // 15
+          '################################', // 16
+          '################################', // 17
+        ] },
+      { // ---------- Room 2: Crooked Crypts (stack up on the stool for the hip bone, hold the crank for the other leg) ----------
+        title: 'Crooked Crypts', unlock: 'ladder', exitVia: 'ladder', exitLabel: 'PUMPKIN PLOT',
+        tip: 'Stack up on Mr. Bones to reach the high roof. One holds the crank while the other digs in the crypt!',
+        mounds: [{ piece: 'hips', how: 'tower', foot: { x: 136, feet: 480 }, land: 60 }, { piece: 'leg2', how: 'gate' }],
+        plan: ['tower:0', 'gate:1', 'exit'], stones: ['BOO!'],
+        decor: [{ k: 'grave', x: 300, text: ['Gone to', 'lunch'] }, { k: 'tree', x: 460, s: 0.9 }, { k: 'owl', x: 494, y: 330 },
+          { k: 'grave', x: 640, text: ['Napping.', 'Do not disturb'], tilt: 0.06 }, { k: 'ghost', x: 380, y: 360 },
+          { k: 'fence', x0: 150, x1: 700 }, { k: 'sign', x: 752, y: 228, text: 'THE CRYPT' }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '............................E...', //  9
+          '.d......................BBBBBBBB', // 10
+          'BBBB....................BBBBBBBB', // 11
+          'BBBB....................BBBBBBBB', // 12
+          'BBBB....................g......B', // 13
+          'BBBB....................g......B', // 14
+          'BBBBx.h.1.2N.S....r....yg....d.B', // 15
+          '################################', // 16
+          '################################', // 17
+        ] },
+      { // ---------- Room 3: Pumpkin Plot (climb Mr. Bones up the old tree, dig the giant ribcage together) ----------
+        title: 'Pumpkin Plot', unlock: 'bridge', exitVia: 'bridge', exitLabel: 'BELL TOWER',
+        tip: 'Climb Mr. Bones up the old tree. The giant ribcage only digs up when you both dig at once!',
+        mounds: [{ piece: 'funny', how: 'ladder' }, { piece: 'ribs', how: 'big', len: 120, together: true }],
+        plan: ['ladder:0', 'big:1', 'exit'],
+        decor: [{ k: 'owl', x: 14, y: 254 }, { k: 'pumpkins', x: 260 }, { k: 'grave', x: 470, text: ['Ate too', 'many sweets'] },
+          { k: 'pumpkins', x: 700 }, { k: 'ghost', x: 760, y: 300 }, { k: 'fence', x0: 160, x1: 640 },
+          { k: 'sign', x: 790, y: 430, text: 'OPEN GRAVE · BOING!' }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '.d..............................', //  8
+          'WWW.............................', //  9
+          'WWW.............................', // 10
+          'WWW.............................', // 11
+          'WWW.............................', // 12
+          'WWW...........................E.', // 13
+          'WWW..........................###', // 14
+          'WWWy.h.1.2.p.p...D..Nz.......###', // 15
+          '######################~~~~~~~###', // 16
+          '######################~~~~~~~###', // 17
+        ] },
+      { // ---------- Room 4: Old Bell Tower (bridge the grave, stack up for the arm, ring the bell together) ----------
+        title: 'Old Bell Tower', unlock: 'done', bellPiece: 'hand', bellY: 92, finale: { x: 840, feet: 210 },
+        tip: 'Bridge the big grave, stack up for the arm bone, then climb to the bell and pull both ropes together!',
+        mounds: [{ piece: 'arm', how: 'tower', foot: { x: 435, feet: 480 }, land: 410 }],
+        plan: ['cross', 'tower:0', 'bell', 'finale'],
+        decor: [{ k: 'grave', x: 594, text: ['Here lies', 'Steve’s homework'] }, { k: 'tree', x: 655, s: 0.8 }, { k: 'owl', x: 624, y: 346 },
+          { k: 'ghost', x: 270, y: 300 }, { k: 'fence', x0: 380, x1: 700 }, { k: 'pumpkins', x: 494 }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '........................BBBBBBBB', //  1
+          '........................B......B', //  2
+          '........................B......B', //  3
+          '...............................B', //  4
+          '...............................B', //  5
+          '.........................!....!B', //  6
+          '........................BBBBBBBB', //  7
+          '........................BBBBBBBB', //  8
+          '........................BBBBBBBB', //  9
+          '.............d..........BBBBBBBB', // 10
+          '............====........BBBBBBBB', // 11
+          '........................BBBBBBBB', // 12
+          '........................BBBBBBBB', // 13
+          '........................BBBBBBBB', // 14
+          '.h.12z........x..N.....yBBBBBBBB', // 15
+          '######~~~~~~####################', // 16
+          '######~~~~~~####################', // 17
+        ] },
+    ] },
+  // ----- END 13-2 Graveyard Bone Hunt -----
+  //
+  // ----- BEGIN 13-3 Haunted Mansion (mode 'mansion', js/levels/world13/haunted-mansion.js) -----
+  // Gavyn's own idea: one holds the flashlight that wakes the ghost platforms, the other hops on them (and freezes in the
+  // light: "Eep!"). Map chars (read by the mode): g sleepy ghost platform, p haunted portrait (swaps Pip and Bo), d candle.
+  { name: 'Haunted Mansion', world: 12, kind: 'team', mode: 'mansion', ownStep: true, ownHUD: true,
+    act: { label: 'light', labels: ['light', 'swap'] },
+    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> drop',
+              pad: 'stick or d-pad move (▲▼ aims the light), <span data-glyph="a"></span> jump,' },
+    theme: { skyTop: '#2a1f45', skyBot: '#3b2a55', hillFar: '#2e2348', hillNear: '#2a2042', sun: 'rgba(0,0,0,0)', sunGlow: 'rgba(0,0,0,0)',
+      stone: '#4a3352', stoneLight: '#5a4062', stoneEdge: '#1f1630', grass: '#9b6a40', grassDark: '#6b4127' },
+    tip: 'A silly-spooky house! One of you holds the flashlight, the other hops on the ghosts it wakes up.',
+    switches: {}, signs: [],
+    rooms: [
+      {
+        title: 'The Foyer',
+        holder: 0, style: 'foyer',
+        act: { label: 'light', labels: ['light', 'swap'] },
+        tip: 'Pip, shine the light on the sleepy ghosts so Bo can hop up. Keep it off Bo, or Eep!',
+        cat: [27, 14, -1],
+        plan: [{ portrait: 0 }, { lean: [23, 6, 1] }],
+        deco: [
+          { kind: 'window', x: 450, y: 292, moon: true }, { kind: 'window', x: 690, y: 300 },
+          { kind: 'frame', x: 300, y: 104, w: 44, h: 54 }, { kind: 'frame', x: 630, y: 100, art: 'moon', bg: '#2e3f66' },
+          { kind: 'frame', x: 760, y: 110, art: 'cat', bg: '#6a4a7a' },
+          { kind: 'stairs', x: 240, y: 438, n: 7, dx: 30, dy: 30, broken: [2, 3, 5] },
+          { kind: 'carpet', x: 180, y: 210, w: 540 }, { kind: 'rails', x: 540, y: 210, w: 180 },
+          { kind: 'pillar', x: 165, y: 240, h: 210 },
+        ],
+        map: [
+          '################################',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##......p....d....E...........##',
+          '##....##################.gg...##',
+          '##............................##',
+          '##ggg.........................##',
+          '##..........................####',
+          '##............................##',
+          '##..gg...................ggg..##',
+          '##............................##',
+          '##.....2.1......d......d......##',
+          '################################',
+          '################################',
+          '################################',
+        ],
+      },
+      {
+        title: 'The Library',
+        holder: 1, style: 'library',
+        act: { label: 'light', labels: ['swap', 'light'] },
+        tip: 'Swap jobs! Bo has the light. Wake the ghost book so Pip rides up. From up top, aim down over the edge.',
+        cat: [21, 14, 1],
+        books: [{ c: 13, w: 3, low: 15, high: 5, period: 7.2, pause: 1.4 }],
+        plan: [{ book: 0 }, { portrait: 0 }, { lean: [16, 4, -1] }],
+        deco: [
+          { kind: 'shelf', x: 66, y: 196, w: 150, h: 254 }, { kind: 'shelf', x: 232, y: 256, w: 124, h: 194 },
+          { kind: 'shelf', x: 530, y: 210, w: 150, h: 240 }, { kind: 'shelf', x: 700, y: 40, w: 110, h: 110 },
+          { kind: 'window', x: 790, y: 250, moon: true }, { kind: 'frame', x: 620, y: 92, art: 'pumpkin', bg: '#3a2a5a' },
+          { kind: 'carpet', x: 480, y: 150, w: 390 },
+        ],
+        map: [
+          '################################',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##................p....d...E..##',
+          '##..............################',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##..d....1........2......d....##',
+          '#############...################',
+          '################################',
+          '################################',
+        ],
+      },
+      {
+        title: 'The Portrait Gallery',
+        holder: 0, style: 'gallery',
+        act: { label: 'light', labels: ['light', 'swap'] },
+        tip: 'Two magic paintings! Bo swaps places with Pip to carry the light up, one floor at a time.',
+        cat: [26, 14, -1],
+        plan: [{ portrait: 1 }, { lean: [13, 9, 1] }, { portrait: 0 }, { lean: [17, 4, -1] }],
+        deco: [
+          { kind: 'frame', x: 130, y: 150, art: 'moon', bg: '#2e3f66' }, { kind: 'frame', x: 250, y: 140, w: 46, h: 58 },
+          { kind: 'frame', x: 370, y: 160, art: 'cat', bg: '#6a4a7a' }, { kind: 'frame', x: 150, y: 390, art: 'pumpkin', bg: '#3a2a5a' },
+          { kind: 'frame', x: 300, y: 385, w: 36, h: 46 }, { kind: 'frame', x: 660, y: 80, art: 'moon', bg: '#4a2e5a' },
+          { kind: 'window', x: 790, y: 250, moon: true }, { kind: 'frame', x: 650, y: 330, art: 'pumpkin', bg: '#2e4a4a' },
+          { kind: 'pillar', x: 445, y: 30, h: 420 }, { kind: 'rails', x: 60, y: 300, w: 360 },
+        ],
+        map: [
+          '################################',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##.................p...d..E...##',
+          '##...............###############',
+          '##............................##',
+          '##............................##',
+          '##.............gg.............##',
+          '##..p....d....................##',
+          '##############................##',
+          '##............................##',
+          '##.............ggg............##',
+          '##............................##',
+          '##.....2..1...........d.......##',
+          '################################',
+          '################################',
+          '################################',
+        ],
+      },
+      {
+        title: 'The Attic Race',
+        holder: 1, style: 'attic',
+        act: { label: 'light', labels: ['swap', 'light'] },
+        tip: 'Race Bertie the ghost to the attic door! You both have to get there before he does.',
+        cat: [20, 4, -1],
+        race: { route: [[84, 420], [84, 104], [420, 92], [840, 112]], time: 40 },
+        plan: [{ portrait: 0, hold: [27, 8] }, { lean: [22, 4, 1] }],
+        deco: [
+          { kind: 'round', x: 480, y: 84 }, { kind: 'trunk', x: 360, y: 450 }, { kind: 'boxes', x: 520, y: 450 },
+          { kind: 'boxes', x: 560, y: 150 }, { kind: 'trunk', x: 380, y: 150 },
+          { kind: 'stairs', x: 600, y: 440, n: 3, dx: 30, dy: 26 },
+        ],
+        map: [
+          '################################',
+          '##............................##',
+          '##............................##',
+          '##............................##',
+          '##.......p.....d...........E..##',
+          '##.....################...######',
+          '##............................##',
+          '##gg....................gg....##',
+          '##............................##',
+          '##...gg.................########',
+          '##............................##',
+          '##............................##',
+          '##ggg...............####......##',
+          '##............................##',
+          '##......1.2....d..............##',
+          '################################',
+          '################################',
+          '################################',
+        ],
+      },
+    ],
+  },
+  // ----- END 13-3 Haunted Mansion -----
+  //
+  // ----- BEGIN 13-4 Broomstick Race (mode 'broom', js/levels/world13/broomstick-race.js) -----
+  { name: 'Broomstick Race', world: 12, kind: 'versus', mode: 'broom', ownStep: true,
+    // side-on broom race (MODES.broom): the map is only the two spawns, the mode builds each round's course
+    match: { bestOf: 5 },
+    act: { label: 'zoom', padGlyph: 'a' },   // padGlyph: on a controller A zooms too (the stick climbs and dives)
+    legend: {
+      pip: '<kbd>W</kbd><kbd>S</kbd> up · down <kbd>A</kbd><kbd>D</kbd> slow · fast',
+      bo: '<kbd>↑</kbd><kbd>↓</kbd> up · down <kbd>←</kbd><kbd>→</kbd> slow · fast',
+      pad: 'stick: fly, <span data-glyph="a"></span> or',
+    },
+    tip: 'Fly through the glowing rings for speed, grab a star and zoom! Bumping a friendly bat slows you.',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '.....1..........................', '................................', '................................',
+      '.....2..........................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+    ],
+  },
+  // ----- END 13-4 Broomstick Race -----
+  //
+  // ===== END World 13 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -3047,6 +3401,10 @@ const WORLDS = [
   { name: 'Winter Games', blurb: 'Slide, sweep, skate and soar: Winter Games for two!',
     theme: { skyTop: '#8fc8ef', skyBot: '#eef8ff', hillFar: '#d7e9f7', hillNear: '#b9d8ee', sun: 'rgba(255, 250, 232, 0.95)', sunGlow: 'rgba(214, 238, 255, 0.42)',
       stone: '#5d7fa8', stoneLight: '#7397c0', stoneEdge: '#3e5b82', grass: '#f4fbff', grassDark: '#bcd8ee', plank: '#c9955a', plankDark: '#7d5530', rope: '#e3f1ff', ropeDark: '#56789c' } },
+  // World 13: Halloween, silly-spooky (a dusky purple night with an orange harvest moon; hidden until it has levels)
+  { name: 'Spooky Hollow', blurb: 'Roll, dig, sneak and fly through a not-too-spooky Halloween night!',
+    theme: { skyTop: '#2b2155', skyBot: '#f0915a', hillFar: '#5a3f78', hillNear: '#44305f', sun: 'rgba(255, 196, 110, 0.95)', sunGlow: 'rgba(255, 150, 70, 0.38)',
+      stone: '#4a4060', stoneLight: '#5c5276', stoneEdge: '#302944', grass: '#8bc46a', grassDark: '#4f8a44', plank: '#c98650', plankDark: '#7a4a2a', rope: '#f2b45a', ropeDark: '#7a4a1a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
