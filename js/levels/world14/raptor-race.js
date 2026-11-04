@@ -7,7 +7,8 @@
    Noodle, a lilac raptor with blue feathers). Raptors run forward by themselves, so a kid can just hop and duck:
      ▶ runs fast, ◀ slows down (to wait for a herd or a geyser). Jump (W, ↑, pad A, touch ▲) hops logs, rocks, little compies,
      puddles and the gaps between treetop branches; hold it for a full hop. ▼ (S, ↓, stick down) ducks under low branches,
-     vines and roots.
+     vines and roots. A raptor drifts a little slower through its own hops and needs a short push-off step after landing,
+     so hopping all the time (mashing jump) is slower than hopping just the logs.
      Forks: three paths for a while. Jump (or stick up) by the sign to leap up to the Treetops (fast springy branches with
      gaps: miss one and you drop down onto the bridge with a "Whoops!"), hold ▼ to slide down to the Muddy Creek (mud
      slows you, but it has the most speed eggs), or keep running along the Jungle Trail bridge (logs and compies).
@@ -16,7 +17,7 @@
      A stumble (a log, a rock, a branch, a compy, a trike) is a cartoon "Oof!" that slows you down; nobody gets hurt.
      Raptors bump each other a little in the same lane, and jumping over the other raptor is a "Leapfrog!".
    First nose through the brachiosaurus arch wins the round. Crossings 0.005 s apart or closer are a dead heat (replayed);
-   a second tie in a row goes to more logs hopped this match (then fewer stumbles, then more eggs), else a short
+   a second tie in a row goes to more hops this match (then fewer stumbles, then more eggs), else a short
    Sudden Sprint. A safety bell at 75 s gives the
    round to whoever is farther along. After 4 ties in a row the match is called (framework).
    Round 1 is the plain Jungle Dash; rounds 2-5 are a fresh shuffle of Trike Stampede, Bouncy Ferns, Geyser Gully and
@@ -33,6 +34,9 @@ const RAPTOR = {
   cruise: 300, fast: 380, slow: 185, accX: 320, decX: 560, stumbleV: 120,
   // jumping (a full hop is about 89 px high and 0.55 s long; letting go early cuts it)
   jumpV: 640, g: 2300, cut: 0.5, coyote: 0.08, jumpBuf: 0.14,
+  // a hop of your own drifts a little slower than running (air), and after landing the raptor needs a short push-off
+  // step before the next hop, so hopping all the time (mashing jump) is slower than hopping just the logs
+  airMul: 0.9, pushOff: 0.1,
   // speed changes
   highMul: 1.08, duckMul: 0.9, mudMul: 0.55, splashMul: 0.8, splashT: 0.45,
   stumbleT: 0.55, bonkT: 0.5, peepT: 0.3, peepMul: 0.6, booT: 0.4,
@@ -147,9 +151,14 @@ function raptorBuild(twist, R) {
       keep.push([mid - 300, mid + 230]);
     }
     if (twist === 'geyser') {
-      const ng = s.last ? 1 : 2;
+      // two geysers in a stretch sit at least 460 px apart, so each one can be timed on its own (and one WHOOSH can't
+      // throw a raptor straight into the next one)
+      const ng = s.last || end - s.x0 < 760 ? 1 : 2;
+      let gPrev = -1e9;
       for (let k = 0; k < ng; k++) {
-        const gx = Math.round(s.x0 + 200 + (end - s.x0 - 300) * (k + 0.3 + R() * 0.4) / ng);
+        const gx = Math.max(gPrev + 460, Math.round(s.x0 + 200 + (end - s.x0 - 300) * (k + 0.3 + R() * 0.4) / ng));
+        if (gx > end - 60) break;
+        gPrev = gx;
         add({ k: 'geyser', lane: 1, x: gx, w: 44, h: 0, quiet: rr(1.6, 2.3), ph: R() * 4, cd: [0, 0] });
         keep.push([gx - 200, gx + 150]);
       }
@@ -246,7 +255,7 @@ function raptorMakeRider(k) {
   const P = RAPTOR;
   return { id: k, x: P.startX - k * 0, px: P.startX, y: P.laneY[1], vy: 0, lane: 1, air: false, coyote: 0, cutDone: false, jumpBuf: 0,
     base: P.cruise, v: P.cruise, dashT: 0, dashAdd: P.dashAdd, dashGold: false, egg: 0, holdT: 0, stumble: 0, stumbleKind: '',
-    duck: false, splashT: 0, trans: null, pick: null, tail: 0, tailSaid: false, bumpCD: 0, finT: null, carried: 0, noEggT: 0,
+    duck: false, splashT: 0, trans: null, pick: null, tail: 0, tailSaid: false, bumpCD: 0, finT: null, carried: 0, noEggT: 0, hopAir: false, groundT: 9,
     // looks only (never read by the rules)
     run: k * 1.7, popT: 9, pop: '', popCol: '#fff', tilt: 0, trailT: 0, dustT: 0, cheerT: -1, landT: 9, blink: 0 };
 }
@@ -279,7 +288,8 @@ function raptorRun(st, r, inp, dt, live) {
   const grounded = !r.air && !r.trans;
   r.duck = !!(inp && inp.duck && grounded && r.stumble <= 0);
   const mud = grounded && r.dashT <= 0 && raptorMudAt(c, r.lane, r.x);
-  let v = r.base * (r.lane === 0 ? P.highMul : 1) * (r.duck ? P.duckMul : 1) * (mud ? P.mudMul : 1) * (r.splashT > 0 ? P.splashMul : 1);
+  // (dropping through a treetop gap: mostly straight down, so it falls into the gap rather than through the branch)
+  let v = r.base * (r.trans && r.trans.kind === 'fall' ? 0.4 : r.lane === 0 ? P.highMul : 1) * (r.duck ? P.duckMul : 1) * (mud ? P.mudMul : 1) * (r.splashT > 0 ? P.splashMul : 1) * (r.air && r.hopAir ? P.airMul : 1);
   v += raptorDashV(r) + r.tail;
   r.v = v; r.inMud = !!mud;
   r.x += v * dt;
@@ -306,7 +316,7 @@ function raptorRun(st, r, inp, dt, live) {
     const k = clamp(T.t / T.dur, 0, 1), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
     r.y = T.y0 + (T.y1 - T.y0) * e - Math.sin(k * Math.PI) * T.arc;
     if (k >= 1) {
-      r.lane = T.lane; r.y = P.laneY[T.lane]; r.vy = 0; r.air = false; r.trans = null; r.landT = 0; r.coyote = 0;
+      r.lane = T.lane; r.y = P.laneY[T.lane]; r.vy = 0; r.air = false; r.trans = null; r.landT = 0; r.coyote = 0; r.hopAir = false; r.groundT = P.pushOff;
       if (T.kind === 'fall') { r.base *= P.fallMul; raptorPop(r, 'Boing! On a leaf', '#d8ffb0'); Sfx.play('raptorBoing', r.id); raptorDust(st, r.x, r.y, 6, 'rgba(140,210,90,0.9)'); }
       else { Sfx.play('raptorLand', r.id); raptorDust(st, r.x, r.y, 4, 'rgba(240,220,180,0.9)'); }
     }
@@ -315,8 +325,8 @@ function raptorRun(st, r, inp, dt, live) {
     if (!r.air) {
       if (gy == null) { r.coyote += dt; if (r.coyote > P.coyote) { r.air = true; r.vy = 0; } }
       else r.coyote = 0;
-      if (r.jumpBuf > 0 && r.stumble <= 0.15) {
-        r.air = true; r.vy = -P.jumpV; r.jumpBuf = 0; r.cutDone = false; r.coyote = 0; r.duck = false;
+      if (r.jumpBuf > 0 && r.stumble <= 0.15 && r.groundT >= P.pushOff) {
+        r.air = true; r.vy = -P.jumpV; r.jumpBuf = 0; r.cutDone = false; r.coyote = 0; r.duck = false; r.hopAir = true;
         Sfx.play('raptorHop', r.id); raptorDust(st, r.x - 10, r.y, 3, 'rgba(240,220,180,0.8)');
       }
     }
@@ -327,7 +337,7 @@ function raptorRun(st, r, inp, dt, live) {
       if (r.y - hh < ceil) { r.y = ceil + hh; if (r.vy < 0) r.vy = 0; }
       const g2 = raptorGroundAt(c, r.lane, r.x);
       if (g2 != null && r.y >= g2 && r.vy >= 0) {
-        r.y = g2; r.vy = 0; r.air = false; r.landT = 0; Sfx.play('raptorLand', r.id); raptorDust(st, r.x, r.y, 4, 'rgba(240,220,180,0.85)');
+        r.y = g2; r.vy = 0; r.air = false; r.landT = 0; r.groundT = 0; r.hopAir = false; Sfx.play('raptorLand', r.id); raptorDust(st, r.x, r.y, 4, 'rgba(240,220,180,0.85)');
       } else if (g2 == null && r.lane === 0 && r.y > P.laneY[0] + 22) {
         // missed the branch: drop down onto the bridge below (a big leaf breaks the fall)
         raptorTrans(r, 1, 0.42, 'fall'); r.trans.arc = 0;
@@ -340,6 +350,7 @@ function raptorRun(st, r, inp, dt, live) {
   r.run += dt * (4 + v / 45) * (r.air || r.trans ? 0.3 : 1);
   r.tilt += ((r.dashT > 0 ? 0.12 : r.stumble > 0 ? 0.22 : r.air ? clamp(r.vy / 1800, -0.2, 0.25) : 0) - r.tilt) * Math.min(1, dt * 10);
   r.landT += dt;
+  if (!r.air && !r.trans) r.groundT += dt;
 }
 function raptorTrans(r, lane, dur, kind) {
   const P = RAPTOR;
@@ -378,7 +389,7 @@ function raptorHazards(st, r, live) {
         if (raptorOver(r, o.x, o.x + o.w) && h < o.h - 2) {
           o.hit[id] = true; o.passed[id] = true;
           if (dash && o.k === 'log') { o.gone = true; o.goneT = 0; raptorPop(r, 'CRASH!', C.gold); Sfx.play('raptorCrash', r.id); raptorChips(st, o); if (live) st.stat.smash[id]++; }
-          else if (dash) { r.vy = -420; r.air = true; r.cutDone = true; raptorPop(r, 'Hup!', C.gold); Sfx.play('raptorHop', r.id); }
+          else if (dash) { r.vy = -420; r.air = true; r.cutDone = true; r.hopAir = false; raptorPop(r, 'Hup!', C.gold); Sfx.play('raptorHop', r.id); }
           else {
             if (o.k === 'log') { o.gone = true; o.goneT = 0; o.rollDir = 1; }
             else o.fx = 0.4;
@@ -425,7 +436,7 @@ function raptorHazards(st, r, live) {
         if (!grounded || r.duck || r.stumble > 0) break;
         if (r.x > o.x + 6 && r.x < o.x + o.w - 6 && (!o.boing || o.boing[id] < t)) {
           o.boing = o.boing || [0, 0]; o.boing[id] = t + 0.6; o.sq[id] = 0.35;
-          r.air = true; r.vy = -P.fernV; r.cutDone = true; r.jumpBuf = 0;
+          r.air = true; r.vy = -P.fernV; r.cutDone = true; r.jumpBuf = 0; r.hopAir = false;
           raptorPop(r, 'BOING!', '#d8ffb0'); Sfx.play('raptorFern', r.id);
           if (live) st.stat.boings[id]++;
           for (let k = 0; k < 6; k++) raptorFx(st, o.x + o.w / 2, P.laneY[1] - 10, (raptorVR() - 0.5) * 140, -100 - raptorVR() * 120, 0.7, raptorVR() < 0.5 ? '#6fbf4a' : '#c8f08a', 3, 300, 'leaf');
@@ -437,7 +448,8 @@ function raptorHazards(st, r, live) {
         const gs = raptorGeyserState(o, t);
         if (gs.s === 'blow' && gs.k < 0.92 && raptorOver(r, o.x + 4, o.x + o.w - 4) && h < P.geyserTop) {
           o.cd[id] = t + 1.4;
-          r.air = true; r.vy = -P.geyserV * (r.lane === 2 ? 0.55 : 1); r.cutDone = true; r.base *= P.geyserMul; r.dashT = 0; r.stumble = 0.35; r.stumbleKind = 'whoosh';
+          // (never so high that the raptor leaves the top of the screen)
+          r.air = true; r.vy = -Math.min(P.geyserV * (r.lane === 2 ? 0.55 : 1), Math.sqrt(2 * P.g * Math.max(0, r.y - 90))); r.cutDone = true; r.hopAir = false; r.base *= P.geyserMul; r.dashT = 0; r.stumble = 0.35; r.stumbleKind = 'whoosh';
           raptorPop(r, 'WHOOSH!', '#e6f6ff'); Sfx.play('raptorWhoosh', r.id); rumble(r.id, 0.25, 0.4, 120);
           if (live) { st.stat.whoosh[id]++; st.stat.stumbles[id]++; }
         }
@@ -697,7 +709,7 @@ MODES.raptor = {
   tiebreak() {
     // most hops this match, then fewer stumbles, then more speed eggs; all the same: run it again
     const s = G.mst.stat;
-    if (s.hops[0] !== s.hops[1]) return { winner: s.hops[0] > s.hops[1] ? 0 : 1, reason: 'Most logs hopped this match!' };
+    if (s.hops[0] !== s.hops[1]) return { winner: s.hops[0] > s.hops[1] ? 0 : 1, reason: 'Most hops this match!' };
     if (s.stumbles[0] !== s.stumbles[1]) return { winner: s.stumbles[0] < s.stumbles[1] ? 0 : 1, reason: 'Fewest stumbles this match!' };
     if (s.eggs[0] !== s.eggs[1]) return { winner: s.eggs[0] > s.eggs[1] ? 0 : 1, reason: 'Most speed eggs this match!' };
     return -1;
@@ -1420,7 +1432,7 @@ function raptorDrawTop() {
     text(cpu ? NAMES[r.id] + ' · CPU' : NAMES[r.id], x, y - 1.5, 12, '#fff', 'center', 'body'); ctx.globalAlpha = 1;
   }
   if (m && m.phase === 'count' && m.t < 1.1) for (const r of st.riders) if (r.goldStart) {
-    const k = m.t / 1.1; ctx.globalAlpha = 1 - k * k; bigText('Gold egg!', r.x + 80, r.y - 110 - 20 * k, 17, C.gold); ctx.globalAlpha = 1;
+    const k = m.t / 1.1; ctx.globalAlpha = 1 - k * k; bigText('Gold egg!', r.x + 96, r.y - 140 - 20 * k, 17, C.gold); ctx.globalAlpha = 1;
   }
   ctx.restore();
 }

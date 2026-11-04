@@ -44,6 +44,7 @@
     return { up: up == null ? t : up, down: down == null ? t : down, land: t, maxH: Math.min(maxH, P.jumpV * P.jumpV / (2 * P.g)) };
   }
   // the foot x to take off from to clear [a, b] (the span the feet must stay above oh) at speed v; null if it can't be done
+  // (v is the speed in the air: a raptor's own hop drifts at airMul of its running speed)
   function takeoffFor(c, lane, a, b, oh, v) {
     const ht = hopTimes(c, lane, (a + b) / 2, oh);
     if (ht.maxH < oh) return null;
@@ -84,6 +85,8 @@
   function plan(S, me, st, sk, info) {
     const P = T().RAPTOR, c = st.c, hard = info.skill >= 0.9;
     const v = Math.max(150, me.v), look = Math.min(640, st.cam.x + W - me.x + 20);
+    // how fast it will drift through a hop of its own (P.airMul of its running speed; a dash's push isn't slowed)
+    const vAir = me.air && me.hopAir ? v : me.dashT > 0 ? v - (v - me.dashAdd) * (1 - P.airMul) : v * P.airMul;
     const seen = o => { if (!S.dec.has(o)) S.dec.set(o, { see: Math.random() < sk.see, err: (Math.random() * 2 - 1) * sk.err, derr: (Math.random() * 2 - 1) * sk.duckErr, want: Math.random() < sk.egg, smart: Math.random() < sk.time }); return S.dec.get(o); };
     // which lane we'll be on (a fork pick ahead counts)
     let lane = me.trans ? me.trans.lane : me.lane;
@@ -115,7 +118,7 @@
         let a = o.x - 22, b = o.x + o.w + 16, oh = o.h + 2;
         if (o.k === 'compy') { const tA = Math.max(0, (o.x - me.x) / v), cx = T().compyX(o, st.t + tA); a = cx - 13 - 22; b = cx + 13 + 16; }
         if (o.k === 'puddle') { a = o.x + 4; b = o.x + o.w - 4; oh = 1; }
-        if (S.jump == null || a < S.jump.a) { const to = takeoffFor(c, lane, a, b, oh, v); if (to) S.jump = { a, x: to.x + d.err * (o.k === 'puddle' ? 0.4 : 1), lo: to.lo, k: o.k, o }; }
+        if (S.jump == null || a < S.jump.a) { const to = takeoffFor(c, lane, a, b, oh, vAir); if (to) S.jump = { a, x: to.x + d.err * (o.k === 'puddle' ? 0.4 : 1), lo: to.lo, k: o.k, o }; }
       } else if (DUCKS[o.k]) {
         if (o.hit[me.id] || o.passed[me.id] || !d.see) continue;
         if (S.duck == null) S.duck = { a: o.x - 30 - v * 0.12 + d.derr, b: o.x + o.w + 20, o };
@@ -125,15 +128,15 @@
     if (lane === 0) for (const g of c.gaps) {
       if (g.x + g.w < me.x || g.x > me.x + look) continue;
       const d = seen(g); if (!d.see) continue;
-      const ht = hopTimes(c, 0, g.x, 1), mid = g.x + g.w / 2, x0 = mid - v * ht.land / 2 + 6;
-      if (S.jump == null || g.x - 4 < S.jump.a) S.jump = { a: g.x - 4, x: Math.min(x0 + d.err * 0.7, g.x + 4), lo: g.x + g.w + 6 - v * ht.land, k: 'gap', o: g };
+      const ht = hopTimes(c, 0, g.x, 1), mid = g.x + g.w / 2, x0 = mid - vAir * ht.land / 2 + 6;
+      if (S.jump == null || g.x - 4 < S.jump.a) S.jump = { a: g.x - 4, x: Math.min(x0 + d.err * 0.7, g.x + 4), lo: g.x + g.w + 6 - vAir * ht.land, k: 'gap', o: g };
       break;
     }
     // a floating egg we want (and our paws are free): hop for it
     if (!me.egg) for (const e of c.eggs) {
       if (e.got[me.id] || e.lane !== lane || e.h < 40 || e.x < me.x + 20 || e.x > me.x + look) continue;
       const d = seen(e); if (!d.want) continue;
-      const ht = hopTimes(c, lane, e.x, 1), apex = ht.land / 2, x0 = e.x - 6 - v * apex * 0.8;
+      const ht = hopTimes(c, lane, e.x, 1), apex = ht.land / 2, x0 = e.x - 6 - vAir * apex * 0.8;
       if (S.jump == null || x0 < S.jump.x - 40) S.jump = { a: e.x - 30, x: x0 + d.err * 0.5, lo: x0 - 40, k: 'egg', o: e };
       break;
     }
@@ -184,7 +187,16 @@
     // raptors run on by themselves: a person who walked away still finishes the match, so the computer keeps racing
     noIdleStop: true,
     bubbleHidden: true,
-    bubblePos(p) { const st = G.mst, r = st && st.riders && st.riders[p.id]; return r && st.cam ? { x: r.x - st.cam.x, y: r.y - (r.egg ? 104 : 84) } : null; },
+    // above the raptor, and above its floating word while one shows ("Speed egg!"), so the two never sit on top of each
+    // other; under its feet when a high hop would put the bubble on the round pill at the top
+    bubblePos(p) {
+      const st = G.mst, r = st && st.riders && st.riders[p.id]; if (!r || !st.cam) return null;
+      const x = r.x - st.cam.x, bh = typeof hudBig === 'function' && hudBig() ? 30 : 22, box = G.matchHudBox;
+      const clear = y => !box || y - 22 - bh >= box.y1 + 4 || x < box.x0 - 70 || x > box.x1 + 70;
+      const y0 = r.y - (r.egg ? 104 : 84), y1 = r.y - 132;
+      const y = r.popT < 0.9 && r.pop ? y1 : y0;
+      return { x, y: clear(y) ? y : r.y + 74 + bh };
+    },
     reset(S) { S.dec = new Map(); S.picks = {}; },
     think(S, p, o, dt, info) {
       const out = {}, st = info.mst;
