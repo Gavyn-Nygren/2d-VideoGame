@@ -2606,32 +2606,12 @@ const LEVELS = [
   },
   // ----- END 9-4 Krakatoa Ash Run -----
 
-  /* ===== World 10 (Summer Games, mixed): the Summer Olympics world, world index 9 (js/levels/world10/). Gavyn's picks and
-     order: 10-1 Synchro Diving (team), 10-2 Tandem Velodrome (team), 10-3 Hurdle Dash (versus), 10-4 Javelin Throw (versus).
-     Each level's def sits between its own BEGIN/END lines. world: 9 ===== */
-  // ----- BEGIN 10-1 Synchro Diving (mode 'dive', js/levels/world10/synchro-diving.js) -----
-  // ----- END 10-1 Synchro Diving -----
-  //
-  // ----- BEGIN 10-2 Tandem Velodrome (mode 'tandem', js/levels/world10/tandem-velodrome.js) -----
-  // ----- END 10-2 Tandem Velodrome -----
-  //
-  // ----- BEGIN 10-3 Hurdle Dash (mode 'hurdles', js/levels/world10/hurdle-dash.js) -----
-  // ----- END 10-3 Hurdle Dash -----
-  //
-  // ----- BEGIN 10-4 Javelin Throw (mode 'javelin', js/levels/world10/javelin-throw.js) -----
-  // ----- END 10-4 Javelin Throw -----
-  //
-  // ===== END World 10 =====
-
-  /* ===== World 11 (Winter Games): the Winter Olympics world, world index 10 (js/levels/world11/). ===== */
-  // ===== END World 11 =====
-
-  /* ===== World 12 (Grand Finale, team boss): one big boss level, 12-1 The Grand Collector (mode 'collector',
-     js/levels/world12/grand-collector.js). It stays the last level in LEVELS. Each room is one phase of the fight, run by GC_PHASES[room.phase].
+  /* ===== World 10 (Collector's Vault, team boss): one big boss level, 10-1 The Grand Collector (mode 'collector',
+     js/levels/world10/grand-collector.js). Gavyn's rule: a boss world every 10 worlds (10, 20, ...). Each room is one phase of the fight, run by GC_PHASES[room.phase].
      Room fields the core reads: title, tip, phase, pieces (the world numbers this phase wins back, in order),
      look (the world index whose colours the room uses; theme adds to them), act (labels per player), legend, map.
      Each phase builder edits only its own room block below (between its BEGIN and END lines). ===== */
-  { name: 'The Grand Collector', world: 11, kind: 'team', mode: 'collector', ownHUD: true, noFalls: true,
+  { name: 'The Grand Collector', world: 9, kind: 'team', mode: 'collector', ownHUD: true, noFalls: true,
     act: { label: 'act' },
     tip: 'A giant robot took a piece of every world! Team up and win all nine back.',
     switches: {}, signs: [],
@@ -2766,6 +2746,26 @@ const LEVELS = [
       // ----- END 10-1 room 4 -----
     ],
   },
+
+  /* ===== World 11 (Summer Games, mixed): the Summer Olympics world, world index 10 (js/levels/world11/). Gavyn's picks and
+     order: 11-1 Synchro Diving (team), 11-2 Tandem Velodrome (team), 11-3 Hurdle Dash (versus), 11-4 Javelin Throw (versus).
+     Each level's def sits between its own BEGIN/END lines. world: 10 ===== */
+  // ----- BEGIN 11-1 Synchro Diving (mode 'dive', js/levels/world11/synchro-diving.js) -----
+  // ----- END 11-1 Synchro Diving -----
+  //
+  // ----- BEGIN 11-2 Tandem Velodrome (mode 'tandem', js/levels/world11/tandem-velodrome.js) -----
+  // ----- END 11-2 Tandem Velodrome -----
+  //
+  // ----- BEGIN 11-3 Hurdle Dash (mode 'hurdles', js/levels/world11/hurdle-dash.js) -----
+  // ----- END 11-3 Hurdle Dash -----
+  //
+  // ----- BEGIN 11-4 Javelin Throw (mode 'javelin', js/levels/world11/javelin-throw.js) -----
+  // ----- END 11-4 Javelin Throw -----
+  //
+  // ===== END World 11 =====
+
+  /* ===== World 12 (Winter Games): the Winter Olympics world, world index 11 (js/levels/world12/). ===== */
+  // ===== END World 12 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -2799,16 +2799,16 @@ const WORLDS = [
   { name: 'Great Escapes', blurb: 'Volcanoes, quakes, glaciers and ash clouds: escape them together!',
     theme: { skyTop: '#f2a477', skyBot: '#ffe6bd', hillFar: '#c9a08e', hillNear: '#a98272', sun: 'rgba(255, 236, 180, 0.95)', sunGlow: 'rgba(255, 180, 120, 0.38)',
       stone: '#5d4b5f', stoneLight: '#705c73', stoneEdge: '#3e3143', grass: '#a9d870', grassDark: '#6a9c45', plank: '#d39a62', plankDark: '#8a5a32', rope: '#f0d08a', ropeDark: '#7a5432' } },
-  // World 10: the Summer Olympics (hidden until it has levels)
+  // World 10: a boss world (Gavyn: a boss level every 10 worlds), one big boss level (a dusky purple and brass junk vault; each phase also takes the look of an earlier world)
+  { name: "Collector's Vault", blurb: 'A giant robot stole a piece of every world. Win them all back together!',
+    theme: { skyTop: '#3d2f6e', skyBot: '#e3a978', hillFar: '#6b5294', hillNear: '#56407c', sun: 'rgba(255, 222, 160, 0.92)', sunGlow: 'rgba(255, 190, 120, 0.32)',
+      stone: '#55467a', stoneLight: '#685894', stoneEdge: '#372c58', grass: '#d9b55a', grassDark: '#a37f30', plank: '#c9955a', plankDark: '#7d5530', rope: '#f0c75e', ropeDark: '#7a5520' } },
+  // World 11: the Summer Olympics (hidden until it has levels)
   { name: 'Summer Games', blurb: 'Dive, pedal, hurdle and throw: go for gold together!',
     theme: { skyTop: '#4fb6f0', skyBot: '#e9f8ff', hillFar: '#9fd4a0', hillNear: '#7cc27e', sun: 'rgba(255, 246, 190, 0.96)', sunGlow: 'rgba(255, 222, 140, 0.4)',
       stone: '#3f5a86', stoneLight: '#4f6c9c', stoneEdge: '#2b3f63', grass: '#8fdc6a', grassDark: '#4fa24a', plank: '#f0c070', plankDark: '#9a6a2e', rope: '#ffe08a', ropeDark: '#8a6420' } },
-  // World 11: the Winter Olympics (hidden until it has levels)
+  // World 12: the Winter Olympics (hidden until it has levels)
   { name: 'Winter Games', blurb: 'Winter Olympics fun for two!', theme: {} },
-  // the finale: one big boss level (a dusky purple and brass junk vault; each phase also takes the look of an earlier world)
-  { name: 'Grand Finale', blurb: 'A giant robot stole a piece of every world. Win them all back together!',
-    theme: { skyTop: '#3d2f6e', skyBot: '#e3a978', hillFar: '#6b5294', hillNear: '#56407c', sun: 'rgba(255, 222, 160, 0.92)', sunGlow: 'rgba(255, 190, 120, 0.32)',
-      stone: '#55467a', stoneLight: '#685894', stoneEdge: '#372c58', grass: '#d9b55a', grassDark: '#a37f30', plank: '#c9955a', plankDark: '#7d5530', rope: '#f0c75e', ropeDark: '#7a5520' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);

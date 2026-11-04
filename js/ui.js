@@ -377,7 +377,7 @@ function showWorldDone(w) {
 function showFinal() {
   G.mode = 'final';
   setActUI(false); setLegend(null);
-  const all = resultRows(LEVELS.map((l, i) => i)), fl = all.tot.showFalls, beat = !!G.results[LEVELS.length - 1];
+  const all = resultRows(LEVELS.map((l, i) => i)), fl = all.tot.showFalls, beat = !!G.results[LEVELS.findIndex(l => l.mode === 'collector')];
   const rows = liveWorlds().flatMap(w => [`<tr class="wrow"><td colspan="${fl ? 4 : 3}">World ${w + 1}: ${esc(WORLDS[w].name)}</td></tr>`].concat(resultRows(worldLevels(w), fl).rows));
   // one line per world up top; every level's row folds away below it (a long table on a phone otherwise)
   const worldRows = liveWorlds().map(w => {

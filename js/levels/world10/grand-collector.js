@@ -1,7 +1,7 @@
-/* Pip & Bo - Level 12-1 The Grand Collector (team boss, World 12 Grand Finale). */
+/* Pip & Bo - Level 10-1 The Grand Collector (team boss, World 10 Collector's Vault). */
 'use strict';
 
-/* ===== The Grand Collector (12-1, mode 'collector', team) =====
+/* ===== The Grand Collector (10-1, mode 'collector', team) =====
    A big, goofy robot took a piece of every world and keeps them in his glass belly-jar. The level is one boss fight in
    four phases (one room each). Each phase borrows an earlier world's look and tricks, and every hit wins a piece back.
    He is never hurt: hits make him wobble and pop his monocle. At the end he naps, wakes up friendly, waves, and every

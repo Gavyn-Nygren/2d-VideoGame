@@ -15,6 +15,7 @@ Demo: https://claude.ai/artifact/3KFgRXoujADJ9PMR1rTErY
 - Publish each finished world to the same demo link, push it to this repo, and update the README world list.
 - Build each new world or major feature in a fresh thread, briefed to read this file first.
 - 1-player mode (Nov 2026): one person plays Pip or Bo and the computer plays the other. In team levels the computer is a helpful teammate; in versus levels it is the opponent (Easy, Normal or Hard). Every new level needs a computer brain too (see "Computer partner" below).
+- A boss world every 10 worlds (Gavyn, Nov 2026): World 10 is the Grand Collector, World 20 is the next boss, and so on. Worlds 11 (Summer Games) and 12 (Winter Games) come after World 10.
 
 ## Controls
 
@@ -94,18 +95,17 @@ Famous natural disasters from history, kept light and cartoony: nobody gets hurt
 - **9-4 Krakatoa Ash Run**: Ash hides the way; one clears a path with a fan, the other leads (Gavyn). Thick ash is drawn over the level. The fanner holds the action (fan) to blow a cone of ash away and blow off ash drifts; the leader follows the footprints, pulls levers (pull) that open bamboo gates and drop rope bridges for the fanner, and presses the action elsewhere to shout "This way!". At windsock gaps (7 tiles) only the fanner's gust carries the leader across (an updraft while over the gap, so a tap jump or walk-off floats too). Roles swap every room: Jungle Trail, Lava Rocks, Cliff Path, Beach to the Ship. Camps are checkpoints; hold ▼ 1 s to go back to camp. The act labels switch per role every room. Help: quick nudges at gaps and drifts, a parrot with hints, a gold Super gust after 2 misses at a gap, a gold Sea breeze when stuck. Lava is "Toasty toes!" here (9-1 says "Hot foot!").
 - Every World 9 level was bot-tested on keyboard, a stubbed controller and touch (844x390 and 390x844), and with solo, idle and button-mashing bots: none can be cleared by one player, and none gets stuck. Bot times for a perfect pair: 9-1 about 50 s, 9-2 about 88 s, 9-3 about 172 s, 9-4 about 51 s; slower human-like bots take 2-4.5 min. Real playtests may show the medal limits need tuning.
 
-### World 12: Grand Finale (team boss)
-(It was World 10 until the Summer and Winter worlds were added before it, Nov 2026.)
-One big boss level (Gavyn picked "The Grand Collector"); the world name is Claude's pick. A goofy brass-and-purple robot took a piece of every world and keeps them in his glass belly-jar. The 9 pieces are his health bar (a HUD strip, top centre). He is never hurt: hits make him wobble and pop his monocle. At the end he naps, wakes up friendly, waves, and every piece flies home.
-- **12-1 The Grand Collector**: 4 rooms, one phase each, every phase borrowing an earlier world's look and tricks. Every hit needs both players, and jobs swap inside each phase ("Swap jobs!", badges, per-role act labels).
+### World 10: Collector's Vault (team boss)
+One big boss level (Gavyn picked "The Grand Collector"); the world name is Claude's pick (it was "Grand Finale" until Gavyn asked for a rename in Nov 2026, since more worlds come after it). A goofy brass-and-purple robot took a piece of every world and keeps them in his glass belly-jar. The 9 pieces are his health bar (a HUD strip, top centre). He is never hurt: hits make him wobble and pop his monocle. At the end he naps, wakes up friendly, waves, and every piece flies home.
+- **10-1 The Grand Collector**: 4 rooms, one phase each, every phase borrowing an earlier world's look and tricks. Every hit needs both players, and jobs swap inside each phase ("Swap jobs!", badges, per-role act labels).
   - **Castle Cannons** (7-1): the loader brings powder and a ball, the gunner aims and fires at his wall, then his belly. Pieces 7, 2.
   - **Jackpot Reels** (8-3): the stopper stops reels from the deck below, the runner hops up them; the top cherry bounces the runner onto his hat (pop the dome, then bop the button). Pieces 8, 3.
   - **Hot Floor Climb** (5-4, 9-1): buttons build steps in the partner's colour while cartoon lava rises; turn the steam valves together. Pieces 5, 9.
   - **Grand Finale** (4-3, 6-2): set and spike his balls back (whoever spiked sets next), then pull his plug together. Pieces 4, 6, 1.
 - Soft failure only: his tosses and claw are telegraphed and cause a "Bonk!" (counted, never death). He waits during cards, cutscenes, celebrations and when nobody plays for 10 s. Gold help per phase (Lucky aim, Lucky slow-mo / magnet / hold, Cool breeze, Super steps, Big mitts, Floaty balls, Magnet balls, Super grip).
 - Fairness rules from QA: in Room 1 a key held from before a swap is ignored until let go (or 0.4 s). In Room 2 the low good reels stay stopped after a dome pop, so a miss costs one climb, not all of it. In Room 3 the checkpoint never rises above your own button or valve floor, the lava never rises past floor 3, a hint says "Drop down to your button!" when you climb too high, and Super steps wait while someone stands under them. In Room 4 the ball rally is "BOING!" and "N more hits!", fast whiffs add a short lock (so mashing is slow), and the plug pull is tuned so a pair wins in about 10-13 s.
-- Hints, HUD and cards: the per-room keys in the top legend and the in-world hints follow each player's own device (keyboard, controller or touch). The news line, health strip and pills fade while a player is under them. The results card is 4 tiles and 1 line, with no Falls tile. The ending is about 6.5 s (hops and confetti), and beating this last level turns the final card into "The end" ("You beat the Grand Collector").
-- Code: one file, `js/levels/world12/grand-collector.js`, in marked sections (GC CORE, then GC PHASE 1-4). Each room def names its `phase`; the core owns `MODES.collector` and calls `GC_PHASES[phase]` hooks. R restarts the whole level from phase 1.
+- Hints, HUD and cards: the per-room keys in the top legend and the in-world hints follow each player's own device (keyboard, controller or touch). The news line, health strip and pills fade while a player is under them. The results card is 4 tiles and 1 line, with no Falls tile. The ending is about 6.5 s (hops and confetti), and once he is beaten the final card (after the last level of the game) says "The end" ("You beat the Grand Collector"; `showFinal` finds him by `mode === 'collector'`).
+- Code: one file, `js/levels/world10/grand-collector.js`, in marked sections (GC CORE, then GC PHASE 1-4). Each room def names its `phase`; the core owns `MODES.collector` and calls `GC_PHASES[phase]` hooks. R restarts the whole level from phase 1.
 - Bot times: perfect pair about 3:00, good pair 4:18-4:58 (phases about 55-74, 51-81, 52-58, 57-102 s), human-like parent + kid bots 4:51-5:40. Trophy: Gold up to 5:30 and 5 bonks, Silver up to 9:00 and 14 bonks. Real playtests may show these need tuning.
 
 ## How the game is built
@@ -176,6 +176,6 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 - Then push to `main` here and update the README's world list and this file.
 
 ## Open questions for Gavyn
-- World 9 is called "Great Escapes" and World 10 "Grand Finale" (Claude's picks). Keep them or rename them?
+- World 9 is called "Great Escapes" and World 10 "Collector's Vault" (Claude's picks). Keep them or rename them?
 - Crown Keep (2-4) is one 90-second game, not best of 3/5/7. It was built before that rule. Should it become a best-of match?
 - Boost rings exist in the golf engine but no hole uses them. Want a hole with rings?
