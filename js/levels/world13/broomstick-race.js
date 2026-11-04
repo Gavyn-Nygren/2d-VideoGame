@@ -12,7 +12,7 @@
    First through the giant jack-o'-lantern gate wins the round. Crossings 0.02 s apart or closer are a dead heat (replayed).
    Shared camera: it follows the pair, never lets the leader off the right side, and the left edge carries a trailer along.
    Catch-up help, always gold and announced: Tailwind (the trailer flies a bit faster while far behind) and, for a player
-   2+ rounds behind, a Gold star ready at the start of every round.
+   2+ rounds behind, a Gold star ready at the start of every round (its zoom is bigger and longer: +400 for 1.6 s).
    Round 1 is a plain course; rounds 2-5 are a fresh shuffle of Windy Night, Foggy Hollow, Ring Trains and Bat Swarm; a
    sudden-death replay (2 ties in a row) is a short Photo Finish sprint. Every course is built at the start of its round.
    Every top-level name is prefixed broom / BROOM, every sound is Sfx.extra.broom*. Rule randomness only from
@@ -27,7 +27,7 @@ const BROOM = {
   // rings
   ringIn: 30, ringOut: 46, ringAdd: 115, burstMax: 260, burstK: 1.15, clinkSlow: 25, trainAdd: 110,
   // speed stars + zoom
-  starR: 26, zoomAdd: 300, zoomT: 1.15, zoomRamp: 0.3,
+  starR: 26, zoomAdd: 300, zoomT: 1.15, zoomRamp: 0.3, goldZoomAdd: 400, goldZoomT: 1.6, // a Gold star (catch-up) zooms bigger and longer
   // bats
   batR: 12, batSlow: 0.5, batMin: 120, spinT: 0.75, batCool: 1.2, batHitT: 1.1, batKnock: 170,
   // rooftops, the other broom
@@ -54,7 +54,6 @@ const BROOM_COLS = {
   bat: '#6b4c9a', batDk: '#4a3270', batWing: '#5b3f8c', pumpkin: '#ff8a2a', pumpkinDk: '#c95a12', stem: '#5a8a3a',
   hat: '#3a2a66', hatDk: '#241a44', stick: '#8a5833', straw: '#e8c36a', strawDk: '#b08a3a',
 };
-const broomP = () => G.mst.P || BROOM;
 // looks-only randomness (sparkles, smoke): never MODES.broom.rand, so the rules' random sequence doesn't depend on the looks
 let broomVS = 20261031;
 const broomVR = () => { broomVS = (Math.imul(broomVS, 1664525) + 1013904223) >>> 0; return broomVS / 4294967296; };
@@ -220,12 +219,12 @@ function broomBuild(twist, R) {
 /* ---------- the riders ---------- */
 function broomMakeRider(k) {
   const P = BROOM;
-  return { id: k, x: P.startX, y: P.startY[k], px: P.startX, vy: 0, base: P.cruise, burst: 0, zoomT: 0, star: 0, spin: 0, wob: 0,
+  return { id: k, x: P.startX, y: P.startY[k], px: P.startX, vy: 0, base: P.cruise, burst: 0, zoomT: 0, zoomAdd: BROOM.zoomAdd, star: 0, spin: 0, wob: 0,
     tail: 0, roofCD: 0, bumpCD: 0, finT: null, v: P.cruise,
     // looks only (never read by the rules)
     tilt: 0, popT: 9, pop: '', popCol: '#fff', trailT: 0, loopT: -1, flap: 0, holdT: 0, tailSaid: false, spinA: 0 };
 }
-const broomSpeed = r => r.base + r.burst + (r.zoomT > 0 ? BROOM.zoomAdd * Math.min(1, r.zoomT / BROOM.zoomRamp) : 0) + r.tail;
+const broomSpeed = r => r.base + r.burst + (r.zoomT > 0 ? r.zoomAdd * Math.min(1, r.zoomT / BROOM.zoomRamp) : 0) + r.tail;
 function broomVyMax(v) { const P = BROOM; return clamp(P.vyMax0 - P.vyK * (v - 180), P.vyMin, P.vyMax0); }
 function broomPop(r, text, col) { r.pop = text; r.popCol = col || '#ffffff'; r.popT = 0; }
 
@@ -270,7 +269,7 @@ function broomFly(st, r, inp, dt, live) {
 function broomZoom(st, r) {
   if (!r.star) { if (r.noStarT <= 0 || r.noStarT === undefined) { Sfx.play('broomNope', r.id); r.noStarT = 0.4; } return; }
   const gold = r.star === 2;
-  r.star = 0; r.zoomT = BROOM.zoomT; r.spin = 0; r.holdT = 0;
+  r.star = 0; r.zoomT = gold ? BROOM.goldZoomT : BROOM.zoomT; r.zoomAdd = gold ? BROOM.goldZoomAdd : BROOM.zoomAdd; r.zoomGold = gold; r.spin = 0; r.holdT = 0;
   st.stat.zooms[r.id]++;
   broomPop(r, gold ? 'GOLD ZOOM!' : 'ZOOM!', C.gold);
   Sfx.play('broomZoom', r.id); rumble(r.id, 0.25, 0.5, 140);
@@ -573,14 +572,18 @@ MODES.broom = {
   drawTop() { broomDrawTop(); },
   hud() { broomHud(); },
   stats() {
-    const s = G.mst.stat, f = t => (t == null ? '–' : t.toFixed(1));
+    const s = G.mst.stat, f = t => (t == null ? '–' : t.toFixed(1)), g = t => (t == null ? '–' : String(Math.round(t)));
     const out = [
       { label: 'Clean rings', values: s.rings.slice() },
       { label: 'Stars zoomed', values: s.zooms.slice() },
       { label: 'Bat squeaks', values: s.squeaks.slice() },
-      { label: 'Best secs', values: [f(s.best[0]), f(s.best[1])] },
+      // whole seconds here ("22.1 – 20.5" wraps onto two lines in a desktop tile); the line below gives the tenths
+      { label: 'Best secs', values: [g(s.best[0]), g(s.best[1])] },
     ];
-    if (s.closest) out.push(s.closest.m < 0.25 ? 'Closest finish: ' + NAMES[s.closest.w] + ' by a whisker!' : 'Closest finish: ' + NAMES[s.closest.w] + ' by ' + s.closest.m.toFixed(1) + ' s.');
+    const fast = s.best[0] == null && s.best[1] == null ? null : s.best[1] == null || (s.best[0] != null && s.best[0] <= s.best[1]) ? 0 : 1;
+    const fastTxt = fast == null ? '' : ' Fastest: ' + NAMES[fast] + ', ' + f(s.best[fast]) + ' s.';
+    if (s.closest) out.push((s.closest.m < 0.25 ? 'Closest finish: ' + NAMES[s.closest.w] + ' by a whisker!' : 'Closest finish: ' + NAMES[s.closest.w] + ' by ' + s.closest.m.toFixed(1) + ' s.') + fastTxt);
+    else if (fastTxt) out.push(fastTxt.trim());
     const tr = s.trains[0] + s.trains[1], bw = s.bowled[0] + s.bowled[1];
     if (tr > 0) out.push('Whole ring trains: ' + tr + '!');
     else if (bw > 0) out.push('Bats bowled over by a zoom: ' + bw + ' (they loved it).');
@@ -772,14 +775,14 @@ function broomDrawWorld() {
   for (const s of st.vis.smoke) { const k = s.t / 2.4; ctx.fillStyle = 'rgba(200,185,225,' + (0.32 * (1 - k)) + ')'; circle(s.x + k * 30 + Math.sin(k * 6) * 5, s.y - k * 70, (5 + k * 14) * s.s); ctx.fill(); }
   for (const t of c.trees) if (t.x + t.r > cam.x - 10 && t.x - t.r < cam.x + W + 10) broomDrawTree(t);
   for (const h of c.houses) if (h.x + h.w > cam.x - 20 && h.x < cam.x + W + 20) broomDrawHouse(h);
-  // the street with a little fence and pumpkins
+  // the street with a little fence
   ctx.fillStyle = '#241838'; ctx.fillRect(cam.x - 10, BROOM.street, W + 20, H - BROOM.street);
   ctx.fillStyle = '#33244a'; ctx.fillRect(cam.x - 10, BROOM.street, W + 20, 4);
   ctx.strokeStyle = '#463560'; ctx.lineWidth = 3;
   const fx0 = Math.floor(cam.x / 22) * 22;
   for (let x = fx0; x < cam.x + W + 22; x += 22) { ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x, H - 18); ctx.stroke(); }
   ctx.beginPath(); ctx.moveTo(cam.x - 10, H - 12); ctx.lineTo(cam.x + W + 10, H - 12); ctx.stroke();
-  for (let k = Math.floor(cam.x / 260); k * 260 < cam.x + W + 40; k++) if (broomHash(k, 77) > 0.4) broomDrawPumpkin(k * 260 + 70, H - 14, 7, broomHash(k, 78) > 0.5);
+  // (no pumpkins along the fence: that band is under the HUD, and one peeking past the course map looked like part of it)
   // the start sign
   if (BROOM.startX + 60 > cam.x - 80 && BROOM.startX < cam.x + W) {
     const sx = BROOM.startX + 48, gy = broomGroundY(c, sx);
@@ -885,9 +888,10 @@ function broomDrawRider(st, r) {
     ctx.lineCap = 'butt';
   }
   if (r.zoomT > 0) {
-    ctx.fillStyle = 'rgba(255,197,61,0.28)'; ctx.beginPath(); ctx.ellipse(-6, 0, 40, 24, 0, 0, Math.PI * 2); ctx.fill();
+    const gz = r.zoomGold ? 1.3 : 1; // a Gold zoom: a bigger aura and more speed lines
+    ctx.fillStyle = r.zoomGold ? 'rgba(255,214,90,0.36)' : 'rgba(255,197,61,0.28)'; ctx.beginPath(); ctx.ellipse(-6, 0, 40 * gz, 24 * gz, 0, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = 'rgba(255,240,180,0.85)'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-    for (const oy of [-18, -4, 10]) { const L = 30 + broomHash(Math.floor(G.clock * 40), oy + 30) * 30; ctx.beginPath(); ctx.moveTo(-58, oy); ctx.lineTo(-58 - L, oy); ctx.stroke(); }
+    for (const oy of r.zoomGold ? [-26, -12, 2, 16] : [-18, -4, 10]) { const L = 30 + broomHash(Math.floor(G.clock * 40), oy + 30) * 30; ctx.beginPath(); ctx.moveTo(-58, oy); ctx.lineTo(-58 - L, oy); ctx.stroke(); }
     ctx.lineCap = 'butt';
   }
   ctx.rotate(rot);
@@ -1078,7 +1082,7 @@ function broomDrawTop() {
 function broomKeyLabel(id, what) {
   let k = 'kb'; try { k = actKey(id); } catch (e) { k = 'kb'; }
   if (what === 'zoom') return k === 'pad' ? glyph('a') + ' zoom!' : k === 'touch' ? 'Tap zoom!' : (id === 0 ? 'F' : '/') + ' zoom!';
-  return k === 'pad' ? 'stick fly · ' + glyph('a') + ' zoom' : k === 'touch' ? '▲ ▼ fly · zoom button' : id === 0 ? 'W S fly · D fast · F zoom' : '↑ ↓ fly · → fast · / zoom';
+  return k === 'pad' ? 'stick ▲▼ fly · ▶ fast · ' + glyph('a') + ' zoom' : k === 'touch' ? '▲ ▼ fly · ▶ fast · zoom button' : id === 0 ? 'W S fly · D fast · F zoom' : '↑ ↓ fly · → fast · / zoom';
 }
 function broomChip(label, x, y, big, col) {
   const fs = big ? 18 : 13, h = big ? 30 : 22;
@@ -1094,7 +1098,7 @@ function broomHud() {
   // bottom corners: each player's star slot
   for (const r of st.riders) {
     const left = r.id === 0, sz = big ? 1.45 : 1, pw = 98 * sz, ph = 34 * sz, y = H - 8 - ph, x = left ? 12 : W - 12 - pw;
-    ctx.fillStyle = 'rgba(28,26,54,0.74)'; rr(x, y, pw, ph, 12); ctx.fill();
+    ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(x, y, pw, ph, 12); ctx.fill();
     if (r.star === 2 || r.tail > BROOM.tailShow) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x, y, pw, ph, 12); ctx.stroke(); }
     text(NAMES[r.id], left ? x + 12 * sz : x + pw - 12 * sz, y + ph / 2 + 0.5, 17 * sz, PCOL[r.id], left ? 'left' : 'right');
     const sx = left ? x + pw - 22 * sz : x + 22 * sz, sy = y + ph / 2;
@@ -1104,10 +1108,13 @@ function broomHud() {
   }
   // bottom centre: the course map, start to pumpkin, with both brooms
   {
-    const mw = big ? 360 : 380, mh = big ? 30 : 22, x0 = W / 2 - mw / 2, y = H - 8 - (big ? 49 : 34) / 2 - mh / 2;
-    ctx.fillStyle = 'rgba(28,26,54,0.66)'; rr(x0, y, mw, mh, mh / 2); ctx.fill();
+    // it sits low in the street band, below the doorstep pumpkins, and is nearly solid so the street doesn't show through
+    const mw = big ? 360 : 380, mh = big ? 28 : 22, x0 = W / 2 - mw / 2, y = H - (big ? 4 : 5) - mh;
+    ctx.fillStyle = 'rgba(28,26,54,0.92)'; rr(x0, y, mw, mh, mh / 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(246,239,223,0.18)'; ctx.lineWidth = 1.5; rr(x0, y, mw, mh, mh / 2); ctx.stroke();
     const a = x0 + 18, b = x0 + mw - 28, cy = y + mh / 2, len = st.c.len, sx = BROOM.startX;
     ctx.strokeStyle = 'rgba(246,239,223,0.35)'; ctx.lineWidth = 3; ctx.setLineDash([2, 6]); ctx.beginPath(); ctx.moveTo(a, cy); ctx.lineTo(b, cy); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(246,239,223,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a - 6, cy - mh * 0.28); ctx.lineTo(a - 6, cy + mh * 0.28); ctx.stroke(); // the start line
     ctx.save(); ctx.translate(b + 10, cy); ctx.scale(big ? 1.2 : 0.9, big ? 1.2 : 0.9); broomDrawPumpkin(0, 1, 8, true); ctx.restore();
     for (const r of st.riders) {
       const k = clamp((r.x - sx) / (len - sx), 0, 1), px = a + (b - a) * k, py = cy + (r.id ? 3 : -3);
@@ -1122,21 +1129,21 @@ function broomHud() {
   }
   // one live chip, top right: a tailwind (gold), or what's coming up (gusts, fog, a bat wall)
   if (m.phase === 'live') {
-    let chip = null;
+    // top right: what's coming up (gusts, fog, a bat wall) first, then a tailwind (gold) under it
+    const chips = [], ahead = cam.x + W;
+    if (st.c.gusts.some(g => g.x0 > cam.x + W * 0.4 && g.x0 < ahead + 200)) chips.push({ text: 'Gusts ahead!', col: '#bfe8ff' });
+    else if (st.c.fogs.some(f => f.x0 > cam.x + W * 0.4 && f.x0 < ahead + 300)) chips.push({ text: 'Fog ahead!', col: '#d9c8ff' });
+    else if (st.c.walls.some(wl => wl.x > cam.x + W * 0.5 && wl.x < ahead + 300)) chips.push({ text: 'Bat swarm ahead!', col: '#e0c8ff' });
     const tr = st.riders.find(r => r.tail > BROOM.tailShow);
-    if (tr) chip = { text: 'Tailwind for ' + NAMES[tr.id] + '!', col: C.gold };
-    else {
-      const ahead = cam.x + W;
-      if (st.c.gusts.some(g => g.x0 > cam.x + W * 0.4 && g.x0 < ahead + 200)) chip = { text: 'Gusts ahead!', col: '#bfe8ff' };
-      else if (st.c.fogs.some(f => f.x0 > cam.x + W * 0.4 && f.x0 < ahead + 300)) chip = { text: 'Fog ahead!', col: '#d9c8ff' };
-      else if (st.c.walls.some(wl => wl.x > cam.x + W * 0.5 && wl.x < ahead + 300)) chip = { text: 'Bat swarm ahead!', col: '#e0c8ff' };
-    }
-    if (chip) {
+    if (tr) chips.push({ text: 'Tailwind for ' + NAMES[tr.id] + '!', col: C.gold });
+    let cy = null;
+    for (const chip of chips) {
       const fs = big ? 20 : 13, h = big ? 36 : 28;
       ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
       const w = ctx.measureText(chip.text).width + (big ? 36 : 28), x1 = W - 14, box = G.matchHudBox;
-      const y = box && x1 - w < box.x1 + 8 ? box.y1 + 6 : 12;
+      const y = cy != null ? cy : box && x1 - w < box.x1 + 8 ? box.y1 + 6 : 12;
       pill(x1 - w, y, w, h); text(chip.text, x1 - (big ? 18 : 14), y + h / 2 + 0.5, fs, chip.col, 'right', 'body');
+      cy = y + h + 6;
     }
     // a star held a while: a reminder chip over that broom, in its player's own keys (never for the computer)
     for (const r of st.riders) if (r.star && r.holdT > 3.5 && r.holdT < 9 && !broomCpu(r.id) && Math.sin(G.clock * 5) > -0.6) {

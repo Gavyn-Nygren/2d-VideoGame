@@ -15,10 +15,12 @@
      is coming (Hard), after a short wait (Normal), or whenever it remembers (Easy).
      What it reads: the course's rings, stars, bats' flight paths and gusts, only as far ahead as the screen shows. It
      never reads the other player's keys. Easy reacts slowly, aims loosely, misses some bats, holds ▶ only part of the
-     time and sometimes daydreams; Hard reacts in about 0.1 s and plans every bat. */
+     time and sometimes daydreams; Hard reacts in about 0.1 s and plans every bat. Normal (the default) sits in between
+     on purpose: about 0.3 s to react, ▶ about two thirds of the time, sees most bats, so a kid still wins some rounds
+     (a scripted kid won about 1 round in 4 against it, and a sharp grown-up beats it most matches). */
   const SK = {
     easy: { react: 0.5, noise: 40, look: 320, batSee: 0.4, margin: 34, fastP: 0.42, slowSmart: false, starGreed: 0.35, zoomMin: 2.5, zoomMax: 6, wander: 0.08 },
-    normal: { react: 0.22, noise: 14, look: 470, batSee: 0.85, margin: 44, fastP: 0.88, slowSmart: true, starGreed: 0.75, zoomMin: 0.6, zoomMax: 2.2, wander: 0.02 },
+    normal: { react: 0.32, noise: 24, look: 420, batSee: 0.6, margin: 40, fastP: 0.64, slowSmart: true, starGreed: 0.6, zoomMin: 1, zoomMax: 3, wander: 0.04 },
     hard: { react: 0.1, noise: 4, look: 600, batSee: 1, margin: 50, fastP: 1, slowSmart: true, starGreed: 1, zoomMin: 0.15, zoomMax: 0.6, wander: 0 },
   };
   const skOf = s => (s <= 0.4 ? SK.easy : s < 0.9 ? SK.normal : SK.hard);
