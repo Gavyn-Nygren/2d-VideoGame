@@ -30,6 +30,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 9. **Great Escapes** (famous natural disasters, kept cartoony): Pompeii Escape, San Francisco 1906 Quake, Ice Age Glacier, Krakatoa Ash Run
 10. **Collector's Vault** (one big boss level): The Grand Collector
 11. **Summer Games** (summer sports): Synchro Diving, Tandem Velodrome, Hurdle Dash, Javelin Throw
+12. **Winter Games** (winter sports): Curling, Bobsled, Ski Jump, Ice Hockey
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 

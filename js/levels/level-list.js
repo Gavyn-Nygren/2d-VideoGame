@@ -2900,7 +2900,107 @@ const LEVELS = [
   //
   // ===== END World 11 =====
 
-  /* ===== World 12 (Winter Games): the Winter Olympics world, world index 11 (js/levels/world12/). ===== */
+  /* ===== World 12 (Winter Games): the Winter Games world, world index 11 (js/levels/world12/). ===== */
+  // ----- BEGIN 12-1 Curling -----
+  // 12-1: top-down curling (MODES.curling, js/levels/world12/curling.js). One throws, one sweeps; jobs swap every end.
+  // Room fields the mode reads: title, tip, thrower (0 Pip / 1 Bo), act, stars [2-star points, 3-star points],
+  // guards [[x, y, 'snowman' | 'penguin']], luckyGuards / luckyGuards2 (the guards on the 1st / later gold-help replays), robots [[x, y]],
+  // snow [[x0, y0, x1, y1]] (all in px; the house is at 790, 300).
+  { name: 'Curling', world: 11, kind: 'team', mode: 'curling', ownStep: true, ownHUD: true, noFalls: true, noTime: true,
+    act: { label: 'throw', labels: ['throw', 'sweep'] },
+    legend: { pip: '<kbd>W</kbd><kbd>S</kbd> aim <kbd>A</kbd><kbd>D</kbd> curl · or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> skate',
+      bo: '<kbd>↑</kbd><kbd>↓</kbd> aim <kbd>←</kbd><kbd>→</kbd> curl · or arrows skate',
+      pad: 'stick aims, curls or skates, <span data-glyph="a"></span> or' },
+    tip: 'One slides the stone, one skates along and sweeps in front of it so it goes farther. Swap every end.',
+    switches: {}, signs: [],
+    map: Array.from({ length: 18 }, (_, y) => (y === 10 ? '.1....2' + '.'.repeat(25) : '.'.repeat(32))),
+    rooms: [
+      { title: 'Draw to the Button', thrower: 0, stars: [5, 8], act: { label: 'throw', labels: ['throw', 'sweep'] },
+        tip: 'Pip throws: aim, hold to charge, let go. Bo skates beside the stone and holds the action to sweep!' },
+      { title: 'Snowman Guards', thrower: 1, stars: [5, 8], act: { label: 'throw', labels: ['sweep', 'throw'] },
+        tip: 'Bo throws, Pip sweeps. Snowmen guard the house: aim beside them and curl the stone around!',
+        guards: [[640, 300, 'snowman'], [700, 380, 'penguin']], luckyGuards: [[640, 300, 'snowman'], [700, 412, 'penguin']],
+        luckyGuards2: [[640, 244, 'snowman'], [700, 414, 'penguin']] },
+      { title: 'Robot Takeout', thrower: 0, stars: [6, 10], act: { label: 'throw', labels: ['throw', 'sweep'] },
+        tip: 'Pip throws, Bo sweeps. Grumpy robot stones! Throw hard and sweep to knock them out (+2 each).',
+        robots: [[790, 300], [818, 266]] },
+      { title: 'Snowy Patches', thrower: 1, stars: [5, 8], act: { label: 'throw', labels: ['sweep', 'throw'] },
+        tip: 'Bo throws, Pip sweeps. Snow stops the stone! Sweep through it, or sweep a path before the throw.',
+        snow: [[590, 236, 680, 364], [712, 318, 770, 396]] },
+    ],
+  },
+  // ----- END 12-1 Curling -----
+  // ----- BEGIN 12-2 Bobsled -----
+  // 12-2: chase-cam bobsled run (MODES.bobsled, js/levels/world12/bobsled.js). Push off on the beat, hop in, then BOTH lean
+  // into every curve. Pilot (front) steers to rings and calls curves; brakeman (back) brakes for hairpins. Jobs swap every run.
+  // Room fields the mode reads: title, tip, pilot (0 Pip / 1 Bo), par (s, a clean run; medal by the total), act,
+  // course: tokens (sN straight, lN/rN curve, LN/RN big curve, hl/hr hairpin, zlr/zrl S-bend, tN tuck, j jump bump,
+  // o<u> ring at lateral u, F finish), see the file header.
+  { name: 'Bobsled', world: 11, kind: 'team', mode: 'bobsled', ownStep: true, ownHUD: true, noFalls: true,
+    act: { label: 'push', labels: ['push', 'push'] },
+    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> lean <kbd>W</kbd> hop <kbd>S</kbd> tuck', bo: '<kbd>←</kbd><kbd>→</kbd> lean <kbd>↑</kbd> hop <kbd>↓</kbd> tuck',
+      pad: 'stick ◀ ▶ lean, <span data-glyph="a"></span> hop, down tucks,' },
+    tip: 'Push on the beat, hop in, then BOTH lean into every curve! One leaning just wobbles. Jobs swap each run.',
+    switches: {}, signs: [],
+    map: Array.from({ length: 18 }, (_, y) => (y === 15 ? '..1.2' + '.'.repeat(27) : '.'.repeat(32))),
+    rooms: [
+      { title: 'First Run', pilot: 0, par: 48, act: { label: 'push', labels: ['push', 'push'] },
+        tip: 'Pip pilots in front: steer to the rings. Bo brakes. In curves you BOTH lean the way the arrows point!',
+        course: ['s50', 'o0', 's25', 'o-0.6', 's50', 'r70', 's40', 'o0.6', 's50', 'l70', 's50', 't140', 's25', 'r65', 's30', 'o0', 's20', 'o0.6',
+          's50', 'l65', 's50', 'R85', 's30', 'o-0.6', 's25', 'o0', 's50', 'l60', 's60', 'hl', 's25', 'o0.6', 's30', 'F'] },
+      { title: 'Snake Bends', pilot: 1, par: 46, act: { label: 'push', labels: ['push', 'push'] },
+        tip: 'Swap! Bo pilots, Pip brakes. S-bends flip fast: lean one way, then the other. Hop together on bumps!',
+        course: ['s25', 'o-0.5', 's45', 'r65', 's35', 'zlr', 's40', 'o-0.6', 's30', 'o0.5', 's25', 'j', 's35', 'l70', 's30', 'zrl', 's20', 'o0.5', 's20', 't130', 's80',
+          'hr', 's25', 'o-0.6', 's50', 'zlr', 's40', 'R80', 's40', 'F'] },
+      { title: 'Hairpin Hill', pilot: 0, par: 49.5, act: { label: 'push', labels: ['push', 'push'] },
+        tip: 'Pip pilots again. Hairpins! Bo brakes from the first red BRAKE board, then you both lean the way.',
+        course: ['s45', 'l65', 's60', 'hr', 's30', 'o-0.6', 's30', 't130', 's25', 'L85', 's30', 'zrl', 's15', 'o0.5', 's20', 'j', 's50', 'hl', 's25', 'o0.6', 's30',
+          'o-0.4', 's45', 'R85', 's40', 'o0.4', 's45', 'r60', 's40', 'F'] },
+      { title: 'Thunder Run', pilot: 1, par: 54.5, act: { label: 'push', labels: ['push', 'push'] },
+        tip: 'Bo pilots, Pip brakes. The big one: double S-bends, two hairpins, jumps. Push, hop, lean together!',
+        course: ['s45', 'zrl', 's25', 'o0.5', 's30', 'o-0.4', 's45', 'L85', 's30', 'j', 's50', 'hl', 's25', 'o0.6', 's45', 'zlr', 'zrl', 's40', 't120', 's25',
+          'R85', 's30', 'o-0.6', 's30', 'o0', 's30', 'o0.6', 's50', 'l60', 's60', 'hr', 's25', 'o-0.6', 's30', 'F'] },
+    ],
+  },
+  // ----- END 12-2 Bobsled -----
+  // ----- BEGIN 12-3 Ski Jump -----
+  // 12-3: side-view ski jump (MODES.skijump, js/levels/world12/ski-jump.js). One jumps, one runs the wind fans; jobs swap
+  // every jump (2 per hill). Room fields the mode reads: title, tip, hill ('normal' | 'large' | 'night' | 'cliff', geometry
+  // in the mode file), night, rings [jump 1 [[u, height]], jump 2 [...]] (u = px past the take-off lip, height = px above
+  // the snow), stars [2-star points, 3-star points] for the hill's two jumps.
+  { name: 'Ski Jump', world: 11, kind: 'team', mode: 'skijump', ownStep: true, ownHUD: true, noFalls: true, noTime: true,
+    act: { label: 'fan', labels: ['jump', 'fan'] },
+    legend: { pip: 'ski: <kbd>S</kbd> tuck <kbd>W</kbd> jump <kbd>A</kbd><kbd>D</kbd> lean · fans: <kbd>A</kbd><kbd>D</kbd> run',
+      bo: 'ski: <kbd>↓</kbd> tuck <kbd>↑</kbd> jump <kbd>←</kbd><kbd>→</kbd> lean · fans: <kbd>←</kbd><kbd>→</kbd> run',
+      pad: 'stick leans or runs, down tucks, <span data-glyph="a"></span> jumps,' },
+    tip: 'One skis and jumps, one runs the wind fans. Fans push the jumper farther! Swap every jump.',
+    switches: {}, signs: [],
+    map: Array.from({ length: 18 }, (_, y) => (y === 10 ? '.1....2' + '.'.repeat(25) : '.'.repeat(32))),
+    rooms: [
+      { title: 'Normal Hill', hill: 'normal', stars: [200, 260],
+        tip: 'Tuck, jump at the gold edge, keep the needle green. Fan crew: blow as the jumper flies over!' },
+      { title: 'Large Hill', hill: 'large', stars: [175, 215], rings: [[[150, 58], [272, 50]], [[110, 62], [190, 48], [275, 40]]],
+        tip: 'A bigger hill with snowflake rings (+5 each). In the air ◀ leans back to float up, ▶ leans forward to dive.' },
+      { title: 'Night Hill', hill: 'night', night: true, stars: [205, 240], rings: [[], [[120, 50], [190, 58]]],
+        tip: 'The Gust-o-matic blows a headwind by the red fan. Start that fan before the jumper gets there to block it!' },
+      { title: 'Fan Cart Cliff', hill: 'cliff', stars: [230, 270], rings: [[[252, 46]], [[165, 62], [258, 50]]],
+        tip: 'Fly over the snow pit! The fan crew drives a fan cart under the jumper and holds to blow once they fly.' },
+    ],
+  },
+  // ----- END 12-3 Ski Jump -----
+  // ----- BEGIN 12-4 Ice Hockey -----
+  // 12-4: top-down one-on-one ice hockey with a goalie robot in each net (MODES.hockey, js/levels/world12/ice-hockey.js).
+  // Pip defends the left net, Bo the right. Tap = shot, hold = slapshot; no puck = poke check. First to 3 goals or most
+  // at the 60 s bell; a tie at the bell goes to 15 s golden-goal overtime. Rounds 2-5 rotate the twists (see the file).
+  { name: 'Ice Hockey', world: 11, kind: 'versus', mode: 'hockey', ownStep: true,
+    match: { bestOf: 5, roundTime: 60 },
+    act: { label: 'shoot' },
+    legend: { pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> skate', bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> skate',
+      pad: 'stick: skate, <span data-glyph="a"></span> or' },
+    tip: 'Shoot into the far net: tap to shoot, hold for a slapshot. No puck? Poke to steal it!',
+    switches: {}, signs: [],
+    map: Array.from({ length: 18 }, (_, y) => (y === 10 ? '.'.repeat(12) + '1' + '.'.repeat(6) + '2' + '.'.repeat(12) : '.'.repeat(32))) },
+  // ----- END 12-4 Ice Hockey -----
   // ===== END World 12 =====
 ];
 
@@ -2943,8 +3043,10 @@ const WORLDS = [
   { name: 'Summer Games', blurb: 'Dive, pedal, hurdle and throw: go for gold together!',
     theme: { skyTop: '#4fb6f0', skyBot: '#e9f8ff', hillFar: '#9fd4a0', hillNear: '#7cc27e', sun: 'rgba(255, 246, 190, 0.96)', sunGlow: 'rgba(255, 222, 140, 0.4)',
       stone: '#3f5a86', stoneLight: '#4f6c9c', stoneEdge: '#2b3f63', grass: '#8fdc6a', grassDark: '#4fa24a', plank: '#f0c070', plankDark: '#9a6a2e', rope: '#ffe08a', ropeDark: '#8a6420' } },
-  // World 12: the Winter Olympics (hidden until it has levels)
-  { name: 'Winter Games', blurb: 'Winter Olympics fun for two!', theme: {} },
+  // World 12: Winter Games (curling, bobsled, ski jump, ice hockey)
+  { name: 'Winter Games', blurb: 'Slide, sweep, skate and soar: Winter Games for two!',
+    theme: { skyTop: '#8fc8ef', skyBot: '#eef8ff', hillFar: '#d7e9f7', hillNear: '#b9d8ee', sun: 'rgba(255, 250, 232, 0.95)', sunGlow: 'rgba(214, 238, 255, 0.42)',
+      stone: '#5d7fa8', stoneLight: '#7397c0', stoneEdge: '#3e5b82', grass: '#f4fbff', grassDark: '#bcd8ee', plank: '#c9955a', plankDark: '#7d5530', rope: '#e3f1ff', ropeDark: '#56789c' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
