@@ -17,7 +17,7 @@
     react: s > 0.8 ? 0.22 : 0.95 - 0.8 * s,   // notices a call this late: easy 0.67 s, normal 0.39 s, hard 0.22 s (a quick person)
     late: 0.6 * (1 - s),            // chance a call is noticed even later (looked away)
     duty: 0.55 + 0.45 * s,          // share of the time it keeps running (easy runs in fits and starts)
-    lag: 0.36 - 0.26 * s,           // sees you this late
+    lag: Math.max(0.15, 0.36 - 0.26 * s),   // sees you this late (hard 0.15 s, a quick person)
     aim: 50 * (1 - s),              // stands up to this far off the ball (px)
     dawdle: 0.7 * (1 - s),          // short stops per second (none on hard)
     range: 40 + 26 * s + (s > 0.8 ? 14 : 0),   // bumps when you're this close (px between centres; a lunge reaches about 95)
@@ -116,6 +116,8 @@
         tb = cur && score(cur) < score(best) + 50 ? cur : best;
       }
       st.ball = tb;
+      // the next hop's shadow, noticed a moment after it shows (like a lit color)
+      const hopSeen = tb ? cpuLag(st, 'hop' + tb.id, tb.hopTo, sk.react * 0.8) : -1;
 
       // easy and normal stop for a moment now and then
       if (st.dawT > 0) { st.dawT -= dt; return out; }
@@ -132,7 +134,7 @@
           tu = 236 * Math.cos(a); tv = 236 * Math.sin(a);
         } else {
           let a = ang(q.u, q.v);
-          if (P.hop && sk.hopRead && tb.hopTo >= 0) a = RW().pocketA(tb.hopTo);   // the shadow of its next hop
+          if (P.hop && sk.hopRead && hopSeen >= 0) a = RW().pocketA(hopSeen);   // the shadow of its next hop
           tu = 258 * Math.cos(a); tv = 258 * Math.sin(a);
         }
         // a small aiming error, the same for the whole spin (none on hard)

@@ -156,6 +156,11 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 - Brain key: the level's `def.mode`; older levels use `level:<name>` (World 1), `build`, `pong`, `crown`, `golf`. A level with no brain falls back to `follow` (stay near the partner), so a new level works but plays badly until it gets a brain.
 - Skill: `info.skill` is 0.35 / 0.7 / 1. Team brains play well at every skill; versus brains use it for reaction time, aim and mistakes.
 - World 1 approach: the brain works out who does which job (holder or crosser, carrier or rider) from where the partner stands, waits for a person who is slow, and asks for help in a bubble.
+- Every brain was written, then reviewed by a second agent that tried to break it with scripted "people" (who take the computer's job first, wait, wander, go the wrong way) and fixed what it found. Each brain file's header explains its plan.
+- Speech bubbles: short, only in 1-player mode, never while the intro card is up or while the person is away, and a bubble that has been up 4 s rests for 5 s. Bigger on phones. Levels whose players are hidden (golf ball, plinko, car) set `bubbleHidden`. Hints, tips and pills that would tell the person to press keys for the computer say what the computer does instead (`cpuSolo() && cpuOn(id)` checks in the level files); intro and pause tips that name the computer's character get "You play Pip. The computer does Bo's part."
+- Versus balance (computer vs computer, many seeds): no side bias, Hard beats Easy clearly, Easy is beatable by a kid-like scripted player. Hard reacts in about 0.12-0.15 s. Luck-heavy levels (8-2 Roulette) give Hard a smaller edge. Real playtests may still show tuning is needed.
+- Known weak spots: 6-2 Tug of War rounds are mostly decided by the mud dig-in rule, so a fast masher beats Normal; 6-4 Sumo: a player who just keeps hopping beats Hard about 30% of the time; 9-4 Krakatoa: getting past the partner runs on rules of thumb, so unusual partner habits may still find a stall.
+- On phones the computer's touch pad is hidden and only one side gutter is kept, so the game screen is centred. A controller's View button swaps which character the person plays.
 
 ### Testing
 - `window.__pipbo` exposes the game state and functions (`G`, `LEVELS`, `MODES`, `loadLevel`, `step`, `matchRoundEnd`, `pause`, and more) for bot tests.

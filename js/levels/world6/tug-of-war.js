@@ -383,7 +383,10 @@ MODES.tug = {
     if (s.streak[0] + s.streak[1] > 0) out.push({ label: 'Best streak', values: s.streak.slice() });
     // one line: a sweep gets the easing tip (a parent who only heaves on the BOOM lets a kid win), else the closest call
     const wn = G.match ? G.match.wins : [0, 0], sweep = Math.min(wn[0], wn[1]) === 0 && Math.max(wn[0], wn[1]) >= 3;
-    if (sweep) out.push(NAMES[wn[0] > wn[1] ? 0 : 1] + ', go easy: only pull on the BOOM!');
+    const sw = wn[0] > wn[1] ? 0 : 1, solo = typeof cpuSolo === 'function' && cpuSolo();
+    // (1-player mode: no easing tip for the computer; a person who swept it gets a cheer instead)
+    if (sweep && solo) out.push(cpuOn(sw) ? 'Too tough? Try the computer on Easy!' : 'Clean sweep, ' + NAMES[sw] + '!');
+    else if (sweep) out.push(NAMES[sw] + ', go easy: only pull on the BOOM!');
     else if (s.close && s.close.gap <= 60) out.push('Closest call: ' + NAMES[s.close.k] + ' won ' + s.close.gap + ' px from the mud');
     return out;
   },

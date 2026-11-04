@@ -103,11 +103,24 @@
     const out = cpuNav(st, p, x, feet, no) || {};
     // no way on the map after all: stand still (cpuNav would walk straight at it, jumping at gaps)
     if (st.nav && st.nav.status === 'noPath' && p.grounded) return {};
-    // a jump that would land where the partner stands (on their head): wait for them to move
     const cur = st.nav && st.nav.cur, gph = typeof NAV === 'object' && NAV.cache ? NAV.cache[p.id] : null;
+    // lining up for a jump steps back to the take-off point (a run-up backs up a tile): with the partner standing
+    // right behind me there is no room, so take off from here (I'm already nearer the edge; a standing jump still
+    // clears these gaps) instead of pushing into them for ever
+    if (cur && cur.kind !== 'walk' && cur.kind !== 'off' && cur.kind !== 'drop' && p.grounded && gph && gph.cells[cur.from] && gph.cells[cur.to]) {
+      const mdir = Math.sign(gph.cells[cur.to].tx - gph.cells[cur.from].tx), back = out.left ? -1 : out.right ? 1 : 0;
+      const behind = back && back === -mdir && o.alive && near(cpuFeet(o), cpuFeet(p), 8) && (back > 0 ? o.x - (p.x + p.w) : p.x - (o.x + o.w)) < 4 && Math.abs(cpuCx(o) - cpuCx(p)) < p.w + 6;
+      if (cpuFor(st, 'backBlk', !!behind, DT) > 0.3) {
+        if (cur.kind === 'run') { st.nav.phase = 'go'; return { left: mdir < 0, right: mdir > 0 }; }
+        if (mdir && !CPU.last[p.id].jump) return { left: mdir < 0, right: mdir > 0, jump: true };
+        return {};
+      }
+    } else cpuFor(st, 'backBlk', false, DT);
+    // a jump that would land where the partner stands (on their head): wait for them to move
     if (out.jump && !CPU.last[p.id].jump && p.grounded && cur && cur.kind !== 'walk' && gph && gph.cells[cur.to] && o.alive) {
       const c = gph.cells[cur.to];
-      if (Math.abs(cpuCx(o) - (c.tx * T + T / 2)) < 30 && Math.abs(cpuFeet(o) - (c.ty + 1) * T) < 8) return {};
+      // (only when we would overlap: the fanner picks spots at least 28 px from the leader, so a looser test here waits for ever)
+      if (Math.abs(cpuCx(o) - (c.tx * T + T / 2)) < (p.w + o.w) / 2 + 2 && Math.abs(cpuFeet(o) - (c.ty + 1) * T) < 8) return {};
     }
     return out;
   }
@@ -155,6 +168,9 @@
     }
     if (job.kind === 'gap') {
       const gp = job.ref, feet = gp.r * T;
+      // already over (landed right on the far rim, so the level hasn't counted the crossing yet): step on onto the
+      // far side; the job there is the bridge lever
+      if (p.grounded && cx > (gp.x0 + gp.x1) / 2 && near(cpuFeet(p), feet, 70)) return go(st, p, m, gp.x1 + 40, cpuFeet(p), 6);
       // the edge, or (when the fanner stands right at the edge) just behind the fanner: jump over them into the wind
       let x = gp.x0 - 14;
       if (f.alive && f.grounded && near(cpuFeet(f), feet, 4) && fx > gp.x0 - 62 && fx < gp.x0 + 4 && cx < fx) x = fx - 32;
@@ -168,7 +184,9 @@
       const on = ashGustReach(m, gp, f), t = cpuFor(st, 'gust', on, dt);
       if (st.gustWas && !on) st.puffs = (st.puffs || 0) + 1;
       st.gustWas = on;
-      if (t > 0.2 + (1 - info.skill) * 0.35 + Math.min(0.6, (gp.falls || 0) * 0.3) && !CPU.last[p.id].jump) {
+      // (a fanner who keeps puffing anyway: after 3 puffs, go at the very start of the next one, to make the most of it)
+      const wait = (st.puffs || 0) >= 3 ? 0.1 : 0.2 + (1 - info.skill) * 0.35 + Math.min(0.6, (gp.falls || 0) * 0.3);
+      if (t > wait && !CPU.last[p.id].jump) {
         st.gusting = true; st.puffs = 0;
         return { right: true, jump: true };
       }
@@ -225,7 +243,10 @@
     if (p.grounded && ld.alive && near(cpuFeet(p), ld.y, 3) && Math.abs(cx - lx) < (p.w + ld.w) / 2) return offHead(st, p, ld, m, job, dt);
     cpuFor(st, 'ride', false, dt);
     if (job.kind === 'drift') {
-      const d = job.ref, side = cx < d.x ? -1 : 1, feet = (d.r1 + 1) * T;
+      // the side the trail comes from (left to right, but right to left up on a climbing room's higher path),
+      // unless I already stand next to the drift on its floor (from below, the far side is no way at all)
+      const feet = (job.ref.r1 + 1) * T, d = job.ref;
+      const side = p.grounded && near(cpuFeet(p), feet, 8) && Math.abs(cx - d.x) < 250 ? (cx < d.x ? -1 : 1) : m.turnY != null && feet < m.turnY ? 1 : -1;
       const faceX = side < 0 ? d.c0 * T : (d.c1 + 1) * T;
       // a spot in the fan's reach with ground under it, clear of the leader
       let x = faceX + side * 60;

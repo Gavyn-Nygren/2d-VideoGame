@@ -336,7 +336,13 @@
     // no way up yet: ask a person for steps now and then
     st.waitT = (st.waitT || 0) + dt;
     if (!cpuOn(o.id) && st.waitT > 15) { st.waitT = 0; cpuSay(p, 'Build me steps!'); }
-    if (!st.spot) return out;
+    if (!st.spot) {
+      // nowhere to wait: probably in a pocket the path finder can't see out of (the game's jumps are a bit more forgiving
+      // than its copy of them). Every few seconds try a jump out, to the other side each time.
+      if (cpuFor(st, 'boxed', p.grounded && !(st.escT > 0), dt) > 3) { st._for_boxed = 0; st.escDir = -(st.escDir || 1); st.escT = 0.7; }
+      if (st.escT > 0) { st.escT -= dt; out.left = st.escDir < 0; out.right = st.escDir > 0; out.jump = st.escT > 0.3; }
+      return out;
+    }
     // (it stands in the middle of the column: a body poking into the next column would block blocks there too)
     const r = noPiece(() => cpuNav(st, p, st.spot.x, st.spot.feet, { tol: 3 }));
     const nx = cpuCx(p) + (r.right ? T : r.left ? -T : 0);

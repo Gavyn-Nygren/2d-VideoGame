@@ -208,7 +208,7 @@
       if (f.from !== 'chef' || f.dead) continue;
       // room 2: a food the monster won't eat isn't worth a basket spot
       if (st.bins.length && f.type !== 'gold' && f.type !== st.want && f.type !== f.wantAt) {
-        if (G.time - (S.saidWant || -99) > 8 && info.partnerIdle < K().afkT) { cpuSay(p, 'Munch wants ' + st.want + '!', 2.2); S.saidWant = G.time; }
+        if (G.time - (S.saidWant || -99) > 8 && info.partnerIdle < K().afkT) { cpuSay(p, 'Munch wants ' + (MONSTER_FOOD_NAME[st.want] || st.want) + '!', 2.2); S.saidWant = G.time; }
         continue;
       }
       let q = S.pred.get(f);
@@ -222,6 +222,17 @@
       if (q.c && G.time - q.seen >= sk.react * 0.5) foods.push({ f, x: q.c.x, t: q.c.t - (G.time - q.at), feet: q.feet });
     }
     for (const f of S.pred.keys()) if (f.dead) S.pred.delete(f);
+    // which way the chef throws: S.away counts throws in a row to side S.lastSide that went away from our side
+    S.seen = S.seen || new WeakSet();
+    const kc = (st.kitchen.x0 + st.kitchen.x1) / 2;
+    for (const f of st.foods) {
+      if (f.from !== 'chef' || S.seen.has(f)) continue;
+      S.seen.add(f);
+      const side = Math.sign(f.vx) || 1;
+      if (side !== S.lastSide) S.away = 0;
+      if (side !== Math.sign(cpuCx(p) - kc)) S.away = (S.away || 0) + 1;
+      S.lastSide = side;
+    }
     // toss: a mouth in reach. Peek-a-Boo waits for a fuller basket unless nothing more is coming or Munch is grumpy
     const rim = monRim(p), near = basket && st.tossCD <= 0 && p.stun <= 0 ? monNearOf(st, rim) : null;
     if (near) {
@@ -245,7 +256,13 @@
     }
     // wait on the spot near the hungriest mouth
     if (m.state !== 'up' && m.kind === 'head') return;   // Munch dived: wait to see where it pops up
-    const sp = catchSpot(st, m, G.players[st.thrower]);
+    const th = G.players[st.thrower];
+    let sp = catchSpot(st, m, th);
+    // a chef who keeps throwing the other way (a kitchen open on both sides): wait on the side it throws to, then carry
+    if (S.away >= 2 && st.kitchen.open.length > 1 && S.lastSide === th.face && sideOf(st, sp.x) !== th.face) {
+      const m2 = st.monsters.filter(q => sideOf(st, feedSpot(st, q).x) === th.face).sort((a, b) => a.full - b.full)[0];
+      if (m2) sp = catchSpot(st, m2, th);
+    }
     if (goTo(S, p, out, sp.x, sp.feet)) { out.left = out.right = false; talkCatch(S, st, p, info, dt); }
   }
   // like the level's monNear: the nearest awake, hungry mouth within toss range of the rim

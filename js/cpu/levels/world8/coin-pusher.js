@@ -14,8 +14,8 @@
        pusher's top slides under it, then drops it in the cup (Big Shove). Easy rarely tries and times it late.
      - Stomps: hard and normal sometimes hop onto you when you carry a few coins and stand close (you spill 2), and step
        away when you come down at them. Easy never stomps on purpose.
-     - When you walk away it keeps playing up to the level's own idle limit (40 s), then stops, so the level's own pause
-       comes 40 s later (noIdleStop: its own stop replaces the core's 30 s one). */
+     - When you walk away it keeps playing long enough to finish a match against nobody (WALK_AWAY s), then stops, so the
+       level's own pause (40 s with nobody pressing) still comes (noIdleStop: its own stop replaces the core's 30 s one). */
   const SK = s => ({
     replan: 0.5 - 0.35 * s,         // how often it rethinks which coin to grab (s)
     load: s > 0.5 ? 5 : 3,          // coins it collects before putting them in
@@ -23,13 +23,14 @@
     noise: 1.2 * (1 - s),           // random wobble in its choice of coin (s)
     climb: s > 0.5 ? 0 : 0.8,       // easy would rather not climb: extra cost per plank up (s)
     cup: s > 0.5 ? 0.3 + 0.7 * s : 0.1,   // chance it goes for an open Bonus Cup
-    lag: 0.4 - 0.3 * s,             // sees the pusher / you this late
+    lag: Math.max(0.15, 0.4 - 0.3 * s),   // sees the pusher / you this late (hard 0.15 s, a quick person)
     stomp: s > 0.5 ? 2.5 * s : 0,   // how eagerly it hops onto you (per second, when it's a good moment)
     dodge: s > 0.5,                 // steps away from a stomp coming down
     dawdle: 0.9 * (1 - s),          // short stops per second
     duty: s > 0.8 ? 1 : s > 0.5 ? 0.93 : 0.5,   // share of the time it keeps walking (easy walks in fits and starts)
   });
   const CT = () => MODES.coin.test;
+  const WALK_AWAY = 200;            // s with you pressing nothing before it stops too (a match against nobody takes ~150 s)
   const SAFE = [292, 668];          // glass spots that are always on Pip's / Bo's side of the pusher
   const CUP = [360, 600];           // the end of the pusher's stroke on each side (its top stays there a moment)
 
@@ -75,7 +76,7 @@
       }
       const sk = SK(info.skill), k = p.id, K = CT().COIN;
       st.idleLive = info.partnerCpu || info.partnerIdle <= 0.02 ? 0 : (st.idleLive || 0) + dt;
-      if (!p.alive || (!info.partnerCpu && info.partnerIdle > K.idlePause)) return out;
+      if (!p.alive || (!info.partnerCpu && info.partnerIdle > WALK_AWAY)) return out;
       const carry = mst.carry[k].length, cap = mst.magnet[k] > 0 ? K.capMagnet : K.cap;
       const cx = cpuCx(p), feet = cpuFeet(p);
       const ov = cpuLag(st, 'o', { cx: cpuCx(o), feet: cpuFeet(o), vy: o.vy, g: o.grounded, alive: o.alive, stun: o.stun, safe: o.stompSafe }, sk.lag);

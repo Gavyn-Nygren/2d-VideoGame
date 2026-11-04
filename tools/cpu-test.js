@@ -18,6 +18,7 @@
 //   --skills     a skill per player (Pip,Bo), e.g. --skills=easy,hard to check that Hard beats Easy in versus levels
 //   --max        simulated seconds before giving up (default 600)
 //   --seeds      runs every level once per seed, with Math.random made repeatable (default: one run, seed 1)
+//   --trace=S    print where both players are every S simulated seconds (for debugging one run)
 // Prints one line per level: code, name, how it ended, simulated time, and any errors the page logged.
 'use strict';
 const path = require('path');
@@ -30,7 +31,7 @@ const levelsArg = args.find(a => !a.startsWith('--')) || 'all';
 const who = opt('who', 'pair'), skill = opt('skill', 'normal'), maxT = +opt('max', 600);
 const seeds = opt('seeds', opt('seed', '1')).split(',').map(Number);
 const skills = (opt('skills', '') || skill + ',' + skill).split(',');
-const clumsy = +opt('clumsy', 0);
+const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0);
 
 (async () => {
   const browser = await chromium.launch();
@@ -55,7 +56,7 @@ const clumsy = +opt('clumsy', 0);
   for (const lv of want) for (const seed of seeds) {
     errors.length = 0;
     const t0 = Date.now();
-    const r = await page.evaluate(async ({ i, who, skills, maxT, seed, clumsy }) => {
+    const r = await page.evaluate(async ({ i, who, skills, maxT, seed, clumsy, trace }) => {
       const P = window.__pipbo, G = P.G;
       window.__seed(seed * 7919);
       window.__inStep = true;
@@ -100,6 +101,8 @@ const clumsy = +opt('clumsy', 0);
       };
       const steps = Math.round(maxT / P.DT);
       let n = 0, rooms = 0, lastRoom = 0;
+      const lines = [], every = trace ? Math.max(1, Math.round(trace / P.DT)) : 0;
+      const where = q => `${Math.round(q.x + q.w / 2)},${Math.round(q.y + q.h)}${q.grounded ? 'g' : 'a'}${q.alive ? '' : 'X'}`;
       while (n < steps && G.mode === 'play') {
         for (let k = 0; k < 600 && n < steps && G.mode === 'play'; k++, n++) {
           window.__inStep = true;
@@ -107,6 +110,7 @@ const clumsy = +opt('clumsy', 0);
           else if (who === 'idle') { for (const key in pip.input) pip.input[key] = false; }
           P.step(P.DT);
           window.__inStep = false;
+          if (every && n % every === 0) lines.push(`${(n * P.DT).toFixed(1)}s room ${G.room || 0}  Pip ${where(G.players[0])}  Bo ${where(G.players[1])}  ${P.CPU.bubbles.map(b => (b && b.t > 0 ? '"' + b.text + '"' : '')).join(' ')}`);
           if (G.room !== lastRoom) { rooms++; lastRoom = G.room; }
         }
         await new Promise(r => setTimeout(r, 0));
@@ -119,11 +123,13 @@ const clumsy = +opt('clumsy', 0);
         else { out.time = Math.round(res.time); out.falls = res.falls; if (res.pong) out.pong = res.pong.score; if (res.golf) out.golf = res.golf.strokes; }
         out.stats = res.stats;
       }
+      if (lines.length) out.trace = lines;
       if (G.match) out.match = { round: G.match.round, wins: G.match.wins, phase: G.match.phase };
       return out;
-    }, { i: lv.i, who, skills, maxT, seed, clumsy });
+    }, { i: lv.i, who, skills, maxT, seed, clumsy, trace });
     r.seed = seed; r.code = lv.code; r.name = lv.name; r.levelKind = lv.kind; r.errors = errors.slice(0, 5); r.wallS = Math.round((Date.now() - t0) / 100) / 10;
     results.push(r);
+    if (r.trace && !flag('json')) console.log(r.trace.join('\n'));
     if (!flag('json')) {
       const end = r.kind === 'versus' ? `match over: ${r.winner < 0 ? 'draw' : ['Pip', 'Bo'][r.winner]} ${r.rounds && r.rounds.join('-')}`
         : r.kind === 'team' ? `CLEARED in ${r.time}s, falls ${r.falls}${r.pong ? ' pong ' + r.pong.join('-') : ''}${r.golf ? ' golf ' + r.golf.join('+') : ''}`

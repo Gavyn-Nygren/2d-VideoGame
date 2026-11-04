@@ -224,7 +224,9 @@
           if (s.full && s.autoT > 0.5) act = false; // nothing lines up: throw it anyway rather than wait
           if (!act) st.hold = null;
         }
-      } else if (hasBall && s.cd <= 0 && p.stun <= 0 && s.hold < 0 && ov.alive && !st.dodge && st.dawT <= 0) {
+      } else if (hasBall && s.cd <= 0 && p.stun <= 0 && s.hold < 0 && ov.alive && !st.dodge && st.dawT <= 0 && p.grounded) {
+        // (only on the ground: a shot seen from the top of a hop over its fort used to stop the hop's steering, so it
+        // fell back behind the fort and hopped again and again, hiding until the snow fell on it)
         // is there a throw that reaches you from here? (planned as if facing you, so walking away from you never makes it
         // turn back and forth every step: it only turns around when it is going to throw)
         const facing = p.face === dir;

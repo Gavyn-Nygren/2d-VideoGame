@@ -22,6 +22,7 @@
   // a short bubble for the person, at most one every few seconds (less and less often for the same words, and
   // for many bubbles in one room)
   function say(st, p, text, gap = 5) {
+    if (G.mst && G.mst.afk) return; // (the floe is stopped, waiting for someone to press: 'Hop now!' would contradict it)
     const n = st.sayN && st.sayN.text === text ? st.sayN.n : 0, all = st.sayAll || 0;
     if (G.time - (st.saidT == null ? -99 : st.saidT) < gap * (1 + Math.floor(n / 3) + Math.floor(all / 6))) return;
     st.saidT = G.time; st.sayN = { text, n: n + 1 }; st.sayAll = all + 1; cpuSay(p, text, 1.8);

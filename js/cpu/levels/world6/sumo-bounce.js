@@ -8,8 +8,9 @@
        out / rescue           nothing to steer
        ghost, other ball gone roll back to the middle (a ghost passes through the other ball)
        hop over               finishing a jump over the other ball: steer to land on its middle side (air hop if short)
-       defend                 the other ball boings (or charges) at us up close: squat heavy so it bounces off, or, with
-                              our back to the rim, jump over it
+       defend                 the other ball comes down on top of us from a hop, or boings (or charges) at us up close:
+                              squat heavy so it bounces off, or, with our back to the rim, jump over it. Never shove,
+                              boing or roll under a ball that is up in the air (its landing throws the one below outward)
        squeeze                the mat is shrinking: sit on the middle, squat when the other ball comes, shove it away
                               when it is touching us and further out
        attack                 we are nearer the middle: roll in, charge the boing on the way and let it go at close range;
@@ -20,7 +21,7 @@
   const SK = { // reaction lag (s), aim error (px), defend chance, hop-over chance, slams per s, mistakes per s,
     //            charge chance, re-think time (s), squeeze sense (per s), careful boings
     easy: { lag: 0.4, err: 30, defend: 0.15, hop: 0.2, slam: 0, oops: 0.35, charge: 0.45, think: 0.35, center: 0.5, careful: false },
-    normal: { lag: 0.2, err: 12, defend: 0.55, hop: 0.55, slam: 0.2, oops: 0.06, charge: 0.8, think: 0.18, center: 2.5, careful: false },
+    normal: { lag: 0.2, err: 12, defend: 0.7, hop: 0.55, slam: 0.2, oops: 0.06, charge: 0.8, think: 0.18, center: 2.5, careful: false },
     hard: { lag: 0.08, err: 3, defend: 0.92, hop: 0.85, slam: 0.5, oops: 0, charge: 1, think: 0.08, center: 50, careful: true },
   };
   const skOf = s => (s <= 0.4 ? SK.easy : s < 0.9 ? SK.normal : SK.hard);
@@ -47,6 +48,10 @@
       const ox = cpuLag(S, 'ox', op.x, sk.lag), ovx = cpuLag(S, 'ovx', op.vx, sk.lag);
       const oDash = cpuLag(S, 'od', op.dashT > 0, sk.lag), oCharge = cpuLag(S, 'oc', op.charging && op.holdT > P.tapT, sk.lag);
       const gone = op.out || op.rescue;
+      const oy = cpuLag(S, 'oy', op.y, sk.lag), ovy = cpuLag(S, 'ovy', op.vy, sk.lag), oAir = cpuLag(S, 'oa', !op.onMat, sk.lag);
+      if (oAir && !S.oAir) S.hopN = (S.hopN || 0) + 1;
+      S.oAir = oAir;
+      const oHigh = oAir && oy < me.y - op.r - 6;   // up in the air: a shove or a boing would pass under it
       const hw = st.hw, myD = me.x - cx, oD = ox - cx, myEdge = hw - Math.abs(myD), dir = Math.sign(ox - me.x) || me.face;
       const close = Math.max(0, Math.abs(ox - me.x) - me.r - op.r), relV = (me.vx - ovx) * dir, oCome = -ovx * dir;   // gap, closing speed, its speed at us
       const inside = Math.sign(oD || dir) === dir && Math.abs(myD) <= Math.abs(oD) + 6;
@@ -79,6 +84,11 @@
         return out;
       }
 
+      // ---- defend: it hops and comes down on top of us (that bump throws the ball underneath outward): squat heavy
+      if (oAir && me.onMat && Math.abs(ox - me.x) < me.r + op.r + 16 && oy < me.y - 4 && me.y - oy < 120 && ovy > -150) {
+        if (S.dropKey !== S.hopN) { S.dropKey = S.hopN; S.dropDef = Math.random() < sk.defend; }
+        if (S.dropDef && ((me.heavyCD <= 0 && !me.heavyLatch) || me.heavy)) { out.down = true; return out; }
+      }
       // ---- defend: it boings at us up close (or charges right next to us)
       const coming = (oDash && Math.sign(ovx) === -dir && close < 90) || (oCharge && close < 30) || (oCome > 250 && close < 25 && myEdge < 90);
       if (coming) {
@@ -98,7 +108,7 @@
       if (S.sq && !me.onMat) { steer(out, me, cx + S.sqErr, 3); return out; }
       if (S.sq) {
         const tol = Math.max(5, Math.min(30, hw * 0.25));
-        if (close < 22 && Math.abs(oD) >= Math.abs(myD) - 3) {
+        if (close < 22 && !oHigh && Math.abs(oD) >= Math.abs(myD) - 3) {
           // touching, and we have the middle: shove outward
           push(out, dir);
           if (me.cool <= 0 && can && cpuChance(3, dt)) out.act = 'tap';
@@ -131,19 +141,22 @@
         const room = dir === Math.sign(myD) ? hw - Math.abs(myD) : hw + Math.abs(myD);
         const reach = (sk.careful ? 22 + 55 * me.charge : 35 + 100 * me.charge) + S.aimErr;
         const safe = !sk.careful || (close < 10 && op.onMat && Math.abs(op.y - me.y) < me.r) || carry < room - 10;
-        if ((close <= reach && safe) || (!sk.careful && me.charge >= 1 && close < 140)) { push(out, dir); return out; }
+        // (a ball up in the air would pass over the boing: wait for it to come down)
+        if (!oHigh && ((close <= reach && safe) || (!sk.careful && me.charge >= 1 && close < 140))) { push(out, dir); return out; }
         // held too long (it would go off by itself): let it go toward the middle
         if (me.holdT > P.tapT + P.chargeT + P.autoFire - 0.15) { push(out, -Math.sign(myD) || dir); return out; }
         out.act = true;
         // a planted ball (not rolling) is heavier: stand still while it comes at us
-        if (oCome > 100 || close < 25) return out;
+        if (oCome > 100 || close < 25 || oHigh) return out;
         push(out, dir);
         return out;
       }
       if (can && me.cool <= 0 && close < 170 && close > 30 && Math.random() < sk.charge * dt * 8) { out.act = true; push(out, dir); return out; }
-      if (close <= 30 && can && me.cool <= 0 && cpuChance(3, dt)) { out.act = 'tap'; push(out, dir); return out; }
+      if (close <= 30 && can && me.cool <= 0 && !oHigh && cpuChance(3, dt)) { out.act = 'tap'; push(out, dir); return out; }
       // slam: up close, jump and come down on it squatting
       if (inside && close < 45 && me.onMat && op.onMat && cpuChance(sk.slam, dt)) { out.jump = 'tap'; S.hopT = 0.8; return out; }
+      // it is up in the air: don't roll under it (its landing would throw us outward); brake and wait for it to land
+      if (oHigh && close < 90) { if (Math.abs(me.vx) > 60) push(out, -Math.sign(me.vx)); return out; }
       // roll toward it (never off our own rim)
       const tx = ox - dir * (me.r + op.r) + S.aimErr;
       steer(out, me, tx, 2);

@@ -18,7 +18,7 @@
   // a number for each skill: easy, normal, hard (in between for other skills)
   const by = (s, e, n, h) => (s <= 0.7 ? e + (n - e) * clamp((s - 0.35) / 0.35, 0, 1) : n + (h - n) * clamp((s - 0.7) / 0.3, 0, 1));
   const SK = s => ({
-    lag: by(s, 0.36, 0.2, 0.1),   // how late it sees you (s): hard is about as quick as a sharp person, never quicker
+    lag: by(s, 0.36, 0.2, 0.15),  // how late it sees you (s): hard is about as quick as a sharp person, never quicker
     dawdle: by(s, 0.6, 0.18, 0),   // a short stop this often per second (none on hard)
     jab: by(s, 2.5, 8, 14),        // how eagerly it punches when you're in reach (per second)
     wind: 0.1 + 0.45 * s,          // ...and how often that is a wind-up instead of a jab (wind-ups shrug jabs off)
@@ -60,9 +60,9 @@
         if (M.phase === 'live') st.round = M.round; else return out;
       }
       if (!p.alive) { st.pm = null; return out; }
-      // the person walked away: it keeps playing a little past the level's own idle limit (so a match against nobody
-      // still ends), then stops, and the level pauses itself 40 s later
-      if (!info.partnerCpu && info.partnerIdle > KK.idlePause + 20) { st.pm = null; return out; }
+      // the person walked away: it keeps playing past the level's own idle limit (a match against nobody takes about
+      // 55 s, so it still ends), then stops, and the level pauses itself 40 s later
+      if (!info.partnerCpu && info.partnerIdle > KK.idlePause + 50) { st.pm = null; return out; }
       const ov = cpuLag(st, 'o', look(o), sk.lag);
       const pcx = cpuCx(p), ocx = ov.x + PW / 2, dir = ocx >= pcx ? 1 : -1;
       const gap = Math.max(0, Math.abs(ocx - pcx) - PW), vOk = ov.alive && Math.abs(ov.y - p.y) < 36;

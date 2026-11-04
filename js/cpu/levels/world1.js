@@ -340,7 +340,9 @@
     if (!p.alive || !o.alive) return out;
     const left = q => cpuCx(q) < 19 * T, right = q => cpuCx(q) >= 20 * T;
     const holding = G.held && G.held.hanger === o.id, hanging = G.held && G.held.hanger === p.id;
-    if (holding) return out; // hold still while the partner swings
+    // hold still while the partner swings... but a partner who fell in before I was at the pit edge needs me there
+    if (holding && !L.key.got && p.grounded && cpuCx(p) > tileX(8) + 12) return cpuNav(st, p, tileX(8) + 6, floorAt(11), { tol: 3, noHop: true });
+    if (holding) return out;
     if (!L.key.got) {
       // the key hangs over the pit: one holds at the pit's edge, the other drops off and swings up to it
       const iHang = info.partnerCpu ? p.id === 0 : !st.iHold;

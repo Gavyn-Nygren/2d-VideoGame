@@ -11,9 +11,9 @@
      - You hold the crown: chase. It goes to your level, then runs at you and jumps so it comes down on your head,
        steering in the air to where you will be. It doesn't jump at you while you're flashing (the crown can't be taken
        yet). Easy reacts slowly, aims worse, jumps early and stops to think now and then; hard is quick and sharp. */
-  // per skill: how late it sees you (s), how far off its stomps aim (px), how often it picks a new spot to run to (s),
+  // per skill: how late it sees you (s; never under 0.15 s, a quick person's reaction), how far off its stomps aim (px), how often it picks a new spot to run to (s),
   // how often it stops to think (per s, for 0.3-0.8 s), and how much it just picks any spot instead of a good one
-  const SK = s => ({ lag: 0.42 - 0.3 * s, aimErr: 40 * (1 - s), replan: 1.2 - 0.7 * s, dawdle: Math.max(0, 1.3 * (0.85 - s)), sloppy: 40 + 300 * (1 - s) * (1 - s) });
+  const SK = s => ({ lag: Math.max(0.15, 0.42 - 0.3 * s), aimErr: 40 * (1 - s), replan: 1.2 - 0.7 * s, dawdle: Math.max(0, 1.3 * (0.85 - s)), sloppy: 40 + 300 * (1 - s) * (1 - s) });
 
   // the spots it may run to while holding the crown: every tile someone can stand on
   function spots(st) {
@@ -52,22 +52,31 @@
     return x < W / 2 ? LEAPS[0] : LEAPS[1];
   }
   const leapStart = l => l.edge - l.dir * (70 + PW / 2); // where its centre backs up to
+  // cpuNav, but braking in time on the take-off spot of a standing jump (cpuNav's own steering could overshoot it and
+  // walk back: in the race to the crown a float rounding made Pip do that every time, 0.06 s slower than Bo)
+  function nav(st, p, x, feet, opts) {
+    const out = cpuNav(st, p, x, feet, opts), N = st.nav, g = NAV.cache[p.id];
+    if (out && p.grounded && !out.jump && N && N.cur && (N.cur.kind === 'jump' || N.cur.kind === 'high') && g && g.cells[N.cur.from]) {
+      const s = {}; cpuSeek(s, p, g.cells[N.cur.from].tx * T + T / 2, 1.5); out.left = s.left; out.right = s.right;
+    }
+    return out;
+  }
   // one step of going to (x, feet), anywhere on the map
   function go(st, p, x, feet, tol) {
     const out = {};
     const L = st.leap;
     if (!p.grounded) {
       if (L && L.flying) { out.left = L.l.dir < 0; out.right = L.l.dir > 0; out.jump = p.vy < 0; return out; }
-      return cpuNav(st, p, x, feet, { tol });
+      return nav(st, p, x, feet, { tol });
     }
     const here = area(cpuCx(p), cpuFeet(p)), want = area(x, feet);
     if (L && L.flying) st.leap = null; // landed (on the far plank, or not)
-    if (here === want || LOW[want] || here === '?') { st.leap = null; return cpuNav(st, p, x, feet, { tol }); }
+    if (here === want || LOW[want] || here === '?') { st.leap = null; return nav(st, p, x, feet, { tol }); }
     // upward: the centre plank needs a low plank first, a high plank needs the centre one
     const next = (want === 'L7' || want === 'R7') && here !== 'C10' ? 'C10' : want; // a high plank needs the centre first
     const l = leapFor(here, next, cpuCx(p));
-    if (!l) return cpuNav(st, p, x, feet, { tol });
-    if (l.from !== here) { st.leap = null; return cpuNav(st, p, leapStart(l), l.from === 'C10' ? 300 : 390, { tol: 6 }); }
+    if (!l) return nav(st, p, x, feet, { tol });
+    if (l.from !== here) { st.leap = null; return nav(st, p, leapStart(l), l.from === 'C10' ? 300 : 390, { tol: 6 }); }
     if (!st.leap || st.leap.l !== l) st.leap = { l, run: false, flying: false };
     const S = st.leap, lead = l.dir > 0 ? p.x + p.w : p.x;
     if (!S.run) {
@@ -95,8 +104,8 @@
       const out = {}, c = G.crown;
       if (!c || !p.alive || info.intro) return out;
       const sk = SK(info.skill);
-      // a moment to react after the intro card goes
-      if (st.go < 0) st.go = G.time + sk.lag;
+      // a moment to react after the intro card goes (a little more or less each time, like a person)
+      if (st.go < 0) st.go = G.time + sk.lag * (0.6 + 0.8 * Math.random());
       if (G.time < st.go) return out;
       // the opponent as it saw them a moment ago, moved on by their speed (people judge where you're heading)
       const s = cpuLag(st, 'o', { x: cpuCx(o), feet: cpuFeet(o), vx: o.vx, vy: o.vy, g: o.grounded, alive: o.alive }, sk.lag);
