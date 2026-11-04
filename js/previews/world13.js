@@ -181,11 +181,16 @@ function pw13BroomRider(v, id, x, y, t, o = {}) {
   // the witch hat: a wide brim and a floppy cone bent back by the wind (Pip's sprout pops out of the tip)
   const flop = 4 + Math.sin(t * 7 + id) * 1.5 + z * 3;
   ctx.fillStyle = '#241a44'; ctx.beginPath(); ctx.ellipse(1, -17, 16, 4.2, -0.05, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#3a2a66'; ctx.beginPath(); ctx.moveTo(-8, -18); ctx.quadraticCurveTo(-4, -31, -6 - flop, -42);
+  // a step lighter than the level's #3a2a66, plus a moonlit rim, so the cone still reads against the night sky at card size
+  ctx.fillStyle = '#4a3884'; ctx.beginPath(); ctx.moveTo(-8, -18); ctx.quadraticCurveTo(-4, -31, -6 - flop, -42);
   ctx.quadraticCurveTo(-2 - flop * 0.6, -37, 4 - flop * 1.6, -39 + flop * 0.4); ctx.quadraticCurveTo(4, -29, 10, -18); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,200,140,0.55)'; ctx.lineWidth = 1.6; ctx.lineJoin = 'round'; ctx.stroke();
   ctx.fillStyle = col; ctx.fillRect(-8.5, -22, 18.5, 4);
   ctx.fillStyle = v.c.gold; ctx.fillRect(-1.5, -22.5, 5, 5); ctx.fillStyle = '#3a2a66'; ctx.fillRect(0, -21, 2, 2);
-  if (id === 0) { ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(-6 - flop + 2, -45, 5.5, 2.6, -0.6, 0, Math.PI * 2); ctx.fill(); }
+  if (id === 0) {
+    ctx.strokeStyle = '#3f9a5e'; ctx.lineWidth = 1.8; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-6 - flop, -41); ctx.lineTo(-5 - flop, -45); ctx.stroke();
+    ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(-6 - flop + 2.5, -46, 5.5, 2.6, -0.6, 0, Math.PI * 2); ctx.fill();
+  }
   ctx.restore();
   if (o.star) { const sy = y - 38 + Math.sin(t * 5) * 2; pw13BroomStar(v, x + 18, sy + 0.8, 7.5, v.c.goldDark, t * 2); pw13BroomStar(v, x + 18, sy, 6.8, v.c.gold, t * 2); }
 }
