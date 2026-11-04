@@ -3369,7 +3369,127 @@ const LEVELS = [
   // ----- END 14-2 Pterodactyl Express -----
   //
   // ----- BEGIN 14-3 Tar Pit Pull (mode 'tarpit', js/levels/world14/tar-pit-pull.js) -----
-  // (def goes here)
+  { name: 'Tar Pit Pull', world: 13, kind: 'team', mode: 'tarpit', ownStep: true, ownHUD: true, noFalls: true,
+    act: { label: 'pull' },
+    tip: 'Tar is sticky! Swing across on vines, then pull your partner out of the goo. Take turns!',
+    theme: { grass: '#7fbf5a', grassDark: '#5a9a44' },   // the mode paints its own swamp; this is only for core uses
+    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move · wiggle, <kbd>W</kbd> jump · grab · let go,', bo: '<kbd>←</kbd><kbd>→</kbd> move · wiggle, <kbd>↑</kbd> jump · grab · let go,',
+      pad: 'stick move · wiggle, <span data-glyph="a"></span> jump · grab · let go,' },
+    switches: {}, signs: [],
+    rooms: [
+      { // Room 1: plain vines, plain pulling
+        title: 'Sticky Steps', style: 'steps', act: { label: 'pull' },
+        tip: 'Jump to grab the vine, jump again to let go. Then your partner hops in the tar and you pull them out!',
+        cross: [{ kind: 'tied', lead: 0 }, { kind: 'tied', lead: 1 }],
+        deco: [{ k: 'palm', x: 40, y: 360, h: 170, lean: 0.2 }, { k: 'fern', x: 150, y: 360 }, { k: 'sign', x: 120, y: 360, text: 'Sticky!' },
+          { k: 'rock', x: 420, y: 360, w: 20 }, { k: 'reeds', x: 520, y: 360 }, { k: 'bones', x: 820, y: 360 }, { k: 'palm', x: 930, y: 360, h: 150, lean: -0.2 }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '.1.2........................E...', // 11
+          '######.......##tt##.......######', // 12
+          '######ttttttt######ttttttt######', // 13
+          '######ttttttt######ttttttt######', // 14
+          '######ttttttt######ttttttt######', // 15
+          '################################', // 16
+          '################################', // 17
+        ],
+      },
+      { // Room 2: vines out of reach; hook one in, swing, throw it back
+        title: 'Vine Swing Gully', style: 'gully', act: { label: 'hook' },
+        tip: 'These vines are out of reach. One hooks the vine with the hook stick, the other swings. Then throw it back!',
+        cross: [{ kind: 'pass', lead: 0 }, { kind: 'push', lead: 1 }],
+        deco: [{ k: 'fern', x: 30, y: 360, s: 0.9 }, { k: 'eggs', x: 480, y: 300 }, { k: 'palm', x: 528, y: 300, h: 130, lean: 0.15 },
+          { k: 'reeds', x: 830, y: 360 }, { k: 'fern', x: 950, y: 360, s: 1.1 }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '..............h.................', //  9
+          '.............######.............', // 10
+          '.1.2h........######.........E...', // 11
+          '######.......######.......######', // 12
+          '######ttttttt######ttttttt######', // 13
+          '######ttttttt######ttttttt######', // 14
+          '######ttttttt######ttttttt######', // 15
+          '################################', // 16
+          '################################', // 17
+        ],
+      },
+      { // Room 3: sinking logs and bubble vents
+        title: 'Sinking Logs', style: 'logs', act: { label: 'pull' },
+        tip: 'Logs sink if you both stand on them too long, so keep moving! Big tar bubbles give stuck friends a pop.',
+        cross: [{ kind: 'tied', lead: 0 }, { kind: 'tied', lead: 1 }, { kind: 'tied', lead: 0 }],
+        logs: [{ c: 12, w: 2 }, { c: 20, w: 2 }],
+        deco: [{ k: 'palm', x: 26, y: 360, h: 160, lean: 0.25 }, { k: 'sign', x: 100, y: 360, text: 'Logs sink!' }, { k: 'fern', x: 900, y: 360 }, { k: 'rock', x: 945, y: 360, w: 16 }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '.1.2.........................E..', // 11
+          '#####.......................####', // 12
+          '#####ttttttttttttttttttttttt####', // 13
+          '#####ttttttttttttttttttttttt####', // 14
+          '#####tttzttttttttztttttttztt####', // 15
+          '################################', // 16
+          '################################', // 17
+        ],
+      },
+      { // Room 4: Gerty the brontosaurus is the bridge, then one last pull
+        title: "Gerty's Tail", style: 'gerty', act: { label: 'call' },
+        tip: 'Gerty the brontosaurus makes a bridge while someone blows her leaf horn. Take turns calling!',
+        cross: [{ kind: 'gerty', lead: 1 }, { kind: 'tied', lead: 0 }],
+        deco: [{ k: 'sign', x: 100, y: 360, text: 'Blow the horn!' }, { k: 'fern', x: 600, y: 360, s: 0.8 }, { k: 'eggs', x: 905, y: 360 }],
+        switches: {}, signs: [],
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '.n12.............n...........E..', // 11
+          '#####..........######.......####', // 12
+          '#####tttttttttt######ttttttt####', // 13
+          '#####tttttttttt######ttttttt####', // 14
+          '#####tttttttttt######ttttttt####', // 15
+          '################################', // 16
+          '################################', // 17
+        ],
+      },
+    ],
+  },
   // ----- END 14-3 Tar Pit Pull -----
   //
   // ----- BEGIN 14-4 Raptor Race (mode 'raptor', js/levels/world14/raptor-race.js) -----
