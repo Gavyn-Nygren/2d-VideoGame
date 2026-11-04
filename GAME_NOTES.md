@@ -164,13 +164,29 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 | `js/versus.js` | `MODES` registry, `hook`/`drawHook`, the best-of-N framework (`MATCH`, `matchRoundEnd`), `knock` |
 | `js/levels/world4/` to `world12/` | One file per level: its `MODES.<name>` block, its own drawing and `Sfx.extra` sounds, e.g. `world7/bumper-cars.js` |
 | `js/input.js` | Keyboard (`keys`, `BIND`), controllers (`Pads`, `readPad`), touch, `pollInput` |
-| `js/ui.js` | Overlay cards (`showTitle`, `pause`, `showResult`, `showWorldDone`, `showFinal`, `armOverlay`), legend (`setLegend`, `setActUI`), toast, mute |
+| `js/ui.js` | Overlay cards (`pause`/`showPauseCard`, `showResult`, `showWorldDone`, `showFinal`, `armOverlay`, `menuBack`), legend (`setLegend`, `setActUI`), toast, mute |
 | `js/render.js` | Shared drawing (`render`, `drawHUD`, `drawIntro`) and particles |
+| `js/previews/preview-core.js` | Level previews for the world pages: `definePreview`, the drawing kit `pvKit`, the plain fallback, the title banner, and the loop that animates every `canvas[data-pv]` in a menu |
+| `js/previews/worldN.js` | One file per world: a `definePreview('<level name>', ...)` per level |
+| `js/home.js` | Home screens: `showTitle`, `showWorlds` (world map), `showWorld` (a world's page) |
 | `js/main.js` | `G`, `parseLevel`, `roomDef`, `loadLevel`, `step`, `nextRoom`, `levelClear`, `frame`, `fit`, `window.__pipbo`, startup (loads last) |
 
 - There is no wrapper function: all files share globals, so a file may use at load time only what the files above it define.
 - New level: a new `js/levels/worldN/<slug>.js` with a `MODES.<name>` block (hooks: `setup` required; `resetRound`, `go`, `pre`, `step`, `draw`, `drawTop`, `hud`, `stats`, `timeUp`, `tiebreak`, `onKill`, `onRespawn`, `onStomp`, `room` optional), its def in `LEVELS` after its world's marker (`name`, `world` 0-based, `kind`, `mode`, `tip`, `map` or `rooms`), and a script tag after the last level file, before `js/input.js`. Level codes follow the order in `LEVELS`.
-- New world: a `WORLDS` entry with a theme plus a marker at the end of `LEVELS`. A world with no levels stays hidden.
+- New world: a `WORLDS` entry with a theme plus a marker at the end of `LEVELS`. A world with no levels stays hidden. Add `js/previews/worldN.js` and its script tag after the other preview files (before `js/home.js`).
+- Every new level also gets a preview (see "Home screens" below). Until it has one, its card shows a plain scene in its world's colours.
+
+### Home screens (Nov 2026)
+Gavyn asked for a new title and home screen where every world can be picked and each world shows little animated scenes of its levels.
+- **Title** (`showTitle`): a banner where Pip and Bo run through every world in turn, the logo, Play, the Players setting and the controls. Play opens the world map at the world played last (`store` key `lastWorld`).
+- **World map** (`showWorlds`): a tile per world with its number, name, how many levels, Team / Versus / Team + versus / Boss (every 10th world is a boss world), and a dot per level that fills once it's played. A tile shows its first level's preview standing still and plays all its levels' previews in turn while focused or hovered. While on the title, the game screen behind the menu takes the focused world's colours.
+- **World page** (`showWorld`): the world's blurb, "Play World N from N-1" (plays the whole world in order), ◀ ▶ buttons to the next and previous worlds, and a card per level with its moving preview, code, name, Team/Versus tag, best time or strokes if any, a ✓ once played, and a one-line blurb. In 1-player mode one line says who the computer plays and how.
+- **From the pause card**: "Choose a level" opens the current world's page; Back from the world map says "Back to the game" and returns to the pause card.
+- **Controls**: keyboard arrows or W A S D move between buttons on these screens (cards marked `data-nav`), Enter or Space picks, Esc goes back (a `data-back` button). Controller: stick or d-pad, A picks, B goes back. Touch: tap. Other cards (results, pause) keep their old keys.
+- "Played" is kept in the browser per level name (`store` key `done:<name>`), set when a results card shows (a lost Robo Pong doesn't count), plus any saved best time or golf score.
+- **Previews**: `definePreview('<level name>', { blurb, loop, still, draw(v, t) })` in `js/previews/worldN.js`. `draw` paints a 320x180 scene at time `t` with the kit `v` (documented at the top of `preview-core.js`): world-themed scenery, `v.hero(0|1, x, y, {face, sq, mood, s})` for Pip and Bo in their game look, bubbles, confetti and easing helpers. A preview is a short looping cartoon (3-7 s) that shows the level's twist with a happy payoff (team) or a winner (versus); `still` is the moment shown as a thumbnail and to people who prefer reduced motion; `blurb` is one plain sentence (80 characters or fewer). Rules: a pure function of `t` (no `Math.random`, no state), never touches `G`, `C` or the game canvas, every top-level helper name prefixed with `pw<world>` (all scripts share one scope), under 3 ms a frame, Pip orange and Bo blue, family-friendly. A preview that throws falls back to the plain scene and logs a warning once.
+- **Checking previews**: `node tools/preview-shots.js <world|all> [--frames=8] [--size=1] [--times=0,4.9]` writes a contact sheet per level to `build/previews/` (the still frame, then frames across the loop) and prints errors and ms per frame.
+- Previews draw at about 30 frames a second and only while on screen; the loop stops when the menu closes.
 
 
 ### Computer partner (1-player mode)

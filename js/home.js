@@ -43,12 +43,15 @@ function levelBest(i) {
   const b = levelRecord('best', i);
   return b == null ? '' : 'Best ' + fmtTime(b);
 }
-// 1-player mode: who does what in this level
-function levelWho(i) {
+// 1-player mode: one line on a world's page saying who the computer plays and how, for the kinds of level in it
+function worldWho(w) {
   if (!cpuSolo()) return '';
-  const l = LEVELS[i], me = nameSpan(cpuHuman()), cpu = NAMES[1 - cpuHuman()];
+  const ls = worldLevels(w), me = nameSpan(cpuHuman()), cpu = NAMES[1 - cpuHuman()];
   const skill = { easy: 'Easy', normal: 'Normal', hard: 'Hard' }[CPU.cfg.skill] || '';
-  return l.kind === 'versus' ? `You play ${me} against the computer (${skill})` : `You play ${me}, the computer plays ${cpu}`;
+  const team = ls.some(i => LEVELS[i].kind !== 'versus'), vs = ls.some(i => LEVELS[i].kind === 'versus');
+  const how = team && vs ? `helps you in team levels and plays against you (${skill}) in versus levels`
+    : vs ? `plays against you (${skill})` : 'is your teammate';
+  return `You play ${me}. The computer plays ${cpu} and ${how}.`;
 }
 const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 
@@ -123,13 +126,12 @@ function showWorld(w) {
   const flip = (to, dir) => to == null ? `<span class="flip-gap"></span>`
     : `<button class="ghost flip" type="button" data-act="openworld" data-w="${to}" aria-label="World ${to + 1}: ${esc(WORLDS[to].name)}">${dir < 0 ? '<span aria-hidden="true">◀</span> ' : ''}World ${to + 1}${dir > 0 ? ' <span aria-hidden="true">▶</span>' : ''}</button>`;
   const cards = ls.map(i => {
-    const l = LEVELS[i], best = levelBest(i), who = levelWho(i), done = levelDone(i), blurb = levelBlurb(i);
+    const l = LEVELS[i], best = levelBest(i), done = levelDone(i), blurb = levelBlurb(i);
     return `<li><button type="button" class="lvl" data-act="level" data-i="${i}" aria-label="Level ${levelCode(i)}: ${esc(l.name)}, ${l.kind === 'versus' ? 'versus' : 'team'}. ${esc(blurb)}">
       <span class="thumb"><canvas data-pv="level:${i}" aria-hidden="true"></canvas><span class="lcode">${levelCode(i)}</span>${done ? '<span class="ldone" aria-hidden="true">✓</span>' : ''}</span>
       <span class="lname">${esc(l.name)}</span>
       <span class="lmeta">${kindTag(l.kind, l)}${best ? `<span class="lbest">${esc(best)}</span>` : ''}</span>
       <span class="lblurb">${esc(blurb)}</span>
-      ${who ? `<span class="lwho">${who}</span>` : ''}
     </button></li>`;
   }).join('');
   showOverlay(`
@@ -144,6 +146,7 @@ function showWorld(w) {
         <button class="primary" type="button" data-act="world" data-w="${w}" data-primary>${ls.length > 1 ? `Play World ${w + 1} from ${levelCode(ls[0])}` : `Play ${esc(LEVELS[ls[0]].name)}`}</button>
         <span class="hint">${ls.length > 1 ? 'or pick any level below' : ''}</span>
       </div>
+      ${cpuSolo() ? `<p class="hint solo-who">${worldWho(w)}</p>` : ''}
       <ol class="lvl-grid${ls.length === 1 ? ' one' : ''}">${cards}</ol>
     </div>`);
   mountPreviews(overlay);

@@ -285,7 +285,7 @@ function pvGeneric(v, t, l) {
     v.door(door, gy, k > 0.72 ? 1 : 0);
     for (const id of [0, 1]) {
       const run = v.ease.inOut(v.seg(k, 0.05 + id * 0.08, 0.7));
-      const x = v.lerp(36 + id * 26, door - 10 + id * 18, run), hopk = v.phase(t, 0.45, id * 0.22);
+      const x = v.lerp(36 + id * 28, door - 52 + id * 26, run), hopk = v.phase(t, 0.45, id * 0.22);
       v.hero(id, x, gy + (run > 0 && run < 1 ? v.hop(hopk, 6) : 0), { face: 1, mood: k > 0.72 ? 'joy' : 'happy' });
     }
     v.heart(door, gy - 44 - v.seg(k, 0.75, 1) * 8, 6 * v.seg(k, 0.72, 0.8));

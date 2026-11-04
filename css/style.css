@@ -307,7 +307,7 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 .lmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-inline: 2px; }
 .lbest { font-size: 12px; font-weight: 700; color: var(--gold); }
 .lblurb { font-size: 13px; line-height: 1.4; color: var(--muted); padding-inline: 2px; }
-.lwho { font-size: 12px; font-weight: 700; color: var(--paper); padding-inline: 2px; }
+.solo-who { margin-top: -6px; color: var(--paper); }
 .world-page .actions-row { margin-top: -4px; }
 @media (max-width: 640px) {
   .home-head { grid-template-columns: auto minmax(0, 1fr); }
