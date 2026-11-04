@@ -1019,7 +1019,8 @@ function spacewalkHud(st) {
     let w = ctx.measureText(st.msg.text).width + 30;
     while (w > W - 40 && fs > 11) { fs--; ctx.font = font(fs); w = ctx.measureText(st.msg.text).width + 30; }
     const y = big ? 104 : 80;
-    ctx.globalAlpha = clamp((st.msg.life - st.msg.t) / 0.3, 0, 1);
+    const under = st.pl.some(b => Math.abs(b.x - (W / 2 + 40)) < w / 2 + 16 && b.y > y - 18 && b.y < y + h + 18);
+    ctx.globalAlpha = clamp((st.msg.life - st.msg.t) / 0.3, 0, 1) * (under ? 0.35 : 1);
     pill(W / 2 + 40, y, w, h, 'center'); text(st.msg.text, W / 2 + 40, y + h / 2 + 0.5, fs, st.msg.col, 'center', 'body'); ctx.globalAlpha = 1;
   }
   if (!play) return;
@@ -1036,11 +1037,14 @@ function spacewalkHud(st) {
       else if (role === 'float') chips.push([spacewalkKey(id, 'act') + ' grab · fix', q.want, false], [spacewalkKey(id, 'all') + ' puff', q.puff > 0.5, false]);
       else if (role === 'drift') chips.push([spacewalkKey(id, 'act') + ' grab', q.want, plan.target && Math.hypot(plan.target.x - q.x, plan.target.y - q.y) < spacewalkGrabR(st) * 1.6], st.freeT > 0 ? ['hold ' + spacewalkKey(id, 'down') + ': Bleep', q.callT > 0, st.freeT > 1.5] : ['wait for a swing', false, false]);
     }
-    const pw = Math.round((quiet ? 190 : 262) * z), ph = Math.round((quiet ? 30 : 52) * z), py = H - ph - 8;
+    const small = quiet || !chips.length;   // (the computer's card, or nothing to press: just the name line)
+    const pw = Math.round((quiet ? 190 : 262) * z), ph = Math.round((small ? 30 : 52) * z), py = H - ph - 8;
     const px = id === 0 ? 10 : W - 10 - pw;
+    // (it fades while someone floats behind it)
+    ctx.globalAlpha = pl.some(b => b.x > px - 16 && b.x < px + pw + 16 && b.y > py - 18) ? 0.35 : 1;
     ctx.fillStyle = 'rgba(28,26,54,0.8)'; rr(px, py, pw, ph, 12 * z); ctx.fill();
     ctx.strokeStyle = PCOL[id]; ctx.lineWidth = 2.5; rr(px, py, pw, ph, 12 * z); ctx.stroke();
-    text(title, px + 12 * z, py + (quiet ? ph / 2 : 14 * z), 14 * z, PCOL[id], 'left');
+    text(title, px + 12 * z, py + (small ? ph / 2 : 14 * z), 14 * z, PCOL[id], 'left');
     // the puff tank
     if (role === 'float' && !quiet) {
       const tw2 = 56 * z, tx = px + pw - 12 * z - tw2, ty = py + 9 * z;
@@ -1059,6 +1063,7 @@ function spacewalkHud(st) {
         text(lab, cx + cw / 2, cy + chh / 2 + 0.5, fs, doing || want ? C.ink : '#d9d3ef', 'center', 'body');
       });
     }
+    ctx.globalAlpha = 1;
   }
   if (G.introT > 0 || st.tow || st.fin) { spacewalkHints(st); return; }
   // prompts over the heads
