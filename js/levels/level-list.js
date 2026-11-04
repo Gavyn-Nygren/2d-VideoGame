@@ -3473,7 +3473,7 @@ const LEVELS = [
       },
       { // ---------- Room 3: Star Lab (jump off the ceiling and get flipped mid-air onto the island) ----------
         title: 'Star Lab', goer: 0, style: 'lab',
-        tip: 'Zap goo on the ceiling! Jump off it and get flipped in mid-air to land on the floating island.',
+        tip: 'Zap goo on the ceiling! Jump off the ceiling before it, and get flipped in mid-air onto the floating island.',
         plan: [
           { A: { g: 1 }, say: { A: 'Wait here: {B} flips you up!', B: 'Flip {A} up: {Bkey} at your {Bcol} switch!' } },
           { A: { g: 0, zone: [12, 18] }, jump: [{ x: 280, dir: 1 }, { x: 680, dir: -1 }], say: { A: 'Jump off the ceiling before the goo, toward the island', B: 'Flip {A} when the jump is over the island ({Bkey})!' } },
