@@ -3906,6 +3906,72 @@ const LEVELS = [
   // ----- END 15-4 Planet Hop Race -----
   //
   // ===== END World 15 =====
+
+  /* ===== World 16 (Sugar Rush Factory, mixed): the candy land / candy factory world, world index 15 (js/levels/world16/),
+     sweet and silly, nothing scary. Gavyn's picks (Nov 2026): 16-1 Conveyor Belt Chaos (team), 16-2 Gumball Machine Puzzle
+     (team), 16-3 Chocolate River Raft (team), 16-4 Sprinkle Catch (versus). Each level's def sits between its own BEGIN/END
+     lines. world: 15 ===== */
+  // ----- BEGIN 16-1 Conveyor Belt Chaos (mode 'conveyor', js/levels/world16/conveyor-belt-chaos.js) -----
+  // PLACEHOLDER: replaced when the level is built.
+  { name: 'Conveyor Belt Chaos', world: 15, kind: 'team',
+    tip: 'Coming soon!',
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '...................#....#.......',
+      '.1.2...............#.....E......', '################################', '################################',
+    ],
+  },
+  // ----- END 16-1 Conveyor Belt Chaos -----
+  //
+  // ----- BEGIN 16-2 Gumball Machine Puzzle (mode 'gumball', js/levels/world16/gumball-machine-puzzle.js) -----
+  // PLACEHOLDER: replaced when the level is built.
+  { name: 'Gumball Machine Puzzle', world: 15, kind: 'team',
+    tip: 'Coming soon!',
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '...................#....#.......',
+      '.1.2...............#.....E......', '################################', '################################',
+    ],
+  },
+  // ----- END 16-2 Gumball Machine Puzzle -----
+  //
+  // ----- BEGIN 16-3 Chocolate River Raft (mode 'raft', js/levels/world16/chocolate-river-raft.js) -----
+  // PLACEHOLDER: replaced when the level is built.
+  { name: 'Chocolate River Raft', world: 15, kind: 'team',
+    tip: 'Coming soon!',
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '...................#....#.......',
+      '.1.2...............#.....E......', '################################', '################################',
+    ],
+  },
+  // ----- END 16-3 Chocolate River Raft -----
+  //
+  // ----- BEGIN 16-4 Sprinkle Catch (mode 'sprinkle', js/levels/world16/sprinkle-catch.js) -----
+  // PLACEHOLDER: replaced when the level is built.
+  { name: 'Sprinkle Catch', world: 15, kind: 'team',
+    tip: 'Coming soon!',
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '...................#....#.......',
+      '.1.2...............#.....E......', '################################', '################################',
+    ],
+  },
+  // ----- END 16-4 Sprinkle Catch -----
+  //
+  // ===== END World 16 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -3963,6 +4029,10 @@ const WORLDS = [
   { name: 'Orbit Outpost', blurb: 'Swing, flip, drive and hop your way across the stars!',
     theme: { skyTop: '#0d1033', skyBot: '#3a2c6e', hillFar: '#4a4a7a', hillNear: '#363660', sun: 'rgba(255, 214, 150, 0.95)', sunGlow: 'rgba(190, 160, 255, 0.35)',
       stone: '#6a6f8c', stoneLight: '#7f84a3', stoneEdge: '#474b66', grass: '#c9c3f0', grassDark: '#8f88c4', plank: '#9aa6c4', plankDark: '#5c6688', rope: '#f2f2ff', ropeDark: '#8a8fb0' } },
+  // World 16: candy land and a candy factory, sweet and silly (a pink and peach sky with cotton candy clouds; chocolate ground with frosting on top)
+  { name: 'Sugar Rush Factory', blurb: 'Sort, roll, paddle and catch your way through a world made of candy!',
+    theme: { skyTop: '#ff9ccf', skyBot: '#fff0d6', hillFar: '#f7b8e0', hillNear: '#e48fc4', sun: 'rgba(255, 246, 200, 0.95)', sunGlow: 'rgba(255, 180, 220, 0.4)',
+      stone: '#7a4a32', stoneLight: '#8f5a3e', stoneEdge: '#55301f', grass: '#fff4fa', grassDark: '#f2a7cf', plank: '#e8b06a', plankDark: '#9a6a2e', rope: '#ff6fa8', ropeDark: '#a8346a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
