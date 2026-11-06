@@ -4323,16 +4323,26 @@ const LEVELS = [
   // ----- END 17-3 Waterfall Climb -----
   //
   // ----- BEGIN 17-4 Vine Swing (mode 'vine', js/levels/world17/vine-swing.js) -----
-  // PLACEHOLDER: replaced when the level is built.
-  { name: 'Vine Swing', world: 16, kind: 'team',
-    tip: 'Coming soon!',
+  // 17-4 Vine Swing (mode 'vine', versus, best of 5, Gavyn's pick): both swing from their own vines at once, pump with
+  // the swing, let go at the right moment and fly; the camera follows them right. Longest landing wins the round.
+  { name: 'Vine Swing', world: 16, kind: 'versus', mode: 'vine', ownStep: true,
+    // the map is only the two spawns: the mode builds each round's field (MODES.vine)
+    match: { bestOf: 5 },
+    act: { label: 'glide' },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> pump <kbd>W</kbd> let go <kbd>S</kbd> tuck',
+      bo: '<kbd>←</kbd><kbd>→</kbd> pump <kbd>↑</kbd> let go <kbd>↓</kbd> tuck',
+      pad: 'stick ◀ ▶ pump, <span data-glyph="a"></span> let go, down tucks,',
+    },
+    tip: 'Pump ◀ ▶ with the swing, jump to let go, open your leaf at the top. Longest swing wins!',
+    switches: {}, signs: [],
     map: [
       '................................', '................................', '................................',
       '................................', '................................', '................................',
+      '.....1..........................', '................................', '................................',
+      '.....2..........................', '................................', '................................',
       '................................', '................................', '................................',
       '................................', '................................', '................................',
-      '................................', '................................', '...................#....#.......',
-      '.1.2...............#.....E......', '################################', '################################',
     ],
   },
   // ----- END 17-4 Vine Swing -----
