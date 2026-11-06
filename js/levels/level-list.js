@@ -3927,16 +3927,36 @@ const LEVELS = [
   // ----- END 16-1 Conveyor Belt Chaos -----
   //
   // ----- BEGIN 16-2 Gumball Machine Puzzle (mode 'gumball', js/levels/world16/gumball-machine-puzzle.js) -----
-  // PLACEHOLDER: replaced when the level is built.
-  { name: 'Gumball Machine Puzzle', world: 15, kind: 'team',
-    tip: 'Coming soon!',
+  // 16-2: a giant gumball machine seen from the front (MODES.gumball, team): one cranks gumballs into the board and picks
+  // the chute, the other runs the wafer ledges and flips the levers so each colour rolls into its own cup. Jobs swap every
+  // machine (room `crank`: 0 Pip cranks, 1 Bo cranks). `machine` names the board in GUMBALL_MACHINES (the level file);
+  // the map only holds the keeper's wafer ledges ('=' one-way, levers stand on rows 8, 11 and 14) and the board's walls.
+  { name: 'Gumball Machine Puzzle', world: 15, kind: 'team', mode: 'gumball', ownStep: true, ownHUD: true, noFalls: true,
+    roomWord: 'Machine',
+    legend: {
+      pip: 'crank: <kbd>A</kbd><kbd>D</kbd> chute <kbd>S</kbd> swap · levers: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move',
+      bo: 'crank: <kbd>←</kbd><kbd>→</kbd> chute <kbd>↓</kbd> swap · levers: <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move',
+      pad: 'stick: chute · swap · move, <span data-glyph="a"></span> hop,',
+    },
+    tip: 'One turns the crank to drop gumballs, one flips the levers so every colour rolls into its matching cup!',
+    act: { label: 'crank', labels: ['crank', 'flip'] },
     map: [
-      '................................', '................................', '................................',
-      '................................', '................................', '................................',
-      '................................', '................................', '................................',
-      '................................', '................................', '................................',
-      '................................', '................................', '...................#....#.......',
-      '.1.2...............#.....E......', '################################', '################################',
+      '......#..................#......', '......#..................#......', '......#..................#......',
+      '......#..................#......', '......#..................#......', '......#..................#......',
+      '......#..................#......', '......#..................#......', '======#..................#======',
+      '......#..................#......', '......#..................#......', '======#..................#======',
+      '......#..................#......', '......#..................#......', '======#..................#======',
+      '................................', '...1.2..........................', '################################',
+    ],
+    rooms: [
+      { title: 'Sweet Start', machine: 'start', crank: 0, act: { label: 'crank', labels: ['crank', 'flip'] },
+        tip: 'Pip cranks gumballs out of the globe. Bo runs the ledges and flips each lever so the gumball rolls into its own cup!' },
+      { title: 'Switch Tracks', machine: 'switch', crank: 1, act: { label: 'crank', labels: ['flip', 'crank'] },
+        tip: 'Swap! Bo cranks and picks the chute with ◀ ▶. The seesaw tips over by itself after every gumball!' },
+      { title: 'Spinner Swirl', machine: 'spin', crank: 0, act: { label: 'crank', labels: ['crank', 'flip'] },
+        tip: 'Pip cranks again. Trapdoors only stay open for 3 seconds: open them just before the gumball gets there!' },
+      { title: 'Jackpot Machine', machine: 'jackpot', crank: 1, act: { label: 'crank', labels: ['flip', 'crank'] },
+        tip: 'Bo cranks the big one! Flick the flipper to send a gumball flying. Fill every cup for the golden JACKPOT!' },
     ],
   },
   // ----- END 16-2 Gumball Machine Puzzle -----
