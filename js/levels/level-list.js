@@ -3942,16 +3942,57 @@ const LEVELS = [
   // ----- END 16-2 Gumball Machine Puzzle -----
   //
   // ----- BEGIN 16-3 Chocolate River Raft (mode 'raft', js/levels/world16/chocolate-river-raft.js) -----
-  // PLACEHOLDER: replaced when the level is built.
-  { name: 'Chocolate River Raft', world: 15, kind: 'team',
-    tip: 'Coming soon!',
-    map: [
-      '................................', '................................', '................................',
-      '................................', '................................', '................................',
-      '................................', '................................', '................................',
-      '................................', '................................', '................................',
-      '................................', '................................', '...................#....#.......',
-      '.1.2...............#.....E......', '################################', '################################',
+  // 16-3: a top-down cookie raft (MODES.raft): one paddles, one hooks candy and shoves things away; jobs swap at every
+  // dock. The map is only the two spawns, the mode builds each stretch of river from its course (tokens: see the top of
+  // the level file).
+  { name: 'Chocolate River Raft', world: 15, kind: 'team', mode: 'raft', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    legend: {
+      pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> steer · aim the hook',
+      bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> steer · aim the hook',
+      pad: 'stick: steer · aim the hook,',
+    },
+    tip: 'Ride a cookie raft down the chocolate river! One paddles, one hooks candy and shoves logs away.',
+    act: { label: 'hook', labels: ['paddle', 'hook'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Cocoa Creek', paddler: 0, width: 420, current: 70, act: { label: 'hook', labels: ['paddle', 'hook'] },
+        tip: 'Pip paddles: steer, and paddle for a big push. Bo hooks candy into the basket and shoves things away!',
+        course: ['f420', 'S:{P} steers the raft  ·  {H} aims the hook', 'f200', 'c:wrap:0.25', 'f240', 'c:wrap:-0.35', 'f180',
+          'S:{H}: hook the candy!', 'f120', 'c:lolly:0.8', 'd500:120', 'c:wrap:-0.85', 'f160', 'm:0', 'f220', 'c:wrap:0.6',
+          'u560:160', 'c:lolly:-0.88', 'f200', 'E:0.75:440', 'c:gummy:0.85+200', 'f480', 'S:Candy by the bank? Steer close to it!',
+          'L:-0.2:150', 'f300', 'c:wrap:0.9', 'd420:100', 'm:-0.5', 'c:wrap:0.05+80', 'f220', 'F', 'W300', 'f260',
+          'S:Log jam! {H}: shove it twice', 'f300', 'J', 'f220', 'W420', 'c:lolly:-0.85', 'f200', 'b:0.3', 'f260', 'c:wrap:0.75',
+          'u420:100', 'c:gummy:-0.88', 'f320', 'S:Dock at the pier to swap jobs!', 'D'],
+      },
+      {
+        title: 'Marshmallow Rapids', paddler: 1, width: 380, current: 85, act: { label: 'hook', labels: ['hook', 'paddle'] },
+        tip: 'Swap! Bo paddles, Pip hooks. Rapids push hard: steer round the marshmallow rocks, or shove them away!',
+        course: ['f420', 'S:Swap! {P} paddles, {H} hooks', 'f200', 'c:wrap:0.5', 'f220', 'c:wrap:-0.55', 'f160',
+          'C150', 'W300', 'S:Rapids! Hold on to your sprinkles!', 'f220', 'm:-0.45', 'f240', 'm:0.45', 'c:wrap:0+110', 'f260', 'b:0',
+          'f220', 'c:lolly:-0.85', 'f200', 'C85', 'W400', 'd420:120', 'E:-0.75:420', 'c:gummy:-0.88+200', 'f460', 'F',
+          'C150', 'W280', 'S:A wall of rocks! {H}: shove one away', 'f360', 'm:-0.66', 'm:0', 'm:0.66', 'f320', 'c:wrap:0.4', 'f200',
+          'b:-0.3', 'f220', 'C85', 'W400', 'u420:120', 'c:wrap:0.85', 'f200', 'L:0.3:160', 'f260', 'c:lolly:0.88', 'f200',
+          'c:wrap:-0.75', 'f200', 'F', 'W300', 'f220', 'J', 'f240', 'W400', 'c:gummy:0.88', 'f300', 'b:0.2', 'c:wrap:-0.6+100', 'f320', 'D'],
+      },
+      {
+        title: 'Caramel Swirls', paddler: 0, width: 440, current: 75, act: { label: 'hook', labels: ['paddle', 'hook'] },
+        tip: 'Pip paddles again. Paddle round the caramel whirlpools while Bo hooks the swirling candy. Toffee gates!',
+        course: ['f420', 'S:Caramel whirlpools! Paddle round the edge', 'f200', 'c:wrap:-0.4', 'f320', 'P:0.15:110:3', 'f620',
+          'c:wrap:0.85', 'd420:120', 'E:0.72:400', 'c:gummy:0.86+190', 'f480', 'F', 'S:Toffee gate! Paddle to the ring and hold still',
+          'f340', 'G:-1', 'f520', 'c:lolly:-0.86', 'f200', 'P:-0.3:120:4', 'f640', 'c:wrap:0.65', 'u420:150', 'b:0', 'f260',
+          'c:wrap:-0.85', 'f220', 'F', 'W320', 'f220', 'J', 'f240', 'W440', 'G:1', 'f420', 'c:gummy:0.88', 'f220', 'P:0.2:100:3',
+          'f640', 'c:wrap:-0.75', 'f320', 'D'],
+      },
+      {
+        title: 'Fudge Falls', paddler: 1, width: 400, current: 85, act: { label: 'hook', labels: ['hook', 'paddle'] },
+        tip: 'Bo paddles to the candy village! Hit the fudge ramp straight and fast to jump Fudge Falls. Splat? Try again!',
+        course: ['f420', 'S:Last stretch! Fudge Falls ahead', 'f200', 'c:wrap:0.45', 'f220', 'C140', 'W300', 'm:0.4', 'f220', 'b:-0.3',
+          'f220', 'c:lolly:0.8', 'f200', 'm:-0.55', 'm:0.15+10', 'f320', 'C85', 'W400', 'G:-1', 'f420', 'c:gummy:-0.88', 'f220',
+          'P:0.3:110:3', 'f620', 'F', 'W300', 'f220', 'J', 'f220', 'W400', 'c:wrap:0.75', 'f240',
+          'S:Fudge Falls! Line up with the ramp and paddle hard!', 'C125', 'f300', 'F', 'b:0.45', 'f320', 'c:wrap:-0.6',
+          'b:-0.45+120', 'f420', 'K:0', 'C55', 'W460', 'f240', 'c:gummy:0.35', 'f220', 'c:wrap:-0.45', 'f300', 'V'],
+      },
     ],
   },
   // ----- END 16-3 Chocolate River Raft -----
