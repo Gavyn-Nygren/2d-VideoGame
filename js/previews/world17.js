@@ -356,11 +356,11 @@ if (typeof definePreview === 'function') {
   const pw17vGY = 150, pw17vL = 60, pw17vW = Math.PI * 2 / 1.3;
   // per hero: vine pivot, let-go time, flight time, landing x, distance, swing phase offset (so let-go is at +30 deg going forward)
   const pw17vH = [
-    { px: 92, py: 12, tr: 2.0, ft: 1.3, lx: 240, m: 38 },
-    { px: 74, py: 12, tr: 2.65, ft: 1.55, lx: 272, m: 44 },
+    { px: 106, py: 12, tr: 2.0, ft: 1.3, lx: 240, m: 38 },
+    { px: 88, py: 12, tr: 2.65, ft: 1.55, lx: 272, m: 44 },
   ];
   for (const h of pw17vH) h.ph = 0.44 - pw17vW * h.tr;
-  const pw17vAmp = t => (22 + 48 * Math.min(1, t / 2)) * Math.PI / 180;
+  const pw17vAmp = t => (22 + 56 * Math.min(1, t / 2)) * Math.PI / 180;   // a big swing, up near the branch
   const pw17vWin = 4.4;
   // several circles in one fill
   const pw17vBlobs = (ctx, col, list) => { ctx.fillStyle = col; ctx.beginPath(); for (const [x, y, r] of list) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); } ctx.fill(); };
@@ -408,7 +408,7 @@ if (typeof definePreview === 'function') {
     // the big tree, its branch and the deck
     ctx.fillStyle = '#7a5230'; v.rr(-8, -4, 30, pw17vGY + 6, 8); ctx.fill();
     ctx.fillStyle = '#5e3e22'; ctx.fillRect(6, 30, 3, 90);
-    ctx.fillStyle = '#7a5230'; v.rr(10, 6, 100, 10, 5); ctx.fill();
+    ctx.fillStyle = '#7a5230'; v.rr(10, 6, 112, 10, 5); ctx.fill();
     pw17vBlobs(ctx, '#2f7a3a', pw17vHills[2]);
     pw17vBlobs(ctx, '#3f9446', pw17vHills[3]);
     ctx.fillStyle = '#b07a44'; ctx.fillRect(0, 118, 40, 6); ctx.fillStyle = '#8a5a30'; ctx.fillRect(4, 124, 3, 26); ctx.fillRect(33, 124, 3, 26);
@@ -425,7 +425,7 @@ if (typeof definePreview === 'function') {
         const h = pw17vH[id];
         if (t < h.tr) {
           const a = pw17vAng(h, t), hand = pw17vHand(h, a);
-          pw17vVine(v, h.px, h.py, hand.x, hand.y, -Math.cos(pw17vW * t + h.ph) * 4);
+          pw17vVine(v, h.px, h.py, hand.x, hand.y, -Math.cos(pw17vW * t + h.ph) * 10);   // (the vine whips: it bows out behind)
           pos.push({ id, x: hand.x + Math.sin(a) * 12, y: hand.y + Math.cos(a) * 12 + 8.4, rot: -a, mood: t > h.tr - 0.5 ? 'grit' : 'happy', face: 1 });
         } else {
           // the empty vine swings back and settles

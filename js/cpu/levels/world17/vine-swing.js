@@ -5,21 +5,22 @@
   /* The computer is the other swinger. It presses the same keys a person does: ◀ ▶ to pump, jump to let go, the action
      for the leaf glide, ▼ to tuck and ◀ ▶ to nudge in the air.
      Swinging: it presses the way it sees itself swinging (as it was a reaction time ago), so its pumping drifts out of
-     time a little on Easy, which also presses the wrong way now and then and stops for a moment. It keeps pumping until
-     its swing is about as high as it wants (Easy is happy lower, and is sometimes impatient), or until the swing clock
-     leaves time for just one more forward swing. Then, on that forward swing, it works out the best moment to let go
+     time a little on Easy, which also presses the wrong way now and then and stops for a moment. There is no swing
+     clock, so it keeps pumping until its swing is about as high as it wants (Easy is happy lower, and is sometimes
+     impatient), until its swing stops getting bigger, or until it has swung for its patience (Easy has the least).
+     Then, on that forward swing, it works out the best moment to let go
      with the same swing and flight rules everybody uses (like a person who has practised the arc) and lets go there,
      off by its aim (Easy about ±17°, Normal ±6°, Hard ±2°). (The level works out that same sweet spot at the start of
      each forward swing; the computer uses it rather than working it out twice in one tick.)
      Flying: every reaction time it tries ◀, ▶ or nothing held (and ▼ tucked or not, on Normal and Hard) on the same
      flight rules, keeps the best, and opens the leaf when the best moment to open it has come (Easy guesses that
      moment with a big error, Hard almost none). Bounces, toucans, fireflies and the wind are in those flights.
-     What it reads: the field (mushrooms, river, toucans, wind), its own swing and flight, the swing clock. Nothing about
+     What it reads: the field (mushrooms, river, toucans, wind), its own swing and flight. Nothing about
      the other player's keys. */
   const SK = {
-    easy: { react: 0.34, wrong: 0.5, lazy: 0.4, aim: 17, impatient: 0.6, wantA: 44, glideErr: 0.4, glide: 0.4, nudge: 0.35, tuck: false, think: 0.2 },
-    normal: { react: 0.14, wrong: 0.08, lazy: 0.06, aim: 6, impatient: 0.1, wantA: 76, glideErr: 0.12, glide: 0.95, nudge: 0.9, tuck: true, think: 0.12 },
-    hard: { react: 0.06, wrong: 0, lazy: 0, aim: 2, impatient: 0, wantA: 82, glideErr: 0.03, glide: 1, nudge: 1, tuck: true, think: 0.08 },
+    easy: { react: 0.34, wrong: 0.5, lazy: 0.4, aim: 17, impatient: 0.6, wantA: 95, patience: 12, glideErr: 0.4, glide: 0.4, nudge: 0.35, tuck: false, think: 0.2 },
+    normal: { react: 0.14, wrong: 0.08, lazy: 0.06, aim: 6, impatient: 0.1, wantA: 122, patience: 20, glideErr: 0.12, glide: 0.95, nudge: 0.9, tuck: true, think: 0.12 },
+    hard: { react: 0.06, wrong: 0, lazy: 0, aim: 2, impatient: 0, wantA: 131, patience: 30, glideErr: 0.03, glide: 1, nudge: 1, tuck: true, think: 0.08 },
   };
   const skOf = s => (s <= 0.4 ? SK.easy : s < 0.9 ? SK.normal : SK.hard);
   const T = () => MODES.vine.test;
@@ -54,7 +55,8 @@
   }
 
   cpuBrain('vine', {
-    // the match goes on by itself: a person who walked away still finishes it, so the computer keeps swinging
+    // the computer plays on by itself (it swings, lets go and lands); with no swing clock the match then waits for a
+    // person who never lets go
     noIdleStop: true,
     bubbleHidden: true,
     bubblePos(p) {
@@ -78,13 +80,14 @@
       }
       // a new round: fresh plans
       if (S.round !== st.round || S.att !== st.att || S.lt > st.lt) {
-        S.round = st.round; S.att = st.att; S.saidEnd = false; S.mode = 'pump'; S.target = null; S.fwd = false; S.lastFwd = null; S.wrongT = 0; S.lazyT = 0; S.planT = 0; S.hold = null;
+        S.round = st.round; S.att = st.att; S.saidEnd = false; S.mode = 'pump'; S.target = null; S.fwd = false; S.lastA = 0; S.swingT = 0; S.wrongT = 0; S.lazyT = 0; S.planT = 0; S.hold = null;
         S.glideAt = null; S.gErr = 0; S.flew = false; S.impatient = Math.random() < sk.impatient; S.wantA = (sk.wantA + gauss() * 3) * D;
         S.said = {};
       }
       S.lt = st.lt;
       if (me.status === 'swing') {
-        const w = cpuLag(S, 'w', me.s.w, sk.react), A = T().amp(me.s), period = 2 * Math.PI * Math.sqrt(V.R / V.gs);
+        const w = cpuLag(S, 'w', me.s.w, sk.react), A = T().amp(me.s);
+        S.swingT += dt;
         // pumping: the way it saw itself swing; Easy sometimes the wrong way, or not at all for a moment
         if (cpuChance(sk.wrong, dt)) S.wrongT = 0.15 + Math.random() * 0.25;
         if (cpuChance(sk.lazy, dt)) S.lazyT = 0.3 + Math.random() * 0.5;
@@ -93,19 +96,17 @@
         if (S.wrongT > 0) d = -d;
         if (S.lazyT > 0) d = 0;
         out.right = d > 0; out.left = d < 0;
-        // at the start of each forward swing: is this the one to let go on? (high enough, impatient, or the next
-        // forward swing's best moment would come after the bell)
+        // at the start of each forward swing: is this the one to let go on? (high enough, impatient, the swing has
+        // stopped getting bigger, or it has swung long enough)
         if (me.s.w > 0.2 && !S.fwd) {
           S.fwd = true;
-          // (a big swing takes longer than a small one: it goes by how long the last one took)
-          const per = S.lastFwd != null ? Math.max(period, st.at - S.lastFwd) * 1.04 : period * 1.12;
-          S.lastFwd = st.at;
+          const stalled = A > 70 * D && A - S.lastA < 1.5 * D, bored = S.swingT > sk.patience;
+          S.lastA = A;
           // (the level already worked out this forward swing's sweet spot from the same rules a moment ago: use it
           // rather than working it out again in the same tick)
           const fresh = me.best && !me.bestDue && me.bestAt != null && st.t - me.bestAt < 0.5;
           const best = fresh ? { a: me.best.a, d: me.best.d, dt: Math.max(0, me.best.dt - (st.t - me.bestAt)) } : T().bestRelease(f, me.s, st.t, me.gold > 0);
-          const lastOne = st.clock - (per + best.dt) < 0.25;
-          if (A >= S.wantA || lastOne || (S.impatient && A > 52 * D && st.lt > 3.5)) { S.mode = 'aim'; S.target = best.a + gauss() * sk.aim * D; }
+          if (A >= S.wantA || stalled || bored || (S.impatient && A > 80 * D && st.at > 5)) { S.mode = 'aim'; S.target = best.a + gauss() * sk.aim * D; }
         }
         if (me.s.w < -0.2) { S.fwd = false; if (S.mode === 'aim') S.mode = 'pump'; }
         if (S.mode === 'aim' && me.s.w > 0.2 && me.s.a >= S.target) { out.jump = 'tap'; if (!S.said.go) { S.said.go = 1; cpuSay(p, 'Wheee!'); } }
