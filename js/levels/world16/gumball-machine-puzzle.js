@@ -116,7 +116,7 @@ const GUMBALL_MACHINES = {
       T2: { t: 'gate', timed: true, x: 540, y: 306, outs: ['t2c', 'cup:yellow'], lever: 'U', state: 0 },
       t2c: { t: 'ramp', pts: [[540, 306], [630, 346], [646, 352]], next: 'cup:green' },
       K3: { t: 'bump', x: 690, y: 268, apex: 24, next: 'K4' },
-      K4: { t: 'bump', x: 716, y: 372, apex: 20, next: 'cup:green' },
+      K4: { t: 'bump', x: 722, y: 372, apex: 20, next: 'cup:green' },
     },
     levers: { T: { x: 92, row: 11, icon: 'heart' }, W: { x: 868, row: 8, icon: 'star' }, U: { x: 868, row: 14, icon: 'moon' } },
   },
@@ -134,7 +134,7 @@ const GUMBALL_MACHINES = {
       F: { t: 'flip', x: 640, y: 332, outs: ['f0', 'cup:purple'], lever: 'F', apexY: 262 },
       f0: { t: 'ramp', pts: [[640, 332], [604, 368], [594, 374]], next: 'cup:green' },
       K5: { t: 'bump', x: 712, y: 250, apex: 18, next: 'k5r' },
-      k5r: { t: 'ramp', pts: [[704, 292], [652, 328]], next: 'F' },
+      k5r: { t: 'ramp', pts: [[734, 290], [652, 328]], next: 'F' },
     },
     levers: { A: { x: 92, row: 8, icon: 'star' }, C: { x: 92, row: 14, icon: 'leaf' }, S: { x: 868, row: 8, icon: 'moon' }, F: { x: 868, row: 14, icon: 'heart' } },
     jackpot: true,
@@ -1159,12 +1159,14 @@ function gumballDrawDevice(st, pc, t) {
 function gumballDrawBumpers(st, t) {
   for (const pc of Object.values(st.pc)) {
     if (pc.t !== 'bump') continue;
-    const sq = 1 + pc.hit * 0.25;
-    ctx.fillStyle = 'rgba(90,30,60,0.35)'; circle(pc.x, pc.y + 14, 14); ctx.fill();
-    ctx.save(); ctx.translate(pc.x, pc.y + 12); ctx.scale(sq, 1 / sq);
-    ctx.fillStyle = '#fff'; circle(0, 0, 13); ctx.fill();
-    for (let k = 0; k < 6; k++) { ctx.fillStyle = '#ff3d5e'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 13, k * Math.PI / 3 + t * 0.6, k * Math.PI / 3 + Math.PI / 6 + t * 0.6); ctx.closePath(); ctx.fill(); }
-    ctx.strokeStyle = '#b31a37'; ctx.lineWidth = 2; circle(0, 0, 13); ctx.stroke();
+    // a bouncy marshmallow pillow (flat and mint, so it never looks like a gumball), squashed when hit
+    const sq = 1 + pc.hit * 0.3;
+    ctx.fillStyle = 'rgba(90,30,60,0.25)'; rr(pc.x - 16, pc.y + GUMBALL.r + 4, 32, 14, 7); ctx.fill();
+    ctx.save(); ctx.translate(pc.x, pc.y + GUMBALL.r + 7); ctx.scale(sq, 1 / sq);
+    ctx.fillStyle = '#4a2a3a'; rr(-16, -7.5, 32, 15, 7.5); ctx.fill();
+    ctx.fillStyle = '#7fe8cf'; rr(-14, -6, 28, 12, 6); ctx.fill();
+    ctx.fillStyle = '#ffffff'; for (const dx of [-8, 0, 8]) { ctx.beginPath(); ctx.arc(dx, 0.5, 2.2, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; rr(-10, -4.5, 12, 2.5, 1.2); ctx.fill();
     ctx.restore();
   }
 }

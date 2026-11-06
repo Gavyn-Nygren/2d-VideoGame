@@ -47,7 +47,7 @@ if (typeof definePreview === 'function') {
     v.fillCircle(x, y - 26, 6, '#3a2140'); v.heart(x, y - 26, 3.4, '#fff');
   };
   definePreview('Gumball Machine Puzzle', {
-    blurb: 'One cranks out gumballs, the other flips the levers so every colour rolls into its matching cup.',
+    blurb: 'One cranks out gumballs, one flips levers so each colour rolls into its cup.',
     loop: 5.2,
     still: 3.0,
     draw(v, t) {
