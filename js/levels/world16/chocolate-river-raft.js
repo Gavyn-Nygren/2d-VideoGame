@@ -51,7 +51,7 @@ const RAFT = {
   dockV: 34, dockW: 72, dockWGold: 150, dockCross: 36, netD: 420,
   poolCore: 26, poolSpitT: 0.5, swirl: 150, pull: 80,
   helpMiss: 4, helpJamT: 14, helpBonk: 4, helpSpin: 2, helpRingT: 18, helpRamp: 2, helpRamp2: 4, helpDockT: 14, tryWin: 5,
-  fallT: 3.4, swapT: 1.9, finT: 4.8, hintLife: 2.8, camLead: 300,
+  fallT: 3.4, swapT: 1.9, finT: 4.8, hintLife: 2.8, camLead: 300, introY: 410,
 };
 const raftLerp = (a, b, u) => a + (b - a) * u;
 const raftSmooth = u => { u = clamp(u, 0, 1); return u * u * (3 - 2 * u); };
@@ -202,7 +202,8 @@ function raftRoom(st, L, k) {
   st.cp = { x: 0 }; st.bonksRoom = 0; st.missN = 0; st.goldPaddle = false; st.goldHook = false; st.boost = false;
   st.dockT = 0; st.docked = 0; st.noProgT = 0; st.bestX = 0; st.whiffN = 0;
   raftPlace(st, 0, 0);
-  st.cam = { x: -RAFT.camLead, y: st.raft.y - H / 2 + 10 };
+  // (the raft starts low on the screen, so the intro card and its name tags don't cover each other)
+  st.cam = { x: -RAFT.camLead, y: st.raft.y - RAFT.introY };
   st.parts = []; st.pops = []; st.hints = [null, null]; st.hinted = {}; st.msg = null; st.fly = [];
   st.segStart = G.time; st.inT = [-99, -99];
   raftActLabels(st);
@@ -339,6 +340,13 @@ function raftCollide(st, dt) {
       if (-vn > R.bankBoing && b.bank <= 0) { b.bank = 0.6; Sfx.play('raftBoing'); raftPop(st, b.x, b.y + s * 50, 'Boing!', '#ffe7f3', 18); b.w += s * 1.5; }
     }
   }
+  // paddling back upstream: the river is too strong past the start of the stretch (or far behind the last flag)
+  const back = Math.max(-360, st.cp.x - 900);
+  if (b.x < back) {
+    b.x = back; if (b.vx < 0) b.vx = 0;
+    if (!(st.backT > st.t)) { st.backT = st.t + 3; raftPop(st, b.x, b.y - 70, 'Whoosh! Too strong upstream', '#ffe7f3', 18); }
+    raftHint(st, st.pad, 'The river flows this way: ' + raftKey(st.pad, 'right'), 2.4);
+  }
   // marshmallow rocks and bonbons
   for (const o of c.rocks) if (o.state === 'on') {
     const d = Math.hypot(b.x - o.x, b.y - o.y), m = r + o.r;
@@ -453,7 +461,8 @@ function raftHookStep(st, dt, hi, press) {
   for (const o of st.c.rocks) if (o.state === 'on') near(o.x, o.y, o.r + 18 + extra, { kind: 'rock', o });
   for (const o of st.c.bonbons) if (o.state === 'on' && o.act) near(o.x, raftLY(st, o.x, o.l), o.r + 18 + extra, { kind: 'bonbon', o });
   for (const o of st.c.logs) if (o.state === 'on' && o.act) { const q = raftLogEnds(st, o), cp = raftSegNear(hk.wx, hk.wy, q.ax, q.ay, q.bx, q.by); near(cp.x, cp.y, 13 + 18 + extra, { kind: 'log', o }); }
-  for (const j of st.c.jams) if (!j.open) near(j.x, clamp(hk.wy, raftCY(st, j.x) - raftHW(st, j.x), raftCY(st, j.x) + raftHW(st, j.x)), R.jamR + 16 + extra, { kind: 'jam', j });
+  // a log jam fills the river: a tip on it or past it (the hook pushed all the way ahead) shoves it
+  for (const j of st.c.jams) if (!j.open && j.x > b.x) near(Math.max(j.x, Math.min(hk.wx, j.x + 400)), clamp(hk.wy, raftCY(st, j.x) - raftHW(st, j.x), raftCY(st, j.x) + raftHW(st, j.x)), R.jamR + 16 + extra, { kind: 'jam', j });
   if (!best) {
     hk.miss = 0.25; hk.cd = R.whiffCD; st.whiffN++;
     Sfx.play('raftSwish');
@@ -856,7 +865,10 @@ function raftCam(st, dt) {
   cam.x += (tx - cam.x) * Math.min(1, dt * 4);
   cam.y += (ty - cam.y) * Math.min(1, dt * 3);
   const sy = b.y - cam.y;
-  if (sy < 150) cam.y = b.y - 150; else if (sy > 350) cam.y = b.y - 350;
+  // (during the intro card the raft sits low; afterwards the limit eases back up)
+  if (G.introT > 0) { cam.y = b.y - R.introY; st.camHi = R.introY - 350; }
+  st.camHi = Math.max(0, (st.camHi || 0) - dt * 90);
+  if (sy < 150) cam.y = b.y - 150; else if (sy > 350 + st.camHi) cam.y = b.y - 350 - st.camHi;
 }
 function raftFx(st, dt) {
   for (let i = st.parts.length - 1; i >= 0; i--) {
@@ -1068,15 +1080,21 @@ function raftDrawBanks(st) {
     const h = hash(k, s > 0 ? 31 : 17), x = k * 110 + (h % 60), y = raftCY(st, x) + s * (raftHW(st, x) + 34 + ((h >>> 6) % 70));
     if (y < cam.y - 60 || y > cam.y + H + 80) continue;
     if (vil && Math.abs(x - c.dock.x) < 700) continue;
-    if (s < 0 && c.signs.some(q => Math.abs(q.x - x) < 120)) continue;
+    if (c.signs.some(q => Math.abs(q.x - x) < 120)) continue;
     raftDeco(x, y, (h >>> 10) % 6, h);
   }
   for (const s of c.signs) if (raftVis(st, s.x, 240)) {
     // on the top bank, unless that would sit under the level pills: then on the bottom bank
-    let y = raftCY(st, s.x) - raftHW(st, s.x) - 22;
-    if (y - 34 - st.cam.y < 150) y = raftCY(st, s.x) + raftHW(st, s.x) + 92;
+    // (and never under the job cards in the bottom corners)
     ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
-    const w = ctx.measureText(s.text).width + 24;
+    const w = ctx.measureText(s.text).width + 24, big = hudBig(), topLim = big ? 116 : 92;
+    let y = raftCY(st, s.x) - raftHW(st, s.x) - 22;
+    if (y - 34 - st.cam.y < topLim) {
+      y = raftCY(st, s.x) + raftHW(st, s.x) + 46;
+      const pw = Math.round(250 * (big ? 1.4 : 1)), cardTop = H - Math.round(56 * (big ? 1.4 : 1)) - 10, sx = s.x - st.cam.x;
+      if ((sx - w / 2 < 12 + pw + 8 || sx + w / 2 > W - 12 - pw - 8) && y - 2 - st.cam.y > cardTop) y = st.cam.y + cardTop + 2;
+      y = Math.max(y, st.cam.y + topLim + 34);
+    }
     ctx.fillStyle = '#9a6a2e'; ctx.fillRect(s.x - 2, y - 4, 4, 22);
     ctx.fillStyle = 'rgba(92,44,24,0.92)'; rr(s.x - w / 2, y - 34, w, 30, 9); ctx.fill();
     ctx.strokeStyle = '#ffb3d6'; ctx.lineWidth = 2; rr(s.x - w / 2, y - 34, w, 30, 9); ctx.stroke();
