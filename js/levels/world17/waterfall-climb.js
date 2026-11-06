@@ -8,7 +8,8 @@
    - Boost walls (a vine post V on a ledge 5-6 tiles high): too high for a jump (about 3.6 tiles) or a jump off a standing
      partner's head (4.5 tiles). One BRACES (hold ▼, or hold the action away from a post): they can't move, and a partner
      who jumps off their hands flies about 7.6 tiles (WFALL.boostV). Then the one on top presses the action at the post:
-     the vine unrolls down the wall. The one below grabs it (▲, or jump into it) and climbs with ▲; holding the action at
+     the vine unrolls down the wall. The one below grabs it (▲, or jump into it) and climbs holding ▲ or jump (keyboard
+     and touch have no ▲ of their own: W, ↑ and touch ▲ are jump); jump + ◀/▶ away from the wall hops off. Holding the action at
      the post meanwhile heaves them up faster. A vine stays down once dropped (so a fallen friend can climb back alone).
    - Someone standing on your head is carried when you walk, and you can't jump while carrying them ("Oof!"), so stacked
      jumps are no shortcut. Partners walk through each other.
@@ -395,11 +396,15 @@ function wfallClimb(st, p, dt) {
   const heave = o.alive && !O.splash && O.post === w.i && o.input.act;
   w.heave = approach(w.heave, heave ? 1 : 0, dt * 6);
   const v = WFALL.climbV * (heave ? WFALL.heave : 1) * (st.superBoost ? 1.15 : 1);
-  const dir = (inp.up ? -1 : 0) + (inp.down ? 1 : 0) + (heave && !inp.down ? -0.6 : 0);
+  // ▲ climbs: the stick (controller), or the jump key / button held (keyboard W and ↑ and touch ▲ are jump keys)
+  const upHeld = inp.up || (inp.jump && !inp.down);
+  const dir = (upHeld ? -1 : 0) + (inp.down ? 1 : 0) + (heave && !inp.down ? -0.6 : 0);
   p.x = w.vineX - p.w / 2; p.vx = 0;
   P.climbDir = dir;
   if (dir) { p.y += clamp(dir, -1.6, 1) * v * dt; P.climbT += dt; }
-  // hop off with jump (away from the wall)
+  // hop off: jump while holding ◀ or ▶ away from the wall (a plain jump press just climbs)
+  const away = w.side > 0 ? inp.left : inp.right;
+  if (p.pendingJump && !away) p.pendingJump = false;
   if (p.pendingJump) {
     p.pendingJump = false; P.vine = -1; P.grabCD = 0.35;
     p.vy = -380; p.vx = -w.side * 150; p.grounded = false; p.jumping = false;
@@ -573,16 +578,21 @@ function wfallJob(st, id) {
   if (P.vine >= 0) return { k: 'climb' };
   if (!s) return null;
   const nm = NAMES[1 - id];
+  // stacked up away from a boost wall: the carrier can't jump, so the one on top steps off
+  if (s.go !== 'wall' && P.onHead) return { k: 'hopOff' };
+  if (s.go !== 'wall' && O.onHead && o.alive) return { k: 'carry' };
   if (s.go === 'wall') {
     const w = st.walls[s.wall];
     const oStep = O.step, oUp = o.alive && oStep > P.step;
     if (oUp) return w.down ? { k: 'grab', w } : { k: 'waitVine', w };
     if (O.vine >= 0) return { k: 'none' };
-    if (P.brace) return O.onHead ? { k: 'braceHold' } : { k: 'bracing' };
-    if (P.onHead) return O.brace ? { k: 'boostJump' } : { k: 'askBrace' };
-    if (O.brace && Math.abs(o.x - w.boostX + o.w / 2) < 60) return { k: 'hopOn' };
+    // flying up off the partner's hands
+    if (P.boostFrom >= 0 && !p.grounded) return { k: 'fly' };
     // who should brace: the computer by default in 1-player mode; with two people, Pip on even walls
     const booster = wfallSolo() ? (cpuOn(id) ? id : 1 - id) : (w.i % 2 === 0 ? 0 : 1);
+    if (P.brace) return O.onHead ? { k: 'braceHold' } : O.brace && booster !== id ? { k: 'bothBrace' } : { k: 'bracing' };
+    if (P.onHead) return O.brace ? { k: 'boostJump' } : { k: 'askBrace' };
+    if (O.brace && Math.abs(o.x - w.boostX + o.w / 2) < 60) return { k: 'hopOn' };
     if (oStep !== P.step) return { k: 'waitFriend', w };
     return booster === id ? { k: 'brace', w } : { k: 'hopOn', w, wait: true };
   }
@@ -601,11 +611,15 @@ function wfallJobText(st, id, j) {
   switch (j.k) {
     case 'brace': return ['Brace by the wall: ' + hold(dn), cpu ? nm + ' hops on and jumps!' : nm + ' jumps off your hands'];
     case 'bracing': return ['Bracing! Stay put', nm + ' hops on your hands'];
+    case 'bothBrace': return [cpu ? nm + ' is bracing too' : 'You’re both bracing!', 'Let go of ' + dn + ' and hop on ' + nm + '’s hands'];
+    case 'fly': return ['BIG boost! Steer onto the ledge', ''];
     case 'braceHold': return ['Hold it! ' + nm + ' jumps off', ''];
     case 'hopOn': return [j.wait ? 'Hop on ' + nm + '’s hands when they brace' : 'Hop on ' + nm + '’s hands!', 'Then jump for a BIG boost'];
     case 'boostJump': return ['Jump now: BIG boost!', 'Steer onto the ledge'];
     case 'askBrace': return [nm + ' isn’t bracing', cpu ? 'Hop down and wait a moment' : nm + ': ' + 'hold ' + wfallKey(1 - id, 'down') + ' to brace'];
     case 'waitFriend': return ['Wait here for ' + nm, ''];
+    case 'hopOff': return ['Hop off ' + nm + '’s head', nm + ' can’t jump with you up there'];
+    case 'carry': return [nm + ' is riding on your head', 'You can’t jump while carrying'];
     case 'lower': return ['Drop the vine: press ' + act + ' at the post', nm + ' is waiting below'];
     case 'waitClimb': return [nm + ' climbs the vine', 'Hold ' + act + ' at the post to heave'];
     case 'heave': return ['Hold ' + act + ': heave ' + nm + ' up!', ''];
@@ -617,7 +631,7 @@ function wfallJobText(st, id, j) {
     case 'geyser': return ['Stand on the geyser: whoosh!', 'Steer onto the ledge at the top'];
     case 'frog': return ['Bounce on the frog!', 'Ribbit! Steer onto the ledge'];
     case 'moss': return ['Jump on the springy moss!', 'It throws you extra high'];
-    case 'slip': return ['Wet rocks: slippery!', ''];
+    case 'slip': return ['Wet rocks: slippery!', 'Small steps, then hop up'];
     case 'nest': return ['Both to the toucan nest!', ''];
     default: return null;
   }
@@ -1230,9 +1244,10 @@ MODES.waterfall = {
   hud() { wfallHud(); },
   stats() {
     const st = G.mst, s = st.stats, sp = s.splash[0] + s.splash[1], time = s.time || G.time;
-    // (two computers: 72 s with no splashes; one clumsy computer: 95-255 s)
-    const medal = time <= 240 && sp <= 3 ? 'Gold' : time <= 450 && sp <= 10 ? 'Silver' : 'Bronze';
-    const words = sp === 0 ? 'Not one splash! Super climbers!' : sp <= 3 ? 'Great teamwork up the falls!' : 'Lots of splashes, and you made it together!';
+    // (two computers: 72 s with no splashes; one clumsy computer: 95-255 s; a scripted kid with the computer: 130-290 s
+    // and 1-20 splashes, most of them cheap ones in the pools by the stream and the log)
+    const medal = time <= 240 && sp <= 5 ? 'Gold' : time <= 450 && sp <= 14 ? 'Silver' : 'Bronze';
+    const words = sp === 0 ? 'Not one splash! Super climbers!' : sp <= 5 ? 'Great teamwork up the falls!' : 'Lots of splashes, and you made it together!';
     const gold = st.goldUsed.length ? ' · Gold help: ' + st.goldUsed.map(k => ({ boost: 'Super boost', jam: 'Big log jam', raft: 'Gold raft' }[k])).join(', ') : '';
     return [
       { label: 'Splashes', values: s.splash.slice() },

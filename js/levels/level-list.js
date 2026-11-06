@@ -4035,7 +4035,7 @@ const LEVELS = [
       { at: [7, 19, 18], go: 'jump', from: 8.75, to: [6.9, 21], stream: 0 },
       { at: [6, 7, 21], go: 'jump', from: 6.35, to: [4, 24], stream: 0 },
       { at: [3, 4, 24], go: 'jump', from: 4.6, to: [6.9, 27], stream: 0 },
-      { at: [6, 7, 27], go: 'jump', from: 7.6, to: [9.5, 30], stream: 0 },
+      { at: [6, 7, 27], go: 'jump', from: 7.4, to: [9.5, 30], stream: 0 },
       { at: [8, 13, 30], go: 'log', lane: 0, to: [24.5, 30] },
       { at: [23, 26, 30], go: 'wall', wall: 2 },
       { at: [27, 30, 36], go: 'jump', from: 27.4, to: [23.4, 38] },

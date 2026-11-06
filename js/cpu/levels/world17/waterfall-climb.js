@@ -17,7 +17,7 @@
      On top it drops the vine at the post and holds the action to heave while the partner climbs; at the foot with the
      partner up it grabs the vine once it is down and climbs. A partner who is not at the wall yet is waited for.
    It never reads anything a person couldn't see: positions, the stream's water, the log, the geyser's bubbles. */
-const WFALL_BOT = { look: 0.06, mountGap: 46, yield: 6 };
+const WFALL_BOT = { look: 0.06, mountGap: 46, yield: 1.5 };
 
 function wfallBotCtx(st, p) {
   const cam = st.camY;
@@ -46,7 +46,9 @@ function wfallBotSeek(out, p, x, dead = 3) { return cpuSeek(out, p, x, dead); }
 cpuBrain('waterfall', {
   reset(S) { S.run = false; S.air = null; S.roleT = 0; S.waitT = 0; S.mount = 0; S.stuck = 0; S.lastBest = -1; S.yieldT = 0; },
   think(S, p, o, dt, info) {
+    dt = dt || 1 / 120;
     const st = info.mst, out = {};
+    S.hopT = (S.hopT || 0) + dt;
     if (!st || !st.grid || st.phase !== 'play' || info.intro) return out;
     const P = st.pl[p.id], O = st.pl[o.id];
     if (!p.alive || P.splash) { S.air = null; return out; }
@@ -55,6 +57,10 @@ cpuBrain('waterfall', {
     if (P.vine >= 0) { out.up = true; S.air = null; return out; }
     // in the air: finish the move we started
     if (!p.grounded) {
+      // bouncing on a frog with no plan (we fell onto it from a geyser or a slip): steer for the frog's ledge, or the
+      // frog would bounce us up and down for ever
+      const sf = st.route[P.step];
+      if (!S.air && sf && sf.go === 'frog') S.air = { kind: 'frog', phase: 1, fx: st.frogs[sf.frog].x, frogTop: st.frogs[sf.frog].top, to: { x: sf.to[0] * T, feet: st.feetOf(sf.to[1]) } };
       if (S.air) {
         const a = S.air;
         if (a.kind === 'frog' && a.phase === 0) {
@@ -74,35 +80,47 @@ cpuBrain('waterfall', {
     if (!s) return out;
     // just climbed a wall the partner is still below: the vine
     const prev = st.route.slice(0, P.step).reverse().find(r => r.go === 'wall');
+    // (also when the partner wandered off below the wall's foot or is floating back after a splash: drop the vine
+    // anyway and wait by the post, so the way up is open whenever they come back)
     if (prev && P.step === prev.i + 1) {
       const w = st.walls[prev.wall];
-      if (!w.done && o.alive && !O.splash && O.step === prev.i) return wfallBotTop(S, st, p, o, me, w, out, human);
+      if (!w.done && (O.splash || !o.alive || O.step <= prev.i) && !O.onHead) return wfallBotTop(S, st, p, o, me, w, out, human, O.step === prev.i && !O.splash);
     }
     if (s.go === 'wall') return wfallBotWall(S, st, p, o, me, them, s, st.walls[s.wall], out, human, info);
-    // the partner fell behind a lot: wait for them (they need us at the next wall anyway)
-    return wfallBotMove(S, st, p, o, me, s, out, human, dt);
+    // the partner stands on our head away from a wall: we can't jump with them up there, so stand still and ask
+    if (O.onHead) { if (human && cpuFor(S, 'hopoff', true, dt) > 0.8) cpuSay(p, 'Hop off my head, please!'); return out; }
+    cpuFor(S, 'hopoff', false, 0);
+    return wfallBotMove(S, st, p, o, me, s, out, human, dt, them);
   },
   bubblePos(p) { return { x: p.x + p.w / 2, y: p.y }; },
 });
 
 /* ---------- moving on along the route ---------- */
-function wfallBotMove(S, st, p, o, me, s, out, human, dt) {
-  const T2 = T;
+function wfallBotMove(S, st, p, o, me, s, out, human, dt, them) {
+  const T2 = T, O = st.pl[o.id];
   if (s.go === 'jump') {
     // a run-up: back off a little, then run and jump as we cross the take-off spot
     const fx = s.from * T2, tx = s.to[0] * T2, dir = Math.sign(tx - fx) || 1;
     const back = clamp(fx - dir * 46, s.x0 + 20, s.x1 - 20);
     let ok = true;
+    // the partner is on the take-off spot (or just jumped from it): let them go first, so we never land on their head
+    // on a small stepping stone (two computers: Pip goes first)
+    // (a person who just stands there for a while: go anyway, hopping off their head if we land on it)
+    const first = o.alive && !O.splash && O.step === s.i && !O.onHead && O.vine < 0 && (human || p.id === 1) &&
+      (!o.grounded || (Math.abs(them.cx - fx) < 30 && Math.abs(them.feet - me.feet) < 3));
+    if (first && cpuFor(S, 'first', true, dt) < 4) ok = false;
+    if (!first) cpuFor(S, 'first', false, 0);
     if (s.stream != null) {
       const sm = st.streams[s.stream];
       // jump only into a dry stream with time to spare (a jump at the end of the dry spell is a soaking)
-      ok = !sm.on && sm.dryLeft > 1.0;
-      if (!ok && human && Math.abs(o.x - p.x) < 200) cpuSay(p, 'Wait for the log...');
+      const dry = !sm.on && sm.dryLeft > 1.0;
+      ok = ok && dry;
+      if (!dry && human && Math.abs(o.x - p.x) < 200) cpuSay(p, 'Wait for the log...');
     }
     // a short hop straight up beside an overhanging ledge: no run-up (it would carry us in under it)
     if (s.hop || Math.abs(tx - fx) < 60) {
       S.run = false;
-      if (!wfallBotSeek(out, p, fx, 3) || Math.abs(me.vx) > 20 || !ok) return out;
+      if (!wfallBotSeek(out, p, fx, 2) || Math.abs(me.vx) > 20 || !ok) return out;
       out.jump = 'tap'; S.air = { kind: 'jump', to: { x: tx, feet: st.feetOf(s.to[1]) } };
       return out;
     }
@@ -156,13 +174,14 @@ function wfallBotMove(S, st, p, o, me, s, out, human, dt) {
 }
 
 /* ---------- on top of a wall, the partner still below ---------- */
-function wfallBotTop(S, st, p, o, me, w, out, human) {
+function wfallBotTop(S, st, p, o, me, w, out, human, atFoot) {
   const O = st.pl[o.id];
   if (!wfallBotSeek(out, p, w.postX + w.side * 4, 4)) return out;
   if (!w.down) { out.act = 'tap'; if (human) cpuSay(p, 'Vine coming!'); return out; }
   // heave while they climb
   if (O.vine === w.i) { out.act = true; if (human) cpuSay(p, 'Climb up! I’ll heave!'); }
-  else if (human) cpuSay(p, 'Grab the vine and climb!');
+  else if (human && atFoot) cpuSay(p, 'Grab the vine and climb!');
+  else if (human && cpuFor(S, 'waitTop', true, 1 / 120) > 4) cpuSay(p, 'I’ll wait up here!');
   return out;
 }
 
@@ -193,15 +212,17 @@ function wfallBotWall(S, st, p, o, me, them, s, w, out, human, info) {
   cpuFor(S, 'onhead', false, 0);
   // who braces
   const oBracedNear = O.brace && Math.abs(them.cx - w.boostX) < 60;
+  const both = oBracedNear && P.brace;
+  S.yieldT = both ? S.yieldT + 1 / 120 : 0;
   let booster;
   if (!atBase) booster = human ? p.id : (w.i % 2 === 0 ? 0 : 1);
-  else if (oBracedNear) booster = o.id;
+  // they brace and we don't: ride
+  else if (oBracedNear && !P.brace) booster = o.id;
+  // both bracing at once: we give way after a moment and ride (two computers: Bo gives way). Deciding only on what
+  // the partner does this very moment would have us both let go and both jump at once, over and over.
+  else if (both) booster = S.yieldT > (human ? WFALL_BOT.yield : 0.5) && (human || p.id === 1) ? o.id : p.id;
   else if (!human) booster = w.i % 2 === 0 ? 0 : 1;
-  else {
-    // a person who keeps bracing while we brace: give way after a while and ride
-    S.yieldT = O.brace && P.brace ? S.yieldT + 1 / 120 : Math.max(0, S.yieldT - 1 / 240);
-    booster = S.yieldT > WFALL_BOT.yield ? o.id : p.id;
-  }
+  else booster = p.id;
   if (booster === p.id) {
     if (!wfallBotSeek(out, p, w.boostX, 3) && !P.brace) return out;
     // brace when the partner is close (a person: as soon as they are at the foot of the wall)
@@ -228,13 +249,13 @@ function wfallBotWall(S, st, p, o, me, them, s, w, out, human, info) {
 function wfallBotRider(S, st, p, o, me, them, out, human) {
   const P = st.pl[p.id], O = st.pl[o.id], s = st.route[O.step];
   const w = s && s.go === 'wall' ? st.walls[s.wall] : null;
-  if (!w) { out.left = me.cx < them.cx; out.right = !out.left; return out; }   // (not at a wall: hop off)
+  if (!w) { wfallBotHopOff(S, p, me, them, s && s.to ? -Math.sign(s.to[0] * T - them.cx) : 0, out); return out; }   // (not at a wall: hop off, away from where they jump)
   // stay over their middle while they walk us to the wall; jump when they brace there
   if (!O.brace || Math.abs(them.cx - w.boostX) > 8) {
     wfallBotSeek(out, p, them.cx, 3);
     S.mount += 1 / 120;
     if (S.mount > 3 && human) cpuSay(p, 'Brace by the wall, please!');
-    if (S.mount > 7) { S.mount = 0; out.left = wfallBotSide0(w) > 0; out.right = !out.left; }   // (hop down: something is off)
+    if (S.mount > 7) { wfallBotHopOff(S, p, me, them, -w.side, out); if (S.mount > 9) S.mount = 0; }   // (hop down, away from the wall: something is off)
     return out;
   }
   S.mount = 0;
@@ -244,4 +265,12 @@ function wfallBotRider(S, st, p, o, me, them, out, human) {
   S.air = { kind: 'boost', side: w.side, to: { x: w.postX + w.side * 34, feet: w.topFeet } };
   return out;
 }
-const wfallBotSide0 = w => -w.side;
+// step off the partner's head sideways: the way asked (pref), else away from their middle; if a ledge above blocks
+// that way (a low ceiling over a stepping stone), turn round after a moment
+function wfallBotHopOff(S, p, me, them, pref, out) {
+  if (!S.hopDir || S.hopT > 1.5) S.hopDir = pref || Math.sign(me.cx - them.cx) || 1;
+  if (S.hopX == null || Math.abs(me.cx - S.hopX) > 1.5) { S.hopX = me.cx; S.hopStill = 0; } else S.hopStill = (S.hopStill || 0) + 1 / 120;
+  if (S.hopStill > 0.3) { S.hopDir = -S.hopDir; S.hopStill = 0; }
+  S.hopT = 0;
+  out.left = S.hopDir < 0; out.right = S.hopDir > 0;
+}
