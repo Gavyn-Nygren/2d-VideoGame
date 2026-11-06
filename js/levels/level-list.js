@@ -3906,6 +3906,189 @@ const LEVELS = [
   // ----- END 15-4 Planet Hop Race -----
   //
   // ===== END World 15 =====
+
+  /* ===== World 16 (Sugar Rush Factory, mixed): the candy land / candy factory world, world index 15 (js/levels/world16/),
+     sweet and silly, nothing scary. Gavyn's picks (Nov 2026): 16-1 Conveyor Belt Chaos (team), 16-2 Gumball Machine Puzzle
+     (team), 16-3 Chocolate River Raft (team), 16-4 Sprinkle Catch (versus). Each level's def sits between its own BEGIN/END
+     lines. world: 15 ===== */
+  // ----- BEGIN 16-1 Conveyor Belt Chaos (mode 'conveyor', js/levels/world16/conveyor-belt-chaos.js) -----
+  // 16-1 (MODES.conveyor, Gavyn's pick): one works the levers on the catwalk (belt speed and direction, a lift, a
+  // trapdoor), the other runs and jumps on the belts below and sorts candy into the right bins; jobs swap every room.
+  // The map is only the two spawns: the mode builds each room's grid from its belts and shelves (see the level file).
+  { name: 'Conveyor Belt Chaos', world: 15, kind: 'team', mode: 'conveyor', ownStep: true, ownHUD: true, noFalls: true,
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> run · walk <kbd>W</kbd> jump · faster <kbd>S</kbd> drop · slower',
+      bo: '<kbd>←</kbd><kbd>→</kbd> run · walk <kbd>↑</kbd> jump · faster <kbd>↓</kbd> drop · slower',
+      pad: 'stick: run · walk · belt speed, <span data-glyph="a"></span> jump · faster,',
+    },
+    tip: 'One works the levers that run the belts, one grabs the candy and tosses it into the right bin!',
+    act: { label: 'grab', labels: ['grab', 'lever'] },
+    map: [...Array(14).fill('.'.repeat(32)), '...1....2' + '.'.repeat(23), ...Array(3).fill('.'.repeat(32))],
+    rooms: [
+      {
+        title: 'Lollipop Line', sorter: 0, act: { label: 'grab', labels: ['grab', 'lever'] }, sorterX: 480, opX: 330,
+        tip: 'Bo: at the lever, ▲ ▼ set the speed and the action flips the belt. Pip: grab candy, toss it in its bin!',
+        belts: [{ id: 'A', name: 'Belt', c0: 5, c1: 22, r: 12, col: 'mint', st: 420 }],
+        chutes: [{ belt: 'A', x: 225, every: 3.0, mix: ['lolly', 'gum'] }],
+        bins: [{ kind: 'lolly', x: 46, y: 450 }, { kind: 'gum', x: 880, y: 450 }],
+        order: { lolly: 3, gum: 3 },
+      },
+      {
+        title: 'Gumdrop Gallery', sorter: 1, act: { label: 'grab', labels: ['lever', 'grab'] }, sorterX: 420, opX: 600,
+        tip: 'Swap! Bo sorts, Pip works the levers. Gumdrops go up on the high shelf: Pip works the lift!',
+        belts: [
+          { id: 'U', name: 'Top belt', c0: 9, c1: 22, r: 8, col: 'lilac', st: 480 },
+          { id: 'L', name: 'Low belt', c0: 6, c1: 20, r: 12, col: 'mint', st: 240 },
+        ],
+        shelves: [[26, 31, 8]],
+        lift: { x0: 690, x1: 780, lo: 450, hi: 240, st: 735 },
+        chutes: [{ belt: 'U', x: 630, every: 3.2, mix: ['gum', 'lolly', 'choc'] }],
+        bins: [{ kind: 'lolly', x: 50, y: 450 }, { kind: 'choc', x: 868, y: 450 }, { kind: 'gum', x: 876, y: 240 }],
+        order: { gum: 3, lolly: 2, choc: 2 },
+      },
+      {
+        title: 'Wrap & Ribbon', sorter: 0, act: { label: 'grab', labels: ['grab', 'lever'] }, sorterX: 450, opX: 420,
+        tip: 'The wrapper only wraps toffees on SLOW. Bo opens the trapdoor to drop candy down to Pip!',
+        belts: [
+          { id: 'U', name: 'Top belt', c0: 3, c1: 29, r: 8, col: 'lilac', st: 240, ends: ['wall', 'mouth'] },
+          { id: 'L', name: 'Low belt', c0: 8, c1: 24, r: 12, col: 'mint', st: 760 },
+        ],
+        wrap: { belt: 'U', x: 340 },
+        trap: { belt: 'U', c0: 17, c1: 18, st: 540 },
+        chutes: [{ belt: 'U', x: 150, every: 2.6, mix: ['toffee', 'choc', 'lolly'] }],
+        bins: [{ kind: 'gift', x: 44, y: 450 }, { kind: 'lolly', x: 124, y: 450 }, { kind: 'choc', x: 886, y: 450 }],
+        order: { gift: 3, choc: 2, lolly: 2 },
+      },
+      {
+        title: 'Rush Hour', sorter: 1, act: { label: 'grab', labels: ['lever', 'grab'] }, sorterX: 420, opX: 480,
+        tip: 'Rush hour! Two chutes, the lift, the trapdoor and the wrapper. Fill Boss Bonbon\'s big order!',
+        belts: [
+          { id: 'U', name: 'Top belt', c0: 9, c1: 22, r: 8, col: 'lilac', st: 360 },
+          { id: 'L', name: 'Low belt', c0: 4, c1: 20, r: 12, col: 'mint', st: 200, ends: ['wall', 'fall'] },
+        ],
+        shelves: [[26, 31, 8]],
+        lift: { x0: 690, x1: 780, lo: 450, hi: 240, st: 735 },
+        wrap: { belt: 'U', x: 410 },
+        trap: { belt: 'U', c0: 17, c1: 18, st: 560 },
+        chutes: [{ belt: 'U', x: 320, every: 2.6, mix: ['toffee', 'gum', 'choc', 'lolly'] }, { belt: 'L', x: 190, every: 3.4, mix: ['lolly', 'choc', 'gum'] }],
+        bins: [{ kind: 'lolly', x: 48, y: 450 }, { kind: 'choc', x: 828, y: 450 }, { kind: 'gift', x: 912, y: 450 }, { kind: 'gum', x: 876, y: 240 }],
+        order: { lolly: 3, gum: 3, choc: 2, gift: 2 },
+      },
+    ],
+  },
+  // ----- END 16-1 Conveyor Belt Chaos -----
+  //
+  // ----- BEGIN 16-2 Gumball Machine Puzzle (mode 'gumball', js/levels/world16/gumball-machine-puzzle.js) -----
+  // 16-2: a giant gumball machine seen from the front (MODES.gumball, team): one cranks gumballs into the board and picks
+  // the chute, the other runs the wafer ledges and flips the levers so each colour rolls into its own cup. Jobs swap every
+  // machine (room `crank`: 0 Pip cranks, 1 Bo cranks). `machine` names the board in GUMBALL_MACHINES (the level file);
+  // the map only holds the keeper's wafer ledges ('=' one-way, levers stand on rows 8, 11 and 14) and the board's walls.
+  { name: 'Gumball Machine Puzzle', world: 15, kind: 'team', mode: 'gumball', ownStep: true, ownHUD: true, noFalls: true,
+    roomWord: 'Machine',
+    legend: {
+      pip: 'crank: <kbd>A</kbd><kbd>D</kbd> chute <kbd>S</kbd> swap · levers: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move',
+      bo: 'crank: <kbd>←</kbd><kbd>→</kbd> chute <kbd>↓</kbd> swap · levers: <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move',
+      pad: 'stick: chute · swap · move, <span data-glyph="a"></span> hop,',
+    },
+    tip: 'One turns the crank to drop gumballs, one flips the levers so every colour rolls into its matching cup!',
+    act: { label: 'crank', labels: ['crank', 'flip'] },
+    map: [
+      '......#..................#......', '......#..................#......', '......#..................#......',
+      '......#..................#......', '......#..................#......', '......#..................#......',
+      '......#..................#......', '......#..................#......', '======#..................#======',
+      '......#..................#......', '......#..................#......', '======#..................#======',
+      '......#..................#......', '......#..................#......', '======#..................#======',
+      '................................', '...1.2..........................', '################################',
+    ],
+    rooms: [
+      { title: 'Sweet Start', machine: 'start', crank: 0, act: { label: 'crank', labels: ['crank', 'flip'] },
+        tip: 'Pip cranks gumballs out of the globe. Bo runs the ledges and flips each lever so the gumball rolls into its own cup!' },
+      { title: 'Switch Tracks', machine: 'switch', crank: 1, act: { label: 'crank', labels: ['flip', 'crank'] },
+        tip: 'Swap! Bo cranks and picks the chute with ◀ ▶. The seesaw tips over by itself after every gumball!' },
+      { title: 'Spinner Swirl', machine: 'spin', crank: 0, act: { label: 'crank', labels: ['crank', 'flip'] },
+        tip: 'Pip cranks again. Trapdoors only stay open for 3 seconds: open them just before the gumball gets there!' },
+      { title: 'Jackpot Machine', machine: 'jackpot', crank: 1, act: { label: 'crank', labels: ['flip', 'crank'] },
+        tip: 'Bo cranks the big one! Flick the flipper to send a gumball flying. Fill every cup for the golden JACKPOT!' },
+    ],
+  },
+  // ----- END 16-2 Gumball Machine Puzzle -----
+  //
+  // ----- BEGIN 16-3 Chocolate River Raft (mode 'raft', js/levels/world16/chocolate-river-raft.js) -----
+  // 16-3: a top-down cookie raft (MODES.raft): one paddles, one hooks candy and shoves things away; jobs swap at every
+  // dock. The map is only the two spawns, the mode builds each stretch of river from its course (tokens: see the top of
+  // the level file).
+  { name: 'Chocolate River Raft', world: 15, kind: 'team', mode: 'raft', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    legend: {
+      pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> steer · aim the hook',
+      bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> steer · aim the hook',
+      pad: 'stick: steer · aim the hook,',
+    },
+    tip: 'Ride a cookie raft down the chocolate river! One paddles, one hooks candy and shoves logs away.',
+    act: { label: 'hook', labels: ['paddle', 'hook'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Cocoa Creek', paddler: 0, width: 420, current: 70, act: { label: 'hook', labels: ['paddle', 'hook'] },
+        tip: 'Pip paddles: steer, and paddle for a big push. Bo hooks candy into the basket and shoves things away!',
+        course: ['f420', 'S:{P} steers the raft  ·  {H} aims the hook', 'f200', 'c:wrap:0.25', 'f240', 'c:wrap:-0.35', 'f180',
+          'S:{H}: hook the candy!', 'f120', 'c:lolly:0.8', 'd500:120', 'c:wrap:-0.85', 'f160', 'm:0', 'f220', 'c:wrap:0.6',
+          'u560:160', 'c:lolly:-0.88', 'f200', 'E:0.75:440', 'c:gummy:0.85+200', 'f480', 'S:Candy by the bank? Steer close to it!',
+          'L:-0.2:150', 'f300', 'c:wrap:0.9', 'd420:100', 'm:-0.5', 'c:wrap:0.05+80', 'f220', 'F', 'W300', 'f260',
+          'S:Log jam! {H}: shove it twice', 'f300', 'J', 'f220', 'W420', 'c:lolly:-0.85', 'f200', 'b:0.3', 'f260', 'c:wrap:0.75',
+          'u420:100', 'c:gummy:-0.88', 'f320', 'S:Dock at the pier to swap jobs!', 'D'],
+      },
+      {
+        title: 'Marshmallow Rapids', paddler: 1, width: 380, current: 85, act: { label: 'hook', labels: ['hook', 'paddle'] },
+        tip: 'Swap! Bo paddles, Pip hooks. Rapids push hard: steer round the marshmallow rocks, or shove them away!',
+        course: ['f420', 'S:Swap! {P} paddles, {H} hooks', 'f200', 'c:wrap:0.5', 'f220', 'c:wrap:-0.55', 'f160',
+          'C150', 'W300', 'S:Rapids! Hold on to your sprinkles!', 'f220', 'm:-0.45', 'f240', 'm:0.45', 'c:wrap:0+110', 'f260', 'b:0',
+          'f220', 'c:lolly:-0.85', 'f200', 'C85', 'W400', 'd420:120', 'E:-0.75:420', 'c:gummy:-0.88+200', 'f460', 'F',
+          'C150', 'W280', 'S:A wall of rocks! {H}: shove one away', 'f360', 'm:-0.66', 'm:0', 'm:0.66', 'f320', 'c:wrap:0.4', 'f200',
+          'b:-0.3', 'f220', 'C85', 'W400', 'u420:120', 'c:wrap:0.85', 'f200', 'L:0.3:160', 'f260', 'c:lolly:0.88', 'f200',
+          'c:wrap:-0.75', 'f200', 'F', 'W300', 'f220', 'J', 'f240', 'W400', 'c:gummy:0.88', 'f300', 'b:0.2', 'c:wrap:-0.6+100', 'f320', 'D'],
+      },
+      {
+        title: 'Caramel Swirls', paddler: 0, width: 440, current: 75, act: { label: 'hook', labels: ['paddle', 'hook'] },
+        tip: 'Pip paddles again. Paddle round the caramel whirlpools while Bo hooks the swirling candy. Toffee gates!',
+        course: ['f420', 'S:Caramel whirlpools! Paddle round the edge', 'f200', 'c:wrap:-0.4', 'f320', 'P:0.15:110:3', 'f620',
+          'c:wrap:0.85', 'd420:120', 'E:0.72:400', 'c:gummy:0.86+190', 'f480', 'F', 'S:Toffee gate! Paddle to the ring and hold still',
+          'f340', 'G:-1', 'f520', 'c:lolly:-0.86', 'f200', 'P:-0.3:120:4', 'f640', 'c:wrap:0.65', 'u420:150', 'b:0', 'f260',
+          'c:wrap:-0.85', 'f220', 'F', 'W320', 'f220', 'J', 'f240', 'W440', 'G:1', 'f420', 'c:gummy:0.88', 'f220', 'P:0.2:100:3',
+          'f640', 'c:wrap:-0.75', 'f320', 'D'],
+      },
+      {
+        title: 'Fudge Falls', paddler: 1, width: 400, current: 85, act: { label: 'hook', labels: ['hook', 'paddle'] },
+        tip: 'Bo paddles to the candy village! Hit the fudge ramp straight and fast to jump Fudge Falls. Splat? Try again!',
+        course: ['f420', 'S:Last stretch! Fudge Falls ahead', 'f200', 'c:wrap:0.45', 'f220', 'C140', 'W300', 'm:0.4', 'f220', 'b:-0.3',
+          'f220', 'c:lolly:0.8', 'f200', 'm:-0.55', 'm:0.15+10', 'f320', 'C85', 'W400', 'G:-1', 'f420', 'c:gummy:-0.88', 'f220',
+          'P:0.3:110:3', 'f620', 'F', 'W300', 'f220', 'J', 'f220', 'W400', 'c:wrap:0.75', 'f240',
+          'S:Fudge Falls! Line up with the ramp and paddle hard!', 'C125', 'f300', 'F', 'b:0.45', 'f320', 'c:wrap:-0.6',
+          'b:-0.45+120', 'f420', 'K:0', 'C55', 'W460', 'f240', 'c:gummy:0.35', 'f220', 'c:wrap:-0.45', 'f300', 'V'],
+      },
+    ],
+  },
+  // ----- END 16-3 Chocolate River Raft -----
+  //
+  // ----- BEGIN 16-4 Sprinkle Catch (mode 'sprinkle', js/levels/world16/sprinkle-catch.js) -----
+  { name: 'Sprinkle Catch', world: 15, kind: 'versus', mode: 'sprinkle', ownStep: true,
+    // one candy-land arena (MODES.sprinkle runs its own little platformer): the map is only the two spawns
+    match: { bestOf: 5 },
+    act: { label: 'bump' },
+    tagLift: 18,   // name tags clear the basket on each head
+    tip: 'Catch falling candy in your basket! Dodge the bouncy gobstoppers and bump the other one to make them spill.',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '........1..............2........', '................................', '................................',
+    ],
+  },
+  // ----- END 16-4 Sprinkle Catch -----
+  //
+  // ===== END World 16 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -3963,6 +4146,10 @@ const WORLDS = [
   { name: 'Orbit Outpost', blurb: 'Swing, flip, drive and hop your way across the stars!',
     theme: { skyTop: '#0d1033', skyBot: '#3a2c6e', hillFar: '#4a4a7a', hillNear: '#363660', sun: 'rgba(255, 214, 150, 0.95)', sunGlow: 'rgba(190, 160, 255, 0.35)',
       stone: '#6a6f8c', stoneLight: '#7f84a3', stoneEdge: '#474b66', grass: '#c9c3f0', grassDark: '#8f88c4', plank: '#9aa6c4', plankDark: '#5c6688', rope: '#f2f2ff', ropeDark: '#8a8fb0' } },
+  // World 16: candy land and a candy factory, sweet and silly (a pink and peach sky with cotton candy clouds; chocolate ground with frosting on top)
+  { name: 'Sugar Rush Factory', blurb: 'Sort, roll, paddle and catch your way through a world made of candy!',
+    theme: { skyTop: '#ff9ccf', skyBot: '#fff0d6', hillFar: '#f7b8e0', hillNear: '#e48fc4', sun: 'rgba(255, 246, 200, 0.95)', sunGlow: 'rgba(255, 180, 220, 0.4)',
+      stone: '#7a4a32', stoneLight: '#8f5a3e', stoneEdge: '#55301f', grass: '#fff4fa', grassDark: '#f2a7cf', plank: '#e8b06a', plankDark: '#9a6a2e', rope: '#ff6fa8', ropeDark: '#a8346a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
