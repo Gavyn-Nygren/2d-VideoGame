@@ -8,11 +8,12 @@
    the engine grid is empty apart from the two spawns.
    The PADDLER sits at the back. Each press of ◀ or ▶ is a paddle stroke on that side: it pushes the canoe forward and
    that way. Strokes on alternate sides on a steady beat (0.25-1.1 s apart) are "Swish!" strokes: they add the most
-   speed and keep the canoe straight. The same side twice only steers; mashing faster than the beat adds almost
-   nothing. Holding ◀ or ▶ keeps turning. ▼ back-paddles (slow down: less water splashes in). The action or ▲ is a
+   speed and keep the canoe straight. The same side twice only steers; mashing faster than the beat (under 0.2 s)
+   only splashes: the canoe slows, a little water comes in, and a mash stroke neither steers nor pushes off a bank. Holding ◀ or ▶ keeps turning. ▼ back-paddles (slow down: less water splashes in). The action or ▲ is a
    straight stroke on the other side from the last one.
    The BAILER sits at the front with a bucket and an oar. The bucket dips by itself; the action scoops: a full bucket
-   (the gold part of the bucket meter) is a big scoop, an early press only a small one, so mashing bails slowly.
+   (the gold part of the bucket meter) is a big scoop, a bit early a small one, and long before it is full nothing at
+   all, so mashing bails slowly. A poke that hits nothing brings the oar back slowly (0.8 s).
    ◀ ▶ aim the oar (5 notches, a dotted line shows where it reaches) and ▲ pokes: a wobbly rock rolls away, a floating
    log spins aside, a branch or log in a jam is knocked loose (big logs need two pokes), a floating fruit is flicked
    into the canoe, and a poke at a big rock shoves the canoe away from it.
@@ -35,7 +36,7 @@
      j:N[:HP]   a jam of N branches (HP 2: big logs) right across the river
      i:O:RW:RL[:animal]  an island (sandbar), half-width RW, half-length RL, with a sleepy animal on it
      m:O:kind   a floating fruit (mango banana berry coconut melon starfruit)
-     R:N RR:N   white water (big) for N px          F  a flag (checkpoint)       S:text  a sign ({P} {B} and key words)
+     R:N RR:N   white water (big) for N px          F  a flag (checkpoint)       S:text  a sign ({P} {B} and key words; 'text||text' gives the words for a computer's job)
      A:kind:L|R a jungle animal on the bank         g:O:W  a line of rocks across the river with a gold gap at O
      W          the waterfall lip                   P  the calm pool at the end (swap)    E  the party pool (the end)
    Every global is prefixed canoe / CANOE (and Sfx.extra.canoe*); all state lives in G.mst. */
@@ -43,12 +44,12 @@ const CANOE = {
   CY: 372,                                    // the canoe's middle on screen
   half: 52, beam: 20, endW: 10,               // half length, half width, half width at bow and stern
   bowSeat: -22, sternSeat: 26, pivot: 30,     // seats (screen px from the middle, bow up) and the oar's pivot ahead
-  boostMax: 150, boostDecay: 1.6, gGood: 34, gPlain: 16, mashKeep: 0.9, side: 46,
-  goodMin: 0.25, goodMax: 1.1, mashMax: 0.16,
+  boostMax: 150, boostDecay: 1.6, gGood: 34, gPlain: 16, mashKeep: 0.6, side: 46,
+  goodMin: 0.25, goodMax: 1.1, mashMax: 0.2, mashWater: 0.6, mashSlow: 0.85, pushHold: 0.35,
   holdAfter: 0.15, holdAcc: 300, vxMax: 170, vxDamp: 2.2,
   accUp: 130, accDown: 220, backK: 0.15,
-  dipT: 0.5, goldAt: 0.75, goldAtGold: 0.55, scoop: 12, scoopGold: 1.6,
-  reach: 130, reachGold: 1.4, notchA: 0.42, jabT: 0.3, jabCd: 0.36, aimRep: 0.22, aimHold: 0.32,
+  dipT: 0.65, goldAt: 0.75, spillBelow: 0.4, goldAtGold: 0.55, scoop: 12, scoopGold: 1.6,
+  reach: 130, reachGold: 1.4, notchA: 0.42, jabT: 0.3, jabCd: 0.36, missCd: 0.8, aimRep: 0.22, aimHold: 0.32,
   splash: 4.2, splashBig: 6.4, leak: 1.5, bonkWater: 9, bankWater: 3, dropWater: 38, slowFrom: 45,
   swampT: 3.6, swapT: 2.7, finT: 5.2, tryWin: 6, hintLife: 2.8, dropLen: 300, dropT: 1.4,
   swampHelp: 2, calmHelp: 3, beachHelp: 3, jamMissHelp: 3, jamStuck: 14,
@@ -153,6 +154,9 @@ function canoeKey(id, what) {
 }
 function canoeSignText(st, s) {
   const P = st.paddler, B = st.bailer;
+  // 'words for a person||words when that job is the computer's' (1-player mode never shows keys for the computer's job)
+  const two = s.split('||');
+  if (two.length > 1) s = (/\{P/.test(two[0]) ? canoeQuiet(P) : /\{B/.test(two[0]) && canoeQuiet(B)) ? two[1] : two[0];
   return s.replace(/\{P\}/g, NAMES[P]).replace(/\{B\}/g, NAMES[B]).replace(/\{Plr\}/g, canoeKey(P, 'lr')).replace(/\{Pdown\}/g, canoeKey(P, 'down'))
     .replace(/\{Bact\}/g, canoeKey(B, 'act')).replace(/\{Blr\}/g, canoeKey(B, 'lr')).replace(/\{Bpoke\}/g, canoeKey(B, 'poke'));
 }
@@ -225,7 +229,7 @@ function canoePlay(st, dt) {
   if (hd && hd === cn.holdDir) cn.holdT += dt; else { cn.holdDir = hd; cn.holdT = 0; }
   if (hd && cn.holdT > P.holdAfter) {
     cn.vx += hd * P.holdAcc * (st.paddleGold ? 1.35 : 1) * dt;
-    if (cn.beached && (hd === cn.beached.dir || st.paddleGold)) canoeUnbeach(st);
+    if (cn.beached && (hd === cn.beached.dir || st.paddleGold) && cn.holdT > P.pushHold) canoeUnbeach(st);
   }
   const back = pi.down && !hd;
   /* the bailer: ◀ ▶ aim the oar (a hold steps on), ▲ pokes, the action scoops */
@@ -269,9 +273,9 @@ function canoePlay(st, dt) {
     }
   }
   canoeHits(st, dt);
-  // the jam: stuck in front of it for a long time, both trying: the gold oar
+  // the jam: stuck in front of it for a long time with the bailer trying (the paddler is told to wait): the gold oar
   if (cn.atJam && cn.v <= 1) {
-    if (canoeBoth(st)) cn.atJam.stuck += dt;
+    if (G.time - st.inT[st.bailer] < CANOE.tryWin) cn.atJam.stuck += dt;
     if (cn.atJam.stuck > P.jamStuck && !st.oarGold) canoeOarGold(st);
   }
   // the end of the stretch
@@ -289,9 +293,11 @@ function canoeStroke(st, side, straight) {
   else if (side !== cn.lastSide && dtL >= P.goodMin && dtL <= P.goodMax) kind = 'good';
   else kind = 'plain';
   // (mashing faster than the beat only splashes: the canoe loses a little speed)
-  if (kind === 'mash') cn.boost *= P.mashKeep;
+  if (kind === 'mash') { cn.boost *= P.mashKeep; cn.v *= P.mashSlow; }
   else cn.boost = Math.min(P.boostMax, cn.boost + (kind === 'good' ? P.gGood : P.gPlain));
-  if (!straight) cn.vx += side * P.side * (kind === 'mash' ? 0.4 : 1) * (st.paddleGold ? 1.25 : 1);
+  // (a mash stroke doesn't steer, and it splashes a little water into the canoe)
+  if (!straight && kind !== 'mash') cn.vx += side * P.side * (st.paddleGold ? 1.25 : 1);
+  if (kind === 'mash' && cn.state === 'go') cn.water = Math.min(99, cn.water + P.mashWater);
   st.stats.strokes[id]++;
   if (kind === 'good') {
     cn.streak++; st.stats.swish[id]++;
@@ -302,7 +308,7 @@ function canoeStroke(st, side, straight) {
   else st.mashN = 0;
   cn.lastT = G.time; cn.lastSide = side; cn.strokeA = 1; cn.strokeSide = side;
   for (let i = 0; i < 4; i++) canoePart(st, cn.x + side * 34, cn.d - 26 + Math.random() * 10, side * (30 + Math.random() * 40), -40 - Math.random() * 50, 0.5, 'rgba(255,255,255,0.85)', 2.5 + Math.random() * 2, 0, 'drop');
-  if (cn.beached && (side === cn.beached.dir || st.paddleGold)) canoeUnbeach(st);
+  if (cn.beached && kind !== 'mash' && (side === cn.beached.dir || st.paddleGold)) canoeUnbeach(st);
 }
 function canoeUnbeach(st) {
   const cn = st.cn, b = cn.beached;
@@ -317,7 +323,8 @@ function canoeBail(st) {
   const full = cn.dip >= canoeGoldAt(st), k = st.bucketGold ? P.scoopGold : 1;
   cn.scoopA = 1; cn.scoopSide = cn.aim > 0 ? -1 : 1;
   if (cn.water <= 0.5) { cn.dip = 0; canoePop(st, cn.x, cn.d + 50, 'All dry!', '#e8fff8', 14); Sfx.play('canoeSplish', id); return; }
-  const amt = full ? P.scoop * k : P.scoop * k * 0.6 * cn.dip * cn.dip;
+  // (far too soon: the bucket is still empty, so nothing comes out; a bit early: a small scoop)
+  const amt = full ? P.scoop * k : cn.dip < P.spillBelow ? 0 : P.scoop * k * 0.6 * cn.dip * cn.dip;
   cn.water = Math.max(0, cn.water - amt);
   if (full) { st.stats.scoops[id]++; Sfx.play('canoeScoop', id); } else Sfx.play('canoeSplish', id);
   st.stats.bails[id]++;
@@ -497,6 +504,7 @@ function canoePoke(st) {
     const jm = st.c.jams.find(j => j.d > cn.d && j.d < cn.d + 220 && j.pieces.some(pc => !pc.gone));
     if (jm && canoeBoth(st)) { jm.miss++; if (jm.miss >= P.jamMissHelp && !st.oarGold) canoeOarGold(st); }
     for (let i = 0; i < 3; i++) canoePart(st, tip.x, tip.d, (Math.random() - 0.5) * 60, (Math.random() - 0.5) * 60, 0.4, 'rgba(255,255,255,0.8)', 2.5, 0, 'drop');
+    cn.jabCd = Math.max(cn.jabCd, CANOE.missCd - 0.09); // (a miss: the oar comes back slowly, so jabbing at random is slow)
     st.missPoke = (st.missPoke || 0) + 1;
     if (st.missPoke >= 4) { st.missPoke = 0; canoeHintOnce(st, 'aim' + st.k, id, 'Aim the oar ' + canoeKey(id, 'lr') + ' so the dotted line touches it'); }
     return;
@@ -729,8 +737,9 @@ function canoeNeeds(st) {
     } else if (o.kind === 'piece') {
       const pc = o.ref, gapHere = !o.jam.pieces.some(q => !q.gone && q.x1 > laneAt(o.d) - P.beam - 2 && q.x0 < laneAt(o.d) + P.beam + 2);
       const onCanoe = pc.x1 > cn.x - P.beam - 4 && pc.x0 < cn.x + P.beam + 4, onLane = pc.x1 > laneAt(o.d) - P.beam - 4 && pc.x0 < laneAt(o.d) + P.beam + 4;
-      // (waiting at the jam: whatever is in front of the canoe; on the way: what is on the line unless it has a gap)
-      inWay = (cn.atJam === o.jam && onCanoe) || (!gapHere && (onLane || onCanoe));
+      // (at the jam: only what is in front of the canoe, because the oar can't reach a branch off to the side from
+      // there; on the way: what is on the line unless it has a gap)
+      inWay = cn.atJam === o.jam ? onCanoe : !gapHere && (onLane || onCanoe);
     }
     if (!inWay) continue;
     const dd = o.d - cn.d;
@@ -873,9 +882,10 @@ MODES.canoe = {
     return out;
   },
 };
-// the medal: Gold also needs 60% of the fruit and at most 1 swamp; Silver 35% and at most 4
-// (computer pairs clear in about 3:00-3:30 with 16-17 of 26 fruit; scripted kid pairs in about 3:45 with 9-11)
-const CANOE_MEDAL = { gold: 230, silver: 360, goldFruit: 0.6, silverFruit: 0.35 };
+// the medal: Gold (by 3:50) also needs 60% of the fruit and at most 1 swamp; Silver (by 5:00) 35% and at most 4
+// (computer pairs clear in about 3:30 with 16-19 of 26 fruit; scripted kid pairs in about 4:00 with 15-17; a random
+// button-masher with the computer takes 5:00-5:45, so it gets Bronze)
+const CANOE_MEDAL = { gold: 230, silver: 300, goldFruit: 0.6, silverFruit: 0.35 };
 function canoeMedal(t, s) {
   const frac = s.fruitAll ? s.fruit / s.fruitAll : 1, M = CANOE_MEDAL;
   return t <= M.gold && frac >= M.goldFruit && s.swamps <= 1 ? 'Gold' : t <= M.silver && frac >= M.silverFruit && s.swamps <= 4 ? 'Silver' : 'Bronze';

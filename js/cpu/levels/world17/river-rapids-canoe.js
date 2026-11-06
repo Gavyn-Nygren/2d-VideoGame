@@ -41,6 +41,8 @@
       const dj = nd.jam.d - (cn.d + P.half), lx = nd.laneX;
       const free = !nd.jam.pieces.some(pc => !pc.gone && pc.x1 > lx - P.beam - 2 && pc.x0 < lx + P.beam + 2);
       if (dj < 190 && !free) slow = true;
+      // stopped at it: keep still so the oar can reach what is in front of the canoe
+      if (!free && cn.atJam && cn.v < 5) { out.down = true; if (!info.partnerCpu && dj < 120) say(st, p, 'Poke the ' + (nd.jam.hp > 1 ? 'logs' : 'branches') + '! ' + keyOf(o.id, 'poke')); return out; }
       if (!info.partnerCpu && dj < 120 && !free) say(st, p, 'Poke the ' + (nd.jam.hp > 1 ? 'logs' : 'branches') + '! ' + keyOf(o.id, 'poke'));
     }
     if (!info.partnerCpu && nd.poke && nd.poke.kind !== 'fruit' && nd.poke.far < 210) {

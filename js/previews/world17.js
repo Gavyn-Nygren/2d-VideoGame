@@ -97,28 +97,28 @@ if (typeof definePreview === 'function') {
       const rock = Math.sin(t * 5) * 0.03 + (t > 4.1 && t < 4.4 ? Math.sin((t - 4.1) * 30) * 0.05 : 0);
       pw17rCanoe(v, cx, cy, rock);
       const party = t > 5.2, hopP = party ? v.hop(v.phase(t, 0.5), 7) : 0, hopB = party ? v.hop(v.phase(t, 0.5, 0.25), 7) : 0;
-      // Pip's paddle: a stroke on alternating sides until the pool
+      // (seats as in the game: the bailer, Bo, at the bow; the paddler, Pip, at the stern) Pip's paddle: a stroke on alternating sides until the pool
       const strokeK = v.phase(t, 0.8), side = strokeK < 0.5 ? -1 : 1, sk = (strokeK % 0.5) * 2, paddling = t < 4.8 && !(t > 2.0 && t < 2.75);
       if (paddling) {
-        const px = cx + side * 20, py = cy - 26 + sk * 22;
-        v.line(cx + side * 6, cy - 34, px, py, '#7a4a20', 3);
+        const px = cx + side * 20, py = cy + 20 + sk * 22;
+        v.line(cx + side * 6, cy + 12, px, py, '#7a4a20', 3);
         ctx.fillStyle = '#c8873e'; ctx.beginPath(); ctx.ellipse(px, py, 3.5, 7, 0, 0, Math.PI * 2); ctx.fill();
         if (sk > 0.3) { ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(px, py + 9, 4 + sk * 4, Math.PI * 0.1, Math.PI * 0.9); ctx.stroke(); }
       }
-      v.hero(0, cx, cy - 18 + hopP, { s: 0.62, face: paddling ? side : 1, mood: party || (t > 3.9 && t < 4.3) ? 'joy' : 'happy', shadow: false });
+      v.hero(0, cx, cy + 28 + hopP, { s: 0.62, face: paddling ? side : 1, mood: party || (t > 3.9 && t < 4.3) ? 'joy' : 'happy', shadow: false });
       // Bo's oar: aims at the jam and pokes it, later the bucket bails a splash
       const aim = v.seg(t, 1.75, 2.05), jab = t > 2.3 && t < 2.6 ? Math.sin(v.seg(t, 2.3, 2.6) * Math.PI) : 0;
       if (aim > 0 && t < 2.75) {
-        const ox = cx - 10, oy = cy + 14, tx = cx - 22, ty = pw17rJamS + pw17rScroll(2.05) + 4;
+        const ox = cx - 10, oy = cy - 30, tx = cx - 22, ty = pw17rJamS + pw17rScroll(2.05) + 4;
         const len = Math.hypot(tx - ox, ty - oy), reach = 0.72 + jab * 0.3, ux = (tx - ox) / len, uy = (ty - oy) / len;
         ctx.save(); ctx.setLineDash([3, 4]); ctx.globalAlpha *= 0.85 * aim; v.line(ox, oy, tx, ty, v.c.gold, 1.6); ctx.restore();
         v.line(ox, oy, ox + ux * len * reach, oy + uy * len * reach, '#7a4a20', 3);
         ctx.fillStyle = '#c8873e'; v.circle(ox + ux * len * reach, oy + uy * len * reach, 3.5); ctx.fill();
       }
       const bail = v.seg(t, 4.4, 4.95);
-      v.hero(1, cx, cy + 28 + hopB, { s: 0.62, face: bail > 0 && bail < 1 ? 1 : -1, mood: party ? 'joy' : t > 2.4 && t < 2.9 ? 'wow' : 'happy', shadow: false });
+      v.hero(1, cx, cy - 18 + hopB, { s: 0.62, face: bail > 0 && bail < 1 ? 1 : -1, mood: party ? 'joy' : t > 2.4 && t < 2.9 ? 'wow' : 'happy', shadow: false });
       if (bail > 0 && bail < 1) {
-        const bx = cx + 14 + bail * 8, by = cy + 24 - Math.sin(bail * Math.PI) * 10;
+        const bx = cx + 14 + bail * 8, by = cy - 22 - Math.sin(bail * Math.PI) * 10;
         ctx.fillStyle = '#5a6478'; v.rr(bx - 6, by - 6, 12, 11, 3); ctx.fill(); ctx.fillStyle = '#d0d6e4'; v.rr(bx - 5, by - 5, 10, 9, 2.5); ctx.fill();
         ctx.fillStyle = '#e8f8ff';
         for (let q = 0; q < 5; q++) { const k = v.seg(bail, 0.4 + q * 0.05, 1); if (k > 0 && k < 1) { v.circle(bx + 6 + k * 40 + q * 3, by - 6 - Math.sin(k * Math.PI) * 18 + q, 2.8); ctx.fill(); } }
