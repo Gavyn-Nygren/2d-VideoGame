@@ -11,6 +11,9 @@
             (Room 3's far star plate); otherwise back onto the plate.
    - press: walk onto the next glyph plate of the Sun Door and stand there until it counts.
    - back:  hold ▼ to go back up to the balcony (Room 4: one on each side).  drop: walk off the balcony.  exit: in.
+   Room 2 with a person running: it waits a second on the first plate ("Ready...") before hopping ("GO! Dash!").
+   In the exit it stands still (never hops about on a partner who is in it too). If the level says its job can't be
+   reached from where it fell (m.pl[id].lost), it holds ▼ back to its torch.
    With a person partner who doesn't do their part (not on the plate), it says what to do now and then. It needs the
    partner for every door, so it can't clear a room alone. Skill only changes how soon it reacts. */
 (() => {
@@ -18,16 +21,8 @@
     if (G.time - (st.saidT == null ? -99 : st.saidT) < gap) return;
     st.saidT = G.time; cpuSay(p, text, 2);
   }
-  // the map for walking: a door too low to get under is stone
-  function navOpts(m, tol) {
-    let key = 'tp';
-    const shut = {};
-    for (const d of m.doors) { const ok = templePassable(d); shut[d.id] = !ok; key += ok ? '1' : '0'; }
-    return {
-      tol: tol || 5, key, maxDown: 12,
-      solid: (ch, p) => (shut[ch] === true) || solidFor(ch, p),
-    };
-  }
+  // the map for walking (the level's own: a door too low to get under is stone)
+  const navOpts = (m, tol) => Object.assign({ tol: tol || 5 }, templeNavOpts(m));
   const go = (st, p, m, x, feet, tol) => cpuNav(st, p, x, feet, navOpts(m, tol));
   // a 1-tile moat between two door columns: run at it and tap jump at the edge (no high jump into a door's slab)
   function hop(st, p, m, j) {
@@ -46,7 +41,7 @@
   }
 
   cpuBrain('temple', {
-    reset(st) { st.viaGo = null; st.saidT = null; st.lastId = ''; },
+    reset(st) { st.viaGo = null; st.saidT = null; st.lastId = ''; st.hopWait = null; },
     think(st, p, o, dt, info) {
       const m = info.mst;
       if (!m || !m.doors || info.intro || m.phase !== 'play' || !p.alive) return {};
@@ -65,10 +60,19 @@
         if (pr > 6) say(st, p, 'Your turn: the ' + TEMPLE_GLYPH[oj.plate.seq].word + ' plate!', 10);
         if (m.shout && m.shout.id === o.id && G.time - (st.shoutSeen || -9) > 3 && m.roomT - m.shout.t < 0.3) { st.shoutSeen = G.time; say(st, p, j.k === 'hold' ? 'I\'m holding it!' : 'On my way!', 3); }
       }
+      // fell somewhere it can't get back from to its job: hold ▼ back to the torch
+      if (m.pl[p.id].lost) return { down: true };
       switch (j.k) {
         case 'hold': case 'press': {
           const pl = j.plate;
-          if (pl.by[p.id]) return {};
+          if (pl.by[p.id]) { st.hopWait = null; return {}; }
+          // Room 2, with a person running: before hopping to the second plate (which starts the first door closing),
+          // a short "Ready... GO!" so they know when to dash
+          if (m.logic === 'relay' && m.relay === 'second' && !info.partnerCpu && m.plates.some(q => q.by[p.id] && q !== pl)) {
+            if (st.hopWait == null) st.hopWait = 1.0;
+            if (st.hopWait > 0) { st.hopWait -= dt; say(st, p, 'Ready...', 0); return {}; }
+            say(st, p, 'GO! Dash!', 0);
+          } else st.hopWait = null;
           return go(st, p, m, pl.x, pl.feet, 4);
         }
         case 'wait': case 'idle': {
@@ -87,6 +91,8 @@
           return go(st, p, m, pl.x, pl.feet, 4);
         }
         case 'cross': case 'exit': case 'drop': {
+          // already standing in the exit: stay put (never hop about on a partner who is in it too)
+          if (j.k === 'exit' && m.exit && p.grounded && templeCx(p) > m.exit.x + 5 && templeCx(p) < m.exit.x + m.exit.w - 5) return {};
           // Room 2's moat inside the low tunnel (a door slab may be coming down over it): run and hop it with a short tap
           const moat = m.logic === 'relay' && hop(st, p, m, j);
           if (moat) return moat;

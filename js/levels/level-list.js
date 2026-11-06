@@ -4022,8 +4022,8 @@ const LEVELS = [
         title: 'Two-Way Plates', logic: 'relay', lead: 1, style: 'relay', act: { label: 'shout' }, mango: [390, 54],
         tip: 'Each plate opens one door and shuts the other! Leaf plate, then hop to the flower plate: dash through both!',
         doors: {
-          A: { glyph: 'leaf', close: 2.3, lights: 5, open: [['3'], ['6']], shut: ['4', '5'] },
-          B: { glyph: 'flower', close: 2.3, lights: 5, open: [['4'], ['5']], shut: ['3', '6'] },
+          A: { glyph: 'leaf', close: 2.8, lights: 5, open: [['3'], ['6']], shut: ['4', '5'] },
+          B: { glyph: 'flower', close: 2.8, lights: 5, open: [['4'], ['5']], shut: ['3', '6'] },
         },
         plates: {},
         map: [

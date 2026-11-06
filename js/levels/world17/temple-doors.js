@@ -18,17 +18,23 @@
      the flower plate while the partner dashes through both doors and over a little moat), Idol Hall (a two-plate moon
      door, the idol, and a big slow star door opened from the far end of the hall), The Sun Door (one on each side; star
      plates open the partner's star door; glyph plates in the carved order open the Sun Door).
-   - Help, always gold and announced: Gold sand (doors close slower) after 2 missed dashes or a long stall in a room;
+   - Help, always gold and announced: Gold sand (doors close 1.4x slower) after 2 missed dashes (bumping a door that
+     just shut, or waiting right by a door that closed again) or 60 s with nobody getting through a door; Super gold
+     sand (2.2x) after 4 misses or another 120 s;
      Gold lily pads on the water after 3 splashes in a room; Gold glyphs on the Sun Door after 2 restarts (the next
      plate glows and a wrong one no longer restarts). Mango the monkey cheers dashes and points the way after a stall.
    - Brains and hints read templePlan(st): each player's job right now (hold a plate, wait by a door, cross, press a
      glyph, go back...), worked out from where both stand, so roles swap naturally.
+   - Kind rules: a full-speed run skims Room 2's 1-tile moat (a stop or a walk still splashes); a glyph pressed
+     before the first one only says "Not first!" (nothing to start again); someone already standing on a plate when it
+     becomes the next one presses it; a player who fell where their job can't be reached is told to hold ▼ (the
+     computer does it).
    Room def fields: see the comment above the level in js/levels/level-list.js.
    Every top-level name starts with temple / TEMPLE (Sfx.extra.temple* too); level state lives in G.mst. */
 const TEMPLE = {
   openV: 300,              // px/s a door slides up when its plate is held
-  gold: 1.4,               // Gold sand: doors take this much longer to shut
-  missGold: 2, stallGold: 75, lilyAfter: 3, glyphGold: 2,
+  gold: 1.4, gold2: 2.2,   // Gold sand / Super gold sand: doors take this much longer to shut
+  missGold: 2, missGold2: 4, stallGold: 60, lilyAfter: 3, glyphGold: 2,
   pushHold: 0.45, slideT: 0.5, pullCD: 0.35,
   dwell: 0.35,             // seconds standing on a glyph plate to press it
   respawn: 1.0, backHold: 1.0, backShow: 0.18,
@@ -92,6 +98,8 @@ function templeRoom(st, L) {
     st.doors.push(d); st.doorBy[id] = d;
   }
   st.waterCols.sort((a, b) => a - b);
+  // a moat one tile wide (floor on both sides): a running player skims over it, like any small gap
+  st.moats = st.waterCols.filter(c => !st.water[templeIx(c - 1, 16)] && !st.water[templeIx(c + 1, 16)] && g[16][c - 1] === '#' && g[16][c + 1] === '#');
   // what each plate does (for the little stone tablets beside them)
   for (const pl of st.plates) {
     pl.opens = st.doors.filter(d => (d.open || []).some(grp => grp.includes(pl.id))).map(d => ({ d, pair: (d.open || []).find(grp => grp.includes(pl.id)).length > 1 }));
@@ -108,7 +116,7 @@ function templeRoom(st, L) {
   for (const d of st.doors) d.side = G.players.map(p => (templeCx(p) < d.cx ? -1 : 1));
   // the room's flow and help
   st.roomT = 0; st.phase = 'play'; st.winT = 0; st.winTick = 0; st.exitT = 0; st.doorIn = [false, false];
-  st.miss = 0; st.splash = 0; st.goldDoors = false; st.lily = false; st.goldGlyph = false;
+  st.miss = 0; st.splash = 0; st.goldDoors = false; st.goldLv = 0; st.stallT = 0; st.lily = false; st.goldGlyph = false;
   st.pops = []; st.news = null; st.stepId = ''; st.stepT = 0; st.planTick = -1; st.plan = null;
   st.holder = -1; st.relay = 'first'; st.readyT = 0; st.secondT = 0; st.race = null; st.raceGo = 0; st.side4 = null; st.owner = {};
   st.cheerCD = 0;
@@ -176,7 +184,8 @@ const templeDown = (st, id) => !!(st.plateBy[id] && st.plateBy[id].down);
 /* ---------- doors ---------- */
 const templeGap = d => d.h - d.cover;                       // the open gap under a door
 const templePassable = (d, need = PH + 1) => d.h - d.cover >= need;
-const templeCloseV = (st, d) => d.h / (d.close * (st.goldDoors ? TEMPLE.gold : 1));
+const templeSlow = st => (st.goldLv >= 2 ? TEMPLE.gold2 : st.goldLv ? TEMPLE.gold : 1);   // Gold sand: slower doors
+const templeCloseV = (st, d) => d.h / (d.close * templeSlow(st));
 // seconds until a closing door can't be passed any more (Infinity while it's held open)
 function templeTimeLeft(st, d) {
   if (d.want || d.perm) return Infinity;
@@ -195,6 +204,8 @@ function templeDoorsPre(st, dt) {
     if (d.want && !was) { Sfx.play('templeOpen'); d.sinceShut = 9; }
     if (!d.want && was) Sfx.play('templeRumble');
     d.glow = approach(d.glow, st.goldDoors ? 1 : 0, dt * 2);
+    // how long it has been open enough to pass, and which side everyone was on when it opened (for missed dashes)
+    if (templePassable(d)) { if (!d.openT) d.openSide = d.side.slice(); d.openT = (d.openT || 0) + dt; }
     if (d.want) { d.cover = Math.max(0, d.cover - TEMPLE.openV * dt); d.closingT = 0; continue; }
     if (d.cover >= d.h) { d.sinceShut += dt; continue; }
     d.closingT += dt;
@@ -206,8 +217,12 @@ function templeDoorsPre(st, dt) {
         if (p.grounded) templeSqueeze(st, p, d);   // (a jump into it just bumps your head: the slab waits over you)
       }
     }
-    if (nc >= d.h && d.cover < d.h) { Sfx.play('templeThud'); d.sinceShut = 0; for (let i = 0; i < 6; i++) puff(d.x + 4 + i * 4, d.top + d.h, 1, 'rgba(230,220,190,0.8)'); }
+    if (nc >= d.h && d.cover < d.h) {
+      Sfx.play('templeThud'); d.sinceShut = 0; for (let i = 0; i < 6; i++) puff(d.x + 4 + i * 4, d.top + d.h, 1, 'rgba(230,220,190,0.8)');
+    }
     d.cover = nc;
+    // it just got too low to pass: anyone who waited right by it and didn't go missed the dash
+    if (d.openT > 0 && !templePassable(d)) { if (!d.sun && d.openT > 0.3 && d.openSide) templeMissedWindow(st, d); d.openT = 0; }
   }
 }
 // a door came down on p: nudge them out to the side they're more on (or the side with floor, next to water)
@@ -248,10 +263,27 @@ function templeDoorsCollide(st) {
 function templeMiss(st, p, d) {
   const P = st.pl[p.id];
   P.missCD = 3;
-  st.miss++;
   templePop(st, templeCx(p), p.y - 14, 'Too late! Bonk!', '#ffe0a8', 17);
   Sfx.play('templeBonk', p.id);
-  if (!st.goldDoors && st.miss >= TEMPLE.missGold) templeGoldDoors(st, 'Gold sand! The doors in this room close slower');
+  templeMissCount(st);
+}
+// a door shut again while someone waited right by it on the same side (they didn't make the dash): a gentle miss
+function templeMissedWindow(st, d) {
+  for (const p of G.players) {
+    const P = st.pl[p.id];
+    if (!p.alive || !p.grounded || P.missCD > 0 || d.side[p.id] !== d.openSide[p.id]) continue;
+    if (Math.abs(templeCx(p) - d.cx) > 130 || Math.abs(p.y + p.h - (d.top + d.h)) > 40) continue;
+    if (st.plates.some(pl => pl.by[p.id])) continue;   // (the holder)
+    P.missCD = 3;
+    templePop(st, templeCx(p), p.y - 14, 'So close! Try again!', '#ffe0a8', 16);
+    templeMissCount(st);
+    return;
+  }
+}
+function templeMissCount(st) {
+  st.miss++;
+  if (st.goldLv < 1 && st.miss >= TEMPLE.missGold) templeGoldDoors(st, 'Gold sand! The doors in this room close slower', 1);
+  else if (st.goldLv < 2 && st.miss >= TEMPLE.missGold2) templeGoldDoors(st, 'Super gold sand! The doors close really slowly now', 2);
 }
 // passing a door: a held-open door is just a walk; a closing one is a Dash! (Phew! when it was really close)
 function templeDoorsPass(st) {
@@ -259,7 +291,7 @@ function templeDoorsPass(st) {
     if (!p.alive) continue;
     const s = templeCx(p) < d.cx ? -1 : 1;
     if (s !== d.side[p.id]) {
-      d.side[p.id] = s;
+      d.side[p.id] = s; st.stallT = 0;
       if (!d.want && !d.perm && !d.sun && d.cover > 1) {
         st.stats.dashes[p.id]++;
         const close = templeGap(d) < 46;
@@ -269,6 +301,14 @@ function templeDoorsPass(st) {
       }
     }
   }
+}
+
+// running over a 1-tile moat at full speed keeps you up (a slow walk or a stop still splashes)
+function templeSkim(st, p, dt) {
+  if (!p.alive || !st.moats.length || Math.abs(p.vx) < 150 || p.vy < 0) return;
+  const floor = 16 * T, feet = p.y + p.h;
+  if (feet < floor - 0.5 || feet > floor + 6) return;
+  if (st.moats.some(c => p.x < (c + 1) * T && p.x + p.w > c * T)) { p.y = floor - p.h; p.vy = -PHYS.g * dt; }
 }
 
 /* ---------- the stone monkey idol: a heavy block on the floor ---------- */
@@ -374,7 +414,7 @@ function templeBack(st, p) {
   const P = st.pl[p.id], s = P.spot, input = p.input;
   Object.assign(p, { x: s.x, y: s.y, vx: 0, vy: 0, alive: true, grounded: false, jumping: false, jumpBuf: 0, pendingJump: false, coyote: 0, stun: 0, dropT: 0, sx: 0.6, sy: 1.4, carryVx: 0, offT: 0, knockT: 0, input });
   p.pendingAct = false; p.downLatch = true;
-  P.downT = 0; P.px = p.x; P.py = p.y;
+  P.downT = 0; P.px = p.x; P.py = p.y; P.lost = false;
   for (const d of st.doors) d.side[p.id] = templeCx(p) < d.cx ? -1 : 1;
   st.stats.backs++;
   templePop(st, templeCx(p), p.y - 14, 'Boing! Back!', '#ffe9a8', 17);
@@ -490,6 +530,9 @@ function templePlanRelay(st) {
     else if (!up.length) { const d = [0, 1].map(id => Math.abs(pos[id].x - templeWaitX(A, -1))); if (d[st.holder] + 70 < d[1 - st.holder]) st.holder = 1 - st.holder; }
     h = st.holder; first = P['3']; second = P['4'];
   }
+  // a new holder (or the same one on the other side) starts the relay over
+  const hk = h + ':' + first.id;
+  if (st.relayH !== hk) { st.relayH = hk; st.relay = 'first'; st.secondT = 0; st.readyT = 0; }
   const r = 1 - h, pr = G.players[r], rp = pos[r];
   const ready = rp.grounded && Math.abs(rp.x - templeWaitX(A, -1)) < 40 && Math.abs(rp.feet - floor) < 3;
   const inTunnel = rp.x >= A.x - 4 && rp.x <= B.x + T + 4;
@@ -500,12 +543,12 @@ function templePlanRelay(st) {
     st.secondT += DT;
     const lost = !templePassable(A) && !inTunnel && rp.x < A.x && st.secondT > 0.5;
     if (lost || (!second.by[h] && !first.by[h] && st.secondT > 4)) st.relay = 'first';
-    if (first.by[h] && !second.by[h] && st.secondT > 0.6) st.relay = 'first';
+    if (first.by[h] && !second.by[h] && st.secondT > 5) st.relay = 'first';   // (time for a slow hop)
   }
   const jobs = [];
   const fw = TEMPLE_GLYPH[A.glyph].word, sw = TEMPLE_GLYPH[B.glyph].word;
   if (st.relay === 'first') jobs[h] = templeHold(first, ready ? 'Now hop to the ' + sw + ' plate!' : 'Stand on the ' + fw + ' plate (it opens the ' + fw + ' door)');
-  else jobs[h] = templeHold(second, 'Stay on the ' + sw + ' plate until ' + NAMES[r] + ' is through!');
+  else jobs[h] = templeHold(second, second.by[h] ? 'Stay on the ' + sw + ' plate until ' + NAMES[r] + ' is through!' : 'Now hop to the ' + sw + ' plate!');
   if (st.relay === 'first' && ready && first.by[h] && A.cover <= 4) jobs[h] = templeJob('hold', second.x, second.feet, { plate: second, say: 'Now hop to the ' + sw + ' plate!' });
   const go = (templePassable(A, 30) || inTunnel) && templePassable(B, 30) && st.relay === 'second';
   if (go || (inTunnel && templePassable(B))) jobs[r] = templeJob('cross', B.x + T + 60, floor, { doors: [A, B], say: 'Dash! Hop the moat!' });
@@ -616,7 +659,7 @@ function templePlanSun(st) {
     }
     if (stuck[o] && w[id] === s) { jobs[id] = templeHold(helper[s], 'Stand on the star plate: let ' + NAMES[o] + ' out of the star room!'); continue; }
     if (st.sunOpen) { jobs[id] = templeExitJob(st, id); continue; }
-    if (w[id] === 'top') { jobs[id] = templeJob('drop', s === 'L' ? 9 * T : 23 * T, 16 * T, { say: 'Drop down on the ' + (s === 'L' ? 'left' : 'right') + ' side!' }); continue; }
+    if (w[id] === 'top') { jobs[id] = templeJob('drop', s === 'L' ? 11 * T + T / 2 : 20 * T + T / 2, 16 * T, { say: 'Drop down on the ' + (s === 'L' ? 'left' : 'right') + ' side!' }); continue; }
     if (w[id] !== s) { jobs[id] = templeJob('back', 0, 0, { say: 'One on each side! ' + templeBackKey(id) + ' to go back up' }); continue; }
     if (!n) { jobs[id] = templeJob('idle', idle[s], 16 * T); continue; }
     const gw = TEMPLE_GLYPH[n.seq].word;
@@ -635,6 +678,33 @@ function templePlanSun(st) {
   return { id: 's-' + st.seqI + w.join('') + jobs.map(j => j.k).join(''), jobs, focus: f };
 }
 
+/* ---------- can a player still get to their job? (a fall into a pocket they can't climb out of) ---------- */
+// the walking map the computer uses too: a door too low to get under is stone
+function templeNavOpts(st) {
+  const shut = {};
+  let key = 'tp';
+  for (const d of st.doors) { const ok = templePassable(d); shut[d.id] = !ok; key += ok ? '1' : '0'; }
+  return { key, maxDown: 12, solid: (ch, p) => (shut[ch] === true) || solidFor(ch, p) };
+}
+// after a little stall, now and then (one player per check): a player who can't reach their plate or spot is told
+// (or, the computer, knows) to hold ▼ back to their torch. A person's check uses a map with every door open (built
+// once a room, so no hitch while doors move): only a pocket no door can fix counts. The computer's uses its own map.
+const TEMPLE_OPEN_NAV = { key: 'tpOpen', maxDown: 12 };
+function templeLostCheck(st, plan, dt) {
+  st.lostT = (st.lostT || 0) - dt;
+  if (st.lostT > 0) return;
+  st.lostT = 0.6;
+  const id = st.lostId = 1 - (st.lostId || 0);
+  const p = G.players[id], j = plan.jobs[id], P = st.pl[id];
+  // (it sticks while in the air, until a check on the ground or a new step says otherwise)
+  if (P.lostId !== plan.id || !p.alive || !j || !'hold press wait'.includes(j.k)) P.lost = false;
+  P.lostId = plan.id;
+  if (st.stallT < 8 || !p.alive || !p.grounded || !j || !'hold press wait'.includes(j.k) || typeof cpuNavReach !== 'function') return;
+  const x = j.plate ? j.plate.x : j.x, feet = j.plate ? j.plate.feet : j.feet;
+  const opts = typeof cpuOn === 'function' && cpuOn(id) ? templeNavOpts(st) : TEMPLE_OPEN_NAV;
+  try { P.lost = cpuNavReach(p, x, feet, opts) === Infinity; } catch (e) { P.lost = false; }
+}
+
 /* ---------- Room 4: glyph presses ---------- */
 function templeGlyphs(st, dt) {
   if (!st.seq || st.sunOpen) return;
@@ -642,18 +712,22 @@ function templeGlyphs(st, dt) {
     if (!pl.seq) continue;
     for (const id of [0, 1]) {
       if (!pl.by[id]) { pl.dwell[id] = 0; pl.used[id] = false; continue; }
-      if (pl.used[id]) continue;
+      const want = st.seq[st.seqI];
+      // (pressed already: counts again only if it has since become the next one, for someone still standing on it)
+      if (pl.used[id] && !(pl === want && pl.used[id] !== st.seqI + 1)) continue;
       pl.dwell[id] += dt;
       if (pl.dwell[id] < TEMPLE.dwell) continue;
-      pl.used[id] = true;
-      const want = st.seq[st.seqI];
+      pl.used[id] = st.seqI + 1;
       if (pl === want) {
-        st.seqI++; pl.flash = 1;
+        st.seqI++; pl.flash = 1; st.stallT = 0;
         Sfx.play('templeGlyph', st.seqI);
         templePop(st, pl.x, pl.feet - 46, st.seqI >= st.seq.length ? 'The sun rises!' : 'Glyph ' + st.seqI + '!', TEMPLE_GLYPH[pl.seq].col, 18);
         if (st.seqI >= st.seq.length) templeSunRise(st);
       } else if (st.seq.indexOf(pl) < st.seqI) {
         templePop(st, pl.x, pl.feet - 46, 'Done already!', '#e8dcc0', 14);
+      } else if (st.seqI === 0) {
+        templePop(st, pl.x, pl.feet - 46, 'Not first! Look at the Sun Door', '#e8dcc0', 14);
+        Sfx.play('templeNope', id);
       } else if (st.goldGlyph) {
         templePop(st, pl.x, pl.feet - 46, 'Not that one: follow the gold glow', C.gold, 14);
         Sfx.play('templeNope', id);
@@ -679,32 +753,53 @@ function templeSunRise(st) {
 }
 
 /* ---------- help: gold sand, gold lily pads, gold glyphs, Mango ---------- */
-function templeGoldDoors(st, why) {
-  st.goldDoors = true; st.stats.gold.push('Gold sand');
+function templeGoldDoors(st, why, lv) {
+  st.goldDoors = true; st.goldLv = lv || 1;
+  templeUsed(st, st.goldLv >= 2 ? 'Super gold sand' : 'Gold sand');
   templeNews(st, why, true); Sfx.play('templeGold');
-  templeMangoSay(st, 'Gold sand! Slower doors!', 2.5);
+  templeMangoSay(st, st.goldLv >= 2 ? 'Super gold sand! Sloooow doors!' : 'Gold sand! Slower doors!', 2.5);
 }
+function templeUsed(st, s) { if (!st.stats.gold.includes(s)) st.stats.gold.push(s); }
 function templeLily(st) {
-  st.lily = true; st.stats.gold.push('Gold lily pads');
+  st.lily = true; templeUsed(st, 'Gold lily pads');
   const g = G.level.grid;
   for (let c = 0; c < COLS; c++) if (st.water[templeIx(c, 16)]) g[15][c] === '.' && (g[16][c] = '=');
   templeNews(st, 'Gold lily pads! Hop on them over the water', true); Sfx.play('templeGold');
 }
 function templeGoldGlyphs(st) {
-  st.goldGlyph = true; st.stats.gold.push('Gold glyphs');
+  st.goldGlyph = true; templeUsed(st, 'Gold glyphs');
   templeNews(st, 'Gold glyphs! The next plate glows, and a wrong one no longer starts again', true); Sfx.play('templeGold');
 }
 function templeNews(st, s, gold, life) { st.news = { s, gold: !!gold, t: 0, life: life || TEMPLE.newsLife }; }
-function templePop(st, x, y, s, col, size) { st.pops.push({ x, y, s, col: col || C.gold, size: size || 18, t: 0 }); }
+function templePop(st, x, y, s, col, size) {
+  size = size || 18;
+  // a new pop near one that just appeared goes above it, so two at once don't overlap
+  for (let k = 0; k < 4; k++) {
+    const q = st.pops.find(q => q.t < 0.9 && Math.abs(q.x - x) < 110 && Math.abs((q.y - q.t * 26) - y) < (q.size + size) * 0.6);
+    if (!q) break;
+    y = q.y - q.t * 26 - (q.size + size) * 0.65;
+  }
+  st.pops.push({ x, y, s, col: col || C.gold, size, t: 0 });
+}
 function templeMangoSay(st, s, secs) { const m = st.mango; m.say = s; m.sayT = secs || 2.2; m.cheer = 1; }
 function templeHelp(st, pl, dt) {
-  st.stepT += dt; st.cheerCD -= dt;
-  if (!st.goldDoors && st.stepT >= TEMPLE.stallGold && st.doors.some(d => !d.sun)) templeGoldDoors(st, 'Gold sand! The doors close slower now');
-  const m = st.mango, f = pl.focus;
+  st.stepT += dt; st.stallT += dt; st.cheerCD -= dt;
+  // a long time with nobody getting through a door (or pressing the next glyph): slower doors
+  if (st.doors.some(d => !d.sun && !d.perm) && st.goldLv < 2 && st.stallT >= TEMPLE.stallGold * (st.goldLv + 1)) {
+    if (st.goldLv < 1) templeGoldDoors(st, 'Gold sand! The doors close slower now', 1);
+    else templeGoldDoors(st, 'Super gold sand! The doors close really slowly now', 2);
+  }
+  const m = st.mango;
+  let f = pl.focus;
+  // 1-player mode: Mango points out the person's own job, never the computer's
+  if (f && templeCpu(f.id)) {
+    const hid = 1 - f.id, j = pl.jobs[hid];
+    f = j && j.say && j.k !== 'back' ? { id: hid, x: j.plate ? j.plate.x : j.x, y: (j.plate ? j.plate.feet : j.feet) - 60, text: NAMES[hid] + ': ' + j.say } : null;
+  }
   m.t += dt; if (m.sayT > 0) m.sayT -= dt; m.cheer = Math.max(0, m.cheer - dt);
-  m.on = st.phase === 'play' && st.stepT >= TEMPLE.mangoAfter && !!f && G.introT <= 0;
+  m.on = st.phase === 'play' && st.stallT >= TEMPLE.mangoAfter && !!f && G.introT <= 0;
   if (m.on) {
-    const tx = clamp(f.x, 50, W - 50), ty = clamp(f.y, 96, H - 80);
+    const tx = clamp(f.x, 50, W - 50), ty = clamp(f.y - 40 * (templeBig() ? 1.3 : 1), 96, H - 80);   // (high enough to leave the plate's tablet clear)
     m.face = tx > m.x ? 1 : -1;
     m.x += (tx - m.x) * Math.min(1, dt * 1.8); m.y += (ty + Math.sin(m.t * 2.5) * 5 - m.y) * Math.min(1, dt * 1.8);
     m.hint = f.text;
@@ -744,6 +839,7 @@ function templePre(st, dt) {
     const P = st.pl[p.id];
     P.px = p.x; P.py = p.y;
     P.sqCD -= dt; P.missCD -= dt; P.shoutCD -= dt;
+    templeSkim(st, p, dt);
     if (P.sqT > 0 && p.alive) { P.sqT -= dt; moveX(p, P.sqDir * TEMPLE.squeezeV * dt, true); if (p.input) { p.input.left = P.sqDir < 0; p.input.right = P.sqDir > 0; } }
   }
 }
@@ -759,6 +855,7 @@ function templeStep(st, dt) {
   templeGlyphs(st, dt);
   if (st.sunOpen) st.sunT += dt;
   const pl = templePlan(st);
+  templeLostCheck(st, pl, dt);
   templeHelp(st, pl, dt);
   templeExitStep(st, dt);
   for (const b of st.bananas) if (b.pop > 0) b.pop = Math.max(0, b.pop - dt * 2);
@@ -893,7 +990,7 @@ function templeDrawDoor(st, d, t) {
   }
   // the light column over the doorway
   if (d.lights > 0) {
-    const left = templeTimeLeft(st, d), full = d.close * (st.goldDoors ? TEMPLE.gold : 1) * (d.h - PH - 1) / d.h;
+    const left = templeTimeLeft(st, d), full = d.close * templeSlow(st) * (d.h - PH - 1) / d.h;
     const frac = d.want || d.perm ? 1 : clamp(left / full, 0, 1), lit = Math.ceil(frac * d.lights - 0.001);
     const big = templeBig(), gap = big ? 13 : 11, r = big ? 4.8 : 3.8;
     for (let i = 0; i < d.lights; i++) {
@@ -1121,7 +1218,7 @@ function templeDrawMango(st, t) {
 }
 // a dark chip with a coloured title and an optional second line (job hints)
 function templeChip(t1, t2, x, y, col, avoid) {
-  const z = templeBig() ? 1.45 : 1, f1 = Math.round(13 * z), f2 = Math.round(12 * z);
+  const z = templeBig() ? 1.6 : 1, f1 = Math.round(13 * z), f2 = Math.round(12 * z);
   ctx.font = '700 ' + f1 + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
   let w = ctx.measureText(t1).width;
   if (t2) { ctx.font = '700 ' + f2 + 'px "Atkinson Hyperlegible", system-ui, sans-serif'; w = Math.max(w, ctx.measureText(t2).width); }
@@ -1175,7 +1272,8 @@ function templeDrawTop() {
       // 1-player mode: say what the computer does instead of telling the person to do its part
       const o = 1 - id;
       if (templeCpu(o) && pl.jobs[o] && pl.jobs[o].k === 'hold' && j.k === 'wait') line = j.say + ' (' + NAMES[o] + ' holds the plate)';
-      const extra = j.k === 'back' ? '' : st.stepT > 30 ? 'Stuck? ' + templeBackKey(id) + ' to go back to your torch' : '';
+      const far = Math.abs(templeCx(p) - (st.pl[id].spot.x + PW / 2)) > 100 || Math.abs(p.y - st.pl[id].spot.y) > 40;
+      const extra = j.k === 'back' ? '' : st.pl[id].lost ? 'Can’t get there? ' + templeBackKey(id) + ' to go back to your torch' : st.stallT > 30 && far ? 'Stuck? ' + templeBackKey(id) + ' to go back to your torch' : '';
       boxes.push(templeChip(NAMES[id] + ': ' + line, extra, templeCx(p), p.y - 22, PCOL[id], boxes));
     }
     ctx.restore();
@@ -1184,7 +1282,10 @@ function templeDrawTop() {
   for (const q of st.pops) {
     const size = q.size * (big ? 1.3 : 1);
     ctx.font = size + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
-    const w = ctx.measureText(q.s).width + size * 0.3, x = clamp(q.x, w / 2 + 6, W - w / 2 - 6), y = clamp(q.y - q.t * 26, 86, H - 20);
+    const w = ctx.measureText(q.s).width + size * 0.3, x = clamp(q.x, w / 2 + 6, W - w / 2 - 6);
+    let y = clamp(q.y - q.t * 26, 86, H - 20);
+    // (never on top of a hint chip or Mango: go just above it)
+    for (const b of boxes) if (x + w / 2 > b.x0 && x - w / 2 < b.x1 && y + size * 0.55 > b.y0 && y - size * 0.55 < b.y1) y = Math.max(86, b.y0 - size * 0.6 - 2);
     ctx.save(); ctx.globalAlpha = clamp(Math.min(q.t / 0.1, (1.3 - q.t) / 0.4), 0, 1);
     bigText(q.s, x, y, Math.round(size), q.col);
     ctx.restore();
@@ -1207,7 +1308,7 @@ function templeHud() {
   parts.forEach((q, i) => { text(q[0], x, cy, fs, q[1], 'left', 'body'); x += ws[i] + gap; });
   // gold help chips under it
   let gy = 12 + h + 6;
-  for (const [on, s] of [[st.goldDoors, 'GOLD SAND'], [st.lily, 'GOLD LILY PADS'], [st.goldGlyph, 'GOLD GLYPHS']]) {
+  for (const [on, s] of [[st.goldDoors, st.goldLv >= 2 ? 'SUPER GOLD SAND' : 'GOLD SAND'], [st.lily, 'GOLD LILY PADS'], [st.goldGlyph, 'GOLD GLYPHS']]) {
     if (!on) continue;
     const fs2 = big ? 15 : 11;
     ctx.font = '700 ' + fs2 + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
@@ -1227,7 +1328,7 @@ function templeHud() {
   }
   const ny = big ? 60 : 50;
   if (best) {
-    const d = best.d, gl = TEMPLE_GLYPH[d.glyph], full = d.close * (st.goldDoors ? TEMPLE.gold : 1) * (d.h - PH - 1) / d.h;
+    const d = best.d, gl = TEMPLE_GLYPH[d.glyph], full = d.close * templeSlow(st) * (d.h - PH - 1) / d.h;
     const fs3 = big ? 18 : 13, bw = big ? 300 : 220, bh = big ? 40 : 30, y = ny;
     pill(W / 2, y, bw, bh, 'center');
     templeGlyph(d.glyph, W / 2 - bw / 2 + 18, y + bh / 2, big ? 8 : 6.5, gl.col);
@@ -1282,7 +1383,7 @@ MODES.temple = {
   },
 };
 // medal: [seconds, whoopsies] for Gold and Silver
-const TEMPLE_MEDAL = { gold: [180, 3], silver: [360, 10] };
+const TEMPLE_MEDAL = { gold: [120, 3], silver: [240, 10] };   // (bots: a good pair ~1:00, slow 1-player people 1:25-2:10)
 
 /* ---------- sounds ---------- */
 Sfx.extra.templePlate = function () { this.tone(330, 0.07, 'triangle', 0.05, 260); this.tone(180, 0.1, 'sine', 0.05, null, 0.03); };
