@@ -234,17 +234,23 @@ function vineFlySim(f, b0, t, pol, maxT = VINE.flyCap) {
   return { d: vineM(b.x), kind: 'grass', T: maxT, x: b.x };
 }
 // the best moment to let go on the rest of this forward swing (no more pumping, no leaf): { a, d, dt (s from now) }
+// (a coarse pass every 6 ticks, then every tick around the best one: about 70 flights, so it fits in one tick)
 function vineBestRelease(f, s0, t0, gold) {
-  const s = Object.assign({}, s0), out = { a: s.a, d: -1, dt: 0 };
-  let t = t0;
-  for (let i = 0; i < 360; i++) {
-    if (i % 3 === 0 && s.w > 0.15) {
-      const r = vineFlySim(f, vineNewBody(s), t, null);
-      if (r.d > out.d + 0.01) { out.d = r.d; out.a = s.a; out.dt = t - t0; }
+  const out = { a: s0.a, d: -1, dt: 0 };
+  const scan = (from, to, every) => {
+    const s = Object.assign({}, s0);
+    let t = t0;
+    for (let i = 0; i < 360 && i <= to; i++) {
+      if (i >= from && (i - from) % every === 0 && s.w > 0.15) {
+        const r = vineFlySim(f, vineNewBody(s), t, null);
+        if (r.d > out.d + 0.01) { out.d = r.d; out.a = s.a; out.dt = t - t0; out.i = i; }
+      }
+      vineSwingStep(f, s, 0, DT, gold); t += DT;
+      if (i > 6 && s.w <= 0) break;
     }
-    vineSwingStep(f, s, 0, DT, gold); t += DT;
-    if (i > 6 && s.w <= 0) break;
-  }
+  };
+  scan(0, 360, 6);
+  if (out.d >= 0) { const c = out.i; scan(Math.max(0, c - 5), c + 5, 1); }
   return out;
 }
 
@@ -328,7 +334,9 @@ function vineSwinger(st, P, p, dt) {
     P.amp = vineAmp(P.s); P.maxAmp = Math.max(P.maxAmp, P.amp);
     st.stat.amp[P.k] = Math.max(st.stat.amp[P.k], P.amp);
     // a fresh forward swing: where its best let-go is (for the Perfect pop, the gold sweet spot and the arc hint)
-    if (P.prevW <= 0 && P.s.w > 0) P.best = vineBestRelease(f, P.s, st.t, P.gold > 0);
+    // (at most one of these a tick: when both turn at once, the second one waits a tick)
+    if (P.prevW <= 0 && P.s.w > 0) P.bestDue = true;
+    if (P.bestDue && st.bestTick !== st.t) { P.best = vineBestRelease(f, P.s, st.t, P.gold > 0); P.bestDue = false; P.bestAt = st.t; st.bestTick = st.t; }
     if (press) {
       if (P.s.w > 0.15) { vineRelease(st, P, 'you'); return; }
       if (P.nopeT <= 0) { P.nopeT = 0.8; vinePop(P, 'Wait for the forward swing!', '#d9d3ef'); Sfx.play('vineNope', P.k); }
@@ -397,7 +405,7 @@ function vineCamera(st, dt, snap, pre) {
   const z = clamp(Math.min(zx, zy), zMin, zMax);
   let cx = (x0 + x1) / 2;
   if (lead) { const hw = (W / 2 - mx) / z; cx = clamp(cx, lead.x + 120 - hw, lead.x - 60 + hw); }
-  if (pre) cx = VINE.px + (W / 2 - W * 0.2) / z;
+  if (pre) cx = VINE.px + (W / 2 - W * 0.28) / z;
   const cy = yBot - (H / 2 - bot) / z;
   if (snap || cam.z == null) { cam.x = cx; cam.y = cy; cam.z = z; return; }
   const kp = 1 - Math.exp(-dt * 3), kz = 1 - Math.exp(-dt * 2.2);
@@ -497,10 +505,7 @@ function vineNextSwing(st) {
   Sfx.play('roundStart');
 }
 function vineStartSwing(st) {
-  for (const P of st.pl) {
-    P.status = 'swing';
-    P.best = vineBestRelease(st.f, P.s, st.t, P.gold > 0);
-  }
+  for (const P of st.pl) { P.status = 'swing'; P.best = null; } // (each works out its sweet spot on its first tick)
   Sfx.play('vineGo');
 }
 function vineEndRound(st) {
@@ -532,7 +537,7 @@ MODES.vine = {
     st.pl = [0, 1].map(vineMakeSwinger);
     for (const P of st.pl) P.gold = info.suddenDeath ? 0 : Math.max(0, info.wins[1 - P.k] - info.wins[P.k]);
     st.t = 0; st.lt = 0; st.clock = VINE.window; st.bellT = null; st.endT = 0; st.winFlag = -1; st.winD = 0; st.goldSaid = false; st.say = null;
-    st.att = 0; st.at = 0; st.attN = st.twist === 'last' ? 1 : VINE.swings; st.setT = 0;
+    st.bestTick = -1; st.att = 0; st.at = 0; st.attN = st.twist === 'last' ? 1 : VINE.swings; st.setT = 0;
     st.vis = vineVisNew();
     st.cam = { x: 0, y: 0, z: null };
     vineCamera(st, 0, true, true);
@@ -1117,25 +1122,37 @@ function vineDrawTop() {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
-  // words, flag labels and pins in screen space (they read the same at any zoom)
-  for (const P of st.pl) {
+  // words, flag labels and pins in screen space (they read the same at any zoom). A tiny layout pass keeps the two
+  // distance labels and the two pops from sitting on each other when both land close together: each box that would
+  // overlap one already placed moves up above it (Bo's first, so Pip's sit on top as on the strips).
+  const placed = [];
+  const place = (x, y, w, h) => {
+    for (let n = 0, moved = true; moved && n < 6; n++) {
+      moved = false;
+      for (const r of placed) if (Math.abs(x - r.x) < (w + r.w) / 2 + 4 && Math.abs(y - r.y) < (h + r.h) / 2 + 2) { y = r.y - (h + r.h) / 2 - 3; moved = true; }
+    }
+    placed.push({ x, y, w, h });
+    return y;
+  };
+  for (const P of [st.pl[1], st.pl[0]]) {
     if (P.status === 'land' || P.status === 'done') {
       const s = vineToScreen(cam, P.flagX, VINE_LANE[P.k] - 70), lab = vineFmt(P.d || 0), fs = big ? 18 : 14;
       ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-      const w = ctx.measureText(lab).width + 14, other = st.pl[1 - P.k], oy = (other.status === 'land' || other.status === 'done') && Math.abs(other.flagX - P.flagX) * cam.z < w + 10 ? (P.k ? 0 : -(fs + 12)) : 0;
-      const x = clamp(s.x + 14, w / 2 + 4, W - w / 2 - 4), y = s.y - 14 + oy;
+      const w = ctx.measureText(lab).width + 14, x = clamp(s.x + 14, w / 2 + 4, W - w / 2 - 4), y = place(x, s.y - 14, w, fs + 8);
       ctx.fillStyle = 'rgba(28,26,54,0.85)'; rr(x - w / 2, y - fs / 2 - 4, w, fs + 8, 8); ctx.fill();
       ctx.strokeStyle = PCOL[P.k]; ctx.lineWidth = 2; rr(x - w / 2, y - fs / 2 - 4, w, fs + 8, 8); ctx.stroke();
       text(lab, x, y + 0.5, fs, '#fff', 'center', 'body');
     }
   }
-  for (const P of st.pl) if (P.popT < 1.1 && P.pop) {
+  const popTop = (G.matchHudBox ? G.matchHudBox.y1 : 50) + 16;
+  for (const P of [st.pl[1], st.pl[0]]) if (P.popT < 1.1 && P.pop) {
     const q = vineHeroPos(st, P), s = vineToScreen(cam, q.x, q.y), k = P.popT / 1.1;
-    ctx.globalAlpha = 1 - k * k;
     const fs = (P.popBig ? (big ? 26 : 20) : (big ? 21 : 16));
-    let y = s.y - (big ? 52 : 42) * Math.max(1, zk * cam.z) - 22 * k;
-    if (P.k === 0 && st.pl[1].popT < 1.1 && Math.abs(vineHeroPos(st, st.pl[1]).x - q.x) * cam.z < 140) y -= fs + 6; // (both at once: Pip's above)
-    bigText(P.pop, clamp(s.x, 90, W - 90), Math.max(y, (G.matchHudBox ? G.matchHudBox.y1 : 50) + 16), fs, P.popCol, 1 + 0.25 * Math.max(0, 1 - k * 5));
+    ctx.font = fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+    const w = ctx.measureText(P.pop).width * 1.1 + 8, x = clamp(s.x, Math.max(90, w / 2 + 4), W - Math.max(90, w / 2 + 4));
+    const y = place(x, s.y - (big ? 52 : 42) * Math.max(1, zk * cam.z), w, fs + 4) - 22 * k;
+    ctx.globalAlpha = 1 - k * k;
+    bigText(P.pop, x, Math.max(y, popTop), fs, P.popCol, 1 + 0.25 * Math.max(0, 1 - k * 5));
     ctx.globalAlpha = 1;
   }
   // zoomed out: a pin over each swinger; off screen: an edge marker

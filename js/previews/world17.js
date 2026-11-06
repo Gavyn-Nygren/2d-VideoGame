@@ -16,7 +16,7 @@ if (typeof definePreview === 'function') {
   // ----- END 17-3 Waterfall Climb preview -----
   //
   // ----- BEGIN 17-4 Vine Swing preview -----
-  // Pip and Bo pump their vines higher, let go at the top of the swing and fly; Bo opens a leaf and lands further.
+  // Pip and Bo pump their vines higher, let go on the way up and fly; Bo opens a leaf and lands further.
   const pw17vGY = 150, pw17vL = 60, pw17vW = Math.PI * 2 / 1.3;
   // per hero: vine pivot, let-go time, flight time, landing x, distance, swing phase offset (so let-go is at +30 deg going forward)
   const pw17vH = [
@@ -78,7 +78,7 @@ if (typeof definePreview === 'function') {
     ctx.fillStyle = '#b07a44'; ctx.fillRect(0, 118, 40, 6); ctx.fillStyle = '#8a5a30'; ctx.fillRect(4, 124, 3, 26); ctx.fillRect(33, 124, 3, 26);
   };
   definePreview('Vine Swing', {
-    blurb: 'Pump your vine, let go at the top and fly. Longest swing wins!',
+    blurb: 'Pump your vine, let go on the way up and fly. Longest swing wins!',
     loop: 6,
     still: 4.9,
     draw(v, t) {

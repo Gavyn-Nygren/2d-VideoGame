@@ -9,14 +9,15 @@
      its swing is about as high as it wants (Easy is happy lower, and is sometimes impatient), or until the swing clock
      leaves time for just one more forward swing. Then, on that forward swing, it works out the best moment to let go
      with the same swing and flight rules everybody uses (like a person who has practised the arc) and lets go there,
-     off by its aim (Easy about ±14°, Normal ±6°, Hard ±2°).
+     off by its aim (Easy about ±17°, Normal ±6°, Hard ±2°). (The level works out that same sweet spot at the start of
+     each forward swing; the computer uses it rather than working it out twice in one tick.)
      Flying: every reaction time it tries ◀, ▶ or nothing held (and ▼ tucked or not, on Normal and Hard) on the same
      flight rules, keeps the best, and opens the leaf when the best moment to open it has come (Easy guesses that
      moment with a big error, Hard almost none). Bounces, toucans, fireflies and the wind are in those flights.
      What it reads: the field (mushrooms, river, toucans, wind), its own swing and flight, the swing clock. Nothing about
      the other player's keys. */
   const SK = {
-    easy: { react: 0.34, wrong: 0.5, lazy: 0.4, aim: 17, impatient: 0.6, wantA: 48, glideErr: 0.36, glide: 0.5, nudge: 0.35, tuck: false, think: 0.2 },
+    easy: { react: 0.34, wrong: 0.5, lazy: 0.4, aim: 17, impatient: 0.6, wantA: 44, glideErr: 0.4, glide: 0.4, nudge: 0.35, tuck: false, think: 0.2 },
     normal: { react: 0.14, wrong: 0.08, lazy: 0.06, aim: 6, impatient: 0.1, wantA: 76, glideErr: 0.12, glide: 0.95, nudge: 0.9, tuck: true, think: 0.12 },
     hard: { react: 0.06, wrong: 0, lazy: 0, aim: 2, impatient: 0, wantA: 82, glideErr: 0.03, glide: 1, nudge: 1, tuck: true, think: 0.08 },
   };
@@ -41,10 +42,10 @@
     }
     let gBest = null;
     if (!b.glideUsed && !b.carry) {
-      for (let dt = 0; dt <= 1.6; dt += 0.1) {
-        const r = tryFlight(f, b, t, best.h, b.ft + dt);
-        if (!gBest || r.d > gBest.d + 0.05) gBest = { d: r.d, at: dt };
-      }
+      // (every 0.2 s, then 0.1 s either side of the best: 11 flights instead of 17)
+      const tryAt = dt => { if (dt < 0) return; const r = tryFlight(f, b, t, best.h, b.ft + dt); if (!gBest || r.d > gBest.d + 0.05) gBest = { d: r.d, at: dt }; };
+      for (let dt = 0; dt <= 1.61; dt += 0.2) tryAt(dt);
+      const c = gBest.at; tryAt(c - 0.1); tryAt(c + 0.1);
       const none = tryFlight(f, b, t, best.h, null);
       if (none.d >= gBest.d) gBest = null; // (a headwind: better never to open it)
     }
@@ -99,7 +100,10 @@
           // (a big swing takes longer than a small one: it goes by how long the last one took)
           const per = S.lastFwd != null ? Math.max(period, st.at - S.lastFwd) * 1.04 : period * 1.12;
           S.lastFwd = st.at;
-          const best = T().bestRelease(f, me.s, st.t, me.gold > 0);
+          // (the level already worked out this forward swing's sweet spot from the same rules a moment ago: use it
+          // rather than working it out again in the same tick)
+          const fresh = me.best && !me.bestDue && me.bestAt != null && st.t - me.bestAt < 0.5;
+          const best = fresh ? { a: me.best.a, d: me.best.d, dt: Math.max(0, me.best.dt - (st.t - me.bestAt)) } : T().bestRelease(f, me.s, st.t, me.gold > 0);
           const lastOne = st.clock - (per + best.dt) < 0.25;
           if (A >= S.wantA || lastOne || (S.impatient && A > 52 * D && st.lt > 3.5)) { S.mode = 'aim'; S.target = best.a + gauss() * sk.aim * D; }
         }
@@ -113,7 +117,8 @@
         if (b.carry) { if (!S.said.taxi) { S.said.taxi = 1; cpuSay(p, 'Toucan taxi!'); } return out; }
         if (!S.flew) { S.flew = true; S.gErr = gauss() * sk.glideErr; S.planT = 0; S.useGlide = Math.random() < sk.glide; S.useNudge = Math.random() < sk.nudge; }
         S.planT -= dt;
-        if (S.planT <= 0) { S.planT = sk.think; planFlight(S, f, b, st.t, sk); }
+        // (Pip's computer plans on even ticks and Bo's on odd ones, so two computers never plan in the same tick)
+        if (S.planT <= 0 && (Math.round(st.t / DT) & 1) === p.id) { S.planT = sk.think; planFlight(S, f, b, st.t, sk); }
         const h = S.hold || {};
         out.left = !!h.left && S.useNudge; out.right = !!h.right && S.useNudge; out.down = !!h.down;
         if (S.useGlide && S.glideAt != null && !b.glideUsed && b.ft >= S.glideAt) { out.act = 'tap'; out.down = false; }
