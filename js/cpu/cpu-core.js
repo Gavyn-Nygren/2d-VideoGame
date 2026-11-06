@@ -45,7 +45,13 @@ const CPU = {
 };
 const CPU_SKILL = { easy: 0.35, normal: 0.7, hard: 1 };
 const CPU_SKILL_NAMES = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
-const cpuSkill = id => CPU_SKILL[(id != null && CPU.skillOf[id]) || CPU.cfg.skill] || 0.7;
+// the setting is the opponent's difficulty: in team levels the computer always plays its best (bot tests can still set
+// a skill per player with CPU.skillOf)
+const cpuSkill = id => {
+  if (id != null && CPU.skillOf[id]) return CPU_SKILL[CPU.skillOf[id]] || 0.7;
+  if (G.level && G.level.def && G.level.def.kind !== 'versus') return CPU_SKILL.hard;
+  return CPU_SKILL[CPU.cfg.skill] || 0.7;
+};
 const cpuOn = id => !!(G.cpuOn && G.cpuOn[id]);
 const cpuSolo = () => !!(G.cpuOn && (G.cpuOn[0] !== G.cpuOn[1]));
 // the person in 1-player mode (null with two people or two computers)
@@ -256,14 +262,14 @@ function cpuCfgHTML() {
       <div class="seg-row" role="group" aria-label="Players"><span class="seg-k">Players</span>${seg('players', 2, '2 players')}${seg('players', 1, '1 player + computer')}</div>
       <div class="seg-row cpu-more" role="group" aria-label="1-player options"${c.players === 1 ? '' : ' hidden'}>
         <span class="seg-k">You play</span>${seg('human', 0, '<span class="nm-pip">Pip</span>')}${seg('human', 1, '<span class="nm-bo">Bo</span>')}
-        <span class="seg-k">Computer</span>${seg('skill', 'easy', 'Easy')}${seg('skill', 'normal', 'Normal')}${seg('skill', 'hard', 'Hard')}
+        <span class="seg-k">Opponent</span>${seg('skill', 'easy', 'Easy')}${seg('skill', 'normal', 'Normal')}${seg('skill', 'hard', 'Hard')}
       </div>
       <p class="hint cpu-more"${c.players === 1 ? '' : ' hidden'}>${cpuSoloLine()}</p>
     </div>`;
 }
 function cpuSoloLine() {
   const h = CPU.cfg.human, cpuName = NAMES[1 - h];
-  return `The computer plays ${cpuName}: it helps in team levels and plays against you in versus levels. ` +
+  return `The computer plays ${cpuName}: it helps in team levels (always at its best) and plays against you in versus levels, at the Opponent level you pick. ` +
     `Use ${h === 0 ? 'W A S D or the arrow keys' : 'the arrow keys or W A S D'}, any controller, or the ${h === 0 ? 'left' : 'right'} touch buttons.`;
 }
 // 1-player mode: a tip that names the computer's character gets this note, so the person knows that part isn't theirs
