@@ -234,6 +234,120 @@ Candy land and a candy factory, sweet and silly: a pink and peach sky with cotto
 - Each level was built, then break-tested by a separate reviewer (scripted 1-player people who follow only the prompts, take the computer's job, wait, wander, mash or hold one key; idle and solo partners; keyboard, a stubbed controller and touch at 1280x800, 844x390 and 390x844), then fixed and re-tested. Medal limits are tuned on bots and scripted players only, so real playtests may move them.
 - Code: `js/levels/world16/<slug>.js` and `js/cpu/levels/world16/<slug>.js` (conveyor-belt-chaos, gumball-machine-puzzle, chocolate-river-raft, sprinkle-catch); defs between BEGIN/END lines in the World 16 block of `level-list.js`. World-page previews are in `js/previews/world16.js` (one BEGIN/END section per level, helpers prefixed `pw16`).
 
+### World 17: Jungle Jamboree (mixed)
+A sunny, leafy jungle: a gold-green sky through the canopy, mossy brown earth, vines, an overgrown temple, a river and a big waterfall. Helpers are friendly animals (Mango the monkey, Cappy and Coco the capybaras, Hugo the hippo, toucans and frogs). Nothing is scary and nobody gets hurt ("Splash!", "Squeeze!", "Whoopsie!"). Three team levels, then a versus finale. Gavyn picked 3 of 6 team ideas (Nov 2026; he skipped Monkey Business, Rope Bridge Builder and Firefly Night Hunt) and asked for the vine swing himself: a swing-and-let-go-for-distance level inspired by a jungle swing minigame he likes, built in Pip & Bo's own style (no copied look, names or layout) with a scrolling camera. The world name is Claude's pick.
+- **17-1 Temple Doors** (team, mode `temple`, `ownHUD`, `noFalls`; js/levels/world17/temple-doors.js + js/cpu/levels/world17/temple-doors.js): standing on a pressure plate lifts a stone door, and stepping off lets it slide down SLOWLY. A column of glyph lights over the doorway and a HUD door timer ("Leaf door 1.0 s") count down the time left to get through. Getting through a closing door is a "Dash!".
+  - **Moving/controls:** normal platforming. Hold ▼ for 1 s to go back to your own torch (each player lights their own). The action (F or / on keyboard, X on a controller, the round touch button) is "pull" in Room 3 (it tugs the idol a tile toward you) and "shout" in the other rooms ("Go, Bo!"). The touch button's word changes with the room.
+  - **Rooms:**
+    - Mossy Gate: one holds the plate while the other runs through, then the far plate brings the first one across.
+    - Two-Way Plates: each plate opens one door and shuts the other. The holder hops from the leaf plate to the flower plate. The runner dashes through both doors (2.8 s to close) and over a 1-tile moat in a low tunnel. A full-speed run skims the moat; stopping or walking on it still splashes.
+    - Idol Hall: the moon door needs both moon plates at once, or the plate behind it. A pushable stone monkey idol can stand on a plate. The big, slow star door opens from the far-left plate or the far-right one, and the idol on the far star plate holds it open for good.
+    - The Sun Door: one player on each side. Star plates open the partner's star room. Six glyph plates must be pressed in the order carved on the door, woven between both sides, and the order is shuffled each play.
+  - **Soft fails:**
+    - "Splash!": water sends you back to your torch in 1 s.
+    - "Squeeze!": a closing door stops at anyone under it and nudges them out. A jump into it just bumps your head.
+    - "Too late! Bonk!": you ran into a door that just shut.
+    - "So close! Try again!": you waited right by a door that closed again.
+    - "Oops! Start again!": a wrong glyph. Before any glyph is pressed, a wrong one only says "Not first!". Someone already standing on a plate when it becomes the next one presses it.
+    - If you fall somewhere you can't reach your job from (the Room 2 exit pocket, for example), your chip says "Can't get there? hold ▼ to go back to your torch". The computer does this by itself.
+  - **Gold help (announced):**
+    - Gold sand: doors close 1.4× slower. It comes after 2 misses (bonks or missed windows) or 60 s with nobody getting through a door.
+    - Super gold sand: doors close 2.2× slower. It comes after 4 misses or another 120 s.
+    - Gold lily pads: after 3 splashes in a room.
+    - Gold glyphs: after 2 Sun Door restarts. The next plate glows and wrong ones stop restarting.
+    - Mango the monkey cheers dashes, and after 24 s with no progress he points at the next step from just above it. In 1-player mode he always points at the person's own job.
+    - Hint chips show each person's job. "Stuck?" shows only when you are away from your torch.
+  - **Scoring/medal:** time plus whoopsies (splashes and wrong glyphs). Gold is ≤ 2:00 with ≤ 3 whoopsies; Silver is ≤ 4:00 with ≤ 10. Results tiles: Whoopsies per player, Golden bananas (12), Dashes per player, plus a line with plates held, squeezes, idol pushes and the help used.
+  - **Brain:** plays the job that templePlan(st) gives it: hold, wait, cross, via, press, back, drop or exit. These are the same jobs the hint chips show, worked out from where both players stand, so roles swap on their own.
+    - Shut doors count as stone on its walking map. It hops the moat and leaves the far star plate only when the door's time left beats the run.
+    - In Room 2, with a person running, it waits a second ("Ready...") before hopping ("GO! Dash!").
+    - Once in the exit it stands still.
+    - In 1-player games it nudges the person with bubbles ("Stand on the plate, Pip!", "Go! I've got the plate!").
+    - It can't clear a room alone, because the exit needs both players.
+  - **Bot times:**
+    - Computer pair: about 56 s (also on easy and on hard).
+    - Noisy partner: 68-71 s.
+    - Scripted people with the computer: 56-60 s when they follow the hints, 85-129 s when they react 1.5-3.5 s late, 60-92 s for wanderers who press wrong glyphs.
+    - An idle partner, a solo player or a one-key holder never clears. A random masher with the computer sometimes clears Rooms 1 and 3 after 1-3 minutes, but never the whole level.
+- **17-2 River Rapids Canoe** (team, mode 'canoe', `ownStep`, `ownHUD`, `noFalls`, `roomWord: 'Stretch'`; `js/levels/world17/river-rapids-canoe.js`, brain `js/cpu/levels/world17/river-rapids-canoe.js`). Gavyn's pick: one paddles left and right, the other bails water and pushes rocks away with an oar. Both ride one canoe down a jungle river seen from above. The stretch's def says who paddles (`paddler`), and the jobs swap at the calm pool after every stretch. Courses are token lists (fN advance, b/p rocks, l logs, j jams, i islands, m fruit, R/RR rapids, F flags, S signs, W waterfall lip, P/E pools), compiled in canoeCompile. A sign written 'text||text' uses the second words when that job is the computer's in 1-player mode, so it never shows keys for the computer.
+  - **Moving and controls:**
+    - The paddler (at the back) strokes with ◀ ▶. Strokes on alternate sides 0.25-1.1 s apart are Swish strokes, the fastest and straightest. The beat bar is in their corner panel.
+    - Mash strokes (under 0.2 s apart) only splash: the canoe slows, a little water comes in, and they neither steer nor push off a bank.
+    - Holding ◀ or ▶ steers hard, and ▼ back-paddles (less splash in white water).
+    - The bailer (at the front) scoops with the action button ("bail") when the bucket glows gold. A bit early is a small scoop; long before it is full bails nothing.
+    - ◀ ▶ aim the oar one notch at a time, and jump/▲ pokes along the dotted line. A poke that hits nothing brings the oar back slowly (0.8 s).
+    - The act label follows the job (`act.labels` and `[data-actlabel]`). Pad and touch key names come from canoeKey.
+  - **Stretches:**
+    - **Lazy Bend** (Pip paddles).
+    - **Rocky Rapids** (Bo): boulders, wobbly rocks, rapids that splash water in.
+    - **Log Jam** (Pip): drifting logs, and branch and log jams that take 1-2 pokes.
+    - **Big Waterfall Drop** (Bo): a gold gap in a line of rocks, the lip, a drop with a rainbow and a splash, then the party pool with jungle animals.
+    - Each stretch has an early sandbar, so an idle paddler beaches. A jam stops the canoe until it is poked open; at a jam the oar's job is always the branch right in front of the canoe. A slow leak plus rapid splashes swamp a canoe nobody bails.
+  - **Soft fails:**
+    - Running aground ("Bump! The bank!" / "A sandbar!") just stops the canoe until a real stroke away from it, or a 0.35 s hold away from it.
+    - Bonking a rock adds water.
+    - Swamping ("Glug! Swamped!"): Cappy the capybara swims over, tips the water out and takes the canoe back to the last flag.
+  - **Gold help** (announced with a message and a gold panel border; swamps and beachings only count while both players pressed something recently):
+    - Gold bucket after 2 swamps in a stretch (big scoops come sooner and bail more), then Calm water after 3 (half the splashes).
+    - Gold paddle after 3 beachings (stronger steering, any stroke pushes off).
+    - Gold oar after 3 missed pokes at a jam, or 14 s stopped at one while the bailer is trying (longer reach and a gold arrow).
+  - **Scoring and medal:** results tiles are Time, Record, Fruit "x of 26", Swamped, Swish strokes per player and Medal, plus a line with big scoops, pokes and a "Gold help" count when help was used. Gold is ≤ 3:50 with ≥ 60% of the fruit and ≤ 1 swamp. Silver is ≤ 5:00 with ≥ 35% and ≤ 4 swamps. Otherwise Bronze.
+  - **Brain:** reads MODES.canoe.needs (the planned lane, the jam ahead, the next poke target with its notch and whether it can be reached, rapids ahead).
+    - As paddler it strokes on a beat toward the lane. It keeps still at a closed jam, and slows in splashy rapids, when the canoe is full, and before things a person bailer still has to poke.
+    - As bailer it scoops on gold, aims one notch per press and pokes when the target can be reached.
+    - With a person it says what it needs in short bubbles ("Poke the branches! W", "Paddle away from the sandbar!"), with rate limits. It never does the person's job.
+  - **Bot times:**
+    - Computer pair about 3:30 (Gold); noisy pairs 3:35-3:50.
+    - Scripted kid + computer 3:25-3:50 (Gold/Silver); two scripted kids 4:00-4:15 (Silver); a slow sloppy kid + computer about 4:05-4:35 (Silver).
+    - A person who stops for 25 s of every minute takes about 4:50.
+  - **Fairness:** one player alone, an idle partner, one-key holders and act/jump or left/right mashers never get past stretch 1 or 2. A random button-masher with the computer takes 5:00-5:45 (Bronze). Two random mashers take 7:20-7:40 (Bronze).
+- **17-3 Waterfall Climb** (mode `waterfall`, team, `ownStep`, `ownHUD`, `noFalls`; js/levels/world17/waterfall-climb.js, brain js/cpu/levels/world17/waterfall-climb.js)
+  - **Moving:** normal run and jump. Hold ▼ (or hold the action, `help`, away from a post) to **brace**: you can't move, and a partner who jumps off your hands gets a BIG boost (about 7.6 tiles; a plain jump is about 3.6 tiles, a jump off a standing partner's head about 4.5, and the walls are 5-6 tiles). At a vine post, tap help to lower the vine and hold help to heave. To grab the vine press ▲ or jump into it. Hold ▲ or jump to climb (keyboard and touch have no ▲ of their own, so W, ↑ and touch ▲ climb). Jump plus ◀ or ▶ away from the wall hops off. A player carrying the partner can't jump ("Oof!"), so stacked jumps are no shortcut. Partners walk through each other. A vine stays down once dropped.
+  - **Rooms:** one tall scrolling climb, 103 rows, built from `def.climb`. The camera follows the pair and always keeps the lower player on screen. The higher player can't get more than 13.5 tiles above the partner ("Wait for me!").
+    - Mossy Steps: slippery wet rock, springy moss.
+    - Log Jam Falls: a stream that flows on a timer and pushes you down (a log jams it now and then), stepping stones, a drifting log over a pool.
+    - Misty Geysers: mist vents that puff you up, a frog bounce.
+    - Toucan Top: Tico the toucan's treasure nest. Both must stand by the nest to finish.
+    - In all: 7 boost walls and 8 checkpoints. `def.route` describes each ledge, for the hint chips, Tico's hints and the computer.
+  - **Soft fails:** falling into water, or more than 2.5 tiles below the team checkpoint, is a "Splash!". A bubble floats you back to the team checkpoint. A checkpoint lights only once both players have touched it, so nobody lands below their partner's checkpoint.
+  - **Hints:** chips over each person, in their own device's keys: who braces (with two people, Pip on even walls; in 1-player mode the computer), hop on, jump now, steer onto the ledge, drop the vine, heave, grab and climb. Also "You're both bracing!", "Hop off Bo's head" and "carrying" chips. The computer's chip is never shown. Tico flies over with a hint after 22 s with no progress.
+  - **Gold help (announced):**
+    - Super boost after 3 missed boosts at a wall, or 50 s at one wall's foot.
+    - Big log jam (the water stays off longer) after 3 stream wash-downs.
+    - Gold raft (a bigger, slower log) after 2 splashes at the log.
+  - **Scoring:** results tiles: splashes per player, boosts given per player and gems (0-8). Lines: the medal, vines dropped, frog bounces, geyser rides and any gold help. Medals:
+    - Gold: 4:00 or less with at most 5 splashes.
+    - Silver: 7:30 or less with at most 14 splashes.
+    - Bronze otherwise.
+  - **Brain:**
+    - Two computers split the bracing by wall number. If both brace at once, Bo gives way.
+    - With a person, the computer braces when the person reaches the foot of the wall and rides when the person braces first. If both keep bracing, it gives way after 1.5 s.
+    - On top it always drops the vine and waits at the post, even if the person wandered off below the wall or splashed. It heaves while they climb.
+    - It lets the person jump first from the small stepping stones. It hops off a partner's head when not at a wall, and turns round if a low ledge blocks the way. When carrying the person away from a wall it stands still and asks "Hop off my head, please!". It steers off a frog it fell onto.
+    - Bubbles appear only in 1-player mode.
+  - **Fairness:** one player alone, an idle partner, a masher or a one-key holder (◀, ▶, jump, ▼, help) never gets past the first wall. The partner is left behind and the 13.5-tile limit stops the climb.
+  - **Bot times:**
+    - Computer pair: 83 s.
+    - Noisy pairs: 111-180 s, average 136 s.
+    - Noisy pairs with Bo clumsy: 102-168 s.
+    - Idle partner: never clears.
+    - Scripted person with the computer: 78-95 s, with either one bracing.
+    - Scripted kid with the computer: 107-257 s, 2-17 splashes.
+    - Person who wanders or walks away from the wall: 103-202 s.
+    - Person who waits 20 s before dropping each vine: about 3:45.
+    - Full climbs through the real keyboard, controller and touch input path, and with two people on one keyboard: 80 s each.
+- **17-4 Vine Swing** (versus, best of 5, `ownStep`; mode `vine`; js/levels/world17/vine-swing.js, brain js/cpu/levels/world17/vine-swing.js): Pip and Bo each hang from their own vine off the treehouse branch and swing at the same time. Longest landing wins the round.
+  - **Moving/controls:** ◀ ▶ pumps the way you are swinging; pushing against the swing brakes. A soft cap fades the push between 40° and 86° of swing, so a steady rhythm beats mashing or holding one key. Jump lets go, but only on the forward swing ("Wait for the forward swing!"). A pop rates the let-go: Perfect (within 6° of the best spot), a bit early, a bit late, or too late (high). In the air ◀ ▶ nudge, ▼ tucks (falls faster, cuts through a headwind, bigger boings), and the action ("glide") opens one leaf glide per flight, best just after the top. One shared camera pans and zooms to fit both, with edge markers and P/B pins when zoomed out. Posts every 5 m show metres. Before rounds 1 and 2 the round card shows each person's own keys (none for the computer), and in rounds 1-2 a chip under each person says "▶ pump" or "W let go!" at the right moment.
+  - **Rounds:** each round is 2 swings, and the longer one counts. Each swing has a 10 s clock ("Let go in N"). At the bell, anyone still swinging lets go at the bottom of their next forward swing (or after 3 s), and a 40 s safety cap lands everyone, so a round always ends. Round 1 is a plain Morning Swing with a dotted arc and a sweet-spot marker for people. Then come 4 shuffled twists from: Windy Day (tail- or headwind, shown by blowing leaves), Stretchy Vine (bungee vines), River Crossing (Hugo the hippo's belly bounces you), Bouncy Mushrooms, Toucan Taxi (fly into a toucan for a short ride) and Night Fireflies (swarms give a sparkle push). Within 0.1 m is a tie and is replayed. A second tie in a row goes to the longest swing of the match; otherwise there is a one-swing sudden-death "Last Swing". After 4 ties in a row the match is a draw (it only happens if both players do exactly the same, e.g. both idle).
+  - **Soft fails:** mud is "Splat! Still counts!". The river is a splash, and Coco the capybara paddles you to the near bank; the distance up to the bank counts. Letting go too early is a "Plop!" on the deck (0 m). Nothing is ever lost.
+  - **Gold help (announced on the round card, at GO and with a gold vine and HUD edge):** whoever trails in rounds gets a gold vine (1.6x pump and a slightly higher cap). Two rounds behind also shows the arc hint and the sweet spot. It is off in sudden death.
+  - **Scoring/medal:** no medal. The results card has Longest swing, Perfect let-gos, Boings & rides, Splats & splashes, the longest swing of the match and the jungle record (saved in the browser under `vinebest:<name>`).
+  - **Brain:** pumps by the sign of its swing as it saw it a reaction time ago. It aims once the swing is high enough, or when the clock leaves just one more forward swing. It lets go at the level's best-release angle (worked out at the start of each forward swing with the same swing and flight rules, without the leaf), off by its aim. In the air it re-plans nudge, tuck and leaf timing every think tick with the same flight rules; the two computers plan on alternating ticks. Easy is slow and sometimes pumps the wrong way, pauses, aims ±17°, lets go at a smaller swing and often forgets the leaf. Hard makes no mistakes and aims ±2°. Bubbles only in 1-player mode.
+  - **Performance:** the best-release search is coarse then fine (about 70 flights, 0.2-0.8 ms), with at most one per tick. Steps take under about 3 ms with brief 4-5 ms peaks at the start of a round.
+  - **Bot times:** matches take 80-185 s of sim time (2-3 min); a round with an idle player takes about 33 s. Hard beats Easy 32/32 from both sides. Hard beats Normal 30/40. Normal beats Easy 32/32. Normal vs Normal 40-30 and Easy vs Easy 98-82 over many seeds (no side bias). A kid-like scripted player (0.25 s pump lag, lets go at 20-50°, late leaf) beats Easy about 3 in 4. Mashers, one-key holders and idle players lose every match, even to Easy. A careful scripted person wins some rounds off Normal and Hard but loses the matches.
+- Each level was built, then break-tested by a separate reviewer (one player alone, idle and masher partners, one-key holders, softlocks, scripted 1-player "people" who take the computer's job, wait, wander or go the wrong way; keyboard, stubbed controller and touch at 1280x800, 844x390 and 390x844), then fixed and re-tested. Medal limits are tuned on bots and scripted players only, so real playtests may move them.
+- Code: `js/levels/world17/<slug>.js` and `js/cpu/levels/world17/<slug>.js` (temple-doors, river-rapids-canoe, waterfall-climb, vine-swing); defs between BEGIN/END lines in the World 17 block of `level-list.js`. World-page previews are in `js/previews/world17.js` (one BEGIN/END section per level, helpers prefixed `pw17t`, `pw17r`, `pw17w`, `pw17v`).
+
 ## How the game is built
 
 ### Conventions for every level
@@ -264,7 +378,7 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 | `js/player.js` | `makePlayer`, tile collision (`solidFor`), movement, tether rope/chain/bungee, stomp, `kill`/`respawn` |
 | `js/levels/block-building.js`, `golf.js`, `robo-pong.js` | World 2-3 mechanics (`BUILD`, `GOLF`, `PONG`) and their drawing |
 | `js/versus.js` | `MODES` registry, `hook`/`drawHook`, the best-of-N framework (`MATCH`, `matchRoundEnd`), `knock` |
-| `js/levels/world4/` to `world16/` | One file per level: its `MODES.<name>` block, its own drawing and `Sfx.extra` sounds, e.g. `world7/bumper-cars.js` |
+| `js/levels/world4/` to `world17/` | One file per level: its `MODES.<name>` block, its own drawing and `Sfx.extra` sounds, e.g. `world7/bumper-cars.js` |
 | `js/input.js` | Keyboard (`keys`, `BIND`), controllers (`Pads`, `readPad`), touch, `pollInput` |
 | `js/ui.js` | Overlay cards (`pause`/`showPauseCard`, `showResult`, `showWorldDone`, `showFinal`, `armOverlay`, `menuBack`), legend (`setLegend`, `setActUI`), toast, mute |
 | `js/render.js` | Shared drawing (`render`, `drawHUD`, `drawIntro`) and particles |
@@ -319,6 +433,9 @@ Gavyn asked for a new title and home screen where every world can be picked and 
 - Then push to `main` here and update the README's world list and this file.
 
 ## Open questions for Gavyn
+- World 17 is called "Jungle Jamboree" (Claude's pick). Keep it or rename it?
+- 17-2 River Rapids Canoe runs about 3.5 minutes for a good pair, the longest in World 17. A random button-masher with the computer can still clear it slowly (Bronze); making that impossible would also punish small kids.
+- 17-4 Vine Swing: you can only let go on the forward swing, and Hard is close to perfect. Check that Easy feels fair for kids.
 - World 13 is called "Spooky Hollow" (Claude's pick). Keep it or rename it?
 - World 14 is called "Dino Valley" (Claude's pick). Keep it or rename it?
 - World 15 is called "Orbit Outpost" (Claude's pick). Keep it or rename it?

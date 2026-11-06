@@ -4089,6 +4089,382 @@ const LEVELS = [
   // ----- END 16-4 Sprinkle Catch -----
   //
   // ===== END World 16 =====
+
+  /* ===== World 17 (Jungle Jamboree, mixed): the jungle world, world index 16 (js/levels/world17/), leafy, sunny and
+     friendly, nothing scary. Gavyn's picks (Nov 2026): 17-1 Temple Doors (team), 17-2 River Rapids Canoe (team),
+     17-3 Waterfall Climb (team), 17-4 Vine Swing (versus). Each level's def sits between its own BEGIN/END lines. world: 16 ===== */
+  // ----- BEGIN 17-1 Temple Doors (mode 'temple', js/levels/world17/temple-doors.js) -----
+  // 17-1 Temple Doors (mode 'temple', team): one stands on a pressure plate to open a stone door while the other runs
+  // through (Gavyn's pick). Doors slide down SLOWLY when the plate is let go, and glyph lights above each door count
+  // down how long it can still be passed. Map chars (read by the mode): a door letter from the room's `doors` (a door
+  // column), a plate char from `plates`, ~ water (a soft "Splash!"), z golden banana, f torch (checkpoint, each player
+  // their own), Y the stone monkey idol, E the exit (both must stand in it). The mode draws everything itself.
+  // Room def: logic ('gate' | 'relay' | 'idol' | 'sun': which helper plans the room), lead (who holds first), style,
+  // doors: { L: { glyph, close (s to shut), lights, open: [[plates...], ...] (any group fully pressed), shut: [plates]
+  // (pressed: forced shut), sun: true (opens when the Sun Door glyphs are done) } }, plates: { ch: { seq: glyph } },
+  // mango: [x, y] (Mango the monkey's perch).
+  { name: 'Temple Doors', world: 16, kind: 'team', mode: 'temple', noFalls: true, ownHUD: true,
+    act: { label: 'shout' },
+    legend: { down: 'hold: go back', padDown: 'hold down: go back' },
+    tip: 'Stand on a plate to open a stone door for your partner. Let go and it slides shut slowly: dash!',
+    signs: [],
+    rooms: [
+      { // ---------- Room 1: Mossy Gate (Pip holds first, then Bo holds from the far side) ----------
+        title: 'Mossy Gate', logic: 'gate', lead: 0, style: 'gate', act: { label: 'shout' }, mango: [450, 54],
+        tip: 'Pip, stand on the plate: the leaf door opens for Bo! Then Bo holds the far plate for Pip.',
+        doors: { A: { glyph: 'leaf', close: 2.0, lights: 5, open: [['3'], ['4']] } },
+        plates: {},
+        map: [
+          '################################',
+          '################################',
+          '##.............#..............##',
+          '##.............#..............##',
+          '##.............#..............##',
+          '##.............#..............##',
+          '##.............#..............##',
+          '##.............#..............##',
+          '##.............#..............##',
+          '##.............#..............##',
+          '##..........z..#..............##',
+          '##...z.........#..............##',
+          '##...##........#..............##',
+          '##.............A..........z...##',
+          '##.............A..............##',
+          '##3.f1.2.......A..f...E......4##',
+          '#########~~##############~~#####',
+          '#########~~##############~~#####',
+        ],
+      },
+      { // ---------- Room 2: Two-Way Plates (each plate opens one door and shuts the other) ----------
+        title: 'Two-Way Plates', logic: 'relay', lead: 1, style: 'relay', act: { label: 'shout' }, mango: [390, 54],
+        tip: 'Each plate opens one door and shuts the other! Leaf plate, then hop to the flower plate: dash through both!',
+        doors: {
+          A: { glyph: 'leaf', close: 2.8, lights: 5, open: [['3'], ['6']], shut: ['4', '5'] },
+          B: { glyph: 'flower', close: 2.8, lights: 5, open: [['4'], ['5']], shut: ['3', '6'] },
+        },
+        plates: {},
+        map: [
+          '################################',
+          '################################',
+          '##..........###...............##',
+          '##..........###...............##',
+          '##..........###...............##',
+          '##..........###...............##',
+          '##..........###...............##',
+          '##.......z..###...............##',
+          '##..........###...............##',
+          '##..........###...............##',
+          '##......3.4.###.5.6....z......##',
+          '##....###############.........##',
+          '####........###........##.....##',
+          '####........A.B........##.....##',
+          '#####.......AzB.......###.....##',
+          '#####.f2.1..A.B.f.....###.E...##',
+          '#############~##################',
+          '#############~##################',
+        ],
+      },
+      { // ---------- Room 3: Idol Hall (the moon door needs two plates at once; the big star door is slow) ----------
+        title: 'Idol Hall', logic: 'idol', lead: 0, style: 'idol', act: { label: 'pull' }, mango: [660, 54],
+        tip: 'The moon door needs BOTH moon plates! Push the monkey idol onto one, or stand on one each and run together.',
+        doors: {
+          C: { glyph: 'moon', close: 2.6, lights: 6, open: [['3', '4'], ['6']] },
+          D: { glyph: 'star', close: 8.5, lights: 8, open: [['5'], ['7']] },
+        },
+        plates: {},
+        map: [
+          '################################',
+          '################################',
+          '##................#.......#...##',
+          '##................#.......#...##',
+          '##................#.......#...##',
+          '##................#.......#...##',
+          '##................#.......#...##',
+          '##................#.......#...##',
+          '##................#.......#...##',
+          '##................#.......#...##',
+          '##................#.......#...##',
+          '##..z.............#.......#...##',
+          '##..##............#...z...#...##',
+          '##..........z.....C.......D...##',
+          '##................C.......D...##',
+          '##.5..Y1.3f2...4..C.f...6.DE.7##',
+          '############~~##################',
+          '############~~##################',
+        ],
+      },
+      { // ---------- Room 4: The Sun Door (one on each side; press the glyphs in the order carved on the door) ----------
+        title: 'The Sun Door', logic: 'sun', lead: 0, style: 'sun', act: { label: 'shout' }, mango: [480, 40],
+        tip: 'One on each side! Press the glyph plates in the order carved on the Sun Door. Star plates open your partner’s star door.',
+        doors: {
+          K: { glyph: 'star', close: 1.6, lights: 4, open: [['p']] },
+          N: { glyph: 'star', close: 1.6, lights: 4, open: [['n']] },
+          S: { glyph: 'sun', close: 2, lights: 0, sun: true },
+          W: { glyph: 'sun', close: 2, lights: 0, sun: true },
+        },
+        plates: { m: { seq: 'leaf' }, j: { seq: 'frog' }, g: { seq: 'bird' }, q: { seq: 'fish' }, l: { seq: 'flower' }, h: { seq: 'moon' } },
+        map: [
+          '################################',
+          '################################',
+          '##..............z.............##',
+          '##............................##',
+          '##............1f.2............##',
+          '##..........########..........##',
+          '########....#......#....########',
+          '##.....K....#......#....N.....##',
+          '##.z...K....#......#....N...z.##',
+          '##...g.K....#......#....N.h...##',
+          '##.######...#......#...######.##',
+          '##..........#......#..........##',
+          '##........j.#......#.l........##',
+          '##.......##.S......W.##.......##',
+          '##.......##.S......W.##.......##',
+          '##..m.n..##.S..E...W.##..p.q..##',
+          '################################',
+          '################################',
+        ],
+      },
+    ],
+  },
+  // ----- END 17-1 Temple Doors -----
+  //
+  // ----- BEGIN 17-2 River Rapids Canoe (mode 'canoe', js/levels/world17/river-rapids-canoe.js) -----
+  // 17-2 River Rapids Canoe (team, Gavyn's pick): both ride one canoe down a jungle river, seen from above. The paddler
+  // steers with paddle strokes (◀ ▶ in turn on a steady beat is fast and straight, ▼ slows); the bailer scoops water out
+  // with a bucket (the action, timed) and pokes rocks, logs and branches out of the way with an oar (◀ ▶ aim, ▲ poke).
+  // Jobs swap at the calm pool after each stretch. Course tokens: the top of the level file. The map is only the spawns.
+  { name: 'River Rapids Canoe', world: 16, kind: 'team', mode: 'canoe', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    act: { label: 'paddle', labels: ['paddle', 'bail'] },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> paddle · aim <kbd>S</kbd> slow <kbd>W</kbd> poke',
+      bo: '<kbd>←</kbd><kbd>→</kbd> paddle · aim <kbd>↓</kbd> slow <kbd>↑</kbd> poke',
+      pad: 'stick: paddle · aim, down slows, <span data-glyph="a"></span> poke,',
+    },
+    tip: 'Paddle down the jungle river together! One paddles and steers, one bails water and pokes logs away.',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Lazy Bend', paddler: 0, pal: 'lazy', act: { label: 'paddle', labels: ['paddle', 'bail'] },
+        tip: 'Pip paddles: left, right, left, right! Bo bails water and pokes the branches out of the way.',
+        course: ['v40', 'w215', 'f420', 'S:{P}: {Plr} in turn to paddle. Swish!||{P} paddles left, right, in turn. Swish!', 'm:0:mango', 'f260', 'm:-34:banana', 'f300',
+          'S:An island! {P}: steer around it||An island! {P} steers around it', 'f120', 'i:0:62:110:tapir', 'f330', 'c380', 'm:-40:mango', 'f260', 'A:toucan:R', 'f180',
+          'S:Splashy water! {B}: {Bact} to bail when the bucket is full||Splashy water! {B} bails when the bucket is full', 'f60', 'R:340', 'm:30:berry', 'f460', 'c570', 'm:40:banana', 'f220', 'A:monkey:L', 'f240', 'F',
+          'S:A wobbly rock! {B}: aim {Blr}, poke {Bpoke}||A wobbly rock! {B} aims the oar and pokes it', 'f160', 'p:0', 'f300', 'm:-70:mango', 'f160', 'p:50', 'f320', 'c480',
+          'S:Branches! {B}: poke them out of the way||Branches! {B} pokes them out of the way', 'f200', 'j:4', 'f340', 'b:-80', 'b:85', 'm:0:melon', 'f300', 'A:frog:L',
+          'R:280', 'm:40:mango', 'f420', 'c420', 'm:-30:starfruit', 'f300', 'A:parrot:R', 'f260', 'P'],
+      },
+      {
+        title: 'Rocky Rapids', paddler: 1, pal: 'rapids', act: { label: 'paddle', labels: ['bail', 'paddle'] },
+        tip: 'Swap! Bo paddles round the big rocks. Pip bails fast in the white water and pokes the wobbly rocks.',
+        course: ['v60', 'w195', 'f380', 'S:Big rocks! {P}: steer round them||Big rocks! {P} steers round them', 'i:0:50:90', 'f280', 'b:-70', 'm:65:mango', 'f220', 'b:60', 'f220',
+          'S:White water! {B}: bail, bail, bail!||White water! {B} bails fast', 'RR:520', 'b:-10', 'm:-80:banana', 'f190', 'b:70', 'f170', 'b:-75', 'f240', 'c410', 'f160',
+          'S:{P}: {Pdown} slows down, so less water splashes in||{P} slows down, so less water splashes in', 'p:-10', 'm:70:coconut', 'f260', 'A:monkey:R', 'RR:440', 'b:55', 'f170', 'b:-55', 'f170', 'p:5', 'f240', 'F',
+          'c550', 'w175', 'R:300', 'b:0', 'f200', 'm:-55:berry', 'm:55:mango', 'f220', 'j:3', 'f320',
+          'RR:520', 'b:-60', 'f160', 'b:45', 'f170', 'p:-25', 'f200', 'm:0:starfruit', 'A:toucan:L', 'f300', 'c480', 'w200', 'F',
+          'R:300', 'b:75', 'b:-75', 'f280', 'm:0:mango', 'f280', 'A:parrot:L', 'f200', 'P'],
+      },
+      {
+        title: 'Log Jam', paddler: 0, pal: 'logjam', act: { label: 'paddle', labels: ['paddle', 'bail'] },
+        tip: 'Pip paddles again. Logs float across the river! Bo pokes the big logs twice to clear the log jams.',
+        course: ['v48', 'w210', 'f380', 'S:Floating logs! Go round them or poke them away', 'i:0:56:100:turtle', 'f300', 'l:-70:120:80:38', 'f300', 'm:40:mango',
+          'l:60:110:70:-34', 'f320', 'S:A log jam! Big logs need two pokes', 'f140', 'j:4:2', 'f320', 'm:-60:banana', 'm:60:berry', 'f260', 'A:sloth:L',
+          'i:-25:66:130:turtle', 'f380', 'l:0:130:90:46', 'f300', 'F', 'R:300', 'l:-40:100:60:30', 'f240', 'p:30', 'f240', 'c380', 'j:5:2', 'f320',
+          'c560', 'l:40:140:80:-42', 'f260', 'm:-40:coconut', 'f260', 'A:frog:R', 'l:-50:120:90:40', 'l:60:120:90:-40', 'f320', 'F', 'j:4:2', 'f300',
+          'm:0:starfruit', 'f220', 'c480', 'R:260', 'f380', 'A:monkey:L', 'P'],
+      },
+      {
+        title: 'Big Waterfall Drop', paddler: 1, pal: 'falls', act: { label: 'paddle', labels: ['bail', 'paddle'] },
+        tip: 'Bo paddles to the Big Waterfall! Keep the canoe dry, aim for the gold gap, then WHOOSH!',
+        course: ['v70', 'w200', 'f380', 'S:The Big Waterfall is ahead! Keep the canoe dry', 'i:0:52:96', 'f240', 'RR:460', 'b:-60', 'm:70:mango', 'f200', 'b:55', 'f230',
+          'c410', 'p:0', 'f220', 'm:55:berry', 'f240', 'A:parrot:R', 'l:30:110:80:40', 'f320', 'F',
+          'RR:500', 'b:60', 'f170', 'b:-45', 'f170', 'p:20', 'f220', 'j:3', 'f300', 'm:0:coconut', 'c480', 'w185', 'f240',
+          'S:Bail before the drop! {P}: aim for the gold gap||Bail before the drop! {P} aims for the gold gap', 'f220', 'v95', 'f240', 'g:40:120', 'f150', 'W',
+          'v55', 'w230', 'f80', 'S:SPLASH! {B}: bail it all out!||SPLASH! {B} bails it all out', 'RR:360', 'm:-45:starfruit', 'm:45:mango', 'f380', 'A:capy:L', 'R:200', 'f380', 'E'],
+      },
+    ],
+  },
+  // ----- END 17-2 River Rapids Canoe -----
+  //
+  // ----- BEGIN 17-3 Waterfall Climb (mode 'waterfall', js/levels/world17/waterfall-climb.js) -----
+  // 17-3 Waterfall Climb (mode 'waterfall', team, Gavyn's pick): a tall climb up beside a big jungle waterfall; the camera
+  // scrolls up with the pair. Ledges are too high for one jump: one braces (hold down or the action) and the other jumps
+  // off their hands for a BIG boost, then lowers a vine at the post for the partner. Wet rocks, a stream a log keeps
+  // blocking, a drifting log, mist geysers, springy moss and friendly frogs on the way. The 18-row map is only for the
+  // engine; the mode builds the climb from def.climb (rows top first, 32 wide). Climb chars (read by the mode):
+  // # rock, s wet slippery rock, m springy moss, g mist geyser vent (solid), ~ water (Splash!), w falling stream,
+  // L the log's lane over a pool, V vine post (on a ledge's top edge), C checkpoint, * gem, r frog, N toucan nest,
+  // 1 2 starts. The comment after each row is the height of a player's feet standing in that row (in tiles).
+  // route: one step per ledge (at: [col0, col1, feet height]) saying how to move on from it, for the hints and the
+  // computer: jump (from: take-off column, to: [column, height]), wall (a boost wall, by order from the bottom), log,
+  // geyser, frog, nest. Columns may have halves (x = col * 30 px). hop: the computer jumps from a standstill (no run-up).
+  { name: 'Waterfall Climb', world: 16, kind: 'team', mode: 'waterfall', ownStep: true, ownHUD: true, noFalls: true,
+    act: { label: 'help' },
+    legend: { down: 'brace', padDown: 'down braces', jump: 'jump · climb', padJump: 'jump · climb' },
+    tip: 'Ledges too high? One braces (hold ▼), the other jumps off their hands. Then drop a vine for your partner!',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    sections: [{ name: 'Mossy Steps', h: 0 }, { name: 'Log Jam Falls', h: 18 }, { name: 'Misty Geysers', h: 44 }, { name: 'Toucan Top', h: 75 }],
+    streams: [{ flow: 3.2, off: 3.6 }],
+    lanes: [{ speed: 55 }],
+    route: [
+      { at: [1, 13, 0], go: 'wall', wall: 0 },
+      { at: [14, 20, 5], go: 'jump', from: 19.5, to: [23.5, 8] },
+      { at: [22, 26, 8], go: 'jump', from: 26.4, to: [29.8, 8], say: 'slip' },
+      { at: [29, 30, 8], go: 'jump', from: 30.1, to: [26.5, 12], say: 'moss' },
+      { at: [20, 27, 12], go: 'wall', wall: 1 },
+      { at: [7, 19, 18], go: 'jump', from: 8.75, to: [6.9, 21], stream: 0 },
+      { at: [6, 7, 21], go: 'jump', from: 6.35, to: [4, 24], stream: 0 },
+      { at: [3, 4, 24], go: 'jump', from: 4.6, to: [6.9, 27], stream: 0 },
+      { at: [6, 7, 27], go: 'jump', from: 7.4, to: [9.5, 30], stream: 0 },
+      { at: [8, 13, 30], go: 'log', lane: 0, to: [24.5, 30] },
+      { at: [23, 26, 30], go: 'wall', wall: 2 },
+      { at: [27, 30, 36], go: 'jump', from: 27.4, to: [23.4, 38] },
+      { at: [18, 24, 38], go: 'wall', wall: 3, say: 'slip' },
+      { at: [1, 17, 44], go: 'geyser', gey: 0, to: [9.6, 51] },
+      { at: [8, 12, 51], go: 'frog', frog: 0, to: [14.6, 56] },
+      { at: [13, 22, 56], go: 'wall', wall: 4 },
+      { at: [23, 30, 62], go: 'geyser', gey: 1, to: [24.6, 69] },
+      { at: [16, 26, 69], go: 'wall', wall: 5 },
+      { at: [1, 15, 75], go: 'jump', from: 7.7, to: [5, 78], hop: true, say: 'slip' },
+      { at: [4, 6, 78], go: 'jump', from: 4.4, to: [1.6, 81], say: 'moss' },
+      { at: [1, 2, 81], go: 'jump', from: 1.5, to: [5.2, 85], say: 'moss' },
+      { at: [4, 8, 85], go: 'frog', frog: 1, to: [11.6, 90] },
+      { at: [10, 19, 90], go: 'wall', wall: 6, say: 'slip' },
+      { at: [20, 30, 96], go: 'nest' },
+    ],
+    climb: [
+      '#..............................#', // 101
+      '#..............................#', // 100
+      '#.....................*........#', // 99
+      '#..............................#', // 98
+      '#..............................#', // 97
+      '#...................V...C..N...#', // 96
+      '#...................############', // 95
+      '#...................############', // 94
+      '#...................############', // 93
+      '#...................############', // 92
+      '#...................############', // 91
+      '#...................############', // 90
+      '#.........ssssssssss############', // 89
+      '#..............................#', // 88
+      '#..............................#', // 87
+      '#*.............................#', // 86
+      '#......r.......................#', // 85
+      '#...#####......................#', // 84
+      '#..............................#', // 83
+      '#..............................#', // 82
+      '#..............................#', // 81
+      '#mm............................#', // 80
+      '#..............................#', // 79
+      '#..............................#', // 78
+      '#...sss........................#', // 77
+      '#..............................#', // 76
+      '#..........C...V...............#', // 75
+      '################...............#', // 74
+      '#........#######...............#', // 73
+      '#........#######...............#', // 72
+      '#........#######...............#', // 71
+      '#........#######...............#', // 70
+      '#........#######...............#', // 69
+      '#........##################....#', // 68
+      '#..............................#', // 67
+      '#..............................#', // 66
+      '#..............................#', // 65
+      '#..............................#', // 64
+      '#..............................#', // 63
+      '#......................V..C....#', // 62
+      '#......................######gg#', // 61
+      '#......................######..#', // 60
+      '#..................*...######..#', // 59
+      '#......................######..#', // 58
+      '#......................######..#', // 57
+      '#......................######..#', // 56
+      '#............##########........#', // 55
+      '#..............................#', // 54
+      '#..............................#', // 53
+      '#..............................#', // 52
+      '#..........r...................#', // 51
+      '#.......#####..................#', // 50
+      '#..............................#', // 49
+      '#..............................#', // 48
+      '#..............................#', // 47
+      '#.*............................#', // 46
+      '#..............................#', // 45
+      '#............C...V.............#', // 44
+      '####gg############.............#', // 43
+      '#..........#######.............#', // 42
+      '#..........#######.............#', // 41
+      '#..........#######.............#', // 40
+      '#..........#######.............#', // 39
+      '#..........#######.............#', // 38
+      '#..........#######sssssss......#', // 37
+      '#..........................V.C.#', // 36
+      '#..........................#####', // 35
+      '#..........................#####', // 34
+      '########..........*........#####', // 33
+      '########...................#####', // 32
+      '#wwwwwww...................#####', // 31
+      '#wwwwwww..C...LLLLLLLLL....#####', // 30
+      '#wwwwwww######~~~~~~~~~#########', // 29
+      '#wwwwwww########################', // 28
+      '#wwwwwww.......................#', // 27
+      '#ww*wwss.......................#', // 26
+      '#wwwwwww.......................#', // 25
+      '#wwwwwww.......................#', // 24
+      '#wwsswww.......................#', // 23
+      '#wwwwwww.......................#', // 22
+      '#wwwwwww.......................#', // 21
+      '#wwwwwss.......................#', // 20
+      '#wwwwwww.......................#', // 19
+      '#wwwwwww.......C...V...........#', // 18
+      '#~~~~~~#############...........#', // 17
+      '####################...........#', // 16
+      '#.............######...........#', // 15
+      '#.............######.........*.#', // 14
+      '#.............######...........#', // 13
+      '#.............######...........#', // 12
+      '#.............##############...#', // 11
+      '#.......................*......#', // 10
+      '#..............................#', // 9
+      '#..............................#', // 8
+      '#.....................sssss..mm#', // 7
+      '#..............................#', // 6
+      '#.............V................#', // 5
+      '#.............#######..........#', // 4
+      '#.............#######..........#', // 3
+      '#.............#######..........#', // 2
+      '#.............#######..........#', // 1
+      '#..1.2........#######..........#', // 0
+      '#####################~~~~~~~~~~#', // -1
+    ],
+  },
+  // ----- END 17-3 Waterfall Climb -----
+  //
+  // ----- BEGIN 17-4 Vine Swing (mode 'vine', js/levels/world17/vine-swing.js) -----
+  // 17-4 Vine Swing (mode 'vine', versus, best of 5, Gavyn's pick): both swing from their own vines at once, pump with
+  // the swing, let go at the right moment and fly; the camera follows them right. Longest landing wins the round.
+  { name: 'Vine Swing', world: 16, kind: 'versus', mode: 'vine', ownStep: true,
+    // the map is only the two spawns: the mode builds each round's field (MODES.vine)
+    match: { bestOf: 5 },
+    act: { label: 'glide' },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> pump <kbd>W</kbd> let go <kbd>S</kbd> tuck',
+      bo: '<kbd>←</kbd><kbd>→</kbd> pump <kbd>↑</kbd> let go <kbd>↓</kbd> tuck',
+      pad: 'stick ◀ ▶ pump, <span data-glyph="a"></span> let go, down tucks,',
+    },
+    tip: 'Pump ◀ ▶ with the swing, jump to let go, open your leaf at the top. Longest swing wins!',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '.....1..........................', '................................', '................................',
+      '.....2..........................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+    ],
+  },
+  // ----- END 17-4 Vine Swing -----
+  //
+  // ===== END World 17 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -4150,6 +4526,10 @@ const WORLDS = [
   { name: 'Sugar Rush Factory', blurb: 'Sort, roll, paddle and catch your way through a world made of candy!',
     theme: { skyTop: '#ff9ccf', skyBot: '#fff0d6', hillFar: '#f7b8e0', hillNear: '#e48fc4', sun: 'rgba(255, 246, 200, 0.95)', sunGlow: 'rgba(255, 180, 220, 0.4)',
       stone: '#7a4a32', stoneLight: '#8f5a3e', stoneEdge: '#55301f', grass: '#fff4fa', grassDark: '#f2a7cf', plank: '#e8b06a', plankDark: '#9a6a2e', rope: '#ff6fa8', ropeDark: '#a8346a' } },
+  // World 17: the jungle, leafy and sunny (a warm green-gold sky through the canopy; mossy brown earth with bright leaves on top)
+  { name: 'Jungle Jamboree', blurb: 'Open temple doors, paddle the rapids, climb the falls and swing on vines!',
+    theme: { skyTop: '#6cc7a8', skyBot: '#f4f6c8', hillFar: '#5fae6e', hillNear: '#3f8f55', sun: 'rgba(255, 244, 180, 0.95)', sunGlow: 'rgba(230, 255, 170, 0.38)',
+      stone: '#6b5438', stoneLight: '#806645', stoneEdge: '#4a3826', grass: '#7fd65a', grassDark: '#3f9a3c', plank: '#c08a4e', plankDark: '#7a5228', rope: '#9bc85a', ropeDark: '#5a7f2e' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
