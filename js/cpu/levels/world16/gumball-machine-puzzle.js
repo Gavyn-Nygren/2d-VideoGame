@@ -68,7 +68,7 @@
       if (nd.ready || S.readyCount >= 2) go = true;
       else if (next) {
         const job = nd.jobs.find(j => !j.b && j.lever);
-        if (job) cpuSay(p, 'Not yet! Flip ' + M().leverName(job.lever) + ' first', 2.4);
+        if (job) cpuSay(p, 'Not yet! ' + (job.kind === 'flip' ? (st.pc[job.dev].timed ? 'Shut ' : 'Flip ') : 'Stand at ') + M().leverName(job.lever) + ' first', 2.4);
         S.answer = false;
       }
     }
@@ -81,7 +81,7 @@
       const job = nd.jobs.find(j => j.lever && j.kind === 'flip') || nd.jobs.find(j => j.lever && !j.b);
       if (job && wait > 2.5) {
         const c = GUMBALL_COL[job.b ? job.b.col : next.col];
-        if (job.kind === 'flip') cpuSay(p, c.name + ' next: flip ' + M().leverName(job.lever) + ' ' + M().key(K, 'act'), 2.6);
+        if (job.kind === 'flip') cpuSay(p, c.name + ' next: ' + (st.pc[job.dev].timed ? 'shut ' : 'flip ') + M().leverName(job.lever) + ' ' + M().key(K, 'act'), 2.6);
         else if (job.kind === 'time') cpuSay(p, 'Stand at ' + M().leverName(job.lever) + ', open it as the gumball comes!', 2.6);
         else if (job.kind === 'flick') cpuSay(p, 'Stand at ' + M().leverName(job.lever) + ' and flick it!', 2.6);
       }
@@ -90,17 +90,62 @@
   }
 
   /* ---------- the gate keeper ---------- */
+  // with no job it can make in time: what every gumball still to come (in the globe or on the board) wants of each
+  // device, on its cheapest way from any chute. One way only: set it now ('flip'). Both ways (or a trapdoor or the
+  // flipper to work): wait at that lever ('wait').
+  function prep(st, nd, travel) {
+    const cols = st.queue.concat(st.balls.filter(M().live).map(b => b.col));
+    const wants = {};
+    for (const col of cols) {
+      let best = null;
+      for (const c of st.M.chutes) { const bb = M().best(st, c.to, col, null); if (bb && (!best || bb.cost < best.cost)) best = bb; }
+      if (!best) continue;
+      for (const [d, s] of best.req) { const w = wants[d] || (wants[d] = [0, 0]); w[s]++; }
+    }
+    const leverOf = d => st.levers.find(l => l.dev === d) || null;
+    let flip = null, wait = null, waitN = 0;
+    for (const d of Object.keys(wants)) {
+      const pc = st.pc[d], w = wants[d], lv = leverOf(d);
+      if (!lv || pc.t === 'see') continue;
+      const timed = pc.timed || pc.t === 'flip';
+      if (!timed && (!w[0] || !w[1])) {
+        const want = w[1] ? 1 : 0;
+        if (M().state(st, d) !== want && (nd.lock[d] == null || nd.lock[d] === want) && (!flip || travel(lv) < travel(flip.lever))) flip = { dev: d, kind: 'flip', want, b: null, lever: lv };
+      } else {
+        const n = timed ? w[1] : Math.min(w[0], w[1]);
+        if (n > waitN) { waitN = n; wait = { dev: d, kind: 'wait', b: null, lever: lv }; }
+      }
+    }
+    return flip || wait;
+  }
   function keep(st, S, p, o, dt, info) {
     const out = {}, nd = M().needs(st), human = !info.partnerCpu, C = o.id, sc = st.slow ? R().slow : 1;
     const react = 0.08 + (1 - info.skill) * 0.25;
-    // the most urgent job: the gumball that gets to its device soonest, then the next one in the globe
+    // how long the run to a lever takes from here (the nav map's time, or a rough guess while in the air)
+    const here0 = M().leverAt(st, p), tt = {};
+    const travel = l => {
+      if (tt[l.id] != null) return tt[l.id];
+      let s = here0 === l ? 0 : p.grounded ? cpuNavReach(p, l.x, l.feet) : Infinity;
+      if (s === Infinity) s = Math.abs(l.x - cpuCx(p)) / 200 + Math.abs(l.feet - cpuFeet(p)) / 120 + 0.3;
+      return (tt[l.id] = s);
+    };
+    // the most urgent job it can still make in time: the gumball that gets to its device soonest, then the next one in
+    // the globe. A gumball it can't reach in time is let go (it bloops and comes back) instead of chasing it from one
+    // side of the machine to the other while the next one rolls past too.
     let job = null, jobEta = Infinity;
     for (const j of nd.jobs) {
       if (!j.lever) continue;
       const eta = j.b ? M().eta(st, j.b, j.dev) : 50;
       if (eta === Infinity && j.b) continue;
+      if (j.b) {
+        const slack = j.kind === 'flick' ? R().restT / sc - 0.3 : -react;
+        if (travel(j.lever) > eta + slack) continue;
+      }
       if (eta < jobEta) { job = j; jobEta = eta; }
     }
+    // nothing it can make: get ready for what is left. A device every gumball still to come wants the same way gets set
+    // now; otherwise it waits at the lever of the device the gumballs disagree on (it will flip it between gumballs).
+    if (!job && st.phase === 'play') job = prep(st, nd, travel);
     const lv = job && job.lever;
     if (!lv) {
       // nothing to do: wait by the floor in the middle of the left side, ready to run

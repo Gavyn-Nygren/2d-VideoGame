@@ -27,7 +27,7 @@
        switch, 4 cups), Spinner Swirl (3 chutes, a spinner wheel and two timed trapdoors), Jackpot Machine (3 chutes, a
        flap gate, a seesaw, a conveyor and a flipper, 5 cups, then the golden JACKPOT gumball: flick it into the gold
        star and the globe rains gumballs).
-   - Hints: Machine 1 always shows whose job is what next; later machines show them after 12 s of waiting, after a
+   - Hints: Machine 1 always shows whose job is what next; later machines show them after 8 s of waiting, after a
      bloop of that colour, or with the gold path on. Each player's prompts use their own keys (keyboard, controller,
      touch); in 1-player mode the computer's job card says "(computer)" and it gets no prompts.
    - Gold help (always announced): Gold path after 2 bloops in a machine or 45 s with nothing sorted (a gold dotted line
@@ -48,7 +48,7 @@ const GUMBALL = {
   pegHop: 0.12, spinW: 2.5, spinExit: 1.75, spinCap: 6, beltV: 78, beltCap: 7, seeLen: 46, seeTilt: 0.36,
   restT: 2.4, openT: 3.0, slow: 0.65, crankCD: 0.9, crankAnim: 0.5, maxBalls: 2, popT: 1.0, cupT: 0.35,
   reach: 22, flipCD: 0.22, callCD: 1.0, readyCD: 1.2,
-  goldPathBloops: 2, goldPathStuck: 45, slowBloops: 4, hintWait: 12,
+  goldPathBloops: 2, goldPathStuck: 45, slowBloops: 4, hintWait: 8,
   introHold: 0.4, winHold: 2.2, rainT: 5.2, newsLife: 4.2,
   globe: { x: 480, y: 68, r: 54 }, head: { x0: 404, y0: 118, x1: 556, y1: 184 }, mouthX: 480, mouthY: 186, trayY: 194, nozzleY: 204,
   crankX: 570, crankY: 150, crankerX: 606, crankerFeet: 186, cupMouth: 452, cupBot: 506,
@@ -186,7 +186,7 @@ function gumballRoom(st, L) {
   st.chute = Math.floor((M.chutes.length - 1) / 2); st.nozX = M.chutes[st.chute].x; st.nozAnim = 0;
   st.crankT = 0; st.crankCD = 0; st.crankRot = 0; st.swapA = 0; st.callCD = [0, 0]; st.readyCD = [0, 0]; st.flipCD = [0, 0]; st.wrongCD = [0, 0];
   st.phase = 'play'; st.winT = 0; st.roomT = 0; st.bloopsRoom = 0; st.noSortT = 0; st.waitT = 0; st.colorBloops = {};
-  st.goldPath = false; st.slow = false; st.jack = null; st.rain = [];
+  st.goldPath = false; st.slow = false; st.hintLatch = 0; st.jack = null; st.rain = [];
   st.pops = []; st.news = null; st.calls = [null, null];
   st.inp = [{}, {}];
   st.needsTick = -1; st.needs = null; st.pathCache = null;
@@ -243,8 +243,12 @@ function gumballUseLever(st, lv, p) {
     const b = st.balls.find(q => q.ph === 'rest' && q.piece === pc.id);
     if (b) gumballFlick(st, b, pc, null);
   } else if (pc.timed) {
-    pc.open = GUMBALL.openT / gumballSlowK(st); pc.state = 1;
-    Sfx.play('gumballOpen', p.id);
+    // a trapdoor: a press opens it for 3 s; a press while it is open shuts it again (not in its first 0.6 s, so a
+    // double tap doesn't undo itself)
+    const full = GUMBALL.openT / gumballSlowK(st);
+    if (pc.open > 0 && pc.open < full - 0.6) { pc.open = 0; pc.state = 0; Sfx.play('gumballShut'); }
+    else if (pc.open > 0) { st.flipCD[p.id] = 0; lv.flash = 0; st.stats.flips[p.id]--; return; }
+    else { pc.open = full; pc.state = 1; Sfx.play('gumballOpen', p.id); }
   } else {
     pc.state ^= 1;
     Sfx.play(pc.t === 'belt' ? 'gumballBelt' : pc.t === 'spin' ? 'gumballSpin' : 'gumballFlip', p.id);
@@ -729,7 +733,11 @@ function gumballHelpCheck(st) {
 }
 // show the "what to do next" hints? (always in Machine 1; later after a wait, a bloop of that colour, or gold path)
 function gumballHintsOn(st) {
-  if (st.k === 0 || st.goldPath) return true;
+  if (st.k === 0 || st.goldPath || st.hintLatch > 0) return true;
+  return gumballHintsWant(st);
+}
+// (once on, they stay on for a while, so a hint doesn't vanish halfway through the gumball it was about)
+function gumballHintsWant(st) {
   const col = st.queue[0];
   if (st.waitT > GUMBALL.hintWait) return true;
   return !!(col && st.colorBloops[col]) || st.balls.some(b => gumballLive(b) && st.colorBloops[b.col]);
@@ -825,6 +833,7 @@ function gumballStep(st, dt) {
   const nd = gumballNeeds(st);
   if (st.queue.length && nd.busy === 0) st.waitT += dt; else st.waitT = 0;
   if (st.queue.length || st.balls.length) st.noSortT += dt;
+  st.hintLatch = gumballHintsWant(st) ? 8 : Math.max(0, st.hintLatch - dt);
   gumballHelpCheck(st);
   gumballCheckDone(st);
 }
@@ -1316,7 +1325,8 @@ function gumballPrompts(st, boxes) {
     let s = '', col = '#fff3d6', pulse = false;
     if (hints && job && job.lever) {
       const jl = job.lever, at = lv === jl, nm = gumballLeverName(jl);
-      if (job.kind === 'flip') { s = at ? 'Flip it! ' + gumballKey(st.keep, 'act') : (job.b ? 'Quick! ' : '') + 'Flip ' + nm; col = C.gold; pulse = at || !!job.b; }
+      const verb = st.pc[job.dev] && st.pc[job.dev].timed ? 'Shut' : 'Flip';
+      if (job.kind === 'flip') { s = at ? verb + ' it! ' + gumballKey(st.keep, 'act') : (job.b ? 'Quick! ' : '') + verb + ' ' + nm; col = C.gold; pulse = at || !!job.b; }
       else if (job.kind === 'time') {
         if (!at) { s = 'Go to ' + nm + (job.b ? ', quick!' : ''); col = C.gold; pulse = !!job.b; }
         else if (job.b) { const eta = gumballEta(st, job.b, job.dev); const win = GUMBALL.openT / gumballSlowK(st) - 0.6; if (eta <= win) { s = 'NOW! ' + gumballKey(st.keep, 'act'); col = C.gold; pulse = true; } else s = 'Wait for it...'; }
@@ -1327,7 +1337,7 @@ function gumballPrompts(st, boxes) {
         else s = 'Flick it when it lands';
       }
     } else if (hints && nd.ready && nd.busy === 0 && st.queue.length) { s = 'All set! Shout: ' + gumballKey(st.keep, 'act'); col = '#9cf2b8'; }
-    else if (lv) { s = gumballKey(st.keep, 'act') + ': ' + (st.pc[lv.dev] && st.pc[lv.dev].t === 'flip' ? 'flick' : st.pc[lv.dev] && st.pc[lv.dev].timed ? 'open' : 'flip') + ' ' + gumballLeverName(lv).replace('the ', ''); }
+    else if (lv) { s = gumballKey(st.keep, 'act') + ': ' + (st.pc[lv.dev] && st.pc[lv.dev].t === 'flip' ? 'flick' : st.pc[lv.dev] && st.pc[lv.dev].timed ? (st.pc[lv.dev].open > 0 ? 'shut' : 'open') : 'flip') + ' ' + gumballLeverName(lv).replace('the ', ''); }
     else if (st.roomT < 7 && st.k < 2) { s = 'Run to a lever: ' + gumballKey(st.keep, 'move'); }
     if (s) boxes.push(gumballChip(s, K.x + K.w / 2, K.y - 26, col, boxes, pulse));
     // a gold arrow over the lever that needs a hand
