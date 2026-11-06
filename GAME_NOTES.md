@@ -268,7 +268,7 @@ Gavyn asked for a new title and home screen where every world can be picked and 
 
 ### Publishing
 - The demo is a multi-file claude.ai Artifact at https://claude.ai/artifact/85NPz4hhcdi429juHSXUx7: the page is the repo's `index.html` and every css/js file is published next to it under its own path (`files`). To update it, read the page and list its files first, then publish `index.html` with the changed files. Always republish to that same link. (Older single-file demos, which got too big to update: 3KFgRXoujADJ9PMR1rTErY, 5jJ7SJw7gwSttznxFP56TG.)
-- `node tools/bundle.js` (needs only Node) writes `build/pip-and-bo.html`, one self-contained file that is not committed. Publish that file. Like `index.html`, it is the page body without the outer html/head/body tags, which the publisher adds.
+- `node tools/bundle.js` (needs only Node) writes `build/pip-and-bo.html`, one self-contained file that is not committed (handy for sharing offline; the demo no longer uses it). Like `index.html`, it is the page body without the outer html/head/body tags, which the publisher adds.
 - Then push to `main` here and update the README's world list and this file.
 
 ## Open questions for Gavyn
