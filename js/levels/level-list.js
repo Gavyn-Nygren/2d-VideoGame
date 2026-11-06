@@ -3912,16 +3912,68 @@ const LEVELS = [
      (team), 16-3 Chocolate River Raft (team), 16-4 Sprinkle Catch (versus). Each level's def sits between its own BEGIN/END
      lines. world: 15 ===== */
   // ----- BEGIN 16-1 Conveyor Belt Chaos (mode 'conveyor', js/levels/world16/conveyor-belt-chaos.js) -----
-  // PLACEHOLDER: replaced when the level is built.
-  { name: 'Conveyor Belt Chaos', world: 15, kind: 'team',
-    tip: 'Coming soon!',
-    map: [
-      '................................', '................................', '................................',
-      '................................', '................................', '................................',
-      '................................', '................................', '................................',
-      '................................', '................................', '................................',
-      '................................', '................................', '...................#....#.......',
-      '.1.2...............#.....E......', '################################', '################################',
+  // 16-1 (MODES.conveyor, Gavyn's pick): one works the levers on the catwalk (belt speed and direction, a lift, a
+  // trapdoor), the other runs and jumps on the belts below and sorts candy into the right bins; jobs swap every room.
+  // The map is only the two spawns: the mode builds each room's grid from its belts and shelves (see the level file).
+  { name: 'Conveyor Belt Chaos', world: 15, kind: 'team', mode: 'conveyor', ownStep: true, ownHUD: true, noFalls: true,
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> run · walk <kbd>W</kbd> jump · faster <kbd>S</kbd> drop · slower',
+      bo: '<kbd>←</kbd><kbd>→</kbd> run · walk <kbd>↑</kbd> jump · faster <kbd>↓</kbd> drop · slower',
+      pad: 'stick: run · walk · belt speed, <span data-glyph="a"></span> jump · faster,',
+    },
+    tip: 'One works the levers that run the belts, one grabs the candy and tosses it into the right bin!',
+    act: { label: 'grab', labels: ['grab', 'lever'] },
+    map: [...Array(14).fill('.'.repeat(32)), '...1....2' + '.'.repeat(23), ...Array(3).fill('.'.repeat(32))],
+    rooms: [
+      {
+        title: 'Lollipop Line', sorter: 0, act: { label: 'grab', labels: ['grab', 'lever'] }, sorterX: 480, opX: 330,
+        tip: 'Bo: at the lever, ▲ ▼ set the speed and the action flips the belt. Pip: grab candy, toss it in its bin!',
+        belts: [{ id: 'A', name: 'Belt', c0: 5, c1: 22, r: 12, col: 'mint', st: 420 }],
+        chutes: [{ belt: 'A', x: 225, every: 3.0, mix: ['lolly', 'gum'] }],
+        bins: [{ kind: 'lolly', x: 46, y: 450 }, { kind: 'gum', x: 880, y: 450 }],
+        order: { lolly: 3, gum: 3 },
+      },
+      {
+        title: 'Gumdrop Gallery', sorter: 1, act: { label: 'grab', labels: ['lever', 'grab'] }, sorterX: 420, opX: 600,
+        tip: 'Swap! Bo sorts, Pip works the levers. Gumdrops go up on the high shelf: Pip works the lift!',
+        belts: [
+          { id: 'U', name: 'Top belt', c0: 9, c1: 22, r: 8, col: 'lilac', st: 480 },
+          { id: 'L', name: 'Low belt', c0: 6, c1: 20, r: 12, col: 'mint', st: 240 },
+        ],
+        shelves: [[26, 31, 8]],
+        lift: { x0: 690, x1: 780, lo: 450, hi: 240, st: 735 },
+        chutes: [{ belt: 'U', x: 630, every: 3.2, mix: ['gum', 'lolly', 'choc'] }],
+        bins: [{ kind: 'lolly', x: 50, y: 450 }, { kind: 'choc', x: 868, y: 450 }, { kind: 'gum', x: 876, y: 240 }],
+        order: { gum: 3, lolly: 2, choc: 2 },
+      },
+      {
+        title: 'Wrap & Ribbon', sorter: 0, act: { label: 'grab', labels: ['grab', 'lever'] }, sorterX: 450, opX: 420,
+        tip: 'The wrapper only wraps toffees on SLOW. Bo opens the trapdoor to drop candy down to Pip!',
+        belts: [
+          { id: 'U', name: 'Top belt', c0: 3, c1: 29, r: 8, col: 'lilac', st: 240, ends: ['wall', 'mouth'] },
+          { id: 'L', name: 'Low belt', c0: 8, c1: 24, r: 12, col: 'mint', st: 760 },
+        ],
+        wrap: { belt: 'U', x: 340 },
+        trap: { belt: 'U', c0: 17, c1: 18, st: 540 },
+        chutes: [{ belt: 'U', x: 150, every: 2.6, mix: ['toffee', 'choc', 'lolly'] }],
+        bins: [{ kind: 'gift', x: 44, y: 450 }, { kind: 'lolly', x: 124, y: 450 }, { kind: 'choc', x: 886, y: 450 }],
+        order: { gift: 3, choc: 2, lolly: 2 },
+      },
+      {
+        title: 'Rush Hour', sorter: 1, act: { label: 'grab', labels: ['lever', 'grab'] }, sorterX: 420, opX: 480,
+        tip: 'Rush hour! Two chutes, the lift, the trapdoor and the wrapper. Fill Boss Bonbon\'s big order!',
+        belts: [
+          { id: 'U', name: 'Top belt', c0: 9, c1: 22, r: 8, col: 'lilac', st: 360 },
+          { id: 'L', name: 'Low belt', c0: 4, c1: 20, r: 12, col: 'mint', st: 200, ends: ['wall', 'fall'] },
+        ],
+        shelves: [[26, 31, 8]],
+        lift: { x0: 690, x1: 780, lo: 450, hi: 240, st: 735 },
+        wrap: { belt: 'U', x: 410 },
+        trap: { belt: 'U', c0: 17, c1: 18, st: 560 },
+        chutes: [{ belt: 'U', x: 320, every: 2.6, mix: ['toffee', 'gum', 'choc', 'lolly'] }, { belt: 'L', x: 190, every: 3.4, mix: ['lolly', 'choc', 'gum'] }],
+        bins: [{ kind: 'lolly', x: 48, y: 450 }, { kind: 'choc', x: 828, y: 450 }, { kind: 'gift', x: 912, y: 450 }, { kind: 'gum', x: 876, y: 240 }],
+        order: { lolly: 3, gum: 3, choc: 2, gift: 2 },
+      },
     ],
   },
   // ----- END 16-1 Conveyor Belt Chaos -----
