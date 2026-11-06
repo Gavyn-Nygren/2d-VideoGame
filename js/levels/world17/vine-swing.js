@@ -39,8 +39,9 @@ const VINE = {
   gs: 1500, damp: 0.04,                      // swing gravity and air drag on the swing
   pump: 0.8, goldPump: 1.35,                 // pump push (rad/s²); the gold vine pushes 1.35x
   capLo: 60 * VINE_D, capHi: 135 * VINE_D, goldCap: 8 * VINE_D,  // the pump fades between these amplitudes (soft cap)
+  maxA: 150 * VINE_D,                        // the swing is braked hard past this, so it never loops over the branch
   whip: 0.2, whipLo: 70 * VINE_D,            // the whip: let-go speed up to +20%, growing from this amplitude to the cap
-  fieldK: 1.75,                              // the field (mushrooms, river, toucans...) is spread this much further out
+  fieldK: 2.0,                               // the field (mushrooms, river, toucans...) is spread this much further out
   stretchK: 55, stretchC: 2.4, stretchMax: 150,                   // Stretchy Vine: spring, damping, most stretch (px)
   gf: 850, drag: 0.05, nudge: 45, tuckG: 1.12, tuckWind: 0.4,     // flight
   glideT: 0.8, glideG: 0.45, glideVy: 0.8, glideUp: 3, glideDragUp: 1.2, glideDrag: 0.35, glideWind: 2.2,
@@ -81,14 +82,14 @@ function vineBuild(tw, R) {
     stretchy: tw === 'stretchy', night: tw === 'night', bouncers: [] };
   if (tw === 'wind') f.wind = (R() < 0.6 ? 1 : -1) * (70 + R() * 50);
   if (tw === 'river') {
-    const x0 = (15 + R() * 4) * X, x1 = x0 + (8 + R() * 2.5) * M;
+    const x0 = (15 + R() * 4) * X, x1 = x0 + (8 + R() * 2.5) * X;
     f.river = { x0, x1 };
     f.hippo = { id: 9, x: (x0 + x1) / 2 + (R() - 0.5) * 2 * M, hw: 58, top: -34, kind: 'hippo' };
     f.bouncers.push(f.hippo);
   }
   if (tw === 'mush') {
     for (let i = 0; i < 4; i++) {
-      const x = (12 + i * 8.2 + (R() - 0.5) * 3) * X, hw = 40 + R() * 10, top = -(52 + R() * 30);
+      const x = (12 + i * 8.2 + (R() - 0.5) * 3) * X, hw = 52 + R() * 12, top = -(52 + R() * 30);
       const m = { id: i, x, hw, top, kind: 'mush', col: i % 2 };
       f.mush.push(m); f.bouncers.push(m);
     }
@@ -106,11 +107,11 @@ function vineBuild(tw, R) {
   const free = (x0, x1) => !(f.river && x1 > f.river.x0 - 30 && x0 < f.river.x1 + 30) &&
     f.mud.concat(f.logs).every(q => x1 < q.x0 - 40 || x0 > q.x1 + 40) && f.mush.every(m => x1 < m.x - m.hw - 10 || x0 > m.x + m.hw + 10);
   for (let n = 0, tries = 0; n < 2 && tries < 40; tries++) {
-    const w = (2.6 + R() * 1.2) * M, x0 = (11 + R() * 30) * X;
+    const w = (2.6 + R() * 1.2) * M * 1.4, x0 = (11 + R() * 42) * X;
     if (free(x0, x0 + w)) { f.mud.push({ x0, x1: x0 + w }); n++; }
   }
   for (let n = 0, tries = 0; n < 2 && tries < 40; tries++) {
-    const w = (2 + R() * 0.8) * M, x0 = (7 + R() * 36) * X;
+    const w = (2 + R() * 0.8) * M * 1.4, x0 = (7 + R() * 46) * X;
     if (free(x0, x0 + w)) { f.logs.push({ x0, x1: x0 + w }); n++; }
   }
   return f;
@@ -141,10 +142,14 @@ function vineSwingStep(f, s, d, dt, gold) {
   let tq = d * P.pump * (gold ? P.goldPump : 1);
   if (d * s.w > 0) {
     const A = vineAmp(s), hi = P.capHi + (gold ? P.goldCap : 0);
-    tq *= clamp(1 - Math.pow(Math.max(0, (A - P.capLo) / (hi - P.capLo)), 2), 0.08, 1);
+    tq *= A >= hi ? 0 : clamp(1 - Math.pow(Math.max(0, (A - P.capLo) / (hi - P.capLo)), 2), 0.08, 1);
   }
+  // never over the top: past 150° and still going outward, the swing is braked hard (a swing that looped round the
+  // branch could never swing forward again to let go; the bungee on Stretchy Vine can add energy past the cap)
+  const over = Math.abs(s.a) > P.maxA && s.a * s.w > 0 ? Math.exp(-6 * dt) : 1;
   if (!f.stretchy) {
     s.w += (-P.gs / P.R * Math.sin(s.a) - P.damp * s.w + tq) * dt;
+    s.w *= over;
     s.a += s.w * dt;
     return;
   }
@@ -154,6 +159,7 @@ function vineSwingStep(f, s, d, dt, gold) {
   if (s.r > P.R + P.stretchMax) { s.r = P.R + P.stretchMax; s.rv = Math.min(0, s.rv); }
   if (s.r < P.R * 0.85) { s.r = P.R * 0.85; s.rv = Math.max(0, s.rv); }
   s.w += ((-P.gs * Math.sin(s.a) - 2 * s.rv * s.w) / s.r - P.damp * s.w + tq * P.R / s.r) * dt;
+  s.w *= over;
   s.a += s.w * dt;
 }
 // where a swing puts the body's middle, and how fast it moves
@@ -419,7 +425,11 @@ function vineCamera(st, dt, snap, pre) {
   const zMin = big ? 0.42 : 0.36, zMax = big ? 0.95 : 0.85;
   const z = clamp(Math.min(zx, zy), zMin, zMax);
   let cx = (x0 + x1) / 2;
-  if (lead) { const hw = (W / 2 - mx) / z; cx = clamp(cx, lead.x + 120 - hw, lead.x - 60 + hw); }
+  const hw = (W / 2 - mx) / z;
+  // anyone still swinging needs to see their swing to time the let-go: the tree side stays in view and a far flyer or
+  // flag gets the edge marker; otherwise the leader stays in view
+  if (st.pl.some(P => P.status === 'swing' || P.status === 'ready')) cx = Math.min(cx, x0 + hw);
+  else if (lead) cx = clamp(cx, lead.x + 120 - hw, lead.x - 60 + hw);
   if (pre) cx = VINE.px + (W / 2 - W * 0.28) / z;
   const cy = yBot - (H / 2 - bot) / z;
   if (snap || cam.z == null) { cam.x = cx; cam.y = cy; cam.z = z; return; }
@@ -492,7 +502,7 @@ function vineTick(dt, live) {
   }
   // (no swing clock and no safety bell: a swinger lets go only when they choose; a flight always lands by VINE.flyCap)
 }
-// the round's next swing: marks kept, both back on the deck with a fresh swing clock
+// the round's next swing: marks kept, both back on the deck for the next swing
 function vineNextSwing(st) {
   st.pl = st.pl.map(P => {
     const N = vineMakeSwinger(P.k);
@@ -657,7 +667,7 @@ function vineLeafShape(x, y, len, wid, ang, col) {
 }
 // the ground: two landing strips (back for Pip, front for Bo), stripes every 5 m, soil under them
 function vineDrawGround(st, v) {
-  const x0 = Math.max(v.x0, -700), x1 = v.x1;
+  const x0 = Math.max(v.x0, -4000), x1 = v.x1;
   ctx.fillStyle = VINE_COL.soil; ctx.fillRect(x0, 4, x1 - x0, v.y1 - 4);
   ctx.fillStyle = VINE_COL.soilDk; for (let x = Math.floor(x0 / 60) * 60; x < x1; x += 60) { circle(x + 20, 30 + (x % 120 ? 6 : 16), 5); ctx.fill(); }
   // grass band from the back strip to the front
@@ -918,7 +928,7 @@ function vineDrawParrot(x, y, a, b, ph) {
 }
 // Tilly the tapir, asleep at the far end of the field (she wakes up and waves at a very long swing)
 function vineDrawTapir(st, v) {
-  const x = 88 * VINE.M, y = VINE_LANE[0] - 2;
+  const x = 105 * VINE.M, y = VINE_LANE[0] - 2;
   if (x < v.x0 - 80 || x > v.x1 + 80) return;
   const awake = st.pl.some(P => P.status !== 'swing' && P.status !== 'ready' && P.landX > x - 260);
   ctx.save(); ctx.translate(x, y);
@@ -1292,7 +1302,7 @@ function vineHud() {
   // bottom centre: a distance ruler with both swingers, the river or mushrooms, and the jungle record
   {
     const mw = big ? 300 : 380, mh = big ? 30 : 24, x0 = W / 2 - mw / 2, y = H - 8 - mh, a = x0 + 14, b = x0 + mw - 14, cy = y + mh / 2;
-    let far = 80; for (const P of st.pl) { const q = vineBodyPos(P); far = Math.max(far, vineM(P.status === 'land' || P.status === 'done' ? P.landX : q.x) + 5); }
+    let far = 100; for (const P of st.pl) { const q = vineBodyPos(P); far = Math.max(far, vineM(P.status === 'land' || P.status === 'done' ? P.landX : q.x) + 5); }
     far = Math.ceil(far / 10) * 10;
     const X = d => a + (b - a) * clamp(d / far, 0, 1);
     ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(x0, y, mw, mh, mh / 2); ctx.fill();
@@ -1350,7 +1360,9 @@ function vineHud() {
         if (fwd && P.best && A > 50 * VINE_D && P.s.a > P.best.a - 25 * VINE_D && P.s.a < P.best.a + 8 * VINE_D) lab = kk.go + ' let go!';
         vineChip(lab, s.x + (P.k ? 70 : -70), below, big, PCOL[P.k], lab.indexOf('let go') >= 0);
       } else if (P.status === 'fly' && P.b && !P.b.glideUsed && !P.b.carry && st.round <= 2 && P.b.vy > -140) {
-        vineChip(kk.leaf + ' leaf glide!', s.x, s.y - (big ? 70 : 56), big, PCOL[P.k], true);
+        // (under the score pill, and not on top of the let-go pop)
+        const popTop = (G.matchHudBox ? G.matchHudBox.y1 : 50) + (big ? 30 : 24);
+        if (P.popT > 0.6) vineChip(kk.leaf + ' leaf glide!', s.x, Math.max(popTop, s.y - (big ? 70 : 56)), big, PCOL[P.k], true);
       }
     }
   }

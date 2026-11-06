@@ -15,7 +15,7 @@
      Flying: every reaction time it tries ◀, ▶ or nothing held (and ▼ tucked or not, on Normal and Hard) on the same
      flight rules, keeps the best, and opens the leaf when the best moment to open it has come (Easy guesses that
      moment with a big error, Hard almost none). Bounces, toucans, fireflies and the wind are in those flights.
-     What it reads: the field (mushrooms, river, toucans, wind), its own swing and flight, the swing clock. Nothing about
+     What it reads: the field (mushrooms, river, toucans, wind), its own swing and flight. Nothing about
      the other player's keys. */
   const SK = {
     easy: { react: 0.34, wrong: 0.5, lazy: 0.4, aim: 17, impatient: 0.6, wantA: 95, patience: 12, glideErr: 0.4, glide: 0.4, nudge: 0.35, tuck: false, think: 0.2 },
@@ -55,7 +55,8 @@
   }
 
   cpuBrain('vine', {
-    // the match goes on by itself: a person who walked away still finishes it, so the computer keeps swinging
+    // the computer plays on by itself (it swings, lets go and lands); with no swing clock the match then waits for a
+    // person who never lets go
     noIdleStop: true,
     bubbleHidden: true,
     bubblePos(p) {
