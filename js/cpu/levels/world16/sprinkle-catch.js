@@ -13,16 +13,18 @@
      Getting up: from a floor or wafer it jumps when a jump from right there (worked out with the same jump rules)
      lands on the wafer it wants; otherwise it runs to a spot under or beside it.
      Gobstoppers: it guesses where each one bounces in the next 0.7 s and runs away from a hit (or jumps when cornered).
-     Bumps: when the other player has candy, isn't shielded and is right beside it on the same level, it bumps.
+     Bumps: when the other player has candy, isn't shielded and is right beside it on the same level, it bumps. A bump
+     dashing at it is on screen, so it hops over it sometimes (Easy seldom, Hard mostly). It leaves candy its own bump
+     knocked out until the bumped one's turn to scoop it is over.
      Skill: Easy reacts slowly (about 0.5 s), aims its basket sloppily, sometimes goes for the wrong candy, dawdles,
      often forgets to dodge and seldom bumps. Normal reacts in about 0.25 s. Hard reacts in about 0.12 s, aims well,
      dodges every time and bumps when it can.
      What it reads: the candy, gobstoppers, shaker and surfaces in G.mst, and the other player's position and shield
      (all on screen). It never reads the other player's keys or the shaker's next pick before it shows. */
   const SK = {
-    easy: { react: 0.6, aim: 16, miss: 0.3, dodge: 0.35, bump: 0.25, bumpGap: 7, chase: 0, lazy: 0.45, look: 0, jelly: false, wobble: 0.3, slack: 0.15 },
-    normal: { react: 0.25, aim: 7, miss: 0.08, dodge: 0.75, bump: 0.45, bumpGap: 4.5, chase: 0.25, lazy: 0.06, look: 0.5, jelly: true, wobble: 0.08, slack: 0.05 },
-    hard: { react: 0.12, aim: 2.5, miss: 0, dodge: 1, bump: 0.8, bumpGap: 3, chase: 0.55, lazy: 0, look: 1, jelly: true, wobble: 0, slack: 0 },
+    easy: { hop: 0.1, react: 0.6, aim: 16, miss: 0.3, dodge: 0.35, bump: 0.25, bumpGap: 7, chase: 0, lazy: 0.45, look: 0, jelly: false, wobble: 0.3, slack: 0.15 },
+    normal: { hop: 0.4, react: 0.25, aim: 7, miss: 0.08, dodge: 0.75, bump: 0.45, bumpGap: 4.5, chase: 0.25, lazy: 0.06, look: 0.5, jelly: true, wobble: 0.08, slack: 0.05 },
+    hard: { hop: 0.75, react: 0.12, aim: 2.5, miss: 0, dodge: 1, bump: 0.8, bumpGap: 3, chase: 0.55, lazy: 0, look: 1, jelly: true, wobble: 0, slack: 0 },
   };
   const skOf = s => (s <= 0.4 ? SK.easy : s < 0.9 ? SK.normal : SK.hard);
   const T = () => MODES.sprinkle.test;
@@ -158,6 +160,11 @@
       S.bumpWait = (S.bumpWait || 0) - dt;
       // jelly floor: hold ▼ to land softly (Normal and Hard)
       if (st.twist === 'jelly' && sk.jelly && !p.grounded && p.vy > 200 && mySurf === 0 && feet > P.floorY - 60 && !S.wantBounce) out.down = true;
+      // a bump dashing at me (the dash is on screen): hop over it, sometimes (Hard most of the time)
+      if (op.dashT > 0 && p.grounded && me.shield <= 0 && p.stun <= 0 && same && Math.sign(dx) === -op.dashDir && Math.abs(dx) < 120) {
+        if (S.hopFor !== st.stat.dashes[o.id]) { S.hopFor = st.stat.dashes[o.id]; S.hopRoll = Math.random() < sk.hop; }
+        if (S.hopRoll) { out.jump = true; S.jumping = true; out.act = false; }
+      } else if (op.dashT <= 0) S.hopFor = null;
       // gobstoppers: run from a hit
       dodge(S, st, p, me, out, sk, dt);
       // Easy dawdles now and then (a kid watching the other one)
@@ -177,7 +184,8 @@
       const pts = c.pts * (c.kind === 'gold' ? 1.6 : 1);
       if (c.rest) {
         if (c.delay > 0.3) continue;
-        const t = cost(c.x, c.surf, mySurf, cx);
+        // (candy my own bump just knocked out can't be scooped by me for a moment: the bumped one gets first try)
+        const t = Math.max(cost(c.x, c.surf, mySurf, cx), c.lockT > 0 && c.lock === p.id ? c.lockT + 0.05 : 0);
         if (t > c.life - 0.2) continue;
         const ot = cost(c.x, c.surf, og, ocx);
         let val = pts / (0.5 + t) * 1.1;
@@ -201,7 +209,7 @@
     }
     if (!opts.length) {
       // chase the other one for a bump (Normal and Hard), when it has candy and isn't shielded
-      if (op.score > 1 && op.shield <= 0 && Math.random() < sk.chase && Math.abs(ocx - cx) < 260) return { id: 'chase', kind: 'chase', c: null, x: ocx, surf: og, t: 1, val: 0 };
+      if (op.score > 1 && op.shield <= 0 && me.dashCD <= 0 && me.shield <= 0 && Math.random() < sk.chase * 0.5 && Math.abs(ocx - cx) < 260 && Math.abs(ocx - cx) > 40) return { id: 'chase', kind: 'chase', c: null, x: ocx, surf: og, t: 1, val: 0 };
       return null;
     }
     opts.sort((a, b) => b.val - a.val);

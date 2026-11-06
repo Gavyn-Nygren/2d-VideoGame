@@ -104,7 +104,7 @@ if (typeof definePreview === 'function') {
       // Bo: catches a gumdrop, gets bonked (Boing!) and spills two
       const bonk = v.seg(t, 2.9, 3.3), boX = t < 1.7 ? v.lerp(258, 225, v.ease.out(v.seg(t, 0, 1.4))) : t < 2.9 ? 225 : t < 3.3 ? v.lerp(225, 198, bonk) : t < 3.9 ? 198 : v.lerp(198, 232, v.ease.inOut(v.seg(t, 3.9, 4.5)));
       const boY = gy + (t > 2.9 && t < 3.3 ? v.hop(bonk, 22) : 0), dizzy = t > 2.9 && t < 3.9;
-      const boN = t >= 2.4 && t < 2.9 ? 1 : t < 2.4 ? 0 : 0;
+      const boN = t < 2.4 ? 1 : t < 2.9 ? 2 : 0; // (Bo had one already: the bonk spills both)
       v.shadow(pipX, gy, 12); v.shadow(boX, gy, 12);
       v.hero(0, pipX, gy + pipHop, { s: pw16sS, face: t > 3.2 && t < 3.75 ? 1 : t > 3.75 && t < 4.3 ? -1 : 1, mood: win > 0 ? 'joy' : 'happy', sq: pipHop ? -0.1 : 0 });
       pw16sBasket(v, pipX, gy + pipHop, pipN, t >= 4.7, t > 1.05 && t < 1.3 ? -0.2 : 0);
@@ -136,7 +136,7 @@ if (typeof definePreview === 'function') {
       word('Golden! +5', 160, catchY - 22, 4.7, 5.5, v.c.gold, 13);
       if (win > 0) { v.confetti(pipX, gy - 40, v.seg(t, 4.75, 5.9), 20); if (t > 5.1) v.pill('Pip wins!', v.W / 2, 50, { size: 13, col: v.c.gold }); }
       // the score
-      const sp = 2 * (t >= 1.1) + 1 * (t >= 3.45) + 2 * (t >= 3.7) + 5 * (t >= 4.7), sb = t >= 2.4 && t < 2.9 ? 1 : 0;
+      const sp = 2 * (t >= 1.1) + 1 * (t >= 3.45) + 2 * (t >= 3.7) + 5 * (t >= 4.7), sb = boN;
       v.pill('Pip ' + sp, 8, v.H - 14, { size: 10, align: 'left', col: v.c.pip });
       v.pill(sb + ' Bo', v.W - 8, v.H - 14, { size: 10, align: 'right', col: v.c.bo });
     },

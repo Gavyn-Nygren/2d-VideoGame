@@ -14,7 +14,9 @@
              "plop" and is gone.
      bump    the action: a short hip-bump dash (also in the air, once per jump). Bump the other one and they spill
              their last candy ("Bump!"); after any knock you get a short bubble shield, so nobody can be bumped twice in
-             a row. Two bumps head-on just boing apart.
+             a row (2.5 s after a bump). Two bumps head-on just boing apart. The bumped one gets the first second to
+             scoop the spilled candy back (the bumper can't), and players squeeze past each other, so nobody can be
+             boxed in or bumped over and over (review fix: a player who only chased and bumped used to beat Hard).
    Giant gobstoppers drop in now and then and bounce round the arena. Getting bonked is a soft "Boing!": you fly back,
    see stars for a moment and spill a few candies. Spilled candy lies on the floor for a few seconds and either player
    can scoop it up by walking over it (or catch it in the air). When a gobstopper is done it pops into candy.
@@ -36,9 +38,10 @@ const SPRINKLE = {
   floorY: 480, wallL: 12, wallR: 948, spawnY: 146, ceilY: 132,
   vRun: 230, accG: 2400, fricG: 2600, accA: 1700, fricA: 600,   // running (same feel as the platform levels)
   g: 2000, jumpV: 700, cut: 0.45, maxFall: 900, coyote: 0.08, buffer: 0.12, dropT: 0.24,
-  jellyJump: 1.14, jellyMin: 430, jellyMax: 860,                  // Jelly Floor: jumps go higher, landings bounce
-  dashV: 470, dashT: 0.16, dashCD: 0.85,                           // the hip bump
-  bumpV: 330, bumpLift: 260, bumpStun: 0.35, shieldT: 1.4,
+  jellyJump: 1.14, jellyK: 0.72, jellyMax: 860,                   // Jelly Floor: jumps go higher, landings bounce (smaller each time)
+  dashV: 470, dashT: 0.16, dashCD: 1.1,                            // the hip bump
+  bumpV: 330, bumpLift: 260, bumpStun: 0.35, shieldT: 2.5, gobShield: 1.7,
+  bumpLock: 1.0,   // the bumper can't scoop the candy its own bump knocked out for this long (the bumped one gets first try)
   bonkV: 360, bonkLift: 430, bonkStun: 0.55,
   basketW: 40, goldBasketW: 60, magnetX: 74, magnetPull: 520,
   spillG: 1400, spillLife: 6, spillDelay: 0.4,
@@ -152,7 +155,7 @@ function sprinkleKnock(st, p, vx, vy, stun) {
   p.sx = 1.35; p.sy = 0.7;
 }
 // a knocked player spills their last n candies: they fly out and land, and either player can scoop them up
-function sprinkleSpill(st, k, n, dir) {
+function sprinkleSpill(st, k, n, dir, by = -1) {
   const s = st.pl[k], p = G.players[k];
   let lost = 0, gold = false;
   for (let i = 0; i < n && s.basket.length; i++) {
@@ -161,6 +164,7 @@ function sprinkleSpill(st, k, n, dir) {
     const c = sprinkleCandy(st, kind, p.x + p.w / 2, p.y - 8);
     c.state = 'spill'; c.vx = dir * (60 + 160 * sprinkleRand()) + (sprinkleRand() - 0.5) * 50; c.vy = -(300 + 140 * sprinkleRand());
     c.delay = SPRINKLE.spillDelay; c.life = SPRINKLE.spillLife; c.owner = k;
+    if (by >= 0) { c.lock = by; c.lockT = SPRINKLE.bumpLock; }
     st.candy.push(c);
   }
   if (lost) {
@@ -174,7 +178,7 @@ function sprinkleCatch(st, k, c, how) {
   const s = st.pl[k], p = G.players[k];
   s.basket.push(c.kind); s.score = sprinkleScore(s);
   if (how === 'scoop') st.stat.scoops[k]++; else st.stat.caught[k]++;
-  if (c.kind === 'gold') st.stat.gold[k]++;
+  if (c.kind === 'gold' && c.owner !== k) st.stat.gold[k]++; // (scooping back your own spilled golden candy doesn't count twice)
   const col = c.kind === 'gold' ? C.gold : c.kind === 'mint' ? '#ff6f7f' : c.kind === 'cupcake' ? '#7fd3ff' : '#ffffff';
   sprinkleWord(st, p.x + p.w / 2, p.y - 26, c.kind === 'gold' ? 'Golden! +5' : how === 'scoop' ? 'Scoop! +' + c.pts : '+' + c.pts, col);
   Sfx.play(c.kind === 'gold' ? 'sprinkleGold' : how === 'scoop' ? 'sprinkleScoop' : 'sprinkleCatch', k);
@@ -241,7 +245,7 @@ function sprinkleMove(st, p, inp, dt) {
       const impact = p.vy;
       p.y = best.y - p.h;
       if (tw === 'jelly' && best.floor && impact > 260 && !(ctl && inp.down)) {
-        p.vy = -clamp(impact * 0.8, P.jellyMin, P.jellyMax); s.lastFloor = true; s.airDashed = false;
+        p.vy = -Math.min(impact * P.jellyK, P.jellyMax); s.lastFloor = true; s.airDashed = false;
         p.sx = 1.4; p.sy = 0.6; Sfx.play('sprinkleJelly', p.id);
         st.jelly.push({ x: p.x + p.w / 2, t: 0, a: Math.min(1, impact / 700) });
       } else {
@@ -291,16 +295,16 @@ function sprinkleBumps(st, live) {
       sprinkleKnock(st, o, s.dashDir * P.bumpV, -P.bumpLift, P.bumpStun);
       so.shield = P.shieldT; s.dashT = 0; p.vx = s.dashDir * 60;
       st.stat.bumps[p.id]++;
-      const n = sprinkleSpill(st, o.id, 1, s.dashDir);
+      const n = sprinkleSpill(st, o.id, 1, s.dashDir, p.id);
       sprinklePop(st, o.id, n ? 'Oopsie!' : 'Bump!', '#ffffff');
       sprinkleWord(st, mx, my, 'Bump!', PCOL[p.id]);
       Sfx.play('sprinkleBump', p.id); rumble(o.id, 0.3, 0.5, 120);
       for (let i = 0; i < 8; i++) sprinkleFx(st, mx, my + 10, (sprinkleVR() - 0.5) * 220, -sprinkleVR() * 160, 0.4, i % 2 ? '#ffffff' : PCOL[p.id], 3, 400, 'spark');
     }
   }
-  // players don't stand on each other: a soft push apart
+  // players don't stand on each other: a gentle push apart (gentle enough that a runner squeezes past, so nobody can be boxed in)
   if (Math.abs((a.y + a.h) - (b.y + b.h)) < 24 && a.x < b.x + b.w && a.x + a.w > b.x && st.pl[0].dashT <= 0 && st.pl[1].dashT <= 0) {
-    const ov = Math.min(a.x + a.w - b.x, b.x + b.w - a.x), d = a.x + a.w / 2 <= b.x + b.w / 2 ? -1 : 1, push = Math.min(ov, 3) / 2;
+    const ov = Math.min(a.x + a.w - b.x, b.x + b.w - a.x), d = a.x + a.w / 2 <= b.x + b.w / 2 ? -1 : 1, push = Math.min(ov, 0.9) / 2;
     a.x = clamp(a.x + d * push, P.wallL, P.wallR - a.w); b.x = clamp(b.x - d * push, P.wallL, P.wallR - b.w);
   }
 }
@@ -363,7 +367,7 @@ function sprinkleGobStep(st, g, dt, live) {
     if (Math.hypot(g.x - nx, g.y - ny) >= g.r - 1) continue;
     const cx = p.x + p.w / 2, dir = Math.sign(cx - g.x) || (sprinkleRand() < 0.5 ? -1 : 1);
     sprinkleKnock(st, p, dir * SPRINKLE.bonkV * (g.mega ? 1.15 : 1), -SPRINKLE.bonkLift, SPRINKLE.bonkStun);
-    s.shield = SPRINKLE.shieldT + 0.3;
+    s.shield = SPRINKLE.gobShield;
     g.vx = -dir * Math.abs(g.vx);
     if (g.vy > 0 && g.y < p.y + 6) g.vy = -Math.max(380, g.vy * 0.7); // landed on a head: bounce off it
     st.stat.bonks[p.id]++;
@@ -495,7 +499,7 @@ function sprinkleCandyStep(st, dt, live) {
         break;
       }
     } else { // spilled: tumbles, lands, rests on whatever it landed on until someone scoops it or it melts away
-      c.delay -= dt; c.life -= dt;
+      c.delay -= dt; c.life -= dt; if (c.lockT > 0) c.lockT -= dt;
       if (!c.rest) {
         const py = c.y;
         c.vy += P.spillG * dt; c.x += c.vx * dt; c.y += c.vy * dt;
@@ -517,7 +521,7 @@ function sprinkleCandyStep(st, dt, live) {
       if (!gone && live && c.delay <= 0) {
         for (const k of order) {
           const p = G.players[k];
-          if (p.stun > 0) continue;
+          if (p.stun > 0 || (c.lockT > 0 && c.lock === k)) continue;
           if (c.x + c.r > p.x - 5 && c.x - c.r < p.x + p.w + 5 && c.y + c.r > p.y && c.y - c.r < p.y + p.h + 3) { sprinkleCatch(st, k, c, 'scoop'); gone = true; break; }
         }
       }
@@ -534,7 +538,7 @@ function sprinkleCandyStep(st, dt, live) {
 function sprinkleTryCatch(st, c, order) {
   for (const k of order) {
     const p = G.players[k];
-    if (!p.alive) continue;
+    if (!p.alive || (c.lockT > 0 && c.lock === k)) continue;
     const b = sprinkleBasket(st, k), m = c.r * 0.5;
     if (c.vy > -40 && c.x > b.x0 - m && c.x < b.x1 + m && c.y + m > b.y0 && c.y < b.y1 + 2) { sprinkleCatch(st, k, c, 'catch'); return true; }
     // hitting the body below the basket: it bounces off
@@ -1164,13 +1168,19 @@ function sprinkleHud() {
       ctx.globalAlpha = 1;
     }
     // tips for people, in their own keys (never for the computer)
+    let prevY = null;
     for (const k of [0, 1]) {
       const h = st.hint[k], p = G.players[k]; if (!h || sprinkleCpu(k) || m.phase !== 'live') continue;
       const kk = sprinkleKeys(k);
       const lab = h.n === 'bonk' ? 'Watch the gobstopper’s shadow: run or jump!' : 'Bump ' + NAMES[1 - k] + ' with ' + kk.bump + ': they spill a candy!';
       ctx.globalAlpha = clamp(Math.min(h.t / 0.2, (4.5 - h.t) / 0.4), 0, 1);
       const up = p.y - (big ? 92 : 74);
-      sprinkleChip(lab, p.x + p.w / 2, box && up < box.y1 + 50 ? p.y + p.h + (big ? 26 : 20) : up, big, PCOL[k], false);
+      let y = box && up < box.y1 + 50 ? p.y + p.h + (big ? 26 : 20) : up;
+      // both players' tips at once (2 players): stack them so they never overlap
+      const gap = big ? 34 : 26;
+      if (prevY != null && Math.abs(y - prevY) < gap) y = prevY - gap < (box ? box.y1 + 24 : 20) ? prevY + gap : prevY - gap;
+      prevY = y;
+      sprinkleChip(lab, p.x + p.w / 2, y, big, PCOL[k], false);
       ctx.globalAlpha = 1;
     }
   }
