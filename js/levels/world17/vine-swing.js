@@ -6,17 +6,18 @@
    Side view of a sunny jungle field. A big tree with a treehouse deck stands at the left; Pip and Bo each hang from their
    own vine on its long branch (Pip on the back vine, Bo on the front one) and swing at the same time. def.ownStep: the
    mode runs the whole live tick, the camera and the picture; the platformer bodies are hidden.
-     pump    ◀ ▶: pressing the way you are swinging adds energy, pressing against it brakes. The push is strongest through
-             the bottom and fades near the top of the swing (a soft cap), so a steady rhythm builds a big swing and
-             mashing or holding one key does not.
+     pump    ◀ ▶: pressing the way you are swinging adds energy, pressing against it brakes. A steady rhythm builds the
+             swing fast and high, up past the branch (Gavyn: more momentum, like his picture); the push fades only near
+             the very top (a soft cap), and mashing or holding one key does not build it.
+     whip    the bigger the swing, the harder the vine whips you off it: from about 70° up, the let-go speed gets up to
+             +20% ("Crack!" sparks when it is big). The vine bends behind you as you swing and sags over the top.
      let go  jump (or the action) while swinging forward. A press on the backswing only says "Wait for the forward
              swing!". The release angle and speed set the flight: early is flat and fast, late is high and short; the
              best spot is about a third of the way up. A pop says Perfect / A bit early / A bit late.
      in air  ◀ ▶ nudge a little, ▼ tucks (a cannonball: falls a bit faster, cuts through wind, bigger boings), and the
              action (or jump) opens a big leaf ONCE per flight: a floaty glide that is best opened at the top of the arc
              (opened while still rising, it catches the air and slows you).
-   A 10 s swing window per round (the swing clock); at the bell anyone still swinging lets go at the bottom of the next
-   forward swing. Landings: grass strips, mossy logs ("Thump!"), mud puddles ("Splat!", the distance still counts),
+   No swing clock (Gavyn): nobody is ever let go automatically; each swinger lets go when they choose. Landings: grass strips, mossy logs ("Thump!"), mud puddles ("Splat!", the distance still counts),
    the deck ("Plop!", 0 m). Distance is measured from the deck edge, flags show each landing with metres.
    Rounds: round 1 Morning Swing (plain, with a dotted arc hint for each person), then four of Windy Day (tail- or
    headwind, shown by blowing leaves), Stretchy Vine (bungee vines), River Crossing (a splash counts to the near bank;
@@ -25,7 +26,7 @@
    tie in a row goes to the longest swing this match, else a sudden-death Last Swing.
    Soft fails only: a splash brings Coco the capybara to paddle you to the bank, mud is a giggle. Nobody is hurt.
    Catch-up help, gold and announced (round card, GO pop, gold vine, HUD edge): 1 round behind = Gold vine (pumping
-   1.6x stronger, a slightly bigger top swing); 2+ behind also shows the gold arc hint and the sweet spot.
+   1.35x stronger, a bigger top swing and whip); 2+ behind also shows the gold arc hint and the sweet spot.
    Shared pan-and-zoom camera: it fits both swingers and flyers (zooming out as they sail right) and shows an edge
    marker when one is off screen.
    Every top-level name is prefixed vine / VINE, every sound Sfx.extra.vine*. Rule randomness only from
@@ -36,15 +37,17 @@ const VINE = {
   hand: 29, feet: 17,                        // body middle to hands and to feet (px)
   a0: -40 * VINE_D,                          // the start: standing at the deck edge, vine pulled back
   gs: 1500, damp: 0.04,                      // swing gravity and air drag on the swing
-  pump: 0.6, goldPump: 1.6,                  // pump push (rad/s²); the gold vine pushes 1.6x
-  capLo: 40 * VINE_D, capHi: 86 * VINE_D, goldCap: 3 * VINE_D,   // the pump fades between these amplitudes (soft cap)
+  pump: 0.8, goldPump: 1.35,                 // pump push (rad/s²); the gold vine pushes 1.35x
+  capLo: 60 * VINE_D, capHi: 135 * VINE_D, goldCap: 8 * VINE_D,  // the pump fades between these amplitudes (soft cap)
+  whip: 0.2, whipLo: 70 * VINE_D,            // the whip: let-go speed up to +20%, growing from this amplitude to the cap
+  fieldK: 1.75,                              // the field (mushrooms, river, toucans...) is spread this much further out
   stretchK: 55, stretchC: 2.4, stretchMax: 150,                   // Stretchy Vine: spring, damping, most stretch (px)
   gf: 850, drag: 0.05, nudge: 45, tuckG: 1.12, tuckWind: 0.4,     // flight
   glideT: 0.8, glideG: 0.45, glideVy: 0.8, glideUp: 3, glideDragUp: 1.2, glideDrag: 0.35, glideWind: 2.2,
   bounceE: 0.82, bounceMin: 430, bounceKick: 45, tuckBounce: 1.18,
   carryT: 1.0, carryV: 330, carryUp: 30, grabR: 40, sparkV: 70, flyR: 48,
   deckX0: -330, deckY: -281, logH: 16, M: 30, // the deck's left end and top; a log's height; px per metre
-  window: 10, bellLate: 3, flyCap: 8, showT: 1.1, capT: 40, landT: 0.6, swings: 2, setT: 1.3,
+  flyCap: 8, showT: 1.1, landT: 0.6, swings: 2, setT: 1.3,
   tie: 0.1, perfect: 6 * VINE_D,
 };
 const VINE_LANE = [-26, 0];                   // Pip's vine and landing strip sit a little further back (looks only)
@@ -74,40 +77,40 @@ const vineFmt = d => d.toFixed(1) + ' m';
 
 /* ---------- the field: built once per round with the rules' random numbers ---------- */
 function vineBuild(tw, R) {
-  const M = VINE.M, f = { tw, wind: 0, mud: [], logs: [], river: null, hippo: null, mush: [], toucans: [], flies: [],
+  const M = VINE.M, X = VINE.M * VINE.fieldK, f = { tw, wind: 0, mud: [], logs: [], river: null, hippo: null, mush: [], toucans: [], flies: [],
     stretchy: tw === 'stretchy', night: tw === 'night', bouncers: [] };
   if (tw === 'wind') f.wind = (R() < 0.6 ? 1 : -1) * (70 + R() * 50);
   if (tw === 'river') {
-    const x0 = (15 + R() * 4) * M, x1 = x0 + (8 + R() * 2.5) * M;
+    const x0 = (15 + R() * 4) * X, x1 = x0 + (8 + R() * 2.5) * M;
     f.river = { x0, x1 };
     f.hippo = { id: 9, x: (x0 + x1) / 2 + (R() - 0.5) * 2 * M, hw: 58, top: -34, kind: 'hippo' };
     f.bouncers.push(f.hippo);
   }
   if (tw === 'mush') {
     for (let i = 0; i < 4; i++) {
-      const x = (12 + i * 8.2 + (R() - 0.5) * 3) * M, hw = 40 + R() * 10, top = -(52 + R() * 30);
+      const x = (12 + i * 8.2 + (R() - 0.5) * 3) * X, hw = 40 + R() * 10, top = -(52 + R() * 30);
       const m = { id: i, x, hw, top, kind: 'mush', col: i % 2 };
       f.mush.push(m); f.bouncers.push(m);
     }
   }
   if (tw === 'toucan') {
     for (let i = 0; i < 2; i++) {
-      f.toucans.push({ id: 10 + i, cx: (i ? 26 + R() * 5 : 14 + R() * 5) * M, cy: -(230 + R() * 90), ax: 70 + R() * 40, ay: 30 + R() * 20,
+      f.toucans.push({ id: 10 + i, cx: (i ? 26 + R() * 5 : 14 + R() * 5) * X, cy: -(230 + R() * 90), ax: 70 + R() * 40, ay: 30 + R() * 20,
         w: 1.2 + R() * 0.5, ph: R() * 6.28 });
     }
   }
   if (tw === 'night') {
-    for (let i = 0; i < 4; i++) f.flies.push({ id: 20 + i, x: (11 + i * 7.5 + (R() - 0.5) * 3) * M, y: -(170 + R() * 200), ph: R() * 6.28 });
+    for (let i = 0; i < 4; i++) f.flies.push({ id: 20 + i, x: (11 + i * 7.5 + (R() - 0.5) * 3) * X, y: -(170 + R() * 200), ph: R() * 6.28 });
   }
   // mud puddles and mossy logs (not in the river, not on each other)
   const free = (x0, x1) => !(f.river && x1 > f.river.x0 - 30 && x0 < f.river.x1 + 30) &&
     f.mud.concat(f.logs).every(q => x1 < q.x0 - 40 || x0 > q.x1 + 40) && f.mush.every(m => x1 < m.x - m.hw - 10 || x0 > m.x + m.hw + 10);
   for (let n = 0, tries = 0; n < 2 && tries < 40; tries++) {
-    const w = (2.6 + R() * 1.2) * M, x0 = (11 + R() * 30) * M;
+    const w = (2.6 + R() * 1.2) * M, x0 = (11 + R() * 30) * X;
     if (free(x0, x0 + w)) { f.mud.push({ x0, x1: x0 + w }); n++; }
   }
   for (let n = 0, tries = 0; n < 2 && tries < 40; tries++) {
-    const w = (2 + R() * 0.8) * M, x0 = (7 + R() * 36) * M;
+    const w = (2 + R() * 0.8) * M, x0 = (7 + R() * 36) * X;
     if (free(x0, x0 + w)) { f.logs.push({ x0, x1: x0 + w }); n++; }
   }
   return f;
@@ -158,9 +161,14 @@ function vineSwingBody(s) {
   const P = VINE, sa = Math.sin(s.a), ca = Math.cos(s.a);
   return { x: P.px + s.r * sa, y: P.py + s.r * ca, vx: s.r * s.w * ca + s.rv * sa, vy: -s.r * s.w * sa + s.rv * ca };
 }
-function vineNewBody(s) {
-  const q = vineSwingBody(s);
-  return { x: q.x, y: q.y, vx: q.vx, vy: q.vy, ft: 0, glide: 0, glideUsed: false, carry: null, used: new Array(32).fill(0), ev: null, evI: -1, tuck: false };
+// the whip: how much faster a swing of this size throws you off the vine (1 .. 1 + VINE.whip)
+function vineWhip(s, gold) {
+  const P = VINE, hi = P.capHi + (gold ? P.goldCap : 0);
+  return 1 + P.whip * clamp((vineAmp(s) - P.whipLo) / (hi - P.whipLo), 0, 1);
+}
+function vineNewBody(s, gold) {
+  const q = vineSwingBody(s), k = vineWhip(s, gold);
+  return { x: q.x, y: q.y, vx: q.vx * k, vy: q.vy * k, whip: k, ft: 0, glide: 0, glideUsed: false, carry: null, used: new Array(32).fill(0), ev: null, evI: -1, tuck: false };
 }
 function vineCloneBody(b) { return Object.assign({}, b, { used: b.used.slice(), carry: b.carry ? Object.assign({}, b.carry) : null }); }
 
@@ -242,7 +250,7 @@ function vineBestRelease(f, s0, t0, gold) {
     let t = t0;
     for (let i = 0; i < 360 && i <= to; i++) {
       if (i >= from && (i - from) % every === 0 && s.w > 0.15) {
-        const r = vineFlySim(f, vineNewBody(s), t, null);
+        const r = vineFlySim(f, vineNewBody(s, gold), t, null);
         if (r.d > out.d + 0.01) { out.d = r.d; out.a = s.a; out.dt = t - t0; out.i = i; }
       }
       vineSwingStep(f, s, 0, DT, gold); t += DT;
@@ -257,19 +265,25 @@ function vineBestRelease(f, s0, t0, gold) {
 /* ---------- the swingers ---------- */
 function vineMakeSwinger(k) {
   return { k, status: 'ready', s: { a: VINE.a0, w: 0, r: VINE.R, rv: 0 }, b: null, d: null, kind: '', landX: 0, landT: 0,
-    gold: 0, best: null, relA: null, amp: 0, maxAmp: 0, nopeT: 0, bellT: 0, prevW: 0, lastD: 0, pumpOk: 0, brake: 0,
+    gold: 0, best: null, relA: null, amp: 0, maxAmp: 0, nopeT: 0, prevW: 0, lastD: 0, pumpOk: 0, brake: 0,
     spin: 0, mud: false, rescue: null, marks: [], rbest: 0,
     // looks only (never read by the rules)
     pop: '', popT: 9, popCol: '#fff', popBig: false, sq: 0, cheer: 0 };
 }
 function vinePop(P, text, col, big) { P.pop = text; P.popCol = col || '#ffffff'; P.popT = 0; P.popBig = !!big; }
 function vineRelease(st, P, why) {
-  P.b = vineNewBody(P.s);
-  st.vis.ev[P.k] = { a: P.s.a, w: P.s.w, r: P.s.r }; // (looks: the empty vine swings on)
+  P.b = vineNewBody(P.s, P.gold > 0);
+  // (looks: the empty vine snaps back the other way, harder the bigger the whip)
+  st.vis.ev[P.k] = { a: P.s.a, w: P.s.w * (1 - (P.b.whip - 1) * 6), r: P.s.r };
   P.status = 'fly'; P.relA = P.s.a;
   st.stat.lets[P.k]++;
-  Sfx.play('vineLet', P.k); rumble(P.k, 0.15, 0.35, 80);
-  if (why === 'bell') { vinePop(P, 'Bell! Wheee!', '#ffe6a8'); return; }
+  Sfx.play('vineLet', P.k); rumble(P.k, 0.15 + (P.b.whip - 1) * 1.5, 0.35 + (P.b.whip - 1) * 2, 80);
+  if (P.b.whip > 1.08) {
+    // a big whip: CRACK! (sparks fanning out behind the hands)
+    Sfx.play('vineCrack', P.k); st.stat.crack[P.k]++;
+    const n = Math.round(6 + (P.b.whip - 1) * 60);
+    for (let i = 0; i < n; i++) { const a = Math.atan2(P.b.vy, P.b.vx) + Math.PI + (vineVR() - 0.5) * 1.6, sp = 60 + vineVR() * 140; vineFx(st, P.b.x, P.b.y - 20 + VINE_LANE[P.k], Math.cos(a) * sp, Math.sin(a) * sp, 0.5, i % 2 ? '#ffffff' : '#fff3a0', 3, 0, 'spark'); }
+  }
   const best = P.best;
   if (best && best.d > 0) {
     const da = P.s.a - best.a;
@@ -341,10 +355,6 @@ function vineSwinger(st, P, p, dt) {
       if (P.s.w > 0.15) { vineRelease(st, P, 'you'); return; }
       if (P.nopeT <= 0) { P.nopeT = 0.8; vinePop(P, 'Wait for the forward swing!', '#d9d3ef'); Sfx.play('vineNope', P.k); }
     }
-    if (st.clock <= 0) {
-      P.bellT += dt;
-      if ((P.s.w > 0.15 && P.s.a >= 0) || P.bellT > VINE.bellLate) vineRelease(st, P, 'bell');
-    }
     return;
   }
   if (P.status === 'fly') {
@@ -390,7 +400,12 @@ function vineCamera(st, dt, snap, pre) {
   let x0 = 1e9, x1 = -1e9, yTop = -150, lead = null, lx = -1e9;
   for (const P of st.pl) {
     const q = vineBodyPos(P), ly = VINE_LANE[P.k];
-    if (P.status === 'ready' || P.status === 'swing') { x0 = Math.min(x0, -300); x1 = Math.max(x1, 430); yTop = Math.min(yTop, -600); }
+    if (P.status === 'ready' || P.status === 'swing') {
+      // the tree and the whole swing (up past the branch on a big one)
+      const A = P.status === 'swing' ? Math.min(Math.PI, vineAmp(P.s)) : 0;
+      x0 = Math.min(x0, -300); x1 = Math.max(x1, 430, VINE.px + P.s.r * Math.sin(Math.min(A, Math.PI / 2)) + 110);
+      yTop = Math.min(yTop, -600, VINE.py + P.s.r * Math.cos(A) - 120);
+    }
     else if (P.status === 'fly') {
       x0 = Math.min(x0, q.x - 90); x1 = Math.max(x1, q.x + 170 + Math.max(0, q.vx) * 0.3); yTop = Math.min(yTop, q.y + ly - 90);
       if (q.x > lx) { lx = q.x; lead = q; }
@@ -459,14 +474,6 @@ function vineTick(dt, live) {
   st.t += dt;
   if (live) {
     st.lt += dt; st.at += dt;
-    if (st.pl.some(P => P.status === 'swing')) {
-      const was = st.clock;
-      st.clock = Math.max(0, st.clock - dt);
-      const sec = Math.ceil(st.clock);
-      if (sec !== Math.ceil(was) && sec > 0 && sec <= 3) Sfx.play('tick');
-      if (was > 0 && st.clock <= 0) { Sfx.play('vineBell'); st.bellT = 0; }
-    }
-    if (st.bellT != null) st.bellT += dt;
     if (st.setT > 0) {
       // between swings: both back on the deck for a moment ("Swing 2!"), then off they go
       st.setT -= dt;
@@ -483,15 +490,7 @@ function vineTick(dt, live) {
     if (st.endT >= VINE.showT) { if (st.att + 1 < st.attN) vineNextSwing(st); else vineEndRound(st); }
     return;
   }
-  // the safety bell: a round that somehow runs this long ends with what there is
-  if (st.at > VINE.capT) {
-    for (const P of st.pl) if (P.status !== 'done' && P.status !== 'land') {
-      const q = vineBodyPos(P), gr = vineGroundAt(f, q.x);
-      if (!P.b) P.b = vineNewBody(P.s);
-      vineLand(st, P, { kind: gr.kind, x: gr.kind === 'splash' ? f.river.x0 : gr.kind === 'deck' ? 0 : q.x }, true);
-    }
-    st.endT = VINE.showT; // (straight on: the next swing or the round's end, on the next tick)
-  }
+  // (no swing clock and no safety bell: a swinger lets go only when they choose; a flight always lands by VINE.flyCap)
 }
 // the round's next swing: marks kept, both back on the deck with a fresh swing clock
 function vineNextSwing(st) {
@@ -500,7 +499,7 @@ function vineNextSwing(st) {
     N.gold = P.gold; N.marks = P.marks.concat([{ x: P.flagX, d: P.d || 0, kind: P.kind }]); N.rbest = Math.max(P.rbest, P.d || 0);
     return N;
   });
-  st.att++; st.at = 0; st.clock = VINE.window; st.bellT = null; st.endT = 0; st.setT = VINE.setT; st.winFlag = -1;
+  st.att++; st.at = 0; st.endT = 0; st.setT = VINE.setT; st.winFlag = -1;
   st.vis.ev = [null, null];
   Sfx.play('roundStart');
 }
@@ -520,7 +519,7 @@ MODES.vine = {
   rand: Math.random,
   setup(st, L) {
     for (const row of L.grid) row.fill('.');
-    st.stat = { best: [0, 0], total: [0, 0], n: [0, 0], perfect: [0, 0], boing: [0, 0], ride: [0, 0], splat: [0, 0], glides: [0, 0], lets: [0, 0], amp: [0, 0] };
+    st.stat = { best: [0, 0], total: [0, 0], n: [0, 0], perfect: [0, 0], boing: [0, 0], ride: [0, 0], splat: [0, 0], glides: [0, 0], lets: [0, 0], amp: [0, 0], crack: [0, 0] };
     const mix = VINE_MIX.slice();
     for (let i = mix.length - 1; i > 0; i--) { const j = Math.floor(this.rand() * (i + 1)); [mix[i], mix[j]] = [mix[j], mix[i]]; }
     st.order = ['plain', ...mix.slice(0, 4)];
@@ -536,7 +535,7 @@ MODES.vine = {
     st.f = vineBuild(st.twist === 'last' ? 'plain' : st.twist, () => this.rand());
     st.pl = [0, 1].map(vineMakeSwinger);
     for (const P of st.pl) P.gold = info.suddenDeath ? 0 : Math.max(0, info.wins[1 - P.k] - info.wins[P.k]);
-    st.t = 0; st.lt = 0; st.clock = VINE.window; st.bellT = null; st.endT = 0; st.winFlag = -1; st.winD = 0; st.goldSaid = false; st.say = null;
+    st.t = 0; st.lt = 0; st.endT = 0; st.winFlag = -1; st.winD = 0; st.goldSaid = false; st.say = null;
     st.bestTick = -1; st.att = 0; st.at = 0; st.attN = st.twist === 'last' ? 1 : VINE.swings; st.setT = 0;
     st.vis = vineVisNew();
     st.cam = { x: 0, y: 0, z: null };
@@ -586,7 +585,7 @@ MODES.vine = {
   },
   // test access for the bot harness and the computer brain (read-only helpers; no window globals)
   test: { VINE, VINE_TWISTS, build: vineBuild, amp: vineAmp, swingStep: vineSwingStep, swingBody: vineSwingBody, newBody: vineNewBody,
-    cloneBody: vineCloneBody, air: vineAir, flySim: vineFlySim, bestRelease: vineBestRelease, toucanPos: vineToucanPos, groundAt: vineGroundAt },
+    cloneBody: vineCloneBody, whip: vineWhip, air: vineAir, flySim: vineFlySim, bestRelease: vineBestRelease, toucanPos: vineToucanPos, groundAt: vineGroundAt },
 };
 
 /* ---------- drawing ---------- */
@@ -919,7 +918,7 @@ function vineDrawParrot(x, y, a, b, ph) {
 }
 // Tilly the tapir, asleep at the far end of the field (she wakes up and waves at a very long swing)
 function vineDrawTapir(st, v) {
-  const x = 56 * VINE.M, y = VINE_LANE[0] - 2;
+  const x = 88 * VINE.M, y = VINE_LANE[0] - 2;
   if (x < v.x0 - 80 || x > v.x1 + 80) return;
   const awake = st.pl.some(P => P.status !== 'swing' && P.status !== 'ready' && P.landX > x - 260);
   ctx.save(); ctx.translate(x, y);
@@ -936,10 +935,14 @@ function vineDrawTapir(st, v) {
   if (!awake) { const zt = (G.clock * 0.6) % 1; ctx.globalAlpha = 1 - zt; vineLabelWorld('z', x - 40 + zt * 10, y - 46 - zt * 22, '#ffffff'); ctx.globalAlpha = 1; }
   else vineLabelWorld('Wow!', x - 40, y - 52, '#ffe6a8');
 }
-// a vine from the knot to the hands (a little bow in it), with leaves along it
-function vineDrawVine(k, hx, hy, gold, stretchy, sag) {
-  const P = VINE, kx = P.px, ky = P.py + VINE_LANE[k];
-  const mx = (kx + hx) / 2 - sag * 10, my = (ky + hy) / 2;
+// a vine from the knot to the hands, with leaves along it. The whip look (looks only): a fast swing bows the vine out
+// behind the swinger (w: how fast it swings, rad/s), and near the top of a big swing, where it slows, it goes slack
+// and droops
+function vineDrawVine(k, hx, hy, gold, stretchy, w) {
+  const P = VINE, kx = P.px, ky = P.py + VINE_LANE[k], len = Math.max(1, Math.hypot(hx - kx, hy - ky));
+  const ux = (hx - kx) / len, uy = (hy - ky) / len, trail = clamp(-w * 16, -80, 80);
+  const slack = Math.max(0, 0.45 - uy) * 90 / (1 + Math.abs(w) * 0.6);
+  const mx = (kx + hx) / 2 + uy * trail, my = (ky + hy) / 2 - ux * trail + slack;
   ctx.lineCap = 'round';
   ctx.strokeStyle = gold ? '#b9850f' : VINE_COL.vineDk; ctx.lineWidth = 7;
   ctx.beginPath(); ctx.moveTo(kx, ky); ctx.quadraticCurveTo(mx, my, hx, hy); ctx.stroke();
@@ -1053,7 +1056,7 @@ function vineDrawWorld() {
 }
 // the arc a person would fly if they let go now (round 1, or gold 2+), and the sweet spot on the swing
 function vineDrawArc(st, P) {
-  const f = st.f, b = vineNewBody(P.s), ly = VINE_LANE[P.k];
+  const f = st.f, b = vineNewBody(P.s, P.gold > 0), ly = VINE_LANE[P.k];
   if (P.s.w <= 0.15) return;
   ctx.fillStyle = PCOL[P.k];
   let t = st.t, lastX = b.x;
@@ -1204,7 +1207,7 @@ function vineDrawSwinger(st, P, zk) {
   if (P.status === 'ready' || P.status === 'swing') {
     const q = vineSwingBody(P.s), x = q.x, y = q.y + ly, rot = -P.s.a;
     const hx = x - Math.sin(P.s.a) * (VINE.hand * s / 1.3), hy = y - Math.cos(P.s.a) * (VINE.hand * s / 1.3);
-    vineDrawVine(k, hx, hy, gold, st.f.stretchy, clamp(P.s.w * 0.4, -2, 2));
+    vineDrawVine(k, hx, hy, gold, st.f.stretchy, P.s.w);
     if (P.pumpOk > 0 && !vineCpu(k) && st.round <= 2) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; circle(x, y, 22 * s / 1.3); ctx.fill(); }
     const mood = P.status === 'ready' ? 'happy' : P.brake > 0 ? 'grit' : Math.abs(P.s.w) > 1.6 ? 'wow' : 'happy';
     vineDrawHero(k, { x, y, rot, s, pose: P.status === 'ready' ? 'ready' : 'hang', mood, kick: G.clock * 9 + k, face: 1 });
@@ -1230,9 +1233,9 @@ function vineDrawSwinger(st, P, zk) {
     vineDrawHero(k, { x: pos.x, y: footY - VINE.feet * s / 1.3, s, pose: win || P.landT < 0.4 ? 'cheer' : 'stand', mood: P.kind === 'mud' ? 'joy' : win ? 'joy' : 'happy', sq: P.sq, mud: P.mud });
   }
   // the empty vine swinging back
-  const ve = st.vis.ev[k] || { a: P.s.a, r: VINE.R };
+  const ve = st.vis.ev[k] || { a: P.s.a, r: VINE.R, w: 0 };
   const hx = VINE.px + (ve.r - VINE.hand) * Math.sin(ve.a), hy = VINE.py + (ve.r - VINE.hand) * Math.cos(ve.a) + ly;
-  vineDrawVine(k, hx, hy, gold, st.f.stretchy, 0);
+  vineDrawVine(k, hx, hy, gold, st.f.stretchy, ve.w || 0);
 }
 
 /* ---------- HUD ---------- */
@@ -1276,8 +1279,8 @@ function vineHud() {
     } else if (P.status === 'fly') {
       text(P.b && P.b.carry ? 'Toucan ride!' : 'Wheee!', bx + bw / 2, by + 0.5, 15 * sz, '#ffe6a8', 'center', 'body');
     } else {
-      // swing meter: how high this swing goes, with a gold band near the top
-      const A = P.status === 'swing' ? vineAmp(P.s) : 0, kA = clamp(A / (90 * VINE_D), 0, 1), hk = (75 / 90);
+      // swing meter: how high this swing goes (full at the soft cap), with a gold band near the top
+      const A = P.status === 'swing' ? vineAmp(P.s) : 0, kA = clamp(A / VINE.capHi, 0, 1), hk = 0.83;
       ctx.fillStyle = 'rgba(255,255,255,0.14)'; rr(bx, by - 6 * sz, bw, 12 * sz, 6 * sz); ctx.fill();
       ctx.fillStyle = 'rgba(255,197,61,0.35)'; rr(bx + bw * hk, by - 6 * sz, bw * (1 - hk), 12 * sz, 6 * sz); ctx.fill();
       if (kA > 0) { ctx.fillStyle = P.gold ? C.gold : PCOL[P.k]; rr(bx, by - 6 * sz, Math.max(12 * sz, bw * kA), 12 * sz, 6 * sz); ctx.fill(); }
@@ -1289,7 +1292,7 @@ function vineHud() {
   // bottom centre: a distance ruler with both swingers, the river or mushrooms, and the jungle record
   {
     const mw = big ? 300 : 380, mh = big ? 30 : 24, x0 = W / 2 - mw / 2, y = H - 8 - mh, a = x0 + 14, b = x0 + mw - 14, cy = y + mh / 2;
-    let far = 50; for (const P of st.pl) { const q = vineBodyPos(P); far = Math.max(far, vineM(P.status === 'land' || P.status === 'done' ? P.landX : q.x) + 5); }
+    let far = 80; for (const P of st.pl) { const q = vineBodyPos(P); far = Math.max(far, vineM(P.status === 'land' || P.status === 'done' ? P.landX : q.x) + 5); }
     far = Math.ceil(far / 10) * 10;
     const X = d => a + (b - a) * clamp(d / far, 0, 1);
     ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(x0, y, mw, mh, mh / 2); ctx.fill();
@@ -1320,11 +1323,11 @@ function vineHud() {
   });
   ctx.globalAlpha = 1;
   if (m.phase === 'live' || m.phase === 'end') {
-    // the swing clock under the match pill while anyone still swings
-    if (st.pl.some(P => P.status === 'swing') || (st.bellT != null && st.bellT < 1.2)) {
-      const box = G.matchHudBox, y0 = box ? box.y1 + 6 : 52, sec = Math.ceil(st.clock), warn = sec <= 3;
-      const lab = (st.attN > 1 ? 'Swing ' + (st.att + 1) + ' of ' + st.attN + '  ·  ' : '') + (st.clock > 0 ? 'Let go in ' + sec : 'Bell! Let go!');
-      vineChip(lab, W / 2, y0 + (big ? 16 : 12), big, warn ? C.gold : 'rgba(246,239,223,0.5)', warn);
+    // which swing this is, under the match pill while anyone still swings (no clock: let go when you are ready)
+    if (st.pl.some(P => P.status === 'swing')) {
+      const box = G.matchHudBox, y0 = box ? box.y1 + 6 : 52;
+      const lab = (st.attN > 1 ? 'Swing ' + (st.att + 1) + ' of ' + st.attN + '  ·  ' : '') + 'Let go when you\'re ready!';
+      vineChip(lab, W / 2, y0 + (big ? 16 : 12), big, 'rgba(246,239,223,0.5)', false);
     }
     if (st.setT > 0) {
       const k = 1 - st.setT / VINE.setT;
@@ -1339,7 +1342,8 @@ function vineHud() {
       if (vineCpu(P.k)) continue;
       const kk = vineKeys(P.k), q = vineHeroPos(st, P), s = vineToScreen(cam, q.x, q.y), zk = vineHeroK(cam);
       const below = s.y + 46 * cam.z * zk + (big ? 22 : 16);
-      if (P.status === 'swing' && (st.round <= 2 || P.gold)) {
+      // (no clock: someone still swinging after 15 s gets the reminder too, in any round)
+      if (P.status === 'swing' && (st.round <= 2 || P.gold || st.at > 15)) {
         const fwd = P.s.w > 0, A = vineAmp(P.s);
         const key = fwd ? kk.r : kk.l, arrow = fwd ? '▶' : '◀';
         let lab = (key === arrow ? arrow : fwd ? key + ' ▶' : '◀ ' + key) + '  pump';
@@ -1393,7 +1397,7 @@ Sfx.extra.vineSplash = function (p) { this.tone(900 * p, 0.25, 'sine', 0.035, 20
 Sfx.extra.vineBoing = function (p) { this.tone(170 * p, 0.28, 'sine', 0.08, 620 * p); };
 Sfx.extra.vineToucan = function (p) { [660, 880, 660].forEach((f, i) => this.tone(f * p, 0.07, 'square', 0.025, null, i * 0.07)); };
 Sfx.extra.vineSparkle = function (p) { [1046, 1318, 1568, 2093].forEach((f, i) => this.tone(f * p, 0.08, 'triangle', 0.035, null, i * 0.04)); };
-Sfx.extra.vineBell = function () { this.tone(880, 0.4, 'sine', 0.05); this.tone(1320, 0.3, 'sine', 0.03, null, 0.05); };
+Sfx.extra.vineCrack = function (p) { this.tone(2400 * p, 0.05, 'square', 0.03, 600 * p); this.tone(1600 * p, 0.08, 'triangle', 0.04, 3000 * p, 0.02); };
 Sfx.extra.vineGo = function () { this.tone(300, 0.25, 'triangle', 0.04, 700); };
 Sfx.extra.vineGold = function () { this.tone(784, 0.1, 'triangle', 0.05); this.tone(1046, 0.12, 'triangle', 0.045, null, 0.08); this.tone(1318, 0.16, 'triangle', 0.04, null, 0.16); };
 /* ===== end of 17-4 Vine Swing ===== */
