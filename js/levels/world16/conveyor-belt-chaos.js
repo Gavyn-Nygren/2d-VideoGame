@@ -26,8 +26,11 @@
    Gold help (always announced): Gold grabber (grab from fast belts, longer reach) after 4 useful candies recycled in a
    room; Gold labels (bins light up for the candy you hold) after 2 Blechs in a room; Gold candy (the chutes send only
    what the order needs) after 30 s without sorting a candy once the room is a minute old; Gold wrapper (wraps at any
-   speed) after 3 toffees rush through the wrapper unwrapped.
-   Medal: Gold ≤ 4:00 with ≤ 3 Blechs, Silver ≤ 7:00 with ≤ 8 (two computers about 2:55, noisy computer pairs 3:00-3:45).
+   speed) after 3 toffees rush through the wrapper unwrapped; Gold trapdoor (a tile wider each side, open 1.6 s) after 3
+   good candies ride past the trapdoor into the recycler.
+   An unwrapped toffee anywhere but on the wrapper's belt goes "Back to the wrapper!" after a moment (a toffee in the gift
+   box is a lesson, not a Blech). When junk fills the floor and belts, the oldest junk poofs back so the chutes never stall.
+   Medal: Gold ≤ 4:00 with ≤ 3 Blechs, Silver ≤ 7:00 with ≤ 8 (two computers about 2:40, noisy computer pairs 3:20-4:00, prompt-following scripted kids 3:00-4:00).
    Room def: { title, sorter: 0|1, tip, act, belts: [{ id, name, c0, c1, r, col, ends: [l, r] ('fall'|'wall'|'mouth'),
    st (station x), spd, dir }], chutes: [{ belt, x, every, mix: [kinds] }], bins: [{ kind, x, y }], shelves: [[c0, c1,
    r]], lift: { x0, x1, lo, hi, st }, trap: { belt, c0, c1, st }, wrap: { belt, x }, order: { kind: n } }.
@@ -38,8 +41,8 @@ const CONVEYOR = {
   grabX: 28, grabUp: 34, grabDown: 8, goldReach: 1.5,
   tossReach: 200, tossAbove: 160, tossBelow: 70,
   liftSpeed: 165, trapT: 0.7, stationR: 24,
-  recycleBack: 4.5, floorPoof: 20, chuteFirst: 0.6,
-  helpRecycled: 4, helpBlechs: 2, helpNoSortT: 30, helpRoomT: 60, helpWrapMiss: 3,
+  recycleBack: 4.5, floorPoof: 20, chuteFirst: 0.6, toffeeBack: 0.9, crowdPoof: 6,
+  helpRecycled: 4, helpTrapRecycled: 3, goldTrapT: 1.6, helpBlechs: 2, helpNoSortT: 30, helpRoomT: 60, helpWrapMiss: 3,
   doneT: 2.4, finalT: 6.2, hintLife: 2.8,
   catwalkY: 120, floorY: 450, ceilY: 150,
 };
@@ -135,8 +138,8 @@ function conveyorRoom(st, L, k) {
   st.candies = []; st.recycleQ = []; st.held = null; st.nextId = st.nextId || 1;
   st.phase = 'play'; st.phaseT = 0; st.roomT = 0; st.lastSortT = 0;
   st.pops = []; st.parts = []; st.msg = null; st.hints = [null, null]; st.hinted = {};
-  st.gold = { grab: false, labels: false, candy: false, wrap: false };
-  st.room = { recycled: 0, blechs: 0, wrapMiss: 0, tooFast: 0 };
+  st.gold = { grab: false, labels: false, candy: false, wrap: false, trap: false };
+  st.room = { recycled: 0, blechs: 0, wrapMiss: 0, tooFast: 0, missedTrap: 0 };
   st.opPrev = { up: true, down: true }; st.opNope = 0; st.tooFastT = 0; st.tooFastBelt = null; st.missGrab = 0;
   st.inT = [-99, -99]; st.boss = null;
   st.stats.roomT[k] = null; st.stats.roomTitles[k] = st.title;
@@ -241,7 +244,7 @@ function conveyorOperator(st, p, dt) {
   if (s.kind === 'belt') {
     const b = s.ref;
     if (act) {
-      b.dir = -b.dir; b.flash = 1; s.flash = 1; s.lever = b.dir;
+      b.dir = -b.dir; b.flash = 1; s.flash = 1; s.lever = b.dir; b.flipT = st.roomT;
       st.stats.flips[p.id]++;
       conveyorPop(st, (b.x0 + b.x1) / 2, b.y - 34, b.dir > 0 ? 'Flip! ▶' : '◀ Flip!', b.col[0], 20, 'belt' + b.id);
       Sfx.play('conveyorFlip', p.id); rumble(p.id, 0, 0.25, 60);
@@ -260,7 +263,7 @@ function conveyorOperator(st, p, dt) {
     }
   } else if (s.kind === 'trap') {
     const tp = s.ref;
-    if (act || down) { if (!tp.open) { Sfx.play('conveyorTrap', p.id); st.stats.traps[p.id]++; } tp.openT = Math.max(tp.openT, CONVEYOR.trapT); s.flash = 1; }
+    if (act || down) { if (!tp.open) { Sfx.play('conveyorTrap', p.id); st.stats.traps[p.id]++; } tp.openT = Math.max(tp.openT, tp.gold ? CONVEYOR.goldTrapT : CONVEYOR.trapT); s.flash = 1; }
     else if (i.act && tp.open) tp.openT = Math.max(tp.openT, 0.12);
     if (up && tp.open) tp.openT = 0;
   }
@@ -273,6 +276,13 @@ function conveyorLiftStep(st, dt) {
   // (never down onto someone standing under it: it waits)
   lf.blocked = false;
   if (ny > lf.y && !s.onLift && s.x + s.w > lf.x0 + 2 && s.x < lf.x1 - 2 && s.y < ny + 14 && s.y + s.h > lf.y) { ny = lf.y; lf.blocked = true; }
+  // (someone waiting under it for a long while gets a gentle nudge out of the shaft: "Beep beep!")
+  lf.blockT = lf.blocked ? (lf.blockT || 0) + dt : 0;
+  if (lf.blockT > 4 && s.grounded) {
+    const mid = (lf.x0 + lf.x1) / 2, side = s.x + s.w / 2 < mid ? -1 : 1;
+    moveX(s, side * 120 * dt, true);
+    if (!lf.beeped) { lf.beeped = true; conveyorPop(st, mid, lf.y - 30, 'Beep beep!', '#ffe680', 18); Sfx.play('conveyorNope'); }
+  } else if (!lf.blocked) lf.beeped = false;
   const dy = ny - lf.y;
   lf.moving = dy;
   if (!dy) return;
@@ -286,6 +296,11 @@ function conveyorTrapStep(st, dt) {
   if (!tp) return;
   tp.openT = Math.max(0, tp.openT - dt);
   const open = tp.openT > 0;
+  // Gold trapdoor: one tile wider each side (changed while it is shut)
+  if (tp.goldPending && !open && !tp.open) {
+    tp.goldPending = false; tp.gold = true;
+    tp.c0 = Math.max(tp.belt.c0 + 1, tp.c0 - 1); tp.c1 = Math.min(tp.belt.c1 - 1, tp.c1 + 1); tp.x0 = tp.c0 * T; tp.x1 = (tp.c1 + 1) * T;
+  }
   if (open !== tp.open) {
     tp.open = open;
     const g = G.level.grid, r = tp.belt.r;
@@ -312,7 +327,7 @@ function conveyorInReach(st, p, ok) {
     if (dx > C0.grabX * k) continue;
     if (c.y < p.y - C0.grabUp * k || c.y > p.y + p.h + C0.grabDown) continue;
     // order candy first: an unneeded kind only wins when nothing useful is in reach
-    const d = dx + Math.abs(c.y - (p.y + p.h / 2)) * 0.5 + (conveyorUseful(st, c.kind) ? 0 : 1000);
+    const d = dx + Math.abs(c.y - (p.y + p.h / 2)) * 0.5 + (conveyorCandyUseful(st, c) ? 0 : 1000);
     if (!conveyorCanGrab(st, c)) { if (!fast) fast = c; continue; }
     if (d < bd) { bd = d; best = c; }
   }
@@ -391,6 +406,12 @@ const conveyorUseful = (st, kind) => {
   const o = st.order[kind];
   return !!(o && o.got < o.need);
 };
+// this candy (not just its kind): a toffee only counts while it can still reach the wrapper (on the wrapper's belt, not
+// rushed through); anywhere else it is on its way back to the machine
+function conveyorCandyUseful(st, c) {
+  if (c.kind === 'toffee') return !!(st.wrap && c.st === 'belt' && c.belt === st.wrap.belt && !c.wrapSeen) && conveyorUseful(st, 'toffee');
+  return conveyorUseful(st, c.kind);
+}
 function conveyorPickKind(st, ch) {
   // recycled candy comes back first
   for (let i = 0; i < st.recycleQ.length; i++) {
@@ -426,7 +447,15 @@ function conveyorChutes(st, dt) {
     ch.t -= dt * (st.gold.candy ? 1.25 : 1);
     if (ch.t > 0) continue;
     const crowded = live >= C0.cap || st.candies.some(c => (c.st === 'belt' && c.belt === b && Math.abs(c.x - ch.x) < 36) || (c.st === 'air' && Math.abs(c.x - ch.x) < 30 && c.y < b.y));
-    if (crowded) { ch.t = 0.25; continue; }
+    if (crowded) {
+      ch.t = 0.25;
+      if (live >= C0.cap) {
+        let old = null;
+        for (const c of st.candies) if ((c.st === 'rest' || (c.st === 'belt' && !c.belt.spd)) && c.t > C0.crowdPoof && !conveyorCandyUseful(st, c) && (!old || c.t > old.t)) old = c;
+        if (old) conveyorRecycle(st, old, 'poof');
+      }
+      continue;
+    }
     const nx = ch.next;
     ch.next = null; ch.t = ch.every * (0.85 + Math.random() * 0.3); ch.pop = 1;
     const c = { id: st.nextId++, kind: nx.kind, x: ch.x, y: b.y - 62, vx: 0, vy: 40, st: 'air', belt: null, surf: null, rot: 0, spin: 0, t: 0, age: 0, noGrab: 0, back: !!nx.back };
@@ -455,6 +484,12 @@ function conveyorCandies(st, dt) {
   for (const c of st.candies) {
     if (c.st === 'gone' || c.st === 'held') continue;
     c.t += dt; c.noGrab = Math.max(0, c.noGrab - dt); c.noBin = Math.max(0, (c.noBin || 0) - dt);
+    // an unwrapped toffee that can't reach the wrapper any more (dropped, tossed, fallen off, rushed through) settles
+    // for a moment, then goes back to the machine to come round again ("Back to the wrapper!")
+    if (c.kind === 'toffee' && c.st !== 'air' && !(st.wrap && c.st === 'belt' && c.belt === st.wrap.belt && !c.wrapSeen)) {
+      c.backT = (c.backT || 0) + dt;
+      if (c.backT > C0.toffeeBack) { conveyorRecycle(st, c, 'toffee'); continue; }
+    } else c.backT = 0;
     if (c.st === 'belt') {
       const b = c.belt;
       c.y = b.y - R;
@@ -466,7 +501,7 @@ function conveyorCandies(st, dt) {
       // the ends
       if (c.x > b.x1 || c.x < b.x0) {
         const side = c.x > b.x1 ? 1 : 0, end = b.ends[side];
-        if (end === 'mouth') { conveyorRecycle(st, c, 'mouth'); continue; }
+        if (end === 'mouth') { if (b.trap && conveyorCandyUseful(st, c) && c.kind !== 'toffee') st.room.missedTrap++; conveyorRecycle(st, c, 'mouth'); continue; }
         if (end === 'wall') { c.x = side ? b.x1 - R : b.x0 + R; continue; }
         c.st = 'air'; c.vx = b.v; c.vy = 0; c.belt = null; c.inWrap = false;
       }
@@ -513,7 +548,17 @@ function conveyorCandies(st, dt) {
       if (c.vy > 300) { c.vy = -c.vy * 0.28; c.y = top - R - 1; Sfx.play('conveyorTap'); continue; }
       c.st = 'rest'; c.surf = land; c.vx = 0; c.vy = 0; c.age = 0;
     } else if (land === 'lift') { c.st = 'rest'; c.surf = 'lift'; c.vx = 0; c.vy = 0; c.age = 0; Sfx.play('conveyorTap'); }
-    else { c.st = 'belt'; c.belt = land; c.vx = 0; c.vy = 0; Sfx.play('conveyorTap'); }
+    else {
+      c.st = 'belt'; c.belt = land; c.vx = 0; c.vy = 0; Sfx.play('conveyorTap');
+      // (never right on top of another candy: slide over to the nearest free spot on the belt)
+      for (let tries = 0; tries < 8; tries++) {
+        const o = st.candies.find(q => q !== c && q.st === 'belt' && q.belt === land && Math.abs(q.x - c.x) < C0.gap - 3);
+        if (!o) break;
+        let nx = o.x + (c.x >= o.x ? 1 : -1) * C0.gap;
+        if (nx > land.x1 - R || nx < land.x0 + R) nx = o.x - (c.x >= o.x ? 1 : -1) * C0.gap;
+        c.x = clamp(nx, land.x0 + R, land.x1 - R);
+      }
+    }
   }
   st.candies = st.candies.filter(c => c.st !== 'gone');
 }
@@ -556,8 +601,9 @@ function conveyorBinHit(st, c, bn) {
   c.st = 'air'; c.noBin = 0.6; c.noGrab = 0.2;
   c.vy = -380; c.vx = (bn.x < W / 2 ? 1 : -1) * (110 + Math.random() * 50); c.y = bn.y - bn.h - 2; c.spin = 9;
   bn.blech = 1; bn.shake = 1;
-  st.stats.blechs++; st.room.blechs++;
   const wrap = bn.kind === 'gift' && c.kind === 'toffee';
+  // (a toffee in the gift box is a lesson, not a Blech: it goes back to the wrapper)
+  if (!wrap) { st.stats.blechs++; st.room.blechs++; }
   conveyorPop(st, bn.x, bn.y - bn.h - 30, wrap ? 'Wrap it first!' : 'Blech! Wrong flavour!', '#e8ffb0', wrap ? 20 : 19);
   Sfx.play('conveyorBlech');
   if (!conveyorQuiet(by)) conveyorHint(st, by, wrap ? 'Toffees need wrapping first' : 'That goes in the ' + CONVEYOR_KINDS[c.kind].bin + ' bin!', 2.8);
@@ -568,9 +614,9 @@ function conveyorRecycle(st, c, how) {
   if (st.held === c) st.held = null;
   st.recycleQ.push({ kind: c.kind, t: CONVEYOR.recycleBack });
   st.stats.recycled++;
-  if (conveyorUseful(st, c.kind)) st.room.recycled++;
-  const y = how === 'mouth' ? c.y - 20 : how === 'poof' ? c.y - 24 : CONVEYOR.floorY - 28;
-  conveyorPop(st, c.x, y, how === 'poof' ? 'Poof! Back to the machine' : 'Recycled!', '#bff5d6', how === 'poof' ? 13 : 15);
+  if (how !== 'toffee' && conveyorUseful(st, c.kind)) st.room.recycled++;
+  const y = how === 'mouth' ? c.y - 20 : how === 'poof' || how === 'toffee' ? c.y - 24 : CONVEYOR.floorY - 28;
+  conveyorPop(st, c.x, y, how === 'poof' ? 'Poof! Back to the machine' : how === 'toffee' ? 'Back to the wrapper!' : 'Recycled!', '#bff5d6', how === 'poof' ? 13 : 15);
   Sfx.play('conveyorRecycle');
   for (let i = 0; i < 8; i++) conveyorPart(st, c.x + (Math.random() - 0.5) * 20, c.y, (Math.random() - 0.5) * 80, -40 - Math.random() * 80, 0.6, '#9ff0c0', 3, 200, 'dot');
 }
@@ -625,6 +671,7 @@ function conveyorHelp(st, dt) {
   if (!g.grab && st.room.recycled >= C0.helpRecycled && active(st.sorter)) { g.grab = true; conveyorGoldMsg(st, 'Gold grabber! ' + S + ' can grab candy from fast belts now'); }
   if (!g.labels && st.room.blechs >= C0.helpBlechs) { g.labels = true; conveyorGoldMsg(st, 'Gold labels! The right bin lights up for the candy you hold'); }
   if (!g.candy && st.roomT > C0.helpRoomT && st.roomT - st.lastSortT > C0.helpNoSortT && active(0) && active(1)) { g.candy = true; conveyorGoldMsg(st, 'Gold candy! The machine sends just what the order needs'); }
+  if (!g.trap && st.trap && st.room.missedTrap >= C0.helpTrapRecycled && active(st.op)) { g.trap = true; st.trap.goldPending = true; conveyorGoldMsg(st, 'Gold trapdoor! It\'s wider and stays open longer'); }
   if (!g.wrap && st.wrap && st.room.wrapMiss >= C0.helpWrapMiss) { g.wrap = true; conveyorGoldMsg(st, 'Gold wrapper! It wraps toffees at any speed now'); }
   st.tooFastT = Math.max(0, st.tooFastT - dt);
   for (const bn of st.bins) { bn.glow = Math.max(0, bn.glow - dt * 3); bn.yum = Math.max(0, bn.yum - dt * 1.5); bn.blech = Math.max(0, bn.blech - dt * 1.5); bn.shake = Math.max(0, bn.shake - dt * 2.5); }
@@ -648,6 +695,7 @@ function conveyorNeeds(st) {
       const tgt = conveyorTossTarget(st, S);
       if (tgt === bin) out.sorter = 'toss';
       else if (bin.high && !high) out.sorter = lf && S.onLift ? 'rideUp' : 'toLift';
+      else if (!bin.high && high) out.sorter = lf && S.onLift ? 'rideDown' : 'getDown';
       else out.sorter = 'toBin';
     }
   } else {
@@ -658,29 +706,55 @@ function conveyorNeeds(st) {
   }
   // the operator
   const station = s => st.stations.find(q => q.ref === s) || null;
-  const usefulOn = b => st.candies.filter(c => c.st === 'belt' && c.belt === b && conveyorUseful(st, c.kind));
-  const set = (what, ref, text) => { if (!out.op) { out.op = what; out.opStation = station(ref); out.opText = text; } };
+  const usefulOn = b => st.candies.filter(c => c.st === 'belt' && c.belt === b && conveyorCandyUseful(st, c));
+  const set = (what, ref, text) => {
+    // (a belt that was just flipped isn't asked to flip straight back: no flip-flopping prompts)
+    if (what === 'flip' && ref.flipT != null && st.roomT - ref.flipT < 3) return;
+    if (!out.op) { out.op = what; out.opStation = station(ref); out.opText = text; }
+  };
   const chuteBelts = st.chutes.map(c => c.belt);
   if (lf) {
     const holdHigh = st.held && conveyorBinFor(st, st.held.kind) && conveyorBinFor(st, st.held.kind).high;
     if (S.onLift && lf.target === lf.lo && Math.abs(lf.y - lf.lo) < 2 && holdHigh) set('liftUp', lf, 'Lift up!');
+    if (lf.blocked) out.sorter = 'jumpLift';
     if (S.onLift && Math.abs(lf.y - lf.hi) < 2 && !holdHigh && st.phaseT > 0) set('liftDown', lf, 'Lift down!');
-    const liftCandy = st.candies.some(c => c.st === 'rest' && c.surf === 'lift' && conveyorUseful(st, c.kind));
+    // the sorter is waiting by the shaft with a candy for the high shelf and the lift is up: bring it down for them
+    if (holdHigh && !high && !S.onLift && lf.target !== lf.lo && Math.abs(scx - (lf.x0 + lf.x1) / 2) < 160) set('liftDown', lf, 'Lift down for ' + NAMES[st.sorter] + '!');
+    const liftCandy = st.candies.some(c => c.st === 'rest' && c.surf === 'lift' && conveyorCandyUseful(st, c));
     if (liftCandy && Math.abs(lf.y - lf.hi) < 2 && !high) set('liftDown', lf, 'Bring the candy down!');
   }
   if (st.tooFastT > 0 && st.tooFastBelt && st.tooFastBelt.spd === 2) set('slow', st.tooFastBelt, 'Slow ' + st.tooFastBelt.name + ' down!');
   if (out.sorter === 'tooFast' && out.candy.belt) set('slow', out.candy.belt, 'Slow ' + out.candy.belt.name + ' down!');
   if (st.wrap && st.wrap.belt.spd === 2 && !st.gold.wrap && st.candies.some(c => c.st === 'belt' && c.belt === st.wrap.belt && c.kind === 'toffee' && !c.wrapSeen && conveyorUseful(st, 'toffee')))
     set('slow', st.wrap.belt, 'Slow down to wrap!');
+  // a toffee riding away from the wrapper (or waiting on a stopped belt when only gifts are left): send it through
+  if (st.wrap && conveyorUseful(st, 'toffee')) {
+    const wb = st.wrap.belt, d = Math.sign(wb.v);
+    const tof = st.candies.filter(c => c.st === 'belt' && c.belt === wb && c.kind === 'toffee' && !c.wrapSeen);
+    const onlyGifts = st.orderKeys.every(kd => kd === 'gift' || st.order[kd].got >= st.order[kd].need);
+    const ch = st.chutes.find(q => q.belt === wb), toWrap = ch ? Math.sign(st.wrap.x - ch.x) : 0;
+    if (wb.spd && (tof.some(c => (st.wrap.x - c.x) * d < -10) || (onlyGifts && toWrap && d !== toWrap))) set('flip', wb, 'Flip it to the wrapper!');
+    else if (!wb.spd && onlyGifts) set('start', wb, 'Run the toffees through the wrapper!');
+  }
   if (st.trap) {
     const tp = st.trap, b = tp.belt;
     if (!tp.open && b.spd) for (const c of usefulOn(b)) {
       if (c.kind === 'toffee') continue;
       const ahead = (c.x - (tp.x0 + tp.x1) / 2) * -Math.sign(b.v);
-      if (ahead > -6 && ahead < 50) { set('trap', tp, 'Open the trapdoor!'); break; }
+      if (ahead > -20 && ahead < 70) { set('trap', tp, 'Open the trapdoor!'); break; }
     }
+    // (good candy on its way: go and stand ready at the trapdoor lever)
+    if (!tp.open && b.spd && !out.op && usefulOn(b).some(c => { if (c.kind === 'toffee') return false; const a = (c.x - (tp.x0 + tp.x1) / 2) * -Math.sign(b.v); return a >= 70 && a < 260; })) set('trapReady', tp, 'Get ready to open it!');
   }
-  if (!chuteBelts.some(b => b.spd > 0) && !st.candies.some(c => c.st !== 'held' && conveyorUseful(st, c.kind))) set('start', chuteBelts[0], 'Start ' + chuteBelts[0].name + '!');
+  if (!chuteBelts.some(b => b.spd > 0) && !st.candies.some(c => c.st !== 'held' && conveyorCandyUseful(st, c))) set('start', chuteBelts[0], 'Start ' + chuteBelts[0].name + '!');
+  // candy piling up against a wall end (out of the sorter's reach, or blocking the chute): flip it back
+  for (const b of st.belts) {
+    if (!b.spd || out.op) continue;
+    const d = Math.sign(b.v), wallX = d > 0 ? b.x1 : b.x0;
+    if (b.ends[d > 0 ? 1 : 0] !== 'wall') continue;
+    const pile = st.candies.filter(c => c.st === 'belt' && c.belt === b && Math.abs(c.x - wallX) < 16 + CONVEYOR.gap * 2);
+    if (pile.length >= 3 || (b.y < 300 && pile.some(c => Math.abs(c.x - wallX) < 18 && conveyorCandyUseful(st, c)))) set('flip', b, 'Flip ' + b.name + '!');
+  }
   // a useful candy heading off a belt end while the sorter is far away
   for (const b of st.belts) {
     if (!b.spd || out.op) continue;
@@ -755,7 +829,7 @@ function conveyorActLabels(st) {
 
 MODES.conveyor = {
   CONVEYOR, KINDS: CONVEYOR_KINDS,
-  needs: conveyorNeeds, useful: conveyorUseful, binFor: conveyorBinFor, inReach: conveyorInReach, tossTarget: conveyorTossTarget,
+  needs: conveyorNeeds, useful: conveyorUseful, candyUseful: conveyorCandyUseful, binFor: conveyorBinFor, inReach: conveyorInReach, tossTarget: conveyorTossTarget,
   stationAt: conveyorStationAt, canGrab: conveyorCanGrab, key: conveyorKey,
   setup(st, L) {
     st.stats = { sorted: [0, 0], grabs: [0, 0], tosses: [0, 0], flips: [0, 0], speeds: [0, 0], lifts: [0, 0], traps: [0, 0], blechs: 0, recycled: 0, extras: 0, wrapped: 0, helps: 0, beltT: 0, roomT: [], roomTitles: [] };
@@ -772,7 +846,7 @@ MODES.conveyor = {
     const st = G.mst, s = st.stats;
     if (!s) return [];
     const t = G.time, b = s.blechs;
-    // (two computers: about 2:55 with no Blechs; noisy computer pairs 3:00-3:45; a parent and a kid take longer and mix up a few bins)
+    // (two computers: about 2:40 with no Blechs; noisy computer pairs 3:20-4:00; a parent and a kid take longer and mix up a few bins)
     const medal = t <= 240 && b <= 3 ? 'Gold' : t <= 420 && b <= 8 ? 'Silver' : 'Bronze';
     const out = [
       { label: 'Candy sorted', values: s.sorted.slice() },
@@ -1241,7 +1315,7 @@ function conveyorHud(st) {
     }
     // gold help chips under the board
     const chips = [];
-    if (st.gold.grab) chips.push('GOLD GRABBER'); if (st.gold.labels) chips.push('GOLD LABELS'); if (st.gold.candy) chips.push('GOLD CANDY'); if (st.gold.wrap) chips.push('GOLD WRAPPER');
+    if (st.gold.grab) chips.push('GOLD GRABBER'); if (st.gold.labels) chips.push('GOLD LABELS'); if (st.gold.candy) chips.push('GOLD CANDY'); if (st.gold.wrap) chips.push('GOLD WRAPPER'); if (st.gold.trap) chips.push('GOLD TRAPDOOR');
     if (chips.length) {
       const cfs = big ? 13 : 10;
       ctx.font = conveyorFont(cfs);
@@ -1263,11 +1337,12 @@ function conveyorHud(st) {
     text(NAMES[id] + (sorter ? ' sorts the candy' : ' works the levers') + (cpuSeat ? ' (computer)' : ''), px + 12 * z, py + 15 * z, 14 * z, PCOL[id], 'left');
     let chips;
     if (sorter) {
-      const go = ['toBin', 'toLift', 'find'].includes(nd.sorter);
+      const go = ['toBin', 'toLift', 'getDown', 'find'].includes(nd.sorter);
       chips = [['lr', 'RUN', go && !!st.held], ['jump', 'JUMP', false], ['act', st.held ? 'TOSS' : 'GRAB', nd.sorter === 'grab' || nd.sorter === 'toss']];
     } else {
       const at = st.opAt, want = nd.opStation;
       const walk = want && at !== want;
+      // (trapReady: stand at the trapdoor lever and wait)
       const ud = at && at === want && ['slow', 'start', 'liftUp', 'liftDown'].includes(nd.op);
       const ac = at && at === want && ['flip', 'trap'].includes(nd.op);
       const lab = at && at.kind === 'lift' ? 'LIFT' : at && at.kind === 'trap' ? 'SHUT' : 'SPEED';
@@ -1295,7 +1370,7 @@ function conveyorHud(st) {
     ctx.font = conveyorFont(fs);
     let w = ctx.measureText(st.msg.text).width + 30;
     while (w > W - 40 && fs > 11) { fs--; ctx.font = conveyorFont(fs); w = ctx.measureText(st.msg.text).width + 30; }
-    const y = bb.y1 + (st.gold.grab || st.gold.labels || st.gold.candy || st.gold.wrap ? (big ? 26 : 22) : 0) + 6;
+    const y = bb.y1 + (st.gold.grab || st.gold.labels || st.gold.candy || st.gold.wrap || st.gold.trap ? (big ? 26 : 22) : 0) + 6;
     const cx = clamp(W / 2 + 40, w / 2 + 10, W - w / 2 - 10);
     ctx.globalAlpha = clamp((st.msg.life - st.msg.t) / 0.3, 0, 1);
     pill(cx, y, w, h, 'center'); ctx.strokeStyle = st.msg.col; ctx.lineWidth = 2; rr(cx - w / 2, y, w, h, h / 2); ctx.stroke();
@@ -1338,8 +1413,12 @@ function conveyorHud(st) {
     else if (nd.sorter === 'tooFast') box(S, 'Too fast! Ask ' + NAMES[Oid] + ' to slow it', '#ffe0b0', false);
     else if (nd.sorter === 'toss') box(S, 'Toss! ' + conveyorKey(Sid, 'act'), C.gold, true);
     else if (nd.sorter === 'toBin' && bin) box(S, dirTo(bin.x).replace('%', CONVEYOR_KINDS[bin.kind].bin + ' bin'), CONVEYOR_KINDS[bin.kind].tint, false);
+    else if (nd.sorter === 'toLift' && st.lift && st.lift.target !== st.lift.lo && Math.abs(S.x + S.w / 2 - (st.lift.x0 + st.lift.x1) / 2) < 160) box(S, 'Ask ' + NAMES[Oid] + ' to bring the lift down', '#ffe680', false);
     else if (nd.sorter === 'toLift' && st.lift) box(S, dirTo((st.lift.x0 + st.lift.x1) / 2).replace('%', 'Stand on the lift'), '#ffe680', false);
+    else if (nd.sorter === 'jumpLift') box(S, 'Jump up onto the lift! ' + conveyorKey(Sid, 'jump'), C.gold, true);
     else if (nd.sorter === 'rideUp') box(S, 'Ask ' + NAMES[Oid] + ' for the lift ▲', '#ffe680', false);
+    else if (nd.sorter === 'rideDown') box(S, 'Ask ' + NAMES[Oid] + ' for the lift ▼', '#ffe680', false);
+    else if (nd.sorter === 'getDown') box(S, dirTo(st.lift ? (st.lift.x0 + st.lift.x1) / 2 : W / 2).replace('%', 'Hop down to the ' + CONVEYOR_KINDS[bin.kind].bin + ' bin'), CONVEYOR_KINDS[bin.kind].tint, false);
     else if (nd.sorter === 'unwrapped') box(S, 'Not wrapped! Drop it: ' + conveyorKey(Sid, 'down') + ' + ' + conveyorKey(Sid, 'act'), '#ffe0b0', false);
   }
   // the operator
@@ -1349,8 +1428,10 @@ function conveyorHud(st) {
     if (s && at !== s) str = (s.x < O.x + O.w / 2 ? conveyorKey(Oid, 'left') + ' ' : '') + 'To the ' + s.label + ' lever' + (s.x >= O.x + O.w / 2 ? ' ' + conveyorKey(Oid, 'right') : '') + ': ' + nd.opText.replace(/!$/, '');
     else if (nd.op === 'slow' || nd.op === 'liftDown') str = nd.opText + ' ' + conveyorKey(Oid, 'down');
     else if (nd.op === 'start' || nd.op === 'liftUp') str = nd.opText + ' ' + conveyorKey(Oid, 'up');
+    else if (nd.op === 'trapReady') str = 'Candy coming! Open it when it\'s on top';
     else str = nd.opText + ' ' + conveyorKey(Oid, 'act');
-    box(O, str, s && at === s ? C.gold : '#ffd6ea', !!(s && at === s), true);
+    const now = s && at === s && nd.op !== 'trapReady';
+    box(O, str, now ? C.gold : '#ffd6ea', !!now, true);
   } else if (!conveyorQuiet(Oid) && !st.hints[Oid] && st.opAt && st.roomT < 25 && st.k < 2) {
     // first rooms: what this lever does, while standing at it
     const s = st.opAt, str = s.kind === 'belt' ? conveyorKey(Oid, 'updown') + ' speed · ' + conveyorKey(Oid, 'act') + ' flip' : s.kind === 'lift' ? conveyorKey(Oid, 'updown') + ' lift up / down' : conveyorKey(Oid, 'act') + ' open the trapdoor';

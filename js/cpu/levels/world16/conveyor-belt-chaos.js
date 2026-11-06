@@ -13,7 +13,7 @@
      over), the end above the low belt, or the lift; a toffee goes through the wrapper on SLOW first. The lift goes up
      when the sorter stands on it holding a candy for the high shelf, and comes down otherwise.
      SORTER: holding a candy, it takes it to its bin (riding the lift up for the high shelf) and tosses it once the toss
-     aims into that bin; an unwrapped toffee is dropped on a recycle grate. Not holding one, it picks the nearest useful
+     aims into that bin; an unwrapped toffee is just dropped (it goes back to the wrapper). Not holding one, it picks the nearest useful
      candy it can reach (on the floor, a slow or stopped belt, the lift, in the air), runs under it, jumps up through
      the belt and grabs it.
      With a person partner it says what it needs in short bubbles ("Slow the belt down, please!", "Lift up, please!",
@@ -27,7 +27,7 @@
   const high = p => feet(p) < K().floorY - 150;
 
   /* ---------- shared: candy and where it can go ---------- */
-  const isUseful = (st, c) => c.st !== 'gone' && c.st !== 'held' && !(c.st === 'air' && c.aim) && M().useful(st, c.kind);
+  const isUseful = (st, c) => c.st !== 'gone' && c.st !== 'held' && !(c.st === 'air' && c.aim) && (c.kind !== 'toffee' || c.st !== 'air') && M().candyUseful(st, c);
   // can a sorter on the floor (or on the low belt) get at this candy? (the high belt only from up high)
   function reachable(st, c, sorter) {
     if (c.st === 'belt') return c.belt.y >= 300 || high(sorter);
@@ -251,11 +251,8 @@
     if (st.held) {
       const c = st.held, bn = M().binFor(st, c.kind);
       if (!bn || c.kind === 'toffee') {
-        // an unwrapped toffee: put it on a recycle grate so it comes round again
-        let g = null;
-        for (const q of st.grates) if (!q.shaft && (!g || Math.abs((q.x0 + q.x1) / 2 - cx(p)) < Math.abs((g.x0 + g.x1) / 2 - cx(p)))) g = q;
-        const gx = g ? (g.x0 + g.x1) / 2 : cx(p);
-        if (go(st, S, p, out, gx, C0.floorY, 8) || (g && cx(p) > g.x0 + 4 && cx(p) < g.x1 - 4 && p.grounded && feet(p) > C0.floorY - 3)) { out.down = true; out.act = 'tap'; out.left = out.right = false; }
+        // an unwrapped toffee: drop it (it goes back to the wrapper by itself)
+        out.down = true; out.act = 'tap';
         return out;
       }
       const tgt = M().tossTarget(st, p);
@@ -334,6 +331,7 @@
     if (!human || info.partnerIdle > 15) return out;
     const lf = st.lift;
     if (S.wantLift && p.onLift && lf && Math.abs(lf.y - lf.lo) < 4) { cpuSay(p, 'Lift up, please!', 2); return out; }
+    if (S.wantLift && !p.onLift && lf && lf.target !== lf.lo && st.held) { cpuSay(p, 'Lift down, please!', 2); return out; }
     if (!st.belts.some(b => b.spd) && !st.candies.some(c => isUseful(st, c))) { cpuFor(S, 'still', true, 1 / 120) > 3 && cpuSay(p, 'Start the belt, please!', 2.2); return out; }
     cpuFor(S, 'still', false, 0);
     if (T && T.st === 'belt' && T.belt.spd === 2 && !st.gold.grab && Math.abs(T.x - cx(p)) < 160) { cpuSay(p, 'Slow the belt down, please!', 2); return out; }

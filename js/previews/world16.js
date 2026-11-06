@@ -31,7 +31,7 @@ if (typeof definePreview === 'function') {
     if (n != null) v.pill(n, x + 14, y - 38, { size: 8, bg: '#ffffff', col: dark });
   };
   definePreview('Conveyor Belt Chaos', {
-    blurb: 'One works the belt levers, one rides the belts and sorts candy into the right bins. Swap jobs every room!',
+    blurb: 'One works the belt levers, one sorts the candy into the right bins!',
     loop: 6,
     still: 2.25,
     draw(v, t) {
