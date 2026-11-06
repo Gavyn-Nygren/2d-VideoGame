@@ -96,7 +96,7 @@ Famous natural disasters from history, kept light and cartoony: nobody gets hurt
 - Every World 9 level was bot-tested on keyboard, a stubbed controller and touch (844x390 and 390x844), and with solo, idle and button-mashing bots: none can be cleared by one player, and none gets stuck. Bot times for a perfect pair: 9-1 about 50 s, 9-2 about 88 s, 9-3 about 172 s, 9-4 about 51 s; slower human-like bots take 2-4.5 min. Real playtests may show the medal limits need tuning.
 
 ### World 10: Collector's Vault (team boss)
-One big boss level (Gavyn picked "The Grand Collector"); the world name is Claude's pick (it was "Grand Finale" until Gavyn asked for a rename in Nov 2026, since more worlds come after it). A goofy brass-and-purple robot took a piece of every world and keeps them in his glass belly-jar. The 9 pieces are his health bar (a HUD strip, top centre). He is never hurt: hits make him wobble and pop his monocle. At the end he naps, wakes up friendly, waves, and every piece flies home.
+One big boss level (Gavyn picked "The Grand Collector"); the world name is Claude's pick (it was "Grand Finale" until Gavyn asked for a rename in Nov 2026, since more worlds come after it); Gavyn said to keep "Collector's Vault" (2026-11-06). A goofy brass-and-purple robot took a piece of every world and keeps them in his glass belly-jar. The 9 pieces are his health bar (a HUD strip, top centre). He is never hurt: hits make him wobble and pop his monocle. At the end he naps, wakes up friendly, waves, and every piece flies home.
 - **10-1 The Grand Collector**: 4 rooms, one phase each, every phase borrowing an earlier world's look and tricks. Every hit needs both players, and jobs swap inside each phase ("Swap jobs!", badges, per-role act labels).
   - **Castle Cannons** (7-1): the loader brings powder and a ball, the gunner aims and fires at his wall, then his belly. Pieces 7, 2.
   - **Jackpot Reels** (8-3): the stopper stops reels from the deck below, the runner hops up them; the top cherry bounces the runner onto his hat (pop the dome, then bop the button). Pieces 8, 3.
@@ -277,6 +277,6 @@ Gavyn asked for a new title and home screen where every world can be picked and 
 - World 15 is called "Orbit Outpost" (Claude's pick). Keep it or rename it?
 - 15-4 Planet Hop Race: running round a planet is relative to your own up, but in the air ◀ ▶ and the jet puff follow the screen (changed in review because it saved far more jumps). Check it feels right with kids.
 - 14-2 Pterodactyl Express runs about 4.5 minutes for a good pair (longest in World 14) and 14-3 Tar Pit Pull about 1-3 minutes. Shorten or lengthen after playtests?
-- World 9 is called "Great Escapes" and World 10 "Collector's Vault" (Claude's picks). Keep them or rename them?
+- World 9 is called "Great Escapes" (Claude's pick). Keep it or rename it?
 - Crown Keep (2-4) is one 90-second game, not best of 3/5/7. It was built before that rule. Should it become a best-of match?
 - Boost rings exist in the golf engine but no hole uses them. Want a hole with rings?
