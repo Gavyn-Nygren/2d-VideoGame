@@ -3957,16 +3957,20 @@ const LEVELS = [
   // ----- END 16-3 Chocolate River Raft -----
   //
   // ----- BEGIN 16-4 Sprinkle Catch (mode 'sprinkle', js/levels/world16/sprinkle-catch.js) -----
-  // PLACEHOLDER: replaced when the level is built.
-  { name: 'Sprinkle Catch', world: 15, kind: 'team',
-    tip: 'Coming soon!',
+  { name: 'Sprinkle Catch', world: 15, kind: 'versus', mode: 'sprinkle', ownStep: true,
+    // one candy-land arena (MODES.sprinkle runs its own little platformer): the map is only the two spawns
+    match: { bestOf: 5 },
+    act: { label: 'bump' },
+    tagLift: 18,   // name tags clear the basket on each head
+    tip: 'Catch falling candy in your basket! Dodge the bouncy gobstoppers and bump the other one to make them spill.',
+    switches: {}, signs: [],
     map: [
       '................................', '................................', '................................',
       '................................', '................................', '................................',
       '................................', '................................', '................................',
       '................................', '................................', '................................',
-      '................................', '................................', '...................#....#.......',
-      '.1.2...............#.....E......', '################################', '################################',
+      '................................', '................................', '................................',
+      '........1..............2........', '................................', '................................',
     ],
   },
   // ----- END 16-4 Sprinkle Catch -----
