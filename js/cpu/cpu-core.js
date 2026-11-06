@@ -264,12 +264,23 @@ function cpuCfgHTML() {
         <span class="seg-k">You play</span>${seg('human', 0, '<span class="nm-pip">Pip</span>')}${seg('human', 1, '<span class="nm-bo">Bo</span>')}
         <span class="seg-k">Opponent</span>${seg('skill', 'easy', 'Easy')}${seg('skill', 'normal', 'Normal')}${seg('skill', 'hard', 'Hard')}
       </div>
-      <p class="hint cpu-more"${c.players === 1 ? '' : ' hidden'}>${cpuSoloLine()}</p>
+      <p class="hint cpu-more cpu-skill-line"${c.players === 1 ? '' : ' hidden'}>${cpuSkillLine()}</p>
+      <p class="hint cpu-more cpu-solo-line"${c.players === 1 ? '' : ' hidden'}>${cpuSoloLine()}</p>
     </div>`;
+}
+// what the Opponent choice means, for the line under the buttons
+const CPU_SKILL_TEXT = {
+  easy: 'slow to react and makes lots of mistakes. Good for young kids.',
+  normal: 'a fair match: quick enough to make you work, but it slips up.',
+  hard: 'fast and sharp, like a good grown-up player. A real fight.',
+};
+function cpuSkillLine() {
+  const k = CPU.cfg.skill;
+  return `${CPU_SKILL_NAMES[k]}: ${CPU_SKILL_TEXT[k]} This only changes versus levels. As a teammate, the computer always plays its best.`;
 }
 function cpuSoloLine() {
   const h = CPU.cfg.human, cpuName = NAMES[1 - h];
-  return `The computer plays ${cpuName}: it helps in team levels (always at its best) and plays against you in versus levels, at the Opponent level you pick. ` +
+  return `The computer plays ${cpuName}: it helps in team levels and plays against you in versus levels. ` +
     `Use ${h === 0 ? 'W A S D or the arrow keys' : 'the arrow keys or W A S D'}, any controller, or the ${h === 0 ? 'left' : 'right'} touch buttons.`;
 }
 // 1-player mode: a tip that names the computer's character gets this note, so the person knows that part isn't theirs
@@ -286,7 +297,8 @@ function cpuSyncCfgUI() {
   });
   overlay.querySelectorAll('.cpu-more, [data-solo-only]').forEach(el => { el.hidden = c.players !== 1; });
   overlay.querySelectorAll('[data-two-only]').forEach(el => { el.hidden = c.players === 1; });
-  overlay.querySelectorAll('.cpu-cfg .hint').forEach(el => { el.textContent = cpuSoloLine(); });
+  overlay.querySelectorAll('.cpu-cfg .cpu-solo-line').forEach(el => { el.textContent = cpuSoloLine(); });
+  overlay.querySelectorAll('.cpu-cfg .cpu-skill-line').forEach(el => { el.textContent = cpuSkillLine(); });
   overlay.querySelectorAll('[data-cpu-eyebrow]').forEach(el => { el.textContent = c.players === 1 ? '1 player + computer' : '2 players'; });
 }
 
