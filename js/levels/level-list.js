@@ -3972,6 +3972,71 @@ const LEVELS = [
   // ----- END 16-4 Sprinkle Catch -----
   //
   // ===== END World 16 =====
+
+  /* ===== World 17 (Jungle Jamboree, mixed): the jungle world, world index 16 (js/levels/world17/), leafy, sunny and
+     friendly, nothing scary. Gavyn's picks (Nov 2026): 17-1 Temple Doors (team), 17-2 River Rapids Canoe (team),
+     17-3 Waterfall Climb (team), 17-4 Vine Swing (versus). Each level's def sits between its own BEGIN/END lines. world: 16 ===== */
+  // ----- BEGIN 17-1 Temple Doors (mode 'temple', js/levels/world17/temple-doors.js) -----
+  // PLACEHOLDER: replaced when the level is built.
+  { name: 'Temple Doors', world: 16, kind: 'team',
+    tip: 'Coming soon!',
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '...................#....#.......',
+      '.1.2...............#.....E......', '################################', '################################',
+    ],
+  },
+  // ----- END 17-1 Temple Doors -----
+  //
+  // ----- BEGIN 17-2 River Rapids Canoe (mode 'canoe', js/levels/world17/river-rapids-canoe.js) -----
+  // PLACEHOLDER: replaced when the level is built.
+  { name: 'River Rapids Canoe', world: 16, kind: 'team',
+    tip: 'Coming soon!',
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '...................#....#.......',
+      '.1.2...............#.....E......', '################################', '################################',
+    ],
+  },
+  // ----- END 17-2 River Rapids Canoe -----
+  //
+  // ----- BEGIN 17-3 Waterfall Climb (mode 'waterfall', js/levels/world17/waterfall-climb.js) -----
+  // PLACEHOLDER: replaced when the level is built.
+  { name: 'Waterfall Climb', world: 16, kind: 'team',
+    tip: 'Coming soon!',
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '...................#....#.......',
+      '.1.2...............#.....E......', '################################', '################################',
+    ],
+  },
+  // ----- END 17-3 Waterfall Climb -----
+  //
+  // ----- BEGIN 17-4 Vine Swing (mode 'vine', js/levels/world17/vine-swing.js) -----
+  // PLACEHOLDER: replaced when the level is built.
+  { name: 'Vine Swing', world: 16, kind: 'team',
+    tip: 'Coming soon!',
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '...................#....#.......',
+      '.1.2...............#.....E......', '################################', '################################',
+    ],
+  },
+  // ----- END 17-4 Vine Swing -----
+  //
+  // ===== END World 17 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -4033,6 +4098,10 @@ const WORLDS = [
   { name: 'Sugar Rush Factory', blurb: 'Sort, roll, paddle and catch your way through a world made of candy!',
     theme: { skyTop: '#ff9ccf', skyBot: '#fff0d6', hillFar: '#f7b8e0', hillNear: '#e48fc4', sun: 'rgba(255, 246, 200, 0.95)', sunGlow: 'rgba(255, 180, 220, 0.4)',
       stone: '#7a4a32', stoneLight: '#8f5a3e', stoneEdge: '#55301f', grass: '#fff4fa', grassDark: '#f2a7cf', plank: '#e8b06a', plankDark: '#9a6a2e', rope: '#ff6fa8', ropeDark: '#a8346a' } },
+  // World 17: the jungle, leafy and sunny (a warm green-gold sky through the canopy; mossy brown earth with bright leaves on top)
+  { name: 'Jungle Jamboree', blurb: 'Open temple doors, paddle the rapids, climb the falls and swing on vines!',
+    theme: { skyTop: '#6cc7a8', skyBot: '#f4f6c8', hillFar: '#5fae6e', hillNear: '#3f8f55', sun: 'rgba(255, 244, 180, 0.95)', sunGlow: 'rgba(230, 255, 170, 0.38)',
+      stone: '#6b5438', stoneLight: '#806645', stoneEdge: '#4a3826', grass: '#7fd65a', grassDark: '#3f9a3c', plank: '#c08a4e', plankDark: '#7a5228', rope: '#9bc85a', ropeDark: '#5a7f2e' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
