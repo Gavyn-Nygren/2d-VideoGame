@@ -3992,16 +3992,58 @@ const LEVELS = [
   // ----- END 17-1 Temple Doors -----
   //
   // ----- BEGIN 17-2 River Rapids Canoe (mode 'canoe', js/levels/world17/river-rapids-canoe.js) -----
-  // PLACEHOLDER: replaced when the level is built.
-  { name: 'River Rapids Canoe', world: 16, kind: 'team',
-    tip: 'Coming soon!',
-    map: [
-      '................................', '................................', '................................',
-      '................................', '................................', '................................',
-      '................................', '................................', '................................',
-      '................................', '................................', '................................',
-      '................................', '................................', '...................#....#.......',
-      '.1.2...............#.....E......', '################################', '################################',
+  // 17-2 River Rapids Canoe (team, Gavyn's pick): both ride one canoe down a jungle river, seen from above. The paddler
+  // steers with paddle strokes (◀ ▶ in turn on a steady beat is fast and straight, ▼ slows); the bailer scoops water out
+  // with a bucket (the action, timed) and pokes rocks, logs and branches out of the way with an oar (◀ ▶ aim, ▲ poke).
+  // Jobs swap at the calm pool after each stretch. Course tokens: the top of the level file. The map is only the spawns.
+  { name: 'River Rapids Canoe', world: 16, kind: 'team', mode: 'canoe', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    act: { label: 'paddle', labels: ['paddle', 'bail'] },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> paddle · aim <kbd>S</kbd> slow <kbd>W</kbd> poke',
+      bo: '<kbd>←</kbd><kbd>→</kbd> paddle · aim <kbd>↓</kbd> slow <kbd>↑</kbd> poke',
+      pad: 'stick: paddle · aim, down slows, <span data-glyph="a"></span> poke,',
+    },
+    tip: 'Paddle down the jungle river together! One paddles and steers, one bails water and pokes logs away.',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Lazy Bend', paddler: 0, pal: 'lazy', act: { label: 'paddle', labels: ['paddle', 'bail'] },
+        tip: 'Pip paddles: left, right, left, right! Bo bails water and pokes the branches out of the way.',
+        course: ['v40', 'w215', 'f420', 'S:{P}: {Plr} in turn to paddle. Swish!', 'm:0:mango', 'f260', 'm:-34:banana', 'f300',
+          'S:An island! {P}: steer around it', 'f120', 'i:0:62:110:tapir', 'f330', 'c380', 'm:-40:mango', 'f260', 'A:toucan:R', 'f180',
+          'S:Splashy water! {B}: {Bact} to bail when the bucket is full', 'f60', 'R:340', 'm:30:berry', 'f460', 'c570', 'm:40:banana', 'f220', 'A:monkey:L', 'f240', 'F',
+          'S:A wobbly rock! {B}: aim {Blr}, poke {Bpoke}', 'f160', 'p:0', 'f300', 'm:-70:mango', 'f160', 'p:50', 'f320', 'c480',
+          'S:Branches! {B}: poke them out of the way', 'f200', 'j:4', 'f340', 'b:-80', 'b:85', 'm:0:melon', 'f300', 'A:frog:L',
+          'R:280', 'm:40:mango', 'f420', 'c420', 'm:-30:starfruit', 'f300', 'A:parrot:R', 'f260', 'P'],
+      },
+      {
+        title: 'Rocky Rapids', paddler: 1, pal: 'rapids', act: { label: 'paddle', labels: ['bail', 'paddle'] },
+        tip: 'Swap! Bo paddles round the big rocks. Pip bails fast in the white water and pokes the wobbly rocks.',
+        course: ['v60', 'w195', 'f380', 'S:Big rocks! {P}: steer round them', 'i:0:50:90', 'f280', 'b:-70', 'm:65:mango', 'f220', 'b:60', 'f220',
+          'S:White water! {B}: bail, bail, bail!', 'RR:520', 'b:-10', 'm:-80:banana', 'f190', 'b:70', 'f170', 'b:-75', 'f240', 'c410', 'f160',
+          'S:{P}: {Pdown} slows down, so less water splashes in', 'p:-10', 'm:70:coconut', 'f260', 'A:monkey:R', 'RR:440', 'b:55', 'f170', 'b:-55', 'f170', 'p:5', 'f240', 'F',
+          'c550', 'w175', 'R:300', 'b:0', 'f200', 'm:-55:berry', 'm:55:mango', 'f220', 'j:3', 'f320',
+          'RR:520', 'b:-60', 'f160', 'b:45', 'f170', 'p:-25', 'f200', 'm:0:starfruit', 'A:toucan:L', 'f300', 'c480', 'w200', 'F',
+          'R:300', 'b:75', 'b:-75', 'f280', 'm:0:mango', 'f280', 'A:parrot:L', 'f200', 'P'],
+      },
+      {
+        title: 'Log Jam', paddler: 0, pal: 'logjam', act: { label: 'paddle', labels: ['paddle', 'bail'] },
+        tip: 'Pip paddles again. Logs float across the river! Bo pokes the big logs twice to clear the log jams.',
+        course: ['v48', 'w210', 'f380', 'S:Floating logs! Go round them or poke them away', 'i:0:56:100:turtle', 'f300', 'l:-70:120:80:38', 'f300', 'm:40:mango',
+          'l:60:110:70:-34', 'f320', 'S:A log jam! Big logs need two pokes', 'f140', 'j:4:2', 'f320', 'm:-60:banana', 'm:60:berry', 'f260', 'A:sloth:L',
+          'i:-25:66:130:turtle', 'f380', 'l:0:130:90:46', 'f300', 'F', 'R:300', 'l:-40:100:60:30', 'f240', 'p:30', 'f240', 'c380', 'j:5:2', 'f320',
+          'c560', 'l:40:140:80:-42', 'f260', 'm:-40:coconut', 'f260', 'A:frog:R', 'l:-50:120:90:40', 'l:60:120:90:-40', 'f320', 'F', 'j:4:2', 'f300',
+          'm:0:starfruit', 'f220', 'c480', 'R:260', 'f380', 'A:monkey:L', 'P'],
+      },
+      {
+        title: 'Big Waterfall Drop', paddler: 1, pal: 'falls', act: { label: 'paddle', labels: ['bail', 'paddle'] },
+        tip: 'Bo paddles to the Big Waterfall! Keep the canoe dry, aim for the gold gap, then WHOOSH!',
+        course: ['v70', 'w200', 'f380', 'S:The Big Waterfall is ahead! Keep the canoe dry', 'i:0:52:96', 'f240', 'RR:460', 'b:-60', 'm:70:mango', 'f200', 'b:55', 'f230',
+          'c410', 'p:0', 'f220', 'm:55:berry', 'f240', 'A:parrot:R', 'l:30:110:80:40', 'f320', 'F',
+          'RR:500', 'b:60', 'f170', 'b:-45', 'f170', 'p:20', 'f220', 'j:3', 'f300', 'm:0:coconut', 'c480', 'w185', 'f240',
+          'S:Bail before the drop! {P}: aim for the gold gap', 'f220', 'v95', 'f240', 'g:40:120', 'f150', 'W',
+          'v55', 'w230', 'f80', 'S:SPLASH! {B}: bail it all out!', 'RR:360', 'm:-45:starfruit', 'm:45:mango', 'f380', 'A:capy:L', 'R:200', 'f380', 'E'],
+      },
     ],
   },
   // ----- END 17-2 River Rapids Canoe -----
