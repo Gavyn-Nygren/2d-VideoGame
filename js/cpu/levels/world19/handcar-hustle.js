@@ -57,7 +57,7 @@
       if (human) {
         const partnerTurn = !myUp && (nd.what === 'pump' || nd.what === 'creep') && st.jamT <= 0;
         if (partnerTurn && now - st.lastPushT > 1.6) cpuSay(p, 'Your turn! Pump!');
-        else if (nd.what === 'brake' && !st.braking[o.id] && v > 60) cpuSay(p, 'Brake! Brake!');
+        else if (nd.what === 'brake' && !st.braking[o.id] && v > 60) cpuSay(p, 'Brake! Brake!', 1.2);
         else if (nd.what === 'waitCows') cpuSay(p, 'Wait for the cows!');
         else if (nd.what === 'waitFix') cpuSay(p, 'The crew is fixing it!');
         else if (nd.what === 'coast' && now - st.lastPushT < 0.6 && st.lastPusher === o.id) cpuSay(p, 'Easy! Stop pumping!');

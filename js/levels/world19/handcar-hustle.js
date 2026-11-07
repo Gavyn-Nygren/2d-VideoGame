@@ -13,9 +13,11 @@
    SLOPES: going up slows you, coming down speeds you up; a steep hill with slow pumping rolls you gently back down.
    BRAKING: hold ▲ (W / ↑, controller A or stick up, touch ▲). Both braking squeeze it fully; one alone brakes half as
    hard. Brake for: broken track (a warning sign, then a flagman with a red flag: stop before him and the work crew
-   lays a plank in a few seconds), sharp curves (a SLOW sign; too fast is a "Whoa!" wobble on two wheels and a hard
-   slowdown), cows crossing (stop until they amble across; rolling into them is a "Moo!" bump), and mail stations
-   (stop in the painted box to pick up the mail sack, the score). Missing a station just misses its sack.
+   lays a plank in a few seconds), sharp curves (a SLOW sign; over the limit the handcar starts to tip ("Too fast!
+   Brake!") and braking within about half a second saves it; still too fast, or far too fast, is a "Whoa!" wobble on
+   two wheels and a hard slowdown), cows crossing (stop until they amble across; rolling into them is a "Moo!" bump),
+   and mail stations (stop in the painted box to pick up the mail sack, the score). Stopping just past a box: the
+   station hand pushes the handcar back (there is no reverse). Rolling well past it misses its sack.
    Soft fails only: rolling into the buffer before broken track is a "Whoops!" and the friendly work crew pushes the
    handcar back to the last flag. Nobody is ever hurt.
    4 stretches (roomWord 'Stretch'); Pip and Bo hop over the handle and swap ends at the arch after each one. The last
@@ -30,9 +32,9 @@
    Every global is prefixed handcar / HANDCAR (and Sfx.extra.handcar*); all state lives in G.mst. */
 const HANDCAR = {
   pushV: 84, vTop: 345, drag: 0.26, roll: 12, gS: 520, brake: 560, vMax: 470, vBack: -95,
-  jamWin: 0.11, jamT: 0.6, swing: 0.3, ease: 10,
-  half: 72, wb: 48, wr: 13, deckY: -30, pivotY: -80, arm: 58, scale: 1.25,
-  fixT: 3.4, fixZone: 360, flagGap: 110, cowWalk: 5.4, cowTrig: 760, curveV: 140,
+  jamWin: 0.11, jamT: 0.6, swing: 0.42, ease: 10,
+  half: 72, wb: 48, wr: 13, deckY: -30, pivotY: -80, arm: 36, stand: 56, scale: 1.25,
+  fixT: 3.4, fixZone: 360, flagGap: 110, cowWalk: 5.4, cowTrig: 760, curveV: 140, curveHard: 1.55,
   mailTol: 50, mailHold: 0.4, endTol: 56, endHold: 0.6, backT: 1.4,
   oopsT: 3.0, swapT: 2.6, finT: 3.8, hintLife: 2.8, tryWin: 5, crewHelp: 3, endTolGold: 120, hayHelp: 3,
   goldPush: 1.6, stallHelp: 2, crashHelp: 2, goldLead: 560, streakMax: 8, streakK: 0.035,
@@ -71,7 +73,7 @@ function handcarCompile(def) {
       c.hz.push({ kind: 'fix', sign: x, flag, buffer: flag + H.flagGap, gap: flag + H.flagGap + 46, state: 'broken', t: 0, crashes: 0, gold: false });
       seg(1250, () => y0);
     } else if (ch === 'C') {
-      c.hz.push({ kind: 'curve', sign: x, x0: x + 700, x1: x + 1160, vMax: H.curveV, crashes: 0, gold: false, hit: false, passed: false });
+      c.hz.push({ kind: 'curve', sign: x, x0: x + 700, x1: x + 1160, vMax: H.curveV, crashes: 0, gold: false, hit: false, passed: false, tilt: 0 });
       seg(1300, () => y0);
     } else if (ch === 'W') {
       c.hz.push({ kind: 'cows', sign: x, cx: x + 720, state: 'idle', t: 0, crashes: 0, gold: false });
@@ -138,7 +140,7 @@ function handcarRoom(st, L, k) {
   st.hd = -1; st.down = 1;               // the handle: hd +1 = back end down; down = which end is down (front, so the back pumps first)
   st.lastPushT = -9; st.lastPusher = -1; st.gap = 0; st.prevGap = 0; st.streak = 0; st.jamT = 0; st.clunkT = [0, 0]; st.clunkN = [0, 0];
   st.prevDown = [true, true]; st.braking = [false, false]; st.bob = [0, 0];
-  st.state = 'ride'; st.oops = null; st.swap = null; st.fin = null; st.wob = 0; st.held = null; st.stallArm = false;
+  st.state = 'ride'; st.oops = null; st.swap = null; st.fin = null; st.wob = 0; st.tilt = 0; st.held = null; st.stallArm = false; st.brakeT = [0, 0];
   st.roomT = 0; st.segStart = G.time; st.inT = [-99, -99]; st.waitT = 0;
   st.cam = { x: st.x - HANDCAR.camLead, y: handcarY(st, 0) - HANDCAR.camY };
   st.parts = []; st.pops = []; st.hints = [null, null]; st.hinted = {}; st.msg = null; st.clackD = 0; st.squealT = 0;
@@ -159,9 +161,13 @@ function handcarStep(st, dt) {
     for (const p of ps) { p.pendingJump = false; p.pendingAct = false; }
     st.prevDown = [true, true];
   } else if (st.state === 'ride') handcarRide(st, dt);
-  else if (st.state === 'oops') handcarOopsStep(st, dt);
-  else if (st.state === 'swap') { if (handcarSwapStep(st, dt)) return; }
-  else if (st.state === 'finish') { if (handcarFinStep(st, dt)) return; }
+  else {
+    // (presses while the crew pushes, at the arch or at the finish don't wait for later)
+    for (const p of ps) { p.pendingJump = false; p.pendingAct = false; st.prevDown[p.id] = p.input.down; st.braking[p.id] = false; }
+    if (st.state === 'oops') handcarOopsStep(st, dt);
+    else if (st.state === 'swap') { if (handcarSwapStep(st, dt)) return; }
+    else if (st.state === 'finish') { if (handcarFinStep(st, dt)) return; }
+  }
   handcarHandle(st, dt);
   handcarCam(st, dt);
   handcarFx(st, dt);
@@ -299,7 +305,7 @@ function handcarPhysics(st, dt, nB) {
 /* ---------- broken track, curves, cows, mail stations, the town station ---------- */
 function handcarHazards(st, dt) {
   const H = HANDCAR, front = st.x + H.half;
-  st.held = null;
+  st.held = null; st.tilt = 0;
   for (const hz of st.c.hz) {
     if (hz.kind === 'fix') {
       if (hz.state === 'fixing') {
@@ -324,8 +330,18 @@ function handcarHazards(st, dt) {
         }
       } else if (hz.state === 'fixed') hz.t += dt;
     } else if (hz.kind === 'curve') {
-      if (front > hz.x0 && st.x < hz.x1 && !hz.hit && st.v > hz.vMax) {
-        hz.hit = true; hz.crashes++; st.stats.whoas++;
+      // over the limit the handcar starts to tip (hz.tilt 0..1, drawn): brake within about half a second and it settles
+      // back; far too fast (or still too fast) is a Whoa
+      const inC = front > hz.x0 && st.x < hz.x1;
+      if (inC && !hz.hit) {
+        const over = st.v - hz.vMax;
+        hz.tilt = over > 0 ? hz.tilt + dt * (0.8 + over / 45) : Math.max(0, hz.tilt - dt * 2);
+      } else hz.tilt = Math.max(0, hz.tilt - dt * 2);
+      if (hz.tilt > 0.2 && !hz.warned) { hz.warned = true; handcarPop(st, st.x, handcarY(st, st.x) - 140, 'Too fast! Brake!', '#ffe7a8', 24); Sfx.play('handcarRollBack'); }
+      if (!inC) hz.warned = false;
+      st.tilt = Math.max(st.tilt, hz.tilt);
+      if (inC && !hz.hit && (hz.tilt >= 1 || st.v > hz.vMax * H.curveHard)) {
+        hz.hit = true; hz.crashes++; st.stats.whoas++; hz.tilt = 0;
         st.v = Math.min(st.v, hz.vMax * 0.35); st.wob = 1.3; st.streak = 0;
         Sfx.play('handcarWhoa'); handcarPop(st, st.x, handcarY(st, st.x) - 140, 'Whoa!', '#ffffff', 34);
         rumble(0, 0.3, 0.5, 200); rumble(1, 0.3, 0.5, 200);
@@ -361,6 +377,9 @@ function handcarHazards(st, dt) {
           Sfx.play('handcarSack'); handcarPop(st, hz.box, handcarY(st, hz.box) - 160, 'Mail sack! ' + st.sacks, C.gold, 26);
         }
       } else hz.hold = 0;
+      // stopped a little past the box: the station hand pushes the handcar back (there is no reverse)
+      if (st.x > hz.box + H.mailTol && Math.abs(st.v) < 3) { hz.past = (hz.past || 0) + dt; if (hz.past > H.backT) { hz.past = 0; handcarStartOops(st, 'back', hz); return; } }
+      else hz.past = 0;
       if (st.x > hz.box + H.mailTol + 50) {
         hz.state = 'missed'; hz.t = 0;
         handcarPop(st, hz.box, handcarY(st, hz.box) - 150, 'Missed the mail!', '#ffe7a8', 22);
@@ -431,7 +450,7 @@ function handcarStartOops(st, kind, hz) {
   const H = HANDCAR;
   st.state = 'oops';
   let toX = st.cp.x;
-  if (kind === 'end' || kind === 'back') toX = hz.box - (kind === 'back' ? 380 : 480);
+  if (kind === 'end' || kind === 'back') toX = hz.box - (kind === 'back' ? (hz.kind === 'mail' ? 300 : 380) : 480);
   else if (hz) toX = Math.min(toX > handcarSignX(hz) - 1400 ? toX : handcarSignX(hz) - 400, handcarSignX(hz) - 150);
   st.oops = { kind, t: 0, x0: st.x, toX, hz: hz || null };
   st.v = 0; st.streak = 0; st.jamT = 0;
@@ -490,10 +509,11 @@ function handcarStartFinish(st) {
 function handcarFinStep(st, dt) {
   const fin = st.fin, e = st.c.end;
   fin.t += dt;
-  for (const tt of [0.5, 1.0, 1.5]) if (fin.t > tt && !fin['b' + tt]) {
-    fin['b' + tt] = true; Sfx.play('handcarBell');
-    handcarPop(st, e.box + 150, handcarY(st, e.box) - 230, 'Ding!', C.gold, 26);
-  }
+  [0.5, 1.0, 1.5].forEach((tt, i) => {
+    if (fin.t <= tt || fin['b' + i]) return;
+    fin['b' + i] = true; Sfx.play('handcarBell');
+    handcarPop(st, e.box + 70 + i * 80, handcarY(st, e.box) - 230 - (i % 2) * 24, 'Ding!', C.gold, 26);
+  });
   if (fin.t > 1.6 && !fin.conf) {
     fin.conf = true;
     for (let i = 0; i < 50; i++) { const a = -Math.PI * (0.15 + 0.7 * Math.random()); handcarPart(st, e.box, handcarY(st, e.box) - 140, Math.cos(a) * 300, Math.sin(a) * 300, 1.6, ['#ff6b4a', '#5b95ff', '#ffd36b', '#8fe3b0', '#ffffff'][i % 5], 4, 280, 'conf'); }
@@ -552,7 +572,7 @@ function handcarNeeds(st, brakeA) {
     else if (hz.kind === 'end') { stopAt = hz.box; info = 'end'; }
     if (stopAt == null) continue;
     const d = stopAt - st.x;
-    if (info !== 'curve' && d < -80 && info !== 'end') continue;
+    if (info !== 'curve' && info !== 'end' && d < (info === 'mail' ? -(H.mailTol + 50) : -80)) continue;
     if (!best || d < best.d) best = { d, hz, vL, info };
   }
   if (!best) return out;
@@ -562,7 +582,7 @@ function handcarNeeds(st, brakeA) {
   out.vAllow = Math.sqrt(vL * vL + 2 * 0.55 * eff * Math.max(0, d)) - 18;
   out.vBrake = Math.sqrt(vL * vL + 2 * 0.82 * eff * Math.max(0, d));
   const tol = best.info === 'end' ? (best.hz.gold ? H.endTolGold : H.endTol) : best.info === 'mail' ? H.mailTol : 30;
-  if (best.info === 'end' && d < -tol) { out.what = 'back'; return out; }
+  if ((best.info === 'end' || best.info === 'mail') && d < -tol && Math.abs(v) < 5) { out.what = 'back'; out.wait = true; return out; }
   if (best.info === 'mail' || best.info === 'end') {
     if (Math.abs(d) <= tol - 2 && Math.abs(v) < 5) { out.what = 'hold'; return out; }
     if (Math.abs(d) <= tol * 0.6) { out.what = v > 4 ? 'brake' : 'hold'; return out; }
@@ -582,6 +602,12 @@ function handcarNudges(st, dt) {
     st.waitT += dt;
     if (st.waitT > 3) { st.waitT = -6; handcarHint(st, up, 'Your turn! Push ' + handcarKey(up, 'pump') + ' to pump'); }
   } else st.waitT = Math.max(Math.min(st.waitT, 0) + dt, -6);
+  // holding the brake while it's time to roll
+  for (const k of [0, 1]) {
+    const idle = st.braking[k] && ['pump', 'creep'].includes(nd.what) && Math.abs(st.v) < 25 && !st.held;
+    st.brakeT[k] = idle ? st.brakeT[k] + dt : 0;
+    if (st.brakeT[k] > 2.5) { st.brakeT[k] = -4; handcarHint(st, k, 'Let go of the brake ' + handcarKey(k, 'brake') + ' so you can roll!'); }
+  }
   if (nd.kind === 'fix' && nd.dist < 1400) handcarHintOnceBoth(st, 'fix' + st.k, 'Broken track! Brake and stop before the red flag');
   if (nd.kind === 'mail' && nd.dist < 900) handcarHintOnceBoth(st, 'mail' + st.k, 'Mail stop! Brake and stop in the box');
   if (nd.kind === 'curve' && nd.dist < 1100) handcarHintOnceBoth(st, 'curve' + st.k, 'Sharp curve! Brake to slow down');
@@ -607,6 +633,7 @@ function handcarSpark(st, x, y, col, n) { for (let i = 0; i < n; i++) { const a 
 function handcarPose(st) {
   const H = HANDCAR, x = st.x, yb = handcarY(st, x - H.wb), yf = handcarY(st, x + H.wb);
   let a = Math.atan2(yf - yb, 2 * H.wb), y = (yb + yf) / 2;
+  if (st.tilt > 0 && st.state === 'ride') { a -= st.tilt * 0.16 + Math.sin(G.clock * 30) * 0.015 * st.tilt; y -= st.tilt * 6; }
   if (st.wob > 0) { const u = st.wob / 1.3; a += -Math.abs(Math.sin(u * Math.PI * 3)) * 0.2 * u; y -= Math.abs(Math.sin(u * Math.PI * 3)) * 8 * u; }
   if (st.state === 'oops' && st.oops && st.oops.t < 0.7 && st.oops.kind !== 'back') { const u = st.oops.t / 0.7; a += Math.sin(u * Math.PI * 4) * 0.06 * (1 - u); }
   return { x, y, a, ca: Math.cos(a), sa: Math.sin(a) };
@@ -636,6 +663,8 @@ function handcarCam(st, dt) {
   const k = st.state === 'oops' ? 3 : 5;
   cam.x += (tx - cam.x) * Math.min(1, dt * k);
   cam.y += (ty - cam.y) * Math.min(1, dt * 4);
+  const sx = st.x - cam.x;
+  if (sx < 200) cam.x = st.x - 200; else if (sx > W - 260) cam.x = st.x - (W - 260);
   const sy = handcarY(st, st.x) - cam.y;
   if (sy < 250) cam.y = handcarY(st, st.x) - 250; else if (sy > 440) cam.y = handcarY(st, st.x) - 440;
 }
@@ -661,10 +690,10 @@ function handcarFx(st, dt) {
 // where each player stands (world px, feet), and the hop over the handle when they swap ends
 function handcarSpot(st, id) {
   const H = HANDCAR, P = handcarPose(st), e = handcarEnd(st, id), s = e === 0 ? -1 : 1;
-  let lx = s * 52, ly = H.deckY, hop = 0;
+  let lx = s * H.stand, ly = H.deckY, hop = 0;
   if (st.state === 'swap' && st.swap) {
     const u = clamp((st.swap.t - 0.7) / 1.0, 0, 1);
-    lx = handcarLerp(s * 52, -s * 52, handcarSmooth(u));
+    lx = handcarLerp(s * H.stand, -s * H.stand, handcarSmooth(u));
     hop = (e === 0 ? 96 : 66) * 4 * u * (1 - u);
   }
   const w = handcarLocal(P, lx, ly);
@@ -714,11 +743,11 @@ MODES.handcar = {
     const st = G.mst, s = st.stats;
     if (!s) return [];
     const all = st.sacksAll || st.sacksN, got = st.sacks, t = G.time, frac = all ? got / all : 1, bumps = s.oops + s.whoas + s.moos;
-    const medal = frac >= 0.7 && t <= 245 && bumps <= 3 ? 'Gold' : frac >= 0.4 && t <= 360 ? 'Silver' : 'Bronze';
+    const medal = frac >= 0.7 && t <= 260 && bumps <= 3 && s.jams <= 12 ? 'Gold' : frac >= 0.4 && t <= 380 ? 'Silver' : 'Bronze';
     const out = [
       { label: 'Mail sacks', value: got + ' of ' + all },
       { label: 'Pumps', values: s.pumps.slice() },
-      { label: 'Best rhythm', value: s.bestStreak + ' in a row' },
+      { label: 'Rhythm streak', value: String(s.bestStreak) },
       { label: 'Medal', value: medal },
     ];
     const words = frac >= 0.95 ? 'Every mail sack delivered. Rootin\' tootin\' teamwork!' : frac >= 0.6 ? 'A big bag of mail for the town. Yee-haw!' : 'Pumped all the way to town together!';
@@ -892,8 +921,12 @@ function handcarDrawTown(st, z) {
     { w: 110, h: 100, col: '#e8c27a', trim: '#8a6a3a', word: 'BAKERY' },
   ];
   let x = z.x0 + 40, i = 0;
+  // (no shop fronts behind a station's depot)
+  const depots = st.c.hz.filter(h => h.kind === 'mail' || h.kind === 'end').map(h => [h.box - 190, h.box + (h.kind === 'end' ? 330 : 240)]);
   while (x < z.x1 - 100) {
     const f = fronts[i % fronts.length], y = handcarTerrain(st, x + f.w / 2) - 30;
+    const dep = depots.find(([a, b]) => x < b && x + f.w > a);
+    if (dep) { x = dep[1] + 20; continue; }
     ctx.fillStyle = f.col; ctx.strokeStyle = f.trim; ctx.lineWidth = 3;
     ctx.fillRect(x, y - f.h, f.w, f.h); ctx.strokeRect(x, y - f.h, f.w, f.h);
     ctx.fillStyle = f.trim; ctx.fillRect(x - 6, y - f.h - 6, f.w + 12, 10);
@@ -1162,6 +1195,13 @@ function handcarDrawFix(st, hz, front) {
 // a sharp curve: chevron boards on the far side of the bend
 function handcarDrawCurve(st, hz) {
   const t = G.clock;
+  // the bend itself: the far rail curves away behind a rocky bluff
+  const mx = (hz.x0 + hz.x1) / 2, my = handcarY(st, mx);
+  ctx.fillStyle = '#b8643f'; ctx.strokeStyle = '#7a3a26'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(mx - 200, my - 4); ctx.quadraticCurveTo(mx - 160, my - 120, mx - 40, my - 130); ctx.quadraticCurveTo(mx + 80, my - 140, mx + 170, my - 70); ctx.lineTo(mx + 210, my - 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#e8c27a'; ctx.beginPath(); ctx.ellipse(mx - 30, my - 128, 70, 8, 0.04, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(90,84,104,0.7)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(hz.x0, my - 6); ctx.quadraticCurveTo(mx, my - 40, hz.x1, my - 6); ctx.stroke();
+  // chevron boards along the bend (in front of the bluff)
   for (let x = hz.x0 + 30; x < hz.x1; x += 90) {
     const y = handcarY(st, x) - 10;
     ctx.fillStyle = '#5a3a22'; ctx.fillRect(x - 2, y - 46, 4, 46);
@@ -1171,12 +1211,6 @@ function handcarDrawCurve(st, hz) {
     ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(x - 5, y - 58); ctx.lineTo(x + 3, y - 53); ctx.lineTo(x - 5, y - 48); ctx.stroke();
   }
-  // the bend itself: the far rail curves away behind a rocky bluff
-  const mx = (hz.x0 + hz.x1) / 2, my = handcarY(st, mx);
-  ctx.fillStyle = '#b8643f'; ctx.strokeStyle = '#7a3a26'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(mx - 200, my - 4); ctx.quadraticCurveTo(mx - 160, my - 120, mx - 40, my - 130); ctx.quadraticCurveTo(mx + 80, my - 140, mx + 170, my - 70); ctx.lineTo(mx + 210, my - 4); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#e8c27a'; ctx.beginPath(); ctx.ellipse(mx - 30, my - 128, 70, 8, 0.04, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = 'rgba(90,84,104,0.7)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(hz.x0, my - 6); ctx.quadraticCurveTo(mx, my - 40, hz.x1, my - 6); ctx.stroke();
 }
 function handcarCow(x, y, s, face, step, ph) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s * face, s);
@@ -1356,20 +1390,23 @@ function handcarDrawRider(st, p, P) {
   p.stun = (st.state === 'oops' && st.oops && st.oops.t < 1.0 && st.oops.kind !== 'back') || (st.wob > 0.6) ? 0.5 : 0;
   drawPlayer(p);
   ctx.restore();
-  // arms up to the grip
+  // arms reaching from the shoulder on the post side up to the grip (a bent elbow under the reach)
   if (!swapping) {
-    // two little arms from the shoulders up to the grip, elbows out (away from the post)
-    const bodyH = PH * H.scale * (1.06 - 0.2 * low), out = e === 0 ? -1 : 1;
-    ctx.lineCap = 'round';
-    for (const side of [-1, 1]) {
-      const sh = handcarLocal(P, s.lx + side * 8, H.deckY - bodyH * 0.55), el = handcarLocal(P, s.lx + side * 8 + out * 6, H.deckY - bodyH * 0.55 - (H.deckY - bodyH * 0.55 - g.y) * 0.5);
-      const hx = grip.x + side * 2.5, hy = grip.y + 3;
-      for (const [col, lw] of [[PDARK[p.id], 5], [PCOL[p.id], 2.6]]) {
+    const bodyH = PH * H.scale * (1.06 - 0.2 * low), inward = e === 0 ? 1 : -1;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const side of [0, 1]) {
+      const sh = handcarLocal(P, s.lx + inward * (PW * H.scale / 2 - 5), H.deckY - bodyH * (0.42 + side * 0.1));
+      const hx = grip.x + (side ? -1 : 1) * 1.5 * inward, hy = grip.y + 2 + side;
+      const mx = (sh.x + hx) / 2, my = (sh.y + hy) / 2, dx = hx - sh.x, dy = hy - sh.y, L = Math.hypot(dx, dy) || 1;
+      // the elbow bends down and out a little, more when the hands are close
+      const bend = clamp(18 - L * 0.3, 2, 10);
+      const ex = mx - inward * Math.abs(dy / L) * bend * 0.4, ey = my + Math.abs(dx / L) * bend * 0.6 + bend * 0.3;
+      for (const [col, lw] of [[PDARK[p.id], 6], [PCOL[p.id], 3.4]]) {
         ctx.strokeStyle = col; ctx.lineWidth = lw;
-        ctx.beginPath(); ctx.moveTo(sh.x, sh.y); ctx.quadraticCurveTo(el.x, el.y, hx, hy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sh.x, sh.y); ctx.lineTo(ex, ey); ctx.lineTo(hx, hy); ctx.stroke();
       }
     }
-    ctx.fillStyle = PCOL[p.id]; ctx.strokeStyle = PDARK[p.id]; ctx.lineWidth = 1.5; circle(grip.x - 2.5, grip.y + 2, 3.2); ctx.fill(); ctx.stroke(); circle(grip.x + 2.5, grip.y + 2, 3.2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = PCOL[p.id]; ctx.strokeStyle = PDARK[p.id]; ctx.lineWidth = 1.5; circle(grip.x, grip.y + 2, 3.8); ctx.fill(); ctx.stroke();
   }
   // a clunk: a little shake line
   if (st.clunkT[p.id] > 0) { ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2; for (const d of [-8, 8]) { ctx.beginPath(); ctx.moveTo(grip.x + d, grip.y - 10); ctx.lineTo(grip.x + d * 1.6, grip.y - 18); ctx.stroke(); } }
@@ -1552,6 +1589,7 @@ function handcarHud(st) {
     else if (nd.what === 'coast') say(p, 'Stop pumping! Get ready to brake', '#ffe7a8', false);
     else if (nd.what === 'waitFix') say(p, 'Wait: the crew is fixing the track', '#d9d3ef', false);
     else if (nd.what === 'waitCows') say(p, 'Wait for the cows to cross', '#d9d3ef', false);
+    else if (nd.what === 'back') say(p, 'Too far! Wait: they back you up', '#d9d3ef', false);
     else if (nd.what === 'hold' && Math.abs(st.v) < 5) say(p, nd.kind === 'end' ? 'In the box! Hold still...' : 'In the box! Hold still for the mail', C.gold, false);
     else if (nd.what === 'creep' && id === upId && Math.abs(st.v) < 25) say(p, 'A little push ' + handcarKey(id, 'pump') + ', then brake', '#ffe7a8', false);
   }
