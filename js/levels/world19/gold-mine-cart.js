@@ -17,7 +17,8 @@
    Nobody can do it alone: a lever nobody moves always meets a dead end on its side (every stretch has dead ends up and
    down), and a gap nobody jumps sends the cart back every time.
    Soft fails only: a dead end bumps a soft hay buffer ("Whoops! Dead end!"), a missed gap drops the cart into a rope
-   safety net (or onto a sand pile by the lower track), and Mabel the mine mule trots over and pulls the cart back before the fork or the gap. A
+   safety net (or onto a sand pile by the lower track), and Mabel the mine mule trots over and pulls the cart back to a
+   spot it rode through before the fork's sign or the gap (minecartSafeBack: always with a run-up before the next gap). A
    beam or a rock is a "Bonk!": the cart stops a moment, hats fly off, the beam swings up out of the way. A waterfall
    you don't duck is a "Splash!" that slows you.
    Gold help (announced): after 2 dead ends in a row the signs glow gold with a big gold arrow for the rest of the
@@ -36,12 +37,12 @@
    Every global is prefixed minecart / MINECART (and Sfx.extra.minecart*); all state lives in G.mst. */
 const MINECART = {
   R: 260, H: 125,                               // a fork's ramp length and how far the branches go up / down
-  cruise: 240, kDrive: 1.2, gEff: 330, vMin: 60, vMax: 440, brakeDec: 520, brakeMin: 90, fordMax: 150,
+  cruise: 240, kDrive: 1.2, gEff: 330, vMin: 60, vMax: 440, brakeDec: 520, brakeMin: 140, fordMax: 150,
   hopV: 430, g: 980, holdK: 0.62, coyote: 16, springZone: 230, springLand: 50,
   duckRate: 9, duckOK: 0.6, bendMax: 300, bonkT: 0.95, wobbleT: 1.1,
   half: 44, wheelX: 30, wheelR: 10, seat: [18, -18],
   signAhead: 520, countAhead: [780, 500], lanternAt: 170, viewDark: 470, viewLit: 640,
-  oopsT: 3.0, swapT: 2.0, finT: 5.4, hintLife: 2.8, tryWin: 5, helpWrong: 2, helpMiss: 2,
+  oopsT: 3.0, runUp: 340, swapT: 2.0, finT: 5.4, hintLife: 2.8, tryWin: 5, helpWrong: 2, helpMiss: 2,
   camLead: 330, camY: 300,
 };
 const minecartLerp = (a, b, u) => a + (b - a) * u;
@@ -239,7 +240,9 @@ function minecartRide(st, dt) {
   const x0 = cart.x;
   const slope = (minecartRail(st, cart.lane, cart.fork, cart.x + 3) - minecartRail(st, cart.lane, cart.fork, cart.x - 3)) / 6;
   if (cart.stopT > 0) { cart.stopT -= dt; cart.v = 0; }
-  else {
+  else if (cart.h <= 0 && cart.hv <= 0) {
+    // (only on the rails: in the air the cart keeps the speed it hopped with, so a hop goes where it was aimed and
+    // a brake held in the air can't drop the cart short into a gap)
     cart.v += (M.cruise - cart.v) * M.kDrive * dt + M.gEff * slope * dt;
     if (cart.braking && cart.v > M.brakeMin) cart.v = Math.max(M.brakeMin, cart.v - M.brakeDec * dt);
     if (c.fords.some(w => w.x0 < cart.x && w.x1 > cart.x && minecartOnPath(st, w)) && cart.h <= 0) cart.v = Math.min(cart.v, M.fordMax);
@@ -297,8 +300,10 @@ function minecartHop(st) {
   const M = MINECART, cart = st.cart;
   const sp = st.c.gaps.find(g => g.spring && minecartOnPath(st, g) && cart.x > g.x0 - M.springZone && cart.x < g.x0 + M.coyote);
   if (sp) {
-    const T = (sp.x1 + M.springLand - cart.x) / Math.max(90, cart.v);
-    cart.hv = clamp(M.g * T / 2, M.hopV, 820); cart.spring = true;
+    const need = sp.x1 + M.springLand - cart.x, T = need / Math.max(90, cart.v);
+    cart.hv = clamp(M.g * T / 2, M.hopV, 700); cart.spring = true;
+    // a slow cart gets a push forward too, so the spring always lands it past the gap
+    cart.v = Math.max(cart.v, need / (2 * cart.hv / M.g));
     Sfx.play('minecartSpring'); minecartPop(st, cart.x, minecartCartRail(st) - 120, 'BOING!', C.gold, 26);
   } else { cart.hv = M.hopV; cart.spring = false; Sfx.play('minecartHop'); }
   cart.h = 0.01; st.stats.hops++;
@@ -385,12 +390,20 @@ function minecartCollect(st) {
 }
 
 /* ---------- whoopsies: a dead end or a missed gap; Mabel the mule pulls the cart back ---------- */
+// the last spot the cart rode through at or before xMax with a run-up of at least MINECART.runUp px before the next gap
+// on its track (so the cart is never put back over a gap or just before one, starting slow)
+function minecartSafeBack(st, xMax) {
+  const gaps = st.c.gaps, run = MINECART.runUp;
+  const clear = h => !gaps.some(g => (g.lane === 'm' || (g.lane === h.lane && g.fork === h.fork)) && g.x1 > h.x - 10 && g.x0 < h.x + run);
+  for (let i = st.hist.length - 1; i >= 0; i--) { const h = st.hist[i]; if (h.x <= xMax && clear(h)) return h; }
+  return st.hist[0];
+}
 function minecartStartOops(st, kind, o) {
   const M = MINECART, cart = st.cart, Rid = st.rider, Sid = st.sw;
   st.state = 'oops';
   let back;
   if (kind === 'dead') {
-    back = { x: o.restart, lane: 'm', fork: null };
+    back = minecartSafeBack(st, o.restart);
     st.stats.wrong++; st.wrongRow++;
     cart.x = o.deadEnd - M.half - 6;
     Sfx.play('minecartBump');
@@ -401,8 +414,7 @@ function minecartStartOops(st, kind, o) {
     } else if (!st.hinted.sign) { st.hinted.sign = true; minecartHint(st, Sid, 'Read the sign before the fork, then ' + minecartKey(Sid, 'lever'), 3.4); }
   } else {
     // back to a safe spot well before the gap
-    back = st.hist[0];
-    for (let i = st.hist.length - 1; i >= 0; i--) if (st.hist[i].x <= o.x0 - 460) { back = st.hist[i]; break; }
+    back = minecartSafeBack(st, o.x0 - 460);
     st.stats.falls++; o.falls++;
     const tried = G.time - st.inT[Rid] < M.tryWin;
     if (tried) o.misses++;
@@ -653,7 +665,7 @@ MODES.minecart = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const all = st.goldAll || 1, got = st.gold, t = G.time, frac = got / all;
+    const all = st.goldAll || 1, got = st.gold, t = G.time, frac = Math.min(1, got / all);
     const medal = frac >= 0.7 && t <= 250 ? 'Gold' : frac >= 0.45 && t <= 380 ? 'Silver' : 'Bronze';
     const out = [
       { label: 'Gold nuggets', value: got + ' of ' + all },
@@ -1068,7 +1080,8 @@ function minecartDrawSign(st, s) {
     ctx.save(); ctx.translate(x, y - 140); ctx.rotate(Math.PI / 4); rr(-26, -26, 52, 52, 6); ctx.fill(); ctx.stroke(); ctx.restore();
     text('SLOW', x, y - 146, 15, '#3a200c', 'center', 'body');
     // a little downhill arrow
-    ctx.strokeStyle = '#3a200c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 12, y - 136); ctx.lineTo(x + 10, y - 126); ctx.stroke();
+    ctx.strokeStyle = '#3a200c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 13, y - 130); ctx.lineTo(x + 6, y - 120); ctx.stroke();
+    ctx.fillStyle = '#3a200c'; ctx.beginPath(); ctx.moveTo(x + 13, y - 116); ctx.lineTo(x + 1, y - 115); ctx.lineTo(x + 7, y - 126); ctx.closePath(); ctx.fill();
     return;
   }
   const fk = s.fork, w = 96, h = 92, top = y - 240;
