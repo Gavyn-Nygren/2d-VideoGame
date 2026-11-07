@@ -12,7 +12,7 @@
      says lands in the ring. Its idea of the angle is off by a degree or two (less after each miss), so it misses now
      and then like a person. If the meter goes round twice without a good moment it lets go at the bottom (too soft:
      no throw) and thinks again.
-   - Zipper: walks to the X and waits for the hook, grabs the handle, then tucks (▶) and brakes (◀) so it reaches the
+   - Zipper: climbs to the ladder side of the crow's nest and waits for the hook, grabs the handle, then tucks (▶) and brakes (◀) so it reaches the
      knot slower than a bonk, lifts its legs (▲) for flags and high coins and dips (▼) for lanterns and low coins a
      moment before they reach it, and lets go at the knot. Then it walks to the capstan and heaves on a steady beat
      (about every 0.45 s) once the rider is in the chair.
@@ -108,8 +108,8 @@
     }
     // charging: let go when the head-throw at the next tick's power lands in the ring
     out.act = true;
-    const ph = ((hop.chargeT + dt) / P.powPeriod) % 1, pw = ph < 0.5 ? ph * 2 : 2 - ph * 2;
-    const cyc = Math.floor((hop.chargeT + dt) / P.powPeriod);
+    const pw = MODES.grapple.test.powAt(hop, hop.chargeT + dt);
+    const cyc = Math.floor((hop.chargeT + dt) / (hop.period || P.powPeriod));
     if (pw >= P.powMin) {
       const r = simThrow(m, hop, hop.ang + st.angErr, pw, m.t + dt);
       if (r.hit === 'ring') { out.act = false; return out; }
@@ -197,11 +197,9 @@
       switch (nd.job) {
         case 'climb': case 'spot': case 'capstan': case 'waitHook':
           walkTo(out, m, pl, nd.nest, nd.x, 4); return out;
-        case 'grab':
-          if (walkTo(out, m, pl, true, nd.x, 6)) out.act = 'tap';
-          return out;
-        case 'board':
-          if (walkTo(out, m, pl, true, nd.x, 6)) out.act = 'tap';
+        case 'grab': case 'board':
+          // (the handle and the chair can be taken from anywhere in the crow's nest)
+          if (pl.mode === 'walk' && pl.onNest) out.act = 'tap'; else walkTo(out, m, pl, true, nd.x, 6);
           return out;
         case 'zip': return zipper(st, p, m, hop, pl, dt);
         case 'ride': return rider(st, p, m, hop, pl, dt);

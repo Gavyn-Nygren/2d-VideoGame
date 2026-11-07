@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Screenshots of 18-2 Grapple & Zip at a few moments, with the computer playing both (or scripted steps).
 // Usage: node tools/w18/grapple-shots.js [--w=1280 --h=800] [--times=3,12,20] [--room=0] [--out=build/w18] [--solo=0|1|none] [--touch]
+//        [--view=2p|0|1] (the computer still plays, but the picture is drawn as if people play: both, or only Pip / Bo)
+//        [--gold=1|2] (gives the hop gold / super gold help when the picture is taken) [--tag=name]
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -39,11 +41,29 @@ const flag = k => args.includes('--' + k);
       const P = window.__pipbo, G = P.G;
       while (window.__simT < t && G.mode === 'play') { P.step(P.DT); window.__simT += P.DT; }
     }, t);
-    await page.waitForTimeout(120);
+    await page.evaluate(({ view, gold, stuck }) => {
+      const G = window.__pipbo.G, st = G.mst;
+      window.__cpuWas = G.cpuOn.slice();
+      if (view === '2p') G.cpuOn = [false, false]; else if (view === '0') G.cpuOn = [false, true]; else if (view === '1') G.cpuOn = [true, false];
+      if (gold && st.hop) st.hop.gold = +gold;
+      // --stuck: the hop has stalled, so Captain Polly flies over with a hint (the players are frozen for 2 s)
+      if (stuck && st.hop) { const keep = G.players.map(p => p.input); st.hop.stuckT = 21; G.players.forEach(p => { p.input = {}; }); const on = G.cpuOn; G.cpuOn = [false, false]; for (let k = 0; k < 240; k++) window.__pipbo.step(window.__pipbo.DT); G.cpuOn = on; G.players.forEach((p, i) => { p.input = keep[i]; }); }
+      // a few steps so prompts and hints for "people" show (the inputs stay the computer's)
+      if (view) for (let k = 0; k < 3; k++) window.__pipbo.step(window.__pipbo.DT);
+    }, { view: opt('view', ''), gold: opt('gold', ''), stuck: flag('stuck') });
+    await page.waitForTimeout(150);
     const info = await page.evaluate(() => { const G = window.__pipbo.G, st = G.mst; return { mode: G.mode, room: G.room, hop: st.hop && st.hop.i, phase: st.hop && st.hop.phase, t: G.time.toFixed(1) }; });
-    const f = path.join(out, `grapple-${w}x${h}-r${room}-t${t}.png`);
+    const f = path.join(out, `grapple-${w}x${h}-r${room}-t${t}${opt('tag', '')}.png`);
     await page.screenshot({ path: f });
+    await page.evaluate(() => { window.__pipbo.G.cpuOn = window.__cpuWas; });
     console.log(f, JSON.stringify(info));
+  }
+  // --results: play on to the end and take the results card too
+  if (flag('results')) {
+    await page.evaluate(() => { const P = window.__pipbo, G = P.G; let n = 0; while (G.mode === 'play' && n < 600 * 120) { P.step(P.DT); n++; } });
+    await page.waitForTimeout(4500);
+    const f = path.join(out, `grapple-${w}x${h}-results.png`);
+    await page.screenshot({ path: f }); console.log(f);
   }
   if (errors.length) console.log('ERRORS:\n' + errors.join('\n'));
   await browser.close();

@@ -49,7 +49,7 @@ if (typeof definePreview === 'function') {
     ctx.restore();
   }
   definePreview('Grapple & Zip', {
-    blurb: 'One throws the grappling hook to the next ship, the other zips down the rope for coins, then cranks the thrower across!',
+    blurb: 'Throw the hook to the next ship, zip down the rope, crank your partner over!',
     loop: 6.4,
     still: 2.9,
     draw(v, t) {
@@ -120,7 +120,7 @@ if (typeof definePreview === 'function') {
         const p = pw18gRope(zipK, sag), legsUp = Math.abs(p.x - flagX) < 18;
         v.line(p.x, p.y, p.x, p.y + 8, '#6b4424', 1.6);
         v.hero(1, p.x, p.y + (legsUp ? 22 : 28), { s: 0.6, face: 1, sq: legsUp ? 0.25 : -0.08, mood: legsUp ? 'wow' : 'joy' });
-        if (t < 2.9) v.label('Wheee!', p.x, p.y - 12, 10, '#ffffff');
+        if (t < 2.9) v.label('Wheee!', p.x + 26, p.y + 2, 10, '#ffffff');
       } else v.hero(1, capX - 10, deckR, { s: 0.6, face: 1, sq: cr ? Math.sin(t * 12) * 0.08 : 0, mood: t > 5.4 ? 'joy' : 'grit' });
       // Pip: throws from the nest, rides the chair, hops aboard
       const chairK = t < 3.9 ? 0 : v.ease.inOut(v.seg(t, 3.9, 5.4)) * 0.97;

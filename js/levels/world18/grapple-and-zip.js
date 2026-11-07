@@ -13,7 +13,8 @@
         the flight), hold the action to charge (the meter rises and falls), let go to throw. The hook must pass through
         the ring. Ships bob, wind nudges the hook (later gusty), laundry lines and gulls can block, the ring can hang off
         a swinging boom. A miss ("Clunk!", "Splash!", "Flump! Socks!") reels the hook back and counts a try.
-     2. ZIP: once the hook holds, the zipper (standing at the X too) presses the action to grab the handle and zips down
+     2. ZIP: once the hook holds, the zipper (anywhere in the crow's nest; they wait on the ladder side so the thrower
+        stays in view) presses the action to grab the handle and zips down
         the rope. It speeds up downhill; ▶ tucks (faster), ◀ brakes. Coins float along the line: some in the middle,
         some high (hold ▲ to pull your legs up) and some low (hold ▼ to dangle). A flag pole from a rowboat below needs
         ▲, a lantern hanging from above needs ▼, else "Bonk!" (a slow-down, counted). Reaching the stopper knot too fast
@@ -26,8 +27,10 @@
    Whoever arrived first (the zipper) throws the next hook, so the jobs swap every hop. 4 fleets ("Fleet N of 4") of 2
    hops each: Dockside Hop, Laundry Day, Windy Boom, Polly's Flagship (gulls, gusts and a tall flagship). Nobody can do
    a hop alone: only the thrower throws, only the zipper zips and cranks, and the rider must board.
-   Gold help (always announced): Gold hook after 3 misses on one hop (a bigger ring and a longer guide), Super gold hook
-   after 6 (Polly shows the whole path, an even bigger ring); Gold handle after 2 splashes (it won't let go over water);
+   Gold help (always announced): Gold hook after 3 misses on one hop (a bigger ring, a 1.3x slower meter and a longer
+   guide), Super gold hook after 6 (a huge ring, a 1.6x slower meter, the whole path shown with a star or a cross where it
+   ends, gold marks on the meter for the powers that catch, Polly by the ring); Gold handle after 2 splashes (it won't
+   let go over water); a tip after every miss says what went wrong (too far, too short, socks, a gull);
    Gold capstan after 14 s of hauling (every heave pulls 1.6x).
    Room def: { title, tip, act, fleet: [start ship, ship, ship] }. A ship (the hop INTO it is described on it):
      { name, pal, nest (crow's nest height above the deck), ring (ring height), gap (mast to mast from the ship before),
@@ -39,9 +42,9 @@
 const GRAPPLE = {
   SEA: 432, free: 44, freeFlag: 62, shipL: 330, flagL: 430,
   walk: 175, climb: 200, hopV: 330, grav: 1400,
-  aimMin: -12, aimMax: 78, aimRate: 46, aimRate2: 90, powPeriod: 1.9, powMin: 0.08, vMin: 230, vMax: 860, hookG: 900,
-  ringR: 13, hookR: 6, goldRing: 1.9, superRing: 2.6, guideT: 0.26, guideGold: 0.55, goldMiss: 3, superMiss: 6,
-  reelT: 1.05, flyMax: 3.2, spotTol: 16, grabTol: 24, ladTol: 15,
+  aimMin: -12, aimMax: 78, aimRate: 46, aimRate2: 90, powPeriod: 2.4, goldSlow: 1.3, superSlow: 1.6, powMin: 0.08, vMin: 230, vMax: 860, hookG: 900,
+  ringR: 16, hookR: 6, goldRing: 1.9, superRing: 2.6, guideT: 0.26, guideGold: 0.55, goldMiss: 3, superMiss: 6,
+  reelT: 1.05, flyMax: 3.2, spotTol: 16, ladTol: 15,
   zipSag: 0.05, chairSag: 0.12, zipG: 720, zipDrag: 0.0014, tuckAcc: 90, brakeAcc: 520, crawl: 62, bonkV: 255, stopT: 1.8,
   offMid: 26, offHi: 12, offLo: 44, offRate: 230, rideMid: 32, rideHi: 14, rideLo: 48,
   coinR: 13, endBack: 32,
@@ -85,7 +88,7 @@ function grappleShip(spec, x, k) {
     bobA: dock ? 0 : flagship ? 3 : 4 + (k % 3), bobW: 1.6 + (k % 4) * 0.17, ph: k * 1.37,
   };
   sh.deckX0 = x + (dock ? 8 : 30); sh.deckX1 = x + L - (dock ? 20 : 34);
-  sh.ladX = mast - 22; sh.spotX = mast + 14; sh.capX = mast - 104;
+  sh.ladX = mast - 22; sh.spotX = mast + 16; sh.waitX = mast - 24; sh.capX = mast - 104;
   sh.nestX0 = mast - 30; sh.nestX1 = mast + 30;
   sh.mizzen = dock ? null : x + 0.2 * L; sh.fore = dock ? null : x + 0.82 * L;
   sh.mizzenH = 104; sh.foreH = 126;
@@ -261,11 +264,11 @@ function grappleHopStep(st, hop, pend, dt) {
       const ud = (grappleUpH(G.players[hop.T]) ? 1 : 0) - (Tin.down ? 1 : 0);
       if (ud) { hop.aimHold += dt; hop.ang = clamp(hop.ang + ud * (hop.aimHold > 0.45 ? P.aimRate2 : P.aimRate) * dt, P.aimMin, P.aimMax); }
       else hop.aimHold = 0;
-      if (Tin.act && !hop.charging && (pend[hop.T].act || hop.armed)) { hop.charging = true; hop.chargeT = 0; hop.armed = false; Sfx.play('grappleCharge', hop.T); }
+      if (Tin.act && !hop.charging && (pend[hop.T].act || hop.armed)) { hop.charging = true; hop.chargeT = 0; hop.armed = false; hop.period = grapplePeriod(hop); Sfx.play('grappleCharge', hop.T); }
+      if (hop.gold >= 2) grappleSweetSpots(st, hop, from, dt);
       if (hop.charging) {
         hop.chargeT += dt;
-        const ph = (hop.chargeT / P.powPeriod) % 1;
-        hop.pow = ph < 0.5 ? ph * 2 : 2 - ph * 2;
+        hop.pow = grapplePowAt(hop, hop.chargeT);
         if (!Tin.act) {
           hop.charging = false;
           if (hop.pow < P.powMin) { grappleHint(st, hop.T, 'Hold ' + grappleKey(hop.T, 'act') + ' longer, then let go!'); hop.pow = 0; }
@@ -285,7 +288,7 @@ function grappleHopStep(st, hop, pend, dt) {
     if (hop.reelT >= P.reelT) { hop.phase = 'aim'; hop.hook = null; hop.pow = 0; hop.armed = false; }
   } else if (hop.phase === 'caught') {
     // the zipper grabs the handle at the X
-    if (pend[hop.Z].act && Zp.mode === 'walk' && Zp.ship === hop.from && Zp.onNest && Math.abs(Zp.x - from.spotX) < P.grabTol) { grappleStartZip(st, hop, Zp); pend[hop.Z].act = false; }
+    if (pend[hop.Z].act && Zp.mode === 'walk' && Zp.ship === hop.from && Zp.onNest) { grappleStartZip(st, hop, Zp); pend[hop.Z].act = false; }
     else if (pend[hop.Z].act && Zp.mode === 'walk' && Zp.ship === hop.from && !Zp.onNest) grappleHint(st, hop.Z, 'Climb up to the crow\'s nest first! ' + grappleKey(hop.Z, 'up'), 2.2);
     if (pend[hop.T].act && Tp.onNest) grappleHint(st, hop.T, NAMES[hop.Z] + ' zips first! Then you ride.', 2.2);
   } else if (hop.phase === 'zip') {
@@ -297,7 +300,7 @@ function grappleHopStep(st, hop, pend, dt) {
       grappleMsg(st, 'Gold capstan! Every heave pulls ' + NAMES[hop.T] + ' further', C.gold, 3.6); Sfx.play('grappleHelp');
     }
     // the rider boards at the X
-    if (!hop.boarded && pend[hop.T].act && Tp.mode === 'walk' && Tp.ship === hop.from && Tp.onNest && Math.abs(Tp.x - from.spotX) < P.grabTol) {
+    if (!hop.boarded && pend[hop.T].act && Tp.mode === 'walk' && Tp.ship === hop.from && Tp.onNest) {
       hop.boarded = true; Tp.mode = 'chair'; Tp.zip = { s: 0, off: P.rideMid, pose: 0 }; hop.chairS = 0; hop.chairTS = 0;
       hop.sagTo = P.chairSag;
       grapplePop(st, Tp.x, grappleNestY(from, st.t) - 60, 'Hop in!', '#ffffff', 18);
@@ -318,6 +321,35 @@ function grappleHopStep(st, hop, pend, dt) {
       grappleChairTick(st, hop, Tp, dt);
     }
   }
+}
+// the power meter: up and down, slower with gold help (the period is fixed when the charge starts)
+const grapplePeriod = hop => GRAPPLE.powPeriod * (hop.gold >= 2 ? GRAPPLE.superSlow : hop.gold >= 1 ? GRAPPLE.goldSlow : 1);
+function grapplePowAt(hop, ct) { const ph = (ct / (hop.period || grapplePeriod(hop))) % 1; return ph < 0.5 ? ph * 2 : 2 - ph * 2; }
+// a throw worked out ahead with the level's own hook rules: what it hits and where ({ hit, x, y, pts })
+function grappleSimThrow(st, hop, from, ang, pow, t0, maxT, keep) {
+  const P = GRAPPLE, h = grappleHand(from, t0), a = ang * Math.PI / 180, v = P.vMin + pow * (P.vMax - P.vMin);
+  const hk = { x: h.x, y: h.y, vx: v * Math.cos(a), vy: -v * Math.sin(a), t: 0, near: 1e9 }, dt = 1 / 60, pts = keep ? [] : null;
+  for (let j = 1; hk.t < maxT; j++) {
+    hk.t += dt;
+    let hit = null;
+    for (let i = 0; i < 2 && !hit; i++) hit = grappleHookMove(st, hop, hk, t0 + (j - 1) * dt + dt * (i + 1) / 2, dt / 2);
+    if (pts) pts.push({ x: hk.x, y: hk.y });
+    if (hit) return { hit, x: hk.x, y: hk.y, pts };
+  }
+  return { hit: null, x: hk.x, y: hk.y, pts };
+}
+// super gold: which powers on the meter catch the ring at this angle right now (gold marks on the meter)
+function grappleSweetSpots(st, hop, from, dt) {
+  hop.sweetT = (hop.sweetT || 0) - dt;
+  if (hop.sweetT > 0) return;
+  hop.sweetT = 0.15;
+  const bands = [];
+  let on = null;
+  for (let pw = 0.08; pw <= 1.0001; pw += 0.02) {
+    const ok = grappleSimThrow(st, hop, from, hop.ang, pw, st.t + 0.05, GRAPPLE.flyMax).hit === 'ring';
+    if (ok && !on) { on = [pw - 0.01, pw + 0.01]; bands.push(on); } else if (ok) on[1] = pw + 0.01; else on = null;
+  }
+  hop.sweet = bands;
 }
 function grappleOnSpot(sh, pl) { return pl.mode === 'walk' && pl.ship === sh.k && pl.onNest && Math.abs(pl.x - sh.spotX) < GRAPPLE.spotTol; }
 function grappleThrow(st, hop, from) {
@@ -403,13 +435,20 @@ function grappleHookTick(st, hop, dt) {
   const want = hop.misses >= P.superMiss ? 2 : hop.misses >= P.goldMiss ? 1 : 0;
   if (want > hop.gold) {
     hop.gold = want; st.stats.helps++;
-    grappleMsg(st, want === 2 ? 'Super gold hook! Captain Polly shows the whole throw, and the ring is huge' : 'Gold hook! A bigger ring and a longer aim guide', C.gold, 4);
+    grappleMsg(st, want === 2 ? 'Super gold hook! The whole throw shows, and gold marks on the meter say when to let go' : 'Gold hook! A bigger ring, a slower meter and a longer aim guide', C.gold, 4.5);
     Sfx.play('grappleHelp');
-  } else if (hop.misses === 1 && !st.hinted['aim' + st.k + hop.i]) {
-    st.hinted['aim' + st.k + hop.i] = true;
-    grappleHint(st, hop.T, hit === 'far' || (hit === 'mast' && hk.x > to.mast) ? 'Too strong! Let go a bit sooner' : hit === 'water' || hit === 'deck' ? 'Aim higher ' + grappleKey(hop.T, 'up') + ' or throw harder' : 'Try a different angle ' + grappleKey(hop.T, 'ud'), 3.2);
   }
+  // what went wrong, after every miss (short, so it never piles up)
+  grappleHint(st, hop.T, grappleMissTip(st, hop, hk, hit, to), 2.6);
   if (hk.near < 46 && hit !== 'ring') st.stats.close++;
+}
+function grappleMissTip(st, hop, hk, hit, to) {
+  const rg = grappleRing(st, to, st.t), id = hop.T;
+  if (hit === 'laundry') return 'Socks! Throw over or under them ' + grappleKey(id, 'ud');
+  if (hit === 'gull') return 'A gull! Throw when the way is clear';
+  if (hit === 'far' || hk.x > rg.x + 10) return 'Too far! Let go a bit sooner';
+  if (hk.y > rg.y) return 'Too short! Hold ' + grappleKey(id, 'act') + ' a bit longer';
+  return 'Too high! Aim lower ' + grappleKey(id, 'down');
 }
 function grappleStartZip(st, hop, Zp) {
   const P = GRAPPLE;
@@ -479,12 +518,16 @@ function grappleTouch(st, hop, pl, bx, by, hh, dt) {
       for (let i = 0; i < 6; i++) grapplePart(st, q.x, cy, (Math.random() - 0.5) * 140, (Math.random() - 0.6) * 140, 0.5, C.gold, 2.6, 200, 'spark');
     }
   }
-  if (pl.bonkT > 0) { pl.bonkT -= dt; return; }
+  if (pl.bonkT > 0) pl.bonkT -= dt;
   for (const o of hop.obs) {
     const q = grappleRopeU(r, o.u);
-    if (Math.abs(q.x - bx) > 11) continue;
+    o.by = o.by || [false, false];
+    // (one bonk per pass: someone stopped against a flag or lantern isn't bonked again and again)
+    if (Math.abs(q.x - bx) > 11) { if (Math.abs(q.x - bx) > 24) o.by[pl.id] = false; continue; }
+    if (pl.bonkT > 0 || o.by[pl.id]) continue;
     const hit = o.kind === 'flag' ? by + hh > q.y + 33 : by - hh < q.y + 22;
     if (!hit) continue;
+    o.by[pl.id] = true;
     o.hitT = 1; pl.bonkT = 0.7; pl.sq = 1; st.stats.bonks++;
     if (pl.zip && pl.mode === 'zip') pl.zip.v = Math.min(pl.zip.v, 40);
     if (pl.mode === 'chair') hop.chairTS = Math.min(hop.chairTS, hop.chairS);
@@ -571,6 +614,13 @@ function grapplePlayer(st, pl, p, pnd, dt) {
   if (!aiming && !(hop && hop.T === pl.id && hop.charging)) { if (L) vx = -P.walk; else if (R) vx = P.walk; }
   if (vx) { pl.face = Math.sign(vx); pl.walkPh += dt * 11; } else pl.walkPh = 0;
   pl.x += vx * dt;
+  // the crow's nest is small: the thrower slides onto the middle of the X, and a partner standing still right next
+  // to them shuffles over to the ladder side so both stay in view
+  if (aiming) pl.x = approach(pl.x, sh.spotX, 140 * dt);
+  else if (!vx && pl.onNest && hop && !hop.done && hop.Z === pl.id && hop.from === pl.ship) {
+    const o = st.pl[hop.T];
+    if (o.mode === 'walk' && o.onNest && o.ship === pl.ship && Math.abs(o.x - pl.x) < 30) pl.x = approach(pl.x, sh.waitX, 90 * dt);
+  }
   const x0 = pl.onNest ? sh.nestX0 + 4 : sh.deckX0, x1 = pl.onNest ? sh.nestX1 - 4 : sh.deckX1;
   pl.x = clamp(pl.x, x0, x1);
   if (pl.onNest) pl.h = sh.nest;
@@ -681,7 +731,7 @@ function grappleNeeds(st, id) {
   if (hop.phase === 'aim' || hop.phase === 'fly' || hop.phase === 'reel' || hop.phase === 'caught') {
     if (pl.ship !== hop.from) return { job: 'wait' };
     if (!pl.onNest) return { job: 'climb', ship: from.k, x: from.ladX, nest: true };
-    const x = from.spotX - 12;
+    const x = from.waitX;
     if (hop.phase !== 'caught') return { job: 'waitHook', ship: from.k, x, nest: true };
     return { job: 'grab', ship: from.k, x, nest: true };
   }
@@ -821,7 +871,7 @@ function grappleActLabels(st) {
     });
     let changed = false;
     for (const o of grappleLabelEls) {
-      const want = o.id < 0 ? 'throw/zip' : word(o.id);
+      const want = o.id < 0 ? 'action' : word(o.id);
       if (o.el.textContent !== want) { o.el.textContent = want; changed = true; }
     }
     if (changed && typeof fitActLabels === 'function') fitActLabels();
@@ -876,7 +926,7 @@ MODES.grapple = {
     const thr = s.throws[0] + s.throws[1], miss = s.misses[0] + s.misses[1];
     const out = [
       { label: 'Coins', value: s.coins + ' of ' + s.coinsAll },
-      { label: 'Hooks thrown', value: thr + (miss ? ' (' + miss + ' missed)' : ' (no misses!)') },
+      { label: 'Hooks / misses', value: thr + ' / ' + miss },
       { label: 'Splashes & bonks', value: s.splashes + ' & ' + s.bonks },
       { label: 'Medal', value: grappleMedal(G.time, s) },
     ];
@@ -887,7 +937,7 @@ MODES.grapple = {
   },
   // read-only helpers for the computer brain and the bot tests
   test: { rope: grappleRopeMake, ropeAt: grappleRopeAt, ropeU: grappleRopeU, hookMove: grappleHookMove, ring: grappleRing, hand: grappleHand,
-    deckY: grappleDeckY, nestY: grappleNestY, onSpot: grappleOnSpot, overDeck: grappleOverDeck, wind: grappleWind },
+    deckY: grappleDeckY, nestY: grappleNestY, onSpot: grappleOnSpot, overDeck: grappleOverDeck, wind: grappleWind, powAt: grapplePowAt },
 };
 // the medal: Gold by 3:45 with 65% of the coins and at most 8 missed hooks; Silver by 5:30 with 35%
 const GRAPPLE_MEDAL = { gold: 225, silver: 330, goldCoins: 0.65, silverCoins: 0.35, goldMiss: 8 };
@@ -918,7 +968,9 @@ function grappleDrawWorld(st) {
     grappleDrawCoins(st, hop);
     grappleDrawGulls(st, hop);
   }
-  for (const pl of st.pl) grappleDrawPlayer(st, pl);
+  // (the thrower is drawn last so the partner waiting in the crow's nest never hides them)
+  const order = hop && !hop.done && hop.T === 0 ? [1, 0] : [0, 1];
+  for (const k of order) grappleDrawPlayer(st, st.pl[k]);
   for (const sh of st.ships) { if (!grappleVisible(st, sh)) continue; grappleDrawNestFront(st, sh); }
   if (hop) { grappleDrawHook(st, hop); grappleDrawObstacles(st, hop, true); }
   grappleDrawDolphin(st);
@@ -940,11 +992,13 @@ function grappleDrawFront(st) {
   ctx.globalAlpha = 1;
   grappleDrawPolly(st);
   for (const q of st.pops) {
-    const a = clamp(1.3 - q.t, 0, 1), x = clamp(q.x, cam.x + 80, cam.x + W - 80), y = q.y - q.t * 30;
-    ctx.globalAlpha = a;
+    // (a quick fade at the end: a half-see-through outline shows through the letters)
+    const a = clamp((1.3 - q.t) / 0.3, 0, 1), x = clamp(q.x, cam.x + 80, cam.x + W - 80), y = q.y - q.t * 30;
     ctx.font = q.size + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // (the outline fades faster than the letters, so it never shows through them as they go)
+    ctx.globalAlpha = a * a * a;
     ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(3, q.size * 0.2); ctx.strokeStyle = 'rgba(28,26,54,0.85)'; ctx.strokeText(q.s, x, y);
-    ctx.fillStyle = q.col; ctx.fillText(q.s, x, y);
+    ctx.globalAlpha = a; ctx.fillStyle = q.col; ctx.fillText(q.s, x, y);
   }
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -1378,31 +1432,39 @@ function grappleDrawAim(st, hop) {
   if (!hop || hop.done || hop.phase !== 'aim' || G.introT > 0) return;
   const from = st.ships[hop.from], Tp = st.pl[hop.T];
   if (!grappleOnSpot(from, Tp)) return;
-  const hand = grappleHand(from, st.t), a = hop.ang * Math.PI / 180, pow = hop.charging ? hop.pow : 0.55;
-  const v = P.vMin + pow * (P.vMax - P.vMin);
-  let x = hand.x, y = hand.y, vx = v * Math.cos(a), vy = -v * Math.sin(a), t = 0;
-  const T = hop.gold >= 2 ? P.flyMax : hop.gold >= 1 ? P.guideGold : P.guideT, dt = 1 / 60;
+  const hand = grappleHand(from, st.t), pow = hop.charging ? hop.pow : 0.55;
+  // the guide follows the level's own hook rules, so it stops at socks, gulls and masts like the hook would
+  const T = hop.gold >= 2 ? P.flyMax : hop.gold >= 1 ? P.guideGold : P.guideT;
+  const sim = grappleSimThrow(st, hop, from, hop.ang, pow, st.t, T, true);
   const col = hop.gold ? C.gold : '#ffffff';
-  let n = 0;
-  while (t < T && y < P.SEA) {
-    vy += P.hookG * dt; vx += grappleWind(hop, st.t + t) * dt; x += vx * dt; y += vy * dt; t += dt; n++;
-    if (n % 3 === 0) {
-      const fade = hop.gold >= 2 ? 0.9 : clamp(1.2 - t / T, 0.15, 1);
-      ctx.globalAlpha = fade; ctx.fillStyle = 'rgba(28,26,54,0.5)'; circle(x, y, 4.2); ctx.fill();
-      ctx.fillStyle = col; circle(x, y, 3); ctx.fill();
-    }
-    if (hop.gold >= 2) { const rg = grappleRing(st, st.ships[hop.to], st.t + t); if (Math.hypot(x - rg.x, y - rg.y) < 14) break; }
-  }
+  sim.pts.forEach((q, n) => {
+    if (n % 2 !== 1 || q.y > P.SEA) return;
+    const u = (n + 1) / 60, fade = hop.gold >= 2 ? 0.9 : clamp(1.2 - u / T, 0.15, 1);
+    ctx.globalAlpha = fade; ctx.fillStyle = 'rgba(28,26,54,0.5)'; circle(q.x, q.y, 4.2); ctx.fill();
+    ctx.fillStyle = col; circle(q.x, q.y, 3); ctx.fill();
+  });
   ctx.globalAlpha = 1;
-  // the power meter by the thrower: it rises and falls while the action is held
-  const mx = hand.x + 30, my = hand.y - 74, mh = 62, mw = 13;
-  ctx.fillStyle = 'rgba(28,26,54,0.78)'; rr(mx - 4, my - 4, mw + 8, mh + 8, 7); ctx.fill();
+  // super gold shows where the whole throw ends: a gold star in the ring, or a little cross where it would miss
+  if (hop.gold >= 2 && sim.hit) {
+    if (sim.hit === 'ring') { ctx.fillStyle = C.gold; grappleStar(sim.x, sim.y, 11, 5, G.clock * 2); ctx.fill(); }
+    else if (sim.y < P.SEA + 4) { ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sim.x - 6, sim.y - 6); ctx.lineTo(sim.x + 6, sim.y + 6); ctx.moveTo(sim.x + 6, sim.y - 6); ctx.lineTo(sim.x - 6, sim.y + 6); ctx.stroke(); }
+  }
+  // the power meter just behind the thrower (out of the guide's way): it rises and falls while the action is held;
+  // with super gold the powers that catch the ring at this angle are marked in gold
+  const mx = hand.x - 102, my = hand.y - 14, mh = 62, mw = 13;
+  ctx.font = '700 10px "Atkinson Hyperlegible", system-ui, sans-serif';
+  const lw = ctx.measureText('power').width + 10;
+  ctx.fillStyle = 'rgba(28,26,54,0.78)'; rr(mx + mw / 2 - Math.max(mw + 8, lw) / 2, my - 4, Math.max(mw + 8, lw), mh + 24, 7); ctx.fill();
   const g = ctx.createLinearGradient(0, my + mh, 0, my);
   g.addColorStop(0, '#7fd36a'); g.addColorStop(0.6, '#ffd75e'); g.addColorStop(1, '#ff7a6b');
   ctx.fillStyle = 'rgba(255,255,255,0.18)'; rr(mx, my, mw, mh, 5); ctx.fill();
   if (hop.pow > 0.02) { ctx.fillStyle = g; rr(mx, my + mh * (1 - hop.pow), mw, mh * hop.pow, 5); ctx.fill(); }
+  if (hop.gold >= 2 && hop.sweet) for (const [p0, p1] of hop.sweet) {
+    const y0 = my + mh * (1 - clamp(p1, 0, 1)), y1 = my + mh * (1 - clamp(p0, 0, 1));
+    ctx.strokeStyle = C.gold; ctx.lineWidth = 3; rr(mx - 3, y0, mw + 6, Math.max(3, y1 - y0), 2); ctx.stroke();
+  }
   ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1.5; rr(mx, my, mw, mh, 5); ctx.stroke();
-  text('power', mx + mw / 2, my + mh + 12, 10, '#ffffff', 'center', 'body');
+  text('power', mx + mw / 2, my + mh + 11, 10, '#ffffff', 'center', 'body');
 }
 function grappleDrawCoins(st, hop) {
   const r = hop.rope || grappleRopeMake(grappleAnchor(st.ships[hop.from], st.t), grappleRing(st, st.ships[hop.to], st.t), GRAPPLE.zipSag);
@@ -1424,6 +1486,9 @@ function grappleDrawCoins(st, hop) {
 // flag poles on little rowboats (lift your legs) and lanterns held up by friendly gulls (dip under)
 function grappleDrawObstacles(st, hop, front) {
   const r = hop.rope || grappleRopeMake(grappleAnchor(st.ships[hop.from], st.t), grappleRing(st, st.ships[hop.to], st.t), GRAPPLE.zipSag), S = GRAPPLE.SEA;
+  const gone = hop.done ? clamp(hop.doneT / 0.8, 0, 1) : st.fin ? 1 : 0;
+  if (gone >= 1) return;
+  ctx.globalAlpha = 1 - gone;
   for (const o of hop.obs) {
     const q = grappleRopeU(r, o.u), wob = Math.sin(G.clock * 14) * 5 * o.hitT;
     if (o.kind === 'flag' && !front) {
@@ -1448,6 +1513,7 @@ function grappleDrawObstacles(st, hop, front) {
       ctx.fillStyle = '#fff6d0'; circle(lx, (top + bot) / 2, 3); ctx.fill();
     }
   }
+  ctx.globalAlpha = 1;
 }
 function grappleGullShape(x, y, face, ph, s) {
   ctx.save(); ctx.translate(x, y); ctx.scale(face * (s || 1), s || 1);
@@ -1652,9 +1718,19 @@ function grappleDrawPolly(st) {
   if (po.say) {
     ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
     const w = ctx.measureText(po.say).width + 20, h = 24;
-    const bx = clamp(x - w / 2, st.cam.x + 8, st.cam.x + W - w - 8), by = Math.max(54, y - 56);
-    ctx.fillStyle = '#ffffff'; rr(bx, by, w, h, 12); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(clamp(x, bx + 12, bx + w - 12) - 6, by + h - 1); ctx.lineTo(clamp(x, bx + 12, bx + w - 12) + 4, by + h - 1); ctx.lineTo(x, by + h + 8); ctx.closePath(); ctx.fill();
+    let bx = clamp(x - w / 2, st.cam.x + 8, st.cam.x + W - w - 8), by = y - 56;
+    ctx.fillStyle = '#ffffff';
+    if (by < 196) {
+      // too high (it would sit on the HUD pills): beside her, on whichever side has room
+      const right = x + 28 + w < st.cam.x + W - 8;
+      bx = right ? x + 28 : x - 28 - w; by = clamp(y - 22, 196, H - 120);
+      const tx = right ? bx + 1 : bx + w - 1, ty = clamp(y - 6, by + 6, by + h - 6);
+      ctx.beginPath(); ctx.moveTo(tx, ty - 6); ctx.lineTo(tx, ty + 4); ctx.lineTo(right ? x + 16 : x - 16, y - 8); ctx.closePath(); ctx.fill();
+      rr(bx, by, w, h, 12); ctx.fill();
+    } else {
+      rr(bx, by, w, h, 12); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(clamp(x, bx + 12, bx + w - 12) - 6, by + h - 1); ctx.lineTo(clamp(x, bx + 12, bx + w - 12) + 4, by + h - 1); ctx.lineTo(x, by + h + 8); ctx.closePath(); ctx.fill();
+    }
     ctx.strokeStyle = '#4fbf4a'; ctx.lineWidth = 2; rr(bx, by, w, h, 12); ctx.stroke();
     text(po.say, bx + w / 2, by + h / 2 + 0.5, 13, C.ink, 'center', 'body');
   }
@@ -1722,8 +1798,9 @@ function grappleHud(st) {
     }
     ctx.globalAlpha = 1;
   }
-  // the gold help message: between the level pill and the time when it fits, else lower down
-  let signY = big ? 92 : 80;
+  // the gold help message: between the level pill and the time when it fits, else low over the water (above the
+  // fleet's sign when that is up), where the prompts over the crow's nests can't cover it
+  const lowY = hh => H - Math.round(52 * z) - 16 - hh;
   if (st.msg) {
     let fs = big ? 19 : 14;
     const h = big ? 32 : 26;
@@ -1732,18 +1809,19 @@ function grappleHud(st) {
     ctx.font = font(fs);
     let w = ctx.measureText(st.msg.text).width + 30, cx = W / 2, y = 12;
     if (w <= right - left) cx = clamp(cx, left + w / 2, right - w / 2);
-    else { cx = W / 2; y = signY + (big ? 40 : 30); while (w > W - 40 && fs > 11) { fs--; ctx.font = font(fs); w = ctx.measureText(st.msg.text).width + 30; } }
+    else { cx = W / 2; y = lowY(h) - (st.sign && G.introT <= 0 ? (big ? 33 : 28) + 8 : 0); while (w > W - 40 && fs > 11) { fs--; ctx.font = font(fs); w = ctx.measureText(st.msg.text).width + 30; } }
     ctx.globalAlpha = clamp((st.msg.life - st.msg.t) / 0.3, 0, 1);
     pill(cx, y, w, h, 'center'); text(st.msg.text, cx, y + h / 2 + 0.5, fs, st.msg.col, 'center', 'body'); ctx.globalAlpha = 1;
   }
-  // the fleet's sign: a wooden board in the middle of the sky
+  // the fleet's sign: a wooden board low over the water
   if (st.sign && G.introT <= 0) {
     const s = grappleSignText(st, st.sign.text);
     let fs = big ? 19 : 14;
     ctx.font = font(fs);
     let w = ctx.measureText(s).width + 34;
     while (w > W - 30 && fs > 11) { fs--; ctx.font = font(fs); w = ctx.measureText(s).width + 34; }
-    const h = fs + 14, a = clamp(Math.min(st.sign.t / 0.25, (st.sign.life - st.sign.t) / 0.4), 0, 1), y = big ? 132 : 112;
+    // (low over the water, just above the job cards: the prompts over the crow's nests stay clear of it)
+    const h = fs + 14, a = clamp(Math.min(st.sign.t / 0.25, (st.sign.life - st.sign.t) / 0.4), 0, 1), y = lowY(h);
     ctx.globalAlpha = a;
     ctx.fillStyle = '#c99358'; rr(W / 2 - w / 2, y, w, h, 8); ctx.fill();
     ctx.strokeStyle = '#6e4422'; ctx.lineWidth = 2.5; rr(W / 2 - w / 2, y, w, h, 8); ctx.stroke();
@@ -1831,10 +1909,9 @@ function grapplePrompt(st, id) {
     case 'aim':
       if (hop.charging) return { text: 'Let go to throw!', col: C.gold, pulse: hop.pow > 0.3 };
       return { text: k('ud') + ' aim, hold ' + k('act') + ' to throw', col: C.gold };
-    case 'waitHook': return id === hop.Z ? { text: 'Wait for ' + NAMES[hop.T] + "'s hook", col: '#d8f0ff' } : null;
+    case 'waitHook': return null; // (the job card says what's next; a chip here would only crowd the crow's nest)
     case 'grab': {
-      const d = nd.x - pl.x;
-      return Math.abs(d) < P.grabTol ? { text: 'Grab the handle! ' + k('act'), col: C.gold, pulse: true } : { text: (d < 0 ? k('left') + ' ' : '') + 'To the X' + (d > 0 ? ' ' + k('right') : '') };
+      return { text: 'Grab the handle! ' + k('act'), col: C.gold, pulse: true };
     }
     case 'zip': {
       if (pl.mode !== 'zip' || !pl.zip || !hop.rope) return null;
@@ -1850,8 +1927,7 @@ function grapplePrompt(st, id) {
       return null;
     }
     case 'board': {
-      const d = nd.x - pl.x;
-      return Math.abs(d) < P.grabTol ? { text: 'Hop in the chair! ' + k('act'), col: C.gold, pulse: true } : { text: (d < 0 ? k('left') + ' ' : '') + 'To the chair' + (d > 0 ? ' ' + k('right') : '') };
+      return { text: 'Hop in the chair! ' + k('act'), col: C.gold, pulse: true };
     }
     case 'ride': {
       if (!hop.rope || !pl.zip) return null;
@@ -1872,7 +1948,7 @@ function grapplePrompt(st, id) {
       return { text: ok ? 'Heave! ' + k('act') : '...ho!', col: ok ? C.gold : '#ffffff', pulse: ok };
     }
     case 'swim': return null;
-    default: return id === hop.T && (hop.phase === 'zip' || hop.phase === 'caught') && pl.onNest ? { text: 'Watch ' + NAMES[hop.Z] + ' zip!', col: '#d8f0ff' } : null;
+    default: return null;
   }
   void from;
 }
