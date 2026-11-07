@@ -4967,21 +4967,263 @@ const LEVELS = [
   //   Each level's def sits between its own BEGIN/END lines. world: 20 =====
   //
   // ----- BEGIN 21-1 Hot Air Balloon Climb (mode 'balloon', js/levels/world21/hot-air-balloon-climb.js) -----
+  // 21-1: side-on hot air balloon climb that scrolls UP (MODES.balloon): one burns (hold to heat and rise, pulse it or
+  // it overheats), one steers (◀ ▶ vent ropes, steady); jobs swap every climb. The map is only the two spawns; the mode
+  // builds each climb from its course (items: see the top of the level file). Altitudes h are px above the start.
+  { name: 'Hot Air Balloon Climb', world: 20, kind: 'team', mode: 'balloon', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Climb',
+    legend: {
+      pip: 'burner: hold <kbd>W</kbd> · steerer: <kbd>A</kbd><kbd>D</kbd> ropes, <kbd>S</kbd> steady',
+      bo: 'burner: hold <kbd>↑</kbd> · steerer: <kbd>←</kbd><kbd>→</kbd> ropes, <kbd>↓</kbd> steady',
+      pad: 'burner holds <span data-glyph="a"></span>, steerer: stick ◀ ▶, ▼ steady,',
+    },
+    tip: 'One burns (hold ▲ to rise, but not too long!), one steers (◀ ▶). Thread the islands and land on the dock!',
+    act: { label: 'burn', labels: ['burn', 'steady'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Meadow Liftoff', burner: 0, look: 'meadow', startX: 300, act: { label: 'burn', labels: ['burn', 'steady'] },
+        tip: 'Pip burns: hold ▲ to rise, let go so it cools. Bo steers with ◀ ▶. Then land softly on the dock!',
+        course: [
+          ['sign', 150, 520, '{B}: hold ▲ to burn and go up!'], ['stars', 300, 300, 5, 0, 75],
+          ['sign', 720, 660, '{S}: ◀ ▶ pull the ropes to drift'], ['stars', 800, 380, 5, 60, 40],
+          ['gap', 1200, 650, 270], ['pb', 1080, 650], ['sign', 1100, 260, 'A gap! {S} steers, {B} waits below'],
+          ['sign', 1480, 230, 'Grumpy clouds go Bzzt!'], ['storm', 1700, 470, 60], ['stars', 1600, 720, 3, 0, 80],
+          ['cp', 1950, 130, 470],
+          ['gap', 2300, 270, 260], ['pb', 2180, 270],
+          ['sign', 2520, 690, 'Birds! {B}: wait for them'], ['birds', 2750, 1, 3, 120], ['stars', 2820, 420, 4, 70, 40],
+          ['dock', 3250, 650, 220],
+        ],
+      },
+      {
+        title: 'Windy Cliffs', burner: 1, look: 'cliffs', startX: 650, bounds: [128, 832], act: { label: 'burn', labels: ['steady', 'burn'] },
+        tip: 'Swap! Bo burns, Pip steers. The wind pushes you: Pip pulls ◀ ▶ against the arrows.',
+        course: [
+          ['sign', 170, 400, 'Swap! {B} burns, {S} steers'],
+          ['wind', 380, 820, 1, 120], ['stars', 480, 330, 3, 0, 90], ['sign', 340, 640, 'Wind! Pull against it'],
+          ['gap', 1000, 320, 250], ['pb', 900, 320],
+          ['wind', 1220, 1650, -1, 140], ['stars', 1320, 650, 3, 0, 90],
+          ['gap', 1750, 660, 250],
+          ['cp', 1980, 760, 660],
+          ['storm', 2300, 400, 58, 70, 6], ['stars', 2240, 640, 3, 0, 70],
+          ['birds', 2650, -1, 4, 130],
+          ['wind', 2800, 3180, 1, 150], ['stars', 2880, 300, 3, 0, 80],
+          ['gaps', 3220, [270, 230], [690, 230]], ['pb', 3100, 690],
+          ['dock', 3620, 330, 220],
+        ],
+      },
+      {
+        title: 'Storm Clouds', burner: 0, look: 'storm', startX: 330, act: { label: 'burn', labels: ['burn', 'steady'] },
+        tip: 'Pip burns again, Bo steers. Lots of grumpy clouds: steer around them and wait under them!',
+        course: [
+          ['sign', 170, 620, 'Swap back! Clouds ahead'],
+          ['storm', 640, 330, 62], ['storm', 800, 640, 56, 40, 5], ['stars', 560, 480, 3, 0, 90],
+          ['storm', 1150, 200, 60], ['storm', 1180, 760, 60], ['stars', 1100, 480, 3, 0, 80],
+          ['gap', 1480, 480, 260], ['pb', 1360, 480],
+          ['storm', 1780, 560, 52, 70, 7],
+          ['cp', 1980, 160, 480],
+          ['birds', 2280, 1, 4, 140], ['stars', 2330, 300, 4, 100, 30],
+          ['storm', 2640, 250, 62, 30, 7], ['storm', 2640, 710, 62, 30, 7], ['stars', 2600, 480, 3, 0, 70],
+          ['isle', 2980, 300, 260], ['pb', 2920, 640],
+          ['storm', 3330, 560, 60, 120, 7], ['stars', 3300, 200, 3, 60, 50],
+          ['dock', 3720, 720, 220],
+        ],
+      },
+      {
+        title: 'Cloud Castle Dock', burner: 1, look: 'castle', startX: 720, act: { label: 'burn', labels: ['steady', 'burn'] },
+        tip: 'Last climb! Bo burns, Pip steers. Up past wind, birds and clouds to the Cloud Castle dock!',
+        course: [
+          ['sign', 170, 470, 'Last climb! Up to the castle!'],
+          ['gap', 620, 360, 240], ['stars', 400, 720, 3, -110, 60], ['pb', 520, 360],
+          ['wind', 820, 1220, -1, 130], ['stars', 900, 720, 3, 0, 90],
+          ['birds', 1330, -1, 4, 140],
+          ['gap', 1580, 760, 240], ['pb', 1470, 760],
+          ['cp', 1820, 860, 760],
+          ['storm', 2160, 520, 60, 100, 6], ['stars', 2120, 800, 3, 0, 70],
+          ['wind', 2380, 2760, 1, 150], ['stars', 2450, 260, 3, 0, 90],
+          ['gaps', 2840, [220, 220], [640, 220]],
+          ['birds', 3180, 1, 5, 150], ['stars', 3240, 480, 4, -60, 40],
+          ['storm', 3520, 760, 55], ['stars', 3560, 300, 3, 90, 20],
+          ['dock', 3920, 480, 240],
+        ],
+      },
+    ],
+  },
   // ----- END 21-1 Hot Air Balloon Climb -----
   //
   //
   //
   // ----- BEGIN 21-2 Kite Tandem (mode 'kite', js/levels/world21/kite-tandem.js) -----
+  // 21-2 Kite Tandem (mode 'kite', team, Gavyn's pick): one runs along the ground holding the string (run, jump, reel
+  // in), the other rides the big kite behind (steer, tuck) through stars and rings and round power lines, birds and
+  // spires. Each stretch ends at a tower whose flag only the rider can grab. The map is only the two spawns; the mode
+  // builds each stretch from its course (tokens: see the top of the level file). Jobs swap every stretch.
+  { name: 'Kite Tandem', world: 20, kind: 'team', mode: 'kite', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>S</kbd> reel · kite: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> steer',
+      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump <kbd>↓</kbd> reel · kite: arrows steer',
+      pad: 'runner: stick run, <span data-glyph="a"></span> jump, stick ▼ reel; kite: stick steers,',
+    },
+    tip: 'Runner: hold ▶ to run, ▲ jump, hold ▼ to reel in. Kite rider: ▲ ▼ ◀ ▶ steer. Grab the flag at each tower!',
+    act: { label: 'reel', labels: ['reel', 'tuck'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Rooftop Run', runner: 0, look: 'roofs', act: { label: 'reel', labels: ['reel', 'tuck'] },
+        tip: 'Pip runs, Bo rides the kite! Keep running so it flies. Bo: steer round things and grab the clock tower flag.',
+        course: ['f500', 'S:{R}: hold ▶ to run!', 'f350', '*:220:4', 'f250', '*:280:3', 'f300',
+          'g70', 'f300', 'S:Chimney! Jump ▲', 'f150', 'c', 'f300', 'T:200', '*:300:3', 'f350',
+          'S:{K}: steer ▲ ▼ round things', 'f150', 'W:270:340', 'f420', 'j-30', 'f200', 'c', 'f300', 'O:320', 'f250',
+          'g90', 'f300', '*:180:4', 'f300', 'H:250:300', 'f400', 'c', 'f200', 'j30', 'f200', 'B:280', 'f420',
+          'g100', 'f250', 'T:220', 'f200', 'T:240', 'f350', 'c', 'f250', 'S:A tall spire! Fly high', 'f150', 'P:275', 'f350',
+          '*:330:3', 'f250', 'j-30', 'f200', 'g80', 'f300', 'O:200', 'f300', 'E'],
+      },
+      {
+        title: 'Windy Hill', runner: 1, look: 'hill', act: { label: 'reel', labels: ['tuck', 'reel'] },
+        tip: 'Swap! Bo runs, Pip rides. Gusts push the kite up or down: steer against them. Fly over the windmill!',
+        course: ['f450', 'S:Swap! {R} runs, {K} rides', 'f300', 'u500:-50', 'f200', '*:260:4', 'f200', 'c', 'f300', 'u400:40', 'f200',
+          'S:Gusts! {K}: steer against the wind', 'f100', 'U:700', '*:290:4:60', 'f450', 'c', 'f350', 'D:700', '*:300:4:60', 'f500',
+          'g70', 'f300', 'T:220', 'f250', 'T:250', 'f300', 'u500:-60', 'S:A windmill! Fly over the sails', 'f150', 'M:150', 'f450',
+          'O:310', 'f300', 'c', 'f250', 'u400:50', 'B:220', 'f500', 'B:300', 'f450', 'g80', 'f300', 'u400:-40', 'f200', '*:200:4', 'f300', 'E'],
+      },
+      {
+        title: 'Seaside Pier', runner: 0, look: 'pier', act: { label: 'reel', labels: ['reel', 'tuck'] },
+        tip: 'Pip runs again! Gulls, ship masts and bunting. Reel in for the low rings. The lighthouse flag waits at the end.',
+        course: ['f450', 'S:Swap back! {R} runs again', 'f300', '*:240:4', 'f250', 'c', 'f300', 'g80', 'f250', 'B:270', 'f700',
+          'K:280', 'f300', '*:330:3', 'f200', 'H:240:320', 'f400', 'O:180', 'f250', 'g90', 'f250', 'c', 'f300', 'K:270', 'f160', 'K:280', 'f400',
+          'B:220', 'f550', 'B:300', 'f400', 'g100', 'f300', 'H:260:300', 'f350', '*:180:5', 'f300', 'c', 'f250', 'O:320', 'f250', 'g80', 'f250', 'E'],
+      },
+      {
+        title: 'Bridge to the Sky Kingdom', runner: 1, look: 'bridge', act: { label: 'reel', labels: ['tuck', 'reel'] },
+        tip: 'Bo runs to the Sky Kingdom! Reel in under the cloud arches, steer round the balloons. Grab the royal flag!',
+        course: ['f450', 'S:Last stretch! To the Sky Kingdom', 'f300', 'u600:-60', '*:260:4', 'f300', 'g80', 'f300', 'L:280', 'f400', 'c', 'f250',
+          'S:Cloud arch! Fly under it', 'f150', 'A:200:500', '*:140:5', 'f650', 'O:300', 'f200', 'u500:-50', 'W:260:300', 'f450',
+          'g90', 'f300', 'L:220', 'f500', 'L:330', 'f400', 'c', 'f250', 'A:190:400', 'O:130', 'f600', 'u500:-60', 'B:280', 'f400', 'g100', 'f300',
+          '*:320:4', 'f300', 'E'],
+      },
+    ],
+  },
   // ----- END 21-2 Kite Tandem -----
   //
   //
   //
   // ----- BEGIN 21-3 Cloud Bridge Builder (mode 'cloudbridge', js/levels/world21/cloud-bridge-builder.js) -----
+  // 21-3 Cloud Bridge Builder (mode 'cloudbridge', team, Gavyn's pick): the caller walks ahead and plants "here!" flags
+  // over the gaps between floating islands, the builder squeezes the cloud machine to puff a cloud block onto each flag.
+  // Clouds melt after about 6 s, so keep moving; both must cross every gap. Jobs swap every stretch (Pip calls 1 and 3).
+  // The map is only the two spawns; the mode builds each stretch from its course (items: see the top of the level file).
+  { name: 'Cloud Bridge Builder', world: 20, kind: 'team', mode: 'cloudbridge', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump',
+      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> jump',
+      pad: 'stick or d-pad walk, <span data-glyph="a"></span> jump,',
+    },
+    tip: 'At the edge the caller presses call for a flag, the builder presses puff to send a cloud there. Clouds melt: keep moving!',
+    act: { label: 'call', labels: ['call', 'puff'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'First Puffs', caller: 0, look: 'meadow', act: { label: 'call', labels: ['call', 'puff'] },
+        tip: 'Pip calls: at the edge, press call for a flag. Bo builds: press puff to send a cloud there. Cross together!',
+        news: 'Pip plants the flags, Bo puffs the clouds!',
+        course: [
+          ['isle', 600, 380, { signs: [[300, '{C}: at the edge, {Ca} plants a flag', '{C} plants a flag at the edge'], [80, '{B}: {Ba} puffs a cloud onto it', '{B} puffs a cloud onto it']] }],
+          ['gap', 192],
+          ['isle', 340, 380, { signs: [[150, 'Clouds melt! Keep moving']] }],
+          ['gap', 256, { star: true }],
+          ['isle', 320, 350, { signs: [[140, 'A star up high? {C}: hold {Ca}, tap {Cu} to aim higher', 'A star up high? {C} aims a cloud higher']] }],
+          ['gap', 192],
+          ['isle', 260, 380, { signs: [[130, 'Stay close together!']] }],
+          ['gap', 256],
+          ['isle', 280, 420],
+          ['gap', 320],
+          ['isle', 480, 380, { flag: true }],
+        ],
+      },
+      {
+        title: 'Stairway Up', caller: 1, look: 'stairs', act: { label: 'call', labels: ['puff', 'call'] },
+        tip: 'Swap! Bo calls, Pip puffs. Clouds step up and down by themselves: walk into a step to hop up. Boing on the spring!',
+        news: 'Swap! Bo calls, Pip puffs',
+        course: [
+          ['isle', 520, 420, { signs: [[260, 'Swap! {C} calls, {B} puffs']] }],
+          ['gap', 192],
+          ['isle', 300, 300, { signs: [[150, 'Cloud stairs! Walk up them']] }],
+          ['gap', 192],
+          ['isle', 280, 380, { signs: [[140, 'Down to the rainbow spring!']] }],
+          ['gap', 256, { star: true }],
+          ['isle', 140, 440, { spring: 70 }],
+          ['gap', 64],
+          ['isle', 320, 230],
+          ['gap', 256],
+          ['isle', 280, 300],
+          ['gap', 192],
+          ['isle', 460, 260, { flag: true }],
+        ],
+      },
+      {
+        title: 'Windy Gap', caller: 0, look: 'windy', act: { label: 'call', labels: ['call', 'puff'] },
+        tip: 'Pip calls, Bo puffs. When the windsock blows, puffs get blown away: puff in the calm!',
+        news: 'Swap back! Pip calls, Bo puffs',
+        course: [
+          ['isle', 520, 380, { signs: [[260, 'Swap back! Wind ahead']] }],
+          ['gap', 256, { wind: 0 }],
+          ['isle', 300, 380, { signs: [[150, 'Puff when the windsock droops']] }],
+          ['gap', 192],
+          ['isle', 280, 340],
+          ['gap', 320, { wind: 2.4, star: true }],
+          ['isle', 280, 380],
+          ['gap', 256, { wind: 4.6 }],
+          ['isle', 260, 380],
+          ['gap', 192, { wind: 1.2 }],
+          ['isle', 460, 380, { flag: true }],
+        ],
+      },
+      {
+        title: 'Sunny Melt to the Cloud Castle', caller: 1, look: 'sunny', act: { label: 'call', labels: ['puff', 'call'] },
+        tip: 'Bo calls, Pip puffs. Sun rays melt clouds fast: hurry over! Ride the cloud lift up to the Cloud Castle.',
+        news: 'Last stretch! Bo calls, Pip puffs',
+        course: [
+          ['isle', 500, 380, { signs: [[260, 'Sunny! Clouds melt fast here']] }],
+          ['gap', 256, { sun: true }],
+          ['isle', 280, 380],
+          ['gap', 192, { sun: true, star: true }],
+          ['isle', 240, 360, { signs: [[100, 'Cloud lift! Ride it up together']] }],
+          ['lift', 130, 240],
+          ['gap', 256, { sun: true }],
+          ['isle', 280, 240],
+          ['gap', 256, { sun: true }],
+          ['isle', 620, 340, { flag: true, castle: true }],
+        ],
+      },
+    ],
+  },
   // ----- END 21-3 Cloud Bridge Builder -----
   //
   //
   //
   // ----- BEGIN 21-4 Paper Plane Race (mode 'paperplane', js/levels/world21/paper-plane-race.js) -----
+  // 21-4 Paper Plane Race (mode 'paperplane', versus, best of 5, Gavyn's pick): throw your paper plane from a slingshot
+  // (hold the action, let go at the top of the meter), then tilt ▲ ▼ to glide a side-scrolling course: dive for speed,
+  // ride warm air up, fly through gold rings, flap (3 a round). First through the finish cloud arch wins the round.
+  // The map is only the two spawns: the mode draws the whole course (MODES.paperplane).
+  { name: 'Paper Plane Race', world: 20, kind: 'versus', mode: 'paperplane', ownStep: true,
+    match: { bestOf: 5, roundTime: 75 },
+    act: { label: 'flap' },
+    legend: {
+      pip: '<kbd>W</kbd><kbd>S</kbd> tilt up / down',
+      bo: '<kbd>↑</kbd><kbd>↓</kbd> tilt up / down',
+      pad: 'stick ▲ ▼ tilt,',
+    },
+    tip: 'Hold the action to throw, let go at the top! Then ▲ ▼ tilt: dive for speed, ride warm air, fly through rings.',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '....1.......2...................', '................................', '................................',
+    ],
+  },
   // ----- END 21-4 Paper Plane Race -----
   //
   //
