@@ -4527,7 +4527,69 @@ const LEVELS = [
   //
   //
   // ----- BEGIN 18-2 Grapple & Zip (mode 'grapple', js/levels/world18/grapple-and-zip.js) -----
-  // (def goes here)
+  // 18-2 Grapple & Zip (mode 'grapple', team, Gavyn's pick): cross a whole fleet of friendly pirate ships, side view, the
+  // camera scrolling right ship by ship. From the crow's nest the thrower aims (▲ ▼), holds the action to charge and lets
+  // go to throw a grappling hook through the next ship's ring. The zipper grabs the handle and zips down the rope for
+  // coins (▶ faster, ◀ brake, ▲ legs up, ▼ dip, action lets go), then cranks the capstan to haul the thrower across in
+  // the bosun's chair. Whoever arrives first throws next, so the jobs swap every hop. 4 fleets of 2 hops.
+  // fleet: the first ship is where the fleet starts; each later ship also describes the hop INTO it (see the level file:
+  // gap, nest, ring, coins 'm.h.l', chair coins, obs, wind, gust, boom, lines, gulls, sign).
+  { name: 'Grapple & Zip', world: 17, kind: 'team', mode: 'grapple', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Fleet',
+    act: { label: 'throw', labels: ['throw', 'grab'] },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd><kbd>S</kbd> climb · aim · legs',
+      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd><kbd>↓</kbd> climb · aim · legs',
+      pad: 'stick: walk, climb, aim, legs,',
+    },
+    tip: 'Throw the hook through the next ring, zip down the rope for coins, then crank your partner across!',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Dockside Hop', act: { label: 'throw', labels: ['throw', 'grab'] },
+        tip: 'Pip throws first: aim, hold to charge, let go. Bo zips down the rope, then cranks Pip across!',
+        fleet: [
+          { dock: true, name: 'Pirate Cove Dock', nest: 150 },
+          { name: 'Sea Biscuit', pal: 'red', gap: 400, nest: 190, ring: 90, coins: 'm.m.h.m', chair: 'm.h', crew: 2,
+            sign: '{T}: {Tud} aim, hold {Tact}, let go to throw the hook through the ring!||{T} throws the hook through the ring. Then {Z} zips!' },
+          { name: 'Jolly Jelly', pal: 'teal', gap: 430, nest: 200, ring: 95, coins: 'm.h.l.m.m', chair: 'l.h', obs: ['flag:0.55'], crew: 2,
+            sign: 'Swap! {T} throws now. Zipping: {Zud} for high and low coins||Swap! {T} throws now, {Z} zips for the coins' },
+        ],
+      },
+      {
+        title: 'Laundry Day', act: { label: 'throw', labels: ['throw', 'grab'] },
+        tip: 'Laundry lines! Throw over the socks or under them. Dip under the lanterns as you zip.',
+        fleet: [
+          { name: 'Jolly Jelly', pal: 'teal', nest: 200, ring: 95, crew: 2 },
+          { name: 'Salty Sock', pal: 'yellow', gap: 470, nest: 215, ring: 110, coins: 'm.l.h.m.l', chair: 'h.m', obs: ['lant:0.45'], crew: 1,
+            lines: [[-70, 250, 60, 246]], sign: 'Socks on the line! Throw over them or under them' },
+          { name: 'Merry Mermaid', pal: 'pink', gap: 500, nest: 225, ring: 100, coins: 'h.m.l.m.h.m', chair: 'l.h', obs: ['flag:0.4', 'lant:0.7'], crew: 2,
+            lines: [[-130, 236, -30, 240], [70, 262, 170, 256]] },
+        ],
+      },
+      {
+        title: 'Windy Boom', act: { label: 'throw', labels: ['throw', 'grab'] },
+        tip: 'Wind and a swinging boom! Watch the wind arrow and throw as the ring swings by.',
+        fleet: [
+          { name: 'Merry Mermaid', pal: 'pink', nest: 225, ring: 100, crew: 2 },
+          { name: 'Breezy Barnacle', pal: 'green', gap: 520, nest: 232, ring: 115, wind: 90, boom: 34, coins: 'm.h.l.h.m.l', chair: 'h.l.m', obs: ['lant:0.35', 'flag:0.65'], crew: 2,
+            sign: 'A tailwind pushes the hook further, and the ring swings on its boom!' },
+          { name: 'Wobbly Whale', pal: 'purple', gap: 540, nest: 240, ring: 108, wind: -70, gust: 55, boom: 40, coins: 'l.m.h.m.l.h', chair: 'm.h', obs: ['flag:0.3', 'lant:0.55', 'flag:0.76'], crew: 1,
+            lines: [[-40, 284, 90, 288]], sign: 'A gusty headwind! Throw a little harder' },
+        ],
+      },
+      {
+        title: "Polly's Flagship", act: { label: 'throw', labels: ['throw', 'grab'] },
+        tip: "Gulls and gusts on the way to Captain Polly's flagship. The last haul is uphill: heave together!",
+        fleet: [
+          { name: 'Wobbly Whale', pal: 'purple', nest: 240, ring: 108, crew: 1 },
+          { name: 'Lucky Lobster', pal: 'blue', gap: 560, nest: 248, ring: 120, gust: 90, coins: 'h.l.m.h.l.m', chair: 'l.m.h', obs: ['lant:0.4', 'flag:0.62'], crew: 2,
+            gulls: [[0, 300, 120, 30, 0.8]], lines: [[-160, 232, -60, 228]], sign: 'Gulls! Throw when the way is clear' },
+          { name: 'The Golden Polly', pal: 'flag', flagship: true, gap: 590, nest: 270, ring: 160, wind: 40, gust: 70, coins: 'm.h.l.m.h.l.m', chair: 'h.l.h', obs: ['flag:0.35', 'lant:0.6'], crew: 3,
+            gulls: [[-90, 292, 90, 26, 0.9], [130, 252, 70, 30, 1.1]], sign: "Captain Polly's flagship! The last bit of the haul is uphill" },
+        ],
+      },
+    ],
+  },
   // ----- END 18-2 Grapple & Zip -----
   //
   //
