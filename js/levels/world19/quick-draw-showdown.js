@@ -282,7 +282,7 @@ function qdTick(dt, live) {
     else if (st.ph === 'done') {
       // late presses after the round is decided: the slower one still gets a time on the board
       const tNow = st.rt - (st.drawAt || 0);
-      for (const P of st.pl) if (presses[P.k] && st.drawSeen && P.raw == null && !P.foul && st.res && st.res.how !== 'foul' && tNow < 2) {
+      for (const P of st.pl) if (presses[P.k] && st.drawSeen && !st.target && P.raw == null && !P.foul && st.res && st.res.how !== 'foul' && tNow < 2) {
         P.raw = tNow; P.gunT = 0; P.late = true; Sfx.play('quickdrawCock', P.k);
         st.stat.react[P.k].push(tNow); st.stat.best[P.k] = Math.min(st.stat.best[P.k], tNow);
       }
@@ -304,6 +304,7 @@ function qdEndRound(st, r) {
   if (st.ended) return;
   st.ended = true;
   if (r.winner >= 0) st.stat.wins[r.winner]++;
+  if (st.target && r.how !== 'foul' && r.how !== 'foul2') st.stat.seenTarget = true;
   matchRoundEnd(r.winner, r.reason);
 }
 // the platformer bodies stay hidden, but p.x / p.y follow the picture (name tags, bubbles, confetti fall-backs)
@@ -480,8 +481,9 @@ MODES.quickdraw = {
       { label: 'Fouls', values: s.fouls.slice() },
       { label: 'Bandits hit', values: s.bandits.slice() },
     ];
-    const b = s.best, w = !isFinite(b[0]) && !isFinite(b[1]) ? -1 : b[0] < b[1] ? 0 : 1;
-    if (w >= 0) out.push('Fastest draw of the match: ' + NAMES[w] + ', ' + qdMs(b[w]) + '!');
+    const b = s.best, w = !isFinite(b[0]) && !isFinite(b[1]) ? -1 : Math.round(b[0] * 1000) === Math.round(b[1] * 1000) ? 2 : b[0] < b[1] ? 0 : 1;
+    if (w === 2) out.push('Fastest draw of the match: Pip and Bo, both ' + qdMs(b[0]) + '!');
+    else if (w >= 0) out.push('Fastest draw of the match: ' + NAMES[w] + ', ' + qdMs(b[w]) + '!');
     if (st.newRecord) out.push('New Gulch record: ' + st.newRecord.ms + ' ms by ' + NAMES[st.newRecord.k] + '!');
     else if (st.record) out.push('Gulch record: ' + st.record.ms + ' ms.');
     return out;
@@ -1025,7 +1027,7 @@ function qdDrawTop() {
   if (r && r.say && r.sayT < (r.sayGold ? 0.9 : 1.15)) {
     const s = qdToScreen(cam, QD.refX - 54, QD.refY - 98), fs = big ? 24 : 18;
     ctx.font = fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
-    const w = ctx.measureText(r.say).width + 26, h = fs + 16, x = clamp(s.x - w, 8, W - w - 8), y = clamp(s.y - h / 2, 52, H - h);
+    const w = ctx.measureText(r.say).width + 26, h = fs + 16, x = clamp(s.x - w, 8, W - w - 8), y = clamp(s.y - h / 2, (G.matchHudBox ? G.matchHudBox.y1 : 44) + (big ? 40 : 32), H - h);
     const a = clamp(Math.min(r.sayT / 0.08, ((r.sayGold ? 0.9 : 1.15) - r.sayT) / 0.2), 0, 1), pop = 1 + 0.15 * Math.max(0, 1 - r.sayT * 8);
     ctx.save(); ctx.globalAlpha = a; ctx.translate(x + w / 2, y + h / 2); ctx.scale(pop, pop);
     ctx.fillStyle = r.sayGold ? '#fff3c4' : '#fffaf0'; ctx.strokeStyle = '#5a4a8a'; ctx.lineWidth = 2.5;
@@ -1137,7 +1139,7 @@ function qdHud() {
     else lab = 'Ready';
     text(lab, mid, y + ph / 2 - (P.gold || isFinite(st.stat.best[P.k]) ? 6 * sz : 0) + 0.5, 15 * sz, col, 'center', 'body');
     const sub = [];
-    if (isFinite(st.stat.best[P.k])) sub.push('best ' + Math.round(st.stat.best[P.k] * 1000));
+    if (isFinite(st.stat.best[P.k]) && !P.gold) sub.push('best ' + Math.round(st.stat.best[P.k] * 1000));
     if (P.gold) sub.push('gold −' + Math.round(P.bonus * 1000) + ' ms' + (P.patience ? ' · patience' : ''));
     if (sub.length) text(sub.join('  ·  '), mid, y + ph / 2 + 9 * sz, 10.5 * sz, P.gold ? C.gold : 'rgba(246,239,223,0.7)', 'center', 'body');
     qdGunIcon(left ? x + pw - 22 * sz : x + 22 * sz, y + ph / 2 - 1, 1.1 * sz, P.k, P.raw != null || !!P.foul);
@@ -1152,7 +1154,7 @@ function qdHud() {
   const box = G.matchHudBox, below = (box ? box.y1 : 44) + (big ? 20 : 16);
   if (m.phase === 'live') {
     // the reminder under the match pill until DRAW!
-    if (st.ph === 'pace' || st.ph === 'turn' || st.ph === 'wait') qdChip(st.ph === 'pace' ? 'Ten paces... then wait for the gold DRAW!' : 'Wait for the gold DRAW!', W / 2, below, big, 'rgba(255,197,61,0.7)', true);
+    if (st.ph === 'pace' || st.ph === 'turn' || st.ph === 'wait') qdChip(st.ph === 'pace' ? 'Three paces... then wait for the gold DRAW!' : 'Wait for the gold DRAW!', W / 2, below, big, 'rgba(255,197,61,0.7)', true);
     // each person's keys over their panel (rounds 1-2, the first bandit round, and with gold help); never the computer's
     const firstTarget = st.target && !st.stat.seenTarget;
     for (const P of st.pl) {
@@ -1161,38 +1163,36 @@ function qdHud() {
       if (P.raw != null || P.foul || st.ph === 'done') continue;
       const kk = qdKeys(P.k), left = P.k === 0, ph = 44 * sz;
       const lab = st.ph === 'draw' ? (st.target ? kk.aim + ' aim · ' + kk.fire + ' fire!' : kk.fire + ' fire!') : (st.target ? kk.fire + ' fire (after DRAW!)' : kk.fire + ' fire, after DRAW!');
-      if (big) { const hp = qdToScreen(st.cam, qdStance(st, P.k).x, QD.feetY - 112); qdChip(lab, hp.x, hp.y, big, PCOL[P.k], st.ph === 'draw'); }
+      if (big) { const hp = qdToScreen(st.cam, qdStance(st, P.k).x, QD.feetY - 150); qdChip(lab, hp.x, hp.y, big, PCOL[P.k], st.ph === 'draw'); }
       else qdChip(lab, left ? 10 + 214 * sz / 2 : W - 10 - 214 * sz / 2, H - 8 - ph - 18, big, PCOL[P.k], st.ph === 'draw');
     }
   }
-  if (m.phase === 'end' && st.target) st.stat.seenTarget = true;
   if (m.phase === 'ready' || m.phase === 'count') {
-    // the round card, between the match pill and the framework's Round banner: the twist, and any gold help
-    const lines = [];
-    for (const P of st.pl) if (P.gold) lines.push(P.gold >= 2 ? 'Gold for ' + NAMES[P.k] + ': a 70 ms head start and one early press forgiven!' : 'Gold for ' + NAMES[P.k] + ': a 40 ms head start!');
-    const nf = big ? 26 : 22, hf = big ? 17 : 14, lh = big ? 22 : 18;
+    // the round card, between the match pill and the framework's Round banner and 3-2-1 pill (y 113): the twist
+    const nf = big ? 23 : 22, hf = big ? 15 : 14;
     ctx.font = hf + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-    let w = Math.max(big ? 380 : 320, ctx.measureText(tw.hint).width + 44);
-    ctx.font = '700 ' + (hf - 1) + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-    for (const l of lines) w = Math.max(w, ctx.measureText(l).width + 44);
-    w = Math.min(W - 20, w);
-    const ch = (big ? 60 : 50) + lines.length * lh, cy = (box ? box.y1 : 44) + 6;
+    const w = Math.min(W - 20, Math.max(big ? 380 : 320, ctx.measureText(tw.hint).width + 44));
+    const cy = (box ? box.y1 : 44) + 5, ch = Math.min(big ? 52 : 50, 108 - cy), gold = st.pl.some(P => P.gold);
     const a = m.phase === 'ready' ? clamp(m.t / 0.25, 0, 1) : 1, cx = W / 2;
     ctx.globalAlpha = a; ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(cx - w / 2, cy, w, ch, 14); ctx.fill();
-    ctx.strokeStyle = lines.length ? C.gold : 'rgba(246,239,223,0.25)'; ctx.lineWidth = 2; rr(cx - w / 2, cy, w, ch, 14); ctx.stroke();
-    text(tw.name, cx, cy + (big ? 20 : 17), nf, C.gold, 'center'); text(tw.hint, cx, cy + (big ? 45 : 37), hf, C.paper, 'center', 'body');
-    lines.forEach((l, i) => text(l, cx, cy + (big ? 45 : 37) + (i + 1) * lh, hf - 1, C.gold, 'center', 'body'));
+    ctx.strokeStyle = gold ? C.gold : 'rgba(246,239,223,0.25)'; ctx.lineWidth = 2; rr(cx - w / 2, cy, w, ch, 14); ctx.stroke();
+    text(tw.name, cx, cy + ch * 0.33, nf, C.gold, 'center'); text(tw.hint, cx, cy + ch * 0.74, hf, C.paper, 'center', 'body');
     ctx.globalAlpha = 1;
-    // key reminders at the bottom corners before rounds 1-2 and the first bandit round (each person's own device)
-    if (m.round <= 2 || (st.target && !st.stat.seenTarget)) {
-      ctx.globalAlpha = a;
-      for (const P of st.pl) {
-        if (qdCpu(P.k)) continue;
-        const kk = qdKeys(P.k), left = P.k === 0, ph = 44 * sz;
-        qdChip(NAMES[P.k] + ': ' + (st.target ? kk.aim + ' aim · ' : '') + kk.fire + ' fire', left ? 10 + 214 * sz / 2 : W - 10 - 214 * sz / 2, H - 8 - ph - (big ? 24 : 18), big, PCOL[P.k], false);
+    // over the bottom corners: any gold help (announced to everyone), then each person's keys before rounds 1-2 and
+    // the first bandit round (their own device; never the computer's)
+    const keysToo = m.round <= 2 || (st.target && !st.stat.seenTarget);
+    ctx.globalAlpha = a;
+    for (const P of st.pl) {
+      const left = P.k === 0, ph = 44 * sz, cxp = left ? 10 + 214 * sz / 2 : W - 10 - 214 * sz / 2;
+      let y = H - 8 - ph - (big ? 24 : 18);
+      if (keysToo && !qdCpu(P.k)) {
+        const kk = qdKeys(P.k);
+        qdChip(NAMES[P.k] + ': ' + (st.target ? kk.aim + ' aim · ' : '') + kk.fire + ' fire', cxp, y, big, PCOL[P.k], false);
+        y -= big ? 38 : 28;
       }
-      ctx.globalAlpha = 1;
+      if (P.gold) qdChip(P.gold >= 2 ? 'Gold for ' + NAMES[P.k] + ': 70 ms head start + one early press forgiven!' : 'Gold for ' + NAMES[P.k] + ': a 40 ms head start!', cxp, y, big, C.gold, true);
     }
+    ctx.globalAlpha = 1;
   }
 }
 

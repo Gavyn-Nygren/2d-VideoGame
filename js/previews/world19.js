@@ -81,7 +81,7 @@ if (typeof definePreview === 'function') {
     for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(tx, 170, 6, 3.5, i * 0.8 + t * 3, 0, Math.PI * 2); ctx.stroke(); }
   };
   definePreview('Quick-Draw Showdown', {
-    blurb: 'Ten paces, wait for the gold DRAW!, then pop your cork first. No peeking early!',
+    blurb: 'Three paces, wait for the gold DRAW!, then pop your cork first. No peeking early!',
     loop: pw19qdLoop,
     still: 3.55,
     draw(v, t) {
