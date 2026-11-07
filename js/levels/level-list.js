@@ -4514,7 +4514,45 @@ const LEVELS = [
   //
   //
   // ----- BEGIN 19-2 Handcar Hustle (mode 'handcar', js/levels/world19/handcar-hustle.js) -----
-  // (def goes here)
+  // 19-2: side-on railroad handcar (MODES.handcar): a seesaw pump handle, so Pip and Bo must take turns pumping, and
+  // both brake for broken track, curves, cows and mail stations. The map is only the two spawns; the mode builds each
+  // stretch from its course (tokens: see the top of the level file). Ends swap every stretch.
+  { name: 'Handcar Hustle', world: 18, kind: 'team', mode: 'handcar', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    legend: {
+      pip: '<kbd>S</kbd> pump · hold <kbd>W</kbd> brake',
+      bo: '<kbd>↓</kbd> pump · hold <kbd>↑</kbd> brake',
+      pad: 'stick down pumps, hold <span data-glyph="a"></span> to brake,',
+    },
+    tip: 'Take turns pumping the seesaw handle: Pip, Bo, Pip, Bo! Both hold ▲ to brake for signs, cows and stations.',
+    act: { label: 'pump' },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Dusty Flats', back: 0,
+        tip: 'Pip has the back end, Bo the front. Push ▼ in turns: Pip, Bo, Pip, Bo! Both hold ▲ to brake.',
+        course: ['f300', 'S:Take turns: {B}, {F}, {B}, {F}!', 'f400', 'u300', 'f100', 'd300', 'f200', 'M', 'u400', 'f100',
+          'd400', 'F', 'W', 'M', 'F', 'K', 'd300', 'f100', 'X'],
+      },
+      {
+        title: 'Mesa Hills', back: 1,
+        tip: 'Swap! Bo has the back end now. Quick turns up the steep hills, and brake at the SLOW sign!',
+        course: ['f300', 'S:Steep hills! Quick turns!', 'f200', 'U500', 'f150', 'D400', 'f100', 'F', 'C', 'U400', 'f150', 'M',
+          'D500', 'f200', 'F', 'K', 'u300', 'f100', 'd300', 'M', 'X'],
+      },
+      {
+        title: 'Canyon Trestle', back: 0,
+        tip: 'Over the canyon on a tall trestle! Brake for the curve, the cows and the mail stop.',
+        course: ['f300', 'b260', 'f200', 'u300', 'f150', 'F', 'D400', 'S:The canyon trestle!', 't900', 'C', 'F', 'W',
+          'M', 'b300', 'f200', 'X'],
+      },
+      {
+        title: 'Into Town', back: 1,
+        tip: 'Last stretch! Through the cactus forest into town. Stop in the station box to finish!',
+        course: ['f300', 'Z:cactus:2600', 'f300', 'U400', 'f150', 'M', 'D400', 'f200', 'F', 'K', 'C', 'u200',
+          'S:Welcome to Tumbleweed!', 'Z:town:2300', 'f100', 'M', 'E'],
+      },
+    ],
+  },
   // ----- END 19-2 Handcar Hustle -----
   //
   //
