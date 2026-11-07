@@ -90,6 +90,9 @@ function heistBotGo(S, st, p, me, tx, out, carry, bm) {
     }
     const car = MODES.heist.carAt(st, me.cx);
     if (car) room = Math.min(room, (dir > 0 ? edge - car.x0 : car.x1 - edge) - 14);
+    // (and never so far back that the leash would hold us: a partner already over there is the limit)
+    if (S.oX != null && (S.oX - edge) * dir > 0) room = Math.min(room, HEIST.maxSep - 24 - Math.abs(S.oX - edge));
+    room = Math.max(room, 12);
     if (dEdge < room - 10) {
       const spot = edge - dir * room;
       if (heistBotSeek(out, st, p, spot, 5) || Math.abs(spot - me.cx) < 6) S.run = true;
@@ -100,7 +103,7 @@ function heistBotGo(S, st, p, me, tx, out, carry, bm) {
   out.left = dir < 0; out.right = dir > 0;
   // take off: at the very edge for a wide gap (full speed), a bit before it for a small one
   if (dEdge <= (wide ? -3 : 8)) {
-    if (wide && Math.abs(me.vx) < 170) { S.run = false; return false; }   // too slow: back up and try again
+    if (wide && Math.abs(me.vx) < 90) { S.run = false; return false; }   // too slow: back up and try again (a standing jump makes it too)
     out.jump = true; S.run = false;
     S.air = { dir, land: dir > 0 ? g.x1 + 26 : g.x0 - 26, tx };
   }
@@ -141,6 +144,7 @@ cpuBrain('heist', {
     const me = heistBotMe(st, p), human = !info.partnerCpu, s = st.sack;
     const carry = s.state === 'held' && s.who === p.id, oCarry = s.state === 'held' && s.who === o.id;
     const oX = MODES.heist.tx(st, o), oOk = o.alive && !O.whoops;
+    S.oX = oOk ? oX : null;
     // in the air: finish the jump we started (hold jump to the top, keep going until over the far roof)
     if (!me.grounded) {
       if (S.air) {
@@ -184,10 +188,11 @@ cpuBrain('heist', {
     }
     if (s.state === 'ret') return out;
     if (s.state === 'roof') {
-      // the nearer one fetches it (a person gets a moment to go first)
-      const mine = Math.abs(s.x - me.cx) <= Math.abs(s.x - oX) || !oOk;
+      // the nearer one fetches it (a person gets a moment to go first); a sack I threw over a wide gap is the partner's
+      const iMay = MODES.heist.mayGrab(st, p), oMay = MODES.heist.mayGrab(st, o);
+      const mine = iMay && (!oMay || !oOk || Math.abs(s.x - me.cx) <= Math.abs(s.x - oX));
       S.fetchT = (S.fetchT || 0) + dt;
-      if (mine || (human && S.fetchT > 2.5) || (!human && !oOk)) {
+      if (mine || (iMay && human && S.fetchT > 2.5) || (iMay && !human && !oOk)) {
         if (human && !mine) cpuSay(p, 'I’ll get the sack!');
         const above = s.y < me.feet - 12;
         heistBotGo(S, st, p, me, s.x, out, false, bm);
@@ -195,6 +200,14 @@ cpuBrain('heist', {
         return out;
       }
       if (human) cpuSay(p, 'Grab the gold sack!');
+      // a sack I threw over a wide gap: go over to its side too (next to it, not onto it), so nobody is held back by the leash
+      if (!iMay) {
+        const side = me.cx < s.x ? -1 : 1, car = MODES.heist.carAt(st, s.x);
+        let tx = s.x + side * 50;
+        if (car) tx = clamp(tx, car.x0 + 16, car.x1 - 16);
+        if (Math.abs(tx - s.x) < 20) tx = s.x - side * 50;
+        heistBotGo(S, st, p, me, tx, out, false, bm);
+      }
       return out;
     }
     S.fetchT = 0;
@@ -221,7 +234,7 @@ cpuBrain('heist', {
       return out;
     }
     if (carry) {
-      const oReady = oOk && o.grounded && oX > g.x1 + 4;
+      const oReady = oOk && oX > g.x1 + 4 && (o.grounded || !!MODES.heist.carAt(st, oX));   // (a partner hopping about on the far roof counts)
       const edge = g.x0 - 13;
       if (!oReady) {
         S.edgeT = 0;

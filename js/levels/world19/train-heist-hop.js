@@ -45,7 +45,7 @@ const HEIST = {
   hz: 420,                         // the ground (and every hazard on it) streams past at this speed
   warn: 1.5, weedV: 150, weedR: 10, weedHit: 8,
   sackG: 1500, tossVx: 320, tossVxMax: 520, tossVy: 430, tossVyMax: 500, chargeMax: 0.55,
-  catchR: 16, catchGold: 40, pickR: 12, ownWait: 0.45,
+  catchR: 16, catchGold: 40, pickR: 12, ownWait: 0.45, lieT: 8,
   fallBelow: 60, whoopsT: 1.6,
   maxSep: 420,
   goldMiss: 2, goldFalls: 3, stuckHint: 25,
@@ -250,7 +250,7 @@ function heistSackStep(st, dt) {
     r.t += dt;
     const home = P.whoops ? { x: P.whoops.sx, y: R - 20 } : heistSackHome(st, to);
     s.x = heistLerp(r.x0, home.x, u); s.y = heistLerp(r.y0, home.y, u) - Math.sin(u * Math.PI) * 150;
-    if (u >= 1) { s.state = 'held'; s.who = r.to; s.t = 0; s.ret = null; Sfx.play('heistCatch', r.to); }
+    if (u >= 1) { s.state = 'held'; s.who = r.to; s.t = 0; s.ret = null; s.fromX = null; Sfx.play('heistCatch', r.to); }
     return;
   }
   if (s.state === 'fly') {
@@ -275,7 +275,10 @@ function heistSackStep(st, dt) {
       if (!p.alive || P.whoops || s.state !== 'fly' && s.state !== 'roof') continue;
       if (p.id === s.from && s.t < HEIST.ownWait) continue;
       const cr = s.state === 'fly' ? (st.goldSack ? HEIST.catchGold : HEIST.catchR) : HEIST.pickR;
-      if (s.x > p.x - cr && s.x < p.x + p.w + cr && s.y > p.y - cr && s.y < p.y + p.h + cr) { heistGrab(st, p, s.state === 'fly' && !landed); break; }
+      if (s.x > p.x - cr && s.x < p.x + p.w + cr && s.y > p.y - cr && s.y < p.y + p.h + cr) {
+        if (!heistMayGrab(st, p)) { heistNoGrab(st, p); continue; }
+        heistGrab(st, p, s.state === 'fly' && !landed); break;
+      }
     }
     if (s.state === 'fly' && s.y > R + 70) heistSackMiss(st);
     return;
@@ -286,14 +289,38 @@ function heistSackStep(st, dt) {
       if (!p.alive || P.whoops) continue;
       if (p.id === s.from && s.t < HEIST.ownWait) continue;
       const cr = HEIST.pickR;
-      if (s.x > p.x - cr && s.x < p.x + p.w + cr && s.y > p.y - cr && s.y < p.y + p.h + cr) { heistGrab(st, p, false); break; }
+      if (s.x > p.x - cr && s.x < p.x + p.w + cr && s.y > p.y - cr && s.y < p.y + p.h + cr) {
+        if (!heistMayGrab(st, p)) { heistNoGrab(st, p); continue; }
+        heistGrab(st, p, false); break;
+      }
+    }
+    // a sack the thrower can't take, left lying for a while: Dusty's hay cart boings it to the partner (never to the thrower)
+    const to = s.from == null ? -1 : 1 - s.from, q = to >= 0 && G.players[to];
+    if (s.state === 'roof' && q && s.t > HEIST.lieT && !heistMayGrab(st, G.players[s.from]) && q.alive && !st.pl[to].whoops) {
+      heistPop(st, s.x, s.y - 30, 'Boing! Over to ' + NAMES[to] + '!', PCOL[to], 18);
+      Sfx.play('heistBoing');
+      s.state = 'ret'; s.ret = { t: 0, x0: s.x, y0: s.y, to };
     }
   }
+}
+// the one who threw the sack can't take it over a wide gap themselves: a sack thrown across is the partner's to take
+// (so nobody can do both jobs: toss it over, jump after it and pick it up again)
+function heistMayGrab(st, p) {
+  const s = st.sack;
+  if (p.id !== s.from || s.fromX == null) return true;
+  const lo = Math.min(s.fromX, s.x), hi = Math.max(s.fromX, s.x);
+  return !st.gaps.some(g => g.kind === 'wide' && !g.plank && (g.x0 + g.x1) / 2 > lo && (g.x0 + g.x1) / 2 < hi);
+}
+function heistNoGrab(st, p) {
+  const P = st.pl[p.id];
+  if (P.noGrabCD > 0) return;
+  P.noGrabCD = 2.5;
+  heistPop(st, p.x + p.w / 2, p.y - 30, 'Let ' + NAMES[1 - p.id] + ' grab it!', PCOL[1 - p.id], 16);
 }
 function heistGrab(st, p, caught) {
   const s = st.sack;
   const wasFly = s.state === 'fly';
-  s.state = 'held'; s.who = p.id; s.t = 0; s.ret = null;
+  s.state = 'held'; s.who = p.id; s.t = 0; s.ret = null; s.fromX = null;
   st.progressT = 0;
   if (wasFly && caught && s.from !== p.id) {
     st.stats.catches[p.id]++;
@@ -317,9 +344,9 @@ function heistSackMiss(st) {
 // the action: the carrier presses (and holds, to throw farther) to toss; the free one picks up a sack lying close by
 function heistAct(st, p, dt) {
   const P = st.pl[p.id], s = st.sack, inp = p.input;
-  if (!p.alive || P.whoops) { P.charging = false; return; }
+  if (!p.alive || P.whoops) { P.charging = false; p.pendingAct = false; return; }
   const carry = s.state === 'held' && s.who === p.id;
-  if (st.state === 'play' && st.final && heistInCab(st, p)) { P.charging = false; return; }   // (the brake, see heistBrake)
+  if (st.state === 'play' && st.final && heistInCab(st, p)) { P.charging = false; p.pendingAct = false; return; }   // (the brake, see heistGoalCheck)
   if (st.state !== 'play') { P.charging = false; p.pendingAct = false; return; }
   if (carry) {
     if (P.charging) {
@@ -331,7 +358,10 @@ function heistAct(st, p, dt) {
   P.charging = false;
   if (p.pendingAct) {
     p.pendingAct = false;
-    if (s.state === 'roof' && Math.abs(s.x - (p.x + p.w / 2)) < 44 && Math.abs(s.y - (p.y + p.h / 2)) < 50) { heistGrab(st, p, false); return; }
+    if (s.state === 'roof' && Math.abs(s.x - (p.x + p.w / 2)) < 44 && Math.abs(s.y - (p.y + p.h / 2)) < 50) {
+      if (heistMayGrab(st, p)) { heistGrab(st, p, false); return; }
+      heistNoGrab(st, p); return;
+    }
     if (P.shoutCD <= 0) { P.shoutCD = 1.2; heistPop(st, p.x + p.w / 2, p.y - 34, s.state === 'held' ? 'Toss it here!' : 'Yee-haw!', PCOL[p.id], 15); Sfx.play('heistShout', p.id); }
   }
 }
@@ -343,7 +373,7 @@ function heistToss(st, p, k) {
   const P = st.pl[p.id], s = st.sack, v = heistTossV(k, p.face);
   P.charging = false; P.chargeT = 0;
   const h = heistSackHome(st, p);
-  Object.assign(s, { state: 'fly', who: -1, from: p.id, x: h.x + p.face * 6, y: h.y - 4, vx: v.vx + p.vx * 0.3, vy: v.vy, t: 0, spin: 0 });
+  Object.assign(s, { state: 'fly', who: -1, from: p.id, fromX: p.x + p.w / 2, x: h.x + p.face * 6, y: h.y - 4, vx: v.vx + p.vx * 0.3, vy: v.vy, t: 0, spin: 0 });
   st.stats.tosses[p.id]++;
   Sfx.play('heistToss', p.id);
   p.sx = 0.85; p.sy = 1.15;
@@ -377,7 +407,10 @@ function heistHzBox(h) {
 function heistHazards(st, dt) {
   const ps = G.players, R = HEIST.roof;
   // new ones
-  if (st.state === 'play' && !(st.final && heistBothInCab(st))) {
+  // (no new hazards once someone reaches the engine cab, and a whistle still waiting is called off: the brake is calm)
+  const cabCalm = st.final && G.players.some(p => heistInCab(st, p));
+  if (cabCalm) st.hz = st.hz.filter(h => h.phase !== 'warn');
+  if (st.state === 'play' && !cabCalm) {
     for (const tm of st.timers) {
       tm.t -= dt;
       if (tm.t > 0) continue;
@@ -413,7 +446,8 @@ function heistHazards(st, dt) {
         continue;
       }
       const b = heistHzBox(h);
-      if (b && p.x < b.x1 && p.x + p.w > b.x0 && p.y < b.y1 && p.y + p.h > b.y0) { heistBonk(st, p, h.k); break; }
+      // (a ducked player is always safe, even ducking on a crate or a hay bale)
+      if (b && !P.duck && p.x < b.x1 && p.x + p.w > b.x0 && p.y < b.y1 && p.y + p.h > b.y0) { heistBonk(st, p, h.k); break; }
       if (b && P.duck && p.x < b.x1 && p.x + p.w > b.x0 && !h.hits[p.id]) { h.hits[p.id] = 1; st.stats.ducked++; }
     }
   }
@@ -436,7 +470,6 @@ function heistBonk(st, p, k) {
 
 /* ---------- the stretch's goal: both on the flag car with the sack, or the brake in the engine cab ---------- */
 const heistInCab = (st, p) => { if (!st.cab || st.pl[p.id].whoops || !p.alive || !p.grounded) return false; const x = heistTX(st, p); return x > st.cab.x0 + 4 && x < st.cab.x1 - 4; };
-const heistBothInCab = st => G.players.every(p => heistInCab(st, p));
 const heistOnGoal = (st, p) => { if (!st.goal || !p.alive || st.pl[p.id].whoops || !p.grounded) return false; const x = heistTX(st, p); return x > st.goal.x0 + 4 && x < st.goal.x1 - 4; };
 function heistGoalCheck(st, dt) {
   const s = st.sack;
@@ -555,7 +588,7 @@ function heistJob(st, id) {
   const carry = s.state === 'held' && s.who === id, oCarry = s.state === 'held' && s.who === 1 - id;
   if (s.state === 'fly') return s.from === id ? { k: 'watch' } : { k: 'catch' };
   if (s.state === 'ret') return { k: 'watch' };
-  if (s.state === 'roof') return { k: 'getSack', x: s.x };
+  if (s.state === 'roof') return heistMayGrab(st, p) ? { k: 'getSack', x: s.x } : { k: 'oGetSack', x: s.x };
   const g = heistFront(st);
   if (!g) {
     if (st.final) return heistInCab(st, p) ? { k: heistInCab(st, o) ? 'brake' : 'brakeWait' } : { k: 'toCab' };
@@ -580,6 +613,7 @@ function heistJobText(st, id, j) {
     case 'ready': return ['Get ready to catch!', cpu ? nm + ' tosses the sack to you' : nm + ': press ' + oAct + ' to toss'];
     case 'catch': return ['Catch the sack!', ''];
     case 'getSack': return ['Grab the gold sack!', 'Walk over it'];
+    case 'oGetSack': return ['Let ' + nm + ' grab the sack', 'You threw it, so ' + nm + ' takes it on'];
     case 'toFlag': return ['Both onto the flag car!', 'Bring the sack'];
     case 'onFlag': return ['Wait here for ' + nm, ''];
     case 'toCab': return ['Into the engine cab!', 'The big brake lever is inside'];
@@ -618,7 +652,9 @@ function heistLeash(st, xb) {
   if (Math.abs((a.x + a.w / 2) - (b.x + b.w / 2)) <= lim) return;
   for (const p of [a, b]) {
     const o = other(p), away = Math.abs(p.x - o.x) > Math.abs(xb[p.id] - o.x) && Math.abs(p.x - xb[p.id]) > 0;
-    if (!away || !p.grounded) continue;
+    // (in the air too, but only above a roof: hopping along can't beat the leash, and it never drops anyone into a gap)
+    const overRoof = p.grounded || (!heistGapAt(st, xb[p.id] + p.w / 2) && !heistGapAt(st, p.x + p.w / 2));
+    if (!away || !overRoof) continue;
     p.x = xb[p.id]; p.vx = 0;
     const P = st.pl[p.id];
     if (P.waitCD <= 0) {
@@ -664,7 +700,7 @@ function heistTick(st, dt) {
   }
   if (G.introT > HEIST.introHold) { for (const p of ps) { p.pendingAct = false; p.pendingJump = false; } heistCamera(st, dt); return; }
   if (!st.started) { st.started = true; if (st.room.news) heistNews(st, st.room.news, false, 5); }
-  for (const p of ps) { const P = st.pl[p.id]; P.waitCD -= dt; P.shoutCD -= dt; }
+  for (const p of ps) { const P = st.pl[p.id]; P.waitCD -= dt; P.shoutCD -= dt; P.noGrabCD -= dt; }
   const xb = ps.map(p => p.x);
   for (const p of ps) heistPlayer(st, p, dt);
   heistLeash(st, xb);
@@ -716,12 +752,12 @@ function heistRoom(st, L, k) {
   st.k = k; st.room = def; st.final = k === (def.roomCount || 1) - 1;
   heistBuild(st, def);
   st.carrier = def.carrier || 0;
-  st.sack = { state: 'held', who: st.carrier, from: st.carrier, x: 0, y: 0, vx: 0, vy: 0, t: 0, spin: 0, ret: null };
+  st.sack = { state: 'held', who: st.carrier, from: st.carrier, fromX: null, x: 0, y: 0, vx: 0, vy: 0, t: 0, spin: 0, ret: null };
   st.hz = []; st.timers = (def.hz || []).map(h => ({ k: h.k, every: h.every || 10, t: h.first || 6, len: h.len || 0, once: !!h.once }));
   st.state = 'play'; st.goNext = false; st.clearT = 0; st.started = false; st.progressT = 0; st.segStart = G.time;
   st.brakeK = 0; st.brakeHold = [false, false]; st.rattleCD = 0; st.leverShake = 0;
   st.pops = []; st.news = null; st.sparks = []; st.dark = 0;
-  st.pl = [0, 1].map(() => ({ duck: false, ducks: 0, safe: 0, whoops: null, car: 0, best: 0, charging: false, chargeT: 0, waitCD: 0, shoutCD: 0, chipKey: '', chipT: 0 }));
+  st.pl = [0, 1].map(() => ({ duck: false, ducks: 0, safe: 0, whoops: null, car: 0, best: 0, charging: false, chargeT: 0, waitCD: 0, shoutCD: 0, noGrabCD: 0, chipKey: '', chipT: 0 }));
   const c0 = st.cars[0], sx = [c0.x0 + 60, c0.x0 + 110];
   G.players.forEach((p, i) => {
     const input = p.input;
@@ -741,7 +777,7 @@ function heistSetup(st, L) {
 
 MODES.heist = {
   HEIST,
-  front: heistFront, job: heistJob, tx: heistTX, inCab: heistInCab, hzBox: heistHzBox, tossV: heistTossV, carAt: heistCarAt,
+  front: heistFront, job: heistJob, mayGrab: heistMayGrab, tx: heistTX, inCab: heistInCab, hzBox: heistHzBox, tossV: heistTossV, carAt: heistCarAt,
   setup(st, L) { heistSetup(st, L); },
   room(k, L) { heistRoom(G.mst, L, k); },
   step(dt) {
@@ -1214,6 +1250,15 @@ function heistDrawTop(st) {
   // hint chips over each person
   if (st.state === 'play' && G.introT <= HEIST.introHold) {
     const boxes = [];
+    // (keep clear of the computer's speech bubble, drawn later by cpuDraw with the same sizes)
+    for (const p of G.players) {
+      const b = heistCpu(p.id) && typeof CPU !== 'undefined' && CPU.bubbles[p.id];
+      if (!b || b.t <= 0 || !p.alive) continue;
+      ctx.font = '700 ' + (big ? 19 : 13) + 'px "Atkinson Hyperlegible", sans-serif';
+      const bw = ctx.measureText(b.text).width + (big ? 22 : 16), bh = big ? 30 : 22;
+      const bx = clamp(p.x + p.w / 2 - bw / 2, 4, W - bw - 4), by = clamp(p.y - 22 - bh, 4, H - bh - 4);
+      boxes.push({ x0: bx, y0: by, x1: bx + bw, y1: by + bh + 6 });
+    }
     for (const p of G.players) {
       if (!p.alive || heistCpu(p.id)) continue;
       const P = st.pl[p.id], j = heistJob(st, p.id);
@@ -1281,7 +1326,6 @@ function heistDrawHazard(st, h, t) {
     ctx.fillStyle = '#c9a24a'; for (const bx of [10, 35, 60]) { circle(x + bx, top - 22, 3); ctx.fill(); }
     ctx.strokeStyle = '#5a3a22'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(x + 4, top - 42); ctx.lineTo(x + 4, top - 74); ctx.moveTo(x + 66, top - 42); ctx.lineTo(x + 66, top - 74); ctx.moveTo(x, top - 70); ctx.lineTo(x + 70, top - 70); ctx.stroke();
-    ctx.fillStyle = 'rgba(80,50,30,0.35)'; ctx.fillRect(x - 6, top - 120, 82, 48);
   } else if (h.k === 'arch') {
     // a red rock arch over the canyon line, all the way up
     ctx.fillStyle = '#b4583a'; ctx.beginPath(); ctx.moveTo(x - 10, 0); ctx.lineTo(x + 100, 0); ctx.lineTo(x + 94, top - 30); ctx.quadraticCurveTo(x + 86, top + 2, x + 45, top); ctx.quadraticCurveTo(x + 4, top + 2, x - 4, top - 30); ctx.closePath(); ctx.fill();
@@ -1393,7 +1437,9 @@ function heistHud(st) {
     cy2 += fs2 + 14;
   }
   // hazard warning: a wooden sign with each person's duck key
-  const wn = st.hz.find(q => HEIST_DUCK[q.k] && (q.phase === 'warn' || (q.x > st.camX + 120 && q.x < st.camX + W + 60)));
+  // (only while it is still coming: once it has passed the front player the sign goes)
+  const front = Math.max(...G.players.map(p => heistTX(st, p)));
+  const wn = st.hz.find(q => HEIST_DUCK[q.k] && (q.phase === 'warn' || (q.x > front - 20 && q.x > st.camX + 120 && q.x < st.camX + W + 60)));
   if (wn && st.state === 'play') {
     const name = { bridge: 'LOW BRIDGE!', arch: 'LOW ARCH!', tower: 'WATER SPOUT!', tunnel: 'TUNNEL!' }[wn.k];
     const humans = [0, 1].filter(id => !heistCpu(id));
