@@ -26,10 +26,11 @@
    - Rooms: Sandy Cove (1 chest, gentle waves, no crabs), Rock Pools (2 chests, crabs, a rock pool to dump in),
      Shipwreck Beach (a deep chest under the old wreck, bigger waves, every 3rd wave BIG, a sand wall), Skull Rock
      Lagoon (a small chest, then the big chest: the tide comes in faster and higher as the room goes on, crabs from both
-     sides; the big chest is too heavy, so both hold the action at the two rope posts to haul it up together).
+     sides; the big chest is too heavy, so both hold the action at the two rope posts to haul it up together: either
+     player may take either post, no new crabs come out during the haul, and a tap away from the posts still shoos).
    - A room is done once every chest is open, no coin is loose and no crab carries one.
    - Help, always gold and announced: Gold bucket (bigger scoops, no slow-down) after 2 floods in a room (the digger
-     blocked by water for 6 s); Captain Polly the parrot chases coin-carrying crabs after 2 crab steals in a room; Gold
+     blocked by water for 6 s); Captain Polly the parrot chases coin-carrying crabs after 3 crab steals in a room; Gold
      shovel (1.7x digging) after 75 s in a room with a chest still shut.
    - Neither can clear it alone: digging alone floods out (water never drains) and nobody but the digger can dig.
    - Brains and hint chips read tidedigPlan(st): each player's job right now.
@@ -49,7 +50,7 @@ const TIDEDIG = {
   swellT: 1.9, rushV: 300, backV: 210, holdT: 0.45,
   coinR: 8, coinG: 1500,
   winHold: 2.0, newsLife: 3.8, chipT: 7, chipAgain: 16,
-  floodT: 6, floodGold: 2, stealGold: 2, shovelAfter: 75, goldShovel: 1.7,
+  floodT: 6, floodGold: 2, stealGold: 3, shovelAfter: 75, goldShovel: 1.7,
   haulT: 2.6,
 };
 const TIDEDIG_MEDAL = { gold: [240, 0.85], silver: [400, 0.6] };   // [seconds, share of coins saved]
@@ -374,7 +375,12 @@ function tidedigAct(st, p) {
   const P = st.pl[p.id];
   const fresh = p.pendingAct, held = p.input.act;
   if (fresh) { P.lastAct = st.roomT; }
-  if (st.phase !== 'play') { if (st.phase === 'haul') p.pendingAct = false; return; }
+  if (st.phase === 'haul') {
+    // hauling: held at a post it pulls the rope (tidedigHaulStep); a tap anywhere else can still shoo a crab
+    if (fresh) { p.pendingAct = false; if (!st.haul.posts.some(x => Math.abs(tidedigCx(p) - x) < 20)) tidedigShoo(st, p); }
+    return;
+  }
+  if (st.phase !== 'play') return;
   if (p.id === st.digger) {
     const h = st.holes.find(h => !h.chest.opened && tidedigAtSpot(st, p, h));
     if (h && (fresh || held)) { p.pendingAct = false; tidedigDig(st, p, h); return; }
@@ -472,7 +478,7 @@ function tidedigCrabs(st, dt) {
   st.crabT -= dt;
   const active = st.crabs.filter(c => c.ph !== 'gone').length;
   const prize = st.coins.some(q => q.st === 'rest') || st.stats.stash > 0;
-  if (st.crabT <= 0 && active < cf.max && prize && st.phase !== 'won') {
+  if (st.crabT <= 0 && active < cf.max && prize && st.phase === 'play') {
     st.crabT = cf.every * (0.8 + Math.random() * 0.4);
     const b = st.burrows[st.crabNext % st.burrows.length];
     st.crabs.push(tidedigMakeCrab(st, b));
@@ -548,25 +554,40 @@ function tidedigPolly(st, dt) {
 /* ---------- the big chest (Skull Rock Lagoon): both haul it up on the rope ---------- */
 function tidedigStartHaul(st, h) {
   if (st.haul) return;
-  const posts = st.posts.length >= 2 ? st.posts.slice(0, 2) : [h.cx - 60, h.cx + 60];
-  // whoever stands further left takes the left post
-  const ps = G.players, left = tidedigCx(ps[0]) <= tidedigCx(ps[1]) ? 0 : 1;
-  const post = []; post[left] = posts[0]; post[1 - left] = posts[1];
-  st.haul = { h, prog: 0, post, held: [false, false], t: 0 };
+  const posts = st.posts.length >= 2 ? st.posts.slice(0, 2).sort((a, b) => a - b) : [h.cx - 60, h.cx + 60];
+  // either player may take either post: by[k] is who holds post k right now (-1: nobody)
+  st.haul = { h, prog: 0, posts, by: [-1, -1], held: [false, false], t: 0 };
   st.phase = 'haul';
   tidedigNews(st, 'Too heavy! Both hold ' + (cpuSolo() ? 'the action' : 'your action') + ' on a rope post to haul it up!', false, 5);
   st.polly.say = 'Squawk! Here\'s a rope!'; st.polly.sayT = 2.5;
   Sfx.play('tidedigRope');
 }
+// is p holding the rope at post x (standing by it on the sand with the action held)?
+const tidedigOnPost = (p, x) => p.alive && p.input.act && tidedigOnSurface(p) && Math.abs(tidedigCx(p) - x) < 20;
+// the post each player should take: the one they hold, else the one the partner isn't taking (left player, left post)
+function tidedigPostFor(st, id) {
+  const hl = st.haul, ps = hl.posts, mine = hl.by.indexOf(id), theirs = hl.by.indexOf(1 - id);
+  if (mine >= 0) return ps[mine];
+  if (theirs >= 0) return ps[1 - theirs];
+  const a = G.players[id], b = G.players[1 - id], ax = tidedigCx(a), bx = tidedigCx(b);
+  const left = ax < bx || (ax === bx && id === 0);
+  return ps[left ? 0 : 1];
+}
 function tidedigHaulStep(st, dt) {
   const hl = st.haul;
   hl.t += dt;
-  hl.held = G.players.map(p => p.alive && p.input.act && tidedigOnSurface(p) && Math.abs(tidedigCx(p) - hl.post[p.id]) < 20);
-  if (hl.held[0] && hl.held[1]) {
+  const by = [-1, -1];
+  for (let k = 0; k < 2; k++) {
+    // (one player per post: a player on both counts only for the nearer one)
+    for (const p of G.players) if (tidedigOnPost(p, hl.posts[k]) && by[1 - k] !== p.id) { by[k] = p.id; break; }
+  }
+  hl.by = by;
+  hl.held = [by.includes(0), by.includes(1)];
+  if (by[0] >= 0 && by[1] >= 0) {
     const was = hl.prog;
     hl.prog = Math.min(1, hl.prog + dt / TIDEDIG.haulT);
-    if (Math.floor(was * 6) !== Math.floor(hl.prog * 6)) { Sfx.play('tidedigHeave'); tidedigPop(st, hl.h.cx, tidedigSurf() - 50, 'Heave!', '#ffe9a8', 16); }
-  } else if (hl.held[0] !== hl.held[1]) hl.prog = Math.max(0, hl.prog - dt * 0.05);
+    if (Math.floor(was * 6) !== Math.floor(hl.prog * 6)) Sfx.play('tidedigHeave');   // (the haul bar says HEAVE!)
+  } else if (by[0] >= 0 || by[1] >= 0) hl.prog = Math.max(0, hl.prog - dt * 0.05);
   hl.h.chest.lift = hl.prog;
   if (hl.prog >= 1) {
     st.phase = 'play'; st.haul = null;
@@ -604,7 +625,7 @@ function tidedigPlan(st) {
   const D = G.players[st.digger], B = G.players[st.bailer], h = tidedigActive(st);
   // ----- the digger -----
   const dIn = tidedigIn(st, D);
-  if (st.phase === 'haul') jobs[st.digger] = tidedigJob('haul', st.haul.post[st.digger]);
+  if (st.phase === 'haul') jobs[st.digger] = tidedigJob('haul', tidedigPostFor(st, st.digger), { hole: dIn });
   else if (dIn && (dIn.chest.opened || dIn !== h)) jobs[st.digger] = tidedigJob('climb', h ? h.cx : W / 2, { hole: dIn });
   else if (h && (dIn === h || tidedigAtSpot(st, D, h))) jobs[st.digger] = tidedigJob(h.water >= TIDEDIG.stopW ? 'wait' : 'dig', h.cx, { hole: h });
   else if (tidedigLoose(st)) { const q = tidedigNearestCoin(st, D); jobs[st.digger] = tidedigJob('coins', q.x, { coin: q }); }
@@ -614,7 +635,7 @@ function tidedigPlan(st) {
   const P = st.pl[st.bailer], thr = tidedigThreat(st), wl = st.wall, w = st.wave;
   const wet = st.holes.filter(q => q.depth > 0 && !q.chest.opened && q.water > 0.5).sort((a, b) => (b === h) - (a === h) || b.water - a.water)[0] || null;
   const dumpTo = () => { let best = null; for (const d of st.dumps) { const x = clamp(tidedigCx(B), d.x0 + 14, d.x1 - 14), dd = Math.abs(x - tidedigCx(B)); if (!best || dd < best.dd) best = { d, x: d.kind === 'sea' ? Math.max(x, d.x0 + 18) : x, dd }; } return best; };
-  if (st.phase === 'haul') jobs[st.bailer] = tidedigJob('haul', st.haul.post[st.bailer]);
+  if (st.phase === 'haul' && !(thr && thr.coin)) jobs[st.bailer] = tidedigJob('haul', tidedigPostFor(st, st.bailer));
   else if (thr && (thr.coin || thr.ph === 'grab' || Math.abs(thr.x - tidedigCx(B)) < 160)) jobs[st.bailer] = tidedigJob('shoo', thr.x, { crab: thr });
   else if (P.bucket > 0) { const d = dumpTo(); jobs[st.bailer] = tidedigJob('dump', d.x, { dump: d.d }); }
   else if (wet && (wet.water >= 4 || wet === h && !wl)) jobs[st.bailer] = tidedigJob('scoop', wet.cx, { hole: wet });
@@ -634,7 +655,7 @@ function tidedigSay(st, id, j) {
     case 'climb': return 'Climb out: hold ' + u;
     case 'goX': return j.hole && j.hole.depth > 0 ? 'Hop into your hole and dig!' : 'Go to the X and dig!';
     case 'coins': return 'Grab the gold coins!';
-    case 'haul': return 'Hold ' + a + ' on the rope post!';
+    case 'haul': return j.hole ? 'Climb out (hold ' + u + '), then hold ' + a + ' at a rope post!' : 'Hold ' + a + ' at the rope post' + (oc ? ' with ' + NAMES[o] : '') + '!';
     case 'shoo': return j.crab && j.crab.coin ? 'Crab! Shoo it: ' + a + ' next to it' : 'Crab coming! Shoo it: ' + a;
     case 'dump': return j.dump && j.dump.kind === 'pool' ? 'Dump it in the rock pool: ' + a : 'Dump it in the sea ➜ ' + a;
     case 'scoop': return 'Scoop the water: ' + a + ' at the hole';
@@ -999,7 +1020,9 @@ function tidedigDrawHoles(st, t) {
     // the chest under it (seen through the cut-away sand until it's dug to)
     const cy = surf + (ch.depth + 1) * T - 2 - (ch.lift || 0) * (ch.depth + 0.3) * T;
     const reached = h.depth >= ch.depth;
-    if (!(ch.opened && ch.haul)) tidedigDrawChest(h.cx, cy, ch.open, ch.big, reached || ch.opened ? 1 : 0.55, ch.lift > 0 && !ch.opened);
+    // (the hauled big chest sits open on the sand over its hole)
+    if (ch.opened && ch.haul) tidedigDrawChest(h.cx, surf + 3, ch.open, ch.big, 1, false);
+    else tidedigDrawChest(h.cx, cy, ch.open, ch.big, reached || ch.opened ? 1 : 0.55, ch.lift > 0 && !ch.opened);
     if (!reached && !ch.opened) {
       ctx.fillStyle = 'rgba(214,173,98,0.35)'; ctx.fillRect(h.cx - 22, cy - 26, 44, 28);
       ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '700 12px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1040,8 +1063,8 @@ function tidedigDrawHoles(st, t) {
   if (st.haul) {
     const hl = st.haul, h = hl.h, cy = surf + (h.chest.depth + 1) * T - 2 - hl.prog * (h.chest.depth + 0.3) * T - (h.chest.big ? 44 : 34);
     for (let k = 0; k < 2; k++) {
-      const px = hl.post[k];
-      ctx.strokeStyle = hl.held[k] ? '#ffe9a8' : C.rope; ctx.lineWidth = 3;
+      const px = hl.posts[k];
+      ctx.strokeStyle = hl.by[k] >= 0 ? '#ffe9a8' : C.rope; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(px, surf - 34); ctx.quadraticCurveTo((px + h.cx) / 2, surf - 46, h.cx, Math.max(surf - 40, cy)); ctx.lineTo(h.cx, cy); ctx.stroke();
     }
   }
@@ -1242,15 +1265,18 @@ function tidedigDrawTools(st, t) {
     ctx.fillStyle = p.id === 0 ? '#d63a2c' : '#2a3a8a'; ctx.beginPath(); ctx.moveTo(cx - f * (w / 2 - 2), by + 3); ctx.lineTo(cx - f * (w / 2 + 6), by + 1 + Math.sin(t * 8 + p.id) * 1.5); ctx.lineTo(cx - f * (w / 2 + 5), by + 8); ctx.closePath(); ctx.fill();
   }
 }
-function tidedigChip(t1, t2, x, y, col, avoid) {
+function tidedigChip(t1, t2, x, y, col, avoid, top) {
+  top = top || 84;
   const z = tidedigBig() ? 1.6 : 1, f1 = Math.round(13 * z), f2 = Math.round(12 * z);
   ctx.font = '700 ' + f1 + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
   let w = ctx.measureText(t1).width;
   if (t2) { ctx.font = '700 ' + f2 + 'px "Atkinson Hyperlegible", system-ui, sans-serif'; w = Math.max(w, ctx.measureText(t2).width); }
   w = Math.min(W - 16, w + 22 * z); const h = (t2 ? 38 : 22) * z;
   const x0 = clamp(x - w / 2, 8, W - 8 - w);
-  let y0 = clamp(y - h, 84, H - 8 - h);
-  for (const b of avoid || []) if (x0 < b.x1 + 4 && x0 + w > b.x0 - 4 && y0 < b.y1 + 4 && y0 + h > b.y0 - 4) y0 = b.y0 - h - 6 >= 84 ? b.y0 - h - 6 : b.y1 + 6;
+  let y0 = clamp(y - h, top, H - 8 - h);
+  // (clear of every box already drawn: up if there's room under the top line, else down; checked again after a move)
+  const hit = yy => (avoid || []).find(b => x0 < b.x1 + 4 && x0 + w > b.x0 - 4 && yy < b.y1 + 4 && yy + h > b.y0 - 4);
+  for (let k = 0, b; k < 6 && (b = hit(y0)); k++) y0 = b.y0 - h - 6 >= top && !hit(b.y0 - h - 6) ? b.y0 - h - 6 : b.y1 + 6;
   ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(x0, y0, w, h, 10 * z); ctx.fill();
   ctx.strokeStyle = col; ctx.lineWidth = 2; rr(x0, y0, w, h, 10 * z); ctx.stroke();
   text(t1, x0 + w / 2, y0 + 11 * z, f1, col, 'center', 'body');
@@ -1286,7 +1312,13 @@ function tidedigDrawTop() {
     ctx.fillStyle = 'rgba(255,255,255,0.2)'; rr(x0, y0 + 6, bw, 8, 4); ctx.fill();
     ctx.fillStyle = C.gold; rr(x0, y0 + 6, Math.max(8, bw * hl.prog), 8, 4); ctx.fill();
     text(hl.held[0] && hl.held[1] ? 'HEAVE!' : 'Both hold the rope!', hl.h.cx, y0 - 1, 11, C.paper, 'center', 'body');
-    for (let k = 0; k < 2; k++) { ctx.fillStyle = hl.held[k] ? PCOL[k] : 'rgba(255,255,255,0.3)'; circle(hl.post[k], tidedigSurf() - 52, 6); ctx.fill(); }
+    // a light over each post: the holder's colour, or a soft blink while nobody holds it
+    for (let k = 0; k < 2; k++) {
+      const b = hl.by[k];
+      ctx.fillStyle = b >= 0 ? PCOL[b] : 'rgba(255,255,255,' + (reduceMotion ? 0.5 : 0.35 + 0.3 * Math.sin(G.clock * 6)) + ')';
+      circle(hl.posts[k], tidedigSurf() - 52, 6); ctx.fill();
+    }
+    boxes.push({ x0: x0 - 6, x1: x0 + bw + 6, y0: y0 - 14, y1: y0 + 20 });
   }
   // job hints over each person (never for the computer): when a job starts, and again when it drags on
   const pl = tidedigPlan(st);
@@ -1299,7 +1331,7 @@ function tidedigDrawTop() {
       const line = tidedigSay(st, id, j);
       if (!line) continue;
       const role = id === st.digger ? ' (digger)' : ' (bailer)';
-      boxes.push(tidedigChip(NAMES[id] + role + ': ' + line, '', tidedigCx(p), Math.min(p.y, tidedigSurf() - 26) - 22, PCOL[id], boxes));
+      boxes.push(tidedigChip(NAMES[id] + role + ': ' + line, '', tidedigCx(p), Math.min(p.y, tidedigSurf() - 26) - 22, PCOL[id], boxes, st.news ? (big ? 146 : 118) : 84));
     }
     ctx.restore();
   }
@@ -1309,10 +1341,13 @@ function tidedigDrawTop() {
     ctx.font = size + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
     const w = ctx.measureText(q.s).width + size * 0.3, x = clamp(q.x, w / 2 + 6, W - w / 2 - 6);
     let y = clamp(q.y - q.t * 26, 92, H - 20);
-    for (const b of boxes) if (x + w / 2 > b.x0 && x - w / 2 < b.x1 && y + size * 0.55 > b.y0 && y - size * 0.55 < b.y1) y = Math.max(92, b.y0 - size * 0.6 - 2);
+    // (step clear of the hint chips, the haul bar and the pops already drawn: up if there's room, else down)
+    const hit = yy => boxes.find(b => x + w / 2 > b.x0 && x - w / 2 < b.x1 && yy + size * 0.55 > b.y0 && yy - size * 0.55 < b.y1);
+    for (let k = 0, b; k < 6 && (b = hit(y)); k++) { const up = b.y0 - size * 0.6 - 2; y = up >= 92 ? up : b.y1 + size * 0.6 + 2; }
     ctx.save(); ctx.globalAlpha = clamp(Math.min(q.t / 0.1, (1.3 - q.t) / 0.4), 0, 1);
     bigText(q.s, x, y, Math.round(size), q.col);
     ctx.restore();
+    boxes.push({ x0: x - w / 2, x1: x + w / 2, y0: y - size * 0.55, y1: y + size * 0.55 });
   }
   if (st.phase === 'won') {
     const k = Math.min(1, st.winT / 0.3), last = G.level.def.roomIndex >= G.level.def.roomCount - 1;
@@ -1348,7 +1383,10 @@ function tidedigHud() {
   // the wave meter (top centre): next wave coming in, or the big one
   const wv = st.wave, ny = big ? 60 : 50;
   if (st.phase !== 'won') {
-    const fs3 = big ? 18 : 13, bw = big ? 300 : 220, bh = big ? 40 : 30, y = ny;
+    const fs3 = big ? 18 : 13, bh = big ? 40 : 30, y = ny;
+    // (the pill fits the longest label, "BIG WAVE coming!", then the bar, so the words never run into the bar)
+    ctx.font = '700 ' + fs3 + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+    const lw = ctx.measureText('BIG WAVE coming!').width, barW0 = big ? 80 : 60, bw = 36 + lw + 14 + barW0 + 14;
     const left = tidedigWaveIn(st), every = Math.max(1, tidedigWaveCfg(st).every);
     let label, col = C.paper, fill;
     if (wv.ph === 'calm') { label = 'Next wave ' + Math.ceil(left) + ' s'; fill = 1 - clamp((left - TIDEDIG.swellT) / every, 0, 1); }
@@ -1362,7 +1400,7 @@ function tidedigHud() {
     ctx.strokeStyle = '#5fd6ee'; ctx.lineWidth = 3; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(ix - 9, iy + 4); ctx.quadraticCurveTo(ix - 4, iy - 8, ix + 4, iy - 4); ctx.quadraticCurveTo(ix, iy, ix + 2, iy + 4); ctx.stroke();
     text(label, ix + 16, iy + 0.5, fs3, col, 'left', 'body');
-    const bx = W / 2 + (big ? 50 : 36), barW = W / 2 + bw / 2 - 14 - bx;
+    const barW = barW0, bx = W / 2 + bw / 2 - 14 - barW;
     ctx.fillStyle = 'rgba(255,255,255,0.18)'; rr(bx, iy - 4, barW, 8, 4); ctx.fill();
     ctx.fillStyle = wv.big && wv.ph !== 'calm' ? '#ffb08a' : '#5fd6ee'; rr(bx, iy - 4, Math.max(8, barW * fill), 8, 4); ctx.fill();
     ctx.restore();

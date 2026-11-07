@@ -21,7 +21,7 @@
   const TD = () => MODES.tidedig.test;
   // walk toward x on the beach; the digger climbs out of a hole first and hops over open holes on the way
   function walk(st, p, m, x, dead = 4) {
-    const t = TD(), out = {}, cx = cpuCx(p);
+    const t = TD(), out = {}, cx = cpuCx(p), o = G.players[1 - p.id];
     const inH = p.id === m.digger ? t.tidedigIn(m, p) : null;
     if (inH && Math.abs(x - inH.cx) > 14) {
       out.jump = true;
@@ -42,10 +42,13 @@
         }
       } else if (st.hopT > 0) { st.hopT += DT; out.jump = st.hopT < 0.2; }
     }
-    // a step up in the way (out of the sea or a rock pool, onto a rock): jump it, holding for height
+    // a step up in the way (out of the sea or a rock pool, onto a rock), or the partner standing in the way (say, the
+    // digger floating up in a flooded hole, or standing on the X): jump it, holding for height
     if (Math.abs(x - cx) > dead + 4) {
       const dir = x > cx ? 1 : -1, col = Math.floor((cx + dir * (p.w / 2 + 6)) / T), row = Math.floor((cpuFeet(p) - 2) / T);
-      if (p.grounded && solidFor(tile(col, row), p)) { out.jump = !CPU.last[p.id].jump || st.stepT > 0; st.stepT = 0.01; }
+      const ahead = (cpuCx(o) - cx) * dir, blocker = o.alive && ahead > 0 && ahead < p.w + 10 && Math.abs(x - cpuCx(o)) > 6
+        && o.y < cpuFeet(p) - 6 && cpuFeet(o) > p.y + 6 && !p.onPartner;
+      if (p.grounded && (solidFor(tile(col, row), p) || blocker)) { out.jump = !CPU.last[p.id].jump || st.stepT > 0; st.stepT = 0.01; }
       else if (st.stepT > 0) { st.stepT += DT; out.jump = st.stepT < 0.25; if (st.stepT >= 0.25) st.stepT = 0; }
     }
     return out;
@@ -54,7 +57,7 @@
   const near = (p, x, d) => Math.abs(cpuCx(p) - x) <= d;
 
   cpuBrain('tidedig', {
-    reset(st) { st.saidT = null; st.lastK = ''; st.lagT = 0; st.hopT = 0; st.scoopSide = 0; },
+    reset(st) { st.yieldPost = null; st.saidT = null; st.lastK = ''; st.lagT = 0; st.hopT = 0; st.scoopSide = 0; },
     think(st, p, o, dt, info) {
       const m = info.mst, t = TD();
       if (!m || !m.holes || info.intro || m.phase === 'won' || !p.alive) return {};
@@ -101,8 +104,18 @@
           return out;
         }
         case 'haul': {
-          if (near(p, j.x, 9) && p.grounded) return { act: true };
-          return walk(st, p, m, j.x, 4);
+          // a person who wants the post we're at (standing by it a second) gets it: we take the other one
+          let x = j.x;
+          const hl = m.haul;
+          if (hl && person) {
+            const other = hl.posts[0] === j.x ? hl.posts[1] : hl.posts[0], ox = cpuCx(o);
+            const crowd = Math.abs(ox - j.x) < 40 && Math.abs(ox - j.x) < Math.abs(ox - other);
+            if (cpuFor(st, 'crowd', crowd, dt) > 1) st.yieldPost = other;
+            if (st.yieldPost != null && st.yieldPost !== j.x && st.yieldPost !== other) st.yieldPost = null;
+            if (st.yieldPost != null) x = st.yieldPost;
+          }
+          if (near(p, x, 9) && p.grounded) return { act: true };
+          return walk(st, p, m, x, 4);
         }
         case 'shoo': {
           const cr = j.crab, d = cr.x - cpuCx(p);

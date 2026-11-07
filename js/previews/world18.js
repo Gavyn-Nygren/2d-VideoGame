@@ -54,7 +54,9 @@ if (typeof definePreview === 'function') {
     ctx.fillStyle = '#a9834c'; ctx.fillRect(0, pw18tGY + 60, v.W, v.H - pw18tGY - 60);
     for (let k = 0; k < 18; k++) v.fillCircle((k * 37) % 320 + 6, pw18tGY + 14 + (k * 23) % 60, 1.4, 'rgba(120,80,40,0.25)');
     // the near sea, right of the beach
-    v.water(pw18tSea, pw18tGY + 3, v.W - pw18tSea, v.H - pw18tGY, t);
+    // (a shallow sea over a sloping sandy seabed, so the cutaway stays sand all the way across)
+    v.water(pw18tSea, pw18tGY + 3, v.W - pw18tSea, 30, t);
+    ctx.fillStyle = '#e3c27e'; ctx.beginPath(); ctx.moveTo(pw18tSea, pw18tGY + 4); ctx.lineTo(v.W, pw18tGY + 28); ctx.lineTo(v.W, pw18tGY + 34); ctx.lineTo(pw18tSea, pw18tGY + 34); ctx.closePath(); ctx.fill();
     // the buried chest (seen through the cut-away sand)
     if (t < 3.4) { ctx.save(); ctx.globalAlpha = 0.45; pw18tBox(v, pw18tHX - 1, pw18tGY + pw18tChest, 0); ctx.restore(); }
     // the hole
@@ -171,7 +173,7 @@ if (typeof definePreview === 'function') {
       // words
       if (t > 1.55 && t < 2.2) v.bubble('Glub!', pw18tHX + 2, pw18tGY + d - w - 26, { size: 9 });
       if (t > 3.05 && t < 3.7) v.label('Sploosh!', 268, 80 - (t - 3.05) * 8, 12, '#bfe8ff');
-      if (t > 3.4 && t < 4.0) v.label('CLUNK!', pw18tHX, pw18tGY + 20 - (t - 3.4) * 10, 14, v.c.gold);
+      if (t > 3.4 && t < 4.0) v.label('CLUNK!', pw18tHX + 34, pw18tGY - 14 - (t - 3.4) * 10, 14, v.c.gold);
       if (t > 4.95 && t < 5.4) v.puff(102, pw18tGY, v.seg(t, 4.95, 5.4));
       if (t > 4.95 && t < 5.7) v.bubble('Shoo!', 106, pw18tGY - 34, { size: 9 });
       if (t > 5.4) v.confetti(130, 70, v.seg(t, 5.4, 6.5));
