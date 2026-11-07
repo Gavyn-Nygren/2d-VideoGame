@@ -4465,6 +4465,40 @@ const LEVELS = [
   // ----- END 17-4 Vine Swing -----
   //
   // ===== END World 17 =====
+  //
+  // ===== World 18 (Pirate Cove, mixed): the pirate world, world index 17 (js/levels/world18/), a sunny tropical cove with
+  //   friendly pirates, nothing scary, nobody gets hurt. Gavyn's picks (Nov 2026): 18-1 Runaway Ship (team, scrolling),
+  //   18-2 Grapple & Zip (team, scrolling), 18-3 Tide Pool Dig (team), 18-4 Plank Duel (versus, best of 5).
+  //   Each level's def sits between its own BEGIN/END lines. world: 17 =====
+  //
+  // ----- BEGIN 18-1 Runaway Ship (mode 'runship', js/levels/world18/runaway-ship.js) -----
+  // (def goes here)
+  // ----- END 18-1 Runaway Ship -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 18-2 Grapple & Zip (mode 'grapple', js/levels/world18/grapple-and-zip.js) -----
+  // (def goes here)
+  // ----- END 18-2 Grapple & Zip -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 18-3 Tide Pool Dig (mode 'tidedig', js/levels/world18/tide-pool-dig.js) -----
+  // (def goes here)
+  // ----- END 18-3 Tide Pool Dig -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 18-4 Plank Duel (mode 'plankduel', js/levels/world18/plank-duel.js) -----
+  // (def goes here)
+  // ----- END 18-4 Plank Duel -----
+  //
+  //
+  //
+  // ===== END World 18 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -4530,6 +4564,10 @@ const WORLDS = [
   { name: 'Jungle Jamboree', blurb: 'Open temple doors, paddle the rapids, climb the falls and swing on vines!',
     theme: { skyTop: '#6cc7a8', skyBot: '#f4f6c8', hillFar: '#5fae6e', hillNear: '#3f8f55', sun: 'rgba(255, 244, 180, 0.95)', sunGlow: 'rgba(230, 255, 170, 0.38)',
       stone: '#6b5438', stoneLight: '#806645', stoneEdge: '#4a3826', grass: '#7fd65a', grassDark: '#3f9a3c', plank: '#c08a4e', plankDark: '#7a5228', rope: '#9bc85a', ropeDark: '#5a7f2e' } },
+  // World 18: pirates, sunny and friendly (a bright tropical sky over a turquoise sea; warm sand on top of driftwood-brown rock)
+  { name: 'Pirate Cove', blurb: 'Sail, swing, dig and duel your way across the high seas!',
+    theme: { skyTop: '#55c3ef', skyBot: '#fff2cf', hillFar: '#6fd0c4', hillNear: '#3fb0a6', sun: 'rgba(255, 246, 190, 0.95)', sunGlow: 'rgba(255, 214, 140, 0.4)',
+      stone: '#7a5a3e', stoneLight: '#8f6c4c', stoneEdge: '#553e2a', grass: '#f2d68c', grassDark: '#c9a457', plank: '#c98e57', plankDark: '#7d5030', rope: '#ead6a0', ropeDark: '#7a5a2a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
