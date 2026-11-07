@@ -5,20 +5,20 @@
   /* The computer is the other duelist. It presses the same keys a person does: the action to fire, ◀ ▶ to move the aim
      marker in bandit rounds.
      Waiting: it never presses during the pacing. Each fakeout it notices (the Mayor's DRAWER!, a CAW!, a CLONK!...) may
-     fool it: Easy falls for about 13% of them, Normal 6%, Hard 2%. A fooled computer presses a reaction time after the
+     fool it: Easy falls for about 16% of them, Normal 6%, Hard 2%. A fooled computer presses a reaction time after the
      fakeout, which is a foul like anybody's.
      DRAW!: it fires one reaction time after the gold DRAW! (drawn fresh each round from a bell curve: Easy about
-     0.42 s ± 0.07, Normal 0.30 s ± 0.045, Hard 0.21 s ± 0.025, never below its floor), so a quick kid (about 0.35-0.45 s)
+     0.55 s ± 0.08, Normal 0.30 s ± 0.045, Hard 0.21 s ± 0.025, never below its floor), so even a young kid (about 0.4-0.5 s)
      beats Easy more often than not.
      Bandit rounds: after that reaction time, plus a moment to spot which cutout is the bandit, it taps ◀ or ▶ one spot
-     at a time like a person (Easy about 0.19 s a step, Hard 0.10 s), then fires after a short check. Easy sometimes
+     at a time like a person (Easy about 0.24 s a step, Hard 0.10 s), then fires after a short check. Easy sometimes
      picks a friend by mistake (about 10%, Normal 4%, Hard never), which is a foul.
      What it reads: the round's phase, the fakeouts once they have happened, the DRAW! moment once it has happened, and in
      bandit rounds where the bandit stands once the cutouts are up (what a person sees on screen). Never the future
      DRAW! time or the other player's keys.
      It talks (1-player mode only) in short bubbles: a nervous word after a fakeout, a cheer or a "Nice draw!". */
   const SK = {
-    easy: { react: 0.42, sd: 0.07, min: 0.30, fall: 0.13, spot: 0.11, stepT: 0.19, confirm: 0.11, wrong: 0.1 },
+    easy: { react: 0.55, sd: 0.08, min: 0.40, fall: 0.16, spot: 0.16, stepT: 0.24, confirm: 0.14, wrong: 0.12 },
     normal: { react: 0.30, sd: 0.045, min: 0.22, fall: 0.06, spot: 0.08, stepT: 0.15, confirm: 0.07, wrong: 0.04 },
     hard: { react: 0.21, sd: 0.025, min: 0.17, fall: 0.02, spot: 0.05, stepT: 0.10, confirm: 0.04, wrong: 0 },
   };
