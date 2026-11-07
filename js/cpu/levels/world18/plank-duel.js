@@ -7,7 +7,7 @@
      What it reads, all of it on the screen for a person too: where both stand, how much plank is behind each, the
      other's stance (high or crouched), whether their sword is winding up and at which height, charging, lunging,
      wobbling after a block, hopping or teetering. It sees the other as they were a reaction time ago (cpuLag): Easy
-     about 0.5 s (slower than a wind-up, so it mostly guesses), Normal about 0.27 s, Hard about 0.15 s. Nothing else
+     about 0.5 s (slower than a wind-up, so it mostly guesses), Normal about 0.33 s, Hard about 0.15 s. Nothing else
      about the other player's keys or the level's random numbers.
      Defending: when it sees a swing coming it guards that height, now and then misreads it (Easy often) or hops over a
      low one. It doesn't start a swing of its own into a wind-up it can see, but it attacks a charger (they can't block).
@@ -15,10 +15,12 @@
      one), punishes a wobble or a hop (a high swing), answers a block with a quick riposte, and on Normal and Hard can
      feint (start at one height, switch once the other has matched it) or charge a lunge when the other is near their
      end or wobbling. It steps in to just inside reach, and teeters back to safety ("Phew!") after its reaction time.
-     Easy also dawdles. Bubbles only in 1-player mode. */
+     Easy also dawdles. A swing that has already landed (a clack or bonk anyone hears) ends its guarding at once, and a
+     riposte waits for its own reaction time. In the last 10 s of a round it isn't ahead in bonks it swings more often
+     (time up goes to more bonks). Bubbles only in 1-player mode. */
   const SK = {
-    easy: { react: 0.5, jit: 0.12, misread: 0.3, smart: 0.45, feint: 0, lunge: 0.04, hop: 0.15, punish: 0.3, riposte: 0.25, aggro: 0.7, dawdle: 0.35, aimAir: 0.2 },
-    normal: { react: 0.27, jit: 0.05, misread: 0.12, smart: 0.75, feint: 0.15, lunge: 0.1, hop: 0.2, punish: 0.7, riposte: 0.6, aggro: 1.1, dawdle: 0.05, aimAir: 0.6 },
+    easy: { react: 0.5, jit: 0.12, misread: 0.3, smart: 0.3, feint: 0, lunge: 0.04, hop: 0.15, punish: 0.2, riposte: 0.12, aggro: 0.55, dawdle: 0.35, aimAir: 0.2 },
+    normal: { react: 0.33, jit: 0.05, misread: 0.25, smart: 0.45, feint: 0.1, lunge: 0.1, hop: 0.2, punish: 0.5, riposte: 0.35, aggro: 0.85, dawdle: 0.08, aimAir: 0.6 },
     hard: { react: 0.15, jit: 0.025, misread: 0.06, smart: 0.88, feint: 0.28, lunge: 0.14, hop: 0.22, punish: 0.92, riposte: 0.9, aggro: 1.4, dawdle: 0, aimAir: 0.9 },
   };
   const skOf = s => (s <= 0.4 ? SK.easy : s < 0.9 ? SK.normal : SK.hard);
@@ -92,8 +94,10 @@
         S.guard = h;
         return out;
       }
-      // --- defending: a swing it can see coming
-      if (seen.swH && !seen.fall) {
+      // --- defending: a swing it can see coming. A swing that has already landed (the clack, swish or bonk a person
+      // hears at once) is over, even if the lagged picture still shows its wind-up: then it's riposte time.
+      const landed = !!seen.swH && (!op.sw || op.sw.id !== seen.swId || op.sw.state === 'rec');
+      if (seen.swH && !seen.fall && !landed) {
         if (!S.resp || S.resp.id !== seen.swId || S.resp.h !== seen.swH) {
           const mis = Math.random() < sk.misread;
           S.resp = { id: seen.swId, h: seen.swH, want: mis ? other(seen.swH) : seen.swH, hop: seen.swH === 'lo' && !seen.charging && Math.random() < sk.hop };
@@ -122,14 +126,16 @@
       S.guessT -= dt;
       guard = S.guessG || seen.stance;
       if (seen.air) guard = 'hi';
-      // --- attacking
+      // --- attacking (more often near the end of a round it isn't ahead in: time up goes to more bonks, as the HUD shows)
       const free = T().free(me) && !me.air;
+      const hurry = m.timeLeft < 10 && me.bonks <= op.bonks ? 1.6 : 1;
       if (free && dist <= P.reach - 6) {
         let go = false, h = null, lunge = false, feint = false;
-        if (me.riposte > 0 && Math.random() < sk.riposte * dt * 30) go = true;                         // a quick riposte after a block
+        // a quick riposte after a block (once it has reacted to its own clack, like a person)
+        if (me.riposte > 0 && me.riposte <= P.riposte - S.react * 0.7 && Math.random() < sk.riposte * dt * 30) go = true;
         else if ((seen.wobble || seen.stun) && Math.random() < sk.punish * dt * 12) go = true;            // punish a wobble
         else if (seen.air && Math.random() < sk.aimAir * dt * 14) { go = true; h = 'hi'; }                // a hop: swing high
-        else if (S.cool <= 0 && S.dawdle <= 0 && Math.random() < sk.aggro * dt * 2.5) go = true;
+        else if (S.cool <= 0 && S.dawdle <= 0 && Math.random() < sk.aggro * hurry * dt * 2.5) go = true;
         if (go) {
           if (!h) h = Math.random() < sk.smart ? other(seen.stance) : (Math.random() < 0.5 ? 'hi' : 'lo');
           if (!seen.wobble && !seen.air && me.riposte <= 0 && Math.random() < sk.feint) { feint = true; h = other(seen.stance); }
@@ -151,7 +157,7 @@
       if (!me.sw && me.stun <= 0 && S.dawdle <= 0) {
         const want = S.cool <= 0.15 ? P.reach - 18 : P.reach - 4;
         if (dist > want + 6) step(1);
-        else if (dist < P.minGap + 10 && myRoom > 100) step(-1);
+        else if (dist < P.minGap + 10 && myRoom > 150) step(-1);
         if (myRoom < 45 && dist > P.minGap + 4) step(1);
       }
       out.down = guard === 'lo';

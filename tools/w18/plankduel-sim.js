@@ -4,6 +4,7 @@
 //   node tools/w18/plankduel-sim.js --skills=easy,hard --seeds=1-20
 //   node tools/w18/plankduel-sim.js --kid=easy --seeds=1-20          (kid-like scripted Pip vs Easy Bo)
 //   node tools/w18/plankduel-sim.js --kid=easy --kidreact=0.45 ...   (a slower kid)
+//   --kidsmart=0.5   the kid swings at the height the other isn't guarding half the time (default: random heights)
 //   --swap=1 puts the stronger/kid side on Bo instead (side-bias check)
 'use strict';
 const path = require('path');
@@ -13,7 +14,7 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
 const sr = opt('seeds', '1-10').split('-').map(Number), seeds = [];
 for (let s = sr[0]; s <= (sr[1] || sr[0]); s++) seeds.push(s);
 const skills = opt('skills', 'normal,normal').split(','), kid = opt('kid', null), kidReact = +opt('kidreact', 0.35), swap = +opt('swap', 0);
-const kidMis = +opt('kidmis', 0.15), kidRate = +opt('kidrate', 0.6);
+const kidMis = +opt('kidmis', 0.15), kidRate = +opt('kidrate', 0.6), kidSmart = +opt('kidsmart', 0);
 
 (async () => {
   const browser = await chromium.launch();
@@ -31,7 +32,7 @@ const kidMis = +opt('kidmis', 0.15), kidRate = +opt('kidrate', 0.6);
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
   const res = [];
   for (const seed of seeds) {
-    const r = await page.evaluate(({ seed, skills, kid, kidReact, kidMis, kidRate, swap }) => {
+    const r = await page.evaluate(({ seed, skills, kid, kidReact, kidMis, kidRate, kidSmart, swap }) => {
       const P = window.__pipbo, G = P.G, i = P.LEVELS.findIndex(l => l.name === 'Plank Duel');
       window.__seed(seed * 7919); window.__inStep = true;
       G.manual = true; P.CPU.errs.clear();
@@ -59,18 +60,32 @@ const kidMis = +opt('kidmis', 0.15), kidRate = +opt('kidrate', 0.6);
         else K.teeT = 0;
         K.cool -= dt;
         let act = false;
-        if (!s && !me.sw && dist < 92 && K.cool <= 0 && Math.random() < kidRate * dt * 3) { K.low = Math.random() < 0.5; act = true; K.cool = 0.8 + Math.random() * 1.4; }
-        if (!s && !me.sw && dist > 85 && me.teeter <= 0) { inp.right = dirIn > 0; inp.left = dirIn < 0; }
+        // a riposte after its own block, once it has reacted (half the time)
+        if (me.riposte > 0 && me.riposte < 0.45 - kidReact && !me.sw && dist < 106 && K.ripo !== me.swN) { K.ripo = me.swN; if (Math.random() < 0.5) { act = true; K.cool = 0.3; } }
+        if (!s && !me.sw && dist < 103 && K.cool <= 0 && Math.random() < kidRate * dt * 3) { K.low = Math.random() < kidSmart ? op.stance === 'hi' : Math.random() < 0.5; act = true; K.cool = (0.8 + Math.random() * 1.4) * 0.6 / kidRate; }
+        if (!s && !me.sw && dist > 96 && me.teeter <= 0) { inp.right = dirIn > 0; inp.left = dirIn < 0; }
         if (!s && !me.sw && !act && K.cool > 0.6 && Math.random() < 0.02) K.low = false; // stands back up now and then
         inp.down = K.low;
         if (act && !p.prevAct) { p.pendingAct = true; p.actAge = 0; }
         p.prevAct = act; inp.act = act;
       };
       let n = 0;
-      while (G.mode === 'play' && n < 120 * 900) { if (kid) kidTick(P.DT); P.step(P.DT); n++; }
+      // why the kid gets bonked (with --v): the kid's state the tick before each bonk it takes
+      const why = {};
+      let prev = null, taken = 0;
+      while (G.mode === 'play' && n < 120 * 900) {
+        if (kid) kidTick(P.DT);
+        const st0 = G.mst, me0 = st0.d && st0.d[kidId], op0 = st0.d && st0.d[1 - kidId];
+        if (me0 && G.match.phase === 'live') prev = { sw: me0.sw ? me0.sw.state : '-', rat: me0.rattle > 0, st: me0.stance, oh: op0.sw ? op0.sw.h + (op0.sw.wind < 0.3 ? 'Q' : '') + (op0.sw.feints ? 'F' : '') + (op0.sw.lunge ? 'L' : '') : '?', air: me0.air };
+        P.step(P.DT); n++;
+        const me1 = G.mst.d && G.mst.d[kidId];
+        if (me1 && G.match.phase === 'live' && me1.hitsTaken === 0) taken = 0;
+        if (me1 && me1.hitsTaken > taken && prev) { taken = me1.hitsTaken; const k = prev.sw !== '-' ? 'own swing ' + prev.sw : prev.rat ? 'wobble' : prev.air ? 'air' : 'guard ' + prev.st + ' vs ' + prev.oh; why[k] = (why[k] || 0) + 1; }
+        else if (me1 && me1.hitsTaken < taken) taken = me1.hitsTaken;
+      }
       const rec = G.results[i];
-      return { seed, t: Math.round(n * P.DT), winner: rec ? rec.winner : null, rounds: rec && rec.rounds, hist: rec && rec.history.map(h => h.winner + ' ' + h.secs + 's ' + h.reason), stats: rec && rec.stats, cpuErrs: [...P.CPU.errs] };
-    }, { seed, skills, kid, kidReact, kidMis, kidRate, swap });
+      return { seed, t: Math.round(n * P.DT), winner: rec ? rec.winner : null, rounds: rec && rec.rounds, hist: rec && rec.history.map(h => h.winner + ' ' + h.secs + 's ' + h.reason), stats: rec && rec.stats, cpuErrs: [...P.CPU.errs], raw: G.mst.stat, why };
+    }, { seed, skills, kid, kidReact, kidMis, kidRate, kidSmart, swap });
     res.push(r);
     if (args.includes('--v')) console.log(JSON.stringify(r));
   }
@@ -80,6 +95,8 @@ const kidMis = +opt('kidmis', 0.15), kidRate = +opt('kidrate', 0.6);
   const secs = res.map(r => r.t).sort((a, b) => a - b);
   const rs = res.flatMap(r => (r.hist || []).map(h => +h.split(' ')[1].replace('s', '')));
   console.log(`${kid ? 'kid(r' + kidReact + ',mis' + kidMis + ') as ' + (swap ? 'Bo' : 'Pip') + ' vs ' + kid : skills.join(' vs ')}: Pip ${w0}  Bo ${w1}  draw ${res.length - w0 - w1}  | match ${secs[0]}-${secs[secs.length - 1]}s median ${secs[secs.length >> 1]}s | round avg ${(rs.reduce((a, b) => a + b, 0) / rs.length).toFixed(1)}s`);
+  const rw = [0, 1].map(k => res.reduce((a, r) => a + (r.hist || []).filter(h => h.startsWith(k + ' ')).length, 0));
+  console.log('  rounds won: Pip ' + rw[0] + '  Bo ' + rw[1]);
   console.log('  ends:', Object.entries(reasons).sort((a, b) => b[1] - a[1]).map(([k, v]) => v + '× ' + k).join(' | '));
   const errs = res.filter(r => r.cpuErrs.length).length;
   if (errs || errors.length) console.log('  ERRORS', errs, errors.slice(0, 3));

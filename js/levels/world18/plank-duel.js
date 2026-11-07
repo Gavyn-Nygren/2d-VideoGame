@@ -12,7 +12,7 @@
      step    ◀ ▶ take small steps (slower while crouched). You stop at the plank's end by yourself: only bonks push you off.
      swing   the action swings at your stance height after a short wind-up (WIND s) you can read: the sword goes up
              behind the head (high) or back by the hip (low) and a "!" glows at that height. Changing stance during the
-             wind-up changes the swing too (a FEINT), but then at least FEINT_MIN s of wind-up are left, so it can still
+             wind-up changes the swing too (a FEINT, once per swing), but then at least FEINT_MIN s of wind-up are left, so it can still
              be read. While winding up you can't block.
      block   a swing that meets the same guard is a BLOCK ("Clack!"): both slide apart a little, the attacker wobbles
              for a moment (no guard, no swing) and the blocker's next swing within RIPOSTE s is a quick one.
@@ -23,8 +23,9 @@
      lunge   hold the action past the wind-up to charge (glowing sword, no guard, can't move), let go to lunge: a dash
              and a strike that pushes three steps. Blocked, the lunger wobbles longer.
      edge    pushed just past the end you teeter ("Whoa!"): step back toward the middle in time for "Phew!", or splash.
-   A splash ("SPLASH!" and a friendly fish; you bob up in the duck float) loses the round. Time up (ROUND s): whoever has
-   more plank behind them wins, then whoever bonked more; else a tie (replayed). A second tie in a row goes to the most
+   A splash ("SPLASH!" and a friendly fish; you bob up in the duck float) loses the round. Time up (ROUND s): whoever
+   landed more bonks this round wins (the ★ count in the HUD), then whoever has more plank behind them; else a tie.
+   Walking into the other never shoves them (plankduelSeparate stops the walker), so only swords push. A second tie in a row goes to the most
    bonks this match, else a sudden-death "Last Clash": first bonk wins.
    Rounds: round 1 Calm Cove, then 4 shuffled twists: Short Plank, Rocking Plank (it tilts on the barrel and you slide
    downhill), Slippery Plank (bonks and steps slide further) and Breezy Cove (gusts, warned by the flags, blow you both).
@@ -38,11 +39,11 @@ const PLANKDUEL = {
   X0: 480, PY: 352, SEA: 412,                       // the plank's middle (barrel), its top surface, the water line
   walk: 120, walkLo: 72, acc: 1500, accWet: 420, airDrift: 45,
   hopV: 430, grav: 1750, hopDodge: 12,               // a hop is about 0.49 s and 53 px; above hopDodge px a low swing misses
-  wind: 0.42, windQuick: 0.27, feintMin: 0.26, rec: 0.22, recWhiff: 0.34, recLunge: 0.6,
+  wind: 0.42, windQuick: 0.32, feintMin: 0.26, rec: 0.22, recWhiff: 0.34, recLunge: 0.6,
   chargeT: 0.45, chargeMax: 2.4, lungeT: 0.2, lungeDash: 34,
   reach: 106, lungeReach: 122, minGap: 58,
-  push: 46, pushLunge: 100, pushAir: 1.4, grow: 0.15, growMax: 4, goldPush: 0.75, wetPush: 1.3,
-  block: 14, blockLunge: 30, clang: 24,
+  push: 50, pushLunge: 100, pushAir: 1.4, grow: 0.25, growMax: 4, goldPush: 0.75, wetPush: 1.3,
+  block: 8, blockLunge: 30, clang: 24,
   fric: 760, fricWet: 470,
   stun: 0.34, stunLunge: 0.5, rattle: 0.3, rattleLunge: 0.7, riposte: 0.45,
   teeterMax: 14, teeterT: 0.8, goldTeeter: 1.25, clashW: 0.07,
@@ -52,7 +53,7 @@ const PLANKDUEL = {
   start: 86,                                         // each starts this far from the middle
 };
 const PLANKDUEL_TW = {
-  plain: { name: 'Calm Cove', E: 300, time: 45, hint: 'Swing high or low. Block by guarding the same height!' },
+  plain: { name: 'Calm Cove', E: 300, time: 45, hint: 'Swing high or low. Block by guarding the same height! At time up, most bonks (★) wins.' },
   short: { name: 'Short Plank', E: 215, time: 40, hint: 'A short plank today: every bonk counts!' },
   rock: { name: 'Rocking Plank', E: 285, time: 45, hint: 'The barrel rocks the plank: you slide downhill!' },
   wet: { name: 'Slippery Plank', E: 300, time: 45, hint: 'A wave made it slippery: bonks slide further!' },
@@ -203,7 +204,8 @@ function plankduelDuellist(st, D, O, p, dt) {
     D.stance = want;
     const sw = D.sw;
     // a feint: the swing changes height, but there is always FEINT_MIN of wind-up left to read it
-    if (sw && sw.state === 'wind') {
+    // (one feint per swing: after that the height is locked, so mashing ▼ can't stretch a wind-up forever)
+    if (sw && sw.state === 'wind' && sw.feints < 1) {
       sw.h = want;
       sw.t = Math.min(sw.t, sw.wind - P.feintMin);
       sw.feints++; st.stat.feints[D.k]++;
@@ -308,13 +310,16 @@ function plankduelTwistPush(st, dt) {
   }
 }
 // bodies never overlap: they push apart (half each)
+// Whoever walked (or slid) into the other this tick is the one stopped, so walking into someone never shoves them
+// toward their end: only a sword pushes (the pitch's high/low read, not sumo). Both moving in: shared by how far.
 function plankduelSeparate(st) {
   const P = PLANKDUEL, [A, B] = st.d;
   if (A.fall || B.fall) return;
   const gap = B.x - A.x;
   if (gap < P.minGap) {
-    const d = (P.minGap - gap) / 2;
-    A.x -= d; B.x += d;
+    const over = P.minGap - gap, ma = Math.max(0, A.x - (A.px ?? A.x)), mb = Math.max(0, (B.px ?? B.x) - B.x);
+    const fa = ma + mb > 0.001 ? ma / (ma + mb) : 0.5;
+    A.x -= over * fa; B.x += over * (1 - fa);
     if (A.vx > 0) A.vx = 0; if (B.vx < 0) B.vx = 0;
     if (A.wv > 0) A.wv = 0; if (B.wv < 0) B.wv = 0;
   }
@@ -363,6 +368,7 @@ function plankduelTick(dt, live) {
     if (st.twist === 'rock') st.tilt = P.tiltA * Math.sin(2 * Math.PI * st.lt / P.tiltP + st.tiltPh);
     if (st.twist === 'wind') plankduelGustTick(st, dt);
     // who moves first alternates every tick, so neither side wins every tie
+    for (const D of st.d) D.px = D.x;
     const order = (G.tickN & 1) ? [1, 0] : [0, 1];
     for (const k of order) plankduelDuellist(st, st.d[k], st.d[1 - k], G.players[k], dt);
     plankduelTwistPush(st, dt);
@@ -513,9 +519,11 @@ MODES.plankduel = {
     if (A.fall && !B.fall) return { winner: 1, reason: 'Pip took a splash!' };
     if (B.fall && !A.fall) return { winner: 0, reason: 'Bo took a splash!' };
     if (st.twist === 'last') return { winner: -1, reason: 'Time\'s up: no bonk!' };
+    // more bonks this round first (shown in the HUD), so walking forward without ever swinging can't win a round;
+    // then whoever kept more plank behind them
+    if (A.bonks !== B.bonks) { const w = A.bonks > B.bonks ? 0 : 1; return { winner: w, reason: 'Time\'s up! More bonks for ' + NAMES[w] + '!' }; }
     const ra = plankduelRoom(st, A), rb = plankduelRoom(st, B);
     if (Math.abs(ra - rb) >= 8) { const w = ra > rb ? 0 : 1; return { winner: w, reason: 'Time\'s up! ' + NAMES[w] + ' kept more plank!' }; }
-    if (A.bonks !== B.bonks) { const w = A.bonks > B.bonks ? 0 : 1; return { winner: w, reason: 'Time\'s up! More bonks for ' + NAMES[w] + '!' }; }
     return { winner: -1, reason: 'Time\'s up: dead even!' };
   },
   tiebreak() {
@@ -539,7 +547,7 @@ MODES.plankduel = {
     const fe = s.feints[0] + s.feints[1], lu = s.lunges[0] + s.lunges[1], ph = s.phew[0] + s.phew[1];
     if (fe) bits.push(fe + (fe === 1 ? ' feint' : ' feints'));
     if (lu) bits.push(lu + (lu === 1 ? ' lunge' : ' lunges'));
-    if (ph) bits.push(ph + ' "Phew!" saves');
+    if (ph) bits.push(ph + (ph === 1 ? ' "Phew!" save' : ' "Phew!" saves'));
     if (bits.length) out.push(bits.join('  ·  '));
     const lh = s.lungeHits;
     if (lh[0] + lh[1] > 0) { const w = lh[0] >= lh[1] ? 0 : 1; out.push('Big lunge bonks: ' + NAMES[w] + ' ' + lh[w] + (lh[1 - w] ? ', ' + NAMES[1 - w] + ' ' + lh[1 - w] : '') + '!'); }
@@ -1063,7 +1071,7 @@ function plankduelHud() {
   const big = plankduelBig(), tw = PLANKDUEL_TW[st.twist], sz = big ? 1.4 : 1;
   // bottom corners: each duellist's guard, how much plank is behind them, and bonks
   for (const D of st.d) {
-    const left = D.k === 0, pw = 212 * sz, ph = 42 * sz, y = H - 8 - ph, x = left ? 10 : W - 10 - pw;
+    const left = D.k === 0, pw = 256 * sz, ph = 42 * sz, y = H - 8 - ph, x = left ? 10 : W - 10 - pw;
     ctx.fillStyle = 'rgba(28,26,54,0.84)'; rr(x, y, pw, ph, ph / 2); ctx.fill();
     if (D.gold) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2.5; rr(x, y, pw, ph, ph / 2); ctx.stroke(); }
     const nx = left ? x + 14 * sz : x + pw - 14 * sz, cy = y + ph / 2;
@@ -1073,11 +1081,15 @@ function plankduelHud() {
     const lab = D.fall ? 'Splash!' : D.teeter > 0 ? 'Whoa!' : D.sw && D.sw.state === 'charge' ? 'Charging' : D.air ? 'Hop!' : g === 'lo' ? 'Low' : g === 'hi' ? 'High' : 'Open';
     text(lab, left ? gx + 14 * sz : gx - 14 * sz, cy + 0.5, 13 * sz, g ? C.paper : '#ffe6a8', left ? 'left' : 'right', 'body');
     // plank left behind me: a little bar that empties toward the end
-    const bx = left ? x + 116 * sz : x + 22 * sz, bw = 72 * sz, room = clamp(plankduelRoom(st, D) / (st.E - PLANKDUEL.start), 0, 1);
+    const bx = left ? x + 140 * sz : x + 56 * sz, bw = 60 * sz, room = clamp(plankduelRoom(st, D) / (st.E - PLANKDUEL.start), 0, 1);
     ctx.fillStyle = 'rgba(255,255,255,0.14)'; rr(bx, cy - 5 * sz, bw, 10 * sz, 5 * sz); ctx.fill();
     ctx.fillStyle = room < 0.3 ? '#ff9a7a' : (D.gold ? C.gold : '#e2ad75');
     if (room > 0) { const w = Math.max(10 * sz, bw * room); if (left) rr(bx + bw - w, cy - 5 * sz, w, 10 * sz, 5 * sz); else rr(bx, cy - 5 * sz, w, 10 * sz, 5 * sz); ctx.fill(); }
     ctx.fillStyle = '#7fd0ff'; if (left) ctx.fillRect(bx - 3 * sz, cy - 6 * sz, 2 * sz, 12 * sz); else ctx.fillRect(bx + bw + 1 * sz, cy - 6 * sz, 2 * sz, 12 * sz);
+    // bonks landed this round (they decide a round that runs out of time): a star and the count, at the outer end
+    const sx = left ? x + pw - 46 * sz : x + 18 * sz, pulse = D.cheer > 0 ? 1 + 0.3 * D.cheer : 1;
+    ctx.fillStyle = D.bonks ? C.gold : 'rgba(255,255,255,0.3)'; plankduelStar(sx + 7 * sz, cy, 8 * sz * pulse);
+    text(String(D.bonks), sx + 18 * sz, cy + 0.5, 16 * sz, D.bonks ? C.gold : 'rgba(255,255,255,0.5)', 'left');
   }
   // the twist, top left under the level pill (not in the plain round)
   if (st.twist !== 'plain') {
