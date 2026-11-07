@@ -4957,6 +4957,36 @@ const LEVELS = [
   //
   //
   // ===== END World 19 =====
+  //
+  // (World 20 is the Volcano Dragon boss world, index 19, built in its own thread; its levels go here, before World 21.)
+  //
+  // ===== World 21 (Sky Kingdom, mixed): the sky world, world index 20 (js/levels/world21/), a bright sunny sky of
+  //   fluffy clouds, floating islands and a cloud castle, nothing scary, nobody gets hurt. Gavyn's picks (Nov 2026):
+  //   21-1 Hot Air Balloon Climb (team, scrolls up), 21-2 Kite Tandem (team, scrolls sideways), 21-3 Cloud Bridge
+  //   Builder (team, scrolls sideways), 21-4 Paper Plane Race (versus, best of 5, scrolls sideways).
+  //   Each level's def sits between its own BEGIN/END lines. world: 20 =====
+  //
+  // ----- BEGIN 21-1 Hot Air Balloon Climb (mode 'balloon', js/levels/world21/hot-air-balloon-climb.js) -----
+  // ----- END 21-1 Hot Air Balloon Climb -----
+  //
+  //
+  //
+  // ----- BEGIN 21-2 Kite Tandem (mode 'kite', js/levels/world21/kite-tandem.js) -----
+  // ----- END 21-2 Kite Tandem -----
+  //
+  //
+  //
+  // ----- BEGIN 21-3 Cloud Bridge Builder (mode 'cloudbridge', js/levels/world21/cloud-bridge-builder.js) -----
+  // ----- END 21-3 Cloud Bridge Builder -----
+  //
+  //
+  //
+  // ----- BEGIN 21-4 Paper Plane Race (mode 'paperplane', js/levels/world21/paper-plane-race.js) -----
+  // ----- END 21-4 Paper Plane Race -----
+  //
+  //
+  //
+  // ===== END World 21 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -5030,6 +5060,12 @@ const WORLDS = [
   { name: 'Tumbleweed Gulch', blurb: 'Hop the train, pump the handcar, ride the mine cart and face off at high noon!',
     theme: { skyTop: '#f6b26b', skyBot: '#fff0c9', hillFar: '#e59a66', hillNear: '#c7713f', sun: 'rgba(255, 244, 196, 0.95)', sunGlow: 'rgba(255, 196, 120, 0.42)',
       stone: '#a9563a', stoneLight: '#c06a48', stoneEdge: '#7a3a26', grass: '#e8c27a', grassDark: '#b98f45', plank: '#b77a45', plankDark: '#704622', rope: '#e9d29a', ropeDark: '#7a5a2a' } },
+  // World 20: the Volcano Dragon boss world (built in its own thread; this placeholder stays hidden until it has levels)
+  { name: 'Volcano Dragon', blurb: 'Climb the volcano and outsmart the dragon together!', theme: {} },
+  // World 21: the sky, bright and breezy (a deep blue sky fading to a pale morning glow; fluffy white cloud ground with a lilac underside)
+  { name: 'Sky Kingdom', blurb: 'Fly a balloon, ride a kite, build cloud bridges and race paper planes!',
+    theme: { skyTop: '#5ab4f2', skyBot: '#fff4e0', hillFar: '#cfe6fb', hillNear: '#b2d5f5', sun: 'rgba(255, 248, 205, 0.96)', sunGlow: 'rgba(255, 230, 170, 0.42)',
+      stone: '#8c88c4', stoneLight: '#a29fd6', stoneEdge: '#625ea0', grass: '#ffffff', grassDark: '#d6dcf4', plank: '#e0b070', plankDark: '#946232', rope: '#f4e2b0', ropeDark: '#8a6a3a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
