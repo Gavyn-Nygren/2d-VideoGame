@@ -39,7 +39,8 @@
                   tick (setup excepted: positions there are screen = world with cam 0), p.x / p.y are WORLD coords;
                   between ticks (draw hooks, name tags, bubbles) p.x / p.y are on SCREEN. Set st.cam in step.
      st.shield    [pip, bo]: { on, k (raise 0..1), hitT }        st.fires  live fire-breath attacks
-     st.idle      true while no person has pressed anything for VD.idleAfter (10) s (the computer doesn't count)
+     st.idle      true while no person has pressed anything for VD.idleAfter (10) s (the computer doesn't count);
+                  Cinder waits and the level clock (G.time) stops meanwhile
      st.cut       a cutscene ({ kind: 'leave' | 'end' }) or null     st.celebT  s of calm after a big moment
      st.stats     { bonks: [pip, bo], kinds: { fire, lava, rock, ... }, blocks, help: [texts], phaseT: [s per phase],
                     climb: {}, levers: {}, golf: {}, surf: {} }: write your results into st.stats.<phase> (vdStats(st))
@@ -58,7 +59,7 @@
      drawTop(st)       over the players      core has done ctx.translate(-cam.x, -cam.y); vdScreen(st, fn) draws in
                                               screen coords inside them)
      hud(st)           screen coords, after the core HUD (strip, time pill, news), before the head bubbles.
-     hudText(st)       -> a short text for the top-right time pill (e.g. 'Dunks 1/3').
+     hudText(st)       -> a short text for the top-right time pill (e.g. 'Dunks 1/4').
      progress(st)      -> { n, of } for the pips under your segment of the phase strip (checkpoints, dunks, holes).
      labels(st)        -> [pip word, bo word]: the action button word per player (lowercase, 6 letters or fewer).
      legend(st)        -> a setLegend object when the keys change with the job (read when the labels change).
@@ -69,8 +70,9 @@
      onBonk(st, p, kind)  onKill(st, p)  onRespawn(st, p)     (kill = the engine's spikes / falling off the grid)
      bubblePos(st, p)  -> { x, y } (screen) where to put the computer's speech bubble when you draw p elsewhere;
      bubbleHidden      true if your players are hidden (p.alive false) but bubbles should still show.
-     stat(st)          -> one results tile { label, value } or null      statLine(st) -> a short results text or ''
-                       (they run at the end: read st.stats.<phase>, not st.ph. Only golf gives a tile, only surf a line.)
+     stat(st)          -> one results fact { label, value } or null      statLine(st) -> a short results text or ''
+                       (they run at the end: read st.stats.<phase>, not st.ph. Only golf gives a fact, only surf a line;
+                       both go in the card's first line, as 'label: value.' and 'text.')
    The core's own hooks never need calling from a phase: it ticks Cinder, shields, fires, bubbles and the idle wait.
 
    HELPERS (call them inside the tick unless noted):
@@ -134,9 +136,10 @@
      GOLF        Do not set G.golf: main.step() would hand the whole tick to golfStep and skip MODES.dragon. Run your
                  own ball (GOLF constants, golfSolid, golfCollide(b) work on the grid; golfCollide reads
                  G.golf.bumps / G.golf.ball only when it hits an 'X' bumper), and draw rings with drawRing(rg).
-   STATS.  The results card shows Time + Record (framework), then the core's Bonks tile [pip, bo], golf's stat() tile,
-   the core's Trophy tile, and one line: the phases' statLine()s (surf: 'Surf champ: Pip') + the trophy + a happy end.
-   Trophy by time and bonks: VD.medal (tune with bots).
+   STATS.  The results card shows 4 tiles: Time + Record (framework), then the core's Bonks [pip, bo] and Trophy; and
+   2 lines: the phases' statLine()s and stat() tiles as text, last phase first ('Surf champ: Pip (2-1). Golf strokes:
+   4 (par 6).'), then the trophy and a happy end. Trophy by play time (G.time, which stops while Cinder waits for an
+   away person) and bonks: VD.medal (tuned with bots, see there).
 
    BRAINS (js/cpu/levels/world20/): the core brain is cpuBrain('dragon'); it dispatches every step to
    VD_BRAINS[st.phase] = { reset(bst, p, info), think(bst, p, o, dt, info, S) -> { left, right, jump, down, up, act,
@@ -165,7 +168,12 @@ const VD = {
   bonk: { vx: 230, vy: 300, stun: 0.7, slide: 0.3, safe: 1.4, popV: 320 },
   shield: { raiseT: 0.14, walkK: 0.55, hopV: 400, rx: 44, ry: 20, lift: 14 },   // the dome: rx wide each side, lift px over the head
   fire: { inhale: 1.0, breathe: 1.0, w: 120, h: 150 },
-  medal: { gold: { t: 510, bonks: 6 }, silver: { t: 780, bonks: 16 } },          // s and bonks (placeholders: tune with bots)
+  // the trophy: play time (s, idle waits not counted) and team bonks (surf hits are no bonks). Tuned with bots over
+  // 32 seeds each: a perfect computer pair (4:04-4:47, 0-5 bonks) and a good adult-like pair (0.25 s late, glances
+  // away; 4:16-6:12, 5-20 bonks) get Gold (100% / 84%); a parent with a kid-like partner (0.5 s late, stops, wanders;
+  // 4:54-9:18, 8-59 bonks) mostly Silver (75% Silver, 19% Gold, 6% Bronze); with a distracted partner (cpu-test
+  // --who=noisy) about half Gold. Time limits leave room for people reading the hints (bots don't need to).
+  medal: { gold: { t: 420, bonks: 16 }, silver: { t: 660, bonks: 40 } },
   cinder: { s: 0.9 },
   endT: 7.4,                   // the ending, then levelClear()
   endGround: 456,
@@ -179,6 +187,10 @@ const vdPh = st => (st && VD_PHASES[st.phase]) || VD_NONE;
 function vdCall(ph, name, ...args) { const f = ph && ph[name]; return typeof f === 'function' ? f.apply(ph, args) : undefined; }
 const vdBusy = (st, p) => !!vdCall(vdPh(st), 'busy', st, p);
 const vdCalm = st => G.mode !== 'play' || G.introT > 0 || !!st.cut || st.celebT > 0 || !!st.idle;
+// the bigger HUD text (news, hints, bubbles, the strip): on phones too. The shared hudBig() only turns on below 0.6
+// screen scale, and a landscape phone (844x390) is about 0.67, so like other levels with their own HUD (0.72-0.75)
+// World 20 goes big below 0.75. Phase files use it too.
+const vdBig = () => hudBig() || (typeof stageScale === 'number' && stageScale < 0.75);
 const vdFont = px => '700 ' + px + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
 const vdLilita = px => '400 ' + px + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
 const vdStats = st => st.stats[st.phase] || (st.stats[st.phase] = {});
@@ -456,12 +468,15 @@ function vdFire(st, o = {}) {
   if (!f.keepFace && Math.abs(x - c.x) > 4) c.face = x > c.x ? 1 : -1;
   c.act = 'inhale'; c.actT = 0;
   if (o.target != null) vdWarn(st, o.target, f.inhale);
-  for (const p of G.players) if (p.alive && rectHit(p, f.x0, gy - f.h, w, f.h + 8)) vdWarn(st, p.id, f.inhale);
+  for (const p of G.players) if (vdInFire(p, f)) vdWarn(st, p.id, f.inhale);
   st.stats.fires++;
   Sfx.play('vdInhale');
   return f;
 }
 const vdFireZone = f => ({ x0: f.x0, x1: f.x1, y0: f.gy - f.h, y1: f.gy + 8 });
+// p is in the flame: in its zone box, and not standing on a higher step or ledge above its ground (a player in the
+// air, or on the partner's head, still counts)
+const vdInFire = (p, f) => p.alive && rectHit(p, f.x0, f.gy - f.h, f.x1 - f.x0, f.h + 8) && !(p.grounded && p.tileGround && p.y + p.h < f.gy - 12);
 function vdFireMouth(st, f) { return f.from ? f.from(st) : vdCinderPts(st.cinder).mouth; }
 function vdFireOut(st, f) { if (f.phase !== 'out') { f.phase = 'out'; f.t = 0; } }
 function vdFireTick(st, dt) {
@@ -474,7 +489,7 @@ function vdFireTick(st, dt) {
       const z = vdFireZone(f);
       for (const id of [0, 1]) { const b = vdShieldBox(st, id); if (b && b.x1 > z.x0 && b.x0 < z.x1 && (G.tickN % 10) === 0) vdShieldBlock(st, id, clamp(f.cx, b.x0, b.x1), b.y - b.ry * 0.6); }
       for (const p of G.players) {
-        if (!p.alive || !rectHit(p, z.x0, z.y0, z.x1 - z.x0, z.y1 - z.y0) || vdUnderShield(st, p) >= 0) continue;
+        if (!vdInFire(p, f) || vdUnderShield(st, p) >= 0) continue;
         if (f.onHit ? f.onHit(st, p, f) : vdBonk(st, p, { kind: 'fire', word: f.word, fromX: f.cx })) f.hits++;
       }
     }
@@ -530,7 +545,7 @@ function vdActLabels(st) {
 
 /* --- the mode: phases, cutscenes, the ending --- */
 function vdInit(st) {
-  st.stats = { bonks: [0, 0], kinds: {}, blocks: 0, fires: 0, hics: 0, help: [], phaseT: [], climb: {}, levers: {}, golf: {}, surf: {} };
+  st.stats = { bonks: [0, 0], kinds: {}, blocks: 0, fires: 0, hics: 0, help: [], phaseT: [], idleT: 0, climb: {}, levers: {}, golf: {}, surf: {} };
   st.idleN = 0; st.ended = false;
 }
 function vdStartPhase(st, L) {
@@ -672,7 +687,13 @@ MODES.dragon = {
   rand: Math.random,   // gameplay randomness (vdRand); tests may swap in a seeded one (MODES.dragon.test.seed)
   setup(st, L) { vdInit(st); vdStartPhase(st, L); },
   room(k, L) { vdStartPhase(G.mst, L); },
-  step(dt) { vdStep(G.mst, dt); },
+  step(dt) {
+    const st = G.mst;
+    vdStep(st, dt);
+    // the clock stops while Cinder waits for an away person (the surf race freezes then too): the trophy and the
+    // record count play time only (G.time is the framework's clock: the Time tile, the record and the time pill)
+    if (st.cinder && st.idle && !st.cut && G.mode === 'play') { G.time = Math.max(0, G.time - dt); st.stats.idleT += dt; }
+  },
   onKill(p) { const st = G.mst; if (st.cinder && !(st.cut && st.cut.kind === 'end')) vdCall(vdPh(st), 'onKill', st, p); },
   onRespawn(p) { const st = G.mst; if (st.cinder && !(st.cut && st.cut.kind === 'end')) vdCall(vdPh(st), 'onRespawn', st, p); },
   draw() { const st = G.mst; if (st.cinder) vdDraw(st); },
@@ -681,20 +702,25 @@ MODES.dragon = {
   stats() { return vdStatsOut(G.mst); },
 };
 
-function vdStatsOut(st) {
+// The results card: the framework's Time and Record tiles, then Bonks and Trophy (4 tiles, a 2 x 2 grid), and two
+// lines: the phases' tiles and lines as text ("Surf champ: Pip (2-1). Golf strokes: 4 (par 6).") and the trophy.
+function vdMedal(st) {
   const s = st.stats, bonks = s.bonks[0] + s.bonks[1], t = G.time, M = VD.medal;
-  const medal = t <= M.gold.t && bonks <= M.gold.bonks ? 'Gold' : t <= M.silver.t && bonks <= M.silver.bonks ? 'Silver' : 'Bronze';
-  const out = [{ label: 'Bonks', values: [s.bonks[0], s.bonks[1]] }];
-  const lines = [];
-  for (const ph of VD_ORDER) {
+  return t <= M.gold.t && bonks <= M.gold.bonks ? 'Gold' : t <= M.silver.t && bonks <= M.silver.bonks ? 'Silver' : 'Bronze';
+}
+function vdStatsOut(st) {
+  const s = st.stats, bonks = s.bonks[0] + s.bonks[1], medal = vdMedal(st);
+  const out = [{ label: 'Bonks', values: [s.bonks[0], s.bonks[1]] }, { label: 'Trophy', value: medal }];
+  const bits = [];
+  for (const ph of VD_ORDER.slice().reverse()) {   // (surf first: the race is the last thing they did)
     const P = VD_PHASES[ph];
     if (!P) continue;
     const tile = vdCall(P, 'stat', st), line = vdCall(P, 'statLine', st);
-    if (tile) out.push(tile);
-    if (line) lines.push(line);
+    if (tile && tile.label) bits.push(tile.label + ': ' + (tile.values ? tile.values.join(' - ') : tile.value));
+    if (line) bits.push(line);
   }
-  out.push({ label: 'Trophy', value: medal });
-  out.push(lines.map(l => l + '. ').join('') + medal + ' trophy! ' + (bonks === 0 ? 'Not one bonk! ' : bonks <= 3 ? 'Hardly toasty at all! ' : '') + 'Cinder is your friend now!');
+  if (bits.length) out.push(bits.map(l => l + '.').join(' '));
+  out.push(medal + ' trophy! ' + (bonks === 0 ? 'Not one bonk! ' : bonks <= 3 ? 'Hardly toasty at all! ' : '') + 'Cinder is your friend now!');
   return out;
 }
 
@@ -1012,7 +1038,7 @@ function vdDraw(st) {
   ctx.restore();
 }
 function vdDrawTop(st) {
-  const ph = vdPh(st), big = hudBig(), z = big ? 1.4 : 1, end = st.cut && st.cut.kind === 'end';
+  const ph = vdPh(st), big = vdBig(), z = big ? 1.4 : 1, end = st.cut && st.cut.kind === 'end';
   ctx.save(); ctx.translate(-st.cam.x, -st.cam.y);
   if (!end) vdCall(ph, 'drawTop', st);
   vdDrawFlames(st);
@@ -1059,7 +1085,7 @@ const vdHeadLift = (st, p) => (st.cut && st.cut.kind === 'end' ? 0 : vdCall(vdPh
 function vdSayBox(st) {
   const c = st.cinder;
   if (!st.say || ((c.hidden || c.alpha <= 0) && !c.sayAt)) return null;
-  const z = hudBig() ? 1.4 : 1, fs = Math.round(16 * z);
+  const z = vdBig() ? 1.4 : 1, fs = Math.round(16 * z);
   let hx, hy, hr, mx, my;
   if (c.sayAt) { hx = c.sayAt.x; hy = c.sayAt.y; hr = c.sayAt.r || 30; mx = hx; my = hy; }
   else { const P = vdCinderPts(c); hx = P.head.x - st.cam.x; hy = P.head.y - st.cam.y; hr = P.head.r; mx = P.mouth.x - st.cam.x; my = P.mouth.y - st.cam.y; }
@@ -1077,7 +1103,7 @@ function vdSayBox(st) {
 function vdNewsBox(st) {
   const n = st.news;
   if (!n || G.introT > 0) return null;
-  const big = hudBig(), B = vdStripBox(), fs = big ? 19 : 14, h = big ? 36 : 28, y = B.y0 + B.h + 6;
+  const big = vdBig(), B = vdStripBox(), fs = big ? 19 : 14, h = big ? 36 : 28, y = B.y0 + B.h + 6;
   ctx.font = vdFont(fs);
   const w = Math.min(ctx.measureText(n.text).width + 34, W - 40);
   return { x0: W / 2 - w / 2, x1: W / 2 + w / 2, y0: y, y1: y + h, fs, h };
@@ -1107,7 +1133,7 @@ function vdDrawEndScene(st) {
 /* --- drawing: the HUD --- */
 // the phase strip, top centre: "Dragon Peak" and 4 phase slots (done ones ticked, the current one lit, with pips)
 function vdStripBox() {
-  const big = hudBig(), sw = big ? 40 : 30, gap = big ? 8 : 6, w = 4 * sw + 3 * gap + 28, h = big ? 70 : 56;
+  const big = vdBig(), sw = big ? 40 : 30, gap = big ? 8 : 6, w = 4 * sw + 3 * gap + 28, h = big ? 70 : 56;
   return { x0: W / 2 - w / 2, y0: 6, w, h, sw, gap, big, labY: 6 + (big ? 13 : 11), slotY: 6 + (big ? 24 : 20) };
 }
 function vdSlotPos(i) { const B = vdStripBox(); return { x: B.x0 + 14 + i * (B.sw + B.gap) + B.sw / 2, y: B.slotY + B.sw / 2, r: B.sw / 2 }; }
@@ -1156,7 +1182,7 @@ function vdDrawStrip(st) {
 // what draws over (or under) each player's head: role badges, then hint bubbles (from 10-1)
 function vdDrawHeads(st, rightBox, newsBox) {
   if (G.introT > 0) return;
-  const big = hudBig(), B = vdStripBox();
+  const big = vdBig(), B = vdStripBox();
   const clearTop = (x0, x1) => {
     let y = 4;
     if (x0 < 290) y = 80;
@@ -1215,11 +1241,14 @@ function vdDrawHeads(st, rightBox, newsBox) {
   }
 }
 function vdHud(st) {
-  const ph = vdPh(st), big = hudBig(), end = st.cut && st.cut.kind === 'end';
+  const ph = vdPh(st), big = vdBig(), end = st.cut && st.cut.kind === 'end';
   vdDrawStrip(st);
-  const fs = big ? 20 : 14, h = big ? 40 : 28, extra = end ? '' : vdCall(ph, 'hudText', st);
-  const s = fmtTime(G.time) + (extra ? '   ' + extra : '');
+  const h = big ? 40 : 28, extra = end ? '' : vdCall(ph, 'hudText', st);
+  const s = fmtTime(G.time) + (extra ? '   ' + extra : ''), SB = vdStripBox();
+  // (a long pill, e.g. golf's, gets a smaller font rather than run into the phase strip)
+  let fs = big ? 20 : 14;
   ctx.font = vdFont(fs);
+  while (fs > 12 && W - 14 - (ctx.measureText(s).width + 28) < SB.x0 + SB.w + 8) ctx.font = vdFont(--fs);
   const rw = ctx.measureText(s).width + 28, rx = pill(W - 14, 12, rw, h, 'right');
   text(s, W - 28, 12 + h / 2 + 0.5, fs, C.paper, 'right', 'body');
   const rightBox = [rx, 12 + h];

@@ -99,8 +99,8 @@ vdRoom('golf', {
 
 /* --- helpers --- */
 const vdgSolo = () => typeof cpuSolo === 'function' && cpuSolo();
-// bigger texts on small screens (a phone held sideways is about 0.67 of full size; hudBig() only starts below 0.6)
-const vdgBig = () => hudBig() || (typeof stageScale === 'number' && stageScale < 0.75);
+// bigger texts on small screens (a phone held sideways is about 0.67 of full size; vdBig() only starts below 0.6)
+const vdgBig = () => vdBig();   // (the core's: big below 0.75 screen scale)
 const vdgCpu = id => typeof cpuOn === 'function' && cpuOn(id);
 const vdgGrid = map => map.map(r => r.split('').map(ch => (ch === '1' || ch === '2' ? '.' : ch)));
 // the grid as the ball sees it: open sky above the screen, rock walls at the sides
@@ -893,7 +893,18 @@ function vdgDrawBall(st) {
     const cpu = vdgSolo() && vdgCpu(id), word = card ? (cpu ? NAMES[id] + ' · CPU' : NAMES[id]) : 'Ball!';
     const a = card ? clamp(G.introT / 0.5, 0, 1) : clamp(st.badgeT / 0.4, 0, 1), big = vdgBig(), fs = big ? 18 : 12;
     ctx.font = vdFont(fs);
-    const hw = ctx.measureText(word).width / 2 + 9, x = clamp(b.x + vdgDir(ph) * 14, hw + 4, W - hw - 4), y = b.y - r - (big ? 30 : 24);
+    const hw = ctx.measureText(word).width / 2 + 9, y = b.y - r - (big ? 30 : 24);
+    let x = b.x + vdgDir(ph) * 14;
+    // keep clear of the golfer's own tag or "Golf!" badge (the golfer stands right behind the ball; on a phone the
+    // bigger badges overlapped)
+    const gp = G.players[ph.golfer];
+    if (gp && gp.alive && gp.id !== id) {
+      ctx.font = vdFont(big ? 20 : 12);
+      const gHalf = ctx.measureText(card ? NAMES[gp.id] : 'Golf!').width / 2 + 9, gx = gp.x + gp.w / 2;
+      ctx.font = vdFont(fs);
+      x = vdgDir(ph) > 0 ? Math.max(x, gx + gHalf + hw + 4) : Math.min(x, gx - gHalf - hw - 4);
+    }
+    x = clamp(x, hw + 4, W - hw - 4);
     ctx.save(); ctx.globalAlpha = a;
     ctx.fillStyle = col; rr(x - hw, y - fs * 0.9, hw * 2, fs * 1.6, fs * 0.8); ctx.fill();
     ctx.beginPath(); ctx.moveTo(x - 4, y + fs * 0.7); ctx.lineTo(x + 4, y + fs * 0.7); ctx.lineTo(b.x, y + fs * 0.7 + 4); ctx.fill();

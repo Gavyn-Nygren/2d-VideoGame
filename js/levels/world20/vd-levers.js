@@ -10,17 +10,21 @@
    Cinder perches on a pillar for a few seconds, crouches and flaps (the next pillar's gem, lever and chain light up
    and a dotted arc shows the hop), hops, lands, and so on. Pull the lever UNDER THE PILLAR HE IS ON (hold the action
    VDL.pullT s at it) before he leaves: the pillar sinks, SPLASH, he is dunked in his hot tub, sputters happily-grumpily
-   and flies out to another pillar. 3 dunks win; jobs swap after each dunk.
+   and flies out to another pillar. 4 dunks win; jobs swap after each dunk, so each player pulls twice and shields
+   twice.
    Jobs: the SHIELDER holds the action to raise the shield (slow walk, small hops only); the PULLER pulls. While he
-   perches he guards his lever: anyone near it gets a telegraphed flame (he inhales, the zone glows), back to back, so a
-   1.2 s pull only works under the shield (a bonk resets the pull, and the lever won't budge while an unshielded flame
-   is on the puller, so nobody can tank a bonk and pull alone). The guard flame belongs to its lever: it goes out when
+   perches he guards his lever: anyone near it gets a telegraphed flame (he inhales, the zone glows), then a short rest
+   (VDL.guard.rest s: he catches his breath, a puff of smoke) and the next, so a 1.2 s pull only works under the
+   shield: a bonk resets the pull, and the lever won't budge for an unshielded puller while a flame is on them or
+   during the rest after it (the hot lever), so the only unshielded pulling time is a 0.9 s inhale and nobody can tank
+   a bonk and pull alone. The guard flame belongs to its lever: it goes out when
    he hops, and it wins over a stray flame. When nobody is near his lever he now and then breathes at someone on the way.
    Lava: "Hot foot!" (counted) and a pop back to where you last stood.
    Hop order: never the same pillar twice in a row, rarely straight back, and only levers both players can reach in
    time (an estimate from where they stand; farther fair ones are a bit more likely). Each dunk makes his perches a
-   little shorter. Gold help (announced): after 2 hops in a row without a dunk he sits longer ("Sleepy Cinder"), after
-   4 even longer and he breathes less often. In 1-player mode, a person who has the shield and gets to the lit lever
+   little shorter. Gold help (announced): after 2 hops in a row without a dunk he sits longer ("Sleepy Cinder") and
+   rests a little longer between guard flames, after 4 even longer naps, longer rests, shorter guard flames and fewer
+   stray ones ("Extra sleepy"). In 1-player mode, a person who has the shield and gets to the lit lever
    first while the computer is far away (VDL.farEst s, and too far to pull before he hops) takes the pull job instead
    (announced), so the computer takes whichever job the person leaves. (Not when the computer is just on its way:
    then the person's press is the shield it was asked for.) Fire never knocks anyone into the lava: a low side lever's
@@ -34,16 +38,17 @@ const VDL = {
   bridgeY: 150,
   rimY: 420, rimX: 135,                     // the rims' top; a pop-down spot beside a low ledge (left; right mirrored)
   firstPerch: 9,                            // s on his first pillar (the badges and tips are up meanwhile)
-  perch: [3.4, 3.1, 2.9],                   // s per perch by dunks so far
+  perch: [3.4, 3.2, 3.0, 2.9],              // s per perch by dunks so far
   crouchT: 1.0, hopT: 0.95, hopPeak: 44, flyT: 1.35, flyPeak: 120,
   pullT: 1.2, decay: 1.2, reach: 26,        // s of holding, /s lost when let go, px from the lever
-  guard: { dx: 72, dy: 50, inhale: 0.9, breathe: 1.1, w: 136, h: 120 },
+  // (inhale must stay well under pullT: it is the only time an unshielded puller can pull; rest is the hot lever)
+  guard: { dx: 72, dy: 50, inhale: 0.9, breathe: 1.1, rest: 0.6, w: 136, h: 120 },
   roam: { first: 2.5, gap: 5.5, inhale: 1.25, breathe: 0.9, w: 110, h: 130 },
-  help: [{ at: 2, add: 1.6, roam: 1.25, text: 'Sleepy Cinder! He sits longer now.' },
-    { at: 4, add: 3.2, roam: 1.6, text: 'Extra sleepy Cinder! Even longer naps, less fire.' }],
+  help: [{ at: 2, add: 1.6, roam: 1.25, rest: 0.9, breathe: 1.1, text: 'Sleepy Cinder! He sits longer now.' },
+    { at: 4, add: 3.2, roam: 1.6, rest: 1.3, breathe: 0.85, text: 'Extra sleepy Cinder! Even longer naps, less fire.' }],
   fairPad: 0.55,
   farEst: 2.0,                              // 1-player: the computer is "far away" (s to get there) for the job swap
-  win: 3,
+  win: 4,
   dunk: { sink: 0.55, line: 0.75, swap: 1.1, out: 2.7, end: 2.5, riseWait: 1.6, riseV: 46 },
   gems: [['circle', '#6fd66f'], ['diamond', '#b48cff'], ['heart', '#ff7fb0'], ['tri', '#4fd6c4']],
 };
@@ -273,10 +278,17 @@ function vdlTooFar(st, p, g) {
   else if (n.state === 'hop' || n.state === 'fly') left += n.dur - n.t + vdlPerchT(st);
   return est > VDL.farEst && est + VDL.pullT + 0.3 > left;
 }
-// a flame is blowing on p and no shield covers p: the lever won't budge (so nobody can tank a bonk and pull alone)
+// a flame is blowing on p, or his lever is still hot from the last one (the rest between guard flames), and no shield
+// covers p: the lever won't budge (so nobody can tank a bonk and pull alone)
 function vdlScorched(st, p) {
   if (vdUnderShield(st, p) >= 0) return false;
+  if (st.ph.guardRest > 0) return true;
   return st.fires.some(f => f.phase === 'breathe' && rectHit(p, f.x0, f.gy - f.h, f.x1 - f.x0, f.h + 8));
+}
+// the guard flame's breath and the rest after it (longer while he is sleepy: gold help)
+function vdlGuardK(st) {
+  const h = st.ph.help ? VDL.help[st.ph.help - 1] : null, G2 = VDL.guard;
+  return { breathe: h ? h.breathe : G2.breathe, rest: h ? h.rest : G2.rest };
 }
 function vdlPullStep(st, dt) {
   const ph = st.ph, ps = G.players, pu = ps[ph.pull], sh = ps[1 - ph.pull], act = vdlActive(ph);
@@ -318,12 +330,25 @@ function vdlFireStep(st, dt, calm) {
   const ph = st.ph, ps = G.players, act = vdlActive(ph);
   // a guard flame belongs to its lever: it goes out when he leaves that pillar
   for (const f of st.fires) if (f.guard && f.lever !== act && f.phase !== 'out') vdFireOut(st, f);
+  // a guard flame that blew out on his lever: he catches his breath (a puff of smoke) before the next one, and the
+  // lever stays hot meanwhile (vdlScorched)
+  ph.guardRest = Math.max(0, ph.guardRest - dt);
+  for (const f of st.fires) if (f.guard && f.phase === 'out' && !f.rested) {
+    f.rested = true;
+    if (f.lever === act && !calm) {
+      ph.guardRest = vdlGuardK(st).rest;
+      const c = st.cinder, n = vdCinderPts(c).nose;   // (a quiet puff of smoke: he catches his breath)
+      for (let k = 0; k < 2; k++) st.smoke.push({ x: n.x + c.face * k * 5, y: n.y - k * 4, vx: c.face * (14 + k * 10), vy: -36 - k * 14, r: 5 + k * 3, t: 0, life: 0.9 + k * 0.2 });
+    }
+  }
+  if (act < 0) ph.guardRest = 0;
   if (calm || act < 0) return;
   const lv = ph.levers[act], G2 = VDL.guard;
   const near = ps.some(p => vdlNear(p, lv));
+  if (near && ph.guardRest > 0) return;
   if (near && !st.fires.some(f => f.guard && f.phase !== 'out')) {
     for (const f of st.fires) if (!f.guard) vdFireOut(st, f);      // guarding beats a stray flame
-    const f = vdFire(st, { x: lv.x, w: G2.w, gy: lv.feet, h: G2.h, inhale: G2.inhale, breathe: G2.breathe, onHit: vdlFireHit });
+    const f = vdFire(st, { x: lv.x, w: G2.w, gy: lv.feet, h: G2.h, inhale: G2.inhale, breathe: vdlGuardK(st).breathe, onHit: vdlFireHit });
     if (f) { f.guard = true; f.lever = act; }
     ph.roamT = Math.max(ph.roamT, 2.5);
     return;
@@ -412,7 +437,7 @@ function vdlHintStep(st, dt) {
   if (covered) drop(pu.id, ['wait']);
   if (pu.input.act && puAt) drop(pu.id, ['hold']);
   if (vdShieldUp(st, shId)) drop(shId, ['raise', 'come', 'job']);
-  const fire = st.fires.find(f => f.phase !== 'out' && f.guard);
+  const fire = st.fires.find(f => f.phase !== 'out' && f.guard) || (ph.guardRest > 0 ? { rest: true } : null);
   if (puAt && !pu.input.act && (ph.atT[pu.id] += 0.25) > 0.7) vdlHint(st, pu.id, 'hold', 'Hold ' + vdKey(pu.id, 'act') + ' to pull!', { again: 6, cpu: 'Pulling!' });
   if (!puAt) ph.atT[pu.id] = 0;
   if (puAt && !covered && fire) vdlHint(st, pu.id, 'wait', 'Wait for ' + vdlName(shId) + '\'s shield!', { again: 6, cpu: 'Shield me!' });
@@ -435,7 +460,7 @@ VD_PHASES.levers = {
       if (pi >= 0) { ph.pillars[pi] = { k: pi, x: tx * T + T / 2, top0: (ty + 1) * T, top: (ty + 1) * T, sink: 0, state: 'up', wait: 0 }; L.grid[ty][tx] = '.'; }
     }
     ph.pull = def.first === 1 ? 0 : 1;   // def.first takes job A (the shield) first
-    ph.dunks = 0; ph.miss = 0; ph.help = 0; ph.prev = -1; ph.roamT = VDL.roam.first + 3;
+    ph.dunks = 0; ph.miss = 0; ph.help = 0; ph.prev = -1; ph.roamT = VDL.roam.first + 3; ph.guardRest = 0;
     ph.dunk = null; ph.drops = []; ph.rings = []; ph.hintT = 1; ph.hk = [{}, {}]; ph.atT = [0, 0];
     ph.spot = G.players.map(p => ({ x: vdlCx(p), y: vdlFeet(p) }));
     const k0 = 0, q = ph.pillars[k0];
@@ -634,7 +659,7 @@ function vdlDrawLevers(st) {
   }
 }
 function vdlDrawTop(st) {
-  const ph = st.ph, t = G.clock, act = vdlActive(ph), big = hudBig();
+  const ph = st.ph, t = G.clock, act = vdlActive(ph), big = vdBig();
   // splash drops and rings
   for (const d of ph.drops) { ctx.fillStyle = d.r > 5 ? '#ffc04d' : '#ff7a1f'; circle(d.x, d.y, d.r); ctx.fill(); }
   for (const r of ph.rings) {

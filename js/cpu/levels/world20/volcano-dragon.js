@@ -6,6 +6,7 @@
      VD_BRAINS.<phase> = {
        reset(bst, p, info)                       optional: the room (or a restart) began
        think(bst, p, o, dt, info, S) -> out      every step while the phase plays (not during cards or cutscenes)
+       back(bst, p, info, S)                     optional: the person came back after being away (plan afresh)
      }
    out = { left, right, jump, down, up, act } as in cpu-core (jump / act: true held, 'tap' a fresh press), plus
    keep: true to go on while the person is away (only for work that clears nothing by itself).
@@ -13,7 +14,9 @@
      info.vs     vdVersusSkill(p): 0.35 / 0.7 / 1 from the saved Opponent setting (Easy / Normal / Hard), or the bot
                  test's --skills; the surf race (versus inside this team level) uses it.
      info.away   the person pressed nothing for VD.idleAfter (10) s: Cinder waits, and so does the computer (the core
-                 brain returns {} unless out.keep).
+                 brain returns {} unless out.keep). While it throws an output away, the core also drops the phase
+                 brain's cpuNav plan (bst.nav), which would otherwise run on unplayed and come back mid-move (the
+                 levers QA saw it jump into the lava), and when the person is back it calls back() if there is one.
    A phase that is still the core's stub (VD_PHASES[phase].stub) is played by VD_STUB_BRAINS[phase]; a real phase
    with no brain by a follow-the-partner fallback, so the level never breaks.
    Helpers for phase brains: vdBrainSay(bst, p, key, text, again) a short bubble (1-player mode only, once per key
@@ -114,7 +117,14 @@ cpuBrain('dragon', {
     info.vs = vdVersusSkill(p);
     info.away = !info.partnerCpu && info.partnerIdle > VD.idleAfter;
     if (bst.key !== key) { bst.key = key; bst.sub = {}; if (typeof B.reset === 'function') B.reset(bst.sub, p, info); }
+    if (bst.away && !info.away) { bst.away = false; if (typeof B.back === 'function') B.back(bst.sub, p, info, S); }
     const out = B.think(bst.sub, p, o, dt, info, S) || {};
-    return info.away && !out.keep ? {} : out;
+    if (info.away && !out.keep) {
+      // standing still while the person is away: no map plan may run on unplayed
+      bst.away = true;
+      if (bst.sub.nav) bst.sub.nav = null;
+      return {};
+    }
+    return out;
   },
 });

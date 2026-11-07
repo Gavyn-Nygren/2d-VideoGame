@@ -43,13 +43,13 @@ const VDSURF = {
   waveV: 150, waveTrig: 720, waveMul: 0.6, waveBoost: 0.45,
   geyP: 3.0, geyCalm: 1.35, geyWarn: 0.95, geyErupt: 0.7, geyH: 180, geyW: 26, geyMul: 0.4, geyToss: 560, geyWob: 0.8,
   help: { pop: 1.4, trick: 0.88, boost: 1.2 },
-  win: 2, cardT: 3.8, endT: 2.9, crownT: 4.6, tieEps: 0.002, limitK: 1.7,
+  win: 2, cardT: 5, endT: 2.9, crownT: 4.6, tieEps: 0.002, limitK: 1.7,
 };
 // the three hand-made tracks: segs [length, drop] (a smooth S between points; negative drop = a bump up), feat:
 // ['k', x, len, h] a rock ramp (its lip at x + len), ['r', x, h, w] a rock, ['s', x0, x1] a gold stream,
 // ['w', x, h] a lava wave (it starts there and rolls up the river when you come near), ['g', x, beat offset] a geyser
 const VDSURF_TRACKS = [
-  { key: 'ember', name: 'Ember Run', hint: 'Hop the rocks. Jump at the gold edge of a ramp: POP!', len: 13300,
+  { key: 'ember', name: 'Ember Run', hint: 'Hop over the rocks. Hop at the gold edge of a ramp: POP!', len: 13300,
     say: 'Race me down the volcano! Wheee!',
     segs: [[600, 20], [700, 110], [300, -36], [500, 110], [700, 50], [600, 150], [500, 30], [260, -40], [600, 140], [700, 40],
       [220, 150], [700, 50], [600, 140], [300, -40], [600, 120], [800, 40], [600, 150], [700, 40], [260, 160], [700, 90],
@@ -65,7 +65,7 @@ const VDSURF_TRACKS = [
     feat: [['w', 1500, 30], ['s', 2000, 2500], ['r', 2900, 28], ['w', 3700, 32], ['k', 4250, 150, 44], ['w', 5650, 32],
       ['r', 6150, 30], ['s', 6450, 6900], ['w', 7350, 34], ['w', 8000, 32], ['k', 8650, 150, 46], ['r', 9850, 30],
       ['w', 10550, 34], ['s', 10750, 11200], ['w', 11700, 34], ['r', 12300, 30], ['w', 12900, 32]] },
-  { key: 'geysers', name: 'Geyser Gulch', hint: 'Geysers spout on a beat: lean back to wait, then go!', len: 13600,
+  { key: 'geysers', name: 'Geyser Gulch', hint: 'Geysers spout on a beat: slow down to wait, then go!', len: 13600,
     say: 'Geysers! They tickle! Hee hee!',
     segs: [[600, 20], [700, 150], [600, 40], [240, 160], [700, 40], [600, 160], [300, -40], [700, 140], [700, 40], [260, 170],
       [700, 50], [600, 150], [700, 40], [300, -40], [600, 160], [700, 40], [240, 170], [700, 60], [600, 150], [700, 40],
@@ -305,7 +305,7 @@ function vdSurfHazards(st, r, dt) {
     vdSurfPop(ph, k, rk.x, top - 30, 'Bonk!', '#ffffff', 22);
     for (let n = 0; n < 9; n++) vdSurfPart(ph, k, rk.x, top + 10, -60 + vdSurfVR() * 260, -160 - vdSurfVR() * 220, 0.9, n % 3 ? '#4d4453' : '#ff9a4d', 3 + vdSurfVR() * 4, 1200, 'rock');
     Sfx.play('vdSurfBonk', k); rumble(k, 0.5, 0.3, 140);
-    if (r.hits === 2 && !ph.hinted[k].rock2) vdSurfHint(st, k, 'rock2', 'Jump ' + vdKey(k, 'jump') + ' just before a rock!');
+    if (r.hits === 2 && !ph.hinted[k].rock2) vdSurfHint(st, k, 'rock2', 'Hop ' + vdKey(k, 'jump') + ' just before a rock!');
   });
   // lava waves: each surfer's own, started as they come near, rolling up the river
   T.waves.forEach((w, i) => {
@@ -342,10 +342,10 @@ function vdSurfHazards(st, r, dt) {
   }
   // first-time hints as each kind of thing comes into view
   const near = (x, d) => x > r.x && x - r.x < d;
-  if (!ph.hinted[k].rock && T.rocks.some(q => near(q.x, 560))) vdSurfHint(st, k, 'rock', 'Jump ' + vdKey(k, 'jump') + ' over the rock!');
-  if (!ph.hinted[k].kick && T.kick.some(q => near(q.x0, 380))) vdSurfHint(st, k, 'kick', 'Jump at the gold edge: POP!');
+  if (!ph.hinted[k].rock && T.rocks.some(q => near(q.x, 560))) vdSurfHint(st, k, 'rock', 'Hop ' + vdKey(k, 'jump') + ' over the rock!');
+  if (!ph.hinted[k].kick && T.kick.some(q => near(q.x0, 380))) vdSurfHint(st, k, 'kick', 'Hop ' + vdKey(k, 'jump') + ' at the gold edge: POP!');
   if (!ph.hinted[k].wave && ph.waves[k].some(w => !w.past && w.x - r.x < 620)) vdSurfHint(st, k, 'wave', 'Hop the lava wave!');
-  if (!ph.hinted[k].gey && T.geys.some(q => near(q.x, 640))) vdSurfHint(st, k, 'gey', 'Geyser! ' + vdKey(k, 'left') + ' to wait for it', 3.2);
+  if (!ph.hinted[k].gey && T.geys.some(q => near(q.x, 640))) vdSurfHint(st, k, 'gey', 'Geyser! Hold ' + vdKey(k, 'left') + ' to wait for it', 3.2);
 }
 
 /* ---------- the race flow: card (3-2-1) -> live -> fin -> next card | crown ---------- */
@@ -559,7 +559,7 @@ VD_PHASES.surf = {
     if (ph.state === 'card') {
       for (const p of G.players) { p.pendingJump = false; p.pendingAct = false; }
       const was = ph.cardT;
-      ph.cardT += dt;
+      if (G.introT <= 0) ph.cardT += dt;   // (race 1: the race card waits for the phase card to go)
       if (was < 0.15 && ph.cardT >= 0.15) vdSurfSayCard(st);
       for (const n of [1, 2, 3]) if (was < K.cardT - n && ph.cardT >= K.cardT - n) Sfx.play('vdSurfBeep');
       if (ph.cardT >= K.cardT) {
@@ -689,7 +689,7 @@ function vdSurfDrawLane(st, k) {
   ctx.globalAlpha = 1;
   ctx.restore();
   // pop words (lane coords, kept inside the lane)
-  const big = hudBig();
+  const big = vdBig();
   for (const q of ph.pops) {
     if (q.k !== k) continue;
     const u = q.t / q.life, x = clamp(r.x - cam.x + 34 + u * 10, 120, W - 90), y = clamp(r.y - cam.y - 78 - u * 24, big ? 52 : 46, LH - 20);
@@ -949,9 +949,9 @@ function vdSurfFake(r, sq) {
 }
 
 /* ---------- drawing: the HUD (lane chips, race bars, the race card) ---------- */
-function vdSurfCardBox() { const big = hudBig(), w = big ? 600 : 520, h = big ? 230 : 196; return { x0: W / 2 - w / 2, y0: big ? 150 : 160, w, h, big }; }
+function vdSurfCardBox() { const big = vdBig(), w = big ? 600 : 520, h = big ? 230 : 196; return { x0: W / 2 - w / 2, y0: big ? 150 : 160, w, h, big }; }
 function vdSurfHud(st) {
-  const ph = st.ph, K = VDSURF, big = hudBig(), z = big ? 1.4 : 1;
+  const ph = st.ph, K = VDSURF, big = vdBig(), z = big ? 1.4 : 1;
   if (!ph.R || ph.state === 'crown') return;
   const nb = vdNewsBox(st), under = (x0, x1, y0, y1) => nb && x1 > nb.x0 - 4 && x0 < nb.x1 + 4 && y1 > nb.y0 - 2 && y0 < nb.y1 + 2;
   for (const k of [0, 1]) {
@@ -997,7 +997,7 @@ function vdSurfHud(st) {
 }
 function vdSurfDrawCard(st) {
   const ph = st.ph, K = VDSURF, B = vdSurfCardBox(), big = B.big, t = ph.cardT, z = big ? 1.35 : 1;
-  const show = clamp(Math.min(t / 0.25, (K.cardT - 2.6 - t) / 0.3 + 1), 0, 1);   // the panel, then 3-2-1
+  const show = clamp(Math.min(t / 0.25, (K.cardT - 3 - t) / 0.3), 0, 1);   // the panel (about 2 s to read), then 3-2-1 (no overlap)
   if (show > 0) {
     ctx.save(); ctx.globalAlpha = show;
     ctx.fillStyle = 'rgba(40,18,32,0.93)'; rr(B.x0, B.y0, B.w, B.h, 22); ctx.fill();
@@ -1066,7 +1066,7 @@ function vdSurfDrawCrown(st) {
   ctx.fillStyle = '#ff5f6d'; circle(0, -5, 2.6); ctx.fill(); ctx.fillStyle = '#7fd6ff'; circle(-8, -4, 2); ctx.fill(); circle(8, -4, 2); ctx.fill();
   ctx.restore();
   if (t > 2.2) {
-    const k = clamp((t - 2.2) / 0.3, 0, 1), big = hudBig();
+    const k = clamp((t - 2.2) / 0.3, 0, 1), big = vdBig();
     ctx.save(); ctx.globalAlpha = k;
     bigText('Surf champ: ' + vdSurfName(ph.champ) + '!', W / 2, big ? 150 : 140, big ? 50 : 42, C.gold, 0.8 + 0.2 * k);
     ctx.restore();

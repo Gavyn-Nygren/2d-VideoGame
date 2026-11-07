@@ -8,9 +8,10 @@
                shield and holds the action. It never pulls uncovered, so it can't win a dunk alone ("Shield me!").
      shielder  walks there with the shield down (it can't jump high with it up), then stands beside the lever (or
                beside the puller) and holds the shield up, and waits there for a slow puller ("Come pull!").
+   4 dunks with the jobs swapped after each one, so each player pulls twice and shields twice.
    Both: when he crouches to hop, they head for the next lever (unless the pull is nearly done); a flame zone they
    stand in sends them under a raised shield nearby, or a step out of it; they hop over the partner when blocked.
-   The core brain stops it while the person is away (10 s), like Cinder. */
+   The core brain stops it while the person is away (10 s), like Cinder, and calls back() on their return. */
 (() => {
   const spotOk = (x, feet) => {
     const tx = Math.floor(x / T), ty = Math.round(feet / T), ch = tile(tx, ty);
@@ -114,7 +115,7 @@
       } else x = clamp(oc - Math.sign(oc - lv.x) * 24, lv.x - 22, lv.x + 22);
       // go in when the next flame is far enough off (or after waiting a while anyway)
       const f = guardFire(S), inside = vdlNear(p, lv);
-      const next = !f ? VDL.guard.inhale : f.phase === 'inhale' ? f.inhale - f.t : -1;
+      const next = !f ? (S.ph.guardRest || 0) + VDL.guard.inhale : f.phase === 'inhale' ? f.inhale - f.t : -1;   // (his rest between guard flames counts too)
       const dy = cpuFeet(p) - lv.feet, need = Math.max(0, Math.abs(cpuCx(p) - oc) - 38) / 200 + (dy > 3 ? 0.45 : dy < -3 ? 0.25 : 0) + 0.05;
       bst.readyT = (bst.readyT || 0) + 1 / 120;
       if (!bst.commit && (inside || next >= need || bst.readyT > 2.2)) bst.commit = G.time;
@@ -163,12 +164,13 @@
 
   VD_BRAINS.levers = {
     reset(bst) { bst.nav = null; bst.job = null; },
+    // the person is back after being away: plan afresh (the core brain already dropped the map plan while away)
+    back(bst) { bst.nav = null; bst.commit = 0; bst.wait = null; bst.readyT = 0; },
     think(bst, p, o, dt, info, S) {
       const out = {}, ph = S.ph;
       if (!ph || !ph.levers || !p.alive) return out;
-      // the person walked away: the core brain throws our output away, so don't let a map plan run on unplayed (it
-      // would come back mid-jump and drop us in the lava): stand, and plan afresh on their return
-      if (info.away) { bst.nav = null; bst.commit = 0; bst.wait = null; return out; }
+      // the person walked away: stand (the core brain drops the map plan meanwhile, and back() plans afresh)
+      if (info.away) return out;
       const job = ph.pull === p.id ? 'pull' : 'shield';
       if (bst.job !== job) {
         if (bst.job && info.partnerCpu === false) vdBrainSay(bst, p, 'job' + job, job === 'pull' ? 'I\'ll pull!' : 'I\'ll shield!', 4);

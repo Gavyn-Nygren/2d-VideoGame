@@ -824,7 +824,7 @@ function vdClimbArrow(x, y) {
 }
 // rock warnings at the right edge of the screen (screen coords)
 function vdClimbHud(st) {
-  const ph = st.ph, t = G.clock, big = hudBig();
+  const ph = st.ph, t = G.clock, big = vdBig();
   for (const r of ph.rocks) {
     if (r.gone || r.warn <= 0) continue;
     const y = clamp(vdClimbG(ph, r.x) - 30 - st.cam.y, 110, H - 40), x = W - 26, k = 1 - r.warn / VDCL.rock.warn, pulse = 0.5 + 0.5 * Math.sin(t * 16);

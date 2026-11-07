@@ -171,8 +171,7 @@ function showPauseCard() {
       <p class="eyebrow">Paused · World ${l.world + 1}: ${esc(WORLDS[l.world].name)} · Level ${levelCode(G.levelIndex)}</p>
       <h2>${esc(l.name)}</h2>
       <p class="lede">${esc((G.level && G.level.def.tip) || l.tip)}</p>
-      ${cpuTipNote((G.level && G.level.def.tip) || l.tip) ? `<p class="hint">${esc(cpuTipNote((G.level && G.level.def.tip) || l.tip))}</p>` : ''}
-      ${l.act ? actKeysHTML() : ''}${matchLine}
+      <div data-pause-who style="display:contents">${pauseWhoHTML()}</div>${matchLine}
       <div class="actions-row">
         <button class="primary" type="button" data-act="resume" data-primary>Keep playing</button>
         <button class="ghost" type="button" data-act="replay">${m ? 'Restart match' : 'Restart level'}</button>
@@ -181,6 +180,11 @@ function showPauseCard() {
       </div>
       ${cpuCfgHTML()}
     </div>`);
+}
+// the pause card's "You play Pip..." note and action keys (redrawn when the Players setting changes on the card)
+function pauseWhoHTML() {
+  const l = LEVELS[G.levelIndex], tip = (G.level && G.level.def.tip) || l.tip, note = cpuTipNote(tip);
+  return (note ? `<p class="hint">${esc(note)}</p>` : '') + (l.act ? actKeysHTML() : '');
 }
 function resume() { if (G.mode !== 'paused') return; G.mode = 'play'; hideOverlay(); G.players.forEach(p => { p.prevJump = true; p.prevAct = true; }); }
 
