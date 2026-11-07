@@ -4472,7 +4472,55 @@ const LEVELS = [
   //   Each level's def sits between its own BEGIN/END lines. world: 17 =====
   //
   // ----- BEGIN 18-1 Runaway Ship (mode 'runship', js/levels/world18/runaway-ship.js) -----
-  // (def goes here)
+  // 18-1 Runaway Ship (team, Gavyn's pick): the ship broke loose and sails itself out of the harbor, seen from the side.
+  // The helm steers between three sea lanes round rocks and reefs (▲ ▼), eases off (◀) and rings the bell (the action) as
+  // big waves hit; the deckhand runs round the deck patching leaks, pumping, hauling the flapping rope when the wind
+  // changes, untangling the rigging up the rope ladder and looking out from the crow's nest in fog. Jobs swap at the buoy
+  // after each stretch. Course tokens: the top of the level file. The map is only the spawns.
+  { name: 'Runaway Ship', world: 17, kind: 'team', mode: 'runship', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    act: { label: 'bell', labels: ['bell', 'fix'] },
+    legend: {
+      pip: '<kbd>W</kbd><kbd>S</kbd> steer · climb <kbd>A</kbd><kbd>D</kbd> run · <kbd>A</kbd> ease off',
+      bo: '<kbd>↑</kbd><kbd>↓</kbd> steer · climb <kbd>←</kbd><kbd>→</kbd> run · <kbd>←</kbd> ease off',
+      pad: 'stick: steer · run · climb, ◀ eases off, <span data-glyph="a"></span> jump,',
+    },
+    tip: 'Sail the runaway ship to Treasure Cove! One steers round the rocks, one fixes leaks, ropes and sails.',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Harbor Mouth', helm: 0, pal: 'harbor', cruise: 150, act: { label: 'bell', labels: ['bell', 'fix'] },
+        tip: 'Pip steers with ▲ ▼ round the rocks. Bo runs the deck: patch leaks, pump, pull ropes, untangle!',
+        course: ['f250', 'S:{H}: steer with {Hud} round the rocks!||{H} steers round the rocks', 'f350', 'r1', 'f450', 'r0', 'f220', 'c2', 'f420',
+          'S:A reef! Steer round it, or the ship runs aground', 'f220', 'R1', 'f420', 'c1', 'f300',
+          'S:Creak! {D}: stand on the leak and hold {Dact}||Creak! {D} patches the leak', 'L', 'f600',
+          'S:The wind changed! {D}: pull the glowing rope {Dact}||The wind changed! {D} pulls the flapping rope', 'N', 'f650', 'r2', 'f350', 'r01', 'f400',
+          'S:A big wave! {H}: ring the bell {Hact} as it hits the front||A big wave! {H} rings the bell as it hits', 'f200', 'V', 'f650',
+          'S:Squawk! {D}: climb the ladder {Dup} and hold {Dact} on the knot||Squawk! {D} climbs up to untangle the ropes', 'T:200', 'f700',
+          'R02', 'f380', 'c1', 'f380', 'r1', 'f450', 'B'],
+      },
+      {
+        title: 'Reef Run', helm: 1, pal: 'reef', cruise: 168, act: { label: 'bell', labels: ['fix', 'bell'] },
+        tip: 'Swap! Bo steers between the reefs. Pip keeps the ship patched, pumped and the sail full.',
+        course: ['f250', 'S:Reef Run! {H}: weave between the reefs||{H} weaves between the reefs', 'f300', 'R1', 'f420', 'R02', 'c1', 'f450', 'r1', 'f160', 'c2', 'f320', 'R01', 'f320',
+          'N', 'f420', 'r2', 'f300', 'r0', 'f300', 'c1', 'f380', 'T:150', 'f320', 'R1', 'f450', 'r02', 'f400', 'V', 'f500', 'L', 'R12', 'c0', 'f450', 'r0', 'f300', 'r1', 'f380',
+          'c2', 'f300', 'R01', 'f550', 'B'],
+      },
+      {
+        title: 'Stormy Patch', helm: 0, pal: 'storm', cruise: 165, act: { label: 'bell', labels: ['bell', 'fix'] },
+        tip: 'Pip steers through the storm: ring the bell for big waves! Bo looks out from the crow\'s nest in the fog.',
+        course: ['f250', 'S:Stormy seas! {H}: ring the bell {Hact} as each big wave hits||Stormy seas! {H} rings the bell for each big wave', 'f250', 'V', 'f600', 'r1', 'f300', 'N', 'r0', 'f380', 'V', 'f520', 'c2', 'f300',
+          'S:Fog ahead! {D}: climb to the crow\'s nest so {H} can see||Fog ahead! {D} climbs to the crow\'s nest to look out', 'f450', 'F:1900', 'f220', 'q', 'f420', 'q', 'f420', 'q', 'f420', 'q', 'f420',
+          'T:220', 'f300', 'N', 'f380', 'V', 'f600', 'R1', 'f400', 'c0', 'r2', 'f450', 'L', 'f300', 'r01', 'f500', 'B'],
+      },
+      {
+        title: 'Treasure Cove', helm: 1, pal: 'cove', cruise: 168, act: { label: 'bell', labels: ['fix', 'bell'] },
+        tip: 'Bo steers to Treasure Cove through the last fog. Then both run to the anchor and hold the action!',
+        course: ['f250', 'S:Nearly there! Sail on to Treasure Cove', 'f300', 'r1', 'f350', 'c0', 'f300', 'R12', 'f400', 'N', 'f300', 'r0', 'f300', 'c2', 'f300',
+          'S:More fog! {D}: look out from the crow\'s nest||More fog! {D} looks out from the crow\'s nest', 'f450', 'F:1500', 'f220', 'q', 'f420', 'q', 'f420', 'q', 'f420',
+          'T:180', 'f380', 'V', 'f500', 'R02', 'c1', 'f400', 'r1', 'f300', 'c0', 'f300', 'r2', 'f420', 'S:Land ho! Treasure Cove!', 'f380', 'E'],
+      },
+    ],
+  },
   // ----- END 18-1 Runaway Ship -----
   //
   //
