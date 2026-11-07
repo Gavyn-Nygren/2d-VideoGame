@@ -4499,6 +4499,41 @@ const LEVELS = [
   //
   //
   // ===== END World 18 =====
+  //
+  // ===== World 19 (Tumbleweed Gulch, mixed): the Wild West world, world index 18 (js/levels/world19/), a sunny desert
+  //   town with red mesas, cactus and friendly cowpokes, nothing scary, nobody gets hurt (cork popguns only). Gavyn's
+  //   picks (Nov 2026): 19-1 Train Heist Hop (team, scrolling), 19-2 Handcar Hustle (team, scrolling), 19-3 Gold Mine
+  //   Cart (team, scrolling), 19-4 Quick-Draw Showdown (versus, best of 7).
+  //   Each level's def sits between its own BEGIN/END lines. world: 18 =====
+  //
+  // ----- BEGIN 19-1 Train Heist Hop (mode 'heist', js/levels/world19/train-heist-hop.js) -----
+  // (def goes here)
+  // ----- END 19-1 Train Heist Hop -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 19-2 Handcar Hustle (mode 'handcar', js/levels/world19/handcar-hustle.js) -----
+  // (def goes here)
+  // ----- END 19-2 Handcar Hustle -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 19-3 Gold Mine Cart (mode 'minecart', js/levels/world19/gold-mine-cart.js) -----
+  // (def goes here)
+  // ----- END 19-3 Gold Mine Cart -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 19-4 Quick-Draw Showdown (mode 'quickdraw', js/levels/world19/quick-draw-showdown.js) -----
+  // (def goes here)
+  // ----- END 19-4 Quick-Draw Showdown -----
+  //
+  //
+  //
+  // ===== END World 19 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -4568,6 +4603,10 @@ const WORLDS = [
   { name: 'Pirate Cove', blurb: 'Sail, swing, dig and duel your way across the high seas!',
     theme: { skyTop: '#55c3ef', skyBot: '#fff2cf', hillFar: '#6fd0c4', hillNear: '#3fb0a6', sun: 'rgba(255, 246, 190, 0.95)', sunGlow: 'rgba(255, 214, 140, 0.4)',
       stone: '#7a5a3e', stoneLight: '#8f6c4c', stoneEdge: '#553e2a', grass: '#f2d68c', grassDark: '#c9a457', plank: '#c98e57', plankDark: '#7d5030', rope: '#ead6a0', ropeDark: '#7a5a2a' } },
+  // World 19: the Wild West, sunny and dusty (a warm orange-gold desert sky; red mesa rock with sandy dirt on top)
+  { name: 'Tumbleweed Gulch', blurb: 'Hop the train, pump the handcar, ride the mine cart and face off at high noon!',
+    theme: { skyTop: '#f6b26b', skyBot: '#fff0c9', hillFar: '#e59a66', hillNear: '#c7713f', sun: 'rgba(255, 244, 196, 0.95)', sunGlow: 'rgba(255, 196, 120, 0.42)',
+      stone: '#a9563a', stoneLight: '#c06a48', stoneEdge: '#7a3a26', grass: '#e8c27a', grassDark: '#b98f45', plank: '#b77a45', plankDark: '#704622', rope: '#e9d29a', ropeDark: '#7a5a2a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
