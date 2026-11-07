@@ -4493,7 +4493,29 @@ const LEVELS = [
   //
   //
   // ----- BEGIN 18-4 Plank Duel (mode 'plankduel', js/levels/world18/plank-duel.js) -----
-  // (def goes here)
+  // 18-4 Plank Duel (mode 'plankduel', versus, best of 5, Gavyn's pitch): a foam-sword fight on a plank over the lagoon.
+  // Swing high or low, block by guarding the same height (stand = high, hold down = low), hop over low swings, hold the
+  // action to charge a lunge. Every bonk pushes the other back; off the end is a splash and the round.
+  { name: 'Plank Duel', world: 17, kind: 'versus', mode: 'plankduel', ownStep: true,
+    // the map is only the two spawns: the mode builds each round's plank (MODES.plankduel); round time is set per plank
+    match: { bestOf: 5, roundTime: 45 },
+    act: { label: 'swing' },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> step <kbd>S</kbd> low <kbd>W</kbd> hop',
+      bo: '<kbd>←</kbd><kbd>→</kbd> step <kbd>↓</kbd> low <kbd>↑</kbd> hop',
+      pad: 'stick ◀ ▶ step, down guards low, <span data-glyph="a"></span> hops,',
+    },
+    tip: 'Swing high, or hold ▼ to swing low. Guard the same height to block. Bonk them off the end!',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '..............1..2..............',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+    ],
+  },
   // ----- END 18-4 Plank Duel -----
   //
   //
