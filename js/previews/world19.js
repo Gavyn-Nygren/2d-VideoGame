@@ -1,0 +1,449 @@
+/* Pip & Bo - Level previews for World 19 Tumbleweed Gulch (see js/previews/preview-core.js for how to write one).
+   Every top-level name starts with pw19. The whole file is skipped when the preview engine isn't loaded yet. */
+'use strict';
+
+if (typeof definePreview === 'function') {
+  // ----- BEGIN 19-1 Train Heist Hop preview -----
+  // Bo jumps the wide gap first, Pip tosses the gold sack over, Bo catches it, Pip hops across and they cheer.
+  const pw19heistRoof = 112;
+  const pw19heistSack = (v, x, y, rot, s) => {
+    const c = v.ctx;
+    c.save(); c.translate(x, y); c.rotate(rot || 0); c.scale(s || 1, s || 1);
+    c.fillStyle = '#c9a36a'; c.beginPath(); c.moveTo(-5, -7); c.quadraticCurveTo(-11, 2, -9, 8); c.quadraticCurveTo(0, 11, 9, 8); c.quadraticCurveTo(11, 2, 5, -7); c.closePath(); c.fill();
+    c.strokeStyle = '#8a6a3a'; c.lineWidth = 1.4; c.stroke();
+    c.fillStyle = '#ffd34a'; v.circle(-3, -9, 3); c.fill(); v.circle(3, -10, 2.6); c.fill();
+    c.strokeStyle = '#7a5228'; c.lineWidth = 2; c.beginPath(); c.moveTo(-6, -6); c.lineTo(6, -6); c.stroke();
+    v.star(0, 2, 3.4, '#b9850f');
+    c.restore();
+  };
+  const pw19heistBack = (v, t) => {
+    const c = v.ctx;
+    const g = c.createLinearGradient(0, 0, 0, 180);
+    g.addColorStop(0, '#f6b86a'); g.addColorStop(0.55, '#fbd99a'); g.addColorStop(1, '#f2c48a');
+    c.fillStyle = g; c.fillRect(0, 0, 320, 180);
+    v.fillCircle(250, 52, 30, 'rgba(255,240,190,0.55)'); v.fillCircle(250, 52, 18, '#fff1b8');
+    // far mesas: repeat every 160 px, slide 160 px per 6 s loop
+    const off = (t / 6) * 160;
+    c.fillStyle = '#d98a5a';
+    for (let k = -1; k < 3; k++) {
+      const x = k * 160 - off;
+      c.beginPath(); c.moveTo(x + 10, 120); c.lineTo(x + 24, 78); c.lineTo(x + 70, 78); c.lineTo(x + 82, 120); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(x + 100, 120); c.lineTo(x + 108, 96); c.lineTo(x + 130, 96); c.lineTo(x + 140, 120); c.closePath(); c.fill();
+    }
+    c.fillStyle = '#e8b27a'; c.fillRect(0, 118, 320, 62);
+    // telegraph poles every 80 px, 480 px per loop
+    const po = (t * 80) % 80;
+    for (let x = -po; x < 340; x += 80) { v.line(x, 132, x, 92, '#7a5034', 2.4); v.line(x - 7, 96, x + 7, 96, '#7a5034', 2); }
+    c.strokeStyle = 'rgba(90,60,40,0.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, 97); c.lineTo(320, 97); c.stroke();
+    // track
+    c.fillStyle = '#9a6e4a'; c.fillRect(0, 160, 320, 4);
+    c.fillStyle = '#6b4a30';
+    const so = (t * 120) % 16;
+    for (let x = -so; x < 330; x += 16) c.fillRect(x, 164, 9, 4);
+    c.fillStyle = '#d9a46e'; c.fillRect(0, 168, 320, 12);
+  };
+  const pw19heistCar = (v, x0, x1, col, label, t) => {
+    const c = v.ctx, R = pw19heistRoof;
+    c.fillStyle = col; v.rr(x0, R, x1 - x0, 38, 3); c.fill();
+    c.fillStyle = '#5a3420'; c.fillRect(x0 - 2, R - 3, x1 - x0 + 4, 5);
+    c.fillStyle = 'rgba(0,0,0,0.14)'; c.fillRect(x0, R + 30, x1 - x0, 8);
+    c.fillStyle = '#ffe6a8';
+    for (let wx = x0 + 12; wx < x1 - 18; wx += 26) { v.rr(wx, R + 9, 14, 11, 2); c.fill(); }
+    if (label) v.text(label, (x0 + x1) / 2, R + 32, 6, '#fff1c4', 'center');
+    for (const wx of [x0 + 18, x0 + 36, x1 - 36, x1 - 18]) {
+      v.fillCircle(wx, 156, 7, '#3a2a22'); v.fillCircle(wx, 156, 2.4, '#c9a36a');
+      const a = t * Math.PI * 2;
+      v.line(wx + Math.cos(a) * 6, 156 + Math.sin(a) * 6, wx - Math.cos(a) * 6, 156 - Math.sin(a) * 6, '#c9a36a', 1.4);
+    }
+  };
+  definePreview('Train Heist Hop', {
+    blurb: 'Jump the train gaps and toss the gold sack to your partner!',
+    loop: 6,
+    still: 3.3,
+    draw(v, t) {
+      const R = pw19heistRoof, e = v.ease;
+      pw19heistBack(v, t);
+      // couplers, then the two cars with a wide gap 150..196
+      v.line(150, 146, 196, 146, '#3a2a22', 3);
+      pw19heistCar(v, -20, 150, '#b8462e', 'GULCH LINE', t);
+      pw19heistCar(v, 196, 340, '#3f6fa8', 'EXPRESS', t);
+      // Bo: run to the edge, leap the gap, turn and wait; then cheer
+      const kb1 = v.seg(t, 0.2, 1.0), kb2 = v.seg(t, 1.0, 1.65);
+      let bx = v.lerp(70, 138, e.inOut(kb1)), by = R, bf = 1, bmood = 'happy', bsq = 0;
+      if (t >= 1.0) { bx = v.lerp(138, 226, kb2); by = R + v.hop(kb2, 34); }
+      if (t >= 1.65) { bf = -1; bsq = t < 1.8 ? 0.25 : 0; }
+      const kt = v.seg(t, 2.5, 3.25);
+      if (t >= 2.6 && t < 3.25) bmood = 'wow';
+      if (t >= 3.25) { bmood = 'joy'; bsq = t < 3.4 ? 0.2 : 0; }
+      // Pip: walks to the edge with the sack, winds up, tosses; then hops across (no sack: full jump)
+      const kp1 = v.seg(t, 1.2, 2.1), kp2 = v.seg(t, 3.5, 4.1);
+      let px = v.lerp(40, 128, e.inOut(kp1)), py = R, psq = 0, pmood = 'happy';
+      if (t >= 2.1 && t < 2.5) { psq = 0.3 * v.seg(t, 2.1, 2.45); pmood = 'grit'; }
+      if (t >= 3.5) { px = v.lerp(128, 200, kp2); py = R + v.hop(kp2, 40); pmood = 'joy'; }
+      const cheer = v.seg(t, 4.2, 6);
+      if (t >= 4.2) { py = R + v.hop(v.phase(t, 0.6), 7); by = R + v.hop(v.phase(t, 0.6, 0.3), 7); }
+      v.shadow(px, R, 18); v.shadow(bx, R, 18);
+      v.hero(1, bx, by, { face: bf, sq: bsq, mood: bmood });
+      v.hero(0, px, py, { face: 1, sq: psq, mood: pmood });
+      // the sack: on Pip's back, in the air, then held up by Bo
+      if (t < 2.5) pw19heistSack(v, px - 13, py - 15, -0.3, 1);
+      else if (t < 3.25) {
+        const arc = k => R - 26 - 70 * 4 * k * (1 - k) + k * 6;
+        // dotted aim arc fades as it flies
+        v.ctx.globalAlpha = 0.5 * (1 - kt);
+        for (let k = 0.1; k < 1; k += 0.1) v.fillCircle(v.lerp(136, 222, k), arc(k), 1.5, '#fff6d8');
+        v.ctx.globalAlpha = 1;
+        pw19heistSack(v, v.lerp(136, 222, kt), arc(kt), kt * 9, 1.1);
+      } else pw19heistSack(v, bx, by - 40 + (t < 3.4 ? 3 : 0), 0, 1.1);
+      if (t >= 3.25 && t < 4.2) { v.sparkle(bx, by - 42, v.seg(t, 3.25, 3.9)); v.label('Nice catch!', bx, by - 58, 11, '#ffd34a'); }
+      if (t >= 0.25 && t < 1.0) v.bubble('Jump first!', 112, 74);
+      if (t >= 1.8 && t < 2.45) v.bubble('Toss it!', 222, 72);
+      if (t >= 4.2) {
+        v.confetti(213, 70, cheer);
+        v.pill('All aboard the gold!', 160, 34, { size: 12, align: 'center' });
+      }
+    },
+  });
+  // ----- END 19-1 Train Heist Hop preview -----
+  //
+  //
+  //
+  // ----- BEGIN 19-2 Handcar Hustle preview -----
+  // where the handcar is along the track at time t (it rolls, brakes at the flag, waits, rolls on to the mail stop)
+  const pw19handcarS = (v, t) => {
+    if (t < 2.5) return t * 62;
+    if (t < 3.2) return 155 + 22 * v.ease.out(v.seg(t, 2.5, 3.2));
+    if (t < 4.3) return 177;
+    return 177 + 92 * v.ease.inOut(v.seg(t, 4.3, 5.3));
+  };
+  const pw19handcarCar = (v, x, y, a, pumping, t) => {
+    const ctx = v.ctx;
+    // wheels and deck
+    for (const wx of [x - 19, x + 19]) { v.fillCircle(wx, y - 6, 6.5, '#4a3d5c'); v.fillCircle(wx, y - 6, 2.4, '#c9c2dc'); }
+    ctx.fillStyle = '#8a5a34'; v.rr(x - 32, y - 16, 64, 7, 2); ctx.fill();
+    ctx.fillStyle = '#6b4226'; ctx.fillRect(x - 32, y - 11, 64, 2);
+    // the A-frame post and the seesaw handle
+    ctx.fillStyle = '#6b4226'; ctx.beginPath(); ctx.moveTo(x - 7, y - 16); ctx.lineTo(x + 7, y - 16); ctx.lineTo(x + 1.5, y - 40); ctx.lineTo(x - 1.5, y - 40); ctx.closePath(); ctx.fill();
+    const hx = Math.cos(a) * 28, hy = Math.sin(a) * 28;
+    v.line(x - hx, y - 40 - hy, x + hx, y - 40 + hy, '#7a5032', 3.5);
+    v.fillCircle(x, y - 40, 2.6, '#d9d3ef');
+    // Pip at the back end, Bo at the front: the one pushing their end down squashes a little
+    const dn = Math.sin(a), mood = t > 5.2 ? 'joy' : t > 2.5 && t < 4.3 ? 'grit' : 'happy';
+    v.hero(0, x - 21, y - 16, { s: 0.62, face: 1, sq: pumping ? Math.max(0, -dn) * 0.5 : 0, shadow: false, mood });
+    v.hero(1, x + 21, y - 16, { s: 0.62, face: -1, sq: pumping ? Math.max(0, dn) * 0.5 : 0, shadow: false, mood });
+    // their arms up to the handle grips
+    v.line(x - 21, y - 26, x - hx * 0.95, y - 40 - hy * 0.95, v.c.pipDark, 2);
+    v.line(x + 21, y - 26, x + hx * 0.95, y - 40 + hy * 0.95, v.c.boDark, 2);
+  };
+  definePreview('Handcar Hustle', {
+    blurb: 'Take turns on the seesaw pump, brake for the flag, deliver the mail!',
+    loop: 6,
+    still: 1.1,
+    draw(v, t) {
+      const ctx = v.ctx, s = pw19handcarS(v, t), rail = 142, carX = 110;
+      // sky, sun, far mesas
+      v.sky(); v.sun(262, 40, 15);
+      ctx.fillStyle = '#d98a58';
+      for (let k = -1; k < 4; k++) {
+        const mx = k * 150 - (s * 0.2) % 150 + 20;
+        ctx.beginPath(); ctx.moveTo(mx, rail - 10); ctx.lineTo(mx + 14, rail - 52); ctx.lineTo(mx + 80, rail - 52); ctx.lineTo(mx + 94, rail - 10); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = '#efc58a'; ctx.fillRect(0, rail - 14, v.W, 20);
+      // a cactus or two going by
+      for (let k = 0; k < 4; k++) {
+        const cx = ((k * 130 + 60 - s * 0.7) % 520 + 520) % 520 - 60;
+        ctx.fillStyle = '#4f9a5a'; v.rr(cx - 3, rail - 36, 6, 26, 3); ctx.fill(); v.rr(cx - 10, rail - 28, 5, 10, 2.5); ctx.fill(); v.rr(cx + 5, rail - 32, 5, 10, 2.5); ctx.fill();
+      }
+      // the ground, ties and rails (with the broken bit until the crew lays the plank)
+      ctx.fillStyle = '#c96f45'; ctx.fillRect(0, rail, v.W, v.H - rail);
+      ctx.fillStyle = '#b25f3a'; for (let k = 0; k < 9; k++) ctx.fillRect(((k * 47 - s) % 330 + 330) % 330 - 10, rail + 18 + (k % 3) * 9, 6, 3);
+      const gapX = 368 - s, fixK = v.seg(t, 3.4, 4.0);
+      ctx.fillStyle = '#6b4a36';
+      for (let k = -1; k < 24; k++) { const tx = k * 16 - (s % 16); if (tx > gapX && tx < gapX + 26 && fixK < 1) continue; ctx.fillRect(tx, rail + 1, 9, 5); }
+      ctx.fillStyle = '#8e8aa6';
+      if (gapX > 0) ctx.fillRect(0, rail - 2, gapX, 3);
+      ctx.fillRect(Math.max(0, gapX + 26), rail - 2, v.W, 3);
+      // the crew's new plank drops in
+      if (t > 3.4) {
+        const py = v.lerp(rail - 34, rail - 2, v.ease.in(fixK));
+        ctx.fillStyle = '#c99a5c'; ctx.fillRect(gapX - 2, py, 30, 4);
+        if (fixK >= 1 && t < 4.5) v.sparkle(gapX + 13, rail - 8, v.seg(t, 4.0, 4.5));
+      }
+      // the flagman: red flag (stop) until the track is fixed, then green
+      const fx = 352 - s, flagOk = t > 4.05;
+      ctx.save(); ctx.globalAlpha = 1 - v.seg(t, 4.5, 4.9); // he steps off the track once the handcar rolls by
+      ctx.fillStyle = '#3c4a7a'; ctx.fillRect(fx - 4, rail - 18, 3, 12); ctx.fillRect(fx + 1, rail - 18, 3, 12);
+      ctx.fillStyle = '#c0453a'; v.rr(fx - 6, rail - 34, 12, 17, 4); ctx.fill();
+      v.fillCircle(fx, rail - 39, 5.5, '#f0c49a');
+      ctx.fillStyle = '#6b4226'; ctx.fillRect(fx - 9, rail - 45, 18, 2.5); v.rr(fx - 5, rail - 51, 10, 7, 2); ctx.fill();
+      const wave = flagOk ? Math.sin(t * 10) * 0.4 : Math.sin(t * 6) * 0.15;
+      ctx.save(); ctx.translate(fx - 5, rail - 30); ctx.rotate(-0.6 + wave);
+      ctx.fillStyle = '#7a5032'; ctx.fillRect(-1, -22, 2, 22);
+      ctx.fillStyle = flagOk ? '#4fbf6a' : '#e04a3a'; ctx.beginPath(); ctx.moveTo(0, -22); ctx.lineTo(-13, -18); ctx.lineTo(0, -13); ctx.closePath(); ctx.fill();
+      ctx.restore(); ctx.restore();
+      // the mail stop: a post with a mail sack waiting
+      const mx = 452 - s;
+      ctx.fillStyle = '#7a5032'; ctx.fillRect(mx - 2, rail - 46, 4, 44);
+      ctx.fillStyle = '#f6e7c4'; v.rr(mx - 18, rail - 56, 36, 13, 3); ctx.fill();
+      v.text('MAIL', mx, rail - 49, 9, '#6b4226');
+      const sackGot = t > 5.25, sk = v.seg(t, 5.25, 5.7);
+      const sx = sackGot ? v.lerp(mx + 12, carX + 3, sk) : mx + 12, sy = sackGot ? rail - 2 + v.hop(sk, 26) - 16 * sk : rail - 2;
+      ctx.fillStyle = '#c9a26a'; v.rr(sx - 6, sy - 12, 12, 12, 4); ctx.fill(); v.text('M', sx, sy - 5.5, 7, '#6b4226');
+      // the handcar: a seesaw beat while pumping, still while braking or waiting
+      const pumping = t < 2.4 || (t > 4.3 && t < 5.0);
+      const a = pumping ? Math.sin(t * Math.PI * 2 / 0.7) * 0.32 : 0.06;
+      pw19handcarCar(v, carX, rail - 1, a, pumping, t);
+      // brake sparks, and who pumps next
+      if (t > 2.5 && t < 3.2) {
+        for (let k = 0; k < 5; k++) { const kk = v.phase(t * 3 + k * 0.2, 1); v.line(carX + 22 - kk * 22, rail - 3, carX + 22 - kk * 30, rail - 6 - kk * 10 * v.rand(k + 1), '#ffd34d', 1.6); }
+        v.pill('Brake!', carX, 34, { size: 12, bg: 'rgba(28,26,54,0.85)', col: '#ffcf3a' });
+      } else if (t < 2.4) {
+        const bo = Math.sin(t * Math.PI * 2 / 0.7) > 0;
+        v.pill(bo ? 'Bo!' : 'Pip!', carX + (bo ? 24 : -24), 42, { size: 11, col: bo ? '#9fd0ff' : '#ffb58a' });
+      } else if (t > 3.3 && t < 4.3) v.pill('Fixing the track...', 222, 34, { size: 10 });
+      // the payoff: the mail is aboard
+      if (t > 5.3) { v.confetti(carX, 60, v.seg(t, 5.3, 6)); v.label('Got the mail!', 160, 30, 18, '#ffcf3a'); }
+    },
+  });
+  // ----- END 19-2 Handcar Hustle preview -----
+  //
+  //
+  //
+  // ----- BEGIN 19-3 Gold Mine Cart preview -----
+  // the cart rolls through the lantern-lit mine; a sign says gold up top and a dead end below, Bo flips the lever up,
+  // the cart takes the upper track (the lower one ends at a hay buffer), and Pip hops a gap scooping a gold arc. Yee-haw!
+  const pw19MineX = t => 40 + 72 * t;                                // the cart along the mine (world px)
+  const pw19MineFork = 250, pw19MineGap = [372, 404];
+  const pw19MineRail = (x, lane) => {
+    // the main line at 122; past the fork the upper track climbs to 80 and the lower one dips to 156
+    if (x <= pw19MineFork || lane === 'm') return 122;
+    const u = Math.min(1, (x - pw19MineFork) / 70), s = u * u * (3 - 2 * u);
+    return 122 + (lane === 'u' ? -42 : 34) * s;
+  };
+  const pw19MineNugget = (v, x, y, s) => {
+    const ctx = v.ctx;
+    v.fillCircle(x, y, 7 * s, 'rgba(255,220,100,0.28)');
+    ctx.fillStyle = '#ffcf4a'; ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(x, y, 5 * s, 4 * s, -0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    v.fillCircle(x - 1.5 * s, y - 1.5 * s, 1.2 * s, 'rgba(255,255,255,0.8)');
+  };
+  const pw19MineTrack = (v, cam, lane, x0, x1) => {
+    const ctx = v.ctx;
+    for (let x = Math.ceil(x0 / 12) * 12; x <= x1; x += 12) {
+      if (lane === 'u' && x > pw19MineGap[0] && x < pw19MineGap[1]) continue;
+      const y = pw19MineRail(x, lane);
+      ctx.fillStyle = '#7a4a28'; ctx.fillRect(x - cam - 4, y + 1, 8, 4);
+      if (x % 48 === 0) { ctx.fillStyle = 'rgba(42,25,14,0.8)'; ctx.fillRect(x - cam - 2, y + 4, 4, 70); }
+    }
+    ctx.strokeStyle = '#c9ced8'; ctx.lineWidth = 2.5; ctx.beginPath();
+    let on = false;
+    for (let x = x0; x <= x1; x += 3) {
+      const gap = lane === 'u' && x > pw19MineGap[0] && x < pw19MineGap[1];
+      const y = pw19MineRail(x, lane);
+      if (gap) { on = false; continue; }
+      if (!on) { ctx.moveTo(x - cam, y); on = true; } else ctx.lineTo(x - cam, y);
+    }
+    ctx.stroke();
+  };
+  definePreview('Gold Mine Cart', {
+    blurb: 'One jumps gaps and ducks beams, one pulls the lever to find the gold!',
+    loop: 6,
+    still: 4.6,
+    draw(v, t) {
+      const ctx = v.ctx, W = v.W, H = v.H;
+      // the mine: a warm dark cavern, timber frames with lanterns, gold veins
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#3d2618'); g.addColorStop(1, '#1f130c');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      const cx = pw19MineX(t), cam = cx - 96;
+      for (let k = -1; k < 5; k++) {
+        const x = k * 110 - ((cam * 0.5) % 110);
+        ctx.fillStyle = 'rgba(42,25,14,0.85)'; ctx.fillRect(x, 14, 6, H); ctx.fillRect(x - 4, 14, 74, 6);
+        const lx = x + 34;
+        v.fillCircle(lx, 40, 22, 'rgba(255,200,110,0.22)');
+        ctx.fillStyle = '#ffd27a'; ctx.fillRect(lx - 3, 35, 6, 8);
+        ctx.strokeStyle = 'rgba(255,207,74,0.4)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + 10, 96 + (k % 2) * 8); ctx.quadraticCurveTo(x + 40, 84, x + 80, 100); ctx.stroke();
+      }
+      ctx.fillStyle = '#4a2d1c'; ctx.fillRect(0, 168, W, 12);
+      // the sign: gold up top, a boarded X down below
+      const sx = 172 - cam;
+      ctx.fillStyle = '#5a3a1c'; ctx.fillRect(sx - 2, 60, 4, 62);
+      ctx.fillStyle = '#c98e57'; v.rr(sx - 22, 28, 44, 40, 4); ctx.fill(); ctx.strokeStyle = '#704622'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#3a200c';
+      ctx.beginPath(); ctx.moveTo(sx - 16, 43); ctx.lineTo(sx - 11, 34); ctx.lineTo(sx - 6, 43); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(sx - 16, 53); ctx.lineTo(sx - 11, 62); ctx.lineTo(sx - 6, 53); ctx.closePath(); ctx.fill();
+      pw19MineNugget(v, sx + 9, 39, 1);
+      ctx.strokeStyle = '#a3321e'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sx + 3, 52); ctx.lineTo(sx + 15, 63); ctx.moveTo(sx + 15, 52); ctx.lineTo(sx + 3, 63); ctx.stroke();
+      // the tracks: the main line, the upper track (with a gap and a net) and the lower one ending at a hay buffer
+      pw19MineTrack(v, cam, 'm', cam - 10, pw19MineFork);
+      pw19MineTrack(v, cam, 'u', pw19MineFork, cam + W + 10);
+      pw19MineTrack(v, cam, 'd', pw19MineFork, 436);
+      const bx = 436 - cam, by = pw19MineRail(436, 'd');
+      ctx.fillStyle = '#e8c27a'; v.rr(bx, by - 18, 16, 18, 4); ctx.fill();
+      ctx.fillStyle = '#8a5a30'; ctx.save(); ctx.translate(bx + 28, by - 22); ctx.rotate(0.7); ctx.fillRect(-16, -3, 32, 6); ctx.rotate(-1.4); ctx.fillRect(-16, -3, 32, 6); ctx.restore();
+      ctx.strokeStyle = 'rgba(233,210,154,0.9)'; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let k = 0; k <= 10; k++) { const x = pw19MineGap[0] - 14 + k * 6.2; ctx.lineTo(x - cam, 120 + Math.sin(Math.PI * k / 10) * 8); }
+      ctx.stroke();
+      // the switch arrow: down, then up once Bo pulls the lever
+      const flip = v.seg(t, 1.1, 1.35), up = flip > 0.5;
+      const ax = pw19MineFork - 12 - cam;
+      ctx.fillStyle = '#fff3d6'; v.circle(ax, 142, 7); ctx.fill(); ctx.strokeStyle = '#704622'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.save(); ctx.translate(ax, 142); ctx.rotate(up ? -0.75 : 0.75); ctx.fillStyle = v.c.bo; ctx.beginPath(); ctx.moveTo(5, 0); ctx.lineTo(-2, -4); ctx.lineTo(-2, 4); ctx.closePath(); ctx.fill(); ctx.restore();
+      // gold: a row on the upper track, and an arc over the gap
+      const lane = cx > pw19MineFork ? 'u' : 'm';
+      const hk = v.seg(cx, pw19MineGap[0] - 34, pw19MineGap[1] + 34), hop = v.hop(hk, 30);
+      const golds = [[300, 0], [318, 0], [336, 0], [370, 16], [388, 26], [406, 16]];
+      golds.forEach(([gx, gh], q) => {
+        const got = cx > gx - 4;
+        const gy = pw19MineRail(gx, 'u') - 14 - gh;
+        if (!got) pw19MineNugget(v, gx - cam, gy + Math.sin(t * 4 + q) * 1, 1);
+        else v.sparkle(gx - cam, gy, v.seg(cx, gx - 4, gx + 24), '#fff3b0', 6);
+      });
+      // the cart with the crew: Pip rides up front, Bo works the lever at the back
+      const ry = pw19MineRail(cx, lane) + hop, slope = (pw19MineRail(cx + 4, lane) - pw19MineRail(cx - 4, lane)) / 8;
+      const sxc = cx - cam;
+      ctx.save(); ctx.translate(sxc, ry); ctx.rotate(Math.atan(slope));
+      const duckBob = Math.sin(t * 18) * 0.6;
+      v.hero(1, -9, -19 + duckBob, { s: 0.62, face: 1, mood: up && t < 2.4 ? 'joy' : 'happy' });
+      v.hero(0, 9, -19 - duckBob, { s: 0.62, face: 1, mood: hk > 0 && hk < 1 ? 'wow' : t > 5 ? 'joy' : 'happy' });
+      // hats
+      for (const [hx, hid] of [[-9, 1], [9, 0]]) {
+        ctx.fillStyle = '#8a5a30'; ctx.beginPath(); ctx.ellipse(hx, -34 + (hid ? duckBob : -duckBob), 8, 2, 0, 0, Math.PI * 2); ctx.fill();
+        v.rr(hx - 4, -40 + (hid ? duckBob : -duckBob), 8, 6, 2); ctx.fill();
+      }
+      ctx.fillStyle = '#8a5a30'; ctx.strokeStyle = '#4a2d18'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(-24, -20); ctx.lineTo(24, -20); ctx.lineTo(20, -5); ctx.lineTo(-20, -5); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#5c6070'; ctx.fillRect(-25, -21, 50, 3);
+      ctx.fillStyle = v.c.pip; ctx.fillRect(3, -14, 16, 3); ctx.fillStyle = v.c.bo; ctx.fillRect(-19, -14, 16, 3);
+      for (const wx of [-14, 14]) { ctx.fillStyle = '#3b3a45'; v.circle(wx, -4, 5); ctx.fill(); ctx.fillStyle = '#c9ced8'; v.circle(wx, -4, 1.6); ctx.fill(); }
+      ctx.fillStyle = '#ffd27a'; ctx.fillRect(23, -27, 6, 7);
+      // the lever: it swings from down to up
+      const la = v.lerp(-3.75, -2.25, v.ease.out(flip));
+      ctx.save(); ctx.translate(-24, -13); ctx.rotate(la);
+      ctx.strokeStyle = '#5c6070'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(15, 0); ctx.stroke();
+      v.fillCircle(16, 0, 3.5, '#e04a3a');
+      ctx.restore();
+      ctx.restore();
+      // speech: Bo reads the sign, the gold rains in, and a happy finish
+      if (t > 0.5 && t < 1.6) v.bubble('Gold is up top!', sxc - 10, ry - 34, { size: 9 });
+      if (t > 2.0 && t < 2.9) v.label('UP!', sxc - 34, ry - 40, 12, v.c.gold);
+      if (hk > 0.1 && hk < 0.9 && t <= 5.0) v.label('Jump!', sxc + 22, ry - 44, 12, v.c.gold);
+      if (t > 5.0) { v.bubble('Yee-haw!', sxc + 8, ry - 34, { size: 10 }); v.confetti(sxc, ry - 30, v.seg(t, 5.0, 6.0)); }
+      // a gold counter
+      const n = golds.filter(([gx]) => cx > gx - 4).length;
+      v.pill('Gold ' + (12 + n * 3), W - 8, 14, { align: 'right', col: '#ffe27a', size: 10 });
+    },
+  });
+  // ----- END 19-3 Gold Mine Cart preview -----
+  //
+  //
+  //
+  // ----- BEGIN 19-4 Quick-Draw Showdown preview -----
+  // Back to back, three paces apart, a crow's CAW! tempts nobody, then the gold DRAW!: Bo's cork pops Pip's hat off.
+  const pw19qdGY = 150, pw19qdLoop = 6.4;
+  // a cowboy hat with its brim centred at (x, y), scale s, in the player's band colour
+  const pw19qdHat = (v, id, x, y, s, rot) => {
+    const ctx = v.ctx;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.scale(s, s);
+    ctx.fillStyle = id ? '#6e4422' : '#b98545'; ctx.beginPath(); ctx.ellipse(0, 0, 14, 3.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = id ? '#8a5a30' : '#d6a35e'; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.quadraticCurveTo(-9, -11, -4, -12); ctx.quadraticCurveTo(0, -9, 4, -12); ctx.quadraticCurveTo(9, -11, 8, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = id ? v.c.bo : v.c.pip; ctx.fillRect(-8, -4, 16, 3);
+    ctx.restore();
+  };
+  // the toy popgun held out front (face 1 = pointing right); out: the cork is off on its string
+  const pw19qdGun = (v, id, x, y, face, out) => {
+    const ctx = v.ctx;
+    ctx.save(); ctx.translate(x, y); ctx.scale(face, 1);
+    ctx.fillStyle = '#fff'; v.rr(0, -3, 15, 6, 2); ctx.fill();
+    ctx.fillStyle = id ? v.c.bo : v.c.pip; ctx.fillRect(4, -3, 2.5, 6); ctx.fillRect(9, -3, 2.5, 6);
+    ctx.fillStyle = id ? v.c.boDark : v.c.pipDark; v.rr(-1, 0, 5, 7, 1.5); ctx.fill();
+    if (!out) { ctx.fillStyle = '#c9925a'; v.rr(15, -2.5, 5, 5, 1.5); ctx.fill(); }
+    ctx.restore();
+  };
+  const pw19qdScene = (v, t) => {
+    const ctx = v.ctx;
+    const g = ctx.createLinearGradient(0, 0, 0, pw19qdGY);
+    g.addColorStop(0, '#f7a85a'); g.addColorStop(1, '#fff0c9');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, v.W, v.H);
+    v.fillCircle(250, 26, 18, 'rgba(255,246,206,0.6)'); v.fillCircle(250, 26, 11, '#fff7d6');
+    // red mesas
+    ctx.fillStyle = '#e3936a'; ctx.beginPath(); ctx.moveTo(0, 90); ctx.lineTo(14, 44); ctx.lineTo(70, 44); ctx.lineTo(86, 90); ctx.fill();
+    ctx.fillStyle = '#c3653f'; ctx.beginPath(); ctx.moveTo(220, 90); ctx.lineTo(238, 34); ctx.lineTo(300, 34); ctx.lineTo(320, 90); ctx.fill();
+    // shop fronts: store, saloon (with the Mayor on the balcony), hat shop
+    ctx.fillStyle = '#8fae9a'; ctx.fillRect(0, 62, 100, 66);
+    ctx.fillStyle = '#c9744a'; ctx.fillRect(108, 40, 104, 88); ctx.fillRect(130, 32, 60, 10);
+    ctx.fillStyle = '#d9a85a'; ctx.fillRect(220, 66, 100, 62);
+    ctx.fillStyle = '#ffe9b8'; v.rr(126, 34, 68, 13, 2); ctx.fill(); v.text('SALOON', 160, 41, 8, '#8f2f1a');
+    ctx.fillStyle = '#f3e2b8'; v.rr(10, 68, 80, 12, 2); ctx.fill(); v.text('STORE', 50, 74.5, 8, '#7a3a26');
+    ctx.fillStyle = '#fff1cc'; v.rr(230, 70, 80, 12, 2); ctx.fill(); v.text('HATS', 270, 76.5, 8, '#3f4a8a');
+    ctx.fillStyle = '#7a4a24'; ctx.fillRect(108, 80, 104, 3);
+    ctx.fillStyle = '#3a2232'; ctx.fillRect(146, 100, 28, 28);
+    // the Mayor (tall hat, white mustache) and his gold bell
+    ctx.fillStyle = '#5a4a8a'; v.rr(152, 62, 14, 17, 4); ctx.fill();
+    v.fillCircle(159, 57, 6, '#f2c9a0'); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(159, 60, 5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2d2a3e'; ctx.fillRect(153, 49, 12, 2); ctx.fillRect(155, 40, 8, 10);
+    const ring = t > 3.0 && t < 4.2 ? Math.sin((t - 3) * 16) * Math.exp(-(t - 3) * 2.5) * 0.6 : 0;
+    ctx.save(); ctx.translate(182, 56); ctx.rotate(ring); ctx.fillStyle = v.c.gold; ctx.beginPath(); ctx.moveTo(-4, 0); ctx.lineTo(4, 0); ctx.lineTo(7, 11); ctx.lineTo(-7, 11); ctx.closePath(); ctx.fill(); ctx.restore();
+    // the crow on the hat shop
+    const caw = t > 1.95 && t < 2.6;
+    ctx.fillStyle = '#2d2a3e'; ctx.beginPath(); ctx.ellipse(298, 62, 6, 4.5, 0, 0, Math.PI * 2); ctx.fill(); v.circle(293, 58, 3.5); ctx.fill();
+    ctx.fillStyle = '#f2b23a'; ctx.beginPath(); ctx.moveTo(290, 57); ctx.lineTo(286, caw ? 54 : 58); ctx.lineTo(290, 59); ctx.fill();
+    // boardwalk and street
+    ctx.fillStyle = '#c48a52'; ctx.fillRect(0, 128, v.W, 6); ctx.fillStyle = '#8a5a30'; ctx.fillRect(0, 134, v.W, 2);
+    ctx.fillStyle = '#e6c486'; ctx.fillRect(0, 136, v.W, v.H - 136);
+    ctx.fillStyle = 'rgba(160,110,60,0.25)'; ctx.fillRect(0, 168, v.W, 2);
+    // a tumbleweed rolling by
+    const tx = ((t * 40) % 400) - 40;
+    ctx.strokeStyle = '#b08848'; ctx.lineWidth = 1.2;
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(tx, 170, 6, 3.5, i * 0.8 + t * 3, 0, Math.PI * 2); ctx.stroke(); }
+  };
+  definePreview('Quick-Draw Showdown', {
+    blurb: 'Three paces, wait for the gold DRAW!, then pop your cork first. No peeking early!',
+    loop: pw19qdLoop,
+    still: 3.55,
+    draw(v, t) {
+      const ctx = v.ctx;
+      pw19qdScene(v, t);
+      // paces apart (0.3-1.6 s), turn (1.6-1.8), wait, DRAW! at 3.0, Bo fires at 3.22, Pip at 3.42
+      const k = v.ease.inOut(v.seg(t, 0.3, 1.6)), turned = t > 1.7;
+      const xs = [148 - k * 82, 172 + k * 82];
+      const hatT = t - 3.38;
+      for (const id of [0, 1]) {
+        const face = turned ? (id ? -1 : 1) : (id ? 1 : -1), walk = t > 0.3 && t < 1.6 ? v.hop(v.phase(t, 0.43), 3) : 0;
+        const win = id === 1 && t > 3.45, lose = id === 0 && t > 3.38;
+        v.hero(id, xs[id], pw19qdGY + walk, { s: 1.15, face, mood: win ? 'joy' : lose ? 'wow' : t > 1.8 && t < 3.0 ? 'grit' : 'happy' });
+        if (!(lose && hatT > 0)) pw19qdHat(v, id, xs[id], pw19qdGY - 27.6 + walk, 1.05, 0);
+        const fired = t > (id ? 3.22 : 3.42);
+        if (fired) pw19qdGun(v, id, xs[id] + face * 12, pw19qdGY - 12, face, id === 1 && t < 3.6);
+      }
+      // the cork on its string from Bo's gun to Pip's hat
+      if (t > 3.22 && t < 3.75) {
+        const c = Math.min(1, (t - 3.22) / 0.16) * (t > 3.5 ? Math.max(0, 1 - (t - 3.5) / 0.25) : 1);
+        const x0 = xs[1] - 30, y0 = pw19qdGY - 12, x1 = x0 + (xs[0] + 2 - x0) * c, y1 = y0 + (pw19qdGY - 30 - y0) * c;
+        v.line(x0, y0, x1, y1, 'rgba(255,250,235,0.9)', 1);
+        ctx.fillStyle = '#c9925a'; v.rr(x1 - 3, y1 - 2.5, 6, 5, 1.5); ctx.fill();
+      }
+      // Pip's popped hat tumbling off
+      if (hatT > 0) {
+        const fl = Math.min(hatT, 0.75), hx = xs[0] - fl * 60, hy = pw19qdGY - 28 - 140 * fl + 260 * fl * fl;
+        pw19qdHat(v, 0, hx, Math.min(hy, pw19qdGY - 2), 1.05, -fl * 9);
+        if (hatT < 0.5) for (let i = 0; i < 4; i++) v.star(xs[0] + Math.cos(i * 1.6) * 12 * (1 + hatT * 2), pw19qdGY - 30 + Math.sin(i * 1.6) * 8 * (1 + hatT * 2), 2.4);
+      }
+      // the Mayor's count, the crow's fakeout, the real DRAW!
+      if (t > 0.3 && t < 1.65) v.bubble(String(1 + Math.min(2, Math.floor((t - 0.3) / 0.45))) + '...', 132, 64, { size: 9 });
+      if (pw19qdCaw(t)) v.label('CAW!', 290, 44, 13, '#f6efdf');
+      if (t > 2.05 && t < 2.6) v.bubble('Not yet...', xs[0], pw19qdGY - 38, { size: 8 });
+      if (t > 3.0 && t < 3.7) {
+        const p = v.ease.back(v.seg(t, 3.0, 3.15));
+        ctx.save(); ctx.translate(160, 100); ctx.scale(p, p); v.label('DRAW!', 0, 0, 34, v.c.gold); ctx.restore();
+      }
+      if (t > 3.4 && t < 4.2) v.pill('231 ms', xs[1], pw19qdGY - 52, { size: 9, col: v.c.gold });
+      if (t > 3.8) { v.label('Bo wins!', 160, 92, 22, v.c.bo); if (t < 5.4) v.confetti(xs[1], pw19qdGY - 40, v.phase(t, 1.6, -3.8)); }
+    },
+  });
+  const pw19qdCaw = t => t > 1.95 && t < 2.55;
+  // ----- END 19-4 Quick-Draw Showdown preview -----
+  //
+  //
+  //
+}

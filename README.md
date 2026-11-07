@@ -38,6 +38,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 16. **Sugar Rush Factory** (candy land and a candy factory): Conveyor Belt Chaos, Gumball Machine Puzzle, Chocolate River Raft, Sprinkle Catch
 17. **Jungle Jamboree** (a sunny jungle with a temple, rapids and a waterfall): Temple Doors, River Rapids Canoe, Waterfall Climb, Vine Swing
 18. **Pirate Cove** (a sunny tropical cove with friendly pirates): Runaway Ship, Grapple & Zip, Tide Pool Dig, Plank Duel
+19. **Tumbleweed Gulch** (the Wild West: a runaway train, a handcar, a gold mine and a high-noon showdown): Train Heist Hop, Handcar Hustle, Gold Mine Cart, Quick-Draw Showdown
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 

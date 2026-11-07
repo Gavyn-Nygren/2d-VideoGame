@@ -4756,6 +4756,207 @@ const LEVELS = [
   //
   //
   // ===== END World 18 =====
+  //
+  // ===== World 19 (Tumbleweed Gulch, mixed): the Wild West world, world index 18 (js/levels/world19/), a sunny desert
+  //   town with red mesas, cactus and friendly cowpokes, nothing scary, nobody gets hurt (cork popguns only). Gavyn's
+  //   picks (Nov 2026): 19-1 Train Heist Hop (team, scrolling), 19-2 Handcar Hustle (team, scrolling), 19-3 Gold Mine
+  //   Cart (team, scrolling), 19-4 Quick-Draw Showdown (versus, best of 7).
+  //   Each level's def sits between its own BEGIN/END lines. world: 18 =====
+  //
+  // ----- BEGIN 19-1 Train Heist Hop (mode 'heist', js/levels/world19/train-heist-hop.js) -----
+  // 19-1 Train Heist Hop (mode 'heist', team, Gavyn's pick): run along the roofs of a runaway train to the engine and pull
+  // the brake, carrying the bandits' dropped gold sack back to the sheriff. The carrier jumps low, so at wide gaps the free
+  // one jumps first and the sack is tossed across. Duck the bridges, water spouts and the tunnel; jump the tumbleweeds.
+  // The 18-row map is only for the engine; the mode builds each stretch from its car tokens (see the level file's top).
+  { name: 'Train Heist Hop', world: 18, kind: 'team', mode: 'heist', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    act: { label: 'toss', labels: ['toss', 'toss'] },
+    legend: { down: 'duck', padDown: 'down ducks' },
+    tip: 'Run the train roofs to the engine! With the gold sack you jump low, so toss it over the wide gaps.',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Caboose Run', carrier: 0, act: { label: 'toss', labels: ['toss', 'toss'] },
+        tip: 'Pip has the gold sack. Small gaps: just hop. Wide gap: Bo jumps over first, then Pip tosses the sack!',
+        news: 'With the gold sack you jump low. At a wide gap the free one jumps first!',
+        cars: ['caboose 330', 'n', 'box 340 c170', 'n', 'stock 300', 'w', 'hay 300', 'n', 'box 320', 'w', 'pass 320', 'n', 'check 320'],
+        hz: [{ k: 'bridge', first: 9, every: 14 }],
+      },
+      {
+        title: 'Canyon Bridges', carrier: 1, act: { label: 'toss', labels: ['toss', 'toss'] },
+        tip: 'Bo has the sack now. Rock arches and bridges come fast: duck when the whistle blows! Jump tumbleweeds.',
+        news: 'Whistle = something low ahead. Hold \u25BC to duck!',
+        cars: ['pass 320', 'n', 'box 320 c160', 'w', 'stock 300', 'n', 'hay 280', 'w', 'box 300', 'n', 'tank 300', 'w', 'stock 320 c160', 'n', 'check 320'],
+        hz: [{ k: 'arch', first: 5, every: 11 }, { k: 'bridge', first: 12, every: 13 }, { k: 'weed', first: 14, every: 10 }],
+      },
+      {
+        title: 'Water Tower Way', carrier: 0, act: { label: 'toss', labels: ['toss', 'toss'] },
+        tip: 'Pip carries again. Water spouts hang over the roof: duck under them. Four wide gaps to toss across!',
+        cars: ['tank 300', 'w', 'stock 300 c150', 'n', 'box 360 c110 c250', 'w', 'pass 300', 'n', 'hay 280', 'w', 'box 320', 'n', 'stock 300', 'w', 'check 300'],
+        hz: [{ k: 'tower', first: 5, every: 9 }, { k: 'weed', first: 9, every: 7 }],
+      },
+      {
+        title: 'Tunnel to the Engine', carrier: 1, act: { label: 'toss', labels: ['toss', 'toss'] },
+        tip: 'Through the dark tunnel to the engine! Then both hold the action on the big brake lever together.',
+        news: 'A tunnel ahead: duck at the mouth, lanterns light the way!',
+        cars: ['box 300', 'w', 'pass 320', 'n', 'stock 300 c150', 'w', 'box 300', 'n', 'hay 300', 'w', 'tender 240', 'p', 'engine 400'],
+        hz: [{ k: 'tunnel', first: 7, every: 99, len: 2400, once: true }, { k: 'bridge', first: 20, every: 12 }, { k: 'weed', first: 5, every: 9 }],
+      },
+    ],
+  },
+  // ----- END 19-1 Train Heist Hop -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 19-2 Handcar Hustle (mode 'handcar', js/levels/world19/handcar-hustle.js) -----
+  // 19-2: side-on railroad handcar (MODES.handcar): a seesaw pump handle, so Pip and Bo must take turns pumping, and
+  // both brake for broken track, curves, cows and mail stations. The map is only the two spawns; the mode builds each
+  // stretch from its course (tokens: see the top of the level file). Ends swap every stretch.
+  { name: 'Handcar Hustle', world: 18, kind: 'team', mode: 'handcar', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    legend: {
+      pip: '<kbd>S</kbd> pump · hold <kbd>W</kbd> brake',
+      bo: '<kbd>↓</kbd> pump · hold <kbd>↑</kbd> brake',
+      pad: 'stick down pumps, hold <span data-glyph="a"></span> to brake,',
+    },
+    tip: 'Take turns pumping the seesaw handle: Pip, Bo, Pip, Bo! Both hold ▲ to brake for signs, cows and stations.',
+    act: { label: 'pump' },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Dusty Flats', back: 0,
+        tip: 'Pip has the back end, Bo the front. Push ▼ in turns: Pip, Bo, Pip, Bo! Both hold ▲ to brake.',
+        course: ['f300', 'S:Take turns: {B}, {F}, {B}, {F}!', 'f400', 'u300', 'f100', 'd300', 'f200', 'M', 'u400', 'f100',
+          'd400', 'F', 'W', 'M', 'F', 'K', 'd300', 'f100', 'X'],
+      },
+      {
+        title: 'Mesa Hills', back: 1,
+        tip: 'Swap! Bo has the back end now. Quick turns up the steep hills, and brake at the SLOW sign!',
+        course: ['f300', 'S:Steep hills! Quick turns!', 'f200', 'U500', 'f150', 'D400', 'f100', 'F', 'C', 'U400', 'f150', 'M',
+          'D500', 'f200', 'F', 'K', 'u300', 'f100', 'd300', 'M', 'X'],
+      },
+      {
+        title: 'Canyon Trestle', back: 0,
+        tip: 'Over the canyon on a tall trestle! Brake for the curve, the cows and the mail stop.',
+        course: ['f300', 'b260', 'f200', 'u300', 'f150', 'F', 'D400', 'S:The canyon trestle!', 't900', 'C', 'F', 'W',
+          'M', 'b300', 'f200', 'X'],
+      },
+      {
+        title: 'Into Town', back: 1,
+        tip: 'Last stretch! Through the cactus forest into town. Stop in the station box to finish!',
+        course: ['f300', 'Z:cactus:2600', 'f300', 'U400', 'f150', 'M', 'D400', 'f200', 'F', 'K', 'C', 'u200',
+          'S:Welcome to Tumbleweed!', 'Z:town:2300', 'f100', 'M', 'E'],
+      },
+    ],
+  },
+  // ----- END 19-2 Handcar Hustle -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 19-3 Gold Mine Cart (mode 'minecart', js/levels/world19/gold-mine-cart.js) -----
+  // 19-3: side-on mine cart ride (MODES.minecart): one rides up front (jump, duck, grab), one works the lever at the back
+  // (picks the upper or lower track at every fork, brakes down steep slopes); jobs swap every stretch. The map is only the
+  // two spawns, the mode builds each stretch from its course (tokens: see the top of the level file).
+  { name: 'Gold Mine Cart', world: 18, kind: 'team', mode: 'minecart', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    legend: {
+      pip: '<kbd>W</kbd> jump · lever up <kbd>S</kbd> duck · lever down',
+      bo: '<kbd>↑</kbd> jump · lever up <kbd>↓</kbd> duck · lever down',
+      pad: '<span data-glyph="a"></span> or stick ▲ jump · lever up, stick ▼ duck · lever down,',
+    },
+    tip: 'One rides up front: jump gaps, duck beams. One works the lever: read the signs, find the gold!',
+    act: { label: 'grab', labels: ['grab', 'brake'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Lantern Tunnel', rider: 0, look: 'lantern', act: { label: 'grab', labels: ['grab', 'brake'] },
+        tip: 'Pip rides: ▲ jumps gaps, ▼ ducks beams. Bo works the lever: ▲ or ▼ picks the track at each fork.',
+        course: ['f200', 'S:{R} rides up front  ·  {W} works the lever', 'f300', 'n', 'f60', 'n', 'f60', 'n', 'f260',
+          'S:A gap! {R}: jump ▲', 'f260', 'a110', 'g110', 'f260', 'N', 'f200', 'S:A fork! {W}: read the sign, then ▲ or ▼', 'f520',
+          { dead: 'u', sign: 'plain', up: ['f260'], down: ['f60', 'N', 'f160', 'n', 'f100'] },
+          'f100', 'S:Low beam! {R}: hold ▼ to duck', 'f260', 'b', 'f280',
+          { dead: 'd', sign: 'plain', up: ['f60', 'N', 'f80', 'a100', 'g100', 'f100', 'n', 'f60'], down: ['f260'] },
+          'f100', 'S:Rock! {R}: jump it', 'f220', 'r', 'f160', 'S:A gold lantern! {R}: press ● to grab', 'f200', 'l', 'f200',
+          { sign: 'both', up: ['f60', 'b', 'f200', 'n', 'f100'], down: ['f40', 'N', 'f160', 'N', 'f120'] },
+          'f120', 'a120', 'g120', 'f360',
+          { dead: 'u', sign: 'plain', up: ['f260'], down: ['f60', 'N', 'f160', 'b', 'f180'] },
+          'f160', 'S:Steep slope! {W}: hold ● to brake', 'f340', 'D360', 'f260', 'n', 'f60', 'n', 'f60', 'n', 'f120', 'X'],
+      },
+      {
+        title: 'Crystal Cavern', rider: 1, look: 'crystal', act: { label: 'grab', labels: ['brake', 'grab'] },
+        tip: 'Swap! Bo rides, Pip works the lever. Some signs only show the dead end: take the other track!',
+        course: ['f200', 'S:Swap! {R} rides  ·  {W} works the lever', 'f300', 'N', 'f200', 'a120', 'g120', 'f300',
+          'S:An X on the sign? Take the other track!', 'f360',
+          { dead: 'd', sign: 'xonly', up: ['f60', 'N', 'f120', 'r', 'f160', 'n', 'f60'], down: ['f260'] },
+          'f200', 'b', 'f200', 'n', 'f60', 'n110', 'f60', 'n', 'f120',
+          { dead: 'u', sign: 'xonly', up: ['f260'], down: ['f60', 'N', 'f80', 'a110', 'g110', 'f80', 'n', 'f60'] },
+          'f200', 'r', 'f220', 'l', 'f220',
+          { sign: 'both', up: ['f60', 'N', 'f120', 'N', 'f120', 'n', 'f60'], down: ['f100', 'b', 'f200', 'n', 'f100'] },
+          'f160', 'S:Steep! {W}: brake ●', 'f280', 'D360', 'f240', 'a120', 'g120', 'f360',
+          { dead: 'u', sign: 'xonly', up: ['f260'], down: ['f60', 'N', 'f120', 'r', 'f160', 'N', 'f60'] },
+          'f200', 'n', 'f60', 'n', 'f60', 'n', 'f120', 'X'],
+      },
+      {
+        title: 'Underground River', rider: 0, look: 'river', act: { label: 'grab', labels: ['grab', 'brake'] },
+        tip: 'Pip rides: duck the waterfalls! Bo: two signs show the gold each way. Pick the track with more!',
+        course: ['f200', 'S:{W}: two signs! Pick the track with more gold', 'f200', 'c', 'f300', 'w220', 'f240', 'N', 'f200',
+          { sign: 'count', up: ['f60', 'n', 'f200', 'n', 'f140'], down: ['f60', 'N', 'f120', 'N', 'f120'] },
+          'f200', 'a130', 'g130', 'f200', 'c', 'f240',
+          { dead: 'u', sign: 'plain', up: ['f260'], down: ['f60', 'w200', 'f60', 'N', 'f80'] },
+          'f200', 'r', 'f220', 'l', 'f360',
+          { sign: 'count', up: ['f60', 'N', 'f100', 'N', 'f100', 'N', 'f60'], down: ['f100', 'c', 'f200', 'n', 'f100'] },
+          'f200', 'a120', 'g120', 'f320',
+          { dead: 'd', sign: 'plain', up: ['f60', 'N', 'f160', 'c', 'f180'], down: ['f260'] },
+          'f160', 'S:Down the rapids! {W}: brake ●', 'f280', 'D360', 'f200', 'w240', 'f120', 'X'],
+      },
+      {
+        title: 'Mother Lode', rider: 1, look: 'lode', dark: true, act: { label: 'grab', labels: ['brake', 'grab'] },
+        tip: 'Lights out! Only the cart lantern shines. The good track has a lit lantern. Then out into the sun!',
+        course: ['f200', 'S:Lights out! Follow the lit lanterns', 'f300', 'N', 'f240', 'b', 'f360',
+          { dead: 'd', sign: 'lantern', up: ['f60', 'N', 'f160', 'n', 'f160'], down: ['f260'] },
+          'f160', 'a120', 'g120', 'f240',
+          { dead: 'u', sign: 'lantern', up: ['f260'], down: ['f60', 'N', 'f120', 'r', 'f160', 'N', 'f60'] },
+          'f200', 'b', 'f220', 'l', 'f220',
+          { dead: 'd', sign: 'xonly', up: ['f60', 'N', 'f80', 'a110', 'g110', 'f80', 'N', 'f60'], down: ['f260'] },
+          'f160', 'S:Last slope! {W}: brake ●', 'f280', 'D360', 'f420',
+          { dead: 'u', sign: 'lantern', up: ['f260'], down: ['f60', 'N', 'f100', 'N', 'f100', 'N', 'f60'] },
+          'f160', 'S:Daylight ahead!', 'f240', 'E'],
+      },
+    ],
+  },
+  // ----- END 19-3 Gold Mine Cart -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 19-4 Quick-Draw Showdown (mode 'quickdraw', js/levels/world19/quick-draw-showdown.js) -----
+  // 19-4 Quick-Draw Showdown (mode 'quickdraw', versus, best of 7, Gavyn's pick): back to back, three paces, then wait
+  // for the gold DRAW! and fire your cork popgun first. Fakeouts tempt an early press (a foul); later rounds add
+  // cardboard bandit cutouts to aim at (◀ ▶).
+  { name: 'Quick-Draw Showdown', world: 18, kind: 'versus', mode: 'quickdraw', ownStep: true,
+    // the map is only the two spawns: the mode draws the whole street (MODES.quickdraw)
+    match: { bestOf: 7 },
+    act: { label: 'fire' },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> aim',
+      bo: '<kbd>←</kbd><kbd>→</kbd> aim',
+      pad: 'stick ◀ ▶ aim,',
+    },
+    tip: 'Wait for the gold DRAW! and the bell, then fire first. Too early is a foul! Later: aim ◀ ▶ at the bandit.',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '.......1................2.......', '................................', '................................',
+    ],
+  },
+  // ----- END 19-4 Quick-Draw Showdown -----
+  //
+  //
+  //
+  // ===== END World 19 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -4825,6 +5026,10 @@ const WORLDS = [
   { name: 'Pirate Cove', blurb: 'Sail, swing, dig and duel your way across the high seas!',
     theme: { skyTop: '#55c3ef', skyBot: '#fff2cf', hillFar: '#6fd0c4', hillNear: '#3fb0a6', sun: 'rgba(255, 246, 190, 0.95)', sunGlow: 'rgba(255, 214, 140, 0.4)',
       stone: '#7a5a3e', stoneLight: '#8f6c4c', stoneEdge: '#553e2a', grass: '#f2d68c', grassDark: '#c9a457', plank: '#c98e57', plankDark: '#7d5030', rope: '#ead6a0', ropeDark: '#7a5a2a' } },
+  // World 19: the Wild West, sunny and dusty (a warm orange-gold desert sky; red mesa rock with sandy dirt on top)
+  { name: 'Tumbleweed Gulch', blurb: 'Hop the train, pump the handcar, ride the mine cart and face off at high noon!',
+    theme: { skyTop: '#f6b26b', skyBot: '#fff0c9', hillFar: '#e59a66', hillNear: '#c7713f', sun: 'rgba(255, 244, 196, 0.95)', sunGlow: 'rgba(255, 196, 120, 0.42)',
+      stone: '#a9563a', stoneLight: '#c06a48', stoneEdge: '#7a3a26', grass: '#e8c27a', grassDark: '#b98f45', plank: '#b77a45', plankDark: '#704622', rope: '#e9d29a', ropeDark: '#7a5a2a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
