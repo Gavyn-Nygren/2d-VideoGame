@@ -4521,7 +4521,75 @@ const LEVELS = [
   //
   //
   // ----- BEGIN 19-3 Gold Mine Cart (mode 'minecart', js/levels/world19/gold-mine-cart.js) -----
-  // (def goes here)
+  // 19-3: side-on mine cart ride (MODES.minecart): one rides up front (jump, duck, grab), one works the lever at the back
+  // (picks the upper or lower track at every fork, brakes down steep slopes); jobs swap every stretch. The map is only the
+  // two spawns, the mode builds each stretch from its course (tokens: see the top of the level file).
+  { name: 'Gold Mine Cart', world: 18, kind: 'team', mode: 'minecart', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    legend: {
+      pip: '<kbd>W</kbd> jump · lever up <kbd>S</kbd> duck · lever down',
+      bo: '<kbd>↑</kbd> jump · lever up <kbd>↓</kbd> duck · lever down',
+      pad: '<span data-glyph="a"></span> or stick ▲ jump · lever up, stick ▼ duck · lever down,',
+    },
+    tip: 'One rides up front: jump gaps, duck beams. One works the lever: read the signs, find the gold!',
+    act: { label: 'grab', labels: ['grab', 'brake'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Lantern Tunnel', rider: 0, look: 'lantern', act: { label: 'grab', labels: ['grab', 'brake'] },
+        tip: 'Pip rides: ▲ jumps gaps, ▼ ducks beams. Bo works the lever: ▲ or ▼ picks the track at each fork.',
+        course: ['f200', 'S:{R} rides up front  ·  {W} works the lever', 'f300', 'n', 'f60', 'n', 'f60', 'n', 'f260',
+          'S:A gap! {R}: jump ▲', 'f260', 'a110', 'g110', 'f260', 'N', 'f200', 'S:A fork! {W}: read the sign, then ▲ or ▼', 'f520',
+          { dead: 'u', sign: 'plain', up: ['f260'], down: ['f60', 'N', 'f160', 'n', 'f100'] },
+          'f100', 'S:Low beam! {R}: hold ▼ to duck', 'f260', 'b', 'f280',
+          { dead: 'd', sign: 'plain', up: ['f60', 'N', 'f80', 'a100', 'g100', 'f100', 'n', 'f60'], down: ['f260'] },
+          'f100', 'S:Rock! {R}: jump it', 'f220', 'r', 'f160', 'S:A gold lantern! {R}: press ● to grab', 'f200', 'l', 'f200',
+          { sign: 'both', up: ['f60', 'b', 'f200', 'n', 'f100'], down: ['f40', 'N', 'f160', 'N', 'f120'] },
+          'f120', 'a120', 'g120', 'f360',
+          { dead: 'u', sign: 'plain', up: ['f260'], down: ['f60', 'N', 'f160', 'b', 'f180'] },
+          'f160', 'S:Steep slope! {W}: hold ● to brake', 'f340', 'D360', 'f260', 'n', 'f60', 'n', 'f60', 'n', 'f120', 'X'],
+      },
+      {
+        title: 'Crystal Cavern', rider: 1, look: 'crystal', act: { label: 'grab', labels: ['brake', 'grab'] },
+        tip: 'Swap! Bo rides, Pip works the lever. Some signs only show the dead end: take the other track!',
+        course: ['f200', 'S:Swap! {R} rides  ·  {W} works the lever', 'f300', 'N', 'f200', 'a120', 'g120', 'f300',
+          'S:An X on the sign? Take the other track!', 'f360',
+          { dead: 'd', sign: 'xonly', up: ['f60', 'N', 'f120', 'r', 'f160', 'n', 'f60'], down: ['f260'] },
+          'f200', 'b', 'f200', 'n', 'f60', 'n110', 'f60', 'n', 'f120',
+          { dead: 'u', sign: 'xonly', up: ['f260'], down: ['f60', 'N', 'f80', 'a110', 'g110', 'f80', 'n', 'f60'] },
+          'f200', 'r', 'f220', 'l', 'f220',
+          { sign: 'both', up: ['f60', 'N', 'f120', 'N', 'f120', 'n', 'f60'], down: ['f100', 'b', 'f200', 'n', 'f100'] },
+          'f160', 'S:Steep! {W}: brake ●', 'f280', 'D360', 'f240', 'a120', 'g120', 'f360',
+          { dead: 'u', sign: 'xonly', up: ['f260'], down: ['f60', 'N', 'f120', 'r', 'f160', 'N', 'f60'] },
+          'f200', 'n', 'f60', 'n', 'f60', 'n', 'f120', 'X'],
+      },
+      {
+        title: 'Underground River', rider: 0, look: 'river', act: { label: 'grab', labels: ['grab', 'brake'] },
+        tip: 'Pip rides: duck the waterfalls! Bo: two signs show the gold each way. Pick the track with more!',
+        course: ['f200', 'S:{W}: two signs! Pick the track with more gold', 'f200', 'c', 'f300', 'w220', 'f240', 'N', 'f200',
+          { sign: 'count', up: ['f60', 'n', 'f200', 'n', 'f140'], down: ['f60', 'N', 'f120', 'N', 'f120'] },
+          'f200', 'a130', 'g130', 'f200', 'c', 'f240',
+          { dead: 'u', sign: 'plain', up: ['f260'], down: ['f60', 'w200', 'f60', 'N', 'f80'] },
+          'f200', 'r', 'f220', 'l', 'f360',
+          { sign: 'count', up: ['f60', 'N', 'f100', 'N', 'f100', 'N', 'f60'], down: ['f100', 'c', 'f200', 'n', 'f100'] },
+          'f200', 'a120', 'g120', 'f320',
+          { dead: 'd', sign: 'plain', up: ['f60', 'N', 'f160', 'c', 'f180'], down: ['f260'] },
+          'f160', 'S:Down the rapids! {W}: brake ●', 'f280', 'D360', 'f200', 'w240', 'f120', 'X'],
+      },
+      {
+        title: 'Mother Lode', rider: 1, look: 'lode', dark: true, act: { label: 'grab', labels: ['brake', 'grab'] },
+        tip: 'Lights out! Only the cart lantern shines. The good track has a lit lantern. Then out into the sun!',
+        course: ['f200', 'S:Lights out! Follow the lit lanterns', 'f300', 'N', 'f240', 'b', 'f360',
+          { dead: 'd', sign: 'lantern', up: ['f60', 'N', 'f160', 'n', 'f160'], down: ['f260'] },
+          'f160', 'a120', 'g120', 'f240',
+          { dead: 'u', sign: 'lantern', up: ['f260'], down: ['f60', 'N', 'f120', 'r', 'f160', 'N', 'f60'] },
+          'f200', 'b', 'f220', 'l', 'f220',
+          { dead: 'd', sign: 'xonly', up: ['f60', 'N', 'f80', 'a110', 'g110', 'f80', 'N', 'f60'], down: ['f260'] },
+          'f160', 'S:Last slope! {W}: brake ●', 'f280', 'D360', 'f420',
+          { dead: 'u', sign: 'lantern', up: ['f260'], down: ['f60', 'N', 'f100', 'N', 'f100', 'N', 'f60'] },
+          'f160', 'S:Daylight ahead!', 'f240', 'E'],
+      },
+    ],
+  },
   // ----- END 19-3 Gold Mine Cart -----
   //
   //
