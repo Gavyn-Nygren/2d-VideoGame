@@ -26,8 +26,11 @@
    ship (never sinks it), and a flapping sail sails at half speed.
    Four stretches (room def helm: 0|1), the jobs swap at the buoy after each: Harbor Mouth, Reef Run, Stormy Patch (rain,
    big waves, a fog bank), Treasure Cove (fog, then both must hold the action at the anchor to drop it).
+   The bell can't be mashed: a ring just before the window (under bellLock s early) uses up the bell for that wave
+   ("Too early!"); a ring long before it is only a warning.
    Gold help (announced, only while both are playing): Gold rudder after 3 bonks in a stretch (quicker steering and a
-   gold arrow at the safe lane), Gold bell after 2 missed waves (a wider bell window), Gold hammer after 10 s with the
+   gold arrow at the safe lane), Gold bell after the same helm misses 2 waves (a wider bell window, no early lock; it stays
+   for that player's later stretches), Gold anchor after 20 s at the cove (the chain never slips back, a hop counts), Gold hammer after 10 s with the
    water past 70% (quicker patches, bigger pumps), Gold knife after 14 s tangled with the deckhand trying, Gold spyglass
    after 2 bonks in fog (the sea chart shows the hidden rocks in gold).
    Room def: { title, helm: 0|1, pal, cruise, tip, act, course: [tokens] }. Course tokens (X = world px along the course):
@@ -49,11 +52,11 @@ const RUNSHIP = {
   // sailing
   acc: 70, dec: 120, stopDec: 55, easeK: 0.5, luffK: 0.55, steerT: 0.5, steerGold: 0.3, steerRep: 0.42,
   waterSlow: 25, waterK: 0.82, leakRate: 2.1, bonkWater: 4, bonkSlow: 0.35, slowBonk: 0.72, maxLeaks: 4,
-  waveV: 150, waveWin: 0.42, waveWinGold: 0.85, waveLate: 0.28, waveLen: 1.7, waveWater: 10, waveSee: 720,
+  waveV: 150, waveWin: 0.42, waveWinGold: 0.85, bellLock: 0.45, waveLate: 0.28, waveLen: 1.7, waveWater: 10, waveSee: 720,
   // the deckhand (ship px, px/s)
   run: 205, accG: 2200, accA: 1300, fric: 2600, g: 2000, jumpV: 610, cut: 0.45, climb: 165, climbSide: 110,
   fixT: 0.9, fixGold: 0.45, pumpAmt: 4.2, pumpGold: 2, pumpCd: 0.14, untangleT: 1.0, knifeT: 0.3,
-  hold: 0.45, splashT: 2.4, swapT: 2.5, anchorT: 1.3, partyT: 5.5, tryWin: 8, hintLife: 3,
+  hold: 0.45, splashT: 2.4, swapT: 2.5, anchorT: 1.3, anchorHelp: 20, partyT: 5.5, tryWin: 8, hintLife: 3,
   rudderHelp: 3, bellHelp: 2, hammerHelp: 10, knifeHelp: 14, glassHelp: 2, stuckHint: 7,
   leakSlots: [{ x: 110, y: 250 }, { x: 188, y: 290 }, { x: 252, y: 290 }, { x: 360, y: 290 }, { x: 398, y: 290 }, { x: 470, y: 258 }],
 };
@@ -67,6 +70,8 @@ const runshipLerp = (a, b, u) => a + (b - a) * u;
 const runshipSmooth = u => { u = clamp(u, 0, 1); return u * u * (3 - 2 * u); };
 // 1-player mode: the computer's own job gets no key hints or prompts (it knows its job)
 const runshipQuiet = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
+// the level's own HUD goes big a bit sooner than the shared one: its job cards carry small key hints (phones in landscape)
+const runshipBig = () => (typeof hudBig === 'function' && hudBig()) || (typeof stageScale === 'number' && stageScale < 0.75);
 const runshipBoth = st => G.time - st.inT[0] < RUNSHIP.tryWin && G.time - st.inT[1] < RUNSHIP.tryWin;
 
 /* ---------- the course: tokens -> things on the sea and things that happen on board ---------- */
@@ -172,7 +177,8 @@ function runshipRoom(st, L, k) {
   st.leaks = []; st.coins = []; st.tangle = null; st.gull = null; st.dolphin = null;
   st.state = 'sail'; st.stateT = 0; st.anchorK = 0; st.party = null;
   st.roomBonks = 0; st.roomWhoa = 0; st.fogBonks = 0; st.highWater = 0;
-  st.rudderGold = false; st.bellGold = false; st.hammerGold = false; st.knifeGold = false; st.glassGold = false;
+  st.bellFor = st.bellFor || [false, false];
+  st.rudderGold = false; st.bellGold = !!st.bellFor[st.helm]; st.anchorGold = false; st.anchorWait = 0; st.hammerGold = false; st.knifeGold = false; st.glassGold = false;
   st.parts = []; st.pops = []; st.hints = [null, null]; st.hinted = {}; st.msg = null; st.sign = null; st.polly = { t: 9, say: null };
   st.roomT = 0; st.segStart = G.time; st.inT = [G.time, G.time]; st.prevIn = [{}, {}];
   st.need = null; st.needT = -1; st.evI = 0;
@@ -204,7 +210,7 @@ function runshipStep(st, dt) {
 function runshipPlay(st, dt) {
   const P = RUNSHIP, sh = st.ship, ps = G.players, hp = ps[st.helm], hi = hp.input, hPrev = st.prevIn[st.helm];
   /* the helm: ▲ ▼ steer a lane at a time (a hold repeats), ◀ eases off, the action rings the bell */
-  const up = hi.jump || hi.up, down = hi.down && !up;
+  const up = hi.jump || hi.up || hp.pendingJump, down = hi.down && !up;
   const dir = up ? -1 : down ? 1 : 0;
   const fresh = (up && !(hPrev.jump || hPrev.up)) || (down && !hPrev.down) || hp.pendingJump;
   if (dir && (fresh || (dir === sh.steerDir && sh.steerT >= P.steerRep))) { runshipSteer(st, dir); sh.steerT = 0; }
@@ -271,10 +277,16 @@ function runshipBell(st) {
   for (const w of st.c.items) {
     if (w.k !== 'wave' || w.done) continue;
     const tt = w.crossT != null ? -(G.time - w.crossT) : (w.X - sh.d) / (sh.v + P.waveV);
-    if (tt <= win && tt >= -P.waveLate) { w.rang = G.time; runshipPop(st, 'Ding! Hold on!', C.gold, 120, 230); return; }
-    if (tt > win && tt < 3) early = true;
+    if (tt <= win && tt >= -P.waveLate) {
+      if (w.early && !st.bellGold) return; // already rung too early for this wave (mashing the bell doesn't work)
+      w.rang = G.time; runshipPop(st, 'Ding! Hold on!', C.gold, 120, 230); return;
+    }
+    if (tt > win && tt < 3 && !early) early = { w, tt };
   }
-  if (early) runshipPop(st, 'Too early!', '#ffe7a8', 120, 230);
+  if (!early) return;
+  // just before the window (under bellLock s early) uses up the bell for this wave; earlier than that is only a warning
+  if (!st.bellGold && early.tt < win + P.bellLock) { early.w.early = true; runshipPop(st, 'Too early! Wait for the splash', '#ffe7a8', 120, 230); }
+  else runshipPop(st, 'Too early!', '#ffe7a8', 120, 230);
 }
 // the ship sails on; things it meets at the bow
 function runshipMove(st, dt) {
@@ -379,7 +391,7 @@ function runshipWaveHit(st, met) {
     Sfx.play('runshipOver');
     return;
   }
-  st.stats.whoas++; st.roomWhoa++;
+  st.stats.whoas++; st.roomWhoa++; st.stats.whoasBy[st.helm]++;
   runshipPop(st, 'Whoa! Big wave!', '#ffffff', bow.x - 60, bow.y - 50);
   Sfx.play('runshipWhoosh');
   if (!reduceMotion) G.shake = Math.max(G.shake, 0.35);
@@ -394,7 +406,7 @@ function runshipWaveHit(st, met) {
     if (runshipHolding(st, db)) { const sc = runshipToScreen(st, db.x, db.y - 40, xf); runshipPop(st, 'Held on!', '#c8ffd0', sc.x, sc.y - 20); }
     else runshipOverboard(st, db);
   }
-  if (st.roomWhoa >= P.bellHelp && !st.bellGold && runshipBoth(st)) runshipGold(st, 'bell');
+  if (st.stats.whoasBy[st.helm] >= P.bellHelp && !st.bellGold && runshipBoth(st)) { runshipGold(st, 'bell'); st.bellFor[st.helm] = true; }
   if (!runshipQuiet(st.helm)) runshipHint(st, st.helm, 'Ring the bell ' + runshipKey(st.helm, 'act') + ' just as the wave hits!');
 }
 // holding on: climbing, in the crow's nest, holding ▼ on deck, or busy at a job
@@ -675,10 +687,12 @@ function runshipAnchorStep(st, dt) {
   }
   for (const id of [0, 1]) runshipDeckhand(st, st.body[id], G.players[id], dt, false);
   // both at the anchor holding the action
-  const at = id => { const b = st.body[id]; return b.ground && b.x > P.anchorX0 && b.x < P.anchorX1 && b.mode === 'walk' && G.players[id].input.act; };
+  // (gold anchor: a hop at the capstan still counts and the chain never slips back)
+  const at = id => { const b = st.body[id]; return (st.anchorGold || (b.ground && b.mode === 'walk')) && b.mode !== 'splash' && b.x > P.anchorX0 && b.x < P.anchorX1 && b.y < P.deckY - 1 && G.players[id].input.act; };
   const both = at(0) && at(1);
   st.anchorAt = [at(0), at(1)];
-  if (both) st.anchorK = Math.min(1, st.anchorK + dt / P.anchorT); else st.anchorK = Math.max(0, st.anchorK - dt * 0.5);
+  if (both) st.anchorK = Math.min(1, st.anchorK + dt / P.anchorT); else if (!st.anchorGold) st.anchorK = Math.max(0, st.anchorK - dt * 0.5);
+  if (runshipBoth(st)) { st.anchorWait += dt; if (st.anchorWait > P.anchorHelp && !st.anchorGold) runshipGold(st, 'anchor'); }
   if (both && Math.random() < dt * 10) Sfx.play('runshipChain');
   if (st.anchorK >= 1) {
     st.state = 'party'; st.party = { t: 0 }; st.sign = null;
@@ -703,6 +717,7 @@ const RUNSHIP_GOLD = {
   hammer: ['hammerGold', 'Gold hammer! Quicker patches and bigger pumps'],
   knife: ['knifeGold', 'Gold knife! One quick tug untangles the ropes'],
   glass: ['glassGold', 'Gold spyglass! The sea chart shows the rocks in the fog'],
+  anchor: ['anchorGold', 'Gold anchor! The chain stays put: keep holding at the anchor'],
 };
 function runshipGold(st, k) {
   const g = RUNSHIP_GOLD[k];
@@ -771,7 +786,7 @@ function runshipNeeds(st) {
   // the next wave: seconds until it hits the bow
   for (const w of st.c.items) {
     if (w.k !== 'wave' || w.done || !w.moving) continue;
-    out.wave = { w, tt: w.crossT != null ? -(G.time - w.crossT) : (w.X - sh.d) / (sh.v + P.waveV), rang: w.rang != null };
+    out.wave = { w, tt: w.crossT != null ? -(G.time - w.crossT) : (w.X - sh.d) / (sh.v + P.waveV), rang: w.rang != null, early: !!w.early && !st.bellGold };
     break;
   }
   out.job = runshipDeckJob(st);
@@ -781,7 +796,8 @@ function runshipNeeds(st) {
 function runshipDeckJob(st) {
   const P = RUNSHIP, sh = st.ship, b = st.body[st.deck];
   const nd = st.need || {};
-  if (nd.wave && !nd.wave.rang && nd.wave.tt < 0.9 && nd.wave.tt > -0.2 && b.mode !== 'climb' && b.mode !== 'nest') return { k: 'hold' };
+  // (until the wave has really hit: a late bell still counts up to waveLate s after it reaches the bow)
+  if (nd.wave && !nd.wave.rang && nd.wave.tt < 0.9 && nd.wave.tt > -P.waveLate - 0.12 && b.mode !== 'climb' && b.mode !== 'nest') return { k: 'hold' };
   if (st.tangle) return { k: 'tangle', x: P.mastX, y: st.tangle.y };
   if (st.gull && !st.gull.done) return { k: 'tangle', x: P.mastX, y: st.gull.y };
   const fog = st.c.fogs.find(f => sh.d < f.X1 - 40 && f.X0 - sh.d < 900);
@@ -888,7 +904,7 @@ MODES.runship = {
     let coinsAll = 0;
     const rooms = (LEVELS[G.levelIndex] && LEVELS[G.levelIndex].rooms) || [L.def];
     for (const r of rooms) for (const tk of r.course || []) if (/^c[0-2]$/.test(String(tk))) coinsAll += 4;
-    st.stats = { bonks: 0, whoas: 0, wavesMet: 0, wavesAll: 0, coins: 0, coinsAll, coinsBy: [0, 0], fixed: [0, 0], pumps: [0, 0], trims: [0, 0], untangles: [0, 0],
+    st.stats = { bonks: 0, whoas: 0, whoasBy: [0, 0], wavesMet: 0, wavesAll: 0, coins: 0, coinsAll, coinsBy: [0, 0], fixed: [0, 0], pumps: [0, 0], trims: [0, 0], untangles: [0, 0],
       splashes: [0, 0], helps: 0, roomT: [], roomTitles: [] };
     for (const r of rooms) for (const tk of r.course || []) if (tk === 'V') st.stats.wavesAll++;
     runshipRoom(st, L, 0);
@@ -926,7 +942,7 @@ MODES.runship = {
     return out;
   },
 };
-// the medal: Gold by 3:40 with at most 4 bonks, Silver by 5:30 with at most 12
+// the medal: Gold by 4:00 with at most 4 bonks, Silver by 5:30 with at most 12
 const RUNSHIP_MEDAL = { gold: 240, silver: 330, goldBonks: 4, silverBonks: 12 };
 function runshipMedal(t, s) {
   const M = RUNSHIP_MEDAL;
@@ -1613,7 +1629,7 @@ function runshipDrawDolphin(st, xf) {
 
 /* ---------- HUD: the clock and coins, the sea chart, each job's card, prompts and hints ---------- */
 function runshipHud(st) {
-  const P = RUNSHIP, sh = st.ship, big = hudBig(), play = G.mode === 'play' || G.mode === 'paused', t = G.clock;
+  const P = RUNSHIP, sh = st.ship, big = runshipBig(), play = G.mode === 'play' || G.mode === 'paused', t = G.clock;
   const font = n => '700 ' + n + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
   let timeX0 = W - 14;
   {
@@ -1635,12 +1651,12 @@ function runshipHud(st) {
     const helm = id === st.helm && st.state !== 'anchor' && st.state !== 'party', pw = Math.round(250 * z), ph = Math.round(48 * z), py = H - ph - 8;
     const px = id === 0 ? 10 : W - 10 - pw, cpuSeat = runshipQuiet(id);
     ctx.fillStyle = 'rgba(28,26,54,0.82)'; rr(px, py, pw, ph, 13 * z); ctx.fill();
-    const gold = helm ? (st.rudderGold || st.bellGold || st.glassGold) : (st.hammerGold || st.knifeGold);
+    const gold = st.state === 'anchor' || st.state === 'party' ? st.anchorGold : helm ? (st.rudderGold || st.bellGold || st.glassGold) : (st.hammerGold || st.knifeGold);
     ctx.strokeStyle = gold ? C.gold : PCOL[id]; ctx.lineWidth = 2.5; rr(px, py, pw, ph, 13 * z); ctx.stroke();
     const role = st.state === 'anchor' || st.state === 'party' ? ' · anchor' : helm ? ' · helm' : ' · deckhand';
     text(NAMES[id] + role + (cpuSeat ? ' (computer)' : ''), px + 12 * z, py + 13 * z, 14 * z, PCOL[id], 'left');
     if (!cpuSeat) {
-      const keys = st.state === 'anchor' ? 'hold ' + runshipKey(id, 'act') + ' at the anchor' : helm ? runshipKey(id, 'ud') + ' steer · ' + runshipKey(id, 'left') + ' ease · ' + runshipKey(id, 'act') + ' bell'
+      const keys = st.state === 'anchor' || st.state === 'party' ? 'hold ' + runshipKey(id, 'act') + ' at the anchor' : helm ? runshipKey(id, 'ud') + ' steer · ' + runshipKey(id, 'left') + ' ease · ' + runshipKey(id, 'act') + ' bell'
         : runshipKey(id, 'up') + ' climb · ' + runshipKey(id, 'act') + ' fix';
       text(keys.replace(/stick /g, ''), px + pw - 10 * z, py + 13 * z, 11 * z, '#d9d3ef', 'right', 'body');
     }
@@ -1807,7 +1823,8 @@ function runshipPrompts(st, z, big) {
   if (st.hints[HM]) box(HM, st.hints[HM].text, C.ink, false, true);
   else if (nd.wave && !nd.wave.rang && nd.wave.tt < 1.4 && nd.wave.tt > -0.3) {
     const win = st.bellGold ? P.waveWinGold : P.waveWin;
-    box(HM, nd.wave.tt <= win ? 'Ring the bell NOW! ' + runshipKey(HM, 'act') : 'Wave! Get ready to ring ' + runshipKey(HM, 'act'), nd.wave.tt <= win ? C.gold : '#d8f0ff', nd.wave.tt <= win);
+    if (nd.wave.early) box(HM, 'Too early! Next time ring as it hits', '#ffe7a8', false);
+    else box(HM, nd.wave.tt <= win ? 'Ring the bell NOW! ' + runshipKey(HM, 'act') : 'Wave! Get ready to ring ' + runshipKey(HM, 'act'), nd.wave.tt <= win ? C.gold : '#d8f0ff', nd.wave.tt <= win);
   } else if (sh.aground) box(HM, 'Aground! Steer away ' + runshipKey(HM, nd.lane < sh.lane ? 'up' : 'down'), '#ff9a9a', true);
   else if (nd.fogBlind && !runshipLookout(st)) box(HM, 'Fog! Ease off ' + runshipKey(HM, 'left') + ' until ' + NAMES[DH] + ' looks out', '#e8eef8', false);
   else if (nd.threat && nd.lane !== sh.lane) box(HM, (nd.lane < sh.lane ? 'Steer up ' + runshipKey(HM, 'up') : 'Steer down ' + runshipKey(HM, 'down')), '#ffe7a8', true);
