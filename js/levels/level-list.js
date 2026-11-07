@@ -4507,7 +4507,45 @@ const LEVELS = [
   //   Each level's def sits between its own BEGIN/END lines. world: 18 =====
   //
   // ----- BEGIN 19-1 Train Heist Hop (mode 'heist', js/levels/world19/train-heist-hop.js) -----
-  // (def goes here)
+  // 19-1 Train Heist Hop (mode 'heist', team, Gavyn's pick): run along the roofs of a runaway train to the engine and pull
+  // the brake, carrying the bandits' dropped gold sack back to the sheriff. The carrier jumps low, so at wide gaps the free
+  // one jumps first and the sack is tossed across. Duck the bridges, water spouts and the tunnel; jump the tumbleweeds.
+  // The 18-row map is only for the engine; the mode builds each stretch from its car tokens (see the level file's top).
+  { name: 'Train Heist Hop', world: 18, kind: 'team', mode: 'heist', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    act: { label: 'toss', labels: ['toss', 'toss'] },
+    legend: { down: 'duck', padDown: 'down ducks' },
+    tip: 'Run the train roofs to the engine! With the gold sack you jump low, so toss it over the wide gaps.',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Caboose Run', carrier: 0, act: { label: 'toss', labels: ['toss', 'toss'] },
+        tip: 'Pip has the gold sack. Small gaps: just hop. Wide gap: Bo jumps over first, then Pip tosses the sack!',
+        news: 'With the gold sack you jump low. At a wide gap the free one jumps first!',
+        cars: ['caboose 330', 'n', 'box 340 c170', 'n', 'stock 300', 'w', 'hay 300', 'n', 'box 320', 'w', 'pass 320', 'n', 'check 320'],
+        hz: [{ k: 'bridge', first: 9, every: 14 }],
+      },
+      {
+        title: 'Canyon Bridges', carrier: 1, act: { label: 'toss', labels: ['toss', 'toss'] },
+        tip: 'Bo has the sack now. Rock arches and bridges come fast: duck when the whistle blows! Jump tumbleweeds.',
+        news: 'Whistle = something low ahead. Hold \u25BC to duck!',
+        cars: ['pass 320', 'n', 'box 320 c160', 'w', 'stock 300', 'n', 'hay 280', 'w', 'box 300', 'n', 'tank 300', 'w', 'stock 320 c160', 'n', 'check 320'],
+        hz: [{ k: 'arch', first: 5, every: 11 }, { k: 'bridge', first: 12, every: 13 }, { k: 'weed', first: 14, every: 10 }],
+      },
+      {
+        title: 'Water Tower Way', carrier: 0, act: { label: 'toss', labels: ['toss', 'toss'] },
+        tip: 'Pip carries again. Water spouts hang over the roof: duck under them. Four wide gaps to toss across!',
+        cars: ['tank 300', 'w', 'stock 300 c150', 'n', 'box 360 c110 c250', 'w', 'pass 300', 'n', 'hay 280', 'w', 'box 320', 'n', 'stock 300', 'w', 'check 300'],
+        hz: [{ k: 'tower', first: 5, every: 9 }, { k: 'weed', first: 9, every: 7 }],
+      },
+      {
+        title: 'Tunnel to the Engine', carrier: 1, act: { label: 'toss', labels: ['toss', 'toss'] },
+        tip: 'Through the dark tunnel to the engine! Then both hold the action on the big brake lever together.',
+        news: 'A tunnel ahead: duck at the mouth, lanterns light the way!',
+        cars: ['box 300', 'w', 'pass 320', 'n', 'stock 300 c150', 'w', 'box 300', 'n', 'hay 300', 'w', 'tender 240', 'p', 'engine 400'],
+        hz: [{ k: 'tunnel', first: 7, every: 99, len: 2400, once: true }, { k: 'bridge', first: 20, every: 12 }, { k: 'weed', first: 5, every: 9 }],
+      },
+    ],
+  },
   // ----- END 19-1 Train Heist Hop -----
   //
   //
