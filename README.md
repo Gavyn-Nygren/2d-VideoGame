@@ -37,6 +37,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 15. **Orbit Outpost** (friendly, floaty space): Tethered Spacewalk, Gravity Flip Station, Moon Buggy Crew, Planet Hop Race
 16. **Sugar Rush Factory** (candy land and a candy factory): Conveyor Belt Chaos, Gumball Machine Puzzle, Chocolate River Raft, Sprinkle Catch
 17. **Jungle Jamboree** (a sunny jungle with a temple, rapids and a waterfall): Temple Doors, River Rapids Canoe, Waterfall Climb, Vine Swing
+18. **Pirate Cove** (a sunny tropical cove with friendly pirates): Runaway Ship, Grapple & Zip, Tide Pool Dig, Plank Duel
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
@@ -53,7 +54,7 @@ Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md
 | `js/versus.js` | Level-mode hooks and best-of rounds for versus levels (the game has no enemies; the robot in Robo Pong lives with its level) |
 | `js/levels/level-list.js` | Every level's map, rules and hints, and the list of worlds |
 | `js/levels/block-building.js`, `golf.js`, `robo-pong.js` | World 2 and 3 levels that need their own code |
-| `js/levels/world4/` to `world17/` | One file per level, with its rules, sounds and drawing |
+| `js/levels/world4/` to `world18/` | One file per level, with its rules, sounds and drawing |
 | `js/cpu/` | The computer player for 1-player mode: `cpu-core.js` (settings and the brain framework), `cpu-nav.js` (path finding), and one brain per level in `js/cpu/levels/` |
 | `js/input.js` | Keyboard, controllers and touch buttons |
 | `js/ui.js` | Result cards, pause screen, controls legend, notices |

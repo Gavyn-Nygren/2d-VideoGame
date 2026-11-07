@@ -4465,6 +4465,297 @@ const LEVELS = [
   // ----- END 17-4 Vine Swing -----
   //
   // ===== END World 17 =====
+  //
+  // ===== World 18 (Pirate Cove, mixed): the pirate world, world index 17 (js/levels/world18/), a sunny tropical cove with
+  //   friendly pirates, nothing scary, nobody gets hurt. Gavyn's picks (Nov 2026): 18-1 Runaway Ship (team, scrolling),
+  //   18-2 Grapple & Zip (team, scrolling), 18-3 Tide Pool Dig (team), 18-4 Plank Duel (versus, best of 5).
+  //   Each level's def sits between its own BEGIN/END lines. world: 17 =====
+  //
+  // ----- BEGIN 18-1 Runaway Ship (mode 'runship', js/levels/world18/runaway-ship.js) -----
+  // 18-1 Runaway Ship (team, Gavyn's pick): the ship broke loose and sails itself out of the harbor, seen from the side.
+  // The helm steers between three sea lanes round rocks and reefs (▲ ▼), eases off (◀) and rings the bell (the action) as
+  // big waves hit; the deckhand runs round the deck patching leaks, pumping, hauling the flapping rope when the wind
+  // changes, untangling the rigging up the rope ladder and looking out from the crow's nest in fog. Jobs swap at the buoy
+  // after each stretch. Course tokens: the top of the level file. The map is only the spawns.
+  { name: 'Runaway Ship', world: 17, kind: 'team', mode: 'runship', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    act: { label: 'bell', labels: ['bell', 'fix'] },
+    legend: {
+      pip: '<kbd>W</kbd><kbd>S</kbd> steer · climb <kbd>A</kbd><kbd>D</kbd> run · <kbd>A</kbd> ease off',
+      bo: '<kbd>↑</kbd><kbd>↓</kbd> steer · climb <kbd>←</kbd><kbd>→</kbd> run · <kbd>←</kbd> ease off',
+      pad: 'stick: steer · run · climb, ◀ eases off, <span data-glyph="a"></span> jump,',
+    },
+    tip: 'Sail the runaway ship to Treasure Cove! One steers round the rocks, one fixes leaks, ropes and sails.',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Harbor Mouth', helm: 0, pal: 'harbor', cruise: 150, act: { label: 'bell', labels: ['bell', 'fix'] },
+        tip: 'Pip steers with ▲ ▼ round the rocks. Bo runs the deck: patch leaks, pump, pull ropes, untangle!',
+        course: ['f250', 'S:{H}: steer with {Hud} round the rocks!||{H} steers round the rocks', 'f350', 'r1', 'f450', 'r0', 'f220', 'c2', 'f420',
+          'S:A reef! Steer round it, or the ship runs aground', 'f220', 'R1', 'f420', 'c1', 'f300',
+          'S:Creak! {D}: stand on the leak and hold {Dact}||Creak! {D} patches the leak', 'L', 'f600',
+          'S:The wind changed! {D}: pull the glowing rope {Dact}||The wind changed! {D} pulls the flapping rope', 'N', 'f650', 'r2', 'f350', 'r01', 'f400',
+          'S:A big wave! {H}: ring the bell {Hact} as it hits the front||A big wave! {H} rings the bell as it hits', 'f200', 'V', 'f650',
+          'S:Squawk! {D}: climb the ladder {Dup} and hold {Dact} on the knot||Squawk! {D} climbs up to untangle the ropes', 'T:200', 'f700',
+          'R02', 'f380', 'c1', 'f380', 'r1', 'f450', 'B'],
+      },
+      {
+        title: 'Reef Run', helm: 1, pal: 'reef', cruise: 168, act: { label: 'bell', labels: ['fix', 'bell'] },
+        tip: 'Swap! Bo steers between the reefs. Pip keeps the ship patched, pumped and the sail full.',
+        course: ['f250', 'S:Reef Run! {H}: weave between the reefs||{H} weaves between the reefs', 'f300', 'R1', 'f420', 'R02', 'c1', 'f450', 'r1', 'f160', 'c2', 'f320', 'R01', 'f320',
+          'N', 'f420', 'r2', 'f300', 'r0', 'f300', 'c1', 'f380', 'T:150', 'f320', 'R1', 'f450', 'r02', 'f400', 'V', 'f500', 'L', 'R12', 'c0', 'f450', 'r0', 'f300', 'r1', 'f380',
+          'c2', 'f300', 'R01', 'f550', 'B'],
+      },
+      {
+        title: 'Stormy Patch', helm: 0, pal: 'storm', cruise: 165, act: { label: 'bell', labels: ['bell', 'fix'] },
+        tip: 'Pip steers through the storm: ring the bell for big waves! Bo looks out from the crow\'s nest in the fog.',
+        course: ['f250', 'S:Stormy seas! {H}: ring the bell {Hact} as each big wave hits||Stormy seas! {H} rings the bell for each big wave', 'f250', 'V', 'f600', 'r1', 'f300', 'N', 'r0', 'f380', 'V', 'f520', 'c2', 'f300',
+          'S:Fog ahead! {D}: climb to the crow\'s nest so {H} can see||Fog ahead! {D} climbs to the crow\'s nest to look out', 'f450', 'F:1900', 'f220', 'q', 'f420', 'q', 'f420', 'q', 'f420', 'q', 'f420',
+          'T:220', 'f300', 'N', 'f380', 'V', 'f600', 'R1', 'f400', 'c0', 'r2', 'f450', 'L', 'f300', 'r01', 'f500', 'B'],
+      },
+      {
+        title: 'Treasure Cove', helm: 1, pal: 'cove', cruise: 168, act: { label: 'bell', labels: ['fix', 'bell'] },
+        tip: 'Bo steers to Treasure Cove through the last fog. Then both run to the anchor and hold the action!',
+        course: ['f250', 'S:Nearly there! Sail on to Treasure Cove', 'f300', 'r1', 'f350', 'c0', 'f300', 'R12', 'f400', 'N', 'f300', 'r0', 'f300', 'c2', 'f300',
+          'S:More fog! {D}: look out from the crow\'s nest||More fog! {D} looks out from the crow\'s nest', 'f450', 'F:1500', 'f220', 'q', 'f420', 'q', 'f420', 'q', 'f420',
+          'T:180', 'f380', 'V', 'f500', 'R02', 'c1', 'f400', 'r1', 'f300', 'c0', 'f300', 'r2', 'f420', 'S:Land ho! Treasure Cove!', 'f380', 'E'],
+      },
+    ],
+  },
+  // ----- END 18-1 Runaway Ship -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 18-2 Grapple & Zip (mode 'grapple', js/levels/world18/grapple-and-zip.js) -----
+  // 18-2 Grapple & Zip (mode 'grapple', team, Gavyn's pick): cross a whole fleet of friendly pirate ships, side view, the
+  // camera scrolling right ship by ship. From the crow's nest the thrower aims (▲ ▼), holds the action to charge and lets
+  // go to throw a grappling hook through the next ship's ring. The zipper grabs the handle and zips down the rope for
+  // coins (▶ faster, ◀ brake, ▲ legs up, ▼ dip, action lets go), then cranks the capstan to haul the thrower across in
+  // the bosun's chair. Whoever arrives first throws next, so the jobs swap every hop. 4 fleets of 2 hops.
+  // fleet: the first ship is where the fleet starts; each later ship also describes the hop INTO it (see the level file:
+  // gap, nest, ring, coins 'm.h.l', chair coins, obs, wind, gust, boom, lines, gulls, sign).
+  { name: 'Grapple & Zip', world: 17, kind: 'team', mode: 'grapple', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Fleet',
+    act: { label: 'throw', labels: ['throw', 'grab'] },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd><kbd>S</kbd> climb · aim · legs',
+      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd><kbd>↓</kbd> climb · aim · legs',
+      pad: 'stick: walk, climb, aim, legs,',
+    },
+    tip: 'Throw the hook through the next ring, zip down the rope for coins, then crank your partner across!',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Dockside Hop', act: { label: 'throw', labels: ['throw', 'grab'] },
+        tip: 'Pip throws first: aim, hold to charge, let go. Bo zips down the rope, then cranks Pip across!',
+        fleet: [
+          { dock: true, name: 'Pirate Cove Dock', nest: 150 },
+          { name: 'Sea Biscuit', pal: 'red', gap: 400, nest: 190, ring: 90, coins: 'm.m.h.m', chair: 'm.h', crew: 2,
+            sign: '{T}: {Tud} aim, hold {Tact}, let go to throw the hook through the ring!||{T} throws the hook through the ring. Then {Z} zips!' },
+          { name: 'Jolly Jelly', pal: 'teal', gap: 430, nest: 200, ring: 95, coins: 'm.h.l.m.m', chair: 'l.h', obs: ['flag:0.55'], crew: 2,
+            sign: 'Swap! {T} throws now. Zipping: {Zud} for high and low coins||Swap! {T} throws now, {Z} zips for the coins' },
+        ],
+      },
+      {
+        title: 'Laundry Day', act: { label: 'throw', labels: ['throw', 'grab'] },
+        tip: 'Laundry lines! Throw over the socks or under them. Dip under the lanterns as you zip.',
+        fleet: [
+          { name: 'Jolly Jelly', pal: 'teal', nest: 200, ring: 95, crew: 2 },
+          { name: 'Salty Sock', pal: 'yellow', gap: 470, nest: 215, ring: 110, coins: 'm.l.h.m.l', chair: 'h.m', obs: ['lant:0.45'], crew: 1,
+            lines: [[-70, 250, 60, 246]], sign: 'Socks on the line! Throw over them or under them' },
+          { name: 'Merry Mermaid', pal: 'pink', gap: 500, nest: 225, ring: 100, coins: 'h.m.l.m.h.m', chair: 'l.h', obs: ['flag:0.4', 'lant:0.7'], crew: 2,
+            lines: [[-130, 236, -30, 240], [70, 262, 170, 256]] },
+        ],
+      },
+      {
+        title: 'Windy Boom', act: { label: 'throw', labels: ['throw', 'grab'] },
+        tip: 'Wind and a swinging boom! Watch the wind arrow and throw as the ring swings by.',
+        fleet: [
+          { name: 'Merry Mermaid', pal: 'pink', nest: 225, ring: 100, crew: 2 },
+          { name: 'Breezy Barnacle', pal: 'green', gap: 520, nest: 232, ring: 115, wind: 90, boom: 34, coins: 'm.h.l.h.m.l', chair: 'h.l.m', obs: ['lant:0.35', 'flag:0.65'], crew: 2,
+            sign: 'A tailwind pushes the hook further, and the ring swings on its boom!' },
+          { name: 'Wobbly Whale', pal: 'purple', gap: 540, nest: 240, ring: 108, wind: -70, gust: 55, boom: 40, coins: 'l.m.h.m.l.h', chair: 'm.h', obs: ['flag:0.3', 'lant:0.55', 'flag:0.76'], crew: 1,
+            lines: [[-40, 284, 90, 288]], sign: 'A gusty headwind! Throw a little harder' },
+        ],
+      },
+      {
+        title: "Polly's Flagship", act: { label: 'throw', labels: ['throw', 'grab'] },
+        tip: "Gulls and gusts on the way to Captain Polly's flagship. The last haul is uphill: heave together!",
+        fleet: [
+          { name: 'Wobbly Whale', pal: 'purple', nest: 240, ring: 108, crew: 1 },
+          { name: 'Lucky Lobster', pal: 'blue', gap: 560, nest: 248, ring: 120, gust: 90, coins: 'h.l.m.h.l.m', chair: 'l.m.h', obs: ['lant:0.4', 'flag:0.62'], crew: 2,
+            gulls: [[0, 300, 120, 30, 0.8]], lines: [[-160, 232, -60, 228]], sign: 'Gulls! Throw when the way is clear' },
+          { name: 'The Golden Polly', pal: 'flag', flagship: true, gap: 590, nest: 270, ring: 160, wind: 40, gust: 70, coins: 'm.h.l.m.h.l.m', chair: 'h.l.h', obs: ['flag:0.35', 'lant:0.6'], crew: 3,
+            gulls: [[-90, 292, 90, 26, 0.9], [130, 252, 70, 30, 1.1]], sign: "Captain Polly's flagship! The last bit of the haul is uphill" },
+        ],
+      },
+    ],
+  },
+  // ----- END 18-2 Grapple & Zip -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 18-3 Tide Pool Dig (mode 'tidedig', js/levels/world18/tide-pool-dig.js) -----
+  // 18-3 Tide Pool Dig (mode 'tidedig', team): one digs for buried chests while the other bails out seawater with a
+  // bucket and shoos away crabs that steal coins (Gavyn's pick). A side view of a beach, cut away under the sand.
+  // Map chars (read by the mode): # sand (diggable only under an x), r rock, x an X mark (a chest is buried under it,
+  // see chests), w the sea (the dump spot is its edge), p a rock pool in the sand (another dump spot), n a crab burrow,
+  // h the treasure blanket (coins saved), y the sand-wall spot, q a rope post (the big chest haul). Row 9 is the beach.
+  // Room def: title, tip, digger (0 Pip, 1 Bo; the other bails), polly (x of Captain Polly's perch), act (labels per
+  // role), style ('cove' | 'pools' | 'wreck' | 'skull'), chests: [{ depth (tiles of sand over it), coins, big, haul
+  // (both haul it up on the ropes) }] in the X marks' left-to-right order, waves: { every (s), first (s), pour (px of water into a hole), reach (x the waves
+  // run up to), big (every Nth wave is BIG, over the sand wall), bigPour, ramp: { every, pour, reach, over (s) } (the
+  // tide coming in: the numbers move to these over the room) }, crabs: { max, every, first } (null: no crabs).
+  { name: 'Tide Pool Dig', world: 17, kind: 'team', mode: 'tidedig', noFalls: true, ownHUD: true,
+    act: { label: 'dig', labels: ['dig', 'bail'] },
+    legend: { jump: 'jump (hold: climb out)', padJump: 'jump (hold: climb out)' },
+    tip: 'One digs at the X, the other bails the waves out with a bucket and shoos the coin-grabbing crabs!',
+    signs: [],
+    rooms: [
+      { // ---------- Room 1: Sandy Cove (one chest, gentle waves, no crabs; Pip digs) ----------
+        title: 'Sandy Cove', digger: 0, polly: 320, style: 'cove', act: { label: 'dig', labels: ['dig', 'bail'] },
+        tip: 'Pip, dig at the X! Bo, scoop the seawater out of the hole and dump it in the sea.',
+        chests: [{ depth: 4, coins: 12 }],
+        waves: { every: 7, first: 4, pour: 24, reach: 330 },
+        crabs: null,
+        map: [
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '......h.......1.....2...........',
+          '################x#########wwwwww',
+          '################################',
+          '################################',
+          '################################',
+          '################################',
+          '################################',
+          '################################',
+          'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
+          'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
+        ],
+      },
+      { // ---------- Room 2: Rock Pools (two chests, crabs, a rock pool to dump in; Bo digs) ----------
+        title: 'Rock Pools', digger: 1, polly: 470, style: 'pools', act: { label: 'dig', labels: ['bail', 'dig'] },
+        tip: 'Bo digs, Pip bails. Cheeky crabs grab coins: shoo them (action, or land a jump next to them)!',
+        chests: [{ depth: 3, coins: 12 }, { depth: 4, coins: 14 }],
+        waves: { every: 6, first: 4, pour: 26, reach: 300 },
+        crabs: { max: 2, every: 6, first: 3 },
+        map: [
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          'rr..............................',
+          'rrn.....h....2..1...............',
+          '####pp######x######x######wwwwww',
+          '################################',
+          '################################',
+          '################################',
+          '################################',
+          '################################',
+          '################################',
+          'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
+          'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
+        ],
+      },
+      { // ---------- Room 3: Shipwreck Beach (a deep chest under the wreck, bigger waves, a sand wall; Pip digs) ----------
+        title: 'Shipwreck Beach', digger: 0, polly: 320, style: 'wreck', act: { label: 'dig', labels: ['dig', 'bail'] },
+        tip: 'Pip digs deep under the wreck. Bo, pat a sand wall to stop a small wave: BIG waves go over it!',
+        chests: [{ depth: 6, coins: 20 }],
+        waves: { every: 6, first: 4, pour: 26, reach: 380, big: 2, bigPour: 40 },
+        crabs: { max: 2, every: 6, first: 3 },
+        map: [
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          'rr..............................',
+          'rrn...h........1...2..y..n......',
+          '################x#########wwwwww',
+          '################################',
+          '################################',
+          '################################',
+          '################################',
+          '################################',
+          '################################',
+          'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
+          'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
+        ],
+      },
+      { // ---------- Room 4: Skull Rock Lagoon (a small chest, then the big one; the tide comes in; Bo digs) ----------
+        title: 'Skull Rock Lagoon', digger: 1, polly: 265, style: 'skull', act: { label: 'dig', labels: ['bail', 'dig'] },
+        tip: 'The tide is coming in! Bo digs, Pip bails and shoos. Haul the big chest up together on the ropes!',
+        chests: [{ depth: 2, coins: 8 }, { depth: 6, coins: 30, big: true, haul: true }],
+        waves: { every: 6.5, first: 4, pour: 24, reach: 300, big: 3, bigPour: 40, ramp: { every: 4.5, pour: 32, reach: 240, over: 150 } },
+        crabs: { max: 3, every: 5, first: 3 },
+        map: [
+          '................................',
+          '................................',
+          '................................',
+          '................................',
+          'rrrr............................',
+          'rrrr............................',
+          'rrrr............................',
+          'rrrr............................',
+          'rrrrn.....2..1h..q...q.y.n......',
+          '######pp###x#######x######wwwwww',
+          '################################',
+          '################################',
+          '################################',
+          '################################',
+          '################################',
+          '################################',
+          'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
+          'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
+        ],
+      },
+    ],
+  },
+  // ----- END 18-3 Tide Pool Dig -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 18-4 Plank Duel (mode 'plankduel', js/levels/world18/plank-duel.js) -----
+  // 18-4 Plank Duel (mode 'plankduel', versus, best of 5, Gavyn's pitch): a foam-sword fight on a plank over the lagoon.
+  // Swing high or low, block by guarding the same height (stand = high, hold down = low), hop over low swings, hold the
+  // action to charge a lunge. Every bonk pushes the other back; off the end is a splash and the round.
+  { name: 'Plank Duel', world: 17, kind: 'versus', mode: 'plankduel', ownStep: true,
+    // the map is only the two spawns: the mode builds each round's plank (MODES.plankduel); round time is set per plank
+    match: { bestOf: 5, roundTime: 45 },
+    act: { label: 'swing' },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> step <kbd>S</kbd> low <kbd>W</kbd> hop',
+      bo: '<kbd>←</kbd><kbd>→</kbd> step <kbd>↓</kbd> low <kbd>↑</kbd> hop',
+      pad: 'stick ◀ ▶ step, down guards low, <span data-glyph="a"></span> hops,',
+    },
+    tip: 'Swing high, or hold ▼ to swing low. Guard the same height to block. Bonk them off the end!',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '..............1..2..............',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+    ],
+  },
+  // ----- END 18-4 Plank Duel -----
+  //
+  //
+  //
+  // ===== END World 18 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -4530,6 +4821,10 @@ const WORLDS = [
   { name: 'Jungle Jamboree', blurb: 'Open temple doors, paddle the rapids, climb the falls and swing on vines!',
     theme: { skyTop: '#6cc7a8', skyBot: '#f4f6c8', hillFar: '#5fae6e', hillNear: '#3f8f55', sun: 'rgba(255, 244, 180, 0.95)', sunGlow: 'rgba(230, 255, 170, 0.38)',
       stone: '#6b5438', stoneLight: '#806645', stoneEdge: '#4a3826', grass: '#7fd65a', grassDark: '#3f9a3c', plank: '#c08a4e', plankDark: '#7a5228', rope: '#9bc85a', ropeDark: '#5a7f2e' } },
+  // World 18: pirates, sunny and friendly (a bright tropical sky over a turquoise sea; warm sand on top of driftwood-brown rock)
+  { name: 'Pirate Cove', blurb: 'Sail, swing, dig and duel your way across the high seas!',
+    theme: { skyTop: '#55c3ef', skyBot: '#fff2cf', hillFar: '#6fd0c4', hillNear: '#3fb0a6', sun: 'rgba(255, 246, 190, 0.95)', sunGlow: 'rgba(255, 214, 140, 0.4)',
+      stone: '#7a5a3e', stoneLight: '#8f6c4c', stoneEdge: '#553e2a', grass: '#f2d68c', grassDark: '#c9a457', plank: '#c98e57', plankDark: '#7d5030', rope: '#ead6a0', ropeDark: '#7a5a2a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);

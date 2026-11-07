@@ -348,6 +348,281 @@ A sunny, leafy jungle: a gold-green sky through the canopy, mossy brown earth, v
 - Each level was built, then break-tested by a separate reviewer (one player alone, idle and masher partners, one-key holders, softlocks, scripted 1-player "people" who take the computer's job, wait, wander or go the wrong way; keyboard, stubbed controller and touch at 1280x800, 844x390 and 390x844), then fixed and re-tested. Medal limits are tuned on bots and scripted players only, so real playtests may move them.
 - Code: `js/levels/world17/<slug>.js` and `js/cpu/levels/world17/<slug>.js` (temple-doors, river-rapids-canoe, waterfall-climb, vine-swing); defs between BEGIN/END lines in the World 17 block of `level-list.js`. World-page previews are in `js/previews/world17.js` (one BEGIN/END section per level, helpers prefixed `pw17t`, `pw17r`, `pw17w`, `pw17v`).
 
+### World 18: Pirate Cove (mixed)
+A sunny tropical cove with friendly cartoon pirates: turquoise sea, striped sails, palm islands, foam swords and pretend gold coins. Helpers are friendly animals (Captain Polly the parrot, Dot and Dolly the dolphins, cheeky crabs, gulls). Nothing is scary and nobody gets hurt ("Splash!", "Bonk!", "Whoa!"). Three team levels, then a versus finale. Gavyn picked 4 of 8 ideas on 2026-11-07 (he skipped Deep Sea Dive, Treasure Map Split, Kraken Tickle and Barrel Roll Race) and asked for more scrolling levels: 18-1 and 18-2 scroll. The world name is Claude's pick. Each level was built by one agent and then reviewed by a second agent that tried to break it with scripted people and fixed what it found; per-level test tools are in tools/w18/.
+- **18-1 Runaway Ship** (team, World 18 Pirate Cove, `world: 17`; mode `runship`, `ownStep`, `ownHUD`, `noFalls`, `roomWord: 'Stretch'`; js/levels/world18/runaway-ship.js, brain js/cpu/levels/world18/runaway-ship.js). Gavyn's pick: the little pirate ship broke loose and sails itself out of the harbor, seen from the side. One player steers, the other runs the deck, and they swap jobs at every buoy. At Treasure Cove both drop the anchor together.
+  - **The helm** stands at the wheel on the quarterdeck:
+    - ▲ / ▼ move the ship one lane at a time between three sea lanes (far, middle, near). The far lane is drawn smaller and higher.
+    - ◀ eases off to half speed, for creeping through fog. A rock hit slowly makes no leak.
+    - The action rings the bell. Ring it as a big wave hits the bow (a 0.42 s window, up to 0.28 s late) and the ship rides over: "Over the top!".
+    - Ringing in the 0.45 s just before the window uses up the bell for that wave ("Too early!"), so mashing doesn't work. Ringing earlier than that is only a warning.
+    - **Hazards:**
+      - A rock in your lane is a "Bonk!": the ship slows, takes on water and springs a leak.
+      - A reef runs the ship "Aground!" until the helm steers into another lane.
+      - A wave without the bell is a "Whoa!": +10% water, the coins on deck wash away, and a deckhand who isn't holding on goes overboard.
+  - **The deckhand** runs and jumps around the deck, hops up onto the quarterdeck and the forecastle, and climbs the rope ladder with ▲ at the mast (▼ climbs down, jump with ◀ ▶ hops off). Jobs:
+    - Stand on a leak and hold the action to hammer a plank over it.
+    - Tap the action at the pump to bail. Water slows the ship, down to about a fifth of full speed at 100%. The ship never sinks.
+    - Haul the glowing rope at its cleat when the wind changes. Until then the sail flaps at 55% speed.
+    - Climb to the tangle a seagull makes in every stretch and hold the action on it. Until then the sail is down and the ship drifts to a stop.
+    - Climb into the crow's nest in fog. It's the only way the rocks hidden in the fog show on screen and on the sea chart.
+    - Walk over coins that land on deck from treasure barrels.
+    - Hold ▼ to hold on when a wave is coming. Climbing, sitting in the nest or working a job also counts as holding on.
+  - **Why both are needed:**
+    - Every stretch has a reef in the starting lane and a tangle. An idle helm or an idle deckhand never gets past them.
+    - Fog needs the lookout.
+  - **Controls:**
+    - Pip: W / S steer and climb, A / D run, A eases off, F is the action.
+    - Bo: ↑ / ↓ steer and climb, ← / → run, ← eases off, / is the action.
+    - Controller: the stick (or A for ▲) steers, runs and climbs; ◀ eases off; X is the action.
+    - Touch: arrow buttons plus the action button.
+    - The action word follows the job: "bell" at the helm, "fix" on deck, "anchor" at the end. It shows in the legend, on the touch buttons and on both job cards.
+  - **Stretches** (about 54 s each, then a 2.5 s "Buoy! Swap jobs!" hop):
+    | # | Stretch | Who steers | What's in it |
+    |---|---|---|---|
+    | 1 | Harbor Mouth | Pip | Gentle rocks, first reef, leak, wind change, first wave, tangle, coins |
+    | 2 | Reef Run | Bo | Reefs, wind change, a wave |
+    | 3 | Stormy Patch | Pip | Rain, 3 big waves, a 1,900 px fog bank with hidden rocks placed at random |
+    | 4 | Treasure Cove | Bo | Fog, coin barrels, a wave, then the anchor |
+    Signs and Polly's sign introduce each new thing just before it matters.
+  - **Soft fails** (nothing restarts):
+    - Bonk! and Aground!
+    - Whoa!
+    - "Splash!": Dot the dolphin flips the deckhand back aboard after 2.4 s.
+    - "Glug! So much water!"
+    - Polly squawks a hint after 7 s stopped (aground or sail down).
+  - **Gold help** (announced with a gold message, Polly and a sound; only while both players are pressing things):
+    - Gold rudder: after 3 bonks in a stretch. Quicker steering, and a gold arrow on the chart points to the safe lane.
+    - Gold bell: after the same helm player misses 2 waves. The window doubles to 0.85 s, there's no early lock, and it stays for that player's later stretches.
+    - Gold hammer: after 10 s with the water over 70%. Patches take half the time, and each pump bails twice as much.
+    - Gold knife: after 14 s of trying at a tangle. Untangling takes 0.3 s.
+    - Gold spyglass: after 2 bonks in fog. Hidden rocks show in gold on the chart.
+    - Gold anchor: after 20 s at the cove. The chain never slips back, and a hop at the capstan still counts.
+  - **Finish:** at the cove both run to the capstan on the forecastle and hold the action together for 1.3 s. Then "SPLOOSH! Anchor down!", a 5.5 s party with confetti, and the results.
+  - **Results:**
+    - Tiles: Time, Record, Bonks, Leaks patched (Pip / Bo), Coins "x of 56", Medal.
+    - Lines: a bonk summary, waves met "x of 6", who Dot saved, the quickest stretch, and the gold help count.
+  - **Medal:**
+    - Gold: 4:00 or under with at most 4 bonks.
+    - Silver: 5:30 or under with at most 12 bonks.
+    - Bronze: otherwise.
+  - **Brain:** reads `MODES.runship.needs(m)`: the best lane, judged only from what's in sight (fog rocks only with a lookout or the gold spyglass), whether fog means easing off, the next wave and when it hits, and the deckhand's most useful job (hold on, tangle, nest, trim, leak, pump, coin).
+    - At the helm it taps ▲ / ▼ one lane at a time, holds ◀ in blind fog, and rings 0.2 s before the wave hits.
+    - On deck it walks and hops up steps, climbs the ladder, holds the action on leaks and knots, taps at the pump and cleat, and holds ▼ until a wave lands.
+    - At the end it runs to the capstan and holds.
+    - In 1-player mode it says short, rate-limited bubbles: "Steer away from the reef!", "Ring the bell as it hits!", "Climb to the crow's nest, please!", "Patch the leak! Hold /", "Hold the action at the anchor with me!".
+    - It never does the person's job.
+  - **Bot times:**
+    - Computer pair: 221–222 s (Gold, 0 bonks).
+    - Noisy Pip: 231–234 s. Noisy Bo: 226–229 s.
+    - Scripted person who follows the prompts 0.7 s late: 223–224 s.
+    - Kid-like person: 229–231 s (Gold).
+    - Waits 25 s at the anchor: about 249 s (Silver).
+    - Random masher with the computer: 5:52–7:57 (Bronze, through the gold anchor).
+  - **Fairness:**
+    - These never clear: an idle partner, a person who quits after 60 s, holding jump or ▲ the whole run, a wrong-way player, or one player alone.
+    - A bell masher misses waves until the gold bell.
+  - **Tests:** tools/w18/runship-test.js (stats per run), runship-break.js (scripted 1-player people), runship-io.js (keyboard, controller, touch, labels, R, pause, no leaks between levels), runship-shots.js (screenshots).
+- **18-2 Grapple & Zip** (team, mode `grapple`, `ownStep`, `ownHUD`, `noFalls`, `roomWord: 'Fleet'`; js/levels/world18/grapple-and-zip.js, brain js/cpu/levels/world18/grapple-and-zip.js; tools in tools/w18/: grapple-shots, grapple-debug, grapple-people, grapple-controls, grapple-windows). Gavyn's pick: cross a whole fleet of friendly pirate ships in side view. One throws a grappling hook to the next mast, the other zips down the rope for coins, then cranks the thrower across. The camera follows one hop at a time.
+  - **Moving and controls:** A/D or ←/→ walk, W/S or ↑/↓ climb the rope ladder, aim and lift legs/dip; the action is F or /, X on a controller, the round touch button. The act word changes live with the job: thrower throw → ride, zipper grab → drop → crank. The legend's controller line says "action".
+    - **Thrower:** stands on the gold X in the crow's nest. ▲▼ aim (a short dotted guide shows the start of the flight). Hold the action: the power meter behind the thrower goes up and down (one cycle is 2.4 s). Let go to throw. The hook flies with gravity and wind/gusts and must pass through the ring on the next ship's mast; on Breezy Barnacle and Wobbly Whale the ring swings on a boom.
+    - **Zipper:** waits on the ladder side of the crow's nest and grabs the handle from anywhere in it. On the rope: ▶ tuck, ◀ brake, ▲ legs up (flags, high coins), ▼ dip (lanterns, low coins). Too fast at the stopper knot is "Bonk! The mast!" and a small bounce back. At the knot, let go (or wait: you drop by yourself after 1.8 s).
+    - **Haul:** the thrower hops into the bosun's chair from anywhere in the nest. The zipper cranks the capstan with steady presses (0.3–1.15 s apart is a full heave; faster slips). The rider presses ▶ right after a heave to help and ▲▼ for the chair coins. The end of the line sags uphill, so heaves pull less there.
+    - "All aboard!", then the jobs swap (Pip throws hops 1, 3, 5, 7). Nobody can finish a hop alone.
+  - **Fleets (4 × 2 hops, 64 coins):**
+    - **Dockside Hop:** Pirate Cove dock → Sea Biscuit → Jolly Jelly.
+    - **Laundry Day:** socks on the line to throw over or under, lanterns to dip under.
+    - **Windy Boom:** tailwind and a swinging boom ring, then a gusty headwind.
+    - **Polly's Flagship:** gulls, then The Golden Polly with an uphill last haul, a treasure chest, a cheering crew, and Captain Polly saying "Ahoy, Pip and Bo! Welcome aboard!", then confetti.
+    - Each fleet's first hop shows a wooden sign low over the water. A sign written 'text||text' uses the second words in 1-player mode.
+  - **Soft fails:**
+    - Missed throws ("Clunk!", "Splash!", "Whoosh! Too far!", "Flump! Socks!", "Squawk! A gull!") reel back in 1 s, with a tip on what went wrong.
+    - "Splash!" when you let go over the water: Dolly the dolphin carries you back to the start ship.
+    - "Bonk!" from a flag, a lantern or the knot just slows you, once per pass.
+    - No lives, no game over.
+  - **Gold help (always announced):**
+    - Gold hook after 3 misses on a hop: ring ×1.9, meter 1.3× slower, a longer guide.
+    - Super gold hook after 6: ring ×2.6, meter 1.6× slower, the whole flight shown with a star or a cross where it ends, gold marks on the meter for the powers that catch, Polly by the ring.
+    - Gold handle after 2 splashes on a hop (it won't let go over water).
+    - Gold capstan after 14 s of hauling (heaves ×1.6).
+    - Captain Polly flies over with a hint after 20 s stuck on a job; in 1-player mode she points at the person's job. Her bubble moves beside her if it would cover the HUD.
+  - **HUD:** the top-right pill shows time and coins, then a "Ship N of 8 · name · tries" chip (gold border while gold help is on) and a wind pill. Job cards sit in the bottom corners (keys for each player's own device, a meter, "Computer" for the computer). Prompt chips sit over each person's head; two in one spot stack.
+  - **Results and medal:** tiles are Coins "x of 64", Hooks / misses, Splashes & bonks, and Medal. One line gives coins per player, first-try catches and good heaves, plus a gold-help line when help was used. Gold is ≤ 3:45 with ≥ 65% of the coins and ≤ 8 misses; Silver is ≤ 5:30 with ≥ 35%; otherwise Bronze.
+  - **Brain:** plays the job MODES.grapple.needs gives it.
+    - Throwing: plans with the level's own hook physics (`test.hookMove`, `test.powAt`), picks the angle with the widest window of catching powers, and adds an aim error that shrinks after each miss. It holds ▲▼ to the angle, holds the action, lets go on the tick where its pretend throw catches, and replans after 2 meter cycles.
+    - Zipping: tucks, then brakes to reach the knot at about 0.55× bonk speed, dodges and reaches for coins, lets go at the knot.
+    - Riding: pulls ▶ after each heave and reaches for chair coins. Cranking: a steady 0.40–0.52 s beat once the rider is boarded.
+    - With a person it never does their job and nudges with short bubbles after 5 s.
+  - **Bot times:**
+    - Computer pair: 129–162 s (Gold).
+    - Noisy partner: 142–189 s.
+    - Scripted 1-player people (following prompts, slow, kid-like, wanderers, ladder-climbers, jumpers, ones who try the computer's job first): 145–387 s, mostly Silver.
+    - Idle, masher and quitter people never clear.
+- **18-3 Tide Pool Dig** (team, mode `tidedig`, `noFalls`, `ownHUD`).
+  - **Pitch (Gavyn's pick):** One player digs for buried chests while the other bails seawater out with a bucket and shoos away crabs that steal coins.
+    - **Code:**
+      - `js/levels/world18/tide-pool-dig.js`
+      - `js/cpu/levels/world18/tide-pool-dig.js`
+      - The def is between its BEGIN/END lines in `level-list.js`.
+      - The preview is in the 18-3 block of `js/previews/world18.js` (helpers named `pw18t`).
+    - **The look:** a side view of a sunny beach, cut away so you can see under the sand. The chests show faintly through the sand, and you watch each hole go down.
+  - **Rules:**
+    - Each room says who digs (`digger`); the other player is the bailer.
+    - The action button reads "dig" or "bail" per player and per room, on the legend and on the touch buttons.
+    - **The digger**
+    - Stands on the red X and holds (or taps) the action to dig: about 2.6 strokes a second, and mashing is no faster.
+    - A sand tile takes 5 + 2 × its depth strokes. The sand flies onto a pile beside the hole.
+    - Holding jump (or ▲) in the hole climbs out and pops you out sideways at the top.
+    - The last stroke hits the chest: "CLUNK!", and coins shower out onto the sand on both sides. Coins never land in a hole or in the sea.
+    - Either player picks up coins by walking over them. Saved coins go to the treasure-blanket stash, which is kept from room to room.
+    - **Waves**
+    - Each wave goes calm → swell (the HUD meter warns; big waves are warned too) → rush → hold → back.
+    - A wave that reaches an open hole pours water into it.
+    - With 8 or more px of water the digger can't dig ("Glub!"). Less water than that slows digging.
+    - Deeper water floats the digger up. Water never drains by itself.
+    - **The bailer**
+    - Taps the action at the hole's edge to scoop: 16 px a scoop, 28 px with the gold bucket.
+    - A full bucket slows walking.
+    - Taps the action at the sea, or at a rock pool, to dump the bucket ("Sploosh!").
+    - In rooms 3 and 4, holding the action at the flagged spot pats a sand wall (2.2 s). The wall stops one small wave and is then washed flat. A BIG wave goes over it and still pours in at 0.75×.
+    - The hole's mouth is solid for the bailer only, so the bailer can walk over it and the digger drops in.
+    - **Crabs (rooms 2-4)**
+    - Crabs peek out of burrows by the rocks and go for loose coins first, then the stash.
+    - A crab that reaches a coin grabs it and runs home. A coin that reaches the burrow is a crab steal and is lost for good.
+    - Either player shoos a crab by tapping the action within 66 px of it, or by landing a jump within 70 px. The crab drops the coin and runs.
+    - **The big chest (last room)**
+    - It is too heavy to open in the hole. Both players hold the action, one at each rope post, either player at either post, for 2.6 s.
+    - During the haul no new crabs come out, and a tap away from the posts still shoos.
+    - The chest comes up and sits open on the sand.
+    - **Winning**
+    - A room ends when every chest is open, no coins are loose, and no crab carries one.
+    - It holds for 2 s, then moves on.
+    - Waves never hurt anyone. The level can always be finished.
+  - **Rooms (96 coins in 6 chests):**
+    | Room | Digger | Chests (depth / coins) | Waves | Crabs | Other |
+    |---|---|---|---|---|---|
+    | 1 Sandy Cove | Pip | one: 4 / 12 | every 7 s (first at 4 s), pour 24 | none | teaches dig and bail |
+    | 2 Rock Pools | Bo | two: 3 / 12, then 4 / 14 | every 6 s, pour 26 | up to 2 | rock-pool dump spot |
+    | 3 Shipwreck Beach | Pip | one: 6 / 20, under the wreck | every 6 s; every 2nd is BIG (pour 40) | up to 2 | sand-wall spot |
+    | 4 Skull Rock Lagoon | Bo | 2 / 8, then a big 6-deep chest / 30 hauled on ropes | every 3rd is BIG; the tide rises over 150 s (6.5 s → 4.5 s apart, pour 24 → 32, reaching further) | up to 3, burrows on both sides | rope posts, rock pool, sand wall |
+  - **Soft fails:**
+    - **Flood:** the digger is blocked by water for 6 s. It is counted, but nothing is lost.
+    - **Steal:** a crab gets a coin home. The coin is lost, which lowers the coin score and the medal.
+  - **Gold help (announced, once each):**
+    - **Gold bucket:** after 2 floods in a room. Scoops take 28 px and the bucket no longer slows the bailer.
+    - **Captain Polly the parrot:** after 3 steals in a room. She chases crabs that carry or grab a coin.
+    - **Gold shovel:** after 75 s in a room with a chest still shut. Strokes count 1.7×.
+  - **Results and medals:**
+    - **Tiles:** Coins saved "x of 96", Crab steals, Sand dug (Pip / Bo), Buckets bailed (Pip / Bo).
+    - **Lines:** the medal with a cheer, then shoos (Pip, Bo, Polly), waves held by walls, floods and the help used.
+    | Medal | Time | Coins saved |
+    |---|---|---|
+    | Gold | ≤ 240 s | ≥ 85% |
+    | Silver | ≤ 400 s | ≥ 60% |
+    | Bronze | otherwise | — |
+  - **Hints:**
+    - Chips read "Name (digger/bailer): …" and use each player's own device keys.
+    - They show when a job starts and again when it drags on, and never over the computer's player.
+    - They come from `tidedigPlan`, the same plan the brain uses.
+  - **The computer partner:**
+    - It plays only the job `tidedigPlan` gives it.
+    - **As the digger:**
+      - Walks to the X, hopping over open holes.
+      - Digs while the water is low and waits while the hole is flooded.
+      - Climbs out centred in the hole.
+      - Picks up coins.
+      - Holds a rope post for the haul.
+    - **As the bailer, in this order:**
+      1. Shoo a crab that carries or grabs a coin.
+      2. Dump a full bucket at the nearest sea or rock-pool spot.
+      3. Scoop from the hole's edge, ±32 px on its own side.
+      4. Pat the wall between waves.
+      5. Pick up coins.
+      6. Otherwise wait by the hole on the sea side.
+    - **Getting around:** it jumps steps, and it jumps over a partner standing in its way, such as a digger floating in a flooded hole or someone standing on the X.
+    - **The haul:** it gives up its post to a person who wants it.
+    - **Reaction time:** 0.08 s plus up to 0.3 s more at low skill after each job change.
+    - **Talking (1-player only):** "Glub! Bail me out, please!", "Dig at the X, Name!", "Dig, dig, Name!", "Shoo that crab!", "Dump the bucket in the sea!", "Hold the rope with me!", "Scoot over, please!".
+  - **Bot times:**
+    | Run | Total time | Medal / coins | Room times |
+    |---|---|---|---|
+    | Pair | 149-171 s | Gold, 92-96 coins | about 23, 36-50, 34-44 and 42-52 s |
+    | Noisy partner | 190-241 s | — | — |
+    | Scripted 1-player people | 160-330 s | — | — |
+  - **Preview:**
+    - **Loop:** Pip digs at the X and a wave floods the hole ("Glub!"). Bo scoops the water out and dumps it in the sea ("Sploosh!"). "CLUNK!", and coins shower onto the blanket. A crab grabs a stray coin; Pip lands by it ("Shoo!") and it drops the coin. Confetti to finish.
+    - **Scene:** a shallow sea over a sandy seabed.
+    - **Timing:** the loop is 6.6 s and the still frame is at 3.8 s, at about 1.5 ms a frame.
+    - **Blurb:** "One digs for buried treasure, the other bails out the waves and shoos crabs!"
+  - **Tests in tools/w18/:**
+    - `tidedig-run.js`: a bot run that reports each room, with optional traces and screenshots.
+    - `tidedig-input.js`: keyboard, stubbed controller and touch at 844x390 and 390x844.
+    - `tidedig-break.js`: scripted people in 1-player mode, as Pip and as Bo.
+    - `tidedig-life.js`: pause, R, leaving and coming back, and 1-player as Bo, at 1280x800 and 844x390.
+    ---------------------------------------------------------------
+- **18-4 Plank Duel** (versus, best of 5, mode `plankduel`, `ownStep`; js/levels/world18/plank-duel.js, brain js/cpu/levels/world18/plank-duel.js). Gavyn's pitch: a foam-sword fight on a plank over a splash pool. You attack high or low and block high or low. Each hit pushes the other player back, and whoever goes off the end gets a splash.
+  - **Scene:** side view of a sunny lagoon. One long plank rests on a barrel on a little rock, with posts in the water. Behind it are two friendly pirate ships with star sails (Pip's has the orange flag, Bo's the blue one). A crab, a seagull and a parrot cheer on each rail. Captain Polly the parrot, in a captain's hat, is the referee on a post. She squawks a short word: "En garde!", "Clang! Squawk!", "Thwack!", "Splash! Arr!". The water has fish, bubbles, seaweed and a duck float. Pip and Bo wear tricorn hats with a gold star (Pip's sprout pokes out of the top) and carry foam swords (Pip orange, Bo blue). The platformer bodies are hidden and the mode draws the duellists, like 17-4.
+  - **Controls:**
+    - Stand = HIGH guard. Hold ▼ = LOW guard (a crouch). A bright bracket in front of you shows your guard.
+    - ◀ ▶ take small steps, slower while crouched. Walking always stops at the plank's end, and walking into the other player never pushes them: whoever walks in is stopped. Only swords push.
+    - The action (`swing`) swings at your stance height after a 0.42 s wind-up. The sword goes back, an arc fills in at that height, and a ▲/▼ badge shows over your head.
+    - Changing stance during the wind-up is a FEINT, once per swing: the height changes, but at least 0.26 s of wind-up stays left so it can still be read. Later stance changes don't change that swing.
+    - Jump hops (about 0.5 s). A low swing misses a hopper ("Hop! Missed me!"), but you can't block in the air, so a high swing bonks you further.
+    - Hold the action past the wind-up to charge (glowing sword, no guard, can't move). Let go after 0.45 s to LUNGE: a dash plus a big push (100 px).
+    - Act labels: `swing` everywhere. The round card shows each person's own keys before rounds 1-2 (touch: "round button swings"). The legend and pad line are set in the def.
+  - **Rules:**
+    - **Block:** a swing that meets the same guard is "Clack! Block!". Both slide apart 8 px. The attacker wobbles for 0.3 s (no guard, can't swing; 0.7 s after a lunge). The blocker's next swing within 0.45 s is a quick 0.32 s riposte.
+    - **Bonk:** a swing that meets the wrong guard, or anyone winding up, charging or wobbling, is a "Bonk!". The defender slides back 50 px, 25% further for each bonk already taken this round (up to 4), and their swing is cancelled.
+    - **Clang:** swings that land within 0.07 s of each other at the same height are "Clang!" and both bounce apart. At different heights both land ("Double bonk!").
+    - **Edge:** pushed just past the end, you teeter ("Whoa! Step back!" for 0.8 s). Step toward the middle for "Phew!", or fall.
+  - **Rounds:** round 1 is Calm Cove (half-plank 300 px, 45 s). Then come 4 shuffled twists:
+    - Short Plank (215 px, 40 s).
+    - Rocking Plank: tilts ±6° on the barrel every 7 s, and you slide downhill. The HUD shows "downhill ◀/▶".
+    - Slippery Plank: wet sheen. Bonks push 1.3x and slide further, and steps slide.
+    - Breezy Cove: gusts every 3.5-6.5 s with a 1.2 s flag warning, blowing both players along, less so when crouched.
+    - The round time is set per plank by overriding `G.match.timeLeft` in resetRound; def.match.roundTime is 45.
+  - **Ending a round:**
+    - Off the end is "SPLASH!": a fish jumps and you bob up laughing in the duck float. The round ends 0.8 s later with "Bo took a splash!".
+    - At time up, whoever landed more bonks this round wins ("Time's up! More bonks for Pip!"; the ★ count in the HUD). Next, whoever has more plank behind them wins (by 8 px or more). Otherwise it is a tie and replayed.
+    - A second tie in a row goes to the most bonks this match. Otherwise the framework's sudden death is "Last Clash" (240 px, 30 s, first bonk wins; a double bonk is a tie).
+  - **Soft fails:** foam swords only. "Bonk!", "Swish!" (a whiff), "Whoa!", "Splash!", "Whoopsie!". Nobody is hurt.
+  - **Gold help** (announced on the round card, at GO and with a gold HUD edge):
+    - 1 round behind: Gold boots (bonks push you 25% less, teeter 1.25 s).
+    - 2+ rounds behind: also Polly's call, a gold "Polly: ▲ High!" / "▼ Low!" chip over your head while a swing comes at you.
+    - Off in Last Clash.
+  - **HUD:**
+    - Bottom corners: each player's guard icon and word (High / Low / Open / Hop! / Charging / Whoa! / Splash!), a bar of plank left behind them, and a gold ★ with bonks landed this round.
+    - The twist chip sits under the level pill.
+    - Hint chips for people only (never the computer) in rounds 1-2 or with gold: "Hold S: block low!", "Let go of S: block high!", "F swing! (S + F = low)", "▶ step closer". In any round, "D step back!" shows when teetering.
+  - **Results:** tiles are Bonks landed, Blocks, Hop dodges and Splashes. Lines: clangs · feints · lunges · "Phew!" saves, and "Big lunge bonks: Pip N!". No medal (versus).
+  - **Brain** (`plankduel`, `noIdleStop`, `bubbleHidden`):
+    - What it reads (all visible on screen), via cpuLag at its reaction time: positions, plank left behind each player, the other's stance, wind-up height and state, charge, lunge, wobble, hop and teeter. Reaction time is Easy 0.5 s (slower than a wind-up, so it mostly guesses), Normal 0.33 s, Hard 0.15 s.
+    - It knows at once when a swing has landed (the clack or bonk anyone hears), so it stops guarding against it.
+    - Defending: it guards the seen height, misreads sometimes (Easy 30%, Normal 25%, Hard 6%) and hops some low swings. It never starts a swing into a visible wind-up, and it punishes a charger.
+    - Attacking: just inside reach it swings at the height the other isn't guarding (Easy 30% of the time, Normal 45%, Hard 88%; otherwise a random height). It punishes wobbles and hops (high), and ripostes after a block once its own reaction time has passed.
+    - Normal and Hard feint: start at one height and switch once the other has matched it. They lunge at someone near their end or wobbling.
+    - In the last 10 s of a round where it isn't ahead on bonks, it swings more often.
+    - Between swings it mirrors the other's stance (Easy holds a guess), steps to just inside reach, backs off only when it has more than 150 px of plank behind it, and leaves a teeter after its reaction time. Easy also dawdles.
+    - Bubbles only in 1-player mode ("En garde!", "Arr! That round's mine!", "Nice sword work!", "Whoopsie! Splash!").
+  - **Bot results** (tools/w18/plankduel-sim.js, sim seconds):
+    - Equal skills, over 60-100 seeds:
+      | Match | Pip wins | Bo wins | Rounds (Pip-Bo) | Median match |
+      |---|---|---|---|---|
+      | Normal vs Normal (100 seeds) | 40 | 60 | 197-228 | 159 s |
+      | Hard vs Hard (60 seeds) | 32 | 28 | 130-131 | 187 s |
+      | Easy vs Easy (60 seeds) | 29 | 31 | 114-126 | 169 s |
+      Per-seed results are noisy: the builder's code gave 59-41 the other way at Normal vs Normal over the same 100 seeds. Taking the round counts with that, there is no clear side bias.
+    - Hard beats Easy 20/20 from both sides (about 65 s). Normal beats Easy 20/20 and Hard beats Normal 20/20, from both sides.
+    - About half of all rounds end in a splash.
+    - A kid-like script (0.35 s reaction, 15% misreads, random-height swings, no feints, lunges or hops) beats Easy 20/20 as Pip and 18/20 as Bo. A slower kid (0.5 s, 25% misreads) beats Easy 8/20. The same kid loses to Normal 0/20, even when it targets the open height or swings more often. It mostly gets bonked during its own wind-up, and it doesn't hop or feint.
+  - **Break tests** (tools/w18/plankduel-break.js, as Pip and as Bo vs Easy, Normal and Hard): an idle player, one who walks forward or backward, mashers, hop spam, crouch, holding the action, random keys and a perfect blocker who never swings all lose every match. Every match finishes, with no errors.
+    - Lunge spam and feint spam (mashing ▼ while swinging) beat Easy 4/4; feint spam also takes the odd match off Normal or Hard (1/4 each, by more bonks at time up).
+  - **Tested:**
+    - Real keyboard (both players), a stubbed Xbox controller (stick down = low, X swings, A hops) and touch on a phone at 844x390 (the round button reads "swing", ▲ hops); tools/w18/plankduel-input.js passes.
+    - Screenshots at 1280x800 and 844x390 with touch, in 1-player mode as Pip and as Bo (tools/w18/plankduel-shots.js, plankduel-scenes.js).
+    - Leaving to another level and coming back starts fresh; R restarts; pause stops the clock (tools/w18/plankduel-leak.js). No console errors.
+    - Preview `pw18p` runs at 2.7 ms/frame.
+
 ## How the game is built
 
 ### Conventions for every level
@@ -378,7 +653,7 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 | `js/player.js` | `makePlayer`, tile collision (`solidFor`), movement, tether rope/chain/bungee, stomp, `kill`/`respawn` |
 | `js/levels/block-building.js`, `golf.js`, `robo-pong.js` | World 2-3 mechanics (`BUILD`, `GOLF`, `PONG`) and their drawing |
 | `js/versus.js` | `MODES` registry, `hook`/`drawHook`, the best-of-N framework (`MATCH`, `matchRoundEnd`), `knock` |
-| `js/levels/world4/` to `world17/` | One file per level: its `MODES.<name>` block, its own drawing and `Sfx.extra` sounds, e.g. `world7/bumper-cars.js` |
+| `js/levels/world4/` to `world18/` | One file per level: its `MODES.<name>` block, its own drawing and `Sfx.extra` sounds, e.g. `world7/bumper-cars.js` |
 | `js/input.js` | Keyboard (`keys`, `BIND`), controllers (`Pads`, `readPad`), touch, `pollInput` |
 | `js/ui.js` | Overlay cards (`pause`/`showPauseCard`, `showResult`, `showWorldDone`, `showFinal`, `armOverlay`, `menuBack`), legend (`setLegend`, `setActUI`), toast, mute |
 | `js/render.js` | Shared drawing (`render`, `drawHUD`, `drawIntro`) and particles |
@@ -433,6 +708,12 @@ Gavyn asked for a new title and home screen where every world can be picked and 
 - Then push to `main` here and update the README's world list and this file.
 
 ## Open questions for Gavyn
+- World 18 is called "Pirate Cove" (Claude's pick). Keep it or rename it?
+- 18-1 Runaway Ship takes a good pair about 3:40, the longest in World 18. Trim a hazard group per stretch (about 3:00)? Prompt-following kids get Gold; should Gold also need 4 of 6 big waves met? After 20 s at the cove a gold anchor lets a button-masher with the computer finish (Bronze), like 17-2.
+- 18-1: a missed wave throws a deckhand who isn't holding on (▼) overboard; Dot the dolphin brings them back in 2.4 s. Keep it?
+- 18-2 Grapple & Zip: 4 fleets take 2.5-4 minutes. Gold needs time, 65% of the coins and few misses, so most people with the computer get Silver. Is the capstan beat (0.3-1.15 s apart) too forgiving?
+- 18-3 Tide Pool Dig: a coin a crab gets home is gone for good. Should stolen coins come back, or crabs only take loose coins? Gold (≤ 240 s, ≥ 85% coins) may be easy; tune after playtests.
+- 18-4 Plank Duel: at time-up the round goes to more sword bonks, then plank kept (not "nearer the middle", which walking forward would win). Standing is high guard and holding ▼ is low guard, since ▲ is jump. Check that Normal isn't too hard for kids; feint-spamming ▼ beats Easy.
 - World 17 is called "Jungle Jamboree" (Claude's pick). Keep it or rename it?
 - 17-2 River Rapids Canoe runs about 3.5 minutes for a good pair, the longest in World 17. A random button-masher with the computer can still clear it slowly (Bronze); making that impossible would also punish small kids.
 - 17-4 Vine Swing: you can only let go on the forward swing, and Hard is close to perfect. Check that Easy feels fair for kids. With no swing clock, check the bigger swing (about 7 s of pumping to the top, about 80 m at best) doesn't make rounds drag.
