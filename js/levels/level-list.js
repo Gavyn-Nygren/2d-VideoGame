@@ -4957,6 +4957,126 @@ const LEVELS = [
   //
   //
   // ===== END World 19 =====
+  //
+  /* ===== World 20 (Dragon Peak, team boss): the second boss world (Gavyn's rule: a boss world every 10 worlds), world
+     index 19 (js/levels/world20/). One big boss level, 20-1 Volcano Dragon (mode 'dragon'): Cinder, a chubby, goofy,
+     grumpy dragon, won't let anyone up Dragon Peak. Climb it, dunk him in his lava hot tub, ring his gong, then race
+     him down the other side; he cheers up and becomes their friend. Gavyn picked every phase himself (Nov 2026).
+     The core (MODES.dragon, VD_PHASES registry, Cinder, shield, fire breath, bonks, HUD, ending) is
+     js/levels/world20/volcano-dragon.js; each phase has its own file (vd-climb.js, vd-levers.js, vd-golf.js,
+     vd-surf.js) that registers VD_PHASES.<phase> and fills in its own room fields (map etc.) at load time with
+     vdRoom(phase, fields), so nobody needs to edit this block after the core. The maps below are the core's
+     placeholders (its stub phases play on them).
+     Every room is ownStep: the phase moves the players itself (vdPlatform does the usual platforming on the grid).
+     Room fields the core reads: title, phase, tip, act (labels per player), legend, map, ownStep, theme, look.
+     The core reads one map char: 'Z' (Cinder's feet). ===== */
+  // ----- BEGIN 20-1 Volcano Dragon (mode 'dragon', js/levels/world20/volcano-dragon.js) -----
+  { name: 'Volcano Dragon', world: 19, kind: 'team', mode: 'dragon', ownHUD: true, noFalls: true, roomWord: 'Phase',
+    act: { label: 'shield', labels: ['shield', 'ladder'] },
+    tip: 'Grumpy Cinder the dragon guards Dragon Peak! Climb it, dunk him, ring his gong, then race him down.',
+    switches: {}, signs: [],
+    rooms: [
+      // ----- 20-1 phase 1 (climb): vd-climb.js replaces the map and adds its own fields with vdRoom('climb', {...}) -----
+      { title: 'Slope Climb', phase: 'climb', ownStep: true, first: 0,
+        act: { label: 'shield', labels: ['shield', 'ladder'] },
+        tip: 'Up the volcano! One holds the shield over you both, one climbs ahead and drops the rope ladder.',
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '................................', // 11
+          '................................', // 12
+          '..1.2...........................', // 13
+          '................................', // 14
+          '################################', // 15
+          '################################', // 16
+          '################################', // 17
+        ] },
+      // ----- 20-1 phase 2 (levers): vd-levers.js fills this room in with vdRoom('levers', {...}) -----
+      { title: 'Hopping Pillars', phase: 'levers', ownStep: true, first: 0,
+        act: { label: 'pull', labels: ['shield', 'pull'] },
+        tip: 'Pull the lever under the pillar Cinder sits on to dunk him in his hot tub! Shield the puller.',
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '...............Z................', //  8
+          '................................', //  9
+          '................................', // 10
+          '................................', // 11
+          '................................', // 12
+          '..1.2...........................', // 13
+          '................................', // 14
+          '################################', // 15
+          '################################', // 16
+          '################################', // 17
+        ] },
+      // ----- 20-1 phase 3 (golf): vd-golf.js fills this room in with vdRoom('golf', {...}) -----
+      { title: 'Gong Golf', phase: 'golf', ownStep: true, first: 0,
+        act: { label: 'swing', labels: ['swing', 'swing'] },
+        tip: 'Golf your partner across the crater and ring his gong! Fire rings speed you up. Lava is +1 stroke.',
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '................................', // 11
+          '................................', // 12
+          '................................', // 13
+          '..1.2...................Z.......', // 14
+          '################################', // 15
+          '################################', // 16
+          '################################', // 17
+        ] },
+      // ----- 20-1 phase 4 (surf): vd-surf.js fills this room in with vdRoom('surf', {...}) -----
+      { title: 'Lava Surf Race', phase: 'surf', ownStep: true,
+        act: { label: 'trick', labels: ['trick', 'trick'] },
+        tip: 'Cinder wants a race! Surf a rock slab down the volcano. First to win 2 races is the Surf champ.',
+        map: [
+          '................................', //  0
+          '................................', //  1
+          '................................', //  2
+          '................................', //  3
+          '................................', //  4
+          '................................', //  5
+          '................................', //  6
+          '................................', //  7
+          '................................', //  8
+          '................................', //  9
+          '................................', // 10
+          '................................', // 11
+          '................................', // 12
+          '..1.2...........................', // 13
+          '................................', // 14
+          '################################', // 15
+          '################################', // 16
+          '################################', // 17
+        ] },
+    ],
+  },
+  // ----- END 20-1 Volcano Dragon -----
+  //
+  // ===== END World 20 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -5030,6 +5150,11 @@ const WORLDS = [
   { name: 'Tumbleweed Gulch', blurb: 'Hop the train, pump the handcar, ride the mine cart and face off at high noon!',
     theme: { skyTop: '#f6b26b', skyBot: '#fff0c9', hillFar: '#e59a66', hillNear: '#c7713f', sun: 'rgba(255, 244, 196, 0.95)', sunGlow: 'rgba(255, 196, 120, 0.42)',
       stone: '#a9563a', stoneLight: '#c06a48', stoneEdge: '#7a3a26', grass: '#e8c27a', grassDark: '#b98f45', plank: '#b77a45', plankDark: '#704622', rope: '#e9d29a', ropeDark: '#7a5a2a' } },
+  // World 20: the second boss world (Gavyn: a boss world every 10 worlds): a volcanic sunset (dusky red and orange sky,
+  // dark basalt stone, glowing orange lava accents on top)
+  { name: 'Dragon Peak', blurb: 'Climb the volcano, dunk a grumpy dragon in his hot tub, ring his gong and race him down!',
+    theme: { skyTop: '#5b2346', skyBot: '#ff9450', hillFar: '#8a3b3f', hillNear: '#5e2a33', sun: 'rgba(255, 200, 120, 0.95)', sunGlow: 'rgba(255, 120, 60, 0.42)',
+      stone: '#3d3542', stoneLight: '#4d4453', stoneEdge: '#25202b', grass: '#ff8a3d', grassDark: '#c4501f', plank: '#8a5a3a', plankDark: '#4e3022', rope: '#e8c27a', ropeDark: '#6b4a22' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);

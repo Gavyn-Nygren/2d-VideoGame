@@ -39,6 +39,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 17. **Jungle Jamboree** (a sunny jungle with a temple, rapids and a waterfall): Temple Doors, River Rapids Canoe, Waterfall Climb, Vine Swing
 18. **Pirate Cove** (a sunny tropical cove with friendly pirates): Runaway Ship, Grapple & Zip, Tide Pool Dig, Plank Duel
 19. **Tumbleweed Gulch** (the Wild West: a runaway train, a handcar, a gold mine and a high-noon showdown): Train Heist Hop, Handcar Hustle, Gold Mine Cart, Quick-Draw Showdown
+20. **Dragon Peak** (the second boss world, one big boss level: climb a volcano past a grumpy dragon, then race him down): Volcano Dragon
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
@@ -55,7 +56,7 @@ Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md
 | `js/versus.js` | Level-mode hooks and best-of rounds for versus levels (the game has no enemies; the robot in Robo Pong lives with its level) |
 | `js/levels/level-list.js` | Every level's map, rules and hints, and the list of worlds |
 | `js/levels/block-building.js`, `golf.js`, `robo-pong.js` | World 2 and 3 levels that need their own code |
-| `js/levels/world4/` to `world18/` | One file per level, with its rules, sounds and drawing |
+| `js/levels/world4/` to `world20/` | One file per level, with its rules, sounds and drawing |
 | `js/cpu/` | The computer player for 1-player mode: `cpu-core.js` (settings and the brain framework), `cpu-nav.js` (path finding), and one brain per level in `js/cpu/levels/` |
 | `js/input.js` | Keyboard, controllers and touch buttons |
 | `js/ui.js` | Result cards, pause screen, controls legend, notices |

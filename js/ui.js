@@ -347,7 +347,11 @@ function showWorldDone(w) {
 function showFinal() {
   G.mode = 'final';
   setActUI(false); setLegend(null);
-  const all = resultRows(LEVELS.map((l, i) => i)), fl = all.tot.showFalls, beat = !!G.results[LEVELS.findIndex(l => l.mode === 'collector')];
+  // the bosses beaten this session: the Grand Collector (10-1) and Cinder the dragon (20-1)
+  const beaten = m => { const k = LEVELS.findIndex(l => l.mode === m); return k >= 0 && !!G.results[k]; };
+  const all = resultRows(LEVELS.map((l, i) => i)), fl = all.tot.showFalls, beatGC = beaten('collector'), beatVD = beaten('dragon'), beat = beatGC || beatVD;
+  const bossLine = beatGC && beatVD ? 'You beat the Grand Collector and made friends with Cinder the dragon!'
+    : beatVD ? 'You cheered up Cinder the dragon. Now he\'s your friend!' : 'You beat the Grand Collector!';
   const rows = liveWorlds().flatMap(w => [`<tr class="wrow"><td colspan="${fl ? 4 : 3}">World ${w + 1}: ${esc(WORLDS[w].name)}</td></tr>`].concat(resultRows(worldLevels(w), fl).rows));
   // one line per world up top; every level's row folds away below it (a long table on a phone otherwise)
   const worldRows = liveWorlds().map(w => {
@@ -361,7 +365,7 @@ function showFinal() {
     <div class="card fit-card">
       <p class="eyebrow">${beat ? 'The end' : 'Demo complete'}</p>
       <h2>Nice teamwork, <span class="nm-pip">Pip</span> &amp; <span class="nm-bo">Bo</span>${beat ? '!' : ''}</h2>
-      ${beat ? '<p class="lede">You beat the Grand Collector!</p>' : ''}
+      ${beat ? `<p class="lede">${bossLine}</p>` : ''}
       ${totalsStats(all.tot)}
       <div class="table-wrap"><table class="summary worlds">
         <thead><tr><th>World</th><th style="text-align:right">Result</th></tr></thead>
