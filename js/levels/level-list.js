@@ -4672,7 +4672,29 @@ const LEVELS = [
   //
   //
   // ----- BEGIN 19-4 Quick-Draw Showdown (mode 'quickdraw', js/levels/world19/quick-draw-showdown.js) -----
-  // (def goes here)
+  // 19-4 Quick-Draw Showdown (mode 'quickdraw', versus, best of 7, Gavyn's pick): back to back, three paces, then wait
+  // for the gold DRAW! and fire your cork popgun first. Fakeouts tempt an early press (a foul); later rounds add
+  // cardboard bandit cutouts to aim at (◀ ▶).
+  { name: 'Quick-Draw Showdown', world: 18, kind: 'versus', mode: 'quickdraw', ownStep: true,
+    // the map is only the two spawns: the mode draws the whole street (MODES.quickdraw)
+    match: { bestOf: 7 },
+    act: { label: 'fire' },
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> aim',
+      bo: '<kbd>←</kbd><kbd>→</kbd> aim',
+      pad: 'stick ◀ ▶ aim,',
+    },
+    tip: 'Wait for the gold DRAW! and the bell, then fire first. Too early is a foul! Later: aim ◀ ▶ at the bandit.',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '.......1................2.......', '................................', '................................',
+    ],
+  },
   // ----- END 19-4 Quick-Draw Showdown -----
   //
   //
