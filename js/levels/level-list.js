@@ -5347,6 +5347,34 @@ const LEVELS = [
   //
   //
   // ===== END World 21 =====
+  //
+  // ===== World 22 (Coral Deep, mixed): the underwater world, world index 21 (js/levels/world22/), a bright friendly
+  //   sea of coral reefs, kelp, a sunken ship and sandy seabed, nothing scary, nobody gets hurt. Gavyn's picks (Nov 2026):
+  //   22-1 Submarine Duo (team, scrolls sideways), 22-2 Treasure Diver Rope (team, scrolls down), 22-3 Shipwreck
+  //   Lights (team, scrolls sideways), 22-4 Dolphin Race (versus, best of 5, scrolls sideways).
+  //   Each level's def sits between its own BEGIN/END lines. world: 21 =====
+  //
+  // ----- BEGIN 22-1 Submarine Duo (mode 'subduo', js/levels/world22/submarine-duo.js) -----
+  // ----- END 22-1 Submarine Duo -----
+  //
+  //
+  //
+  // ----- BEGIN 22-2 Treasure Diver Rope (mode 'diverope', js/levels/world22/treasure-diver-rope.js) -----
+  // ----- END 22-2 Treasure Diver Rope -----
+  //
+  //
+  //
+  // ----- BEGIN 22-3 Shipwreck Lights (mode 'shipwreck', js/levels/world22/shipwreck-lights.js) -----
+  // ----- END 22-3 Shipwreck Lights -----
+  //
+  //
+  //
+  // ----- BEGIN 22-4 Dolphin Race (mode 'dolphinrace', js/levels/world22/dolphin-race.js) -----
+  // ----- END 22-4 Dolphin Race -----
+  //
+  //
+  //
+  // ===== END World 22 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -5429,6 +5457,10 @@ const WORLDS = [
   { name: 'Sky Kingdom', blurb: 'Fly a balloon, ride a kite, build cloud bridges and race paper planes!',
     theme: { skyTop: '#5ab4f2', skyBot: '#fff4e0', hillFar: '#cfe6fb', hillNear: '#b2d5f5', sun: 'rgba(255, 248, 205, 0.96)', sunGlow: 'rgba(255, 230, 170, 0.42)',
       stone: '#8c88c4', stoneLight: '#a29fd6', stoneEdge: '#625ea0', grass: '#ffffff', grassDark: '#d6dcf4', plank: '#e0b070', plankDark: '#946232', rope: '#f4e2b0', ropeDark: '#8a6a3a' } },
+  // World 22: under the sea, bright and friendly (sunlit turquoise water fading to deep blue; sandy seabed, pink coral)
+  { name: 'Coral Deep', blurb: 'Steer a submarine, dive for treasure, light up a shipwreck and race the dolphins!',
+    theme: { skyTop: '#3fc6d8', skyBot: '#0f5f9a', hillFar: '#2a8fb0', hillNear: '#1f7a9a', sun: 'rgba(210, 250, 255, 0.85)', sunGlow: 'rgba(150, 235, 255, 0.35)',
+      stone: '#e07a8f', stoneLight: '#f29aac', stoneEdge: '#a8506a', grass: '#f2dca0', grassDark: '#c9ad6a', plank: '#9a6a3e', plankDark: '#5e3c1e', rope: '#efe0b0', ropeDark: '#7a6438' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
