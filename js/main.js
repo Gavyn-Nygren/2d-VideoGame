@@ -307,7 +307,9 @@ function levelClear() {
     if (rec.newBest) store.set('best:' + LEVELS[i].name, rec.time);
   }
   if (G.lmode) rec.stats = modeStats();
+  if (G.lmode) { const t = hook('resultTitle'); if (t) rec.title = String(t); }
   G.results[i] = rec;
+  if (G.lmode && hook('quietClear')) return; // the mode ended in a loss (e.g. an endless level): no party
   if (rec.pong && !rec.pong.won) { Sfx.play('pointRobo'); return; } // Robo won: no party this time
   Sfx.play('clear'); rumble(0, 0.3, 0.6, 250); rumble(1, 0.3, 0.6, 250);
   if (rec.pong) { for (let k = 0; k < 70; k++) confetti(W / 2, 140); return; }

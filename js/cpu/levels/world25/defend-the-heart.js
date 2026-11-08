@@ -84,8 +84,7 @@
   const isNat = c => !!c && c.by < 0 && (c.k === 'dirt' || c.k === 'stone');
   const isPl = c => !!c && c.by >= 0;
   const cellAt = (x, y) => M().cellAt(x, y);
-  const zSize = z => (z.kind === 'behemoth' ? [44, 58] : z.kind === 'brute' ? [30, 38] : z.kind === 'leaper' ? [20, 26] : [22, 30]);
-  const zRect = z => { const b = zSize(z); return { x: z.px - b[0] / 2, y: z.py - b[1], w: b[0], h: b[1] }; };
+  const zRect = z => M().zRect(z);
   const feetRow = p => Math.floor((p.y + p.h - 1) / TT);
   // a short bubble (1-player mode only), each line at most once every `every` seconds
   const say = (S, p, text, secs, every = 20) => {
@@ -104,25 +103,31 @@
     const c = cellAt(x, y), mod = M();
     if (!isPl(c)) return { op: null };
     if (c.hp < c.max - 0.01) return { op: 'fix', x, y, how: 'repair' };
-    const cost = mod.upCost(c.k);
+    const cost = mod.payCost(st, c.k);
     if (cost && mod.canPay(st, cost)) return { op: 'fix', x, y, how: 'upgrade', to: ZF.kinds[c.k].next, cost };
     return { op: 'fix', x, y, how: 'fail' };
   }
   function predict(st, tx, ty, f, down) {
     const mod = M();
-    if (ty === ZF.pads.row && (tx === ZF.pads.guns || tx === ZF.pads.turret || (tx >= ZF.heart.c0 && tx <= ZF.heart.c1))) return { op: 'buy' };
-    if (!down && ty === ZF.ground - 1 && st.trees.some(q => q.col === tx && mod.treeUp(q))) return { op: 'chop', x: tx, y: ty };
+    if (down && ty === ZF.pads.row && (tx === ZF.pads.guns || tx === ZF.pads.turret || (tx >= ZF.heart.c0 && tx <= ZF.heart.c1))) return { op: 'buy' };
     const fx = tx + f;
+    if (!down && ty === ZF.ground - 1) {
+      if (st.trees.some(q => q.col === tx && mod.treeUp(q))) return { op: 'chop', x: tx, y: ty };
+      const fc = cellAt(fx, ty), cracked = isPl(fc) && fc.hp < fc.max - 0.01;
+      if (!cracked && st.trees.some(q => q.col === fx && mod.treeUp(q))) return { op: 'chop', x: fx, y: ty };
+    }
+    if (fx < 0 || fx >= COLS || mod.isLane(fx)) return { op: null };
     if (down) {
       const c = cellAt(fx, ty + 1);
-      if (c) return isNat(c) ? { op: 'dig', x: fx, y: ty + 1 } : isPl(c) ? fixInfo(st, fx, ty + 1) : { op: null };
+      if (c) return isNat(c) ? { op: 'dig', x: fx, y: ty + 1 } : isPl(c) ? { op: 'take', x: fx, y: ty + 1 } : { op: null };
       let y = ty + 1;
       while (y < ty + 3 && y + 1 < ROWS && !cellAt(fx, y + 1)) y++;
       return { op: 'place', x: fx, y };
     }
     if (isNat(cellAt(fx, ty))) return { op: 'dig', x: fx, y: ty };
     for (let y = ty; y >= ty - 2; y--) if (!cellAt(fx, y)) return { op: 'place', x: fx, y };
-    for (let y = ty; y >= ty - 2; y--) { const c = cellAt(fx, y); if (isPl(c) && (c.hp < c.max || M().upCost(c.k))) return fixInfo(st, fx, y); }
+    for (let y = ty; y >= ty - 2; y--) { const c = cellAt(fx, y); if (isPl(c) && c.hp < c.max - 0.01) return fixInfo(st, fx, y); }
+    for (let y = ty; y >= ty - 2; y--) { const c = cellAt(fx, y); if (isPl(c) && M().upCost(c.k)) return fixInfo(st, fx, y); }
     return fixInfo(st, fx, ty);
   }
   // could a block go in this cell (ignoring players: we plan to be elsewhere when it goes in)?
@@ -130,6 +135,8 @@
     if (x < 0 || x >= COLS || y < ZF.ceilRow || y >= ZF.bedRow) return false;
     const mod = M();
     if (mod.isLane(x) || mod.inHeart(x, y) || mod.isPad(x, y) || cellAt(x, y)) return false;
+    if ((x === ZF.pads.guns || x === ZF.pads.turret) && y >= ZF.pads.row - 3 && y < ZF.pads.row) return false;
+    if (y === ZF.ground - 1 && st.trees.some(t => t.col === x && mod.treeUp(t))) return false;
     for (const z of st.zs) {
       if (z.hp <= 0) continue;
       if (z.cx === x && z.cy === y) return false;
@@ -579,6 +586,9 @@
     if (sig !== S.sig || !j.holding) { S.sig = sig; S.sigT = G.time; }
     if (j.holding && G.time - S.sigT > 1.6) { S.rel = 2; S.block[j.key] = G.time + 6; S.job = null; S.planT = 0; return out; }
     if (j.kind === 'buy') {
+      // buying is ▼ + hold on the pad
+      out.down = true;
+      if (!p.input.down) return out;
       const h = st.hold[k];
       if (h && h.done) { S.rel = 1; S.job = null; S.planT = 0; S.block[j.key] = G.time + (j.what === 'heal' ? 0.05 : 1.5); return out; }
       out.act = true; j.holding = true;
@@ -609,7 +619,7 @@
     if (j.op === 'fix' || tg.op === 'fix') {
       if (tg.op !== 'fix' || !isPl(c)) return false;
       if (c.hp < c.max - 0.01) return true;
-      const cost = M().upCost(c.k);
+      const cost = M().payCost(st, c.k);
       if (!cost || !M().canPay(st, cost) || st.phase === 'wave') return false;
       // upgrades: only the planned ones
       return j.key.startsWith('up:') && tg.x === j.cell[0] && tg.y === j.cell[1];

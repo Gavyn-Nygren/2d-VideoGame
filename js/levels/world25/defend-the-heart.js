@@ -25,28 +25,34 @@
      HOLD the action (ZF.holdBuild s) to work; it repeats every ZF.buildRep s while held, and one hold keeps doing the
      same kind of job it started with (place, dig, chop, fix), so holding never undoes itself. What a hold does
      (zfTarget):
-       - standing at a tree trunk: chop it (+1 wood a chop; ZF.treeWood chops fell it, it regrows after ZF.regrow s).
-       - on a pad: buy (Guns pad: YOUR next gun; Turret pad: a turret in your hands, placed like a block; the heart
-         itself: +ZF.repairHp HP).
-       - on the ground: the column in front of you, from your feet up 2 cells. Natural dirt or stone at your feet is
-         dug (+1 dirt at once; stone takes ZF.stoneHits hits, +1 stone); otherwise a block goes in the lowest empty
-         cell, made of your strongest material (stone, then wood, then dirt). When all three are full, the hold fixes
-         (free) or upgrades the lowest one: dirt -> wood (1 wood), wood -> stone (1 stone), stone -> metal (coins).
-       - holding ▼: the column below-front, 3 deep: digs dirt and stone (moats, mines) or fills a hole.
+       - standing at a tree trunk (or facing one right in front): chop it (+1 wood a chop; ZF.treeWood chops fell
+         it, it regrows after ZF.regrow s). You can't build on a standing tree's trunk cell.
+       - holding ▼ on a pad: buy (Guns pad: YOUR next gun; Turret pad: a turret in your hands, placed like a block;
+         by the heart: +ZF.repairHp HP). Without ▼ a pad is ordinary ground.
+       - on the ground: the column just in front of your body, from your feet up 2 cells. Natural dirt or stone at your
+         feet is dug (+1 dirt at once; stone takes ZF.stoneHits hits, +1 stone); otherwise a block goes in the lowest
+         empty cell, made of your strongest material (stone, then wood, then dirt). When all three are full, the hold
+         fixes the lowest cracked block (free), else upgrades the lowest one: dirt -> wood (1 wood, or ZF.upCoins coins
+         when out of wood), wood -> stone (1 stone, or coins), stone -> metal (coins). An upgrade paid in coins ends
+         the hold, so one long hold can't spend everything.
+       - holding ▼: the column below-front, 3 deep: digs dirt and stone (moats, mines), takes back one of your own
+         blocks right below-front (refund: metal gives stone, a turret goes back in your hands), or fills a hole from
+         the bottom up.
        - in the air: the cell under your feet (jump and hold to build a tower under you).
      Dirt, wood, stone and coins are shared by the team. Nothing can be built in the zombie lanes (cols 0-1, 30-31),
-     on the pads, the heart, or a cell a player or zombie is in, or above row ZF.ceilRow.
+     on the pads or the 3 cells above them, the heart, a cell a player or zombie is in, or above row ZF.ceilRow.
    - ZOMBIES walk in from both edges (diggers also come up through the ground at the edges). They step between cells:
      walk, fall, jump up a wall at most `jump` cells tall (2; leapers 4: build TALL), climb in tunnels they dug, and
      dig left, right, up and down. They follow a cost field from the heart (buildField): every move costs time, digging
      a block costs digW + its hp, so they go the way with the fewest and weakest blocks (diggers like digging, digW
-     0.6). A zombie in a cell next to the heart attacks it. Kinds: walker, digger, leaper, brute and the Behemoth
+     0.6). Digging down costs extra (downPen) and natural ground just under a built block counts as that block, so
+     a wall can't be skipped by tunnelling under it for free. Turrets can't see through natural ground. A zombie in a cell next to the heart attacks it. Kinds: walker, digger, leaper, brute and the Behemoth
      (every 10th wave).
    - PLAYERS HAVE HEALTH (ZF.playerHp). A zombie that touches you hits you (its `hit`) and knocks you back; you can't
      be hit again for ZF.invuln s and you heal ZF.regen HP/s after ZF.regenAfter s without a hit. At 0 you are down
      and come back on your pad after ZF.respawn s.
    - FLOW: build time (ZF.grace = 5:00 before wave 1, ZF.breakT between waves). Both players standing by the heart
-     holding ▼ for ZF.readyHold s start the next wave early. The waves never end (zfWaveSpec: more zombies, more
+     holding ▼ (standing still, not holding the action) for ZF.readyHold s start the next wave early. The waves never end (zfWaveSpec: more zombies, more
      kinds, more HP, faster digging, every wave), so sooner or later the heart falls. A wave ends when its last zombie
      is down; then a FORT BONUS pays coins for how wide and how tall the fort is.
    - GAME OVER: the heart at 0. A banner, then the results card: waves survived (best kept in the browser as
@@ -58,7 +64,7 @@ const ZF = {
   ground: 12, stoneRow: 14, ceilRow: 3, bedRow: 17, heart: { c0: 15, c1: 16, r0: 10, r1: 11 }, pads: { guns: 13, turret: 18, row: 11 },
   lanes: [0, 1, 30, 31],
   trees: [4, 7, 10, 21, 24, 27], treeWood: 5, regrow: 60, chopRep: 0.32,
-  grace: 300, breakT: 30, readyHold: 1.0,
+  grace: 300, breakT: 30, readyHold: 1.6,
   holdBuild: 0.26, buildRep: 0.2, holdBuy: 0.45, stoneHits: 3,
   start: { dirt: 10, wood: 10, stone: 0, coins: 10 },
   kinds: {
@@ -75,7 +81,8 @@ const ZF = {
     brute:  { hp: 12, speed: 0.8,  dig: 2.4, jump: 2, dps: 8,  hit: 25, coins: 8,  field: 'w', name: 'brute' },
     behemoth: { hp: 70, speed: 0.6, dig: 4.0, jump: 2, dps: 14, hit: 35, coins: 40, field: 'w', name: 'the Behemoth' },
   },
-  fields: { w: { jump: 2, digW: 3 }, h: { jump: 4, digW: 3 }, d: { jump: 2, digW: 0.6 } },
+  // downPen: extra planning cost to dig DOWN, so most zombies go over or through a wall, not under it
+  fields: { w: { jump: 2, digW: 3, downPen: 10 }, h: { jump: 4, digW: 3, downPen: 10 }, d: { jump: 2, digW: 0.6, downPen: 1 } },
   guns: [
     { name: 'Pistol', cd: 0.4, dmg: 1, kind: 'bullet', v: 720, life: 0.9 },
     { name: 'SMG', cd: 0.14, dmg: 1, kind: 'bullet', v: 780, life: 0.8, jitter: 0.06 },
@@ -84,7 +91,7 @@ const ZF = {
     { name: 'Rocket launcher', cd: 0.85, dmg: 5, kind: 'rocket', v: 500, life: 1.4, splash: 64 },
   ],
   gunCost: [0, 12, 25, 45, 70], turretCost: 15, turretMax: 6, turretRange: 300, turretCD: 1.0,
-  repairCost: 8, repairHp: 20,
+  repairCost: 8, repairHp: 20, upCoins: { wood: 2, stone: 3 }, // an upgrade paid in coins when the team has no wood or stone
   medal: { gold: 12, silver: 8 },
   idleAfter: 15, newsLife: 3.6, overT: 4.0,
 };
@@ -131,6 +138,8 @@ function zfWaveSpec(n) {
   function cellAt(x, y) { const st = G.mst; if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return null; return st.cell[idx(x, y)]; }
   // solid for zombies (off the sides and below the map count as solid, the sky above is open)
   function zSolid(x, y) { if (y < 0) return false; if (x < 0 || x >= COLS || y >= ROWS) return true; return !!G.mst.cell[idx(x, y)]; }
+  // a dug tunnel cell lets a zombie stand and climb, but only while some side of it is still solid
+  const tunOK = (x, y) => !!G.mst.tun[idx(x, y)] && (zSolid(x - 1, y) || zSolid(x + 1, y) || zSolid(x, y + 1));
   function setCell(x, y, c) {
     const st = G.mst, i = idx(x, y);
     st.cell[i] = c;
@@ -142,6 +151,10 @@ function zfWaveSpec(n) {
   const playerBlock = c => !!c && c.by >= 0;
   const natural = c => !!c && c.by < 0 && (c.k === 'dirt' || c.k === 'stone');
   const upCost = k => { const nx = ZF.kinds[k] && ZF.kinds[k].next; if (!nx) return null; return nx === 'metal' ? { coins: ZF.kinds.metal.coins } : { [nx]: 1 }; };
+  // the coin price of an upgrade when the team is out of the material (wood, stone)
+  const coinAlt = k => { const nx = ZF.kinds[k] && ZF.kinds[k].next; return nx && ZF.upCoins[nx] ? { coins: ZF.upCoins[nx] } : null; };
+  // what an upgrade will actually cost now: the material if you have it, else coins
+  const payCost = (st, k) => { const c = upCost(k); if (!c) return null; const a = coinAlt(k); return !canPay(st, c) && a && canPay(st, a) ? a : c; };
   const costWords = c => Object.entries(c).map(([k, n]) => n + ' ' + k).join(', ');
   const canPay = (st, c) => Object.entries(c).every(([k, n]) => (k === 'coins' ? st.coins : st.res[k]) >= n);
   const pay = (st, c) => { for (const [k, n] of Object.entries(c)) { if (k === 'coins') st.coins -= n; else st.res[k] -= n; } };
@@ -149,32 +162,43 @@ function zfWaveSpec(n) {
   /* ---------- the zombies' way to the heart: a cost field per kind of zombie ---------- */
   // forward moves from an open cell (x, y) for a zombie that jumps up to J cells; each is [to, cost]
   // (asDug: plan from a solid cell as if it were already dug open, which makes it a tunnel)
-  function movesFrom(x, y, J, digW, out, asDug) {
+  // what a zombie pays to dig a cell: natural ground just under a player's block (its foundation) is as hard as
+  // that block, so digging under a wall costs as much as digging through it
+  function digHp(cx, cy) {
+    const st = G.mst, c = st.cell[idx(cx, cy)];
+    if (c.k === 'bed') return Infinity;
+    let hp = c.hp;
+    if (c.by < 0) for (let k = 1; k <= 2 && cy - k >= 0; k++) { const a = st.cell[idx(cx, cy - k)]; if (!a) break; if (a.by >= 0) { hp = Math.max(hp, a.hp); break; } }
+    return hp;
+  }
+  function movesFrom(x, y, J, digW, out, asDug, downPen) {
     out.length = 0;
-    const st = G.mst, dc = (cx, cy) => { const c = st.cell[idx(cx, cy)]; return c.k === 'bed' ? Infinity : 1 + digW + c.hp; };
-    const tunHere = asDug || st.tun[idx(x, y)];
-    const sup = y + 1 >= ROWS || zSolid(x, y + 1) || tunHere;
+    const st = G.mst, dc = (cx, cy) => { const h = digHp(cx, cy); return h === Infinity ? Infinity : 1 + digW + h; };
+    const tunHere = asDug || tunOK(x, y);
+    const sup = y + 1 >= ROWS || zSolid(x, y + 1) || inHeart(x, y + 1) || tunHere;
     if (!sup) { out.push([idx(x, y + 1), 0.3]); return out; }
     for (const d of [-1, 1]) {
       const nx = x + d;
       if (nx < 0 || nx >= COLS) continue;
+      if (inHeart(nx, y)) continue;
       if (!zSolid(nx, y)) out.push([idx(nx, y), 1]);
       else {
         const c = dc(nx, y);
         if (c < Infinity) out.push([idx(nx, y), c]);
         for (let k = 1; k <= J; k++) {
           if (y - k < 0 || zSolid(x, y - k)) break;
+          if (inHeart(nx, y - k)) break;
           if (!zSolid(nx, y - k)) { out.push([idx(nx, y - k), 1 + 0.5 * k]); break; }
         }
       }
     }
     if (y + 1 < ROWS) {
-      if (zSolid(x, y + 1)) { const c = dc(x, y + 1); if (c < Infinity) out.push([idx(x, y + 1), c]); }
+      if (zSolid(x, y + 1)) { const c = dc(x, y + 1); if (c < Infinity) out.push([idx(x, y + 1), c + (downPen || 0)]); }
       else if (tunHere) out.push([idx(x, y + 1), 1]);
     }
     if (y - 1 >= 0) {
       if (zSolid(x, y - 1)) { const c = dc(x, y - 1); if (c < Infinity) out.push([idx(x, y - 1), c]); }
-      else if (st.tun[idx(x, y - 1)]) out.push([idx(x, y - 1), 1]);
+      else if (tunOK(x, y - 1)) out.push([idx(x, y - 1), 1]);
     }
     return out;
   }
@@ -182,19 +206,19 @@ function zfWaveSpec(n) {
     const g = [];
     for (let y = H0.r0 - 1; y <= H0.r1 + 1; y++) for (let x = H0.c0 - 1; x <= H0.c1 + 1; x++) {
       const corner = (x < H0.c0 || x > H0.c1) && (y < H0.r0 || y > H0.r1);
-      if (!corner) g.push(idx(x, y));
+      if (!corner && !inHeart(x, y)) g.push(idx(x, y));
     }
     return g;
   })();
   const isGoal = new Uint8Array(COLS * ROWS); for (const i of goalCells) isGoal[i] = 1;
   function buildField(key) {
-    const { jump, digW } = ZF.fields[key], N = COLS * ROWS, st = G.mst;
+    const { jump, digW, downPen } = ZF.fields[key], N = COLS * ROWS, st = G.mst;
     const rev = Array.from({ length: N }, () => []), tmp = [];
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       // a zombie only stands in open cells; a solid one plans as if dug open (the dig is the cost of stepping in)
       const sol = zSolid(x, y);
-      if (sol && st.cell[idx(x, y)].k === 'bed') continue;
-      movesFrom(x, y, jump, digW, tmp, sol);
+      if ((sol && st.cell[idx(x, y)].k === 'bed') || inHeart(x, y)) continue;
+      movesFrom(x, y, jump, digW, tmp, sol, downPen);
       for (const [to, c] of tmp) rev[to].push(idx(x, y), c);
     }
     const dist = new Float64Array(N).fill(Infinity), heap = [];
@@ -233,13 +257,14 @@ function zfWaveSpec(n) {
       speed: z.speed * sp.spdK, dig: z.dig * sp.digK, dps: z.dps * sp.dpsK, face: side < 0 ? 1 : -1, act: null, flash: 0,
       t: Math.random() * 6, groanT: 2 + Math.random() * 6, lurch: 0.8 + Math.random() * 0.4, stagger: 0 });
   }
+  const supported = (x, y) => y + 1 >= ROWS || zSolid(x, y + 1) || inHeart(x, y + 1) || tunOK(x, y);
   const zSize = z => (z.kind === 'behemoth' ? [44, 58] : z.kind === 'brute' ? [30, 38] : z.kind === 'leaper' ? [20, 26] : [22, 30]);
   const zRect = z => { const b = zSize(z); return { x: z.px - b[0] / 2, y: z.py - b[1], w: b[0], h: b[1] }; };
   function zChoose(st, z) {
     const zt = ZF.zombies[z.kind], here = idx(z.cx, z.cy);
-    if (isGoal[here] && !zSolid(z.cx, z.cy)) { z.act = { type: 'chew', t: 0 }; return; }
+    if (isGoal[here] && !zSolid(z.cx, z.cy) && supported(z.cx, z.cy)) { z.act = { type: 'chew', t: 0 }; return; }
     const fd = st.fields[zt.field], tmp = st.tmpMoves || (st.tmpMoves = []);
-    movesFrom(z.cx, z.cy, zt.jump, ZF.fields[zt.field].digW, tmp);
+    movesFrom(z.cx, z.cy, zt.jump, ZF.fields[zt.field].digW, tmp, false, ZF.fields[zt.field].downPen);
     let best = null, bv = Infinity;
     for (const [to, c] of tmp) {
       const v = c + fd[to] + ((to * 31 + z.id * 17) % 7) * 0.002;
@@ -249,7 +274,7 @@ function zfWaveSpec(n) {
     const tx = best % COLS, ty = (best / COLS) | 0;
     if (tx !== z.cx) z.face = tx > z.cx ? 1 : -1;
     if (zSolid(tx, ty)) { z.act = { type: 'dig', tx, ty, t: 0 }; return; }
-    const kind = ty < z.cy && tx !== z.cx ? 'jump' : ty > z.cy && !st.tun[idx(z.cx, z.cy)] ? 'fall' : ty !== z.cy ? 'climb' : 'walk';
+    const kind = ty < z.cy && tx !== z.cx ? 'jump' : ty > z.cy && !tunOK(z.cx, z.cy) ? 'fall' : ty !== z.cy ? 'climb' : 'walk';
     const dur = kind === 'fall' ? 0.13 : kind === 'jump' ? (0.45 + 0.12 * (z.cy - ty)) / Math.max(0.6, z.speed) : kind === 'climb' ? 0.7 / z.speed : 1 / z.speed;
     z.act = { type: 'move', kind, tx, ty, t: 0, dur, x0: z.cx, y0: z.cy };
   }
@@ -257,7 +282,9 @@ function zfWaveSpec(n) {
     z.t += dt; z.flash = Math.max(0, z.flash - dt);
     if (z.stagger > 0) { z.stagger -= dt; return; }
     if (!z.act) zChoose(st, z);
-    const a = z.act;
+    let a = z.act;
+    // the ground went from under it (dug out by a player): drop
+    if (a.type !== 'move' && !supported(z.cx, z.cy)) { zChoose(st, z); a = z.act; }
     a.t += dt;
     if (a.type === 'wait') { if (a.t >= a.dur) z.act = null; }
     else if (a.type === 'chew') {
@@ -297,7 +324,8 @@ function zfWaveSpec(n) {
   }
   function heartHit(st, dmg) {
     if (st.phase !== 'wave') return;
-    st.heart = Math.max(0, st.heart - dmg); st.heartFlash = 0.25;
+    st.heart = Math.max(0, st.heart - dmg);
+    if (st.heartFlash <= 0) st.heartFlash = 0.3; // a blink now and then while it's being hit, not solid white
     if ((st.heartSfx -= DT) <= 0) { st.heartSfx = 0.5; Sfx.play('zombiefortHeart'); }
     if (!st.heartWarned && st.heart < 40) { st.heartWarned = true; news(st, 'The heart is in danger! Stop the zombies attacking it!'); }
     if (st.heart <= 0) gameOver(st);
@@ -332,36 +360,48 @@ function zfWaveSpec(n) {
   }
 
   /* ---------- players: shoot, build, buy ---------- */
-  // what a hold of the action would do right now: { op: 'place'|'dig'|'fix'|'buy'|'chop'|null, x, y, ... }
-  function zfTarget(p) {
+  // what a hold of the action would do right now: { op: 'place'|'dig'|'take'|'fix'|'buy'|'chop'|null, x, y, ... }
+  // (op null may carry `why`, said when the hold comes due)
+  const cracked = c => playerBlock(c) && c.hp < c.max - 0.01;
+  // (lock: the kind of job a running hold started with; a dig hold keeps digging down to 3 deep)
+  function zfTarget(p, lock) {
     if (!p.alive) return { op: null };
     const st = G.mst;
     const cxp = p.x + p.w / 2, col = Math.floor(cxp / T), feet = Math.floor((p.y + p.h - 1) / T), f = p.face;
-    if (p.grounded && feet === ZF.pads.row) {
+    // ▼ + hold on a pad or by the heart: buy
+    if (p.grounded && p.input.down && feet === ZF.pads.row) {
       if (col === ZF.pads.guns) return { op: 'buy', what: 'gun', x: col, y: feet };
       if (col === ZF.pads.turret) return { op: 'buy', what: 'turret', x: col, y: feet };
       if (col >= H0.c0 && col <= H0.c1) return { op: 'buy', what: 'heart', x: col, y: feet };
     }
+    // the cell column just in front of your body (not the one you overlap)
+    const fx = f > 0 ? Math.ceil((p.x + p.w - 1) / T) : Math.floor((p.x + 1) / T) - 1;
     if (p.grounded && !p.input.down && feet === ZF.ground - 1) {
-      const t = st.trees.find(q => treeUp(q) && Math.abs(cxp - (q.col * T + T / 2)) < 16);
+      // a tree you stand at, or one right in front of you (unless the block in front needs fixing)
+      let t = st.trees.find(q => treeUp(q) && Math.abs(cxp - (q.col * T + T / 2)) < 16);
+      if (!t && !cracked(cellAt(fx, feet))) t = st.trees.find(q => treeUp(q) && q.col === fx);
       if (t) return { op: 'chop', tree: t, x: t.col, y: feet };
     }
-    const fx = col + f;
+    if (!p.grounded) return { op: 'place', x: col, y: feet + 1, under: true };
+    if (fx < 0 || fx >= COLS || isLane(fx)) return { op: null, why: 'Zombie lane!' };
     if (p.input.down) {
-      if (!p.grounded) return { op: null };
-      if (cellAt(fx, feet + 1)) {
-        for (let y = feet + 1; y <= feet + 3; y++) { const c = cellAt(fx, y); if (!c) continue; return natural(c) ? { op: 'dig', x: fx, y } : playerBlock(c) ? { op: 'fix', x: fx, y } : { op: null }; }
-        return { op: null };
+      // the column below-front, 3 deep: dig natural ground out (a dig hold goes on down), take back one of your
+      // blocks, or fill a hole from the bottom up
+      if (lock === 'dig') {
+        for (let y = feet + 1; y <= feet + 3 && y < ROWS; y++) { const c = cellAt(fx, y); if (!c) continue; if (natural(c)) return { op: 'dig', x: fx, y }; break; }
       }
+      const c1 = cellAt(fx, feet + 1);
+      if (c1) return natural(c1) ? { op: 'dig', x: fx, y: feet + 1 } : c1.k === 'bed' ? { op: null, why: 'Bedrock!' } : { op: 'take', x: fx, y: feet + 1 };
       let y = feet + 1;
       while (y < feet + 3 && y + 1 < ROWS && !cellAt(fx, y + 1)) y++;
       return { op: 'place', x: fx, y };
     }
-    if (!p.grounded) return { op: 'place', x: col, y: feet + 1, under: true };
     const c0 = cellAt(fx, feet);
     if (natural(c0)) return { op: 'dig', x: fx, y: feet };
     for (let y = feet; y >= feet - 2; y--) if (!cellAt(fx, y)) return { op: 'place', x: fx, y };
-    for (let y = feet; y >= feet - 2; y--) { const c = cellAt(fx, y); if (playerBlock(c) && (c.hp < c.max || upCost(c.k))) return { op: 'fix', x: fx, y }; }
+    // the wall in front is full: fix the lowest cracked block first, then upgrade the lowest one that can be
+    for (let y = feet; y >= feet - 2; y--) if (cracked(cellAt(fx, y))) return { op: 'fix', x: fx, y };
+    for (let y = feet; y >= feet - 2; y--) { const c = cellAt(fx, y); if (playerBlock(c) && upCost(c.k)) return { op: 'fix', x: fx, y }; }
     return { op: 'fix', x: fx, y: feet };
   }
   // the material a new block is made of: the strongest the team has (a turret in your hands goes first)
@@ -371,13 +411,17 @@ function zfWaveSpec(n) {
     if (x < 0 || x >= COLS || y < ZF.ceilRow || y >= ZF.bedRow) return 'Too high!';
     if (isLane(x)) return 'Zombie lane!';
     if (inHeart(x, y) || isPad(x, y)) return 'Not there!';
+    if ((x === ZF.pads.guns || x === ZF.pads.turret) && y >= ZF.pads.row - 3 && y < ZF.pads.row) return 'Keep the pad clear!';
     if (cellAt(x, y)) return 'Full!';
+    if (y === ZF.ground - 1 && G.mst.trees.some(t => t.col === x && treeUp(t))) return 'Chop the tree first!';
     const rx = x * T, ry = y * T;
     for (const q of G.players) if (q.alive && rectHit(q, rx + 1, ry + 1, T - 2, T - 2)) return 'In the way!';
     for (const z of G.mst.zs) {
       if (z.hp <= 0) continue;
       if (z.cx === x && z.cy === y) return 'Zombie!';
       if (z.act && z.act.type === 'move' && z.act.tx === x && z.act.ty === y) return 'Zombie!';
+      const r = zRect(z);
+      if (rx + 2 < r.x + r.w && rx + T - 2 > r.x && ry + 2 < r.y + r.h && ry + T - 2 > r.y) return 'Zombie!';
     }
     return null;
   }
@@ -403,6 +447,18 @@ function zfWaveSpec(n) {
       Sfx.play(c.k === 'stone' ? 'zombiefortMine' : 'zombiefortDig', p.id);
       return true;
     }
+    if (op === 'take') {
+      const c = cellAt(tg.x, tg.y);
+      if (!playerBlock(c)) return false;
+      if (c.k === 'turret') {
+        if (st.carry[p.id]) { say(st, p, 'Your hands are full!'); return false; }
+        st.carry[p.id] = true;
+      } else st.res[c.k === 'metal' ? 'stone' : c.k]++;
+      setCell(tg.x, tg.y, null);
+      burst(tg.x * T + T / 2, tg.y * T + T / 2, zfCol(c.k).main, 6);
+      Sfx.play('zombiefortDig', p.id);
+      return 'stop'; // one block back per hold
+    }
     if (op === 'place') {
       const why = canPlace(tg.x, tg.y);
       if (why) { if (why !== 'In the way!' || !tg.under) say(st, p, why); return false; }
@@ -420,14 +476,14 @@ function zfWaveSpec(n) {
       const c = cellAt(tg.x, tg.y);
       if (!playerBlock(c)) return false;
       if (c.hp < c.max - 0.01) { c.hp = c.max; st.ver++; Sfx.play('zombiefortPlace', p.id); s.fixed[p.id]++; sparkle(tg.x, tg.y); return true; }
-      const cost = upCost(c.k);
+      const cost = payCost(st, c.k);
       if (!cost) { say(st, p, c.k === 'turret' ? 'Turret is fine!' : 'Metal is the strongest!'); return false; }
-      if (!canPay(st, cost)) { say(st, p, 'Upgrade needs ' + costWords(cost)); return false; }
+      if (!canPay(st, cost)) { say(st, p, 'Upgrade needs ' + costWords(upCost(c.k)) + (coinAlt(c.k) ? ' or ' + costWords(coinAlt(c.k)) : '')); return false; }
       pay(st, cost);
       const nx = ZF.kinds[c.k].next;
       c.k = nx; c.hp = c.max = ZF.kinds[nx].hp; c.mine = 0; st.ver++;
       s.upgraded[p.id]++; sparkle(tg.x, tg.y); Sfx.play('zombiefortBuy', p.id);
-      return true;
+      return cost.coins ? 'stop' : true; // an upgrade that cost coins ends the hold, so one hold can't spend them all
     }
     if (op === 'buy') {
       if (tg.what === 'gun') {
@@ -513,7 +569,8 @@ function zfWaveSpec(n) {
       if (st.tcd[i] > 0) continue;
       const x = (i % COLS) * T + T / 2, y = ((i / COLS) | 0) * T + 8;
       let best = null, bd = ZF.turretRange;
-      for (const z of st.zs) { if (z.hp <= 0) continue; const dd = Math.hypot(z.px - x, z.py - 14 - y); if (dd < bd) { bd = dd; best = z; } }
+      const tx0 = i % COLS, ty0 = (i / COLS) | 0;
+      for (const z of st.zs) { if (z.hp <= 0) continue; const dd = Math.hypot(z.px - x, z.py - 14 - y); if (dd < bd && clearShot(st, x, y, z.px, z.py - 14, tx0, ty0)) { bd = dd; best = z; } }
       if (!best) continue;
       st.tcd[i] = ZF.turretCD;
       const a = Math.atan2(best.py - 14 - y, best.px - x);
@@ -521,6 +578,18 @@ function zfWaveSpec(n) {
       st.shots.push({ x, y, vx: Math.cos(a) * 700, vy: Math.sin(a) * 700, dmg: 1, kind: 'tbullet', life: 0.7, by: -1, hit: [], ghost: true, homing: best.id });
       Sfx.play('zombiefortTurret');
     }
+  }
+  // can a turret at cell (tx0, ty0) see this point? Natural ground and bedrock block it (no shooting zombies that
+  // tunnel underground); the team's own blocks don't (it shoots over its wall)
+  function clearShot(st, x0, y0, x1, y1, tx0, ty0) {
+    const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (T / 3));
+    for (let k = 1; k < n; k++) {
+      const cx = Math.floor((x0 + (x1 - x0) * k / n) / T), cy = Math.floor((y0 + (y1 - y0) * k / n) / T);
+      if (Math.abs(cx - tx0) <= 1 && Math.abs(cy - ty0) <= 1) continue;
+      const c = cx >= 0 && cx < COLS && cy >= 0 && cy < ROWS ? st.cell[idx(cx, cy)] : null;
+      if (c && c.by < 0) return false;
+    }
+    return true;
   }
   // a zombie touched a player: damage and knock-back
   function hitPlayer(st, p, z) {
@@ -615,7 +684,7 @@ function zfWaveSpec(n) {
       st.gun = [0, 0]; st.carry = [false, false]; st.tcd = {};
       st.php = [ZF.playerHp, ZF.playerHp]; st.inv = [0, 0]; st.calm = [9, 9]; st.hurtFlash = [0, 0]; st.downAt = [null, null];
       st.zs = []; st.zid = 1; st.queue = []; st.shots = []; st.pops = []; st.corpses = [];
-      st.hold = [null, null]; st.cd = [0, 0]; st.say = [null, null]; st.news = null;
+      st.hold = [null, null]; st.latch = [false, false]; st.cd = [0, 0]; st.say = [null, null]; st.news = null;
       st.idle = false; st.overT = 0; st.ended = false; st.hintT = 0; st.usedHold = [false, false]; st.usedTap = [false, false];
       st.best = null; st.newBest = false;
       st.stats = { downed: [0, 0], built: [0, 0], dug: [0, 0], wood: [0, 0], fixed: [0, 0], upgraded: [0, 0], bought: [0, 0], shots: [0, 0],
@@ -656,19 +725,20 @@ function zfWaveSpec(n) {
         st.calm[k] += dt;
         if (st.calm[k] > ZF.regenAfter) st.php[k] = Math.min(ZF.playerHp, st.php[k] + ZF.regen * dt);
         if (p.pendingAct && st.cd[k] <= 0) { p.pendingAct = false; fire(st, p); st.usedTap[k] = true; }
-        if (p.input.act) {
+        if (st.latch[k] && !p.input.act) st.latch[k] = false; // (a hold carried through a respawn does nothing)
+        if (p.input.act && !st.latch[k]) {
           const h = st.hold[k] || (st.hold[k] = { t: 0, next: 0, op: null, done: false });
           h.t += dt;
-          const tg = zfTarget(p);
+          const tg = zfTarget(p, h.op);
           const need = tg.op === 'buy' ? ZF.holdBuy : ZF.holdBuild;
           if (h.t >= need && !h.done && h.t >= h.next) {
             if (!h.op) h.op = tg.op;
             if (h.op) {
               st.usedHold[k] = true;
               const ok = doHold(st, p, tg, h.op);
-              if (h.op === 'buy') h.done = true;
+              if (h.op === 'buy' || ok === 'stop') h.done = true;
               h.next = h.t + (ok ? (h.op === 'chop' ? ZF.chopRep : ZF.buildRep) : 0.12);
-            }
+            } else if (tg.why) { say(st, p, tg.why); h.next = h.t + 0.5; }
           }
         } else st.hold[k] = null;
       }
@@ -684,7 +754,9 @@ function zfWaveSpec(n) {
       // build time / waves
       if (st.phase === 'build') {
         st.buildT -= dt;
-        const atHeart = p => p.alive && p.grounded && p.input.down && Math.abs(p.x + p.w / 2 - HX) < 2.2 * T && Math.floor((p.y + p.h - 1) / T) === ZF.pads.row;
+        // ready early: both stand still by the heart holding ▼ (not the action: that's digging or healing)
+        const atHeart = p => p.alive && p.grounded && p.input.down && !p.input.act && !p.input.left && !p.input.right &&
+          Math.abs(p.x + p.w / 2 - HX) < 2.2 * T && Math.floor((p.y + p.h - 1) / T) === ZF.pads.row;
         if (ps.every(atHeart)) { st.readyT += dt; if (st.readyT >= ZF.readyHold) st.buildT = 0; } else st.readyT = 0;
         if (st.buildT <= 0) startWave(st);
       } else if (st.phase === 'wave') {
@@ -699,7 +771,7 @@ function zfWaveSpec(n) {
       st.zs = st.zs.filter(z => z.hp > 0);
       if (st.phase === 'wave' && !st.queue.length && !st.zs.length) waveCleared(st);
     },
-    onRespawn(p) { const st = G.mst; st.inv[p.id] = 1.5; st.php[p.id] = ZF.playerHp; st.calm[p.id] = 9; },
+    onRespawn(p) { const st = G.mst; st.latch[p.id] = true; st.inv[p.id] = 1.5; st.php[p.id] = ZF.playerHp; st.calm[p.id] = 9; },
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
@@ -714,11 +786,14 @@ function zfWaveSpec(n) {
         words + rec + ' · Time ' + fmtTime(s.playT) + ' · Biggest fort: ' + s.bestFort.wide + ' wide, ' + s.bestFort.tall + ' tall' + (s.turret ? ' · Turrets stopped ' + s.turret : '') + ' · Times down: ' + (s.downs[0] + s.downs[1]),
       ];
     },
+    // the game ends with the heart falling: no clear party, and the results card says how long you held
+    quietClear() { return true; },
+    resultTitle() { const n = G.mst.stats ? G.mst.stats.waves : 0; return 'You held ' + n + ' wave' + (n === 1 ? '' : 's') + '!'; },
     draw() { zfDraw(); },
     drawTop() { zfDrawTop(); },
     hud() { zfHUD(); },
     // for the computer brain and tests
-    target: zfTarget, cellAt, solid: zSolid, canPlace, isPad, inHeart, isLane, fortSize, material, treeUp, upCost, canPay, HX, HY,
+    target: zfTarget, cellAt, solid: zSolid, canPlace, isPad, inHeart, isLane, fortSize, material, treeUp, upCost, payCost, canPay, zRect, HX, HY,
     test: { startWave, waveCleared, gameOver, spawnZombie, buildField },
   };
   function zfMedal(st) { const w = st.stats.waves; return w >= ZF.medal.gold ? 'Gold' : w >= ZF.medal.silver ? 'Silver' : 'Bronze'; }
@@ -809,7 +884,7 @@ function zfWaveSpec(n) {
     ctx.beginPath(); ctx.moveTo(0, 20);
     ctx.lineTo(-22, -2); ctx.lineTo(-18, -16); ctx.lineTo(-8, -20); ctx.lineTo(0, -12); ctx.lineTo(8, -20); ctx.lineTo(18, -16); ctx.lineTo(22, -2); ctx.closePath();
     const g = ctx.createLinearGradient(-20, -20, 20, 20); g.addColorStop(0, '#ff7a9c'); g.addColorStop(1, '#b0123f');
-    ctx.fillStyle = st.heartFlash > 0 ? '#ffffff' : g; ctx.fill();
+    ctx.fillStyle = st.heartFlash > 0.2 ? '#ffffff' : g; ctx.fill();
     ctx.lineWidth = 2; ctx.strokeStyle = '#6e0a26'; ctx.stroke();
     ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-18, -14); ctx.lineTo(0, 20); ctx.moveTo(18, -14); ctx.lineTo(0, 20); ctx.moveTo(0, -12); ctx.lineTo(0, 20); ctx.stroke();
     if (u < 0.66) { ctx.strokeStyle = '#2a0610'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(6, -16); ctx.lineTo(-1, -5); ctx.lineTo(5, 3); if (u < 0.33) { ctx.moveTo(-1, -5); ctx.lineTo(-14, -3); ctx.moveTo(5, 3); ctx.lineTo(2, 13); } ctx.stroke(); }
@@ -818,9 +893,11 @@ function zfWaveSpec(n) {
   function drawPad(col, label, sub) {
     const x = col * T + T / 2, y = (ZF.pads.row + 1) * T;
     ctx.fillStyle = '#ffc53d'; rr(x - 14, y - 5, 28, 5, 2); ctx.fill();
-    ctx.fillStyle = 'rgba(20,18,34,0.82)'; rr(x - 30, y - 76, 60, 30, 6); ctx.fill();
+    const fs = big() ? 12 : 10;
+    ctx.font = '700 ' + fs + 'px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const w = Math.max(60, ctx.measureText(sub).width + 12, ctx.measureText(label).width + 12);
+    ctx.fillStyle = 'rgba(20,18,34,0.82)'; rr(x - w / 2, y - 76, w, 30, 6); ctx.fill();
     ctx.fillStyle = '#8a8f9e'; ctx.fillRect(x - 1.5, y - 46, 3, 41);
-    ctx.font = '700 10px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fff'; ctx.fillText(label, x, y - 67);
     ctx.fillStyle = '#ffd36b'; ctx.fillText(sub, x, y - 55);
   }
@@ -884,9 +961,9 @@ function zfWaveSpec(n) {
     ctx.save(); ctx.globalAlpha = 0.35; ctx.strokeStyle = '#ffffff'; ctx.setLineDash([4, 6]); ctx.lineWidth = 1.5;
     for (const x of [2 * T, (COLS - 2) * T]) { ctx.beginPath(); ctx.moveTo(x, ZF.ceilRow * T); ctx.lineTo(x, ZF.ground * T); ctx.stroke(); }
     ctx.restore();
-    const lo = Math.min(st.gun[0], st.gun[1]);
-    drawPad(ZF.pads.guns, 'Guns', lo >= ZF.guns.length - 1 ? 'all bought' : 'next ' + ZF.gunCost[lo + 1]);
-    drawPad(ZF.pads.turret, 'Turret', ZF.turretCost + ' coins');
+    const gp = k => (st.gun[k] >= ZF.guns.length - 1 ? 'best' : ZF.gunCost[st.gun[k] + 1]);
+    drawPad(ZF.pads.guns, 'Guns (▼ + hold)', st.gun[0] === st.gun[1] ? (gp(0) === 'best' ? 'all bought' : 'next ' + gp(0)) : NAMES[0] + ' ' + gp(0) + ' · ' + NAMES[1] + ' ' + gp(1));
+    drawPad(ZF.pads.turret, 'Turret (▼ + hold)', ZF.turretCost + ' coins');
     drawHeart(st);
     for (const c of st.corpses) drawZombie(st, { px: c.x, py: c.y, face: c.face, kind: c.kind, id: c.id, t: c.t, hp: 0, max: 1 }, true);
     for (const z of st.zs) drawZombie(st, z, false);
@@ -906,22 +983,25 @@ function zfWaveSpec(n) {
     for (const p of G.players) {
       const h = st.hold[p.id];
       if (!p.alive || !h || h.t < 0.1) continue;
-      const tg = zfTarget(p);
+      const tg = zfTarget(p, h.op);
       if (!tg.op || tg.op === 'buy' || tg.op === 'chop') continue;
       const bad = tg.op === 'place' && canPlace(tg.x, tg.y);
       ctx.save(); ctx.globalAlpha = 0.6 + 0.25 * Math.sin(G.clock * 10);
-      ctx.strokeStyle = bad ? '#ff6b6b' : tg.op === 'dig' ? '#ffd36b' : tg.op === 'fix' ? '#9fe07f' : '#ffffff';
+      ctx.strokeStyle = bad ? '#ff6b6b' : tg.op === 'dig' || tg.op === 'take' ? '#ffd36b' : tg.op === 'fix' ? '#9fe07f' : '#ffffff';
       ctx.lineWidth = 2.5; ctx.setLineDash([5, 4]); ctx.strokeRect(tg.x * T + 2, tg.y * T + 2, T - 4, T - 4);
       ctx.restore();
       let lab = '';
       const c = cellAt(tg.x, tg.y);
       if (tg.op === 'place') { const m = material(st, p); lab = m ? ZF.kinds[m].name + ' ' + ZF.kinds[m].hp + ' HP' : 'Nothing to build with'; }
       else if (tg.op === 'dig' && c) lab = c.k === 'stone' ? 'Stone ' + (c.mine || 0) + '/' + ZF.stoneHits : 'Dirt';
-      else if (tg.op === 'fix' && c) { const uc = upCost(c.k); lab = ZF.kinds[c.k].name + ' ' + Math.ceil(c.hp) + '/' + c.max + ' HP' + (c.hp >= c.max && uc ? ' · upgrade: ' + costWords(uc) : ''); }
+      else if (tg.op === 'take' && c) lab = 'Take back ' + ZF.kinds[c.k].name;
+      else if (tg.op === 'fix' && c) { const uc = payCost(st, c.k); lab = ZF.kinds[c.k].name + ' ' + Math.ceil(c.hp) + '/' + c.max + ' HP' + (c.hp >= c.max && uc ? ' · upgrade: ' + costWords(uc) : ''); }
       if (lab) {
-        ctx.font = '700 11px ' + FONT; const w = ctx.measureText(lab).width + 12;
-        ctx.fillStyle = 'rgba(20,18,34,0.85)'; rr(tg.x * T + T / 2 - w / 2, tg.y * T - 18, w, 15, 7); ctx.fill();
-        text(lab, tg.x * T + T / 2, tg.y * T - 10.5, 11, '#fff', 'center', 'body');
+        const fs = big() ? 13 : 11;
+        ctx.font = '700 ' + fs + 'px ' + FONT; const w = ctx.measureText(lab).width + 12;
+        const lx = clamp(tg.x * T + T / 2, w / 2 + 4, W - w / 2 - 4);
+        ctx.fillStyle = 'rgba(20,18,34,0.85)'; rr(lx - w / 2, tg.y * T - fs - 7, w, fs + 4, 7); ctx.fill();
+        text(lab, lx, tg.y * T - 5 - fs / 2, fs, '#fff', 'center', 'body');
       }
     }
     // carried turrets, and each player's health bar while hurt
@@ -940,15 +1020,16 @@ function zfWaveSpec(n) {
     for (const k of [0, 1]) {
       const d = st.downAt[k], p = G.players[k];
       if (!d || p.alive) continue;
-      ctx.save(); ctx.globalAlpha = 0.85; text(NAMES[k] + ' back in ' + Math.max(1, Math.ceil(p.respawnT)), d.x, d.y - 20, 13, PCOL[k], 'center', 'body'); ctx.restore();
+      ctx.save(); ctx.globalAlpha = 0.85; text(NAMES[k] + ' back in ' + Math.max(1, Math.ceil(p.respawnT)), clamp(d.x, 60, W - 60), d.y - 20, big() ? 16 : 13, PCOL[k], 'center', 'body'); ctx.restore();
     }
     for (const k of [0, 1]) {
       const b = st.say[k], p = G.players[k];
       if (!b || !p.alive) continue;
       ctx.save(); ctx.globalAlpha = clamp(1.6 - b.t, 0, 1);
-      ctx.font = '700 12px ' + FONT; const w = ctx.measureText(b.s).width + 14;
-      ctx.fillStyle = 'rgba(20,18,34,0.88)'; rr(p.x + p.w / 2 - w / 2, p.y - 54, w, 18, 9); ctx.fill();
-      text(b.s, p.x + p.w / 2, p.y - 45, 12, '#fff', 'center', 'body');
+      const fs = big() ? 14 : 12;
+      ctx.font = '700 ' + fs + 'px ' + FONT; const w = ctx.measureText(b.s).width + 14, bx = clamp(p.x + p.w / 2, w / 2 + 4, W - w / 2 - 4);
+      ctx.fillStyle = 'rgba(20,18,34,0.88)'; rr(bx - w / 2, p.y - 54, w, fs + 6, 9); ctx.fill();
+      text(b.s, bx, p.y - 51 + fs / 2 + 1, fs, '#fff', 'center', 'body');
       ctx.restore();
     }
   }
@@ -960,17 +1041,23 @@ function zfWaveSpec(n) {
     const st = G.mst;
     if (!st.cell) return;
     const B = big(), fs = B ? 17 : 14;
+    // resources, top right (measured first so the centre pill can keep clear of it)
+    ctx.font = '700 ' + fs + 'px ' + FONT;
+    const items = [['Dirt', st.res.dirt, COLS_K.dirt.light], ['Wood', st.res.wood, COLS_K.wood.light], ['Stone', st.res.stone, COLS_K.stone.light], ['Coins', st.coins, '#ffc53d']];
+    const segs = items.map(([n, v]) => ctx.measureText(n + ' ' + v).width + 26);
+    const rw = segs.reduce((a, b) => a + b, 0) + 14, rLeft = W - 14 - rw;
     // top centre: what's happening now
     let line;
+    const left = st.queue.length + st.zs.length;
     if (st.phase === 'build') line = (st.wave === 1 ? 'Build time ' : 'Break ') + fmtClock(st.buildT) + ' · Wave ' + st.wave + ' next';
-    else if (st.phase === 'wave') line = 'Wave ' + st.wave + ' · ' + (st.queue.length + st.zs.length) + ' zombies left';
+    else if (st.phase === 'wave') line = 'Wave ' + st.wave + ' · ' + left + (left === 1 ? ' zombie left' : ' zombies left');
     else line = 'Waves survived: ' + st.stats.waves;
     ctx.font = '700 ' + fs + 'px ' + FONT;
-    const lw = ctx.measureText(line).width + 30;
-    pill(W / 2, 10, lw, B ? 34 : 28, 'center');
-    text(line, W / 2, B ? 27 : 24.5, fs, st.phase === 'wave' ? '#ff9c8a' : C.paper, 'center', 'body');
+    const lw = ctx.measureText(line).width + 30, mx = Math.min(W / 2, rLeft - 8 - lw / 2);
+    pill(mx, 10, lw, B ? 34 : 28, 'center');
+    text(line, mx, B ? 27 : 24.5, fs, st.phase === 'wave' ? '#ff9c8a' : C.paper, 'center', 'body');
     // the heart's health
-    const bw = B ? 240 : 190, bx = W / 2 - bw / 2, by = B ? 50 : 44, bh = B ? 14 : 10;
+    const bw = B ? 220 : 190, bx = mx - bw / 2, by = B ? 50 : 44, bh = B ? 14 : 10;
     ctx.fillStyle = 'rgba(20,18,34,0.8)'; rr(bx - 30, by - 4, bw + 70, bh + 8, 9); ctx.fill();
     ctx.fillStyle = '#ff4d7a'; ctx.save(); ctx.translate(bx - 16, by + bh / 2); ctx.scale(0.5, 0.5);
     ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-11, -1); ctx.lineTo(-9, -8); ctx.lineTo(-4, -10); ctx.lineTo(0, -6); ctx.lineTo(4, -10); ctx.lineTo(9, -8); ctx.lineTo(11, -1); ctx.closePath(); ctx.fill(); ctx.restore();
@@ -979,11 +1066,7 @@ function zfWaveSpec(n) {
     ctx.fillStyle = u < 0.35 ? '#ff5050' : '#ff4d7a';
     if (u > 0) { rr(bx, by, Math.max(8, bw * u), bh, 5); ctx.fill(); }
     text(Math.ceil(st.heart) + ' HP', bx + bw + 8, by + bh / 2 + 0.5, B ? 13 : 11, C.paper, 'left', 'body');
-    // resources, top right
     ctx.font = '700 ' + fs + 'px ' + FONT;
-    const items = [['Dirt', st.res.dirt, COLS_K.dirt.light], ['Wood', st.res.wood, COLS_K.wood.light], ['Stone', st.res.stone, COLS_K.stone.light], ['Coins', st.coins, '#ffc53d']];
-    const segs = items.map(([n, v]) => ctx.measureText(n + ' ' + v).width + 26);
-    const rw = segs.reduce((a, b) => a + b, 0) + 14;
     const rx = pill(W - 14, 12, rw, B ? 32 : 28, 'right');
     let cx = rx + 10;
     items.forEach(([n, v, col], i) => {
@@ -993,46 +1076,47 @@ function zfWaveSpec(n) {
       ctx.font = '700 ' + fs + 'px ' + FONT;
     });
     // each player's gun and health, under the resources
-    ctx.font = '700 12px ' + FONT;
+    const ps = B ? 15 : 12, ph = B ? 24 : 19;
     for (const k of [0, 1]) {
       const s = NAMES[k] + ': ' + ZF.guns[st.gun[k]].name + (st.carry[k] ? ' + turret' : '') + '  ' + Math.ceil(G.players[k].alive ? st.php[k] : 0) + ' HP';
-      ctx.font = '700 12px ' + FONT;
-      const w2 = ctx.measureText(s).width + 20, y2 = (B ? 50 : 46) + k * 22;
-      pill(W - 14, y2, w2, 19, 'right');
-      text(s, W - 24, y2 + 10, 12, PCOL[k], 'right', 'body');
+      ctx.font = '700 ' + ps + 'px ' + FONT;
+      const w2 = ctx.measureText(s).width + 20, y2 = (B ? 50 : 46) + k * (ph + 3);
+      pill(W - 14, y2, w2, ph, 'right');
+      text(s, W - 24, y2 + ph / 2 + 0.5, ps, PCOL[k], 'right', 'body');
     }
-    // news
+    // news (on phones it goes under the player pills, out of their way)
     if (st.news) {
       const a = Math.min(1, (ZF.newsLife - st.news.t) * 2, st.news.t * 6);
       ctx.save(); ctx.globalAlpha = clamp(a, 0, 1);
       ctx.font = '700 ' + (B ? 18 : 15) + 'px ' + FONT;
-      const nw = ctx.measureText(st.news.s).width + 30;
-      pill(W / 2, B ? 78 : 66, nw, B ? 30 : 26, 'center');
-      text(st.news.s, W / 2, B ? 93 : 79, B ? 18 : 15, '#ffd36b', 'center', 'body');
+      const nw = ctx.measureText(st.news.s).width + 30, ny = B ? 112 : 66;
+      pill(W / 2, ny, nw, B ? 30 : 26, 'center');
+      text(st.news.s, W / 2, ny + (B ? 15 : 13), B ? 18 : 15, '#ffd36b', 'center', 'body');
       ctx.restore();
     }
     // build time: the block tiers and how strong they are, and the how-to for each person
     if (st.phase === 'build' && G.introT <= 0) {
       const tiers = ['dirt', 'wood', 'stone', 'metal'];
-      ctx.font = '700 12px ' + FONT;
+      const ts = B ? 14 : 12, th = B ? 26 : 22;
+      ctx.font = '700 ' + ts + 'px ' + FONT;
       const lab = 'Block strength:', parts = tiers.map(k => ZF.kinds[k].name + ' ' + ZF.kinds[k].hp + ' HP');
       const pw = parts.map(s => ctx.measureText(s).width + 26), labW = ctx.measureText(lab).width, tw = labW + pw.reduce((a, b) => a + b, 0) + 30;
-      const ty = H - 22, tx0 = W / 2 - tw / 2;
-      ctx.fillStyle = 'rgba(20,18,34,0.82)'; rr(tx0, ty - 11, tw, 22, 11); ctx.fill();
-      text(lab, tx0 + 12, ty, 12, '#d9d3ef', 'left', 'body');
+      const ty = H - th / 2 - 11, tx0 = W / 2 - tw / 2;
+      ctx.fillStyle = 'rgba(20,18,34,0.82)'; rr(tx0, ty - th / 2, tw, th, th / 2); ctx.fill();
+      text(lab, tx0 + 12, ty, ts, '#d9d3ef', 'left', 'body');
       let px = tx0 + 20 + labW;
-      tiers.forEach((k, i) => { ctx.fillStyle = COLS_K[k].main; rr(px, ty - 5, 10, 10, 2); ctx.fill(); ctx.strokeStyle = COLS_K[k].dark; ctx.lineWidth = 1; ctx.stroke(); text(parts[i], px + 14, ty, 12, C.paper, 'left', 'body'); px += pw[i]; });
-      const sub = st.readyT > 0 ? 'Starting...' : 'Ready early? Both stand by the heart and hold ' + (solo() ? key(cpuHuman(), 'down') : '▼');
-      ctx.save(); ctx.globalAlpha = 0.85; text(sub, W / 2, H - 44, B ? 14 : 12, '#fff', 'center', 'body'); ctx.restore();
+      tiers.forEach((k, i) => { ctx.fillStyle = COLS_K[k].main; rr(px, ty - 5, 10, 10, 2); ctx.fill(); ctx.strokeStyle = COLS_K[k].dark; ctx.lineWidth = 1; ctx.stroke(); text(parts[i], px + 14, ty, ts, C.paper, 'left', 'body'); px += pw[i]; });
+      const sub = st.readyT > 0 ? 'Wave ' + st.wave + ' starts in ' + Math.max(1, Math.ceil(ZF.readyHold - st.readyT)) + '...' : 'Ready early? Both stand still by the heart and hold ' + (solo() ? key(cpuHuman(), 'down') : '▼');
+      ctx.save(); ctx.globalAlpha = 0.85; text(sub, W / 2, ty - th / 2 - (B ? 13 : 11), B ? 15 : 12, '#fff', 'center', 'body'); ctx.restore();
       if (st.wave === 1) {
-        ctx.font = '700 12px ' + FONT;
+        const hs = B ? 14 : 12, lh = hs + 7;
         for (const k of [0, 1]) {
           if (isCpu(k) || (st.usedHold[k] && st.usedTap[k] && st.hintT > 30)) continue;
-          const lines = ['Tap ' + key(k, 'act') + ' to shoot, hold it to build', 'Hold ' + key(k, 'act') + ' at a tree to chop wood', 'Hold ' + key(k, 'down') + ' + ' + key(k, 'act') + ' to dig and mine', 'Hold on a full wall to upgrade it'];
-          ctx.font = '700 12px ' + FONT;
-          const w3 = Math.max(...lines.map(s => ctx.measureText(s).width)) + 22, x3 = k === 0 ? 14 : W - 14 - w3, y3 = H - 150;
-          ctx.fillStyle = 'rgba(20,18,34,0.82)'; rr(x3, y3, w3, 86, 10); ctx.fill();
-          lines.forEach((s, i) => text(s, x3 + 11, y3 + 14 + i * 19, 12, i === 0 ? PCOL[k] : C.paper, 'left', 'body'));
+          const lines = ['Tap ' + key(k, 'act') + ' to shoot, hold it to build', 'Hold ' + key(k, 'act') + ' at a tree to chop wood', 'Hold ' + key(k, 'down') + ' + ' + key(k, 'act') + ' to dig, mine, or buy on a pad', 'Hold on a full wall to upgrade it'];
+          ctx.font = '700 ' + hs + 'px ' + FONT;
+          const w3 = Math.max(...lines.map(s => ctx.measureText(s).width)) + 22, x3 = k === 0 ? 14 : W - 14 - w3, hh = lines.length * lh + 10, y3 = H - (B ? 84 : 72) - hh;
+          ctx.fillStyle = 'rgba(20,18,34,0.82)'; rr(x3, y3, w3, hh, 10); ctx.fill();
+          lines.forEach((s, i) => text(s, x3 + 11, y3 + 5 + lh / 2 + i * lh, hs, i === 0 ? PCOL[k] : C.paper, 'left', 'body'));
         }
       }
     }
