@@ -30,7 +30,7 @@
    gold plank across it. 12 s on the landing pad without the flag (while the rider plays): a gold gust lifts the kite closer
    to the flag and the flag gets easier to grab (still never without the rider).
    Scoring: stars and rings (a ring is worth 3 stars), tangles, whoopses, time. Medal: Gold at <= 3:30 with <= 5 tangles
-   + whoopses and half the stars, Silver at <= 5:30 with <= 14, else Bronze.
+   + whoopses and 40% of the stars, Silver at <= 5:30 with <= 14, else Bronze.
    Room def: { title, runner: 0|1, look: 'roofs'|'hill'|'pier'|'bridge', tip, act, course: [tokens] }.
    Course tokens (heights are px above the ground at that spot, lengths in px):
      fN flat   uN:D smooth slope over N px by D (negative = up)   jD step (a wall if up)   gN gap   c chimney/crate/fence
@@ -776,7 +776,7 @@ MODES.kite = {
     const st = G.mst, s = st.stats;
     if (!s) return [];
     const t = G.time, all = st.starsAll || 1, frac = st.stars / all, bumps = s.tangles + s.oops;
-    const medal = t <= 210 && bumps <= 5 && frac >= 0.5 ? 'Gold' : t <= 330 && bumps <= 14 ? 'Silver' : 'Bronze';
+    const medal = t <= 210 && bumps <= 5 && frac >= 0.4 ? 'Gold' : t <= 330 && bumps <= 14 ? 'Silver' : 'Bronze';
     const out = [
       { label: 'Stars', value: st.stars + ' of ' + all },
       { label: 'Rings', value: st.rings + ' of ' + st.ringsAll },

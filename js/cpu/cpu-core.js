@@ -300,6 +300,9 @@ function cpuSyncCfgUI() {
   overlay.querySelectorAll('.cpu-cfg .cpu-solo-line').forEach(el => { el.textContent = cpuSoloLine(); });
   overlay.querySelectorAll('.cpu-cfg .cpu-skill-line').forEach(el => { el.textContent = cpuSkillLine(); });
   overlay.querySelectorAll('[data-cpu-eyebrow]').forEach(el => { el.textContent = c.players === 1 ? '1 player + computer' : '2 players'; });
+  // the pause card: who you play and the action keys follow the new setting (a controller's View swap, or a tap here)
+  const pw = overlay.querySelectorAll('[data-pause-who]');
+  if (pw.length && typeof pauseWhoHTML === 'function') { pw.forEach(el => { el.innerHTML = pauseWhoHTML(); }); if (typeof refreshGlyphs === 'function') refreshGlyphs(); }
 }
 
 /* ---------- drawing: "CPU" on the name tag and speech bubbles ---------- */

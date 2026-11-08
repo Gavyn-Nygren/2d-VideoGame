@@ -796,7 +796,7 @@ MODES.balloon = {
     const st = G.mst, s = st.stats;
     if (!s) return [];
     const t = G.time, all = st.starsAll || 1, frac = s.stars / all, bumps = s.zaps + s.birds + s.bonks;
-    const medal = t <= 240 && bumps <= 6 && frac >= 0.55 ? 'Gold' : t <= 360 && bumps <= 16 ? 'Silver' : 'Bronze';
+    const medal = t <= 270 && bumps <= 6 && frac >= 0.5 ? 'Gold' : t <= 360 && bumps <= 16 ? 'Silver' : 'Bronze';
     const out = [
       { label: 'Star coins', value: s.stars + ' of ' + st.starsAll },
       { label: 'Party balloons', value: s.pbs + ' of ' + st.pbsAll },

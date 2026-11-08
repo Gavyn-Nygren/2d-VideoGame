@@ -39,6 +39,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 17. **Jungle Jamboree** (a sunny jungle with a temple, rapids and a waterfall): Temple Doors, River Rapids Canoe, Waterfall Climb, Vine Swing
 18. **Pirate Cove** (a sunny tropical cove with friendly pirates): Runaway Ship, Grapple & Zip, Tide Pool Dig, Plank Duel
 19. **Tumbleweed Gulch** (the Wild West: a runaway train, a handcar, a gold mine and a high-noon showdown): Train Heist Hop, Handcar Hustle, Gold Mine Cart, Quick-Draw Showdown
+20. **Dragon Peak** (the second boss world, one big boss level: climb a volcano past a grumpy dragon, then race him down): Volcano Dragon
 21. **Sky Kingdom** (a bright sky of clouds, floating islands and a cloud castle): Hot Air Balloon Climb, Kite Tandem, Cloud Bridge Builder, Paper Plane Race
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).

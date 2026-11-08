@@ -34,7 +34,7 @@ async function open(browser, file, vp) {
     const w21 = tiles.find(t => t.w === 20);
     check(!!w21, 'world map has World 21: ' + JSON.stringify(w21));
     check(w21 && /4 levels/.test(w21.meta) && /Team \+ versus/.test(w21.meta), 'World 21 tile says 4 levels, Team + versus');
-    check(!tiles.some(t => t.w === 19), 'hidden World 20 placeholder not on the map');
+    check(tiles.some(t => t.w === 19), 'World 20 Dragon Peak is on the map');
     await page.evaluate(() => { const b = document.querySelector('.wtile[data-w="20"]'); b && b.scrollIntoView({ block: 'center' }); });
     await page.waitForTimeout(400);
     await shot(page, 'worlds');
@@ -45,7 +45,7 @@ async function open(browser, file, vp) {
     console.log('     ' + JSON.stringify(info));
     check(info.eyebrow === 'World 21 · Team + versus' && info.cards.length === 4, 'World 21 page: eyebrow and 4 cards');
     check(info.cards.join('|') === '21-1 Hot Air Balloon Climb|21-2 Kite Tandem|21-3 Cloud Bridge Builder|21-4 Paper Plane Race', 'card codes and names in order');
-    check(!info.flips.some(f => /World 20/.test(f)), 'flip buttons skip the hidden World 20');
+    check(info.flips.some(f => /World 20/.test(f)), 'World 21 flips back to World 20');
     // previews animate: canvases change between two moments
     const grab = () => page.evaluate(() => [...document.querySelectorAll('.lvl canvas')].map(c => { try { return c.toDataURL().length + ':' + c.toDataURL().slice(-80); } catch (e) { return 'x'; } }));
     const a = await grab(); await page.waitForTimeout(900); const b = await grab();
