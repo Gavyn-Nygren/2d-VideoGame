@@ -10,7 +10,8 @@
    through the water in any direction (no gravity; they drift to a stop), in WORLD coordinates (x along the section,
    y on screen; the camera only scrolls sideways). Between steps p.x is on screen (world x - camX), so the engine
    draws them, their name tags and the computer's bubbles in the right place. Partners swim through each other.
-   It is dark: a deep blue overlay covers the ship, with soft light circles. The walls, doors and crates show dimly;
+   It is very dark (Gavyn, Nov 2026: darker so the lantern matters): a near-black blue overlay covers the ship, with
+   soft light circles. Outside Glimmer's light the walls, doors and crates are barely visible;
    the small hidden things (levers, wheel valves, keys, treasure, prickly coral and sea urchins) only show inside the
    lantern light, and fade out again after it moves on (a lever or key that was seen once leaves a faint outline).
    - THE LANTERN (one job per section) carries Glimmer the lantern fish. Glimmer's light (radius 160) shows and WAKES
@@ -1298,7 +1299,7 @@ const SHIPWRECK = {
     const c = dkx;
     c.globalCompositeOperation = 'source-over';
     c.clearRect(0, 0, w, h);
-    c.fillStyle = st.look === 'treasure' ? 'rgba(10,22,58,0.78)' : 'rgba(8,18,52,0.8)';
+    c.fillStyle = st.look === 'treasure' ? 'rgba(4,10,30,0.95)' : 'rgba(3,8,26,0.965)';
     c.fillRect(0, 0, w, h);
     c.globalCompositeOperation = 'destination-out';
     const hole = (x, y, r, a, inner = 0.45) => {
@@ -1312,8 +1313,8 @@ const SHIPWRECK = {
       hole(st.fish.x, st.fish.y, lightRad(st), 1, 0.55);
       hole(st.fish.x, st.fish.y, lightRad(st) * 1.25, 0.35, 0.6);
     }
-    for (const p of G.players) hole(p.x + st.camX + p.w / 2, p.y + p.h / 2, 52, 0.45, 0.2);
-    for (const q of st.ports) hole(q.x, q.y + 60, 120, 0.3, 0.1);
+    for (const p of G.players) hole(p.x + st.camX + p.w / 2, p.y + p.h / 2, 36, 0.3, 0.2);
+    for (const q of st.ports) hole(q.x, q.y + 60, 100, 0.12, 0.1);
     for (const tr of Object.values(st.trig)) if (tr.kind === 'glow') hole(tr.x, SW.floor - 26, tr.on ? 110 : 46, tr.on ? 0.7 : 0.3, 0.2);
     for (const q of st.puffers) if (q.gold) hole(q.x, q.y, 70, 0.5, 0.2);
     for (const tr of Object.values(st.trig)) if (tr.gold && tr.kind !== 'glow') hole(tr.x, tr.y, 60, 0.6, 0.2);
@@ -1335,7 +1336,7 @@ const SHIPWRECK = {
       if (!onScreen(st, q.x)) continue;
       const x = q.x - st.camX;
       const g = ctx.createLinearGradient(0, q.y, 0, SW.floor);
-      g.addColorStop(0, 'rgba(170,240,255,0.16)'); g.addColorStop(1, 'rgba(170,240,255,0)');
+      g.addColorStop(0, 'rgba(170,240,255,0.07)'); g.addColorStop(1, 'rgba(170,240,255,0)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - 16, q.y); ctx.lineTo(x + 16, q.y); ctx.lineTo(x + 70 + Math.sin(t) * 6, SW.floor); ctx.lineTo(x + 10 + Math.sin(t) * 6, SW.floor); ctx.fill();
     }
     ctx.restore();
@@ -1372,7 +1373,7 @@ const SHIPWRECK = {
     }
     // anemones glow softly even in the dark (so the lantern can find them); pufferfish eyes peek out
     for (const tr of Object.values(st.trig)) if (tr.kind === 'glow' && onScreen(st, tr.x)) drawAnemone(tr, t, lightAt(st, tr.x, tr.y) < 0.5);
-    for (const q of st.puffers) if (onScreen(st, q.x)) drawPuffer(q, t, Math.max(q.vis, q.state === 'gone' ? 0.5 : 0.35, q.gold ? 1 : 0));
+    for (const q of st.puffers) if (onScreen(st, q.x)) drawPuffer(q, t, Math.max(q.vis, q.state === 'gone' ? 0.3 : 0.15, q.gold ? 1 : 0));
     // seen switches leave a faint outline in the dark (a memory of where they were)
     for (const tr of Object.values(st.trig)) {
       if (tr.kind === 'glow' || tr.on || !tr.seen || tr.vis > 0.5 || (tr.kind === 'key' && tr.got) || !onScreen(st, tr.x)) continue;
