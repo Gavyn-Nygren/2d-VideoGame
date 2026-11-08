@@ -41,6 +41,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 19. **Tumbleweed Gulch** (the Wild West: a runaway train, a handcar, a gold mine and a high-noon showdown): Train Heist Hop, Handcar Hustle, Gold Mine Cart, Quick-Draw Showdown
 20. **Dragon Peak** (the second boss world, one big boss level: climb a volcano past a grumpy dragon, then race him down): Volcano Dragon
 21. **Sky Kingdom** (a bright sky of clouds, floating islands and a cloud castle): Hot Air Balloon Climb, Kite Tandem, Cloud Bridge Builder, Paper Plane Race
+25. **Zombie Acres** (built early; one endless survival level: chop, dig and build a fort, then hold off waves of zombies): Defend the Heart
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
