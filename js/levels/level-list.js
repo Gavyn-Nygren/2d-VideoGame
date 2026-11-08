@@ -5355,21 +5355,319 @@ const LEVELS = [
   //   Each level's def sits between its own BEGIN/END lines. world: 21 =====
   //
   // ----- BEGIN 22-1 Submarine Duo (mode 'subduo', js/levels/world22/submarine-duo.js) -----
+  // 22-1 Submarine Duo (mode 'subduo', team, Gavyn's pick): both ride one little sub through a reef canyon. One steers
+  // (◀ ▶ ▲ ▼, the action toots the horn), the other works the claw arm (◀ ▶ ▲ ▼ move it, the action grabs / lets go):
+  // pearls and shells, boulders into sandy holes, floaty logs pulled down, a conch for Clammy the clam gate. Each stretch
+  // ends at a buoy ring only the claw can clip onto, then they swap jobs. The map is only the two spawns; the mode builds
+  // each stretch from its course (tokens: see the top of the level file).
+  { name: 'Submarine Duo', world: 21, kind: 'team', mode: 'subduo', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    legend: {
+      pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> steer the sub or move the claw',
+      bo: 'arrows steer the sub or move the claw',
+      pad: 'stick steers the sub or moves the claw,',
+    },
+    tip: 'Steerer: arrows push the sub, the action toots. Claw: arrows move the arm, the action grabs and lets go!',
+    act: { label: 'grab', labels: ['toot', 'grab'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Sunny Shallows', steer: 0, look: 'shallows', top: 70, bot: 440, act: { label: 'grab', labels: ['toot', 'grab'] },
+        tip: 'Pip steers, Bo works the claw! Grab the pearls, lift the boulder into its sandy hole, clip onto the buoy ring.',
+        course: ['f200', 'S:{S}: steer the sub!', 'f250', 'p:200:3:60', 'f250', 'Q', 'f150',
+          'S:{G}: move the claw, grab pearls!', 'f200', 'p:-22', 'f140', 'p:-22', 'f160', 'h:-12', 'f260',
+          'K:f:60', 'f220', 'p:150:2:60', 'f240', 'm300:120:440', 'K:c:46', 'f200', 'p:300', 'f160', 'h:-12', 'f200',
+          'P:250', 'f200', 'm200:140:410', 'S:A boulder! Into the sandy hole', 'f150', 'B', 'f160', 'p:280:3:55', 'f240',
+          'T:300:70', 'f300', 'h:-12', 'f160', 'K:f:64', 'f240', 'p:-22', 'f140', 'm200:70:430', 'p:200:2:60', 'f200', 'E'],
+      },
+      {
+        title: 'Kelp Forest', steer: 1, look: 'kelp', top: 90, bot: 450, act: { label: 'grab', labels: ['grab', 'toot'] },
+        tip: 'Swap! Bo steers, Pip works the claw. Pull the floaty log all the way down, then the boulder. Mind the current!',
+        course: ['f200', 'S:Swap! {S} steers, {G} works the claw', 'f250', 'p:250:3:60', 'f250', 'Q', 'K:f:56', 'f200', 'p:-22', 'f160', 'h:-12', 'f200',
+          'U:520:0:-150', 'S:A current pushes you up!', 'f100', 'p:380:3:60', 'f500',
+          'S:A floaty log! Pull it down', 'f150', 'L', 'f150', 'p:-22:2:60', 'f220', 'T:270:80', 'f300', 'K:c:50', 'f200', 'p:330', 'f240',
+          'm200:140:410', 'f150', 'B', 'f150', 'p:220:3:60', 'f300', 'h:-12', 'f200', 'E'],
+      },
+      {
+        title: 'Coral Canyon', steer: 0, look: 'canyon', top: 100, bot: 440, act: { label: 'grab', labels: ['toot', 'grab'] },
+        tip: 'Pip steers again! Squeeze between the coral, push through the current, and bring Clammy her conch.',
+        course: ['f200', 'S:Swap back! {S} steers', 'f240', 'K:f:58', 'f160', 'p:200:2:60', 'f200', 'K:c:52', 'f180', 'p:-22', 'f200',
+          'U:600:-120:0', 'S:A current! Push on through', 'f150', 'p:260:3:70', 'f450',
+          'P:270', 'f150', 'K:f:62', 'f250', 'h:-12', 'f150', 'S:Find the conch for Clammy', 'f450', 'C:420',
+          'f200', 'p:-22:2:60', 'f240', 'T:270:80', 'f300', 'L', 'f150', 'p:260:3:60', 'f240', 'K:c:48', 'f200', 'E'],
+      },
+      {
+        title: 'Treasure Grotto', steer: 1, look: 'grotto', top: 100, bot: 450, act: { label: 'grab', labels: ['grab', 'toot'] },
+        tip: 'Bo steers to the treasure! A boulder, Clammy and a log stand in the way. Grab the chest handle at the end!',
+        course: ['f200', 'S:Last stretch! To the treasure', 'f240', 'p:250:3:60', 'f240', 'K:f:56', 'f180', 'p:-22', 'f160', 'm200:140:410',
+          'f100', 'B', 'f160', 'p:240:2:60', 'f200', 'P:300', 'f240', 'K:c:50', 'f200', 'h:-12', 'f240',
+          'C:380', 'f200', 'p:-22:2:60', 'f240', 'T:280:70', 'f240', 'L', 'f150', 'p:250:3:60', 'f220', 'E'],
+      },
+    ],
+  },
   // ----- END 22-1 Submarine Duo -----
   //
   //
   //
   // ----- BEGIN 22-2 Treasure Diver Rope (mode 'diverope', js/levels/world22/treasure-diver-rope.js) -----
+  // 22-2 Treasure Diver Rope (mode 'diverope', team, Gavyn's pick): side-on, scrolls DOWN. One stays in the boat (▼ lets
+  // out rope, ▲ reels in, the action pumps air down the hose), the other dives in a brass helmet on the end of the rope
+  // (◀ ▶ swim, ▲ kick, the action hooks the chest), picking up gems, starfish and pearls and dodging sleepy eels and
+  // jellyfish. Treasure only counts back in the boat; a dive ends when its chest is reeled up. Out of air is a "Blub!"
+  // bubble ride back up. Jobs swap every dive. The map is only the two spawns; the mode builds each dive from its course
+  // (items: see the top of the level file). y is the depth in px below the surface.
+  { name: 'Treasure Diver Rope', world: 21, kind: 'team', mode: 'diverope', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Dive',
+    legend: {
+      pip: 'diver: <kbd>A</kbd><kbd>D</kbd> swim <kbd>W</kbd> kick · boat: <kbd>S</kbd> rope out <kbd>W</kbd> reel',
+      bo: 'diver: <kbd>←</kbd><kbd>→</kbd> swim <kbd>↑</kbd> kick · boat: <kbd>↓</kbd> rope out <kbd>↑</kbd> reel',
+      pad: 'diver: stick swims, <span data-glyph="a"></span> kick; boat: stick ▼ rope out, <span data-glyph="a"></span> reel,',
+    },
+    tip: 'One dives for treasure, one runs the boat: ▼ lets out rope, the action pumps air, ▲ reels the diver up!',
+    act: { label: 'grab', labels: ['grab', 'pump'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Sandy Shelf', diver: 0, look: 'shelf', floor: 760, boatX: 480, act: { label: 'grab', labels: ['grab', 'pump'] },
+        tip: 'Pip dives, Bo runs the boat! Bo: hold ▼ for rope, tap the action to pump air, hold ▲ to reel Pip up.',
+        course: [
+          ['sign', 480, 150, '{B}: hold ▼ to let out rope'],
+          ['gems', 510, 230, 3, 0, 45],
+          ['rock', -60, 330, 110, 760], ['rock', 860, 430, 1020, 760],
+          ['ledge', 380, 110, 400], ['ledge', 380, 620, 860],
+          ['gems', 230, 290, 1],
+          ['star', 250, 380], ['star', 740, 380], ['kelp', 180, 380, 90], ['coral', 330, 380, 2],
+          ['gems', 690, 480, 3, 0, 45],
+          ['jelly', 300, 540, 60, 7],
+          ['eel', 860, 650, -1, 170],
+          ['gems', 410, 700, 2, 70, 0],
+          ['pearl', 640, 760], ['chest', 230, 760],
+          ['kelp', 140, 760, 140], ['kelp', 470, 760, 100], ['kelp', 920, 430, 110], ['coral', 340, 760, 1], ['coral', 560, 760, 2], ['coral', 780, 760, 0],
+        ],
+      },
+      {
+        title: 'Kelp Drop', diver: 1, look: 'kelp', floor: 1150, boatX: 480, act: { label: 'grab', labels: ['pump', 'grab'] },
+        tip: 'Swap! Bo dives, Pip runs the boat. Pip: pump air when Bo stops. Sleepy eels: pass them while they snooze!',
+        course: [
+          ['sign', 480, 150, 'Swap! {D} dives, {B} runs the boat'],
+          ['rock', -60, 220, 70, 1150], ['rock', 890, 180, 1020, 1150],
+          ['gems', 480, 240, 2, 0, 50],
+          ['ledge', 330, 70, 560], ['star', 300, 330], ['kelp', 150, 330, 100], ['gems', 200, 290, 2, 60, 0],
+          ['gems', 725, 400, 3, 0, 40],
+          ['eel', 890, 470, -1, 180],
+          ['jelly', 470, 470, 80, 6],
+          ['ledge', 590, 360, 890], ['kelp', 520, 590, 90], ['kelp', 820, 590, 70],
+          ['gems', 520, 560, 3, 50, 0],
+          ['eel', 70, 690, 1, 170],
+          ['gems', 280, 760, 2, 0, 40],
+          ['ledge', 860, 70, 540], ['star', 420, 860], ['kelp', 300, 860, 120],
+          ['jelly', 620, 950, 40, 7],
+          ['gems', 750, 1000, 2, 0, 40],
+          ['eel', 890, 1080, -1, 140],
+          ['pearl', 560, 1150], ['chest', 380, 1150],
+          ['kelp', 120, 1150, 200], ['kelp', 250, 1150, 160], ['kelp', 650, 1150, 220], ['kelp', 820, 1150, 150], ['coral', 480, 1150, 1],
+        ],
+      },
+      {
+        title: 'Coral Cliffs', diver: 0, look: 'coral', floor: 1550, boatX: 480, act: { label: 'grab', labels: ['grab', 'pump'] },
+        tip: 'Pip dives again, Bo runs the boat. Deeper means the air goes faster: Bo, keep pumping!',
+        course: [
+          ['sign', 480, 160, '{D} dives again! Down the coral canyon'],
+          ['rock', -60, 260, 190, 1550], ['rock', 770, 240, 1020, 1550],
+          ['gems', 480, 280, 3, 0, 40],
+          ['ledge', 440, 190, 470], ['star', 330, 440], ['coral', 250, 440, 0],
+          ['eel', 770, 580, -1, 190],
+          ['gems', 540, 560, 2, 0, 50],
+          ['ledge', 720, 490, 770], ['star', 640, 720], ['coral', 720, 720, 2],
+          ['jelly', 300, 860, 50, 6],
+          ['eel', 190, 980, 1, 180],
+          ['gems', 450, 940, 3, 0, 45],
+          ['ledge', 1110, 190, 420], ['ledge', 1110, 600, 770],
+          ['eel', 600, 1132, -1, 130],
+          ['pearl', 300, 1110],
+          ['jelly', 560, 1270, 80, 8],
+          ['gems', 330, 1300, 3, 0, 45],
+          ['eel', 770, 1430, -1, 170],
+          ['gems', 520, 1490, 2, 50, 0],
+          ['chest', 300, 1550],
+          ['coral', 230, 1550, 0], ['coral', 420, 1550, 1], ['coral', 520, 1550, 2], ['coral', 640, 1550, 0], ['coral', 720, 1550, 1], ['kelp', 600, 1550, 120],
+        ],
+      },
+      {
+        title: 'Deep Trench', diver: 1, look: 'trench', floor: 1950, boatX: 480, act: { label: 'grab', labels: ['pump', 'grab'] },
+        tip: 'Last dive! Bo dives, Pip runs the boat. All the way down the Deep Trench for the golden chest!',
+        course: [
+          ['sign', 480, 160, 'Last dive! Down into the Deep Trench'],
+          ['rock', -60, 220, 140, 920], ['rock', 820, 220, 1020, 920],
+          ['gems', 480, 260, 3, 0, 40],
+          ['ledge', 440, 140, 600], ['star', 380, 440],
+          ['eel', 820, 560, -1, 170],
+          ['gems', 640, 520, 2, 0, 50],
+          ['ledge', 700, 360, 820], ['coral', 600, 700, 2],
+          ['jelly', 480, 800, 90, 8],
+          ['rock', -60, 920, 300, 1950], ['rock', 660, 920, 1020, 1950],
+          ['coral', 740, 920, 0],
+          ['gems', 480, 980, 3, 0, 45],
+          ['eel', 300, 1080, 1, 170],
+          ['rock', 520, 1220, 660, 1270], ['star', 590, 1220], ['gems', 360, 1200, 2, 0, 50],
+          ['jelly', 400, 1360, 50, 7],
+          ['gems', 560, 1420, 3, 0, 45],
+          ['eel', 660, 1540, -1, 160],
+          ['rock', 300, 1640, 430, 1690], ['pearl', 380, 1640],
+          ['jelly', 560, 1760, 50, 7],
+          ['eel', 300, 1860, 1, 150],
+          ['gems', 420, 1900, 3, 40, 0],
+          ['chest', 560, 1950],
+          ['coral', 340, 1950, 2], ['coral', 620, 1950, 1], ['kelp', 400, 1950, 90],
+        ],
+      },
+    ],
+  },
   // ----- END 22-2 Treasure Diver Rope -----
   //
   //
   //
   // ----- BEGIN 22-3 Shipwreck Lights (mode 'shipwreck', js/levels/world22/shipwreck-lights.js) -----
+  // 22-3 Shipwreck Lights (mode 'shipwreck', team, Gavyn's pick): inside a dark (cosy) sunken ship. One carries Glimmer
+  // the lantern fish, whose light shows the hidden levers, wheels, keys, treasure and prickly coral (the action is a big
+  // flash that wakes sleepy anemones and shoos grumpy pufferfish); the other swims with the grabby claw and opens doors,
+  // pushes crates and grabs treasure, but only in the light. Jobs swap every section (Pip lights 1 and 3). The map is
+  // only the two spawns; the mode builds each section from its items (see the top of the level file). Ceiling y 104,
+  // floor y 476.
+  { name: 'Shipwreck Lights', world: 21, kind: 'team', mode: 'shipwreck', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Section',
+    legend: {
+      pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> swim',
+      bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> swim',
+      pad: 'stick or d-pad swims,',
+    },
+    tip: 'One carries Glimmer the lantern fish (flash!), one grabs. Levers, keys and treasure only show in the light!',
+    act: { label: 'flash', labels: ['flash', 'grab'] },
+    map: [...Array(9).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), ...Array(8).fill('.'.repeat(32))],
+    rooms: [
+      {
+        title: 'Cargo Hold', lantern: 0, look: 'hold', len: 2800, exit: 2600, act: { label: 'flash', labels: ['flash', 'grab'] },
+        tip: 'Pip carries Glimmer: light the way! Bo grabs: levers and treasure only work in the light.',
+        news: 'Pip lights the way, Bo opens the doors!',
+        items: [
+          ['decor', 'net', 250, 0], ['decor', 'barrel', 270, 476], ['decor', 'sacks', 480, 476], ['port', 380, 200],
+          ['sign', 250, 150, '{L} carries Glimmer the lantern fish!'],
+          ['gems', 340, 410, 3, 40, -22, 'coin'], ['gem', 600, 300, 'pearl'],
+          ['coral', 560, 0, 24, 'floor'], ['coral', 650, 0, 22, 'ceil'],
+          ['sign', 640, 200, '{G}: find the lever in the light!', 'A lever hides in the dark...'],
+          ['lever', 'l1', 762, 200], ['bulk', 800, 250, 476, { door: 'd1', need: ['l1'] }],
+          ['urchin', 960, 250, { dy: 70, per: 4 }], ['coral', 1030, 0, 22, 'ceil'],
+          ['gems', 890, 430, 3, 32, 0, 'coin'],
+          ['sign', 1000, 380, 'A crate! {G} pushes it', 'A crate in the tunnel!'],
+          ['wall', 1100, 74, 220, 318, 'crates'], ['crate', 1130, 1390],
+          ['gems', 1430, 300, 3, 40, 0, 'pearl'],
+          ['decor', 'crab', 1560, 476], ['port', 1700, 200],
+          ['urchin', 1720, 452, { dx: 100, per: 5 }], ['urchin', 1930, 452, { dx: 90, per: 4.5, ph: 2 }],
+          ['gems', 1650, 230, 4, 50, 15, 'coin'],
+          ['coral', 2020, 0, 26, 'ceil'], ['coral', 2100, 0, 26, 'floor'], ['coral', 2190, 0, 24, 'ceil'], ['gem', 2140, 290, 'gem'],
+          ['decor', 'hermit', 2200, 476, { span: 150 }], ['decor', 'barrel', 2330, 476],
+          ['gems', 2290, 200, 2, 44, 0, 'coin'],
+          ['wheel', 'w1', 2390, 410], ['bulk', 2450, 140, 476, { door: 'd2', need: ['w1'] }],
+        ],
+      },
+      {
+        title: 'Galley', lantern: 1, look: 'galley', len: 2950, exit: 2760, act: { label: 'flash', labels: ['grab', 'flash'] },
+        tip: 'Swap! Bo carries Glimmer, Pip grabs. Flash the grumpy pufferfish away, then find the key!',
+        news: 'Swap! Bo lights, Pip grabs',
+        items: [
+          ['sign', 220, 150, 'Swap! {L} carries Glimmer now'],
+          ['decor', 'pots', 80, 0], ['decor', 'stove', 560, 476], ['port', 430, 210],
+          ['wall', 300, 392, 160, 14, 'table'], ['gems', 330, 450, 3, 40, 0, 'coin'],
+          ['sign', 470, 170, 'Grumpy pufferfish! {L}: flash it with {La}', 'Grumpy pufferfish! Flash it away'],
+          ['bulk', 680, 240, 340], ['puffer', 698, 290, 880, 160],
+          ['decor', 'plates', 880, 330], ['coral', 920, 0, 24, 'floor'], ['coral', 1010, 0, 24, 'ceil'],
+          ['gems', 800, 200, 3, 0, 60, 'coin'], ['gem', 1110, 250, 'pearl'],
+          ['decor', 'barrel', 1190, 476], ['key', 'k1', 1260, 450],
+          ['sign', 1300, 170, 'A locked door! Find the key', 'A locked door!'],
+          ['bulk', 1450, 104, 476, { door: 'd1', need: ['k1'], lock: true }],
+          ['urchin', 1650, 290, { dy: 100, per: 4.4 }], ['urchin', 1830, 290, { dy: 100, per: 4.4, ph: 2.1 }], ['urchin', 2010, 290, { dy: 100, per: 4.4, ph: 4.2 }],
+          ['decor', 'crab', 1740, 476], ['gems', 1740, 200, 3, 0, 90, 'coin'], ['gems', 1920, 200, 3, 0, 90, 'coin'],
+          ['decor', 'pots', 2080, 0],
+          ['lever', 'l1', 2250, 220], ['bulk', 2300, 270, 476, { door: 'd2', need: ['l1'] }],
+          ['wall', 2500, 74, 120, 256, 'pipe'], ['wall', 2500, 420, 120, 80, 'pipe'], ['puffer', 2560, 375, 2720, 170],
+          ['gems', 2400, 400, 2, 40, 0, 'coin'], ['gem', 2680, 300, 'gem'],
+        ],
+      },
+      {
+        title: "Captain's Cabin", lantern: 0, look: 'cabin', len: 3050, exit: 2880, act: { label: 'flash', labels: ['flash', 'grab'] },
+        tip: 'Pip carries Glimmer again! Sleepy anemones need a flash. Mind the prickly coral in the dark!',
+        news: 'Swap back! Pip lights, Bo grabs',
+        items: [
+          ['sign', 220, 150, 'Swap back! {L} has Glimmer'], ['decor', 'portrait', 330, 230], ['decor', 'hat', 460, 200],
+          ['gems', 360, 420, 3, 40, 0, 'coin'],
+          ['glow', 'g1', 540, 470], ['sign', 560, 290, 'A sleepy anemone! Flash to wake it'],
+          ['lever', 'l1', 670, 180], ['bulk', 720, 230, 476, { door: 'd1', need: ['g1', 'l1'] }],
+          ['wall', 880, 74, 40, 256], ['urchin', 900, 352, {}],
+          ['coral', 980, 0, 24, 'floor'], ['gem', 990, 300, 'pearl'],
+          ['wall', 1060, 250, 40, 250], ['urchin', 1080, 228, {}],
+          ['coral', 1160, 0, 24, 'ceil'], ['gem', 1170, 330, 'pearl'],
+          ['wall', 1240, 74, 40, 256], ['urchin', 1260, 352, { dy: 8, per: 3 }],
+          ['decor', 'bed', 1420, 476],
+          ['wall', 1560, 74, 200, 318, 'crates'], ['crate', 1590, 1830],
+          ['gems', 1820, 220, 3, 34, 0, 'coin'],
+          ['decor', 'shelf', 1920, 476], ['key', 'k1', 1920, 300], ['decor', 'map', 2010, 210],
+          ['bulk', 2100, 104, 476, { door: 'd2', need: ['k1'], lock: true }],
+          ['urchin', 2300, 452, { dx: 80, per: 4 }], ['coral', 2420, 0, 26, 'ceil'], ['urchin', 2520, 170, { dx: 60, per: 3.5 }],
+          ['decor', 'crab', 2380, 476], ['decor', 'hermit', 2460, 476, { span: 120 }],
+          ['gems', 2240, 250, 3, 50, -20, 'coin'], ['gem', 2660, 200, 'gem'],
+          ['glow', 'g2', 2600, 470], ['wheel', 'w1', 2740, 330],
+          ['bulk', 2800, 104, 476, { door: 'd3', need: ['g2', 'w1'] }],
+        ],
+      },
+      {
+        title: 'Treasure Room', lantern: 1, look: 'treasure', len: 3100, act: { label: 'flash', labels: ['grab', 'flash'] },
+        tip: 'Bo carries Glimmer to the Treasure Room! Pip opens the way and the big chest at the end.',
+        news: 'Last section! Bo lights, Pip grabs',
+        items: [
+          ['sign', 240, 150, 'Last section! The Treasure Room'], ['decor', 'gold', 440, 476], ['port', 330, 210],
+          ['gems', 250, 410, 4, 40, -16, 'coin'],
+          ['bulk', 600, 270, 370], ['puffer', 618, 320, 780, 170],
+          ['gems', 700, 200, 3, 50, 0, 'gem'],
+          ['wall', 900, 74, 200, 318, 'crates'], ['crate', 930, 1170],
+          ['gems', 1180, 300, 2, 0, -70, 'coin'], ['decor', 'anchor', 1200, 476],
+          ['glow', 'g1', 1250, 470], ['lever', 'l1', 1340, 170], ['bulk', 1400, 240, 476, { door: 'd1', need: ['g1', 'l1'] }],
+          ['coral', 1520, 0, 24, 'floor'], ['coral', 1600, 0, 24, 'ceil'], ['decor', 'gold', 1650, 476],
+          ['urchin', 1710, 290, { dy: 100, per: 4.2 }], ['coral', 1800, 0, 26, 'floor'], ['urchin', 1900, 290, { dy: 100, per: 4.2, ph: 3 }],
+          ['coral', 1980, 0, 24, 'ceil'], ['gems', 1560, 300, 3, 110, 0, 'pearl'], ['gem', 1850, 200, 'gem'],
+          ['key', 'k1', 2050, 440], ['bulk', 2150, 104, 476, { door: 'd2', need: ['k1'], lock: true }],
+          ['wall', 2350, 74, 40, 236], ['wall', 2350, 400, 40, 100], ['puffer', 2370, 355, 2480, 170],
+          ['gems', 2250, 420, 3, 30, 0, 'coin'], ['decor', 'gold', 2500, 476],
+          ['wheel', 'w1', 2620, 400], ['bulk', 2700, 104, 476, { door: 'd3', need: ['w1'] }],
+          ['decor', 'gold', 2800, 476], ['decor', 'gold', 3040, 476], ['chest', 2920],
+        ],
+      },
+    ],
+  },
   // ----- END 22-3 Shipwreck Lights -----
   //
   //
   //
   // ----- BEGIN 22-4 Dolphin Race (mode 'dolphinrace', js/levels/world22/dolphin-race.js) -----
+  // 22-4 Dolphin Race (mode 'dolphinrace', versus, best of 5, Gavyn's pick): ride a dolphin along a side-scrolling sea
+  // course: ▲ ▼ swim up and dive, the action leaps high out of the water, leap through gold hoops for a speed boost,
+  // dodge seaweed, buoys, rocks, sleepy turtles, boats and gulls (bumps slow you). First through the coral arch wins.
+  // The map is only the two spawns: the mode draws the whole course (MODES.dolphinrace).
+  { name: 'Dolphin Race', world: 21, kind: 'versus', mode: 'dolphinrace', ownStep: true,
+    match: { bestOf: 5, roundTime: 70 },
+    act: { label: 'leap' },
+    legend: {
+      pip: '<kbd>W</kbd><kbd>S</kbd> swim up / dive',
+      bo: '<kbd>↑</kbd><kbd>↓</kbd> swim up / dive',
+      pad: 'stick ▲ ▼ swim up / dive,',
+    },
+    tip: '▲ ▼ swim up and dive. The action leaps out of the water: jump through gold hoops for speed, dodge the seaweed!',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '....1.......2...................', '................................', '................................',
+    ],
+  },
   // ----- END 22-4 Dolphin Race -----
   //
   //
