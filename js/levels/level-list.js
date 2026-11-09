@@ -5911,9 +5911,29 @@ const LEVELS = [
   //
   //
   // ----- BEGIN 23-4 Pie-Eating Contest (mode 'pieeat', js/levels/world23/pie-eating-contest.js) -----
-  { name: 'Pie-Eating Contest', world: 22, kind: 'versus', mode: 'pieeat', match: { bestOf: 5, roundTime: 60 },
-    tip: 'Coming soon!',
-    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '#'.repeat(32), '#'.repeat(32)],
+  // 23-4 Pie-Eating Contest (mode 'pieeat', versus, best of 5, Gavyn's pick): Pip and Bo sit at the judges' table on the
+  // fair stage, hands behind their backs. The action takes a bite (cheeks hold 6), ▲ gulps: a gulp on the crowd's clap is
+  // a GULP! (all of it plus two bonus bites), off the beat only a third. Eating too fast fills the hiccup jar: full = HIC! and
+  // no eating for a moment. First to finish every pie wins the round. The map is only the two spawns: the mode draws
+  // the whole stage (MODES.pieeat).
+  { name: 'Pie-Eating Contest', world: 22, kind: 'versus', mode: 'pieeat', ownStep: true,
+    match: { bestOf: 5, roundTime: 60 },
+    act: { label: 'bite' },
+    legend: {
+      pip: '<kbd>W</kbd> gulp on the clap',
+      bo: '<kbd>↑</kbd> gulp on the clap',
+      pad: '<span data-glyph="a"></span> or stick ▲ gulp on the clap,',
+    },
+    tip: 'The action takes a bite, ▲ gulps. Gulp when the crowd claps! Eat too fast and you get the hiccups.',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '........1...........2...........', '................................', '................................',
+    ],
   },
   // ----- END 23-4 Pie-Eating Contest -----
   //
