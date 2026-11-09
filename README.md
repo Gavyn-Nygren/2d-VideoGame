@@ -45,6 +45,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 23. **Barnyard Fair** (a sunny farm and county fair): Tractor & Trailer, Runaway Pigs, Hot Dog Stand Rush, Pie-Eating Contest
 24. **Toy Box Town** (toy-sized in a cosy kid's bedroom: a wind-up train, a jack-in-the-box, a slinky and a pillow fort): Wind-Up Train Ride, Jack-in-the-Box Launch, Slinky Stairs, Pillow Fort Battle
 25. **Zombie Acres** (built early; one endless survival level: chop, dig and build a fort, then hold off waves of zombies): Defend the Heart
+28. **Pyramid Sands** (an adventure in the desert: a rolling boulder, a dark tomb, a stone puzzle and a camel race): Rolling Boulder Run, Tomb Torch Explorers, Sliding Stone Puzzle, Camel Race
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 

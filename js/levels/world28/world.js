@@ -171,6 +171,25 @@ LEVELS.push(
     ],
   },
   // ----- END 28-3 Sliding Stone Puzzle -----
+  //
+  //
+  //
+  // ----- BEGIN 28-4 Camel Race (mode 'camelrace', js/levels/world28/camel-race.js) -----
+  // 28-4 Camel Race (mode 'camelrace', versus, best of 5, scrolls sideways, Gavyn's pick: "race camels across the
+  // desert and time your jumps over the dunes"). One course per round, built in the level file.
+  { name: 'Camel Race', world: 27, kind: 'versus', mode: 'camelrace', ownStep: true,
+    match: { bestOf: 5, roundTime: 75 },
+    act: { label: 'dash' },
+    legend: {
+      pip: '<kbd>W</kbd> jump, <kbd>S</kbd> drop',
+      bo: '<kbd>↑</kbd> jump, <kbd>↓</kbd> drop',
+      pad: 'Ⓐ or ▲ jumps, ▼ drops,',
+    },
+    tip: 'Your camel runs by itself. Jump from the top of a dune and land on the far side for a Perfect landing! The action eats a date for a dash.',
+    switches: {}, signs: [],
+    map: W28_SPAWN_MAP,
+  },
+  // ----- END 28-4 Camel Race -----
 );
 // the tomb chambers' engine maps come from their layouts
 for (const l of LEVELS) if (l.mode === 'tombtorch') for (const r of l.rooms) r.map = ttSplit(r.rows);
