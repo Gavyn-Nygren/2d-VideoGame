@@ -166,6 +166,10 @@ function showPauseCard() {
   Home.screen = 'pause';
   const l = LEVELS[G.levelIndex], m = G.match;
   const matchLine = m ? `<p class="hint">Round ${m.round} · Best of ${m.bestOf} · ${nameSpan(0)} ${m.wins[0]} – ${m.wins[1]} ${nameSpan(1)}</p>` : '';
+  // a level mode may rename "Restart level" and add its own buttons (30-1: "Restart this era", "Start over from Era 1"):
+  // pauseExtra() -> { replay: 'label', more: [{ label, arg }] }; a press calls the mode's pauseAct(arg)
+  const px = (G.lmode && typeof G.lmode.pauseExtra === 'function' && hook('pauseExtra')) || {};
+  const moreBtns = (px.more || []).map(b => `<button class="ghost" type="button" data-act="modeact" data-arg="${esc(b.arg)}">${esc(b.label)}</button>`).join('');
   showOverlay(`
     <div class="card">
       <p class="eyebrow">Paused · World ${l.world + 1}: ${esc(WORLDS[l.world].name)} · Level ${levelCode(G.levelIndex)}</p>
@@ -174,7 +178,7 @@ function showPauseCard() {
       <div data-pause-who style="display:contents">${pauseWhoHTML()}</div>${matchLine}
       <div class="actions-row">
         <button class="primary" type="button" data-act="resume" data-primary>Keep playing</button>
-        <button class="ghost" type="button" data-act="replay">${m ? 'Restart match' : 'Restart level'}</button>
+        <button class="ghost" type="button" data-act="replay">${px.replay ? esc(px.replay) : m ? 'Restart match' : 'Restart level'}</button>${moreBtns}
         <button class="ghost" type="button" data-act="worlds">Choose a level</button>
         <button class="ghost" type="button" data-act="menu">Title screen</button>
       </div>
@@ -351,10 +355,12 @@ function showWorldDone(w) {
 function showFinal() {
   G.mode = 'final';
   setActUI(false); setLegend(null);
-  // the bosses beaten this session: the Grand Collector (10-1) and Cinder the dragon (20-1)
+  // the bosses beaten this session: the Grand Collector (10-1), Cinder the dragon (20-1) and the Time Thief (30-1)
   const beaten = m => { const k = LEVELS.findIndex(l => l.mode === m); return k >= 0 && !!G.results[k]; };
-  const all = resultRows(LEVELS.map((l, i) => i)), fl = all.tot.showFalls, beatGC = beaten('collector'), beatVD = beaten('dragon'), beat = beatGC || beatVD;
-  const bossLine = beatGC && beatVD ? 'You beat the Grand Collector and made friends with Cinder the dragon!'
+  const all = resultRows(LEVELS.map((l, i) => i)), fl = all.tot.showFalls, beatGC = beaten('collector'), beatVD = beaten('dragon'), beatTT = beaten('timethief'), beat = beatGC || beatVD || beatTT;
+  const bossBits = [beatGC ? 'beat the Grand Collector' : '', beatVD ? 'made friends with Cinder the dragon' : '', beatTT ? 'caught the Time Thief and saved history' : ''].filter(Boolean);
+  const bossLine = bossBits.length > 1 ? 'You ' + bossBits.slice(0, -1).join(', ') + ' and ' + bossBits[bossBits.length - 1] + '!'
+    : beatTT ? 'You caught the Time Thief and saved history!'
     : beatVD ? 'You cheered up Cinder the dragon. Now he\'s your friend!' : 'You beat the Grand Collector!';
   const rows = liveWorlds().flatMap(w => [`<tr class="wrow"><td colspan="${fl ? 4 : 3}">World ${w + 1}: ${esc(WORLDS[w].name)}</td></tr>`].concat(resultRows(worldLevels(w), fl).rows));
   // one line per world up top; every level's row folds away below it (a long table on a phone otherwise)
@@ -399,6 +405,7 @@ overlay.addEventListener('click', e => {
   else if (a === 'world') loadLevel(worldLevels(+b.dataset.w)[0]);
   else if (a === 'final') showFinal();
   else if (a === 'replay') loadLevel(G.levelIndex, 'play', { rematch: b.dataset.rematch === '1' });
+  else if (a === 'modeact') hook('pauseAct', b.dataset.arg);
   else if (a === 'resume') resume();
   else if (a === 'menu') showTitle();
   else if (a === 'cpucfg') { const v = b.dataset.v; cpuSetCfg(b.dataset.k, /^\d+$/.test(v) ? +v : v); const pb = overlay.querySelector('[data-primary]'); (pb || b).focus({ preventScroll: true }); }
