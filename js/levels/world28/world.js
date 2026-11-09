@@ -136,6 +136,41 @@ LEVELS.push(
     ],
   },
   // ----- END 28-2 Tomb Torch Explorers -----
+  //
+  //
+  //
+  // ----- BEGIN 28-3 Sliding Stone Puzzle (mode 'stonepuzzle', js/levels/world28/sliding-stone-puzzle.js) -----
+  // 28-3 Sliding Stone Puzzle (mode 'stonepuzzle', team, Gavyn's pick: "push heavy stone blocks together to match the
+  // hieroglyph picture and open the secret door"). Seen from above, three puzzles. rows/slots: see the level file.
+  // (Every puzzle was checked with the computer's own planner: it can solve each one from the start.)
+  { name: 'Sliding Stone Puzzle', world: 27, kind: 'team', mode: 'stonepuzzle', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Puzzle',
+    legend: {
+      pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk and push',
+      bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> walk and push',
+      pad: 'stick or d-pad walks and pushes,',
+    },
+    tip: 'Push the stones to match the picture! Heavy stones need both of you in a line. Hold the action to pull.',
+    act: { label: 'pull' },
+    map: W28_SPAWN_MAP,
+    rooms: [
+      {
+        title: 'The Eye Door', tip: 'Push each stone onto its socket, like the picture. The big sun stone needs you both in a line!',
+        rows: ['#####D#####', '#.........#', '#..e...b..#', '#....U....#', '#.........#', '#pq.....R.#', '###########'],
+        slots: [[4, 1, 'e'], [5, 1, 'u'], [6, 1, 'b']],
+      },
+      {
+        title: 'The Four Seals', tip: 'Four stones in a square. Think about which one goes in first!',
+        rows: ['######D######', '#...........#', '#.#.......#.#', '#...s...c...#', '#.....E.....#', '#..#.n...#..#', '#pq.......R.#', '#############'],
+        slots: [[5, 1, 's'], [6, 1, 'e'], [5, 2, 'n'], [6, 2, 'c']],
+      },
+      {
+        title: 'The Pharaoh\'s Seal', tip: 'Two heavy stones this time. Hold the action and step back to pull a small stone out of a corner.',
+        rows: ['#######D######', '#............#', '#..#..B...#..#', '#.....#......#', '#..u......S..#', '#....#..c....#', '#pq.......#.R#', '##############'],
+        slots: [[6, 1, 'b'], [7, 1, 'c'], [8, 1, 's'], [7, 2, 'u']],
+      },
+    ],
+  },
+  // ----- END 28-3 Sliding Stone Puzzle -----
 );
 // the tomb chambers' engine maps come from their layouts
 for (const l of LEVELS) if (l.mode === 'tombtorch') for (const r of l.rooms) r.map = ttSplit(r.rows);
