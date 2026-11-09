@@ -15,13 +15,13 @@
      gulp   ▲ (W / Space / ↑ / A or B / stick up / touch ▲) swallows. The crowd claps a steady beat (every 1.3-1.5 s,
             per round) and your cheek ring shows it: a circle shrinks onto the ring and lands on it at each clap.
             A gulp on the clap (0.13 s early to 0.2 s late; the ring glows green) is a GULP!: everything in your cheeks
-            goes down, plus one extra bite straight off the plate (the bonus), and it calms your tummy a little.
+            goes down, plus two extra bites straight off the plate (the bonus), and it calms your tummy a little.
             A gulp off the beat is a "Glug!": only a third of your cheeks (rounded up) go down, you swallow air (the
-            hiccup jar fills 40%) and you cough (0.5 s instead of 0.22 s, no biting meanwhile). A gulp with
-            empty cheeks off the beat is air too (20%). One bonus per clap.
+            hiccup jar fills 32%) and you cough (0.5 s instead of 0.22 s, no biting meanwhile). A gulp with
+            empty cheeks off the beat is air too (15%). One bonus per clap.
      hiccups  eating too fast fills your hiccup jar (on the table beside you): a bite sooner than 0.17 s after your last
             one adds 32%, sooner than 0.25 s 16%, sooner than 0.32 s 5%; a bite with full cheeks ("Too full!") adds
-            38% and eats nothing; air gulps add 20-40%. The jar empties by itself (26% a second). Full: "HIC!": you
+            38% and eats nothing; air gulps add 15-32%. The jar empties by itself (26% a second). Full: "HIC!": you
             bounce in your seat for 1.6 s and can't bite or gulp (the jar empties). So mashing loses: a steady fast
             munch (about 3-4 bites a second) with a gulp on every clap is the way to win.
      pies   each round has its own pies (PIEEAT_ROUNDS): when a plate is empty the next pie slides over from your stack
@@ -29,10 +29,10 @@
             moustache). The first to swallow every bite of every pie wins the round ("Pip ate 3 pies!", or "Bo had the
             hiccups!" when the other was hiccuping at the end, "...just a nibble ahead!" when it was close). Both in
             the same tick: a tie (replayed).
-     time   the round clock is 60 s (def.match.roundTime; rounds usually end by pies in 18-35 s): whoever swallowed more
+     time   the round clock is 60 s (def.match.roundTime; rounds usually end by pies in 17-45 s): whoever swallowed more
             wins ("Time! Pip ate the most!"); within half a bite it's a tie.
-   Rounds: 1 Cherry Pie (3 pies, claps every 1.5 s), 2 Blueberry Pie (3, 1.45 s), 3 Apple Pie (3, 1.3 s: the band
-     plays faster), 4 Giant Pumpkin Pie (2 big pies of 32 bites, 1.45 s), 5 Triple Berry Final (3 pies, the claps
+   Rounds: 1 Cherry Pie (3 pies of 26 bites, claps every 1.5 s), 2 Blueberry Pie (3, 1.45 s), 3 Apple Pie (3, 1.3 s: the band
+     plays faster), 4 Giant Pumpkin Pie (2 big pies of 38 bites, 1.45 s), 5 Triple Berry Final (3 pies, the claps
      speed up from 1.45 to 1.25 s over 25 s). Sudden death (2nd tie in a row) is a Sudden Slurp: one pie.
      tiebreak(): more GULP!s (perfect gulps) this match, else replay.
    Catch-up help, gold and announced (round card chip, a gold panel border, the panel line, a gold cheek ring): 1 round
@@ -45,19 +45,19 @@ const PIEEAT = {
   early: 0.13, late: 0.2,                   // the GULP! window around each clap (s)
   earlyGold: 0.18, lateGold: 0.28,          // ... with gold gulps
   fast: [[0.17, 0.32], [0.25, 0.16], [0.32, 0.05]],   // a bite sooner than [0] s after the last adds [1] to the hiccup jar
-  full: 0.38, air: 0.4, airEmpty: 0.2, calm: 0.12, drain: 0.26, goldTummy: 0.7,
-  hicT: 1.6, gulpT: 0.22, glugT: 0.5, glugPart: 3, swapT: 0.55, bonus: 1,
+  full: 0.38, air: 0.32, airEmpty: 0.15, calm: 0.12, drain: 0.26, goldTummy: 0.7,
+  hicT: 1.6, gulpT: 0.22, glugT: 0.5, glugPart: 3, swapT: 0.55, bonus: 2,
   roundTime: 60, timeTie: 0.5,
 };
 // each round's pies: name, flavour key (looks), pies, bites a pie, clap period (per0 -> per1 over rampT s), the hint
 const PIEEAT_ROUNDS = [
-  { name: 'Cherry Pie', key: 'cherry', pies: 3, bites: 22, per0: 1.5, hint: 'Bite, bite, bite... then GULP when the crowd claps!' },
-  { name: 'Blueberry Pie', key: 'blueberry', pies: 3, bites: 22, per0: 1.45, hint: 'Not too fast, or you get the hiccups! Watch your jar.' },
-  { name: 'Apple Pie', key: 'apple', pies: 3, bites: 22, per0: 1.3, hint: 'The band plays faster: gulp on every clap!' },
-  { name: 'Giant Pumpkin Pie', key: 'pumpkin', pies: 2, bites: 32, per0: 1.45, hint: 'Two giant pumpkin pies! Keep a steady munch.' },
-  { name: 'Triple Berry Final', key: 'berry', pies: 3, bites: 22, per0: 1.45, per1: 1.25, rampT: 25, hint: 'The final! The claps speed up as you go.' },
+  { name: 'Cherry Pie', key: 'cherry', pies: 3, bites: 26, per0: 1.5, hint: 'Bite, bite, bite... then GULP when the crowd claps!' },
+  { name: 'Blueberry Pie', key: 'blueberry', pies: 3, bites: 26, per0: 1.45, hint: 'Not too fast, or you get the hiccups! Watch your jar.' },
+  { name: 'Apple Pie', key: 'apple', pies: 3, bites: 26, per0: 1.3, hint: 'The band plays faster: gulp on every clap!' },
+  { name: 'Giant Pumpkin Pie', key: 'pumpkin', pies: 2, bites: 38, per0: 1.45, hint: 'Two giant pumpkin pies! Keep a steady munch.' },
+  { name: 'Triple Berry Final', key: 'berry', pies: 3, bites: 26, per0: 1.45, per1: 1.25, rampT: 25, hint: 'The final! The claps speed up as you go.' },
 ];
-const PIEEAT_SUDDEN = { name: 'Sudden Slurp', key: 'cherry', pies: 1, bites: 26, per0: 1.4, hint: 'Sudden Slurp! One big pie: first to finish wins!' };
+const PIEEAT_SUDDEN = { name: 'Sudden Slurp', key: 'cherry', pies: 1, bites: 30, per0: 1.4, hint: 'Sudden Slurp! One big pie: first to finish wins!' };
 // pie looks: filling, its darker shade, crust, crust edge
 const PIEEAT_LOOK = {
   cherry: { fill: '#d8324a', dark: '#9c1f34', dot: '#ff6b7f', crust: '#f2c27a', edge: '#d6974c', lattice: true },
@@ -172,9 +172,10 @@ function pieeatGulp(st, E) {
     E.usedClap = c.n;
     pieeatSwallow(st, E, E.cheeks);
     if (first) {
-      // the bonus: one more bite straight off the plate
+      // the bonus: two more bites straight off the plate (never more than is left)
       if (E.left > 0 && E.swapT <= 0) {
-        E.left -= q.bonus; E.eaten += q.bonus; st.stat.bonus[E.k] += q.bonus;
+        const b = Math.min(q.bonus, E.left);
+        E.left -= b; E.eaten += b; st.stat.bonus[E.k] += b;
         if (E.left <= 0 && E.pie < st.R.pies - 1) E.swapT = q.swapT;
       }
       E.streak++; st.stat.perfect[E.k]++;
@@ -798,7 +799,7 @@ function pieeatDrawEater(st, E) {
     rr(x - bw * s / 2 - 8, y - bh * s - 8, bw * s + 16, bh * s + 8, 30); ctx.stroke();
   }
 }
-// the cheek ring over each head: 5 segments (bites in the cheeks) and the clap circle that lands on it at each clap
+// the cheek ring over each head: 6 segments (bites in the cheeks) and the clap circle that lands on it at each clap
 function pieeatDrawRing(st, E, big) {
   const q = PIEEAT, m = G.match, x = PIEEAT_X[E.k], y = PIEEAT_RING_Y, sc = big ? 1.25 : 1, r = 26 * sc;
   const live = m && m.phase === 'live' && st.ph === 'eat';
@@ -810,7 +811,7 @@ function pieeatDrawRing(st, E, big) {
   // the green (or gold) glow while a gulp now would be a GULP!
   if (on) { ctx.fillStyle = gold ? 'rgba(255,197,61,0.45)' : 'rgba(110,230,120,0.5)'; circle(x, y, r + 12 * sc); ctx.fill(); }
   if (gold) { ctx.strokeStyle = C.gold; ctx.lineWidth = 3 * sc; circle(x, y, r + 12 * sc); ctx.stroke(); }
-  // the 5 cheek segments
+  // the 6 cheek segments
   const n = q.cap, full = E.cheeks >= n, flash = full && Math.sin(st.t * 18) > 0;
   ctx.lineWidth = 8 * sc; ctx.lineCap = 'butt';
   for (let i = 0; i < n; i++) {
@@ -901,7 +902,8 @@ function pieeatDrawWorld() {
 function pieeatDrawTop() {
   const st = G.mst, m = G.match; if (!st.pl) return;
   const big = hudBig();
-  for (const E of st.pl) pieeatDrawRing(st, E, big);
+  // (the cheek rings stay hidden behind the framework's "Round N" card: they'd only peek out round its edges)
+  if (!(m && m.phase === 'ready')) for (const E of st.pl) pieeatDrawRing(st, E, big);
   // crumbs, sparkles and bubbles
   for (const f of st.vis.fx) {
     const a = clamp(f.life / f.max, 0, 1);

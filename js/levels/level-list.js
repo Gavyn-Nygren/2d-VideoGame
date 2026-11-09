@@ -5715,7 +5715,7 @@ const LEVELS = [
   // ----- BEGIN 23-4 Pie-Eating Contest (mode 'pieeat', js/levels/world23/pie-eating-contest.js) -----
   // 23-4 Pie-Eating Contest (mode 'pieeat', versus, best of 5, Gavyn's pick): Pip and Bo sit at the judges' table on the
   // fair stage, hands behind their backs. The action takes a bite (cheeks hold 6), ▲ gulps: a gulp on the crowd's clap is
-  // a GULP! (all of it plus a bonus bite), off the beat only a third. Eating too fast fills the hiccup jar: full = HIC! and
+  // a GULP! (all of it plus two bonus bites), off the beat only a third. Eating too fast fills the hiccup jar: full = HIC! and
   // no eating for a moment. First to finish every pie wins the round. The map is only the two spawns: the mode draws
   // the whole stage (MODES.pieeat).
   { name: 'Pie-Eating Contest', world: 22, kind: 'versus', mode: 'pieeat', ownStep: true,

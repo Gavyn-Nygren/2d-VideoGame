@@ -6,18 +6,20 @@
      ▲ (jump) gulps.
      What it reads: what is on screen for its own eater: the cheek ring (how full its cheeks are and the clap circle,
      so when the next clap comes), its hiccup jar, its plate. It never reads the other player's buttons.
-     Biting: it keeps a steady munch with a gap between bites (Hard about 0.26 s, Normal 0.31 s, Easy 0.47 s, each
+     Biting: it keeps a steady munch with a gap between bites (Hard about 0.26 s, Normal 0.31 s, Easy 0.56 s, each
        with a little wobble) and never bites with full cheeks or while it is swallowing. Hard and Normal also watch
        the hiccup jar and wait when one more bite could fill it.
      Gulping: it plans a gulp for the next clap once its cheeks hold enough (Hard 1 bite, Normal 2, Easy 3) and presses
-       ▲ at the clap plus a timing error (Hard about ±0.045 s, Normal ±0.08 s, Easy ±0.15 s and a bit late), so Hard
+       ▲ at the clap plus a timing error (Hard about ±0.045 s, Normal ±0.08 s, Easy ±0.18 s and a bit late), so Hard
        nearly always gets the GULP!, Easy often gets a "Glug!".
      Mistakes (Easy, a little Normal): over-excited bursts of fast bites (Easy about once every 7 s: 3-5 bites
-       0.12-0.17 s apart, which often brings the hiccups), forgetting a clap now and then, and short lapses with hands off.
+       0.12-0.17 s apart, which often brings the hiccups), forgetting a clap (Easy one in four, Normal one in twenty)
+       and short lapses with hands off. Easy is tuned so a calm kid beats it most rounds and a slow or random-pressing
+       young kid still takes about a quarter of the rounds (tools/w23/pieeat-break.js).
      It keeps playing if the person walks away (noIdleStop: the person just loses those rounds).
      It talks (1-player mode only) in short bubbles: "Nom nom!", "Hic!", "Yum!", "Good munching!". */
   const SK = {
-    easy: { gap: 0.47, gapSd: 0.07, need: 3, jit: 0.16, bias: 0.04, burst: 0.15, burstN: [3, 5], burstGap: [0.12, 0.17], forget: 0.16, lapse: 0.09, lapseT: 0.9, watch: false },
+    easy: { gap: 0.56, gapSd: 0.09, need: 3, jit: 0.18, bias: 0.04, burst: 0.15, burstN: [3, 5], burstGap: [0.12, 0.17], forget: 0.25, lapse: 0.1, lapseT: 0.9, watch: false },
     normal: { gap: 0.31, gapSd: 0.035, need: 2, jit: 0.08, bias: 0.02, burst: 0.035, burstN: [2, 4], burstGap: [0.15, 0.2], forget: 0.05, lapse: 0.03, lapseT: 0.6, watch: true },
     hard: { gap: 0.26, gapSd: 0.01, need: 1, jit: 0.045, bias: 0.01, burst: 0, burstN: [0, 0], burstGap: [0.2, 0.2], forget: 0.03, lapse: 0, lapseT: 0, watch: true },
   };

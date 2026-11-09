@@ -37,12 +37,12 @@ const { chromium } = require('playwright');
 
     /* ---------- bites ---------- */
     let st = fresh();
-    ok('round 1 is Cherry Pie, 3 pies of 22 bites, claps every 1.5 s', st.R.name === 'Cherry Pie' && st.R.pies === 3 && st.R.bites === 22 && per(st) === 1.5, st.R.name);
+    ok('round 1 is Cherry Pie, 3 pies of 26 bites, claps every 1.5 s', st.R.name === 'Cherry Pie' && st.R.pies === 3 && st.R.bites === 26 && per(st) === 1.5, st.R.name);
     ok('the platformer bodies are hidden', G.players.every(p => !p.alive));
     const A = st.pl[0];
     atClap(st, 1, -0.9);
     bite(0);
-    ok('a bite moves one bite from the plate to the cheeks', A.cheeks === 1 && A.left === 21 && A.eaten === 0, A.cheeks + '/' + A.left);
+    ok('a bite moves one bite from the plate to the cheeks', A.cheeks === 1 && A.left === st.R.bites - 1 && A.eaten === 0, A.cheeks + '/' + A.left);
     ok('a calm first bite adds nothing to the hiccup jar', A.H === 0, A.H);
     run(0.1); bite(0);
     ok('a bite 0.1 s after the last fills the jar 32%', near(A.H, 0.32, 0.01), A.H.toFixed(3));
@@ -65,32 +65,32 @@ const { chromium } = require('playwright');
     B.H = 0.3;
     atClap(st, 2, -0.125);
     gulp(0);
-    ok('a gulp on the clap swallows all 4 plus a bonus bite off the plate', B.eaten === 5 && B.cheeks === 0 && B.left === 22 - 5, B.eaten + ' eaten, left ' + B.left);
+    ok('a gulp on the clap swallows all 4 plus 2 bonus bites off the plate', Q.bonus === 2 && B.eaten === 6 && B.cheeks === 0 && B.left === st.R.bites - 6, B.eaten + ' eaten, left ' + B.left);
     ok('... is a GULP! that starts a streak and calms the jar 12%', /GULP/.test(B.pop) && B.streak === 1 && B.H < 0.3 - 0.11, B.pop + ' H ' + B.H.toFixed(3));
     ok('... and the swallow takes 0.22 s (no bites meanwhile)', near(B.gulpT, Q.gulpT - DT, 0.02), B.gulpT.toFixed(3));
     const l0 = B.left; bite(0);
     ok('a bite while swallowing is ignored', B.left === l0 && B.cheeks === 0);
     run(0.22); bite(0);
     gulp(0);
-    ok('a second gulp on the same clap swallows but gets no bonus', B.eaten === 6 && B.left === l0 - 1 && B.streak === 1, B.eaten + ' / streak ' + B.streak);
+    ok('a second gulp on the same clap swallows but gets no bonus', B.eaten === 7 && B.left === l0 - 1 && B.streak === 1, B.eaten + ' / streak ' + B.streak);
     // an early gulp (0.13 s before is still in), a late one (0.2 s after is still in)
     st = fresh();
     let E = st.pl[0];
     atClap(st, 1, -0.6); bite(0); run(0.3); bite(0);
     atClap(st, 3, -0.125); gulp(0);
-    ok('a gulp 0.125 s early is a GULP!', /GULP/.test(E.pop) && E.eaten === 3, E.pop);
+    ok('a gulp 0.125 s early is a GULP!', /GULP/.test(E.pop) && E.eaten === 4, E.pop);
     run(0.4); bite(0); run(0.3); bite(0);
     atClap(st, 5, 0.19); gulp(0);
-    ok('a gulp 0.19 s late is a GULP!', /GULP/.test(E.pop) && E.eaten === 6 && E.streak === 2, E.pop + ' ' + E.eaten);
+    ok('a gulp 0.19 s late is a GULP!', /GULP/.test(E.pop) && E.eaten === 8 && E.streak === 2, E.pop + ' ' + E.eaten);
     run(0.4); for (let i = 0; i < 6; i++) { bite(0); run(0.34); }
     E.H = 0;
     atClap(st, 9, -0.3); gulp(0);
-    ok('an off-beat gulp is a "Glug!": a third of the cheeks (6 -> 2) goes down', /Glug/.test(E.pop) && E.cheeks === 4 && E.eaten === 8, E.pop + ' cheeks ' + E.cheeks);
-    ok('... it swallows air (the jar +40%), ends the streak and takes 0.5 s', near(E.H, 0.4, 0.02) && E.streak === 0 && near(E.gulpT, 0.5 - DT, 0.02), E.H.toFixed(3) + ' ' + E.gulpT.toFixed(3));
+    ok('an off-beat gulp is a "Glug!": a third of the cheeks (6 -> 2) goes down', /Glug/.test(E.pop) && E.cheeks === 4 && E.eaten === 10, E.pop + ' cheeks ' + E.cheeks);
+    ok('... it swallows air (the jar +32%), ends the streak and takes 0.5 s', near(E.H, 0.32, 0.02) && E.streak === 0 && near(E.gulpT, 0.5 - DT, 0.02), E.H.toFixed(3) + ' ' + E.gulpT.toFixed(3));
     run(0.6);
     E.cheeks = 0; E.H = 0;
     atClap(st, 12, 0.4); gulp(0);
-    ok('an off-beat gulp with empty cheeks is air too (+20%)', near(E.H, 0.2, 0.02) && /air/.test(E.pop), E.pop + ' ' + E.H.toFixed(3));
+    ok('an off-beat gulp with empty cheeks is air too (+15%)', near(E.H, 0.15, 0.02) && /air/.test(E.pop), E.pop + ' ' + E.H.toFixed(3));
     run(0.3); E.H = 0;
     atClap(st, 14, 0.0); gulp(0);
     ok('an on-beat gulp with empty cheeks does nothing', E.H === 0 && /Nothing/.test(E.pop), E.pop);
@@ -118,7 +118,7 @@ const { chromium } = require('playwright');
     bite(0);
     ok('no biting while the next pie slides over', E.left === 0 && E.cheeks === 1);
     run(0.6);
-    ok('then the next pie is on the plate', E.pie === 1 && E.left === 22 && /Next pie/.test(E.pop), E.pie + ' ' + E.pop);
+    ok('then the next pie is on the plate', E.pie === 1 && E.left === st.R.bites && /Next pie/.test(E.pop), E.pie + ' ' + E.pop);
     // the last pie: the round is won when its last bite is swallowed
     st = fresh();
     E = st.pl[0];
@@ -177,7 +177,7 @@ const { chromium } = require('playwright');
     E = st.pl[1]; atClap(st, 1, -1); bite(1); run(0.4); bite(1);
     atClap(st, 2, 0);
     G.players[1].input.up = true; P.step(DT); G.players[1].input.up = false; P.step(DT);
-    ok('stick ▲ (input.up) gulps', E.eaten === 3, E.eaten);
+    ok('stick ▲ (input.up) gulps', E.eaten === 4, E.eaten);
 
     /* ---------- gold help ---------- */
     // round 2 after Pip won round 1: Bo gets gold gulps (a wider window)
@@ -207,7 +207,7 @@ const { chromium } = require('playwright');
 
     /* ---------- the rounds ---------- */
     const names = [1, 2, 3, 4, 5].map(r => { M.resetRound(r, { first: false, replay: false, suddenDeath: false, wins: [0, 0] }); return G.mst.R.name + ' ' + G.mst.R.pies + 'x' + G.mst.R.bites; });
-    ok('rounds: Cherry, Blueberry, Apple, Giant Pumpkin (2 big pies), Triple Berry Final', names.join(',') === 'Cherry Pie 3x22,Blueberry Pie 3x22,Apple Pie 3x22,Giant Pumpkin Pie 2x32,Triple Berry Final 3x22', names.join(','));
+    ok('rounds: Cherry, Blueberry, Apple, Giant Pumpkin (2 big pies), Triple Berry Final', names.join(',') === 'Cherry Pie 3x26,Blueberry Pie 3x26,Apple Pie 3x26,Giant Pumpkin Pie 2x38,Triple Berry Final 3x26', names.join(','));
     st = G.mst; st.rt = 0;
     const p0 = per(st); st.rt = 30; const p1 = per(st);
     ok('the final speeds the claps up from 1.45 s to 1.25 s', near(p0, 1.45) && near(p1, 1.25), p0 + ' -> ' + p1);
@@ -220,7 +220,7 @@ const { chromium } = require('playwright');
 
     /* ---------- stats tiles ---------- */
     st = fresh();
-    st.stat.perfect = [7, 3]; st.stat.hics = [0, 2]; st.stat.bestStreak = [5, 2]; st.pl[0].eaten = 33; st.pl[1].eaten = 11;
+    st.stat.perfect = [7, 3]; st.stat.hics = [0, 2]; st.stat.bestStreak = [5, 2]; st.pl[0].eaten = 39; st.pl[1].eaten = 13;
     const tiles = M.stats();
     const lab = tiles.filter(t => typeof t === 'object').map(t => t.label + ' ' + t.values.join('-')).join(', ');
     ok('stats tiles: Rounds won, Pies eaten, GULP!s, Hiccups', lab === 'Rounds won 0-0, Pies eaten 1.5-0.5, GULP!s 7-3, Hiccups 0-2', lab);

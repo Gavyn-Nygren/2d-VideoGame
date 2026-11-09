@@ -87,7 +87,7 @@ if (typeof definePreview === 'function') {
       c.beginPath(); c.arc(x, y, 9.5, a, a + Math.PI / 3 - 0.16); c.stroke();
     }
     if (glow > 0) { c.strokeStyle = 'rgba(110,230,120,' + glow + ')'; c.lineWidth = 4; v.circle(x, y, 13); c.stroke(); }
-    if (next != null && t < 4.55) { c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 1.6; v.circle(x, y, 12 + 20 * (1 - k)); c.stroke(); }
+    if (next != null && t < 4.55) { c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 1.6; v.circle(x, y, 12 + 14 * (1 - k)); c.stroke(); }
   };
   definePreview('Pie-Eating Contest', {
     blurb: 'Munch your pie and gulp on the clap! Eat too fast and you get the hiccups.',
@@ -107,8 +107,6 @@ if (typeof definePreview === 'function') {
       c.fillStyle = '#7fcf6a'; c.fillRect(0, 100, v.W, 12);
       // the stage back wall and the sign
       c.fillStyle = '#e8b878'; c.fillRect(70, 62, 180, 50); c.fillStyle = '#d29a5a'; for (let x = 70; x < 250; x += 15) c.fillRect(x, 62, 1.5, 50);
-      c.fillStyle = '#fff4dc'; v.rr(98, 8, 124, 22, 6); c.fill(); c.strokeStyle = '#b5482e'; c.lineWidth = 2; c.stroke();
-      v.text('PIE-EATING CONTEST', 160, 19.5, 10, '#b5482e');
       for (let i = 0; i < 11; i++) { const x = 72 + i * 17; c.fillStyle = ['#ff7a8a', '#ffd25a', '#6ec8ff'][i % 3]; c.beginPath(); c.moveTo(x, 62); c.lineTo(x + 14, 62); c.lineTo(x + 7, 71); c.fill(); }
       // Pip and Bo seated behind the table
       for (let k = 0; k < 2; k++) {
@@ -117,7 +115,7 @@ if (typeof definePreview === 'function') {
         const gulpAt = pw23eClaps.find(cl => t >= cl && t < cl + 0.35 && (k === 0 || cl === 1.5));
         const bounce = hic ? -Math.abs(Math.sin((t - pw23eHic[0]) * 9)) * 9 : 0;
         const nod = chew < 1 ? Math.sin(chew * Math.PI) * 2.5 : 0;
-        const mood = win ? (k === 0 ? 'joy' : 'wow') : hic ? 'dizzy' : k === 1 && t > 1.6 ? 'grit' : gulpAt != null ? 'joy' : 'happy';
+        const mood = win ? (k === 0 ? 'joy' : 'wow') : hic ? 'blink' : k === 1 && t > 1.6 ? 'grit' : gulpAt != null ? 'joy' : 'happy';
         const y = pw23eTable + 4 + bounce + nod;
         v.hero(k, x, y, { s: 2, face: k ? -1 : 1, mood, shadow: false, sq: gulpAt != null ? -0.12 : 0 });
         // puffed cheeks
@@ -128,10 +126,13 @@ if (typeof definePreview === 'function') {
         v.fillCircle(x, y - 7, 2.6, '#c0283c');
         // the cheek ring
         const glow = gulpAt != null ? 1 - (t - gulpAt) / 0.35 : 0;
-        pw23eRing(v, x, 44 + bounce * 0.3, n, t, glow);
+        if (!win) pw23eRing(v, x, 44 + bounce * 0.3, n, t, glow);
         if (hic) v.label('HIC!', x + 26, 64 + bounce, 13, '#ffd2a8');
         if (gulpAt != null) { const u = (t - gulpAt) / 0.35; c.save(); c.globalAlpha *= 1 - u * 0.6; v.label('GULP!', x, 70 - u * 10, 12, v.c.gold); c.restore(); }
       }
+      // the sign (drawn over the clap circles so they never cross its words)
+      c.fillStyle = '#fff4dc'; v.rr(98, 8, 124, 22, 6); c.fill(); c.strokeStyle = '#b5482e'; c.lineWidth = 2; c.stroke();
+      v.text('PIE-EATING CONTEST', 160, 19.5, 10, '#b5482e');
       // the table with its checked cloth, the pies and the hiccup jars
       c.fillStyle = '#a0603a'; c.fillRect(56, pw23eTable, 208, 6);
       c.fillStyle = '#ffffff'; c.fillRect(56, pw23eTable + 6, 208, 26);
