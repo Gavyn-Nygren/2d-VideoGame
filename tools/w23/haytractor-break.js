@@ -11,8 +11,11 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
 const limit = +opt('limit', 900), seeds = opt('seeds', '1').split(',').map(Number);
 const PAIRS = [
   ['idle', 'idle', 'stuck'], ['kid', 'idle', 'stuck'], ['idle', 'kid', 'stuck'], ['idle', 'cpu', 'stuck'], ['cpu', 'idle', 'stuck'],
-  ['mash', 'mash', '?'], ['hold', 'hold', '?'], ['act', 'act', '?'], ['back', 'back', 'stuck'], ['wrong', 'wrong', '?'], ['racer', 'racer', '?'],
+  ['mash', 'mash', 'clear'], ['hold', 'hold', '?'], ['act', 'act', 'clear'], ['back', 'back', 'clear'], ['wrong', 'wrong', '?'], ['racer', 'racer', '?'],
   ['kid', 'kid', 'clear'], ['slowkid', 'slowkid', 'clear'], ['kid', 'slowkid', 'clear'], ['kid', 'cpu', 'clear'], ['cpu', 'kid', 'clear'], ['slowkid', 'cpu', 'clear'],
+  // 1-player mode: the person does odd things in their seat while the computer plays the other
+  ['mash', 'cpu', 'clear'], ['cpu', 'mash', 'clear'], ['hold', 'cpu', '?'], ['cpu', 'hold', '?'], ['back', 'cpu', 'clear'], ['cpu', 'back', 'clear'],
+  ['act', 'cpu', 'clear'], ['cpu', 'act', 'clear'], ['wrong', 'cpu', '?'], ['cpu', 'wrong', '?'], ['nap', 'cpu', 'clear'], ['cpu', 'nap', 'clear'],
 ];
 const only = opt('only', '');
 (async () => {

@@ -129,10 +129,13 @@ if (typeof definePreview === 'function') {
       // the rock and its yellow sign
       const rx = pw23tRock - cam;
       c.fillStyle = '#8b8f98'; c.strokeStyle = '#5c606a'; c.lineWidth = 1.5; c.beginPath(); c.ellipse(rx, gy + 3, 9, 6, 0, Math.PI, 0); c.fill(); c.stroke();
-      const sgx = rx + 70;
+      // (the warning comes before the rock; faint while the wagon or tractor rolls past it)
+      const sgx = rx - 46;
+      c.save(); c.globalAlpha = sgx > 76 && sgx < 232 ? 0.3 : 1;
       c.fillStyle = '#7a4a22'; c.fillRect(sgx - 1, gy - 22, 3, 22);
       c.save(); c.translate(sgx, gy - 30); c.rotate(Math.PI / 4); c.fillStyle = '#ffd23f'; c.strokeStyle = '#7a5a10'; c.lineWidth = 1.5; c.fillRect(-7, -7, 14, 14); c.strokeRect(-7, -7, 14, 14); c.restore();
       c.fillStyle = '#5a3a10'; c.font = 'bold 10px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('!', sgx, gy - 30);
+      c.restore();
       // the wagon rolling over the rock: a lift and a sway that dies down
       const over = v.seg(t, 2.75, 3.25), lift = Math.sin(over * Math.PI) * 4;
       const swayK = Math.max(0, 1 - Math.abs(t - 3.1) / 0.9), sway = Math.sin(t * 13) * swayK;

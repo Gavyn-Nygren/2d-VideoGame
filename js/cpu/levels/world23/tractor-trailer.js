@@ -16,7 +16,7 @@
      level state, so the plan, the prompts and both seats move on together.
      It can't finish a field alone: as the catcher it can't move the tractor, and as the driver it stops when the person
      has pressed nothing for 15 s (the level's "Taking a break"), and the shared idle stop (CPU.idleStop) stops it too.
-     In 1-player mode it says short things ("Catch it!", "Slow down, a bump!", "Honk at the sheep!"). Team brains always
+     In 1-player mode it says short things ("Catch that one!", "Slow down, a bump!", "Honk at the sheep!"). Team brains always
      play at full skill. */
   const M = () => MODES.haytractor;
 
@@ -40,7 +40,7 @@
         if (pl.honk && S.honkCd <= 0 && tr.honkCd <= 0) { out.act = 'tap'; S.honkCd = 0.6; }
         if (human) {
           if (pl.cWhy === 'jump' && pl.jumpSoon) cpuSay(p, 'Jump for it!', 1.4);
-          else if (pl.cWhy === 'catch' && Math.abs(pl.uWant - c.u) > 30 && pl.catchT < 1.2) cpuSay(p, pl.uWant < c.u ? 'Catch it! Go left!' : 'Catch it! Go right!', 1.4);
+          else if (pl.cWhy === 'catch' && Math.abs(pl.uWant - c.u) > 30 && pl.catchT < 1.2) cpuSay(p, 'Catch that one!', 1.2); // (no left/right here: a bubble outlives the move, the prompt shows the way)
           else if (pl.holdNow && !c.hold) cpuSay(p, 'Bump! Hold on!', 1.4);
           else if (pl.dWhy === 'back' || pl.dWhy === 'creep') cpuSay(p, 'I\'ll back up. Scoop it!', 1.8);
           else if (st.wob > 0.7) cpuSay(p, 'The load is wobbly!', 1.4);

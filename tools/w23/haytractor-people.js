@@ -14,6 +14,8 @@
     if (!st.c || G.mode !== 'play') return want;
     const dt = P.DT, isD = id === st.drive, tr = st.tr, c = st.cat;
     if (kind === 'idle') return want;
+    // nap: plays like a kid but stops pressing anything for 25 s every 60 s (the break, then coming back)
+    if (kind === 'nap') { m.napT = (m.napT || 0) + dt; if (m.napT % 60 > 35) return want; kind = 'kid'; }
     if (kind === 'mash') { m.t = (m.t || 0) - dt; if (m.t <= 0) { m.t = 0.08 + rnd() * 0.2; m.held = {}; for (const k of ['left', 'right', 'up', 'down', 'act']) m.held[k] = rnd() < 0.4; } return Object.assign(want, m.held); }
     if (kind === 'hold') { want.right = true; want.up = true; want.act = true; return want; }
     if (kind === 'act') { m.t = (m.t || 0) - dt; if (m.t <= 0) m.t = 0.25; want.act = m.t > 0.15; return want; }

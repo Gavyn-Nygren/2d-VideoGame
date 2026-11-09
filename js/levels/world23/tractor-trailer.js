@@ -37,7 +37,10 @@
    GOLD HELP (always announced in the news line, only while both players are playing): 3 spills in one field: a gold
    rope ties the load for the rest of that field (it can't spill). 6 tosses in a row missed: gold hay (tosses glow, float
    down slowly and aim right at the catcher) for the rest of the field. 2 items taken by crows in one field: a gold
-   scarecrow rides on the wagon and the crows stay away.
+   scarecrow rides on the wagon and the crows stay away. A driver who keeps pressing things but hasn't got 300 px further
+   in 20 s (a little kid mashing, holding ◀ or only honking): a gold engine, so the tractor putters on at 62 px/s by
+   itself (slower than every bump's safe speed; ▶ still goes faster, it can't back up) for the rest of that field. It
+   only runs while both players are playing, so it never carries a player who has wandered off.
    IDLE: when no person has pressed anything for 15 s the tractor waits ("Taking a break") and the clock stops.
    Scoring: items delivered to the barns (golden corn counts as one, and is also counted on its own). Medal: Gold at
    <= 3:45 with >= 70% delivered, Silver at <= 6:30 with >= 50%, else Bronze.
@@ -60,7 +63,7 @@
     lieT: 7, scoopV: 95, scoopDX: 38,
     honkCd: 0.45, honkReach: 560, crowPeck: 5, sheepWait: 6,
     camLead: 600, idleWait: 15, tryWin: 12,
-    goldSpills: 3, goldMiss: 6, goldSteals: 2,
+    goldSpills: 3, goldMiss: 6, goldSteals: 2, goldStall: 20, stallGo: 300, cruiseV: 62,
     finT: 4.2, slot: 44, row: 25, cols: 4,
   };
   const lerp = (a, b, u) => a + (b - a) * u;
@@ -170,7 +173,8 @@
     st.state = 'go'; st.barn = null; st.roomT = 0; st.segStart = G.time;
     st.cam = { x: st.tr.s - S.camLead };
     st.parts = []; st.pops = []; st.hints = [null, null]; st.hinted = {}; st.msg = null; st.waiting = false;
-    st.gold = { rope: false, hay: false, scare: false }; st.rSpills = 0; st.missRun = 0; st.rSteals = 0;
+    st.gold = { rope: false, hay: false, scare: false, cruise: false }; st.rSpills = 0; st.missRun = 0; st.rSteals = 0;
+    st.prog = { s: st.tr.s, t: 0 }; st.liveT = 0;
     st.stats.roomT[k] = null;
     mirror(st);
   }
@@ -205,6 +209,7 @@
       flocks(st, dt);
       wobble(st, dt);
       nudges(st);
+      stall(st, dt);
       if (st.c.barn && st.tr.s + 100 >= st.c.barn.x - 130) enterBarn(st);
     } else {
       for (const p of ps) { p.pendingJump = false; p.pendingAct = false; }
@@ -223,13 +228,17 @@
     const p = G.players[st.drive], i = p.input, tr = st.tr;
     p.pendingJump = false;
     if (p.pendingAct) { p.pendingAct = false; honk(st); }
-    const gas = i.right && !i.left, brk = i.left || i.down;
+    const gas = i.right && !i.left, brk = i.left || i.down, v0 = tr.v;
     if (gas && !i.down) tr.v = Math.min(S.vMax, tr.v + (tr.v < 0 ? S.brake : S.acc) * dt);
     else if (brk) {
       if (tr.v > 0) tr.v = Math.max(0, tr.v - S.brake * dt);
       else if (i.left && !i.down) tr.v = Math.max(-S.revMax, tr.v - S.revAcc * dt);
       else tr.v = Math.min(0, tr.v + S.brake * dt);
     } else tr.v = tr.v > 0 ? Math.max(0, tr.v - S.coast * dt) : Math.min(0, tr.v + S.coast * 2 * dt);
+    // the gold engine (help for a driver who is trying but not getting anywhere): it never goes slower than a putter
+    // forward and can't back up; ▶ still goes faster. Only while both players are playing, so it can't carry a player
+    // who has wandered off.
+    if (st.gold.cruise && both(st)) tr.v = Math.max(tr.v, Math.min(S.cruiseV, v0 + S.acc * dt));
     tr.gas = gas ? 1 : 0; tr.brk = brk ? 1 : 0;
   }
   function honk(st) {
@@ -284,7 +293,7 @@
     if (tr.puff <= 0) {
       tr.puff = 0.35;
       const pose = tractorPose(st), ex = toWorld(pose, 62, -70);
-      part(st, ex.x, ex.y, -20 - tr.v * 0.3, -40 - Math.random() * 20, 1.4, 'rgba(255,255,255,0.75)', 5 + Math.random() * 3, -10, 'smoke');
+      part(st, ex.x, ex.y, -20 - tr.v * 0.3, -40 - Math.random() * 20, 1.4, st.gold.cruise ? 'rgba(255,214,90,0.85)' : 'rgba(255,255,255,0.75)', 5 + Math.random() * 3, -10, 'smoke');
     }
     if (tr.honkCd > 0) tr.honkCd -= dt;
     if (tr.honkT > 0) tr.honkT -= dt;
@@ -538,6 +547,18 @@
     if (b && st.stack.length >= 3) hintOnce(st, 'hold' + st.k, Cc, 'A bump! Hold ' + key(Cc, 'act') + ' to steady the load', 3.2);
   }
 
+  // the gold engine: a driver who keeps pressing things but hasn't got 300 px further along in 20 s of play (a little kid
+  // mashing, holding ◀, only honking) gets a tractor that putters on by itself for the rest of the field
+  function stall(st, dt) {
+    st.liveT += dt;
+    if (st.tr.s > st.prog.s + S.stallGo) { st.prog.s = st.tr.s; st.prog.t = st.liveT; }
+    if (!st.gold.cruise && st.liveT - st.prog.t > S.goldStall && both(st)) {
+      st.gold.cruise = true; st.stats.helps++; Sfx.play('haytractorHelp');
+      msg(st, 'Gold engine! The tractor putters on by itself', C.gold, 4.4);
+      hint(st, st.drive, 'Gold engine! ' + key(st.drive, 'right') + ' still goes faster', 3.4);
+    }
+  }
+
   /* ---------- the barn: count the load, swap jobs ---------- */
   function enterBarn(st) {
     const last = !(G.level.def.rooms && G.level.def.roomIndex < G.level.def.roomCount - 1);
@@ -635,6 +656,7 @@
     for (const it of st.items) {
       if (it.st !== 'lie' || it.lieT < 1.2 || it.skip) continue;
       const rel = it.x - tc;
+      if (st.gold.cruise && rel < -S.deckHalf + 20) continue; // (the gold engine can't back up)
       if (rel < -S.deckHalf - 300 || rel > S.deckHalf + 260) continue;
       if (!scoop || Math.abs(rel) < Math.abs(scoop.x - tc)) scoop = it;
     }
@@ -1005,11 +1027,15 @@
     const x = b.x - 150;
     if (x < st.cam.x - 60 || x > st.cam.x + W + 60 || b.kind === 'plank' && b !== st.c.bumps.find(q => q.kind === 'plank' && Math.abs(q.x - b.x) < 400)) return;
     const y = gyAt(st, x) - 22, big = b.size === 2;
+    // (faint while the tractor drives past it, so it doesn't look like it sits on the hood)
+    const tx = st.tr.s + 40, fade = Math.abs(x - tx) < 100 ? 0.3 + 0.7 * Math.abs(x - tx) / 100 : 1;
+    ctx.save(); ctx.globalAlpha *= fade;
     ctx.fillStyle = '#7a6a5a'; ctx.fillRect(x - 2, y - 40, 4, 40);
     ctx.save(); ctx.translate(x, y - 52); ctx.rotate(Math.PI / 4);
     ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(-12, -12, 24, 24, 3); ctx.fill(); ctx.stroke();
     ctx.restore();
     ctx.fillStyle = C.ink; ctx.beginPath(); ctx.moveTo(x - 9, y - 47); ctx.quadraticCurveTo(x, y - (big ? 66 : 60), x + 9, y - 47); ctx.closePath(); ctx.fill();
+    ctx.restore();
   }
   function drawBump(st, b) {
     const y = gyAt(st, b.x), slow = Math.abs(st.tr.v) <= b.safe;
@@ -1379,9 +1405,10 @@
         if (pl.bump) { const sx = gx + 2 + (gw - 4) * pl.bump.safe / S.vMax; ctx.fillStyle = '#ffffff'; ctx.fillRect(sx - 1, cy + 3, 2, chh - 6); }
         const lab = (qt ? '' : key(id, 'right') + ' ') + (tr.v < -5 ? 'BACK' : 'SPEED');
         // (outlined so it reads over the fill and the marks)
-        ctx.font = '700 ' + Math.round(11 * z) + 'px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(28,26,54,0.95)'; ctx.lineWidth = 3.5 * z; ctx.strokeText(lab, gx + gw / 2, cy + chh / 2 + 0.5);
-        ctx.fillStyle = '#ffffff'; ctx.fillText(lab, gx + gw / 2, cy + chh / 2 + 0.5);
+        ctx.font = '700 ' + Math.round(11 * z) + 'px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        // (at the left end, clear of the gold pace mark)
+        ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(28,26,54,0.95)'; ctx.lineWidth = 3.5 * z; ctx.strokeText(lab, gx + 9 * z, cy + chh / 2 + 0.5);
+        ctx.fillStyle = '#ffffff'; ctx.fillText(lab, gx + 9 * z, cy + chh / 2 + 0.5);
         chip(px + 12 * z + gw + 6 * z, cy, pw - 24 * z - gw - 6 * z, chh, (qt ? '' : key(id, 'act') + ' ') + 'HONK', honkLit, tr.honkT > 0, z, t);
       } else {
         const moveLit = pl.cWhy !== 'none' && pl.cWhy !== 'hold' && Math.abs(pl.uWant - c.u) > 16 && pl.cWhy !== 'ready';

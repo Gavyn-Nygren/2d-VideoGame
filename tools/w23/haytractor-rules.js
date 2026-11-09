@@ -80,6 +80,27 @@ const { chromium } = require('playwright');
     for (let i = 0; i < 30; i++) { st.inT = [G.time, G.time - 99]; st.personT = G.time; P.step(P.DT); }
     ok('no gold help when one player is away', !st.gold.hay);
 
+    // the gold engine: a driver who holds ◀ (trying, but going nowhere) for 20 s gets a tractor that putters on
+    st = fresh(0);
+    G.players[st.drive].input.left = true;
+    step(Math.round(19 / P.DT));
+    ok('gold engine: not before 20 s', !st.gold.cruise && st.tr.v <= 0, { v: +st.tr.v.toFixed(1) });
+    step(Math.round(2 / P.DT));
+    const s0 = st.tr.s;
+    step(Math.round(2 / P.DT));
+    ok('gold engine: on after 20 s stuck, putters forward with ◀ held', st.gold.cruise && st.tr.v > 50 && st.tr.v <= S.cruiseV + 1 && st.tr.s > s0 + 90, { v: +st.tr.v.toFixed(1), moved: Math.round(st.tr.s - s0) });
+    clearIn(); G.players[st.drive].input.right = true; step(Math.round(1.5 / P.DT));
+    ok('gold engine: ▶ still goes faster', st.tr.v > 150, { v: +st.tr.v.toFixed(1) });
+    clearIn();
+    // ...but not while the driver is away (only the catcher keeps pressing)
+    for (let i = 0; i < Math.round(16 / P.DT); i++) { st.inT = [G.time - 99, G.time]; st.personT = G.time; P.step(P.DT); }
+    ok('gold engine: stops when the driver is away', Math.abs(st.tr.v) < 1, { v: +st.tr.v.toFixed(1) });
+    // and never for a driver who is away from the start
+    st = fresh(0);
+    for (let i = 0; i < Math.round(40 / P.DT); i++) { st.inT = [G.time - 99, G.time]; st.personT = G.time; G.players[st.catch].input.right = i % 200 < 100; P.step(P.DT); }
+    clearIn();
+    ok('gold engine: no help when the driver never pressed', !st.gold.cruise && st.tr.s < 400, { s: Math.round(st.tr.s) });
+
     // crows: a pecking crow takes the top item after 5 s; two steals bring the gold scarecrow; a honk shoos them
     st = fresh(1); st.stack = bales(5);
     st.birds.push({ st: 'peck', x: tcOf(st), y: 300, slot: 0, t: S.crowPeck - 0.01, vx: 0, flap: 0, carry: null });
