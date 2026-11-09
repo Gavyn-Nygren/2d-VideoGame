@@ -12,21 +12,26 @@
    - THE COOK (action 'cook'). Stations, left to right: Biscuit the farm dog (on his rug), the grill (4 spots), the bun
      basket, the topping bottles (ketchup, mustard, then relish, onions and cheese in later shifts), the pass shelf.
      At an empty grill spot the action puts a sausage on. It cooks raw (pink) -> golden (ready: it glows and gets a
-     green tick) after 4 s, stays golden 7 s (a red "!" blinks in the last 2.2 s) and then is burnt (black, smoky).
+     green tick) after 4 s, stays golden 8.5 s (a red "!" blinks in the last 2.2 s) and then is burnt (black, smoky).
      The action on a golden one picks it up; the bun basket makes it a hot dog; each bottle adds its topping (a topping
      it already has: "Already has ketchup!"); the pass shelf puts it down (4 slots). A burnt sausage, or a hot dog
      with the wrong toppings, goes to Biscuit, who is delighted ("Woof! Yum!"): no penalty except the time. With empty
-     hands at a full-ish shelf the cook can take back a hot dog that nobody's order needs. The cook holds one thing.
+     hands at a full-ish shelf the cook can take back a hot dog that nobody's order needs. A wanted hot dog put on a
+     FULL shelf swaps places with an old one nobody needs ("Swap! Old one for Biscuit"). The cook holds one thing. The
+     arrow asks for at most 2 sausages cooking at once (the empty spot nearest the bun), so nobody is sent to fill
+     the whole grill and then burn half of it.
    - THE SERVER (action 'serve'). Stations: the pass shelf, the lemonade jug, and three window spots where fairgoers
      (a farmer, a cowboy, a granny, a kid with a balloon, a cow in a straw hat, a pig with a bow...) walk up from the
      right. A new customer's bubble shows a notepad "?": the action TAKES the order, which pins a ticket on the order
      board in the kitchen (pictures only: hot dogs with their topping marks, a lemonade cup) and shows the same
      pictures in the customer's bubble. At the shelf the action picks up a hot dog (the one an order needs, if any;
-     two hands, so two items) or, with nothing there to pick up, puts a held one back. At the customer it hands over
+     two hands, so two items) or, with nothing there to pick up, puts a held one back (a hot dog nobody wants first);
+     with full hands and a full shelf it swaps a hot dog nobody wants for one an order needs. At the customer it hands over
      every held item their order wants: right = "Thanks!" / "Yum!" (hearts, 1-3 stars by how much patience was left);
      wrong = "Not mine!" and they kindly hand it back. LEMONADE (Lunch Rush on): hold the action at the jug to pour and
      let go when the cup is in the green band (66-90%); letting go early keeps the cup at the jug half full (hold again
-     to top it up); over the top is a funny spill ("Oops! Spill!"), start again.
+     to top it up); over the top is a funny spill ("Oops! Spill!"), start again. With both hands full, the action at
+     the jug pours a lemonade nobody ordered back in ("Back in the jug!"), so spare lemonades never block the hands.
    - Customers wait with a patience ring (a smiley that goes green -> yellow -> red). Taking the order gives back a
      quarter of it, and each item handed over a bit more. Patience runs out: "Maybe later!", a shrug, and they walk off
      (counted as missed, never a game over). Customers who arrive while all three window spots are full wait in the
@@ -40,12 +45,14 @@
      Jobs swap every shift: Pip cooks in 1 and 3, Bo in 2 and 4.
    - Gold help, always announced (a news line and a HUD chip): 2 customers walking off in a row ring the GOLD BELL
      (everyone at the window gets full patience back, and patience drains a third slower for the rest of the shift);
-     2 burnt sausages in a row give the GOLD TIMER (a gold ring and a seconds count on every sausage, and golden lasts
-     11 s instead of 7); 2 lemonade spills in a row give the GOLD JUG (it stops by itself in the green). 20 s with a
-     job to do and nothing done: a gold hint line for that person.
+     2 burnt sausages in a row, or 3 in one shift, give the GOLD TIMER (a gold ring and a seconds count on every
+     sausage, and golden lasts 12 s instead of 8.5); 2 lemonade spills in a row give the GOLD JUG (it stops by itself in
+     the green). The gold timer and gold jug, once earned, stay for the rest of the level. 20 s with a job to do and
+     nothing done: a gold hint line for that person.
    - Rest: when every person playing has pressed nothing for 15 s, the stand waits ("RESTING" chip): the shift clock,
-     patience, the grill and new arrivals all stop. So the computer can't get through a shift alone in 1-player mode
-     (and it stops too after CPU.idleStop).
+     patience, the grill and new arrivals all stop. In 1-player mode the stand also waits when the person has had a
+     job to do for 30 s and done none of it (leaning on a key, wandering): "The stand waits for Bo: Take the order!",
+     until one useful press. So the computer can't get through a shift alone (and it stops too after CPU.idleStop).
    - Medal by happy customers, not time: Gold = >= 85% of the fairgoers who reached the window left happy (happy /
      (happy + missed)), 3 of the 4 shift goals reached and 2 stars a customer on average; Silver = >= 60% happy and at
      least half as many happy customers as the four goals together (10 of 19); else Bronze.
@@ -68,11 +75,11 @@ const HOTDOG = {
   tops: { k: 390, m: 430, r: 470, o: 510, c: 550 }, topHW: 20,
   shelf: 605, shelfN: 4, jug: 670, jugHW: 24,
   spots: [744, 823, 902], spotHW: 38,
-  cookT: 4.0, goodT: 7.0, goodGold: 11.0, warnT: 2.2,
+  cookT: 4.0, goodT: 8.5, goodGold: 12.0, warnT: 2.2,
   pourT: 1.6, greenLo: 0.66, greenHi: 0.9, spillAt: 1.04, goldFill: 0.78,
   takeBonus: 0.25, itemBonus: 0.12, walkV: 150, hands: 2, queueMax: 6,
   goldWalk: 2, goldBurn: 2, goldSpill: 2, bellDrain: 0.65,
-  restT: 15, hintT: 20, lastT: 10, clearT: 3.4, finT: 4.8, newsLife: 3.8, chipAgain: 14,
+  restT: 15, waitT: 30, hintT: 20, lastT: 10, clearT: 3.4, finT: 4.8, newsLife: 3.8, chipAgain: 14,
 };
 
 (() => {
@@ -155,6 +162,19 @@ const HOTDOG = {
     return out;
   }
   const shelfItems = st => st.shelf.filter(Boolean);
+  // the server's held items that no taken order still wants (indexes into st.hands)
+  function spareHeld(st) {
+    const want = [], out = [];
+    for (const c of waiting(st)) if (c.taken) c.order.forEach((k, i) => { if (!c.got[i]) want.push(k); });
+    st.hands.forEach((k, h) => { const n = want.indexOf(k); if (n >= 0) want.splice(n, 1); else out.push(h); });
+    return out;
+  }
+  // shelf slots holding a hot dog that no order still needs (the server's hands count first), oldest first
+  function spareShelf(st) {
+    const need = uncovered(st, st.hands).map(u => u.key), out = [];
+    st.shelf.forEach((k, i) => { if (!k) return; const n = need.indexOf(k); if (n >= 0) need.splice(n, 1); else out.push(i); });
+    return { slots: out.sort((a, b) => st.shelfT[b] - st.shelfT[a]), need };
+  }
   // what the cook still has to make: hot dog items not already on the shelf or in the server's hands
   function plan(st) {
     const un = uncovered(st, shelfItems(st).concat(st.hands));
@@ -189,11 +209,11 @@ const HOTDOG = {
       s.t += dtw;
       if (was < HD.cookT && s.t >= HD.cookT) { pop(st, HD.grill[i], 392, 'Ready!', '#7be36a', 15); Sfx.play('hotdogReady'); }
       if (s.t >= HD.cookT + goodFor(st)) {
-        s.burnt = true; st.stats.burnt++; st.burnRow++;
+        s.burnt = true; st.stats.burnt++; st.sec.burnt++; st.burnRow++;
         pop(st, HD.grill[i], 392, 'Burnt!', '#ffb08a', 16); Sfx.play('hotdogBurn');
         smoke(st, HD.grill[i], 424, 8);
         if (isCpu(st.serv) && typeof cpuSay === 'function') cpuSay(G.players[st.serv], 'Biscuit gets that one!');
-        if (st.burnRow >= HD.goldBurn && !st.goldTimer) {
+        if ((st.burnRow >= HD.goldBurn || st.sec.burnt >= HD.goldBurn + 1) && !st.goldTimer) {
           st.goldTimer = true; st.goldUsed.push('timer');
           news(st, 'Gold timer! A gold ring on each sausage shows when to pick it up (and golden lasts longer)', true, 5.5);
           Sfx.play('hotdogGold');
@@ -265,9 +285,15 @@ const HOTDOG = {
     }
     if (s.k === 'shelf') {
       if (H && H.kind === 'dog') {
-        const i = st.shelf.indexOf(null);
-        if (i < 0) return no('Shelf is full!');
+        let i = st.shelf.indexOf(null), swap = null;
+        if (i < 0) {
+          // a full shelf: a wanted hot dog swaps places with an old one nobody needs (that one goes to Biscuit)
+          const sp = spareShelf(st);
+          if (!sp.slots.length || !sp.need.includes(dogKey(H.tops))) return no('Shelf is full!');
+          i = sp.slots[0]; swap = st.shelf[i];
+        }
         st.shelf[i] = dogKey(H.tops); st.shelfT[i] = 0; st.hold = null;
+        if (swap) { st.hold = { kind: 'dog', tops: topsOf(swap), again: true }; pop(st, HD.shelf - 40, 410, 'Swap! Old one for Biscuit', '#ffd7a8', 14); }
         if (!H.again) st.stats.made[p.id]++;   // (one taken back off the shelf isn't counted twice)
         Sfx.play('hotdogShelf'); pop(st, HD.shelf, 382, 'Order up!', C.gold, 16);
         useful(st, p.id);
@@ -318,7 +344,15 @@ const HOTDOG = {
     P.armT = 0.25;
     if (!s) { Sfx.play('hotdogSnap', p.id); return; }
     if (s.k === 'jug') {
-      if (st.hands.length >= HD.hands) return no('Hands full!');
+      if (st.hands.length >= HD.hands) {
+        // hands full and a lemonade nobody ordered: it goes back in the jug
+        const h = spareHeld(st).find(n => st.hands[n] === 'L');
+        if (h == null) return no('Hands full!');
+        st.hands.splice(h, 1); st.cup = 0;
+        pop(st, HD.jug, 360, 'Back in the jug!', '#ffe066', 15); Sfx.play('hotdogPour');
+        useful(st, p.id);
+        return;
+      }
       st.pouring = true;
       return;
     }
@@ -335,10 +369,22 @@ const HOTDOG = {
         return;
       }
       if (st.hands.length) {
+        const spare = spareHeld(st).filter(h => st.hands[h] !== 'L');
         const i = st.shelf.indexOf(null);
-        if (i < 0) return no('Shelf is full!');
-        const k = st.hands.pop();
-        if (k === 'L') { st.hands.push(k); return no('Lemonade goes to a customer!'); }
+        if (i < 0) {
+          // full shelf, full hands: a hot dog nobody wants swaps for one an order needs
+          const need = uncovered(st, st.hands);
+          let j = -1;
+          for (const u of need) { j = st.shelf.indexOf(u.key); if (j >= 0) break; }
+          if (j < 0 || !spare.length) return no('Shelf is full!');
+          const h = spare[0], k = st.hands[h];
+          st.hands[h] = st.shelf[j]; st.shelf[j] = k; st.shelfT[j] = 0;
+          Sfx.play('hotdogPick'); pop(st, HD.shelf, 382, 'Swap!', '#fff3d6', 15); useful(st, p.id);
+          return;
+        }
+        const h = spare.length ? spare[0] : st.hands.length - 1, k = st.hands[h];
+        if (k === 'L') return no('Lemonade goes to a customer!');
+        st.hands.splice(h, 1);
         st.shelf[i] = k; st.shelfT[i] = 0; Sfx.play('hotdogShelf');
         return;
       }
@@ -512,7 +558,7 @@ const HOTDOG = {
           miss.sort((a, b) => Math.abs(HD.tops[a] - x) - Math.abs(HD.tops[b] - x));
           return { k: 'top', t: miss[0], x: HD.tops[miss[0]], c: tgt.c };
         }
-        if (anyTicketWants(st, H.tops) || (!H.tops && !waiting(st).some(c => c.taken))) return { k: 'shelf', x: HD.shelf };
+        if (st.shelf.includes(null) && (anyTicketWants(st, H.tops) || (!H.tops && !waiting(st).some(c => c.taken)))) return { k: 'shelf', x: HD.shelf };
         return { k: 'biscuit', x: HD.biscuit, wrong: true };
       }
       // empty hands: golden first (the one closest to burning), then burnt ones, then put sausages on
@@ -523,15 +569,16 @@ const HOTDOG = {
         if (ss === 'burnt' && bi < 0) bi = i;
       });
       const pl = plan(st), have = st.grill.filter(s => s && !s.burnt).length;
-      const want = Math.min(4, pl.needs.length + Math.min(pl.hi, 1));
+      // (after a burn this shift, at most 2 cooking at once, so a slower cook isn't sent to fill the whole grill)
+      const want = Math.min(2, pl.needs.length + Math.min(pl.hi, 1));
       // (a sausage that still has a while before it burns can wait while an empty spot gets a new one)
       const refill = have < want && st.grill.includes(null);
       if (gi >= 0 && !(refill && gl > 3.5)) return { k: 'pick', i: gi, x: HD.grill[gi] };
       if (bi >= 0 && !refill) return { k: 'pickBurnt', i: bi, x: HD.grill[bi] };
       if (refill) {
-        const x = cxOf(G.players[id]);
+        // (the empty spot nearest the bun: a steady arrow that doesn't hop about while the cook walks)
         let ei = -1;
-        st.grill.forEach((s, i) => { if (!s && (ei < 0 || Math.abs(HD.grill[i] - x) < Math.abs(HD.grill[ei] - x))) ei = i; });
+        st.grill.forEach((s, i) => { if (!s) ei = i; });
         if (ei >= 0) return { k: 'grill', i: ei, x: HD.grill[ei] };
       }
       if (gi >= 0) return { k: 'pick', i: gi, x: HD.grill[gi] };
@@ -547,6 +594,11 @@ const HOTDOG = {
     const hi = u.find(q => !q.taken);
     if (hi) return { k: 'take', c: hi, x: HD.spots[hi.spot] };
     const need = uncovered(st, st.hands);
+    if (st.hands.length >= HD.hands) {
+      const spare = spareHeld(st);
+      if (spare.some(h => st.hands[h] === 'L')) return { k: 'jugBack', x: HD.jug };
+      if (spare.length && need.some(n => isDog(n.key) && st.shelf.includes(n.key))) return { k: 'shelf', x: HD.shelf };
+    }
     if (st.hands.length < HD.hands) {
       if (need.some(n => isDog(n.key) && st.shelf.includes(n.key))) return { k: 'shelf', x: HD.shelf };
       if (need.some(n => n.key === 'L')) return { k: 'jug', x: HD.jug };
@@ -568,6 +620,7 @@ const HOTDOG = {
       case 'give': return ['Hand it over!', 'Press ' + a + ' at the fairgoer'];
       case 'jug': return ['Pour a lemonade!', 'Hold ' + a + ', let go in the green'];
       case 'back': return ['Put it back on the shelf', 'Nobody ordered that one'];
+      case 'jugBack': return ['Pour the spare lemonade back', 'Press ' + a + ' at the jug'];
       case 'wait': return id === st.cook ? ['Watch the order board', nm + ' pins up the orders'] : ['Wait for the next fairgoer', 'Hot dogs come on the shelf'];
       default: return null;
     }
@@ -580,12 +633,13 @@ const HOTDOG = {
     if (j.k === 'top') return s.k === 'top' && s.t === j.t;
     if (j.k === 'take' || j.k === 'give') return s.k === 'spot' && s.i === j.c.spot;
     if (j.k === 'back') return s.k === 'shelf';
+    if (j.k === 'jugBack') return s.k === 'jug';
     if (j.k === 'wait') return false;
     return s.k === j.k;
   }
 
   /* ---------- gold help and hints ---------- */
-  function useful(st, id) { st.pl[id].stuckT = 0; }
+  function useful(st, id) { st.pl[id].stuckT = 0; st.pl[id].lazyT = 0; }
   function help(st, dt) {
     const away = awayFor(10);
     for (const id of [0, 1]) {
@@ -667,6 +721,18 @@ const HOTDOG = {
     }
     if (!intro && !st.started) { st.started = true; if (st.room.news) news(st, st.room.news, false, 5); }
     st.rest = !intro && awayFor(HD.restT);
+    // 1-player: a person who has had a job to do for 30 s and done none of it (holding a key down, wandering) also
+    // makes the stand wait for them, so the computer never runs the shifts by itself
+    st.restFor = -1;
+    if (!intro && !st.rest && solo() && (st.state === 'play' || st.state === 'last')) {
+      for (const id of [0, 1]) {
+        if (isCpu(id)) continue;
+        const P = st.pl[id], k = job(st, id).k;
+        if (k === 'wait' || k === 'none') P.lazyT = 0;
+        else if (P.lazyT <= HD.waitT) P.lazyT += dt;
+        if (P.lazyT > HD.waitT) { st.rest = true; st.restFor = id; }
+      }
+    }
     const dtw = intro || st.rest ? 0 : dt;
     for (const p of ps) walk(st, p, dt, intro);
     cookAct(st, ps[st.cook], dt, intro);
@@ -745,11 +811,12 @@ const HOTDOG = {
     st.state = 'play'; st.goNext = false; st.clearT = 0; st.started = false; st.rest = false;
     st.left = def.len || 48; st.elapsed = 0; st.lastT = 0; st.arrT = def.first != null ? def.first : 1.2;
     st.busDone = false; st.busT = null; st.busDrop = false;
-    st.bell = false; st.bellT = 0; st.goldTimer = false; st.goldJug = false;
+    st.bell = false; st.bellT = 0;   // (the gold timer and gold jug, once earned, stay for the rest of the level)
     st.walkRow = 0; st.burnRow = 0; st.spillRow = 0;
-    st.sec = { happy: 0, missed: 0 };
+    st.sec = { happy: 0, missed: 0, burnt: 0 };
     st.biscuit = { eat: 0, happy: 0, wag: 0 };
-    st.pl = [0, 1].map(() => ({ noCD: 0, armT: 0, stuckT: 0, chipKey: '', chipAt: 0 }));
+    st.pl = [0, 1].map(() => ({ noCD: 0, armT: 0, stuckT: 0, lazyT: 0, chipKey: '', chipAt: 0 }));
+    st.restFor = -1;
     const sx = [];
     sx[st.cook] = 200; sx[st.serv] = 760;
     G.players.forEach((p, i) => {
@@ -760,7 +827,7 @@ const HOTDOG = {
   }
   function setup(st, L) {
     st.stats = { happy: 0, missed: 0, seen: 0, stars: 0, made: [0, 0], lemon: [0, 0], taken: [0, 0], served: [0, 0], lemonServed: 0, biscuit: 0, burnt: 0, spills: 0, hints: 0, goals: 0, shifts: [] };
-    st.goldUsed = []; st.tick = 0; st.t = 0; st.custN = 0;
+    st.goldUsed = []; st.goldTimer = false; st.goldJug = false; st.tick = 0; st.t = 0; st.custN = 0;
     st.seed = ((Math.random() * 4294967296) >>> 0) || 7;
     room(st, L, 0);
   }
@@ -1449,7 +1516,7 @@ const HOTDOG = {
         const j = job(st, id);
         if (!j || j.x == null || j.k === 'wait' || j.k === 'none') continue;
         const there = atJob(st, id, j);
-        let ay = id === st.cook ? (j.k === 'biscuit' ? 410 : j.k === 'shelf' ? 380 : j.k === 'top' ? 340 : 372) : (j.k === 'take' || j.k === 'give' ? 262 : j.k === 'jug' ? 330 : 372);
+        let ay = id === st.cook ? (j.k === 'biscuit' ? 410 : j.k === 'shelf' ? 380 : j.k === 'top' ? 340 : 372) : (j.k === 'take' || j.k === 'give' ? 262 : j.k === 'jug' || j.k === 'jugBack' ? 330 : 372);
         if (j.k === 'take' || j.k === 'give') ay = 300 - 24 - (j.c.taken ? Math.ceil(j.c.order.length / 2) * 24 - 14 : 0) - 14;
         const ax = j.x;
         if (there) {
@@ -1490,7 +1557,13 @@ const HOTDOG = {
       }
     }
     // resting
-    if (st.rest) { pill(W / 2, 236, bg ? 380 : 300, bg ? 40 : 32, 'center'); text('Taking a break: the stand waits', W / 2, 236 + (bg ? 20 : 16), bg ? 19 : 15, '#bfe6ff', 'center', 'body'); }
+    if (st.rest) {
+      let msg = 'Taking a break: the stand waits';
+      if (st.restFor >= 0) { const tx = jobText(st, st.restFor, job(st, st.restFor)); msg = 'The stand waits for ' + NAMES[st.restFor] + (tx ? ': ' + tx[0] : ''); }
+      ctx.font = '700 ' + (bg ? 19 : 15) + 'px ' + FONT;
+      const pw = Math.min(W - 40, Math.max(bg ? 380 : 300, ctx.measureText(msg).width + 36));
+      pill(W / 2, 236, pw, bg ? 40 : 32, 'center'); text(msg, W / 2, 236 + (bg ? 20 : 16), bg ? 19 : 15, '#bfe6ff', 'center', 'body');
+    }
     // the shift summary and the finale
     if (st.state === 'clear' || st.state === 'end') {
       const k = clamp(st.clearT / 0.3, 0, 1), s = st.stats.shifts[st.stats.shifts.length - 1];

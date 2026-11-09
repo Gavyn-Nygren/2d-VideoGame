@@ -5,7 +5,8 @@
 // Who plays: --who=pair (computer both), noisy (one side made clumsy like a distracted person: pauses, wanders, random
 // presses; --clumsy=0|1 picks the side), slow (one side sees things 1.2 s late, walks in bursts and stops to look
 // around, like a young kid), idle (Pip presses nothing; must not clear), masher (Pip mashes random buttons with the
-// computer as Bo).
+// computer as Bo), wrong (side --clumsy walks the wrong way first at every new job; 2 = both), still (side
+// --clumsy never walks, just presses the action twice a second).
 // Usage: node tools/w23/hotdog-sim.js [--who=pair] [--seeds=1,2,3] [--clumsy=0|1|2] [--hes=1.2] [--max=600]
 'use strict';
 const path = require('path');
@@ -63,6 +64,22 @@ const hes = +opt('hes', 1.2), who = opt('who', 'pair'), seeds = opt('seeds', '1,
         if (z.burst < -0.25) z.burst = 0.5;
         if ((out.left || out.right) && z.burst < 0) return { act: out.act };
         return out;
+      };
+      // (wrong: each new job, first walks the wrong way for about 2 s; still: never walks, just presses the action
+      // twice a second wherever it stands; both on side --clumsy)
+      const wr = [{}, {}];
+      if (who === 'wrong') P.CPU.filter = (p, out, dt) => {
+        if (clumsy !== 2 && p.id !== clumsy) return out;
+        const z = wr[p.id], j = P.MODES.hotdog.job(G.mst, p.id), jk = j.k + (j.t || '') + (j.c ? j.c.id : '');
+        if (jk !== z.jk) { z.jk = jk; z.t = 1.5 + Math.random(); z.dir = j.x != null && j.x < p.x ? 1 : -1; }
+        if (z.t > 0) { z.t -= dt; return { left: z.dir < 0, right: z.dir > 0 }; }
+        return out;
+      };
+      if (who === 'still') P.CPU.filter = (p, out, dt) => {
+        if (p.id !== clumsy) return out;
+        const z = wr[p.id]; z.t = (z.t || 0) + dt;
+        if (z.t > 0.5) { z.t = 0; return { act: 'tap' }; }
+        return {};
       };
       P.loadLevel(P.LEVELS.findIndex(l => l.name === 'Hot Dog Stand Rush'));
       const pip = G.players[0];

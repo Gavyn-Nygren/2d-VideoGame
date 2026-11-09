@@ -11,11 +11,13 @@
      wrong hot dogs go to Biscuit. While a sausage is cooking and nothing else is to do it waits by the grill.
      SERVER: hands over held items that an order wants, takes new orders (the least patient fairgoer first), picks up
      a hot dog an order needs from the shelf, pours lemonade (holds the action at the jug and lets go in the middle of
-     the green band), and puts back a hot dog nobody wants. With nothing to do it waits in front of the window.
+     the green band), puts back a hot dog nobody wants (or swaps it for a wanted one on a full shelf) and pours a spare
+     lemonade back in the jug when its hands are full. With nothing to do it waits in front of the window.
      Moving: steer to the station's x (each station is about 40-70 px wide), then one press ('tap') with a short rest
      after it, so a press is never counted twice (a second press at the shelf would put a hot dog back).
      It can't do the level alone: one player can't both cook and serve, and when the person rests for 15 s the stand
-     itself waits (the clock, patience and the grill stop); after CPU.idleStop the computer stops too.
+     itself waits (the clock, patience and the grill stop), and in 1-player mode it also waits for a person who has
+     had a job for 30 s and done none of it; after CPU.idleStop the computer stops too.
      Speech (1-player mode only, cpuSay): "Order up!", "New order on the board!", tips when the person's own job has
      waited a while ("Grill a sausage!", "Pick it up, it's golden!", "Take their order!"...).
      Team brains always play at full skill. */
@@ -35,7 +37,7 @@
         if (S.tipT > 7 && info.partnerIdle < 6) {
           const say = { grill: 'Grill a sausage!', pick: 'Pick it up, it’s golden!', pickBurnt: 'Biscuit wants that one!', bun: 'Into a bun!',
             top: 'Check the ticket!', shelf: o.id === st.cook ? 'Put it on the shelf!' : 'Grab it from the shelf!', biscuit: 'Give it to Biscuit!',
-            take: 'Take their order!', give: 'Hand it over!', jug: 'Lemonade, please!' }[oj.k];
+            take: 'Take their order!', give: 'Hand it over!', jug: 'Lemonade, please!', jugBack: 'Pour that one back!' }[oj.k];
           if (say) cpuSay(p, say);
         }
       }
