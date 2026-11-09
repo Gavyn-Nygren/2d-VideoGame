@@ -5673,6 +5673,55 @@ const LEVELS = [
   //
   //
   // ===== END World 22 =====
+  //
+  //
+  //
+  // ===== World 23 (Barnyard Fair, mixed): the farm and county fair world, world index 22 (js/levels/world23/), a sunny
+  //   farm with red barns, hay fields, pig pens and a county fair with a Ferris wheel. Nothing scary, nobody gets hurt.
+  //   Gavyn's picks (Nov 2026), from ten ideas: 23-1 Tractor & Trailer (team, scrolls sideways), 23-2 Runaway Pigs
+  //   (team, scrolls sideways), 23-3 Hot Dog Stand Rush (team), 23-4 Pie-Eating Contest (versus, best of 5).
+  //   Each level's def sits between its own BEGIN/END lines. world: 22 =====
+  //
+  // ----- BEGIN 23-1 Tractor & Trailer (mode 'haytractor', js/levels/world23/tractor-trailer.js) -----
+  { name: 'Tractor & Trailer', world: 22, kind: 'team', mode: 'haytractor',
+    tip: 'Coming soon!',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '#'.repeat(32), '#'.repeat(32)],
+  },
+  // ----- END 23-1 Tractor & Trailer -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 23-2 Runaway Pigs (mode 'pigherd', js/levels/world23/runaway-pigs.js) -----
+  { name: 'Runaway Pigs', world: 22, kind: 'team', mode: 'pigherd',
+    tip: 'Coming soon!',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '#'.repeat(32), '#'.repeat(32)],
+  },
+  // ----- END 23-2 Runaway Pigs -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 23-3 Hot Dog Stand Rush (mode 'hotdog', js/levels/world23/hot-dog-stand-rush.js) -----
+  { name: 'Hot Dog Stand Rush', world: 22, kind: 'team', mode: 'hotdog',
+    tip: 'Coming soon!',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '#'.repeat(32), '#'.repeat(32)],
+  },
+  // ----- END 23-3 Hot Dog Stand Rush -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 23-4 Pie-Eating Contest (mode 'pieeat', js/levels/world23/pie-eating-contest.js) -----
+  { name: 'Pie-Eating Contest', world: 22, kind: 'versus', mode: 'pieeat', match: { bestOf: 5, roundTime: 60 },
+    tip: 'Coming soon!',
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '#'.repeat(32), '#'.repeat(32)],
+  },
+  // ----- END 23-4 Pie-Eating Contest -----
+  //
+  //
+  //
+  // ===== END World 23 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -5759,6 +5808,10 @@ const WORLDS = [
   { name: 'Coral Deep', blurb: 'Steer a submarine, dive for treasure, light up a shipwreck and race the dolphins!',
     theme: { skyTop: '#3fc6d8', skyBot: '#0f5f9a', hillFar: '#2a8fb0', hillNear: '#1f7a9a', sun: 'rgba(210, 250, 255, 0.85)', sunGlow: 'rgba(150, 235, 255, 0.35)',
       stone: '#e07a8f', stoneLight: '#f29aac', stoneEdge: '#a8506a', grass: '#f2dca0', grassDark: '#c9ad6a', plank: '#9a6a3e', plankDark: '#5e3c1e', rope: '#efe0b0', ropeDark: '#7a6438' } },
+  // World 23: a farm and county fair, sunny and friendly (a bright blue summer sky fading to warm gold; rich brown soil with green grass on top, red barn wood)
+  { name: 'Barnyard Fair', blurb: 'Haul the hay, herd the pigs, sell hot dogs and win the pie contest!',
+    theme: { skyTop: '#6ec3f2', skyBot: '#fff3c4', hillFar: '#b9dc7a', hillNear: '#8cc65a', sun: 'rgba(255, 244, 190, 0.96)', sunGlow: 'rgba(255, 214, 130, 0.42)',
+      stone: '#8a5a36', stoneLight: '#a06c44', stoneEdge: '#5e3c22', grass: '#7fd05a', grassDark: '#4a9a3c', plank: '#c8483c', plankDark: '#7e2a22', rope: '#f2d27a', ropeDark: '#8a6a2a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);
