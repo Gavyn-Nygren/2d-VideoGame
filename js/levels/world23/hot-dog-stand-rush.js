@@ -109,11 +109,11 @@ const HOTDOG = {
   function dev(id) { try { return actKey(id); } catch (e) { return 'kb'; } }
   function key(id) {
     const d = dev(id);
-    return d === 'pad' ? glyph('act') : d === 'touch' ? 'the button' : solo() ? 'F' : id === 0 ? 'F' : '/';
+    return d === 'pad' ? glyph('act') : d === 'touch' ? 'the button' : id === 0 ? 'F' : '/';
   }
   function keyCap(id) {
     const d = dev(id);
-    return d === 'pad' ? glyph('act') : d === 'touch' ? 'tap' : solo() ? 'F' : id === 0 ? 'F' : '/';
+    return d === 'pad' ? glyph('act') : d === 'touch' ? 'tap' : id === 0 ? 'F' : '/';
   }
 
   /* ---------- a seeded random for the orders (repeatable in bot tests) ---------- */
