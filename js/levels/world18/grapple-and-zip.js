@@ -605,7 +605,8 @@ function grapplePlayer(st, pl, p, pnd, dt) {
     pl.x = approach(pl.x, sh.ladX, 120 * dt);
     if (pl.h >= top) { pl.mode = 'walk'; pl.onNest = true; pl.h = top; pl.x = sh.ladX + 6; Sfx.play('grappleStep', pl.id); }
     else if (pl.h <= 0) { pl.mode = 'walk'; pl.onNest = false; pl.h = 0; }
-    else if ((L || R) && pl.h < 20) { pl.mode = 'walk'; pl.onNest = false; pl.h = 0; }
+    // (not while ▲ is held: up + sideways at the foot of the ladder used to flip between climbing and walking every tick)
+    else if ((L || R) && !up && pl.h < 20) { pl.mode = 'walk'; pl.onNest = false; pl.h = 0; }
     return;
   }
   // walking (on the deck or in the crow's nest)
