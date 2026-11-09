@@ -9,7 +9,7 @@
 'use strict';
 
 // screen: which home screen is up ('title', 'worlds', 'world'); from: where the world map's Back goes ('title' or 'pause')
-const Home = { screen: 'title', from: 'title', w: 0 };
+const Home = { screen: 'title', from: 'title', w: 0, page: 0 };
 
 const NUM_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen',
   'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'];
@@ -87,32 +87,64 @@ function showTitle() {
   mountPreviews(overlay);
 }
 
-/* ---------- the world map: one tile per world ---------- */
+/* ---------- the world map: one tile per world, 20 to a page (5 across, 4 down) ---------- */
+// Gavyn (Nov 2026): a page of 20 worlds with an arrow on the right to the next 20 (and one on the left to go back).
+// Pages are counted from the worlds that exist, so new worlds land on the next page by themselves.
+const WORLDS_PER_PAGE = 20;
+const worldPageCount = () => Math.max(1, Math.ceil(liveWorlds().length / WORLDS_PER_PAGE));
+const worldPageOf = w => Math.max(0, Math.floor(liveWorlds().indexOf(w) / WORLDS_PER_PAGE));
+function worldTileHTML(w, focusW) {
+  const ls = worldLevels(w), done = ls.filter(levelDone).length, wd = WORLDS[w], kind = worldKind(w);
+  const dots = ls.map(i => `<i class="${levelDone(i) ? 'on' : ''}"></i>`).join('');
+  return `<li><button type="button" class="wtile${isBossWorld(w) ? ' boss' : ''}" data-act="openworld" data-w="${w}"${w === focusW ? ' data-primary' : ''}
+      aria-label="World ${w + 1}: ${esc(wd.name)}. ${plural(ls.length, 'level')}, ${kind.toLowerCase()}. ${done} played.">
+    <span class="thumb"><canvas data-pv="world:${w}" aria-hidden="true"></canvas><span class="wnum">${w + 1}</span>${isBossWorld(w) ? '<span class="bossb">Boss</span>' : ''}</span>
+    <span class="wname">${esc(wd.name)}</span>
+    <span class="wmeta"><span>${plural(ls.length, 'level')} · ${kind}</span><span class="dots" aria-hidden="true">${dots}</span></span>
+  </button></li>`;
+}
+// one page of tiles, with the arrows either side and the page dots under it
+function worldPageHTML(page, focusW) {
+  const ws = liveWorlds(), n = worldPageCount(), on = ws.slice(page * WORLDS_PER_PAGE, (page + 1) * WORLDS_PER_PAGE);
+  const range = p => { const a = ws[p * WORLDS_PER_PAGE], b = ws[Math.min(ws.length, (p + 1) * WORLDS_PER_PAGE) - 1]; return a === b ? `World ${a + 1}` : `Worlds ${a + 1} to ${b + 1}`; };
+  const arrow = (to, dir) => to < 0 || to >= n ? `<span class="pagearrow-gap ${dir < 0 ? 'prev' : 'next'}" aria-hidden="true"></span>`
+    : `<button type="button" class="ghost pagearrow ${dir < 0 ? 'prev' : 'next'}" data-act="wpage" data-p="${to}" aria-label="${dir < 0 ? 'Back to' : 'Next:'} ${range(to)}">
+        <span class="pa-icon" aria-hidden="true">${dir < 0 ? '◀' : '▶'}</span><span class="pa-text">${dir < 0 ? 'Back' : 'More'}</span></button>`;
+  const dots = n > 1 ? `<p class="pagedots" aria-label="Page ${page + 1} of ${n}: ${range(page)}">${Array.from({ length: n }, (_, p) => `<i class="${p === page ? 'on' : ''}"></i>`).join('')}<span>${range(page)}</span></p>` : '';
+  return `${n > 1 ? arrow(page - 1, -1) : ''}<ol class="world-grid">${on.map(w => worldTileHTML(w, focusW)).join('')}</ol>${n > 1 ? arrow(page + 1, 1) : ''}${dots}`;
+}
 function showWorlds(focusW) {
   const ws = liveWorlds();
   if (!ws.includes(focusW)) focusW = ws.includes(Home.w) ? Home.w : ws[0];
-  Home.screen = 'worlds'; Home.w = focusW;
+  Home.screen = 'worlds'; Home.w = focusW; Home.page = worldPageOf(focusW);
   if (G.mode === 'title') applyTheme(focusW);
-  const tiles = ws.map(w => {
-    const ls = worldLevels(w), done = ls.filter(levelDone).length, wd = WORLDS[w], kind = worldKind(w);
-    const dots = ls.map(i => `<i class="${levelDone(i) ? 'on' : ''}"></i>`).join('');
-    return `<li><button type="button" class="wtile${isBossWorld(w) ? ' boss' : ''}" data-act="openworld" data-w="${w}"${w === focusW ? ' data-primary' : ''}
-        aria-label="World ${w + 1}: ${esc(wd.name)}. ${plural(ls.length, 'level')}, ${kind.toLowerCase()}. ${done} played.">
-      <span class="thumb"><canvas data-pv="world:${w}" aria-hidden="true"></canvas><span class="wnum">${w + 1}</span>${isBossWorld(w) ? '<span class="bossb">Boss</span>' : ''}</span>
-      <span class="wname">${esc(wd.name)}</span>
-      <span class="wmeta"><span>${plural(ls.length, 'level')} · ${kind}</span><span class="dots" aria-hidden="true">${dots}</span></span>
-    </button></li>`;
-  }).join('');
   showOverlay(`
-    <div class="card home-card" data-nav>
+    <div class="card home-card worlds-card" data-nav>
       <div class="home-head">
         <button class="ghost back" type="button" data-act="worlds-back" data-back><span aria-hidden="true">◀</span> ${Home.from === 'pause' ? 'Back to the game' : 'Title'}</button>
         <div class="home-title"><p class="eyebrow">${plural(ws.length, 'world')} · ${plural(LEVELS.length, 'level')}</p><h2>Pick a world</h2></div>
       </div>
-      <ol class="world-grid">${tiles}</ol>
+      <div class="wpager${worldPageCount() > 1 ? ' paged' : ''}" data-wpager>${worldPageHTML(Home.page, focusW)}</div>
     </div>`);
   const f = overlay.querySelector('[data-primary]');
   if (f) f.scrollIntoView({ block: 'nearest' });
+  mountPreviews(overlay);
+}
+// flip the world map to another page in place (no new card, so quick taps on the arrow all count)
+function showWorldPage(page, dir) {
+  const box = overlay.querySelector('[data-wpager]');
+  if (!box) return;
+  page = Math.max(0, Math.min(worldPageCount() - 1, page));
+  Home.page = page;
+  const ws = liveWorlds(), first = ws[page * WORLDS_PER_PAGE];
+  Home.w = first;
+  if (G.mode === 'title') applyTheme(first);
+  box.innerHTML = worldPageHTML(page, first);
+  // keep focus on the same arrow so you can keep paging; at the last (or first) page, land on the first world
+  const same = box.querySelector(`.pagearrow.${dir < 0 ? 'prev' : 'next'}`);
+  const to = same || box.querySelector('.wtile');
+  if (to) { try { to.focus({ preventScroll: true }); } catch (e) { to.focus(); } }
+  box.scrollIntoView({ block: 'nearest' });
   mountPreviews(overlay);
 }
 
@@ -162,6 +194,7 @@ overlay.addEventListener('click', e => {
     else { Home.from = 'title'; showWorlds(store.get('lastWorld')); }
   }
   else if (a === 'openworld') showWorld(+b.dataset.w);
+  else if (a === 'wpage') showWorldPage(+b.dataset.p, +b.dataset.p < Home.page ? -1 : 1);
   else if (a === 'home-back') showWorlds(Home.w);
   else if (a === 'worlds-back') { if (Home.from === 'pause' && G.mode === 'paused') showPauseCard(); else showTitle(); }
   else if (a === 'level' || a === 'world') {
