@@ -5,7 +5,7 @@
 // Usage (from the repo folder):
 //   node tools/cpu-test.js [levels] [--who=pair|noisy|solo|idle] [--skill=easy|normal|hard] [--skills=easy,hard]
 //                          [--max=600] [--seeds=1,2,3] [--json]
-//   levels: level codes or indexes, comma separated (1-1,4-2,12), or "all" (default)
+//   levels: level codes, indexes or exact names, comma separated (1-1,4-2,12,"Stilt Race"), or "all" (default)
 //   --who=pair   the computer plays both characters (default): team levels must clear, versus matches must finish
 //   --who=idle   the computer plays Bo, Pip presses nothing: the computer must not clear a team level alone (and must
 //                not get stuck in an error); versus: the computer should win
@@ -51,7 +51,7 @@ const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0);
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
   const list = await page.evaluate(() => window.__pipbo.LEVELS.map((l, i) => ({ i, code: window.__pipbo.levelCode(i), name: l.name, kind: l.kind })));
-  const want = levelsArg === 'all' ? list : levelsArg.split(',').map(s => list.find(l => l.code === s || String(l.i) === s)).filter(Boolean);
+  const want = levelsArg === 'all' ? list : levelsArg.split(',').map(s => list.find(l => l.code === s || String(l.i) === s || l.name === s)).filter(Boolean);
   const results = [];
   for (const lv of want) for (const seed of seeds) {
     errors.length = 0;
