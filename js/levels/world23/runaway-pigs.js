@@ -34,13 +34,20 @@
    Chases (def.roomWord 'Chase'): Barnyard (a gate, a mud puddle, one side gate), Duck Pond (two side gates by the
    pond, a gate, a broken fence for the hay bale, another gate), Cornfield Maze (a lever fork, two side gates, two
    puddles, a gate), Fairground (the sliding barn door, a lever fork, a side gate by the pie tent, the big pen).
-   - Gold help, always announced and only while both players are playing: a pig that makes no headway for 45 s gets a
-     gold ribbon and trots home by itself along the track (it still waits at shut gates); 2 wrong turns in a chase or
-     22 s on one gate job with the herd near shows a gold arrow over the gate to work next; 3 wrong turns through the
-     same side gate make it shut itself (a broken fence: the hay rolls in by itself); 85 s in one chase, or the herder
-     far from the pigs for 30 s, gives gold oats: the pigs are full and trot slower for the rest of the chase.
+   - Gold help, always announced and only while both players are playing (pressed something in the last 10 s; in
+     2-player a gatekeeper waiting by a gate counts as playing for 90 s): a pig that makes no headway for 40 s, or
+     sits in the mud for 25 s, gets a gold ribbon and trots home by itself along the track (it still waits at shut
+     gates; ribbons count as one gold help a chase); 2 wrong turns in a chase or 22 s on one gate job with the herd
+     near shows a gold arrow over the gate to work next; 3 wrong turns through the same side gate (or down the wrong
+     fork) make it shut (or the lever flip) by itself, and the hay rolls into a broken fence by itself; the herd
+     waiting 25 s at a shut gate, fork, barn door or pen makes that way a gold gate that opens and stays open; every
+     pig in and the pen still open for 20 s, the pen gate shuts itself. Gold gates and levers stay put (the gatekeeper
+     can't undo them). 85 s in one chase, or the herder far from the pigs for 30 s, gives gold oats: the pigs are full
+     and trot slower for the rest of the chase.
    - Rest: when every person playing has pressed nothing for 15 s the clock waits ("RESTING" chip).
-   - Leash: the two can't be more than 800 px apart ("Wait for Bo!"); the camera always keeps both on screen.
+   - Leash: the two can't be more than 800 px apart; the camera always keeps both on screen. The gatekeeper running
+     too far ahead waits ("Wait for Bo!"); the herder going back for a straggler pulls the gatekeeper along ("Come on,
+     Bo!"), so a gatekeeper waiting by the pen never blocks the herding.
    Medal: Gold at <= 3:45 with <= 3 wrong turns and <= 1 gold help, Silver at <= 5:45 with <= 9 wrong turns, else
    Bronze. Results: Pigs penned, Wrong turns, Gold help, Medal, and a line with the quickest chase and the claps.
    Room def: { title, herder: 0|1, look, tip, news, act, len, pigs: [names], spots: [indexes], items: [...] } with items
@@ -74,8 +81,8 @@ const PIGHERD = {
   wallowNear: 120, mudCD: 4,
   lostT: 5.5, zoneCD: 7,
   gateReach: 54, barnT: 6.5,
-  ribbonT: 45, ribbonV: 82, arrowT: 22, oatsT: 85, farT: 30, farD: 330, oatsMul: 0.72, goldGate: 3,
-  leash: 800, idleRest: 15, activeT: 10,
+  ribbonT: 40, ribbonV: 82, mudGoldT: 25, blockGoldT: 25, penGoldT: 20, arrowT: 22, oatsT: 85, farT: 30, farD: 330, oatsMul: 0.72, goldGate: 3,
+  leash: 800, idleRest: 15, activeT: 10, keeperWaitT: 90,
   introHold: 0.4, newsLife: 3.8, clearT: 2.4, finT: 5.2, chipAgain: 14,
   hayW: 64, hayH: 44,
 };
@@ -346,6 +353,8 @@ const PIGHERD = {
   function herderXY(st) { const p = G.players[st.herder]; return { x: p.x + p.w / 2, y: p.y + p.h / 2 + 4 }; }
   function pigsStep(st, dt) {
     const sol = pigSolids(st), hp = herderXY(st), opens = openings(st);
+    // a gold-ribbon pig caught down the wrong fork when the lever flipped squeezes back through the shut fork gate
+    const solR = sol.filter(r => !(r.gate && r.gate.lever && r.gate.lever.a === r.gate));
     const mul = st.oats ? PH0.oatsMul : 1;
     const herderLive = st.state === 'play' && G.introT <= PH0.introHold;
     const fr = st.pigs.filter(q => q.state === 'run' || q.state === 'ribbon');
@@ -356,6 +365,9 @@ const PIGHERD = {
       if (q.state === 'pen') { penPig(st, q, dt, sol); continue; }
       if (q.state === 'lost') { lostPig(st, q, dt); continue; }
       if (q.state === 'wallow') {
+        // stuck in the mud a long time (both playing): a gold ribbon gets the pig out
+        if (bothActive() && st.state === 'play' && G.introT <= PH0.introHold) q.wallowT = (q.wallowT || 0) + dt;
+        if (q.wallowT > PH0.mudGoldT) { ribbon(st, q); continue; }
         q.vx *= Math.exp(-6 * dt); q.vy *= Math.exp(-6 * dt);
         q.x += q.vx * dt; q.y += q.vy * dt;
         if (Math.random() < dt * 1.2) st.parts.push({ x: q.x + (Math.random() - 0.5) * 30, y: q.y + 4, vx: 0, vy: -20, g: 0, t: 0, life: 0.8, r: 3, kind: 'bubble' });
@@ -431,7 +443,7 @@ const PIGHERD = {
       }
       q.skidT -= dt;
       q.x += q.vx * dt; q.y += q.vy * dt;
-      pigCollide(st, q, sol);
+      pigCollide(st, q, q.state === 'ribbon' ? solR : sol);
       if (Math.abs(q.vx) > 8) q.face = q.vx > 0 ? 1 : -1;
       // a mud puddle: flop down and wallow
       if (q.state === 'run' && q.mudCD <= 0 && inMud(st, q.x, q.y)) wallow(st, q);
@@ -462,14 +474,14 @@ const PIGHERD = {
       p1.x -= ux * push * 2 * w1 / (w1 + w2); p1.y -= uy * push * 2 * w1 / (w1 + w2);
       p2.x += ux * push * 2 * w2 / (w1 + w2); p2.y += uy * push * 2 * w2 / (w1 + w2);
     }
-    for (const q of all) if (q.state !== 'pen') pigCollide(st, q, sol);
+    for (const q of all) if (q.state !== 'pen') pigCollide(st, q, q.state === 'ribbon' ? solR : sol);
   }
   // is the pig waiting at a shut gate the gatekeeper should open? (no ribbon for waiting)
   function atShutGate(st, q) {
     return st.gates.some(g => !g.open && g.kind !== 'side' && Math.abs(g.cx - q.x) < 120 && q.x < g.cx + 10 && Math.abs(g.cy - q.y) < 150);
   }
   function wallow(st, q) {
-    q.state = 'wallow'; q.muddy = true; q.alarm = 0;
+    q.state = 'wallow'; q.muddy = true; q.alarm = 0; q.wallowT = 0;
     q.vx *= 0.3; q.vy *= 0.3;
     pop(st, q.x, q.y - 30, 'Oink! Mud!', '#c98a52', 18);
     Sfx.play('pigherdMud');
@@ -481,7 +493,9 @@ const PIGHERD = {
     q.lx = clamp(q.x, z.x0 + 20, z.x1 - 20); q.ly = clamp(q.y, z.y0 + 20, z.y1 - 20);
     st.stats.wrong++; st.secWrong++; z.wrong++;
     // which opening it went through (for the gold gate)
-    const g = st.gates.find(g2 => g2.zone === z.id && g2.open) || st.gates.find(g2 => g2.zone === z.id);
+    // (a dead end past a fork: the fork gate the lever has open the wrong way)
+    const fork = () => { let best = null, bd = 1e9; for (const lv of st.levers) if (lv.a && lv.a.open) { const d = Math.hypot(clamp(lv.a.cx, z.x0, z.x1) - lv.a.cx, clamp(lv.a.cy, z.y0, z.y1) - lv.a.cy); if (d < bd && d < 900) { bd = d; best = lv.a; } } return best; };
+    const g = st.gates.find(g2 => g2.zone === z.id && g2.open) || st.gates.find(g2 => g2.zone === z.id) || fork();
     const h = st.hays.find(h2 => h2.zone === z.id && !h2.locked);
     const where = { corn: 'into the cornfield', pond: 'into the duck pond', veg: 'into the vegetable patch', pie: 'into the pie tent' }[z.kind] || 'off the track';
     news(st, 'Oops! ' + q.name + ' ran ' + where + '!', false, 3.6);
@@ -494,7 +508,7 @@ const PIGHERD = {
       if (opening.wrong >= PH0.goldGate && !opening.gold && bothActive()) {
         opening.gold = true;
         if (h) { h.x0 = h.slot.cx - h.w / 2; h.y0 = h.slot.cy - h.h / 2; h.locked = true; news(st, 'Gold hay! The bale rolls into the gap by itself', true, 5); }
-        else if (opening.lever) { setLever(st, opening.lever, true); news(st, 'Gold lever! It flips to the right way by itself', true, 5); }
+        else if (opening.lever) { setLever(st, opening.lever, true); opening.lever.gold = true; news(st, 'Gold lever! It flips to the right way by itself', true, 5); }
         else { opening.open = false; news(st, 'Gold gate! That side gate shuts itself now', true, 5); }
         st.goldUsed.push('gate'); Sfx.play('pigherdGold');
       }
@@ -539,9 +553,11 @@ const PIGHERD = {
     else if (Math.abs(q.vx) > 8) q.face = q.vx > 0 ? 1 : -1;
   }
   function ribbon(st, q) {
-    q.state = 'ribbon'; q.gold = true; q.strayT = 0;
-    st.stats.ribbons++; st.goldUsed.push('ribbon');
-    news(st, 'Gold ribbon! ' + q.name + ' trots home by herself', true, 5);
+    const mud = q.state === 'wallow';
+    q.state = 'ribbon'; q.gold = true; q.strayT = 0; q.wallowT = 0; q.mudCD = 99;
+    st.stats.ribbons++;
+    if (!st.ribbonUsed) { st.ribbonUsed = true; st.goldUsed.push('ribbon'); }   // (one gold help a chase, however many pigs)
+    news(st, 'Gold ribbon! ' + q.name + (mud ? ' hops out of the mud and trots home' : ' trots home by herself'), true, 5);
     pop(st, q.x, q.y - 30, 'Gold ribbon!', C.gold, 18);
     Sfx.play('pigherdGold');
   }
@@ -607,6 +623,7 @@ const PIGHERD = {
     if (!r) { if (P.noCD <= 0) { P.noCD = 1.4; pop(st, cx, p.y - 26, 'No gate here', '#fff3c4', 14); Sfx.play('pigherdNo'); } return; }
     if (r.lever) {
       const lv = r.lever, right = !lv.b.open;
+      if (lv.gold) { pop(st, lv.x, lv.y - 34, 'Gold lever: this way!', C.gold, 15); return; }
       if (!right && pigInGate(st, lv.b)) { pop(st, lv.x, lv.y - 34, 'Piggy in the way!', '#ffe9a8', 15); Sfx.play('pigherdNo'); return; }
       if (right && pigInGate(st, lv.a)) { pop(st, lv.x, lv.y - 34, 'Piggy in the way!', '#ffe9a8', 15); Sfx.play('pigherdNo'); return; }
       setLever(st, lv, right);
@@ -615,6 +632,7 @@ const PIGHERD = {
       return;
     }
     const g = r.gate;
+    if (g.gold && st.state === 'play') { pop(st, g.cx, g.cy - 40, g.open ? 'Gold gate: open!' : 'Gold gate: shut!', C.gold, 15); return; }
     if (g.kind === 'barn') {
       if (g.open) { g.openT = PH0.barnT; pop(st, g.cx, g.y0 - 20, 'Still open!', '#fff3c4', 15); return; }
       g.open = true; g.openT = PH0.barnT; st.stats.gates[p.id]++; st.progT = 0;
@@ -636,7 +654,7 @@ const PIGHERD = {
   function gatesStep(st, dt) {
     for (const g of st.gates) {
       g.t += dt;
-      if (g.kind === 'barn' && g.open) {
+      if (g.kind === 'barn' && g.open && !g.gold) {
         g.openT -= dt;
         if (g.openT <= 0) {
           if (pigInGate(st, g)) g.openT = 0.3;
@@ -653,7 +671,7 @@ const PIGHERD = {
     st.state = 'clear'; st.clearT = 0; st.news = null;
     st.stats.chaseT[st.k] = G.time - st.segStart;
     const P = st.pen;
-    pop(st, P.x0 + 40, P.y0 - 20, 'All in!', C.gold, 32);
+    st.pops = [];   // (the big "All in!" says it all: no old pops on top of it)
     Sfx.play(st.final ? 'pigherdWin' : 'pigherdAllIn');
     for (const q of st.pigs) q.happyT = 3;
     if (!st.final) for (let i = 0; i < 34; i++) confetti(P.x0 + (P.x1 - P.x0) / 2, P.y0 + 20);
@@ -672,7 +690,7 @@ const PIGHERD = {
     return { n: L.length, cx: cx / L.length, cy: cy / L.length, minX, maxX, minS, maxS, s: ss[Math.floor(ss.length / 2)], pigs: L, lost: all.filter(q => q.state === 'lost').length, left: all.length };
   }
   function jobDone(st, j, hd) {
-    const passed = hd.n > 0 ? st.pigs.every(q => q.state === 'pen' || q.state === 'ribbon' ? true : q.state === 'lost' ? false : q.x > j.passX) : true;
+    const passed = hd.n > 0 ? st.pigs.every(q => q.state === 'pen' ? true : q.state === 'lost' ? false : q.x > j.passX) : true;
     if (j.kind === 'shut') return !j.gate.open || (passed && !st.pigs.some(q => q.state === 'lost' && q.zone && q.zone.id === j.gate.zone));
     if (j.kind === 'hay') return j.hay.locked || passed;
     if (j.kind === 'lever') return j.lever.b.open || passed;
@@ -700,7 +718,13 @@ const PIGHERD = {
   }
 
   /* ---------- gold help and hints ---------- */
-  function active(id) { return (typeof cpuOn === 'function' && cpuOn(id)) || typeof CPU === 'undefined' || CPU.idle[id] < PH0.activeT; }
+  // playing: pressed something in the last 10 s. In 2-player a gatekeeper waiting by a gate counts as playing for
+  // 90 s (standing still is part of that job); in 1-player the person must keep pressing, so the computer can't win alone
+  function active(id) {
+    if ((typeof cpuOn === 'function' && cpuOn(id)) || typeof CPU === 'undefined') return true;
+    const st = G.mst, waitT = !solo() && st && id === st.keeper ? PH0.keeperWaitT : PH0.activeT;
+    return CPU.idle[id] < waitT;
+  }
   function bothActive() { return active(0) && active(1); }
   function showArrow(st, say) {
     if (st.arrow || !bothActive()) return;
@@ -715,6 +739,22 @@ const PIGHERD = {
     // a gate job waiting long with the herd near: the gold arrow
     const j = pl.job;
     if (j && both && pl.herd.n && pl.herd.maxX > j.x - 450) { j.pendT += dt; if (j.pendT > PH0.arrowT && !st.arrow && j.kind !== 'pen') showArrow(st, 'Gold arrow! It shows ' + NAMES[st.keeper] + ' the gate to work next'); }
+    // the herd waiting a long time at a shut way (both playing): a gold gate opens it and stays open
+    const b = pl.block;
+    if (b && both && !b.gold) {
+      b.blockT += dt;
+      if (b.blockT > PH0.blockGoldT) goldOpen(st, b);
+    }
+    // every pig in, and the pen gate still open: it shuts itself (gold) after a while
+    if (st.pen && st.pen.gate.open && st.pigs.every(q => q.state === 'pen')) {
+      if (both) st.penWaitT += dt;
+      if (st.penWaitT > (st.pen.gate.gold ? 1.2 : PH0.penGoldT)) {
+        if (!st.pen.gate.gold) { st.pen.gate.gold = true; st.goldUsed.push('gate'); }
+        st.pen.gate.open = false; st.pen.gate.t = 0; Sfx.play('pigherdLatch');
+        allIn(st);
+        return;
+      }
+    } else st.penWaitT = 0;
     // gold oats: a long chase, or a herder far from the pigs
     const hp = herderXY(st), near = pl.herd.pigs.reduce((m, q) => Math.min(m, dist(q.x, q.y, hp.x, hp.y)), 1e9);
     if (both && pl.herd.n && near > PH0.farD) st.farT += dt;
@@ -732,6 +772,15 @@ const PIGHERD = {
         if (tx && tx[0]) { news(st, 'Hint for ' + NAMES[id] + ': ' + tx[0], true, 5); break; }
       }
     }
+  }
+  // a gold gate: the shut way the herd is waiting at opens by itself and stays open
+  function goldOpen(st, g) {
+    g.gold = true; st.goldUsed.push('gate'); st.progT = 0;
+    if (g.lever) { setLever(st, g.lever, true); g.lever.gold = true; g.lever.a.gold = false; }
+    else { g.open = true; g.t = 0; g.openT = PH0.barnT; }
+    news(st, g.kind === 'barn' ? 'Gold barn door! It stays open for the pigs' : g.kind === 'pen' ? 'Gold pen gate! It opens for the pigs' : g.lever ? 'Gold lever! It flips to the right way by itself' : 'Gold gate! It opens by itself', true, 5);
+    pop(st, g.cx, g.cy - 44, 'Gold gate!', C.gold, 22);
+    Sfx.play('pigherdGold');
   }
   function news(st, s, gold, life) { st.news = { s, gold: !!gold, t: 0, life: life || PH0.newsLife }; }
   function pop(st, x, y, s, col, size) { st.pops.push({ x, y, s, col: col || C.gold, size: size || 18, t: 0 }); if (st.pops.length > 14) st.pops.shift(); }
@@ -825,6 +874,13 @@ const PIGHERD = {
       const o = G.players[1 - p.id];
       if (Math.abs(p.x - o.x) <= PH0.leash) continue;
       if (Math.abs(p.x - o.x) <= Math.abs(xb[p.id] - o.x)) continue;
+      // the herder going back for a straggler pulls the gatekeeper gently along (never the other way round, so a
+      // gatekeeper waiting by the pen can't stop the herder fetching a pig from far behind)
+      if (p.id === st.herder) {
+        const want = p.x - o.x > 0 ? p.x - PH0.leash : p.x + PH0.leash;
+        moveAxis(st, o, want - o.x, 'x');
+        if (Math.abs(p.x - o.x) <= PH0.leash + 0.5) { const Q = st.pl[o.id]; if (Q.waitCD <= 0) { Q.waitCD = 3.5; pop(st, o.x + o.w / 2, o.y - 26, 'Come on, ' + NAMES[o.id] + '!', PCOL[p.id], 16); } continue; }
+      }
       p.x = xb[p.id]; p.vx = 0;
       const P = st.pl[p.id];
       if (P.waitCD <= 0) {
@@ -935,8 +991,8 @@ const PIGHERD = {
     compile(st, def);
     st.parts = []; st.pops = []; st.rings = []; st.news = null;
     st.state = 'play'; st.goNext = false; st.clearT = 0; st.endT = 0; st.started = false; st.progT = 0; st.segStart = G.time;
-    st.secWrong = 0; st.arrow = false; st.oats = false; st.chaseActT = 0; st.farT = 0; st.t = 0; st.rest = false;
-    st.stats.pigsAll += st.pigs.length;
+    st.secWrong = 0; st.arrow = false; st.oats = false; st.ribbonUsed = false; st.penWaitT = 0; st.chaseActT = 0; st.farT = 0; st.t = 0; st.rest = false;
+    st.stats.pigsAll = st.stats.penned + st.pigs.length;   // (the pigs of the chases played so far)
     st.pl = [0, 1].map(() => ({ cd: 0, clapT: 9, armT: 0, noCD: 0, waitCD: 0, mudHintCD: 0, heavyCD: 0, pushT: 0, chipKey: '', chipAt: 0, walkT: 0, climb: 0 }));
     const sx = [], sy = [];
     sx[st.herder] = 110; sy[st.herder] = 300; sx[st.keeper] = 200; sy[st.keeper] = def.keeperY || 380;
@@ -1346,7 +1402,8 @@ const PIGHERD = {
     const right = lv.b.open, a = (right ? 0.7 : -0.7) * clamp(lv.t / 0.15, 0, 1) + (right ? 0 : 0);
     const x = lv.x, y = lv.y;
     ctx.fillStyle = 'rgba(40,70,30,0.25)'; ctx.beginPath(); ctx.ellipse(x + 3, y + 12, 18, 6, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#5c6470'; rr(x - 16, y - 2, 32, 16, 5); ctx.fill();
+    if (lv.gold) { ctx.fillStyle = 'rgba(255,211,107,' + (0.35 + 0.15 * Math.sin(t * 5)) + ')'; circle(x, y + 2, 30); ctx.fill(); }
+    ctx.fillStyle = lv.gold ? '#b9850f' : '#5c6470'; rr(x - 16, y - 2, 32, 16, 5); ctx.fill();
     ctx.fillStyle = '#7d8896'; rr(x - 13, y + 1, 26, 10, 4); ctx.fill();
     ctx.save(); ctx.translate(x, y + 6); ctx.rotate(right ? 0.75 : -0.75);
     ctx.fillStyle = '#d9b45a'; ctx.fillRect(-2.5, -30, 5, 30);

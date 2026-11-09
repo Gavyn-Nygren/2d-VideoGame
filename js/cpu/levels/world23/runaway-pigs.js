@@ -18,7 +18,8 @@
      it and pushes), pulls the barn door rope when the herd is close (and again if it is about to shut on them), opens
      the pen and shuts it once every pig is in.
      It can't finish alone: pigs ignore the gatekeeper, and the herder can't open gates; gold help only comes while
-     both are playing. With a person it says short things ("Open the gate!", "Clap behind them!"); bubbles only show in
+     both are playing (in 1-player the person must have pressed something in the last 10 s). idleStop is 90 s here
+     (a person keeping the gates often waits by a gate without pressing anything). With a person it says short things ("Open the gate!", "Clap behind them!"); bubbles only show in
      1-player mode (cpuSay). Team brains always play at full skill. */
   const M = () => MODES.pigherd;
   const CELL = 15;
@@ -56,7 +57,7 @@
     const g = grid(st), n = g.cols * g.rows;
     const s = cellOf(g, x, y);
     let s0 = s.r * g.cols + s.c;
-    if (!g.free[s0]) { s0 = nearFree(g, s.c, s.r, 3); if (s0 < 0) return null; }
+    if (!g.free[s0]) { s0 = nearFree(g, s.c, s.r, 8); if (s0 < 0) return null; }   // (squeezed into a corner: from the nearest free spot)
     const t = cellOf(g, tx, ty);
     let ti = t.r * g.cols + t.c;
     if (!g.free[ti]) { ti = nearFree(g, t.c, t.r, 6); if (ti < 0) return null; }
@@ -134,7 +135,7 @@
       return;
     }
     const pigs = hd.pigs.filter(q => q.state === 'run');
-    if (!pigs.length) { go(S, out, p, st, hd.cx - 160, bandY(hd.cy), 30, dt); return; }
+    if (!pigs.length) { go(S, out, p, st, cx, cy, hd.cx - 160, bandY(hd.cy), 30, dt); return; }   // (only gold-ribbon pigs: follow them home)
     // a shut gate in front of the herd: hang back so they settle there
     if (pl.block) {
       const g = pl.block, f = M().flowAt(st, hd.cx, hd.cy);
@@ -200,6 +201,7 @@
       if (!free(wx, wy)) { wx = aimX - sx * R; wy = aimY - sy * R; }
       if (free(wx, wy)) { tx = wx + ux / uL * 30; ty = bandY(wy + uy / uL * 30); }
     }
+    S.dbg = (stray ? 'stray ' + stray.name : 'drive') + ' ' + (tx | 0) + ',' + (ty | 0);
     go(S, out, p, st, cx, cy, tx, ty, 12, dt);
     // clap when close behind and the herd is slow (or a stray is near trouble)
     const slow = body.reduce((m, q) => m + Math.hypot(q.vx, q.vy), 0) / body.length < 70;
@@ -217,7 +219,7 @@
     const reach = () => M().reachable(st, Object.assign({}, p, { x: cx - p.w / 2, y: cy - p.h / 2 }));
     const tap = () => { if (!S.tapT || S.tapT <= 0) { out.act = 'tap'; S.tapT = 0.35; } };
     S.tapT = (S.tapT || 0) - dt;
-    if (!j) { go(S, out, p, st, Math.min(st.len - 60, hd.maxX + 160), bandY(300), 40, dt); return; }
+    if (!j) { go(S, out, p, st, cx, cy, Math.min(st.len - 60, hd.maxX + 160), bandY(300), 40, dt); return; }
     if (j.kind === 'hay') { hay(S, p, st, out, dt, cx, cy, j.hay, human); return; }
     let tx, ty;
     const g = j.gate, lv = j.lever;
@@ -273,6 +275,10 @@
   }
 
   cpuBrain('pigherd', {
+    // a person keeping the gates often just waits by a gate or the pen (the hint says "Wait by the pen gate"), so the
+    // computer herder keeps going for 90 s of no presses, not 30. It still can't finish alone: pigs only go through
+    // gates the person opens, and no gold help comes while the person is away.
+    idleStop: 90,
     reset(S) { S.path = null; S.pathT = 0; S.goal = null; S.wig = 0; S.pushing = false; S.tapT = 0; S.clapGap = 0; },
     think(S, p, o, dt, info) {
       const out = {}, st = info.mst;

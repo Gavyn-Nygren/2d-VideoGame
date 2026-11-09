@@ -17,7 +17,7 @@ const touch = +opt('touch', 0), intro = +opt('intro', 0), tag = opt('tag', ''), 
   fs.mkdirSync(out, { recursive: true });
   const browser = await chromium.launch();
   const co = { viewport: { width: vw, height: vh }, deviceScaleFactor: 1 };
-  if (touch) Object.assign(co, { hasTouch: true, isMobile: true });
+  if (touch) Object.assign(co, { hasTouch: true });
   const page = await browser.newPage(co);
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
