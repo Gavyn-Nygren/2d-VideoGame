@@ -47,6 +47,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 25. **Zombie Acres** (built early; one endless survival level: chop, dig and build a fort, then hold off waves of zombies): Defend the Heart
 26. **Circus Big Top** (inside a striped circus tent: a trapeze, a clown car, a cannon and tall stilts): Trapeze Catch, Clown Car Getaway, Human Cannonball Tour, Stilt Race
 27. **Robot Factory** (a bright robot factory with belts, cranes and helper robots): Mech Suit Duo, Runaway Assembly Line, Magnet Crane Crew, Robot Rumble
+28. **Pyramid Sands** (an adventure in the desert: a rolling boulder, a dark tomb, a stone puzzle and a camel race): Rolling Boulder Run, Tomb Torch Explorers, Sliding Stone Puzzle, Camel Race
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
