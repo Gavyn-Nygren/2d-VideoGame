@@ -5683,9 +5683,51 @@ const LEVELS = [
   //   Each level's def sits between its own BEGIN/END lines. world: 22 =====
   //
   // ----- BEGIN 23-1 Tractor & Trailer (mode 'haytractor', js/levels/world23/tractor-trailer.js) -----
-  { name: 'Tractor & Trailer', world: 22, kind: 'team', mode: 'haytractor',
-    tip: 'Coming soon!',
-    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '#'.repeat(32), '#'.repeat(32)],
+  // 23-1 Tractor & Trailer (mode 'haytractor', team, Gavyn's pick): one little red tractor pulls a hay wagon across rolling
+  // farmland, scrolling right. One drives (▶ gas, ◀ slow / back up, ▼ brake, the action honks at sheep, geese and crows),
+  // the other stands on the wagon and catches the hay bales, pumpkins and golden corn tossed from the fields (◀ ▶ walk,
+  // ▲ jumps, holding the action steadies the stack). Hard bumps fill the load's wobble meter and too many spill it. Each
+  // field ends at a barn where the load is counted, then they swap jobs. The map is only the two spawns; the mode builds
+  // each field from its course (tokens: see the top of the level file).
+  { name: 'Tractor & Trailer', world: 22, kind: 'team', mode: 'haytractor', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Field',
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> drive or walk <kbd>W</kbd> jump <kbd>S</kbd> brake',
+      bo: '<kbd>←</kbd><kbd>→</kbd> drive or walk <kbd>↑</kbd> jump <kbd>↓</kbd> brake',
+      pad: 'stick drives or walks, <span data-glyph="a"></span> jumps,',
+    },
+    tip: 'Driver: ▶ gas, ◀ slow down, the action honks. Catcher: walk under the tosses, ▲ jumps, hold the action to steady the load!',
+    act: { label: 'honk', labels: ['honk', 'hold'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Hay Meadow', drive: 0, look: 'meadow', pace: 145, y0: 405, act: { label: 'honk', labels: ['honk', 'hold'] },
+        tip: 'Pip drives, Bo catches! Keep a steady pace by the farmers, slow down for bumps, then drive up to the barn.',
+        course: ['f210', 'Y:{D} drives! ▶ is the gas', 'f290', 'T:farmer:bbb', 'f250', 'Y:{C} catches the hay!', 'f210', 'u', 'f290', 'T:farmer:bbbb',
+          'f210', 'g300:390', 'r', 'f150', 'Y:Sheep! Honk to shoo them', 'f170', 'S:2', 'f170', 'g300:415', 'T:kid:cbc', 'f380', 'u', 'f150',
+          'Y:High bales! Jump to catch', 'f250', 'T:baler:bBB', 'f210', 'g250:395', 'r', 'f340', 'T:farmer:bbbb', 'f500', 'E'],
+      },
+      {
+        title: 'Pumpkin Patch', drive: 1, look: 'patch', pace: 150, y0: 400, act: { label: 'honk', labels: ['hold', 'honk'] },
+        tip: 'Swap! Bo drives, Pip catches. Pumpkins are heavy: they make the load wobble more. Honk at the crow!',
+        course: ['f210', 'Y:Swap! {D} drives now', 'f290', 'T:farmer:bbbb', 'f210', 'g250:385', 'r', 'f150', 'Y:Pumpkins are heavy!', 'f210',
+          'T:catapult:ppp', 'f420', 'u', 'f250', 'R', 'f150', 'g250:410', 'T:farmer:bpbp', 'f150', 'Y:A crow! Honk it away', 'f210', 'C:1', 'f250', 'r',
+          'f340', 'T:catapult:pppp', 'f380', 'u', 'f290', 'T:kid:cpc', 'f340', 'R', 'f150', 'g250:395', 'T:baler:bBB', 'f500', 'E'],
+      },
+      {
+        title: 'Bumpy Hills', drive: 0, look: 'hills', pace: 155, y0: 410, act: { label: 'honk', labels: ['honk', 'hold'] },
+        tip: 'Pip drives again! Big humps and a little bridge: slow down, or hold on tight. Honk the geese off the road!',
+        course: ['f210', 'Y:Big humps! Slow down or hold on', 'f150', 'g300:370', 'T:farmer:bbbb', 'f250', 'H', 'f250', 'g400:425', 'H', 'f250',
+          'T:catapult:ppp', 'f170', 'g250:395', 'Y:Geese! Honk honk', 'f210', 'G:3', 'f340', 'T:farmer:bpbb', 'f100', 'Y:A little bridge', 'f250',
+          'B:150', 'f250', 'g350:360', 'T:kid:ccb', 'f250', 'H', 'f150', 'g350:410', 'T:baler:bBBb', 'f290', 'L', 'f290', 'T:farmer:bbbb', 'f500', 'E'],
+      },
+      {
+        title: 'Sunset Lane', drive: 1, look: 'sunset', pace: 160, y0: 400, act: { label: 'honk', labels: ['hold', 'honk'] },
+        tip: 'Bo drives to the Big Barn at the fair! Crows, sheep, bumps and lots of hay. Bring home all you can!',
+        course: ['f210', 'Y:To the Big Barn!', 'f290', 'T:farmer:bbbb', 'f210', 'C:2', 'f250', 'r', 'f100', 'g250:385', 'T:catapult:pppp', 'f380', 'u',
+          'f210', 'H', 'f250', 'S:3', 'f380', 'T:farmer:bcbp', 'f340', 'R', 'f150', 'g300:410', 'C:2', 'T:baler:bBBb', 'f380', 'B:140', 'f300',
+          'T:kid:cpc', 'f290', 'L', 'f150', 'g250:395', 'T:farmer:bbbbb', 'f550', 'E:big'],
+      },
+    ],
   },
   // ----- END 23-1 Tractor & Trailer -----
   //
