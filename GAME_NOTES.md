@@ -16,6 +16,7 @@ Demo: https://claude.ai/artifact/85NPz4hhcdi429juHSXUx7
 - Build each new world or major feature in a fresh thread, briefed to read this file first.
 - 1-player mode (Nov 2026): one person plays Pip or Bo and the computer plays the other. In team levels the computer is a helpful teammate; in versus levels it is the opponent (Easy, Normal or Hard). Every new level needs a computer brain too (see "Computer partner" below).
 - A boss world every 10 worlds (Gavyn, Nov 2026): World 10 is the Grand Collector, World 20 is the next boss, and so on. Worlds 11 (Summer Games) and 12 (Winter Games) come after World 10.
+- World 25 was built early (Gavyn, Nov 2026) with gaps at 22-24 still to fill; a world can add itself from its own file (see World 25).
 
 ## Controls
 
@@ -681,6 +682,22 @@ A bright, friendly underwater world: sunny shallows, coral reefs, kelp, a sandy 
 - Status: built, reviewed and QA'd per level (keyboard, controller and touch at 844x390 and 390x844, 2-player and 1-player). `node tools/w22/integration.js` checks the world map and World 22 page (all 4 previews animate), plays 22-1 to 22-4 in order to the world-done card, loads every level of every world without errors, and checks `build/pip-and-bo.html` (run `node tools/bundle.js` first) starts 22-1. A computer pair plays the whole world in about 11 minutes.
 - Testing tip: phone tests should use `hasTouch` with a phone-sized viewport, not `isMobile: true` (index.html has no viewport meta tag, since the publisher adds it, so `isMobile` lays the page out 980 px wide and never shows the big phone HUD).
 
+### World 25: Zombie Acres (team, one endless level)
+Gavyn asked for World 25 early (Nov 2026), before Worlds 22-24 exist: one zombie-survival level from his own idea. A moonlit night on an old farm. Not overly cartoony (Gavyn: "a game for everyone; some animated violence is fine, silly guns can be fun"): grey-green zombies in torn clothes fall over and fade, no gore. World index 24. It adds itself from its own file (`WORLDS[24] = {...}` and `LEVELS.push(...)` at the bottom of the level file), so worlds 22-24 can go into the WORLDS literal and LEVELS list later and still sort before it; the world map simply skips the empty numbers until then.
+- **25-1 Defend the Heart** (team, mode `zombiefort`, `ownHUD`, `noFalls`, `noTime`; js/levels/world25/defend-the-heart.js, whose header has every rule): protect the glowing heart in the middle from endless waves of zombies coming from both sides.
+  - Gavyn's rules: 5-minute build time before wave 1; waves get harder; upgrade weapons and the base; lose when the heart is destroyed; incentives to build wide and tall; zombies jump walls that are too short, path through as few blocks as possible and dig up, down, left and right. His answers to our questions: 15-20 minutes on average; endless, so you always lose in the end; not overly cartoony; building should feel natural; Terraria-like trees to chop (they don't block your path) and stone below the dirt; players must know every block tier and its durability; zombies knock you back and damage you, with a short respawn near the centre. He kept the names.
+  - Controls: one action button. Tap shoots (hold ▼ to aim 45° down); hold works: chop a tree you stand at or face, dig the dirt or stone at your feet, place a block in front (stacks up to head height + 1; in the air it goes under you, so jump-and-hold builds a tower), and on a full wall fix the lowest cracked block or upgrade. With ▼ held: dig below-front (one hold digs down 3 deep), take back your own block below-front (refund; a turret goes back in your hands), fill a hole, or BUY on a pad (▼ + hold, so walking over a pad never buys by accident). One hold keeps doing the job it started with; an upgrade paid in coins ends the hold. You can't build on a standing tree's trunk, in the zombie lanes, or in the 3 cells above a pad.
+  - Blocks (shown on screen in build time and on the build cursor): Dirt 2 HP, Wood 5, Stone 10, Metal 20, Turret 10. New blocks use the team's strongest material (stone, wood, dirt). Upgrades: dirt to wood (1 wood, or 2 coins when out of wood), wood to stone (1 stone, or 3 coins), stone to metal (6 coins). The coin prices give late-game coins a use. Shared dirt, wood, stone and coins.
+  - Pads by the heart: Guns (each player's own: Pistol, SMG 12, Shotgun 25, Laser rifle 45, Rocket launcher 70 coins), Turret (15 coins, placed like a block, max 6), and the heart itself heals it (+20 HP for 8 coins).
+  - Zombies: walker, digger (likes digging, also comes up through the ground at the edges), leaper (jumps 4 high, so build taller than 4), brute, and the Behemoth every 10th wave. They follow a cost field from the heart where digging a block costs its HP plus a fixed amount, so they take the way with the fewest and weakest blocks. Digging down costs extra (except diggers), and natural ground just under a built block counts as that block, so going under a wall is no cheaper than going through it. Turrets can't shoot through natural ground (a zombie tunnelling underground is safe from them) but shoot over your own blocks. Each wave has more and tougher zombies (`zfWaveSpec`).
+  - Incentives: walls under 3 high get jumped (4+ for leapers); after every wave a fort bonus pays coins for width and height; thicker and stronger walls take longer to dig through.
+  - Players have 100 HP: a zombie touch hurts and knocks you back, you heal after 4 s without a hit, and at 0 you're back on your pad after 4 s.
+  - Both players standing still by the heart holding ▼ (not the action) for 1.6 s start the next wave early, with a countdown. No person input for 15 s pauses the zombies.
+  - Game over is not a "Level clear!": no confetti, and the results card says "You held N waves!" (engine hooks `quietClear` and `resultTitle`, read in levelClear and showResult).
+  - Results: waves survived (best kept per browser, `zfwave:<name>`), zombies stopped and blocks built per player, medal (Gold 12+ waves, Silver 8+), time, biggest fort.
+- Code: the level file above (MODES.zombiefort), the brain `js/cpu/levels/world25/defend-the-heart.js`, the preview `js/previews/world25.js`.
+- Status: built and reviewed (23 review findings fixed). Computer tests (`sh tools/w25/zf-runs.sh`): a computer pair survives 18 waves (about 14-15 minutes; computers start waves early), a pair with a clumsy partner 15-16, a computer with the simple follow-the-leader test person 7-9; the idle check never ends (the zombies wait). People who use the full 5-minute build time should land around 15-20 minutes. Open for Gavyn: are 12 / 8 waves right for Gold / Silver once he has played it?
+
 ## How the game is built
 
 ### Conventions for every level
@@ -711,7 +728,7 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 | `js/player.js` | `makePlayer`, tile collision (`solidFor`), movement, tether rope/chain/bungee, stomp, `kill`/`respawn` |
 | `js/levels/block-building.js`, `golf.js`, `robo-pong.js` | World 2-3 mechanics (`BUILD`, `GOLF`, `PONG`) and their drawing |
 | `js/versus.js` | `MODES` registry, `hook`/`drawHook`, the best-of-N framework (`MATCH`, `matchRoundEnd`), `knock` |
-| `js/levels/world4/` to `world22/` | One file per level: its `MODES.<name>` block, its own drawing and `Sfx.extra` sounds, e.g. `world7/bumper-cars.js` |
+| `js/levels/world4/` to `world25/` | One file per level: its `MODES.<name>` block, its own drawing and `Sfx.extra` sounds, e.g. `world7/bumper-cars.js` |
 | `js/input.js` | Keyboard (`keys`, `BIND`), controllers (`Pads`, `readPad`), touch, `pollInput` |
 | `js/ui.js` | Overlay cards (`pause`/`showPauseCard`, `showResult`, `showWorldDone`, `showFinal`, `armOverlay`, `menuBack`), legend (`setLegend`, `setActUI`), toast, mute |
 | `js/render.js` | Shared drawing (`render`, `drawHUD`, `drawIntro`) and particles |

@@ -263,7 +263,7 @@ function showResult() {
       <p class="lede">${faster}.${sqLine}</p>`;
   } else {
     const bestLine = r.newBest ? (r.best == null ? 'First clear' : 'New best time!') : 'Best ' + fmtTime(r.best);
-    body = `<h2>Level clear!</h2>
+    body = `<h2>${r.title ? esc(r.title) : 'Level clear!'}</h2>
       ${l.noTime && l.noFalls ? '' : `<div class="stats">
         ${l.noTime ? '' : `<div class="stat"><span class="k">Time</span><span class="v">${fmtTime(r.time)}</span></div>`}
         ${l.noFalls ? '' : `<div class="stat"><span class="k">Falls</span><span class="v">${r.falls}</span></div>`}
