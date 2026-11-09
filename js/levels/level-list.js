@@ -5703,9 +5703,49 @@ const LEVELS = [
   //
   //
   // ----- BEGIN 23-3 Hot Dog Stand Rush (mode 'hotdog', js/levels/world23/hot-dog-stand-rush.js) -----
-  { name: 'Hot Dog Stand Rush', world: 22, kind: 'team', mode: 'hotdog',
-    tip: 'Coming soon!',
-    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '#'.repeat(32), '#'.repeat(32)],
+  // 23-3 Hot Dog Stand Rush (mode 'hotdog', team, Gavyn's pick): one screen inside a striped hot dog stand at the county
+  // fair. The cook (kitchen, left) grills sausages, puts them in buns, adds the toppings the order tickets show and puts
+  // them on the pass shelf; the server (counter, right) takes the fairgoers' orders, carries the hot dogs over and pours
+  // lemonade, before patience runs out. Each shift runs on its own clock with a goal of happy customers; jobs swap every
+  // shift (Pip cooks 1 and 3). The map is only the two spawns; the mode builds the stand (see the top of the level file).
+  // Room fields: cook, len (s), goal, tops, topMin/topMax, two/three (chance of 2/3 hot dogs), maxDogs, bigAt (line
+  // length that adds a hot dog), lemon (chance), every (s between fairgoers), first, patience, extraPat, bus.
+  { name: 'Hot Dog Stand Rush', world: 22, kind: 'team', mode: 'hotdog', ownStep: true, ownHUD: true, noFalls: true, noTime: true, roomWord: 'Shift',
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> hop',
+      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> hop',
+      pad: 'stick or d-pad walks, <span data-glyph="a"></span> hops,',
+    },
+    tip: 'One cooks the hot dogs, one serves the fairgoers. Follow the arrow, then press the action!',
+    act: { label: 'cook', labels: ['cook', 'serve'] },
+    map: [...Array(9).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), ...Array(8).fill('.'.repeat(32))],
+    rooms: [
+      {
+        title: 'Morning', cook: 0, len: 40, goal: 4, act: { label: 'cook', labels: ['cook', 'serve'] },
+        tops: 'km', topMin: 0, topMax: 1, two: 0, maxDogs: 1, lemon: 0, every: 7, first: 1.0, patience: 40, extraPat: 8,
+        tip: 'Pip cooks: grill, bun, topping, then the pass shelf. Bo takes the orders and hands them over!',
+        news: 'Morning shift: Pip cooks, Bo serves!',
+      },
+      {
+        title: 'Lunch Rush', cook: 1, len: 44, goal: 5, act: { label: 'serve', labels: ['serve', 'cook'] },
+        tops: 'kmr', topMin: 1, topMax: 2, two: 0.2, maxDogs: 2, bigAt: 2, lemon: 0.4, every: 6.5, first: 1.0, patience: 42, extraPat: 8,
+        tip: 'Swap! Bo cooks now. Pip serves and pours lemonade: hold the action, let go in the green!',
+        news: 'Lunch Rush: Bo cooks, Pip serves (and pours lemonade)!',
+      },
+      {
+        title: 'Afternoon', cook: 0, len: 44, goal: 4, act: { label: 'cook', labels: ['cook', 'serve'] },
+        tops: 'kmro', topMin: 0, topMax: 2, two: 0.4, three: 0.05, maxDogs: 3, bigAt: 2, lemon: 0.35, every: 8.5, first: 1.0, patience: 46, extraPat: 8,
+        tip: 'Bigger orders now! Every hot dog on a ticket has its own toppings. Onions are here too.',
+        news: 'Afternoon: Pip cooks, Bo serves. Bigger orders!',
+      },
+      {
+        title: 'County Fair Finale', cook: 1, len: 50, goal: 6, act: { label: 'serve', labels: ['serve', 'cook'] },
+        tops: 'kmroc', topMin: 1, topMax: 2, two: 0.3, three: 0, maxDogs: 3, bigAt: 2, lemon: 0.35, every: 8, first: 1.0, patience: 46, extraPat: 8,
+        bus: { at: 16, n: 4 },
+        tip: 'The County Fair Finale! A hay-ride bus brings a crowd, and there is cheese now. Go go go!',
+        news: 'The Finale: Bo cooks, Pip serves. Here comes the crowd!',
+      },
+    ],
   },
   // ----- END 23-3 Hot Dog Stand Rush -----
   //
