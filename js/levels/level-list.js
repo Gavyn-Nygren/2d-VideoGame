@@ -5673,6 +5673,273 @@ const LEVELS = [
   //
   //
   // ===== END World 22 =====
+  //
+  //
+  //
+  // ===== World 23 (Barnyard Fair, mixed): the farm and county fair world, world index 22 (js/levels/world23/), a sunny
+  //   farm with red barns, hay fields, pig pens and a county fair with a Ferris wheel. Nothing scary, nobody gets hurt.
+  //   Gavyn's picks (Nov 2026), from ten ideas: 23-1 Tractor & Trailer (team, scrolls sideways), 23-2 Runaway Pigs
+  //   (team, scrolls sideways), 23-3 Hot Dog Stand Rush (team), 23-4 Pie-Eating Contest (versus, best of 5).
+  //   Each level's def sits between its own BEGIN/END lines. world: 22 =====
+  //
+  // ----- BEGIN 23-1 Tractor & Trailer (mode 'haytractor', js/levels/world23/tractor-trailer.js) -----
+  // 23-1 Tractor & Trailer (mode 'haytractor', team, Gavyn's pick): one little red tractor pulls a hay wagon across rolling
+  // farmland, scrolling right. One drives (▶ gas, ◀ slow / back up, ▼ brake, the action honks at sheep, geese and crows),
+  // the other stands on the wagon and catches the hay bales, pumpkins and golden corn tossed from the fields (◀ ▶ walk,
+  // ▲ jumps, holding the action steadies the stack). Hard bumps fill the load's wobble meter and too many spill it. Each
+  // field ends at a barn where the load is counted, then they swap jobs. The map is only the two spawns; the mode builds
+  // each field from its course (tokens: see the top of the level file).
+  { name: 'Tractor & Trailer', world: 22, kind: 'team', mode: 'haytractor', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Field',
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> drive or walk <kbd>W</kbd> jump <kbd>S</kbd> brake',
+      bo: '<kbd>←</kbd><kbd>→</kbd> drive or walk <kbd>↑</kbd> jump <kbd>↓</kbd> brake',
+      pad: 'stick drives or walks, <span data-glyph="a"></span> jumps,',
+    },
+    tip: 'Driver: ▶ gas, ◀ slow down, the action honks. Catcher: walk under the tosses, ▲ jumps, hold the action to steady the load!',
+    act: { label: 'honk', labels: ['honk', 'hold'] },
+    map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
+    rooms: [
+      {
+        title: 'Hay Meadow', drive: 0, look: 'meadow', pace: 145, y0: 405, act: { label: 'honk', labels: ['honk', 'hold'] },
+        tip: 'Pip drives, Bo catches! Keep a steady pace by the farmers, slow down for bumps, then drive up to the barn.',
+        course: ['f210', 'Y:{D} drives! ▶ is the gas', 'f290', 'T:farmer:bbb', 'f250', 'Y:{C} catches the hay!', 'f210', 'u', 'f290', 'T:farmer:bbbb',
+          'f210', 'g300:390', 'r', 'f150', 'Y:Sheep! Honk to shoo them', 'f170', 'S:2', 'f170', 'g300:415', 'T:kid:cbc', 'f380', 'u', 'f150',
+          'Y:High bales! Jump to catch', 'f250', 'T:baler:bBB', 'f210', 'g250:395', 'r', 'f340', 'T:farmer:bbbb', 'f500', 'E'],
+      },
+      {
+        title: 'Pumpkin Patch', drive: 1, look: 'patch', pace: 150, y0: 400, act: { label: 'honk', labels: ['hold', 'honk'] },
+        tip: 'Swap! Bo drives, Pip catches. Pumpkins are heavy: they make the load wobble more. Honk at the crow!',
+        course: ['f210', 'Y:Swap! {D} drives now', 'f290', 'T:farmer:bbbb', 'f210', 'g250:385', 'r', 'f150', 'Y:Pumpkins are heavy!', 'f210',
+          'T:catapult:ppp', 'f420', 'u', 'f250', 'R', 'f150', 'g250:410', 'T:farmer:bpbp', 'f150', 'Y:A crow! Honk it away', 'f210', 'C:1', 'f250', 'r',
+          'f340', 'T:catapult:pppp', 'f380', 'u', 'f290', 'T:kid:cpc', 'f340', 'R', 'f150', 'g250:395', 'T:baler:bBB', 'f500', 'E'],
+      },
+      {
+        title: 'Bumpy Hills', drive: 0, look: 'hills', pace: 155, y0: 410, act: { label: 'honk', labels: ['honk', 'hold'] },
+        tip: 'Pip drives again! Big humps and a little bridge: slow down, or hold on tight. Honk the geese off the road!',
+        course: ['f210', 'Y:Big humps! Slow down or hold on', 'f150', 'g300:370', 'T:farmer:bbbb', 'f250', 'H', 'f250', 'g400:425', 'H', 'f250',
+          'T:catapult:ppp', 'f170', 'g250:395', 'Y:Geese! Honk honk', 'f210', 'G:3', 'f340', 'T:farmer:bpbb', 'f100', 'Y:A little bridge', 'f250',
+          'B:150', 'f250', 'g350:360', 'T:kid:ccb', 'f250', 'H', 'f150', 'g350:410', 'T:baler:bBBb', 'f290', 'L', 'f290', 'T:farmer:bbbb', 'f500', 'E'],
+      },
+      {
+        title: 'Sunset Lane', drive: 1, look: 'sunset', pace: 160, y0: 400, act: { label: 'honk', labels: ['hold', 'honk'] },
+        tip: 'Bo drives to the Big Barn at the fair! Crows, sheep, bumps and lots of hay. Bring home all you can!',
+        course: ['f210', 'Y:To the Big Barn!', 'f290', 'T:farmer:bbbb', 'f210', 'C:2', 'f250', 'r', 'f100', 'g250:385', 'T:catapult:pppp', 'f380', 'u',
+          'f210', 'H', 'f250', 'S:3', 'f380', 'T:farmer:bcbp', 'f340', 'R', 'f150', 'g300:410', 'C:2', 'T:baler:bBBb', 'f380', 'B:140', 'f300',
+          'T:kid:cpc', 'f290', 'L', 'f150', 'g250:395', 'T:farmer:bbbbb', 'f550', 'E:big'],
+      },
+    ],
+  },
+  // ----- END 23-1 Tractor & Trailer -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 23-2 Runaway Pigs (mode 'pigherd', js/levels/world23/runaway-pigs.js) -----
+  // 23-2 Runaway Pigs (mode 'pigherd', team, Gavyn's pick): greased pigs escape across the farm, seen from above. One
+  // herds (the action is a big clap: the pigs run away from the herder); the other keeps the gates (the action opens
+  // forward gates, shuts side gates so curious pigs don't trot into the corn, the pond or the pie tent, flips the fork
+  // levers, pulls the barn door rope and opens and shuts the pen). Jobs swap every chase (Pip herds 1 and 3). The map is
+  // only the two spawns; the mode builds each chase from its items (see the top of the level file). Field y 104 to 492.
+  { name: 'Runaway Pigs', world: 22, kind: 'team', mode: 'pigherd', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Chase',
+    legend: {
+      pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk',
+      bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> walk',
+      pad: 'stick or d-pad walks,',
+    },
+    tip: 'One herds the slippery pigs (clap!), one opens and shuts the gates. Get every pig into the pen!',
+    act: { label: 'clap', labels: ['clap', 'gate'] },
+    map: [...Array(9).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), ...Array(8).fill('.'.repeat(32))],
+    rooms: [
+      {
+        title: 'Barnyard', herder: 0, look: 'farm', len: 2700, keeperY: 390, act: { label: 'clap', labels: ['clap', 'gate'] },
+        tip: 'Pip herds: the pigs run away from you! Bo opens the gate ahead and shuts the side gate.',
+        news: 'Pip herds the pigs, Bo keeps the gates!',
+        pigs: ['Rosie', 'Peanut', 'Truffle', 'Biscuit'], spots: [1, 3],
+        items: [
+          ['solid', 30, 104, 230, 80, 'barn'], ['decor', 'chickens', 330, 160], ['decor', 'flowers', 560, 450],
+          ['route', [[120, 300], [820, 298], [1400, 300], [1900, 300], [2300, 300], [2440, 300]]],
+          ['pigs', 440, 300],
+          ['sign', 300, 440, '{H}: walk behind the pigs, clap with {Ha}', 'Walk behind the pigs: they run away!'],
+          ['sign', 640, 140, '{K}: open the gate with {Ka}', '{K} opens the gate'],
+          ['fence', 820, 104, 820, 240], ['gate', 'g1', 820, 240, 820, 360, { kind: 'fwd' }], ['fence', 820, 360, 820, 492],
+          ['solid', 1020, 150, 70, 60, 'haystack'], ['solid', 1080, 404, 70, 60, 'haystack'],
+          ['mud', 1230, 330, 46], ['sign', 1230, 410, 'Mud! Clap close by to get a pig out', 'Mud! Clap close by'],
+          ['fence', 1420, 104, 1420, 210], ['fence', 1420, 210, 1560, 210], ['gate', 's1', 1560, 210, 1680, 210, { kind: 'side', open: true, zone: 'veg1', swing: -1 }],
+          ['fence', 1680, 210, 1820, 210], ['fence', 1820, 104, 1820, 210],
+          ['zone', 'veg1', 'veg', 1426, 104, 1814, 204, 1620, 268],
+          ['sign', 1500, 440, '{K}: shut the side gate!', 'Shut the side gate!'],
+          ['decor', 'cow', 1980, 450, { f: 1 }], ['decor', 'chickens', 2100, 150],
+          ['fence', 2300, 104, 2300, 190], ['fence', 2300, 410, 2300, 492],
+          ['pen', 2300, 190, 2620, 410],
+        ],
+      },
+      {
+        title: 'Duck Pond', herder: 1, look: 'pond', len: 3200, keeperY: 200, act: { label: 'clap', labels: ['gate', 'clap'] },
+        tip: 'Swap! Bo herds, Pip keeps the gates. Shut the pond gates, and roll the hay into the broken fence!',
+        news: 'Swap! Bo herds, Pip keeps the gates',
+        pigs: ['Daisy', 'Pickles', 'Waffles', 'Button', 'Muffin'], spots: [0, 3],
+        items: [
+          ['route', [[120, 260], [700, 240], [1300, 240], [1520, 280], [2000, 260], [2400, 290], [2700, 300], [2860, 300]]],
+          ['pigs', 430, 260], ['decor', 'flowers', 300, 150], ['decor', 'chickens', 520, 440],
+          ['sign', 300, 420, 'Swap! {H} herds now'],
+          ['fence', 640, 360, 760, 360], ['gate', 's1', 760, 360, 870, 360, { kind: 'side', open: true, zone: 'pondA', swing: 1 }],
+          ['fence', 870, 360, 1080, 360], ['gate', 's2', 1080, 360, 1190, 360, { kind: 'side', open: true, zone: 'pondB', swing: 1 }],
+          ['fence', 1190, 360, 1320, 360], ['fence', 640, 360, 640, 492], ['fence', 1320, 360, 1320, 492],
+          ['zone', 'pondA', 'pond', 646, 366, 980, 492, 815, 296], ['zone', 'pondB', 'pond', 980, 366, 1314, 492, 1135, 296],
+          ['sign', 700, 150, '{K}: shut both pond gates!', 'Two pond gates to shut!'],
+          ['fence', 1450, 104, 1450, 220], ['gate', 'g1', 1450, 220, 1450, 340, { kind: 'fwd' }], ['fence', 1450, 340, 1450, 492],
+          ['fence', 1456, 380, 1740, 380], ['fence', 1810, 380, 2100, 380], ['fence', 2100, 380, 2100, 492],
+          ['zone', 'reeds', 'pond', 1462, 386, 2094, 492, 1700, 318],
+          ['hay', 1775, 236, [1740, 374, 1810, 386], 'reeds'],
+          ['sign', 1610, 160, '{K}: push the hay into the gap', 'The hay fills the gap'],
+          ['mud', 2060, 220, 44],
+          ['fence', 2400, 104, 2400, 230], ['gate', 'g2', 2400, 230, 2400, 350, { kind: 'fwd' }], ['fence', 2400, 350, 2400, 492],
+          ['decor', 'cow', 2580, 160, { f: -1 }], ['decor', 'flowers', 2560, 440],
+          ['fence', 2750, 104, 2750, 180], ['fence', 2750, 420, 2750, 492],
+          ['pen', 2750, 180, 3100, 420],
+        ],
+      },
+      {
+        title: 'Cornfield Maze', herder: 0, look: 'corn', len: 3500, keeperY: 390, act: { label: 'clap', labels: ['clap', 'gate'] },
+        tip: 'Pip herds again! At the fork, Bo pulls the lever: the top way is a dead end in the corn.',
+        news: 'Swap back! Pip herds, Bo keeps the gates',
+        pigs: ['Penny', 'Hamlet', 'Noodle', 'Clover', 'Sprout'], spots: [2, 4],
+        items: [
+          ['route', [[120, 300], [840, 300], [900, 420], [1560, 420], [1800, 300], [2500, 290], [2750, 290], [3050, 300], [3200, 300]]],
+          ['pigs', 440, 300], ['decor', 'chickens', 300, 160],
+          ['sign', 600, 440, 'A fork! {K}: pull the lever with {Ka}', 'A fork in the corn!'],
+          ['solid', 920, 250, 640, 100, 'corn'],
+          ['gate', 'gU', 920, 104, 920, 250, { kind: 'fork' }], ['gate', 'gL', 920, 492, 920, 350, { kind: 'fork' }],
+          ['lever', 'lv', 880, 300, ['gU', 'gL']],
+          ['zone', 'maze', 'corn', 1300, 104, 1560, 244, 840, 200], ['fence', 1566, 104, 1566, 250],
+          ['mud', 1250, 430, 42],
+          ['fence', 1900, 104, 1900, 200], ['fence', 1900, 200, 2040, 200], ['gate', 's1', 2040, 200, 2160, 200, { kind: 'side', open: true, zone: 'corn2', swing: -1 }],
+          ['fence', 2160, 200, 2300, 200], ['fence', 2300, 104, 2300, 200],
+          ['zone', 'corn2', 'corn', 1906, 104, 2294, 194, 2100, 262],
+          ['mud', 2250, 390, 44],
+          ['fence', 2500, 104, 2500, 230], ['gate', 'g1', 2500, 230, 2500, 350, { kind: 'fwd' }], ['fence', 2500, 350, 2500, 492],
+          ['fence', 2620, 390, 2700, 390], ['gate', 's2', 2700, 390, 2810, 390, { kind: 'side', open: true, zone: 'veg3', swing: 1 }],
+          ['fence', 2810, 390, 2900, 390], ['fence', 2620, 390, 2620, 492], ['fence', 2900, 390, 2900, 492],
+          ['zone', 'veg3', 'veg', 2626, 396, 2894, 492, 2755, 326],
+          ['decor', 'flowers', 2950, 150],
+          ['fence', 3050, 104, 3050, 180], ['fence', 3050, 420, 3050, 492],
+          ['pen', 3050, 180, 3400, 420],
+        ],
+      },
+      {
+        title: 'Fairground', herder: 1, look: 'fair', len: 3700, keeperY: 390, barnLen: 280, act: { label: 'clap', labels: ['gate', 'clap'] },
+        tip: 'Bo herds to the county fair! Pip pulls the barn door rope when the pigs come, then picks the way.',
+        news: 'Last chase! Bo herds, Pip keeps the gates',
+        pigs: ['Buttercup', 'Pudding', 'Jellybean', 'Marshmallow', 'Pumpkin', 'Wiggles'], spots: [1, 4],
+        items: [
+          ['route', [[120, 300], [1000, 300], [1260, 300], [1640, 180], [1720, 180], [2200, 180], [2400, 260], [3000, 300], [3200, 300], [3360, 300]]],
+          ['pigs', 460, 300], ['decor', 'bunting', 200, 120, { w: 500 }], ['decor', 'balloons', 760, 440],
+          ['sign', 640, 150, 'The barn door shuts again by itself!', 'The barn door shuts by itself!'],
+          ['solid', 1000, 104, 260, 141, 'barn'], ['solid', 1000, 355, 260, 137, 'barn'],
+          ['gate', 'b1', 1000, 245, 1000, 355, { kind: 'barn' }],
+          ['solid', 1400, 110, 80, 56, 'tent'], ['solid', 1460, 432, 80, 56, 'stall'],
+          ['solid', 1700, 255, 500, 90, 'stall'],
+          ['gate', 'gU', 1700, 104, 1700, 255, { kind: 'fork' }], ['gate', 'gL', 1700, 492, 1700, 345, { kind: 'fork' }],
+          ['lever', 'lv', 1660, 300, ['gL', 'gU']],
+          ['zone', 'splash', 'pond', 2000, 351, 2200, 492, 1640, 410], ['fence', 2206, 345, 2206, 492],
+          ['sign', 1560, 440, 'The top way goes to the fair!', 'Top way to the fair!'],
+          ['mud', 2380, 200, 44],
+          ['fence', 2450, 400, 2540, 400], ['gate', 's1', 2540, 400, 2650, 400, { kind: 'side', open: true, zone: 'pie', swing: 1 }],
+          ['fence', 2650, 400, 2750, 400], ['fence', 2450, 400, 2450, 492], ['fence', 2750, 400, 2750, 492],
+          ['zone', 'pie', 'pie', 2456, 406, 2744, 492, 2595, 336],
+          ['mud', 2880, 330, 42], ['decor', 'balloons', 2900, 150],
+          ['decor', 'ribbonstage', 3000, 128],
+          ['fence', 3200, 104, 3200, 160], ['fence', 3200, 440, 3200, 492],
+          ['pen', 3200, 160, 3600, 440, true],
+        ],
+      },
+    ],
+  },
+  // ----- END 23-2 Runaway Pigs -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 23-3 Hot Dog Stand Rush (mode 'hotdog', js/levels/world23/hot-dog-stand-rush.js) -----
+  // 23-3 Hot Dog Stand Rush (mode 'hotdog', team, Gavyn's pick): one screen inside a striped hot dog stand at the county
+  // fair. The cook (kitchen, left) grills sausages, puts them in buns, adds the toppings the order tickets show and puts
+  // them on the pass shelf; the server (counter, right) takes the fairgoers' orders, carries the hot dogs over and pours
+  // lemonade, before patience runs out. Each shift runs on its own clock with a goal of happy customers; jobs swap every
+  // shift (Pip cooks 1 and 3). The map is only the two spawns; the mode builds the stand (see the top of the level file).
+  // Room fields: cook, len (s), goal, tops, topMin/topMax, two/three (chance of 2/3 hot dogs), maxDogs, bigAt (line
+  // length that adds a hot dog), lemon (chance), every (s between fairgoers), first, patience, extraPat, bus.
+  { name: 'Hot Dog Stand Rush', world: 22, kind: 'team', mode: 'hotdog', ownStep: true, ownHUD: true, noFalls: true, noTime: true, roomWord: 'Shift',
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> hop',
+      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> hop',
+      pad: 'stick or d-pad walks, <span data-glyph="a"></span> hops,',
+    },
+    tip: 'One cooks the hot dogs, one serves the fairgoers. Follow the arrow, then press the action!',
+    act: { label: 'cook', labels: ['cook', 'serve'] },
+    map: [...Array(9).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), ...Array(8).fill('.'.repeat(32))],
+    rooms: [
+      {
+        title: 'Morning', cook: 0, len: 40, goal: 4, act: { label: 'cook', labels: ['cook', 'serve'] },
+        tops: 'km', topMin: 0, topMax: 1, two: 0, maxDogs: 1, lemon: 0, every: 7, first: 1.0, patience: 40, extraPat: 8,
+        tip: 'Pip cooks: grill, bun, topping, then the pass shelf. Bo takes the orders and hands them over!',
+        news: 'Morning shift: Pip cooks, Bo serves!',
+      },
+      {
+        title: 'Lunch Rush', cook: 1, len: 44, goal: 5, act: { label: 'serve', labels: ['serve', 'cook'] },
+        tops: 'kmr', topMin: 1, topMax: 2, two: 0.2, maxDogs: 2, bigAt: 2, lemon: 0.4, every: 6.5, first: 1.0, patience: 42, extraPat: 8,
+        tip: 'Swap! Bo cooks now. Pip serves and pours lemonade: hold the action, let go in the green!',
+        news: 'Lunch Rush: Bo cooks, Pip serves (and pours lemonade)!',
+      },
+      {
+        title: 'Afternoon', cook: 0, len: 44, goal: 4, act: { label: 'cook', labels: ['cook', 'serve'] },
+        tops: 'kmro', topMin: 0, topMax: 2, two: 0.4, three: 0.05, maxDogs: 3, bigAt: 2, lemon: 0.35, every: 8.5, first: 1.0, patience: 46, extraPat: 8,
+        tip: 'Bigger orders now! Every hot dog on a ticket has its own toppings. Onions are here too.',
+        news: 'Afternoon: Pip cooks, Bo serves. Bigger orders!',
+      },
+      {
+        title: 'County Fair Finale', cook: 1, len: 50, goal: 6, act: { label: 'serve', labels: ['serve', 'cook'] },
+        tops: 'kmroc', topMin: 1, topMax: 2, two: 0.3, three: 0, maxDogs: 3, bigAt: 2, lemon: 0.35, every: 8, first: 1.0, patience: 46, extraPat: 8,
+        bus: { at: 16, n: 4 },
+        tip: 'The County Fair Finale! A hay-ride bus brings a crowd, and there is cheese now. Go go go!',
+        news: 'The Finale: Bo cooks, Pip serves. Here comes the crowd!',
+      },
+    ],
+  },
+  // ----- END 23-3 Hot Dog Stand Rush -----
+  //
+  //
+  //
+  //
+  // ----- BEGIN 23-4 Pie-Eating Contest (mode 'pieeat', js/levels/world23/pie-eating-contest.js) -----
+  // 23-4 Pie-Eating Contest (mode 'pieeat', versus, best of 5, Gavyn's pick): Pip and Bo sit at the judges' table on the
+  // fair stage, hands behind their backs. The action takes a bite (cheeks hold 6), ▲ gulps: a gulp on the crowd's clap is
+  // a GULP! (all of it plus two bonus bites), off the beat only a third. Eating too fast fills the hiccup jar: full = HIC! and
+  // no eating for a moment. First to finish every pie wins the round. The map is only the two spawns: the mode draws
+  // the whole stage (MODES.pieeat).
+  { name: 'Pie-Eating Contest', world: 22, kind: 'versus', mode: 'pieeat', ownStep: true,
+    match: { bestOf: 5, roundTime: 60 },
+    act: { label: 'bite' },
+    legend: {
+      pip: '<kbd>W</kbd> gulp on the clap',
+      bo: '<kbd>↑</kbd> gulp on the clap',
+      pad: '<span data-glyph="a"></span> or stick ▲ gulp on the clap,',
+    },
+    tip: 'The action takes a bite, ▲ gulps. Gulp when the crowd claps! Eat too fast and you get the hiccups.',
+    switches: {}, signs: [],
+    map: [
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '................................', '................................', '................................',
+      '........1...........2...........', '................................', '................................',
+    ],
+  },
+  // ----- END 23-4 Pie-Eating Contest -----
+  //
+  //
+  //
+  // ===== END World 23 =====
 ];
 
 /* ---------- worlds: levels come in groups, each with its own look ---------- */
@@ -5759,6 +6026,10 @@ const WORLDS = [
   { name: 'Coral Deep', blurb: 'Steer a submarine, dive for treasure, light up a shipwreck and race the dolphins!',
     theme: { skyTop: '#3fc6d8', skyBot: '#0f5f9a', hillFar: '#2a8fb0', hillNear: '#1f7a9a', sun: 'rgba(210, 250, 255, 0.85)', sunGlow: 'rgba(150, 235, 255, 0.35)',
       stone: '#e07a8f', stoneLight: '#f29aac', stoneEdge: '#a8506a', grass: '#f2dca0', grassDark: '#c9ad6a', plank: '#9a6a3e', plankDark: '#5e3c1e', rope: '#efe0b0', ropeDark: '#7a6438' } },
+  // World 23: a farm and county fair, sunny and friendly (a bright blue summer sky fading to warm gold; rich brown soil with green grass on top, red barn wood)
+  { name: 'Barnyard Fair', blurb: 'Haul the hay, herd the pigs, sell hot dogs and win the pie contest!',
+    theme: { skyTop: '#6ec3f2', skyBot: '#fff3c4', hillFar: '#b9dc7a', hillNear: '#8cc65a', sun: 'rgba(255, 244, 190, 0.96)', sunGlow: 'rgba(255, 214, 130, 0.42)',
+      stone: '#8a5a36', stoneLight: '#a06c44', stoneEdge: '#5e3c22', grass: '#7fd05a', grassDark: '#4a9a3c', plank: '#c8483c', plankDark: '#7e2a22', rope: '#f2d27a', ropeDark: '#8a6a2a' } },
 ];
 const worldLevels = w => LEVELS.map((l, i) => i).filter(i => LEVELS[i].world === w);
 const levelCode = i => (LEVELS[i].world + 1) + '-' + (worldLevels(LEVELS[i].world).indexOf(i) + 1);

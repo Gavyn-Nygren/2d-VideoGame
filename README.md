@@ -42,6 +42,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 20. **Dragon Peak** (the second boss world, one big boss level: climb a volcano past a grumpy dragon, then race him down): Volcano Dragon
 21. **Sky Kingdom** (a bright sky of clouds, floating islands and a cloud castle): Hot Air Balloon Climb, Kite Tandem, Cloud Bridge Builder, Paper Plane Race
 22. **Coral Deep** (a bright, friendly undersea world of coral reefs, kelp and a cosy sunken ship): Submarine Duo, Treasure Diver Rope, Shipwreck Lights, Dolphin Race
+23. **Barnyard Fair** (a sunny farm and county fair): Tractor & Trailer, Runaway Pigs, Hot Dog Stand Rush, Pie-Eating Contest
 25. **Zombie Acres** (built early; one endless survival level: chop, dig and build a fort, then hold off waves of zombies): Defend the Heart
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
