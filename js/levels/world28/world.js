@@ -49,4 +49,93 @@ LEVELS.push(
     ],
   },
   // ----- END 28-1 Rolling Boulder Run -----
+  //
+  //
+  //
+  // ----- BEGIN 28-2 Tomb Torch Explorers (mode 'tombtorch', js/levels/world28/tomb-torch-explorers.js) -----
+  // 28-2 Tomb Torch Explorers (mode 'tombtorch', team, Gavyn's pick: "a dark tomb. One holds the torch to light the way,
+  // the other finds hidden switches and traps"). Three dark chambers on one screen each; the torch swaps every chamber.
+  // Each room's `rows` is its layout (letters: see the level file); ttSplit makes the engine's map from it.
+  { name: 'Tomb Torch Explorers', world: 27, kind: 'team', mode: 'tombtorch', noFalls: true, ownHUD: true, roomWord: 'Chamber',
+    tip: 'One carries the torch and lights braziers. The other presses the switches found in the light, and disarms traps.',
+    act: { label: 'light', labels: ['light', 'press'] },
+    map: W28_SPAWN_MAP,
+    rooms: [
+      {
+        title: 'Entrance Hall', torch: 0, act: { label: 'light', labels: ['light', 'press'] },
+        tip: 'Pip has the torch: light the braziers! Bo: press the switches you see in the light. Mind the traps!',
+        rows: [
+          '################################',
+          '#...........#..................#',
+          '#...........#..................#',
+          '#...........#..................#',
+          '#...........#..................#',
+          '#...........#..................#',
+          '#...........#..................#',
+          '#...........#.................*#',
+          '#...........#..................#',
+          '#...........#................b.#',
+          '#...........#...........########',
+          '#.....*.....#...*.........B....#',
+          '#........a..#.......Y.....B....#',
+          '#.......===.A.....=====...B....#',
+          '#...........A.............B....#',
+          '#.12.Y......A..^^^........B.E..#',
+          '################################',
+          '################################',
+        ],
+      },
+      {
+        title: 'Hall of Traps', torch: 1, act: { label: 'press', labels: ['press', 'light'] },
+        tip: 'Swap! Bo holds the torch, Pip finds switches and disarms traps (press the action at a trap).',
+        rows: [
+          '################################',
+          '#..........................#...#',
+          '#..........................#...#',
+          '#..........................#...#',
+          '#.................*........#...#',
+          '#..........................#...#',
+          '#..........^^^......Y...a..#...#',
+          '#..*..######################...#',
+          '#.............A............#...#',
+          '#.............A............#...#',
+          '#.====........A............#.*.#',
+          '#.............A............B...#',
+          '#......Y......A.......b....B...#',
+          '#.....====....A......===...B...#',
+          '#.............A............B...#',
+          '#.12..........A.Y.^^....^^.B.E.#',
+          '################################',
+          '################################',
+        ],
+      },
+      {
+        title: 'Treasure Chamber', torch: 0, act: { label: 'light', labels: ['light', 'press'] },
+        tip: 'Pip has the torch again. Three gates, then the treasure! Bo disarms the traps on the way.',
+        rows: [
+          '################################',
+          '#.........#...............#....#',
+          '#.........#........*......#....#',
+          '#.........#.............b.#....#',
+          '#.........#.....###########....#',
+          '#.........#..........#.....#...#',
+          '#.........#..Y.......#.....#...#',
+          '#.........#.===......#.....#...#',
+          '#.........#..........#.....#...#',
+          '#.a.......#......^...#.....#...#',
+          '####......#.....===..#.....#...#',
+          '#.........A..........B.....C...#',
+          '#.......*.A..........B...c.C.*.#',
+          '#...===...A.===......B..==.C...#',
+          '#.........A..........B.....C...#',
+          '#.12Y.....A..^.*.....BY^^..C$E.#',
+          '################################',
+          '################################',
+        ],
+      },
+    ],
+  },
+  // ----- END 28-2 Tomb Torch Explorers -----
 );
+// the tomb chambers' engine maps come from their layouts
+for (const l of LEVELS) if (l.mode === 'tombtorch') for (const r of l.rooms) r.map = ttSplit(r.rows);
