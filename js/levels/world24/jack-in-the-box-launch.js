@@ -153,7 +153,7 @@ function jackboxLaunch(st, li, fresh) {
   st.phase = 'crank';
   jackboxTune(st);
   st.hookX = L.crane; st.goldHook = false;
-  st.yoyo = null; st.haul = 0; st.haulLast = -9; st.swap = null; st.boing = null;
+  st.yoyo = null; st.haul = 0; st.boxU = 0; st.haulLast = -9; st.swap = null; st.boing = null;   // (boxU too: left at 1, it put the box on the next shelf for the first tick of every later haul)
   for (const t of c.things) if (t.li === li) t.bumps = 0;
 }
 // a fresh tune (a new launch, or after a boing)

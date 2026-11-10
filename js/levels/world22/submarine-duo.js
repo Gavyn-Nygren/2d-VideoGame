@@ -544,7 +544,7 @@ function subduoMoveSub(st, dt) {
 function subduoSolids(st, x0, x1) {
   const c = st.c, out = [];
   for (const k of c.corals) if (k.x + k.r > x0 && k.x - k.r < x1) out.push({ x: k.x, y: k.y, r: k.r * 0.86, kind: 'coral' });
-  for (const b of c.boulders) if (b.state === 'rest' && b.x + b.r > x0 && b.x - b.r < x1) out.push({ x: b.x, y: b.y, r: b.r - 2, kind: 'rock' });
+  for (const b of c.boulders) if ((b.state === 'rest' || b.state === 'sink') && b.x + b.r > x0 && b.x - b.r < x1) out.push({ x: b.x, y: b.y, r: b.r - 2, kind: 'rock' });
   for (const t of c.turtles) if (t.x + 40 > x0 && t.x - 40 < x1) out.push({ x: t.x, y: t.y, r: t.r, kind: 'turtle', obj: t });
   for (const f of c.puffers) if (f.x + 40 > x0 && f.x - 40 < x1) out.push({ x: f.x, y: f.y, r: f.r + f.puff * 10, kind: 'puffer', obj: f });
   return out;

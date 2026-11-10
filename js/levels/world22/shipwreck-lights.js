@@ -631,12 +631,15 @@ const SHIPWRECK = {
     tx = clamp(tx, 0, Math.max(0, st.len - W));
     st.camX = snap ? tx : st.camX + (tx - st.camX) * Math.min(1, dt * 4);
   }
-  function leash(st, xb) {
+  function leash(st, xb, yb) {
     for (const p of G.players) {
       const o = G.players[1 - p.id];
       if (Math.abs(p.x - o.x) <= SW.maxSep) continue;
       if (Math.abs(p.x - o.x) <= Math.abs(xb[p.id] - o.x)) continue;
       p.x = xb[p.id]; p.vx = 0;
+      // (if this step's up/down move only fitted at the new x, it goes back too: the swimmer used to be left 1 px inside a
+      // wall corner, and the next step threw them right across the wall)
+      if (yb && solids(st).some(s => hit(p, s))) { p.y = yb[p.id]; p.vy = 0; }
       const P = st.pl[p.id];
       if (P.waitCD <= 0) {
         P.waitCD = 3.5;
@@ -706,9 +709,9 @@ const SHIPWRECK = {
     for (const p of ps) st.pl[p.id].waitCD -= dt;
     lanternTouch(st, ps[st.lantern], dt);
     grabber(st, ps[st.grabber], dt);
-    const xb = ps.map(p => p.x);
+    const xb = ps.map(p => p.x), yb = ps.map(p => p.y);
     for (const p of ps) swim(st, p, dt);
-    leash(st, xb);
+    leash(st, xb, yb);
     crateStep(st, dt);
     doorsStep(st, dt);
     hazardsStep(st, dt);

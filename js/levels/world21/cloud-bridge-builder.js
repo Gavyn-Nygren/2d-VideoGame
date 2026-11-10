@@ -204,7 +204,7 @@ const CLOUDBRIDGE = {
     try { control(p, dt); } finally { p.input = real; }
     const d = inp.right ? 1 : inp.left ? -1 : 0;
     moveX(st, p, p.vx * dt);
-    if (was && d && P.stepCD <= 0 && p.stun <= 0) {
+    if (was && d && P.stepCD <= 0 && p.stun <= 0 && !(p.vy < -CB.stepV)) {   // (not on the tick a jump started: the step hop used to swallow the jump)
       const s = stepAhead(st, p, d);
       if (s) { p.vy = -CB.stepV; p.jumping = false; P.stepCD = 0.3; p.vx = d * Math.max(Math.abs(p.vx), 120); }
     }
@@ -221,6 +221,7 @@ const CLOUDBRIDGE = {
       // a rainbow spring
       if (gs.spring != null && Math.abs(p.x + p.w / 2 - gs.spring) < 18 && st.state === 'play') {
         p.vy = -CB.springV; p.grounded = false; p.jumping = false; p.sx = 0.7; p.sy = 1.35; P.springT = 0;
+        p.coyote = 0; p.jumpBuf = 0; p.pendingJump = false;   // (a jump pressed just after must not replace the launch)
         gs.springT = 0;
         pop(st, gs.spring, gs.top - 40, 'Boing!', '#ff9fd6', 20);
         Sfx.play('cloudbridgeSpring', p.id);
@@ -683,11 +684,12 @@ const CLOUDBRIDGE = {
     tx = Math.min(tx, lo - 60); tx = Math.max(tx, hi + 60 - W);
     st.camX = snap ? tx : st.camX + (tx - st.camX) * Math.min(1, dt * 4);
   }
-  function leash(st, xb) {
+  function leash(st, xb, wasBoing) {
     // (a partner in a Boing counts from the spot the safety cloud bounces them back to)
     const pos = q => { const w = st.pl[q.id].boing; return w ? w.sx - q.w / 2 : q.x; };
     for (const p of G.players) {
       if (!p.alive || !p.grounded) continue;
+      if (wasBoing && wasBoing[p.id]) continue;   // (just back from a Boing: the leash must not undo the come-back, which left them in mid-air to Boing again for ever)
       const o = other(p), ox = pos(o);
       if (Math.abs(p.x - ox) <= CB.maxSep) continue;
       const away = Math.abs(p.x - ox) > Math.abs(xb[p.id] - ox) && Math.abs(p.x - xb[p.id]) > 0;
@@ -741,9 +743,9 @@ const CLOUDBRIDGE = {
     for (const p of ps) { const P = st.pl[p.id]; P.waitCD -= dt; }
     liftsStep(st, dt);
     for (const p of ps) act(st, p, dt);
-    const xb = ps.map(p => p.x);
+    const xb = ps.map(p => p.x), wasBoing = ps.map(p => !!st.pl[p.id].boing);
     for (const p of ps) playerTick(st, p, dt);
-    leash(st, xb);
+    leash(st, xb, wasBoing);
     puffsStep(st, dt);
     cloudsStep(st, dt);
     starsStep(st, dt);

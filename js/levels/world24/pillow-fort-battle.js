@@ -515,7 +515,11 @@ function pfbStep(st, dt) {
     if (p.grounded) s.boing = false;
     else if (!s.boing && p.vy < -PHYS.jumpV + 60 && p.vy > -PHYS.jumpV - 5) {
       s.boing = true;
-      const feetRow = Math.floor((p.y + p.h - 2) / T), cc = Math.floor((p.x + p.w / 2) / T), hl = pfbWallUp(cc - 1, feetRow), hr = pfbWallUp(cc + 1, feetRow);
+      const feetRow = Math.floor((p.y + p.h - 2) / T), cc = Math.floor((p.x + p.w / 2) / T);
+      // (the nearest wall on each side, across up to 4 columns of pit floor: a pit 2 or more wide used to get no Boing, and
+      // a player could wall themselves in behind their own shield for the rest of the round)
+      const wall = d => { for (let i = 1; i <= 5; i++) { const n = pfbWallUp(cc + d * i, feetRow); if (n) return n; } return 0; };
+      const hl = wall(-1), hr = wall(1);
       const need = Math.min(hl, hr);
       if (need >= 4 && need < 12) {
         p.vy = -Math.sqrt(2 * PHYS.g * (need + 0.8) * T);
