@@ -84,7 +84,7 @@ fs.mkdirSync(out, { recursive: true });
       check(mode, 'Pip\'s action key (F) is the brake too', f0.v > 60 && f.v === 0, `v ${f0.v} -> ${f.v}`);
       await page.keyboard.up('Slash'); await wait(350); let g = await S();
       check(mode, 'letting go of / shuts the hatch', g.peek < 0.1, 'peek ' + g.peek);
-      await page.keyboard.down('KeyD'); await wait(2600); let h = await S(); await page.keyboard.up('KeyD');
+      await page.keyboard.down('KeyD'); await wait(5200); let h = await S(); await page.keyboard.up('KeyD');   // (the heavy horse coasts about 3 s once the light is gone)
       check(mode, 'hatch shut: it goes dark and the wheels stop ("Too dark to roll!")', h.light < 0.25 && h.v === 0 && /dark/i.test(h.hints[0]), `light ${h.light}, v ${h.v}, "${h.hints[0]}"`);
       await shot('kb-dark');
       await page.keyboard.down('ArrowUp'); await wait(450); let i = await S(); await page.keyboard.up('ArrowUp');
@@ -120,7 +120,8 @@ fs.mkdirSync(out, { recursive: true });
       const pad = (ix, f) => page.evaluate(({ ix, f }) => { const p = window.__pads[ix]; new Function('p', f)(p); }, { ix, f });
       // the press that wakes a controller only connects it
       await pad(0, 'p.buttons[0] = { pressed: true, value: 1 }'); await pad(1, 'p.buttons[0] = { pressed: true, value: 1 }'); await run(0.2);
-      await pad(0, 'p.buttons[0] = { pressed: false, value: 0 }'); await pad(1, 'p.buttons[0] = { pressed: false, value: 0 }'); await run(1.2);
+      await pad(0, 'p.buttons[0] = { pressed: false, value: 0 }'); await pad(1, 'p.buttons[0] = { pressed: false, value: 0 }'); await run(0.3);
+      await start({ pads: true, sleep: true }); await run(1.3);   // a fresh start with both controllers joined (the waking A press may already have peeked)
       let a = await S();
       check(mode, 'two controllers joined: hints name controller buttons', has(a.hints[0], a.keys[0].right) && /stick/.test(a.hints[0]) && has(a.hints[1], a.keys[1].act) && !/\//.test(a.hints[1]), a.hints.join(' | '));
       check(mode, 'controller legend line names the jobs', /peek/.test(a.pad) && /roll/.test(a.pad), a.pad);
@@ -152,8 +153,11 @@ fs.mkdirSync(out, { recursive: true });
       let a = await S();
       check(mode, 'touch: the round buttons say brake / peek', a.btn.join() === 'brake,peek', a.btn.join('/'));
       check(mode, 'touch: hints name ▶ and the round button', /▶/.test(a.hints[0]) && /round button/.test(a.hints[1]), a.hints.join(' | '));
-      const down = (sel, id) => page.dispatchEvent(sel, 'pointerdown', { pointerId: id, bubbles: true });
-      const up = (sel, id) => page.dispatchEvent(sel, 'pointerup', { pointerId: id, bubbles: true });
+      const down = async (sel, id) => {   // (the move bar reads which half the thumb is on: ◀ ▶ are pressed at their own middle)
+        const b = await page.locator(sel).boundingBox();
+        return page.dispatchEvent(/data-k="(left|right)"/.test(sel) ? sel.replace(/\[data-k=.*$/, '.tmove') : sel, 'pointerdown', { pointerId: id, bubbles: true, clientX: b.x + b.width / 2, clientY: b.y + b.height / 2 });
+      };
+      const up = (sel, id) => page.dispatchEvent(/data-k="(left|right)"/.test(sel) ? sel.replace(/\[data-k=.*$/, '.tmove') : sel, 'pointerup', { pointerId: id, bubbles: true });
       await down('#padBo .tbtn-act', 11); await run(0.4); let b = await S();
       check(mode, 'Bo\'s round button opens the hatch', b.peek > 0.9, 'peek ' + b.peek);
       await down('#padPip [data-k="right"]', 12); await run(1.5); let c = await S();
@@ -179,7 +183,7 @@ fs.mkdirSync(out, { recursive: true });
       // the person rolls (Pip), the computer peeks
       await start({ solo: 0, sleep: true }); await run(1.3);
       let a = await S();
-      check(mode, 'solo roller: the person\'s hint names a key, the computer\'s says what it does', /\bD\b/.test(a.hints[0]) && !!a.hints[1] && !/hold|press|\//i.test(a.hints[1]), a.hints.join(' | '));
+      check(mode, 'solo roller: the person\'s hint names a key, the computer\'s hero shows none', /\bD\b/.test(a.hints[0]) && !/hold|press|\//i.test(a.hints[1]), a.hints.join(' | '));   // (the computer is already peeking: it needs no hint)
       await run(6); let b = await S();
       check(mode, 'solo roller: the computer peeks but the horse stays put without the person', b.peek > 0.9 && Math.abs(b.x - a.x) < 3, `peek ${b.peek}, x ${a.x} -> ${b.x}`);
       await page.keyboard.down('KeyD'); await run(1.5); let c = await S(); await page.keyboard.up('KeyD');
@@ -191,7 +195,10 @@ fs.mkdirSync(out, { recursive: true });
       await start({ solo: 1, sleep: true }); await run(1.3);
       let d = await S();
       check(mode, 'solo lookout: the person\'s hint names a key, the computer\'s says what it does', /\bF\b/.test(d.hints[1]) && !!d.hints[0] && !/hold|press/i.test(d.hints[0]), d.hints.join(' | '));
-      await run(9); let e = await S(); await run(3); let e2 = await S();
+      await run(2.4); let d2 = await S();
+      check(mode, 'solo lookout: the computer asks for a peek in a bubble (no key names)', /peek/i.test(d2.bubbles[0]) && !/\bF\b|\//.test(d2.bubbles[0]), d2.bubbles[0]);
+      await run(6.6); let e = await S(); await run(3); let e2 = await S();
+      check(mode, 'solo lookout: the computer never rolls before the person has peeked (no free metres)', e2.x === d.x, `x ${d.x} -> ${e2.x}`);
       check(mode, 'solo lookout: in the dark the computer stops and asks for light', e.light < 0.1 && e2.x === e.x && e.v === 0, `light ${e.light}, x ${e.x} -> ${e2.x}, said "${e.bubbles[0] || e2.bubbles[0]}"`);
       await page.keyboard.down('Slash'); await run(2.5); let f = await S();
       check(mode, 'solo lookout: holding / lights the way and the computer rolls', f.x > e2.x + 80 && f.peek > 0.9, `x ${e2.x} -> ${f.x}`);

@@ -32,8 +32,9 @@
      about 4 s in all. The guards then rest a full nap, so there is always a gap to go on.
 
    THE COURSE (TTHTROY_STRETCHES; each stretch adds something new, with a safe breather and a job swap between):
-     1 The Plain        one slow guard on a watchtower, a hill (ramp up, ramp down), the wall guard, then the Great
-                        Gate (a narrow gate: tiptoe through).
+     1 The Plain        one slow guard on a watchtower, a hill (ramp up, ramp down: "Wheee!"), a second watchtower
+                        whose beam goes back and forth, a safe spot, the wall guard, then the Great Gate (a narrow
+                        gate: tiptoe through).
      2 The Streets      the Thief's first claw grab, two guards whose beams overlap with different rhythms, a loose
                         plank (noise), a patrol that walks up and knocks on the horse, a guard the Thief wakes with a
                         bell.
@@ -73,6 +74,10 @@
    when one will reach the head within 0.6 s with the hatch open. Nothing can catch the horse during cards,
    cutscenes, the swap breather, the claw, a catch, or for 1.1 s after any of them; guards rest and the clock stops
    while nobody plays (tthCalm). Ramps, gates, claws and the stretch ends lie outside every beam.
+   LENGTH (tools/w30/play.js): a computer pair takes about 2:10 (stretches about 33 / 37 / 57 s), a clumsy partner
+   2:25 to 3:05, a young kid 2:50 to 4:25; with one player idle nothing moves (the era starts lit for a first look at
+   the plain, and the computer roller waits for the lookout's first peek).
+   DRAWING: about 3.5 ms a frame (tools/w30/troy-perf.js); the dusk sky is a cached 1 px strip (tthTroySky).
    The Thief (on screen all era, hovering top right): taunts, tips off the patrol, rings bells, hooks the horse.
    History (news line and taunts): the story of the wooden horse comes from ancient Greek poems, about 3,200 years
    ago; nobody knows if it really happened.
@@ -96,10 +101,11 @@ const TTHTROY = {
 // guards: z [from, to] the strip the beam sweeps, v px/s, rest s between sweeps, first s before the first sweep,
 // mode 'r' | 'l' | 'pp', perch 'tower' | 'wall' | 'roof', asleep (until the Thief's bell).  ramps: [x, length, rise].
 const TTHTROY_STRETCHES = [
-  { name: 'The Plain', len: 2330,
+  { name: 'The Plain', len: 2890,
     guards: [{ z: [480, 900], v: 150, rest: 3.8, first: 2.6, mode: 'r', perch: 'tower' },
-      { z: [1700, 1960], at: 1780, v: 170, rest: 3.2, first: 1.2, mode: 'pp', perch: 'wall' }],
-    ramps: [[1060, 200, 44], [1330, 190, -44]], hides: [1000], gates: [2240] },
+      { z: [1700, 2060], v: 160, rest: 3.4, first: 3.2, mode: 'pp', perch: 'tower' },
+      { z: [2260, 2520], at: 2340, v: 170, rest: 3.2, first: 1.2, mode: 'pp', perch: 'wall' }],
+    ramps: [[1060, 200, 44], [1330, 190, -44]], hides: [1000, 2130], gates: [2800] },
   { name: 'The Streets', len: 2240,
     claws: [{ x: 300, hold: 1.5 }],
     guards: [{ z: [520, 900], v: 175, rest: 3.2, first: 1.2, mode: 'pp' },
@@ -886,14 +892,22 @@ function tthTroyDrawRoad(ph, xa, xb, top, body, edge) {
   ctx.lineTo(b, tthTroyGy(ph, b));
   ctx.strokeStyle = edge || C.ink; ctx.lineWidth = 3; ctx.stroke();
 }
+// the dusk sky: painted once into a 1 px wide strip and stretched (a full-screen gradient every frame is slow). Pixels only, no game state.
+let tthTroySkyCv = null;
+function tthTroySky() {
+  if (tthTroySkyCv) return tthTroySkyCv;
+  const cv = document.createElement('canvas'); cv.width = 1; cv.height = H;
+  const x = cv.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 440);
+  g.addColorStop(0, '#1d1b52'); g.addColorStop(0.45, '#5a3a86'); g.addColorStop(0.78, '#d9705a'); g.addColorStop(1, '#ffc27a');
+  x.fillStyle = g; x.fillRect(0, 0, 1, H);
+  return (tthTroySkyCv = cv);
+}
 function tthTroyDrawBack(st) {
   const ph = st.ph, K = TTHTROY, Q = TTHTROYC, c = ph.c, cam = st.cam, t = G.clock, h = ph.h, L = cam.x - 40, R = cam.x + W + 40, light = ph.light;
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   tthScreen(st, () => {
     // dusk: indigo above, a band of orange at the horizon, a low sun over the sea, early stars
-    const g = ctx.createLinearGradient(0, 0, 0, 440);
-    g.addColorStop(0, '#1d1b52'); g.addColorStop(0.45, '#5a3a86'); g.addColorStop(0.78, '#d9705a'); g.addColorStop(1, '#ffc27a');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(tthTroySky(), 0, 0, 1, H, 0, 0, W, H);
     tthStars(t, 34, 0.75, 13);
     const sx = 230 - cam.x * 0.03;
     if (sx > -90) { ctx.fillStyle = 'rgba(255,214,140,0.25)'; circle(sx, 396, 78); ctx.fill(); ctx.fillStyle = '#ffe2a0'; circle(sx, 396, 44); ctx.fill(); }
@@ -1315,11 +1329,11 @@ Sfx.extra.tthTroySweep = function () { this.tone(520, 0.4, 'sine', 0.025, 260); 
 Sfx.extra.tthTroyKnock = function () { this.tone(190, 0.05, 'square', 0.06, 120); this.tone(150, 0.08, 'triangle', 0.05, 90, 0.02); };
 Sfx.extra.tthTroyStep = function () { this.tone(110, 0.04, 'triangle', 0.035, 80); };
 Sfx.extra.tthTroyHey = function () { [660, 880, 660, 990].forEach((f, i) => this.tone(f, 0.09, 'square', 0.04, null, i * 0.08)); };
-Sfx.extra.tthTroyRoll = function () { this.tone(95 + Math.random() * 30, 0.07, 'sawtooth', 0.016, 70); };
+Sfx.extra.tthTroyRoll = function () { this.tone(95 + (G.tickN * 7 % 31), 0.07, 'sawtooth', 0.016, 70); };
 Sfx.extra.tthTroyScrape = function () { this.tone(900, 0.3, 'sawtooth', 0.035, 300); this.tone(140, 0.2, 'triangle', 0.06, 70, 0.02); };
 Sfx.extra.tthTroyClonk = function () { this.tone(240, 0.08, 'square', 0.06, 120); this.tone(120, 0.2, 'triangle', 0.07, 60, 0.04); };
 Sfx.extra.tthTroyHook = function () { this.tone(1300, 0.06, 'square', 0.04, 700); this.tone(200, 0.25, 'sawtooth', 0.04, 90, 0.05); };
-Sfx.extra.tthTroyCreak = function () { this.tone(260 + Math.random() * 80, 0.16, 'sawtooth', 0.016, 180); };
+Sfx.extra.tthTroyCreak = function () { this.tone(260 + (G.tickN * 13 % 81), 0.16, 'sawtooth', 0.016, 180); };
 Sfx.extra.tthTroyUnhook = function () { [880, 1175, 1568].forEach((f, i) => this.tone(f, 0.09, 'triangle', 0.05, null, i * 0.05)); this.tone(300, 0.3, 'sine', 0.04, 900, 0.1); };
 Sfx.extra.tthTroyBell = function () { [0, 0.34].forEach(d => { this.tone(880, 0.5, 'triangle', 0.06, 860, d); this.tone(1760, 0.3, 'sine', 0.025, null, d); }); };
 Sfx.extra.tthTroyWhee = function () { this.tone(380, 0.5, 'sine', 0.04, 900); };

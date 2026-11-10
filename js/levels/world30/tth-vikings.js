@@ -32,7 +32,7 @@
                        "Splash!" (team bump: lots of water, the ship slows).
      buoy: a gust fills the sail and carries the ship for 2.6 s while the jobs swap ("Swap jobs!").
      2 Iceberg Field   packs of iceberg rows in the fog (every row leaves one lane free, rows are 450+ px apart so a
-                       lane change always fits). From the deck the fog shows 200 px ahead of the bow (about 0.9 s);
+                       lane change always fits). From the deck the fog shows 240 px ahead of the bow (about 1 s);
                        from the mast top 900 px. Hitting one is a "Crunch!": the berg crumbles, the ship bounces back
                        a little and takes on water. Rain clouds now and then.
      buoy: swap again.
@@ -51,10 +51,12 @@
    GOLD HELP (announced with tthHelp, kept for the rest of the era):
      Golden drum    a rower whose last 8 strokes had 6 weak ones: the Good window grows to 0.3 s; again: any stroke
                     counts (still one per beat). Per player.
-     Gold lantern   3 crashes (icebergs or coils) in one stretch: the deck sees 340 px into the fog.
+     Gold lantern   3 crashes (icebergs or coils) in one stretch: the deck sees 380 px into the fog.
      Gold bucket    swamped twice: every scoop bails double.
-     Golden wave    2 big waves missed: the waves roll slower, lift a slow ship too and the Thief stops pulling away.
-   FAIRNESS: every hazard is telegraphed 0.85 s or more (fog reveal at top speed), usually much longer (the raven,
+     Golden wave    2 big waves missed: the waves roll slower, lift a slow ship too, the Thief stops pulling away
+                    and the hull stops filling (no more bailing: the lookout can stay up the mast).
+   FAIRNESS: every hazard is telegraphed 0.7 s or more (the fog reveal at the speed cap; about 1 s at rowing speed
+   and a lane change takes 0.3 s), usually much longer (the raven,
    the Thief's "!" for jet waves, the cloud flying in, big waves seen from the right edge). No hazard starts in a calm
    moment (tthCalm: cards, cutscenes, celebrations, the idle wait); while the Thief waits for an away person the ship
    drifts to a stop and the hull does not fill. Jet waves never start with a row or loop close ahead.
@@ -64,7 +66,10 @@
    HISTORY (news line and taunts): Leif Erikson's crew reached North America (Vinland) around the year 1000, about
    500 years before Columbus; longships had both oars and a sail; Vikings told tales of a giant sea serpent and took
    ravens to sea to help find land.
-   TUNING (bots, tools/w30/play.js vikings): a computer pair takes about 2:10-2:30; see GAME_NOTES.
+   TUNING (bots, tools/w30/play.js vikings): a computer pair takes about 2:10 (stretches about 29 / 35 / 44 s, the
+   grab 20 s), a clumsy partner 2:25-2:50, a young kid 2:30-4:15; an idle player stalls it for good. Other tools:
+   tools/w30/vikings-input.js (real keyboard / controller / touch), vikings-trace.js (a timeline), vikings-perf.js
+   (draw time: the era's drawing is about 4.5 ms a frame in headless software canvas, like the other eras).
    Stats (st.stats.vikings): strokes, perfect, good, weak, scoops, spotted, threads, crashes, splashes, swamps, grabs,
    waves, legs [s per stretch]. Every top-level name starts with tthVik / TTHVIK (Sfx.extra.tthVik*); all state is in
    st.ph (fresh every phase start); gameplay randomness only through tthRand(). */
@@ -777,7 +782,7 @@ function tthVikDrawBack(st) {
     ctx.restore();
   }
   // the far sea
-  ctx.fillStyle = CO.far; ctx.fillRect(0, hz, W, H - hz);
+  ctx.fillStyle = CO.far; ctx.fillRect(0, hz, W, 92);   // (the lanes cover the rest)
   ctx.strokeStyle = 'rgba(190,225,240,0.28)'; ctx.lineWidth = 2; ctx.beginPath();
   for (let k = 0; k < 9; k++) { const x = ((k * 211 - d * 0.3) % (W + 80) + W + 80) % (W + 80) - 40, y = hz + 12 + (k * 23) % 44; ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 13, y - 5, x + 26, y); }
   ctx.stroke();

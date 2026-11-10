@@ -11,6 +11,8 @@
    Every decision is taken a person's reaction time late (0.13 s to stop or duck, 0.2 s to start again).
 
    ROLLER (tthTroyBrainRoll)
+   - It never starts before the lookout has opened the hatch once (the era begins lit, but an idle person at the
+     hatch must not get free metres).
    - It cannot see in the dark and the wheels do not turn there, so it lets go and says "Too dark! Peek, please!"
      (on a ramp it holds the brake so the horse does not roll back). That is also why it can never clear anything
      alone: with an idle lookout the hatch stays shut.
@@ -62,6 +64,12 @@ function tthTroyBrainRoll(bst, p, o, dt, info, S) {
   if (ph.claw) {
     if (ph.claw.st === 'tug') { out.right = true; if (ph.light < K.rollLight) tthBrainSay(bst, p, 'dark', 'Too dark to pull! Peek!', 6); }
     bst.go = bst.want = false; bst.goT = 0;
+    return out;
+  }
+  if (!ph.peeked) {
+    // the era starts lit (a first look at the plain), but the horse waits for the lookout's first peek: no free metres
+    bst.go = bst.want = false; bst.goT = 0;
+    if (ph.t > 2.5) tthBrainSay(bst, p, 'dark', 'Peek out, please! Then I roll.', 7);
     return out;
   }
   if (ph.light < 0.3) {

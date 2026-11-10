@@ -52,7 +52,7 @@
      waiting at a boulder is always safe. A touch is "Hot foot!": a pop forward onto cool ground, and the fire falls
      back 150 px. It falls back 240 px at each flag (the breather). A glow at the left edge shows it is near.
    - "Wait for Bo!": nobody gets more than 470 px ahead of the partner (the leash only stops the one walking away,
-     and never in mid-air over a pit).
+     never in mid-air over a pit, and never the one who walks back to a dropped egg).
    - THE END: the last ledge leads to the nest. The carrier steps up to the nest while the partner is up there too
      (within 240 px): the egg hops into the nest, the Thief grabs for it ("NO! That egg is MINE!"), the mother T. rex
      (big, friendly to Pip and Bo) ROARS him away, tthPhaseDone ("EEK! OK, OK! Keep your egg!"), she nuzzles the nest,
@@ -72,7 +72,8 @@
    meteors, rocks, hot, pits. Every top-level name starts with tthDino / TTHDINO (Sfx.extra.tthDino*). All state
    lives in st.ph (fresh every phase start); the course is compiled again at every start. Brain:
    js/cpu/levels/world30/tth-dino.js. Tests: tools/w30/dino-keys.js (real keyboard, controller, touch),
-   tools/w30/dino-solo.js (scripted people with the computer), tools/w30/dino-dbg.js (trick and bump tracer). */
+   tools/w30/dino-solo.js (scripted people with the computer), tools/w30/dino-dbg.js (trick and bump tracer),
+   tools/w30/dino-play.js (play.js with a richer --trace), tools/w30/dino-perf.js (draw time per frame). */
 const TTHDINO = {
   cell: 4, stepUp: 7, snap: 9, x0: -900, y0: 432,
   carryV: 150, hopV: 400,             // with the egg: walking speed (free: 220) and jump speed (a 40 px hop; free: 109 px)
@@ -260,6 +261,8 @@ function tthDinoLeash(st, xb) {
     const o = ps[1 - p.id];
     if (Math.abs(p.x - o.x) <= Math.abs(xb[p.id] - o.x)) continue;   // only the one walking away
     if (!p.grounded && tthDinoPitAt(ph, tthDinoCx(p), 16)) continue;        // (never stop a jump over a pit in mid-air)
+    const e = ph.egg;                                                       // (nor the one who goes back for the dropped egg)
+    if (e.state === 'loose' && Math.abs(e.x - tthDinoCx(p)) < Math.abs(e.x - xb[p.id] - p.w / 2)) continue;
     p.x = xb[p.id]; p.vx = 0;
     const P = ph.P[p.id];
     if (P.waitCD <= 0) {
@@ -777,11 +780,13 @@ function tthDinoHints(st) {
   if (tthDinoBlocker(o)) {
     const nap = o.kind === 'nap';
     if (!fPast && fx > o.x0 - 80) tthDinoTip(st, fid, 'smash', nap ? 'Shoo it away! Tap ' + tthDinoAct(fid, 'shoo') : 'Smash it! Tap ' + tthDinoAct(fid, 'smash'), 8);
+    else if (fPast && !hPast && hx > o.x0 - 60 && fx > o.x1 + 60) tthDinoTip(st, fid, 'back', 'Come back! ' + NAMES[hid] + ' can\'t get over it with the egg.', 9, { cpu: null });
     else if (!hPast && hx > o.x0 - 60) tthDinoTip(st, hid, 'hands', 'Hands full! ' + NAMES[fid] + (nap ? ' shoos it away.' : ' smashes it.'), 10, { cpu: null });
   } else if (o.kind === 'ledge' || o.kind === 'gap') {
     const up = o.kind === 'ledge';
     if (!hPast && hx > o.x0 - 60) {
-      if (fPast) tthDinoTip(st, hid, 'toss', (up ? 'Toss the egg up: ' : 'Toss the egg across: ') + tthDinoAct(hid, 'toss'), 6);
+      if (fPast && Math.abs(fx - hx) > TTHDINO.toss.range) tthDinoTip(st, fid, 'near', 'Too far for a toss! Go back to the edge.', 7, { cpu: null });
+      else if (fPast) tthDinoTip(st, hid, 'toss', (up ? 'Toss the egg up: ' : 'Toss the egg across: ') + tthDinoAct(hid, 'toss'), 6);
       else tthDinoTip(st, hid, 'high', (up ? 'Too high with the egg! ' : 'Too wide with the egg! ') + NAMES[fid] + ' jumps first.', 10, { cpu: null });
     }
     if (!fPast && fx > o.x0 - 90) tthDinoTip(st, fid, 'jump', (up ? 'Jump up: ' : 'Jump across: ') + tthKey(fid, 'jump'), 8);
@@ -814,7 +819,7 @@ function tthDinoStuck(st, dt) {
     else { id = hid; text = 'Carry the egg on! ▶'; }
   }
   // 1-player: the computer never holds things up this long; the person gets the hint instead
-  if (tthDinoSolo(id)) { id = 1 - id; text = hid === id ? 'Carry the egg to ' + NAMES[1 - id] + '! ▶' : hid < 0 ? 'Pick up the egg: walk into it!' : 'Run to ' + NAMES[1 - id] + ' and help! ▶'; }
+  if (tthDinoSolo(id)) { id = 1 - id; const ar = tthDinoCx(ps[1 - id]) >= tthDinoCx(ps[id]) ? ' ▶' : ' ◀'; text = hid === id ? 'Carry the egg to ' + NAMES[1 - id] + '!' + ar : hid < 0 ? 'Pick up the egg: walk into it!' : 'Run to ' + NAMES[1 - id] + ' and help!' + ar; }
   const first = o ? !o.gold : !ph.goldOpen;
   if (o) o.gold = true; else ph.goldOpen = true;
   if (first) tthHelp(st, 'Gold help: follow the gold arrow!', { id, hint: text, life: 5 });
@@ -1016,10 +1021,11 @@ function tthDinoDrawBack(st) {
     const tc = tthDinoMix3('#3f9a68', '#4a6a48', '#2a1a22', d), ty = 410 - cam.y * 0.3;
     for (let i = Math.floor((cam.x * 0.35 - 100) / 130); i * 130 < cam.x * 0.35 + W + 100; i++) {
       const hs = hash(i, 31), x = i * 130 + hs % 70 - cam.x * 0.35, hgt = 70 + (hs >> 4) % 60, palm = (hs >> 9) % 3 !== 0;
-      ctx.strokeStyle = tc; ctx.fillStyle = tc; ctx.lineWidth = 7; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(x, ty + 10); ctx.quadraticCurveTo(x + 8, ty - hgt * 0.5, x + 3, ty - hgt); ctx.stroke();
-      if (palm) { ctx.lineWidth = 6; for (let q = 0; q < 6; q++) { const a = -Math.PI * 0.95 + q * Math.PI * 0.18 + Math.sin(t * 1.5 + i + q) * 0.04; ctx.beginPath(); ctx.moveTo(x + 3, ty - hgt); ctx.quadraticCurveTo(x + 3 + Math.cos(a) * 26, ty - hgt + Math.sin(a) * 26 - 8, x + 3 + Math.cos(a) * 44, ty - hgt + Math.sin(a) * 30 + 10); ctx.stroke(); } }
-      else for (let q = 0; q < 3; q++) { const yy = ty - hgt + q * hgt * 0.24, ww = 16 + q * 9; ctx.beginPath(); ctx.moveTo(x + 3 - ww, yy + 14); ctx.quadraticCurveTo(x + 3, yy - 16, x + 3 + ww, yy + 14); ctx.quadraticCurveTo(x + 3, yy + 4, x + 3 - ww, yy + 14); ctx.fill(); }
+      ctx.strokeStyle = tc; ctx.fillStyle = tc; ctx.lineWidth = 6.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x, ty + 10); ctx.quadraticCurveTo(x + 8, ty - hgt * 0.5, x + 3, ty - hgt);   // (trunk and fronds: one path, one stroke)
+      if (palm) for (let q = 0; q < 6; q++) { const a = -Math.PI * 0.95 + q * Math.PI * 0.18 + Math.sin(t * 1.5 + i + q) * 0.04; ctx.moveTo(x + 3, ty - hgt); ctx.quadraticCurveTo(x + 3 + Math.cos(a) * 26, ty - hgt + Math.sin(a) * 26 - 8, x + 3 + Math.cos(a) * 44, ty - hgt + Math.sin(a) * 30 + 10); }
+      ctx.stroke();
+      if (!palm) for (let q = 0; q < 3; q++) { const yy = ty - hgt + q * hgt * 0.24, ww = 16 + q * 9; ctx.beginPath(); ctx.moveTo(x + 3 - ww, yy + 14); ctx.quadraticCurveTo(x + 3, yy - 16, x + 3 + ww, yy + 14); ctx.quadraticCurveTo(x + 3, yy + 4, x + 3 - ww, yy + 14); ctx.fill(); }
       if (d > 0.55 && hs % 3 === 0) { const fl = 6 + Math.sin(t * 9 + i) * 2; ctx.fillStyle = 'rgba(255,150,50,0.85)'; ctx.beginPath(); ctx.ellipse(x + 3, ty - hgt - 4, fl, fl * 1.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,230,120,0.9)'; ctx.beginPath(); ctx.ellipse(x + 3, ty - hgt, fl * 0.5, fl * 0.9, 0, 0, Math.PI * 2); ctx.fill(); }
     }
     // the near meadow, with the herds running the same way
@@ -1081,7 +1087,9 @@ function tthDinoDrawGround(st, burn, t) {
     if (kind <= 2) {   // a fern (a burnt stick later)
       if (burn > 0.75) { ctx.strokeStyle = '#2a1f28'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(dx, gy); ctx.lineTo(dx + 3, gy - 16); ctx.moveTo(dx + 2, gy - 9); ctx.lineTo(dx + 9, gy - 15); ctx.stroke(); continue; }
       ctx.strokeStyle = tthDinoMix('#2f8f4a', '#5a4a3a', burn); ctx.lineWidth = 3.5;
-      for (let q = -2; q <= 2; q++) { ctx.beginPath(); ctx.moveTo(dx, gy); ctx.quadraticCurveTo(dx + q * 6 + sw, gy - 16 - (kind * 4), dx + q * 11 + sw * 2, gy - 12 - kind * 3 + Math.abs(q) * 5); ctx.stroke(); }
+      ctx.beginPath();
+      for (let q = -2; q <= 2; q++) { ctx.moveTo(dx, gy); ctx.quadraticCurveTo(dx + q * 6 + sw, gy - 16 - (kind * 4), dx + q * 11 + sw * 2, gy - 12 - kind * 3 + Math.abs(q) * 5); }
+      ctx.stroke();
     } else if (kind === 3) {   // a bone
       ctx.strokeStyle = C.ink; ctx.lineWidth = 6.5; ctx.beginPath(); ctx.moveTo(dx - 9, gy - 4); ctx.lineTo(dx + 9, gy - 6); ctx.stroke();
       ctx.strokeStyle = TTHDINOC.bone; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(dx - 9, gy - 4); ctx.lineTo(dx + 9, gy - 6); ctx.stroke();

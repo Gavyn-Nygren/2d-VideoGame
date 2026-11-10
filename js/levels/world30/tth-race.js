@@ -45,7 +45,12 @@
    (st.thief, on foot, happy), counts down, calls the lead changes and cheers. After the deciding race he hands the
    Golden Hourglass to the champ (a short scene), then tthPhaseDone starts the core's ending.
    Results: the line "Race champ: Bo (2-1)". Stats: st.stats.race { wins, champ, races, stumbles, boosts, best }.
-   The engine players are hidden while the lanes draw (hide) and mirror each runner's screen spot (hints, bubbles).
+   The engine players are hidden for the whole era (hide): the lanes draw the runners, the crowning draws Pip and Bo
+   big (crownS) on and beside the winner's step; the engine players mirror those screen spots (hints, bubbles).
+   Length (bot runs, tools/w30/play.js and race-balance.js): a race is cardT 5.5 s (the race card, then 3-2-1) + about
+   43 s of running for a Normal pair (Hard 41, Easy 52; the three laps are 17,500-17,700 px at 300-345 px/s) + endT
+   3.4 s; the crowning is crownT 6 s. So the era takes about 1:50 when it goes 2-0 and about 2:45 when it goes 2-1.
+   Drawing: about 4 ms a frame in headless software Chromium (tools/w30/race-perf.js, race-prof.js --stub=...).
    The brain (js/cpu/levels/world30/tth-race.js) is the OPPONENT and reads TTHRACE and these helpers.
    Names: tthRace* / TTHRACE*; sounds Sfx.extra.tthRace*. */
 
@@ -67,7 +72,7 @@ const TTHRACE = {
   catchUp: { d: 380, t: 2.0 },                                     // this far behind at a ring: a gold boost of t s
   help: { cd: 0.7, st: 0.62, boost: 1.3 },                         // gold shoes: dash cooldown x, speed kept in a stumble, time boosts x
   finPortal: 230,                                                  // the home portal stands this far behind the finish line
-  win: 2, cardT: 5.5, endT: 3.4, crownT: 6, tieEps: 0.002, limitK: 1.9,
+  win: 2, cardT: 5.5, endT: 3.4, crownT: 6, crownS: 1.7, tieEps: 0.002, limitK: 1.9,
 };
 // The laps. obs: ['h', x] a low thing to hop; ['d', x, w] a lintel to slide under; ['g', x0, w] a gap; ['u', x0, w] an
 // updraft; ['w', x0, w] a wind gust; ['m', x] a meteor shadow (x from the lap's start; h, d, m: the middle of the thing).
@@ -562,6 +567,7 @@ function tthRaceCrownStep(st, dt) {
   if (t < 1.1) { const u = t / 1.1, e = 1 - (1 - u) * (1 - u); c.x = W + 60 - (W + 60 - tx) * e; c.pose = 'run'; }
   else { c.x = tx; c.pose = t < 2.3 ? 'grab' : 'cheer'; }
   c.y = 456; c.face = -1;
+  { const P = tthThiefPts(c).head; c.sayAt = { x: P.x - st.cam.x, y: 262 + P.r * 0.6, r: P.r }; }   // (his bubble sits above the champ and the hourglass, not on them)
   if (ph.crownSaid === 0 && t > 0.3) { ph.crownSaid = 1; tthSay(st, 'Race champ: ' + NAMES[w] + '! My Golden Hourglass is yours!', 2.6); }
   if (ph.crownSaid === 1 && t > 2.2) { ph.crownSaid = 2; Sfx.play('tthCheer'); for (let n = 0; n < 8; n++) confetti(st.cam.x + W / 2 - 40 + (n - 3.5) * 28, st.cam.y + 300); }
   if (t > 2.2 && (G.tickN % 10) === 0) confetti(st.cam.x + 120 + tthRaceVR() * (W - 240), st.cam.y + 60 + tthRaceVR() * 60);
@@ -573,7 +579,7 @@ function tthRaceCrownStep(st, dt) {
 }
 // where the hourglass is: from his hands to over the champ's head (screen)
 function tthRaceCrownAt(st) {
-  const ph = st.ph, t = ph.crT, p = G.players[ph.champ], hx = p.x + p.w / 2, hy = p.y - 20;
+  const ph = st.ph, t = ph.crT, p = G.players[ph.champ], hx = p.x + p.w / 2, hy = p.y + PH - PH * TTHRACE.crownS - 22;
   const P = tthThiefPts(st.thief), from = { x: P.head.x - 44, y: P.head.y + 26 };
   if (t < 1.7) return from;
   const u = clamp((t - 1.7) / 0.6, 0, 1), e = u * u * (3 - 2 * u);
@@ -647,7 +653,7 @@ TTH_PHASES.race = {
     if (ph.state !== 'crown') tthRaceCams(st, dt);
     tthRaceMirror(st);
   },
-  hide: st => st.ph.state !== 'crown',
+  hide: () => true,       // (the lanes draw the runners; the crowning draws Pip and Bo big, see tthRaceDrawCrown)
   busy: () => true,       // (no team bumps here: race stumbles are the race's own)
   labels: () => ['dash', 'dash'],
   legend: () => ({ jump: 'hop', down: 'slide', padJump: 'hop', padDown: 'down slides' }),
@@ -1189,7 +1195,8 @@ function tthRaceDrawBack(st) {
   if (ph.state === 'crown') { tthRaceDrawCrownBack(st); return; }
   // the time tunnel around the lanes: the band under the HUD, the divider, the strip at the bottom
   if (!tthRaceBandG) { tthRaceBandG = ctx.createLinearGradient(0, 0, 0, H); tthRaceBandG.addColorStop(0, '#1c1446'); tthRaceBandG.addColorStop(0.14, '#3a2a7a'); tthRaceBandG.addColorStop(0.56, '#241a5c'); tthRaceBandG.addColorStop(1, '#1c1446'); }
-  ctx.fillStyle = tthRaceBandG; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = tthRaceBandG;   // (only the strips around the lanes: the lanes paint themselves, and a full-screen gradient is slow on weak devices)
+  ctx.fillRect(0, 0, W, K.laneY[0]); ctx.fillRect(0, K.laneY[0] + K.laneH, W, K.laneY[1] - K.laneY[0] - K.laneH); ctx.fillRect(0, K.laneY[1] + K.laneH, W, H - K.laneY[1] - K.laneH);
   for (let i = 0; i < 9; i++) {
     const h = hash(i, 17), x = ((h % W) + t * (8 + (i % 3) * 5)) % (W + 60) - 30, y = 14 + ((h >>> 9) % 50);
     ctx.fillStyle = `rgba(255,255,255,${0.35 + 0.3 * Math.sin(t * 2 + i)})`; circle(x, y, 1 + (i % 2)); ctx.fill();
@@ -1442,6 +1449,8 @@ function tthRaceDrawCrownBack(st) {
 }
 function tthRaceDrawCrown(st) {
   const ph = st.ph, a = tthRaceCrownAt(st), t = ph.crT, gt = G.clock;
+  // Pip and Bo, big for their big moment (the engine players are hidden and keep the spots: tthRaceCrownPlace)
+  for (const p of G.players) tthDrawHero(p.id, p.x + PW / 2, p.y + PH, { s: TTHRACE.crownS, face: 1, vy: p.vy });
   // the Golden Hourglass
   ctx.save(); ctx.translate(a.x, a.y + Math.sin(gt * 4) * 1.5); ctx.rotate(Math.sin(gt * 2.4) * 0.08);
   ctx.fillStyle = 'rgba(255,243,196,0.35)'; circle(0, 0, 24 + Math.sin(gt * 8) * 2); ctx.fill();

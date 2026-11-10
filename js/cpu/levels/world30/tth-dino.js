@@ -8,7 +8,8 @@
    - CLEARER: runs ahead to the first thing in its way (never more than TTHDINO_BRAIN.ahead px in front of the
      carrier). A boulder, log, meteor rock or napping dino: stands next to it and taps the action (4 taps a second).
      A ledge or a pit: jumps it and waits just past the edge for the toss. A vine bridge: stands at the post and holds
-     the action until the carrier is across (the bridge ties itself then), then follows.
+     the action until the carrier is across (the bridge ties itself then), then follows. When a meteor rock lands
+     between it and the carrier, it goes back and smashes the rock from its own side.
    - CARRIER: walks to the thing in the way and waits beside it (out of the clearer's way). At a ledge or a pit it
      looks at the partner and tosses the egg once they stand on the other side, then jumps after it. At a vine bridge
      it waits at the rim until the bridge is tight and walks across.
@@ -21,14 +22,17 @@
      the nest need both players. A person who is away (10 s without a press) is waited for (the core brain does that).
    - TAKING THE JOB THE PERSON LEAVES (1-player only): when it carries the egg and has waited TTHDINO_BRAIN.takeover s
      at something the person should open (smash, jump first, hold the vine) with the person close by, it says so,
-     tosses them the egg and does the clearing itself. Not again for 14 s, so the egg never ping-pongs.
+     tosses them the egg and does the clearing itself. Not again for 14 s, so the egg never ping-pongs (but
+     at the same thing, when the egg came straight back before the job was done, after TTHDINO_BRAIN.retake s). The same when
+     the person has hopped over a log (or a napping dino, a rock) and waits beyond it: "Come back, please!", then the
+     egg is tossed over to them and the computer smashes the thing.
    - Talk (1-player only, short): asks for a smash / a jump / the vine, "Toss it to me!", "I'll hold the bridge. Go!",
      "Duck!", "Grab the egg!", "This way!".
    It reads only what a person can see: the course, the rings, the Thief's pose and claw, the egg, the partner. */
-const TTHDINO_BRAIN = { react: 0.15, tap: 0.25, ahead: 400, takeover: 7, again: 14, duck: 0.5, whackNear: 330, tossWait: 0.25, jumpHold: 0.45 };
+const TTHDINO_BRAIN = { react: 0.15, tap: 0.25, ahead: 400, takeover: 7, retake: 4.5, again: 14, duck: 0.5, whackNear: 330, tossWait: 0.25, jumpHold: 0.45 };
 
 TTH_BRAINS.dino = {
-  reset(b) { b.jumpHold = 0; b.jumpRest = 0; b.creepT = 0; b.stall = 0; b.stallSig = ''; b.tookT = -99; b.tossT = 0; b.looseT = 0; b.waitT = 0; },
+  reset(b) { b.jumpHold = 0; b.jumpRest = 0; b.creepT = 0; b.stall = 0; b.stallSig = ''; b.tookT = -99; b.tookAt = null; b.tossT = 0; b.looseT = 0; b.waitT = 0; },
   back(b) { b.stall = 0; b.tossT = 0; b.looseT = 0; b.waitT = 0; },
   think(b, p, o, dt, info, S) {
     const ph = S.ph;
@@ -160,6 +164,9 @@ TTH_BRAINS.dino = {
       return carry ? travel(nest.x - 50, 10) : park(nest.x - 190, nest.x - 110);   // (the carrier stops at the rim: the egg hops in)
     };
     if (mine && flag && mine.x0 > flag.x) mine = null;   // the flag comes first
+    // (a meteor rock landed between us, or I hopped over a log the carrier can't pass: go back and smash it from my side)
+    const behind = !carry && iPast && !oPast && tthDinoBlocker(gate);
+    if (behind) mine = gate;
     const blocker = mine && tthDinoBlocker(mine), sig = mine ? mine.x0 + ':' + mine.hits + ':' + (mine.held ? 1 : 0) + ':' + (oPast ? 1 : 0) : '';
     if (sig !== b.stallSig) { b.stallSig = sig; b.stall = 0; }
 
@@ -167,7 +174,7 @@ TTH_BRAINS.dino = {
     if (carry) {
       if (!mine) { openRoad(); if (solo && Math.abs(ocx - cx) > 300 && ocx < cx) say('way', 'This way!', 10); return out; }
       let at = false, ask = '';
-      if (blocker) { at = park(mine.x0 - 124, mine.x0 - 46); ask = mine.kind === 'nap' ? 'Shoo it away, please!' : 'Smash it, please!'; }
+      if (blocker) { at = park(mine.x0 - 124, mine.x0 - 46); ask = oPast ? 'Come back, please!' : mine.kind === 'nap' ? 'Shoo it away, please!' : 'Smash it, please!'; }
       else if (mine.kind === 'vine') {
         if (mine.taut && (mine.tied || mine.pull >= 0.98 || cx > mine.x0)) { travel(mine.x1 + 40, 8); return out; }
         at = park(mine.x0 - 96, mine.x0 - 18); ask = 'Hold the vine at the post!';
@@ -184,18 +191,20 @@ TTH_BRAINS.dino = {
         }
         b.tossT = 0;
         // wait a little back from the edge; step closer when the partner stands too far on the other side
-        if (there && !inRange) at = travel(mine.x0 - (ledge ? 18 : 30), 5);
+        if (there && !inRange) { at = travel(mine.x0 - (ledge ? 18 : 30), 5); if (solo && at) say('near', 'Come closer, please!', 8); }
         else at = ledge ? park(mine.x0 - 110, mine.x0 - 16) : park(mine.x0 - 86, mine.x0 - 30);
       }
       // the person leaves the clearing to me: ask, then toss them the egg and do it myself
-      if (solo && at && !oPast && !mine.held) {
+      // (also when the person has jumped over a log / a napping dino / a rock and waits on the far side: toss it over)
+      if (solo && at && (!oPast || blocker) && !mine.held) {
         b.stall += dt;
         if (b.stall > 3) say('ask', ask, 9);
         const dx = ocx - cx, inRange = Math.abs(dx) <= K.toss.range - 10 && Math.abs(ofeet - feet) <= 60 && o.grounded && o.stun <= 0;
-        if (b.stall > R.takeover && G.time - b.tookT > R.again && me.lock <= 0) {
+        const same = b.tookAt === mine.x0;   // (the egg came straight back before I was done here: offer again sooner)
+        if (b.stall > (same ? R.retake : R.takeover) && (same || G.time - b.tookT > R.again) && me.lock <= 0) {
           if (!inRange) say('come', 'Come over here!', 8);
           else if (Math.abs(dx) > 34 && Math.sign(dx) !== p.face) { out.left = dx < 0; out.right = dx > 0; }
-          else { out.act = 'tap'; b.tookT = G.time; b.stall = 0; say('took', 'Catch! I\'ll do it.', 6); }
+          else { out.act = 'tap'; b.tookT = G.time; b.tookAt = mine.x0; b.stall = 0; say('took', 'Catch! I\'ll do it.', 6); }
         }
       }
       return out;
@@ -203,7 +212,7 @@ TTH_BRAINS.dino = {
 
     /* ================= CLEARER ================= */
     // past the edge the carrier still stands at: wait for the toss, close to the edge
-    if (iPast && !oPast) {
+    if (iPast && !oPast && !behind) {
       const edge = gate.kind === 'ledge' ? gate.x0 : gate.x1;
       const at = cx >= edge + 12 && cx <= edge + 64;
       if (cx < edge + 12) travel(edge + 36, 8); else if (!at) creep(edge + 44);   // (back toward the edge: carefully)
