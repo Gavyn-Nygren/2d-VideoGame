@@ -2374,7 +2374,13 @@ function gc3Buttons(st, dt) {
 function gc3Super(st, gr) {
   const g = G.level.grid, r = gr.cells[0].r + 1, cs = gr.cells.map(cl => cl.c);
   gr.super = true; st.stats.lava.supers++;
-  for (const c of [Math.min(...cs) - 1, Math.max(...cs) + 1]) if (c > 0 && c < 25 && g[r] && g[r][c] === '.') gr.cells.push({ c, r, on: false, flash: 0, extra: true });
+  // (never on the holder's own respawn spot: they would come back inside it, boxed in under the steps)
+  const ph = st.ph, k = gr.holder, spots = [];
+  if (ph && ph.home) ph.home.forEach((h, i) => { if (h && h[k] != null) spots.push({ x: h[k], y: ph.floors[i] - PH }); });
+  if (G.spawnPts && G.spawnPts[k]) spots.push({ x: G.spawnPts[k].x, y: G.spawnPts[k].y });
+  if (ph && ph.spawn0 && ph.spawn0[k]) spots.push({ x: ph.spawn0[k].x, y: ph.spawn0[k].y });
+  const onSpot = c => spots.some(s => rectHit({ x: s.x, y: s.y, w: PW, h: PH }, c * T, r * T, T, T));
+  for (const c of [Math.min(...cs) - 1, Math.max(...cs) + 1]) if (c > 0 && c < 25 && g[r] && g[r][c] === '.' && !onSpot(c)) gr.cells.push({ c, r, on: false, flash: 0, extra: true });
   if (gr.state === 'on') gr.state = 'building';
   gcHelp(st, 'Super steps! An extra step for ' + NAMES[gr.holder] + '.');
 }

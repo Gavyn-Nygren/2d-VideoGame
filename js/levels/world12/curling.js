@@ -464,7 +464,12 @@
     if (sw.y < by0) { sw.y = by0; sw.vy = Math.abs(sw.vy) * 0.4; }
     if (sw.y > by1) { sw.y = by1; sw.vy = -Math.abs(sw.vy) * 0.4; }
     // the hack is the thrower's spot
-    if (sw.x < 120 && Math.abs(sw.y - K.lineY) < 30) { sw.x = 120; sw.vx = Math.abs(sw.vx) * 0.4; }
+    // (pushed out of its nearest side: coming in from above or below used to snap the sweeper up to 84 px to the right)
+    if (sw.x < 120 && Math.abs(sw.y - K.lineY) < 30) {
+      const ox = 120 - sw.x, oy = 30 - Math.abs(sw.y - K.lineY), up = sw.y < K.lineY;
+      if (oy < ox) { sw.y = K.lineY + (up ? -30 : 30); sw.vy = (up ? -1 : 1) * Math.abs(sw.vy) * 0.4; }
+      else { sw.x = 120; sw.vx = Math.abs(sw.vx) * 0.4; }
+    }
     if (sw.sweeping && Math.random() < 0.35) puff(sw.bx, sw.by, 1, 'rgba(255,255,255,0.9)');
     if (sw.brush && Math.floor(sw.brushT / 0.16) !== Math.floor((sw.brushT - dt) / 0.16)) Sfx.play('curlingSweep', id);
     p.face = sw.face;

@@ -374,10 +374,12 @@ function quakeCarStep(st, br, dt) {
       }
       br.peakS = 0;
     }
-    if (br.s >= 1 && riders.length) {   // docked with a rider aboard: parked for good
+    // (a rider in mid-hop as it docks counts too: the far wall opens at the dock, and the crossing needs a parked car)
+    const docked = riders.length ? riders : G.players.filter(p => p.alive && st.pl[p.id].aboard === br);
+    if (br.s >= 1 && docked.length) {   // docked with a rider aboard: parked for good
       br.parked = true; br.vel = 0; br.bellT = 0.8; br.flash = 0.5;
       Sfx.play('quakeBell'); quakePop(st, br.x1 - 20, br.cy - 104, 'Ding ding!', C.gold, 18);
-      rumble(riders[0].id, 0.2, 0.4, 120);
+      rumble(docked[0].id, 0.2, 0.4, 120);
     }
   }
   br.carX = br.x0 - 30 + br.s * br.travel;
@@ -520,6 +522,7 @@ function quakeCrateHits(st, br, c) {
       if (P.boingCD <= 0) { quakePop(st, bx, top - 30, 'Boing!', C.gold, 16); P.boingCD = 1.2; }
       continue;
     }
+    if (p.vy < -1 && p.y + p.h <= top + 3) continue;   // just boinged off the crate next to this one: no sideways snap
     const side = p.x + p.w / 2 < bx ? -1 : 1;   // the player is on this side of the crate
     if (c.vu * side > QUAKE.bonkV) {
       // a crate sliding into you: bonk, back you go a little

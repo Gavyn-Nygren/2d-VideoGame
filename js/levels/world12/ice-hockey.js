@@ -218,7 +218,10 @@ function hockeySkaterWorld(st, sk) {
     const gl = R.gl[k], dir = k ? -1 : 1;
     if ((sk.x - gl) * dir > 0) { // the crease (ice side only): skaters stay out
       const dx = sk.x - gl, dy = sk.y - R.cy, d = Math.hypot(dx, dy), min = P.crease + P.r;
-      if (d < min) {
+      if (d < min && Math.abs(dx) < min - d) {
+        // just over the goal line beside a post (came round the back of the net): held at the line, not snapped sideways
+        sk.x = gl; if (sk.vx * dir > 0) sk.vx = 0;
+      } else if (d < min) {
         const nx = d > 1e-6 ? dx / d : dir, ny = d > 1e-6 ? dy / d : 0;
         sk.x = gl + nx * min; sk.y = R.cy + ny * min;
         const vn = sk.vx * nx + sk.vy * ny; if (vn < 0) { sk.vx -= 1.2 * vn * nx; sk.vy -= 1.2 * vn * ny; }
@@ -388,6 +391,7 @@ function hockeyPucks(st, dt) {
     }
     // skaters' bodies
     for (const sk of st.sk) if (hockeyPushCircle(pk, pk.r, sk.x, sk.y, P.r - 2, P.bodyE, sk.vx, sk.vy) > 200 && st.live) { Sfx.play('hockeyThud'); sk.sq = 0.4; }
+    hockeyBoard(pk, pk.r, P.puckE, 0);   // (a body pinning the puck on the boards must not push it out of the rink)
     // a slow puck in a crease: the robot sweeps it out to a corner
     // (only the nearer net's crease counts, so the far one can't keep resetting the timer)
     {
