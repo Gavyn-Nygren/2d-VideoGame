@@ -461,12 +461,13 @@ function runshipDeckhand(st, b, p, dt, jobs) {
   if (b.mode === 'splash') { runshipSplashStep(st, b, dt); return; }
   if (b.sq) b.sq = approach(b.sq, 0, dt * 3);
   if (b.hammer > 0) b.hammer = Math.max(0, b.hammer - dt);
+  if (b.noGrab > 0) b.noGrab -= dt;
   const onRat = Math.abs(b.x - P.mastX) < (P.ratX1 - P.ratX0) / 2 && b.y > P.nestY + 2 && b.y <= P.deckY + 1;
   /* climbing the rope ladder */
   if (b.mode === 'climb') {
     let cy = 0;
     if (upHeld) cy = -1; else if (downHeld) cy = 1;
-    if (jumpPress && mv) { b.mode = 'air'; b.vx = mv * 170; b.vy = -380; b.jumping = true; b.face = mv; Sfx.play('jump', b.id); return; }
+    if (jumpPress && mv) { b.mode = 'air'; b.vx = mv * 170; b.vy = -380; b.jumping = true; b.face = mv; b.noGrab = 0.3; Sfx.play('jump', b.id); return; }   // (noGrab: the still-held jump used to grab the ladder again on the next tick, so the hop never happened)
     b.x += mv * P.climbSide * dt;
     if (mv) b.face = mv;
     b.y += cy * P.climb * dt;
@@ -481,14 +482,14 @@ function runshipDeckhand(st, b, p, dt, jobs) {
   if (b.mode === 'nest') {
     b.x = clamp(b.x + mv * 70 * dt, P.nestX0, P.nestX1);
     if (mv) b.face = mv;
-    if (downHeld) { b.mode = 'climb'; b.y = P.nestY + 3; }
+    if (downHeld && !upHeld) { b.mode = 'climb'; b.y = P.nestY + 3; }   // (not with jump/▲ held too: that flipped nest/ladder 40 times a second)
     if (jumpPress) b.nestHop = 0.25;
     if (b.nestHop > 0) b.nestHop -= dt;
     if (jobs) runshipJobs(st, b, p, dt, actPress);
     return;
   }
   /* walking and jumping on deck */
-  if (onRat && b.mode !== 'helm' && (jumpPress || inp.up || (b.mode === 'air' && upHeld))) {
+  if (onRat && b.mode !== 'helm' && !(b.noGrab > 0) && (jumpPress || inp.up || (b.mode === 'air' && upHeld))) {
     // grab the rope ladder: a press of ▲ there, or ▲ held while jumping into it
     b.mode = 'climb'; b.vx = 0; b.vy = 0; b.jumping = false; b.jumpBuf = 0; b.y = Math.min(b.y, P.deckY - 1); return;
   }

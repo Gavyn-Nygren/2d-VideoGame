@@ -106,7 +106,8 @@ function heistBuild(st, def) {
   for (const g of st.gaps) if (g.plank) st.solids.push({ x0: g.x0 - 2, x1: g.x1 + 2, y0: R, y1: R + 8, kind: 'plate', gap: g });
   // the back of the stretch and the front (the flag car's front end, or the engine's nose)
   st.solids.push({ x0: -60, x1: 0, y0: -600, y1: R + B, kind: 'wall' });
-  st.solids.push({ x0: st.len, x1: st.len + 60, y0: -600, y1: R - 0.5, kind: 'wall' });
+  // (down to the engine's lower boiler top: a ducked player used to walk under the wall there and be thrown far off screen)
+  st.solids.push({ x0: st.len, x1: st.len + 60, y0: -600, y1: (st.cars[st.cars.length - 1].kind === 'engine' ? R + 18 : R) - 0.5, kind: 'wall' });
   const last = st.cars[st.cars.length - 1];
   st.goal = last.kind === 'engine' ? null : last;
 }

@@ -148,7 +148,7 @@ function vdClimbBody(st, p, dt) {
     const c = P.climb, w = c.w, up = inp.jump || inp.up, dn = inp.down && !up;
     p.stun = Math.max(0, p.stun - dt); p.pendingJump = false;
     p.x = w.face - p.w; p.vx = 0; p.grounded = false; p.face = 1;
-    if (inp.left && !up) { P.climb = null; p.vx = -90; p.vy = 0; p.x -= 2; return; }   // let go
+    if (inp.left && !up) { P.climb = null; p.vx = -90; p.vy = 0; p.x -= 2; p.coyote = 0; return; }   // let go (no coyote jump in mid-air)
     const v = up ? (c.kind === 'ladder' ? K.ladderV : K.climbV) : dn ? K.downV : 0;
     p.vy = 0; p.y += (up ? -v : v) * dt;
     if (up || dn) { P.climbAnim += dt * 9; p.sx = 1 + Math.sin(P.climbAnim) * 0.06; p.sy = 1 - Math.sin(P.climbAnim) * 0.06; if ((P.gripSnd -= dt) <= 0) { P.gripSnd = 0.22; Sfx.play('vdClimbGrip', p.id); } }

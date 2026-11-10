@@ -332,7 +332,12 @@ function templeIdolStep(st, dt) {
     const x0 = I.fx * T, x1 = x0 + T;
     for (const p of G.players) if (p.alive && p.y + p.h > I.ty * T + 2 && p.y < (I.ty + 1) * T && p.x < x1 && p.x + p.w > x0) {
       const dx = templeCx(p) < x0 + T / 2 ? x0 - (p.x + p.w) : x1 - p.x;
+      // (the idol's own two cells are not walls for this nudge: the puller stands in the cell it slides into, and was
+      // snapped back through the idol and out of its far side)
+      const ca = g[I.ty][I.from], cb = g[I.ty][I.to];
+      g[I.ty][I.from] = '.'; g[I.ty][I.to] = '.';
       moveX(p, dx, true);
+      g[I.ty][I.from] = ca; g[I.ty][I.to] = cb;
     }
     if (I.slideT <= 0) {
       g[I.ty][I.from] = '.'; g[I.ty][I.to] = '#'; I.tx = I.to; I.fx = I.to; I.slideT = 0;
@@ -360,7 +365,9 @@ function templeIdolStep(st, dt) {
 function templeIdolSlide(st, I, to, by) {
   const g = G.level.grid;
   I.from = I.tx; I.to = to; I.slideT = TEMPLE.slideT;
-  g[I.ty][to] = '#';   // (both cells are stone while it slides; the old one frees when it arrives)
+  // (both cells are stone while it slides; the old one frees when it arrives. On a pull the puller stands in the new
+  // cell, so that one only turns to stone on arrival: the slide's nudge moves them out of the way meanwhile)
+  if (!G.players.some(p => p.alive && rectHit(p, to * T, I.ty * T, T, T))) g[I.ty][to] = '#';
   st.stats.pushes++;
   Sfx.play('templeIdol');
   rumble(by.id, 0.25, 0.4, 120);
@@ -402,7 +409,8 @@ function templeHazards(st, p) {
 function templeSplash(st, p) {
   const P = st.pl[p.id], cx = templeCx(p);
   p.alive = false; p.respawnT = TEMPLE.respawn; P.deadT = TEMPLE.respawn;
-  G.spawnPts[p.id] = { x: P.spot.x, y: P.spot.y };
+  const sp = templeSpotNow(st, P);
+  G.spawnPts[p.id] = { x: sp.x, y: sp.y };
   st.stats.whoops[p.id]++; st.splash++;
   templePop(st, cx, 16 * T - 30, 'Splash!', '#9fe3ff', 22);
   for (let i = 0; i < 18; i++) G.particles.push({ x: cx, y: 16 * T + 4, vx: (Math.random() - 0.5) * 220, vy: -120 - Math.random() * 260, life: 0.8, max: 0.8, col: i % 3 ? '#8fd8ff' : '#e8fbff', size: 3 + Math.random() * 3, grav: 900, kind: 'dot' });
@@ -410,8 +418,16 @@ function templeSplash(st, p) {
   if (!st.lily && st.splash >= TEMPLE.lilyAfter) templeLily(st);
 }
 // (the engine brings a splashed player back at G.spawnPts after p.respawnT; this is the hold-▼ way back)
+// a player's spot, moved beside the idol if the idol has been pushed onto it
+function templeSpotNow(st, P) {
+  const s = P.spot, I = st.idol;
+  if (!I) return s;
+  const cells = I.slideT > 0 ? [I.from, I.to] : [I.tx];
+  if (!cells.some(c => rectHit({ x: s.x, y: s.y, w: PW, h: PH }, c * T, I.ty * T, T, T))) return s;
+  return templeSpot(st, s.x + PW / 2, s.y + PH);
+}
 function templeBack(st, p) {
-  const P = st.pl[p.id], s = P.spot, input = p.input;
+  const P = st.pl[p.id], s = templeSpotNow(st, P), input = p.input;
   Object.assign(p, { x: s.x, y: s.y, vx: 0, vy: 0, alive: true, grounded: false, jumping: false, jumpBuf: 0, pendingJump: false, coyote: 0, stun: 0, dropT: 0, sx: 0.6, sy: 1.4, carryVx: 0, offT: 0, knockT: 0, input });
   p.pendingAct = false; p.downLatch = true;
   P.downT = 0; P.px = p.x; P.py = p.y; P.lost = false;

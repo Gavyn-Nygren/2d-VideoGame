@@ -4259,7 +4259,7 @@ const LEVELS = [
         course: ['v60', 'w195', 'f380', 'S:Big rocks! {P}: steer round them||Big rocks! {P} steers round them', 'i:0:50:90', 'f280', 'b:-70', 'm:65:mango', 'f220', 'b:60', 'f220',
           'S:White water! {B}: bail, bail, bail!||White water! {B} bails fast', 'RR:520', 'b:-10', 'm:-80:banana', 'f190', 'b:70', 'f170', 'b:-75', 'f240', 'c410', 'f160',
           'S:{P}: {Pdown} slows down, so less water splashes in||{P} slows down, so less water splashes in', 'p:-10', 'm:70:coconut', 'f260', 'A:monkey:R', 'RR:440', 'b:55', 'f170', 'b:-55', 'f170', 'p:5', 'f240', 'F',
-          'c550', 'w175', 'R:300', 'b:0', 'f200', 'm:-55:berry', 'm:55:mango', 'f220', 'j:3', 'f320',
+          'c550', 'w175', 'R:300', 'f120', 'b:0', 'f80', 'm:-55:berry', 'm:55:mango', 'f220', 'j:3', 'f320',
           'RR:520', 'b:-60', 'f160', 'b:45', 'f170', 'p:-25', 'f200', 'm:0:starfruit', 'A:toucan:L', 'f300', 'c480', 'w200', 'F',
           'R:300', 'b:75', 'b:-75', 'f280', 'm:0:mango', 'f280', 'A:parrot:L', 'f200', 'P'],
       },

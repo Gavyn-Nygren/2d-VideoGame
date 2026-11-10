@@ -181,7 +181,7 @@ function wfallMoveY(st, p, dy) {
     for (let c = c1; c <= c2; c++) if (wfallSolidAt(st, c, r)) { p.y = top - p.h; P.landV = p.vy; P.landOn = wfallCell(st, c, r); p.vy = 0; return p.y - y0; }
     // the partner's head (hands, when they brace)
     const o = other(p), O = st.pl[o.id];
-    if (o.alive && O.vine < 0 && !O.splash && p.x < o.x + o.w - 4 && p.x + p.w > o.x + 4 && prevBottom <= o.y + 1 && p.y + p.h >= o.y) {
+    if (o.alive && o.grounded && O.vine < 0 && !O.splash && p.x < o.x + o.w - 4 && p.x + p.w > o.x + 4 && prevBottom <= o.y + 1 && p.y + p.h >= o.y) {   // (a partner in mid-jump is no ground: that gave a second full jump, higher than a boost)
       p.y = o.y - p.h; P.landV = p.vy; P.landOn = 'head'; p.vy = 0; return p.y - y0;
     }
     for (const ln of st.lanes) {
@@ -210,7 +210,7 @@ function wfallGround(st, p) {
     if (best) return best;
   }
   const o = other(p), O = st.pl[o.id];
-  if (o.alive && O.vine < 0 && !O.splash && Math.abs(by - o.y) <= 1.5 && p.x < o.x + o.w - 4 && p.x + p.w > o.x + 4) return 'head';
+  if (o.alive && o.grounded && O.vine < 0 && !O.splash && Math.abs(by - o.y) <= 1.5 && p.x < o.x + o.w - 4 && p.x + p.w > o.x + 4) return 'head';
   for (const ln of st.lanes) if (Math.abs(by - ln.top) <= 1.5 && p.x < ln.x + ln.w - 3 && p.x + p.w > ln.x + 3) return 'log';
   return '';
 }
@@ -412,7 +412,7 @@ function wfallClimb(st, p, dt) {
     return;
   }
   const feet = p.y + p.h;
-  if (feet >= w.baseFeet) { p.y = w.baseFeet - p.h; P.vine = -1; P.grabCD = 0.3; p.grounded = true; return; }
+  if (feet >= w.baseFeet) { p.y = w.baseFeet - p.h; p.x = w.boostX - p.w / 2; P.vine = -1; P.grabCD = 0.3; p.grounded = true; return; }   // (clear of the wall face: 1 px of overlap let jump taps climb the bare wall)
   if (feet <= w.topFeet + 6) {
     // over the top: step onto the ledge
     P.vine = -1; P.grabCD = 0.4;
@@ -524,7 +524,11 @@ function wfallWorld(st, dt) {
     }
     ln.dx = dx;
     // riders come along
-    if (dx) for (const p of G.players) if (p.alive && st.pl[p.id].onLog === ln.i && p.grounded) wfallMoveX(st, p, dx);
+    if (dx) for (const p of G.players) if (p.alive && st.pl[p.id].onLog === ln.i && p.grounded) {
+      const q = other(p), onHead = q.alive && q.grounded && st.pl[q.id].onLog !== ln.i && wfallGround(st, q) === 'head';
+      wfallMoveX(st, p, dx);
+      if (onHead) wfallMoveX(st, q, dx);   // (a rider on this one's head comes too)
+    }
   }
   for (const gy of st.geysers) {
     const idle = WFALL.geyIdle * (st.goldMist ? 0.7 : 1), puffT = WFALL.geyPuff, cyc = idle + WFALL.geyWarn + puffT;
