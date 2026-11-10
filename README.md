@@ -46,6 +46,8 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 24. **Toy Box Town** (toy-sized in a cosy kid's bedroom: a wind-up train, a jack-in-the-box, a slinky and a pillow fort): Wind-Up Train Ride, Jack-in-the-Box Launch, Slinky Stairs, Pillow Fort Battle
 25. **Zombie Acres** (built early; one endless survival level: chop, dig and build a fort, then hold off waves of zombies): Defend the Heart
 26. **Circus Big Top** (inside a striped circus tent: a trapeze, a clown car, a cannon and tall stilts): Trapeze Catch, Clown Car Getaway, Human Cannonball Tour, Stilt Race
+27. **Robot Factory** (a bright robot factory with belts, cranes and helper robots): Mech Suit Duo, Runaway Assembly Line, Magnet Crane Crew, Robot Rumble
+28. **Pyramid Sands** (an adventure in the desert: a rolling boulder, a dark tomb, a stone puzzle and a camel race): Rolling Boulder Run, Tomb Torch Explorers, Sliding Stone Puzzle, Camel Race
 29. **Ninja Dojo** (moonlit rooftops, a guarded fortress, a runaway rickshaw and a dojo duel): Rooftop Moonlight Run, Shadow Sneak, Runaway Rickshaw, Throwing Star Duel
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
