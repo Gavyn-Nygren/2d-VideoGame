@@ -294,22 +294,26 @@ function raptorRun(st, r, inp, dt, live) {
   r.v = v; r.inMud = !!mud;
   r.x += v * dt;
   // forks: by the sign, jump (or stick up) picks the Treetops and ▼ picks the Creek; the pick happens at the fork
+  // (fpx: where the last fork check left off. The camera's left edge, or a bump, can carry a raptor over a fork line after
+  // its own step, and the crossing used to be missed: it stayed on the creek/treetop level past the fork's end)
+  const fpx = r.chk != null && r.chk <= r.px ? r.chk : r.px;
   for (const f of c.forks) {
     if (r.lane === 1 && !r.trans && inp && r.x >= f.x0 - P.forkZone && r.x < f.x0) {
       if (inp.jumpP || inp.up) r.pick = 0;
       else if (inp.duck) r.pick = 2;
     }
-    if (r.px < f.x0 && r.x >= f.x0 && r.lane === 1 && !r.trans) {
+    if (fpx < f.x0 && r.x >= f.x0 && r.lane === 1 && !r.trans) {
       if (r.pick === 0) { raptorTrans(r, 0, P.transUp, 'up'); raptorPop(r, 'Treetops!', '#d8ffb0'); Sfx.play('raptorUp', r.id); }
       else if (r.pick === 2) { raptorTrans(r, 2, P.transDown, 'slide'); raptorPop(r, 'Splish!', '#ffe0b0'); Sfx.play('raptorSlide', r.id); }
       if (live) st.stat.paths[r.id][r.pick == null ? 1 : r.pick]++;
       r.pick = null;
     }
-    if (r.px < f.x1 && r.x >= f.x1 && (r.trans ? r.trans.lane !== 1 : r.lane !== 1)) {
+    if (fpx < f.x1 && r.x >= f.x1 && (r.trans ? r.trans.lane !== 1 : r.lane !== 1)) {
       raptorTrans(r, 1, r.lane === 0 ? P.transDown : P.transUp, r.lane === 0 ? 'down' : 'climb');
       Sfx.play(r.lane === 0 ? 'raptorSlide' : 'raptorUp', r.id);
     }
   }
+  r.chk = r.x;
   // up and down
   if (r.trans) {
     const T = r.trans; T.t += dt;

@@ -249,7 +249,7 @@ function broomFly(st, r, inp, dt, live) {
   if (r.y < P.top) { r.y = P.top; r.vy = Math.max(0, r.vy); }
   const fl = broomFloorAt(c, r.x);
   if (r.y > fl) {
-    r.y = fl;
+    r.y = Math.max(fl, r.y - 900 * dt);   // (slides up a wall or chimney face over a few frames: it used to pop up 50 px in one step)
     if (fl >= P.floorY - P.R - 1) r.vy = Math.min(r.vy, 0); // just the bottom of the sky (over the street): no bounce
     else if (r.vy >= 0 || wind > 0) {
       r.vy = -P.roofBounce;
