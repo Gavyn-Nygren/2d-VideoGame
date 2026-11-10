@@ -78,9 +78,10 @@
       const hand = { x: pipX + 9, y: ry - 9 };
       if (t < 0.9) {
         // the aim line sweeps, the ring waits
-        const a = 0.55 + 0.5 * Math.sin(t * 5.2 + 0.4);
+        // the aim sweeps and crosses the ring (about 0.74 rad from the hand) just as it turns green
+        const a = 0.74 + 0.45 * Math.sin((t - 0.85) * 5.2);
         c.fillStyle = '#ffffff'; for (let d = 12; d < 84; d += 11) v.fillCircle(hand.x + Math.cos(a) * d, hand.y - Math.sin(a) * d, 1.3, '#ffffff');
-        c.strokeStyle = t > 0.7 ? '#8fe3b0' : 'rgba(255,255,255,0.8)'; c.lineWidth = 1.6; c.setLineDash(t > 0.7 ? [] : [3, 3]); v.circle(HX, HY, 11); c.stroke(); c.setLineDash([]);
+        c.strokeStyle = t > 0.72 ? '#8fe3b0' : 'rgba(255,255,255,0.8)'; c.lineWidth = 1.6; c.setLineDash(t > 0.7 ? [] : [3, 3]); v.circle(HX, HY, 11); c.stroke(); c.setLineDash([]);
       }
       // the swinger's state
       let bo = null, zipU = v.seg(t, 3.7, 4.9);
@@ -164,7 +165,7 @@
     draw(v, t) {
       const c = v.ctx, e = v.ease, gy = 150, top = 64;
       // night sky, moon, far pagoda
-      const g = c.createLinearGradient(0, 0, 0, top); g.addColorStop(0, '#141a3c'); g.addColorStop(1, '#4a3f7c'); c.fillStyle = g; c.fillRect(0, 0, 320, 180);
+      c.fillStyle = '#141a3c'; c.fillRect(0, 0, 320, 24); c.fillStyle = '#2a2a5c'; c.fillRect(0, 24, 320, 22); c.fillStyle = '#3f3672'; c.fillRect(0, 46, 320, top - 46);
       for (let i = 0; i < 14; i++) v.fillCircle(v.rand(i) * 320, v.rand(i + 40) * 50, 0.8, 'rgba(255,255,255,' + (0.5 + 0.4 * Math.sin(t * 3 + i)) + ')');
       v.fillCircle(262, 30, 24, 'rgba(200,210,255,0.16)'); v.fillCircle(262, 30, 16, '#faf4d6');
       c.fillStyle = '#2c2a58'; c.fillRect(150, 34, 22, 30); for (const [w, y] of [[40, 34], [32, 24], [22, 15]]) { c.beginPath(); c.moveTo(161 - w / 2, y); c.lineTo(161 + w / 2, y); c.lineTo(161 + w / 2 - 6, y - 6); c.lineTo(161 - w / 2 + 6, y - 6); c.closePath(); c.fill(); }
@@ -220,6 +221,184 @@
 // ----- END 29-2 Shadow Sneak -----
 
 // ----- BEGIN 29-3 Runaway Rickshaw -----
+// The runaway rickshaw rolls down the moonlit market street: Bo steers and hops a crate, a rival ninja on a roof
+// throws a foam star, Pip swings the sword just in time and it flies back ("Bonk!", the rival goes dizzy), then the
+// rickshaw flies off a ramp, scoops up a row of dumplings, lands, and both cheer.
+{
+  const pw29rkTAU = Math.PI * 2, pw29rkV = 70, pw29rkX = 118, pw29rkK = 0.17;
+  // the street's height at screen x (downhill to the right)
+  const pw29rkGy = x => 120 + (x - pw29rkX) * pw29rkK;
+  const pw29rkStar = (v, x, y, r, rot, col) => {
+    const c = v.ctx;
+    c.save(); c.translate(x, y); c.rotate(rot);
+    c.fillStyle = col || '#dfe4f5'; c.strokeStyle = '#2a2546'; c.lineWidth = 1.2; c.beginPath();
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, rr = k % 2 ? r * 0.38 : r; c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+    c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#2a2546'; v.circle(0, 0, r * 0.18); c.fill();
+    c.restore();
+  };
+  // a rival ninja (purple, masked); feet at x, y
+  const pw29rkRival = (v, x, y, mode, t) => {
+    const c = v.ctx, wob = mode === 'dizzy' ? Math.sin(t * 14) * 0.25 : 0;
+    c.save(); c.translate(x, y); c.rotate(wob);
+    c.fillStyle = '#4a3f78'; c.strokeStyle = '#211b3c'; c.lineWidth = 1.4; v.rr(-7, -16, 14, 16, 5); c.fill(); c.stroke();
+    v.circle(0, -19, 7); c.fill(); c.stroke();
+    c.fillStyle = '#f2e6c8'; c.fillRect(-6, -21.5, 12, 4);
+    c.fillStyle = '#211b3c';
+    if (mode === 'dizzy') { c.font = '700 5px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('x x', 0, -19.5); }
+    else { v.circle(-2.4, -19.5, 1.1); c.fill(); v.circle(2.4, -19.5, 1.1); c.fill(); }
+    c.fillStyle = '#c8474a'; c.fillRect(-7, -9, 14, 2);
+    c.restore();
+    if (mode === 'alert') v.label('!', x, y - 36, 13, '#ff9aa8');
+    if (mode === 'dizzy') for (let k = 0; k < 3; k++) { const a = t * 6 + k * 2.1; v.star(x + Math.cos(a) * 10, y - 30 + Math.sin(a) * 3, 2.6, '#ffe7a8'); }
+  };
+  // a steamer basket
+  const pw29rkSteamer = (v, x, y) => { const c = v.ctx; c.fillStyle = '#d9b06a'; c.strokeStyle = '#7a5a2a'; c.lineWidth = 1; v.rr(x - 7, y - 3, 14, 6, 2); c.fill(); c.stroke(); };
+  const pw29rkBao = (v, x, y) => {
+    const c = v.ctx;
+    v.fillCircle(x, y, 7.5, 'rgba(255,240,210,0.18)');
+    c.fillStyle = '#fff6e6'; c.strokeStyle = '#8a6a4a'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(x - 5.5, y + 3); c.quadraticCurveTo(x - 6.5, y - 3, x, y - 5); c.quadraticCurveTo(x + 6.5, y - 3, x + 5.5, y + 3); c.quadraticCurveTo(x, y + 4.5, x - 5.5, y + 3); c.closePath(); c.fill(); c.stroke();
+  };
+  definePreview('Runaway Rickshaw', {
+    blurb: 'One steers the runaway rickshaw downhill, the other swats foam stars with a sword.',
+    loop: 6.4, still: 2.9,
+    draw(v, t) {
+      const c = v.ctx, e = v.ease, scroll = t * pw29rkV;
+      // sky, stars, moon, far pagodas
+      const g = c.createLinearGradient(0, 0, 0, 180); g.addColorStop(0, '#0e1434'); g.addColorStop(0.65, '#2b2a68'); g.addColorStop(1, '#5a4a86');
+      c.fillStyle = g; c.fillRect(0, 0, 320, 180);
+      c.fillStyle = '#ffffff'; for (let i = 0; i < 22; i++) { c.globalAlpha = 0.4 + 0.4 * Math.sin(t * (pw29rkTAU / 3.2) * (1 + i % 2) + i); c.fillRect(v.rand(i * 5 + 1) * 320, v.rand(i * 5 + 2) * 70, 1.4, 1.4); }
+      c.globalAlpha = 1;
+      v.fillCircle(272, 32, 30, 'rgba(210,216,255,0.12)'); v.fillCircle(272, 32, 19, '#faf4d6'); v.fillCircle(266, 28, 3.5, 'rgba(196,190,170,0.5)');
+      c.fillStyle = '#2c2a58';
+      for (let k = -1; k < 5; k++) {
+        const px = k * 112 - ((scroll * 0.25) % 112) + 40, ph = 30 + v.rand(k + 40) * 16;
+        c.fillRect(px - 6, 104 - ph, 12, ph + 20);
+        for (let q = 0; q < 3; q++) { const yy = 104 - ph + q * ph * 0.3, ww = 18 - q * 3; c.beginPath(); c.moveTo(px - ww, yy + 5); c.lineTo(px, yy - 4); c.lineTo(px + ww, yy + 5); c.closePath(); c.fill(); }
+      }
+      // houses and stalls along the far side of the street (scroll with the street, 4 per loop)
+      const cols = ['#c8474a', '#3f8468', '#d98a3a', '#6a6cc0'];
+      for (let k = -1; k < 5; k++) {
+        const n = k + Math.floor(scroll / 112), hx = n * 112 - scroll + 20, base = pw29rkGy(hx + 40) - 16;
+        c.fillStyle = '#3a3566'; c.fillRect(hx, base - 54, 80, 54);
+        c.fillStyle = '#46507f'; c.beginPath(); c.moveTo(hx - 8, base - 52); c.quadraticCurveTo(hx + 40, base - 60, hx + 88, base - 52); c.lineTo(hx + 82, base - 60); c.lineTo(hx - 2, base - 60); c.closePath(); c.fill();
+        c.fillStyle = '#ffd98a'; c.fillRect(hx + 12, base - 44, 12, 12); c.fillRect(hx + 56, base - 44, 12, 12);
+        const col = cols[((n % 4) + 4) % 4];
+        for (let q = 0; q < 4; q++) { c.fillStyle = q % 2 ? '#f2e6c8' : col; c.fillRect(hx + 18 + q * 11, base - 22, 11, 7); }
+        c.fillStyle = '#8a5a3a'; c.fillRect(hx + 18, base - 12, 44, 12);
+        // a lantern string
+        for (let q = 0; q < 3; q++) { const lx = hx + 20 + q * 30, ly = base - 70 + Math.sin(q * 1.3) * 2; c.fillStyle = q === 1 ? '#ffb85a' : '#ff7a4a'; c.beginPath(); c.ellipse(lx, ly, 3, 4, 0, 0, pw29rkTAU); c.fill(); }
+      }
+      // the rival's watch roof (scrolls with the street)
+      const rx = 400 - pw29rkV * t, ry = pw29rkGy(rx) - 64;
+      c.fillStyle = '#3a3566'; c.fillRect(rx - 16, ry + 4, 32, 90);
+      c.fillStyle = '#46507f'; c.strokeStyle = '#1f2244'; c.lineWidth = 1; v.rr(rx - 22, ry, 44, 6, 2); c.fill(); c.stroke();
+      // the street: sloping cobbles, then the stone wall under it
+      c.fillStyle = '#48446e'; c.beginPath(); c.moveTo(0, pw29rkGy(0) - 16); c.lineTo(320, pw29rkGy(320) - 16); c.lineTo(320, 180); c.lineTo(0, 180); c.closePath(); c.fill();
+      c.strokeStyle = '#7d77a6'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, pw29rkGy(0) - 16); c.lineTo(320, pw29rkGy(320) - 16); c.stroke();
+      c.fillStyle = '#241f44'; c.beginPath(); c.moveTo(0, pw29rkGy(0) + 14); c.lineTo(320, pw29rkGy(320) + 14); c.lineTo(320, 180); c.lineTo(0, 180); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(20,18,50,0.35)';
+      for (let k = -1; k < 22; k++) { const x = k * 16 - (scroll % 16), r = v.rand((k + Math.floor(scroll / 16)) * 3); c.fillRect(x, pw29rkGy(x) - 10 + r * 18, 6, 1.6); }
+      c.strokeStyle = 'rgba(120,112,170,0.3)'; c.lineWidth = 1;
+      for (let r = 0; r < 3; r++) { const off = 26 + r * 12; c.beginPath(); c.moveTo(0, pw29rkGy(0) + off); c.lineTo(320, pw29rkGy(320) + off); c.stroke(); }
+      // the rival: pops up (1.6), warns (2.0-2.35), throws, then gets bonked (3.3) and goes dizzy
+      if (t > 1.5 && rx > -20) {
+        const pop = e.out(v.seg(t, 1.5, 1.9)) * (1 - v.seg(t, 3.75, 4.05)), mode = t >= 3.3 && t < 3.85 ? 'dizzy' : t >= 3.85 ? 'gone' : t >= 2.0 && t < 2.4 ? 'alert' : 'idle';
+        c.save(); c.beginPath(); c.rect(rx - 30, ry - 60, 60, 60); c.clip();
+        pw29rkRival(v, rx, ry + (1 - pop) * 26, mode, t);
+        c.restore();
+        if (mode === 'alert') { c.strokeStyle = 'rgba(255,150,160,' + (0.6 + 0.3 * Math.sin(t * 20)) + ')'; c.lineWidth = 2; v.circle(rx, ry - 18, 20 - 8 * v.seg(t, 2.0, 2.4)); c.stroke(); }
+      }
+      // the crate (passes the rickshaw at 1.9 s) and the ramp (at 3.9 s)
+      const cx = pw29rkX + pw29rkV * (1.9 - t);
+      if (cx > -20 && cx < 340) {
+        const cy = pw29rkGy(cx);
+        c.fillStyle = '#a8744c'; c.strokeStyle = '#4a2c1a'; c.lineWidth = 1.4; v.rr(cx - 8, cy - 13, 16, 13, 2); c.fill(); c.stroke();
+        c.beginPath(); c.moveTo(cx - 8, cy - 6.5); c.lineTo(cx + 8, cy - 6.5); c.stroke();
+        for (const dx of [-4, 0, 4]) v.fillCircle(cx + dx, cy - 15, 3, dx ? '#ff6b5a' : '#ff9a4a');
+      }
+      const px = pw29rkX + 8 + pw29rkV * (3.9 - t);
+      if (px > -40 && px < 360) {
+        const py = pw29rkGy(px);
+        c.fillStyle = '#a8744c'; c.strokeStyle = '#3c2416'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(px - 36, py - 36 * pw29rkK + 1); c.lineTo(px + 4, py - 16); c.lineTo(px + 4, py + 1); c.closePath(); c.fill(); c.stroke();
+        c.strokeStyle = '#ffffff'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(px - 18, py - 6); c.lineTo(px - 13, py - 10); c.lineTo(px - 14, py - 4); c.stroke();
+      }
+      // the rickshaw: a hop over the crate (1.55-2.25), a ramp jump (3.9-5.0)
+      const hopU = v.seg(t, 1.55, 2.25), jumpU = v.seg(t, 3.9, 5.0), air = hopU > 0 && hopU < 1 ? -v.hop(hopU, 16) : jumpU > 0 && jumpU < 1 ? -v.hop(jumpU, 46) : 0;
+      const land = t >= 5.0 && t < 5.3 ? Math.sin(v.seg(t, 5.0, 5.3) * Math.PI) * 2 : 0;
+      const gx = pw29rkX, gy0 = pw29rkGy(gx), ang = Math.atan(pw29rkK) + (jumpU > 0 && jumpU < 1 ? -0.25 * (1 - 2 * jumpU) : 0);
+      // dumplings along the ramp jump's path: each is scooped as the rickshaw passes it
+      let got = 0;
+      for (let k = 0; k < 4; k++) {
+        const tk = 4.15 + k * 0.22, bx = gx + pw29rkV * (tk - t), u = v.seg(tk, 3.9, 5.0), by = pw29rkGy(bx) - 34 - (-v.hop(u, 46));
+        if (t < tk) { if (bx < 340 && t > 3.0) { c.globalAlpha = v.seg(t, 3.0, 3.3); pw29rkBao(v, bx, by + Math.sin(t * 5 + k) * 1.5); c.globalAlpha = 1; } }
+        else { got++; v.sparkle(gx + pw29rkV * (tk - t) + 4, by, v.seg(t, tk, tk + 0.4), '#ffffff', 8); }
+      }
+      c.fillStyle = 'rgba(14,12,40,0.3)'; c.beginPath(); c.ellipse(gx, gy0 + 1, 26 - Math.min(12, air * 0.2), 3, 0, 0, pw29rkTAU); c.fill();
+      c.save(); c.translate(gx, gy0 - air + land); c.rotate(ang);
+      const wa = scroll / 10;
+      const wheel = (x, r, far) => {
+        c.strokeStyle = far ? '#1c1430' : '#2c1c26'; c.lineWidth = far ? 2 : 2.6; v.circle(x, -r, r - 1); c.stroke();
+        c.strokeStyle = far ? '#4a3040' : '#a8744c'; c.lineWidth = 1.2; c.beginPath();
+        for (let k = 0; k < 3; k++) { const a = wa + k * Math.PI / 3; c.moveTo(x + Math.cos(a) * (r - 2), -r + Math.sin(a) * (r - 2)); c.lineTo(x - Math.cos(a) * (r - 2), -r - Math.sin(a) * (r - 2)); }
+        c.stroke(); v.fillCircle(x, -r, 2, far ? '#4a3040' : '#e2a93b');
+      };
+      wheel(4, 11, true);
+      // the steamer baskets, the seat back and canopy posts
+      c.fillStyle = '#5a3824'; c.fillRect(-32, -21, 14, 2.5);
+      for (let k = 0; k < 4; k++) pw29rkSteamer(v, -25, -24 - k * 5);
+      c.fillStyle = '#8a2c34'; v.rr(-20, -40, 7, 28, 3); c.fill();
+      c.fillStyle = '#5a3824'; c.fillRect(-18, -52, 2, 14); c.fillRect(13, -52, 2, 30);
+      // Bo steers from the seat
+      const lean = t > 0.4 && t < 1.0 ? -0.15 : 0;
+      v.hero(1, -3, -19, { s: 0.55, face: 1, rot: lean, shadow: false, mood: t >= 5.0 ? 'joy' : t > 1.3 && t < 2.3 ? 'grit' : 'happy' });
+      c.fillStyle = '#d4e6ff'; c.fillRect(-8.5, -30, 11, 2);
+      // the red tub, the shafts and their lantern
+      c.fillStyle = '#c8474a'; c.strokeStyle = '#3c1420'; c.lineWidth = 1.4;
+      c.beginPath(); c.moveTo(-20, -23); c.lineTo(15, -23); c.quadraticCurveTo(19, -17, 15, -10); c.lineTo(-17, -10); c.quadraticCurveTo(-21, -15, -20, -23); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle = '#f2e6c8'; c.fillRect(-18, -19, 33, 2);
+      c.strokeStyle = '#8a5a3a'; c.lineWidth = 2.2; c.beginPath(); c.moveTo(15, -16); c.lineTo(40, -12); c.stroke();
+      v.fillCircle(40, -9, 5, 'rgba(255,190,110,0.25)'); c.fillStyle = '#ff7a4a'; c.beginPath(); c.ellipse(40, -9, 2.6, 3.3, 0, 0, pw29rkTAU); c.fill();
+      // the canopy roof
+      c.fillStyle = '#46507f'; c.strokeStyle = '#1f2244'; c.lineWidth = 1.2;
+      c.beginPath(); c.moveTo(-25, -50); c.quadraticCurveTo(-28, -51, -29, -55); c.lineTo(21, -55); c.quadraticCurveTo(20, -51, 17, -50); c.closePath(); c.fill(); c.stroke();
+      wheel(-4, 12, false);
+      // Pip rides on top with the sword
+      const swingU = v.seg(t, 2.72, 2.95), cheer = t >= 5.05;
+      const hx = 3, hy = -64, sa = cheer ? -Math.PI / 2 - 0.15 : swingU > 0 && swingU < 1 ? v.lerp(-2.3, 0.35, e.out(swingU)) : swingU >= 1 && t < 3.3 ? 0.35 : -0.75;
+      v.hero(0, -4, -55, { s: 0.6, face: 1, shadow: false, mood: cheer ? 'joy' : t > 2.3 && t < 2.95 ? 'grit' : 'happy', sq: cheer ? -0.1 + 0.1 * Math.sin(t * 14) : 0 });
+      c.fillStyle = '#ffd9c2'; c.fillRect(-10, -67.5, 12, 2.2);
+      c.strokeStyle = '#ffd9c2'; c.lineWidth = 1.5; c.lineCap = 'round'; c.beginPath(); c.moveTo(-10, -66.5); c.quadraticCurveTo(-15, -67 + Math.sin(t * 12) * 1.5, -19, -64 + Math.sin(t * 12 + 1) * 2.5); c.stroke();
+      c.strokeStyle = '#3c2416'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + Math.cos(sa) * 4, hy + Math.sin(sa) * 4); c.stroke();
+      c.strokeStyle = '#eef2ff'; c.lineWidth = 2; c.beginPath(); c.moveTo(hx + Math.cos(sa) * 4, hy + Math.sin(sa) * 4); c.lineTo(hx + Math.cos(sa) * 19, hy + Math.sin(sa) * 19); c.stroke();
+      if (swingU > 0 && swingU < 1) { c.strokeStyle = 'rgba(255,255,255,' + (0.8 * (1 - swingU)) + ')'; c.lineWidth = 3; c.beginPath(); c.arc(hx, hy, 17, -2.3, sa); c.stroke(); }
+      c.restore();
+      // the foam star: thrown 2.4, arrives at the sword 2.85, flies back 2.9-3.3
+      const tipX = gx + 18, tipY = gy0 - 66;
+      if (t >= 2.4 && t < 2.88) {
+        const u = v.seg(t, 2.4, 2.88), sx = v.lerp(400 - pw29rkV * 2.4 - 8, tipX, u), sy = v.lerp(pw29rkGy(400 - pw29rkV * 2.4) - 84, tipY, u) - Math.sin(Math.PI * u) * 14;
+        pw29rkStar(v, sx, sy, 6, t * 16);
+        if (u > 0.55) { c.strokeStyle = '#8fe3b0'; c.lineWidth = 1.6; v.circle(sx, sy, 9); c.stroke(); }
+      } else if (t >= 2.88 && t < 3.3) {
+        const u = v.seg(t, 2.88, 3.3), tx = 400 - pw29rkV * 3.3, ty = pw29rkGy(400 - pw29rkV * 3.3) - 84;
+        pw29rkStar(v, v.lerp(tipX, tx, u), v.lerp(tipY, ty, u) - Math.sin(Math.PI * u) * 12, 6, -t * 20, '#ffd9c2');
+      }
+      // chevrons by Pip while the star is coming
+      if (t >= 2.0 && t < 2.85) {
+        c.strokeStyle = Math.sin(t * 18) > -0.2 ? '#ff9aa8' : '#ffd0d8'; c.lineWidth = 2.4; c.lineCap = 'round'; c.lineJoin = 'round';
+        for (let k = 0; k < 2; k++) { const x = gx + 34 + k * 7; c.beginPath(); c.moveTo(x + 4, tipY - 12); c.lineTo(x, tipY - 6); c.lineTo(x + 4, tipY); c.stroke(); }
+      }
+      // words, sparkles and the cheer
+      if (t >= 1.75 && t < 2.35) v.label('Boing!', gx - 4, gy0 - 92, 12, '#d9ffd0');
+      if (t >= 2.85 && t < 3.6) { v.sparkle(tipX, tipY, v.seg(t, 2.85, 3.25), '#ffffff', 10); v.label('Shing!', tipX + 16, tipY - 16, 13, '#ffffff'); }
+      if (t >= 3.3 && t < 3.95) v.label('Bonk!', 400 - pw29rkV * t, pw29rkGy(400 - pw29rkV * t) - 128, 13, '#ffe7a8');
+      if (t >= 3.95 && t < 4.8) v.label('Wheeee!', gx + 34, 30, 14, '#ffffff');
+      v.pill('Dumplings: ' + got, 6, 12, { align: 'left', size: 10 });
+      if (t >= 5.0) { v.label('Yum! +' + got, 170, 38, 16, '#ffe7a8'); v.confetti(gx, gy0 - 70, v.seg(t, 5.0, 6.4)); }
+    },
+  });
+}
 // ----- END 29-3 Runaway Rickshaw -----
 
 // ----- BEGIN 29-4 Throwing Star Duel -----

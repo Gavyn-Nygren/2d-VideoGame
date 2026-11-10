@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Throwing Star Duel balance check: node tools/w29/starduel-stats.js [--skills=normal,normal] [--n=20] [--nohelp=1]
+// Throwing Star Duel balance check: node tools/w29/starduel-stats.js [--skills=normal,normal] [--n=20] [--nohelp=1] [--from=0 (seed offset)]
 // Plays n computer-vs-computer matches and prints who won, how long rounds lasted and what happened in them.
 'use strict';
 const path = require('path');
@@ -19,12 +19,12 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
   await page.goto('file://' + path.resolve(__dirname, '../../index.html'));
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
   const n = +opt('n', 20), skills = opt('skills', 'normal,normal').split(',');
-  const r = await page.evaluate(async ({ n, skills, nohelp }) => {
+  const r = await page.evaluate(async ({ n, skills, nohelp, from }) => {
     const P = window.__pipbo, G = P.G, i = P.LEVELS.findIndex(l => l.mode === 'starduel');
     const out = { wins: [0, 0, 0], secs: [], reasons: {}, roundWins: [0, 0], stat: null, matchT: [] };
     P.MODES.starduel.testNoHelp = !!nohelp;
     for (let seed = 1; seed <= n; seed++) {
-      window.__seed(seed * 7919); window.__inStep = true;
+      window.__seed((seed + from) * 7919); window.__inStep = true;
       G.manual = true; P.CPU.skillOf = skills.slice(); G.cpuOn = [true, true];
       delete G.results[i]; P.loadLevel(i); G.introT = 0;
       let k = 0;
@@ -43,7 +43,7 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
     }
     P.MODES.starduel.testNoHelp = false;
     return out;
-  }, { n, skills, nohelp: opt('nohelp', '') === '1' });
+  }, { n, skills, nohelp: opt('nohelp', '') === '1', from: +opt('from', 0) });
   const sec = r.secs.slice().sort((a, b) => a - b), avg = sec.reduce((a, b) => a + b, 0) / (sec.length || 1);
   console.log(`skills ${skills.join('/')}  matches ${n}: Pip ${r.wins[0]}  Bo ${r.wins[1]}  draw/unfinished ${r.wins[2]}   rounds won ${r.roundWins.join('-')}`);
   console.log(`  round secs: avg ${avg.toFixed(1)}  min ${sec[0]}  median ${sec[sec.length >> 1]}  max ${sec[sec.length - 1]}   match secs avg ${(r.matchT.reduce((a, b) => a + b, 0) / (r.matchT.length || 1)).toFixed(0)}`);

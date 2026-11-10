@@ -30,13 +30,14 @@
      and Bo swap jobs. 4 stretches (roomWord 'Stretch'): Market Hill, Lantern Lane, Kite Bridge, The Big Plunge.
      Pip steers 1 and 3, Bo steers 2 and 4 (room def `steer`).
    GOLD HELP (announced with the gold banner, counted on the results card, only while both are playing):
-     3 stars get through in one stretch: a gold sword for the rest of it (it deflects stars from every side).
-     3 crashes or splashes in one stretch: gold wheels for the rest of it (they bump obstacles aside and bounce over
-     canals by themselves).
-   IDLE: 15 s with no person pressing anything: "Taking a break", the rickshaw is held still and the clock stops.
+     3 stars get through in one stretch: a gold sword for 15 s (it deflects stars from every side, a longer swing, and
+     lantern gates swish past it); 3 crashes, splashes or bridge bonks: gold wheels for 15 s (they bump obstacles aside
+     and bounce over canals). The panel shows the seconds left; a message says when it runs out. 3 more misses in the
+     same stretch earn it again, so a stuck pair keeps getting help but steering and timing still matter.
+   IDLE: 25 s with no person pressing anything: "Taking a break", the rickshaw is held still and the clock stops.
    Scoring: dumplings picked up, spills, stars bonked back. Medal:
      Gold   = time <= 3:40, at least 75% of the dumplings, and at most 6 spills.
-     Silver = time <= 5:00, at least 50% of the dumplings, and at most 16 spills.   Otherwise Bronze.
+     Silver = time <= 5:00, at least 50% of the dumplings, and at most 20 spills.   Otherwise Bronze.
    Room def: { title, steer: 0|1, pace, warn, flight, course: [tokens] }. Course tokens (x advances only with fN):
      fN  street for N px                     sN  the slope becomes N percent from here (blends over about 250 px)
      crate:L  barrel:L  hens:L               a low thing in lane L (f far, n near, b both): hop it or swerve
@@ -58,9 +59,9 @@
     laneRate: 5.5, laneOff: [-24, 22], laneHit: 0.55,
     hopV: 480, hopG: 1300, rampV: 520, rampG: 1000, front: 34, back: -34,
     stopT: 0.7, dunkT: 1.0, restockT: 2.2, hitSlow: 0.72,
-    swingT: 0.3, great: 0.14, whiffCd: 0.26, okCd: 0.08, dizzyT: 0.9, volleyGap: 0.6,
-    cargo: 5, camLead: 0.3, roadY: 340, Z: 1.12, idleWait: 15, goldHits: 3, goldCrash: 3,
-    goldT: 220, goldBao: 0.75, goldSpills: 6, silverT: 300, silverBao: 0.5, silverSpills: 16,
+    swingT: 0.3, great: 0.14, grace: 0.08, whiffCd: 0.26, okCd: 0.08, dizzyT: 0.9, volleyGap: 0.6,
+    cargo: 5, camLead: 0.3, roadY: 362, Z: 1.12, idleWait: 25, goldHits: 3, goldCrash: 3, goldDur: 15,
+    goldT: 220, goldBao: 0.75, goldSpills: 6, silverT: 300, silverBao: 0.5, silverSpills: 20,
   };
   // things on the street: w = width, clear = how high the wheels must be to pass over it
   const OB = {
@@ -146,7 +147,7 @@
     st.rk = { x: 150, v: 0, ly: 1, laneT: 1, hopY: 0, hopV: 0, hopG: S.hopG, air: false, ramp: false, stopT: 0, wob: 0, wobA: 0, wheel: 0, brake: false, dunk: 0, dunkX0: 0, dunkX1: 0, puff: 0, ang: 0 };
     st.rd = { aim: 'a', swing: 0, swingDir: 'a', swingHit: false, cd: 0, duck: false, dizzy: 0, glint: 0 };
     st.stars = []; st.loose = []; st.restock = 0; st.rBao = 0; st.rHits = 0; st.rCrash = 0; st.cargo = S.cargo;
-    st.gold = { sword: false, wheels: false };
+    st.gold = { sword: 0, wheels: 0 }; // gold help: seconds left (0 = none)
     st.state = 'go'; st.endT = 0; st.segStart = G.time; st.said = false; st.rolled = false;
     st.cam = { x: st.rk.x - W * S.camLead, y: gy(st.c, st.rk.x - W * S.camLead + W * 0.5) - S.roadY };
     K.fx(st);
@@ -167,7 +168,7 @@
     st.waiting = st.state === 'go' && K.idle(st, dt, S.idleWait);
     const live = G.introT <= 0 && !st.waiting && st.state === 'go';
     if (!live) for (const p of G.players) { p.pendingJump = false; p.pendingAct = false; }
-    if (live) { steerer(st, dt); rider(st, dt); }
+    if (live) { steerer(st, dt); rider(st, dt); goldTick(st, dt); }
     move(st, dt, live);
     if (st.state === 'go') {
       if (live) { hazards(st); pickups(st); throwers(st, dt); stars(st, dt); }
@@ -177,6 +178,13 @@
     cam(st, dt);
     K.tickFx(st, dt);
     mirror(st);
+  }
+  // gold help runs out after S.goldDur seconds of riding (it can be earned again with 3 more stars or crashes)
+  function goldTick(st, dt) {
+    for (const k of ['sword', 'wheels']) if (st.gold[k] > 0) {
+      st.gold[k] = Math.max(0, st.gold[k] - dt);
+      if (st.gold[k] === 0) K.msg(st, k === 'sword' ? 'The gold sword is back to plain wood. You can do it!' : 'Gold wheels used up. Steady steering!', '#ffe7a8', 3);
+    }
   }
   const upKey = i => !!(i.up || i.jump);
   function steerer(st, dt) {
@@ -333,8 +341,8 @@
     Sfx.play('rickshawCrash');
     spill(st, x, y, word);
     if (st.rCrash >= S.goldCrash && !st.gold.wheels && K.both(st)) {
-      st.gold.wheels = true;
-      K.goldHelp(st, 'Gold wheels! They bump things aside and bounce over canals');
+      st.gold.wheels = S.goldDur; st.rCrash = 0;
+      K.goldHelp(st, 'Gold wheels for ' + S.goldDur + ' s! They bump things aside and bounce over canals');
     }
   }
   // the one soft fail: a wobble and a steamer basket flies off the back
@@ -403,7 +411,9 @@
         // a kite ninja drifts in over the rickshaw, drops its star, and sails off behind
         const rel = th.st === 'warn' ? K.lerp(520, 30, K.smooth(th.t / (c.warn * 0.75))) : th.st === 'thrown' ? 30 - Math.max(0, th.t - 0.5) * 260 : th.st === 'dizzy' ? th.rel - th.t * 200 : 600;
         if (th.st !== 'dizzy') th.rel = rel;
-        th.x = rk.x + rel; th.y = gy(c, rk.x) - 252 + Math.sin(G.clock * 2.4 + th.seed) * 7 - (th.st === 'dizzy' ? th.t * 60 : 0);
+        // it hangs well clear of the rider's head (its ninja's feet about 80 px over the rider), below the HUD pills
+        const top = Math.min(gy(c, rk.x) - 252, laneY(c, rk.x, rk.ly) - 135 * S.Z - 80);
+        th.x = rk.x + rel; th.y = Math.max(top, st.cam.y + 104) + Math.sin(G.clock * 2.4 + th.seed) * 7 - (th.st === 'dizzy' ? th.t * 60 : 0);
       }
     }
   }
@@ -415,14 +425,18 @@
         if (s.dir === 'k') { s.x0 = s.th.x; s.y0 = s.th.y + 8; }
         const u = Math.min(1, s.t / s.T);
         s.x = K.lerp(s.x0, tp.x, u); s.y = K.lerp(s.y0, tp.y, u) - Math.sin(Math.PI * u) * s.arc;
-        if (u >= 1) arrive(st, s);
+        if (u >= 1) {
+          // a star that reaches the rider waits a blink (S.grace) for a swing that is just a little late
+          s.late = (s.late === undefined ? -dt : s.late) + dt;
+          if (s.late >= S.grace || st.state !== 'go' || deflect(st, s, s.late > 0)) arrive(st, s);
+        }
       } else if (s.st === 'back') {
         const u = Math.min(1, s.t / 0.3);
         s.x = K.lerp(s.bx, s.th.x, u); s.y = K.lerp(s.by, s.th.y - 22, u) - Math.sin(Math.PI * u) * 20;
         if (u >= 1) {
           s.st = 'gone'; s.th.st = 'dizzy'; s.th.t = 0;
           Sfx.play('ninjaBonk'); Sfx.play('ninjaDizzy');
-          K.pop(st, s.th.x, s.th.y - 60, 'Bonk!', '#ffffff', 22);
+          K.pop(st, s.th.x, s.th.y - 84, 'Bonk!', '#ffffff', 22);
           K.spark(st, s.th.x, s.th.y - 26, 8, ['#ffffff', '#ffe7a8']);
         }
       } else if (s.st === 'off') {
@@ -432,21 +446,27 @@
     }
     st.stars = st.stars.filter(s => s.st !== 'gone');
   }
-  function arrive(st, s) {
+  // a swing that meets the star: true when it was deflected (late: the swing came just after the star arrived)
+  function deflect(st, s, late) {
     const rd = st.rd, rk = st.rk;
-    if (st.state !== 'go') { s.st = 'gone'; K.poof(st, s.x, s.y, 5); return; }
     if (rd.swing > 0 && !rd.duck && rd.dizzy <= 0 && (rd.swingDir === s.dir || st.gold.sword)) {
-      const since = rd.swingMax - rd.swing, great = since <= S.great;
+      const since = rd.swingMax - rd.swing, great = !late && since <= S.great;
       rd.swingHit = true; rd.swing = Math.min(rd.swing, 0.1); rd.cd = S.okCd; rd.glint = 1;
       if (st.gold.sword) rd.swingDir = s.dir;
       st.stats.deflects++;
       Sfx.play('ninjaShing', great ? 1.15 : 0.9);
       K.spark(st, s.x, s.y, great ? 9 : 5, ['#ffffff', '#cfe0ff']);
       s.t = 0;
-      if (great) { s.st = 'back'; s.bx = s.x; s.by = s.y; st.stats.greats++; K.pop(st, s.x, s.y - 40, 'Great! Right back!', '#d9ffd0', 20); }
+      if (great) { s.st = 'back'; s.bx = s.x; s.by = s.y; st.stats.greats++; K.pop(st, s.x, s.y - 34, 'Great!', '#d9ffd0', 20); }
       else { s.st = 'off'; s.vx = (s.dir === 'b' ? -1 : 1) * (120 + Math.random() * 120) + rk.v; s.vy = -420; K.pop(st, s.x, s.y - 40, 'Clink!', '#ffffff', 18); }
-      return;
+      return true;
     }
+    return false;
+  }
+  function arrive(st, s) {
+    const rd = st.rd, rk = st.rk;
+    if (s.st !== 'fly') return;
+    if (st.state !== 'go') { s.st = 'gone'; K.poof(st, s.x, s.y, 5); return; }
     // it got through: a soft bonk on the cargo
     s.st = 'off'; s.t = 0; s.vx = rk.v * 0.5 - 60; s.vy = -260;
     st.stats.hits++; st.rHits++;
@@ -456,8 +476,8 @@
     if (rd.swing <= 0 && rd.aim !== s.dir && !rd.duck) K.hint(st, st.ride, 'Point the sword ' + DIRS[s.dir].word + ' ' + aimKey(st.ride, s.dir) + ' first, then swing ' + K.key(st.ride, 'act'), 3.2);
     else K.hintOnce(st, 'time', st.ride, 'Swing ' + K.key(st.ride, 'act') + ' just as the star arrives!', 3);
     if (st.rHits >= S.goldHits && !st.gold.sword && K.both(st)) {
-      st.gold.sword = true;
-      K.goldHelp(st, 'Gold sword! It swats stars from every side this stretch');
+      st.gold.sword = S.goldDur; st.rHits = 0;
+      K.goldHelp(st, 'Gold sword for ' + S.goldDur + ' s! It swats stars from every side');
     }
   }
   const aimKey = (id, d) => K.key(id, d === 'a' ? 'right' : d === 'b' ? 'left' : 'up');
@@ -619,6 +639,17 @@
     ctx.fillStyle = '#48446e'; ctx.beginPath(); edge(c, x0, x1, -50); edge(c, x0, x1, 52, true); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = '#7d77a6'; ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.beginPath(); edge(c, x0, x1, -48); ctx.stroke();
     ctx.strokeStyle = '#191634'; ctx.lineWidth = 7; ctx.beginPath(); edge(c, x0, x1, 53); ctx.stroke();
+    // the stone wall that holds the street up: courses of big blocks, with a few moss tufts
+    ctx.strokeStyle = 'rgba(120,112,170,0.22)'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let r = 0; r < 6; r++) {
+      const off = 82 + r * 30;
+      edge(c, x0, x1, off); ctx.moveTo(x1, gy(c, x1) + off + 30);
+      for (let x = Math.floor(x0 / 64) * 64 + (r % 2) * 32; x < x1; x += 64) { ctx.moveTo(x, gy(c, x) + off); ctx.lineTo(x, gy(c, x) + off + 30); }
+      ctx.moveTo(x0, gy(c, x0) + off + 30);
+    }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(110,170,120,0.35)';
+    for (let x = Math.floor(x0 / 150) * 150; x < x1; x += 150) { const h = K.hash(x * 0.37); if (h < 0.5) continue; const y = gy(c, x) + 60; ctx.beginPath(); ctx.ellipse(x + h * 40, y, 12, 5, 0, 0, TAU); ctx.fill(); }
     // cobbles and the lane line
     ctx.fillStyle = 'rgba(20,18,50,0.28)';
     for (let x = Math.floor(x0 / 46) * 46; x < x1; x += 46) { const r = K.hash(x); ctx.fillRect(x + r * 20, gy(c, x) - 36 + K.hash(x + 7) * 76, 12 + r * 8, 3); }
@@ -922,10 +953,10 @@
       const fs = big ? 20 : 14, h = big ? 40 : 28, tm = fmtTime(G.time), n = st.bao + ' / ' + st.totalAll, sp = String(st.stats.spills);
       ctx.font = FONT(fs);
       const tw = ctx.measureText(tm).width, nw = ctx.measureText(n).width, sw = ctx.measureText(sp).width, icon = fs * 1.5;
-      const w = tw + fs + icon + nw + fs * 0.8 + icon + sw + 30, x0 = pill(W - 14, 12, w, h, 'right'), cy = 12 + h / 2 + 0.5;
+      const w = tw + fs + icon + 5 + nw + fs * 0.8 + icon + sw + 30, x0 = pill(W - 14, 12, w, h, 'right'), cy = 12 + h / 2 + 0.5;
       let x = x0 + 15;
       text(tm, x, cy, fs, st.waiting ? '#aab' : C.paper, 'left', 'body'); x += tw + fs;
-      drawBao(x + icon / 2 - 2, cy + 1, fs / 16, 0); x += icon;
+      drawBao(x + icon / 2, cy + 1, fs / 16, 0); x += icon + 5;
       text(n, x, cy, fs, '#ffffff', 'left', 'body'); x += nw + fs * 0.8;
       drawSteamer(x + icon / 2 - 3, cy, -0.5); x += icon;
       text(sp, x, cy, fs, st.stats.spills > S.goldSpills ? '#ffb0a0' : '#ffffff', 'left', 'body');
@@ -935,13 +966,13 @@
     if (!play) return;
     const pl = plan(st), rk = st.rk, rd = st.rd, D = st.steer, R = st.ride;
     {
-      const b = K.panel(D, 'steers', 236, 58, z), cy = b.y + 27 * z, chh = 23 * z, qt = K.quiet(D), cw = (b.w - 24 * z - 12 * z) / 3, x = b.x + 12 * z;
+      const b = K.panel(D, st.gold.wheels ? 'gold wheels ' + Math.ceil(st.gold.wheels) + 's' : 'steers', 236, 58, z), cy = b.y + 27 * z, chh = 23 * z, qt = K.quiet(D), cw = (b.w - 24 * z - 12 * z) / 3, x = b.x + 12 * z;
       K.chip(x, cy, cw, chh, (qt ? '' : K.key(D, pl.lane === 0 ? 'up' : 'down') + ' ') + 'SWERVE', pl.sWhy === 'swerve', rk.ly !== rk.laneT, z);
       K.chip(x + cw + 6 * z, cy, cw, chh, (qt ? '' : K.key(D, 'act') + ' ') + 'HOP', pl.hopSoon || pl.hop, rk.air, z);
       K.chip(x + 2 * (cw + 6 * z), cy, cw, chh, (qt ? '' : K.key(D, 'left') + ' ') + 'BRAKE', false, rk.brake, z);
     }
     {
-      const b = K.panel(R, st.gold.sword ? 'gold sword' : 'sword', 236, 58, z), cy = b.y + 27 * z, chh = 23 * z, qt = K.quiet(R), cw = (b.w - 24 * z - 12 * z) / 3, x = b.x + 12 * z;
+      const b = K.panel(R, st.gold.sword ? 'gold sword ' + Math.ceil(st.gold.sword) + 's' : 'sword', 236, 58, z), cy = b.y + 27 * z, chh = 23 * z, qt = K.quiet(R), cw = (b.w - 24 * z - 12 * z) / 3, x = b.x + 12 * z;
       const d = pl.dir || rd.aim;
       K.chip(x, cy, cw, chh, (qt ? '' : aimKey(R, d) + ' ') + (d === 'a' ? 'AHEAD' : d === 'b' ? 'BEHIND' : 'UP'), pl.rWhy === 'aim', false, z);
       K.chip(x + cw + 6 * z, cy, cw, chh, (qt ? '' : K.key(R, 'act') + ' ') + 'SWING', pl.rWhy === 'swing' && pl.tta < 0.28 && rd.swing <= 0, rd.swing > 0, z);

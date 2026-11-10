@@ -11,7 +11,7 @@
      SWORD RIDER: points the sword (◀ behind, ▶ ahead, ▲ up) at the side of the star that arrives soonest (or of the
      next warning), holds ▼ under a lantern gate, and taps the action about 0.09 s before the star arrives, which is
      inside the "great" window, so its stars fly back and bonk the thrower.
-     It can't finish alone: the level takes a break after 15 s with no person pressing anything (the rickshaw is held
+     It can't finish alone: the level takes a break after 25 s with no person pressing anything (the rickshaw is held
      still), and the shared idle stop (CPU.idleStop) waits too. Team brains always play at full skill. */
   const M = () => MODES.rickshaw;
   cpuBrain('rickshaw', {

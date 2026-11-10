@@ -7,11 +7,14 @@
      "toss here" ring and the HUD chips read (it looks a few seconds ahead with the level's own guard rules).
      SNEAKER (plan.sneak): creeps to the next hiding spot only when the look-ahead says nobody will see it on the way,
      waits hidden otherwise, turns back to the last spot if the way closes, dashes only where nobody can hear, hops
-     crates and creaky boards, pulls the lever in the gatehouse arch, and in a chase sprints for the hiding spot it can
-     reach with the guards farthest behind.
+     crates and creaky boards, pulls the lever in the gatehouse arch, and in a chase sprints for the hiding spot (not one
+     of the red-eyed ones they saw it near) or gatehouse it can reach with the guards farthest behind, hops a guard in
+     the way, slides (▼) when a guard is close behind and the run is long, then stays still until they give up.
      THROWER (plan.toss): walks and slides the aim ring onto the pebble spot the plan picked (the one that opens the
      way soonest; two pebbles for two guards), tosses, then waits. In a chase it leads the nearest chasing guard with
      pebbles ("Bonk!"). When the lever is pulled it walks through the tower door.
+     The level's gold owl (stuck 45 s at a post) only hoots at the plan's pebble spot; the thrower brain does not toss
+     while it is on its way.
      It can't finish alone: the sneaker can't lure the sentries and the thrower can't pull the levers, and each needs
      the other to walk through the gate. It waits for a slow person (the plan is worked out again all the time) and
      after 12 s with no person pressing anything the level takes a break; the shared idle stop (CPU.idleStop) waits too. */
@@ -26,11 +29,13 @@
         const sp = pl.sneak;
         if (sp.dir > 0) out.right = true; else if (sp.dir < 0) out.left = true;
         if (sp.jump) out.jump = 'tap';
+        if (sp.slide) out.down = true;
         if (sp.mode === 'pull') out.act = 'tap';
         else if (sp.dash && sp.dir && (sp.mode === 'go' || sp.mode === 'gate')) out.act = true;
         if (human) {
           S.wait = sp.mode === 'wait' && sp.wait === Infinity ? S.wait + dt : 0;
-          if (st.chase) cpuSay(p, 'Bonk them with pebbles!', 1.4);
+          if (st.chase && st.chase.lose != null) cpuSay(p, 'Shh... hiding!', 1.4);
+          else if (st.chase) cpuSay(p, 'Bonk them with pebbles!', 1.4);
           else if (S.wait > 2.5) cpuSay(p, st.k === 0 || st.waitT > 8 ? 'Toss a pebble at the ring!' : 'Toss a pebble to lure him away!', 1.8);
           else if (sp.mode === 'partner') cpuSay(p, 'Gate is open! Come through the tower!', 1.6);
           else if (sp.mode === 'pull') cpuSay(p, 'Pulling the lever!', 1.0);

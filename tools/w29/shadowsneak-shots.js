@@ -3,7 +3,7 @@
 //   --solo=N   1-player mode with a pretend person as player N (their keys are pressed by the brain's own rules, so the
 //              level plays on and the picture shows what a person sees: their prompts, the computer's speech bubbles)
 //   --rush=T   from T seconds the sneaker dashes right for 1.6 s (to get spotted: the chase, the gong, a catch)
-//   --tp=T     at T the sneaker is put down right in front of a guard (to see a catch)
+//   --tp=T     at T the sneaker is put down right in front of a guard (to see a catch); --freeze=S holds it still S s (2.5)
 //   --pause=T  press pause at T (the pause card);  times past the end show the results card
 // Writes build/w29/ss-<tag>-<t>.png. Times are simulated seconds after the room starts.
 'use strict';
@@ -19,14 +19,14 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
   const out = path.resolve(__dirname, '../../build/w29'); fs.mkdirSync(out, { recursive: true });
   const solo = +opt('solo', -1), rush = +opt('rush', -1), room = +opt('room', 0), tag = opt('tag', (solo >= 0 ? 'solo' + solo : 'pair') + '-r' + room);
-  await page.evaluate(({ solo, rush, room, tp }) => {
+  await page.evaluate(({ solo, rush, room, tp, fz }) => {
     const P = window.__pipbo, G = P.G, i = P.LEVELS.findIndex(l => l.mode === 'shadowsneak');
     G.manual = true; G.cpuOn = solo < 0 ? [true, true] : [solo !== 0, solo !== 1];
     P.loadLevel(i);
     for (let r = 0; r < room; r++) { G.introT = 0; P.nextRoom(); }
     const t0 = G.time, bs = {}, prev = {};
     const rushing = id => rush >= 0 && id === G.mst.sneak && G.time - t0 >= rush && G.time - t0 < rush + 1.6;
-    const tps = tp.split(',').filter(Boolean).map(Number), frozen = id => id === G.mst.sneak && tps.some(q => G.time - t0 >= q && G.time - t0 < q + 2.5);
+    const tps = tp.split(',').filter(Boolean).map(Number), frozen = id => id === G.mst.sneak && tps.some(q => G.time - t0 >= q && G.time - t0 < q + fz);
     P.CPU.filter = (p, o) => (frozen(p.id) ? {} : rushing(p.id) ? { right: true, act: true } : o);
     let tpN = 0;
     window.__ssStep = n => {
@@ -48,7 +48,7 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
         P.step(P.DT);
       }
     };
-  }, { solo, rush, room, tp: opt('tp', '') });
+  }, { solo, rush, room, tp: opt('tp', ''), fz: +opt('freeze', 2.5) });
   let t = 0;
   const pauseAt = +opt('pause', -1);
   for (const tt of times) {

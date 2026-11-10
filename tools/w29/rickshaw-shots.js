@@ -52,7 +52,7 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
   if (args.includes('--results')) {
     await page.evaluate(() => window.__rkStep(120 * 600));
     await page.evaluate(() => { const P = window.__pipbo; for (let k = 0; k < 400 && P.G.mode !== 'play'; k++) P.step(P.DT); });
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(2500);
     await shot('results');
     console.log(await page.evaluate(() => JSON.stringify([window.__pipbo.G.mode, window.__pipbo.G.time, window.__pipbo.G.mst.waiting, window.__pipbo.G.mst.rk.x, window.__pipbo.G.mst.stats])));
   }

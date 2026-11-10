@@ -12,16 +12,19 @@
      How to out-think it (on purpose, so Hard is beatable): two stars close together in different lanes muddle it, a
      quick duck-then-stand feint before a high throw makes it expect a low one, long rallies get harder for it too, and
      it can't swing while it is in the air or in the middle of its own throw.
-     Its own throws: it waits a beat between stars (Hard 0.9-1.7 s, Normal about 1.3-2.6 s, Easy 2-4 s), mixes high and
+     Its own throws: it waits a beat between stars (Hard 0.9-1.7 s, Normal about 1.1-2.1 s, Easy 1.6-3.2 s), mixes high and
      low (Easy mostly high), sometimes follows a star with one in the other lane, throws low at a ducking foe and high
      at a hopping one, and looks where the middle lantern
      will be before throwing (Hard nearly always, Easy seldom). It shuffles along its half now and then. Against a foe
      who camps in a duck, Normal and Hard often send two low stars close together (the second lands as the hop ends).
+     Skill: u = 0 Easy .. 1 Hard sets the lag and how often it parries (Easy 6%, Normal 42%, Hard 72% of the stars it
+     reads right); a bent u2 = u^0.45 (Normal about 0.76) sets blunders (Easy 34%, Normal 12%, Hard 5% a star, more in
+     long rallies) and throw pace, so Normal is a fair fight for an everyday player who dodges but rarely parries.
      It never touches level state: it only reads st and plan(). Both sides run the same code, mirrored. */
   const lerp = (a, b, u) => a + (b - a) * u;
   cpuBrain('starduel', {
     reset(S) { S.seen = {}; S.next = 1 + Math.random(); S.pend = null; S.goal = null; S.goalT = 0; S.foeDuck = -9; S.camp = 0; S.said = 0; S.round = 0; },
-    bubblePos(p) { return { x: cpuCx(p), y: p.y - 14 }; },
+    bubblePos(p) { return { x: cpuCx(p), y: p.y - 28 }; },   // the ninjas are drawn at twice the engine size
     think(S, p, o, dt, info) {
       const out = {}, st = info.mst, M = MODES.starduel;
       if (!st || !st.pl || !M || !G.match) return out;
@@ -35,7 +38,7 @@
       }
       if (st.res) return out;
       const sk = info.skill, u = clamp((sk - 0.35) / 0.65, 0, 1);   // 0 Easy, about 0.54 Normal, 1 Hard
-      const u2 = Math.pow(u, 0.75);                                  // the same, bent so Normal sits a little nearer Hard
+      const u2 = Math.pow(u, 0.45);                                  // the same, bent so Normal sits nearer Hard (about 0.76)
       const pl = M.plan(st, id);
       if (foe.duck) S.foeDuck = G.time;
       S.camp = foe.duck ? (S.camp || 0) + dt : 0;                    // how long the foe has sat in a duck
@@ -88,7 +91,7 @@
         const q = S.pend;
         q.t += dt;
         out.down = q.low;
-        if (q.t > 0.07 && me.duck === q.low && pl.grounded) { if (pl.canThrow) { out.act = 'tap'; if (!CPU.last[id].act) { S.pend = null; S.next = lerp(2.0, 0.9, u2) + Math.random() * lerp(2.0, 0.8, u2); if (S.combo) { S.combo = false; } else if (q.low && S.camp > 1 && Math.random() < 0.15 + 0.5 * u) { S.combo = true; S.next = 0.3; S.comboLow = true; } else if (Math.random() < 0.3 * u) { S.combo = true; S.next = 0.36; S.comboLow = !q.low; } } } }
+        if (q.t > 0.07 && me.duck === q.low && pl.grounded) { if (pl.canThrow) { out.act = 'tap'; if (!CPU.last[id].act) { S.pend = null; S.next = lerp(1.6, 0.9, u2) + Math.random() * lerp(1.6, 0.8, u2); if (S.combo) { S.combo = false; } else if (q.low && S.camp > 1 && Math.random() < 0.15 + 0.5 * u) { S.combo = true; S.next = 0.3; S.comboLow = true; } else if (Math.random() < 0.3 * u) { S.combo = true; S.next = 0.36; S.comboLow = !q.low; } } } }
         if (q.t > 0.8) S.pend = null;
         return out;
       }

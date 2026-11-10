@@ -8,7 +8,12 @@
    the camera and the picture (def.ownStep + ownHUD + noFalls); the engine grid is only spawns. World px; roofs are flat
    tops at their own heights, the street is at S.street.
    BOTH run with ◀ ▶ and jump with ▲. Small gaps and steps can be jumped, white roof cats must be hopped (a bump is a
-   dizzy second), crumbly roofs fall away 0.9 s after the first foot lands on them, and moon stars hang in the air.
+   0.7 s dizzy; the bumped cat then dozes for 1.8 s, so nobody gets stuck behind it), crumbly roofs fall away 0.9 s
+   after the first foot lands on them (back after 2.6 s), and moon stars hang in the air. A runner on the ground stops
+   and teeters at the edge of a wide gap instead of running off ("Too far to jump!"); jumping off is still allowed.
+   EDGE CATCH: a jump or rope leap that only just misses (feet up to S.mantle = 46 px below a roof's top, hands within
+   S.reach = 28 px of its edge, heading for it or straight after a rope leap) catches the edge: "Phew! Caught the edge!"
+   (counted as Edge catches on the results card). Running off a roof is never caught.
    A WIDE GAP needs the grappling hook, in three beats:
      1 THE THROWER (carries the hook; a strip in their colour marks the throwing spot at the roof's edge): the aim line
        sweeps up and down by itself; the action ('throw') throws along it. The hook must pass through the ring around the
@@ -21,7 +26,8 @@
      3 THE PULL: the swinger now holds the far end of the rope. The thrower HOLDS the action to hold on, the swinger taps
        the action to heave them up and over. Heaves in rhythm ("Heave... ho...") pull harder; mashing slips. Letting go
        of the action half way drops the thrower.
-   A FALL is soft: into a hay cart in the street and a bounce back up to the roof you left ("Whoops!", counted).
+   A FALL is soft: into a hay cart in the street and a bounce back up to the roof you left ("Whoops!", counted); a fall
+   from the rope also says "Pump higher, then leap when it says Leap!".
    Each stretch ends at a dojo gate; then Pip and Bo swap jobs. 4 stretches (roomWord 'Stretch'): Lantern Lane (Pip
    throws), Breezy Ridge (Bo throws; gusts of wind push back jumps and swings), Kite Alley (Pip; kites and crumbly
    roofs), The Moon Tower (Bo; everything, long gaps).
@@ -30,7 +36,9 @@
      2 falls from the rope: a gold rope that pumps higher, and a gold ledge on every far roof to land on;
      2 drops during the pull: a gold loop, so the thrower no longer has to hold on.
    IDLE: 12 s with no person pressing anything: "Taking a break" and the clock stops.
-   Medal: Gold <= 3:50 with <= 3 whoops and >= 75% of the moon stars; Silver <= 6:00 with <= 10 whoops.
+   Medal: Gold <= 3:50 with <= 3 whoops and >= 75% of the moon stars; Silver <= 6:00 with <= 10 whoops; else Bronze.
+   Results card: Moon stars, Hook throws (hits of throws), Whoops, Medal; a line with gaps, tugs, edge catches and cat
+   bumps, and the gold-help line.
    Room def: { title, thrower: 0|1, wind, sweep (s per aim sweep), course: [tokens] }. Tokens, left to right:
      'r420'         a roof 420 px wide. 'r420+30' / 'r420-25': 30 px lower / 25 px higher than the roof before it.
      'k150'         a crumbly roof.
@@ -49,7 +57,8 @@
     hand: 34,                       // the grip is this far above the feet on a rope
     gS: 1900, pump: 1.15, goldPump: 1.6, damp: 0.06, maxA: 1.4, tugE: 0.75, ledge: 56, grabT: 0.25,
     heave: 0.125, heaveCd: 0.32, heaveWin: 0.24, zipV: 1.1, dropT: 0.3,
-    crumbT: 0.9, crumbBack: 2.6, catW: 18, catH: 24, coinR: 30,
+    mantle: 46, reach: 28,                    // a near-miss jump or leap: feet this far below a roof's top still catch the edge
+    crumbT: 0.9, crumbBack: 2.6, catW: 18, catH: 24, catCalm: 1.8, coinR: 30,
     windA: 110, windS: 0.9, gust: 7,
     idleWait: 12, goldMiss: 3, goldFall: 2, goldDrop: 2,
     goldT: 230, silverT: 360,
@@ -98,7 +107,7 @@
       for (const it of (parts[1] || '').split(',')) {
         const q = /^([cps])(\d+)$/.exec(it); if (!q) continue;
         if (q[1] === 's') c.coins.push({ x: x + +q[2], y: y - 86 });
-        else c.cats.push({ x: x + +q[2], x0: x + +q[2], y, roof: R.i, prowl: q[1] === 'p', ph: c.cats.length * 2.3, hopT: 0, face: -1 });
+        else c.cats.push({ x: x + +q[2], x0: x + +q[2], y, roof: R.i, prowl: q[1] === 'p', ph: c.cats.length * 2.3, hopT: 0, calm: 0, face: -1 });
       }
       x += n;
     }
@@ -128,7 +137,7 @@
 
   /* ---------- a stretch (one room) ---------- */
   const newRunner = (id, x, y) => ({ id, x, y, vx: 0, vy: 0, face: 1, st: 'run', grounded: true, roof: 0, coy: 0, stun: 0, t: 0,
-    lastRoof: 0, lastX: x, rot: 0, fling: false, hop: 0, hx: 0, hy: 0, throwT: 0, sq: 0, from: null, to: null, why: '' });
+    lastRoof: 0, lastX: x, rot: 0, fling: false, hop: 0, hx: 0, hy: 0, throwT: 0, sq: 0, teeter: 0, from: null, to: null, why: '' });
   function room(st, L, k) {
     const def = L.def;
     st.k = k; st.thr = def.thrower || 0; st.swg = 1 - st.thr; st.title = def.title || '';
@@ -137,7 +146,7 @@
     st.run = [0, 1].map(id => newRunner(id, 70 + (id === st.thr ? 56 : 0), R0.y));
     st.hook = { state: 'held', x: 0, y: 0, vx: 0, vy: 0, d: 0, t: 0, a: 0, fx: 0, fy: 0 };
     st.rc = { miss: 0, sfall: 0, drop: 0 }; st.gold = { hook: false, rope: false, loop: false };
-    st.state = 'go'; st.endT = 0; st.segStart = G.time; st.clock = st.clock || 0; st.leafT = 0;
+    st.state = 'go'; st.endT = 0; st.party = false; st.cleared = false; st.lastRoom = false; st.windSaid = false; st.segStart = G.time; st.clock = st.clock || 0; st.leafT = 0;
     st.cam = { x: 0 };
     K.fx(st); actLabels(st); mirror(st);
   }
@@ -175,7 +184,7 @@
         }
       }
     }
-    for (const q of c.cats) { if (q.prowl) { const nx = q.x0 + Math.sin(st.clock * 0.7 + q.ph) * 44; q.face = nx > q.x ? 1 : -1; q.x = nx; } if (q.hopT > 0) q.hopT -= dt; }
+    for (const q of c.cats) { if (q.prowl) { const nx = q.x0 + Math.sin(st.clock * 0.7 + q.ph) * 44; q.face = nx > q.x ? 1 : -1; q.x = nx; } if (q.hopT > 0) q.hopT -= dt; if (q.calm > 0) q.calm -= dt; }
     for (const q of c.carts) if (q.sq > 0) q.sq = Math.max(0, q.sq - dt * 2.2);
     for (const q of c.coins) if (q.t > 0) q.t -= dt;
     if (st.wind > 0.15) {
@@ -190,6 +199,7 @@
     if (r.throwT > 0) r.throwT -= dt;
     if (r.hop > 0) r.hop -= dt;
     if (r.sq > 0) r.sq -= dt;
+    if (r.teeter > 0) r.teeter -= dt;
     const ctl = live && r.stun <= 0;
     if (r.st === 'run') runStep(st, r, dt, ctl);
     else if (r.st === 'hold') holdStep(st, r, dt, ctl);
@@ -220,9 +230,16 @@
     r.rot = approach(r.rot, 0, dt * 5);
     // sideways, stopped by house walls (only below a roof's top) and by the edges of the screen and the course
     let nx = r.x + r.vx * dt;
+    const vx0 = r.vx;
     for (const R of c.roofs) {
       if (!solid(R) || r.y <= R.y + 8) continue;
       if (nx > wallX(R) - 9 && nx < R.x + R.w + 9) { nx = r.x <= R.x + R.w / 2 ? wallX(R) - 9 : R.x + R.w + 9; r.vx = 0; }
+    }
+    // the edge of a wide gap: too far to jump, so a runner on the ground stops and teeters instead of running off
+    const gq = gap(st);
+    if (r.grounded && gq && r.roof === gq.left && nx > gq.xL - 8 && dir > 0) {
+      nx = Math.max(Math.min(r.x, gq.xL - 8), Math.min(nx, gq.xL - 8)); r.vx = 0; r.teeter = 0.25;
+      K.hintOnce(st, 'edge' + r.id, r.id, r.id === st.thr ? 'Too far to jump! Throw the hook ' + K.key(r.id, 'act') : 'Too far to jump! Wait for the hook', 3);
     }
     const hi = Math.min(c.gateX + 70, st.cam.x + W - 36), lo = Math.max(c.x0 + 100, st.cam.x + 22);
     if (nx > hi) { nx = Math.max(r.x, hi); r.vx = Math.min(r.vx, 0); }
@@ -239,13 +256,28 @@
         if (!solid(R) || r.x < R.x - 6 || r.x > R.x + R.w + 6 || r.y > R.y + 1 || ny < R.y) continue;
         land(st, r, R); break;
       }
-      if (!r.grounded) { r.y = ny; if (r.y > S.street - 96) { r.st = 'fall'; r.t = 0; } }
+      if (!r.grounded) {
+        r.y = ny;
+        // a near miss: feet just below a roof's top and the hands within reach of its edge: they catch it and scramble up
+        if (r.vy > -200) for (const R of c.roofs) {
+          if (!solid(R) || r.y <= R.y + 1 || r.y > R.y + S.mantle) continue;
+          // (only an edge they are heading for, or any edge in reach after a leap off the rope: running off a roof is no catch)
+          const lx = wallX(R), rx = R.x + R.w;
+          const side = r.x >= lx - 9 - S.reach && r.x <= lx + 2 && (vx0 > 0 || r.fling) ? lx + 12 : r.x >= rx - 2 && r.x <= rx + 9 + S.reach && (vx0 < 0 || r.fling) ? rx - 12 : null;
+          if (side == null) continue;
+          r.x = side; r.y = R.y; r.vy = 0; r.vx = 0; r.sq = 0.2;
+          st.stats.phew++; Sfx.play('roofrunPhew');
+          K.pop(st, r.x, r.y - 104, 'Phew! Caught the edge!', '#ffffff', 21); K.dust(st, r.x, r.y, 'rgba(200,206,240,0.7)', 5);
+          land(st, r, R, true); break;
+        }
+        if (!r.grounded && r.y > S.street - 96) { r.st = 'fall'; r.t = 0; }
+      }
     }
     // cats
     if (r.stun <= 0 && r.st === 'run' && !r.fling) for (const q of c.cats) {
-      if (Math.abs(q.x - r.x) < S.catW && r.y > q.y - S.catH && r.y < q.y + 8) {
+      if (q.calm <= 0 && Math.abs(q.x - r.x) < S.catW && r.y > q.y - S.catH && r.y < q.y + 8) {
         const d = r.x < q.x ? -1 : 1;
-        r.vx = d * 190; r.vy = -250; r.grounded = false; r.fling = false; r.stun = 0.7; q.hopT = 0.5;
+        r.vx = d * 190; r.vy = -250; r.grounded = false; r.fling = false; r.stun = 0.7; q.hopT = 0.5; q.calm = S.catCalm;
         st.stats.bumps++; Sfx.play('roofrunMeow'); Sfx.play('ninjaBonk');
         K.pop(st, q.x, q.y - 60, 'Mrow!', '#ffffff', 20); K.spark(st, q.x, q.y - 20, 6, ['#ffffff', STAR]);
         K.hintOnce(st, 'cat' + r.id, r.id, 'Hop over the cats! ' + K.key(r.id, 'up'), 3);
@@ -262,7 +294,7 @@
       else if (g && !g.latched) K.hintOnce(st, 'nohook', r.id, NAMES[st.thr] + ' has the hook this stretch. Wait for the throw!', 3.2);
     }
   }
-  function land(st, r, R) {
+  function land(st, r, R, caught) {
     const hard = r.vy > 420;
     r.y = R.y; r.vy = 0; r.grounded = true; r.roof = R.i; r.fling = false; r.why = '';
     if (hard) { K.dust(st, r.x, r.y, 'rgba(200,206,240,0.7)', 6); Sfx.play('roofrunLand'); r.sq = 0.14; }
@@ -271,7 +303,7 @@
       g.across = true; r.st = 'haul'; r.vx = 0; r.face = -1; g.cd = 0; g.ready = 0; g.streak = 0; g.heaves = 0; g.u = 0; g.uT = 0;
       st.stats.swings++;
       st.hints[r.id] = null;
-      Sfx.play('ninjaCheer'); K.pop(st, r.x, r.y - 104, 'Landed!', '#ffffff', 24); K.spark(st, r.x, r.y - 10, 10, ['#ffffff', STAR]);
+      Sfx.play('ninjaCheer'); if (!caught) K.pop(st, r.x, r.y - 104, 'Landed!', '#ffffff', 24); K.spark(st, r.x, r.y - 10, 10, ['#ffffff', STAR]);
       rumble(r.id, 0.3, 0.5, 140);
     }
   }
@@ -449,6 +481,7 @@
         Sfx.play('roofrunBoing'); K.pop(st, r.x, r.y - 70, 'Whoops! Soft landing!', '#ffffff', 22);
         for (let i = 0; i < 10; i++) K.part(st, r.x + (Math.random() - 0.5) * 50, r.y - 6, (Math.random() - 0.5) * 160, -120 - Math.random() * 140, 0.8, i % 2 ? '#e8c860' : '#fff2a8', 3, 500, 'conf');
         rumble(r.id, 0.4, 0.3, 160);
+        if (r.why === 'rope') K.hint(st, r.id, 'Pump higher ' + K.key(r.id, 'lr') + ', then leap when it says Leap!', 3.2);
         if (r.why === 'rope' && K.both(st)) {
           st.rc.sfall++;
           if (st.rc.sfall >= S.goldFall && !st.gold.rope) {
@@ -744,7 +777,8 @@
     ctx.beginPath(); ctx.ellipse(-2, -9, 13, 10, 0, 0, TAU); ctx.fill(); ctx.stroke();
     circle(9, -19, 8); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(3, -24); ctx.lineTo(5, -31); ctx.lineTo(9, -26); ctx.moveTo(10, -26); ctx.lineTo(14, -31); ctx.lineTo(16, -23); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = q.hopT > 0 ? '#1c1a36' : '#7ac86a'; circle(7, -20, 1.8); ctx.fill(); circle(12.5, -20, 1.8); ctx.fill();
+    if (q.calm > 0 && q.hopT <= 0) { ctx.beginPath(); ctx.moveTo(5.5, -20); ctx.lineTo(8.5, -20); ctx.moveTo(11, -20); ctx.lineTo(14, -20); ctx.stroke(); }
+    else { ctx.fillStyle = q.hopT > 0 ? '#1c1a36' : '#7ac86a'; circle(7, -20, 1.8); ctx.fill(); circle(12.5, -20, 1.8); ctx.fill(); }
     ctx.fillStyle = COL.trim; ctx.fillRect(2, -13, 10, 3);
     ctx.restore();
   }
@@ -780,6 +814,7 @@
     if (r.st === 'hold') { K.ninja(id, r.x, r.y, { pose: 'throw', face: 1, t, rot: -0.3 - sq * 1.2, wind }); return; }
     const held = thr && st.hook.state === 'held';
     if (!r.grounded) { K.ninja(id, r.x, r.y, { pose: 'run', face: r.face, t, rot: r.rot, vy: r.vy, wind: 1, item: held ? 'hook' : undefined }); return; }
+    if (r.teeter > 0) { K.ninja(id, r.x, r.y, { pose: 'cheer', face: 1, t, wind: 1, rot: Math.sin(t * 26) * 0.22 + 0.12, item: held ? 'hook' : undefined }); return; }
     if (Math.abs(r.vx) > 40) { K.ninja(id, r.x, r.y, { pose: 'run', face: r.face, t, wind: 1, item: held ? 'hook' : undefined }); return; }
     if (thr && (r.throwT > 0 || canAim(st))) { K.ninja(id, r.x, r.y, { pose: 'throw', face: 1, t, wind, item: held ? 'hook' : undefined }); return; }
     K.ninja(id, r.x, r.y, { pose: 'idle', face: r.face, t, wind, item: held ? 'hook' : undefined });
@@ -861,8 +896,9 @@
       } else if (pl.phase === 'swing') {
         if (pl.tug) { s = 'Tug! ' + K.key(Tn, 'act'); pulse = true; }
         else if (T.st === 'hold' && !pl.onRope && !Q.fling) { s = 'Got it! Holding the rope'; col = '#d9ffd0'; }
+        else if (free(T) && T.grounded) s = 'Back to the rope ' + K.key(Tn, 'right');
       } else if (pl.phase === 'pull' && !st.gold.loop) {
-        if (!pl.holding) { if (T.st === 'hold') { s = 'Hold on! Hold ' + K.key(Tn, 'act'); pulse = true; } }
+        if (!pl.holding) { if (T.st === 'hold') { s = 'Hold on! Hold ' + K.key(Tn, 'act'); pulse = true; } else if (free(T) && T.grounded) s = 'Back to the rope ' + K.key(Tn, 'right'); }
         else { s = 'Keep holding ' + K.key(Tn, 'act'); col = '#d9ffd0'; }
       } else if (pl.phase === 'run' && free(T) && T.grounded && T.x < pl.thr.x - 300) { s = 'To the gate ' + K.key(Tn, 'right'); col = '#ffe7a8'; }
       P.say(Tn, s, sx(T), sy(T), col, pulse);
@@ -879,7 +915,7 @@
       } else if (pl.phase === 'pull') {
         if (pl.heave) { s = 'Heave! ' + K.key(Qn, 'act'); pulse = true; }
         else if (pl.holding) { s = 'Ho...'; col = '#ffe7a8'; }
-        else if (!K.quiet(Tn)) { s = 'Wait for ' + NAMES[Tn] + ' to hold on'; col = '#ffe7a8'; }
+        else if (!K.quiet(Tn) && !st.gold.loop) { s = 'Wait for ' + NAMES[Tn] + ' to hold on'; col = '#ffe7a8'; }
       } else if (pl.phase === 'run' && free(Q) && Q.grounded && Q.x < pl.swg.x - 300) { s = 'To the gate ' + K.key(Qn, 'right'); col = '#ffe7a8'; }
       P.say(Qn, s, sx(Q), sy(Q), col, pulse);
     }
@@ -889,7 +925,7 @@
   MODES.roofrun = {
     S, compile, plan, nav, hookPt, medal,
     setup(st, L) {
-      st.stats = { throws: 0, hits: 0, swings: 0, gaps: 0, whoops: 0, bumps: 0, tugs: 0, heaves: 0, helps: 0, roomT: [] };
+      st.stats = { throws: 0, hits: 0, swings: 0, gaps: 0, whoops: 0, bumps: 0, phew: 0, tugs: 0, heaves: 0, helps: 0, roomT: [] };
       st.stars = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
       const def = LEVELS[G.levelIndex];
       st.totalStars = (def.rooms || [def]).reduce((n, r) => n + compile(Object.assign({}, def, r)).coins.length, 0);
@@ -911,7 +947,7 @@
         { label: 'Whoops', value: String(s.whoops) },
         { label: 'Medal', value: medal(G.time, s.whoops, frac) },
       ];
-      out.push('Gaps crossed: ' + s.gaps + '. Tugs: ' + s.tugs + '. Cat bumps: ' + s.bumps + '.');
+      out.push('Gaps crossed: ' + s.gaps + '. Tugs: ' + s.tugs + '. Edge catches: ' + s.phew + '. Cat bumps: ' + s.bumps + '.');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);
       return out;
     },
@@ -957,6 +993,7 @@
   Sfx.extra.roofrunHeave = function (p) { this.tone(200 * p, 0.14, 'sawtooth', 0.03, 130 * p); this.tone(400 * p, 0.08, 'triangle', 0.025, 300 * p, 0.02); };
   Sfx.extra.roofrunSlip = function () { this.tone(700, 0.25, 'sine', 0.04, 220); };
   Sfx.extra.roofrunBoing = function () { this.tone(150, 0.3, 'sine', 0.06, 420); this.tone(90, 0.12, 'triangle', 0.04, 60); };
+  Sfx.extra.roofrunPhew = function () { this.tone(520, 0.08, 'triangle', 0.035, 700); this.tone(700, 0.12, 'triangle', 0.03, 880, 0.08); };
   Sfx.extra.roofrunHop = function () { this.tone(300, 0.2, 'sine', 0.04, 640); };
   Sfx.extra.roofrunCreak = function () { this.tone(190, 0.18, 'sawtooth', 0.025, 140); this.tone(230, 0.1, 'sawtooth', 0.02, 170, 0.2); };
   Sfx.extra.roofrunCrumble = function () { [220, 180, 140, 110].forEach((f, i) => this.tone(f, 0.09, 'square', 0.03, f * 0.7, i * 0.05)); };

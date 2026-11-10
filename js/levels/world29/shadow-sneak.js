@@ -24,17 +24,24 @@
        by wakes them for a few seconds;  dogs have a sniff circle and run to every sound;  searchlights sweep back and
        forth and can't be distracted.
      The trick is nearly always: toss a pebble so the guard walks PAST a hiding spot, then slip out behind him.
-   SPOTTED (the eye fills): GONG! The post's guards get a "!" and run after the sneaker, who now sprints by themself
-     (◀ ▶, ▲ hops crates, which slow the guards down). Get into any hiding spot or back to the gatehouse with the guards
-     more than a few steps behind and they lose you ("Phew!"), look around and go back. A guard blocks the way, but a
-     hop goes right over his head. The thrower helps: a pebble that
-     hits a chasing guard is a soft "Bonk!" and he sees stars for a moment. If a guard reaches the sneaker it is a
-     "Gotcha!": he carries them back to the post's gatehouse and puts them down (soft fail: a few seconds, counted).
+   SPOTTED (the eye fills): GONG! The post's guards get a "!" (a startled jump: longer the closer they are, longer for a
+     sleeper) and run after the sneaker, who now sprints (◀ ▶; ▲ hops crates, which slow the guards down, or right over
+     a guard's head; ▼ slides: a fast low whoosh under a guard's arms, chase only, short cooldown). The hiding spots
+     within S.burnR of where you were seen get a wide-open red eye: they saw you there, so they don't work in this chase.
+     Get into another hiding spot, or a gatehouse (always safe: back to the checkpoint, or on to the arch ahead), with the
+     guards a few steps behind: they run up and look around ("?") and you must stay put for S.loseT ("Shh!"). Step out
+     too soon and it is "There!" and the chase is on again; stay and they lose you ("Phew!"). The thrower helps: a
+     pebble that hits a chasing guard is a soft "Bonk!" and he sees stars for a moment. If a guard reaches the sneaker
+     it is a "Gotcha!": he carries them back to the post's gatehouse and puts them down (soft fail: seconds, counted).
    Jobs swap every stretch (room def `sneak`): Pip sneaks in 1 and 3, Bo in 2 and 4. 4 stretches (roomWord 'Stretch'):
      The Outer Yard (sentries and patrols), The Sleepy Barracks (sleeping guards, creaky boards, crates), The Kennel
      Court (dogs, two guards for two pebbles), The Keep (searchlights and everything else).
-   GOLD HELP (announced, only while both are playing): spotted 2 times in one stretch: a gold moon cloud, the guards
-     see only about half as far for the rest of that stretch (their cones turn gold and short).
+   GOLD HELP (announced, counted on the results card, only while both are playing):
+     - spotted 2 times in one stretch: a gold moon cloud, the guards see only about half as far for the rest of that
+       stretch (their cones turn gold and short);
+     - stuck 45 s at one post (clock running, no chase): a gold owl for the rest of that post. Whenever the sneaker is
+       hidden and waiting, it flies to the plan's pebble spot and hoots there like a free pebble (every 6 s at most).
+       The thrower still has to walk through every tower door, so it never finishes a post alone.
    IDLE: 12 s with no person pressing anything: "Taking a break" and the clock stops.
    Scoring: time, times spotted, times caught. Medal: Gold <= 4:30, spotted <= 2 and never caught;
      Silver <= 7:00 and caught <= 3; else Bronze.
@@ -50,13 +57,14 @@
   const K = NINJA, FONT = K.FONT, lerp = K.lerp, COL = K.COL, TAU = Math.PI * 2;
   const S = {
     ground: 420, ramp: 196, zoneW: 110, archA: 84, archB: 6, leverDX: 46, endDX: 250,
-    creep: 100, dash: 250, run: 262, air: 175, jumpV: 430, g: 1500, crateH: 30, crateW: 18, boardW: 28,
+    creep: 100, dash: 250, run: 250, air: 175, jumpV: 430, g: 1500, crateH: 30, crateW: 18, boardW: 28,
     thrV: 215, aimMax: 300, aimV: 330, aim0: 140, flyT: 0.7, pouch: 3, refill: 2.2, throwCd: 0.3,
     cone: 190, coneGold: 105, seeT: 0.5, seeNearT: 0.16, seeNear: 70, behind: 18, unseeT: 0.5,
     hear: 280, stepHear: 130, creakHear: 170, wakeR: 120, wakeT: 4.5, react: 0.35, look: 3.6, walk: 60, goV: 92, backV: 80,
-    chaseV: 215, startle: 0.8, skid: 0.55, groggy: 0.7, carryV: 330, dizzy: 1.5, search: 2.4, safeD: 80, safeGate: 46, catchD: 24, overY: 32,
+    chaseV: 228, startle: 0.5, startleNear: 0.7, skid: 0.55, groggy: 0.7, carryV: 330, dizzy: 1.5, search: 2.4, safeD: 80, safeGate: 30, catchD: 24, overY: 32,
     dogHear: 360, dogV: 210, dogBackV: 120, dogR: 62, dogSniff: 3.6, lightR: 52,
     fdt: 0.1, fN: 120, margin: 24, patience: 1.2, aimOk: 15, idleWait: 12, goldFails: 2,
+    burnR: 130, loseT: 1.5, slideV: 400, slideT: 0.42, slideCd: 1.1, slideNear: 200, owlStuck: 45, owlFly: 0.9, owlCd: 6,
   };
   const SPOT_W = { B: 46, D: 54, H: 84, M: 64, A: 120 };
   const SPOT_NAME = { B: 'the barrel', D: 'the doorway', H: 'the hay', M: 'the bamboo', A: 'the shade', start: 'the gatehouse', arch: 'the gatehouse' };
@@ -169,7 +177,7 @@
   // the next S.fN * S.fdt seconds of this post: for each step, the stretches of courtyard that are watched (pairs lo, hi)
   function forecast(st, events) {
     const P = st.P, gs = P.guards.map(g => Object.assign({}, g)), ds = P.dogs.map(d => Object.assign({}, d));
-    const ev = (events || []).concat(st.pebbles.map(p => ({ t: (1 - p.u) * S.flyT, x: p.tx }))).sort((a, b) => a.t - b.t);
+    const ev = (events || []).concat(st.pebbles.map(p => ({ t: (1 - p.u) * S.flyT, x: p.tx })), st.owl && !st.owl.hooted ? [{ t: (1 - st.owl.u) * S.owlFly, x: st.owl.tx }] : []).sort((a, b) => a.t - b.t);
     const cone = coneLen(st), m = S.margin, frames = [];
     let ei = 0;
     for (let k = 0; k < S.fN; k++) {
@@ -237,7 +245,7 @@
 
   /* ---------- what to do next ---------- */
   function planSneak(st) {
-    const sn = st.sn, th = st.th, P = st.P, out = { mode: 'none', dir: 0, tx: sn.x, jump: false, why: false, boards: false, dash: false, wait: Infinity, left: 0, zone: null, safe: false };
+    const sn = st.sn, th = st.th, P = st.P, out = { mode: 'none', dir: 0, tx: sn.x, jump: false, why: false, boards: false, dash: false, slide: false, wait: Infinity, left: 0, zone: null, safe: false };
     if (st.state !== 'go' || sn.state !== 'ok') return out;
     const z = zoneAt(P, sn.x);
     if (st.chase) {
@@ -246,6 +254,7 @@
       // (a spot on the far side of ONE running guard counts too: hop over his head and he skids)
       let best = null, bt = 1e9, bestHop = null, bht = 1e9, alt = null, am = -Infinity;
       for (const zz of P.zones) {
+        if (burnt(st, zz)) continue;
         const tx = zz.kind === 'start' ? clamp(sn.x, zz.x0 + 14, zz.x1 - 50) : zz.kind === 'arch' ? clamp(sn.x, zz.x0 + 46, zz.x1 - 12) : clamp(sn.x, zz.x0 + 14, zz.x1 - 14);
         const D = Math.abs(tx - sn.x), tS = D / S.run + 0.12 * P.crates.filter(c => (c.x - sn.x) * (c.x - tx) < 0).length;
         const safe = (zz.kind === 'spot' ? S.safeD : S.safeGate) + 12;
@@ -294,6 +303,10 @@
       }
     }
     out.why = needJump(P, sn, out.dir, !!st.chase); out.jump = !!out.why;
+    // a guard right on your heels and a long way to go: slide!
+    if (out.mode === 'flee' && out.dir && !out.jump && sn.gr && sn.y === 0 && sn.slide <= 0 && sn.slideCd <= 0 && Math.abs(out.tx - sn.x) > 175 &&
+      !P.crates.some(c => (c.x - sn.x) * out.dir > -10 && (c.x - sn.x) * out.dir < 200) &&
+      P.guards.some(g => g.state === 'alert' && g.t < 0.3 && (sn.x - g.x) * out.dir > 0 && Math.abs(sn.x - g.x) < S.slideNear)) out.slide = true;
     out.boards = !st.chase && !out.jump && sn.y === 0 && boardsAhead(P, sn, out.dir);
     if (th && out.mode === 'wait' && Math.abs(out.tx - sn.x) <= 9) out.dir = 0;
     return out;
@@ -353,7 +366,7 @@
       else out.aim = th.aim < ad ? 1 : -1;
     } else if (Math.abs(th.mark - out.X) > 6 && d * th.face >= 0 && ad <= S.aimMax) out.aim = th.aim < ad ? 1 : -1; // (still nudging closer)
     out.ready = near && th.pouch >= 1 && th.cd <= 0;
-    if (out.mode === 'toss' && st.pebbles.length) out.ready = false;
+    if (out.mode === 'toss' && (st.pebbles.length || (st.owl && !st.owl.hooted))) out.ready = false;
     return out;
   }
   function plan(st) {
@@ -376,11 +389,12 @@
     const def = L.def;
     st.k = k; st.sneak = def.sneak || 0; st.thr = 1 - st.sneak; st.title = def.title || '';
     st.c = compile(def); st.P = st.c.posts[0];
-    st.sn = { x: 52, y: 0, vy: 0, gr: true, face: 1, state: 'ok', t: 0, seen: 0, hidden: true, zone: st.P.zones[0], dashing: false, moving: false, stepT: 0, stepN: 0.12, stick: 0, pullT: 0, by: null, walk: 0 };
+    st.sn = { x: 52, y: 0, vy: 0, gr: true, face: 1, state: 'ok', t: 0, seen: 0, hidden: true, zone: st.P.zones[0], dashing: false, moving: false, stepT: 0, stepN: 0.12, stick: 0, pullT: 0, by: null, walk: 0, slide: 0, slideCd: 0, downWas: true };
     st.th = { x: 70, face: 1, aim: S.aim0, mark: 70 + S.aim0, pouch: S.pouch, cd: 0, anim: 0, moving: false, walk: 0 };
     st.pebbles = []; st.lying = []; st.rings = [];
     st.chase = null; st.rFail = 0; st.gold = { cloud: false }; st.gongT = 0; st.waitT = 0;
     st.state = 'go'; st.endT = 0; st.segStart = G.time; st.postT = G.time; st.clock = 0;
+    st.postClock = 0; st.owlOn = false; st.owl = null; st.owlCd = 0;
     st.frames = null; st.fAge = 0; st.think = null; st.thinkT = 0; st.pl = null;
     st.cam = { x: -80 };
     K.fx(st);
@@ -410,6 +424,7 @@
     st.lying = st.lying.filter(q => q.t > 0);
     if (st.gongT > 0) st.gongT = Math.max(0, st.gongT - dt * 0.8);
     progress(st, dt);
+    owl(st, dt, live);
     if (st.state === 'end') endStep(st, dt);
     replan(st, false);
     st.waitT = st.pl.sneak.mode === 'wait' && live ? st.waitT + dt : st.pl.sneak.mode === 'wait' ? st.waitT : 0;
@@ -440,12 +455,15 @@
   }
   function sneaker(st, dt, live) {
     const sn = st.sn, p = G.players[st.sneak], i = p.input, P = st.P;
-    let dir = 0, jump = false, act = false, held = false;
+    let dir = 0, jump = false, act = false, held = false, down = false;
     if (st.state === 'end') dir = sn.x < st.c.endX - 4 ? 1 : 0;
-    else if (live && sn.state === 'ok') { dir = (i.right ? 1 : 0) - (i.left ? 1 : 0); jump = p.pendingJump; act = p.pendingAct; held = i.act; }
+    else if (live && sn.state === 'ok') { dir = (i.right ? 1 : 0) - (i.left ? 1 : 0); jump = p.pendingJump; act = p.pendingAct; held = i.act; down = i.down && !sn.downWas; }
+    sn.downWas = !!i.down;
     p.pendingJump = false; p.pendingAct = false;
     sn.moving = false; sn.dashing = false;
     if (sn.pullT > 0) sn.pullT -= dt;
+    if (sn.slideCd > 0) sn.slideCd -= dt;
+    if (sn.slide > 0 && ((sn.slide -= dt) <= 0 || !st.chase || sn.state !== 'ok')) sn.slide = 0;
     if (sn.state === 'caught') { sn.hidden = false; return; }
     if (sn.state === 'dizzy') { if (live && (sn.t -= dt) <= 0) sn.state = 'ok'; sn.hidden = true; return; }
     if (sn.stick > 0) { sn.stick -= dt; dir = 0; jump = false; }
@@ -454,8 +472,14 @@
       if (st.chase) K.hint(st, st.sneak, 'Not with the guards watching! Hide first', 2);
       else pull(st);
     }
+    // a slide (chase only, ▼): a fast low whoosh that goes right under a guard's arms
+    if (down && st.chase && sn.gr && sn.slide <= 0 && sn.slideCd <= 0 && (dir || sn.face)) {
+      sn.slide = S.slideT; sn.slideCd = S.slideCd; sn.face = dir || sn.face; st.stats.slides++;
+      Sfx.play('shadowsneakSlide'); K.dust(st, sn.x, S.ground - 2, null, 6);
+    }
+    if (sn.slide > 0) { dir = sn.face; jump = false; }
     if (jump && sn.gr) { sn.vy = S.jumpV; sn.gr = false; Sfx.play('jump', 1.25); }
-    let v = st.chase ? S.run : S.creep;
+    let v = sn.slide > 0 ? S.slideV : st.chase ? S.run : S.creep;
     if (st.state === 'end') v = S.dash;
     else if (!st.chase && held && dir && !atLever) { v = S.dash; sn.dashing = true; }
     if (!sn.gr) v = Math.max(v, S.air);
@@ -463,10 +487,12 @@
       sn.face = dir;
       let nx = sn.x + dir * v * dt;
       if (floorAt(P, nx) > sn.y + 14) nx = sn.x; // a crate: hop it
-      if (st.chase && sn.y < S.overY) for (const g of P.guards) if (g.state === 'alert' && (g.x - sn.x) * dir > 0 && Math.abs(g.x - nx) < 20) nx = sn.x; // a guard: hop over him!
+      if (st.chase && sn.y < S.overY && !(sn.slide > 0)) for (const g of P.guards) if (g.state === 'alert' && (g.x - sn.x) * dir > 0 && Math.abs(g.x - nx) < 20) nx = sn.x; // a guard: hop over him!
       nx = clamp(nx, P.x0 + 14, st.state === 'end' ? st.c.endX : P.open && P.openT > 0.45 ? P.gate + 96 : P.gate - 16);
       sn.moving = nx !== sn.x; sn.x = nx;
       if (sn.moving) sn.walk += dt * (v > 150 ? 1.6 : 1);
+      if (sn.slide > 0 && !sn.moving) sn.slide = 0; // (slid into a crate or the gate)
+      if (!sn.moving) sn.dashing = false; // (pushing at a wall or a crate makes no noise)
     }
     // up and down (crates are little platforms)
     const fl = floorAt(P, sn.x);
@@ -488,7 +514,7 @@
     }
     for (const b of P.boards) { if (b.cd > 0) b.cd -= dt; if (b.t > 0) b.t -= dt; }
     const z = zoneAt(P, sn.x);
-    sn.zone = z; sn.hidden = !!z && !sn.dashing && !st.chase;
+    sn.zone = z; sn.hidden = !!z && !sn.dashing && (!st.chase || st.chase.lose != null);
   }
   function pull(st) {
     const P = st.P, sn = st.sn;
@@ -576,10 +602,11 @@
   }
   function spotted(st) {
     const sn = st.sn, P = st.P;
-    sn.seen = 0; st.stats.spotted++; st.rFail++; P.seen = true; st.chase = { t: 0 }; st.gongT = 1;
+    sn.seen = 0; st.stats.spotted++; st.rFail++; P.seen = true; st.gongT = 1;
+    st.chase = { t: 0, lose: null, burnt: P.zones.filter(z => z.kind === 'spot' && Math.abs((z.x0 + z.x1) / 2 - sn.x) < S.burnR) };
     let n = 0;
-    for (const g of P.guards) if (AWAKE[g.state] || (g.state === 'sleep' && Math.abs(g.x - sn.x) < 240)) { g.state = 'alert'; g.chasing = true; g.notice = 0; g.fast = false; g.t = S.startle; g.side = 0; n++; }
-    if (!n) { const g = P.guards.reduce((a, q) => (q.state !== 'dizzy' && (!a || Math.abs(q.x - sn.x) < Math.abs(a.x - sn.x)) ? q : a), null); if (g) { g.state = 'alert'; g.chasing = true; g.notice = 0; g.t = S.startle; g.side = 0; } }
+    for (const g of P.guards) if (AWAKE[g.state] || (g.state === 'sleep' && Math.abs(g.x - sn.x) < 240)) { g.t = startle(g, sn); g.state = 'alert'; g.chasing = true; g.notice = 0; g.fast = false; g.side = 0; n++; }
+    if (!n) { const g = P.guards.reduce((a, q) => (q.state !== 'dizzy' && (!a || Math.abs(q.x - sn.x) < Math.abs(a.x - sn.x)) ? q : a), null); if (g) { g.t = startle(g, sn); g.state = 'alert'; g.chasing = true; g.notice = 0; g.side = 0; } }
     for (const d of P.dogs) if (Math.abs(d.x - sn.x) < 320) { d.state = 'bark'; d.t = 3; d.face = sn.x >= d.x ? 1 : -1; Sfx.play('shadowsneakWoof'); }
     Sfx.play('ninjaGong'); Sfx.play('ninjaAlert');
     if (!reduceMotion) G.shake = 0.07;
@@ -592,6 +619,9 @@
       K.goldHelp(st, 'Gold moon cloud! The guards see only half as far in this stretch', 5);
     }
   }
+  // the "!" jump before a guard runs: longer the closer you are (nose to nose he jumps out of his skin), and longer
+  // still for a guard who was asleep, so even a chase that starts right next to him is a real run
+  const startle = (g, sn) => S.startle + S.startleNear * clamp(1 - Math.abs(g.x - sn.x) / 140, 0, 1) + (g.state === 'sleep' || g.state === 'wake' ? 0.3 : 0);
   function chase(st, dt) {
     const sn = st.sn, P = st.P;
     st.chase.t += dt;
@@ -604,30 +634,47 @@
       // hopped right over his head: he skids to a stop and spins round
       const side = d > 0 ? 1 : -1;
       if (g.side && side !== g.side && Math.abs(d) > 2) {
-        if (!sn.gr || sn.y > 0) { g.t = Math.max(g.t, S.skid); st.stats.hops++; Sfx.play('shadowsneakWhoa'); K.pop(st, g.x, S.ground - 84, 'Whoa!', '#ffffff', 20); K.dust(st, g.x, S.ground - 2, null, 5); }
+        if (!sn.gr || sn.y > 0 || sn.slide > 0) { g.t = Math.max(g.t, S.skid); st.stats.hops++; Sfx.play('shadowsneakWhoa'); K.pop(st, g.x, S.ground - 84, 'Whoa!', '#ffffff', 20); K.dust(st, g.x, S.ground - 2, null, 5); }
       }
       if (Math.abs(d) > 2) g.side = side;
       if (Math.abs(d) > 2) g.face = d > 0 ? 1 : -1;
       if (g.t > 0) { g.t -= dt; near = Math.min(near, Math.abs(d)); continue; } // "!": a startled jump before he runs
       g.x = clamp(g.x + g.face * Math.min(Math.abs(d), S.chaseV * slow * dt), g.lo - 20, g.hi + 20);
       near = Math.min(near, Math.abs(sn.x - g.x));
-      if (sn.state === 'ok' && Math.abs(sn.x - g.x) < S.catchD && sn.y < S.overY) { caught(st, g); return; }
+      if (sn.state === 'ok' && Math.abs(sn.x - g.x) < S.catchD && sn.y < S.overY && !(sn.slide > 0)) { caught(st, g); return; }
     }
-    // out of sight in a hiding spot with the guards a few steps behind: they lose you
-    const z = zoneAt(P, sn.x);
-    if (sn.state === 'ok' && (!any || (z && near > (z.kind === 'spot' ? S.safeD : S.safeGate)))) {
-      if (!z && !any) { st.chase = null; return; }
-      st.chase = null; st.stats.escapes++; sn.hidden = true; sn.zone = z; sn.stick = 0.3; st.hints[st.thr] = null;
-      for (const g of P.guards) if (g.chasing) {
-        g.chasing = false;
-        if (g.state === 'alert') { g.state = 'go'; g.fast = true; g.tx = clamp(sn.x + (g.x < sn.x ? -40 : 40), g.lo, g.hi); }
+    // out of sight in a hiding spot they did not see you near, with the guards a few steps behind: they run up to look
+    // around ("?") and, if you stay put for S.loseT, they lose you. Step out too soon and the chase is on again.
+    const z = zoneAt(P, sn.x), cover = !!z && !burnt(st, z) && sn.gr && sn.y === 0, ch = st.chase;
+    const search = g => { g.state = 'go'; g.fast = true; g.t = 0; g.tx = clamp(sn.x + (g.x < sn.x ? -40 : 40), g.lo, g.hi); };
+    if (ch.lose != null) {
+      if (sn.state !== 'ok') return;
+      if (!cover) {
+        ch.lose = null; sn.hidden = false;
+        for (const g of P.guards) if (g.chasing && g.state !== 'dizzy') { g.state = 'alert'; g.t = 0.25; g.side = 0; }
+        Sfx.play('ninjaAlert'); K.pop(st, sn.x, S.ground - 150, 'There!', '#ff8a7a', 24);
+        return;
       }
+      for (const g of P.guards) if (g.chasing && g.state === 'alert') search(g); // (a guard waking from a bonk)
+      if ((ch.lose += dt) < S.loseT) return;
+      st.chase = null; st.stats.escapes++; sn.stick = 0.3; st.hints[st.thr] = null;
+      for (const g of P.guards) if (g.chasing) { g.chasing = false; if (g.state === 'alert') search(g); }
       Sfx.play('ninjaPoof'); Sfx.play('shadowsneakPhew');
       K.poof(st, sn.x, S.ground - 20, 14);
-      K.pop(st, sn.x, S.ground - 110, 'Phew! They lost you!', '#d9ffd0', 22);
+      K.pop(st, sn.x, S.ground - 150, 'Phew! They lost you!', '#d9ffd0', 22);
       K.hint(st, st.sneak, 'Stay hidden until they give up...', 2.6);
+      return;
+    }
+    if (sn.state === 'ok' && !any && !z) { st.chase = null; return; }
+    if (sn.state === 'ok' && cover && (!any || near > (z.kind === 'spot' ? S.safeD : S.safeGate))) {
+      ch.lose = 0; sn.hidden = true; sn.zone = z; sn.slide = 0;
+      for (const g of P.guards) if (g.chasing && g.state === 'alert') search(g);
+      Sfx.play('ninjaPoof'); K.poof(st, sn.x, S.ground - 20, 8);
+      K.hint(st, st.sneak, 'Shh! Stay still...', S.loseT + 0.3);
     }
   }
+  // the hiding spots the guards saw you near when they spotted you don't work in this chase (the gatehouses always do)
+  const burnt = (st, z) => !!(st.chase && st.chase.burnt && st.chase.burnt.includes(z));
   function caught(st, g) {
     const sn = st.sn, P = st.P;
     st.chase = null; st.stats.caught++; st.hints = [null, null]; sn.state = 'caught'; sn.by = g; sn.y = 0; sn.vy = 0; sn.seen = 0;
@@ -647,9 +694,49 @@
     for (const g of P.guards) { g.chasing = false; g.notice = 0; if (g.state === 'alert' || g.state === 'carry' || g.state === 'dizzy') g.state = 'return'; }
     st.chase = null;
     st.P = nxt; st.postT = G.time; st.think = null; st.thinkT = 0; st.frames = null; st.waitT = 0;
+    st.postClock = 0; st.owlOn = false; st.owl = null; st.owlCd = 0;
     Sfx.play('shadowsneakCheck');
     K.pop(st, P.gate + 20, S.ramp + 60, P.seen ? 'Checkpoint!' : 'Checkpoint! Never seen!', C.gold, 22);
     K.spark(st, P.gate + 13, S.ramp + 52, 10);
+  }
+  // GOLD HELP for a stuck pair: 45 s at one post (both playing) brings a gold owl for the rest of that post. While the
+  // sneaker waits hidden it flies to the plan's pebble spot and hoots there, like a free pebble (every few seconds).
+  function owl(st, dt, live) {
+    const sn = st.sn, P = st.P, calm = st.state === 'go' && !st.chase && !P.open && sn.state === 'ok';
+    if (st.state !== 'go') { st.owl = null; return; }
+    if (!live) return;
+    if (calm) st.postClock += dt;
+    if (st.owlCd > 0) st.owlCd -= dt;
+    if (!st.owlOn && calm && st.postClock > S.owlStuck && K.both(st)) {
+      st.owlOn = true; st.stats.owls++;
+      K.goldHelp(st, 'Gold owl! It hoots at the ring to lure the guards', 5);
+    }
+    if (st.owlOn && !st.owl && st.owlCd <= 0 && calm && sn.hidden && st.pl && st.pl.sneak.mode === 'wait' && st.think && st.think.X != null && !st.pebbles.length)
+      st.owl = { tx: st.think.X, x0: st.cam.x + W + 40, u: 0, hooted: false, leave: 0 };
+    const o = st.owl;
+    if (!o) return;
+    if (!o.hooted) {
+      o.u = Math.min(1, o.u + dt / S.owlFly);
+      if (o.u >= 1) {
+        o.hooted = true; st.owlCd = S.owlCd;
+        noise(st, o.tx, S.hear, false, 'shadowsneakHoot');
+        K.pop(st, o.tx, S.ground - 150, 'Hoo hoo!', C.gold, 20);
+      }
+    } else if ((o.leave += dt) > 1.4) st.owl = null;
+  }
+  function drawOwl(o, t) {
+    const u = K.smooth(o.u), x = lerp(o.x0, o.tx, u) + o.leave * 140, y = lerp(150, S.ground - 128, u) - Math.sin(u * Math.PI) * 30 - o.leave * o.leave * 120;
+    const flap = Math.sin(t * (o.hooted && o.leave < 0.5 ? 6 : 22)) * 0.6;
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = 'rgba(255,197,61,0.25)'; circle(0, 0, 26); ctx.fill();
+    ctx.fillStyle = '#e0a02a'; ctx.strokeStyle = '#7a5410'; ctx.lineWidth = 2;
+    for (const f of [-1, 1]) { ctx.save(); ctx.scale(f, 1); ctx.rotate(flap); ctx.beginPath(); ctx.moveTo(8, -2); ctx.quadraticCurveTo(26, -10, 30, 6); ctx.quadraticCurveTo(18, 4, 8, 8); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+    ctx.fillStyle = C.gold; ctx.beginPath(); ctx.ellipse(0, 2, 12, 14, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-10, -8); ctx.lineTo(-8, -18); ctx.lineTo(-3, -11); ctx.moveTo(10, -8); ctx.lineTo(8, -18); ctx.lineTo(3, -11); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffffff'; circle(-4.5, -3, 4.2); ctx.fill(); circle(4.5, -3, 4.2); ctx.fill();
+    ctx.fillStyle = '#1c1a36'; circle(-4.5, -3, 2); ctx.fill(); circle(4.5, -3, 2); ctx.fill();
+    ctx.fillStyle = '#ff9a3a'; ctx.beginPath(); ctx.moveTo(-2.5, 2); ctx.lineTo(2.5, 2); ctx.lineTo(0, 6); ctx.closePath(); ctx.fill();
+    ctx.restore();
   }
   function endRoom(st) {
     const last = !(G.level.def.rooms && G.level.def.roomIndex < G.level.def.roomCount - 1);
@@ -721,7 +808,7 @@
     ctx.fillStyle = COL.tileEdge; for (let x = Math.floor(x0 / 16) * 16; x < x1; x += 16) ctx.fillRect(x, top + 3, 2, 8);
     ctx.fillStyle = COL.trim; ctx.fillRect(x0, top + 14, w, 3);
   }
-  function drawGate(st, gx, openT, pulled, lit) {
+  function drawGate(st, gx, openT, pulled, lit, seen) {
     const gy = S.ground, top = S.ramp;
     ctx.fillStyle = '#262349'; ctx.fillRect(gx - 100, top + 17, 226, gy - top - 17);
     ctx.fillStyle = '#322e5c'; ctx.fillRect(gx - 100, top + 17, 226, 7);
@@ -732,7 +819,7 @@
     ctx.fillStyle = '#0d0c22'; ctx.beginPath(); ctx.moveTo(gx - 88, gy); ctx.lineTo(gx - 88, gy - 76); ctx.quadraticCurveTo(gx - 88, gy - 112, gx - 52, gy - 112);
     ctx.lineTo(gx + 78, gy - 112); ctx.quadraticCurveTo(gx + 114, gy - 112, gx + 114, gy - 76); ctx.lineTo(gx + 114, gy); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = '#4a4680'; ctx.lineWidth = 4; ctx.stroke();
-    eye(gx + 13, gy - 124, false, 0, 0.9);
+    badge(gx + 13, gy - 124, seen);
     // the gate bars
     ctx.save(); ctx.beginPath(); ctx.rect(gx - 16, gy - 112, 32, 112); ctx.clip();
     const up = openT * 100;
@@ -761,12 +848,14 @@
     ctx.fillStyle = COL.woodDark; ctx.fillRect(gx - 30, top - 76, 8, 76); ctx.fillRect(gx + 22, top - 76, 8, 76);
     K.roof(gx - 62, top - 94, 124, { noWall: true, th: 14 });
   }
-  function drawSpotBack(sp, t) {
+  // a hiding spot's badge: a closed eye, or (in a chase, near where they saw you) a wide-open red eye: no good now
+  const badge = (x, y, seen) => (seen ? eye(x, y, true, 1, 1) : eye(x, y, false, 0, 0.9));
+  function drawSpotBack(sp, t, seen) {
     const gy = S.ground, x = sp.x;
     if (sp.kind === 'D') {
       ctx.fillStyle = '#0f0e26'; ctx.beginPath(); ctx.moveTo(x - 27, gy); ctx.lineTo(x - 27, gy - 60); ctx.quadraticCurveTo(x - 27, gy - 86, x, gy - 86); ctx.quadraticCurveTo(x + 27, gy - 86, x + 27, gy - 60); ctx.lineTo(x + 27, gy); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = COL.wood; ctx.lineWidth = 5; ctx.stroke();
-      eye(x, gy - 100, false, 0, 0.9);
+      badge(x, gy - 100, seen);
     } else if (sp.kind === 'A') {
       const w = sp.w;
       ctx.fillStyle = 'rgba(6,6,26,0.55)'; ctx.fillRect(x - w / 2, gy - 96, w, 96);
@@ -777,8 +866,8 @@
         ctx.beginPath(); ctx.moveTo(x - w / 2 - 12 + i * sw, gy - 96); ctx.lineTo(x - w / 2 - 4 + i * sw * (w + 8) / (w + 24), gy - 120); ctx.lineTo(x - w / 2 - 4 + (i + 1) * sw * (w + 8) / (w + 24), gy - 120); ctx.lineTo(x - w / 2 - 12 + (i + 1) * sw, gy - 96); ctx.closePath(); ctx.fill();
         ctx.beginPath(); ctx.arc(x - w / 2 - 12 + (i + 0.5) * sw, gy - 96, sw / 2, 0, Math.PI); ctx.fill();
       }
-      eye(x, gy - 134, false, 0, 0.9);
-    } else eye(x, gy - (sp.kind === 'B' ? 66 : sp.kind === 'H' ? 90 : 128), false, 0, 0.9);
+      badge(x, gy - 134, seen);
+    } else badge(x, gy - (sp.kind === 'B' ? 66 : sp.kind === 'H' ? 90 : 128), seen);
   }
   function drawSpotFront(sp, t, squash) {
     const gy = S.ground, x = sp.x;
@@ -861,7 +950,7 @@
     for (const q of st.c.posts) drawGateIf(st, cx, q.gate, q.openT, q.open ? q.openT : 0, q === P && !q.open && sn.zone && sn.zone.kind === 'arch' && !st.chase);
     for (const q of st.c.posts) {
       if (q.gate < cx - 140 || q.x0 > cx + W + 40) continue;
-      for (const sp of q.spots) drawSpotBack(sp, t);
+      for (const sp of q.spots) drawSpotBack(sp, t, q === P && !!st.chase && st.chase.burnt.some(z => z.spot === sp));
       for (const b of q.boards) {
         const sq = b.t > 0 ? Math.sin(b.t * 30) * 2 : 0;
         ctx.fillStyle = '#9a6e48'; ctx.fillRect(b.x - S.boardW, gy - 1 + sq, S.boardW * 2, 9);
@@ -897,7 +986,7 @@
     }
     ctx.restore();
   }
-  function drawGateIf(st, cx, gx, openT, pulled, lit) { if (gx > cx - 150 && gx < cx + W + 130) drawGate(st, gx, openT, pulled, lit); }
+  function drawGateIf(st, cx, gx, openT, pulled, lit, seen) { if (gx > cx - 150 && gx < cx + W + 130) drawGate(st, gx, openT, pulled, lit, seen); }
   function drawTop(st) {
     const cx = st.cam.x, t = G.clock, P = st.P, gy = S.ground, sn = st.sn, th = st.th, S0 = st.sneak, T0 = st.thr;
     ctx.save(); ctx.translate(-Math.round(cx * 10) / 10, 0);
@@ -906,9 +995,15 @@
     if (sn.state === 'caught' && sn.by) K.ninja(S0, sn.by.x, gy - 44, { pose: 'dizzy', face: -1 });
     else {
       const run = st.chase || sn.dashing || st.state === 'end';
-      const pose = sn.state === 'dizzy' ? 'dizzy' : st.state === 'end' && !sn.moving ? 'cheer' : sn.pullT > 0 ? 'throw' : !sn.gr ? 'run' : sn.moving ? (run ? 'run' : 'sneak') : sn.hidden || st.state !== 'go' ? 'sneak' : 'idle';
+      const pose = sn.slide > 0 ? 'sneak' : sn.state === 'dizzy' ? 'dizzy' : st.state === 'end' && !sn.moving ? 'cheer' : sn.pullT > 0 ? 'throw' : !sn.gr ? 'run' : sn.moving ? (run ? 'run' : 'sneak') : sn.hidden || st.state !== 'go' ? 'sneak' : 'idle';
       const alpha = kind === 'D' || kind === 'G' ? 0.62 : kind === 'A' ? 0.58 : kind === 'M' ? 0.8 : 1;
-      K.ninja(S0, sn.x, gy - sn.y - snLift(sn), { pose, face: sn.face, alpha, t: pose === 'sneak' && !sn.moving ? 0 : undefined });
+      if (sn.slide > 0) {
+        // speed lines behind a slide
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath();
+        for (const [dy, l] of [[-8, 34], [-20, 24], [-32, 30]]) { ctx.moveTo(sn.x - sn.face * 16, gy + dy); ctx.lineTo(sn.x - sn.face * (16 + l), gy + dy); }
+        ctx.stroke();
+      }
+      K.ninja(S0, sn.x, gy - sn.y - snLift(sn), { pose, face: sn.face, alpha, rot: sn.slide > 0 ? -sn.face * 0.5 : undefined, t: pose === 'sneak' && !sn.moving ? 0 : undefined });
     }
     for (const q of st.c.posts) if (q.gate > cx - 140 && q.x0 < cx + W + 40) for (const sp of q.spots) drawSpotFront(sp, t, sn.hidden && z && z.spot === sp);
     // noise rings
@@ -931,6 +1026,7 @@
     }
     K.ninja(T0, th.x, S.ramp, { pose: st.state === 'end' && !th.moving ? 'cheer' : th.anim > 0 ? 'throw' : th.moving ? 'run' : 'idle', face: th.face, item: th.pouch >= 1 && st.state === 'go' && th.anim <= 0 ? 'pebble' : undefined });
     for (const q of st.pebbles) K.pebble(q.x, q.y, 4.5);
+    if (st.owl) drawOwl(st.owl, t);
     K.drawParts(st, cx);
     ctx.restore();
     // hidden or seen: the eye over the sneaker
@@ -963,7 +1059,8 @@
       const bx = K.panel(A, 'sneaker', 250, 58, z), cy = bx.y + 27 * z, chh = 23 * z, qt = K.quiet(A), cw = (bx.w - 24 * z - 12 * z) / 3;
       const run = !!st.chase;
       K.chip(bx.x + 12 * z, cy, cw, chh, (qt ? '' : K.key(A, 'lr') + ' ') + (run ? 'RUN' : 'CREEP'), (run && !!sp.dir) || (sp.mode === 'go' && sp.safe && !sn.moving), sn.moving, z);
-      K.chip(bx.x + 12 * z + cw + 6 * z, cy, cw, chh, (qt ? '' : K.key(A, 'act') + ' ') + (sp.mode === 'pull' || sp.mode === 'lever' ? 'LEVER' : 'DASH'), sp.mode === 'pull', sn.dashing, z);
+      if (run) K.chip(bx.x + 12 * z + cw + 6 * z, cy, cw, chh, (qt ? '' : K.key(A, 'down') + ' ') + 'SLIDE', sp.slide, sn.slide > 0, z);
+      else K.chip(bx.x + 12 * z + cw + 6 * z, cy, cw, chh, (qt ? '' : K.key(A, 'act') + ' ') + (sp.mode === 'pull' || sp.mode === 'lever' ? 'LEVER' : 'DASH'), sp.mode === 'pull', sn.dashing, z);
       K.chip(bx.x + 12 * z + 2 * (cw + 6 * z), cy, cw, chh, (qt ? '' : K.key(A, 'up') + ' ') + 'HOP', sp.jump, !sn.gr, z);
     }
     {
@@ -978,7 +1075,8 @@
       let s = null, col = C.gold, pulse = false;
       const R = K.key(A, 'right'), Lf = K.key(A, 'left'), pale = '#cfd6ff';
       if (sn.state === 'ok') {
-        if (sp.jump) { s = (sp.why === 'guard' ? 'Hop over him! ' : sp.why === 'boards' ? 'Hop the creaky boards! ' : 'Hop! ') + K.key(A, 'up'); pulse = true; }
+        if (sp.slide) { s = 'Slide! ' + K.key(A, 'down'); pulse = true; }
+        else if (sp.jump) { s = (sp.why === 'guard' ? 'Hop over him! ' : sp.why === 'boards' ? 'Hop the creaky boards! ' : 'Hop! ') + K.key(A, 'up'); pulse = true; }
         else if (sp.boards) s = 'Creaky boards ahead: get ready to hop ' + K.key(A, 'up');
         else if (sp.mode === 'flee') { s = sp.dir ? 'Run ' + (sp.dir > 0 ? R : Lf) + '! Hide in ' + zoneName(sp.zone) + '!' : 'Stay hidden!'; pulse = true; }
         else if (sp.mode === 'go') s = sp.safe ? (sn.hidden ? 'Go now! ' + R : 'Sneak on ' + R) : 'Quick, to ' + zoneName(sp.zone) + ' ' + R;
@@ -1011,7 +1109,7 @@
   MODES.shadowsneak = {
     S, compile, plan, medal, zoneAt, stepGuard, forecast, hopSafe, nextZone,
     setup(st, L) {
-      st.stats = { spotted: 0, caught: 0, escapes: 0, pebbles: 0, bonks: 0, hops: 0, posts: 0, clean: 0, helps: 0, roomT: [] };
+      st.stats = { spotted: 0, caught: 0, escapes: 0, pebbles: 0, bonks: 0, hops: 0, slides: 0, owls: 0, posts: 0, clean: 0, helps: 0, roomT: [] };
       st.inT = [G.time, G.time]; st.personT = G.time;
       const def = LEVELS[G.levelIndex];
       st.totalPosts = (def.rooms || [def]).reduce((n, r) => n + (r.posts || []).length, 0);
@@ -1032,7 +1130,7 @@
         { label: 'Unseen gates', value: s.clean + ' of ' + st.totalPosts },
         { label: 'Medal', value: medal(G.time, s.spotted, s.caught) },
       ];
-      out.push('Pebbles tossed: ' + s.pebbles + '.' + (s.bonks ? ' Guards bonked: ' + s.bonks + '.' : '') + (s.escapes ? ' Chases escaped: ' + s.escapes + '.' : ''));
+      out.push('Pebbles tossed: ' + s.pebbles + '.' + (s.bonks ? ' Guards bonked: ' + s.bonks + '.' : '') + (s.escapes ? ' Chases escaped: ' + s.escapes + '.' : '') + (s.slides ? ' Slides: ' + s.slides + '.' : ''));
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);
       return out;
     },
@@ -1048,6 +1146,8 @@
   Sfx.extra.shadowsneakGotcha = function () { [392, 330, 262].forEach((f, i) => this.tone(f, 0.12, 'triangle', 0.05, null, i * 0.09)); };
   Sfx.extra.shadowsneakPlop = function () { this.tone(200, 0.18, 'sine', 0.06, 90); };
   Sfx.extra.shadowsneakWhoa = function () { this.tone(520, 0.16, 'sine', 0.04, 260); };
+  Sfx.extra.shadowsneakSlide = function () { this.tone(900, 0.22, 'triangle', 0.035, 380); };
+  Sfx.extra.shadowsneakHoot = function () { this.tone(392, 0.16, 'sine', 0.06, 370); this.tone(392, 0.28, 'sine', 0.06, 330, 0.22); };
   Sfx.extra.shadowsneakPhew = function () { this.tone(700, 0.3, 'sine', 0.035, 330); };
   Sfx.extra.shadowsneakCheck = function () { [523, 784, 1047].forEach((f, i) => this.tone(f, 0.1, 'triangle', 0.045, null, i * 0.07)); };
   Sfx.extra.shadowsneakFanfare = function () { [392, 523, 659, 784, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.16, 'triangle', 0.055, null, i * 0.11)); };
@@ -1056,9 +1156,9 @@
   NINJA.defs.shadowsneak = {
     name: 'Shadow Sneak', world: 28, kind: 'team', mode: 'shadowsneak', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> creep / walk <kbd>W</kbd> hop / aim far <kbd>S</kbd> aim near',
-      bo: '<kbd>←</kbd><kbd>→</kbd> creep / walk <kbd>↑</kbd> hop / aim far <kbd>↓</kbd> aim near',
-      pad: 'stick creeps, walks and aims, <span data-glyph="a"></span> hops,',
+      pip: '<kbd>A</kbd><kbd>D</kbd> creep / walk <kbd>W</kbd> hop / aim far <kbd>S</kbd> slide / aim near',
+      bo: '<kbd>←</kbd><kbd>→</kbd> creep / walk <kbd>↑</kbd> hop / aim far <kbd>↓</kbd> slide / aim near',
+      pad: 'stick creeps, walks, aims and slides, <span data-glyph="a"></span> hops,',
     },
     tip: 'Sneaker: creep from hiding spot to hiding spot. Thrower: toss pebbles so the guards look the other way!',
     act: { label: 'dash', labels: ['dash', 'toss'] },

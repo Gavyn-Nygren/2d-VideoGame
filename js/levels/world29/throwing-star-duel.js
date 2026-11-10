@@ -11,7 +11,8 @@
    THE DUEL
      STARS fly in two lanes: HIGH (head height) and LOW (ankle height). The action throws one from where you stand: a
        HIGH star when you are standing (or in the air), a LOW star when you are ducking. Each star comes out of your
-       pouch: 3 stars, and one grows back every 1.0 s, so wild mashing just empties the pouch.
+       pouch: 3 stars, and one grows back every 1.0 s while you are on your feet (never while ducking, so camping
+       in a duck runs dry), so wild mashing just empties the pouch.
      DODGE: ▼ ducks under a HIGH star (you can't walk while ducking). ▲ hops over a LOW star (a small hop: it never
        clears a high one).
      DEFLECT: when a star is about to reach you (less than 0.42 s away), the action swings your sword instead of
@@ -40,20 +41,23 @@
    MODES.starduel.plan(st, id) says what a duelist faces right now (the nearest star flying at them, its lane, the
      seconds until it arrives, whether a swing would connect, which lanes the lantern will block): the prompts, the HUD
      panels and the computer brain all read it.
+   LOOKS: the ninjas are drawn at S = 2 (twice the engine body) so they read on a phone; every height (lanes, hop,
+     lantern bob) is scaled by Z = 2 / 1.5 from the first tuning, so all timings are unchanged.
    Results card: rounds won, bonks landed, deflects, perfect deflects, and a line for the longest rally.
    Everything lives inside this block; sounds are Sfx.extra.starduel*. Level state lives in G.mst, per-round state is
    rebuilt in resetRound. */
 (() => {
-  const K = NINJA;
+  const K = NINJA, Z = 2 / 1.5;
   const SD = {
-    floor: 440, mid: 480, side: [[70, 392], [568, 890]], start: [250, 710], S: 1.5,
-    walk: 170, jumpV: 290, grav: 1400,
-    laneY: [40, 8], starR: 9, v0: 380, vMax: 880, bounce: 1.18, perfBounce: 1.36,
+    // Z: the ninjas are drawn twice the engine size (S = 2); heights scale by Z = S / 1.5 so every timing stays the same
+    floor: 440, mid: 480, side: [[70, 392], [568, 890]], start: [250, 710], S: 2,
+    walk: 170, jumpV: 290 * Z, grav: 1400 * Z,
+    laneY: [40 * Z, 8 * Z], starR: 11, v0: 380, vMax: 880, bounce: 1.18, perfBounce: 1.36,
     hitR: 13, reach: 42, zone: 0.42, win: 0.16, winGold: 0.25, winShrink: 0.012, winMin: 0.1, perf: 0.065,
     swingT: 0.22, whiffT: 0.55, throwT: 0.2, release: 0.07, throwCd: 0.3,
     pouch: 3, refill: 1.0, goldPouch: 4, goldRefill: 0.75,
-    need: 3, dizzy: 0.8, inv: 1.5, duckIn: 0.55, hopClear: 10,
-    lanMid: 56, lanAmp: 52, lanBlock: 18, roundTime: 45,
+    need: 3, dizzy: 0.8, inv: 1.5, duckIn: 0.55, hopClear: 10 * Z,
+    lanMid: 56 * Z, lanAmp: 52 * Z, lanBlock: 18 * Z, roundTime: 45,
   };
   const ROUNDS = [
     { name: 'First Bow', lantern: 0, fast: 1 },
@@ -67,7 +71,7 @@
 
   /* ---------- a round ---------- */
   function newDuelist(k, gold) {
-    return { k, x: SD.start[k], h: 0, vy: 0, duck: false, duckA: 0, walk: 0, moving: false,
+    return { k, x: SD.start[k], h: 0, vy: 0, duck: false, duckA: 0, duckT: 0, walk: 0, moving: false,
       pouch: gold >= 2 ? SD.goldPouch : SD.pouch, cap: gold >= 2 ? SD.goldPouch : SD.pouch, refill: gold >= 2 ? SD.goldRefill : SD.refill, refT: 0,
       win: gold >= 1 ? SD.winGold : SD.win, gold,
       throwT: 0, released: true, lowThrow: false, thrCd: 0, swing: null, lock: 0, whiff: 0, glint: 0,
@@ -104,7 +108,7 @@
   }
   const winFor = (P, s) => Math.max(SD.winMin, P.win - SD.winShrink * s.bounces);
   const feet = P => SD.floor - P.h;
-  const sayPop = (st, P, word, col, size) => K.pop(st, P.x, feet(P) - 86, word, col, size);
+  const sayPop = (st, P, word, col, size) => K.pop(st, P.x, feet(P) - 86 * Z - 4, word, col, size);
 
   /* ---------- the rules ---------- */
   function throwStar(st, P) {
@@ -160,7 +164,8 @@
     const can = live && !st.res && P.dizzy <= 0;
     if (!can) { P.duck = false; P.duckA = approach(P.duckA, 0, dt * 12); if (P.throwT > 0) P.throwT -= dt; return; }
     // the pouch grows a star back
-    if (P.pouch < P.cap) { P.refT += dt; if (P.refT >= P.refill) { P.refT = 0; P.pouch++; Sfx.play('starduelRefill', P.k); } } else P.refT = 0;
+    // (only while you are up on your feet: a ninja curled up in a duck can't reach the pouch, so camping in a duck runs dry)
+    if (P.pouch < P.cap) { if (!P.duck) { P.refT += dt; if (P.refT >= P.refill) { P.refT = 0; P.pouch++; Sfx.play('starduelRefill', P.k); } } } else P.refT = 0;
     // stance and steps (locked for the moment of a swing)
     const swinging = P.swing && P.swing.t < SD.swingT;
     if (!swinging) {
@@ -171,6 +176,7 @@
       if (mv && !P.duck) { P.x = clamp(P.x + mv * SD.walk * (g ? 1 : 0.8) * dt, lo, hi); P.walk += dt * 13; P.moving = g; }
     }
     P.duckA = approach(P.duckA, P.duck ? 1 : 0, dt * 12);
+    P.duckT = P.duck ? P.duckT + dt : 0;
     // a throw lets go of its star a moment after the press
     if (P.throwT > 0) {
       P.throwT -= dt;
@@ -218,7 +224,7 @@
           else { bonk(st, T, s); continue; }
         } else if (ahead < -SD.hitR) {
           s.passed = true;
-          if (s.under) { st.stat.dodges[T.k]++; K.pop(st, T.x - DIR[T.k] * 34, feet(T) - 52, s.lane ? 'Hop!' : 'Ducked!', '#d9ffd0', 16); }
+          if (s.under) { st.stat.dodges[T.k]++; K.pop(st, clamp(T.x - DIR[T.k] * 46 * Z, 46, W - 46), feet(T) - 24 * Z, s.lane ? 'Hop!' : 'Ducked!', '#d9ffd0', 16); }   // (behind the back and low: clear of the prompt over the head)
         }
       }
       // off the floor: it sticks in the wall with a soft "tok"
@@ -249,7 +255,7 @@
     st.gongT = 1; Sfx.play('ninjaGong');
     for (const s of st.stars) K.poof(st, s.x, SD.floor - SD.laneY[s.lane], 4);
     st.stars = [];
-    if (w >= 0) { st.stat.wins[w]++; st.pl[w].cheer = 1; st.pl[w].dizzy = 0; K.confetti(st, st.pl[w].x, feet(st.pl[w]) - 60, 26); }
+    if (w >= 0) { st.stat.wins[w]++; st.pl[w].cheer = 1; st.pl[w].dizzy = 0; K.confetti(st, st.pl[w].x, feet(st.pl[w]) - 60 * Z, 26); }
   }
   // the engine players follow the ninjas (name tags, speech bubbles)
   function mirror(st) { for (const P of st.pl) K.place(P.k, P.x, feet(P)); }
@@ -363,9 +369,9 @@
   }
   function drawLantern(st) {
     if (!st.course.lantern) return;
-    const t = G.clock, F = SD.floor, s = 1.35, h = lanH(st), jx = Math.sin(t * 40) * 4 * st.lanJig;
+    const t = G.clock, F = SD.floor, s = 1.35 * Z, h = lanH(st), jx = Math.sin(t * 40) * 4 * st.lanJig;
     const cy = F - h, top = cy - 21 * s;
-    K.rope(SD.mid, 30, SD.mid + jx, top, 0, { w: 2.5 });
+    K.rope(SD.mid, 96, SD.mid + jx, top, 0, { w: 2.5 });
     K.lantern(SD.mid + jx, top, t, { s, col: '#63d6a4', sway: 0.25 + st.lanJig * 2 });   // jade: neither side's colour, and not gold
     // the lane it is in right now, marked on the lantern's sides
     for (const lane of [0, 1]) if (lanBlocks(h, lane)) {
@@ -377,39 +383,39 @@
   function drawDuelist(st, P) {
     const t = G.clock, F = SD.floor, id = P.k, f = DIR[id], x = P.x, y = F - P.h, s = SD.S;
     // shadow
-    ctx.fillStyle = 'rgba(14,16,40,0.3)'; ctx.beginPath(); ctx.ellipse(x, F + 2, 20 - Math.min(8, P.h * 0.2), 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(14,16,40,0.3)'; ctx.beginPath(); ctx.ellipse(x, F + 2, 26 - Math.min(10, P.h * 0.2), 5.5, 0, 0, Math.PI * 2); ctx.fill();
     const won = st.res && st.res.winner === id;
     const alpha = P.inv > 0 && P.dizzy <= 0 && !st.res ? 0.55 + 0.35 * Math.sin(t * 30) : 1;
     const flip = a => (f > 0 ? a : Math.PI - a);
     if (won) { K.ninja(id, x, y, { pose: 'cheer', face: f, s }); return; }
     if (P.dizzy > 0 || (st.res && st.res.winner === 1 - id)) {
       K.ninja(id, x, y, { pose: 'dizzy', face: f, s });
-      for (let n = 0; n < 3; n++) { const a = t * 5 + n * 2.1; ctx.fillStyle = n % 2 ? '#fff3a0' : '#ffffff'; K.star(x + Math.cos(a) * 24, y - 50 + Math.sin(a) * 7, 6, 2.6, a); ctx.fill(); }
+      for (let n = 0; n < 3; n++) { const a = t * 5 + n * 2.1; ctx.fillStyle = n % 2 ? '#fff3a0' : '#ffffff'; K.star(x + Math.cos(a) * 30, y - 66 + Math.sin(a) * 9, 7.5, 3.2, a); ctx.fill(); }
       return;
     }
     if (P.swing) {
       const u = clamp(P.swing.t / (SD.swingT * 0.6), 0, 1), e = K.smooth(u), fade = clamp(1 - (P.swing.t - SD.swingT * 0.5) / (SD.swingT * 0.5 + 0.06), 0, 1);
       if (P.swing.low) {
         K.ninja(id, x, y, { pose: 'sneak', face: f, s, alpha });
-        const hx = x + f * 21, hy = y - 13, a = K.lerp(-1.5, 0.55, e);
-        K.sword(hx, hy, flip(a), 38, { id, glint: P.glint });
-        K.slash(hx, hy, 44, flip(-1.5), flip(a), 0.75 * fade, P.swing.ok ? '#ffffff' : 'rgba(255,255,255,0.6)');
+        const hx = x + f * 21 * Z, hy = y - 13 * Z, a = K.lerp(-1.5, 0.55, e);
+        K.sword(hx, hy, flip(a), 38 * Z, { id, glint: P.glint });
+        K.slash(hx, hy, 44 * Z, flip(-1.5), flip(a), 0.75 * fade, P.swing.ok ? '#ffffff' : 'rgba(255,255,255,0.6)');
       } else {
         const a = K.lerp(-2.25, 0.3, e);
         const hd = K.ninja(id, x, y, { pose: 'sword', face: f, s, alpha, aim: flip(a), glint: P.glint });
-        K.slash(hd.x, hd.y, 50, flip(-2.25), flip(a), 0.75 * fade, P.swing.ok ? '#ffffff' : 'rgba(255,255,255,0.6)');
+        K.slash(hd.x, hd.y, 50 * Z, flip(-2.25), flip(a), 0.75 * fade, P.swing.ok ? '#ffffff' : 'rgba(255,255,255,0.6)');
       }
       return;
     }
     if (P.throwT > 0) {
       K.ninja(id, x, y, { pose: P.lowThrow ? 'sneak' : 'throw', face: f, s, alpha, item: P.released ? undefined : 'star', rot: P.lowThrow ? 0 : f * 0.1 });
-      if (P.lowThrow && P.released) { ctx.fillStyle = PCOL[id]; ctx.strokeStyle = PDARK[id]; ctx.lineWidth = 2; circle(x + f * 26, y - 12, 5); ctx.fill(); ctx.stroke(); }
+      if (P.lowThrow && P.released) { ctx.fillStyle = PCOL[id]; ctx.strokeStyle = PDARK[id]; ctx.lineWidth = 2; circle(x + f * 26 * Z, y - 12 * Z, 6); ctx.fill(); ctx.stroke(); }
       return;
     }
     if (P.duckA > 0.5) {
       K.ninja(id, x, y, { pose: 'sneak', face: f, s, alpha, t: P.moving ? t : 0 });
-      K.sword(x + f * 21, y - 13, flip(-0.55), 38, { id });
-      ctx.fillStyle = PCOL[id]; ctx.strokeStyle = PDARK[id]; ctx.lineWidth = 2; circle(x + f * 21, y - 13, 5); ctx.fill(); ctx.stroke();
+      K.sword(x + f * 21 * Z, y - 13 * Z, flip(-0.55), 38 * Z, { id });
+      ctx.fillStyle = PCOL[id]; ctx.strokeStyle = PDARK[id]; ctx.lineWidth = 2; circle(x + f * 21 * Z, y - 13 * Z, 6); ctx.fill(); ctx.stroke();
       return;
     }
     const bob = P.moving ? Math.abs(Math.sin(P.walk)) * 3 : 0;
@@ -489,6 +495,7 @@
       else if (P.dizzy > 0) { lab = 'Bonked! Dizzy...'; col = '#ffd9d0'; }
       else if (P.whiff > 0) { lab = 'Whiff! Wait...'; col = '#ffd9d0'; }
       else if (pl.star && pl.tti < 1.2) { lab = pl.lane ? 'Low star!' : 'High star!'; col = '#ffffff'; }
+      else if (P.duck && P.duckT > 1 && P.pouch < P.cap) { lab = 'Stand up to refill!'; col = '#d9d3ef'; }
       else if (P.pouch <= 0) { lab = 'Pouch is empty...'; col = '#d9d3ef'; }
       else if (P.gold) { lab = P.gold >= 2 ? 'Gold sword + pouch' : 'Gold sword'; col = C.gold; }
       else if (pl.blocked[0] || pl.blocked[1]) { lab = pl.blocked[0] && pl.blocked[1] ? 'Lantern in the way' : pl.blocked[0] ? 'Lantern high: go low' : 'Lantern low: go high'; col = '#ffe7a8'; }
@@ -514,7 +521,7 @@
       const Pr = K.prompter(st);
       for (const P of st.pl) {
         if (!(st.round <= 2 || P.gold) || P.dizzy > 0) continue;
-        const pl = plan(st, P.k), y = F - P.h - 62;
+        const pl = plan(st, P.k), y = F - P.h - 62 * Z;
         if (pl.star && pl.tti < 0.95) {
           if (pl.inWin && pl.grounded && pl.canAct && (pl.lane === 1) === pl.lowStance) Pr.say(P.k, K.key(P.k, 'act') + ' swing!', P.x, y, '#ffffff', true);
           else Pr.say(P.k, pl.lane ? K.key(P.k, 'up') + ' hop!' : K.key(P.k, 'down') + ' duck!', P.x, y, pl.lane ? '#9fe8ff' : '#ffe7a8', true);
@@ -537,7 +544,7 @@
     name: 'Throwing Star Duel', world: 28, kind: 'versus', mode: 'starduel', ownStep: true,
     match: { bestOf: 5, roundTime: SD.roundTime },
     act: { label: 'throw' },
-    tagLift: 16,
+    tagLift: 30,
     legend: {
       pip: '<kbd>A</kbd><kbd>D</kbd> step <kbd>W</kbd> hop <kbd>S</kbd> duck',
       bo: '<kbd>←</kbd><kbd>→</kbd> step <kbd>↑</kbd> hop <kbd>↓</kbd> duck',
