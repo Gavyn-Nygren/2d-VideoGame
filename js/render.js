@@ -475,14 +475,27 @@ function drawMatchHUD() {
     text(Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'), W / 2, cy + ch / 2 + 0.5, warn ? fs + 2 : fs, warn ? C.gold : C.paper, 'center');
   }
 }
-function drawNameTags(alpha) {
+// card: the intro card's box [x, y, w, h]. A tag that would sit on it goes under the hero's feet,
+// or under the card when the hero is behind it, and points up
+function drawNameTags(alpha, card) {
+  const tagHw = p => cpuSolo() && cpuOn(p.id) ? 30 : 18;
+  const onCard = (p, y0, y1) => card && p.x + p.w / 2 + tagHw(p) > card[0] && p.x + p.w / 2 - tagHw(p) < card[0] + card[2] && y1 > card[1] && y0 < card[1] + card[3];
+  const lift = (LEVELS[G.levelIndex] || {}).tagLift || 0;
+  const moved = p => onCard(p, p.y - 27 - lift, p.y - 5 - lift) || onCard(p, p.y, p.y + p.h); // the tag, or the hero, is on the card
+  let row = 0; // moved tags share one row, under the lowest of those heroes
+  for (const p of G.players) if (p.alive && moved(p)) row = Math.max(row, p.y + p.h + 18);
   for (const p of G.players) {
     if (!p.alive) continue;
-    const x = p.x + p.w / 2, y = p.y - 16 - ((LEVELS[G.levelIndex] || {}).tagLift || 0); // tagLift: a level that carries things overhead
+    const x = p.x + p.w / 2; let y = p.y - 16 - lift; // tagLift: a level that carries things overhead
+    const cpu = cpuSolo() && cpuOn(p.id), hw = tagHw(p); // the computer's tag says so
+    const up = moved(p);
+    if (up) y = onCard(p, row - 15, row + 7) ? card[1] + card[3] + 20 : row;
     ctx.save(); ctx.globalAlpha = alpha;
-    const cpu = cpuSolo() && cpuOn(p.id), hw = cpu ? 30 : 18; // the computer's tag says so
     ctx.fillStyle = PCOL[p.id]; rr(x - hw, y - 11, hw * 2, 18, 9); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(x - 4, y + 7); ctx.lineTo(x + 4, y + 7); ctx.lineTo(x, y + 11); ctx.fill();
+    ctx.beginPath();
+    if (up) { ctx.moveTo(x - 4, y - 11); ctx.lineTo(x + 4, y - 11); ctx.lineTo(x, y - 15); }
+    else { ctx.moveTo(x - 4, y + 7); ctx.lineTo(x + 4, y + 7); ctx.lineTo(x, y + 11); }
+    ctx.fill();
     text(cpu ? NAMES[p.id] + ' · CPU' : NAMES[p.id], x, y - 1.5, 12, '#fff', 'center', 'body');
     ctx.restore();
   }
@@ -568,7 +581,8 @@ function drawIntro() {
   ctx.save(); ctx.globalAlpha = a;
   ctx.font = '14px "Atkinson Hyperlegible", system-ui, sans-serif';
   const tw = Math.max(380, ctx.measureText(def.tip).width + 60, actLine ? ctx.measureText(actLine).width + 80 : 0, note ? ctx.measureText(note).width + 60 : 0);
-  ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(W / 2 - tw / 2, 168, tw, (actLine ? 120 : 92) + (note ? 22 : 0), 18); ctx.fill();
+  const card = [W / 2 - tw / 2, 168, tw, (actLine ? 120 : 92) + (note ? 22 : 0)];
+  ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(card[0], card[1], card[2], card[3], 18); ctx.fill();
   const code = levelCode(G.levelIndex), wd = WORLDS[LEVELS[G.levelIndex].world];
   const first = code.endsWith('-1') && (!def.rooms || def.roomIndex === 0);
   const sub = (first ? `World ${LEVELS[G.levelIndex].world + 1}: ${wd.name} · ` : '') + (def.golf ? `Level ${code} · Hole ${def.roomIndex + 1} of ${def.roomCount} · Par ${def.par}`
@@ -587,8 +601,8 @@ function drawIntro() {
     text(actLine, W / 2, 271.5, 14, C.gold, 'center', 'body');
   }
   ctx.restore();
-  // name tags over the players
-  drawNameTags(a);
+  // name tags over the players, kept off the card (and not yet, while a level's warp-in still hides them)
+  if (!(G.mst && G.mst.arriveT > 0)) drawNameTags(a, card);
 }
 
 function render(dt) {
