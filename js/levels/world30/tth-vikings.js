@@ -20,7 +20,8 @@
      LOOKOUT  runs the deck with LEFT / RIGHT. The ACTION at the bucket (near the bow) bails one scoop (hold it to
               keep scooping). UP at the mast climbs it, DOWN slides down; up there the fog thins far ahead and
               everything that comes into view stays SPOTTED for both players. Nobody bails from up the mast: it is a
-              juggle. The ship's raven caws (and flaps) whenever something unseen is close in the fog.
+              juggle. Watching from up there needs no key, so it counts as playing (present(): the Thief does not
+              "wait" for a lookout on the mast, for up to 45 s without a key and never on a swamped ship). The ship's raven caws (and flaps) whenever something unseen is close in the fog.
    WATER    the hull fills by itself (waves slosh in), faster under the Thief's rain cloud and after a splash or a
             crash. Above 30% the ship gets slower; at 100% it is "Swamped!" (a team bump) and will not move until the
             lookout has bailed it down to 55%. So an idle lookout stalls everything too: nobody clears this alone.
@@ -90,7 +91,7 @@ const TTHVIK = {
   // the course (px of sea): stretch 1, then generated packs of iceberg rows and serpent passes
   len1: 6200, lead: 820, tail: 620, rowGap: [450, 490], packGap: [900, 1000], packs2: [2, 3, 4, 4], packs3: [3, 4, 4, 3],
   bergW: [62, 82], gateW: 46, jetGap: 550,
-  swapT: 2.6, gustV: 165, seatT: 0.7,
+  swapT: 2.6, gustV: 165, seatT: 0.7, watchMax: 45,
   // the Thief's mischief per stretch: R rain cloud, J jet wave
   ev: [{ first: 5, every: 6.4, pat: 'RJRJJ' }, { first: 9, every: 14, pat: 'R' }, { first: 8, every: 12, pat: 'R' }],
   rain: { in: 1.0, on: 4.6, out: 0.8 },
@@ -103,6 +104,11 @@ const TTHVIK = {
   goldCrash: 3, goldSwamp: 2, goldWave: 2,
 };
 const TTHVIK_TAUNTS = ['Lost in the fog? Hee hee!', 'Leif who? Finders keepers!', 'Row, row, row! You\'ll never catch me!', 'Splish, splash! Ha!'];
+// the rower's two steering keys as one readable bit of a sentence: 'W / S', '▲ / ▼', 'stick up / down'
+function tthVikUD(id, sep = ' / ') {
+  const up = tthKey(id, 'up'), dn = tthKey(id, 'down');
+  return up + sep + (up.startsWith('stick ') && dn.startsWith('stick ') ? dn.slice(6) : dn);
+}
 const tthVikSolo = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
 const tthVikLaneY = f => TTHVIK.laneY[0] + (TTHVIK.laneY[2] - TTHVIK.laneY[0]) * f / 2;
 const tthVikBow = () => TTHVIK.sternX + TTHVIK.len;
@@ -203,6 +209,9 @@ function tthVikPlace(st) {
 const tthVikMastTop = () => TTHVIK.mastH - 4;
 // 0..1: how much of the far view the lookout's height gives
 function tthVikMastK(ph) { const L = ph.L; return L.onMast ? clamp((L.h / tthVikMastTop() - 0.3) / 0.6, 0, 1) : 0; }
+// the lookout watches from up the mast with no key held: that IS the job, so the Thief must not take a person there
+// for away (the phase's present()). Not for ever (K.watchMax s), and not once the ship is swamped: bailing comes first.
+const tthVikWatching = ph => tthVikMastK(ph) > 0 && !ph.swamped && ph.L.stillT < TTHVIK.watchMax && (ph.state === 'sail' || ph.state === 'finale');
 const tthVikAtTop = ph => ph.L.onMast && ph.L.h >= tthVikMastTop() - 8;
 
 /* ---------- hints (each at most once every `again` s) ---------- */
@@ -299,6 +308,7 @@ function tthVikLookout(st, p, dt) {
   const ph = st.ph, K = TTHVIK, L = ph.L, top = tthVikMastTop();
   L.cd = Math.max(0, L.cd - dt); L.scoopT = Math.max(0, L.scoopT - dt); L.grabT = Math.max(0, L.grabT - dt);
   const mv = (p.input.right ? 1 : 0) - (p.input.left ? 1 : 0), up = tthUp(p), dn = !!p.input.down;
+  L.stillT = mv || up || dn || p.input.act || p.pendingAct ? 0 : L.stillT + dt;   // (for tthVikWatching)
   if (L.onMast) {
     if (up && !dn) { if (L.h < top) { L.h = Math.min(top, L.h + K.climbV * dt); if ((L.gripT -= dt) <= 0) { L.gripT = 0.16; Sfx.play('tthVikGrip', p.id); } } }
     else if (dn && !up) L.h -= K.slideV * dt;
@@ -402,7 +412,7 @@ function tthVikStartJet(st) {
   c.pose = 'point'; tthSay(st, ph.jetN++ % 2 ? 'Surf\'s up! Ha ha!' : 'Jet wave! Wheee!', 1.6);
   Sfx.play('tthVikRev');
   tthWarn(st, ph.rower, 1.1);
-  tthVikTip(st, ph.rower, 'steer', 'Steer out of his lane: ' + tthKey(ph.rower, 'up') + ' or ' + tthKey(ph.rower, 'down'), 'I steer away!', 14, { force: true });
+  tthVikTip(st, ph.rower, 'steer', 'Steer out of his lane: ' + tthVikUD(ph.rower, ' or '), 'I steer away!', 14, { force: true });
 }
 // true when no row or loop is close ahead (a jet wave would be unfair there)
 function tthVikOpenSea(ph) {
@@ -497,7 +507,7 @@ function tthVikCrash(st, h) {
   }
   if (ph.crashN >= K.goldCrash && !ph.gold.lantern) {
     ph.gold.lantern = true; S.gold.push('lantern');
-    tthHelp(st, 'Gold lantern: the deck sees farther into the fog!', { id: ph.rower, hint: 'Gold lantern! Steer early: ' + tthKey(ph.rower, 'up') + ' ' + tthKey(ph.rower, 'down') });
+    tthHelp(st, 'Gold lantern: the deck sees farther into the fog!', { id: ph.rower, hint: 'Gold lantern! Steer early: ' + tthVikUD(ph.rower) });
   }
 }
 function tthVikHazards(st, dt) {
@@ -520,7 +530,7 @@ function tthVikHazards(st, dt) {
         if (mk > 0.2 && sx > near + 40) { h.spot = 1; spot++; }
         if (!ph.met[h.kind]) {   // the first one of its kind: tell the rower what to do
           ph.met[h.kind] = true;
-          const row = ph.rower, keys = tthKey(row, 'up') + ' ' + tthKey(row, 'down');
+          const row = ph.rower, keys = tthVikUD(row);
           if (h.kind === 'gate') tthVikTip(st, row, 'gate', 'Steer through the tall hoop: ' + keys, 'Through the tall hoop!', 99, { force: true, life: 4 });
           else tthVikTip(st, row, 'berg', 'Iceberg! Steer around it: ' + keys, 'I steer around the ice!', 99, { force: true, life: 4 });
         }
@@ -556,16 +566,17 @@ function tthVikHazards(st, dt) {
     ph.cawSfx = 2.4; Sfx.play('tthVikCaw');
     const q = tthVikPt(ph, K.mastX - 50, K.deckY - K.mastH - 16);
     tthPop(st, q.x - 10, q.y, 'Kraa!', '#ffffff', 16);
-    if (!ph.cawNews) { ph.cawNews = true; tthNews(st, 'The raven caws: something is in the fog! Lookout, up the mast!', false, 4.5); }
+    // (once; not over a news line that has only just come up, e.g. the gust at the buoy: a later caw says it)
+    if (!ph.cawNews && !(st.news && st.news.t < 3.2)) { ph.cawNews = true; tthNews(st, 'The raven caws: something is in the fog! Lookout, up the mast!', false, 4.5); }
   }
 }
 
 /* ---------- the buoys (jobs swap), the grab, the win ---------- */
-const tthVikNewLookout = x => ({ x, vx: 0, h: 0, onMast: false, face: 1, cd: 0, scoopT: 0, grabT: 0, gripT: 0 });
+const tthVikNewLookout = x => ({ x, vx: 0, h: 0, onMast: false, face: 1, cd: 0, scoopT: 0, grabT: 0, gripT: 0, stillT: 0 });
 function tthVikLeg(st) { const ph = st.ph; tthStats(st).legs.push(Math.round((st.phT - ph.legT0) * 10) / 10); ph.legT0 = st.phT; }
 function tthVikJobTips(st) {
   const ph = st.ph, row = ph.rower, look = 1 - row;
-  tthVikTip(st, row, 'job', 'Row: press ' + tthKey(row, 'act') + ' on the drum beat. Steer: ' + tthKey(row, 'up') + ' ' + tthKey(row, 'down'), 'I row on the beat and steer!', 2, { force: true, life: 5 });
+  tthVikTip(st, row, 'job', 'Row: press ' + tthKey(row, 'act') + ' on the drum beat. Steer: ' + tthVikUD(row), 'I row on the beat and steer!', 2, { force: true, life: 5 });
   tthVikTip(st, look, 'job', ph.k === 0 ? 'Bail at the bucket: ' + tthKey(look, 'act') : 'Bail: ' + tthKey(look, 'act') + ' at the bucket. Climb the mast: ' + tthKey(look, 'up'), ph.k === 0 ? 'I bail the water out!' : 'I bail and watch from the mast!', 2, { force: true, life: 5 });
 }
 function tthVikSwap(st) {
@@ -1246,6 +1257,8 @@ TTH_PHASES.vikings = {
     tthVikRower(st, ps[ph.rower], dt);
     if (ph.strokeN !== n0) ph.lastStrokeT = ph.t;
     if (ph.state === 'won') ps[1 - ph.rower].pendingAct = false; else tthVikLookout(st, ps[1 - ph.rower], dt);
+    // (the computer rower has its own "the person is away" clock, cpu-core's CPU.idle: a watching lookout is not away)
+    if (tthVikWatching(ph) && typeof CPU === 'object' && typeof cpuOn === 'function' && !cpuOn(1 - ph.rower)) CPU.idle[1 - ph.rower] = 0;
     tthVikSail(st, dt);
     tthVikEvents(st, dt);
     tthVikHazards(st, dt);
@@ -1259,6 +1272,7 @@ TTH_PHASES.vikings = {
   },
   coast(st, dt) { tthVikCoast(st, dt); },
   hide: () => true,
+  present(st, p) { const ph = st.ph; return p.id !== ph.rower && tthVikWatching(ph); },
   labels(st) { const ph = st.ph, a = 'row', b = ph.fin ? 'grab' : 'bail'; return ph.rower === 0 ? [a, b] : [b, a]; },
   roles(st) { const ph = st.ph, a = 'Row!', b = ph.fin ? 'Grab it!' : ph.k === 0 ? 'Bail!' : 'Lookout!'; return ph.rower === 0 ? [a, b] : [b, a]; },
   legend(st) {

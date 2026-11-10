@@ -16,8 +16,8 @@
    info is cpu-core's info (skill is always 1 in this team level) plus:
      info.vs     tthVersusSkill(p): 0.35 / 0.7 / 1 from the saved Opponent setting (Easy / Normal / Hard), or the bot
                  test's --skills; the portal race (versus inside this team level) uses it.
-     info.away   the person pressed nothing for TTH.idleAfter (10) s: the Thief waits, and so does the computer (the
-                 core brain returns {} unless out.keep). While it throws an output away, the core also drops the era
+     info.away   the person pressed nothing for TTH.idleAfter (10) s in this era (the core's S.idle, so both always
+                 agree): the Thief waits, and so does the computer (the core brain returns {} unless out.keep). While it throws an output away, the core also drops the era
                  brain's cpuNav plan (bst.nav), and when the person is back it calls back() if there is one.
    An era that is still the core's stub (TTH_PHASES[phase].stub) is played by TTH_STUB_BRAINS[phase]; a real era
    with no brain by a follow-the-partner fallback, so the level never breaks.
@@ -107,7 +107,9 @@ cpuBrain('timethief', {
     const B = (stub ? TTH_STUB_BRAINS[S.phase] : TTH_BRAINS[S.phase]) || TTH_STUB_BRAINS.follow;
     const key = S.phase + (stub ? ':stub' : '') + ':' + (S.phaseNo || 0);
     info.vs = tthVersusSkill(p);
-    info.away = !info.partnerCpu && info.partnerIdle > TTH.idleAfter;
+    // the core's own idle wait (S.idle: per era, never during a card or a cutscene), not cpu-core's partnerIdle, which
+    // runs on through the cutscene and the era card: the computer waits exactly when the Thief does
+    info.away = !info.partnerCpu && !!S.idle;
     if (bst.key !== key) { bst.key = key; bst.sub = {}; if (typeof B.reset === 'function') B.reset(bst.sub, p, info); }
     if (bst.away && !info.away) { bst.away = false; if (typeof B.back === 'function') B.back(bst.sub, p, info, S); }
     const out = B.think(bst.sub, p, o, dt, info, S) || {};

@@ -61,8 +61,9 @@
                   (setup excepted: positions there are screen = world with cam 0), p.x / p.y are WORLD coords; between
                   ticks (draw hooks, name tags, bubbles) p.x / p.y are on SCREEN. Set st.cam in step.
      st.loot      [8 booleans]: the things won back so far (the core sets yours in tthPhaseDone)
-     st.idle      true while no person has pressed anything for TTH.idleAfter (10) s (the computer doesn't count): the
-                  Thief waits, the level clock (G.time) stops, and you must start no hazards (tthCalm(st))
+     st.idle      true while no person has pressed anything for TTH.idleAfter (15) s (the computer doesn't count; a
+                  person your present() hook vouches for does): the Thief waits, the level clock (G.time) stops, and
+                  you must start no hazards (tthCalm(st))
      st.cut       a cutscene ({ kind: 'leave' | 'end' }) or null     st.celebT  s of calm after a big moment
      st.stats     { bumps: [pip, bo], team, kinds: {}, help: [texts], phaseT: [s per phase], <phase>: {} }: write your
                   results into st.stats.<phase> (tthStats(st)); it must stay plain JSON (it is saved in checkpoints)
@@ -91,6 +92,9 @@
      roles(st)         -> [pip badge, bo badge] ('Carry!', 'Clear!') or null: shown over heads at the phase start and
                        on tthSwap(st).
      busy(st, p)       -> true while p is mid-teamwork (carried, on a ladder...): tthBonk never hits p then.
+     present(st, p)    -> true while p is doing its job right without pressing anything (a lookout who stays up the
+                       mast): it counts like a key press for the idle wait, so the Thief never "waits" for a person
+                       who is playing. Give it when your era has a job that can go more than a few seconds with no key.
      headLift(st, p)   -> px your drawing adds over p's head (badges and hints sit above it).
      onBonk(st, p, kind)  onKill(st, p)  onRespawn(st, p)     (kill = the engine's spikes / falling off the grid)
      bubblePos(st, p)  -> { x, y } (screen) where to put the computer's speech bubble when you draw p elsewhere.
@@ -158,11 +162,18 @@
    STATS.  The results card shows 4 tiles: Time + Record (framework), then the core's Bumps and Trophy; and 2 lines:
    the phases' statLine()s and stat()s as text, then the trophy line. Trophy by play time (G.time, which stops while
    the Thief waits for an away person) and bumps: TTH.medal (tuned with bots).
-   CHECKPOINTS (core only). At the start of every era after the first the core saves { era, time, stats, loot } in the
-   browser (store key 'tth:cp'). Loading the level (R, "Restart this era" on the pause card, picking the level again,
-   another day) starts at that era with the clock and stats as they were. The pause card has "Start over from Era 1";
-   clearing the level forgets the checkpoint. Bot tests (G.manual) never save or load one unless they ask
-   (MODES.timethief.test.cp).
+   CHECKPOINTS (core only). The core saves { v, era, time, stats, loot } in the browser (store key 'tth:cp') for every
+   era after the first: as soon as the era before it is won (tthPhaseDone, so quitting during the portal cutscene
+   keeps the win) and again when it starts. Loading the level (R, "Restart this era" on the pause card, picking the
+   level again, another day) starts at that era with the stats as they were at its start, and tells the pair so (a
+   gold "Checkpoint" line on the room card and for 6 s of play). The CLOCK and the BUMPS are never rolled back: every
+   TTH.cpEvery s of play (and on the pause card) the core adds live: { time, bumps, team } to the checkpoint, and a
+   restart goes on from those, so the Time, the Record and the Trophy count everything that was played (restarting an
+   era is no way to a better trophy). The pause card has "Start over from Era 1" (two presses: it asks first);
+   clearing the level forgets the checkpoint. A reload during the ending replays the race (its checkpoint stays until
+   levelClear()). A stored value that is not a well-formed checkpoint of this version (TTH.cpV: raise it when the
+   saved shape changes, e.g. when an era's stat() needs new fields in st.stats.<phase>) is dropped: Era 1.
+   Bot tests (G.manual) never save or load one unless they ask (MODES.timethief.test.cp).
 
    BRAINS (js/cpu/levels/world30/): the core brain is cpuBrain('timethief'); it dispatches every step to
    TTH_BRAINS[st.phase] = { reset(bst, p, info), think(bst, p, o, dt, info, S) -> { left, right, jump, down, up, act,
@@ -180,7 +191,8 @@
 
 const TTH = {
   introHold: 0.6,              // phase.step waits while G.introT is above this (the room card)
-  idleAfter: 10,               // s with no input from any person: the Thief waits (no hazards)
+  idleAfter: 15,               // s with no input from any person: the Thief waits (no hazards). (Not 10: jobs done
+                               // right go 9-11 s without a key: the Olympics grabber, the race, the Viking lookout.)
   celebT: 1.6, leaveT: 4.4,    // calm after a big moment; the portal cutscene between eras
   badgeT: 5, swapT: 2.2, hintLife: 3, newsLife: 3.2, sayLife: 2.6, arriveT: 1.1,
   bonk: { vx: 230, vy: 300, stun: 0.7, slide: 0.3, safe: 1.4, popV: 320 },
@@ -190,7 +202,10 @@ const TTH = {
   thief: { s: 0.9 },
   endT: 8.6,                   // the ending, then levelClear()
   endGround: 456,
-  cpKey: 'tth:cp',
+  cpKey: 'tth:cp', cpV: 1,     // the checkpoint's store key and its version (another version is dropped)
+  cpEvery: 2,                  // s of play between two saves of the clock and the bumps into the checkpoint
+  cpNoteLife: 6,               // s of play the "Checkpoint: Era N" line stays after a resume
+  askOverMs: 700,              // "Start over from Era 1" asks first; a second press sooner than this is a double tap
 };
 const TTH_ORDER = ['dino', 'henge', 'troy', 'olympics', 'vikings', 'davinci', 'wright', 'moon', 'finale', 'race'];
 const TTH_ERAS = {
@@ -318,6 +333,7 @@ function tthBonk(st, p, o = {}) {
   }
   st.safe[p.id] = o.safe != null ? o.safe : B.safe;
   st.stats.bumps[p.id]++; st.stats.kinds[kind] = (st.stats.kinds[kind] || 0) + 1;
+  st.cpT = 0;   // (a bump goes into the checkpoint at once: no restart takes it back)
   const ax = o.at ? o.at.x : p.x + p.w / 2, ay = o.at ? o.at.y : p.y - 14;
   tthPop(st, ax, ay, word, '#ffffff', 22);
   Sfx.play('tthBonk', p.id); rumble(p.id, 0.6, 0.4, 160);
@@ -331,6 +347,7 @@ function tthBump(st, o = {}) {
   st.teamSafe = o.safe != null ? o.safe : TTH.bonk.safe;
   const kind = o.kind || 'bump';
   st.stats.team++; st.stats.kinds[kind] = (st.stats.kinds[kind] || 0) + 1;
+  st.cpT = 0;
   const x = o.x != null ? o.x : st.cam.x + W / 2, y = o.y != null ? o.y : st.cam.y + 200;
   tthPop(st, x, y, o.word || 'Bump!', '#ffffff', 24);
   Sfx.play('tthBonk', 0); rumble(0, 0.6, 0.4, 160); rumble(1, 0.6, 0.4, 160);
@@ -419,7 +436,9 @@ function tthDrawHero(id, x, y, o = {}) {
 
 /* --- the idle wait: no person pressed anything for TTH.idleAfter s --- */
 function tthIdleTick(st, dt) {
-  const any = tthHumanIds().some(k => { const i = G.players[k].input; return i.left || i.right || i.jump || i.down || i.up || i.act; });
+  // (a person doing a job that needs no key right now, e.g. the lookout up the mast, is not away: the phase's present())
+  const ph = tthPh(st);
+  const any = tthHumanIds().some(k => { const i = G.players[k].input; return i.left || i.right || i.jump || i.down || i.up || i.act || !!tthCall(ph, 'present', st, G.players[k]); });
   if (any) {
     if (st.idle) { st.idle = false; tthSay(st, 'Aha! You\'re back!', 1.6); }
     st.idleT = 0; return;
@@ -458,24 +477,48 @@ function tthActLabels(st) {
 
 /* --- checkpoints: the start of every era after the first, kept in the browser --- */
 const tthCpOn = () => !!MODES.timethief.cpOn || (!G.manual && G.mode === 'play');
+const tthPlain = o => !!o && typeof o === 'object' && !Array.isArray(o);
+const tthNum0 = n => typeof n === 'number' && isFinite(n) && n >= 0;
+// a well-formed checkpoint of this version? (anything else in the store is dropped: the level starts at Era 1)
+function tthCpOk(cp) {
+  if (!tthPlain(cp) || cp.v !== TTH.cpV || !Number.isInteger(cp.era) || cp.era < 1 || cp.era >= TTH_ORDER.length) return false;
+  if (!tthNum0(cp.time) || cp.time > 1e6 || !Array.isArray(cp.loot) || cp.loot.length !== TTH_LOOT.length || !cp.loot.every(x => typeof x === 'boolean')) return false;
+  const s = cp.stats;
+  if (!tthPlain(s) || !Array.isArray(s.bumps) || s.bumps.length !== 2 || !s.bumps.every(tthNum0) || !tthNum0(s.team)) return false;
+  if (!tthPlain(s.kinds) || !Array.isArray(s.help) || !Array.isArray(s.phaseT) || (s.idleT !== undefined && !tthNum0(s.idleT))) return false;
+  return TTH_ORDER.every(k => s[k] === undefined || tthPlain(s[k]));
+}
 function tthCpGet() {
   const cp = store.get(TTH.cpKey);
-  if (!cp || typeof cp !== 'object' || !(cp.era >= 1 && cp.era < TTH_ORDER.length) || !cp.stats || !Array.isArray(cp.loot)) return null;
-  return cp;
+  if (tthCpOk(cp)) return cp;
+  if (cp != null) tthCpClear();
+  return null;
 }
-function tthCpSave(st) {
-  if (!tthCpOn() || st.phaseNo < 1) return;
+// the checkpoint for era `era` (1-9) with the clock at `time`: the stats and the things won back as they are now
+function tthCpWrite(st, era, time) {
+  st.cp = null;
+  if (!tthCpOn() || era < 1 || era >= TTH_ORDER.length) return;
   let stats; try { stats = JSON.parse(JSON.stringify(st.stats)); } catch (e) { return; }
-  store.set(TTH.cpKey, { era: st.phaseNo, time: Math.round(G.time * 10) / 10, stats, loot: st.loot.slice() });
+  st.cp = { v: TTH.cpV, era, time: Math.round(Math.max(0, time) * 10) / 10, stats, loot: st.loot.slice() };
+  st.cpT = TTH.cpEvery;
+  store.set(TTH.cpKey, st.cp);
 }
-function tthCpClear() { store.set(TTH.cpKey, null); }
+function tthCpSave(st) { tthCpWrite(st, st.phaseNo, G.time); }
+// the clock and the bumps so far go into this era's checkpoint, so a restart never rolls them back
+function tthCpLive(st) {
+  if (!st.cp || st.cp.era !== st.phaseNo || st.cut) return;   // (st.cp is only ever set while checkpoints are on)
+  st.cp.live = { time: Math.round(Math.max(0, G.time) * 10) / 10, bumps: st.stats.bumps.slice(), team: st.stats.team };
+  st.cpT = TTH.cpEvery;
+  store.set(TTH.cpKey, st.cp);
+}
+function tthCpClear() { store.set(TTH.cpKey, null); if (G.mst) G.mst.cp = null; }
 
 /* --- the mode: phases, the portal cutscene, the ending --- */
 function tthInit(st) {
   st.stats = { bumps: [0, 0], team: 0, kinds: {}, help: [], phaseT: [], idleT: 0 };
   for (const k of TTH_ORDER) st.stats[k] = {};
   st.loot = TTH_LOOT.map(() => false);
-  st.idleN = 0; st.ended = false; st.resumed = 0;
+  st.idleN = 0; st.ended = false; st.resumed = 0; st.cp = null; st.cpT = 0; st.cpNote = null; st.askOver = 0;
 }
 function tthStartPhase(st, L) {
   const def = L.def;
@@ -492,7 +535,9 @@ function tthStartPhase(st, L) {
   tthCpSave(st);
   tthCall(tthPh(st), 'setup', st, L);
   tthActLabels(st);
-  if (st.resumed === 1) { st.resumed = 2; tthNews(st, 'Checkpoint: Era ' + (st.phaseNo + 1) + '. Pause to start over from Era 1.', true, 6); }
+  // back at a checkpoint: say so in a line of its own (not the news slot: the eras' opening lines would replace it)
+  st.cpNote = null;
+  if (st.resumed === 1) { st.resumed = 2; st.cpNote = { text: 'Checkpoint: Era ' + (st.phaseNo + 1) + '. Pause to start over from Era 1.', t: 0, life: TTH.cpNoteLife }; }
 }
 function tthCoastPhase(st, dt) { const ph = tthPh(st); if (ph.coast) tthCall(ph, 'coast', st, dt); else tthCoast(dt); }
 function tthTick(st, dt) {
@@ -503,6 +548,7 @@ function tthTick(st, dt) {
   if (st.arriveT > 0) st.arriveT = Math.max(0, st.arriveT - dt);
   if (st.say && (st.say.t += dt) >= st.say.life) st.say = null;
   if (st.news && (st.news.t += dt) >= st.news.life) st.news = null;
+  if (st.cpNote && G.introT <= 0 && !st.cut && (st.cpNote.t += dt) >= st.cpNote.life) st.cpNote = null;   // (s on screen)
   for (let k = 0; k < 2; k++) {
     const h = st.hints[k];
     if (h && (h.t += dt) >= h.life) st.hints[k] = null;
@@ -548,6 +594,8 @@ function tthPhaseDone(st, o = {}) {
     Sfx.play('tthGot');
   }
   if (def.roomIndex >= def.roomCount - 1) return tthEnding(st, o);
+  // the next era's checkpoint at once (not only when it starts): quitting during the portal cutscene keeps this win
+  tthCpWrite(st, st.phaseNo + 1, G.time + TTH.leaveT);
   const c = st.thief;
   let px, py;
   if (o.portal) { px = o.portal.x; py = o.portal.y; }
@@ -633,10 +681,15 @@ MODES.timethief = {
     const cp = tthCpOn() ? tthCpGet() : null;
     if (!cp) { tthStartPhase(st, L); return; }
     // back at the checkpoint: the era, the clock, the stats and the things won back so far
+    // (the clock and the bumps go on from the last play, cp.live: restarting an era never takes them back)
     Object.assign(st.stats, cp.stats);
     for (let k = 0; k < st.loot.length; k++) st.loot[k] = !!cp.loot[k];
     st.resumed = 1;
-    G.time = cp.time || 0;
+    G.time = cp.time;
+    const lv = tthPlain(cp.live) ? cp.live : {};
+    if (tthNum0(lv.time)) G.time = Math.max(G.time, lv.time);
+    if (Array.isArray(lv.bumps)) for (let k = 0; k < 2; k++) if (tthNum0(lv.bumps[k])) st.stats.bumps[k] = Math.max(st.stats.bumps[k], lv.bumps[k]);
+    if (tthNum0(lv.team)) st.stats.team = Math.max(st.stats.team, lv.team);
     G.room = cp.era - 1;
     nextRoom();   // (it calls room() below, which starts the phase)
   },
@@ -646,6 +699,8 @@ MODES.timethief = {
     tthStep(st, dt);
     // the clock stops while the Thief waits for an away person: the trophy and the record count play time only
     if (st.thief && st.idle && !st.cut && G.mode === 'play') { G.time = Math.max(0, G.time - dt); st.stats.idleT += dt; }
+    st.askOver = 0;   // (playing again: "Start over from Era 1" asks anew)
+    if (st.cp && (st.cpT -= dt) <= 0) tthCpLive(st);
   },
   onKill(p) { const st = G.mst; if (st.thief && !(st.cut && st.cut.kind === 'end')) tthCall(tthPh(st), 'onKill', st, p); },
   onRespawn(p) { const st = G.mst; if (st.thief && !(st.cut && st.cut.kind === 'end')) tthCall(tthPh(st), 'onRespawn', st, p); },
@@ -653,13 +708,21 @@ MODES.timethief = {
   drawTop() { const st = G.mst; if (st.thief) tthDrawTop(st); },
   hud() { const st = G.mst; if (st.thief) tthHud(st); },
   stats() { return tthStatsOut(G.mst); },
-  // the pause card (js/ui.js): "Restart this era" and "Start over from Era 1" while a later era is being played
+  // the pause card (js/ui.js): "Restart this era" and "Start over from Era 1" while a later era is being played.
+  // Starting over throws away up to 25 minutes, so it takes two presses: the first one only asks.
   pauseExtra() {
     const st = G.mst;
     if (!st || !st.thief || !(st.phaseNo > 0)) return null;
-    return { replay: 'Restart this era', more: [{ label: 'Start over from Era 1', arg: 'startover' }] };
+    tthCpLive(st);   // ("Restart this era" goes on from this clock)
+    return { replay: 'Restart this era', more: [{ label: st.askOver ? 'Really start over? Press again' : 'Start over from Era 1', arg: 'startover' }] };
   },
-  pauseAct(arg) { if (arg === 'startover') { tthCpClear(); loadLevel(G.levelIndex); } },
+  pauseAct(arg) {
+    if (arg !== 'startover') return;
+    const st = G.mst, now = Date.now();
+    if (!st.askOver) { st.askOver = now; if (typeof showPauseCard === 'function') showPauseCard(); return; }
+    if (now - st.askOver < TTH.askOverMs) return;   // (a double tap is not a yes)
+    tthCpClear(); loadLevel(G.levelIndex);
+  },
 };
 
 // The results card: the framework's Time and Record tiles, then Bumps and Trophy (4 tiles), and two lines.
@@ -1022,7 +1085,7 @@ function tthSayBox(st) {
   if ((side < 0 && hx - gap - tw < 6) || (side > 0 && hx + gap + tw > W - 6)) side = -side;
   const bx = clamp(hx + side * (gap + tw / 2), tw / 2 + 6, W - tw / 2 - 6);
   let by = clamp(hy - hr * 0.6, B.y0 + B.h + th / 2 + 10, H - th / 2 - 10);
-  const nb = tthNewsBox(st);
+  const nb = tthTopBox(st);
   if (nb && bx + tw / 2 > nb.x0 - 4 && bx - tw / 2 < nb.x1 + 4 && by - th / 2 < nb.y1 + 6) by = Math.min(H - th / 2 - 10, nb.y1 + th / 2 + 8);
   return { fs, tw, th, side, bx, by, mx: clamp(mx, 4, W - 4), my: clamp(my, by - th, by + th * 1.5) };
 }
@@ -1043,6 +1106,47 @@ function tthNewsBox(st) {
     if (W / 2 - w / 2 < pr + 6 && y < 78) y = 78;
   }
   return { x0: W / 2 - w / 2, x1: W / 2 + w / 2, y0: y, y1: y + h, fs, h };
+}
+// the "Checkpoint: Era N" line after a resume: a gold pill of its own, under the room card while that is up, then under
+// the news line (or in its place) for TTH.cpNoteLife s of play. Null when there is none.
+function tthCpNoteBox(st) {
+  const n = st.cpNote;
+  if (!n || (st.cut && st.cut.kind === 'end')) return null;
+  const big = tthBig(), B = tthStripBox(), h = big ? 36 : 28, d = G.level && G.level.def, card = G.introT > 0;
+  if (card && G.mode !== 'play') return null;
+  let fs = big ? 19 : 14;
+  ctx.font = tthFont(fs);
+  while (fs > 11 && ctx.measureText(n.text).width + 34 > W - 40) ctx.font = tthFont(--fs);
+  const w = Math.min(ctx.measureText(n.text).width + 34, W - 40), nb = card ? null : tthNewsBox(st);
+  // (the room card, render.js drawIntro: from y 168, 120 tall with the action line, 22 more with the 1-player note)
+  let y = card ? 168 + (d && d.act ? 120 : 92) + (d && typeof cpuTipNote === 'function' && cpuTipNote(d.tip) ? 22 : 0) + 8 : nb ? nb.y1 + 4 : B.y0 + B.h + 6;
+  if (!card && !nb && d && d.rooms && y < 78) {   // (like the news line: never under the engine's era pill, top left)
+    ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
+    if (W / 2 - w / 2 < 14 + ctx.measureText(`${d.roomWord || 'Room'} ${d.roomIndex + 1} of ${d.roomCount}: ${d.title}`).width + 44 + 6) y = 78;
+  }
+  return { x0: W / 2 - w / 2, x1: W / 2 + w / 2, y0: y, y1: y + h, fs, h, a: card ? clamp(G.introT / 0.5, 0, 1) : clamp(Math.min(1, (n.life - n.t) / 0.3), 0, 1) };
+}
+// what the top-centre lines cover during play (the news line and the checkpoint line): bubbles keep clear of it
+function tthTopBox(st) {
+  const nb = tthNewsBox(st), cb = G.introT > 0 ? null : tthCpNoteBox(st);
+  return nb && cb ? { x0: Math.min(nb.x0, cb.x0), x1: Math.max(nb.x1, cb.x1), y0: nb.y0, y1: cb.y1 } : nb || cb;
+}
+// 1-player: where cpu-core's cpuDraw() will put the computer's own speech bubble over p (it draws after this HUD and
+// knows nothing of the badges and hints here, so they make room for it): [x, y, w, h] or null. Same sums as cpuDraw.
+function tthCpuSayBox(p) {
+  try {
+    if (typeof cpuSolo !== 'function' || !cpuSolo() || G.mode === 'title') return null;
+    const b = CPU.bubbles[p.id];
+    if (!b || b.t <= 0) return null;
+    const br = cpuBrainFor(G.level.def);
+    if (!p.alive && !(br && br.bubbleHidden)) return null;
+    const at = br && br.bubblePos ? br.bubblePos(p) : { x: p.x + p.w / 2, y: p.y };
+    if (!at) return null;
+    const big = hudBig();
+    ctx.font = `700 ${big ? 19 : 13}px "Atkinson Hyperlegible", sans-serif`;
+    const w = ctx.measureText(b.text).width + (big ? 22 : 16), h = big ? 30 : 22;
+    return [clamp(at.x - w / 2, 4, W - w - 4), clamp(at.y - 22 - h, 4, H - h - 4), w, h + 6];
+  } catch (e) { return null; }
 }
 const tthUnder = (x0, y0, x1, y1) => G.players.some(p => p.alive && p.x + p.w > x0 - 4 && p.x < x1 + 4 && p.y + p.h > y0 - 4 && p.y - 8 < y1 + 4);
 
@@ -1143,6 +1247,10 @@ function tthDrawHeads(st, rightBox, newsBox) {
     placed.push([x0, y, w, h]);
     return { y, under };
   };
+  // the computer's own bubble (1-player) takes its place first: badges go above it, and its head shows no core hint
+  // meanwhile (the bubble is the computer talking; the hint would say the same thing twice)
+  const cpuBox = G.players.map(p => tthCpuSayBox(p));
+  for (const r of cpuBox) if (r) placed.push(r);
   const heads = G.players.filter(p => p.alive).map(p => ({ p, px: p.x + p.w / 2, top: p.y - 8 - tthHeadLift(st, p), below: p.y + p.h + 10 }));
   const roles = st.badgeT > 0 && !st.cut ? tthCall(tthPh(st), 'roles', st) : null;
   if (roles) for (const k of heads) {
@@ -1152,7 +1260,7 @@ function tthDrawHeads(st, rightBox, newsBox) {
     ctx.font = tthFont(fs);
     const bw = ctx.measureText(word).width + 16, bx = clamp(k.px, bw / 2 + 4, W - bw / 2 - 4), was = [k.top, k.below];
     const pl = place(bx - bw / 2, bw, bh, k), y0 = pl.y;
-    if (pl.under && st.hints[k.p.id]) { placed.pop(); [k.top, k.below] = was; continue; }
+    if (pl.under && st.hints[k.p.id] && !cpuBox[k.p.id]) { placed.pop(); [k.top, k.below] = was; continue; }
     ctx.save(); ctx.globalAlpha = a;
     ctx.fillStyle = PCOL[k.p.id]; rr(bx - bw / 2, y0, bw, bh, bh / 2); ctx.fill();
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke();
@@ -1161,7 +1269,7 @@ function tthDrawHeads(st, rightBox, newsBox) {
   }
   for (const k of heads) {
     const h = st.hints[k.p.id];
-    if (!h) continue;
+    if (!h || cpuBox[k.p.id]) continue;
     const a = clamp(Math.min(h.t, h.life - h.t) / 0.2, 0, 1), fs = big ? 23 : 12;
     ctx.font = tthFont(fs);
     const tw = ctx.measureText(h.text).width + (big ? 22 : 16), th = fs + (big ? 14 : 10), cx = clamp(k.px, tw / 2 + 4, W - tw / 2 - 4);
@@ -1214,13 +1322,23 @@ function tthHud(st) {
     text(n.text, W / 2, y0 + nh / 2 + 0.5, nfs, n.gold ? C.gold : C.paper, 'center', 'body');
     ctx.restore();
   }
+  // back at a checkpoint: the gold "Checkpoint: Era N" line (its own pill: the eras' news lines never replace it)
+  const noteBox = tthCpNoteBox(st);
+  if (noteBox) {
+    const { x0, x1, y0, h: nh, fs: nfs } = noteBox, w = x1 - x0;
+    ctx.save(); ctx.globalAlpha = noteBox.a * (G.introT <= 0 && tthUnder(x0, y0, x1, noteBox.y1) ? 0.35 : 1);
+    ctx.fillStyle = 'rgba(30,20,66,0.88)'; rr(x0, y0, w, nh, nh / 2); ctx.fill();
+    ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x0, y0, w, nh, nh / 2); ctx.stroke();
+    text(st.cpNote.text, W / 2, y0 + nh / 2 + 0.5, nfs, C.gold, 'center', 'body');
+    ctx.restore();
+  }
   if (!end) tthCall(ph, 'hud', st);
   // a player up under the level / room pills or the time pill: draw them again, a little see-through, on top
   for (const p of G.players) {
     if (!p.alive || p.y - 8 > 80 || (st.hid && st.hid[p.id])) continue;
     if (p.x < 294 || p.x + p.w > rightBox[0] - 4 && p.y - 8 < rightBox[1] + 4) { ctx.save(); ctx.globalAlpha = 0.75; drawPlayer(p); ctx.restore(); }
   }
-  tthDrawHeads(st, rightBox, newsBox);
+  tthDrawHeads(st, rightBox, tthTopBox(st));
   if (st.swapT > 0 && G.introT <= 0) {
     const k = 1 - st.swapT / TTH.swapT, a = clamp(st.swapT / 0.4, 0, 1);
     ctx.save(); ctx.globalAlpha = a; bigText('Swap jobs!', W / 2, 150, big ? 46 : 36, C.gold, 0.8 + 0.25 * Math.min(1, k * 6)); ctx.restore();

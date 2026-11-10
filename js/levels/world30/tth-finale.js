@@ -320,10 +320,13 @@ function tthFinTip(st, id, key, text, again = 6, o = {}) {
   return true;
 }
 function tthFinDone(st, id, keys) { if (st.hints[id] && keys.includes(st.ph.hintKey[id])) st.hints[id] = null; }
-// (on touch: the round button is named by the word on it, "the brake button")
-function tthFinAct(id) {
-  const st = G.mst, w = st && st.ph && st.ph.stage ? tthFinLabels(st)[id] : '';
-  return w && tthDev(id) === 'touch' ? 'the ' + w + ' button' : tthKey(id, 'act');
+// (on touch: "the round button", the one name every era uses; the word on it changes with the job)
+function tthFinAct(id) { return tthKey(id, 'act'); }
+// the climber's line at the button up there (on touch there are two buttons: "the button" and "your round button")
+function tthFinBtnTip(id, near) {
+  const touch = tthDev(id) === 'touch';
+  if (near) return touch ? 'You are there! Tap your round button!' : 'Press ' + tthFinAct(id) + ' at the button!';
+  return 'Go to the button, then ' + (touch ? 'tap your round button!' : 'press ' + tthFinAct(id) + '!');
 }
 const tthFinLabels = st => (st.ph.stage === 'top' || st.ph.stage === 'fin' ? ['smash', 'smash'] : st.ph.holder === 0 ? ['brake', 'press'] : ['press', 'brake']);
 
@@ -360,7 +363,7 @@ function tthFinJobs(st, dt) {
     const up = ph.P[p.id].on === sec.upper.plat, bt = sec.button;
     if (p === Cl) {
       if (ph.stage === 'climb' && up && !bt.down && Math.abs(tthFinCx(p) - bt.x) <= K.button.reach) tthFinPress(st, p);
-      else if (ph.stage === 'climb' && up && !bt.down) tthFinTip(st, p.id, 'btn', 'Go to the button, then press ' + tthFinAct(p.id) + '!', 4, { cpu: null });
+      else if (ph.stage === 'climb' && up && !bt.down) tthFinTip(st, p.id, 'btn', tthFinBtnTip(p.id, false), 4, { cpu: null });
       else if (ph.stage === 'climb' && Math.abs(tthFinCx(p) - sec.lever.x) < 60 && ph.P[p.id].on === sec.base.plat) tthFinTip(st, p.id, 'notmine', 'That is ' + NAMES[H.id] + '\'s lever. You climb!', 6, { cpu: null });
     } else if (ph.stage === 'climb' && !at && !ph.slip) {
       tthFinTip(st, p.id, 'lever', 'Stand at the lever, then hold ' + tthFinAct(p.id) + '!', 5, { cpu: null });
@@ -862,7 +865,7 @@ function tthFinHints(st, dt) {
   if (ph.P[cl].on === sec.upper.plat && !sec.button.down) {
     const d = sec.button.x - tthFinCx(Cl);
     if (Math.abs(d) > K.button.reach) tthFinTip(st, cl, 'gobtn', 'Go to the button! ' + (d < 0 ? '◀' : '▶'), 5, { cpu: null });
-    else tthFinTip(st, cl, 'btn', 'Press ' + tthFinAct(cl) + ' at the button!', 4, { cpu: null });
+    else tthFinTip(st, cl, 'btn', tthFinBtnTip(cl, true), 4, { cpu: null });
   }
   // a climb that takes very long (time only counts while they play): gold grip, then sleepy gears and a stuck hand
   sec.T += dt;
@@ -874,7 +877,7 @@ function tthFinHints(st, dt) {
   if ((sec.stuckT += dt) < K.gold.stuckT) return;
   sec.stuckT = 0; sec.stuckN++;
   let id, text;
-  if (ph.P[cl].on === sec.upper.plat) { id = cl; text = 'Press ' + tthFinAct(cl) + ' at the button!'; ph.goldAt = { x: sec.button.x, y: sec.button.y - 70 }; }
+  if (ph.P[cl].on === sec.upper.plat) { id = cl; text = tthFinBtnTip(cl, Math.abs(sec.button.x - tthFinCx(Cl)) <= K.button.reach); ph.goldAt = { x: sec.button.x, y: sec.button.y - 70 }; }
   else if (g && !ph.braking) { id = hd; text = 'Hold ' + tthFinAct(hd) + ' at the lever when ' + NAMES[cl] + ' is at a gear!'; ph.goldAt = { x: sec.lever.x, y: sec.lever.y - 120 }; }
   else {
     id = cl; text = g ? 'Hop on the gear while the lamp is green!' : 'Jump up the clockwork: ' + tthKey(cl, 'jump') + '!';

@@ -20,7 +20,9 @@ const ORDER = ['dino', 'henge', 'troy', 'olympics', 'vikings', 'davinci', 'wrigh
   const phase = /^\d+$/.test(ph) ? ORDER[+ph] : ph, times = String(secs || '2').split(',').map(Number);
   const phone = flag('phone'), who = opt('who', 'pair'), solo = opt('solo', ''), seed = +opt('seed', 1);
   const browser = await chromium.launch();
-  const ctx = await browser.newContext(phone ? { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : { viewport: { width: 1280, height: 800 } });
+  // no isMobile: the page has no viewport meta of its own, so mobile emulation would lay it out 980 px wide and every text
+  // would look 16% bigger than on a real 844x390 phone (the published page gets a device-width layout)
+  const ctx = await browser.newContext(phone ? { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: false, deviceScaleFactor: 2 } : { viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
   const errs = [];
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errs.push(m.text()); });
@@ -63,6 +65,7 @@ const ORDER = ['dino', 'henge', 'troy', 'olympics', 'vikings', 'davinci', 'wrigh
     const ev = opt('eval', '');
     if (ev) await page.evaluate(ev);
     await page.waitForTimeout(350);
+    if (phone && !k) { const lay = await page.evaluate(() => [innerWidth, innerHeight]); if (lay[0] !== 844) console.log('WARNING: phone layout is ' + lay.join('x') + ', not 844x390'); }
     const file = times.length > 1 ? out.replace(/\.png$/, '-' + (++k) + '.png') : out;
     if (out) { if (flag('full')) await page.screenshot({ path: file }); else await page.locator('#game').screenshot({ path: file }); }
     console.log(JSON.stringify(r) + (out ? '  -> ' + file : ''));

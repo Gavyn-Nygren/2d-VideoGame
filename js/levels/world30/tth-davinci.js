@@ -564,7 +564,7 @@ function tthVinciFlocks(st, dt) {
         const b = st.thief; b.pose = 'point'; ph.pointT = 1.6;
         tthSay(st, f.i === 0 ? 'Pigeons! Go and peck them!' : f.i === 1 ? 'More pigeons! Shoo them at THEM!' : 'Fly, my pretties!', 2.2);
         const id = 1 - ph.flap;
-        tthVinciTip(st, id, 'birds', 'Pigeons! Dodge, or toot ' + tthKey(id, 'act'), { cpu: 'Pigeons! I\'ll toot!' }, 2);
+        tthVinciTip(st, id, 'birds', 'Pigeons! Dodge, or shoo them: ' + tthKey(id, 'act'), { cpu: 'Pigeons! I\'ll shoo them!' }, 2);
       }
       continue;
     }
@@ -609,7 +609,7 @@ function tthVinciChase(st, dt) {
       const id = 1 - ph.flap, hi = g.y > wk.y;
       if (ch.full) { /* full: nothing to say, just keep up */ }
       else if (dx > 0 && dx < ch.far + 80 && Math.abs(g.y - wk.y) >= ch.tol) tthVinciTip(st, id, 'tail', (hi ? 'Up' : 'Down') + ' a bit! Get behind his jet', { cpu: 'Getting behind him!' }, 5);
-      else if (dx >= ch.far + 80) tthVinciTip(st, ph.flap, 'tailF', 'Keep flapping! Catch up', { cpu: 'Catching up!' }, 6);
+      else if (dx >= ch.far + 80) tthVinciTip(st, ph.flap, 'tailF', 'Keep flapping! Catch up!', { cpu: 'Catching up!' }, 6);
     }
     if (!ch.gold && ch.t > CH.goldAfter && ch.m < 0.5) {
       ch.gold = true; ch.tol = CH.goldTol; ch.far = CH.far + 80;
@@ -631,7 +631,7 @@ function tthVinciChase(st, dt) {
   const cl = tthVinciClaw(st), dx = cl.x - (g.x + 22), dy = cl.y - g.y;
   if (!ch.zip && (ch.magnet ? Math.abs(dx) < CH.magnet : dx * dx + dy * dy < ch.grab * ch.grab)) { tthVinciSnatch(st); return; }
   if (!ch.zip && g.x > b.x + 90) tthVinciDiveMiss(st);
-  else if (!ch.zip && ch.diveT > 3) tthVinciTip(st, 1 - ph.flap, 'dive', (g.y > cl.y ? 'Up a bit!' : 'Dive! Hold ' + tthKey(1 - ph.flap, 'down')) + ' Fly into the plans', { cpu: 'Going for the plans!' }, 4);
+  else if (!ch.zip && ch.diveT > 3) tthVinciTip(st, 1 - ph.flap, 'dive', (g.y > cl.y ? 'Up a bit!' : 'Dive! Hold ' + tthKey(1 - ph.flap, 'down') + '.') + ' Fly into the plans!', { cpu: 'Going for the plans!' }, 4);
 }
 function tthVinciDiveMiss(st) {
   const ph = st.ph, ch = ph.chase, K = TTHVINCI;

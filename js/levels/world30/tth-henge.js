@@ -910,7 +910,7 @@ TTH_PHASES.henge = {
     return [w(0), w(1)];
   },
   roles(st) { const ph = st.ph; return ph.fin.stage > 0 ? ['Pull!', 'Pull!'] : ph.pusher === 0 ? ['Push!', 'Logs!'] : ['Logs!', 'Push!']; },
-  legend() { return { pip: '<kbd>A</kbd><kbd>D</kbd> move · push <kbd>W</kbd> jump', bo: '<kbd>←</kbd><kbd>→</kbd> move · push <kbd>↑</kbd> jump' }; },
+  legend() { return { pip: '<kbd>A</kbd><kbd>D</kbd> move · push <kbd>W</kbd> jump', bo: '<kbd>←</kbd><kbd>→</kbd> move · push <kbd>↑</kbd> jump', padJump: 'jump', padDown: 'left / right: walk, push, haul' }; },
   hudText(st) { const ph = st.ph; return ph.fin.stage > 0 ? 'Lintel ' + Math.round(ph.fin.lift * 100) + '%' : 'Leg ' + (ph.leg + 1) + '/3'; },
   progress(st) { return { n: st.ph.leg + (st.ph.fin.stage === 3 ? 1 : 0), of: 4 }; },
   headLift(st, p) { return st.ph.P[p.id].log ? 22 : 0; },
@@ -1313,7 +1313,7 @@ function tthHengeDrawTop(st) {
     ctx.fillStyle = F.both ? C.gold : '#ff9a5a'; rr(x - w / 2, y, Math.max(h, w * F.lift), h, h / 2); ctx.fill();
     for (const p of ps) { ctx.globalAlpha = ph.P[p.id].rope >= 0 ? 1 : 0.35; ctx.fillStyle = PCOL[p.id]; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; circle(x + (p.id ? 1 : -1) * (w / 2 + 18 * z), y + h / 2, 8 * z); ctx.fill(); ctx.stroke(); }
     ctx.globalAlpha = 1;
-    bigText(F.both ? 'Heave! ' + Math.round(F.lift * 100) + '%' : 'Both hold a gold ring!', x, y + h + 17 * z, 18 * z, F.both ? C.gold : '#ffffff', 1);
+    bigText(F.both ? 'Heave! ' + Math.round(F.lift * 100) + '%' : 'Both hold a gold ring!', x, y - 17 * z, 18 * z, F.both ? C.gold : '#ffffff', 1);   // above the meter: the route bar of the HUD sits just under it
   }
   // the gold arrow of the stuck help
   if (ph.arrow) {

@@ -104,7 +104,7 @@ const TTHRACE_LAPS = {
     hint: 'Low gravity: huge floaty jumps over the craters.', fact: 'On the Moon you weigh six times less!',
     sky: ['#05060f', '#1a1c33'], ground: ['#c9ccd9', '#8a8da0', '#a3a6b8'],
     obs: [['g', 700, 230], ['h', 1380], ['g', 1950, 250], ['h', 2640], ['h', 3140], ['g', 3700, 240], ['h', 4380], ['g', 4900, 260], ['h', 5560]] },
-  davinci: { name: 'Florence rooftops', when: 'The 1490s', len: 5900, hop: 'pot', gap: 'alley', deco: 'tiles',
+  davinci: { name: 'Florence rooftops', when: 'the 1490s', len: 5900, hop: 'pot', gap: 'alley', deco: 'tiles',
     hint: 'Jump in an updraft to float over the wide alleys.', fact: 'Leonardo drew flying machines 400 years before planes!',
     sky: ['#ffbf7a', '#ffe9c4'], ground: ['#d9744a', '#e8cfa6', '#b5583a'],
     obs: [['h', 650], ['u', 1010, 90], ['g', 1100, 190], ['g', 1720, 80], ['h', 2110], ['u', 2450, 90], ['g', 2540, 190], ['h', 3160], ['u', 3500, 90], ['g', 3590, 190],
@@ -113,7 +113,7 @@ const TTHRACE_LAPS = {
     hint: 'Headwind gusts: duck through them.', fact: 'The very first plane flight lasted just 12 seconds!',
     sky: ['#7fc8f0', '#fff3d0'], ground: ['#f2dfae', '#e0c688', '#d4b872'],
     obs: [['h', 620], ['w', 960, 280], ['h', 1660], ['w', 2010, 300], ['h', 2720], ['h', 3020], ['w', 3360, 300], ['h', 3960], ['w', 4300, 320], ['h', 4980], ['h', 5360]] },
-  tunnel: { name: 'The Time Tunnel', when: 'Almost home', len: 6000, hop: 'gear', duck: 'pend', gap: 'rift', deco: 'brass',
+  tunnel: { name: 'The Time Tunnel', when: '', len: 6000, hop: 'gear', duck: 'pend', gap: 'rift', deco: 'brass',
     hint: 'A bit of everything. The gold portal is HOME!', fact: 'Last lap! Home is through the gold portal!',
     sky: ['#1c1446', '#6b4fb8'], ground: ['#f6d37a', '#3a2f7a', '#d9a441'],
     obs: [['h', 650], ['d', 1010, 100], ['g', 1400, 80], ['h', 1810], ['h', 2110], ['d', 2510, 120], ['g', 2900, 90], ['h', 3310], ['d', 3660, 100], ['g', 4000, 80],
@@ -259,7 +259,7 @@ function tthRaceRing(st, r) {
   // the first one in: the lap's name and a true fact in the news
   if (!ph.lapSaid[r.lap]) {
     ph.lapSaid[r.lap] = true;
-    tthNews(st, th.name + ', ' + th.when + '. ' + th.fact, false, 4.6);
+    tthNews(st, th.name + (th.when ? ', ' + th.when : '') + '. ' + th.fact, false, 4.6);
     if (r.lap === ph.T.laps.length - 1) tthRaceSay(st, 'Last lap! Sprint!', 1.8);
   }
   tthRaceLapHint(st, r);
@@ -627,7 +627,7 @@ TTH_PHASES.race = {
       if (ph.cardT >= K.cardT) {
         ph.state = 'live'; ph.go = 1; Sfx.play('tthRaceGo');
         const th = ph.T.laps[0].th;
-        ph.lapSaid[0] = true; tthNews(st, th.name + ', ' + th.when + '. ' + th.fact, false, 4.6);
+        ph.lapSaid[0] = true; tthNews(st, th.name + (th.when ? ', ' + th.when : '') + '. ' + th.fact, false, 4.6);
         tthRaceSay(st, 'GO! Run, run, run!', 1.4, true);
         for (const k of [0, 1]) { tthRaceHint(st, k, 'go', 'Hold ' + tthKey(k, 'right') + ' to run!', 3); tthRaceLapHint(st, ph.R[k]); }
       }
@@ -1495,6 +1495,6 @@ tthRoom('race', {
   first: 0,
   act: { label: 'dash', labels: ['dash', 'dash'] },
   legend: { jump: 'hop', down: 'slide', padJump: 'hop', padDown: 'down slides' },
-  tip: 'Race home through time! Hold ▶ to run, hop and slide past things, dash for a burst. First to 2 wins!',
+  tip: 'Race home through time! Hold right to run, hop and slide past things, dash for a burst. First to 2 wins!',
   map: TTH_EMPTY_MAP,
 });
