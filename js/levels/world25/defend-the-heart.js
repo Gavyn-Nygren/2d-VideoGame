@@ -245,7 +245,7 @@ function zfWaveSpec(n) {
     const z = ZF.zombies[kind], x = side < 0 ? 0 : COLS - 1, sp = st.spec || zfWaveSpec(st.wave);
     let y = ZF.ground - 1;
     if (under) {
-      y = ZF.ground + 1 + ((st.zid * 7) % 3);
+      y = ZF.ground + 1 + ((st.zid * 7) % 2); // (2 at most: the shaft a digger leaves in the lane is 3 deep, which a jump gets out of)
       if (st.cell[idx(x, y)] && st.cell[idx(x, y)].k !== 'bed') setCell(x, y, null);
       st.tun[idx(x, y)] = 1; st.ver++;
       puff(x * T + T / 2, y * T + T / 2, 8, '#6b4a34');
@@ -375,7 +375,7 @@ function zfWaveSpec(n) {
       if (col >= H0.c0 && col <= H0.c1) return { op: 'buy', what: 'heart', x: col, y: feet };
     }
     // the cell column just in front of your body (not the one you overlap)
-    const fx = f > 0 ? Math.ceil((p.x + p.w - 1) / T) : Math.floor((p.x + 1) / T) - 1;
+    const fx = f > 0 ? Math.ceil((p.x + p.w - 0.01) / T) : Math.floor((p.x + 0.01) / T) - 1; // (0.01: the same inset moveX/moveY use)
     if (p.grounded && !p.input.down && feet === ZF.ground - 1) {
       // a tree you stand at, or one right in front of you (unless the block in front needs fixing)
       let t = st.trees.find(q => treeUp(q) && Math.abs(cxp - (q.col * T + T / 2)) < 16);
@@ -413,9 +413,15 @@ function zfWaveSpec(n) {
     if (inHeart(x, y) || isPad(x, y)) return 'Not there!';
     if ((x === ZF.pads.guns || x === ZF.pads.turret) && y >= ZF.pads.row - 3 && y < ZF.pads.row) return 'Keep the pad clear!';
     if (cellAt(x, y)) return 'Full!';
+    // a pad always keeps one side you can jump out over: the walls next to it are not both taller than 3
+    for (const pc of [ZF.pads.guns, ZF.pads.turret]) {
+      if (Math.abs(x - pc) !== 1 || y > ZF.pads.row - 3 || y < ZF.pads.row - 4) continue;
+      const ox = 2 * pc - x;
+      if (cellAt(ox, ZF.pads.row - 3) || cellAt(ox, ZF.pads.row - 4)) return 'Keep the pad clear!';
+    }
     if (y === ZF.ground - 1 && G.mst.trees.some(t => t.col === x && treeUp(t))) return 'Chop the tree first!';
     const rx = x * T, ry = y * T;
-    for (const q of G.players) if (q.alive && rectHit(q, rx + 1, ry + 1, T - 2, T - 2)) return 'In the way!';
+    for (const q of G.players) if (q.alive && rectHit(q, rx + 0.01, ry + 0.01, T - 0.02, T - 0.02)) return 'In the way!'; // (0.01, as moveX/moveY: a block never goes in overlapping a body)
     for (const z of G.mst.zs) {
       if (z.hp <= 0) continue;
       if (z.cx === x && z.cy === y) return 'Zombie!';

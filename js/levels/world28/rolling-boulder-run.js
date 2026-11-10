@@ -323,7 +323,7 @@ function brBoulder(st, dt) {
     if (!p.alive || P.flat > 0 || B.pause > 0) continue;
     if (p.x < front - 10 && p.y + p.h > B.y - BR.r * 0.6) {
       P.flat = BR.flatT; st.stat.squish[p.id]++; st.roomSquish++;
-      p.x = Math.max(p.x, front - 8); p.vx = 0; p.stun = 0;
+      pyrMoveX(st.c.solids, p, Math.max(0, front - 8 - p.x)); p.vx = 0; p.stun = 0; // (a shove that stops at a door or rubble)
       B.pause = BR.bounceT;
       pyrPop(st, 'Squish!', p.x + p.w / 2, p.y - 30, '#ffb0c8', 24);
       Sfx.play('pyrSquish', p.id === 1 ? 0.84 : 1); pyrShake(0.35); rumble(p.id, 0.9, 0.7, 300);
@@ -449,7 +449,10 @@ function brTick(st, dt) {
   if (st.slowT > 0) { st.slowT -= dt; dt *= BR.slowK; }
   st.rt = (st.rt || 0) + dt;
   const xb = ps.map(p => p.x);
+  const wh = ps.map(p => !!st.pl[p.id].whoops);
   for (const p of ps) brPlayer(st, p, dt);
+  // (a player who popped back from a Whoops this tick: the leash must not put them back over the gap)
+  ps.forEach(p => { if (wh[p.id] && !st.pl[p.id].whoops) xb[p.id] = p.x; });
   brLeash(st, xb);
   for (const p of ps) brActs(st, p, dt);
   brWorld(st, dt);

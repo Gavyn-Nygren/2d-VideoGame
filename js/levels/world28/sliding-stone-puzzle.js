@@ -46,6 +46,7 @@ function spBuild(st, def) {
 const spWall = (b, x, y) => x < 0 || y < 0 || x >= b.w || y >= b.h || (b.wall[y * b.w + x] && !(b.door && b.door.x === x && b.door.y === y && b.doorOpen));
 const spStoneAt = (b, x, y) => (b.sunk ? null : b.stones.find(s => s.x === x && s.y === y) || null);
 const spPlayerAt = (st, x, y, not) => st.pl.find((P, k) => k !== not && P.x === x && P.y === y) || null;
+const spOnReset = (b, x, y) => !!b.reset && b.reset.x === x && b.reset.y === y;
 const spFree = (st, x, y) => !spWall(st.b, x, y) && !spStoneAt(st.b, x, y) && !spPlayerAt(st, x, y);
 const spSolved = b => b.stones.every(s => b.slots.some(o => o.x === s.x && o.y === s.y && o.g === s.g));
 const spCellXY = (b, x, y) => ({ x: b.ox + (x + 0.5) * b.cs, y: b.oy + (y + 0.5) * b.cs });
@@ -87,6 +88,7 @@ function spPlayer(st, p, dt) {
     if (s && s.t >= 1) {
       if (s.heavy) { spBump(st, P, p, 'Too heavy to pull!'); return; }
       if (!spFree(st, tx, ty)) return;
+      if (spOnReset(b, P.x, P.y)) { spBump(st, P, p, 'Stuck!'); return; }
       spGo(P, dx, dy); spSlide(st, s, dx, dy, p.id); st.stat.pulls[p.id]++;
       return;
     }
@@ -98,6 +100,7 @@ function spPlayer(st, p, dt) {
   if (s.t < 1) return;
   const bx = tx + dx, by = ty + dy;
   if (!spFree(st, bx, by)) { spBump(st, P, p, s.heavy ? '' : 'Stuck!'); return; }
+  if (spOnReset(b, bx, by)) { spBump(st, P, p, 'Stuck!'); return; } // (a stone never slides onto the reset tile: it must stay free to stand on)
   if (!s.heavy) { spGo(P, dx, dy); spSlide(st, s, dx, dy, p.id); return; }
   // heavy: the partner must be right behind, pushing the same way
   const Q = st.pl[1 - p.id], q = G.players[1 - p.id], qd = spDirOf(q);

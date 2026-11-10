@@ -106,6 +106,7 @@
     const x0 = tr.x;
     tr.x += tr.v * dt;
     if (tr.x < st.c.cannons[0].x - 160) { tr.x = st.c.cannons[0].x - 160; tr.v = 0; }
+    if (st.state !== 'end' && tr.x > st.c.len - 120) { tr.x = st.c.len - 120; tr.v = 0; } // (the end of the grounds; the drive-off after the last shot goes on)
     tr.wheel += (tr.x - x0) / 16;
     if (tr.beepT > 0) tr.beepT -= dt;
   }
