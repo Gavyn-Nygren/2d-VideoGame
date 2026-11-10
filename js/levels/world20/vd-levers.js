@@ -469,6 +469,8 @@ VD_PHASES.levers = {
     Object.assign(vdStats(st), { dunks: 0, hops: 0, misses: 0, lava: 0, help: 0 });
     ph.introSaid = false;
   },
+  // (the leave cutscene: the lava rescue still runs, so a player in the air over the lake is popped back, not lost)
+  coast(st, dt) { vdCoast(dt); vdlLavaStep(st); },
   step(st, dt) {
     const ph = st.ph, ps = G.players, calm = vdCalm(st), shId = 1 - ph.pull;
     vdShield(st, shId, ps[shId].alive && ps[shId].input.act);

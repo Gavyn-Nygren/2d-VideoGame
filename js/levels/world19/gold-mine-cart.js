@@ -433,9 +433,14 @@ function minecartStartOops(st, kind, o) {
 }
 function minecartOopsStep(st, dt) {
   const o = st.oops, cart = st.cart, mu = st.mule;
+  // the switcher can still set the lever while Mabel works
+  {
+    const sp = G.players[st.sw], up = sp.pendingJump || (sp.input.up && !st.prevUp[st.sw]), down = sp.input.down && !st.prevDown[st.sw];
+    if (up && st.lever !== 'up') { st.lever = 'up'; Sfx.play('minecartLever'); }
+    else if (down && st.lever !== 'down') { st.lever = 'down'; Sfx.play('minecartLever'); }
+  }
   for (const p of G.players) { p.pendingJump = false; p.pendingAct = false; }
   st.prevUp = G.players.map(p => p.input.up); st.prevDown = G.players.map(p => p.input.down);
-  // the switcher can still set the lever while Mabel works
   o.t += dt;
   if (o.kind === 'fall') { const to = o.gap.lane === 'd' ? 86 : 104; if (cart.drop < to) { cart.dropV += 900 * dt; cart.drop = Math.min(to, cart.drop + cart.dropV * dt); if (cart.drop >= to && !o.landed) { o.landed = true; minecartDust(st, 14); Sfx.play('minecartLand'); } } }
   else if (o.t < 0.25) cart.x -= 40 * dt;   // bounce off the soft buffer

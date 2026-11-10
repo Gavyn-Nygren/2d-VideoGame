@@ -309,7 +309,10 @@ function spacewalkFloat(st, dt) {
       st.stats.spinT[a.id] += dt;
     }
     if (a.iy) {
-      st.L = clamp(st.L + a.iy * S.reelV * dt, S.Lmin, Lm);
+      // (a tether that two moving handholds stretched past its limit comes back in at reel speed: one reel tap used to
+      // snap the floater in by the whole extra length)
+      if (a.iy < 0) st.L = Math.max(S.Lmin, st.L - S.reelV * dt);
+      else st.L = st.L > Lm ? Math.max(Lm, st.L - S.reelV * dt) : Math.min(Lm, st.L + S.reelV * dt);
       if (a.iy < 0) st.L = Math.max(st.L, Math.min(d, S.Lmin)); // (it can't reel shorter than the floater is close)
       a.reel = a.iy;
     }
@@ -347,6 +350,12 @@ function spacewalkFloat(st, dt) {
   spacewalkTether(st);
   for (const q of pl) if (q.hold == null) spacewalkCollide(st, q);
   spacewalkTether(st);
+  // (a rock between the two: the reel stalls against it and never pulls the floater's body into the rock)
+  if ((pl[0].hold == null) !== (pl[1].hold == null)) {
+    const F = pl[0].hold == null ? pl[0] : pl[1], A = F === pl[0] ? pl[1] : pl[0], fx = F.x, fy = F.y;
+    spacewalkCollide(st, F);
+    if (F.x !== fx || F.y !== fy) st.L = Math.min(Math.max(st.L, Math.hypot(F.x - A.x, F.y - A.y)), Math.max(st.L, spacewalkLmax(st)));
+  }
   // panels: the floater holds grab near one while the partner holds on
   const need = spacewalkFixNeed(st);
   for (const p of st.panels) {

@@ -354,6 +354,14 @@ function pumpkinRoll(st, dt) {
     }
     if (pu.x < pk.x - P.leash) { pu.x = pk.x - P.leash; pu.vx = Math.max(0, pu.vx); pumpkinHintOnce(st, 'leash', st.pusher, 'Stay with your pumpkin!'); }
     if (pu.x > pk.x + P.leash) { pu.x = pk.x + P.leash; pu.vx = Math.min(0, pu.vx); pumpkinHintOnce(st, 'leash', st.pusher, 'Stay with your pumpkin!'); }
+    // the screen edges stop the pusher too (Gavyn, Nov 2026): the leash alone let them walk out of the picture while the pumpkin rolled on
+    if (st.cam) {
+      const ex0 = st.cam.x + PW / 2 + 4, ex1 = st.cam.x + W - PW / 2 - 4;
+      // (never across the pumpkin: after a poof back to the bale the camera is still easing over, and the old edge used to
+      // put the pusher on the far side of the pumpkin for a moment)
+      const lim0 = pu.side < 0 ? Math.min(ex0, pk.x - P.D) : ex0, lim1 = pu.side > 0 ? Math.max(ex1, pk.x + P.D) : ex1;
+      if (pu.x < lim0) { pu.x = lim0; pu.vx = Math.max(0, pu.vx); } else if (pu.x > lim1) { pu.x = lim1; pu.vx = Math.min(0, pu.vx); }
+    }
     if (!pu.air) pu.y = pumpkinGY(st, pu.x) - pumpkinRockH(st, pu.x);
   }
   pu.shove = approach(pu.shove, 0, dt * 400);

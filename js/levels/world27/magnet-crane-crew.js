@@ -108,12 +108,16 @@ const CRANE = {
     O.pendingJump = false;
     const x0 = m.x, y0 = m.y;
     m.vx = approach(m.vx, mv * K.trolleyV, 900 * dt);
-    m.x = clamp(m.x + m.vx * dt, 34, W - 34);
-    if (m.x === 34 || m.x === W - 34) m.vx = 0;
     // the cable: down stops on whatever is under the magnet (or the hanging crate)
     const bottom = st.carry ? K.magH + CW : K.magH;
-    const lowest = Math.min(...[colOf(m.x - K.magW / 2 + 1), colOf(m.x + K.magW / 2 - 1)].map(c => colTop(st, c))) - bottom;
-    m.vy = ud * K.cableV;
+    const lowAt = x => Math.min(...[colOf(x - K.magW / 2 + 1), colOf(x + K.magW / 2 - 1)].map(c => colTop(st, c))) - bottom;
+    // a lowered magnet driven at a taller column waits there and winds itself up until it clears (no snap up)
+    let nx = clamp(m.x + m.vx * dt, 34, W - 34), wind = false;
+    if (nx !== m.x && m.y > K.railY + K.cableMin + 0.5 && lowAt(nx) < m.y - 0.5 && lowAt(nx) < lowAt(m.x)) { nx = m.x; m.vx = 0; wind = true; }
+    m.x = nx;
+    if (m.x === 34 || m.x === W - 34) m.vx = 0;
+    const lowest = lowAt(m.x);
+    m.vy = (wind ? -1 : ud) * K.cableV;
     m.y = clamp(m.y + m.vy * dt, K.railY + K.cableMin, lowest);
     m.vy = dt > 0 ? (m.y - y0) / dt : 0; // (what it really did: 0 when the cable is at a stop)
     // a rider standing on the magnet goes with it (and is never squashed into the ceiling)
@@ -160,9 +164,9 @@ const CRANE = {
     // walking and jumping (the engine's platformer, through the tile grid)
     const was = R.grounded;
     control(R, dt);
-    moveX(R, R.vx * dt);
+    moveX(R, R.vx * dt, true); // (ignorePartner: the operator up in the cab is scenery)
     const vy = R.vy, ry0 = R.y;
-    moveY(R, R.vy * dt);
+    moveY(R, R.vy * dt, true);
     // landing on the magnet (a one-way platform)
     const mb = magBox(st);
     if (!st.riding && vy >= 0 && ry0 + PH <= mb.y + 1 && R.y + PH >= mb.y && R.x + R.w > mb.x + 2 && R.x < mb.x + mb.w - 2) { R.y = mb.y - PH; R.vy = 0; st.riding = true; }
@@ -209,7 +213,7 @@ const CRANE = {
         if (!f.chute) { st.stats.placed++; st.lastPlace = st.roomT; if (st.guide) st.guide = false; }
         // a crate landing on the rider lifts them on top
         const ct = colTop(st, f.c);
-        if (!st.riding && R.x + R.w > f.c * CW && R.x < f.c * CW + CW && R.y + PH > ct && R.y < ct + CW) { R.y = ct - PH; R.vy = 0; }
+        if (R.x + R.w > f.c * CW && R.x < f.c * CW + CW && R.y + PH > ct && R.y < ct + CW) { R.y = ct - PH; R.vy = 0; st.riding = false; }
       }
     }
     st.falling = st.falling.filter(f => !f.done);

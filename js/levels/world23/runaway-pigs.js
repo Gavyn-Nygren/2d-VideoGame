@@ -248,6 +248,23 @@ const PIGHERD = {
     for (const s of st.walls) if (hit(r, s)) return false;
     for (const z of st.zones) if (hit(r, z) && !(h.slot && z.id === h.zone && h.y0 + h.h * 0.5 < h.slot.cy + 30)) return false;
     for (const q of st.hays) if (q !== h && hit(r, { x0: q.x0, x1: q.x0 + q.w, y0: q.y0, y1: q.y0 + q.h })) return false;
+    // (the herder is in the way like a wall: the bale used to roll over them, and their next step threw them across the map)
+    const hr = hayRect(h);
+    for (const p of G.players) if (p.id !== st.keeper && p.alive && hit(p, hr)) return false;
+    // (and it never squeezes a pig against a fence or a shut gate: the pig used to pop through, counted as a wrong turn)
+    const R = PH0.pigR;
+    for (const q of st.pigs || []) {
+      if (q.state !== 'run' && q.state !== 'wallow' && q.state !== 'ribbon') continue;
+      const nx = clamp(q.x, hr.x0, hr.x1), ny = clamp(q.y, hr.y0, hr.y1), dx = q.x - nx, dy = q.y - ny, d = Math.hypot(dx, dy);
+      if (d >= R) continue;
+      let px = q.x, py = q.y;
+      if (d < 0.001) { const hc = hr.x0 + h.w / 2, vc = hr.y0 + h.h / 2; if (Math.abs(q.x - hc) / h.w > Math.abs(q.y - vc) / h.h) px = q.x < hc ? hr.x0 - R : hr.x1 + R; else py = q.y < vc ? hr.y0 - R : hr.y1 + R; }
+      else { px += dx / d * (R - d); py += dy / d * (R - d); }
+      for (const s of st.walls.concat(st.gates.filter(g => !g.open).map(gateRect))) {
+        const cx = clamp(px, s.x0, s.x1), cy = clamp(py, s.y0, s.y1);
+        if (Math.hypot(px - cx, py - cy) < R - 1) return false;
+      }
+    }
     return true;
   }
   function moveAxis(st, p, d, axis) {
@@ -273,6 +290,10 @@ const PIGHERD = {
     }
     bounds(st, p);
   }
+  // any person standing where a bale locked into its gap is nudged out of it
+  function hayNudge(h) {
+    for (const p of G.players) if (hit(p, hayRect(h))) { p.y = p.y + p.h / 2 < h.slot.cy ? h.y0 - p.h - 1 : h.y0 + h.h + 1; }
+  }
   function hayLock(st, h) {
     if (h.locked) return;
     const cx = h.x0 + h.w / 2, cy = h.y0 + h.h / 2;
@@ -281,8 +302,7 @@ const PIGHERD = {
       pop(st, h.slot.cx, h.slot.cy - 50, 'Gap blocked!', C.gold, 22);
       Sfx.play('pigherdThud');
       dust(st, h.slot.cx, h.slot.cy, 14, '#e8c46a');
-      // any person standing where the bale landed is nudged out of it
-      for (const p of G.players) if (hit(p, hayRect(h))) { p.y = p.y + p.h / 2 < h.slot.cy ? h.y0 - p.h - 1 : h.y0 + h.h + 1; }
+      hayNudge(h);
     }
   }
 
@@ -507,7 +527,7 @@ const PIGHERD = {
       opening.wrong++;
       if (opening.wrong >= PH0.goldGate && !opening.gold && bothActive()) {
         opening.gold = true;
-        if (h) { h.x0 = h.slot.cx - h.w / 2; h.y0 = h.slot.cy - h.h / 2; h.locked = true; news(st, 'Gold hay! The bale rolls into the gap by itself', true, 5); }
+        if (h) { h.x0 = h.slot.cx - h.w / 2; h.y0 = h.slot.cy - h.h / 2; h.locked = true; hayNudge(h); news(st, 'Gold hay! The bale rolls into the gap by itself', true, 5); }
         else if (opening.lever) { setLever(st, opening.lever, true); opening.lever.gold = true; news(st, 'Gold lever! It flips to the right way by itself', true, 5); }
         else { opening.open = false; news(st, 'Gold gate! That side gate shuts itself now', true, 5); }
         st.goldUsed.push('gate'); Sfx.play('pigherdGold');

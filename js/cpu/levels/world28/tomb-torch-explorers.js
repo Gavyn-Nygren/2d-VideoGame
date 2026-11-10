@@ -37,7 +37,8 @@
     const go = (x, f, tol) => { out = cpuNav(st, p, x, f, Object.assign({}, no, { tol: tol || no.tol })); return st.nav && st.nav.status === 'arrived'; };
     if (ms.exitOpen) { const e = exitT(ms); go(e.x + (p.id ? 10 : -10), e.feet); return out; }
     if (torch) {
-      const b = ms.braziers.find(b => !b.lit && Math.abs(b.x - cx) < 150 && Math.abs(b.y - feet) < 10);
+      // (only a brazier it can walk to: one just behind a shut gate used to hold the torch at the gate for good)
+      const b = ms.braziers.find(b => !b.lit && Math.abs(b.x - cx) < 150 && Math.abs(b.y - feet) < 10 && cpuNavReach(p, b.x + (b.x > cx ? -20 : 20), b.y, no) < Infinity);
       if (b) { if (go(b.x + (b.x > cx ? -20 : 20), b.y, 10) || Math.abs(b.x - cx) < 30) act = 'tap'; }
       else {
         const s = nextSwitch(ms, p, no, false);

@@ -341,18 +341,19 @@ function trainMove(st, p, dx, dy, dt, noNudge) {
     if (!trainSolid(st, x, y)) continue;
     if (dx > 0) p.x = x * T - p.w; else if (dx < 0) p.x = (x + 1) * T;
     if (dy > 0) p.y = y * T - p.h; else if (dy < 0) p.y = (y + 1) * T;
-    // corner assist: clipped a tree or a hut corner by a few px -> slide around it (only if the way round is open)
+    // corner assist: clipped a tree or a hut corner by a few px -> slide around it (only if the way round is open,
+    // and never against the way the player is steering: a held diagonal used to cancel it and freeze them at the corner)
     let nudged = false;
     if (!noNudge) {
       const N = TRAIN.nudge, stp = TRAIN.walk * dt;
       if (dx) {
         const dn = p.y + p.h - y * T, up = (y + 1) * T - p.y;
-        if (dn > 0 && dn <= N && !trainSolid(st, x, y - 1)) { trainMove(st, p, 0, -Math.min(dn, stp), dt, true); nudged = true; }
-        else if (up > 0 && up <= N && !trainSolid(st, x, y + 1)) { trainMove(st, p, 0, Math.min(up, stp), dt, true); nudged = true; }
+        if (dn > 0 && dn <= N && p.vy <= 0 && !trainSolid(st, x, y - 1)) { trainMove(st, p, 0, -Math.min(dn, stp), dt, true); nudged = true; }
+        else if (up > 0 && up <= N && p.vy >= 0 && !trainSolid(st, x, y + 1)) { trainMove(st, p, 0, Math.min(up, stp), dt, true); nudged = true; }
       } else {
         const rt = p.x + p.w - x * T, lf = (x + 1) * T - p.x;
-        if (rt > 0 && rt <= N && !trainSolid(st, x - 1, y)) { trainMove(st, p, -Math.min(rt, stp), 0, dt, true); nudged = true; }
-        else if (lf > 0 && lf <= N && !trainSolid(st, x + 1, y)) { trainMove(st, p, Math.min(lf, stp), 0, dt, true); nudged = true; }
+        if (rt > 0 && rt <= N && p.vx <= 0 && !trainSolid(st, x - 1, y)) { trainMove(st, p, -Math.min(rt, stp), 0, dt, true); nudged = true; }
+        else if (lf > 0 && lf <= N && p.vx >= 0 && !trainSolid(st, x + 1, y)) { trainMove(st, p, Math.min(lf, stp), 0, dt, true); nudged = true; }
       }
     }
     if (!nudged) { if (dx) p.vx = 0; if (dy) p.vy = 0; }

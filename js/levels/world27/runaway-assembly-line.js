@@ -138,7 +138,9 @@ const BELT = {
       } else st.jam = null;
     }
     const end = st.camX >= st.len - W - 1;
-    st.running = !st.jam && !end;
+    // (a fall jam only stops the line once the far side of that gap is inside the runner's reach)
+    const far = st.jam && st.jam.kind === 'fall' && st.jam.g.x1 + 30 > st.camX + W - B.edgeR;
+    st.running = (!st.jam || far) && !end;
     if (st.jam && st.jam.kind === 'wide') {
       const g = st.jam.g;
       if (rf27BothPlaying(st, 6) && st.away < 6) g.jamT += dt;

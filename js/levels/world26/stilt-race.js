@@ -165,7 +165,7 @@ function strRacer(st, D, dt, live) {
   }
   // topple
   if (D.a > STR.maxFwd || D.a < STR.maxBack) {
-    D.st = 'fall'; D.fallT = STR.fallT; D.fallDir = D.a > 0 ? 1 : -1; D.av = 0; st.stat.topples[D.k]++;
+    D.st = 'fall'; D.fallT = STR.fallT; D.hopY = 0; D.hopV = 0; D.fallDir = D.a > 0 ? 1 : -1; D.av = 0; st.stat.topples[D.k]++;
     Sfx.play('stiltraceTopple', D.k);
     strPop(D, 'Whoa! Topple!', '#ffffff');
     for (let n = 0; n < 8; n++) strFx(st, D.x + D.fallDir * 60, ground - 6, (strVR() - 0.5) * 140, -40 - strVR() * 80, 0.6, 'rgba(230,200,140,0.9)', 4, 300);

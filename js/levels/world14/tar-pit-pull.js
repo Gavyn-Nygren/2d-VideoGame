@@ -240,7 +240,7 @@ function tarMoveNormal(st, p, ps, dt) {
       ps.visitStuck = false;
       // a safe spot: a bank or a dry log (not Gerty's back)
       const cx = tarCx(p), c = Math.floor(cx / T), r = Math.floor((p.y + p.h + 1) / T);
-      const onBank = tile(c, r) === '#' && !ps.onG;
+      const onBank = tile(c, r) === '#' && !ps.onG && tarSurfAt(st, cx) == null;   // (the pit floor under the tar is not a bank)
       const onLog = ps.onLog >= 0 && st.logs[ps.onLog].sink < 0.4;
       if (onBank || onLog) {
         const zi = tarZoneAt(st, cx), z = st.zones[zi];
@@ -610,7 +610,10 @@ function tarShlorp(st, pu, sp, pp, sq) {
     const nl = side > 0 ? lg.x0 + 18 : lg.x1 - 18;
     if (Math.abs(nl - cx) < Math.abs(lx - cx)) lx = nl;
   }
+  const lxOut = lx;
   if ((side > 0 && lx > tarCx(pu)) || (side < 0 && lx < tarCx(pu))) lx = tarCx(pu);
+  // (never down in a tar column: a puller whose centre overhangs the edge used to land the rescued player on the pit floor)
+  if (tarSurfAt(st, lx) != null && !st.logs.some(lg => lx >= lg.x0 && lx <= lg.x1)) lx = lxOut;
   const top = tarGroundAt(st, lx);
   sq.fly = { x0: sp.x, y0: sp.y, x1: lx - sp.w / 2, y1: top - sp.h, t: 0, T: TAR.shlorpT, h: Math.max(60, sp.y - (top - sp.h) + 46) };
   Object.assign(sq, { inTar: false, stuck: false, depth: 0, goo: 0, sinkT: 0, gooey: false, drip: 2.2 });

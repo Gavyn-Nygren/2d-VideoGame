@@ -356,7 +356,8 @@ function tandemDraft(st) {
   const K = TANDEM, b = st.bike, p = b.s0 + b.d - K.FIN;
   const bikes = st.rivals.filter(r => !r.done).map(r => ({ p: r.s0 + r.d - K.FIN, pos: r.pos }));
   if (st.pacer && st.pacer.on) bikes.push({ p: st.pacer.s0 + st.pacer.d - K.FIN, pos: st.pacer.pos });
-  return !b.rail && b.v > 60 && bikes.some(o => o.p - p > K.draftNear && o.p - p < K.draftFar && Math.abs(o.pos - b.pos) < K.draftLat);
+  return !b.rail && b.v > 60 && bikes.some(o => tandemWrap(o.p - p) > K.draftNear && tandemWrap(o.p - p) < K.draftFar &&   // (wrapped: a lapped bike right ahead on the track counts)
+    Math.abs(o.pos - b.pos) < K.draftLat);
 }
 // the rival tandems (and the pace bike): steady riders on their own lines, who ride round you rather than into you
 function tandemRivals(st, dt) {
@@ -392,7 +393,7 @@ function tandemRivals(st, dt) {
     }
     // lanes: ride round our bike and round each other (the one behind goes high, or low near the rail)
     let want = r.done ? K.line + 0.4 : r.pref;
-    const dz = rp - us;
+    const dz = tandemWrap(rp - us + K.LAP / 2) - K.LAP / 2;   // (on the track, so a lapped bike rides round us too)
     if (!b.done && Math.abs(dz) < 62 && Math.abs(r.pos - b.pos) < 0.36) want = b.pos + (b.pos < 0.56 ? 0.42 : -0.42);
     else if (!b.done && Math.abs(dz) < 62) want = r.pos;   // already beside us: hold the line
     for (const o of st.rivals) {

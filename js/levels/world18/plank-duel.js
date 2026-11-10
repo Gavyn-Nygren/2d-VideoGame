@@ -216,7 +216,7 @@ function plankduelDuellist(st, D, O, p, dt) {
   if (D.teeter > 0) {
     const back = D.k ? inp.left : inp.right;
     if (back) {
-      D.teeter = 0; D.x = plankduelEnd(st, D.k) - plankduelOut(D) * 6; D.wv = -plankduelOut(D) * 60;
+      D.teeter = 0; D.x = plankduelEnd(st, D.k) - plankduelOut(D) * 6; D.wv = -plankduelOut(D) * 60; D.phewed = true;
       st.stat.phew[D.k]++;
       plankduelPop(D, 'Phew!', '#c9ff8a', true); Sfx.play('plankduelPhew', D.k);
     } else {
@@ -305,7 +305,8 @@ function plankduelTwistPush(st, dt) {
     // (the slide stops at the end like a step, unless they are already teetering or sliding off)
     let dx = v * dt;
     const lim = st.E - 4, rel = D.x - P.X0;
-    if (D.teeter <= 0 && Math.abs(rel) < lim && Math.abs(rel + dx) > lim) dx = Math.sign(dx) * (lim - Math.abs(rel));
+    // (<=: a duellist standing exactly at the end used to slip past this and be slid off with no bonk)
+    if (D.teeter <= 0 && Math.abs(rel) <= lim + 0.001 && Math.abs(rel + dx) > lim) dx = Math.sign(dx) * Math.max(0, lim - Math.abs(rel));
     if (D.teeter <= 0) D.x += dx;
   }
 }
@@ -314,11 +315,15 @@ function plankduelTwistPush(st, dt) {
 // toward their end: only a sword pushes (the pitch's high/low read, not sumo). Both moving in: shared by how far.
 function plankduelSeparate(st) {
   const P = PLANKDUEL, [A, B] = st.d;
+  // (a "Phew!" step back makes room for itself: the other duellist is the one moved. It used to be pushed straight back
+  // out past the end, which started a new teeter every tick while back was held)
+  const phA = A.phewed, phB = B.phewed;
+  A.phewed = B.phewed = false;
   if (A.fall || B.fall) return;
   const gap = B.x - A.x;
   if (gap < P.minGap) {
     const over = P.minGap - gap, ma = Math.max(0, A.x - (A.px ?? A.x)), mb = Math.max(0, (B.px ?? B.x) - B.x);
-    const fa = ma + mb > 0.001 ? ma / (ma + mb) : 0.5;
+    const fa = phA ? 0 : phB ? 1 : ma + mb > 0.001 ? ma / (ma + mb) : 0.5;
     A.x -= over * fa; B.x += over * (1 - fa);
     if (A.vx > 0) A.vx = 0; if (B.vx < 0) B.vx = 0;
     if (A.wv > 0) A.wv = 0; if (B.wv < 0) B.wv = 0;

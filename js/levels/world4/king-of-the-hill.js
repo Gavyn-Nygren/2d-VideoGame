@@ -370,7 +370,7 @@ MODES.koth = {
       if (!p.alive || !p.grounded) continue;
       const cx = p.x + p.w / 2;
       for (const sp of st.springs) if (Math.abs(cx - sp.x) < 13 && Math.abs(p.y + p.h - sp.y) < 0.5) {
-        p.vy = -K.springV; p.grounded = false; p.jumping = false; p.sx = 0.7; p.sy = 1.35; sp.t = 0.2;
+        p.vy = -K.springV; p.grounded = false; p.jumping = false; p.coyote = 0; p.jumpBuf = 0; p.pendingJump = false; p.offT = 0.05; // (a jump pressed right after used to replace the launch) p.sx = 0.7; p.sy = 1.35; sp.t = 0.2;
         Sfx.play('boing', p.id); rumble(p.id, 0, 0.35, 70); puff(sp.x, sp.y - 6, 5, 'rgba(255,170,210,0.9)');
         st.rs.springs++;
       }

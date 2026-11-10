@@ -582,11 +582,12 @@ function bonehuntClimbPre(st, p, dt) {
   const P = st.pl[p.id], s = bonehuntLadder(st), inp = p.input;
   if (!s || !p.alive || P.lock || P.hold) { if (P.climb) P.climb = false; return; }
   const on = bonehuntOnLadderCol(s, p);
+  if (!inp.jump) P.topped = false;   // (after stepping off the top, a still-held jump must not grab the ladder again: that shook the player at the lip)
   if (!P.climb) {
     // start: jump held on the ladder (from the ground or in the air), or down held standing at its top
     const atTop = p.grounded && Math.abs(bonehuntFeet(p) - s.top) < 2 && Math.abs(bonehuntCx(p) - s.x) <= 22;
-    if (on && inp.jump && bonehuntFeet(p) > s.top + 2) P.climb = true;
-    else if (atTop && inp.down) {
+    if (on && inp.jump && !P.topped && bonehuntFeet(p) > s.top + 2) P.climb = true;
+    else if (atTop && inp.down && !inp.jump) {
       P.downT += 0;
       P.ladDown = (P.ladDown || 0) + dt;
       if (P.ladDown >= BONEHUNT.downClimbT) { P.climb = true; P.ladDown = 0; p.x = s.x - p.w / 2; p.y += 3; Sfx.play('bonehuntRattle'); }
@@ -607,7 +608,7 @@ function bonehuntClimbPre(st, p, dt) {
   if (inp.jump && bonehuntFeet(p) <= s.top + 2) {
     p.y = s.top - p.h; p.vy = 0;
     moveX(p, s.side * 17, true);
-    P.climb = false;
+    P.climb = false; P.topped = true;
     Sfx.play('land');
     return;
   }

@@ -267,7 +267,9 @@ function diveropeRide(st, dt) {
   d.y += d.vy * dt; d.ground = false; diveropeCollide(st, 'y');
   // the hose: no farther from the boat than the rope let out
   diveropeRopeHold(st, mode, turbo);
-  diveropeCollide(st, 'x'); diveropeCollide(st, 'y');
+  // (y first here: a reel pulls the helmet up into a ledge's underside, and the x pass used to answer that by throwing
+  // the diver sideways to the far edge of the whole rock, over 100 px)
+  diveropeCollide(st, 'y'); diveropeCollide(st, 'x');
   if (d.y < 30) { d.y = 30; if (d.vy < 0) d.vy = 0; }
   d.x = clamp(d.x, 18, W - 18);
   // snag: reeling, but the diver can't come up (rock above)

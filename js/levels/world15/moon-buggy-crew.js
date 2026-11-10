@@ -346,7 +346,11 @@ function buggyTipped(st) {
 }
 // boulders, sleepy critters and the rocket stop the buggy
 function buggyBlockers(st, dt) {
-  const b = st.bg, B = BUGGY, front = b.x + B.half;
+  const b = st.bg, B = BUGGY;
+  // (the start of the course is a wall for reversing: the buggy used to back out into empty moon for ever)
+  const minX = (st.startX != null ? st.startX : 0) - 160;
+  if (b.x < minX) { b.x = minX; if (b.vx < 0) b.vx = 0; }
+  const front = b.x + B.half;
   let stop = null;
   for (const o of st.c.boulders) if (o.state === 'track' && o.x > b.x - 20 && o.x - o.r < front + 4) { const lim = o.x - o.r; if (!stop || lim < stop.lim) stop = { lim, o, kind: 'boulder' }; }
   for (const o of st.c.critters) if (o.state === 'sleep' && o.x > b.x - 20 && o.x - B.critterR < front + 4) { const lim = o.x - B.critterR; if (!stop || lim < stop.lim) stop = { lim, o, kind: 'critter' }; }
@@ -494,7 +498,10 @@ function buggyObjects(st, dt) {
     const g = buggyGround(st, o.x);
     if (o.y + o.r < g) continue;
     // landed: in a crater (plop), behind the buggy (cleared: it bounces off into the distance), or back on the track
-    const pit = buggyPitAt(st, o.x);
+    let pit = buggyPitAt(st, o.x);
+    // landed on the buggy's nose: it rolls off the front first, and may then plop into a crater the buggy is parked at
+    // (it used to become a track boulder down inside the crater: uncounted, later buried, and in the buggy's way for good)
+    if (!(pit && buggyOpen(pit)) && o.x >= b.x - B.half + 6 && Math.abs(o.x - b.x) < B.half + o.r) { o.x = b.x + B.half + o.r + 4; pit = buggyPitAt(st, o.x); }
     if (pit && buggyOpen(pit)) {
       o.state = 'gone';
       if (pit.kind === 'fill') {

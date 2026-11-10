@@ -43,7 +43,7 @@ function pieceFits(cells, px, py, noClimber) {
     if (gx < area.x0 || gx > area.x1 || gy >= ROWS) return false;
     if (gy < 0) continue;
     if (L.grid[gy][gx] !== '.') return false;
-    if (!noClimber && cl.alive && rectHit(cl, gx * T + 0.5, gy * T + 0.5, T - 1, T - 1)) return false;
+    if (!noClimber && cl.alive && rectHit(cl, gx * T + 0.01, gy * T + 0.01, T - 0.02, T - 0.02)) return false;
   }
   return true;
 }
@@ -99,7 +99,7 @@ function towerPush(pc) {
   const cl = G.players[G.build.climber];
   if (!cl.alive) return;
   const cells = pc.cells.map(([cx, cy]) => [(pc.x + cx) * T, (pc.y + cy) * T]);
-  const hits = () => cells.filter(([x, y]) => rectHit(cl, x + 0.5, y + 0.5, T - 1, T - 1));
+  const hits = () => cells.filter(([x, y]) => rectHit(cl, x + 0.01, y + 0.01, T - 0.02, T - 0.02));
   let hs = hits();
   if (!hs.length) return;
   const left = Math.min(...hs.map(c => c[0])), right = Math.max(...hs.map(c => c[0] + T));

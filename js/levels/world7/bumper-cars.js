@@ -156,7 +156,8 @@ function bumperDrive(c, inp, dt) {
   }
   // (lead review) on the edge, only input toward land drives: holding toward the water just wobbles there (no driving out over the moat)
   let landOK = true;
-  if (c.state === 'teeter' && can) { const d = bumperLandDir(c); landOK = !!d && inp.dx * d[0] + inp.dy * d[1] > 0; if (!landOK) thrust = 0; }
+  c.holdOut = false;
+  if (c.state === 'teeter' && can) { const d = bumperLandDir(c) || c.landD; c.landD = d; const dot = d ? inp.dx * d[0] + inp.dy * d[1] : 0; landOK = dot > 0; c.holdOut = dot < 0; if (!landOK) thrust = 0; }
   // spin from bumps
   c.a += c.spin * dt; c.spin *= Math.exp(-P.spinDrag * dt);
   if (Math.abs(c.spin) < 0.05) c.spin = 0;
@@ -354,7 +355,8 @@ function bumperEdge(st, c, live, dt) {
   const P = bumperP();
   if (!bumperSolid(c)) return;
   const on = bumperFloorAt(c.x, c.y);
-  if (on) { if (c.state === 'teeter') { c.state = 'drive'; if (live) { st.stat.saves[c.id]++; c.pop = 'Phew!'; c.popCol = '#ffffff'; c.popT = 0; Sfx.play('bumperPhew', c.id); } } return; }
+  if (on) { if (c.state === 'teeter') { if (c.selfT && c.holdOut && !c.teeterHit) return; // still steering out over the edge: no drive/teeter flicker (and no extra Phew)
+      c.state = 'drive'; if (live) { st.stat.saves[c.id]++; c.pop = 'Phew!'; c.popCol = '#ffffff'; c.popT = 0; Sfx.play('bumperPhew', c.id); } } return; }
   const sp = Math.hypot(c.vx, c.vy);
   if (c.state === 'drive') {
     // (lead review) edge brake: a car that leaves the flagstones under its own steam (no boost, no slide or dizzy, no car or
@@ -474,6 +476,8 @@ function bumperTick(dt, live) {
   if (bumperBalls(st, dt, live)) bumperCollide(st, live);
   // a bump's or a ball's separation may have pushed a car into the well or a tower: push it out again
   for (const c of st.cars) if (bumperSolid(c)) { if (P.well) bumperWellHit(c); if (P.towers) bumperTowerHit(c); }
+  // ... or through the tyre fence (a ram's separation happens after the fence check above)
+  if (P.fence) for (const c of st.cars) bumperFence(st, c);
   bumperCrumble(st, dt, live);
   for (const c of st.cars) bumperEdge(st, c, live, dt);
   for (const f of st.falling) f.t += dt;

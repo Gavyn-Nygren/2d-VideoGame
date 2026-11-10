@@ -115,7 +115,8 @@ function probe(p) {
   for (let tx = tx1; tx <= tx2; tx++) {
     const ch = tile(tx, ty);
     if (solidFor(ch, p)) r.tile = true;
-    else if (ch === '=' && p.dropT <= 0 && by <= top + 0.5) { r.tile = true; r.oneway = true; }
+    // (not while rising: jumping up through a plank is not standing on it, and used to allow a second jump there)
+    else if (ch === '=' && p.dropT <= 0 && by <= top + 0.5 && p.vy >= 0) { r.tile = true; r.oneway = true; }
   }
   const o = other(p);
   // (someone coming down hard onto a head isn't standing on it yet: that's a stomp or a landing)
@@ -144,6 +145,11 @@ function separate() {
 function moveBy(p, dx, dy) {
   const n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 8));
   for (let i = 0; i < n; i++) { moveX(p, dx / n, true); moveY(p, dy / n, true); }
+}
+// A sideways-only pull, in small pieces for the same reason (a 30 px pull in one go could hop a one-tile wall).
+function pullX(p, dx) {
+  const n = Math.max(1, Math.ceil(Math.abs(dx) / 8));
+  for (let i = 0; i < n; i++) moveX(p, dx / n, true);
 }
 const ropeVec = () => {
   const [a, b] = G.players;
@@ -229,7 +235,7 @@ function limitLength(Lr, lip) {
     // both standing: pull each other in sideways only, and never off what you're standing on
     for (const [p, sgn] of [[a, 1], [b, -1]]) {
       const x0 = p.x;
-      moveX(p, sgn * nx * ex * 0.5, true);
+      pullX(p, sgn * nx * ex * 0.5);
       if (!footed(p)) p.x = x0;
     }
   } else {
@@ -242,7 +248,7 @@ function limitLength(Lr, lip) {
   if (d > Lr + 0.5 && (wa === 0 || wb === 0)) {
     const g = wa === 0 ? a : b, s = wa === 0 ? 1 : -1;
     const x0 = g.x;
-    moveX(g, s * (dx / d) * (d - Lr), true);
+    pullX(g, s * (dx / d) * (d - Lr));
     // ...and never so far that less than half of them is still on the ground
     if (g.x !== x0 && !footed(g)) g.x = x0;
   }
@@ -286,7 +292,17 @@ function chainStep(dt) {
       th += w * dt;
       moveBy(hanger, hcx + Math.cos(th) * Lc - hanger.w / 2 - hanger.x, hcy + Math.sin(th) * Lc - hanger.h / 2 - hanger.y);
       // a wall may have stopped them short: carry on from where they really are
-      const rx = hanger.x + hanger.w / 2 - hcx, ry = hanger.y + hanger.h / 2 - hcy;
+      let rx = hanger.x + hanger.w / 2 - hcx, ry = hanger.y + hanger.h / 2 - hcy;
+      // ...and if the wall left them further away than the chain is long, the chain holds the walker back
+      // (sideways only, never off what they stand on), so it can't stretch and then snap
+      const rd = Math.hypot(rx, ry);
+      if (rd > Lc + 1) {
+        const x0 = holder.x;
+        pullX(holder, (rx / rd) * (rd - Lc));
+        if (holder.x !== x0 && !footed(holder)) holder.x = x0;
+        if (holder.x !== x0) holder.vx = 0;
+        rx = hanger.x + hanger.w / 2 - (holder.x + holder.w / 2);
+      }
       const rth = Math.atan2(ry, rx);
       G.held = { hanger: hanger.id, th: th + Math.atan2(Math.sin(rth - th), Math.cos(rth - th)), w };
       // let go (holder jumps, or you land) and you keep the swing

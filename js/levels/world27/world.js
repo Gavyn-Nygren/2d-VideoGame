@@ -32,7 +32,7 @@ LEVELS.push(
       {
         title: 'Bolt Alley', legs: 0, look: 'bolts', act: { label: 'punch', labels: ['jump', 'punch'] },
         tip: 'Pip walks the legs, Bo works the arms. Jump the gaps, punch the wall at its glowing spot!',
-        course: [['sign', '{L}: walk and jump. {A}: move the arm and punch!'], ['f', 420], ['bolts', 4, 60], ['f', 220], ['g', 90], ['f', 260],
+        course: [['sign', '{L}: walk and jump. {A}: move the arm and punch!'], ['f', 420], ['bolts', 4, 60], ['f', 220], ['g', 104], ['f', 260],
           ['bolts', 3, 150], ['f', 260], ['sign', 'Punch the glowing spot!'], ['f', 120], ['wall', 1, 3], ['f', 380], ['bolts', 3, 70], ['f', 120],
           ['up', 80, 300], ['bolts', 4, 60], ['f', 120], ['sign', 'Too tall! Arm up high, then grab'], ['f', 60], ['up', 160, 420],
           ['bolts', 4, 70], ['f', 200], ['g', 100], ['f', 240], ['bolts', 3, 60], ['f', 200], ['end']],

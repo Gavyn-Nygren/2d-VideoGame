@@ -301,7 +301,7 @@ function grappleHopStep(st, hop, pend, dt) {
     }
     // the rider boards at the X
     if (!hop.boarded && pend[hop.T].act && Tp.mode === 'walk' && Tp.ship === hop.from && Tp.onNest) {
-      hop.boarded = true; Tp.mode = 'chair'; Tp.zip = { s: 0, off: P.rideMid, pose: 0 }; hop.chairS = 0; hop.chairTS = 0;
+      hop.boarded = true; Tp.mode = 'chair'; Tp.hh = 0; Tp.hopV = 0; Tp.zip = { s: 0, off: P.rideMid, pose: 0 }; hop.chairS = 0; hop.chairTS = 0;
       hop.sagTo = P.chairSag;
       grapplePop(st, Tp.x, grappleNestY(from, st.t) - 60, 'Hop in!', '#ffffff', 18);
       Sfx.play('grappleBoard', hop.T);
@@ -453,7 +453,7 @@ function grappleMissTip(st, hop, hk, hit, to) {
 function grappleStartZip(st, hop, Zp) {
   const P = GRAPPLE;
   hop.phase = 'zip';
-  Zp.mode = 'zip'; Zp.zip = { s: 0, v: 70, off: P.offMid, at: 'go', stopT: 0, bonkT: 0 };
+  Zp.mode = 'zip'; Zp.hh = 0; Zp.hopV = 0; Zp.zip = { s: 0, v: 70, off: P.offMid, at: 'go', stopT: 0, bonkT: 0 };
   Sfx.play('grappleGrab', Zp.id);
   grapplePop(st, Zp.x, grappleNestY(st.ships[hop.from], st.t) - 64, 'Wheee!', '#ffffff', 18);
   hop.stuckT = 0;
@@ -605,7 +605,8 @@ function grapplePlayer(st, pl, p, pnd, dt) {
     pl.x = approach(pl.x, sh.ladX, 120 * dt);
     if (pl.h >= top) { pl.mode = 'walk'; pl.onNest = true; pl.h = top; pl.x = sh.ladX + 6; Sfx.play('grappleStep', pl.id); }
     else if (pl.h <= 0) { pl.mode = 'walk'; pl.onNest = false; pl.h = 0; }
-    else if ((L || R) && pl.h < 20) { pl.mode = 'walk'; pl.onNest = false; pl.h = 0; }
+    // (not while ▲ is held: up + sideways at the foot of the ladder used to flip between climbing and walking every tick)
+    else if ((L || R) && !up && pl.h < 20) { pl.mode = 'walk'; pl.onNest = false; pl.h = 0; }
     return;
   }
   // walking (on the deck or in the crow's nest)
@@ -626,7 +627,7 @@ function grapplePlayer(st, pl, p, pnd, dt) {
   if (pl.onNest) pl.h = sh.nest;
   const nearLad = Math.abs(pl.x - sh.ladX) < P.ladTol;
   if (!aiming && up && nearLad && !pl.onNest && !(pl.hh > 0)) { pl.mode = 'climb'; pl.h = 4; pl.x = sh.ladX; return; }
-  if (!aiming && dn && nearLad && pl.onNest) { pl.mode = 'climb'; pl.onNest = false; pl.h = sh.nest - 4; pl.x = sh.ladX; return; }
+  if (!aiming && dn && nearLad && pl.onNest) { pl.mode = 'climb'; pl.onNest = false; pl.h = sh.nest - 4; pl.x = sh.ladX; pl.hh = 0; pl.hopV = 0; return; }   // (a hop under way ends here: it used to stay frozen for the whole climb)
   if (pnd.jump && !aiming && !(pl.hh > 0) && !(up && nearLad)) { pl.hopV = P.hopV; pl.hh = 0.01; }
   if (!aiming && up && !nearLad && !pl.onNest && pnd.jump && Math.abs(pl.x - sh.ladX) < 90) grappleHintOnce(st, 'lad' + pl.id, pl.id, 'Climb the rope ladder: stand by it and hold ' + grappleKey(pl.id, 'up'));
 }
@@ -638,7 +639,7 @@ function grappleFallTick(st, pl, dt) {
   for (const sh of [st.ships[hop.to], st.ships[hop.from]]) {
     if (!grappleOverDeck(sh, f.x)) continue;
     const dk = grappleDeckY(sh, st.t);
-    if (f.y >= dk && f.vy > 0) {
+    if (f.y >= dk && f.vy > 0 && f.y - f.vy * dt <= dk + 6) {   // (only when crossing the deck line: a faller already below it is not snapped up onto the deck)
       pl.mode = 'walk'; pl.ship = sh.k; pl.onNest = false; pl.h = 0; pl.x = clamp(f.x, sh.deckX0, sh.deckX1); pl.fall = null; pl.sq = 1;
       Sfx.play('grappleLand', pl.id);
       grappleLanded(st, pl, sh);

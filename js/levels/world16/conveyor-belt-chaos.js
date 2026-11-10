@@ -286,8 +286,21 @@ function conveyorLiftStep(st, dt) {
   const dy = ny - lf.y;
   lf.moving = dy;
   if (!dy) return;
+  // (a rider who stands on a belt or shelf with only an edge over the lift is not carried down through it)
+  if (s.onLift && !(dy > 0 && s.tileGround) && Math.abs(s.y + s.h - lf.y) < 2) {
+    if (dy < 0) {
+      // (going up, the rider moves with tile collision: with part of the body under the shelf beside the shaft the lift
+      // waits and shuffles them fully aboard, where it used to push them up into the shelf)
+      const y0 = s.y; moveY(s, dy, true);
+      if (s.y > y0 + dy + 0.01) {
+        s.y = y0; s.vy = 0; lf.moving = 0;
+        moveX(s, (s.x + s.w / 2 < (lf.x0 + lf.x1) / 2 ? 1 : -1) * 120 * dt, true);
+        return;
+      }
+      s.vy = Math.min(s.vy, 0);
+    } else s.y += dy;
+  }
   lf.y = ny;
-  if (s.onLift && Math.abs(s.y + s.h - (ny - dy)) < 2) { s.y += dy; if (dy < 0) s.vy = Math.min(s.vy, 0); }
   for (const c of st.candies) if (c.st === 'rest' && c.surf === 'lift') c.y = lf.y - CONVEYOR.candyR;
   if (Math.abs(lf.y - lf.target) < 0.01) Sfx.play('conveyorDing');
 }

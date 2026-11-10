@@ -226,7 +226,8 @@ function ashFanStep(st, dt) {
   // the wind only carries the leader over a big gust gap (marked with a windsock), so little hops stay little;
   // while the fan blows at the gap from behind its edge, it carries the leader all the way over (any height up to gustH)
   const gp = ld.alive ? ashGapAt(st, lc.x) : null;
-  st.gust.on = !!gp && ashGustReach(st, gp, f) && (lc.x - o.x) * o.dir > -12 && Math.abs(lc.y - o.y) < ASH.gustH;
+  st.gust.on = !!gp && ashGustReach(st, gp, f) && (lc.x - o.x) * o.dir > -12 && Math.abs(lc.y - o.y) < ASH.gustH
+    && ld.y + ld.h > gp.r * T - ASH.gustH;   // (not through the rock of a path that runs above the gap)
   st.gust.gp = st.gust.on ? gp : null;
   if (k > 0 && st.hat > 0) {
     st.hatOff += dt;

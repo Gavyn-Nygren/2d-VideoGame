@@ -230,7 +230,10 @@ const RUMBLE = {
     if (oy < ox && oy < 20) {
       // one landed on the other's head: slide off
       const top = a.y < b.y ? a : b, bot = top === a ? b : a;
-      top.y = bot.y - top.h; top.vy = Math.min(0, top.vy); top.vx += (top.x < bot.x ? -1 : 1) * 60;
+      top.y = bot.y - top.h; top.vy = Math.min(0, top.vy);
+      // (a slide at about walking pace: it speeds up to 150 px/s and no more)
+      const sd = top.x < bot.x ? -1 : 1, sv = top.vx * sd;
+      if (sv < 150) top.vx = sd * Math.min(150, sv + 60);
       return;
     }
     const wa = a.S.weight * (a.brace ? 2.5 : 1), wb = b.S.weight * (b.brace ? 2.5 : 1), sa = wb / (wa + wb), dir = a.x < b.x ? -1 : 1;

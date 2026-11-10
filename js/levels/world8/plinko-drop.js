@@ -268,7 +268,7 @@
       for (const p of st.pads) {
         if (p.nap) continue;
         const top = p.y - P.padH / 2 - (p.bumpT > 0 ? 4 : 0);
-        if (b.vy > 0 && pyBot <= top + 2 && b.y + P.r >= top && Math.abs(b.x - p.x) <= p.w / 2 + 5) {
+        if (b.vy > 0 && pyBot <= p.y - P.padH / 2 + 2 && b.y + P.r >= top && Math.abs(b.x - p.x) <= p.w / 2 + 5) {
           const off = clamp((b.x - p.x) / (p.w / 2), -1, 1), bump = p.bumpT > 0;
           const zone = off < -P.zoneEdge ? -1 : off > P.zoneEdge ? 1 : 0;
           b.y = top - P.r; b.vy = -P.padBounce;

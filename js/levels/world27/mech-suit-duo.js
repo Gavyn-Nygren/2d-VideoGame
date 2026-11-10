@@ -82,9 +82,10 @@ const MECH = {
     for (const f of st.floors) out.push({ x: f.x0, y: f.top, w: f.x1 - f.x0, h: 900, f });
     for (const w of st.walls) if (!w.broken) out.push({ x: w.x, y: w.top - 230, w: 36, h: 230, wall: w });
     for (const b of st.beams) out.push({ x: b.x0, y: b.top - 160, w: b.x1 - b.x0, h: 40, beam: b });
+    for (const g of st.gaps) if (g.gold) out.push({ x: g.x0, y: g.top, w: g.x1 - g.x0, h: 900, plank: g }); // (the gold plank is a real bridge)
     return out;
   }
-  const floorAt = (st, x) => st.floors.find(f => x >= f.x0 && x < f.x1) || null;
+  const floorAt = (st, x) => st.floors.find(f => x >= f.x0 && x < f.x1) || st.gaps.find(g => g.gold && x >= g.x0 && x < g.x1) || null;
   const front = st => st.m.x + M.w;
 
   /* ---------- the plan: the next thing ahead and each pilot's job ---------- */
