@@ -54,9 +54,9 @@
     thrV: 215, aimMax: 300, aimV: 330, aim0: 140, flyT: 0.7, pouch: 3, refill: 2.2, throwCd: 0.3,
     cone: 190, coneGold: 105, seeT: 0.5, seeNearT: 0.16, seeNear: 70, behind: 18, unseeT: 0.5,
     hear: 280, stepHear: 130, creakHear: 170, wakeR: 120, wakeT: 4.5, react: 0.35, look: 3.6, walk: 60, goV: 92, backV: 80,
-    chaseV: 215, startle: 0.6, carryV: 330, dizzy: 1.5, search: 2.4, safeD: 80, safeGate: 46, catchD: 24, overY: 32,
+    chaseV: 215, startle: 0.8, skid: 0.55, groggy: 0.7, carryV: 330, dizzy: 1.5, search: 2.4, safeD: 80, safeGate: 46, catchD: 24, overY: 32,
     dogHear: 360, dogV: 210, dogBackV: 120, dogR: 62, dogSniff: 3.6, lightR: 52,
-    fdt: 0.1, fN: 120, margin: 24, patience: 1.2, idleWait: 12, goldFails: 2,
+    fdt: 0.1, fN: 120, margin: 24, patience: 1.2, aimOk: 15, idleWait: 12, goldFails: 2,
   };
   const SPOT_W = { B: 46, D: 54, H: 84, M: 64, A: 120 };
   const SPOT_NAME = { B: 'the barrel', D: 'the doorway', H: 'the hay', M: 'the bamboo', A: 'the shade', start: 'the gatehouse', arch: 'the gatehouse' };
@@ -66,12 +66,12 @@
 
   /* ---------- the course ---------- */
   function compile(def) {
-    const c = { posts: [], endX: 0, len: 0 };
+    const c = { posts: [], endX: 0, len: 0 }, lookT = def.look || S.look;
     let x = 0;
     (def.posts || []).forEach((pd, k) => {
       const w = pd.w || 760;
       const P = { k, x0: x, gate: x + w, w, lever: x + w - S.leverDX, lo: x + 130, hi: x + w - 100, spots: [], guards: [], dogs: [], crates: [], boards: [], lights: [], open: false, openT: 0, seen: false };
-      const guard = (kind, gx, o) => P.guards.push(Object.assign({ kind, x: gx, home: gx, a: gx, b: gx, face: -1, dir0: -1, state: 'stand', t: 0, tx: gx, fast: false, chasing: false, notice: 0, lo: P.lo, hi: P.hi, n: k * 10 + P.guards.length }, o));
+      const guard = (kind, gx, o) => P.guards.push(Object.assign({ kind, x: gx, home: gx, a: gx, b: gx, face: -1, dir0: -1, state: 'stand', t: 0, tx: gx, fast: false, chasing: false, notice: 0, side: 0, look: lookT, lo: P.lo, hi: P.hi, n: k * 10 + P.guards.length }, o));
       for (const tk of pd.items || []) {
         const m = /^([A-Z])(\d+)(?:-(\d+))?([LR])?(?::([\d.]+))?$/.exec(tk); if (!m) continue;
         const t = m[1], a = x + +m[2], b = m[3] ? x + +m[3] : a;
@@ -117,7 +117,7 @@
       case 'react': if ((g.t -= dt) <= 0) g.state = 'go'; break;
       case 'go': {
         const v = (g.fast ? S.chaseV : S.goV) * dt;
-        if (Math.abs(g.tx - g.x) <= v) { g.x = g.tx; g.state = 'look'; g.t = g.fast ? S.search : S.look; g.fast = false; }
+        if (Math.abs(g.tx - g.x) <= v) { g.x = g.tx; g.state = 'look'; g.t = g.fast ? S.search : g.look; g.fast = false; }
         else { if (Math.abs(g.tx - g.x) > 30) g.face = g.tx > g.x ? 1 : -1; g.x += (g.tx > g.x ? 1 : -1) * v; }
         break;
       }
@@ -200,10 +200,17 @@
   function earliest(P, frames, x, tx, v, maxK, k0) { for (let k = k0 || 0; k <= maxK; k += 2) if (hopSafe(P, frames, x, tx, v, k, 0)) return k * S.fdt; return Infinity; }
   // how soon the sneaker can get to the next hiding spot unseen in this future (0 = now, Infinity = not at all)
   // (after: a hidden sneaker only sets off once the last planned pebble has landed, so both plans always agree)
+  // (a pebble plan, after > 0, also pays for a short "go" window: the thrower likes pebbles that leave time to set off)
   function score(st, frames, after) {
     const sn = st.sn, P = st.P, z = zoneAt(P, sn.x), nx = nextZone(P, sn.x, z);
     if (!nx) return 0;
-    if (z) return earliest(P, frames, sn.x, nx.x0 + 14, S.creep, 76, after ? Math.ceil(after / S.fdt) : 0);
+    if (z) {
+      const e = earliest(P, frames, sn.x, nx.x0 + 14, S.creep, 76, after ? Math.ceil(after / S.fdt) : 0);
+      if (!after || e === Infinity) return e;
+      const k0 = Math.round(e / S.fdt); let k = k0 + 2;
+      while (k <= k0 + 24 && hopSafe(P, frames, sn.x, nx.x0 + 14, S.creep, k, 0)) k += 2;
+      return e + (2.4 - (k - 2 - k0) * S.fdt) * 0.6;
+    }
     if (hopSafe(P, frames, sn.x, nx.x0 + 14, S.creep, 0, 10)) return 0;
     const pv = prevZone(P, sn.x);
     return pv && hopSafe(P, frames, sn.x, pv.x1 - 14, S.creep, 0, 10) ? 0.6 : Infinity;
@@ -213,48 +220,68 @@
     const lo = Math.min(x, tx) - S.stepHear - 50, hi = Math.max(x, tx) + S.stepHear + 50;
     return !P.guards.some(g => g.x > lo && g.x < hi) && !P.dogs.some(d => d.x > lo - 110 && d.x < hi + 110);
   }
+  // time to hop? Says why: 'crate', 'boards' (any time in the last 34 px before them clears them) or, in a chase,
+  // 'guard' (a hop at the right moment goes over the head of a guard running at you)
   function needJump(P, sn, dir, chase) {
     if (!dir || !sn.gr) return false;
-    for (const c of P.crates) { const d = (c.x - sn.x) * dir - S.crateW - 11; if (d > -6 && d < 24 && sn.y < S.crateH - 14) return true; }
-    if (!chase && sn.y === 0) for (const b of P.boards) { const d = (b.x - sn.x) * dir - S.boardW; if (d > 1 && d < 14) return true; }
+    for (const c of P.crates) { const d = (c.x - sn.x) * dir - S.crateW - 11; if (d > -6 && d < 24 && sn.y < S.crateH - 14) return 'crate'; }
+    if (!chase && sn.y === 0) for (const b of P.boards) { const d = (b.x - sn.x) * dir - S.boardW; if (d > 1 && d < 34) return 'boards'; }
+    if (chase) for (const g of P.guards) if (g.state === 'alert') {
+      const d = (g.x - sn.x) * dir, c = S.run + (g.t > 0 ? 0 : S.chaseV);
+      if (d > 0 && d < 0.088 * c + 24 + 46) return 'guard';
+    }
     return false;
   }
+  // creaky boards coming up on a creep (for an early warning prompt)
+  const boardsAhead = (P, sn, dir) => !!dir && P.boards.some(b => { const d = (b.x - sn.x) * dir - S.boardW; return d > 1 && d < 130; });
 
   /* ---------- what to do next ---------- */
   function planSneak(st) {
-    const sn = st.sn, th = st.th, P = st.P, out = { mode: 'none', dir: 0, tx: sn.x, jump: false, dash: false, wait: Infinity, zone: null, safe: false };
+    const sn = st.sn, th = st.th, P = st.P, out = { mode: 'none', dir: 0, tx: sn.x, jump: false, why: false, boards: false, dash: false, wait: Infinity, left: 0, zone: null, safe: false };
     if (st.state !== 'go' || sn.state !== 'ok') return out;
     const z = zoneAt(P, sn.x);
     if (st.chase) {
       // run for the hiding spot you can reach with the guards farthest behind
       const ch = P.guards.filter(g => g.state === 'alert' || (g.state === 'dizzy' && g.chasing));
-      let best = null, bt = 1e9, alt = null, am = -1e8;
+      // (a spot on the far side of ONE running guard counts too: hop over his head and he skids)
+      let best = null, bt = 1e9, bestHop = null, bht = 1e9, alt = null, am = -Infinity;
       for (const zz of P.zones) {
         const tx = zz.kind === 'start' ? clamp(sn.x, zz.x0 + 14, zz.x1 - 50) : zz.kind === 'arch' ? clamp(sn.x, zz.x0 + 46, zz.x1 - 12) : clamp(sn.x, zz.x0 + 14, zz.x1 - 14);
-        const tS = Math.abs(tx - sn.x) / S.run + 0.12 * P.crates.filter(c => (c.x - sn.x) * (c.x - tx) < 0).length;
-        let ok = true, mar = 1e9;
+        const D = Math.abs(tx - sn.x), tS = D / S.run + 0.12 * P.crates.filter(c => (c.x - sn.x) * (c.x - tx) < 0).length;
+        const safe = (zz.kind === 'spot' ? S.safeD : S.safeGate) + 12;
+        let ok = true, mar = 1e9, hops = 0;
         for (const g of ch) {
-          if ((g.x - sn.x) * (tx - sn.x) > 0 && Math.abs(g.x - sn.x) < Math.abs(tx - sn.x) + 12) { ok = false; mar = -1e9; break; }
-          const d = Math.abs(tx - g.x) - S.chaseV * Math.max(0, tS - Math.max(0, g.t)) - (zz.kind === 'spot' ? S.safeD : S.safeGate) - 12;
+          let d;
+          if (g.state === 'alert' && (g.x - sn.x) * (tx - sn.x) > 0 && Math.abs(g.x - sn.x) < D + 12) {
+            hops++;
+            const R = Math.max(0, D - S.run * Math.abs(g.x - sn.x) / (S.run + (g.t > 0 ? 0 : S.chaseV)));
+            d = R - S.chaseV * Math.max(0, R / S.run - S.skid) - safe;
+          } else d = Math.abs(tx - g.x) - S.chaseV * Math.max(0, tS - Math.max(0, g.t)) - safe;
           mar = Math.min(mar, d); if (d < 0) ok = false;
         }
-        if (ok && tS < bt) { bt = tS; best = { z: zz, tx }; }
+        if (hops > 1) { ok = false; mar -= 2000; } else if (hops) mar -= 60;
+        if (ok && !hops && tS < bt) { bt = tS; best = { z: zz, tx }; }
+        if (ok && hops && tS < bht) { bht = tS; bestHop = { z: zz, tx }; }
         if (mar > am) { am = mar; alt = { z: zz, tx }; }
       }
-      const pick = best || alt;
+      const pick = best || bestHop || alt;
       out.mode = 'flee';
       if (pick) { out.zone = pick.z; out.tx = pick.tx; }
       else { const ng = ch.reduce((a, g) => (!a || Math.abs(g.x - sn.x) < Math.abs(a.x - sn.x) ? g : a), null); out.tx = ng && ng.x > sn.x ? P.x0 + 30 : P.gate - 30; }
       out.dir = Math.abs(out.tx - sn.x) > 3 ? Math.sign(out.tx - sn.x) : 0;
     } else if (P.open) {
       if (sn.x > P.gate + 26) out.mode = 'partner';
-      else { out.mode = 'gate'; out.tx = P.gate + 60; out.dir = 1; out.dash = true; }
+      else { out.mode = 'gate'; out.tx = P.gate + 60; out.dir = 1; out.dash = quiet(P, sn.x, P.gate + 60); }
     } else if (z && z.kind === 'arch') {
       if (Math.abs(sn.x - P.lever) > 12) { out.mode = 'lever'; out.tx = P.lever; out.dir = Math.sign(P.lever - sn.x); } else out.mode = 'pull';
     } else {
       const nx = nextZone(P, sn.x, z), fr = st.frames, tx = nx.x0 + 14;
       out.zone = nx;
-      if (hopSafe(P, fr, sn.x, tx, S.creep, 0, z ? 0 : 10)) { out.mode = 'go'; out.dir = 1; out.tx = (nx.x0 + nx.x1) / 2; out.safe = true; out.dash = quiet(P, sn.x, tx); }
+      if (hopSafe(P, fr, sn.x, tx, S.creep, 0, z ? 0 : 10)) {
+        out.mode = 'go'; out.dir = 1; out.tx = (nx.x0 + nx.x1) / 2; out.safe = true; out.dash = quiet(P, sn.x, tx);
+        // how long the way stays open for a creeper who has not set off yet
+        if (z) { let k = 2; while (k <= 60 && hopSafe(P, fr, sn.x, tx, S.creep, k, 0)) k += 2; out.left = (k - 2) * S.fdt; }
+      }
       else if (z) {
         out.mode = 'wait'; out.wait = earliest(P, fr, sn.x, tx, S.creep, 70);
         const mid = z.kind === 'start' ? Math.min(sn.x, z.x1 - 30) : (z.x0 + z.x1) / 2;
@@ -266,7 +293,8 @@
         else { out.mode = 'go'; out.dir = 1; out.tx = (nx.x0 + nx.x1) / 2; }
       }
     }
-    out.jump = needJump(P, sn, out.dir, !!st.chase);
+    out.why = needJump(P, sn, out.dir, !!st.chase); out.jump = !!out.why;
+    out.boards = !st.chase && !out.jump && sn.y === 0 && boardsAhead(P, sn, out.dir);
     if (th && out.mode === 'wait' && Math.abs(out.tx - sn.x) <= 9) out.dir = 0;
     return out;
   }
@@ -317,11 +345,14 @@
       out.mode = 'toss'; out.X = tk.X; out.show = st.k === 0 || st.waitT > 8;
     }
     // how to get the ring onto X: turn and walk until it is within reach, then slide the aim
-    const d = out.X - th.x, ad = Math.abs(d);
-    if (ad > 8 && d * th.face < 0) out.dir = Math.sign(d);
-    else if (ad > S.aimMax - 30) out.dir = Math.sign(d);
-    else if (Math.abs(th.aim - ad) > 4) out.aim = th.aim < ad ? 1 : -1;
-    out.ready = Math.abs(th.mark - out.X) < (out.mode === 'bonk' ? 22 : 7) && th.pouch >= 1 && th.cd <= 0;
+    // (close is good enough: a person can't park the ring on a pixel, and the look-ahead follows the real pebble)
+    const d = out.X - th.x, ad = Math.abs(d), near = Math.abs(th.mark - out.X) < (out.mode === 'bonk' ? 22 : S.aimOk);
+    if (!near) {
+      if (d * th.face < 0 && ad > 2) out.dir = Math.sign(d); // it is behind you: turn round
+      else if (ad > S.aimMax - 30) out.dir = Math.sign(d);
+      else out.aim = th.aim < ad ? 1 : -1;
+    } else if (Math.abs(th.mark - out.X) > 6 && d * th.face >= 0 && ad <= S.aimMax) out.aim = th.aim < ad ? 1 : -1; // (still nudging closer)
+    out.ready = near && th.pouch >= 1 && th.cd <= 0;
     if (out.mode === 'toss' && st.pebbles.length) out.ready = false;
     return out;
   }
@@ -485,7 +516,7 @@
       let hit = null;
       if (u > 0.55) for (const g of P.guards) if (g.state === 'alert' && Math.abs(g.x - q.x) < 30 && q.y > S.ground - 70) hit = g;
       if (hit) {
-        hit.state = 'dizzy'; hit.t = S.dizzy; st.stats.bonks++;
+        hit.state = 'dizzy'; hit.t = S.dizzy; hit.side = 0; st.stats.bonks++;
         Sfx.play('ninjaBonk'); Sfx.play('ninjaDizzy');
         K.pop(st, hit.x, S.ground - 84, 'Bonk!', '#ffffff', 24); K.spark(st, hit.x, S.ground - 44, 8, ['#fff2b0', '#ffffff']);
         rumble(st.thr, 0.2, 0.5, 120);
@@ -531,6 +562,7 @@
     if (sn.state === 'ok' && !st.chase && !sn.hidden) {
       const cone = coneLen(st);
       for (const g of P.guards) if (AWAKE[g.state]) {
+        if (g.state === 'wake' && g.t > S.wakeT - S.groggy) continue; // just woken: he rubs his eyes first
         const d = (sn.x - g.x) * g.face;
         if (d > -S.behind && d < cone) { g.notice = 0.3; const r = 1 / (d < S.seeNear ? S.seeNearT : S.seeT); if (r > rate) { rate = r; by = g; } }
       }
@@ -546,8 +578,8 @@
     const sn = st.sn, P = st.P;
     sn.seen = 0; st.stats.spotted++; st.rFail++; P.seen = true; st.chase = { t: 0 }; st.gongT = 1;
     let n = 0;
-    for (const g of P.guards) if (AWAKE[g.state] || (g.state === 'sleep' && Math.abs(g.x - sn.x) < 240)) { g.state = 'alert'; g.chasing = true; g.notice = 0; g.fast = false; g.t = S.startle; n++; }
-    if (!n) { const g = P.guards.reduce((a, q) => (q.state !== 'dizzy' && (!a || Math.abs(q.x - sn.x) < Math.abs(a.x - sn.x)) ? q : a), null); if (g) { g.state = 'alert'; g.chasing = true; g.notice = 0; g.t = S.startle; } }
+    for (const g of P.guards) if (AWAKE[g.state] || (g.state === 'sleep' && Math.abs(g.x - sn.x) < 240)) { g.state = 'alert'; g.chasing = true; g.notice = 0; g.fast = false; g.t = S.startle; g.side = 0; n++; }
+    if (!n) { const g = P.guards.reduce((a, q) => (q.state !== 'dizzy' && (!a || Math.abs(q.x - sn.x) < Math.abs(a.x - sn.x)) ? q : a), null); if (g) { g.state = 'alert'; g.chasing = true; g.notice = 0; g.t = S.startle; g.side = 0; } }
     for (const d of P.dogs) if (Math.abs(d.x - sn.x) < 320) { d.state = 'bark'; d.t = 3; d.face = sn.x >= d.x ? 1 : -1; Sfx.play('shadowsneakWoof'); }
     Sfx.play('ninjaGong'); Sfx.play('ninjaAlert');
     if (!reduceMotion) G.shake = 0.07;
@@ -569,6 +601,12 @@
       if (g.state !== 'alert') continue;
       any = true;
       const d = sn.x - g.x, slow = P.crates.some(c => Math.abs(g.x - c.x) < 36) ? 0.45 : 1;
+      // hopped right over his head: he skids to a stop and spins round
+      const side = d > 0 ? 1 : -1;
+      if (g.side && side !== g.side && Math.abs(d) > 2) {
+        if (!sn.gr || sn.y > 0) { g.t = Math.max(g.t, S.skid); st.stats.hops++; Sfx.play('shadowsneakWhoa'); K.pop(st, g.x, S.ground - 84, 'Whoa!', '#ffffff', 20); K.dust(st, g.x, S.ground - 2, null, 5); }
+      }
+      if (Math.abs(d) > 2) g.side = side;
       if (Math.abs(d) > 2) g.face = d > 0 ? 1 : -1;
       if (g.t > 0) { g.t -= dt; near = Math.min(near, Math.abs(d)); continue; } // "!": a startled jump before he runs
       g.x = clamp(g.x + g.face * Math.min(Math.abs(d), S.chaseV * slow * dt), g.lo - 20, g.hi + 20);
@@ -940,7 +978,8 @@
       let s = null, col = C.gold, pulse = false;
       const R = K.key(A, 'right'), Lf = K.key(A, 'left'), pale = '#cfd6ff';
       if (sn.state === 'ok') {
-        if (sp.jump) { s = 'Hop! ' + K.key(A, 'up'); pulse = true; }
+        if (sp.jump) { s = (sp.why === 'guard' ? 'Hop over him! ' : sp.why === 'boards' ? 'Hop the creaky boards! ' : 'Hop! ') + K.key(A, 'up'); pulse = true; }
+        else if (sp.boards) s = 'Creaky boards ahead: get ready to hop ' + K.key(A, 'up');
         else if (sp.mode === 'flee') { s = sp.dir ? 'Run ' + (sp.dir > 0 ? R : Lf) + '! Hide in ' + zoneName(sp.zone) + '!' : 'Stay hidden!'; pulse = true; }
         else if (sp.mode === 'go') s = sp.safe ? (sn.hidden ? 'Go now! ' + R : 'Sneak on ' + R) : 'Quick, to ' + zoneName(sp.zone) + ' ' + R;
         else if (sp.mode === 'back') { s = 'Back ' + Lf + '! Hide in ' + zoneName(sp.zone) + '!'; pulse = true; }
@@ -970,9 +1009,9 @@
   const medal = (t, spotted, caught) => K.medal(t <= 270 && spotted <= 2 && caught === 0, t <= 420 && caught <= 3);
 
   MODES.shadowsneak = {
-    S, compile, plan, medal, zoneAt, stepGuard, forecast,
+    S, compile, plan, medal, zoneAt, stepGuard, forecast, hopSafe, nextZone,
     setup(st, L) {
-      st.stats = { spotted: 0, caught: 0, escapes: 0, pebbles: 0, bonks: 0, posts: 0, clean: 0, helps: 0, roomT: [] };
+      st.stats = { spotted: 0, caught: 0, escapes: 0, pebbles: 0, bonks: 0, hops: 0, posts: 0, clean: 0, helps: 0, roomT: [] };
       st.inT = [G.time, G.time]; st.personT = G.time;
       const def = LEVELS[G.levelIndex];
       st.totalPosts = (def.rooms || [def]).reduce((n, r) => n + (r.posts || []).length, 0);
@@ -1008,6 +1047,7 @@
   Sfx.extra.shadowsneakWoof = function () { this.tone(260, 0.09, 'sawtooth', 0.05, 160); this.tone(240, 0.1, 'sawtooth', 0.05, 150, 0.16); };
   Sfx.extra.shadowsneakGotcha = function () { [392, 330, 262].forEach((f, i) => this.tone(f, 0.12, 'triangle', 0.05, null, i * 0.09)); };
   Sfx.extra.shadowsneakPlop = function () { this.tone(200, 0.18, 'sine', 0.06, 90); };
+  Sfx.extra.shadowsneakWhoa = function () { this.tone(520, 0.16, 'sine', 0.04, 260); };
   Sfx.extra.shadowsneakPhew = function () { this.tone(700, 0.3, 'sine', 0.035, 330); };
   Sfx.extra.shadowsneakCheck = function () { [523, 784, 1047].forEach((f, i) => this.tone(f, 0.1, 'triangle', 0.045, null, i * 0.07)); };
   Sfx.extra.shadowsneakFanfare = function () { [392, 523, 659, 784, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.16, 'triangle', 0.055, null, i * 0.11)); };
@@ -1024,21 +1064,21 @@
     act: { label: 'dash', labels: ['dash', 'toss'] },
     map: K.stubMap(),
     rooms: [
-      { title: 'The Outer Yard', sneak: 0, act: { label: 'dash', labels: ['dash', 'toss'] },
+      { title: 'The Outer Yard', sneak: 0, look: 5.0, act: { label: 'dash', labels: ['dash', 'toss'] },
         tip: 'Pip sneaks, Bo tosses pebbles from the wall. A guard walks over to every "tik": slip past behind him!',
         posts: [
           { w: 640, items: ['S330L', 'D470'] },
           { w: 760, items: ['B200', 'P290-520', 'C600'] },
           { w: 800, items: ['S300R', 'A520:120', 'P590-690'] },
         ] },
-      { title: 'The Sleepy Barracks', sneak: 1, act: { label: 'dash', labels: ['toss', 'dash'] },
+      { title: 'The Sleepy Barracks', sneak: 1, look: 4.4, act: { label: 'dash', labels: ['toss', 'dash'] },
         tip: 'Swap! Bo sneaks, Pip tosses. Creep past the sleepers and hop ▲ over the creaky boards.',
         posts: [
           { w: 760, items: ['Z250', 'K330', 'B420', 'S640L'] },
           { w: 820, items: ['B200', 'Z290', 'C350', 'P430-590', 'D680'] },
           { w: 780, items: ['B190', 'S400L', 'K500', 'Z560', 'K630'] },
         ] },
-      { title: 'The Kennel Court', sneak: 0, act: { label: 'dash', labels: ['dash', 'toss'] },
+      { title: 'The Kennel Court', sneak: 0, look: 4.0, act: { label: 'dash', labels: ['dash', 'toss'] },
         tip: 'Pip sneaks again. Guard dogs run to every sound, and two guards need two pebbles!',
         posts: [
           { w: 820, items: ['G280', 'D450', 'P520-640'] },

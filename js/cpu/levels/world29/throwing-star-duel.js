@@ -12,13 +12,15 @@
      How to out-think it (on purpose, so Hard is beatable): two stars close together in different lanes muddle it, a
      quick duck-then-stand feint before a high throw makes it expect a low one, long rallies get harder for it too, and
      it can't swing while it is in the air or in the middle of its own throw.
-     Its own throws: it waits a beat between stars (Hard 0.55-1.1 s, Easy 1.6-3.4 s), mixes high and low (Easy mostly
-     high), throws low at a hopping foe and high at a ducking one's... other lane, and looks where the middle lantern
-     will be before throwing (Hard nearly always, Easy seldom). It shuffles along its half now and then.
+     Its own throws: it waits a beat between stars (Hard 0.9-1.7 s, Normal about 1.3-2.6 s, Easy 2-4 s), mixes high and
+     low (Easy mostly high), sometimes follows a star with one in the other lane, throws low at a ducking foe and high
+     at a hopping one, and looks where the middle lantern
+     will be before throwing (Hard nearly always, Easy seldom). It shuffles along its half now and then. Against a foe
+     who camps in a duck, Normal and Hard often send two low stars close together (the second lands as the hop ends).
      It never touches level state: it only reads st and plan(). Both sides run the same code, mirrored. */
   const lerp = (a, b, u) => a + (b - a) * u;
   cpuBrain('starduel', {
-    reset(S) { S.seen = {}; S.next = 1 + Math.random(); S.pend = null; S.goal = null; S.goalT = 0; S.foeDuck = -9; S.said = 0; S.round = 0; },
+    reset(S) { S.seen = {}; S.next = 1 + Math.random(); S.pend = null; S.goal = null; S.goalT = 0; S.foeDuck = -9; S.camp = 0; S.said = 0; S.round = 0; },
     bubblePos(p) { return { x: cpuCx(p), y: p.y - 14 }; },
     think(S, p, o, dt, info) {
       const out = {}, st = info.mst, M = MODES.starduel;
@@ -33,8 +35,10 @@
       }
       if (st.res) return out;
       const sk = info.skill, u = clamp((sk - 0.35) / 0.65, 0, 1);   // 0 Easy, about 0.54 Normal, 1 Hard
+      const u2 = Math.pow(u, 0.75);                                  // the same, bent so Normal sits a little nearer Hard
       const pl = M.plan(st, id);
       if (foe.duck) S.foeDuck = G.time;
+      S.camp = foe.duck ? (S.camp || 0) + dt : 0;                    // how long the foe has sat in a duck
       if (me.dizzy > 0) { S.pend = null; return out; }
       const lag = lerp(0.42, 0.13, u);
       // notice the stars flying at me and decide, once per star (and again when it has been batted back)
@@ -49,11 +53,11 @@
       coming.sort((a, b) => a.t - b.t);
       for (const c of coming) {
         if (c.m.plan || G.time - c.m.at < lag) continue;
-        let blunder = lerp(0.34, 0.05, u) + 0.035 * c.s.bounces;
+        let blunder = lerp(0.34, 0.05, u2) + 0.035 * c.s.bounces;
         // muddled by a second star in the other lane close behind (or ahead of) this one
-        if (coming.some(q => q !== c && q.s.lane !== c.s.lane && Math.abs(q.t - c.t) < 0.42)) blunder += 0.25;
+        if (coming.some(q => q !== c && q.s.lane !== c.s.lane && Math.abs(q.t - c.t) < 0.42)) blunder += lerp(0.3, 0.2, u);
         // fooled by a feint: the foe was ducking a moment before a fresh HIGH star
-        if (c.s.lane === 0 && c.s.bounces === 0 && G.time - S.foeDuck < c.s.age + 0.3 && c.s.age < 0.6) blunder += 0.28;
+        if (c.s.lane === 0 && c.s.bounces === 0 && G.time - S.foeDuck < c.s.age + 0.3 && c.s.age < 0.6) blunder += lerp(0.32, 0.2, u);
         const parry = lerp(0.06, 0.72, u), r = Math.random();
         if (r < blunder) c.m.plan = Math.random() < 0.5 ? 'none' : 'wrong';
         else if (r < blunder + (1 - blunder) * parry) { c.m.plan = 'parry'; c.m.aim = 0.035 + Math.random() * lerp(0.2, 0.085, u); }
@@ -84,7 +88,7 @@
         const q = S.pend;
         q.t += dt;
         out.down = q.low;
-        if (q.t > 0.07 && me.duck === q.low && pl.grounded) { if (pl.canThrow) { out.act = 'tap'; if (!CPU.last[id].act) { S.pend = null; S.next = lerp(2.0, 0.9, u) + Math.random() * lerp(2.0, 0.8, u); if (S.combo) { S.combo = false; } else if (Math.random() < 0.3 * u) { S.combo = true; S.next = 0.36; S.comboLow = !q.low; } } } }
+        if (q.t > 0.07 && me.duck === q.low && pl.grounded) { if (pl.canThrow) { out.act = 'tap'; if (!CPU.last[id].act) { S.pend = null; S.next = lerp(2.0, 0.9, u2) + Math.random() * lerp(2.0, 0.8, u2); if (S.combo) { S.combo = false; } else if (q.low && S.camp > 1 && Math.random() < 0.15 + 0.5 * u) { S.combo = true; S.next = 0.3; S.comboLow = true; } else if (Math.random() < 0.3 * u) { S.combo = true; S.next = 0.36; S.comboLow = !q.low; } } } }
         if (q.t > 0.8) S.pend = null;
         return out;
       }
@@ -92,7 +96,7 @@
         let low = Math.random() < lerp(0.25, 0.5, u);
         if (S.combo) low = S.comboLow;
         else if (Math.random() < 0.25 + 0.6 * u) {
-          // aim where the foe is weak: low at a hopper... no: a hopper clears low stars, so high; low at a ducker
+          // aim where the foe is weak: high at a hopper (a hop clears low stars), low at a ducker
           if (foe.duck) low = true; else if (foe.h > 4) low = false;
         }
         // mind the lantern (Hard nearly always looks, Easy seldom)

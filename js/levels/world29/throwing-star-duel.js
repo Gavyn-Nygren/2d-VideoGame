@@ -137,7 +137,7 @@
     K.part(st, s.x, y, -s.dir * 120, -260, 0.9, s.owner ? '#b9d4ff' : '#ffc0ab', 5, 700, 'star');
     sayPop(st, T, 'Bonk!', '#ffffff', 26);
     Sfx.play('ninjaBonk', 1 + 0.08 * T.bonks); Sfx.play('ninjaDizzy');
-    G.shake = Math.max(G.shake || 0, 5);
+    if (!reduceMotion) G.shake = 0.06;
     rumble(T.k, 0.3, 0.6, 160);
   }
   function tickDuelist(st, P, dt, live) {
@@ -218,7 +218,7 @@
           else { bonk(st, T, s); continue; }
         } else if (ahead < -SD.hitR) {
           s.passed = true;
-          if (s.under) { st.stat.dodges[T.k]++; sayPop(st, T, s.lane ? 'Hop!' : 'Ducked!', '#d9ffd0', 16); }
+          if (s.under) { st.stat.dodges[T.k]++; K.pop(st, T.x - DIR[T.k] * 34, feet(T) - 52, s.lane ? 'Hop!' : 'Ducked!', '#d9ffd0', 16); }
         }
       }
       // off the floor: it sticks in the wall with a soft "tok"
@@ -366,7 +366,7 @@
     const t = G.clock, F = SD.floor, s = 1.35, h = lanH(st), jx = Math.sin(t * 40) * 4 * st.lanJig;
     const cy = F - h, top = cy - 21 * s;
     K.rope(SD.mid, 30, SD.mid + jx, top, 0, { w: 2.5 });
-    K.lantern(SD.mid + jx, top, t, { s, sway: 0.25 + st.lanJig * 2 });
+    K.lantern(SD.mid + jx, top, t, { s, col: '#63d6a4', sway: 0.25 + st.lanJig * 2 });   // jade: neither side's colour, and not gold
     // the lane it is in right now, marked on the lantern's sides
     for (const lane of [0, 1]) if (lanBlocks(h, lane)) {
       const y = F - SD.laneY[lane];

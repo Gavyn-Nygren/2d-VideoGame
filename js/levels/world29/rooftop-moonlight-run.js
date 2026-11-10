@@ -45,7 +45,7 @@
   const S = {
     street: 512, baseY: 362,
     runV: 265, runA: 2200, airA: 1300, jumpV: 575, g: 1500, coyote: 0.09, cutV: 230, maxJump: 130,
-    zone: 150, throwV: 1050, range: 430, catchR: 32, goldCatchR: 68, aMin: 0.2, aMax: 1.4, sweepT: 2.8, reel: 0.45,
+    zone: 150, throwV: 1050, range: 430, catchR: 44, goldCatchR: 80, aMin: 0.45, aMax: 1.35, sweepT: 3.2, green: 0.8, reel: 0.45,
     hand: 34,                       // the grip is this far above the feet on a rope
     gS: 1900, pump: 1.15, goldPump: 1.6, damp: 0.06, maxA: 1.4, tugE: 0.75, ledge: 56, grabT: 0.25,
     heave: 0.125, heaveCd: 0.32, heaveWin: 0.24, zipV: 1.1, dropT: 0.3,
@@ -121,6 +121,7 @@
   const hookAt = (st, g) => (g.latched ? g.hp : hookPt(g, st.clock));
   const gap = st => st.c.gaps[st.gi] || null;
   const solid = R => !(R.crumb && R.down > 0);
+  const wallX = R => R.x + R.ledge;       // a gold ledge is only a plate to land on: the house wall stays where it was
   const aimAng = st => lerp(S.aMin, S.aMax, 0.5 - 0.5 * Math.cos(TAU * st.clock / st.sweepT));
   const handOf = r => ({ x: r.x + r.face * 18, y: r.y - 17 });
   const catchR = st => (st.gold.hook ? S.goldCatchR : S.catchR);
@@ -221,7 +222,7 @@
     let nx = r.x + r.vx * dt;
     for (const R of c.roofs) {
       if (!solid(R) || r.y <= R.y + 8) continue;
-      if (nx > R.x - 9 && nx < R.x + R.w + 9) { nx = r.x <= R.x + R.w / 2 ? R.x - 9 : R.x + R.w + 9; r.vx = 0; }
+      if (nx > wallX(R) - 9 && nx < R.x + R.w + 9) { nx = r.x <= R.x + R.w / 2 ? wallX(R) - 9 : R.x + R.w + 9; r.vx = 0; }
     }
     const hi = Math.min(c.gateX + 70, st.cam.x + W - 36), lo = Math.max(c.x0 + 100, st.cam.x + 22);
     if (nx > hi) { nx = Math.max(r.x, hi); r.vx = Math.min(r.vx, 0); }
@@ -343,7 +344,7 @@
     if (sw.th > 0.15) g.tugged = false;
     // a soft bump off the far wall when swinging in too low
     const R = st.c.roofs[g.right], fx = g.hp.x + Math.sin(sw.th) * (g.L + 34), fy = g.hp.y + Math.cos(sw.th) * (g.L + 34);
-    if (sw.om > 0 && fx > R.x - 4 && fy > R.y + 6) { sw.om = -0.45 * sw.om; Sfx.play('ninjaBonk', 0.8); K.dust(st, fx, fy, 'rgba(200,206,240,0.7)', 5); }
+    if (sw.om > 0 && fx > wallX(R) - 4 && fy > R.y + 6) { sw.om = -0.45 * sw.om; Sfx.play('ninjaBonk', 0.8); K.dust(st, fx, fy, 'rgba(200,206,240,0.7)', 5); }
     const hd = swingHands(g, sw.th);
     r.x = hd.x; r.y = hd.y + S.hand; r.face = sgn;
     if (ctl && p.pendingAct && sw.t > S.grabT) {
@@ -381,7 +382,7 @@
       vy = Math.min(900, vy + S.g * dt); vx -= S.windA * st.wind * dt;
       const px = x, py = y;
       x += vx * dt; y += vy * dt;
-      if (px < R.x - 9 && x >= R.x - 9 && y > R.y + 8) return false;
+      if (px < wallX(R) - 9 && x >= wallX(R) - 9 && y > R.y + 8) return false;
       if (vy > 0 && py <= R.y && y >= R.y) return x > R.x + 22 && x < R.x + R.w - 40;
       if (y > R.y + 60) return false;
     }
@@ -541,7 +542,7 @@
         let q = hookPt(g, st.clock);
         q = hookPt(g, st.clock + dist(m.x, m.y, q.x, q.y) / S.throwV);
         const s = (q.x - m.x) * dx + (q.y - m.y) * dy, perp = Math.abs((q.x - m.x) * dy - (q.y - m.y) * dx);
-        out.throwNow = s > 0 && s < S.range - 10 && perp < catchR(st) * 0.55;
+        out.throwNow = s > 0 && s < S.range - 10 && perp < catchR(st) * S.green;
         if (out.throwNow) out.thr.act = 'tap';
       }
       return out;
@@ -929,18 +930,18 @@
     act: acts(0),
     map: K.stubMap(),
     rooms: [
-      { title: 'Lantern Lane', thrower: 0, sweep: 3.0, act: acts(0),
+      { title: 'Lantern Lane', thrower: 0, sweep: 3.4, act: acts(0),
         tip: 'Pip throws the hook, Bo swings. Throw when the ring is green, then hold on while Bo heaves!',
         course: ['r620/s330', 'g80', 'r420/c210', 'G330:post', 'r460/s250', 'g95', 'r340-20', 'G350:post', 'r520/c340', 'g100', 'r360+25/s120', 'G360:post:h210',
           'r500/s190,c330', 'g90', 'r360-20', 'G350:post:o0.38', 'r660'] },
-      { title: 'Breezy Ridge', thrower: 1, wind: true, sweep: 2.7, act: acts(1),
+      { title: 'Breezy Ridge', thrower: 1, wind: true, sweep: 3.1, act: acts(1),
         tip: 'Swap! Bo throws, Pip swings. Swaying lanterns: watch the ring. Gusts push back, so pump hard.',
         course: ['r560/s300', 'g100', 'r380-25/c190', 'G360:sway', 'r500/s180,c330', 'g90', 'r300+20', 'g100', 'r360', 'G380:post:o0.36', 'r520-20/s260', 'g100', 'r380/c170', 'G400:sway:h215',
           'r540+20/s200,p330', 'g100', 'r360', 'G390:post:h210:o0.38', 'r660'] },
-      { title: 'Kite Alley', thrower: 0, sweep: 2.5, act: acts(0),
+      { title: 'Kite Alley', thrower: 0, sweep: 2.9, act: acts(0),
         tip: 'Pip throws again. Kites wander, so time the throw. Cracked roofs crumble: keep running!',
         course: ['r520/s280', 'k150', 'r340/p170', 'G380:kite', 'r480/s240', 'g110', 'r300-25', 'k160', 'r380', 'G400:kite:h215', 'r500/c330', 'g100', 'r360+25', 'G380:sway:o0.36', 'r500/p310', 'k150', 'r360', 'G420:kite:h220', 'r640'] },
-      { title: 'The Moon Tower', thrower: 1, wind: true, sweep: 2.3, act: acts(1),
+      { title: 'The Moon Tower', thrower: 1, wind: true, sweep: 2.7, act: acts(1),
         tip: 'The last dash to the moon tower! Bo throws, Pip swings. Long gaps: tug and pump together.',
         course: ['r500/s260', 'g100', 'r360-25/p180', 'G420:kite:h220', 'r480/s240', 'k160', 'r360', 'G440:sway:h225:o0.38', 'r520/c350', 'g100', 'r320+25', 'k150', 'r380', 'G440:post:h225:o0.36', 'r540/s120,p330', 'g100', 'r380-20', 'G450:sway:h225',
           'r480+20/s220', 'k150', 'r340/c170', 'G460:kite:h230', 'r700'] },

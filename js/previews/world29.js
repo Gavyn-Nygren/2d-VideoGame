@@ -223,4 +223,131 @@
 // ----- END 29-3 Runaway Rickshaw -----
 
 // ----- BEGIN 29-4 Throwing Star Duel -----
+// A moonlit dojo. Pip throws a high foam star: Bo ducks it. Bo throws a low one: Pip hops it. Then a rally: Pip throws,
+// Bo bats it back with his sword ("Clang!"), Pip bats it back faster ("Perfect!") and it bonks Bo on the head: his last
+// lantern goes out, he sees stars and Pip cheers.
+{
+  const pw29sdTAU = Math.PI * 2, pw29sdF = 146, pw29sdS = 0.7;
+  const pw29sdDojo = (v, t, boLit) => {
+    const c = v.ctx, F = pw29sdF;
+    c.fillStyle = '#2a2342'; c.fillRect(0, 0, 320, 180);
+    // paper screens with a dark lattice
+    c.fillStyle = '#6f69aa'; c.fillRect(6, 24, 308, F - 28);
+    c.fillStyle = 'rgba(160,150,220,0.25)'; c.fillRect(6, 24, 308, 40);
+    c.strokeStyle = 'rgba(42,35,66,0.55)'; c.lineWidth = 1; c.beginPath();
+    for (let x = 25; x < 314; x += 19) { c.moveTo(x + 0.5, 24); c.lineTo(x + 0.5, F - 4); }
+    for (let y = 46; y < F - 6; y += 22) { c.moveTo(6, y + 0.5); c.lineTo(314, y + 0.5); }
+    c.stroke();
+    c.fillStyle = '#2a2342'; for (const x of [4, 80, 236, 312]) c.fillRect(x - 2, 20, 4, F - 20);
+    c.fillRect(0, 0, 320, 24); c.fillRect(0, F - 6, 320, 6);
+    c.fillStyle = '#3d3460'; c.fillRect(0, 21, 320, 3);
+    // hanging scrolls
+    for (const x of [42, 278]) {
+      c.fillStyle = '#f1e7cc'; c.fillRect(x - 8, 40, 16, 50); c.fillStyle = '#c8474a'; c.fillRect(x - 9, 38, 18, 3); c.fillRect(x - 9, 89, 18, 3);
+      c.strokeStyle = '#2a2546'; c.lineWidth = 2.4; c.beginPath(); c.arc(x, 62, 5, 0.6, pw29sdTAU - 0.3); c.stroke();
+    }
+    // the round moon window and the gong under it
+    v.fillCircle(160, 66, 27, '#18204a'); v.fillCircle(160, 66, 16, 'rgba(250,244,214,0.2)'); v.fillCircle(160, 66, 11, '#fbf4d2');
+    c.strokeStyle = '#2f2440'; c.lineWidth = 4; v.circle(160, 66, 27); c.stroke();
+    c.lineWidth = 1.5; c.beginPath(); c.moveTo(160, 39); c.lineTo(160, 93); c.moveTo(133, 66); c.lineTo(187, 66); c.stroke();
+    c.fillStyle = '#b8474a'; c.fillRect(144, F - 44, 3, 40); c.fillRect(173, F - 44, 3, 40); c.fillRect(140, F - 46, 40, 3.5);
+    v.line(153, F - 43, 153, F - 34, '#e8d8b0', 1); v.line(167, F - 43, 167, F - 34, '#e8d8b0', 1);
+    const ring = t > 4.47 ? Math.sin((t - 4.47) * 40) * 1.5 * Math.max(0, 1 - (t - 4.47) / 0.8) : 0;
+    v.fillCircle(160 + ring, F - 24, 11, '#c7922c'); v.fillCircle(160 + ring, F - 24, 8.5, '#e9bd4a'); v.fillCircle(160 + ring, F - 24, 3, '#c7922c');
+    // three lanterns each: one goes out with every bonk (Pip has two left, Bo is down to his last)
+    for (let n = 0; n < 3; n++) for (const id of [0, 1]) {
+      const x = id ? 242 - n * 17 : 78 + n * 17, on = id ? n === 0 && boLit : n < 2;
+      v.line(x, 24, x, 30, '#1c1a36', 1);
+      if (on) v.fillCircle(x, 36, 10 + Math.sin(t * 7 + x) * 0.6, id ? 'rgba(120,170,255,0.22)' : 'rgba(255,180,100,0.22)');
+      c.fillStyle = on ? (id ? '#5b95ff' : '#ff9a3d') : '#6b5a7a'; c.beginPath(); c.ellipse(x, 36, 4.6, 6, 0, 0, pw29sdTAU); c.fill();
+      if (on) { c.fillStyle = 'rgba(255,240,190,0.8)'; c.beginPath(); c.ellipse(x, 36.5, 2.2, 3.4, 0, 0, pw29sdTAU); c.fill(); }
+      c.fillStyle = '#2a2546'; c.fillRect(x - 2.5, 29, 5, 1.8); c.fillRect(x - 2.5, 41.2, 5, 1.8);
+    }
+    // tatami mats
+    c.fillStyle = '#b7b36c'; c.fillRect(0, F, 320, 180 - F); c.fillStyle = '#d2cd8a'; c.fillRect(0, F, 320, 2);
+    c.fillStyle = '#3f5a3a'; c.fillRect(0, F + 16, 320, 2); for (const x of [56, 160, 264]) c.fillRect(x - 1, F + 2, 2, 14); for (const x of [108, 212]) c.fillRect(x - 1, F + 18, 2, 180 - F);
+    c.fillStyle = 'rgba(200,71,74,0.55)'; c.fillRect(134, F + 2, 52, 2.5);
+  };
+  // a foam throwing star in its owner's colour, with speed streaks behind it
+  const pw29sdStar = (v, id, x, y, rot, dir, fast) => {
+    const c = v.ctx, r = 5.2;
+    c.strokeStyle = id ? 'rgba(170,205,255,0.5)' : 'rgba(255,190,150,0.5)'; c.lineWidth = 1.6; c.lineCap = 'round'; c.beginPath();
+    for (let n = 0; n < 3; n++) { const yy = y - 3 + n * 3, len = (8 + n % 2 * 5) * fast; c.moveTo(x - dir * 7, yy); c.lineTo(x - dir * (7 + len), yy); }
+    c.stroke();
+    if (fast > 1.4) v.fillCircle(x, y, r + 4, 'rgba(200,235,255,0.35)');
+    c.fillStyle = id ? v.c.bo : v.c.pip; c.strokeStyle = id ? v.c.boDark : v.c.pipDark; c.lineWidth = 1.3; c.lineJoin = 'round';
+    c.beginPath();
+    for (let n = 0; n < 8; n++) { const a = rot + n * pw29sdTAU / 8, rr = n % 2 ? r * 0.42 : r; c[n ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+    c.closePath(); c.fill(); c.stroke();
+    v.fillCircle(x, y, 1.3, '#ffffff');
+  };
+  // ninja Pip / Bo, facing the middle: headband with a fluttering tail and a sword. o.aim: sword angle (0 = level, forward)
+  const pw29sdNinja = (v, id, x, y, o = {}) => {
+    const c = v.ctx, s = pw29sdS, f = id ? -1 : 1, sq = o.sq || 0, bw = 20 * s * (1 + sq * 0.35), bh = 24 * s * (1 - sq * 0.3), t = o.t || 0;
+    const band = id ? '#d4e6ff' : '#ffd9c2', by = y - bh * 0.88;
+    if (o.air) v.shadow(x, pw29sdF, 12);
+    c.strokeStyle = band; c.lineWidth = 1.8; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(x - f * bw / 2, by); c.quadraticCurveTo(x - f * (bw / 2 + 5), by - 1 + Math.sin(t * 9 + id) * 1.5, x - f * (bw / 2 + 9), by + 2 + Math.sin(t * 9 + id + 1) * 2.5); c.stroke();
+    v.hero(id, x, y, { s, face: f, sq, mood: o.mood, shadow: !o.air });
+    c.fillStyle = band; c.fillRect(x - bw / 2 + 0.8, by - 1.3, bw - 1.6, 2.6);
+    if (o.aim == null) return;
+    const hx = x + f * (bw / 2 + 1.5), hy = y - bh * 0.42, ex = hx + f * Math.cos(o.aim) * 15, ey = hy + Math.sin(o.aim) * 15;
+    v.line(hx, hy, ex, ey, '#2a2546', 4.2); v.line(hx, hy, ex, ey, o.glint ? '#ffffff' : '#dfe4f6', 2.2);
+    v.fillCircle(hx, hy, 2.6, id ? v.c.bo : v.c.pip); c.strokeStyle = id ? v.c.boDark : v.c.pipDark; c.lineWidth = 1; v.circle(hx, hy, 2.6); c.stroke();
+    if (o.slash > 0) { c.strokeStyle = 'rgba(255,255,255,' + 0.8 * o.slash + ')'; c.lineWidth = 2.5; c.beginPath(); if (f > 0) c.arc(hx, hy, 17, -2.1, o.aim); else c.arc(hx, hy, 17, Math.PI - o.aim, Math.PI + 2.1); c.stroke(); }
+  };
+  definePreview('Throwing Star Duel', {
+    blurb: 'Throw foam stars, duck and hop them, or bat one back with your sword. Bonk!',
+    loop: 6.2, still: 4.62,
+    draw(v, t) {
+      const c = v.ctx, e = v.ease, F = pw29sdF, HI = F - 16, LO = F - 4, PX = 70, BX = 250;
+      const bonkT = 4.47, bonked = t >= bonkT;
+      pw29sdDojo(v, t, !bonked);
+      // who does what, when
+      const bump = (a, b) => Math.sin(v.seg(t, a, b) * Math.PI);                 // 0 -> 1 -> 0 between a and b
+      const boDuck = bump(0.9, 1.5), pipHop = v.hop(v.seg(t, 2.18, 2.62), 21);
+      const swing = (a) => (t >= a && t < a + 0.3 ? v.lerp(-2.1, 0.45, e.out(v.seg(t, a, a + 0.12))) : null);
+      const boSw = swing(3.6), pipSw = swing(4.04);
+      const pipThrow = bump(0.4, 0.7) + bump(2.95, 3.25), boThrow = bump(1.65, 1.95);
+      const idleAim = id => -1.15 + Math.sin(t * 2.4 + id) * 0.06;
+      // Bo
+      if (bonked) {
+        const wob = Math.sin(t * 7) * 1.6;
+        pw29sdNinja(v, 1, BX + wob, F, { mood: 'dizzy', sq: 0.25 + Math.sin(t * 7) * 0.08, t, aim: 1.1 });
+        for (let n = 0; n < 3; n++) { const a = t * 5 + n * 2.1; v.star(BX + wob + Math.cos(a) * 13, F - 22 + Math.sin(a) * 3.5, 3.2, n % 2 ? '#fff3a0' : '#ffffff', a); }
+      } else pw29sdNinja(v, 1, BX, F, { sq: boDuck * 1.25 + boThrow * 0.2, t, mood: boDuck > 0.2 ? 'grit' : boSw != null ? 'grit' : t > 4.1 ? 'wow' : 'happy',
+        aim: boSw != null ? boSw : boDuck > 0.2 ? -0.5 : idleAim(1) + boThrow * 1.3, slash: boSw != null ? 1 - v.seg(t, 3.66, 3.9) : 0, glint: t > 3.65 && t < 3.8 });
+      // Pip
+      const cheer = t > 4.65 ? Math.abs(Math.sin((t - 4.65) * 7)) * 9 : 0;
+      pw29sdNinja(v, 0, PX, F + pipHop - cheer, { air: pipHop < -1 || cheer > 1, t, sq: pipThrow * 0.2 - (pipHop < -1 ? 0.12 : 0), mood: cheer > 0 || bonked ? 'joy' : pipSw != null || pipHop < -1 ? 'grit' : 'happy',
+        aim: bonked && t > 4.65 ? -1.9 : pipSw != null ? pipSw : idleAim(0) + pipThrow * 1.3, slash: pipSw != null ? 1 - v.seg(t, 4.1, 4.34) : 0, glint: t > 4.09 && t < 4.24 });
+      // the stars
+      if (t >= 0.55 && t < 1.39) pw29sdStar(v, 0, 84 + 270 * (t - 0.55), HI, t * 16, 1, 1);
+      if (t >= 1.8 && t < 2.64) pw29sdStar(v, 1, 236 - 270 * (t - 1.8), LO, -t * 16, -1, 1);
+      if (t >= 3.1 && t < 3.65) pw29sdStar(v, 0, 84 + 270 * (t - 3.1), HI, t * 16, 1, 1);
+      else if (t >= 3.65 && t < 4.09) pw29sdStar(v, 1, 232 - 327 * (t - 3.65), HI, -t * 20, -1, 1.3);
+      else if (t >= 4.09 && t < bonkT) pw29sdStar(v, 0, 88 + 426 * (t - 4.09), HI, t * 26, 1, 1.7);
+      else if (bonked && t < bonkT + 0.7) { const k = (t - bonkT) / 0.7; c.globalAlpha = 1 - k * k; pw29sdStar(v, 0, BX - 4 - k * 26, HI - 4 + v.hop(k, 26) + k * 14, t * 12, 0, 0); c.globalAlpha = 1; }
+      // puffs where a star sticks in the wall
+      if (t >= 1.39 && t < 1.7) v.puff(310, HI, v.seg(t, 1.39, 1.7));
+      if (t >= 2.64 && t < 2.95) v.puff(10, LO, v.seg(t, 2.64, 2.95));
+      // words
+      const word = (str, x, y, a, b, col, size) => { if (t >= a && t < b) { const k = v.seg(t, a, b); c.globalAlpha = Math.min(1, (1 - k) * 4); v.label(str, x, y - k * 6, size || 12, col || '#ffffff'); c.globalAlpha = 1; } };
+      word('Duck!', BX, F - 30, 0.95, 1.6, '#ffe7a8');
+      word('Hop!', PX, F - 46, 2.2, 2.85, '#9fe8ff');
+      word('Clang!', BX - 8, F - 36, 3.65, 4.1, '#ffffff');
+      word('Perfect!', PX + 12, F - 36, 4.09, 4.5, '#bfe8ff', 13);
+      if (t >= 3.65 && t < 3.9) v.sparkle(232, HI, v.seg(t, 3.65, 3.9), '#ffffff', 8);
+      if (t >= 4.09 && t < 4.34) v.sparkle(88, HI, v.seg(t, 4.09, 4.34), '#bfe8ff', 10);
+      if (bonked) {
+        const k = v.seg(t, bonkT, bonkT + 0.25);
+        if (t < bonkT + 0.3) v.sparkle(BX, HI, k, '#fff3a0', 12);
+        c.globalAlpha = v.clamp((6.1 - t) * 5, 0, 1);
+        v.label('Bonk!', BX - 6, F - 46 - e.out(k) * 6, 12 + e.back(k) * 5, '#ffffff');
+        v.confetti(PX + 14, 84, v.seg(t, 4.6, 6.1), 22);
+        c.globalAlpha = 1;
+      }
+    },
+  });
+}
 // ----- END 29-4 Throwing Star Duel -----
