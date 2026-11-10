@@ -15,22 +15,25 @@
    - If the stone is stuck with every log trapped under its back half, the rearmost one squeezes out by itself after
      0.7 s, so there is always a log to fetch.
    JOBS (strict, so one player alone can never move the stone; they swap at each rest post; room field 'first' says
-   who pushes first).
-   - The PUSHER leans on the stone: hold toward it at its back end (hold right). 46 px/s on the flat, 36 uphill.
+   who pushes first: Bo, in this era).
+   - The PUSHER leans on the stone: hold toward it at its back end (hold right). 41 px/s on the flat, 32 uphill.
      The pusher's action button is "shoo" (sheep, the Thief's claw). The pusher can't carry logs.
    - The ROLLER fetches logs: the action GRABS a log lying free on the ground (within 40 px), then hop up on the stone
      (it is 72 px tall: a normal full jump), run along its top and press the action again on its front third or on the
      ground in front: the log DROPS just ahead of the nose (it always snaps to the best spot, 12 px ahead of the stone
-     or 40 px past a log already lying there). The roller's pushing does nothing.
+     or 40 px past a log already lying there; a dashed ring shows the spot). A dropped log can't be grabbed again for
+     1.2 s (no double-press accidents). The roller's pushing does nothing.
      Each log dropped in front buys about 200 px of rolling, so a leg needs 5-7 trips.
    - Both: the action also SHOOS a sheep (within 64 px) and WHACKS the Thief's claw (within 74 px). Players pass
      through each other; the stone is solid (walk on top of it, ride it).
+   - FRESH LOGS: at each rest post and when the log road is finished the rotation is topped up to 4 logs again
+     ("Fresh logs!"), whatever the mud, the stream or the Thief did to it.
    HILLS.
    - UPHILL (legs 1 and 3): if the pusher lets go for more than 0.35 s the stone rolls BACK (slowly at first), down
      to the last chock (wooden wedges that flip up behind the stone every 150-170 px, and every rest post): a
      counted team bump "Rolled back!" once it has lost 50 px. So the pusher holds while the roller hurries.
-   - DOWNHILL (leg 3): pushed over the crest, the stone RUNS AWAY (22 px/s² up to 130 px/s). The pusher hops over
-     it and brakes from the FRONT: hold toward the stone there (hold left) and it eases down at 56 px/s. A stone
+   - DOWNHILL (leg 3): pushed over the crest, the stone RUNS AWAY (18 px/s2 up to 130 px/s). The pusher hops over
+     it and brakes from the FRONT: hold toward the stone there (hold left) and it eases down at 52 px/s. A stone
      that stops on the downhill only starts again when the pusher eases it from the front (or shoves it from behind),
      so it never rolls anywhere by itself. A runaway that outruns its logs faster than 80 px/s: "Runaway! Thud!"
      (team bump), it stops there.
@@ -40,15 +43,16 @@
      in play, 5 with gold help).
    - SHEEP (legs 2 and 3) wander in from the right (3 s on screen before they stand still) and graze on the track:
      the stone stops in front of them ("Baa!"). Shoo them with the action. A runaway stone makes them hop off.
-   - THE STREAM (leg 2): the stone stops at the bank until 3 logs from the pile beside it are laid in the water as
-     a log road (drop a carried log near the stream: it goes into the next free place). Players can wade.
+   - THE STREAM (leg 2): the stone stops at the bank until 3 logs are laid in the water as a log road (drop a
+     carried log near the stream: it goes into the next free place; the pile beside it gives one extra log at a
+     time for this). Players can wade.
    THE THIEF (jet machine, on screen all era; his claw is empty: here the stolen thing is the giant stone itself).
    - Opening gag: he tugs at the stone ("25 tons?!").
-   - CLAW PINCH (leg 1 once, leg 3 once): he swoops over a log lying free behind the stone (1.0 s aiming with a red
-     ring on the log and "!" over both players), then lowers the claw (0.75 s). Save the log by grabbing it first
-     (roller) or whack the claw (either player). If he gets it: "Yoink!" (team bump); he dangles it low behind the
-     stone for 6.5 s: whack the claw (stand under it, action) and he drops it; otherwise he drops it himself
-     ("Butterfingers!"), so a log is never lost for good.
+   - CLAW PINCH (leg 1 once, on the hill; leg 3 once): he swoops over a log lying free behind the stone (1.0 s aiming
+     with a red ring on the log and "!" over both players), then lowers the claw (0.75 s). Save the log by grabbing
+     it first (roller) or whack the claw (either player). If he gets it: "Yoink!" (team bump); he dangles it low
+     behind the stone for 6.5 s: whack the claw (stand under it, action) and he drops it; otherwise he drops it
+     himself ("Butterfingers!"), so a log is never lost for good.
    - LASSO (leg 2 once, leg 3 once, on flat ground): he swings a lasso for 1.4 s ("Lasso time!", "!" over both),
      ropes the stone and tows it BACKWARD. Both players haul against him: hold AWAY from him (right) on the ground
      near the stone (the pusher pushes, anyone in front grabs the rope tail). Both hauling fills the tug bar in
@@ -57,21 +61,29 @@
    - He never starts anything during cards, celebrations or while nobody plays (tthCalm), and the stone never rolls
      back then.
    THE WINNING BEAT. At the circle the stone tips into its hole by itself (THUNK, it stands upright). Then the lintel
-   must go on top: a gold rope ring hangs at each side; each player stands at one and HOLDS the action. The lintel
-   rises only while BOTH hold (about 4.6 s; it sinks slowly otherwise, but never below the last third: props click
-   in). CLONK: the trilithon is complete, the Thief tugs at it in vain and tthPhaseDone() runs.
-   GOLD HELP (always announced with tthHelp):
-   - 3 thuds in one leg: a gold 5th log joins the rotation.
-   - 3 roll-backs on the same hill: gold chocks, the stone can't roll back on that hill any more.
+   must go on top: a gold rope ring hangs at each side; each player stands at one (within 60 px) and HOLDS the
+   action. The lintel rises only while BOTH hold (5.4 s; it sinks slowly otherwise, but never below the last third:
+   props click in). CLONK: the trilithon is complete, the Thief tugs at it in vain and tthPhaseDone() runs.
+   GOLD HELP (always announced with tthHelp; it stays for the rest of the era):
+   - A MISS at the logs is: the pushed stone stood waiting 3 s for a log (a short "Thud!" is the normal rhythm and
+     does not count; neither does the wait for the mud's spare). 2 misses: a gold 5th log joins the rotation.
+     4 misses: GOLD ROLLERS: logs under the stone travel at 3/4 of its speed (not 1/2), so each log carries it
+     twice as far (about 400 px) and the roller needs half the trips. All logs turn gold.
+   - 2 roll-backs on the same hill: gold chocks, the stone can't roll back any more (every hill).
    - 2 runaway thuds: a gold brake (the runaway is slower than the skid speed).
    - 2 yoinks: his claw is slower (1.5 x the telegraph).   - A lost lasso: his next rope is frayed (snaps in 1.3 s).
-   - 16 s without the stone moving forward (12 s at the ropes): gold hints over whoever must act, and a gold arrow.
+   - 13 s without the stone moving forward (9 s at the ropes), then every 9 s: gold hints over whoever must act,
+     and a gold arrow at the thing to do.
    FAIRNESS. Every hazard is telegraphed 0.6 s or more; nobody is ever hit (all soft fails are team bumps: Rolled
    back, Runaway, Yoink, Towed back); a fail costs a few seconds (a roll back to the chock), never the era.
    CONTROLS. Left / right walk (and push, brake, haul), up jumps, the action grabs / drops / shoos / whacks / pulls.
    Nothing needs two directions at once or fast tapping. Hints name each player's own keys (tthKey).
-   Stats (st.stats.henge): legT[], thuds, rollbacks, skids, yoinks, whacks, shoos, lasso [won, lost], carried [pip,
-   bo]. Every top-level name starts with tthHenge / TTHHENGE (Sfx.extra.tthHenge*). State lives in st.ph. */
+   Stats (st.stats.henge): legT[], thuds, waited (s the pushed stone stood without a log), rollbacks, skids, yoinks,
+   whacks, shoos, lasso [won, lost], carried [pip, bo], done. Every top-level name starts with tthHenge / TTHHENGE
+   (Sfx.extra.tthHenge*). State lives in st.ph.
+   TUNING (tools/w30/play.js henge): a computer pair takes 2:05-2:15 with no gold help (legs about 26 / 45 / 46 s
+   and 9 s for the lintel), a clumsy partner 2:30-3:20, a young kid 3:00-4:10; an idle partner never ends it.
+   Tests: tools/w30/henge-keys.js (real keyboard, controller, touch, 1-player), henge-dbg.js (trace), henge-perf.js. */
 const TTHHENGE = {
   gy: 440, groundAt: 424,            // the ground line at the start (world y); where the stone's ground sits on screen
   stepUp: 13, snap: 9,
@@ -84,16 +96,16 @@ const TTHHENGE = {
   signX: 3196,
   stone: { hw: 96, h: 54, lift: 18, pushV: 41, upV: 32, easeV: 52, runPush: 60, acc: 240, stop: 340, brakeA: 170,
     backA: 55, backV: 85, grace: 0.35, runA: 18, runV: 130, goldRunV: 76, skidV: 80, coast: 70, slope: 0.05, backBump: 50 },
-  log: { r: 9, n: 4, gold: 5, reach: 40, lock: 0.5, gap: 40, ahead: 12, far: 220, lo: 4, hi: 16, topDrop: 56, freeT: 0.7 },
+  log: { r: 9, n: 4, gold: 5, reach: 40, lock: 1.2, roll: 0.5, goldRoll: 0.75, gap: 40, ahead: 12, far: 220, lo: 4, hi: 16, topDrop: 56, freeT: 0.7 },
   sheep: { v: 80, flee: 330, reach: 64, gap: 24 },
   thief: { s: 0.62, homeX: 800, homeY: 226, aimT: 1.0, reachT: 0.75, lowY: 49, holdY: 98, holdT: 6.5, whackX: 74, whackY: 135 },
   lasso: { windT: 1.4, win: 3.7, goldWin: 2.0, m0: 0.35, tow0: 34, tow1: 8, towMax: 170, towT: 10, reach: 360 },
-  fin: { tipT: 1.3, liftT: 5.4, sink: 0.1, ringR: 46, upH: 150, linW: 224, linH: 38, gapX: 150 },
-  goldThuds: 3, goldBacks: 3, goldSkids: 2, goldYoinks: 2, stuckT: 16, stuckRopeT: 12,
+  fin: { tipT: 1.3, liftT: 5.4, sink: 0.1, ringR: 60, upH: 150, linW: 224, linH: 38, gapX: 150 },
+  waitMiss: 3, goldWaits: 2, goldRolls: 4, goldBacks: 2, goldSkids: 2, goldYoinks: 2, stuckT: 13, stuckRopeT: 9,
 };
 // what happens where (stone-centre x): the Thief's mischief and the sheep
 const TTHHENGE_SCRIPT = [
-  { at: 560, kind: 'pinch' },
+  { at: 880, kind: 'pinch' },
   { at: 1660, kind: 'sheep', to: [1970] },
   { at: 1830, kind: 'lasso' },
   { at: 2060, kind: 'sheep', to: [2398] },
@@ -101,7 +113,7 @@ const TTHHENGE_SCRIPT = [
   { at: 2840, kind: 'sheep', to: [3128, 3166] },
   { at: 3790, kind: 'lasso' },
 ];
-const TTHHENGE_FACTS = ['True: each great stone weighs about 25 tons, as much as 4 elephants!', 'True: the stones came about 25 km with no wheels. Nobody knows exactly how!'];
+const TTHHENGE_FACTS = ['True: each great stone weighs 25 tons, like 4 elephants!', 'True: these stones travelled 25 km without any wheels!'];
 const TTHHENGEC = { stone: '#9aa3ab', stoneLt: '#c3cad0', stoneDk: '#727d87', lichen: '#b9cc6a', wood: '#c98a4a', woodLt: '#e9bd7c', woodDk: '#8a5a2a', grass: '#7cc260', grassLt: '#a2da7c', grassDk: '#58a548',
   earth: '#b08a58', chalk: '#f1ead2', water: '#5fb8e8', waterLt: '#bfe6fa', mud: '#7a5a3a', mudLt: '#96724a', rope: '#e8d29a', ropeDk: '#8a7a4a' };
 
@@ -130,6 +142,9 @@ const tthHengeAtFront = (ph, p) => { const d = p.x - (ph.stone.x + ph.stone.hw);
 const tthHengeUnder = (ph, l) => l.s === 'ground' && Math.abs(l.x - ph.stone.x) <= ph.stone.hw + 2;
 const tthHengeFree = (ph, l) => l.s === 'ground' && !tthHengeUnder(ph, l);
 const tthHengeLive = ph => { let n = 0; for (const l of ph.logs) if (l.s !== 'sunk') n++; return n; };
+// how fast a log under the stone travels, as a part of the stone's speed (real rollers: half; gold rollers: 3/4)
+const tthHengeRollF = ph => (ph.gold.roll ? TTHHENGE.log.goldRoll : TTHHENGE.log.roll);
+const tthHengeGoldLog = (ph, l) => l.gold || ph.gold.roll;
 const tthHengeMaxLogs = ph => (ph.gold.log ? TTHHENGE.log.gold : TTHHENGE.log.n);
 function tthHengeNewLog(x, o) { return Object.assign({ x, y: 0, s: 'ground', rot: 0, lock: 0, gold: false, t: 0, vy: 0, u: false, pop: 0, age: 0 }, o || {}); }
 // the log (or laid stream log) under the stone's front half that lets it roll, or null
@@ -263,6 +278,14 @@ function tthHengeLetFall(st, l, x, y) {
   if (Math.abs(x - S.x) < S.hw + 14) x = S.x - S.hw - 26;
   l.s = 'fall'; l.x = x; l.y = y; l.vy = -120; l.u = false;
 }
+// fresh logs at a checkpoint (a rest post, the finished log road): the rotation is 4 again, whatever the mud, the
+// stream or butterfingers did to it
+function tthHengeTopUp(st) {
+  const ph = st.ph, S = ph.stone;
+  let k = 0;
+  for (let n = tthHengeMaxLogs(ph) - tthHengeLive(ph); n > 0; n--, k++) { const l = tthHengeNewLog(0); ph.logs.push(l); tthHengeLetFall(st, l, S.x - S.hw - 46 - k * 34, tthHengeTop(S.x) - 110 - k * 36); }
+  if (k) tthPop(st, S.x - S.hw - 60, tthHengeTop(S.x) - 54, 'Fresh logs!', '#ffffff', 18);
+}
 function tthHengeGrab(st, p) {
   const ph = st.ph, P = ph.P[p.id], L = TTHHENGE.log, cx = tthHengeCx(p), feet = tthHengeFeet(p);
   let best = null;
@@ -297,7 +320,7 @@ function tthHengeDrop(st, p) {
     ph.logs.splice(ph.logs.indexOf(l), 1); P.log = null; tthStats(st).carried[p.id]++;
     Sfx.play('tthHengeSplash'); puff(B.at[i].x, tthHengeBase(B.at[i].x) + 4, 8, 'rgba(191,230,250,0.95)');
     tthPop(st, B.at[i].x, tthHengeBase(B.x0) - 46, B.n + ' / 3', '#ffffff', 20);
-    if (B.n >= 3) { B.done = true; tthNews(st, 'The log road is ready. Roll the stone across!', false, 3); Sfx.play('tthDing'); tthHengeDone(st, 0, ['stream', 'bridge', 'bank']); tthHengeDone(st, 1, ['stream', 'bridge', 'bank']); }
+    if (B.n >= 3) { B.done = true; tthHengeTopUp(st); tthNews(st, 'The log road is ready. Roll the stone across!', false, 3); Sfx.play('tthDing'); tthHengeDone(st, 0, ['stream', 'bridge', 'bank']); tthHengeDone(st, 1, ['stream', 'bridge', 'bank']); }
     return;
   }
   if (onFront || inFront) { land(tthHengeSpot(ph)); return; }
@@ -365,7 +388,7 @@ function tthHengeStone(st, dt) {
   S.pushT = push || brake ? 0 : S.pushT + dt;
   const lim = tthHengeLimit(ph), sup = tthHengeFront(ph), tow = !!(ph.lasso && ph.lasso.on);
   S.sup = sup;
-  S.left = sup ? (sup.x - S.x - TTHHENGE.log.lo) * (sup.s === 'bridge' ? 1 : 2) : 0;
+  S.left = sup ? (sup.x - S.x - TTHHENGE.log.lo) / (sup.s === 'bridge' ? 1 : 1 - tthHengeRollF(ph)) : 0;
   S.block = S.x >= lim.x - 0.01 ? lim.why : !sup ? 'log' : '';
   let tv = 0, acc = K.stop;
   if (tow) { tv = tthHengeTug(st, dt); acc = 150; S.run = false; if (!ph.lasso) tv = 0; }
@@ -380,23 +403,19 @@ function tthHengeStone(st, dt) {
   } else if (up) {
     S.run = false;
     if (push) { tv = K.upV; acc = K.acc; }
-    else if (S.pushT > K.grace && ph.gold.chock !== S.hill && !tthCalm(st)) { tv = -K.backV; acc = K.backA; }
+    else if (S.pushT > K.grace && !ph.gold.chock && !tthCalm(st)) { tv = -K.backV; acc = K.backA; }
   } else if (push) { tv = K.pushV; acc = K.acc; S.run = false; }
   else if (S.run) { acc = K.coast; if (S.v < 2) S.run = false; }
   // forward needs a log under the front half and a clear way
   if ((tv > 0 || S.v > 0) && S.block && !tow) {
     if (S.block === 'log' && S.v > 6) {
-      s.thuds++; if (st.phT - ph.glubT > 2.5) ph.miss.thud++;
+      s.thuds++;
       Sfx.play('tthHengeThud'); tthHengeShake(S.v > K.skidV ? 0.3 : 0.14); puff(S.x + S.hw - 8, tthHengeBase(S.x + S.hw), 8, 'rgba(240,234,210,0.9)');
       if (S.v > K.skidV) {
         s.skids++; ph.miss.skid++;
         tthBump(st, { word: 'Runaway! Thud!', x: S.x + 40, y: tthHengeTop(S.x) - 30, kind: 'skid' });
-        if (ph.miss.skid >= TTHHENGE.goldSkids && !ph.gold.brake) { ph.gold.brake = true; tthHelp(st, 'Gold help: a gold brake! The stone rolls slower downhill now.'); }
+        if (ph.miss.skid >= TTHHENGE.goldSkids && !ph.gold.brake) { ph.gold.brake = true; tthHelp(st, 'Gold help: a gold brake! Slower downhill now.'); }
       } else tthPop(st, S.x + S.hw - 10, tthHengeTop(S.x) - 26, 'Thud!', '#ffffff', 22);
-      if (ph.miss.thud >= TTHHENGE.goldThuds && !ph.gold.log) {
-        ph.gold.log = true; tthHelp(st, 'Gold help: a gold log joins in. Now 5 logs keep the stone rolling!');
-        const gl = tthHengeNewLog(0, { gold: true }); ph.logs.push(gl); tthHengeLetFall(st, gl, S.x - S.hw - 50, tthHengeTop(S.x) - 120);
-      }
     }
     if (S.block === 'sheep' && S.v > 6 && lim.sheep) {
       if (S.v > 70) { lim.sheep.s = 'flee'; lim.sheep.t = 0; lim.sheep.face = 1; Sfx.play('tthHengeBaa'); tthPop(st, lim.sheep.x, tthHengeBase(lim.sheep.x) - 50, 'Baa!!', '#ffffff', 20); }
@@ -405,6 +424,21 @@ function tthHengeStone(st, dt) {
     if (S.v > 0) S.v = 0;
     tv = Math.min(tv, 0); S.run = false;
   }
+  // a MISS at the logs: the pushed stone stands waiting for a log for 3 s (not while the mud's spare is fetched)
+  if (S.block === 'log' && (push || brake) && !tow && !tthCalm(st)) {
+    if (S.waitT <= 0) S.waitFree = st.phT - ph.glubT < 3;
+    S.waitT += dt; ph.waited += dt; s.waited = Math.round(ph.waited);
+    if (S.waitT >= TTHHENGE.waitMiss && !S.waitHit && !S.waitFree) {
+      S.waitHit = true; ph.miss.wait++;
+      if (ph.miss.wait >= TTHHENGE.goldWaits && !ph.gold.log) {
+        ph.gold.log = true; tthHelp(st, 'Gold help: a gold log joins in. Now you have 5!');
+        const gl = tthHengeNewLog(0, { gold: true }); ph.logs.push(gl); tthHengeLetFall(st, gl, S.x - S.hw - 50, tthHengeTop(S.x) - 120);
+      } else if (ph.miss.wait >= TTHHENGE.goldRolls && !ph.gold.roll) {
+        ph.gold.roll = true; tthHelp(st, 'Gold help: gold rollers! Each log rolls twice as far.');
+        for (const l of ph.logs) if (l.s === 'ground') burst(l.x, tthHengeG(ph, l.x) - TTHHENGE.log.r, C.gold, 5);
+      }
+    }
+  } else if (S.block !== 'log') { S.waitT = 0; S.waitHit = false; }
   S.v = approach(S.v, tv, acc * dt);
   S.dip = approach(S.dip, sup ? 0 : 1, dt * 6);
   let dx = S.v * dt;
@@ -416,10 +450,10 @@ function tthHengeStone(st, dt) {
   }
   if (dx) {
     S.x += dx;
-    const r = TTHHENGE.log.r;
+    const r = TTHHENGE.log.r, f = tthHengeRollF(ph);
     for (const l of ph.logs) {
       if (l.s !== 'ground') continue;
-      if (l.u) { l.x += dx / 2; l.rot += dx / 2 / r; }
+      if (l.u) { l.x += dx * f; l.rot += dx * f / r; }
       const u = Math.abs(l.x - S.x) <= S.hw + 2;
       if (l.u && !u) {                                       // it rolled out from under the stone
         l.pop = 0.35; l.age = 0; Sfx.play('tthHengePop');
@@ -439,7 +473,7 @@ function tthHengeStone(st, dt) {
         S.backBumped = true; s.rollbacks++;
         const h = S.hill; ph.miss.back[h] = (ph.miss.back[h] || 0) + 1;
         tthBump(st, { word: 'Rolled back!', x: S.x, y: tthHengeTop(S.x) - 30, kind: 'rollback' });
-        if (ph.miss.back[h] >= TTHHENGE.goldBacks && ph.gold.chock !== h) { ph.gold.chock = h; tthHelp(st, 'Gold help: gold chocks! The stone can\'t roll back on this hill.'); }
+        if (ph.miss.back[h] >= TTHHENGE.goldBacks && !ph.gold.chock) { ph.gold.chock = true; tthHelp(st, 'Gold help: gold chocks! The stone can\'t roll back.'); }
       }
     }
   }
@@ -461,8 +495,9 @@ function tthHengeStone(st, dt) {
 function tthHengeRest(st) {
   const ph = st.ph, S = ph.stone, s = tthStats(st), ps = G.players;
   s.legT.push(Math.round((st.phT - ph.legT0) * 10) / 10); ph.legT0 = st.phT;
-  ph.leg++; ph.backStop = S.x; S.v = 0; S.run = false; ph.miss.thud = 0; ph.progT = 0;
+  ph.leg++; ph.backStop = S.x; S.v = 0; S.run = false; ph.progT = 0;
   for (const p of ps) { const P = ph.P[p.id]; if (P.log) { tthHengeLetFall(st, P.log, tthHengeCx(p), p.y - 12); P.log.by = -1; P.log = null; } }
+  tthHengeTopUp(st);
   ph.pusher = 1 - ph.pusher;
   tthCelebrate(st, 1.8); tthSwap(st); Sfx.play('tthHengeFlag');
   const px = S.x + S.hw + 14;
@@ -812,7 +847,7 @@ TTH_PHASES.henge = {
     ph.XH = K.endX + K.stone.hw + 34;                    // the hole (and the new upright) at the circle
     ph.x0 = 0; ph.x1 = ph.XH + 560;
     ph.stone = { x: K.start, hw: K.stone.hw, v: 0, run: false, push: false, brake: false, pushT: 9, dip: 0, backD: 0, backBumped: false, best: K.start, up: false, tip: 0,
-      grade: 0, hill: -1, sup: null, left: 0, block: '', rumT: 0, freeT: 0 };
+      grade: 0, hill: -1, sup: null, left: 0, block: '', rumT: 0, freeT: 0, waitT: 0, waitHit: false, waitFree: false };
     ph.backStop = K.start; ph.lim = { x: 0, why: '', sheep: null };
     ph.logs = [100, 46, -8, -62].map(o => tthHengeNewLog(K.start + o, { u: true }));
     ph.P = [0, 1].map(() => ({ log: null, on: false, wet: false, haul: false, rope: -1, ropeT: 0, hold: false, carryT: 0, pushT: 0, frontT: 0, lazyT: 0 }));
@@ -827,11 +862,11 @@ TTH_PHASES.henge = {
     ph.th = { mode: 'intro', sub: '', t: 0, log: null, sayT: 6, sayN: 0 };
     ph.lasso = null; ph.fin = { stage: 0, t: 0, lift: 0, notch: 0, both: false, heaveT: 0, said: false, out: false };
     ph.tipT = [{}, {}]; ph.hintKey = ['', ''];
-    ph.gold = { log: false, chock: -2, brake: false, claw: false, rope: false };
-    ph.miss = { thud: 0, back: {}, skid: 0, yoink: 0 };
+    ph.gold = { log: false, roll: false, chock: false, brake: false, claw: false, rope: false };
+    ph.miss = { wait: 0, back: {}, skid: 0, yoink: 0 }; ph.waited = 0;
     ph.progT = 0; ph.arrow = null; ph.stuckSaid = false; ph.pops = 0; ph.popN = 0; ph.carryN = 0; ph.needT = 0; ph.upHint = -2; ph.crestHint = false;
     ph.glubT = -9; ph.mudSaid = false; ph.sheepSaid = false; ph.pinchSaid = false;
-    Object.assign(tthStats(st), { legT: [], thuds: 0, rollbacks: 0, skids: 0, yoinks: 0, whacks: 0, shoos: 0, lasso: [0, 0], carried: [0, 0], done: false });
+    Object.assign(tthStats(st), { legT: [], thuds: 0, waited: 0, rollbacks: 0, skids: 0, yoinks: 0, whacks: 0, shoos: 0, lasso: [0, 0], carried: [0, 0], done: false });
     // Pip and Bo behind the stone (world coords; the screen is world - cam)
     G.players.forEach((p, k) => { const x = 150 + k * 62; p.x = x - p.w / 2; p.y = tthHengeBase(x) - p.h; p.vx = 0; p.vy = 0; p.grounded = true; p.face = 1; p.alive = true; });
     st.cam = { x: 0, y: 0 };
@@ -1126,7 +1161,7 @@ function tthHengeDrawBack(st) {
   for (const c of ph.chocks) {
     const x = c.x - S.hw - 3;
     if (!see(x)) continue;
-    const gy = tthHengeBase(x), gold = ph.gold.chock === tthHengeHill(c.x), k = c.up ? Math.min(1, c.t / 0.14) : 0;
+    const gy = tthHengeBase(x), gold = ph.gold.chock, k = c.up ? Math.min(1, c.t / 0.14) : 0;
     ctx.save(); ctx.translate(x, gy + 1);
     if (!c.up) ctx.globalAlpha = 0.45; else ctx.scale(1, 0.4 + 0.6 * k + Math.sin(k * Math.PI) * 0.3);
     ctx.fillStyle = gold ? C.gold : Cc.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
@@ -1156,9 +1191,9 @@ function tthHengeDraw(st) {
     if (l.s === 'ground') {
       if (l.x < cam.x - 30 || l.x > cam.x + W + 30) continue;
       const hop = l.pop > 0 ? Math.sin((1 - l.pop / 0.35) * Math.PI) * 9 : 0;
-      tthHengeDrawLog(l.x, tthHengeG(ph, l.x) - r - hop, l.rot, l.gold);
-    } else if (l.s === 'fall') tthHengeDrawLog(l.x, l.y, l.rot, l.gold);
-    else if (l.s === 'claw') { const q = tthThiefPts(c).claw; tthHengeDrawLog(q.x, q.y + 8, Math.sin(t * 3) * 0.5, l.gold); }
+      tthHengeDrawLog(l.x, tthHengeG(ph, l.x) - r - hop, l.rot, tthHengeGoldLog(ph, l));
+    } else if (l.s === 'fall') tthHengeDrawLog(l.x, l.y, l.rot, tthHengeGoldLog(ph, l));
+    else if (l.s === 'claw') { const q = tthThiefPts(c).claw; tthHengeDrawLog(q.x, q.y + 8, Math.sin(t * 3) * 0.5, tthHengeGoldLog(ph, l)); }
   }
   // the great stone: lying on its rollers (it follows the hill, its nose dips with no log in front), then tipping in
   const a0 = -Math.atan((tthHengeBase(S.x - 70) - tthHengeBase(S.x + 70)) / 140) + S.dip * 0.085, cy0 = gyS - K.stone.lift - K.stone.h / 2 + S.dip * 3;
@@ -1226,7 +1261,7 @@ function tthHengeDrawTop(st) {
   // carried logs (over the head)
   for (const p of ps) {
     const l = ph.P[p.id].log;
-    if (l && p.alive) tthHengeDrawCarry(p.x + cam.x + p.w / 2, p.y + cam.y - 12 - (p.sy - 1) * 12, l.gold, p.face || 1, Math.sin(t * 9) * (Math.abs(p.vx) > 30 ? 0.07 : 0.02) - 0.06);
+    if (l && p.alive) tthHengeDrawCarry(p.x + cam.x + p.w / 2, p.y + cam.y - 12 - (p.sy - 1) * 12, tthHengeGoldLog(ph, l), p.face || 1, Math.sin(t * 9) * (Math.abs(p.vx) > 30 ? 0.07 : 0.02) - 0.06);
   }
   // wading in the stream: the water in front of the feet
   if (!B.done && (ph.P[0].wet || ph.P[1].wet)) { const by = tthHengeBase(B.x0); ctx.fillStyle = 'rgba(95,184,232,0.62)'; ctx.fillRect(B.x0 - 2, by + 5, B.x1 - B.x0 + 4, B.depth - 3); }

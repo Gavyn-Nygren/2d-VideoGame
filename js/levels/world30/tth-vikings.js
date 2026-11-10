@@ -373,7 +373,7 @@ function tthVikSail(st, dt) {
   ph.dist = Math.max(ph.floor, ph.dist + ph.v * dt);
   // the hull fills (never in a calm moment), is swamped at 100%, and floats again once bailed down
   if (ph.state !== 'swap' && ph.state !== 'won' && !ph.swamped && !tthCalm(st)) {
-    ph.water += (K.seep[ph.k] + (ph.rain && ph.rain.state === 'on' ? K.rainFill : 0)) * dt;
+    ph.water += ((ph.fin && ph.fin.gold ? 0 : K.seep[ph.k]) + (ph.rain && ph.rain.state === 'on' ? K.rainFill : 0)) * dt;   // (golden waves: the hull stays dry)
     if (ph.water >= 1) tthVikSwamp(st);
   }
   if (ph.swamped && ph.water <= K.afloat) {
@@ -628,12 +628,12 @@ function tthVikFin(st, dt) {
   if (w.sx + KF.plat / 2 + KF.ramp < K.sternX - 30) {
     // the wave has passed
     ph.humps.splice(ph.humps.indexOf(w), 1); F.wave = null; F.next = KF.gap; F.reach = false;
-    ph.water = Math.min(0.97, ph.water + KF.water);
+    if (!F.gold) ph.water = Math.min(0.97, ph.water + KF.water);
     if (!w.got) {
       F.fails++;
       if (F.fails >= K.goldWave && !F.gold) {
         F.gold = true; S.gold.push('wave');
-        tthHelp(st, 'Golden waves: they roll slower, and he can\'t pull the stone away!', { id: look, hint: 'On the wave top, grab: ' + tthKey(look, 'act') });
+        tthHelp(st, 'Golden waves: slower, no more water comes in, and he can\'t pull the stone away!', { id: look, hint: 'On the wave top, grab: ' + tthKey(look, 'act') });
       } else if (w.broke) tthNews(st, 'The wave broke over the bow: row on the beat to climb the next one!', false, 3.2);
       else if (!w.swiped) tthNews(st, 'Lookout: be on the mast top and grab on top of the wave!', false, 3.2);
     }

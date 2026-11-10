@@ -19,8 +19,8 @@
      were bicycle makers, and bicycle chains drove the propellers). A ring shrinks onto the crank after every tap:
      tap again when it is home (0.4-1.05 s after the last tap; about 1.5 taps a second). Every tap inside the first
      0.28 s is too fast: the engine coughs, and three of those in a row flood it for 1.2 s ("Flooded!"). Engine power
-     runs down by itself: under 60 % the plane slows and sinks, and with a dead engine it sets down on the sand and
-     waits ("Engine out!") until it is pedalled up again.
+     runs down by itself: under 60 % the plane slows and sinks, and a weak engine (under eng.soft) sets it down softly
+     on the sand, where it waits ("Engine out!", no bump) until it is pedalled up again.
      UP climbs and DOWN dives (up is the jump button: tthUp). Climbing heats the engine: at 100 % it steams for
      2.6 s ("Too hot!"), cannot climb and sinks a little. So fly just high enough.
    - Both: hold RIGHT together to run the Flyer down the wooden launch rail (it only speeds up while BOTH hold).
@@ -28,7 +28,8 @@
    WHAT COMES AT THEM (everything is telegraphed at least 0.9 s)
    - Gusts (from flight 1): the Thief turns his jet on the Flyer. A big arrow shows which wing end will be pushed
      down (0.95 s), then it blows for 1.35 s. "Double gusts" (from flight 3) blow one way, then the other.
-   - Tall dunes (from flight 2): climb over them. Touching sand is a "Bump!" and a bounce (the plane slows).
+   - Tall dunes (from flight 2): climb over them. Flying into a dune (or being pushed onto the sand faster than
+     eng.hard px/s) is a "Bump!" and a bounce; a plain dive onto flat sand only skims it (a little bounce, slower).
    - Seagulls (from flight 2): the Thief scares up a flock, a "!" sign shows where 0.9 s before it flies in. High
      flocks fill the upper air (dive under), low flocks skim the dunes (climb over), or the balancer rings the bell.
      A hit is a "Squawk!": the plane dips and slows; the gulls just scatter.
@@ -55,10 +56,12 @@
    (st.idle) nothing is started and the wings level themselves.
 
    GOLD HELP (announced with tthHelp, kept for the rest of the era):
-   - 2 wing scrapes since the last flag: "steadier wings" (gentler gusts and wobble, a longer red-zone time); 4: more.
-   - 3 sand bumps / engine-outs in a flight, or 2 floodings: "gold pedals" (power lasts longer, too-fast taps are
-     just ignored, climbing heats less).
-   - 3 seagull / sandbag hits in a flight: gold arrows show the safe way past and the hit zones shrink.
+   - 2 wing scrapes since the last flag (or 3 in the whole era): "steadier wings" (gentler gusts and wobble, a
+     longer red-zone time); 4 (or 5 in the era): more.
+   - 2 sand bumps / engine-outs in a flight (or 3 in the era), or 2 floodings: "gold pedals" (power lasts longer,
+     too-fast taps are just ignored, climbing is 30 % faster and heats less).
+   - 2 seagull / sandbag hits in a flight (or 3 in the era): gold arrows show the safe way past, the hit zones shrink
+     and the bell reaches further.
    - TTHWRIGHT.catch.goldT s into the catch: the Thief holds still and the grab zone grows.
    Fairness: 1.6 s of grace after every pop-back and take-off (no gusts, no hits); bumps have the core's safe time;
    after a pop-back the hazards behind the flag come again in the same places.
@@ -84,7 +87,7 @@ const TTHWRIGHT = {
   // noise: the wobble; lazyT / lazyK: after lazyT s without a lean the tilt runs away at lazyK per s (never eased by
   // gold help: this is what stops a flight with nobody at the wings); warn / over: the yellow and the red mark;
   // overT / gustK / driftK: per gold-help level (0, 1, 2); sink / drag: what a tilt past sinkFrom costs; level: "level"
-  tilt: { ctl: 0.95, drift: 0.45, noise: 0.17, highK: 0.45, lazyT: 3, lazyK: 0.9, warn: 0.6, over: 0.82, overT: [0.7, 1, 1.3],
+  tilt: { ctl: 0.95, drift: 0.45, noise: 0.17, highK: 0.45, lazyT: 3, lazyK: 0.9, warn: 0.6, over: 0.82, overT: [0.85, 1.1, 1.4],
     gustK: [1, 0.7, 0.5], driftK: [1, 0.6, 0.35], sink: 110, sinkFrom: 0.35, drag: 0.3, rad: 0.42, level: 0.3 },
   gust: { tel: 0.95, dur: 1.35, tel2: 0.6, dur2: 0.95, down: 78 },
   // the engine: power 0..1 runs down by `decay` per s; a tap on the beat adds `pump`, off the beat `weak`; a tap
@@ -92,7 +95,7 @@ const TTHWRIGHT = {
   // sinks (fade px/s), under `dead` it sets down. climb / dive px/s; sink: the heavy Flyer's own slow sink (px/s);
   // hard: a touch-down faster than this (px/s) is a counted "Bump!", slower just skims the sand
   eng: { decay: 0.3, pump: 0.3, weak: 0.18, early: 0.28, good0: 0.4, good1: 1.05, flyMin: 0.6, dead: 0.3, cough: 0.06, floodN: 3, floodT: 1.2,
-    climb: 85, dive: 105, acc: 320, fade: 95, sink: 12, goldDecay: 0.55, hard: 60, skim: 70 },
+    climb: 85, dive: 105, acc: 320, fade: 95, sink: 12, goldDecay: 0.55, hard: 115, skim: 70, soft: 0.56 },
   heat: { up: 0.3, cool: 0.14, down: 0.3, hotT: 2.6, after: 0.45, sink: 40, goldK: 0.65 },
   hit: { bounce: 150, dip: 130, bagTilt: 0.5 },
   bell: { r0: 100, r1: 430, cool: 3, miss: 2 },
@@ -100,8 +103,10 @@ const TTHWRIGHT = {
   gulls: { v: 40, w: 150, hi0: 120, hi1: 306, loGap: 14, loH: 135, warn: 0.9, slack: 8 },
   bag: { hang: 0.7, vy0: 30, vy1: 150 },
   // the catch: he hangs at px + dx, his machine's bottom at y0 +- amp; the Flyer belongs dy under it (+- win), level
-  catch: { dx: 59, dy: 104, y0: 258, amp: 22, w: 0.8, win: 26, fill: 2.2, drain: 0.2, goldT: 22, goldWin: 40, goldLevel: 0.45, gustT: 3.4, gustK: 0.7 },
-  gold: { wing: 2, wing2: 4, sand: 3, flood: 2, hits: 3 },
+  catch: { dx: 59, dy: 104, y0: 258, amp: 22, w: 0.8, win: 26, fill: 2.2, drain: 0.2, goldT: 14, goldWin: 40, goldLevel: 0.45, gustT: 3.4, gustK: 0.7 },
+  // gold help: wing / wing2 scrapes since the last flag (or wingAll / wingAll2 in the whole era); sand bumps and
+  // engine-outs in a flight (or sandAll in the era); floodings; gull / bag hits in a flight (or hitsAll in the era)
+  gold: { wing: 2, wing2: 4, wingAll: 3, wingAll2: 5, sand: 2, sandAll: 3, flood: 2, hits: 2, hitsAll: 3, climbK: 1.3 },
 };
 const TTHWRIGHT_C = { skyTop: '#62b2e8', skyLow: '#d8eef4', sea: '#4c9cc6', seaLt: '#9fd6ea', far: '#efe3bd', mid: '#ecd7a0', sand: '#f4e1a4', sandLow: '#d9bb74', sandInk: '#9a7a3a',
   grass: '#7c9a52', grassDk: '#4f6e3a', wood: '#b9824a', woodDk: '#7a4f27', cloth: '#fbf3dc', clothDk: '#d9caa2', iron: '#4a4f5c', prop: '#c98a4a',
@@ -223,17 +228,17 @@ function tthWrightRewind(st) {
 /* ---------- gold help ---------- */
 function tthWrightGoldWing(st) {
   const ph = st.ph, K = TTHWRIGHT.gold;
-  if (ph.cpMiss >= K.wing2 && ph.gold.wing < 2) { ph.gold.wing = 2; tthHelp(st, 'Gold help: extra steady wings! The gusts are much gentler now.'); }
-  else if (ph.cpMiss >= K.wing && ph.gold.wing < 1) { ph.gold.wing = 1; tthHelp(st, 'Gold help: steadier wings! Gentler gusts, and more time in the red.'); }
+  if ((ph.cpMiss >= K.wing2 || ph.miss.wing >= K.wingAll2) && ph.gold.wing < 2) { ph.gold.wing = 2; tthHelp(st, 'Gold help: extra steady wings! The gusts are much gentler now.'); }
+  else if ((ph.cpMiss >= K.wing || ph.miss.wing >= K.wingAll) && ph.gold.wing < 1) { ph.gold.wing = 1; tthHelp(st, 'Gold help: steadier wings! Gentler gusts, and more time in the red.'); }
 }
 function tthWrightGoldEng(st) {
   const ph = st.ph, K = TTHWRIGHT.gold;
-  if (ph.gold.eng || (ph.miss.sand < K.sand && ph.miss.flood < K.flood)) return;
-  ph.gold.eng = 1; tthHelp(st, 'Gold help: gold pedals! The engine keeps its power longer.');
+  if (ph.gold.eng || (ph.miss.sand < K.sand && ph.miss.sandAll < K.sandAll && ph.miss.flood < K.flood)) return;
+  ph.gold.eng = 1; tthHelp(st, 'Gold help: gold pedals! More power, and the Flyer climbs faster.');
 }
 function tthWrightGoldDodge(st) {
   const ph = st.ph;
-  if (ph.gold.dodge || ph.miss.hits < TTHWRIGHT.gold.hits) return;
+  if (ph.gold.dodge || (ph.miss.hits < TTHWRIGHT.gold.hits && ph.miss.hitsAll < TTHWRIGHT.gold.hitsAll)) return;
   ph.gold.dodge = 1; tthHelp(st, 'Gold help: gold arrows show the safe way past gulls and sandbags.');
 }
 
@@ -377,7 +382,7 @@ function tthWrightObs(st, dt) {
       else if (live && o.x - o.w / 2 < ph.x + 100 && o.x + o.w / 2 > ph.x - 95 && ph.y + 30 > o.y0 + slack && ph.y - 30 < o.y1 - slack) {
         tthWrightScatter(st, o, '');
         if (tthBump(st, { word: 'Squawk!', kind: 'gull', x: ph.x + 60, y: ph.y - 50 })) {
-          ph.vy = K.hit.dip * (o.hi ? 1 : -0.6); ph.slow = 1; ph.spin = Math.max(0, ph.spin - 0.1); s.gulls++; ph.miss.hits++;
+          ph.vy = K.hit.dip * (o.hi ? 1 : -0.6); ph.slow = 1; ph.spin = Math.max(0, ph.spin - 0.1); s.gulls++; ph.miss.hits++; ph.miss.hitsAll++;
           if (!reduceMotion) G.shake = Math.max(G.shake, 0.2);
           tthWrightGoldDodge(st);
         }
@@ -398,7 +403,7 @@ function tthWrightObs(st, dt) {
         else if (live && Math.abs(o.x - ph.x - 4) < 100 && o.y + 12 > ph.y - 34 + slack - 8 && o.y - 12 < ph.y + 32 - slack + 8) {
           o.state = 'hit'; o.vx = -70; o.vy = -230;
           if (tthBump(st, { word: 'Bonk!', kind: 'bag', x: o.x, y: o.y - 34 })) {
-            ph.tilt = clamp(ph.tilt + (o.x >= ph.x ? 1 : -1) * K.hit.bagTilt, -1, 1); ph.slow = Math.max(ph.slow, 0.6); s.bags++; ph.miss.hits++;
+            ph.tilt = clamp(ph.tilt + (o.x >= ph.x ? 1 : -1) * K.hit.bagTilt, -1, 1); ph.slow = Math.max(ph.slow, 0.6); s.bags++; ph.miss.hits++; ph.miss.hitsAll++;
             if (!reduceMotion) G.shake = Math.max(G.shake, 0.22);
             tthWrightGoldDodge(st);
           }
@@ -444,7 +449,7 @@ function tthWrightSetup(st, L) {
     flats: [{ x0: -4000, x1: K.px + K.rail.len + 220 }], rails: [{ x0: K.px - 70, x1: K.px + K.rail.len + 50 }], dunes: [], flags: [], events: [], obs: [],
     gust: null, photo: null, crowd: null,
     x0: K.px, L: 1, d: 0, goalX: 1e9, flightT: 0, cp: { x: K.px, i: -1 }, cpMiss: 0,
-    miss: { sand: 0, hits: 0, flood: 0 }, gold: { wing: 0, eng: 0, dodge: 0, catch: 0 },
+    miss: { sand: 0, hits: 0, flood: 0, wing: 0, sandAll: 0, hitsAll: 0 }, gold: { wing: 0, eng: 0, dodge: 0, catch: 0 },
     taught: {}, told: [0, 1].map(() => ({ gusts: 0, bell: 0, gull: 0, bag: 0, pedal: 0, wings: 0, heat: 0 })), tips: {}, said: {}, gustN: 0, tauntN: 0, laughT: 0, bagT: 0,
     catch: null, got: false, held: false, th: { x: 806, y: 212, cy: K.catch.y0 },
     wobA: tthRand() * 6.28, wobB: tthRand() * 6.28, wobC: tthRand() * 6.28,
@@ -519,7 +524,7 @@ function tthWrightFly(st, dt) {
     } else if (ph.heat > 0.72 && ph.told[ph.eng].heat < 2 && tthWrightTip(st, 'heat', ph.eng, 'Climbing heats the engine: let go to cool it', { cpu: 'Getting warm...' }, 9)) ph.told[ph.eng].heat++;
   } else ph.heat = Math.max(0, ph.heat - (dn ? HK.down : HK.cool) * dt);
   let want = EK.sink;
-  if (up && ph.hot <= 0 && pw > 0.5) want = -EK.climb; else if (dn) want = EK.dive;
+  if (up && ph.hot <= 0 && pw > 0.5) want = -EK.climb * (ph.gold.eng ? K.gold.climbK : 1); else if (dn) want = EK.dive;
   want += EK.fade * (1 - pw);
   if (ph.hot > 0) want += HK.sink;
   const over = Math.max(0, (Math.abs(ph.tilt) - TK.sinkFrom) / (1 - TK.sinkFrom));
@@ -544,14 +549,14 @@ function tthWrightFly(st, dt) {
   } else if (ph.y >= gy) {
     const hard = ph.vy - dgy;
     ph.y = gy;
-    if (ph.spin < EK.dead) {
-      ph.down = true; ph.vy = 0; ph.gust = null; s.outs++; ph.miss.sand++;
+    if (ph.spin < EK.soft) {   // a weak engine sets the Flyer down softly: no bump, it waits to be pedalled up
+      ph.down = true; ph.vy = 0; ph.gust = null; s.outs++; ph.miss.sand++; ph.miss.sandAll++;
       tthPop(st, ph.x + 20, ph.y - 60, 'Engine out!', '#ffffff', 22); Sfx.play('tthWrightLand'); tthWrightSand(ph.x + 30, gy + K.belly, 6);
       tthWrightGoldEng(st);
     } else if (hard > EK.hard && ph.grace <= 0 && !calm) {
       ph.vy = -K.hit.bounce; ph.slow = 1; tthWrightSand(ph.x + 40, gy + K.belly, 8); Sfx.play('tthWrightThud');
       if (tthBump(st, { word: 'Bump!', kind: 'sand', x: ph.x + 40, y: ph.y - 50 })) {
-        s.sand++; ph.miss.sand++; if (!reduceMotion) G.shake = Math.max(G.shake, 0.22);
+        s.sand++; ph.miss.sand++; ph.miss.sandAll++; if (!reduceMotion) G.shake = Math.max(G.shake, 0.22);
         tthWrightTip(st, 'sand', ph.eng, 'Too low! Climb: ' + tthKey(ph.eng, 'up'), { cpu: 'Oops, too low!' }, 5);
         tthWrightGoldEng(st);
       }
@@ -633,7 +638,7 @@ function tthWrightSlip(st, dt) {
   if (u < 1) return;
   const tip = tthWrightAt(ph, ph.slipDir > 0 ? 90 : -100, 24);
   if (tthBump(st, { word: 'Scrape!', kind: 'scrape', x: tip.x, y: tip.y - 70 })) s.scrapes++; else tthPop(st, tip.x, tip.y - 70, 'Scrape!', '#ffffff', 24);
-  ph.cpMiss++; tthWrightSand(tip.x, tip.y, 12); Sfx.play('tthWrightScrape');
+  ph.cpMiss++; ph.miss.wing++; tthWrightSand(tip.x, tip.y, 12); Sfx.play('tthWrightScrape');
   if (!reduceMotion) G.shake = Math.max(G.shake, 0.3);
   tthWrightGoldWing(st);
   tthWrightMode(ph, 'back'); ph.x1 = ph.x; ph.y0 = ph.y; ph.backY = tthWrightSafeY(ph, ph.cp.x); ph.laughT = 1.3;
@@ -710,6 +715,7 @@ function tthWrightCatch(st, dt) {
 function tthWrightGrabStart(st) {
   const ph = st.ph;
   tthWrightMode(ph, 'grab'); ph.jumper = ph.eng; ph.gust = null; ph.vy = 0;
+  if (st.hints) st.hints[ph.eng] = null;   // (the "Grab it!" bubble has done its job)
   Sfx.play('jump', ph.eng);
 }
 function tthWrightGrab(st, dt) {

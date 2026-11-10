@@ -89,12 +89,13 @@
      left (the time pill counts this lander's fuel in seconds, and the landing news compares); the Moon's gravity is
      one sixth of Earth's; twelve people have walked on the Moon.
    Tuning (bots, tools/w30/moon-all.js): computer pair 2:12-2:19 with no bumps and no gold help; a clumsy partner
-   2:25-2:50; a young kid (0.5 s late) 2:35-4:35; an idle partner never ends it.
+   2:25-2:50; a young kid (0.5 s late) 2:50-4:15 with gold help; an idle partner never ends it. Drawing costs about
+   3.8 ms a frame in headless software Chromium (tools/w30/moon-perf.js).
    Stats (tthStats(st), plain JSON): t [stretch times], cells, missed, pumps, spills, tries (landing bounces),
    fuel (s left at touchdown), close (near misses), gold [help keys]. Every top-level name starts with tthMoon / TTHMOON, sounds with
    Sfx.extra.tthMoon. All state lives in st.ph (fresh every start). Brain: js/cpu/levels/world30/tth-moon.js.
    Tests: tools/w30/moon-all.js (the bot matrix), moon-keys.js (real keyboard, controllers, touch), moon-alone.js,
-   moon-trace.js (a flight log), moon-foot.js, moon-dbg.js. */
+   moon-trace.js (a flight log), moon-foot.js, moon-perf.js (draw time), moon-dbg.js. */
 const TTHMOON = {
   // the lander (px, s): gravity, main engine, side jets, sideways drag (per s, only while not steering), speed caps
   g: 70, thrust: 190, side: 240, drag: 0.9, maxVx: 180, maxFall: 215, maxRise: 140,

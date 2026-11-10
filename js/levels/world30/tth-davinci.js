@@ -30,7 +30,10 @@
      3 The river and the piazza (the chase): the Thief flies just ahead and weaves. Stay close behind his machine,
        in his SLIPSTREAM (the streaks behind his jet; gold when you are in it), until the slipstream meter is full
        (chase.need s in it). Over the open piazza his jet runs out of puff and he sinks low: DIVE under his
-       machine and fly through the plans case in his claw to snatch it. Era won.
+       machine and fly through the plans case in his claw to snatch it. Era won. (The longer a dive takes, the
+       slower he flies: from chase.diveV down to chase.diveSlow px/s after chase.diveHold s, and he hovers while
+       the machine sits on the ground, so a pair with a slow flapper catches him too. A MISSED dive is flying
+       past him without the plans, or a bump during the dive: he laughs, zips ahead and the dive starts again.)
    Between the stretches the machine lands by itself on a tower top with a gold flag (the checkpoint and the
    breather): "Swap seats!" (tthSwap), then the new flapper's first beat takes off. Room field `first` flaps first.
 
@@ -83,7 +86,7 @@ const TTHVINCI = {
   flock: { lead: 700, warn: 1.0, v: 150, r: 46, goldR: 30, hw: 64, shoo: 430, cd: 1.0, slow: 0.55 },
   perch: { reach: 430, v: 200, swapAt: 0.35, ready: 1.5 },
   chase: { near: 70, far: 320, tol: 58, need: 7, drain: 0.05, v: 218, gap: 250, pull: 40, weaveA: 44, weaveT: 3.6, maxVy: 115, open: 7150,
-    diveV: 150, diveY: 345, diveGap: 330, grab: 46, goldGrab: 80, goldGrab2: 130, magnet: 56, goldAfter: 24, goldTol: 92 },
+    diveV: 150, diveSlow: 70, diveFade: 14, diveHold: 4, diveY: 345, diveGap: 330, grab: 46, goldGrab: 80, goldGrab2: 130, magnet: 56, goldAfter: 24, goldTol: 92 },
   gold: { hits: 2, shrink: 45, ground: 3, tired: 3, tired2: 7, birds: 2, dive: 2, dive2: 4, dive3: 6 },
   close: 20, lantern: 28, domeBase: 446,
 };
@@ -633,6 +636,7 @@ function tthVinciChase(st, dt) {
 function tthVinciDiveMiss(st) {
   const ph = st.ph, ch = ph.chase, K = TTHVINCI;
   if (!ch || ch.phase !== 'dive' || ch.zip) return;
+  if (ch.magnet) { tthVinciTip(st, ph.flap, 'magnet', 'Flap! Fly past him', { cpu: 'Flap, flap!' }, 3); return; }   // (gold magnet: he stays put)
   ch.miss++; ch.zip = 1; ch.diveT = 0; tthStats(st).diveMiss = ch.miss;
   tthReact(st, 'happy', ch.miss % 2 ? 'Ha! Missed me!' : 'Too slow! Ha ha!', 1.8);
   if (ch.miss === K.gold.dive) { ch.grab = K.chase.goldGrab; tthHelp(st, 'Gold claw! The plans are easier to grab now.', { id: 1 - ph.flap, hint: 'Dive under his machine' }); }
@@ -688,13 +692,15 @@ function tthVinciThief(st, dt) {
     let vx = dive ? CH.diveV : CH.v;
     if (ch.zip) { vx = g.v + 300; if (gap > CH.diveGap) ch.zip = 0; }
     else if (ch.lead) { vx = g.v + 220; if (gap > CH.diveGap) ch.lead = false; }   // (he pulls ahead first: time to line up the dive)
-    else if (dive) { if (gap > 420) vx = 80; }
+    else if (dive) {   // his jet has less and less puff, and he hovers while the machine sits on the ground: a slow pair catches him too
+      vx = g.landed || g.bounce ? (gap > 330 ? 0 : 70) : gap > 420 ? 60 : Math.max(CH.diveSlow, CH.diveV - CH.diveFade * Math.max(0, ch.diveT - CH.diveHold));
+    }
     else if (g.landed || g.bounce) vx = gap > 330 ? 0 : 90;
     else if (gap > CH.gap + 60) vx = Math.max(50, Math.min(vx, g.v - 60));
     else if (gap < CH.gap - 70) vx = Math.max(vx, g.v + 60);
     if (gap > 560) vx = 0;
     ch.vx = approach(ch.vx, vx, 420 * dt); b.x += ch.vx * dt;
-    b.x = Math.max(b.x, g.x + 60);
+    if (!dive) b.x = Math.max(b.x, g.x + 60);                  // (in the dive the machine flies under him, and may fly past: a miss)
     // his height: the trail, with a weave where the sky is open
     let near = 9999;
     for (const ob of c.obs) { if (ob.k < 2) continue; near = Math.min(near, Math.max(0, ob.x0 - b.x - 40, b.x - ob.x1 - 40)); }
@@ -1026,7 +1032,9 @@ function tthVinciDrawObs(st) {
   const ch = ph.chase;
   if (ch && ch.phase === 'tail' && ph.mode === 'fly') {
     const wk = tthVinciWake(st), far = ch.far - 40, tol = ch.tol;
-    ctx.fillStyle = ch.in ? 'rgba(255,197,61,0.22)' : ch.gold ? 'rgba(255,197,61,0.14)' : 'rgba(255,255,255,0.16)';
+    const rgb = ch.in || ch.gold ? '255,197,61' : '255,255,255', gr = ctx.createLinearGradient(wk.x, 0, wk.x - far, 0);
+    gr.addColorStop(0, `rgba(${rgb},${ch.in ? 0.34 : 0.22})`); gr.addColorStop(0.7, `rgba(${rgb},${ch.in ? 0.2 : 0.13})`); gr.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.fillStyle = gr;
     ctx.beginPath(); ctx.moveTo(wk.x, wk.y - 8); ctx.lineTo(wk.x - far, wk.y - tol); ctx.lineTo(wk.x - far, wk.y + tol); ctx.lineTo(wk.x, wk.y + 8); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = ch.in || ch.gold ? 'rgba(255,214,110,0.95)' : 'rgba(255,255,255,0.75)'; ctx.lineWidth = 3;
     for (let n = -2; n <= 2; n++) {

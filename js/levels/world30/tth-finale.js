@@ -3,83 +3,101 @@
 
 /* ===== 30-1 era 9: The End of Time (TTH_PHASES.finale) — Gavyn's plan: "a swirling clock world. One holds back the
    clock hands while the other climbs the gears to his machine", then smash the machine together and everything flies
-   home. The big showdown, on foot.
+   home. The big showdown, on foot. About 2 minutes for a good pair (the computer pair: about 2:00).
    THE PLACE. A brass clockwork tower in a swirling violet clock-sky, climbed UP (the camera scrolls up after the lower
-   player). The tower is one screen wide (x 150-810) and has 5 decks 380 px apart: the start deck, ledges 1-3 and the
-   top deck (ledge 4) where the Thief's time machine sits. Behind it all hangs a giant clock with ONE huge hand.
+   player). The tower is one screen wide (x 150-810) and has 7 decks 380 px apart: the start deck, ledges 1-5 and the
+   top deck (ledge 6 = deck TTHFIN_N) where the Thief's time machine sits. Behind it hangs a giant clock with ONE hand.
    The era runs its own collision (tthFinBody): every platform is a one-way top (jump up through it, land on it), the
    decks are solid slabs with one HATCH (a one-way trapdoor) and a lift shaft. Pip and Bo pass through each other (no
    stacking, so nobody can be boosted past a gear). Nobody can fall below the deck they started the climb from.
-   THE TWO JOBS (they swap at every ledge, so each player does both twice; room field `first` is the first HOLDER):
+   THE TWO JOBS (they swap at every ledge, so each player does both three times; room field `first` = first HOLDER):
    - HOLDER ("brake"): stands at the brake lever of the deck (in the holder's colour) and HOLDS the action. While the
-     brake is held the huge hand stops and every gear slows to a ridable speed (green lamps). A GRIP meter over the
-     lever drains while holding (TTHFIN.grip.hold s from full) and refills while resting (grip.rest s), so holding is
-     a decision, not a button to tape down: when it runs out the lever SLIPS and can only be grabbed again after the
-     button was let go and the grip is back over grip.regrab. Feet on the deck, within lever.reach px of the lever.
+     brake is held the huge hand stops, every gear slows to a ridable speed (green lamps) and the folding teeth lock
+     OUT. A GRIP meter over the lever drains while holding (TTHFIN.grip.hold s from full) and refills while resting
+     (grip.rest s), so holding is a decision, not a button to tape down: when it runs out the lever SLIPS and can only
+     be grabbed again after the button was let go and the grip is back over grip.regrab. Feet on the deck, within
+     lever.reach px of the lever.
    - CLIMBER ("press"): climbs the clockwork to the hatch of the next deck and presses the action at the button up
      there (in the climber's colour). That stops the clock and lowers the LIFT for the holder (it shuttles until both
      are up). Both on the new deck = the ledge is reached: a checkpoint, a breather, "Swap jobs!".
-   THE CLOCKWORK (one new thing per ledge; TTHFIN_SECS):
-     shelves      plain brass shelves.
+   THE CLOCKWORK. Every climb has the same bones (TTHFIN_SECS): a STEP (the new thing of that climb), gear A, the SAFE
+   SHELF (a checkpoint), gear B, the hatch.
      gears        a turning cog with little hanging platforms (pegs) on its rim: riding one carries you round and UP.
                   Unbraked they whirl (red lamp, streaks): a fast peg is not solid ("Too fast!") and a rider on a gear
-                  that speeds up is shaken off after about half a second. EVERY climb has a gear that no jump can
-                  skip, so the climber always needs the holder.
-     pendulum     (ledge 1) a swinging bob platform to time.       piston  (ledge 2) a sliding block to ride.
-     teeth        (ledge 3) escapement teeth that click in and out in turn (they blink 0.6 s before they fold).
-     two gears    (ledge 4) with a resting shelf between them: the holder must rest the grip in the middle.
-   THE HUGE HAND. It sweeps once round the giant clock (hand.sweep s per ledge, unbraked). When it reaches 12 the
-   Thief's machine REWINDS time: whoever is up in the clockwork is whisked back along their own path to the deck
-   ("Rewind!", soft; counted as a bump only the first time at each ledge) and the hand starts again. The last part of
-   the sweep is red, ticks faster and puts a "!" over the climber. A climber who stands on the next deck is safe (the
-   hand waits). A pie gauge in the left margin shows the same sweep for small screens.
-   THE THIEF hovers in his machine in the right margin and (from ledge 2) throws TICK-TOCK BUBBLES: a ring marks the
+                  that speeds up is shaken off after about half a second ("Whoa!"). No jump can skip a gear, so the
+                  climber always needs the holder.
+     the step     climb 1 a plain shelf; 2 a pendulum bob to time; 3 two escapement teeth that click in and out in turn
+                  (they blink 0.6 s before they fold; the brake locks them out, and they blink TTHFIN_TOOTH.lock s
+                  before folding again when it lets go); 4 a sliding piston; 5 a faster pendulum; 6 teeth again.
+     safe shelf   once the climber has stood on it, a rewind or a fall only goes back to it: a climber who drops to
+                  the deck after it is whisked back up ("Back to the safe shelf!", rewind.catchT s after landing).
+   THE HUGE HAND. It sweeps once round the giant clock (hand.sweep s per climb, unbraked). When it reaches 12 the
+   Thief's machine REWINDS time: whoever is up in the clockwork is whisked back along their own path ("Rewind!", soft;
+   counted as a bump only the first time at each spot) and the hand starts again. The last part of the sweep is red,
+   ticks faster and puts a "!" over the climber. A climber on the safe shelf or the next deck is safe. A pie gauge in
+   the left margin shows the same sweep for small screens.
+   THE HAND FIGHTS BACK (climbs 5 and 6, tthFinKicks). While the brake is held the hand winds up and KICKS the lever:
+   the lever shakes and flashes red, a red ring closes on it, the meter says "let go!" (kick.warn s, 0.9). Whoever
+   still holds the brake at that moment is kicked off: the grip is gone ("Kicked!", a counted soft fail) and the gears
+   run away. Let go before the kick, grab again after it ("Dodged!"): the clockwork holds still from the warning until
+   kick.grace s after a dodged kick, so letting go early costs nothing. The next kick comes after S.kick.every s of
+   braking. The hand also sweeps faster on these two climbs.
+   THE THIEF hovers in his machine in the right margin and (from climb 2) throws TICK-TOCK BUBBLES: a ring marks the
    spot (where that player stood) for the whole flight (bub.fly s, never under 0.6 s); who is still inside when it
-   lands is frozen for bub.freeze s ("Tick-tock!", a counted soft fail). A frozen holder lets go of the lever. Ledge 2
-   aims at the climber only; ledges 3-4 at both in turn. Step out of the ring or jump over it.
+   lands is frozen for bub.freeze s ("Tick-tock!", a counted soft fail). A frozen holder lets go of the lever. Climb 2
+   aims at the climber only; later climbs at both in turn. Step out of the ring or jump over it.
    THE TOP: SMASH IT TOGETHER (no jobs: both "smash"). The machine docks on a pedestal between two RAMS. Each player
    stands at a plunger (left or right) and, when the lamps turn green ("NOW!"), presses the action: that side's ram
-   shoots out and waits smash.window s for the other one. Both rams together = a HIT (bolts and clocks fly); a lone
-   ram is dodged ("Together!", not a bump). 3 hits. Between hits the Thief plays his last tricks while the rams
-   re-arm (smash.charge s): bubbles at the plungers (hit 1), cogs that roll across the deck to jump (telegraphed
-   cog.warn s at the edge; hit 2), both (hit 3). A cog hit is a counted "Bonk!".
-   THE PAY-OFF (about 10 s, players keep control): the machine bursts, the Thief plops out dizzy (on foot), all 8
-   stolen things whirl out and fly, one by one, into 8 little portals named after their eras ("The T. rex egg is home,
-   66 million years ago!"; things in st.loot get a gold tick, the rest fly home too). Then he takes out his pocket
-   watch: tthPhaseDone(st, { got: false, say: 'One last portal... race you home!' }) and the core runs the portal
-   cutscene into the race.
-   GOLD HELP (announced with tthHelp, per ledge): 2 rewinds: the hand slows (x hand.goldK); 4: the hand is stuck for
-   this climb. 3 shake-offs: gold grip (the brake holds about twice as long). 3 bubble freezes: sleepy bubbles. 26 s
-   with no new height: the clockwork (pendulum, piston, teeth) slows down, then naps, with a gold hint for whoever's
-   turn it is. At the top: 3 lone rams widen the window (0.9 s, then 1.5 s); 3 trick hits make the tricks sleepy.
+   shoots out and waits smash.window s for the other one. Both rams together = a HIT; a lone ram is dodged
+   ("Together!", not a bump). 4 hits. EVERY HIT shakes two of the 8 stolen things out of the machine: they hover over
+   it and fly, one after the other, into little portals named after their eras ("The T. rex egg is home, 66 million
+   years ago!"; things in st.loot get a gold tick, the rest a green one). Between hits the Thief plays his last tricks
+   while the rams re-arm (smash.charge s): bubbles at the plungers (before hit 1), cogs that roll across the deck to
+   jump (telegraphed cog.warn s at the edge; before hit 2), both (hits 3 and 4). A cog hit is a counted "Bonk!".
+   THE PAY-OFF (about 5 s, players keep control): hit 4 bursts the machine, the Thief plops out dizzy (on foot), the
+   last two things fly home, all 8 portals flare ("Everything is home. History is safe!"). Then he takes out his
+   pocket watch: tthPhaseDone(st, { got: false, say: 'One last portal... race you home!' }) and the core runs the
+   portal cutscene into the race.
+   GOLD HELP (announced with tthHelp, per climb): 2 rewinds: the hand slows (x hand.goldK); 4: the hand is stuck.
+   3 shake-offs, or gold.slowT s on one climb: gold grip (the brake holds twice as long and the gears speed up
+   slowly). gold.slowT2 s on one climb: sleepy gears (one pull of the brake keeps them slow for seconds) and a stuck
+   hand. 3 bubble freezes: sleepy bubbles. 3 kicks: the hand is too tired to kick. 26 s with no new height: the
+   clockwork (pendulum, piston, teeth) slows down, then naps, with a gold hint for whoever's turn it is. Two drops
+   through a folding tooth: a hint for the holder that the brake locks the teeth. At the top: 3 lone rams widen the
+   window (0.9 s, then 1.5 s); 3 trick hits make the tricks sleepy. (Time only counts while somebody plays.)
    FAIRNESS. Everything is telegraphed at least 0.6 s. No hazard starts in a calm moment (tthCalm: cards, cutscenes,
    celebrations, nobody playing) and the hand stops then. Bubbles are never aimed at someone on the lift, being
    rewound or already safe on the next deck. Nothing can be cleared alone: gears need the brake, the lift needs the
    button, a hit needs both rams. Randomness only through tthRand().
-   HISTORY (news line at ledges 1-3): the first clocks had only an hour hand; tick-tock is the escapement's teeth;
-   the first pendulum clock was built in 1656.
-   Stats (st.stats.finale): ledges, ledgeT, rewinds, flings, frozen, hits, misses. Every top-level name starts with
-   tthFin / TTHFIN (Sfx.extra.tthFin*). All state lives in st.ph (fresh every phase start). */
+   HISTORY (news line on climbs 1-3): the first clocks had only an hour hand; the first pendulum clock was built in
+   1656; tick-tock is the escapement's teeth. (And every thing that flies home says where and when it belongs.)
+   Stats (st.stats.finale): ledges, ledgeT, rewinds, flings, frozen, slips, kicks, catches, hits, misses, home,
+   smashT. Every top-level name starts with tthFin / TTHFIN (Sfx.extra.tthFin*). All state lives in st.ph (fresh
+   every phase start). Tests: tools/w30/finale-keys.js (real keys / controller / touch / 1-player), finale-dbg.js
+   (traces, a clumsy kid), finale-perf.js (draw time). */
 const TTHFIN = {
   x0: 150, x1: 810, gap: 380, deckH: 14, foot: 508, topFoot: 470,
   liftW: 84, liftX: [154, 722],                       // the lift columns: left (x 154-238) and right (x 722-806)
   lever: { reach: 42 },
   grip: { hold: 7, rest: 5, regrab: 0.4, goldK: 0.5 },
-  gear: { fast: 3.3, slow: 0.7, ride: 1.7, upT: 1.4, downT: 0.35 },
-  hand: { sweep: [22, 20, 19, 18], startK: 0.02, warnK: 0.78, goldK: 1.6 },
+  gear: { fast: 3.3, slow: 0.7, ride: 1.7, upT: 1.4, downT: 0.35, goldUp: 2.6, sleepyUp: 12 },
+  hand: { sweep: [22, 20, 19, 18, 15, 13], startK: 0.02, warnK: 0.78, goldK: 1.6 },
+  kick: { warn: 0.9, grace: 0.45 },                   // the hand fights back (climbs 5-6): the lever kicks after warn s
+
   lift: { down: 240, up: 140, board: 0.25, again: 0.6 },
   bub: { fly: 1.5, goldFly: 2.2, rx: 30, ry: 40, freeze: 1.0, first: 4.2 },
-  rewind: { t: 0.95, safe: 1.6, every: 0.08 },
+  rewind: { t: 0.95, safe: 1.6, every: 0.08, catchT: 0.3 },
   button: { reach: 24 },
-  smash: { hits: 3, window: 0.55, gold: [0.9, 1.5], charge: 2.5, dock: 2.2, cool: 0.9, hitT: 1.5, reach: 28, plX: [300, 660], every: [3.0, 3.2, 2.6] },
+  smash: { hits: 4, window: 0.55, gold: [0.9, 1.5], charge: 3.8, dock: 2.2, cool: 0.9, hitT: 3.2, reach: 28, plX: [300, 660], every: [3.0, 3.2, 2.6, 2.3] },
   cog: { r: 15, v: 265, warn: 0.9 },
-  gold: { rewinds: 2, rewinds2: 4, flings: 3, frozen: 3, stuckT: 26, miss: 3, miss2: 6, tricks: 3 },
-  fin: { whirl: 2.6, each: 0.72, fly: 0.65, after: 1.7 },
+  gold: { rewinds: 2, rewinds2: 4, flings: 3, frozen: 3, kicks: 3, slowT: 24, slowT2: 40, stuckT: 26, miss: 3, miss2: 6, tricks: 3 },
+  home: { go: [0.7, 1.85], fly: 0.65, after: 2.0 },    // two stolen things fly home per hit: when each leaves (s after the hit)
 };
-// The four climbs. Every climb has the same bones: a STEP (the new thing of the ledge), gear A, the safe shelf R (a
+// The six climbs. Every climb has the same bones: a STEP (the new thing of the ledge), gear A, the safe shelf R (a
 // checkpoint), gear B, the hatch. They are written in "u" (px from the wall opposite the lift: the tower is mirrored
 // when the lift is on the left) and h (px above the lower deck); tthFinSec turns u into x at load time.
-// lift: 0 left / 1 right column; every / pattern: tick-tock bubbles (C at the climber, H at the holder).
+// lift: 0 left / 1 right column; every / pattern: tick-tock bubbles (C at the climber, H at the holder);
+// kick: { first, every }: the lever kicks after that many seconds of braking (climbs 5-6).
 // els, in route order: shelf (rest: the safe shelf), pend (pivot u / ph), piston (u0 <-> u1), tooth (set 0 / 1), gear.
 const TTHFIN_GA = { id: 'gA', kind: 'gear', u: 180, h: 174, r: 62, n: 5, pw: 54 }, TTHFIN_GB = { id: 'gB', kind: 'gear', u: 448, h: 264, r: 60, n: 5, pw: 54 };
 const TTHFIN_R = { id: 'R', kind: 'shelf', rest: true, u: 268, h: 230, w: 70 };
@@ -105,16 +123,21 @@ const TTHFIN_SECS = [
     els: [{ id: 't1', kind: 'tooth', u: 12, h: 68, w: 60, set: 0 }, { id: 't2', kind: 'tooth', u: 84, h: 98, w: 60, set: 1 }, TTHFIN_GA, TTHFIN_R, TTHFIN_GB] },
   { name: 'Piston Pass', lift: 1, every: 4.8, pattern: 'CHC', fact: '',
     els: [{ id: 'z1', kind: 'piston', u0: 10, u1: 96, h: 88, w: 64, v: 90, dwell: 0.9 }, Object.assign({}, TTHFIN_GA, { n: 4 }), TTHFIN_R, Object.assign({}, TTHFIN_GB, { n: 4 })] },
+  { name: 'The Hand Fights Back', lift: 0, every: 5.4, pattern: 'CH', kick: { first: 1.2, every: 2.4 }, fact: '',
+    els: [{ id: 'p2', kind: 'pend', u: 78, ph: 222, len: 142, amp: 0.5, per: 2.8, w: 60 }, Object.assign({}, TTHFIN_GA, { n: 4 }), TTHFIN_R, Object.assign({}, TTHFIN_GB, { n: 4 })] },
+  { name: 'The Last Climb', lift: 1, every: 4.6, pattern: 'CHC', kick: { first: 1.0, every: 2.0 }, fact: '',
+    els: [{ id: 't3', kind: 'tooth', u: 12, h: 68, w: 60, set: 0 }, { id: 't4', kind: 'tooth', u: 84, h: 98, w: 60, set: 1 }, Object.assign({}, TTHFIN_GA, { n: 4 }), TTHFIN_R, Object.assign({}, TTHFIN_GB, { n: 4 })] },
 ].map(tthFinSec);
-const TTHFIN_TOOTH = { per: 3, on: 0.6, warn: 0.2 };   // a tooth is in for on * per s, and blinks for warn * per s before it folds
+const TTHFIN_N = TTHFIN_SECS.length;                   // climbs (= ledges); the top deck is deck TTHFIN_N
+const TTHFIN_TOOTH = { per: 3, on: 0.6, warn: 0.2, lock: 0.7 };   // a tooth is in for on * per s, and blinks for warn * per s before it folds
 const TTHFIN_HOME = [   // the pay-off: one line and one portal name per stolen thing, in TTH_LOOT order
   ['The T. rex egg is home, 66 million years ago!', 'Dinosaurs'], ['The great stone is home, at Stonehenge, 2500 BC!', 'Stonehenge'],
   ['The wooden horse is home, in Troy, 1200 BC!', 'Troy'], ['The wreath is home, at the first Olympics, 776 BC!', 'Olympia'],
   ['The sunstone is home, with the Vikings, 1000 AD!', 'Vikings'], ['Leonardo\'s plans are home, in the 1490s!', 'Leonardo'],
   ['The propeller is home, on the Wright Flyer, 1903!', 'The Flyer'], ['The flag is home, on the Moon, 1969!', 'The Moon'],
 ];
-const TTHFIN_TAUNTS = ['Welcome to the End of Time! Tick, tock!', 'Hmph! One ledge is nothing!', 'Stop climbing my clock!', 'My machine is nearly wound up!'];
-const TTHFIN_OUCH = ['Hey! Careful with that!', 'Stop! It\'s an antique!', 'Noooo! My machine!'];
+const TTHFIN_TAUNTS = ['Welcome to the End of Time! Tick, tock!', 'Hmph! One ledge is nothing!', 'Stop climbing my clock!', 'My machine is nearly wound up!', 'Now my clock FIGHTS BACK!', 'Kick them off, clock! Kick!'];
+const TTHFIN_OUCH = ['Hey! Careful with that!', 'Stop! It\'s an antique!', 'Not my lovely things!', 'Noooo! My machine!'];
 const tthFinLY = i => -i * TTHFIN.gap;                 // the floor of deck i (world y; up is negative)
 const tthFinSolo = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
 const tthFinCx = p => p.x + p.w / 2;
@@ -123,7 +146,7 @@ const tthFinFeet = p => p.y + p.h;
 /* ---------- building the tower: decks, lifts, the clockwork of each climb ---------- */
 function tthFinBuild() {
   const K = TTHFIN, decks = [], plats = [], els = [], secs = [];
-  for (let i = 0; i <= 4; i++) {
+  for (let i = 0; i <= TTHFIN_N; i++) {
     const S = i > 0 ? TTHFIN_SECS[i - 1] : null, col = S ? K.liftX[S.lift] : null;   // the deck's own lift column (the lift from below)
     const d = { i, y: tthFinLY(i), x0: K.x0, x1: K.x1, hatch: S ? S.hatch : null, col: S ? [col, col + K.liftW] : null };
     if (S) { if (S.lift === 0) d.x0 = col + K.liftW; else d.x1 = col; }
@@ -133,7 +156,7 @@ function tthFinBuild() {
   TTHFIN_SECS.forEach((S, k) => {
     const y0 = tthFinLY(k), col = K.liftX[S.lift];
     const sec = { k, S, els: [], gears: [], lever: { x: S.lever, y: y0 }, button: { x: S.button, y: tthFinLY(k + 1), down: false, t: 0 }, back: S.back, base: decks[k], upper: decks[k + 1] };
-    Object.assign(sec, { rewinds: 0, rwN: [0, 0], cp: null, flings: 0, frozen: 0, best: 0, stuckT: 0, stuckN: 0 });
+    Object.assign(sec, { rewinds: 0, rwN: [0, 0], cp: null, flings: 0, frozen: 0, kicks: 0, drops: 0, T: 0, best: 0, stuckT: 0, stuckN: 0 });
     sec.lift = { kind: 'lift', sec: k, x: col, w: K.liftW, y: tthFinLY(k + 1), yTop: tthFinLY(k + 1), yBot: y0, dx: 0, dy: 0, solid: true, state: 'top', t: 0 };
     plats.push(sec.lift);
     for (const E of S.els) {
@@ -175,13 +198,13 @@ const TTHFIN_TMP = { x: 0, y: 0, solid: true, warn: false };
 // one tick of the clockwork: everything moves, and remembers how far (dx, dy) for whoever rides it
 function tthFinMech(st, dt) {
   const ph = st.ph, K = TTHFIN, o = TTHFIN_TMP;
-  const braking = ph.braking && ph.stage === 'climb';
+  const braking = (ph.braking || ph.kick || ph.kickGrace > 0) && ph.stage === 'climb';   // (the clock holds its breath around a kick)
   ph.tm += dt * ph.mechK;
   if (!braking) ph.tt += dt * ph.mechK;                 // the escapement only ticks while the clock runs
   for (const el of ph.c.els) {
     if (el.kind === 'gear') {
       const G0 = K.gear, want = el.sec < ph.k || ph.stage === 'fin' ? G0.slow * 0.5 : braking && el.sec === ph.k ? G0.slow : ph.stage === 'top' ? G0.slow : G0.fast;
-      const rate = (G0.fast - G0.slow) / (want > el.w ? G0.upT : G0.downT);
+      const rate = (G0.fast - G0.slow) / (want > el.w ? G0.upT * (el.sec !== ph.k ? 1 : ph.gold.sleepy ? G0.sleepyUp : ph.gold.grip ? G0.goldUp : 1) : G0.downT);
       el.w = approach(el.w, want, rate * dt);
       el.a += el.w * el.dir * dt;
       const ok = el.w <= G0.ride && el.sec === ph.k;
@@ -189,7 +212,13 @@ function tthFinMech(st, dt) {
     } else if (el.kind !== 'shelf') {
       const q = el.plat; tthFinElAt(el, el.kind === 'tooth' ? ph.tt : ph.tm, o);
       q.dx = o.x - q.x; q.dy = o.y - q.y; q.x = o.x; q.y = o.y;
-      if (el.kind === 'tooth') { if (q.solid !== o.solid && el.sec === ph.k && ph.stage === 'climb') Sfx.play('tthFinClick'); q.solid = o.solid; el.warn = o.warn; el.f = o.f; }
+      if (el.kind === 'tooth') {
+        // the brake locks every tooth OUT; let go and a tooth that should be folded blinks TTHFIN_TOOTH.lock s first
+        el.lock = braking && el.sec === ph.k ? TTHFIN_TOOTH.lock : Math.max(0, (el.lock || 0) - dt);
+        const solid = o.solid || el.lock > 0;
+        if (q.solid !== solid && el.sec === ph.k && ph.stage === 'climb') Sfx.play('tthFinClick');
+        q.solid = solid; el.warn = o.warn || (!o.solid && el.lock > 0 && !braking); el.f = o.f;
+      }
       if (el.kind === 'pend') el.th = o.th;
     }
   }
@@ -211,6 +240,7 @@ function tthFinBody(st, p, dt) {
   let on = P.on;
   if (on && !on.solid) {
     if (on.kind === 'peg') tthFinFling(st, p, 'Whoa!');
+    else if (on.kind === 'tooth' && ph.stage === 'climb' && ++ph.sec.drops >= 2) tthFinTip(st, ph.holder, 'teeth', 'Hold ' + tthFinAct(ph.holder) + ': the brake locks the teeth out!', 9, { life: 4, cpu: null });
     on = P.on = null; p.grounded = false;
   }
   if (on) { p.x += on.dx; p.y = on.y - p.h; }
@@ -268,13 +298,13 @@ function tthFinFling(st, p, word) {
   for (let n = 0; n < 6; n++) G.particles.push({ x: tthFinCx(p), y: tthFinFeet(p), vx: (tthRand() - 0.5) * 260, vy: -80 - tthRand() * 120, life: 0.4, max: 0.4, col: n % 2 ? '#ffd23f' : '#ffffff', size: 3, grav: 500, kind: 'dot' });
   const hd = ph.holder;
   if (p.id !== hd && !ph.braking) tthFinTip(st, hd, 'brake', 'Hold ' + tthFinAct(hd) + ' at the lever: slow the gears!', 5, { cpu: null });
-  if (ph.sec.flings >= TTHFIN.gold.flings && !ph.gold.grip) { ph.gold.grip = true; tthHelp(st, 'Gold help: gold grip! The brake holds much longer.'); }
+  if (ph.sec.flings >= TTHFIN.gold.flings && !ph.gold.grip) { ph.gold.grip = true; tthHelp(st, 'Gold help: gold grip! The brake holds longer and the gears speed up slowly.'); }
 }
 // the camera follows the lower player up the tower; the base deck of the climb sits near the bottom of the screen
 function tthFinCam(st, snap, dt = DT) {
   const ph = st.ph, ps = G.players, K = TTHFIN;
   let ty;
-  if (ph.stage === 'top' || ph.stage === 'fin') ty = tthFinLY(4) - K.topFoot;
+  if (ph.stage === 'top' || ph.stage === 'fin') ty = tthFinLY(TTHFIN_N) - K.topFoot;
   else ty = Math.min(tthFinLY(ph.k), Math.max(tthFinFeet(ps[0]), tthFinFeet(ps[1]))) - K.foot;
   st.cam.x = 0;
   st.cam.y = snap ? ty : st.cam.y + (ty - st.cam.y) * Math.min(1, dt * 4);
@@ -321,6 +351,7 @@ function tthFinJobs(st, dt) {
     } else if ((G.tickN % 5) === 0) G.particles.push({ x: sec.lever.x + (tthRand() - 0.5) * 16, y: sec.lever.y - 8, vx: (tthRand() - 0.5) * 140, vy: -60 - tthRand() * 90, life: 0.3, max: 0.3, col: '#7fe9ff', size: 2.5, grav: 300, kind: 'dot' });
   } else ph.grip = Math.min(1, ph.grip + dt / Gp.rest * (ph.gold.grip ? 1.5 : 1));
   ph.leverK = approach(ph.leverK, ph.braking ? 1 : 0, dt * 9);
+  tthFinKicks(st, dt, H);
   // fresh presses: the climber's button; a press in the wrong place gets a hint
   for (const p of ps) {
     if (!p.pendingAct) continue;
@@ -350,9 +381,46 @@ function tthFinJobs(st, dt) {
     }
   }
 }
+// Climbs 5-6: the huge hand FIGHTS BACK. While the brake is held it winds up (the lever shakes and flashes red, a ring
+// closes on it for kick.warn s) and then KICKS the lever. Whoever still holds it at that moment is kicked off: the
+// grip is gone ("Kicked!", a counted soft fail) and the gears run away. Let go before the kick, grab again after it:
+// the clockwork holds still from the warning until kick.grace s after a dodged kick, so letting go early costs nothing.
+function tthFinKicks(st, dt, H) {
+  const ph = st.ph, sec = ph.sec, KK = sec.S.kick, K = TTHFIN.kick, lv = sec.lever;
+  if (ph.kickGrace > 0) ph.kickGrace -= dt;
+  ph.kickFx = Math.max(0, ph.kickFx - dt * 3);
+  if (!KK || ph.stage !== 'climb' || ph.gold.kick) { ph.kick = null; return; }
+  if (!ph.kick) {
+    if (!ph.braking || tthCalm(st) || ph.rw || (ph.kickT -= dt) > 0) return;
+    ph.kick = { t: K.warn }; ph.kickN++;
+    Sfx.play('tthFinKickWarn'); tthWarn(st, H.id, K.warn);
+    tthFinTip(st, H.id, 'kick', ph.kickN <= 3 ? 'It kicks! Let go of ' + tthFinAct(H.id) + ' for a moment!' : 'Kick! Let go!', 0, { life: K.warn + 0.5, cpu: null });
+    if (ph.kickN === 1) tthSay(st, 'My clock kicks back! Hee hee!', 2);
+    return;
+  }
+  if ((ph.kick.t -= dt) > 0) return;
+  ph.kick = null; ph.kickT = KK.every * (0.9 + 0.2 * tthRand()); ph.kickFx = 1;
+  Sfx.play('tthFinKick');
+  for (let n = 0; n < 8; n++) G.particles.push({ x: lv.x, y: lv.y - 50, vx: (tthRand() - 0.5) * 320, vy: -60 - tthRand() * 200, life: 0.4, max: 0.4, col: n % 2 ? '#ff5f6d' : '#ffd23f', size: 3, grav: 500, kind: 'dot' });
+  if (!ph.braking) {   // dodged
+    ph.kickGrace = K.grace;
+    tthPop(st, lv.x, lv.y - 96, 'Dodged!', TTHFINC.green, 22); Sfx.play('tthDing');
+    if (ph.slip) return;
+    tthFinTip(st, H.id, 'regrab', 'Now grab the brake again!', 0, { life: 2, cpu: null });
+    return;
+  }
+  ph.grip = 0; ph.slip = true; ph.braking = false; sec.kicks++; tthStats(st).kicks = (tthStats(st).kicks || 0) + 1;
+  if (!tthBonk(st, H, { still: true, kind: 'kick', word: 'Kicked!', at: { x: lv.x, y: lv.y - 80 } })) tthPop(st, lv.x, lv.y - 80, 'Kicked!', '#ff8f7a', 22);
+  rumble(H.id, 0.7, 0.5, 200);
+  if (!reduceMotion) G.shake = Math.max(G.shake, 0.25);
+  tthReact(st, 'happy', sec.kicks % 2 ? 'Kicked! Ha ha!' : 'My clock kicks hard!', 1.8);
+  st.thief.pose = 'laugh'; ph.thiefPoseT = 1.4;
+  if (sec.kicks >= TTHFIN.gold.kicks) { ph.gold.kick = true; tthHelp(st, 'Gold help: the huge hand is too tired to kick!'); }
+  else tthFinTip(st, H.id, 'kick', 'Next time: let go of ' + tthFinAct(H.id) + ' when the lever flashes red!', 0, { life: 4, cpu: null });
+}
 function tthFinPress(st, p) {
   const ph = st.ph, sec = ph.sec, bt = sec.button;
-  bt.down = true; bt.t = 0; ph.stage = 'lift'; ph.braking = false;
+  bt.down = true; bt.t = 0; ph.stage = 'lift'; ph.braking = false; ph.kick = null; ph.kickGrace = 0;
   sec.lift.state = 'down'; sec.lift.t = 0;
   Sfx.play('tthFinBtn'); Sfx.play('tthFinLift'); rumble(p.id, 0.5, 0.3, 120);
   tthPop(st, bt.x, bt.y - 60, 'Click!', C.gold, 22);
@@ -372,7 +440,7 @@ function tthFinHand(st, dt) {
   if (hd.spin > 0) { hd.spin = Math.max(0, hd.spin - dt); hd.k = K.hand.startK + (hd.from - K.hand.startK) * (hd.spin / K.rewind.t); return; }
   if (ph.stage !== 'climb' || tthCalm(st) || ph.rw) return;
   const Cl = ps[1 - ph.holder], safe = ph.P[Cl.id].on === sec.upper.plat;
-  if (ph.braking || safe || ph.gold.hand >= 2) return;
+  if (ph.braking || safe || ph.gold.hand >= 2 || ph.kick || ph.kickGrace > 0) return;
   const was = hd.k;
   hd.k += dt / (K.hand.sweep[ph.k] * (ph.gold.hand ? K.hand.goldK : 1));
   // the last stretch: faster ticks, a "!" over the climber, a nudge for the holder
@@ -430,6 +498,19 @@ function tthFinRewinding(st, dt) {
       if (sec.cp !== on.el) { sec.cp = on.el; tthPop(st, on.x + on.w / 2, on.y - 46, 'Safe shelf!', TTHFINC.green, 20); Sfx.play('tthDing'); tthStats(st).shelves = (tthStats(st).shelves || 0) + 1; }
     } else if (ph.stage === 'climb' && tthFinFeet(Cl) < sec.base.y - 8 && (ph.trailT -= dt) <= 0) { ph.trailT = K.rewind.every; ph.trail.push([Cl.x, Cl.y]); if (ph.trail.length > 140) ph.trail.splice(0, 2); }
     else if (tthFinFeet(Cl) >= sec.base.y - 8 && ph.trail.length) ph.trail.length = 0;
+    // fell off after the safe shelf: whisked back up to it (a checkpoint: a fall costs a moment, not the whole climb)
+    if (ph.stage === 'climb' && sec.cp && on === sec.base.plat && Cl.grounded && Cl.stun <= 0) {
+      if ((ph.catchT += dt) >= K.rewind.catchT) {
+        ph.catchT = 0;
+        const who = [false, false]; who[Cl.id] = true;
+        ph.rw = { t: 0, who, from: ps.map(p => ({ x: p.x, y: p.y })), trail: [], soft: true };
+        ph.P[Cl.id].on = null; Cl.vx = 0; Cl.vy = 0; Cl.grounded = false;
+        st.safe[Cl.id] = Math.max(st.safe[Cl.id], K.rewind.t + 0.8);
+        for (const b of ph.bubs) if (b.id === Cl.id) b.dud = true;
+        tthPop(st, tthFinCx(Cl), Cl.y - 14, 'Back to the safe shelf!', TTHFINC.green, 20); Sfx.play('tthFinWhoosh');
+        tthStats(st).catches = (tthStats(st).catches || 0) + 1;
+      }
+    } else ph.catchT = 0;
     return;
   }
   rw.t += dt;
@@ -504,16 +585,17 @@ function tthFinLedge(st) {
   Sfx.play('tthFinLedge');
   for (let n = 0; n < 18; n++) confetti(K.x0 + 60 + tthRand() * (K.x1 - K.x0 - 120), L.yTop - 120);
   ph.k++;
-  ph.bubs = []; ph.trail.length = 0; ph.gold = { hand: 0, grip: false, bub: false, mech: 0 }; ph.mechK = 1;
+  ph.bubs = []; ph.trail.length = 0; ph.gold = { hand: 0, grip: false, bub: false, mech: 0, kick: false, sleepy: false }; ph.mechK = 1;
+  ph.kick = null; ph.kickGrace = 0;
   ph.grip = 1; ph.slip = false; ph.braking = false; ph.waitT = 0; ph.goldAt = null;
   ph.hand.from = ph.hand.k; ph.hand.spin = K.rewind.t;
   st.hints = [null, null];
-  if (ph.k >= 4) { tthFinTopStart(st); return; }
+  if (ph.k >= TTHFIN_N) { tthFinTopStart(st); return; }
   ph.sec = ph.c.secs[ph.k]; ph.holder = 1 - ph.holder; ph.stage = 'climb';
-  ph.bubT = K.bub.first; ph.bubI = 0; ph.factT = 5;
+  ph.bubT = K.bub.first; ph.bubI = 0; ph.factT = 5; ph.kickT = ph.sec.S.kick ? ph.sec.S.kick.first : 0;
   tthPop(st, W / 2, L.yTop - 150, 'Ledge ' + ph.k + '!', C.gold, 30);
   tthSwap(st); tthCelebrate(st, 1.8);
-  tthNews(st, 'Ledge ' + ph.k + ' of 4! Next climb: ' + ph.sec.S.name + '.', false, 3.2);
+  tthNews(st, 'Ledge ' + ph.k + ' of ' + TTHFIN_N + '! Next climb: ' + ph.sec.S.name + '.', false, 3.2);
   tthSay(st, TTHFIN_TAUNTS[ph.k], 2.2);
   ph.jobTipT = 2;
 }
@@ -529,7 +611,8 @@ function tthFinTopStart(st) {
   ph.stage = 'top';
   ph.top = { state: 'dock', t: 0, hits: 0, charge: 0, rams: [0, 1].map(() => ({ k: 0, live: 0, cool: 0, by: -1, down: 0 })), miss: 0, window: K.smash.window,
     trickT: 1, trickN: 0, cogN: 0, cogs: [], rise: 0, tricksHit: 0, sleepy: false, flash: 0, push: 0, standT: [0, 0] };
-  tthPop(st, W / 2, tthFinLY(4) - 190, 'The top!', C.gold, 32);
+  ph.home = { items: TTH_LOOT.map((kind, i) => ({ kind, i, s: 0, t: 0, go: 0, ft: 0, x: 480, y: 0, fx: 0, fy: 0 })), open: TTH_LOOT.map(() => 0), lit: TTH_LOOT.map(() => 0), flare: 0 };
+  tthPop(st, W / 2, tthFinLY(TTHFIN_N) - 190, 'The top!', C.gold, 32);
   tthCelebrate(st, 1.6); tthShowBadges(st); tthActLabels(st); Sfx.play('tthSwap');
   tthNews(st, 'The top! Smash the Time Machine TOGETHER!', true, 4);
   tthSay(st, 'You can\'t smash MY time machine!', 2.4);
@@ -537,7 +620,7 @@ function tthFinTopStart(st) {
 // which plunger p stands at (0 left, 1 right), or -1
 function tthFinPlunger(st, p) {
   const ph = st.ph, K = TTHFIN.smash;
-  if (!p.grounded || Math.abs(tthFinFeet(p) - tthFinLY(4)) > 1) return -1;
+  if (!p.grounded || Math.abs(tthFinFeet(p) - tthFinLY(TTHFIN_N)) > 1) return -1;
   for (let s = 0; s < 2; s++) if (Math.abs(tthFinCx(p) - K.plX[s]) <= K.reach) return s;
   return -1;
 }
@@ -556,7 +639,7 @@ function tthFinDebris(st, x, y, n) {
   if (ph.debris.length > 90) ph.debris.splice(0, ph.debris.length - 90);
 }
 function tthFinTop(st, dt) {
-  const ph = st.ph, tp = ph.top, K = TTHFIN.smash, ps = G.players, deckY = tthFinLY(4), calm = tthCalm(st);
+  const ph = st.ph, tp = ph.top, K = TTHFIN.smash, ps = G.players, deckY = tthFinLY(TTHFIN_N), calm = tthCalm(st);
   for (const d of ph.debris) { d.t += dt; d.vy += 900 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.rot += d.vr * dt; }
   if (ph.debris.length && ph.debris[0].t > ph.debris[0].life) ph.debris = ph.debris.filter(d => d.t <= d.life);
   if (!tp) return;
@@ -612,7 +695,7 @@ function tthFinTop(st, dt) {
       if (tp.cogN === 1) tthSay(st, 'Mind my loose cogs! Hee hee!', 2);
     }
     tp.trickN++;
-    tp.trickT = K.every[Math.min(2, tp.hits)] * (0.9 + 0.2 * tthRand()) * (tp.sleepy ? 1.6 : 1);
+    tp.trickT = K.every[Math.min(K.every.length - 1, tp.hits)] * (0.9 + 0.2 * tthRand()) * (tp.sleepy ? 1.6 : 1);
   }
   const C0 = TTHFIN.cog;
   for (const g of tp.cogs) {
@@ -641,7 +724,7 @@ function tthFinTop(st, dt) {
   }
 }
 function tthFinMiss(st, s) {
-  const ph = st.ph, tp = ph.top, K = TTHFIN.smash, G0 = TTHFIN.gold, r = tp.rams[s], deckY = tthFinLY(4);
+  const ph = st.ph, tp = ph.top, K = TTHFIN.smash, G0 = TTHFIN.gold, r = tp.rams[s], deckY = tthFinLY(TTHFIN_N);
   r.cool = K.cool; tp.miss++; tthStats(st).misses = (tthStats(st).misses || 0) + 1;
   Sfx.play('tthFinMiss');
   tthPop(st, 480, deckY - 205, 'Together!', '#ffd23f', 24);
@@ -651,7 +734,7 @@ function tthFinMiss(st, s) {
   else if (tp.miss === G0.miss2) { tp.window = K.gold[1]; tthHelp(st, 'Gold help: the rams wait much longer now!'); }
 }
 function tthFinHit(st) {
-  const ph = st.ph, tp = ph.top, K = TTHFIN.smash, deckY = tthFinLY(4), c = st.thief;
+  const ph = st.ph, tp = ph.top, K = TTHFIN.smash, deckY = tthFinLY(TTHFIN_N), c = st.thief;
   tp.hits++; tp.state = 'hit'; tp.t = 0; tp.flash = 1;
   for (const r of tp.rams) { r.live = 0; r.cool = K.hitT; r.k = 1; }
   tthStats(st).hits = tp.hits;
@@ -659,81 +742,94 @@ function tthFinHit(st) {
   if (!reduceMotion) G.shake = Math.max(G.shake, tp.hits >= K.hits ? 0.6 : 0.42);
   tthFinDebris(st, 480, deckY - 100, 16 + tp.hits * 6);
   burst(480, deckY - 100, '#f6d37a', 14); burst(480, deckY - 100, '#ffffff', 8);
-  tthPop(st, 480, deckY - 215, ['CRUNCH!', 'SMASH!', 'KA-BOOM!'][Math.min(2, tp.hits - 1)], C.gold, 36);
+  tthPop(st, 480, deckY - 215, ['CRUNCH!', 'CRACK!', 'SMASH!', 'KA-BOOM!'][Math.min(3, tp.hits - 1)], C.gold, 36);
+  tthFinRelease(st, tp.hits);
   for (const g of tp.cogs) if (g.warn <= 0) burst(g.x, deckY - 14, '#f6d37a', 8);
   tp.cogs = []; for (const b of ph.bubs) b.dud = true;
   st.hints = [null, null];
   if (tp.hits >= K.hits) { tthFinStartFin(st); return; }
   c.hitT = 0.7; c.pose = 'shock'; ph.thiefPoseT = 1.3;
   tthReact(st, 'shocked', TTHFIN_OUCH[tp.hits - 1], 2);
-  tthCelebrate(st, 1.1);
-  tthNews(st, 'Hit ' + tp.hits + ' of ' + K.hits + '! The rams wind up again...', false, 2.6);
+  tthCelebrate(st, K.hitT - 0.2);
+  tthNews(st, tp.hits === 1 ? 'Hit 1 of ' + K.hits + '! Look: the stolen things fly home!' : 'Hit ' + tp.hits + ' of ' + K.hits + '!', true, 1.3);
 }
 
-/* ---------- the pay-off: the machine bursts and everything he stole flies home ---------- */
-function tthFinPortalAt(st, i) { return { x: 96 + i * 109.7, y: tthFinLY(4) - TTHFIN.topFoot + 208 - 56 * Math.sin(Math.PI * i / 7) }; }
+/* ---------- the stolen things fly home (two per hit), and the pay-off after the last hit ---------- */
+function tthFinPortalAt(st, i) { return { x: 96 + i * 109.7, y: tthFinLY(TTHFIN_N) - TTHFIN.topFoot + 208 - 56 * Math.sin(Math.PI * i / 7) }; }
+// hit n (1..4) shakes two stolen things out of the machine: they hover over it, then fly off one after the other
+function tthFinRelease(st, n) {
+  const hm = st.ph.home, K = TTHFIN.home;
+  if (!hm) return;
+  const per = hm.items.length / TTHFIN.smash.hits;
+  hm.items.forEach(it => { const j = it.i - (n - 1) * per; if (j >= 0 && j < per && it.s === 0) { it.s = 1; it.t = 0; it.go = K.go[Math.min(K.go.length - 1, j)] + (j >= K.go.length ? (j - K.go.length + 1) * 1.1 : 0); it.j = j; } });
+  Sfx.play('tthPop');
+}
+function tthFinHome(st, dt) {
+  const ph = st.ph, hm = ph.home, K = TTHFIN.home, deckY = tthFinLY(TTHFIN_N);
+  if (!hm) return;
+  hm.flare = Math.max(0, hm.flare - dt);
+  for (const it of hm.items) {
+    const i = it.i;
+    if (it.s === 1) {
+      it.t += dt;
+      const g = clamp(it.t / 0.45, 0, 1), e = 1 - (1 - g) * (1 - g), side = it.j % 2 ? 1 : -1;
+      it.x = 480 + side * 62 * e; it.y = deckY - 100 - 172 * e + Math.sin(it.t * 6 + i) * 5;
+      if (it.t >= it.go) { it.s = 2; it.ft = 0; it.fx = it.x; it.fy = it.y; Sfx.play('tthFinWhoosh'); }
+    } else if (it.s === 2) {
+      it.ft += dt;
+      const u = clamp(it.ft / K.fly, 0, 1), e = u * u * (3 - 2 * u), P = tthFinPortalAt(st, i);
+      it.x = it.fx + (P.x - it.fx) * e; it.y = it.fy + (P.y - it.fy) * e - Math.sin(u * Math.PI) * 30;
+      if ((G.tickN % 3) === 0) G.particles.push({ x: it.x, y: it.y, vx: 0, vy: 20, life: 0.35, max: 0.35, col: '#fff3c4', size: 3, grav: 0, kind: 'dot' });
+      if (u >= 1) {
+        it.s = 3; it.t = 0; hm.lit[i] = 0.001; tthStats(st).home = (tthStats(st).home || 0) + 1;
+        Sfx.play('tthFinHome', i);
+        tthNews(st, TTHFIN_HOME[i][0], true, 2.6);
+        for (let n = 0; n < 8; n++) { const a = n / 8 * Math.PI * 2; G.particles.push({ x: P.x, y: P.y, vx: Math.cos(a) * 110, vy: Math.sin(a) * 110, life: 0.5, max: 0.5, col: n % 2 ? '#fff3c4' : TTH_ERAS[TTH_ORDER[i]].col, size: 3.5, grav: 0, kind: 'dot' }); }
+      }
+    } else if (it.s === 3) it.t += dt;
+    // its portal opens just before it leaves, stays as a small lit door once the thing is home, and flares at the end
+    const want = hm.flare > 0 ? 1 : it.s === 2 || (it.s === 1 && it.t >= it.go - 0.5) || (it.s === 3 && it.t < 0.8) ? 1 : it.s === 3 ? 0.62 : 0;
+    hm.open[i] = approach(hm.open[i], want, dt * 2.6);
+    if (hm.lit[i] > 0) hm.lit[i] = Math.min(1, hm.lit[i] + dt * 3);
+  }
+}
+// after the last hit: the machine bursts, the Thief plops out dizzy, the last two things fly home, the big cheer
 function tthFinStartFin(st) {
-  const ph = st.ph, c = st.thief, deckY = tthFinLY(4);
+  const ph = st.ph, c = st.thief, deckY = tthFinLY(TTHFIN_N);
   ph.stage = 'fin';
-  ph.fin = { t: 0, landed: false, all: false, done: false, said: 0, items: TTH_LOOT.map((kind, i) => ({ kind, i, s: 0, ft: 0, x: 480, y: deckY - 100, fx: 0, fy: 0 })), open: TTH_LOOT.map(() => 0), lit: TTH_LOOT.map(() => 0) };
+  ph.fin = { t: 0, landed: false, all: false, allT: 0, done: false };
   Object.assign(c, { jet: false, pose: 'shock', mood: 'shocked', baseMood: 'sad', moodT: 1.2, item: null, hitT: 0.9, face: 1 });
   ph.thiefPoseT = 0;
   tthFinDebris(st, 480, deckY - 100, 44);
   for (let n = 0; n < 30; n++) confetti(480 + (tthRand() - 0.5) * 160, deckY - 120);
   burst(480, deckY - 100, '#ff9a3c', 20); burst(480, deckY - 100, '#7fe9ff', 14);
-  tthNews(st, 'The Time Machine is SMASHED!', true, 2.4);
-  tthSay(st, TTHFIN_OUCH[2], 1.4);
+  tthNews(st, 'The Time Machine is SMASHED!', true, 1.3);
+  tthSay(st, TTHFIN_OUCH[3], 1.4);
   tthStats(st).smashT = Math.round(st.phT * 10) / 10;
 }
 function tthFinFinale(st, dt) {
-  const ph = st.ph, f = ph.fin, K = TTHFIN.fin, c = st.thief, deckY = tthFinLY(4), ps = G.players;
+  const ph = st.ph, f = ph.fin, K = TTHFIN.home, c = st.thief, deckY = tthFinLY(TTHFIN_N), ps = G.players, hm = ph.home;
   if (!f || f.done) return;
   f.t += dt;
-  const cx = 480, cy = deckY - 212;
   // the Thief tumbles out of the wreck and lands on the deck, dizzy
-  if (f.t < 1) { const u = f.t; c.x = 480 + 114 * u; c.y = deckY - 56 * (1 - u) - Math.sin(u * Math.PI) * 120; c.s += (0.9 - c.s) * Math.min(1, dt * 4); }
+  if (f.t < 1) { const u = f.t; c.x = 480 + 280 * u; c.y = deckY - 56 * (1 - u) - Math.sin(u * Math.PI) * 150; c.s += (0.9 - c.s) * Math.min(1, dt * 4); }
   else if (!f.landed) {
-    f.landed = true; c.x = 594; c.y = deckY; c.pose = 'dizzy'; c.mood = 'sad';
+    f.landed = true; c.x = 760; c.y = deckY; c.face = -1; c.pose = 'dizzy'; c.mood = 'sad';
     puff(c.x, deckY, 10, 'rgba(255,255,255,0.8)'); Sfx.play('tthFinClunk');
     if (!reduceMotion) G.shake = Math.max(G.shake, 0.15);
-    tthSay(st, 'Ooooh... everything is spinning...', 2.4);
+    tthSay(st, 'Ooooh... everything is spinning...', 2);
   }
-  // the 8 things whirl up out of the wreck, then fly home one by one, each into its own little portal
-  const tAll = K.whirl + (f.items.length - 1) * K.each + K.fly;
-  for (const it of f.items) {
-    const t0 = 0.45 + it.i * 0.09, ti = K.whirl + it.i * K.each;
-    if (it.s === 0 && f.t >= t0) { it.s = 1; Sfx.play('tthPop'); }
-    if (it.s === 1) {
-      const g = clamp((f.t - t0) / 1.3, 0, 1), e = g * g * (3 - 2 * g), a = f.t * 2.7 + it.i * Math.PI / 4;
-      it.x = cx + Math.cos(a) * 84 * e; it.y = deckY - 100 + (cy - (deckY - 100)) * e + Math.sin(a) * 34 * e;
-      if (f.t >= ti) { it.s = 2; it.ft = 0; it.fx = it.x; it.fy = it.y; Sfx.play('tthFinWhoosh'); }
-    } else if (it.s === 2) {
-      it.ft += dt;
-      const u = clamp(it.ft / K.fly, 0, 1), e = u * u * (3 - 2 * u), P = tthFinPortalAt(st, it.i);
-      it.x = it.fx + (P.x - it.fx) * e; it.y = it.fy + (P.y - it.fy) * e - Math.sin(u * Math.PI) * 30;
-      if (u >= 1) {
-        it.s = 3; f.lit[it.i] = 0.001;
-        Sfx.play('tthFinHome', it.i);
-        tthNews(st, TTHFIN_HOME[it.i][0], true, 2.4);
-        for (let n = 0; n < 8; n++) { const a = n / 8 * Math.PI * 2; G.particles.push({ x: P.x, y: P.y, vx: Math.cos(a) * 110, vy: Math.sin(a) * 110, life: 0.5, max: 0.5, col: n % 2 ? '#fff3c4' : TTH_ERAS[TTH_ORDER[it.i]].col, size: 3.5, grav: 0, kind: 'dot' }); }
-      }
-    }
-    // its portal opens just before it leaves, and closes when everything is home
-    const want = f.t >= tAll + 1.0 ? 0 : f.t >= ti - 0.5 ? 1 : 0;
-    f.open[it.i] = approach(f.open[it.i], want, dt * (want ? 2.6 : 2.2));
-    if (f.lit[it.i] > 0) f.lit[it.i] = Math.min(1, f.lit[it.i] + dt * 3);
-  }
-  if (f.said === 0 && f.t >= 1.3) { f.said = 1; tthNews(st, 'Look! Everything he stole is flying home!', true, 1.9); }
-  if (!f.all && f.t >= tAll + 0.15) {
-    f.all = true; Sfx.play('tthCheer'); Sfx.play('tthGot');
+  if (!f.all && hm.items.every(it => it.s === 3) && hm.items[hm.items.length - 1].t >= 0.9) {
+    f.all = true; f.allT = f.t; hm.flare = K.after + 0.4; Sfx.play('tthCheer'); Sfx.play('tthGot');
     tthNews(st, 'Everything is home. History is safe!', true, 4);
     for (let n = 0; n < 40; n++) confetti(120 + tthRand() * (W - 240), st.cam.y + 150 + tthRand() * 60);
+    if (!reduceMotion) G.shake = Math.max(G.shake, 0.2);
     ps.forEach((p, k) => { st.hints[k] = { text: k ? 'Hooray!' : 'We did it!', t: 0, life: 2.2, gold: true }; if (p.grounded && !p.input.left && !p.input.right) p.pendingJump = true; });
-    c.pose = 'sulk'; tthSay(st, 'All my lovely things... gone home.', 1.5);
+    c.pose = 'sulk'; tthSay(st, 'All my lovely things... gone home.', 1.7);
   }
-  if (f.t >= tAll + K.after) {
+  if (f.all && f.t >= f.allT + K.after) {
     f.done = true; c.pose = 'idle'; c.mood = 'smug'; c.baseMood = 'smug'; c.face = 1;
-    tthPhaseDone(st, { got: false, say: 'One last portal... race you home!', portal: { x: 722, y: deckY - 84 } });
+    tthPhaseDone(st, { got: false, say: 'One last portal... race you home!', portal: { x: 872, y: deckY - 84 } });
   }
 }
 
@@ -768,6 +864,10 @@ function tthFinHints(st, dt) {
     if (Math.abs(d) > K.button.reach) tthFinTip(st, cl, 'gobtn', 'Go to the button! ' + (d < 0 ? '◀' : '▶'), 5, { cpu: null });
     else tthFinTip(st, cl, 'btn', 'Press ' + tthFinAct(cl) + ' at the button!', 4, { cpu: null });
   }
+  // a climb that takes very long (time only counts while they play): gold grip, then sleepy gears and a stuck hand
+  sec.T += dt;
+  if (sec.T >= K.gold.slowT && !ph.gold.grip) { ph.gold.grip = true; tthHelp(st, 'Gold help: gold grip! The brake holds longer and the gears speed up slowly.'); }
+  if (sec.T >= K.gold.slowT2 && !ph.gold.sleepy) { ph.gold.sleepy = true; ph.gold.hand = 2; tthHelp(st, 'Gold help: sleepy gears! One pull of the brake keeps them slow for a long time.'); }
   // no new height for a long while: the clockwork slows down, and a gold hint for whoever's turn it is
   const h = sec.base.y - tthFinFeet(Cl);
   if (h > sec.best + 12) { sec.best = h; sec.stuckT = 0; ph.goldAt = null; return; }
@@ -793,7 +893,7 @@ function tthFinThief(st, dt) {
   if (ph.thiefPoseT > 0 && (ph.thiefPoseT -= dt) <= 0) c.pose = 'idle';
   if (ph.stage === 'fin') return;
   let tx = 886, ty = st.cam.y + 318 + Math.sin(ph.t * 1.1) * 12, ts = 0.62;
-  if (ph.stage === 'top') { const tp = ph.top; tx = 480 - tp.push * 12; ty = tthFinLY(4) - 58; ts = 0.85; c.face = tp.push > 0.1 ? 1 : tp.push < -0.1 ? -1 : c.face; }
+  if (ph.stage === 'top') { const tp = ph.top; tx = 480 - tp.push * 12; ty = tthFinLY(TTHFIN_N) - 58; ts = 0.85; c.face = tp.push > 0.1 ? 1 : tp.push < -0.1 ? -1 : c.face; }
   else { const Cl = ps[1 - ph.holder]; c.look = { x: tthFinCx(Cl), y: Cl.y }; if (ph.thiefPoseT <= 0) c.face = -1; }
   const k = Math.min(1, dt * (ph.stage === 'top' ? 2.4 : 5));
   c.x += (tx - c.x) * k; c.y += (ty - c.y) * k; c.s += (ts - c.s) * Math.min(1, dt * 2);
@@ -810,12 +910,13 @@ function tthFinSetup(st, Lv) {
   ph.t = 0; ph.tm = 0; ph.tt = 0; ph.mechK = 1; ph.hello = false;
   ph.grip = 1; ph.slip = false; ph.braking = false; ph.leverK = 0; ph.brakedOnce = false;
   ph.hand = { k: K.hand.startK, spin: 0, from: 0, tick: 0 };
-  ph.rw = null; ph.trail = []; ph.trailT = 0;
+  ph.rw = null; ph.trail = []; ph.trailT = 0; ph.catchT = 0;
   ph.bubs = []; ph.bubN = 0; ph.bubT = K.bub.first; ph.bubI = 0;
-  ph.gold = { hand: 0, grip: false, bub: false, mech: 0 };
+  ph.gold = { hand: 0, grip: false, bub: false, mech: 0, kick: false, sleepy: false };
+  ph.kick = null; ph.kickT = 0; ph.kickGrace = 0; ph.kickFx = 0; ph.kickN = 0; ph.home = null;
   ph.tipT = [{}, {}]; ph.hintKey = [null, null]; ph.jobTipT = 1.0; ph.factT = 7; ph.waitT = 0; ph.goldAt = null;
   ph.thiefPoseT = 0; ph.top = null; ph.fin = null; ph.debris = []; ph.kT0 = 0;
-  Object.assign(tthStats(st), { ledges: 0, ledgeT: [], rewinds: 0, flings: 0, frozen: 0, slips: 0, hits: 0, misses: 0 });
+  Object.assign(tthStats(st), { ledges: 0, ledgeT: [], rewinds: 0, flings: 0, frozen: 0, slips: 0, kicks: 0, hits: 0, misses: 0, home: 0 });
   tthFinMech(st, 0);                                   // every platform takes its place
   st.cam = { x: 0, y: tthFinLY(0) - K.foot };
   // on the start deck: the holder near the lever, the climber by the first shelf (screen coords here: world - cam)
@@ -838,6 +939,7 @@ function tthFinStep(st, dt) {
   tthFinHand(st, dt);
   tthFinBubbles(st, dt);
   tthFinTop(st, dt);
+  tthFinHome(st, dt);
   if (ph.stage === 'fin') { for (const p of ps) p.pendingAct = false; tthFinFinale(st, dt); }
   tthFinLedge(st);
   if (G.mst !== st) return;
@@ -855,7 +957,7 @@ function tthFinCoast(st, dt) {
   for (const d of ph.debris) { d.t += dt; d.vy += 900 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.rot += d.vr * dt; }
   if (ph.debris.length && ph.debris[0].t > ph.debris[0].life) ph.debris = ph.debris.filter(d => d.t <= d.life);
   if (ph.top) { const tp = ph.top; tp.rise = Math.min(1, tp.rise + dt / 0.8); tp.flash = Math.max(0, tp.flash - dt * 2.5); for (const r of tp.rams) { r.k = approach(r.k, 0, dt * 3); r.down = approach(r.down, 0, dt * 6); } }
-  if (ph.fin) for (let i = 0; i < ph.fin.open.length; i++) ph.fin.open[i] = approach(ph.fin.open[i], 0, dt * 2.2);
+  if (ph.home) for (let i = 0; i < ph.home.open.length; i++) ph.home.open[i] = approach(ph.home.open[i], 0, dt * 2.2);
   if (!st.cut) tthFinThief(st, dt);
   tthFinCam(st, false, dt);
 }
@@ -888,17 +990,17 @@ function tthFinDrawSky(st) {
   tthSky('#160b38', '#6d2f9e');
   // the swirl of the End of Time
   ctx.save(); ctx.translate(480, 300); ctx.lineCap = 'round';
-  for (let a = 0; a < 4; a++) {
-    ctx.strokeStyle = a % 2 ? 'rgba(255,160,225,0.10)' : 'rgba(140,120,255,0.15)'; ctx.lineWidth = 30 - a * 4;
+  for (let a = 0; a < 3; a++) {   // (few, short arms: wide see-through strokes are the dearest thing in this scene)
+    ctx.strokeStyle = a % 2 ? 'rgba(255,160,225,0.11)' : 'rgba(140,120,255,0.16)'; ctx.lineWidth = 28 - a * 4;
     ctx.beginPath();
-    for (let q = 0; q <= 20; q++) { const u = q / 20, ang = t * 0.22 + a * 1.571 + u * 5, rad = 40 + 600 * u; ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad * 0.6); }
+    for (let q = 0; q <= 12; q++) { const u = q / 12, ang = t * 0.22 + a * 2.094 + u * 4.2, rad = 40 + 560 * u; ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad * 0.6); }
     ctx.stroke();
   }
   ctx.restore();
   tthStars(G.clock, 30, 0.7, 11);
   // lost clocks drifting by (they slide as the tower is climbed)
   ctx.save(); ctx.globalAlpha = 0.5;
-  for (let k = 0; k < 10; k++) {
+  for (let k = 0; k < 7; k++) {
     const h = hash(k, 31), x = (h % 960 + t * (4 + k % 3 * 3)) % 1000 - 20, y0 = (h >>> 9) % 660, y = ((y0 - cy * 0.28) % 660 + 660) % 660 - 60, r = 8 + (h >>> 4) % 9;
     tthClockFace(x, y + Math.sin(t * 0.7 + k) * 6, r, t + k * 3, { speed: (k % 2 ? -1 : 1) * (2 + k % 4), lw: 1.6, fill: k % 3 ? TTHFINC.cream : '#e6d4ff' });
   }
@@ -907,7 +1009,8 @@ function tthFinDrawSky(st) {
 // the giant clock behind the tower, with its ONE huge hand (screen coords)
 function tthFinDrawClock(st) {
   const ph = st.ph, Q = TTHFIN_CLOCK, K = TTHFIN.hand, hd = ph.hand, R = Q.r, climb = ph.stage === 'climb' || ph.stage === 'lift';
-  const k = climb ? hd.k : (G.clock * 0.05) % 1, warn = climb && hd.spin <= 0 && hd.k >= K.warnK && ph.stage === 'climb';
+  const kick = climb && ph.kick, warn = climb && hd.spin <= 0 && hd.k >= K.warnK && ph.stage === 'climb';
+  const k = climb ? hd.k + (kick && !reduceMotion ? Math.sin(G.clock * 60) * 0.006 : 0) + (ph.kickFx || 0) * 0.03 : (G.clock * 0.05) % 1;
   ctx.save(); ctx.translate(Q.x, Q.y); ctx.lineCap = 'round';
   ctx.fillStyle = 'rgba(255,244,214,0.09)'; circle(0, 0, R); ctx.fill();
   ctx.strokeStyle = 'rgba(246,211,122,0.6)'; ctx.lineWidth = 7; circle(0, 0, R); ctx.stroke();
@@ -920,7 +1023,7 @@ function tthFinDrawClock(st) {
   for (let n = 0; n < 12; n++) { const a = n * Math.PI / 6, big = n % 3 === 0; ctx.lineWidth = big ? 6 : 3.5; ctx.beginPath(); ctx.moveTo(Math.sin(a) * (R - (big ? 40 : 34)), -Math.cos(a) * (R - (big ? 40 : 34))); ctx.lineTo(Math.sin(a) * (R - 18), -Math.cos(a) * (R - 18)); if (n) ctx.stroke(); }
   ctx.globalAlpha = 0.9; bigText('12', 0, -R + 32, 26, warn ? TTHFINC.red : TTHFINC.brassLt, 1); ctx.globalAlpha = 1;
   // the hand: gold while it sweeps, icy blue while the brake holds it, red on the last stretch
-  const col = !climb ? 'rgba(246,211,122,0.5)' : hd.spin > 0 ? '#e6d4ff' : ph.braking ? TTHFINC.ice : warn ? TTHFINC.red : TTHFINC.brassLt;
+  const col = !climb ? 'rgba(246,211,122,0.5)' : hd.spin > 0 ? '#e6d4ff' : kick ? (Math.sin(G.clock * 26) > 0 ? TTHFINC.red : '#ffd23f') : ph.braking ? TTHFINC.ice : warn ? TTHFINC.red : TTHFINC.brassLt;
   const hand = (kk, alpha) => {
     ctx.save(); ctx.rotate(kk * Math.PI * 2); ctx.globalAlpha = alpha;
     ctx.fillStyle = col; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.lineJoin = 'round';
@@ -995,7 +1098,7 @@ function tthFinDrawEl(st, el) {
     ctx.fillStyle = C.ink; for (const wx of [q.x + 14, q.x + q.w - 14]) { circle(wx, q.y + 20, 5); ctx.fill(); }
   } else if (el.kind === 'tooth') {
     // a hinged tooth: out (stand on it), blinking (about to fold), folded (a faint flap)
-    const q = el.plat, Z = TTHFIN_TOOTH, f = el.f || 0, fold = q.solid ? 0 : Math.min(1, Math.min(f - Z.on, 1 - f) / 0.05), hx = q.x + q.w - 6, hy = q.y + 6;
+    const q = el.plat, Z = TTHFIN_TOOTH, f = el.f || 0, fold = q.solid ? 0 : Math.min(1, Math.max(0.2, Math.min(f - Z.on, 1 - f) / 0.05)), hx = q.x + q.w - 6, hy = q.y + 6;
     ctx.save(); ctx.translate(hx, hy); ctx.rotate(-fold * 1.35);
     if (!q.solid) ctx.globalAlpha = 0.4;
     ctx.fillStyle = el.warn && Math.sin(G.clock * 22) > 0 ? '#ffffff' : F.brassLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
@@ -1035,10 +1138,17 @@ function tthFinDrawJobs(st, sec) {
   ctx.lineCap = 'round';
   // lever
   ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(lv.x - 20, lv.y - 14, 40, 14, 4); ctx.fill(); ctx.stroke();
-  const a = 0.55 - k * 1.1, tx = lv.x + Math.sin(a) * 46, ty = lv.y - 12 - Math.cos(a) * 46;
+  const kick = cur && ph.kick ? ph.kick : null, kfx = cur ? ph.kickFx : 0;
+  const a = 0.55 - k * 1.1 + (kick && !reduceMotion ? Math.sin(G.clock * 55) * 0.09 : 0) + kfx * 0.7, tx = lv.x + Math.sin(a) * 46, ty = lv.y - 12 - Math.cos(a) * 46;
   ctx.strokeStyle = C.ink; ctx.lineWidth = 9; tthFinLine(lv.x, lv.y - 10, tx, ty);
   ctx.strokeStyle = F.ironLt; ctx.lineWidth = 4.5; tthFinLine(lv.x, lv.y - 10, tx, ty);
-  ctx.fillStyle = hc; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; circle(tx, ty, 9); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = kick && Math.sin(G.clock * 26) > 0 ? F.red : hc; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; circle(tx, ty, 9); ctx.fill(); ctx.stroke();
+  if (kick) {   // the hand winds up a kick: a red ring closes on the lever, a boot-shaped spark when it lands
+    const u = clamp(kick.t / TTHFIN.kick.warn, 0, 1);
+    ctx.strokeStyle = F.red; ctx.lineWidth = 4; circle(tx, ty, 13 + u * 36); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,95,109,0.35)'; ctx.lineWidth = 9; circle(tx, ty, 13 + u * 36); ctx.stroke();
+  }
+  if (kfx > 0) { ctx.save(); ctx.globalAlpha = kfx; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; for (let n = 0; n < 6; n++) { const q = n * 1.047 + 0.3, r0 = 16 + (1 - kfx) * 14; tthFinLine(tx + Math.cos(q) * r0, ty + Math.sin(q) * r0, tx + Math.cos(q) * (r0 + 12), ty + Math.sin(q) * (r0 + 12)); } ctx.restore(); }
   if (cur && ph.stage === 'climb') {
     // the grip meter
     const w = big ? 86 : 66, h = big ? 15 : 11, x = lv.x - w / 2, y = lv.y - (big ? 100 : 92), low = ph.grip < 0.3, blink = Math.sin(G.clock * 14) > 0;
@@ -1046,7 +1156,7 @@ function tthFinDrawJobs(st, sec) {
     ctx.fillStyle = ph.slip ? (blink ? F.red : '#8a3a4a') : low ? '#ffb347' : F.ice;
     if (ph.grip > 0.02) { rr(x, y, Math.max(h, w * ph.grip), h, h / 2); ctx.fill(); }
     ctx.strokeStyle = ph.slip ? F.red : hc; ctx.lineWidth = 2; rr(x - 3, y - 3, w + 6, h + 6, (h + 6) / 2); ctx.stroke();
-    text(ph.slip ? 'rest!' : 'grip', lv.x, y - (big ? 13 : 10), big ? 15 : 11, ph.slip ? '#ffb3ba' : '#ffffff', 'center', 'body');
+    text(kick ? 'let go!' : ph.slip ? 'rest!' : 'grip', lv.x, y - (big ? 13 : 10), big ? 15 : 11, kick || ph.slip ? '#ffb3ba' : '#ffffff', 'center', 'body');
     if (ph.gold.grip) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x - 6, y - 6, w + 12, h + 12, (h + 12) / 2); ctx.stroke(); }
   }
   // button
@@ -1057,7 +1167,7 @@ function tthFinDrawJobs(st, sec) {
 }
 // the top deck: the pedestal the machine docks on (behind the Thief)
 function tthFinDrawPedestal(st) {
-  const ph = st.ph, tp = ph.top, F = TTHFINC, y = tthFinLY(4), rise = tp ? tp.rise : 0;
+  const ph = st.ph, tp = ph.top, F = TTHFINC, y = tthFinLY(TTHFIN_N), rise = tp ? tp.rise : 0;
   if (rise <= 0) return;
   ctx.save(); ctx.beginPath(); ctx.rect(TTHFIN.x0, y - 300, TTHFIN.x1 - TTHFIN.x0, 300); ctx.clip(); ctx.translate(0, (1 - rise) * 70);
   ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
@@ -1099,7 +1209,7 @@ function tthFinDrawBack(st) {
 /* ---------- drawing: in front of the Thief (rams, tricks, bubbles, the pay-off) ---------- */
 // the two rams with their lamps, and the two plungers
 function tthFinDrawRams(st) {
-  const ph = st.ph, tp = ph.top, F = TTHFINC, K = TTHFIN.smash, y = tthFinLY(4);
+  const ph = st.ph, tp = ph.top, F = TTHFINC, K = TTHFIN.smash, y = tthFinLY(TTHFIN_N);
   if (!tp || tp.rise <= 0) return;
   const armed = tp.state === 'armed' && ph.stage === 'top', ch = tp.state === 'charge' ? clamp(tp.charge / K.charge, 0, 1) : armed ? 1 : 0, blink = Math.sin(G.clock * 16) > 0;
   ctx.save(); ctx.beginPath(); ctx.rect(TTHFIN.x0, y - 300, TTHFIN.x1 - TTHFIN.x0, 300); ctx.clip(); ctx.translate(0, (1 - tp.rise) * 130);
@@ -1134,7 +1244,7 @@ function tthFinDrawRams(st) {
 }
 // dents and plasters on the machine after each hit; the wreck after the last one
 function tthFinDrawDamage(st) {
-  const ph = st.ph, tp = ph.top, c = st.thief, F = TTHFINC, y = tthFinLY(4);
+  const ph = st.ph, tp = ph.top, c = st.thief, F = TTHFINC, y = tthFinLY(TTHFIN_N);
   if (!tp) return;
   if (ph.stage === 'top' && tp.hits > 0 && c.jet && !c.hidden) {
     const s = c.s, bx = c.x, by = c.y + Math.sin(c.t * 3) * 4 * s;
@@ -1179,7 +1289,7 @@ function tthFinDrawBubbles(st) {
   }
 }
 function tthFinDrawTricks(st) {
-  const ph = st.ph, tp = ph.top, F = TTHFINC, y = tthFinLY(4), C0 = TTHFIN.cog;
+  const ph = st.ph, tp = ph.top, F = TTHFINC, y = tthFinLY(TTHFIN_N), C0 = TTHFIN.cog;
   for (const d of ph.debris) {
     const a = clamp((d.life - d.t) / 0.3, 0, 1);
     ctx.save(); ctx.globalAlpha = a; ctx.translate(d.x, d.y); ctx.rotate(d.rot);
@@ -1205,13 +1315,13 @@ function tthFinDrawTricks(st) {
 }
 // the pay-off: 8 little portals named after their eras, and the 8 things flying home
 function tthFinDrawHome(st) {
-  const ph = st.ph, f = ph.fin, big = tthBig();
+  const ph = st.ph, f = ph.home, big = tthBig();
   if (!f) return;
   for (let i = 0; i < f.open.length; i++) {
     if (f.open[i] <= 0.01) continue;
     const P = tthFinPortalAt(st, i), era = TTH_ERAS[TTH_ORDER[i]], fs = big ? 15 : 12;
     tthDrawPortal(P.x, P.y, 26 + f.lit[i] * 3 * Math.sin(G.clock * 6), G.clock + i * 0.7, { open: f.open[i], col: era.col });
-    ctx.save(); ctx.globalAlpha = f.open[i];
+    ctx.save(); ctx.globalAlpha = Math.min(1, f.open[i] * 1.6);
     ctx.font = tthFont(fs); const tw = ctx.measureText(TTHFIN_HOME[i][1]).width + 14;
     ctx.fillStyle = f.lit[i] > 0 ? 'rgba(255,243,196,0.95)' : 'rgba(30,20,66,0.85)'; rr(P.x - tw / 2, P.y + 34, tw, fs + 8, (fs + 8) / 2); ctx.fill();
     text(TTHFIN_HOME[i][1], P.x, P.y + 34 + (fs + 8) / 2 + 0.5, fs, f.lit[i] > 0 ? C.ink : '#ffffff', 'center', 'body');
@@ -1225,7 +1335,7 @@ function tthFinDrawHome(st) {
   }
   for (const it of f.items) {
     if (it.s !== 1 && it.s !== 2) continue;
-    const u = it.s === 2 ? clamp(it.ft / TTHFIN.fin.fly, 0, 1) : 0, sc = (it.s === 1 ? 0.95 : 0.95 - 0.5 * u) * (big ? 1.15 : 1);
+    const u = it.s === 2 ? clamp(it.ft / TTHFIN.home.fly, 0, 1) : 0, sc = (it.s === 1 ? 0.95 : 0.95 - 0.5 * u) * (big ? 1.15 : 1);
     ctx.save(); ctx.globalAlpha = 0.35; ctx.fillStyle = '#fff3c4'; circle(it.x, it.y, 22 * sc + Math.sin(G.clock * 9 + it.i) * 2); ctx.fill(); ctx.restore();
     tthDrawLoot(it.kind, it.x, it.y, sc, G.clock + it.i);
   }
@@ -1251,7 +1361,7 @@ function tthFinDrawTop(st) {
     ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.ellipse(x - 10, y - 12, 6, 3.2, -0.6, 0, Math.PI * 2); ctx.fill();
     tthClockFace(x + 15, y - 17, 7, G.clock * 4, { speed: 6, lw: 1.5 });
   }
-  if (ph.rw) {
+  if (ph.rw && !ph.rw.soft) {
     const u = clamp(ph.rw.t / TTHFIN.rewind.t, 0, 1);
     tthScreen(st, () => {
       ctx.save(); ctx.globalAlpha = 0.2 * (1 - u); ctx.fillStyle = '#b28dff'; ctx.fillRect(0, 0, W, H);
@@ -1280,11 +1390,11 @@ function tthFinHud(st) {
     ctx.strokeStyle = F.red; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r + 3, -Math.PI / 2 + K.hand.warnK * Math.PI * 2, Math.PI * 1.5); ctx.stroke();
     ctx.strokeStyle = C.ink; ctx.lineWidth = 4; ctx.lineCap = 'round'; tthFinLine(x, y, x + Math.sin(k * Math.PI * 2) * r * 0.82, y - Math.cos(k * Math.PI * 2) * r * 0.82);
     ctx.fillStyle = C.ink; circle(x, y, 4); ctx.fill();
-    const word = hd.spin > 0 ? 'Rewind!' : stuck ? 'Stuck!' : ph.stage === 'lift' ? 'Stopped' : ph.braking ? 'Braked!' : warn ? 'Nearly 12!' : 'Rewind at 12';
+    const word = hd.spin > 0 ? 'Rewind!' : ph.kick ? 'It kicks!' : stuck ? 'Stuck!' : ph.stage === 'lift' ? 'Stopped' : ph.braking ? 'Braked!' : warn ? 'Nearly 12!' : 'Rewind at 12';
     const fs = big ? 17 : 12; ctx.font = tthFont(fs); const tw = ctx.measureText(word).width + 16;
     pill(x, y + r + 12, tw, fs + 10, 'center'); text(word, x, y + r + 12 + (fs + 10) / 2 + 0.5, fs, stuck ? C.gold : col, 'center', 'body');
   } else if (ph.stage === 'top' && ph.top) {
-    const tp = ph.top, n = K.smash.hits, fs = big ? 18 : 13, gap = big ? 34 : 26;
+    const tp = ph.top, n = K.smash.hits, fs = big ? 18 : 13, gap = big ? 27 : 22, y = big ? 400 : 392;   // (below the little portals)
     pill(x, y - (big ? 34 : 28), big ? 112 : 88, big ? 96 : 76, 'center');
     text('Smash it!', x, y - (big ? 16 : 14), fs, '#ffffff', 'center', 'body');
     for (let i = 0; i < n; i++) {
@@ -1309,8 +1419,8 @@ TTH_PHASES.finale = {
     return { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump, ' + job(0), bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump, ' + job(1),
       pad: 'stick or d-pad move, <span data-glyph="a"></span> jump; ' + (top ? 'at a plunger, together:' : 'hold at the lever, or press at the button:') };
   },
-  hudText(st) { const ph = st.ph; return ph.stage === 'fin' ? 'Smashed!' : ph.stage === 'top' ? 'Hits ' + (ph.top ? ph.top.hits : 0) + '/' + TTHFIN.smash.hits : 'Ledge ' + ph.k + '/4'; },
-  progress(st) { const ph = st.ph; return { n: (ph.k || 0) + (ph.top ? ph.top.hits : 0), of: 4 + TTHFIN.smash.hits }; },
+  hudText(st) { const ph = st.ph; return ph.stage === 'fin' ? 'Smashed!' : ph.stage === 'top' ? 'Hits ' + (ph.top ? ph.top.hits : 0) + '/' + TTHFIN.smash.hits : 'Ledge ' + ph.k + '/' + TTHFIN_N; },
+  progress(st) { const ph = st.ph; return { n: (ph.k || 0) + (ph.top ? ph.top.hits : 0), of: TTHFIN_N + TTHFIN.smash.hits }; },
   drawBack(st) { tthFinDrawBack(st); },
   draw(st) { tthFinDraw(st); },
   drawTop(st) { tthFinDrawTop(st); },
@@ -1327,6 +1437,8 @@ Sfx.extra.tthFinBtn = function () { this.tone(520, 0.06, 'square', 0.04); this.t
 Sfx.extra.tthFinLift = function () { this.tone(110, 0.7, 'sawtooth', 0.018, 220); this.tone(330, 0.5, 'sine', 0.02, 660, 0.05); };
 Sfx.extra.tthFinDong = function () { this.tone(196, 0.9, 'sine', 0.07, 190); this.tone(392, 0.7, 'triangle', 0.035, 380, 0.01); this.tone(588, 0.5, 'sine', 0.02, null, 0.02); };
 Sfx.extra.tthFinRewind = function () { for (let k = 0; k < 7; k++) this.tone(1500 * Math.pow(0.84, k), 0.09, 'triangle', 0.035, 1800 * Math.pow(0.84, k), k * 0.08); };
+Sfx.extra.tthFinKickWarn = function () { for (let k = 0; k < 5; k++) this.tone(300 + k * 90, 0.07, 'square', 0.03, null, k * 0.16); };
+Sfx.extra.tthFinKick = function () { this.tone(160, 0.16, 'sawtooth', 0.06, 60); this.tone(900, 0.06, 'square', 0.03, 400, 0.01); };
 Sfx.extra.tthFinBub = function () { this.tone(500, 0.2, 'sine', 0.035, 1100); this.tone(900, 0.12, 'sine', 0.02, 1500, 0.08); };
 Sfx.extra.tthFinPop = function () { this.tone(1300, 0.05, 'sine', 0.04, 500); this.tone(700, 0.08, 'triangle', 0.025, 300, 0.03); };
 Sfx.extra.tthFinLedge = function () { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.13, 'triangle', 0.05, null, i * 0.07)); };

@@ -18,6 +18,9 @@
    - LASSO: both hold away from him (right) on the ground near the stone.
    - THE LINTEL: each takes one gold ring (two computers: the left one takes the left ring; with a person: the ring
      the person is not at) and holds the action.
+   - WALKING: it runs to a thing and takes the last 80 px in short careful steps (a person lines up with a log or a
+     ring like that; a run that brakes exactly on the spot would be a frame-perfect trick). Its answer always says
+     left and right, pressed or not.
    - It never clears alone: the stone only moves for the pusher and only rolls on the roller's logs, the tug and the
      lintel need both, and the core brain mutes it while the person is away.
    - Bubbles (1-player only, short): "Push the stone!", "Keep holding!", "Brake it from the front!", "A log in front,
@@ -26,17 +29,27 @@ const tthHengeBrainX = p => cpuCx(p) + G.mst.cam.x;
 const tthHengeBrainFeet = p => cpuFeet(p) + G.mst.cam.y;
 // true once `on` has been true for `delay` s (a human-like reaction time)
 function tthHengeBrainSeen(b, key, on, delay) { const s = b.seen || (b.seen = {}); s[key] = on ? (s[key] || 0) + DT : 0; return s[key] >= delay; }
-// walk to x (the centre of the player); an end of the stone in the way: a held (full) jump up onto it
-function tthHengeBrainGo(b, out, p, ph, x, dead = 6) {
-  const S = ph.stone, cam = G.mst.cam.x, cx = cpuCx(p) + cam, d = x - cx, rear = S.x - S.hw, front = S.x + S.hw;
+// walk to x (the centre of the player); an end of the stone in the way: a held (full) jump up onto it.
+// care: the last 80 px in short careful steps, like a person lining up with a log or a ring (a run that brakes on the
+// spot is a frame-perfect trick, and it never settles for a player whose hands are half a second late)
+function tthHengeBrainGo(b, out, p, ph, x, dead = 6, care = true) {
+  const S = ph.stone, cam = G.mst.cam.x, cx = cpuCx(p) + cam, d = x - cx, ad = Math.abs(d), rear = S.x - S.hw, front = S.x + S.hw;
   if (b.jumpCd > 0) b.jumpCd -= DT;
-  if (Math.abs(d) <= 70) cpuSeek(out, p, x - cam, dead); else { out.right = d > 0; out.left = d < 0; }
-  if (!S.up && Math.abs(d) > dead) {
-    const wallR = d > 0 && cx < rear && x > rear - 2 && rear - (cx + p.w / 2) < 24, wallL = d < 0 && cx > front && x < front + 2 && cx - p.w / 2 - front < 24;
-    if ((wallR || wallL) && p.grounded && !(b.jumpT > 0) && !(b.jumpCd > 0)) b.jumpT = 0.34;
+  out.left = out.right = false;
+  const wallR = !S.up && d > 0 && cx < rear && x > rear - 2, wallL = !S.up && d < 0 && cx > front && x < front + 2;
+  if (ad > (care ? 80 : 70) || ((wallR || wallL) && ad > dead)) { out.right = d > 0; out.left = d < 0; b.stepT = 0; }
+  else if (!care || !p.grounded || b.jumpT > 0) cpuSeek(out, p, x - cam, dead);
+  else if (ad > dead) {
+    b.stepT = (b.stepT || 0) - DT;
+    if (b.stepT <= -0.2) b.stepT = clamp(Math.sqrt(ad / 2300) * 0.85, 0.02, 0.1);
+    if (b.stepT > 0) { out.right = d > 0; out.left = d < 0; }
+  }
+  if (ad > dead) {
+    const nearR = wallR && rear - (cx + p.w / 2) < 24, nearL = wallL && cx - p.w / 2 - front < 24;
+    if ((nearR || nearL) && p.grounded && !(b.jumpT > 0) && !(b.jumpCd > 0)) b.jumpT = 0.34;
   }
   if (b.jumpT > 0) { b.jumpT -= DT; out.jump = true; if (b.jumpT <= 0) b.jumpCd = 0.14; }
-  return Math.abs(d) <= dead;
+  return ad <= dead;
 }
 // which gold ring is mine (0 left, 1 right)
 function tthHengeBrainRing(b, p, o, info, ph) {
@@ -82,12 +95,12 @@ function tthHengeBrainPusher(b, p, o, dt, info, S, out) {
   const down = St.grade === -1 && !tow;
   if (down) {
     if (cx > front - 2 && !P.on) { out.left = true; out.right = false; }
-    else tthHengeBrainGo(b, out, p, ph, front + p.w / 2 + 6, 3);
+    else tthHengeBrainGo(b, out, p, ph, front + p.w / 2 + 6, 3, false);
     return out;
   }
   // everywhere else (and for the tug of war): push from behind
   if (cx < rear + 2 && !P.on) { out.right = true; out.left = false; }
-  else tthHengeBrainGo(b, out, p, ph, rear - p.w / 2 - 6, 3);
+  else tthHengeBrainGo(b, out, p, ph, rear - p.w / 2 - 6, 3, false);
   // a person at the logs who needs a nudge
   if (solo && !info.partnerCpu) {
     if (tow && !ph.P[o.id].haul && tthHengeBrainSeen(b, 'lazyTow', true, 1.2)) tthBrainSay(b, p, 'haul', 'Haul with me!', 5);
@@ -141,7 +154,7 @@ function tthHengeBrainRoller(b, p, o, dt, info, S, out) {
       return out;
     }
     if (P.on && cx > front - K.log.topDrop + 14) { tap(); out.right = cx < front - 16; return out; }
-    tthHengeBrainGo(b, out, p, ph, front - 22, 10);
+    tthHengeBrainGo(b, out, p, ph, front - 22, 10, false);
     return out;
   }
   b.forBrook = false;
@@ -184,10 +197,10 @@ function tthHengeBrainRoller(b, p, o, dt, info, S, out) {
   return out;
 }
 TTH_BRAINS.henge = {
-  reset(b) { b.seen = {}; b.ring = null; b.jumpT = 0; b.jumpCd = 0; b.forBrook = false; },
+  reset(b) { b.seen = {}; b.ring = null; b.jumpT = 0; b.jumpCd = 0; b.stepT = 0; b.forBrook = false; },
   back(b) { b.seen = {}; b.jumpT = 0; },
   think(b, p, o, dt, info, S) {
-    const ph = S.ph, out = {};
+    const ph = S.ph, out = { left: false, right: false };   // (always say both: "no key" is an answer too)
     if (!ph || !ph.stone || !p.alive) return out;
     if (ph.fin.stage > 0) return tthHengeBrainFinale(b, p, o, info, S, out);
     return p.id === ph.pusher ? tthHengeBrainPusher(b, p, o, dt, info, S, out) : tthHengeBrainRoller(b, p, o, dt, info, S, out);
