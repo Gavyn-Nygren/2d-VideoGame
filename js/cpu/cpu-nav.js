@@ -82,7 +82,7 @@ function navSim(opts, p, s, mv, jumpHeld, dt) {
   s.g = false;
   for (let tx = tx1; tx <= tx2; tx++) {
     const ch = tile(tx, gy);
-    if (navSolid(opts, ch, p) || (ch === '=' && s.dropT <= 0 && by <= gtop + 0.5)) { s.g = true; break; }
+    if (navSolid(opts, ch, p) || (ch === '=' && s.dropT <= 0 && by <= gtop + 0.5 && s.vy >= 0)) { s.g = true; break; } // (as probe(): not while rising)
   }
 }
 // The steering one kind of move uses, shared by the map builder and the follower so both do exactly the same thing.
@@ -253,7 +253,8 @@ function cpuNav(st, p, x, feetY, opts = {}) {
   N.status = 'moving';
   const e = N.cur, a = g.cells[e.from], b = g.cells[e.to], dir = Math.sign(b.tx - a.tx), cx = cpuCx(p), ax = navCellX(a.tx);
   // stuck (a partner in the way, a moving thing): hop
-  N.stuckT = Math.abs(cx - N.lastX) < 0.3 && (e.kind === 'walk' || e.kind === 'off') ? N.stuckT + dt : 0; N.lastX = cx;
+  const still = Math.abs(cx - N.lastX) < 0.3;
+  N.stuckT = still && (e.kind === 'walk' || e.kind === 'off') ? N.stuckT + dt : 0; N.lastX = cx;
   if (N.stuckT > 0.9) { N.stuckT = 0; N.cur = null; N.plan = null; out.jump = !CPU.last[p.id].jump; N.hop = true; out.left = dir < 0; out.right = dir > 0; return out; }
   if (e.kind === 'walk' || e.kind === 'off') {
     out.left = dir < 0; out.right = dir > 0;
@@ -277,7 +278,14 @@ function cpuNav(st, p, x, feetY, opts = {}) {
     return out;
   }
   // jump / high: stand still on the take-off point, then jump
-  if (!cpuSteer(out, p, ax, 2.5) || Math.abs(p.vx) > 25) { if (Math.abs(cx - ax) <= 2.5) out.left = out.right = false; return out; }
+  if (!cpuSteer(out, p, ax, 2.5) || Math.abs(p.vx) > 25) {
+    if (Math.abs(cx - ax) <= 2.5) out.left = out.right = false;
+    // the partner stands on the take-off point (both want the same jump): after a moment, jump from here instead of
+    // pushing against each other for good
+    N.blockT = still && Math.abs(cx - ax) > 2.5 && navPartnerAhead(p, Math.sign(ax - cx)) ? (N.blockT || 0) + dt : 0;
+    if (N.blockT < 0.4) return out;
+  }
+  N.blockT = 0;
   out.left = out.right = false;
   if (CPU.last[p.id].jump) return out; // let go first so the press counts
   out.jump = true;

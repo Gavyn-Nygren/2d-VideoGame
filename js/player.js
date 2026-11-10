@@ -116,7 +116,7 @@ function probe(p) {
     const ch = tile(tx, ty);
     if (solidFor(ch, p)) r.tile = true;
     // (not while rising: jumping up through a plank is not standing on it, and used to allow a second jump there)
-    else if (ch === '=' && p.dropT <= 0 && by <= top + 0.5) { r.tile = true; r.oneway = true; }
+    else if (ch === '=' && p.dropT <= 0 && by <= top + 0.5 && p.vy >= 0) { r.tile = true; r.oneway = true; }
   }
   const o = other(p);
   // (someone coming down hard onto a head isn't standing on it yet: that's a stomp or a landing)

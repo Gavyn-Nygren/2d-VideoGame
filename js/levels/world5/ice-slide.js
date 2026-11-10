@@ -372,7 +372,7 @@
           try { control(p, dt); } finally { p.input = inp; }
           continue;
         }
-        s.walk = 0;
+        s.walk = 0; p.jumpBuf = 0; // (a jump pressed during the slide must not fire as a hop on the snow)
         p.dropT -= dt; p.offT -= dt; p.stun = 0;
         if (s.mode === 'rest' && !locked) {
           p.vx = 0;
