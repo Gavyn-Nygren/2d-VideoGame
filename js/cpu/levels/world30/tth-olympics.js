@@ -6,6 +6,7 @@
    lane, the hook, the swinging wreath, the Thief's lane arrow, the gold help that was announced.
    - DRIVER. For each lane it works out the free run: how far the chariot can go before something solid (amphora,
      hurdle, landed or falling gear, a discus rolling at it, a rival chariot and the lane that rival points to).
+     It sees what is on screen, plus what a "!" at the edge announces (a discus, a one-way row).
      Its goal lane is the next olive branch's lane (the Thief's lane in the tease). If its own lane's free run is
      short it leaves for the better neighbour; else it steps toward the goal when that neighbour is clear; mud is
      dodged when that costs nothing. Like a hand on a stick: 0.14 s to react, one lane press at a time, 0.22 s apart.
@@ -31,7 +32,7 @@ function tthOlyBrainDrive(b, p, dt, info, S, solo) {
   const run = [9999, 9999, 9999], soft = [9999, 9999, 9999];
   const block = (l, d) => { if (l >= 0 && l <= 2 && d < run[l]) run[l] = d; };
   for (const o of ph.obs) {
-    if (o.dead || o.x > edge + (o.kind === 'disc' ? 260 : 0)) continue;
+    if (o.dead || o.x > edge + (o.kind === 'disc' ? 260 : o.warn ? v * K.rowWarn : 0)) continue;   // (a "!" at the edge announces these early)
     if (o.kind === 'amph' || o.kind === 'hurdle' || o.kind === 'gear') {
       if (o.x + o.r < back) continue;
       const d = Math.max(0, o.x - o.r - front);
@@ -54,14 +55,24 @@ function tthOlyBrainDrive(b, p, dt, info, S, solo) {
   let goal = cur;
   if (ts) goal = clamp(ts.lane + (ts.tell > 0 && ts.tell < 0.45 ? ts.dir : 0), 0, 2);
   else if (br && ph.mode === 'chase') goal = ph.gold.long && Math.abs(br.lane - cur) <= 1 && run[cur] > br.x - front + 200 ? cur : br.lane;
-  const need = v * 0.62 + 90;
+  const need = v * 0.62 + 90, need2 = v * 0.95 + 90, sg = Math.sign(goal - cur || 1);
+  // the lane to escape to: the longest free run (toward the goal on a tie); a lane two away only if the lane between
+  // stays clear long enough to cross it
+  const pick = () => {
+    let best = cur, bs = run[cur] + 40;
+    for (const l of [cur + sg, cur - sg, cur + 2 * sg, cur - 2 * sg]) {
+      if (l < 0 || l > 2) continue;
+      const far = Math.abs(l - cur) === 2;
+      if (far && run[(l + cur) / 2] < v * 0.3 + 30) continue;
+      const sc = run[l] - (far ? 90 : 0);
+      if (sc > bs + (best !== cur ? 60 : 0)) { best = l; bs = sc; }
+    }
+    return best;
+  };
   let want = cur;
-  if (run[cur] < need) {
-    // something ahead in my lane: the neighbour with the longer free run (toward the goal on a tie)
-    let best = cur, bestRun = run[cur] + 40;
-    for (const l of [cur + Math.sign(goal - cur || 1), cur - Math.sign(goal - cur || 1)]) if (l >= 0 && l <= 2 && run[l] > bestRun + (best !== cur ? 60 : 0)) { best = l; bestRun = run[l]; }
-    want = best;
-  } else if (goal !== cur) {
+  if (run[cur] < need) want = cur + Math.sign(pick() - cur);            // something ahead in my lane
+  else if (run[cur] < need2 && Math.abs(pick() - cur) === 2) want = cur + Math.sign(pick() - cur);   // two lanes to cross: start early
+  else if (goal !== cur) {
     const step = cur + Math.sign(goal - cur);
     if (run[step] >= need) want = step;
   } else if (soft[cur] < need && !(br && br.lane === cur && br.x - front < soft[cur] + 260)) {

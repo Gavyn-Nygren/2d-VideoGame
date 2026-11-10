@@ -6,35 +6,38 @@
    20 July 1969. Pip and Bo ride the lunar lander Eagle down from orbit to the Moon; the screen scrolls DOWN. The Time
    Thief has pinched the Moon flag and races them down in his jet machine to plant HIS clock flag first. Both sit in
    the lander's two windows (hide() is true: the era draws them with tthDrawHero; p.x / p.y stay on their seats).
-   The course is built fresh every start (tthMoonBuild, all randomness through tthRand): 3 stretches, about 8100 px.
+   The course is built fresh every start (tthMoonBuild, all randomness through tthRand): 3 stretches, about 8300 px
+   from orbit to the ground. A computer pair takes about 2:15, a good pair of people 2-3 minutes.
 
    THE TWO JOBS (they swap at both hover beacons: each player flies and fuels; room field `first` flies first)
    - The PILOT flies. Left / right fire the side jets (free), up (the jump button; the action button does the same,
-     so touch players never need two arrows at once) burns the main engine to slow the fall. The engine only burns
-     from the small READY tank (TTHMOON.ready.cap = 3.2 s of burn). Empty = it sputters and the lander just falls.
-     Low gravity (g 70 px/s2, engine 190): floaty, sideways speed carries on, so steer and burn in turns.
+     so touch players steer with one thumb and burn with the other) burns the main engine to slow the fall. The
+     engine only burns from the small READY tank (TTHMOON.ready.cap = 3.2 s of burn). Empty = it sputters and the
+     lander just falls. Low gravity (g 70 px/s2, engine 190): floaty; sideways speed fades slowly (drag 0.9 / s).
    - The ENGINEER "watches the fuel". The action PUMPS: one stroke moves 1 s of fuel from the two side pods into the
-     ready tank (a stroke takes 0.3 s, so a steady rhythm of about one press a second keeps the engine fed; mashing
+     ready tank (a stroke takes 0.3 s, so a steady rhythm of about one press every 2-3 s keeps the engine fed; mashing
      gains nothing). Pumping while the ready tube is in its red top (less than 0.45 s of room) SPILLS 0.6 s of fuel.
-     The pods are not enough: the Thief fumbles spare FUEL CELLS (one about every 4.6 s, 2.5 s of fuel each) that float
-     in the lander's way down. Left / right swing the grabber arm on the roof; when a cell is at the claw (it lights
-     up, "GRAB!") the action grabs it instead of pumping. The arm only reaches about 120 px, so the engineer needs the
-     pilot to fly close and slow, and the pilot needs the engineer's fuel to slow at all.
-   - A cell goes into the pod on the arm's side (left grab = left pod; each pod holds 5.5 s). The pump always draws
+     The pods are not enough: the Thief fumbles spare FUEL CELLS (one about every 4.6 s, 3 s of fuel each) that float
+     a little beside the lander's way down (100-185 px off the line to the next gap). Left / right swing the grabber
+     arm on the roof; when a cell is at the claw (it lights up, "GRAB!") the action grabs it instead of pumping. The
+     arm only reaches about 120 px, so the engineer needs the pilot to fly close and slow, and the pilot needs the
+     engineer's fuel to slow at all.
+   - A cell goes into the pod on the arm's side (left grab = left pod; each pod holds 6 s). The pump always draws
      from the heavier pod. A lopsided lander (a difference of more than half a cell) TILTS, and a tilted engine pushes
-     it sideways; more than 1.3 cells of difference is too lopsided to land ("Lopsided!").
+     it sideways; more than 1.3 cells of difference is too lopsided to land ("Lopsided!"). New cells mostly appear on
+     the lighter pod's side.
    - Nothing needs more than about 2 presses a second, never two directions at once.
 
    THE THREE STRETCHES
-   1 High orbit      rows of drifting rocks and old satellites with one wide gap each (the first two rows are half
+   1 High orbit      7 rows of drifting rocks and old satellites with one wide gap each (the first two rows are half
                      rows, to learn to burn). The Thief nudges a rock into a gap now and then (see below).
-   2 Crater canyon   crater walls with narrow passes between wide chambers (the shelves above a pass are safe to rest
-                     on). Dust GEYSERS blow across 4 of the 8 passes: the vent glows and puffs for 1 s (the telegraph),
-                     blows for 1.1 s, then rests 3 s. Hover above (that costs fuel: teamwork) and drop through
-                     while it rests. A blast tosses the lander back up: "Whoosh!".
-   3 Boulder field   bigger boulders, narrower gaps, more nudges, then the LANDING PAD on the ground: touch down on the
-                     pad at 75 px/s or slower, not sliding (60 px/s) and level. Too fast, off the pad or lopsided =
-                     a floaty bounce back up ("Too fast!", "Missed the pad!", "Lopsided!") to try again.
+   2 Crater canyon   crater walls with 7 narrow passes between wide chambers (the shelves above a pass are safe to
+                     rest on). Dust GEYSERS blow across 3 of the passes: the vent glows and puffs for 1 s (the
+                     telegraph), blows for 1.1 s, then rests 3 s. Hover above (that costs fuel: teamwork) and drop
+                     through while it rests. A blast tosses the lander back up: "Whoosh!".
+   3 Boulder field   6 rows of bigger boulders, narrower gaps, more nudges, then the LANDING PAD on the ground: touch
+                     down on the pad at 75 px/s or slower, not sliding (60 px/s) and level. Too fast, off the pad or
+                     lopsided = a floaty bounce back up ("Too fast!", "Missed the pad!", "Lopsided!") to try again.
    Between the stretches a HOVER BEACON (the checkpoint and the breather): fly through its ring slowly (under
    60 px/s for 0.8 s; the ring fills). The lander docks for 2.6 s, the pods are topped up to half, and the jobs swap
    ("Swap jobs!"). Falling past the ring to the red line under it = "Too fast!" and a pop-back to 240 px above it.
@@ -44,6 +47,8 @@
      are free: the lander may slide along walls and rest on top of things (it sticks there until the pilot steers).
    - A geyser blast, a missed beacon, a bad landing: see above. After any bump the lander is safe for 1.4 s.
    - Running dry is not a fail by itself, the lander just falls; see the gold cell below.
+   - Thrills: free fall goes up to 215 px/s (speed streaks from 125); skimming a rock at more than 95 px/s without
+     touching it pops a "Close!"; bonks, blasts and the touchdown shake the screen (not with reduced motion).
 
    THE THIEF is on screen all the way, a little ahead and below (pinned near the bottom of the screen, so he is
    "always just ahead"; the race bar on the right shows the same: rubber-banded, a good landing always wins). He
@@ -58,52 +63,62 @@
 
    GOLD HELP (always announced with tthHelp, never hidden)
    - 3 spills: "Gold safety valve" (the pump just clunks when the ready tube is full; nothing spills any more).
-   - 4 fuel cells floated past while the pods had room: "Gold magnet claw" (reach 72 px instead of 40).
+   - 4 fuel cells floated past while the tanks were low (under 5 s in all): "Gold magnet claw" (reach 72 px, not 40).
    - Both tanks empty for 2.2 s: the Thief tosses a GOLD fuel cell that floats along right beside the arm until it
-     is grabbed (2.5 s into each pod). It still needs the engineer's arm and button, so nobody is carried.
+     is grabbed (3 s into each pod). It still needs the engineer's arm and button, so nobody is carried.
    - 4 bonks (rocks / walls) in one stretch: "Gold bumpers" (bumps only count above 150 px/s and bounce less).
-   - 3 geyser blasts: "Sleepy geysers" (they rest 5 s). 2 missed beacons: its beam widens (zone 150 x 110, 115 px/s).
-   - 2 bad landings: a wider gold pad (300 px) and 100 px/s is slow enough; 4: 125 px/s and lopsided is forgiven.
+   - 3 geyser blasts: "Sleepy geysers" (they rest 5 s).
+   - 2 missed beacons: "Gold beam" (zone 150 x 110, 115 px/s). 4 misses: the "Gold tractor beam": the pop-back is
+     only 150 px up, the beam lets the lander sink slowly to the ring and holds it there, and the ring fills while
+     the engine BURNS (so it still takes the pilot's button and the engineer's fuel).
+   - 2 bad landings: a wider gold pad (300 px), 100 px/s is slow enough, a lower bounce; 4: "Gold landing legs": 125 px/s,
+     sliding and lopsided are forgiven and the bounce is small (95 px/s), so the next touch on the pad settles.
 
    FAIRNESS
    - An idle partner stalls everything: without the engineer the ready tank is empty in a second (it starts at
-     0.9 s), without the pilot nothing slows or steers the lander. Both beacons and the landing need a slow lander,
-     which needs the engine: free fall from any pop-back is always too fast (checked for the gold limits too), and
-     the flag needs both players' buttons. While nobody plays (st.idle) an autopilot holds the lander still.
+     0.9 s), without the pilot nothing slows or steers the lander. Both beacons need a slow lander, which needs the
+     engine: free fall from the pop-back is always too fast (for the gold beam too), the tractor beam only fills
+     while the engine burns, and the flag needs both players' buttons (tools/w30/moon-alone.js checks lazy partners
+     who keep pressing the wrong things). While nobody plays (st.idle) an autopilot holds the lander still.
    - Every hazard shows at least 0.9 s before it can hit; rocks and walls are in view about 3 s ahead (the lander
      sits high on the screen, TTHMOON.camY). Gaps are at least 2.4 lander-widths wide; successive gaps are at most
      250 px apart sideways. Fuel cells never appear inside rocks, walls, a beacon's zone or near the ground.
-   - Supply follows time, not distance (a cell every 4.6 s of flying against about 1.9 s of burn needed), so a slow
+   - Supply follows time, not distance (a cell every 4.6 s of flying against about 1.7 s of burn needed), so a slow
      pair is not starved. Free fall is capped at 215 px/s.
    - Facts in the news line / taunts: 20 July 1969; the lander was called Eagle and landed with about 25 s of fuel
      left (the time pill counts this lander's fuel in seconds, and the landing news compares); the Moon's gravity is
-     one sixth of Earth's.
+     one sixth of Earth's; twelve people have walked on the Moon.
+   Tuning (bots, tools/w30/moon-all.js): computer pair 2:12-2:19 with no bumps and no gold help; a clumsy partner
+   2:25-2:50; a young kid (0.5 s late) 2:35-4:35; an idle partner never ends it.
    Stats (tthStats(st), plain JSON): t [stretch times], cells, missed, pumps, spills, tries (landing bounces),
-   fuel (s left at touchdown), gold [help keys]. Every top-level name starts with tthMoon / TTHMOON, sounds with
-   Sfx.extra.tthMoon. All state lives in st.ph (fresh every start). Brain: js/cpu/levels/world30/tth-moon.js. */
+   fuel (s left at touchdown), close (near misses), gold [help keys]. Every top-level name starts with tthMoon / TTHMOON, sounds with
+   Sfx.extra.tthMoon. All state lives in st.ph (fresh every start). Brain: js/cpu/levels/world30/tth-moon.js.
+   Tests: tools/w30/moon-all.js (the bot matrix), moon-keys.js (real keyboard, controllers, touch), moon-alone.js,
+   moon-trace.js (a flight log), moon-foot.js, moon-dbg.js. */
 const TTHMOON = {
   // the lander (px, s): gravity, main engine, side jets, sideways drag (per s, only while not steering), speed caps
-  g: 70, thrust: 190, side: 240, drag: 0.5, maxVx: 180, maxFall: 215, maxRise: 140,
+  g: 70, thrust: 190, side: 240, drag: 0.9, maxVx: 180, maxFall: 215, maxRise: 140,
   r: 42, foot: 46, camY: 205, xMin: 62, xMax: W - 62, startY: 205,
-  bumpV: 105, bounceV: 95, softBumpV: 150, softBounceV: 55, goldBumps: 4,
+  bumpV: 105, bounceV: 95, softBumpV: 150, softBounceV: 55, goldBumps: 4, close: 95, streakV: 125,
   seat: [{ x: -19, y: -9 }, { x: 19, y: -9 }], seatS: 0.82,
   // fuel, in seconds of burn
   ready: { cap: 3.2, start: 0.9, stroke: 1, strokeT: 0.3, full: 0.45, spill: 0.6, goldSpills: 3 },
-  pod: { cap: 5.5, start: 2.75, beacon: 2.75, cell: 2.5, dead: 0.5, tilt: 0.11 },
-  cell: { fuel: 2.5, every: 4.6, first: 2.4, max: 3, flyT: 0.75, goldMiss: 4, dryT: 2.2 },
+  pod: { cap: 6, start: 3, beacon: 3, cell: 3, dead: 0.5, tilt: 0.11 },
+  cell: { fuel: 3, every: 4.6, first: 2.4, max: 3, flyT: 0.75, goldMiss: 4, missFuel: 5, dryT: 2.2, off: [100, 185] },
   arm: { len: 84, reach: 40, goldReach: 72, swing: 2.7, max: 1.95, pivotY: -52 },
   // the course: per stretch the number of rows / passes, the px between them, gap width first -> last, sideways shift
   stretch: [
-    { name: 'High orbit', rows: 8, gap: 290, w: [320, 285], shift: [120, 250], lead: 440, nudgeEvery: 3 },
-    { name: 'Crater canyon', rows: 8, gap: 300, w: [250, 220], shift: [110, 230], lead: 280, geysers: [2, 4, 6, 7] },
+    { name: 'High orbit', rows: 7, gap: 290, w: [320, 285], shift: [120, 250], lead: 440, nudgeEvery: 3 },
+    { name: 'Crater canyon', rows: 7, gap: 300, w: [250, 220], shift: [110, 230], lead: 280, geysers: [2, 4, 6] },
     { name: 'Boulder field', rows: 6, gap: 285, w: [280, 250], shift: [120, 250], lead: 470, nudgeEvery: 2 },
   ],
-  beacon: { after: 400, zoneX: 100, zoneY: 70, v: 60, goldX: 150, goldY: 110, goldV: 115, holdT: 0.8, dockT: 2.6, gate: 185, back: 240, gold: 2 },
+  beacon: { after: 400, zoneX: 100, zoneY: 70, v: 60, goldX: 150, goldY: 110, goldV: 115, holdT: 0.8, dockT: 2.6, gate: 185, back: 240, gold: 2,
+    beam: 4, beamBack: 150, beamV: 42, beamUp: 26 },   // (the gold tractor beam after 4 misses)
   gey: { rest: 3, sleepy: 5, warn: 1, blow: 1.1, firstRest: 1.2, h: 44, range: 520, gold: 3, upV: 125, sideV: 120 },
   nudge: { warn: 0.9, move: 1.2, dx: [60, 0, 50], first: 7, every: [9, 0, 6.5] },
-  land: { after: 560, v: 75, vx: 60, lean: 1.3, padW: 190, goldW: 300, goldV: 100, gold2V: 125, bounce: 170, hop: 120, gold: 2, gold2: 4 },
+  land: { after: 560, v: 75, vx: 60, lean: 1.3, padW: 190, goldW: 300, goldV: 100, gold2V: 125, bounce: 170, hop: 120, goldBounce: 125, gold2Bounce: 95, gold: 2, gold2: 4 },
   groundH: 64,
-  foot: { g: 380, run: 140, acc: 700, jump: 330, plantR: 58, plantT: 1.3 },
+  walk: { g: 380, run: 140, acc: 700, jump: 330, plantR: 58, plantT: 1.3 },
   thief: { s: 0.62, sy: 498 },
   bot: { cruise: 104, pass: 88, cell: 52 },   // the brain's speeds (px/s): open sky, through a gap, beside a fuel cell
 };
@@ -176,7 +191,7 @@ function tthMoonBuild(ph) {
   // 1: high orbit
   for (let i = 0; i < S[0].rows; i++, y += S[0].gap) { gx = tthMoonNextGap(gx, S[0].shift, 230, W - 230); tthMoonRow(ph, 0, i, y, gx, width(0, i)); }
   y += K.beacon.after - S[0].gap;
-  ph.beacons.push({ i: 0, x: W / 2, y, got: false, p: 0, misses: 0, gold: false });
+  ph.beacons.push({ i: 0, x: W / 2, y, got: false, p: 0, misses: 0, gold: false, beam: false });
   // 2: the crater canyon: two wall lines (x as a function of y) with narrow passes
   const mouth = y + 300, wl = ph.wall[0], wr = ph.wall[1];
   let cl = 60 + R() * 50, cr = W - 60 - R() * 50;
@@ -195,7 +210,7 @@ function tthMoonBuild(ph) {
   y -= S[1].gap;
   wl.push(cl - 10, y + 190, -70, y + 330); wr.push(cr + 10, y + 190, W + 70, y + 330);
   y += 330 + 200;
-  ph.beacons.push({ i: 1, x: W / 2, y, got: false, p: 0, misses: 0, gold: false });
+  ph.beacons.push({ i: 1, x: W / 2, y, got: false, p: 0, misses: 0, gold: false, beam: false });
   // 3: the boulder field, then the ground and the pad
   y += S[2].lead; gx = W / 2;
   for (let i = 0; i < S[2].rows; i++, y += S[2].gap) { gx = tthMoonNextGap(gx, S[2].shift, 220, W - 220); tthMoonRow(ph, 2, i, y, gx, width(2, i)); }
@@ -242,7 +257,7 @@ function tthMoonSetup(st, Lv) {
   tthMoonBuild(ph);
   st.cam = { x: 0, y: clamp(ph.L.y - K.camY, 0, ph.camMax) };
   Object.assign(c, { x: W - 150, y: st.cam.y + K.thief.sy, s: K.thief.s, face: -1, pose: 'idle', mood: 'smug', baseMood: 'smug', jet: true, item: st.era.loot, claw: 0.3, hidden: false, alpha: 1, flame: 1 });
-  Object.assign(tthStats(st), { t: [], cells: 0, missed: 0, pumps: 0, spills: 0, tries: 0, fuel: 0, gold: [] });
+  Object.assign(tthStats(st), { t: [], cells: 0, missed: 0, pumps: 0, spills: 0, tries: 0, fuel: 0, close: 0, gold: [] });
   tthMoonArm(ph);
   tthMoonSeats(st, true);
 }
@@ -295,6 +310,9 @@ function tthMoonCollide(st) {
     if (dy > 140 || dy < -140) continue;
     const dx = L.x - o.x, d = Math.hypot(dx, dy), min = r + o.r;
     if (d < min && d > 0.01) tthMoonHit(st, dx / d, dy / d, min - d, o.k);
+    else if (d < min + 9 && L.vy > K.close && st.teamSafe <= 0 && tthMoonOnce(ph, 'close', 5)) {   // a fast near miss
+      tthPop(st, L.x, L.y - 70, 'Close!', '#ffd23f', 20); Sfx.play('tthMoonClose'); tthStats(st).close = (tthStats(st).close || 0) + 1;
+    }
     if (o.k === 'sat') {   // its solar panels: a thick line
       const cx = clamp(L.x, o.x - o.pan, o.x + o.pan), ex = L.x - cx, ey = L.y - o.y, e = Math.hypot(ex, ey);
       if (e < r + 8 && e > 0.01) tthMoonHit(st, ex / e, ey / e, r + 8 - e, 'sat');
@@ -391,7 +409,7 @@ function tthMoonEngineer(st, dt, eng, idle) {
     best.got = true; A.grabT = 0.4; s.cells++;
     if (best.gold) { F.pod[0] = Math.min(K.pod.cap, F.pod[0] + K.cell.fuel); F.pod[1] = Math.min(K.pod.cap, F.pod[1] + K.cell.fuel); }
     else { let k = A.a < 0 ? 0 : 1; if (F.pod[k] > K.pod.cap - 0.6) k = 1 - k; F.pod[k] = Math.min(K.pod.cap, F.pod[k] + K.cell.fuel); }
-    tthPop(st, best.x, best.y - 16, '+' + (best.gold ? 5 : K.cell.fuel) + ' s', best.gold ? C.gold : '#9fe07f', 20);
+    tthPop(st, best.x, best.y - 16, '+' + (best.gold ? 2 * K.cell.fuel : K.cell.fuel) + ' s', best.gold ? C.gold : '#9fe07f', 20);
     burst(best.x, best.y, best.gold ? C.gold : '#9fe07f', 8); Sfx.play('tthMoonGrab', eng.id); rumble(eng.id, 0.3, 0.4, 100);
     ph.dryT = 0;
     return;
@@ -414,8 +432,20 @@ function tthMoonEngineer(st, dt, eng, idle) {
   const amt = Math.min(K.ready.stroke, pods, room);
   take(amt); F.ready += amt; Sfx.play('tthMoonPump', eng.id);
 }
-// where a new fuel cell may float: ahead of the lander, off to one side, clear of rocks, walls, beacons and the ground
-function tthMoonCellSpot(st, gold) {
+// where the lander's way down runs at height y: straight lines from the lander through the gaps still ahead
+function tthMoonPathX(ph, y) {
+  const L = ph.L;
+  let x0 = L.x, y0 = L.y;
+  for (const g of ph.gates) {
+    if (g.y <= L.y) continue;
+    if (y <= g.y) return x0 + (g.x - x0) * clamp((y - y0) / Math.max(1, g.y - y0), 0, 1);
+    x0 = g.x; y0 = g.y;
+  }
+  return x0;
+}
+// where a new fuel cell may float: ahead of the lander, a little beside its way down (so a small detour brings the arm
+// to it), clear of rocks, walls, beacons and the ground
+function tthMoonCellSpot(st) {
   const K = TTHMOON, ph = st.ph, L = ph.L, R = tthRand;
   let y = st.cam.y + H - 50 - R() * 70;
   for (const g of ph.gates) if (y > g.top - 40 && y < g.bot + 40) { y = g.bot + 46; break; }
@@ -427,11 +457,11 @@ function tthMoonCellSpot(st, gold) {
   const lean = tthMoonLean(ph);
   let side = R() < 0.5 ? -1 : 1;
   if (Math.abs(lean) > 0.4 && R() < 0.75) side = lean > 0 ? -1 : 1;
-  let x = L.x + side * (135 + R() * 105);
-  if (wl > 0 || wr < W) x = side < 0 ? lo + R() * 40 : hi - R() * 40;   // in the canyon: by a chamber wall
-  if (x < lo || x > hi) x = L.x - side * (135 + R() * 105);
+  const px = tthMoonPathX(ph, y), off = K.cell.off[0] + R() * (K.cell.off[1] - K.cell.off[0]);
+  let x = px + side * off;
+  if (x < lo || x > hi) x = px - side * off;
   x = clamp(x, lo, hi);
-  if (Math.abs(x - L.x) < 110) return null;
+  if (Math.abs(x - px) < 70 || Math.abs(x - L.x) < 60) return null;
   for (const o of ph.obs) if (Math.abs(o.y - y) < o.r + 40 && Math.abs(o.hx - x) < (o.pan || o.r) + 44) return null;
   return { x, y };
 }
@@ -478,8 +508,8 @@ function tthMoonCells(st, dt) {
       q.x = q.x0 + (q.tx - q.x0) * e; q.y = q.y0 + (q.ty - q.y0) * e - Math.sin(q.u * Math.PI) * 60;
     } else if (q.gold) { q.x += (q.tx - q.x) * Math.min(1, 7 * dt); q.y += (q.ty - q.y) * Math.min(1, 7 * dt); }
     else if (q.y < st.cam.y - 40) {   // it floated off the top: missed
-      if (tthMoonPods(ph) <= 2 * K.pod.cap - 0.6) {
-        s.missed++;
+      s.missed++;
+      if (tthMoonFuel(ph) < K.cell.missFuel) {   // (it only matters when the tanks are low)
         if (++ph.missN === K.cell.goldMiss && !ph.magnet) { ph.magnet = true; tthMoonGold(st, 'magnet', 'Gold magnet claw! The arm grabs from farther away.'); }
         else if (tthMoonFuel(ph) < 4 && tthMoonOnce(ph, 'near', 10)) tthHint(st, ph.pilot, 'Fly close to the fuel cells!', { cpu: 'I\'ll fly closer to the fuel.' });
       }
@@ -556,19 +586,29 @@ function tthMoonBeacon(st, dt) {
   const K = TTHMOON, ph = st.ph, L = ph.L, b = ph.beacons[ph.stretch], B = K.beacon;
   if (!b || b.got) return;
   const zx = b.gold ? B.goldX : B.zoneX, zy = b.gold ? B.goldY : B.zoneY, vmax = b.gold ? B.goldV : B.v;
+  // the gold tractor beam (after 4 misses) holds the lander over the ring: now the ring fills while the engine burns
+  if (b.beam && Math.abs(L.x - b.x) < zx + 30 && L.y > b.y - B.beamBack - 40 && L.y < b.y + B.gate) {
+    L.vy = clamp(L.vy, -B.beamUp, Math.min(B.beamV, Math.max(0, b.y - 8 - L.y) * 3));   // (it sinks to the ring and floats there)
+    if (L.y > b.y - 8) L.y += (b.y - 8 - L.y) * Math.min(1, 1.5 * dt);
+    L.vx *= Math.exp(-2.5 * dt); L.x += (b.x - L.x) * Math.min(1, 0.8 * dt);
+  }
   const inZone = Math.abs(L.x - b.x) < zx && Math.abs(L.y - b.y) < zy, sp = Math.hypot(L.vx, L.vy);
   if (L.y > b.y - 330 && tthMoonOnce(ph, 'beacon' + b.i, 999)) {
     tthNews(st, 'A hover beacon! Fly through the ring slowly.', false, 3.6);
     tthHint(st, ph.pilot, 'Slow down in the ring: ' + tthKey(ph.pilot, 'jump'), { cpu: 'I\'ll hover in the ring.' });
   }
-  if (inZone && sp < vmax && !st.idle) { if (b.p === 0) Sfx.play('tthTick'); b.p += dt / B.holdT; }
+  if (inZone && sp < vmax && !st.idle && (!b.beam || L.burn > 0.5)) { if (b.p === 0) Sfx.play('tthTick'); b.p += dt / B.holdT; }
+  else if (b.beam && inZone) { if (tthMoonOnce(ph, 'beam', 3.5)) tthHint(st, ph.pilot, 'Hold ' + tthKey(ph.pilot, 'jump') + ' in the gold beam!', { cpu: 'Burning in the beam!', gold: true }); if (ph.F.ready <= 0 && tthMoonOnce(ph, 'beamPump', 3.5)) tthHint(st, 1 - ph.pilot, 'Pump! The engine needs fuel', { cpu: 'Pumping!' }); }
   else b.p = Math.max(0, b.p - dt * 1.6);
   if (b.p >= 1) { tthMoonDockStart(st, b); return; }
   if (L.y > b.y + B.gate) {   // fell past it: back above the ring
-    L.y = b.y - B.back; L.x = b.x; L.vx = 0; L.vy = 0; b.p = 0; L.dizzy = 0.8;
+    b.misses++;
+    if (b.misses >= B.beam) b.beam = true;
+    L.y = b.y - (b.beam ? B.beamBack : B.back); L.x = b.x; L.vx = 0; L.vy = 0; b.p = 0; L.dizzy = 0.8;
     tthBump(st, { word: 'Too fast!', x: L.x, y: L.y - 70, kind: 'beacon' });
     Sfx.play('tthMoonBounce');
-    if (++b.misses === B.gold && !b.gold) { b.gold = true; tthMoonGold(st, 'beacon', 'Gold beam! The beacon catches you more easily.', { id: ph.pilot, hint: tthMoonSolo(ph.pilot) ? null : 'Burn with ' + tthKey(ph.pilot, 'jump') + ' before the ring!' }); }
+    if (b.misses === B.beam) tthMoonGold(st, 'beam', 'Gold tractor beam! Hold burn in the beam to dock.', { id: ph.pilot, hint: tthMoonSolo(ph.pilot) ? null : 'Hold ' + tthKey(ph.pilot, 'jump') + ' in the gold beam!' });
+    else if (b.misses === B.gold && !b.gold) { b.gold = true; tthMoonGold(st, 'beacon', 'Gold beam! The beacon catches you more easily.', { id: ph.pilot, hint: tthMoonSolo(ph.pilot) ? null : 'Burn with ' + tthKey(ph.pilot, 'jump') + ' before the ring!' }); }
     else tthHint(st, ph.pilot, 'Burn before the ring: hold ' + tthKey(ph.pilot, 'jump'), { cpu: 'Too fast! I\'ll burn sooner.' });
     if (tthMoonFuel(ph) < 1.5) tthHint(st, 1 - ph.pilot, 'Pump! The engine needs fuel', { cpu: 'I need fuel cells!' });
   }
@@ -614,16 +654,16 @@ function tthMoonLanding(st) {
   if (L.y + K.foot < ph.ground) return;
   L.y = ph.ground - K.foot;
   const g = ph.land.gold, vmax = g >= 2 ? D.gold2V : g ? D.goldV : D.v, lean = tthMoonLean(ph);
-  const onPad = Math.abs(L.x - pad.x) <= pad.w / 2 - 26, fast = L.vy > vmax || Math.abs(L.vx) > D.vx * (g ? 1.5 : 1), lop = Math.abs(lean) > D.lean && g < 2;
+  const onPad = Math.abs(L.x - pad.x) <= pad.w / 2 - 26, fast = L.vy > vmax || (g < 2 && Math.abs(L.vx) > D.vx * (g ? 1.5 : 1)), lop = Math.abs(lean) > D.lean && g < 2;
   if (onPad && !fast && !lop) { tthMoonTouchdown(st); return; }
   const word = fast ? 'Too fast!' : !onPad ? 'Missed the pad!' : 'Lopsided!';
-  L.vy = -(fast || lop ? D.bounce : D.hop); L.vx *= 0.5; L.dizzy = 0.8;
+  L.vy = -(g >= 2 ? D.gold2Bounce : g ? Math.min(D.goldBounce, D.hop) : fast || lop ? D.bounce : D.hop); L.vx *= 0.5; L.dizzy = 0.8;
   puff(L.x - 40, ph.ground, 6, 'rgba(200,204,220,0.85)'); puff(L.x + 40, ph.ground, 6, 'rgba(200,204,220,0.85)');
   Sfx.play('tthMoonBounce');
   if (!tthBump(st, { word, x: L.x, y: L.y - 70, kind: 'landing', safe: 1 })) return;
   ph.land.tries++; s.tries = ph.land.tries;
   if (ph.land.tries === D.gold) { ph.land.gold = 1; pad.w = D.goldW; tthMoonGold(st, 'pad', 'A wider gold pad! A little faster is fine now.'); }
-  else if (ph.land.tries === D.gold2) { ph.land.gold = 2; tthMoonGold(st, 'pad2', 'Gold landing legs! They take a harder bump.'); }
+  else if (ph.land.tries === D.gold2) { ph.land.gold = 2; tthMoonGold(st, 'pad2', 'Gold landing legs! They take a much harder bump.'); }
   if (fast) tthHint(st, ph.pilot, 'Slower! Burn just before the ground: ' + tthKey(ph.pilot, 'jump'), { cpu: 'Too fast! Once more, slower.' });
   else if (!onPad) tthHint(st, ph.pilot, 'Steer over the pad: ' + tthKey(ph.pilot, 'move'), { cpu: 'Missed! Back to the pad.' });
   else tthHint(st, 1 - ph.pilot, 'Lopsided! Pump from the heavy pod', { cpu: 'Levelling the pods!' });
@@ -685,7 +725,7 @@ function tthMoonDownStep(st, dt) {
 
 /* ---------- on foot: moon hops and the flag ---------- */
 function tthMoonWalk(ph, p, dt, inp) {
-  const K = TTHMOON.foot, dir = inp ? (inp.right ? 1 : 0) - (inp.left ? 1 : 0) : 0;
+  const K = TTHMOON.walk, dir = inp ? (inp.right ? 1 : 0) - (inp.left ? 1 : 0) : 0;
   p.vx = approach(p.vx, dir * K.run, (p.grounded ? K.acc : K.acc * 0.45) * dt);
   if (dir) p.face = dir;
   if (inp && p.grounded && tthUp(p)) { p.vy = -K.jump; p.grounded = false; p.sx = 0.82; p.sy = 1.22; Sfx.play('tthMoonHop', p.id); }
@@ -700,7 +740,7 @@ function tthMoonWalk(ph, p, dt, inp) {
   p.tileGround = p.grounded; p.onPartner = false; p.alive = true;
 }
 function tthMoonFootStep(st, dt) {
-  const K = TTHMOON.foot, ph = st.ph, f = ph.flag, ps = G.players, idle = !!st.idle;
+  const K = TTHMOON.walk, ph = st.ph, f = ph.flag, ps = G.players, idle = !!st.idle;
   tthMoonAfter(st, dt);
   for (const p of ps) tthMoonWalk(ph, p, dt, idle ? null : p.input);
   if (ph.mode === 'planted') {   // a happy moment, then the Thief sulks off
@@ -803,7 +843,7 @@ function tthMoonCoast(st, dt) {
   if (ph.down) tthMoonAfter(st, dt);
   for (const p of G.players) {
     tthMoonWalk(ph, p, dt, null);
-    if (p.grounded && (ph.hopT[p.id] -= dt) <= 0) { ph.hopT[p.id] = 0.6; p.vy = -TTHMOON.foot.jump * 0.75; p.grounded = false; p.sx = 0.82; p.sy = 1.22; }
+    if (p.grounded && (ph.hopT[p.id] -= dt) <= 0) { ph.hopT[p.id] = 0.6; p.vy = -TTHMOON.walk.jump * 0.75; p.grounded = false; p.sx = 0.82; p.sy = 1.22; }
     p.face = st.thief.x > p.x ? 1 : -1;
   }
 }
@@ -836,13 +876,13 @@ function tthMoonDrawSky(st) {
   // the Moon far below: a curved limb in orbit that flattens into hills as we come down
   const base = tthMoonLerp(H - 26, H - 150, k), R = tthMoonLerp(900, 26000, Math.min(1, k * 2.6)), hill = 30 * clamp((k - 0.25) / 0.5, 0, 1);
   const top = x => base + (x - W / 2) * (x - W / 2) / (2 * R) - hill * (Math.sin(x * 0.011 + 1) * 0.6 + Math.sin(x * 0.027) * 0.4);
-  ctx.fillStyle = '#4c5069'; ctx.beginPath(); ctx.moveTo(0, H);
+  ctx.fillStyle = '#2a2f55'; ctx.beginPath(); ctx.moveTo(0, H);
   for (let x = 0; x <= W; x += 24) ctx.lineTo(x, top(x));
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#7a7f9a'; ctx.lineWidth = 3; ctx.beginPath();
+  ctx.strokeStyle = '#4b5285'; ctx.lineWidth = 3; ctx.beginPath();
   for (let x = 0; x <= W; x += 24) { if (x) ctx.lineTo(x, top(x)); else ctx.moveTo(x, top(x)); }
   ctx.stroke();
-  ctx.fillStyle = 'rgba(40,43,64,0.55)';
+  ctx.fillStyle = 'rgba(20,22,52,0.5)';
   for (let i = 0; i < 9; i++) { const h = hash(i, 17), x = 40 + (h % (W - 80)), y = top(x) + 22 + ((h >>> 9) % 70), w = 16 + ((h >>> 5) % 30); if (y < H + 10) { ctx.beginPath(); ctx.ellipse(x, y, w, w * 0.3, 0, 0, 6.3); ctx.fill(); } }
 }
 function tthMoonDrawRock(o) {
@@ -927,6 +967,16 @@ function tthMoonDrawBeacon(b, front, ph) {
   const K = TTHMOON.beacon, t = G.clock, rx = (b.gold ? K.goldX : K.zoneX) + 14, ry = 30, col = b.got ? '#9fe07f' : b.gold ? C.gold : '#7fe9ff';
   ctx.lineCap = 'round';
   if (!front) {
+    // the gold tractor beam (after 4 misses): a tall soft column with sparks drifting up
+    if (b.beam && !b.got) {
+      const bw = K.goldX + 30, y0 = b.y - K.beamBack - 40, hh = b.y + 30 - y0;
+      const gr = ctx.createLinearGradient(0, y0, 0, y0 + hh);
+      gr.addColorStop(0, 'rgba(255,197,61,0)'); gr.addColorStop(0.35, 'rgba(255,197,61,0.2)'); gr.addColorStop(1, 'rgba(255,220,120,0.36)');
+      ctx.fillStyle = gr;
+      for (const k of [1, 0.55]) { ctx.beginPath(); ctx.moveTo(b.x - bw * 0.7 * k, y0); ctx.lineTo(b.x + bw * 0.7 * k, y0); ctx.lineTo(b.x + bw * k, y0 + hh); ctx.lineTo(b.x - bw * k, y0 + hh); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = 'rgba(255,243,196,0.85)';
+      for (let i = 0; i < 9; i++) { const u = (t * 0.4 + i / 9) % 1; circle(b.x + Math.sin(i * 2.4) * bw * 0.85, b.y + 24 - u * hh, 2.6); ctx.fill(); }
+    }
     // the red line under it: falling past is too fast
     if (!b.got) { ctx.strokeStyle = 'rgba(255,95,109,0.5)'; ctx.lineWidth = 3; ctx.setLineDash([10, 12]); ctx.beginPath(); ctx.moveTo(0, b.y + K.gate); ctx.lineTo(W, b.y + K.gate); ctx.stroke(); ctx.setLineDash([]); }
     ctx.fillStyle = b.got ? 'rgba(159,224,127,0.10)' : 'rgba(127,233,255,0.10)'; ctx.beginPath(); ctx.ellipse(b.x, b.y, rx, ry, 0, 0, 6.3); ctx.fill();
@@ -948,7 +998,7 @@ function tthMoonDrawBeacon(b, front, ph) {
   for (let i = 0; i < 6; i++) { const a = (i / 6 + t * 0.25) % 1 * Math.PI; circle(b.x + Math.cos(a) * rx, b.y + Math.sin(a) * ry, 3); ctx.fill(); }
   if (!b.got) {
     if (b.p > 0) { ctx.strokeStyle = C.gold; ctx.lineWidth = 7; ctx.beginPath(); ctx.ellipse(b.x, b.y, rx, ry, 0, Math.PI * (1 - b.p), Math.PI); ctx.stroke(); }
-    else if (Math.abs(ph.L.y - b.y) > 60) text('HOVER HERE', b.x, b.y + ry + 22, tthBig() ? 20 : 15, col, 'center', 'body');
+    else if (Math.abs(ph.L.y - b.y) > 60 || b.beam) text(b.beam ? 'HOLD BURN' : 'HOVER HERE', b.x, b.y + ry + 22, tthBig() ? 20 : 15, col, 'center', 'body');
   }
 }
 function tthMoonDrawGround(st) {
@@ -973,7 +1023,16 @@ function tthMoonDrawGround(st) {
 }
 function tthMoonDrawBack(st) {
   const ph = st.ph, y0 = st.cam.y - 120, y1 = st.cam.y + H + 120;
-  tthScreen(st, () => tthMoonDrawSky(st));
+  tthScreen(st, () => {
+    tthMoonDrawSky(st);
+    // falling fast: speed streaks
+    const v = ph.L.vy, K = TTHMOON;
+    if (ph.mode === 'fly' && v > K.streakV && !reduceMotion) {
+      ctx.strokeStyle = 'rgba(255,255,255,' + (clamp((v - K.streakV) / 90, 0, 1) * 0.45).toFixed(2) + ')'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath();
+      for (let i = 0; i < 10; i++) { const h = hash(i, 33), x = 30 + (h % (W - 60)), y = H + 40 - ((G.clock * (480 + ((h >>> 8) % 300)) + ((h >>> 4) % H)) % (H + 100)); ctx.moveTo(x, y); ctx.lineTo(x, y + 24 + ((h >>> 12) % 30)); }
+      ctx.stroke();
+    }
+  });
   tthMoonDrawGround(st);
   tthMoonDrawWalls(st);
   for (const g of ph.gates) if (g.gey && g.y > y0 && g.y < y1) tthMoonDrawGeyser(g);
@@ -1112,7 +1171,7 @@ function tthMoonDraw(st) {
   }
 }
 function tthMoonDrawTop(st) {
-  const ph = st.ph, f = ph.flag, K = TTHMOON.foot;
+  const ph = st.ph, f = ph.flag, K = TTHMOON.walk;
   if (ph.mode !== 'foot' || f.state !== 'down') return;
   // where to stand, and the ring that fills while both hold the action
   const y = ph.ground, t = G.clock;
@@ -1181,6 +1240,12 @@ function tthMoonHud(st) {
 }
 
 /* ---------- the phase ---------- */
+// the top-bar legend while flying: the pilot's keys and the engineer's
+function tthMoonLegend(pilot) {
+  const fly = k => (k ? '<kbd>←</kbd><kbd>→</kbd> side jets <kbd>↑</kbd> burn' : '<kbd>A</kbd><kbd>D</kbd> side jets <kbd>W</kbd> burn');
+  const fuel = k => (k ? '<kbd>←</kbd><kbd>→</kbd> aim the arm' : '<kbd>A</kbd><kbd>D</kbd> aim the arm');
+  return { pip: pilot === 0 ? fly(0) : fuel(0), bo: pilot === 1 ? fly(1) : fuel(1), padJump: 'burn (pilot)', padDown: 'left / right: side jets or the arm' };
+}
 TTH_PHASES.moon = {
   setup(st, Lv) { tthMoonSetup(st, Lv); },
   step(st, dt) { tthMoonStep(st, dt); },
@@ -1192,9 +1257,7 @@ TTH_PHASES.moon = {
   legend(st) {
     const ph = st.ph;
     if (!tthMoonRiding(ph)) return { pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> moon hop', bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> moon hop', padJump: 'moon hop', padDown: 'both hold the action at the flag' };
-    const fly = k => (k ? '<kbd>←</kbd><kbd>→</kbd> side jets <kbd>↑</kbd> burn' : '<kbd>A</kbd><kbd>D</kbd> side jets <kbd>W</kbd> burn');
-    const fuel = k => (k ? '<kbd>←</kbd><kbd>→</kbd> aim the arm' : '<kbd>A</kbd><kbd>D</kbd> aim the arm');
-    return { pip: ph.pilot === 0 ? fly(0) : fuel(0), bo: ph.pilot === 1 ? fly(1) : fuel(1), padJump: 'burn (pilot)', padDown: 'left / right: side jets or the arm' };
+    return tthMoonLegend(ph.pilot);
   },
   hudText(st) { const ph = st.ph; return tthMoonRiding(ph) ? 'Fuel ' + Math.round(tthMoonFuel(ph)) + ' s' : 'Plant the flag!'; },
   progress(st) { const ph = st.ph; return { n: Math.min(3, ph.stretch + (ph.mode === 'fly' || ph.mode === 'dock' ? 0 : 1)), of: 3 }; },
@@ -1215,6 +1278,7 @@ Sfx.extra.tthMoonSpill = function () { this.tone(700, 0.2, 'sawtooth', 0.02, 240
 Sfx.extra.tthMoonGrab = function (p) { [660, 880, 1320].forEach((f, i) => this.tone(f * p, 0.07, 'triangle', 0.045, null, i * 0.05)); };
 Sfx.extra.tthMoonToss = function () { this.tone(500, 0.18, 'sine', 0.025, 900); };
 Sfx.extra.tthMoonBonk = function () { this.tone(130, 0.16, 'square', 0.05, 60); this.tone(90, 0.25, 'triangle', 0.05, 45, 0.03); };
+Sfx.extra.tthMoonClose = function () { this.tone(900, 0.07, 'triangle', 0.03, 1500); this.tone(1500, 0.09, 'sine', 0.025, 2100, 0.06); };
 Sfx.extra.tthMoonBounce = function () { this.tone(180, 0.25, 'sine', 0.06, 420); };
 Sfx.extra.tthMoonBoing = function () { this.tone(220, 0.3, 'sine', 0.045, 520); this.tone(330, 0.2, 'triangle', 0.02, 660, 0.05); };
 Sfx.extra.tthMoonRumble = function () { for (let k = 0; k < 5; k++) this.tone(60 + Math.random() * 30, 0.16, 'sawtooth', 0.03, 45, k * 0.18); };
@@ -1227,9 +1291,13 @@ Sfx.extra.tthMoonHop = function (p) { this.tone(240 * p, 0.22, 'sine', 0.04, 520
 Sfx.extra.tthMoonPlant = function () { this.tone(200, 0.12, 'square', 0.05, 120); [784, 988, 1175, 1568].forEach((f, i) => this.tone(f, 0.16, 'triangle', 0.05, null, 0.1 + i * 0.08)); };
 
 /* ---------- the room (this file fills in its own room of the level def) ---------- */
-tthRoom('moon', {
-  act: { label: 'burn', labels: ['burn', 'pump'] },
+const TTHMOON_ROOM = tthRoom('moon', {
   tip: 'Pilot: steer and burn to slow the fall. Engineer: pump fuel and grab fuel cells. Land softly on the pad!',
-  legend: { pip: '<kbd>A</kbd><kbd>D</kbd> side jets <kbd>W</kbd> burn', bo: '<kbd>←</kbd><kbd>→</kbd> aim the arm', padJump: 'burn (pilot)', padDown: 'left / right: side jets or the arm' },
   map: TTH_EMPTY_MAP,
 });
+// (the card and the legend before the first tick: who flies first comes from the room's `first`)
+if (TTHMOON_ROOM) {
+  const tthMoonFirst = TTHMOON_ROOM.first === 1 ? 1 : 0;
+  TTHMOON_ROOM.act = { label: 'burn', labels: tthMoonFirst ? ['pump', 'burn'] : ['burn', 'pump'] };
+  TTHMOON_ROOM.legend = tthMoonLegend(tthMoonFirst);
+}

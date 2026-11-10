@@ -53,9 +53,12 @@
                                                                    wider and a gold arrow shows the way.
      3 ground bumps in one stretch    "Gold feathers!": every beat lifts for longer.
      3 times "Wings tired!"           "Gold beat!": a gold dot on the wing meter lights when to flap; quicker refill.
+     7 times "Wings tired!"           "Gold wings!": the wings never tire again (a too-early press just does nothing),
+                                      so a young kid who mashes the button can fly too.
      2 pigeon bumps                   smaller flocks.
      chase.goldAfter s of chase with the meter under half   a wider gold slipstream that never drains.
-     2 missed dives                   "Gold claw!": the plans case is much easier to grab.
+     2 missed dives                   "Gold claw!": the plans case is much easier to grab; after 4 a bigger gold claw;
+                                      after 6 a "Gold magnet!": flying past him at any height takes the plans.
 
    FAIRNESS. The course has no randomness at all (pigeons come at fixed places); a bump never costs more than a
    few seconds; the Thief always waits on screen; while nobody plays (st.idle) the machine hangs still in the air
@@ -71,17 +74,17 @@ const TTHVINCI = {
   seatX: 250,                                       // where the machine sits on screen (x)
   hw: 28, hh: 12,                                   // the machine's hit box (half sizes): the basket, not the wings
   start: { x: 170, y: 336, x0: 40, x1: 300 },       // Leonardo's workshop roof
-  beat: { push: 62, lift: 0.8, cost: 0.25, regen: 0.56, full: 0.45, min: 0.16, weak: 0.3, tired: 1.2, bob: 46 },
-  drag: 0.5, vMax: 340, climb: 150, dive: 215, sink: 92, flare: 0.45, accY: 560, upSlow: 30, flareSlow: 70, diveAcc: 85, stallV: 110,
+  beat: { push: 56, lift: 0.8, cost: 0.25, regen: 0.56, full: 0.45, min: 0.16, weak: 0.3, tired: 1.2, bob: 46 },
+  drag: 0.5, vMax: 330, climb: 150, dive: 215, sink: 92, flare: 0.45, accY: 560, upSlow: 30, flareSlow: 70, diveAcc: 70, stallV: 110,
   landV: 105, groundPop: 300, groundSlow: 0.62,
   back: 230, backT: 0.45, backV: 130, safe: 0.5,    // the pop-back off a tower
   page: { rx: 44, ry: 40, gap: 250, en: 0.05 },
   up: 135, down: 78,                                // updraft and storm gust (px/s added to the climb / sink)
   flock: { lead: 700, warn: 1.0, v: 150, r: 46, goldR: 30, hw: 64, shoo: 430, cd: 1.0, slow: 0.55 },
   perch: { reach: 430, v: 200, swapAt: 0.35, ready: 1.5 },
-  chase: { near: 70, far: 320, tol: 58, need: 7, drain: 0.05, v: 218, gap: 200, pull: 40, weaveA: 44, weaveT: 3.6, maxVy: 115, open: 4850,
-    diveV: 150, diveY: 372, grab: 46, goldGrab: 80, goldAfter: 24, goldTol: 92 },
-  gold: { hits: 2, shrink: 45, ground: 3, tired: 3, birds: 2, dive: 2 },
+  chase: { near: 70, far: 320, tol: 58, need: 7, drain: 0.05, v: 218, gap: 250, pull: 40, weaveA: 44, weaveT: 3.6, maxVy: 115, open: 7150,
+    diveV: 150, diveY: 345, diveGap: 330, grab: 46, goldGrab: 80, goldGrab2: 130, magnet: 56, goldAfter: 24, goldTol: 92 },
+  gold: { hits: 2, shrink: 45, ground: 3, tired: 3, tired2: 7, birds: 2, dive: 2, dive2: 4, dive3: 6 },
   close: 20, lantern: 28, domeBase: 446,
 };
 /* The hand-made course: three stretches. x is counted from the stretch's start (the tower it took off from).
@@ -97,7 +100,7 @@ const TTHVINCI = {
                                                 through these points, at least 50 px clear of everything
    len: the stretch's length; perch: the top y of the tower it ends on. tools/w30/davinci-course.js checks it. */
 const TTHVINCI_COURSE = [
-  { name: 'The Tuscan hills', len: 8400, perch: 300, items: [
+  { name: 'The Tuscan hills', len: 10200, perch: 300, items: [
     ['way', 170, 322], ['way', 520, 300],
     ['hill', 950, 300, 120], ['way', 950, 268],
     ['way', 1500, 382],
@@ -109,8 +112,10 @@ const TTHVINCI_COURSE = [
     ['tower', 6250, 64, 270, 'castle'], ['way', 6200, 205], ['way', 6300, 205],
     ['cloud', 6900, 260, 250, true], ['way', 6770, 345], ['way', 7030, 345],
     ['tower', 7550, 60, 300, 'castle'], ['way', 7500, 235], ['way', 7600, 235],
-    ['way', 8000, 262] ] },
-  { name: 'The rooftops of Florence', len: 9900, perch: 290, items: [
+    ['up', 8150, 240], ['hill', 8650, 240, 60], ['tower', 8650, 54, 205, 'mill'], ['way', 8600, 142], ['way', 8700, 142],
+    ['birds', 9400, 160], ['way', 9150, 300], ['way', 9600, 300],
+    ['way', 9800, 262] ] },
+  { name: 'The rooftops of Florence', len: 12600, perch: 290, items: [
     ['way', 0, 286], ['way', 420, 270],
     ['tower', 800, 56, 300, 'house'], ['way', 750, 235], ['way', 850, 235],
     ['wash', 1400, 240, 330], ['banner', 1400, 80, 180], ['way', 1290, 255], ['way', 1510, 255],
@@ -121,20 +126,27 @@ const TTHVINCI_COURSE = [
     ['up', 5150, 220], ['dome', 5900, 460, 250], ['way', 5760, 150], ['way', 6040, 150],
     ['banner', 6900, 90, 290], ['way', 6840, 370], ['way', 6960, 370],
     ['tower', 7500, 56, 310, 'house'], ['banner', 7500, 80, 170], ['way', 7450, 240], ['way', 7550, 240],
-    ['birds', 8250, 240], ['way', 8050, 365], ['way', 8400, 365],
-    ['tower', 9000, 56, 280, 'house'], ['way', 8950, 215], ['way', 9050, 215],
-    ['way', 9500, 250] ] },
-  { name: 'The river and the piazza', len: 5200, items: [
+    ['birds', 8250, 365], ['way', 8050, 225], ['way', 8400, 225],
+    ['tower', 9000, 56, 285, 'house'], ['way', 8950, 215], ['way', 9050, 215],
+    ['wash', 9700, 240, 335], ['cloud', 9700, 200, 190], ['way', 9590, 262], ['way', 9810, 262],
+    ['banner', 10350, 90, 285], ['way', 10290, 362], ['way', 10410, 362],
+    ['up', 10750, 200], ['tower', 11150, 56, 215, 'bell'], ['way', 11100, 150], ['way', 11200, 150],
+    ['tower', 11800, 56, 325, 'house'], ['banner', 11800, 80, 185], ['way', 11750, 255], ['way', 11850, 255],
+    ['way', 12200, 250] ] },
+  { name: 'The river and the piazza', len: 7600, items: [
     ['way', 0, 276], ['way', 450, 290], ['way', 1000, 385],
     ['tower', 1700, 60, 315, 'house'], ['way', 1640, 250], ['way', 1760, 250],
     ['way', 2300, 380],
     ['banner', 3000, 90, 240], ['way', 2940, 340], ['way', 3060, 340],
-    ['tower', 3800, 84, 235, 'palace'], ['way', 3740, 170], ['way', 3860, 170],
+    ['tower', 3800, 56, 235, 'bell'], ['way', 3740, 170], ['way', 3860, 170],
     ['banner', 4600, 90, 250], ['way', 4540, 345], ['way', 4660, 345],
-    ['way', 5200, 290] ] },
+    ['tower', 5200, 56, 290, 'house'], ['way', 5150, 225], ['way', 5250, 225],
+    ['cloud', 5900, 280, 230, true], ['way', 5760, 325], ['way', 6040, 325],
+    ['tower', 6700, 84, 240, 'palace'], ['way', 6640, 175], ['way', 6760, 175],
+    ['way', 7600, 290] ] },
 ];
-// stretch 3's ground, from its start: roofs, the river (with the old bridge), then the piazza
-const TTHVINCI_RIVER = { x0: 520, x1: 2700, b0: 1500, b1: 1900 };
+// stretch 3's ground, from its start: roofs, the river (with the old bridge), roofs again, then the piazza (from p0)
+const TTHVINCI_RIVER = { x0: 520, x1: 2700, b0: 1500, b1: 1900, p0: 6100 };
 const tthVinciSolo = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
 
 /* ---------- the course: tokens -> obstacles, air zones, flocks, the trail, pages ---------- */
@@ -186,7 +198,7 @@ function tthVinciLand(c, x) {
   const r = x - c.X[2], R = TTHVINCI_RIVER;
   if (r < R.x0) return 'roofs';
   if (r < R.x1) return r >= R.b0 && r < R.b1 ? 'bridge' : 'water';
-  return 'piazza';
+  return r < R.p0 ? 'roofs' : 'piazza';
 }
 function tthVinciHillY(c, x) {
   let y = TTHVINCI.ground - 5 * Math.sin(x * 0.0045) - 4 * Math.sin(x * 0.0113 + 1);
@@ -270,16 +282,17 @@ Sfx.extra.tthVinciSnatch = function () { [523, 784, 1047, 1319, 1568, 2093].forE
 function tthVinciNewMachine() {
   const K = TTHVINCI;
   return { x: K.start.x, y: K.start.y - K.hh, v: 0, vy: 0, pitch: 0, beatT: 9, wingT: 9, liftT: 0, en: 1, tired: 0, landed: true,
-    bounce: null, safeT: 0, spin: 0, air: 1, has: false, weakT: 0, noLiftT: 0 };
+    bounce: null, safeT: 0, spin: 0, air: 1, has: false, weakT: 0, noLiftT: 0, tail: 0 };
 }
 // both players in their seats (world coords inside the tick; called at the end of every hook that moves the machine)
 function tthVinciSeat(st) {
   const ph = st.ph, g = ph.g, a = g.pitch + g.spin, ca = Math.cos(a), sa = Math.sin(a), k = ph.swapA, e = k * k * (3 - 2 * k);
   for (const p of G.players) {
     const now = p.id === ph.flap ? -13 : 13, was = k < 1 ? -now : now;
-    const lx = was + (now - was) * e, ly = 3 - (k < 1 ? Math.sin(Math.PI * k) * (p.id === ph.flap ? 34 : 16) : 0);
+    const lx = was + (now - was) * e, ly = -4 - (k < 1 ? Math.sin(Math.PI * k) * (p.id === ph.flap ? 34 : 16) : 0);
     ph.seat[p.id].x = lx; ph.seat[p.id].y = ly;
     p.x = g.x + lx * ca - ly * sa - p.w / 2; p.y = g.y + lx * sa + ly * ca - p.h;
+    if (G.introT > 0 && p.id === ph.flap) p.y -= 20;         // (the era card: the two name tags, one over the other)
     p.vx = 0; p.vy = 0; p.alive = true; p.grounded = true; p.face = 1; p.stun = 0; p.sx = 1; p.sy = 1;
   }
 }
@@ -293,11 +306,15 @@ function tthVinciBeat(st, F) {
   if (g.tired > 0) { g.weakT = 0.25; return false; }
   if (g.beatT < B.min) return false;                       // the wing is still on its way down
   if (g.en < B.cost) {
+    if (ph.wingGold) { g.weakT = 0.25; return false; }      // gold wings: a too-early press is only a little flutter
     g.tired = B.tired; g.en = 0; g.weakT = 0.4; s.tired++; ph.tiredN++;
     tthPop(st, g.x, g.y - 64, 'Wings tired!', '#ffb3b3', 20); Sfx.play('tthVinciTired');
     if (ph.tiredN === K.gold.tired && !ph.beatGold) {
       ph.beatGold = true;
       tthHelp(st, 'Gold beat! Flap each time the gold dot lights up.', { id: F.id, hint: 'Slow and steady: flap on the gold dot' });
+    } else if (ph.tiredN === K.gold.tired2 && !ph.wingGold) {
+      ph.wingGold = true; g.tired = 0.5;
+      tthHelp(st, 'Gold wings! They never get tired now.', { id: F.id, hint: 'Just keep flapping!' });
     } else tthVinciTip(st, F.id, 'tired', 'Too fast! Slow, steady beats', { cpu: 'Oops, too fast!' }, 3);
     return false;
   }
@@ -376,13 +393,14 @@ function tthVinciPerch(st, dt) {
   g.v = 0; g.vy = 0; g.landed = true; g.pitch = approach(g.pitch, 0, dt * 2); g.x = P.x; g.y = P.y - K.hh;
   if (P.swap && !P.swapped && P.t >= K.perch.swapAt) {
     P.swapped = true; ph.flap = 1 - ph.flap; ph.swapA = 0;
-    tthSwap(st); tthPop(st, g.x, g.y - 96, 'Swap seats!', C.gold, 24);
+    tthSwap(st);
     if (ph.stage === 1) { tthNews(st, 'True: Leonardo drew flying machines around 1490, 400 years before aeroplanes!', false, 6); tthSay(st, 'Florence! So many towers to bump into!', 2.6); }
     else { tthNews(st, 'True: Leonardo\'s flying machine never really flew... until today!', false, 6); tthSay(st, 'That old thing was never meant to fly!', 2.6); }
   }
   if (ph.swapA < 1) ph.swapA = Math.min(1, ph.swapA + dt / 0.8);
   const F = G.players[ph.flap], S = G.players[1 - ph.flap];
-  if (P.t < (P.swap ? K.perch.ready : 0.15)) return;
+  S.pendingAct = false;
+  if (P.t < (P.swap ? K.perch.ready : 0.15)) { F.pendingAct = false; return; }
   P.ready = true;
   if (ph.stage === 0 && !ph.said.hello) { ph.said.hello = true; tthSay(st, 'Leonardo\'s plans are MINE now! Ha ha!', 2.8); tthNews(st, 'Leonardo: "My plans! Take my flying machine and catch him!"', false, 5); }
   tthVinciTip(st, F.id, 'go', 'Tap ' + tthKey(F.id, 'act') + ' to flap the wings!', { cpu: 'I flap the wings!' }, 5);
@@ -434,10 +452,18 @@ function tthVinciFly(st, dt) {
   g.liftT = Math.max(0, g.liftT - dt);
   const up = tthUp(S), dn = S.input.down, steer = up && !dn ? -1 : dn && !up ? 1 : 0;
   ph.steer = steer;
+  ph.noSteerT = steer || g.landed ? 0 : ph.noSteerT + dt;
+  if (ph.noSteerT > 4 && !ph.chase) tthVinciTip(st, S.id, 'how', tthKey(S.id, 'up') + ' climbs, ' + tthKey(S.id, 'down') + ' dives: follow the pages!', {}, 7);
   if (g.landed) {
     // on the ground (a soft landing): only a wingbeat takes off again
     const land = tthVinciLand(c, g.x);
-    g.v = approach(g.v, 0, 420 * dt); g.x += g.v * dt; g.vy = 0; g.pitch = approach(g.pitch, 0, dt * 2);
+    g.v = approach(g.v, 0, 420 * dt); g.vy = 0; g.pitch = approach(g.pitch, 0, dt * 2);
+    let nx = g.x + g.v * dt;
+    for (const ob of c.obs) {   // it never slides into the foot of a tower
+      if (ob.x0 > nx + K.hw) break;
+      if (ob.low && ob.x1 > g.x && nx + K.hw > ob.x0 - 2 && tthVinciGap(ob, ob.x0 + 1, g.y) <= 0) { nx = Math.min(nx, Math.max(g.x, ob.x0 - 2 - K.hw)); g.v = 0; }
+    }
+    g.x = nx;
     g.y = Math.min(tthVinciGround(c, g.x - 14), tthVinciGround(c, g.x + 22)) - K.hh;
     tthVinciTip(st, F.id, 'up', (land === 'water' ? 'Afloat! Tap ' : 'Landed! Tap ') + tthKey(F.id, 'act') + ' to flap', { cpu: 'I\'ll flap us up!' }, 4);
     tthVinciAfter(st, dt);
@@ -498,8 +524,36 @@ function tthVinciFly(st, dt) {
 // what happens along the way while flying (and while sitting on the ground): pigeons, pages, the next perch, the chase
 function tthVinciAfter(st, dt) {
   const ph = st.ph, K = TTHVINCI, g = ph.g, c = ph.c, s = tthStats(st);
+  // the pages of the plans
+  ph.streakT = Math.max(0, ph.streakT - dt);
+  if (ph.streakT <= 0) ph.streak = 0;
+  for (let i = ph.pi; i < c.pages.length; i++) {
+    const q = c.pages[i];
+    if (q.x > g.x + 80) break;
+    if (q.x < g.x - 700) { ph.pi = i + 1; continue; }
+    if (q.got || Math.abs(q.x - g.x) > K.page.rx || Math.abs(q.y - g.y + 6) > K.page.ry) continue;
+    q.got = true; ph.got++; s.pages = ph.got; ph.streak++; ph.streakT = 2.2;
+    g.en = Math.min(1, g.en + K.page.en);
+    Sfx.play('tthVinciPage', ph.streak);
+    for (let n = 0; n < 4; n++) tthVinciFxAdd(ph, 'spark', q.x, q.y, Math.cos(n * 1.6 + 0.4) * 90, Math.sin(n * 1.6 + 0.4) * 90, 0.4, n % 2 ? C.gold : '#ffffff');
+    if (ph.streak > 0 && ph.streak % 10 === 0) tthPop(st, q.x + 40, q.y - 84, ph.streak + ' in a row!', C.gold, 17);
+  }
+  // the next tower to land on: the machine glides in by itself
+  const P = ph.stage < 2 ? c.perches[ph.stage] : null;
+  if (P && ph.mode === 'fly' && !g.bounce && g.x >= P.x - K.perch.reach) {
+    ph.mode = 'toPerch';
+    ph.app = { x0: g.x, y0: g.y, x1: P.x, y1: P.y - K.hh, t: 0, T: clamp((P.x - g.x) / K.perch.v, 1.1, 2.6), hop: g.landed ? 1 : 0.3, beat: 0 };
+    g.landed = false; g.bounce = null;
+    tthNews(st, 'Land on the tower with the gold flag!', true, 2.6);
+    return;
+  }
+  if (ph.chase && ph.mode === 'fly') tthVinciChase(st, dt);
+}
+
+// the pigeons (every mode, so a flock never hangs in the air; they only bump a flying machine)
+function tthVinciFlocks(st, dt) {
+  const ph = st.ph, K = TTHVINCI, g = ph.g, c = ph.c;
   ph.shooCd = Math.max(0, ph.shooCd - dt); ph.tootT = Math.max(0, ph.tootT - dt);
-  // pigeons
   for (const f of c.flocks) {
     if (f.state === 0) {
       if (g.x > f.x - K.flock.lead && ph.mode === 'fly' && !tthCalm(st)) {
@@ -517,7 +571,7 @@ function tthVinciAfter(st, dt) {
     f.wx -= K.flock.v * dt;
     if (f.state === 3) { if (f.t > 1.6) f.state = 4; continue; }
     if (f.wx < st.cam.x - 160) { f.state = 4; continue; }
-    if (g.safeT <= 0 && !g.bounce && Math.abs(f.wx - g.x) < K.flock.hw && Math.abs(f.y - g.y) < ph.flockR + K.hh - 4) {
+    if (ph.mode === 'fly' && g.safeT <= 0 && !g.bounce && Math.abs(f.wx - g.x) < K.flock.hw && Math.abs(f.y - g.y) < ph.flockR + K.hh - 4) {
       f.state = 3; f.t = 0;
       tthBump(st, { word: 'Squawk!', x: g.x + 10, y: g.y - 44, kind: 'birds' }); Sfx.play('tthVinciBirds'); Sfx.play('tthVinciCrash');
       tthVinciFeathers(ph, g.x + 20, g.y, 12, '#e9edf5');
@@ -525,36 +579,12 @@ function tthVinciAfter(st, dt) {
       if (++ph.birdHits === K.gold.birds) { ph.flockR = K.flock.goldR; tthHelp(st, 'Gold crumbs! The flocks are smaller now.', {}); }
     }
   }
-  // the pages of the plans
-  ph.streakT = Math.max(0, ph.streakT - dt);
-  if (ph.streakT <= 0) ph.streak = 0;
-  for (let i = ph.pi; i < c.pages.length; i++) {
-    const q = c.pages[i];
-    if (q.x > g.x + 80) break;
-    if (q.x < g.x - 700) { ph.pi = i + 1; continue; }
-    if (q.got || Math.abs(q.x - g.x) > K.page.rx || Math.abs(q.y - g.y + 6) > K.page.ry) continue;
-    q.got = true; ph.got++; s.pages = ph.got; ph.streak++; ph.streakT = 2.2;
-    g.en = Math.min(1, g.en + K.page.en);
-    Sfx.play('tthVinciPage', ph.streak);
-    for (let n = 0; n < 4; n++) tthVinciFxAdd(ph, 'spark', q.x, q.y, Math.cos(n * 1.6 + 0.4) * 90, Math.sin(n * 1.6 + 0.4) * 90, 0.4, n % 2 ? C.gold : '#ffffff');
-    if (ph.streak > 0 && ph.streak % 8 === 0) tthPop(st, q.x, q.y - 24, ph.streak + ' in a row!', C.gold, 17);
-  }
-  // the next tower to land on: the machine glides in by itself
-  const P = ph.stage < 2 ? c.perches[ph.stage] : null;
-  if (P && ph.mode === 'fly' && !g.bounce && g.x >= P.x - K.perch.reach) {
-    ph.mode = 'toPerch';
-    ph.app = { x0: g.x, y0: g.y, x1: P.x, y1: P.y - K.hh, t: 0, T: clamp((P.x - g.x) / K.perch.v, 1.1, 2.6), hop: g.landed ? 1 : 0.3, beat: 0 };
-    g.landed = false; g.bounce = null;
-    tthNews(st, 'Land on the tower with the gold flag!', true, 2.6);
-    return;
-  }
-  if (ph.chase && ph.mode === 'fly') tthVinciChase(st, dt);
 }
 
 /* ---------- stretch 3: the chase, the slipstream and the dive ---------- */
 function tthVinciChaseStart(st) {
   const ph = st.ph, K = TTHVINCI.chase;
-  ph.chase = { phase: 'tail', m: 0, t: 0, in: false, inT: 0, tol: K.tol, far: K.far, miss: 0, grab: K.grab, full: false, gold: false, wt: 0, vx: 0, humT: 0, hum: 0, zip: 0, diveT: 0 };
+  ph.chase = { phase: 'tail', m: 0, t: 0, in: false, inT: 0, tol: K.tol, far: K.far, miss: 0, grab: K.grab, magnet: false, lead: false, full: false, gold: false, wt: 0, vx: 0, humT: 0, hum: 0, zip: 0, diveT: 0 };
   tthSay(st, 'Catch me if you can! Ha ha!', 2.4);
   tthNews(st, 'Stay close behind his jet, in his slipstream!', false, 4.5);
 }
@@ -574,7 +604,8 @@ function tthVinciChase(st, dt) {
     } else {
       if (!ch.full && !ch.gold) ch.m = Math.max(0, ch.m - CH.drain * dt);
       const id = 1 - ph.flap, hi = g.y > wk.y;
-      if (dx > 0 && dx < ch.far + 80 && Math.abs(g.y - wk.y) >= ch.tol) tthVinciTip(st, id, 'tail', (hi ? 'Up' : 'Down') + ' a bit! Get behind his jet', { cpu: 'Getting behind him!' }, 5);
+      if (ch.full) { /* full: nothing to say, just keep up */ }
+      else if (dx > 0 && dx < ch.far + 80 && Math.abs(g.y - wk.y) >= ch.tol) tthVinciTip(st, id, 'tail', (hi ? 'Up' : 'Down') + ' a bit! Get behind his jet', { cpu: 'Getting behind him!' }, 5);
       else if (dx >= ch.far + 80) tthVinciTip(st, ph.flap, 'tailF', 'Keep flapping! Catch up', { cpu: 'Catching up!' }, 6);
     }
     if (!ch.gold && ch.t > CH.goldAfter && ch.m < 0.5) {
@@ -583,7 +614,7 @@ function tthVinciChase(st, dt) {
     }
     if (ch.m >= 1 && !ch.full) { ch.full = true; tthPop(st, g.x, g.y - 70, 'Slipstream full!', C.gold, 22); Sfx.play('tthGold'); if (b.x < ph.c.X[2] + CH.open - 400) tthNews(st, 'Slipstream full! Stay on his tail to the piazza!', true, 4); }
     if (ch.full && b.x > ph.c.X[2] + CH.open && !g.bounce) {
-      ch.phase = 'dive'; ch.diveT = 0; ch.in = false;
+      ch.phase = 'dive'; ch.diveT = 0; ch.in = false; ch.lead = true;
       tthReact(st, 'shocked', 'Uh-oh! My jet is out of puff!', 2.2);
       tthNews(st, 'His jet sputters! Dive under him and grab the plans!', true, 4.5);
       Sfx.play('tthVinciDive');
@@ -595,7 +626,7 @@ function tthVinciChase(st, dt) {
   // the dive: fly through the plans case under his machine
   ch.diveT += dt;
   const cl = tthVinciClaw(st), dx = cl.x - (g.x + 22), dy = cl.y - g.y;
-  if (!ch.zip && dx * dx + dy * dy < ch.grab * ch.grab) { tthVinciSnatch(st); return; }
+  if (!ch.zip && (ch.magnet ? Math.abs(dx) < CH.magnet : dx * dx + dy * dy < ch.grab * ch.grab)) { tthVinciSnatch(st); return; }
   if (!ch.zip && g.x > b.x + 90) tthVinciDiveMiss(st);
   else if (!ch.zip && ch.diveT > 3) tthVinciTip(st, 1 - ph.flap, 'dive', (g.y > cl.y ? 'Up a bit!' : 'Dive! Hold ' + tthKey(1 - ph.flap, 'down')) + ' Fly into the plans', { cpu: 'Going for the plans!' }, 4);
 }
@@ -605,6 +636,8 @@ function tthVinciDiveMiss(st) {
   ch.miss++; ch.zip = 1; ch.diveT = 0; tthStats(st).diveMiss = ch.miss;
   tthReact(st, 'happy', ch.miss % 2 ? 'Ha! Missed me!' : 'Too slow! Ha ha!', 1.8);
   if (ch.miss === K.gold.dive) { ch.grab = K.chase.goldGrab; tthHelp(st, 'Gold claw! The plans are easier to grab now.', { id: 1 - ph.flap, hint: 'Dive under his machine' }); }
+  else if (ch.miss === K.gold.dive2) { ch.grab = K.chase.goldGrab2; tthHelp(st, 'Bigger gold claw! Fly anywhere near the plans.', { id: 1 - ph.flap, hint: 'Fly close to him' }); }
+  else if (ch.miss === K.gold.dive3) { ch.magnet = true; tthHelp(st, 'Gold magnet! Just fly past him: the plans jump over.', { id: ph.flap, hint: 'Flap! Fly past him' }); }
   else tthHint(st, 1 - ph.flap, 'Again! Dive under his machine', { cpu: 'Again!' });
 }
 function tthVinciSnatch(st) {
@@ -653,7 +686,8 @@ function tthVinciThief(st, dt) {
     // the chase: he keeps about chase.gap px ahead and never leaves the screen
     const gap = b.x - g.x, dive = ch.phase === 'dive';
     let vx = dive ? CH.diveV : CH.v;
-    if (ch.zip) { vx = g.v + 300; if (gap > 300) ch.zip = 0; }
+    if (ch.zip) { vx = g.v + 300; if (gap > CH.diveGap) ch.zip = 0; }
+    else if (ch.lead) { vx = g.v + 220; if (gap > CH.diveGap) ch.lead = false; }   // (he pulls ahead first: time to line up the dive)
     else if (dive) { if (gap > 420) vx = 80; }
     else if (g.landed || g.bounce) vx = gap > 330 ? 0 : 90;
     else if (gap > CH.gap + 60) vx = Math.max(50, Math.min(vx, g.v - 60));
@@ -730,7 +764,7 @@ function tthVinciDrawSky(st) {
 /* ---------- drawing: the ground under the machine (world coords) ---------- */
 function tthVinciDrawGround(st) {
   const ph = st.ph, c = ph.c, K = TTHVINCI, CO = TTHVINCI_COL, cam = st.cam.x, x0 = cam - 30, x1 = cam + W + 30, t = G.clock;
-  const hillsEnd = c.X[1] - 200, R = TTHVINCI_RIVER, rv0 = c.X[2] + R.x0, rv1 = c.X[2] + R.x1;
+  const hillsEnd = c.X[1] - 200, R = TTHVINCI_RIVER, rv0 = c.X[2] + R.x0, rv1 = c.X[2] + R.x1, pz0 = c.X[2] + R.p0;
   ctx.lineJoin = 'round';
   // the Tuscan hills
   if (x0 < hillsEnd) {
@@ -757,10 +791,11 @@ function tthVinciDrawGround(st) {
     }
   }
   // the rooftops of Florence
-  const rf0 = Math.max(x0, hillsEnd), rf1 = Math.min(x1, rv0);
-  if (rf0 < rf1) {
+  for (const [lo, hi] of [[hillsEnd, rv0], [rv1, pz0]]) {
+    const rf0 = Math.max(x0, lo), rf1 = Math.min(x1, hi);
+    if (rf0 >= rf1) continue;
     for (let i = Math.floor(rf0 / 96); i * 96 < rf1; i++) {
-      const x = Math.max(i * 96, hillsEnd), xe = Math.min((i + 1) * 96, rv0), y = tthVinciRoof(i * 96), h = hash(i, 9), w = xe - x;
+      const x = Math.max(i * 96, lo), xe = Math.min((i + 1) * 96, hi), y = tthVinciRoof(i * 96), h = hash(i, 9), w = xe - x;
       if (w <= 0) continue;
       ctx.fillStyle = CO.wall[h % 4]; ctx.fillRect(x, y + 10, w, H - y);
       ctx.strokeStyle = 'rgba(28,26,54,0.35)'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y + 10, w, H - y);
@@ -792,8 +827,8 @@ function tthVinciDrawGround(st) {
     }
   }
   // the piazza, with the townsfolk cheering
-  if (x1 > rv1) {
-    const a = Math.max(x0, rv1), cheer = ph.mode === 'won' || (ph.chase && ph.chase.phase === 'dive');
+  if (x1 > pz0) {
+    const a = Math.max(x0, pz0), cheer = ph.mode === 'won' || (ph.chase && ph.chase.phase === 'dive');
     ctx.fillStyle = '#ead8b0'; ctx.fillRect(a, K.ground, x1 - a, H - K.ground + 10);
     ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(a, K.ground); ctx.lineTo(x1, K.ground); ctx.stroke();
     ctx.strokeStyle = 'rgba(138,110,70,0.4)'; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -938,12 +973,15 @@ function tthVinciDrawObs(st) {
       ctx.fillStyle = C.gold; circle(cx, y - K.lantern + 5, 6); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#3d3552'; for (let n = -2; n <= 2; n++) { circle(cx + n * hw * 0.34, base + 22, 9); ctx.fill(); }
     } else if (ob.kind === 'cloud') {
-      const n = Math.max(3, Math.round(w / 52)), r = w / n / 2 + 6, flash = ((t * 0.9 + ob.x0 * 0.01) % 1.7) < 0.12;
-      ctx.fillStyle = flash ? '#8f8cb0' : CO.cloud; ctx.fillRect(x + 6, -10, w - 12, y - r + 10);
-      ctx.beginPath(); ctx.moveTo(x + 6, -10);
-      for (let i = 0; i < n; i++) { const bx = x + r - 6 + i * ((w - 2 * r + 12) / (n - 1)); ctx.arc(bx, y - r, r, Math.PI, 0, true); }
-      ctx.lineTo(x + w - 6, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = CO.cloudDk; ctx.beginPath(); for (let i = 0; i < n; i++) { const bx = x + r - 6 + i * ((w - 2 * r + 12) / (n - 1)); ctx.moveTo(bx + r - 5, y - r + 3); ctx.arc(bx, y - r + 3, r - 5, 0, Math.PI); } ctx.fill();
+      const n = Math.max(3, Math.round(w / 52)), r = (w - 12) / (2 * n), flash = ((t * 0.9 + ob.x0 * 0.01) % 1.7) < 0.12;
+      const xl = x + 6, xr = x + w - 6, yb = y - r, m = Math.max(2, Math.round((yb + 10) / 56)), sh = (yb + 10) / m;
+      ctx.fillStyle = flash ? '#8f8cb0' : CO.cloud;
+      ctx.beginPath(); ctx.moveTo(xl, -10);
+      for (let i = 0; i < m; i++) ctx.quadraticCurveTo(xl - 13, -10 + (i + 0.5) * sh, xl, -10 + (i + 1) * sh);      // puffy sides
+      for (let i = 0; i < n; i++) ctx.arc(xl + r + i * 2 * r, yb, r, Math.PI, 0, true);                             // a scalloped belly
+      for (let i = m - 1; i >= 0; i--) ctx.quadraticCurveTo(xr + 13, -10 + (i + 0.5) * sh, xr, -10 + i * sh);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = CO.cloudDk; ctx.beginPath(); for (let i = 0; i < n; i++) { const bx = xl + r + i * 2 * r; ctx.moveTo(bx + r - 4, yb + 2); ctx.arc(bx, yb + 2, r - 4, 0, Math.PI); } ctx.fill();
       // a grumpy face and a lightning zigzag inside it
       ctx.fillStyle = '#ffffff'; circle(cx - 20, y - r - 26, 8); ctx.fill(); circle(cx + 20, y - r - 26, 8); ctx.fill();
       ctx.fillStyle = C.ink; circle(cx - 18, y - r - 24, 3.5); ctx.fill(); circle(cx + 18, y - r - 24, 3.5); ctx.fill();
@@ -998,3 +1036,258 @@ function tthVinciDrawObs(st) {
     }
   }
 }
+// the pigeons: a red "!" at the right edge at their height, then a loose V flying left; scattered ones fly off
+function tthVinciDrawBirds(st) {
+  const ph = st.ph, K = TTHVINCI, t = G.clock, cam = st.cam.x, z = tthBig() ? 1.3 : 1;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  for (const f of ph.c.flocks) {
+    if (f.state === 0 || f.state >= 4) continue;
+    if (f.state === 1) {
+      const x = cam + W - 30 * z, y = f.y, s = z * (1 + 0.12 * Math.sin(t * 16));
+      ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+      ctx.fillStyle = '#ff5f6d'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(-8, -17); ctx.lineTo(-8, -9); ctx.lineTo(14, -9); ctx.lineTo(14, 9); ctx.lineTo(-8, 9); ctx.lineTo(-8, 17); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      bigText('!', x + 3 * z, y, 22 * z, '#ffffff', 1);
+      continue;
+    }
+    const n = ph.flockR < K.flock.r ? 4 : 7, sc = f.state === 3;
+    for (let i = 0; i < n; i++) {
+      const row = (i + 1) >> 1, side = i % 2 ? 1 : -1;
+      let bx = f.wx + row * 21, by = f.y + (i ? side * row * (ph.flockR / 3.5) : 0) + Math.sin(t * 5 + i * 1.7) * 3, rot = 0;
+      if (sc) { bx += (i - 3) * f.t * 46 + f.t * 90; by -= f.t * (150 + (i % 3) * 50) * (i % 2 ? 1 : 0.5) + f.t * f.t * 40; rot = -0.5; ctx.globalAlpha = clamp(1.6 - f.t, 0, 1); }
+      const wing = Math.sin(t * (sc ? 30 : 17) + i * 2.1);
+      ctx.save(); ctx.translate(bx, by); ctx.rotate(rot);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+      ctx.fillStyle = '#9aa7c2'; ctx.beginPath(); ctx.moveTo(8, -1); ctx.lineTo(19, -4); ctx.lineTo(18, 3); ctx.closePath(); ctx.fill(); ctx.stroke();   // tail
+      ctx.fillStyle = '#b9c4dc'; ctx.beginPath(); ctx.ellipse(0, 0, 11, 6.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#8fd0b4'; circle(-9, -4, 5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffb03a'; ctx.beginPath(); ctx.moveTo(-13, -5); ctx.lineTo(-19, -3); ctx.lineTo(-13, -2); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = C.ink; circle(-10.5, -5, 1.3); ctx.fill();
+      ctx.fillStyle = '#e9edf5'; ctx.beginPath(); ctx.moveTo(-4, -2); ctx.quadraticCurveTo(2, -6 - wing * 15, 10, -3 - wing * 12); ctx.quadraticCurveTo(6, -1, 5, 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+function tthVinciDrawFx(st) {
+  ctx.lineJoin = 'round';
+  for (const q of st.ph.fx) {
+    ctx.globalAlpha = clamp((q.life - q.t) / 0.3, 0, 1);
+    if (q.kind === 'feather') {
+      ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.rot);
+      ctx.fillStyle = q.col; ctx.strokeStyle = 'rgba(28,26,54,0.55)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(0, 0, 8, 3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.stroke();
+      ctx.restore();
+    } else if (q.kind === 'page') {
+      ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.rot);
+      ctx.fillStyle = q.col; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.fillRect(-6, -8, 12, 16); ctx.strokeRect(-6, -8, 12, 16);
+      ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-3, -3); ctx.lineTo(3, -3); ctx.moveTo(-3, 1); ctx.lineTo(3, 1); ctx.stroke();
+      ctx.restore();
+    } else { ctx.fillStyle = q.col; circle(q.x, q.y, q.kind === 'drop' ? 3.5 : 3.5 * (1 - q.t / q.life) + 1); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- drawing: Leonardo's flying machine, with Pip and Bo in their seats (world coords) ---------- */
+// how far up the wings are (-1 down .. 1 up): a quick downstroke after each beat, then a slower swing back up
+function tthVinciWing(g) {
+  const w = g.wingT;
+  if (g.landed && w > 0.6) return -0.25 + Math.sin(G.clock * 1.6) * 0.05;      // folded a little, resting
+  if (w < 0.13) return 0.35 - 1.35 * Math.sin(Math.PI / 2 * w / 0.13);
+  if (w < 0.6) { const u = (w - 0.13) / 0.47; return -1 + 1.35 * u * (2 - u) + 0.4 * Math.sin(Math.PI * u); }
+  return (g.tired > 0 ? -0.2 : 0.35) + Math.sin(G.clock * 2.3) * 0.05;
+}
+// one bat wing (wooden ribs, canvas between them) from its hinge; dir 1 points forward, -1 back; a: radians up
+function tthVinciDrawWing(hx, hy, dir, L, a, fill, rib) {
+  ctx.save(); ctx.translate(hx, hy); ctx.scale(dir, 1); ctx.rotate(-a);
+  const P = [[L, 0], [L * 0.8, 21], [L * 0.55, 25], [L * 0.3, 20], [5, 9]];
+  ctx.fillStyle = fill; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(L * 0.5, -9, L, 0);
+  for (let i = 1; i < P.length; i++) { const p0 = P[i - 1], p1 = P[i]; ctx.quadraticCurveTo((p0[0] + p1[0]) / 2, Math.min(p0[1], p1[1]) - 4, p1[0], p1[1]); }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = rib; ctx.lineWidth = 2.2; ctx.beginPath();
+  for (let i = 1; i < P.length - 1; i++) { ctx.moveTo(L * 0.12, -2); ctx.lineTo(P[i][0], P[i][1] - 2); }
+  ctx.stroke();
+  ctx.strokeStyle = TTHVINCI_COL.woodDk; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(L * 0.5, -9, L, 0); ctx.stroke();
+  ctx.restore();
+}
+function tthVinciDrawMachine(st) {
+  const ph = st.ph, K = TTHVINCI, CO = TTHVINCI_COL, g = ph.g, t = G.clock;
+  // its shadow on the ground
+  const gy = tthVinciGround(ph.c, g.x), hgt = gy - (g.y + K.hh);
+  if (hgt < 260) { ctx.fillStyle = `rgba(28,26,54,${0.22 * (1 - hgt / 260)})`; ctx.beginPath(); ctx.ellipse(g.x, gy + 2, 34 - hgt * 0.06, 5, 0, 0, Math.PI * 2); ctx.fill(); }
+  const fl = tthVinciWing(g), shake = g.tired > 0 ? Math.sin(t * 38) * 0.05 : 0, a = 0.2 + fl * 0.55 + shake;
+  const canvas = g.tired > 0 ? '#f3cdbd' : CO.canvas;
+  ctx.save(); ctx.translate(g.x, g.y); ctx.rotate(g.pitch + g.spin);
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // speed streaks behind it
+  if (g.v > 265 && !g.landed) {
+    ctx.strokeStyle = `rgba(255,255,255,${clamp((g.v - 265) / 70, 0, 0.8)})`; ctx.lineWidth = 3; ctx.beginPath();
+    for (let n = 0; n < 3; n++) { const o = ((t * 5 + n * 0.37) % 1) * 40; ctx.moveTo(-70 - o, -22 + n * 16); ctx.lineTo(-104 - o, -22 + n * 16); }
+    ctx.stroke();
+  }
+  tthVinciDrawWing(1, -54, 1, 76, a * 0.9, CO.canvasDk, CO.woodDk);                    // the far wing
+  // the tail fan (the steerer's tiller tilts it)
+  ctx.save(); ctx.translate(-36, -3); ctx.rotate(g.tail * 0.42);
+  ctx.fillStyle = CO.canvas; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-30, -15); ctx.quadraticCurveTo(-27, -7, -36, -4); ctx.quadraticCurveTo(-28, 0, -32, 7); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = CO.wood; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-33, -4); ctx.stroke();
+  ctx.restore();
+  // the mast and its ropes
+  ctx.strokeStyle = 'rgba(107,70,48,0.8)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -54); ctx.lineTo(-34, -6); ctx.moveTo(0, -54); ctx.lineTo(42, -8); ctx.stroke();
+  ctx.fillStyle = CO.wood; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(-3, -58, 6, 54, 3); ctx.fill(); ctx.stroke();
+  // Pip and Bo (the flapper squashes down with every beat)
+  for (const p of G.players) {
+    const s = ph.seat[p.id], fp = p.id === ph.flap, pull = fp && g.wingT < 0.16 ? 1 - g.wingT / 0.16 : 0;
+    tthDrawHero(p.id, s.x, s.y, { face: 1, sx: 1 + 0.12 * pull, sy: 1 - 0.14 * pull });
+  }
+  // the hull: a little wooden boat on two wheels, with a brass horn at the prow
+  ctx.fillStyle = CO.woodDk; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+  for (const wx of [-20, 22]) { circle(wx, 7, 5); ctx.fill(); ctx.stroke(); }
+  ctx.fillStyle = CO.wood; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-36, -6); ctx.lineTo(38, -6); ctx.quadraticCurveTo(50, -7, 54, -15); ctx.quadraticCurveTo(54, 0, 36, 7); ctx.lineTo(-28, 7); ctx.quadraticCurveTo(-38, 4, -36, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = CO.woodDk; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(-34, -1); ctx.lineTo(46, -1); ctx.moveTo(-30, 3); ctx.lineTo(40, 3); ctx.stroke();
+  ctx.fillStyle = TTHC.brass; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(44, -13); ctx.lineTo(56, -22); ctx.lineTo(60, -12); ctx.closePath(); ctx.fill(); ctx.stroke();
+  if (ph.tootT > 0) {
+    ctx.strokeStyle = `rgba(255,255,255,${ph.tootT * 2})`; ctx.lineWidth = 3;
+    for (let n = 0; n < 3; n++) { const r = 12 + n * 11 + (0.5 - ph.tootT) * 30; ctx.beginPath(); ctx.arc(58, -17, r, -0.9, 0.5); ctx.stroke(); }
+  }
+  // the flapper's pull rope, then the near wing
+  const fs = ph.seat[ph.flap], wa = 0.2 + fl * 0.55, rx = -1 - Math.cos(wa) * 26, ry = -54 - Math.sin(wa) * 26 + 4;
+  ctx.strokeStyle = '#6b4630'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(fs.x + 7, fs.y - 12); ctx.lineTo(rx, ry); ctx.stroke();
+  tthVinciDrawWing(-1, -54, -1, 84, a, canvas, CO.wood);
+  ctx.fillStyle = CO.woodDk; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(0, -55, 5); ctx.fill(); ctx.stroke();
+  // the plans, won back
+  if (g.has) {
+    const k = 0.5 + 0.5 * Math.sin(t * 8);
+    ctx.fillStyle = `rgba(255,243,196,${0.35 + 0.25 * k})`; circle(38, -34, 22 + k * 4); ctx.fill();
+    tthDrawLoot('plans', 38, -34, 1, t);
+  }
+  ctx.restore();
+}
+// over everything: the wing meter under the machine, the plans case to grab
+function tthVinciDrawMeter(st) {
+  const ph = st.ph, K = TTHVINCI, B = K.beat, g = ph.g, t = G.clock;
+  if (ph.mode === 'won' || st.cut || G.introT > 0) return;
+  const z = tthBig() ? 1.45 : 1, w = 68 * z, h = 10 * z, x = g.x - w / 2, y = g.y + 26 + 4 * z;
+  const tired = g.tired > 0, col = tired ? (Math.sin(t * 18) > 0 ? '#ff5f6d' : '#ff9aa2') : g.en < B.cost ? '#ffb03a' : '#9fe07f';
+  ctx.fillStyle = 'rgba(30,20,66,0.88)'; rr(x - 3, y - 3, w + 6, h + 6, (h + 6) / 2); ctx.fill();
+  ctx.strokeStyle = PCOL[ph.flap]; ctx.lineWidth = 2; rr(x - 3, y - 3, w + 6, h + 6, (h + 6) / 2); ctx.stroke();
+  const fw = Math.max(h, w * clamp(tired ? 1 - g.tired / B.tired : g.en, 0, 1));
+  ctx.fillStyle = col; rr(x, y, fw, h, h / 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(30,20,66,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let n = 1; n < 4; n++) { ctx.moveTo(x + w * n / 4, y + 1); ctx.lineTo(x + w * n / 4, y + h - 1); }
+  ctx.stroke();
+  if (ph.beatGold) {   // gold help: the dot lights when it is time for the next beat
+    const on = !tired && g.beatT >= B.full && g.en >= B.cost;
+    ctx.fillStyle = on ? C.gold : 'rgba(30,20,66,0.88)'; ctx.strokeStyle = on ? '#ffffff' : C.gold; ctx.lineWidth = 2;
+    circle(x + w + 14 * z, y + h / 2, (on ? 8 + Math.sin(t * 14) * 1.5 : 6) * z); ctx.fill(); ctx.stroke();
+  }
+  const ch = ph.chase;
+  if (ch && ch.phase === 'dive' && !ch.zip) {
+    const cl = tthVinciClaw(st), k = 0.5 + 0.5 * Math.sin(t * 9);
+    if (ch.magnet) { ctx.fillStyle = `rgba(255,197,61,${0.16 + 0.1 * k})`; ctx.fillRect(cl.x - K.chase.magnet, K.top - 40, K.chase.magnet * 2, K.ground - K.top + 40); }
+    ctx.strokeStyle = `rgba(255,197,61,${0.6 + 0.4 * k})`; ctx.lineWidth = 4; circle(cl.x, cl.y, Math.max(24, ch.grab - 22) + k * 6); ctx.stroke();
+    ctx.fillStyle = C.gold; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+    const ay = cl.y + 44 + k * 8;
+    ctx.beginPath(); ctx.moveTo(cl.x, ay - 14); ctx.lineTo(cl.x + 12, ay); ctx.lineTo(cl.x + 5, ay); ctx.lineTo(cl.x + 5, ay + 12); ctx.lineTo(cl.x - 5, ay + 12); ctx.lineTo(cl.x - 5, ay); ctx.lineTo(cl.x - 12, ay); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+}
+// the HUD (screen coords): the slipstream meter of the chase, bottom centre
+function tthVinciHud(st) {
+  const ph = st.ph, ch = ph.chase;
+  if (!ch || ch.phase === 'done' || ph.mode !== 'fly' || st.idle || st.cut || G.introT > 0) return;
+  const big = tthBig(), z = big ? 1.4 : 1, t = G.clock, w = 290 * z, h = 24 * z, x = W / 2 - w / 2, y = H - 14 - h;
+  if (ch.phase === 'dive') { bigText('Dive! Grab the plans!', W / 2, y + h / 2, 24 * z, C.gold, 1 + 0.05 * Math.sin(t * 9)); return; }
+  ctx.save(); if (tthUnder(x, y, x + w, y + h)) ctx.globalAlpha = 0.45;
+  ctx.fillStyle = 'rgba(30,20,66,0.88)'; rr(x, y, w, h, h / 2); ctx.fill();
+  const fw = Math.max(h - 6, (w - 6) * clamp(ch.m, 0, 1));
+  ctx.fillStyle = ch.full ? (Math.sin(t * 10) > 0 ? '#fff3c4' : C.gold) : ch.in ? C.gold : '#c9b27a'; rr(x + 3, y + 3, fw, h - 6, (h - 6) / 2); ctx.fill();
+  ctx.strokeStyle = ch.in || ch.full ? C.gold : 'rgba(255,255,255,0.7)'; ctx.lineWidth = ch.in ? 3 : 2; rr(x, y, w, h, h / 2); ctx.stroke();
+  const lab = ch.full ? 'FULL! Stay on his tail' : ch.gold ? 'GOLD SLIPSTREAM' : 'SLIPSTREAM';
+  ctx.font = tthFont(13 * z); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(30,20,66,0.9)'; ctx.lineWidth = 4 * z; ctx.strokeText(lab, W / 2, y + h / 2 + 1);
+  ctx.fillStyle = '#ffffff'; ctx.fillText(lab, W / 2, y + h / 2 + 1);
+  ctx.restore();
+}
+
+/* ---------- the phase ---------- */
+function tthVinciSetup(st, L) {
+  const K = TTHVINCI, ph = st.ph, b = st.thief;
+  ph.c = tthVinciCompile();
+  ph.g = tthVinciNewMachine();
+  ph.t = 0; ph.mode = 'perch'; ph.stage = 0; ph.stageT0 = 0;
+  ph.flap = L && L.def && L.def.first ? 1 : 0;                  // room field `first`: who flaps first
+  ph.perch = { x: K.start.x, y: K.start.y, t: 0, swap: false, swapped: true, ready: false };
+  ph.app = null; ph.chase = null; ph.swapA = 1; ph.seat = [{ x: 0, y: 0 }, { x: 0, y: 0 }];
+  ph.tips = {}; ph.said = {}; ph.fx = [];
+  ph.tiredN = 0; ph.beatGold = false; ph.wingGold = false; ph.liftK = 1; ph.groundHits = 0; ph.birdHits = 0; ph.flockR = K.flock.r;
+  ph.shooCd = 0; ph.tootT = 0; ph.pointT = 0; ph.looseT = 0; ph.leoT = 0; ph.wonT = 0;
+  ph.streak = 0; ph.streakT = 0; ph.pi = 0; ph.got = 0; ph.minX = 0; ph.steer = 0; ph.noSteerT = 0; ph.inUp = false; ph.inGust = false;
+  Object.assign(tthStats(st), { pages: 0, of: ph.c.pages.length, flaps: 0, tired: 0, close: 0, shoos: 0, stretch: [], diveMiss: 0 });
+  Object.assign(b, { x: K.start.x + 590, y: 0, s: 0.55, face: -1, pose: 'laugh', jet: true, item: st.era.loot, claw: 0.45, flame: 0.6 });
+  b.y = tthVinciPath(ph.c, b.x) + 50;
+  st.cam.x = 0; st.cam.y = 0;
+  tthVinciSeat(st);
+}
+function tthVinciStep(st, dt) {
+  const ph = st.ph, g = ph.g;
+  for (const p of G.players) p.pendingJump = false;
+  if (st.idle) {   // nobody plays: the machine hangs still in the air, nothing moves
+    for (const p of G.players) p.pendingAct = false;
+    tthVinciSeat(st); return;
+  }
+  ph.t += dt;
+  if (ph.leoT > 0) ph.leoT += dt;
+  if (ph.mode === 'perch') tthVinciPerch(st, dt);
+  else if (ph.mode === 'toPerch') tthVinciToPerch(st, dt);
+  else if (ph.mode === 'fly') tthVinciFly(st, dt);
+  else if (ph.mode === 'won') tthVinciWon(st, dt);
+  tthVinciFlocks(st, dt);
+  g.tail = approach(g.tail, ph.mode === 'fly' && !g.landed ? -ph.steer : 0, dt * 6);
+  tthVinciThief(st, dt);
+  tthVinciFx(st, dt);
+  tthVinciCam(st, dt);
+  tthVinciSeat(st);
+}
+// during the era card and the portal cutscene: perched it sits still; in the air it flies itself, slow and level
+function tthVinciCoast(st, dt) {
+  const ph = st.ph;
+  for (const p of G.players) { p.pendingJump = false; p.pendingAct = false; }
+  if (!ph.g) return;
+  if (ph.mode === 'won' || (ph.mode === 'fly' && !ph.g.landed)) tthVinciAuto(st, dt);
+  ph.g.tail = approach(ph.g.tail, 0, dt * 4);
+  tthVinciFx(st, dt);
+  tthVinciCam(st, dt);
+  tthVinciSeat(st);
+}
+TTH_PHASES.davinci = {
+  setup(st, L) { tthVinciSetup(st, L); },
+  step(st, dt) { tthVinciStep(st, dt); },
+  coast(st, dt) { tthVinciCoast(st, dt); },
+  hide: () => true,
+  busy: () => true,
+  drawBack(st) { tthScreen(st, () => tthVinciDrawSky(st)); tthVinciDrawGround(st); tthVinciDrawObs(st); },
+  draw(st) { tthVinciDrawBirds(st); tthVinciDrawMachine(st); tthVinciDrawFx(st); },
+  drawTop(st) { tthVinciDrawMeter(st); },
+  hud(st) { tthVinciHud(st); },
+  hudText(st) { const s = tthStats(st); return 'Pages ' + (s.pages || 0) + '/' + (s.of || 0); },
+  progress(st) { return { n: st.ph.mode === 'won' ? 3 : st.ph.stage, of: 3 }; },
+  labels(st) { return st.ph.flap === 0 ? ['flap', 'shoo'] : ['shoo', 'flap']; },
+  roles(st) { return st.ph.mode === 'won' ? null : st.ph.flap === 0 ? ['Flap!', 'Steer!'] : ['Steer!', 'Flap!']; },
+  legend(st) {
+    const f = st.ph.flap, steer = (u, d) => `<kbd>${u}</kbd> climb <kbd>${d}</kbd> dive`, flap = 'a steady beat:';
+    return { pip: f === 0 ? flap : steer('W', 'S'), bo: f === 1 ? flap : steer('↑', '↓'), pad: 'steerer: stick up climbs, down dives; flapper: a steady beat of' };
+  },
+  headLift: () => 44,
+  statLine(st) { const s = st.stats.davinci; return s && s.of && s.pages >= s.of ? 'Caught every page of Leonardo\'s plans' : ''; },
+};
+
+/* ---------- the room (this file fills in its own room of the level def) ---------- */
+tthRoom('davinci', {
+  tip: 'One flaps the wings with a steady beat. One steers: up climbs, down dives. Follow the pages and catch him!',
+  act: { label: 'flap', labels: ['shoo', 'flap'] },
+  legend: { pip: '<kbd>W</kbd> climb <kbd>S</kbd> dive', bo: 'a steady beat:', pad: 'steerer: stick up climbs, down dives; flapper: a steady beat of' },
+  map: TTH_EMPTY_MAP,
+});

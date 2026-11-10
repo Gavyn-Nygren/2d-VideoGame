@@ -1,20 +1,92 @@
-/* Pip \& Bo - Level 30-1 The Time Thief: era 'dino' (Dinosaur Asteroid, 66 million years ago). */
+/* Pip & Bo - Level 30-1 The Time Thief: era 'dino' (Dinosaur Asteroid, 66 million years ago). */
 'use strict';
 
+/* ===== 30-1 era 1: Dinosaur Asteroid (TTH_PHASES.dino) — Gavyn's pick =====
+   "He's stealing a T. rex egg. Run from the fire and meteors while one carries the egg and the other clears the path."
+   A side-scrolling run to the right through a fern jungle that turns into a swamp and then a volcano's slope, with the
+   asteroid growing in the sky all era long. The Thief has the egg on his claw; a meteor startles him and he drops it
+   ("YIKES! My egg!"); Pip and Bo carry it home to the mother T. rex's nest at the far end. About 2:15 for the computer
+   pair, 2-3 minutes for a good pair of people.
+   - The ground is a height map (one height every 4 px, from 20-1's Slope Climb), not the engine grid: gentle slopes,
+     64 px ledges, pits. The era runs its own collision (tthDinoBody). Pip and Bo pass through each other here.
+   - THE EGG decides the jobs: whoever holds it is the CARRIER, the other one is the CLEARER. It is held over the head.
+     It changes hands by a TOSS (the carrier's action, when the partner is within 240 px sideways and 175 px up or
+     down, and the carrier looks at them; it always lands in the partner's hands), and it is tossed to the other one
+     at each of the 2 checkpoint flags ("Swap jobs!"), so both players do both jobs. The room's `first` says who
+     catches it at the start. A loose egg (after a bonk) rolls back a little, wobbles and glows; whoever walks into
+     it picks it up. It never breaks, never rolls into a pit, and hops ahead by itself if the fire reaches it.
+   - CARRIER: slower (150 px/s; free: 220) and small hops only (40 px; free: 109 px). Action = toss. Hold DOWN to
+     duck and hug the egg (planted) when the Thief dives. Can NOT smash, pull or pass a ledge / pit with the egg.
+   - CLEARER: runs ahead with a bone club. The action does what is right here (the word on the touch button follows:
+     smash / shoo / pull / whack): TAP it next to a boulder (4 hits), a fallen log (3), a meteor rock (2) or a napping
+     baby Triceratops (1: "Shoo!", it trots off after the herd); HOLD it at the glowing post of a vine bridge to pull
+     the bridge tight while the carrier walks across (once somebody has crossed, the bridge ties itself for good);
+     TAP it near the Thief's claw when he dives to whack it away.
+   - THINGS IN THE WAY (in course order; "the gate" is the first one both have not passed yet):
+       boulder (68 x 132)   nobody passes: the clearer smashes it
+       log (84 x 52), napping dino (88 x 54), meteor rock (60 x 50)   a free jump clears them, an egg hop doesn't:
+                            smash / shoo them (or toss the egg over and jump after it)
+       ledge (64 px up)     too high with the egg: the clearer jumps up, the carrier tosses the egg up and jumps after
+       pit (112 px wide: tar, lava on the volcano)   a free jump clears it (take off at the edge), an egg hop doesn't:
+                            the clearer jumps, the egg is tossed across. A fall is "Splat!" / "Hot foot!" and a pop
+                            back to the rim you came from (the egg stays in your hands)
+       vine bridge (232 px pit)   nobody jumps it and no toss reaches across: the clearer holds the post.
+                            Let go too early and it creaks for about 0.9 s ("Hold on!") before it drops the walker.
+     So an idle partner stalls everything: the carrier can't open anything, the clearer can't carry, flags and the
+     nest need both players there. The era can never be cleared by one player.
+   - THE THIEF hovers at the top right in his machine all era, taunts (true facts among them) and does one trick at a
+     time, every 6.4 / 5.4 / 4.8 s in stretch 1 / 2 / 3 (TTHDINO_STRETCHES[k].pattern, cycled):
+       M  a meteor at one player (they take turns), aimed where that player is heading: a glowing ring on the ground
+          for 1.15 s (the meteor is seen falling for the last 0.5 s), then BOOM: anyone in the ring gets "Bonk!"
+       R  (from stretch 2) a meteor into the path ahead that stays as a smoking rock to smash
+       S  (stretch 3) a shower: 3 rings in a row over the pair, landing one by one from the left (1.35 / 1.6 / 1.85 s)
+       T  he DIVES for the egg: 1.3 s of aim (1.8 s the first time) right over the carrier with a red dashed line and
+          a ring on the egg, then 0.55 s of dive. The carrier ducks (hold down) and he misses, or the clearer whacks
+          the claw (within 130 px of it, any time from 0.4 s into the aim on) and he spins off dizzy for 2.8 s.
+          Otherwise "Yoink!": the egg is knocked out of the carrier's hands (he never gets away with it).
+     A bonk from a meteor or the claw makes the carrier drop the egg. Never a ring over someone who holds a vine post
+     or walks on a bridge, never a dive next to a pit, on a bridge or near the nest; nothing new starts in a calm
+     moment (card, flag celebration, nobody playing: tthCalm), and what was on its way is called off.
+   - THE FIRE WALL (the pacer) creeps in from the left at 64 / 76 / 88 px/s, speeds up to stay 380 px behind the
+     slower player (or the loose egg), and never comes closer than 210 px to the gate, the next flag or the nest, so
+     waiting at a boulder is always safe. A touch is "Hot foot!": a pop forward onto cool ground, and the fire falls
+     back 150 px. It falls back 240 px at each flag (the breather). A glow at the left edge shows it is near.
+   - "Wait for Bo!": nobody gets more than 470 px ahead of the partner (the leash only stops the one walking away,
+     and never in mid-air over a pit).
+   - THE END: the last ledge leads to the nest. The carrier steps up to the nest while the partner is up there too
+     (within 240 px): the egg hops into the nest, the Thief grabs for it ("NO! That egg is MINE!"), the mother T. rex
+     (big, friendly to Pip and Bo) ROARS him away, tthPhaseDone ("EEK! OK, OK! Keep your egg!"), she nuzzles the nest,
+     and the asteroid's flash lights the horizon as the portal takes everyone away.
+   - GOLD HELP (always announced with tthHelp): 3 hot feet in a stretch slow the fire (x 0.6); 3 egg-dropping bonks
+     in a stretch make the Thief sleepy (rings 1.6 s, aim 1.8 s, tricks 1.4 x rarer); 2 falls into the same pit put a
+     gold stepping stone in it that you just walk across / tie the vine bridge (after two pits needed that, the next
+     ones help after 1 fall); 20 s without progress puts a gold hint over whoever's turn it is and a gold arrow at
+     the thing to do (the news line only the first time per thing).
+   - HINTS name each player's own keys (tthKey; on touch "the smash button"): what the gate needs from whom, "Grab the
+     egg!", the dive, the first meteors. In 1-player mode the computer's player gets no key hints.
+   - HUD: "Stretch n/3" in the time pill, 3 pips on the era strip, and a track along the bottom (fire, both players,
+     the egg, the 2 flags, the nest). Boulders, logs and rocks show their hits left as pips in the clearer's colour.
+   Controls: left / right walk, jump (W / up arrow / touch up / A) jumps, down ducks (carrier), the action as above.
+   Nothing needs two directions at once or more than 4 presses a second (hits count at most 7 a second).
+   Stats (st.stats.dino): stretchT [s per stretch], smashed, shoos, bridges, tosses, drops, whacks, ducks, snatched,
+   meteors, rocks, hot, pits. Every top-level name starts with tthDino / TTHDINO (Sfx.extra.tthDino*). All state
+   lives in st.ph (fresh every phase start); the course is compiled again at every start. Brain:
+   js/cpu/levels/world30/tth-dino.js. Tests: tools/w30/dino-keys.js (real keyboard, controller, touch),
+   tools/w30/dino-solo.js (scripted people with the computer), tools/w30/dino-dbg.js (trick and bump tracer). */
 const TTHDINO = {
   cell: 4, stepUp: 7, snap: 9, x0: -900, y0: 432,
   carryV: 150, hopV: 400,             // with the egg: walking speed (free: 220) and jump speed (a 40 px hop; free: 109 px)
   maxSep: 470,                        // "Wait for Bo!": nobody gets further ahead of the partner than this
-  toss: { range: 215, up: 175, t0: 0.34, perPx: 1 / 900, lock: 0.5, arc: 54 },
+  toss: { range: 240, up: 175, t0: 0.34, perPx: 1 / 900, lock: 0.5, arc: 54 },
   egg: { r: 14, g: 1700, dropVx: 150, dropVy: 330, fric: 300, pick: 0.35 },
   hit: { reach: 42, cd: 0.14 },
   boulder: { w: 68, h: 132, hits: 4 }, log: { w: 84, h: 52, hits: 3 }, nap: { w: 88, h: 54, hits: 1 }, rock: { w: 60, h: 50, hits: 2 },
-  ledge: 64, gap: 112, vine: 232, pit: 84, postX: 40, postR: 38, pullUp: 5, pullDown: 3,
-  fire: { v: [64, 76, 88], gap: 380, catch: 2.5, cap: 150, back: 150, pop: 170, slowK: 0.6, start: -430 },
+  ledge: 64, gap: 112, vine: 232, pit: 84, postX: 64, postR: 48, pullUp: 5, pullDown: 3, creak: 0.6, stoneGap: 18,
+  fire: { v: [64, 76, 88], gap: 380, catch: 2.5, cap: 210, back: 150, pop: 170, slowK: 0.6, start: -430 },
   met: { r: 46, warn: 1.15, sleepyWarn: 1.6, fall: 0.5, showerWarn: 1.35, showerGap: 0.25 },
-  dive: { aim: 1.3, sleepyAim: 1.8, down: 0.55, pre: 0.2, reach: 130, dizzy: 2.8, rise: 1.0, s: 0.72 },
+  dive: { aim: 1.3, sleepyAim: 1.8, down: 0.55, pre: 0.4, reach: 130, dizzy: 2.8, rise: 1.0, s: 0.72 },
   goldHot: 3, goldBonks: 3, goldPit: 2, stuckT: 20,
-  nestR: 40, nestNear: 240, roarAt: 1.2, doneAt: 2.7,
+  nestL: 82, nestR: 40, nestNear: 240, nestDrop: 0.45, roarAt: 1.2, doneAt: 2.7,
 };
 // The hand-made course. Tokens: 'f N' flat N px; 'u N R' a slope rising R px over N px (R < 0: down);
 // 'B' a boulder (tall: nobody passes; 4 smashes); 'L' a fallen log (low: only the egg can't pass; 3 smashes);
@@ -27,9 +99,9 @@ const TTHDINO_STRETCHES = [
   { name: 'Fern Jungle', every: 6.4, first: 6, pattern: 'MTMMT',
     course: 'f 460|B|f 400|L|f 360|u 240 24|Z|f 380|E|f 320|B|f 300|u 260 -40|f 200|L|f 340|B|f 280|E|f 300|u 280 -50|Z|f 320|F|f 220' },
   { name: 'Rumbling Swamp', every: 5.4, first: 4, pattern: 'MRTMRMT',
-    course: 'f 300|g|f 360|B|f 320|V|f 380|L|f 300|E|f 280|g|f 340|u 300 -60|B|f 320|V|f 360|Z|f 300|g|f 320|B|f 300|F|f 220' },
+    course: 'f 300|g|f 340|B|f 300|V|f 360|L|f 280|E|f 280|g|f 320|u 280 -60|B|f 300|V|f 340|Z|f 300|B|f 280|F|f 220' },
   { name: 'Volcano Slope', every: 4.8, first: 4, pattern: 'STRMTS',
-    course: 'f 280|u 260 30|B|f 300|g|f 300|E|f 240|L|f 300|V|f 320|B|f 260|u 300 -40|g|f 280|B|f 300|E|f 220|V|f 320|L|f 280|u 240 -30|B|f 360|E|f 200|N|f 620' },
+    course: 'f 260|u 240 30|B|f 280|g|f 280|E|f 240|L|f 280|V|f 300|B|f 240|u 260 -40|g|f 260|E|f 240|V|f 300|B|f 320|E|f 200|N|f 620' },
 ];
 const TTHDINO_TAUNTS = ['That space rock is 10 km wide. Tick, tock!', 'It will land near Mexico. Not MY problem!', 'T. rex means "tyrant lizard king". I want one!', 'Run, run! Ha ha ha!', 'Nice egg. Shame if someone... borrowed it!'];
 const tthDinoCx = p => p.x + p.w / 2;
@@ -61,7 +133,7 @@ function tthDinoCompile() {
       } else if (c === 'E') { const up = n1 || K.ledge; add({ kind: 'ledge', k, x0: x, x1: x, base: y, top: y - up }); y -= up; }
       else if (c === 'g' || c === 'V') {
         const w = n1 || (c === 'g' ? K.gap : K.vine);
-        add({ kind: c === 'g' ? 'gap' : 'vine', k, x0: x, x1: x + w, base: y, top: y, pull: 0, taut: false, tied: false, held: false, stone: false });
+        add({ kind: c === 'g' ? 'gap' : 'vine', k, x0: x, x1: x + w, base: y, top: y, pull: 0, taut: false, tied: false, held: false, stone: false, creak: false });
         push(w, () => y + K.pit);
       } else if (c === 'F') flags.push({ k, x: x + 30, y, got: false, t: 0 });
       else if (c === 'N') nest = { x: x + 40, y, t: 0 };
@@ -138,7 +210,7 @@ function tthDinoBody(st, p, dt, still) {
   const cx = tthDinoCx(p), g = tthDinoPitAt(ph, cx);
   if (g && tthDinoFeet(p) > g.base + 34) tthDinoFell(st, p, g);
   else if (p.grounded && !tthDinoPitAt(ph, cx, 6)) { P.safeX = cx; P.safeY = tthDinoFeet(p); }
-  if (P.onVine && (cx < P.onVine.x0 || !P.onVine.taut)) P.onVine = null;
+  if (P.onVine && (cx < P.onVine.x0 || cx > P.onVine.x1 + 30 || !P.onVine.taut)) P.onVine = null;   // (the tie check needs x1 + 6)
   if (g && g.kind === 'vine' && g.taut && p.grounded) P.onVine = g;
 }
 function tthDinoFell(st, p, g) {
@@ -151,11 +223,13 @@ function tthDinoFell(st, p, g) {
   }
   Sfx.play(g.k === 2 ? 'tthDinoSizzle' : 'splash');
   g.falls++; tthStats(st).pits = (tthStats(st).pits || 0) + 1;
-  if (g.falls >= TTHDINO.goldPit && !g.stone && !g.tied) {
-    if (g.kind === 'gap') {   // gold help: a stepping stone in the middle (an egg hop reaches it)
-      g.stone = true; const m = (g.x0 + g.x1) / 2;
-      tthDinoCells(ph.c, m - 24, m + 24, g.base);
-      tthHelp(st, 'Gold help: a stepping stone! Hop across.');
+  // gold help after 2 falls into the same pit (after the first fall once two pits have needed help)
+  if (g.falls >= (ph.pitHelp >= 2 ? 1 : TTHDINO.goldPit) && !g.stone && !g.tied) {
+    ph.pitHelp++;
+    if (g.kind === 'gap') {   // a wide stepping stone: the holes left are narrower than a foot, so just walk across
+      g.stone = true;
+      tthDinoCells(ph.c, g.x0 + TTHDINO.stoneGap, g.x1 - TTHDINO.stoneGap, g.base);
+      tthHelp(st, 'Gold help: a stepping stone! Just walk across.');
     } else { g.tied = true; tthHelp(st, 'Gold help: the vine bridge ties itself!'); }
   } else if (g.kind === 'gap') tthDinoTip(st, p.id, 'pit', tthDinoHolder(ph) === p.id ? 'Too far with the egg! Toss it across: ' + tthDinoAct(p.id) : 'Jump late, at the very edge: ' + tthKey(p.id, 'jump'), 5);
   else tthDinoTip(st, p.id, 'pit', 'Wait until the vine bridge is pulled tight!', 5);
@@ -185,6 +259,7 @@ function tthDinoLeash(st, xb) {
   for (const p of ps) {
     const o = ps[1 - p.id];
     if (Math.abs(p.x - o.x) <= Math.abs(xb[p.id] - o.x)) continue;   // only the one walking away
+    if (!p.grounded && tthDinoPitAt(ph, tthDinoCx(p), 16)) continue;        // (never stop a jump over a pit in mid-air)
     p.x = xb[p.id]; p.vx = 0;
     const P = ph.P[p.id];
     if (P.waitCD <= 0) {
@@ -226,6 +301,12 @@ function tthDinoEgg(st, dt) {
     const p = ps[e.by], u = Math.min(1, e.t / e.dur), tx = tthDinoCx(p), ty = p.y - 15;
     e.x = e.x0 + (tx - e.x0) * u; e.y = e.y0 + (ty - e.y0) * u - e.arc * Math.sin(Math.PI * u); e.rot += dt * 10;
     if (u >= 1) tthDinoCatch(st, p, e.state === 'fall' ? 'first' : 'toss');
+    return;
+  }
+  if (e.state === 'nest') {   // a gentle lob from the carrier's hands into the nest
+    const E = ph.end, n = ph.c.nest, u = Math.min(1, e.t / TTHDINO.nestDrop), k = u * u * (3 - 2 * u);
+    e.x = E.x0 + (n.x - E.x0) * k; e.y = E.y0 + (n.y - 30 - E.y0) * k - 46 * Math.sin(Math.PI * u); e.rot = (1 - u) * -1.2;
+    if (u >= 1 && !E.landed) { E.landed = true; Sfx.play('tthDinoCatch', 1); puff(n.x, n.y - 16, 6, 'rgba(255,243,196,0.9)'); }
     return;
   }
   if (e.state !== 'loose') return;
@@ -333,7 +414,7 @@ function tthDinoHit(st, p) {
 }
 function tthDinoWhack(st, p) {
   const ph = st.ph, th = ph.th, K = TTHDINO.dive, c = st.thief;
-  if (!(th.mode === 'dive' || (th.mode === 'aim' && th.t >= th.aim - K.pre))) return false;
+  if (!(th.mode === 'dive' || (th.mode === 'aim' && th.t >= K.pre))) return false;   // (once the claw is down over the egg)
   const cl = tthThiefPts(c).claw;
   if (Math.abs(tthDinoCx(p) - cl.x) > K.reach || Math.abs(p.y + p.h / 2 - cl.y) > K.reach + 70) return false;
   th.mode = 'dizzy'; th.t = 0; c.hitT = 0.6; c.pose = 'dizzy';
@@ -379,7 +460,10 @@ function tthDinoActs(st, dt) {
     if (held && !v.held) Sfx.play('tthDinoVine');
     v.held = held;
     const want = v.tied || held ? 1 : 0;
-    v.pull = approach(v.pull, want, dt * (want ? K.pullUp : K.pullDown));
+    const on = v.taut && ps.some(p => ph.P[p.id].onVine === v);   // let go too early: it creaks for a moment before it drops
+    if (on && !want && !v.creak) { v.creak = true; Sfx.play('tthDinoCreak'); tthPop(st, (v.x0 + v.x1) / 2, v.base - 60, 'Hold on!', '#ffffff', 20); }
+    if (want || !v.taut) v.creak = false;
+    v.pull = approach(v.pull, want, dt * (want ? K.pullUp : on ? K.creak : K.pullDown));
     if (!v.taut && v.pull >= 0.9) { v.taut = true; tthDinoCells(ph.c, v.x0, v.x1, v.base); }
     else if (v.taut && v.pull < 0.45) { v.taut = false; tthDinoCells(ph.c, v.x0, v.x1, null); }
     if (v.taut && !v.tied && ps.some(p => ph.P[p.id].onVine === v && tthDinoCx(p) > v.x1 + 6)) {
@@ -425,7 +509,7 @@ function tthDinoFlags(st) {
   tthDinoThrow(st, from, to);
   tthSwap(st); tthCelebrate(st, 1.8);
   tthNews(st, 'Stretch ' + (ph.k + 1) + ' of 3: ' + TTHDINO_STRETCHES[ph.k].name, false, 3);
-  tthSay(st, ph.k === 1 ? 'Still here? Mind the tar pits! Hee hee!' : 'The volcano is waking up! Give up!', 2.4);
+  ph.later = { t: TTH.swapT + 0.2, text: ph.k === 1 ? 'Still here? Mind the tar pits! Hee hee!' : 'The volcano is waking up! Give up!' };   // (after "Swap jobs!")
 }
 // the end: the carrier steps up to the nest while the partner is up there too; the mother roars the Thief away
 function tthDinoNest(st, dt) {
@@ -456,10 +540,10 @@ function tthDinoNest(st, dt) {
   }
   if (e.state !== 'held') return;
   const p = ps[e.by], o = ps[1 - e.by];
-  if (Math.abs(tthDinoCx(p) - n.x) > TTHDINO.nestR || Math.abs(tthDinoFeet(p) - n.y) > 24) return;
+  if (tthDinoCx(p) < n.x - TTHDINO.nestL || tthDinoCx(p) > n.x + TTHDINO.nestR || Math.abs(tthDinoFeet(p) - n.y) > 24) return;
   if (!(Math.abs(tthDinoCx(o) - n.x) < TTHDINO.nestNear && tthDinoFeet(o) <= n.y + 12)) { tthDinoTip(st, p.id, 'nestwait', 'Wait for ' + NAMES[o.id] + ': put it in the nest together!', 6, { cpu: null }); return; }
-  ph.end = { t: 0, step: 0, roarT: 0 };
-  e.state = 'nest'; e.x = n.x; e.y = n.y - 30; e.rot = 0; n.t = 0;
+  ph.end = { t: 0, step: 0, roarT: 0, x0: e.x, y0: e.y };
+  e.state = 'nest'; e.rot = 0; e.t = 0; n.t = 0; p.face = 1; o.face = 1; p.vx = 0;
   const S = tthStats(st);
   S.stretchT.push(Math.round((st.phT - ph.kT0) * 10) / 10);
   ph.mets = []; ph.k = 3; st.hints = [null, null]; st.warn = [0, 0];
@@ -504,8 +588,8 @@ function tthDinoThief(st, dt) {
       break;
     case 'end': {
       const n = ph.c.nest, E = ph.end;
-      if (E && E.step >= 2) glide(n.x - 360, n.y - 150 + Math.sin(st.phT * 14) * 4, 3.2);   // blown back by the roar
-      else glide(n.x - 70, n.y - 150, 3);
+      if (E && E.step >= 2) glide(Math.max(n.x - 380, cam.x + 150), n.y - 170 + Math.sin(st.phT * 14) * 4, 3.2);   // blown back by the roar
+      else glide(n.x - 40, n.y - 150, 3);
       c.claw = approach(c.claw, E && E.step >= 2 ? 0.25 : 1, dt * 3);
       break;
     }
@@ -528,8 +612,8 @@ function tthDinoDive(st) {
   Sfx.play('tthDinoAlarm');
   tthWarn(st, hid, th.aim + K.down);
   const first = ph.diveN <= 3, life = th.aim + K.down + 0.2;
-  tthDinoTip(st, hid, 'dive', first ? 'He dives for the egg! Hold ' + tthKey(hid, 'down') + ' to duck!' : 'Duck! Hold ' + tthKey(hid, 'down'), 0, { life });
-  if (Math.abs(tthDinoCx(o) - cx) < 400) tthDinoTip(st, o.id, 'dive', first ? 'Run to ' + NAMES[hid] + ' and whack his claw: ' + tthDinoAct(o.id, 'whack') : 'Whack the claw! ' + tthDinoAct(o.id, 'whack'), 0, { life });
+  tthDinoTip(st, hid, 'dive', first ? 'He wants the egg! Duck: hold ' + tthKey(hid, 'down') : 'Duck! Hold ' + tthKey(hid, 'down'), 0, { life });
+  if (Math.abs(tthDinoCx(o) - cx) < 400) tthDinoTip(st, o.id, 'dive', (first ? 'Whack his claw: ' : 'Whack! ') + tthDinoAct(o.id, 'whack'), 0, { life });
   return true;
 }
 // the claw is down: he misses a ducking carrier (or a tossed egg), otherwise the egg is knocked out of their hands
@@ -556,7 +640,8 @@ function tthDinoOpen(ph, x, pad) {
 function tthDinoMeteorAt(st, x, o = {}) {
   const ph = st.ph, K = TTHDINO.met;
   let ok = false;
-  for (const d of [0, 50, -50, 100, -100]) if (tthDinoOpen(ph, x + d, o.rock ? 120 : 26)) { x += d; ok = true; break; }
+  const stuck = G.players.filter(p => ph.P[p.id].post || ph.P[p.id].onVine).map(tthDinoCx);   // (they can't step away)
+  for (const d of [0, 50, -50, 100, -100]) if (tthDinoOpen(ph, x + d, o.rock ? 120 : 26) && !stuck.some(sx => Math.abs(sx - (x + d)) < K.r + 40)) { x += d; ok = true; break; }
   if (!ok) return null;
   if (o.rock && Math.abs(tthDinoG0(ph, x - 34) - tthDinoG0(ph, x + 34)) > 8) return null;
   const warn = (o.warn || K.warn) + (ph.sleepy ? K.sleepyWarn - K.warn : 0);
@@ -776,8 +861,8 @@ TTH_PHASES.dino = {
     ph.intro = { t: 0, step: 0, streak: -1 };
     ph.mets = []; ph.metN = 0; ph.metWho = ph.first; ph.rockN = 0; ph.showerN = 0; ph.diveN = 0; ph.scorch = [];
     ph.atkT = TTHDINO_STRETCHES[0].first; ph.atkN = 0; ph.hot = 0; ph.bonks = 0; ph.fireSlow = false; ph.sleepy = false;
-    ph.progT = 0; ph.progBest = -Infinity; ph.goldOpen = false; ph.tauntT = 12; ph.tauntN = 0; ph.factT = 0; ph.factN = 0;
-    ph.fire = { x: K.fire.start };
+    ph.progT = 0; ph.progBest = -Infinity; ph.goldOpen = false; ph.pitHelp = 0; ph.tauntT = 12; ph.tauntN = 0; ph.factT = 0; ph.factN = 0;
+    ph.fire = { x: K.fire.start }; ph.later = null;
     G.players.forEach((p, k) => {
       const x = 150 + k * 52;
       p.x = x - p.w / 2; p.y = tthDinoG(ph, x) - p.h; p.vx = 0; p.vy = 0; p.grounded = true; p.face = 1; ph.P[k].safeX = x;
@@ -821,6 +906,7 @@ TTH_PHASES.dino = {
       if (ph.mets.some(m => m.state === 'warn')) ph.mets = ph.mets.filter(m => m.state !== 'warn');
       if (th.mode === 'aim' || th.mode === 'dive') { th.mode = 'rise'; th.t = 0; st.warn[0] = st.warn[1] = 0; }
     }
+    if (ph.later && (ph.later.t -= dt) <= 0) { if (!ph.end) tthSay(st, ph.later.text, 2.4); ph.later = null; }
     tthDinoMeteors(st, dt);
     tthDinoFire(st, dt);
     tthDinoHints(st);
@@ -1115,14 +1201,14 @@ function tthDinoDrawPit(st, o, t) {
     if (u < 0.8) { ctx.fillStyle = lava ? 'rgba(255,235,150,0.9)' : 'rgba(120,100,140,0.9)'; circle(bx, sy + 14 - u * 12, 2 + u * 5); ctx.fill(); }
   }
   if (o.stone) {   // gold help: a stepping stone
-    const m = (o.x0 + o.x1) / 2;
-    ctx.fillStyle = '#d9b860'; ctx.strokeStyle = C.gold; ctx.lineWidth = 3; rr(m - 24, y, 48, K.pit + 6, 8); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(m - 24, y); ctx.lineTo(m + 24, y); ctx.stroke();
+    const sx0 = o.x0 + K.stoneGap, sw = w - 2 * K.stoneGap;
+    ctx.fillStyle = '#d9b860'; ctx.strokeStyle = C.gold; ctx.lineWidth = 3; rr(sx0, y, sw, K.pit + 6, 8); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(sx0, y); ctx.lineTo(sx0 + sw, y); ctx.stroke();
   }
   if (o.kind !== 'vine') return;
   // the vine bridge: planks hang slack in the pit until someone pulls at the post
-  const px = o.x0 - K.postX, fx = o.x1 + 22, sag = (1 - o.pull) * 62, n = Math.round(w / 26), col = PCOL[1 - Math.max(0, tthDinoHolder(st.ph))];
-  const at = u => [o.x0 - 4 + (w + 8) * u, y - 3 + Math.sin(u * Math.PI) * sag + (o.pull >= 0.9 ? Math.sin(t * 3 + u * 9) * 0.8 : Math.sin(t * 2 + u * 5) * 2 * (1 - o.pull))];
+  const px = o.x0 - K.postX, fx = o.x1 + 22, sag = o.taut ? (1 - o.pull) * 16 : (1 - o.pull) * 62, n = Math.round(w / 26), col = PCOL[1 - Math.max(0, tthDinoHolder(st.ph))];
+  const at = u => [o.x0 - 4 + (w + 8) * u, y - 3 + Math.sin(u * Math.PI) * sag + (o.creak ? Math.sin(t * 38 + u * 11) * 2.5 : o.pull >= 0.9 ? Math.sin(t * 3 + u * 9) * 0.8 : Math.sin(t * 2 + u * 5) * 2 * (1 - o.pull))];
   ctx.strokeStyle = TTHDINOC.vineDk; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(px, y - 34);
   ctx.lineTo(o.x0 - 4, y - 3); for (let q = 0; q <= 12; q++) { const [ax, ay] = at(q / 12); ctx.lineTo(ax, ay); } ctx.lineTo(fx, y - 30); ctx.stroke();
   for (let q = 0; q < n; q++) {
@@ -1203,7 +1289,7 @@ function tthDinoDrawNest(st, t) {
   // the nest: a bowl of twigs and ferns with two more eggs
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   tthDinoDrawLootAt(n.x - 20, n.y - 22, 0.8, -0.2, t); tthDinoDrawLootAt(n.x + 22, n.y - 20, 0.8, 0.25, t);
-  if (e.state === 'nest') tthDinoDrawLootAt(n.x, n.y - 30 + Math.max(0, 1 - n.t * 4) * -20, 0.95, Math.sin(t * 5) * 0.06, t);
+  if (e.state === 'nest') tthDinoDrawLootAt(e.x, e.y, 0.95, e.rot + (E && E.landed ? Math.sin(t * 5) * 0.06 : 0), t);
   ctx.fillStyle = '#8a5a30'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(n.x - 56, n.y - 20); ctx.quadraticCurveTo(n.x, n.y - 4, n.x + 56, n.y - 20); ctx.quadraticCurveTo(n.x + 52, n.y + 2, n.x + 36, n.y + 2); ctx.lineTo(n.x - 36, n.y + 2); ctx.quadraticCurveTo(n.x - 52, n.y + 2, n.x - 56, n.y - 20); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.strokeStyle = '#c99a5a'; ctx.lineWidth = 2.5; for (let q = 0; q < 7; q++) { const qx = n.x - 44 + q * 14.5; ctx.beginPath(); ctx.moveTo(qx, n.y - 12 + (q % 2) * 3); ctx.lineTo(qx + 12, n.y - 3 - (q % 3) * 2); ctx.stroke(); }
@@ -1327,13 +1413,21 @@ function tthDinoDrawFire(st, t) {
   body.addColorStop(0, 'rgba(90,40,50,0.92)'); body.addColorStop(0.35, '#d8432a'); body.addColorStop(0.75, '#ff7a2a'); body.addColorStop(1, '#ffb347');
   ctx.fillStyle = body; ctx.fillRect(cam.x - 30, top, Math.max(0, x - 40 - cam.x + 30), H);
   // three layers of flame tongues along the front
-  for (const [off, col, amp, sp] of [[0, '#ff5a2a', 26, 6], [-20, '#ff9a3a', 20, 8], [-42, '#ffd86a', 14, 11]]) {
-    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x + off - 60, bot);
-    for (let q = 0; q <= 14; q++) {
-      const yy = bot - q * 26, lean = q * q * 0.5, tip = (q % 2 ? 1 : -0.4) * amp;
-      ctx.lineTo(x + off - lean + tip + Math.sin(t * sp + q * 1.7) * 9, yy);
+  for (const [off, col, amp, sp] of [[0, '#ff5a2a', 30, 6], [-24, '#ff9a3a', 22, 8], [-50, '#ffd86a', 15, 11]]) {
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x + off - 200, bot + 10); ctx.lineTo(x + off + 6, bot + 10);
+    let lx = x + off + 6, ly = bot + 10;
+    for (let q = 0; q <= 16; q++) {   // a wavy front of round tongues that leans back toward the top
+      const yy = bot - q * 26, lean = q * q * 0.55, tip = (q % 2 ? 1 : -0.45) * amp;
+      const nx = x + off - lean + tip + Math.sin(t * sp + q * 1.7) * 9;
+      ctx.quadraticCurveTo(lx, ly, (lx + nx) / 2, (ly + yy) / 2); lx = nx; ly = yy;
     }
-    ctx.lineTo(x + off - 160, bot - 380); ctx.lineTo(x + off - 160, bot); ctx.closePath(); ctx.fill();
+    ctx.lineTo(x + off - 200, ly); ctx.closePath(); ctx.fill();
+  }
+  // flame tongues licking ahead along the ground
+  for (let k = 0; k < 4; k++) {
+    const u = (t * 1.3 + k * 0.27) % 1, fx = x + 4 + k * 13, fh = 26 + 30 * Math.sin(u * Math.PI), gy = tthDinoG(st.ph, fx + 8);
+    ctx.fillStyle = k % 2 ? '#ff9a3a' : '#ff5a2a';
+    ctx.beginPath(); ctx.moveTo(fx - 9, gy + 2); ctx.quadraticCurveTo(fx - 10, gy - fh * 0.5, fx + 6 + Math.sin(t * 9 + k) * 4, gy - fh); ctx.quadraticCurveTo(fx + 12, gy - fh * 0.4, fx + 11, gy + 2); ctx.closePath(); ctx.fill();
   }
   // sparks blown ahead
   for (let k = 0; k < 10; k++) {
@@ -1377,6 +1471,7 @@ Sfx.extra.tthDinoSwoop = function () { this.tone(900, 0.4, 'sawtooth', 0.03, 220
 Sfx.extra.tthDinoWhack = function () { this.tone(1400, 0.05, 'square', 0.06, 500); this.tone(220, 0.16, 'triangle', 0.08, 90); };
 Sfx.extra.tthDinoMiss = function () { this.tone(500, 0.14, 'sine', 0.04, 900); };
 Sfx.extra.tthDinoSizzle = function () { this.tone(1800, 0.25, 'sawtooth', 0.012, 900); this.tone(240, 0.3, 'triangle', 0.03, 120, 0.02); };
+Sfx.extra.tthDinoCreak = function () { for (let k = 0; k < 3; k++) this.tone(150 + k * 30, 0.1, 'sawtooth', 0.03, 110, k * 0.13); };
 Sfx.extra.tthDinoVine = function () { this.tone(200, 0.18, 'sawtooth', 0.02, 420); };
 Sfx.extra.tthDinoFlag = function () { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.12, 'triangle', 0.05, null, i * 0.07)); };
 Sfx.extra.tthDinoRoar = function () { this.tone(140, 1.1, 'sawtooth', 0.09, 60); this.tone(210, 1.0, 'square', 0.04, 80, 0.03); for (let k = 0; k < 6; k++) this.tone(70 + Math.random() * 40, 0.2, 'sawtooth', 0.05, 40, k * 0.15); };

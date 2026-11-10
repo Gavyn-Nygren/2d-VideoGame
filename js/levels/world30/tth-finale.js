@@ -63,11 +63,11 @@
 const TTHFIN = {
   x0: 150, x1: 810, gap: 380, deckH: 14, foot: 508, topFoot: 470,
   liftW: 84, liftX: [154, 722],                       // the lift columns: left (x 154-238) and right (x 722-806)
-  lever: { reach: 36 },
-  grip: { hold: 6, rest: 5, regrab: 0.4, goldK: 0.5 },
-  gear: { fast: 3.3, slow: 0.85, ride: 1.7, upT: 1.4, downT: 0.35 },
-  hand: { sweep: [18, 17, 16, 16], startK: 0.02, warnK: 0.78, goldK: 1.6 },
-  lift: { down: 330, up: 180, board: 0.25, again: 0.6 },
+  lever: { reach: 42 },
+  grip: { hold: 7, rest: 5, regrab: 0.4, goldK: 0.5 },
+  gear: { fast: 3.3, slow: 0.7, ride: 1.7, upT: 1.4, downT: 0.35 },
+  hand: { sweep: [22, 20, 19, 18], startK: 0.02, warnK: 0.78, goldK: 1.6 },
+  lift: { down: 240, up: 140, board: 0.25, again: 0.6 },
   bub: { fly: 1.5, goldFly: 2.2, rx: 30, ry: 40, freeze: 1.0, first: 4.2 },
   rewind: { t: 0.95, safe: 1.6, every: 0.08 },
   button: { reach: 24 },
@@ -76,30 +76,36 @@ const TTHFIN = {
   gold: { rewinds: 2, rewinds2: 4, flings: 3, frozen: 3, stuckT: 26, miss: 3, miss2: 6, tricks: 3 },
   fin: { whirl: 2.6, each: 0.72, fly: 0.65, after: 1.7 },
 };
-// The four climbs. lift: 0 left / 1 right column; lever: x on the lower deck; button: x on the upper deck; hatch: the
-// trapdoor in the upper deck; back: where a rewind puts the climber; every / pattern: bubbles (C climber, H holder).
-// els (in route order; h = px above the lower deck): shelf, pend (pivot px / ph), piston, tooth (set 0 / 1), gear.
+// The four climbs. Every climb has the same bones: a STEP (the new thing of the ledge), gear A, the safe shelf R (a
+// checkpoint), gear B, the hatch. They are written in "u" (px from the wall opposite the lift: the tower is mirrored
+// when the lift is on the left) and h (px above the lower deck); tthFinSec turns u into x at load time.
+// lift: 0 left / 1 right column; every / pattern: tick-tock bubbles (C at the climber, H at the holder).
+// els, in route order: shelf (rest: the safe shelf), pend (pivot u / ph), piston (u0 <-> u1), tooth (set 0 / 1), gear.
+const TTHFIN_GA = { id: 'gA', kind: 'gear', u: 180, h: 174, r: 62, n: 5, pw: 54 }, TTHFIN_GB = { id: 'gB', kind: 'gear', u: 448, h: 264, r: 60, n: 5, pw: 54 };
+const TTHFIN_R = { id: 'R', kind: 'shelf', rest: true, u: 268, h: 230, w: 70 };
+function tthFinSec(S) {
+  const right = S.lift === 1, X = u => (right ? 160 + u : 800 - u), L = (u, w) => (right ? 160 + u : 800 - u - w);
+  const out = Object.assign({}, S, { lever: X(505), button: X(215), back: X(150), hatch: right ? [X(398), X(498)] : [X(498), X(398)] });
+  out.els = S.els.map(E => {
+    const e = Object.assign({}, E);
+    if (E.kind === 'gear') { e.x = X(E.u); e.dir = right ? 1 : -1; }      // (the pegs rise on the side the climber comes from)
+    else if (E.kind === 'pend') e.px = X(E.u);
+    else if (E.kind === 'piston') { e.x0 = right ? L(E.u0, E.w) : L(E.u1, E.w); e.x1 = right ? L(E.u1, E.w) : L(E.u0, E.w); }
+    else e.x = L(E.u, E.w);
+    return e;
+  });
+  return out;
+}
 const TTHFIN_SECS = [
-  { name: 'First Gear', lift: 0, lever: 330, button: 540, hatch: [300, 400], back: 590, every: 0, pattern: '', fact: 'Did you know? The first clocks had only ONE hand: the hour hand.',
-    els: [{ id: 's1', kind: 'shelf', x: 630, h: 85, w: 90 },
-      { id: 'p1', kind: 'pend', px: 515, ph: 345, len: 205, amp: 0.4, per: 3.2, w: 72 },
-      { id: 'g1', kind: 'gear', x: 350, h: 225, r: 80, n: 4, dir: -1, pw: 60 }] },
-  { name: 'Piston Alley', lift: 1, lever: 630, button: 420, hatch: [555, 655], back: 320, every: 7, pattern: 'C', fact: 'Did you know? A clock says tick-tock because its escapement teeth click.',
-    els: [{ id: 's1', kind: 'shelf', x: 175, h: 85, w: 85 },
-      { id: 'z1', kind: 'piston', x0: 280, x1: 440, h: 150, w: 72, v: 115, dwell: 0.8 },
-      { id: 'g1', kind: 'gear', x: 605, h: 228, r: 78, n: 4, dir: 1, pw: 60 }] },
-  { name: 'Tick-Tock Teeth', lift: 0, lever: 330, button: 540, hatch: [300, 400], back: 640, every: 5.6, pattern: 'CH', fact: 'Did you know? The first pendulum clock was built in 1656.',
-    els: [{ id: 's1', kind: 'shelf', x: 715, h: 85, w: 90 },
-      { id: 't1', kind: 'tooth', x: 630, h: 135, w: 64, set: 0 },
-      { id: 't2', kind: 'tooth', x: 535, h: 165, w: 64, set: 1 },
-      { id: 't3', kind: 'tooth', x: 440, h: 190, w: 64, set: 0 },
-      { id: 'g1', kind: 'gear', x: 350, h: 228, r: 78, n: 4, dir: -1, pw: 60 }] },
-  { name: 'Double Gears', lift: 1, lever: 630, button: 395, hatch: [580, 680], back: 320, every: 4.8, pattern: 'CHC', fact: '',
-    els: [{ id: 's1', kind: 'shelf', x: 170, h: 80, w: 85 },
-      { id: 'gA', kind: 'gear', x: 345, h: 170, r: 62, n: 4, dir: 1, pw: 54 },
-      { id: 's2', kind: 'shelf', x: 440, h: 226, w: 66 },
-      { id: 'gB', kind: 'gear', x: 630, h: 262, r: 60, n: 4, dir: 1, pw: 54 }] },
-];
+  { name: 'First Gears', lift: 0, every: 0, pattern: '', fact: 'Did you know? The first clocks had only ONE hand: the hour hand.',
+    els: [{ id: 's1', kind: 'shelf', u: 15, h: 80, w: 85 }, TTHFIN_GA, TTHFIN_R, TTHFIN_GB] },
+  { name: 'Pendulum Hop', lift: 1, every: 7, pattern: 'C', fact: 'Did you know? The first pendulum clock was built in 1656.',
+    els: [{ id: 'p1', kind: 'pend', u: 78, ph: 222, len: 142, amp: 0.42, per: 3.2, w: 60 }, TTHFIN_GA, TTHFIN_R, TTHFIN_GB] },
+  { name: 'Tick-Tock Teeth', lift: 0, every: 5.6, pattern: 'CH', fact: 'Did you know? A clock says tick-tock because its escapement teeth click.',
+    els: [{ id: 't1', kind: 'tooth', u: 12, h: 68, w: 60, set: 0 }, { id: 't2', kind: 'tooth', u: 84, h: 98, w: 60, set: 1 }, TTHFIN_GA, TTHFIN_R, TTHFIN_GB] },
+  { name: 'Piston Pass', lift: 1, every: 4.8, pattern: 'CHC', fact: '',
+    els: [{ id: 'z1', kind: 'piston', u0: 10, u1: 96, h: 88, w: 64, v: 90, dwell: 0.9 }, Object.assign({}, TTHFIN_GA, { n: 4 }), TTHFIN_R, Object.assign({}, TTHFIN_GB, { n: 4 })] },
+].map(tthFinSec);
 const TTHFIN_TOOTH = { per: 3, on: 0.6, warn: 0.2 };   // a tooth is in for on * per s, and blinks for warn * per s before it folds
 const TTHFIN_HOME = [   // the pay-off: one line and one portal name per stolen thing, in TTH_LOOT order
   ['The T. rex egg is home, 66 million years ago!', 'Dinosaurs'], ['The great stone is home, at Stonehenge, 2500 BC!', 'Stonehenge'],
@@ -127,7 +133,7 @@ function tthFinBuild() {
   TTHFIN_SECS.forEach((S, k) => {
     const y0 = tthFinLY(k), col = K.liftX[S.lift];
     const sec = { k, S, els: [], gears: [], lever: { x: S.lever, y: y0 }, button: { x: S.button, y: tthFinLY(k + 1), down: false, t: 0 }, back: S.back, base: decks[k], upper: decks[k + 1] };
-    Object.assign(sec, { rewinds: 0, flings: 0, frozen: 0, best: 0, stuckT: 0, stuckN: 0 });
+    Object.assign(sec, { rewinds: 0, rwN: [0, 0], cp: null, flings: 0, frozen: 0, best: 0, stuckT: 0, stuckN: 0 });
     sec.lift = { kind: 'lift', sec: k, x: col, w: K.liftW, y: tthFinLY(k + 1), yTop: tthFinLY(k + 1), yBot: y0, dx: 0, dy: 0, solid: true, state: 'top', t: 0 };
     plats.push(sec.lift);
     for (const E of S.els) {
@@ -169,8 +175,9 @@ const TTHFIN_TMP = { x: 0, y: 0, solid: true, warn: false };
 // one tick of the clockwork: everything moves, and remembers how far (dx, dy) for whoever rides it
 function tthFinMech(st, dt) {
   const ph = st.ph, K = TTHFIN, o = TTHFIN_TMP;
-  ph.tm += dt * ph.mechK;
   const braking = ph.braking && ph.stage === 'climb';
+  ph.tm += dt * ph.mechK;
+  if (!braking) ph.tt += dt * ph.mechK;                 // the escapement only ticks while the clock runs
   for (const el of ph.c.els) {
     if (el.kind === 'gear') {
       const G0 = K.gear, want = el.sec < ph.k || ph.stage === 'fin' ? G0.slow * 0.5 : braking && el.sec === ph.k ? G0.slow : ph.stage === 'top' ? G0.slow : G0.fast;
@@ -180,7 +187,7 @@ function tthFinMech(st, dt) {
       const ok = el.w <= G0.ride && el.sec === ph.k;
       for (const q of el.pegs) { tthFinPegAt(el, q.n, el.a, o); q.dx = o.x - q.x; q.dy = o.y - q.y; q.x = o.x; q.y = o.y; q.solid = ok; }
     } else if (el.kind !== 'shelf') {
-      const q = el.plat; tthFinElAt(el, ph.tm, o);
+      const q = el.plat; tthFinElAt(el, el.kind === 'tooth' ? ph.tt : ph.tm, o);
       q.dx = o.x - q.x; q.dy = o.y - q.y; q.x = o.x; q.y = o.y;
       if (el.kind === 'tooth') { if (q.solid !== o.solid && el.sec === ph.k && ph.stage === 'climb') Sfx.play('tthFinClick'); q.solid = o.solid; el.warn = o.warn; el.f = o.f; }
       if (el.kind === 'pend') el.th = o.th;
@@ -388,13 +395,14 @@ function tthFinRewind(st) {
   const who = [false, false];
   let any = false;
   for (const p of ps) {
-    if (tthFinFeet(p) > sec.base.y - 8 || ph.P[p.id].on === sec.upper.plat || ph.P[p.id].on === sec.lift) continue;
+    const on = ph.P[p.id].on;
+    if (tthFinFeet(p) > sec.base.y - 8 || on === sec.upper.plat || on === sec.lift || (on && on.el && on.el.rest)) continue;   // (the safe shelf is safe)
     who[p.id] = true; any = true;
   }
   if (!any) { tthPop(st, W / 2, st.cam.y + 150, 'Dong!', '#f6d37a', 24); return; }
   ph.rw = { t: 0, who, from: ps.map(p => ({ x: p.x, y: p.y })), trail: ph.trail.map(t => t.slice()) };
   sec.rewinds++; tthStats(st).rewinds = (tthStats(st).rewinds || 0) + 1;
-  const first = sec.rewinds === 1;
+  const first = ++sec.rwN[sec.cp ? 1 : 0] === 1;         // a bump only the first time at each spot (the deck, the safe shelf)
   for (const p of ps) {
     if (!who[p.id]) continue;
     ph.P[p.id].on = null; p.vx = 0; p.vy = 0; p.grounded = false; p.stun = 0; ph.P[p.id].frozenT = 0;
@@ -416,7 +424,11 @@ function tthFinRewinding(st, dt) {
   // the climber's trail (for the next rewind): a point every rewind.every s while up in the clockwork
   if (!rw) {
     const Cl = ps[1 - ph.holder];
-    if (ph.stage === 'climb' && tthFinFeet(Cl) < sec.base.y - 8 && (ph.trailT -= dt) <= 0) { ph.trailT = K.rewind.every; ph.trail.push([Cl.x, Cl.y]); if (ph.trail.length > 140) ph.trail.splice(0, 2); }
+    const on = ph.P[Cl.id].on;
+    if (ph.stage === 'climb' && on && on.el && on.el.rest) {   // the safe shelf: from now on a rewind only goes back to here
+      ph.trail.length = 0;
+      if (sec.cp !== on.el) { sec.cp = on.el; tthPop(st, on.x + on.w / 2, on.y - 46, 'Safe shelf!', TTHFINC.green, 20); Sfx.play('tthDing'); tthStats(st).shelves = (tthStats(st).shelves || 0) + 1; }
+    } else if (ph.stage === 'climb' && tthFinFeet(Cl) < sec.base.y - 8 && (ph.trailT -= dt) <= 0) { ph.trailT = K.rewind.every; ph.trail.push([Cl.x, Cl.y]); if (ph.trail.length > 140) ph.trail.splice(0, 2); }
     else if (tthFinFeet(Cl) >= sec.base.y - 8 && ph.trail.length) ph.trail.length = 0;
     return;
   }
@@ -424,16 +436,17 @@ function tthFinRewinding(st, dt) {
   const u = clamp(rw.t / K.rewind.t, 0, 1), e = u * u * (3 - 2 * u), Cl = 1 - ph.holder;
   for (const p of ps) {
     if (!rw.who[p.id]) continue;
-    const bx = sec.back + (p.id === Cl ? 0 : 40) - p.w / 2, by = sec.base.y - p.h, tr = p.id === Cl ? rw.trail : [];
+    const cp = p.id === Cl && sec.cp ? sec.cp.plat : null;
+    const bx = (cp ? cp.x + cp.w / 2 : sec.back + (p.id === Cl ? 0 : 40)) - p.w / 2, by = (cp ? cp.y : sec.base.y) - p.h, tr = p.id === Cl ? rw.trail : [];
     // back along the trail (newest first), ending on the deck
     const n = tr.length, f = e * (n + 1), i = Math.floor(f), fr = f - i;
     const pt = j => (j <= 0 ? [rw.from[p.id].x, rw.from[p.id].y] : j > n ? [bx, by] : tr[n - j]);
     const a = pt(i), b = pt(i + 1);
     p.x = a[0] + (b[0] - a[0]) * fr; p.y = a[1] + (b[1] - a[1]) * fr; p.vx = 0; p.vy = 0; p.face = bx > p.x ? 1 : -1;
     if ((G.tickN % 4) === 0) G.particles.push({ x: tthFinCx(p), y: p.y + p.h / 2, vx: 0, vy: 0, life: 0.35, max: 0.35, col: p.id ? 'rgba(91,149,255,0.7)' : 'rgba(255,107,74,0.7)', size: 9, grav: 0, kind: 'dot' });
-    if (u >= 1) { p.x = bx; p.y = by; p.grounded = true; ph.P[p.id].on = sec.base.plat; p.sx = 1.2; p.sy = 0.8; puff(tthFinCx(p), by + p.h, 6, 'rgba(178,141,255,0.85)'); }
+    if (u >= 1) { p.x = bx; p.y = by; p.grounded = true; ph.P[p.id].on = cp || sec.base.plat; p.sx = 1.2; p.sy = 0.8; puff(tthFinCx(p), by + p.h, 6, 'rgba(178,141,255,0.85)'); }
   }
-  if (u >= 1) { ph.rw = null; ph.trail.length = 0; ph.sec.best = 0; ph.sec.stuckT = 0; }
+  if (u >= 1) { ph.rw = null; ph.trail.length = 0; sec.best = sec.cp ? sec.base.y - sec.cp.plat.y : 0; sec.stuckT = 0; }
 }
 
 /* ---------- tick-tock bubbles ---------- */
@@ -786,3 +799,550 @@ function tthFinThief(st, dt) {
   c.x += (tx - c.x) * k; c.y += (ty - c.y) * k; c.s += (ts - c.s) * Math.min(1, dt * 2);
   c.jet = true; c.flame = ph.stage === 'top' && Math.abs(c.x - tx) < 6 ? 0.35 : 1;
 }
+
+/* ---------- the phase: setup, the tick, coasting ---------- */
+function tthFinSetup(st, Lv) {
+  const ph = st.ph, c = st.thief, K = TTHFIN, ps = G.players;
+  ph.c = tthFinBuild();
+  ph.P = [0, 1].map(() => ({ on: null, flingCD: 0, frozenT: 0 }));
+  ph.k = 0; ph.sec = ph.c.secs[0]; ph.stage = 'climb';
+  ph.holder = Lv && Lv.def && Lv.def.first === 1 ? 1 : 0;
+  ph.t = 0; ph.tm = 0; ph.tt = 0; ph.mechK = 1; ph.hello = false;
+  ph.grip = 1; ph.slip = false; ph.braking = false; ph.leverK = 0; ph.brakedOnce = false;
+  ph.hand = { k: K.hand.startK, spin: 0, from: 0, tick: 0 };
+  ph.rw = null; ph.trail = []; ph.trailT = 0;
+  ph.bubs = []; ph.bubN = 0; ph.bubT = K.bub.first; ph.bubI = 0;
+  ph.gold = { hand: 0, grip: false, bub: false, mech: 0 };
+  ph.tipT = [{}, {}]; ph.hintKey = [null, null]; ph.jobTipT = 1.0; ph.factT = 7; ph.waitT = 0; ph.goldAt = null;
+  ph.thiefPoseT = 0; ph.top = null; ph.fin = null; ph.debris = []; ph.kT0 = 0;
+  Object.assign(tthStats(st), { ledges: 0, ledgeT: [], rewinds: 0, flings: 0, frozen: 0, slips: 0, hits: 0, misses: 0 });
+  tthFinMech(st, 0);                                   // every platform takes its place
+  st.cam = { x: 0, y: tthFinLY(0) - K.foot };
+  // on the start deck: the holder near the lever, the climber by the first shelf (screen coords here: world - cam)
+  const lv = ph.sec.lever.x, at = [0, 0];
+  at[ph.holder] = lv + 70; at[1 - ph.holder] = lv + 190;
+  for (const p of ps) {
+    Object.assign(p, { alive: true, respawnT: 0, x: at[p.id] - p.w / 2, y: tthFinLY(0) - p.h - st.cam.y, vx: 0, vy: 0, stun: 0, knockT: 0, grounded: true, face: p.id === ph.holder ? -1 : 1, sx: 1, sy: 1, carryVx: 0, lastVy: 0 });
+    ph.P[p.id].on = ph.c.decks[0].plat;
+  }
+  Object.assign(c, { x: 886, y: st.cam.y + 318, s: 0.62, face: -1, pose: 'idle', mood: 'smug', baseMood: 'smug', jet: true, item: null, claw: 0.25, hidden: false, alpha: 1, flame: 1 });
+}
+function tthFinStep(st, dt) {
+  const ph = st.ph, ps = G.players;
+  ph.t += dt;
+  if (!ph.hello && ph.t > 0.4) { ph.hello = true; tthSay(st, TTHFIN_TAUNTS[0], 2.6); }
+  tthFinMech(st, dt);
+  tthFinRewinding(st, dt);
+  for (const p of ps) tthFinBody(st, p, dt);
+  tthFinJobs(st, dt);
+  tthFinHand(st, dt);
+  tthFinBubbles(st, dt);
+  tthFinTop(st, dt);
+  if (ph.stage === 'fin') { for (const p of ps) p.pendingAct = false; tthFinFinale(st, dt); }
+  tthFinLedge(st);
+  if (G.mst !== st) return;
+  tthFinHints(st, dt);
+  tthFinThief(st, dt);
+  tthFinCam(st, false, dt);
+}
+// cards and the portal cutscene: the clockwork turns, nobody is steered
+function tthFinCoast(st, dt) {
+  const ph = st.ph;
+  if (!ph.c) return;
+  ph.t += dt;
+  tthFinMech(st, dt);
+  tthFinStill(st, dt);
+  for (const d of ph.debris) { d.t += dt; d.vy += 900 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.rot += d.vr * dt; }
+  if (ph.debris.length && ph.debris[0].t > ph.debris[0].life) ph.debris = ph.debris.filter(d => d.t <= d.life);
+  if (ph.top) { const tp = ph.top; tp.rise = Math.min(1, tp.rise + dt / 0.8); tp.flash = Math.max(0, tp.flash - dt * 2.5); for (const r of tp.rams) { r.k = approach(r.k, 0, dt * 3); r.down = approach(r.down, 0, dt * 6); } }
+  if (ph.fin) for (let i = 0; i < ph.fin.open.length; i++) ph.fin.open[i] = approach(ph.fin.open[i], 0, dt * 2.2);
+  if (!st.cut) tthFinThief(st, dt);
+  tthFinCam(st, false, dt);
+}
+
+/* ---------- drawing: the sky, the giant clock, the tower ---------- */
+const TTHFINC = { brass: '#d9a441', brassDk: '#9a6f22', brassLt: '#f6d37a', iron: '#4a4466', ironDk: '#2e2a4a', ironLt: '#7d78a6', cream: '#fff4d6', red: '#ff5f6d', green: '#9fe07f',
+  ice: '#7fe9ff', lift: '#63d2c0', liftDk: '#2f8f84', wall: 'rgba(20,10,52,0.5)', violet: '#5b3a9e' };
+const TTHFIN_CLOCK = { x: 480, y: 306, r: 172 };       // the giant clock (screen coords)
+function tthFinCog(x, y, r, a, n, fill, stroke, lw) {
+  const r0 = r * 0.82, st = Math.PI * 2 / n;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a0 = a + i * st;
+    ctx.lineTo(x + Math.cos(a0) * r0, y + Math.sin(a0) * r0);
+    ctx.lineTo(x + Math.cos(a0 + st * 0.16) * r, y + Math.sin(a0 + st * 0.16) * r);
+    ctx.lineTo(x + Math.cos(a0 + st * 0.5) * r, y + Math.sin(a0 + st * 0.5) * r);
+    ctx.lineTo(x + Math.cos(a0 + st * 0.66) * r0, y + Math.sin(a0 + st * 0.66) * r0);
+  }
+  ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 2.5; ctx.stroke(); }
+}
+function tthFinLine(x0, y0, x1, y1) { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); }
+// a brass plank with an ink outline (the top is the standing line)
+function tthFinPlank(x, y, w, h, fill, lite) {
+  ctx.fillStyle = fill; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x, y, w, h, Math.min(5, h / 2)); ctx.fill(); ctx.stroke();
+  if (lite) { ctx.fillStyle = lite; ctx.fillRect(x + 4, y + 2, w - 8, 2.5); }
+}
+function tthFinDrawSky(st) {
+  const ph = st.ph, t = G.clock * (reduceMotion ? 0.25 : 1), cy = st.cam.y;
+  tthSky('#160b38', '#6d2f9e');
+  // the swirl of the End of Time
+  ctx.save(); ctx.translate(480, 300); ctx.lineCap = 'round';
+  for (let a = 0; a < 4; a++) {
+    ctx.strokeStyle = a % 2 ? 'rgba(255,160,225,0.10)' : 'rgba(140,120,255,0.15)'; ctx.lineWidth = 30 - a * 4;
+    ctx.beginPath();
+    for (let q = 0; q <= 20; q++) { const u = q / 20, ang = t * 0.22 + a * 1.571 + u * 5, rad = 40 + 600 * u; ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad * 0.6); }
+    ctx.stroke();
+  }
+  ctx.restore();
+  tthStars(G.clock, 30, 0.7, 11);
+  // lost clocks drifting by (they slide as the tower is climbed)
+  ctx.save(); ctx.globalAlpha = 0.5;
+  for (let k = 0; k < 10; k++) {
+    const h = hash(k, 31), x = (h % 960 + t * (4 + k % 3 * 3)) % 1000 - 20, y0 = (h >>> 9) % 660, y = ((y0 - cy * 0.28) % 660 + 660) % 660 - 60, r = 8 + (h >>> 4) % 9;
+    tthClockFace(x, y + Math.sin(t * 0.7 + k) * 6, r, t + k * 3, { speed: (k % 2 ? -1 : 1) * (2 + k % 4), lw: 1.6, fill: k % 3 ? TTHFINC.cream : '#e6d4ff' });
+  }
+  ctx.restore();
+}
+// the giant clock behind the tower, with its ONE huge hand (screen coords)
+function tthFinDrawClock(st) {
+  const ph = st.ph, Q = TTHFIN_CLOCK, K = TTHFIN.hand, hd = ph.hand, R = Q.r, climb = ph.stage === 'climb' || ph.stage === 'lift';
+  const k = climb ? hd.k : (G.clock * 0.05) % 1, warn = climb && hd.spin <= 0 && hd.k >= K.warnK && ph.stage === 'climb';
+  ctx.save(); ctx.translate(Q.x, Q.y); ctx.lineCap = 'round';
+  ctx.fillStyle = 'rgba(255,244,214,0.09)'; circle(0, 0, R); ctx.fill();
+  ctx.strokeStyle = 'rgba(246,211,122,0.6)'; ctx.lineWidth = 7; circle(0, 0, R); ctx.stroke();
+  ctx.strokeStyle = 'rgba(246,211,122,0.3)'; ctx.lineWidth = 2; circle(0, 0, R - 13); ctx.stroke();
+  if (climb) {   // the red stretch before 12
+    ctx.strokeStyle = warn && Math.sin(G.clock * 14) > 0 ? 'rgba(255,95,109,0.8)' : 'rgba(255,95,109,0.42)'; ctx.lineWidth = 11;
+    ctx.beginPath(); ctx.arc(0, 0, R - 24, -Math.PI / 2 + K.warnK * Math.PI * 2, Math.PI * 1.5 - 0.08); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(255,244,214,0.55)';
+  for (let n = 0; n < 12; n++) { const a = n * Math.PI / 6, big = n % 3 === 0; ctx.lineWidth = big ? 6 : 3.5; ctx.beginPath(); ctx.moveTo(Math.sin(a) * (R - (big ? 40 : 34)), -Math.cos(a) * (R - (big ? 40 : 34))); ctx.lineTo(Math.sin(a) * (R - 18), -Math.cos(a) * (R - 18)); if (n) ctx.stroke(); }
+  ctx.globalAlpha = 0.9; bigText('12', 0, -R + 32, 26, warn ? TTHFINC.red : TTHFINC.brassLt, 1); ctx.globalAlpha = 1;
+  // the hand: gold while it sweeps, icy blue while the brake holds it, red on the last stretch
+  const col = !climb ? 'rgba(246,211,122,0.5)' : hd.spin > 0 ? '#e6d4ff' : ph.braking ? TTHFINC.ice : warn ? TTHFINC.red : TTHFINC.brassLt;
+  const hand = (kk, alpha) => {
+    ctx.save(); ctx.rotate(kk * Math.PI * 2); ctx.globalAlpha = alpha;
+    ctx.fillStyle = col; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(-10, 20); ctx.lineTo(-6, -R * 0.72); ctx.lineTo(-13, -R * 0.72); ctx.lineTo(0, -R * 0.92); ctx.lineTo(13, -R * 0.72); ctx.lineTo(6, -R * 0.72); ctx.lineTo(10, 20); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  };
+  if (hd.spin > 0 && climb && !reduceMotion) { hand(k + 0.05, 0.22); hand(k + 0.1, 0.12); }
+  hand(k, climb ? 0.95 : 0.5);
+  ctx.fillStyle = TTHFINC.brass; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; circle(0, 0, 13); ctx.fill(); ctx.stroke();
+  if (ph.braking && climb) {   // brake shoes on the hub
+    ctx.strokeStyle = TTHFINC.ice; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, 21, 0.5, 2.6); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 21, 3.64, 5.74); ctx.stroke();
+  }
+  ctx.restore();
+}
+function tthFinDrawDeck(st, d) {
+  const ph = st.ph, K = TTHFIN, w = d.x1 - d.x0;
+  ctx.fillStyle = TTHFINC.brass; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(d.x0, d.y, w, K.deckH, 4); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = TTHFINC.brassLt; ctx.fillRect(d.x0 + 4, d.y + 2, w - 8, 3);
+  ctx.fillStyle = TTHFINC.brassDk; for (let x = d.x0 + 16; x < d.x1 - 8; x += 46) { circle(x, d.y + 9.5, 1.8); ctx.fill(); }
+  if (!d.hatch) return;
+  // the hatch: a striped trapdoor (jump up through it, stand on it)
+  const h0 = d.hatch[0], h1 = d.hatch[1], now = ph.stage === 'climb' && ph.sec.upper === d;
+  ctx.fillStyle = TTHFINC.violet; ctx.fillRect(h0, d.y + 1.5, h1 - h0, K.deckH - 3);
+  ctx.fillStyle = '#ffd23f';
+  for (let x = h0 + 5; x < h1 - 14; x += 18) { ctx.beginPath(); ctx.moveTo(x, d.y + K.deckH - 2.5); ctx.lineTo(x + 6, d.y + 2.5); ctx.lineTo(x + 13, d.y + 2.5); ctx.lineTo(x + 7, d.y + K.deckH - 2.5); ctx.closePath(); ctx.fill(); }
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(h0, d.y + 1, h1 - h0, K.deckH - 2);
+  if (now) {   // "up through here"
+    const cx = (h0 + h1) / 2, bob = Math.sin(G.clock * 5) * 3;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const [col, lw] of [[C.ink, 8], ['#ffd23f', 4]]) {
+      ctx.strokeStyle = col; ctx.lineWidth = lw;
+      for (const dy of [30, 44]) { ctx.beginPath(); ctx.moveTo(cx - 11, d.y + dy + 9 + bob); ctx.lineTo(cx, d.y + dy + bob); ctx.lineTo(cx + 11, d.y + dy + 9 + bob); ctx.stroke(); }
+    }
+  }
+}
+function tthFinDrawLift(st, sec) {
+  const L = sec.lift, cx = L.x + L.w / 2, wait = L.state === 'wait' && sec === st.ph.sec;
+  ctx.strokeStyle = 'rgba(125,120,166,0.5)'; ctx.lineWidth = 3;
+  tthFinLine(L.x + 3, L.yTop, L.x + 3, L.yBot); tthFinLine(L.x + L.w - 3, L.yTop, L.x + L.w - 3, L.yBot);
+  // the telescope pole under it
+  if (L.yBot - L.y > 14) { ctx.fillStyle = TTHFINC.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.fillRect(cx - 6, L.y + 10, 12, L.yBot - L.y - 10); ctx.strokeRect(cx - 6, L.y + 10, 12, L.yBot - L.y - 10); }
+  tthFinPlank(L.x, L.y, L.w, 13, wait && Math.sin(G.clock * 9) > 0 ? '#b7f5e8' : TTHFINC.lift, 'rgba(255,255,255,0.6)');
+  ctx.strokeStyle = TTHFINC.liftDk; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const dx of [-22, 0, 22]) { ctx.beginPath(); ctx.moveTo(cx + dx - 5, L.y + 10); ctx.lineTo(cx + dx, L.y + 5.5); ctx.lineTo(cx + dx + 5, L.y + 10); ctx.stroke(); }
+}
+// one piece of clockwork
+function tthFinDrawEl(st, el) {
+  const ph = st.ph, K = TTHFIN, F = TTHFINC, cur = el.sec === ph.k && (ph.stage === 'climb' || ph.stage === 'lift');
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (el.kind === 'shelf') {
+    const q = el.plat;
+    ctx.fillStyle = F.brassDk; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+    for (const bx of [q.x + 12, q.x + q.w - 12]) { ctx.beginPath(); ctx.moveTo(bx - 7, q.y + 10); ctx.lineTo(bx + 7, q.y + 10); ctx.lineTo(bx, q.y + 24); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    tthFinPlank(q.x, q.y, q.w, 12, F.brass, F.brassLt);
+  } else if (el.kind === 'pend') {
+    const q = el.plat, bx = q.x + q.w / 2;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 7; tthFinLine(el.px, el.py, bx, q.y + 4);
+    ctx.strokeStyle = F.ironLt; ctx.lineWidth = 3.5; tthFinLine(el.px, el.py, bx, q.y + 4);
+    ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; circle(el.px, el.py, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = F.brass; circle(bx, q.y + 26, 17); ctx.fill(); ctx.stroke();
+    tthClockFace(bx, q.y + 26, 10, ph.tm, { speed: 2.5, lw: 1.8 });
+    tthFinPlank(q.x, q.y, q.w, 12, F.brassLt, '#fffbe6');
+  } else if (el.kind === 'piston') {
+    const q = el.plat;
+    ctx.strokeStyle = 'rgba(125,120,166,0.7)'; ctx.lineWidth = 3; tthFinLine(el.x0, q.y + 20, el.x1 + el.w, q.y + 20);
+    ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+    for (const sx of [el.x0 - 4, el.x1 + el.w - 4]) { ctx.fillRect(sx, q.y + 14, 8, 12); ctx.strokeRect(sx, q.y + 14, 8, 12); }
+    // the piston rod from the wall
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 8; tthFinLine(K.x0 + 4, q.y + 9, q.x, q.y + 9);
+    ctx.strokeStyle = F.ironLt; ctx.lineWidth = 4; tthFinLine(K.x0 + 4, q.y + 9, q.x, q.y + 9);
+    tthFinPlank(q.x, q.y, q.w, 18, '#8fb4ff', '#e3edff');
+    ctx.fillStyle = C.ink; for (const wx of [q.x + 14, q.x + q.w - 14]) { circle(wx, q.y + 20, 5); ctx.fill(); }
+  } else if (el.kind === 'tooth') {
+    // a hinged tooth: out (stand on it), blinking (about to fold), folded (a faint flap)
+    const q = el.plat, Z = TTHFIN_TOOTH, f = el.f || 0, fold = q.solid ? 0 : Math.min(1, Math.min(f - Z.on, 1 - f) / 0.05), hx = q.x + q.w - 6, hy = q.y + 6;
+    ctx.save(); ctx.translate(hx, hy); ctx.rotate(-fold * 1.35);
+    if (!q.solid) ctx.globalAlpha = 0.4;
+    ctx.fillStyle = el.warn && Math.sin(G.clock * 22) > 0 ? '#ffffff' : F.brassLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(6, -6); ctx.lineTo(-q.w + 6, -6); ctx.lineTo(-q.w + 16, 6); ctx.lineTo(6, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(hx, hy, 6); ctx.fill(); ctx.stroke();
+    if (el.warn && cur) { ctx.fillStyle = F.red; circle(hx, hy, 3); ctx.fill(); }
+  } else if (el.kind === 'gear') {
+    const ok = el.w <= K.gear.ride, fast = el.w > K.gear.ride + 0.4;
+    tthFinCog(el.x, el.y, el.r - 8, el.a, 12, cur ? F.brass : '#a5884f', C.ink, 3);
+    ctx.fillStyle = 'rgba(46,42,74,0.55)';
+    for (let n = 0; n < 4; n++) { const a = el.a + n * Math.PI / 2 + Math.PI / 4; circle(el.x + Math.cos(a) * el.r * 0.42, el.y + Math.sin(a) * el.r * 0.42, el.r * 0.15); ctx.fill(); }
+    if (fast && cur && !reduceMotion) {   // whirling
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 3;
+      for (let n = 0; n < 3; n++) { const a = el.a * 1.7 + n * 2.1; ctx.beginPath(); ctx.arc(el.x, el.y, el.r + 6 + n * 5, a, a + 0.9); ctx.stroke(); }
+    }
+    for (const q of el.pegs) {
+      const cx = q.x + q.w / 2;
+      ctx.save(); if (!q.solid && cur) ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.fillStyle = F.iron; circle(cx, q.y + 7, 5); ctx.fill(); ctx.stroke();
+      tthFinPlank(q.x, q.y, q.w, 11, cur && q.solid ? '#c8f59f' : F.brassLt, 'rgba(255,255,255,0.7)');
+      ctx.restore();
+    }
+    // the hub lamp: red = too fast, green = ride it
+    ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; circle(el.x, el.y, 15); ctx.fill(); ctx.stroke();
+    if (cur) {
+      ctx.fillStyle = ok ? 'rgba(159,224,127,0.35)' : 'rgba(255,95,109,0.3)'; circle(el.x, el.y, 22 + Math.sin(G.clock * 8) * 2); ctx.fill();
+      ctx.fillStyle = ok ? F.green : F.red; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(el.x, el.y, 9); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(el.x - 3, el.y - 3, 2.6); ctx.fill();
+    } else { ctx.fillStyle = F.brassDk; circle(el.x, el.y, 7); ctx.fill(); }
+  }
+}
+// the brake lever (in the holder's colour) with its grip meter, and the button (in the climber's colour)
+function tthFinDrawJobs(st, sec) {
+  const ph = st.ph, F = TTHFINC, cur = sec === ph.sec && (ph.stage === 'climb' || ph.stage === 'lift'), lv = sec.lever, bt = sec.button, big = tthBig();
+  const hc = cur ? PCOL[ph.holder] : '#8a84a8', cc = cur ? PCOL[1 - ph.holder] : '#8a84a8', k = cur ? ph.leverK : 0;
+  ctx.lineCap = 'round';
+  // lever
+  ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(lv.x - 20, lv.y - 14, 40, 14, 4); ctx.fill(); ctx.stroke();
+  const a = 0.55 - k * 1.1, tx = lv.x + Math.sin(a) * 46, ty = lv.y - 12 - Math.cos(a) * 46;
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 9; tthFinLine(lv.x, lv.y - 10, tx, ty);
+  ctx.strokeStyle = F.ironLt; ctx.lineWidth = 4.5; tthFinLine(lv.x, lv.y - 10, tx, ty);
+  ctx.fillStyle = hc; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; circle(tx, ty, 9); ctx.fill(); ctx.stroke();
+  if (cur && ph.stage === 'climb') {
+    // the grip meter
+    const w = big ? 86 : 66, h = big ? 15 : 11, x = lv.x - w / 2, y = lv.y - (big ? 100 : 92), low = ph.grip < 0.3, blink = Math.sin(G.clock * 14) > 0;
+    ctx.fillStyle = 'rgba(28,26,54,0.85)'; rr(x - 3, y - 3, w + 6, h + 6, (h + 6) / 2); ctx.fill();
+    ctx.fillStyle = ph.slip ? (blink ? F.red : '#8a3a4a') : low ? '#ffb347' : F.ice;
+    if (ph.grip > 0.02) { rr(x, y, Math.max(h, w * ph.grip), h, h / 2); ctx.fill(); }
+    ctx.strokeStyle = ph.slip ? F.red : hc; ctx.lineWidth = 2; rr(x - 3, y - 3, w + 6, h + 6, (h + 6) / 2); ctx.stroke();
+    text(ph.slip ? 'rest!' : 'grip', lv.x, y - (big ? 13 : 10), big ? 15 : 11, ph.slip ? '#ffb3ba' : '#ffffff', 'center', 'body');
+    if (ph.gold.grip) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x - 6, y - 6, w + 12, h + 12, (h + 12) / 2); ctx.stroke(); }
+  }
+  // button
+  ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(bt.x - 19, bt.y - 9, 38, 9, 3); ctx.fill(); ctx.stroke();
+  const dn = bt.down ? 4 : 13;
+  ctx.fillStyle = bt.down ? F.green : cc; ctx.beginPath(); ctx.moveTo(bt.x - 14, bt.y - 9); ctx.quadraticCurveTo(bt.x - 14, bt.y - 9 - dn * 1.5, bt.x, bt.y - 9 - dn); ctx.quadraticCurveTo(bt.x + 14, bt.y - 9 - dn * 1.5, bt.x + 14, bt.y - 9); ctx.closePath(); ctx.fill(); ctx.stroke();
+  if (cur && !bt.down) { const g = 0.5 + 0.5 * Math.sin(G.clock * 6); ctx.strokeStyle = `rgba(255,255,255,${0.25 + 0.4 * g})`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(bt.x, bt.y - 14, 22 + g * 5, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke(); }
+}
+// the top deck: the pedestal the machine docks on (behind the Thief)
+function tthFinDrawPedestal(st) {
+  const ph = st.ph, tp = ph.top, F = TTHFINC, y = tthFinLY(4), rise = tp ? tp.rise : 0;
+  if (rise <= 0) return;
+  ctx.save(); ctx.beginPath(); ctx.rect(TTHFIN.x0, y - 300, TTHFIN.x1 - TTHFIN.x0, 300); ctx.clip(); ctx.translate(0, (1 - rise) * 70);
+  ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(436, y); ctx.lineTo(448, y - 54); ctx.lineTo(512, y - 54); ctx.lineTo(524, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+  tthFinPlank(434, y - 64, 92, 12, F.brass, F.brassLt);
+  ctx.fillStyle = F.ironLt; for (const by of [y - 40, y - 22]) { circle(462, by, 2.5); ctx.fill(); circle(498, by, 2.5); ctx.fill(); }
+  ctx.restore();
+}
+function tthFinDrawBack(st) {
+  const ph = st.ph, K = TTHFIN, F = TTHFINC;
+  if (!ph.c) return;
+  const y0 = st.cam.y, y1 = y0 + H;
+  tthScreen(st, () => tthFinDrawSky(st));
+  // the tower: a dark back wall between two brass rails, with shadowy cogs turning in it
+  ctx.fillStyle = F.wall; ctx.fillRect(K.x0, y0, K.x1 - K.x0, H);
+  for (const s of ph.c.secs) {
+    const by = s.base.y;
+    if (by < y0 - 40 || by - K.gap > y1 + 40) continue;
+    const sgn = s.k % 2 ? -1 : 1;
+    tthFinCog(480 + sgn * 205, by - 318, 46, ph.t * 0.5 * sgn, 10, 'rgba(120,90,200,0.22)');
+    tthFinCog(480 + sgn * 135, by - 292, 24, -ph.t * 0.96 * sgn + 0.3, 8, 'rgba(120,90,200,0.22)');
+    tthFinCog(480 - sgn * 250, by - 60, 34, -ph.t * 0.6 * sgn, 9, 'rgba(120,90,200,0.2)');
+  }
+  tthScreen(st, () => tthFinDrawClock(st));
+  for (const rx of [K.x0 - 12, K.x1]) {
+    ctx.fillStyle = F.brassDk; ctx.fillRect(rx, y0, 12, H);
+    ctx.fillStyle = F.brass; ctx.fillRect(rx + 2, y0, 5, H);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; tthFinLine(rx, y0, rx, y1); tthFinLine(rx + 12, y0, rx + 12, y1);
+    ctx.fillStyle = C.ink; for (let y = Math.floor(y0 / 76) * 76; y < y1; y += 76) { circle(rx + 6, y + 20, 2.2); ctx.fill(); }
+  }
+  // lifts, decks, clockwork (only what is on screen)
+  for (const s of ph.c.secs) if (s.lift.yTop < y1 + 20 && s.lift.yBot > y0 - 20) tthFinDrawLift(st, s);
+  for (const d of ph.c.decks) if (d.y > y0 - 30 && d.y < y1 + 10) tthFinDrawDeck(st, d);
+  for (const el of ph.c.els) { const ey = el.kind === 'pend' ? el.py + 100 : el.y; if (ey > y0 - 240 && ey < y1 + 140) tthFinDrawEl(st, el); }
+  for (const s of ph.c.secs) if (s.lever.y > y0 - 20 && s.button.y < y1 + 30) tthFinDrawJobs(st, s);
+  tthFinDrawPedestal(st);
+}
+
+/* ---------- drawing: in front of the Thief (rams, tricks, bubbles, the pay-off) ---------- */
+// the two rams with their lamps, and the two plungers
+function tthFinDrawRams(st) {
+  const ph = st.ph, tp = ph.top, F = TTHFINC, K = TTHFIN.smash, y = tthFinLY(4);
+  if (!tp || tp.rise <= 0) return;
+  const armed = tp.state === 'armed' && ph.stage === 'top', ch = tp.state === 'charge' ? clamp(tp.charge / K.charge, 0, 1) : armed ? 1 : 0, blink = Math.sin(G.clock * 16) > 0;
+  ctx.save(); ctx.beginPath(); ctx.rect(TTHFIN.x0, y - 300, TTHFIN.x1 - TTHFIN.x0, 300); ctx.clip(); ctx.translate(0, (1 - tp.rise) * 130);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let s = 0; s < 2; s++) {
+    const r = tp.rams[s], d = s ? -1 : 1, hx = s ? 584 : 376, px = K.plX[s];   // the housing's centre; d points at the machine
+    // the pipe from the plunger to the ram
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(px + d * 16, y - 8); ctx.lineTo(hx - d * 6, y - 8); ctx.lineTo(hx - d * 6, y - 66); ctx.stroke();
+    ctx.strokeStyle = F.brass; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(px + d * 16, y - 8); ctx.lineTo(hx - d * 6, y - 8); ctx.lineTo(hx - d * 6, y - 66); ctx.stroke();
+    // the ram: rod and head shoot toward the machine
+    const out = r.k * 30, tip = hx + d * (26 + out);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 12; tthFinLine(hx, y - 88, tip - d * 10, y - 88);
+    ctx.strokeStyle = F.ironLt; ctx.lineWidth = 7; tthFinLine(hx, y - 88, tip - d * 10, y - 88);
+    ctx.fillStyle = r.live > 0 ? '#ffffff' : F.red; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(Math.min(tip, tip - d * 16), y - 106, 16, 36, 5); ctx.fill(); ctx.stroke();
+    // the housing and its lamp
+    ctx.fillStyle = F.iron; rr(hx - 22, y - 112, 44, 48, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = F.brass; ctx.fillRect(hx - 22, y - 76, 44, 5);
+    ctx.fillStyle = F.ironDk; ctx.fillRect(hx - 14, y - 64, 8, 64 - 14); ctx.fillRect(hx + 6, y - 64, 8, 64 - 14);
+    const lampOn = armed ? (r.cool > 0 ? false : true) : false;
+    if (lampOn) { ctx.fillStyle = 'rgba(159,224,127,0.4)'; circle(hx, y - 124, 17 + (blink ? 3 : 0)); ctx.fill(); }
+    ctx.fillStyle = lampOn ? F.green : tp.state === 'hit' ? '#ffffff' : '#8a3a4a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; circle(hx, y - 124, 10); ctx.fill(); ctx.stroke();
+    if (ch > 0 && !armed) { ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(hx, y - 124, 15, -Math.PI / 2, -Math.PI / 2 + ch * Math.PI * 2); ctx.stroke(); }
+    // the plunger: a box and a T handle (it dips when pressed)
+    const hy = y - 50 + r.down * 14;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 8; tthFinLine(px, hy, px, y - 20);
+    ctx.strokeStyle = F.ironLt; ctx.lineWidth = 4; tthFinLine(px, hy, px, y - 20);
+    ctx.fillStyle = armed && !r.live && blink ? '#ffffff' : F.red; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(px - 20, hy - 6, 40, 11, 5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = F.iron; rr(px - 22, y - 22, 44, 22, 5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffd23f'; for (let n = 0; n < 3; n++) { ctx.beginPath(); ctx.moveTo(px - 16 + n * 12, y - 4); ctx.lineTo(px - 10 + n * 12, y - 18); ctx.lineTo(px - 4 + n * 12, y - 18); ctx.lineTo(px - 10 + n * 12, y - 4); ctx.closePath(); ctx.fill(); }
+  }
+  ctx.restore();
+}
+// dents and plasters on the machine after each hit; the wreck after the last one
+function tthFinDrawDamage(st) {
+  const ph = st.ph, tp = ph.top, c = st.thief, F = TTHFINC, y = tthFinLY(4);
+  if (!tp) return;
+  if (ph.stage === 'top' && tp.hits > 0 && c.jet && !c.hidden) {
+    const s = c.s, bx = c.x, by = c.y + Math.sin(c.t * 3) * 4 * s;
+    ctx.save(); ctx.translate(bx, by); ctx.scale(s, s); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-44, -56); ctx.lineTo(-38, -44); ctx.lineTo(-46, -38); ctx.lineTo(-36, -26); ctx.stroke();
+    ctx.fillStyle = '#fff4d6'; ctx.save(); ctx.translate(34, -46); ctx.rotate(0.5); ctx.fillRect(-9, -3, 18, 6); ctx.strokeRect(-9, -3, 18, 6); ctx.rotate(-1); ctx.fillRect(-9, -3, 18, 6); ctx.strokeRect(-9, -3, 18, 6); ctx.restore();
+    if (tp.hits > 1) { ctx.beginPath(); ctx.moveTo(48, -54); ctx.lineTo(40, -42); ctx.lineTo(50, -34); ctx.lineTo(42, -22); ctx.moveTo(-10, -60); ctx.lineTo(-4, -52); ctx.lineTo(-14, -48); ctx.stroke(); }
+    ctx.restore();
+  }
+  if (tp.flash > 0) { ctx.save(); ctx.globalAlpha = tp.flash * 0.8; ctx.fillStyle = '#ffffff'; circle(480, y - 100, 40 + (1 - tp.flash) * 130); ctx.fill(); ctx.restore(); }
+  if (ph.stage !== 'fin' && !(st.cut && ph.fin)) return;
+  // the wreck on the pedestal: two half shells, a sprung dial, the fallen jet
+  const t = ph.fin ? ph.fin.t : 9, wob = Math.sin(t * 9) * 0.5 * Math.exp(-t * 0.45);
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+  ctx.save(); ctx.translate(452, y - 66); ctx.rotate(-0.42); ctx.fillStyle = F.brass; ctx.beginPath(); ctx.moveTo(-34, 0); ctx.quadraticCurveTo(-36, -40, 0, -42); ctx.lineTo(8, -28); ctx.lineTo(0, -18); ctx.lineTo(10, -6); ctx.lineTo(4, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = F.brassLt; ctx.fillRect(-26, -34, 18, 4); ctx.restore();
+  ctx.save(); ctx.translate(510, y - 66); ctx.rotate(0.5); ctx.fillStyle = F.brass; ctx.beginPath(); ctx.moveTo(34, 0); ctx.quadraticCurveTo(36, -40, 0, -42); ctx.lineTo(-8, -28); ctx.lineTo(0, -18); ctx.lineTo(-10, -6); ctx.lineTo(-4, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+  ctx.save(); ctx.translate(480, y - 66); ctx.rotate(wob);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 5; ctx.beginPath(); for (let n = 0; n <= 8; n++) ctx.lineTo((n % 2 ? 7 : -7) * (n > 0 && n < 8 ? 1 : 0), -n * 6); ctx.stroke();
+  ctx.strokeStyle = F.ironLt; ctx.lineWidth = 2.5; ctx.beginPath(); for (let n = 0; n <= 8; n++) ctx.lineTo((n % 2 ? 7 : -7) * (n > 0 && n < 8 ? 1 : 0), -n * 6); ctx.stroke();
+  tthClockFace(0, -62, 15, G.clock, { speed: 14, ticks: true, lw: 2.5 });
+  ctx.restore();
+  ctx.fillStyle = '#4a4466'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.save(); ctx.translate(404, y - 9); ctx.rotate(-0.2); rr(-16, -9, 32, 18, 4); ctx.fill(); ctx.stroke(); ctx.restore();
+}
+function tthFinDrawBubbles(st) {
+  const ph = st.ph, K = TTHFIN.bub, F = TTHFINC;
+  for (const b of ph.bubs) {
+    const u = clamp(b.t / b.fly, 0, 1), pc = PCOL[b.id];
+    // the ring where it will land: it tightens as the bubble comes
+    ctx.save(); ctx.translate(b.tx, b.ty);
+    ctx.fillStyle = `rgba(127,233,255,${0.08 + 0.16 * u})`; ctx.beginPath(); ctx.ellipse(0, 0, K.rx, K.ry, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.setLineDash([9, 7]); ctx.lineDashOffset = -G.clock * 30; ctx.strokeStyle = b.dud ? 'rgba(255,255,255,0.35)' : F.ice; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 0, K.rx, K.ry, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    if (!b.dud) { const g = 1 + (1 - u) * 0.9; ctx.strokeStyle = pc; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.4 + 0.5 * u; ctx.beginPath(); ctx.ellipse(0, 0, K.rx * g, K.ry * g, 0, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.restore();
+    // the bubble: a wobbly soap bubble with a little clock inside
+    const wob = 1 + Math.sin(b.t * 11 + b.seed) * 0.07;
+    ctx.save(); ctx.translate(b.x, b.y); ctx.scale(wob, 2 - wob);
+    ctx.fillStyle = 'rgba(160,240,255,0.42)'; ctx.strokeStyle = '#eaffff'; ctx.lineWidth = 2.5; circle(0, 0, 16); ctx.fill(); ctx.stroke();
+    tthClockFace(0, 1, 8, b.t * 3 + b.seed, { speed: 6, lw: 1.6 });
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.ellipse(-7, -8, 4.5, 2.5, -0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+function tthFinDrawTricks(st) {
+  const ph = st.ph, tp = ph.top, F = TTHFINC, y = tthFinLY(4), C0 = TTHFIN.cog;
+  for (const d of ph.debris) {
+    const a = clamp((d.life - d.t) / 0.3, 0, 1);
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(d.x, d.y); ctx.rotate(d.rot);
+    if (d.kind === 0) { ctx.fillStyle = F.ironLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.8; ctx.beginPath(); for (let n = 0; n < 6; n++) ctx.lineTo(Math.cos(n * 1.047) * 6, Math.sin(n * 1.047) * 6); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = C.ink; circle(0, 0, 2); ctx.fill(); }
+    else if (d.kind === 1) tthClockFace(0, 0, 7, d.t * 5, { speed: 8, lw: 1.6 });
+    else tthFinCog(0, 0, 8, 0, 7, F.brass, C.ink, 1.8);
+    ctx.restore();
+  }
+  if (!tp) return;
+  for (const g of tp.cogs) {
+    if (g.warn > 0) {   // it peeks in at the edge with a "!" before it rolls
+      const ex = g.dir > 0 ? TTHFIN.x0 + 22 : TTHFIN.x1 - 22, bob = Math.abs(Math.sin(G.clock * 12)) * 5;
+      tthFinCog(ex - g.dir * (16 + g.warn * 12), y - C0.r, C0.r, G.clock * 9 * g.dir, 8, F.brass, C.ink, 2.5);
+      bigText('!', ex + g.dir * 8, y - 52 - bob, tthBig() ? 38 : 30, F.red, 1);
+      ctx.strokeStyle = F.red; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (const k of [0, 1, 2]) { const ax = ex + g.dir * (30 + k * 16 + (G.clock * 40) % 16); ctx.globalAlpha = 0.8 - k * 0.2; ctx.beginPath(); ctx.moveTo(ax - g.dir * 6, y - 22); ctx.lineTo(ax, y - 15); ctx.lineTo(ax - g.dir * 6, y - 8); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+      continue;
+    }
+    tthFinCog(g.x, y - C0.r, C0.r + 2, g.rot, 8, F.brass, C.ink, 2.5);
+    ctx.fillStyle = F.brassDk; circle(g.x, y - C0.r, 5); ctx.fill(); ctx.stroke();
+  }
+}
+// the pay-off: 8 little portals named after their eras, and the 8 things flying home
+function tthFinDrawHome(st) {
+  const ph = st.ph, f = ph.fin, big = tthBig();
+  if (!f) return;
+  for (let i = 0; i < f.open.length; i++) {
+    if (f.open[i] <= 0.01) continue;
+    const P = tthFinPortalAt(st, i), era = TTH_ERAS[TTH_ORDER[i]], fs = big ? 15 : 12;
+    tthDrawPortal(P.x, P.y, 26 + f.lit[i] * 3 * Math.sin(G.clock * 6), G.clock + i * 0.7, { open: f.open[i], col: era.col });
+    ctx.save(); ctx.globalAlpha = f.open[i];
+    ctx.font = tthFont(fs); const tw = ctx.measureText(TTHFIN_HOME[i][1]).width + 14;
+    ctx.fillStyle = f.lit[i] > 0 ? 'rgba(255,243,196,0.95)' : 'rgba(30,20,66,0.85)'; rr(P.x - tw / 2, P.y + 34, tw, fs + 8, (fs + 8) / 2); ctx.fill();
+    text(TTHFIN_HOME[i][1], P.x, P.y + 34 + (fs + 8) / 2 + 0.5, fs, f.lit[i] > 0 ? C.ink : '#ffffff', 'center', 'body');
+    if (f.lit[i] > 0) {   // home! (a gold tick for the things Pip and Bo won back themselves)
+      const k = f.lit[i], s = 0.6 + 0.4 * Math.min(1, k * 1.6);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 7 * s; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(P.x - 10 * s, P.y); ctx.lineTo(P.x - 3 * s, P.y + 8 * s); ctx.lineTo(P.x + 11 * s, P.y - 9 * s); ctx.stroke();
+      ctx.strokeStyle = st.loot[i] ? C.gold : '#9fe07f'; ctx.lineWidth = 4 * s; ctx.stroke();
+    }
+    ctx.restore();
+  }
+  for (const it of f.items) {
+    if (it.s !== 1 && it.s !== 2) continue;
+    const u = it.s === 2 ? clamp(it.ft / TTHFIN.fin.fly, 0, 1) : 0, sc = (it.s === 1 ? 0.95 : 0.95 - 0.5 * u) * (big ? 1.15 : 1);
+    ctx.save(); ctx.globalAlpha = 0.35; ctx.fillStyle = '#fff3c4'; circle(it.x, it.y, 22 * sc + Math.sin(G.clock * 9 + it.i) * 2); ctx.fill(); ctx.restore();
+    tthDrawLoot(it.kind, it.x, it.y, sc, G.clock + it.i);
+  }
+}
+function tthFinDraw(st) {
+  const ph = st.ph;
+  if (!ph.c) return;
+  tthFinDrawRams(st);
+  tthFinDrawDamage(st);
+  tthFinDrawTricks(st);
+  tthFinDrawBubbles(st);
+  tthFinDrawHome(st);
+}
+// over the players: who is frozen in a bubble, the rewind flash, the gold arrow
+function tthFinDrawTop(st) {
+  const ph = st.ph, F = TTHFINC;
+  if (!ph.c) return;
+  for (const p of G.players) {
+    const fz = ph.P[p.id].frozenT;
+    if (fz <= 0 || !p.alive) continue;
+    const x = p.x + st.cam.x + p.w / 2, y = p.y + st.cam.y + p.h / 2, r = 24 + Math.sin(G.clock * 18) * (fz < 0.3 ? 2.5 : 0.8);
+    ctx.fillStyle = 'rgba(160,240,255,0.4)'; ctx.strokeStyle = '#eaffff'; ctx.lineWidth = 2.5; circle(x, y, r); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.ellipse(x - 10, y - 12, 6, 3.2, -0.6, 0, Math.PI * 2); ctx.fill();
+    tthClockFace(x + 15, y - 17, 7, G.clock * 4, { speed: 6, lw: 1.5 });
+  }
+  if (ph.rw) {
+    const u = clamp(ph.rw.t / TTHFIN.rewind.t, 0, 1);
+    tthScreen(st, () => {
+      ctx.save(); ctx.globalAlpha = 0.2 * (1 - u); ctx.fillStyle = '#b28dff'; ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = clamp(1.4 - u * 1.4, 0, 1); bigText('◀◀', W / 2, 230, tthBig() ? 64 : 52, '#e6d4ff', 1 + 0.1 * Math.sin(G.clock * 20));
+      ctx.restore();
+    });
+  }
+  const ga = ph.goldAt;
+  if (ga && ph.stage === 'climb') {
+    const x = ga.el ? ga.el.plat.x + ga.el.plat.w / 2 : ga.x, y = (ga.el ? ga.el.plat.y - 50 : ga.y) + Math.sin(G.clock * 6) * 6;
+    ctx.fillStyle = C.gold; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(x - 9, y - 22); ctx.lineTo(x + 9, y - 22); ctx.lineTo(x + 9, y - 6); ctx.lineTo(x + 18, y - 6); ctx.lineTo(x, y + 14); ctx.lineTo(x - 18, y - 6); ctx.lineTo(x - 9, y - 6); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+}
+// the HUD: the rewind clock in the left margin (the same sweep as the huge hand); at the top: the hits
+function tthFinHud(st) {
+  const ph = st.ph, F = TTHFINC, big = tthBig(), K = TTHFIN;
+  if (!ph.c || G.introT > 0.3 || st.cut) return;
+  const x = big ? 76 : 74, y = big ? 196 : 176, r = big ? 40 : 30;
+  if (ph.stage === 'climb' || ph.stage === 'lift') {
+    const hd = ph.hand, k = clamp(hd.k, 0, 1), warn = ph.stage === 'climb' && hd.spin <= 0 && k >= K.hand.warnK, stuck = ph.gold.hand >= 2, stop = ph.braking || ph.stage === 'lift' || stuck;
+    const col = hd.spin > 0 ? '#e6d4ff' : stop ? F.ice : warn ? F.red : F.brassLt;
+    ctx.fillStyle = 'rgba(28,26,54,0.82)'; circle(x, y, r + 6); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = warn && Math.sin(G.clock * 14) > 0 ? F.red : 'rgba(255,244,214,0.9)'; ctx.lineWidth = 3; circle(x, y, r); ctx.stroke();
+    ctx.strokeStyle = F.red; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r + 3, -Math.PI / 2 + K.hand.warnK * Math.PI * 2, Math.PI * 1.5); ctx.stroke();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 4; ctx.lineCap = 'round'; tthFinLine(x, y, x + Math.sin(k * Math.PI * 2) * r * 0.82, y - Math.cos(k * Math.PI * 2) * r * 0.82);
+    ctx.fillStyle = C.ink; circle(x, y, 4); ctx.fill();
+    const word = hd.spin > 0 ? 'Rewind!' : stuck ? 'Stuck!' : ph.stage === 'lift' ? 'Stopped' : ph.braking ? 'Braked!' : warn ? 'Nearly 12!' : 'Rewind at 12';
+    const fs = big ? 17 : 12; ctx.font = tthFont(fs); const tw = ctx.measureText(word).width + 16;
+    pill(x, y + r + 12, tw, fs + 10, 'center'); text(word, x, y + r + 12 + (fs + 10) / 2 + 0.5, fs, stuck ? C.gold : col, 'center', 'body');
+  } else if (ph.stage === 'top' && ph.top) {
+    const tp = ph.top, n = K.smash.hits, fs = big ? 18 : 13, gap = big ? 34 : 26;
+    pill(x, y - (big ? 34 : 28), big ? 112 : 88, big ? 96 : 76, 'center');
+    text('Smash it!', x, y - (big ? 16 : 14), fs, '#ffffff', 'center', 'body');
+    for (let i = 0; i < n; i++) {
+      const bx = x + (i - (n - 1) / 2) * gap, by = y + (big ? 26 : 18), on = i < tp.hits;
+      tthFinCog(bx, by, big ? 14 : 11, on ? 0.3 : G.clock * 2, 7, on ? C.gold : 'rgba(255,255,255,0.22)', on ? C.ink : null, 2);
+      if (on) { ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(bx - 5, by); ctx.lineTo(bx - 1, by + 4); ctx.lineTo(bx + 6, by - 5); ctx.stroke(); }
+    }
+  }
+}
+
+/* ---------- the phase and its room ---------- */
+TTH_PHASES.finale = {
+  setup(st, Lv) { tthFinSetup(st, Lv); },
+  step(st, dt) { tthFinStep(st, dt); },
+  coast(st, dt) { tthFinCoast(st, dt); },
+  busy(st, p) { return tthFinBusy(st, p); },
+  labels(st) { return st.ph.stage ? tthFinLabels(st) : ['brake', 'press']; },
+  roles(st) { const ph = st.ph; return ph.stage === 'top' ? ['Smash!', 'Smash!'] : ph.stage === 'fin' ? null : ph.holder === 0 ? ['Brake!', 'Climb!'] : ['Climb!', 'Brake!']; },
+  legend(st) {
+    const ph = st.ph, top = ph.stage === 'top' || ph.stage === 'fin';
+    const job = id => (top ? 'at a plunger, with your friend:' : id === ph.holder ? 'at the lever, hold:' : 'climb! At the button:');
+    return { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump, ' + job(0), bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump, ' + job(1),
+      pad: 'stick or d-pad move, <span data-glyph="a"></span> jump; ' + (top ? 'at a plunger, together:' : 'hold at the lever, or press at the button:') };
+  },
+  hudText(st) { const ph = st.ph; return ph.stage === 'fin' ? 'Smashed!' : ph.stage === 'top' ? 'Hits ' + (ph.top ? ph.top.hits : 0) + '/' + TTHFIN.smash.hits : 'Ledge ' + ph.k + '/4'; },
+  progress(st) { const ph = st.ph; return { n: (ph.k || 0) + (ph.top ? ph.top.hits : 0), of: 4 + TTHFIN.smash.hits }; },
+  drawBack(st) { tthFinDrawBack(st); },
+  draw(st) { tthFinDraw(st); },
+  drawTop(st) { tthFinDrawTop(st); },
+  hud(st) { tthFinHud(st); },
+};
+
+/* ---------- sounds ---------- */
+Sfx.extra.tthFinClick = function () { this.tone(1500, 0.03, 'square', 0.022); this.tone(900, 0.04, 'square', 0.02, null, 0.04); };
+Sfx.extra.tthFinClunk = function () { this.tone(140, 0.08, 'square', 0.04, 90); this.tone(70, 0.14, 'triangle', 0.05, 50, 0.02); };
+Sfx.extra.tthFinWhirr = function () { this.tone(300, 0.3, 'sawtooth', 0.03, 1200); this.tone(900, 0.12, 'square', 0.02, 500, 0.05); };
+Sfx.extra.tthFinBrake = function () { this.tone(1400, 0.28, 'sawtooth', 0.022, 300); this.tone(220, 0.12, 'triangle', 0.04, 140, 0.05); };
+Sfx.extra.tthFinSlip = function () { this.tone(700, 0.22, 'sawtooth', 0.03, 180); this.tone(200, 0.1, 'square', 0.03, 120, 0.1); };
+Sfx.extra.tthFinBtn = function () { this.tone(520, 0.06, 'square', 0.04); this.tone(1046, 0.16, 'triangle', 0.05, null, 0.06); };
+Sfx.extra.tthFinLift = function () { this.tone(110, 0.7, 'sawtooth', 0.018, 220); this.tone(330, 0.5, 'sine', 0.02, 660, 0.05); };
+Sfx.extra.tthFinDong = function () { this.tone(196, 0.9, 'sine', 0.07, 190); this.tone(392, 0.7, 'triangle', 0.035, 380, 0.01); this.tone(588, 0.5, 'sine', 0.02, null, 0.02); };
+Sfx.extra.tthFinRewind = function () { for (let k = 0; k < 7; k++) this.tone(1500 * Math.pow(0.84, k), 0.09, 'triangle', 0.035, 1800 * Math.pow(0.84, k), k * 0.08); };
+Sfx.extra.tthFinBub = function () { this.tone(500, 0.2, 'sine', 0.035, 1100); this.tone(900, 0.12, 'sine', 0.02, 1500, 0.08); };
+Sfx.extra.tthFinPop = function () { this.tone(1300, 0.05, 'sine', 0.04, 500); this.tone(700, 0.08, 'triangle', 0.025, 300, 0.03); };
+Sfx.extra.tthFinLedge = function () { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.13, 'triangle', 0.05, null, i * 0.07)); };
+Sfx.extra.tthFinArm = function () { [880, 1175, 1568].forEach((f, i) => this.tone(f, 0.1, 'square', 0.035, null, i * 0.07)); };
+Sfx.extra.tthFinRam = function (p) { this.tone(180 * p, 0.12, 'sawtooth', 0.05, 90 * p); this.tone(1200, 0.05, 'square', 0.025, 600, 0.02); };
+Sfx.extra.tthFinRumble = function () { for (let k = 0; k < 5; k++) this.tone(70 + Math.random() * 30, 0.14, 'sawtooth', 0.028, 50, k * 0.16); };
+Sfx.extra.tthFinMiss = function () { this.tone(330, 0.14, 'square', 0.035, 220); this.tone(220, 0.2, 'square', 0.035, 150, 0.12); };
+Sfx.extra.tthFinBoom = function () { this.tone(110, 0.5, 'sawtooth', 0.08, 35); this.tone(60, 0.6, 'triangle', 0.09, 30, 0.02); for (let k = 0; k < 5; k++) this.tone(900 + Math.random() * 1400, 0.07, 'square', 0.025, 300, 0.05 + k * 0.05); };
+Sfx.extra.tthFinWhoosh = function () { this.tone(400, 0.4, 'sine', 0.03, 1400); };
+Sfx.extra.tthFinHome = function (p, i) { const f = [523, 587, 659, 784, 880, 988, 1175, 1319][i | 0] || 784; this.tone(f, 0.12, 'triangle', 0.05); this.tone(f * 1.5, 0.22, 'sine', 0.04, null, 0.07); };
+
+/* ---------- the room (this file fills in its own room of the level def) ---------- */
+tthRoom('finale', {
+  act: { label: 'brake', labels: ['brake', 'press'] },
+  tip: 'One holds the brake lever to slow the gears. The other climbs up to the button. Then smash it together!',
+  legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump, at the lever, hold:', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump, climb! At the button:',
+    pad: 'stick or d-pad move, <span data-glyph="a"></span> jump; hold at the lever, or press at the button:' },
+  map: TTH_EMPTY_MAP,
+});

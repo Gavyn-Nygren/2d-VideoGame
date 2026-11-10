@@ -9,13 +9,18 @@
    PILOT (tthMoonBrainPilot)
    - Speed: it keeps a target fall speed and burns (holds jump) when the lander falls faster than that, with a
      person's reaction time (0.13 s) and a little hysteresis, so it pulses the engine like a person. The target is
-     the cruise speed in the open, slower through a gap, and "can still stop in time" before anything it must not
-     pass yet: a gap it is not lined up with, a pass whose geyser is about to blow, the beacon ring (it creeps
-     through at about 30 px/s so the ring fills) and the ground (it only goes down the last stretch when it is over
-     the pad, not sliding and level; otherwise it hovers above).
-   - Steering: toward the middle of the next gap once it is in view; before that, toward a fuel cell when the pods
-     have room: it flies BESIDE the cell (an arm's length away, on the side it comes from) and slows down there so
-     the engineer can grab. Side jets are tapped toward a wanted sideways speed (no frame-perfect braking).
+     the cruise speed in the open (TTHMOON.bot.cruise), slower through a gap, and "can still stop in time" before
+     anything it must not pass yet: a gap it is not lined up with, a pass whose geyser is about to blow, the beacon
+     ring (it creeps through at about 30 px/s so the ring fills; in the gold tractor beam it just holds the burn) and
+     the ground (it only goes down the last stretch when it is over the pad, not sliding and level; otherwise it
+     hovers above).
+   - Steering: toward the middle of the next gap once it is in view (toward the side of the gap where the next fuel
+     cell floats, when there is one just under it); before that, toward a fuel cell when the pods have room: it
+     flies BESIDE the cell (an arm's length away, on the side it comes from) and slows down there so the engineer
+     can grab. The side jets are TAPPED: it picks a tap for the sideways speed it wants, presses it, then watches
+     what the lander did before the next tap (no frame-perfect braking, and a slow hand does not wobble).
+   - Stuck: sitting on a rock or wedged between two for a second although it wants to go down, it lifts off above
+     that row of rocks and lines up again.
    - It cannot burn without fuel in the ready tank: then it says "Pump, please!" and waits (it falls), so it never
      clears anything without the engineer. With nothing to grab and empty pods it asks for fuel cells.
    ENGINEER (tthMoonBrainEngineer)
@@ -24,11 +29,15 @@
    - Arm: it swings toward the nearest fuel cell coming up (seen 0.14 s late) and presses when the cell lights up
      at the claw (0.12 s after it lights). With no cell around it parks the arm out to the side.
    - It tells the pilot which way the fuel is when the pods run low ("Fuel on the left!").
-   ON FOOT: it moon-hops to its side of the flag and holds the action there; the flag only goes up when the person
-   holds too, so it waits ("Plant it with me!").
+   ON FOOT: it moon-hops to the flag, takes little steps to its own side of it and holds the action there; the flag
+   only goes up when the person holds too, so it waits ("Plant it with me!").
+   Every output names all four buttons (false = let go): a released button is as clear an order as a pressed one
+   (the kid test in tools/w30/play.js keeps the last non-empty output, so an empty one would never let go).
    The core brain already stops everything while the person is away (info.away) and during cards and cutscenes. */
+// every output names all its buttons (false = let go), so a "released" button is as clear an order as a pressed one
+const tthMoonBrainOut = () => ({ left: false, right: false, jump: false, act: false });
 function tthMoonBrainPilot(bst, p, o, dt, info, S) {
-  const K = TTHMOON, ph = S.ph, L = ph.L, out = {}, aNet = K.thrust - K.g;
+  const K = TTHMOON, ph = S.ph, L = ph.L, out = tthMoonBrainOut(), aNet = K.thrust - K.g;
   const stop = d => Math.sqrt(Math.max(0, 2 * aNet * 0.55 * d));   // a speed it can still brake from within d px
   const see = S.cam.y + H;                                           // the bottom edge of the screen
   let vt = K.bot.cruise, tx = L.x, hold = false;
@@ -41,6 +50,8 @@ function tthMoonBrainPilot(bst, p, o, dt, info, S) {
     if (d > 0) vt = Math.min(vt, 28 + stop(d - 24));
     else vt = d > -40 ? 16 : -30;
     if (Math.abs(L.x - b.x) > 70 && d < 90) vt = Math.min(vt, d > 40 ? stop(d - 40) : -10);
+    // the gold tractor beam holds the lander: just burn in the ring
+    if (b.beam && Math.abs(L.x - b.x) < K.beacon.goldX && Math.abs(d) < K.beacon.goldY) vt = -99;
   } else if (g && g.s === ph.stretch && g.top < see + 20) {
     // the next gap (or pass): line up before going in
     const slack = g.w / 2 - K.r - 10, off = L.x - g.x, d = g.top - (L.y + K.r) - 14, inside = L.y + K.r > g.top + 6;
@@ -50,6 +61,12 @@ function tthMoonBrainPilot(bst, p, o, dt, info, S) {
     if (inside) { vt = Math.min(vt, K.bot.pass); if (Math.abs(off) > slack + 8) vt = Math.min(vt, 30); }
     else if (!ok) { vt = Math.min(vt, d > 0 ? stop(d) : -24); hold = true; }
     else vt = Math.min(vt, K.bot.pass + Math.max(0, d) * 0.25);
+    // a fuel cell just under this gap: go through on its side of the gap
+    if (podRoom > K.cell.fuel * 0.6) for (const c of ph.cells) {
+      if (c.got || c.u < 1 || c.gold || c.y < g.bot || c.y > g.bot + 190 || c.y > see) continue;
+      tx = g.x + clamp(c.x - g.x, -1, 1) * Math.max(0, slack - 14);
+      break;
+    }
   } else if (!g && ph.stretch === 2) {
     // the landing: over the pad, level, slower and slower
     const pad = ph.pad, h = ph.ground - K.foot - L.y, lim = ph.land.gold >= 2 ? K.land.gold2V : ph.land.gold ? K.land.goldV : K.land.v;
@@ -83,9 +100,20 @@ function tthMoonBrainPilot(bst, p, o, dt, info, S) {
   // keep off the canyon walls
   const wl = tthMoonWallAt(ph, 0, L.y + 30), wr = tthMoonWallAt(ph, 1, L.y + 30);
   tx = clamp(tx, Math.max(K.xMin, wl + K.r + 12), Math.min(K.xMax, wr - K.r - 12));
-  // side jets: toward a wanted sideways speed
-  const wantVx = clamp((tx - L.x) * 1.9, -150, 150), dv = wantVx - L.vx;
-  if (dv > 24) out.right = true; else if (dv < -24) out.left = true;
+  // side jets in short taps, like a person: it picks a tap for the sideways speed it wants, presses it, then
+  // watches what the lander did before the next one (so a slow hand does not wobble)
+  const wantVx = clamp((tx - L.x) * 1.7, -140, 140), dv = wantVx - L.vx;
+  if (bst.tapT > 0) { bst.tapT -= dt; if (bst.tapDir > 0) out.right = true; else out.left = true; }
+  else if (bst.watchT > 0) { bst.watchT -= dt; if (Math.abs(L.vx - bst.tapV0) > Math.abs(bst.tapDv) * 0.6) bst.watchT = Math.min(bst.watchT, 0.06); }
+  else if (Math.abs(dv) > 22) { bst.tapT = clamp(Math.abs(dv) / K.side, 0.08, 0.55); bst.tapDir = Math.sign(dv); bst.tapV0 = L.vx; bst.tapDv = dv; bst.watchT = 0.7; }
+  // sitting on a rock (or wedged between two) although it wants to go down: after a second of going nowhere it
+  // lifts off (above the row of rocks it is stuck in, if any) and lines up again
+  if (vt <= 20) bst.stuckOk = false;                       // (it hovers on purpose)
+  if ((bst.stuckT += dt) >= 1.1) {
+    if (bst.stuckOk && Math.abs(L.y - bst.stuckY) < 8 && Math.abs(L.x - bst.stuckX) < 12) { bst.liftT = 2.4; bst.liftTo = g && L.y + K.r > g.top ? g.top - K.r - 16 : L.y - 50; }
+    bst.stuckT = 0; bst.stuckY = L.y; bst.stuckX = L.x; bst.stuckOk = true;
+  }
+  if (bst.liftT > 0) { bst.liftT -= dt; if (L.y > bst.liftTo) vt = -70; else bst.liftT = 0; }
   // the engine, with a person's reaction time
   const raw = L.vy > vt + (bst.burn ? -7 : 5);
   bst.burn = tthBrainLate(bst, 'burn', raw, 0.13);
@@ -107,7 +135,7 @@ function tthMoonBrainGeyOk(g, L) {
   return q.state === 'off';
 }
 function tthMoonBrainEngineer(bst, p, o, dt, info, S) {
-  const K = TTHMOON, ph = S.ph, F = ph.F, A = ph.arm, pv = ph.pv, out = {};
+  const K = TTHMOON, ph = S.ph, F = ph.F, A = ph.arm, pv = ph.pv, out = tthMoonBrainOut();
   const room = 2 * K.pod.cap - tthMoonPods(ph) > 0.6;
   // the arm: toward the nearest cell coming up
   let best = null, bd = 300;
@@ -136,10 +164,12 @@ function tthMoonBrainEngineer(bst, p, o, dt, info, S) {
   return out;
 }
 function tthMoonBrainFoot(bst, p, o, dt, info, S) {
-  const K = TTHMOON.foot, ph = S.ph, f = ph.flag, out = {};
+  const K = TTHMOON.walk, ph = S.ph, f = ph.flag, out = tthMoonBrainOut();
   if (ph.mode !== 'foot') return out;
-  const tx = (f.state === 'down' ? f.x : ph.flagX) + (p.id ? 20 : -20), d = tx - cpuCx(p);
-  if (Math.abs(d) > 10) { out.left = d < 0; out.right = d > 0; if (Math.abs(d) > 90 && p.grounded) out.jump = true; }   // (big moon hops on the way)
+  const fx = f.state === 'down' ? f.x : ph.flagX, tx = fx + (p.id ? 20 : -20), d = tx - cpuCx(p);
+  if (Math.abs(cpuCx(p) - fx) > K.plantR - 12) { out.left = d < 0; out.right = d > 0; if (Math.abs(d) > 90 && p.grounded) out.jump = true; }   // (big moon hops on the way)
+  else if (bst.stepT > 0) { bst.stepT -= dt; if (bst.stepDir > 0) out.right = true; else out.left = true; }
+  else if ((bst.stepRest -= dt) <= 0 && Math.abs(d) > 14) { bst.stepT = 0.1; bst.stepDir = Math.sign(d); bst.stepRest = 0.75; }   // (near the flag: little steps to its own side)
   if (f.state !== 'down') return out;
   if (Math.abs(cpuCx(p) - f.x) < K.plantR - 6) {
     out.act = true;
@@ -148,7 +178,7 @@ function tthMoonBrainFoot(bst, p, o, dt, info, S) {
   return out;
 }
 TTH_BRAINS.moon = {
-  reset(bst) { bst.burn = false; bst.cool = 0; bst.park = null; },
+  reset(bst) { bst.burn = false; bst.cool = 0; bst.park = null; bst.liftT = 0; bst.stuckT = 0; bst.stuckOk = false; bst.stuckX = bst.stuckY = 0; bst.tapT = 0; bst.watchT = 0; bst.stepT = 0; bst.stepRest = 0; },
   think(bst, p, o, dt, info, S) {
     const ph = S.ph;
     if (!ph || !ph.L) return {};
@@ -156,5 +186,5 @@ TTH_BRAINS.moon = {
     if (ph.mode === 'foot') return tthMoonBrainFoot(bst, p, o, dt, info, S);
     return {};
   },
-  back(bst) { bst.burn = false; bst.cool = 0.3; },
+  back(bst) { bst.burn = false; bst.cool = 0.3; bst.tapT = 0; bst.watchT = 0; },
 };

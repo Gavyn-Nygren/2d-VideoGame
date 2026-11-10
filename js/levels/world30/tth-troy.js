@@ -86,7 +86,7 @@ const TTHTROY = {
   movedGrace: 0.14, seenGrace: 0.3, wake: 520,
   spot: { w: 104, tele: 0.8, lookV: 430, lookT: 1.6 },
   caught: { freeze: 0.7, push: 1.2, back: 130, done: 2.5, grace: 1.1 },
-  slow: 82, slowGold: 125, gateLen: 120, gateBounce: 46,
+  slow: 82, slowGold: 125, gateLen: 120, gateBounce: 46, gateV: 420, rollBackV: 250, steep: 0.16, stallV: 22, stallT: 0.3,
   patrol: { v: 100, reach: 130, knock: 1.1, spawn: 650 },
   claw: { tele: 1.3, pull: 70, slack: 170, drain: 0.5, goldT: 14 },
   bellTele: 1.2, park: [-50, 70], swapT: 2.6,
@@ -97,21 +97,21 @@ const TTHTROY = {
 // mode 'r' | 'l' | 'pp', perch 'tower' | 'wall' | 'roof', asleep (until the Thief's bell).  ramps: [x, length, rise].
 const TTHTROY_STRETCHES = [
   { name: 'The Plain', len: 2330,
-    guards: [{ z: [480, 900], v: 150, rest: 3.8, first: 1.4, mode: 'r', perch: 'tower' },
+    guards: [{ z: [480, 900], v: 150, rest: 3.8, first: 2.6, mode: 'r', perch: 'tower' },
       { z: [1700, 1960], at: 1780, v: 170, rest: 3.2, first: 1.2, mode: 'pp', perch: 'wall' }],
     ramps: [[1060, 200, 44], [1330, 190, -44]], hides: [1000], gates: [2240] },
   { name: 'The Streets', len: 2240,
-    claws: [{ x: 170, hold: 1.5 }],
+    claws: [{ x: 300, hold: 1.5 }],
     guards: [{ z: [520, 900], v: 175, rest: 3.2, first: 1.2, mode: 'pp' },
       { z: [800, 1180], v: 150, rest: 2.8, first: 2.6, mode: 'l' },
       { z: [1700, 2060], v: 190, rest: 2.5, first: 1.6, mode: 'pp', asleep: true }],
-    bumps: [1040], hides: [1345], patrols: [1360], bells: [{ x: 1500, at: 1930, g: 2 }] },
+    bumps: [1040], hides: [1345], patrols: [1360], bells: [{ x: 1620, at: 2000, g: 2 }] },
   { name: 'To the Square', len: 2880,
     guards: [{ z: [260, 640], v: 210, rest: 2.4, first: 1.0, mode: 'pp' },
       { z: [960, 1320], v: 190, rest: 2.7, first: 1.2, mode: 'r' },
       { z: [1200, 1560], v: 165, rest: 3.0, first: 2.6, mode: 'l' },
       { z: [2400, 2700], v: 200, rest: 2.6, first: 1.4, mode: 'pp', asleep: true }],
-    bumps: [470], patrols: [790], hides: [770, 1700], gates: [1810], bells: [{ x: 1850, at: 2640, g: 3 }],
+    bumps: [470], patrols: [790], hides: [770, 1700], gates: [1810], bells: [{ x: 1850, at: 2672, g: 3 }],
     claws: [{ x: 1900, hold: 2.2, strong: true }], ramps: [[1990, 200, 46]] },
 ];
 const TTHTROY_LINES = ['I\'m taking the WHOLE horse!', 'Nobody knows if this horse was real...', '...so nobody will miss it! Ha!', 'Tick, tock, slowpokes!',
@@ -131,7 +131,7 @@ function tthTroyCompile() {
         i: c.guards.length, k, z0: x0 + g.z[0], z1: x0 + g.z[1], x: x0 + (g.at != null ? g.at : (g.z[0] + g.z[1]) / 2), py: K.perchY,
         state: g.asleep ? 'asleep' : 'idle', t: 0, sx: x0 + g.z[1], dir: -1, face: -1, on: 0, up: 0, miss: 0, gold: 0, n: 0, lp: '', sv: 0 }));
     }
-    for (const r of S.ramps || []) c.ramps.push({ x0: x0 + r[0], len: r[1], rise: r[2], miss: 0, gold: false, rb: false });
+    for (const r of S.ramps || []) c.ramps.push({ x0: x0 + r[0], len: r[1], rise: r[2], miss: 0, gold: false, stallT: 0 });
     for (const b of S.bumps || []) c.bumps.push({ x: x0 + b, hit: 0, t: 9 });
     for (const g of S.gates || []) c.gates.push({ x: x0 + g, k, t: 0, miss: 0, gold: false, alley: k > 0 });
     for (const p of S.patrols || []) c.patrols.push({ x: x0 + p, done: false });
@@ -146,6 +146,7 @@ function tthTroyCompile() {
   c.goal = x0; c.gateX = c.gates[0].x; c.xMax = x0 + 640;
   // the square's own guards: they only join in at the very end (every lantern on the horse)
   for (const dx of [-250, 210, 400]) c.guards.push({ i: c.guards.length, k: 2, deco: true, x: x0 + dx, py: K.perchY, z0: x0, z1: x0, w: K.spot.w, state: 'deco', perch: 'col', t: 0, sx: x0 + dx, dir: -1, face: dx > 0 ? -1 : 1, on: 0, up: 0, miss: 0, gold: 0, sv: 0 });
+  tthTroyScenery(c);
   return c;
 }
 // the road's height under x (ramps are smooth)
@@ -199,11 +200,11 @@ function tthTroySetup(st, L) {
     c: tthTroyCompile(), t: 0, t0: 0, k: 0, roller: L.def.first ? 1 : 0,
     h: { x: K.startX, v: 0, y: K.ground, tilt: 0, rot: 0 },
     peek: 0, light: 1, glowT: 3, force: 0, lean: 0, seatU: 1,
-    spots: [], lit: false, lit0: 0, lit1: 0, frz: 0, movedT: 0, seenT: 0, grace: 2, hush: 0, wasCalm: true,
-    caught: null, pusher: null, patrol: null, claw: null, bell: null, swap: null, done: null, kick: null, parkT: 0,
+    spots: [], lit: false, lit0: 0, lit1: 0, leak0: 0, leak1: 0, frz: 0, movedT: 0, seenT: 0, grace: 2, hush: 0, wasCalm: true,
+    caught: null, pusher: null, patrol: null, claw: null, bell: null, swap: null, done: null, kick: null, kickV: 0, parkT: 0,
     cpX: K.startX, cpN: 0, patMiss: 0, fw0: K.startX + K.wheel,
     bestX: K.startX, stuckT: 0, stuckN: 0, hintT: 0.8, darkTry: 0, tauntT: 5, tauntN: 0, laughT: 0, dustT: 0, creakT: 0, stepT: 0,
-    rolled: false, peeked: false,
+    rolled: false, peeked: false, taught: 0, whee: false,
   });
   tthTroyTerrain(ph);
   st.cam.x = 0; st.cam.y = 0;
@@ -231,9 +232,9 @@ function tthTroyDrive(st, dt, w) {
   const ramp = ph.c.ramps.find(r => h.x > r.x0 - 90 && h.x < r.x0 + r.len + 90) || null;
   const ag = K.grav * Math.sin(h.tilt) * (ramp && ramp.gold ? 0.5 : 1);   // the slope's pull along the road (uphill: negative)
   let v = h.v;
-  if (ph.kick != null) {   // bounced back out of a gate
-    const d = ph.kick - h.x, s = 420 * dt;
-    if (Math.abs(d) <= s) { h.x = ph.kick; ph.kick = null; } else h.x += Math.sign(d) * s;
+  if (ph.kick != null) {   // bounced back out of a gate, or rolling back down a ramp
+    const d = ph.kick - h.x, s = (ph.kickV || K.gateV) * dt;
+    if (Math.abs(d) <= s) { h.x = ph.kick; ph.kick = null; ph.kickV = 0; ph.grace = Math.max(ph.grace, 0.6); } else h.x += Math.sign(d) * s;
     h.rot += Math.sign(d) * s / (20 * K.hs); h.v = 0; ph.fw0 = h.x + K.wheel;
     return;
   }
@@ -262,21 +263,29 @@ function tthTroyDrive(st, dt, w) {
   if (h.x > wall) { h.x = wall; if (v > 60) { Sfx.play('tthTroyKnock'); tthPop(st, h.x + K.body[1], h.y - 120, 'Whoa!', '#ffffff', 16); } v = 0; }
   h.v = v;
   if (Math.abs(v) > 20) ph.rolled = true;
+  // downhill: "Wheee!"
+  if (v > K.vmax + 22 && !ph.whee) { ph.whee = true; tthPop(st, h.x, h.y - 300, 'Wheee!', '#ffffff', 24); Sfx.play('tthTroyWhee'); if (!reduceMotion) G.shake = Math.max(G.shake, 0.15); }
+  else if (v < K.vmax - 10) ph.whee = false;
 }
-// stopping, tiptoeing or losing the light on a ramp: the horse rolls back down ("Rolling back!", not a bump)
-function tthTroyRamps(st) {
+// stalling on a ramp (stopping, tiptoeing or losing the light on the steep part): the heavy horse rolls back down to
+// the foot ("Rolling back!", not a bump) for another run-up. Not even the brake holds it there (on a gold ramp it does).
+function tthTroyRamps(st, dt) {
   const ph = st.ph, h = ph.h, K = TTHTROY;
+  if (ph.kick != null || tthTroyEvent(ph)) return;
   for (const r of ph.c.ramps) {
-    if (r.rise <= 0) continue;
-    const on = h.x > r.x0 - 60 && h.x < r.x0 + r.len + 60;
-    if (on && h.v < -24 && !r.rb && !tthTroyEvent(ph)) {
-      r.rb = true; r.miss++; tthStats(st).rollbacks++;
-      tthPop(st, h.x, h.y - 270, 'Rolling back!', '#ffffff', 20); Sfx.play('tthTroyNope');
-      const rl = ph.roller, lk = 1 - rl;
-      tthHint(st, rl, 'Hold ' + tthKey(rl, 'right') + ' all the way up!', { cpu: 'I\'ll roll all the way up!' });
-      tthHint(st, lk, 'Keep peeking up the ramp!', { cpu: 'I\'ll keep the light on!' });
-      if (r.miss === K.goldMiss) { r.gold = true; tthHelp(st, 'Gold help: a gentler ramp! Roll on up.'); }
-    } else if (r.rb && h.v > 40) r.rb = false;
+    if (r.rise <= 0 || !(h.x > r.x0 - 60 && h.x < r.x0 + r.len + 60)) { r.stallT = 0; continue; }
+    const steep = !r.gold && Math.sin(h.tilt) < -K.steep;
+    r.stallT = steep && h.v < K.stallV ? r.stallT + dt : 0;
+    if (h.v >= -24 && r.stallT < K.stallT) continue;
+    r.miss++; r.stallT = 0; tthStats(st).rollbacks++;
+    ph.kick = Math.min(h.x, r.x0 - K.wheel - 24); ph.kickV = K.rollBackV; h.v = 0;
+    tthPop(st, h.x, h.y - 290, 'Rolling back!', '#ffffff', 20); Sfx.play('tthTroyNope');
+    const rl = ph.roller, lk = 1 - rl;
+    tthHint(st, rl, 'Take a run-up: hold ' + tthKey(rl, 'right') + ' all the way!', { life: 3.2, cpu: 'A run-up, all the way up!' });
+    tthHint(st, lk, 'Keep peeking up the ramp!', { life: 3.2, cpu: 'I\'ll keep the light on!' });
+    ph.hintT = 3.2;
+    if (r.miss === K.goldMiss) { r.gold = true; tthHelp(st, 'Gold help: a gentler ramp! No run-up needed.'); }
+    return;
   }
 }
 
@@ -671,6 +680,16 @@ function tthTroyHints(st, dt, calm) {
     else tthHint(st, rl, ph.lit ? 'Wait for the beam to pass...' : 'Hold ' + tthKey(rl, 'right') + ' to roll!', { gold: true, life: 4, cpu: 'I\'ll roll in the gaps!' });
     ph.hintT = 4; return;
   }
+  // the first two lanterns: what to do about a beam
+  if (ph.taught < 2) {
+    const g = c.guards.find(q => q.state === 'tele' && !q.told && q.z1 + q.w / 2 > h.x + K.body[0] && q.z0 - 560 < h.x);
+    if (g) {
+      g.told = true; ph.taught++;
+      tthHint(st, rl, 'A lantern! Brake before the beam: ' + tthKey(rl, 'left'), { life: 3.4, cpu: 'A lantern! I\'ll brake in time.' });
+      tthHint(st, lk, 'Let go when the beam is at the head!', { life: 3.4, cpu: 'I\'ll duck when the beam is close.' });
+      ph.hintT = 3.4; return;
+    }
+  }
   if (ph.hintT > 0) return;
   // the start: what each job does
   if (ph.t < 12 && (!ph.peeked || !ph.rolled)) {
@@ -729,7 +748,7 @@ function tthTroyStep(st, dt) {
   }
   if (ph.bell) tthTroyBellStep(st, dt);
   tthTroyTerrain(ph);
-  tthTroyRamps(st);
+  tthTroyRamps(st, dt);
   tthTroyGuards(st, dt, calm);
   tthTroyPatrol(st, dt, calm);
   tthTroyPusher(st, dt);
@@ -766,3 +785,550 @@ function tthTroyCoast(st, dt) {
   tthTroySeats(st);
   tthTroyCam(st, dt);
 }
+
+/* ---------- drawing: the scenery (houses, the city wall, towers), built once per start ---------- */
+const TTHTROYC = { wood: '#c98a4a', woodDk: '#9a6230', woodLt: '#e6b577', inside: '#3a2515', insideLt: '#5b3c22', bronze: '#d9a441', bronzeDk: '#9a6f22',
+  tunic: '#3f8f8a', tunicDk: '#2a6663', crest: '#d9483b', skin: '#f0c9a0', beam: '255,232,140', stone: '#b9ab94', stoneDk: '#8f826e', stoneLt: '#d6c9b0',
+  roof: '#c96f4a', roofDk: '#a4532f', walls: ['#ead4aa', '#dcc08e', '#e8c9a2', '#d6b88a', '#f0ddb8'] };
+function tthTroyScenery(c) {
+  const K = TTHTROY, hs = [], x0 = c.gateX + 150, x1 = c.goal - 250;
+  const fixed = c.guards.filter(g => !g.deco && g.perch === 'roof').map(g => ({ x0: g.x - 78, w: 156, top: g.py })).sort((a, b) => a.x0 - b.x0);
+  fixed.push({ x0: x1, w: 0, top: 0, end: true });
+  let cur = x0, n = 0;
+  const add = (hx, w, top) => { const q = hash(n++, 31); hs.push({ x0: hx, w, top, col: TTHTROYC.walls[q % 5], door: 0.2 + ((q >>> 3) % 5) * 0.14, lit: (q >>> 6) % 3 === 0, awn: (q >>> 8) % 4 === 0, win: 1 + ((q >>> 10) % 2), pot: (q >>> 12) % 3 === 0 }); };
+  for (const f of fixed) {
+    while (f.x0 - cur > 60) {
+      const q = hash(n, 77), w = Math.min(f.x0 - cur, 116 + (q % 5) * 16);
+      add(cur, f.x0 - cur - w < 60 ? f.x0 - cur : w, [244, 268, 292, 232][(q >>> 4) % 4]);
+      cur = hs[hs.length - 1].x0 + hs[hs.length - 1].w;
+    }
+    if (f.end) break;
+    add(f.x0, f.w, f.top); cur = f.x0 + f.w;
+  }
+  c.houses = hs;
+  // olive trees and bushes on the plain (not under the watchtower, not on the wall)
+  c.trees = [];
+  for (let x = 70; x < c.gateX - 720; x += 150 + (hash(x, 5) % 120)) if (!c.guards.some(g => g.perch === 'tower' && Math.abs(g.x - x) < 90)) c.trees.push({ x, s: 0.8 + (hash(x, 9) % 5) * 0.1, bush: hash(x, 3) % 3 === 0 });
+  c.wallX0 = c.gateX - 700;
+  // signs: before every uphill ramp, narrow gate and loose plank
+  c.signs = [];
+  for (const r of c.ramps) if (r.rise > 0) c.signs.push({ x: r.x0 - 150, kind: 'ramp' });
+  for (const g of c.gates) c.signs.push({ x: g.x - 250, kind: 'slow' });
+  for (const b of c.bumps) c.signs.push({ x: b.x - 150, kind: 'plank' });
+}
+function tthTroySign(ph, s) {
+  const y = tthTroyGy(ph, s.x);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillStyle = TTHTROYC.woodDk; ctx.fillRect(s.x - 3, y - 64, 6, 64); ctx.strokeRect(s.x - 3, y - 64, 6, 64);
+  ctx.fillStyle = s.kind === 'ramp' ? '#9fe07f' : '#ffd23f'; rr(s.x - 24, y - 104, 48, 44, 8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = C.ink; ctx.lineWidth = 3;
+  if (s.kind === 'ramp') { ctx.beginPath(); ctx.moveTo(s.x - 14, y - 70); ctx.lineTo(s.x + 14, y - 86); ctx.lineTo(s.x + 14, y - 70); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(s.x - 6, y - 90); ctx.lineTo(s.x + 6, y - 97); ctx.moveTo(s.x + 1, y - 98); ctx.lineTo(s.x + 6, y - 97); ctx.lineTo(s.x + 3, y - 92); ctx.stroke(); }
+  else if (s.kind === 'slow') {   // a tiptoeing foot between two walls
+    ctx.fillRect(s.x - 18, y - 98, 5, 32); ctx.fillRect(s.x + 13, y - 98, 5, 32);
+    ctx.beginPath(); ctx.moveTo(s.x - 8, y - 82); ctx.lineTo(s.x + 6, y - 82); ctx.moveTo(s.x + 1, y - 88); ctx.lineTo(s.x + 7, y - 82); ctx.lineTo(s.x + 1, y - 76); ctx.stroke();
+  } else { text('!', s.x, y - 81, 30, C.ink, 'center'); }
+}
+// a Trojan guard, feet centre at (x, y): o { face, up (0..1 lantern raised), sleep, walk, push, lamp (false: no lantern), mark ('?' | '!' | 'z') }
+function tthTroyDrawGuard(x, y, o) {
+  const t = G.clock, f = o.face || 1, K = TTHTROYC, walk = o.walk ? Math.sin(t * 11) : 0, bob = o.walk ? Math.abs(walk) * -2 : o.sleep ? Math.sin(t * 1.6) * 1 : 0;
+  ctx.save(); ctx.translate(x, y); ctx.scale(f, 1); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+  // legs
+  ctx.strokeStyle = K.skin; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(-4, -14); ctx.lineTo(-4 + walk * 6, -1); ctx.moveTo(4, -14); ctx.lineTo(4 - walk * 6, -1); ctx.stroke();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+  ctx.translate(0, bob);
+  if (o.push) ctx.rotate(0.22);
+  // tunic and bronze belt
+  ctx.fillStyle = K.tunic; rr(-10, -34, 20, 22, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = K.bronze; ctx.fillRect(-10, -22, 20, 4);
+  // the back arm
+  ctx.strokeStyle = K.tunicDk; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-7, -30); ctx.lineTo(o.push ? 8 : -11, o.push ? -30 : -18); ctx.stroke();
+  // head, helmet, crest
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+  ctx.fillStyle = K.skin; circle(0, -43, 9.5); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = K.bronze; ctx.beginPath(); ctx.arc(0, -44, 10.5, Math.PI * 1.02, Math.PI * 1.98); ctx.lineTo(10.5, -43); ctx.lineTo(-10.5, -43); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = K.crest; ctx.beginPath(); ctx.moveTo(-9, -53); ctx.quadraticCurveTo(0, -66, 10, -55); ctx.quadraticCurveTo(0, -58, -9, -53); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // face
+  ctx.fillStyle = C.ink;
+  if (o.sleep) { ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(1, -41); ctx.lineTo(5, -41); ctx.moveTo(-5, -41); ctx.lineTo(-2, -41); ctx.stroke(); }
+  else { circle(4, -42, 1.7); ctx.fill(); circle(-2, -42, 1.5); ctx.fill(); }
+  ctx.lineWidth = 1.6; ctx.beginPath();
+  if (o.mark === '!') { ctx.ellipse(2, -36.5, 2.2, 2.6, 0, 0, Math.PI * 2); ctx.fill(); } else { ctx.moveTo(-1, -37); ctx.quadraticCurveTo(2, o.sleep ? -37 : -35.5, 5, -37); ctx.stroke(); }
+  // the front arm and the lantern on its pole
+  const up = o.up || 0, hx = o.push ? 13 : 10 + up * 5, hy = o.push ? -27 : -18 - up * 12;
+  ctx.strokeStyle = K.tunic; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(6, -30); ctx.lineTo(hx, hy); ctx.stroke();
+  ctx.fillStyle = K.skin; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.8; circle(hx, hy, 3.4); ctx.fill(); ctx.stroke();
+  if (o.lamp !== false && !o.push) {
+    const lx = hx + 8, ly = hy - 2 - up * 4;
+    ctx.strokeStyle = TTHTROYC.woodDk; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(hx - 2, hy + 3); ctx.lineTo(lx, ly - 6); ctx.stroke();
+    const on = o.on == null ? up : o.on;
+    if (on > 0.02) { ctx.fillStyle = `rgba(${K.beam},${0.3 * on})`; circle(lx, ly + 4, 13 + Math.sin(t * 9) * 1.2); ctx.fill(); }
+    ctx.fillStyle = on > 0.3 ? '#fff3b0' : '#a8905a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(lx - 5, ly - 3, 10, 13, 3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = K.bronzeDk; ctx.fillRect(lx - 6, ly - 5, 12, 3); ctx.fillRect(lx - 6, ly + 9, 12, 3);
+  }
+  ctx.restore();
+  if (o.mark && o.mark !== 'z') bigText(o.mark, x + f * 2, y - 82 - Math.abs(Math.sin(t * 8)) * 4, 26, o.mark === '?' ? '#ffe28a' : '#ff5f6d', 1);
+  else if (o.mark === 'z') { for (let k = 0; k < 3; k++) { const u = (t * 0.5 + k / 3) % 1; ctx.globalAlpha *= 1 - u; text('z', x + 10 + u * 16 + k * 2, y - 58 - u * 26, 11 + u * 8, '#ffffff', 'center'); ctx.globalAlpha /= 1 - u; } }
+}
+// the road from xa to xb (world): a filled strip that follows the ramps
+function tthTroyDrawRoad(ph, xa, xb, top, body, edge) {
+  const cam = G.mst.cam, a = Math.max(xa, cam.x - 30), b = Math.min(xb, cam.x + W + 30);
+  if (b <= a) return;
+  ctx.beginPath(); ctx.moveTo(a, H + 12);
+  for (let x = a; x < b; x += 24) ctx.lineTo(x, tthTroyGy(ph, x));
+  ctx.lineTo(b, tthTroyGy(ph, b)); ctx.lineTo(b, H + 12); ctx.closePath();
+  ctx.fillStyle = body; ctx.fill();
+  ctx.beginPath();
+  for (let x = a; x < b; x += 24) ctx.lineTo(x, tthTroyGy(ph, x) + 6);
+  ctx.lineTo(b, tthTroyGy(ph, b) + 6);
+  ctx.strokeStyle = top; ctx.lineWidth = 12; ctx.lineCap = 'butt'; ctx.stroke();
+  ctx.beginPath();
+  for (let x = a; x < b; x += 24) ctx.lineTo(x, tthTroyGy(ph, x));
+  ctx.lineTo(b, tthTroyGy(ph, b));
+  ctx.strokeStyle = edge || C.ink; ctx.lineWidth = 3; ctx.stroke();
+}
+function tthTroyDrawBack(st) {
+  const ph = st.ph, K = TTHTROY, Q = TTHTROYC, c = ph.c, cam = st.cam, t = G.clock, h = ph.h, L = cam.x - 40, R = cam.x + W + 40, light = ph.light;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  tthScreen(st, () => {
+    // dusk: indigo above, a band of orange at the horizon, a low sun over the sea, early stars
+    const g = ctx.createLinearGradient(0, 0, 0, 440);
+    g.addColorStop(0, '#1d1b52'); g.addColorStop(0.45, '#5a3a86'); g.addColorStop(0.78, '#d9705a'); g.addColorStop(1, '#ffc27a');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    tthStars(t, 34, 0.75, 13);
+    const sx = 230 - cam.x * 0.03;
+    if (sx > -90) { ctx.fillStyle = 'rgba(255,214,140,0.25)'; circle(sx, 396, 78); ctx.fill(); ctx.fillStyle = '#ffe2a0'; circle(sx, 396, 44); ctx.fill(); }
+    // the sea, and the Greek ships sailing away (they only pretend to leave)
+    const seaX = -cam.x * 0.06;
+    ctx.fillStyle = '#4a4f9a'; ctx.fillRect(0, 392, W, 60);
+    ctx.fillStyle = 'rgba(255,200,140,0.35)'; for (let k = 0; k < 7; k++) ctx.fillRect(((k * 173 + seaX * 0.6) % (W + 80) + W + 80) % (W + 80) - 40, 400 + (k % 3) * 9, 46, 2.5);
+    for (let k = 0; k < 3; k++) {
+      const bx = 120 + k * 150 + seaX + Math.sin(t * 0.4 + k) * 4, by = 404 + k * 5;
+      if (bx < -40) continue;
+      ctx.fillStyle = '#2a2550'; ctx.beginPath(); ctx.moveTo(bx - 20, by); ctx.quadraticCurveTo(bx, by + 9, bx + 22, by - 2); ctx.lineTo(bx + 24, by - 9); ctx.lineTo(bx + 16, by); ctx.closePath(); ctx.fill();
+      ctx.fillRect(bx - 1, by - 22, 2, 22); ctx.fillStyle = '#e8d2b0'; ctx.fillRect(bx - 11, by - 21, 22, 13);
+    }
+    // far hills, then the roofs and towers of Troy
+    ctx.fillStyle = '#4b3a7c'; ctx.beginPath(); ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 32) { const wx = x + cam.x * 0.14; ctx.lineTo(x, 372 - Math.sin(wx * 0.006) * 34 - Math.sin(wx * 0.017 + 2) * 14); }
+    ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#3a2f66';
+    const off = cam.x * 0.36, k0 = Math.floor(off / 58);
+    for (let k = k0 - 1; k < k0 + 19; k++) {
+      const q = hash(k, 21), bx = k * 58 - off, bh = 34 + (q % 6) * 13, bw = 46 + ((q >>> 4) % 3) * 12;
+      ctx.fillRect(bx, 420 - bh, bw, bh + 40);
+      if ((q >>> 7) % 4 === 0) { for (let m = 0; m < 3; m++) ctx.fillRect(bx + m * (bw / 3) + 2, 420 - bh - 8, bw / 3 - 6, 9); }
+      else if ((q >>> 7) % 4 === 1) { ctx.beginPath(); ctx.moveTo(bx - 4, 420 - bh); ctx.lineTo(bx + bw / 2, 420 - bh - 16); ctx.lineTo(bx + bw + 4, 420 - bh); ctx.closePath(); ctx.fill(); }
+      if ((q >>> 10) % 3 === 0) { ctx.fillStyle = 'rgba(255,214,140,0.55)'; ctx.fillRect(bx + 10, 420 - bh + 12, 7, 9); ctx.fillStyle = '#3a2f66'; }
+    }
+  });
+  if (light < 0.02) return;   // (pitch dark behind the planks: nothing more to paint)
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
+  // --- the plain: olive trees, the watchtower ---
+  for (const tr of c.trees) {
+    if (tr.x < L - 60 || tr.x > R + 60) continue;
+    const gy = tthTroyGy(ph, tr.x), s = tr.s;
+    if (tr.bush) { ctx.fillStyle = '#5f7a3a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(tr.x - 14 * s, gy - 8, 14 * s, Math.PI, 0); ctx.arc(tr.x + 6 * s, gy - 12, 18 * s, Math.PI, 0); ctx.arc(tr.x + 26 * s, gy - 6, 12 * s, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); continue; }
+    ctx.lineWidth = 3; ctx.fillStyle = '#7a5636'; ctx.beginPath(); ctx.moveTo(tr.x - 7 * s, gy + 4); ctx.quadraticCurveTo(tr.x - 2 * s, gy - 30 * s, tr.x - 10 * s, gy - 58 * s); ctx.lineTo(tr.x + 6 * s, gy - 58 * s); ctx.quadraticCurveTo(tr.x + 4 * s, gy - 30 * s, tr.x + 9 * s, gy + 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#6f8a48'; ctx.beginPath(); ctx.ellipse(tr.x - 2 * s, gy - 78 * s, 40 * s, 28 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#8aa65a'; ctx.beginPath(); ctx.ellipse(tr.x - 12 * s, gy - 86 * s, 18 * s, 11 * s, -0.3, 0, Math.PI * 2); ctx.fill();
+  }
+  // --- the square: a temple front, steps, the wall the horse stops at ---
+  if (c.goal + 700 > L && c.goal - 260 < R) {
+    const gx = c.goal, gy = tthTroyGy(ph, gx), bx = gx + 196;
+    ctx.lineWidth = 3; ctx.strokeStyle = C.ink;
+    ctx.fillStyle = '#e4d8bf'; ctx.fillRect(bx + 60, 250, 330, gy - 250); ctx.strokeRect(bx + 60, 250, 330, gy - 250);
+    ctx.fillStyle = '#f2e9d6'; for (let k = 0; k < 5; k++) { const cx2 = bx + 82 + k * 70; ctx.fillRect(cx2, 262, 22, gy - 262); ctx.strokeRect(cx2, 262, 22, gy - 262); }
+    ctx.fillStyle = Q.roof; ctx.beginPath(); ctx.moveTo(bx + 40, 252); ctx.lineTo(bx + 225, 186); ctx.lineTo(bx + 410, 252); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffd23f'; circle(bx + 225, 228, 11); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#d6c9b0'; for (let k = 0; k < 3; k++) { ctx.fillRect(bx + k * 16, gy - 14 - k * 14, 460, 15 + k * 14); ctx.strokeRect(bx + k * 16, gy - 14 - k * 14, 460, 15 + k * 14); }
+  }
+  for (const g of c.guards) {
+    if (g.x < L - 90 || g.x > R + 90) continue;
+    const gy = tthTroyGy(ph, g.x);
+    if (g.perch === 'tower') {
+      ctx.lineWidth = 3; ctx.fillStyle = Q.woodDk;
+      for (const dx of [-30, 24]) { ctx.fillRect(g.x + dx, g.py, 7, gy - g.py + 6); ctx.strokeRect(g.x + dx, g.py, 7, gy - g.py + 6); }
+      ctx.lineWidth = 5; ctx.strokeStyle = Q.woodDk; ctx.beginPath(); ctx.moveTo(g.x - 26, gy - 20); ctx.lineTo(g.x + 27, g.py + 60); ctx.moveTo(g.x + 27, gy - 20); ctx.lineTo(g.x - 26, g.py + 60); ctx.stroke();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillStyle = Q.wood; rr(g.x - 44, g.py, 88, 11, 4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = Q.woodDk; for (const dx of [-38, 33]) { ctx.fillRect(g.x + dx, g.py - 100, 5, 100); }
+      ctx.fillStyle = '#d9b86a'; ctx.beginPath(); ctx.moveTo(g.x - 54, g.py - 98); ctx.lineTo(g.x, g.py - 126); ctx.lineTo(g.x + 54, g.py - 98); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if (g.perch === 'col') {
+      ctx.lineWidth = 3; ctx.fillStyle = '#efe6d2'; ctx.fillRect(g.x - 13, g.py + 10, 26, gy - g.py); ctx.strokeRect(g.x - 13, g.py + 10, 26, gy - g.py);
+      ctx.strokeStyle = 'rgba(28,26,54,0.25)'; ctx.lineWidth = 2; ctx.beginPath(); for (const dx of [-5, 3]) { ctx.moveTo(g.x + dx, g.py + 16); ctx.lineTo(g.x + dx, gy - 6); } ctx.stroke();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillStyle = '#f6efdf'; rr(g.x - 22, g.py, 44, 12, 4); ctx.fill(); ctx.stroke(); rr(g.x - 19, gy - 10, 38, 12, 3); ctx.fill(); ctx.stroke();
+    }
+  }
+  // --- the city wall of Troy, up to the Great Gate ---
+  if (c.gateX + 150 > L && c.wallX0 < R) {
+    const wa = Math.max(c.wallX0, L), wb = Math.min(c.gateX + 130, R), top = K.perchY;
+    ctx.fillStyle = Q.stone; ctx.lineWidth = 3; ctx.fillRect(wa, top, wb - wa, 260);
+    ctx.fillStyle = Q.stoneLt; ctx.fillRect(wa, top, wb - wa, 9);
+    ctx.strokeStyle = 'rgba(28,26,54,0.22)'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let row = 0; row < 6; row++) { const y = top + 30 + row * 36; ctx.moveTo(wa, y); ctx.lineTo(wb, y); for (let x = Math.floor(wa / 66) * 66 + (row % 2) * 33; x < wb; x += 66) if (x > wa) { ctx.moveTo(x, y); ctx.lineTo(x, y + 36); } }
+    ctx.stroke();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillStyle = Q.stone;
+    for (let x = Math.floor(wa / 46) * 46; x < Math.min(wb, c.gateX - 20); x += 46) if (x >= c.wallX0) { ctx.fillRect(x + 4, top - 20, 24, 20); ctx.strokeRect(x + 4, top - 20, 24, 20); }
+    ctx.beginPath(); ctx.moveTo(wa, top); ctx.lineTo(wb, top); ctx.stroke();
+    if (c.wallX0 > L) { ctx.fillStyle = Q.stoneDk; ctx.fillRect(c.wallX0 - 16, top - 30, 34, 300); ctx.strokeRect(c.wallX0 - 16, top - 30, 34, 300); }
+  }
+  // --- the streets: houses with flat roofs ---
+  for (const hs of c.houses) {
+    if (hs.x0 + hs.w < L || hs.x0 > R) continue;
+    const gy = tthTroyGy(ph, hs.x0 + hs.w / 2) + 30;
+    ctx.lineWidth = 3; ctx.strokeStyle = C.ink; ctx.fillStyle = hs.col; ctx.fillRect(hs.x0, hs.top, hs.w, gy - hs.top); ctx.strokeRect(hs.x0, hs.top, hs.w, gy - hs.top);
+    ctx.fillStyle = 'rgba(90,50,110,0.14)'; ctx.fillRect(hs.x0 + hs.w * 0.62, hs.top, hs.w * 0.38, gy - hs.top);
+    ctx.fillStyle = Q.roof; rr(hs.x0 - 7, hs.top - 9, hs.w + 14, 13, 4); ctx.fill(); ctx.stroke();
+    const dx = hs.x0 + hs.w * hs.door, base = tthTroyGy(ph, hs.x0 + hs.w / 2);
+    ctx.fillStyle = '#5a3b22'; ctx.beginPath(); ctx.moveTo(dx - 13, base + 4); ctx.lineTo(dx - 13, base - 40); ctx.quadraticCurveTo(dx, base - 56, dx + 13, base - 40); ctx.lineTo(dx + 13, base + 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+    for (let k = 0; k < hs.win; k++) {
+      const wx = hs.x0 + hs.w * (hs.door < 0.5 ? 0.62 + k * 0.2 : 0.14 + k * 0.2), wy = Math.max(hs.top + 22, base - 120);
+      ctx.fillStyle = hs.lit && k === 0 ? '#ffd98a' : '#5b4a78'; rr(wx, wy, 18, 24, 5); ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke();
+    }
+    if (hs.awn) { ctx.lineWidth = 2.5; ctx.fillStyle = '#d9483b'; ctx.beginPath(); ctx.moveTo(dx - 22, base - 62); ctx.lineTo(dx + 22, base - 62); ctx.lineTo(dx + 28, base - 46); ctx.lineTo(dx - 28, base - 46); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#f6efdf'; ctx.fillRect(dx - 9, base - 61, 6, 14); ctx.fillRect(dx + 5, base - 61, 6, 14); }
+    if (hs.pot) { const px = hs.x0 + hs.w - 18; ctx.lineWidth = 2.5; ctx.fillStyle = '#c9783f'; ctx.beginPath(); ctx.moveTo(px - 5, base - 26); ctx.quadraticCurveTo(px - 13, base - 12, px - 6, base + 2); ctx.lineTo(px + 6, base + 2); ctx.quadraticCurveTo(px + 13, base - 12, px + 5, base - 26); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  }
+  // --- the back of the narrow gates: a dark passage (their stone tops are drawn over the horse, in drawTop) ---
+  for (const g of c.gates) {
+    if (g.x + 190 < L || g.x - 60 > R) continue;
+    const gy = tthTroyGy(ph, g.x + 60);
+    ctx.fillStyle = g.alley ? '#6a5878' : '#57496e'; ctx.fillRect(g.x - 14, 150, K.gateLen + 28, gy - 150 + 4);
+    ctx.fillStyle = g.alley ? Q.walls[1] : Q.stoneDk; ctx.lineWidth = 3; ctx.strokeStyle = C.ink;
+    for (const px of [g.x - 34, g.x + K.gateLen + 14]) { ctx.fillRect(px, 150, 20, gy - 150 + 6); ctx.strokeRect(px, 150, 20, gy - 150 + 6); }
+  }
+  // a dusk tint over the scenery, so the lanterns, the road and the horse stand out
+  tthScreen(st, () => { ctx.fillStyle = 'rgba(52,30,92,0.18)'; ctx.fillRect(0, 0, W, H); });
+  // --- the road: the plain, the paved streets, the square ---
+  const sq = c.goal - 330;
+  tthTroyDrawRoad(ph, -200, c.gateX - 30, '#8fa050', '#a57c4c');
+  tthTroyDrawRoad(ph, c.gateX - 30, sq, '#e0cca2', '#b59a72');
+  tthTroyDrawRoad(ph, sq, c.xMax + 200, '#f2e8d2', '#cdbb9a');
+  // paving joints, grass tufts
+  ctx.strokeStyle = 'rgba(28,26,54,0.2)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = Math.floor(L / 52) * 52; x < R; x += 52) {
+    const gy = tthTroyGy(ph, x);
+    if (x > c.gateX - 30) { ctx.moveTo(x, gy + 2); ctx.lineTo(x - 5, gy + 12); ctx.moveTo(x + 22, gy + 30); ctx.lineTo(x + 48, gy + 30); ctx.moveTo(x - 8, gy + 54); ctx.lineTo(x + 14, gy + 54); }
+    else { ctx.moveTo(x, gy + 26); ctx.lineTo(x + 20, gy + 26); ctx.moveTo(x + 30, gy + 50); ctx.lineTo(x + 42, gy + 50); }
+  }
+  ctx.stroke();
+  // the gold star in the square
+  if (c.goal + 200 > L && c.goal - 200 < R) {
+    const gx = c.goal + (K.park[0] + K.park[1]) / 2, gy = tthTroyGy(ph, gx) + 22, pulse = ph.done ? 1 : 0.75 + 0.25 * Math.sin(t * 4);
+    ctx.save(); ctx.translate(gx, gy); ctx.scale(1, 0.32);
+    ctx.fillStyle = `rgba(255,197,61,${0.35 * pulse})`; circle(0, 0, 92); ctx.fill();
+    ctx.fillStyle = C.gold; ctx.strokeStyle = C.ink; ctx.lineWidth = 4; ctx.beginPath();
+    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 30 : 70; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+  }
+  // --- what only shows in the light: each guard's strip of ground, the signs, loose planks, the safe spots, the guards ---
+  ctx.save(); ctx.globalAlpha = light;
+  for (const g of c.guards) {
+    if (g.deco || g.z1 + g.w / 2 < L || g.z0 - g.w / 2 > R) continue;
+    const act = g.state !== 'idle' && g.state !== 'asleep';
+    ctx.fillStyle = act ? `rgba(${Q.beam},0.8)` : 'rgba(255,255,255,0.3)';
+    for (let x = Math.max(g.z0 - g.w / 2, Math.floor(L / 18) * 18); x < Math.min(g.z1 + g.w / 2, R); x += 18) ctx.fillRect(x, tthTroyGy(ph, x) + 4, 9, 3.5);
+  }
+  for (const s of c.signs) if (s.x > L - 30 && s.x < R + 30) tthTroySign(ph, s);
+  for (const b of c.bumps) {
+    if (b.x < L - 40 || b.x > R + 40) continue;
+    const gy = tthTroyGy(ph, b.x), wob = b.t < 0.5 ? Math.sin(b.t * 40) * (0.5 - b.t) * 0.5 : 0;
+    ctx.save(); ctx.translate(b.x, gy); ctx.rotate(-0.1 + wob);
+    ctx.fillStyle = Q.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(-26, -6, 52, 9, 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = C.ink; circle(-19, -1.5, 1.6); ctx.fill(); circle(19, -1.5, 1.6); ctx.fill();
+    ctx.restore();
+  }
+  for (const hd of c.hides) {
+    if (hd.x < L - 40 || hd.x > R + 40) continue;
+    const px = hd.x - 150, gy = tthTroyGy(ph, px), wave = Math.sin(t * 5 + hd.x) * 3;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillStyle = Q.woodDk; ctx.fillRect(px - 2.5, gy - 150, 5, 150); ctx.strokeRect(px - 2.5, gy - 150, 5, 150);
+    ctx.fillStyle = hd.got ? C.gold : '#cfd3e6'; ctx.beginPath(); ctx.moveTo(px + 3, gy - 148); ctx.quadraticCurveTo(px + 22, gy - 150 + wave, px + 42, gy - 134); ctx.quadraticCurveTo(px + 22, gy - 126 + wave, px + 3, gy - 120); ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (hd.got) { ctx.strokeStyle = '#3f8f5c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(px + 11, gy - 135); ctx.lineTo(px + 17, gy - 129); ctx.lineTo(px + 27, gy - 141); ctx.stroke(); }
+  }
+  // the bells the Thief rings
+  for (const b of c.bells) {
+    if (b.at < L - 60 || b.at > R + 60) continue;
+    const gy = tthTroyGy(ph, b.at), sw = Math.sin(t * 13) * b.swing * 0.5;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillStyle = Q.woodDk;
+    for (const dx of [-30, 24]) { ctx.fillRect(b.at + dx, 150, 7, gy - 150 + 4); ctx.strokeRect(b.at + dx, 150, 7, gy - 150 + 4); }
+    rr(b.at - 40, 142, 80, 11, 4); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.translate(b.at, 153); ctx.rotate(sw);
+    ctx.fillStyle = Q.bronze; ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(-8, 22, -19, 32); ctx.lineTo(19, 32); ctx.quadraticCurveTo(8, 22, 6, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = Q.bronzeDk; circle(-sw * 20, 35, 4.5); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  // the guards on their perches
+  for (const g of c.guards) {
+    if (g.x < L - 40 || g.x > R + 40) continue;
+    const asleep = g.state === 'asleep', nap = g.state === 'rest' || g.state === 'idle' || g.state === 'deco';
+    tthTroyDrawGuard(g.x, g.py, { face: g.face, up: g.up, on: Math.max(g.on, g.up * 0.6), sleep: asleep || nap,
+      mark: g.state === 'tele' || (g.state === 'look' && g.lp === 'tele') ? '?' : g.state === 'alert' ? '!' : asleep ? 'z' : null });
+  }
+  ctx.restore();
+}
+
+/* ---------- drawing: the horse (a cutaway: Pip and Bo are inside) ---------- */
+// horse units: x toward the nose, y up is negative, the origin on the road under its middle (see tthTroyPt)
+function tthTroyDrawHorse(st) {
+  const ph = st.ph, K = TTHTROY, Q = TTHTROYC, h = ph.h, t = G.clock, rl = ph.roller, lk = 1 - rl;
+  const shake = ph.claw && ph.claw.st === 'tug' ? Math.sin(t * 34) * 1.2 : ph.caught && ph.caught.t < 0.5 ? Math.sin(t * 50) * 2 * (0.5 - ph.caught.t) : 0;
+  ctx.save(); ctx.translate(h.x + shake, h.y); ctx.rotate(h.tilt); ctx.scale(K.hs, K.hs);
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
+  ctx.fillStyle = 'rgba(28,26,54,0.25)'; ctx.beginPath(); ctx.ellipse(0, 2, 128, 8, 0, 0, Math.PI * 2); ctx.fill();
+  // the rope tail
+  const sw = Math.sin(t * 2.2) * 5 - clamp(h.v * 0.12, -14, 14);
+  ctx.strokeStyle = '#e8d2a0'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(-110, -160); ctx.quadraticCurveTo(-134, -150, -130 + sw, -108); ctx.stroke();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-126 + sw, -112); ctx.lineTo(-136 + sw, -100); ctx.moveTo(-130 + sw, -108); ctx.lineTo(-130 + sw, -96); ctx.moveTo(-133 + sw, -110); ctx.lineTo(-124 + sw, -98); ctx.stroke();
+  // legs (the far pair darker), the cart and its wheels
+  ctx.lineWidth = 3;
+  for (const [lx, col] of [[-78, Q.woodDk], [62, Q.woodDk], [-98, Q.wood], [40, Q.wood]]) { ctx.fillStyle = col; rr(lx, -100, 22, 70, 6); ctx.fill(); ctx.stroke(); ctx.fillStyle = Q.woodDk; ctx.fillRect(lx + 1.5, -46, 19, 7); }
+  ctx.fillStyle = Q.woodDk; rr(-122, -38, 248, 15, 6); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = Q.woodLt; ctx.lineWidth = 2.5; ctx.beginPath(); for (let x = -108; x < 116; x += 20) { ctx.moveTo(x, -27); ctx.lineTo(x + 7, -34); ctx.lineTo(x + 14, -27); } ctx.stroke();
+  for (const wx of [-80, 80]) {
+    ctx.save(); ctx.translate(wx, -20); ctx.rotate(h.rot);
+    ctx.fillStyle = '#7a4a22'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3.5; circle(0, 0, 20); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = Q.woodLt; ctx.lineWidth = 4; ctx.beginPath(); for (let k = 0; k < 3; k++) { const a = k * Math.PI / 3; ctx.moveTo(Math.cos(a) * 15, Math.sin(a) * 15); ctx.lineTo(-Math.cos(a) * 15, -Math.sin(a) * 15); } ctx.stroke();
+    ctx.fillStyle = Q.bronze; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(0, 0, 5); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  // the neck and the head (the hull), then the belly
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 3.5; ctx.fillStyle = Q.wood;
+  ctx.beginPath(); ctx.moveTo(22, -176); ctx.lineTo(48, -252); ctx.quadraticCurveTo(50, -258, 58, -258); ctx.lineTo(104, -258); ctx.quadraticCurveTo(124, -252, 131, -232); ctx.lineTo(132, -214);
+  ctx.quadraticCurveTo(128, -204, 112, -204); ctx.lineTo(102, -206); ctx.lineTo(92, -160); ctx.lineTo(40, -140); ctx.closePath(); ctx.fill(); ctx.stroke();
+  rr(-113, -186, 180, 94, 28); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(122,74,34,0.55)'; ctx.lineWidth = 2; ctx.beginPath();
+  ctx.moveTo(106, -256); ctx.lineTo(106, -206); ctx.moveTo(118, -248); ctx.lineTo(118, -206); ctx.moveTo(33, -186); ctx.lineTo(44, -150); ctx.moveTo(98, -190); ctx.lineTo(60, -150);
+  for (const lx of [-98, -78, 40, 62]) { ctx.moveTo(lx + 11, -92); ctx.lineTo(lx + 11, -48); }
+  ctx.stroke();
+  ctx.strokeStyle = C.ink;
+  // the mane and an ear
+  ctx.fillStyle = Q.woodDk; ctx.lineWidth = 2.5;
+  for (let k = 0; k < 5; k++) { const u = k / 5, mx = 24 + u * 24, my = -182 - u * 66; ctx.beginPath(); ctx.moveTo(mx + 2, my + 4); ctx.lineTo(mx - 13, my - 6); ctx.lineTo(mx + 7, my - 12); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  ctx.fillStyle = Q.wood; ctx.beginPath(); ctx.moveTo(52, -256); ctx.lineTo(50, -282); ctx.lineTo(66, -258); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // the cutaway: the room in the belly and the shaft up the neck
+  ctx.fillStyle = Q.inside; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(46, -172); ctx.lineTo(62, -246); ctx.lineTo(100, -246); ctx.lineTo(100, -216); ctx.lineTo(90, -172); ctx.closePath(); ctx.fill(); ctx.stroke();
+  rr(-103, -176, 160, 76, 20); ctx.fill(); ctx.stroke();
+  ctx.fillRect(48, -180, 40, 12);
+  ctx.fillStyle = Q.insideLt; ctx.fillRect(-98, -106, 150, 6);
+  // the inside lantern and its glow
+  ctx.fillStyle = 'rgba(255,214,140,0.16)'; circle(-72, -150, 34 + Math.sin(t * 7) * 1.5); ctx.fill(); circle(74, -214, 24); ctx.fill();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-72, -176); ctx.lineTo(-72, -160); ctx.stroke();
+  ctx.fillStyle = '#ffe9a8'; ctx.lineWidth = 2; rr(-77, -160, 10, 13, 3); ctx.fill(); ctx.stroke();
+  // the ladder up the neck
+  ctx.strokeStyle = Q.woodLt; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(66, -104); ctx.lineTo(66, -240); ctx.moveTo(94, -104); ctx.lineTo(94, -214); ctx.stroke();
+  ctx.lineWidth = 2.5; ctx.beginPath(); for (let y = -116; y > -240; y -= 16) { ctx.moveTo(66, y); ctx.lineTo(y < -214 ? 80 : 94, y); } ctx.stroke();
+  // the crank wheel (it turns with the wheels), its chain down to the axle, the brake lever
+  ctx.strokeStyle = '#2a2140'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(14, -128); ctx.lineTo(8, -100); ctx.moveTo(26, -128); ctx.lineTo(32, -100); ctx.stroke(); ctx.setLineDash([]);
+  ctx.save(); ctx.translate(20, -130); ctx.rotate(h.rot * 0.7);
+  ctx.fillStyle = Q.bronzeDk; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; circle(0, 0, 15); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = Q.bronze; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.moveTo(0, -11); ctx.lineTo(0, 11); ctx.stroke();
+  ctx.fillStyle = Q.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(-11, 0, 4); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = '#8a8fa8'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-74, -102); ctx.lineTo(-70 - ph.lean * 16, -138); ctx.stroke();
+  ctx.fillStyle = '#ff5f6d'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(-70 - ph.lean * 16, -140, 5); ctx.fill(); ctx.stroke();
+  // Pip and Bo: the roller at the crank, the lookout on the ladder
+  for (const id of [rl, lk]) {
+    const s = tthTroySeat(ph, id), roll = id === rl;
+    const bob = roll && Math.abs(h.v) > 12 && ph.seatU >= 1 ? Math.abs(Math.sin(h.rot * 1.4)) * -2.5 : 0;
+    ctx.save(); ctx.translate(s.x, s.y + bob); ctx.scale(1 / K.hs, 1 / K.hs);
+    tthDrawHero(id, 0, 0, { face: roll ? (ph.lean > 0.5 ? -1 : 1) : 1, sx: roll && ph.lean > 0.5 ? 1.08 : 1, sy: roll && ph.lean > 0.5 ? 0.93 : 1, stun: !!ph.caught && ph.caught.t < 1.2 && ((ph.caught.kind === 'moved') === roll) });
+    ctx.restore();
+  }
+  // the rim of the neck in front of the lookout's feet, the hatch lid on its hinge
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 3.5; ctx.fillStyle = Q.woodLt;
+  ctx.save(); ctx.translate(64, -258); ctx.rotate(-ph.peek * 1.75); rr(-2, -6, 38, 7, 3); ctx.fill(); ctx.stroke(); ctx.fillStyle = Q.bronze; circle(30, -2.5, 2.2); ctx.fill(); ctx.restore();
+  // its painted face: an eye, a nostril, a smile; bronze studs along the belly
+  ctx.fillStyle = '#ffffff'; ctx.lineWidth = 2.5; circle(113, -236, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = C.ink; circle(115 + clamp(h.v * 0.01, -1, 1.4), -235, 3.2); ctx.fill(); circle(126, -220, 1.8); ctx.fill();
+  ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(110, -211); ctx.quadraticCurveTo(120, -208, 128, -213); ctx.stroke();
+  ctx.fillStyle = Q.bronze; ctx.lineWidth = 1.5; for (let x = -100; x <= 52; x += 19) { circle(x, -181, 2.6); ctx.fill(); ctx.stroke(); circle(x, -96.5, 2.6); ctx.fill(); ctx.stroke(); }
+  // the iron ring on the neck (the Thief's claw hooks it)
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 6; circle(34, -226, 8); ctx.stroke(); ctx.strokeStyle = '#b9bdd0'; ctx.lineWidth = 3; circle(34, -226, 8); ctx.stroke();
+  // lantern light leaking through the planks where a beam is on the horse
+  if (ph.frz > 0.02) {
+    const a0 = clamp(ph.lit0 / K.hs, -113, 132), a1 = clamp(ph.lit1 / K.hs, -113, 132);
+    if (a1 > a0 || ph.lit) {
+      if (a1 > a0) { ph.leak0 = a0; ph.leak1 = a1; }
+      ctx.fillStyle = `rgba(${Q.beam},${ph.frz * (0.3 + Math.sin(t * 16) * 0.06)})`;
+      for (let x = Math.ceil(ph.leak0 / 12) * 12; x < ph.leak1; x += 12) { const head = x > 50; ctx.fillRect(x - 2.5, head ? -256 : -184, 5, head ? (x > 98 ? 50 : 162) : 92); }
+    }
+  }
+  ctx.restore();
+}
+// a guard's lantern beam: from the lantern down to its strip of ground
+function tthTroyDrawBeam(ph, lx, ly, x0, x1, a) {
+  if (a <= 0.01) return;
+  const y0 = tthTroyGy(ph, x0) + 8, y1 = tthTroyGy(ph, x1) + 8, B = TTHTROYC.beam;
+  const g = ctx.createLinearGradient(0, ly, 0, Math.max(y0, y1));
+  g.addColorStop(0, `rgba(${B},${0.55 * a})`); g.addColorStop(1, `rgba(${B},${0.2 * a})`);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(lx - 4, ly); ctx.lineTo(lx + 4, ly); ctx.lineTo(x1, y1); ctx.lineTo(x0, y0); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = `rgba(${B},${0.5 * a})`; ctx.beginPath(); ctx.ellipse((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, 9, 0, 0, Math.PI * 2); ctx.fill();
+}
+function tthTroyDraw(st) {
+  const ph = st.ph, K = TTHTROY, Q = TTHTROYC, c = ph.c, cam = st.cam, t = G.clock, h = ph.h, dark = 1 - ph.light;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // the patrol and the guard who wheels the horse back walk on the road (behind the plank curtain)
+  ctx.save(); ctx.globalAlpha = ph.light;
+  const pt = ph.patrol, pu = ph.pusher;
+  if (pt) tthTroyDrawGuard(pt.x, tthTroyGy(ph, pt.x), { face: -1, up: pt.state === 'gone' ? 0.1 : 0.8, on: pt.state === 'gone' ? 0 : 1, walk: pt.walk, mark: null });
+  if (pu) tthTroyDrawGuard(pu.x, tthTroyGy(ph, pu.x), { face: pu.face, walk: pu.walk, push: pu.push, lamp: false, mark: ph.caught && ph.caught.t < 1 ? '!' : null });
+  ctx.restore();
+  // hatch shut: the plank curtain. From inside the horse you cannot see out.
+  if (dark > 0.01) tthScreen(st, () => {
+    ctx.fillStyle = `rgba(24,15,9,${0.9 * dark})`; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = `rgba(74,46,24,${0.9 * dark})`; ctx.lineWidth = 4; ctx.beginPath();
+    for (let x = 30; x < W; x += 75) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    ctx.stroke();
+    ctx.fillStyle = `rgba(255,176,96,${0.16 * dark})`;
+    for (let x = 30; x < W; x += 150) ctx.fillRect(x + 2, 0, 1.5, H);
+    ctx.fillStyle = `rgba(120,80,44,${dark})`;
+    for (let x = 30; x < W; x += 75) for (const y of [70, 280, 480]) { circle(x - 10, y + (x % 50), 2.5); ctx.fill(); }
+  });
+  // the Thief again over the curtain: his machine glows in the dark
+  if (dark > 0.05 && !st.thief.hidden) {
+    const c2 = st.thief;
+    ctx.save(); ctx.globalAlpha = dark * 0.3; ctx.fillStyle = '#b28dff'; circle(c2.x - 6, c2.y - 60 * c2.s, 74 * c2.s); ctx.fill();
+    ctx.globalAlpha = dark * 0.85; tthDrawThief(c2); ctx.restore();
+  }
+  tthTroyDrawHorse(st);
+  // lantern beams (they light the horse too)
+  if (ph.light > 0.02) {
+    ctx.save(); ctx.globalAlpha = ph.light;
+    for (const g of c.guards) {
+      if (g.on <= 0.01 || g.x < cam.x - 500 || g.x > cam.x + W + 500) continue;
+      tthTroyDrawBeam(ph, g.x + g.face * (18 + g.up * 5), g.py - 30 - g.up * 16, g.sx - g.w / 2, g.sx + g.w / 2, g.on * (g.state === 'cheer' ? 0.7 : 1));
+    }
+    if (pt && pt.state !== 'gone') tthTroyDrawBeam(ph, pt.x - 22, tthTroyGy(ph, pt.x) - 30, pt.x - K.patrol.reach, pt.x + 12, 0.85);
+    ctx.restore();
+  }
+  // the Thief's claw rope to the ring on the neck, and the unhook ring
+  const cl = ph.claw;
+  if (cl) {
+    const P = tthThiefPts(st.thief).claw, Rg = tthTroyPt(h, 34, -226), k = cl.st === 'tug' ? 1 : clamp(cl.rope, 0, 1);
+    const ex = P.x + (Rg.x - P.x) * k, ey = P.y + (Rg.y - P.y) * k, sag = cl.st === 'tug' ? (cl.pulling ? 2 : 10) + Math.sin(t * 30) * 2 : 26 * (1 - k) + 8;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(P.x, P.y); ctx.quadraticCurveTo((P.x + ex) / 2, (P.y + ey) / 2 + sag, ex, ey); ctx.stroke();
+    ctx.strokeStyle = '#d9c7a0'; ctx.lineWidth = 3.5; ctx.stroke();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(ex + 5, ey + 2, 8, Math.PI * 0.3, Math.PI * 1.5); ctx.stroke();
+    ctx.strokeStyle = '#b9bdd0'; ctx.lineWidth = 3; ctx.stroke();
+    if (cl.st === 'tug') {
+      const r = 21;
+      ctx.strokeStyle = 'rgba(28,26,54,0.75)'; ctx.lineWidth = 9; circle(Rg.x, Rg.y, r); ctx.stroke();
+      ctx.strokeStyle = cl.gold ? C.gold : '#9fe07f'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(Rg.x, Rg.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clamp(cl.u, 0, 1)); ctx.stroke();
+    }
+  }
+}
+function tthTroyDrawTop(st) {
+  const ph = st.ph, K = TTHTROY, Q = TTHTROYC, c = ph.c, cam = st.cam, t = G.clock, h = ph.h, big = tthBig(), z = big ? 1.35 : 1;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // the stone tops of the narrow gates pass over the horse
+  for (const g of c.gates) {
+    if (g.x + 220 < cam.x || g.x - 80 > cam.x + W) continue;
+    const x0 = g.x - 40, w = K.gateLen + 80;
+    ctx.save(); ctx.globalAlpha = ph.light;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 3.5;
+    if (g.alley) {
+      ctx.fillStyle = Q.walls[3]; ctx.beginPath(); ctx.moveTo(x0, 112); ctx.lineTo(x0 + w, 112); ctx.lineTo(x0 + w, 186); ctx.lineTo(x0 + w - 26, 186); ctx.quadraticCurveTo(x0 + w / 2, 152, x0 + 26, 186); ctx.lineTo(x0, 186); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = Q.roof; rr(x0 - 6, 102, w + 12, 13, 4); ctx.fill(); ctx.stroke();
+    } else {
+      ctx.fillStyle = Q.stone; ctx.fillRect(x0, 84, w, 100); ctx.strokeRect(x0, 84, w, 100);
+      ctx.fillStyle = Q.stone; for (let x = x0 + 4; x < x0 + w - 20; x += 46) { ctx.fillRect(x, 64, 26, 20); ctx.strokeRect(x, 64, 26, 20); }
+      ctx.fillStyle = Q.stoneLt; ctx.fillRect(x0 + 2, 86, w - 4, 8);
+      ctx.fillStyle = Q.stoneDk; ctx.beginPath(); ctx.moveTo(x0 + 22, 184); ctx.quadraticCurveTo(x0 + w / 2, 150, x0 + w - 22, 184); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = Q.bronze; rr(x0 + w / 2 - 62, 104, 124, 34, 8); ctx.fill(); ctx.stroke();
+      text('TROY', x0 + w / 2, 122, 22, C.ink, 'center');
+    }
+    ctx.restore();
+  }
+  // "FREEZE!": a beam is on the horse (the one cue that also shows in the dark)
+  if (ph.frz > 0.05 && !ph.done && !ph.caught) {
+    ctx.save(); ctx.globalAlpha = ph.frz;
+    bigText('FREEZE!', h.x, h.y + 44, 26 * z, '#ffe28a', 1 + Math.sin(t * 14) * 0.04);
+    ctx.restore();
+  }
+  // in the dark the patrol's footsteps can still be heard
+  const pt = ph.patrol;
+  if (pt && pt.walk && ph.light < 0.6) {
+    const px = clamp(pt.x, cam.x + 60, cam.x + W - 60), u = (t * 1.5) % 1;
+    ctx.save(); ctx.globalAlpha = (1 - ph.light) * (1 - u);
+    bigText(Math.floor(t * 1.5) % 2 ? 'tap' : 'TAP', px + (Math.floor(t * 1.5) % 2 ? 14 : -14), tthTroyGy(ph, px) - 16 - u * 14, 17 * z, '#ffffff', 1);
+    ctx.restore();
+  }
+  // park on the gold star
+  if (ph.k === 2 && !ph.done && ph.light > 0.3) {
+    const gx = c.goal + (K.park[0] + K.park[1]) / 2;
+    if (gx - h.x < 620 && Math.abs(h.x - gx) > 40) {
+      const y = tthTroyGy(ph, gx) - 120 - Math.abs(Math.sin(t * 5)) * 10;
+      ctx.save(); ctx.globalAlpha = ph.light;
+      bigText('PARK HERE', gx, y - 26 * z, 20 * z, C.gold, 1);
+      ctx.fillStyle = C.gold; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(gx - 13, y); ctx.lineTo(gx + 13, y); ctx.lineTo(gx, y + 18); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+// screen coords: the tiptoe gauge near a narrow gate or a loose plank, "too dark" over the roller
+function tthTroyHud(st) {
+  const ph = st.ph, K = TTHTROY, c = ph.c, h = ph.h, big = tthBig(), z = big ? 1.35 : 1;
+  if (st.cut || G.introT > 0) return;
+  const nose = h.x + K.body[1], fw = h.x + K.wheel;
+  const gate = c.gates.find(g => nose > g.x - 320 && nose < g.x + K.gateLen), plank = c.bumps.find(b => fw > b.x - 240 && fw < b.x + 6);
+  if ((gate || plank) && ph.light > 0.3 && !tthTroyEvent(ph)) {
+    const lim = gate && gate.gold ? K.slowGold : K.slow, ok = h.v <= lim, w = 150 * z, x0 = h.x - st.cam.x - w / 2, y = H - 26 * z, bh = 14 * z;
+    ctx.save(); ctx.globalAlpha = ph.light;
+    ctx.fillStyle = 'rgba(28,26,54,0.8)'; rr(x0 - 6, y - 5, w + 12, bh + 10, (bh + 10) / 2); ctx.fill();
+    ctx.fillStyle = 'rgba(159,224,127,0.35)'; rr(x0, y, w * lim / K.vmax, bh, bh / 2); ctx.fill();
+    ctx.fillStyle = ok ? '#9fe07f' : '#ff5f6d'; rr(x0, y, Math.max(bh, w * clamp(h.v / K.vmax, 0, 1)), bh, bh / 2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x0 + w * lim / K.vmax - 1.5, y - 3, 3, bh + 6);
+    text(ok ? 'tiptoe: good!' : 'too fast: tiptoe!', x0 + w / 2, y - 16 * z, 13 * z, ok ? '#c8f2b0' : '#ffb0b6', 'center', 'body');
+    ctx.restore();
+  }
+}
+
+/* ---------- the phase ---------- */
+TTH_PHASES.troy = {
+  setup(st, L) { tthTroySetup(st, L); },
+  step(st, dt) { tthTroyStep(st, dt); },
+  coast(st, dt) { tthTroyCoast(st, dt); },
+  hide: () => true,
+  bubbleHidden: true,   // (this file draws Pip and Bo inside the horse: the computer's bubbles still show over its player)
+  labels(st) { return st.ph.roller === 0 ? ['brake', 'peek'] : ['peek', 'brake']; },
+  legend(st) {
+    const r = st.ph.roller;
+    const roll = k => (k ? '<kbd>→</kbd> roll <kbd>↓</kbd> tiptoe <kbd>←</kbd> brake' : '<kbd>D</kbd> roll <kbd>S</kbd> tiptoe <kbd>A</kbd> brake');
+    const look = k => (k ? 'the hatch: hold <kbd>↑</kbd> or' : 'the hatch: hold <kbd>W</kbd> or');
+    return { pip: r === 0 ? roll(0) : look(0), bo: r === 1 ? roll(1) : look(1), padJump: 'peek (lookout)', padDown: 'right rolls, down tiptoes, left brakes (roller)' };
+  },
+  roles(st) { return st.ph.roller === 0 ? ['Roll!', 'Peek!'] : ['Peek!', 'Roll!']; },
+  hudText(st) { const ph = st.ph; return TTHTROY_STRETCHES[Math.min(2, ph.k)].name; },
+  progress(st) { return { n: st.ph.cpN, of: st.ph.c.hides.length + 1 }; },
+  headLift: () => 6,
+  drawBack(st) { tthTroyDrawBack(st); },
+  draw(st) { tthTroyDraw(st); },
+  drawTop(st) { tthTroyDrawTop(st); },
+  hud(st) { tthTroyHud(st); },
+};
+
+/* ---------- sounds ---------- */
+Sfx.extra.tthTroyPeek = function () { this.tone(420, 0.07, 'triangle', 0.04, 760); };
+Sfx.extra.tthTroyShut = function () { this.tone(300, 0.05, 'square', 0.03, 160); };
+Sfx.extra.tthTroyNope = function () { this.tone(170, 0.09, 'square', 0.03, 130); this.tone(140, 0.12, 'square', 0.03, 100, 0.1); };
+Sfx.extra.tthTroyHm = function () { this.tone(330, 0.1, 'triangle', 0.04, 420); this.tone(420, 0.14, 'triangle', 0.04, 560, 0.11); };
+Sfx.extra.tthTroySweep = function () { this.tone(520, 0.4, 'sine', 0.025, 260); };
+Sfx.extra.tthTroyKnock = function () { this.tone(190, 0.05, 'square', 0.06, 120); this.tone(150, 0.08, 'triangle', 0.05, 90, 0.02); };
+Sfx.extra.tthTroyStep = function () { this.tone(110, 0.04, 'triangle', 0.035, 80); };
+Sfx.extra.tthTroyHey = function () { [660, 880, 660, 990].forEach((f, i) => this.tone(f, 0.09, 'square', 0.04, null, i * 0.08)); };
+Sfx.extra.tthTroyRoll = function () { this.tone(95 + Math.random() * 30, 0.07, 'sawtooth', 0.016, 70); };
+Sfx.extra.tthTroyScrape = function () { this.tone(900, 0.3, 'sawtooth', 0.035, 300); this.tone(140, 0.2, 'triangle', 0.06, 70, 0.02); };
+Sfx.extra.tthTroyClonk = function () { this.tone(240, 0.08, 'square', 0.06, 120); this.tone(120, 0.2, 'triangle', 0.07, 60, 0.04); };
+Sfx.extra.tthTroyHook = function () { this.tone(1300, 0.06, 'square', 0.04, 700); this.tone(200, 0.25, 'sawtooth', 0.04, 90, 0.05); };
+Sfx.extra.tthTroyCreak = function () { this.tone(260 + Math.random() * 80, 0.16, 'sawtooth', 0.016, 180); };
+Sfx.extra.tthTroyUnhook = function () { [880, 1175, 1568].forEach((f, i) => this.tone(f, 0.09, 'triangle', 0.05, null, i * 0.05)); this.tone(300, 0.3, 'sine', 0.04, 900, 0.1); };
+Sfx.extra.tthTroyBell = function () { [0, 0.34].forEach(d => { this.tone(880, 0.5, 'triangle', 0.06, 860, d); this.tone(1760, 0.3, 'sine', 0.025, null, d); }); };
+Sfx.extra.tthTroyWhee = function () { this.tone(380, 0.5, 'sine', 0.04, 900); };
+Sfx.extra.tthTroySafe = function () { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.12, 'triangle', 0.05, null, i * 0.07)); };
+
+/* ---------- the room (this file fills in its own room of the level def) ---------- */
+tthRoom('troy', {
+  act: { label: 'peek', labels: ['brake', 'peek'] },
+  tip: 'One rolls the horse, one peeks from the hatch to light the way. Freeze when a lantern beam is on the horse!',
+  legend: { pip: '<kbd>D</kbd> roll <kbd>S</kbd> tiptoe <kbd>A</kbd> brake', bo: 'the hatch: hold <kbd>↑</kbd> or', padJump: 'peek (lookout)', padDown: 'right rolls, down tiptoes, left brakes (roller)' },
+  map: TTH_EMPTY_MAP,
+});

@@ -82,13 +82,13 @@ const TTHHENGE = {
   mud: [{ x: 1560, pile: 1750 }, { x: 3735, pile: 3880 }],
   brook: { x0: 2230, slotW: 30, depth: 12, pile: 2016 },
   signX: 3196,
-  stone: { hw: 96, h: 54, lift: 18, pushV: 46, upV: 36, easeV: 56, runPush: 60, acc: 240, stop: 340, brakeA: 170,
-    backA: 55, backV: 85, grace: 0.35, runA: 22, runV: 130, goldRunV: 76, skidV: 80, coast: 70, slope: 0.05, backBump: 50 },
+  stone: { hw: 96, h: 54, lift: 18, pushV: 41, upV: 32, easeV: 52, runPush: 60, acc: 240, stop: 340, brakeA: 170,
+    backA: 55, backV: 85, grace: 0.35, runA: 18, runV: 130, goldRunV: 76, skidV: 80, coast: 70, slope: 0.05, backBump: 50 },
   log: { r: 9, n: 4, gold: 5, reach: 40, lock: 0.5, gap: 40, ahead: 12, far: 220, lo: 4, hi: 16, topDrop: 56, freeT: 0.7 },
   sheep: { v: 80, flee: 330, reach: 64, gap: 24 },
   thief: { s: 0.62, homeX: 800, homeY: 226, aimT: 1.0, reachT: 0.75, lowY: 49, holdY: 98, holdT: 6.5, whackX: 74, whackY: 135 },
   lasso: { windT: 1.4, win: 3.7, goldWin: 2.0, m0: 0.35, tow0: 34, tow1: 8, towMax: 170, towT: 10, reach: 360 },
-  fin: { tipT: 1.3, liftT: 4.6, sink: 0.1, ringR: 46, upH: 150, linW: 224, linH: 38, gapX: 150 },
+  fin: { tipT: 1.3, liftT: 5.4, sink: 0.1, ringR: 46, upH: 150, linW: 224, linH: 38, gapX: 150 },
   goldThuds: 3, goldBacks: 3, goldSkids: 2, goldYoinks: 2, stuckT: 16, stuckRopeT: 12,
 };
 // what happens where (stone-centre x): the Thief's mischief and the sheep
@@ -332,7 +332,7 @@ function tthHengeTug(st, dt) {
   Z.t += dt; Z.n = n;
   if (n === 2) {
     Z.m += dt / (ph.gold.rope ? K.goldWin : K.win);
-    if ((Z.heaveT -= dt) <= 0) { Z.heaveT = 0.55; tthPop(st, S.x + S.hw + 40, tthHengeTop(S.x) - 30, 'Heave!', C.gold, 20); Sfx.play('tthHengeHeave'); tthHengeShake(0.08); for (const p of G.players) rumble(p.id, 0.3, 0.3, 120); }
+    if ((Z.heaveT -= dt) <= 0) { Z.heaveT = 0.55; Sfx.play('tthHengeHeave'); tthHengeShake(0.08); for (const p of G.players) rumble(p.id, 0.3, 0.3, 120); }
   } else Z.m = Math.max(0, Z.m - dt * (n ? 0.04 : 0.12));
   if (Z.m >= 1) { tthHengeLassoEnd(st, true); return 0; }
   if (Z.x0 - S.x >= K.towMax || Z.t >= K.towT) { tthHengeLassoEnd(st, false); return 0; }
@@ -372,9 +372,11 @@ function tthHengeStone(st, dt) {
   else if (down) {
     const g = ph.gold.brake;
     if (brake) { tv = K.easeV; acc = S.v > tv ? K.brakeA : K.acc * 0.4; S.run = false; }
-    else if (push) { tv = K.runPush; acc = K.acc; S.run = true; }
-    else if (S.run && S.v > 3) { tv = g ? K.goldRunV : K.runV; acc = g ? K.runA * 0.5 : K.runA; }
-    else S.run = false;
+    else {
+      if (push) S.run = true;                 // shoved over the edge: nobody can hold it back from behind
+      else if (S.v <= 3) S.run = false;       // stopped (a thud, a sheep): it waits to be eased or shoved again
+      if (S.run) { tv = g ? K.goldRunV : K.runV; acc = g ? K.runA * 0.5 : K.runA; }
+    }
   } else if (up) {
     S.run = false;
     if (push) { tv = K.upV; acc = K.acc; }
@@ -384,7 +386,7 @@ function tthHengeStone(st, dt) {
   // forward needs a log under the front half and a clear way
   if ((tv > 0 || S.v > 0) && S.block && !tow) {
     if (S.block === 'log' && S.v > 6) {
-      s.thuds++; ph.miss.thud++;
+      s.thuds++; if (st.phT - ph.glubT > 2.5) ph.miss.thud++;
       Sfx.play('tthHengeThud'); tthHengeShake(S.v > K.skidV ? 0.3 : 0.14); puff(S.x + S.hw - 8, tthHengeBase(S.x + S.hw), 8, 'rgba(240,234,210,0.9)');
       if (S.v > K.skidV) {
         s.skids++; ph.miss.skid++;
@@ -489,7 +491,7 @@ function tthHengeLogs(st, dt) {
     } else if (l.s === 'ground') {
       if (l.x < st.cam.x + 36) l.x = st.cam.x + 36;       // never left behind off the screen
       for (const m of ph.mud) if (!m.fed && Math.abs(l.x - m.x) < 20) {
-        m.fed = true; m.t = 0; l.s = 'sunk'; l.x = m.x; l.t = 0; l.u = false;
+        m.fed = true; m.t = 0; ph.glubT = st.phT; l.s = 'sunk'; l.x = m.x; l.t = 0; l.u = false;
         Sfx.play('tthHengeGlub'); tthPop(st, m.x, tthHengeBase(m.x) - 40, 'Glub!', '#e9c9a0', 24); burst(m.x, tthHengeBase(m.x), TTHHENGEC.mudLt, 8);
         const ro = 1 - ph.pusher;
         tthHengeTip(st, ro, 'spare', 'The mud ate a log! Grab a spare from the pile: ' + tthHengeK(ro, 'act'), 0, { life: 4.5, cpu: 'I\'ll get a spare log!' });
@@ -625,7 +627,7 @@ function tthHengeThief(st, dt) {
       } else { pose = 'laugh'; face = 1; tx = bx; ty = gyS - 190; if (th.t > 1.5) go('hover'); }
       break; }
     case 'taunt':   // the lintel is going up: he watches from above, getting nervous
-      tx = ph.XH + 75 + Math.sin(th.t * 0.9) * 150; ty = tthHengeBase(ph.XH) - 300 + Math.sin(c.t * 1.3) * 8; face = tx > c.x ? 1 : -1; pose = ph.fin.lift > 0.66 ? 'shock' : 'idle';
+      tx = ph.XH + 75 + Math.sin(th.t * 0.9) * 150; ty = tthHengeBase(ph.XH) - 236 + Math.sin(c.t * 1.3) * 8; face = tx > c.x ? 1 : -1; pose = ph.fin.lift > 0.66 ? 'shock' : 'idle';
       break;
     case 'strain':  // he grabs the finished trilithon and pulls: far too heavy
       tx = ph.XH + 85; ty = tthHengeBase(ph.XH) - TTHHENGE.fin.upH - TTHHENGE.fin.linH - 40 - Math.abs(Math.sin(th.t * 10)) * 5; claw = 1; pose = 'grab'; flame = 1.6; k = 7; face = -1;
@@ -675,7 +677,7 @@ function tthHengeFinale(st, dt) {
     for (const p of G.players) { const P = ph.P[p.id]; if (P.rope >= 0) { const d = ph.rings[P.rope].x - tthHengeCx(p); p.x += d * Math.min(1, dt * 8); p.face = P.rope ? -1 : 1; tthHengeDone(st, p.id, ['rope', 'gold']); } }
     if (both) {
       F.lift = Math.min(1, F.lift + dt / K.liftT); ph.progT = 0;
-      if ((F.heaveT -= dt) <= 0) { F.heaveT = 0.6; Sfx.play('tthHengeHeave'); tthPop(st, ph.XH + 75, gy - 30 - F.lift * 150, 'Heave!', C.gold, 20); tthHengeShake(0.06); for (const p of G.players) rumble(p.id, 0.3, 0.3, 120); }
+      if ((F.heaveT -= dt) <= 0) { F.heaveT = 0.6; Sfx.play('tthHengeHeave'); tthHengeShake(0.06); for (const p of G.players) rumble(p.id, 0.3, 0.3, 120); }
       const n = Math.floor(F.lift * 3 + 0.0001) / 3;
       if (n > F.notch && n < 1) { F.notch = n; Sfx.play('tthHengeChock'); tthPop(st, ph.XH + 75, gy - 60 - F.lift * 150, 'Click! Propped.', '#ffffff', 16); }
     } else {
@@ -820,14 +822,15 @@ TTH_PHASES.henge = {
     ph.piles = K.mud.map(m => ({ x: m.pile, bridge: false, took: 0 })).concat([{ x: B.pile, bridge: true, took: 0 }]);
     ph.chocks = K.chocks.map(x => ({ x, up: false, t: 9 }));
     ph.rings = [{ x: ph.XH - 84 }, { x: ph.XH + K.fin.gapX + 84 }];
-    ph.sheep = []; ph.sheepN = 0; ph.script = TTHHENGE_SCRIPT.map(e => Object.assign({}, e, { done: false }));
+    ph.sheep = []; ph.sheepN = 0;
+    ph.script = TTHHENGE_SCRIPT.map(e => Object.assign({}, e, { done: false, at: e.at + Math.round((tthRand() - 0.5) * (e.kind === 'lasso' ? 50 : 90)), to: e.to && e.to.map(x => x + Math.round((tthRand() - 0.5) * 50)) }));
     ph.th = { mode: 'intro', sub: '', t: 0, log: null, sayT: 6, sayN: 0 };
     ph.lasso = null; ph.fin = { stage: 0, t: 0, lift: 0, notch: 0, both: false, heaveT: 0, said: false, out: false };
     ph.tipT = [{}, {}]; ph.hintKey = ['', ''];
     ph.gold = { log: false, chock: -2, brake: false, claw: false, rope: false };
     ph.miss = { thud: 0, back: {}, skid: 0, yoink: 0 };
     ph.progT = 0; ph.arrow = null; ph.stuckSaid = false; ph.pops = 0; ph.popN = 0; ph.carryN = 0; ph.needT = 0; ph.upHint = -2; ph.crestHint = false;
-    ph.mudSaid = false; ph.sheepSaid = false; ph.pinchSaid = false;
+    ph.glubT = -9; ph.mudSaid = false; ph.sheepSaid = false; ph.pinchSaid = false;
     Object.assign(tthStats(st), { legT: [], thuds: 0, rollbacks: 0, skids: 0, yoinks: 0, whacks: 0, shoos: 0, lasso: [0, 0], carried: [0, 0], done: false });
     // Pip and Bo behind the stone (world coords; the screen is world - cam)
     G.players.forEach((p, k) => { const x = 150 + k * 62; p.x = x - p.w / 2; p.y = tthHengeBase(x) - p.h; p.vx = 0; p.vy = 0; p.grounded = true; p.face = 1; p.alive = true; });
@@ -881,3 +884,460 @@ TTH_PHASES.henge = {
   drawTop(st) { tthHengeDrawTop(st); },
   hud(st) { tthHengeHud(st); },
 };
+
+/* ---------- drawing ---------- */
+// a rope with a little sag (ink under, rope colour on top)
+function tthHengeRope(x0, y0, x1, y1, sag = 0, w = 3, col = TTHHENGEC.rope) {
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + sag, x1, y1);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = w + 2.5; ctx.stroke();
+  ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke();
+}
+// a log roller seen end-on (the rollers lie across the track); the knot shows it rolling
+function tthHengeDrawLog(x, y, rot, gold, r = TTHHENGE.log.r) {
+  const Cc = TTHHENGEC;
+  ctx.fillStyle = gold ? C.goldDark : Cc.woodDk; circle(x, y, r); ctx.fill();
+  ctx.fillStyle = gold ? C.gold : Cc.wood; circle(x, y, r - 2.2); ctx.fill();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(x, y, r); ctx.stroke();
+  ctx.strokeStyle = gold ? '#fff3c4' : Cc.woodLt; ctx.lineWidth = 1.5; circle(x, y, r * 0.46); ctx.stroke();
+  ctx.fillStyle = gold ? C.goldDark : Cc.woodDk; circle(x + Math.cos(rot) * r * 0.62, y + Math.sin(rot) * r * 0.62, 1.7); ctx.fill();
+}
+// a log carried over the head (seen from the side)
+function tthHengeDrawCarry(x, y, gold, face, tilt) {
+  const Cc = TTHHENGEC;
+  ctx.save(); ctx.translate(x, y); ctx.scale(face, 1); ctx.rotate(tilt);
+  ctx.fillStyle = gold ? C.gold : Cc.wood; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.2;
+  rr(-21, -8, 42, 16, 7); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = gold ? C.goldDark : Cc.woodDk; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-14, -3); ctx.lineTo(4, -3); ctx.moveTo(-9, 3); ctx.lineTo(8, 3); ctx.stroke();
+  ctx.fillStyle = gold ? '#fff3c4' : Cc.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(16, 0, 5, 7.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+function tthHengeStonePath(hw, hh) {
+  ctx.beginPath();
+  ctx.moveTo(-hw + 9, hh); ctx.lineTo(-hw, hh - 12); ctx.lineTo(-hw + 3, -hh + 13); ctx.quadraticCurveTo(-hw + 5, -hh, -hw + 20, -hh);
+  ctx.lineTo(hw - 36, -hh + 1); ctx.quadraticCurveTo(hw - 6, -hh + 2, hw - 2, -hh + 17); ctx.lineTo(hw, hh - 10); ctx.quadraticCurveTo(hw - 1, hh, hw - 11, hh);
+  ctx.closePath();
+}
+// a great sarsen stone, centre (cx, cy), half-length hw, half-thickness hh; ang 0 lies flat, PI/2 stands up.
+// far: a paler stone of the circle in the background
+function tthHengeDrawStone(cx, cy, ang, hw, hh, far) {
+  const Cc = TTHHENGEC;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang); ctx.lineJoin = 'round';
+  tthHengeStonePath(hw, hh);
+  ctx.fillStyle = far ? '#b4c0c4' : Cc.stone; ctx.fill();
+  ctx.save(); ctx.clip();
+  ctx.fillStyle = far ? '#cdd6d8' : Cc.stoneLt; ctx.fillRect(-hw, -hh, hw * 2, far ? 6 : 9);
+  ctx.fillStyle = far ? '#9eabb0' : Cc.stoneDk; ctx.fillRect(-hw, hh - (far ? 6 : 8), hw * 2, 9);
+  if (!far) {
+    ctx.fillStyle = Cc.lichen; circle(-hw * 0.56, -hh * 0.2, 5.5); ctx.fill(); circle(-hw * 0.56 + 8, -hh * 0.05, 3.2); ctx.fill(); circle(hw * 0.42, hh * 0.3, 4.2); ctx.fill(); circle(hw * 0.74, -hh * 0.35, 2.6); ctx.fill();
+    ctx.fillStyle = Cc.stoneDk; circle(-hw * 0.2, hh * 0.25, 2.2); ctx.fill(); circle(hw * 0.12, -hh * 0.4, 1.8); ctx.fill(); circle(-hw * 0.8, hh * 0.35, 1.8); ctx.fill();
+  }
+  ctx.restore();
+  if (!far) {
+    ctx.strokeStyle = Cc.stoneDk; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(hw * 0.2, -hh + 3); ctx.lineTo(hw * 0.26, -hh * 0.3); ctx.lineTo(hw * 0.18, hh * 0.1); ctx.moveTo(-hw * 0.35, hh - 3); ctx.lineTo(-hw * 0.3, hh * 0.35); ctx.stroke();
+  }
+  ctx.strokeStyle = far ? '#6f7f88' : C.ink; ctx.lineWidth = far ? 2 : 3; tthHengeStonePath(hw, hh); ctx.stroke();
+  ctx.restore();
+}
+function tthHengeDrawSheep(s, gy) {
+  const t = s.t + s.k * 1.7, flee = s.s === 'flee', graze = s.s === 'graze';
+  const hop = flee ? Math.abs(Math.sin(t * 15)) * 10 : s.s === 'walk' ? Math.abs(Math.sin(t * 9)) * 2.5 : 0;
+  const sw = graze ? 0 : Math.sin(t * (flee ? 30 : 13)) * (flee ? 6 : 3.5);
+  ctx.save(); ctx.translate(s.x, gy - hop); ctx.scale(s.face, 1); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.fillStyle = 'rgba(28,26,54,0.16)'; ctx.beginPath(); ctx.ellipse(0, hop, 17, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#2b2740'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(-10, -9); ctx.lineTo(-10 - sw, -1); ctx.moveTo(-3, -9); ctx.lineTo(-3 + sw, -1); ctx.moveTo(6, -9); ctx.lineTo(6 - sw, -1); ctx.moveTo(12, -9); ctx.lineTo(12 + sw, -1); ctx.stroke();
+  // the wool: ink blobs first, then the white ones a little smaller, so only the outline shows
+  const blobs = TTHHENGE_WOOL;
+  ctx.fillStyle = C.ink; for (let i = 0; i < blobs.length; i += 3) { circle(blobs[i], blobs[i + 1], blobs[i + 2] + 2.4); ctx.fill(); }
+  ctx.fillStyle = '#fdfaf0'; for (let i = 0; i < blobs.length; i += 3) { circle(blobs[i], blobs[i + 1], blobs[i + 2]); ctx.fill(); }
+  ctx.fillStyle = '#e6dfcf'; circle(-6, -12, 4); ctx.fill(); circle(6, -11, 3.4); ctx.fill();
+  // the head: down in the grass while it grazes
+  const nod = graze ? Math.sin(t * 6) * 1.5 : 0, hx = graze ? 21 : 19, hy = graze ? -9 + nod : -22;
+  ctx.fillStyle = '#2b2740';
+  ctx.beginPath(); ctx.ellipse(hx - 6, hy - 6, 5, 2.6, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx, hy, 7, 8.5, graze ? 0.9 : 0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fdfaf0'; circle(hx - 4, hy - 8, 4.2); ctx.fill();
+  ctx.fillStyle = '#ffffff'; circle(hx + 2, hy - 2, 2.6); ctx.fill();
+  ctx.fillStyle = '#1c1a36'; circle(hx + (flee ? 2 : 2.8), hy - 2, flee ? 1 : 1.3); ctx.fill();
+  ctx.restore();
+}
+const TTHHENGE_WOOL = [-13, -17, 8, -5, -23, 9, 6, -22, 9, 14, -16, 7.5, 5, -12, 8.5, -7, -12, 8.5];
+// the land between x0 and x1: green turf over white chalk (Salisbury Plain is chalk downland)
+function tthHengeGround(st, x0, x1, patch) {
+  const ph = st.ph, Cc = TTHHENGEC, bot = st.cam.y + H + 14, step = 12;
+  x0 = Math.floor(x0 / step) * step; x1 = Math.ceil(x1 / step) * step;
+  // (a patch over something already painted: each band only as deep as itself, so its ends leave no seam)
+  const band = (dy, col, dy1) => {
+    ctx.beginPath(); ctx.moveTo(x0, patch && dy1 ? tthHengeG(ph, x0) + dy1 : bot);
+    for (let x = x0; x <= x1; x += step) ctx.lineTo(x, tthHengeG(ph, x) + dy);
+    if (patch && dy1) for (let x = x1; x >= x0; x -= step) ctx.lineTo(x, tthHengeG(ph, x) + dy1); else ctx.lineTo(x1, bot);
+    ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+  };
+  band(0, Cc.grass, 20); band(20, Cc.grassDk, 30); band(30, '#efe6c8', 96); band(96, '#e3d7b2', 0);
+  ctx.beginPath();
+  for (let x = x0; x <= x1; x += step) { const y = tthHengeG(ph, x) + 3; if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+  ctx.strokeStyle = Cc.grassLt; ctx.lineWidth = 4; ctx.stroke();
+  ctx.beginPath();
+  for (let x = x0; x <= x1; x += step) { const y = tthHengeG(ph, x); if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.stroke();
+}
+function tthHengeDrawSky(st) {
+  const cam = st.cam, t = G.clock;
+  tthSky('#6fc3ee', '#fff0c4');
+  // the rising sun over the plain, where the circle stands
+  const sx = 780 - cam.x * 0.02, sy = 168 - cam.y * 0.06;
+  ctx.fillStyle = 'rgba(255,246,200,0.28)'; circle(sx, sy, 92 + Math.sin(t * 1.3) * 4); ctx.fill();
+  ctx.fillStyle = 'rgba(255,246,200,0.4)'; circle(sx, sy, 68); ctx.fill();
+  ctx.fillStyle = '#fff6c2'; circle(sx, sy, 48); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.86)';
+  for (let k = 0; k < 5; k++) {
+    const x = (((k * 263 + 90 - cam.x * 0.07 - t * 5) % (W + 320)) + W + 320) % (W + 320) - 160, y = 96 + (k * 57) % 100 - cam.y * 0.06, s = 0.8 + (k % 3) * 0.25;
+    circle(x, y, 20 * s); ctx.fill(); circle(x + 24 * s, y + 5 * s, 16 * s); ctx.fill(); circle(x - 24 * s, y + 6 * s, 14 * s); ctx.fill(); ctx.fillRect(x - 30 * s, y + 4 * s, 62 * s, 14 * s);
+  }
+  // the far downs, then the near downs with a burial mound and far-away sheep
+  const hills = (f, y0, a, col) => {
+    const ox = cam.x * f, oy = y0 - cam.y * f;
+    ctx.beginPath(); ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 24) ctx.lineTo(x, oy + Math.sin((x + ox) * 0.0052) * a + Math.sin((x + ox) * 0.0131 + 1.3) * a * 0.45);
+    ctx.lineTo(W, H); ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+  };
+  hills(0.12, 330, 26, '#a9dcc0');
+  hills(0.3, 372, 20, '#93d28c');
+  const ox = cam.x * 0.3, oy = 372 - cam.y * 0.3;
+  for (let i = Math.floor(ox / 170); i <= Math.floor((ox + W) / 170) + 1; i++) {
+    const h = hash(i, 53), x = i * 170 + (h % 120) - ox, y = oy + Math.sin((x + ox) * 0.0052) * 20 + Math.sin((x + ox) * 0.0131 + 1.3) * 9;
+    if (h % 3 === 0) { ctx.fillStyle = '#86c880'; ctx.beginPath(); ctx.ellipse(x, y + 4, 34, 13, 0, Math.PI, 0); ctx.fill(); }
+    else if (h % 3 === 1) { ctx.fillStyle = '#fdfaf0'; ctx.beginPath(); ctx.ellipse(x, y + 12, 5, 3.4, 0, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.ellipse(x + 16, y + 17, 4.4, 3, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#2b2740'; circle(x + 5, y + 11, 1.8); ctx.fill(); circle(x + 20.5, y + 16, 1.6); ctx.fill(); }
+  }
+}
+// two timber poles tied at the top (the builders' shear legs); the lintel ropes run over them
+function tthHengePole(x, gy, top) {
+  const Cc = TTHHENGEC;
+  ctx.lineCap = 'round';
+  for (const dx of [-30, 30]) {
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 11; ctx.beginPath(); ctx.moveTo(x + dx, gy + 2); ctx.lineTo(x - dx * 0.12, top - 14); ctx.stroke();
+    ctx.strokeStyle = dx < 0 ? Cc.woodDk : Cc.wood; ctx.lineWidth = 7; ctx.stroke();
+  }
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(x - 6, top + 2); ctx.lineTo(x + 6, top + 2); ctx.stroke();
+  ctx.strokeStyle = Cc.rope; ctx.lineWidth = 5; ctx.stroke();
+}
+function tthHengeDrawBack(st) {
+  const ph = st.ph, K = TTHHENGE, Cc = TTHHENGEC, cam = st.cam, S = ph.stone, t = G.clock, B = ph.brook, F = ph.fin;
+  const vx0 = cam.x - 30, vx1 = cam.x + W + 30, see = (x, m = 80) => x > vx0 - m && x < vx1 + m;
+  tthScreen(st, () => tthHengeDrawSky(st));
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  const XH = ph.XH, gyH = tthHengeBase(XH);
+  // the half-built circle: finished trilithons and lone uprights standing further back
+  if (see(XH, 900)) {
+    const far = (x, lint) => { tthHengeDrawStone(x, gyH - 68, Math.PI / 2, 62, 20, true); if (lint) { tthHengeDrawStone(x + lint, gyH - 68, Math.PI / 2, 62, 20, true); tthHengeDrawStone(x + lint / 2, gyH - 142, 0, lint / 2 + 26, 14, true); } };
+    far(XH - 330, 96); far(XH - 150, 0); far(XH + 330, 100); far(XH + 510, 0);
+  }
+  // a way sign at the start
+  if (see(250)) {
+    const gy = tthHengeBase(250);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(250, gy); ctx.lineTo(250, gy - 96); ctx.stroke(); ctx.strokeStyle = Cc.woodDk; ctx.lineWidth = 5; ctx.stroke();
+    ctx.fillStyle = Cc.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(214, gy - 124); ctx.lineTo(280, gy - 124); ctx.lineTo(298, gy - 106); ctx.lineTo(280, gy - 88); ctx.lineTo(214, gy - 88); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = Cc.stoneDk; ctx.fillRect(228, gy - 114, 7, 19); ctx.fillRect(246, gy - 114, 7, 19); ctx.fillRect(224, gy - 119, 33, 7);
+    ctx.strokeStyle = Cc.woodDk; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(264, gy - 106); ctx.lineTo(284, gy - 106); ctx.moveTo(277, gy - 113); ctx.lineTo(284, gy - 106); ctx.lineTo(277, gy - 99); ctx.stroke();
+  }
+  // the downhill sign on the crest
+  if (see(K.signX)) {
+    const x = K.signX, gy = tthHengeBase(x);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, gy - 118); ctx.stroke(); ctx.strokeStyle = Cc.woodDk; ctx.lineWidth = 5; ctx.stroke();
+    ctx.fillStyle = '#ffe9a8'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x - 30, gy - 150, 60, 44, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = Cc.grassDk; ctx.beginPath(); ctx.moveTo(x - 22, gy - 138); ctx.lineTo(x + 22, gy - 114); ctx.lineTo(x - 22, gy - 114); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = Cc.stoneDk; ctx.save(); ctx.translate(x - 2, gy - 132); ctx.rotate(0.5); rr(-9, -5, 18, 9, 2); ctx.fill(); ctx.restore();
+    ctx.fillStyle = '#ff5f6d'; ctx.fillRect(x + 12, gy - 144, 5, 13); circle(x + 14.5, gy - 126, 2.8); ctx.fill();
+  }
+  // the builders' poles at the circle
+  if (see(XH + 75, 400)) { tthHengePole(XH - 52, gyH, gyH - 256); tthHengePole(XH + K.fin.gapX + 52, gyH, gyH - 256); }
+  tthHengeGround(st, vx0, vx1);
+  // grass tufts, flowers and chalk pebbles
+  for (let i = Math.floor(vx0 / 36); i <= Math.floor(vx1 / 36); i++) {
+    const h = hash(i, 77), x = i * 36 + ((h >>> 8) % 28), kind = h % 6;
+    if (kind > 3 || (x > B.x0 - 20 && x < B.x1 + 20)) continue;
+    const gy = tthHengeBase(x);
+    if (kind < 2) {
+      ctx.strokeStyle = kind ? Cc.grassLt : Cc.grassDk; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(x - 4, gy + 6); ctx.lineTo(x - 6, gy - 5); ctx.moveTo(x, gy + 6); ctx.lineTo(x, gy - 8); ctx.moveTo(x + 4, gy + 6); ctx.lineTo(x + 7, gy - 4); ctx.stroke();
+    } else if (kind === 2) {
+      ctx.strokeStyle = Cc.grassDk; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, gy + 4); ctx.lineTo(x, gy - 8); ctx.stroke();
+      ctx.fillStyle = (h >>> 5) % 3 === 0 ? '#ff7a8a' : (h >>> 5) % 3 === 1 ? '#ffffff' : '#ffd23f'; circle(x, gy - 10, 3.6); ctx.fill();
+      ctx.fillStyle = '#ffb400'; circle(x, gy - 10, 1.4); ctx.fill();
+    } else { ctx.fillStyle = '#d2c59c'; ctx.beginPath(); ctx.ellipse(x, gy + 52 + ((h >>> 12) % 50), 5 + (h >>> 4) % 5, 3.5, 0, 0, Math.PI * 2); ctx.fill(); }
+  }
+  // the stream: water running toward us, the 3 places of the log road
+  if (see(B.x0 + 45, 140)) {
+    const by = tthHengeBase(B.x0), bot = cam.y + H + 14;
+    ctx.fillStyle = Cc.water; ctx.beginPath(); ctx.moveTo(B.x0 - 3, by + 4); ctx.lineTo(B.x1 + 3, by + 4); ctx.lineTo(B.x1 + 30, bot); ctx.lineTo(B.x0 - 30, bot); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = Cc.waterLt; ctx.lineWidth = 3;
+    for (let k = 0; k < 7; k++) { const u = ((t * 0.35 + k / 7) % 1), y = by + 8 + u * (bot - by - 8), x = B.x0 + 12 + ((k * 37) % 66) + (u - 0.5) * ((k % 3) - 1) * 30; ctx.globalAlpha = 0.9 - u * 0.5; ctx.beginPath(); ctx.moveTo(x - 9 - u * 6, y); ctx.lineTo(x + 9 + u * 6, y); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(B.x0 - 3, by + 4); ctx.lineTo(B.x0 - 30, bot); ctx.moveTo(B.x1 + 3, by + 4); ctx.lineTo(B.x1 + 30, bot); ctx.stroke();
+    for (let i = 0; i < 3; i++) {
+      const x = B.at[i].x;
+      if (B.slots[i]) { const d = Math.min(1, B.dropT[i] / 0.3); tthHengeDrawLog(x, by - 6 - (1 - d) * 18 + Math.sin(d * Math.PI) * 3, i * 1.3, false, 13); }
+      else { ctx.save(); ctx.setLineDash([5, 5]); ctx.lineDashOffset = -t * 14; ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 2.5; circle(x, by - 2, 12); ctx.stroke(); ctx.restore(); }
+    }
+  }
+  // mud puddles
+  for (const m of ph.mud) {
+    if (!see(m.x)) continue;
+    const gy = tthHengeBase(m.x);
+    ctx.fillStyle = Cc.mud; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(m.x, gy + 3, 30, 8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = Cc.mudLt; ctx.beginPath(); ctx.ellipse(m.x - 9, gy + 1.5, 11, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+    if (m.fed) {
+      const k = Math.min(1, m.t / 0.6);
+      tthHengeDrawLog(m.x, gy - 9 + k * 9, 0.6, false);
+      ctx.fillStyle = Cc.mud; ctx.beginPath(); ctx.ellipse(m.x, gy + 5, 29, 6, 0, 0, Math.PI); ctx.fill();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(m.x, gy + 3, 30, 8, 0, 0, Math.PI); ctx.stroke();
+    } else {
+      for (let k = 0; k < 3; k++) { const u = (t * 0.7 + k * 0.37) % 1, bx = m.x - 16 + k * 15; ctx.strokeStyle = Cc.mudLt; ctx.lineWidth = 2; circle(bx, gy + 1 - u * 5, 1.5 + u * 3.5); ctx.globalAlpha = 1 - u; ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+  }
+  // piles of spare logs
+  for (const q of ph.piles) {
+    if (!see(q.x)) continue;
+    const gy = tthHengeBase(q.x), r = 9;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(q.x - 31, gy + 2); ctx.lineTo(q.x - 27, gy - 26); ctx.moveTo(q.x + 31, gy + 2); ctx.lineTo(q.x + 27, gy - 26); ctx.stroke();
+    ctx.strokeStyle = Cc.woodDk; ctx.lineWidth = 3.5; ctx.stroke();
+    for (let row = 0; row < 3; row++) for (let k = 0; k < 3 - row; k++) tthHengeDrawLog(q.x - (2 - row) * r + k * r * 2, gy - r - row * 15.5, row * 2 + k * 1.1, false);
+  }
+  // rest posts with their flags
+  for (let i = 0; i < 2; i++) {
+    const x = K.posts[i] + S.hw + 16;
+    if (!see(x)) continue;
+    const gy = tthHengeBase(x), up = ph.leg > i;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(x, gy + 2); ctx.lineTo(x, gy - 112); ctx.stroke(); ctx.strokeStyle = Cc.wood; ctx.lineWidth = 6; ctx.stroke();
+    ctx.strokeStyle = Cc.rope; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 4, gy - 30); ctx.lineTo(x + 4, gy - 26); ctx.moveTo(x - 4, gy - 22); ctx.lineTo(x + 4, gy - 18); ctx.stroke();
+    const fy = up ? gy - 110 : gy - 70, wv = Math.sin(t * 5 + i) * 4;
+    ctx.fillStyle = up ? C.gold : '#ffffff'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(x + 3, fy); ctx.quadraticCurveTo(x + 22, fy + 2 + wv, x + 42, fy + 13); ctx.quadraticCurveTo(x + 22, fy + 18 - wv, x + 3, fy + 26); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = C.ink; circle(x + 13, fy + 13, 2.6); ctx.fill(); if (i) { circle(x + 21, fy + 13, 2.6); ctx.fill(); }
+    ctx.fillStyle = C.gold; ctx.strokeStyle = C.ink; circle(x, gy - 116, 6); ctx.fill(); ctx.stroke();
+  }
+  // chocks: wooden wedges that flip up behind the stone on the hills
+  for (const c of ph.chocks) {
+    const x = c.x - S.hw - 3;
+    if (!see(x)) continue;
+    const gy = tthHengeBase(x), gold = ph.gold.chock === tthHengeHill(c.x), k = c.up ? Math.min(1, c.t / 0.14) : 0;
+    ctx.save(); ctx.translate(x, gy + 1);
+    if (!c.up) ctx.globalAlpha = 0.45; else ctx.scale(1, 0.4 + 0.6 * k + Math.sin(k * Math.PI) * 0.3);
+    ctx.fillStyle = gold ? C.gold : Cc.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-26, 0); ctx.lineTo(0, c.up ? -19 : -7); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  // the hole for the last stone, with its heap of dug-out chalk
+  if (see(XH, 200)) {
+    ctx.fillStyle = Cc.chalk; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(XH + 32, gyH + 1); ctx.quadraticCurveTo(XH + 52, gyH - 24, XH + 74, gyH + 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (S.tip < 1) { ctx.fillStyle = '#4a3f38'; ctx.beginPath(); ctx.ellipse(XH, gyH + 4, 36, 8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    // the upright that already stands (its partner)
+    tthHengeDrawStone(XH + K.fin.gapX, gyH - K.fin.upH / 2, Math.PI / 2, K.fin.upH / 2, 27, false);
+    // the timber crib that props the lintel on its way up
+    if (F.notch > 0) {
+      const top = gyH - F.notch * (K.fin.upH - 4);
+      for (let y = gyH - 9, n = 0; y > top; y -= 13, n++) { ctx.fillStyle = n % 2 ? Cc.wood : Cc.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(XH + 75 - 22 + (n % 2) * 4, y - 6, 40, 12, 4); ctx.fill(); ctx.stroke(); }
+    }
+  }
+}
+function tthHengeDraw(st) {
+  const ph = st.ph, K = TTHHENGE, Cc = TTHHENGEC, S = ph.stone, F = ph.fin, c = st.thief, t = G.clock, cam = st.cam, r = K.log.r;
+  const XH = ph.XH, gyH = tthHengeBase(XH), gyS = tthHengeBase(S.x), ps = G.players;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // the logs: on the ground (under the stone too), falling, in his claw
+  for (const l of ph.logs) {
+    if (l.s === 'ground') {
+      if (l.x < cam.x - 30 || l.x > cam.x + W + 30) continue;
+      const hop = l.pop > 0 ? Math.sin((1 - l.pop / 0.35) * Math.PI) * 9 : 0;
+      tthHengeDrawLog(l.x, tthHengeG(ph, l.x) - r - hop, l.rot, l.gold);
+    } else if (l.s === 'fall') tthHengeDrawLog(l.x, l.y, l.rot, l.gold);
+    else if (l.s === 'claw') { const q = tthThiefPts(c).claw; tthHengeDrawLog(q.x, q.y + 8, Math.sin(t * 3) * 0.5, l.gold); }
+  }
+  // the great stone: lying on its rollers (it follows the hill, its nose dips with no log in front), then tipping in
+  const a0 = -Math.atan((tthHengeBase(S.x - 70) - tthHengeBase(S.x + 70)) / 140) + S.dip * 0.085, cy0 = gyS - K.stone.lift - K.stone.h / 2 + S.dip * 3;
+  if (S.tip <= 0) tthHengeDrawStone(S.x, cy0, a0, S.hw, K.stone.h / 2, false);
+  else {
+    const u = S.tip;
+    tthHengeDrawStone(S.x + (XH - S.x) * u, cy0 + (gyH - 54 - cy0) * u - Math.sin(u * Math.PI) * 26, a0 + (Math.PI / 2 - a0) * u, S.hw, K.stone.h / 2, false);
+    tthHengeGround(st, XH - 60, XH + 60, true);    // its foot is down in the hole
+    if (u >= 1) { ctx.fillStyle = '#4a3f38'; ctx.beginPath(); ctx.ellipse(XH, gyH + 2.5, 33, 3.5, 0, 0, Math.PI); ctx.fill(); }
+  }
+  // the lasso
+  const Z = ph.lasso;
+  if (Z) {
+    const P = tthThiefPts(c), top = tthHengeTop(S.x), bx = S.x - S.hw + 40;
+    if (!Z.on) {   // the loop spins over his head, then flies to the stone
+      const u = Z.fly, hx = P.head.x + c.face * 16, hy = P.head.y - 30, lx = hx + (bx - hx) * u, ly = hy - 16 + (top - 2 - (hy - 16)) * u - Math.sin(u * Math.PI) * 44, a = t * 13;
+      tthHengeRope(hx, hy + 12, lx, ly, 6, 3);
+      ctx.beginPath(); ctx.ellipse(lx, ly, 30 + Math.sin(a) * 7, 9 + Math.cos(a) * 3, Math.sin(a * 0.5) * 0.25, 0, Math.PI * 2);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 5.5; ctx.stroke(); ctx.strokeStyle = Cc.rope; ctx.lineWidth = 3; ctx.stroke();
+    } else {
+      const fx = S.x + S.hw, jig = Math.sin(t * 40) * (Z.n ? 1.5 : 0.5);
+      tthHengeRope(P.claw.x, P.claw.y, bx, top + 3 + jig, Z.n === 2 ? -3 : 4, 3.5);
+      tthHengeRope(bx, top - 1, bx - 4, gyS - K.stone.lift + 1, 0, 4);
+      tthHengeRope(bx, top + 2, fx - 10, top + 4, 2, 3.5);
+      let held = false;
+      for (const p of ps) {   // (draw hooks: p.x / p.y are screen coords)
+        if (!ph.P[p.id].haul || p.x + cam.x + p.w / 2 <= fx) continue;
+        held = true; tthHengeRope(fx - 10, top + 4, p.x + cam.x + p.w / 2 - 6, p.y + cam.y + p.h * 0.55, 3 + jig, 3.5);
+      }
+      if (!held) { const ex = fx + 74; tthHengeRope(fx - 10, top + 4, ex, tthHengeG(ph, ex) - 4, 30, 3.5); ctx.fillStyle = Cc.rope; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(ex, tthHengeG(ph, ex) - 5, 4.5); ctx.fill(); ctx.stroke(); }
+    }
+  }
+  // sheep
+  for (const s of ph.sheep) if (s.x > cam.x - 60 && s.x < cam.x + W + 60) tthHengeDrawSheep(s, tthHengeG(ph, s.x));
+  // the lintel on its timber crib, the ropes over the poles and the two gold rings
+  if (XH - 300 < cam.x + W && XH + 500 > cam.x) {
+    const lb = gyH - 40 - F.lift * (K.fin.upH - 40), lt = lb - K.fin.linH, live = F.stage === 2;
+    if (F.notch <= 0) for (let y = gyH - 9, n = 0; y > gyH - 40; y -= 13, n++) { ctx.fillStyle = n % 2 ? Cc.wood : Cc.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(XH + 75 - 22 + (n % 2) * 4, y - 6, 40, 12, 4); ctx.fill(); ctx.stroke(); }
+    tthHengeDrawStone(XH + 75, lb - K.fin.linH / 2, F.stage === 3 ? Math.sin(Math.min(1, F.t / 0.3) * Math.PI) * 0.012 : 0, K.fin.linW / 2, K.fin.linH / 2, false);
+    for (let i = 0; i < 2; i++) {
+      const ax = i ? XH + K.fin.gapX + 52 : XH - 52, ay = gyH - 254, rx = ph.rings[i].x, held = ph.P[0].rope === i || ph.P[1].rope === i;
+      if (F.stage < 3) tthHengeRope(ax, ay, i ? XH + 175 : XH - 25, lt + 3, 0, 3);
+      const ry = held ? gyH - 34 + Math.sin(t * 9 + i) * 2.5 : gyH - 64 + Math.sin(t * 2 + i * 2) * 3;
+      tthHengeRope(ax, ay, rx, ry - 9, held ? 0 : (i ? -8 : 8), 3);
+      if (live && !held) { ctx.fillStyle = 'rgba(255,197,61,' + (0.25 + 0.2 * Math.sin(t * 6)) + ')'; circle(rx, ry, 17); ctx.fill(); ctx.strokeStyle = C.gold; ctx.lineWidth = 3; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.ellipse(rx, gyH + 5, 22, 5, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 7.5; circle(rx, ry, 9); ctx.stroke(); ctx.strokeStyle = live || F.stage === 3 ? C.gold : Cc.ropeDk; ctx.lineWidth = 4; ctx.stroke();
+    }
+  }
+}
+function tthHengeChevron(x, y, col, s = 1) {
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(x - 7 * s, y - 6 * s); ctx.lineTo(x, y); ctx.lineTo(x + 7 * s, y - 6 * s);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 7 * s; ctx.stroke(); ctx.strokeStyle = col; ctx.lineWidth = 3.5 * s; ctx.stroke();
+}
+function tthHengeGhost(x, y, col, t) {
+  ctx.save(); ctx.setLineDash([5, 5]); ctx.lineDashOffset = -t * 16;
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 5; circle(x, y, 11); ctx.stroke(); ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.restore();
+  tthHengeChevron(x, y - 17 - Math.abs(Math.sin(t * 5)) * 6, col);
+}
+function tthHengeDrawTop(st) {
+  const ph = st.ph, K = TTHHENGE, Cc = TTHHENGEC, S = ph.stone, F = ph.fin, th = ph.th, t = G.clock, cam = st.cam, ps = G.players, B = ph.brook;
+  const big = tthBig(), z = big ? 1.35 : 1, ro = 1 - ph.pusher, PR = ph.P[ro], r = K.log.r;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // carried logs (over the head)
+  for (const p of ps) {
+    const l = ph.P[p.id].log;
+    if (l && p.alive) tthHengeDrawCarry(p.x + cam.x + p.w / 2, p.y + cam.y - 12 - (p.sy - 1) * 12, l.gold, p.face || 1, Math.sin(t * 9) * (Math.abs(p.vx) > 30 ? 0.07 : 0.02) - 0.06);
+  }
+  // wading in the stream: the water in front of the feet
+  if (!B.done && (ph.P[0].wet || ph.P[1].wet)) { const by = tthHengeBase(B.x0); ctx.fillStyle = 'rgba(95,184,232,0.62)'; ctx.fillRect(B.x0 - 2, by + 5, B.x1 - B.x0 + 4, B.depth - 3); }
+  if (F.stage === 0 && G.introT <= 0 && !st.cut) {
+    const top = tthHengeTop(S.x), nose = S.x + S.hw, col = PCOL[ro], calmNow = st.celebT > 0;
+    if (PR.log) {
+      // where the carried log will land: a place in the stream, or just ahead of the nose
+      const spot = tthHengeSpot(ph), i = B.slots.indexOf(false);
+      if (!B.done && i >= 0 && (spot > B.x0 - 14 || Math.abs(ps[ro].x + cam.x - B.x0) < 260)) tthHengeGhost(B.at[i].x, tthHengeBase(B.x0) - 2, col, t);
+      else tthHengeGhost(spot, tthHengeG(ph, spot) - r, col, t);
+    } else if (!calmNow) {
+      // free logs the roller can grab
+      for (const l of ph.logs) if (tthHengeFree(ph, l) && l.lock <= 0 && l.x > cam.x && l.x < cam.x + W && (l.x < S.x || S.block === 'log')) tthHengeChevron(l.x, tthHengeG(ph, l.x) - r * 2 - 8 - Math.abs(Math.sin(t * 5 + l.x)) * 6, col);
+      for (const q of ph.piles) if (q.x > cam.x && q.x < cam.x + W && (q.bridge ? !B.done : tthHengeLive(ph) < tthHengeMaxLogs(ph))) tthHengeChevron(q.x, tthHengeBase(q.x) - 58 - Math.abs(Math.sin(t * 5)) * 6, col, 1.2);
+      if (S.block === 'log') { const spot = tthHengeSpot(ph); tthHengeGhost(spot, tthHengeG(ph, spot) - r, '#ffffff', t); }
+    }
+    // the nose: no log in front (or the last one nearly spent)
+    let ahead = false;
+    for (const l of ph.logs) if (l.s === 'ground' && l.x > S.x + S.hw + K.log.hi && l.x < S.x + S.hw + K.log.hi + 70) ahead = true;
+    const spent = S.block === 'log' || (S.sup && S.sup.s !== 'bridge' && S.left < 56 && !ahead && S.block === '');
+    if (spent && (S.block === 'log' || Math.sin(t * 16) > -0.3)) bigText('!', nose + 4, top - 18 - Math.abs(Math.sin(t * 10)) * 5, 30 * z, S.block === 'log' ? '#ff5f6d' : C.gold, 1);
+    // the runaway
+    if (S.run && S.grade === -1 && S.v > 60) { ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 3; for (let k = 0; k < 3; k++) { const y = top + 12 + k * 18, x = S.x - S.hw - 10 - ((t * 240 + k * 23) % 40); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 26, y + 3); ctx.stroke(); } }
+  }
+  // the claw's target, and the log it dangles
+  if (th.mode === 'pinch' && th.log && (th.sub === 'aim' || th.sub === 'reach')) {
+    const L = th.log, y = tthHengeG(ph, L.x) - r, q = tthThiefPts(st.thief).claw, k = 1 + Math.sin(t * 14) * 0.12;
+    ctx.save(); ctx.strokeStyle = '#ff5f6d'; ctx.lineWidth = 3; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.moveTo(q.x, q.y + 6); ctx.lineTo(L.x, y - 12); ctx.stroke(); ctx.restore();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 7; circle(L.x, y, 19 * k); ctx.stroke(); ctx.strokeStyle = '#ff5f6d'; ctx.lineWidth = 4; ctx.stroke();
+  } else if (th.mode === 'hold' && th.log) {
+    const q = tthThiefPts(st.thief).claw;
+    ctx.save(); ctx.setLineDash([6, 6]); ctx.lineDashOffset = -t * 18; ctx.strokeStyle = C.gold; ctx.lineWidth = 3.5; circle(q.x, q.y + 8, 22 + Math.sin(t * 8) * 2); ctx.stroke(); ctx.restore();
+  }
+  // the tug of war
+  const Z = ph.lasso;
+  if (Z && Z.on) {
+    const w = 160 * z, h = 14 * z, x = clamp(S.x, cam.x + w / 2 + 40, cam.x + W - w / 2 - 40), y = tthHengeTop(S.x) - 46 - h;
+    ctx.fillStyle = 'rgba(30,20,66,0.88)'; rr(x - w / 2 - 5, y - 5, w + 10, h + 10, (h + 10) / 2); ctx.fill();
+    ctx.fillStyle = Z.n === 2 ? C.gold : '#ff9a5a'; rr(x - w / 2, y, Math.max(h, w * clamp(Z.m, 0, 1)), h, h / 2); ctx.fill();
+    for (const p of ps) { ctx.globalAlpha = ph.P[p.id].haul ? 1 : 0.35; ctx.fillStyle = PCOL[p.id]; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; circle(x + (p.id ? 1 : -1) * (w / 2 + 18 * z), y + h / 2, 8 * z); ctx.fill(); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    bigText(Z.n === 2 ? 'HEAVE!' : 'Both haul!', x, y - 17 * z, 19 * z, Z.n === 2 ? C.gold : '#ffffff', Z.n === 2 ? 1 + Math.sin(t * 14) * 0.05 : 1);
+  }
+  // the lintel meter (down in the chalk, under the trilithon)
+  if (F.stage === 2) {
+    const gy = tthHengeBase(ph.XH), w = 230 * z, h = 15 * z, x = ph.XH + 75, y = gy + 44;
+    ctx.fillStyle = 'rgba(30,20,66,0.88)'; rr(x - w / 2 - 5, y - 5, w + 10, h + 10, (h + 10) / 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'; for (let k = 1; k < 3; k++) ctx.fillRect(x - w / 2 + w * k / 3 - 1, y, 2, h);
+    ctx.fillStyle = F.both ? C.gold : '#ff9a5a'; rr(x - w / 2, y, Math.max(h, w * F.lift), h, h / 2); ctx.fill();
+    for (const p of ps) { ctx.globalAlpha = ph.P[p.id].rope >= 0 ? 1 : 0.35; ctx.fillStyle = PCOL[p.id]; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; circle(x + (p.id ? 1 : -1) * (w / 2 + 18 * z), y + h / 2, 8 * z); ctx.fill(); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    bigText(F.both ? 'Heave! ' + Math.round(F.lift * 100) + '%' : 'Both hold a gold ring!', x, y + h + 17 * z, 18 * z, F.both ? C.gold : '#ffffff', 1);
+  }
+  // the gold arrow of the stuck help
+  if (ph.arrow) {
+    const a = ph.arrow, y = a.y - Math.abs(Math.sin(t * 5)) * 10, s = z;
+    ctx.fillStyle = C.gold; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(a.x, y); ctx.lineTo(a.x - 15 * s, y - 17 * s); ctx.lineTo(a.x - 6 * s, y - 17 * s); ctx.lineTo(a.x - 6 * s, y - 36 * s); ctx.lineTo(a.x + 6 * s, y - 36 * s); ctx.lineTo(a.x + 6 * s, y - 17 * s); ctx.lineTo(a.x + 15 * s, y - 17 * s); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+}
+// the way so far: a little track at the bottom (start, the 2 rest posts, the circle)
+function tthHengeHud(st) {
+  const ph = st.ph, K = TTHHENGE, S = ph.stone, big = tthBig(), z = big ? 1.3 : 1;
+  if (G.introT > 0) return;
+  const w = 280 * z, x0 = W / 2 - w / 2 - 8, h = 9 * z, y = H - 15 * z, u = x => clamp((x - K.start) / (K.endX - K.start), 0, 1);
+  ctx.save(); if (tthUnder(x0 - 22, y - 22 * z, x0 + w + 40, y + 12 * z)) ctx.globalAlpha = 0.4;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.fillStyle = 'rgba(30,20,66,0.82)'; rr(x0 - 16, y - h / 2 - 6, w + 52 * z, h + 12, (h + 12) / 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; rr(x0, y - h / 2, w, h, h / 2); ctx.fill();
+  ctx.fillStyle = C.gold; rr(x0, y - h / 2, Math.max(h, w * u(S.x)), h, h / 2); ctx.fill();
+  for (let i = 0; i < 2; i++) {
+    const px = x0 + w * u(K.posts[i]), up = ph.leg > i;
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, y + h / 2); ctx.lineTo(px, y - 15 * z); ctx.stroke();
+    ctx.fillStyle = up ? C.gold : '#ffffff'; ctx.beginPath(); ctx.moveTo(px + 1, y - 15 * z); ctx.lineTo(px + 10 * z, y - 11 * z); ctx.lineTo(px + 1, y - 7 * z); ctx.closePath(); ctx.fill();
+  }
+  // the circle at the end: a tiny trilithon
+  const tx = x0 + w + 12 * z, col = st.ph.fin.stage === 3 ? C.gold : '#c3cad0';
+  ctx.fillStyle = col; ctx.fillRect(tx, y - 7 * z, 5 * z, 13 * z); ctx.fillRect(tx + 11 * z, y - 7 * z, 5 * z, 13 * z); ctx.fillRect(tx - 2 * z, y - 11 * z, 20 * z, 5 * z);
+  // the stone
+  const sx = x0 + w * u(S.x);
+  ctx.fillStyle = TTHHENGEC.stoneLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(sx - 10 * z, y - 6 * z, 20 * z, 12 * z, 3.5 * z); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+/* ---------- sounds ---------- */
+Sfx.extra.tthHengeRoll = function () { this.tone(74, 0.1, 'triangle', 0.04, 52); };
+Sfx.extra.tthHengeCreak = function () { this.tone(210, 0.16, 'sawtooth', 0.016, 130); };
+Sfx.extra.tthHengeThud = function () { this.tone(96, 0.22, 'triangle', 0.08, 42); this.tone(58, 0.3, 'sine', 0.06, 34, 0.02); };
+Sfx.extra.tthHengeThunk = function () { this.tone(72, 0.45, 'triangle', 0.09, 30); this.tone(150, 0.18, 'square', 0.03, 52); this.tone(46, 0.5, 'sine', 0.07, 28, 0.05); };
+Sfx.extra.tthHengeChock = function () { this.tone(430, 0.05, 'square', 0.03, 300); this.tone(250, 0.07, 'triangle', 0.045, null, 0.04); };
+Sfx.extra.tthHengePop = function () { this.tone(360, 0.07, 'triangle', 0.04, 640); };
+Sfx.extra.tthHengeGrab = function (p) { this.tone(420 * p, 0.06, 'triangle', 0.05, 640 * p); };
+Sfx.extra.tthHengeDrop = function (p) { this.tone(520 * p, 0.07, 'triangle', 0.05, 300 * p); };
+Sfx.extra.tthHengeLand = function () { this.tone(190, 0.07, 'triangle', 0.05, 110); this.tone(300, 0.04, 'square', 0.02, null, 0.03); };
+Sfx.extra.tthHengeNope = function () { this.tone(200, 0.07, 'square', 0.025, 160); this.tone(160, 0.09, 'square', 0.025, 130, 0.08); };
+Sfx.extra.tthHengeGlub = function () { [240, 180, 130].forEach((f, i) => this.tone(f, 0.14, 'sine', 0.06, f * 0.6, i * 0.12)); };
+Sfx.extra.tthHengeSplash = function () { this.tone(900, 0.1, 'triangle', 0.025, 400); this.tone(1400, 0.08, 'sine', 0.02, 700, 0.04); };
+Sfx.extra.tthHengeBaa = function () { for (let k = 0; k < 4; k++) this.tone(520 - k * 14 + (k % 2) * 36, 0.09, 'sawtooth', 0.022, 470, k * 0.08); };
+Sfx.extra.tthHengeWhack = function () { this.tone(820, 0.05, 'square', 0.05, 260); this.tone(180, 0.12, 'triangle', 0.06, 80, 0.02); };
+Sfx.extra.tthHengeSwoop = function () { this.tone(980, 0.3, 'sine', 0.035, 300); };
+Sfx.extra.tthHengeYoink = function () { this.tone(300, 0.14, 'square', 0.035, 900); this.tone(900, 0.1, 'triangle', 0.035, 1300, 0.12); };
+Sfx.extra.tthHengeWhirl = function () { for (let k = 0; k < 6; k++) this.tone(500 + (k % 2) * 180, 0.12, 'sine', 0.028, 700 - (k % 2) * 180, k * 0.2); };
+Sfx.extra.tthHengeTaut = function () { this.tone(150, 0.2, 'sawtooth', 0.04, 420); this.tone(90, 0.25, 'triangle', 0.06, 60, 0.05); };
+Sfx.extra.tthHengeHeave = function () { this.tone(170, 0.16, 'sawtooth', 0.03, 250); this.tone(250, 0.12, 'triangle', 0.035, 190, 0.1); };
+Sfx.extra.tthHengeSnap = function () { this.tone(1500, 0.07, 'square', 0.05, 240); this.tone(240, 0.3, 'sawtooth', 0.035, 900, 0.05); [659, 880, 1175].forEach((f, i) => this.tone(f, 0.12, 'triangle', 0.045, null, 0.2 + i * 0.07)); };
+Sfx.extra.tthHengeFlag = function () { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.12, 'triangle', 0.05, null, i * 0.07)); };
+
+/* ---------- the room ---------- */
+tthRoom('henge', {
+  act: { label: 'grab', labels: ['grab', 'shoo'] },
+  tip: 'One pushes the giant stone. The other carries each log from the back to the front. Swap at every post!',
+  legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move · push <kbd>W</kbd> jump', bo: '<kbd>←</kbd><kbd>→</kbd> move · push <kbd>↑</kbd> jump', padJump: 'jump', padDown: 'left / right: walk, push, haul' },
+  map: TTH_EMPTY_MAP,
+});

@@ -15,7 +15,8 @@
               With nothing pressed the horses slowly ease to a stop (75 px/s²), so an idle driver stalls everything,
               but letting go for a lane change costs nothing you can feel. Never two directions at once.
      GRABBER  the action button ("grab"): HOLD it to swing the long hook out (0.2 s), LET GO to snatch. The snatch
-              takes an olive branch whose pole is passing the hook (a window of about 0.3 s at a gallop) if the
+              takes an olive branch whose pole is passing the hook (a window of about 0.4 s at a gallop, 0.3 s in a
+              boost; the branch glows while it can be taken) if the
               chariot is in that branch's lane. A quick tap does nothing (the hook must be out); a snatch at nothing
               rests the arm for 0.55 s, so mashing loses to timing.
    They need each other all the time: only the driver can put the chariot in the branch's lane and keep it out of the
@@ -31,10 +32,10 @@
    Lap 3: the snatch takes the whole wreath. The horses pull up, the crowd goes wild, tthPhaseDone.
 
    THE THREE LAPS (TTHOLY.laps; each adds something)
-     1  amphorae (one or two lanes), mud, one turning post. 7 branches. A plain swing.
-     2  + fallen hurdles (two lanes wide), rolling discuses, the Thief's old socks on some poles; 8 branches; he
-        weaves in the tease; gears when he flees.
-     3  + rival chariots that weave; more socks; faster horses; 9 branches; a faster swing and more weaving.
+     1  amphorae (one or two lanes), mud, two turning posts. 10 branches. A plain swing.
+     2  + fallen hurdles (two lanes wide), rolling discuses, the Thief's old socks on some poles; 11 branches; he
+        weaves in the tease. (Fleeing, he drops 4 gears after lap 1 and 6 after lap 2.)
+     3  + rival chariots that weave; more socks; faster horses; 12 branches; a faster swing and more weaving.
    HAZARDS (all soft: nobody is hurt)
      amphora / hurdle / gear / discus   "Crash!": tthBump (the team's bump), the thing shatters, the chariot wobbles
               and drops to 40% speed. A discus rolls toward you along its lane ("!" at the edge 0.8 s before it shows).
@@ -46,19 +47,24 @@
               330 px/s: "Skid!" (a bump, a spin, down to 100 px/s). At the right speed: "Clean turn!".
      sock     looks like a branch pole, but holds the Thief's smelly sock. Grabbing it: "Yuck!" (tthBonk for the
               grabber, the arm rests 1 s). Just don't grab it.
-     Everything is telegraphed at least 0.6 s: static things scroll in from the right edge (1 s away even in a boost).
+     Everything is telegraphed at least 0.6 s: static things scroll in from the right edge (0.9 s away even in a
+     boost), and a one-way row (two amphorae side by side, or a hurdle: it may take two lane changes) blinks "!" at
+     the edge of its blocked lanes 0.55 s before it scrolls in.
      In a calm moment (card, cutscene, idle) nothing moves or drops; with nobody playing the horses stop.
+     A lane change that clears a thing by less than 130 px (about 0.3 s) is a "Close one!" (the crowd cheers).
    GOLD HELP (announced with tthHelp; per lap, because the jobs swap)
-     3 branches missed in the right lane   a golden hook: just HOLD the button, it grabs by itself (never a sock)
+     3 branches missed in the right lane   a golden hook: just HOLD the button, it grabs by itself (never a sock);
+                                           it flies out at once, so even a quick tap at the right moment grabs
      3 branches missed in the wrong lane   a long golden hook: it reaches the next lane too
      3 crashes in a lap                    a clearer track (45% of the junk beats stay empty)
      2 skids by the same driver            the horses slow for turns by themselves
      3 whiffs at the wreath (or 16 s)      a slower swing and a bigger ring; 6 whiffs (or 30 s): the golden hook
+                                           (6 taps too quick to swing the hook out count as 3 whiffs: for mashers)
      60 s in one lap's chase               the crowd throws a branch every 8 s while the chariot is moving
    The era can never be cleared alone: an idle driver stops the chariot; an idle grabber never takes the wreath.
    HISTORY (the news line and his taunts): the first Olympics in 776 BC had one event, a foot race of about 192 m;
    chariot races joined in 680 BC; winners got a wreath of olive leaves, not gold.
-   Stats (st.stats.olympics): laps [s], branches, missed, crashes, skids, whiffs, socks, mud.
+   Stats (st.stats.olympics): laps [s], branches, missed, crashes, skids, whiffs, socks, mud, close (close calls).
    Names: tthOly* / TTHOLY*; sounds Sfx.extra.tthOly*. All state lives in st.ph (fresh every start); gameplay
    randomness only through tthRand(). The brain (js/cpu/levels/world30/tth-olympics.js) reads TTHOLY and st.ph. */
 const TTHOLY = {
@@ -67,24 +73,24 @@ const TTHOLY = {
   trackTop: 318,
   front: 124, back: 34, floor: 26,       // the rig ahead of / behind the car's centre; the car's floor over the ground
   laps: [
-    { need: 7, vMax: 440, gap: 500, branchEvery: 3, postFirst: 10, postEvery: 16, sock: 0, swing: 2.0, weave: 0, junk: 4,
-      haz: { a1: 5, a2: 2, mud: 3 }, fact: '776 BC: the first Olympics had just ONE event, a foot race of about 192 m!' },
-    { need: 8, vMax: 470, gap: 480, branchEvery: 3, postFirst: 8, postEvery: 15, sock: 0.16, swing: 1.75, weave: 3.4, junk: 6,
-      haz: { a1: 3, a2: 2, hu: 2, mud: 2, disc: 4 }, fact: 'Chariot races only joined the Olympics in 680 BC, almost 100 years later.' },
-    { need: 9, vMax: 500, gap: 460, branchEvery: 3, postFirst: 7, postEvery: 13, sock: 0.22, swing: 1.55, weave: 2.6, junk: 0,
+    { need: 10, vMax: 440, gap: 500, branchEvery: 3, postFirst: 10, postEvery: 16, sock: 0, swing: 2.0, weave: 0, junk: 4,
+      haz: { a1: 5, a2: 2, mud: 3 }, fact: '776 BC: the first Olympics had ONE event, a 192 m foot race!' },
+    { need: 11, vMax: 470, gap: 480, branchEvery: 3, postFirst: 8, postEvery: 15, sock: 0.16, swing: 1.75, weave: 3.4, junk: 6,
+      haz: { a1: 3, a2: 2, hu: 2, mud: 2, disc: 4 }, fact: 'Chariot races joined the Olympics in 680 BC: 96 years later!' },
+    { need: 12, vMax: 500, gap: 460, branchEvery: 3, postFirst: 7, postEvery: 13, sock: 0.22, swing: 1.55, weave: 2.6, junk: 0,
       haz: { a1: 3, a2: 2, hu: 2, mud: 1, disc: 3, rival: 4 }, fact: 'Olympic winners got a wreath of olive leaves, not gold.' },
   ],
   acc: 420, brake: 640, decay: 75, vRein: 150, vBoost: 690, boostT: 1.3, spurT: 1.2,
   laneT: 0.16, laneRepeat: 0.32,
-  crashK: 0.4, crashMin: 120, wobT: 0.75, mudV: 210, mudLen: 190,
+  crashK: 0.4, crashMin: 120, wobT: 0.75, mudV: 210, mudLen: 190, closeD: 130,
   skidV: 330, zone: 440, skidT: 1.0, skidTo: 100,
   hookDx: 104, hookUp: 96, handDx: -12, handUp: 42,             // the hook's tip at full reach; the grabber's hand
-  reachUp: 0.2, reachDown: 0.14, minReach: 0.6, winBack: 56, winFront: 60, winLead: 0.1, swipeT: 0.16, cool: 0.3, whiffCool: 0.55, sockStun: 1.0,
+  reachUp: 0.2, reachDown: 0.14, minReach: 0.6, winBack: 56, winFront: 60, winLead: 0.13, swipeT: 0.16, cool: 0.3, whiffCool: 0.55, sockStun: 1.0,
   tease: { rope: 70, amp: 1.2, R: 30, goldR: 46, goldSlow: 1.45, keepV: 380, lagMax: 300, tell: 0.8, move: 0.4, s: 0.62 },
-  disc: { v: 170, warn: 0.8 },
+  disc: { v: 170, warn: 0.8 }, rowWarn: 0.55,
   rival: { v: 215, tell: 0.75, move: 0.35, every: [1.5, 2.3], shove: 0.8 },
   gear: { fall: 1.1, every: 0.75 },
-  gold: { hook: 3, lane: 3, crash: 3, skid: 2, whiff: 3, whiff2: 6, teaseT: 16, teaseT2: 30, chaseT: 60, chaseEvery: 8, clearK: 0.45 },
+  gold: { hook: 3, lane: 3, crash: 3, skid: 2, whiff: 3, whiff2: 6, taps: 6, teaseT: 16, teaseT2: 30, chaseT: 60, chaseEvery: 8, clearK: 0.45 },
   wonT: 2.1,
 };
 const TTHOLY_TAUNTS = ['Too slow, slowpokes!', 'My horse has a JET! Ha ha!', 'Chariots, 96 years early. You\'re welcome!', 'One foot race? Boring! I added chariots!',
@@ -149,8 +155,8 @@ function tthOlyBeat(st) {
   const any = () => Math.floor(R() * 3), mine = k => (R() < k ? ph.lane : any());
   switch (kind) {
     case 'a1': add({ kind: 'amph', x, lane: mine(0.5), r: 17 }); break;
-    case 'a2': { const free = any(); for (let l = 0; l < 3; l++) if (l !== free) add({ kind: 'amph', x: x + (R() - 0.5) * 50, lane: l, r: 17 }); g.one = true; g.free = free; g.x += 70; break; }
-    case 'hu': { const top = R() < 0.5 ? 0 : 1; add({ kind: 'hurdle', x, lane: top, r: 18 }); g.one = true; g.free = top ? 0 : 2; g.x += 70; break; }
+    case 'a2': { const free = any(); for (let l = 0; l < 3; l++) if (l !== free) add({ kind: 'amph', x: x + (R() - 0.5) * 50, lane: l, r: 17, warn: true }); g.one = true; g.free = free; g.x += 70; break; }
+    case 'hu': { const top = R() < 0.5 ? 0 : 1; add({ kind: 'hurdle', x, lane: top, r: 18, warn: true }); g.one = true; g.free = top ? 0 : 2; g.x += 70; break; }
     case 'mud': { const lane = any(); add({ kind: 'mud', x, lane, len: K.mudLen }); if (R() < 0.5) add({ kind: 'amph', x: x + 95, lane: (lane + 1 + Math.floor(R() * 2)) % 3, r: 17 }); break; }
     case 'disc': add({ kind: 'disc', x: x + 120, lane: mine(0.6), r: 15, roll: false, rot: 0 }); break;
     case 'rival': { const lane = any(); add({ kind: 'rival', x, lane, ly: lane, v: K.rival.v, gal: R() * 6, wheel: 0, tell: 0, dir: 0, next: 1.2 + R(), shove: 0, wob: 0 }); g.skip = 2; g.rivalCD = 8; break; }
@@ -169,7 +175,7 @@ function tthOlyDrive(st, dt) {
   ph.prevUp = up; ph.prevDn = dn; p.pendingJump = false;
   if (d && ph.spin <= 0) {
     const to = clamp(ph.lane + d, 0, 2);
-    if (to !== ph.lane) { ph.laneFrom = ph.lane; ph.lane = to; ph.lean = d; Sfx.play('tthOlyLane'); }
+    if (to !== ph.lane) { ph.laneFrom = ph.lane; ph.lane = to; ph.laneX = ph.x; ph.lean = d; Sfx.play('tthOlyLane'); }
     else ph.edge = 0.25;
   }
   ph.ly = approach(ph.ly, ph.lane, dt / K.laneT);
@@ -192,6 +198,7 @@ function tthOlyDrive(st, dt) {
   if (ph.gold.turn[ph.driver] && ph.postD < K.zone + 60 && v > K.skidV - 30) v = Math.min(v, approach(ph.v, K.skidV - 30, K.brake * dt));
   if (go && ph.v < 40 && v >= 40 && !frozen) { Sfx.play('tthOlyNeigh'); ph.rear = 0.4; }
   ph.v = v; ph.x += v * dt;
+  for (const q of st.pops) q.x += v * dt;                  // pop words ride along with the chariot
   ph.gal += dt * (v > 20 ? 5 + v / 34 : 0); ph.wheel += v * dt / 15;
   ph.wob = Math.max(0, ph.wob - dt); ph.spin = Math.max(0, ph.spin - dt); ph.edge = Math.max(0, ph.edge - dt); ph.rear = Math.max(0, ph.rear - dt);
   // hooves and dust
@@ -212,11 +219,19 @@ function tthOlyGrab(st, dt) {
   const can = ph.cool <= 0 && ph.stunT <= 0 && (ph.mode === 'chase' || ph.mode === 'tease' || ph.mode === 'flee' || ph.mode === 'toLine' || ph.mode === 'start');
   if (g.input.act && can) {
     if (!ph.held) { ph.held = true; Sfx.play('tthOlyReach', g.id); }
-    ph.reach = Math.min(1, ph.reach + dt / K.reachUp);
-    // gold help: the golden hook grabs by itself while it is held out
+    ph.reach = Math.min(1, ph.reach + dt / (ph.gold.hook ? K.reachUp * 0.25 : K.reachUp));
+    // gold help: the golden hook flies out at once (a quick tap counts too) and grabs by itself while it is out
     if (ph.gold.hook && ph.reach >= K.minReach) tthOlySnatch(st, true);
   } else {
-    if (ph.held) { ph.held = false; if (can && ph.reach >= K.minReach) tthOlySnatch(st, false); }
+    if (ph.held) {
+      ph.held = false;
+      if (can && ph.reach >= K.minReach) tthOlySnatch(st, false);
+      else if (can && !ph.gold.hook && ph.mode !== 'start') {
+        // a tap too quick for the hook to swing out: say so; a masher at the wreath gets the gold help sooner
+        tthOlyTipOnce(st, g.id, 'hold', 'HOLD ' + tthOlyAct(st, g.id) + ' a moment, then let go!', 6);
+        if (++ph.miss.tap % K.gold.taps === 0 && ph.mode === 'tease' && ph.tease && ph.tease.live) { ph.miss.whiff += K.gold.whiff; tthOlyTeaseGold(st); }
+      }
+    }
     ph.reach = Math.max(0, ph.reach - dt / K.reachDown);
   }
 }
@@ -280,7 +295,7 @@ function tthOlyTeaseGold(st) {
     tthHelp(st, 'Gold help: a slower swing and a bigger ring!', { id: g, hint: 'Let go when the ring turns gold!' });
   } else if (ph.gold.swing && !ph.gold.hook && (ph.miss.whiff >= K.whiff2 || t.T >= K.teaseT2)) {
     ph.gold.hook = true;
-    tthHelp(st, 'Gold help: a golden hook! Just HOLD the button, it grabs by itself.', { id: g, hint: 'Just hold ' + tthOlyAct(st, g) + '!' });
+    tthHelp(st, 'Gold help: a golden hook! Just HOLD the button.', { id: g, hint: 'Just hold ' + tthOlyAct(st, g) + '!' });
   }
 }
 // the snatch at the wreath: a ribbon (laps 1 and 2), then the whole wreath
@@ -291,9 +306,10 @@ function tthOlyTakeWreath(st) {
   if (!reduceMotion) G.shake = Math.max(G.shake, last ? 0.5 : 0.3);
   for (let k = 0; k < (last ? 40 : 16); k++) confetti(tip.x + (Math.random() - 0.5) * 80, tip.y);
   s.laps.push(Math.round((st.phT - ph.lapT0) * 10) / 10);
+  st.hints[0] = null; st.hints[1] = null;
   if (!last) {
     ph.ribbons++; ph.mode = 'flee'; ph.modeT = 0; ph.flee = { n: tthOlyLapK(ph).junk, dropT: 1.0, endT: 0 }; ph.tease.live = false; ph.tease.yank = 0.01;
-    tthPop(st, tip.x, tip.y - 30, 'RRRIP! A ribbon!', '#ff8fc7', 28);
+    tthPop(st, tip.x + 50, tip.y - 30, 'RRRIP! A ribbon!', '#ff8fc7', 28);
     tthNews(st, 'A ribbon! He yanked the wreath away. After him!', false, 3);
     tthReact(st, 'shocked', ph.ribbons === 1 ? 'Hey! My ribbon! Hands off!' : 'Not AGAIN! Eat my junk!', 2); c.pose = 'shock'; ph.poseT = 1.2;
     Sfx.play('tthOlyRip', g.id); Sfx.play('tthOlyCheer');
@@ -301,7 +317,7 @@ function tthOlyTakeWreath(st) {
     return;
   }
   ph.mode = 'won'; ph.modeT = 0; ph.wreathOn = true; ph.tease.live = false; ph.tease = null; ph.reach = 1;
-  tthPop(st, tip.x, tip.y - 34, 'THE WREATH!', C.gold, 34);
+  tthPop(st, tip.x + 40, tip.y - 34, 'THE WREATH!', C.gold, 34);
   tthReact(st, 'shocked', 'NOOO! My shiny wreath!', 2.2); c.pose = 'shock'; c.item = null;
   Sfx.play('tthOlyWin'); Sfx.play('tthOlyCheer');
   tthCelebrate(st, K.wonT + 0.3);
@@ -332,6 +348,16 @@ function tthOlyWorld(st, dt) {
   ph.inMud = false; ph.postD = Infinity;
   for (const o of ph.obs) {
     if (o.dead) { o.deadT = (o.deadT || 0) + dt; continue; }
+    // a close call: the chariot left this thing's lane with less than K.closeD px to spare
+    if (o.r && !o.by && o.kind !== 'rival' && o.x + o.r < back) {
+      o.by = true;
+      const was = o.lane === ph.laneFrom || (o.kind === 'hurdle' && o.lane + 1 === ph.laneFrom);
+      if (was && ph.lane !== ph.laneFrom && !(o.fall > 0) && o.x - o.r - (ph.laneX + K.front) < K.closeD && st.phT - ph.closeAt > 2.5 && !calm) {
+        ph.closeAt = st.phT; s.close++; ph.cheerT = Math.max(ph.cheerT, 0.7);
+        tthPop(st, ph.x + 50, tthOlyLaneY(ph.ly) - 84, 'Close one!', '#ffe08a', 20); Sfx.play('tthOlyWhoa');
+        if (!reduceMotion) G.shake = Math.max(G.shake, 0.08);
+      }
+    }
     switch (o.kind) {
       case 'amph': case 'hurdle':
         if (front > o.x - o.r && back < o.x + o.r && (inLane(o.lane) || (o.kind === 'hurdle' && inLane(o.lane + 1)))) tthOlyCrash(st, o, 'Crash!');
@@ -384,7 +410,7 @@ function tthOlyWorld(st, dt) {
               tthPop(st, hookX - 40, tthOlyLaneY(ph.ly) - K.hookUp - 20, 'Missed!', '#ffffff', 18);
               if (++ph.miss.hook >= K.gold.hook && !ph.gold.hook) {
                 ph.gold.hook = true;
-                tthHelp(st, 'Gold help: a golden hook! Just HOLD the button, it grabs by itself.', { id: grab, hint: 'Just hold ' + tthOlyAct(st, grab) + '!' });
+                tthHelp(st, 'Gold help: a golden hook! Just HOLD the button.', { id: grab, hint: 'Just hold ' + tthOlyAct(st, grab) + '!' });
               } else if (!ph.gold.hook) tthOlyTipOnce(st, grab, 'late', 'Hold ' + tthOlyAct(st, grab) + ' early, let go AT the branch!', 7);
             } else if (++ph.miss.lane >= K.gold.lane && !ph.gold.long) {
               ph.gold.long = true;
@@ -433,12 +459,13 @@ function tthOlyLapLine(st) {
   ph.lap++; ph.driver = 1 - ph.driver;
   const LK = tthOlyLapK(ph);
   ph.got = 0; ph.need = LK.need; ph.mode = 'chase'; ph.modeT = 0; ph.chaseT = 0; ph.freeT = 0; ph.lapT0 = st.phT;
-  ph.miss = { hook: 0, lane: 0, crash: 0, whiff: 0 };
-  ph.gold.hook = false; ph.gold.long = false; ph.gold.clear = false; ph.gold.swing = 0;
+  ph.miss = { hook: 0, lane: 0, crash: 0, whiff: 0, tap: 0 };
+  ph.gold.hook = false; ph.gold.long = false; ph.gold.clear = false; ph.gold.swing = 0; ph.gold.crowd = false;
   ph.gen = tthOlyNewGen(ph.x + 1150, LK);
   ph.held = false; ph.reach = 0; ph.cool = 0.4; ph.spurT = 0; ph.prevUp = true; ph.prevDn = true; ph.swapA = 1; ph.tease = null; ph.tipT = {};
   tthSwap(st);
-  tthNews(st, 'Lap ' + (ph.lap + 1) + ' of 3: swap reins! ' + LK.fact, false, 6);
+  tthNews(st, 'Lap ' + (ph.lap + 1) + ' of 3: swap reins!', false, 2.8);
+  ph.newsQ = { text: LK.fact, at: st.phT + 3 };
   ph.cheerT = 1.5; Sfx.play('tthOlyHorn');
   ph.tauntT = 5; ph.hintT = 0;
 }
@@ -448,16 +475,18 @@ function tthOlyFlow(st, dt) {
   const ph = st.ph, K = TTHOLY, c = st.thief, LK = tthOlyLapK(ph), s = tthStats(st);
   ph.modeT += dt;
   ph.cheerT = Math.max(0, ph.cheerT - dt); ph.poseT = Math.max(0, ph.poseT - dt); ph.swapA = Math.max(0, ph.swapA - dt / 0.5); ph.leafT = Math.max(0, ph.leafT - dt);
+  if (ph.newsQ && st.phT >= ph.newsQ.at && ph.mode === 'chase') { tthNews(st, ph.newsQ.text, false, 5); ph.newsQ = null; }   // the lap's history fact, after "swap reins!"
   if (ph.mode === 'start' && ph.v > 30) { ph.mode = 'chase'; ph.modeT = 0; ph.gen = tthOlyNewGen(ph.x + 1000, LK); ph.lapT0 = st.phT; Sfx.play('tthOlyHorn'); ph.cheerT = 1.5; }
   if (ph.mode === 'chase') {
     if (!st.idle) ph.chaseT += dt;
     // gold help for a long lap: the crowd throws a branch now and then (only to a chariot that is moving)
     if (ph.chaseT > K.gold.chaseT && ph.v > 100 && !st.idle && ph.got < ph.need && (ph.freeT += dt) >= K.gold.chaseEvery) {
       ph.freeT = 0; ph.got++; ph.leafT = 0.5; ph.cheerT = 1;
-      tthHelp(st, 'Gold help: the crowd throws you an olive branch!');
+      if (!ph.gold.crowd) { ph.gold.crowd = true; tthHelp(st, 'Gold help: the crowd throws you olive branches!'); }
+      else { tthPop(st, ph.x + 40, tthOlyLaneY(ph.ly) - 120, 'From the crowd!', C.gold, 20); Sfx.play('tthDing'); }
     }
     if (ph.got >= ph.need) {
-      ph.mode = 'tease'; ph.modeT = 0; ph.gen.on = false; ph.miss.whiff = 0;
+      ph.mode = 'tease'; ph.modeT = 0; ph.gen.on = false; ph.miss.whiff = 0; ph.miss.tap = 0;
       ph.tease = { phi: Math.PI, out: 0, live: false, lane: ph.lane, ly: ph.lane, lag: 0, wT: 2.6, tell: 0, dir: 0, T: 0, yank: 0, hintT: 0 };
       c.item = null;
       tthSay(st, ['Want it? Come and get it!', 'Look! Shiny! Can\'t reach!', 'Last lap! You\'ll NEVER get it!'][Math.min(ph.lap, 2)], 2.4);
@@ -552,6 +581,7 @@ function tthOlyPlace(st, dt = DT) {
   for (const p of G.players) {
     const seat = tthOlySeat(ph, p.id);
     p.x = ph.x + seat.dx - p.w / 2; p.y = y - K.floor - p.h - 3 - seat.hop;
+    if (G.introT > 0 && p.id !== ph.driver) p.y -= 22;      // the era card: the two name tags stack instead of overlapping
     p.vx = 0; p.vy = 0; p.grounded = true; p.face = 1; p.alive = true; p.stun = 0; p.sx = 1; p.sy = 1;
     if ((p.blinkT = (p.blinkT || 0) - dt) <= 0) { p.blinkT = 2 + Math.random() * 2.5; p.blink = 0.12; } else p.blink = Math.max(0, (p.blink || 0) - dt);
   }
@@ -562,7 +592,7 @@ function tthOlyHints(st, dt) {
   const R = tthKey(d, 'right'), U = tthKey(d, 'up'), Dn = tthKey(d, 'down');
   ph.stallT = ph.v < 60 && ph.mode !== 'won' && ph.mode !== 'done' ? ph.stallT + dt : 0;
   if (ph.mode === 'start') {
-    tthOlyTipOnce(st, d, 'go', 'Hold ' + R + ' to gallop!', 5, { cpu: 'I\'ll drive!', life: 3.4 });
+    tthOlyTipOnce(st, d, 'go', tthDev(d) === 'touch' ? 'Gallop: hold ' + R + ' or the gallop button!' : 'Hold ' + R + ' to gallop!', 5, { cpu: 'I\'ll drive!', life: 3.4 });
     tthOlyTipOnce(st, g, 'grab', 'Hold ' + tthOlyAct(st, g) + ', then let go to grab!', 5, { cpu: 'I\'ll grab!', life: 3.4 });
     return;
   }
@@ -578,10 +608,10 @@ function tthOlyHints(st, dt) {
   }
   if (ph.mode === 'tease' && ph.tease) {
     const t = ph.tease;
-    if (t.live) tthOlyTipOnce(st, g, 'wreath', ph.gold.hook ? 'Just hold ' + tthOlyAct(st, g) + '!' : 'Hold ' + tthOlyAct(st, g) + ', let go as the wreath swings in!', 9, { life: 3.6, cpu: 'I\'ll snatch it!' });
-    if (t.lag > 70) tthOlyTipOnce(st, d, 'keep', 'Faster! Hold ' + R + ': stay under him!', 5, { cpu: null });
+    if (t.live) tthOlyTipOnce(st, g, 'wreath', ph.gold.hook ? 'Just hold ' + tthOlyAct(st, g) + '!' : 'Hold ' + tthOlyAct(st, g) + ', let go at NOW!', 9, { life: 3.6, cpu: 'I\'ll snatch it!' });
+    if (t.lag > 70) tthOlyTipOnce(st, d, 'keep', 'Faster! Hold ' + R + '!', 5, { cpu: null });
     else if (Math.abs(t.lane - ph.lane) >= 1 && t.tell <= 0 && (t.hintT += dt) > 1) tthOlyTipOnce(st, d, 'follow', 'Follow him! ' + (t.lane < ph.lane ? U : Dn), 4, { cpu: null });
-    else if (t.live) { tthOlyTipOnce(st, d, 'under', 'Keep galloping: stay under him!', 12, { cpu: 'I\'ll stay under him!' }); }
+    else if (t.live) { tthOlyTipOnce(st, d, 'under', 'Gallop: stay under him!', 12, { cpu: 'I\'ll stay under him!' }); }
     if (Math.abs(t.lane - ph.lane) < 1) t.hintT = 0;
   }
   if (ph.mode === 'flee' && ph.flee && ph.flee.n > 0) tthOlyTipOnce(st, d, 'junk', 'Junk is falling! Dodge the shadows!', 30, { cpu: null, life: 2.4 });
@@ -721,6 +751,9 @@ function tthOlyGround(st) {
       const y = tthOlyLaneY(o.lane) - 4, k = 1 - o.fall / K.gear.fall;
       ctx.fillStyle = 'rgba(28,26,54,' + (0.15 + 0.3 * k) + ')'; ctx.beginPath(); ctx.ellipse(o.x, y, 12 + 16 * k, 4 + 6 * k, 0, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#ff5f6d'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(o.x, y, 34 - 6 * k, 12 - 2 * k, 0, 0, Math.PI * 2); ctx.stroke();
+    } else if (o.warn && o.x - o.r > cam + W) {
+      // a one-way row (two lanes blocked) is coming: "!" at the edge of each blocked lane, K.rowWarn s early
+      if ((o.x - o.r - (cam + W)) / Math.max(ph.v, 200) < K.rowWarn) for (let l = o.lane; l <= o.lane + (o.kind === 'hurdle' ? 1 : 0); l++) bigText('!', cam + W - 26, tthOlyLaneY(l) - 30 - Math.abs(Math.sin(t * 12)) * 5, 34, '#ff5f6d', 1);
     } else if (o.kind === 'disc' && !o.roll) {
       // a discus is about to roll in: "!" at the edge of its lane
       const wd = (o.x - (cam + W)) / (ph.v + K.disc.v + 1);
@@ -957,21 +990,21 @@ TTH_PHASES.olympics = {
     const ph = st.ph, K = TTHOLY, c = st.thief, LK = K.laps[0];
     Object.assign(ph, {
       t: 0, mode: 'start', modeT: 0, lap: 0, lapT0: 0, driver: L.def.first ? 1 : 0,
-      x: K.chX, v: 0, lane: 1, ly: 1, laneFrom: 1, lean: 0, gal: 0, wheel: 0, camBack: 0,
+      x: K.chX, v: 0, lane: 1, ly: 1, laneFrom: 1, laneX: -9999, closeAt: -9, lean: 0, gal: 0, wheel: 0, camBack: 0,
       boostT: 0, spurT: 0, wob: 0, spin: 0, edge: 0, rear: 0, inMud: false, postD: Infinity, hoofT: 0, dustT: 0,
       prevUp: true, prevDn: true, repT: 0,
       reach: 0, held: false, swipe: 0, cool: 0, stunT: 0,
       obs: [], gen: tthOlyNewGen(0, LK), cullT: 0,
       got: 0, need: LK.need, ribbons: 0, wreathOn: false,
-      miss: { hook: 0, lane: 0, crash: 0, whiff: 0 }, skids: [0, 0],
-      gold: { hook: false, long: false, clear: false, turn: [false, false], swing: 0 },
+      miss: { hook: 0, lane: 0, crash: 0, whiff: 0, tap: 0 }, skids: [0, 0],
+      gold: { hook: false, long: false, clear: false, turn: [false, false], swing: 0, crowd: false },
       chaseT: 0, freeT: 0, tease: null, flee: null, tauntT: 7, tauntN: 0, poseT: 0, cheerT: 0, leafT: 0,
-      swapA: 0, stallT: 0, tipT: {}, said: false,
+      swapA: 0, stallT: 0, tipT: {}, said: false, newsQ: null,
     });
     ph.gen.on = false;
     st.cam = { x: 0, y: 0 };
     Object.assign(c, { x: 830, y: 232, s: 0.62, face: -1, pose: 'laugh', jet: true, item: st.era.loot, claw: 0.3, flame: 1 });
-    Object.assign(tthStats(st), { laps: [], branches: 0, missed: 0, crashes: 0, skids: 0, whiffs: 0, socks: 0, mud: 0 });
+    Object.assign(tthStats(st), { laps: [], branches: 0, missed: 0, crashes: 0, skids: 0, whiffs: 0, socks: 0, mud: 0, close: 0 });
     // the start line under the horses' noses
     ph.obs.push({ kind: 'line', x: K.chX + K.front + 26, lane: -1, n: 1, done: true });
     tthOlyPlace(st);
@@ -997,7 +1030,7 @@ TTH_PHASES.olympics = {
     const ph = st.ph, K = TTHOLY;
     ph.t += dt;
     for (const p of G.players) { p.pendingJump = false; p.pendingAct = false; }
-    ph.v = approach(ph.v, 0, 400 * dt); ph.x += ph.v * dt; ph.gal += dt * (ph.v > 20 ? 5 + ph.v / 34 : 0); ph.wheel += ph.v * dt / 15;
+    ph.v = approach(ph.v, 0, 400 * dt); ph.x += ph.v * dt; for (const q of st.pops) q.x += ph.v * dt; ph.gal += dt * (ph.v > 20 ? 5 + ph.v / 34 : 0); ph.wheel += ph.v * dt / 15;
     ph.ly = approach(ph.ly, ph.lane, dt / K.laneT);
     ph.wob = Math.max(0, ph.wob - dt); ph.spin = Math.max(0, ph.spin - dt); ph.swipe = Math.max(0, ph.swipe - dt); ph.cheerT = Math.max(0, ph.cheerT - dt);
     if (!ph.wreathOn && ph.mode !== 'done') ph.reach = Math.max(0, ph.reach - dt / K.reachDown);
@@ -1061,11 +1094,15 @@ TTH_PHASES.olympics = {
     const tease = ph.mode === 'tease', label = ph.mode === 'won' ? 'Got it!' : tease ? 'Grab the wreath!' : ph.mode === 'flee' || ph.mode === 'toLine' ? 'To the lap line!' : 'Catch up!';
     const fs = Math.round(14 * z), h = Math.round(28 * z), pw = Math.round(15 * z), leaves = ph.mode === 'chase' || ph.mode === 'start';
     ctx.font = tthFont(fs);
-    const lw = ctx.measureText(label).width, w = 18 * z + lw + (leaves ? 10 * z + ph.need * pw : 0) + 12 * z, x = 14, y = 84;
-    pill(x, y, w, h);
-    if (tease) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x, y, w, h, h / 2); ctx.stroke(); }
-    text(label, x + 14 * z, y + h / 2 + 0.5, fs, tease || ph.mode === 'won' ? C.gold : C.paper, 'left', 'body');
-    if (leaves) for (let k = 0; k < ph.need; k++) {
+    const lw = ctx.measureText(label).width, w = 18 * z + lw + (leaves ? 10 * z + ph.need * pw : 0) + 12 * z, x = 14, y = H - h - 6;   // bottom left, under the chariot: clear of the core HUD, the news and the hints
+    const sb = st.say ? tthSayBox(st) : null;
+    const under = (!!sb && sb.bx - sb.tw / 2 < x + w + 6 && sb.by - sb.th / 2 < y + h + 6 && sb.by + sb.th / 2 > y - 6) || (st.idle && x + w > W / 2 - 190);   // his speech bubble (or "...is waiting") is over it
+    if (!under) {
+      pill(x, y, w, h);
+      if (tease) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x, y, w, h, h / 2); ctx.stroke(); }
+      text(label, x + 14 * z, y + h / 2 + 0.5, fs, tease || ph.mode === 'won' ? C.gold : C.paper, 'left', 'body');
+    }
+    if (leaves && !under) for (let k = 0; k < ph.need; k++) {
       const lx = x + 14 * z + lw + 14 * z + k * pw, ly = y + h / 2, on = k < ph.got, pop = on && k === ph.got - 1 && ph.leafT > 0 ? 1 + ph.leafT : 1;
       ctx.save(); ctx.translate(lx, ly); ctx.rotate(-0.6); ctx.scale(z * pop, z * pop);
       ctx.fillStyle = on ? '#8fce5e' : 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.ellipse(0, 0, 4, 8, 0, 0, Math.PI * 2); ctx.fill();
@@ -1076,7 +1113,7 @@ TTH_PHASES.olympics = {
     if (ph.postD < 900 && ph.postD > -40 && ph.mode === 'chase') {
       const ok = ph.v <= K.skidV, msg = ok ? 'Turn: good speed!' : 'Turn! Rein in!', f2 = Math.round(17 * z);
       ctx.font = tthLilita(f2);
-      const tw = ctx.measureText(msg).width + 30 * z, th = 30 * z, tx = W / 2 - tw / 2, ty = st.news ? 150 : 104;
+      const tw = ctx.measureText(msg).width + 30 * z, th = 30 * z, tx = W / 2 - tw / 2, ty = big ? (st.news ? 124 : 82) : st.news ? 132 : 104;
       ctx.fillStyle = ok ? 'rgba(63,143,92,0.92)' : 'rgba(200,60,50,0.94)'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(tx, ty, tw, th, th / 2); ctx.fill(); ctx.stroke();
       text(msg, W / 2, ty + th / 2 + 1, f2, '#ffffff', 'center');
     }
@@ -1090,7 +1127,8 @@ TTH_PHASES.olympics = {
       pad: 'driver: stick ▶ gallop, ◀ rein in, up / down lanes; grabber: hold, then let go:' };
   },
   roles: st => (st.ph.mode === 'done' ? null : st.ph.driver === 0 ? ['Drive!', 'Grab!'] : ['Grab!', 'Drive!']),
-  headLift: () => 4,
+  // hints and badges: over the heads; over the hook's ring too on phones (big bubbles) and in the tease
+  headLift: st => (tthBig() || st.ph.mode === 'tease' ? 62 : 4),
 };
 tthRoom('olympics', {
   tip: 'One drives: hold right to gallop, up and down change lanes. One grabs: hold the button, let go to snatch!',
@@ -1101,6 +1139,7 @@ tthRoom('olympics', {
 
 /* ---------- sounds ---------- */
 Sfx.extra.tthOlyHoof = function () { this.tone(170, 0.035, 'triangle', 0.03, 90); this.tone(150, 0.035, 'triangle', 0.025, 80, 0.07); };
+Sfx.extra.tthOlyWhoa = function () { this.tone(500, 0.12, 'triangle', 0.035, 1000); this.tone(1000, 0.1, 'triangle', 0.025, 800, 0.1); };
 Sfx.extra.tthOlyLane = function () { this.tone(300, 0.08, 'sawtooth', 0.016, 520); };
 Sfx.extra.tthOlyYah = function (p) { this.tone(520 * p, 0.08, 'square', 0.03, 780 * p); };
 Sfx.extra.tthOlyNeigh = function () { for (let k = 0; k < 5; k++) this.tone(900 - k * 90 + (k % 2) * 120, 0.07, 'sawtooth', 0.022, 700 - k * 80, k * 0.06); };

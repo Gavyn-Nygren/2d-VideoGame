@@ -12,7 +12,8 @@
             a slide and for a moment (grace) after letting go, so a touch player can lift the thumb off ▶ to tap ▲ or
             ▼: nothing ever needs two directions at once. ◀ brakes.
      hop    ▲ (the jump button; tthUp): one fixed arc. On the Moon, and from an updraft, it is a big floaty jump.
-     slide  ▼ on the ground: a low slide (0.9 s at most; it never ends under a lintel). ▼ in the air drops you fast.
+     slide  ▼ on the ground: a low slide (0.9 s at most; it never ends under a lintel). ▼ pressed in the air drops you
+            fast (▼ held from before the hop does not, so on the ice you can keep it down and just tap ▲).
             On ice the slide is the fast way to go; in a wind gust ▼ is a duck that keeps you moving.
      dash   the action: a time-sparkle burst of speed, then a cooldown (the little bar under your feet).
    The laps (TTHRACE_LAPS), with a true fact in the news line when the first racer runs in:
@@ -56,9 +57,9 @@ const TTHRACE = {
   float: { v: 390, g: 700 },                                       // the Moon / an updraft: 1.1 s in the air, 109 px high
   hb: 8, standH: 34, lowH: 19, duckC: 26, edge: 6,                 // half a runner's width, heights standing / sliding, the room under a lintel, a gap's forgiving rim
   slideMin: 150, slideFric: 120, slideMax: 0.9,
-  ice: { acc: 210, fric: 90, brake: 260, gain: 70, add: 55 },      // slippery: slow to speed up or stop; a slide gains speed
+  ice: { acc: 210, fric: 90, brake: 260, gain: 70, add: 45 },      // slippery: slow to speed up or stop; a slide gains speed
   wind: { stand: 0.45, duck: 0.85, brake: 700 },                   // a gust: your top speed (x run) standing / ducking
-  dash: { add: 170, t: 0.6, cd: 3.2, acc: 1500 },
+  dash: { add: 160, t: 0.6, cd: 3.6, acc: 1500 },
   boost: { add: 130, t: 1.0, min: 0.8 },                           // "Time boost!" through a ring at 80% of top speed or more
   st: { mul: 0.4, min: 110, t: 0.45, k: 0.55 },                    // a stumble: speed kept, the least, how long, top speed meanwhile
   fall: { t: 0.5, depth: 30, v: 130, pop: 330 },                   // a gap: s out of the race, how deep counts, speed after
@@ -66,47 +67,52 @@ const TTHRACE = {
   catchUp: { d: 380, t: 2.0 },                                     // this far behind at a ring: a gold boost of t s
   help: { cd: 0.7, st: 0.62, boost: 1.3 },                         // gold shoes: dash cooldown x, speed kept in a stumble, time boosts x
   finPortal: 230,                                                  // the home portal stands this far behind the finish line
-  win: 2, cardT: 5, endT: 3, crownT: 4.6, tieEps: 0.002, limitK: 1.9,
+  win: 2, cardT: 5.5, endT: 3.4, crownT: 6, tieEps: 0.002, limitK: 1.9,
 };
 // The laps. obs: ['h', x] a low thing to hop; ['d', x, w] a lintel to slide under; ['g', x0, w] a gap; ['u', x0, w] an
 // updraft; ['w', x0, w] a wind gust; ['m', x] a meteor shadow (x from the lap's start; h, d, m: the middle of the thing).
 const TTHRACE_LAPS = {
-  dino: { name: 'Dinosaur jungle', when: '66 million years ago', len: 4300, hop: 'log', gap: 'hole', deco: 'grass',
+  dino: { name: 'Dinosaur jungle', when: '66 million years ago', len: 5800, hop: 'log', gap: 'hole', deco: 'grass',
     hint: 'Hop the logs. A shadow means a meteor!', fact: 'Dinosaurs ruled the Earth for over 150 million years!',
     sky: ['#2f9c98', '#ffd08a'], ground: ['#6fbf5a', '#7a5a3a', '#4f9a45'],
-    obs: [['h', 700], ['h', 1150], ['m', 1600], ['h', 2000], ['h', 2350], ['m', 2800], ['h', 3150], ['m', 3500], ['h', 3830]] },
-  henge: { name: 'Stonehenge', when: '2500 BC', len: 4300, hop: 'stone', duck: 'lintel', gap: 'hole', deco: 'grass',
+    obs: [['h', 700], ['h', 1150], ['m', 1600], ['h', 2000], ['h', 2350], ['m', 2800], ['h', 3150], ['m', 3500], ['h', 3830], ['h', 4200], ['m', 4580], ['h', 4940], ['m', 5320]] },
+  henge: { name: 'Stonehenge', when: '2500 BC', len: 5800, hop: 'stone', duck: 'lintel', gap: 'hole', deco: 'grass',
     hint: 'Slide under the great stones.', fact: 'The biggest stones of Stonehenge weigh as much as 4 elephants!',
     sky: ['#f29a8a', '#fff0c9'], ground: ['#8fd17a', '#5f8f4f', '#6fb35f'],
-    obs: [['d', 620, 110], ['d', 1060, 110], ['h', 1460], ['d', 1860, 130], ['d', 2300, 110], ['h', 2660], ['d', 3060, 120], ['d', 3460, 110], ['d', 3850, 120]] },
-  olympics: { name: 'Olympia', when: '776 BC', len: 4400, hop: 'hurdle', gap: 'hole', deco: 'track',
+    obs: [['d', 620, 110], ['d', 1060, 110], ['h', 1460], ['d', 1860, 130], ['d', 2300, 110], ['h', 2660], ['d', 3060, 120], ['d', 3460, 110], ['d', 3850, 120],
+      ['h', 4250], ['d', 4640, 140], ['d', 5020, 110], ['h', 5400]] },
+  olympics: { name: 'Olympia', when: '776 BC', len: 5900, hop: 'hurdle', gap: 'hole', deco: 'track',
     hint: 'Hurdles! Find the rhythm, then sprint.', fact: 'The first Olympic Games had just one event: a sprint!',
     sky: ['#3fa3f5', '#d6f0ff'], ground: ['#f0d9a0', '#d9b877', '#c9a55f'],
-    obs: [['h', 620], ['h', 910], ['h', 1200], ['h', 1490], ['h', 2020], ['h', 2310], ['h', 2600], ['h', 2890], ['h', 3330], ['h', 3600], ['h', 3870]] },
-  troy: { name: 'Walls of Troy', when: '1200 BC', len: 4300, hop: 'merlon', gap: 'hole', deco: 'blocks',
+    obs: [['h', 620], ['h', 910], ['h', 1200], ['h', 1490], ['h', 2020], ['h', 2310], ['h', 2600], ['h', 2890], ['h', 3330], ['h', 3600], ['h', 3870],
+      ['h', 4380], ['h', 4660], ['h', 4940], ['h', 5220], ['h', 5500]] },
+  troy: { name: 'Walls of Troy', when: '1200 BC', len: 5800, hop: 'merlon', gap: 'hole', deco: 'blocks',
     hint: 'Run the wall top: jump the gaps.', fact: 'Troy was a real city. You can still visit its walls!',
     sky: ['#5a3d7a', '#ffb37a'], ground: ['#e6d2a8', '#b89f73', '#9a8258'],
-    obs: [['g', 650, 80], ['h', 1070], ['g', 1450, 90], ['g', 1820, 80], ['h', 2260], ['g', 2600, 90], ['h', 3010], ['g', 3350, 90], ['g', 3720, 80]] },
-  vikings: { name: 'Viking ice', when: '1000 AD', len: 4500, hop: 'ice', duck: 'arch', gap: 'hole', deco: 'ice', ice: true,
+    obs: [['g', 650, 80], ['h', 1070], ['g', 1450, 90], ['g', 1820, 80], ['h', 2260], ['g', 2600, 90], ['h', 3010], ['g', 3350, 90], ['g', 3720, 80], ['h', 4150],
+      ['g', 4520, 100], ['g', 4900, 90], ['h', 5330]] },
+  vikings: { name: 'Viking ice', when: '1000 AD', len: 5900, hop: 'ice', duck: 'arch', gap: 'hole', deco: 'ice', ice: true,
     hint: 'Slippery ice: a long slide is the fast way.', fact: 'Vikings sailed to America 500 years before Columbus!',
     sky: ['#0f2a4a', '#3f8fa8'], ground: ['#eaf8ff', '#7fbfe0', '#a8dcf5'],
-    obs: [['d', 700, 220], ['h', 1220], ['d', 1700, 280], ['h', 2280], ['h', 2640], ['d', 3120, 320], ['h', 3640], ['d', 4000, 200]] },
-  moon: { name: 'The Moon', when: '1969', len: 4500, hop: 'rock', gap: 'bowl', deco: 'moon', float: true,
+    obs: [['d', 700, 220], ['h', 1220], ['d', 1700, 280], ['h', 2280], ['h', 2640], ['d', 3120, 320], ['h', 3640], ['d', 4000, 200], ['h', 4480], ['d', 4860, 300], ['h', 5420]] },
+  moon: { name: 'The Moon', when: '1969', len: 6000, hop: 'rock', gap: 'bowl', deco: 'moon', float: true,
     hint: 'Low gravity: huge floaty jumps over the craters.', fact: 'On the Moon you weigh six times less!',
     sky: ['#05060f', '#1a1c33'], ground: ['#c9ccd9', '#8a8da0', '#a3a6b8'],
-    obs: [['g', 700, 230], ['h', 1380], ['g', 1950, 250], ['h', 2640], ['h', 3140], ['g', 3700, 240]] },
-  davinci: { name: 'Florence rooftops', when: 'The 1490s', len: 4400, hop: 'pot', gap: 'alley', deco: 'tiles',
+    obs: [['g', 700, 230], ['h', 1380], ['g', 1950, 250], ['h', 2640], ['h', 3140], ['g', 3700, 240], ['h', 4380], ['g', 4900, 260], ['h', 5560]] },
+  davinci: { name: 'Florence rooftops', when: 'The 1490s', len: 5900, hop: 'pot', gap: 'alley', deco: 'tiles',
     hint: 'Jump in an updraft to float over the wide alleys.', fact: 'Leonardo drew flying machines 400 years before planes!',
     sky: ['#ffbf7a', '#ffe9c4'], ground: ['#d9744a', '#e8cfa6', '#b5583a'],
-    obs: [['h', 650], ['u', 1010, 90], ['g', 1100, 190], ['g', 1720, 80], ['h', 2110], ['u', 2450, 90], ['g', 2540, 190], ['h', 3160], ['u', 3500, 90], ['g', 3590, 190]] },
-  wright: { name: 'Kitty Hawk dunes', when: '1903', len: 4400, hop: 'fence', gap: 'hole', deco: 'sand',
+    obs: [['h', 650], ['u', 1010, 90], ['g', 1100, 190], ['g', 1720, 80], ['h', 2110], ['u', 2450, 90], ['g', 2540, 190], ['h', 3160], ['u', 3500, 90], ['g', 3590, 190],
+      ['g', 4200, 90], ['h', 4560], ['u', 4860, 90], ['g', 4950, 200], ['h', 5480]] },
+  wright: { name: 'Kitty Hawk dunes', when: '1903', len: 5800, hop: 'fence', gap: 'hole', deco: 'sand',
     hint: 'Headwind gusts: duck through them.', fact: 'The very first plane flight lasted just 12 seconds!',
     sky: ['#7fc8f0', '#fff3d0'], ground: ['#f2dfae', '#e0c688', '#d4b872'],
-    obs: [['h', 620], ['w', 960, 280], ['h', 1660], ['w', 2010, 300], ['h', 2720], ['h', 3020], ['w', 3360, 300], ['h', 3960]] },
-  tunnel: { name: 'The Time Tunnel', when: 'Almost home', len: 4500, hop: 'gear', duck: 'pend', gap: 'rift', deco: 'brass',
+    obs: [['h', 620], ['w', 960, 280], ['h', 1660], ['w', 2010, 300], ['h', 2720], ['h', 3020], ['w', 3360, 300], ['h', 3960], ['w', 4300, 320], ['h', 4980], ['h', 5360]] },
+  tunnel: { name: 'The Time Tunnel', when: 'Almost home', len: 6000, hop: 'gear', duck: 'pend', gap: 'rift', deco: 'brass',
     hint: 'A bit of everything. The gold portal is HOME!', fact: 'Last lap! Home is through the gold portal!',
     sky: ['#1c1446', '#6b4fb8'], ground: ['#f6d37a', '#3a2f7a', '#d9a441'],
-    obs: [['h', 650], ['d', 1010, 100], ['g', 1400, 80], ['h', 1810], ['h', 2110], ['d', 2510, 120], ['g', 2900, 90], ['h', 3310], ['d', 3660, 100], ['g', 4000, 80]] },
+    obs: [['h', 650], ['d', 1010, 100], ['g', 1400, 80], ['h', 1810], ['h', 2110], ['d', 2510, 120], ['g', 2900, 90], ['h', 3310], ['d', 3660, 100], ['g', 4000, 80],
+      ['h', 4400], ['d', 4760, 120], ['g', 5120, 90], ['h', 5560]] },
 };
 const TTHRACE_RACES = [
   { name: 'Ancient Dash', laps: ['dino', 'henge', 'olympics'], say: 'No more stealing. Let\'s RACE home!' },
@@ -168,7 +174,7 @@ function tthRaceJumpOf(T, r) {
 function tthRaceRunner(k) {
   return { k, x: 0, y: 0, v: 0, vy: 0, air: false, airT: 0, jumped: false, g: TTHRACE.g, flo: false, buf: 0, upWas: false, runT: 9, low: false, lowT: 0, lowArm: true,
     stun: 0, clean: 0, dash: 0, dashCd: 0, boost: 0, gold: 0, fallT: 0, fallGap: null, lastGap: null, fin: null, goneT: 0, lap: 0, oi: 0, land: 0, step: 0,
-    stumbles: 0, boosts: 0, miss: {}, wind: false, flash: 0, place: 0, dustT: 0, whoa: 0, lead: 0 };
+    stumbles: 0, boosts: 0, miss: {}, wind: false, flash: 0, place: 0, dustT: 0, whoa: 0, lead: 0, dive: true };
 }
 function tthRacePop(ph, k, s, col = '#ffffff', size = 20, life = 0.9) {
   ph.pops = ph.pops.filter(q => q.k !== k || q.t > 0.3);
@@ -203,7 +209,7 @@ function tthRaceStumble(st, r, o, word) {
   Sfx.play('tthRaceBonk', k); rumble(k, 0.5, 0.3, 140);
   // the same kind twice: say how, in their own keys
   if (r.miss[o.kind] === 2) {
-    const tip = o.kind === 'd' ? 'Slide sooner: hold ' + tthKey(k, 'down') : 'Hop a little sooner: ' + tthKey(k, 'jump');
+    const tip = o.kind === 'd' ? 'Slide a little sooner: ' + tthKey(k, 'down') : 'Hop a little sooner: ' + tthKey(k, 'jump');
     tthRaceHint(st, k, 'again' + o.kind, tip, 3);
   }
   if (tthRaceVR() < 0.35) { if (tthRaceSay(st, ['Oof! Mind your step!', 'Whoops-a-daisy!', 'Hee hee! Bonk!'][Math.floor(tthRaceVR() * 3)], 1.6)) { st.thief.pose = 'laugh'; ph.poseT = 1.2; } }
@@ -215,11 +221,12 @@ function tthRaceFall(st, r, g) {
   r.miss.g = (r.miss.g || 0) + 1;
   tthRacePop(ph, k, 'Whoops!', '#ffffff', 22);
   Sfx.play('tthRaceFall', k); rumble(k, 0.4, 0.3, 160);
-  if (r.miss.g === 2) tthRaceHint(st, k, 'againg', g.w > 150 ? (g.look === 'bowl' ? 'Jump ' + tthKey(k, 'jump') + ' at the crater\'s rim!' : 'Jump ' + tthKey(k, 'jump') + ' in the updraft!') : 'Jump ' + tthKey(k, 'jump') + ' at the edge!', 3);
+  if (r.miss.g === 2) tthRaceHint(st, k, 'againg', g.w > 150 ? (g.look === 'bowl' ? 'Jump at the crater\'s rim: ' + tthKey(k, 'jump') : 'Jump in the updraft: ' + tthKey(k, 'jump')) : 'Jump at the edge: ' + tthKey(k, 'jump'), 3);
 }
 function tthRaceJump(st, r) {
   const ph = st.ph, J = tthRaceJumpOf(ph.T, r);
   r.buf = 0; r.air = true; r.airT = 0; r.jumped = true; r.low = false; r.flo = J.flo; r.vy = J.v; r.g = J.g;
+  r.dive = !G.players[r.k].input.down;   // (▼ held through the hop, as on the ice, is no dive: let go and press it in the air)
   if (J.up) {
     tthRacePop(ph, r.k, 'Whoosh!', '#fff3c4', 22);
     for (let n = 0; n < 8; n++) tthRacePart(ph, r.k, r.x - 16 + tthRaceVR() * 32, TTHRACE.gy - 6, -30 + tthRaceVR() * 60, -220 - tthRaceVR() * 160, 0.6, '#ffffff', 2.5, -200);
@@ -296,8 +303,8 @@ function tthRaceRun(st, r, p, dt) {
   }
   const fast = r.dash > 0 || r.boost > 0;
   let top = K.run + K.flow * Math.min(1, r.clean / K.flowT) + Math.max(r.dash > 0 ? K.dash.add : 0, r.boost > 0 ? K.boost.add : 0);
-  if (inp.right) r.runT = 0; else r.runT += dt;
-  const run = !inp.left && (inp.right || r.runT < K.grace);
+  if (inp.right || inp.down) r.runT = 0; else r.runT += dt;
+  const run = !inp.left && (inp.right || inp.down || r.runT < K.grace);   // (▼ never stops you: no slide yet = you run on)
   if (!r.air) {
     // the slide (a duck in a gust): low while ▼ is held, 0.9 s at most, but never standing up under a lintel
     if (r.low) {
@@ -330,7 +337,8 @@ function tthRaceRun(st, r, p, dt) {
   } else {
     r.airT += dt;
     if (r.buf > 0 && !r.jumped && r.airT < K.coyote && r.stun <= 0) { r.y = Math.max(r.y, 0); tthRaceJump(st, r); }   // a moment late off an edge still counts
-    r.vy -= r.g * (inp.down && r.jumped ? K.dive : 1) * dt; r.y += r.vy * dt;
+    if (!inp.down) r.dive = true;
+    r.vy -= r.g * (inp.down && r.jumped && r.dive ? K.dive : 1) * dt; r.y += r.vy * dt;
     if (wind) { const vt = K.run * K.wind.stand; if (r.v > vt) r.v = Math.max(vt, r.v - K.wind.brake * dt); }
     else if (fast && r.v < top) r.v = Math.min(top, r.v + K.dash.acc * 0.6 * dt);
     else if (run && r.v < top) r.v = Math.min(top, r.v + K.acc * 0.3 * dt);
@@ -393,12 +401,12 @@ function tthRaceHints(st, r) {
     const key = o.kind === 'h' && o.look === 'hurdle' ? 'hurdle' : o.kind === 'g' && o.w > 150 ? 'G' + o.look : o.kind;
     if (H[key]) return;
     const J = tthKey(k, 'jump'), D = tthKey(k, 'down');
-    const text = { h: 'Hop ' + J + ' over it!', hurdle: 'Hurdles: hop ' + J + ', hop, hop!', m: 'A meteor! Hop ' + J + ' the hot rock', d: 'Slide ' + D + ' under it!', g: 'Jump ' + J + ' the gap!',
-      Gbowl: 'A crater: jump ' + J + ' at the rim!', u: 'Jump ' + J + ' in the updraft!', w: 'Wind! Hold ' + D + ' to duck' }[key];
+    const text = { h: 'Hop over it: ' + J, hurdle: 'Hurdles! Hop, hop, hop: ' + J, m: 'A meteor! Hop the hot rock: ' + J, d: 'Slide under it: ' + D, g: 'Jump the gap: ' + J,
+      Gbowl: 'A crater! Jump at the rim: ' + J, u: 'Jump in the updraft: ' + J, w: 'Wind! Hold ' + D + ' to duck' }[key];
     if (text) tthRaceHint(st, k, key, text, 2.6);
     return false;
   });
-  if (!H.dash && ph.t > 5 && r.dashCd <= 0 && r.stun <= 0 && !st.hints[k]) tthRaceHint(st, k, 'dash', tthKey(k, 'act') + ': a time dash!', 2.6);
+  if (!H.dash && ph.t > 5 && r.dashCd <= 0 && r.stun <= 0 && !st.hints[k]) tthRaceHint(st, k, 'dash', 'Time dash: ' + tthKey(k, 'act'), 2.6);
 }
 
 /* ---------- the race flow: card (3-2-1) -> live -> fin -> next card | crown ---------- */
@@ -488,7 +496,7 @@ function tthRaceResult(st, w, reason, margin, quiet) {
   ph.end = { w, reason };
   s.wins = ph.wins.slice();
   s.races = s.races || [];
-  s.races.push({ track: ph.T.name, w, t: R.fin != null ? Math.round(R.fin * 10) / 10 : null });
+  s.races.push({ track: ph.T.name, w, t: R.fin != null ? Math.round(R.fin * 10) / 10 : null, m: margin != null ? Math.round(margin * 100) / 100 : null });
   for (const key of ['stumbles', 'boosts']) { s[key] = s[key] || [0, 0]; for (const k of [0, 1]) s[key][k] += ph.stat[key][k]; }
   s.best = s.best || [null, null];
   for (const q of ph.R) if (q.fin != null && (s.best[q.k] == null || q.fin < s.best[q.k])) s.best[q.k] = Math.round(q.fin * 10) / 10;
@@ -578,12 +586,13 @@ TTH_PHASES.race = {
   setup(st) {
     const ph = st.ph, c = st.thief, K = TTHRACE;
     // the Thief at his commentator's desk, between the lanes at the right
-    Object.assign(c, { hidden: false, alpha: 1, jet: false, item: null, mood: 'happy', baseMood: 'happy', pose: 'wave', s: 0.5, face: -1, x: W - 84, y: K.laneY[1], sayAt: null, look: null });
+    Object.assign(c, { hidden: false, alpha: 1, jet: false, item: null, mood: 'happy', baseMood: 'happy', pose: 'wave', s: 0.42, face: -1, x: W - 80, y: K.laneY[1], sayAt: null, look: null });
     ph.wins = [0, 0]; ph.raceN = 1; ph.ties = 0; ph.ti = 0; ph.sayCd = 0; ph.poseT = 0;
     ph.hinted = [{}, {}];
     st.cam = { x: 0, y: 0 };
     tthRaceNewRace(st, '');
     tthRaceCams(st, 0);
+    c.sayAt = tthRaceSayAt(st);
     tthRaceMirror(st);
   },
   wait(st, dt) { st.idleT = 0; tthRaceFx(st, dt); tthRaceMirror(st); },   // (reading the era card is not being away)
@@ -592,6 +601,7 @@ TTH_PHASES.race = {
     const ph = st.ph, K = TTHRACE;
     st.cam.x = 0; st.cam.y = 0;
     if (ph.state === 'crown') { st.idle = false; st.idleT = 0; tthRaceCrownStep(st, dt); return; }   // (a little scene: no idle nagging over it)
+    st.thief.sayAt = tthRaceSayAt(st);
     if (st.idle) {
       // the Thief waits: nothing moves. Away at GO (no person left the start): a false start, run again when they are back
       if (!ph.wasIdle) { ph.wasIdle = true; ph.falseStart = ph.state === 'live' && tthHumanIds().every(k => ph.R[k].x < 150); }
@@ -606,7 +616,7 @@ TTH_PHASES.race = {
       for (const p of G.players) { p.pendingJump = false; p.pendingAct = false; }
       const was = ph.cardT;
       if (G.introT <= 0) ph.cardT += dt;   // (race 1: the race card waits for the era card to go)
-      if (was < 0.15 && ph.cardT >= 0.15) { tthRaceSay(st, ph.replay ? 'A tie?! Run it again!' : ph.T.say, 2.6, true); st.thief.pose = 'wave'; ph.poseT = 2.2; }
+      if (was < 0.15 && ph.cardT >= 0.15) { tthRaceSay(st, ph.replay ? 'A tie?! Run it again!' : ph.T.say, 1.75, true); st.thief.pose = 'wave'; ph.poseT = 2.2; }
       for (const n of [1, 2, 3]) if (was < K.cardT - n && ph.cardT >= K.cardT - n) { Sfx.play('tthRaceBeep'); if (n === 3) { st.thief.pose = 'point'; ph.poseT = 3.8; tthRaceSay(st, 'Ready... set...', 2.4, true); } }
       if (ph.cardT >= K.cardT) {
         ph.state = 'live'; ph.go = 1; Sfx.play('tthRaceGo');
@@ -945,8 +955,9 @@ function tthRaceDrawGap(th, o, t) {
   if (o.look === 'bowl') {
     // a Moon crater: a dusty bowl
     ctx.fillStyle = th.ground[1]; ctx.fillRect(o.x0, gy, o.w, LH - gy);
-    ctx.fillStyle = '#5a5d74'; ctx.beginPath(); ctx.moveTo(o.x0, gy); ctx.quadraticCurveTo(o.x, gy + 62, o.x1, gy); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(o.x0, gy); ctx.quadraticCurveTo(o.x, gy + 62, o.x1, gy); ctx.stroke();
+    ctx.fillStyle = '#2f3148'; ctx.beginPath(); ctx.moveTo(o.x0, gy); ctx.quadraticCurveTo(o.x, gy + 70, o.x1, gy); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#44475f'; ctx.beginPath(); ctx.moveTo(o.x0 + o.w * 0.3, gy + 17); ctx.quadraticCurveTo(o.x, gy + 44, o.x1 - o.w * 0.12, gy + 8); ctx.quadraticCurveTo(o.x, gy + 30, o.x0 + o.w * 0.3, gy + 17); ctx.fill();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(o.x0, gy); ctx.quadraticCurveTo(o.x, gy + 70, o.x1, gy); ctx.stroke();
     ctx.fillStyle = th.ground[0]; rr(o.x0 - 9, gy - 4, 16, 7, 3); ctx.fill(); rr(o.x1 - 7, gy - 4, 16, 7, 3); ctx.fill();
     return;
   }
@@ -1156,8 +1167,325 @@ function tthRaceDrawRunner(st, r, o) {
   ctx.restore();
   if (o.ghost && o.tag) {
     ctx.save(); ctx.globalAlpha = 0.8;
-    ctx.fillStyle = PCOL[r.k]; rr(x - 15, y - PH * s - 26, 30, 15, 7); ctx.fill();
-    text(NAMES[r.k], x, y - PH * s - 18, 10, '#ffffff', 'center', 'body');
+    const z = tthBig() ? 1.35 : 1;
+    ctx.fillStyle = PCOL[r.k]; rr(x - 15 * z, y - PH * s - 11 - 15 * z, 30 * z, 15 * z, 7 * z); ctx.fill();
+    text(NAMES[r.k], x, y - PH * s - 11 - 7 * z, Math.round(10 * z), '#ffffff', 'center', 'body');
     ctx.restore();
   }
 }
+
+/* ---------- drawing: the lanes ---------- */
+let tthRaceBandG = null;
+// where the Thief's speech bubble points: under the race card while it shows, else just over his booth
+function tthRaceSayAt(st) {
+  const ph = st.ph, K = TTHRACE, c = st.thief;
+  if (ph.state === 'crown') return null;
+  if (ph.state === 'card' && ph.cardT < K.cardT - 3) { const B = tthRaceCardBox(); return { x: B.x0 + 46, y: B.y0 + B.h + (B.big ? 34 : 26), r: 6 }; }
+  return { x: c.x - 10, y: K.laneY[1] - 48, r: 7 };
+}
+function tthRaceDrawBack(st) {
+  const ph = st.ph, K = TTHRACE, t = G.clock;
+  if (!ph.R) return;
+  if (ph.state === 'crown') { tthRaceDrawCrownBack(st); return; }
+  // the time tunnel around the lanes: the band under the HUD, the divider, the strip at the bottom
+  if (!tthRaceBandG) { tthRaceBandG = ctx.createLinearGradient(0, 0, 0, H); tthRaceBandG.addColorStop(0, '#1c1446'); tthRaceBandG.addColorStop(0.14, '#3a2a7a'); tthRaceBandG.addColorStop(0.56, '#241a5c'); tthRaceBandG.addColorStop(1, '#1c1446'); }
+  ctx.fillStyle = tthRaceBandG; ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < 9; i++) {
+    const h = hash(i, 17), x = ((h % W) + t * (8 + (i % 3) * 5)) % (W + 60) - 30, y = 14 + ((h >>> 9) % 50);
+    ctx.fillStyle = `rgba(255,255,255,${0.35 + 0.3 * Math.sin(t * 2 + i)})`; circle(x, y, 1 + (i % 2)); ctx.fill();
+  }
+  for (const k of [0, 1]) tthRaceDrawLane(st, k);
+  // brass rails along the lanes
+  for (const k of [0, 1]) {
+    const y0 = K.laneY[k];
+    ctx.fillStyle = TTHC.brassDk; ctx.fillRect(0, y0 - 3, W, 3); ctx.fillRect(0, y0 + K.laneH, W, 3);
+    ctx.fillStyle = TTHC.brassLt; ctx.fillRect(0, y0 - 3, W, 1); ctx.fillRect(0, y0 + K.laneH, W, 1);
+  }
+  // the commentator's booth (behind the Thief): a little brass-framed window between the lanes
+  const c = st.thief, bx = c.x, by = K.laneY[1] + 2;
+  ctx.fillStyle = '#1a123d'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(bx - 58, by - 66, 116, 66, 12); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = TTHC.brass; ctx.lineWidth = 2.5; rr(bx - 54, by - 62, 108, 60, 9); ctx.stroke();
+  ctx.fillStyle = `rgba(178,141,255,${0.2 + 0.08 * Math.sin(t * 3)})`; rr(bx - 52, by - 60, 104, 56, 8); ctx.fill();
+}
+// the desk in front of him: a microphone and a chequered front
+function tthRaceDrawDesk(st) {
+  const K = TTHRACE, c = st.thief, x = c.x, y = K.laneY[1] + 2, t = G.clock;
+  ctx.fillStyle = TTHC.brass; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x - 50, y - 20, 100, 20, 5); ctx.fill(); ctx.stroke();
+  for (let i = 0; i < 11; i++) for (let j = 0; j < 2; j++) { ctx.fillStyle = (i + j) % 2 ? C.ink : '#ffffff'; ctx.fillRect(x - 44 + i * 8, y - 14 + j * 5, 8, 5); }
+  ctx.fillStyle = TTHC.brassLt; rr(x - 52, y - 24, 104, 6, 3); ctx.fill(); ctx.stroke();
+  // the microphone, with little sound rings while he talks
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 30, y - 24); ctx.lineTo(x - 26, y - 36); ctx.stroke();
+  ctx.fillStyle = '#d9dbe8'; ctx.beginPath(); ctx.ellipse(x - 25, y - 40, 4.5, 6, 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  if (st.say) { ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5; for (let n = 0; n < 2; n++) { const u = (t * 2 + n / 2) % 1; ctx.globalAlpha = 1 - u; ctx.beginPath(); ctx.arc(x - 25, y - 40, 7 + u * 9, Math.PI * 0.8, Math.PI * 1.5); ctx.stroke(); } ctx.globalAlpha = 1; }
+}
+function tthRaceDrawLane(st, k) {
+  const K = TTHRACE, ph = st.ph, T = ph.T, cam = ph.cam[k], r = ph.R[k], o = ph.R[1 - k], y0 = K.laneY[k], LH = K.laneH, gy = K.gy, t = G.clock;
+  const big = tthBig(), n = T.laps.length;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, y0, W, LH); ctx.clip();
+  ctx.translate(0, y0 + (ph.quake[k] > 0 && !reduceMotion ? Math.sin(t * 80) * 3 * ph.quake[k] / 0.25 : 0));
+  // each lap's own sky and far scenery, split at the portal rings
+  for (const lap of T.laps) {
+    const a = lap.i === 0 ? 0 : clamp(lap.x0 - cam.x, 0, W), b = lap.i === n - 1 ? W : clamp(lap.x1 - cam.x, 0, W);
+    if (b > a) tthRaceDrawBackdrop(lap, cam, a, b, t);
+  }
+  ctx.save(); ctx.translate(-cam.x, 0);
+  const X0 = cam.x - 70, X1 = cam.x + W + 70;
+  tthRaceDrawGround(T, X0, X1, t);
+  tthRaceDrawEnds(T, X0, X1, t);
+  for (let i = 1; i < n; i++) { const x = T.laps[i].x0; if (x > X0 - 40 && x < X1 + 40) tthRaceDrawRing(x, t, false); }
+  // the things on the track (behind the runners)
+  for (const q of T.obs) {
+    if (q.x1 < X0 - 60) continue;
+    if (q.x0 > X1 + 60) break;
+    if (q.kind === 'u') tthRaceDrawUpdraft(q, t);
+    else if (q.kind === 'w') tthRaceDrawWind(q, t);
+    else if (q.kind === 'd') tthRaceDrawDuck(q, k, t);
+    else if (q.kind === 'h') tthRaceDrawHop(q, k, t);
+    else if (q.kind === 'm') tthRaceDrawMeteor(ph, q, k, t);
+  }
+  // the other racer, a faded ghost (fainter when right on top of you)
+  if (o.x > X0 && o.x < X1) {
+    const apart = clamp((Math.abs(o.x - r.x) - 16) / 50, 0, 1);
+    tthRaceDrawRunner(st, o, { alpha: 0.2 + 0.25 * apart, s: K.RS * 0.88, ghost: true, tag: apart > 0.6 });
+  }
+  tthRaceDrawRunner(st, r, { alpha: 1, s: K.RS });
+  // the dash bar under your feet: it fills up again, then sparkles
+  if (r.fin == null && r.fallT <= 0 && ph.state !== 'card') {
+    const max = K.dash.cd * (ph.help[k] ? K.help.cd : 1), u = 1 - clamp(r.dashCd / max, 0, 1), bw = big ? 44 : 34, bh = big ? 7 : 5, bx = r.x - bw / 2, by = gy + 9;
+    ctx.fillStyle = 'rgba(28,26,54,0.7)'; rr(bx - 1.5, by - 1.5, bw + 3, bh + 3, (bh + 3) / 2); ctx.fill();
+    ctx.fillStyle = u >= 1 ? (Math.sin(t * 10) > 0 ? '#ffffff' : '#9fe9ff') : '#6f9fd9'; if (u > 0.05) { rr(bx, by, bw * u, bh, bh / 2); ctx.fill(); }
+  }
+  for (let i = 1; i < n; i++) { const x = T.laps[i].x0; if (x > X0 - 40 && x < X1 + 40) tthRaceDrawRing(x, t, true); }
+  // particles
+  for (const q of ph.parts) {
+    if (q.k !== k || q.x < X0 || q.x > X1) continue;
+    const a = clamp(q.life / q.max, 0, 1);
+    ctx.globalAlpha = a; ctx.fillStyle = q.col;
+    if (q.kind === 'spark') { const s = q.size * 1.5; ctx.beginPath(); ctx.moveTo(q.x, q.y - s); ctx.lineTo(q.x + s * 0.3, q.y - s * 0.3); ctx.lineTo(q.x + s, q.y); ctx.lineTo(q.x + s * 0.3, q.y + s * 0.3); ctx.lineTo(q.x, q.y + s); ctx.lineTo(q.x - s * 0.3, q.y + s * 0.3); ctx.lineTo(q.x - s, q.y); ctx.lineTo(q.x - s * 0.3, q.y - s * 0.3); ctx.closePath(); ctx.fill(); }
+    else { circle(q.x, q.y, q.size * (0.5 + 0.5 * a)); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  // going really fast: streaks across the lane
+  if ((r.dash > 0 || r.boost > 0) && r.fin == null && !reduceMotion) {
+    ctx.strokeStyle = r.gold > 0 ? 'rgba(255,220,120,0.5)' : 'rgba(255,255,255,0.45)'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath();
+    for (let i = 0; i < 7; i++) { const x = W - ((t * (900 + i * 60) + i * 173) % (W + 160)), y = 16 + ((i * 53) % (gy - 30)); ctx.moveTo(x, y); ctx.lineTo(x + 46 + i * 6, y); }
+    ctx.stroke(); ctx.lineCap = 'butt';
+  }
+  // through a portal ring: a flash
+  if (r.flash > 0) { ctx.fillStyle = `rgba(235,225,255,${(reduceMotion ? 0.25 : 0.6) * r.flash / 0.4})`; ctx.fillRect(0, 0, W, LH); }
+  // pop words over the runner (kept inside the lane)
+  const sx = r.x - cam.x;
+  for (const q of ph.pops) {
+    if (q.k !== k) continue;
+    const u = q.t / q.life, x = clamp(sx + 40 + u * 10, 110, W - 100), y = clamp(gy - Math.max(0, r.y) - 62 - u * 22, big ? 50 : 42, LH - 20);
+    ctx.globalAlpha = clamp((1 - u) / 0.3, 0, 1);
+    bigText(q.s, x, y, q.size * (big ? 1.35 : 1), q.col, 1 + 0.3 * Math.max(0, 1 - q.t / 0.12));
+  }
+  ctx.globalAlpha = 1;
+  // the finish
+  if (ph.end && ph.state === 'fin') {
+    const a = clamp(ph.endT / 0.25, 0, 1);
+    ctx.globalAlpha = a;
+    if (ph.end.w < 0) bigText(ph.end.reason, W / 2 + 40, big ? 78 : 68, big ? 44 : 34, C.gold, 1);
+    else if (ph.end.w === k) bigText(NAMES[k] + ' wins!', W / 2 + 40, big ? 80 : 70, big ? 52 : 40, C.gold, 0.9 + 0.15 * Math.max(0, 1 - ph.endT / 0.3));
+    else bigText(r.fin != null ? '2nd' : 'Keep going!', W / 2 + 40, big ? 76 : 66, big ? 34 : 26, '#e6dcff', 1);
+    ctx.globalAlpha = 1;
+  }
+  if (ph.state === 'live' && ph.go > 0) { ctx.globalAlpha = clamp(ph.go / 0.3, 0, 1); bigText('GO!', W / 2, LH / 2 - 14, big ? 64 : 52, C.gold, 1 + 0.4 * ph.go); ctx.globalAlpha = 1; }
+  // the lane's edge in its player's colour
+  ctx.fillStyle = PCOL[k]; ctx.fillRect(0, 0, 5, LH);
+  ctx.restore();
+}
+
+/* ---------- drawing: the HUD (lane chips, the race bar between the lanes, the race card) ---------- */
+function tthRaceCardBox() { const big = tthBig(), w = big ? 620 : 520, h = big ? 252 : 208; return { x0: W / 2 - w / 2, y0: big ? 146 : 158, w, h, big }; }
+function tthRaceHud(st) {
+  const ph = st.ph, K = TTHRACE, big = tthBig(), z = big ? 1.4 : 1, T = ph.T;
+  if (!ph.R || ph.state === 'crown') return;
+  const nb = tthNewsBox(st), under = (x0, x1, y0, y1) => nb && x1 > nb.x0 - 4 && x0 < nb.x1 + 4 && y1 > nb.y0 - 2 && y0 < nb.y1 + 2;
+  const lead = ph.R[0].x - ph.R[1].x;
+  for (const k of [0, 1]) {
+    const y0 = K.laneY[k] + 7, r = ph.R[k], ch = 24 * z;
+    // name, race wins, gold shoes (the chips fade under the news line, so the news stays readable on small screens)
+    ctx.font = tthLilita(Math.round(16 * z));
+    const cpu = tthRaceCpu(k), nw = ctx.measureText(NAMES[k]).width, cw = nw + 30 + 2 * 15 * z + (cpu ? 36 * z : 0);
+    ctx.save();
+    if (under(12, 12 + cw + (ph.help[k] ? 120 * z : 0), y0, y0 + ch)) ctx.globalAlpha = 0.3;
+    ctx.fillStyle = 'rgba(30,20,66,0.85)'; rr(12, y0, cw, ch, ch / 2); ctx.fill();
+    ctx.strokeStyle = PCOL[k]; ctx.lineWidth = 2; rr(12, y0, cw, ch, ch / 2); ctx.stroke();
+    text(NAMES[k], 24, y0 + ch / 2 + 1, Math.round(16 * z), PCOL[k], 'left');
+    let dx = 24 + nw + 10;
+    if (cpu) { text('CPU', dx, y0 + ch / 2 + 1, Math.round(11 * z), '#d8cff0', 'left', 'body'); dx += 32 * z; }
+    for (let i = 0; i < K.win; i++) {
+      const cx = dx + 6 * z + i * 15 * z, cy = y0 + ch / 2;
+      if (i < ph.wins[k]) { ctx.fillStyle = C.gold; circle(cx, cy, 5.5 * z); ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; circle(cx, cy, 5.5 * z); ctx.stroke(); }
+      else { ctx.strokeStyle = 'rgba(246,239,223,0.5)'; ctx.lineWidth = 2; circle(cx, cy, 4.5 * z); ctx.stroke(); }
+    }
+    if (ph.help[k]) {
+      const s = 'GOLD SHOES', gx = 12 + cw + 8;
+      ctx.font = tthFont(Math.round(11 * z)); const gw = ctx.measureText(s).width + 18;
+      ctx.fillStyle = 'rgba(255,243,196,0.95)'; rr(gx, y0 + 2, gw, ch - 4, (ch - 4) / 2); ctx.fill();
+      ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(gx, y0 + 2, gw, ch - 4, (ch - 4) / 2); ctx.stroke();
+      text(s, gx + gw / 2, y0 + ch / 2 + 0.5, Math.round(11 * z), '#7a5200', 'center', 'body');
+    }
+    ctx.restore();
+    // the lap and the place, top right of the lane
+    if (ph.state !== 'card') {
+      const lap = T.laps[r.lap], place = r.fin != null ? (ph.end && ph.end.w === k ? '1st' : '2nd') : Math.abs(lead) < 12 ? '' : (lead > 0) === (k === 0) ? '1st' : '2nd';
+      const s = 'Lap ' + (r.lap + 1) + '/' + T.laps.length + '  ' + lap.th.name;
+      ctx.font = tthFont(Math.round(12 * z));
+      const pw = place ? 34 * z : 0, w = ctx.measureText(s).width + 22 + pw, x1 = W - 12;
+      ctx.save();
+      if (under(x1 - w, x1, y0, y0 + ch)) ctx.globalAlpha = 0.3;
+      ctx.fillStyle = 'rgba(30,20,66,0.85)'; rr(x1 - w, y0, w, ch, ch / 2); ctx.fill();
+      text(s, x1 - 11 - pw, y0 + ch / 2 + 0.5, Math.round(12 * z), C.paper, 'right', 'body');
+      if (place) text(place, x1 - 10, y0 + ch / 2 + 1, Math.round(15 * z), place === '1st' ? C.gold : '#c9c2e6', 'right');
+      ctx.restore();
+    }
+  }
+  // the race bar between the lanes: the three laps in their colours, the rings between them, the flag, both faces
+  const bx0 = 64, bx1 = st.thief.x - 96, by = K.laneY[1] - 14, L = T.len;
+  ctx.fillStyle = 'rgba(20,14,48,0.9)'; rr(bx0 - 28, by - 11, bx1 - bx0 + 62, 22, 11); ctx.fill();
+  ctx.strokeStyle = 'rgba(217,164,65,0.7)'; ctx.lineWidth = 1.5; rr(bx0 - 28, by - 11, bx1 - bx0 + 62, 22, 11); ctx.stroke();
+  const at = x => bx0 + (bx1 - bx0) * clamp(x / L, 0, 1);
+  for (const lap of T.laps) {
+    const a = at(lap.x0), b = at(lap.x1), col = (TTH_ERAS[lap.key] || TTH_ERAS.finale).col;
+    ctx.fillStyle = col; rr(a + 2, by - 3, b - a - 4, 6, 3); ctx.fill();
+    ctx.strokeStyle = 'rgba(28,26,54,0.6)'; ctx.lineWidth = 1; rr(a + 2, by - 3, b - a - 4, 6, 3); ctx.stroke();
+  }
+  for (let i = 1; i < T.laps.length; i++) {
+    const x = at(T.laps[i].x0);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.ellipse(x, by, 3.5, 8, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = TTHC.brassLt; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.ellipse(x, by, 3.5, 8, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  for (let j = 0; j < 4; j++) for (let i = 0; i < 2; i++) { ctx.fillStyle = (i + j) % 2 ? C.ink : '#ffffff'; ctx.fillRect(bx1 + i * 4, by - 8 + j * 4, 4, 4); }
+  ctx.fillStyle = '#ffc53d'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; circle(bx1 + 19, by, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#fff7d6'; circle(bx1 + 19, by, 3); ctx.fill();
+  const fs = big ? 0.66 : 0.56, order = lead >= 0 ? [1, 0] : [0, 1];   // (the leader on top)
+  for (const k of order) {
+    const r = ph.R[k], x = at(r.x), y = by + PH * fs / 2 + (k ? 1.5 : -1.5);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; circle(x, by + (k ? 1.5 : -1.5), PH * fs * 0.62); ctx.fill();
+    tthDrawHero(k, x, y, { s: fs, face: 1, blink: false });
+  }
+  if (ph.state === 'card') tthRaceDrawCard(st);
+}
+function tthRaceDrawCard(st) {
+  const ph = st.ph, K = TTHRACE, B = tthRaceCardBox(), big = B.big, t = ph.cardT, z = big ? 1.35 : 1, T = ph.T;
+  const show = clamp(Math.min(t / 0.25, (K.cardT - 3 - t) / 0.3), 0, 1);   // the panel (about 2 s to read), then 3-2-1
+  if (show > 0) {
+    ctx.save(); ctx.globalAlpha = show;
+    ctx.fillStyle = 'rgba(30,20,66,0.94)'; rr(B.x0, B.y0, B.w, B.h, 22); ctx.fill();
+    ctx.strokeStyle = C.gold; ctx.lineWidth = 3; rr(B.x0, B.y0, B.w, B.h, 22); ctx.stroke();
+    // the Thief with his starter's wave
+    const c = ph.cardC || (ph.cardC = Object.assign(tthNewThief(), { jet: false, mood: 'happy', baseMood: 'happy', pose: 'wave', face: 1, item: null }));
+    c.t = G.clock; c.s = 0.62 * z; c.x = B.x0 + 52 * z; c.y = B.y0 + B.h - 16;
+    tthDrawThief(c);
+    const tx = B.x0 + 112 * z;
+    text(ph.replay ? 'A tie! Race ' + ph.raceN + ' again' : 'Race ' + ph.raceN + ' of 3', tx, B.y0 + 26 * z, Math.round(15 * z), '#c9b8ff', 'left', 'body');
+    text(T.name, tx, B.y0 + 58 * z, Math.round(34 * z), C.gold, 'left');
+    // the three laps: each a different time
+    const cw = (B.x0 + B.w - 16 - tx) / 3;
+    T.laps.forEach((lap, i) => {
+      const cx = tx + cw * (i + 0.5) - 8, cy = B.y0 + 106 * z, r = 17 * z;
+      ctx.fillStyle = lap.th.sky[1]; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(cx, cy, r); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = lap.th.ground[0]; ctx.beginPath(); ctx.arc(cx, cy, r - 1, 0.25, Math.PI - 0.25); ctx.closePath(); ctx.fill();
+      tthIcon(TTHRACE_ICON[lap.key] || lap.key, cx, cy - 1, r * 0.62);
+      text('Lap ' + (i + 1), cx, cy - r - 8 * z, Math.round(10 * z), '#c9b8ff', 'center', 'body');
+      text(lap.th.name, cx, cy + r + 11 * z, Math.round(12 * z), C.paper, 'center', 'body');
+      if (i < 2) { ctx.strokeStyle = TTHC.brassLt; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(cx + cw / 2, cy, 4 * z, 11 * z, 0, 0, Math.PI * 2); ctx.stroke(); }
+    });
+    // the score so far
+    const sy = B.y0 + B.h - 22 * z;
+    text(NAMES[0], tx, sy, Math.round(20 * z), PCOL[0], 'left');
+    ctx.font = tthLilita(Math.round(20 * z));
+    const pw = ctx.measureText(NAMES[0] + ' ').width, sc = ph.wins[0] + ' - ' + ph.wins[1];
+    text(sc, tx + pw, sy, Math.round(20 * z), C.paper, 'left');
+    const sw = ctx.measureText(sc + ' ').width;
+    text(NAMES[1], tx + pw + sw, sy, Math.round(20 * z), PCOL[1], 'left');
+    const hk = ph.help[0] ? 0 : ph.help[1] ? 1 : -1;
+    text(hk >= 0 ? 'Gold shoes: ' + NAMES[hk] : 'First to 2 wins', B.x0 + B.w - 20, sy, Math.round(13 * z), hk >= 0 ? C.gold : '#d8cff0', 'right', 'body');
+    ctx.restore();
+  }
+  // 3-2-1 between the lanes
+  const left = K.cardT - t;
+  if (left <= 3 && left > 0) {
+    const n = Math.ceil(left), u = n - left;
+    ctx.save(); ctx.globalAlpha = clamp((1 - u) / 0.25, 0, 1) * clamp(u / 0.06, 0, 1);
+    bigText(String(n), W / 2, K.laneY[1] - 14, big ? 96 : 76, '#ffffff', 1.3 - 0.3 * u);
+    ctx.restore();
+  }
+}
+
+/* ---------- drawing: the crowning (the end of the time tunnel, at the gold home portal) ---------- */
+function tthRaceDrawCrownBack(st) {
+  const t = G.clock, gy = 456, px = W / 2 - 40;
+  tthSky('#1c1446', '#6b4fb8');
+  tthStars(t, 40, 0.9, 3);
+  ctx.lineWidth = 3;
+  for (let k = 0; k < 6; k++) { const r = ((t * 50 + k * 70) % 420) + 20; ctx.strokeStyle = `rgba(${k % 2 ? '178,141,255' : '127,233,255'},${0.45 * (1 - r / 440)})`; ctx.beginPath(); ctx.ellipse(px, 250, r * 1.5, r * 0.8, 0, 0, Math.PI * 2); ctx.stroke(); }
+  for (let n = 0; n < 7; n++) { const h = hash(n, 23), x = 70 + (h % (W - 140)), y = 90 + ((h >>> 9) % 230) + Math.sin(t * 1.1 + n) * 6; if (Math.abs(x - px) > 150) tthClockFace(x, y, 10 + (h % 8), t + n, { speed: 2 + (n & 3), lw: 1.8, fill: n % 2 ? '#fff4d6' : '#f6d37a' }); }
+  tthDrawPortal(px, 262, 128, t, { col: '#ffc53d' });
+  ctx.fillStyle = C.gold; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(px - 44, 96, 88, 28, 10); ctx.fill(); ctx.stroke();
+  text('HOME', px, 111, 19, C.ink, 'center', 'body');
+  // the brass floor of the tunnel
+  ctx.fillStyle = '#3a2f7a'; ctx.fillRect(0, gy, W, H - gy);
+  ctx.fillStyle = '#d9a441'; ctx.fillRect(0, gy, W, 10); ctx.fillStyle = '#f6d37a'; ctx.fillRect(0, gy, W, 4);
+  ctx.fillStyle = `rgba(178,141,255,${0.35 + 0.15 * Math.sin(t * 4)})`; ctx.fillRect(0, gy + 10, W, 3);
+  ctx.fillStyle = '#9a6f22'; for (let x = 18; x < W; x += 36) { circle(x, gy + 7, 1.6); ctx.fill(); }
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+  // the winner's step, with a big 1
+  ctx.fillStyle = TTHC.brass; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(px - 50, gy + 1); ctx.lineTo(px - 44, 396); ctx.lineTo(px + 44, 396); ctx.lineTo(px + 50, gy + 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = TTHC.brassLt; ctx.fillRect(px - 42, 398, 84, 4);
+  bigText('1', px, 428, 34, '#ffffff', 1);
+}
+function tthRaceDrawCrown(st) {
+  const ph = st.ph, a = tthRaceCrownAt(st), t = ph.crT, gt = G.clock;
+  // the Golden Hourglass
+  ctx.save(); ctx.translate(a.x, a.y + Math.sin(gt * 4) * 1.5); ctx.rotate(Math.sin(gt * 2.4) * 0.08);
+  ctx.fillStyle = 'rgba(255,243,196,0.35)'; circle(0, 0, 24 + Math.sin(gt * 8) * 2); ctx.fill();
+  ctx.lineJoin = 'round'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+  ctx.fillStyle = 'rgba(214,244,255,0.9)'; ctx.beginPath(); ctx.moveTo(-9, -13); ctx.lineTo(9, -13); ctx.lineTo(1.5, 0); ctx.lineTo(9, 13); ctx.lineTo(-9, 13); ctx.lineTo(-1.5, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = C.gold; ctx.beginPath(); ctx.moveTo(-6, -11); ctx.lineTo(6, -11); ctx.lineTo(0, -2); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-8, 12); ctx.lineTo(8, 12); ctx.lineTo(0, 5); ctx.closePath(); ctx.fill(); ctx.fillRect(-0.8, -2, 1.6, 8);
+  ctx.fillStyle = C.gold; rr(-12, -17, 24, 5, 2.5); ctx.fill(); ctx.stroke(); rr(-12, 12, 24, 5, 2.5); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  if (t > 2.2) {
+    const k = clamp((t - 2.2) / 0.3, 0, 1), big = tthBig();
+    ctx.save(); ctx.globalAlpha = k;
+    bigText('Race champ: ' + NAMES[ph.champ] + '!', W / 2, big ? 196 : 186, big ? 50 : 42, C.gold, 0.8 + 0.2 * k);
+    ctx.restore();
+  }
+}
+
+/* ---------- sounds ---------- */
+Sfx.extra.tthRaceHop = function (p) { this.tone(320 * p, 0.09, 'triangle', 0.035, 600 * p); };
+Sfx.extra.tthRaceFloat = function (p) { this.tone(260 * p, 0.3, 'sine', 0.035, 520 * p); };
+Sfx.extra.tthRaceWhoosh = function (p) { this.tone(300 * p, 0.35, 'sawtooth', 0.016, 1100 * p); this.tone(700, 0.25, 'sine', 0.03, 1300, 0.04); };
+Sfx.extra.tthRaceLand = function (p) { this.tone(150 * p, 0.07, 'triangle', 0.04, 90); };
+Sfx.extra.tthRaceSlide = function (p) { this.tone(520 * p, 0.2, 'sawtooth', 0.012, 240 * p); };
+Sfx.extra.tthRaceDash = function (p) { this.tone(500 * p, 0.2, 'sawtooth', 0.02, 1500 * p); this.tone(1760, 0.14, 'triangle', 0.03, 2300, 0.04); };
+Sfx.extra.tthRaceBoost = function (p) { [784, 1047, 1319, 1568].forEach((f, i) => this.tone(f * p, 0.09, 'triangle', 0.04, null, i * 0.045)); };
+Sfx.extra.tthRaceRing = function (p) { this.tone(660 * p, 0.2, 'sine', 0.04, 990 * p); };
+Sfx.extra.tthRaceBonk = function (p) { this.tone(190 * p, 0.12, 'square', 0.045, 90 * p); this.tone(900, 0.06, 'triangle', 0.025, 600, 0.02); };
+Sfx.extra.tthRaceFall = function (p) { this.tone(520 * p, 0.3, 'triangle', 0.04, 140 * p); };
+Sfx.extra.tthRaceGust = function (p) { this.tone(240 * p, 0.4, 'sawtooth', 0.014, 520 * p); };
+Sfx.extra.tthRaceMeteor = function () { this.tone(1500, 0.75, 'sawtooth', 0.014, 240); };
+Sfx.extra.tthRaceBoom = function () { this.tone(110, 0.3, 'square', 0.05, 45); this.tone(70, 0.4, 'triangle', 0.05, 40, 0.03); };
+Sfx.extra.tthRaceIn = function (p) { this.tone(500 * p, 0.3, 'sine', 0.04, 1500 * p); };
+Sfx.extra.tthRaceBeep = function () { this.tone(660, 0.12, 'square', 0.04); };
+Sfx.extra.tthRaceGo = function () { this.tone(990, 0.28, 'square', 0.045); this.tone(1320, 0.3, 'triangle', 0.04, null, 0.02); this.tone(196, 0.6, 'sine', 0.05, 180); };
+Sfx.extra.tthRaceCard = function () { [392, 523, 659].forEach((f, i) => this.tone(f, 0.12, 'triangle', 0.045, null, i * 0.08)); };
+Sfx.extra.tthRaceFinish = function () { [784, 988, 1175].forEach((f, i) => this.tone(f, 0.1, 'square', 0.035, null, i * 0.06)); };
+Sfx.extra.tthRaceWin = function () { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.14, 'triangle', 0.055, null, i * 0.08)); };
+Sfx.extra.tthRaceCrown = function () { [392, 523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.22, 'triangle', 0.045, null, i * 0.1)); this.tone(1568, 0.5, 'sine', 0.045, null, 0.62); };
+
+/* ---------- the room ---------- */
+tthRoom('race', {
+  first: 0,
+  act: { label: 'dash', labels: ['dash', 'dash'] },
+  legend: { jump: 'hop', down: 'slide', padJump: 'hop', padDown: 'down slides' },
+  tip: 'Race home through time! Hold ▶ to run, hop and slide past things, dash for a burst. First to 2 wins!',
+  map: TTH_EMPTY_MAP,
+});
