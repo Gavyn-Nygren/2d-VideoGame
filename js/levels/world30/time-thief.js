@@ -186,7 +186,7 @@ const TTH = {
   bonk: { vx: 230, vy: 300, stun: 0.7, slide: 0.3, safe: 1.4, popV: 320 },
   // the trophy: play time (s, idle waits not counted) and bumps (players' and the team's; race hits are no bumps).
   // PLACEHOLDER until the whole level is tuned with bots.
-  medal: { gold: { t: 1800, bumps: 40 }, silver: { t: 2700, bumps: 100 } },
+  medal: { gold: { t: 1800, bumps: 30 }, silver: { t: 2700, bumps: 80 } },
   thief: { s: 0.9 },
   endT: 8.6,                   // the ending, then levelClear()
   endGround: 456,
@@ -199,7 +199,7 @@ const TTH_ERAS = {
   troy:     { title: 'The Fall of Troy', when: '1200 BC', loot: 'horse', lootName: 'the wooden horse', col: '#c98a4a' },
   olympics: { title: 'The First Olympics', when: '776 BC', loot: 'wreath', lootName: 'the champion\'s wreath', col: '#ffd23f' },
   vikings:  { title: 'Viking Voyage', when: '1000 AD', loot: 'sunstone', lootName: 'the Vikings\' sunstone', col: '#7fd6ff' },
-  davinci:  { title: 'Leonardo\'s Flying Machine', when: 'The 1490s', loot: 'plans', lootName: 'Leonardo\'s plans', col: '#e8cf9a' },
+  davinci:  { title: 'Leonardo\'s Wings', when: 'The 1490s', loot: 'plans', lootName: 'Leonardo\'s plans', col: '#e8cf9a' },
   wright:   { title: 'The First Flight', when: '1903', loot: 'prop', lootName: 'the Flyer\'s propeller', col: '#d9a066' },
   moon:     { title: 'Moon Landing', when: '1969', loot: 'flag', lootName: 'the Moon flag', col: '#d9dbe8' },
   finale:   { title: 'The End of Time', when: 'The End of Time', loot: null, lootName: '', col: '#b28dff' },
@@ -1029,11 +1029,19 @@ function tthSayBox(st) {
 function tthNewsBox(st) {
   const n = st.news;
   if (!n || G.introT > 0) return null;
-  const big = tthBig(), B = tthStripBox(), h = big ? 36 : 28, y = B.y0 + B.h + 6;
+  const big = tthBig(), B = tthStripBox(), h = big ? 36 : 28;
+  let y = B.y0 + B.h + 6;
   let fs = big ? 19 : 14;
   ctx.font = tthFont(fs);
   while (fs > 11 && ctx.measureText(n.text).width + 34 > W - 40) ctx.font = tthFont(--fs);
   const w = Math.min(ctx.measureText(n.text).width + 34, W - 40);
+  // a long line would run under the engine's era pill (top left, y 46-72): drop it below that pill
+  const d = G.level && G.level.def;
+  if (d && d.rooms) {
+    ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
+    const pr = 14 + ctx.measureText(`${d.roomWord || 'Room'} ${d.roomIndex + 1} of ${d.roomCount}: ${d.title}`).width + 44;
+    if (W / 2 - w / 2 < pr + 6 && y < 78) y = 78;
+  }
   return { x0: W / 2 - w / 2, x1: W / 2 + w / 2, y0: y, y1: y + h, fs, h };
 }
 const tthUnder = (x0, y0, x1, y1) => G.players.some(p => p.alive && p.x + p.w > x0 - 4 && p.x < x1 + 4 && p.y + p.h > y0 - 4 && p.y - 8 < y1 + 4);
