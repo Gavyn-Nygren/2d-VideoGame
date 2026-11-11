@@ -50,6 +50,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 28. **Pyramid Sands** (an adventure in the desert: a rolling boulder, a dark tomb, a stone puzzle and a camel race): Rolling Boulder Run, Tomb Torch Explorers, Sliding Stone Puzzle, Camel Race
 29. **Ninja Dojo** (moonlit rooftops, a guarded fortress, a runaway rickshaw and a dojo duel): Rooftop Moonlight Run, Shadow Sneak, Runaway Rickshaw, Throwing Star Duel
 30. **Time Chase** (boss world: chase the Time Thief through history, from the dinosaurs to the Moon, and win back everything he stole; one long level with a checkpoint at every era): The Time Thief
+31. **Shrunk in the Backyard** (bug-sized: outrun a lawnmower, sneak a crumb out of an ant hill, hide from a hungry robin and race snails): Lawnmower Escape, Ant Hill Heist, Bird Attack Dash, Snail Race
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
