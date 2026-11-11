@@ -28,7 +28,7 @@
      (it shields its eyes and blocks the road), but a hero outside the light gets a snowball (thrown back 150 px).
      Raise the flare: in the big light it runs off.
    COLD: a shared meter that drains slowly, faster standing still or in the dark. Both at a cairn (a little fire) warm
-     up, and it becomes the checkpoint. Empty: both are brought back to the last cairn (a slip).
+     up, and it becomes the checkpoint (a burnt-out flare is relit there, half full). Empty: both are brought back to the last cairn (a slip).
    STRETCHES (the jobs swap): The Trailhead, Frozen Lake, The Pass, Summit Station (ends at the weather hut: either
      presses the action at its switch and the beacon clears the whole sky).
    SNOW PROBES: 16 flagged poles (some up on rocks: jump). GOLD HELP (3 slips / bonks / snowballs in a stretch, only
@@ -504,6 +504,11 @@
         if (!c.lit) { c.lit = true; Sfx.play('whiteoutCairn'); K.pop(st, c.x, c.y - 70, 'Cairn! Warm up here', '#ffd0a0', 18); }
         if (st.check < c.x) st.check = c.x;
         warm = true;
+        // a flare that has burnt out is relit at the cairn's fire (half a flare), so a stretch is never dark for good
+        if (st.burn <= 0 && !st.lantern) {
+          st.burn = S.burn * 0.5; st.stats.flares++; Sfx.play('whiteoutFlare');
+          K.pop(st, c.x, c.y - 96, 'Flare relit at the fire!', '#ffb070', 18);
+        }
       }
     }
     st.warm = warm;

@@ -17,8 +17,10 @@
      Tap the action next to a wedged boulder to shove it off into the flood.
    Both jump, climb a dropped rope (jump next to it to grab on; ▲ or jump climbs, ▼ slides, jump with ◀ ▶ lets go) and can ride a
    floating log (it rolls over 2.5 s after you step on it).
-   WATER: rises all the time (faster each stretch). Touching it sweeps a hero away: a rope from above pulls them up
-   onto the partner's ledge after 1.5 s, and the water jumps up a little. If both are in the water, the stretch starts
+   WATER: rises all the time (faster each stretch), and keeps up with fast climbers: it is never more than 250 px
+   below the lower hero, so it is always in sight at the bottom of the screen. Touching it sweeps a hero away: a rope
+   from above pulls them up onto the partner's ledge after 1.5 s, the water jumps up a little and then holds still for
+   4 s. If both are in the water, the stretch starts
    again. CRUMBLING SHELVES crack when touched and fall 1.8 s later. WATERFALL SPOUTS burst from the wall on a rhythm
    (a drip, then a 1 s gush that shoves you along the ledge and knocks you off a rope). FLASH SURGE (once a stretch
    from stretch 2): a siren, "SURGE!", the water jumps 90 px over 2 s; a white line on the wall shows where to.
@@ -26,8 +28,8 @@
    Narrows (spouts, a surge), Mine Scaffold (planks too wobbly to boost on: a hand-cranked lift, the boost hero holds
    the action at the crank while the rope hero rides; ending on the rim next to the van as the canyon brims over).
    RAIN GAUGES: 20, on the ledges (some just above the water at the start) and on little shelves a plain jump reaches.
-   GOLD HELP (3 sweeps in a stretch, only while both are playing): a gold life ring, the water rises 30% slower for
-   the rest of the stretch.
+   GOLD HELP (3 sweeps in a stretch, restarts included, only while both are playing): a gold life ring, the water
+   rises 30% slower for the rest of the stretch.
    MEDAL: Gold <= 190 s with 16 or more gauges and 2 or fewer sweeps; Silver <= 330 s.
    MODES.floodclimb.plan(st) says what each hero should do now (the prompts, the HUD chips and the computer brain read
    it). Sounds are Sfx.extra.floodclimb*. */
@@ -37,7 +39,7 @@
     floor: 480, g: 1700, jumpV: 600, boostK: 1.33, runV: 220, acc: 2400, maxFall: 900, climbV: 160, ropeLen: 190, ropeDrop: 0.3,
     graceT: 0.4, boostR: 24, grabR: 18, anchorR: 22, bw: 22, bh: 26, sweepT: 1.5, sweepJump: 16, crumbleT: 1.8, logRoll: 2.5,
     surge: 90, surgeT: 2, spoutIdle: 3.2, spoutWarn: 1, spoutGush: 1, spoutPush: 260, crankV: 85, shelfH: 84, goldT: 190, silverT: 330,
-    idleWait: 12, ledgeH: 16, wallL: 130, wallR: 830,
+    idleWait: 12, ledgeH: 16, wallL: 130, wallR: 830, chase: 250, chaseV: 120, calmT: 4,
   };
 
   /* ---------- a stretch (one room) ---------- */
@@ -115,7 +117,7 @@
     const L0 = st.ledges[0];
     st.h = [0, 1].map(id => ({ id, x: K.lerp(L0.x0, L0.x1, 0.42 + id * 0.12), y: L0.y, vx: 0, vy: 0, face: 1, grounded: true, on: 0, st: 'free', t: 0, sq: 0, sweep: 0, stun: 0, pushT: 0 }));
     st.water = S.floor + (st.def.water0 || 120); st.wv = st.def.wv; st.surgeLeft = 0; st.surged = false; st.stT = 0;
-    st.ropeOn = null; st.ropeU = 0; st.grace = 0;
+    st.ropeOn = null; st.ropeU = 0; st.grace = 0; st.calmT = 0;
     st.logs = []; st.logT = 2;
     for (const l of st.lifts) { l.u = 0; l.cy = l.y; }
     for (const r of st.rocks) { r.gone = false; r.x = st.X[r.j]; r.vx = 0; r.fall = 0; r.y = st.ledges[r.j].y; }
@@ -149,6 +151,12 @@
   }
   function waterStep(st, dt) {
     let v = st.wv * (st.ring ? 0.7 : 1);
+    // the flood keeps up with fast climbers: it is never more than S.chase px below the lower hero, so it is always
+    // in sight at the bottom of the screen (from there it only closes in at its steady speed)
+    const up = st.h.filter(h => h.st !== 'swept');
+    if (up.length) { const gap = st.water - Math.max(...up.map(h => h.y)); if (gap > S.chase) v = Math.max(v, Math.min(S.chaseV, (gap - S.chase) * 3)); }
+    // just after a rescue the flood holds still for a moment (no sweep straight after a sweep)
+    if (st.calmT > 0) { st.calmT -= dt; v = 0; }
     if (st.surgeAt && !st.surged && st.stT >= st.surgeAt) {
       st.surged = true; st.surgeLeft = S.surge; st.surgeLine = st.water - S.surge;
       Sfx.play('stormSiren'); K.msg(st, 'SURGE! The water is jumping up to the white line!', '#ffd0c8', 2.6);
@@ -398,39 +406,42 @@
     K.pop(st, h.x, st.water - 40, 'Swept away!', '#ffd0c8', 22);
     for (let k = 0; k < 18; k++) K.part(st, h.x, st.water, (Math.random() - 0.5) * 300, -150 - Math.random() * 220, 0.9, '#efe6d0', 4, 700, 'dot');
     const o = st.h[1 - h.id];
+    // (sweeps are counted over the whole stretch, a restart included, so a pair that keeps being washed back gets the ring)
+    const gold = st.rc.bad >= 3 && !st.goldUsed && K.both(st);
+    if (gold) { st.goldUsed = true; st.ring = true; }
     if (o.st === 'swept') {
       // both in the water: the stretch starts again
       st.stats.restarts++;
-      K.msg(st, 'Both swept away! The rescue team hauls you back to the start of the stretch.', '#ffd0c8', 3.4);
+      if (gold) K.goldHelp(st, 'Both swept away! Gold life ring: the water rises 30% slower for the rest of this stretch');
+      else K.msg(st, 'Both swept away! The rescue team hauls you back to the start of the stretch.', '#ffd0c8', 3.4);
       Sfx.play('stormSiren');
       st.restartT = 1.6;
       setTimeout0(st);
       return;
     }
-    K.msg(st, 'Rope from above! ' + NAMES[h.id] + ' is pulled up to ' + NAMES[o.id] + '.', '#ffe7a8', 2.4);
-    if (st.rc.bad >= 3 && !st.goldUsed && K.both(st)) {
-      st.goldUsed = true; st.ring = true;
-      K.goldHelp(st, 'Gold life ring! The water rises 30% slower for the rest of this stretch');
-    }
+    if (gold) K.goldHelp(st, 'Gold life ring! The water rises 30% slower for the rest of this stretch');
+    else K.msg(st, 'Rope from above! ' + NAMES[h.id] + ' is pulled up to ' + NAMES[o.id] + '.', '#ffe7a8', 2.4);
   }
   // (a stretch restart waits a moment so the splash shows)
   function setTimeout0(st) { st.h.forEach(h => { h.sweep = 1.6; h.both = true; }); }
   function rescue(st, h) {
     if (h.both) {
       // both swept: back to the floor
-      const stats = st.stats; restart(st); st.stats = stats; st.rc.bad = 0;
+      const stats = st.stats; restart(st); st.stats = stats;
       K.pop(st, (st.wl + st.wr) / 2, S.floor - 120, 'Try again!', '#ffffff', 24);
       return;
     }
     const o = st.h[1 - h.id];
     // up onto the partner's ledge (or the highest ledge clear of the water)
-    let L1 = o.grounded && o.on >= 0 && st.ledges[o.on].y < st.water - 30 ? st.ledges[o.on] : null;
-    if (!L1) L1 = st.ledges.slice().reverse().find(L => L.y < st.water - 60 && L.y > st.water - 400) || st.ledges[st.ledges.length - 1];
+    // (the partner's ledge even if they are in mid-jump: a ledge further up would leave the two more than one climb apart)
+    let L1 = o.on >= 0 && st.ledges[o.on].y < st.water - 30 ? st.ledges[o.on] : null;
+    if (!L1) L1 = st.ledges.find(L => L.y < st.water - 60) || st.ledges[st.ledges.length - 1];
     h.st = 'free'; h.y = L1.y; h.grounded = true; h.on = L1.j; h.vy = 0; h.vx = 0;
     h.x = clamp(o.on === L1.j ? o.x + (o.x > (L1.x0 + L1.x1) / 2 ? -40 : 40) : (L1.x0 + L1.x1) / 2, Math.max(L1.x0, st.wl) + 14, Math.min(L1.x1, st.wr) - 14);
     // not inside a boulder
     for (const r of st.rocks) if (!r.gone && r.j === L1.j && Math.abs(h.x - r.x) < r.w / 2 + 12) h.x = r.x + (h.x < r.x ? -1 : 1) * (r.w / 2 + 14);
     h.sq = 1; Sfx.play('floodclimbTop');
+    st.calmT = S.calmT;
   }
   function finish(st) {
     st.state = 'end'; st.endT = 0;
@@ -457,7 +468,7 @@
     const ys = st.h.filter(h => h.st !== 'swept').map(h => h.y);
     if (!ys.length) return;
     const lo = Math.max(...ys), hi = Math.min(...ys);
-    let want = Math.max(st.water - H + 60, lo - 360);
+    let want = Math.max(st.water - H + 30, lo - 360);
     want = Math.min(want, hi - 120, lo - 160);
     want = Math.min(want, S.floor + 60 - H);
     st.camY = K.lerp(st.camY, want, Math.min(1, dt * 4));
@@ -491,6 +502,8 @@
     if (r < b) {
       const L1 = st.ledges[b];
       out.stage = 'down'; out.j = r;
+      // (not when the flood is about to take that ledge: the rope hero is pulled up here by the rescue rope instead)
+      if (st.ledges[r].y > st.water - 80) return out;
       const endX = L1.end === 1 ? L1.x1 + 30 : L1.end === -1 ? L1.x0 - 30 : B.x;
       out.boost = { x: endX, why: 'down' };
       out.rope = { x: R.x, why: 'wait' };
@@ -552,6 +565,10 @@
     const t = st.clock, cy = st.camY, fl = K.flashA(st), sh = st.shake * 4 * Math.sin(t * 50);
     // the sky strip high above, then the far canyon walls
     K.sky(0, t, { mood: 'flood', flash: fl, bolt: st.bolt });
+    // the last stretch ends in the open: above the rim there is only sky, the canyon is all below it
+    const rimY = isLast() ? st.topY - cy : -1e9;
+    ctx.save();
+    if (rimY > -20) { ctx.beginPath(); ctx.rect(0, rimY, W, H - rimY + 20); ctx.clip(); }
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, 'rgba(90,60,40,0)'); g.addColorStop(0.3, 'rgba(90,60,40,0.85)'); g.addColorStop(1, 'rgba(60,40,28,1)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -566,13 +583,15 @@
       for (let y = -10; y <= H + 20; y += 30) { const yy = y + cy * par; ctx.lineTo(W - inset - Math.sin(yy * 0.011 + layer * 2) * 30 - K.hash(Math.floor(yy / 30) + 50) * 20, y); }
       ctx.lineTo(W, H + 20); ctx.closePath(); ctx.fill();
     }
+    ctx.restore();
     ctx.save(); ctx.translate(0, -cy + sh);
     drawWalls(st, t);
     drawLedges(st, t);
     ctx.restore();
   }
+  const isLast = () => !(G.level.def.rooms && G.level.def.roomIndex < G.level.def.roomCount - 1);
   function drawWalls(st, t) {
-    const y0 = st.camY - 40, y1 = st.camY + H + 40;
+    const last = isLast(), y0 = last ? Math.max(st.camY - 40, st.topY) : st.camY - 40, y1 = st.camY + H + 40;
     for (const side of [-1, 1]) {
       const x = side < 0 ? st.wl : st.wr;
       ctx.fillStyle = '#9a6a44';
@@ -594,6 +613,12 @@
         if (K.hash(y * 7 + side) < 0.15) { ctx.fillStyle = '#4e7a3a'; circle(x - side * 6, y + 20, 8); ctx.fill(); circle(x - side * 14, y + 16, 6); ctx.fill(); ctx.fillStyle = '#9a6a44'; }
       }
       ctx.fillStyle = 'rgba(255,220,180,0.12)'; ctx.fillRect(side < 0 ? x - 10 : x, y0, 10, y1 - y0);
+      // the top of the canyon: grass along the rim on both sides
+      if (last && y0 === st.topY) {
+        const gx0 = side < 0 ? -10 : x - 14, gw = side < 0 ? x + 24 : W + 10 - gx0;
+        ctx.fillStyle = '#5a8a3a'; ctx.fillRect(gx0, y0 - 4, gw, 8);
+        ctx.fillStyle = '#7aaa4a'; for (let gx = gx0 + 3; gx < gx0 + gw - 4; gx += 9) { ctx.beginPath(); ctx.moveTo(gx, y0 - 3); ctx.lineTo(gx + 2, y0 - 9 - K.hash(gx) * 4); ctx.lineTo(gx + 4, y0 - 3); ctx.fill(); }
+      }
     }
     // the surge line on the wall
     if (st.surgeLine !== null && st.surgeLine !== undefined) {

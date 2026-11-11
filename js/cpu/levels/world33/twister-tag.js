@@ -12,7 +12,7 @@
      a twister that is nearly 3 bigger with a small thing; Hard leads its shots. A dash spits out its biggest thing, so
      it dashes away only at the last moment. Easy never dashes.
      It steers around the pond and the power lines and keeps off the wall cloud; Easy wanders into the pond now and
-     then. Versus brains use the Opponent setting (info.skill). */
+     then. Normal and Hard leave a thing alone while a power line is in the way to it (Easy goes for it and is zapped). Versus brains use the Opponent setting (info.skill). */
   const M = () => MODES.twistertag;
   cpuBrain('twistertag', {
     reset(S) { S.t = 0; S.dx = 0; S.dy = 0; S.fire = false; S.wet = false; S.mode = ''; S.wander = 0; S.wanderT = 3 + Math.random() * 3; },
@@ -62,6 +62,8 @@
         if (easy) s = 1 / (c.d + 30);
         else {
           if (!c.lift) continue;
+          // never steer through a power line for it (Easy does, and gets zapped)
+          if (wired(pl, A, c.o)) continue;
           s = c.o.v / (c.d + 90);
           if (hard && c.o.kind === 'shed') s *= 1.7;
           // not the ones the other twister is about to take
@@ -100,7 +102,15 @@
     const pd = Math.hypot((A.x - P.x) / (P.rx + 50), (A.y - P.y) / (P.ry + 40));
     if (!S.wet && pd < 1.25) { const w = (1.25 - pd) * 4; away(P.x, P.y, w); }
     if (A.spout && !S.wet) away(P.x, P.y, 2);
-    for (const [a, b] of pl.lines) { const d = pl.segDist(A, a, b); if (d < 80) { const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2; away(mx, my, (80 - d) / 25); } }
+    // (pushed straight off the nearest point of the line, harder the closer it is: a twister drifts about 40 px before it turns;
+    // it looks where it will be in a third of a second too, so it turns in time)
+    const zr = pl.coreR(A) * 0.7 + 6, ahead = { x: A.x + A.vx * 0.35, y: A.y + A.vy * 0.35 };
+    for (const [a, b] of pl.lines) {
+      const d = Math.min(pl.segDist(A, a, b), easy ? 1e9 : pl.segDist(ahead, a, b));
+      if (d >= zr + 75) continue;
+      const lx = b.x - a.x, ly = b.y - a.y, u = Math.max(0, Math.min(1, ((A.x - a.x) * lx + (A.y - a.y) * ly) / (lx * lx + ly * ly)));
+      away(a.x + lx * u, a.y + ly * u, (zr + 75 - d) / (easy ? 30 : 14));
+    }
     const m = 70;
     if (A.x < Bd.x0 + m) gx += (Bd.x0 + m - A.x) / 30; if (A.x > Bd.x1 - m) gx -= (A.x - Bd.x1 + m) / 30;
     if (A.y < Bd.y0 + m * 0.6) gy += (Bd.y0 + m * 0.6 - A.y) / 20; if (A.y > Bd.y1 - m * 0.6) gy -= (A.y - Bd.y1 + m * 0.6) / 20;
@@ -109,6 +119,17 @@
     S.dx = gx / n; S.dy = gy / n;
     // an escape dash goes the way it is running
     if (S.fire === 'escape') S.fire = true;
+    // never dash into a power line (a dash flies about 180 px)
+    if (S.fire) {
+      const qx = S.dx > 0.38 ? 1 : S.dx < -0.38 ? -1 : 0, qy = S.dy > 0.38 ? 1 : S.dy < -0.38 ? -1 : 0, qn = Math.hypot(qx, qy) || 1;
+      if (wired(pl, A, { x: A.x + qx / qn * 200, y: A.y + qy / qn * 200 })) S.fire = false;
+    }
   }
   const K2 = (a, b, u) => a + (b - a) * u;
+  // is a power line on the straight way from the twister to this thing (or right next to the thing)?
+  function wired(pl, A, o) {
+    const need = pl.coreR(A) * 0.7 + 6 + 30, dx = o.x - A.x, dy = o.y - A.y, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 10));
+    for (const [a, b] of pl.lines) for (let k = 1; k <= n; k++) if (pl.segDist({ x: A.x + dx * k / n, y: A.y + dy * k / n }, a, b) < need) return true;
+    return false;
+  }
 })();
