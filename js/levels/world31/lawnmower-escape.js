@@ -416,7 +416,7 @@
     const par = 0.62, step = 70, sx = cx * par;
     for (let i = Math.floor(sx / step) - 2; i <= Math.ceil((sx + W) / step) + 2; i++) {
       const x = i * step - sx + (K.hash(i + 40) - 0.5) * 40, h = 220 + K.hash(i + 41) * 200;
-      K.blade(x, GY + 4, h, (K.hash(i + 42) - 0.5) * 70, { w: 22, col: i % 2 ? 'rgba(104,176,86,0.8)' : 'rgba(116,188,96,0.8)', t, seed: i, dark: false });
+      K.blade(x, GY + 4, h, (K.hash(i + 42) - 0.5) * 70, { w: 22, col: i % 2 ? '#6fb35a' : '#7cbd64', t, seed: i, dark: 'rgba(40,100,36,0.35)' });
       if (K.hash(i + 43) < 0.12) K.dandelion(x + 20, GY + 4, 200 + K.hash(i) * 80, t, { puff: K.hash(i + 44) < 0.4 });
     }
     ctx.save(); ctx.translate(-Math.round(cx * 10) / 10, 0);
@@ -503,30 +503,52 @@
     if (x < -40) return;
     const sh = (Math.random() - 0.5) * 4 * m.shake, t = st.clock, wet = m.gold > 0;
     ctx.save(); ctx.translate(sh, sh * 0.5);
-    // deck and body
-    const body = wet ? '#c86a6a' : '#d8342a', dark = wet ? '#8a4444' : '#8a1e18';
-    ctx.fillStyle = dark; ctx.fillRect(x - 900, GY - 120, 900, 110);
-    ctx.fillStyle = body; rr(x - 900, GY - 170, 900, 70, 18); ctx.fill();
-    ctx.fillStyle = '#2a2a2a'; ctx.fillRect(x - 900, GY - 18, 900, 18);
-    // the front bumper and the spinning blade under the deck
-    ctx.fillStyle = '#e8e8e8'; rr(x - 16, GY - 168, 22, 160, 8); ctx.fill();
-    ctx.fillStyle = 'rgba(200,200,200,0.5)';
-    for (let k = 0; k < 3; k++) { const a = t * 30 + k * 2.1; ctx.fillRect(x - 200 + Math.cos(a) * 160, GY - 14, 60, 4); }
-    // big wheel
-    const wx = x - 150, wy = GY - 80, wr = 110;
+    const body = wet ? '#c86a6a' : '#d8342a', hi = wet ? '#e09090' : '#f0584a', dark = wet ? '#8a4444' : '#8a1e18';
+    // the handle bars, rising out of the sky behind
+    ctx.strokeStyle = '#5a5e66'; ctx.lineWidth = 26; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x - 470, GY - 210); ctx.lineTo(x - 760, -200); ctx.stroke();
+    ctx.strokeStyle = '#7a808a'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(x - 466, GY - 218); ctx.lineTo(x - 754, -196); ctx.stroke();
+    ctx.lineCap = 'butt';
+    // the engine up top: a dome with cooling fins and a pull-cord handle
+    ctx.fillStyle = dark; rr(x - 560, GY - 330, 400, 190, 40); ctx.fill();
+    ctx.fillStyle = body; rr(x - 552, GY - 340, 384, 180, 40); ctx.fill();
+    ctx.fillStyle = hi; rr(x - 530, GY - 330, 300, 22, 11); ctx.fill();
+    ctx.fillStyle = dark; for (let k = 0; k < 7; k++) rr(x - 520 + k * 46, GY - 296, 20, 110, 8), ctx.fill();
+    ctx.fillStyle = '#ffd84a'; text('MOW-MAX', x - 360, GY - 200, 30, '#ffd84a', 'center');
+    // the cutting deck: a long red shell, low to the ground, with a grille nose
+    ctx.fillStyle = dark; rr(x - 900, GY - 168, 900, 150, 26); ctx.fill();
+    ctx.fillStyle = body; rr(x - 900, GY - 176, 896, 128, 30); ctx.fill();
+    ctx.fillStyle = hi; rr(x - 880, GY - 168, 860, 16, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; for (let k = 0; k < 8; k++) { circle(x - 860 + k * 110, GY - 120, 6); ctx.fill(); }
+    // headlights like two angry eyes
+    const glow = 0.6 + 0.4 * Math.sin(t * 6);
+    for (const dy of [-140, -100]) {
+      ctx.fillStyle = 'rgba(255,240,150,' + 0.22 * glow + ')'; circle(x - 26, GY + dy, 26); ctx.fill();
+      ctx.fillStyle = '#fff3b0'; circle(x - 26, GY + dy, 13); ctx.fill();
+      ctx.fillStyle = '#3a1010'; ctx.beginPath(); ctx.moveTo(x - 46, GY + dy - 16); ctx.lineTo(x - 8, GY + dy - 6); ctx.lineTo(x - 8, GY + dy - 14); ctx.lineTo(x - 44, GY + dy - 22); ctx.closePath(); ctx.fill();
+    }
+    // the front bumper: a steel bar with teeth
+    ctx.fillStyle = '#d8dce2'; rr(x - 12, GY - 70, 18, 52, 6); ctx.fill();
+    ctx.fillStyle = '#aab0b8'; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x + 6, GY - 64 + k * 12); ctx.lineTo(x + 18, GY - 58 + k * 12); ctx.lineTo(x + 6, GY - 52 + k * 12); ctx.fill(); }
+    // the dark gap under the deck where the blade spins
+    ctx.fillStyle = '#1a1214'; ctx.fillRect(x - 900, GY - 24, 896, 22);
+    for (let k = 0; k < 4; k++) {
+      const a = t * 34 + k * TAU / 4, bx = x - 260 + Math.cos(a) * 240, len = 60 + Math.abs(Math.sin(a)) * 50;
+      ctx.fillStyle = 'rgba(230,236,244,' + (0.45 + 0.4 * Math.abs(Math.cos(a))) + ')'; ctx.fillRect(bx - len / 2, GY - 15, len, 5);
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; if (Math.sin(t * 40) > 0.3) ctx.fillRect(x - 40, GY - 14, 30, 3);
+    // the front wheel, rolling
+    const wx = x - 120, wy = GY - 52, wr = 58, rot = -m.x / wr;
     ctx.fillStyle = '#1e1e22'; circle(wx, wy, wr); ctx.fill();
-    ctx.fillStyle = '#3a3a40'; circle(wx, wy, wr * 0.55); ctx.fill();
-    ctx.fillStyle = '#e8e8e8'; circle(wx, wy, wr * 0.22); ctx.fill();
-    ctx.strokeStyle = '#2e2e34'; ctx.lineWidth = 10;
-    const rot = -m.x / wr;
-    for (let k = 0; k < 10; k++) { const a = rot + k * TAU / 10; ctx.beginPath(); ctx.moveTo(wx + Math.cos(a) * wr * 0.8, wy + Math.sin(a) * wr * 0.8); ctx.lineTo(wx + Math.cos(a) * wr, wy + Math.sin(a) * wr); ctx.stroke(); }
-    // the engine housing up into the sky, and the handle
-    ctx.fillStyle = body; rr(x - 520, -40, 380, GY - 150, 30); ctx.fill();
-    ctx.fillStyle = dark; for (let k = 0; k < 6; k++) ctx.fillRect(x - 480 + k * 56, 60, 26, 160);
-    ctx.fillStyle = '#ffd84a'; text('MOW-MAX', x - 330, 300, 34, '#ffd84a', 'center');
-    if (wet) { ctx.fillStyle = 'rgba(150,210,255,0.6)'; for (let k = 0; k < 12; k++) { const yy = ((t * 240 + k * 47) % 420); rr(x - 500 + k * 36, yy, 5, 14, 2); ctx.fill(); } }
+    ctx.strokeStyle = '#33333a'; ctx.lineWidth = 9;
+    for (let k = 0; k < 12; k++) { const a = rot + k * TAU / 12; ctx.beginPath(); ctx.moveTo(wx + Math.cos(a) * wr * 0.82, wy + Math.sin(a) * wr * 0.82); ctx.lineTo(wx + Math.cos(a) * wr, wy + Math.sin(a) * wr); ctx.stroke(); }
+    ctx.fillStyle = '#c8ccd2'; circle(wx, wy, wr * 0.5); ctx.fill();
+    ctx.fillStyle = '#9aa0a8'; circle(wx, wy, wr * 0.3); ctx.fill();
+    ctx.strokeStyle = '#7a8088'; ctx.lineWidth = 4;
+    for (let k = 0; k < 5; k++) { const a = rot + k * TAU / 5; ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx + Math.cos(a) * wr * 0.48, wy + Math.sin(a) * wr * 0.48); ctx.stroke(); }
+    if (wet) { ctx.fillStyle = 'rgba(150,210,255,0.6)'; for (let k = 0; k < 14; k++) { const yy = GY - 340 + ((t * 240 + k * 47) % 330); rr(x - 520 + k * 36, yy, 5, 14, 2); ctx.fill(); } }
     // exhaust puffs
-    if (Math.sin(t * 9) > 0.6) { ctx.fillStyle = 'rgba(80,80,90,0.25)'; circle(x - 160, 30 - (t * 60 % 40), 26); ctx.fill(); }
+    if (Math.sin(t * 9) > 0.6) { ctx.fillStyle = 'rgba(80,80,90,0.25)'; circle(x - 190, GY - 360 - (t * 60 % 40), 26); ctx.fill(); }
     ctx.restore();
   }
   function drawTop(st) {

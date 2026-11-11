@@ -305,13 +305,22 @@ const SHRUNK = (() => {
       circle(x, y, 22 * s); ctx.fill(); circle(x + 26 * s, y - 10 * s, 28 * s); ctx.fill(); circle(x + 56 * s, y, 20 * s); ctx.fill(); ctx.fillRect(x, y, 56 * s, 18 * s);
     }
     if (!o.noFence) {
-      // the giant fence and the house roof far away, pale with distance
+      // the giant wooden fence far away: solid boards, softened by the haze
       const fx = -((cx * 0.06) % 120);
-      ctx.fillStyle = 'rgba(214,190,160,0.55)';
+      ctx.fillStyle = '#b89c78'; ctx.fillRect(0, 186, W, 18); ctx.fillRect(0, 254, W, 18);
       for (let x = fx - 120; x < W + 120; x += 120) {
-        ctx.beginPath(); ctx.moveTo(x + 6, 300); ctx.lineTo(x + 6, 150); ctx.lineTo(x + 60, 118); ctx.lineTo(x + 114, 150); ctx.lineTo(x + 114, 300); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#dcc6a2';
+        ctx.beginPath(); ctx.moveTo(x + 6, 330); ctx.lineTo(x + 6, 150); ctx.lineTo(x + 60, 118); ctx.lineTo(x + 114, 150); ctx.lineTo(x + 114, 330); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#c8ae88'; ctx.beginPath(); ctx.moveTo(x + 92, 330); ctx.lineTo(x + 92, 137); ctx.lineTo(x + 114, 150); ctx.lineTo(x + 114, 330); ctx.closePath(); ctx.fill();
+        // wood grain and a knot
+        ctx.strokeStyle = 'rgba(150,120,86,0.35)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x + 30, 150); ctx.lineTo(x + 30, 330); ctx.moveTo(x + 64, 140); ctx.lineTo(x + 64, 330); ctx.stroke();
+        ctx.fillStyle = 'rgba(150,120,86,0.4)'; ctx.beginPath(); ctx.ellipse(x + 46, 214 + (Math.abs(Math.round(x / 120)) % 3) * 30, 5, 8, 0, 0, TAU); ctx.fill();
       }
-      ctx.fillStyle = 'rgba(190,164,132,0.5)'; ctx.fillRect(0, 196, W, 14); ctx.fillRect(0, 262, W, 14);
+      // haze in front of the fence, so it sits far back
+      const hz = ctx.createLinearGradient(0, 120, 0, 340);
+      hz.addColorStop(0, 'rgba(200,232,246,0.35)'); hz.addColorStop(1, 'rgba(214,238,226,0.75)');
+      ctx.fillStyle = hz; ctx.fillRect(0, 110, W, 240);
     }
     if (o.dim) { ctx.fillStyle = 'rgba(20,40,30,' + clamp(o.dim, 0, 1) * 0.5 + ')'; ctx.fillRect(0, 0, W, H); }
   };
@@ -335,13 +344,13 @@ const SHRUNK = (() => {
     const sx = cx * par, i0 = Math.floor(sx / step) - 2, i1 = Math.ceil((sx + W) / step) + 2;
     for (let i = i0; i <= i1; i++) {
       const x = i * step - sx + (K.hash(i) - 0.5) * step * 0.8, h = 260 + K.hash(i + 7) * 260, lean = (K.hash(i + 3) - 0.5) * 120;
-      K.blade(x, y + 40, h, lean, { w: 30 + K.hash(i + 9) * 20, col: i % 3 ? 'rgba(96,160,84,0.55)' : 'rgba(120,180,96,0.5)', dark: false });
+      K.blade(x, y + 40, h, lean, { w: 30 + K.hash(i + 9) * 20, col: i % 3 ? '#9ccd88' : '#acd696', dark: false });
       if (o.flowers !== false && K.hash(i + 21) < 0.16) {
         const fx = x + lean * 0.6, fy = y + 40 - h * 0.92;
-        ctx.strokeStyle = 'rgba(80,140,70,0.6)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(x, y + 40); ctx.quadraticCurveTo(x + lean * 0.2, fy + 80, fx, fy); ctx.stroke();
-        ctx.fillStyle = K.hash(i + 5) < 0.5 ? 'rgba(255,230,90,0.7)' : 'rgba(255,255,255,0.75)';
+        ctx.strokeStyle = '#8cbf78'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(x, y + 40); ctx.quadraticCurveTo(x + lean * 0.2, fy + 80, fx, fy); ctx.stroke();
+        ctx.fillStyle = K.hash(i + 5) < 0.5 ? '#fbe68a' : '#f6faf0';
         for (let k = 0; k < 8; k++) { const a = k / 8 * TAU; ctx.beginPath(); ctx.ellipse(fx + Math.cos(a) * 22, fy + Math.sin(a) * 22, 16, 8, a, 0, TAU); ctx.fill(); }
-        ctx.fillStyle = 'rgba(240,170,40,0.8)'; circle(fx, fy, 13); ctx.fill();
+        ctx.fillStyle = '#f0b448'; circle(fx, fy, 13); ctx.fill();
       }
     }
   };

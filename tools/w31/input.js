@@ -34,7 +34,7 @@ const { chromium } = require('playwright');
   out.birddash = lk && rolls === 1;
   await load('snailrace'); await page.waitForFunction(() => window.__pipbo.G.match && window.__pipbo.G.match.phase === 'live', null, { timeout: 8000 });
   for (let k = 0; k < 6; k++) { await page.keyboard.press('KeyF'); await page.keyboard.press('Slash'); await page.waitForTimeout(90); }
-  await page.keyboard.press('KeyW');
+  await page.keyboard.press('KeyW'); await page.waitForTimeout(120);
   const sn = await ev(() => window.__pipbo.G.mst.pl.map(P => [P.x, P.row]));
   out.snailrace = sn[0][0] > 125 && sn[1][0] > 125 && sn[0][1] === 0;
   console.log(out, sn, errs.slice(0, 3));

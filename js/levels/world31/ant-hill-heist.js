@@ -344,8 +344,18 @@
     for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) { const y = c.fl(x) + 6; if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y); }
     for (let x = Math.ceil(x1 / 20) * 20; x >= x0; x -= 20) ctx.lineTo(x, c.fl(x) - S.tunH - 10 + Math.sin(x * 0.013) * 12);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,220,160,0.08)';
-    for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) ctx.fillRect(x, c.fl(x) - S.tunH + 20, 20, 30);
+    // shading: dark under the ceiling, warmer near the floor, packed-earth speckles
+    ctx.save(); ctx.lineJoin = 'round';
+    const ceil = () => { ctx.beginPath(); let f = true; for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) { const y = c.fl(x) - S.tunH - 10 + Math.sin(x * 0.013) * 12; if (f) { ctx.moveTo(x, y); f = false; } else ctx.lineTo(x, y); } };
+    const flo = () => { ctx.beginPath(); let f = true; for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) { const y = c.fl(x) + 6; if (f) { ctx.moveTo(x, y); f = false; } else ctx.lineTo(x, y); } };
+    ceil(); ctx.strokeStyle = 'rgba(30,16,8,0.22)'; ctx.lineWidth = 90; ctx.stroke(); ctx.lineWidth = 44; ctx.stroke();
+    flo(); ctx.strokeStyle = 'rgba(255,214,150,0.06)'; ctx.lineWidth = 120; ctx.stroke();
+    ctx.restore();
+    for (let i = Math.floor(x0 / 90); i <= Math.ceil(x1 / 90); i++) {
+      const px = i * 90 + K.hash(i + 31) * 70, fy = c.fl(px), py = fy - 30 - K.hash(i + 32) * (S.tunH - 70);
+      ctx.fillStyle = 'rgba(60,34,18,0.35)'; ctx.beginPath(); ctx.ellipse(px, py, 3 + K.hash(i + 33) * 4, 2 + K.hash(i + 34) * 2, 0, 0, TAU); ctx.fill();
+      if (K.hash(i + 35) < 0.35) { ctx.fillStyle = '#9a8a78'; ctx.beginPath(); ctx.ellipse(px + 20, fy + 14 + K.hash(i) * 30, 10, 7, 0.3, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(px + 17, fy + 11 + K.hash(i) * 30, 4, 2, 0.3, 0, TAU); ctx.fill(); }
+    }
     // the floor edge
     ctx.strokeStyle = '#5a3a22'; ctx.lineWidth = 6; ctx.beginPath(); first = true;
     for (let x = Math.floor(x0 / 10) * 10; x <= x1; x += 10) { const y = c.fl(x) + 3; if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y); }
@@ -356,7 +366,9 @@
       ctx.strokeStyle = '#a07850'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(rx, ry - 10); ctx.quadraticCurveTo(rx + 10, ry + 30, rx - 4, ry + 50 + K.hash(i) * 30); ctx.stroke();
       if (K.hash(i + 9) < 0.5) {
         const mx = rx + 60, my = c.fl(mx) + 2;
-        ctx.fillStyle = 'rgba(160,255,200,0.1)'; circle(mx, my - 10, 22); ctx.fill(); ctx.fillStyle = 'rgba(160,255,200,0.12)'; circle(mx, my - 10, 13); ctx.fill();
+        const lg = ctx.createRadialGradient(mx, my - 12, 4, mx, my - 12, 120);
+        lg.addColorStop(0, 'rgba(150,255,200,0.28)'); lg.addColorStop(1, 'rgba(150,255,200,0)');
+        ctx.fillStyle = lg; ctx.fillRect(mx - 120, my - 132, 240, 140);
         ctx.fillStyle = '#d8ffe8'; ctx.fillRect(mx - 2, my - 12, 4, 12); ctx.fillStyle = '#7affc0'; ctx.beginPath(); ctx.ellipse(mx, my - 12, 9, 6, 0, Math.PI, 0); ctx.fill();
       }
     }
@@ -497,15 +509,32 @@
   function drawCrumb(x, y, tilt, t) {
     ctx.save(); ctx.translate(x, y + S.crumbH / 2); ctx.rotate(tilt);
     const w = S.crumbW, h = S.crumbH;
-    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(0, h / 2 + 2, w / 2, 5, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#d89a50'; ctx.strokeStyle = '#8a5a24'; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(-w / 2, h / 2);
-    ctx.lineTo(-w / 2 + 6, -h / 2 + 12); ctx.lineTo(-w / 4, -h / 2); ctx.lineTo(-4, -h / 2 + 6); ctx.lineTo(w / 4, -h / 2 - 2); ctx.lineTo(w / 2 - 4, -h / 2 + 10); ctx.lineTo(w / 2, h / 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(0, h / 2 + 2, w / 2 + 4, 6, 0, 0, TAU); ctx.fill();
+    // a broken-off wedge of chocolate chip cookie: round baked edge on top, crumbly broken edges at the sides
+    const g = ctx.createLinearGradient(0, -h / 2 - 8, 0, h / 2);
+    g.addColorStop(0, '#e8b064'); g.addColorStop(0.55, '#d4924a'); g.addColorStop(1, '#a8682c');
+    ctx.fillStyle = g; ctx.strokeStyle = '#7a4a1c'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-w / 2 + 2, h / 2);
+    ctx.lineTo(-w / 2 - 2, h / 2 - 10); ctx.lineTo(-w / 2 + 4, h / 2 - 18); ctx.lineTo(-w / 2, -h / 2 + 18); ctx.lineTo(-w / 2 + 8, -h / 2 + 8);
+    ctx.quadraticCurveTo(0, -h / 2 - 14, w / 2 - 8, -h / 2 + 6);
+    ctx.lineTo(w / 2 + 1, -h / 2 + 16); ctx.lineTo(w / 2 - 5, -2); ctx.lineTo(w / 2 + 2, 8); ctx.lineTo(w / 2 - 2, h / 2);
     ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#e8b468'; ctx.beginPath(); ctx.ellipse(-w / 6, -h / 6, w / 4, h / 6, -0.1, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#4a2a14';
-    for (const [dx, dy, r] of [[-30, 0, 7], [6, -10, 6], [30, 6, 8], [-8, 12, 5], [40, -8, 4]]) { ctx.beginPath(); ctx.ellipse(dx, dy, r, r * 0.8, 0.5, 0, TAU); ctx.fill(); }
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'; for (const [dx, dy] of [[-40, 14], [-16, -8], [20, 14], [46, 4]]) { circle(dx, dy, 1.6); ctx.fill(); }
+    // a golden top crust and little baked cracks
+    ctx.strokeStyle = 'rgba(255,224,160,0.7)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-w / 2 + 12, -h / 2 + 8); ctx.quadraticCurveTo(0, -h / 2 - 8, w / 2 - 14, -h / 2 + 8); ctx.stroke();
+    ctx.strokeStyle = 'rgba(120,70,24,0.5)'; ctx.lineWidth = 1.5;
+    for (const [dx, dy] of [[-24, -6], [14, 10], [36, -10]]) { ctx.beginPath(); ctx.moveTo(dx, dy); ctx.lineTo(dx + 6, dy + 4); ctx.lineTo(dx + 4, dy + 10); ctx.stroke(); }
+    // the broken sides show the crumbly inside
+    ctx.fillStyle = 'rgba(240,196,130,0.8)';
+    for (const [dx, dy] of [[-w / 2 + 5, 4], [-w / 2 + 7, 14], [w / 2 - 6, -12], [w / 2 - 5, 12]]) { circle(dx, dy, 2.2); ctx.fill(); }
+    // chocolate chips, with a shine
+    for (const [dx, dy, r] of [[-32, 2, 8], [2, -12, 7], [28, 8, 9], [-8, 14, 6], [42, -10, 5], [-44, -12, 5]]) {
+      ctx.fillStyle = '#4a2410'; ctx.beginPath(); ctx.moveTo(dx - r, dy + r * 0.6); ctx.quadraticCurveTo(dx - r * 0.6, dy - r, dx, dy - r * 1.05); ctx.quadraticCurveTo(dx + r * 0.6, dy - r, dx + r, dy + r * 0.6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,220,190,0.45)'; circle(dx - r * 0.3, dy - r * 0.4, r * 0.25); ctx.fill();
+    }
+    // sugar sparkles
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    for (const [dx, dy] of [[-40, 14], [-16, -4], [20, 16], [46, 4], [10, 2]]) { circle(dx, dy, 1.4 + 0.6 * Math.sin(t * 3 + dx)); ctx.fill(); }
     ctx.restore();
   }
 
