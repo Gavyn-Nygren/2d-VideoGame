@@ -28,8 +28,7 @@
    RAIN GAUGES: 20, on the ledges (some just above the water at the start) and on little shelves a plain jump reaches.
    GOLD HELP (3 sweeps in a stretch, only while both are playing): a gold life ring, the water rises 30% slower for
    the rest of the stretch.
-   MEDAL: Gold <= 190 s with every gauge but 4 or fewer missing... see medal(): Gold <= S.goldT and >= 16 gauges and
-   <= 2 sweeps; Silver <= S.silverT.
+   MEDAL: Gold <= 190 s with 16 or more gauges and 2 or fewer sweeps; Silver <= 330 s.
    MODES.floodclimb.plan(st) says what each hero should do now (the prompts, the HUD chips and the computer brain read
    it). Sounds are Sfx.extra.floodclimb*. */
 (() => {
