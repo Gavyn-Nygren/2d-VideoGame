@@ -7,18 +7,20 @@
      ahead, so the computer freezes (▼) before an ant's zone reaches the crumb, waits while an ant or a column is in the
      way, lifts (▲) at steps, and pushes ▶ when the way is clear.
      With a person partner it never pushes alone (that drags the crumb and the scrape wakes sleeping soldiers): it pushes
-     only while the person pushes too, and asks "Push with me!" when the way is clear and the person waits. At a step it
+     only while the person pushes too (or tapped ▶ in the last 0.35 s), and asks "Push with me!" when the way is clear and the person waits. At a step it
      presses ▲ right after the person does (or every 0.9 s, so a person pressing ▲ will meet it).
      It can't finish alone: the crumb only moves with two pushing, the level takes a break after 12 s with no person
      pressing anything, and the shared idle stop (CPU.idleStop) waits as well. Team brains always play at full skill. */
   const M = () => MODES.antheist;
   cpuBrain('antheist', {
-    reset(S) { S.liftT = 0; S.react = 0; },
+    reset(S) { S.liftT = 0; S.react = 0; S.since = 9; },
     think(S, p, o, dt, info) {
       const out = {}, st = info.mst;
       if (!st || !st.c || info.intro || st.state !== 'go' || st.waiting || st.grab) return out;
       const pl = M().plan(st), cr = st.cr, human = !info.partnerCpu;
       S.liftT -= dt;
+      // how long since the person last pushed ▶ (a person who taps ▶ instead of holding it still gets a partner)
+      S.since = cr.push[o.id] > 0 ? 0 : S.since + dt;
       if (pl.act === 'freeze') { out.down = true; if (human && !cr.frozen[o.id]) cpuSay(p, 'Freeze! Hold ▼!', 1.2); return out; }
       if (pl.act === 'lift') {
         const mateJust = st.clock - st.liftAt[o.id] < 0.3;
@@ -27,7 +29,7 @@
         return out;
       }
       if (pl.act === 'go') {
-        if (!human || cr.push[o.id] > 0) { S.react += dt; if (!human || S.react > 0.08) out.right = true; }
+        if (!human || S.since < 0.35) { S.react += dt; if (!human || S.react > 0.06) out.right = true; }
         else { S.react = 0; if (human) cpuSay(p, 'All clear! Push ▶ with me!', 1.4); }
         return out;
       }

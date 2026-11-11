@@ -32,7 +32,7 @@
   const K = SHRUNK, TAU = Math.PI * 2;
   const S = {
     ground: 430, runV: 235, acc: 2200, jumpV: 470, g: 1700, boostV: 830, boostVx: 120, maxFall: 1000,
-    bw: 22, bh: 26, chopCd: 0.17, braceR: 40, boostR: 28, reachR: 44, hoistT: 0.45,
+    bw: 22, bh: 26, chopCd: 0.17, braceR: 40, boostR: 36, reachR: 44, hoistT: 0.45,
     leash: 640, catchPad: 8, mowBack: 600, whirlT: 1.4, dewR: 20, idleWait: 12,
     goldSlow: 0.6, goldDur: 20, goldT: 160, silverT: 270,
   };
@@ -149,9 +149,7 @@
     // jump: a boost off a bracing partner, a hoist from a reaching partner, or a plain jump
     if (jump && r.grounded) {
       if (other.st === 'brace' && Math.abs(other.x - r.x) < S.boostR && !r.on) {
-        r.vy = -S.boostV; r.vx = S.boostVx; r.grounded = false; r.on = null; r.face = 1; other.sq = 1;
-        Sfx.play('shrunkBoing'); K.pop(st, r.x, r.y - 50, 'Boost!', PCOL[other.id], 22); K.dust(st, other.x, GY, null, 6);
-        st.stats.boosts++;
+        boost(st, r, other);
       } else if (other.st === 'reach' && other.on && !r.on && r.x < other.on.x && other.on.x - r.x < S.reachR + 14) {
         const O = other.on;
         r.st = 'hoist'; r.ht = 0; r.hx0 = r.x; r.hy0 = r.y; r.hx1 = O.x + 16; r.hy1 = topY(O); r.hoistO = O; r.vx = 0; r.vy = 0; r.grounded = false;
@@ -174,9 +172,27 @@
         else if (boostable(b.O) && r.grounded && !r.on) K.hintOnce(st, 'tooTall' + r.id, r.id, 'Too tall to jump! Boost!');
       }
     }
+    // a boost always lands on the top it was aimed at (no sailing over and leaving the partner stuck behind)
+    if (r.boostO && !r.grounded && r.vy > 0 && r.y < topY(r.boostO) + 1) nx = Math.min(nx, r.boostO.x + r.boostO.w - hw - 6);
+    // up top with the partner still down behind: stay up here and pull them up (walking off would strand them)
+    if (r.grounded && r.on && boostable(r.on) && strandedBehind(other, r.on) && nx > r.on.x + r.on.w - hw - 2) {
+      nx = r.on.x + r.on.w - hw - 2; r.vx = Math.min(r.vx, 0);
+      K.hint(st, r.id, 'Pull ' + NAMES[other.id] + ' up first: hold ' + K.key(r.id, 'act') + ' at the near edge');
+    }
     r.x = nx;
+    // dropping onto a bracing partner's hands is a boost too (so a jump that's a little early or late still works)
+    if (job === 'cut' && !r.grounded && r.vy > 0 && other.st === 'brace' && !r.on && Math.abs(other.x - r.x) < S.boostR + 6 &&
+        r.y + r.vy * dt >= GY - S.bh && r.y < GY - S.bh + 4) { r.y = GY - S.bh; boost(st, r, other); return; }
     gravity(st, r, dt);
+    if (r.grounded) r.boostO = null;
   }
+  function boost(st, r, other) {
+    r.vy = -S.boostV; r.vx = S.boostVx; r.grounded = false; r.on = null; r.face = 1; other.sq = 1; r.boostO = other.braceO;
+    Sfx.play('shrunkBoing'); K.pop(st, r.x, r.y - 50, 'Boost!', PCOL[other.id], 22); K.dust(st, other.x, GY, null, 6);
+    st.stats.boosts++;
+  }
+  // still on the ground in front of O (not on it, not past it)
+  const strandedBehind = (r, O) => r.st !== 'whirl' && r.on !== O && r.x < O.x && r.st !== 'hoist';
   function gravity(st, r, dt) {
     const hw = S.bw / 2;
     if (r.grounded) {
@@ -355,6 +371,17 @@
     }
     out.kind = 'boost';
     const top = r => r.on === O, base = O.x - S.bw / 2 - 4;
+    // already down the far side (or jumping down it)
+    const past = r => !top(r) && r.st !== 'hoist' && r.x - S.bw / 2 > O.x + O.w - 4;
+    if (past(T) || past(B)) {
+      out.stage = 'over';
+      const P = past(T) ? T : B, Q = P === T ? B : T, pj = P === T ? 'cut' : 'bst', qj = pj === 'cut' ? 'bst' : 'cut';
+      // the one over waits just past it; the other comes over the top (or, stranded in front, waits for the mower to
+      // blow them both back, which can't be helped: the rules up top stop this happening)
+      out[pj] = { x: Math.max(P.x, O.x + O.w + 30), why: 'wait' };
+      out[qj] = top(Q) ? { x: O.x + O.w + 60 } : { x: Q.x, why: 'wait' };
+      return out;
+    }
     if (top(T) && top(B)) {
       out.stage = 'over'; out.cut = { x: O.x + O.w + 60 }; out.bst = { x: O.x + O.w + 60 };
     } else if (top(B) && !top(T)) {
