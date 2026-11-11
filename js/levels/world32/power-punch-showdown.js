@@ -516,9 +516,9 @@
     act: { label: 'punch' },
     tagLift: 30,
     legend: {
-      pip: '<kbd>S</kbd> block',
-      bo: '<kbd>↓</kbd> block',
-      pad: 'stick ▼ blocks,',
+      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>S</kbd> block',
+      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump <kbd>↓</kbd> block',
+      pad: 'stick runs, down blocks, <span data-glyph="a"></span> jumps,',
     },
     tip: 'Punch with the action, hold ▼ to block, jump twice to get back on the roof. Grab the power-ups! Knock your rival off the roof to win the round.',
     switches: {}, signs: [],

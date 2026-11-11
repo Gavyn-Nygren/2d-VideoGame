@@ -39,7 +39,7 @@
   /* ---------- the course ----------
      tokens (left to right): 'r300' solid deck; 'g180' a gap; 'c160' a cracked slab (crumbles); 'w' a live wire over the
      next 46 px of deck (it needs solid deck under it); 'b' the bus starts here; 'd' a badge just above the deck here,
-     'd150' one 150 px up; 'G' a badge in the middle of the next gap (only reachable by crossing it). */
+     'd100' one 100 px up (the most a jump reaches); 'G' a badge in the middle of the next gap (only reachable by crossing it). */
   function compile(def) {
     const c = { segs: [], wires: [], badges: [], busX: 160, endX: 0 };
     let x = 0, pendG = 0;
@@ -50,7 +50,8 @@
       else if (k === 'g') { if (pendG) { c.badges.push({ x: x + a[0] / 2, y: GY - 40, got: false }); pendG = 0; } x += a[0]; }
       else if (k === 'w') c.wires.push({ x: x - 23 - 40, t: K.hash(x) * 3, ph: 'idle' });
       else if (k === 'b') c.busX = x - 120;
-      else if (k === 'd') c.badges.push({ x: x - 20, y: GY - (a[0] || 40), got: false });
+      // (a high badge is never higher than a plain jump reaches: 100 px)
+      else if (k === 'd') c.badges.push({ x: x - 20, y: GY - Math.min(a[0] || 40, 100), got: false });
       else if (k === 'G') pendG = 1;
     }
     c.endX = x - 160;
@@ -296,7 +297,8 @@
   function badges(st) {
     for (const r of st.run) {
       for (const q of st.c.badges) {
-        if (q.got || Math.abs(q.x - r.x) > S.badgeR || Math.abs(q.y - (r.y - 13)) > S.badgeR + 8) continue;
+        // (crossing the rubber bridge collects the badge over the gap, however far it sags under the bus)
+        if (q.got || Math.abs(q.x - r.x) > S.badgeR || Math.abs(q.y - (r.y - 13)) > S.badgeR + (r.onSpan ? 42 : 8)) continue;
         q.got = true; st.badge++;
         Sfx.play('cityPop', 1 + (st.badge % 5) * 0.06); K.spark(st, q.x, q.y, 6, ['#ffe08a', '#ffffff']);
       }

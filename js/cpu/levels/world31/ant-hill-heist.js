@@ -13,7 +13,7 @@
      pressing anything, and the shared idle stop (CPU.idleStop) waits as well. Team brains always play at full skill. */
   const M = () => MODES.antheist;
   cpuBrain('antheist', {
-    reset(S) { S.liftT = 0; S.react = 0; S.since = 9; },
+    reset(S) { S.liftT = 0; S.react = 0; S.since = 9; S.hold = 0; },
     think(S, p, o, dt, info) {
       const out = {}, st = info.mst;
       if (!st || !st.c || info.intro || st.state !== 'go' || st.waiting || st.grab) return out;
@@ -28,7 +28,11 @@
         if (human) cpuSay(p, 'Lift on three! ▲', 1.2);
         return out;
       }
+      // after a "wait" it holds off for a moment, so following close behind an ant is a few clear pushes and not a
+      // push on every other step
+      if (pl.act === 'wait') S.hold = 0.3; else if (S.hold > 0) S.hold -= dt;
       if (pl.act === 'go') {
+        if (S.hold > 0) return out;
         if (!human || S.since < 0.35) { S.react += dt; if (!human || S.react > 0.06) out.right = true; }
         else { S.react = 0; if (human) cpuSay(p, 'All clear! Push ▶ with me!', 1.4); }
         return out;

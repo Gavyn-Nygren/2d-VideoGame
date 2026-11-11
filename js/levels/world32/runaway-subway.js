@@ -247,7 +247,9 @@
       } else if (h.kind === 'pipe') {
         if (Math.abs(h.x - R.x) < h.w / 2 + hw - 3) {
           const top = R.y - (R.duck ? S.duckH : S.bh);
-          if (R.st === 'hold') { h.hit = true; Sfx.play('cityClang'); K.spark(st, h.x, ROOF - 50, 6, ['#ffd27a', '#ffffff']); continue; }
+          // a girder overhead (held, or still coming down): the pipe clangs off it. The strong hero can't duck and
+          // catch at once, so a pipe that was already on its way when the lever was pulled must not cost a dent
+          if (R.st === 'hold' || (st.beam && Math.abs(h.x - st.beam.x) < S.beamR + 60)) { h.hit = true; Sfx.play('cityClang'); K.spark(st, h.x, ROOF - 50, 6, ['#ffd27a', '#ffffff']); continue; }
           if (top < ROOF - S.pipeBot - 1 && R.stun <= 0) {
             h.hit = true; st.stats.bonks++; st.rc.bad++;
             R.stun = S.bonkT; R.x = Math.max(24, R.x - 40); R.vx = 0; R.sq = 1;
@@ -345,10 +347,16 @@
       else out.zoom.why = ready ? 'crate' : 'wait';
     }
     if (crateT < 0.13 && Z.grounded) { out.zoom.jump = true; out.zoom.act = false; }
+    // in the air over a crate: carry on past it (hanging back over the lever can land on a slow crate)
+    if (!Z.grounded) {
+      const under = st.haz.find(h => h.kind === 'crate' && !h.hit && h.x > Z.x - 40 && h.x - Z.x < 90);
+      if (under) { out.zoom.x = Math.max(out.zoom.x, under.x + 70); out.zoom.act = false; }
+    }
     // the strong hero: under the girder spot, holding when one is coming or up
     out.lift = { x: L.x, why: 'go' };
     if (b) { out.lift.x = b.x; out.lift.act = Math.abs(R.x - b.x) < S.beamR + 30 || b.state === 'held'; out.lift.why = b.state === 'held' ? 'keep' : 'catch'; }
-    else if (pipeT < 0.24 && R.grounded) { out.lift.down = true; out.lift.why = 'duck'; }
+    // duck a pipe (not under a girder: there the pipe clangs off it), and stay down until it has gone over
+    if ((pipeT < 0.24 || (R.duck && pipeT < 0.6)) && R.grounded && (!b || Math.abs(R.x - b.x) >= S.beamR + 60)) { out.lift.down = true; out.lift.act = false; out.lift.why = 'duck'; }
     return out;
   }
 
