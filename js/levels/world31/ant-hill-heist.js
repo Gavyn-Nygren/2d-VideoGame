@@ -16,11 +16,13 @@
      carrier is in an ant's zone, its "?" fills: fast if the crumb moves (0.5 s), slowly if someone is standing up
      (1.6 s), and it empties if both are frozen. Full = "!" and GOTCHA: the ant drops down, grabs the crumb and the
      soldiers haul it (and you) back to the last checkpoint flag (counted as Caught; a soft fail, 2 s of calm after).
+     An ant that has felt all over the frozen crumb and walked on is FOOLED ("Just a crumb...", a green tick): it
+     ignores the crumb for S.foolT s, so one good freeze gets you past each patrol ant.
      Patrol ants walk back and forth and stop at the ends to turn. Sleeping soldiers lie in side chambers and wake up for
      7 s (they look around, zone 170 px) when a scrape is heard within 320 px. March shafts drop a column of soldiers
      through the tunnel every few seconds (a drum "tromp tromp" warns 2 s before); while the column comes through,
      anyone within 70 px of the shaft must be frozen.
-   SUGAR GRAINS sparkle in the tunnel: the crumb picks them up as it passes (48 in all).
+   SUGAR GRAINS sparkle in the tunnel: the crumb picks them up as it passes (43 in all).
    STRETCHES: The Way In, Nursery Hall (sleepers), Marching Shafts, The Queen's Gate (everything; out into the sun).
    GOLD HELP (only while both are playing, announced, counted): caught twice in one stretch = gold sugar dust on the
      crumb dazzles the ants' feelers (zones shrink to 60%) for the rest of the stretch.
@@ -34,8 +36,8 @@
   const S = {
     base: 400, tunH: 190, crumbW: 116, crumbH: 52, carry: 46, push: 130, drag: 35, dragNoise: 0.5, noiseR: 320,
     front: 150, back: 60, sleepFront: 170, wakeT: 7, shaftR: 70, susMove: 0.5, susStand: 1.6, susDrain: 0.8,
-    liftWin: 0.4, liftT: 0.45, turn: 0.8, grabT: 1.6, calm: 2.0, warnT: 2, sugarR: 70, idleWait: 12, goldZone: 0.6,
-    goldT: 330, silverT: 540,
+    liftWin: 0.4, liftT: 0.45, turn: 0.8, foolT: 6, foolMin: 0.4, grabT: 1.6, calm: 2.0, warnT: 2, sugarR: 70, idleWait: 12, goldZone: 0.6,
+    goldT: 255, silverT: 450,
   };
 
   /* ---------- the course ----------
@@ -49,7 +51,7 @@
       const k = tok[0], a = tok.slice(1).split(':').map(Number);
       if (k === 'r') x += a[0];
       else if (k === 'u' || k === 'n') { seg.x1 = x; c.floor.push(seg); y += k === 'u' ? -a[0] : a[0]; seg = { x0: x, y }; }
-      else if (k === 'A') c.ants.push({ a: x, b: x + a[0], v: (a[1] || 60) * 1.3, x: a[2] < 0 ? x + a[0] : x, face: a[2] < 0 ? -1 : 1, pause: 0, sus: 0, t: K.hash(x) * 5 });
+      else if (k === 'A') c.ants.push({ a: x, b: x + a[0], v: (a[1] || 60) * 1.3, x: a[2] < 0 ? x + a[0] : x, face: a[2] < 0 ? -1 : 1, pause: 0, sus: 0, fool: 0, over: 0, t: K.hash(x) * 5 });
       else if (k === 'Z') c.sleepers.push({ x, y, awake: 0, sus: 0, face: -1, t: K.hash(x) * 5 });
       else if (k === 'M') c.shafts.push({ x, per: a[0] || 7, dur: a[1] || 3, ph: K.hash(x + 3) * (a[0] || 7), sus: 0, warned: false });
       else if (k === 's') c.sugar.push({ x, y: 0, got: false });
@@ -208,8 +210,20 @@
         }
       }
       const z = zoneOf(st, q.x, q.face, S.front, S.back);
-      q.zone = z; q.near = Math.abs(q.x - cr.x) < 420;
-      sense(q, overlaps(z[0], z[1], sp[0], sp[1]));
+      q.near = Math.abs(q.x - cr.x) < 420;
+      // fooled: an ant that felt all over the frozen crumb and walked on takes it for a plain crumb and pays it no
+      // more attention for S.foolT s (so one good freeze always gets you past an ant: no being passed again and again)
+      if (q.fool > 0) { if (live) q.fool -= dt; q.zone = null; q.over = 0; q.sus = Math.max(0, q.sus - dt / S.susDrain); continue; }
+      q.zone = z;
+      const inZ = overlaps(z[0], z[1], sp[0], sp[1]);
+      if (live && st.calm <= 0) {
+        if (inZ) q.over = frozen && q.over >= 0 ? q.over + dt : -1;
+        else {
+          if (q.over >= S.foolMin && q.sus < 0.05) { q.fool = S.foolT; q.zone = null; Sfx.play('antheistFlag'); K.pop(st, q.x, q.y0 - S.tunH + 132, 'Just a crumb...', '#d9ffd0', 18); st.stats.fooled = (st.stats.fooled || 0) + 1; }
+          q.over = 0;
+        }
+      }
+      sense(q, inZ);
     }
     for (const q of c.sleepers) {
       q.t += dt;
@@ -249,7 +263,7 @@
     }
     if (g.t >= S.grabT) {
       st.grab = null; st.calm = S.calm; cr.x = g.dest; cr.y = Math.min(st.c.fl(cr.x - S.crumbW / 2 + 4), st.c.fl(cr.x + S.crumbW / 2 - 4)); cr.vy = 0;
-      for (const q of st.c.ants) q.sus = 0;
+      for (const q of st.c.ants) { q.sus = 0; q.fool = 0; q.over = 0; }
       for (const q of st.c.sleepers) { q.sus = 0; q.awake = 0; }
       for (const q of st.c.shafts) q.sus = 0;
       // patrol ants right over the checkpoint walk on, so you don't land in a zone
@@ -307,7 +321,7 @@
       for (let k = 0; k <= T / 0.1; k++) {
         const t = k * 0.1, sp = span(st, cr.x + v * t);
         sp[0] -= slack; sp[1] += slack;
-        for (const q of c.ants) { const a = antAt(q, t), z = zoneOf(st, a.x, a.face, S.front, S.back); if (overlaps(z[0], z[1], sp[0], sp[1])) return { q, t }; }
+        for (const q of c.ants) { if (q.fool > t) continue; const a = antAt(q, t), z = zoneOf(st, a.x, a.face, S.front, S.back); if (overlaps(z[0], z[1], sp[0], sp[1])) return { q, t }; }
         for (const q of c.sleepers) if (q.awake > t) { const z = zoneOf(st, q.x, q.face, S.sleepFront, S.back); if (overlaps(z[0], z[1], sp[0], sp[1])) return { q, t }; }
         for (const sh of c.shafts) if (shaftOn(st, sh, t) && overlaps(sh.x - S.shaftR * sc, sh.x + S.shaftR * sc, sp[0], sp[1])) return { q: sh, t };
       }
@@ -344,8 +358,18 @@
     for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) { const y = c.fl(x) + 6; if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y); }
     for (let x = Math.ceil(x1 / 20) * 20; x >= x0; x -= 20) ctx.lineTo(x, c.fl(x) - S.tunH - 10 + Math.sin(x * 0.013) * 12);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,220,160,0.08)';
-    for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) ctx.fillRect(x, c.fl(x) - S.tunH + 20, 20, 30);
+    // shading: dark under the ceiling, warmer near the floor, packed-earth speckles
+    ctx.save(); ctx.lineJoin = 'round';
+    const ceil = () => { ctx.beginPath(); let f = true; for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) { const y = c.fl(x) - S.tunH - 10 + Math.sin(x * 0.013) * 12; if (f) { ctx.moveTo(x, y); f = false; } else ctx.lineTo(x, y); } };
+    const flo = () => { ctx.beginPath(); let f = true; for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) { const y = c.fl(x) + 6; if (f) { ctx.moveTo(x, y); f = false; } else ctx.lineTo(x, y); } };
+    ceil(); ctx.strokeStyle = 'rgba(30,16,8,0.22)'; ctx.lineWidth = 90; ctx.stroke(); ctx.lineWidth = 44; ctx.stroke();
+    flo(); ctx.strokeStyle = 'rgba(255,214,150,0.06)'; ctx.lineWidth = 120; ctx.stroke();
+    ctx.restore();
+    for (let i = Math.floor(x0 / 90); i <= Math.ceil(x1 / 90); i++) {
+      const px = i * 90 + K.hash(i + 31) * 70, fy = c.fl(px), py = fy - 30 - K.hash(i + 32) * (S.tunH - 70);
+      ctx.fillStyle = 'rgba(60,34,18,0.35)'; ctx.beginPath(); ctx.ellipse(px, py, 3 + K.hash(i + 33) * 4, 2 + K.hash(i + 34) * 2, 0, 0, TAU); ctx.fill();
+      if (K.hash(i + 35) < 0.35) { ctx.fillStyle = '#9a8a78'; ctx.beginPath(); ctx.ellipse(px + 20, fy + 14 + K.hash(i) * 30, 10, 7, 0.3, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(px + 17, fy + 11 + K.hash(i) * 30, 4, 2, 0.3, 0, TAU); ctx.fill(); }
+    }
     // the floor edge
     ctx.strokeStyle = '#5a3a22'; ctx.lineWidth = 6; ctx.beginPath(); first = true;
     for (let x = Math.floor(x0 / 10) * 10; x <= x1; x += 10) { const y = c.fl(x) + 3; if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y); }
@@ -356,7 +380,9 @@
       ctx.strokeStyle = '#a07850'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(rx, ry - 10); ctx.quadraticCurveTo(rx + 10, ry + 30, rx - 4, ry + 50 + K.hash(i) * 30); ctx.stroke();
       if (K.hash(i + 9) < 0.5) {
         const mx = rx + 60, my = c.fl(mx) + 2;
-        ctx.fillStyle = 'rgba(160,255,200,0.1)'; circle(mx, my - 10, 22); ctx.fill(); ctx.fillStyle = 'rgba(160,255,200,0.12)'; circle(mx, my - 10, 13); ctx.fill();
+        const lg = ctx.createRadialGradient(mx, my - 12, 4, mx, my - 12, 120);
+        lg.addColorStop(0, 'rgba(150,255,200,0.28)'); lg.addColorStop(1, 'rgba(150,255,200,0)');
+        ctx.fillStyle = lg; ctx.fillRect(mx - 120, my - 132, 240, 140);
         ctx.fillStyle = '#d8ffe8'; ctx.fillRect(mx - 2, my - 12, 4, 12); ctx.fillStyle = '#7affc0'; ctx.beginPath(); ctx.ellipse(mx, my - 12, 9, 6, 0, Math.PI, 0); ctx.fill();
       }
     }
@@ -464,6 +490,7 @@
       const ceil = c.fl(q.x) - S.tunH - 4;
       ant(q.x, ceil, q.face, q.t, { up: -1, s: 1.35, walk: q.pause > 0 ? 0 : q.t * 10, mad: q.sus });
       susMark(q.x + q.face * 14, ceil + 88, q.sus, t);
+      if (q.fool > 0) { ctx.globalAlpha = Math.min(1, q.fool); ctx.fillStyle = 'rgba(28,26,54,0.75)'; circle(q.x + q.face * 14, ceil + 88, 13); ctx.fill(); text('✓', q.x + q.face * 14, ceil + 89, 16, '#8fe3b0', 'center'); ctx.globalAlpha = 1; }
     }
     for (const q of c.sleepers) {
       if (q.x < cx - 140 || q.x > cx + W + 140) continue;
@@ -497,15 +524,32 @@
   function drawCrumb(x, y, tilt, t) {
     ctx.save(); ctx.translate(x, y + S.crumbH / 2); ctx.rotate(tilt);
     const w = S.crumbW, h = S.crumbH;
-    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(0, h / 2 + 2, w / 2, 5, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#d89a50'; ctx.strokeStyle = '#8a5a24'; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(-w / 2, h / 2);
-    ctx.lineTo(-w / 2 + 6, -h / 2 + 12); ctx.lineTo(-w / 4, -h / 2); ctx.lineTo(-4, -h / 2 + 6); ctx.lineTo(w / 4, -h / 2 - 2); ctx.lineTo(w / 2 - 4, -h / 2 + 10); ctx.lineTo(w / 2, h / 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(0, h / 2 + 2, w / 2 + 4, 6, 0, 0, TAU); ctx.fill();
+    // a broken-off wedge of chocolate chip cookie: round baked edge on top, crumbly broken edges at the sides
+    const g = ctx.createLinearGradient(0, -h / 2 - 8, 0, h / 2);
+    g.addColorStop(0, '#e8b064'); g.addColorStop(0.55, '#d4924a'); g.addColorStop(1, '#a8682c');
+    ctx.fillStyle = g; ctx.strokeStyle = '#7a4a1c'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-w / 2 + 2, h / 2);
+    ctx.lineTo(-w / 2 - 2, h / 2 - 10); ctx.lineTo(-w / 2 + 4, h / 2 - 18); ctx.lineTo(-w / 2, -h / 2 + 18); ctx.lineTo(-w / 2 + 8, -h / 2 + 8);
+    ctx.quadraticCurveTo(0, -h / 2 - 14, w / 2 - 8, -h / 2 + 6);
+    ctx.lineTo(w / 2 + 1, -h / 2 + 16); ctx.lineTo(w / 2 - 5, -2); ctx.lineTo(w / 2 + 2, 8); ctx.lineTo(w / 2 - 2, h / 2);
     ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#e8b468'; ctx.beginPath(); ctx.ellipse(-w / 6, -h / 6, w / 4, h / 6, -0.1, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#4a2a14';
-    for (const [dx, dy, r] of [[-30, 0, 7], [6, -10, 6], [30, 6, 8], [-8, 12, 5], [40, -8, 4]]) { ctx.beginPath(); ctx.ellipse(dx, dy, r, r * 0.8, 0.5, 0, TAU); ctx.fill(); }
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'; for (const [dx, dy] of [[-40, 14], [-16, -8], [20, 14], [46, 4]]) { circle(dx, dy, 1.6); ctx.fill(); }
+    // a golden top crust and little baked cracks
+    ctx.strokeStyle = 'rgba(255,224,160,0.7)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-w / 2 + 12, -h / 2 + 8); ctx.quadraticCurveTo(0, -h / 2 - 8, w / 2 - 14, -h / 2 + 8); ctx.stroke();
+    ctx.strokeStyle = 'rgba(120,70,24,0.5)'; ctx.lineWidth = 1.5;
+    for (const [dx, dy] of [[-24, -6], [14, 10], [36, -10]]) { ctx.beginPath(); ctx.moveTo(dx, dy); ctx.lineTo(dx + 6, dy + 4); ctx.lineTo(dx + 4, dy + 10); ctx.stroke(); }
+    // the broken sides show the crumbly inside
+    ctx.fillStyle = 'rgba(240,196,130,0.8)';
+    for (const [dx, dy] of [[-w / 2 + 5, 4], [-w / 2 + 7, 14], [w / 2 - 6, -12], [w / 2 - 5, 12]]) { circle(dx, dy, 2.2); ctx.fill(); }
+    // chocolate chips, with a shine
+    for (const [dx, dy, r] of [[-32, 2, 8], [2, -12, 7], [28, 8, 9], [-8, 14, 6], [42, -10, 5], [-44, -12, 5]]) {
+      ctx.fillStyle = '#4a2410'; ctx.beginPath(); ctx.moveTo(dx - r, dy + r * 0.6); ctx.quadraticCurveTo(dx - r * 0.6, dy - r, dx, dy - r * 1.05); ctx.quadraticCurveTo(dx + r * 0.6, dy - r, dx + r, dy + r * 0.6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,220,190,0.45)'; circle(dx - r * 0.3, dy - r * 0.4, r * 0.25); ctx.fill();
+    }
+    // sugar sparkles
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    for (const [dx, dy] of [[-40, 14], [-16, -4], [20, 16], [46, 4], [10, 2]]) { circle(dx, dy, 1.4 + 0.6 * Math.sin(t * 3 + dx)); ctx.fill(); }
     ctx.restore();
   }
 
@@ -587,21 +631,17 @@
     map: K.stubMap(),
     rooms: [
       { title: 'The Way In',
-        tip: 'Push together, quietly. Freeze ▼ under the crumb while an ant passes over, then sneak on behind it.',
-        course: ['r420', 'S', 'r200', 'A360:55', 'r260', 's', 'r200', 'C', 'r180', 'u40', 'r220', 'S', 'r160', 'A420:65:-1', 'r300', 's', 'r200', 'C', 'r200', 'n50', 'r180', 'S',
-          'r120', 'A380:60', 'r200', 's', 'r300', 'u44', 'r260', 'S', 'r240'] },
+        tip: 'Push together, quietly. Freeze ▼ under the crumb while an ant feels its way over you. When it walks on ("Just a crumb..."), go!',
+        course: ['r420', 'S', 'r200', 'A360:55', 'r300', 's', 'r340', 'C', 'r180', 'u40', 'r220', 'S', 'r160', 'A420:65:-1', 'r340', 's', 'r360', 'C', 'r200', 'n50', 'r180', 'S', 'r240'] },
       { title: 'Nursery Hall',
         tip: 'Soldiers sleep here. Never drag the crumb alone: the scrape wakes them up!',
-        course: ['r380', 'S', 'r160', 'Z', 'r260', 's', 'r160', 'A360:60', 'r240', 'C', 'r200', 'Z', 'r200', 'u40', 'r200', 'S', 'r140', 'A400:70:-1', 'r220', 'Z', 'r200', 'C',
-          'r200', 's', 'r200', 'u40', 'r200', 'Z', 'r200', 'A360:65', 'r240', 'S', 'r300'] },
+        course: ['r380', 'S', 'r160', 'Z', 'r260', 's', 'r160', 'A360:60', 'r620', 'C', 'r200', 'Z', 'r200', 'u40', 'r200', 'S', 'r140', 'A400:70:-1', 'r680', 'C', 'r160', 's', 'r160', 'u40', 'r160', 'Z', 'r200', 'S', 'r240'] },
       { title: 'Marching Shafts',
         tip: 'Tromp tromp! A column of soldiers is coming down a shaft. Freeze if you\'re under it!',
-        course: ['r380', 'S', 'r220', 'M7:2.6', 'r260', 's', 'r200', 'A380:60', 'r220', 'C', 'r160', 'M6:2.4', 'r200', 'u40', 'r220', 'S', 'r120', 'M7:3', 'r200', 'A400:70:-1',
-          'r240', 'C', 'r200', 'n44', 'r200', 's', 'r160', 'M6:2.6', 'r260', 'S', 'r300'] },
+        course: ['r380', 'S', 'r220', 'M7:2.6', 'r380', 's', 'A340:60', 'r560', 'C', 'r160', 'M6:2.4', 'r200', 'u40', 'r220', 'S', 'r180', 'M7:3', 'r300', 'C', 'r200', 'n44', 'r200', 'S', 'r300'] },
       { title: 'The Queen\'s Gate',
         tip: 'The last tunnel and the way out! Ants, sleepers and marching columns: freeze, wait, then go together.',
-        course: ['r380', 'S', 'r160', 'A380:65', 'r240', 'Z', 'r220', 's', 'r100', 'M6:2.6', 'r220', 'C', 'r160', 'u44', 'r200', 'A420:72:-1', 'r260', 'S', 'r100', 'Z', 'r220',
-          'C', 'r160', 'M7:3', 'r220', 'A380:70', 'r240', 's', 'u40', 'r200', 'C', 'r200', 'u40', 'r160', 'S', 'r300'] },
+        course: ['r380', 'S', 'r160', 'A380:65', 'r240', 'Z', 'r400', 'C', 'r140', 's', 'r160', 'M6:2.6', 'r240', 'u44', 'r200', 'S', 'r160', 'A420:72:-1', 'r260', 'Z', 'r440', 'C', 'r160', 'M7:3', 'r260', 's', 'u40', 'r200', 'S', 'r300'] },
     ],
   };
 

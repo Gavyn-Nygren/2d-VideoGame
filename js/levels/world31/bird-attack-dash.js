@@ -32,7 +32,7 @@
   const S = {
     ground: 440, runV: 240, acc: 2200, jumpV: 470, g: 1700, bw: 22, bh: 26, diveT: 0.32, diveV: 1.7, diveCd: 1.0,
     leash: 620, eyeT: 1.0, tuckT: 0.6, riseT: 1.3, strikeR: 46, homing: 0.6, homeV: 320, falseT: 1.2, snatchT: 1.6,
-    seedR: 20, idleWait: 12, goldT: 270, silverT: 450,
+    seedR: 20, idleWait: 12, goldT: 180, silverT: 360,
   };
   const GY = S.ground;
   const ROOMS = [
@@ -72,7 +72,7 @@
     st.k = k; st.wat = def.watcher || 0; st.dash = 1 - st.wat; st.title = def.title || '';
     st.c = compile(def); st.rp = ROOMS[k] || ROOMS[0];
     st.run = [0, 1].map(id => newRunner(id, 80 + (id === st.dash ? 60 : 0)));
-    st.cp = 0;
+    st.cp = 0; st.seenSky = -9;
     st.bird = { ph: 'circle', t: 0, dur: 3.5, tg: -1, x: 0, sx: 0, warned: false, shown: false, falseT: 0, seen: 0, feint: false, carry: -1, bx: 0, by: -200, flap: 0 };
     st.rc = { snatched: 0 }; st.gold = false;
     st.state = 'go'; st.endT = 0; st.party = false; st.cleared = false; st.lastRoom = false;
@@ -90,6 +90,7 @@
     const live = G.introT <= 0 && !st.waiting && st.state === 'go';
     if (!st.waiting) st.clock += dt;
     for (const r of st.run) runner(st, r, dt, live);
+    if (st.run[st.wat].look) st.seenSky = st.clock;
     for (const p of G.players) { p.pendingJump = false; p.pendingAct = false; }
     if (live) { leash(st); seeds(st); checkpoint(st); goal(st); }
     if (!st.waiting && st.state === 'go' && G.introT <= 0) bird(st, dt);
@@ -298,7 +299,10 @@
     const danger = b.shown && (b.ph === 'eye' || b.ph === 'tuck' || b.ph === 'dive');
     const left = b.ph === 'eye' ? S.eyeT - b.t + S.tuckT + st.rp.dive : b.ph === 'tuck' ? S.tuckT - b.t + st.rp.dive : b.ph === 'dive' ? b.dur - b.t : Infinity;
     const fresh = b.ph === 'circle' && st.clock - b.seen < 0.8;
-    const clearSky = (watching && b.ph === 'circle') || fresh || b.ph === 'rise' || b.ph === 'snatch';
+    // what the spyglass showed stays known for a moment after the watcher gets up (otherwise the plan flips between
+    // "the sky is clear, go" and "nobody is looking, wait" on every step and the watcher twitches instead of running)
+    const knows = watching || st.clock - (st.seenSky == null ? -9 : st.seenSky) < 1.5;
+    const clearSky = (knows && b.ph === 'circle') || fresh || b.ph === 'rise' || b.ph === 'snatch';
     const out = { phase: b.ph, danger, strikeX: b.x, left, watching, visible, clearSky, wat: {}, dash: {} };
     const plan1 = (r, mate) => {
       const o = { x: r.x, why: 'wait' }, here = coverAt(st, r.x), nc = nextCover(st, r);
@@ -314,7 +318,7 @@
       if (!here) { o.x = nc.x + Math.min(nc.w / 2, 40); o.why = 'run'; return o; }
       // in cover: go when the sky is clear and the next cover is close enough to make it
       const dist = nc.x + Math.min(nc.w / 2, 40) - r.x, need = dist / S.runV + 0.4;
-      const timeLeft = b.ph === 'circle' ? (fresh ? b.dur - b.t : watching ? Math.max(0, b.dur - b.t) : 0) + S.eyeT + S.tuckT + st.rp.dive : b.ph === 'rise' ? S.riseT - b.t + 2 + S.eyeT : 0;
+      const timeLeft = b.ph === 'circle' ? (fresh ? b.dur - b.t : knows ? Math.max(0, b.dur - b.t) : 0) + S.eyeT + S.tuckT + st.rp.dive : b.ph === 'rise' ? S.riseT - b.t + 2 + S.eyeT : 0;
       if (clearSky && need < timeLeft) { o.x = nc.x + Math.min(nc.w / 2, 40); o.why = 'go'; }
       else o.why = 'wait';
       return o;

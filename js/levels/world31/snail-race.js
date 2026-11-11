@@ -256,6 +256,19 @@
     const top = SR.rowY[0] - 14, bot = SR.rowY[2] + 16;
     ctx.fillStyle = '#9a7650'; ctx.fillRect(cx - 10, top, W + 20, bot - top);
     ctx.fillStyle = '#6b4a32'; ctx.fillRect(cx - 10, bot, W + 20, (y1 - y0) - bot);
+    // packed earth: speckles and tiny stones, a slime trail shine, a grass fringe along both edges
+    for (let i = Math.floor((cx - 20) / 46); i <= Math.ceil((cx + W + 20) / 46); i++) {
+      const sx = i * 46 + K.hash(i + 61) * 40, sy = top + 6 + K.hash(i + 62) * (bot - top - 12);
+      ctx.fillStyle = K.hash(i + 63) < 0.5 ? 'rgba(70,46,26,0.35)' : 'rgba(255,236,200,0.18)';
+      ctx.beginPath(); ctx.ellipse(sx, sy, 2 + K.hash(i + 64) * 4, 1.5 + K.hash(i + 65) * 2, 0, 0, TAU); ctx.fill();
+      if (K.hash(i + 66) < 0.12) { ctx.fillStyle = '#b4aa9a'; ctx.beginPath(); ctx.ellipse(sx + 10, sy, 5, 3.5, 0, 0, TAU); ctx.fill(); }
+    }
+    ctx.fillStyle = '#5aa848';
+    for (let x = Math.floor((cx - 20) / 9) * 9; x < cx + W + 20; x += 9) {
+      const h1 = 6 + K.hash(x * 0.37) * 8, h2 = 5 + K.hash(x * 0.53) * 7;
+      ctx.beginPath(); ctx.moveTo(x, top + 2); ctx.lineTo(x + 3, top - h1); ctx.lineTo(x + 6, top + 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x, bot + 2); ctx.lineTo(x + 3, bot - h2); ctx.lineTo(x + 6, bot + 2); ctx.fill();
+    }
     ctx.strokeStyle = 'rgba(255,240,210,0.25)'; ctx.lineWidth = 2; ctx.setLineDash([14, 12]);
     for (const r of [0.5, 1.5]) { const yy = SR.rowY[0] + r * (SR.rowY[1] - SR.rowY[0]); ctx.beginPath(); ctx.moveTo(cx - 10, yy); ctx.lineTo(cx + W + 10, yy); ctx.stroke(); }
     ctx.setLineDash([]);
