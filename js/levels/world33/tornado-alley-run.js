@@ -240,7 +240,6 @@
     for (const h of st.obs) if (h.fly) { h.fly.vy += 900 * DT; h.d += h.fly.vx * DT; h.fy = (h.fy || 0) + h.fly.vy * DT; h.fly.r += DT * 6; }
   }
   function roadHit(st, h, why) {
-    if (window.__w33log) console.log('roadHit', h.kind, JSON.stringify(h.lanes), 'laneF', st.laneF.toFixed(2), 'lane', st.lane, 't', (st.dist / S.speed).toFixed(1), 'k', st.k);
     st.stats.hits++; bad(st, S.roadCost);
     st.bump = 1; st.shake = 1; G.shake = Math.max(G.shake || 0, 0.4);
     Sfx.play('tornadorunCrunch'); Sfx.play('stormThud');
