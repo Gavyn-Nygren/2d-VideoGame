@@ -43,7 +43,7 @@ const seeds = opt('seeds', '1,2,3').split(',').map(Number), maxT = +opt('max', 6
         await new Promise(r => setTimeout(r, 0));
       }
       // the most flips inside any 1 s window
-      const worst = fl => { let b = 0, j = 0; for (let k = 0; k < fl.length; k++) { while (fl[k] - fl[j] > 1) j++; b = Math.max(b, k - j + 1); } return b; };
+      const worst = fl => { let b = 0, j = 0, at = 0; for (let k = 0; k < fl.length; k++) { while (fl[k] - fl[j] > 1) j++; if (k - j + 1 > b) { b = k - j + 1; at = fl[j]; } } return b + (b >= 12 ? ' (at ' + at.toFixed(1) + 's)' : ''); };
       const res = G.results[i];
       let stats = '';
       try { stats = (P.MODES[mode].stats() || []).map(s => (typeof s === 'string' ? s : s.label + ': ' + (s.value || (s.values || []).join('/')))).join(' | '); } catch (e) { stats = 'ERR ' + e.message; }
