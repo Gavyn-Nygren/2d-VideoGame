@@ -157,17 +157,25 @@ function pvKit(ctx, w = PV_W, h = PV_H) {
     ctx.translate(x, y);
     if (o.shadow !== false) { ctx.fillStyle = 'rgba(28,26,54,0.2)'; ctx.beginPath(); ctx.ellipse(0, 0, bw * 0.55, 2.5 * s, 0, 0, TAU); ctx.fill(); }
     if (o.rot) { ctx.translate(0, -bh / 2); ctx.rotate(o.rot); ctx.translate(0, bh / 2); }
-    if (id === 1) { // Bo's round ears
+    // the previewed level's outfit (js/outfits.js); o.outfit: a name to force one, or false for none
+    const ofn = o.outfit === false ? null : o.outfit || (v.level ? outfitNameFor(v.level) : outfitNameFor({ world: v.world }));
+    const look0 = ofn && OUTFITS[ofn] ? OUTFITS[ofn].looks[id] : null, oo = { face, t: v.t, vx: o.vx || 0 };
+    if (look0) outfitLayer(ctx, look0, 'back', id, 0, 0, bw, bh, oo);
+    const ears = () => { // Bo's round ears
       ctx.fillStyle = col; ctx.strokeStyle = dark; ctx.lineWidth = 1.8 * s;
       for (const ex of [-bw / 2 + 3.5 * s, bw / 2 - 3.5 * s]) { v.circle(ex, -bh + 1, 4.4 * s); ctx.fill(); ctx.stroke(); }
-    }
+    };
+    if (id === 1 && !(look0 && look0.earsOver)) ears();
     ctx.fillStyle = col; ctx.strokeStyle = dark; ctx.lineWidth = 2.2 * s;
     v.rr(-bw / 2, -bh, bw, bh, 7 * s); ctx.fill(); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.22)'; v.rr(-bw / 2 + 3 * s, -bh + 3 * s, bw * 0.35, bh * 0.4, 4 * s); ctx.fill();
-    if (id === 0) { // Pip's sprout
-      v.line(0, -bh, 1 * s, -bh - 5 * s, '#3f8f5c', 1.8 * s);
-      ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(4.5 * s, -bh - 7 * s, 5.2 * s, 2.6 * s, -0.5, 0, TAU); ctx.fill();
-    }
+    if (look0) outfitLayer(ctx, look0, 'body', id, 0, 0, bw, bh, oo);
+    const sprout = () => { // Pip's sprout (out of the top of any hat)
+      const lift = outfitLift(look0) * bh / PH;
+      v.line(0, -bh - lift, 1 * s, -bh - lift - 5 * s, '#3f8f5c', 1.8 * s);
+      ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(4.5 * s, -bh - lift - 7 * s, 5.2 * s, 2.6 * s, -0.5, 0, TAU); ctx.fill();
+    };
+    if (id === 0 && !look0) sprout();
     const look = face * 2.2 * s, ey = -bh * 0.6, mood = o.mood || 'happy';
     ctx.strokeStyle = v.c.ink; ctx.fillStyle = v.c.ink; ctx.lineWidth = 1.8 * s; ctx.lineCap = 'round';
     for (const ex0 of [-4.5 * s, 4.5 * s]) {
@@ -185,6 +193,11 @@ function pvKit(ctx, w = PV_W, h = PV_H) {
     ctx.fillStyle = 'rgba(255,120,140,0.45)'; v.circle(-7 * s + look * 0.5, ey + 5.5 * s, 2.1 * s); ctx.fill(); v.circle(7 * s + look * 0.5, ey + 5.5 * s, 2.1 * s); ctx.fill();
     if (mood === 'wow') { ctx.fillStyle = v.c.ink; ctx.beginPath(); ctx.ellipse(look * 0.6, ey + 6.5 * s, 1.8 * s, 2.2 * s, 0, 0, TAU); ctx.fill(); }
     else if (mood === 'joy' || mood === 'happy') { ctx.strokeStyle = v.c.ink; ctx.lineWidth = 1.5 * s; ctx.beginPath(); ctx.arc(look * 0.6, ey + 4.2 * s, 2.4 * s, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); }
+    if (look0) {
+      outfitLayer(ctx, look0, 'head', id, 0, 0, bw, bh, oo);
+      if (id === 0) sprout(); else if (look0.earsOver) { ctx.save(); ctx.translate(0, -outfitLift(look0) * bh / PH); ears(); ctx.restore(); }
+      outfitLayer(ctx, look0, 'front', id, 0, 0, bw, bh, oo);
+    }
     if (mood === 'dizzy') for (let k = 0; k < 3; k++) { const a = v.t * 7 + k * 2.1; v.fillCircle(Math.cos(a) * 10 * s, -bh - 6 * s + Math.sin(a) * 2.5 * s, 1.8 * s, v.c.gold); }
     ctx.restore();
   };

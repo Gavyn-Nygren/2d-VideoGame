@@ -733,7 +733,9 @@ function pieeatDrawEater(st, E) {
   ctx.fillStyle = col; ctx.strokeStyle = dk; ctx.lineWidth = 0.6;
   rr(-bw / 2, -bh, bw, bh, 7); ctx.fill(); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.22)'; rr(-bw / 2 + 3, -bh + 3, bw * 0.32, bh * 0.36, 3.5); ctx.fill();
-  if (k === 0) { ctx.strokeStyle = '#3f8f5c'; ctx.lineWidth = 0.55; ctx.beginPath(); ctx.moveTo(0, -bh); ctx.lineTo(1, -bh - 5); ctx.stroke(); ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(4.5, -bh - 7, 5.2, 2.6, -0.5, 0, Math.PI * 2); ctx.fill(); }
+  const sprout = lift => { ctx.strokeStyle = '#3f8f5c'; ctx.lineWidth = 0.55; ctx.beginPath(); ctx.moveTo(0, -bh - lift); ctx.lineTo(1, -bh - lift - 5); ctx.stroke(); ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(4.5, -bh - lift - 7, 5.2, 2.6, -0.5, 0, Math.PI * 2); ctx.fill(); };
+  const lift = outfitSproutLift(k) * bh / PH;
+  if (k === 0 && !lift) sprout(0);
   // the paper bib with a little pie on it
   ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(-7, -7.5); ctx.quadraticCurveTo(0, -5.5, 7, -7.5); ctx.lineTo(6, 0); ctx.lineTo(-6, 0); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = 'rgba(28,26,54,0.25)'; ctx.lineWidth = 0.3; ctx.stroke();
@@ -791,6 +793,9 @@ function pieeatDrawEater(st, E) {
     for (let i = -2; i <= 2; i++) { circle(i * 1.6, my - 1.6 - Math.abs(i) * 0.2, 1.1 + E.cream * 0.7); ctx.fill(); }
     if (E.cream > 0.5) { circle(-5, ey - 6, 1.2); ctx.fill(); }
   }
+  // the contest hats (js/outfits.js), Pip's sprout out of the top
+  drawOutfit(k, 'head', 0, 0, bw, bh, { face: k ? -1 : 1 });
+  if (k === 0 && lift) sprout(lift);
   ctx.lineCap = 'butt';
   ctx.restore();
   // a gold glow round an eater with gold help

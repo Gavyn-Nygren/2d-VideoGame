@@ -65,6 +65,7 @@ Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md
 | `index.html` | The page: top bar, game screen, touch buttons, and the list of scripts in load order |
 | `css/style.css` | All styling |
 | `js/core.js` | Shared constants, colors, themes, small helpers |
+| `js/outfits.js`, `js/outfits-worlds.js` | Outfits for Pip and Bo per world, level or room (the parts library, and what Worlds 1-31 wear) |
 | `js/saving.js` | Best times and settings saved in the browser |
 | `js/audio.js` | The sound effects engine |
 | `js/player.js` | Pip and Bo: movement, collisions, jumping, stomps, respawns, and the cord between them |
