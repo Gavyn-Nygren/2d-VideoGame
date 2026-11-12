@@ -33,39 +33,39 @@ defineOutfit('wrestlers', { // King of the Hill
 });
 defineOutfit('snowday', { // Snowball Fight: its own bobble hats soak hits, so scarves only
   pip: [['scarf', { col: '#3fbf6a', stripe: '#fff' }]],
-  bo: [['scarf', { col: '#e8483a', stripe: '#fff' }]],
+  bo: [['scarf', { col: '#6a3fc8', stripe: '#fff' }]],
 });
 defineOutfit('beach', { // Hot Potato Volleyball
   pip: [['visor', { col: '#ff8fc7', band: '#ff8fc7' }], ['lei', { cols: ['#ffd23f', '#fff', '#ff8fc7'] }], ['shades', { frame: '#ff8fc7' }]],
   bo: [['sunhat', { col: '#f2d07a', band: '#5bd0ff', flower: '#ff8fc7' }], ['lei', { cols: ['#ff8fc7', '#b28dff', '#fff'] }]],
 });
 defineOutfit('painters', { // Paint the Floor
-  pip: [['cap', { col: '#fff', peak: '#fff' }], ['overalls', { col: '#f6efdf' }], ['dots', { col: '#5b95ff', at: [[-6, -3, 1.2], [5, -7, 1], [7, -2, 1.4]] }]],
-  bo: [['beret', { col: '#e8483a' }], ['apron', { col: '#f6efdf', stain: '#ff6b4a' }]],
+  pip: [['cap', { col: '#fff', peak: '#fff' }], ['overalls', { col: '#f6efdf' }], ['dots', { col: 'ownDark', at: [[-6, -3, 1.2], [5, -7, 1], [7, -2, 1.4]] }]],
+  bo: [['beret', { col: '#6a3fc8' }], ['apron', { col: '#f6efdf', stain: 'own' }]],
 });
 
 /* ---------- World 5 Road Trip ---------- */
 defineOutfit('roadtrip', {
   pip: [['cap', { col: '#e8483a', peak: '#fff', letter: '★', letterCol: '#ffd23f' }], ['shades', {}]],
-  bo: [['sunhat', { col: '#f2d07a', band: '#e8483a' }], ['backpack', { col: '#3fbf6a', roll: '#e8483a' }]],
+  bo: [['sunhat', { col: '#f2d07a', band: '#3fbf6a' }], ['backpack', { col: '#3fbf6a', roll: '#ffd23f' }]],
 });
 defineOutfit('pizza', { // Pizza Delivery
   pip: [['cap', { col: '#e8483a', peak: '#e8483a', trim: '#fff', letter: 'P', letterCol: '#fff' }], ['apron', { col: '#fff', trim: '#e8483a' }]],
-  bo: [['chef', { band: '#e8483a' }], ['apron', { col: '#fff', trim: '#3fbf6a', stain: '#e8483a' }]],
+  bo: [['chef', { band: '#3fbf6a' }], ['apron', { col: '#fff', trim: '#3fbf6a', stain: '#ffc53d' }]],
 });
 defineOutfit('icetrip', { // Ice Slide
   pip: [['beanie', { col: '#3fbf6a', trim: '#fff', pom: '#fff', stripe: '#fff' }], ['scarf', { col: '#ffd23f', stripe: '#e8483a' }]],
-  bo: [['earmuffs', { col: '#ff8fc7', band: '#2b2840' }], ['scarf', { col: '#e8483a', stripe: '#fff' }]],
+  bo: [['earmuffs', { col: '#ff8fc7', band: '#2b2840' }], ['scarf', { col: '#6a3fc8', stripe: '#fff' }]],
 });
 defineOutfit('firefighters', { // Rising Lava
   pip: [['helmet', { col: '#e8202a', stripe: '#ffd23f', visor: '#ffd23f' }], ['shirt', { col: '#3a3a4a', top: -7, stripes: null, belt: '#ffd23f' }]],
-  bo: [['helmet', { col: '#ffd23f', stripe: '#e8202a', visor: '#2b2840' }], ['shirt', { col: '#3a3a4a', top: -7, belt: '#ffd23f' }]],
+  bo: [['helmet', { col: '#ffd23f', stripe: '#2b2840', visor: '#2b2840' }], ['shirt', { col: '#3a3a4a', top: -7, belt: '#ffd23f' }]],
 });
 
 /* ---------- World 6 Backyard Bash ---------- */
 defineOutfit('chefs', { // Monster Feeding
   pip: [['chef', { band: 'own' }], ['apron', { col: '#fff', trim: 'own', stain: '#8a5a32' }]],
-  bo: [['chef', { band: 'own' }], ['scarf', { col: '#e8483a', stripe: '#fff' }], ['apron', { col: '#fff', trim: 'own' }]],
+  bo: [['chef', { band: 'own' }], ['scarf', { col: '#3fbf6a', stripe: '#fff' }], ['apron', { col: '#fff', trim: 'own' }]],
 });
 defineOutfit('tugteam', { // Tug of War
   pip: [['headband', { col: '#fff', badge: '#e8483a' }], ['shirt', { col: '#fff', top: -8, number: 1, numCol: 'own', side: 'own' }]],
@@ -79,7 +79,7 @@ defineOutfit('railway', { // Train Tracks: its own hats show who builds, so over
 /* ---------- World 7 Castle Quest ---------- */
 defineOutfit('knights', {
   pip: [['knight', { plume: '#ffd23f' }], ['armor', { emblem: 'own', mail: true }]],
-  bo: [['knight', { plume: '#e8483a', col: '#e0c070' }], ['armor', { col: '#e0c070', emblem: 'own' }]],
+  bo: [['knight', { plume: '#5bd0ff', col: '#e0c070' }], ['armor', { col: '#e0c070', emblem: 'own' }]],
 });
 defineOutfit('burglars', { // Laser Vault: cartoon cat burglars sneaking through the vault
   pip: [['beanie', { col: '#2b2840', trim: '#2b2840', pom: false }], ['domino', {}], ['shirt', { col: '#fff', top: -9, stripes: '#2b2840' }]],
@@ -89,7 +89,7 @@ defineOutfit('burglars', { // Laser Vault: cartoon cat burglars sneaking through
 /* ---------- World 8 Lucky Casino ---------- */
 defineOutfit('casino', {
   pip: [['visor', { col: '#3fbf6a', band: '#3fbf6a', glass: true }], ['vest', { col: '#c8202a', buttons: '#ffd23f' }], ['bowtie', { col: '#2b2840' }]],
-  bo: [['tophat', { col: '#2b2840', band: '#ffd23f', tall: 10 }], ['bowtie', { col: '#c8202a', dots: '#fff' }], ['vest', { col: '#2b2840', buttons: '#ffd23f' }]],
+  bo: [['tophat', { col: '#2b2840', band: '#ffd23f', tall: 10 }], ['bowtie', { col: '#3fbf6a', dots: '#fff' }], ['vest', { col: '#2b2840', buttons: '#ffd23f' }]],
 });
 
 /* ---------- World 9 Great Escapes ---------- */
@@ -99,7 +99,7 @@ defineOutfit('romans', { // Pompeii Escape
 });
 defineOutfit('frisco', { // San Francisco 1906 Quake
   pip: [['flatcap', { col: '#8a7a66' }], ['overalls', { col: '#6a5a4a' }], ['neckerchief', { col: '#e8483a' }]],
-  bo: [['bowler', { col: '#3a3030' }], ['vest', { col: '#4a4a5a', buttons: '#ffd23f' }], ['bowtie', { col: '#c8202a' }]],
+  bo: [['bowler', { col: '#3a3030' }], ['vest', { col: '#4a4a5a', buttons: '#ffd23f' }], ['bowtie', { col: '#ffd23f' }]],
 });
 defineOutfit('iceage', { // Ice Age Glacier
   pip: [['headband', { col: '#c8a070', stripe: '#f4ead0' }], ['cavefur', { col: '#c8a070', spots: '#7a4a1a' }]],
@@ -113,7 +113,7 @@ defineOutfit('explorers1883', { // Krakatoa Ash Run: the leader's explorer hat i
 /* ---------- World 10 Collector's Vault (boss): the heroes' capes ---------- */
 defineOutfit('vaultheroes', {
   pip: [['cape', { col: '#c8202a', lining: '#ffd23f' }], ['domino', { col: '#c8202a' }], ['belt', { col: '#ffd23f', buckle: '#fff' }]],
-  bo: [['cape', { col: '#ffd23f', lining: '#c8202a' }], ['domino', { col: '#2b2840' }], ['belt', { col: '#ffd23f', buckle: '#fff' }]],
+  bo: [['cape', { col: '#ffd23f', lining: '#6a3fc8' }], ['domino', { col: '#2b2840' }], ['belt', { col: '#ffd23f', buckle: '#fff' }]],
 });
 
 /* ---------- World 11 Summer Games ---------- */
@@ -140,14 +140,14 @@ defineOutfit('sledders', { // Bobsled, Ski Jump
   bo: [['helmet', { col: '#2b3a8a', stripe: '#fff' }], ['goggles', { ski: true, frame: '#2b2840', lens: 'rgba(140,220,255,0.6)' }]],
 });
 defineOutfit('hockey', { // Ice Hockey
-  pip: [['helmet', { col: '#fff', stripe: 'own' }], ['cage', {}], ['shirt', { col: 'own', top: -9, stripes: '#fff', number: 9, numCol: '#fff' }]],
-  bo: [['helmet', { col: '#2b2840', stripe: 'own' }], ['cage', {}], ['shirt', { col: 'own', top: -9, stripes: '#fff', number: 4, numCol: '#fff' }]],
+  pip: [['helmet', { col: '#fff', stripe: 'own' }], ['cage', {}], ['shirt', { col: 'own', top: -9, number: 9, numCol: '#fff' }]],
+  bo: [['helmet', { col: '#2b2840', stripe: 'own' }], ['cage', {}], ['shirt', { col: 'own', top: -9, number: 4, numCol: '#fff' }]],
 });
 
 /* ---------- World 13 Spooky Hollow: Halloween costumes ---------- */
 defineOutfit('halloween', {
-  pip: [['wizard', { witch: true, col: '#3a2a5a', band: '#7dffb0', buckle: true, stars: false }], ['cape', { col: '#3a2a5a', lining: '#7dffb0', len: 0.9 }]],
-  bo: [['pumpkinhat', {}], ['cape', { col: '#1c1a36', lining: '#c8202a' }], ['bowtie', { col: '#ff8a1e' }]],
+  pip: [['pumpkinhat', { leaf: false }], ['cape', { col: '#1c1a36', lining: '#ff8a1e' }], ['bowtie', { col: '#3fbf6a' }]], // (the sprout is the pumpkin's leaf)
+  bo: [['wizard', { witch: true, col: '#3a2a5a', band: '#7dffb0', buckle: true, stars: false }], ['cape', { col: '#3a2a5a', lining: '#7dffb0', len: 0.9 }]],
 });
 defineOutfit('ghosthunters', { // Haunted Mansion
   pip: [['goggles', { up: true, frame: '#2b2840', lens: 'rgba(125,255,176,0.6)' }], ['shirt', { col: '#c8b080', top: -8, belt: '#5a3418' }], ['tank', { col: '#c9d0da' }]],
@@ -171,31 +171,31 @@ defineOutfit('space-nohat', { from: 'space', noHats: true }); // Tethered Spacew
 /* ---------- World 16 Sugar Rush Factory ---------- */
 defineOutfit('candy', {
   pip: [['chef', { band: '#ff8fc7' }], ['apron', { col: '#fff', trim: '#ff8fc7', pocket: '#ff8fc7' }]],
-  bo: [['cap', { col: '#fff', peak: '#ff8fc7', trim: '#ff8fc7' }], ['apron', { col: '#ffe0f0', trim: '#e8483a', stain: '#8a5a32' }]],
+  bo: [['cap', { col: '#fff', peak: '#ff8fc7', trim: '#ff8fc7' }], ['apron', { col: '#ffe0f0', trim: '#b28dff', stain: '#8a5a32' }]],
 });
 defineOutfit('candyraft', { // Chocolate River Raft
   from: 'candy', pip: [['chef', { band: '#ff8fc7' }], ['lifevest', { col: '#ff8fc7' }]],
   bo: [['cap', { col: '#fff', peak: '#ff8fc7', trim: '#ff8fc7' }], ['lifevest', { col: '#ffd23f' }]],
 });
-defineOutfit('sprinkles', { // Sprinkle Catch (versus)
-  pip: [['party', { col: '#ff8fc7', stripe: '#fff', pom: '#ffd23f' }], ['bib', { col: '#fff', check: '#ff8fc7' }]],
-  bo: [['party', { col: '#7dd8ff', stripe: '#fff', pom: '#ff8fc7' }], ['bib', { col: '#fff', check: '#7dd8ff' }]],
+defineOutfit('sprinkles', { // Sprinkle Catch (versus): the level puts a catching basket on each head, so bibs and bow ties only
+  pip: [['bib', { col: '#fff', check: '#ff8fc7' }], ['bowtie', { col: '#ff8fc7' }]],
+  bo: [['bib', { col: '#fff', check: '#7dd8ff' }], ['bowtie', { col: '#7dd8ff' }]],
 });
 
 /* ---------- World 17 Jungle Jamboree ---------- */
 defineOutfit('jungle', {
   pip: [['pith', { col: '#d6c290', band: '#3fbf6a' }], ['vest', { col: '#a88a50' }], ['backpack', { col: '#6a8a3a' }]],
-  bo: [['feather', { cols: ['#e8483a', '#ffd23f', '#3fbf6a'] }], ['vest', { col: '#8a6a3a' }], ['belt', { col: '#5a3418', pouch: '#8a5a32' }]],
+  bo: [['feather', { cols: ['#b28dff', '#ffd23f', '#3fbf6a'] }], ['vest', { col: '#8a6a3a' }], ['belt', { col: '#5a3418', pouch: '#8a5a32' }]],
 });
 defineOutfit('canoe', { // River Rapids Canoe
   pip: [['pith', { col: '#d6c290', band: '#3fbf6a' }], ['lifevest', { col: '#ff7a1e' }]],
-  bo: [['feather', { cols: ['#e8483a', '#ffd23f', '#3fbf6a'] }], ['lifevest', { col: '#ffd23f' }]],
+  bo: [['feather', { cols: ['#b28dff', '#ffd23f', '#3fbf6a'] }], ['lifevest', { col: '#ffd23f' }]],
 });
 
 /* ---------- World 18 Pirate Cove ---------- */
 defineOutfit('pirates', {
   pip: [['tricorn', { col: '#2b2840', trim: '#ffc53d', feather: '#e8483a' }], ['sash', { col: '#c8202a', knot: true }], ['belt', { col: '#5a3418' }]],
-  bo: [['bandana', { col: '#c8202a', dots: '#fff' }], ['shirt', { col: '#fff', top: -9, stripes: '#2f5fc4' }]],
+  bo: [['bandana', { col: '#1f9f8f', dots: '#fff' }], ['shirt', { col: '#fff', top: -9, stripes: '#2f5fc4' }]],
 });
 defineOutfit('pirates-nohat', { from: 'pirates', noHats: true }); // Runaway Ship draws captain and deckhand hats itself
 
@@ -205,8 +205,8 @@ defineOutfit('cowboys', {
   bo: [['cowboy', { col: '#4a3a3a', band: '#c8a050' }], ['neckerchief', { col: '#ffd23f' }], ['belt', { col: '#5a3418', buckle: '#ffd23f' }]],
 });
 defineOutfit('railroaders', { // Handcar Hustle
-  pip: [['captain', { col: '#2b3a6b', band: '#2b3a6b', peak: '#1c1a36', badge: '#ffd23f' }], ['overalls', { col: '#6a4a2a' }], ['neckerchief', { col: '#e8483a' }]],
-  bo: [['flatcap', { col: '#4a6aa8' }], ['overalls', { col: '#4a6aa8' }], ['neckerchief', { col: '#ffd23f' }]],
+  pip: [['captain', { col: '#3a3a4a', band: '#c8202a', peak: '#1c1a36', badge: '#ffd23f' }], ['overalls', { col: '#6a4a2a' }], ['neckerchief', { col: '#e8483a' }]],
+  bo: [['flatcap', { col: '#dfe6f0' }], ['overalls', { col: '#dfe6f0' }], ['neckerchief', { col: '#ffd23f' }]],
 });
 defineOutfit('cowboys-nohat', { from: 'cowboys', noHats: true }); // Gold Mine Cart: its own cowboy hats fly off on a bonk
 
@@ -219,7 +219,7 @@ defineOutfit('dragonknights', {
 /* ---------- World 21 Sky Kingdom: aviators ---------- */
 defineOutfit('aviators', {
   pip: [['pilotcap', { col: '#8a5a32', lens: '#9fe0ff' }], ['scarf', { col: '#fff' }]],
-  bo: [['pilotcap', { col: '#5a3a24', lens: '#ffd88a' }], ['scarf', { col: '#e8483a' }]],
+  bo: [['pilotcap', { col: '#5a3a24', lens: '#ffd88a' }], ['scarf', { col: '#ffd23f' }]],
 });
 
 /* ---------- World 22 Coral Deep: divers ---------- */
@@ -233,35 +233,35 @@ defineOutfit('scuba-nohat', { from: 'scuba', noHats: true }); // Treasure Diver 
 /* ---------- World 23 Barnyard Fair ---------- */
 defineOutfit('farmers', {
   pip: [['sunhat', { col: '#f2d07a', band: '#e8483a' }], ['overalls', { col: '#8a5a32' }]],
-  bo: [['cap', { col: '#e8483a', peak: '#e8483a', trim: '#fff' }], ['overalls', { col: '#6a8a3a' }], ['neckerchief', { col: '#ffd23f' }]],
+  bo: [['cap', { col: '#3fbf6a', peak: '#3fbf6a', trim: '#fff' }], ['overalls', { col: '#6a8a3a' }], ['neckerchief', { col: '#ffd23f' }]],
 });
 defineOutfit('hotdogs', { // Hot Dog Stand Rush
-  pip: [['cap', { col: '#e8483a', peak: '#ffd23f', letter: '★', letterCol: '#ffd23f' }], ['apron', { col: '#fff', trim: '#e8483a', stain: '#ffc53d' }]],
-  bo: [['visor', { col: '#ffd23f', band: '#e8483a' }], ['apron', { col: '#fff', trim: '#ffd23f', stain: '#e8483a' }]],
+  pip: [['cap', { col: '#e8483a', peak: '#ffd23f', letter: '★', letterCol: '#ffd23f' }], ['apron', { col: '#fff', trim: '#e8483a', stain: '#e8483a' }]],
+  bo: [['visor', { col: '#ffd23f', band: '#fff' }], ['apron', { col: '#fff', trim: '#ffd23f', stain: '#ffc53d' }]], // ketchup for Pip, mustard for Bo
 });
 defineOutfit('pieeaters', { // Pie-Eating Contest: the level ties its own paper bibs on, so just hats
   pip: [['sunhat', { col: '#f2d07a', band: '#e8483a' }]],
-  bo: [['cap', { col: '#e8483a', peak: '#e8483a', trim: '#fff' }]],
+  bo: [['cap', { col: '#3fbf6a', peak: '#3fbf6a', trim: '#fff' }]],
 });
 
 /* ---------- World 24 Toy Box Town ---------- */
 defineOutfit('toys', {
-  pip: [['propeller', {}], ['overalls', { col: '#ffd23f', button: '#e8483a' }]],
-  bo: [['tophat', { col: '#c8202a', band: '#ffd23f', tall: 9 }], ['shirt', { col: '#2b3a8a', top: -9, belt: '#fff' }], ['buttons', { col: '#ffd23f' }]],
+  pip: [['propeller', { cols: ['#e8483a', '#ffd23f', '#3fbf6a', '#b28dff'] }], ['overalls', { col: '#ffd23f', button: '#e8483a' }]],
+  bo: [['tophat', { col: '#2b2840', band: '#ffd23f', tall: 9 }], ['shirt', { col: '#2b3a8a', top: -9, belt: '#fff' }], ['buttons', { col: '#ffd23f' }]],
 });
 defineOutfit('pyjamas', { // Pillow Fort Battle
-  pip: [['nightcap', { col: '#b28dff', stripe: '#fff', pom: '#ffd23f' }], ['shirt', { col: '#b28dff', top: -9, stripes: '#fff' }]],
+  pip: [['nightcap', { col: '#ffc53d', stripe: '#fff', pom: '#fff' }], ['shirt', { col: '#ffc53d', top: -9, stripes: '#fff' }]],
   bo: [['nightcap', { col: '#7dd89f', stripe: '#fff', pom: '#fff' }], ['shirt', { col: '#7dd89f', top: -9, stripes: '#fff' }]],
 });
 defineOutfit('trainride', { // Wind-Up Train Ride
-  pip: [['captain', { col: '#2b3a8a', band: '#2b3a8a', peak: '#1c1a36' }], ['overalls', { col: '#c8202a', button: '#ffd23f' }]],
-  bo: [['propeller', { cols: ['#ff8fc7', '#7dd89f', '#ffd23f', '#b28dff'] }], ['overalls', { col: '#ffd23f', button: '#e8483a' }]],
+  pip: [['captain', { col: '#c8202a', band: '#2b2840', peak: '#1c1a36' }], ['overalls', { col: '#c8202a', button: '#ffd23f' }]],
+  bo: [['propeller', { cols: ['#ff8fc7', '#7dd89f', '#ffd23f', '#b28dff'], blade: '#b28dff' }], ['overalls', { col: '#ffd23f', button: '#e8483a' }]],
 });
 
 /* ---------- World 25 Zombie Acres: home-made armour ---------- */
 defineOutfit('zombiefort', {
   pip: [['helmet', { col: '#3fbf6a', stripe: '#fff', visor: '#2b2840' }], ['shirt', { col: '#6a8a3a', top: -8, belt: '#5a3418' }], ['belt', { col: '#5a3418', pouch: '#8a5a32' }]],
-  bo: [['saucepan', {}], ['overalls', { col: '#6a5a4a' }], ['neckerchief', { col: '#e8483a' }]],
+  bo: [['saucepan', {}], ['overalls', { col: '#6a5a4a' }], ['neckerchief', { col: '#ffd23f' }]],
 });
 
 /* ---------- World 26 Circus Big Top ---------- */
@@ -271,7 +271,7 @@ defineOutfit('acrobats', { // Trapeze Catch: spangled leotards in their own colo
 });
 defineOutfit('clowns', { // Clown Car Getaway, Stilt Race
   pip: [['clownwig', { col: '#7dd89f', hat: '#2b2840' }], ['clownnose', {}], ['ruff', { cols: ['#ffd23f', '#7dd89f'] }]],
-  bo: [['clownwig', { col: '#ff8fc7', hat: '#c8202a' }], ['clownnose', {}], ['ruff', { cols: ['#ffd23f', '#ff8fc7'] }]],
+  bo: [['clownwig', { col: '#ff8fc7', hat: false }], ['clownnose', {}], ['ruff', { cols: ['#ffd23f', '#ff8fc7'] }]],
 });
 defineOutfit('cannonball', { // Human Cannonball Tour: the level gives the flier a helmet, so capes and belts
   pip: [['cape', { col: '#c8202a', lining: '#ffd23f' }], ['belt', { col: '#ffd23f', buckle: '#c8202a' }]],

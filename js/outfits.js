@@ -32,7 +32,7 @@
    under the eyes), head (hats: over the face), front (goggles and visors: over everything).
 
    Rules: Pip must still read as orange and Bo as blue at a glance (keep most of the body in the player's own colour,
-   or use 'own' for the outfit's main colour); Pip and Bo should look different from each other (a different hat or
+   or use 'own' for the outfit's main colour; no blue or navy on Pip, no orange or red on Bo); Pip and Bo should look different from each other (a different hat or
    colour); keep the eyes visible. Check a new outfit with `node tools/outfits/sheet.js` (every outfit, big) and in a
    level screenshot.
 
@@ -420,11 +420,11 @@ defineOutfitPart('clownwig', { layer: 'head', lift: 5, earsOver: true, draw(c, o
   if (o.hat !== false) { ofRR(g, -4, -32, 8, 6.4, 1.2); ofFillStroke(g, k(o.hat || '#2b2840', c), ink, 1.2); g.fillRect(-6, -26.4, 12, 1.8); g.strokeRect(-6, -26.4, 12, 1.8); }
 } });
 defineOutfitPart('pumpkinhat', { layer: 'head', lift: 8, draw(c, o, k) {
-  // a little pumpkin worn as a hat, with a leaf
+  // a little pumpkin worn as a hat, with a leaf (`leaf: false` for Pip, whose sprout grows out of the stem)
   const g = c.g, ink = o.ink || OF_INK;
   for (const dx of [-5, 5, 0]) { g.beginPath(); g.ellipse(dx, -29, dx ? 5 : 5.6, 4.6, 0, 0, Math.PI * 2); ofFillStroke(g, k(o.col || '#ff8a1e', c), ink, 1.2); }
   g.strokeStyle = '#3f6a2a'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, -33); g.lineTo(1, -36.4); g.stroke();
-  g.fillStyle = '#5cc27f'; g.beginPath(); g.ellipse(3.4, -35.6, 2.8, 1.4, -0.5, 0, Math.PI * 2); g.fill();
+  if (o.leaf !== false) { g.fillStyle = '#5cc27f'; g.beginPath(); g.ellipse(3.4, -35.6, 2.8, 1.4, -0.5, 0, Math.PI * 2); g.fill(); }
 } });
 defineOutfitPart('dinohood', { layer: 'head', lift: 4, earsOver: true, draw(c, o, k) {
   // a dino-costume hood: green with spikes down the back of the head
