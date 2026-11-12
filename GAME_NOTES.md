@@ -17,6 +17,7 @@ Demo: https://claude.ai/artifact/85NPz4hhcdi429juHSXUx7
 - 1-player mode (Nov 2026): one person plays Pip or Bo and the computer plays the other. In team levels the computer is a helpful teammate; in versus levels it is the opponent (Easy, Normal or Hard). Every new level needs a computer brain too (see "Computer partner" below).
 - A boss world every 10 worlds (Gavyn, Nov 2026): World 10 is the Grand Collector, World 20 is the Volcano Dragon, World 30 is the Time Thief, and so on. Worlds 11 (Summer Games) and 12 (Winter Games) come after World 10.
 - World 25 was built early (Gavyn, Nov 2026) with gaps still to fill; a world can add itself from its own file (see World 25). World 24 was added that way too.
+- Outfits (Gavyn, Nov 2026): Pip and Bo wear outfits unique to each level where it fits (space suits, pirate gear, knight armour...). Every new world and level gets its outfits while it is built (see "Outfits" below). Opus designs them; a Fable 5.2 review checks they look good and fit the theme.
 
 ## Controls
 
@@ -869,6 +870,7 @@ The King's Grand Tournament: striped pavilions, pennants, a royal stand, a castl
 - Per-role action words: `act.labels` is per player, so a level whose roles swap every room gives each room its own `act` (as 8-3 does) or updates the labels itself (9-4 rewrites the `[data-actlabel]` text when the room changes).
 - Never rename a shipped level: records are saved in localStorage by level name (`pipbo:best:<name>`, `pipbo:golf:<name>`).
 - Catch-up help is gold and announced, never hidden.
+- Every new level declares its outfit (`def.outfit`, or the world's `WORLDS[n].outfit`; see "Outfits").
 
 ### Code map
 The code is split into `css/` and `js/` files (the README has the same table). `index.html` loads the scripts in this order.
@@ -878,6 +880,8 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 | `index.html` | Markup: header legend, `#stage` with `canvas#game`, touch pads `#padPip` and `#padBo`, `#overlay` cards, `#toast`; script tags in load order |
 | `css/style.css` | All styles |
 | `js/core.js` | Constants (`T`, `DT`, `PHYS`), colours `C`, themes and `applyTheme`, helpers |
+| `js/outfits.js` | Outfits: `defineOutfit`, `defineOutfitPart`, the parts library (hats, clothes, capes, goggles...), `setOutfit`, `outfitNow`, `drawOutfit` / `outfitLayer` (drawPlayer and the previews' `v.hero` call it) |
+| `js/outfits-worlds.js` | The outfits of Worlds 1-31 and which level wears which (`OUTFIT_BY_LEVEL`, `OUTFIT_BY_WORLD`, `TTH_OUTFITS`) |
 | `js/levels/level-list.js` | `LEVELS` (with a `/* ===== World N (` marker per world from 4 on) and `WORLDS` (`name`, `blurb`, `theme`) |
 | `js/saving.js` | `store`, `levelRecord` |
 | `js/audio.js` | `Sfx` (each level keeps its `Sfx.extra.*` sounds in its own file) |
@@ -897,6 +901,17 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 - New level: a new `js/levels/worldN/<slug>.js` with a `MODES.<name>` block (hooks: `setup` required; `resetRound`, `go`, `pre`, `step`, `draw`, `drawTop`, `hud`, `stats`, `timeUp`, `tiebreak`, `onKill`, `onRespawn`, `onStomp`, `room` optional), its def in `LEVELS` after its world's marker (`name`, `world` 0-based, `kind`, `mode`, `tip`, `map` or `rooms`), and a script tag after the last level file, before `js/input.js`. Level codes follow the order in `LEVELS`.
 - New world: a `WORLDS` entry with a theme plus a marker at the end of `LEVELS`. A world with no levels stays hidden. Add `js/previews/worldN.js` and its script tag after the other preview files (before `js/home.js`).
 - Every new level also gets a preview (see "Home screens" below). Until it has one, its card shows a plain scene in its world's colours.
+
+### Outfits (Nov 2026)
+Gavyn asked for Pip and Bo to wear outfits unique to each level where it fits, and for every future level to get them while it is built.
+- **What an outfit is**: paint over the usual body, drawn by `drawPlayer` (js/render.js) in four layers: `back` (capes, packs, tanks: behind the body), `body` (clothes and masks: on the body, under the eyes), `head` (hats), `front` (goggles, visors, a clown nose). Hitboxes, physics, the computer partner and saves never see it. A hat can lift Pip's sprout so it grows out of the hat's top (`lift`), and a hood can put Bo's ears over itself (`earsOver`).
+- **Declaring one** (the first found wins): `setOutfit('name')` from a level's own code at run time (lasts until the next `loadLevel`; the Time Thief changes outfit every era with it), `rooms[i].outfit`, the level's `def.outfit`, `WORLDS[w].outfit`. `'none'` turns them off for a level. Worlds 1-31 declare theirs by level name in `js/outfits-worlds.js` (so `level-list.js` stayed as it was); a new world puts `outfit: 'name'` on its level defs and/or `WORLDS[n].outfit` in its own `world.js`, and `defineOutfit` calls in its kit or world file.
+- **Defining one**: `defineOutfit('pirates', { pip: [['tricorn', { feather: '#e8483a' }], ['sash', {}]], bo: [['bandana', {}], ['shirt', { stripes: '#2f5fc4' }]] })` (or `both: [...]`). Each entry is a part from the library in `js/outfits.js` with its options; colour options take a colour or `'own'` / `'ownDark'` / `'ownLight'` (the wearer's colours). `{ from: 'pirates', noHats: true }` copies an outfit without its hats, for a level that already puts job hats on (Runaway Ship's captain, Train Tracks' builder). A level can add its own part with `defineOutfitPart('name', { layer, lift, earsOver, draw(c, o, k) })`: it draws in the body's own frame (x -11 to 11, y -26 at the top of the head to 0 at the feet, eyes about y -16), scaled to the body as drawn; the header of `js/outfits.js` lists what `c` holds.
+- **Rules**: Pip must still read as orange and Bo as blue at a glance: keep most of the body in their own colour, Pip wears no blue (navy counts) and Bo wears no orange or red (the Fable review recoloured about 25 outfits for this; purple, green, yellow, teal, white and dark ink are safe for both; a clown's red nose is the one exception). A level that puts its own prop on the head (Sprinkle Catch's baskets) gets an outfit with no hat; Pip and Bo never wear the same hat (a different hat, or the same hat in different colours); keep the eyes visible; keep it small and bold (the bodies are 22 x 26 px on screen).
+- **Heroes a level draws itself** (vehicles, close-ups, custom poses): call `outfitBehind(id, x, y, w, h, o)` before the body and `outfitOver(...)` after the face, or `drawOutfit(id, layer, ...)` per layer, where (x, y) is the middle of the feet and w x h the body in the current transform; `outfitSproutLift(id)` says how far up to draw Pip's sprout (17-4 Vine Swing and 23-4 Pie-Eating Contest do this). Levels that call `drawPlayer` (most do, even for copies in vehicles) get outfits for free.
+- **Previews**: `v.hero()` wears the previewed level's outfit by itself (`o.outfit` forces one, `false` none); the title screen's run through the worlds shows each world's look (`OUTFIT_BY_WORLD`).
+- **Levels left as they were**: World 1 (their everyday look, so new players meet the real Pip and Bo); Worlds 32-35 and the custom-drawn versus levels that were already dressed for the job when outfits came (superhero suits, storm-chaser raincoats, Viking helmets, wizard robes; and 13-4 Broomstick Race, 14-4 Raptor Race, 15-4 Planet Hop Race, 18-2 Grapple & Zip, 18-4 Plank Duel, 19-4 Quick-Draw Showdown, 21-4 Paper Plane Race, 22-4 Dolphin Race), and the levels where Pip and Bo are a ball, a chip, a paddle or a car. Outfits there would double up the hats.
+- **Checking**: `node tools/outfits/sheet.js [names|all]` draws every outfit big (both players, facing both ways, standing and running, plus the preview look) into `build/outfits/`. Then look at the level itself and its preview.
 
 ### Home screens (Nov 2026)
 Gavyn asked for a new title and home screen where every world can be picked and each world shows little animated scenes of its levels.

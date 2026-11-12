@@ -299,24 +299,22 @@ function drawPlayer(p) {
   const col = PCOL[p.id], dark = PDARK[p.id];
   const w = p.w * p.sx, h = p.h * p.sy;
   const cx = p.x + p.w / 2, by = p.y + p.h;
+  const of = outfitNow(), look0 = of && of.looks[p.id], oo = look0 && { face: p.face, t: G.clock, vx: p.vx };
   ctx.save(); ctx.translate(cx, by);
   ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.beginPath(); ctx.ellipse(0, 0, w * 0.55, 3, 0, 0, Math.PI * 2); ctx.fill();
-  // ears / sprout
-  if (p.id === 1) { ctx.fillStyle = col; circle(-w / 2 + 4, -h + 1, 5); ctx.fill(); circle(w / 2 - 4, -h + 1, 5); ctx.fill(); ctx.strokeStyle = dark; ctx.lineWidth = 2; circle(-w / 2 + 4, -h + 1, 5); ctx.stroke(); circle(w / 2 - 4, -h + 1, 5); ctx.stroke(); }
+  if (look0) outfitLayer(ctx, look0, 'back', p.id, 0, 0, w, h, oo);
+  // ears / sprout (js/outfits.js: an outfit's hat can lift the sprout, or put the ears over the hat)
+  const ears = () => { ctx.fillStyle = col; circle(-w / 2 + 4, -h + 1, 5); ctx.fill(); circle(w / 2 - 4, -h + 1, 5); ctx.fill(); ctx.strokeStyle = dark; ctx.lineWidth = 2; circle(-w / 2 + 4, -h + 1, 5); ctx.stroke(); circle(w / 2 - 4, -h + 1, 5); ctx.stroke(); };
+  if (p.id === 1 && !(look0 && look0.earsOver)) ears();
   ctx.fillStyle = col; ctx.strokeStyle = dark; ctx.lineWidth = 2.5;
   rr(-w / 2, -h, w, h, 8); ctx.fill(); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.22)'; rr(-w / 2 + 3, -h + 3, w * 0.35, h * 0.4, 5); ctx.fill();
-  if (p.id === 0) {
-    ctx.strokeStyle = '#3f8f5c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -h); ctx.lineTo(1, -h - 6); ctx.stroke();
-    ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(5, -h - 8, 6, 3, -0.5, 0, Math.PI * 2); ctx.fill();
-  }
+  if (look0) outfitLayer(ctx, look0, 'body', p.id, 0, 0, w, h, oo);
   // face
   const look = p.face * 2.5, ey = -h * 0.6 + clamp(p.vy / 300, -1.5, 1.5);
   if (p.stun > 0) {
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
     for (const ex of [-5, 5]) { ctx.beginPath(); ctx.moveTo(ex - 3 + look, ey - 3); ctx.lineTo(ex + 3 + look, ey + 3); ctx.moveTo(ex + 3 + look, ey - 3); ctx.lineTo(ex - 3 + look, ey + 3); ctx.stroke(); }
-    ctx.fillStyle = C.gold;
-    for (let i = 0; i < 3; i++) { const a = G.clock * 8 + i * 2.1; circle(Math.cos(a) * 12, -h - 8 + Math.sin(a) * 3, 2.2); ctx.fill(); }
   } else if (p.blink > 0) {
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
     for (const ex of [-5, 5]) { ctx.beginPath(); ctx.moveTo(ex - 3 + look, ey); ctx.lineTo(ex + 3 + look, ey); ctx.stroke(); }
@@ -327,6 +325,18 @@ function drawPlayer(p) {
     }
   }
   ctx.fillStyle = 'rgba(255,120,140,0.45)'; circle(-8 + look * 0.5, ey + 6, 2.4); ctx.fill(); circle(8 + look * 0.5, ey + 6, 2.4); ctx.fill();
+  if (look0) outfitLayer(ctx, look0, 'head', p.id, 0, 0, w, h, oo);
+  if (p.id === 0) {
+    const lift = outfitLift(look0) * h / PH;
+    ctx.strokeStyle = '#3f8f5c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -h - lift + (lift ? 1 : 0)); ctx.lineTo(1, -h - lift - 6); ctx.stroke();
+    ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(5, -h - lift - 8, 6, 3, -0.5, 0, Math.PI * 2); ctx.fill();
+  } else if (look0 && look0.earsOver) { ctx.save(); ctx.translate(0, -outfitLift(look0) * h / PH); ears(); ctx.restore(); }
+  if (look0) outfitLayer(ctx, look0, 'front', p.id, 0, 0, w, h, oo);
+  if (p.stun > 0) { // dizzy stars, above any hat
+    const sy = -h - 8 - outfitLift(look0) * h / PH * 0.6;
+    ctx.fillStyle = C.gold;
+    for (let i = 0; i < 3; i++) { const a = G.clock * 8 + i * 2.1; circle(Math.cos(a) * 12, sy + Math.sin(a) * 3, 2.2); ctx.fill(); }
+  }
   if (p.stompSafe > 0 && p.stun <= 0 && isVersus()) {
     // just stomped: a blinking bubble shows you can't be stomped again yet
     ctx.globalAlpha = 0.45 + 0.35 * Math.sin(G.clock * 18);

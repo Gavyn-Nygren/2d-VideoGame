@@ -523,6 +523,7 @@ function tthInit(st) {
 function tthStartPhase(st, L) {
   const def = L.def;
   st.phase = def.phase; st.phaseNo = def.roomIndex || 0; st.era = TTH_ERAS[st.phase] || TTH_ERAS.dino;
+  setOutfit(TTH_OUTFITS[st.phase] || null); // Pip and Bo dress for the era (js/outfits-worlds.js)
   st.ph = {}; st.phT = 0; st.cam = { x: 0, y: 0 };
   st.cut = null; st.celebT = 0; st.say = null; st.news = null; st.hints = [null, null]; st.pops = []; st.fly = null;
   st.badgeT = 0; st.badgeArm = true; st.swapT = 0; st.safe = [0, 0]; st.teamSafe = 0; st.warn = [0, 0]; st.idleT = 0; st.idle = false; st.labKey = '';
