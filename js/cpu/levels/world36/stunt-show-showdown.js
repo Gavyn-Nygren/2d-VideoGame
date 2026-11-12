@@ -54,7 +54,7 @@
       // ---- in the air on the bike
       if (ph === 'air' && (st.si === 0 || st.si === 4)) {
         const left = P.airT - P.t;
-        if (st.si === 0 && S.flipT === undefined) S.flipT = Math.min(S.flips, Math.max(0, Math.floor((P.airT - 0.25) * SS.spinRate / 360)));
+        if (st.si === 0 && S.flipT === undefined) S.flipT = Math.min(S.flips, Math.max(0, Math.floor((P.airT - 0.12) * SS.spinRate / 360)));
         const want = st.si === 0 ? S.flipT * 360 : 0, land = st.si === 0 ? S.land : S.fLand;
         const goal = want + (land ? 0 : S.miss);
         if (P.rot < goal - 3 && left > 0.02) out.right = true;

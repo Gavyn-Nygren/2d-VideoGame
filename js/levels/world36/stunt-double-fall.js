@@ -10,7 +10,8 @@
    FALLING: always. ◀ ▶ steer (S.steer px/s), ▲ spread (fall x S.spread, steer a little faster), ▼ tuck (fall x S.tuck).
    HANDS (the action): within S.linkR px (gold help: S.goldLinkR) a tap by either links them (they snap S.gap px apart);
      linked they fall x S.linkMul, steer as one from the average of both inputs ("Pull together!" when they pull apart)
-     and are STRONG. A tap by either lets go with a small push apart.
+     and are STRONG. A tap by either lets go with a small push apart. The partner's tap within S.sameTap s of a link or
+     a let-go counts as the same wish (two people pressing together don't undo each other).
    ROWS (st.rows, each at a depth y):
      glass   sugar glass (FAKE, pale, a paper edge and a PROP tag): a linked pair smashes it (+1 Smash, a 0.15 s slow-mo);
              a single hero bounces up and hangs S.hangT s (take meter -S.glassCost).
@@ -29,6 +30,8 @@
    SIGNPOSTS: the next glass or beam shows at the bottom edge S.iconT s before (0.9 s from take 3): two figures holding
      hands (glass) or apart (a gap).
    SAFETY WIRE: heroes more than S.sep px apart up and down: the upper one is winched down beside the other (meter cost).
+     S.sep is less than the gap between two rows, so a hero stuck on a beam is brought down before the other reaches
+     the next glass alone.
    STARS: 20 gold stars (5 a take), mostly inside the camera drone's frame (it drifts down alongside), some in the gaps.
      Both inside the drone frame lights its REC lamp (stats: seconds on camera).
    GOLD HELP (3 Bonks or bounces in a take, both playing, announced, counted): gold wrist ribbons, the link reaches
@@ -42,7 +45,7 @@
   const S = {
     X0: 150, X1: 810, C: 480, steer: 260, steerSpread: 300, acc: 2200, linkR: 70, goldLinkR: 130, gap: 56, hw: 10, gapW: 64,
     fallAcc: 900, spread: 0.75, tuck: 1.3, linkMul: 0.75, heroY: 190, bounceV: -220, hangT: 0.8, bonkCost: 22, glassCost: 14,
-    daze: 0.5, sep: 430, winchCost: 16, regen: 2, idleWait: 12, iconT: 1.2, iconT2: 0.9, goldT: 185, silverT: 290,
+    daze: 0.5, sameTap: 0.5, sep: 340, winchCost: 16, regen: 2, idleWait: 12, iconT: 1.2, iconT2: 0.9, goldT: 185, silverT: 290,
   };
   const TAKES = [
     { title: 'Rehearsal', v: 250 },
@@ -114,7 +117,7 @@
   function startFrom(st, cp, first) {
     for (const r of st.rows) if (r.y > cp.y) { r.broken = false; r.busy = 0; if (r.boxes) r.boxes.forEach(b => { b.hit = false; }); }
     st.hs = [0, 1].map(id => ({ id, x: S.C + (id === 0 ? -70 : 70), y: cp.y + 20, vx: 0, vy: 0, daze: 0, hang: 0, push: 0, pvx: 0, spin: 0, chute: 0, landed: false, face: id === 0 ? 1 : -1, mul: 1, upT: 0 }));
-    st.link = null; st.linkT = -9; st.camY = cp.y + 20 - S.heroY; st.slow = 0;
+    st.link = null; st.linkT = -9; st.linkBy = -1; st.camY = cp.y + 20 - S.heroY; st.slow = 0;
     st.meter = 100; st.lastHit = -9; st.state = 'go'; st.endT = 0; st.cut = null;
     st.rc = st.rc && !first ? st.rc : { bad: 0 }; st.party = false; st.cleared = false; st.planMemo = null;
     st.land = null; st.rec = false;
@@ -150,8 +153,12 @@
   }
   function hands(st) {
     const [a, b] = st.hs;
-    const press = [0, 1].filter(q => G.players[q].pendingAct && !st.hs[q].landed);
+    let press = [0, 1].filter(q => G.players[q].pendingAct && !st.hs[q].landed);
+    // both heroes often tap for the same thing a moment apart: the partner's tap inside S.sameTap s of a link or a
+    // let-go is that same wish, so it doesn't undo it
+    if (st.clock - st.linkT < S.sameTap) press = press.filter(q => q === st.linkBy);
     if (!press.length) return;
+    st.linkBy = press.length === 1 ? press[0] : -1;
     if (st.link) { unlink(st, 60); Sfx.play('stuntfallLetGo'); st.stats.lets++; return; }
     const d = Math.hypot(a.x - b.x, a.y - b.y);
     if (d <= linkR(st) && !(a.chute > 0) && !(b.chute > 0) && a.daze <= 0 && b.daze <= 0) {
@@ -428,7 +435,10 @@
         out.h.forEach((o, i) => { o.tx = mx + (i === 0 ? (a.x <= b.x ? -1 : 1) : (b.x < a.x ? -1 : 1)) * S.gap / 2; o.why = 'meet'; });
         // (not while one is still going for a star with time to spare)
         const chasing = !busy && nx.eta > 1.6 && singleStars(st, hs, nx.eta - 1.2).some(Boolean);
-        if (!chasing && d <= linkR(st) && !busy && a.daze <= 0 && b.daze <= 0 && (sinceLink > 0.35 || nx.eta < 0.6)) out.h.forEach(o => { o.link = true; });
+        // (and not while the pair, as wide as it would be here, would hit something on the way to the glass: a person
+        // pinned to the wall beside a REAL box used to be linked, bonked and linked again for ever)
+        const wide = pairOK(soon, (a.x + b.x) / 2);
+        if (!chasing && wide && d <= linkR(st) && !busy && a.daze <= 0 && b.daze <= 0 && (sinceLink > 0.35 || nx.eta < 0.6)) out.h.forEach(o => { o.link = true; });
         // up and down: tuck to catch up, spread to wait
         if (!busy) { const dy = a.y - b.y; if (Math.abs(dy) > 40) { const hi = dy < 0 ? 0 : 1; out.h[hi].tuck = true; out.h[1 - hi].spread = true; } }
       }
@@ -467,8 +477,10 @@
       hs.forEach((h, i) => {
         const o = out.h[i];
         if (h.chute > 0 || h.landed) return;
-        if (ss[i]) { o.tx = ss[i].x; o.why = 'star'; }
-        o.tx = safeOne(st, soon, h, o.tx);
+        // (on the way to a star only the rows before it count, and the ones so close under it that there would be
+        // no time to get clear afterwards)
+        if (ss[i]) { o.tx = ss[i].x; o.why = 'star'; o.tx = safeOne(st, soon.filter(q => q.r.y < ss[i].y + V(st) * 0.6), h, o.tx); }
+        else o.tx = safeOne(st, soon, h, o.tx);
       });
     }
     return out;
@@ -488,8 +500,8 @@
     return clamp(x, S.X0 + 16, S.X1 - 16);
   }
   // a safe middle for a linked pair
-  function safePair(st, soon, cx) {
-    const ok = c => soon.every(q => {
+  function pairOK(soon, c) {
+    return soon.every(q => {
       const r = q.r, xs = [c - S.gap / 2, c + S.gap / 2];
       if (r.k === 'boxes') return !xs.some(x => r.boxes.some(b => b.real && Math.abs(x - b.x) < b.w / 2 + S.hw + 6));
       if (r.k === 'awning') return !xs.some(x => Math.abs(x - r.x) < r.w / 2 + 14);
@@ -497,6 +509,9 @@
       if (r.k === 'fan' && !r.dir) return !xs.some(x => x > r.x0 - 20 && x < r.x1 + 20);
       return true;
     });
+  }
+  function safePair(st, soon, cx) {
+    const ok = c => pairOK(soon, c);
     if (ok(cx)) return cx;
     let best = cx, bd = 1e9;
     for (let c = S.X0 + 50; c <= S.X1 - 50; c += 8) if (ok(c) && Math.abs(c - cx) < bd) { bd = Math.abs(c - cx); best = c; }

@@ -12,7 +12,8 @@
      match moves on to the next stunt). Judges: Stern (left), Sleepy (middle), Very Excited (right).
    THE STUNTS (stunt k = st.si; a round is one stunt; the Grand Finale repeats if ties run the list out):
      0 Ramp Jump      HOLD the action to rev: the needle climbs, a green band drifts; let go to launch (nearer the
-                      middle of the green = faster; past it, a wheelie loses speed). In the air ◀ ▶ spin the bike (each
+                      middle of the green = faster; past it, a wheelie loses speed; a rider who has not touched the
+                      rev after SS.revWait s is waved off at a crawl). In the air ◀ ▶ spin the bike (each
                       full turn a flip); land within SS.landTol degrees of level or it's a Bail into the foam blocks.
                       Number = metres (past the FAKE prop buses; landing on them crushes cardboard and scores low).
      1 High Dive      ▲ climbs the tower while a 5 s clock runs (higher = more air, less time); the action jumps. In
@@ -23,7 +24,8 @@
                       action charges within SS.chargeWin s of the wall. ▶ faster, ◀ slower to look. A REAL panel is a
                       bonk (SS.bonkT s, the streak resets). Number = walls smashed; Style = the best streak; finish = time.
      3 Fire Hoop Leap Trampoline: press the action as you hit the bed (SS.bounceWin s window) to bounce higher, ◀ ▶
-                      drift; through a hoop lights it, clipping one wobbles you down. Hold ▼ at the top for a pike
+                      drift; through a hoop lights it, clipping one wobbles you down (a lit hoop is done with: it
+                      can't be clipped, or the top hoop could not be reached without brushing the lower ones). Hold ▼ at the top for a pike
                       (Style; the next window is tighter). All five lit (or SS.hoopT s): land on the centre cross. Style = the
                       longest run of good bounces and the pikes.
      4 Grand Finale   Rev and jump a short ramp, land level, smash 3 walls, climb and dive through a flaming hoop into
@@ -38,7 +40,7 @@
   const K = STUDIO, TAU = Math.PI * 2, DEG = Math.PI / 180;
   const SS = {
     ground: 470, roundTime: 45, gold: 1.3,
-    revRate: 0.55, band: 0.08, landTol: 20, spinRate: 600,
+    revRate: 0.55, band: 0.08, revWait: 10, landTol: 20, spinRate: 660,
     climbRate: 0.42, climbT: 5, turnRate: 480, tuckRate: 900, straighten: 260, entryTol: 15,
     run: 240, runFast: 320, runSlow: 140, wallGap: 300, focus: 0.9, chargeWin: 0.3, bonkT: 1.2,
     bed: 440, grav: 1400, bounceWin: 0.2, pikeWin: 0.14, hoopR: 22, hoopClip: 36, hoopT: 15,
@@ -127,7 +129,11 @@
   function rev(st, P, p, dt, short) {
     const i = p.input;
     if (i.act) { P.held = true; P.needle = Math.min(1, P.needle + SS.revRate * dt); if (Math.random() < 0.2) Sfx.play('stuntshowRev', 0.8 + P.needle * 0.8); }
-    if ((P.held && !i.act) || P.needle >= 1) {
+    // nobody waits out the round cap for a rider who never revs: after SS.revWait s the starter waves them off
+    P.revT += dt;
+    const waved = !P.held && P.revT > SS.revWait;
+    if (waved) K.pop(st, P.ox + 240, 200, 'Off you go!', '#ffffff', 20);
+    if ((P.held && !i.act) || P.needle >= 1 || waved) {
       const g = bandC(st, P), w = win(P, SS.band), off = Math.abs(P.needle - g);
       let s = clamp(1 - Math.max(0, off - w * 0.3) * 2.5, 0.25, 1);
       if (P.needle > g + w) { s *= 0.85; P.wheelie = 0.6; }
@@ -158,6 +164,8 @@
   }
   function land(st, P) {
     const err = angErr(P.rot);
+    // the flips that count are the ones the bike has all but finished (a level landing at 1078 degrees is three)
+    P.flips = Math.floor((Math.abs(P.rot) + 45) / 360);
     P.err = err; P.onBus = P.dist < 27 && P.dist > 9; P.ph = 'landed'; P.t = 0; P.y = SS.ground - 20;
     if (err > win(P, SS.landTol)) { P.bail = true; bailPop(st, P, 'BAIL! Into the foam blocks!'); }
     else if (P.onBus) { Sfx.play('studioRip'); K.scraps(st, P.ox + P.x, P.y - 10, 12, '#f6eedc'); K.pop(st, P.ox + 240, 200, 'Crunch! Cardboard bus!', '#ffffff', 20); }
@@ -268,7 +276,7 @@
       if ((y0 - hy) * (P.y - hy) > 0) continue;
       const dx = Math.abs(P.x - H.x);
       if (dx < SS.hoopR && !P.lit[k]) { P.lit[k] = true; Sfx.play('stuntshowHoop'); K.spark(st, P.ox + H.x, hy, 12, ['#ff9a3a', '#ffe58a']); if (P.lit.every(Boolean)) roar(st, P, 'ALL FIVE HOOPS!'); }
-      else if (dx >= SS.hoopR && dx < SS.hoopClip && P.wob <= 0) { P.wob = 0.5; P.clips++; P.L = Math.max(1, P.L - 1); if (P.vy < 0) P.vy *= 0.75; Sfx.play('stuntshowClip'); }
+      else if (dx >= SS.hoopR && dx < SS.hoopClip && P.wob <= 0 && !P.lit[k]) { P.wob = 0.5; P.clips++; P.L = Math.max(1, P.L - 1); if (P.vy < 0) P.vy *= 0.75; Sfx.play('stuntshowClip'); }
     }
     if (P.y >= SS.bed && P.vy > 0) {
       P.y = SS.bed;

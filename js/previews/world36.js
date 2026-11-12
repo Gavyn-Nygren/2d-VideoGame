@@ -54,8 +54,8 @@ const pw36Hero = (v, id, x, y, look, o = {}) => {
   if (look === 'stunt' || look === 'show') {
     c.fillStyle = id === 0 ? '#d8dce4' : '#ffd23a'; c.beginPath(); c.arc(0, top + 6 * s, 12 * s, Math.PI, pw36TAU); c.fill();
     c.fillStyle = id === 0 ? '#e8322a' : '#2a6ae8'; c.fillRect(-1.5 * s, top - 6 * s, 3 * s, 12 * s);
-    if (look === 'stunt') { c.fillStyle = '#9fd8ff'; v.circle(-4 * s + face * 2 * s, top + 2 * s, 2.5 * s); c.fill(); v.circle(4 * s + face * 2 * s, top + 2 * s, 2.5 * s); c.fill(); }
-    else { c.fillStyle = 'rgba(30,40,70,0.6)'; c.fillRect(-9 * s, top + 4 * s, 18 * s, 5 * s); }
+    if (look === 'stunt') { c.fillStyle = id === 0 ? '#ffd68c' : '#9fd8ff'; v.circle(-4 * s + face * 2 * s, top + 2 * s, 2.5 * s); c.fill(); v.circle(4 * s + face * 2 * s, top + 2 * s, 2.5 * s); c.fill(); }
+    else { c.fillStyle = id === 0 ? 'rgba(255,200,120,0.35)' : 'rgba(150,230,255,0.35)'; c.fillRect(-9 * s, top + 4 * s, 18 * s, 5 * s); }
   } else if (look === 'crew') {
     c.fillStyle = id === 0 ? '#5a1a1a' : '#1a2a5a'; c.beginPath(); c.arc(0, top + 6 * s, 11 * s, Math.PI, pw36TAU); c.fill();
     c.fillRect(face > 0 ? 0 : -16 * s, top + 4 * s, 16 * s, 3 * s);
