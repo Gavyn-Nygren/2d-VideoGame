@@ -139,7 +139,9 @@
     st.edges = [0, 1].map(id => ({ jump: edge(id, 'jump'), down: edge(id, 'down'), act: P[id].pendingAct || edge(id, 'act') }));
     if (live) {
       st.T += dt;
-      if (st.state === 'go') { pusher(st, dt); }
+      // (at the wall the pusher still works the bar until the bridge is down: a pusher who let go, or was knocked,
+      // as the tower rolled up to the wall must be able to take the bar again, or the bridge could never drop)
+      if (st.state === 'go' || !st.pu2) { pusher(st, dt); }
       else climberStep(st, st.pu2, st.push, dt);
       climberStep(st, st.he, st.tw, dt);
       tower(st, dt);
@@ -561,7 +563,8 @@
     // ---- the pusher
     if (st.state === 'bridge') {
       if (st.pu2) { Pu.why = 'cross'; Pu.nav = nav(st, st.pu2, 3, T.half + 40); }
-      else { Pu.push = !st.bridge.down; Pu.why = 'hold'; }
+      else if (u.at) { Pu.push = !st.bridge.down; Pu.why = 'hold'; }
+      else { Pu.walkTo = T.bar; Pu.why = 'bar'; }
       return out;
     }
     if (u.knock > 0) { Pu.why = 'knocked'; return out; }
@@ -855,10 +858,10 @@
     {
       let s = null, col = C.gold, pulse = false;
       const pp = st.pu2 ? climberPos(st, st.pu2) : { x: scrX(st, u.x), y: groundY(st, st.tx + u.x) };
-      if (st.state === 'bridge') s = st.pu2 ? 'Climb to the top and cross! ' + K.key(Pn, 'up') : 'Hold it against the wall ' + K.key(Pn, 'right');
+      if (st.state === 'bridge') s = st.pu2 ? 'Climb to the top and cross! ' + K.key(Pn, 'up') : u.knock > 0 ? null : !u.at ? 'Back to the bar ' + K.key(Pn, u.x > T.bar ? 'left' : 'right') : 'Hold it against the wall ' + K.key(Pn, 'right');
       else if (u.knock > 0) s = null;
       else if (pl.pu.duck && !u.duck) { s = 'DUCK! ' + K.key(Pn, 'down'); pulse = true; }
-      else if (!u.at) s = pl.pu.walkTo === T.bar ? 'Back to the bar ' + K.key(Pn, 'left') : 'Grab the shield!';
+      else if (!u.at) s = pl.pu.walkTo === T.bar ? 'Back to the bar ' + K.key(Pn, u.x > T.bar ? 'left' : 'right') : 'Grab the shield!';
       else if (pl.pu.heave) { s = 'Heave! ' + K.key(Pn, 'act'); pulse = true; }
       else if (pl.pu.brake) { s = 'Hold it! ' + K.key(Pn, 'left'); pulse = true; }
       else if (pl.pu.letGo) { s = 'A shield! Let go ' + K.key(Pn, 'up'); }

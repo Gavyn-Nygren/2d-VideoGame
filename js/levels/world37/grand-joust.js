@@ -74,13 +74,13 @@
     startPass(st, true);
   }
   function startPass(st, first) {
-    st.pass++; st.t = 0; st.phase = first ? 'wait' : 'charge'; st.freezeT = 0; st.flash = 0; st.lockShown = false; st.struck = false;
+    st.pass++; st.t = 0; st.phase = first ? 'wait' : 'charge'; st.freezeT = 0; st.flash = 0; st.lockShown = false; st.struck = false; st.beatSeen = -1;
     st.gust = st.tw.wind ? { t: GJ.charge - (0.25 + Math.random() * 1.6), done: false } : null;
     st.sunOn = st.tw.sun ? st.pass % 2 : -1; // who is blinded this pass (Pip on odd passes)
     for (const r of st.r) {
       Object.assign(r, {
         sp: st.sd ? 3.2 : 0, aim: 1, guard: 2, stepT: 0, want: 1, lastChange: -9, beatN: -9, beatTaps: 0,
-        strikeT: null, q: null, hitBy: 0, took: 0, fumble: false, prevIn: {}, x: 0, ph: 0, helmOff: false,
+        strikeT: null, q: null, hitBy: 0, took: 0, fumble: false, prevIn: {}, x: 0, ph: 0, helmOff: false, tapFx: null,
       });
       if (r.rattled) { r.rattledNow = true; r.rattled = false; } else r.rattledNow = false;
     }
@@ -109,6 +109,7 @@
     mirror(st);
   }
   function anim(st, dt) {
+    for (const r of st.r) if (r.tapFx && (r.tapFx.t -= dt) <= 0) r.tapFx = null;
     for (const r of st.r) { r.ph += dt * (0.9 + tierOf(r.sp) * 0.45) * (st.phase === 'charge' || st.phase === 'result' ? 1 : 0.2); }
     if (st.flash > 0) st.flash -= dt;
   }
@@ -124,6 +125,9 @@
       }
       Sfx.play('grandjoustGust'); K.pop(st, W / 2, 140, 'GUST!', '#ffffff', 22);
     }
+    // the hoofbeat everyone taps to: a soft thud on every beat, and the beat lamps on the HUD flash with it (review
+    // fix: the beat could not be seen or heard until a tap happened to land on it)
+    if (!st.sd && st.t < GJ.charge) { const nb = Math.round(st.t / GJ.beat); if (nb !== st.beatSeen && st.t >= nb * GJ.beat) { st.beatSeen = nb; Sfx.play('grandjoustHoof'); } }
     for (const r of st.r) rider(st, r, dt, st.t < lockAt);
     if (st.t >= lockAt && !st.lockShown) {
       st.lockShown = true; Sfx.play('grandjoustLock');
@@ -145,6 +149,7 @@
       r.beatTaps++;
       const add = r.beatTaps > 1 ? 0 : d <= win ? (st.tw.mud ? GJ.mudOn : GJ.on) : (st.tw.mud ? GJ.mudOff : GJ.off);
       r.sp = Math.min(3.99, r.sp + add);
+      r.tapFx = { on: add >= GJ.mudOn, t: 0.3 };
       if (add >= GJ.mudOn) Sfx.play('tourneyGallop', 1 + tierOf(r.sp) * 0.5);
     }
     // aim and guard (until the lock)
@@ -368,9 +373,18 @@
       for (let k = 0; k < GJ.unhorse; k++) { ctx.fillStyle = k < r.wob ? (r.wob >= GJ.unhorse - 1 ? '#ff5a4a' : '#ffb04a') : 'rgba(255,255,255,0.15)'; rr(x + 66 * z + k * 22 * z, y + 4 * z, 18 * z, 14 * z, 4 * z); ctx.fill(); }
       const tier = finalTier(r);
       K.chip(x + 12 * z, y + 22 * z, 100 * z, 18 * z, TIERS[tier] + (r.rattledNow ? ' (rattled)' : ''), false, tier >= 2, z * 0.85);
-      text('pass ' + st.pass + (st.sd ? '' : ' / ' + GJ.passes), x + 170 * z, y + 31 * z, 10 * z, '#e8dcc8', 'center', 'body');
+      text('pass ' + st.pass + (st.sd ? '' : ' / ' + GJ.passes), x + 182 * z, y + 31 * z, 10 * z, '#e8dcc8', 'center', 'body');
+      // the hoofbeat lamp: bright on the beat (tap forward then); green after a tap on the beat, red after one off it
+      if (st.phase === 'charge' && !st.sd && st.t < GJ.charge) {
+        const d = Math.abs(st.t - Math.round(st.t / GJ.beat) * GJ.beat), win = st.tw.mud ? GJ.mudOnBeat : GJ.onBeat, on = d <= win;
+        const lx = x + 128 * z, ly = y + 31 * z, fx = r.tapFx;
+        ctx.fillStyle = fx ? (fx.on ? '#8fe3b0' : '#ff7a6a') : on ? '#ffffff' : 'rgba(255,255,255,0.22)';
+        circle(lx, ly, (on ? 8 : 6) * z); ctx.fill();
+        text(fx ? (fx.on ? '✓' : '✗') : '♪', lx, ly + 0.5, 9 * z, fx || on ? C.ink : 'rgba(255,255,255,0.7)', 'center', 'body');
+      }
     }
-    K.drawMsg(st, st.msg, W - 14);
+    // the message line sits under the two rider panels (review fix: at the top it lay over the round pill)
+    ctx.save(); ctx.translate(0, (big ? 152 : 142) - (big ? 96 : 80)); K.drawMsg(st, st.msg, 0); ctx.restore();
     if (!G.match || st.phase === 'over') return;
     // the ladders and strike rings by the riders
     for (const r of st.r) {
@@ -452,6 +466,7 @@
   };
 
   /* ---------- sounds ---------- */
+  Sfx.extra.grandjoustHoof = function () { this.tone(120, 0.05, 'triangle', 0.035, 70); };
   Sfx.extra.grandjoustTick = function () { this.tone(900, 0.03, 'square', 0.015, 1100); };
   Sfx.extra.grandjoustLock = function () { this.tone(660, 0.1, 'triangle', 0.04, null); this.tone(990, 0.12, 'triangle', 0.03, null, 0.06); };
   Sfx.extra.grandjoustFumble = function () { this.tone(500, 0.2, 'sawtooth', 0.02, 200); };

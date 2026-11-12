@@ -185,10 +185,13 @@ const TOURNEY_OUTFITS = (() => {
       // the round postilion cap (the feather is drawn behind)
       c.save(); c.translate(0, -bh + 1); c.rotate(o.askew || 0);
       c.fillStyle = '#1e3e96'; c.strokeStyle = '#10245e'; c.lineWidth = 1.2;
-      c.beginPath(); c.ellipse(0, -1, 10, 6.5, 0, Math.PI, TAU); c.closePath(); c.fill(); c.stroke();
+      c.beginPath(); c.ellipse(0, -1, 8.5, 7, 0, Math.PI, TAU); c.closePath(); c.fill(); c.stroke();
       c.fillStyle = '#2a1e16'; c.beginPath(); c.ellipse(face * 6, 0.5, 8, 2, 0, 0, TAU); c.fill();
-      c.fillStyle = '#dfe6f2'; c.fillRect(-10, -1.6, 20, 1.6);
-      crest(c, 1, -face * 3, -4, 2.6);
+      c.fillStyle = '#dfe6f2'; c.fillRect(-8.5, -1.6, 17, 1.6);
+      // Bo's round ears stay visible: the cap sits between them (review fix: the first cap covered both ears)
+      c.fillStyle = '#3a6ee8'; c.strokeStyle = '#1c3a8a'; c.lineWidth = 1.2;
+      for (const d of [-1, 1]) { circ(c, d * 9.5, -2.5, 4.2); c.fill(); c.stroke(); }
+      crest(c, 1, -face * 2, -4.4, 2.6);
       c.restore();
     }
     arms(c, id, o.arms, bw, bh, face, id === 0 ? '#ff8a2a' : '#3266d8', id === 0 ? '#a8441a' : '#183c8e', o.prop === 'gauntlets' ? '#7a4a26' : null);
