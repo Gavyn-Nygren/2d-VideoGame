@@ -52,6 +52,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 30. **Time Chase** (boss world: chase the Time Thief through history, from the dinosaurs to the Moon, and win back everything he stole; one long level with a checkpoint at every era): The Time Thief
 31. **Shrunk in the Backyard** (bug-sized: outrun a lawnmower, sneak a crumb out of an ant hill, hide from a hungry robin and race snails): Lawnmower Escape, Ant Hill Heist, Bird Attack Dash, Snail Race
 32. **Superhero City** (superheroes for a day: stop a runaway train, hold a falling bridge together, chase a jewel thief over the rooftops and brawl on a roof): Runaway Subway, Bridge Collapse, Rooftop Chase, Power Punch Showdown
+35. **Wizard Academy** (one long level at a wizard school: ten magic classes, a final exam against an ink monster and a graduation duel): Moonwick Academy
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 

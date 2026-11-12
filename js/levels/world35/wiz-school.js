@@ -97,7 +97,7 @@ const WIZ = {
   goldAfter: 3,                // Oops inside one part of a section before its gold helper
   // the trophy: play time (s, idle waits not counted) and Oops (players' and the team's; duel hits are no Oops).
   // Tuned from bot runs (see GAME_NOTES): Gold about 1.25x the computer pair's time, Silver about 1.9x.
-  medal: { gold: { t: 2280, oops: 40 }, silver: { t: 3420, oops: 110 } },
+  medal: { gold: { t: 1400, oops: 20 }, silver: { t: 2100, oops: 60 } },   // (computer pair about 1120 s, 0 Oops; noisy pair 1400-1560 s, about 14)
   hm: { s: 0.9 },
   endT: 9.2,                   // the ending, then levelClear()
   endGround: 456,
