@@ -282,8 +282,27 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 .worlds-card { width: min(1180px, 100%); }
 .wpager { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px 12px; }
 .wpager.paged { grid-template-columns: 56px minmax(0, 1fr) 56px; }
-/* 5 across when there is room; fewer (each at least 150 px) on small screens */
+/* a page of 10 worlds is 2 rows of 5, so the boss world always ends the page in the bottom-right corner.
+   On a small screen the tiles shrink (smaller name, no level count) rather than wrap; only a very narrow
+   box falls back to 5 rows of 2 (never a ragged 3 or 4 across) */
 .wpager .world-grid { grid-template-columns: repeat(auto-fill, minmax(max(150px, calc((100% - 56px) / 5)), 1fr)); align-content: start; }
+@supports (container-type: inline-size) {
+  .wpager { container: wpager / inline-size; }
+  .wpager .world-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  @container wpager (max-width: 780px) {
+    .wpager .world-grid { gap: 8px; }
+    .wpager .wtile { gap: 4px; padding: 5px 5px 6px; border-radius: 12px; }
+    .wpager .thumb { border-radius: 7px; }
+    .wpager .wnum { left: 3px; top: 3px; padding: 2px 5px 1px; border-radius: 6px; font-size: 12px; }
+    .wpager .bossb { right: 3px; top: 3px; padding: 2px 5px; font-size: 8px; letter-spacing: 0.04em; }
+    .wpager .wname { font-size: 13px; line-height: 1.05; }
+    .wpager .wmeta { justify-content: flex-start; }
+    .wpager .wmeta > span:first-child { display: none; }
+    .wpager .dots { gap: 3px; }
+    .wpager .dots i { width: 6px; height: 6px; border-width: 1px; }
+  }
+  @container wpager (max-width: 400px) { .wpager .world-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+}
 .pagearrow-gap { align-self: stretch; }
 /* the arrows ride along (sticky) when the page of worlds is taller than the screen, so ▶ is always in reach */
 .pagearrow {
@@ -333,7 +352,6 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
   .flips { grid-column: 1 / -1; justify-content: space-between; }
   .world-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
   .lvl-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-  .wpager .world-grid { grid-template-columns: repeat(auto-fill, minmax(max(130px, calc((100% - 40px) / 5)), 1fr)); }
   .wpager.paged { grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 10px 8px; }
   .pagearrow .pa-icon { font-size: 24px; }
   .pagearrow .pa-text { font-size: 10px; letter-spacing: 0.04em; }
@@ -342,7 +360,6 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
   .play-btn { font-size: 22px; padding: 10px 34px; }
   .world-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
   .wpager.paged { grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 10px 8px; }
-  .wpager .world-grid { grid-template-columns: repeat(auto-fill, minmax(max(130px, calc((100% - 40px) / 5)), 1fr)); }
   .pagearrow { min-height: 100px; height: min(150px, 100%); }
   .lvl-grid { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px; }
   .wname, .lname { font-size: 17px; }
