@@ -327,6 +327,48 @@ function wizPlatform(st, dt) {
   }
   for (const p of ps) postStep(p);
 }
+// A body on a list of rectangles (world coords) instead of the tile grid, for the scrolling classes:
+//   solids: [{ x0, y0, x1, y1, one (a one-way top: jump up through it, ▼ drops through), dx, dy (how far it moved
+//   this tick: riders go with it), off (ignored) }]. o.still: no input (cards); o.ctl(p): runs instead of control().
+// Moves p (world coords), sets p.grounded / p.onOneWay / p.ground (the rect under its feet or null). Partners do not
+// collide with each other (each class decides if one rides the other). Returns p.ground.
+function wizBody(p, dt, solids, o = {}) {
+  if (!p.alive) return null;
+  const real = p.input;
+  if (o.still) { p.input = NO_INPUT; p.pendingJump = false; }
+  try { if (o.ctl) o.ctl(p, dt); else control(p, dt); } finally { p.input = real; }
+  const was = p.grounded, g0 = p.ground;
+  // ride whatever we stand on
+  // (a mover's rect can carry src: the live mover, so the ride uses this tick's motion, not last tick's)
+  if (was && g0 && !g0.off) { const m = g0.src || g0; p.x += m.dx || 0; p.y += m.dy || 0; }
+  // x
+  p.x += p.vx * dt;
+  for (const r of solids) {
+    if (r.one || r.off || p.y + p.h <= r.y0 + 4 || p.y >= r.y1 - 0.5) continue;   // feet just under a top: the y pass steps up
+    if (p.x + p.w > r.x0 && p.x < r.x1) {
+      if (p.x + p.w / 2 < (r.x0 + r.x1) / 2) { p.x = r.x0 - p.w; p.vx = Math.min(0, p.vx); } else { p.x = r.x1; p.vx = Math.max(0, p.vx); }
+    }
+  }
+  // y
+  const feet0 = p.y + p.h, top0 = p.y;
+  p.y += p.vy * dt;
+  let ground = null;
+  for (const r of solids) {
+    if (r.off || p.x + p.w <= r.x0 + 0.5 || p.x >= r.x1 - 0.5) continue;
+    if (p.vy >= 0 && p.y + p.h >= r.y0 && feet0 <= r.y0 + 2 + Math.max(0, r.dy || 0) && !(r.one && p.dropT > 0)) { p.y = r.y0 - p.h; p.vy = 0; ground = r; }
+    else if (!r.one && p.vy < 0 && p.y < r.y1 && top0 >= r.y1 - 2) { p.y = r.y1; p.vy = 0; p.jumping = false; }
+    else if (!r.one && p.y + p.h > r.y0 + 0.5 && p.y < r.y1 - 0.5 && p.x + p.w > r.x0 + 0.5 && p.x < r.x1 - 0.5) {   // inside (a mover pushed in): out the short way
+      const up = p.y + p.h - r.y0, dn = r.y1 - p.y;
+      if (up < dn) { p.y = r.y0 - p.h; p.vy = Math.min(0, p.vy); ground = r; } else { p.y = r.y1; p.vy = Math.max(0, p.vy); }
+    }
+  }
+  // still standing (snap down onto a ground that sank a little)
+  if (!ground && was && p.vy >= 0) for (const r of solids) if (!r.off && p.x + p.w > r.x0 + 0.5 && p.x < r.x1 - 0.5 && Math.abs(p.y + p.h - r.y0) < 3) { p.y = r.y0 - p.h; ground = r; p.vy = 0; break; }
+  p.ground = ground; p.grounded = !!ground; p.tileGround = !!ground; p.onPartner = false; p.onOneWay = !!(ground && ground.one);
+  if (p.grounded && !was && p.lastVy > 260) { p.sx = 1.25; p.sy = 0.78; puff(p.x + p.w / 2, p.y + p.h, 5, 'rgba(255,255,255,0.75)'); Sfx.play('land'); }
+  p.lastVy = p.grounded ? 0 : p.vy;
+  return ground;
+}
 // players stand and land with no input (cards, cutscenes)
 function wizCoast(dt) {
   for (const p of G.players) {

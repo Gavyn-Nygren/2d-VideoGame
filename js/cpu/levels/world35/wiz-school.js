@@ -5,7 +5,7 @@
    WIZ_BRAINS[S.phase] (js/cpu/levels/world35/wiz-broom.js ... wiz-duel.js), with a fresh sub-state (bst) per room:
      WIZ_BRAINS.<phase> = {
        reset(bst, p, info)                       optional: the room (or a restart) began
-       think(bst, p, o, dt, info, S) -> out      every step while the class plays (not during cards or cutscenes)
+       think(bst, p, o, dt, info, S) -> out      (world coords) every step while the class plays (not during cards or cutscenes)
        back(bst, p, info, S)                     optional: the person came back after being away (plan afresh)
      }
    p is the computer's player, o the partner (or the opponent in the duel), S = G.mst (S.ph is the class's own state).
@@ -110,9 +110,16 @@ cpuBrain('wizschool', {
     // the core's own idle wait (S.idle: per class, never during a card or a cutscene), not cpu-core's partnerIdle, which
     // runs on through the cutscene and the class card: the computer waits exactly when Thimblewick does
     info.away = !info.partnerCpu && !!S.idle;
-    if (bst.key !== key) { bst.key = key; bst.sub = {}; if (typeof B.reset === 'function') B.reset(bst.sub, p, info); }
+    // (a fresh brain per class, and again when the class restarts: a new level state, or its clock went back)
+    const fresh = bst.key !== key || bst.S !== S || (S.phT || 0) < (bst.phT || 0);
+    bst.S = S; bst.phT = S.phT || 0;
+    if (fresh) { bst.key = key; bst.sub = {}; if (typeof B.reset === 'function') B.reset(bst.sub, p, info); }
     if (bst.away && !info.away) { bst.away = false; if (typeof B.back === 'function') B.back(bst.sub, p, info, S); }
-    const out = B.think(bst.sub, p, o, dt, info, S) || {};
+    // class brains think in WORLD coords, like the class's tick and its plan(): the players shift by the camera and back
+    const c = S.cam || { x: 0, y: 0 }, ps = G.players;
+    for (const q of ps) { q.x += c.x; q.y += c.y; }
+    let out;
+    try { out = B.think(bst.sub, p, o, dt, info, S) || {}; } finally { for (const q of ps) { q.x -= c.x; q.y -= c.y; } }
     if (info.away && !out.keep) {
       // standing still while the person is away: no map plan may run on unplayed
       bst.away = true;
