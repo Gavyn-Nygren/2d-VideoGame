@@ -230,7 +230,6 @@
     const ledge = st.base;
     if (h.r === ledge) { h.stun = 0.5; h.sq = 1; K.pop(st, hx(st, h), hy(st, h) - 40, 'Ow!', '#ffffff', 18); return; }
     st.stats.tumbles++; st.rc.bad++;
-    (st.log = st.log || []).push([st.k, st.sec, +(G.time).toFixed(1), why, h.id === st.axe ? 'axe' : 'shield', h.c, h.r]);
     h.pc = h.c; h.pr = h.r; h.r = ledge; h.mT = h.mt = 0.45; h.stun = S.tumbleT; h.sq = 1; h.up = false; h.raise = 0;
     Sfx.play('icefortTumble'); Sfx.play('vikingThunk');
     K.pop(st, cx(h.c), wy(h.pr) - 30, why || 'Tumble!', '#ffb0a0', 22);

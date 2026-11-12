@@ -245,7 +245,6 @@
     const sh = st.ship;
     if (sh.hitT > 0) return false;
     sh.hitT = 1.0;
-    (st.hitLog = st.hitLog || []).push([st.k, +st.T.toFixed(1), kind, sh.row, +sh.ry.toFixed(2), Math.round(sh.x), Math.round(x || 0)]);
     st.gap = Math.max(0, st.gap - S.cost[kind]); st.lastHit = G.time; st.rc.bad++;
     st.stats[kind === 'bite' ? 'bites' : kind === 'slap' ? 'slaps' : kind === 'dive' ? 'bursts' : 'crashes']++;
     // the damage shows: a shield knocked off, a rip in the sail, a bite out of the rail
