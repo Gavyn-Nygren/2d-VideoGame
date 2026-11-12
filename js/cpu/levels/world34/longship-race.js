@@ -42,7 +42,7 @@
       };
       let want = P.lane;
       if (bad(P.lane) || !pl.safe.includes(P.lane) && pl.safe.length && pl.ahead[P.lane] && notice(pl.ahead[P.lane])) {
-        const opts = [0, 1, 2, 3].filter(l => !bad(l) && (pl.safe.includes(l) || !pl.safe.length)).sort((a, b) => Math.abs(a - P.lane) - Math.abs(b - P.lane));
+        const opts = [0, 1, 2, 3].filter(l => !bad(l) && (pl.safe.includes(l) || !pl.safe.length)).sort((a, b) => (Math.abs(a - P.lane) - Math.abs(b - P.lane)) || (Math.abs(a - 1.5) - Math.abs(b - 1.5))); // nearest first; a tie goes to the middle (not always "up", which sent Pip's ship to the edge and Bo's to the middle)
         if (opts.length) want = opts[0];
       }
       // ---- ramming

@@ -216,7 +216,9 @@
   // ramming: steering into the other ship's lane alongside, or hitting its stern from behind
   function ram(st) {
     const [A, B] = st.pl;
-    for (const [R, T] of [[A, B], [B, A]]) {
+    // (who is checked first swaps every step, so when both ships turn into each other at once neither side is favoured)
+    st.ramFlip = !st.ramFlip;
+    for (const [R, T] of st.ramFlip ? [[A, B], [B, A]] : [[B, A], [A, B]]) {
       if (R.ram > 0 || R.air > 0 || T.air > 0) continue;
       const dx = R.x - T.x, al = Math.abs(dx) < LR.len * 0.7;
       // side ram: R is moving into T's lane while alongside

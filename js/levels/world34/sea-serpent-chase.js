@@ -37,7 +37,7 @@
    GOLD HELP (only while both are playing, announced, counted): 3 hits in a stretch = a gold harpoon: the next 3 bolts
      fly at full crank the instant the action is pressed, and lunge tells last 0.4 s longer for the rest of the stretch.
    IDLE: no person presses anything for 12 s: "Taking a break", the sea and the serpent wait and the clock stops.
-   MEDAL: by time. Gold <= 180 s, Silver <= 310 s.
+   MEDAL: by time. Gold <= 195 s, Silver <= 310 s.
    MODES.serpentchase.plan(st) says what each job should do now (the prompts, HUD chips and the computer brain read it).
    Everything lives inside this block; sounds are Sfx.extra.serpentchase*. */
 (() => {
@@ -46,7 +46,7 @@
     rowY: [318, 368, 418], rowSc: [0.8, 0.9, 1], winL: 230, winR: 470, burstR: 600, v: 170, rowT: 0.2, swampRowT: 0.5,
     helmV: 170, burstT: 1.2, burstV: 300, rowCd: 6, aimN: 7, crankT: 0.5, reload: 0.5, tellT: 1.1, goldTell: 0.4,
     riseT: 0.55, snapT: 0.3, foamT: 1.2, tailT: 0.9, diveT: 1.4, rearT: 1.0, spitAim: 0.6, spitFly: 1.35, swampT: 2,
-    gap0: 72, regen: 1.3, pace: 0.9, hullHalf: 104, idleWait: 12, goldT: 180, silverT: 310,
+    gap0: 72, regen: 1.3, pace: 0.9, hullHalf: 104, idleWait: 12, goldT: 195, silverT: 310,
     cost: { bite: 24, coil: 14, slap: 16, dive: 18, rock: 12 }, gain: { mouth: 10, throat: 20, tail: 4, row: 4, glob: 2 },
   };
   // aim angles in degrees (0 = straight ahead, 90 = straight up; 180 = straight back)
@@ -123,7 +123,7 @@
       for (const t of [2, 9.5, 18, 25, 31]) add(t, 'hump');
       add(38, 'boss');
     }
-    // (the stretch runs a little quicker than the numbers above: Gold 180 s leaves time for a slip)
+    // (the stretch runs a little quicker than the numbers above: Gold 195 s leaves time for a slip and a few tries at the last shot; a clean run is about 170 s)
     for (const e of ev) e.t *= S.pace;
     return ev.sort((a, b) => a.t - b.t);
   }
@@ -133,6 +133,12 @@
     const g = geom(st), v = S.v, sh = st.ship;
     // a dive or a tail never lands while a coil blocks two rows nearby (there would be nowhere to steer): it waits
     if ((e.kind === 'dive' || e.kind === 'tail') && st.threats.some(q => (q.kind === 'coil' || q.kind === 'arch') && !q.hit && (q.rows.length >= 2) && q.x + q.w > sh.x - g.half - 40 && q.x < sh.x + 760)) { e.t += 0.6; return false; }
+    // ... nor while the rows next to the ship's are about to be filled by a coil or a rock (review: in The Skerries a
+    // tail slap could land on a ship boxed in by a coil alongside, a hit the helm had no way to steer out of)
+    if (e.kind === 'dive' || e.kind === 'tail') {
+      const need = (e.kind === 'dive' ? S.diveT : S.tailT) + 0.5;
+      if (![sh.row - 1, sh.row + 1].some(r => r >= 0 && r <= 2 && rowDanger(st, r, 3) > need)) { e.t += 0.6; return false; }
+    }
     const ahead = (sec, extra) => sh.x + S.hullHalf + v * sec + (extra || 0);
     if (e.kind === 'lunge') st.threats.push({ kind: 'lunge', state: 'rise', t: 0, row: sh.row, x: sh.x - 190, y: rowY(sh.row) + 40 });
     else if (e.kind === 'coil') {

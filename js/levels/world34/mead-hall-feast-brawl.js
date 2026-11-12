@@ -17,7 +17,8 @@
        where it stops grabs it whether he wanted it or not.
      - anywhere else with food: tap to TOSS it in an arc to the partner (it homes in; they catch it if their hands are
        free and they're within S.tossMax). With the partner too far it lands on the floor.
-     - on a food lying on the floor: pick it up. At the rack with food: put it back.
+     - on a food lying on the floor: pick it up. At the rack with food: put it back (a full rack: swap it with
+       the nearest food on the rack).
    ORDERS: each Viking with an order shows a bubble with the food he wants and a patience ring (S.pat per feast). Right
      food: he cheers, +1 FED, and his seat is quiet for a while. Wrong food: he eats it anyway and grumbles (no score,
      patience half back). Patience out: a TANTRUM (he bangs the table and throws his plate): the ROWDY meter goes up.
@@ -53,7 +54,7 @@
     chargeT: 1.1, slideBase: 40, slidePer: 680, seatWin: 65, slideV: 900,
     tossMax: 480, catchR: 70, restock: 0.6,
     rowdyMax: 10, rowdyTantrum: 2, rowdyMess: 1.5, rowdyFed: 0.8, brawlT: 4,
-    quietLo: 3.5, quietHi: 6.5, eatT: 1.6, madT: 1.4, goldSlow: 0.6,
+    quietLo: 3.5, quietHi: 6.5, eatT: 1.6, madT: 1.4, goldSlow: 0.6, watchSlow: 0.3, settlePat: 7,
     skolAnn: 4, skolUp: 7, barrelRoll: 520,
     platterT: 12, handle: 28, pairJump: 0.4,
     throwTell: 0.9, throwFly: 0.75, dogV: 300, dogWait: 1.2, sweepT: 8,
@@ -209,8 +210,13 @@
   function putBack(st, h) {
     if (h.carry.k === 'barrel') { if (!st.barrel) { st.barrel = h.carry; h.carry = null; Sfx.play('meadhallBarrel'); } return; }
     const k = st.rack.findIndex(q => !q);
-    if (k >= 0) { st.rack[k] = h.carry; h.carry = null; Sfx.play('meadhallPick'); }
-    else K.pop(st, h.x, h.y - 60, 'The rack is full!', '#ffe7a8', 15);
+    if (k >= 0) { st.rack[k] = h.carry; h.carry = null; Sfx.play('meadhallPick'); return; }
+    // a full rack: swap with the nearest food on it (review: with "The rack is full!" a hero holding a food nobody
+    // wanted any more had no way to take the one the cook had just put out; two computers stood there for 15-30 s)
+    let best = 0;
+    for (let q = 1; q < 3; q++) if (Math.abs(S.rack[q] - h.x) < Math.abs(S.rack[best] - h.x)) best = q;
+    const mine = h.carry; h.carry = st.rack[best]; st.rack[best] = mine;
+    Sfx.play('meadhallPick'); K.pop(st, h.x, h.y - 60, 'Swapped!', '#ffe7a8', 15);
   }
   function toss(st, h) {
     const it = h.carry;
@@ -348,7 +354,10 @@
 
   /* ---------- the Vikings at the tables ---------- */
   function seatsStep(st, dt) {
-    const d = st.d, drain = st.gold ? S.goldSlow : 1;
+    // while an arm-wrestle or the chieftain's platter is on, the hall is watching it: the other orders' patience runs
+    // much slower (review: both heroes are tied up for about 10 s by those jobs, and even a perfect pair came out of
+    // each one with two or three tantrums it could do nothing about, and Gold help in every run)
+    const d = st.d, drain = (st.gold ? S.goldSlow : 1) * (st.wrestle || st.platter ? S.watchSlow : 1);
     let open = 0;
     for (const s of st.seats) {
       if (s.t >= st.nTables) continue;
@@ -370,6 +379,9 @@
     }
     if (st.wrestle) wrestleStep(st, dt);
   }
+  // after a job that tied both heroes up (an arm-wrestle, the platter, a SKOL), the waiting Vikings get a little of
+  // their patience back, so nobody throws a tantrum the moment the heroes are free again
+  function settle(st) { for (const s of st.seats) if (s.state === 'want') s.pat = Math.max(s.pat, Math.min(s.patMax, S.settlePat)); }
   function tantrum(st, s) {
     s.state = 'mad'; s.qt = S.madT; s.food = null; s.mood = -2; s.react = pick(st, ['WHERE\'S MY FOOD?!', 'HUNGRY!', 'GRRR!']); s.reactT = 1.6; s.plate = false;
     st.stats.tantrums++; st.tantrums++; st.streak = 0;
@@ -430,7 +442,7 @@
       if (sk.state === 'soon' && sk.t <= 0) { sk.state = 'up'; sk.t = S.skolUp; for (const s of st.seats) if (s.t === sk.table) { s.skol = true; s.filled = false; } Sfx.play('meadhallSkol'); }
       else if (sk.state === 'up' && sk.t <= 0) {
         for (const s of st.seats) s.skol = false;
-        st.skol = null; st.barrel = null;
+        st.skol = null; st.barrel = null; settle(st);
       }
     }
     // arm-wrestle
@@ -478,7 +490,7 @@
   function endWrestle(st) {
     const w = st.wrestle; if (!w) return;
     for (const s of [st.seats[w.table * 4 + 1], st.seats[w.table * 4 + 2]]) if (s.state === 'wrestle') { s.state = 'quiet'; s.qt = S.quietLo; s.food = null; }
-    st.wrestle = null;
+    st.wrestle = null; settle(st);
   }
   function fightStep(st, dt) {
     const f = st.fight, h = st.h[f.to];
@@ -530,7 +542,7 @@
     pt.t -= dt;
     if (pt.t <= 0) {
       for (const h of st.h) if (h.handle !== null) letGo(st, h);
-      st.platter = null; st.stats.platterLost++;
+      st.platter = null; st.stats.platterLost++; settle(st);
       K.msg(st, 'Too slow! The chieftain is cross', '#ffb0a0', 3); rowdy(st, 3); Sfx.play('meadhallBang');
       return;
     }
@@ -556,7 +568,7 @@
     // up on a top step: the chieftain's
     if (pt.ground === 'L2' || pt.ground === 'R2') {
       for (const h of st.h) if (h.handle !== null) { h.handle = null; }
-      st.platter = null; st.stats.platters++;
+      st.platter = null; st.stats.platters++; settle(st);
       st.fed += 3; st.stats.fed += 3; st.rowdy = Math.max(0, st.rowdy - 2);
       K.msg(st, 'The chieftain\'s platter is served! +3 fed', '#d9ffd0', 3); K.confetti(st, 900, 170, 30); Sfx.play('meadhallCheer');
     }

@@ -41,7 +41,7 @@
 (() => {
   const K = VIKING, TAU = Math.PI * 2;
   const S = {
-    cols: 15, cw: 44, rh: 52, rowsPer: 18, ledgeEvery: 6, moveT: 0.2, ledgeMoveT: 0.15, shieldMoveT: 0.6, chopT: 0.2,
+    cols: 15, cw: 44, rh: 52, rowsPer: 18, ledgeEvery: 6, moveT: 0.2, ledgeMoveT: 0.15, shieldMoveT: 0.6, chopT: 0.2, chopPause: 0.1,
     cover: 110, coverGold: 220, raiseT: 0.12, volleyTell: 1.0, volleyRain: 0.8, volleyW: 200, icicleShake: 0.8,
     icicleV: 520, rollWarn: 1.2, rollV: 300, spoutRest: 4.5, spoutWarn: 1.0, spoutGush: 1.0, meltT: 4, gustWarn: 0.9,
     gustBlow: 0.35, frostWait: 4, frostRow: 4, snowCrumble: 3, tumbleT: 0.7, swapT: 0.9, idleWait: 12, goldT: 200, silverT: 340,
@@ -179,6 +179,10 @@
       chop(st, h, h.c + dc, h.r + dr);
     }
     if (!d || h.mt > 0) return;
+    // a beat after each chop before climbing on: without it the last chop of a hold and the climb into it were the same
+    // instant, so a hero holding a direction to chop was pulled out from under the shield (or into a spout's column)
+    // the moment the hold broke free (review: this was every Tumble a computer pair took)
+    if (isAxe && h.chopT > S.chopT - S.chopPause) return;
     if (!isAxe && h.up && (d === 'l' || d === 'r')) return; // tilting, not moving
     let [dc, dr] = DIRS[d];
     if (!isAxe && h.up) { if (dc && dr) dc = 0; } // shield up: straight up and down only

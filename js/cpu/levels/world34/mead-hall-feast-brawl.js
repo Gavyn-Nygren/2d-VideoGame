@@ -153,7 +153,10 @@
         if (!b) { b = MM.best(st, k, 'L'); side = 'L'; }
         if (!b) {
           s.noneT += dt;
-          if (s.noneT > 3) { if (go(s, out, h, 'floor', 110) && s.cd <= 0) { out.act = 'tap'; s.cd = 0.3; s.noneT = 0; } }
+          // nobody wants what I hold: take it back to the rack, to the slot of the food that IS wanted if there is one
+          // (a full rack swaps the two)
+          const pk = pl.pick && pl.pick.slot !== 'barrel' ? MM.S.rack[pl.pick.slot] : 110;
+          if (s.noneT > (pl.pick ? 1.2 : 3)) { if (go(s, out, h, 'floor', pk) && Math.abs(h.x - pk) < 12 && s.cd <= 0) { out.act = 'tap'; s.cd = 0.3; s.noneT = 0; } }
           return out;
         }
         s.noneT = 0;
@@ -173,7 +176,11 @@
         if (!coming && pl.orders.length && h.ground && h.ground !== 'floor') s.idleT = (s.idleT || 0) + dt; else if (coming) s.idleT = 0;
         if (s.idleT > 6) { s.solo = 1; s.idleT = 0; cpuSay(p, 'I\'ll get this one!', 1.2); }
       }
-      if (role === 'runner' || s.solo > 0) {
+      // an arm-wrestle with the partner already holding its food (on the way to one end): fetch the second one myself
+      // (review: a server kept waiting on its step for a runner who was standing at the far end with the first one, and
+      // the wrestle ran out after 20 s with the food it needed sitting on the rack)
+      const wr = pl.wrestle, fetch2 = wr && wr.carrying < wr.need.length && oh.carry && oh.carry.k === wr.food;
+      if (role === 'runner' || s.solo > 0 || fetch2) {
         // food on the floor first (before the dog gets it)
         const fl = st.floorItems.filter(f => f.land).sort((a, b) => Math.abs(a.x - h.x) - Math.abs(b.x - h.x))[0];
         if (fl && Math.abs(fl.x - h.x) < 400) { if (go(s, out, h, 'floor', fl.x) || h.ground === 'floor' && Math.abs(fl.x - h.x) < 14) { if (s.cd <= 0) { out.act = 'tap'; s.cd = 0.3; } } return out; }
