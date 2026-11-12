@@ -8,6 +8,7 @@
 //   --solo=0|1  1-player mode: the person plays Pip (0) or Bo (1) and presses nothing; the computer plays the other
 //   --intro   keep the class card (take a shot at 1 s to see it)      --pause  show the pause card in the shot
 //   --crop=x,y,w,h  a 3x close-up of that part of the game (game pixels)
+//   --at=g3|r1  exam only: start at that flood gate (0-7) or Great Hall round (0-2)
 //   --full    screenshot the whole page (touch pads, legend) instead of only the game canvas
 'use strict';
 const path = require('path');
@@ -37,16 +38,17 @@ const ORDER = ['broom', 'lift', 'cauldron', 'glow', 'morph', 'size', 'frostflame
   await page.goto('file://' + path.resolve(__dirname, '..', '..', 'index.html'));
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.MODES && window.__pipbo.MODES.wizschool);
   if (phone) await page.evaluate(() => { try { enableTouch(); Pads.lastNonPad = 'touch'; setKind('touch'); } catch (e) { /* older builds */ } });
-  await page.evaluate(({ phase, who, solo, seed, intro }) => {
+  await page.evaluate(({ phase, who, solo, seed, intro, at }) => {
     const P = window.__pipbo, G = P.G, TT = P.MODES.wizschool.test;
     window.__seed(seed * 7919);
     G.manual = true;
     if (solo !== '') { P.cpuSetCfg('players', 1); P.cpuSetCfg('human', +solo); }
     else G.cpuOn = who === 'pair' ? [true, true] : [false, false];
     TT.jump(TT.WIZ_ORDER.indexOf(phase), { intro });
+    if (at && phase === 'exam') TT.examAt(at);
     if (solo === '' ) G.cpuOn = who === 'pair' ? [true, true] : [false, false];
     window.__simT = 0;
-  }, { phase, who, solo, seed, intro: flag('intro') });
+  }, { phase, who, solo, seed, intro: flag('intro'), at: opt('at', '') });
   let k = 0;
   for (const t of times) {
     const r = await page.evaluate(({ t, who }) => {

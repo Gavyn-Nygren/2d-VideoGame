@@ -14,6 +14,7 @@
 //                end, and nothing may move on by itself (a team class never clears alone).
 //   --skills     a skill per player for the duel (Pip,Bo), e.g. --skills=easy,hard
 //   --max        simulated seconds before giving up (default 600)        --trace=S  print both players every S s
+//   --at=g3|r1   exam only: start at flood gate 3 (0-7) or Great Hall round 1 (0-2) (MODES.wizschool.test.examAt)
 //   --expr="js"  with --trace: also print this (st = the level state, ph = the class's state) on each trace line
 // One line per run: phase, seed, how it ended, the class's time, oops [pip, bo] + team, gold help, page errors.
 'use strict';
@@ -27,6 +28,7 @@ const what = args.find(a => !a.startsWith('--')) || 'all';
 const phases = what === 'all' ? ORDER : what.split(',').map(s => (/^\d+$/.test(s) ? ORDER[+s] : s)).filter(s => ORDER.includes(s));
 const expr = (args.find(x => x.startsWith('--expr=')) || '').slice(7);
 const who = opt('who', 'pair'), maxT = +opt('max', 600), seeds = opt('seeds', '1').split(',').map(Number), clumsy = +opt('clumsy', 0), trace = +opt('trace', 0);
+const at = opt('at', '');
 const skills = opt('skills', '') ? opt('skills', '').split(',') : null;
 
 (async () => {
@@ -49,7 +51,7 @@ const skills = opt('skills', '') ? opt('skills', '').split(',') : null;
   for (const phase of phases) for (const seed of seeds) {
     errors.length = 0;
     const t0 = Date.now();
-    const r = await page.evaluate(async ({ phase, who, maxT, seed, clumsy, trace, skills, expr }) => {
+    const r = await page.evaluate(async ({ phase, who, maxT, seed, clumsy, trace, skills, expr, at }) => {
       const P = window.__pipbo, G = P.G, TT = P.MODES.wizschool.test;
       window.__seed(seed * 7919); window.__inStep = true;
       G.manual = true;
@@ -80,6 +82,7 @@ const skills = opt('skills', '') ? opt('skills', '').split(',') : null;
       };
       const k = TT.WIZ_ORDER.indexOf(phase);
       TT.jump(k, { intro: false });
+      if (at && phase === 'exam') TT.examAt(at);
       const st = G.mst, steps = Math.round(maxT / P.DT), lines = [], every = trace ? Math.max(1, Math.round(trace / P.DT)) : 0;
       const where = q => `${Math.round(q.x + q.w / 2 + st.cam.x)},${Math.round(q.y + q.h + st.cam.y)}`;
       let n = 0, ended = '', endT = 0;
@@ -101,7 +104,7 @@ const skills = opt('skills', '') ? opt('skills', '').split(',') : null;
       const s = st.stats;
       return { ended, t: Math.round((endT || st.phT) * 10) / 10, sim: Math.round(n * P.DT), oops: s.oops.slice(), team: s.team, help: s.help.slice(), kinds: s.kinds, own: s[phase],
         stub: TT.stub(phase), idle: !!st.idle, cpuErrs: [...P.CPU.errs], hud: TT.WIZ_PHASES[phase].hudText ? TT.WIZ_PHASES[phase].hudText(st) : '', trace: lines };
-    }, { phase, who, maxT, seed, clumsy, trace, skills, expr });
+    }, { phase, who, maxT, seed, clumsy, trace, skills, expr, at });
     r.phase = phase; r.seed = seed; r.errors = errors.slice(0, 6); r.wall = Math.round((Date.now() - t0) / 100) / 10;
     results.push(r);
     const ok = who === 'idle' ? !r.ended : !!r.ended;

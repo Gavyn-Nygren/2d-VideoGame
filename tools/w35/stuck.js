@@ -2,7 +2,7 @@
 // Looks for spots where the computer partner gets stuck in 35-1 Moonwick Academy when a person-like player is the other
 // character, class by class. node tools/w35/stuck.js [phase[,phase]|all] [--human=lag,eager,slow] [--seeds=1,2]
 //   (--expr runs with the players in world coords, as the plans do)
-//   [--max=600] [--human-is=0,1] [--expr="..."] [--log=T0:T1:EVERY (print --expr every EVERY s between T0 and T1)]
+//   [--max=600] [--human-is=0,1] [--at=g3|r1 (exam only: start at that flood gate / Great Hall round)] [--expr="..."] [--log=T0:T1:EVERY (print --expr every EVERY s between T0 and T1)]
 //   lag    plays the job well but does everything 0.35 s late (a careful person)
 //   eager  plays the job, but every 4-12 s often runs off to one side for 1-3 s, jumping now and then (an excited kid)
 //   slow   plays the job, but holds still for 2-5 s every 8-15 s and walks at about half speed (a younger player)
@@ -16,7 +16,7 @@ const args = process.argv.slice(2);
 const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); return a ? a.slice(k.length + 3) : d; };
 const first = args.find(a => !a.startsWith('--')) || 'all';
 const humans = opt('human', 'lag,eager,slow').split(','), seeds = opt('seeds', '1,2').split(',').map(Number);
-const maxT = +opt('max', 600), expr = opt('expr', ''), logA = opt('log', '').split(':').map(Number), humanIs = opt('human-is', '0,1').split(',').map(Number);
+const at = opt('at', ''), maxT = +opt('max', 600), expr = opt('expr', ''), logA = opt('log', '').split(':').map(Number), humanIs = opt('human-is', '0,1').split(',').map(Number);
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1100, height: 640 } });
@@ -32,7 +32,7 @@ const maxT = +opt('max', 600), expr = opt('expr', ''), logA = opt('log', '').spl
   let bad = 0;
   for (const phase of phases) for (const hum of humans) for (const hid of humanIs) for (const seed of seeds) {
     errs.length = 0;
-    const r = await page.evaluate(async ({ phase, hum, hid, seed, maxT, expr, logA }) => {
+    const r = await page.evaluate(async ({ phase, hum, hid, seed, maxT, expr, logA, at }) => {
       const P = window.__pipbo, G = P.G, TT = P.MODES.wizschool.test;
       window.__seed(seed * 104729);
       G.manual = true; G.cpuOn = [true, true]; P.CPU.skillOf = ['normal', 'normal'];
@@ -64,6 +64,7 @@ const maxT = +opt('max', 600), expr = opt('expr', ''), logA = opt('log', '').spl
       const B = P.CPU.brains.wizschool, think0 = B.think;
       B.think = function (s, p, o, dt, info) { return think0.call(this, s, p, o, dt, p.id === hid ? info : Object.assign({}, info, { partnerCpu: false })); };
       TT.jump(phase, { intro: false, seed });
+      if (at && phase === 'exam') TT.examAt(at);
       const st = G.mst, cpu = G.players[1 - hid], hp = G.players[hid];
       const pos = () => ({ x: cpu.x + st.cam.x, y: cpu.y + st.cam.y });
       const stuck = []; let anchor = Object.assign(pos(), { t: 0 }), n = 0, flagged = false, ended = '';
@@ -94,7 +95,7 @@ const maxT = +opt('max', 600), expr = opt('expr', ''), logA = opt('log', '').spl
       }
       P.CPU.filter = null; B.think = think0;
       return { ended, t: Math.round(n * P.DT), stuck, cpuErrs: [...P.CPU.errs], hud: ended ? '' : (TT.WIZ_PHASES[phase].hudText ? TT.WIZ_PHASES[phase].hudText(st) : '') + ' oops ' + st.stats.oops.join('+') + '+' + st.stats.team + ' ' + JSON.stringify(st.stats.kinds) + (expr ? ' ' + (() => { try { const ph = st.ph; void ph; return JSON.stringify(eval(expr)); } catch (e) { return 'ERR ' + e.message; } })() : '') };
-    }, { phase, hum, hid, seed, maxT, expr, logA });
+    }, { phase, hum, hid, seed, maxT, expr, logA, at });
     if (!r.ended || errs.length || r.cpuErrs.length) bad++;
     console.log(`${phase.padEnd(10)} ${hum.padEnd(5)} human=${['Pip', 'Bo'][hid]} s${seed}: ${r.ended ? 'ended ' + r.t + 's' : 'NOT ENDED [' + r.hud + ']'}  stuck ${r.stuck.length}${errs.length ? ' ERR ' + errs[0] : ''}${r.cpuErrs.length ? ' CPU ERR ' + r.cpuErrs.join(',') : ''}`);
     for (const s of r.stuck.slice(0, logA.length === 3 ? 400 : 4)) console.log('   ' + s);
