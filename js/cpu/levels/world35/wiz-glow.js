@@ -63,7 +63,8 @@ function wizGlowBrainFind(bst, p, out, S, P) {
   if (Math.abs(dx) > 6) { if (dx > 0) out.right = true; else out.left = true; }
   // never walk off into an open pit
   for (const pi of ph.pits) if (!pi.down && !jump && ((out.right && cx + 14 > pi.x0 - 4 && cx < pi.x0) || (out.left && cx - 14 < pi.x1 + 4 && cx > pi.x1))) { out.right = false; out.left = false; }
-  if (jump) { out.jump = true; bst.hold = 0.3; bst.airTx = air != null ? air : tx; }
+  // (a fresh press each time: one held down forever never jumps again if the first press was eaten)
+  if (jump && bst.hold < -0.12) { out.jump = true; bst.hold = 0.3; bst.airTx = air != null ? air : tx; }
   return wizBrainHop(bst, out, p);
 }
 WIZ_BRAINS.glow = {

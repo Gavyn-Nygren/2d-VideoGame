@@ -109,7 +109,7 @@ function wizFFFrost(st, p, press) {
     if (pc.plant && Math.abs(pc.plant.x - cx) < 90) { pc.plant.frozen = K.plantT; pc.plant.mouth = 0; any = true; wizPop(st, pc.plant.x, F - 80, 'Frozen shut!', '#dff4ff', 14); }
     if (pc.fire) pc.fire.out.forEach((o, k) => { const tx = pc.fire.x0 + (k + 0.5) * K.tile; if (!o && Math.abs(tx - (cx + f * 24)) < 46) { pc.fire.out[k] = true; any = true; puff(tx, F - 10, 6, 'rgba(220,240,255,0.9)'); } });
     if (pc.geyser && Math.abs(pc.geyser.x - cx) < 90 && p.y + p.h > F - 10) {
-      const g = pc.geyser; g.ice = wizFFIceLife(st); any = true;
+      const g = pc.geyser; g.ice = Math.max(6, wizFFIceLife(st)); any = true;   // (a pillar lasts long enough for two careful jumps)
       // (anyone standing in the spout rides the new pillar up)
       for (const q of G.players) if (q.x + q.w > g.x - 22 && q.x < g.x + 22 && q.y + q.h > g.y) Object.assign(q, { y: g.y - q.h, vy: 0, grounded: true });
     }
@@ -179,12 +179,14 @@ function wizFFPlan(st) {
       // FROST bridges ahead when FLAME is close; FLAME follows a step behind (never ahead of the ice)
       const goal = thornUp ? island.x0 + 30 : o.x1 + 70;
       if (fcx < o.x0 - 10 && !near) A = { why: 'wait', x: o.x0 - 20 };
-      else A = { why: 'bridge', x: fcx > o.x0 && fcx - lcx > 80 ? fcx : goal, hold: fcx < goal - 10 && fcx > o.x0 - 30 };   // (on the bridge: waits for FLAME to catch up)
+      else A = { why: 'bridge', x: fcx > o.x0 && fcx - lcx > 80 ? fcx : goal, hold: fcx < goal - 10 && fcx > o.x0 - 44 };   // (on the bridge: waits for FLAME to catch up)
       B = { why: 'follow', x: Math.min(fcx - 34, goal - 34) };
       if (thornUp && fcx > island.x0 + 4 && lcx > island.x0 - 4) B = { why: 'burn', x: island.x0 + 24, hold: true };
       if (thornUp && fcx > island.x0) { A = { why: 'wait', x: island.x0 + 46 }; if (lcx < island.x0 + 4) B = { why: 'follow', x: island.x0 + 24 }; }
       // FLAME left behind (the ice melted under them, or they lagged): FROST comes back for them, laying ice that way
-      if (lcx < o.x1 + 4 && fl.grounded && Math.abs(fcx - lcx) > 110) A = { why: 'bridge', x: lcx + (fcx > lcx ? 44 : -44), hold: true, back: true };
+      // (or the ice between them is melting and FLAME won't step on it)
+      const ti = Math.floor((lcx + 20 - o.x0) / WIZFF.tile), weak = ti >= 0 && ti < o.n && o.ice[ti] <= 1.2;
+      if (lcx < o.x1 + 4 && fl.grounded && (Math.abs(fcx - lcx) > 110 || (weak && fcx - lcx > 60))) A = { why: 'bridge', x: lcx + (fcx > lcx ? 44 : -44), hold: true, back: true };
       break;
     }
     case 'plant': {

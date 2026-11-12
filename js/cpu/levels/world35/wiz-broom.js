@@ -17,7 +17,7 @@ function wizBroomBrainSteer(bst, p, out, S) {
   let want = P.y;
   // a gust: lean against it early
   for (const o of ph.items) if (o.kind === 'gust' && o.x - o.w / 2 - ph.x < 120 && o.x + o.w / 2 > ph.x) want -= o.dir * 30;
-  const dy = ph.y + ph.vy * 0.3 - want, dir = wizBrainLate(bst, 'dir', dy > 10 ? -1 : dy < -10 ? 1 : 0, 0.12);
+  const dy = ph.y + ph.vy * 0.55 - want, dir = wizBrainLate(bst, 'dir', dy > 10 ? -1 : dy < -10 ? 1 : 0, 0.12);
   if (dir < 0) out.jump = true; else if (dir > 0) out.down = true;
   if (P.tap && wizBrainLate(bst, 'swat', true, 0.1)) out.act = 'tap';
   // what the kicker (the person) should do
@@ -34,7 +34,8 @@ function wizBroomBrainKick(bst, p, out, S, info) {
     const P = wizBroomPlan(S)[ph.steer];
     if (Math.abs(ph.y - P.y) > 70) beat = 0.66;   // the person is behind on the steering: ease off
   }
-  if (ph.sinceKick >= (bst.beat || beat)) { out.act = 'tap'; bst.n = (bst.n || 0) + 1; bst.beat = beat + ((bst.n * 0.37) % 1) * 0.06; }
+  bst.tapT = (bst.tapT || 0) - DT;   // (one press, then wait for it to take: a slow hand mustn't pile up kicks)
+  if (ph.sinceKick >= (bst.beat || beat) && bst.tapT <= 0) { out.act = 'tap'; bst.tapT = 0.45; bst.n = (bst.n || 0) + 1; bst.beat = beat + ((bst.n * 0.37) % 1) * 0.06; }
   if (ph.mode === 'fly') {
     const P = wizBroomPlan(S)[ph.steer];
     if (P.hold === 'up' && Math.abs(ph.y - P.y) > 60) wizBrainSay(bst, p, 'up', 'Climb! Up, up!', 7);
