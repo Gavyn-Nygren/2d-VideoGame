@@ -61,7 +61,7 @@
   };
   // the tower in its own frame (x from its middle, y up from the ground): decks, ladders, bar, wheels, stations
   const T = { half: 64, deck: [0, 86, 168, 250], lad: [-46, 46], bar: -84, wheel: [-42, 42], winch: 0, chock: -34, plank: 38, top: 286 };
-  const SCR = { x: 360, gy: 470 };
+  const SCR = { x: 430, gy: 436 };
   const rnd = (a, b) => a + Math.random() * (b - a);
 
   /* ---------- the script: world x of everything in a stretch ---------- */
@@ -162,7 +162,7 @@
     u.duck = !!i.down;
     if (u.at) {
       u.x = T.bar;
-      if (e.jump) { u.at = false; u.letT = 0.4; K.hint(st, id, 'Walk back into the bar to grab it', 1.4); return; }
+      if (e.jump) { u.at = false; u.away = false; u.offT = 0; u.letT = 0.4; K.hint(st, id, 'Walk back into the bar to grab it', 1.4); return; }
       if (st.edges[id].act) {
         if (st.heaveCd <= 0 || st.gold) { st.heave = S.heaveT; st.heaveCd = S.heaveCd; Sfx.play('siegetowerHeave'); K.pop(st, scrX(st, T.bar) , SCR.gy - 80, 'HEAVE!', PCOL[id], 20); st.stats.heaves++; }
         else K.hint(st, id, 'Catch your breath... ' + Math.ceil(st.heaveCd) + ' s', 1);
@@ -172,7 +172,10 @@
       const dir = (i.right ? 1 : 0) - (i.left ? 1 : 0);
       if (dir) u.face = dir;
       if (!u.duck) u.x = clamp(u.x + dir * S.walk * dt, -260, 220);
-      if (u.letT <= 0 && Math.abs(u.x - T.bar) < 8) { u.at = true; Sfx.play('siegetowerGrip'); }
+      // (walk away and back into the bar to take it again; after a knock the pusher is already away)
+      u.offT = (u.offT || 0) + dt;
+      if (Math.abs(u.x - T.bar) > 12 || u.offT > 1.2) u.away = true;
+      if (u.letT <= 0 && u.away && Math.abs(u.x - T.bar) < 8) { u.at = true; u.away = false; Sfx.play('siegetowerGrip'); }
       grabGround(st, st.tx + u.x);
     }
   }
@@ -295,10 +298,11 @@
       if (it.kind === 'wall' && st.tx + T.half >= it.x - 2) fwd = 0;
     }
     if (st.jam) fwd = 0;
-    if (fwd > 0) st.v = approach(st.v, fwd, 160 * dt);
+    // (it's heavy: it takes a moment to get rolling and coasts a little when let go)
+    if (fwd > 0) st.v = approach(st.v, fwd, 220 * dt);
     else if (brake || st.jam) st.v = approach(st.v, 0, 260 * dt);
     else if (s > 0 && !st.gold) st.v = Math.max(-S.rollMax, st.v - s * S.roll * dt);
-    else st.v = approach(st.v, 0, 200 * dt);
+    else st.v = approach(st.v, 0, (mud ? 200 : 45) * dt);
     if (st.v < -S.runaway && !st.rollFrom) { st.rollFrom = st.tx; Sfx.play('siegetowerCreak'); K.msg(st, 'It\'s rolling back! Grab the bar and brake (◀)!', '#ffd0c8', 2.2); }
     if (st.v > -10) st.rollFrom = null;
     st.tx += st.v * dt;
@@ -437,7 +441,9 @@
   function bridgeStep(st, dt) {
     const B = st.bridge, h = st.he, ih = G.players[st.tw].input;
     if (!B.down) {
-      const pushing = st.pu2 ? true : st.pu.at && G.players[st.push].input.right;
+      // (pushing within the last 0.4 s counts: a hand slipping off for a moment doesn't undo the bridge)
+      if (st.pu.at && G.players[st.push].input.right) B.pushT = st.T;
+      const pushing = st.pu2 ? true : st.pu.at && st.T - (B.pushT || -9) < 0.4;
       if (h.lvl === 3 && !h.climb && ih.act && pushing) { B.hold += dt; if (Math.random() < dt * 5) Sfx.play('siegetowerCreak'); }
       else B.hold = Math.max(0, B.hold - dt);
       B.open = clamp(B.hold / S.bridgeT, 0, 1) * 0.3;
