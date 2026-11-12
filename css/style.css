@@ -281,9 +281,10 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: clamp(14px, 3.4vh, 34px); padding: clamp(18px, 4vh, 44px) 20px clamp(54px, 9vh, 80px);
 }
-.ts-brand { position: relative; display: grid; justify-items: center; gap: clamp(14px, 3vh, 30px); }
+.ts-brand { position: relative; display: grid; justify-items: center; gap: clamp(4px, 1.2vh, 12px); }
 .logo {
-  margin: 0; font-family: var(--font-display); font-weight: 400; line-height: 0.9; white-space: nowrap;
+  /* room under the letters for the "p" tail, the depth shadow and the bob, so the tagline below is never covered */
+  margin: 0; padding-bottom: 0.3em; font-family: var(--font-display); font-weight: 400; line-height: 0.9; white-space: nowrap;
   font-size: clamp(64px, min(13vw, 19vh), 168px); letter-spacing: 0.01em;
 }
 .logo .lw { display: inline-block; }
@@ -361,12 +362,16 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 .ts-padblocked { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); width: min(560px, 90%); text-align: center;
   background: rgba(28, 26, 54, 0.9); border-radius: 12px; padding: 8px 12px; }
 .ts-padblocked[hidden] { display: none; }
+/* not much height (small laptops): the Opponent explainer goes (the pause card still shows it) */
+@media (max-height: 700px) {
+  .ts-menu .cpu-cfg .hint { display: none; }
+}
 /* short screens (phones held sideways): logo on the left, menu on the right */
 @media (max-height: 520px) {
   .ts-main { flex-direction: row; gap: clamp(16px, 4vw, 48px); padding: 14px 20px 44px; }
   .logo { font-size: clamp(40px, min(6.6vw, 21vh), 96px); }
   .ts-menu { flex: none; width: auto; min-width: 230px; max-width: 340px; gap: 8px; padding: 12px 12px 10px; }
-  .ts-brand { min-width: 0; gap: 14px; }
+  .ts-brand { min-width: 0; gap: 4px; }
   .play-btn { font-size: 24px; padding: 8px 30px; }
   .ts-menu .seg { padding: 4px 9px; font-size: 12px; }
   .ts-menu .seg-row:not(.cpu-more) { flex-wrap: nowrap; }
