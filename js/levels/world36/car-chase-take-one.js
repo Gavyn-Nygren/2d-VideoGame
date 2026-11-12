@@ -159,7 +159,7 @@
     const def = L.def;
     st.k = k; st.drv = def.drv || 0; st.hero = 1 - st.drv; st.title = def.title || '';
     st.T = TAKES[k];
-    st.goldUsed = false; st.gold = false;
+    st.goldUsed = false; st.gold = false; st.reelsTake = 0;
     labels(st);
     startTake(st);
     K.fx(st);
@@ -167,6 +167,8 @@
   }
   function startTake(st) {
     const T = st.T;
+    // a retake lays the take's reels out again, so the ones picked up in the cut take don't count twice
+    if (st.reelsTake) { st.reels -= st.reelsTake; if (st.stats) st.stats.reels = st.reels; }
     st.items = layout(st.k, st.seed);
     st.car = { x: S.carX, lane: 1, ly: 1, vx: 0, air: 0, airMax: 0, big: false, bump: false, hitT: 0, dents: 0, drift: 0, prevLane: 1 };
     st.dist = 0; st.scene = T.scenes[0]; st.roll = null; st.cdT = 0; st.dial = 0; st.dialRep = 0; st.dialHeld = 0; st.lastClapT = -9;

@@ -132,7 +132,7 @@
   function room(st, L, k) {
     const def = L.def;
     st.k = k; st.brk = def.brk || 0; st.run = 1 - st.brk; st.title = def.title || ''; st.set = SETS[k];
-    st.goldUsed = false; st.gold = false;
+    st.goldUsed = false; st.gold = false; st.tixTake = 0;
     labels(st);
     startTake(st);
     K.fx(st);
@@ -140,6 +140,8 @@
   }
   function startTake(st) {
     const L = layout(st.k);
+    // a retake lays the set's tickets out again, so the ones picked up in the cut take don't count twice
+    if (st.tixTake) { st.tickets -= st.tixTake; if (st.stats) st.stats.tickets = st.tickets; }
     st.jobs = L.jobs; st.forks = L.forks; st.tix = L.tix; st.end = L.end;
     st.jobs.forEach((j, i) => { j.i = i; if (j.k === 'crank') j.taps = 0; });
     st.tram = { x: 0, v: st.set.v, heat: 0, cook: 0, braking: false, hitT: 0, smoke: 0, back: 0 };
@@ -148,7 +150,7 @@
     st.cam = 0; st.meter = 100; st.lastHit = -9; st.state = 'go'; st.endT = 0; st.cut = null;
     st.rc = { bad: 0 }; st.segStart = G.time; st.call = {}; st.callT = {}; st.bubble = null;
     st.final = { prog: 0, done: false }; st.tixTake = 0; st.party = false; st.cleared = false; st.planMemo = null;
-    st.prevUp = [false, false]; st.prevDown = [false, false]; st.leftT = 0; st.tailUntil = 0;
+    st.prevUp = [false, false]; st.prevDown = [false, false]; st.leftT = 0; st.tailUntil = 0; st.brkRest = false;
   }
   function labels(st) { const w = []; w[st.brk] = 'brake'; w[st.run] = 'do it'; K.actLabels(w, 'brake'); }
   const zog = st => !!st.set.zog;
@@ -439,10 +441,15 @@
     return clearLine(st, f) || f.sw;
   }
   // the line at a fork with no REAL thing (and no unheld boulder) on it
-  function clearLine(st, f) {
+  function realFree(st, f) {
     const realOn = l => st.jobs.some(j => (j.k === 'real') && j.line === l && j.x > f.x0 && j.x < f.x1);
     if (realOn('up') && !realOn('low')) return 'low';
     if (realOn('low') && !realOn('up')) return 'up';
+    return null;
+  }
+  function clearLine(st, f) {
+    const rf = realFree(st, f);
+    if (rf) return rf;
     if (st.jobs.some(j => j.k === 'lever' && j.line === 'up' && j.x > f.x0 && j.x < f.x1)) return 'low';
     return null;
   }
@@ -493,7 +500,10 @@
       const want = lever ? (r.on === 'car' || Math.abs(workSpot(J) - r.x) > 30 ? need > ta - 0.6 : false) : need > ta - 0.8;
       const stop = lever ? false : need < ta - 1.6;
       const was = !!st.braking;
-      let hold = T.cook <= 0 && T.heat < cap && (want || was && !stop);
+      // a pull ends at the cap and the next one waits until the brake has cooled a little below it (holding it
+      // right at the cap let go and grabbed again every other step)
+      if (T.heat >= cap) st.brkRest = true; else if (T.heat < cap - 0.12) st.brkRest = false;
+      let hold = T.cook <= 0 && !st.brkRest && (want || was && !stop);
       if (J.k === 'final' && T.x > J.x - 300) hold = true;
       st.braking = hold;
       out.brk.hold = hold; out.brk.why = hold ? 'time for ' + J.k : 'roll';
@@ -516,7 +526,9 @@
     const f = nextFork(st);
     if (f) {
       const seen = T.x > f.x0 - S.seeT || Math.abs(r.x - (f.x0 + f.x1) / 2) < S.runSee + 300;
-      const want = st.call[f.i] || (seen ? clearLine(st, f) : null);
+      // (a REAL thing the brake hero can see for itself beats a call: a person can call the wrong way)
+      const eyes = T.x > f.x0 - S.seeT ? realFree(st, f) : null;
+      const want = eyes || st.call[f.i] || (seen ? clearLine(st, f) : null);
       if (want && want !== f.sw) out.brk.sw = want;
     }
     // where to stand: the front (brake), or the car the runner is jumping for

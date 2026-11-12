@@ -20,10 +20,11 @@
 
    OUTFITS (Gavyn, Nov 2026: Pip and Bo dress for each level). Every outfit is drawn here and only here, so a shared
    outfit system can take them over later. K.stunt(id, x, y, o) draws Pip or Bo (feet at x, y) in o.look:
-     'stunt'  36-1: a stunt jumpsuit with a white stripe, knee pads, a racing helmet (Pip silver, Bo gold) and goggles
+     'stunt'  36-1: a stunt jumpsuit with a white stripe, knee pads, an open-face helmet (Pip silver, Bo gold) with
+              goggles pushed up on it (the eyes always show)
      'crew'   36-2: tram crew, a striped vest, a peaked cap and a headset
      'agent'  36-3: the film stars' doubles, a black secret-agent suit with a tie, sunglasses and a stunt harness
-     'show'   36-4: a sparkly show jumpsuit, a star cape and a full-face helmet with a visor
+     'show'   36-4: a sparkly show jumpsuit, a star cape and the helmet with a clear visor down over the eyes
      o: face, rot, s, sy, sx, vy, stun, alpha, arms ('up' | 'fwd' | 'out' | 'grab'), cape (0..1 how hard it flies).
    THE FAKE-OR-REAL LANGUAGE (the same in all four levels; never colour alone):
      FAKE (props: paper, foam, sugar glass): matte, a torn paper / foam edge, a small yellow "PROP" tag, a slight wobble.
@@ -138,20 +139,23 @@ const STUDIO = (() => {
       ctx.fillStyle = '#2a2a34'; rr(-w / 2 + 1, -5 * s, 7 * s, 4 * s, 2 * s); ctx.fill(); rr(w / 2 - 8 * s, -5 * s, 7 * s, 4 * s, 2 * s); ctx.fill();
       if (look === 'show') { ctx.fillStyle = '#ffe58a'; for (let k = 0; k < 5; k++) { const sx = -w / 2 + 4 * s + H_(k + id * 7) * (w - 8 * s), sy2 = -h * 0.45 + H_(k * 3 + 1) * h * 0.38; ctx.globalAlpha = (o.alpha === undefined ? 1 : o.alpha) * (0.5 + 0.5 * Math.sin(t * 6 + k * 2)); circle(sx, sy2, 1.2 * s); ctx.fill(); } ctx.globalAlpha = o.alpha === undefined ? a0 : a0 * o.alpha; }
       armsOf(o, w, h, s, face, col, dark);
-      // the helmet: a dome over the top of the head; stunt has goggles up, show has a full visor
-      const hc = id === 0 ? ['#e2e6ec', '#7a828e'] : ['#ffd86a', '#b8860a'];
-      const g = ctx.createLinearGradient(0, -h - 6 * s, 0, -h * 0.55);
+      // the helmet: an open-face dome over the top of the head only, so the eyes (and Pip's orange, Bo's blue) still
+      // show; stunt has goggles pushed up on the brow, show has a clear visor down over the eyes
+      const hc = id === 0 ? ['#e2e6ec', '#7a828e'] : ['#ffd86a', '#b8860a'], brow = -h * 0.8;
+      const g = ctx.createLinearGradient(0, -h - 6 * s, 0, brow);
       g.addColorStop(0, hc[0]); g.addColorStop(1, hc[1]);
       ctx.fillStyle = g; ctx.strokeStyle = '#2a2a34'; ctx.lineWidth = 1.5 * s;
-      ctx.beginPath(); ctx.moveTo(-w / 2 - 1, -h * 0.58); ctx.quadraticCurveTo(-w / 2 - 1, -h - 7 * s, 0, -h - 7 * s); ctx.quadraticCurveTo(w / 2 + 1, -h - 7 * s, w / 2 + 1, -h * 0.58); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = id === 0 ? '#e8322a' : '#2a6ae8'; ctx.fillRect(-1.5 * s, -h - 7 * s, 3 * s, h * 0.35);
+      ctx.beginPath(); ctx.moveTo(-w / 2 - 1, brow); ctx.quadraticCurveTo(-w / 2 - 1, -h - 7 * s, 0, -h - 7 * s); ctx.quadraticCurveTo(w / 2 + 1, -h - 7 * s, w / 2 + 1, brow); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = id === 0 ? '#e8322a' : '#2a6ae8'; ctx.fillRect(-1.5 * s, -h - 6.4 * s, 3 * s, h * 0.2 + 5.6 * s);
       if (id === 1) topper(id, w, h, s, 0); // Bo's ears come out through holes in the helmet
+      // lenses: amber for Pip, pale blue for Bo (no blue on Pip)
+      const lens = id === 0 ? ['rgba(255,214,140,0.95)', 'rgba(255,200,120,0.22)'] : ['rgba(170,226,255,0.95)', 'rgba(150,230,255,0.22)'];
       if (look === 'show') {
-        ctx.fillStyle = 'rgba(30,40,70,0.55)'; rr(-w / 2 + 2, -h * 0.82, w - 4, h * 0.2, 4 * s); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(face * 2 * s, -h * 0.8, 4 * s, 2 * s);
+        ctx.fillStyle = lens[1]; ctx.strokeStyle = '#2a2a34'; ctx.lineWidth = 1.2 * s; rr(-w / 2, brow - 1 * s, w, h * 0.3, 4 * s); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(face * 3 * s - 2 * s, brow + 1.5 * s, 5 * s, 1.5 * s);
       } else {
-        ctx.fillStyle = '#3a3a44'; ctx.fillRect(-w / 2, -h * 0.98, w, 3 * s);
-        for (const d of [-1, 1]) { ctx.fillStyle = '#9fd8ff'; circle(d * 5 * s + face * 1.5 * s, -h * 0.97, 3 * s); ctx.fill(); ctx.strokeStyle = '#3a3a44'; ctx.lineWidth = 1.2 * s; ctx.stroke(); }
+        ctx.fillStyle = '#3a3a44'; ctx.fillRect(-w / 2, brow - 5.5 * s, w, 2.5 * s);
+        for (const d of [-1, 1]) { ctx.fillStyle = lens[0]; circle(d * 4.5 * s + face * 1.5 * s, brow - 4.2 * s, 2.8 * s); ctx.fill(); ctx.strokeStyle = '#3a3a44'; ctx.lineWidth = 1.2 * s; ctx.stroke(); }
       }
       ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(-face * 5 * s, -h - 2 * s, 3 * s, 1.6 * s, -0.4, 0, TAU); ctx.fill();
       if (id === 0) topper(id, w, h, s, -h - 7 * s);
@@ -181,7 +185,7 @@ const STUDIO = (() => {
       ctx.strokeStyle = '#c8a03a'; ctx.lineWidth = 1.6 * s; ctx.beginPath(); ctx.moveTo(-w / 2 + 2, -h * 0.5); ctx.lineTo(w / 2 - 2, -2 * s); ctx.moveTo(w / 2 - 2, -h * 0.5); ctx.lineTo(-w / 2 + 2, -2 * s); ctx.stroke();
       armsOf(o, w, h, s, face, '#2a2c36', '#0a0a10');
       ctx.fillStyle = '#0a0a10'; rr(-w / 2 + 1 + face * 1.5 * s, -h * 0.68, w - 2, 5 * s, 2 * s); ctx.fill();
-      ctx.fillStyle = 'rgba(160,200,255,0.6)'; ctx.fillRect(-w / 2 + 3 + face * 1.5 * s, -h * 0.67, 3 * s, 1.5 * s); ctx.fillRect(3 * s + face * 1.5 * s, -h * 0.67, 3 * s, 1.5 * s);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(-w / 2 + 3 + face * 1.5 * s, -h * 0.67, 3 * s, 1.5 * s); ctx.fillRect(3 * s + face * 1.5 * s, -h * 0.67, 3 * s, 1.5 * s);
     }
     ctx.restore();
     ctx.globalAlpha = a0;
