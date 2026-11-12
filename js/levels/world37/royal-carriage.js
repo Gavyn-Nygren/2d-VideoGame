@@ -170,6 +170,9 @@
     let target = lr > 0 ? S.fast : lr < 0 ? S.slow : S.cruise;
     // at the royal stand the reins can stop the horses (they creep on until the stand is close)
     if (lr < 0 && inStop && !c.loose) target = sd <= S.stopNear ? 0 : 60;
+    // (review fix: near the stand the horses don't pick up speed again between tugs, so a driver who taps the reins
+    // instead of holding them still stops; before, taps never got below a canter and the carriage lapped for ever)
+    else if (lr === 0 && inStop && !c.loose) target = Math.min(st.v, S.cruise);
     if (c.whip > 0) target = S.whipV;
     if (c.crash > 0) { c.crash -= dt; target = Math.min(target, 150); }
     const acc = target < st.v ? S.haulAcc : S.acc;
