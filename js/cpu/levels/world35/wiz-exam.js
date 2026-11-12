@@ -45,6 +45,12 @@ WIZ_BRAINS.exam = {
       if (there && P.face && Math.sign(p.face || 1) !== P.face) { out.left = P.face < 0; out.right = P.face > 0; }
     }
     if (P.right) { out.right = true; out.left = false; }
+    // no dithering: turning round takes a moment (a plan spot can hop from one side to the other between two steps,
+    // e.g. when the partner stands right at the rim of the light)
+    const dir = out.right ? 1 : out.left ? -1 : 0;
+    bst.turnT = (bst.turnT || 0) - DT;
+    if (dir && bst.dir && dir !== bst.dir && bst.turnT > 0) out.left = out.right = false;
+    else if (dir) { if (dir !== bst.dir) bst.turnT = 0.3; bst.dir = dir; }
     if (P.hop || (!P.jump && (out.left || out.right))) wizBrainHop(bst, out, p);   // (a step in the way: hop it)
     // the action
     bst.rel = Math.max(0, (bst.rel || 0) - DT); bst.actT = (bst.actT || 0) - DT; bst.dialT = (bst.dialT || 0) - DT;   // (the clocks run every step)

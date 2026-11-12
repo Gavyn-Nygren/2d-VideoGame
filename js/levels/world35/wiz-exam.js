@@ -1502,10 +1502,10 @@ function wizExHallPlan(st) {
       out[id] = danger ? me : null;
     }
     if (dark) {
-      const g = ps[R.a], o = ps[R.b], gp = out[R.a] || { why: 'glow', x: clamp(wizExCx(o) - 20, lo, hi) };
+      const g = ps[R.a], o = ps[R.b], far = Math.abs(wizExCx(o) - wizExCx(g)) > 80, gp = out[R.a] || (far ? { why: 'glow', x: clamp(wizExCx(o) - 20, lo, hi), dead: 30 } : { why: 'glow' });   // (the light stands still once the partner is in it: they come to the light, it doesn't chase them)
       out[R.a] = Object.assign(gp, { why: 'glow', hold: true, cast: 'glow', say: 'Hold ' + wizExKey(R.a, 'act') + ' to GLOW! Keep your partner in the light!' });
       delete out[R.a].tap;
-      if (!out[R.b]) out[R.b] = { why: 'light', x: clamp(wizExCx(g) + 30, lo, hi), say: 'Stay in the light!' };
+      if (!out[R.b]) out[R.b] = { why: 'light', x: clamp(wizExCx(g) + 30, lo, hi), dead: 20, say: 'Stay in the light!' };
       else if (out[R.b].x === wizExCx(o)) out[R.b].x = clamp(wizExCx(g) + 30, lo, hi);
     }
     for (const id of [0, 1]) if (!out[id]) out[id] = { why: 'wait', x: H0 + (id === R.a ? 230 : 430) };
