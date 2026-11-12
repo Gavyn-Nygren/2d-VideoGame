@@ -36,8 +36,11 @@ const layout = page => page.evaluate(() => {
     .every(e => { const r = e.getBoundingClientRect(); return r.left >= ts.left - 1 && r.right <= ts.right + 1 && r.top >= ts.top - 1 && r.bottom <= ts.bottom + 1; });
   const menu = document.querySelector('.ts-menu').getBoundingClientRect(), logo = document.querySelector('.logo').getBoundingClientRect();
   const overlap = !(menu.left >= logo.right || menu.right <= logo.left || menu.top >= logo.bottom || menu.bottom <= logo.top);
+  // the tagline sits below the logo's ink: the "p" tail, depth shadow and bob reach about 1.2 em under the top of the letters
+  const ch = document.querySelector('.logo .ch'), fs = parseFloat(getComputedStyle(ch).fontSize);
+  const tagGap = (document.querySelector('.ts-tag').getBoundingClientRect().top - Math.min(...[...document.querySelectorAll('.logo .ch')].map(e => e.getBoundingClientRect().top))) / fs;
   const art = document.querySelector('.ts-art');
-  return { inside, overlap, hscroll: document.documentElement.scrollWidth > innerWidth + 1, artW: art.width, artH: art.height,
+  return { tagGap, inside, overlap, hscroll: document.documentElement.scrollWidth > innerWidth + 1, artW: art.width, artH: art.height,
     artFill: Math.abs(art.width / art.height - art.clientWidth / art.clientHeight) < 0.05 };
 });
 
@@ -51,6 +54,7 @@ const layout = page => page.evaluate(() => {
       await page.waitForTimeout(500);
       const l = await layout(page);
       check(l.inside && !l.overlap && !l.hscroll, `${name} ${players}P: logo, menu and footer fit, menu clear of the logo, no sideways scroll`);
+      check(l.tagGap >= 1.22, `${name} ${players}P: the tagline sits clear below the logo (${l.tagGap.toFixed(2)} em)`);
       check(l.artFill, `${name} ${players}P: the backdrop fills the title (${l.artW}x${l.artH})`);
       await page.screenshot({ path: path.join(out, `${name}-${players}p.png`) });
     }
