@@ -164,6 +164,7 @@ function wizMorphWrong(st, word) {
     wizPop(st, sh.x + sh.w / 2, sh.y - 20, word, '#bfe0ff', 18);
     Object.assign(sh, { x: back.x - sh.w / 2, y: back.y - sh.h - 2, vx: 0, vy: -200, grounded: false });
   }
+  st.cam.x = Math.min(st.cam.x, back.x - 160);   // (the camera follows the pop back)
   ph.sink = 0; ph.float = 0; Sfx.play('wizMorphGlub');
 }
 // the SHIFTER's body in its shape's box (the box is set only for the move, so the player keeps its normal size)
@@ -171,11 +172,15 @@ function wizMorphBody(st, p, dt) {
   const ph = st.ph, K = WIZMORPH, F = K.floor, [bw, bh] = K.box[ph.shape];
   const w0 = p.w, h0 = p.h, dx = (w0 - bw) / 2, dy = h0 - bh;
   p.x += dx; p.y += dy; p.w = bw; p.h = bh;
-  const sol = ph.shSolids.filter(r => !(r.bat && ph.shape === 'bat')).concat(wizMorphEdges(st));
+  const sol = ph.shSolids.filter(r => !(r.bat && ph.shape === 'bat'));
   try { wizBody(p, dt, sol, { ctl: (q, d) => wizMorphCtl(st, q, d) }); } finally { p.x -= dx; p.y -= dy; p.w = w0; p.h = h0; }
+  wizMorphClamp(st, p);
   void F;
 }
-function wizMorphEdges(st) { return [{ x0: st.cam.x - 40, y0: -400, x1: st.cam.x + 2, y1: 800, kind: 'edge' }, { x0: st.cam.x + W - 2, y0: -400, x1: st.cam.x + W + 40, y1: 800, kind: 'edge' }]; }
+// the screen's edges: nobody walks out of view
+function wizMorphClamp(st, p) {
+  if (p.x < st.cam.x) { p.x = st.cam.x; p.vx = Math.max(0, p.vx); } else if (p.x > st.cam.x + W - p.w) { p.x = st.cam.x + W - p.w; p.vx = Math.min(0, p.vx); }
+}
 function wizMorphCtl(st, p, dt) {
   const ph = st.ph, K = WIZMORPH, F = K.floor, i = p.input, dir = (i.right ? 1 : 0) - (i.left ? 1 : 0), up = wizUp(p);
   const water = wizMorphInPool(ph, p.x + p.w / 2, p.y + p.h - 2);
@@ -248,7 +253,8 @@ function wizMorphStep(st, dt) {
   ph.upWas = upNow; ph.dnWas = dnNow;
   const castP = ca.pendingAct; ca.pendingAct = false; ca.pendingJump = false;
   if (castP) wizMorphCast(st);
-  wizBody(ca, dt, ph.caSolids.concat(wizMorphEdges(st)), { ctl: (p, d) => { const real = p.input; p.input = Object.assign({}, real, { jump: false, up: false, down: false }); p.pendingJump = false; try { control(p, d); } finally { p.input = real; } } });
+  wizBody(ca, dt, ph.caSolids, { ctl: (p, d) => { const real = p.input; p.input = Object.assign({}, real, { jump: false, up: false, down: false }); p.pendingJump = false; try { control(p, d); } finally { p.input = real; } } });
+  wizMorphClamp(st, ca);
   // --- the SHIFTER ---
   if (ph.shape === 'fish' && sh.pendingAct) { ph.dashT = 0.25; Sfx.play('wizMorphSplash'); }
   if (ph.shape === 'bat' && sh.pendingAct) sh.pendingJump = true;   // (a flap)
