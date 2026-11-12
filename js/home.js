@@ -8,7 +8,7 @@
    Controller: stick or d-pad moves, A picks, B goes back. Touch: tap. */
 'use strict';
 
-// screen: which home screen is up ('title', 'worlds', 'world'); from: where the world map's Back goes ('title' or 'pause')
+// screen: which home screen is up ('title', 'howto', 'worlds', 'world'); from: where the world map's Back goes ('title' or 'pause')
 const Home = { screen: 'title', from: 'title', w: 0, page: 0 };
 
 const NUM_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen',
@@ -56,35 +56,67 @@ function worldWho(w) {
 const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 
 /* ---------- the title ---------- */
+// A full-screen title like a console game's: Pip and Bo run through the worlds behind the logo, with a short menu
+// (Play, Players, How to play). The controls live on their own "How to play" screen so the title stays clean.
+// the logo, one span per letter so they can drop in and bob (data-c feeds the two-tone shine in css/style.css)
+function logoHTML() {
+  let k = 0;
+  const word = (txt, cls) => `<span class="lw ${cls}">${[...txt].map(c => `<span class="ch" style="--i:${k++}" data-c="${esc(c)}">${esc(c)}</span>`).join('')}</span>`;
+  return `<h1 class="logo" aria-label="Pip and Bo"><span aria-hidden="true">${word('Pip', 'nm-pip')}${word('&', 'amp')}${word('Bo', 'nm-bo')}</span></h1>`;
+}
 function showTitle() {
   G.mode = 'title';
   G.results = [];
   loadLevel(0, 'title');
   Home.screen = 'title'; Home.from = 'title';
+  const nVs = LEVELS.filter(l => l.kind === 'versus').length;
   showOverlay(`
-    <div class="card title-card" data-nav>
-      <div class="hero">
-        <canvas data-pv="hero" aria-hidden="true"></canvas>
-        <h1 class="logo"><span class="nm-pip">Pip</span> <span class="amp">&amp;</span> <span class="nm-bo">Bo</span></h1>
+    <div class="title-screen" data-nav>
+      <canvas class="ts-art" data-pv="hero" aria-hidden="true"></canvas>
+      <div class="ts-shade" aria-hidden="true"></div>
+      <div class="ts-main">
+        <div class="ts-brand">
+          ${logoHTML()}
+          <span class="spark s1" aria-hidden="true"></span><span class="spark s2" aria-hidden="true"></span><span class="spark s3" aria-hidden="true"></span>
+          <p class="ts-tag"><span>A couch co-op adventure for two</span></p>
+        </div>
+        <div class="ts-menu">
+          <button class="primary play-btn" type="button" data-act="worlds" data-primary><span>Play</span></button>
+          ${cpuCfgHTML()}
+          <button class="ghost ts-btn" type="button" data-act="howto">How to play</button>
+          <p class="ts-press" aria-hidden="true"><span class="kb-only">Press <kbd>Enter</kbd> to start</span><span class="pad-only">Press <span data-glyph="a"></span> to start</span></p>
+        </div>
       </div>
-      <p class="eyebrow">Playable demo · <span data-cpu-eyebrow>${CPU.cfg.players === 1 ? '1 player + computer' : '2 players'}</span> · 1 screen</p>
+      <p class="ts-foot"><span><b>${liveWorlds().length}</b> worlds</span><span><b>${LEVELS.length}</b> levels</span><span><b>${nVs}</b> head-to-heads</span></p>
+      <p class="hint ts-padblocked" data-padblocked hidden>This page isn’t allowed to read controllers. To play with one, download the game file and open it directly in Chrome, Edge or Firefox.</p>
+    </div>`);
+  mountPreviews(overlay);
+}
+// "How to play": each player's keys, touch buttons and controller, plus what the game is (Esc / B / Back goes to the title)
+function showHowTo() {
+  Home.screen = 'howto';
+  showOverlay(`
+    <div class="card home-card howto-card" data-nav>
+      <div class="home-head">
+        <button class="ghost back" type="button" data-act="howto-back" data-back data-primary><span aria-hidden="true">◀</span> Title</button>
+        <div class="home-title"><p class="eyebrow"><span data-cpu-eyebrow>${CPU.cfg.players === 1 ? '1 player + computer' : '2 players'}</span> · 1 screen</p><h2>How to play</h2></div>
+      </div>
       <p class="lede">${titleLede()}</p>
-      <div class="actions-row"><button class="primary play-btn" type="button" data-act="worlds" data-primary>Play</button><span class="hint kb-only">or press Enter</span></div>
-      ${cpuCfgHTML()}
       <div class="duo kb-only">
         <div class="pcard pip"><div class="nm nm-pip">Pip</div><div class="keys"><span><kbd>A</kbd><kbd>D</kbd> move</span><span><kbd>W</kbd> jump</span><span><kbd>S</kbd> drop down</span></div></div>
         <div class="pcard bo"><div class="nm nm-bo">Bo</div><div class="keys"><span><kbd>←</kbd><kbd>→</kbd> move</span><span><kbd>↑</kbd> jump</span><span><kbd>↓</kbd> drop down</span></div></div>
       </div>
+      <p class="hint kb-only">Some levels add an action button: <kbd>F</kbd> for Pip, <kbd>/</kbd> for Bo. <kbd>R</kbd> restarts a level and <kbd>Esc</kbd> pauses. In menus, the arrow keys move, <kbd>Enter</kbd> picks and <kbd>Esc</kbd> goes back.</p>
       <p class="hint touch-only" data-two-only${CPU.cfg.players === 1 ? ' hidden' : ''}>Pip uses the orange buttons on the left, Bo uses the blue buttons on the right. ▲ jumps, ▼ drops through planks.</p>
+      <p class="hint touch-only" data-solo-only${CPU.cfg.players === 1 ? '' : ' hidden'}>Use the buttons on your side of the screen. ▲ jumps, ▼ drops through planks.</p>
       <div class="pcard pad-only">
         <div class="keys"><span>Stick or d-pad: move</span><span><span data-glyph="a"></span> jump</span><span>Down: drop through planks</span><span><span data-glyph="start"></span> pause</span></div>
         <p class="hint" data-padwho></p>
         <p class="hint">Press <span data-glyph="view"></span> to swap who plays which character<span data-solo-only${CPU.cfg.players === 1 ? '' : ' hidden'}> (you and the computer)</span>. In menus, the stick moves between buttons, <span data-glyph="a"></span> picks and <span data-glyph="b"></span> goes back.</p>
       </div>
-      <p class="hint kb-only">Controllers work too (Xbox, PlayStation, Switch and others): press any button on one to connect it. The first is Pip, the second is Bo. In menus, the arrow keys move and Esc goes back.</p>
+      <p class="hint kb-only">Controllers work too (Xbox, PlayStation, Switch and others): press any button on one to connect it. The first is Pip, the second is Bo.</p>
       <p class="hint" data-padblocked hidden>This page isn’t allowed to read controllers. To play with one, download the game file and open it directly in Chrome, Edge or Firefox.</p>
     </div>`);
-  mountPreviews(overlay);
 }
 
 /* ---------- the world map: one tile per world, 10 to a page (5 across, 2 down) ---------- */
@@ -194,6 +226,8 @@ overlay.addEventListener('click', e => {
     if (G.mode === 'paused') { Home.from = 'pause'; showWorld(LEVELS[G.levelIndex].world); }
     else { Home.from = 'title'; showWorlds(store.get('lastWorld')); }
   }
+  else if (a === 'howto') showHowTo();
+  else if (a === 'howto-back') { showTitle(); const h = overlay.querySelector('[data-act="howto"]'); if (h) h.focus({ preventScroll: true }); }
   else if (a === 'openworld') showWorld(+b.dataset.w);
   else if (a === 'wpage') showWorldPage(+b.dataset.p, +b.dataset.p < Home.page ? -1 : 1);
   else if (a === 'home-back') showWorlds(Home.w);

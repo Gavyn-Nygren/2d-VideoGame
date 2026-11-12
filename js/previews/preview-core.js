@@ -313,17 +313,22 @@ function pvDrawLevel(v, i, t) {
 }
 const pvStill = i => { const s = previewFor(i); return s && s.still != null ? s.still : 2; };
 
-/* ---------- the title screen's banner: Pip and Bo run through every world in turn ---------- */
+/* ---------- the title screen's backdrop: Pip and Bo run through every world in turn ---------- */
+// The title's canvas fills the whole title screen, so the scene takes that box's shape: always 480 wide, and as tall as
+// the box's aspect needs (150 to 640). The bottom strip is the same at any height; a taller box just shows more sky.
 const HERO_W = 480, HERO_H = 150;
+const heroH = cv => { const cw = cv.clientWidth, ch = cv.clientHeight; return cw && ch ? Math.round(clamp(HERO_W * ch / cw, HERO_H, 640)) : HERO_H; };
 function pvDrawHero(v, t) {
   const ws = liveWorlds(), per = 3.2, n = ws.length, idx = Math.floor(t / per) % n, k = (t % per) / per;
+  const tall = v.H > 200;
   const draw = (w, alpha) => {
     v.ctx.save(); v.ctx.globalAlpha = alpha; v.setWorld(w);
     const gy = v.H - 22;
-    v.sky(); v.sun(v.W - 70, 36, 18);
+    v.sky(); v.sun(v.W - 70, tall ? 58 : 36, tall ? 24 : 18);
     const span = v.W + 80;
     v.cloud(((t * 10) % span) - 40, 30, 1); v.cloud(((t * 7 + span * 0.5) % span) - 40, 50, 0.8);
-    v.hills(gy - 26, t * 30); // the hills scroll by: Pip and Bo run to the right
+    if (tall) { v.cloud(((t * 5 + span * 0.25) % span) - 40, v.H * 0.42, 1.3); v.cloud(((t * 4 + span * 0.75) % span) - 40, v.H * 0.3, 0.7); }
+    v.hills(gy - (tall ? 40 : 26), t * 30); // the hills scroll by: Pip and Bo run to the right
     v.ground(gy);
     v.ctx.fillStyle = v.c.grassDark;
     for (let x = -((t * 60) % 24); x < v.W; x += 24) v.ctx.fillRect(x, gy + 6, 10, 2);
@@ -331,14 +336,14 @@ function pvDrawHero(v, t) {
   };
   draw(ws[idx], 1);
   if (k > 0.85) draw(ws[(idx + 1) % n], v.seg(k, 0.85, 1));
-  const gy = v.H - 22, hx = v.W * 0.28;
+  const gy = v.H - 22, hx = v.W * (tall ? 0.12 : 0.28), s = tall ? 1.45 : 1.25;
   for (const id of [0, 1]) {
     const hk = v.phase(t, 0.62, id * 0.31), big = Math.floor(t / 0.62 + id * 0.5) % 4 === 3;
-    v.hero(id, hx + id * 34, gy + v.hop(hk, big ? 26 : 9), { s: 1.25, face: 1, sq: hk < 0.08 || hk > 0.94 ? 0.25 : -0.05, mood: big && hk > 0.2 && hk < 0.8 ? 'joy' : 'happy' });
+    v.hero(id, hx + id * 34 * s / 1.25, gy + v.hop(hk, big ? 26 : 9), { s, face: 1, sq: hk < 0.08 || hk > 0.94 ? 0.25 : -0.05, mood: big && hk > 0.2 && hk < 0.8 ? 'joy' : 'happy' });
   }
   const shown = ws[k > 0.85 ? (idx + 1) % n : idx];
   v.setWorld(shown);
-  v.pill('World ' + (shown + 1) + ' · ' + WORLDS[shown].name, v.W - 10, v.H - 12, { size: 11, align: 'right' });
+  v.pill('World ' + (shown + 1) + ' · ' + WORLDS[shown].name, v.W - 10, v.H - 12, { size: tall ? clamp(13 / (v.px || 1), 5, 11) : 11, align: 'right' }); // about 13 px on screen
 }
 
 /* ---------- live previews in the menu: every canvas[data-pv] in the overlay ---------- */
@@ -366,6 +371,7 @@ function pvFrame(now, force) {
     if (!cw) continue;
     const r = p.cv.getBoundingClientRect();
     if (r.bottom < box.top || r.top > box.bottom) continue; // scrolled out of sight
+    if (p.kind === 'hero') { const h = heroH(p.cv); if (h !== p.v.H) p.v = pvKit(p.ctx, HERO_W, h); p.v.px = cw / HERO_W; } // the title backdrop follows its box's shape
     const dpr = Math.min(2, window.devicePixelRatio || 1), W2 = Math.round(cw * dpr), H2 = Math.round(cw * dpr * p.v.H / p.v.W);
     const size = W2 + 'x' + H2;
     if (p.size !== size) { p.cv.width = W2; p.cv.height = H2; p.size = size; p.still = ''; }
