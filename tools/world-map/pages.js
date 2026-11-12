@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// World map paging check: 20 worlds a page (5 across, 4 down), ▶ and ◀ arrows, with the keyboard, a stubbed
+// World map paging check: 10 worlds a page (5 across, 2 down, a boss world in the bottom-right corner), ▶ and ◀ arrows, with the keyboard, a stubbed
 // controller and touch, on a laptop, a phone held sideways and a phone held upright. Also adds pretend worlds to
 // check paging works for any number of worlds. Usage: node tools/world-map/pages.js  (screenshots to build/world-map/)
 'use strict';
@@ -35,6 +35,7 @@ const state = page => page.evaluate(() => ({
   cols: (() => { const t = [...document.querySelectorAll('.wtile')].map(b => b.getBoundingClientRect().top); return t.filter(y => Math.abs(y - t[0]) < 8).length; })(),
   hscroll: document.documentElement.scrollWidth > window.innerWidth + 1,
 }));
+const P = 10; // worlds a page
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
 
 (async () => {
@@ -47,9 +48,15 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
     const { page, errors } = await open(browser, { width: 1280, height: 800 });
     await page.keyboard.press('Enter'); await page.waitForTimeout(700);
     let s = await state(page);
-    check(s.tiles.length === Math.min(20, n) && s.tiles[0] === 1, `page 1 shows worlds ${s.tiles[0]}-${s.tiles[s.tiles.length - 1]} (${s.tiles.length} tiles)`);
+    check(s.tiles.length === Math.min(P, n) && s.tiles[0] === 1, `page 1 shows worlds ${s.tiles[0]}-${s.tiles[s.tiles.length - 1]} (${s.tiles.length} tiles)`);
     check(s.cols === 5, `5 tiles across (got ${s.cols})`);
-    check(!s.prev && s.next === n > 20, 'page 1: no back arrow, a next arrow');
+    check(!s.prev && s.next === n > P, 'page 1: no back arrow, a next arrow');
+    // 2 rows of 5, and the boss world (World 10) is the last tile, bottom right
+    const rows = await page.evaluate(() => (() => { const t = [...document.querySelectorAll('.wtile')].map(b => b.getBoundingClientRect().top).sort((a, b) => a - b); return t.filter((y, k) => k === 0 || y - t[k - 1] > 8).length; })());
+    check(rows === 2, `2 rows of tiles (got ${rows})`);
+    const boss = await page.evaluate(() => { const t = [...document.querySelectorAll('.wtile')], last = t[t.length - 1];
+      return { last: +last.dataset.w + 1, boss: last.classList.contains('boss'), others: t.slice(0, -1).filter(b => b.classList.contains('boss')).length }; });
+    check(boss.last === 10 && boss.boss && boss.others === 0, `boss World ${boss.last} is the last tile of page 1 and the only boss there`);
     await page.screenshot({ path: path.join(out, 'laptop-page1.png') });
     // walk right along the top row to the arrow
     await page.evaluate(() => document.querySelector('.wtile[data-w="0"]').focus());
@@ -58,9 +65,9 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
     check(/pagearrow next/.test(s.focus), 'arrow keys reach the ▶ arrow from the top row: ' + s.focus);
     await page.keyboard.press('Enter'); await page.waitForTimeout(500);
     s = await state(page);
-    check(s.tiles[0] === 21 && s.tiles.length === Math.min(20, n - 20), `▶ shows page 2: worlds ${s.tiles.join(',')}`);
+    check(s.tiles[0] === P + 1 && s.tiles.length === Math.min(P, n - P), `▶ shows page 2: worlds ${s.tiles.join(',')}`);
     check(s.prev, 'page 2 has a back arrow');
-    check(/wtile 20$/.test(s.focus) || /pagearrow next/.test(s.focus), 'focus lands on the first world of the page (or stays on ▶): ' + s.focus);
+    check(/wtile 10$/.test(s.focus) || /pagearrow next/.test(s.focus), 'focus lands on the first world of the page (or stays on ▶): ' + s.focus);
     await page.waitForTimeout(400);
     await page.screenshot({ path: path.join(out, 'laptop-page2.png') });
     // back with ◀ by keyboard
@@ -73,17 +80,22 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
     check(s.tiles[0] === 1, 'Space on ◀ goes back to page 1');
     // opening a world on page 2 and coming back lands on page 2
     await page.evaluate(() => document.querySelector('.pagearrow.next').click()); await page.waitForTimeout(300);
-    await page.click('.wtile[data-w="24"]'); await page.waitForTimeout(800);
+    await page.click('.wtile[data-w="14"]'); await page.waitForTimeout(800);
     await page.keyboard.press('Escape'); await page.waitForTimeout(700);
     s = await state(page);
-    check(s.tiles.includes(25) && /wtile 24$/.test(s.focus), 'Back from World 25 returns to page 2 with World 25 focused: ' + s.focus);
-    // World 20's page flips on to World 21 (other page) and back still work
+    check(s.tiles.includes(15) && /wtile 14$/.test(s.focus), 'Back from World 15 returns to page 2 with World 15 focused: ' + s.focus);
+    // every page ends on its boss world (20, 30...) and has no other boss on it
+    const bosses = await page.evaluate(() => { const ws = liveWorlds(), bad = [];
+      for (let p = 0; p * 10 < ws.length; p++) { const on = ws.slice(p * 10, p * 10 + 10); on.forEach((w, k) => { if (isBossWorld(w) && k !== 9) bad.push(w + 1); }); }
+      return bad; });
+    check(bosses.length === 0, 'boss worlds always sit at the end of their page' + (bosses.length ? ': ' + bosses : ''));
+    // World 10's page flips on to World 11 (other page) and back still work
     await page.evaluate(() => window.__pipbo.G && document.querySelector('.pagearrow.prev').click()); await page.waitForTimeout(300);
-    await page.click('.wtile[data-w="19"]'); await page.waitForTimeout(800);
-    await page.click('.flip[data-w="20"]'); await page.waitForTimeout(800);
+    await page.click('.wtile[data-w="9"]'); await page.waitForTimeout(800);
+    await page.click('.flip[data-w="10"]'); await page.waitForTimeout(800);
     await page.keyboard.press('Escape'); await page.waitForTimeout(700);
     s = await state(page);
-    check(s.tiles[0] === 21, 'World 20 page ▶ World 21, then Back: world map is on page 2');
+    check(s.tiles[0] === P + 1, 'World 10 page ▶ World 11, then Back: world map is on page 2');
     check(errors.length === 0, 'no errors: ' + errors.join(' | '));
     await page.close();
   }
@@ -103,7 +115,7 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
     check(/pagearrow next/.test(s.focus), 'controller: d-pad right from World 5 reaches ▶: ' + s.focus);
     await press(0); await page.waitForTimeout(400); // A
     s = await state(page);
-    check(s.tiles[0] === 21, 'controller: A on ▶ shows page 2');
+    check(s.tiles[0] === P + 1, 'controller: A on ▶ shows page 2');
     await page.evaluate(() => document.querySelector('.pagearrow.prev').focus());
     await press(0); await page.waitForTimeout(400);
     s = await state(page);
@@ -117,13 +129,13 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
     const { page, errors } = await open(browser, vp, { touch: true });
     await page.tap('[data-act="worlds"]'); await page.waitForTimeout(700);
     let s = await state(page);
-    check(s.tiles.length === Math.min(20, n) && !s.hscroll, `touch ${vp.width}x${vp.height}: page 1 has ${s.tiles.length} tiles, ${s.cols} across, no sideways scroll`);
+    check(s.tiles.length === Math.min(P, n) && !s.hscroll && (s.cols === 5 || s.cols === 2), `touch ${vp.width}x${vp.height}: page 1 has ${s.tiles.length} tiles, ${s.cols} across, no sideways scroll`);
     await page.screenshot({ path: path.join(out, `phone-${vp.width}x${vp.height}-page1.png`) });
     await page.locator('.pagearrow.next').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(out, `phone-${vp.width}x${vp.height}-arrow.png`) });
     await page.tap('.pagearrow.next'); await page.waitForTimeout(500);
     s = await state(page);
-    check(s.tiles[0] === 21, `touch ${vp.width}x${vp.height}: tapping ▶ shows page 2`);
+    check(s.tiles[0] === P + 1, `touch ${vp.width}x${vp.height}: tapping ▶ shows page 2`);
     await page.screenshot({ path: path.join(out, `phone-${vp.width}x${vp.height}-page2.png`) });
     await page.tap('.pagearrow.prev'); await page.waitForTimeout(500);
     s = await state(page);
@@ -144,7 +156,7 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
     let s = await state(page); pages.push(s.tiles);
     while (s.next) { await page.click('.pagearrow.next'); await page.waitForTimeout(250); s = await state(page); pages.push(s.tiles); }
     const live = await page.evaluate(() => window.__pipbo.liveWorlds().map(w => w + 1));
-    check(pages.length === Math.ceil(live.length / 20) && pages.flat().join() === live.join(), `${live.length} worlds: ${pages.length} pages of ${pages.map(p => p.length).join(' + ')}, every world once, in order`);
+    check(pages.length === Math.ceil(live.length / P) && pages.flat().join() === live.join(), `${live.length} worlds: ${pages.length} pages of ${pages.map(p => p.length).join(' + ')}, every world once, in order`);
     check(/Worlds 41 to 47/.test(s.dots), 'last page label: ' + s.dots);
     await page.screenshot({ path: path.join(out, 'laptop-47-worlds-page3.png') });
     check(errors.length === 0, 'no errors: ' + errors.join(' | '));
@@ -157,7 +169,7 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
     await page.keyboard.press('Enter'); await page.waitForTimeout(700);
     await page.click('.pagearrow.next'); await page.waitForTimeout(300);
     const s = await state(page);
-    check(s.tiles[0] === 21, 'bundled demo pages to worlds 21+');
+    check(s.tiles[0] === P + 1, 'bundled demo pages to worlds 11+');
     check(errors.length === 0, 'no errors: ' + errors.join(' | '));
     await page.close();
   }
