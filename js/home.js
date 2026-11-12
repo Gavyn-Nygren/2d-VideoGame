@@ -87,10 +87,11 @@ function showTitle() {
   mountPreviews(overlay);
 }
 
-/* ---------- the world map: one tile per world, 20 to a page (5 across, 4 down) ---------- */
-// Gavyn (Nov 2026): a page of 20 worlds with an arrow on the right to the next 20 (and one on the left to go back).
+/* ---------- the world map: one tile per world, 10 to a page (5 across, 2 down) ---------- */
+// Gavyn (Nov 2026): a page of 10 worlds in a 2x5 block, with an arrow on the right to the next 10 (and one on the
+// left to go back). Each page ends on a boss world (10, 20, 30...), which sits in the bottom-right corner.
 // Pages are counted from the worlds that exist, so new worlds land on the next page by themselves.
-const WORLDS_PER_PAGE = 20;
+const WORLDS_PER_PAGE = 10;
 const worldPageCount = () => Math.max(1, Math.ceil(liveWorlds().length / WORLDS_PER_PAGE));
 const worldPageOf = w => Math.max(0, Math.floor(liveWorlds().indexOf(w) / WORLDS_PER_PAGE));
 function worldTileHTML(w, focusW) {
