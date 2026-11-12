@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Screenshots of a World 37 level played by a computer pair: node tools/w37/shots.js <code|name|mode> <t1,t2,...> [--solo] [--w=960 --h=540]
-// Writes build/w37/<code>-<t>.png (simulated seconds after the level loads).
+// Writes build/w37/<code>-<t>.png (simulated seconds after the level loads). --until="expr" (st = G.mst) plays until
+// expr is true and writes <code>-until.png.
 'use strict';
 const path = require('path'), fs = require('fs');
 const { chromium } = require('playwright');
@@ -17,6 +18,13 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
     const P = window.__pipbo, G = P.G, i = P.LEVELS.findIndex((l, k) => P.levelCode(k) === code || l.name === code || l.mode === code);
     G.manual = true; G.cpuOn = solo ? [false, true] : [true, true]; P.loadLevel(i);
   }, { code, solo: args.includes('--solo') });
+  // --until="expr" (st = G.mst): play until expr is true, then take one shot named <code>-until.png
+  if (opt('until')) {
+    const ok = await page.evaluate(ex => { const P = window.__pipbo, G = P.G; for (let k = 0; k < 120 * 600 && G.mode === 'play'; k++) { P.step(P.DT); const st = G.mst; if (eval(ex)) return true; } return false; }, args.find(a => a.startsWith('--until=')).slice(8));
+    await page.waitForTimeout(80);
+    await page.screenshot({ path: path.join(out, code.replace(/\W+/g, '_') + '-until.png') });
+    console.log('until:', ok, 'errors:', errs.slice(0, 5)); await browser.close(); return;
+  }
   let t = 0;
   for (const tt of times) {
     await page.evaluate(n => { const P = window.__pipbo; for (let k = 0; k < n && P.G.mode === 'play'; k++) P.step(P.DT); }, Math.round((tt - t) * 120));

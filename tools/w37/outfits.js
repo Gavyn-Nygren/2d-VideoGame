@@ -41,7 +41,7 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
       states.forEach((o, k) => {
         const cx = 120 + k * (840 / states.length) + (states.length === 4 ? -20 : 40);
         for (const id of [0, 1]) {
-          const x = cx + id * 30 * sc * 0.55, y = 330;
+          const x = cx + id * 48 * sc * 0.55, y = 330;
           c.fillStyle = 'rgba(0,0,0,0.12)'; c.beginPath(); c.ellipse(x, y, 30, 6, 0, 0, Math.PI * 2); c.fill();
           const face = 1;
           TOURNEY_OUTFITS.draw(c, id, name, Object.assign({ x, y, s: sc * 0.9, face, t: 1.3, bw: 20, bh: 24 }, o), () => v.hero(id, 0, 0, { s: 1, face, mood: o.dizzy ? 'dizzy' : 'happy', shadow: false }));

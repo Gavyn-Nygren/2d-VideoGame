@@ -255,6 +255,9 @@ const TOURNEY_OUTFITS = (() => {
       c.save(); c.translate(0, -bh * 0.58); c.rotate(o.askew || 0);
       const hw = bw + 6, hh = bh * 0.72;
       const g = c.createLinearGradient(-hw / 2, 0, hw / 2, 0); g.addColorStop(0, COL.steelDark); g.addColorStop(0.35, COL.steelHi); g.addColorStop(1, COL.steel);
+      // Bo's round ears poke out over the too-big helm (cut-outs the knight never needed)
+      c.fillStyle = '#3a6ee8'; c.strokeStyle = '#1c3a8a'; c.lineWidth = 1.2;
+      for (const d of [-1, 1]) { circ(c, d * (hw / 2 - 2), -hh * 0.78, 4.4); c.fill(); c.stroke(); }
       c.fillStyle = g; c.strokeStyle = '#3a424e'; c.lineWidth = 1.5;
       rrect(c, -hw / 2, -hh * 0.78, hw, hh, 5); c.fill(); c.stroke();
       // the eye slit and breaths, the visor falls over the slit
@@ -363,6 +366,8 @@ const TOURNEY_OUTFITS = (() => {
     } else {
       plume(c, 0, -14, ['#3a6ee8', '#dfe6f2', '#3a6ee8', '#dfe6f2'], 20 - wob * 4, back, t, Math.max(0.25, o.v || 0), wob);
     }
+    // Bo's round ears stay visible: the helm has two ear-shaped blue enamel rondels poking out of the dome
+    if (id === 1) { c.fillStyle = '#3a6ee8'; c.strokeStyle = '#1c3a8a'; c.lineWidth = 1.2; for (const d of [-1, 1]) { circ(c, d * 9.5, -12, 4.4); c.fill(); c.stroke(); } }
     const g = c.createLinearGradient(-12, 0, 12, 0); g.addColorStop(0, COL.steelDark); g.addColorStop(0.35, COL.steelHi); g.addColorStop(1, COL.steel);
     c.fillStyle = g; c.strokeStyle = '#2e3440'; c.lineWidth = 1.4;
     c.beginPath(); c.moveTo(-11, 9); c.lineTo(-12, -4); c.quadraticCurveTo(-11, -14, 0, -15); c.quadraticCurveTo(11, -14, 12, -4); c.lineTo(11, 9); c.quadraticCurveTo(0, 12, -11, 9); c.closePath(); c.fill(); c.stroke();
