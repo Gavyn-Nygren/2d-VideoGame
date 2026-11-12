@@ -732,9 +732,19 @@
   function drawLow(st, it, sx, t) {
     const top = 120, bot = R.roofY - 6;
     if (it.what === 'arch') {
-      ctx.fillStyle = '#a8a69c'; ctx.fillRect(sx - 30, top, 60, bot - top - 4); ctx.fillRect(sx - 30, top, 60, bot - top - 4);
-      ctx.fillStyle = '#d8323a'; ctx.fillRect(sx - 34, bot - 12, 68, 12); ctx.fillStyle = '#ffd23a'; ctx.fillRect(sx - 34, bot - 14, 68, 3);
-      K.heraldShield(sx, bot - 50, 16, { col: '#7a3aa8', charge: 'crown' });
+      // a gatehouse: two towers down to the road and a crenellated stone lintel over the roof
+      const lt = bot - 70;
+      for (const tx of [sx - 92, sx + 64]) {
+        ctx.fillStyle = '#8e8c82'; ctx.fillRect(tx, lt - 30, 28, R.gy - lt + 30);
+        ctx.fillStyle = '#a8a69c'; for (let k = 0; k < 2; k++) ctx.fillRect(tx + k * 16, lt - 42, 12, 12);
+        ctx.fillStyle = '#5e5c56'; for (let yy = lt; yy < R.gy - 10; yy += 22) ctx.fillRect(tx, yy, 28, 2);
+      }
+      ctx.fillStyle = '#a8a69c'; ctx.beginPath(); ctx.moveTo(sx - 64, lt); ctx.lineTo(sx + 64, lt); ctx.lineTo(sx + 64, bot - 4);
+      ctx.quadraticCurveTo(sx, bot - 34, sx - 64, bot - 4); ctx.closePath(); ctx.fill();
+      for (let k = 0; k < 5; k++) ctx.fillRect(sx - 60 + k * 26, lt - 12, 16, 12);
+      ctx.fillStyle = '#5e5c56'; ctx.fillRect(sx - 64, lt + 20, 128, 2);
+      ctx.fillStyle = '#d8323a'; ctx.fillRect(sx - 30, lt + 4, 60, 12); ctx.fillStyle = '#ffd23a'; ctx.fillRect(sx - 30, lt + 2, 60, 3);
+      K.heraldShield(sx, lt + 36, 12, { col: '#7a3aa8', charge: 'crown' });
     } else if (it.what === 'sign') {
       ctx.fillStyle = '#5e3a1c'; ctx.fillRect(sx + 40, top + 20, 8, 340); ctx.fillRect(sx - 30, top + 20, 78, 6);
       ctx.save(); ctx.translate(sx, top + 26); ctx.rotate(Math.sin(t * 3) * 0.12);
@@ -832,7 +842,8 @@
     // the window and the King
     const wx = R.window, wy = top + 30;
     ctx.fillStyle = '#4a2a5a'; rr(wx - 26, wy, 52, 40, 8); ctx.fill();
-    drawKing(st, wx, wy + 24, t);
+    if (st.kingOut <= 0) drawKing(st, wx, wy + 24, t);
+    else { ctx.fillStyle = '#2a1a3a'; ctx.fillRect(wx - 22, wy + 4, 44, 32); }
     ctx.strokeStyle = '#7a5010'; ctx.lineWidth = 3; rr(wx - 26, wy, 52, 40, 8); ctx.stroke();
     // the crest on the door
     K.heraldShield(wx + 50, wy + 30, 10, { col: '#7a3aa8', charge: 'crown' });
@@ -846,6 +857,7 @@
     K.squire(dId, dx, dy, { outfit: 'livery', face: 1, arms: 'reins', prop: 'gauntlets', v: sp, rot: lean * 0.18 + c.tilt * 0.15 });
     ctx.strokeStyle = gold ? C.gold : '#3a2010'; ctx.lineWidth = 1.6;
     for (const o of rig) { ctx.beginPath(); ctx.moveTo(dx + 14, dy - 12); ctx.quadraticCurveTo((dx + o.head.x) / 2, dy + 6, o.head.x, o.head.y); ctx.stroke(); }
+    if (st.kingOut > 0) drawKingOut(st, t);
     if (c.whip > 0) { ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(dx + 6, dy - 30); ctx.quadraticCurveTo(dx + 60, dy - 90, dx + 160 + Math.sin(t * 40) * 20, dy - 60); ctx.stroke(); }
   }
   function drawKing(st, x, y, t) {
@@ -860,6 +872,21 @@
     ctx.fillStyle = '#1c1a36'; circ(-5, -3, 1.4); ctx.fill(); circ(5, -3, 1.4); ctx.fill();
     ctx.fillStyle = '#7a2a2a'; ctx.beginPath(); ctx.ellipse(0, 5, 3 + n * 2, 1 + n * 4, 0, 0, TAU); ctx.fill();
     ctx.restore();
+  }
+  function drawKingOut(st, t) {
+    // the end: the King climbs down from the carriage door, staggers in a little circle and waves to the stands
+    const u = st.kingOut, x = R.window - u * 96 + Math.sin(t * 3) * 6 * u, y = K.lerp(R.roofY + 60, R.gy - 2, Math.min(1, u * 1.4)) - Math.sin(u * Math.PI) * 30;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * 4) * 0.12 * u);
+    ctx.fillStyle = '#7a3aa8'; ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(14, 0); ctx.lineTo(9, -30); ctx.lineTo(-9, -30); ctx.closePath(); ctx.fill(); // robe
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(-14, -4, 28, 4); ctx.fillRect(-2, -30, 4, 26); // ermine trim
+    // the waving arm
+    const wv = Math.sin(t * 10) * 0.5;
+    ctx.strokeStyle = '#7a3aa8'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(7, -26); ctx.lineTo(16 + Math.sin(wv) * 6, -44); ctx.stroke();
+    ctx.fillStyle = '#f2c8a0'; circ(16 + Math.sin(wv) * 6, -46, 3.5); ctx.fill();
+    ctx.restore();
+    drawKing({ nerves: 30 }, x, y - 42, t);
+    // dizzy stars
+    for (let k = 0; k < 3; k++) { const a = t * 4 + k * TAU / 3; text('★', x + Math.cos(a) * 16, y - 70 + Math.sin(a) * 5, 10, '#ffd23a', 'center', 'display'); }
   }
   function drawBandit(st, b, t) {
     const lift = st.car.airH;
@@ -1016,7 +1043,7 @@
   /* ---------- the level ---------- */
   const acts = d => ({ label: 'shove', labels: d === 0 ? ['whip', 'shove'] : ['shove', 'whip'] });
   TOURNEY.defs.royalcarriage = {
-    name: 'Runaway Royal Carriage', world: 36, kind: 'team', mode: 'royalcarriage', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    name: 'Runaway Royal Carriage', world: 36, kind: 'team', mode: 'royalcarriage', outfit: 'none', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     legend: {
       pip: '<kbd>A</kbd><kbd>D</kbd> speed or run / <kbd>W</kbd><kbd>S</kbd> lean, hop, duck',
       bo: '<kbd>←</kbd><kbd>→</kbd> speed or run / <kbd>↑</kbd><kbd>↓</kbd> lean, hop, duck',
