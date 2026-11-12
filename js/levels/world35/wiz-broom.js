@@ -25,8 +25,10 @@
    lands by itself, they hop off and trade places, then the new kicker's first kick takes off).
 
    FAILS. Hitting anything is a "Bonk!": a counted Oops (team), the broom spins once and reappears at the last lantern
-   ring, with WIZBROOM.graceT s of grace. GOLD HELP after WIZ.goldAfter Oops in one stretch: a gold bristle, the
+   ring (at a height that clears what comes next), with WIZBROOM.graceT s of grace. GOLD HELP after WIZ.goldAfter Oops in one stretch: a gold bristle, the
    broom auto-levels gently toward the next ring for 20 s when the steerer holds nothing (announced, never hidden).
+   And nobody stays stuck on one thing: WIZBROOM.towAfter bonks from the same lantern ring and Thimblewick tows the
+   broom on to the next ring (a gold tow, announced).
 
    NEVER ALONE. No kicks means no flight; no steering flies level into the first hedge.
    Stats (st.stats.broom): rings, puffs, swats, hot.   Names: wizBroom* / WIZBROOM* (Sfx.extra.wizBroom*). */
@@ -43,6 +45,7 @@ const WIZBROOM = {
   swat: { r: 130, rest: 0.5 },
   ring: { r: 48, puff: 45 },
   graceT: 1.5, spinT: 0.9, goldT: 20,
+  towAfter: 4, towPast: 150,        // bonks from one lantern ring before the gold tow (to the next ring; towPast px when there is none)
   smoke: { period: 2.8, on: 1.0, warn: 0.8, h: 110 },
   vane: { near: 430, warn: 1.0, lunge: 1.4, rest: 1.6, r: 66 },
   gust: { acc: 430 },
@@ -96,7 +99,7 @@ function wizBroomSetup(st, L) {
   ph.x = wizBroomPadX(0); ph.y = WIZBROOM.padTop - 10; ph.v = 0; ph.vy = 0; ph.live = 0; ph.grounded = true;
   ph.stretch = 0; ph.mode = 'wait';   // wait (on a platform, for the first kick) | fly | land | swap | done
   ph.kicks = []; ph.hot = 0; ph.sinceKick = 9; ph.swatT = 0; ph.swing = 0; ph.spin = 0; ph.grace = 0; ph.kickAnim = 0;
-  ph.safe = { x: ph.x, y: 300 }; ph.lastRing = null; ph.gold = 0; ph.modeT = 0; ph.swapK = 0;
+  ph.safe = { x: ph.x, y: 300 }; ph.lastRing = null; ph.gold = 0; ph.modeT = 0; ph.swapK = 0; ph.bonkRing = null; ph.bonkN = 0; ph.tow = 0; ph.hitX = 0;
   ph.t = 0;
   const s = wizStats(st); Object.assign(s, { rings: s.rings || 0, puffs: s.puffs || 0, swats: s.swats || 0, hot: s.hot || 0 });
   st.cam = { x: ph.x - WIZBROOM.sx, y: 0 };
@@ -169,6 +172,9 @@ function wizBroomBonk(st, word) {
   if (ph.grace > 0 || ph.spin > 0) return;
   if (!wizTeamOops(st, { word: word || 'Bonk!', x: ph.x, y: ph.y - 40, kind: 'broom' })) return;
   ph.spin = WIZBROOM.spinT; Sfx.play('wizBroomBonk');
+  // the same spot again and again (counted per lantern ring): after WIZBROOM.towAfter bonks from one ring, a gold tow
+  ph.hitX = ph.x;
+  if (ph.bonkRing === ph.safe.x) ph.bonkN++; else { ph.bonkRing = ph.safe.x; ph.bonkN = 1; }
   const n = wizMiss(st, 's' + ph.stretch);
   wizReact(st, 'calm', ['Mind the scenery, dears.', 'That hedge was there first.', 'Brooms bend. Hedges don\'t.'][n % 3], 2);
   if (n >= WIZ.goldAfter && wizGoldOnce(st, 'bristle' + ph.stretch, 'Gold bristle! The broom levels out toward the rings by itself for 20 s.')) ph.gold = WIZBROOM.goldT;
@@ -197,6 +203,10 @@ function wizBroomStep(st, dt) {
     ph.spin -= dt;
     if (ph.spin <= 0) {
       ph.x = ph.safe.x; ph.y = ph.safe.y; ph.v = 150; ph.vy = 0; ph.live = 0.6; ph.grace = K.graceT; ph.grounded = false;
+      // back at a height that clears what comes next (a ring can hang low before a tall hedge: no bonk straight away again)
+      ph.y = wizBroomTarget(ph).y;
+      // stuck on one thing: Thimblewick tows the broom past it (announced gold help, as often as it is needed)
+      if (ph.bonkN >= K.towAfter) { const nr = ph.items.find(o => o.kind === 'ring' && o.x > ph.hitX); ph.tow = nr ? nr.x + 10 : ph.hitX + K.towPast; ph.bonkN = 0; wizHelp(st, 'A gold tow! Thimblewick pulls the broom on to the next lanterns.'); }
       for (const o of ph.items) if (o.kind === 'vane' && o.x > ph.x) { o.state = o.state === 'gone' ? 'gone' : 'rest'; o.t = 0; }
     }
     wizBroomSeat(st); wizBroomCam(st, dt); return;
@@ -232,6 +242,8 @@ function wizBroomStep(st, dt) {
     }
     wizBroomSeat(st); wizBroomCam(st, dt); return;
   }
+  // a gold tow: nothing can bonk the broom until the next lantern ring (the next safe spot)
+  if (ph.tow) { if (ph.x < ph.tow) ph.grace = Math.max(ph.grace, 0.3); else ph.tow = 0; }
   // flying: speed from kicks
   const KK = K.kick;
   if (ph.live > 0) { ph.live -= dt; ph.v -= ph.v * KK.dragLive * dt; } else ph.v = Math.max(0, ph.v - KK.dragDead * dt);

@@ -27,7 +27,7 @@
 const WIZFF = {
   floor: 430, tile: 40, depth: 120,
   ice: 5, goldIce: 9, crack: 1.5, plantT: 5, jet: 120, burn: 0.8, holdEvery: 0.12,
-  plant: { reach: 34, warn: 0.8, kick: 80 }, ledge: 150,
+  plant: { reach: 34, warn: 0.8, kick: 80 }, ledge: 150, pillar: 9,
 };
 const WIZFF_NEWS = ['Part 1, the Moat: FROST lays the bridge, FLAME burns the thorns on the raft.', 'Part 2, the Greenhouse: freeze the snapper, burn the thorns, frost the fire, light the lamp!', 'Part 3, the Ice House: freeze the geyser, climb, and melt the ice walls.'];
 const WIZFF_C = { water: 'rgba(70,140,210,0.6)', waterTop: '#9fd4ff', ice: '#dff4ff', iceDk: '#8fc8e8', thorn: '#4a7a3a', thornDk: '#2a4a22', stone: '#7a8aa0', stoneDk: '#4e5a70', glass: 'rgba(160,220,200,0.12)' };
@@ -109,7 +109,7 @@ function wizFFFrost(st, p, press) {
     if (pc.plant && Math.abs(pc.plant.x - cx) < 90) { pc.plant.frozen = K.plantT; pc.plant.mouth = 0; any = true; wizPop(st, pc.plant.x, F - 80, 'Frozen shut!', '#dff4ff', 14); }
     if (pc.fire) pc.fire.out.forEach((o, k) => { const tx = pc.fire.x0 + (k + 0.5) * K.tile; if (!o && Math.abs(tx - (cx + f * 24)) < 46) { pc.fire.out[k] = true; any = true; puff(tx, F - 10, 6, 'rgba(220,240,255,0.9)'); } });
     if (pc.geyser && Math.abs(pc.geyser.x - cx) < 90 && p.y + p.h > F - 10) {
-      const g = pc.geyser; g.ice = Math.max(6, wizFFIceLife(st)); any = true;   // (a pillar lasts long enough for two careful jumps)
+      const g = pc.geyser; g.ice = Math.max(WIZFF.pillar, wizFFIceLife(st)); any = true;   // (a pillar lasts long enough for both to climb with careful jumps)
       // (anyone standing in the spout rides the new pillar up)
       for (const q of G.players) if (q.x + q.w > g.x - 22 && q.x < g.x + 22 && q.y + q.h > g.y) Object.assign(q, { y: g.y - q.h, vy: 0, grounded: true });
     }

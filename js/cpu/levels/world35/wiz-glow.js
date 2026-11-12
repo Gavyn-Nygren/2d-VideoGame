@@ -16,6 +16,12 @@ function wizGlowBrainLight(bst, p, out, S, P) {
   if (P.hold === 'up') out.jump = true;
   const dx = P.x - cx;
   if (Math.abs(dx) > 8) { if (dx > 0) out.right = true; else out.left = true; }
+  // no dithering: turning round takes a moment (the plan's spot can hop between "on to the pit" and "back to the finder"
+  // from one step to the next when the finder stands right at the rim of the light)
+  const dir = out.right ? 1 : out.left ? -1 : 0;
+  bst.turnT = (bst.turnT || 0) - DT;
+  if (dir && bst.dir && dir !== bst.dir && bst.turnT > 0) { out.right = out.left = false; }
+  else if (dir) { if (dir !== bst.dir) bst.turnT = 0.45; bst.dir = dir; }
   // never walk into an open pit
   for (const pi of ph.pits) if (!pi.down && ((out.right && cx + 16 > pi.x0 - 6 && cx < pi.x0) || (out.left && cx - 16 < pi.x1 + 6 && cx > pi.x1))) { out.right = false; out.left = false; }
   // what the finder (the person) should do
