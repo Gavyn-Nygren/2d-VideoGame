@@ -53,6 +53,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 31. **Shrunk in the Backyard** (bug-sized: outrun a lawnmower, sneak a crumb out of an ant hill, hide from a hungry robin and race snails): Lawnmower Escape, Ant Hill Heist, Bird Attack Dash, Snail Race
 32. **Superhero City** (superheroes for a day: stop a runaway train, hold a falling bridge together, chase a jewel thief over the rooftops and brawl on a roof): Runaway Subway, Bridge Collapse, Rooftop Chase, Power Punch Showdown
 33. **Storm Chasers** (chase wild weather: outrun a tornado in a storm van, climb out of a flash flood, cross a blizzard roped together and spin as twisters): Tornado Alley Run, Flash Flood Climb, Blizzard Whiteout, Twister Tag
+34. **Viking Voyage** (Vikings on a voyage north: outrun a sea serpent, raid an ice fortress, feed a starving mead hall and race longships): Sea Serpent Chase, Ice Fortress Raid, Mead Hall Feast Brawl, Longship Race
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
