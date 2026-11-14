@@ -1,17 +1,26 @@
 /* Layout: one-screen game cabinet. Slim header with the controls, a 16:9 stage centered in the space left over,
-   and HTML menus laid over the stage. One deliberate look (dusk-indigo cabinet) used in both light and dark. */
+   and HTML menus laid over the stage. One deliberate look (charcoal cabinet; every menu colour is a variable in :root, so a new scheme is a change to this block only) used in both light and dark. */
 :root {
-  --cabinet: #1c1a36;
-  --cabinet-2: #26244a;
-  --line: #3d3a6e;
-  --paper: #f6efdf;
-  --muted: #bdb7da;
+  --cabinet: #17191d;
+  --cabinet-2: #22252b;
+  --line: #40454f;
+  --paper: #f5f2ea;
+  --muted: #b4b9c4;
   --pip: #ff6b4a;
   --bo: #5b95ff;
   --gold: #ffc53d;
   --gold-deep: #b9850f;
   --mint: #8fe3b0;
-  --scrim: rgba(20, 18, 42, 0.74);
+  /* the same colours as "r, g, b" for see-through fills: the cabinet, the wash over art, drop shadows */
+  --cabinet-rgb: 23, 25, 29;
+  --shade-rgb: 23, 25, 29;
+  --shadow-rgb: 6, 8, 12;
+  --card-top: #2a2e36;
+  --card-line: #4b515d;
+  --tile-top: #1f2228;
+  --boss-top: #3d2222;
+  --boss-line: #d9574a;
+  --scrim: rgba(var(--shade-rgb), 0.74);
   --team-bg: rgba(143, 227, 176, 0.14);
   --versus-bg: rgba(255, 107, 74, 0.16);
   --font-display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
@@ -70,8 +79,8 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 }
 .g-xbox-a { background: #3e9b3a; } .g-xbox-b { background: #c8382e; }
 .g-ps-a { background: #3d6fd6; } .g-ps-b { background: #d1425a; }
-.g-nintendo-a, .g-nintendo-b { background: #4a4766; }
-.g-xbox-act { background: #2f6fd6; } .g-ps-act { background: #b9559f; } .g-nintendo-act { background: #4a4766; }
+.g-nintendo-a, .g-nintendo-b { background: #4b515d; }
+.g-xbox-act { background: #2f6fd6; } .g-ps-act { background: #b9559f; } .g-nintendo-act { background: #4b515d; }
 /* the action button (punch, throw...) only shows in levels that use it (html.act-on) */
 .acth { display: none; font-style: normal; }
 .act-on .acth { display: inline; margin-left: 6px; }
@@ -270,12 +279,12 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
   animation: ts-in 0.45s ease-out both;
 }
 .title-screen .ts-art { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -2; }
-/* a soft dusk wash: darker at the top (behind the logo) and in the middle (behind the menu), clear over Pip and Bo */
+/* a soft dark wash: darker at the top (behind the logo) and in the middle (behind the menu), clear over Pip and Bo */
 .title-screen .ts-shade {
   position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background:
-    radial-gradient(ellipse 40% 46% at 50% 60%, rgba(20, 18, 42, 0.22), rgba(20, 18, 42, 0) 70%),
-    linear-gradient(180deg, rgba(20, 18, 42, 0.16) 0%, rgba(20, 18, 42, 0) 30%, rgba(20, 18, 42, 0) 75%, rgba(20, 18, 42, 0.16) 100%);
+    radial-gradient(ellipse 40% 46% at 50% 60%, rgba(var(--shade-rgb), 0.22), rgba(var(--shade-rgb), 0) 70%),
+    linear-gradient(180deg, rgba(var(--shade-rgb), 0.16) 0%, rgba(var(--shade-rgb), 0) 30%, rgba(var(--shade-rgb), 0) 75%, rgba(var(--shade-rgb), 0.16) 100%);
 }
 .ts-main {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -292,7 +301,7 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 .logo .ch {
   position: relative; display: inline-block; transform-origin: 50% 90%;
   -webkit-text-stroke: 0.1em var(--cabinet); paint-order: stroke fill;
-  text-shadow: 0 0.05em 0 var(--cabinet), 0 0.09em 0 var(--cabinet), 0 0.13em 0 var(--cabinet), 0 0.2em 0.16em rgba(10, 8, 30, 0.45);
+  text-shadow: 0 0.05em 0 var(--cabinet), 0 0.09em 0 var(--cabinet), 0 0.13em 0 var(--cabinet), 0 0.2em 0.16em rgba(var(--shadow-rgb), 0.45);
   animation: logo-drop 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) calc(0.12s + var(--i) * 0.06s) both,
              logo-bob 3.2s ease-in-out calc(1s + var(--i) * 0.16s) infinite;
 }
@@ -311,7 +320,7 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 .ts-tag {
   margin: 0; display: flex; white-space: nowrap; align-items: center; gap: 12px; color: var(--paper);
   font: 700 clamp(11px, 1.9vh, 14px) var(--font-body); letter-spacing: 0.24em; text-transform: uppercase;
-  text-shadow: 0 1px 3px rgba(10, 8, 30, 0.8); animation: ts-fade 0.6s ease-out 0.7s both;
+  text-shadow: 0 1px 3px rgba(var(--shadow-rgb), 0.8); animation: ts-fade 0.6s ease-out 0.7s both;
 }
 .ts-tag::before, .ts-tag::after { content: ""; width: clamp(24px, 6vw, 64px); height: 2px; border-radius: 2px; background: var(--gold); opacity: 0.9; }
 /* little twinkling stars around the logo */
@@ -324,8 +333,8 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 /* the menu: a frosted panel so it reads over any world's sky */
 .ts-menu {
   width: min(420px, 100%); box-sizing: border-box; display: grid; justify-items: center; gap: 12px;
-  padding: 18px 20px 14px; border-radius: 22px; background: rgba(28, 26, 54, 0.72); border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 50px rgba(10, 8, 30, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding: 18px 20px 14px; border-radius: 22px; background: rgba(var(--cabinet-rgb), 0.72); border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 50px rgba(var(--shadow-rgb), 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   animation: ts-rise 0.5s ease-out 0.45s both;
 }
@@ -357,10 +366,10 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
   position: absolute; left: 16px; bottom: 10px; margin: 0; display: flex; gap: 6px; flex-wrap: wrap;
   animation: ts-fade 0.6s ease-out 0.9s both;
 }
-.ts-foot span { font-size: 12px; color: var(--paper); background: rgba(28, 26, 54, 0.78); border-radius: 999px; padding: 4px 10px; }
+.ts-foot span { font-size: 12px; color: var(--paper); background: rgba(var(--cabinet-rgb), 0.78); border-radius: 999px; padding: 4px 10px; }
 .ts-foot b { color: var(--gold); font-weight: 700; }
 .ts-padblocked { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); width: min(560px, 90%); text-align: center;
-  background: rgba(28, 26, 54, 0.9); border-radius: 12px; padding: 8px 12px; }
+  background: rgba(var(--cabinet-rgb), 0.9); border-radius: 12px; padding: 8px 12px; }
 .ts-padblocked[hidden] { display: none; }
 /* not much height (small laptops): the Opponent explainer goes (the pause card still shows it) */
 @media (max-height: 700px) {
@@ -401,12 +410,12 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 @keyframes card-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .home-card {
   width: min(1060px, 100%);
-  background: linear-gradient(180deg, #2b2856 0%, var(--cabinet-2) 160px); border-color: #45417c;
+  background: linear-gradient(180deg, var(--card-top) 0%, var(--cabinet-2) 160px); border-color: var(--card-line);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
   animation: card-in 0.22s ease-out both;
 }
 .home-card .home-head { padding-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
-.home-card h2 { text-shadow: 0 3px 0 rgba(10, 8, 30, 0.55); letter-spacing: 0.01em; }
+.home-card h2 { text-shadow: 0 3px 0 rgba(var(--shadow-rgb), 0.55); letter-spacing: 0.01em; }
 .home-card .back { border-radius: 999px; background: rgba(255, 255, 255, 0.04); }
 .home-card .flip { border-radius: 999px; }
 .home-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; }
@@ -467,12 +476,12 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
   border-color: var(--gold); transform: translateY(-3px); outline: none;
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(255, 197, 61, 0.22);
 }
-.wtile, .lvl { background: linear-gradient(180deg, #23214a, var(--cabinet)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); }
+.wtile, .lvl { background: linear-gradient(180deg, var(--tile-top), var(--cabinet)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); }
 .thumb { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
-.wtile.boss { border-color: #8a5cc8; background: linear-gradient(180deg, #34266a, var(--cabinet)); }
+.wtile.boss { border-color: var(--boss-line); background: linear-gradient(180deg, var(--boss-top), var(--cabinet)); }
 .thumb { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: var(--cabinet-2); }
 .wnum, .lcode {
-  position: absolute; left: 6px; top: 6px; padding: 3px 8px 2px; border-radius: 9px; background: rgba(28, 26, 54, 0.82);
+  position: absolute; left: 6px; top: 6px; padding: 3px 8px 2px; border-radius: 9px; background: rgba(var(--cabinet-rgb), 0.82);
   color: var(--gold); font: 400 17px/1 var(--font-display);
 }
 .bossb, .ldone {

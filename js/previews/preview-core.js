@@ -219,7 +219,7 @@ function pvKit(ctx, w = PV_W, h = PV_H) {
     ctx.font = (o.body === false ? '' : '700 ') + size + 'px ' + (o.body === false ? FONT_D : FONT_B);
     const tw = ctx.measureText(str).width, ww = tw + size * 1.3, hh = size * 1.75;
     const cx = o.align === 'right' ? x - ww / 2 : o.align === 'left' ? x + ww / 2 : x;
-    ctx.fillStyle = o.bg || 'rgba(28,26,54,0.78)'; v.rr(cx - ww / 2, y - hh / 2, ww, hh, hh / 2); ctx.fill();
+    ctx.fillStyle = o.bg || 'rgba(23,25,29,0.78)'; v.rr(cx - ww / 2, y - hh / 2, ww, hh, hh / 2); ctx.fill();
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = o.col || '#fff'; ctx.fillText(str, cx, y + 0.5);
   };
   v.star = (x, y, r = 6, col = v.c.gold, rot = 0) => {
@@ -336,6 +336,8 @@ function pvDrawHero(v, t) {
   const tall = v.H > 200;
   const draw = (w, alpha) => {
     v.ctx.save(); v.ctx.globalAlpha = alpha; v.setWorld(w);
+    // a world with the stock blue-violet stone gets a neutral slate floor here, to sit with the charcoal menus
+    if (!((WORLDS[w] || {}).theme || {}).stone) Object.assign(v.c, { stone: '#474d59', stoneLight: '#565d6b', stoneEdge: '#33373f' });
     const gy = v.H - 22;
     v.sky(); v.sun(v.W - 70, tall ? 58 : 36, tall ? 24 : 18);
     const span = v.W + 80;
