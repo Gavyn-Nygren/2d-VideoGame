@@ -69,7 +69,9 @@ Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md
 | `js/core.js` | Shared constants, colors, themes, small helpers |
 | `js/outfits.js`, `js/outfits-worlds.js` | Outfits for Pip and Bo per world, level or room (the parts library, and what Worlds 1-31 wear) |
 | `js/saving.js` | Best times and settings saved in the browser |
-| `js/audio.js` | The sound effects engine |
+| `js/audio.js` | The sound effects engine and mixer |
+| `js/music.js` | The music and ambience engine |
+| `js/music-tracks.js` | The songs, the ambience beds, and which world plays which |
 | `js/player.js` | Pip and Bo: movement, collisions, jumping, stomps, respawns, and the cord between them |
 | `js/versus.js` | Level-mode hooks and best-of rounds for versus levels (the game has no enemies; the robot in Robo Pong lives with its level) |
 | `js/levels/level-list.js` | Every level's map, rules and hints, and the list of worlds |

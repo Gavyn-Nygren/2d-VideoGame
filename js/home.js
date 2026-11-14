@@ -83,7 +83,7 @@ function showTitle() {
         <div class="ts-menu">
           <button class="primary play-btn" type="button" data-act="worlds" data-primary><span>Play</span></button>
           ${cpuCfgHTML()}
-          ${sysCfgHTML()}
+          ${sysCfgHTML(true)}
           <button class="ghost ts-btn" type="button" data-act="howto">How to play</button>
           <p class="ts-press" aria-hidden="true"><span class="kb-only">Press <kbd>Enter</kbd> to start</span><span class="pad-only">Press <span data-glyph="a"></span> to start</span></p>
         </div>

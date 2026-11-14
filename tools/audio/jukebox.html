@@ -1,0 +1,87 @@
+<title>Pip & Bo Sound Test</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Lilita+One&display=swap">
+<style>
+/* layout: one column of sections (music, ambience, sounds, textures), each a grid of play buttons; a sticky bar on top
+   shows what is playing. One dark look on purpose: the game's own Charcoal menu colours. */
+:root { --cabinet: #17191d; --card: #22252b; --line: #40454f; --paper: #f5f2ea; --muted: #b4b9c4; --gold: #ffc53d; --ink: #17191d; --dim: #4b515d;
+  --display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color-scheme: dark; }
+body { background: var(--cabinet); color: var(--paper); font-family: var(--body); font-size: 16px; line-height: 1.45; padding-block: 0 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--cabinet); }
+main { max-width: 860px; margin: 0 auto; display: grid; gap: 28px; }
+h1, h2 { font-family: var(--display); font-weight: 400; margin: 0; line-height: 1.05; text-wrap: balance; }
+h1 { font-size: 34px; }
+h2 { font-size: 22px; }
+p { margin: 0; color: var(--muted); max-width: 65ch; }
+header { display: grid; gap: 8px; padding-top: 28px; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--cabinet); border-bottom: 1px solid var(--line); padding-block: 10px;
+  display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.now { flex: 1 1 200px; min-width: 0; font-weight: 700; }
+.now span { color: var(--gold); }
+.vol { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+section { display: grid; gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.grid.small { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+button { font: inherit; color: var(--paper); background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 14px; cursor: pointer; text-align: left; min-width: 0; }
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+button b { display: block; font-family: var(--display); font-weight: 400; font-size: 18px; letter-spacing: 0.01em; }
+button small { display: block; font-size: 13px; color: var(--muted); }
+button[aria-pressed="true"] small { color: var(--dim); }
+.pill { padding: 6px 12px; border-radius: 999px; font-weight: 700; font-size: 13px; }
+</style>
+<main>
+  <header>
+    <h1>Pip &amp; Bo Sound Test</h1>
+    <p>Every song, background ambience and sound texture in the game, made live in your browser. Press one to hear it. In the game, a level plays its world's song with its ambience underneath.</p>
+  </header>
+  <div class="bar">
+    <div class="now" id="now">Nothing playing</div>
+    <div class="vol">Music <button class="pill" id="volMusic" type="button"></button></div>
+    <div class="vol">Sounds <button class="pill" id="volSfx" type="button"></button></div>
+    <button class="pill" id="stop" type="button">Stop</button>
+  </div>
+  <section><h2>Music</h2><p>Head-to-head levels play their world's song a little faster.</p><div class="grid" id="songs"></div></section>
+  <section><h2>Ambience</h2><p>A quiet bed under a level. It can play together with a song.</p><div class="grid small" id="ambs"></div></section>
+  <section><h2>Sound effects</h2><p>The shared sounds every level uses.</p><div class="grid small" id="sfx"></div></section>
+  <section><h2>Textures</h2><p>A layer added to a level's own sound by the words in its name: a sound called Splash gets water, Crash gets a heavy thud, Gold gets a sparkle. About 800 of the game's 2,400 level sounds pick one up.</p><div class="grid small" id="tex"></div></section>
+</main>
+<script>
+'use strict';
+const WORLD_NAMES = /*WORLD_NAMES*/;
+/*AUDIO*/
+const SONG_INFO = { menu: 'Title screen and menus', base: 'Any world without its own song yet' };
+const $ = id => document.getElementById(id), VOL = ['Off', 'Low', 'Medium', 'High'];
+Music.force = { song: null, amb: null };
+const cap = s => s[0].toUpperCase() + s.slice(1);
+function sync() {
+  document.querySelectorAll('[data-song]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.song === Music.force.song)));
+  document.querySelectorAll('[data-amb]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.amb === Music.force.amb)));
+  const f = Music.force, bits = [f.song && 'song <span>' + cap(f.song) + '</span>', f.amb && 'ambience <span>' + cap(f.amb) + '</span>'].filter(Boolean);
+  $('now').innerHTML = bits.length ? 'Playing ' + bits.join(' with ') : 'Nothing playing';
+  $('volMusic').textContent = VOL[Sfx.vol.music]; $('volSfx').textContent = VOL[Sfx.vol.sfx];
+}
+function add(into, label, small, fn, data) {
+  const b = document.createElement('button'); b.type = 'button';
+  if (data) b.dataset[data[0]] = data[1];
+  b.innerHTML = '<b>' + label + '</b>' + (small ? '<small>' + small + '</small>' : '');
+  b.onclick = () => { Sfx.init(); fn(); sync(); };
+  $(into).appendChild(b);
+}
+for (const name in SONGS) {
+  const worlds = Object.keys(MUSIC_BY_WORLD).filter(w => MUSIC_BY_WORLD[w] === name).map(w => 'World ' + (+w + 1) + ' ' + (WORLD_NAMES[w] || ''));
+  add('songs', cap(name), SONG_INFO[name] || worlds.join(', '), () => { Music.force.song = Music.force.song === name ? null : name; }, ['song', name]);
+}
+for (const name in AMBIENCE) add('ambs', cap(name), '', () => { Music.force.amb = Music.force.amb === name ? null : name; }, ['amb', name]);
+for (const name of ['jump', 'land', 'press', 'open', 'close', 'key', 'flag', 'die', 'boing', 'splash', 'thwack', 'crumble', 'portal', 'bumper', 'ring', 'cup', 'beep', 'go', 'roundWin', 'clear', 'win', 'matchWin'])
+  add('sfx', cap(name), '', () => Sfx.play(name));
+for (const k in Sfx.texKinds) add('tex', cap(k), '', () => Sfx.texKinds[k].fn(Sfx));
+$('volMusic').onclick = () => { Sfx.init(); Sfx.setVol('music', (Sfx.vol.music + 1) % 4); sync(); };
+$('volSfx').onclick = () => { Sfx.init(); Sfx.setVol('sfx', (Sfx.vol.sfx + 1) % 4); sync(); Sfx.play('press'); };
+$('stop').onclick = () => { Music.force.song = null; Music.force.amb = null; sync(); };
+sync();
+(function loop() { requestAnimationFrame(loop); try { Music.tick(); } catch (e) { console.error(e); } })();
+</script>

@@ -367,6 +367,7 @@ function frame(now) {
     }
   }
   if (G.mode === 'clear') { G.clearT -= dt; if (G.clearT <= 0) showResult(); }
+  try { Music.tick(); } catch (e) { /* music must never stop the game */ }
   render(dt);
 }
 

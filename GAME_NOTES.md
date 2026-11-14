@@ -913,14 +913,16 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 | `js/outfits-worlds.js` | The outfits of Worlds 1-31 and which level wears which (`OUTFIT_BY_LEVEL`, `OUTFIT_BY_WORLD`, `TTH_OUTFITS`) |
 | `js/levels/level-list.js` | `LEVELS` (with a `/* ===== World N (` marker per world from 4 on) and `WORLDS` (`name`, `blurb`, `theme`) |
 | `js/saving.js` | `store`, `levelRecord` |
-| `js/audio.js` | `Sfx` (each level keeps its `Sfx.extra.*` sounds in its own file) |
+| `js/audio.js` | `Sfx`: the mixer (music and sounds volume, reverb), `tone`, `noise`, the shared sounds and the texture layers (each level keeps its `Sfx.extra.*` sounds in its own file) |
+| `js/music.js` | `Music`: the song sequencer, the instruments (`MUSIC_INST`) and drums (`MUSIC_DRUMS`), the ambience player; `Music.tick()` runs every frame |
+| `js/music-tracks.js` | The songs (`SONGS`), the ambience beds (`AMBIENCE`), and which world or level plays which (`MUSIC_BY_WORLD`, `AMB_BY_WORLD`, `AMB_BY_LEVEL`) |
 | `js/player.js` | `makePlayer`, tile collision (`solidFor`), movement, tether rope/chain/bungee, stomp, `kill`/`respawn` |
 | `js/levels/block-building.js`, `golf.js`, `robo-pong.js` | World 2-3 mechanics (`BUILD`, `GOLF`, `PONG`) and their drawing |
 | `js/versus.js` | `MODES` registry, `hook`/`drawHook`, the best-of-N framework (`MATCH`, `matchRoundEnd`), `knock` |
 | `js/levels/world4/` to `world33/` | One file per level: its `MODES.<name>` block, its own drawing and `Sfx.extra` sounds, e.g. `world7/bumper-cars.js` |
 | `js/input.js` | Keyboard (`keys`, `BIND`), controllers (`Pads`, `readPad`), touch, `pollInput` |
 | `js/controls.js` | Each player's device (`playerDevice`), button prompts (`btnLabel`, `btnHTML`, `drawBtn`, `controlsLine`), the ready card (`startLevel`, `showReadyCard`, `readyPress`) |
-| `js/ui.js` | Overlay cards (`pause`/`showPauseCard`, `showResult`, `showWorldDone`, `showFinal`, `armOverlay`, `menuBack`), legend (`setLegend`, `setActUI`), toast, mute |
+| `js/ui.js` | Overlay cards (`pause`/`showPauseCard`, `showResult`, `showWorldDone`, `showFinal`, `armOverlay`, `menuBack`), legend (`setLegend`, `setActUI`), toast, mute and volume (`sysCfgHTML`, `setVolume`) |
 | `js/render.js` | Shared drawing (`render`, `drawHUD`, `drawIntro`) and particles |
 | `js/previews/preview-core.js` | Level previews for the world pages: `definePreview`, the drawing kit `pvKit`, the plain fallback, the title banner, and the loop that animates every `canvas[data-pv]` in a menu |
 | `js/previews/worldN.js` | One file per world: a `definePreview('<level name>', ...)` per level |
@@ -941,6 +943,17 @@ Gavyn asked for cleaner controls: the game should see what each player is using 
 - After the card, a level without rooms skips the old intro card and only shows the name tags for about a second (`G.introQuick`); a level with rooms keeps its "Room 1 of 3" card. `loadLevel(i)` itself still starts at once, so R, "Restart level", "Play it again", rematches and the test tools are unchanged.
 - The pause card lists each person's controls the same way (`controlsLinesHTML`).
 - Changed by hand: 13 older levels (Worlds 2-8: block building, golf, Robo Pong and others) had their own "is this a controller?" check with the global `Pads.kind`; they now ask `actKey(id)`. Their hint wording is unchanged.
+
+### Music and sound (Nov 2026)
+Gavyn (2026-11-14): the game needs a base background music, themed music where it fits, and richer sound effects, with each level having its own sounds where it makes sense. Everything is made live with WebAudio, so the game stays self-contained: no sound files.
+
+- **Music.** `SONGS` in `js/music-tracks.js`, written as short text patterns (the format is explained at the top of `js/music.js`): `menu` (title and menus), `base` (any world without a theme of its own), `boss` (Worlds 10, 20, 30) and the themed songs. `MUSIC_BY_WORLD` maps a world index to a song; a level or room can pick its own with `music: 'name'` in its def, and a mode can switch part-way with `Music.cue({ song, amb })` (a boss phase, a new era). Versus levels play their song 6% faster. The song turns down on the ready card and the pause card.
+- **Ambience.** A quiet bed under a level (wind, waves, crickets, a crowd, a factory hum...) with small random events (a bird, a drip, thunder): `AMBIENCE`, mapped by `AMB_BY_WORLD` and `AMB_BY_LEVEL`, or `amb: 'name'` in a level's def (`amb: null` for none). It plays through the Sounds volume.
+- **Sound effects.** Levels still write their own sounds as `Sfx.extra.<mode><Word>` with `this.tone(...)`, and can now use `this.noise(dur, { type, f, to, q, vol, a, delay })` for anything a beep cannot do. **Name a sound for what it is**: `Sfx.play` adds a texture layer picked from the words in the name after the mode prefix (`pyrCrash` gets a heavy thud, `sbSplash` water, `vikGold` a sparkle; the word lists are `Sfx.texKinds` in `js/audio.js`). `Sfx.texture.off['name'] = true` switches it off for one sound.
+- **Volume.** Music and Sounds each have Off, Low, Medium, High (pause card: a row each; title screen: one button each that steps through), saved as `volMusic` and `volSfx`. M and "Sound on/off" still mute everything. Sound effects are mixed a little above the music; every song is balanced to the same loudness with its `vol`.
+- **Every new world** gets: its own song (or a fitting existing one) in `MUSIC_BY_WORLD`, an ambience per world or level, and sounds named in plain words so the textures apply. A new song needs its `vol` set: `node tools/audio/check.js` prints the value that brings it level with the others.
+- **Tools.** `node tools/audio/check.js` checks that every song is well-formed and renders, measures loudness, checks that every level resolves to a song and ambience, plays every sound effect, and checks that the music follows the menus, levels, pause and volume buttons (`--list` prints every level's song and ambience, `--wav` saves each song to `build/audio/`). `node tools/audio/jukebox.js` builds `build/sound-test.html`, a page to listen to every song, ambience and texture.
+- **Status (2026-11-14):** stage 1. 15 songs; 23 worlds have a themed song and the rest play `base` until Gavyn has heard the first batch. Still to do after his feedback: songs for the other worlds, per-era music in 30-1, and a pass over levels with few sounds of their own (Worlds 27 and 28 have the fewest).
 
 ### Outfits (Nov 2026)
 Gavyn asked for Pip and Bo to wear outfits unique to each level where it fits, and for every future level to get them while it is built.
