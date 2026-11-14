@@ -349,7 +349,7 @@ function drawPlayer(p) {
 
 function pill(x, y, w, h, align) {
   const px = align === 'right' ? x - w : align === 'center' ? x - w / 2 : x;
-  ctx.fillStyle = 'rgba(28,26,54,0.78)'; rr(px, y, w, h, h / 2); ctx.fill();
+  ctx.fillStyle = 'rgba(23,25,29,0.78)'; rr(px, y, w, h, h / 2); ctx.fill();
   return px;
 }
 function text(str, x, y, size, col, align = 'left', font = 'display') {
@@ -530,7 +530,7 @@ function drawMatchOverlay() {
     if (m.phase === 'ready') {
       const sc = easeBack(m.t / 0.25), h = 84 + subs.length * 22;
       ctx.save(); ctx.translate(W / 2, 205); ctx.scale(sc, sc);
-      ctx.fillStyle = 'rgba(28,26,54,0.88)'; rr(-180, -h / 2, 360, h, 20); ctx.fill();
+      ctx.fillStyle = 'rgba(23,25,29,0.88)'; rr(-180, -h / 2, 360, h, 20); ctx.fill();
       text('Round ' + m.round, 0, -h / 2 + 40, 40, C.paper, 'center');
       subs.forEach(([t, c], k) => text(t, 0, -h / 2 + 78 + k * 22, 15, c, 'center', 'body'));
       ctx.restore();
@@ -541,7 +541,7 @@ function drawMatchOverlay() {
       pill(W / 2, 128, lw, 30, 'center');
       text(lab, W / 2, 143.5, 14, subs[0][1], 'center', 'body');
       const n = Math.max(1, 3 - Math.floor(m.t / MATCH.beat)), f = (m.t % MATCH.beat) / MATCH.beat;
-      ctx.fillStyle = 'rgba(28,26,54,0.82)'; circle(W / 2, 222, 52); ctx.fill();
+      ctx.fillStyle = 'rgba(23,25,29,0.82)'; circle(W / 2, 222, 52); ctx.fill();
       ctx.strokeStyle = 'rgba(255,197,61,0.9)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(W / 2, 222, 52, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - f)); ctx.stroke();
       bigText(String(n), W / 2, 225, 70, C.gold, 1 + 0.45 * Math.pow(1 - Math.min(1, f * 3), 2));
     }
@@ -569,7 +569,7 @@ function drawMatchOverlay() {
     bw = Math.min(W - 40, Math.max(380, bw + 64));
     const bh = 78 + lines.length * 24 + 34;
     ctx.save(); ctx.translate(W / 2, 212); ctx.scale(sc, sc);
-    ctx.fillStyle = 'rgba(28,26,54,0.9)'; rr(-bw / 2, -bh / 2, bw, bh, 20); ctx.fill();
+    ctx.fillStyle = 'rgba(23,25,29,0.9)'; rr(-bw / 2, -bh / 2, bw, bh, 20); ctx.fill();
     ctx.strokeStyle = final ? C.gold : (e.winner >= 0 ? PCOL[e.winner] : 'rgba(246,239,223,0.4)'); ctx.lineWidth = 3; rr(-bw / 2, -bh / 2, bw, bh, 20); ctx.stroke();
     let y = -bh / 2 + 40;
     text(title, 0, y, 34, tcol, 'center'); y += 38;
@@ -594,7 +594,7 @@ function drawIntro() {
   ctx.font = '14px "Atkinson Hyperlegible", system-ui, sans-serif';
   const tw = Math.max(380, ctx.measureText(def.tip).width + 60, actLine ? ctx.measureText(actLine).width + 80 : 0, note ? ctx.measureText(note).width + 60 : 0);
   const card = [W / 2 - tw / 2, 168, tw, (actLine ? 120 : 92) + (note ? 22 : 0)];
-  ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(card[0], card[1], card[2], card[3], 18); ctx.fill();
+  ctx.fillStyle = 'rgba(23,25,29,0.86)'; rr(card[0], card[1], card[2], card[3], 18); ctx.fill();
   const code = levelCode(G.levelIndex), wd = WORLDS[LEVELS[G.levelIndex].world];
   const first = code.endsWith('-1') && (!def.rooms || def.roomIndex === 0);
   const sub = (first ? `World ${LEVELS[G.levelIndex].world + 1}: ${wd.name} · ` : '') + (def.golf ? `Level ${code} · Hole ${def.roomIndex + 1} of ${def.roomCount} · Par ${def.par}`
