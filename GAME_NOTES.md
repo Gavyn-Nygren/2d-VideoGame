@@ -28,6 +28,7 @@ Demo: https://claude.ai/artifact/85NPz4hhcdi429juHSXUx7
 | **Bo** (blue, player 1) | Arrow keys | / . , or Enter | |
 
 - Controller: the first controller pressed plays Pip, the second plays Bo. A or B jumps; X, Y, RB or RT is the action; Start pauses; View on the title or pause card swaps players.
+- **Full screen (Gavyn, 2026-11-14).** There is no header bar. The 16:9 game screen is as big as the window allows (black bars on the spare sides) and every menu is laid over it. The only page button during a level is the small Menu button in the top-right corner (`#menuBtn`, placed by `fit()`: in the spare space above or beside the game when there is some, otherwise a small icon on the corner). Clicking or tapping it, the controller's Menu / Start button, or Esc opens the pause menu, which has the level's controls for each player's device, Players, Sound and (where the browser allows it) a real Full screen switch (`sysCfgHTML` in js/ui.js, also on the title). On phones the see-through touch pads sit in the bottom corners and may cover up to 40px of the game's side edges (`PAD_OVER` in js/main.js) so the game uses the full height. Don't put level HUD in the top-right 50px corner. Controls are no longer shown during play outside the ready card and pause menu.
 - Touch: ◀ ▶ ▲ ▼ for each player, plus a round action button in levels that use the action.
 - The action button only exists in levels that set `def.act`. Its word changes per level (punch, honk, fire, bump...).
 - Each player's device is detected on its own (see "Controls and the ready card"), so a keyboard player next to a controller player each see their own buttons. Xbox shows A / X, PlayStation ✕ / □, Switch B / Y, and a controller the browser can't name shows button numbers.
@@ -905,7 +906,7 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 
 | File | What's in it |
 |---|---|
-| `index.html` | Markup: header legend, `#stage` with `canvas#game`, touch pads `#padPip` and `#padBo`, `#overlay` cards, `#toast`; script tags in load order |
+| `index.html` | Markup: `#stage` with `canvas#game`, touch pads `#padPip` and `#padBo`, `#overlay` cards, `#toast`; script tags in load order |
 | `css/style.css` | All styles |
 | `js/core.js` | Constants (`T`, `DT`, `PHYS`), colours `C`, themes and `applyTheme`, helpers |
 | `js/outfits.js` | Outfits: `defineOutfit`, `defineOutfitPart`, the parts library (hats, clothes, capes, goggles...), `setOutfit`, `outfitNow`, `drawOutfit` / `outfitLayer` (drawPlayer and the previews' `v.hero` call it) |
@@ -918,7 +919,7 @@ The code is split into `css/` and `js/` files (the README has the same table). `
 | `js/versus.js` | `MODES` registry, `hook`/`drawHook`, the best-of-N framework (`MATCH`, `matchRoundEnd`), `knock` |
 | `js/levels/world4/` to `world33/` | One file per level: its `MODES.<name>` block, its own drawing and `Sfx.extra` sounds, e.g. `world7/bumper-cars.js` |
 | `js/input.js` | Keyboard (`keys`, `BIND`), controllers (`Pads`, `readPad`), touch, `pollInput` |
-| `js/controls.js` | Each player's device (`playerDevice`), button prompts (`btnLabel`, `btnHTML`, `drawBtn`, `controlsLine`), the top-bar legend (`legendRender`), the ready card (`startLevel`, `showReadyCard`, `readyPress`) |
+| `js/controls.js` | Each player's device (`playerDevice`), button prompts (`btnLabel`, `btnHTML`, `drawBtn`, `controlsLine`), the ready card (`startLevel`, `showReadyCard`, `readyPress`) |
 | `js/ui.js` | Overlay cards (`pause`/`showPauseCard`, `showResult`, `showWorldDone`, `showFinal`, `armOverlay`, `menuBack`), legend (`setLegend`, `setActUI`), toast, mute |
 | `js/render.js` | Shared drawing (`render`, `drawHUD`, `drawIntro`) and particles |
 | `js/previews/preview-core.js` | Level previews for the world pages: `definePreview`, the drawing kit `pvKit`, the plain fallback, the title banner, and the loop that animates every `canvas[data-pv]` in a menu |

@@ -72,7 +72,15 @@ const ok = (cond, what) => { if (!cond) { fails++; console.log('FAIL  ' + what);
   // a key press moves only that player to the keyboard
   await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(150);
   ok(await devs(page) === 'pad:xbox kb', 'mixed: Bo pressing a key shows Bo keys, Pip keeps the Xbox buttons (' + await devs(page) + ')');
-  ok(await page.evaluate(() => { const l = document.querySelector('.legend'); return !!l.querySelector('[data-legp="0"] .g-xbox-a') && l.querySelector('[data-legp="1"]').textContent.includes('←'); }), 'mixed: the top-bar legend shows each player\'s own buttons');
+  await page.click('#menuBtn'); await page.waitForTimeout(300);
+  ok(await mode(page) === 'paused', 'mixed: the on-screen Menu button opens the pause menu');
+  ok(await page.evaluate(() => { const l = document.querySelectorAll('#overlay .ctl-line'); return l.length === 2 && !!l[0].querySelector('.g-xbox-a') && l[1].textContent.includes('←'); }), 'mixed: the pause menu shows each player\'s own buttons');
+  ok(await page.evaluate(() => { const b = document.querySelector('[data-k="sound"]'); b.click(); const off = window.__pipbo.Sfx.muted && b.textContent === 'Sound off'; b.click(); return off && !window.__pipbo.Sfx.muted; }), 'pause menu: the Sound button turns sound off and on');
+  ok(await page.evaluate(() => { const s = document.getElementById('stage').getBoundingClientRect(); return s.width >= innerWidth - 1 || s.height >= innerHeight - 1; }), 'the game screen fills the window (' + JSON.stringify(await page.evaluate(() => { const s = document.getElementById('stage').getBoundingClientRect(); return [s.width, s.height, innerWidth, innerHeight]; })) + ')');
+  await tap(page, 0, 9); await page.waitForTimeout(300);
+  ok(await mode(page) === 'play', 'controllers: the Menu / Start button closes the pause menu');
+  await tap(page, 0, 9); await page.waitForTimeout(300);
+  ok(await mode(page) === 'paused', 'controllers: the Menu / Start button opens it');
   await start(page, 'Snowball Fight'); await page.waitForTimeout(450);
   await tap(page, 0, 1); await page.waitForTimeout(300);
   ok(await mode(page) === 'title', 'controllers: B on the ready card goes back');

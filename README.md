@@ -64,7 +64,7 @@ Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md
 
 | File | What's in it |
 |---|---|
-| `index.html` | The page: top bar, game screen, touch buttons, and the list of scripts in load order |
+| `index.html` | The page: full-window game screen, Menu button, touch buttons, and the list of scripts in load order |
 | `css/style.css` | All styling |
 | `js/core.js` | Shared constants, colors, themes, small helpers |
 | `js/outfits.js`, `js/outfits-worlds.js` | Outfits for Pip and Bo per world, level or room (the parts library, and what Worlds 1-31 wear) |
@@ -77,7 +77,7 @@ Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md
 | `js/levels/world4/` to `world33/` | One file per level, with its rules, sounds and drawing |
 | `js/cpu/` | The computer player for 1-player mode: `cpu-core.js` (settings and the brain framework), `cpu-nav.js` (path finding), and one brain per level in `js/cpu/levels/` |
 | `js/input.js` | Keyboard, controllers and touch buttons |
-| `js/controls.js` | Which device each player uses, matching button prompts, the top-bar legend, the ready card before a level |
+| `js/controls.js` | Which device each player uses, matching button prompts, the ready card before a level |
 | `js/ui.js` | Result cards, pause screen, controls legend, notices |
 | `js/render.js` | Shared drawing: background, tiles, players, HUD, particles |
 | `js/previews/` | The little animated scene of each level on the world pages: `preview-core.js` (the drawing kit) and one file per world |
