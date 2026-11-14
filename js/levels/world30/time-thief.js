@@ -674,7 +674,10 @@ function tthEndStep(st, dt) {
   if (at(4, TTH.endT)) { st.ended = true; tthCpClear(); levelClear(); }
 }
 
+// each era plays the song of the world it visits (js/music-tracks.js); the End of Time and the race home play the boss song
+const TTH_MUSIC = { dino: 'dino', henge: 'wizard', troy: 'escapes', olympics: 'summer', vikings: 'viking', davinci: 'castle', wright: 'sky', moon: 'space' };
 MODES.timethief = {
+  music() { const st = G.mst, k = st && st.phase; return k && TTH_MUSIC[k] ? { song: TTH_MUSIC[k] } : null; },
   rand: Math.random,   // gameplay randomness (tthRand); tests may swap in a seeded one (MODES.timethief.test.seed)
   cpOn: false,         // tests: true makes checkpoints work under G.manual too
   setup(st, L) {

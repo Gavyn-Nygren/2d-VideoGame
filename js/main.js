@@ -367,12 +367,16 @@ function frame(now) {
     }
   }
   if (G.mode === 'clear') { G.clearT -= dt; if (G.clearT <= 0) showResult(); }
+  try { Music.tick(); } catch (e) { /* music must never stop the game */ }
   render(dt);
 }
 
 /* ---------- sizing ---------- */
+// the game fills the window. On a phone the see-through touch pads sit in the bottom corners and may cover up to this
+// many pixels of the game's side edges (mostly the side walls), so the screen can use the full height.
+const PAD_OVER = 40;
 function fit() {
-  const wrapW = stageWrap.clientWidth, wrapH = Math.max(0, stageWrap.clientHeight - 14);
+  const wrapW = stageWrap.clientWidth, wrapH = stageWrap.clientHeight;
   const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
   const padPip = document.getElementById('padPip'), padBo = document.getElementById('padBo');
   const tb0 = clamp(Math.round(Math.min(wrapW, wrapH * 1.8) / 11), 44, 64), gap = 8;
@@ -390,13 +394,15 @@ function fit() {
     // pick whichever layout gives the bigger game screen (ties: pads beside it, then the act button on a third row)
     let best = null;
     for (const sh of actOn ? ['rows', 'cols'] : ['rows']) for (const md of ['side', 'below']) {
-      let b = tb0, [pw, ph] = padSize(b, sh), sg = 12, so = 0;
+      let b = tb0, [pw, ph] = padSize(b, sh), sg = 12, so = md === 'side' ? PAD_OVER : 0;
       // short landscape phone, pads beside a game screen under half size (480px wide): the buttons shrink to the smallest
       // touch size, then the pads move closer to the screen and 8px into the side margins, so the screen gets the width
       const sideW = () => wrapW - (one ? 1 : 2) * (pw + sg - so), small = () => sideW() < Math.min(480, wrapH * 16 / 9);
       if (md === 'side') {
+        // the buttons shrink a little (to 48px) while the pads would still squeeze a full-height screen
+        while (b > 48 && sideW() < Math.min(wrapW, wrapH * 16 / 9)) { b--; [pw, ph] = padSize(b, sh); }
         while (b > 44 && small()) { b--; [pw, ph] = padSize(b, sh); }
-        if (small()) { sg = 6; so = 8; }
+        if (small()) sg = 6;
       }
       if (md === 'side' && actOn && ph > wrapH) continue;
       // two wide 3-column pads side by side under the screen: on a very narrow phone the buttons shrink a little to fit
@@ -423,15 +429,15 @@ function fit() {
     }
     if (mode === 'side') {
       const py = Math.max(0, top + h - padH);
-      Object.assign(padPip.style, { left: Math.max(-sideOut, left - padW - sideGap) + 'px', top: py + 'px' });
-      Object.assign(padBo.style, { left: Math.min(wrapW - padW + sideOut, left + w + sideGap) + 'px', top: py + 'px' });
+      Object.assign(padPip.style, { left: Math.max(0, left - padW - sideGap) + 'px', top: py + 'px' });
+      Object.assign(padBo.style, { left: Math.min(wrapW - padW, left + w + sideGap) + 'px', top: py + 'px' });
     } else {
       const py = top + h + 10;
       let px = left, bx = left + w - padW;
       if (actOn && bx - (px + padW) < 12) {
         // action pads wider than half the game screen: spread them toward the edges (up to 8px into the side margins)
-        px = Math.max(-8, Math.min(px, Math.round(wrapW / 2 - 6 - padW)));
-        bx = Math.min(wrapW - padW + 8, Math.max(bx, Math.round(wrapW / 2 + 6)));
+        px = Math.max(0, Math.min(px, Math.round(wrapW / 2 - 6 - padW)));
+        bx = Math.min(wrapW - padW, Math.max(bx, Math.round(wrapW / 2 + 6)));
       }
       Object.assign(padPip.style, { left: px + 'px', top: py + 'px' });
       Object.assign(padBo.style, { left: bx + 'px', top: py + 'px' });
@@ -442,6 +448,11 @@ function fit() {
   Object.assign(overlay.style, mode === 'side' ? { left: left + 'px', right: (wrapW - left - w) + 'px', bottom: '' }
     : mode === 'below' ? { left: '', right: '', bottom: (stageWrap.clientHeight - (top + h + 6)) + 'px' }
     : { left: '', right: '', bottom: '' });
+  // the Menu button: in the spare space above or beside the game when there is some, otherwise a small icon on its corner
+  const fab = document.getElementById('menuBtn'), fh = touch || document.documentElement.classList.contains('has-touch') ? 44 : 34;
+  const sideRoom = wrapW - left - w, clear = top >= fh + 8 || sideRoom >= 104;
+  fab.classList.toggle('tiny', !clear);
+  fab.style.top = clamp(Math.round((top - fh) / 2), 4, 8) + 'px';
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const cw = Math.round(w * dpr), ch = Math.round(h * dpr);
   if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }

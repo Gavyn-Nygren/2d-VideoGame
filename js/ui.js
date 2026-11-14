@@ -153,6 +153,7 @@ function showPauseCard() {
         <button class="ghost" type="button" data-act="menu">Title screen</button>
       </div>
       ${cpuCfgHTML()}
+      ${sysCfgHTML()}
     </div>`);
 }
 // the pause card's "You play Pip..." note and action keys (redrawn when the Players setting changes on the card)
@@ -384,14 +385,65 @@ overlay.addEventListener('click', e => {
   else if (a === 'cpucfg') { const v = b.dataset.v; cpuSetCfg(b.dataset.k, /^\d+$/.test(v) ? +v : v); const pb = overlay.querySelector('[data-primary]'); (pb || b).focus({ preventScroll: true }); }
 });
 
-const muteBtn = document.getElementById('muteBtn');
-function toggleMute() {
-  Sfx.muted = !Sfx.muted;
-  muteBtn.textContent = Sfx.muted ? 'Sound off' : 'Sound on';
-  muteBtn.setAttribute('aria-pressed', String(Sfx.muted));
-  store.set('muted', Sfx.muted);
+/* ---------- settings on the title and pause cards: sound, and real full screen where the browser allows it ---------- */
+const canFullscreen = () => !!(document.fullscreenEnabled && document.documentElement.requestFullscreen);
+const VOL_NAMES = ['Off', 'Low', 'Medium', 'High'];
+// the pause card has a row of four buttons for each volume; the title screen (compact) has one button each that steps through them
+function sysCfgHTML(compact) {
+  const full = !!document.fullscreenElement;
+  const vol = (k, label) => `<div class="seg-row vol-row" role="group" aria-label="${label} volume"><span class="seg-k">${label}</span>${
+    VOL_NAMES.map((n, i) => `<button type="button" class="seg" data-act="syscfg" data-k="${k}" data-v="${i}" aria-pressed="${Sfx.vol[k] === i}">${n}</button>`).join('')}</div>`;
+  const step = (k, label) => `<button type="button" class="seg" data-act="syscfg" data-k="${k}" data-v="step" data-label="${label}" aria-pressed="${Sfx.vol[k] > 0 && !Sfx.muted}">${label}: ${Sfx.muted ? 'Off' : VOL_NAMES[Sfx.vol[k]]}</button>`;
+  const fs = canFullscreen() ? `<button type="button" class="seg" data-act="syscfg" data-k="full" aria-pressed="${full}">${full ? 'Full screen on' : 'Full screen off'}</button>` : '';
+  if (compact) return `<div class="cpu-cfg sys-cfg"><div class="seg-row" role="group" aria-label="Sound and screen">${step('music', 'Music')}${step('sfx', 'Sounds')}${fs}</div></div>`;
+  return `<div class="cpu-cfg sys-cfg">${vol('music', 'Music')}${vol('sfx', 'Sounds')}<div class="seg-row" role="group" aria-label="Sound and screen">
+      <button type="button" class="seg" data-act="syscfg" data-k="sound" aria-pressed="${!Sfx.muted}">${Sfx.muted ? 'Sound off' : 'Sound on'}</button>
+      ${fs}
+    </div></div>`;
 }
-muteBtn.addEventListener('click', () => { Sfx.init(); toggleMute(); muteBtn.blur(); });
+function sysCfgSync() {
+  const full = !!document.fullscreenElement;
+  overlay.querySelectorAll('[data-act="syscfg"]').forEach(b => {
+    const k = b.dataset.k;
+    if (k === 'music' || k === 'sfx') {
+      if (b.dataset.v === 'step') { b.setAttribute('aria-pressed', String(Sfx.vol[k] > 0 && !Sfx.muted)); b.textContent = b.dataset.label + ': ' + (Sfx.muted ? 'Off' : VOL_NAMES[Sfx.vol[k]]); }
+      else b.setAttribute('aria-pressed', String(Sfx.vol[k] === +b.dataset.v));
+      return;
+    }
+    const snd = k === 'sound', on = snd ? !Sfx.muted : full;
+    b.setAttribute('aria-pressed', String(on));
+    b.textContent = (snd ? 'Sound ' : 'Full screen ') + (on ? 'on' : 'off');
+  });
+}
+function setFullscreen(on) {
+  try {
+    const p = on ? (!document.fullscreenElement && document.documentElement.requestFullscreen()) : (document.fullscreenElement && document.exitFullscreen());
+    if (p && p.catch) p.catch(() => toast('Full screen is not available here.'));
+  } catch (e) { toast('Full screen is not available here.'); }
+}
+document.addEventListener('fullscreenchange', sysCfgSync);
+function toggleMute() {
+  Sfx.setMuted(!Sfx.muted);
+  store.set('muted', Sfx.muted);
+  sysCfgSync();
+}
+// Music and Sounds each have their own volume: 0 Off, 1 Low, 2 Medium, 3 High
+function setVolume(k, n) {
+  Sfx.setVol(k, n);
+  store.set(k === 'music' ? 'volMusic' : 'volSfx', Sfx.vol[k]);
+  if (Sfx.muted && n > 0) toggleMute(); // turning a volume up also turns the sound back on
+  sysCfgSync();
+  if (k === 'sfx') Sfx.play('press');
+}
+for (const [k, key] of [['music', 'volMusic'], ['sfx', 'volSfx']]) { const v = store.get(key); if (typeof v === 'number') Sfx.setVol(k, v); }
+overlay.addEventListener('click', e => {
+  const b = e.target.closest('[data-act="syscfg"]');
+  if (!b) return;
+  Sfx.init();
+  const k = b.dataset.k;
+  if (k === 'music' || k === 'sfx') setVolume(k, b.dataset.v === 'step' ? (Sfx.muted ? 1 : (Sfx.vol[k] + 1) % 4) : +b.dataset.v);
+  else if (k === 'sound') toggleMute(); else setFullscreen(!document.fullscreenElement);
+});
 if (store.get('muted') === true) toggleMute();
 document.getElementById('menuBtn').addEventListener('click', e => {
   Sfx.init();

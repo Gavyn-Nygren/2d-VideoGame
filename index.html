@@ -7,19 +7,6 @@
 <link rel="stylesheet" href="css/style.css">
 
 <div id="app">
-  <header class="bar">
-    <div class="brand" aria-label="Pip and Bo"><span class="pip">Pip</span> <span class="amp">&amp;</span> <span class="bo">Bo</span></div>
-    <div class="legend" aria-label="Controls">
-      <!-- filled by legendRender (js/controls.js): each player's line in the buttons of their own device -->
-      <span data-legp="0"><b class="nm-pip">Pip</b> <span data-leg="pip"><kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop</span><em class="acth"><span data-actkey="0"><kbd>F</kbd></span> <span data-actlabel>act</span></em></span>
-      <span data-legp="1"><b class="nm-bo">Bo</b> <span data-leg="bo"><kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> drop</span><em class="acth"><span data-actkey="1"><kbd>/</kbd></span> <span data-actlabel>act</span></em></span>
-      <span data-legsys><kbd>R</kbd> restart <kbd>Esc</kbd> pause</span>
-    </div>
-    <div class="bar-actions">
-      <button class="chipbtn" id="muteBtn" type="button" aria-pressed="false">Sound on</button>
-      <button class="chipbtn" id="menuBtn" type="button">Menu</button>
-    </div>
-  </header>
   <p class="rotate-tip">Turn your device sideways for a bigger screen.</p>
   <main class="stage-wrap" id="stageWrap">
     <div class="stage" id="stage">
@@ -37,6 +24,8 @@
       <div class="tbtn tact tbtn-act" data-p="1" data-k="act" data-actlabel>act</div>
       <div class="tmove" data-p="1"><div class="tbtn" data-k="left">◀</div><div class="tbtn" data-k="right">▶</div></div>
     </div>
+    <!-- the only page button while a level runs: opens the pause menu (settings, controls). Placed by fit(). -->
+    <button class="menu-fab" id="menuBtn" type="button" aria-label="Menu: pause, settings and controls"><span class="mf-ico" aria-hidden="true"></span><span class="mf-word">Menu</span></button>
     <div class="overlay" id="overlay" hidden></div>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   </main>
@@ -48,6 +37,8 @@
 <script src="js/levels/level-list.js"></script>
 <script src="js/saving.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/music.js"></script>
+<script src="js/music-tracks.js"></script>
 <script src="js/player.js"></script>
 <script src="js/levels/block-building.js"></script>
 <script src="js/levels/golf.js"></script>
