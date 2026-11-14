@@ -52,7 +52,7 @@ function carOnPad(id) { return Pads.kind === 'pad' && !!padFor(padSlots(), id); 
 // button). The core maps A and B both to jump, so this reads the pad's own state (Pads.prev = this frame's readPad).
 function carPadB(id) { return carOnPad(id) && Pads.family !== 'nintendo'; }
 function carPadState(id) { const sl = padFor(padSlots(), id); return (sl && Pads.prev[sl.ix]) || null; }
-function carHow(id) { return carOnPad(id) ? 'pad' : document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch' ? 'touch' : 'kb'; }
+function carHow(id) { return actKey(id); } // (each player's own device: js/controls.js)
 // the key hint for a seat: 'steer' or 'pedals'
 function carKeys(id, role) {
   if (typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id)) return role === 'steer' ? 'the computer steers' : 'the computer does gas and brake';

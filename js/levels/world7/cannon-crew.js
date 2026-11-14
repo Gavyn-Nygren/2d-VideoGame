@@ -494,8 +494,7 @@ function cannonKeys(id, what) {
   // 1 player + computer: the computer's bubble says what it does instead of which keys to press
   if (typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id)) return what === 'gunner' ? 'aims and fires' : 'brings powder and balls';
   if (what !== 'gunner') return 'bring powder and a ball to the cannon';
-  const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-  const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
+  const how = actKey(id), touch = how === 'touch', pad = how === 'pad'; // (each player's own device: js/controls.js)
   return pad ? 'stick ▲▼ aim  ◀▶ power  ' + glyph('a') + ' fire'
     : touch ? '▲▼ aim  ◀▶ power  round button: fire' : id === 0 ? 'W S aim  A D power  F/Space fire' : '↑ ↓ aim  ← → power  / fire';
 }

@@ -10,10 +10,10 @@
   <header class="bar">
     <div class="brand" aria-label="Pip and Bo"><span class="pip">Pip</span> <span class="amp">&amp;</span> <span class="bo">Bo</span></div>
     <div class="legend" aria-label="Controls">
-      <span class="kb-only" data-legp="0"><b class="nm-pip">Pip</b> <span data-leg="pip"><kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop</span><em class="acth"><kbd>F</kbd> <span data-actlabel>act</span></em></span>
-      <span class="kb-only" data-legp="1"><b class="nm-bo">Bo</b> <span data-leg="bo"><kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> drop</span><em class="acth"><kbd>/</kbd> <span data-actlabel>act</span></em></span>
-      <span class="kb-only"><kbd>R</kbd> restart <kbd>Esc</kbd> pause</span>
-      <span class="pad-only">Controller: <span data-leg="pad">stick or d-pad move, <span data-glyph="a"></span> jump, down drops,</span><em class="acth"><span data-glyph="act"></span> <span data-actlabel>act</span>,</em> <span data-glyph="start"></span> pause</span>
+      <!-- filled by legendRender (js/controls.js): each player's line in the buttons of their own device -->
+      <span data-legp="0"><b class="nm-pip">Pip</b> <span data-leg="pip"><kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop</span><em class="acth"><span data-actkey="0"><kbd>F</kbd></span> <span data-actlabel>act</span></em></span>
+      <span data-legp="1"><b class="nm-bo">Bo</b> <span data-leg="bo"><kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> drop</span><em class="acth"><span data-actkey="1"><kbd>/</kbd></span> <span data-actlabel>act</span></em></span>
+      <span data-legsys><kbd>R</kbd> restart <kbd>Esc</kbd> pause</span>
     </div>
     <div class="bar-actions">
       <button class="chipbtn" id="muteBtn" type="button" aria-pressed="false">Sound on</button>
@@ -412,6 +412,7 @@
 <script src="js/cpu/levels/world35/wiz-duel.js"></script>
 <script src="js/input.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/controls.js"></script>
 <script src="js/render.js"></script>
 <script src="js/previews/preview-core.js"></script>
 <!-- level previews for the world pages: one file per world (js/previews/worldN.js) -->

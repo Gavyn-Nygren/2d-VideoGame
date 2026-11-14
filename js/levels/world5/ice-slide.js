@@ -152,8 +152,7 @@
   }
   // the key that means "down" for this player, for the hint bubbles
   function iceKey(id) {
-    const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-    const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
+    const how = actKey(id), touch = how === 'touch', pad = how === 'pad'; // (each player's own device: js/controls.js)
     return pad ? 'stick ↓' : touch ? '▼' : id === 0 ? 'S' : '↓';
   }
 

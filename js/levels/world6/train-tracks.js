@@ -320,10 +320,7 @@ function trainStopDist(st) {
 
 /* ---------- players: top-down walking ---------- */
 function trainOnPad(id) { return Pads.kind === 'pad' && !!padFor(padSlots(), id); }
-function trainHow(id) {
-  const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-  return trainOnPad(id) ? 'pad' : touch ? 'touch' : 'kb';
-}
+function trainHow(id) { return actKey(id); } // (each player's own device: js/controls.js)
 function trainKey(id) { const h = trainHow(id); return h === 'pad' ? glyph('act') : h === 'touch' ? 'tap' : id === 0 ? 'F' : '/'; }
 // 1 player + computer: true for the computer's character (no key hints over it)
 const trainCpu = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);

@@ -43,6 +43,7 @@ body { background: var(--cabinet); color: var(--paper); font-family: var(--font-
 .legend span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .legend [data-leg] { flex-wrap: wrap; max-width: 100%; }
 .legend b { font-weight: 700; margin-right: 2px; }
+.legend[hidden], .legend [hidden] { display: none !important; }
 kbd {
   font-family: var(--font-body); font-size: 12px; line-height: 1.4; color: var(--paper);
   background: var(--cabinet-2); border: 1px solid var(--line); border-bottom-width: 3px;
@@ -84,7 +85,55 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 /* the action button (punch, throw...) only shows in levels that use it (html.act-on) */
 .acth { display: none; font-style: normal; }
 .act-on .acth { display: inline; margin-left: 6px; }
-.g-xbox-start, .g-xbox-view, .g-ps-start, .g-ps-view, .g-nintendo-start, .g-nintendo-view { border-radius: 6px; }
+.g-generic-start, .g-generic-view, .g-xbox-start, .g-xbox-view, .g-ps-start, .g-ps-view, .g-nintendo-start, .g-nintendo-view { border-radius: 6px; }
+/* buttons of other devices, drawn like keys (js/controls.js): the stick's directions, touch buttons */
+kbd.k-stick { border-radius: 999px; border-bottom-width: 1px; background: var(--cabinet); min-width: 14px; padding: 0 5px; }
+kbd.k-touch { border: 0; border-radius: 6px; background: rgba(255, 255, 255, 0.2); padding: 1px 6px; }
+kbd.k-touch.k-round { border-radius: 999px; }
+.pip kbd.k-touch { background: rgba(255, 107, 74, 0.6); } .bo kbd.k-touch { background: rgba(91, 149, 255, 0.6); }
+.k-word { font-size: 0.9em; margin-right: 3px; }
+/* each player's controls on a card (pause card, ready card) */
+.ctl-lines { display: grid; gap: 6px; }
+.ctl-line { margin: 0; font-size: 14px; color: var(--muted); display: flex; gap: 8px; align-items: baseline; }
+.ctl-line > b { flex: none; min-width: 2.2em; }
+.ctl-keys { font-size: 14px; line-height: 1.9; color: var(--muted); }
+.ctl-keys kbd, .ctl-keys .glyph { margin-right: 2px; }
+.ctl-keys kbd + kbd { margin-left: 1px; }
+.ctl-act { white-space: nowrap; margin-left: 6px; color: var(--paper); }
+/* the ready card before a level: the tip, each player's controls on their own device, and a Ready button each */
+.ready-card { width: min(760px, 100%); gap: 14px; }
+.rdy-top { display: flex; gap: 14px; align-items: center; }
+.rdy-top .home-title { display: grid; gap: 6px; min-width: 0; }
+.rdy-top .eyebrow { margin: 0; }
+.rdy-top h2 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.rdy-top h2 .tag { font-family: var(--font-body); font-weight: 700; }
+.ready-card .lede { max-width: none; color: var(--paper); font-size: 17px; }
+.rdy-how { margin: 0; padding-left: 20px; color: var(--muted); font-size: 15px; line-height: 1.45; display: grid; gap: 2px; }
+.rdy-duo { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+.pcard.rdy { grid-template-rows: auto 1fr auto; gap: 8px; transition: background-color 0.15s; }
+.rdy-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.devchip { font: 700 11px var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.rdy-btn {
+  font: 700 15px var(--font-body); color: var(--paper); background: var(--cabinet-2); border: 2px dashed var(--line); border-radius: 12px;
+  padding: 9px 12px; min-height: 44px; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;
+}
+button.rdy-btn:hover { border-color: var(--muted); }
+.pcard.pip.is-ready { background: rgba(255, 107, 74, 0.14); } .pcard.bo.is-ready { background: rgba(91, 149, 255, 0.14); }
+.is-ready .rdy-btn { border-style: solid; color: var(--cabinet); font-family: var(--font-display); font-weight: 400; font-size: 19px; letter-spacing: 0.02em; cursor: default; }
+.pip.is-ready .rdy-btn { background: var(--pip); border-color: var(--pip); } .bo.is-ready .rdy-btn { background: var(--bo); border-color: var(--bo); }
+.rdy-foot { margin: 0; text-align: center; font-size: 14px; color: var(--muted); min-height: 1.3em; }
+@media (max-height: 520px) {
+  .ready-card { gap: 8px; padding-block: 10px; }
+  .ready-card .lede { font-size: 14px; }
+  .rdy-how { font-size: 13px; }
+  .pcard.rdy { padding: 8px 10px; gap: 4px; }
+  .pcard.rdy .nm { font-size: 20px; }
+  .ctl-keys { line-height: 1.6; font-size: 13px; }
+  .rdy-btn { min-height: 40px; padding-block: 5px; }
+  .rdy-foot { font-size: 12px; }
+}
+@media (max-width: 520px) { .rdy-duo { grid-template-columns: 1fr; } }
+@media (max-height: 400px) { .rdy-foot { display: none; } }
 .toast {
   position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 8; max-width: calc(100% - 32px);
   background: var(--cabinet-2); color: var(--paper); border: 2px solid var(--gold); border-radius: 999px;
@@ -241,7 +290,6 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
   .round-list { font-size: 13px; }
   .round-list li { padding-block: 1px; }
 }
-.has-touch .legend { display: none; }
 @media (orientation: portrait) {
   .has-touch .rotate-tip { display: block; }
 }

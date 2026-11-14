@@ -587,6 +587,8 @@ function drawIntro() {
   if (G.introT <= 0 || G.mode !== 'play') return;
   const a = clamp(G.introT / 0.5, 0, 1);
   const def = G.level.def;
+  // straight after the ready card (which showed the tip and the controls): only the name tags
+  if (G.introQuick) { if (!(G.mst && G.mst.arriveT > 0)) drawNameTags(a, null); return; }
   const actLine = def.act ? actHintLine() : null, note = cpuTipNote(def.tip);
   ctx.save(); ctx.globalAlpha = a;
   ctx.font = '14px "Atkinson Hyperlegible", system-ui, sans-serif';

@@ -50,8 +50,7 @@
 
   // the player's real keys, for hint bubbles (like golfKeys)
   function pzKey(id, what) {
-    const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-    const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
+    const how = actKey(id), touch = how === 'touch', pad = how === 'pad'; // (each player's own device: js/controls.js)
     if (what === 'hop') return pad ? glyph('a') : touch ? '▲' : id === 0 ? 'W' : '↑';
     if (what === 'duck') return pad ? 'stick ↓' : touch ? '▼' : id === 0 ? 'S' : '↓';
     if (what === 'steady') return pad ? glyph('act') : touch ? 'steady' : id === 0 ? 'F' : '/';

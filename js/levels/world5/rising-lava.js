@@ -26,8 +26,7 @@ const LAVA = {
 const LAVA_BTN = { d: [0, '3'], e: [0, '4'], f: [0, '5'], g: [0, '6'], h: [1, '7'], i: [1, '8'], j: [1, '9'], m: [1, '0'] };
 // the player's own "down" key for hint bubbles: "S" / "↓" (keyboard), "stick ↓" (controller), "▼" (touch); same test as golfKeys
 function lavaKey(id) {
-  const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-  const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
+  const how = actKey(id), touch = how === 'touch', pad = how === 'pad'; // (each player's own device: js/controls.js)
   return pad ? 'stick ↓' : touch ? '▼' : id === 0 ? 'S' : '↓';
 }
 MODES.lava = {

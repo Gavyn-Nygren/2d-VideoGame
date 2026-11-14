@@ -24,21 +24,34 @@ const touchState = [{}, {}];
    Works with any controller the browser reports. Xbox, PlayStation and Switch Pro pads use the
    browser's "standard" layout; other pads fall back to stick + first buttons + hat-switch d-pad.
    The first controller you press a button on plays Pip, the second plays Bo (View/Select swaps). */
-const Pads = { slots: [], prev: {}, quiet: {}, swap: false, nav: {}, family: 'xbox', kind: 'kb' };
+const Pads = { slots: [], prev: {}, quiet: {}, swap: false, nav: {}, family: 'xbox', kind: 'kb', fam: {}, ctxFam: null };
+// Which device each player is using right now (js/controls.js reads it): last[k] is 'kb', 'pad' or 'touch', set by that
+// player's own last press (null until they press something); keyset is the set of keys (0 = W A S D, 1 = arrows) the
+// person last used in 1-player mode, where both sets work.
+const Dev = { last: [null, null], keyset: null, sig: '' };
 function padFamily(gp) {
   const id = (gp.id || '').toLowerCase();
   if (/xbox|xinput|045e/.test(id)) return 'xbox';
   if (/054c|playstation|dualshock|dualsense|^wireless controller/.test(id)) return 'ps';
   if (/057e|nintendo|switch|pro controller|joy-con/.test(id)) return 'nintendo';
-  return 'xbox';
+  // a pad the browser can't map to the standard layout has no known letters: its buttons are shown by number
+  return gp.mapping === 'standard' ? 'xbox' : 'generic';
 }
 // what to print for each button, per controller family
 const GLYPHS = {
   xbox: { a: 'A', b: 'B', act: 'X', start: '☰', view: '⧉', name: 'Xbox' },
   ps: { a: '✕', b: '○', act: '□', start: 'Options', view: 'Create', name: 'PlayStation' },
   nintendo: { a: 'B', b: 'A', act: 'Y', start: '+', view: '−', name: 'Switch' },
+  generic: { a: '1', b: '2', act: '3', start: 'Start', view: 'Select', name: 'Controller' },
 };
-const glyph = k => (GLYPHS[Pads.family] || GLYPHS.xbox)[k];
+// the family of the controller that plays this character (the last controller used when it has none)
+function padFamilyFor(id) {
+  const pad = padFor(padSlots(), id);
+  return (pad && Pads.fam[pad.ix]) || Pads.family;
+}
+// glyph('a', id): the button's name on that player's own controller. Without an id it is the controller of the
+// player last asked about with actKey(id) (older level code asks, then prints), or else the last controller used.
+const glyph = (k, id) => (GLYPHS[id == null ? Pads.ctxFam || Pads.family : padFamilyFor(id)] || GLYPHS.xbox)[k];
 document.documentElement.classList.add('use-kb');
 function readPad(gp) {
   const b = n => { const x = gp.buttons[n]; return !!(x && (x.pressed || x.value > 0.5)); };
@@ -118,9 +131,11 @@ function setKind(k) {
   if (document.documentElement.classList.contains('has-touch')) requestAnimationFrame(fit);
 }
 function refreshGlyphs() {
+  // (data-gp="0|1": that player's own controller; without it, the last controller used)
   document.querySelectorAll('[data-glyph]').forEach(el => {
-    el.textContent = glyph(el.dataset.glyph);
-    el.className = 'glyph g-' + Pads.family + '-' + el.dataset.glyph;
+    const fam = el.dataset.gp === undefined ? Pads.family : padFamilyFor(+el.dataset.gp);
+    el.textContent = (GLYPHS[fam] || GLYPHS.xbox)[el.dataset.glyph];
+    el.className = 'glyph g-' + fam + '-' + el.dataset.glyph;
   });
   document.querySelectorAll('[data-padblocked]').forEach(el => { el.hidden = !Pads.blocked; });
   const who = document.querySelectorAll('[data-padwho]');
@@ -133,9 +148,9 @@ function refreshGlyphs() {
   });
 }
 function onPadJoined(gp, slot) {
-  Pads.family = padFamily(gp);
+  Pads.family = Pads.fam[gp.index] = padFamily(gp);
   const player = [0, 1].find(k => { const p = padFor(padSlots(), k); return p && p.ix === gp.index; });
-  toast(`${GLYPHS[Pads.family].name} controller connected` + (player === undefined ? '' : `: it plays ${NAMES[player]}`));
+  toast(`${Pads.family === 'generic' ? 'Controller' : GLYPHS[Pads.family].name + ' controller'} connected` + (player === undefined ? '' : `: it plays ${NAMES[player]}`));
   setKind('pad'); refreshGlyphs();
   rumbleIx(gp.index, 0.4, 0.4, 120);
 }
@@ -190,6 +205,12 @@ function pollInput(dt = 1 / 60) {
   const pads = readPads();
   if (pads.some(p => p && p.s.active)) setKind('pad');
   const solo = cpuSolo();
+  // each player's own device: a controller in use marks its player (keys and touch mark theirs as they are pressed)
+  for (const pd of pads) if (pd && pd.s.active) {
+    Pads.family = Pads.fam[pd.ix] || Pads.family;
+    for (const k of [0, 1]) { const mine = padFor(pads, k); if (mine && mine.ix === pd.ix) Dev.last[k] = 'pad'; }
+  }
+  controlsWatch();
   G.players.forEach((p, i) => {
     if (cpuOn(i)) return; // the computer's presses come from cpuTick (js/cpu/cpu-core.js)
     // 1-player mode: the person can use either player's keys
@@ -217,7 +238,16 @@ function pollInput(dt = 1 / 60) {
     const quiet = G.clock < (Pads.quiet[ix] || 0);
     if (quiet && inMenu && ['ok', 'start', 'back'].some(k => st[k] && !prev[k])) extendArm();
     const pressed = k => st[k] && !prev[k] && !quiet;
-    if (pressed('start')) { Sfx.init(); if (G.mode === 'play') pause(); else if (G.mode === 'paused') resume(); else if (inMenu) primaryAction(); }
+    if (G.mode === 'ready') {
+      // the level's ready card: each controller readies its own player; B goes back
+      if (pressed('back')) menuBack();
+      else if (pressed('ok') || pressed('act') || pressed('start')) {
+        Sfx.init();
+        const k = [0, 1].find(q => { const mine = padFor(pads, q); return mine && mine.ix === ix; });
+        if (k !== undefined) readyPress(k);
+      }
+    }
+    else if (pressed('start')) { Sfx.init(); if (G.mode === 'play') pause(); else if (G.mode === 'paused') resume(); else if (inMenu) primaryAction(); }
     else if (inMenu) {
       if (pressed('ok')) { Sfx.init(); menuActivate(); }
       else if (pressed('back')) { if (!menuBack() && G.mode === 'paused') resume(); }
@@ -238,6 +268,7 @@ function pollInput(dt = 1 / 60) {
     }
     Pads.prev[ix] = st;
   }
+  if (G.mode === 'ready') readyTick();
 }
 
 const MENU_NAV_KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', KeyW: 'up', KeyS: 'down', KeyA: 'left', KeyD: 'right' };
@@ -248,6 +279,12 @@ window.addEventListener('keydown', e => {
   if (GAME_KEYS.has(code) && !inMenu) e.preventDefault();
   if (!e.repeat) Sfx.init();
   setKind('kb');
+  // whose key was that? (in 1-player mode both sets of keys are the person's; Enter and Space also work the menus,
+  // so there they don't count)
+  const set = BIND.findIndex(b => Object.values(b).some(l => l.includes(code)));
+  if (set >= 0 && !(inMenu && (code === 'Enter' || code === 'NumpadEnter' || code === 'Space'))) {
+    if (cpuSolo()) { Dev.last[cpuHuman()] = 'kb'; Dev.keyset = set; } else Dev.last[set] = 'kb';
+  }
   if (code === 'Escape') {
     e.preventDefault();
     if (e.repeat) return;
@@ -256,6 +293,14 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (code === 'KeyM' && !e.repeat) { toggleMute(); return; }
+  // the level's ready card: each player's jump or action key readies them (any of those keys, for one person)
+  if (G.mode === 'ready') {
+    e.preventDefault();
+    if (code === 'Enter' || code === 'NumpadEnter') menuHeld.add(code); // (Bo's action key: not a press once the level starts)
+    if (e.repeat || set < 0 || !(BIND[set].jump.includes(code) || BIND[set].act.includes(code))) return;
+    if (cpuSolo()) { Dev.last[cpuHuman()] = 'kb'; Dev.keyset = set; readyPress(cpuHuman()); } else { Dev.last[set] = 'kb'; readyPress(set); }
+    return;
+  }
   if (code === 'KeyR' && !e.repeat && (G.mode === 'play' || G.mode === 'paused' || G.mode === 'result')) { loadLevel(G.levelIndex); return; }
   if (inMenu && (code === 'Enter' || code === 'Space' || code === 'NumpadEnter')) {
     if (code !== 'Space') menuHeld.add(code);
@@ -296,7 +341,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { rel
 // so you can slide between left and right without lifting
 document.querySelectorAll('.tact').forEach(btn => {
   const p = +btn.dataset.p, k = btn.dataset.k;
-  const set = v => { if (v && !touchState[p][k]) touchTapped[p].set(k, tapClock); touchState[p][k] = v; btn.classList.toggle('on', v); };
+  const set = v => { if (v && !touchState[p][k]) touchTapped[p].set(k, tapClock); touchState[p][k] = v; btn.classList.toggle('on', v); if (v) Dev.last[p] = 'touch'; };
   btn.addEventListener('pointerdown', e => { e.preventDefault(); Sfx.init(); try { btn.setPointerCapture(e.pointerId); } catch (_) {} set(true); });
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => btn.addEventListener(ev, () => set(false)));
   btn.addEventListener('contextmenu', e => e.preventDefault());
@@ -311,7 +356,7 @@ document.querySelectorAll('.tmove').forEach(el => {
     touchState[p].left = l; touchState[p].right = r;
     lb.classList.toggle('on', l); rb.classList.toggle('on', r);
   };
-  el.addEventListener('pointerdown', e => { e.preventDefault(); Sfx.init(); try { el.setPointerCapture(e.pointerId); } catch (_) {} ptrs.set(e.pointerId, sideOf(e)); update(); });
+  el.addEventListener('pointerdown', e => { e.preventDefault(); Sfx.init(); try { el.setPointerCapture(e.pointerId); } catch (_) {} ptrs.set(e.pointerId, sideOf(e)); Dev.last[p] = 'touch'; update(); });
   el.addEventListener('pointermove', e => { if (ptrs.has(e.pointerId)) { ptrs.set(e.pointerId, sideOf(e)); update(); } });
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => el.addEventListener(ev, e => { ptrs.delete(e.pointerId); update(); }));
   el.addEventListener('contextmenu', e => e.preventDefault());
