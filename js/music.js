@@ -50,6 +50,7 @@ const MUSIC_INST = {
   harmonica: { w: 'square', w2: 'sawtooth', det: 9, mix: 0.5, lp: 1900, q: 2, a: 0.04, d: 0.1, s: 0.85, r: 0.1, vol: 0.06, vib: [5.5, 10] },
   brass:     { w: 'sawtooth', w2: 'sawtooth', det: 8, mix: 0.8, lp: 1400, env: 2.2, a: 0.03, d: 0.2, s: 0.75, r: 0.1, vol: 0.075 },
   reed:      { w: 'sawtooth', lp: 2400, q: 4, a: 0.02, d: 0.1, s: 0.9, r: 0.06, vol: 0.06, vib: [6.5, 14] },
+  fiddle:    { w: 'sawtooth', w2: 'sawtooth', det: 6, mix: 0.5, lp: 3200, q: 1.5, a: 0.02, d: 0.08, s: 0.8, r: 0.06, vol: 0.055, vib: [6, 9] },
   strings:   { w: 'sawtooth', w2: 'sawtooth', det: 12, mix: 1, lp: 1100, a: 0.35, d: 0.3, s: 0.8, r: 0.5, vol: 0.026 },
   softpad:   { w: 'triangle', w2: 'sine', det: 6, mix: 1, a: 0.4, d: 0.3, s: 0.9, r: 0.6, vol: 0.045 },
   bass:      { w: 'triangle', w2: 'sine', mix: 0.8, lp: 700, a: 0.006, d: 0.2, s: 0.6, r: 0.08, vol: 0.2 },
@@ -90,11 +91,16 @@ const Music = {
     if (!inLevel) return { song: 'menu', amb: null, rate: 1, duck: 1 };
     const l = LEVELS[G.levelIndex], def = G.level.def;
     if (this.cuedFor !== G.level) { this.cued = null; this.cuedFor = G.level; }
-    const cue = this.cued || {};
+    // a mode can choose by itself: MODES.x.music = () => ({ song, amb }) (30-1 plays each era's own song)
+    const own = G.lmode && typeof G.lmode.music === 'function' ? G.lmode.music() || {} : {};
+    const cue = Object.assign({}, own, this.cued || {});
     const song = cue.song || def.music || l.music || MUSIC_BY_LEVEL[l.name] || MUSIC_BY_WORLD[l.world] || 'base';
     const amb = cue.amb !== undefined ? cue.amb : def.amb !== undefined ? def.amb : l.amb !== undefined ? l.amb
       : AMB_BY_LEVEL[l.name] !== undefined ? AMB_BY_LEVEL[l.name] : AMB_BY_WORLD[l.world] || null;
-    return { song, amb: m === 'result' ? null : amb, rate: l.kind === 'versus' ? 1.06 : 1, duck: m === 'paused' ? 0.35 : m === 'ready' ? 0.6 : 1 };
+    // the levels of a world share its song, each in its own key (and versus levels a little faster), so no two sound quite the same
+    if (this._posOf !== LEVELS.length) { this._pos = {}; const seen = {}; LEVELS.forEach(x => { this._pos[x.name] = seen[x.world] = (seen[x.world] === undefined ? 0 : seen[x.world] + 1); }); this._posOf = LEVELS.length; }
+    const tr = cue.song ? 0 : [0, 2, -2, 3, -3, 5][this._pos[l.name] % 6];
+    return { song, amb: m === 'result' ? null : amb, rate: l.kind === 'versus' ? 1.06 : 1, tr, duck: m === 'paused' ? 0.35 : m === 'ready' ? 0.6 : 1 };
   },
   // a level mode can change the music or ambience part-way through (a boss phase, a new era): Music.cue({ song, amb }).
   // It lasts until the next room or level loads.
@@ -106,7 +112,7 @@ const Music = {
     if (!ctx || ctx.state !== 'running' || typeof SONGS === 'undefined') return;
     const on = !Sfx.muted, want = this.pick(), now = ctx.currentTime;
     const song = on && Sfx.vol.music ? want.song : null, amb = on && Sfx.vol.sfx ? want.amb : null;
-    if (song !== this.name || (this.trk && this.trk.rate !== want.rate && song)) this.start(song, want.rate);
+    if (song !== this.name || (this.trk && song && (this.trk.rate !== want.rate || this.trk.tr !== (want.tr || 0)))) this.start(song, want.rate, want.tr || 0);
     if (this.trk) {
       if (this.trk.duck !== want.duck) { this.trk.duck = want.duck; this.trk.out.gain.setTargetAtTime(this.trk.vol * want.duck, now, 0.15); }
       // rAF stops in a hidden tab: pick the song up from the next bar when the tab comes back
@@ -126,7 +132,7 @@ const Music = {
     setTimeout(() => { try { trk.out.disconnect(); } catch (e) { /* gone already */ } }, fade * 6000 + 300);
   },
   ctx() { return Sfx.ctx; },
-  start(name, rate = 1) {
+  start(name, rate = 1, tr = 0) {
     if (this.trk) { this.stopTrack(this.trk); this.trk = null; }
     this.name = name;
     const song = name && SONGS[name];
@@ -134,7 +140,7 @@ const Music = {
     const ctx = Sfx.ctx, out = ctx.createGain(), vol = song.vol == null ? 1 : song.vol;
     out.gain.setValueAtTime(0, ctx.currentTime); out.gain.setTargetAtTime(vol, ctx.currentTime, 0.2);
     out.connect(Sfx.musicIn);
-    this.trk = { song, out, vol, duck: 1, rate, next: ctx.currentTime + 0.12, bar: 0 };
+    this.trk = { song, out, vol, duck: 1, rate, tr, next: ctx.currentTime + 0.12, bar: 0 };
   },
 
   /* ---------- the sequencer: schedules one bar of the song ---------- */
@@ -155,6 +161,7 @@ const Music = {
   chordStep(root, n) { const o = Math.floor(n / 3); return root + o * 7 + (n - o * 3) * 2; },
   bar(trk) {
     const song = trk.song, bars = this.barsOf(song), B = bars[trk.bar % bars.length], sec = B.sec;
+    const tr = trk.tr || 0;
     const t0 = trk.next, beat = 60 / (song.bpm * trk.rate), len = (song.beats || 4) * beat, out = trk.out, inst = song.inst || {};
     const ch = sec.ch[B.i], chordAt = f => Array.isArray(ch) ? ch[Math.min(ch.length - 1, Math.floor(f * ch.length))] : ch;
     const swing = song.swing || 0;
@@ -170,7 +177,7 @@ const Music = {
         let hold = 1; while (i + hold < n && toks[i + hold] === '-') hold++;
         const m = /^(-?\d+)([#b]?)$/.exec(tk); if (!m) continue;
         const t = at(i, n), end = i + hold >= n ? t0 + len : at(i + hold, n);
-        this.voice(out, t, this.note(song, +m[1], m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + 12 * ((song.oct && song.oct[k]) || 0), (end - t) * 0.92, inst[k], 1);
+        this.voice(out, t, tr + this.note(song, +m[1], m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + 12 * ((song.oct && song.oct[k]) || 0), (end - t) * 0.92, inst[k], 1);
       }
     }
     // bass and arpeggio: chord notes
@@ -183,7 +190,7 @@ const Music = {
         const t = at(i, n), end = i + hold >= n ? t0 + len : at(i + hold, n);
         // the bass sits in its own octave whatever the song's key (its root lands between C2 and B2)
         const shift = k === 'bass' ? 12 * Math.floor((47 - song.root) / 12) : 12 * ((song.oct && song.oct[k]) || 0);
-        this.voice(out, t, this.note(song, this.chordStep(chordAt(i / n), +tk)) + shift, (end - t) * (k === 'bass' ? 0.85 : 0.95), inst[k], 1);
+        this.voice(out, t, tr + this.note(song, this.chordStep(chordAt(i / n), +tk)) + shift, (end - t) * (k === 'bass' ? 0.85 : 0.95), inst[k], 1);
       }
     }
     // chord stabs
@@ -192,13 +199,13 @@ const Music = {
       const toks = this.toks(comp), n = toks.length;
       for (let i = 0; i < n; i++) if (toks[i] === 'x' || toks[i] === 'X') {
         const r0 = chordAt(i / n), r = r0 > 3 ? r0 - 7 : r0, t = at(i, n); // chords high in the scale are played an octave down
-        for (let c = 0; c < 3; c++) this.voice(out, t, this.note(song, this.chordStep(r, c)), len / n * 0.5, inst.comp, toks[i] === 'X' ? 0.8 : 0.6);
+        for (let c = 0; c < 3; c++) this.voice(out, t, tr + this.note(song, this.chordStep(r, c)), len / n * 0.5, inst.comp, toks[i] === 'X' ? 0.8 : 0.6);
       }
     }
     // held chords
     if (inst.pad && part('pad') !== false) {
       const cs = Array.isArray(ch) ? ch : [ch];
-      cs.forEach((r0, j) => { const r = r0 > 3 ? r0 - 7 : r0; for (let c = 0; c < 3; c++) this.voice(out, t0 + j * len / cs.length, this.note(song, this.chordStep(r, c)), len / cs.length * 0.98, inst.pad, 1); });
+      cs.forEach((r0, j) => { const r = r0 > 3 ? r0 - 7 : r0; for (let c = 0; c < 3; c++) this.voice(out, t0 + j * len / cs.length, tr + this.note(song, this.chordStep(r, c)), len / cs.length * 0.98, inst.pad, 1); });
     }
     // drums
     const drums = part('drums');

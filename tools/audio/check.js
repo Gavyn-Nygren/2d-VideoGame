@@ -78,10 +78,10 @@ function wav(b64, sr) {
 
   // --- render every song offline and measure it
   const names = await page.evaluate(() => Object.keys(SONGS));
-  console.log('\nsong        bars  loop(s)  peak   avg(dB)');
+  console.log('\nsong        bars  loop(s)  peak   LUFS');
   for (const name of names) {
     const r = await page.evaluate(async ([name, secs, wantWav]) => {
-      const sr = 44100, off = new OfflineAudioContext(2, sr * secs, sr), live = Sfx.ctx;
+      const sr = 48000, off = new OfflineAudioContext(2, sr * secs, sr), live = Sfx.ctx;
       Sfx.ctx = off; Sfx.build(off);
       const song = SONGS[name], out = off.createGain(); out.gain.value = song.vol == null ? 1 : song.vol; out.connect(Sfx.musicIn);
       Sfx.musicVol.gain.value = 1;
@@ -93,16 +93,26 @@ function wav(b64, sr) {
       const a = buf.getChannelData(0), b = buf.getChannelData(1);
       let peak = 0, sum = 0;
       for (let i = 0; i < a.length; i++) { const v = Math.abs(a[i]); if (v > peak) peak = v; sum += a[i] * a[i]; }
+      // loudness as the ear hears it (ITU-R BS.1770 K-weighting, gated), in LUFS
+      const kw = x => { const y = new Float32Array(x.length); let x1 = 0, x2 = 0, y1 = 0, y2 = 0, z1 = 0, z2 = 0, w1 = 0, w2 = 0;
+        for (let i = 0; i < x.length; i++) {
+          const v = 1.53512485958697 * x[i] - 2.69169618940638 * x1 + 1.19839281085285 * x2 + 1.69065929318241 * y1 - 0.73248077421585 * y2; x2 = x1; x1 = x[i]; y2 = y1; y1 = v;
+          const w = v - 2 * z1 + z2 + 1.99004745483398 * w1 - 0.99007225036621 * w2; z2 = z1; z1 = v; w2 = w1; w1 = w; y[i] = w;
+        } return y; };
+      const ka = kw(a), kb = kw(b), blk = Math.floor(sr * 0.4), hop = Math.floor(sr * 0.1), ms = [];
+      for (let i = sr; i + blk <= ka.length; i += hop) { let q = 0; for (let j = i; j < i + blk; j++) q += ka[j] * ka[j] + kb[j] * kb[j]; ms.push(q / blk); }
+      const L = v => -0.691 + 10 * Math.log10(v || 1e-12), mean = xs => xs.reduce((p, c) => p + c, 0) / (xs.length || 1);
+      const g1 = ms.filter(v => L(v) > -70), g2 = g1.filter(v => L(v) > L(mean(g1)) - 10), lufs = L(mean(g2));
       const bars = Music.barsOf(song).length;
-      return { vol: song.vol == null ? 1 : song.vol, err, peak, rms: Math.sqrt(sum / a.length), bars, loop: bars * (song.beats || 4) * 60 / song.bpm, pcm: wantWav ? (() => { const i16 = new Int16Array(a.length * 2); for (let i = 0; i < a.length; i++) { i16[i * 2] = Math.max(-1, Math.min(1, a[i])) * 32767; i16[i * 2 + 1] = Math.max(-1, Math.min(1, b[i])) * 32767; }
+      return { lufs, vol: song.vol == null ? 1 : song.vol, err, peak, rms: Math.sqrt(sum / a.length), bars, loop: bars * (song.beats || 4) * 60 / song.bpm, pcm: wantWav ? (() => { const i16 = new Int16Array(a.length * 2); for (let i = 0; i < a.length; i++) { i16[i * 2] = Math.max(-1, Math.min(1, a[i])) * 32767; i16[i * 2 + 1] = Math.max(-1, Math.min(1, b[i])) * 32767; }
         const u8 = new Uint8Array(i16.buffer); let str = ''; for (let i = 0; i < u8.length; i += 32768) str += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(str); })() : null };
     }, [name, SECS, WAV]);
-    const db = 20 * Math.log10(r.rms || 1e-9);
-    console.log(name.padEnd(12) + ('vol ' + (r.vol * Math.pow(10, (-24 - db) / 20)).toFixed(2)).padEnd(10) + String(r.bars).padStart(4) + r.loop.toFixed(1).padStart(8) + r.peak.toFixed(2).padStart(7) + db.toFixed(1).padStart(9));
+    const db = r.lufs, TARGET = -22;
+    console.log(name.padEnd(12) + ('vol ' + (r.vol * Math.pow(10, (TARGET - db) / 20)).toFixed(2)).padEnd(10) + String(r.bars).padStart(4) + r.loop.toFixed(1).padStart(8) + r.peak.toFixed(2).padStart(7) + db.toFixed(1).padStart(9));
     ok(!r.err, name + ' renders' + (r.err ? ': ' + r.err : ''));
     ok(r.peak < 0.95, name + ' does not clip (peak ' + r.peak.toFixed(2) + ')');
-    ok(db > -27 && db < -21, name + ' is about as loud as the others (' + db.toFixed(1) + ' dB)');
-    if (WAV) { fs.mkdirSync(path.join(root, 'build', 'audio'), { recursive: true }); fs.writeFileSync(path.join(root, 'build', 'audio', name + '.wav'), wav(r.pcm, 44100)); }
+    ok(Math.abs(db - TARGET) < 0.8, name + ' is as loud as the others (' + db.toFixed(1) + ' LUFS, target ' + TARGET + ')');
+    if (WAV) { fs.mkdirSync(path.join(root, 'build', 'audio'), { recursive: true }); fs.writeFileSync(path.join(root, 'build', 'audio', name + '.wav'), wav(r.pcm, 48000)); }
   }
 
   // --- every sound effect plays, and its texture layer is looked up, without an error

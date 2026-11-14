@@ -15,7 +15,7 @@ const SONGS = {
       B: { ch: [3, 0, 3, 4], lead: ['5 - 7 - 10 - 9 7', '9 - 7 - 4 - - .', '5 - 7 - 10 - 9 7', '8 - 6 - 8 - 11 -'] },
     },
   },
-  /* ---------- the base level tune: a bouncy adventure, for any world without its own theme ---------- */
+  /* ---------- World 1 Sunny Meadow, and the fallback for a world with no song yet: a bouncy adventure ---------- */
   base: {
     bpm: 120, vol: 0.21, root: 55, scale: 'major', form: ['A', 'A2', 'B', 'A2'],
     inst: { lead: 'lead', bass: 'bass', arp: 'marimba', pad: 'softpad' }, oct: { lead: 1, arp: 1 },
@@ -28,7 +28,7 @@ const SONGS = {
         drums: { k: 'x.......x.......', c: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' } },
     },
   },
-  /* ---------- boss worlds (10, 20, 30): fast, minor, driving ---------- */
+  /* ---------- World 10 Collector's Vault (boss): fast, minor, driving ---------- */
   boss: {
     bpm: 140, vol: 0.39, root: 64, scale: 'minor', form: ['A', 'A', 'B', 'A'],
     inst: { lead: 'brass', bass: 'sawbass', arp: 'chiparp', pad: 'strings' },
@@ -40,7 +40,7 @@ const SONGS = {
         drums: { k: 'x.x.x.x.x.x.x.x.', s: '....x.......x.xx', h: 'xxxxxxxxxxxxxxxx', t: '..............x.' } },
     },
   },
-  /* ---------- World 8 Lucky Casino, World 36 Movie Studio: swing ---------- */
+  /* ---------- World 8 Lucky Casino: swing ---------- */
   casino: {
     bpm: 132, vol: 0.42, root: 53, scale: 'major', swing: 0.3, form: ['A', 'A2'],
     inst: { lead: 'vibes', bass: 'upright', comp: 'pizz' }, oct: { lead: 1 },
@@ -62,9 +62,9 @@ const SONGS = {
       B: { ch: [0, 3, 4, 0], lead: ['9 - 7 9 11 - 9 -', '10 - 12 10 7 - 5 -', '8 - 6 8 11 - 8 6', '7 - - - . . . .'] },
     },
   },
-  /* ---------- World 13 Spooky Hollow, World 25 Zombie Acres: a creepy waltz ---------- */
+  /* ---------- World 13 Spooky Hollow: a creepy waltz ---------- */
   spooky: {
-    bpm: 138, vol: 0.42, beats: 3, root: 62, scale: 'harmonic', form: ['A', 'B'],
+    bpm: 138, vol: 0.40, beats: 3, root: 62, scale: 'harmonic', form: ['A', 'B'],
     inst: { lead: 'whistle', bass: 'pizz', comp: 'harpsi', pad: 'strings' },
     bass: '0 . .', comp: '. x x',
     drums: { t: 'o..', z: '.xx' },
@@ -75,7 +75,7 @@ const SONGS = {
   },
   /* ---------- World 15 Orbit Outpost: slow and floaty ---------- */
   space: {
-    bpm: 84, vol: 0.27, root: 60, scale: 'lydian', form: ['A'],
+    bpm: 84, vol: 0.26, root: 60, scale: 'lydian', form: ['A'],
     inst: { lead: 'whistle', bass: 'bass', arp: 'bell', pad: 'strings' }, oct: { arp: 1 },
     bass: '0 . . . . . 0 .', arp: '0 2 1 2 3 2 1 2 0 2 1 2 3 2 1 2',
     drums: { k: 'x.........x.....', h: '....o.......o...' },
@@ -84,9 +84,9 @@ const SONGS = {
         lead: ['4 - - 6', '8 - - -', '7 - - 4', '3 - - -', '5 - 7 -', '8 - 5 -', '4 - - -', '. . . .'] },
     },
   },
-  /* ---------- World 18 Pirate Cove, World 34 Viking Voyage: a sea jig ---------- */
+  /* ---------- World 18 Pirate Cove: a sea jig ---------- */
   pirate: {
-    bpm: 152, vol: 0.59, beats: 3, root: 62, scale: 'minor', form: ['A', 'A', 'B'],
+    bpm: 152, vol: 0.58, beats: 3, root: 62, scale: 'minor', form: ['A', 'A', 'B'],
     inst: { lead: 'accordion', bass: 'tuba', comp: 'pizz' },
     bass: '0 . . 2 . .', comp: '. x x . x x',
     drums: { k: 'x.....', j: '..x..x', t: '...o..' },
@@ -97,9 +97,9 @@ const SONGS = {
         lead: ['5 - 7 9 - 7', '9 - 7 5 - .', '2 - 4 6 - 4', '6 - 4 2 - .', '3 - 5 7 - 5', '7 - 5 3 - .', '4 - 6 8 - 6', '8 - 6 4 - -'] },
     },
   },
-  /* ---------- World 19 Tumbleweed Gulch, World 23 Barnyard Fair: banjo and harmonica ---------- */
+  /* ---------- World 19 Tumbleweed Gulch: banjo and harmonica ---------- */
   west: {
-    bpm: 126, vol: 0.48, root: 55, scale: 'major', swing: 0.22, form: ['A'],
+    bpm: 126, vol: 0.46, root: 55, scale: 'major', swing: 0.22, form: ['A'],
     inst: { lead: 'harmonica', bass: 'upright', arp: 'banjo' }, oct: { lead: 1, arp: 1 },
     bass: '0 . 2 . 0 . 2 .', arp: '0 2 1 2 3 2 1 2',
     drums: { w: 'x..xx.x.x..xx.x.', z: '..x...x...x...x.' },
@@ -111,7 +111,7 @@ const SONGS = {
   },
   /* ---------- World 22 Coral Deep: dreamy and slow ---------- */
   coral: {
-    bpm: 92, vol: 0.24, root: 63, scale: 'major', form: ['A'],
+    bpm: 92, vol: 0.23, root: 63, scale: 'major', form: ['A'],
     inst: { lead: 'flute', bass: 'bass', arp: 'pluck', pad: 'strings' }, oct: { arp: 1 },
     bass: '0 . . . . . 2 .', arp: '0 1 2 3 4 3 2 1 0 1 2 3 4 3 2 1',
     drums: { z: 'o...o...o...o...' },
@@ -120,9 +120,9 @@ const SONGS = {
         lead: ['4 - 7 -', '6 - 4 -', '5 - 7 10', '9 - - -', '9 - 7 -', '6 - 4 -', '5 - 7 5', '4 - - -'] },
     },
   },
-  /* ---------- World 26 Circus Big Top, World 24 Toy Box Town: an oom-pah march ---------- */
+  /* ---------- World 26 Circus Big Top: an oom-pah march ---------- */
   circus: {
-    bpm: 138, vol: 0.41, root: 60, scale: 'major', form: ['A'],
+    bpm: 138, vol: 0.40, root: 60, scale: 'major', form: ['A'],
     inst: { lead: 'organ', bass: 'tuba', comp: 'pizz' },
     bass: '0 . 2 . 0 . 2 .', comp: '. x . x . x . x',
     drums: { k: 'x...x...x...x...', s: '..x...x...x...xx', H: '..............x.' },
@@ -134,7 +134,7 @@ const SONGS = {
   },
   /* ---------- World 27 Robot Factory: chip-tune electro ---------- */
   robots: {
-    bpm: 128, vol: 0.49, root: 57, scale: 'minor', form: ['A', 'A', 'B', 'A'],
+    bpm: 128, vol: 0.47, root: 57, scale: 'minor', form: ['A', 'A', 'B', 'A'],
     inst: { lead: 'chip', bass: 'sawbass', arp: 'chiparp' }, oct: { lead: 1, arp: 1 },
     bass: '0 . 0 3 0 . 0 3', arp: '0 1 2 3 2 1 0 1 2 3 2 1 0 1 2 3',
     drums: { k: 'x...x...x...x...', c: '....x.......x...', h: '..x...x...x...xx', b: '......o.......o.' },
@@ -145,7 +145,7 @@ const SONGS = {
   },
   /* ---------- World 28 Pyramid Sands: desert reed and hand drums ---------- */
   pyramid: {
-    bpm: 100, vol: 0.34, root: 62, scale: 'phrygdom', form: ['A'],
+    bpm: 100, vol: 0.37, root: 62, scale: 'phrygdom', form: ['A'],
     inst: { lead: 'reed', bass: 'bass', arp: 'pluck' },
     bass: '0 . . 0 . . 2 .', arp: '0 . 2 . 3 . 2 .',
     drums: { D: 'x.....x...x.....', e: '..x.x...x...x.x.', j: '....x.......x...' },
@@ -157,7 +157,7 @@ const SONGS = {
   },
   /* ---------- World 29 Ninja Dojo: koto and big drums ---------- */
   ninja: {
-    bpm: 96, vol: 0.36, root: 57, scale: 'phrygian', form: ['A'],
+    bpm: 96, vol: 0.34, root: 57, scale: 'phrygian', form: ['A'],
     inst: { lead: 'koto', lead2: 'flute', bass: 'bass' }, oct: { lead: 1, lead2: 1 },
     bass: '0 . . . . . . . 2 . . . 0 . . .',
     drums: { t: 'x.....x...x.x...', w: '....x.......x...', T: '..............o.' },
@@ -168,9 +168,9 @@ const SONGS = {
         lead2: ['. . . .', '. . . .', '. . . .', '4 - 3 -', '. . . .', '. . . .', '. . . .', '7 - - -'] },
     },
   },
-  /* ---------- World 37 Medieval Tournament, World 7 Castle Quest: lute, recorder and tabor ---------- */
+  /* ---------- World 37 Medieval Tournament: lute, recorder and tabor ---------- */
   medieval: {
-    bpm: 112, vol: 0.24, root: 62, scale: 'dorian', form: ['A'],
+    bpm: 112, vol: 0.23, root: 62, scale: 'dorian', form: ['A'],
     inst: { lead: 'flute', bass: 'bass', arp: 'pluck' },
     bass: '0 . . . 2 . . .', arp: '0 2 1 2 3 2 1 2',
     drums: { t: 'x.....x.x.......', j: '....x.......x.x.' },
@@ -180,14 +180,280 @@ const SONGS = {
           '4 - 5 7 - 5 4 2', '3 - 5 7 5 3 5 -', '6 - 4 3 1 - 3 -', '0 - - - . . . .'] },
     },
   },
+  /* ================= stage 2: a song for every world ================= */
+  /* World 2 Block Party: marimba and claps */
+  blocks: {
+    bpm: 116, vol: 0.30, root: 60, scale: 'major', form: ['A', 'A', 'B', 'A'],
+    inst: { lead: 'marimba', bass: 'bass', comp: 'pizz' }, oct: { lead: 1 },
+    bass: '0 . . 0 . 2 0 .', comp: '. . x . . x . x',
+    drums: { k: 'x..x..x.x..x..x.', c: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+    sec: {
+      A: { ch: [0, 3, 0, 4], lead: ['0 . 2 . 4 2 0 .', '3 . 5 . 7 5 3 .', '4 . 2 . 0 2 4 7', '8 6 4 6 8 - - .'] },
+      B: { ch: [5, 3, 0, 4], lead: ['9 - 7 5 7 - 5 -', '7 - 5 3 5 - 3 -', '4 - 2 4 7 - 4 -', '6 - 8 6 4 - 6 -'] },
+    },
+  },
+  /* World 3 Fairway Fun: easy-going vibes */
+  fairway: {
+    bpm: 96, vol: 0.37, root: 53, scale: 'major', form: ['A', 'A2'],
+    inst: { lead: 'vibes', bass: 'upright', arp: 'pluck', pad: 'softpad' }, oct: { lead: 1, arp: 1 },
+    bass: '0 . . 0 2 . . .', arp: '. 1 2 . 1 2 . 1',
+    drums: { w: '..x...x...x..x..', z: 'o.x.o.x.o.x.o.x.', k: 'x.......x.......' },
+    sec: {
+      A: { ch: [0, 5, 1, 4], lead: ['4 - - 2 4 - 7 -', '7 - - 5 7 - 9 -', '8 - - 5 3 - 5 -', '4 - 6 - 8 - - .'] },
+      A2: { ch: [0, 5, 1, 4], lead: ['9 - 7 - 4 - 2 -', '7 - 5 - 9 - 7 -', '5 - 3 - 8 - 5 -', '6 - 4 - 1 - - .'] },
+    },
+  },
+  /* World 4 Rumble Park: a head-to-head rocker */
+  rumble: {
+    bpm: 150, vol: 0.47, root: 57, scale: 'minor', form: ['A', 'A', 'B', 'A'],
+    inst: { lead: 'brass', bass: 'sawbass', comp: 'banjo' }, oct: { lead: 1 },
+    bass: '0 0 . 0 0 . 3 0', comp: 'x . . x . . x .',
+    drums: { k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+    sec: {
+      A: { ch: [0, 0, 6, 5], lead: ['0 - 0 2 4 - 2 0', '7 - 4 2 4 - 0 -', '-1 - -1 1 3 - 1 -1', '0 - 2 0 -2 - 0 -'] },
+      B: { ch: [3, 3, 4, 4], lead: ['3 5 7 - 5 3 5 -', '7 - 5 - 3 - 5 -', '4 6 8 - 6 4 6 -', '8 - 6 - 4 - 8 -'],
+        drums: { k: 'x...x...x...x...', s: '....x.......x.xx', h: 'xxxxxxxxxxxxxxxx' } },
+    },
+  },
+  /* World 5 Road Trip: a driving shuffle */
+  roadtrip: {
+    bpm: 136, vol: 0.19, root: 57, scale: 'major', swing: 0.2, form: ['A'],
+    inst: { lead: 'lead', bass: 'bass', comp: 'banjo' }, oct: { lead: 1 },
+    bass: '0 1 2 1 3 1 2 1', comp: '. x . x . x . x',
+    drums: { k: 'x.......x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+    sec: {
+      A: { ch: [0, 0, 3, 0, 4, 3, 0, 4],
+        lead: ['4 - 2 4 5 4 2 -', '0 - 2 - 4 - - .', '5 - 3 5 7 5 3 -', '4 - 2 - 0 - - .',
+          '8 - 6 8 4 - 6 -', '7 - 5 7 3 - 5 -', '4 2 0 2 4 - 7 -', '8 - 6 - 4 - - .'] },
+    },
+  },
+  /* World 6 Backyard Bash: whistling over a ukulele */
+  backyard: {
+    bpm: 124, vol: 0.27, root: 55, scale: 'major', form: ['A', 'A2'],
+    inst: { lead: 'whistle', bass: 'bass', arp: 'pluck' }, oct: { lead: 1, arp: 1 },
+    bass: '0 . . . 2 . . .', arp: '0 2 1 2 0 2 1 2',
+    drums: { z: 'x.x.x.x.x.x.x.x.', w: '....x.......x...', k: 'x.......x.x.....' },
+    sec: {
+      A: { ch: [0, 5, 3, 4], lead: ['4 - 4 2 4 - 7 -', '5 - 5 4 5 - 9 -', '7 - 5 3 5 - 7 -', '8 - 6 4 6 - - .'] },
+      A2: { ch: [0, 2, 3, 4], lead: ['9 - 7 4 7 - 9 -', '9 - 6 4 6 - 9 -', '10 - 7 5 7 - 10 -', '11 - 8 6 8 - - .'] },
+    },
+  },
+  /* World 7 Castle Quest: a harpsichord dance */
+  castle: {
+    bpm: 120, vol: 0.29, beats: 3, root: 62, scale: 'major', form: ['A'],
+    inst: { lead: 'harpsi', bass: 'bass', pad: 'strings' }, oct: { lead: 1 },
+    bass: '0 . 2',
+    drums: { j: 'x..', t: 'o..' },
+    sec: {
+      A: { ch: [0, 4, 5, 3, 0, 3, 4, 0],
+        lead: ['0 2 4 2 7 4', '6 4 1 4 6 8', '9 7 5 7 9 7', '10 7 5 3 5 7', '7 4 2 4 7 9', '10 7 5 7 10 7', '8 6 4 6 8 6', '7 - - - . .'] },
+    },
+  },
+  /* World 9 Great Escapes: run! */
+  escapes: {
+    bpm: 144, vol: 0.39, root: 62, scale: 'harmonic', form: ['A', 'A', 'B'],
+    inst: { lead: 'brass', bass: 'sawbass', arp: 'pizz', pad: 'strings' }, oct: { arp: 1 },
+    bass: '0 . 0 . 0 . 0 2', arp: '0 2 1 2 0 2 1 2 0 2 1 2 0 2 1 2',
+    drums: { k: 'x.......x.x.....', s: '....x.......x...', m: 'x.............x.', h: '..x...x...x...x.' },
+    sec: {
+      A: { ch: [0, 5, 3, 4], lead: ['0 - - 2 4 - - 7', '5 - - 7 9 - 7 5', '3 - - 5 7 - 5 3', '4 - 6 - 8 - 6 4'] },
+      B: { ch: [5, 5, 4, 4], lead: ['9 - 7 - 5 - 7 -', '9 - 10 9 7 - 5 -', '8 - 6 - 4 - 6 -', '8 - 11 8 6 - 4 -'] },
+    },
+  },
+  /* World 11 Summer Games: a stadium fanfare */
+  summer: {
+    bpm: 120, vol: 0.53, root: 58, scale: 'major', form: ['A', 'B'],
+    inst: { lead: 'brass', bass: 'tuba', comp: 'pizz', pad: 'strings' }, oct: { lead: 1 },
+    bass: '0 . . . 2 . . .', comp: '. . x . . . x .',
+    drums: { s: 'x..xx..xx..xx.xx', k: 'x.......x.......', m: 'x...............' },
+    sec: {
+      A: { ch: [0, 3, 0, 4], lead: ['0 . 0 0 4 - - 4', '5 . 5 5 7 - - 5', '4 . 4 4 7 - 9 -', '8 - 6 - 4 - - .'] },
+      B: { ch: [0, 3, [0, 4], 0], lead: ['7 . 7 7 9 - - 7', '10 . 10 9 7 - 5 -', '9 - 7 - 8 - 6 -', '7 - - - . . . .'] },
+    },
+  },
+  /* World 14 Dino Valley: a stomping drum circle */
+  dino: {
+    bpm: 108, vol: 0.47, root: 52, scale: 'dorian', form: ['A'],
+    inst: { lead: 'marimba', bass: 'tuba' }, oct: { lead: 1 },
+    bass: '0 . . 0 . . 0 .',
+    drums: { t: 'x..x..x.x..x....', T: '..x..x....x..xx.', z: 'x.x.x.x.x.x.x.x.', k: 'x.......x.......' },
+    sec: {
+      A: { ch: [0, 0, 6, 0, 3, 3, 0, 0],
+        lead: ['0 . 0 2 . 4 2 .', '4 . 4 5 . 4 2 0', '-1 . -1 1 . 3 1 .', '0 . 2 . 0 - - .',
+          '3 . 3 5 . 7 5 .', '7 . 5 3 . 5 3 .', '4 . 2 0 . 2 4 .', '0 - - - . . . .'] },
+    },
+  },
+  /* World 16 Sugar Rush Factory: fizzy and fast */
+  candy: {
+    bpm: 148, vol: 0.27, root: 60, scale: 'major', form: ['A', 'A', 'B', 'A'],
+    inst: { lead: 'musicbox', lead2: 'chip', bass: 'bass', comp: 'pizz' },
+    bass: '0 . 3 . 0 . 3 .', comp: '. x . x . x . x',
+    drums: { k: 'x...x...x...x...', c: '....x.......x...', z: 'xxxxxxxxxxxxxxxx' },
+    sec: {
+      A: { ch: [0, 4, 5, 3], lead: ['7 . 4 . 7 . 9 .', '8 . 6 . 4 . 6 .', '9 . 7 . 5 . 7 .', '10 9 7 5 7 . 8 .'] },
+      B: { ch: [3, 4, 0, 0], lead: ['5 7 10 7 5 7 10 .', '6 8 11 8 6 8 11 .', '7 9 11 9 7 9 11 .', '14 . 11 . 7 . . .'],
+        lead2: ['3 - - - 5 - - -', '4 - - - 6 - - -', '4 - - - 2 - - -', '0 - - - . . . .'] },
+    },
+  },
+  /* World 17 Jungle Jamboree: a hand-drum groove */
+  jungle: {
+    bpm: 112, vol: 0.25, root: 55, scale: 'major', form: ['A', 'A2'],
+    inst: { lead: 'marimba', lead2: 'flute', bass: 'bass' }, oct: { lead: 1, lead2: 1 },
+    bass: '0 . . 0 . 2 . 0',
+    drums: { T: 'x..x..x...x.x...', t: '....x.......x..x', z: 'x.xxx.xxx.xxx.xx', b: 'x...x...x...x...' },
+    sec: {
+      A: { ch: [0, 3, 4, 3], lead: ['4 . 2 4 . 2 0 .', '5 . 3 5 . 7 5 .', '6 . 4 6 . 8 6 .', '7 . 5 3 . 5 . .'] },
+      A2: { ch: [0, 3, 4, 3], lead: ['7 . 9 7 . 4 7 .', '10 . 7 5 . 7 5 .', '8 . 11 8 . 6 4 .', '5 . 7 5 3 . . .'],
+        lead2: ['4 - - - - - - -', '5 - - - - - - -', '6 - - - - - - -', '5 - - - 3 - - -'] },
+    },
+  },
+  /* World 20 Dragon Peak (boss): heavy and menacing */
+  dragon: {
+    bpm: 126, vol: 0.36, root: 62, scale: 'phrygian', form: ['A'],
+    inst: { lead: 'brass', bass: 'tuba', pad: 'strings', arp: 'pizz' },
+    bass: '0 . . 0 . . 0 0', arp: '0 2 3 2 0 2 3 2 0 2 3 2 0 2 3 2',
+    drums: { m: 'x.....x.x.......', t: '....x.......x.xx', k: 'x...x...x...x...', H: '............x...' },
+    sec: {
+      A: { ch: [0, 1, 0, 1, 3, 1, 0, 0],
+        lead: ['0 - - 0 1 - 0 -', '1 - 3 - 5 - 3 1', '0 - - 0 3 - 4 -', '5 - 3 - 1 - 3 -',
+          '3 - 5 - 7 - 5 3', '5 - 3 - 1 - -1 1', '0 - 4 - 7 - 4 -', '0 - - - . . . .'] },
+    },
+  },
+  /* World 21 Sky Kingdom: a floating waltz */
+  sky: {
+    bpm: 132, vol: 0.20, beats: 3, root: 62, scale: 'major', form: ['A'],
+    inst: { lead: 'flute', bass: 'bass', arp: 'pluck', pad: 'softpad' }, oct: { lead: 1, arp: 1 },
+    bass: '0 . .', arp: '0 1 2 3 2 1',
+    drums: { z: 'o.x.x.' },
+    sec: {
+      A: { ch: [0, 2, 3, 4, 0, 5, 3, 4],
+        lead: ['4 - 7', '9 - 6', '10 9 7', '8 - -', '11 - 9', '7 - 5', '7 5 3', '4 - -'] },
+    },
+  },
+  /* World 23 Barnyard Fair: a fiddle hoedown */
+  barn: {
+    bpm: 144, vol: 0.50, root: 57, scale: 'major', form: ['A'],
+    inst: { lead: 'fiddle', bass: 'upright', comp: 'banjo' }, oct: { lead: 1 },
+    bass: '0 . 2 . 0 . 2 .', comp: '. x . x . x . x',
+    drums: { w: 'x.x.x.x.x.x.x.x.', k: 'x.......x.......', c: '....x.......x...' },
+    sec: {
+      A: { ch: [0, 0, 3, 0, 0, 0, 4, 0],
+        lead: ['0 2 4 2 0 2 4 7', '9 7 4 7 9 7 4 2', '3 5 7 5 3 5 7 10', '9 7 4 2 0 - - .',
+          '7 9 11 9 7 9 11 9', '7 4 2 4 7 4 2 0', '4 6 8 6 4 6 8 6', '7 - 4 - 0 - - .'] },
+    },
+  },
+  /* World 24 Toy Box Town: a music-box march */
+  toybox: {
+    bpm: 116, vol: 0.65, root: 55, scale: 'major', form: ['A'],
+    inst: { lead: 'musicbox', bass: 'pizz', arp: 'bell' }, oct: { arp: 1 },
+    bass: '0 . 2 . 0 . 2 .', arp: '. 1 . 2 . 1 . 2',
+    drums: { w: 'x...x...x...x...', s: '..o...o...o...oo' },
+    sec: {
+      A: { ch: [0, 4, 0, 4, 3, 0, 4, 0],
+        lead: ['4 - 2 - 4 - 7 -', '6 - 4 - 6 - 8 -', '9 - 7 - 4 - 7 -', '8 - 6 - 4 - - .',
+          '10 - 7 - 5 - 7 -', '9 - 7 - 4 - 2 -', '1 - 4 - 6 - 8 -', '7 - - - . . . .'] },
+    },
+  },
+  /* World 25 Zombie Acres: slow dread */
+  zombies: {
+    bpm: 92, vol: 0.34, root: 60, scale: 'harmonic', form: ['A', 'A2'],
+    inst: { lead: 'whistle', bass: 'tuba', arp: 'pizz', pad: 'strings' },
+    bass: '0 . . . 0 . . 2', arp: '0 . 2 . 1 . 2 .',
+    drums: { t: 'x.......x..x....', m: 'x...............', z: '....o.......o...' },
+    sec: {
+      A: { ch: [0, 0, 5, 4], lead: ['0 - - 2', '4 - 3 2', '0 - 2 -', '-1 - 1 -'] },
+      A2: { ch: [0, 0, 5, 4], lead: ['7 - 6 4', '2 - 0 -', '0 - 2 5', '4 - 6 -'] },
+    },
+  },
+  /* World 30 Time Chase (boss): the clock is ticking */
+  timechase: {
+    bpm: 156, vol: 0.45, root: 57, scale: 'harmonic', form: ['A', 'A', 'B'],
+    inst: { lead: 'chip', bass: 'sawbass', pad: 'strings' }, oct: { lead: 1 },
+    bass: '0 . 0 . 0 . 3 .',
+    drums: { w: 'x.x.x.x.x.x.x.x.', k: 'x.......x..x....', s: '....x.......x...' },
+    sec: {
+      A: { ch: [0, 5, 3, 4], lead: ['0 2 4 7 4 2 0 2', '-2 0 2 5 2 0 -2 0', '3 5 7 10 7 5 3 5', '4 6 8 11 8 6 4 6'] },
+      B: { ch: [5, 5, 4, 4], lead: ['9 - 7 - 5 - 7 -', '9 - 12 - 9 - 7 -', '8 - 6 - 4 - 6 -', '8 - 11 - 13 - 11 8'],
+        drums: { w: 'x.x.x.x.x.x.x.x.', k: 'x...x...x...x...', s: '....x.......x.xx' } },
+    },
+  },
+  /* World 31 Shrunk in the Backyard: tiptoe */
+  shrunk: {
+    bpm: 100, vol: 0.65, root: 57, scale: 'harmonic', form: ['A'],
+    inst: { lead: 'pizz', bass: 'tuba', lead2: 'flute' }, oct: { lead: 1, lead2: 1 },
+    bass: '0 . . . 2 . . .',
+    drums: { w: 'x...x...x...x.x.', z: '..o...o...o...o.' },
+    sec: {
+      A: { ch: [0, 0, 4, 4, 0, 3, 4, 0],
+        lead: ['0 . 2 . 4 . 2 .', '0 . . 4 3 2 0 .', '-1 . 1 . 4 . 1 .', '-1 . . 4 3 1 -1 .',
+          '0 . 2 . 4 . 7 .', '5 . 3 . 7 . 5 .', '4 . 6 . 8 6 4 .', '0 - . . 0 . . .'],
+        lead2: ['. . . .', '. . . .', '. . . .', '. . 6 -', '. . . .', '. . . .', '. . . .', '. . 7 -'] },
+    },
+  },
+  /* World 32 Superhero City: a hero's march */
+  hero: {
+    bpm: 132, vol: 0.26, root: 60, scale: 'major', form: ['A', 'B'],
+    inst: { lead: 'brass', bass: 'bass', pad: 'strings', comp: 'pizz' },
+    bass: '0 . 0 0 0 . 0 0', comp: 'x . . x . . x .',
+    drums: { k: 'x.......x.......', s: '....x..x....x.xx', H: 'x...............', h: '..x.x.x...x.x.x.' },
+    sec: {
+      A: { ch: [0, 5, 3, 4], lead: ['0 - 4 - 7 - - 4', '9 - 7 - 5 - - 7', '10 - 7 - 5 - 3 -', '4 - 6 - 8 - - .'] },
+      B: { ch: [0, 2, 3, 4], lead: ['7 - 9 - 11 - - 9', '9 - 11 - 13 - - 11', '12 - 10 - 7 - 10 -', '11 - 8 - 11 - - .'] },
+    },
+  },
+  /* World 33 Storm Chasers: racing the weather */
+  storm: {
+    bpm: 132, vol: 0.37, root: 64, scale: 'minor', form: ['A', 'A2'],
+    inst: { lead: 'brass', bass: 'sawbass', arp: 'pizz', pad: 'strings' },
+    bass: '0 0 0 0 0 0 0 0', arp: '0 1 2 1 0 1 2 1 0 1 2 1 0 1 2 1',
+    drums: { m: 'x.......x.......', k: 'x.....x...x.....', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx' },
+    sec: {
+      A: { ch: [0, 6, 5, 4], lead: ['0 - - - 4 - 2 -', '1 - - - 3 - 1 -', '0 - - - 2 - 0 -', '1 - -1 - 1 - 4 -'] },
+      A2: { ch: [0, 6, 5, 4], lead: ['7 - - 4 7 - 9 -', '8 - - 6 8 - 10 -', '9 - - 7 5 - 7 -', '8 - 6 - 4 - - .'] },
+    },
+  },
+  /* World 34 Viking Voyage: horns over the oars */
+  viking: {
+    bpm: 132, vol: 0.46, beats: 3, root: 62, scale: 'minor', form: ['A'],
+    inst: { lead: 'brass', bass: 'tuba', pad: 'strings' },
+    bass: '0 . . 0 . .',
+    drums: { t: 'x.....', T: '...x.x', m: 'x.....' },
+    sec: {
+      A: { ch: [0, 0, 6, 0, 5, 6, 0, 0],
+        lead: ['0 - - 4 - -', '7 - 6 4 - 2', '1 - - 3 - 1', '0 - - 0 - .', '5 - 7 9 - 7', '8 - 6 8 - 10', '7 - 4 2 - 0', '0 - - - - .'] },
+    },
+  },
+  /* World 35 Wizard Academy: a spell-book waltz */
+  wizard: {
+    bpm: 126, vol: 0.51, beats: 3, root: 64, scale: 'harmonic', form: ['A'],
+    inst: { lead: 'bell', bass: 'pizz', arp: 'pluck', pad: 'strings' }, oct: { lead: 1 },
+    bass: '0 . .', arp: '. 1 2 . 1 2',
+    drums: { j: '..o' },
+    sec: {
+      A: { ch: [0, 0, 5, 4, 0, 3, 4, 0],
+        lead: ['4 - 7 6 - 4', '2 - 0 2 - 4', '5 - 7 9 - 7', '8 - 6 4 - -', '7 - 9 11 - 9', '10 - 7 5 - 3', '4 - 6 8 - 6', '7 - - - - .'] },
+    },
+  },
+  /* World 36 Movie Studio: big-band show time */
+  movie: {
+    bpm: 140, vol: 0.43, root: 52, scale: 'harmonic', swing: 0.28, form: ['A', 'A', 'B'],
+    inst: { lead: 'brass', bass: 'upright', comp: 'vibes' }, oct: { lead: 1, comp: 1 },
+    bass: '0 1 2 1', comp: 'x . . x . . . .',
+    drums: { r: 'x..xx..xx..xx..x', h: '....x.......x...', k: 'x.........x.....', s: '............o...' },
+    sec: {
+      A: { ch: [0, 0, 3, 4], lead: ['0 . 2 4 . 6 7 .', '7 . 6 4 . 2 0 .', '3 . 5 7 . 9 10 .', '8 . 6 4 . 6 8 .'] },
+      B: { ch: [5, 4, 5, 4], lead: ['9 - 7 5 - 7 9 -', '8 - 6 4 - 6 8 -', '9 - 7 5 - 9 12 -', '11 - 8 - 6 - 4 -'] },
+    },
+  },
 };
 
-/* ---------- which world plays which song (world index from 0: World 1 is 0). No entry: 'base'. ----------
+/* ---------- which world plays which song (world index from 0: World 1 is 0). Every world has its own; no entry: 'base'. ----------
    A level can pick its own with `music: 'name'` in its def (and a room with its own def.music), or by name here. */
 const MUSIC_BY_WORLD = {
-  6: 'medieval', 7: 'casino', 9: 'boss', 11: 'winter', 12: 'spooky', 14: 'space', 17: 'pirate', 18: 'west', 19: 'boss',
-  21: 'coral', 22: 'west', 23: 'circus', 24: 'spooky', 25: 'circus', 26: 'robots', 27: 'pyramid', 28: 'ninja', 29: 'boss',
-  33: 'pirate', 35: 'casino', 36: 'medieval',
+  0: 'base', 1: 'blocks', 2: 'fairway', 3: 'rumble', 4: 'roadtrip', 5: 'backyard', 6: 'castle', 7: 'casino', 8: 'escapes', 9: 'boss',
+  10: 'summer', 11: 'winter', 12: 'spooky', 13: 'dino', 14: 'space', 15: 'candy', 16: 'jungle', 17: 'pirate', 18: 'west', 19: 'dragon',
+  20: 'sky', 21: 'coral', 22: 'barn', 23: 'toybox', 24: 'zombies', 25: 'circus', 26: 'robots', 27: 'pyramid', 28: 'ninja', 29: 'timechase',
+  30: 'shrunk', 31: 'hero', 32: 'storm', 33: 'viking', 34: 'wizard', 35: 'movie', 36: 'medieval',
 };
 const MUSIC_BY_LEVEL = {};
 

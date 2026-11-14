@@ -44,7 +44,7 @@ button[aria-pressed="true"] small { color: var(--dim); }
     <div class="vol">Sounds <button class="pill" id="volSfx" type="button"></button></div>
     <button class="pill" id="stop" type="button">Stop</button>
   </div>
-  <section><h2>Music</h2><p>Head-to-head levels play their world's song a little faster.</p><div class="grid" id="songs"></div></section>
+  <section><h2>Music</h2><p>Every world has its own song. Each level of a world plays it in a different key, and head-to-head levels play it a little faster.</p><div class="grid" id="songs"></div></section>
   <section><h2>Ambience</h2><p>A quiet bed under a level. It can play together with a song.</p><div class="grid small" id="ambs"></div></section>
   <section><h2>Sound effects</h2><p>The shared sounds every level uses.</p><div class="grid small" id="sfx"></div></section>
   <section><h2>Textures</h2><p>A layer added to a level's own sound by the words in its name: a sound called Splash gets water, Crash gets a heavy thud, Gold gets a sparkle. About 800 of the game's 2,400 level sounds pick one up.</p><div class="grid small" id="tex"></div></section>
@@ -53,7 +53,7 @@ button[aria-pressed="true"] small { color: var(--dim); }
 'use strict';
 const WORLD_NAMES = /*WORLD_NAMES*/;
 /*AUDIO*/
-const SONG_INFO = { menu: 'Title screen and menus', base: 'Any world without its own song yet' };
+const SONG_INFO = { menu: 'Title screen and menus' };
 const $ = id => document.getElementById(id), VOL = ['Off', 'Low', 'Medium', 'High'];
 Music.force = { song: null, amb: null };
 const cap = s => s[0].toUpperCase() + s.slice(1);
