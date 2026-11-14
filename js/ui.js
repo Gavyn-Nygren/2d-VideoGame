@@ -10,24 +10,18 @@ const nameSpan = k => `<span class="nm-${k === 0 ? 'pip' : 'bo'}">${NAMES[k]}</s
 let stageScale = 1;
 const hudBig = () => stageScale < 0.6;
 
+// top-bar legend per level: def.legend = { pip, bo } replaces a player's whole keyboard line (HTML with <kbd> keys), or
+// { jump, down } replaces just those words; { pad } is an optional hand-written controller line. Each player's line is
+// then shown in their own buttons (js/controls.js: a keyboard line is rewritten for a controller or touch player).
+function setLegend(lg) { Legend.cur = lg || null; legendRender(); refreshGlyphs(); }
 // touch button label, key hints and the pad layout for levels with an action button (def.act)
-// top-bar legend per level: def.legend = { pip, bo, pad } replaces a whole line (HTML), or
-// { jump, down, padJump, padDown } replaces just those words; anything else keeps the default text
-function setLegend(lg) {
-  document.querySelectorAll('[data-leg]').forEach(el => {
-    if (el.dataset.def === undefined) el.dataset.def = el.innerHTML;
-    const k = el.dataset.leg;
-    let h = el.dataset.def;
-    if (lg && lg[k]) h = lg[k];
-    else if (lg && k === 'pad') { if (lg.padJump) h = h.replace(' jump,', ' ' + lg.padJump + ','); if (lg.padDown) h = h.replace('down drops', lg.padDown); }
-    else if (lg) { if (lg.jump) h = h.replace('</kbd> jump', '</kbd> ' + lg.jump); if (lg.down) h = h.replace('</kbd> drop', '</kbd> ' + lg.down); }
-    if (el.innerHTML !== h) el.innerHTML = h;
-  });
-  refreshGlyphs();
-}
 function setActUI(on) {
-  const root = document.documentElement, label = actLabel();
-  document.querySelectorAll('[data-actlabel]').forEach(el => { el.textContent = label; });
+  const root = document.documentElement;
+  // each player's own word where the label sits on their touch button or in their legend line
+  document.querySelectorAll('[data-actlabel]').forEach(el => {
+    const box = el.closest('[data-p]') || el.closest('[data-legp]');
+    el.textContent = actLabel(box ? +(box.dataset.p !== undefined ? box.dataset.p : box.dataset.legp) : undefined);
+  });
   if (root.classList.contains('act-on') !== on) { root.classList.toggle('act-on', on); if (root.classList.contains('has-touch')) fit(); }
   if (on) fitActLabels();
 }
@@ -51,22 +45,21 @@ function fitMatchCard() {
   card.classList.remove('tight');
   if (overlay.scrollHeight > overlay.clientHeight + 1) card.classList.add('tight');
 }
-// each player's own device: a player with a controller assigned is shown its button, whoever pressed last
+// each player's own device: 'kb', 'pad' or 'touch' (playerDevice in js/controls.js has the controller family too).
+// It also remembers that player's controller for a glyph() call without an id right after it (older level code).
 function actKey(id) {
-  if (padFor(padSlots(), id)) return 'pad';
-  return document.documentElement.classList.contains('has-touch') && Pads.lastNonPad === 'touch' ? 'touch' : 'kb';
+  if (isCpuPlayer(id)) { Pads.ctxFam = null; return 'kb'; }
+  const d = playerDevice(id);
+  Pads.ctxFam = d.family;
+  return d.kind;
 }
-// one line for the level intro card: how to use the action button
-// def.act.padGlyph names another controller button here (e.g. 'a' where A does the action for a seated role)
+// one line for the level intro card: how to use the action button, in each player's own buttons
 function actHintLine() {
-  if (cpuSolo()) {
-    const h = cpuHuman(), k = actKey(h), a = G.level && G.level.def.act, lab = actLabel(h);
-    return k === 'pad' ? 'Press ' + glyph((a && a.padGlyph) || 'act') + ' to ' + lab : k === 'touch' ? 'Tap the round button to ' + lab : 'Press F or / to ' + lab;
-  }
-  const ks = [0, 1].map(actKey), a = G.level && G.level.def.act, pg = glyph((a && a.padGlyph) || 'act');
-  const one = (k, how) => { const lab = actLabel(k); return how === 'pad' ? pg + ' to ' + lab : how === 'touch' ? 'round button to ' + lab : (k === 0 ? 'F' : '/') + ' to ' + lab; };
-  if (ks[0] === ks[1] && ks[0] !== 'kb' && actLabel(0) === actLabel(1)) return ks[0] === 'pad' ? 'Press ' + one(0, 'pad') : 'Tap the ' + one(0, 'touch');
-  return NAMES[0] + ': ' + one(0, ks[0]) + '     ' + NAMES[1] + ': ' + one(1, ks[1]);
+  const one = k => (playerDevice(k).kind === 'touch' ? 'round button' : btnLabel(k, 'act')) + ' to ' + actLabel(k);
+  if (cpuSolo()) { const h = cpuHuman(); return (playerDevice(h).kind === 'touch' ? 'Tap the ' : 'Press ') + one(h); }
+  const ks = [0, 1].map(k => playerDevice(k));
+  if (ks[0].kind !== 'kb' && ks[0].kind === ks[1].kind && ks[0].family === ks[1].family && actLabel(0) === actLabel(1)) return (ks[0].kind === 'touch' ? 'Tap the ' : 'Press ') + one(0);
+  return NAMES[0] + ': ' + one(0) + '     ' + NAMES[1] + ': ' + one(1);
 }
 
 /* small notices (controller connected, etc.) */
@@ -132,29 +125,6 @@ function menuBack() { const b = overlay.hidden ? null : overlay.querySelector('[
 const kindTag = (k, l) => k === 'versus' ? '<span class="tag versus">Versus</span>' : l && l.pong ? '<span class="tag team">vs Robo</span>' : '<span class="tag team">Team</span>';
 // (the title, world map and world pages are in js/home.js)
 
-// the action button's keys, for cards (only levels with def.act)
-function actKeysHTML() {
-  if (cpuSolo()) return actKeysSoloHTML();
-  const l0 = esc(actLabel(0)), l1 = esc(actLabel(1)), lab = l0 === l1 ? l0 : `<span class="nm-pip">Pip</span> ${l0}, <span class="nm-bo">Bo</span> ${l1}`;
-  const a = G.level && G.level.def.act, pg = esc((a && a.padGlyph) || 'act');
-  // mixed input (one on a controller, one on the keyboard or touch): each player's own key, shown whatever the page mode
-  const ks = [actKey(0), actKey(1)];
-  if (ks[0] !== ks[1]) {
-    const one = k => { const l = k ? l1 : l0; return ks[k] === 'pad' ? `<span data-glyph="${pg}"></span> ${l}` : ks[k] === 'touch' ? `round button ${l}` : `<kbd>${k ? '/' : 'F'}</kbd> ${l}`; };
-    return `<p class="act-keys"><span><b class="nm-pip">Pip</b> ${one(0)}</span><span><b class="nm-bo">Bo</b> ${one(1)}</span></p>`;
-  }
-  // both on controllers, or both on touch: just that line (a touch page with pads would show the touch line too)
-  if (ks[0] === 'pad') return `<p class="act-keys"><span><span data-glyph="${pg}"></span> ${lab}</span></p>`;
-  if (ks[0] === 'touch') return `<p class="act-keys"><span>Round button: ${lab}</span></p>`;
-  return `<p class="act-keys"><span class="kb-only"><b class="nm-pip">Pip</b> <kbd>F</kbd> ${l0}</span><span class="kb-only"><b class="nm-bo">Bo</b> <kbd>/</kbd> ${l1}</span><span class="pad-only"><span data-glyph="${pg}"></span> ${lab}</span><span class="touch-only">Round button: ${lab}</span></p>`;
-}
-// 1-player mode: the person's action key (either player's key works), and the computer's word for its own job
-function actKeysSoloHTML() {
-  const h = cpuHuman(), c = 1 - h, lh = esc(actLabel(h)), lc = esc(actLabel(c)), k = actKey(h);
-  const a = G.level && G.level.def.act, pg = esc((a && a.padGlyph) || 'act');
-  const mine = k === 'pad' ? `<span data-glyph="${pg}"></span> ${lh}` : k === 'touch' ? `round button ${lh}` : `<kbd>F</kbd> or <kbd>/</kbd> ${lh}`;
-  return `<p class="act-keys"><span>${nameSpan(h)} ${mine}</span>${lc !== lh ? `<span>${nameSpan(c)} (computer) ${lc}</span>` : ''}</p>`;
-}
 function pause() {
   if (G.mode !== 'play') return;
   G.mode = 'paused';
@@ -188,7 +158,7 @@ function showPauseCard() {
 // the pause card's "You play Pip..." note and action keys (redrawn when the Players setting changes on the card)
 function pauseWhoHTML() {
   const l = LEVELS[G.levelIndex], tip = (G.level && G.level.def.tip) || l.tip, note = cpuTipNote(tip);
-  return (note ? `<p class="hint">${esc(note)}</p>` : '') + (l.act ? actKeysHTML() : '');
+  return (note ? `<p class="hint">${esc(note)}</p>` : '') + controlsLinesHTML();
 }
 function resume() { if (G.mode !== 'paused') return; G.mode = 'play'; hideOverlay(); G.players.forEach(p => { p.prevJump = true; p.prevAct = true; }); }
 
@@ -394,15 +364,18 @@ overlay.addEventListener('click', e => {
   if (!b) return;
   Sfx.init();
   const a = b.dataset.act;
-  if (a === 'start') { G.results = []; loadLevel(0); }
-  else if (a === 'level') loadLevel(+b.dataset.i);
+  // (from a menu a level opens on its ready card: startLevel, js/controls.js)
+  if (a === 'start') { G.results = []; startLevel(0); }
+  else if (a === 'level') startLevel(+b.dataset.i);
+  else if (a === 'ready') { const k = +b.dataset.p; if (e.pointerType === 'touch') Dev.last[k] = 'touch'; readyPress(k); b.blur(); }
+  else if (a === 'ready-back') readyBack();
   else if (a === 'next') {
     const i = G.levelIndex;
     if (lastInWorld(i)) showWorldDone(LEVELS[i].world); // the last world gets its card too; its button opens the final card
     else if (i + 1 >= LEVELS.length) showFinal();
-    else loadLevel(i + 1);
+    else startLevel(i + 1);
   }
-  else if (a === 'world') loadLevel(worldLevels(+b.dataset.w)[0]);
+  else if (a === 'world') startLevel(worldLevels(+b.dataset.w)[0]);
   else if (a === 'final') showFinal();
   else if (a === 'replay') loadLevel(G.levelIndex, 'play', { rematch: b.dataset.rematch === '1' });
   else if (a === 'modeact') hook('pauseAct', b.dataset.arg);

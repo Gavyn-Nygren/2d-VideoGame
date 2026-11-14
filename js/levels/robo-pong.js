@@ -226,8 +226,7 @@ function pongStep(dt) {
 }
 
 function pongKeys(id) {
-  const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-  const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
+  const how = actKey(id), touch = how === 'touch', pad = how === 'pad'; // (each player's own device: js/controls.js)
   return pad ? 'stick ↑ ↓' : touch ? '▲ ▼' : id === 0 ? 'W  S' : '↑  ↓';
 }
 // a paddle with a face: Pip and Bo stretched tall, and Robo

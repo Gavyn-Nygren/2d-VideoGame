@@ -13,7 +13,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 | **Pip** (orange) | W A S D | F or E |
 | **Bo** (blue) | Arrow keys | / or . or Enter |
 
-- **Controllers:** Xbox and most other gamepads work. Action is X, RB or RT. If a controller isn't picked up in the online demo, download the game and open `index.html` straight from your computer.
+- **Controllers:** Xbox, PlayStation, Switch and most other gamepads work, and the game shows the buttons of the one you hold. Action is X (□ on PlayStation), RB or RT. If a controller isn't picked up in the online demo, download the game and open `index.html` straight from your computer.
 - **Touch:** on-screen buttons show up on phones and tablets.
 - **Pick any level:** press Play, choose a world, and every level shows a little moving preview of what happens in it.
 - **1 player:** on the title screen pick "1 player + computer", choose who you play, and the computer plays the other character: a teammate in team levels, your opponent in versus levels (Easy, Normal or Hard). You can use either set of keys.
@@ -77,6 +77,7 @@ Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md
 | `js/levels/world4/` to `world33/` | One file per level, with its rules, sounds and drawing |
 | `js/cpu/` | The computer player for 1-player mode: `cpu-core.js` (settings and the brain framework), `cpu-nav.js` (path finding), and one brain per level in `js/cpu/levels/` |
 | `js/input.js` | Keyboard, controllers and touch buttons |
+| `js/controls.js` | Which device each player uses, matching button prompts, the top-bar legend, the ready card before a level |
 | `js/ui.js` | Result cards, pause screen, controls legend, notices |
 | `js/render.js` | Shared drawing: background, tiles, players, HUD, particles |
 | `js/previews/` | The little animated scene of each level on the world pages: `preview-core.js` (the drawing kit) and one file per world |
