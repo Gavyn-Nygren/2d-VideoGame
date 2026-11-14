@@ -1010,13 +1010,18 @@ function vineDrawHero(k, o) {
     ctx.beginPath(); ctx.ellipse(-5 + kick, 13, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(5 - kick, 13, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill();
   }
+  // the outfit (js/outfits.js): the body box below is the outfit frame's own (feet at y 13), already flipped to face
+  const ofo = { face: 1, vx: pose === 'fly' || pose === 'hang' ? 200 : 0 };
+  outfitBehind(k, 0, 13, 22, 26, ofo);
   // ears (Bo) / sprout (Pip)
   if (k === 1) { ctx.fillStyle = col; ctx.strokeStyle = dk; ctx.lineWidth = 2; for (const ex of [-7, 7]) { circle(ex, -12, 4.6); ctx.fill(); ctx.stroke(); } }
   ctx.fillStyle = col; ctx.strokeStyle = dk; ctx.lineWidth = 2.4;
   if (pose === 'tuck') { circle(0, 0, 13); ctx.fill(); ctx.stroke(); }
   else { rr(-11, -13, 22, 26, 8); ctx.fill(); ctx.stroke(); }
   ctx.fillStyle = 'rgba(255,255,255,0.22)'; rr(-8, -10, 8, 9, 4); ctx.fill();
-  if (k === 0) { ctx.strokeStyle = '#3f8f5c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -13); ctx.lineTo(1, -18); ctx.stroke(); ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(5, -19, 5, 2.5, -0.5, 0, Math.PI * 2); ctx.fill(); }
+  if (pose !== 'tuck') drawOutfit(k, 'body', 0, 13, 22, 26, ofo);
+  const lift = outfitSproutLift(k);
+  if (k === 0 && !lift) { ctx.strokeStyle = '#3f8f5c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -13 - lift); ctx.lineTo(1, -18 - lift); ctx.stroke(); ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(5, -19 - lift, 5, 2.5, -0.5, 0, Math.PI * 2); ctx.fill(); }
   if (pose === 'tuck') { ctx.strokeStyle = dk; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(0, 2, 10, 0.3, Math.PI - 0.3); ctx.stroke(); }
   // mud spots
   if (o.mud) { ctx.fillStyle = 'rgba(122,82,40,0.85)'; circle(-5, 6, 3); ctx.fill(); circle(6, 2, 2.4); ctx.fill(); circle(2, 10, 2); ctx.fill(); circle(-8, -4, 1.8); ctx.fill(); }
@@ -1033,6 +1038,8 @@ function vineDrawHero(k, o) {
     else { ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0.5, ey + 4, 2.8, 0.2, Math.PI - 0.2); ctx.stroke(); }
   }
   ctx.fillStyle = 'rgba(255,120,140,0.45)'; circle(-7, ey + 5, 1.9); ctx.fill(); circle(9, ey + 5, 1.9); ctx.fill();
+  drawOutfit(k, 'head', 0, 13, 22, 26, ofo); drawOutfit(k, 'front', 0, 13, 22, 26, ofo);
+  if (k === 0 && lift) { ctx.strokeStyle = '#3f8f5c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -12 - lift); ctx.lineTo(1, -18 - lift); ctx.stroke(); ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(5, -19 - lift, 5, 2.5, -0.5, 0, Math.PI * 2); ctx.fill(); }
   ctx.lineCap = 'butt';
   ctx.restore();
 }

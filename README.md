@@ -55,6 +55,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 33. **Storm Chasers** (chase wild weather: outrun a tornado in a storm van, climb out of a flash flood, cross a blizzard roped together and spin as twisters): Tornado Alley Run, Flash Flood Climb, Blizzard Whiteout, Twister Tag
 34. **Viking Voyage** (Vikings on a voyage north: outrun a sea serpent, raid an ice fortress, feed a starving mead hall and race longships): Sea Serpent Chase, Ice Fortress Raid, Mead Hall Feast Brawl, Longship Race
 35. **Wizard Academy** (one long level at a wizard school: ten magic classes, a final exam against an ink monster and a graduation duel): Moonwick Academy
+36. **Movie Studio** (stunt performers at a chaotic film studio where some things are fake and some are very real: film a car chase, stop a runaway tour tram, fall off a skyscraper and win the live stunt show): Car Chase, Take One, Backlot Tram Runaway, Stunt Double Fall, Stunt Show Showdown
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
@@ -65,6 +66,7 @@ Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md
 | `index.html` | The page: top bar, game screen, touch buttons, and the list of scripts in load order |
 | `css/style.css` | All styling |
 | `js/core.js` | Shared constants, colors, themes, small helpers |
+| `js/outfits.js`, `js/outfits-worlds.js` | Outfits for Pip and Bo per world, level or room (the parts library, and what Worlds 1-31 wear) |
 | `js/saving.js` | Best times and settings saved in the browser |
 | `js/audio.js` | The sound effects engine |
 | `js/player.js` | Pip and Bo: movement, collisions, jumping, stomps, respawns, and the cord between them |
