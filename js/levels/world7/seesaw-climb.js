@@ -1108,8 +1108,7 @@ Sfx.extra.seesawNudge = function (pitch) { this.tone(520 * pitch, 0.08, 'triangl
 // 1-player mode: the computer plays this character (it gets no key prompts or "Your turn!" nudges)
 const seesawCpu = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
 function seesawKeys(id) {   // the player's own jump key (like golfKeys)
-  const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-  const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
+  const how = actKey(id), touch = how === 'touch', pad = how === 'pad'; // (each player's own device: js/controls.js)
   return pad ? glyph('a') : touch ? '▲' : id === 0 ? 'W' : '↑';
 }
 

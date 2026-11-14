@@ -423,8 +423,7 @@ function drawBuildHUD() {
   pill(14, 46, 104, 26);
   text('Round ' + (B.round + 1) + ' of ' + B.rounds, 28, 59.5, 13, C.gold, 'left', 'body');
   // builder's controls, along the bottom
-  const touch = document.documentElement.classList.contains('has-touch');
-  const hasPad = Pads.kind === 'pad' && padFor(padSlots(), B.builder);
+  const how = actKey(B.builder), touch = how === 'touch', hasPad = how === 'pad'; // (the builder's own device: js/controls.js)
   const keysTxt = hasPad ? 'stick move   ' + glyph('a') + ' turn   down faster'
     : touch ? '\u25c0 \u25b6 move   \u25b2 turn   \u25bc faster'
     : (B.builder === 0 ? 'A D move   W turn   S faster' : '\u2190 \u2192 move   \u2191 turn   \u2193 faster');

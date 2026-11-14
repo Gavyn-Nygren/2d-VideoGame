@@ -477,8 +477,7 @@
   function plinkoKeys(id, what) {
     // 1 player + computer: the computer's part of the hint says what it does instead of which keys to press
     if (typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id)) return what === 'aim' ? 'rolls and drops' : what === 'fall' ? 'leans to the shine' : 'slides the paddles';
-    const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-    const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
+    const how = actKey(id), touch = how === 'touch', pad = how === 'pad'; // (each player's own device: js/controls.js)
     const A = pad ? glyph('a') : '';
     if (what === 'aim') return pad ? 'stick roll · ' + A + ' drop' : touch ? '◀ ▶ roll · ▲ or ▼ drop' : id === 0 ? 'A D roll · S drop' : '← → roll · ↓ drop';
     if (what === 'fall') return pad ? 'stick lean · ' + A + ' hop · down = fast' : touch ? '◀ ▶ lean · ▲ hop · ▼ fast' : id === 0 ? 'A D lean · W hop · S fast' : '← → lean · ↑ hop · ↓ fast';

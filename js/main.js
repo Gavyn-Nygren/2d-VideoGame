@@ -51,6 +51,7 @@ function roomDef(def, k) {
   return Object.assign({}, def, def.rooms[k], { roomIndex: k, roomCount: def.rooms.length });
 }
 // opts.rematch: a best-of-N rematch skips the level intro card and goes straight to "Round 1"
+// opts.ready: the level waits on its ready card until every person has readied up (startLevel, js/controls.js)
 function loadLevel(i, mode = 'play', opts = {}) {
   G.levelIndex = i;
   G.room = 0;
@@ -59,7 +60,7 @@ function loadLevel(i, mode = 'play', opts = {}) {
   applyTheme(LEVELS[i].world, L.def.theme);
   G.held = null; G.stretch = 0; G.climbHold = 0;
   G.time = 0; G.falls = 0; G.doorHold = 0; G.doorIn = [false, false]; G.clearT = 0;
-  G.introT = mode === 'play' ? 2.6 : 0; G.particles = []; G.taut = false; G.shake = 0;
+  G.introT = mode === 'play' ? 2.6 : 0; G.introQuick = false; G.particles = []; G.taut = false; G.shake = 0;
   G.ropeLen = L.def.tether || 0; G.climbing = false;
   G.spawnPts = L.spawns.map(s => ({ ...s }));
   G.players.forEach((p, k) => {
@@ -95,7 +96,7 @@ function loadLevel(i, mode = 'play', opts = {}) {
   hook('setup', G.mst, L);
   if (G.match) startMatchRound(true);
   cpuReset();
-  if (mode === 'play') hideOverlay();
+  if (mode === 'play') { if (opts.ready) showReadyCard(); else hideOverlay(); }
 }
 
 function step(dt) {
@@ -262,7 +263,7 @@ function nextRoom() {
     const input = p.input;
     Object.assign(p, makePlayer(k), { x: L.spawns[k].x, y: L.spawns[k].y, input, prevJump: true });
   });
-  G.introT = 3.4;
+  G.introT = 3.4; G.introQuick = false;
   applyTheme(LEVELS[G.levelIndex].world, L.def.theme); // a room can have its own def.theme
   Sfx.play('room'); rumble(0, 0.2, 0.4, 120); rumble(1, 0.2, 0.4, 120);
   hook('room', G.room, L);
@@ -456,6 +457,8 @@ window.__pipbo = { PONG, G, LEVELS, loadLevel, nextRoom, BUNGEE, CHAIN, GOLF, st
   MODES, WORLDS, MATCH, C, Sfx, matchRoundEnd, versusEnd, levelClear, showResult, knock, rumble, burst, puff, confetti, applyTheme,
   pollInput, readPad, fit, liveWorlds, worldLevels, levelCode, makePlayer, NO_INPUT, keys,
   // computer partner
+  // controls
+  Dev, Pads, playerDevice, btnLabel, btnHTML, drawBtn, controlsLine, startLevel, readyPress, Ready,
   CPU, cpuBrain, cpuBrainKey, cpuSeek, cpuApplyCfg, cpuSetCfg, cpuNav, cpuNavReach, cpuNavCell, NAV };
 
 fit();

@@ -186,7 +186,7 @@
     try { if (G.level && G.level.def) G.level.def.act = { label: start ? 'push' : 'act', labels: labs }; } catch (e) { /* ignore */ }
     try {
       if (!bobLabelEls || !bobLabelEls.every(o => document.contains(o.el))) bobLabelEls = Array.from(document.querySelectorAll('[data-actlabel]')).map(el => {
-        const box = el.closest('[data-p]') || el.closest('.kb-only') || el.closest('.pad-only');
+        const box = el.closest('[data-p]') || el.closest('[data-legp]') || el.closest('.kb-only') || el.closest('.pad-only');
         const id = box && box.dataset.p !== undefined ? +box.dataset.p : box && box.querySelector('.nm-bo') ? 1 : box && box.querySelector('.nm-pip') ? 0 : -1;
         return { el, id };
       });

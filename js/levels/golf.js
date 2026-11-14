@@ -436,8 +436,7 @@ function drawGolfBall() {
   }
 }
 function golfKeys(id, what) {
-  const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-  const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
+  const how = actKey(id), touch = how === 'touch', pad = how === 'pad'; // (each player's own device: js/controls.js)
   if (what === 'aim') {
     return pad ? 'stick aim   hold ' + glyph('a') + ', let go to swing'
       : touch ? '◀ ▶ aim   hold ▲, let go to swing'

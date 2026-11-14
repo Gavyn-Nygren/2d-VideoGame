@@ -345,8 +345,7 @@ function monSwapBurrow(st, m) {
 }
 // the act key a player sees in hints (same detection as golfKeys)
 function monKey(id) {
-  const touch = document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch';
-  const pad = Pads.kind === 'pad' && padFor(padSlots(), id);
+  const how = actKey(id), touch = how === 'touch', pad = how === 'pad'; // (each player's own device: js/controls.js)
   return pad ? glyph('act') : touch ? 'throw' : id === 0 ? 'F' : '/';
 }
 function monTouchHint() { return document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch'; }
