@@ -153,6 +153,7 @@ function showPauseCard() {
         <button class="ghost" type="button" data-act="menu">Title screen</button>
       </div>
       ${cpuCfgHTML()}
+      ${sysCfgHTML()}
     </div>`);
 }
 // the pause card's "You play Pip..." note and action keys (redrawn when the Players setting changes on the card)
@@ -384,14 +385,41 @@ overlay.addEventListener('click', e => {
   else if (a === 'cpucfg') { const v = b.dataset.v; cpuSetCfg(b.dataset.k, /^\d+$/.test(v) ? +v : v); const pb = overlay.querySelector('[data-primary]'); (pb || b).focus({ preventScroll: true }); }
 });
 
-const muteBtn = document.getElementById('muteBtn');
+/* ---------- settings on the title and pause cards: sound, and real full screen where the browser allows it ---------- */
+const canFullscreen = () => !!(document.fullscreenEnabled && document.documentElement.requestFullscreen);
+function sysCfgHTML() {
+  const full = !!document.fullscreenElement;
+  return `<div class="cpu-cfg sys-cfg"><div class="seg-row" role="group" aria-label="Sound and screen">
+      <button type="button" class="seg" data-act="syscfg" data-k="sound" aria-pressed="${!Sfx.muted}">${Sfx.muted ? 'Sound off' : 'Sound on'}</button>
+      ${canFullscreen() ? `<button type="button" class="seg" data-act="syscfg" data-k="full" aria-pressed="${full}">${full ? 'Full screen on' : 'Full screen off'}</button>` : ''}
+    </div></div>`;
+}
+function sysCfgSync() {
+  const full = !!document.fullscreenElement;
+  overlay.querySelectorAll('[data-act="syscfg"]').forEach(b => {
+    const snd = b.dataset.k === 'sound', on = snd ? !Sfx.muted : full;
+    b.setAttribute('aria-pressed', String(on));
+    b.textContent = (snd ? 'Sound ' : 'Full screen ') + (on ? 'on' : 'off');
+  });
+}
+function setFullscreen(on) {
+  try {
+    const p = on ? (!document.fullscreenElement && document.documentElement.requestFullscreen()) : (document.fullscreenElement && document.exitFullscreen());
+    if (p && p.catch) p.catch(() => toast('Full screen is not available here.'));
+  } catch (e) { toast('Full screen is not available here.'); }
+}
+document.addEventListener('fullscreenchange', sysCfgSync);
 function toggleMute() {
   Sfx.muted = !Sfx.muted;
-  muteBtn.textContent = Sfx.muted ? 'Sound off' : 'Sound on';
-  muteBtn.setAttribute('aria-pressed', String(Sfx.muted));
   store.set('muted', Sfx.muted);
+  sysCfgSync();
 }
-muteBtn.addEventListener('click', () => { Sfx.init(); toggleMute(); muteBtn.blur(); });
+overlay.addEventListener('click', e => {
+  const b = e.target.closest('[data-act="syscfg"]');
+  if (!b) return;
+  Sfx.init();
+  if (b.dataset.k === 'sound') toggleMute(); else setFullscreen(!document.fullscreenElement);
+});
 if (store.get('muted') === true) toggleMute();
 document.getElementById('menuBtn').addEventListener('click', e => {
   Sfx.init();

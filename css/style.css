@@ -1,5 +1,6 @@
-/* Layout: one-screen game cabinet. Slim header with the controls, a 16:9 stage centered in the space left over,
-   and HTML menus laid over the stage. One deliberate look (charcoal cabinet; every menu colour is a variable in :root, so a new scheme is a change to this block only) used in both light and dark. */
+/* Layout: the game fills the whole window. The 16:9 stage is as big as the window allows (black bars on the spare
+   sides), HTML menus are laid over it, and a small Menu button in the top-right corner opens the pause menu.
+   One deliberate look (charcoal) used in both light and dark. */
 :root {
   --cabinet: #17191d;
   --cabinet-2: #22252b;
@@ -28,51 +29,51 @@
   color-scheme: dark;
 }
 html, body { height: 100%; }
-body { background: var(--cabinet); color: var(--paper); font-family: var(--font-body); overflow: hidden; }
+body { margin: 0; background: #0b0c0f; color: var(--paper); font-family: var(--font-body); overflow: hidden; }
 #app {
   height: 100%; box-sizing: border-box; display: flex; flex-direction: column;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
-.bar { display: flex; align-items: center; gap: 8px 22px; flex-wrap: wrap; padding-block: 10px; }
-.brand { font-family: var(--font-display); font-size: 26px; line-height: 1; letter-spacing: 0.02em; white-space: nowrap; }
-.brand .pip, .nm-pip { color: var(--pip); }
-.brand .bo, .nm-bo { color: var(--bo); }
-.brand .amp { color: var(--gold); }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; }
-.legend span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.legend [data-leg] { flex-wrap: wrap; max-width: 100%; }
-.legend b { font-weight: 700; margin-right: 2px; }
-.legend[hidden], .legend [hidden] { display: none !important; }
+.nm-pip { color: var(--pip); }
+.nm-bo { color: var(--bo); }
 kbd {
   font-family: var(--font-body); font-size: 12px; line-height: 1.4; color: var(--paper);
   background: var(--cabinet-2); border: 1px solid var(--line); border-bottom-width: 3px;
   border-radius: 6px; padding: 0 6px; min-width: 12px; text-align: center; display: inline-block;
 }
-.bar-actions { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; }
-.chipbtn {
-  font: 700 13px var(--font-body); color: var(--paper); background: var(--cabinet-2);
-  border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer;
+/* the Menu button over the top-right corner of the game (fit() keeps it in the spare space beside the stage when there
+   is some). See-through until pointed at, hidden while a menu is open. */
+.menu-fab {
+  position: absolute; z-index: 4; top: 8px; right: 8px; display: inline-flex; align-items: center; gap: 7px;
+  height: 34px; padding: 0 12px 0 10px; box-sizing: border-box; cursor: pointer;
+  font: 700 13px var(--font-body); color: var(--paper); background: rgba(23, 25, 29, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 999px; opacity: 0.78; transition: opacity 0.15s, background-color 0.15s;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
-.chipbtn:hover { border-color: var(--muted); }
+.menu-fab:hover, .menu-fab:focus-visible { opacity: 1; background: rgba(23, 25, 29, 0.9); }
+.mf-ico { width: 14px; height: 2px; background: currentColor; border-radius: 2px; box-shadow: 0 -5px 0 currentColor, 0 5px 0 currentColor; }
+.has-touch .menu-fab { height: 44px; min-width: 44px; padding-inline: 14px; }
+.menu-fab.tiny .mf-word { display: none; }
+.menu-fab.tiny { padding: 0; width: 34px; justify-content: center; }
+.has-touch .menu-fab.tiny { width: 44px; }
+.in-menu .menu-fab { display: none; }
 :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 
 .stage-wrap { flex: 1; min-height: 0; position: relative; }
 .stage {
-  position: absolute; left: 0; top: 0; border-radius: 14px; overflow: hidden; background: var(--cabinet-2);
-  box-shadow: 0 0 0 2px var(--line), 0 18px 50px rgba(0, 0, 0, 0.45);
+  position: absolute; left: 0; top: 0; overflow: hidden; background: var(--cabinet-2);
 }
 .stage::after { content: ""; position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .stage.dim::after { opacity: 1; }
 canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
-.overlay { position: absolute; inset: 0 0 14px 0; z-index: 5; display: flex; padding: 16px; overflow: auto; overscroll-behavior: contain; }
+.overlay { position: absolute; inset: 0; z-index: 5; display: flex; padding: 16px; overflow: auto; overscroll-behavior: contain; }
 .overlay[hidden] { display: none; }
 .rotate-tip { display: none; margin: 0 0 10px; font-size: 14px; color: var(--muted); text-align: center; }
 .touch-only, .pad-only { display: none; }
 .use-pad .pad-only { display: revert; }
 .use-pad .kb-only, .use-pad .touch-only { display: none; }
-.use-pad .legend { display: flex; }
 .use-pad .card button:focus { outline: 3px solid var(--gold); outline-offset: 3px; }
 .glyph {
   display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 4px; box-sizing: border-box;
@@ -223,7 +224,6 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 .has-touch.use-kb .touch-only { display: none; }
 /* while a menu is open the pads are faded and can't be pressed, so a stray tap can't pick a menu button */
 .in-menu .tpad { opacity: 0.3; pointer-events: none; }
-.has-touch .chipbtn { min-height: 44px; padding-inline: 16px; }
 .tmove { grid-column: 1 / span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; touch-action: none; }
 .tbtn {
   border-radius: 16px; border: 2px solid rgba(255, 255, 255, 0.55); color: #fff;
@@ -274,13 +274,7 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 .match-card.tight > .eyebrow, .match-card.tight > h2, .fit-card.tight > .eyebrow, .fit-card.tight > h2 { order: -2; }
 .match-card.tight > .actions-row, .fit-card.tight > .actions-row { order: -1; }
 
-@media (max-width: 760px) {
-  .legend { display: none; }
-  .brand { font-size: 22px; }
-}
 @media (max-height: 520px) {
-  .legend { display: none; }
-  .bar { padding-block: 6px; }
   .card { gap: 10px; padding-block: 14px; }
   .card h2 { font-size: 28px; }
   .stats { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
@@ -298,7 +292,6 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 }
 
 /* 1-player mode: the computer's keys and touch buttons are hidden (js/cpu/cpu-core.js) */
-.cpu-pip [data-legp="0"], .cpu-bo [data-legp="1"] { display: none !important; }
 .cpu-pip #padPip, .cpu-bo #padBo { visibility: hidden; }
 .cpu-cfg { display: grid; gap: 8px; }
 .seg-row { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
