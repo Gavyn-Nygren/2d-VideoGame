@@ -78,7 +78,7 @@ const who = opt('who', 'pair'), clumsy = +opt('clumsy', 0), seeds = opt('seeds',
       }
       const m = G.mst, res = G.results[i];
       return { mode: G.mode, t: Math.round(G.time), room: G.room || 0, roomAt, cleared: !!res, stats: m.stats && { bonks: m.stats.bonks, whoas: m.stats.whoas, met: m.stats.wavesMet, coins: m.stats.coins, fixed: m.stats.fixed, splashes: m.stats.splashes, helps: m.stats.helps, roomT: m.stats.roomT.map(x => x && Math.round(x)) },
-        d: m.ship && Math.round(m.ship.d), state: m.state, sail: m.ship && m.ship.sail, aground: !!(m.ship && m.ship.aground), water: m.ship && Math.round(m.ship.water), cpuErrs: [...P.CPU.errs], medal: res && res.stats && res.stats.find(x => x.label === 'Medal') };
+        d: m.ship && Math.round(m.ship.d), state: m.state, sail: m.ship && m.ship.sail, aground: !!(m.ship && m.ship.aground), water: m.ship && Math.round(m.ship.water), cpuErrs: [...P.CPU.errs], medal: res && res.medal && ['none', 'Bronze', 'Silver', 'Gold'][res.medal.tier] };
     }, { who, clumsy, seed, maxT, key });
     console.log(`s${seed} ${who}${who === 'noisy' || who !== 'pair' ? ' clumsy/person=' + ['Pip', 'Bo'][clumsy] : ''}: ${r.cleared ? 'CLEARED' : 'not cleared'} t=${r.t}s room=${r.room + 1} rooms@${r.roomAt.join(',')} ${JSON.stringify(r.stats)} medal=${r.medal ? r.medal.value : '-'} ship d=${r.d} ${r.state} sail=${r.sail} aground=${r.aground} water=${r.water}${r.cpuErrs.length ? ' CPUERR ' + r.cpuErrs : ''}${errors.length ? ' ERR ' + errors.slice(0, 3).join(' | ') : ''}`);
   }

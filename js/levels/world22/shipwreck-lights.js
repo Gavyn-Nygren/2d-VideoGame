@@ -42,8 +42,9 @@
    the serving hatch, a hidden key, bobbing urchins, a lever, a second pufferfish), Captain's Cabin (sleepy anemones
    with a lever on one door, a zigzag of prickly coral, a crate, a key on the bookshelf, an anemone + wheel door),
    Treasure Room (a bit of everything, then the chest).
-   Medal: Gold at <= 3:45 with <= 5 bonks and >= 60% of the treasure, Silver at <= 5:30 with <= 14 bonks, else Bronze.
-   Results: Bonks and treasure per player, flashes per player, the medal, the treasure count and the gold help.
+   Medal (MODES.shipwreck.medals, js/medals.js; medalOf is kept for the tools): Gold at <= 3:45 with <= 5
+   bonks and >= 60% of the treasure, Silver at <= 5:30 with <= 14 bonks, else Bronze.
+   Results: Bonks and treasure per player, flashes per player, the treasure count and the gold help.
    Room def: { title, lantern: 0|1, look, tip, news, act, len, exit, items: [...] } with items (world coords, y on
    screen; the ship's ceiling is y 104 and its floor y 476):
      ['wall', x, y, w, h, look]                 solid timber (look: 'wood' | 'crates' | 'table' | 'shelf' | 'pipe')
@@ -791,6 +792,8 @@ const SHIPWRECK = {
 
   MODES.shipwreck = {
     SW,
+    medals: { bronze: 'Find the treasure chest', goals: [{ key: 'time', gold: 225, silver: 330 }, { key: 'bonks', gold: 5, silver: 14, word: 'bonk' }, { key: 'treasure', gold: 0.6, more: true, pct: true, word: 'the treasure' }] },
+    medalValues() { const s = G.mst.stats; return s ? { time: s.time || G.time, bonks: s.bonks[0] + s.bonks[1], treasure: (s.gems[0] + s.gems[1]) / (s.gemsAll || 1) } : {}; },
     need, curStep, solids, isLit, lightAt, lightRad, wx, reachable, job, jobText, medalOf,
     setup(st, L) { setup(st, L); },
     room(k, L) { room(G.mst, L, k); },
@@ -813,7 +816,6 @@ const SHIPWRECK = {
       const st = G.mst, s = st.stats;
       if (!s) return [];
       const b = s.bonks[0] + s.bonks[1], g = s.gems[0] + s.gems[1];
-      const medal = medalOf(st);
       const words = b === 0 ? 'Not one bonk! Brilliant lights and quick claws!' : b <= 5 ? 'Light, grab, swim: lovely teamwork in the dark!' : 'A few bonks, and you found the treasure together!';
       const goldNames = { prickly: 'Gold coral', lever: 'Gold lever', wheel: 'Gold wheel', key: 'Gold key', keyDoor: 'Gold keyhole', glow: 'Gold anemone', puffer: 'Gold pufferfish', crate: 'Gold crate', chest: 'Gold chest' };
       const gold = st.goldUsed.length ? ' · Gold help: ' + [...new Set(st.goldUsed.map(k => goldNames[k] || 'Gold'))].join(', ') : '';
@@ -821,7 +823,6 @@ const SHIPWRECK = {
         { label: 'Bonks', values: s.bonks.slice() },
         { label: 'Treasure grabbed', values: s.gems.slice() },
         { label: 'Flashes', values: s.flashes.slice() },
-        { label: 'Medal', value: medal },
         words + ' Treasure: ' + g + ' of ' + s.gemsAll + gold,
       ];
     },

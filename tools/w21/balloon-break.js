@@ -81,7 +81,7 @@ const SCEN = {
     const s = r.stats;
     console.log(`   zaps ${s.zaps} birds ${s.birds} bonks ${s.bonks} tows ${s.tows} bounces ${s.bounces} sputters ${s.sputters} helps ${s.helps} stars ${s.stars}`);
     for (const m of r.msgs) console.log('   ' + m);
-    if (r.res) console.log('   medal: ' + r.res.find(x => x.label === 'Medal').value);
+    if (r.res) console.log('   medal: ' + (r.res.find(x => x && x.label === 'Medal') || {}).value  /* the medal is now on the results' medal ladder (js/medals.js) */);
     if (errors.length) console.log('   ERRORS: ' + errors.join(' | '));
     await page.close();
   }

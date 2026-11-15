@@ -892,6 +892,10 @@ function grappleMirror(st) {
 }
 
 MODES.grapple = {
+  // the medal (js/medals.js): Gold by 3:45 with 65% of the coins and at most 8 missed hooks; Silver by 5:30 with 35%
+  medals: { bronze: "Reach Captain Polly's flagship", goals: [{ key: 'time', gold: 225, silver: 330 },
+    { key: 'coins', gold: 0.65, silver: 0.35, more: true, pct: true, word: 'the coins' }, { key: 'misses', gold: 8, word: 'missed hook' }] },
+  medalValues() { const s = G.mst.stats; return s ? { coins: s.coinsAll ? s.coins / s.coinsAll : 1, misses: s.misses[0] + s.misses[1] } : {}; },
   GRAPPLE,
   needs: grappleNeeds,
   setup(st, L) {
@@ -929,7 +933,6 @@ MODES.grapple = {
       { label: 'Coins', value: s.coins + ' of ' + s.coinsAll },
       { label: 'Hooks / misses', value: thr + ' / ' + miss },
       { label: 'Splashes & bonks', value: s.splashes + ' & ' + s.bonks },
-      { label: 'Medal', value: grappleMedal(G.time, s) },
     ];
     const hops = s.caught[0] + s.caught[1];
     out.push('Coins: Pip ' + s.coinsBy[0] + ', Bo ' + s.coinsBy[1] + '. First-try catches: ' + s.first + ' of ' + hops + '. Good heaves: Pip ' + s.goodHeaves[0] + ', Bo ' + s.goodHeaves[1] + '.');
@@ -940,12 +943,6 @@ MODES.grapple = {
   test: { rope: grappleRopeMake, ropeAt: grappleRopeAt, ropeU: grappleRopeU, hookMove: grappleHookMove, ring: grappleRing, hand: grappleHand,
     deckY: grappleDeckY, nestY: grappleNestY, onSpot: grappleOnSpot, overDeck: grappleOverDeck, wind: grappleWind, powAt: grapplePowAt },
 };
-// the medal: Gold by 3:45 with 65% of the coins and at most 8 missed hooks; Silver by 5:30 with 35%
-const GRAPPLE_MEDAL = { gold: 225, silver: 330, goldCoins: 0.65, silverCoins: 0.35, goldMiss: 8 };
-function grappleMedal(t, s) {
-  const M = GRAPPLE_MEDAL, f = s.coinsAll ? s.coins / s.coinsAll : 1, miss = s.misses[0] + s.misses[1];
-  return t <= M.gold && f >= M.goldCoins && miss <= M.goldMiss ? 'Gold' : t <= M.silver && f >= M.silverCoins ? 'Silver' : 'Bronze';
-}
 
 /* ---------- drawing ---------- */
 const GRAPPLE_COL = {

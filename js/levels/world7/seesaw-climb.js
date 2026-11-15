@@ -475,6 +475,8 @@ function seesawWallTop(st, dt) {
   }
 }
 MODES.seesaw = {
+  medals: { bronze: 'Reach the top of the castle', goals: [{ key: 'time', gold: 90, silver: 150 }, { key: 'gems', gold: 0.75, more: true, pct: true, word: 'the gems' }] },
+  medalValues() { const st = G.mst; return st && st.gemCount ? { gems: st.gemTotal / st.gemCount } : {}; },
   rand: Math.random,
   setup(st, L) {
     st.stats = { launches: [0, 0], supers: [0, 0], drops: [0, 0], levers: [0, 0], bells: [0, 0], gems: [0, 0], best: 0, bestWho: 0, floorT: [] };

@@ -35,9 +35,9 @@
      and bounce over canals). The panel shows the seconds left; a message says when it runs out. 3 more misses in the
      same stretch earn it again, so a stuck pair keeps getting help but steering and timing still matter.
    IDLE: 25 s with no person pressing anything: "Taking a break", the rickshaw is held still and the clock stops.
-   Scoring: dumplings picked up, spills, stars bonked back. Medal:
+   Scoring: dumplings picked up, spills, stars bonked back. Medal goals (MODES.rickshaw.medals, js/medals.js):
      Gold   = time <= 3:40, at least 75% of the dumplings, and at most 6 spills.
-     Silver = time <= 5:00, at least 50% of the dumplings, and at most 20 spills.   Otherwise Bronze.
+     Silver = time <= 5:00, at least 50% of the dumplings, and at most 20 spills.
    Room def: { title, steer: 0|1, pace, warn, flight, course: [tokens] }. Course tokens (x advances only with fN):
      fN  street for N px                     sN  the slope becomes N percent from here (blends over about 250 px)
      crate:L  barrel:L  hens:L               a low thing in lane L (f far, n near, b both): hop it or swerve
@@ -1011,10 +1011,15 @@
       P.say(R, s, a.x - cx - 30, a.y - cy - 62, col, pulse);
     }
   }
-  const medal = (t, frac, spills) => K.medal(t <= S.goldT && frac >= S.goldBao && spills <= S.goldSpills, t <= S.silverT && frac >= S.silverBao && spills <= S.silverSpills);
 
   MODES.rickshaw = {
-    S, OB, DIRS, compile, plan, medal, gy, slopeAt, riderPt,
+    S, OB, DIRS, compile, plan, gy, slopeAt, riderPt,
+    medals: { bronze: 'Ride the rickshaw down to the dojo', goals: [
+      { key: 'time', gold: S.goldT, silver: S.silverT },
+      { key: 'bao', gold: S.goldBao, silver: S.silverBao, more: true, pct: true, word: 'the dumplings' },
+      { key: 'spills', gold: S.goldSpills, silver: S.silverSpills, word: 'spill' },
+    ] },
+    medalValues() { const st = G.mst, s = st.stats; return s ? { bao: st.bao / (st.totalAll || 1), spills: s.spills } : {}; },
     setup(st, L) {
       st.stats = { bao: 0, spills: 0, crashes: 0, splashes: 0, gates: 0, restocks: 0, hits: 0, thrown: 0, deflects: 0, greats: 0, swings: 0, hops: 0, hopped: 0, jumps: 0, ducked: 0, helps: 0, roomT: [] };
       st.bao = 0; st.inT = [G.time, G.time]; st.personT = G.time;
@@ -1031,16 +1036,14 @@
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const all = st.totalAll || 1, frac = st.bao / all, m = medal(G.time, frac, s.spills);
+      const all = st.totalAll || 1, frac = st.bao / all, gold = G.time <= S.goldT && frac >= S.goldBao && s.spills <= S.goldSpills;
       const out = [
         { label: 'Dumplings', value: st.bao + ' of ' + all },
         { label: 'Spills', value: String(s.spills) },
         { label: 'Stars bonked back', value: s.greats + ' of ' + s.thrown },
-        { label: 'Medal', value: m },
       ];
-      out.push((m === 'Gold' ? 'A perfect delivery: the dojo feast is saved!' : frac >= 0.6 ? 'Most of the dumplings made it to the feast!' : 'You rode the runaway rickshaw all the way down!')
+      out.push((gold ? 'A perfect delivery: the dojo feast is saved!' : frac >= 0.6 ? 'Most of the dumplings made it to the feast!' : 'You rode the runaway rickshaw all the way down!')
         + ' Stars deflected: ' + s.deflects + ' of ' + s.thrown + ', ramp jumps: ' + s.jumps + '.');
-      if (m !== 'Gold') out.push('Gold: ' + K.mmss(S.goldT) + ' or faster, ' + Math.round(S.goldBao * 100) + '% of the dumplings, ' + S.goldSpills + ' spills or fewer.');
       if (s.helps) out.push(K.helpLine(s.helps));
       return out;
     },

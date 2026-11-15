@@ -1219,6 +1219,8 @@
   }
 
   MODES.pizza = {
+    medals: { bronze: 'Deliver to every door', goals: [{ key: 'stars', gold: 11, silver: 8, more: true, text: n => `${n} of 12 stars or more`, gap: (v, n) => `${n - v} more star${n - v === 1 ? '' : 's'}` }, { key: 'time', gold: 150 }] },
+    medalValues() { const s = G.mst.stats; return s ? { stars: pzSum(s.stars) } : {}; },
     rand: Math.random,
     PZ,  // tuning knobs, readable by tests
     hand: pzHand, stackHits: pzStackHits, support: pzSupport, parseRoom: pzParseRoom, key: pzKey, prompts: pzPrompts,

@@ -42,8 +42,9 @@
    itself (slower than every bump's safe speed; ▶ still goes faster, it can't back up) for the rest of that field. It
    only runs while both players are playing, so it never carries a player who has wandered off.
    IDLE: when no person has pressed anything for 15 s the tractor waits ("Taking a break") and the clock stops.
-   Scoring: items delivered to the barns (golden corn counts as one, and is also counted on its own). Medal: Gold at
-   <= 3:45 with >= 70% delivered, Silver at <= 6:30 with >= 50%, else Bronze.
+   Scoring: items delivered to the barns (golden corn counts as one, and is also counted on its own).
+   Medal (MODES.haytractor.medals, js/medals.js; medal() is kept for the tools): Gold at <= 3:45 with >= 70%
+   delivered, Silver at <= 6:30 with >= 50%, else Bronze.
    Room def: { title, drive: 0|1, look: 'meadow'|'patch'|'hills'|'sunset', pace, y0, tip, act, course: [tokens] }.
    Course tokens (x advances only with f and g):
      fN flat road for N px   gN:Y the road rises or falls smoothly to height Y over N px
@@ -1519,6 +1520,8 @@
   const medal = (t, frac) => (t <= 225 && frac >= 0.7 ? 'Gold' : t <= 390 && frac >= 0.5 ? 'Silver' : 'Bronze');
 
   MODES.haytractor = {
+    medals: { bronze: 'Drive to the Big Barn', goals: [{ key: 'time', gold: 225, silver: 390 }, { key: 'delivered', gold: 0.7, silver: 0.5, more: true, pct: true, word: 'the load delivered' }] },
+    medalValues() { const st = G.mst; return st.stats ? { delivered: st.delivered / (st.totalAll || 1) } : {}; },
     S, compile, gy: gyAt, deckTop, head, plan, catchSpot, tc: tcOf, slotPos, key, medal, tractorPose,
     setup(st, L) {
       st.stats = { spills: 0, missed: 0, caught: 0, scooped: 0, helps: 0, honks: 0, shooed: 0, stolen: 0, stops: 0, hard: 0, corn: 0, roomT: [], finishT: 0 };
@@ -1555,7 +1558,6 @@
         { label: 'Delivered', value: st.delivered + ' of ' + all },
         { label: 'Spills', value: String(s.spills) },
         { label: 'Gold corn', value: s.corn + ' of ' + st.cornAll },
-        { label: 'Medal', value: medal(G.time, frac) },
       ];
       const words = frac >= 0.85 ? 'A barn full to the roof. Champion farmers!' : frac >= 0.6 ? 'Hay for every cow and pumpkins for the fair!' : 'You drove the whole way to the Big Barn!';
       out.push(words + ' Caught: ' + s.caught + (s.scooped ? ', scooped: ' + s.scooped : '') + '. Crows shooed: ' + s.shooed + '.');

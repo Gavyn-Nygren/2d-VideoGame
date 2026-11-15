@@ -49,7 +49,7 @@
      back, so test loops must count steps, not G.time). The box waits for its cranker and the yo-yo for its jumper, so
      nobody can climb alone: an idle cranker never pops the lid or hooks the box, and an idle jumper never hauls.
      The clock also stops at the top (the win party), so the results time is the time the trophy was reached.
-   MEDALS (jackboxMedal): Gold ≤ 225 s, ≤ 3 boings, ≥ 55% of the stars and no gold help; Silver ≤ 360 s and ≤ 10 boings;
+   MEDALS (MODES.jackbox.medals, js/medals.js): Gold ≤ 225 s, ≤ 3 boings, ≥ 55% of the stars and no gold help; Silver ≤ 360 s and ≤ 10 boings;
      otherwise Bronze.
    Shelves (roomWord 'Shelf'): Bottom Shelf (books, a ribbon), Toy Shelf (a toy car, a desk fan), Night Light Shelf
      (darker, a swinging mobile, a sleepy cat's tail), Top of the Bookshelf (fan, ribbon, car and mobile; a trophy star
@@ -790,6 +790,11 @@ function jackboxMirror(st) {
 
 MODES.jackbox = {
   JBOX,
+  medals: { bronze: 'Reach the top of the bookshelf', goals: [
+    { key: 'time', gold: 225, silver: 360 }, { key: 'boings', gold: 3, silver: 10, word: 'Boing' },
+    { key: 'stars', gold: 0.55, more: true, pct: true, word: 'the stars' }, { key: 'helps', gold: 0, word: 'gold help', text: 'No gold help' },
+  ] },
+  medalValues() { const st = G.mst, s = st.stats; return s ? { time: s.finishT || G.time, boings: s.boings, stars: s.stars / (st.allStars || 1), helps: s.helps } : {}; },
   plan: jackboxPlan, predict: jackboxPredict, risk: jackboxRisk, key: jackboxKey, power: jackboxPower, need: jackboxNeed, aimX: jackboxAimX,
   // where the computer's speech bubble goes: over where the level draws it
   bubblePos(p) {
@@ -825,14 +830,12 @@ MODES.jackbox = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const t = s.finishT || G.time, all = st.allStars || 1, frac = s.stars / all;
-    const medal = jackboxMedal(t, s.boings, frac, s.helps);
+    const all = st.allStars || 1, frac = s.stars / all;
     const perf = s.notes[0][2] + s.notes[1][2], tot = s.notes[0].reduce((a, b) => a + b, 0) + s.notes[1].reduce((a, b) => a + b, 0);
     const out = [
       { label: 'Stars', value: s.stars + ' of ' + st.allStars },
       { label: 'Boings', value: String(s.boings) },
       { label: 'Best launch', value: s.best + ' cm' },
-      { label: 'Medal', value: medal },
     ];
     const words = frac >= 0.85 && s.boings <= 1 ? 'Star catchers! Right to the top of the bookshelf!' : s.boings <= 3 ? 'Up, up, up the bookshelf. Lovely launching!' : 'Boing, boing... and up! You made it to the top together!';
     out.push(words + ' Cranked on the beat: ' + perf + ' of ' + tot + ' notes Perfect.');
@@ -841,10 +844,6 @@ MODES.jackbox = {
     return out;
   },
 };
-function jackboxMedal(t, boings, frac, helps) {
-  return t <= 225 && boings <= 3 && frac >= 0.55 && helps === 0 ? 'Gold' : t <= 360 && boings <= 10 ? 'Silver' : 'Bronze';
-}
-MODES.jackbox.medal = jackboxMedal;
 
 /* ---------- drawing (world px; drawn after translate(0, -cam)) ---------- */
 const JBOX_LOOK = {

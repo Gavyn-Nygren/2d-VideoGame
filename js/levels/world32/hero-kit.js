@@ -14,7 +14,7 @@
    From SHRUNK (see js/levels/world31/shrunk-kit.js): K.FONT, K.lerp, K.smooth, K.hash, K.mmss, K.stubMap, K.BREAK,
      K.quiet, K.key, K.track, K.both, K.idle, K.actLabels, K.hide, K.unhide, K.place, K.fx, K.pop, K.part, K.spark,
      K.confetti, K.dust, K.poof, K.hint, K.hintOnce, K.msg, K.tickFx, K.star, K.drawParts, K.drawPops, K.chip, K.panel,
-     K.meter, K.medal, K.helpLine, K.drawMsg, K.prompter, K.hero.
+     K.meter, K.helpLine, K.drawMsg, K.prompter, K.hero.
    K.goldHelp(st, text, life)       the gold-help banner (plays cityHelp, counts st.stats.helps).
    Superheroes
      K.suit(id, x, y, o)             Pip or Bo in costume, feet at x, y: cape (behind), body (K.hero), mask, chest star.
@@ -46,7 +46,7 @@ const HEROCITY = (() => {
   const S = SHRUNK, K = { defs: {} };
   for (const k of ['FONT', 'lerp', 'smooth', 'hash', 'mmss', 'stubMap', 'BREAK', 'quiet', 'key', 'track', 'both', 'idle', 'actLabels',
     'hide', 'unhide', 'place', 'fx', 'pop', 'part', 'spark', 'confetti', 'dust', 'poof', 'hint', 'hintOnce', 'msg', 'tickFx', 'star',
-    'drawParts', 'drawPops', 'chip', 'panel', 'meter', 'medal', 'helpLine', 'drawMsg', 'prompter', 'hero']) K[k] = S[k];
+    'drawParts', 'drawPops', 'chip', 'panel', 'meter', 'helpLine', 'drawMsg', 'prompter', 'hero']) K[k] = S[k];
   const TAU = Math.PI * 2, H_ = K.hash;
   const COL = K.COL = {
     night: '#141a3a', nightHi: '#2a3468', dusk: '#f08a4a', brick: '#8a4a3a', brickDark: '#5e2e24', concrete: '#7a7f92',

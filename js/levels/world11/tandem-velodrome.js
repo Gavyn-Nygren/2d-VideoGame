@@ -16,7 +16,7 @@
    Four races, roles swap every race (Pip pedals races 1 and 3, Bo races 2 and 4):
      1 Warm-up Laps (2 rivals)   2 Draft Line (ride behind a bike: less drag)   3 Sprint Finish (bell lap: the drum
      speeds up)   4 Keirin Final (a pace bike leads, nobody may pass it; it pulls off, then sprint).
-   Scored by place, not time (noTime): 1st 3 points, 2nd 2, 3rd 1. A medal per race and one for the level.
+   Scored by place, not time (noTime): 1st 3 points, 2nd 2, 3rd 1. A medal per race, and one for the level (MODES.tandem.medals).
    Gold help (announced): Steady wheels (a wider lean wedge and a slower slide after 2 rail wobbles or 6 trips onto the
    apron in a race),
    Big drum (wider beat windows, and one missed beat is forgiven, after 12 off-beat pedals), Tailwind (25% more speed
@@ -513,6 +513,11 @@ function tandemMirror(st) {
 }
 
 MODES.tandem = {
+  // medal goals for the level (js/medals.js): podium points over the four races (each race's own medal is by place)
+  medals: { bronze: 'Ride all four races', goals: [
+    { key: 'pts', gold: 10, silver: 6, more: true, word: 'podium point' },
+  ] },
+  medalValues() { const s = G.mst.stats; return s ? { pts: s.pts } : {}; },
   TANDEM, xy: tandemXY, need: tandemNeed, shape: tandemShape, key: tandemKey,
   setup(st, L) {
     st.stats = { places: [], pts: 0, strokes: [0, 0], onBeat: [0, 0], leanT: [0, 0], grooveT: [0, 0], rails: 0, aprons: 0,
@@ -548,9 +553,8 @@ MODES.tandem = {
       { label: 'Pedals on the beat %', values: [pct(s.onBeat[0], s.strokes[0]), pct(s.onBeat[1], s.strokes[1])] },
       { label: 'Leaning in the groove %', values: [pct(s.grooveT[0], s.leanT[0]), pct(s.grooveT[1], s.leanT[1])] },
     ];
-    const medal = s.pts >= 10 ? 'Gold' : s.pts >= 6 ? 'Silver' : 'Bronze';
-    const words = medal === 'Gold' ? 'Champions of the boards!' : medal === 'Silver' ? 'A super team ride!' : 'You rode it together!';
-    out.push(medal + ' medal · ' + words);
+    const words = s.pts >= 10 ? 'Champions of the boards!' : s.pts >= 6 ? 'A super team ride!' : 'You rode it together!';
+    out.push(words);
     const bits = [];
     bits.push(s.rails === 0 ? 'No rail wobbles' : s.rails === 1 ? '1 rail wobble' : s.rails + ' rail wobbles');
     if (s.bestStreak >= 8) bits.push(s.bestStreak + ' perfect pedals in a row');

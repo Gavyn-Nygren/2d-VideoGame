@@ -309,6 +309,7 @@ function levelClear() {
   }
   if (G.lmode) rec.stats = modeStats();
   if (G.lmode) { const t = hook('resultTitle'); if (t) rec.title = String(t); }
+  rec.medal = medalAtClear(i, rec); // js/medals.js (null for a level without medal goals)
   G.results[i] = rec;
   if (G.lmode && hook('quietClear')) return; // the mode ended in a loss (e.g. an endless level): no party
   if (rec.pong && !rec.pong.won) { Sfx.play('pointRobo'); return; } // Robo won: no party this time
@@ -473,6 +474,7 @@ window.__pipbo = { PONG, G, LEVELS, loadLevel, nextRoom, BUNGEE, CHAIN, GOLF, st
   // settings
   BIND, PadBind, KEYCAPS, showSettings, readPads, glyph,
   CPU, cpuBrain, cpuBrainKey, cpuSeek, cpuApplyCfg, cpuSetCfg, cpuNav, cpuNavReach, cpuNavCell, NAV };
+window.__pipboMedals = { medalSpec, medalGoalText, medalResult, medalBest };
 
 fit();
 cpuLoadCfg();

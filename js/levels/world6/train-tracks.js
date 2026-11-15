@@ -1418,6 +1418,8 @@ function trainStar(x, y, r) {
 }
 
 MODES.train = {
+  medals: { bronze: 'Get every passenger home', goals: [{ key: 'time', gold: 240, silver: 360 }, { key: 'smooth', gold: 1, silver: 0.5, more: true, text: n => n >= 1 ? 'Every trip smooth' : 'Half the trips smooth', show: v => Math.round(v * 100) + '% smooth', gap: (v, n) => n >= 1 ? 'every trip smooth' : 'more smooth trips' }] },
+  medalValues() { const st = G.mst; return st && st.tripsTotal ? { smooth: st.smooth / st.tripsTotal } : {}; },
   rand: Math.random,
   speedMul: 1,                // test knob: multiplies the train's speed (bots); players never see it
   cfg: TRAIN,

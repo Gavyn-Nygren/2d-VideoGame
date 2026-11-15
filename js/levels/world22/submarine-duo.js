@@ -35,7 +35,7 @@
    from halfway), a gold conch (it floats to the claw and Clammy's mouth gets wide). 4 bonks in one tight spot: gold
    bubbles there (bumps are soft and don't count). 20 s at the buoy ring: a gold ring, twice as easy to grab.
    IDLE: when no person has pressed anything for 12 s the sub waits ("Taking a break") and the clock stops.
-   Scoring: pearls (shells 1, Clammy's big pearls 3), bonks, time. Medal: Gold at <= 4:30 with <= 6 bonks and 50% of the
+   Scoring: pearls (shells 1, Clammy's big pearls 3), bonks, time. Medal (MODES.subduo.medals, js/medals.js): Gold at <= 4:30 with <= 6 bonks and 50% of the
    pearls, Silver at <= 7:00 with <= 16 bonks, else Bronze (tuned with bots: a computer pair takes about 3:07,
    prompt-following kid pairs 3:45-4:30, slow kid pairs 6-7 minutes).
    Room def: { title, steer: 0|1, look: 'shallows'|'kelp'|'canyon'|'grotto', tip, act, top, bot, course: [tokens] }.
@@ -905,6 +905,8 @@ function subduoMirror(st) {
 
 MODES.subduo = {
   SUBD,
+  medals: { bronze: 'Steer to the treasure grotto', goals: [{ key: 'time', gold: 270, silver: 420 }, { key: 'bonks', gold: 6, silver: 16, word: 'bonk' }, { key: 'pearls', gold: 0.5, more: true, pct: true, word: 'the pearls' }] },
+  medalValues() { const st = G.mst, s = st.stats; return s ? { bonks: s.bonks, pearls: st.pearls / (st.pearlsAll || 1) } : {}; },
   compile: subduoCompile, ceil: subduoCeil, floor: subduoFloor, plan: subduoPlan, canGrab: subduoCanGrab, lane: subduoLane,
   shoulder: subduoShoulder, clampOff: subduoClampOff, job: subduoJob, key: subduoKey, fit: subduoFit,
   setup(st, L) {
@@ -937,13 +939,11 @@ MODES.subduo = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const t = G.time, all = st.pearlsAll || 1, frac = st.pearls / all;
-    const medal = subduoMedal(t, s.bonks, frac);
+    const all = st.pearlsAll || 1, frac = st.pearls / all;
     const out = [
       { label: 'Pearls', value: st.pearls + ' of ' + all },
       { label: 'Bonks', value: String(s.bonks) },
       { label: 'Toots', value: String(s.toots) },
-      { label: 'Medal', value: medal },
     ];
     const words = frac >= 0.85 ? 'A treasure chest AND a sack of pearls. Super sailors!' : frac >= 0.5 ? 'Down through the reef to the treasure!' : 'You steered all the way to the treasure grotto!';
     out.push(words + ' Grabs: ' + s.grabs + '.');
@@ -951,7 +951,6 @@ MODES.subduo = {
     return out;
   },
 };
-const subduoMedal = (t, bonks, frac) => (t <= 270 && bonks <= 6 && frac >= 0.5 ? 'Gold' : t <= 420 && bonks <= 16 ? 'Silver' : 'Bronze');
 
 /* ---------- drawing ---------- */
 const SUBD_LOOK = {

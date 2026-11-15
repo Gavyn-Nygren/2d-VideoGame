@@ -132,7 +132,8 @@ const worldPageCount = () => Math.max(1, Math.ceil(liveWorlds().length / WORLDS_
 const worldPageOf = w => Math.max(0, Math.floor(liveWorlds().indexOf(w) / WORLDS_PER_PAGE));
 function worldTileHTML(w, focusW) {
   const ls = worldLevels(w), done = ls.filter(levelDone).length, wd = WORLDS[w], kind = worldKind(w);
-  const dots = ls.map(i => `<i class="${levelDone(i) ? 'on' : ''}"></i>`).join('');
+  // one dot per level, filled with the level's best medal (Gavyn: empty until a medal is earned)
+  const dots = ls.map(i => { const b = medalBest(i); return `<i class="${b ? 'm-' + MEDAL_TIERS[b - 1] : ''}"></i>`; }).join('');
   return `<li><button type="button" class="wtile${isBossWorld(w) ? ' boss' : ''}" data-act="openworld" data-w="${w}"${w === focusW ? ' data-primary' : ''}
       aria-label="World ${w + 1}: ${esc(wd.name)}. ${plural(ls.length, 'level')}, ${kind.toLowerCase()}. ${done} played.">
     <span class="thumb"><canvas data-pv="world:${w}" aria-hidden="true"></canvas><span class="wnum">${w + 1}</span>${isBossWorld(w) ? '<span class="bossb">Boss</span>' : ''}</span>
@@ -160,6 +161,7 @@ function showWorlds(focusW) {
       <div class="home-head">
         <button class="ghost back" type="button" data-act="worlds-back" data-back><span aria-hidden="true">◀</span> ${Home.from === 'pause' ? 'Back to the game' : 'Title'}</button>
         <div class="home-title"><p class="eyebrow">${plural(ws.length, 'world')} · ${plural(LEVELS.length, 'level')}</p><h2>Pick a world</h2></div>
+        ${medalTallyHTML(ws.flatMap(worldLevels))}
       </div>
       <div class="wpager${worldPageCount() > 1 ? ' paged' : ''}" data-wpager>${worldPageHTML(Home.page, focusW)}</div>
     </div>`);
@@ -197,7 +199,7 @@ function showWorld(w) {
   const cards = ls.map(i => {
     const l = LEVELS[i], best = levelBest(i), done = levelDone(i), blurb = levelBlurb(i);
     return `<li><button type="button" class="lvl" data-act="level" data-i="${i}" aria-label="Level ${levelCode(i)}: ${esc(l.name)}, ${l.kind === 'versus' ? 'versus' : 'team'}. ${esc(blurb)}">
-      <span class="thumb"><canvas data-pv="level:${i}" aria-hidden="true"></canvas><span class="lcode">${levelCode(i)}</span>${done ? '<span class="ldone" aria-hidden="true">✓</span>' : ''}</span>
+      <span class="thumb"><canvas data-pv="level:${i}" aria-hidden="true"></canvas><span class="lcode">${levelCode(i)}</span>${medalBest(i) ? `<span class="lmedal">${medalSVG(MEDAL_TIERS[medalBest(i) - 1], true, 24)}</span>` : done && !medalSpec(i) ? '<span class="ldone" aria-hidden="true">✓</span>' : ''}</span>
       <span class="lname">${esc(l.name)}</span>
       <span class="lmeta">${kindTag(l.kind, l)}${best ? `<span class="lbest">${esc(best)}</span>` : ''}</span>
       <span class="lblurb">${esc(blurb)}</span>
@@ -214,6 +216,7 @@ function showWorld(w) {
       <div class="actions-row">
         <button class="primary" type="button" data-act="world" data-w="${w}" data-primary>${ls.length > 1 ? `Play World ${w + 1} from ${levelCode(ls[0])}` : `Play ${esc(LEVELS[ls[0]].name)}`}</button>
         <span class="hint">${ls.length > 1 ? 'or pick any level below' : ''}</span>
+        ${medalTallyHTML(ls)}
       </div>
       ${cpuSolo() ? `<p class="hint solo-who">${worldWho(w)}</p>` : ''}
       <ol class="lvl-grid${ls.length === 1 ? ' one' : ''}">${cards}</ol>

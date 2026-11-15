@@ -219,7 +219,7 @@ const { chromium } = require('playwright');
     while (G.mode === 'play' && n < 900 / P.DT) { P.step(P.DT); n++; }
     const tiles = G.lmode.stats();
     ok(G.mode === 'result' || G.mode === 'clear', 'a computer pair clears all four chases', { mode: G.mode, t: Math.round(G.time) });
-    ok(tiles.length === 5 && tiles[0].label === 'Pigs penned' && tiles[3].label === 'Medal' && typeof tiles[4] === 'string', 'results: four tiles and a line', tiles);
+    ok(tiles[0].label === 'Pigs penned' && !tiles.some(x => x && x.label === 'Medal') && typeof tiles[tiles.length - 1] === 'string', 'results: tiles and a line (the medal has its own ladder now)', tiles);
     out.push('pair time ' + G.time.toFixed(1) + ' s, medal ' + M.medalOf(G.mst) + ', chases ' + G.mst.stats.chaseT.map(x => x.toFixed(1)).join(' / '));
     return out;
   });

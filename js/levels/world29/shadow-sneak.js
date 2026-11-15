@@ -43,8 +43,9 @@
        hidden and waiting, it flies to the plan's pebble spot and hoots there like a free pebble (every 6 s at most).
        The thrower still has to walk through every tower door, so it never finishes a post alone.
    IDLE: 12 s with no person pressing anything: "Taking a break" and the clock stops.
-   Scoring: time, times spotted, times caught. Medal: Gold <= 4:30, spotted <= 2 and never caught;
-     Silver <= 7:00 and caught <= 3; else Bronze.
+   Scoring: time, times spotted, times caught. Medal goals (MODES.shadowsneak.medals, js/medals.js): Gold <= 4:30,
+     spotted <= 2 and never caught; Silver <= 7:00 and caught <= 3. MODES.shadowsneak.medal(t, spotted, caught) gives
+     the medal's name from those goals (for the bot tests).
    Room def: { title, sneak: 0|1, posts: [{ w, items: [tokens] }] }. Tokens (x in px from the post's first gatehouse;
    keep guards between 130 and w - 100, hiding spots clear of each other):
      B<x> barrel   D<x> doorway   H<x> hay cart   M<x> bamboo   A<x>:<w> awning shade w px wide
@@ -1104,10 +1105,18 @@
       Pm.say(B, s, th.x - cx, S.ramp - 42, col, pulse);
     }
   }
-  const medal = (t, spotted, caught) => K.medal(t <= 270 && spotted <= 2 && caught === 0, t <= 420 && caught <= 3);
+  const times = n => n + (n === 1 ? ' time' : ' times');
+  const medals = { bronze: 'Sneak past every guard post', goals: [
+    { key: 'time', gold: 270, silver: 420 },
+    { key: 'spotted', gold: 2, text: n => (n ? `Spotted ${times(n)} or fewer` : 'Never spotted'), gap: (v, n) => `spotted ${times(Math.max(1, Math.ceil(v - n)))} fewer` },
+    { key: 'caught', gold: 0, silver: 3, text: n => (n ? `Caught ${times(n)} or fewer` : 'Never caught'), gap: (v, n) => `caught ${times(Math.max(1, Math.ceil(v - n)))} fewer` },
+  ] };
+  const medal = (t, spotted, caught) => [null, 'Bronze', 'Silver', 'Gold'][medalResult(medals, { time: t, spotted, caught }).tier];
 
   MODES.shadowsneak = {
     S, compile, plan, medal, zoneAt, stepGuard, forecast, hopSafe, nextZone,
+    medals,
+    medalValues() { const s = G.mst.stats; return s ? { spotted: s.spotted, caught: s.caught } : {}; },
     setup(st, L) {
       st.stats = { spotted: 0, caught: 0, escapes: 0, pebbles: 0, bonks: 0, hops: 0, slides: 0, owls: 0, posts: 0, clean: 0, helps: 0, roomT: [] };
       st.inT = [G.time, G.time]; st.personT = G.time;
@@ -1128,7 +1137,6 @@
         { label: 'Spotted', value: String(s.spotted) },
         { label: 'Caught', value: String(s.caught) },
         { label: 'Unseen gates', value: s.clean + ' of ' + st.totalPosts },
-        { label: 'Medal', value: medal(G.time, s.spotted, s.caught) },
       ];
       out.push('Pebbles tossed: ' + s.pebbles + '.' + (s.bonks ? ' Guards bonked: ' + s.bonks + '.' : '') + (s.escapes ? ' Chases escaped: ' + s.escapes + '.' : '') + (s.slides ? ' Slides: ' + s.slides + '.' : ''));
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

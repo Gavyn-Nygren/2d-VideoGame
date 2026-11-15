@@ -24,7 +24,8 @@
    GOLD HELP (only while both are playing, announced, counted): 3 slips or spots in a stretch = gold goggles: the drone
      beams get narrower and the ghost's meter lasts twice as long for the rest of the stretch.
    IDLE: no person presses anything for 12 s: "Taking a break", the drones hover still and the clock stops.
-   MEDAL: Gold <= S.goldT with <= 2 slips+spots and >= 70% of the jewels; Silver <= S.silverT with <= 8.
+   MEDAL goals (MODES.roofchase.medals, js/medals.js): Gold <= S.goldT with <= 2 slips+spots and >= 70% of the jewels;
+   Silver <= S.silverT with <= 8.
    MODES.roofchase.plan(st) says what each job should do now (the prompts, the HUD chips and the computer brain read it).
    Everything lives inside this block; sounds are Sfx.extra.roofchase*. */
 (() => {
@@ -734,10 +735,15 @@
       if (Gh.st === 'run') P.say(Gn, s, sx(Gh), sy(Gh), col, pulse);
     }
   }
-  const medal = (t, bad, frac) => K.medal(t <= S.goldT && bad <= 2 && frac >= 0.7, t <= S.silverT && bad <= 8);
 
   MODES.roofchase = {
-    S, compile, plan, medal, predict, roofAt,
+    S, compile, plan, predict, roofAt,
+    medals: { bronze: 'Catch the jewel thief', goals: [
+      { key: 'time', gold: S.goldT, silver: S.silverT },
+      { key: 'bad', gold: 2, silver: 8, text: n => (n ? `${n} or fewer slips and spots` : 'No slips and spots'), gap: (v, n) => `${Math.max(1, Math.ceil(v - n))} fewer slips and spots` },
+      { key: 'jewels', gold: 0.7, more: true, pct: true, word: 'the jewels' },
+    ] },
+    medalValues() { const st = G.mst, s = st.stats; return s ? { bad: s.slips + s.spots, jewels: st.jewel / (st.totalJewel || 1) } : {}; },
     setup(st, L) {
       st.stats = { swings: 0, slips: 0, spots: 0, helps: 0, roomT: [] };
       st.jewel = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
@@ -754,12 +760,10 @@
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const bad = s.slips + s.spots, frac = st.jewel / (st.totalJewel || 1);
       const out = [
         { label: 'Jewels back', value: st.jewel + ' of ' + st.totalJewel },
         { label: 'Web swings', value: String(s.swings) },
         { label: 'Spotted', value: String(s.spots) },
-        { label: 'Medal', value: medal(G.time, bad, frac) },
       ];
       out.push('Slips: ' + s.slips + '. The jewel thief is webbed up and the jewels are going back to the museum!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

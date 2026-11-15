@@ -27,7 +27,7 @@
    STRETCHES (about 35 s each, roles swap): Farm Road, Cornfield Shortcut, Trailer Park, Storm Cellar Dash (darker; the
    van skids down a ramp into a storm cellar as the doors slam).
    GOLD HELP (3 hits in a stretch, only while both are playing): a gold bull-bar, the next 3 road hits are shrugged off.
-   MEDAL: time. Gold <= 175 s, Silver <= 300 s.
+   MEDAL (MODES.tornadorun.medals, js/medals.js): by time. Gold <= 175 s, Silver <= 300 s.
    MODES.tornadorun.plan(st) says what each job should do now (the prompts, the HUD chips and the computer brain read
    it). Sounds are Sfx.extra.tornadorun*. */
 (() => {
@@ -802,10 +802,11 @@
       P.say(P_, str, st.vx - 12 * s, y - 170 * s, col, pulse);
     }
   }
-  const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
 
   MODES.tornadorun = {
-    S, plan, medal, aimA,
+    S, plan, aimA,
+    medals: { bronze: 'Reach the storm cellar', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }] },
+    medalValues() { return {}; },
     setup(st, L) {
       st.stats = { dents: 0, hits: 0, junkHits: 0, batted: 0, cows: 0, bonks: 0, dishes: 0, spins: 0, jumps: 0, helps: 0, roomT: [] };
       st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
@@ -824,7 +825,6 @@
         { label: 'Dents', value: String(s.dents) },
         { label: 'Junk batted', value: String(s.batted) },
         { label: 'Spin-outs', value: String(s.spins) },
-        { label: 'Medal', value: medal(G.time) },
       ];
       out.push('Road hits: ' + s.hits + '. Junk on the roof: ' + s.junkHits + '. Cows bounced home: ' + s.cows + '. Dish saves: ' + s.dishes + '. Everyone made the cellar!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

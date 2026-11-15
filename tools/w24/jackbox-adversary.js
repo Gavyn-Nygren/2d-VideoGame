@@ -139,7 +139,7 @@ const SCEN = {
       line = `${ok ? 'ok  ' : 'BAD '} ${name.padEnd(13)} mid ${JSON.stringify(r.mid)} after reload ${JSON.stringify(r.a)} after another level ${JSON.stringify(r.b)}`;
     } else {
       const cleared = r.mode === 'clear' || r.mode === 'result';
-      const s = r.stats, medal = r.res && r.res.stats ? (r.res.stats.find(x => x.label === 'Medal') || {}).value : '-';
+      const s = r.stats, medal = r.res && r.res.medal ? ['none', 'Bronze', 'Silver', 'Gold'][r.res.medal.tier] : '-';
       ok = sc.want === 'any' || (sc.want === 'clear' && cleared) || (sc.want === 'stuck' && !cleared) || (sc.want === 'slow' && (!cleared || (r.t > 240 && medal === 'Bronze')));
       if (sc.help && !s.helps) ok = false;
       if (sc.pause && cleared && !(r.real - r.t > r.pause - 15)) ok = false;

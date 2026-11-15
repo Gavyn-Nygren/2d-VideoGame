@@ -27,7 +27,8 @@
    GOLD HELP (only while both are playing, announced, counted): caught twice in one stretch = gold sugar dust on the
      crumb dazzles the ants' feelers (zones shrink to 60%) for the rest of the stretch.
    IDLE: no person presses anything for 12 s: "Taking a break", the ants wait and the clock stops.
-   MEDAL: Gold <= S.goldT, caught <= 1 and >= 75% of the sugar; Silver <= S.silverT and caught <= 5.
+   MEDAL goals (MODES.antheist.medals, js/medals.js): Gold <= S.goldT, caught <= 1 and >= 75% of the sugar;
+   Silver <= S.silverT and caught <= 5.
    MODES.antheist.plan(st) says what to do now (go, wait, freeze, lift) by running the ants' own rules a moment ahead;
    the prompts, the HUD chips and the computer brain all read it.
    Everything lives inside this block; sounds are Sfx.extra.antheist*. */
@@ -586,10 +587,15 @@
       P.say(id, s, carrierX(st, id) - cx + (id ? 30 : -30), cr.y - cy - 104, col, pulse);
     }
   }
-  const medal = (t, caught, frac) => K.medal(t <= S.goldT && caught <= 1 && frac >= 0.75, t <= S.silverT && caught <= 5);
 
   MODES.antheist = {
-    S, compile, plan, antAt, medal,
+    S, compile, plan, antAt,
+    medals: { bronze: 'Carry the crumb out of the ant hill', goals: [
+      { key: 'time', gold: S.goldT, silver: S.silverT },
+      { key: 'caught', gold: 1, silver: 5, text: n => (!n ? 'Never caught' : n === 1 ? 'Caught at most once' : `Caught at most ${n} times`), gap: (v, n) => { const d = Math.max(1, Math.ceil(v - n)); return `caught ${d} fewer time${d === 1 ? '' : 's'}`; } },
+      { key: 'sugar', gold: 0.75, more: true, pct: true, word: 'the sugar' },
+    ] },
+    medalValues() { const st = G.mst, s = st.stats; return s ? { caught: s.caught, sugar: st.sugar / (st.totalSugar || 1) } : {}; },
     setup(st, L) {
       st.stats = { caught: 0, lifts: 0, scrapes: 0, helps: 0, roomT: [] };
       st.sugar = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
@@ -606,12 +612,10 @@
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const frac = st.sugar / (st.totalSugar || 1);
       const out = [
         { label: 'Sugar grains', value: st.sugar + ' of ' + st.totalSugar },
         { label: 'Caught', value: String(s.caught) },
         { label: 'Lifts', value: String(s.lifts) },
-        { label: 'Medal', value: medal(G.time, s.caught, frac) },
       ];
       out.push(s.scrapes ? 'Scrapes heard by the ants: ' + s.scrapes + '. Push together to stay quiet!' : 'Not one scrape all the way: perfect teamwork!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

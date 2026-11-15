@@ -1315,6 +1315,8 @@ function carTags(st, a, big) {
 }
 
 MODES.car = {
+  medals: { bronze: 'Park all four times', goals: [{ key: 'time', gold: 105, silver: 180 }, { key: 'cones', gold: 0, silver: 4, word: 'cone' }] },
+  medalValues() { const s = G.mst.stats; return s ? { cones: s.cones } : {}; },
   CFG: CAR, rand: Math.random,
   setup(st, L) {
     st.stats = { steerT: [0, 0], honks: [0, 0], cones: 0, jumps: 0, quacks: 0, swaps: 0, splashes: 0, tows: 0, bumps: 0, perfect: 0, parks: 0 };

@@ -47,7 +47,7 @@ const GC = {
   bonk: { vx: 230, vy: 300, stun: 0.75, slide: 0.3, safe: 1.4 },     // knock() speeds, dizzy time, no second bonk for safe s
   toss: { flight: 1.15, min: 0.9, g: 900, hitW: 22, hitH: 36, lead: 0.2, warn: 0.6 }, // junk: flight s (shadow shows all of it)
   claw: { warn: 0.85, reach: 0.32, grab: 0.28, back: 0.55, w: 26, h: 40 },           // warn = the telegraph before it zips out
-  medal: { gold: { t: 330, bonks: 5 }, silver: { t: 540, bonks: 14 } },              // s and bonks (bots: perfect 3:00, good 4:05-4:40)
+  medal: { gold: { t: 330, bonks: 5 }, silver: { t: 540, bonks: 14 } },              // MODES.collector.medals: s and bonks (bots: perfect 3:00, good 4:05-4:40)
   boss: { s: 0.9 },          // default scale: about 7 tiles wide with his arms, 9 tiles to the top of his hat
 };
 // the nine stolen pieces, one per world (index = world number - 1)
@@ -482,6 +482,12 @@ function gcStep(st, dt) {
 }
 
 MODES.collector = {
+  // medal goals (js/medals.js), from GC.medal: time and bonks
+  medals: { bronze: 'Win all nine pieces back', goals: [
+    { key: 'time', gold: GC.medal.gold.t, silver: GC.medal.silver.t },
+    { key: 'bonks', gold: GC.medal.gold.bonks, silver: GC.medal.silver.bonks, word: 'bonk' },
+  ] },
+  medalValues() { const s = G.mst.stats; return s && s.bonks ? { bonks: s.bonks[0] + s.bonks[1] } : {}; },
   rand: Math.random,   // gameplay randomness (gcRand); tests may swap in a seeded one (MODES.collector.test.seed)
   setup(st, L) { gcInit(st); gcStartPhase(st, L); },
   room(k, L) { gcStartPhase(G.mst, L); },
@@ -501,12 +507,10 @@ MODES.collector = {
 };
 
 function gcStats(st) {
-  const s = st.stats, bonks = s.bonks[0] + s.bonks[1], t = G.time, M = GC.medal;
-  const medal = t <= M.gold.t && bonks <= M.gold.bonks ? 'Gold' : t <= M.silver.t && bonks <= M.silver.bonks ? 'Silver' : 'Bronze';
+  const s = st.stats, bonks = s.bonks[0] + s.bonks[1];
   const out = [
     { label: 'Pieces won back', value: gcPiecesWon(st) + ' / 9' },
     { label: 'Bonks', values: [s.bonks[0], s.bonks[1]] },
-    { label: 'Trophy', value: medal },
   ];
   const lines = [], seen = new Set();
   for (const r of LEVELS[G.levelIndex].rooms || []) {
@@ -517,8 +521,8 @@ function gcStats(st) {
     if (tile) out.push(tile);
     if (line) lines.push(line);
   }
-  // one short line (a phone shows it without scrolling): the trophy, the phases' fun fact, his rematch wish
-  out.push(medal + ' trophy! ' + (bonks === 0 ? 'Not one bonk. ' : bonks <= 4 ? 'Hardly a bonk. ' : '') + lines.map(l => l + '. ').join('') + 'He wants a rematch!');
+  // one short line (a phone shows it without scrolling): the bonks, the phases' fun fact, his rematch wish (the medal: MODES.collector.medals)
+  out.push((bonks === 0 ? 'Not one bonk. ' : bonks <= 4 ? 'Hardly a bonk. ' : '') + lines.map(l => l + '. ').join('') + 'He wants a rematch!');
   return out;
 }
 

@@ -654,6 +654,17 @@ function glacierArc(a, b, u, h) {
 }
 
 MODES.glacier = {
+  // medal goals (js/medals.js): bonks, and for Gold three quarters of the snowflakes (the soft stop counts too)
+  medals: { bronze: 'Slide down the glacier', goals: [
+    { key: 'bonks', gold: 2, silver: 10, word: 'bonk' },
+    { key: 'flakes', gold: 0.75, more: true, pct: true, word: 'the snowflakes' },
+  ] },
+  medalValues() {
+    const s = G.mst.stats;
+    if (!s) return {};
+    const max = s.maxFlakes.reduce((a, b) => a + (b || 0), 0) + GLACIER.softStop;
+    return { bonks: s.bonks, flakes: max > 0 ? s.flakes / max : 0 };
+  },
   rand: Math.random,
   GLACIER,
   compile: glacierCompile, gy: glacierGY, ahead: glacierAhead, key: glacierKey, feet: glacierFeet,
@@ -696,10 +707,8 @@ MODES.glacier = {
       const b = s.segBonks[best];
       out.push('Smoothest stretch: ' + s.segTitles[best] + (b === 0 ? ', not one bonk!' : b === 1 ? ', just 1 bonk' : ', ' + b + ' bonks'));
     }
-    const ratio = max > 0 ? s.flakes / max : 0;
-    const medal = s.bonks <= 2 && ratio >= 0.75 ? 'Gold' : s.bonks <= 10 ? 'Silver' : 'Bronze';
     const words = s.bonks === 0 ? 'Cool as ice!' : s.bonks <= 4 ? 'Slick sliding!' : 'Brrr-illiant, you made it together!';
-    out.push(medal + ' medal · ' + words);
+    out.push(words);
     return out;
   },
 };

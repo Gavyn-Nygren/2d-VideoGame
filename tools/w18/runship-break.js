@@ -117,7 +117,7 @@ const as = +opt('as', 0), seeds = opt('seeds', '1,2').split(',').map(Number), ma
       const m = G.mst, res = G.results[i];
       return { t: Math.round(G.time), room: G.room || 0, roomAt, cleared: !!res, state: m.state, sail: m.ship && m.ship.sail, aground: !!(m.ship && m.ship.aground),
         stats: m.stats && { bonks: m.stats.bonks, whoas: m.stats.whoas, met: m.stats.wavesMet, coins: m.stats.coins, splashes: m.stats.splashes, helps: m.stats.helps, roomT: m.stats.roomT.map(x => x && Math.round(x)) },
-        medal: res && res.stats && (res.stats.find(x => x.label === 'Medal') || {}).value, cpuErrs: [...P.CPU.errs] };
+        medal: res && res.medal && ['none', 'Bronze', 'Silver', 'Gold'][res.medal.tier], cpuErrs: [...P.CPU.errs] };
     }, { who, as, seed, maxT });
     console.log(`${who.padEnd(10)} as ${['Pip', 'Bo'][as]} s${seed}: ${r.cleared ? 'CLEARED ' + r.t + 's ' + r.medal : 'not cleared (stretch ' + (r.room + 1) + ', ' + r.state + (r.aground ? ', aground' : '') + ', sail ' + r.sail + ')'} rooms@${r.roomAt.join(',')} ${JSON.stringify(r.stats)}${r.cpuErrs.length ? ' CPUERR ' + r.cpuErrs : ''}${errors.length ? ' ERR ' + errors.slice(0, 3).join(' | ') : ''}`);
   }

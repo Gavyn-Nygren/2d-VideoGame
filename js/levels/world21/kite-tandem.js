@@ -29,8 +29,8 @@
    the rest of it. 4 tangles in a stretch: gold gusts for every group left in that stretch. 2 whoopses at one gap: a
    gold plank across it. 12 s on the landing pad without the flag (while the rider plays): a gold gust lifts the kite closer
    to the flag and the flag gets easier to grab (still never without the rider).
-   Scoring: stars and rings (a ring is worth 3 stars), tangles, whoopses, time. Medal: Gold at <= 3:30 with <= 5 tangles
-   + whoopses and 40% of the stars, Silver at <= 5:30 with <= 14, else Bronze.
+   Scoring: stars and rings (a ring is worth 3 stars), tangles, whoopses, time. Medal (MODES.kite.medals, js/medals.js): Gold
+   at <= 3:30 with <= 5 tangles + whoopses and 40% of the stars, Silver at <= 5:30 with <= 14, else Bronze.
    Room def: { title, runner: 0|1, look: 'roofs'|'hill'|'pier'|'bridge', tip, act, course: [tokens] }.
    Course tokens (heights are px above the ground at that spot, lengths in px):
      fN flat   uN:D smooth slope over N px by D (negative = up)   jD step (a wall if up)   gN gap   c chimney/crate/fence
@@ -740,6 +740,8 @@ function kiteMirror(st) {
 
 MODES.kite = {
   KITE,
+  medals: { bronze: 'Fly the kite to the castle', goals: [{ key: 'time', gold: 210, silver: 330 }, { key: 'bumps', gold: 5, silver: 14, text: n => n + ' or fewer tangles and whoopses' }, { key: 'stars', gold: 0.4, more: true, pct: true, word: 'the stars' }] },
+  medalValues() { const st = G.mst, s = st.stats; return s ? { bumps: s.tangles + s.oops, stars: st.stars / (st.starsAll || 1) } : {}; },
   compile: kiteCompile, gy: kiteGy, plan: kitePlan, onPad: kiteOnPad, base: kiteKiteBase, key: kiteKey, obsD: kiteObsD,
   setup(st, L) {
     st.stats = { tangles: 0, oops: 0, flags: 0, helps: 0, dodges: 0, roomT: [], finishT: 0 };
@@ -775,13 +777,11 @@ MODES.kite = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const t = G.time, all = st.starsAll || 1, frac = st.stars / all, bumps = s.tangles + s.oops;
-    const medal = t <= 210 && bumps <= 5 && frac >= 0.4 ? 'Gold' : t <= 330 && bumps <= 14 ? 'Silver' : 'Bronze';
+    const all = st.starsAll || 1, frac = st.stars / all;
     const out = [
       { label: 'Stars', value: st.stars + ' of ' + all },
       { label: 'Rings', value: st.rings + ' of ' + st.ringsAll },
       { label: 'Tangles', value: String(s.tangles) },
-      { label: 'Medal', value: medal },
     ];
     const words = frac >= 0.85 ? 'A sky full of stars. Super flying!' : frac >= 0.5 ? 'Up, up and away to the Sky Kingdom!' : 'You flew the kite all the way to the castle!';
     out.push(words + ' Whoopses: ' + s.oops + ', flags grabbed: ' + s.flags + ' of 4.');

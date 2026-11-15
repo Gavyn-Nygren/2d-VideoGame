@@ -77,8 +77,9 @@
                  between ticks, world inside).   wizDrawStar(x, y, r, col, o)   wizDrawSpellIcon(key, x, y, r)
                  wizCastSound(key)  the spell's chime (the same in the class and in the exam).
      Random      wizRand() (all gameplay randomness; tests seed it). No Math.random in gameplay.
-   STATS. Results card: Time, Record (framework), Oops, Trophy; then "Spells learned 10/10", the duel line and the
-   trophy line. Trophy by play time (G.time; it stops while she waits for an away person) and Oops: WIZ.medal.
+   STATS. Results card: Time, Record (framework), Oops; then "Spells learned 10/10", the duel line and the closing
+   line. Medal (MODES.wizschool.medals from WIZ.medal, js/medals.js) by play time (G.time; it stops while she waits
+   for an away person) and Oops.
    CHECKPOINTS as in 30-1 (store key 'wiz:cp'; World 30's 'tth:cp' is never touched).
    TEST HOOK. window.__pipbo.MODES.wizschool.test: jump(k, { seed, intro }), st(), ph(), phase(), calm(), done(o),
    ending(), bonk(id, o), seed(n), index(), stub(phase), cp(on), cpGet(), cpClear().
@@ -643,6 +644,11 @@ function wizEndStep(st, dt) {
 MODES.wizschool = {
   rand: Math.random,   // gameplay randomness (wizRand); tests may swap in a seeded one (MODES.wizschool.test.seed)
   cpOn: false,         // tests: true makes checkpoints work under G.manual too
+  medals: { bronze: 'Graduate from Moonwick Academy', goals: [
+    { key: 'time', gold: WIZ.medal.gold.t, silver: WIZ.medal.silver.t },
+    { key: 'oops', gold: WIZ.medal.gold.oops, silver: WIZ.medal.silver.oops, word: 'Oops', text: n => n + ' or fewer Oops', gap: (v, n) => Math.max(1, Math.ceil(v - n)) + ' fewer Oops' },
+  ] },
+  medalValues() { return G.mst && G.mst.stats ? { oops: wizOopsN(G.mst) } : {}; },
   setup(st, L) {
     wizInit(st);
     const cp = wizCpOn() ? wizCpGet() : null;
@@ -692,15 +698,11 @@ MODES.wizschool = {
   },
 };
 
-// The results card: the framework's Time and Record tiles, then Oops and Trophy (4 tiles), and two lines.
+// The results card: the framework's Time and Record tiles, then Oops (the medal is js/medals.js's), and two lines.
 const wizOopsN = st => st.stats.oops[0] + st.stats.oops[1] + st.stats.team;
-function wizMedal(st) {
-  const n = wizOopsN(st), t = G.time, M = WIZ.medal;
-  return t <= M.gold.t && n <= M.gold.oops ? 'Gold' : t <= M.silver.t && n <= M.silver.oops ? 'Silver' : 'Bronze';
-}
 function wizStatsOut(st) {
-  const n = wizOopsN(st), medal = wizMedal(st), learned = wizHatStars(st);
-  const out = [{ label: 'Oops', value: n }, { label: 'Trophy', value: medal }];
+  const n = wizOopsN(st), learned = wizHatStars(st);
+  const out = [{ label: 'Oops', value: n }];
   const bits = ['Spells learned ' + learned + '/10'];
   for (const ph of WIZ_ORDER.slice().reverse()) {   // (the duel first: it is the last thing they did)
     const P = WIZ_PHASES[ph];
@@ -710,7 +712,7 @@ function wizStatsOut(st) {
     if (line) bits.push(line);
   }
   out.push(bits.map(l => l + '.').join(' '));
-  out.push(medal + ' trophy! ' + (n === 0 ? 'Not one Oops! ' : '') + 'Pip and Bo are wizards of Moonwick Academy!');
+  out.push((n === 0 ? 'Not one Oops! ' : '') + 'Pip and Bo are wizards of Moonwick Academy!');
   return out;
 }
 

@@ -777,6 +777,9 @@ function heistSetup(st, L) {
 }
 
 MODES.heist = {
+  // medal (js/medals.js): two computers about 2:20 with no whoopses; a clumsy computer partner about 2:40-3:20
+  medals: { bronze: 'Stop the train', goals: [{ key: 'time', gold: 225, silver: 360 }, { key: 'whoops', gold: 4, silver: 12, word: 'whoops' }] },
+  medalValues() { const s = G.mst.stats; return s ? { time: s.time || G.time, whoops: s.whoops[0] + s.whoops[1] } : {}; },
   HEIST,
   front: heistFront, job: heistJob, mayGrab: heistMayGrab, tx: heistTX, inCab: heistInCab, hzBox: heistHzBox, tossV: heistTossV, carAt: heistCarAt,
   setup(st, L) { heistSetup(st, L); },
@@ -800,9 +803,7 @@ MODES.heist = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const wh = s.whoops[0] + s.whoops[1], t = s.time || G.time;
-    // (two computers: about 2:20 with no whoopses; a clumsy computer partner about 2:40-3:20)
-    const medal = t <= 225 && wh <= 4 ? 'Gold' : t <= 360 && wh <= 12 ? 'Silver' : 'Bronze';
+    const wh = s.whoops[0] + s.whoops[1];
     const words = wh === 0 ? 'Not one whoops! Real train-top heroes!' : wh <= 4 ? 'Smooth hopping, partners!' : 'Lots of whoopses, and you got the gold home together!';
     const bonks = s.bonks[0] + s.bonks[1];
     const gold = st.goldUsed.length ? ' · Gold help: ' + st.goldUsed.map(k => ({ sack: 'Gold sack', plank: 'Gold plank' }[k])).join(', ') : '';
@@ -810,7 +811,6 @@ MODES.heist = {
       { label: 'Whoops', values: s.whoops.slice() },
       { label: 'Sacks tossed', values: s.tosses.slice() },
       { label: 'Catches', values: s.catches.slice() },
-      { label: 'Medal', value: medal },
       words + ' Bonks: ' + bonks + ' · Ducked under: ' + s.ducked + gold,
     ];
   },

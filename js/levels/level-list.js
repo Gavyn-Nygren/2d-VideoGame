@@ -14,6 +14,7 @@
 const LEVELS = [
   {
     name: 'Hold the Door', world: 0, kind: 'team',
+    medals: { bronze: 'Both reach the door', goals: [{ key: 'time', gold: 20, silver: 45 }, { key: 'falls', gold: 0, silver: 2, word: 'fall' }] },
     tip: 'One of you holds the button. The other walks through.',
     switches: { A: { plate: 'a', type: 'gate' }, X: { plate: 'b', type: 'bridge' } },
     signs: [
@@ -43,6 +44,7 @@ const LEVELS = [
   },
   {
     name: 'Boost Me Up', world: 0, kind: 'team',
+    medals: { bronze: 'Both reach the door', goals: [{ key: 'time', gold: 30, silver: 60 }, { key: 'falls', gold: 0, silver: 2, word: 'fall' }] },
     tip: 'Stand on each other to reach high places.',
     switches: { A: { plate: 'a', type: 'gate' }, X: { plate: 'b', type: 'bridge' } },
     signs: [
@@ -73,6 +75,7 @@ const LEVELS = [
   },
   {
     name: 'Your Color, My Color', world: 0, kind: 'team',
+    medals: { bronze: 'Both reach the door', goals: [{ key: 'time', gold: 30, silver: 60 }, { key: 'falls', gold: 0, silver: 2, word: 'fall' }] },
     tip: 'Orange blocks hold Pip. Blue blocks hold Bo. Give each other a ride.',
     switches: { A: { plate: 'a', type: 'gate' } },
     flagNeedsBoth: true,
@@ -105,6 +108,7 @@ const LEVELS = [
   },
   {
     name: 'Rope, Chain & Bungee', world: 0, kind: 'team',
+    medals: { bronze: 'Both reach the door', goals: [{ key: 'time', gold: 60, silver: 120 }, { key: 'falls', gold: 1, silver: 4, word: 'fall' }] },
     tip: 'You\u2019re tied together, and the cord keeps changing: a rope, a stiff chain, then a bouncy bungee.',
     rooms: [
       {
@@ -195,6 +199,7 @@ const LEVELS = [
   },
   {
     name: 'Brick by Brick', world: 1, kind: 'team', build: { x0: 1, x1: 25, spawnCol: 12, goalX: 26 * 30 },
+    medals: { bronze: 'Both climbs done', goals: [{ key: 'time', gold: 45, silver: 90 }, { key: 'squashes', gold: 0, silver: 2, word: 'squash' }] },
     tip: 'One of you drops blocks, the other climbs them to the flag. Then you swap!',
     switches: {},
     signs: [
@@ -223,6 +228,7 @@ const LEVELS = [
   },
   {
     name: 'Sky Tower', world: 1, kind: 'team', build: { x0: 12, x1: 19, spawnCol: 15, goalX: 21 * 30, tower: true, rounds: 4 },
+    medals: { bronze: 'Every climb done', goals: [{ key: 'time', gold: 120, silver: 210 }, { key: 'squashes', gold: 0, silver: 3, word: 'squash', text: n => n === 0 ? 'Nobody squashed or trapped' : `${n} or fewer squashes or traps` }] },
     tip: 'Stack blocks up to the ledge. Careful: a falling block squashes your partner and knocks them down!',
     switches: {},
     signs: [
@@ -254,6 +260,7 @@ const LEVELS = [
   },
   {
     name: 'Robo Pong', world: 1, kind: 'team', pong: true,
+    medals: { bronze: 'Beat Robo', goals: [{ key: 'robo', gold: 3, silver: 5, word: 'point', text: n => `Robo scores ${n} or fewer`, gap: (v, n) => `${v - n} fewer point${v - n === 1 ? '' : 's'} for Robo` }] },
     tip: 'Pip guards the top half, Bo the bottom. First to 7 beats Robo!',
     switches: {},
     signs: [],
@@ -308,6 +315,7 @@ const LEVELS = [
   },
   {
     name: 'Tee for Two', world: 2, kind: 'team', golf: true,
+    medals: { bronze: 'Sink both balls', goals: [{ key: 'overPar', gold: 0, silver: 2, text: n => n === 0 ? 'Par or better' : `${n} or fewer over par`, show: v => v === 0 ? 'par' : v > 0 ? v + ' over' : -v + ' under', gap: (v, n) => `${v - n} fewer stroke${v - n === 1 ? '' : 's'}` }] },
     tip: 'One of you golfs, the other IS the ball and can boost mid-flight. Fewest strokes wins!',
     switches: {},
     rooms: [
@@ -365,6 +373,7 @@ const LEVELS = [
   },
   {
     name: 'Bounce House', world: 2, kind: 'team', golf: true,
+    medals: { bronze: 'Sink both balls', goals: [{ key: 'overPar', gold: 0, silver: 2, text: n => n === 0 ? 'Par or better' : `${n} or fewer over par`, show: v => v === 0 ? 'par' : v > 0 ? v + ' over' : -v + ' under', gap: (v, n) => `${v - n} fewer stroke${v - n === 1 ? '' : 's'}` }] },
     tip: 'Pink pads bounce the ball. Red bumpers kick it back hard!',
     switches: {},
     rooms: [
@@ -422,6 +431,7 @@ const LEVELS = [
   },
   {
     name: 'Windmill Way', world: 2, kind: 'team', golf: true,
+    medals: { bronze: 'Sink both balls', goals: [{ key: 'overPar', gold: 0, silver: 2, text: n => n === 0 ? 'Par or better' : `${n} or fewer over par`, show: v => v === 0 ? 'par' : v > 0 ? v + ' over' : -v + ' under', gap: (v, n) => `${v - n} fewer stroke${v - n === 1 ? '' : 's'}` }] },
     tip: 'Windmill sails knock the ball around. Wait for a gap, then swing!',
     switches: {},
     rooms: [
@@ -479,6 +489,7 @@ const LEVELS = [
   },
   {
     name: 'Portal Park', world: 2, kind: 'team', golf: true, airBoost: true,
+    medals: { bronze: 'Sink both balls', goals: [{ key: 'overPar', gold: 0, silver: 2, text: n => n === 0 ? 'Par or better' : `${n} or fewer over par`, show: v => v === 0 ? 'par' : v > 0 ? v + ' over' : -v + ' under', gap: (v, n) => `${v - n} fewer stroke${v - n === 1 ? '' : 's'}` }] },
     tip: 'Portals send the ball across the course. Speed in = speed out!',
     switches: {},
     rooms: [

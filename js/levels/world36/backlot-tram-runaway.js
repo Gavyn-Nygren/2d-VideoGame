@@ -35,7 +35,7 @@
    TICKETS: 20 golden tickets (5 a set), beside the line ahead of the tram, some high, 5 on the upper line.
    GOLD HELP (3 crashes in a take, both playing, announced, counted): gold brake shoes, the brake heats half as fast.
    IDLE: no person presses anything for 12 s: "Taking a break", the clock stops.
-   MEDAL: Gold <= 215 s, Silver <= 330 s (a clean computer pair takes about 200 s; the line alone is 170 s).
+   MEDAL (MODES.tramrun.medals, js/medals.js): Gold <= 215 s, Silver <= 330 s (a clean computer pair takes about 200 s; the line alone is 170 s).
    MODES.tramrun.plan(st) says what each job should do now (the prompts, HUD chips and the computer brain read it).
    Everything lives inside this block; sounds are Sfx.extra.tramrun*. */
 (() => {
@@ -892,7 +892,6 @@
       P.say(Rn, s, clamp(r.x - st.cam, 70, W - 70), r.y - 70, col, pulse);
     }
   }
-  const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
 
   // the runner's call at a fork sign (▲ / ▼ there), read every tick before jobs
   const tickCall = st => {
@@ -906,7 +905,9 @@
   };
 
   MODES.tramrun = {
-    S, SETS, plan, tailHit, medal, layout, workAt, workSpot, carSpan, carDeck, lineY, tramLine, forkAt, bhCar, nextFork, TRAM_L,
+    S, SETS, plan, tailHit, layout, workAt, workSpot, carSpan, carDeck, lineY, tramLine, forkAt, bhCar, nextFork, TRAM_L,
+    medals: { bronze: 'Save the tram tour', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }] },
+    medalValues() { return {}; },
     setup(st, L) {
       st.stats = { crashes: 0, props: 0, catches: 0, tickets: 0, retakes: 0, cooked: 0, boards: 0, offs: 0, scoops: 0, calls: 0, helps: 0, roomT: [] };
       st.tickets = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
@@ -925,7 +926,6 @@
         { label: 'Props cleared', value: String(s.props) },
         { label: 'Crashes', value: String(s.crashes) },
         { label: 'Tickets', value: st.tickets + ' of 20' },
-        { label: 'Medal', value: medal(G.time) },
       ];
       out.push('Catches: ' + s.catches + '. Retakes: ' + s.retakes + '. Cooked brakes: ' + s.cooked + '. The tour is saved!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

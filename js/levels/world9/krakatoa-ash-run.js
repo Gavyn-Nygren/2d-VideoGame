@@ -591,6 +591,11 @@ function ashFx(st, dt) {
 }
 
 MODES.ash = {
+  // medal goals (js/medals.js): time and falls (both built in)
+  medals: { bronze: 'Escape the ash cloud', goals: [
+    { key: 'time', gold: 200, silver: 320 },
+    { key: 'falls', gold: 2, silver: 7, word: 'fall' },
+  ] },
   rand: Math.random,   // cosmetic randomness and the volcano's puff timing; tests may swap in a seeded one
   setup(st, L) {
     st.stats = { ash: [0, 0], gusts: 0, drifts: 0, marks: 0, markTotal: 0, levers: 0, hatsOff: 0, hats: 0, calls: 0, camps: 0, hops: 0, oops: [0, 0], hot: 0, splash: 0, roomT: [] };
@@ -650,8 +655,7 @@ MODES.ash = {
   drawTop() { const st = G.mst; if (st.dens) ashDrawTop(st); },
   hud() { const st = G.mst; if (st.dens) ashHud(st); },
   stats() {
-    const s = G.mst.stats, falls = G.falls, time = G.time;
-    const medal = time <= 200 && falls <= 2 ? 'Gold' : time <= 320 && falls <= 7 ? 'Silver' : 'Bronze';
+    const s = G.mst.stats, falls = G.falls;
     const words = falls === 0 ? 'Not one Oops! Super teamwork!' : falls <= 3 ? 'A few Oops, lots of teamwork!' : 'Ash everywhere, and you made it together!';
     const extra = [s.hatsOff ? 'Ash hats blown off: ' + s.hatsOff : '', 'Levers pulled: ' + s.levers, s.calls ? '“This way!” calls: ' + s.calls : ''].filter(Boolean).join(' · ');
     return [
@@ -659,7 +663,7 @@ MODES.ash = {
       { label: 'Gust jumps', value: s.gusts },
       { label: 'Drifts blown', value: s.drifts },
       { label: 'Footprints found', value: s.marks + ' of ' + s.markTotal },
-      medal + ' medal · ' + words,
+      words,
       extra,
     ];
   },

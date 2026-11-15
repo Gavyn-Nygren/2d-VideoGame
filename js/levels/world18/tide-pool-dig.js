@@ -53,7 +53,7 @@ const TIDEDIG = {
   floodT: 6, floodGold: 2, stealGold: 3, shovelAfter: 75, goldShovel: 1.7,
   haulT: 2.6,
 };
-const TIDEDIG_MEDAL = { gold: [240, 0.85], silver: [400, 0.6] };   // [seconds, share of coins saved]
+const TIDEDIG_MEDAL = { gold: [240, 0.85], silver: [400, 0.6] };   // [seconds, share of coins saved] (MODES.tidedig.medals, js/medals.js)
 const tidedigBig = () => (typeof hudBig === 'function' && hudBig());
 const tidedigCpu = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);   // 1-player mode: the computer's character
 const tidedigCx = p => p.x + p.w / 2;
@@ -1419,6 +1419,9 @@ function tidedigHud() {
 }
 
 MODES.tidedig = {
+  medals: { bronze: 'Find every chest', goals: [{ key: 'time', gold: TIDEDIG_MEDAL.gold[0], silver: TIDEDIG_MEDAL.silver[0] },
+    { key: 'coins', gold: TIDEDIG_MEDAL.gold[1], silver: TIDEDIG_MEDAL.silver[1], more: true, pct: true, word: 'the coins' }] },
+  medalValues() { const s = G.mst.stats; return s ? { coins: s.coinsTotal ? s.stash / s.coinsTotal : 0 } : {}; },
   setup(st, L) {
     const lv = LEVELS[G.levelIndex], rooms = lv.rooms || [];
     const total = rooms.reduce((n, r) => n + (r.chests || []).reduce((m, c) => m + c.coins, 0), 0);
@@ -1434,8 +1437,7 @@ MODES.tidedig = {
   drawTop() { tidedigDrawTop(); },
   hud() { tidedigHud(); },
   stats() {
-    const s = G.mst.stats, time = G.time, share = s.coinsTotal ? s.stash / s.coinsTotal : 0;
-    const medal = time <= TIDEDIG_MEDAL.gold[0] && share >= TIDEDIG_MEDAL.gold[1] ? 'Gold' : time <= TIDEDIG_MEDAL.silver[0] && share >= TIDEDIG_MEDAL.silver[1] ? 'Silver' : 'Bronze';
+    const s = G.mst.stats, share = s.coinsTotal ? s.stash / s.coinsTotal : 0;
     const words = s.steals === 0 ? 'Not one coin for the crabs! Treasure masters!' : share >= 0.85 ? 'Super digging and bailing, pirates!' : 'The crabs got a few, and you found every chest!';
     const extra = 'Shoos: Pip ' + s.shoos[0] + ', Bo ' + s.shoos[1] + (s.pollyShoos ? ', Polly ' + s.pollyShoos : '') + ' · Waves held by walls ' + s.blocked + ' · Floods ' + s.floods + (s.gold.length ? ' · Help: ' + s.gold.join(', ') : '');
     return [
@@ -1443,7 +1445,7 @@ MODES.tidedig = {
       { label: 'Crab steals', value: s.steals },
       { label: 'Sand dug', values: s.tiles.slice() },
       { label: 'Buckets bailed', values: s.buckets.slice() },
-      medal + ' medal · ' + words,
+      words,
       extra,
     ];
   },

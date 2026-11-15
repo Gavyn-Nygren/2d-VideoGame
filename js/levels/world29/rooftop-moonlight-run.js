@@ -36,8 +36,8 @@
      2 falls from the rope: a gold rope that pumps higher, and a gold ledge on every far roof to land on;
      2 drops during the pull: a gold loop, so the thrower no longer has to hold on.
    IDLE: 12 s with no person pressing anything: "Taking a break" and the clock stops.
-   Medal: Gold <= 3:50 with <= 3 whoops and >= 75% of the moon stars; Silver <= 6:00 with <= 10 whoops; else Bronze.
-   Results card: Moon stars, Hook throws (hits of throws), Whoops, Medal; a line with gaps, tugs, edge catches and cat
+   Medal goals (MODES.roofrun.medals, js/medals.js): Gold <= 3:50 with <= 3 whoops and >= 75% of the moon stars;
+   Silver <= 6:00 with <= 10 whoops. Results card: Moon stars, Hook throws (hits of throws), Whoops; a line with gaps, tugs, edge catches and cat
    bumps, and the gold-help line.
    Room def: { title, thrower: 0|1, wind, sweep (s per aim sweep), course: [tokens] }. Tokens, left to right:
      'r420'         a roof 420 px wide. 'r420+30' / 'r420-25': 30 px lower / 25 px higher than the roof before it.
@@ -920,10 +920,15 @@
       P.say(Qn, s, sx(Q), sy(Q), col, pulse);
     }
   }
-  const medal = (t, whoops, frac) => K.medal(t <= S.goldT && whoops <= 3 && frac >= 0.75, t <= S.silverT && whoops <= 10);
 
   MODES.roofrun = {
-    S, compile, plan, nav, hookPt, medal,
+    S, compile, plan, nav, hookPt,
+    medals: { bronze: 'Cross every rooftop to the gate', goals: [
+      { key: 'time', gold: S.goldT, silver: S.silverT },
+      { key: 'whoops', gold: 3, silver: 10, word: 'whoops', text: n => (n ? `${n} or fewer whoops` : 'No whoops'), gap: (v, n) => `${Math.max(1, Math.ceil(v - n))} fewer whoops` },
+      { key: 'stars', gold: 0.75, more: true, pct: true, word: 'the moon stars' },
+    ] },
+    medalValues() { const st = G.mst, s = st.stats; return s ? { whoops: s.whoops, stars: st.stars / (st.totalStars || 1) } : {}; },
     setup(st, L) {
       st.stats = { throws: 0, hits: 0, swings: 0, gaps: 0, whoops: 0, bumps: 0, phew: 0, tugs: 0, heaves: 0, helps: 0, roomT: [] };
       st.stars = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
@@ -940,12 +945,10 @@
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const frac = st.stars / (st.totalStars || 1);
       const out = [
         { label: 'Moon stars', value: st.stars + ' of ' + st.totalStars },
         { label: 'Hook throws', value: s.hits + ' of ' + s.throws },
         { label: 'Whoops', value: String(s.whoops) },
-        { label: 'Medal', value: medal(G.time, s.whoops, frac) },
       ];
       out.push('Gaps crossed: ' + s.gaps + '. Tugs: ' + s.tugs + '. Edge catches: ' + s.phew + '. Cat bumps: ' + s.bumps + '.');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

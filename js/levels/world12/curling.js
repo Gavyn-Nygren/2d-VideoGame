@@ -17,7 +17,7 @@
    it is replayed with gold "Lucky slick ice" (sweeping works extra well, the broom grabs the stone from farther away,
    the aim guide becomes the gold path of a well-swept stone, a gold X shows where it stops if sweeping stops; End 2
    also moves the penguin aside, then the snowman from the 2nd replay; an unswept stone still stops short).
-   Stars per end (1 for any stone in the house, 2 and 3 by points), 12 in all.
+   Stars per end (1 for any stone in the house, 2 and 3 by points), 12 in all. Medal: MODES.curling.medals.
    def.ownStep: the mode runs the whole tick. The players stay visible: the mode moves them (p.x / p.y).
    Only MODES.curling and Sfx.extra.curling* are visible outside this block; MODES.curling.api has helpers (the
    physics simulator) for the computer brain and bot tests. */
@@ -1002,6 +1002,9 @@
   }
 
   MODES.curling = {
+    // medal goals (js/medals.js): the stars, 12 in all
+    medals: { bronze: 'Play all four ends', goals: [{ key: 'stars', gold: 10, silver: 7, more: true, word: 'star' }] },
+    medalValues() { const st = G.mst; return { stars: (st.endStars || []).reduce((a, b) => a + b, 0) }; },
     CFG: CURLING, rand: Math.random,
     setup(st, L) {
       Object.assign(st, { total: 0, endStars: [0, 0, 0, 0], endPts: [0, 0, 0, 0], fails: {}, cheer: 0, fx: [], msg: null,
@@ -1016,13 +1019,12 @@
     hud() { if (G.mst.sw) cuHud(G.mst); },
     stats() {
       const st = G.mst, s = st.stats, stars = st.endStars.reduce((a, b) => a + b, 0);
-      const medal = stars >= 10 ? 'Gold medal' : stars >= 7 ? 'Silver medal' : 'Bronze medal';
       return [
         { label: 'Stars', value: stars + ' of 12' },
         { label: 'Points', value: String(st.total) },
         { label: 'Buttons', value: String(s.buttons) },
         { label: 'Sweeping', values: s.sweepT.map(t => t.toFixed(0) + 's') },
-        medal + '! ' + (stars >= 10 ? 'Curling champions!' : stars >= 7 ? 'Super sweeping!' : 'Great teamwork on the ice!'),
+        (stars >= 10 ? 'Curling champions!' : stars >= 7 ? 'Super sweeping!' : 'Great teamwork on the ice!'),
       ];
     },
     // for the computer brain and bot tests

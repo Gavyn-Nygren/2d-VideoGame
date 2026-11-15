@@ -813,7 +813,17 @@ function pteroMirror(st) {
   }
 }
 
+// the medal times (s) for MODES.ptero.medals: Gold also needs 75% of the babies fed, Silver 40%
+// (bot pairs clear in about 256-267 s with 17-19 of 20 fed; noisy bots in 300-485 s)
+const PTERO_MEDAL = { gold: 300, silver: 450 };
 MODES.ptero = {
+  // medal goals (js/medals.js): time, and the share of the baby dinos fed
+  medals: { bronze: 'Fly all four routes', goals: [
+    { key: 'time', gold: PTERO_MEDAL.gold, silver: PTERO_MEDAL.silver },
+    { key: 'fed', gold: 0.75, silver: 0.4, more: true, pct: true, word: 'the babies fed', text: n => `Feed at least ${Math.round(n * 100)}% of the babies`,
+      gap: (v, n) => `${Math.max(1, Math.ceil((n - v) * 100))}% more of the babies fed` },
+  ] },
+  medalValues() { const s = G.mst.stats; return s ? { fed: s.wanted ? s.fed / s.wanted : 1 } : {}; },
   PTERO,
   needs: pteroNeeds, reach: pteroReach, gy: pteroGY, cy: pteroCY, hangPos: pteroHangPos, hangVel: pteroHangVel, predict: pteroPredict, pathHit: (st, pts) => pteroPathHit(st, pts), pivot: pteroPivot, wingCfg: pteroWingCfg,
   setup(st, L) {
@@ -844,13 +854,11 @@ MODES.ptero = {
   stats() {
     const s = G.mst.stats;
     if (!s) return [];
-    const t = G.time, frac = s.wanted ? s.fed / s.wanted : 1, oops = s.lands + s.bonks + s.sneezes;
-    const medal = t <= PTERO_MEDAL.gold && frac >= 0.75 ? 'Gold' : t <= PTERO_MEDAL.silver && frac >= 0.4 ? 'Silver' : 'Bronze';
+    const frac = s.wanted ? s.fed / s.wanted : 1, oops = s.lands + s.bonks + s.sneezes;
     const out = [
       { label: 'Babies fed', value: s.fed + ' of ' + s.wanted },
       { label: 'Perfect flaps', values: s.perfect.slice() },
       { label: 'Bumps', value: oops },
-      { label: 'Medal', value: medal },
     ];
     let best = -1;
     s.roomFed.forEach((f, k) => { if (s.roomT[k] == null) return; if (best < 0 || s.roomT[k] < s.roomT[best]) best = k; });
@@ -860,9 +868,6 @@ MODES.ptero = {
     return out;
   },
 };
-// the medal times (s): Gold also needs 3 of 4 babies fed, Silver 2 of 5
-// (bot pairs clear in about 256-267 s with 17-19 of 20 fed; noisy bots in 300-485 s)
-const PTERO_MEDAL = { gold: 300, silver: 450 };
 
 /* ---------- drawing ---------- */
 const pteroSkyG = {};

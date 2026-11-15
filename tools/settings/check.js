@@ -92,7 +92,7 @@ const onSettings = page => page.evaluate(() => !!document.querySelector('.settin
     const ctl = await page.locator('.ctl-lines').textContent();
     check(/Q/.test(ctl), 'the pause card\'s controls show Q');
     // reset
-    await page.click('.card [data-act="settings"]'); await page.waitForTimeout(300);
+    await page.click('.card [data-act="settings"]'); await page.waitForTimeout(500);   // (past the overlay's 350 ms click guard)
     await page.click('[data-act="bind-reset"][data-p="0"]'); await page.waitForTimeout(100);
     s = await page.evaluate(() => ({ pip: window.__pipbo.BIND[0], bo: window.__pipbo.BIND[1] }));
     check(s.pip.jump.join() === 'KeyW,Space' && s.pip.act.join() === 'KeyF,KeyE' && s.bo.jump.join() === 'ArrowUp', `Reset puts Pip (and Bo's swapped key) back (${JSON.stringify(s)})`);

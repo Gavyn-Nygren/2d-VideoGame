@@ -37,7 +37,7 @@
    GOLD HELP (only while both are playing, announced, counted): 3 hits in a stretch = a gold harpoon: the next 3 bolts
      fly at full crank the instant the action is pressed, and lunge tells last 0.4 s longer for the rest of the stretch.
    IDLE: no person presses anything for 12 s: "Taking a break", the sea and the serpent wait and the clock stops.
-   MEDAL: by time. Gold <= 195 s, Silver <= 310 s.
+   MEDAL (MODES.serpentchase.medals, js/medals.js): by time. Gold <= 195 s, Silver <= 310 s.
    MODES.serpentchase.plan(st) says what each job should do now (the prompts, HUD chips and the computer brain read it).
    Everything lives inside this block; sounds are Sfx.extra.serpentchase*. */
 (() => {
@@ -875,10 +875,11 @@
       P.say(Rn, s, clamp(g.bx - 20, 70, W - 70), g.deck - 76, col, pulse);
     }
   }
-  const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
 
   MODES.serpentchase = {
-    S, AIMS, plan, medal, geom, targets, solve,
+    S, AIMS, plan, geom, targets, solve,
+    medals: { bronze: 'Reach the fjord', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }] },
+    medalValues() { return {}; },
     setup(st, L) {
       st.stats = { bites: 0, crashes: 0, slaps: 0, bursts: 0, mouth: 0, throat: 0, tails: 0, globs: 0, scales: 0, swallowed: 0, swamps: 0, rows: 0, shots: 0, helps: 0, roomT: [] };
       st.scales = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0; st.dist = 0;
@@ -897,7 +898,6 @@
         { label: 'Bites taken', value: String(s.bites) },
         { label: 'Mouth shots', value: String(s.mouth) },
         { label: 'Scales', value: st.scales + ' of 20' },
-        { label: 'Medal', value: medal(G.time) },
       ];
       out.push('Swallowed: ' + s.swallowed + '. Crashes: ' + (s.crashes + s.slaps + s.bursts) + '. Throat shots: ' + s.throat + '. The longship made it to the fjord!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

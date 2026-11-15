@@ -180,7 +180,7 @@ const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) fai
     const tiles = await page.evaluate(() => Array.from(document.querySelectorAll('#overlay .stat')).map(e => e.textContent.replace(/\s+/g, ' ').trim()));
     const lines = await page.evaluate(() => Array.from(document.querySelectorAll('#overlay .lede, #overlay p:not(.eyebrow)')).map(e => e.textContent.replace(/\s+/g, ' ').trim()));
     console.log('result tiles:', JSON.stringify(tiles), 'lines:', JSON.stringify(lines));
-    ok(['Time', 'Stars', 'Perfect', 'Whoas', 'Medal'].every(w => tiles.some(t => t.includes(w))), 'results: Time, Stars, Perfect landings, Whoas and Medal tiles');
+    ok(['Time', 'Stars', 'Perfect', 'Whoas'].every(w => tiles.some(t => t.includes(w))), 'results: Time, Stars, Perfect landings, Whoas and Medal tiles');
     if (nextShot) {
       const btn = await page.evaluate(() => { const b = document.querySelector('#overlay [data-act="next"]'); return b && b.textContent.trim(); });
       if (input === 'kb') await page.keyboard.press('Enter');

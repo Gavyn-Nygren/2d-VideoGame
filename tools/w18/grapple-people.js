@@ -161,7 +161,7 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
       const res = G.results[i];
       const m = G.mst, s = m.stats;
       return { cleared: !!res, time: res ? Math.round(res.time) : null, simT: Math.round(n * P.DT), room: G.room || 0, hop: m.hop && m.hop.i, phase: m.hop && m.hop.phase,
-        stats: s && { coins: s.coins, throws: s.throws, misses: s.misses, splashes: s.splashes, bonks: s.bonks, helps: s.helps }, medal: res && res.stats ? (res.stats.find(x => x.label === 'Medal') || {}).value : null,
+        stats: s && { coins: s.coins, throws: s.throws, misses: s.misses, splashes: s.splashes, bonks: s.bonks, helps: s.helps }, medal: res && res.medal ? ['none', 'Bronze', 'Silver', 'Gold'][res.medal.tier] : null,
         cpuErrs: [...P.CPU.errs], lines };
     }, { who, as, seed, maxT, trace });
     if (r.lines.length) console.log(r.lines.join('\n'));

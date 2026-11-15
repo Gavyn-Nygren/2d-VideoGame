@@ -35,7 +35,7 @@
    GOLD HELP (only while both are playing, announced, counted): 3 Tumbles in a stretch = a gold shield, twice as wide and
      no slow-down for the rest of the stretch.
    IDLE: no person presses anything for 12 s: "Taking a break", the wall waits and the clock stops.
-   MEDAL: by time: Gold <= 200 s, Silver <= 340 s.
+   MEDAL (MODES.icefort.medals, js/medals.js): by time: Gold <= 200 s, Silver <= 340 s.
    MODES.icefort.plan(st) says what each job should do now (the prompts, the HUD chips and the computer brain read it).
    Everything lives inside this block; sounds are Sfx.extra.icefort*. */
 (() => {
@@ -849,10 +849,11 @@
       P.say(Sn, s, sx(Sh), sy(Sh), col, pulse);
     }
   }
-  const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
 
   MODES.icefort = {
-    S, plan, medal, layout, covered,
+    S, plan, layout, covered,
+    medals: { bronze: 'Bring down the ice fortress', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }] },
+    medalValues() { return {}; },
     setup(st, L) {
       st.stats = { tumbles: 0, blocked: 0, runes: 0, chops: 0, knocks: 0, blown: 0, ledges: 0, helps: 0, roomT: [] };
       st.runes = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0; st.axe = 0;
@@ -871,7 +872,6 @@
         { label: 'Tumbles', value: String(s.tumbles) },
         { label: 'Arrows blocked', value: String(s.blocked) },
         { label: 'Rune stones', value: st.runes + ' of 20' },
-        { label: 'Medal', value: medal(G.time) },
       ];
       out.push('Holds chopped: ' + s.chops + ' chops. Knocked down a row: ' + s.knocks + '. The ice fortress fell!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

@@ -14,7 +14,8 @@
             ("Click! Trap off.").
    Traps are loose floor tiles with spikes under them, hidden until lit (then marked). Stepping on an armed trap pops
    the spikes: "Ouch!", a bounce back and a dizzy moment (a cartoon bump, counted). A sprung trap re-arms after 1.5 s.
-   Gems (lit or not, you can grab them by walking into them) count for the medal.
+   Gems (lit or not, you can grab them by walking into them) count for the medal. Medal goals (MODES.tombtorch.medals,
+   js/medals.js): Gold <= 4:00 with <= 2 ouches and >= 60% of the gems; Silver <= 6:40 with <= 8 ouches.
    Each chamber: open its gates in any order; the exit doorway (engine door 'E') lights up once every gate is open;
    both in the doorway moves on. Chamber 3 ends at a golden treasure chest.
    Room def: { title, torch: 0|1, tip, act, rows } where rows is the chamber layout (32×18, see world.js):
@@ -187,6 +188,15 @@ function ttStep(st, dt) {
 
 MODES.tombtorch = {
   TT,
+  medals: { bronze: 'Find the treasure chest', goals: [
+    { key: 'time', gold: 240, silver: 400 },
+    { key: 'ouch', gold: 2, silver: 8, word: 'Ouch' },
+    { key: 'gems', gold: 0.6, more: true, pct: true, word: 'the gems' },
+  ] },
+  medalValues() {
+    const st = G.mst, s = st.stat;
+    return s ? { ouch: s.ouch[0] + s.ouch[1], gems: st.gemTotal ? (s.gems[0] + s.gems[1]) / st.gemTotal : 1 } : {};
+  },
   setup(st, L) {
     st.stat = { gems: [0, 0], ouch: [0, 0], switches: [0, 0], braziers: [0, 0], disarmed: [0, 0], found: 0 };
     st.t = 0; st.gemTotal = 0;
@@ -201,14 +211,12 @@ MODES.tombtorch = {
   stats() {
     const st = G.mst, s = st.stat;
     if (!s) return [];
-    const gems = s.gems[0] + s.gems[1], ouch = s.ouch[0] + s.ouch[1], t = G.time;
-    const medal = t <= 240 && ouch <= 2 && gems >= st.gemTotal * 0.6 ? 'Gold' : t <= 400 && ouch <= 8 ? 'Silver' : 'Bronze';
+    const gems = s.gems[0] + s.gems[1], ouch = s.ouch[0] + s.ouch[1];
     const words = ouch === 0 ? 'Not one trap sprung! Careful explorers!' : ouch <= 3 ? 'A few pokes, but you found the way!' : 'Ouch, ouch! But you made it through the dark!';
     return [
       { label: 'Gems', values: s.gems.slice() },
       { label: 'Switches found', values: s.switches.slice() },
       { label: 'Traps disarmed', values: s.disarmed.slice() },
-      { label: 'Medal', value: medal },
       words + ' Gems: ' + gems + ' of ' + st.gemTotal + ' · Ouches: ' + ouch + ' · Braziers lit: ' + (s.braziers[0] + s.braziers[1]),
     ];
   },

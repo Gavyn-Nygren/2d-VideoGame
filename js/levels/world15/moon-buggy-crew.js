@@ -868,6 +868,9 @@ function buggyMirror(st) {
 }
 
 MODES.buggy = {
+  // medal (js/medals.js): Gold with 80% of the moon rocks by 4:30, Silver with 50% by 7:00
+  medals: { bronze: 'Reach the rocket', goals: [{ key: 'time', gold: 270, silver: 420 }, { key: 'rocks', gold: 0.8, silver: 0.5, more: true, pct: true, word: 'the moon rocks' }] },
+  medalValues() { const st = G.mst, all = st.rocksAll || st.rocksN; return st.stats ? { rocks: all ? st.rocks / all : 1 } : {}; },
   BUGGY,
   compile: buggyCompile, ground: buggyGround, needs: buggyNeeds, pivot: buggyPivot, claw: buggyClaw, rockPos: buggyRockPos, cratePos: buggyCratePos, key: buggyKey,
   setup(st, L) {
@@ -898,13 +901,11 @@ MODES.buggy = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const all = st.rocksAll || st.rocksN, got = st.rocks, t = G.time, frac = all ? got / all : 1;
-    const medal = frac >= 0.8 && t <= 270 ? 'Gold' : frac >= 0.5 && t <= 420 ? 'Silver' : 'Bronze';
+    const all = st.rocksAll || st.rocksN, got = st.rocks, frac = all ? got / all : 1;
     const out = [
       { label: 'Moon rocks', value: got + ' of ' + all },
       { label: 'Rocks grabbed', values: s.grabs.slice() },
       { label: 'Whoopsies', value: s.oops },
-      { label: 'Medal', value: medal },
     ];
     const words = frac >= 0.95 ? 'Every shiny rock on board. Out of this world!' : frac >= 0.7 ? 'A big haul of moon rocks. Great crew!' : 'Bumpy, bouncy, and home safe together!';
     out.push(words + ' Boulders tossed: ' + s.cleared + '.');

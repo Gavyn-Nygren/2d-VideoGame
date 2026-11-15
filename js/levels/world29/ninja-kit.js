@@ -45,7 +45,6 @@
      K.chip(x, y, w, h, str, lit, held, z)    a pill: gold and blinking when it is the thing to press, green while held.
      K.panel(id, job, w, h, z)                a player's corner panel with name and job; returns { x, y, w, h } to fill.
      K.meter(x, y, w, h, frac, col, mark)     a rounded bar (mark 0..1 draws a gold tick).
-     K.medal(gold, silver)                    'Gold' | 'Silver' | 'Bronze' from two booleans (write the rule in your header).
      K.helpLine(n)                            the results-card line for n gold helps ('' when 0).
    Ninja Pip and Bo
      K.hero(id, x, y, o)                      the plain engine look, feet at x, y. o: face, rot, s, sy, sx, vy, stun.
@@ -258,7 +257,6 @@ const NINJA = (() => {
     if (frac > 0) { ctx.fillStyle = col || '#ffffff'; rr(x, y, fw, h, h / 2); ctx.fill(); }
     if (mark !== undefined) { ctx.fillStyle = C.gold; ctx.fillRect(x + w * clamp(mark, 0, 1) - 1.5, y - 3, 3, h + 6); }
   };
-  K.medal = (gold, silver) => (gold ? 'Gold' : silver ? 'Silver' : 'Bronze');
   K.helpLine = n => (n ? 'Gold help: ' + n + (n === 1 ? ' time' : ' times') + '. Next time, try it without!' : '');
   // the message line (gold help, taking a break): top middle when it fits, else under the level pill
   K.drawMsg = (st, m, rightX = W - 14) => {

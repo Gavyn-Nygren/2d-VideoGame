@@ -1485,6 +1485,9 @@ function gumballHud() {
 }
 
 MODES.gumball = {
+  // medal (js/medals.js): two computers about 2 min 15 s with no bloops; families on a first try take longer and bloop more
+  medals: { bronze: 'Fill every cup', goals: [{ key: 'time', gold: 240, silver: 420 }, { key: 'bloops', gold: 3, silver: 10, word: 'bloop' }] },
+  medalValues() { const s = G.mst.stats; return s ? { bloops: s.bloops } : {}; },
   GUMBALL, GUMBALL_MACHINES,
   needs: gumballNeeds, routes: gumballRoutes, best: gumballBest, eta: gumballEta, leverAt: gumballLeverAt, state: gumballState, live: gumballLive, ahead: gumballAhead, key: gumballKey, leverName: gumballLeverName,
   setup(st, L) {
@@ -1501,16 +1504,14 @@ MODES.gumball = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const t = G.time, b = s.bloops;
-    // (two computers: about 2 min 15 s with no bloops; families on a first try take longer and bloop more)
-    const medal = t <= 240 && b <= 3 ? 'Gold' : t <= 420 && b <= 10 ? 'Silver' : 'Bronze';
+    const b = s.bloops;
     const words = b === 0 ? 'Not one bloop! Every gumball home first time!' : b <= 3 ? 'Sweet sorting, gumball crew!' : 'Lots of bloops, and every cup filled together!';
     const out = [
       { label: 'Right first time', value: s.firstTry + ' of ' + (st.allBalls || s.sorted) },
       { label: 'Bloops', value: b },
       { label: 'Cranks', values: s.cranks.slice() },
       { label: 'Lever flips', values: s.flips.slice() },
-      medal + ' medal · ' + words,
+      words,
     ];
     out.push((s.jackpot ? 'JACKPOT! ' : '') + 'Flicks: ' + s.flicks + ' · Swaps: ' + s.swaps + (s.helps ? ' · Gold help ' + s.helps + (s.helps === 1 ? ' time' : ' times') : ''));
     return out;

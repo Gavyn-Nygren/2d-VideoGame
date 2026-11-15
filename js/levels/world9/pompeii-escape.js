@@ -804,6 +804,12 @@ function pompeiiFx(st, dt) {
 
 /* ---------- the mode ---------- */
 MODES.pompeii = {
+  // medal goals (js/medals.js): time and hot foots (toes touching the lava)
+  medals: { bronze: 'Reach the harbor boat', goals: [
+    { key: 'time', gold: 180, silver: 300 },
+    { key: 'hot', gold: 1, silver: 5, word: 'hot foot', text: n => `${n} or fewer hot foots` },
+  ] },
+  medalValues() { const s = G.mst.stats; return s ? { hot: s.hot[0] + s.hot[1] } : {}; },
   rand: Math.random,   // cosmetic and ash randomness; tests swap in a seeded one
   setup(st, L) {
     st.stats = { hands: [0, 0], boosts: [0, 0], hot: [0, 0], sneezes: [0, 0], closest: 1e9, closeWho: 0, roomT: [] };
@@ -876,14 +882,13 @@ MODES.pompeii = {
   stats() {
     const s = G.mst.stats;
     if (!s) return [];
-    const hot = s.hot[0] + s.hot[1], sn = s.sneezes[0] + s.sneezes[1], time = G.time;
+    const hot = s.hot[0] + s.hot[1], sn = s.sneezes[0] + s.sneezes[1];
     // (distances in steps: one step is one tile)
     const steps = Math.round(s.closest / T);
     const closest = hot > 0 ? 'Closest call: ' + NAMES[s.closeWho] + '’s toes touched the lava. Hot foot!'
       : s.closest >= 999 ? 'The lava never even got close. Cool!'
       : steps <= 1 ? 'Closest call: ' + NAMES[s.closeWho] + ', just one step from the lava!'
       : 'The lava never got closer than ' + steps + ' steps. Cool!';
-    const medal = time <= 180 && hot <= 1 ? 'Gold' : time <= 300 && hot <= 5 ? 'Silver' : 'Bronze';
     const words = hot === 0 ? 'Not one toe toasted!' : hot <= 3 ? 'Warm toes, cool heads!' : 'Hot stuff, and you made it together!';
     return [
       { label: 'Hand-ups', values: s.hands.slice() },
@@ -891,7 +896,7 @@ MODES.pompeii = {
       { label: 'Hot foots', value: hot },
       { label: 'Ash sneezes', value: sn },
       closest,
-      medal + ' medal · ' + words,
+      words,
     ];
   },
 };

@@ -955,6 +955,9 @@ function gravflipHud() {
 }
 
 MODES.gravflip = {
+  // medal (js/medals.js): two computers take about 2:30 with no whoopsies; people on a first try take longer and slip now and then
+  medals: { bronze: 'Get through the station', goals: [{ key: 'time', gold: 240, silver: 420 }, { key: 'whoopsies', gold: 4, silver: 12, word: 'whoopsie' }] },
+  medalValues() { const s = G.mst.stats; return s ? { whoopsies: s.whoops[0] + s.whoops[1] } : {}; },
   setup(st, L) {
     const total = (LEVELS[G.levelIndex].rooms || []).reduce((n, r) => n + r.map.join('').split('S').length - 1, 0);
     st.stats = { whoops: [0, 0], flips: [0, 0], stars: 0, starsTotal: total, ceilT: [0, 0], backs: 0, roomT: [] };
@@ -966,14 +969,12 @@ MODES.gravflip = {
   drawTop() { gravflipDrawTop(); },
   hud() { gravflipHud(); },
   stats() {
-    const s = G.mst.stats, wh = s.whoops[0] + s.whoops[1], time = G.time;
-    // (two computers: about 2:30 with no whoopsies; people on a first try take longer and slip now and then)
-    const medal = time <= 240 && wh <= 4 ? 'Gold' : time <= 420 && wh <= 12 ? 'Silver' : 'Bronze';
+    const s = G.mst.stats, wh = s.whoops[0] + s.whoops[1];
     const words = wh === 0 ? 'Not one whoopsie! Perfect flipping!' : wh <= 4 ? 'Smooth flipping, space cadets!' : 'Lots of whoopsies, and you made it together!';
     return [
       { label: 'Whoopsies', values: s.whoops.slice() },
       { label: 'Stars', value: s.stars + ' of ' + s.starsTotal },
-      medal + ' medal · ' + words,
+      words,
       'Flips: Pip ' + s.flips[0] + ', Bo ' + s.flips[1] + ' · On the ceiling: Pip ' + Math.round(s.ceilT[0]) + ' s, Bo ' + Math.round(s.ceilT[1]) + ' s',
     ];
   },

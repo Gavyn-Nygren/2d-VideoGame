@@ -901,6 +901,13 @@ function bonehuntHints(st, dt) {
 
 /* ---------- the mode ---------- */
 MODES.bonehunt = {
+  // medal goals (js/medals.js): time and oopses (Boings plus clatters)
+  medals: { bronze: 'Put Mr. Bones back together', goals: [
+    { key: 'time', gold: 300, silver: 480 },
+    { key: 'oops', gold: 3, silver: 9, word: 'Boing or clatter', text: n => `${n} or fewer Boings and clatters`,
+      gap: (v, n) => { const d = Math.max(1, Math.ceil(v - n)); return d + ' fewer ' + (d === 1 ? 'Boing or clatter' : 'Boings and clatters'); } },
+  ] },
+  medalValues() { const s = G.mst.stats; return s ? { oops: s.boings + s.clatters } : {}; },
   rand: Math.random,   // cosmetic randomness (dirt, fireflies); tests may swap in a seeded one
   setup(st, L) {
     st.stats = { dug: [0, 0], digs: [0, 0], boings: 0, clatters: 0, back: 0, calls: 0, roomT: [] };
@@ -987,15 +994,13 @@ MODES.bonehunt = {
   stats() {
     const s = G.mst.stats;
     if (!s) return [];
-    const oops = s.boings + s.clatters, time = G.time;
-    const medal = time <= 300 && oops <= 3 ? 'Gold' : time <= 480 && oops <= 9 ? 'Silver' : 'Bronze';
+    const oops = s.boings + s.clatters;
     const words = oops === 0 ? 'Not one boing or clatter. Smooth digging!' : s.clatters === 0 ? 'No bones dropped. Steady hands!'
       : s.boings === 0 ? 'No boings at all. Nice and careful!' : 'A few boings and clatters, and lots of teamwork!';
     return [
       { label: 'Bones dug', values: s.dug.slice() },
       { label: 'Boings', value: s.boings },
       { label: 'Clatters', value: s.clatters },
-      { label: 'Medal', value: medal },
       'Mr. Bones is back together and dancing in his new top hat. ' + words,
     ];
   },

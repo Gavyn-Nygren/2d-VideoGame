@@ -795,6 +795,8 @@ function laserHud() {
 }
 
 MODES.laser = {
+  medals: { bronze: 'Get out of the vault', goals: [{ key: 'stars', gold: 11, silver: 8, more: true, text: n => `${n} of 12 stars or more`, gap: (v, n) => `${n - v} more star${n - v === 1 ? '' : 's'}` }, { key: 'time', gold: 120 }] },
+  medalValues() { const s = G.mst.stats; return s ? { stars: s.stars.reduce((a, b) => a + (b || 0), 0) } : {}; },
   rand: Math.random,
   setup(st, L) {
     st.stats = { zaps: [0, 0], flips: [0, 0], pings: [0, 0], shouts: [0, 0], coins: 0, found: 0, stars: [], roomZaps: [], roomTime: [], roomCoinsGot: [], roomCoinsMax: [] };

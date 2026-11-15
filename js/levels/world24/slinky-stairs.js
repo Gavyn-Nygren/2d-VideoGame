@@ -56,8 +56,9 @@
        compass (the slinky points the right way by itself while the steerer lets go of ◀ ▶) and the gold guide.
    IDLE: when no person has pressed anything for SLK.idleWait s while the slinky stands on a step, it waits ("Taking a
    break") and the clock stops (G.time is wound back, so test loops must count steps, not G.time).
-   Medal by time, whoas, stars and perfects (slinkyMedal). Results tiles: Stars, Perfect landings, Whoas, Medal (the
-   engine shows the time).
+   Medal by time, whoas, stars, perfects and gold help (MODES.slinky.medals, js/medals.js): Gold at <= 3:30 with <= 3
+   whoas, 70% of the stars, 30 Perfect landings and <= 1 gold help; Silver at <= 5:30 with <= 12 whoas; else Bronze.
+   Results tiles: Stars, Perfect landings, Whoas (the engine shows the time).
    Room def: { title, flip: 0|1, look: 'books'|'blocks'|'pillows'|'rug', tip, act, signs: [[x, y, text, role, alt]],
      course: [tokens] }. A token is 'kind dx dy [w] [key=value ...]': a step whose centre is dx px across and dy px down
    from the previous one (the first token, 'start x y', is absolute). Kinds: start book block tiny spring slip car lift
@@ -780,9 +781,14 @@ function slkMirror(st) {
   }
 }
 
-const slinkyMedal = (t, whoas, frac, perf, helps) => (t <= 210 && whoas <= 3 && frac >= 0.7 && perf >= 30 && helps <= 1 ? 'Gold' : t <= 330 && whoas <= 12 ? 'Silver' : 'Bronze');
 MODES.slinky = {
   SLK,
+  medals: { bronze: 'Flip all the way to the toy box', goals: [
+    { key: 'time', gold: 210, silver: 330 }, { key: 'whoas', gold: 3, silver: 12, word: 'Whoa' },
+    { key: 'stars', gold: 0.7, more: true, pct: true, word: 'the stars' }, { key: 'perfects', gold: 30, more: true, word: 'Perfect landing' },
+    { key: 'helps', gold: 1, word: 'gold help', text: n => 'At most ' + n + ' gold help' + (n === 1 ? '' : 's') },
+  ] },
+  medalValues() { const st = G.mst, s = st.stats; return s ? { time: s.finishT || G.time, whoas: s.whoas, stars: s.stars / (st.starsAll || 1), perfects: s.perfects, helps: s.helps } : {}; },
   plan: slkPlan, key: slkKey, zone: slkZone, posAt: slkPosAt, marbleAt: slkMarbleAt, compile: slkCompile, base: slkBase, front: slkFrontPos,
   // where the computer's speech bubble goes: over the player's own end of the slinky
   bubblePos(p) {
@@ -818,13 +824,11 @@ MODES.slinky = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const t = s.finishT || G.time, all = st.starsAll || 1, frac = s.stars / all;
-    const medal = slinkyMedal(t, s.whoas, frac, s.perfects, s.helps);
+    const all = st.starsAll || 1, frac = s.stars / all;
     const out = [
       { label: 'Stars', value: s.stars + ' of ' + st.starsAll },
       { label: 'Perfect landings', value: String(s.perfects) },
       { label: 'Whoas', value: String(s.whoas) },
-      { label: 'Medal', value: medal },
     ];
     const words = s.perfects >= 20 ? 'Stuck the landing again and again. Slinky champions!' : frac >= 0.7 ? 'A sky full of stars, all the way down!' : 'Flip, flop, all the way to the toy box!';
     out.push(words + ' ' + s.landings + ' steps, ' + s.flops + ' flops.');

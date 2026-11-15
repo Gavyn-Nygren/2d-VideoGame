@@ -48,8 +48,8 @@
    - Leash: the two can't be more than 800 px apart; the camera always keeps both on screen. The gatekeeper running
      too far ahead waits ("Wait for Bo!"); the herder going back for a straggler pulls the gatekeeper along ("Come on,
      Bo!"), so a gatekeeper waiting by the pen never blocks the herding.
-   Medal: Gold at <= 3:45 with <= 3 wrong turns and <= 1 gold help, Silver at <= 5:45 with <= 9 wrong turns, else
-   Bronze. Results: Pigs penned, Wrong turns, Gold help, Medal, and a line with the quickest chase and the claps.
+   Medal (MODES.pigherd.medals, js/medals.js; medalOf is kept for the tools): Gold at <= 3:45 with <= 3
+   wrong turns and <= 1 gold help, Silver at <= 5:45 with <= 9 wrong turns, else Bronze. Results: Pigs penned, Wrong turns, Gold help, and a line with the quickest chase and the claps.
    Room def: { title, herder: 0|1, look, tip, news, act, len, pigs: [names], spots: [indexes], items: [...] } with items
    (world coords; the field is y 104 to 492):
      ['fence', x0, y0, x1, y1]                   a wooden fence along a straight line (12 thick)
@@ -1037,6 +1037,8 @@ const PIGHERD = {
 
   MODES.pigherd = {
     PH: PH0,
+    medals: { bronze: 'Get every pig home', goals: [{ key: 'time', gold: 225, silver: 345 }, { key: 'wrong', gold: 3, silver: 9, word: 'wrong turn' }, { key: 'helps', gold: 1, word: 'gold help', text: n => 'At most ' + n + ' gold help' + (n === 1 ? '' : 's') }] },
+    medalValues() { const st = G.mst, s = st.stats; return s ? { time: s.time || G.time, wrong: s.wrong, helps: st.goldUsed.length } : {}; },
     plan, herd, progress, routeAt, flowAt, nearSeg, reachable, pigSolids, playerSolids, job, jobText, medalOf, openings, wx, jobDone, inMud,
     setup(st, L) { setup(st, L); },
     room(k, L) { room(G.mst, L, k); },
@@ -1058,7 +1060,6 @@ const PIGHERD = {
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const medal = medalOf(st);
       const words = s.wrong === 0 ? 'Not one wrong turn! Super herding and gates!' : s.wrong <= 3 ? 'Clap, chase, open, shut: lovely teamwork!' : 'A few runaway snacks, and every pig got home!';
       const names = ['Barnyard', 'Duck Pond', 'Cornfield Maze', 'Fairground'];
       let best = -1;
@@ -1070,7 +1071,6 @@ const PIGHERD = {
         { label: 'Pigs penned', value: s.penned + ' of ' + s.pigsAll },
         { label: 'Wrong turns', value: s.wrong },
         { label: 'Gold help', value: st.goldUsed.length },
-        { label: 'Medal', value: medal },
         words + bestLine + ' Claps: Pip ' + s.claps[0] + ', Bo ' + s.claps[1] + '.' + gold,
       ];
     },

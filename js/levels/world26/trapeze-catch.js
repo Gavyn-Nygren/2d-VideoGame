@@ -28,7 +28,7 @@
    flyer's whole path drawn, for the rest of the act. 15 s on the board without a "Hep!" while the catcher presses
    things: a gold "Hep!" (the ring stays lit, any Hep works for that jump).
    IDLE: 12 s with no person pressing anything: "Taking a break" and the clock stops.
-   Medal: Gold <= 3:15 with <= 3 boings and >= 2200 cheers; Silver <= 5:30 with <= 10 boings.
+   Medal (MODES.trapeze.medals, js/medals.js): Gold <= 3:15 with <= 3 boings and >= 2200 cheers; Silver <= 5:30 with <= 10 boings.
    MODES.trapeze.plan(st) says what to do next (prompts, HUD chips and the computer brain read it). The swings are
    steady (no randomness), and the catcher's swing has the same period as the flyer's. */
 (() => {
@@ -533,6 +533,8 @@
   const medal = (t, boings, cheers) => (t <= 195 && boings <= 3 && cheers >= 2200 ? 'Gold' : t <= 330 && boings <= 10 ? 'Silver' : 'Bronze');
 
   MODES.trapeze = {
+    medals: { bronze: 'Finish the trapeze show', goals: [{ key: 'time', gold: 195, silver: 330 }, { key: 'boings', gold: 3, silver: 10, word: 'Boing' }, { key: 'cheers', gold: 2200, more: true, word: 'cheer' }] },
+    medalValues() { const st = G.mst; return st.stats ? { boings: st.stats.boings, cheers: st.cheers } : {}; },
     S, plan, release, predict, flyHands, catchHands, hepTarget, hepQuality, medal,
     setup(st, L) {
       st.stats = { caught: 0, boings: 0, flips: 0, bestFlips: 0, hoops: 0, perfect: 0, great: 0, releases: 0, heps: 0, goodHeps: 0, helps: 0, actT: [] };
@@ -552,7 +554,6 @@
         { label: 'Cheers', value: String(st.cheers) },
         { label: 'Flips', value: String(s.flips) },
         { label: 'Boings', value: String(s.boings) },
-        { label: 'Medal', value: medal(G.time, s.boings, st.cheers) },
       ];
       out.push((s.bestFlips >= 3 ? 'A triple flip! ' : s.bestFlips === 2 ? 'A double flip! ' : '') + 'Perfect catches: ' + s.perfect + '. Gold hoops: ' + s.hoops + '. Great timing: ' + s.great + ' of ' + s.releases + '.');
       if (s.helps) out.push('Gold help: ' + s.helps + (s.helps === 1 ? ' time' : ' times') + '. Next time, try it without!');
