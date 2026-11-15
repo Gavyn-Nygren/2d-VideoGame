@@ -548,6 +548,8 @@
       if (cab && j === 3) break;
       ctx.fillStyle = INK; rr(wx - 1, wy - 1, ww + 2, wh + 2, 9); ctx.fill();
       ctx.fillStyle = '#fff3a0'; rr(wx + 4, wy + 4, ww - 8, wh - 8, 6); ctx.fill();
+      // (the printed shade goes on the glass first, so it never fades the passengers' shirts)
+      K.dotFade(wx + 4, wx + ww - 4, wy + wh - 30, wy + wh - 4, 'rgba(255,176,46,0.7)', 6, 0.6);
       const seed = k * 10 + j, n = 1 + Math.floor(K.hash(seed) * 2);
       for (let q = 0; q < n; q++) {
         const px = wx + 20 + q * 30, wob = Math.sin(t * 9 + seed + q) * (2 + braking), hue = ['#ff5a2e', '#2e7bff', '#2fc45a', '#ff5ab4', '#ffb81e'][Math.floor(K.hash(seed + q * 3) * 5)];
@@ -559,7 +561,6 @@
         ctx.beginPath(); ctx.ellipse(px + wob, wy + 36, 2, 2.6, 0, 0, TAU2); ctx.fill();
       }
       ctx.fillStyle = INK; ctx.fillRect(wx + 3, wy + 12, ww - 6, 2);
-      K.dotFade(wx + 4, wx + ww - 4, wy + wh - 30, wy + wh - 4, 'rgba(255,176,46,0.7)', 6, 0.6);
       ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.moveTo(wx + 8, wy + 8); ctx.lineTo(wx + 22, wy + 8); ctx.lineTo(wx + 8, wy + 30); ctx.fill();
     }
     // doors and the car number

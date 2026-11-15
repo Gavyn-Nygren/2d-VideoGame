@@ -87,7 +87,64 @@ const COMIC = (() => {
     g.fill();
     return c;
   }
+  // The fast way (review, Nov 2026): a band drawn once at the screen's own pixel size and copied on with drawImage, pixel
+  // for pixel. A pattern fill has to be worked out again for every pixel, which cost more than everything else in the
+  // frame put together where the canvas is drawn by the CPU. It needs the plain game transform (K.finish notes its scale
+  // every frame); under a rotation or another scale (a burst popping in, the moon's tilted shadow) the pattern below is used.
+  let baseA = 0, baseD = 0, stripPx = 0;
+  const strips = new Map();
+  function strip(axisX, dir, col, cell, maxR, len, pad, wide, sx, sy) {
+    const key = (axisX ? 'x' : 'y') + dir + col + '|' + cell + '|' + maxR + '|' + len + '|' + wide + '|' + sx + '|' + sy;
+    let c = strips.get(key);
+    if (c) return c;
+    const cw = Math.ceil((axisX ? len + pad : wide + cell * 2) * sx), ch = Math.ceil((axisX ? wide + cell * 2 : len + pad) * sy);
+    if (stripPx + cw * ch > 6e6) { strips.clear(); stripPx = 0; }
+    stripPx += cw * ch;
+    c = mk(cw, ch);
+    const g = c.getContext('2d'), rows = Math.max(1, Math.ceil(len / (cell * 0.5)));
+    g.fillStyle = col; g.scale(sx, sy); g.beginPath();
+    for (let r = 0; r <= rows; r++) {
+      const rad = cell * maxR * (r / rows), y = r * cell * 0.5;
+      if (rad < 0.35 || y > len + cell * 0.5) continue;
+      const v = dir > 0 ? y : len + pad - y;
+      for (let u = (r % 2) * cell * 0.5 - cell; u < wide + cell * 3; u += cell) {
+        if (axisX) { g.moveTo(v + rad, u); g.arc(v, u, rad, 0, TAU); } else { g.moveTo(u + rad, v); g.arc(u, v, rad, 0, TAU); }
+      }
+    }
+    g.fill();
+    strips.set(key, c);
+    return c;
+  }
+  function fadeFast(m, axisX, a0, a1, b0, b1, col, cell, maxR, off) {
+    // sA, tA: scale and shift along the band; sB, tB: across it
+    const sA = axisX ? m.a : m.d, tA = axisX ? m.e : m.f, sB = axisX ? m.d : m.a, tB = axisX ? m.f : m.e;
+    const len = Math.round(Math.abs(a1 - a0)), dir = a1 < a0 ? -1 : 1, pad = Math.ceil(cell * maxR + 1);
+    const o = ((off || 0) % cell + cell) % cell, bmin = Math.min(b0, b1), bw = Math.abs(b1 - b0);
+    const wide = bw <= 32 ? 32 : bw <= 64 ? 64 : bw <= 128 ? 128 : 256;
+    const c = strip(axisX, dir, col, cell, maxR, len, pad, wide, m.a, m.d);
+    const alongPx = axisX ? c.width : c.height, a = Math.round((dir > 0 ? a0 : a0 - len - pad) * sA + tA);
+    const end = Math.round((bmin + bw) * sB + tB);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    for (let B = bmin, guard = 0; guard < 40; guard++) {
+      // each piece starts where the dots line up with the last one
+      const ph = (((B - (b0 - o)) % cell) + cell) % cell, src = Math.round(ph * sB), dst = Math.round(B * sB + tB);
+      const n = Math.min(end, Math.round((B + wide) * sB + tB)) - dst;
+      if (n <= 0) break;
+      if (axisX) ctx.drawImage(c, 0, src, alongPx, n, a, dst, alongPx, n);
+      else ctx.drawImage(c, src, 0, n, alongPx, dst, a, n, alongPx);
+      B += wide;
+    }
+    ctx.setTransform(m);
+  }
   function fade(axisX, a0, a1, b0, b1, col, cell, maxR, off) {
+    if (Math.abs(a1 - a0) < 1 || Math.abs(b1 - b0) <= 0) return;
+    if (baseA) {
+      const m = ctx.getTransform();
+      if (m.b === 0 && m.c === 0 && Math.abs(m.a - baseA) < 1e-6 && Math.abs(m.d - baseD) < 1e-6) return fadeFast(m, axisX, a0, a1, b0, b1, col, cell, maxR, off);
+    }
+    fadeSlow(axisX, a0, a1, b0, b1, col, cell, maxR, off);
+  }
+  function fadeSlow(axisX, a0, a1, b0, b1, col, cell, maxR, off) {
     const len = Math.abs(a1 - a0);
     if (len < 1) return;
     const R = res(), Lq = Math.round(len), key = 'f' + col + '|' + cell + '|' + maxR + '|' + Lq + '|' + R;
@@ -189,7 +246,8 @@ const COMIC = (() => {
   K.focus = (x, y, r0, n, a = 0.9, seed = 1) => {
     ctx.save(); ctx.fillStyle = INK; ctx.globalAlpha *= a; ctx.beginPath();
     for (let k = 0; k < n; k++) {
-      const an = (k + hsh(k + seed) * 0.7) / n * TAU, wd = 0.006 + hsh(k * 3 + seed) * 0.016, r = r0 * (0.85 + hsh(k * 7 + seed) * 0.5);
+      // (thin: at most about 10 px wide where they cross the middle of the screen, so they never hide play)
+      const an = (k + hsh(k + seed) * 0.7) / n * TAU, wd = 0.0025 + hsh(k * 3 + seed) * 0.0065, r = r0 * (0.85 + hsh(k * 7 + seed) * 0.5);
       ctx.moveTo(x + Math.cos(an) * r, y + Math.sin(an) * r);
       ctx.lineTo(x + Math.cos(an - wd) * 1400, y + Math.sin(an - wd) * 1400); ctx.lineTo(x + Math.cos(an + wd) * 1400, y + Math.sin(an + wd) * 1400);
     }
@@ -212,24 +270,33 @@ const COMIC = (() => {
   };
 
   /* ---------- the printed page ---------- */
-  let grain = null, grainR = 0;
+  // the fine dot screen is one picture the size of the canvas, copied on pixel for pixel (a pattern fill of the whole
+  // screen cost about as much as the rest of the frame where the canvas is drawn by the CPU)
+  let grain = null;
+  function grainFor(s) {
+    if (grain && grain.width === canvas.width && grain.height === canvas.height && grain._s === s) return grain;
+    const c = grain || mk(1, 1); c.width = canvas.width; c.height = canvas.height; c._s = s;
+    const t = mk(Math.round(6 * s) * 8, Math.round(6 * s) * 8), g = t.getContext('2d'), q = Math.round(6 * s);
+    g.fillStyle = 'rgba(0,0,0,0.18)'; g.beginPath();
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) for (const d of [0.25, 0.75]) { const px = (x + d) * q, py = (y + d) * q; g.moveTo(px + 0.85 * s, py); g.arc(px, py, 0.85 * s, 0, TAU); }
+    g.fill();
+    const cg = c.getContext('2d'); cg.clearRect(0, 0, c.width, c.height); cg.fillStyle = cg.createPattern(t, 'repeat'); cg.fillRect(0, 0, c.width, c.height);
+    return (grain = c);
+  }
   K.finish = (o = {}) => {
-    const R = res();
-    if (!grain || grainR !== R) {
-      const c = mk(6 * R, 6 * R), g = c.getContext('2d');
-      g.scale(R, R); g.fillStyle = '#000'; g.beginPath(); g.arc(1.5, 1.5, 0.85, 0, TAU); g.arc(4.5, 4.5, 0.85, 0, TAU); g.fill();
-      grain = ctx.createPattern(c, 'repeat'); grain.setTransform(new DOMMatrix([1 / R, 0, 0, 1 / R, 0, 0])); grainR = R;
-    }
+    const m = ctx.getTransform();
+    if (m.b === 0 && m.c === 0 && m.a > 0 && m.d > 0) { baseA = m.a; baseD = m.d; } else baseA = 0;
     ctx.save();
     if (!o.light) {
       // off-register printing: the whole plate again, a hair to the side
       const s = canvas.width / W;
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.24;
       ctx.drawImage(canvas, Math.round(2.5 * s), Math.round(1.5 * s));
-      ctx.setTransform(s, 0, 0, canvas.height / H, 0, 0);
+      ctx.setTransform(m);
     }
-    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.18; ctx.fillStyle = grain; ctx.fillRect(0, 0, W, H);
-    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#fff0cc'; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(grainFor(m.a || 1), 0, 0); ctx.setTransform(m);
+    ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#fff0cc'; ctx.fillRect(0, 0, W, H);
     ctx.restore();
     K.frame();
   };

@@ -155,7 +155,7 @@ const HEROCITY = (() => {
   K.drawWords = (st, cx = 0, cy = 0, heroes = []) => {
     if (st.foc) {
       const u = st.foc.t / 0.25;
-      if (u < 1) K.focus(st.foc.x - cx, st.foc.y - cy, 200 + u * 60, 44, 0.75 * (1 - u * u), st.foc.seed);
+      if (u < 1) K.focus(st.foc.x - cx, st.foc.y - cy, 220 + u * 60, 40, 0.6 * (1 - u * u), st.foc.seed);
     }
     if (!st.words) return;
     const big = hudBig(), placed = [];
@@ -214,11 +214,13 @@ const HEROCITY = (() => {
     if (kit === 'stretch' || kit === 'web' || kit === 'ghost' || kit === 'strong' || kit === 'champ') {
       ctx.save(); body(); ctx.clip();
       if (kit === 'stretch') {
-        // a striped rubbery suit: the stripes stretch with the body
-        ctx.fillStyle = id === 0 ? kc.a : '#ffffff';
-        for (const u of [0.12, 0.3, 0.86]) ctx.fillRect(-w / 2, -h * u - 2.2 * s * sy, w, 4.4 * s * sy);
-        ctx.strokeStyle = INK; ctx.lineWidth = 0.8 * s;
-        for (const u of [0.12, 0.3, 0.86]) { ctx.strokeRect(-w / 2 - 1, -h * u - 2.2 * s * sy, w + 2, 4.4 * s * sy); }
+        // a striped rubbery suit: the stripes stretch with the body. Thin, and in the hero's own family of colours
+        // (yellow on Pip, light teal on Bo), so most of the body stays orange or blue (review: Bo's wide white
+        // stripes made him read as a white hero)
+        ctx.fillStyle = id === 0 ? kc.a : kc.b;
+        for (const u of [0.12, 0.3, 0.86]) ctx.fillRect(-w / 2, -h * u - 1.5 * s * sy, w, 3 * s * sy);
+        ctx.strokeStyle = INK; ctx.lineWidth = 0.7 * s;
+        for (const u of [0.12, 0.3, 0.86]) { ctx.strokeRect(-w / 2 - 1, -h * u - 1.5 * s * sy, w + 2, 3 * s * sy); }
       } else if (kit === 'web') {
         // a web pattern over the mask and the shoulders
         ctx.strokeStyle = INK; ctx.lineWidth = 0.7 * s; ctx.beginPath();
@@ -231,8 +233,8 @@ const HEROCITY = (() => {
         }
         ctx.stroke();
       } else if (kit === 'ghost') {
-        // a pale hood with an opening for the face
-        ctx.fillStyle = '#e6f4ff'; ctx.beginPath(); ctx.rect(-w / 2 - 2, -h - 2, w + 4, h * 0.62);
+        // a pale hood with an opening for the face, tinted with the hero's own colour so Pip still reads warm and Bo cool
+        ctx.fillStyle = id === 0 ? '#ffd9c4' : '#cfe4ff'; ctx.beginPath(); ctx.rect(-w / 2 - 2, -h - 2, w + 4, h * 0.62);
         ctx.ellipse(look * 0.6, ey + 1.5 * s, 10.5 * s, 7.5 * s, 0, 0, TAU); ctx.fill('evenodd');
         ctx.strokeStyle = INK; ctx.lineWidth = 1 * s; ctx.beginPath(); ctx.ellipse(look * 0.6, ey + 1.5 * s, 10.5 * s, 7.5 * s, 0, 0, TAU);
         ctx.moveTo(-w / 2, -h * 0.4 + 2); ctx.lineTo(w / 2, -h * 0.4 + 2); ctx.stroke();
