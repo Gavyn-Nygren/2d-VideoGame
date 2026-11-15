@@ -834,8 +834,8 @@
     match: { bestOf: 5, roundTime: 0 },
     act: { label: 'dig' },
     legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump <kbd>F</kbd> + a direction to dig',
-      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> jump <kbd>/</kbd> + a direction to dig',
+      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump',
+      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> jump',
     },
     tip: 'Dig down for gems. The star gem is deep in the middle. Watch what\'s above you!',
     howTo: [
