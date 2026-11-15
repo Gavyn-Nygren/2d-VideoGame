@@ -48,7 +48,7 @@
     hipY: -700, stride: 120, lift: 70, step: 4, golemV: 60,
     stompTell: 1.0, goldTell: 0.5, holdAhead: 0.6,
     pullT: 3, reach: 34, earR: 42, goldEarR: 84, heaveWin: 0.5, heaveR: 70,
-    rage: { pull: 0.07, flinch: 0.05, tumble: 0.06, brush: 0.04, bonk: 0.02, gold: 0.7 }, ringDrain: 0.11, idleDrain: 0.012,
+    rage: { pull: 0.1, flinch: 0.07, tumble: 0.06, brush: 0.04, bonk: 0.02, gold: 0.7 }, ringDrain: 0.11, idleDrain: 0.012,
     scratchEvery: 14, scratchTell: 1.5, scratchT: 0.9, scratchR: 110,
     archEvery: 11, archTell: 2, archT: 1.2, archY: -1080,
     armPer: 10, armLow: -704, armHigh: -1136, armX: 300, fistTell: 1, fistAt: 7.5, fistT: 1.2, palm: 25,
@@ -229,6 +229,10 @@
     h.hold = h.ring = h.pull = h.crouch = false;
     if (h.mode === 'stand') {
       const s = SURF[h.s];
+      // stepping off a climb onto a ledge: the key still held from the climb does not start the next climb (several
+      // ledges have one climb straight above another, and nobody could stop on the knee or the back ledge between
+      // them without letting go on the exact tick). Let go, then press again to climb on.
+      if ((h.climbLock === 'up' && !up) || (h.climbLock === 'down' && !down)) h.climbLock = null;
       if (act && down) { h.hold = true; h.crouch = true; } // (▼ + action: hold on, flat, without pulling or ringing)
       else if (act) {
         if (id === st.puller && atShard(st, h) && !curShard(st).loose) h.pull = true;
@@ -236,12 +240,12 @@
         else h.hold = true;
         if (id === st.soother && atEar(st, h) && curShard(st).mite) K.hintOnce(st, 'mite' + st.k + st.cur, id, 'A crystal mite is on it! Jump on it', 2.4);
       } else if (down) {
-        const c = CLIMBS.find(c => c.up === s.n && overClimb(st, c, h, s.y));
+        const c = h.climbLock === 'down' ? null : CLIMBS.find(c => c.up === s.n && overClimb(st, c, h, s.y));
         if (c) { h.mode = 'climb'; h.s = c.i; h.ly = c.top + 2; h.lx = clamp(h.x - world(st, c.part, 0, h.ly).x, c.x0, c.x1); }
         else h.crouch = true;
       } else {
         if (lr) { h.lx += lr * S.walk * sp * dt; h.face = lr; h.walkPh += dt * 10; }
-        const c = up ? CLIMBS.find(c => c.down === s.n && overClimb(st, c, h, s.y)) : null;
+        const c = up && h.climbLock !== 'up' ? CLIMBS.find(c => c.down === s.n && overClimb(st, c, h, s.y)) : null;
         if (c) { h.mode = 'climb'; h.s = c.i; h.ly = c.bot - 2; h.lx = clamp(h.x - world(st, c.part, 0, h.ly).x, c.x0, c.x1); }
         else if (jumpP) { h.mode = 'air'; h.vx = lr * S.walk * S.air; h.vy = -S.jumpV * (wet ? 0.8 : 1); Sfx.play('cavegolemJump'); }
         else if (h.lx < s.x0 || h.lx > s.x1) {
@@ -260,8 +264,8 @@
         h.lx += lr * S.climb * 0.7 * dt; if (lr) h.face = lr;
         if (up || down) h.walkPh += dt * 8;
         if (h.lx < c.x0 - 6 || h.lx > c.x1 + 6) { place(st, h); h.mode = 'air'; h.vx = lr * 80; h.vy = 0; }
-        else if (h.ly <= c.top) { const L = SURF[SI[c.up]]; place(st, h); h.mode = 'stand'; h.s = L.i; h.lx = h.x - origin(st, L).x; h.lx = clamp(h.lx, L.x0, L.x1); }
-        else if (h.ly >= c.bot) { const L = SURF[SI[c.down]]; place(st, h); h.mode = 'stand'; h.s = L.i; h.lx = clamp(h.x - origin(st, L).x, L.x0, L.x1); }
+        else if (h.ly <= c.top) { const L = SURF[SI[c.up]]; place(st, h); h.mode = 'stand'; h.s = L.i; h.lx = h.x - origin(st, L).x; h.lx = clamp(h.lx, L.x0, L.x1); h.climbLock = 'up'; }
+        else if (h.ly >= c.bot) { const L = SURF[SI[c.down]]; place(st, h); h.mode = 'stand'; h.s = L.i; h.lx = clamp(h.x - origin(st, L).x, L.x0, L.x1); h.climbLock = 'down'; }
       }
       place(st, h);
     } else if (h.mode === 'air') {
@@ -295,7 +299,9 @@
   // a rising ledge picks up anyone standing just above it (the arm lift, a swinging foot)
   function pickup(st, prev, now) {
     for (const h of st.h) {
-      if (h.mode !== 'stand') continue;
+      // (never off the body itself: the forearm passes the end of the rib ledge on every rise, and used to carry the
+      // ringer at the chest's teal crystal away for a whole 10 s cycle, again and again)
+      if (h.mode !== 'stand' || SURF[h.s].part === 'body') continue;
       for (let n = 0; n < LEDGES.length; n++) {
         const L = LEDGES[n]; if (L.i === h.s || L.part === 'body') continue;
         const a = prev[n], b = now[n];
@@ -446,7 +452,7 @@
     Sfx.play('cavegolemShardOut'); Sfx.play('caveGolemSigh');
     K.spark(st, X0 + p.x, scrY(st, p.y), 14, [K.GLOW.teal, '#ffffff']);
     st.flyShards.push({ x: p.x, y: p.y, vx: (p.x >= 0 ? 1 : -1) * 260, vy: -380, r: 0, t: 0 });
-    st.rage = Math.max(0, st.rage - 0.25);
+    st.rage = Math.max(0, st.rage - 0.2);
     K.pop(st, X0 + p.x, scrY(st, p.y) - 40, 'Shard out! ' + st.pulled + ' of 12', '#ffffff', 18);
     if (st.pulled === 4) Music.cue({ song: 'cavegolem1' }); else if (st.pulled === 8) Music.cue({ song: 'cavegolem2' }); else if (st.pulled === 12) Music.cue({ song: 'cavegolem3' });
     st.cur++;
@@ -566,7 +572,7 @@
   }
   function plan(st) {
     if (st.planMemo && st.planMemo.n === G.tickN) return st.planMemo.p;
-    const sh = curShard(st), out = { shard: sh, puller: st.puller, soother: st.soother, stompIn: stompIn(st), tell: stompIn(st) < tellT(st), goal: [null, null], mv: [null, null], hold: [false, false], crouch: [false, false], hop: [false, false], dodge: [0, 0], freeze: [false, false], gem: [null, null], act: [null, null] };
+    const sh = curShard(st), out = { shard: sh, puller: st.puller, soother: st.soother, stompIn: stompIn(st), tell: stompIn(st) < tellT(st), goal: [null, null], mv: [null, null], hold: [false, false], crouch: [false, false], hop: [false, false], noJump: [false, false], dodge: [0, 0], freeze: [false, false], gem: [null, null], act: [null, null] };
     const ap = armPose(st.gt); out.arm = ap;
     if (sh) {
       for (const id of [0, 1]) {
@@ -582,7 +588,8 @@
         }
         else g = sh.ear;
         // the palm shard: off the palm before the fist closes
-        if (g[0] === 'arm' && g[1] > S.palm && (ap.fistIn < 1.2 || ap.closed)) g = ['arm', -10];
+        let flee = false;
+        if (g[0] === 'arm' && g[1] > S.palm && (ap.fistIn < 1.2 || ap.closed)) { g = ['arm', -10]; flee = true; }
         // a gem on the ledge I am on (and not where I am going): pick it up first, unless it is time to act
         if (h.mode === 'stand' && !sh.loose && !(id === st.soother && st.h[st.puller].pull)) {
           const gm = st.gemsHere.find(q => !q.got && q.sp[0] === SURF[h.s].n && SURF[h.s].kind === 'ledge');
@@ -594,6 +601,7 @@
         const here = out.mv[id].k === 'here';
         if (out.gem[id]) out.act[id] = null;
         else if (sh.loose) out.act[id] = here ? 'heave' : null;
+        else if (flee) out.act[id] = null; // (off the palm first: the fist is closing)
         else if (id === st.puller) out.act[id] = here || atShard(st, h) ? 'pull' : null;
         else if (sh.mite && here) out.act[id] = 'pop';
         else out.act[id] = here && atEar(st, h) ? 'ring' : null;
@@ -608,6 +616,14 @@
         if (sc && h.mode !== 'air' && sc.t > S.scratchTell - 0.45 && sc.t < S.scratchTell + S.scratchT && dist(heroC(h), sc) < S.scratchR + 30 && !safe) out.crouch[id] = true;
         const ar = st.arch;
         if (ar && h.mode !== 'air' && ar.t > S.archTell - 0.5 && h.y < S.archY + 40) out.crouch[id] = true;
+        // a jump now would still be in the air when the hand or the arch sweeps through (no crouching up there):
+        // no hop over a stomp and no jump onto a mite until it has passed
+        // (in a hollow too: a jump leaves its shelter)
+        if (((sc && sc.t > S.scratchTell - 0.85 && sc.t < S.scratchTell + S.scratchT && dist(heroC(h), sc) < S.scratchR + 30) || (ar && ar.t > S.archTell - 0.85 && h.y < S.archY + 40))) {
+          out.noJump[id] = true;
+          if (out.hop[id]) { out.hop[id] = false; out.hold[id] = true; }
+          if (out.act[id] === 'pop') out.act[id] = null;
+        }
         // (on a climb you cannot crouch: hold on flat against the rock instead)
         if (out.crouch[id] && h.mode === 'climb') { out.crouch[id] = false; out.hold[id] = true; }
         // crouching through a stomp: hold on as well (▼ + action)

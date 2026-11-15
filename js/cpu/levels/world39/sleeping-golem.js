@@ -27,7 +27,9 @@
       if (pl.dodge[id]) { if (pl.dodge[id] > 0) out.right = true; else out.left = true; return out; }
       if (pl.hop[id]) { out.jump = 'tap'; return out; }
       // hold on (at the shard or a ring spot ▼ + action, so it holds without pulling or ringing)
-      if (pl.hold[id]) { out.act = true; if (pl.act[id] === 'pull' || pl.act[id] === 'ring') out.down = true; return out; }
+      // (always ▼ + action on a ledge: near a shard or a teal crystal the action alone pulls or rings, and a ringer is
+      // shaken off; on a climb the action alone holds)
+      if (pl.hold[id]) { out.act = true; if (h.mode === 'stand') out.down = true; return out; }
       const job = pl.act[id], oid = 1 - id;
       if (job === 'pull') {
         const ringing = st.h[st.soother].ring;
@@ -50,11 +52,12 @@
       }
       s.heaveT = 0;
       const mv = pl.mv[id];
-      if (!mv || pl.freeze[id]) return out; // (a roof crystal marker close by: stay out of it until it lands)
+      if (!mv || pl.freeze[id] || (pl.noJump[id] && mv.k === 'up' && h.mode === 'stand')) return out; // (a roof crystal marker close by: stay out of it until it lands)
       if (mv.k === 'walk') { if (mv.x > h.lx + 2) out.right = true; else if (mv.x < h.lx - 2) out.left = true; }
       else if (mv.k === 'wait' && Math.abs(mv.x - h.lx) > 4) { if (mv.x > h.lx) out.right = true; else out.left = true; }
-      else if (mv.k === 'up') out.jump = true;
-      else if (mv.k === 'down') out.down = true;
+      // (just off a climb: let go for a moment before starting the next one, as a person has to)
+      else if (mv.k === 'up') { if (!(h.mode === 'stand' && h.climbLock)) out.jump = true; }
+      else if (mv.k === 'down') { if (!(h.mode === 'stand' && h.climbLock)) out.down = true; }
       if (solo && id === st.soother && st.h[oid].mode !== 'tumble' && M().atShard(st, st.h[oid]) && !pl.act[id]) cpuSay(p, 'Coming! Wait for my chime', 1.6);
       return out;
     },

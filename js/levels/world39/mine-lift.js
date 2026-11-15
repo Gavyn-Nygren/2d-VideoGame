@@ -510,7 +510,7 @@
       // (a shelf stays the target once it is chosen, so winding a little never flips the plan back to level)
       if (n0.kind === 'shelf' && (dist < 320 || st.tiltFor === n0)) {
         st.tiltFor = n0;
-        const pull = pullFor(n0.r) + 5, dh = Math.min(dhFor(pull) + 6, Math.sin((lurchAt(st) - 4) * DEG) * S.LW);
+        const pull = pullFor(n0.r) + 5, dh = Math.min(dhFor(pull) + 6, Math.sin((lurchAt(st) - 3) * DEG) * S.LW);
         out.dh = n0.side === 0 ? dh : -dh; out.why = 'shelf';
         // a second shelf on the other side right after: keep this tilt until this one is passed, then swing over
       } else if (n0.kind === 'narrow' && dist < 260) { out.dh = 0; out.why = 'narrow'; out.narrow = true; }
@@ -842,8 +842,9 @@
         else if (j && j.kind === 'crate' && Math.abs(st.u[id] - j.u) < 36) { s = 'Push the crate! ' + K.key(id, 'act'); pulse = true; }
         else if (j && (j.kind === 'fire' || j.kind === 'bat') && (j.urgent || j.kind === 'bat')) { s = (j.kind === 'fire' ? 'Spark!' : 'Bats!') + ' Walk ' + K.key(id, j.u > st.u[id] ? 'right' : 'left'); }
         else if (!st.at[id]) s = 'Back to your crank ' + K.key(id, HOME[id] > st.u[id] ? 'right' : 'left');
-        else if (pl.why === 'shelf' && a > 40) { s = 'Your side up! ' + K.key(id, 'up'); pulse = true; }
-        else if (pl.why === 'shelf' && a < -30) { s = 'Let out! ' + K.key(id, 'down'); }
+        // (the gap between snagging the shelf and a Lurch is only about 18 px each way: say so before it is too late)
+        else if (pl.why === 'shelf' && a > 16) { s = 'Your side up! ' + K.key(id, 'up'); pulse = true; }
+        else if (pl.why === 'shelf' && a < -12) { s = 'Let out! ' + K.key(id, 'down'); }
         else if (pl.why === 'narrow' && Math.abs(pl.tilt) > S.narrowTilt) { s = a > 0 ? 'Level it! Hold' : 'Level it! ' + K.key(id, 'down'); pulse = true; }
       } else if (id === 0) {
         if (!pl.lower && st.v[0] > 0) { s = 'Wait! Spike below'; pulse = true; }

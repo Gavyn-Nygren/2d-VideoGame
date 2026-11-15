@@ -974,7 +974,7 @@
       const hx = x + h.face * 12, hy = y - 20;
       if (id === st.lurer) {
         // the bandolier of glow gems across the chest: shows how many are left
-        for (let k = 0; k < S.gemMax; k++) { const u = (k - 2) / 4; ctx.fillStyle = k < st.gemsLeft ? (st.gold ? K.GLOW.gold : K.GLOW.teal) : 'rgba(40,40,50,0.6)'; circle(x - 7 + k * 3.5, y - 22 + u * 8 * h.face, 2); ctx.fill(); }
+        for (let k = 0; k < S.gemMax; k++) { const u = (k - 2) / 4; ctx.fillStyle = k < st.gemsLeft ? (st.gold ? K.GLOW.gold : K.GLOW.teal) : 'rgba(40,40,50,0.6)'; circle(x - 7 + k * 3.5, y - (7 - u * 5 * h.face) * sy, 2); ctx.fill(); } // (on the chest, under the eyes: it used to cross the forehead)
       } else {
         // the pickaxe, swung on a strike
         const a = h.swingT > 0 ? -2.2 + (0.22 - h.swingT) * 12 : -0.6;

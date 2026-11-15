@@ -194,7 +194,9 @@
         else if (!diggable(k)) { if (!P.dig || P.dig.r !== tgt.r || P.dig.c !== tgt.c) { Sfx.play('gemrushDigBlocked'); K.spark(st, scrX(st, (tgt.c + 0.5) * C_), scrY(st, (tgt.r + 0.5) * C_), 3, ['#ffffff']); if (k === PIL) ring(st, tgt.r, tgt.c); } P.dig = { r: tgt.r, c: tgt.c, t: 0, need: 99, blocked: true }; }
         else {
           if (!P.dig || P.dig.r !== tgt.r || P.dig.c !== tgt.c) P.dig = { r: tgt.r, c: tgt.c, t: 0, need: DIGT[k], start: st.t };
-          const sp = (P.gold ? 1 / GR.gold : 1) * (P.cough > 0 ? 2 : 1);
+          // (sp is the time factor: the gold shovel takes 0.8 of the time, a cough twice the time. It used to be 1 / 0.8, which
+          // made the gold shovel 25% SLOWER, so whoever lost a round usually lost the next ones too)
+          const sp = (P.gold ? GR.gold : 1) * (P.cough > 0 ? 2 : 1);
           P.dig.t += dt / sp;
           P.digAnim += dt;
           if (Math.floor(P.digAnim * 9) !== Math.floor((P.digAnim - dt) * 9)) K.dust(st, scrX(st, (tgt.c + 0.5) * C_), scrY(st, (tgt.r + 0.5) * C_), '#9a7250', 2);
@@ -305,14 +307,32 @@
       const ny = f.y + f.vy * dt, below = rowOf(ny + C_);
       // a digger under it: buried
       for (const P of st.pl) {
-        if (P.buried > 0 || P.lift > 0) continue;
-        if (Math.abs(P.x - (f.c + 0.5) * C_) < C_ * 0.5 + GR.w / 2 - 4 && ny + C_ > P.y - GR.h && ny < P.y) { bury(st, P, f.by); f.y = Math.min(f.y, P.y - GR.h - C_); f.done = true; break; }
+        if (P.lift > 0) continue;
+        // the boulder breaks up on the digger it buries (left sitting on their head it floated in mid-air once they
+        // walked off, and a digger who dug straight on down would be buried by the same boulder again and again)
+        if (Math.abs(P.x - (f.c + 0.5) * C_) < C_ * 0.5 + GR.w / 2 - 4 && ny + C_ > P.y - GR.h && ny < P.y) {
+          if (P.buried <= 0) bury(st, P, f.by);
+          f.done = true; Sfx.play('gemrushBoulderThud'); G.shake = Math.max(G.shake || 0, 0.15);
+          for (let n = 0; n < 3; n++) K.dust(st, scrX(st, (f.c + 0.5) * C_) + (n - 1) * 8, scrY(st, P.y - GR.h), '#8a8480', 4);
+          break;
+        }
       }
-      if (f.done) { settle(st, f); continue; }
+      if (f.done) continue;
       if (solid(cellAt(st, below, f.c))) { f.y = (below - 1) * C_; settle(st, f); f.done = true; }
       else f.y = ny;
     }
     st.falling = st.falling.filter(f => !f.done);
+    // nothing floats: a boulder left with nothing under it (the one below it fell, a digger it buried walked away, a
+    // geyser or a crumbled row opened the cell) falls too, unless a digger is standing right under it
+    st.scanT = (st.scanT || 0) - dt;
+    if (st.scanT <= 0) {
+      st.scanT = 0.1;
+      for (let r = NR - 3; r >= 0; r--) for (let c = 1; c < NC - 1; c++) {
+        if (st.g[r][c] !== BOUL || st.g[r + 1][c] !== E) continue;
+        if (st.pl.some(P => { const q = cellOf(P); return P.lift <= 0 && q.c === c && (q.r === r + 1 || q.r === r); })) continue;
+        st.g[r][c] = E; st.falling.push({ c, y: r * C_, vy: 0, wob: 0.25 }); Sfx.play('gemrushBoulderRumble');
+      }
+    }
   }
   function settle(st, f) {
     let r = Math.round(f.y / C_);
@@ -359,7 +379,19 @@
     st.geyOn = (st.geyT % GR.geyserEvery) < 0.5;
     if (!fire) return;
     let any = false;
-    for (const P of st.pl) { const q = cellOf(P); if (cellAt(st, q.r + 1, q.c) === VENT && P.ground) { P.vy = -GR.geyserV; P.ground = false; any = true; st.stat.geysers[P.id]++; } }
+    for (const P of st.pl) {
+      const q = cellOf(P);
+      if (cellAt(st, q.r + 1, q.c) !== VENT || !P.ground || P.buried > 0 || P.lift > 0) continue;
+      // the jet blasts the earth above the vent open (up to 6 cells, not through rock) and a nook each side at the top,
+      // so it really is a way back up: steer ◀ ▶ at the top to step off. (The hollow is only 2 cells high and nobody
+      // can dig upward, so before this the jet only bumped the digger's head on the roof.)
+      let top = q.r;
+      for (let r = q.r - 1; r >= Math.max(3, q.r - 6); r--) { const k = cellAt(st, r, q.c); if (k !== E && !diggable(k)) break; st.g[r][q.c] = E; top = r; }
+      if (top < q.r - 1) for (const dc of [-1, 1]) { const k = cellAt(st, top, q.c + dc); if (diggable(k)) st.g[top][q.c + dc] = E; }
+      K.dust(st, scrX(st, P.x), scrY(st, top * C_), '#9a7250', 8);
+      P.vy = -Math.max(GR.geyserV, Math.sqrt(2 * GR.grav * ((q.r - top) * C_ + 10))); P.ground = false; P.dig = null; any = true; st.stat.geysers[P.id]++;
+      if (!K.quiet(P.id)) K.pop(st, scrX(st, P.x), scrY(st, P.y) - 44, 'Whoosh! Steer off at the top', '#bfe6ff', 15);
+    }
     Sfx.play(any ? 'gemrushGeyserLaunch' : 'gemrushGeyserPuff');
   }
   function ring(st, r, c) {
@@ -379,7 +411,7 @@
       for (let r = top; r < top + 14 && r < NR - 1; r++) for (let c = 1; c < NC / 2; c++) if (cellAt(st, r, c) === E && solid(cellAt(st, r + 1, c)) && cellAt(st, r, NC - 1 - c) === E && solid(cellAt(st, r + 1, NC - 1 - c))) spots.push([r, c]);
       for (let n = 0; n < 3 && spots.length; n++) {
         const [r, c] = spots.splice(Math.floor(Math.random() * spots.length), 1)[0];
-        for (const cc of n < 2 ? [c, NC - 1 - c] : [c]) if (st.gems.filter(q => q.sprk === st.sprinkled).length < 5) { st.gems.push({ r, c: cc, v: 1, x: (cc + 0.5) * C_, y: (r + 0.5) * C_, got: false, sprk: st.sprinkled, drop: 0.8 }); st.total++; }
+        for (const cc of n < 2 ? [c, NC - 1 - c] : [Math.random() < 0.5 ? c : NC - 1 - c]) if (st.gems.filter(q => q.sprk === st.sprinkled).length < 5) { st.gems.push({ r, c: cc, v: 1, x: (cc + 0.5) * C_, y: (r + 0.5) * C_, got: false, sprk: st.sprinkled, drop: 0.8 }); st.total++; }
       }
       st.sprinkle.push({ t: 0 });
       K.msg(st, 'The golem sprinkles more gems!', '#bff8ef', 2);

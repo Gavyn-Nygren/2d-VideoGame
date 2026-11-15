@@ -51,6 +51,9 @@
       let job = pl.jobs[id];
       // the crate only once the lift is level again (pushing it while tipped only stalls the lift), unless it is about to fall
       if (job && job.kind === 'crate' && Math.abs(pl.tilt) > 9 && job.u > 50 && job.u < S.LW - 50) job = null;
+      // not while the lift is being tipped past a shelf: walking off stops my end, the tilt runs away and it snags or
+      // lurches (a sitting bat, or a spark about to scorch the rope, still comes first)
+      if (job && pl.why === 'shelf' && pl.dist < 260 && pl.dist > -40 && !(job.kind === 'bat' || job.urgent || job.kind === 'crate')) job = null;
       if (job && !pl.wind[id] && !pl.slam) {
         if (Math.abs(job.u - u) < 18) { out.act = 'tap'; }
         else walkTo(job.u);
@@ -64,7 +67,10 @@
       // one side leads (the side the plan wants lower; Pip when level) and keeps lowering, the other follows it, so
       // both run at full speed together instead of taking turns. With a person partner the computer always follows.
       const a = pl.ahead[id], lead = info.partnerCpu && id === (pl.dh > 0 ? 1 : 0);
-      const stopAt = lead ? 40 : 16, goAt = lead ? 20 : 6;
+      // (at a shelf the room between a Snag and a Lurch is small: the follower keeps closer to the plan's tilt, and the
+      // leader only runs on ahead while the other end is moving too, or the tilt runs away into a Lurch)
+      const tight = pl.why === 'shelf', alone = Math.abs(st.v[1 - id]) < 60;
+      const stopAt = lead ? (tight && alone ? 12 : 40) : tight ? 12 : 16, goAt = lead ? (tight && alone ? 4 : 20) : tight ? 4 : 6;
       if (s.low && a > stopAt) s.low = false;
       else if (!s.low && a <= goAt) s.low = true;
       if (s.low) out.down = true;
