@@ -57,6 +57,8 @@ const maxT = +opt('max', 600), expr = opt('expr', ''), logA = opt('log', '').spl
           if (h.run > 0) { h.run -= dt; return { right: true, jump: Math.random() < 0.6 * dt ? 'tap' : false }; }
           return out;
         }
+        // noact: plays the role but never presses the action (a person who never Boosts or hacks)
+        if (hum === 'noact') return Object.assign({}, out, { act: false });
         if (hum === 'slow') {
           if (h.hold > 0) { h.hold -= dt; return {}; }
           h.next -= dt; if (h.next <= 0) { h.hold = 2 + Math.random() * 3; h.next = 8 + Math.random() * 7; }
