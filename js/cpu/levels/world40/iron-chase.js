@@ -98,7 +98,7 @@ function ironChaseCpuBoost(bst, p, o, P, out) {
   if (!w) return out;
   const top = gy - IRONCHASE.wallH;
   if (p.grounded && p.y + p.h <= top + 2) { if (cx > w.x + 30) out.left = ironBrainTap(bst, 'inch', 0.1); return ironBrainJumpHold(bst, out); }
-  if (!o.crouch && p.grounded && !p.onPartner) { bst._jh = 0; ironBrainSeek(out, p, w.x - 60, 6); return out; }   // out of the step's way
+  if (!o.crouch && p.grounded && !p.onPartner) { ironBrainSeek(out, p, w.x - 60, 6); return ironChaseCpuJumps(bst, p, G.mst.ph, out, gy); }   // out of the step's way
   out.right = true;
   if (!p.grounded) { if (p.y + p.h < top && cx > w.x + 24) out.right = false; return ironBrainJumpHold(bst, out); }
   if (p.onPartner || cx > w.x - 16) ironBrainJump(bst, out, p, 0.35);

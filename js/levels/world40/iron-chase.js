@@ -164,6 +164,7 @@ function ironChaseLand(st, f) {
   if (ph.stretch === 1) for (const c of ph.cracks) {
     if (c.open || c.x < st.cam.x + 90 || c.x > st.cam.x + W - 60) continue;
     if (G.players.some(p => Math.abs(p.x + p.w / 2 - c.x) < 54)) continue;
+    if (ph.walls.some(w => !w.done && w.x - c.x > -40 && w.x - c.x < 320)) continue;   // never in the way of a wall climb
     c.open = true; c.t = 0; Sfx.play('ironchaseCrackOpen'); ironWord(st, 'KRAK!', c.x, gy - 30, 20, { life: 0.8 });
   }
   // the chain whips on the tow
