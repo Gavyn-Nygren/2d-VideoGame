@@ -24,7 +24,7 @@ const IRONFALL = {
   crumble: { full: 1.0, faint: 1.0, goldFaint: 2.0 },
   slide: { v: 300, goldV: 220, top: [1600, 180] },
   jump: { ready: 1.0, win: 0.5, goldWin: 1.0, rest: 0.6 },
-  meadow: 1300, endX: [4700, 4770],
+  meadow: 1300, endX: [4540, 4600], hands: 4990, key: 4710, home: 5260, camEnd: 4430,
   rivets: [[580, 46], [790, 106], [1330, 50], [2000, 366], [2200, 474], [2840, 490], [3330, 686], [3540, 536], [3850, 626], [4100, 476]],
 };
 // the course: platforms [id, x0, x1, top y, opts]
@@ -76,7 +76,7 @@ function ironFallSetup(st, L) {
   ph.prep = [];
   for (let l = 0; l < 3; l++) for (let c = 0; c < 2; c++) ph.prep.push(() => IRON_ART.meadow(l, c));
   ph.prep.push(() => IRON_ART.fallBody(0), () => IRON_ART.fallBody(1), () => IRON_ART.fallBody(2), () => IRON_ART.fallBody(3), () => IRON_ART.fallBody(4),
-    () => IRON_ART.fallPump(), () => IRON_ART.fallSpring(), () => IRON_ART.fallPost(), () => IRON_ART.fallHands(), () => IRON_ART.fallKey());
+    () => IRON_ART.fallPump(), () => IRON_ART.fallSpring(), () => IRON_ART.fallPost(), () => IRON_ART.fallHands(), () => IRON_ART.fallKey(), () => IRON_ART.fallHome());
   for (const [, x0, x1, , o] of IRONFALL_PLATS) ph.prep.push(() => IRON_ART.fallPlate(x1 - x0, !!o.wall));
 }
 
@@ -306,7 +306,7 @@ function ironFallEnd(st, dt) {
   if (e.t > 1.7) for (const p of G.players) { p.x = clamp(p.x, IRONFALL.endX[0] - 80, IRONFALL.endX[1] + 40); p.y = IRONFALL.meadow - p.h; p.vy = 0; p.grounded = true; }
   ph.ex = Math.min(4900, ph.ex + 900 * dt);
   for (const r of ph.solids) if (r.ox0 != null && ph.ex >= r.x1) r.off = true;
-  if (e.t > 2.2 && !e.thump) { e.thump = true; Sfx.play('ironfallThump'); if (!reduceMotion) G.shake = Math.max(G.shake, 0.4); ironWord(st, 'THUMP!', 5000, IRONFALL.meadow - 160, 34, { life: 1.2, rise: 10 }); }
+  if (e.t > 2.2 && !e.thump) { e.thump = true; Sfx.play('ironfallThump'); if (!reduceMotion) G.shake = Math.max(G.shake, 0.4); ironWord(st, 'THUMP!', IRONFALL.hands, IRONFALL.meadow - 190, 34, { life: 1.2, rise: 10 }); }
   const T = st.tick;
   if (e.t > 2.8 && T.ride >= 0) { const p = G.players[T.ride]; T.ride = -1; T.x = p.x + p.w / 2 + 18; T.y = IRONFALL.meadow; T.pose = 'idle'; T.face = 1; Sfx.play('ironfallScoop'); }
   if (e.t > 3.4 && T.ride < 0) { T.pose = e.t > 4.4 ? 'gasp' : 'point'; T.face = 1; }
@@ -318,9 +318,8 @@ function ironFallCamera(st, dt) {
   const ph = st.ph, ps = G.players.filter(p => p.alive);
   if (!ps.length) return;
   const mx = ps.reduce((a, p) => a + p.x + p.w / 2, 0) / ps.length, my = ps.reduce((a, p) => a + p.y + p.h, 0) / ps.length;
-  const tx = clamp(mx - 420, -200, 4700), ty = clamp(my - 320, -330, IRONFALL.meadow - 470);
-  st.cam.x += (tx - st.cam.x) * Math.min(1, dt * 2.6); st.cam.y += (ty - st.cam.y) * Math.min(1, dt * 2.6);
-  if (ph.end) st.cam.x += (4380 - st.cam.x) * Math.min(1, dt * 1.5);
+  const tx = ph.end ? IRONFALL.camEnd : clamp(mx - 420, -200, 4700), ty = clamp(my - 320, -330, IRONFALL.meadow - 470);
+  st.cam.x += (tx - st.cam.x) * Math.min(1, dt * (ph.end ? 1.6 : 2.6)); st.cam.y += (ty - st.cam.y) * Math.min(1, dt * 2.6);
 }
 
 /* --- the plan --- */
@@ -385,7 +384,7 @@ function ironFallHints(st) {
 function ironFallDrawSky(st) {
   const cx = st.cam.x, cy = st.cam.y;
   SKETCH.paper(ctx, 'dawn');
-  const par = [0.06, 0.2, 0.45], vy = [0.04, 0.12, 0.3];
+  const par = [0.06, 0.2, 0.45], vy = [0.04, 0.09, 0.2];
   for (let l = 0; l < 3; l++) {
     const off = cx * par[l], c0 = Math.floor(off / 960), dy = -(cy + 330) * vy[l];
     for (let c = c0; c <= c0 + 1; c++) SKETCH.blit(ctx, IRON_ART.meadow(l, ((c % 2) + 2) % 2), c * 960 - off, dy);
@@ -403,10 +402,10 @@ function ironFallDrawBack(st) {
 function ironFallDraw(st) {
   const ph = st.ph, d = SKETCH.live(ctx, 6170, SKETCH.boil()), cx = st.cam.x, gold = ironFallGold(st);
   // the meadow ground at the foot of the leg
-  if (cx + W > 4300 && st.cam.y + H > IRONFALL.meadow - 20) {
-    const gy = IRONFALL.meadow, g = [[4300, gy + 4], [4700, gy - 2], [5200, gy + 3], [5800, gy - 1], [5800, gy + 300], [4300, gy + 300]];
+  if (cx + W > 4100 && st.cam.y + H > IRONFALL.meadow - 20) {
+    const gy = IRONFALL.meadow, g = [[4100, gy + 4], [4500, gy - 2], [4900, gy + 2], [5300, gy - 1], [5800, gy + 1], [5800, gy + 300], [4100, gy + 300]];
     d.shape(g, { fill: IRON_P.green, w: 2, col: SKETCH.INK, corner: 30 });
-    for (let x = 4310; x < 5800; x += 26) { d.line(x, gy + 2, x - 3, gy - 8, { w: 1, col: SKETCH.INK, ov: 0 }); if ((x / 26 | 0) % 5 === 0) d.ellipse(x + 6, gy - 9, 2.4, 2.4, { fill: (x / 26 | 0) % 2 ? '#f6ecd4' : IRON_P.core, w: 0.6 }); }
+    for (let x = 4110; x < 5800; x += 26) { d.line(x, gy + 2, x - 3, gy - 8, { w: 1, col: SKETCH.INK, ov: 0 }); if ((x / 26 | 0) % 5 === 0) d.ellipse(x + 6, gy - 9, 2.4, 2.4, { fill: (x / 26 | 0) % 2 ? '#f6ecd4' : IRON_P.core, w: 0.6 }); }
   }
   // the platforms: full pencil, faint (flickering), dotted (gone); trimmed at the edge
   for (const id in ph.plats) {
@@ -469,34 +468,46 @@ function ironFallDraw(st) {
   // the knee's count
   const J = ph.jump, knee = ph.plats.knee;
   if (J.st === 'ready') d.word('ready' + '...'.slice(0, 1 + Math.floor(J.t * 3)), knee.x1 - 60, knee.y0 - 70, 22, { align: 'center', col: SKETCH.INK, w: 2.2 });
-  if (J.st === 'go') d.word('JUMP!', knee.x1 - 60, knee.y0 - 74, 30 + Math.sin(J.t * 30) * 2, { align: 'center', col: '#c0402a', w: 3 });
+  if (J.st === 'go' && !ph.end) d.word('JUMP!', knee.x1 - 60, knee.y0 - 74, 30 + Math.sin(J.t * 30) * 2, { align: 'center', col: '#c0402a', w: 3 });
+  if (IRONFALL.home + 140 > cx && IRONFALL.home - 140 < cx + W) SKETCH.blit(ctx, IRON_ART.fallHome(), IRONFALL.home, IRONFALL.meadow + 2);
   // the end: the hands and the great key thump down in the grass
   if (ph.end) {
     const k = clamp((ph.end.t - 1.6) / 0.6, 0, 1), y = IRONFALL.meadow - (1 - k * k) * 700;
-    SKETCH.blit(ctx, IRON_ART.fallHands(), 5060, y);
-    SKETCH.blit(ctx, IRON_ART.fallKey(), 5300, y - 10, { rot: 0.25 });
+    const k2 = clamp((ph.end.t - 1.9) / 0.5, 0, 1), y2 = IRONFALL.meadow - (1 - k2 * k2) * 800;
+    SKETCH.blit(ctx, IRON_ART.fallHands(), IRONFALL.hands, y, { rot: 0.1 });
+    SKETCH.blit(ctx, IRON_ART.fallKey(), IRONFALL.key, y2 + 4, { rot: -0.16 });
   }
   ironTickDrawAt(st);
 }
 function ironFallDrawTop(st) {
   const ph = st.ph, cx = st.cam.x, cy = st.cam.y, d = SKETCH.live(ctx, 6180, SKETCH.boil());
-  // the eraser edge: a rubbed-out smear and crumbs, and the big rubber working up and down
-  const ex = ph.ex;
-  if (ex > cx - 200 && ex < cx + W + 100) {
-    ctx.save();
+  // the eraser edge: a rubbed-out smear and crumbs, and the big rubber working up and down (it lifts away at the end)
+  const ex = ph.ex, fa = ph.end ? Math.max(0, 1 - ph.end.t * 1.4) : 1;
+  if (ex > cx - 200 && ex < cx + W + 100 && fa > 0) {
+    ctx.save(); ctx.globalAlpha = fa;
     const g = ctx.createLinearGradient(ex - 90, 0, ex + 30, 0);
-    g.addColorStop(0, 'rgba(250,240,224,0)'); g.addColorStop(0.7, 'rgba(250,240,224,0.55)'); g.addColorStop(1, 'rgba(250,240,224,0)');
+    g.addColorStop(0, 'rgba(250,240,224,0)'); g.addColorStop(0.7, 'rgba(250,240,224,0.5)'); g.addColorStop(1, 'rgba(250,240,224,0)');
     ctx.fillStyle = g; ctx.fillRect(ex - 90, cy - 20, 120, H + 40);
     ctx.restore();
-    for (let i = 0; i < 26; i++) {
-      const s = (i * 97 + Math.floor(ph.t * 6) * 13) % 1000 / 1000, y = cy + ((i * 211) % 540), x = ex - 10 - s * 70;
-      d.shape([[x, y], [x + 4 + (i % 3), y - 1], [x + 5, y + 3], [x + 1, y + 4]], { fill: '#e8a0a0', w: 0.8, col: SKETCH.INK, corner: 30 });
+    // dry rubbing strokes along the edge
+    for (let i = 0; i < 7; i++) { const y = cy + ((i * 157 + Math.floor(ph.t * 10) * 61) % 540), x = ex - 30 - (i % 3) * 14; d.stroke([[x, y], [x + 24, y + 30], [x + 4, y + 60]], { w: 1.2, col: '#d9c9b0', alpha: 0.6 * fa, sh: 0, curve: true, p: [0.1, 1, 0.1] }); }
+    // crumbs: little rolled pink curls falling away
+    for (let i = 0; i < 22; i++) {
+      const s = ((i * 97 + ph.t * 40 * (1 + i % 3)) % 300) / 300, x = ex - 8 - (i * 37 % 60), y = cy + ((i * 211) % 520) + s * 120;
+      d.stroke([[x, y], [x + 3, y + 1.5], [x + 4, y + 4]], { w: 2.2, col: '#e3959c', alpha: fa * (1 - s * 0.6), sh: 0, curve: true });
     }
-    const by = cy + 270 + Math.sin(ph.t * 5) * 140;
-    ctx.save(); ctx.translate(ex - 30, by); ctx.rotate(-0.25);
-    d.shape([[-40, -60], [30, -60], [34, 60], [-36, 60]], { fill: '#e78f94', w: 2.4, col: SKETCH.INK, corner: 30 });
-    d.shape([[-40, -60], [30, -60], [31, -20], [-39, -20]], { fill: '#4a7ab0', w: 2, col: SKETCH.INK, corner: 30 });
-    d.word('RUB', -4, -34, 12, { align: 'center', col: '#fff', w: 1.6 });
+    const by = cy + 270 + Math.sin(ph.t * 5) * 140 - (ph.end ? ph.end.t * ph.end.t * 900 : 0);
+    ctx.save(); ctx.translate(ex - 30, by); ctx.rotate(-0.25 + Math.sin(ph.t * 10) * 0.04); ctx.globalAlpha = fa;
+    const body = [[-42, -58], [32, -62], [38, 52], [26, 66], [-30, 66], [-40, 54]];
+    ctx.fillStyle = '#ef9ea4'; ctx.beginPath(); body.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.fill();
+    d.hatch([[8, -58], [32, -62], [38, 52], [26, 66], [10, 66]], { a: 70, gap: 3.2, w: 0.6, alpha: 0.45, force: true, col: '#a8525a' });
+    d.stroke([[-34, 40], [-22, 58], [18, 60]], { w: 1.2, col: '#fff', alpha: 0.5, sh: 0, curve: true });
+    d.shape(body, { w: 2.4, col: SKETCH.INK, corner: 30 });
+    const sleeve = [[-43, -60], [33, -64], [35, -18], [-41, -14]];
+    ctx.fillStyle = '#5f86b5'; ctx.beginPath(); sleeve.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.fill();
+    d.hatch([[10, -62], [33, -64], [35, -18], [12, -16]], { a: 70, gap: 3, w: 0.6, alpha: 0.5, force: true });
+    d.shape(sleeve, { w: 2.2, col: SKETCH.INK, corner: 30 });
+    d.word('RUB', -4, -32, 13, { align: 'center', col: '#fbf3df', w: 1.8 });
     ctx.restore();
   }
 }
