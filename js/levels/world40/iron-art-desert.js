@@ -40,10 +40,10 @@ IRON_ART.desertDraw[0] = (d, chunk) => {
     const blob = []; for (let k = 0; k <= 10; k++) { const t = k / 10; blob.push([x + w2 * t, top + Math.sin(t * Math.PI * 2 + i) * 14 - Math.sin(t * Math.PI) * 30 + (1 - Math.sin(t * Math.PI)) * 60]); }
     d.wash(blob.concat([[x + w2 + 20, 302], [x - 20, 302]]), i % 3 ? P.dust : P.ochre, { alpha: 0.16 + d.r() * 0.1, off: 0, spread: 2, layers: 2, edge: false, curve: true });
   }
-  d.wash([[0, 0], [380, 0], [300, 60], [0, 90]], P.greyBlue, { alpha: 0.22, off: 0, spread: 2, layers: 3, edge: false, blooms: 1 });
+  d.wash([[960, 0], [560, 0], [660, 60], [960, 100]], P.greyBlue, { alpha: 0.22, off: 0, spread: 2, layers: 3, edge: false, blooms: 1 });
   // the sun (top right): left as paper, a ring of wash round it, short pencil rays
   if (chunk === 0) {
-    const sx = 790, sy = 90;
+    const sx = 168, sy = 172;
     // the glare: blotchy glazes of core yellow and ochre round a disc of bare paper
     for (let i = 0; i < 6; i++) { const a = d.r() * 6.3, rr = 46 + d.r() * 26; d.wash(SKETCH.ell(sx + Math.cos(a) * 8, sy + Math.sin(a) * 6, rr, rr * 0.9, 18, d.r()), i % 2 ? P.core : P.dust, { alpha: 0.16, off: 0, spread: 2.2, edge: i === 0, blooms: 1 }); }
     d.lift(SKETCH.ell(sx, sy, 32, 31, 16), 1);
@@ -54,10 +54,10 @@ IRON_ART.desertDraw[0] = (d, chunk) => {
       d.stroke([[sx + Math.cos(a) * r0, sy + Math.sin(a) * r0], [sx + Math.cos(a) * r1, sy + Math.sin(a) * r1]], { w: i % 2 ? 0.7 : 1.1, alpha: 0.45, p: [1, 0.8, 0.05], sh: 0 });
     }
     // heat shimmer over the horizon: wavy pencil lines
-    for (let k = 0; k < 6; k++) { const y = 262 + k * 6, x0 = 520 + d.r() * 200, pts = []; for (let x = 0; x <= 160; x += 8) pts.push([x0 + x, y + Math.sin(x / 9 + k) * 1.4]); d.pencil(pts, { alpha: 0.28, curve: true }); }
+    for (let k = 0; k < 6; k++) { const y = 262 + k * 6, x0 = 160 + d.r() * 300, pts = []; for (let x = 0; x <= 160; x += 8) pts.push([x0 + x, y + Math.sin(x / 9 + k) * 1.4]); d.pencil(pts, { alpha: 0.28, curve: true }); }
   }
   // clouds: long flat ones, inked lightly on their undersides, grey-blue glaze
-  const clouds = chunk === 0 ? [[150, 70, 120], [470, 120, 90], [640, 40, 70]] : [[200 + d.r() * 200, 60 + d.r() * 60, 100], [600 + d.r() * 200, 40 + d.r() * 80, 80]];
+  const clouds = chunk === 0 ? [[300, 64, 110], [520, 120, 90], [700, 40, 70]] : [[200 + d.r() * 200, 60 + d.r() * 60, 100], [600 + d.r() * 200, 40 + d.r() * 80, 80]];
   for (const [cx, cy, r] of clouds) {
     const pts = [];
     for (let i = 0; i <= 18; i++) { const t = i / 18, x = cx - r + 2 * r * t; pts.push([x, cy - Math.sin(t * Math.PI) * r * 0.22 - Math.abs(Math.sin(t * 9)) * 6]); }
@@ -95,6 +95,7 @@ IRON_ART.desertDraw[1] = (d, chunk) => {
     // the pyramid: the Colossus stepped over it and kicked its top off; left face lit, right face hatched
     const ax = 250, ay = 130, L = [80, base], R = [430, base], M = [292, base + 6];
     const lit = [[ax - 12, ay + 8], [ax + 14, ay + 4], M, L], shd = [[ax + 14, ay + 4], R, M];
+    d.solid([[ax - 14, ay + 6], [ax + 16, ay + 2], R, M, L], { lw: 2 });
     d.pencil([[ax, 100], L], { alpha: 0.3 }); d.pencil([[ax, 100], R], { alpha: 0.3 }); d.pencil([[ax, 100], [ax, base]], { alpha: 0.18 });
     d.wash(lit, P.dust, { alpha: 0.5, off: 2, spread: 1.2, blooms: 1 });
     d.wash(shd, P.ochreDeep, { alpha: 0.55, off: 2, spread: 1.2 });

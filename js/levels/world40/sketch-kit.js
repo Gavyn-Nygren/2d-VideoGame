@@ -361,7 +361,7 @@ const SKETCH = (() => {
           if (tone) {
             let start = null;
             for (let x = xa; x <= xb; x += stepL) {
-              const p = back(Math.min(x + stepL / 2, xb), y), keep = R.r() * 0.45 + 0.3 < tone(p[0], p[1]);
+              const p = back(Math.min(x + stepL / 2, xb), y), keep = R.r() * 0.22 + 0.42 < tone(p[0], p[1]);
               if (keep && start == null) start = x; if (!keep && start != null) { runs.push([start, x]); start = null; }
             }
             if (start != null) runs.push([start, xb]);
@@ -745,6 +745,27 @@ const SKETCH = (() => {
   S.paperCanvas = paperCanvas;
   // the page's darker edge alone, drawn last over everything (so drawings that cover the paper still sit on a page)
   const edgeCv = {};
+  /* light: the painter's last glazes over a finished page. S.glow adds warm light (screen) in a soft pool;
+     S.gloom darkens everything outside a lit circle (multiply), so a page has one clear light source. */
+  S.glow = (g, x, y, r, rgb, a) => {
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(0.45, `rgba(${rgb},${a * 0.45})`); gr.addColorStop(1, `rgba(${rgb},0)`);
+    g.save(); g.globalCompositeOperation = 'screen'; g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); g.restore();
+  };
+  S.gloom = (g, x, y, r0, r1, rgb, a) => {
+    const gr = g.createRadialGradient(x, y, r0, x, y, r1);
+    gr.addColorStop(0, `rgba(${rgb},0)`); gr.addColorStop(1, `rgba(${rgb},${a})`);
+    g.save(); g.globalCompositeOperation = 'multiply'; g.fillStyle = gr; g.fillRect(0, 0, 960, 540); g.restore();
+  };
+  // a little flock of inked birds, wings flapping (o.dir -1 flies left)
+  S.birds = (d, x, y, n, t, o = {}) => {
+    const R = S.rng(o.seed || 5);
+    for (let i = 0; i < n; i++) {
+      const bx = x + (R() - 0.5) * (o.spread || 120) + (o.dir || -1) * t * 40 % 400, by = y + (R() - 0.5) * (o.spreadY || 50), s = (o.s || 5) * (0.7 + R() * 0.6);
+      const f = Math.sin(t * 11 + i * 1.7) * s * 0.6;
+      d.stroke([[bx - s, by - f], [bx - s * 0.4, by - s * 0.2], [bx, by + s * 0.25], [bx + s * 0.4, by - s * 0.2], [bx + s, by - f]], { w: o.w || 1.3, curve: true, sh: 0, p: [0.2, 1, 0.2], alpha: o.alpha || 0.85, col: o.col });
+    }
+  };
   S.edge = (g, kind) => {
     const k = kind + '@' + S.res;
     if (!edgeCv[k]) {

@@ -210,7 +210,7 @@ IRON_ART.FOOT = { w: 760, h: 330, ox: 380, oy: 320, toeX: 748, heelX: 6 };
 IRON_ART.foot = () => SKETCH.sheet('iron:foot', IRON_ART.FOOT.w, IRON_ART.FOOT.h, (d) => {
   const H = IRON_ART.helpers, plate = H.ironPlate;
   // darker toward the bottom right of each form (light from the top left)
-  const tn = (bx, by, sx, sy, m = 1) => (x, y) => ((x - bx) / sx * 0.4 + (y - by) / sy * 0.9) * m;
+  const tn = (bx, by, sx, sy, m = 1) => (x, y) => ((x - bx) / sx * 0.45 + (y - by) / sy * 0.95) * m - 0.32;
   // ---- round 1: construction (pencil) ----
   d.pcircle(205, 100, 76); d.pcircle(205, 100, 30); d.pcircle(518, 170, 80, { ry: 0.95 }); d.pcircle(612, 196, 70); d.pcircle(690, 218, 56);
   d.pencil([[0, 320], [760, 320]], { alpha: 0.25 }); d.pencil([[205, 0], [205, 330]], { alpha: 0.15 });
@@ -316,6 +316,21 @@ IRON_ART.foot = () => SKETCH.sheet('iron:foot', IRON_ART.FOOT.w, IRON_ART.FOOT.h
       if (d.round >= 4) d.hatch(SKETCH.ell(x + 1, y + 1, 6, 2.6, 8, 0.2), { a: 20, gap: 1.3, w: 0.5, alpha: 0.6 });
     }
     d.rivets(96, 6, 296, 6, 11, { r: 2, rust: 0.5 });
+  }
+  if (d.round >= 4) {
+    // painter's light: a cool blue-violet glaze pooled in the shadow side of every form (the sky in the shadows),
+    // and warm sand-bounce light glazed up into the undersides
+    for (const q of [back, main, instep].concat(toes)) {
+      const [x0, y0, x1, y1] = SKETCH.bbox(q);
+      d.washIn(q, () => {
+        d.wash(SKETCH.ell(x1 - (x1 - x0) * 0.1, y1 - (y1 - y0) * 0.05, (x1 - x0) * 0.75, (y1 - y0) * 0.7, 18, d.r()), '#4f5f86', { alpha: 0.22, off: 0, spread: 2.2, layers: 3, edge: false });
+        d.wash([[x0 - 10, y1 - 26], [x1 + 10, y1 - 30], [x1 + 10, y1 + 10], [x0 - 10, y1 + 10]], '#e0a85a', { alpha: 0.2, off: 0, spread: 2, layers: 2, edge: false });
+      });
+    }
+    d.washIn(sole, () => d.wash([[0, 296], [760, 300], [760, 330], [0, 330]], '#d89a50', { alpha: 0.28, off: 0, spread: 2, layers: 2, edge: false }));
+    // sunlit top-left faces: a warm glaze where the light lands
+    d.washIn(back, () => d.wash(SKETCH.ell(60, 60, 90, 120, 16, 0.2), '#f0c070', { alpha: 0.14, off: 0, spread: 2, layers: 2, edge: false }));
+    d.washIn(main, () => d.wash(SKETCH.ell(170, 40, 120, 90, 16, 0.2), '#f0c070', { alpha: 0.12, off: 0, spread: 2, layers: 2, edge: false }));
   }
   // the silhouette again, heavy: the outer line of a big form is the boldest line in it
   d.stroke([[90, -4], [70, 50], [48, 120], [36, 190], [34, 244]], { w: 4.2, curve: true, c: [380, 200], sh: 1.2 });

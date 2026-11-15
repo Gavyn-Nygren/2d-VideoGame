@@ -29,7 +29,7 @@ IRON_ART.boilerWall = (chunk = 0) => {
         const pts = [[xa, ya], [(xa + xb) / 2, ya - bow * 0.4], [xb, ya], [xb + 3, (ya + yb) / 2], [xb, yb], [(xa + xb) / 2, yb + bow * 0.4], [xa, yb], [xa - 3, (ya + yb) / 2]];
         d.wash(pts, i % 2 ? '#3e3632' : '#463c35', { alpha: 0.55, off: 1.5, spread: 1.3, blooms: 1 });
         // chalk hatching where the light falls (the upper part of each plate), paper left dark below
-        d.hatch(pts, { a: 62 + i * 3, gap: 3.4, w: 0.6, alpha: 0.42, tone: (x, y) => 0.95 - (y - ya) / (yb - ya) * 1.2 + (x - xa) / (xb - xa) * 0.2 });
+        d.hatch(pts, { a: 62 + i * 3, gap: 3.4, w: 0.6, alpha: 0.42, tone: (x, y) => 1.05 - (y - ya) / (yb - ya) * 0.9 - Math.hypot(x + chunk * 960 - 560, (y - 268) * 1.3) / 330 });
         d.outline(pts, { w: 1.5, corner: 40, alpha: 0.75, c: [(xa + xb) / 2, (ya + yb) / 2] });
         d.rivets(xa + 8, ya + 8, xb - 8, ya + 8, Math.round((xb - xa) / 17), { r: 1.7, rust: 0.25 });
         if (d.r() < 0.5) ironScratches(d, xa + (xb - xa) * 0.5, (ya + yb) / 2, 3);

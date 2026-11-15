@@ -14,7 +14,14 @@
     const t = SKETCH.t, gy = IRON_ART.GROUND_Y;
     SKETCH.paper(g, 'sand');
     if (G.mst) G.mst.outfit = 'ironchase';
-    for (let l = 0; l < 4; l++) SKETCH.blit(g, IRON_ART.desert(l, 0), 0, 0);
+    for (let l = 0; l < 4; l++) {
+      SKETCH.blit(g, IRON_ART.desert(l, 0), 0, 0);
+      // aerial perspective: warm haze laid over the far layers so the distance falls back
+      if (l === 1) { g.save(); g.globalAlpha = 0.22; g.fillStyle = '#f4e3c2'; g.fillRect(0, 150, 960, 170); g.restore(); }
+    }
+    // the sun's light washing across the whole sky, low and warm
+    SKETCH.glow(g, 168, 172, 560, '255,206,128', 0.32);
+    SKETCH.glow(g, 168, 172, 150, '255,236,190', 0.5);
     IRON_ART.foot(); IRON_ART.shin();
     // the stomp: the foot hangs 78 px over the sand, 0.25 s before it lands
     const fx = 668, sole = 376, tell = 0.8;
@@ -29,6 +36,16 @@
     // the shin above, then the foot (a hair tilted: the heel comes down first)
     SKETCH.blit(g, "iron:shin", fx - 380 + 196, sole - 320 + 14, { rot: -0.025 });
     SKETCH.blit(g, 'iron:foot', fx, sole, { rot: -0.025 });
+    // its own shade over the sand right under it, cool, and the sky's blue in it
+    g.save(); g.globalCompositeOperation = 'multiply'; g.fillStyle = 'rgba(150,160,200,0.25)'; g.beginPath(); SKETCH.ell(fx + 20, gy + 6, 360, 16, 40).forEach((p, k) => (k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.fill(); g.restore();
+    // its downdraft: sand blown out in a rolling billow from under the heel and the toes
+    for (const [x, y, r] of [[fx - 330, gy - 14, 22], [fx - 296, gy - 8, 16], [fx - 360, gy - 4, 13], [fx + 230, gy - 12, 24], [fx + 280, gy - 20, 30], [fx + 150, gy - 6, 15]])
+      d.cloud(x + Math.sin(t * 2 + x) * 2, y, r, { fill: P.dust, puffs: 6, w: 1.4, curls: 1, flat: true });
+    d.speed(fx - 330, gy - 10, -50, 2, 4, { spread: 16, w: 1 });
+    d.speed(fx + 300, gy - 18, 50, -2, 4, { spread: 22, w: 1.1 });
+    // birds scattering from its knee, small against it (that is how big it is)
+    SKETCH.birds(d, 300, 110, 9, t, { spread: 120, spreadY: 50, s: 6, dir: -1, seed: 31 });
+    SKETCH.birds(d, 200, 70, 4, t, { spread: 60, spreadY: 24, s: 4, dir: -1, seed: 32, alpha: 0.55 });
     // speed lines over its top edge: it is coming down fast
     d.speed(fx + 250, sole - 150, 0, -70, 6, { spread: 120, w: 1.3 });
     d.speed(fx - 300, sole - 250, 0, -80, 4, { spread: 60, w: 1.2 });
@@ -40,6 +57,7 @@
       g.fillStyle = big ? 'rgba(70,46,26,0.85)' : 'rgba(120,88,48,0.7)';
       g.beginPath(); g.ellipse(x, y, big ? 2.4 : 0.9, big ? 2 : 1.6 + R(), R() * 3, 0, 6.3); g.fill();
     }
+    for (const sx of [fx - 120, fx + 40, fx + 210]) for (let k = -2; k <= 2; k++) if (k) d.stroke([[sx + k * 3, sole + 2], [sx + k * 3.6 + Math.sin(t * 3 + k) * 1.5, sole + 24], [sx + k * 4.4, sole + 40 + Math.abs(k) * -5]], { w: 1, p: [1, 0.6, 0.05], curve: true, col: '#9c7a46', alpha: 0.55, sh: 0, brk: 1.4 });
     for (const sx of [fx - 120, fx + 40, fx + 210]) d.stroke([[sx, sole + 2], [sx + 1, sole + 26], [sx - 1, sole + 52]], { w: 2.4, p: [1, 0.6, 0.05], curve: true, col: '#9c7a46', alpha: 0.75, sh: 0, brk: 1 });
     // the tell: "THOO..." growing on the sand under it
     d.word('THOO...', fx - 40, gy + 48, 20 + tell * 14, { rot: -0.05, fill: P.ochre, w: 2.8, align: 'center' });
@@ -76,7 +94,20 @@
     SKETCH.blit(g, IRON_ART.furnace(), 560, 268);
     IRON_ART.flames(g, 560, 268, 70, t);
     SKETCH.blit(g, IRON_ART.boilerFloor(), 0, 0);
+    // one light in the room: the fire. Everything far from it sinks into the dark, everything near it glows
+    const fl = 1 + Math.sin(t * 9) * 0.05 + Math.sin(t * 23) * 0.03;
+    SKETCH.gloom(g, 560, 300, 150, 640, '18,14,30', 0.7);
+    SKETCH.glow(g, 560, 290, 360 * fl, '255,140,60', 0.34);
+    SKETCH.glow(g, 560, 290, 150, '255,190,110', 0.28);
     const d = SKETCH.live(g, 400, SKETCH.boil()); d.dark = true;
+    // embers riding the heat up out of the door, and the air shimmering above the furnace
+    const ER = SKETCH.rng(77);
+    for (let i = 0; i < 18; i++) {
+      const f = (t * (0.25 + ER() * 0.2) + ER()) % 1, x = 520 + ER() * 80 + Math.sin(f * 9 + i) * 14 + f * (ER() - 0.3) * 120, y = 250 - f * 230, r = (1 - f) * (1.2 + ER() * 1.6);
+      g.save(); g.globalCompositeOperation = 'screen'; g.fillStyle = `rgba(255,${150 + ER() * 80 | 0},70,${0.9 * (1 - f)})`;
+      g.beginPath(); g.ellipse(x, y, r, r * 1.6, 0, 0, 6.3); g.fill(); g.restore();
+    }
+    for (let k = 0; k < 5; k++) { const y = 92 - k * 9, pts = []; for (let x = 0; x <= 110; x += 6) pts.push([500 + x, y + Math.sin(x / 8 + t * 6 + k) * 2]); d.stroke(pts, { w: 0.7, curve: true, col: '#f2c27a', alpha: 0.32, sh: 0 }); }
     // the jets: two shut (a drip and a wisp), one live at the right, an alcove (safe) between
     for (const [x, on] of [[420, 0], [520, 0], [790, 1]]) {
       SKETCH.blit(g, IRON_ART.nozzle(), x, 120);
