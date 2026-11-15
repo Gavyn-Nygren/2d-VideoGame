@@ -950,142 +950,149 @@ const LEVELS = [
   {
     name: 'Ice Slide', world: 4, kind: 'team', mode: 'ice', ownStep: true, // no act button: "go back" is hold ▼ for 1 s
     legend: { down: 'drop · hold: go back', padDown: 'down drops, hold: back' },
+    howTo: [
+      'Push left or right once and you slide until you bump into something: a wall, a gate, a post or your partner.',
+      'On ice you only hop straight up (through a hole above you) or drop down through the ice shelf you stand on.',
+      'Orange posts stop only Pip, blue posts only Bo. Snow is grippy: walk on it.',
+      'Stuck? Hold down for a second to go back to your start.',
+    ],
     tip: 'Ice is slippery: you slide until you bump into something. Park so your partner stops in just the right spot! Crash into each other head-on and you both bounce back. Stuck? Hold ▼ for a second to go back to your start.',
     theme: { skyTop: '#a9dcff', skyBot: '#eef8ff', hillFar: '#cfe2f3', hillNear: '#e9f4fc', stone: '#5a7db3', stoneLight: '#7094c8', stoneEdge: '#3b5788', grass: '#c9f0ff', grassDark: '#7cc7ec', plank: '#bfe9ff', plankDark: '#5fa9d6', rope: '#7fd3ff', sun: 'rgba(255, 251, 230, 0.95)', sunGlow: 'rgba(255, 255, 245, 0.4)' },
     switches: {},
     // per room, ice: { par (moves for a "neat" room), hints (park-here cells), hintAfter (s, default 45), arrowAfter (s before the
-    // who-moves-next arrows, default 60), guide (their table: made by tests/mkguide.js, redo it after any map change), signs
-    // (drawn by the mode over its backdrop), palace: [x, baseY, scale], penguins: [[x, feetY, scale]], floes: [[x, y]] }
+    // who-moves-next arrows, default 60; the arrows come from the computer partner's own solver, so maps can change freely),
+    // signs (drawn by the mode over its backdrop), palace: [x, baseY, scale], penguins: [[x, feetY, scale]], floes: [[x, y]] }
+    // Nov 2026 (Gavyn): the rooms got a step harder (fewest moves 6, 12, 7, 11; they were 4, 7, 7, 6). Check every map with
+    // node tools/w5/ice-solve.js (fewest moves and one solution per room).
     rooms: [
       {
         title: 'Slip and Stop',
-        tip: 'Push once and you slide all the way. Bump into your partner to stop! Stuck? Hold ▼ to go back.',
-        switches: { A: { plate: 'a', type: 'gate' } },
-        ice: { par: 4, hintAfter: 0, hints: [[19, 14], [18, 14]], palace: [780, 420, 0.75],
-          guide: 'blchRbncjrc3czlchblrchciRchcjRchckRchclRchcmRchcnRchcoRchcpRchcqRchcrRchcsRchctRchcuRchcvRchcwRchcxRchcyRchczrchd1RchdarcibmrcichrcicircicjRciczrcisiRcjbnrcjchrcjcircjckRcjclRcjcmRcjcnRcjcoRcjcpRcjcqRcjcrRcjcsRcjctRcjcuRcjcvRcjcwRcjcxRcjcyRcjczrcjd1RcjdarckchrckcirckcjrckclRckczrclchrclcirclcjrclckrclcmRclczrcmchrcmcircmcjrcmclrcmcnRcmczrcnchrcncircncjrcncmrcncoRcnczrcochrcocircocjrcocnrcocpRcoczrcpchrcpcircpcjrcpcorcpcqRcpczrcqchrcqcircqcjrcqcprcqcrRcqczrcrchrcrcircrcjrcrcqrcrcsRcrczrcschrcscircscjrcscrrcsctRcsczrctchrctcirctcjrctcsrctcuRctczrcuchrcucircucjrcuctrcucvRcuczrcvchrcvcircvcjrcvcurcvcwRcvczrcwchrcwcircwcjrcwcvrcwcxRcwczrcxchrcxcircxcjrcxcwrcxcyRcxczrcychrcycircycjrcycxrcyczRcyd1Rcydarczc3lczchRczciRczcjRczckRczclRczcmRczcnRczcoRczcpRczcqRczcrRczcsRczctRczcuRczcvRczcwRczcxRczcyrczd1Rczdard1chrd1cird1cjrd1cyrd1czrdachRdaciRdacjRdacyRdaczR',
+        tip: 'Push once and you slide all the way. Bump into your partner to stop! A button opens its gate only while someone stands on it.',
+        switches: { A: { plate: 'a', type: 'gate' }, B: { plate: 'b', type: 'gate' } },
+        ice: { par: 6, hintAfter: 20, hints: [[10, 14], [9, 14], [19, 14], [18, 14]], palace: [800, 420, 0.6], penguins: [[48, 450, 0.85]],
           signs: [
-            { x: 300, y: 300, text: 'On ice you slide until you bump into something' },
-            { x: 300, y: 330, text: 'One of you parks by the gate. The other bumps into them!' },
-            { x: 770, y: 300, text: 'The door has a button too' },
+            { x: 180, y: 300, text: 'Slide until you bump' },
+            { x: 180, y: 326, text: 'into something' },
+            { x: 480, y: 300, text: 'Bump your partner' },
+            { x: 480, y: 326, text: 'onto the button!' },
+            { x: 780, y: 300, text: 'The door has' },
+            { x: 780, y: 326, text: 'a button too' },
           ] },
         signs: [],
         map: [
-          '################################',
-          '#...................#..........#',
-          '#...................#..........#',
-          '#...................#..........#',
-          '#...................#..........#',
-          '#...................#..........#',
-          '#...................#..........#',
-          '#...................#..........#',
-          '#...................#..........#',
-          '#...................#..........#',
-          '#...................#..........#',
-          '#...................#..........#',
-          '#...................A..........#',
-          '#...................A..........#',
-          '#.21..............a.A........Ea#',
-          '#nnn############################',
-          '################################',
-          '################################',
+          '################################', //  0
+          '#..........#........#..........#', //  1
+          '#..........#........#..........#', //  2
+          '#..........#........#..........#', //  3
+          '#..........#........#..........#', //  4
+          '#..........#........#..........#', //  5
+          '#..........#........#..........#', //  6
+          '#..........#........#..........#', //  7
+          '#..........#........#..........#', //  8
+          '#..........#........#..........#', //  9
+          '#..........#........#..........#', // 10
+          '#..........#........#..........#', // 11
+          '#..........A........B..........#', // 12
+          '#..........A........B..........#', // 13
+          '#.21.....a.A......baB........Eb#', // 14
+          '#nnn############################', // 15
+          '################################', // 16
+          '################################', // 17
         ],
       },
       {
         title: 'Hop Up',
-        tip: 'On ice you can only hop straight up. Stop under a hole in the ceiling to hop through it!',
+        tip: 'On ice you can only hop straight up. Stop under a hole to hop through it! Orange posts stop only Pip, blue posts only Bo.',
         switches: { A: { plate: 'a', type: 'gate' } },
-        ice: { par: 7, hints: [[15, 14], [14, 14], [1, 11]], palace: [700, 360, 0.75],
-          guide: '8x9tr9t8xr9t9uR9t9vR9t9wR9t9xR9t9yR9t9zR9ta0R9ta1R9ta2R9ta3R9ta4R9ta5R9ta6R9ta7R9ta8R9ta9R9taaR9tabR9tacR9tadR9taeR9tafR9tagR9tahR9taiR9tajR9takR9talR9tamr9tchR9tcjR9tctR9tcur9tcvR9tcxr9tcyr9tczr9td0r9td1r9td2r9td3r9td4r9td5r9td6r9td7r9td8r9td9r9tdar9u9tr9u9vR9uamr9uchl9ucjl9ucvl9ucxr9udar9v9tr9v9ur9v9wR9vamr9vchl9vcjl9vcvl9vcxr9vdar9w9tr9w9vr9w9xR9wamr9wchl9wcjl9wcvl9wcxr9wdar9x9tr9x9wr9x9yR9xamr9xchl9xcjl9xcvl9xcxr9xdar9y9tr9y9xr9y9zR9yamr9ychl9ycjl9ycvl9ycxr9ydar9z9tr9z9yr9za0R9zamr9zchl9zcjl9zcvl9zcxr9zdara09tra09zra0a1Ra0amra0chla0cjla0cvla0cxra0dara19tra1a0ra1a2Ra1amra1chla1cjla1cvla1cxra1dara29tra2a1ra2a3Ra2amra2chla2cjla2cvla2cxra2dara39tra3a2ra3a4Ra3amra3chla3cjla3cvla3cxra3dara49tra4a3ra4a5Ra4amra4chla4cjla4cvla4cxra4dara59tra5a4ra5a6Ra5amra5chla5cjla5cura5cvla5cxra5dara69tra6a5ra6a7Ra6amra6chla6cjla6ctla6cvla6cxra6dara79tra7a6ra7a8Ra7amra7chla7cjla7cura7cvla7cxra7dara89tra8a7ra8a9Ra8amra8chla8cjla8cvla8cxra8dara99tra9a8ra9aaRa9amra9chla9cjla9cvla9cxra9daraa9traaa9raaabRaaamraachlaacjlaacvlaacxraadarab9trabaarabacRabamrabchlabcjlabcvlabcxrabdarac9tracabracadRacamracchlaccjlaccvlaccxracdarad9tradacradaeRadamradchladcjladcvladcxraddarae9traeadraeafRaeamraechlaecjlaecvlaecxraedaraf9trafaerafagRafamrafchlafcjlafcvlafcxrafdarag9tragafragahRagamragchlagcjlagcvlagcxragdarah9trahagrahaiRahamrahchlahcjlahcvlahcxrahdarai9traiahraiajRaiamraichlaicjlaicvlaicxraidaraj9trajairajakRajamrajchlajcjlajcvlajcxrajdarak9trakajrakalRakamrakchlakcjlakcvlakcxrakdaral9tralakralchlalcjlalcvlalcxRaldaUam9tRam9uRam9vRam9wRam9xRam9yRam9zRama0Rama1Rama2Rama3Rama4Rama5Rama6Rama7Rama8Rama9RamaaRamabRamacRamadRamaeRamafRamagRamahRamaiRamajRamakRamchlamcjlamctlamcuUamcvlamcxRamcyRamczRamd0Ramd1Ramd2Ramd3Ramd4Ramd5Ramd6Ramd7Ramd8Ramd9RamdaUblchRbncjrbzcvlc1cxrcedaUch9trch9uLch9vLch9wLch9xLch9yLch9zLcha0Lcha1Lcha2Lcha3Lcha4Lcha5Lcha6Lcha7Lcha8Lcha9LchaaLchabLchacLchadLchaeLchafLchagLchahLchaiLchajLchakLchalLchamLchblrchciRchcjRchckRchclRchcmRchcnRchcoRchcpRchcqRchcrRchcsRchctRchcuUchcvrchcxRchcyRchczRchd0Rchd1Rchd2Rchd3Rchd4Rchd5Rchd6Rchd7Rchd8Rchd9RchdaUci9trci9uLci9vLci9wLci9xLci9yLci9zLcia0Lcia1Lcia2Lcia3Lcia4Lcia5Lcia6Lcia7Lcia8Lcia9LciaaLciabLciacLciadLciaeLciafLciagLciahLciaiLciajLciakLcialLciamLcibmrcichrcicircicjRcickRciclRcicmRcicnRcicoRcicpRcicqRcicrRcicsRcictRcicuUcicvrcicxRcicyRciczRcid0Rcid1Rcid2Rcid3Rcid4Rcid5Rcid6Rcid7Rcid8Rcid9RcidaUcisiRcj9trcj9uLcj9vLcj9wLcj9xLcj9yLcj9zLcja0Lcja1Lcja2Lcja3Lcja4Lcja5Lcja6Lcja7Lcja8Lcja9LcjaaLcjabLcjacLcjadLcjaeLcjafLcjagLcjahLcjaiLcjajLcjakLcjalLcjamLcjbnrcjchrcjcircjckRcjclRcjcmRcjcnRcjcoRcjcpRcjcqRcjcrRcjcsRcjctRcjcuUcjcvrcjcxRcjcyRcjczRcjd0Rcjd1Rcjd2Rcjd3Rcjd4Rcjd5Rcjd6Rcjd7Rcjd8Rcjd9RcjdaUckchrckcjrckclRckcvrclchrclcjrclckrclcmRclcvrcmchrcmcjrcmclrcmcnRcmcvrcnchrcncjrcncmrcncoRcncvrcochrcocjrcocnrcocpRcocvrcpchrcpcjrcpcorcpcqRcpcvrcqchrcqcjrcqcprcqcrRcqcvrcrchrcrcjrcrcqrcrcsRcrcvrcschrcscjrcscrrcsctRcscvrct9trcta6LctamLctchrctcjrctcsrctcuUctcvrctcxRctdaUcu9trcua5ucua7ucuamucuchucucjucuctucucvucucxucudaucv9trcv9uLcv9vLcv9wLcv9xLcv9yLcv9zLcva0Lcva1Lcva2Lcva3Lcva4Lcva5Lcva6Lcva7Lcva8Lcva9LcvaaLcvabLcvacLcvadLcvaeLcvafLcvagLcvahLcvaiLcvajLcvakLcvalLcvamLcvbzlcvchRcvciRcvcjRcvckRcvclRcvcmRcvcnRcvcoRcvcpRcvcqRcvcrRcvcsRcvctlcvcuUcvcxRcvcyRcvczRcvd0Rcvd1Rcvd2Rcvd3Rcvd4Rcvd5Rcvd6Rcvd7Rcvd8Rcvd9RcvdaUcx9trcx9urcx9vrcx9wrcx9xrcx9yrcx9zrcxa0rcxa1rcxa2rcxa3rcxa4rcxa5rcxa6rcxa7rcxa8rcxa9rcxaarcxabrcxacrcxadrcxaercxafrcxagrcxahrcxaircxajrcxakrcxalrcxamrcxc1rcxchrcxcjrcxctrcxcurcxcvrcxcyRcxczRcxd0Rcxd1Rcxd2Rcxd3Rcxd4Rcxd5Rcxd6Rcxd7Rcxd8Rcxd9RcxdaUcy9trcyamrcychrcycjrcycvrcycxrcyczRcydaUcz9trczamrczchrczcjrczcvrczcxrczcyrczd0RczdaUd09trd0amrd0chrd0cjrd0cvrd0cxrd0czrd0d1Rd0daUd19trd1amrd1chrd1cjrd1cvrd1cxrd1d0rd1d2Rd1daUd29trd2amrd2chrd2cjrd2cvrd2cxrd2d1rd2d3Rd2daUd39trd3amrd3chrd3cjrd3cvrd3cxrd3d2rd3d4Rd3daUd49trd4amrd4chrd4cjrd4cvrd4cxrd4d3rd4d5Rd4daUd59trd5amrd5chrd5cjrd5cvrd5cxrd5d4rd5d6Rd5daUd69trd6amrd6chrd6cjrd6cvrd6cxrd6d5rd6d7Rd6daUd79trd7amrd7chrd7cjrd7cvrd7cxrd7d6rd7d8Rd7daUd89trd8amrd8chrd8cjrd8cvrd8cxrd8d7rd8d9Rd8daUd99trd9amrd9chrd9cjrd9cvrd9cxrd9d8rd9daUda9tuda9uuda9vuda9wuda9xuda9yuda9zudaa0udaa1udaa2udaa3udaa4udaa5udaa6udaa7udaa8udaa9udaaaudaabudaacudaadudaaeudaafudaagudaahudaaiudaajudaakudaaludaamudaceudachudacjudactudacuudacvudacxudacyudaczudad0udad1udad2udad3udad4udad5udad6udad7udad8udad9u',
+        ice: { par: 12, hints: [[15, 14], [14, 14], [1, 11]], palace: [690, 270, 0.6],
           signs: [
-            { x: 480, y: 112, text: 'Stop right under the ice shelf, then hop up!' },
-            { x: 480, y: 142, text: 'Up top: stand on the button to open the gate below' },
+            { x: 480, y: 96, text: 'Stop right under a hole, then hop up!' },
+            { x: 480, y: 126, text: 'Orange posts stop Pip. Blue posts stop Bo.' },
+            { x: 480, y: 156, text: 'The button up here opens the gate down below' },
           ] },
         signs: [],
         map: [
-          '################################',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#a...........................E.#',
-          '##############=###############=#',
-          '#...............#..............#',
-          '#.12............A..............#',
-          '#nnn############################',
-          '################################',
-          '################################',
-        ],
-      },
-      {
-        title: 'Drop In',
-        tip: 'Press down on an ice shelf to drop through it. You land right below it, and you stay put!',
-        switches: { A: { plate: 'a', type: 'gate' } },
-        ice: { par: 7, hintAfter: 30, hints: [[1, 14], [17, 11]], palace: [730, 360, 0.75], penguins: [[90, 270, 1], [455, 270, 0.9]],
-          guide: 'a9chda9cida9cyda9dadadchladciladcyladdalafchlafciLafd8LafdaLalchlalciLald8LaldaLamchlamciLamd8LamdaLblchrcedalcha9DchadLchafLchalLchamLchblrchciRchcjRchckRchclRchcmRchcnRchcoRchcpRchcqRchcrRchcsRchctRchcuRchcvRchcwRchcxrchcyrchczrchd0rchd1Rchd2Rchd3Rchd4Rchd5Rchd6Rchd7Rchd8Rchd9UchdarcichrcicjRcidarcja9DcjadLcjaflcjallcjamlcjchrcjcircjckRcjclRcjcmRcjcnRcjcoRcjcpRcjcqRcjcrRcjcsRcjctRcjcuRcjcvRcjcwRcjcxrcjcyrcjczrcjd0rcjd1Rcjd2Rcjd3Rcjd4Rcjd5Rcjd6Rcjd7Rcjd8Rcjd9lcjdarckchrckcirckcjrckclRckdarclchrclcirclckrclcmRcldarcmchrcmcircmclrcmcnRcmdarcnchrcncircncmrcncoRcndarcochrcocircocnrcocpRcodarcpchrcpcircpcorcpcqRcpdarcqchrcqcircqcprcqcrRcqdarcrchrcrcircrcqrcrcsRcrdarcschrcscircscrrcsctRcsdarctchrctcirctcsrctcuRctdarcuchrcucircuctrcucvRcudarcvchrcvcircvcurcvcwRcvdarcwchrcwcircwcvrcwdaLcxchRcxciRcxcyBcxdaBcya9lcyadlcychRcyciRcycxbcyczBcydaBczchRczciRczcybczd0Bczdard0chrd0cird0czbd0d1Rd0dard1chrd1cird1d0rd1d2Rd1dard2chrd2cird2d1rd2d3Rd2dard3chrd3cird3d2rd3d4Rd3dard4chrd4cird4d3rd4d5Rd4dard5chrd5cird5d4rd5d6Rd5dard6chrd6cird6d5rd6d7Rd6dard7chrd7cird7d6rd7d8Rd7dard8afld8alld8amld8chrd8cird8d7rd8d9ld8dard9chud9ciud9d8ud9daudaa9ldaadldaafldaalldaamldaceldachRdaciRdacjRdackRdaclRdacmRdacnRdacoRdacpRdacqRdacrRdacsRdactRdacuRdacvRdacwldacxbdacybdaczRdad0Rdad1Rdad2Rdad3Rdad4Rdad5Rdad6Rdad7Rdad8ldad9U',
-          signs: [
-            { x: 270, y: 112, text: 'The door is in the middle of the ice!' },
-            { x: 270, y: 142, text: 'Drop into it, then your partner slides in' },
-            { x: 300, y: 405, text: 'This button opens the gate up top' },
-          ] },
-        signs: [],
-        map: [
-          '################################',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#################..............#',
-          '#################.....A........#',
-          '#################.....A........#',
-          '#################=###########=##',
-          '#..............................#',
-          '#a21............E..............#',
-          '################################',
-          '################################',
-          '################################',
+          '################################', //  0
+          '#..............................#', //  1
+          '#..............................#', //  2
+          '#..............................#', //  3
+          '#..............................#', //  4
+          '#..............................#', //  5
+          '#..............................#', //  6
+          '#..............................#', //  7
+          '#............................E.#', //  8
+          '#######=############=###########', //  9
+          '#..............................#', // 10
+          '#a....u..............o.........#', // 11
+          '##############=###############=#', // 12
+          '#...............A..............#', // 13
+          '#.12............A..............#', // 14
+          '#nnn############################', // 15
+          '################################', // 16
+          '################################', // 17
         ],
       },
       {
         title: 'Ice Bridge',
-        tip: 'Orange posts stop Pip. Blue posts stop Bo. Don’t slide off the bridge!',
-        switches: {},
-        ice: { par: 6, hintAfter: 30, hints: [[18, 11], [17, 11], [22, 14]], palace: [760, 360, 0.7], penguins: [[75, 453, 0.8]],
-          floes: [[75, 456], [140, 456], [800, 456], [880, 456]],
-          guide: '8x9tR8y9uR9eaaD9gacl9qaml9t8xR9t9uR9t9vR9t9wR9t9xR9t9yR9t9zR9ta0R9ta1R9ta2R9ta3R9ta4R9ta5R9ta6R9ta7R9ta8R9ta9R9taar9tacB9tadB9taeB9tafB9tagB9tahB9taiB9tajB9takB9talB9tamL9tcxr9tcyU9u8yR9u9tb9u9vR9u9wR9u9xR9u9yR9u9zR9ua0R9ua1R9ua2R9ua3R9ua4R9ua5R9ua6R9ua7R9ua8R9ua9R9uaar9uacB9uadB9uaeB9uafB9uagB9uahB9uaiB9uajB9uakB9ualB9uamL9ucxr9ucyU9v9tb9v9ub9v9wR9vaar9vcyU9w9tb9w9ub9w9vb9w9xR9waar9wcyU9x9tb9x9ub9x9wb9x9yR9xaar9xcyU9y9tb9y9ub9y9xb9y9zR9yaar9ycyU9z9tb9z9ub9z9yb9za0R9zaar9zcyUa09tba09uba09zba0a1Ra0aara0cyUa19tba19uba1a0ba1a2Ra1aara1cyUa29tba29uba2a1ba2a3Ra2aara2cyUa39tba39uba3a2ba3a4Ra3aara3cyUa49tba49uba4a3ba4a5Ra4aara4cyUa59tba59uba5a4ba5a6Ra5aara5cyUa69tba69uba6a5ba6a7Ra6aara6cyUa79tba79uba7a6ba7a8Ra7aara7cyUa89tba89uba8a7ba8a9Ra8aara8cxra8cyUa99tda99uda9a8da9aada9cydaa9edaa9tdaa9udaaa9daaacdaaamdaacxdaacydab9tRab9uRabaababaclabamlabcylac9tRac9uRacaabacadlacamlaccylad9tRad9uRadaabadacbadaeladamladcylae9tRae9uRaeaabaeacbaeadbaeaflaeamlaecylaf9tRaf9uRafaabafacbafaebafaglafamlafcylag9tRag9uRagaabagacbagafbagahlagamlagcylah9tRah9uRahaabahacbahagbahailahamlahcylai9tRai9uRaiaabaiacbaiahbaiajlaiamlaicylaj9tRaj9uRajaabajacbajaibajaklajamlajcylak9tRak9uRakaabakacbakajbakallakamlakcylal9tRal9uRalaabalacbalakbalamlalcylam9qlam9tlam9ulam9vlam9wlam9xlam9ylam9zlama0lama1lama2lama3lama4lama5lama6lama7lama8lama9lamaalamaclamadlamaelamaflamaglamahlamailamajlamaklamalBamcxUamcylc2cyrcx9trcx9urcxa8rcxaarcxcyUcy9trcy9urcya9rcyaarcyacrcyamrcyc2rcycxrcz9trcz9urczaarczcyrd29tRd29uRd2a8Rd2a9Dd2aaDd2acBd2amLd2cxRd2cyR',
+        tip: 'Press down on an ice shelf to drop through it. Snow stops a slide. Splash! The water sends you back.',
+        switches: { A: { plate: 'a', type: 'gate' } },
+        ice: { par: 7, hintAfter: 40, hints: [[8, 11], [18, 11], [16, 14]], palace: [470, 360, 0.62], penguins: [[75, 453, 0.8], [860, 453, 0.8]],
+          floes: [[75, 456], [140, 456], [760, 456], [850, 456], [910, 456]],
           signs: [
-            { x: 480, y: 112, text: 'Orange posts stop Pip. Blue posts stop Bo.' },
-            { x: 480, y: 142, text: 'Splash! The water sends you back where you were.' },
+            { x: 480, y: 150, text: 'Press down on an ice shelf to drop through it' },
+            { x: 480, y: 180, text: 'Snow stops a slide. Splash! Water sends you back.' },
           ] },
         signs: [],
         map: [
-          '################################',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#12................u...........#',
-          '#nn##############==###########=#',
-          '#..............................#',
-          '#....................E.o.......#',
-          '#wwwww#################wwwwwwww#',
-          '#wwwww#################wwwwwwww#',
-          '################################',
+          '################################', //  0
+          '#..............................#', //  1
+          '#..............................#', //  2
+          '#..............................#', //  3
+          '#..............................#', //  4
+          '#..............................#', //  5
+          '#..............................#', //  6
+          '#..............................#', //  7
+          '#..............................#', //  8
+          '#..............................#', //  9
+          '#..............................#', // 10
+          '#......o.........ua..........12#', // 11
+          '########=#########=##########nn#', // 12
+          '#...........A..................#', // 13
+          '#...........A.......E.u........#', // 14
+          '#wwwww##########n######wwwwwwww#', // 15
+          '#wwwww#################wwwwwwww#', // 16
+          '################################', // 17
+        ],
+      },
+      {
+        title: 'Long Way Down',
+        tip: 'Shelves, posts, a button and a gate: all of it at once. Who goes first?',
+        switches: { A: { plate: 'a', type: 'gate' } },
+        ice: { par: 11, hints: [[12, 8], [8, 11], [1, 14]], palace: [760, 270, 0.6], penguins: [[870, 450, 0.85]],
+          signs: [
+            { x: 480, y: 96, text: 'Find the way down to the door together' },
+            { x: 480, y: 126, text: 'The button at the bottom opens the gate' },
+          ] },
+        signs: [],
+        map: [
+          '################################', //  0
+          '#..............................#', //  1
+          '#..............................#', //  2
+          '#..............................#', //  3
+          '#..............................#', //  4
+          '#..............................#', //  5
+          '#..............................#', //  6
+          '#..............................#', //  7
+          '#.21.........u.................#', //  8
+          '#nnn########=#################=#', //  9
+          '#......#...........A...........#', // 10
+          '#......#...........A...........#', // 11
+          '########=###############=#######', // 12
+          '#..............................#', // 13
+          '#a.............E.o.............#', // 14
+          '################################', // 15
+          '################################', // 16
+          '################################', // 17
         ],
       },
     ],

@@ -10,7 +10,8 @@
    timing never matters). Hold ▼ for 1 s (on the ground, not on a shelf, a button or a head) to go back to your start spot.
    After a respawn or a room change, a held ◀/▶ must be let go first (dirLock), like ▼ (dropLock).
    On snow a tap of ◀/▶ keeps you walking that way until you reach the ice or bump into something (or press the other way).
-   After ice.arrowAfter s in a room, an arrow in the player's colour shows who moves next and which way (ice.guide table).
+   After ice.arrowAfter s in a room, an arrow in the player's colour shows who moves next and which way. The arrows ask the
+   computer partner's solver (CPU.brains.ice.model.guide in js/cpu/levels/world5/ice-slide.js), so they always fit the map.
    def.ownStep: this step() is the whole tick (it copies the engine's buttons/gates/door).
    Everything lives in this block, so only MODES.ice and the Sfx.extra.ice* sounds are visible outside it. */
 {
@@ -66,12 +67,38 @@
     const x0 = p.x, vx0 = p.vx, got = moveX(p, d * 10); p.x = x0; p.vx = vx0;
     return Math.abs(got) >= 9; // a resting player sits 4 px from a wall and 8 px from a partner, so < 9 px means blocked
   }
-  // the guide table's key for where the two of you stand: the tile under each middle (row * COLS + col, 2 base-36 chars;
-  // a head-stander's middle is in the tile above), Bo's + ROWS * COLS when you share a tile and Bo is to the right
-  function iceGuideKey(a, b) {
-    const cell = p => Math.floor((p.y + p.h / 2) / T) * COLS + Math.floor((p.x + p.w / 2) / T);
-    const ca = cell(a), cb = cell(b) + (cell(a) === cell(b) && b.x > a.x ? ROWS * COLS : 0);
-    return [ca, cb].map(i => (i < 36 ? '0' : '') + i.toString(36)).join('');
+  // where a partner who is in the air straight up/down (no sideways speed) comes down: their feet y, or null
+  function iceLandFeet(o) {
+    let y = o.y, vy = o.vy, dropT = o.dropT;
+    const tx1 = Math.floor((o.x + 0.01) / T), tx2 = Math.floor((o.x + o.w - 0.01) / T);
+    for (let n = 0; n < 360; n++) {
+      vy = Math.min(vy + PHYS.g * DT, PHYS.maxFall); dropT -= DT;
+      const prevBottom = y + o.h;
+      y += vy * DT;
+      if (y > H + 40) return null;
+      if (vy < 0) {
+        const ty = Math.floor((y + 0.001) / T);
+        for (let tx = tx1; tx <= tx2; tx++) if (solidFor(tile(tx, ty), o)) { y = (ty + 1) * T; vy = 0; break; }
+      } else {
+        const ty = Math.floor((y + o.h - 0.001) / T), top = ty * T;
+        for (let tx = tx1; tx <= tx2; tx++) {
+          const ch = tile(tx, ty);
+          if (solidFor(ch, o) || (ch === '=' && prevBottom <= top + 0.5 && dropT <= 0)) return top;
+        }
+      }
+    }
+    return null;
+  }
+  // a slide of p in direction d may go at most this far (px, signed) before it reaches the column a partner in the air
+  // will land in on p's own row; null when no such partner is ahead
+  function iceAirBlock(p, d) {
+    const o = other(p);
+    if (!o.alive || o.grounded || Math.abs(o.vx) > 0.5) return null;
+    const gap = d > 0 ? o.x - (p.x + p.w) : p.x - (o.x + o.w);
+    if (gap < -0.001) return null; // (already under them: carry on)
+    const feet = iceLandFeet(o);
+    if (feet === null || Math.abs(feet - (p.y + p.h)) > 1.5) return null;
+    return d * Math.max(0, gap);
   }
   function iceOnPlate(p) { return G.level.plates.some(pl => rectHit(p, pl.x * T + 3, pl.y * T + 18, T - 6, 12)); }
   function iceHeldDir(p, s, dt) {
@@ -178,6 +205,125 @@
     ctx.fillStyle = 'rgba(255,120,140,0.45)'; circle(ex - 6.5, -15, 1.8); ctx.fill(); circle(ex + 6.5, -15, 1.8); ctx.fill();
     ctx.restore();
   }
+  // far snowy mountains (two ranges) behind the palace, in the open air only
+  function iceDrawMountains() {
+    const ranges = [
+      { base: 300, amp: 120, step: 120, seed: 3, body: 'rgba(196,224,248,0.75)', cap: 'rgba(255,255,255,0.85)', drift: 0.9 },
+      { base: 360, amp: 95, step: 95, seed: 11, body: 'rgba(170,206,240,0.62)', cap: 'rgba(250,253,255,0.8)', drift: 1.6 },
+    ];
+    for (const r of ranges) {
+      const pts = [];
+      for (let x = -r.step, i = 0; x <= W + r.step; x += r.step / 2, i++) {
+        const h = hash(i, r.seed), peak = i % 2 === 0;
+        pts.push([x + (h % 23) - 11, peak ? r.base - r.amp * (0.45 + (h % 100) / 180) : r.base - r.amp * 0.15 * ((h >> 3) % 3)]);
+      }
+      ctx.fillStyle = r.body; ctx.beginPath(); ctx.moveTo(-20, H);
+      for (const [x, y] of pts) ctx.lineTo(x, y);
+      ctx.lineTo(W + 20, H); ctx.closePath(); ctx.fill();
+      // snow caps: the top third of each peak
+      ctx.fillStyle = r.cap; ctx.beginPath();
+      for (let k = 2; k < pts.length - 1; k += 2) {
+        const [px, py] = pts[k], [lx, ly] = pts[k - 1], [rx, ry] = pts[k + 1], f = 0.32;
+        const ax = px + (lx - px) * f, ay = py + (ly - py) * f, bx = px + (rx - px) * f, by = py + (ry - py) * f;
+        ctx.moveTo(px, py); ctx.lineTo(bx, by);
+        for (let j = 1; j <= 3; j++) ctx.lineTo(bx + (ax - bx) * j / 4, (by + ay) / 2 + (j % 2 ? 5 : -1));
+        ctx.lineTo(ax, ay); ctx.closePath();
+      }
+      ctx.fill();
+    }
+  }
+  // the room's rock and snow as packed ice blocks, drawn once per room into a canvas (st.terrain) and pasted each frame:
+  // staggered blocks with seams, a frosty rim where they meet the air, a glassy streak or a frozen bubble here and there,
+  // darker deeper in; snow tiles are packed snow
+  function iceBuildTerrain(L, st) {
+    const sc = 2, cv = document.createElement('canvas');
+    cv.width = W * sc; cv.height = H * sc;
+    const g = cv.getContext('2d');
+    g.scale(sc, sc);
+    const rock = (x, y) => x < 0 || x >= COLS || y < 0 || y >= ROWS || L.grid[y][x] === '#';
+    const near = (x, y, r) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (!rock(x + dx, y + dy)) return true; return false; };
+    for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+      if (L.grid[ty][tx] !== '#') continue;
+      const x = tx * T, y = ty * T, h = hash(tx * 7 + 1, ty * 13 + 5);
+      if (st.snow.has(ty * COLS + tx)) {
+        const gr = g.createLinearGradient(0, y, 0, y + T); gr.addColorStop(0, '#f7fbff'); gr.addColorStop(1, '#d9e8f6');
+        g.fillStyle = gr; g.fillRect(x, y, T, T);
+        g.fillStyle = 'rgba(150,185,225,0.45)';
+        for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(x + 4 + ((h >> (i * 3)) % 22), y + 12 + ((h >> (i * 2 + 1)) % 15), 1.1, 0, Math.PI * 2); g.fill(); }
+        continue;
+      }
+      const depth = near(tx, ty, 1) ? 0 : near(tx, ty, 2) ? 1 : 2;
+      const top = ['#7eaee0', '#5f8dcb', '#4e78b6'][depth], bot = ['#5f8fcc', '#4d79b8', '#43689f'][depth];
+      const gr = g.createLinearGradient(0, y, 0, y + T); gr.addColorStop(0, top); gr.addColorStop(1, bot);
+      g.fillStyle = gr; g.fillRect(x, y, T, T);
+      // seams: blocks two tiles wide, every other row shifted by one tile
+      const left = (tx + (ty % 2)) % 2 === 0;
+      g.fillStyle = 'rgba(32,58,120,0.35)'; g.fillRect(x, y, T, 1); if (left) g.fillRect(x, y, 1, T);
+      g.fillStyle = 'rgba(225,244,255,0.22)'; g.fillRect(x, y + 1, T, 1); if (left) g.fillRect(x + 1, y + 1, 1, T - 1);
+      // a glassy streak, a frozen bubble or a hairline crack
+      if (h % 4 === 0) {
+        const sx = x + 6 + (h >> 4) % 10;
+        g.fillStyle = `rgba(255,255,255,${depth ? 0.08 : 0.16})`; g.beginPath();
+        g.moveTo(sx, y + T - 5); g.lineTo(sx + 9, y + 5); g.lineTo(sx + 13, y + 5); g.lineTo(sx + 4, y + T - 5); g.closePath(); g.fill();
+      } else if (h % 5 === 1) {
+        g.strokeStyle = 'rgba(235,248,255,0.35)'; g.lineWidth = 1; g.beginPath(); g.arc(x + 8 + (h >> 3) % 14, y + 8 + (h >> 6) % 14, 2 + (h % 2), 0, Math.PI * 2); g.stroke();
+      } else if (h % 7 === 2) {
+        g.strokeStyle = 'rgba(30,55,110,0.3)'; g.lineWidth = 1; g.beginPath();
+        const cx0 = x + 5 + (h >> 2) % 18; g.moveTo(cx0, y + 4); g.lineTo(cx0 + 4, y + 11); g.lineTo(cx0 + 1, y + 17); g.lineTo(cx0 + 6, y + 24); g.stroke();
+      }
+      // a frosty rim on faces that meet the air (the top faces get the mode's ice or snow caps)
+      g.fillStyle = 'rgba(214,240,255,0.75)';
+      if (!rock(tx - 1, ty)) g.fillRect(x, y, 2.5, T);
+      if (!rock(tx + 1, ty)) g.fillRect(x + T - 2.5, y, 2.5, T);
+      if (!rock(tx, ty + 1)) { g.fillRect(x, y + T - 2.5, T, 2.5); g.fillStyle = 'rgba(28,48,100,0.18)'; g.fillRect(x, y + T - 6, T, 3.5); }
+    }
+    return cv;
+  }
+  // icy water: deeper blue further down, a lighter band under the surface and drifting glints
+  function iceDrawWaterFx(L) {
+    for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+      if (L.grid[ty][tx] !== 'w') continue;
+      const x = tx * T, y = ty * T, top = tile(tx, ty - 1) !== 'w';
+      if (!top) { ctx.fillStyle = 'rgba(25,70,140,0.35)'; ctx.fillRect(x, y, T, T); continue; }
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x, y + 11, T, 3);
+      const ph = (G.clock * 0.6 + tx * 0.37) % 1;
+      if (ph < 0.5) {
+        const a = Math.sin(ph * 2 * Math.PI), gx = x + 6 + (hash(tx, ty) % 16);
+        ctx.strokeStyle = `rgba(255,255,255,${0.75 * a})`; ctx.lineWidth = 1.4; ctx.beginPath();
+        ctx.moveTo(gx - 3 * a, y + 17); ctx.lineTo(gx + 3 * a, y + 17); ctx.moveTo(gx, y + 17 - 3 * a); ctx.lineTo(gx, y + 17 + 3 * a); ctx.stroke();
+      }
+    }
+  }
+  // each player mirrored faintly in the ice under their feet
+  function iceDrawReflections() {
+    for (const p of G.players) {
+      if (!p.alive || !p.grounded || !p.tileGround || iceSurface(p) !== 'ice') continue;
+      const by = p.y + p.h;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(p.x - 16, by + 1, p.w + 32, 14); ctx.clip();
+      ctx.globalAlpha = 0.22; ctx.translate(0, by * 2 + 2); ctx.scale(1, -1);
+      drawPlayer(p);
+      ctx.restore();
+    }
+  }
+  // a slow band of light sweeping across the ice caps (st.caps: the tiles with an ice cap), and twinkles in the air
+  function iceDrawShine(st) {
+    const band = (G.clock * 140) % (W + 600) - 300;
+    for (const [x, y] of st.caps) {
+      const d = Math.abs(x + T / 2 - (band - (y - 300) * 0.4));
+      if (d > 60) continue;
+      ctx.fillStyle = `rgba(255,255,255,${0.55 * (1 - d / 60)})`; ctx.fillRect(x, y + 1, T, 4);
+    }
+  }
+  function iceDrawDust() {
+    for (let i = 0; i < 16; i++) {
+      const tw = Math.sin(G.clock * (1.3 + (i % 4) * 0.4) + i * 2.1);
+      if (tw < 0.55) continue;
+      const x = (i * 211 + 37) % W, y = 40 + ((i * 97) % 380) + Math.sin(G.clock * 0.4 + i) * 6, r = 3.2 * (tw - 0.55) / 0.45 + 0.4;
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.2; ctx.beginPath();
+      ctx.moveTo(x - r, y); ctx.lineTo(x + r, y); ctx.moveTo(x, y - r); ctx.lineTo(x, y + r); ctx.stroke();
+    }
+  }
   // a far-away ice palace (one fill per colour, so overlapping parts don't double their alpha)
   function iceDrawPalace(cx, base, s) {
     ctx.save(); ctx.translate(cx, base); ctx.scale(s, s);
@@ -237,12 +383,11 @@
   }
 
   MODES.ice = {
-    medals: { bronze: 'Slide out of every room', goals: [{ key: 'time', gold: 105, silver: 180 }, { key: 'neat', gold: 1, more: true, text: () => 'Every room in the fewest moves', show: v => Math.round(v * 100) + '% neat', gap: () => 'every room in the fewest moves' }] },
+    medals: { bronze: 'Slide out of every room', goals: [{ key: 'time', gold: 160, silver: 270 }, { key: 'neat', gold: 1, more: true, text: () => 'Every room in the fewest moves', show: v => Math.round(v * 100) + '% neat', gap: () => 'every room in the fewest moves' }] },
     medalValues() { const s = G.mst.stats, rooms = LEVELS[G.levelIndex].rooms || []; if (!s || !rooms.length) return {}; return { neat: s.roomMoves.filter((m, i) => rooms[i] && rooms[i].ice && m <= rooms[i].ice.par).length / rooms.length }; },
     rand: Math.random,
     K: ICE,          // (tests read the numbers)
     keyName: iceKey, // (tests: the device's name for ▼)
-    guideKey: iceGuideKey, // (tests/mkguide.js builds the ice.guide tables with it)
     setup(st, L) {
       st.stats = { slides: [0, 0], partnerStops: [0, 0], hops: [0, 0], drops: [0, 0], splashes: [0, 0], resets: [0, 0], boings: 0, roomMoves: [], roomTimes: [] };
       st.cheerT = 0;
@@ -261,11 +406,8 @@
       st.stuckAt = Math.max(ICE.stuckAfter, st.hintAfter + ICE.stuckLate); // (the markers come first: the bubble mustn't hide them)
       st.hints = (cfg.hints || []).map(([c, r]) => ({ c, r, a: 0, used: false }));
       st.hintsOn = false; st.stuckT = 0; st.stuckDone = false; st.cheerT = 0; st.boingFx = null;
-      // "who moves next": ice.guide = 5-char entries, 4 base-36 chars (Pip's cell, Bo's cell: row * COLS + col, 2 chars each)
-      // and the move (l r u d b for Pip, L R U D B for Bo; b = hold ▼ to go back). Made by tests/mkguide.js on the real engine.
+      // "who moves next" (the computer partner's solver works it out: see the header)
       st.arrowAt = cfg.arrowAfter === undefined ? ICE.arrowAfter : cfg.arrowAfter;
-      st.guide = new Map();
-      for (let i = 0; i + 5 <= (cfg.guide || '').length; i += 5) st.guide.set(cfg.guide.slice(i, i + 4), cfg.guide[i + 4]);
       st.guideNow = null; st.guideShow = null; st.guideA = 0; st.guideOn = false;
       st.pengs = (cfg.penguins || []).map(([x, y, s]) => ({ x, y, s: s || 1, blinkT: 1 + this.rand() * 3, blink: 0 }));
       // the open air of the room (the backdrop is clipped to it) and the icicles under ceilings
@@ -287,7 +429,11 @@
         icicles.push({ x: x * T + 6 + (h % 6), y: (y + 1) * T, len: 7 + (h % 7), w: 5 });
         if (h % 3) icicles.push({ x: x * T + 18 + ((h >> 3) % 6), y: (y + 1) * T, len: 5 + ((h >> 5) % 6), w: 4 });
       }
-      st.air = air; st.icicles = icicles;
+      st.air = air; st.icicles = icicles; st.terrain = null;
+      st.caps = [];
+      for (let y = 1; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+        if (L.grid[y][x] === '#' && !st.snow.has(y * COLS + x) && !'#sw'.includes(L.grid[y - 1][x])) st.caps.push([x * T, y * T]);
+      }
       st.ps = G.players.map(p => {
         iceProbe(p);
         // a direction or ▼ held into the room must be let go first (dirLock, dropLock; prev* = no fresh press)
@@ -371,6 +517,9 @@
           f.jump = !locked && inp.jump; f.down = !locked && inp.down; f.up = !locked && inp.up; f.act = false;
           p.input = f;
           try { control(p, dt); } finally { p.input = inp; }
+          // no steering in the air, here too: a jump off the snow goes straight up and down (so nobody can jump over
+          // their partner: Gavyn, Nov 2026, that was a way to get the two of you into a muddle)
+          if (!p.grounded) p.vx = 0;
           continue;
         }
         s.walk = 0; p.jumpBuf = 0; // (a jump pressed during the slide must not fire as a hop on the snow)
@@ -416,7 +565,18 @@
       });
       for (const p of order) {
         if (!p.alive || !p.vx) continue;
-        const s = st.ps[p.id], want = p.vx * dt, got = moveX(p, want);
+        const s = st.ps[p.id];
+        let want = p.vx * dt;
+        // a partner in the air (a hop, a drop, a jump off the snow) who will come down on your row still counts as standing
+        // there: you stop next to the spot they land on, never slide under them (Gavyn, Nov 2026: hopping let you jump
+        // over each other, which made the rooms a muddle)
+        const air = s.mode === 'slide' ? iceAirBlock(p, s.dir) : null;
+        if (air !== null && Math.abs(air) < Math.abs(want)) want = air;
+        const got = moveX(p, want);
+        if (air !== null && s.mode === 'slide' && Math.abs(got - want) < 0.001 && Math.abs(want) < Math.abs(p.vx * dt) - 0.001) {
+          iceStopSlide(p, s, 'partner');
+          continue;
+        }
         if (s.mode === 'slide' && Math.abs(got - want) > 0.001) {
           const o = other(p), os = st.ps[o.id];
           const byPartner = o.alive && Math.abs(s.dir > 0 ? o.x - (p.x + p.w) : p.x - (o.x + o.w)) < 0.5 && p.y < o.y + o.h && p.y + p.h > o.y;
@@ -515,11 +675,12 @@
       }
       // "who moves next" arrows, once the room has taken a while: only while both of you stand still
       st.guideNow = null;
-      if (st.roomT >= st.arrowAt && st.guide.size && G.introT <= 0 && ps.every((p, k) => p.alive && p.grounded
+      const solver = typeof CPU !== 'undefined' && CPU.brains.ice && CPU.brains.ice.model;
+      if (solver && st.roomT >= st.arrowAt && G.introT <= 0 && ps.every((p, k) => p.alive && p.grounded
         && (st.ps[k].mode === 'rest' || (st.ps[k].mode === 'free' && Math.abs(p.vx) < 1)))) {
-        const a = st.guide.get(iceGuideKey(ps[0], ps[1]));
-        if (a) {
-          st.guideNow = { id: a === a.toUpperCase() ? 1 : 0, a: a.toUpperCase() };
+        const g = solver.guide(); // { id, a } (a: L R U D or B = hold ▼ to go back), or null while it is still thinking
+        if (g) {
+          st.guideNow = g;
           if (!st.guideOn) { st.guideOn = true; Sfx.play('iceHint'); }
         }
       }
@@ -533,13 +694,19 @@
       const cfg = L.def.ice || {};
       // backdrop in the open air of the room: a far ice palace and falling snow
       ctx.save(); ctx.clip(st.air);
+      iceDrawMountains();
       if (cfg.palace) iceDrawPalace(cfg.palace[0], cfg.palace[1], cfg.palace[2] || 1);
+      iceDrawDust();
       ctx.fillStyle = 'rgba(255,255,255,0.8)';
       for (let i = 0; i < 26; i++) {
         const sp = 14 + (i % 5) * 5, x = (i * 151 + Math.sin(G.clock * 0.7 + i) * 18 + 2000) % W, y = (i * 83 + G.clock * sp) % (H + 20) - 10;
         circle(x, y, 1.2 + (i % 3) * 0.6); ctx.fill();
       }
       ctx.restore();
+      // the rock as packed ice blocks (built once per room), and the icy water
+      if (!st.terrain) st.terrain = iceBuildTerrain(L, st);
+      ctx.drawImage(st.terrain, 0, 0, W, H);
+      iceDrawWaterFx(L);
       // the open air also covered the gates, buttons and door the engine drew: draw them again
       for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) { const ch = L.grid[ty][tx]; if (L.sw[ch]) drawSwitchTile(ch, tx * T, ty * T); }
       if (L.door) drawDoor(L.door);
@@ -589,6 +756,8 @@
       ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.beginPath();
       for (const ic of st.icicles) { ctx.moveTo(ic.x - ic.w / 2 + 0.5, ic.y); ctx.lineTo(ic.x - 0.3, ic.y); ctx.lineTo(ic.x - 0.4, ic.y + ic.len * 0.6); ctx.closePath(); }
       ctx.fill();
+      iceDrawShine(st);
+      iceDrawReflections();
       // ice floes bobbing on the water, penguins watching
       for (const [fx, fy] of cfg.floes || []) {
         const bob = Math.sin(G.clock * 2 + fx * 0.05) * 1.4;
