@@ -117,7 +117,7 @@ function showHowTo() {
       <p class="hint touch-only" data-two-only${CPU.cfg.players === 1 ? ' hidden' : ''}>Pip uses the orange buttons on the left, Bo uses the blue buttons on the right. ▲ jumps, ▼ drops through planks.</p>
       <p class="hint touch-only" data-solo-only${CPU.cfg.players === 1 ? '' : ' hidden'}>Use the buttons on your side of the screen. ▲ jumps, ▼ drops through planks.</p>
       <div class="pcard pad-only">
-        <div class="ctl-table">${[['<kbd class="k-stick">stick</kbd>', 'move (or the d-pad)'], ['<span data-glyph="a"></span>', 'jump'], ['<kbd class="k-stick">▼</kbd>', 'drop through planks'],
+        <div class="ctl-table">${[['<kbd class="k-stick">◀</kbd><kbd class="k-stick">▶</kbd>', 'move (stick or d-pad)'], ['<span data-glyph="a"></span>', 'jump'], ['<kbd class="k-stick">▼</kbd>', 'drop through planks'],
           ['<span data-glyph="act"></span>', 'action (some levels)'], ['<span data-glyph="start"></span>', 'pause']].map(([k, v]) => `<div class="ctl-row"><span class="ctl-k">${k}</span><span class="ctl-v">${v}</span></div>`).join('')}</div>
         <p class="hint">You can change the keys and buttons in Settings.</p>
         <p class="hint" data-padwho></p>

@@ -189,6 +189,9 @@ function drawBtn(id, what, x, y, o = {}) {
 // keys and the player's own controller or touch buttons show.
 const tidyLabel = t => t.replace(/\s+/g, ' ').trim().replace(/^(or\s+)?[·,;:/\s]+/, '').replace(/^or\s+/, '').replace(/(\s+or)?[\s·,;:/]*$/, '');
 const plainText = h => h.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+// Gavyn (2026-11-15): on a controller the table shows plain arrows, not the word "stick"
+const STICK_ALL = ['left', 'right', 'up', 'down'].map(d => `<kbd class="k-stick">${ARROWS[d]}</kbd>`).join('');
+const arrowsOnly = h => h.replace(/<span class="k-word">stick<\/span>/g, '').replace(/<kbd class="k-stick">stick<\/kbd>/g, STICK_ALL);
 function controlRows(id, lg, act) {
   const base = String(legendBase(id, lg)), rows = [], re = /(?:<kbd>[^<]*<\/kbd>)+/g;
   let m, last = 0, pre = '';
@@ -203,7 +206,7 @@ function controlRows(id, lg, act) {
       pre = split ? after : '';
     } else pre = between.trim();
     // a role name ("fans:") keeps its colon in front of the row's words
-    rows.push({ keys: controlsLine(id, m[0]), label: '', pre: tidyLabel(pre), role: /:$/.test(pre) });
+    rows.push({ keys: arrowsOnly(controlsLine(id, m[0])), label: '', pre: tidyLabel(pre), role: /:$/.test(pre) });
     last = m.index + m[0].length;
   }
   const tail = plainText(base.slice(last));
