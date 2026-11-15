@@ -4298,8 +4298,8 @@ const LEVELS = [
   //
   // ----- BEGIN 17-3 Waterfall Climb (mode 'waterfall', js/levels/world17/waterfall-climb.js) -----
   // 17-3 Waterfall Climb (mode 'waterfall', team, Gavyn's pick): a tall climb up beside a big jungle waterfall; the camera
-  // scrolls up with the pair. Ledges are too high for one jump: one braces (hold down or the action) and the other jumps
-  // off their hands for a BIG boost, then lowers a vine at the post for the partner. Wet rocks, a stream a log keeps
+  // scrolls up with the pair. Ledges are too high for one jump: one rides the bamboo lift while the other pulls its
+  // lever, then lowers a vine at the post for the partner. Wet rocks, a stream a log keeps
   // blocking, a drifting log, mist geysers, springy moss and friendly frogs on the way. The 18-row map is only for the
   // engine; the mode builds the climb from def.climb (rows top first, 32 wide). Climb chars (read by the mode):
   // # rock, s wet slippery rock, m springy moss, g mist geyser vent (solid), ~ water (Splash!), w falling stream,
@@ -4309,9 +4309,9 @@ const LEVELS = [
   // computer: jump (from: take-off column, to: [column, height]), wall (a boost wall, by order from the bottom), log,
   // geyser, frog, nest. Columns may have halves (x = col * 30 px). hop: the computer jumps from a standstill (no run-up).
   { name: 'Waterfall Climb', world: 16, kind: 'team', mode: 'waterfall', ownStep: true, ownHUD: true, noFalls: true,
-    act: { label: 'help' },
-    legend: { down: 'brace', padDown: 'down braces', jump: 'jump · climb', padJump: 'jump · climb' },
-    tip: 'Ledges too high? One braces (hold ▼), the other jumps off their hands. Then drop a vine for your partner!',
+    act: { label: 'use' },
+    legend: { down: 'climb down', padDown: 'down: climb down', jump: 'jump · climb', padJump: 'jump · climb' },
+    tip: 'Ledges too high? One rides the bamboo lift, the other pulls its lever. Then drop a vine for your partner!',
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     sections: [{ name: 'Mossy Steps', h: 0 }, { name: 'Log Jam Falls', h: 18 }, { name: 'Misty Geysers', h: 44 }, { name: 'Toucan Top', h: 75 }],
     streams: [{ flow: 3.2, off: 3.6 }],
