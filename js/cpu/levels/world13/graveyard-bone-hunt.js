@@ -2,16 +2,19 @@
 'use strict';
 
 /* 13-2 Graveyard Bone Hunt. Each room's def.plan lists its jobs in order ('boost:0', 'tower:0', 'ladder:0', 'gate:1',
-   'big:1', 'cross', 'bell', 'exit', 'finale'; the number is the mound). The brain does the first job not done yet:
+   'big:1', 'cross', 'bell', 'exit', 'finale', 'seesaw:0'; the number is the mound). The brain does the first job not done yet:
    - a bone in my hands: take it to Mr. Bones (beside him when he is the stool; trapped behind the shut crypt gate it
      waits, then holds down to hop back out). Holding a big bone's end: wait still for the partner to grab the other
      end, then carry it together toward Mr. Bones, keeping about the bone's length apart (the front one waits, the back
      one follows) and jumping at a headstone or pumpkin in the way (a jump is shared).
-   - boost / tower: one is the step (at the foot of the wall, or up on Mr. Bones the stool, called first), one hops on
+   - tower: one is the step (up on Mr. Bones the stool, called first), one hops on
      the step's head and jumps up to dig. Default: the computer is the step; with a person it adapts like a person
      would (someone on my head makes me the step, a person waiting at the foot makes me the climber, a person who
      waits elsewhere gets me taking the step job). Once the partner is up, the step moves off and helps with the next
      job if it can be done at the same time (a big bone, the crank).
+   - seesaw (room 1): one stands still on the low end, the other stands at the high end and jumps straight up (coming
+     down onto it slams it and flings the partner up to the roof; the flung one steers onto the roof and digs). Two
+     computers: Bo is flung. With a person: the computer takes the low end unless the person is standing on it.
    - gate: one holds dig at the crank, the other runs into the crypt, digs, and carries the bone out. The computer
      holds the crank unless the person goes to it first. The holder lets go once the bone is out.
    - ladder: calls Mr. Bones to his chalk X and climbs him (hold jump). A partner already on the way up does it.
@@ -274,6 +277,41 @@
     return go(st, p, m, g.waitX, g.ground, 6, true);
   }
 
+  /* ---------- the seesaw: one on the low end, the other jumps onto the high end ---------- */
+  function seesaw(st, p, o, m, mound, dt, info) {
+    const ss = m.seesaw;
+    if (!ss) return null;
+    const up = q => q.alive && q.grounded && near(cpuFeet(q), mound.feet, 3) && near(cpuCx(q), mound.x, 140);
+    if (up(p)) return dig(st, p, m, mound);
+    if (up(o)) return null;
+    const e = bonehuntSeesawEnds(ss), launchX = (e.l0 + e.l1) / 2, slamX = (e.r0 + e.r1) / 2, out = {};
+    if (st.ssFor !== mound) { st.ssFor = mound; st.ssRole = info.partnerCpu ? (p.id === 1 ? 'fly' : 'slam') : 'fly'; }
+    // a person already standing on the low end gets flung; a person who stays at the high end gets me on the low end
+    if (!info.partnerCpu) {
+      if (st.ssRole === 'fly' && cpuFor(st, 'oLaunch', bonehuntOnLaunch(m, o) && !bonehuntOnLaunch(m, p), dt) > 0.6) st.ssRole = 'slam';
+      else if (st.ssRole === 'slam' && !bonehuntOnLaunch(m, o) && cpuFor(st, 'oOff', true, dt) > 3) st.ssRole = 'fly';
+      if (st.ssRole !== 'slam' || bonehuntOnLaunch(m, o)) cpuFor(st, 'oOff', false, dt);
+    }
+    if (st.ssRole === 'fly') {
+      if (!p.grounded) { if (p.vy < -500) { st.air = 'boost'; st.landX = mound.cfg.land != null ? mound.cfg.land : mound.x; } return go(st, p, m, launchX, ss.feet, 6, true); }
+      if (!near(cpuCx(p), launchX, 6) || !near(cpuFeet(p), ss.feet, 3)) return go(st, p, m, launchX, ss.feet, 4, true);
+      if (cpuFor(st, 'askSlam', still(p), dt) > 3) say(st, p, info, 'Jump on the high end!');
+      return out;
+    }
+    // the slammer: under the high end, then a full jump straight up once the partner stands still on the low end
+    if (!p.grounded) { out.jump = p.vy < 0; return out; }
+    if (ss.down !== -1) return go(st, p, m, e.r1 + 34, ss.feet, 6, true);   // off it, so it tips back
+    if (!near(cpuCx(p), slamX, 6)) return go(st, p, m, slamX, ss.feet, 4, true);
+    if (bonehuntOnLaunch(m, o) && cpuFor(st, 'oReady', still(o), dt) > 0.25 + (1 - info.skill) * 0.3) {
+      if (CPU.last[p.id].jump) return out;
+      out.jump = true;
+      return out;
+    }
+    if (!bonehuntOnLaunch(m, o)) cpuFor(st, 'oReady', false, dt);
+    if (cpuFor(st, 'askLow', still(p) && !bonehuntOnLaunch(m, o), dt) > 3) say(st, p, info, 'Stand on the low end!');
+    return out;
+  }
+
   /* ---------- the crank and the crypt ---------- */
   function gate(st, p, o, m, mound, dt, info) {
     const gt = m.gate, out = {};
@@ -493,7 +531,8 @@
         if (kind !== 'gate') { busy = true; continue; }
       }
       let out = null;
-      if (kind === 'boost' || kind === 'tower') out = stack(st, p, o, m, mound, dt, info);
+      if (kind === 'tower') out = stack(st, p, o, m, mound, dt, info);
+      else if (kind === 'seesaw') out = seesaw(st, p, o, m, mound, dt, info);
       else if (kind === 'gate') out = gate(st, p, o, m, mound, dt, info);
       else if (kind === 'big') out = big(st, p, o, m, mound, dt, info);
       else if (kind === 'ladder') out = ladderJob(st, p, o, m, mound, dt, info);

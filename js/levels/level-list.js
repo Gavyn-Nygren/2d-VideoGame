@@ -3069,11 +3069,12 @@ const LEVELS = [
     tip: 'Dig up Mr. Bones’s lost bones and bring them back. Every bone makes him a better helper!',
     switches: {}, signs: [],
     rooms: [
-      { // ---------- Room 1: Front Gate (a head boost for the leg bone, carry the backbone together) ----------
-        title: 'Front Gate', unlock: 'stool', exitVia: 'stool', exitLabel: 'CROOKED CRYPTS',
-        tip: 'Boost each other up to dig the leg bone, then carry the big backbone together. Don’t pull apart!',
-        mounds: [{ piece: 'leg1', how: 'boost', foot: { x: 136, feet: 480 }, land: 66 }, { piece: 'spine', how: 'big', len: 90 }],
-        plan: ['boost:0', 'big:1', 'exit'], stones: ['BRB'],
+      { // ---------- Room 1: Front Gate (the seesaw flings one up for the leg bone, carry the backbone together) ----------
+        title: 'Front Gate', unlock: 'stool', exitVia: 'stool', exitLabel: 'CROOKED CRYPTS', passPartners: true,
+        tip: 'Seesaw! One stands on the low end, the other jumps on the high end to fling them up to the leg bone. Then carry the big backbone together!',
+        seesaw: { x: 204, feet: 480 },
+        mounds: [{ piece: 'leg1', how: 'seesaw', land: 66 }, { piece: 'spine', how: 'big', len: 90 }],
+        plan: ['seesaw:0', 'big:1', 'exit'], stones: ['BRB'],
         decor: [{ k: 'tree', x: 300, s: 1 }, { k: 'owl', x: 336, y: 318 }, { k: 'grave', x: 380, text: ['Here lies', 'my left sock'] },
           { k: 'grave', x: 560, text: ['R.I.P.', 'Pizza crust'], tilt: -0.05 }, { k: 'ghost', x: 470, y: 380 },
           { k: 'fence', x0: 230, x1: 760 }, { k: 'sign', x: 112, y: 300, text: 'MR. BONES · BACK SOON!' }],
@@ -3094,7 +3095,7 @@ const LEVELS = [
           'BBBB......................######', // 12
           'BBBB......................######', // 13
           'BBBB......................######', // 14
-          'BBBB..h.1.2..N..S.....D..x######', // 15
+          'BBBB....1.2.hN..S.....D..x######', // 15
           '################################', // 16
           '################################', // 17
         ] },
