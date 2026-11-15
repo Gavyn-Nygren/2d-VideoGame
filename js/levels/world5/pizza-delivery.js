@@ -2,455 +2,418 @@
 'use strict';
 
 /* ===== 5-2 Pizza Delivery (mode 'pizza', World 5 "Road Trip", teamwork) =====================================
-   Pip and Bo carry ONE tray with a wobbly stack of pizza boxes down a bumpy street (team/pizza/SPEC.md).
-   def.ownStep: the mode runs its own physics: a rigid 90 px tray between the two, a heightfield street
-   (tiles n m p x r f - D are parsed and drawn here, the engine ignores them), and a damped-spring "lean" for
-   the stack. Walk together, hop together (crates), duck together (awnings), and BOTH hold steady to save a
-   teetering box. Fewer boxes than the order = the room restarts with a smaller order.
+   Gavyn's rework (Nov 2026): no hold button and no hopping. Pip and Bo carry ONE tray with a stack of pizza boxes
+   up and down a hilly town, and the whole game is keeping the tray level: each of them raises (▲) or lowers (▼)
+   their own end. Uphill the back one raises and the front one lowers; downhill the other way round. A tilted tray
+   makes the stack slide toward its low end, and a pizza is only ever lost by sliding off. Low awnings need both
+   ends lowered, jumping dogs need the tray raised high, and wind gusts on the last street need the tray tilted
+   into the wind.
+   def.ownStep + ownHUD: the mode runs its own physics and camera. Each room is a long scrolling street built from
+   its def.course (see pzBuild). The engine grid is only the spawns; players are mirrored in screen space.
    Everything lives in this block: only MODES.pizza and Sfx.extra.pz* are visible outside it. */
 {
   const PZ = {
-    span: 90,                                   // tray: centre-to-centre distance between the holders (rigid)
-    walk: 150, duckWalk: 90, push: 0,           // pair target speeds (px/s); push = speed when only one walks
-    acc: 320, dec: 420, accAir: 300, decSteady: 1100,
-    stepUp: 12, snapDown: 9,                    // walk up steps <= 12 px, stick to ground dropping <= 9 px
-    airUp: 2.5,                                 // (build) in the air you can still drift up a bump's slope (<= 1.3 px a tick) instead of bonking
-    hop: 490, soloHop: 322, teamWin: 0.2, windMax: 0.6, jumpBuf: 0.12,
-    handUp: 10, trayTh: 6, duck: 16, duckRate: 10, readyDip: 4, duckHold: 0.6,
-    boxH: 10, boxW: 40, leanPx: 9,
-    K: 64, D: 4, Ksteady: 40, Dsteady: 14, steadyMaxV: 30,
-    hf0: 0.55, hf1: 0.09,                       // height factor hf(n) = hf0 + hf1*n
-    cAcc: 12, cTilt: 110, cPush: 38, cTug: 26, strainRise: 1.2, strainFall: 0.3,
-    jBump: 5.5, jCobble: 2.4, jSplash: 6, jLand: 2.5, jLandTeam: 1.5, jSolo: 5, jBonk: 7, jAwning: 4,
-    teeter: 0.8, steadySave: 0.15, grace: 0.35, settleMul: 0.3, fallMul: 0.5, awningGrace: 0.6,
-    bumpH: 10, cobbleH: 3, puddleD: 8,
+    span: 90,                                   // tray: horizontal distance between the holders (rigid)
+    walk: 140, lowWalk: 115, acc: 340, dec: 480,
+    stepUp: 13, g: 2000, maxFall: 900,
+    handUp: 36,                                 // hand height above the feet with arms at rest
+    liftMin: -26, liftMax: 20, liftRate: 80,    // raise up to 26 px, lower up to 20 px, 80 px/s (it stays where you leave it)
+    trayTh: 7, boxH: 10, boxW: 40,
+    // the slide (s: 0 centred, +-1 = the top box goes over the edge)
+    dead: 0.06, kSlide: 9, dSlide: 2.2, dLevel: 7, settle: 0.1, svMax: 2.5,
+    hf0: 0.55, hf1: 0.09,                       // taller stacks slide quicker: hf(n) = hf0 + hf1 * n
+    cAcc: 0.9, jBump: 0.08, jLand: 0.05, jAwning: 0.25, jDog: 0.4, lostTo: 0.55, grace: 0.6,
+    warnS: 0.45,
+    // dogs: jump at the tray while it is near; they reach dogReach px above their ground
+    dog: { near: 150, period: 1.5, air: 0.62, reach: 56 },
+    // wind gusts (accel on the slide while in the zone; the whistle warns 1 s before each gust)
+    wind: { period: 4.4, warn: 1.0, gust: 1.7, ramp: 0.3, force: 1.25, calmAfter: 3, calmMul: 0.8, calmMin: 0.5 },
     deliverR: 45, deliverV: 40, deliverHold: 0.3,
-    // (rev2) the gust cycle starts when the pair first comes within trig px of the zone (not by room time, so it
-    // can't blow during the room card); calm*: after calmAfter retries in a room the wind gets weaker each retry
-    wind: { first: 0, trig: 60, period: 3.6, warn: 1.0, gust: 1.1, rampIn: 0.15, rampOut: 0.25, force: 90,
-      calmAfter: 3, calmMul: 0.8, calmMin: 0.5 },
-    failT: 1.4, reliefMax: 2, reliefLate: 3, reliefLateAt: 4,   // relief: need -1 per retry up to 2, up to 3 after 4 retries
-    afkSave: 3,                                 // (rev2) a partner idle this long (no keys) counts as steadying for the save
-    carryWin: 0.3,                              // (lead review) hop carry for one-finger touch play
-    g: 2000, maxFall: 900, afkT: 8,
+    failT: 1.6, reliefMax: 2, reliefLate: 3, reliefLateAt: 4,
+    afkT: 8, groundScreen: 392,
   };
-  const PZ_NOIN = Object.freeze({ left: false, right: false, jump: false, down: false, act: false });
-  const PZ_FACADES = ['#f2c9b6', '#cfe3c8', '#f4e2ad', '#cbd7ec', '#ebcadf', '#ddd0bd', '#c3e2dc', '#f0d3c0'];
-  const PZ_ROOFS = ['#b8664e', '#8f6f9e', '#5f8a8b', '#a5694f'];
+  const PZ_NOIN = Object.freeze({ left: false, right: false, jump: false, down: false, up: false, act: false });
+  const PZ_FACADES = ['#f2c9b6', '#cfe3c8', '#f4e2ad', '#cbd7ec', '#ebcadf', '#e8d7bf', '#c3e2dc', '#f0d3c0', '#d8cdea'];
+  const PZ_ROOFS = ['#b8664e', '#7d6a9e', '#4f7f80', '#a5694f', '#8a5a44'];
+  const PZ_TRIMS = ['#ffffff', '#fff6e4', '#f7efe0'];
+  const PZ_SHUTTERS = ['#4f7f80', '#c0583c', '#5b7bb5', '#8a6fb0', '#6b9a5a'];
   const pzHf = n => PZ.hf0 + PZ.hf1 * n;
   const pzRand = () => MODES.pizza.rand();
   const pzSum = a => a.reduce((s, v) => s + (v || 0), 0);
-  // particles only while the frame loop can age them (bots step thousands of ticks without frames)
   const pzPuff = (x, y, n, col) => { if (G.particles.length < 500) puff(x, y, n, col); };
   const pzBurst = (x, y, col, n) => { if (G.particles.length < 500) burst(x, y, col, n); };
   const pzRumble = (s, w, ms, id) => { if (id === undefined) { rumble(0, s, w, ms); rumble(1, s, w, ms); } else rumble(id, s, w, ms); };
   const pzShake = v => { if (!reduceMotion) G.shake = Math.max(G.shake, v); };
-  // 1-player mode: the computer's holder gets no key hints (it says what it needs in its own bubbles)
   const pzCpu = id => typeof cpuSolo === 'function' && cpuSolo() && cpuOn(id);
+  const pzSmooth = u => u * u * (3 - 2 * u);
 
-  // the player's real keys, for hint bubbles (like golfKeys)
-  function pzKey(id, what) {
-    const how = actKey(id), touch = how === 'touch', pad = how === 'pad'; // (each player's own device: js/controls.js)
-    if (what === 'hop') return pad ? glyph('a') : touch ? '▲' : id === 0 ? 'W' : '↑';
-    if (what === 'duck') return pad ? 'stick ↓' : touch ? '▼' : id === 0 ? 'S' : '↓';
-    if (what === 'steady') return pad ? glyph('act') : touch ? 'steady' : id === 0 ? 'F' : '/';
-    if (what === 'right') return pad ? 'stick →' : touch ? '▶' : id === 0 ? 'D' : '→';
-    if (what === 'left') return pad ? 'stick ←' : touch ? '◀' : id === 0 ? 'A' : '←';
-    return pad ? 'stick' : touch ? '◀ ▶' : id === 0 ? 'A D' : '← →';
-  }
-
-  /* ---------- the room: a heightfield (ground[x]) and ceilings (awnings) for the stack ---------- */
-  function pzParseRoom(def) {
-    const map = def.map;
-    const R = { ground: new Float32Array(W), ceil: new Float32Array(W).fill(-1e9), bumps: [], crests: [], cobbles: [],
-      puddles: [], crates: [], awnings: [], raised: [], spawns: [], door: null, wind: null, roadY: 450 };
-    const at = (ty, tx) => (map[ty] && map[ty][tx]) || '.';
-    const runOf = (ty, tx, ch) => { let a = tx, b = tx; while (a > 0 && at(ty, a - 1) === ch) a--; while (b < COLS - 1 && at(ty, b + 1) === ch) b++; return [a, b]; };
-    for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
-      const ch = at(ty, tx);
-      if (ch === '1' || ch === '2') R.spawns[ch === '1' ? 0 : 1] = { tx, ty };
-      else if (ch === 'D') R.door = { x: tx * T, y: (ty - 1) * T, w: 2 * T, h: 2 * T, cx: tx * T + T, tx, ty };
-      else if (ch === 'n') R.bumps.push({ cx: tx * T + T / 2, x0: tx * T, ty });
-      else if (ch === 'm') { R.cobbles.push({ tx, ty }); for (let k = 0; k < 3; k++) R.crests.push(tx * T + 5 + 10 * k); }
-      else if (ch === 'p') R.puddles.push({ x0: tx * T, x1: tx * T + T, ty });
-      else if (ch === 'x') R.crates.push({ x0: tx * T, x1: tx * T + T, top: ty * T, tx, ty });
-      else if (ch === '-') { const [a, b] = runOf(ty, tx, '-'); if (a === tx) R.awnings.push({ x0: a * T, x1: (b + 1) * T, y0: ty * T, bottom: (ty + 1) * T }); }
-      if ('rfm'.includes(ch) && at(ty + 1, tx) === '#' && (tx === 0 || !'rfm'.includes(at(ty, tx - 1)))) {
-        let b = tx; while (b < COLS - 1 && 'rfm'.includes(at(ty, b + 1))) b++;
-        R.raised.push({ x0: tx * T, x1: (b + 1) * T, ty });
+  /* ---------- the street: a heightfield built from the room's course ----------
+     f300          flat, 300 px
+     u400:60       a smooth slope over 400 px rising 60 px (negative falls)
+     r200:-40      a straight ramp over 200 px (here falling 40 px)
+     h360:50       a hump: up 50 px and back down over 360 px;  v300:40  a dip
+     bridge420:60  a hump drawn as a stone bridge over a canal
+     s6:10:28      stairs: 6 steps, each 10 px up (negative: down) after 28 px of tread
+     b             a speed bump (a little jolt)
+     a220:80       an awning over the next 220 px, its edge 80 px over the ground here
+     dog           a dog in a yard, jumping at the tray as it passes
+     wind700       wind gusts over the next 700 px
+     S:Some text   a signboard here
+     E             the customer's house (the end of the street)                                          */
+  function pzBuild(def) {
+    const g = [], R = { awn: [], dogs: [], signs: [], bumps: [], stairs: [], bridges: [], slopes: [], wind: null, door: null, len: 0 };
+    let y = 450;
+    const put = v => g.push(v);
+    for (const tok of def.course) {
+      const x = g.length;
+      if (tok.startsWith('S:')) { R.signs.push({ x, text: tok.slice(2) }); continue; }
+      if (tok === 'b') { for (let i = 0; i < 30; i++) put(y - 7 * Math.sin(Math.PI * (i + 0.5) / 30)); R.bumps.push({ cx: x + 15, x0: x }); continue; }
+      if (tok === 'dog') { R.dogs.push({ x: x + 10, t: 0, air: -1, hit: false, woofT: 0, k: R.dogs.length }); continue; }
+      if (tok === 'E') {
+        for (let i = 0; i < 420; i++) put(y);
+        R.door = { cx: x + 150, x: x + 120, y: y - 60, w: 60, h: 60 };
+        continue;
       }
-    }
-    for (let x = 0; x < W; x++) {
-      const tx = Math.floor(x / T), u = x + 0.5 - tx * T;
-      let g = H + 100;
-      for (let ty = 0; ty < ROWS; ty++) {
-        const ch = at(ty, tx);
-        if (ch === '-') { R.ceil[x] = Math.max(R.ceil[x], (ty + 1) * T); continue; }
-        if (ch === '#' || ch === 'x') { g = ty * T; break; }
-        if (ch === 'm') { g = ty * T - PZ.cobbleH * Math.abs(Math.sin(Math.PI * u / 10)); break; }
-        if (ch === 'p') { g = ty * T + PZ.puddleD; break; }
-        if (ch === 'n') { g = (ty + 1) * T - PZ.bumpH * Math.sin(Math.PI * u / T); break; }
-        if (ch === 'r' || ch === 'f') {
-          const [a, b] = runOf(ty, tx, ch), f = (x + 0.5 - a * T) / ((b - a + 1) * T);
-          g = ch === 'r' ? (ty + 1) * T - T * f : ty * T + T * f; break;
+      let m;
+      if ((m = /^f(\d+)$/.exec(tok))) { for (let i = 0; i < +m[1]; i++) put(y); continue; }
+      if ((m = /^wind(\d+)$/.exec(tok))) { R.wind = { x0: x, x1: x + +m[1], dir: -1 }; continue; }
+      if ((m = /^a(\d+):(\d+)$/.exec(tok))) { R.awn.push({ x0: x, x1: x + +m[1], y: y - +m[2], k: R.awn.length }); continue; }
+      if ((m = /^([urhv]|bridge)(\d+):(-?\d+)$/.exec(tok))) {
+        const kind = m[1], n = +m[2], d = +m[3], y0 = y;
+        for (let i = 0; i < n; i++) {
+          const u = (i + 0.5) / n;
+          if (kind === 'u') put(y0 - d * (1 - Math.cos(Math.PI * u)) / 2);
+          else if (kind === 'r') put(y0 - d * u);
+          else if (kind === 'v') put(y0 + d * (1 - Math.cos(2 * Math.PI * u)) / 2);
+          else put(y0 - d * (1 - Math.cos(2 * Math.PI * u)) / 2);
         }
+        if (kind === 'u' || kind === 'r') { y = y0 - d; R.slopes.push({ x0: x, x1: x + n, d }); }
+        if (kind === 'bridge') R.bridges.push({ x0: x, x1: x + n, y: y0, h: d });
+        continue;
       }
-      R.ground[x] = g;
+      if ((m = /^s(\d+):(-?\d+):(\d+)$/.exec(tok))) {
+        const n = +m[1], rise = +m[2], run = +m[3];
+        const st = { x0: x, n, rise, run, y0: y, tread: [] };
+        for (let k = 0; k < n; k++) {
+          // going up: the step face comes first; going down: the tread first
+          if (rise > 0) y -= rise;
+          st.tread.push({ x: g.length, y });
+          for (let i = 0; i < run; i++) put(y);
+          if (rise < 0) y -= rise;
+        }
+        st.x1 = g.length; st.y1 = y;
+        R.stairs.push(st);
+        continue;
+      }
+      console.warn('Pizza Delivery: unknown course piece', tok);
     }
-    R.puddles.sort((a, b) => a.x0 - b.x0);
-    const pr = [];
-    for (const p of R.puddles) { const l = pr[pr.length - 1]; if (l && l.x1 === p.x0) l.x1 = p.x1; else pr.push(Object.assign({}, p)); }
-    R.puddles = pr;
-    R.crests.sort((a, b) => a - b);
-    if (def.wind) R.wind = { x0: def.wind.x0 * T, x1: (def.wind.x1 + 1) * T, dir: def.wind.dir || -1 };
-    if (R.spawns[0]) R.roadY = (R.spawns[0].ty + 1) * T;
+    R.g = Float32Array.from(g);
+    R.len = g.length;
+    R.awn.sort((a, b) => a.x0 - b.x0);
     return R;
   }
-  const pzGAt = (R, x) => (x < 0 || x >= W ? -1e9 : R.ground[Math.floor(x)]);
-  const pzSupport = (R, xc) => Math.min(pzGAt(R, xc - 8), pzGAt(R, xc), pzGAt(R, xc + 8));
-  function pzCeilOver(R, x0, x1) { let c = -1e9; for (let x = Math.floor(x0); x <= x1; x += 2) if (x >= 0 && x < W) c = Math.max(c, R.ceil[x]); return c; }
-  const pzHand = pc => pc.feet - PH - PZ.handUp + pc.duck * PZ.duck + (pc.ready >= 0 ? PZ.readyDip : 0);
-  const pzStackBase = st => (pzHand(st.pc[st.left]) + pzHand(st.pc[st.right])) / 2 - PZ.trayTh;
-  const pzStackHits = st => pzStackBase(st) - st.n * PZ.boxH < pzCeilOver(st.R, st.X - PZ.boxW / 2, st.X + PZ.boxW / 2);
-  function pzHitsWithDuck(st, pc, duck) { const d = pc.duck; pc.duck = duck; const h = pzStackHits(st); pc.duck = d; return h; }
-  const pzImpulse = (st, j) => { st.leanV += pzHf(st.n) * j; };
+  const pzGAt = (R, x) => R.g[clamp(Math.floor(x), 0, R.len - 1)];
+  const pzSupport = (R, xc) => Math.min(pzGAt(R, xc - 7), pzGAt(R, xc), pzGAt(R, xc + 7));
+  const pzCeil = (R, x0, x1) => { let c = -1e9; for (const a of R.awn) if (a.x1 > x0 && a.x0 < x1) c = Math.max(c, a.y); return c; };
+  const pzHandAt = (feet, lift) => feet - PZ.handUp + lift;
+  const pzHand = pc => pzHandAt(pc.feet, pc.lift);
+  // the stack's footprint (the boxes lean with the slide)
+  const pzStackTop = (st, hl, hr, n) => (hl + hr) / 2 - PZ.trayTh - n * PZ.boxH;
+  function pzStackHitsAt(st, X, hl, hr) {
+    if (st.n <= 0) return false;
+    const sh = st.s * 26, x0 = X - PZ.boxW / 2 - 4 + Math.min(0, sh), x1 = X + PZ.boxW / 2 + 4 + Math.max(0, sh);
+    return pzStackTop(st, hl, hr, st.n) < pzCeil(st.R, x0, x1);
+  }
+  const pzStackHits = st => pzStackHitsAt(st, st.X, pzHand(st.pc[st.left]), pzHand(st.pc[st.right]));
 
-  const pzPc = id => ({ id, xc: 0, feet: 0, vy: 0, grounded: true, ready: -1, jumpBuf: 0, duck: 0, duckT: 0,
-    steadyHeld: false, steady: false, squeezed: false, landT: -9, landV: 0, idleT: 0, hops: 0, lastDir: 0, relT: 9, carry: 0, carryAir: false });
+  const pzPc = id => ({ id, xc: 0, feet: 0, vy: 0, grounded: true, lift: 0, liftV: 0, idleT: 0, lastDir: 0, landT: -9, landV: 0, upT: 0, dnT: 0 });
 
   function pzInitRoom(k, L, relief) {
-    const st = G.mst, def = L.def, R = pzParseRoom(def);
+    const st = G.mst, def = L.def;
+    const R = st.cache && st.cache.k === k ? st.cache.R : pzBuild(def);
+    st.cache = { k, R };
     st.room = k; st.R = R; st.def = def; st.relief = relief;
-    const sx = R.spawns.map(s => s.tx * T + T / 2);
-    st.left = sx[0] < sx[1] ? 0 : 1; st.right = 1 - st.left;
-    st.X = (sx[0] + sx[1]) / 2; st.V = 0; st.aPair = 0; st.mode = 'idle'; st.pushDir = 0; st.strain = 0; st.phi = 0;
+    st.left = 0; st.right = 1;
+    st.X = 150; st.V = 0; st.aPair = 0; st.mode = 'idle'; st.pushDir = 0; st.pusher = -1;
     st.pc = [pzPc(0), pzPc(1)];
     st.pc[st.left].xc = st.X - PZ.span / 2; st.pc[st.right].xc = st.X + PZ.span / 2;
     for (const pc of st.pc) pc.feet = pzSupport(R, pc.xc);
     st.n = def.stack; st.start = st.n; st.need = Math.max(1, def.order - relief);
-    st.lean = 0; st.leanV = 0; st.teeter = null; st.grace = 0; st.awnT = 0; st.nSteady = 0;
+    st.s = 0; st.sv = 0; st.tilt = 0; st.wob = 0; st.wobV = 0; st.graceT = 0; st.slideT = 0;
     st.phase = 'play'; st.phaseT = 0; st.deliverT = 0; st.roomT = 0; st.failWhy = '';
-    st.windState = 'calm'; st.windG = 0; st.windF = 0; st.windIn = false; st.gustHeld = false; st.windT0 = null;
+    st.windState = 'calm'; st.windG = 0; st.windA = 0; st.windIn = false; st.windT0 = null;
     const tries = st.stats.retries[k] || 0, Wd = PZ.wind;
     st.windMul = R.wind && tries >= Wd.calmAfter ? Math.max(Wd.calmMin, Math.pow(Wd.calmMul, tries - Wd.calmAfter + 1)) : 1;
-    st.crateT = 0; st.pushT = 0; st.tugT = 0; st.pusher = -1; st.awnBonkT = 0;
-    st.fx = { boxes: [], flyers: [], leaves: [], floats: [], birds: [], bake: 0, freshT: 0, reliefT: relief > 0 ? 3 : 0, del: null,
-      cobbleT: 0, creakT: 0, gruntT: 0, dustT: 0, leafAcc: 0, pop: 0, bakeN: 0, bumpT: [-9, -9] };
+    st.pushT = 0; st.tugT = 0; st.awnBonkT = 0; st.dogBonkT = 0;
+    for (const d of R.dogs) { d.t = 0; d.air = -1; d.hit = false; d.woofT = 0; }
+    st.fx = { boxes: [], flyers: [], leaves: [], floats: [], birds: [], steam: [], bake: 0, freshT: 0, reliefT: relief > 0 ? 3 : 0, del: null,
+      creakT: 0, gruntT: 0, dustT: 0, leafAcc: 0, steamAcc: 0, pop: 0, bakeN: 0, stepT: [0, 0] };
     if (st.stats.retries[k] === undefined) st.stats.retries[k] = 0;
-    if (!st.deco || st.deco.room !== k) st.deco = pzDeco(k, R);
+    if (!st.deco || st.deco.room !== k) st.deco = pzDeco(k, R, def);
+    st.cam = { x: 0, y: 0 };
+    pzCamera(st, 1, true);
     pzMirror(st);
   }
 
-  // mirror the carry into the engine players (drawPlayer, name tags)
+  /* ---------- camera and the engine players (screen space, for name tags and bubbles) ---------- */
+  function pzCamera(st, dt, snap) {
+    const R = st.R;
+    let tx = st.X - W * 0.38 + clamp(st.V * 0.4, -40, 60);
+    if (R.door && st.X > R.door.cx - W * 0.45) tx = Math.max(tx, Math.min(R.door.cx - W * 0.62, R.len - W));
+    tx = clamp(tx, 0, Math.max(0, R.len - W));
+    const mid = (st.pc[0].feet + st.pc[1].feet) / 2;
+    const ty = mid - PZ.groundScreen;
+    if (snap) { st.cam.x = tx; st.cam.y = ty; return; }
+    st.cam.x += (tx - st.cam.x) * Math.min(1, dt * 3.5);
+    st.cam.y += (ty - st.cam.y) * Math.min(1, dt * 3);
+  }
   function pzMirror(st) {
     for (const pc of st.pc) {
       const p = G.players[pc.id];
-      p.x = pc.xc - PW / 2; p.y = pc.feet - PH; p.vx = st.V; p.vy = pc.vy; p.grounded = pc.grounded; p.alive = true;
+      p.x = pc.xc - st.cam.x - PW / 2; p.y = pc.feet - st.cam.y - PH; p.vx = st.V; p.vy = pc.vy; p.grounded = pc.grounded; p.alive = true;
       p.stun = 0; p.stompSafe = 0;
       if (Math.abs(st.V) > 10) p.face = Math.sign(st.V);
     }
   }
 
-  /* ---------- one tick of the carry (a port of physics() in sim/pizza.js, with the lead review's hop carry) ---------- */
+  /* ---------- one tick of the carry ---------- */
   function pzPhysics(st, dt, frozen) {
     const R = st.R, ps = st.pc, L = ps[st.left], Rp = ps[st.right];
     const mv = [0, 0];
-    // 1. each player's intent
+    // 1. each player's intent: walk, and raise or lower their own end
     for (const pc of ps) {
-      const p = G.players[pc.id], inp = frozen ? PZ_NOIN : p.input, press = !frozen && p.pendingJump;
+      const p = G.players[pc.id], inp = frozen ? PZ_NOIN : p.input;
       p.pendingJump = false; p.pendingAct = false;
-      pc.steadyHeld = !!inp.act;
-      const m = pc.steadyHeld ? 0 : (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
-      if (!frozen) { if (inp.left || inp.right || inp.jump || inp.down || inp.act) pc.idleT = 0; else pc.idleT += dt; }
-      // hop carry: a hop pressed just after letting go of a direction keeps walking that way until landing
-      if (m !== 0) { pc.lastDir = m; pc.relT = 0; pc.carry = 0; } else pc.relT += dt;
-      if (inp.down || pc.steadyHeld || frozen) pc.carry = 0;
-      // duck: a tap keeps you down a moment; you can't stand up into an awning
-      pc.duckT = inp.down ? PZ.duckHold : Math.max(0, pc.duckT - dt);
-      const wantDuck = (inp.down || pc.duckT > 0) && pc.grounded && pc.ready < 0 && !pc.steadyHeld;
-      const d0 = pc.duck;
-      pc.duck = approach(pc.duck, wantDuck ? 1 : 0, PZ.duckRate * dt);
-      if (pc.duck < d0 && !pzHitsWithDuck(st, pc, d0) && pzStackHits(st)) pc.duck = d0;
-      pc.squeezed = pc.duck === d0 && !wantDuck && d0 > 0;
-      if (press && !pc.steadyHeld) {
-        const sets = (pc.grounded && pc.ready < 0) || !pc.grounded;
-        if (sets && m === 0 && pc.relT <= PZ.carryWin && pc.lastDir) { pc.carry = pc.lastDir; pc.carryAir = false; st.stats.carries++; }
-        if (pc.grounded && pc.ready < 0) { pc.ready = 0; Sfx.play('pzReady', pc.id); } else if (!pc.grounded) pc.jumpBuf = PZ.jumpBuf;
-      }
-      if (pc.jumpBuf > 0) { pc.jumpBuf -= dt; if (pc.grounded && pc.ready < 0) { pc.ready = 0; pc.jumpBuf = 0; } }
-      // (rev2) a carry only lives while you wind up, fly, or have a buffered hop: on the ground with none, it ends
-      // (an in-air re-press or a ready lost off a crate's edge used to leave it on forever: a "ghost" walker)
-      if (pc.carry && pc.grounded && pc.ready < 0 && !(pc.jumpBuf > 0)) { pc.carry = 0; pc.carryAir = false; }
-      mv[pc.id] = m !== 0 ? m : pc.carry;
+      const m = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+      const up = !!(inp.jump || inp.up), dn = !!inp.down;
+      if (!frozen) { if (inp.left || inp.right || up || dn) pc.idleT = 0; else pc.idleT += dt; }
+      if (m !== 0) pc.lastDir = m;
+      mv[pc.id] = m;
+      const want = up && !dn ? -1 : dn && !up ? 1 : 0;
+      pc.upT = want < 0 ? pc.upT + dt : 0; pc.dnT = want > 0 ? pc.dnT + dt : 0;
+      const l0 = pc.lift;
+      pc.lift = clamp(pc.lift + want * PZ.liftRate * dt, PZ.liftMin, PZ.liftMax);
+      // you can't push the stack up into an awning
+      if (pc.lift < l0) { const l1 = pc.lift, now = pzStackHits(st); pc.lift = l0; if (!now || pzStackHits(st)) pc.lift = l1; }
+      pc.liftV = (pc.lift - l0) / dt;
     }
-    // 2. hops: both ready on the ground = a team hop; a lone ready player hops low after the window
-    if (L.ready >= 0 && Rp.ready >= 0 && L.grounded && Rp.grounded) {
-      for (const pc of ps) { pc.vy = -PZ.hop; pc.grounded = false; pc.ready = -1; pc.hops++; if (pc.carry) pc.carryAir = true; }
-      st.stats.teamHops++;
-      Sfx.play('pzHop'); pzRumble(0, 0.35, 70);
-      for (const pc of ps) pzPuff(pc.xc, pc.feet, 6, 'rgba(255,255,255,0.8)');
-    } else for (const pc of ps) {
-      if (pc.ready < 0) continue;
-      if (!pc.grounded) { pc.ready = -1; continue; }
-      pc.ready += dt;
-      const holding = !frozen && G.players[pc.id].input.jump;
-      if ((pc.ready >= PZ.teamWin && !holding) || pc.ready >= PZ.windMax) {
-        pc.vy = -PZ.soloHop; pc.grounded = false; pc.ready = -1; pc.hops++; st.stats.soloHops++; if (pc.carry) pc.carryAir = true;
-        pzImpulse(st, (pc === L ? 1 : -1) * PZ.jSolo);
-        Sfx.play('jump', pc.id); pzPuff(pc.xc, pc.feet, 3, 'rgba(255,255,255,0.75)');
-      }
-    }
-    // 3. pair speed: it only moves when both push the same way
-    const mL = mv[L.id], mR = mv[Rp.id], anyDuck = L.duck > 0.5 || Rp.duck > 0.5;
+    // 2. pair speed: it only moves when both walk the same way
+    const mL = mv[L.id], mR = mv[Rp.id];
     let Vt = 0, mode = 'idle', dir = 0;
-    if (mL === mR) { Vt = mL * (anyDuck ? PZ.duckWalk : PZ.walk); mode = mL ? 'walk' : 'idle'; }
-    else if (mL === 0 || mR === 0) { dir = mL || mR; Vt = dir * PZ.push; mode = 'push'; st.pusher = mL ? L.id : Rp.id; }
+    const low = L.lift > 10 || Rp.lift > 10;
+    if (mL === mR) { Vt = mL * (low ? PZ.lowWalk : PZ.walk); mode = mL ? 'walk' : 'idle'; }
+    else if (mL === 0 || mR === 0) { dir = mL || mR; mode = 'push'; st.pusher = mL ? L.id : Rp.id; }
     else mode = 'tug';
-    const nG = (L.grounded ? 1 : 0) + (Rp.grounded ? 1 : 0), anySteady = L.steadyHeld || Rp.steadyHeld;
-    let acc;
-    if (nG === 0) acc = PZ.accAir;
-    else {
-      const speeding = Vt !== 0 && (st.V === 0 || Math.sign(Vt) === Math.sign(st.V)) && Math.abs(Vt) > Math.abs(st.V);
-      acc = speeding ? PZ.acc : (anySteady && Vt === 0 ? PZ.decSteady : PZ.dec);
-      if (nG === 1) acc *= 0.5;
-    }
+    const speeding = Vt !== 0 && (st.V === 0 || Math.sign(Vt) === Math.sign(st.V)) && Math.abs(Vt) > Math.abs(st.V);
     const V0 = st.V;
-    st.V = approach(st.V, Vt, acc * dt);
+    st.V = approach(st.V, Vt, (speeding ? PZ.acc : PZ.dec) * dt);
     st.mode = mode; st.pushDir = dir;
-    // 4. horizontal move (rigid pair): ground walls, room edges, then the awning stack-wall
+    // 3. horizontal move (rigid pair): walls (steps over 13 px), the street's ends, then the awnings
     let bonked = false;
     const dX = st.V * dt;
     if (dX !== 0) {
       const nx = st.X + dX;
-      const blocked = pc => {
-        const xc = nx + (pc === L ? -PZ.span / 2 : PZ.span / 2);
-        if (xc - PW / 2 < 0 || xc + PW / 2 > W) return true;
-        const sup = pzSupport(R, xc);
-        // in the air you drift up a slope, or out of a puddle dip, instead of bonking on it (crates stay solid walls)
-        const dip = !pc.grounded && pzSupport(R, pc.xc) > R.roadY + 0.5;
-        return sup < pc.feet - (pc.grounded ? PZ.stepUp : dip ? PZ.puddleD + 0.5 : PZ.airUp);
-      };
-      let stop = blocked(L) || blocked(Rp), awn = false;
-      if (!stop) { const was = pzStackHits(st), X0 = st.X; st.X = nx; if (!was && pzStackHits(st)) { stop = true; awn = true; } st.X = X0; }
+      const feetAt = (pc, x) => { const s = pzSupport(R, x); return s >= pc.feet - PZ.stepUp ? Math.max(s, pc.grounded ? s : pc.feet) : null; };
+      const xl = nx - PZ.span / 2, xr = nx + PZ.span / 2;
+      let stop = xl < 30 || xr > R.len - 30;
+      const fl = feetAt(L, xl), fr = feetAt(Rp, xr);
+      if (fl === null || fr === null) stop = true;
+      let awn = false;
+      if (!stop && st.n > 0) {
+        const hl = pzHandAt(Math.min(fl, pzSupport(R, xl)), L.lift), hr = pzHandAt(Math.min(fr, pzSupport(R, xr)), Rp.lift);
+        if (!pzStackHits(st) && pzStackHitsAt(st, nx, hl, hr)) { stop = true; awn = true; }
+      }
       if (stop) {
-        if (Math.abs(st.V) > 60) {
-          pzImpulse(st, Math.sign(st.V) * PZ.jBonk * Math.abs(st.V) / PZ.walk);
-          st.stats.bonks++; Sfx.play('bonk'); pzRumble(0.2, 0.4, 90);
-          const front = st.V > 0 ? Rp : L;
-          pzPuff(front.xc + Math.sign(st.V) * 12, front.feet - 12, 4, 'rgba(255,255,255,0.8)');
-        }
-        if (awn) pzAwningKnock(st, Math.sign(st.V));
+        if (awn && Math.abs(st.V) > 30) pzAwningBonk(st, Math.sign(st.V));
+        else if (Math.abs(st.V) > 60) { Sfx.play('bonk'); pzRumble(0.2, 0.4, 90); }
         st.V = 0; bonked = true;
       } else st.X = nx;
     }
     st.aPair = bonked ? 0 : (st.V - V0) / dt;
     const prevXc = [L.xc, Rp.xc];
     L.xc = st.X - PZ.span / 2; Rp.xc = st.X + PZ.span / 2;
-    // 5. vertical, per player
+    // 4. feet: step up small steps, fall down the bigger ones
     for (const pc of ps) {
+      const sup = pzSupport(R, pc.xc);
       if (pc.grounded) {
-        const sup = pzSupport(R, pc.xc);
-        if (sup <= pc.feet + PZ.snapDown) pc.feet = sup; else { pc.grounded = false; pc.vy = 0; }
+        if (sup <= pc.feet + 2.5) pc.feet = sup; else { pc.grounded = false; pc.vy = 0; }
       }
       if (!pc.grounded) {
         pc.vy = Math.min(pc.vy + PZ.g * dt, PZ.maxFall);
         pc.feet += pc.vy * dt;
         const s2 = pzSupport(R, pc.xc);
-        if (pc.vy < 0 && pc.feet > s2) pc.feet = s2;   // rising over a bump's slope: the slope lifts your feet
-        if (pc.vy >= 0 && pc.feet >= s2) {
-          const vy = pc.vy; pc.feet = s2; pc.vy = 0; pc.grounded = true;
-          if (pc.carryAir) { pc.carry = 0; pc.carryAir = false; }
-          const o = pc === L ? Rp : L, team = !o.grounded || st.clock - o.landT < 0.08;
-          pc.landT = st.clock; pc.landV = vy;
-          if (vy > 150) {
-            if (team) pzImpulse(st, Math.sign(st.lean) * PZ.jLandTeam * vy / PZ.hop);
-            else pzImpulse(st, (pc === L ? -1 : 1) * PZ.jLand * vy / PZ.hop);
-            pzPuff(pc.xc, pc.feet, 5, 'rgba(255,255,255,0.75)');
-            if (vy > 300) { Sfx.play('land'); pzRumble(0.25, 0.3, 80, pc.id); }
-          }
+        if (pc.feet >= s2) {
+          const vy = pc.vy; pc.feet = s2; pc.vy = 0; pc.grounded = true; pc.landT = st.clock; pc.landV = vy;
+          if (vy > 120) { st.s += (pc === L ? 1 : -1) * PZ.jLand * vy / 250; st.wobV += (pc === L ? 1 : -1) * 2; if (!frozen) pzPuff(pc.xc, pc.feet, 3, 'rgba(255,255,255,0.7)'); }
         }
       }
     }
-    // the stack bumps its head on an awning: rising stops, and a box is knocked off
-    if (pzStackHits(st)) {
-      for (const pc of ps) if (pc.vy < 0) pc.vy = 0;
-      pzAwningKnock(st, Math.sign(st.V) || 1);
-    }
-    // 6. surface events: bumps, cobbles, puddles
+    // 5. bumps: a little jolt to the stack
     const spd = Math.abs(st.V) / PZ.walk;
     [L, Rp].forEach((pc, i) => {
-      if (!pc.grounded) return;
       const a = Math.min(prevXc[i], pc.xc), b = Math.max(prevXc[i], pc.xc);
       if (a === b) return;
-      const away = pc === L ? 1 : -1;
       for (const bp of R.bumps) if (bp.cx > a && bp.cx <= b) {
-        pzImpulse(st, away * PZ.jBump * spd * spd);
-        if (!frozen) {
-          Sfx.tone(110, 0.07, 'square', 0.02 + 0.03 * spd, 70); pzRumble(0.2 * spd, 0.45 * spd, 70, pc.id);
-          pzPuff(bp.cx, R.roadY - 10, 3, 'rgba(255,255,255,0.7)'); st.fx.bumpT[pc.id] = st.clock;
-        }
+        const sg = hash(bp.cx | 0, pc.id) & 1 ? 1 : -1;
+        st.s += sg * PZ.jBump * spd * spd; st.wobV += sg * 6 * spd;
+        if (!frozen) { Sfx.tone(110, 0.07, 'square', 0.02 + 0.03 * spd, 70); pzRumble(0.2 * spd, 0.45 * spd, 70, pc.id); pzPuff(bp.cx, pzGAt(R, bp.cx) - 4, 3, 'rgba(255,255,255,0.7)'); }
       }
-      for (let ci = 0; ci < R.crests.length; ci++) {
-        const c = R.crests[ci];
-        if (c > a && c <= b) {
-          const sg = hash(Math.round(c), pc.id + st.room * 7) & 1 ? 1 : -1;
-          pzImpulse(st, sg * PZ.jCobble * spd * spd);
-          if (!frozen && st.clock - st.fx.cobbleT > 0.045) {
-            st.fx.cobbleT = st.clock;
-            Sfx.tone(600 + 100 * (ci % 3), 0.025, 'square', 0.006 + 0.012 * spd);
-            if (ci % 2) pzPuff(c, pzGAt(R, c), 1, 'rgba(255,255,255,0.6)');
-            if (ci % 3 === 0) pzRumble(0, 0.15 * spd, 60);
-          }
-        }
-      }
-      for (const pd of R.puddles) {
-        const was = prevXc[i] > pd.x0 && prevXc[i] < pd.x1, now = pc.xc > pd.x0 && pc.xc < pd.x1;
-        if (now && !was) {
-          pzImpulse(st, -away * PZ.jSplash * spd);
-          if (spd > 0.15) {
-            Sfx.play('pzSplash'); pzBurst(pc.xc, R.roadY + 2, '#7fc8ff', 4 + Math.round(8 * spd)); pzBurst(pc.xc, R.roadY + 2, '#ffffff', 3);
-            pzRumble(0.1, 0.3 * spd, 80, pc.id);
-          }
-        }
+      // stairs: a little tap and dust on every step
+      if (!frozen && pc.grounded) for (const s of R.stairs) for (const t of s.tread) if (t.x > a && t.x <= b) {
+        Sfx.tone(180 + 20 * pc.id, 0.04, 'triangle', 0.025); st.wobV += (hash(t.x, pc.id) & 1 ? 1 : -1) * 2.5;
+        pzPuff(pc.xc, pc.feet, 1, 'rgba(255,255,255,0.6)');
       }
     });
-    // 7. wind gusts
-    pzWindStep(st, dt);
-    // 8. steady: needs the pair nearly stopped and you on the ground
-    for (const pc of ps) pc.steady = pc.steadyHeld && pc.grounded && Math.abs(st.V) <= PZ.steadyMaxV;
-    const nS = (L.steady ? 1 : 0) + (Rp.steady ? 1 : 0);
-    st.nSteady = nS;
-    // (rev2) an AFK partner (no keys for afkSave s) can't cost a box: one steadier is enough to save it then
-    const nSave = nS === 1 && ps.some(pc => !pc.steady && pc.idleT >= PZ.afkSave) ? 2 : nS;
-    // 9. the lean: a damped spring pushed by acceleration, tilt, strain, wind and jolts
-    const hl = pzHand(L), hr = pzHand(Rp), phi = clamp((hr - hl) / PZ.span, -0.8, 0.8);
-    st.phi = phi;
-    if (mode === 'push' || mode === 'tug') st.strain = Math.min(1, st.strain + dt / PZ.strainRise);
-    else st.strain = Math.max(0, st.strain - dt / PZ.strainFall);
-    let F = -PZ.cAcc * clamp(st.aPair, -1500, 1500) / 300 + PZ.cTilt * phi + st.windF;
-    if (mode === 'push') F += -PZ.cPush * st.strain * dir;
-    if (mode === 'tug') F += PZ.cTug * st.strain * Math.sin(8 * st.roomT);
-    F *= pzHf(st.n);
-    const Ke = PZ.K + PZ.Ksteady * nS, De = PZ.D + PZ.Dsteady * nS;
-    st.leanV += (F - Ke * st.lean - De * st.leanV) * dt;
-    st.lean += st.leanV * dt;
-    if (st.grace > 0) st.grace -= dt;
-    if (st.awnT > 0) st.awnT -= dt;
+    // 6. dogs and wind
+    pzDogStep(st, dt, frozen);
+    pzWindStep(st, dt, frozen);
+    // 7. the slide: the stack slides toward the low end of a tilted tray
+    const hl = pzHand(L), hr = pzHand(Rp), tilt = (hr - hl) / PZ.span;   // + : the right end is lower
+    st.tilt = tilt;
+    const ex = Math.sign(tilt) * Math.max(0, Math.abs(tilt) - PZ.dead), k = pzHf(Math.max(1, st.n));
+    const push = PZ.kSlide * ex + st.windA - PZ.cAcc * clamp(st.aPair, -1500, 1500) / 320;
+    if (ex === 0 && st.windA === 0) {
+      st.sv += push * k * dt;
+      st.sv -= st.sv * Math.min(1, PZ.dLevel * dt);
+      if (Math.abs(st.sv) < 0.25) st.s = approach(st.s, 0, PZ.settle * dt);
+    } else {
+      st.sv += push * k * dt;
+      st.sv -= st.sv * Math.min(1, PZ.dSlide * dt);
+    }
+    st.sv = clamp(st.sv, -PZ.svMax, PZ.svMax);
+    st.s += st.sv * dt;
+    st.slideT = Math.abs(st.s) > PZ.warnS ? st.slideT + dt : 0;
+    // a cosmetic jiggle on top (cardboard boxes wobble a bit as you walk)
+    st.wobV += (-90 * st.wob - 7 * st.wobV) * dt + (st.mode === 'walk' ? Math.sin(st.clock * 13) * 9 * spd * dt : 0);
+    st.wob += st.wobV * dt;
+    if (st.graceT > 0) { st.graceT -= dt; st.s = clamp(st.s, -0.95, 0.95); }
+    if (st.awnBonkT > 0) st.awnBonkT -= dt;
+    if (st.dogBonkT > 0) st.dogBonkT -= dt;
     if (frozen) return;
-    // 10. teeter: the top box slides to the edge; both steadying saves it, otherwise it falls
-    if (!st.teeter && st.grace <= 0 && Math.abs(st.lean) >= 1 && st.n > 0) {
-      st.teeter = { side: Math.sign(st.lean), t: 0, st: 0 };
-      st.stats.teeters++; st.fx.creakT = 0.27;
-      Sfx.play('pzTeeter'); pzRumble(0.25, 0.5, 180);
+    // 8. creaks while it slides near the edge, and the top box going over
+    if (Math.abs(st.s) > 0.7 && st.n > 0) {
+      st.fx.creakT -= dt;
+      if (st.fx.creakT <= 0) { st.fx.creakT = 0.3; Sfx.play('pzCreak'); pzRumble(0, 0.25, 50); }
+    } else st.fx.creakT = 0;
+    if (Math.abs(st.s) >= 1 && st.n > 0 && st.graceT <= 0) {
+      const side = Math.sign(st.s);
+      pzLoseBox(st, side);
+      st.s = side * PZ.lostTo; st.sv *= 0.2; st.graceT = PZ.grace;
     }
-    if (st.teeter) {
-      const te = st.teeter;
-      te.t += dt;
-      if (nSave === 2) te.st += dt;
-      if (te.st >= PZ.steadySave) {
-        st.teeter = null; st.lean *= PZ.settleMul; st.leanV *= PZ.settleMul; st.grace = PZ.grace; st.stats.saves++;
-        Sfx.play('pzSave'); pzRumble(0, 0.4, 90);
-        const tp = pzTopPos(st);
-        pzBurst(tp.x, tp.y, '#ffffff', 8); pzFloat(st, tp.x, tp.y - 26, 'Phew!', C.gold, 18);
-      } else if (te.t >= PZ.teeter) {
-        st.teeter = null; pzLoseBox(st, 'fell', te.side); st.lean *= PZ.fallMul; st.leanV *= PZ.fallMul; st.grace = PZ.grace;
-      } else {
-        st.fx.creakT -= dt;
-        if (st.fx.creakT <= 0) { st.fx.creakT = 0.27; Sfx.play('pzCreak'); pzRumble(0, 0.3, 60); }
-      }
-    }
-    // 11. fail and delivery
-    if (st.n < st.need || ps.some(pc => pc.feet > H + 40)) { pzFail(st, st.n < st.need ? 'boxes' : 'pit'); return; }
+    // 9. fail and delivery
+    if (st.n < st.need) { pzFail(st, 'boxes'); return; }
     const d = R.door;
-    if (d && Math.abs(st.X - d.cx) <= PZ.deliverR && L.grounded && Rp.grounded && Math.abs(st.V) <= PZ.deliverV && !st.teeter) {
+    if (d && Math.abs(st.X - d.cx) <= PZ.deliverR && L.grounded && Rp.grounded && Math.abs(st.V) <= PZ.deliverV && Math.abs(st.s) < 0.7) {
       st.deliverT += dt;
       if (st.deliverT >= PZ.deliverHold) pzDeliver(st);
     } else st.deliverT = 0;
   }
 
-  function pzWindStep(st, dt) {
+  function pzAwningBonk(st, dir) {
+    if (st.awnBonkT > 1.6) return;
+    st.awnBonkT = 2.2; st.stats.bonks++;
+    st.s -= dir * PZ.jAwning; st.wobV -= dir * 14;
+    Sfx.play('pzThunk'); pzRumble(0.4, 0.5, 140); pzShake(0.05);
+    const tp = pzTopPos(st);
+    pzBurst(tp.x - st.cam.x, tp.y - st.cam.y - 4, C.paper, 5);
+  }
+
+  function pzDogStep(st, dt, frozen) {
+    const R = st.R, Dg = PZ.dog;
+    for (const d of R.dogs) {
+      const near = st.X > d.x - Dg.near && st.X < d.x + Dg.near * 0.8 && st.phase === 'play';
+      if (d.woofT > 0) d.woofT -= dt;
+      if (d.air >= 0) {
+        d.air += dt;
+        const u = d.air / Dg.air, up = Math.sin(Math.PI * clamp(u, 0, 1));
+        // at the top of the jump the dog's nose meets the tray, unless it is raised out of reach
+        if (!d.hit && u > 0.35 && u < 0.7 && !frozen) {
+          const reachY = pzGAt(R, d.x) - Dg.reach * up;
+          const hl = pzHand(st.pc[st.left]), hr = pzHand(st.pc[st.right]);
+          const f = clamp((d.x - (st.X - PZ.span / 2)) / PZ.span, 0, 1), trayY = hl + (hr - hl) * f;
+          if (Math.abs(d.x - st.X) < PZ.span / 2 + 6 && trayY > reachY - 2 && st.n > 0) {
+            d.hit = true; st.stats.dogBonks++;
+            const side = st.X >= d.x ? 1 : -1;
+            st.s += side * PZ.jDog; st.wobV += side * 18; st.dogBonkT = 1.2;
+            Sfx.play('pzBonk'); pzRumble(0.5, 0.6, 160); pzShake(0.06);
+            pzFloat(st, d.x, trayY - 18, 'Boop!', '#ffffff', 16);
+          }
+        }
+        if (d.air >= Dg.air) { d.air = -1; d.t = 0; }
+      } else if (near) {
+        d.t += dt;
+        if (d.t > Dg.period - Dg.air) { d.air = 0; d.hit = false; if (!frozen && d.woofT <= 0) { Sfx.play('pzWoof'); d.woofT = 0.9; } }
+      } else d.t = Math.min(d.t, Dg.period * 0.5);
+    }
+  }
+
+  function pzWindStep(st, dt, frozen) {
     const R = st.R;
-    st.windF = 0;
+    st.windA = 0;
     if (!R.wind) return;
     const Wd = PZ.wind;
-    if (st.windT0 == null && st.X > R.wind.x0 - Wd.trig) st.windT0 = st.roomT;
-    const t = st.windT0 == null ? -1 : st.roomT - st.windT0 - Wd.first;
+    if (st.windT0 == null && st.X > R.wind.x0 - 80) st.windT0 = st.roomT;
+    const t = st.windT0 == null ? -1 : st.roomT - st.windT0;
     let state = 'calm', g = 0;
     if (t >= 0) {
       const c = t % Wd.period;
       if (c < Wd.warn) state = 'warn';
-      else if (c < Wd.warn + Wd.gust) { state = 'gust'; const u = c - Wd.warn; g = Math.min(1, u / Wd.rampIn, (Wd.gust - u) / Wd.rampOut); }
+      else if (c < Wd.warn + Wd.gust) { state = 'gust'; const u = c - Wd.warn; g = Math.min(1, u / Wd.ramp, (Wd.gust - u) / Wd.ramp); }
     }
-    const near = st.X > R.wind.x0 - 150 && st.X < R.wind.x1 + 40;
+    const near = st.X > R.wind.x0 - 200 && st.X < R.wind.x1 + 60;
     if (state !== st.windState) {
-      if (st.windState === 'gust' && st.gustHeld) st.stats.windStops++;
-      st.gustHeld = false;
-      if (state === 'warn' && near && st.phase === 'play') Sfx.play('pzWhistle');
-      if (state === 'gust' && near && st.phase === 'play') { Sfx.play('pzGust'); if (st.X > R.wind.x0 && st.X < R.wind.x1) pzRumble(0.15, 0.35, 900); }
+      if (!frozen && state === 'warn' && near && st.phase === 'play') Sfx.play('pzWhistle');
+      if (!frozen && state === 'gust' && near && st.phase === 'play') { Sfx.play('pzGust'); pzRumble(0.12, 0.3, 900); }
+      if (st.windState === 'gust' && st.windIn && Math.abs(st.s) < 0.6) st.stats.gustsRidden++;
       st.windState = state;
     }
     st.windIn = st.X > R.wind.x0 && st.X < R.wind.x1;
-    if (st.windIn) st.windF = R.wind.dir * Wd.force * st.windMul * Math.max(0, g);
     st.windG = Math.max(0, g);
+    if (st.windIn) st.windA = R.wind.dir * Wd.force * st.windMul * st.windG;
   }
 
-  function pzAwningKnock(st, dir) {
-    if (st.awnT > 0 || st.n <= 0) return;
-    st.awnT = PZ.awningGrace; st.awnBonkT = 2.5;
-    if (st.teeter) st.teeter = null;
-    pzImpulse(st, -dir * PZ.jAwning);
-    Sfx.play('pzThunk'); pzRumble(0.5, 0.5, 160);
-    const tp = pzTopPos(st);
-    pzBurst(tp.x, tp.y - 4, C.paper, 6);
-    pzLoseBox(st, 'awning', -dir);
-  }
-
-  function pzLoseBox(st, why, side) {
+  function pzLoseBox(st, side) {
     if (st.n <= 0) return;
     const tp = pzTopPos(st);
     st.n--; st.stats.dropped++; G.falls++;
     const fx = st.fx.boxes;
-    const knocked = why === 'awning';
-    fx.push({ x: tp.x, y: tp.y, rot: tp.rot, vx: knocked ? side * 160 : side * (90 + pzRand() * 50) + st.V * 0.5, vy: knocked ? -80 : -120,
-      vr: (pzRand() < 0.5 ? -1 : 1) * (4 + pzRand() * 2), open: false, bounced: false, rest: false, t: 0 });
+    fx.push({ x: tp.x, y: tp.y, rot: tp.rot, vx: side * (120 + pzRand() * 50) + st.V * 0.5, vy: -60,
+      vr: side * (4 + pzRand() * 2), open: false, bounced: false, rest: false, t: 0 });
     if (fx.length > 10) fx.shift();
-    Sfx.play('pzSlip'); pzRumble(0.6, 0.7, 260); pzShake(0.12);
+    Sfx.play('pzSlip'); pzRumble(0.6, 0.7, 260); pzShake(0.1);
     st.fx.pop = 0.25;
   }
 
   function pzFail(st, why) {
-    st.phase = 'fail'; st.phaseT = PZ.failT; st.failWhy = why; st.teeter = null; st.deliverT = 0;
+    st.phase = 'fail'; st.phaseT = PZ.failT; st.failWhy = why; st.deliverT = 0;
     st.stats.fails++;
-    if (why === 'pit') G.falls++;
     Sfx.play('pzOops'); pzRumble(0.7, 0.7, 350); pzShake(0.12);
   }
 
   function pzDeliver(st) {
     const def = st.def, lost = st.start - st.n, spares = def.stack - def.order;
     const stars = lost === 0 ? 3 : lost <= Math.ceil(spares / 2) ? 2 : 1;
-    st.phase = 'deliver'; st.phaseT = 0.15 * st.n + 0.9;
+    st.phase = 'deliver'; st.phaseT = 0.15 * st.n + 1.0;
     st.stats.lost[st.room] = lost; st.stats.delivered[st.room] = st.n; st.stats.stars[st.room] = stars;
     st.fx.del = { t: 0, n: st.n, launched: 0, arrived: 0, stars, shown: 0 };
     Sfx.play('pzDing');
   }
 
-  // where the top box is (for fx)
-  function pzTopPos(st) {
-    const g = pzGeom(st), i = Math.max(0, st.n - 1);
-    return pzBoxAt(st, g, i, Math.max(1, st.n));
-  }
+  /* ---------- where things are (world space) ---------- */
   function pzGeom(st) {
     const hl = pzHand(st.pc[st.left]), hr = pzHand(st.pc[st.right]);
     const a = Math.atan2(hr - hl, PZ.span);
-    return { hl, hr, a, bx: st.X, by: (hl + hr) / 2 - PZ.trayTh, ux: Math.sin(a), uy: -Math.cos(a) };
+    return { hl, hr, a, bx: st.X, by: (hl + hr) / 2 - PZ.trayTh, ux: Math.sin(a), uy: -Math.cos(a), cx: Math.cos(a), cy: Math.sin(a) };
   }
+  // box i of n: the stack shears toward the slide, the top box most
   function pzBoxAt(st, g, i, n) {
-    const f = (i + 1) / n, h = PZ.boxH * (i + 0.5);
-    const jit = (hash(st.room + 1, i) % 3) - 1;
-    return { x: g.bx + g.ux * h + st.lean * PZ.leanPx * Math.pow(f, 1.5) + jit, y: g.by + g.uy * h, rot: g.a + st.lean * 0.18 * f };
+    const f = n > 1 ? i / (n - 1) : 1, h = PZ.boxH * (i + 0.5);
+    const along = st.s * (8 + 22 * Math.pow(f, 1.25)) + st.wob * (0.3 + f), jit = ((hash(st.room + 1, i) % 3) - 1) * 0.8;
+    return { x: g.bx + g.ux * h + g.cx * (along + jit), y: g.by + g.uy * h + g.cy * (along + jit), rot: g.a + st.s * 0.12 * f + st.wob * 0.01 * f };
   }
+  function pzTopPos(st) { const g = pzGeom(st); return pzBoxAt(st, g, Math.max(0, st.n - 1), Math.max(1, st.n)); }
 
-  function pzFloat(st, x, y, str, col, size) {
+  function pzFloat(st, x, y, str, col, size) { // world space
     const f = st.fx.floats;
     f.push({ x, y, str, col, size: size || 16, t: 0, max: 1.1 });
     if (f.length > 12) f.shift();
@@ -464,51 +427,66 @@
     if (fx.freshT > 0) fx.freshT -= dt;
     if (fx.reliefT > 0) fx.reliefT -= dt;
     if (fx.pop > 0) fx.pop -= dt;
-    if (st.awnBonkT > 0) st.awnBonkT -= dt;
     for (let i = fx.boxes.length - 1; i >= 0; i--) {
       const b = fx.boxes[i];
       b.t += dt;
       if (!b.rest) {
         b.vy += 1800 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.rot += b.vr * dt;
-        const gy = pzGAt(R, clamp(b.x, 0, W - 1)) - 4;
+        const gy = pzGAt(R, clamp(b.x, 0, R.len - 1)) - 4;
         if (b.vy > 0 && b.y >= gy) {
           b.y = gy;
           if (!b.bounced) {
             b.bounced = true; b.open = true; b.hitT = b.t; b.vy *= -0.35; b.vx *= 0.5; b.vr *= 0.4;
-            pzBurst(b.x, b.y, '#ffcf5a', 6); pzBurst(b.x, b.y, '#e2452b', 4); pzPuff(b.x, b.y, 4, 'rgba(255,255,255,0.8)');
+            const sx = b.x - st.cam.x, sy = b.y - st.cam.y;
+            pzBurst(sx, sy, '#ffcf5a', 6); pzBurst(sx, sy, '#e2452b', 4); pzPuff(sx, sy, 4, 'rgba(255,255,255,0.8)');
             Sfx.play('pzPlop');
           } else {
             b.rest = true; b.vy = 0; b.vx = 0; b.vr = 0; b.rot = 0;
-            // a hungry pigeon swoops in for the pizza (from the side away from the carry)
-            if (b.x > 24 && b.x < W - 24 && fx.birds.length < 4) {
+            if (fx.birds.length < 4) {
               const side = b.x < st.X ? -1 : 1;
-              fx.birds.push({ box: b, side, t: -0.15, x: b.x + side * 200, y: 120, x1: b.x + side * 17, y1: b.y + 4, cooed: false });
+              fx.birds.push({ box: b, side, t: -0.15, x: b.x + side * 220, y: b.y - 300, x1: b.x + side * 17, y1: b.y + 4, cooed: false });
             }
           }
         }
       }
-      if ((b.hitT !== undefined && b.t - b.hitT > 2.4) || b.x < -60 || b.x > W + 60 || b.y > H + 60) fx.boxes.splice(i, 1);
+      if (b.hitT !== undefined && b.t - b.hitT > 2.4) fx.boxes.splice(i, 1);
     }
     for (let i = fx.birds.length - 1; i >= 0; i--) {
       const bd = fx.birds[i];
       bd.t += dt;
       if (bd.t >= 0.45 && !bd.cooed) { bd.cooed = true; Sfx.play('pzCoo'); }
-      if (bd.t >= 0.95 && !bd.box.eaten) { bd.box.eaten = true; pzBurst(bd.x1 - bd.side * 10, bd.y1 - 6, '#ffcf5a', 3); }
+      if (bd.t >= 0.95 && !bd.box.eaten) bd.box.eaten = true;
       if (bd.t > 1.7) fx.birds.splice(i, 1);
     }
     for (let i = fx.floats.length - 1; i >= 0; i--) { const f = fx.floats[i]; f.t += dt; f.y -= 34 * dt; if (f.t >= f.max) fx.floats.splice(i, 1); }
+    // steam from the hot pizzas
+    if (st.n > 0 && st.phase !== 'deliver') {
+      fx.steamAcc += dt * 5;
+      while (fx.steamAcc >= 1) {
+        fx.steamAcc -= 1;
+        const tp = pzTopPos(st);
+        if (fx.steam.length < 30) fx.steam.push({ x: tp.x + (pzRand() - 0.5) * 26, y: tp.y - 6, t: 0, max: 1.2 + pzRand() * 0.6, ph: pzRand() * 6 });
+      }
+    }
+    for (let i = fx.steam.length - 1; i >= 0; i--) {
+      const s = fx.steam[i];
+      s.t += dt; s.y -= 22 * dt; s.x += Math.sin(s.t * 3 + s.ph) * 8 * dt + st.windA * -12 * dt;
+      if (s.t >= s.max) fx.steam.splice(i, 1);
+    }
     // wind leaves
     if (R.wind) {
-      const rate = st.windState === 'gust' ? 35 : st.windState === 'warn' ? 5 : 0;
+      const near = st.X > R.wind.x0 - 300 && st.X < R.wind.x1 + 200;
+      const rate = !near ? 0 : st.windState === 'gust' ? 40 : st.windState === 'warn' ? 6 : 1;
       fx.leafAcc += rate * dt;
       while (fx.leafAcc >= 1) {
         fx.leafAcc -= 1;
-        if (fx.leaves.length < 80) fx.leaves.push({ x: R.wind.x1 + pzRand() * (W - R.wind.x1), y: 250 + pzRand() * 190, vx: -(260 + pzRand() * 200), ph: pzRand() * 6, col: ['#8fe3b0', '#ffb347', '#e4572e'][(pzRand() * 3) | 0], r: pzRand() * 6 });
+        if (fx.leaves.length < 90) fx.leaves.push({ x: st.cam.x + W + 20 + pzRand() * 80, y: st.cam.y + 120 + pzRand() * 300, vx: -(260 + pzRand() * 220), ph: pzRand() * 6,
+          col: ['#e9a23b', '#d9643a', '#b5c24a', '#f2c14e'][(pzRand() * 4) | 0], r: pzRand() * 6 });
       }
       for (let i = fx.leaves.length - 1; i >= 0; i--) {
         const l = fx.leaves[i];
-        l.x += l.vx * dt; l.ph += dt * 6; l.y += Math.sin(l.ph) * 20 * dt; l.r += dt * 8;
-        if (l.x < -10) fx.leaves.splice(i, 1);
+        l.x += l.vx * dt * (st.windState === 'gust' ? 1 : 0.45); l.ph += dt * 6; l.y += Math.sin(l.ph) * 30 * dt; l.r += dt * 8;
+        if (l.x < st.cam.x - 30) fx.leaves.splice(i, 1);
       }
     }
     // delivery: the boxes fly into the door one by one, then the stars pop
@@ -525,10 +503,10 @@
         f.t += dt;
         if (f.t >= 0.35) {
           fx.flyers.splice(i, 1); del.arrived++;
-          const k = f.k;
+          const k = f.k, sx = f.x1 - st.cam.x, sy = f.y1 - st.cam.y;
           Sfx.tone(1046 * (1 + 0.06 * k), 0.05, 'square', 0.035); Sfx.tone(1046 * 1.5 * (1 + 0.06 * k), 0.09, 'square', 0.035, null, 0.045);
-          pzBurst(f.x1, f.y1, C.gold, 6); pzFloat(st, f.x1 + (k % 2 ? 24 : -24), f.y1 - 14, '+1', C.gold, 18); pzRumble(0, 0.15, 40);
-          if (del.arrived === del.n) { for (let c = 0; c < 10; c++) confetti(f.x1, f.y1 - 10); pzFloat(st, R.door.cx, R.door.y - 44, 'Thanks!', '#ffffff', 22); }
+          pzBurst(sx, sy, C.gold, 6); pzFloat(st, f.x1 + (k % 2 ? 24 : -24), f.y1 - 14, '+1', C.gold, 18); pzRumble(0, 0.15, 40);
+          if (del.arrived === del.n) { for (let c = 0; c < 10; c++) confetti(sx, sy - 10); pzFloat(st, R.door.cx, R.door.y - 44, 'Thanks!', '#ffffff', 22); }
         }
       }
       const starT = 0.15 * (del.n - 1) + 0.4;
@@ -536,159 +514,298 @@
     }
   }
 
-  /* ---------- the street scene (drawn behind the players) ---------- */
-  function pzDeco(k, R) {
-    const out = { room: k, bld: [], trees: [], stalls: [] };
-    const hx0 = R.door ? R.door.x - 52 : W;
-    let x = k === 0 ? 156 : -12, i = 0;
-    while (x < hx0 - 40) {
-      const h = hash(k * 13 + 5, i * 7 + 1);
-      let w = 92 + (h % 5) * 13;
-      if (x + w > hx0 - 4) w = hx0 - 4 - x;
-      if (w < 56) break;
-      out.bld.push({ x, w, top: 256 + ((h >> 5) % 4) * 12, col: PZ_FACADES[(h >> 9) % PZ_FACADES.length], roof: (h >> 13) % 3,
-        rcol: PZ_ROOFS[(h >> 16) % PZ_ROOFS.length], shop: (h >> 19) % 3 === 0, chim: (h >> 21) % 2 === 0 });
-      x += w + 6 + ((h >> 23) % 3) * 8; i++;
+  /* ======================================================================================================
+     DRAWING. Screen layers: sky, far hills and skyline, near rooftops (parallax); then the street in world
+     space: houses up the hillside, props, the ground, awnings, dogs; then the players (engine), then the carry.
+     ====================================================================================================== */
+  // per-room light: sky colours, haze and a warm or cool wash
+  const PZ_LIGHT = [
+    { top: '#7fc6ee', bot: '#fdf0d2', sun: [760, 86], sunCol: '#fff4c4', haze: 'rgba(253,240,210,', far: '#a9cbe0', mid: '#93b7cf', wash: null },
+    { top: '#9bbfd8', bot: '#eef0e6', sun: [200, 70], sunCol: '#fffbe8', haze: 'rgba(238,240,230,', far: '#b1c9cc', mid: '#98b3b5', wash: 'rgba(160,190,210,0.06)', rain: true },
+    { top: '#8fd0f3', bot: '#ffe8c0', sun: [620, 64], sunCol: '#fff1b8', haze: 'rgba(255,232,192,', far: '#e2c79c', mid: '#cfae80', wash: null },
+    { top: '#f59a6b', bot: '#ffe2a8', sun: [700, 210], sunCol: '#ffd27a', haze: 'rgba(255,214,160,', far: '#c99595', mid: '#ad7d85', wash: 'rgba(255,150,80,0.07)' },
+  ];
+
+  function pzDeco(k, R, def) {
+    const out = { room: k, bld: [], props: [], far: [], mid: [], clouds: [], lines: [] };
+    const doorX = R.door ? R.door.x - 70 : R.len;
+    // houses along the hillside, each standing on the ground under it
+    let x = k === 0 ? 0 : -20, i = 0;
+    while (x < doorX - 30) {
+      const h = hash(k * 31 + 7, i * 13 + 3);
+      let w = 96 + (h % 6) * 14;
+      const isShop = k === 0 && i === 0;
+      if (isShop) w = 190;
+      if (x + w > doorX - 6) w = doorX - 6 - x;
+      if (w < 60) break;
+      let base = -1e9, top = 1e9;
+      for (let xx = Math.max(0, x); xx < Math.min(R.len, x + w); xx += 4) { base = Math.max(base, R.g[xx]); top = Math.min(top, R.g[xx]); }
+      const floors = 2 + ((h >>> 4) % 3);
+      out.bld.push({ x, w, base: base + 30, ground: top, top: top - 46 - floors * 50 - ((h >>> 7) % 3) * 6, floors, shop: isShop || (h >>> 10) % 3 === 0,
+        col: PZ_FACADES[(h >>> 12) % PZ_FACADES.length], roof: (h >>> 15) % 3, rcol: PZ_ROOFS[(h >>> 17) % PZ_ROOFS.length],
+        trim: PZ_TRIMS[(h >>> 19) % 3], shut: PZ_SHUTTERS[(h >>> 20) % PZ_SHUTTERS.length], chim: (h >>> 22) % 2 === 0,
+        balcony: (h >>> 23) % 3 === 0, cat: (h >>> 25) % 5 === 0, flowers: (h >>> 26) % 2 === 0, pizzeria: isShop, seed: h });
+      x += w + 4 + ((h >>> 27) % 3) * 6; i++;
     }
-    if (k === 3) for (const tx of [130, 300, 470, 650]) out.trees.push({ x: tx + (hash(tx, 3) % 20), h: 70 + hash(tx, 9) % 20 });
-    if (k === 2) for (const sx of [70, 230, 400]) out.stalls.push({ x: sx, col: ['#ffb347', '#8fe3b0', '#ff8fc7'][out.stalls.length] });
+    // washing lines between some neighbours
+    for (let j = 0; j + 1 < out.bld.length; j++) if (hash(k, j * 5 + 1) % 3 === 0) {
+      const a = out.bld[j], b = out.bld[j + 1];
+      out.lines.push({ x0: a.x + a.w - 6, y0: a.top + 40, x1: b.x + 6, y1: b.top + 40, seed: j });
+    }
+    // props on the pavement: lamps, trees, benches, hydrants, flower pots (kept off the stairs, awnings and the door)
+    const busy = x => R.stairs.some(s => x > s.x0 - 20 && x < s.x1 + 20) || R.awn.some(a => x > a.x0 - 30 && x < a.x1 + 30)
+      || (R.door && x > R.door.x - 120) || R.bridges.some(b => x > b.x0 - 10 && x < b.x1 + 10) || R.dogs.some(d => Math.abs(x - d.x) < 90)
+      || R.signs.some(s => Math.abs(x - s.x - 30) < 50) || x < 230;
+    for (let px = 260, j = 0; px < R.len - 100; px += 150 + (hash(k + 3, j) % 120), j++) {
+      if (busy(px)) continue;
+      const kinds = ['lamp', 'tree', 'lamp', 'bench', 'pots', 'hydrant', 'tree', 'bin', 'mail'];
+      out.props.push({ x: px, kind: kinds[hash(k * 7 + 1, j) % kinds.length], seed: hash(px, k) });
+    }
+    // far skyline and hills, near rooftops (screen-space parallax layers)
+    for (let j = 0; j < 40; j++) { const hh = hash(k + 11, j); out.far.push({ x: j * 70 + (hh % 30), w: 40 + (hh >>> 5) % 40, h: 40 + (hh >>> 9) % 90, spire: (hh >>> 13) % 7 === 0 }); }
+    for (let j = 0; j < 40; j++) { const hh = hash(k + 19, j); out.mid.push({ x: j * 90 + (hh % 40), w: 70 + (hh >>> 5) % 50, h: 30 + (hh >>> 9) % 50, roof: (hh >>> 14) % 2, tree: (hh >>> 16) % 4 === 0 }); }
+    for (let j = 0; j < 6; j++) { const hh = hash(k + 41, j); out.clouds.push({ x: j * 230 + (hh % 120), y: 40 + (hh >>> 7) % 90, s: 0.7 + ((hh >>> 12) % 6) / 10, sp: 4 + (hh >>> 15) % 6 }); }
     return out;
   }
 
-  function pzDrawBuilding(b, roadY) {
-    const { x, w, top } = b;
-    ctx.fillStyle = b.col; ctx.fillRect(x, top, w, roadY - top);
-    ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.fillRect(x + w - 5, top, 5, roadY - top);
-    if (b.roof === 0) { ctx.fillStyle = b.rcol; ctx.fillRect(x - 4, top - 8, w + 8, 10); }
-    else if (b.roof === 1) { ctx.fillStyle = b.rcol; ctx.beginPath(); ctx.moveTo(x - 6, top + 2); ctx.lineTo(x + w / 2, top - 30); ctx.lineTo(x + w + 6, top + 2); ctx.closePath(); ctx.fill(); }
-    else { ctx.fillStyle = b.rcol; ctx.beginPath(); ctx.moveTo(x - 4, top + 2); ctx.lineTo(x + 12, top - 18); ctx.lineTo(x + w - 12, top - 18); ctx.lineTo(x + w + 4, top + 2); ctx.closePath(); ctx.fill(); }
-    if (b.chim) { ctx.fillStyle = b.rcol; ctx.fillRect(x + w * 0.72, top - (b.roof === 1 ? 26 : 22), 10, 18); }
-    const cols = Math.max(1, Math.floor((w - 16) / 32)), gap = (w - cols * 18) / (cols + 1);
-    for (let r = 0, wy = top + 16; wy + 26 < roadY - 54; r++, wy += 44) for (let c = 0; c < cols; c++) {
-      const wx = x + gap + c * (18 + gap);
-      ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.fillRect(wx - 2, wy - 2, 22, 28);
-      ctx.fillStyle = '#e8f3fa'; ctx.fillRect(wx, wy, 18, 24);
-      ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.fillRect(wx + 8, wy, 2, 24); ctx.fillRect(wx, wy + 11, 18, 2);
-    }
-    // ground floor: a shop window or a front door
-    if (b.shop) {
-      ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.fillRect(x + 8, roadY - 46, w - 16, 46);
-      ctx.fillStyle = '#fff3d6'; ctx.fillRect(x + 11, roadY - 43, w - 22, 30);
-    } else {
-      ctx.fillStyle = 'rgba(28,26,54,0.28)'; rr(x + w / 2 - 11, roadY - 40, 22, 40, 4); ctx.fill();
-    }
-    // haze over the whole silhouette: the backdrop stays softer than the carry in front of it
-    ctx.beginPath();
-    ctx.rect(x, top, w, roadY - top);
-    if (b.roof === 0) ctx.rect(x - 4, top - 8, w + 8, 10);
-    else if (b.roof === 1) { ctx.moveTo(x - 6, top + 2); ctx.lineTo(x + w / 2, top - 30); ctx.lineTo(x + w + 6, top + 2); ctx.closePath(); }
-    else { ctx.moveTo(x - 4, top + 2); ctx.lineTo(x + 12, top - 18); ctx.lineTo(x + w - 12, top - 18); ctx.lineTo(x + w + 4, top + 2); ctx.closePath(); }
-    if (b.chim) ctx.rect(x + w * 0.72, top - (b.roof === 1 ? 26 : 22), 10, 18);
-    ctx.fillStyle = 'rgba(255,255,255,0.24)'; ctx.fill();
-  }
-
-  function pzDrawBackdrop(st) {
-    const R = st.R, roadY = R.roadY, d = st.deco, k = st.room;
-    if (k === 1) {
-      // after the rain: a faint rainbow and grey clouds
-      ctx.save(); ctx.globalAlpha = 0.28; ctx.lineWidth = 9;
-      ['#ff6b6b', '#ffb347', '#ffe66b', '#8fe3b0', '#7fc8ff', '#b28dff'].forEach((c, i) => { ctx.strokeStyle = c; ctx.beginPath(); ctx.arc(330, 470, 330 - i * 9, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke(); });
+  /* ----- sky and parallax (screen space) ----- */
+  function pzDrawSky(st) {
+    const Lt = PZ_LIGHT[st.room % 4], d = st.deco, cx = st.cam.x, cy = st.cam.y;
+    const gr = ctx.createLinearGradient(0, 0, 0, H);
+    gr.addColorStop(0, Lt.top); gr.addColorStop(0.75, Lt.bot); gr.addColorStop(1, Lt.bot);
+    ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+    // sun with a soft glow
+    const [sx, sy0] = Lt.sun, sy = sy0 - cy * 0.04;
+    const sg = ctx.createRadialGradient(sx, sy, 10, sx, sy, 140);
+    sg.addColorStop(0, Lt.sunCol); sg.addColorStop(0.25, Lt.haze + '0.55)'); sg.addColorStop(1, Lt.haze + '0)');
+    ctx.fillStyle = sg; ctx.fillRect(sx - 140, sy - 140, 280, 280);
+    ctx.fillStyle = Lt.sunCol; circle(sx, sy, st.room === 3 ? 38 : 26); ctx.fill();
+    if (st.room === 1) { // after the rain: a faint rainbow
+      ctx.save(); ctx.globalAlpha = 0.22; ctx.lineWidth = 9;
+      ['#ff6b6b', '#ffb347', '#ffe66b', '#8fe3b0', '#7fc8ff', '#b28dff'].forEach((c, i) => { ctx.strokeStyle = c; ctx.beginPath(); ctx.arc(560 - cx * 0.05, 430 - cy * 0.05, 330 - i * 9, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke(); });
       ctx.restore();
-      for (let i = 0; i < 3; i++) {
-        const cx = ((i * 330 + G.clock * 5) % (W + 260)) - 130, cy = 70 + i * 22;
-        ctx.fillStyle = 'rgba(150,160,180,0.55)';
-        ctx.beginPath(); ctx.arc(cx, cy, 24, 0, Math.PI * 2); ctx.arc(cx + 30, cy - 12, 30, 0, Math.PI * 2); ctx.arc(cx + 62, cy, 22, 0, Math.PI * 2); ctx.rect(cx, cy, 62, 20); ctx.fill();
-      }
     }
-    for (const b of d.bld) pzDrawBuilding(b, roadY);
-    if (k === 0) pzDrawPizzeria(roadY);
-    if (k === 2) {
-      // market: bunting between the rooftops and little stalls
-      const pts = d.bld.map(b => [b.x + b.w / 2, b.top + 14]);
-      const cols = ['#e4572e', '#ffc53d', '#5b95ff', '#8fe3b0', '#ff8fc7'];
-      for (let i = 0; i + 1 < pts.length; i++) {
-        const [ax, ay] = pts[i], [bx, by] = pts[i + 1], sag = 22;
-        ctx.strokeStyle = 'rgba(28,26,54,0.45)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo((ax + bx) / 2, (ay + by) / 2 + sag * 2, bx, by); ctx.stroke();
-        const n = Math.max(2, Math.floor((bx - ax) / 18));
-        for (let j = 1; j < n; j++) {
-          const t = j / n, px = (1 - t) * (1 - t) * ax + 2 * (1 - t) * t * (ax + bx) / 2 + t * t * bx;
-          const py = (1 - t) * (1 - t) * ay + 2 * (1 - t) * t * ((ay + by) / 2 + sag * 2) + t * t * by;
-          ctx.fillStyle = cols[(i * 3 + j) % cols.length];
-          ctx.beginPath(); ctx.moveTo(px - 5, py); ctx.lineTo(px + 5, py); ctx.lineTo(px, py + 10); ctx.closePath(); ctx.fill();
-        }
-      }
-      for (const s of d.stalls) pzDrawStall(s, roadY);
+    // clouds drift slowly
+    for (const c of d.clouds) {
+      const x = ((c.x - cx * 0.08 + G.clock * c.sp) % (W + 300) + W + 300) % (W + 300) - 150, y = c.y - cy * 0.05;
+      pzCloud(x, y, c.s, st.room === 1 ? 'rgba(200,208,220,0.9)' : st.room === 3 ? 'rgba(255,226,200,0.85)' : 'rgba(255,255,255,0.88)');
     }
-    if (k === 3) {
-      const bend = -st.windG * 12, sway = Math.sin(G.clock * 1.6) * 1.5 + (st.windState === 'gust' ? Math.sin(G.clock * 22) * 2 * st.windG : 0);
-      for (const t of d.trees) {
-        const top = roadY - t.h;
-        ctx.strokeStyle = '#8a5833'; ctx.lineWidth = 7; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(t.x, roadY); ctx.quadraticCurveTo(t.x, top + 20, t.x + bend * 0.6 + sway, top); ctx.stroke();
-        const cx = t.x + bend + sway;
-        ctx.fillStyle = '#5fab55'; circle(cx, top - 6, 24); ctx.fill(); circle(cx - 18, top + 6, 17); ctx.fill(); circle(cx + 18, top + 4, 18); ctx.fill();
-        ctx.fillStyle = '#7fcf6a'; circle(cx - 6, top - 14, 13); ctx.fill();
-      }
+    // far hills and skyline
+    const fy = 300 - cy * 0.12;
+    ctx.fillStyle = Lt.far;
+    ctx.beginPath(); ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 16) { const wx = x + cx * 0.12; ctx.lineTo(x, fy + 20 + Math.sin(wx * 0.006) * 26 + Math.sin(wx * 0.017 + 1) * 10); }
+    ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+    for (const b of d.far) {
+      const x = ((b.x - cx * 0.18) % 2800 + 2800) % 2800 - 100;
+      if (x > W + 60 || x + b.w < -60) continue;
+      ctx.fillStyle = Lt.far; ctx.fillRect(x, fy - b.h + 30, b.w, b.h + 200);
+      if (b.spire) { ctx.beginPath(); ctx.moveTo(x + b.w / 2 - 8, fy - b.h + 30); ctx.lineTo(x + b.w / 2, fy - b.h - 20); ctx.lineTo(x + b.w / 2 + 8, fy - b.h + 30); ctx.fill(); }
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      for (let wy = fy - b.h + 40; wy < fy + 20; wy += 14) for (let wx = x + 6; wx < x + b.w - 6; wx += 12) if (hash(wx | 0, wy | 0) % 3 === 0) ctx.fillRect(wx, wy, 4, 6);
     }
+    ctx.fillStyle = Lt.haze + '0.45)'; ctx.fillRect(0, fy - 140, W, H);
+    // near rooftops
+    const my = 360 - cy * 0.3;
+    for (const b of d.mid) {
+      const x = ((b.x - cx * 0.4) % 3600 + 3600) % 3600 - 120;
+      if (x > W + 60 || x + b.w < -60) continue;
+      ctx.fillStyle = Lt.mid;
+      const top = my - b.h;
+      ctx.fillRect(x, top, b.w, H - top);
+      if (b.roof) { ctx.beginPath(); ctx.moveTo(x - 4, top); ctx.lineTo(x + b.w / 2, top - 22); ctx.lineTo(x + b.w + 4, top); ctx.fill(); }
+      else ctx.fillRect(x - 3, top - 6, b.w + 6, 7);
+      if (b.tree) { circle(x + b.w + 12, top + 18, 20); ctx.fill(); circle(x + b.w + 26, top + 26, 15); ctx.fill(); }
+      ctx.fillStyle = 'rgba(255,255,255,0.16)';
+      for (let wy = top + 10; wy < my + 40; wy += 18) for (let wx = x + 8; wx < x + b.w - 8; wx += 16) ctx.fillRect(wx, wy, 6, 8);
+    }
+    ctx.fillStyle = Lt.haze + '0.35)'; ctx.fillRect(0, my - 120, W, H);
+  }
+  function pzCloud(x, y, s, col) {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(x, y, 22 * s, 0, Math.PI * 2); ctx.arc(x + 26 * s, y - 12 * s, 28 * s, 0, Math.PI * 2);
+    ctx.arc(x + 56 * s, y - 2 * s, 22 * s, 0, Math.PI * 2); ctx.arc(x + 30 * s, y + 8 * s, 22 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(x + 22 * s, y - 18 * s, 14 * s, 0, Math.PI * 2); ctx.fill();
   }
 
-  function pzDrawPizzeria(roadY) {
-    const x0 = 0, x1 = 150, top = 246;
-    ctx.fillStyle = '#e4572e'; ctx.fillRect(x0, top, x1 - x0, roadY - top);
-    ctx.fillStyle = '#fff4e0'; ctx.fillRect(x0, top, x1 - x0, 6); ctx.fillRect(x0, top + 44, x1 - x0, 4);
-    ctx.fillStyle = '#b8402a'; ctx.fillRect(x1 - 6, top, 6, roadY - top);
-    // plaque
-    ctx.fillStyle = '#fff4e0'; rr(22, top + 12, 100, 26, 8); ctx.fill();
-    text('PIZZA', 72, top + 26, 18, '#e4572e', 'center');
-    // striped canopy (cosmetic)
-    for (let i = 0; i < 15; i++) { ctx.fillStyle = i % 2 ? '#fff4e0' : '#e4572e'; ctx.fillRect(x0 + i * 10, 300, 10, 14); }
-    ctx.fillStyle = '#fff4e0';
-    for (let i = 0; i < 15; i++) { ctx.fillStyle = i % 2 ? '#fff4e0' : '#e4572e'; ctx.beginPath(); ctx.arc(x0 + i * 10 + 5, 314, 5, 0, Math.PI); ctx.fill(); }
-    ctx.fillStyle = C.ink; ctx.fillRect(x0, 298, x1 - x0, 3);
-    // warm window with an oven glow, and the shop door
-    ctx.fillStyle = '#7a2c1c'; rr(8, 330, 62, 64, 8); ctx.fill();
+  /* ----- the houses (world space) ----- */
+  function pzDrawBuilding(st, b) {
+    const { x, w, top, base } = b, h = base - top;
+    // body with a side shade
+    ctx.fillStyle = b.col; ctx.fillRect(x, top, w, h);
+    ctx.fillStyle = 'rgba(60,40,60,0.10)'; ctx.fillRect(x + w - 7, top, 7, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x, top, 4, h);
+    // a cornice under the roof, a plinth at the ground
+    ctx.fillStyle = b.trim; ctx.fillRect(x - 3, top, w + 6, 6);
+    ctx.fillStyle = 'rgba(60,40,60,0.15)'; ctx.fillRect(x - 3, top + 6, w + 6, 2);
+    // roof
+    ctx.fillStyle = b.rcol;
+    if (b.roof === 0) { ctx.fillRect(x - 5, top - 9, w + 10, 10); ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x - 5, top - 2, w + 10, 2); }
+    else if (b.roof === 1) {
+      ctx.beginPath(); ctx.moveTo(x - 8, top + 1); ctx.lineTo(x + w / 2, top - 36); ctx.lineTo(x + w + 8, top + 1); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.13)'; ctx.lineWidth = 1.5;
+      for (let r = 1; r < 4; r++) { const yy = top + 1 - r * 9, half = (w / 2 + 8) * (1 - r * 9 / 37); ctx.beginPath(); ctx.moveTo(x + w / 2 - half, yy); ctx.lineTo(x + w / 2 + half, yy); ctx.stroke(); }
+      ctx.fillStyle = '#e8f3fa'; circle(x + w / 2, top - 12, 6); ctx.fill(); ctx.strokeStyle = b.trim; ctx.lineWidth = 2; ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(x - 6, top + 1); ctx.lineTo(x + 14, top - 22); ctx.lineTo(x + w - 14, top - 22); ctx.lineTo(x + w + 6, top + 1); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.13)'; ctx.lineWidth = 1.5;
+      for (let yy = top - 6; yy > top - 22; yy -= 7) { ctx.beginPath(); ctx.moveTo(x - 2, yy); ctx.lineTo(x + w + 2, yy); ctx.stroke(); }
+    }
+    if (b.chim) {
+      const cxx = x + w * 0.74, ctop = top - (b.roof === 1 ? 34 : 28);
+      ctx.fillStyle = '#9a5a44'; ctx.fillRect(cxx, ctop, 12, 24); ctx.fillStyle = '#7d4636'; ctx.fillRect(cxx - 2, ctop - 3, 16, 4);
+      // a thin curl of smoke
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath();
+      for (let k = 0; k < 6; k++) { const yy = ctop - 6 - k * 9, xx = cxx + 6 + Math.sin(G.clock * 1.5 + k * 0.9 + b.seed) * 4 + k * 2; if (k === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy); }
+      ctx.stroke();
+    }
+    if (b.pizzeria) { pzDrawPizzeria(st, b); return; }
+    // windows: frames, panes, shutters and flower boxes
+    const groundY = b.ground;
+    const cols = Math.max(1, Math.floor((w - 20) / 34)), gap = (w - cols * 20) / (cols + 1);
+    for (let r = 0; r < b.floors; r++) {
+      const wy = top + 18 + r * 50;
+      if (wy + 30 > groundY - 56) break;
+      for (let c = 0; c < cols; c++) {
+        const wx = x + gap + c * (20 + gap), lit = st.room === 3 && hash(b.seed + r, c) % 3 === 0;
+        ctx.fillStyle = b.shut; ctx.fillRect(wx - 7, wy, 6, 28); ctx.fillRect(wx + 21, wy, 6, 28);
+        ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(wx - 7, wy + 9, 6, 1); ctx.fillRect(wx - 7, wy + 18, 6, 1); ctx.fillRect(wx + 21, wy + 9, 6, 1); ctx.fillRect(wx + 21, wy + 18, 6, 1);
+        ctx.fillStyle = b.trim; ctx.fillRect(wx - 2, wy - 2, 24, 32);
+        const pg = ctx.createLinearGradient(wx, wy, wx + 20, wy + 28);
+        pg.addColorStop(0, lit ? '#ffe39a' : '#d7ecf7'); pg.addColorStop(1, lit ? '#ffc861' : '#a9cde3');
+        ctx.fillStyle = pg; ctx.fillRect(wx, wy, 20, 28);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.moveTo(wx + 2, wy + 20); ctx.lineTo(wx + 12, wy + 2); ctx.lineTo(wx + 16, wy + 2); ctx.lineTo(wx + 6, wy + 20); ctx.fill();
+        ctx.fillStyle = b.trim; ctx.fillRect(wx + 9, wy, 2, 28); ctx.fillRect(wx, wy + 13, 20, 2);
+        if (b.cat && r === 0 && c === 0) pzDrawCat(wx + 10, wy + 28, b.seed);
+        if (b.flowers && (r + c) % 2 === 0) {
+          ctx.fillStyle = '#8a5833'; ctx.fillRect(wx - 3, wy + 28, 26, 6);
+          for (let f = 0; f < 5; f++) { ctx.fillStyle = f % 2 ? '#5fab55' : '#4b9147'; circle(wx + 1 + f * 4.5, wy + 27, 3.2); ctx.fill(); ctx.fillStyle = ['#ff6b8a', '#ffd23f', '#ff8a3d', '#ffffff'][(f + c) % 4]; circle(wx + 1 + f * 4.5, wy + 25, 1.8); ctx.fill(); }
+        } else { ctx.fillStyle = b.trim; ctx.fillRect(wx - 3, wy + 29, 26, 3); }
+      }
+      if (b.balcony && r === 0 && w > 110) {
+        const bx = x + w / 2 - 30, by = wy + 34;
+        ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(bx, by, 60, 4);
+        ctx.strokeStyle = '#3d3a4f'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(bx, by - 12); ctx.lineTo(bx + 60, by - 12);
+        for (let k = 0; k <= 10; k++) { ctx.moveTo(bx + k * 6, by - 12); ctx.lineTo(bx + k * 6, by); }
+        ctx.stroke();
+      }
+    }
+    // ground floor: a shop front or a front door, at the ground under the middle of the house
+    const mx = x + w / 2, gy = st.R.g[clamp(Math.floor(mx), 0, st.R.len - 1)];
+    if (b.shop) {
+      const sw = Math.min(w - 20, 96), sx = mx - sw / 2;
+      ctx.fillStyle = '#3d3a4f'; ctx.fillRect(sx - 3, gy - 52, sw + 6, 52);
+      const sg = ctx.createLinearGradient(0, gy - 48, 0, gy);
+      sg.addColorStop(0, '#fff6dc'); sg.addColorStop(1, '#f3d9a2');
+      ctx.fillStyle = sg; ctx.fillRect(sx, gy - 46, sw, 44);
+      ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let k = 1; k < 3; k++) ctx.fillRect(sx + sw * k / 3, gy - 46, 2, 44);
+      // goods in the window
+      for (let k = 0; k < 6; k++) { ctx.fillStyle = ['#e4572e', '#ffc53d', '#8fe3b0', '#7fc8ff', '#ff8fc7'][(k + b.seed) % 5]; circle(sx + 8 + k * (sw - 16) / 5, gy - 10, 5); ctx.fill(); }
+      // a little striped awning (high up: just a decoration)
+      const aw = sw + 16, ax = mx - aw / 2;
+      for (let k = 0; k * 10 < aw; k++) { ctx.fillStyle = k % 2 ? '#fff4e0' : b.shut; ctx.fillRect(ax + k * 10, gy - 66, 10, 12); ctx.beginPath(); ctx.arc(ax + k * 10 + 5, gy - 54, 5, 0, Math.PI); ctx.fill(); }
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(ax, gy - 66, aw, 2);
+    } else {
+      // a front door: an arched frame, a fanlight, panels, a knob and a step
+      ctx.fillStyle = 'rgba(60,40,60,0.25)'; rr(mx - 17, gy - 52, 34, 52, 16); ctx.fill();
+      ctx.fillStyle = b.trim; rr(mx - 15, gy - 50, 30, 50, 15); ctx.fill();
+      ctx.fillStyle = '#ffe9a8'; ctx.beginPath(); ctx.arc(mx, gy - 36, 11, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = b.trim; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let k = 1; k < 4; k++) { const a = Math.PI + k * Math.PI / 4; ctx.moveTo(mx, gy - 36); ctx.lineTo(mx + Math.cos(a) * 11, gy - 36 + Math.sin(a) * 11); }
+      ctx.stroke();
+      ctx.fillStyle = b.shut; ctx.fillRect(mx - 11, gy - 35, 22, 35);
+      ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.fillRect(mx - 8, gy - 31, 7, 12); ctx.fillRect(mx + 1, gy - 31, 7, 12); ctx.fillRect(mx - 8, gy - 15, 7, 11); ctx.fillRect(mx + 1, gy - 15, 7, 11);
+      ctx.fillStyle = C.gold; circle(mx + 7, gy - 17, 1.8); ctx.fill();
+      ctx.fillStyle = '#d8ccb8'; ctx.fillRect(mx - 15, gy - 3, 30, 3);
+    }
+    // a drainpipe
+    ctx.fillStyle = 'rgba(80,80,100,0.35)'; ctx.fillRect(x + 4, top + 6, 3, base - top);
+  }
+
+  function pzDrawCat(x, y, seed) {
+    const col = ['#3d3a4f', '#f0a050', '#ffffff', '#9a9aa8'][seed % 4];
+    const blink = (G.clock + seed % 7) % 4 < 0.15;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.ellipse(x, y - 6, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+    circle(x, y - 14, 5.5); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x - 5, y - 17); ctx.lineTo(x - 4, y - 23); ctx.lineTo(x - 1, y - 18); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x + 5, y - 17); ctx.lineTo(x + 4, y - 23); ctx.lineTo(x + 1, y - 18); ctx.fill();
+    const tail = Math.sin(G.clock * 2 + seed) * 4;
+    ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x + 6, y - 3); ctx.quadraticCurveTo(x + 14, y + 2, x + 12 + tail, y + 10); ctx.stroke();
+    ctx.fillStyle = seed % 4 === 0 ? '#ffd23f' : '#3d3a4f';
+    if (blink) { ctx.fillRect(x - 3.5, y - 14.5, 3, 1); ctx.fillRect(x + 0.5, y - 14.5, 3, 1); }
+    else { circle(x - 2, y - 14, 1.1); ctx.fill(); circle(x + 2, y - 14, 1.1); ctx.fill(); }
+  }
+
+  function pzDrawPizzeria(st, b) {
+    const { x, w, top } = b, gy = st.R.g[Math.floor(x + w / 2)];
+    // brick-red front with a cream band, a big plaque and a striped canopy
+    ctx.fillStyle = '#d64f31'; ctx.fillRect(x, top + 6, w, gy - top - 6);
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    for (let yy = top + 12; yy < gy; yy += 8) for (let xx = x + ((yy / 8) % 2 ? 0 : 8); xx < x + w; xx += 16) ctx.fillRect(xx, yy, 14, 1);
+    ctx.fillStyle = '#fff4e0'; ctx.fillRect(x, top + 6, w, 6);
+    ctx.fillStyle = '#fff4e0'; rr(x + 20, top + 22, w - 40, 38, 10); ctx.fill();
+    ctx.strokeStyle = '#2f8a4a'; ctx.lineWidth = 3; rr(x + 24, top + 26, w - 48, 30, 8); ctx.stroke();
+    text('PIZZA', x + w / 2, top + 42, 24, '#d64f31', 'center');
+    // windows upstairs
+    for (let c = 0; c < 3; c++) { const wx = x + 26 + c * 52, wy = top + 74; ctx.fillStyle = '#fff4e0'; ctx.fillRect(wx - 2, wy - 2, 28, 34); ctx.fillStyle = '#ffe9b0'; ctx.fillRect(wx, wy, 24, 30); ctx.fillStyle = '#fff4e0'; ctx.fillRect(wx + 11, wy, 2, 30); }
+    const cy = gy - 96;
+    for (let i = 0; i * 12 < w; i++) { ctx.fillStyle = i % 2 ? '#fff4e0' : '#2f8a4a'; ctx.fillRect(x + i * 12, cy, 12, 16); ctx.beginPath(); ctx.arc(x + i * 12 + 6, cy + 16, 6, 0, Math.PI); ctx.fill(); }
+    ctx.fillStyle = '#1f6b37'; ctx.fillRect(x - 4, cy - 3, w + 8, 4);
+    // the oven window with a glowing pizza, and the shop door
+    ctx.fillStyle = '#7a2c1c'; rr(x + 12, gy - 70, 84, 62, 10); ctx.fill();
     const glow = 0.85 + 0.15 * Math.sin(G.clock * 3);
-    ctx.fillStyle = '#ffd77a'; ctx.globalAlpha = glow; rr(12, 334, 54, 56, 6); ctx.fill(); ctx.globalAlpha = 1;
-    ctx.fillStyle = '#e4572e'; circle(39, 362, 17); ctx.fill();
-    ctx.fillStyle = '#ffcf5a'; circle(39, 362, 13.5); ctx.fill();
-    ctx.fillStyle = '#e2452b'; for (const [dx, dy] of [[-5, -4], [5, -3], [0, 6], [-7, 4], [7, 5]]) { circle(39 + dx, 362 + dy, 2.2); ctx.fill(); }
-    ctx.fillStyle = '#5a2a1a'; rr(86, 336, 52, roadY - 336 + 2, 6); ctx.fill();
-    ctx.fillStyle = '#7a3a24'; rr(91, 341, 42, roadY - 341, 4); ctx.fill();
-    ctx.fillStyle = C.gold; circle(126, 400, 2.6); ctx.fill();
-  }
-
-  function pzDrawStall(s, roadY) {
-    const x = s.x, y = roadY - 64;
-    ctx.save(); ctx.globalAlpha = 0.8;
-    ctx.fillStyle = '#8a5833'; ctx.fillRect(x + 4, y + 14, 4, 50); ctx.fillRect(x + 72, y + 14, 4, 50);
-    for (let i = 0; i < 8; i++) { ctx.fillStyle = i % 2 ? '#fff4e0' : s.col; ctx.fillRect(x + i * 10, y, 10, 14); }
-    ctx.fillStyle = '#c98b5a'; ctx.fillRect(x, y + 40, 80, 24);
-    ctx.fillStyle = 'rgba(28,26,54,0.2)'; ctx.fillRect(x, y + 40, 80, 3);
-    const fruit = ['#e4572e', '#ffc53d', '#8fe3b0'];
-    for (let i = 0; i < 7; i++) { ctx.fillStyle = fruit[(i + (s.x / 10 | 0)) % 3]; circle(x + 8 + i * 10.5, y + 36, 5); ctx.fill(); }
-    ctx.restore();
+    const og = ctx.createRadialGradient(x + 54, gy - 38, 4, x + 54, gy - 38, 44);
+    og.addColorStop(0, '#fff0a8'); og.addColorStop(1, '#ff9a3c');
+    ctx.globalAlpha = glow; ctx.fillStyle = og; rr(x + 16, gy - 66, 76, 54, 8); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.fillStyle = '#d88a3a'; circle(x + 54, gy - 38, 19); ctx.fill();
+    ctx.fillStyle = '#ffcf5a'; circle(x + 54, gy - 38, 15); ctx.fill();
+    ctx.fillStyle = '#e2452b'; for (const [dx, dy] of [[-6, -5], [6, -4], [0, 7], [-8, 5], [8, 6], [1, -1]]) { circle(x + 54 + dx, gy - 38 + dy, 2.4); ctx.fill(); }
+    ctx.fillStyle = '#5a2a1a'; rr(x + w - 64, gy - 70, 50, 70, 8); ctx.fill();
+    ctx.fillStyle = '#7a3a24'; rr(x + w - 59, gy - 65, 40, 65, 6); ctx.fill();
+    ctx.fillStyle = '#ffe9b0'; rr(x + w - 52, gy - 58, 26, 18, 4); ctx.fill();
+    ctx.fillStyle = C.gold; circle(x + w - 24, gy - 30, 2.6); ctx.fill();
+    // the chef waves you off
+    const wave = Math.sin(G.clock * 6) * 0.4;
+    ctx.fillStyle = '#ffffff'; rr(x + 104, gy - 64, 20, 12, 5); ctx.fill(); circle(x + 109, gy - 66, 6); ctx.fill(); circle(x + 119, gy - 66, 6); ctx.fill();
+    ctx.fillStyle = '#f2c29b'; circle(x + 114, gy - 46, 9); ctx.fill();
+    ctx.fillStyle = C.ink; circle(x + 111, gy - 47, 1.3); ctx.fill(); circle(x + 117, gy - 47, 1.3); ctx.fill();
+    ctx.strokeStyle = '#5a2a1a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + 108, gy - 42); ctx.quadraticCurveTo(x + 114, gy - 39, x + 120, gy - 42); ctx.stroke();
+    ctx.fillStyle = '#ffffff'; rr(x + 104, gy - 37, 20, 37, 6); ctx.fill();
+    ctx.save(); ctx.translate(x + 124, gy - 32); ctx.rotate(-0.8 + wave); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, -3, 16, 6); ctx.fillStyle = '#f2c29b'; circle(17, 0, 4); ctx.fill(); ctx.restore();
   }
 
   function pzDrawHouse(st) {
     const d = st.R.door, h = st.def.house || { num: '1', col: '#ffd6a5' };
     if (!d) return;
-    const x0 = d.x - 45, x1 = d.x + 105, top = 262, roadY = st.R.roadY;
-    ctx.fillStyle = h.col; ctx.fillRect(x0, top, x1 - x0, roadY - top);
-    ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.fillRect(x1 - 6, top, 6, roadY - top);
-    ctx.fillStyle = '#c0583c'; ctx.beginPath(); ctx.moveTo(x0 - 10, top + 2); ctx.lineTo((x0 + x1) / 2, 218); ctx.lineTo(x1 + 10, top + 2); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#a3462e'; ctx.fillRect(x0 + 108, 222, 12, 26);
-    // lit upper window with the customer peeking out
-    const wx = d.cx - 18, wy = 282;
-    ctx.fillStyle = '#7a4a22'; rr(wx - 3, wy - 3, 42, 36, 4); ctx.fill();
-    ctx.fillStyle = '#ffe9a8'; rr(wx, wy, 36, 30, 3); ctx.fill();
+    const gy = d.y + 60, x0 = d.x - 70, x1 = d.x + 150, top = gy - 190;
+    // garden fence and the path
+    ctx.fillStyle = h.col; ctx.fillRect(x0, top, x1 - x0, gy - top);
+    ctx.fillStyle = 'rgba(60,40,60,0.10)'; ctx.fillRect(x1 - 8, top, 8, gy - top);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x0 - 3, top, x1 - x0 + 6, 6);
+    ctx.fillStyle = '#c0583c'; ctx.beginPath(); ctx.moveTo(x0 - 14, top + 2); ctx.lineTo((x0 + x1) / 2, top - 56); ctx.lineTo(x1 + 14, top + 2); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.13)'; ctx.lineWidth = 1.5;
+    for (let r = 1; r < 6; r++) { const yy = top + 2 - r * 9, half = ((x1 - x0) / 2 + 14) * (1 - r * 9 / 58); ctx.beginPath(); ctx.moveTo((x0 + x1) / 2 - half, yy); ctx.lineTo((x0 + x1) / 2 + half, yy); ctx.stroke(); }
+    ctx.fillStyle = '#a3462e'; ctx.fillRect(x1 - 50, top - 46, 14, 34);
+    // windows: one with the customer peeking out
+    for (const wx of [x0 + 24, x1 - 64]) {
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(wx - 3, top + 26, 46, 40);
+      ctx.fillStyle = '#ffe9a8'; ctx.fillRect(wx, top + 29, 40, 34);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(wx + 19, top + 29, 2, 34);
+      ctx.fillStyle = '#5fab55'; for (let f = 0; f < 5; f++) { circle(wx + 2 + f * 9, top + 66, 4); ctx.fill(); }
+      ctx.fillStyle = '#ff6b8a'; for (let f = 0; f < 5; f++) { circle(wx + 2 + f * 9, top + 63, 2); ctx.fill(); }
+    }
     const delivered = st.phase === 'deliver';
-    const bob = delivered ? Math.sin(G.clock * 10) * 2 : Math.sin(G.clock * 2) * 1;
-    ctx.fillStyle = '#b48cff'; circle(d.cx, wy + 22 + bob, 10); ctx.fill();
-    ctx.fillStyle = C.ink; circle(d.cx - 4, wy + 20 + bob, 1.6); ctx.fill(); circle(d.cx + 4, wy + 20 + bob, 1.6); ctx.fill();
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(d.cx, wy + 23 + bob, 3.5, 0.2, Math.PI - 0.2); ctx.stroke();
-    ctx.fillStyle = '#7a4a22'; ctx.fillRect(wx + 17, wy, 2, 30);
-    // door: opens on delivery
+    const bob = delivered ? Math.sin(G.clock * 10) * 2 : Math.sin(G.clock * 2);
+    const fx = x0 + 34, fy = top + 52 + bob;
+    ctx.fillStyle = '#b48cff'; circle(fx, fy, 10); ctx.fill();
+    ctx.fillStyle = C.ink; circle(fx - 4, fy - 2, 1.6); ctx.fill(); circle(fx + 4, fy - 2, 1.6); ctx.fill();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(fx, fy + 1, 3.5, 0.2, Math.PI - 0.2); ctx.stroke();
+    // porch and door: opens on delivery
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(d.x - 4, gy - 80, 68, 6);
+    ctx.fillStyle = '#e8dcc8'; ctx.fillRect(d.x - 6, gy - 6, 72, 6);
     ctx.fillStyle = '#5a3a20'; rr(d.x + 4, d.y + 2, 52, 58, 7); ctx.fill();
     if (delivered) {
       ctx.fillStyle = C.doorIn; rr(d.x + 6, d.y + 4, 48, 56, 6); ctx.fill();
@@ -703,159 +820,389 @@
       rr(d.x + 12, d.y + 36, 16, 18, 3); ctx.fill(); rr(d.x + 32, d.y + 36, 16, 18, 3); ctx.fill();
       ctx.fillStyle = C.gold; circle(d.x + 47, d.y + 34, 2.6); ctx.fill();
     }
-    // house number
     ctx.fillStyle = '#fff8ea'; rr(d.cx - 14, d.y - 15, 28, 16, 4); ctx.fill();
     ctx.strokeStyle = 'rgba(28,26,54,0.35)'; ctx.lineWidth = 1; ctx.stroke();
     text(h.num, d.cx, d.y - 6.5, 13, C.ink, 'center', 'body');
-    // doormat
-    ctx.fillStyle = '#b84a3a'; rr(d.cx - 35, roadY - 5, 70, 5, 2); ctx.fill();
+    ctx.fillStyle = '#b84a3a'; rr(d.cx - 35, gy - 5, 70, 5, 2); ctx.fill();
+    // a picket fence each side of the path
+    for (const [fa, fb] of [[x0 - 40, d.x - 10], [d.x + 70, x1 + 40]]) pzFence(fa, fb, gy, '#ffffff');
   }
 
-  // the order bubble over the door: "4 × [box]" (after a retry: "3 is fine!")
-  function pzDrawOrder(st) {
-    const d = st.R.door;
-    if (!d || st.phase === 'deliver') return;
-    const sc = hudBig() ? 1.35 : 1;
-    const relief = st.fx.reliefT > 0;
-    const label = relief ? st.need + ' is fine!' : st.need + ' ×';
-    ctx.font = Math.round(17 * sc) + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
-    const tw = ctx.measureText(label).width, w = tw + (relief ? 20 : 48) * sc, h = 28 * sc;
-    const cx = Math.min(W - w / 2 - 4, d.cx), cy = d.y - 38 - (sc - 1) * 14;
-    ctx.save(); ctx.translate(cx, cy);
-    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = relief ? C.gold : C.ink; ctx.lineWidth = 2;
-    rr(-w / 2, -h / 2, w, h, 9); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-6, h / 2 - 1); ctx.lineTo(6, h / 2 - 1); ctx.lineTo(d.cx - cx, h / 2 + 8); ctx.closePath(); ctx.fill();
-    if (relief) text(label, 0, 1, Math.round(17 * sc), '#e4572e', 'center');
-    else {
-      text(label, -w / 2 + 10 * sc, 1, Math.round(17 * sc), C.ink, 'left');
-      ctx.save(); ctx.translate(w / 2 - 20 * sc, 0); ctx.scale(0.55 * sc, 0.55 * sc); pzBoxShape(false); ctx.restore();
+  function pzFence(x0, x1, gy, col) {
+    ctx.fillStyle = col;
+    ctx.fillRect(x0, gy - 22, x1 - x0, 3); ctx.fillRect(x0, gy - 11, x1 - x0, 3);
+    for (let x = x0; x < x1; x += 9) { ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, gy - 26); ctx.lineTo(x + 3, gy - 30); ctx.lineTo(x + 6, gy - 26); ctx.lineTo(x + 6, gy); ctx.fill(); }
+    ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(x0, gy - 3, x1 - x0, 3);
+  }
+
+  /* ----- props on the pavement ----- */
+  function pzDrawProp(st, p) {
+    const R = st.R, gy = pzGAt(R, p.x), x = p.x;
+    if (p.kind === 'lamp') {
+      ctx.fillStyle = '#3d3a4f'; ctx.fillRect(x - 2.5, gy - 92, 5, 92); ctx.fillRect(x - 6, gy - 8, 12, 8);
+      ctx.beginPath(); ctx.moveTo(x, gy - 92); ctx.quadraticCurveTo(x + 2, gy - 104, x + 14, gy - 102); ctx.lineWidth = 3; ctx.strokeStyle = '#3d3a4f'; ctx.stroke();
+      ctx.fillStyle = '#3d3a4f'; rr(x + 8, gy - 104, 14, 8, 3); ctx.fill();
+      const on = st.room === 3;
+      ctx.fillStyle = on ? '#fff0a8' : '#f2ead2'; ctx.beginPath(); ctx.moveTo(x + 9, gy - 96); ctx.lineTo(x + 21, gy - 96); ctx.lineTo(x + 18, gy - 88); ctx.lineTo(x + 12, gy - 88); ctx.fill();
+      if (on) { const lg = ctx.createRadialGradient(x + 15, gy - 90, 2, x + 15, gy - 90, 46); lg.addColorStop(0, 'rgba(255,230,150,0.5)'); lg.addColorStop(1, 'rgba(255,230,150,0)'); ctx.fillStyle = lg; ctx.fillRect(x - 31, gy - 136, 92, 92); }
+      // a hanging flower basket
+      ctx.fillStyle = '#8a5833'; ctx.beginPath(); ctx.arc(x - 9, gy - 70, 6, 0, Math.PI); ctx.fill();
+      ctx.fillStyle = '#5fab55'; circle(x - 9, gy - 72, 5); ctx.fill(); ctx.fillStyle = '#ff6b8a'; circle(x - 11, gy - 74, 2); ctx.fill(); circle(x - 6, gy - 73, 2); ctx.fill();
+    } else if (p.kind === 'tree') {
+      const sway = Math.sin(G.clock * 1.3 + p.seed) * 1.5 - (st.windState === 'gust' && R.wind && x > R.wind.x0 - 200 && x < R.wind.x1 + 200 ? st.windG * 8 : 0);
+      ctx.fillStyle = '#8a5833'; ctx.fillRect(x - 3.5, gy - 54, 7, 54);
+      ctx.fillStyle = '#7d756a'; rr(x - 13, gy - 8, 26, 8, 2); ctx.fill();
+      const green = st.room === 3 ? ['#c98a3a', '#e0a74a', '#b8742e'] : ['#4f9a4f', '#6dbb5f', '#3f8a46'];
+      ctx.fillStyle = green[2]; circle(x + sway - 14, gy - 58, 17); ctx.fill(); circle(x + sway + 15, gy - 60, 16); ctx.fill();
+      ctx.fillStyle = green[0]; circle(x + sway, gy - 72, 23); ctx.fill();
+      ctx.fillStyle = green[1]; circle(x + sway - 7, gy - 80, 12); ctx.fill(); circle(x + sway + 9, gy - 66, 9); ctx.fill();
+    } else if (p.kind === 'bench') {
+      ctx.fillStyle = '#3d3a4f'; ctx.fillRect(x - 22, gy - 14, 3, 14); ctx.fillRect(x + 19, gy - 14, 3, 14);
+      ctx.fillStyle = '#b8743e'; ctx.fillRect(x - 25, gy - 16, 50, 4); ctx.fillRect(x - 25, gy - 28, 50, 4); ctx.fillRect(x - 25, gy - 22, 50, 3);
+    } else if (p.kind === 'pots') {
+      for (let k = 0; k < 3; k++) {
+        const px = x - 16 + k * 16, s = 0.8 + (k % 2) * 0.3;
+        ctx.fillStyle = '#c0583c'; ctx.beginPath(); ctx.moveTo(px - 7 * s, gy - 14 * s); ctx.lineTo(px + 7 * s, gy - 14 * s); ctx.lineTo(px + 5 * s, gy); ctx.lineTo(px - 5 * s, gy); ctx.fill();
+        ctx.fillStyle = '#5fab55'; circle(px, gy - 18 * s, 8 * s); ctx.fill();
+        ctx.fillStyle = ['#ffd23f', '#ff6b8a', '#ffffff'][k]; circle(px - 2, gy - 21 * s, 2.4); ctx.fill(); circle(px + 3, gy - 17 * s, 2.4); ctx.fill();
+      }
+    } else if (p.kind === 'hydrant') {
+      ctx.fillStyle = '#d93a2b'; rr(x - 6, gy - 22, 12, 22, 3); ctx.fill(); ctx.beginPath(); ctx.arc(x, gy - 22, 6, Math.PI, 0); ctx.fill();
+      ctx.fillRect(x - 10, gy - 16, 20, 5); ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 6, gy - 8, 12, 2);
+    } else if (p.kind === 'bin') {
+      ctx.fillStyle = '#4f7f80'; rr(x - 9, gy - 26, 18, 26, 3); ctx.fill(); ctx.fillStyle = '#3c6566'; ctx.fillRect(x - 11, gy - 28, 22, 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x - 6, gy - 22, 2, 18);
+    } else if (p.kind === 'mail') {
+      ctx.fillStyle = '#3d3a4f'; ctx.fillRect(x - 2, gy - 22, 4, 22);
+      ctx.fillStyle = '#2f6fd6'; rr(x - 12, gy - 38, 24, 18, 8); ctx.fill(); ctx.fillStyle = '#ffd23f'; ctx.fillRect(x + 8, gy - 44, 3, 10);
+    }
+  }
+
+  function pzDrawSign(st, s) {
+    const R = st.R, x = s.x + 30, gy = pzGAt(R, x);
+    ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
+    const words = s.text.split(' '), lines = [''];
+    for (const w of words) { const t = lines[lines.length - 1] ? lines[lines.length - 1] + ' ' + w : w; if (ctx.measureText(t).width > 150 && lines[lines.length - 1]) lines.push(w); else lines[lines.length - 1] = t; }
+    const bw = Math.max(...lines.map(l => ctx.measureText(l).width)) + 22, bh = 12 + lines.length * 16, by = gy - 118 - bh;
+    ctx.fillStyle = '#6b4630'; ctx.fillRect(x - 3, by + bh - 4, 6, gy - by - bh + 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'; rr(x - bw / 2 + 3, by + 3, bw, bh, 7); ctx.fill();
+    ctx.fillStyle = '#fff6e0'; rr(x - bw / 2, by, bw, bh, 7); ctx.fill();
+    ctx.strokeStyle = '#6b4630'; ctx.lineWidth = 2.5; ctx.stroke();
+    lines.forEach((l, i) => text(l, x, by + 14 + i * 16, 13, '#3d3a4f', 'center', 'body'));
+  }
+
+  /* ----- the ground: pavement on top, a stone wall under it ----- */
+  function pzDrawGround(st) {
+    const R = st.R, x0 = Math.max(0, Math.floor(st.cam.x) - 4), x1 = Math.min(R.len - 1, Math.ceil(st.cam.x + W) + 4);
+    const bot = st.cam.y + H + 10;
+    const path = off => { ctx.beginPath(); ctx.moveTo(x0, bot); for (let x = x0; x <= x1; x += 3) ctx.lineTo(x, R.g[x] + off); ctx.lineTo(x1, R.g[x1] + off); ctx.lineTo(x1, bot); ctx.closePath(); };
+    // pavement on top, then a curb, then the retaining wall of warm stone blocks under it
+    path(0); ctx.fillStyle = '#e3d8c4'; ctx.fill();
+    path(7); ctx.fillStyle = '#b3a38c'; ctx.fill();
+    path(11);
+    const wg = ctx.createLinearGradient(0, st.cam.y + 330, 0, bot);
+    wg.addColorStop(0, '#c4ad92'); wg.addColorStop(1, '#94806d');
+    ctx.fillStyle = wg; ctx.fill();
+    ctx.save(); path(11); ctx.clip();
+    const by0 = Math.floor((st.cam.y + 200) / 20) * 20;
+    for (let yy = by0, row = 0; yy < bot; yy += 20, row++) {
+      const off = (yy / 20) % 2 ? 0 : 22;
+      for (let xx = Math.floor(x0 / 44) * 44 - 44 + off; xx < x1 + 44; xx += 44) {
+        const hsh = hash(xx | 0, yy | 0), shade = 0.06 + (hsh % 5) * 0.025;
+        ctx.fillStyle = (hsh >>> 3) % 2 ? 'rgba(255,240,220,' + shade.toFixed(3) + ')' : 'rgba(90,60,40,' + shade.toFixed(3) + ')';
+        rr(xx + 1.5, yy + 1.5, 41, 17, 4); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(80,55,40,0.2)'; ctx.fillRect(x0, yy, x1 - x0, 1.5);
+      for (let xx = Math.floor(x0 / 44) * 44 - 44 + off; xx < x1 + 44; xx += 44) ctx.fillRect(xx, yy, 1.5, 20);
+    }
+    // the shadow the curb throws on the wall, and ivy hanging over it here and there
+    ctx.restore();
+    ctx.save(); path(11); ctx.clip();
+    ctx.beginPath(); for (let x = x0; x <= x1; x += 3) ctx.lineTo(x, R.g[x] + 11); for (let x = x1; x >= x0; x -= 3) ctx.lineTo(x, R.g[x] + 24); ctx.closePath();
+    ctx.fillStyle = 'rgba(60,40,30,0.18)'; ctx.fill();
+    for (let x = Math.floor(x0 / 37) * 37; x < x1; x += 37) {
+      const hh = hash(x, st.room + 5);
+      if (hh % 4) continue;
+      const gy = R.g[clamp(x, 0, R.len - 1)] + 10, len = 16 + (hh >>> 4) % 34;
+      for (let k = 0; k < 4; k++) {
+        const vx = x + k * 6 + Math.sin(G.clock * 1.2 + k + x) * 1.2;
+        ctx.strokeStyle = '#4f8a46'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x + k * 6, gy); ctx.quadraticCurveTo(vx + 3, gy + len * 0.5, vx, gy + len - k * 4); ctx.stroke();
+        for (let l = 4; l < len - k * 4; l += 6) { ctx.fillStyle = l % 12 ? '#6dbb5f' : '#4f9a4f'; ctx.beginPath(); ctx.ellipse(vx + (l % 12 ? 2.5 : -2.5), gy + l, 3, 2, 0.5, 0, Math.PI * 2); ctx.fill(); }
+      }
     }
     ctx.restore();
-  }
-
-  function pzDrawStreet(st) {
-    const R = st.R, map = st.def.map, ry = R.roadY, row = ry / T;
-    // asphalt band, a pale kerb on top, lane dashes
-    ctx.fillStyle = C.stone; ctx.fillRect(0, ry, W, H - ry);
-    ctx.fillStyle = C.stoneLight; ctx.fillRect(0, ry + 8, W, 20);
-    ctx.fillStyle = 'rgba(28,26,54,0.18)'; for (let x = 15; x < W; x += 30) ctx.fillRect(x, ry + 8, 2, 20);
-    ctx.fillStyle = C.stoneEdge; ctx.fillRect(0, ry + 28, W, 4);
-    ctx.fillStyle = 'rgba(255,240,200,0.55)'; for (let x = 10; x < W; x += 64) ctx.fillRect(x, ry + 58, 30, 4);
-    for (let tx = 0; tx < COLS; tx++) {
-      const ch = (map[row] || '')[tx] || '#', x = tx * T;
-      if (ch === 'p' || ch === 'm') continue;
-      ctx.fillStyle = C.grassDark; ctx.fillRect(x - 0.5, ry, T + 1, 9);
-      ctx.fillStyle = C.grass; ctx.fillRect(x - 0.5, ry, T + 1, 6);
+    // slab joints on the pavement
+    ctx.fillStyle = 'rgba(80,60,50,0.22)';
+    for (let x = Math.floor(x0 / 30) * 30; x < x1; x += 30) ctx.fillRect(x, R.g[clamp(x, 0, R.len - 1)] + 1, 1.5, 6);
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let x = x0; x <= x1; x += 3) { if (x === x0) ctx.moveTo(x, R.g[x] + 0.8); else ctx.lineTo(x, R.g[x] + 0.8); }
+    ctx.stroke();
+    if (st.room === 1) { // wet pavement shine
+      ctx.fillStyle = 'rgba(255,255,255,0.28)';
+      for (let i = 0; i < 40; i++) { const x = (hash(i, 77) % R.len); if (x < x0 || x > x1) continue; ctx.fillRect(x, R.g[x] + 2, 14 + (i % 4) * 6, 1.5); }
     }
-    if (st.room === 1) { // wet road shine
-      ctx.fillStyle = 'rgba(255,255,255,0.18)';
-      for (let i = 0; i < 9; i++) { const x = (hash(i, 77) % 900) + 20; ctx.fillRect(x, ry + 38 + (i % 3) * 12, 26 + (i % 4) * 8, 2); }
+    // stairs: lit step noses, and a handrail
+    for (const s of R.stairs) {
+      if (s.x1 < x0 - 40 || s.x0 > x1 + 40) continue;
+      for (const t of s.tread) { ctx.fillStyle = '#efe6d4'; ctx.fillRect(t.x, t.y, s.run, 3); ctx.fillStyle = 'rgba(80,60,50,0.3)'; ctx.fillRect(t.x + (s.rise > 0 ? 0 : s.run - 2), t.y, 2, Math.abs(s.rise) + 4); }
+      pzRail(R, s.x0 - 10, s.x1 + 10, 40);
     }
-    // puddles (one per run of p tiles)
-    for (const pd of R.puddles) {
-      const w = pd.x1 - pd.x0, y = pd.ty * T;
-      ctx.fillStyle = C.stoneEdge; rr(pd.x0 - 1, y - 1, w + 2, 13, 5); ctx.fill();
-      ctx.fillStyle = 'rgba(127,200,255,0.9)'; rr(pd.x0 + 1, y + 2, w - 2, 9, 4); ctx.fill();
-      ctx.strokeStyle = '#d6f0ff'; ctx.lineWidth = 1.5; ctx.beginPath();
-      for (let x = pd.x0 + 4; x <= pd.x1 - 4; x += 3) { const yy = y + 5 + Math.sin(G.clock * 3 + x * 0.25) * 1.2; if (x === pd.x0 + 4) ctx.moveTo(x, yy); else ctx.lineTo(x, yy); }
-      ctx.stroke();
-    }
-    // raised parts: ramps and the cobbled plateau
-    for (const rs of R.raised) {
-      const path = dy => {
-        ctx.beginPath(); ctx.moveTo(rs.x0, ry + 2);
-        for (let x = rs.x0; x <= rs.x1; x += 3) ctx.lineTo(x, Math.min(ry + 2, pzGAt(R, Math.min(x, W - 1)) + dy));
-        ctx.lineTo(rs.x1, ry + 2); ctx.closePath();
-      };
-      path(0); ctx.fillStyle = C.grass; ctx.fill();
-      path(6); ctx.fillStyle = C.grassDark; ctx.fill();
-      path(8); ctx.fillStyle = C.stone; ctx.fill();
-    }
-    // cobbles
-    for (const cb of R.cobbles) {
-      const x = cb.tx * T, y = cb.ty * T;
-      if (cb.ty === row) { ctx.fillStyle = C.stone; ctx.fillRect(x, y, T, 12); }
-      for (let k = 0; k < 3; k++) {
-        ctx.fillStyle = '#9a97a8'; ctx.strokeStyle = '#6f6c80'; ctx.lineWidth = 1.2;
-        rr(x + 10 * k + 0.6, y - 3, 8.8, 10, 4); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x + 10 * k + 3, y - 1, 4, 2);
-      }
-    }
+    // bridges: an arch over a canal
+    for (const b of R.bridges) pzDrawBridge(st, b);
     // speed bumps
     for (const bp of R.bumps) {
-      const x0 = bp.x0, y1 = (bp.ty + 1) * T;
-      ctx.save();
-      ctx.beginPath(); ctx.moveTo(x0, y1);
-      for (let u = 0; u <= 30; u += 2) ctx.lineTo(x0 + u, y1 - PZ.bumpH * Math.sin(Math.PI * u / 30));
-      ctx.closePath();
-      ctx.fillStyle = C.gold; ctx.fill(); ctx.clip();
-      ctx.fillStyle = C.ink; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(x0 + 3 + i * 9, y1); ctx.lineTo(x0 + 8 + i * 9, y1 - 11); ctx.lineTo(x0 + 11 + i * 9, y1 - 11); ctx.lineTo(x0 + 6 + i * 9, y1); ctx.fill(); }
+      if (bp.x0 < x0 - 40 || bp.x0 > x1) continue;
+      const y1 = pzGAt(R, bp.x0 - 1);
+      ctx.save(); ctx.beginPath(); ctx.moveTo(bp.x0, y1);
+      for (let u = 0; u <= 30; u += 2) ctx.lineTo(bp.x0 + u, y1 - 7 * Math.sin(Math.PI * u / 30));
+      ctx.closePath(); ctx.fillStyle = C.gold; ctx.fill(); ctx.clip();
+      ctx.fillStyle = C.ink; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(bp.x0 + 3 + i * 9, y1); ctx.lineTo(bp.x0 + 8 + i * 9, y1 - 9); ctx.lineTo(bp.x0 + 11 + i * 9, y1 - 9); ctx.lineTo(bp.x0 + 6 + i * 9, y1); ctx.fill(); }
       ctx.restore();
-      ctx.beginPath(); ctx.moveTo(x0, y1);
-      for (let u = 0; u <= 30; u += 2) ctx.lineTo(x0 + u, y1 - PZ.bumpH * Math.sin(Math.PI * u / 30));
-      ctx.strokeStyle = C.goldDark; ctx.lineWidth = 1.5; ctx.stroke();
     }
-    // crates
-    for (const c of R.crates) {
-      const x = c.x0, y = c.top;
-      ctx.fillStyle = C.plankDark; rr(x, y, T, T, 3); ctx.fill();
-      ctx.fillStyle = C.plank; ctx.fillRect(x + 3, y + 3, T - 6, T - 6);
-      ctx.strokeStyle = C.plankDark; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 4, y + 4); ctx.lineTo(x + T - 4, y + T - 4); ctx.moveTo(x + T - 4, y + 4); ctx.lineTo(x + 4, y + T - 4); ctx.stroke();
-      ctx.fillStyle = '#e4572e'; circle(x + 9, y + 21, 3.4); ctx.fill();
-      ctx.fillStyle = '#5fab55'; ctx.fillRect(x + 8, y + 16, 2, 2.5);
+  }
+  function pzRail(R, x0, x1, hgt) {
+    const y = x => pzGAt(R, x) - hgt;
+    ctx.strokeStyle = '#3d3a4f'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath();
+    const sm = x => { let s = 0, n = 0; for (let k = -24; k <= 24; k += 6) { s += y(x + k); n++; } return s / n; };
+    for (let x = x0; x <= x1; x += 6) { if (x === x0) ctx.moveTo(x, sm(x)); else ctx.lineTo(x, sm(x)); }
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.beginPath(); for (let x = x0; x <= x1; x += 28) { ctx.moveTo(x, sm(x)); ctx.lineTo(x, pzGAt(R, x)); } ctx.stroke();
+  }
+  function pzDrawBridge(st, b) {
+    const R = st.R;
+    // water under the arch
+    const wy = b.y + 34;
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(b.x0 + 30, b.y + 12);
+    for (let x = b.x0 + 30; x <= b.x1 - 30; x += 4) ctx.lineTo(x, pzGAt(R, x) + 24 + 18 * Math.sin(Math.PI * (x - b.x0 - 30) / (b.x1 - b.x0 - 60)));
+    ctx.lineTo(b.x1 - 30, b.y + 200); ctx.lineTo(b.x0 + 30, b.y + 200); ctx.closePath();
+    ctx.clip();
+    const wg = ctx.createLinearGradient(0, wy - 10, 0, wy + 120);
+    wg.addColorStop(0, '#2c4f6e'); wg.addColorStop(0.3, '#5fa3c7'); wg.addColorStop(1, '#3f7ea3');
+    ctx.fillStyle = '#2c3a4e'; ctx.fillRect(b.x0, b.y - 100, b.x1 - b.x0, 400);
+    ctx.fillStyle = wg; ctx.fillRect(b.x0, wy, b.x1 - b.x0, 300);
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 6; i++) { const xx = b.x0 + 40 + ((G.clock * 20 + i * 47) % (b.x1 - b.x0 - 80)); ctx.beginPath(); ctx.moveTo(xx, wy + 8 + i * 6); ctx.lineTo(xx + 16, wy + 8 + i * 6); ctx.stroke(); }
+    ctx.restore();
+    // the arch's stones
+    ctx.strokeStyle = '#efe6d4'; ctx.lineWidth = 3; ctx.beginPath();
+    for (let x = b.x0 + 30; x <= b.x1 - 30; x += 4) { const yy = pzGAt(R, x) + 24 + 18 * Math.sin(Math.PI * (x - b.x0 - 30) / (b.x1 - b.x0 - 60)); if (x === b.x0 + 30) ctx.moveTo(x, yy); else ctx.lineTo(x, yy); }
+    ctx.stroke();
+    // stone balustrade
+    ctx.fillStyle = '#e8dcc6';
+    for (let x = b.x0 + 8; x < b.x1 - 8; x += 14) { const gy = pzGAt(R, x); rr(x - 3, gy - 26, 6, 26, 2); ctx.fill(); }
+    ctx.strokeStyle = '#e8dcc6'; ctx.lineWidth = 5; ctx.beginPath();
+    for (let x = b.x0 + 4; x <= b.x1 - 4; x += 4) { const yy = pzGAt(R, x) - 28; if (x === b.x0 + 4) ctx.moveTo(x, yy); else ctx.lineTo(x, yy); }
+    ctx.stroke();
+  }
+
+  /* ----- awnings: the low ones you must get under (lower BOTH ends) ----- */
+  function pzDrawAwnings(st) {
+    const R = st.R, pal = [['#2f8a4a', '#fff4e0'], ['#c0583c', '#fff4e0'], ['#2f6fd6', '#fff4e0'], ['#d9922e', '#fff4e0']];
+    for (const a of R.awn) {
+      if (a.x1 < st.cam.x - 40 || a.x0 > st.cam.x + W + 40) continue;
+      const [c1, c2] = pal[(a.k + st.room) % 4], y0 = a.y - 30;
+      // the shop wall it hangs from, behind the players
+      ctx.fillStyle = 'rgba(61,58,79,0.5)';
+      const p0 = pzGAt(R, a.x0 + 4), p1 = pzGAt(R, a.x1 - 4);
+      ctx.fillRect(a.x0 + 2, y0 + 20, 5, p0 - y0 - 20); ctx.fillRect(a.x1 - 7, y0 + 20, 5, p1 - y0 - 20);
+      // sloped top
+      const tg = ctx.createLinearGradient(0, y0 - 14, 0, y0 + 8);
+      tg.addColorStop(0, c1); tg.addColorStop(1, '#00000000');
+      ctx.fillStyle = c1; ctx.beginPath(); ctx.moveTo(a.x0 - 8, y0 + 8); ctx.lineTo(a.x0 + 10, y0 - 12); ctx.lineTo(a.x1 - 10, y0 - 12); ctx.lineTo(a.x1 + 8, y0 + 8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.moveTo(a.x0 + 10, y0 - 12); ctx.lineTo(a.x1 - 10, y0 - 12); ctx.lineTo(a.x1 - 4, y0 - 6); ctx.lineTo(a.x0 + 4, y0 - 6); ctx.fill();
+      // striped valance; the scallops end exactly on the line the stack can't pass (a.y)
+      for (let x = a.x0 - 6, i = 0; x < a.x1 + 6; x += 12, i++) {
+        ctx.fillStyle = i % 2 ? c2 : c1;
+        ctx.fillRect(x, y0 + 8, 12, 16);
+        ctx.beginPath(); ctx.arc(x + 6, y0 + 24, 6, 0, Math.PI); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(28,26,54,0.2)'; ctx.fillRect(a.x0 - 6, y0 + 8, a.x1 - a.x0 + 12, 3);
+      ctx.fillStyle = C.ink; rr(a.x0 - 9, y0 + 5, a.x1 - a.x0 + 18, 4, 2); ctx.fill();
+      // a shop name on top
+      const names = ['CAFÉ', 'BOOKS', 'FLOWERS', 'BAKERY', 'TOYS', 'CHEESE'];
+      text(names[(a.k + st.room * 2) % names.length], (a.x0 + a.x1) / 2, y0 - 2, 12, '#ffffff', 'center');
     }
   }
 
-  function pzDrawAwnings(st) {
-    const R = st.R, hx0 = R.door ? R.door.x - 45 : W;
-    for (const a of R.awnings) {
-      const { x0, x1, y0 } = a, onHouse = x1 > hx0;
-      // poles down to the road (behind the players); a porch roof hangs on the house at its right end
-      ctx.fillStyle = '#6b4630';
-      ctx.fillRect(x0 + 2, y0 + 20, 5, R.roadY - y0 - 20);
-      if (!onHouse) ctx.fillRect(x1 - 7, y0 + 20, 5, R.roadY - y0 - 20);
-      // sloped top and striped valance; the scallops end exactly at the collision line (y0 + 30)
-      ctx.fillStyle = '#c0583c';
-      ctx.beginPath(); ctx.moveTo(x0 - 6, y0 + 6); ctx.lineTo(x0 + 10, y0 - 10); ctx.lineTo(x1 - 10, y0 - 10); ctx.lineTo(x1 + 6, y0 + 6); ctx.closePath(); ctx.fill();
-      for (let x = x0 - 5, i = 0; x < x1 + 5; x += 10, i++) {
-        ctx.fillStyle = i % 2 ? '#fff4e0' : '#e4572e';
-        ctx.fillRect(x, y0 + 6, 10, 19);
-        ctx.beginPath(); ctx.arc(x + 5, y0 + 25, 5, 0, Math.PI); ctx.fill();
-      }
-      ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.fillRect(x0 - 5, y0 + 6, x1 - x0 + 10, 3);
-      ctx.fillStyle = C.ink; rr(x0 - 7, y0 + 3, x1 - x0 + 14, 4, 2); ctx.fill();
+  /* ----- dogs in their yards ----- */
+  function pzDrawDogs(st) {
+    const R = st.R;
+    for (const d of R.dogs) {
+      if (d.x < st.cam.x - 80 || d.x > st.cam.x + W + 80) continue;
+      const gy = pzGAt(R, d.x);
+      pzFence(d.x - 50, d.x + 50, gy, '#f4ead8');
+      const u = d.air >= 0 ? clamp(d.air / PZ.dog.air, 0, 1) : 0, up = Math.sin(Math.PI * u);
+      const y = gy - (PZ.dog.reach - 22) * up, look = st.X > d.x ? 1 : -1;
+      pzDrawDog(d.x, y, look, up, d.k + st.room);
+      if (d.woofT > 0.3) { ctx.save(); ctx.globalAlpha = clamp((d.woofT - 0.3) / 0.3, 0, 1); text('Woof!', d.x + look * 30, y - 40, 15, '#3d3a4f', 'center'); ctx.restore(); }
     }
+  }
+  function pzDrawDog(x, y, f, up, k) {
+    const col = ['#d9a066', '#ffffff', '#6b4a3a', '#e8c890'][k % 4], spot = ['#8a5833', '#3d3a4f', '#3d2a20', '#c49a5a'][k % 4];
+    ctx.save(); ctx.translate(x, y); ctx.scale(f, 1);
+    ctx.rotate(-0.5 * up);
+    // tail wags
+    const wag = Math.sin(G.clock * 18) * 0.6;
+    ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-12, -14); ctx.lineTo(-20 + wag * 3, -24 - wag * 2); ctx.stroke();
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.ellipse(0, -14, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = spot; circle(-4, -17, 4); ctx.fill();
+    ctx.fillStyle = col; ctx.fillRect(-11, -8, 5, 8 + up * 2); ctx.fillRect(6, -8, 5, 8 - up * 2);
+    circle(13, -24, 9); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(21, -21, 6, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = spot; ctx.beginPath(); ctx.ellipse(8, -26, 4, 8, 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.ink; circle(26, -22, 2); ctx.fill(); circle(15, -27, 1.6); ctx.fill();
+    if (up > 0.3) { ctx.fillStyle = '#ff8fa3'; ctx.beginPath(); ctx.ellipse(22, -16, 2.5, 4, 0.2, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
   }
 
   function pzDrawWindsock(st) {
     const R = st.R;
     if (!R.wind) return;
-    const px = R.wind.x1 + 12, base = R.roadY, top = base - 90;
-    ctx.fillStyle = C.ink; ctx.fillRect(px - 2, top, 4, 90);
-    circle(px, top, 4); ctx.fill();
-    let ang;
-    if (st.windState === 'gust') ang = Math.PI + Math.sin(G.clock * 75) * 0.06 * st.windG + (1 - st.windG) * -1.1;
-    else if (st.windState === 'warn') ang = Math.PI - 0.52 + Math.sin(G.clock * 38) * 0.26;
-    else ang = Math.PI / 2 + 0.1 + Math.sin(G.clock * 1.5) * 0.05;
-    ctx.save(); ctx.translate(px, top + 4); ctx.rotate(ang);
-    for (let i = 0; i < 3; i++) {
-      const x = i * 11.5, hw = 7 - i * 1.6, hw2 = 7 - (i + 1) * 1.6;
-      const wob = st.windState === 'calm' ? 0 : Math.sin(G.clock * 30 + i) * 1.5;
-      ctx.fillStyle = i % 2 ? '#ffffff' : '#ff8a3d';
-      ctx.beginPath(); ctx.moveTo(x, -hw + wob); ctx.lineTo(x + 11.5, -hw2 + wob); ctx.lineTo(x + 11.5, hw2 + wob); ctx.lineTo(x, hw + wob); ctx.closePath(); ctx.fill();
+    for (const px of [R.wind.x0 - 40, (R.wind.x0 + R.wind.x1) / 2, R.wind.x1 + 30]) {
+      if (px < st.cam.x - 60 || px > st.cam.x + W + 60) continue;
+      const base = pzGAt(R, px), top = base - 100;
+      ctx.fillStyle = '#3d3a4f'; ctx.fillRect(px - 2, top, 4, 100); circle(px, top, 4); ctx.fill();
+      let ang;
+      if (st.windState === 'gust') ang = Math.PI + Math.sin(G.clock * 75) * 0.06 * st.windG + (1 - st.windG) * -1.1;
+      else if (st.windState === 'warn') ang = Math.PI - 0.52 + Math.sin(G.clock * 38) * 0.26;
+      else ang = Math.PI / 2 + 0.1 + Math.sin(G.clock * 1.5) * 0.05;
+      ctx.save(); ctx.translate(px, top + 4); ctx.rotate(ang);
+      for (let i = 0; i < 3; i++) {
+        const x = i * 12, hw = 8 - i * 1.8, hw2 = 8 - (i + 1) * 1.8;
+        const wob = st.windState === 'calm' ? 0 : Math.sin(G.clock * 30 + i) * 1.5;
+        ctx.fillStyle = i % 2 ? '#ffffff' : '#ff8a3d';
+        ctx.beginPath(); ctx.moveTo(x, -hw + wob); ctx.lineTo(x + 12, -hw2 + wob); ctx.lineTo(x + 12, hw2 + wob); ctx.lineTo(x, hw + wob); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
     }
-    ctx.restore();
-    if (st.windState === 'gust') {
-      ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 * st.windG).toFixed(2) + ')'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-      for (let i = 0; i < 7; i++) {
-        const y = 270 + i * 26 + Math.sin(i * 2.3) * 8, len = 40 + (i % 3) * 20;
-        const x = R.wind.x1 - (((G.clock * 520 + i * 137) % (R.wind.x1 - R.wind.x0 + 120)));
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y); ctx.stroke();
+  }
+
+  function pzDrawLines(st) {
+    for (const l of st.deco.lines) {
+      if (l.x1 < st.cam.x - 20 || l.x0 > st.cam.x + W + 20) continue;
+      const mx = (l.x0 + l.x1) / 2, my = (l.y0 + l.y1) / 2 + 18;
+      ctx.strokeStyle = 'rgba(61,58,79,0.6)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(l.x0, l.y0); ctx.quadraticCurveTo(mx, my + 10, l.x1, l.y1); ctx.stroke();
+      const n = Math.max(2, Math.floor((l.x1 - l.x0) / 18));
+      for (let j = 1; j < n; j++) {
+        const t = j / n, px = (1 - t) * (1 - t) * l.x0 + 2 * (1 - t) * t * mx + t * t * l.x1, py = (1 - t) * (1 - t) * l.y0 + 2 * (1 - t) * t * (my + 10) + t * t * l.y1;
+        const sw = Math.sin(G.clock * 2 + j + l.seed) * 2 - (st.windState === 'gust' ? st.windG * 5 : 0);
+        ctx.fillStyle = ['#ff8fa3', '#7fc8ff', '#ffd23f', '#ffffff', '#8fe3b0'][(j + l.seed) % 5];
+        ctx.beginPath(); ctx.moveTo(px - 5, py); ctx.lineTo(px + 5, py); ctx.lineTo(px + 5 + sw, py + 12); ctx.lineTo(px - 5 + sw, py + 12); ctx.fill();
       }
     }
   }
 
-  /* ---------- the carry: arms, tray and the stack (drawn in front of the players) ---------- */
+  /* ----- the carry: arms, tray (with a spirit level), and the stack ----- */
+  function pzBoxShape(open, eaten) {
+    if (open) {
+      ctx.fillStyle = '#f4e4c1'; rr(-20, -3, 40, 8, 2); ctx.fill();
+      ctx.strokeStyle = '#c49a5a'; ctx.lineWidth = 1.5; ctx.stroke();
+      if (eaten) { ctx.fillStyle = '#e8a24a'; for (const dx of [-9, -2, 5, 11]) { circle(dx, -3.5, 1.2); ctx.fill(); } }
+      else {
+        ctx.fillStyle = '#e8a24a'; ctx.beginPath(); ctx.ellipse(0, -4, 17, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffcf5a'; ctx.beginPath(); ctx.ellipse(0, -4.5, 14, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#e2452b'; for (const dx of [-8, -1, 6, 10]) { circle(dx, -4.5 + (dx % 3) * 0.3, 1.8); ctx.fill(); }
+      }
+      ctx.save(); ctx.translate(-20, -3); ctx.rotate(-2.1);
+      ctx.fillStyle = '#efdcb4'; rr(0, -2, 40, 4, 1.5); ctx.fill(); ctx.strokeStyle = '#c49a5a'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.restore();
+      return;
+    }
+    // closed box: cardboard with a lid seam, a red band and the shop's little slice logo
+    ctx.fillStyle = '#e9d3a6'; rr(-20, -5, 40, 10, 2); ctx.fill();
+    ctx.fillStyle = '#f6e7c8'; ctx.fillRect(-19, -4.5, 38, 3.5);
+    ctx.fillStyle = 'rgba(140,100,50,0.35)'; ctx.fillRect(-19, -1, 38, 1);
+    ctx.strokeStyle = '#b48a4e'; ctx.lineWidth = 1.3; rr(-20, -5, 40, 10, 2); ctx.stroke();
+    ctx.fillStyle = '#d64f31'; ctx.fillRect(-19.3, 1.2, 38.6, 2.2);
+    ctx.fillStyle = '#fff4e0'; circle(0, 0, 4.2); ctx.fill();
+    ctx.fillStyle = '#ffcf5a'; ctx.beginPath(); ctx.moveTo(-2.6, -2); ctx.lineTo(2.6, -2); ctx.lineTo(0, 2.8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e2452b'; circle(0, -0.6, 0.9); ctx.fill();
+  }
+
+  function pzSquash(st) {
+    for (const pc of st.pc) {
+      const p = G.players[pc.id];
+      const low = Math.max(0, pc.lift) / PZ.liftMax, high = Math.max(0, -pc.lift) / -PZ.liftMin;
+      let sx = 1 + 0.18 * low, sy = 1 - 0.34 * low + 0.07 * high;
+      const lt = st.clock - pc.landT;
+      if (pc.grounded && lt < 0.12 && pc.landV > 150) sy = Math.min(sy, 0.85 + 0.15 * lt / 0.12);
+      p.sx = sx; p.sy = sy;
+      const lean = st.phase === 'play' && st.mode === 'push' && st.pusher === pc.id ? st.pushDir * 3 : 0;
+      p.x = pc.xc - st.cam.x - PW / 2 + lean;
+    }
+  }
+
+  function pzDrawCarry(st) {
+    const g = pzGeom(st), del = st.fx.del;
+    const shown = st.phase === 'deliver' && del ? Math.max(0, del.n - del.launched) : st.n;
+    const n = st.phase === 'deliver' && del ? del.n : st.n;
+    // arms (up over the head when raising)
+    for (const pc of st.pc) {
+      const p = G.players[pc.id], top = pc.feet - PH * p.sy, hand = pzHand(pc), xc = pc.xc + (p.x - (pc.xc - st.cam.x - PW / 2));
+      const inner = pc.id === st.left ? 1 : -1;
+      ctx.strokeStyle = PDARK[pc.id]; ctx.lineWidth = 3.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const hx0 = xc + inner * 2 - 5, hx1 = xc + inner * 2 + 5;
+      for (const [sx, hx] of [[xc - 8, hx0], [xc + 8, hx1]]) {
+        const ex = (sx + hx) / 2 + (sx < xc ? -4 : 4), ey = (top + 8 + hand) / 2 + (hand < top ? 0 : 2);
+        ctx.beginPath(); ctx.moveTo(sx, top + 8); ctx.quadraticCurveTo(ex, ey, hx, hand); ctx.stroke();
+      }
+      ctx.fillStyle = PCOL[pc.id]; circle(hx0, hand, 3.3); ctx.fill(); circle(hx1, hand, 3.3); ctx.fill();
+      ctx.strokeStyle = PDARK[pc.id]; ctx.lineWidth = 1.2; circle(hx0, hand, 3.3); ctx.stroke(); circle(hx1, hand, 3.3); ctx.stroke();
+    }
+    // tray: a wooden board with a spirit level set into its front
+    ctx.save(); ctx.translate(st.X, (g.hl + g.hr) / 2); ctx.rotate(g.a);
+    const half = PZ.span / 2 + 12;
+    ctx.fillStyle = 'rgba(28,26,54,0.18)'; rr(-half + 2, 1, half * 2, 4, 2); ctx.fill();
+    ctx.fillStyle = '#8a5833'; rr(-half, -PZ.trayTh, half * 2, PZ.trayTh, 3); ctx.fill();
+    ctx.fillStyle = '#c98b5a'; rr(-half, -PZ.trayTh, half * 2, PZ.trayTh - 2.5, 3); ctx.fill();
+    ctx.strokeStyle = 'rgba(138,88,51,0.5)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(-half + 6, -4.5); ctx.lineTo(-20, -4); ctx.moveTo(10, -5); ctx.lineTo(half - 8, -4.6); ctx.stroke();
+    // the level vial
+    const off = clamp(-g.a * 70, -9, 9), ok = Math.abs(st.tilt) <= PZ.dead, far = Math.abs(st.tilt) > PZ.dead + 0.12;
+    ctx.fillStyle = '#2f3142'; rr(-14, -5.5, 28, 7, 3.5); ctx.fill();
+    ctx.fillStyle = ok ? '#9fe870' : far ? '#ff8a6b' : '#ffd23f'; rr(-12.5, -4.4, 25, 4.8, 2.4); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.ellipse(off, -2, 3.6, 1.9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(28,26,54,0.55)'; ctx.fillRect(-4.5, -4.4, 1, 4.8); ctx.fillRect(3.5, -4.4, 1, 4.8);
+    ctx.restore();
+    // boxes (the bake-in drops them on one by one at room start)
+    const warn = Math.abs(st.s) > PZ.warnS && st.phase === 'play';
+    for (let i = 0; i < shown; i++) {
+      const b = pzBoxAt(st, g, i, n);
+      let x = b.x, y = b.y;
+      const bakeT = st.fx.bake - 0.08 * i;
+      if (bakeT < 0) continue;
+      if (bakeT < 0.12) y -= 40 * (1 - bakeT / 0.12) * (1 - bakeT / 0.12);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(b.rot);
+      pzBoxShape(false);
+      if (warn && i >= shown - 2) {
+        ctx.globalAlpha = 0.55 + 0.45 * Math.sin(G.clock * 16);
+        ctx.strokeStyle = '#e4572e'; ctx.lineWidth = 2; rr(-21, -6, 42, 12, 3); ctx.stroke();
+      }
+      ctx.restore();
+      if (i === shown - 1 && warn) {
+        const side = Math.sign(st.s), bx = x + side * 34, by = y - 10 + Math.sin(G.clock * 14) * 1.5;
+        ctx.fillStyle = '#e4572e'; circle(bx, by, 10); ctx.fill();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+        text('!', bx, by + 1, 16, '#ffffff', 'center');
+      }
+    }
+    // steam
+    for (const s of st.fx.steam) {
+      const a = Math.sin(Math.PI * s.t / s.max) * 0.45;
+      ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(3) + ')'; circle(s.x, s.y, 3 + s.t * 4); ctx.fill();
+    }
+    // flyers: delivered boxes on their way into the door
+    for (const f of st.fx.flyers) {
+      const t = clamp(f.t / 0.35, 0, 1), x = f.x0 + (f.x1 - f.x0) * t, y = f.y0 + (f.y1 - f.y0) * t - 60 * Math.sin(Math.PI * t);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(t * 2.4); ctx.scale(1 - 0.4 * t, 1 - 0.4 * t); pzBoxShape(false); ctx.restore();
+    }
+  }
+
   function pzDrawBird(x, y, f, flap, peck, slice) { // a pigeon (f: 1 faces right), feet at (x, y)
     ctx.save(); ctx.translate(x, y); ctx.scale(f, 1);
     ctx.fillStyle = '#9aa3b5';
@@ -880,106 +1227,6 @@
     ctx.restore();
   }
 
-  function pzBoxShape(open, eaten) {
-    if (open) {
-      ctx.fillStyle = '#f4e4c1'; rr(-20, -3, 40, 8, 2); ctx.fill();
-      ctx.strokeStyle = '#c49a5a'; ctx.lineWidth = 1.5; ctx.stroke();
-      if (eaten) { ctx.fillStyle = '#e8a24a'; for (const dx of [-9, -2, 5, 11]) { circle(dx, -3.5, 1.2); ctx.fill(); } }
-      else {
-        ctx.fillStyle = '#e8a24a'; ctx.beginPath(); ctx.ellipse(0, -4, 17, 4.5, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#ffcf5a'; ctx.beginPath(); ctx.ellipse(0, -4.5, 14, 3.4, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#e2452b'; for (const dx of [-8, -1, 6, 10]) { circle(dx, -4.5 + (dx % 3) * 0.3, 1.8); ctx.fill(); }
-      }
-      ctx.save(); ctx.translate(-20, -3); ctx.rotate(-2.1);
-      ctx.fillStyle = '#efdcb4'; rr(0, -2, 40, 4, 1.5); ctx.fill(); ctx.strokeStyle = '#c49a5a'; ctx.lineWidth = 1.2; ctx.stroke();
-      ctx.restore();
-      return;
-    }
-    ctx.fillStyle = '#f4e4c1'; rr(-20, -5, 40, 10, 2); ctx.fill();
-    ctx.strokeStyle = '#c49a5a'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = '#e4572e'; ctx.fillRect(-18.5, -1, 37, 3);
-    ctx.fillStyle = '#ffcf5a'; ctx.beginPath(); ctx.moveTo(-4, -3.5); ctx.lineTo(4, -3.5); ctx.lineTo(0, 3.5); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#e2452b'; circle(0, -1.5, 1.2); ctx.fill();
-  }
-
-  function pzSquash(st) {
-    for (const pc of st.pc) {
-      const p = G.players[pc.id];
-      let sx = 1 + 0.18 * pc.duck, sy = 1 - 0.38 * pc.duck;
-      if (pc.ready >= 0) { sx = Math.max(sx, 1.1); sy = Math.min(sy, 0.86); }
-      if (pc.steady) { sx = Math.max(sx, 1.06); sy = Math.min(sy, 0.95); }
-      const lt = st.clock - pc.landT;
-      if (pc.grounded && lt < 0.14 && pc.landV > 200) sy = Math.min(sy, 0.8 + 0.2 * lt / 0.14);
-      if (!pc.grounded && pc.vy < 0) { sy = Math.max(sy, 1.08); sx = Math.min(sx, 0.94); }
-      p.sx = sx; p.sy = sy;
-      // pushing alone: the pusher leans forward
-      const lean = st.phase === 'play' && st.mode === 'push' && st.pusher === pc.id ? st.pushDir * 3 * Math.min(1, st.strain * 3) : 0;
-      p.x = pc.xc - PW / 2 + lean;
-    }
-  }
-
-  function pzDrawCarry(st) {
-    const g = pzGeom(st), del = st.fx.del;
-    const shown = st.phase === 'deliver' && del ? Math.max(0, del.n - del.launched) : st.n;
-    const n = st.phase === 'deliver' && del ? del.n : st.n;
-    // arms
-    for (const pc of st.pc) {
-      const p = G.players[pc.id], top = pc.feet - PH * p.sy, hand = pzHand(pc), xc = p.x + PW / 2;
-      let tx = [xc - 4, xc + 4], ty = [hand, hand];
-      if (pc.steady && shown > 0) {
-        const b0 = pzBoxAt(st, g, 0, n), side = pc.id === st.left ? -1 : 1;
-        tx = [b0.x + side * 23, b0.x + side * 21]; ty = [b0.y + 3, b0.y - 3];
-      }
-      ctx.strokeStyle = PDARK[pc.id]; ctx.lineWidth = 3; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(xc - 7, top + 7); ctx.lineTo(tx[0], ty[0]); ctx.moveTo(xc + 7, top + 7); ctx.lineTo(tx[1], ty[1]); ctx.stroke();
-      ctx.fillStyle = PCOL[pc.id]; circle(tx[0], ty[0], 3); ctx.fill(); circle(tx[1], ty[1], 3); ctx.fill();
-      if (pc.squeezed) { // sweat drops under an awning
-        ctx.fillStyle = '#7fc8ff';
-        for (const s of [-1, 1]) { const f = (G.clock * 2 + (s > 0 ? 0.5 : 0)) % 1; ctx.beginPath(); ctx.ellipse(xc + s * 13, top + 4 + f * 8, 2, 3, 0, 0, Math.PI * 2); ctx.fill(); }
-      }
-    }
-    // tray
-    const xl = st.pc[st.left], xr = st.pc[st.right];
-    ctx.save(); ctx.translate(st.X, (g.hl + g.hr) / 2); ctx.rotate(g.a);
-    const half = PZ.span / 2 + 8;
-    ctx.fillStyle = C.plankDark; rr(-half, -PZ.trayTh, half * 2, PZ.trayTh, 2); ctx.fill();
-    ctx.fillStyle = C.plank; rr(-half, -PZ.trayTh, half * 2, PZ.trayTh - 2, 2); ctx.fill();
-    ctx.fillStyle = C.plankDark; circle(-half + 5, -3.5, 1.2); ctx.fill(); circle(half - 5, -3.5, 1.2); ctx.fill();
-    ctx.restore();
-    // boxes (the bake-in drops them on one by one at room start)
-    const warn = Math.abs(st.lean) > 0.6 && st.phase === 'play';
-    for (let i = 0; i < shown; i++) {
-      const b = pzBoxAt(st, g, i, n);
-      let x = b.x, y = b.y, rot = b.rot;
-      const bakeT = st.fx.bake - 0.08 * i;
-      if (bakeT < 0) continue;
-      if (bakeT < 0.12) y -= 40 * (1 - bakeT / 0.12) * (1 - bakeT / 0.12);
-      const isTop = i === shown - 1;
-      if (isTop && st.teeter) {
-        const f = st.teeter.t / PZ.teeter, side = st.teeter.side;
-        x += side * (6 + 22 * f) * Math.cos(rot); y += side * (6 + 22 * f) * Math.sin(rot); rot += side * 0.35 * f;
-      }
-      ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
-      pzBoxShape(false);
-      if (warn && i >= shown - 2) {
-        ctx.globalAlpha = 0.55 + 0.45 * Math.sin(G.clock * 16);
-        ctx.strokeStyle = '#e4572e'; ctx.lineWidth = 2; rr(-21, -6, 42, 12, 3); ctx.stroke();
-      }
-      ctx.restore();
-      if (isTop && st.teeter && st.phase === 'play') {
-        const bx = x + st.teeter.side * 36, by = y - 8 + Math.sin(G.clock * 14) * 1.5;
-        ctx.fillStyle = '#e4572e'; circle(bx, by, 10); ctx.fill();
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
-        text('!', bx, by + 1, 16, '#ffffff', 'center');
-      }
-    }
-    // flyers: delivered boxes on their way into the door
-    for (const f of st.fx.flyers) {
-      const t = clamp(f.t / 0.35, 0, 1), x = f.x0 + (f.x1 - f.x0) * t, y = f.y0 + (f.y1 - f.y0) * t - 60 * Math.sin(Math.PI * t);
-      ctx.save(); ctx.translate(x, y); ctx.rotate(t * 2.4); ctx.scale(1 - 0.4 * t, 1 - 0.4 * t); pzBoxShape(false); ctx.restore();
-    }
-  }
-
   function pzDrawFx(st) {
     for (const b of st.fx.boxes) {
       const a = b.hitT === undefined ? 1 : clamp(1 - (b.t - b.hitT - 1.6) / 0.8, 0, 1);
@@ -994,56 +1241,55 @@
       pzDrawBird(x, y, -bd.side, flap, peck, slice);
     }
     for (const l of st.fx.leaves) {
-      ctx.save(); ctx.translate(l.x, l.y); ctx.rotate(l.r); ctx.fillStyle = l.col; ctx.beginPath(); ctx.ellipse(0, 0, 4, 2, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      ctx.save(); ctx.translate(l.x, l.y); ctx.rotate(l.r); ctx.fillStyle = l.col; ctx.beginPath(); ctx.ellipse(0, 0, 4.5, 2.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     for (const f of st.fx.floats) {
       ctx.save(); ctx.globalAlpha = clamp((f.max - f.t) / 0.3, 0, 1);
       bigText(f.str, f.x, f.y, f.size, f.col, 1 + 0.3 * Math.max(0, 1 - f.t / 0.15));
       ctx.restore();
     }
-    // delivered: banner and stars over the door
-    const del = st.fx.del, d = st.R.door;
-    if (del && st.phase === 'deliver' && d) {
-      const sc = hudBig() ? 1.3 : 1, cx = W / 2, cy = hudBig() ? 128 : 104;
-      ctx.save(); ctx.translate(cx, cy); ctx.scale(sc, sc);
-      ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(-72, -22, 144, 64, 14); ctx.fill();
-      text('Delivered!', 0, -6, 20, C.paper, 'center');
-      for (let s = 0; s < 3; s++) {
-        const on = s < del.shown, pop = on ? 1 : 0.85;
-        pzStar(-30 + s * 30, 22, 11 * pop, on ? C.gold : 'rgba(255,255,255,0.22)');
-      }
-      ctx.restore();
+  }
+
+  // the order bubble over the door: "4 × [box]" (after a retry: "3 is fine!")
+  function pzDrawOrder(st) {
+    const d = st.R.door;
+    if (!d || st.phase === 'deliver') return;
+    const sc = hudBig() ? 1.35 : 1, relief = st.fx.reliefT > 0;
+    const label = relief ? st.need + ' is fine!' : st.need + ' ×';
+    ctx.font = Math.round(17 * sc) + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+    const tw = ctx.measureText(label).width, w = tw + (relief ? 20 : 48) * sc, h = 28 * sc;
+    const cx = d.cx, cy = d.y - 38 - (sc - 1) * 14;
+    ctx.save(); ctx.translate(cx, cy);
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = relief ? C.gold : C.ink; ctx.lineWidth = 2;
+    rr(-w / 2, -h / 2, w, h, 9); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-6, h / 2 - 1); ctx.lineTo(6, h / 2 - 1); ctx.lineTo(0, h / 2 + 8); ctx.closePath(); ctx.fill();
+    if (relief) text(label, 0, 1, Math.round(17 * sc), '#e4572e', 'center');
+    else {
+      text(label, -w / 2 + 10 * sc, 1, Math.round(17 * sc), C.ink, 'left');
+      ctx.save(); ctx.translate(w / 2 - 20 * sc, 0); ctx.scale(0.55 * sc, 0.55 * sc); pzBoxShape(false); ctx.restore();
     }
+    ctx.restore();
   }
 
-  function pzStar(x, y, r, col) {
-    ctx.fillStyle = col; ctx.beginPath();
-    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr2 = i % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2); }
-    ctx.closePath(); ctx.fill();
-  }
-
-  /* ---------- prompts (world space; at most 2 at once) ---------- */
-  function pzBubble(x, y, label, col, sc, outline) {
+  /* ---------- prompts (world space, at most 2 at once) ---------- */
+  function pzBubble(x, y, label, col, sc) {
     ctx.font = Math.round(18 * sc) + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
     const w = ctx.measureText(label).width + 26 * sc, h = 30 * sc;
-    const cx = clamp(x, w / 2 + 6, W - w / 2 - 6), s = 1 + 0.06 * Math.sin(G.clock * 9);
+    const cam = G.mst.cam, cx = clamp(x, cam.x + w / 2 + 6, cam.x + W - w / 2 - 6), s = 1 + 0.06 * Math.sin(G.clock * 9);
     ctx.save(); ctx.translate(cx, y); ctx.scale(s, s);
     ctx.fillStyle = '#ffffff'; rr(-w / 2, -h / 2, w, h, h / 2); ctx.fill();
-    ctx.strokeStyle = outline || col; ctx.lineWidth = 3; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x - cx - 6, h / 2 - 1.5); ctx.lineTo(x - cx + 6, h / 2 - 1.5); ctx.lineTo(x - cx, h / 2 + 7); ctx.closePath(); ctx.fillStyle = '#ffffff'; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.stroke();
     text(label, 0, 1, Math.round(18 * sc), col, 'center');
     ctx.restore();
   }
-  // a key bubble on the road under a player's feet; the back player's grows to the left, the front one's to the
-  // right, so the two never overlap (they stand only 90 px apart)
-  function pzKeyBubble(st, pc, label, sc, word) {
+  // a key bubble under a player's feet; the back player's grows to the left, the front one's to the right
+  function pzKeyBubble(st, pc, what, word, sc) {
     const x = pc.xc, y = pc.feet + 25 * sc;
-    const str = word ? word + ' ' + label : label;
+    const str = btnLabel(pc.id, what) + ' ' + word;
     ctx.font = '700 ' + Math.round(14 * sc) + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
     const w = Math.max(26 * sc, ctx.measureText(str).width + 16 * sc), h = 24 * sc;
     const out = pc.id === st.left ? -1 : 1, lim = PZ.span / 2 - 4;
-    const cx0 = w / 2 <= lim ? x : x + out * (w / 2 - lim);
-    const cx = clamp(cx0, w / 2 + 4, W - w / 2 - 4), s = 1 + 0.08 * Math.max(0, Math.sin(G.clock * 10));
+    const cx = w / 2 <= lim ? x : x + out * (w / 2 - lim), s = 1 + 0.08 * Math.max(0, Math.sin(G.clock * 10));
     ctx.save(); ctx.translate(cx, y); ctx.scale(s, s);
     ctx.fillStyle = PCOL[pc.id]; ctx.beginPath(); ctx.moveTo(x - cx - 5 * sc, -h / 2 + 1); ctx.lineTo(x - cx + 5 * sc, -h / 2 + 1); ctx.lineTo(x - cx, -h / 2 - 7 * sc); ctx.closePath(); ctx.fill();
     rr(-w / 2, -h / 2, w, h, h / 2); ctx.fill();
@@ -1051,38 +1297,50 @@
     text(str, 0, 1, Math.round(14 * sc), '#ffffff', 'center', 'body');
     ctx.restore();
   }
-  function pzArrow(x, y, dir, col, len) { // a fat arrow shape (dir: 1 right, -1 left, 2 up)
+  function pzArrow(x, y, dir, col, len) { // a fat arrow (dir: 1 right, -1 left, 2 up, -2 down)
     ctx.save(); ctx.translate(x, y);
-    if (dir === 2) ctx.rotate(-Math.PI / 2); else if (dir < 0) ctx.scale(-1, 1);
+    if (dir === 2) ctx.rotate(-Math.PI / 2); else if (dir === -2) ctx.rotate(Math.PI / 2); else if (dir < 0) ctx.scale(-1, 1);
     ctx.fillStyle = col; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(-len / 2, -4); ctx.lineTo(len / 2 - 9, -4); ctx.lineTo(len / 2 - 9, -10); ctx.lineTo(len / 2, 0); ctx.lineTo(len / 2 - 9, 10); ctx.lineTo(len / 2 - 9, 4); ctx.lineTo(-len / 2, 4); ctx.closePath();
     ctx.fill(); ctx.stroke(); ctx.restore();
   }
 
+  // which end should go up (+1: the right one, -1: the left one, 0: none) to bring the stack back to the middle
+  function pzFixSide(st) {
+    const s = st.s, t = st.tilt;
+    if (Math.abs(s) > 0.3) return t * Math.sign(s) > -0.12 ? Math.sign(s) : 0;               // tilt it back, away from the slide
+    if (Math.abs(t) > PZ.dead + 0.02 && Math.sign(t) * Math.sign(st.sv) >= 0) return Math.sign(t); // the low end comes up
+    return 0;
+  }
+  function pzNeedLower(st, ahead) {
+    if (st.n <= 0) return false;
+    const R = st.R, hl = pzHand(st.pc[st.left]), hr = pzHand(st.pc[st.right]);
+    const top = pzStackTop(st, hl, hr, st.n);
+    return top - 2 < pzCeil(R, st.X - 30 + Math.min(0, ahead), st.X + 30 + Math.max(0, ahead));
+  }
+  function pzDogNear(st) {
+    return st.R.dogs.find(d => st.X > d.x - PZ.dog.near && st.X < d.x + PZ.span / 2 + 10);
+  }
+
   function pzPrompts(st) {
-    const R = st.R, ps = st.pc, L = ps[st.left], Rp = ps[st.right], out = [];
+    const R = st.R, ps = st.pc, out = [];
     if (st.phase !== 'play') return out;
-    // (rev2) the teaching prompts show during the room card too (players can already move then); only the
-    // "walk with your partner" nudges wait for it to go
     const intro = G.introT > 0.2;
-    if (st.teeter) out.push('teeter');
-    if (R.wind && (st.windState === 'warn' || st.windState === 'gust') && st.X > R.wind.x0 - 60 && st.X < R.wind.x1 + 60) out.push('wind');
-    const top = pzStackBase(st) - st.n * PZ.boxH;
-    // look ahead in the walking direction (~0.7 s at walking speed), so there is time to react
-    const ahead = st.n > 0 && top < pzCeilOver(R, st.X - 50 + Math.min(0, st.V) * 0.7, st.X + 50 + Math.max(0, st.V) * 0.7);
-    if (st.awnBonkT > 0 || ahead) out.push('duck');
-    if (st.crateT > 0.8) out.push('crate');
-    const rL = L.ready >= 0 && L.grounded, rR = Rp.ready >= 0 && Rp.grounded;
-    if (rL !== rR && L.grounded && Rp.grounded) out.push('ready');
+    if (Math.abs(st.s) > PZ.warnS) out.push('slide');
+    if (pzNeedLower(st, st.V * 0.9 + 40 * Math.sign(st.V || 1)) || st.awnBonkT > 1.2) out.push('lower');
+    const dg = pzDogNear(st);
+    if (dg && !out.includes('slide')) {
+      const hl = pzHand(ps[st.left]), hr = pzHand(ps[st.right]);
+      if (Math.max(hl, hr) > pzGAt(R, dg.x) - PZ.dog.reach - 3) out.push('raise');
+    }
+    if (R.wind && (st.windState === 'warn' || st.windState === 'gust') && st.X > R.wind.x0 - 80 && st.X < R.wind.x1 + 20 && !out.includes('slide')) out.push('wind');
+    if (!out.length && pzFixSide(st)) out.push('tilt');
     if (!intro) {
-      // never tell a steadier to walk while the stack needs steadying (teeter, wind, or a big wobble)
-      const steadyTime = out.includes('teeter') || out.includes('wind');
-      const steadying = ps.some(pc => pc.steadyHeld) && Math.abs(st.lean) > 0.3;
-      if (st.mode === 'push' && st.pushT > 0.5 && !steadyTime && !steadying) out.push('push');
-      if (st.mode === 'tug' && st.tugT > 0.6 && !steadyTime) out.push('tug');
+      if (st.mode === 'push' && st.pushT > 0.5) out.push('push');
+      if (st.mode === 'tug' && st.tugT > 0.6) out.push('tug');
       const afk = ps.find(pc => pc.idleT >= PZ.afkT && ps[1 - pc.id].idleT < 3 && !pzCpu(pc.id));
       if (afk) out.push('afk');
-      if (R.door && Math.abs(st.X - R.door.cx) < 160) out.push('door');
+      if (R.door && Math.abs(st.X - R.door.cx) < 170) out.push('door');
     }
     return out.slice(0, 2);
   }
@@ -1090,87 +1348,70 @@
   function pzDrawPrompts(st) {
     const list = pzPrompts(st);
     if (!list.length) return;
-    const sc = hudBig() ? 1.5 : 1, ps = st.pc, R = st.R;
-    let top = Math.max(96, pzStackBase(st) - st.n * PZ.boxH - 26 * sc);
-    // (rev2) while the room card (y 168-288) is up, slide the big bubbles down below it (over the stack top)
-    const nMain = list.filter(p => p === 'teeter' || (p === 'wind' && !list.includes('teeter')) || p === 'duck' || p === 'afk').length;
-    if (G.introT > 0 && nMain) {
-      const under = 288 + 15 * sc + 4 + (nMain - 1) * 38 * sc;
-      if (top < under) top += (under - top) * clamp(G.introT / 0.5, 0, 1);
-    }
+    const sc = hudBig() ? 1.5 : 1, ps = st.pc, R = st.R, L = ps[st.left], Rp = ps[st.right];
+    const g = pzGeom(st);
+    let top = Math.max(st.cam.y + 96, pzStackTop(st, g.hl, g.hr, st.n) - 28 * sc);
+    if (G.introT > 0) { const under = st.cam.y + 288 + 15 * sc + 4; if (top < under) top += (under - top) * clamp(G.introT / 0.5, 0, 1); }
     let slot = 0;
     const main = (label, col) => { pzBubble(st.X, top - slot * 38 * sc, label, col, sc); slot++; };
     const keyed = new Set();
-    const key = (pc, what, word) => { if (keyed.has(pc.id) || pzCpu(pc.id)) return; keyed.add(pc.id); pzKeyBubble(st, pc, pzKey(pc.id, what), sc, word); };
+    const key = (pc, what, word) => { if (keyed.has(pc.id) || pzCpu(pc.id)) return; keyed.add(pc.id); pzKeyBubble(st, pc, what, word, sc); };
+    const fixKeys = side => {   // side: +1 the right end goes up
+      if (!side) return;
+      const up = side > 0 ? Rp : L, dn = side > 0 ? L : Rp;
+      if (up.lift > PZ.liftMin + 1) key(up, 'jump', 'raise'); else key(dn, 'down', 'lower');
+      if (dn.lift < PZ.liftMax - 1) key(dn, 'down', 'lower');
+    };
     for (const pr of list) {
-      if (pr === 'teeter') {
-        main(Math.abs(st.V) > PZ.steadyMaxV ? 'STOP!' : 'STEADY!', '#e4572e');
-        for (const pc of ps) if (!pc.steady) key(pc, 'steady', 'hold');
-      } else if (pr === 'wind') {
-        if (list.includes('teeter')) continue;   // STEADY!/STOP! already says it (one big bubble, not two)
-        main(st.windState === 'warn' ? 'Wind! Stop + steady' : 'Hold steady!', '#2f6fd6');
-        for (const pc of ps) if (!pc.steady) key(pc, 'steady', 'hold');
-      } else if (pr === 'duck') {
-        main('DUCK!', '#b9850f');
-        for (const pc of ps) if (pc.duck < 0.9) key(pc, 'duck');
-      } else if (pr === 'crate') {
-        const c = R.crates.reduce((b, c) => (Math.abs(c.x0 - st.X) < Math.abs(b.x0 - st.X) ? c : b));
-        pzBubble(c.x0 + 15, c.top - 22 * sc - (sc - 1) * 10, '1-2-3 HOP!', '#2f9a5a', sc);
-        for (const pc of ps) key(pc, 'hop');
-      } else if (pr === 'ready') {
-        for (const pc of ps) if (pc.ready < 0) key(pc, 'hop', 'HOP!');
+      if (pr === 'slide') { main('LEVEL IT!', '#e4572e'); fixKeys(Math.sign(st.s)); }
+      else if (pr === 'tilt') fixKeys(pzFixSide(st));
+      else if (pr === 'lower') { main('BOTH LOWER!', '#b9850f'); for (const pc of ps) if (pc.lift < PZ.liftMax - 1) key(pc, 'down', 'lower'); }
+      else if (pr === 'raise') { main('Dog! RAISE IT!', '#2f9a5a'); for (const pc of ps) if (pc.lift > PZ.liftMin + 1) key(pc, 'jump', 'raise'); }
+      else if (pr === 'wind') {
+        main(st.windState === 'warn' ? 'Wind coming! Tilt into it' : 'Tilt into the wind!', '#2f6fd6');
+        // wind blows left (dir -1): the stack is pushed left, so the left end goes up
+        const side = -Math.sign(R.wind.dir);
+        const want = side > 0 ? st.tilt < 0.12 : st.tilt > -0.12;
+        if (want) fixKeys(-side);
       } else if (pr === 'push') {
         const idle = ps.find(pc => pc.id !== st.pusher);
-        if (idle && !pzCpu(idle.id)) {
-          pzArrow(idle.xc, idle.feet + 52 * sc, st.pushDir, PCOL[st.pusher], 34 * sc);
-          key(idle, st.pushDir > 0 ? 'right' : 'left');
-        }
+        if (idle && !pzCpu(idle.id)) { pzArrow(idle.xc, idle.feet + 56 * sc, st.pushDir, PCOL[st.pusher], 34 * sc); key(idle, st.pushDir > 0 ? 'right' : 'left', 'walk'); }
       } else if (pr === 'tug') {
-        // pulling apart: the arrow (toward the door) goes under the one walking away from it
-        const d = R.door, dir = d && st.X > d.cx + PZ.deliverR ? -1 : 1;
-        const away = ps.find(pc => pc.lastDir === -dir && pc.relT === 0) || ps.find(pc => pc.lastDir === -dir);
-        const other = away && ps[1 - away.id];
-        if (away) {
-          pzArrow(away.xc, away.feet + 52 * sc, dir, PCOL[other.id], 34 * sc);
-          key(away, dir > 0 ? 'right' : 'left');
-        }
+        const away = ps.find(pc => pc.lastDir === -1);
+        if (away) { pzArrow(away.xc, away.feet + 56 * sc, 1, PCOL[1 - away.id], 34 * sc); key(away, 'right', 'walk'); }
       } else if (pr === 'afk') {
         const idle = ps.find(pc => pc.idleT >= PZ.afkT);
-        if (idle) { main(NAMES[idle.id] + '! Grab your end!', PCOL[idle.id]); key(idle, 'walk'); }
+        if (idle) { main(NAMES[idle.id] + '! Grab your end!', PCOL[idle.id]); key(idle, 'right', 'walk'); }
       } else if (pr === 'door') {
-        const d = R.door, ry = R.roadY, pulse = 0.5 + 0.5 * Math.sin(G.clock * 6);
-        ctx.fillStyle = 'rgba(255,215,90,' + (0.35 + 0.35 * pulse).toFixed(2) + ')'; rr(d.cx - PZ.deliverR, ry - 3, PZ.deliverR * 2, 10, 5); ctx.fill();
-        const bob = Math.sin(G.clock * 7) * 4;
+        const d = R.door, gy = d.y + 60, pulse = 0.5 + 0.5 * Math.sin(G.clock * 6);
+        ctx.fillStyle = 'rgba(255,215,90,' + (0.35 + 0.35 * pulse).toFixed(2) + ')'; rr(d.cx - PZ.deliverR, gy - 3, PZ.deliverR * 2, 10, 5); ctx.fill();
+        const bob = Math.sin(G.clock * 7) * 4, ly = Math.min(gy + 64 * sc, st.cam.y + H - 14 * sc);
         ctx.font = '700 ' + Math.round(15 * sc) + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-        // (rev2) keep the label on screen with the big phone HUD (sc 1.5 put it at y 546)
-        const lw = ctx.measureText('Stop here!').width + 24 * sc, ly = Math.min(ry + 64 * sc, H - 14 * sc);
-        pzArrow(d.cx, Math.min(ry + 30 * sc, ly - 30 * sc) + bob, 2, C.gold, 26 * sc);
-        const lx = Math.min(W - lw / 2 - 4, d.cx);
-        ctx.fillStyle = 'rgba(28,26,54,0.85)'; rr(lx - lw / 2, ly - 12 * sc, lw, 24 * sc, 12 * sc); ctx.fill();
-        text('Stop here!', lx, ly + 1, Math.round(15 * sc), C.gold, 'center', 'body');
+        const lw = ctx.measureText('Stop here!').width + 24 * sc;
+        pzArrow(d.cx, Math.min(gy + 30 * sc, ly - 30 * sc) + bob, 2, C.gold, 26 * sc);
+        ctx.fillStyle = 'rgba(28,26,54,0.85)'; rr(d.cx - lw / 2, ly - 12 * sc, lw, 24 * sc, 12 * sc); ctx.fill();
+        text('Stop here!', d.cx, ly + 1, Math.round(15 * sc), C.gold, 'center', 'body');
       }
     }
   }
 
-  // timers that drive prompts (crate blocked, pushing alone)
   function pzTimers(st, dt) {
-    const R = st.R, ps = st.pc;
-    const atCrate = R.crates.some(c => ps.some(pc => pc.grounded && pc.feet > c.top + 1 && c.x0 - pc.xc > 0 && c.x0 - pc.xc < 18));
-    st.crateT = atCrate && Math.abs(st.V) < 5 ? st.crateT + dt : 0;
+    const ps = st.pc;
     if (st.mode === 'push') {
       st.pushT += dt;
       const pc = ps[st.pusher];
       if (pc && pc.grounded) {
         st.fx.dustT -= dt; st.fx.gruntT -= dt;
-        if (st.fx.dustT <= 0) { st.fx.dustT = 0.15; pzPuff(pc.xc - st.pushDir * 10, pc.feet, 1, 'rgba(255,255,255,0.7)'); }
+        if (st.fx.dustT <= 0) { st.fx.dustT = 0.15; pzPuff(pc.xc - st.cam.x - st.pushDir * 10, pc.feet - st.cam.y, 1, 'rgba(255,255,255,0.7)'); }
         if (st.fx.gruntT <= 0) { st.fx.gruntT = 0.45; Sfx.play('pzGrunt', pc.id); pzRumble(0, 0.2, 60, pc.id); }
       }
     } else { st.pushT = 0; st.fx.gruntT = 0.2; }
     st.tugT = st.mode === 'tug' ? st.tugT + dt : 0;
-    if (st.windState === 'gust' && st.nSteady === 2 && st.X > R.wind.x0 - 60 && st.X < R.wind.x1 + 10) st.gustHeld = true;
+    // creak of the hands moving (a soft tick)
+    for (const pc of ps) if (Math.abs(pc.liftV) > 1 && st.clock % 0.12 < dt) Sfx.tone(pc.liftV < 0 ? 620 : 420, 0.03, 'triangle', 0.012);
   }
 
-  /* ---------- HUD ---------- */
+  /* ---------- HUD (screen space) ---------- */
   function pzHud(st) {
     const big = hudBig(), s = big ? 1.5 : 1;
     const n = st.phase === 'deliver' && st.fx.del ? st.fx.del.n : st.n;
@@ -1195,38 +1436,58 @@
     ctx.fillStyle = 'rgba(246,239,223,0.25)'; ctx.fillRect(x, cy - 8 * s, 1.5, 16 * s);
     x += 9 * s;
     text(tS, x, cy + 1, ft, C.paper, 'left', 'body');
-    // fail banner
-    if (st.phase === 'fail') {
-      const a = clamp((PZ.failT - st.phaseT) / 0.2, 0, 1);
-      ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, 205); const k = big ? 1.25 : 1; ctx.scale(k, k);
-      ctx.fillStyle = 'rgba(28,26,54,0.9)'; rr(-215, -52, 430, 104, 20); ctx.fill();
-      ctx.strokeStyle = '#ff8a6b'; ctx.lineWidth = 3; ctx.stroke();
-      bigText(st.failWhy === 'pit' ? 'Oops!' : 'Oh no!', 0, -16, 44, C.paper);
-      text(st.failWhy === 'pit' ? 'Down the hole! Fresh stack coming!' : 'Not enough pizzas. Fresh stack coming!', 0, 26, 16, C.paper, 'center', 'body');
+    // how far along the street (a little route line under the pill)
+    const R = st.R, k = R.door ? clamp((st.X - 150) / (R.door.cx - 150), 0, 1) : 0, rw2 = w - 24 * s, rx = px + 12 * s, ry = 12 + h + 8 * s;
+    ctx.fillStyle = 'rgba(23,25,29,0.55)'; rr(rx - 4, ry - 5 * s, rw2 + 8, 10 * s, 5 * s); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(rx, ry - 1, rw2, 2);
+    ctx.fillStyle = C.gold; circle(rx + rw2, ry, 3.5 * s); ctx.fill();
+    ctx.fillStyle = '#ffffff'; circle(rx + rw2 * k, ry, 3.5 * s); ctx.fill();
+    // delivered: banner and stars
+    const del = st.fx.del;
+    if (del && st.phase === 'deliver') {
+      const cx = W / 2, cy2 = big ? 128 : 104;
+      ctx.save(); ctx.translate(cx, cy2); ctx.scale(big ? 1.3 : 1, big ? 1.3 : 1);
+      ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(-72, -22, 144, 64, 14); ctx.fill();
+      text('Delivered!', 0, -6, 20, C.paper, 'center');
+      for (let i = 0; i < 3; i++) { const on = i < del.shown; pzStar(-30 + i * 30, 22, 11 * (on ? 1 : 0.85), on ? C.gold : 'rgba(255,255,255,0.22)'); }
       ctx.restore();
     }
-    // after a retry: a reminder pill at the top
+    if (st.phase === 'fail') {
+      const a = clamp((PZ.failT - st.phaseT) / 0.2, 0, 1);
+      ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, 205); const kk = big ? 1.25 : 1; ctx.scale(kk, kk);
+      ctx.fillStyle = 'rgba(28,26,54,0.9)'; rr(-215, -52, 430, 104, 20); ctx.fill();
+      ctx.strokeStyle = '#ff8a6b'; ctx.lineWidth = 3; ctx.stroke();
+      bigText('Oh no!', 0, -16, 44, C.paper);
+      text('Too many pizzas slid off. Fresh stack coming!', 0, 26, 16, C.paper, 'center', 'body');
+      ctx.restore();
+    }
     if (st.fx.freshT > 0 && st.phase === 'play') {
       const msg = st.windMul < 1 ? 'Fresh stack! Only ' + st.need + ' needed now, and the wind calmed down a bit'
         : st.relief > 0 ? 'Fresh stack! The customer only needs ' + st.need + ' now' : 'Fresh stack!';
       ctx.save(); ctx.globalAlpha = clamp(st.fx.freshT / 0.3, 0, 1);
       ctx.font = '700 ' + Math.round(14 * s) + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-      const mw = ctx.measureText(msg).width + 28 * s, my = big ? 66 : 50;
+      const mw = ctx.measureText(msg).width + 28 * s, my = big ? 86 : 64;
       pill(W / 2, my, mw, 26 * s, 'center');
       text(msg, W / 2, my + 13 * s + 0.5, Math.round(14 * s), C.gold, 'center', 'body');
       ctx.restore();
     }
   }
+  function pzStar(x, y, r, col) {
+    ctx.fillStyle = col; ctx.beginPath();
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r2 = i % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * r2, y + Math.sin(a) * r2); }
+    ctx.closePath(); ctx.fill();
+  }
+
+  function pzWorld(st, fn) { ctx.save(); ctx.translate(-Math.round(st.cam.x * 2) / 2, -Math.round(st.cam.y * 2) / 2); try { fn(); } finally { ctx.restore(); } }
 
   MODES.pizza = {
-    medals: { bronze: 'Deliver to every door', goals: [{ key: 'stars', gold: 11, silver: 8, more: true, text: n => `${n} of 12 stars or more`, gap: (v, n) => `${n - v} more star${n - v === 1 ? '' : 's'}` }, { key: 'time', gold: 150 }] },
+    medals: { bronze: 'Deliver to every door', goals: [{ key: 'stars', gold: 11, silver: 8, more: true, text: n => `${n} of 12 stars or more`, gap: (v, n) => `${n - v} more star${n - v === 1 ? '' : 's'}` }, { key: 'time', gold: 240 }] },
     medalValues() { const s = G.mst.stats; return s ? { stars: pzSum(s.stars) } : {}; },
     rand: Math.random,
-    PZ,  // tuning knobs, readable by tests
-    hand: pzHand, stackHits: pzStackHits, support: pzSupport, parseRoom: pzParseRoom, key: pzKey, prompts: pzPrompts,
+    PZ,  // tuning knobs, readable by tests and the computer partner
+    hand: pzHand, handAt: pzHandAt, support: pzSupport, gAt: pzGAt, ceil: pzCeil, stackTop: pzStackTop, build: pzBuild, prompts: pzPrompts,
     setup(st, L) {
-      st.stats = { delivered: [], lost: [], stars: [], retries: [], saves: 0, teamHops: 0, soloHops: 0, roomTimes: [], dropped: 0,
-        teeters: 0, carries: 0, windStops: 0, fails: 0, bonks: 0 };
+      st.stats = { delivered: [], lost: [], stars: [], retries: [], dropped: 0, fails: 0, bonks: 0, dogBonks: 0, gustsRidden: 0 };
       st.clock = 0;
       pzInitRoom(0, L, 0);
     },
@@ -1235,76 +1496,76 @@
       const st = G.mst;
       if (!st.pc) return;
       st.clock += dt; st.roomT += dt;
-      if (st.phase === 'fail') {
-        st.phaseT -= dt; pzPhysics(st, dt, true); pzFxStep(st, dt); pzMirror(st);
+      if (st.phase === 'fail' || st.phase === 'deliver') {
+        st.phaseT -= dt; pzPhysics(st, dt, true); pzFxStep(st, dt); pzCamera(st, dt); pzMirror(st);
         if (st.phaseT <= 0) {
-          st.stats.retries[st.room]++;
-          const tries = st.stats.retries[st.room];
-          pzInitRoom(st.room, G.level, Math.min(tries >= PZ.reliefLateAt ? PZ.reliefLate : PZ.reliefMax, tries));
-          st.fx.freshT = st.windMul < 1 ? 2.6 : 1.8; Sfx.play('pzFresh');
-        }
-        return;
-      }
-      if (st.phase === 'deliver') {
-        st.phaseT -= dt; pzPhysics(st, dt, true); pzFxStep(st, dt); pzMirror(st);
-        if (st.phaseT <= 0) {
-          st.stats.roomTimes[st.room] = st.roomT;
-          if (st.room >= (G.level.def.roomCount || 1) - 1) { G.level.goal = { x: st.R.door.cx, y: st.R.door.y }; levelClear(); }
+          if (st.phase === 'fail') {
+            st.stats.retries[st.room]++;
+            const tries = st.stats.retries[st.room];
+            pzInitRoom(st.room, G.level, Math.min(tries >= PZ.reliefLateAt ? PZ.reliefLate : PZ.reliefMax, tries));
+            st.fx.freshT = st.windMul < 1 ? 2.6 : 1.8; Sfx.play('pzFresh');
+          } else if (st.room >= (G.level.def.roomCount || 1) - 1) { G.level.goal = { x: st.R.door.cx - st.cam.x, y: st.R.door.y - st.cam.y }; levelClear(); }
           else nextRoom();
         }
         return;
       }
       pzPhysics(st, dt, false);
-      if (!isFinite(st.lean) || !isFinite(st.leanV) || !isFinite(st.X) || !isFinite(st.V) || st.pc.some(pc => !isFinite(pc.feet) || !isFinite(pc.vy))) {
+      if (!isFinite(st.s) || !isFinite(st.sv) || !isFinite(st.X) || !isFinite(st.V) || st.pc.some(pc => !isFinite(pc.feet) || !isFinite(pc.vy))) {
         console.warn('Pizza Delivery: bad numbers, restarting the room');
         pzInitRoom(st.room, G.level, st.relief);
         return;
       }
       if (st.phase === 'play') pzTimers(st, dt);
       pzFxStep(st, dt);
+      pzCamera(st, dt);
       pzMirror(st);
     },
     draw() {
       const st = G.mst;
       if (!st.pc) return;
-      pzDrawBackdrop(st);
-      pzDrawHouse(st);
-      pzDrawWindsock(st);
-      pzDrawStreet(st);
-      pzDrawAwnings(st);
-      pzDrawOrder(st);
+      pzDrawSky(st);
+      pzWorld(st, () => {
+        const vis = b => b.x + b.w > st.cam.x - 60 && b.x < st.cam.x + W + 60;
+        for (const b of st.deco.bld) if (vis(b)) pzDrawBuilding(st, b);
+        pzDrawLines(st);
+        pzDrawHouse(st);
+        for (const p of st.deco.props) if (p.x > st.cam.x - 80 && p.x < st.cam.x + W + 80) pzDrawProp(st, p);
+        pzDrawWindsock(st);
+        pzDrawDogs(st);
+        for (const s of st.R.signs) if (s.x > st.cam.x - 200 && s.x < st.cam.x + W + 100) pzDrawSign(st, s);
+        pzDrawGround(st);
+        pzDrawAwnings(st);
+        pzDrawOrder(st);
+      });
+      const Lt = PZ_LIGHT[st.room % 4];
+      if (Lt.wash) { ctx.fillStyle = Lt.wash; ctx.fillRect(0, 0, W, H); }
       pzSquash(st);
     },
     drawTop() {
       const st = G.mst;
       if (!st.pc) return;
-      pzDrawCarry(st);
-      pzDrawFx(st);
-      pzDrawPrompts(st);
+      pzWorld(st, () => { pzDrawCarry(st); pzDrawFx(st); pzDrawPrompts(st); });
     },
     hud() { const st = G.mst; if (st.pc) pzHud(st); },
     stats() {
       const s = G.mst.stats;
       if (!s) return [];
       const stars = pzSum(s.stars), lost = s.dropped, retries = pzSum(s.retries);
-      let line = lost === 0 && retries === 0 ? 'Perfect delivery: not one pizza hit the road!'
-        : lost <= 3 ? 'Only ' + lost + (lost === 1 ? ' pizza' : ' pizzas') + ' hit the road. Smooth carrying!'
-        : lost + ' pizzas hit the road… the pigeons say thanks!';
+      let line = lost === 0 && retries === 0 ? 'Perfect delivery: not one pizza slid off the tray!'
+        : lost <= 3 ? 'Only ' + lost + (lost === 1 ? ' pizza' : ' pizzas') + ' slid off. Nice and level!'
+        : lost + ' pizzas slid off… the pigeons say thanks!';
       if (retries) line += ' Do-overs: ' + retries + '.';
       return [{ label: 'Stars', value: stars + ' / 12' }, { label: 'Pizzas delivered', value: String(pzSum(s.delivered)) },
-        { label: 'Wobbles saved', value: String(s.saves) }, line];
+        { label: 'Pizzas slid off', value: String(lost) }, line];
     },
   };
 
-  Sfx.extra.pzHop = function () { this.tone(330, 0.08, 'square', 0.04, 520); this.tone(495, 0.12, 'triangle', 0.05, 780, 0.05); };
-  Sfx.extra.pzReady = function (p) { this.tone(440 * p, 0.05, 'triangle', 0.03); };
-  Sfx.extra.pzTeeter = function () { this.tone(260, 0.18, 'sawtooth', 0.025, 360); this.tone(360, 0.22, 'sawtooth', 0.02, 240, 0.16); };
   Sfx.extra.pzCreak = function () { this.tone(320, 0.06, 'triangle', 0.025); };
-  Sfx.extra.pzSave = function () { [523, 784, 1047].forEach((f, i) => this.tone(f, 0.1, 'triangle', 0.05, null, i * 0.06)); };
   Sfx.extra.pzSlip = function () { this.tone(700, 0.25, 'sine', 0.04, 200); };
   Sfx.extra.pzPlop = function () { this.tone(160, 0.12, 'triangle', 0.08, 80); this.tone(420, 0.05, 'square', 0.025, 260, 0.02); };
   Sfx.extra.pzThunk = function () { this.tone(240, 0.07, 'square', 0.05, 150); this.tone(90, 0.12, 'triangle', 0.06, 60, 0.02); };
-  Sfx.extra.pzSplash = function () { this.tone(1200, 0.12, 'sawtooth', 0.012, 300); this.tone(260, 0.15, 'sine', 0.04, 120); };
+  Sfx.extra.pzBonk = function () { this.tone(300, 0.08, 'square', 0.04, 180); this.tone(520, 0.06, 'triangle', 0.03, 300, 0.05); };
+  Sfx.extra.pzWoof = function () { this.tone(220, 0.09, 'sawtooth', 0.04, 160); this.tone(200, 0.11, 'sawtooth', 0.035, 140, 0.16); };
   Sfx.extra.pzGrunt = function (p) { this.tone(150 * p, 0.09, 'square', 0.025, 120 * p); };
   Sfx.extra.pzWhistle = function () { this.tone(520, 0.9, 'sine', 0.025, 980); this.tone(780, 0.6, 'sine', 0.012, 1170, 0.3); };
   Sfx.extra.pzGust = function () { this.tone(320, 1.0, 'sawtooth', 0.018, 140); this.tone(1400, 0.8, 'sine', 0.01, 700, 0.1); };
@@ -1314,4 +1575,3 @@
   Sfx.extra.pzCoo = function () { this.tone(330, 0.12, 'sine', 0.035, 290); this.tone(300, 0.18, 'sine', 0.03, 250, 0.14); };
   Sfx.extra.pzFresh = function () { [523, 659, 784].forEach((f, i) => this.tone(f, 0.08, 'triangle', 0.045, null, i * 0.05)); };
 }
-
