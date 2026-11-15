@@ -74,7 +74,7 @@ const ok = (cond, what) => { if (!cond) { fails++; console.log('FAIL  ' + what);
   ok(await devs(page) === 'pad:xbox kb', 'mixed: Bo pressing a key shows Bo keys, Pip keeps the Xbox buttons (' + await devs(page) + ')');
   await page.click('#menuBtn'); await page.waitForTimeout(300);
   ok(await mode(page) === 'paused', 'mixed: the on-screen Menu button opens the pause menu');
-  ok(await page.evaluate(() => { const l = document.querySelectorAll('#overlay .ctl-line'); return l.length === 2 && !!l[0].querySelector('.g-xbox-a') && l[1].textContent.includes('←'); }), 'mixed: the pause menu shows each player\'s own buttons');
+  ok(await page.evaluate(() => { const l = document.querySelectorAll('#overlay .ctl-card'); return l.length === 2 && !!l[0].querySelector('.g-xbox-a') && l[1].textContent.includes('←'); }), 'mixed: the pause menu shows each player\'s own buttons');
   await page.click('#overlay [data-act="settings"]'); await page.waitForTimeout(300);
   ok(await page.evaluate(() => { const b = document.querySelector('[data-k="sound"]'); b.click(); const off = window.__pipbo.Sfx.muted && b.textContent === 'Sound off'; b.click(); return off && !window.__pipbo.Sfx.muted; }), 'pause menu > Settings: the Sound button turns sound off and on');
   await page.click('#overlay [data-act="settings-back"]'); await page.waitForTimeout(300);
@@ -128,7 +128,7 @@ const ok = (cond, what) => { if (!cond) { fails++; console.log('FAIL  ' + what);
         if (G.mode !== 'ready') { out.push(P.LEVELS[i].name + ': no ready card'); continue; }
         const card = document.querySelector('.ready-card');
         if (!card || !card.querySelector('.lede').textContent.trim()) out.push(P.LEVELS[i].name + ': empty card');
-        if (card.querySelectorAll('.rdy-duo .ctl-keys').length !== 2) out.push(P.LEVELS[i].name + ': controls missing');
+        if (card.querySelectorAll('.rdy-duo .ctl-table').length !== 2) out.push(P.LEVELS[i].name + ': controls missing');
         P.Ready.armAt = 0; P.readyPress(0); P.readyPress(1);
         G.clock += 1; P.pollInput(0);
         if (G.mode !== 'play') { out.push(P.LEVELS[i].name + ': did not start'); continue; }
