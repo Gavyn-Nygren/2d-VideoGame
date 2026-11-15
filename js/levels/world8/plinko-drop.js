@@ -872,6 +872,8 @@
   }
 
   MODES.plinko = {
+    medals: { bronze: 'Drop every chip', goals: [{ key: 'stars', gold: 8, silver: 5, more: true, text: n => `${n} of 9 stars or more`, gap: (v, n) => `${n - v} more star${n - v === 1 ? '' : 's'}` }] },
+    medalValues() { const st = G.mst; return st && st.starsEarned ? { stars: st.starsEarned.reduce((a, b) => a + b, 0) } : {}; },
     CFG: PLINKO, rand: Math.random,
     setup(st, L) {
       Object.assign(st, { total: 0, misses: 0, fx: [], msg: null, plinkCD: 0, tixPop: 0, idle: [0, 0], starsEarned: [0, 0, 0],

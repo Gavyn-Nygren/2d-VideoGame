@@ -838,6 +838,12 @@ function canoeMirror(st) {
 
 MODES.canoe = {
   CANOE,
+  // the medal (js/medals.js): Gold (by 3:50) also needs 60% of the fruit and at most 1 swamp; Silver (by 5:00) 35% and at most 4
+  // (computer pairs clear in about 3:30 with 16-19 of 26 fruit; scripted kid pairs in about 4:00 with 15-17; a random
+  // button-masher with the computer takes 5:00-5:45, so it gets Bronze)
+  medals: { bronze: 'Paddle all four stretches', goals: [{ key: 'time', gold: 230, silver: 300 },
+    { key: 'fruit', gold: 0.6, silver: 0.35, more: true, pct: true, word: 'the fruit' }, { key: 'swamps', gold: 1, silver: 4, word: 'swamp', text: n => (n === 1 ? 'At most 1 swamp' : `${n} or fewer swamps`) }] },
+  medalValues() { const s = G.mst.stats; return s ? { fruit: s.fruitAll ? s.fruit / s.fruitAll : 1, swamps: s.swamps } : {}; },
   needs: canoeNeeds, plan: canoePlan, cx: canoeCX, hw: canoeHW, cur: canoeCur, reach: canoeReach, goldAt: canoeGoldAt, oarSeg: canoeOarSeg,
   setup(st, L) {
     // how much fruit floats down all four stretches (for the medal)
@@ -867,12 +873,10 @@ MODES.canoe = {
   stats() {
     const s = G.mst.stats;
     if (!s) return [];
-    const medal = canoeMedal(G.time, s);
     const out = [
       { label: 'Fruit', value: s.fruit + ' of ' + s.fruitAll },
       { label: 'Swamped', value: s.swamps },
       { label: 'Swish strokes', values: s.swish.slice() },
-      { label: 'Medal', value: medal },
     ];
     let best = -1;
     s.roomT.forEach((t, k) => { if (t == null) return; if (best < 0 || t < s.roomT[best]) best = k; });
@@ -882,14 +886,6 @@ MODES.canoe = {
     return out;
   },
 };
-// the medal: Gold (by 3:50) also needs 60% of the fruit and at most 1 swamp; Silver (by 5:00) 35% and at most 4
-// (computer pairs clear in about 3:30 with 16-19 of 26 fruit; scripted kid pairs in about 4:00 with 15-17; a random
-// button-masher with the computer takes 5:00-5:45, so it gets Bronze)
-const CANOE_MEDAL = { gold: 230, silver: 300, goldFruit: 0.6, silverFruit: 0.35 };
-function canoeMedal(t, s) {
-  const frac = s.fruitAll ? s.fruit / s.fruitAll : 1, M = CANOE_MEDAL;
-  return t <= M.gold && frac >= M.goldFruit && s.swamps <= 1 ? 'Gold' : t <= M.silver && frac >= M.silverFruit && s.swamps <= 4 ? 'Silver' : 'Bronze';
-}
 
 /* ---------- drawing ---------- */
 function canoeDrawWorld(st) {

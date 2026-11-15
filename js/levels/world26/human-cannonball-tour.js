@@ -21,7 +21,7 @@
    4 tours (roomWord 'Tour'): Sawdust Alley, Balloon Garden, The High Rings, The Grand Tour. Pip flies 1 and 3.
    GOLD HELP (announced, only while both are playing): 3 misses in one tour: a gold extra-wide net for the rest of it.
    IDLE: 12 s with no person pressing anything: "Taking a break" and the clock stops.
-   Medal: Gold <= 3:15 with <= 2 misses and >= 60% of the stars; Silver <= 5:00 with <= 8 misses.
+   Medal (MODES.cannonball.medals, js/medals.js): Gold <= 3:15 with <= 2 misses and >= 60% of the stars; Silver <= 5:00 with <= 8 misses.
    Room def: { title, fly: 0|1, look, cannons: [[angle, [items]], ...] } where items are 'r0.4' (a ring at 40% of the
    flight at that angle), 'r0.4-30' (30 px higher), 'b0.5-60' (a balloon). MODES.cannonball.plan(st) says what to do next. */
 (() => {
@@ -465,6 +465,8 @@
   const medal = (t, misses, frac) => (t <= 195 && misses <= 2 && frac >= 0.6 ? 'Gold' : t <= 300 && misses <= 8 ? 'Silver' : 'Bronze');
 
   MODES.cannonball = {
+    medals: { bronze: 'Finish the cannonball tour', goals: [{ key: 'time', gold: 195, silver: 300 }, { key: 'misses', gold: 2, silver: 8, word: 'miss' }, { key: 'stars', gold: 0.6, more: true, pct: true, word: 'the stars' }] },
+    medalValues() { const st = G.mst; return st.stats ? { misses: st.stats.misses, stars: st.stars / (st.totalStars || 1) } : {}; },
     S, compile, plan, pathAt, flightT, medal,
     setup(st, L) {
       st.stats = { shots: 0, caught: 0, misses: 0, bulls: 0, flaps: 0, helps: 0, roomT: [] };
@@ -482,12 +484,10 @@
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const frac = st.stars / (st.totalStars || 1);
       const out = [
         { label: 'Stars', value: st.stars + ' of ' + st.totalStars },
         { label: 'Caught', value: s.caught + ' of ' + s.shots },
         { label: 'Misses', value: String(s.misses) },
-        { label: 'Medal', value: medal(G.time, s.misses, frac) },
       ];
       out.push((s.bulls ? 'Bullseyes in the middle of the net: ' + s.bulls + '. ' : '') + 'Cape flaps: ' + s.flaps + '.');
       if (s.helps) out.push('Gold help: ' + s.helps + (s.helps === 1 ? ' time' : ' times') + '. Next time, try it without!');

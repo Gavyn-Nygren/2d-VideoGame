@@ -289,6 +289,8 @@ function slotsAhead(st) {
   return st.reels.find(r => r.x0 > cx - 10) || null;
 }
 MODES.slots = {
+  medals: { bronze: 'Make it through the machine', goals: [{ key: 'time', gold: 120, silver: 210 }, { key: 'gulps', gold: 0, silver: 3, word: 'gulp' }] },
+  medalValues() { const s = G.mst.stats; return s ? { gulps: s.gulps } : {}; },
   rand: Math.random,
   setup(st, L) {
     st.stats = { stops: [0, 0], perfect: [0, 0], holds: [0, 0], boings: [0, 0], saves: 0, saveBy: [0, 0], late: 0, gulps: 0, tickets: 0, jackpots: 0, springs: 0, roomT: [], fast: null };

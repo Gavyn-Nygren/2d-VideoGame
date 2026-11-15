@@ -27,7 +27,8 @@
    GOLD HELP (only while both are playing, announced, counted): 3 bumps, bonks or dents in a stretch = gold brakes: the
      next 2 levers pull in 0.45 s with no girder.
    IDLE: no person presses anything for 12 s: "Taking a break", the train and the tunnel wait and the clock stops.
-   MEDAL: Gold <= S.goldT with <= 3 bumps+bonks+dents and >= 70% of the tokens; Silver <= S.silverT with <= 9.
+   MEDAL goals (MODES.subway.medals, js/medals.js): Gold <= S.goldT with <= 3 bumps+bonks+dents and >= 70% of the tokens;
+   Silver <= S.silverT with <= 9.
    MODES.subway.plan(st) says what each job should do now (the prompts, the HUD chips and the computer brain read it).
    Everything lives inside this block; sounds are Sfx.extra.subway*. */
 (() => {
@@ -682,10 +683,15 @@
       P.say(Rn, s, sx(R), sy(R), col, pulse);
     }
   }
-  const medal = (t, bad, frac) => K.medal(t <= S.goldT && bad <= 3 && frac >= 0.7, t <= S.silverT && bad <= 9);
 
   MODES.subway = {
-    S, plan, medal, nextLever,
+    S, plan, nextLever,
+    medals: { bronze: 'Stop the runaway train', goals: [
+      { key: 'time', gold: S.goldT, silver: S.silverT },
+      { key: 'bad', gold: 3, silver: 9, text: n => (n ? `${n} or fewer bumps, bonks and dents` : 'No bumps, bonks and dents'), gap: (v, n) => `${Math.max(1, Math.ceil(v - n))} fewer bumps, bonks and dents` },
+      { key: 'tokens', gold: 0.7, more: true, pct: true, word: 'the tokens' },
+    ] },
+    medalValues() { const st = G.mst, s = st.stats; return s ? { bad: s.bumps + s.bonks + s.dents, tokens: st.tok / (st.totalTok || 1) } : {}; },
     setup(st, L) {
       st.stats = { levers: 0, caught: 0, bumps: 0, bonks: 0, dents: 0, helps: 0, roomT: [] };
       st.tok = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
@@ -702,12 +708,10 @@
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const bad = s.bumps + s.bonks + s.dents, frac = st.tok / (st.totalTok || 1);
       const out = [
         { label: 'Brakes pulled', value: String(s.levers) },
         { label: 'Girders caught', value: s.caught + '' },
         { label: 'Tokens', value: st.tok + ' of ' + st.totalTok },
-        { label: 'Medal', value: medal(G.time, bad, frac) },
       ];
       out.push('Bumps: ' + s.bumps + '. Pipe bonks: ' + s.bonks + '. Dents: ' + s.dents + '. Every passenger got home safe!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

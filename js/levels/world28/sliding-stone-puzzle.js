@@ -16,6 +16,8 @@
      glyph on its socket: the secret door in the top wall grinds open in a cloud of dust. Both walk into the doorway
      (the door cell and the cell in front of it) to go on.
    - Gold help (announced): after 75 s on one puzzle the sockets show their glyphs faintly.
+   - Medal goals (MODES.stonepuzzle.medals, js/medals.js): Gold <= 4:00, no gold help and <= 1 reset; Silver <= 7:00
+     with <= 1 gold help.
    Room def: { title, tip, rows, slots: [[x, y, glyph]] }. rows: '#' wall, '.' floor, 'p' 'q' Pip's and Bo's starts,
    'R' the reset tile, 'D' the secret door (in a wall), and a stone: e eye, b bird, s scarab, u sun, n snake, c cat
    (capital letter = heavy stone of that glyph). Every stone's glyph has one socket.
@@ -196,6 +198,12 @@ function spRoom(st, L) {
 }
 MODES.stonepuzzle = {
   SP,
+  medals: { bronze: 'Open every secret door', goals: [
+    { key: 'time', gold: 240, silver: 420 },
+    { key: 'help', gold: 0, silver: 1, word: 'gold help', text: n => (!n ? 'No gold help' : n === 1 ? 'Gold help at most once' : `Gold help at most ${n} times`) },
+    { key: 'resets', gold: 1, word: 'reset', text: n => `At most ${n} reset${n === 1 ? '' : 's'}` },
+  ] },
+  medalValues() { const st = G.mst; return st.stat ? { help: st.goldUsed || 0, resets: st.stat.resets } : {}; },
   setup(st, L) {
     st.stat = { pushes: [0, 0], pulls: [0, 0], heavy: 0, resets: 0, solveT: [] };
     st.t = 0; st.goldUsed = 0; st.noHelp = !!MODES.stonepuzzle.testNoHelp;
@@ -218,13 +226,11 @@ MODES.stonepuzzle = {
   stats() {
     const st = G.mst, s = st.stat;
     if (!s) return [];
-    const t = G.time, medal = t <= 240 && !st.goldUsed && s.resets <= 1 ? 'Gold' : t <= 420 && st.goldUsed <= 1 ? 'Silver' : 'Bronze';
     const words = s.resets === 0 && !st.goldUsed ? 'Not one reset! Master tomb builders!' : 'Puzzled it out together!';
     return [
       { label: 'Stones pushed', values: s.pushes.slice() },
       { label: 'Stones pulled', values: s.pulls.slice() },
       { label: 'Heavy heaves', value: s.heavy },
-      { label: 'Medal', value: medal },
       words + ' Resets: ' + s.resets + (st.goldUsed ? ' · Gold help: ' + st.goldUsed + ' time' + (st.goldUsed > 1 ? 's' : '') : ''),
     ];
   },

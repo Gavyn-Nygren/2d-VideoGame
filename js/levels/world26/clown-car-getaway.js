@@ -25,7 +25,7 @@
      bonk you, pies can't skid you) for the rest of it. 5 clowns missed in a row: gold clowns (they float down slowly
      right into the popper's hands) for the rest of the stretch.
    IDLE: 15 s with no person pressing anything: "Taking a break", the car rolls to a stop and the clock stops.
-   Scoring: clowns in the car. Medal: Gold <= 3:30 with >= 75% of the clowns and <= 4 bonks; Silver <= 5:30 with >= 50%.
+   Scoring: clowns in the car. Medal (MODES.clowncar.medals, js/medals.js): Gold <= 3:30 with >= 75% of the clowns and <= 4 bonks; Silver <= 5:30 with >= 50%.
    Room def: { title, drive: 0|1, look, pace, course: [tokens] }. Course tokens (x advances only with fN):
      fN road for N px   C:n a trampoline with n clowns   A:kind an animal on the road (duck | poodle | seal | elephant)
      P a custard pie on the road   N a banana peel   B a low banner across the road   S:text a sign ({D} driver, {R} popper)
@@ -638,6 +638,8 @@
   const medal = (t, frac, bonks) => (t <= 210 && frac >= 0.75 && bonks <= 4 ? 'Gold' : t <= 330 && frac >= 0.5 ? 'Silver' : 'Bronze');
 
   MODES.clowncar = {
+    medals: { bronze: 'Get the clown car to the big top', goals: [{ key: 'time', gold: 210, silver: 330 }, { key: 'clowns', gold: 0.75, silver: 0.5, more: true, pct: true, word: 'the clowns' }, { key: 'bonks', gold: 4, word: 'bonk' }] },
+    medalValues() { const st = G.mst; return st.stats ? { clowns: st.caught / (st.totalAll || 1), bonks: st.stats.bonks } : {}; },
     S, compile, plan, medal, roofX, handsY,
     setup(st, L) {
       st.stats = { caught: 0, scooped: 0, missed: 0, lost: 0, bonks: 0, honks: 0, shooed: 0, hopped: 0, ducked: 0, helps: 0, roomT: [] };
@@ -660,7 +662,6 @@
         { label: 'Clowns', value: st.caught + ' of ' + all },
         { label: 'Bonks', value: String(s.bonks) },
         { label: 'Animals shooed', value: String(s.shooed) },
-        { label: 'Medal', value: medal(G.time, frac, s.bonks) },
       ];
       out.push((frac >= 0.85 ? 'A car stuffed full of clowns. The show can start!' : frac >= 0.6 ? 'Most of the clowns made it to the show!' : 'You got the clown car to the big top!') + ' Pies hopped: ' + s.hopped + ', banners ducked: ' + s.ducked + '.');
       if (s.helps) out.push('Gold help: ' + s.helps + (s.helps === 1 ? ' time' : ' times') + '. Next time, try it without!');

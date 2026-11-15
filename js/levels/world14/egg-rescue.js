@@ -57,7 +57,7 @@ const EGG = {
   // steam vents: rest, bubble (warning), puff; r: how wide a puff reaches
   vent: { quiet: 2.7, warn: 1.25, puff: 0.85, r: 26, lift: 38 },
   soloHelp: 3, dropHelp: 2, dropHelp2: 4, ventHelp: 2, stoneHelp: 2, tryWin: 6,
-  medal: [260, 480],               // Gold up to medal[0] s (the egg is home before the hatch clock runs out) and 2 drops, Silver up to medal[1] s and 7 drops
+  medal: [260, 480],               // (MODES.eggrescue.medals) Gold up to medal[0] s (the egg is home before the hatch clock runs out) and 2 drops, Silver up to medal[1] s and 7 drops
   hatchT: 260, dropT: 1.45, backT: 1.0, swapT: 1.9, finT: 6.2, hintLife: 2.8,
   camLead: 340, camY: 362, introDrop: 40,
 };
@@ -897,6 +897,12 @@ function eggArc(a, b, u, h) {
 }
 
 MODES.eggrescue = {
+  // medal goals (js/medals.js), times from EGG.medal: time and egg drops
+  medals: { bronze: 'Carry the egg home', goals: [
+    { key: 'time', gold: EGG.medal[0], silver: EGG.medal[1] },
+    { key: 'drops', gold: 2, silver: 7, word: 'drop' },
+  ] },
+  medalValues() { const s = G.mst.stats; return s ? { drops: s.drops } : {}; },
   EGG,
   needs: eggNeeds, hopDx: eggHopDx, ventInfo: eggVentInfo, ventT: eggVentT, hands: eggHands, tilt: eggTilt, surf: eggSurf, key: eggKey, safe: eggSafe,
   setup(st, L) {
@@ -924,13 +930,11 @@ MODES.eggrescue = {
     const s = G.mst.stats;
     if (!s) return [];
     const t = G.time, d = s.drops;
-    const medal = t <= EGG.medal[0] && d <= 2 ? 'Gold' : t <= EGG.medal[1] && d <= 7 ? 'Silver' : 'Bronze';
     const onTime = t <= EGG.hatchT;
     const out = [
       { label: 'Drops', value: d },
       { label: 'Together hops', value: s.together },
       { label: 'Hatch clock', value: onTime ? 'On time!' : 'Just in time!' },
-      { label: 'Medal', value: medal },
     ];
     let best = -1;
     s.roomDrops.forEach((f, k) => { if (s.roomT[k] == null) return; if (best < 0 || f < s.roomDrops[best] || (f === s.roomDrops[best] && s.roomT[k] < s.roomT[best])) best = k; });

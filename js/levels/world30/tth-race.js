@@ -28,7 +28,7 @@
      tunnel   The Time Tunnel     the last lap of race 3: gears, pendulums and rifts, a bit of everything
    The races (TTHRACE_RACES; hand-made, the same track for both lanes): 1 Ancient Dash (dino, henge, olympics),
    2 Heroes' Run (troy, vikings, moon), 3 Sky Sprint (davinci, wright, tunnel). A dead heat replays the same race.
-   Soft fails only (race slowdowns: they are NOT team bumps and never count for the trophy): running into a thing =
+   Soft fails only (race slowdowns: they are NOT team bumps and never count for the medal): running into a thing =
    "Bonk!" (a stumble: slower for a moment, the thing tips over, your flow is gone); a gap = "Whoops!" (you pop back
    out on the far side, slow); standing up in a gust = "Whoa!" (pushed back to a crawl while it lasts).
    Fairness: both lanes get the same things at the same spots; everything is seen at least 1.5 s ahead (a meteor's

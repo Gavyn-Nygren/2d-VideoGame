@@ -640,6 +640,9 @@ function minecartMirror(st) {
 }
 
 MODES.minecart = {
+  // medal (js/medals.js): Gold with 70% of the gold by 4:10, Silver with 45% by 6:20
+  medals: { bronze: 'Reach the assay office', goals: [{ key: 'time', gold: 250, silver: 380 }, { key: 'nuggets', gold: 0.7, silver: 0.45, more: true, pct: true, word: 'the gold nuggets' }] },
+  medalValues() { const st = G.mst; return st.stats ? { nuggets: Math.min(1, st.gold / (st.goldAll || 1)) } : {}; },
   MINECART,
   compile: minecartCompile, needs: minecartNeeds, rail: minecartRail, cartRail: minecartCartRail, onPath: minecartOnPath, key: minecartKey,
   setup(st, L) {
@@ -670,13 +673,11 @@ MODES.minecart = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const all = st.goldAll || 1, got = st.gold, t = G.time, frac = Math.min(1, got / all);
-    const medal = frac >= 0.7 && t <= 250 ? 'Gold' : frac >= 0.45 && t <= 380 ? 'Silver' : 'Bronze';
+    const all = st.goldAll || 1, got = st.gold, frac = Math.min(1, got / all);
     const out = [
       { label: 'Gold nuggets', value: got + ' of ' + all },
       { label: 'Wrong turns', value: s.wrong },
       { label: 'Bonks', value: s.bonks + s.wobbles },
-      { label: 'Medal', value: medal },
     ];
     const words = frac >= 0.9 ? 'The mother lode! The assayer needs a bigger scale!' : frac >= 0.6 ? 'A cart full of gold. Yee-haw, partners!' : 'A wild ride, and home safe together!';
     out.push(words + ' Lanterns grabbed: ' + s.lanterns + ', Mabel pull-backs: ' + (s.wrong + s.falls) + '.');

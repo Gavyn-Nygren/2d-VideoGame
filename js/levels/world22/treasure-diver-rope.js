@@ -61,6 +61,8 @@
    air is under half (only while someone pumps: after 2.5 s without a stroke the dive goes on).
    MODES.diverope.plan (st.plan, made once a step) is the one place that works out what's needed: the prompts, the job
    panels, the gold help and the computer brain all read it.
+   Medal (MODES.diverope.medals, js/medals.js): Gold at <= 4:00 with <= 5 bumps and blubs, 70% of the treasure and <= 1
+   gold help; Silver at <= 5:30 with <= 14 bumps and blubs; else Bronze.
    Every global is prefixed diverope / DROPE (and Sfx.extra.diverope*); all state lives in G.mst. Rules never use
    Math.random (only the looks do: bubbles, sparkles). */
 const DROPE = {
@@ -839,6 +841,8 @@ function diveropeMirror(st) {
 
 MODES.diverope = {
   DROPE,
+  medals: { bronze: 'Bring all four chests up', goals: [{ key: 'time', gold: 240, silver: 330 }, { key: 'bumps', gold: 5, silver: 14, text: n => n + ' or fewer bumps and blubs' }, { key: 'treasure', gold: 0.7, more: true, pct: true, word: 'the treasure' }, { key: 'helps', gold: 1, word: 'gold help', text: n => 'At most ' + n + ' gold help' + (n === 1 ? '' : 's') }] },
+  medalValues() { const st = G.mst, s = st.stats; return s ? { time: s.finishT || G.time, bumps: s.eels + s.jellies + s.blubs, treasure: s.banked / (st.allTreasure || 1), helps: s.helps } : {}; },
   plan: diveropePlan, key: diveropeKey, dist: diveropeDist, eelAt: diveropeEelAt, eelStrip: diveropeEelStrip,
   // where the computer's speech bubble goes: over the diver, or over the boat (or over its job panel when the boat is
   // off screen)
@@ -879,13 +883,11 @@ MODES.diverope = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const t = s.finishT || G.time, all = st.allTreasure || 1, frac = s.banked / all, bumps = s.eels + s.jellies + s.blubs;
-    const medal = t <= 240 && bumps <= 5 && frac >= 0.7 && s.helps <= 1 ? 'Gold' : t <= 330 && bumps <= 14 ? 'Silver' : 'Bronze';
+    const all = st.allTreasure || 1, frac = s.banked / all, bumps = s.eels + s.jellies + s.blubs;
     const out = [
       { label: 'Treasure', value: s.banked + ' of ' + st.allTreasure },
       { label: 'Chests', value: s.chests + ' of 4' },
       { label: 'Bumps & blubs', value: String(bumps) },
-      { label: 'Medal', value: medal },
     ];
     const words = frac >= 0.9 ? 'Every gem in the sea! What a dive team!' : frac >= 0.6 ? 'A boat full of treasure. Splendid diving!' : 'Four chests up from the deep together!';
     out.push(words + ' Eel frights: ' + s.eels + ', jelly boings: ' + s.jellies + ', blubs: ' + s.blubs + '.');

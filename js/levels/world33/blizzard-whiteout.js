@@ -33,7 +33,7 @@
      presses the action at its switch and the beacon clears the whole sky).
    SNOW PROBES: 16 flagged poles (some up on rocks: jump). GOLD HELP (3 slips / bonks / snowballs in a stretch, only
    while both are playing): a gold lantern, 240 px of light that never burns out, for the rest of the stretch.
-   MEDAL: Gold <= 200 s with 12+ probes, Silver <= 350 s.
+   MEDAL (MODES.whiteout.medals, js/medals.js): Gold <= 200 s with 12+ probes, Silver <= 350 s.
    MODES.whiteout.plan(st) says what each hero should do now, using only what has been lit or shown by lightning (the
    prompts, the HUD chips and the computer brain read it). Sounds are Sfx.extra.whiteout*. */
 (() => {
@@ -1073,10 +1073,11 @@
     say(Fn, F, pl.flare, true);
     say(In, I, pl.ice, false);
   }
-  const medal = (t, got, total) => K.medal(t <= S.goldT && got >= total - 4, t <= S.silverT);
 
   MODES.whiteout = {
-    S, plan, medal, groundY: (st, x) => groundY(st, x), gapAt: (st, x) => gapAt(st, x), lightC: st => lightC(st),
+    S, plan, groundY: (st, x) => groundY(st, x), gapAt: (st, x) => gapAt(st, x), lightC: st => lightC(st),
+    medals: { bronze: 'Reach the weather hut', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }, { key: 'probes', gold: 12, more: true, word: 'snow probe' }] },
+    medalValues() { return G.mst.stats ? { probes: G.mst.probeN } : {}; },
     setup(st, L) {
       st.stats = { slips: 0, catches: 0, bonks: 0, snowballs: 0, flares: 0, yetis: 0, colds: 0, smashed: 0, helps: 0, roomT: [] };
       st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0; st.probeN = 0;
@@ -1097,7 +1098,6 @@
         { label: 'Snow probes', value: st.probeN + ' of ' + st.totalP },
         { label: 'Slips', value: String(s.slips) },
         { label: 'Flares used', value: String(s.flares) },
-        { label: 'Medal', value: medal(G.time, st.probeN, st.totalP) },
       ];
       out.push('Rope catches: ' + s.catches + '. Icicle bonks: ' + s.bonks + '. Snowballs: ' + s.snowballs + '. Yetis scared off: ' + s.yetis + '.');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

@@ -1175,6 +1175,8 @@ Sfx.extra.cannonCatapult = function (p) { this.tone(200, 0.15, 'triangle', 0.05,
 Sfx.extra.cannonWin = function (p) { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.16, 'square', 0.045, null, i * 0.09)); };
 
 MODES.cannon = {
+  medals: { bronze: 'Knock down every castle', goals: [{ key: 'stars', gold: 11, silver: 8, more: true, text: n => `${n} of 12 stars or more`, gap: (v, n) => `${n - v} more star${n - v === 1 ? '' : 's'}` }] },
+  medalValues() { const s = G.mst.stats; return s ? { stars: s.stars.reduce((a, b) => a + (b || 0), 0) } : {}; },
   rand: Math.random,
   setup(st, L) {
     st.stats = { shots: 0, fired: [0, 0], fetched: [0, 0], loaded: [0, 0], broken: 0, flags: 0, misses: 0, clicks: 0, calls: 0, shouts: 0,

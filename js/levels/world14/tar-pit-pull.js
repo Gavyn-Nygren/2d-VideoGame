@@ -27,7 +27,7 @@
    - Gold help, always announced: Slow tar (2 bloops in a room), Long lasso (2 "Too far!"), Gold vines (they drop you
      on the far bank, after 2 falls off a vine), Patient Gerty (after 2 slides off her), all of it after a long time stuck.
      Petey the pterodactyl flies in with a hint after a while with no progress.
-   - Medal by time and times stuck. Map chars (parsed here): t tar, z a bubble vent in the tar, h hook stump, n leaf horn,
+   - Medal by time and times stuck (MODES.tarpit.medals). Map chars (parsed here): t tar, z a bubble vent in the tar, h hook stump, n leaf horn,
      E the exit (the engine's door rect, taken over here). Room def: { title, tip, act, style, cross: [{ kind:
      'tied'|'push'|'pass'|'gerty', lead }], logs: [{ c, w }], deco: [...] }. The deep tar spans, split by logs, are the
      crossings in x order; the ground between them are the zones (banks and logs).
@@ -1480,6 +1480,13 @@ function tarHud() {
 }
 
 MODES.tarpit = {
+  // medal goals (js/medals.js): time and times stuck
+  medals: { bronze: 'Cross the tar pits', goals: [
+    { key: 'time', gold: 270, silver: 480 },
+    { key: 'stuck', gold: 12, silver: 28, word: 'time stuck', text: n => `Stuck ${n} times or fewer`,
+      gap: (v, n) => { const d = Math.max(1, Math.ceil(v - n)); return d + (d === 1 ? ' time' : ' times') + ' less stuck'; } },
+  ] },
+  medalValues() { const s = G.mst.stats; return s ? { stuck: s.stuck[0] + s.stuck[1] } : {}; },
   setup(st, L) {
     st.stats = { stuck: [0, 0], bloops: [0, 0], shlorps: 0, swings: 0, throws: 0, hooks: 0, pushes: 0, pops: 0, slides: 0, roomT: [] };
     tarBack = null;
@@ -1492,12 +1499,12 @@ MODES.tarpit = {
   hud() { tarHud(); },
   stats() {
     const s = G.mst.stats, stuck = s.stuck[0] + s.stuck[1], time = G.time, bl = s.bloops[0] + s.bloops[1];
-    const medal = time <= 270 && stuck <= 12 ? 'Gold' : time <= 480 && stuck <= 28 ? 'Silver' : 'Bronze';
-    const words = medal === 'Gold' ? 'Sticky-quick teamwork!' : medal === 'Silver' ? 'Great pulling, partners!' : 'Gooey, but you made it together!';
+    const gold = time <= 270 && stuck <= 12, silver = time <= 480 && stuck <= 28;   // the same lines as MODES.tarpit.medals
+    const words = gold ? 'Sticky-quick teamwork!' : silver ? 'Great pulling, partners!' : 'Gooey, but you made it together!';
     return [
       { label: 'Times stuck', values: s.stuck.slice() },
       { label: 'Shlorps!', value: s.shlorps },
-      medal + ' medal · ' + words,
+      words,
       'Vine swings: ' + s.swings + ' · Bloops: ' + bl + ' · Bubble pops: ' + s.pops,
     ];
   },

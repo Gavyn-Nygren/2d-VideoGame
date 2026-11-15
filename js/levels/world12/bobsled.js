@@ -25,12 +25,13 @@
      moment counts for 0.9 s after you let go, the sled climbs slower, and the hop window is wider. It still needs both
      riders, and taps never count as a lean.
    10 s with no press from one rider pauses the sled ("Brrr!") until they press something.
-   4 runs (rooms); the official time is the sum of the four run times; medal by that total.
+   4 runs (rooms); the official time is the sum of the four run times; medal by that total (MODES.bobsled.medals).
    Room def: { title, tip, pilot: 0|1, par (s, a clean run), course: [tokens], act }. Course tokens (lengths in m):
      sN straight · lN / rN curve · LN / RN big curve · hl / hr hairpin (75 m, BRAKE boards before it)
      zlr / zrl S-bend (two quick curves, the lean flips) · tN tuck zone · j jump bump · o<u> a snow-gate ring at
      lateral u (-0.8..0.8, 0 = middle) · F the finish line
-   Medal: the summed run times against the summed room pars (a perfect pair), and the Whoas (K.goldX and friends).
+   Medal (MODES.bobsled.medals): the summed run times against the summed room pars (a perfect pair), and the Whoas
+   (K.goldX and friends).
    Only MODES.bobsled and Sfx.extra.bobsled* are visible outside this block; MODES.bobsled.api has helpers for the
    computer brain and bot tests. All state lives in G.mst. */
 {
@@ -1047,7 +1048,19 @@
   }
 
   /* ---------- the mode ---------- */
+  // the course par: the room pars summed (a clean, perfect pair), for the medal times
+  const bobPar = () => ((LEVELS.find(l => l.mode === 'bobsled') || {}).rooms || []).reduce((a, r) => a + (r.par || 50), 0);
   MODES.bobsled = {
+    // medal goals (js/medals.js): the summed run times against the course par (K.goldX and friends), and the Whoas
+    medals: { bronze: 'Slide down all four runs', goals: [
+      { key: 'time', gold: bobPar() * K.goldX, silver: bobPar() * K.silverX },
+      { key: 'whoas', gold: K.goldWhoas, silver: K.silverWhoas, word: 'Whoa' },
+    ] },
+    medalValues() {
+      const s = G.mst.stats;
+      if (!s) return {};
+      return { time: s.runT.filter(x => x != null).reduce((a, b) => a + b, 0), whoas: s.whoas };
+    },
     BOB,
     api: { medal: bobMedal, compile: bobCompile, ahead: bobAhead, curveAt: bobCurveAt, tuckAt: bobTuckAt, leanOf: bobLeanOf, pose: bobPose, key: bobKey, needs: bobNeeds },
     setup(st, L) {
@@ -1089,7 +1102,7 @@
       ];
       const m = bobMedal(tot, s.whoas);
       const words = m.medal === 'Gold' ? 'Fastest sled on the mountain!' : m.whoaCut ? 'Fewer Whoas for ' + (m.medal === 'Silver' ? 'gold!' : 'silver!') : m.medal === 'Silver' ? 'Lean together for gold!' : 'You made it down together!';
-      out.push(m.medal + ' medal · ' + words + (runs.length ? ' · Runs ' + runs.map(fmtTime).join(' · ') : ''));
+      out.push(words + (runs.length ? ' · Runs ' + runs.map(fmtTime).join(' · ') : ''));
       return out;
     },
   };

@@ -23,8 +23,8 @@
    - Help, always gold and announced: Super boost (after 3 missed boosts at a wall, or 50 s at one wall's foot), Big log
      jam (after 3 washes in a stream), Gold raft (after 2 splashes in a log pool). Tico the toucan flies over with a hint
      after a while with no progress.
-   - The climb ends when both stand by the toucan nest at the top: Tico shows the treasure. Medal by time and splashes,
-     plus optional gems.
+   - The climb ends when both stand by the toucan nest at the top: Tico shows the treasure. Medal by time and splashes
+     (MODES.waterfall.medals, js/medals.js), plus optional gems.
    World coordinates: during the mode's step the players are in climb coordinates (y grows down the whole climb); outside
    it p.y is on screen (p.y - camY), so the engine draws them, their name tags and the computer's bubbles in the right
    place. Particles made during the step are moved onto the screen the same way.
@@ -1241,23 +1241,24 @@ function wfallSetup(st, L) {
 }
 
 MODES.waterfall = {
+  // medal (js/medals.js): two computers 72 s with no splashes; one clumsy computer 95-255 s; a scripted kid with the
+  // computer 130-290 s and 1-20 splashes, most of them cheap ones in the pools by the stream and the log
+  medals: { bronze: 'Reach the toucan nest', goals: [{ key: 'time', gold: 240, silver: 450 }, { key: 'splashes', gold: 5, silver: 14, word: 'splash' }] },
+  medalValues() { const s = G.mst.stats; return s ? { time: s.time || G.time, splashes: s.splash[0] + s.splash[1] } : {}; },
   setup(st, L) { wfallSetup(st, L); },
   step(dt) { const st = G.mst; if (st.grid) wfallStep(st, dt); },
   draw() { wfallDraw(); },
   drawTop() { wfallDrawTop(); },
   hud() { wfallHud(); },
   stats() {
-    const st = G.mst, s = st.stats, sp = s.splash[0] + s.splash[1], time = s.time || G.time;
-    // (two computers: 72 s with no splashes; one clumsy computer: 95-255 s; a scripted kid with the computer: 130-290 s
-    // and 1-20 splashes, most of them cheap ones in the pools by the stream and the log)
-    const medal = time <= 240 && sp <= 5 ? 'Gold' : time <= 450 && sp <= 14 ? 'Silver' : 'Bronze';
+    const st = G.mst, s = st.stats, sp = s.splash[0] + s.splash[1];
     const words = sp === 0 ? 'Not one splash! Super climbers!' : sp <= 5 ? 'Great teamwork up the falls!' : 'Lots of splashes, and you made it together!';
     const gold = st.goldUsed.length ? ' · Gold help: ' + st.goldUsed.map(k => ({ boost: 'Super boost', jam: 'Big log jam', raft: 'Gold raft' }[k])).join(', ') : '';
     return [
       { label: 'Splashes', values: s.splash.slice() },
       { label: 'Boosts given', values: s.boosts.slice() },
       { label: 'Gems', value: s.gems + ' of ' + st.gems.length },
-      medal + ' medal · ' + words,
+      words,
       'Vines dropped: Pip ' + s.vines[0] + ', Bo ' + s.vines[1] + ' · Frog bounces ' + s.frogs + ' · Geyser rides ' + s.geysers + gold,
     ];
   },

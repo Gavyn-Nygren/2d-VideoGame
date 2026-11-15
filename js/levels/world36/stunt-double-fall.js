@@ -37,7 +37,7 @@
    GOLD HELP (3 Bonks or bounces in a take, both playing, announced, counted): gold wrist ribbons, the link reaches
      S.goldLinkR px and pulls them together.
    IDLE: no person presses anything for 12 s: "Taking a break", the clock stops.
-   MEDAL: Gold <= 185 s, Silver <= 290 s (a clean computer pair takes about 170 s).
+   MEDAL (MODES.stuntfall.medals, js/medals.js): Gold <= 185 s, Silver <= 290 s (a clean computer pair takes about 170 s).
    MODES.stuntfall.plan(st) says what each hero should do now (the prompts, HUD chips and the computer brain read it).
    Everything lives inside this block; sounds are Sfx.extra.stuntfall*. */
 (() => {
@@ -781,10 +781,11 @@
     const y = pairY(st);
     return Math.max(0, Math.ceil((st.bag.y - y) / (st.bag.y / 12)));
   }
-  const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
 
   MODES.stuntfall = {
-    S, TAKES, plan, medal, layout, inGap, poleHit, droneX,
+    S, TAKES, plan, layout, inGap, poleHit, droneX,
+    medals: { bronze: 'Land the big fall', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }] },
+    medalValues() { return {}; },
     setup(st, L) {
       st.stats = { smashes: 0, bonks: 0, bounces: 0, links: 0, lets: 0, stars: 0, style: 0, landing: 0, retakes: 0, winches: 0, bounceProps: 0, recT: 0, helps: 0, roomT: [] };
       st.stars = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
@@ -804,7 +805,6 @@
         { label: 'Bonks', value: String(s.bonks) },
         { label: 'Stars', value: st.stars + ' of 20' },
         { label: 'Landing', value: s.landing + ' / 100' },
-        { label: 'Medal', value: medal(G.time) },
       ];
       out.push('Links: ' + s.links + '. Glass bounces: ' + s.bounces + '. Retakes: ' + s.retakes + '. On camera: ' + Math.round(s.recT) + ' s. That\'s a wrap!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

@@ -55,7 +55,8 @@
    IDLE: when no person has pressed anything for 12 s the train waits ("Taking a break") and the clock stops (G.time is
    wound back, so test loops must count steps, not G.time). A train still rolling then coasts to a stop but never rolls
    through a block, a dead end, the raised bridge or the buffer.
-   Medal by time, clunks and stars (WTR_MEDAL). Results tiles: Time (the engine's), Stars, Clunks, Passengers, Medal.
+   Medal by time, clunks and stars (MODES.windtrain.medals, js/medals.js). Results tiles: Time (the engine's), Stars,
+   Clunks, Passengers.
    Room def: { title, wind: 0|1, look: 'rug'|'bed'|'shelf'|'box', tip, act, course: [tokens] }.
    Course tokens (heights are px above the floor):
      fN flat   rN:H ramp the main line to height H over N px (on books)   *:dy[:n:gap] star(s) dy px above the rail
@@ -871,6 +872,9 @@ function wtrMirror(st) {
 
 MODES.windtrain = {
   WTR,
+  // Medal: Gold at <= 4:00 with <= 4 clunks and half the stars; Silver at <= 6:30 with <= 12 clunks (tuned with bots)
+  medals: { bronze: 'Chug all the way to Toy Box Station', goals: [{ key: 'time', gold: 240, silver: 390 }, { key: 'clunks', gold: 4, silver: 12, word: 'clunk' }, { key: 'stars', gold: 0.5, more: true, pct: true, word: 'the stars' }] },
+  medalValues() { const st = G.mst, s = st.stats; return s ? { clunks: s.clunks, stars: st.stars / (st.starsAll || 1) } : {}; },
   compile: wtrCompile, plan: wtrPlan, railY: wtrRailY, mainY: wtrMainY, canSwitch: wtrCanSwitch, ready: wtrReady, car: wtrCar,
   surfaces: wtrSurfaces, hzPos: wtrHzPos, hzBlock: wtrHzBlock, stopD: wtrStopD, key: wtrKey, windAmt: wtrWindAmt, gap: wtrGap,
   setup(st, L) {
@@ -891,12 +895,11 @@ MODES.windtrain = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const all = st.starsAll || 1, frac = st.stars / all, medal = wtrMedal(G.time, s.clunks, frac);
+    const all = st.starsAll || 1, frac = st.stars / all;
     const out = [
       { label: 'Stars', value: st.stars + ' of ' + all },
       { label: 'Clunks', value: String(s.clunks) },
       { label: 'Passengers', value: s.passengers + ' of ' + (st.passAll || 4) },
-      { label: 'Medal', value: medal },
     ];
     const good = s.winds ? Math.round(100 * s.goodWinds / s.winds) : 0;
     const words = s.passengers >= (st.passAll || 4) ? 'Every toy got a ride to Toy Box Station. All aboard!' : frac >= 0.6 ? 'Round the rug, under the bed and over the books!' : 'Chugga chugga, all the way to the toy box!';
@@ -905,9 +908,6 @@ MODES.windtrain = {
     return out;
   },
 };
-// Medal: Gold at <= 4:00 with <= 4 clunks and half the stars; Silver at <= 6:30 with <= 12 clunks (tuned with bots)
-const WTR_MEDAL = { gold: [240, 4, 0.5], silver: [390, 12] };
-const wtrMedal = (t, clunks, frac) => (t <= WTR_MEDAL.gold[0] && clunks <= WTR_MEDAL.gold[1] && frac >= WTR_MEDAL.gold[2] ? 'Gold' : t <= WTR_MEDAL.silver[0] && clunks <= WTR_MEDAL.silver[1] ? 'Silver' : 'Bronze');
 
 /* ---------- drawing: the bedroom ---------- */
 const WTR_LOOK = {

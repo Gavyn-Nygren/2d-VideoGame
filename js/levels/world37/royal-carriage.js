@@ -41,7 +41,7 @@
    GOLD HELP (only while both are playing, announced, counted): 3 bad events in a stretch = gold reins: the tilt gauge
      fills 40% slower and "Duck!" markers show 0.4 s earlier for the rest of the stretch.
    IDLE: no person presses anything for 12 s: "Taking a break", the road and the clock wait.
-   MEDAL: by time. Gold <= 185 s, Silver <= 320 s.
+   MEDAL (MODES.royalcarriage.medals, js/medals.js): by time. Gold <= 185 s, Silver <= 320 s.
    OUTFITS (Gavyn's rule): royal coach livery, TOURNEY_OUTFITS 'livery'. Pip a footman's coat and a slipping tricorn,
      Bo a postilion's jacket and a cap with a streaming moon-tipped feather. The driver wears the driving gauntlets, the
      roof hero has a rope round the waist; straw sticks out after a Tumble into the hay.
@@ -1014,9 +1014,10 @@
       P.say(Rn, s, hp.x, hp.y - 50, col, pulse);
     }
   }
-  const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
   MODES.royalcarriage = {
-    S, R, plan, medal, heroPos,
+    S, R, plan, heroPos,
+    medals: { bronze: 'Get the King there in one piece', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }] },
+    medalValues() { return {}; },
     setup(st, L) {
       st.stats = { spills: 0, tumbles: 0, bandits: 0, bagsLost: 0, crowns: 0, reins: 0, favours: 0, fits: 0, hits: 0, straps: 0, hitches: 0, jumps: 0, ducks: 0, whips: 0, forks: [], missed: [], helps: 0, roomT: [] };
       st.favs = 0; st.bags = S.bags; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
@@ -1035,7 +1036,6 @@
         { label: 'Spills', value: String(s.spills) },
         { label: 'Bandits shoved', value: String(s.bandits) },
         { label: 'Favours', value: st.favs + ' of ' + S.favours },
-        { label: 'Medal', value: medal(G.time) },
       ];
       out.push('Tumbles: ' + s.tumbles + '. Bags saved: ' + st.bags + ' of ' + S.bags + '. Royal Fits: ' + s.fits + '. The King arrived (dizzy, but in one piece)!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

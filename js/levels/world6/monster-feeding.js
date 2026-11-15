@@ -351,6 +351,8 @@ function monKey(id) {
 function monTouchHint() { return document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch'; }
 
 MODES.monster = {
+  medals: { bronze: 'Fill up every monster', goals: [{ key: 'stars', gold: 11, silver: 8, more: true, text: n => `${n} of 12 stars or more`, gap: (v, n) => `${n - v} more star${n - v === 1 ? '' : 's'}` }, { key: 'time', gold: 180 }] },
+  medalValues() { const s = G.mst.stats; return s ? { stars: s.stars.reduce((a, b) => a + b, 0) } : {}; },
   rand: Math.random,
   // test hooks for bots (no engine edits)
   K: MONSTER, predict: monPredict, throwV: monThrowV, rim: monRim, foodStep: monFoodStep, key: monKey,

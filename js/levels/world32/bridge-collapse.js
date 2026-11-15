@@ -24,7 +24,8 @@
    GOLD HELP (only while both are playing, announced, counted): 3 slips or zaps in a stretch = a gold steel cable: the
      stretch never strains or snaps for the rest of the stretch.
    IDLE: no person presses anything for 12 s: "Taking a break", the bridge waits and the clock stops.
-   MEDAL: Gold <= S.goldT with <= 2 slips+zaps and >= 70% of the badges; Silver <= S.silverT with <= 8.
+   MEDAL goals (MODES.bridge.medals, js/medals.js): Gold <= S.goldT with <= 2 slips+zaps and >= 70% of the badges;
+   Silver <= S.silverT with <= 8.
    MODES.bridge.plan(st) says what each job should do now (the prompts, the HUD chips and the computer brain read it).
    Everything lives inside this block; sounds are Sfx.extra.bridge*. */
 (() => {
@@ -663,10 +664,15 @@
       if (Y.st === 'run' || Y.st === 'span') P.say(Yn, s, Y.st === 'span' ? clamp((st.span.a + st.span.b) / 2 - cx, 70, W - 70) : sx(Y), Y.st === 'span' ? GY - 50 : sy(Y), col, pulse);
     }
   }
-  const medal = (t, bad, frac) => K.medal(t <= S.goldT && bad <= 2 && frac >= 0.7, t <= S.silverT && bad <= 8);
 
   MODES.bridge = {
-    S, compile, plan, medal, gaps,
+    S, compile, plan, gaps,
+    medals: { bronze: 'Get the buses across the bridge', goals: [
+      { key: 'time', gold: S.goldT, silver: S.silverT },
+      { key: 'bad', gold: 2, silver: 8, text: n => (n ? `${n} or fewer slips and zaps` : 'No slips and zaps'), gap: (v, n) => `${Math.max(1, Math.ceil(v - n))} fewer slips and zaps` },
+      { key: 'badges', gold: 0.7, more: true, pct: true, word: 'the hero badges' },
+    ] },
+    medalValues() { const st = G.mst, s = st.stats; return s ? { bad: s.slips + s.zaps, badges: st.badge / (st.totalBadge || 1) } : {}; },
     setup(st, L) {
       st.stats = { lifts: 0, spans: 0, slips: 0, zaps: 0, helps: 0, roomT: [] };
       st.badge = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
@@ -683,12 +689,11 @@
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const bad = s.slips + s.zaps, frac = st.badge / (st.totalBadge || 1);
+      const bad = s.slips + s.zaps;
       const out = [
         { label: 'Hero badges', value: st.badge + ' of ' + st.totalBadge },
         { label: 'Stretches', value: String(s.spans) },
         { label: 'Slips and zaps', value: String(bad) },
-        { label: 'Medal', value: medal(G.time, bad, frac) },
       ];
       out.push('Bus lifts: ' + s.lifts + '. Every passenger made it off the bridge!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

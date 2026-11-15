@@ -1366,7 +1366,12 @@ function templeHud() {
   }
 }
 
+// medal (MODES.temple.medals, js/medals.js): [seconds, whoopsies] for Gold and Silver
+const TEMPLE_MEDAL = { gold: [120, 3], silver: [240, 10] };   // (bots: a good pair ~1:00, slow 1-player people 1:25-2:10)
 MODES.temple = {
+  medals: { bronze: 'Get through the Sun Door', goals: [{ key: 'time', gold: TEMPLE_MEDAL.gold[0], silver: TEMPLE_MEDAL.silver[0] },
+    { key: 'whoopsies', gold: TEMPLE_MEDAL.gold[1], silver: TEMPLE_MEDAL.silver[1], word: 'whoopsie' }] },
+  medalValues() { const s = G.mst.stats; return s ? { whoopsies: s.whoops[0] + s.whoops[1] } : {}; },
   setup(st, L) {
     const lv = LEVELS[G.levelIndex], total = (lv.rooms || []).reduce((n, r) => n + r.map.join('').split('z').length - 1, 0);
     st.stats = { whoops: [0, 0], dashes: [0, 0], held: [0, 0], bananas: 0, bananasBy: [0, 0], bananasTotal: total, squeezes: 0, pushes: 0, resets: 0, backs: 0, roomT: [], gold: [] };
@@ -1386,20 +1391,17 @@ MODES.temple = {
     templePop(st, templeCx(p), p.y - 14, 'Boing!', '#9fe3ff', 16);
   },
   stats() {
-    const s = G.mst.stats, wh = s.whoops[0] + s.whoops[1], time = G.time;
-    const medal = time <= TEMPLE_MEDAL.gold[0] && wh <= TEMPLE_MEDAL.gold[1] ? 'Gold' : time <= TEMPLE_MEDAL.silver[0] && wh <= TEMPLE_MEDAL.silver[1] ? 'Silver' : 'Bronze';
+    const s = G.mst.stats, wh = s.whoops[0] + s.whoops[1];
     const words = wh === 0 ? 'Not one whoopsie! Temple masters!' : wh <= 3 ? 'Super door dashing, explorers!' : 'Lots of splashes, and you made it together!';
     return [
       { label: 'Whoopsies', values: s.whoops.slice() },
       { label: 'Golden bananas', value: s.bananas + ' of ' + s.bananasTotal },
       { label: 'Dashes', values: s.dashes.slice() },
-      medal + ' medal · ' + words,
+      words,
       'Plates held: Pip ' + Math.round(s.held[0]) + ' s, Bo ' + Math.round(s.held[1]) + ' s · Squeezes ' + s.squeezes + ' · Idol pushes ' + s.pushes + (s.gold.length ? ' · Help: ' + s.gold.join(', ') : ''),
     ];
   },
 };
-// medal: [seconds, whoopsies] for Gold and Silver
-const TEMPLE_MEDAL = { gold: [120, 3], silver: [240, 10] };   // (bots: a good pair ~1:00, slow 1-player people 1:25-2:10)
 
 /* ---------- sounds ---------- */
 Sfx.extra.templePlate = function () { this.tone(330, 0.07, 'triangle', 0.05, 260); this.tone(180, 0.1, 'sine', 0.05, null, 0.03); };

@@ -36,7 +36,7 @@
    GOLD HELP (only while both are playing, announced, counted): 3 crashes in a take = a gold clapper: cooldown
      S.goldCd s and flats show S.goldShow s earlier, for the rest of the take.
    IDLE: no person presses anything for 12 s: "Taking a break", the clock stops.
-   MEDAL: by time. Gold <= 185 s, Silver <= 310 s.
+   MEDAL (MODES.takeone.medals, js/medals.js): by time. Gold <= 185 s, Silver <= 310 s.
    MODES.takeone.plan(st) says what each job should do now (the prompts, HUD chips and the computer brain read it).
    Everything lives inside this block; sounds are Sfx.extra.takeone*. */
 (() => {
@@ -799,10 +799,11 @@
       P.say(Hn, s, clamp(g.x - 40, 70, W - 70), g.top - 104, col, pulse);
     }
   }
-  const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
 
   MODES.takeone = {
-    S, SCN, TAKES, plan, medal, geom, layout, eta, active,
+    S, SCN, TAKES, plan, geom, layout, eta, active,
+    medals: { bronze: 'Wrap the car chase', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }] },
+    medalValues() { return {}; },
     setup(st, L) {
       st.stats = { crashes: 0, bursts: 0, claps: 0, reels: 0, retakes: 0, hops: 0, jumps: 0, cleared: 0, helps: 0, roomT: [] };
       st.reels = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
@@ -822,7 +823,6 @@
         { label: 'Crashes', value: String(s.crashes) },
         { label: 'Bursts', value: String(s.bursts) },
         { label: 'Reels', value: st.reels + ' of 20' },
-        { label: 'Medal', value: medal(G.time) },
       ];
       out.push('Scene changes: ' + s.claps + '. Retakes: ' + s.retakes + '. That\'s a wrap!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

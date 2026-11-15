@@ -18,8 +18,10 @@
    Each goal names a value by `key`. Fewer (or faster) is better unless `more: true`. A goal leaves out `silver` (or
    `gold`) when that medal does not ask for it. Gold needs every gold goal met, Silver every silver goal, Bronze only
    the finish. The words come from the key and `word`; `pct: true` shows a fraction (0-1) as a percent; `text` replaces
-   the goal's words entirely: text: n => `${n} or fewer gold helps`.
-   Built-in keys: time (G.time at the clear, or `def.medalTime`), falls (G.falls). A mode gives every other value from
+   the goal's words entirely: text: n => `${n} or fewer gold helps`; `show: v => '+' + v` changes how your value reads;
+   `gap: (v, n) => '...'` how the gap to the next medal reads.
+   Built-in keys: time (G.time at the clear, or `def.medalTime`), falls (G.falls); golf levels: overPar; block
+   building: squashes (squashes + traps); Robo Pong: robo (Robo's points; a lost match earns no medal). A mode gives every other value from
    its `medalValues()` hook at the end: medalValues() { return { boings: 5, stars: 0.6 }; } (it may also return
    time). A level that ended without earning even Bronze (a lost Robo Pong) returns { noMedal: true }.
    Keep `medals` a plain object so the ready card can read it before the level starts. */
@@ -46,10 +48,12 @@ function medalGoalText(g, tier) {
   const w = g.word || g.key;
   if (g.more) return g.pct ? `At least ${fmt} of ${w}` : `At least ${fmt} ${medalPlural(n, w)}`;
   if (n === 0) return `No ${pluralWord(w)}`;
+  if (n === 1) return `At most 1 ${w}`;
   return `${fmt} or fewer ${medalPlural(n, w)}`;
 }
 function medalFmt(g, v) {
   if (v == null || !isFinite(v)) return '–';
+  if (g.show) return g.show(v);
   if (g.key === 'time' || g.fmt === 'time') { const s = Math.ceil(v - 1e-6); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
   if (g.pct) return Math.round(v * 100) + '%';
   return String(Math.round(v * 100) / 100);
@@ -76,7 +80,12 @@ function medalAtClear(i, rec) {
   const spec = medalSpec(i);
   if (!spec) return null;
   const def = G.level && G.level.def;
-  const vals = Object.assign({ time: def && def.medalTime != null ? def.medalTime : rec.time, falls: rec.falls }, (G.lmode && hook('medalValues')) || {});
+  const vals = { time: def && def.medalTime != null ? def.medalTime : rec.time, falls: rec.falls };
+  // the built-in levels of Worlds 1-3: golf (strokes over par), block building (squashes and traps), Robo Pong (Robo's points)
+  if (rec.golf) vals.overPar = rec.golf.strokes[0] + rec.golf.strokes[1] - rec.golf.pars[0] - rec.golf.pars[1];
+  if (rec.build) vals.squashes = (rec.build.squashes || [0, 0]).concat(rec.build.pops || [0, 0]).reduce((a, b) => a + b, 0);
+  if (rec.pong) { vals.robo = rec.pong.score[1]; if (!rec.pong.won) vals.noMedal = true; }
+  Object.assign(vals, (G.lmode && hook('medalValues')) || {});
   const r = medalResult(spec, vals);
   const key = 'medal:' + LEVELS[i].name, prev = store.get(key) || 0;
   r.newBest = r.tier > prev;
@@ -144,8 +153,20 @@ function medalGoalsHTML(i) {
   if (!spec) return '';
   const best = medalBest(i);
   const row = t => {
-    const words = t === 'bronze' ? (spec.bronze || 'Finish the level') : spec.goals.filter(g => g[t] != null).map(g => medalGoalText(g, t)).join(', ');
+    const words = t === 'bronze' ? (spec.bronze || 'Finish the level') : spec.goals.filter(g => g[t] != null).map((g, k) => { const w = medalGoalText(g, t); return k ? w.replace(/^(No|At least|At most|Every|Half) /, m => m.toLowerCase()) : w; }).join(', ');
     return `<span class="mg">${medalSVG(t, true, 18)}${esc(words)}</span>`;
   };
-  return `<div class="medal-goals"><span class="mg-hd">Medals${best ? ` <span class="mg-best">(best: ${MEDAL_NAMES[MEDAL_TIERS[best - 1]]})</span>` : ''}</span>${MEDAL_TIERS.slice().reverse().map(row).join('')}</div>`;
+  const bestHTML = best ? `<span class="mg-best">Your best ${medalSVG(MEDAL_TIERS[best - 1], true, 22)}<b>${MEDAL_NAMES[MEDAL_TIERS[best - 1]]}</b></span>` : '';
+  return `<div class="medal-goals"><span class="mg-hd">Medals</span>${MEDAL_TIERS.slice().reverse().map(row).join('')}${bestHTML}</div>`;
+}
+
+// the world map and world pages: how many levels have earned each medal (a Gold level counts for Silver and Bronze too)
+function medalTallyHTML(levels) {
+  const ls = levels.filter(i => medalSpec(i));
+  if (!ls.length) return '';
+  const n = MEDAL_TIERS.map((t, k) => ls.filter(i => medalBest(i) > k).length);
+  return `<div class="medal-tally" aria-label="Medals: ${n[2]} gold, ${n[1]} silver, ${n[0]} bronze, out of ${ls.length} levels">${MEDAL_TIERS.slice().reverse().map(t => {
+    const k = MEDAL_TIERS.indexOf(t);
+    return `<span class="mt ${n[k] ? '' : 'none'}">${medalSVG(t, true, 20)}<b>${n[k]}</b><small>/${ls.length}</small></span>`;
+  }).join('')}</div>`;
 }

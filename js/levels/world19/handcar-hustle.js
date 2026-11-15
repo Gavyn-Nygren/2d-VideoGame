@@ -712,6 +712,13 @@ function handcarMirror(st) {
 }
 
 MODES.handcar = {
+  // medal (js/medals.js): Gold with 70% of the mail by 4:20, at most 3 bumps (whoas, whoopses and moos) and at most 12
+  // jammed handles; Silver with 40% by 6:20
+  medals: { bronze: 'Pump all the way to town', goals: [{ key: 'time', gold: 260, silver: 380 },
+    { key: 'sacks', gold: 0.7, silver: 0.4, more: true, pct: true, word: 'the mail sacks' },
+    { key: 'bumps', gold: 3, text: n => `${n} or fewer whoas, whoopses and moos`, gap: (v, n) => `${Math.max(1, Math.ceil(v - n))} fewer whoas, whoopses and moos` },
+    { key: 'jams', gold: 12, word: 'jammed handle' }] },
+  medalValues() { const st = G.mst, s = st.stats, all = st.sacksAll || st.sacksN; return s ? { sacks: all ? st.sacks / all : 1, bumps: s.oops + s.whoas + s.moos, jams: s.jams } : {}; },
   HANDCAR,
   compile: handcarCompile, y: handcarY, slope: handcarSlope, needs: handcarNeeds, end: handcarEnd, at: handcarAt, key: handcarKey, cowsBlock: handcarCowsBlock,
   setup(st, L) {
@@ -742,13 +749,11 @@ MODES.handcar = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const all = st.sacksAll || st.sacksN, got = st.sacks, t = G.time, frac = all ? got / all : 1, bumps = s.oops + s.whoas + s.moos;
-    const medal = frac >= 0.7 && t <= 260 && bumps <= 3 && s.jams <= 12 ? 'Gold' : frac >= 0.4 && t <= 380 ? 'Silver' : 'Bronze';
+    const all = st.sacksAll || st.sacksN, got = st.sacks, frac = all ? got / all : 1;
     const out = [
       { label: 'Mail sacks', value: got + ' of ' + all },
       { label: 'Pumps', values: s.pumps.slice() },
       { label: 'Rhythm streak', value: String(s.bestStreak) },
-      { label: 'Medal', value: medal },
     ];
     const words = frac >= 0.95 ? 'Every mail sack delivered. Rootin\' tootin\' teamwork!' : frac >= 0.6 ? 'A big bag of mail for the town. Yee-haw!' : 'Pumped all the way to town together!';
     out.push(words + ' Whoas: ' + s.whoas + ', Whoopses: ' + s.oops + ', Moos: ' + s.moos + '.');

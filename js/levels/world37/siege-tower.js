@@ -44,7 +44,7 @@
    GOLD HELP (only while both are playing, announced, counted): 3 bad events (Knock, Burn, Smash, Rollback) in a
      stretch = gold wheels: the tower doesn't roll back on slopes and the heave has no cooldown for the rest of it.
    IDLE: no person presses anything for 12 s: "Taking a break", the castle and the clock wait.
-   MEDAL: by time. Gold <= 200 s, Silver <= 340 s.
+   MEDAL (MODES.siegetower.medals, js/medals.js): by time. Gold <= 200 s, Silver <= 340 s.
    OUTFITS (Gavyn's rule): siege engineers (TOURNEY_OUTFITS 'engineer'). Pip a leather apron, rolled sleeves, kettle
      hat and a mallet; Bo a hooded mantle, mail collar, fire gloves and a rope coil. The pusher wears the padded
      shoulder straps, the tower hero carries the wet hide; soot builds up through the level; a Knocked hero has a
@@ -885,9 +885,10 @@
       P.say(Hn, s, hp.x, hp.y - 50, col, pulse);
     }
   }
-  const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
   MODES.siegetower = {
-    S, T, plan, nav, medal,
+    S, T, plan, nav, 
+    medals: { bronze: 'Win the trophy back', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }] },
+    medalValues() { return {}; },
     setup(st, L) {
       st.stats = { knocks: 0, burns: 0, smashes: 0, rollbacks: 0, fires: 0, shields: 0, heaves: 0, kicks: 0, rams: 0, chocks: 0, missed: [], panels: 0, ruts: 0, volleys: 0, helps: 0, roomT: [] };
       st.shields = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0; st.T = 0; st.roofArrows = 0; st.pu2 = null;
@@ -906,7 +907,6 @@
         { label: 'Shields', value: st.shields + ' of ' + S.shields },
         { label: 'Fires put out', value: String(s.fires) },
         { label: 'Knocks', value: String(s.knocks) },
-        { label: 'Medal', value: medal(G.time) },
       ];
       out.push('Burns: ' + s.burns + '. Smashes: ' + s.smashes + '. Rollbacks: ' + s.rollbacks + '. The trophy is back where it belongs!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

@@ -21,8 +21,9 @@
    - Gold help (announced, while both play): 2 Boings at one gap fix it in gold; 2 Squishes by one stamper put it to
      sleep in gold; a line stopped 12 s at a wide gap makes its switch gold (the fixer's action fixes it from anywhere).
    - Idle: 12 s with no person pressing anything: "Taking a break", the line stops and the clock stops.
-   Medal (BELT.medal): Gold with <= 3 bumps (Boings + Squishes) and >= 55% of the gears; Silver with <= 10 bumps.
-   Results tiles: Gears, Belt fixes, Bumps, Line stops, Medal (no time: the belt sets the pace).
+   Medal goals (BELT.medal, MODES.runbelt.medals, js/medals.js): Gold with <= 3 bumps (Boings + Squishes) and >= 55%
+   of the gears; Silver with <= 10 bumps. Results tiles: Gears, Belt fixes, Bumps, Line stops (no time: the belt sets
+   the pace).
    Room def: { title, runner: 0|1, look, tip, speed: [start, end], course, walk }.
      course (the belt, left to right): ['belt', len], ['gap', w] (w > 120 is wide), ['stamp', period, phase] (a stamper
        over the cursor), ['gears', n] (a row of gears over the belt from the cursor)
@@ -319,13 +320,18 @@ const BELT = {
       if (changed && typeof fitActLabels === 'function') fitActLabels();
     } catch (e) { /* labels stay */ }
   }
-  function medal(st) {
-    const s = st.stats, bumps = s.boings + s.squish, frac = s.gearsTotal ? (s.gears[0] + s.gears[1]) / s.gearsTotal : 0;
-    return bumps <= B.medal.gold[0] && frac >= B.medal.gold[1] ? 'Gold' : bumps <= B.medal.silver ? 'Silver' : 'Bronze';
+  function medalValues(st) {
+    const s = st.stats;
+    return s ? { bumps: s.boings + s.squish, gears: s.gearsTotal ? (s.gears[0] + s.gears[1]) / s.gearsTotal : 0 } : {};
   }
 
   MODES.runbelt = {
-    BELT: B, plan, jobs, stampState, runnerSolids, fixerSolids, open, medal,
+    BELT: B, plan, jobs, stampState, runnerSolids, fixerSolids, open,
+    medals: { bronze: 'Pack every robot off the line', goals: [
+      { key: 'bumps', gold: B.medal.gold[0], silver: B.medal.silver, word: 'bump' },
+      { key: 'gears', gold: B.medal.gold[1], more: true, pct: true, word: 'the gears' },
+    ] },
+    medalValues() { return medalValues(G.mst); },
     setup(st, L) {
       st.stats = { gears: [0, 0], gearsTotal: 0, fixes: [0, 0], boings: 0, squish: 0, stops: 0, fixerBoings: 0, time: 0 };
       st.goldUsed = []; st.tick = 0;
@@ -359,7 +365,6 @@ const BELT = {
         { label: 'Belt fixes', values: s.fixes.slice() },
         { label: 'Bumps', value: bumps },
         { label: 'Line stops', value: s.stops },
-        { label: 'Medal', value: medal(st) },
         words + ' (' + s.boings + ' Boings, ' + s.squish + ' Squishes)' + gold,
       ];
     },

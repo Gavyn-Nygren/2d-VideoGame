@@ -772,6 +772,13 @@ function pumpkinArc(a, b, u, h) {
 }
 
 MODES.pumpkin = {
+  // medal goals (js/medals.js): time and slips (splashes plus tumbles)
+  medals: { bronze: 'Roll the pumpkin home', goals: [
+    { key: 'time', gold: 240, silver: 390 },
+    { key: 'fails', gold: 2, silver: 8, word: 'splash or tumble', text: n => `${n} or fewer splashes and tumbles`,
+      gap: (v, n) => { const d = Math.max(1, Math.ceil(v - n)); return d + ' fewer ' + (d === 1 ? 'splash or tumble' : 'splashes and tumbles'); } },
+  ] },
+  medalValues() { const s = G.mst.stats; return s ? { fails: s.splashes + s.tumbles } : {}; },
   PUMPKIN,
   compile: pumpkinCompile, gy: pumpkinGY, pc: pumpkinPC, needs: pumpkinNeeds, key: pumpkinKey, riderFeet: pumpkinRiderFeet, lim: pumpkinLim, boots: pumpkinBoots, rockAhead: pumpkinRockAhead, slope: pumpkinSlope,
   setup(st, L) {
@@ -798,13 +805,11 @@ MODES.pumpkin = {
   stats() {
     const s = G.mst.stats;
     if (!s) return [];
-    const fails = s.splashes + s.tumbles, t = G.time;
-    const medal = t <= 240 && fails <= 2 ? 'Gold' : t <= 390 && fails <= 8 ? 'Silver' : 'Bronze';
+    const fails = s.splashes + s.tumbles;
     const out = [
       { label: 'Splashes', value: s.splashes },
       { label: 'Tumbles', value: s.tumbles },
       { label: 'Leapfrogs', values: s.frogs.slice() },
-      { label: 'Medal', value: medal },
     ];
     let best = -1;
     s.roomFails.forEach((f, k) => { if (s.roomT[k] == null) return; if (best < 0 || f < s.roomFails[best] || (f === s.roomFails[best] && s.roomT[k] < s.roomT[best])) best = k; });

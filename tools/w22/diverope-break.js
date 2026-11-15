@@ -84,7 +84,7 @@ const SCEN = {
     console.log(`   dives ${s.roomT.map(x => x == null ? '-' : Math.round(x)).join(' / ')}  treasure ${s.banked}/${r.all} chests ${s.chests} eels ${s.eels} jellies ${s.jellies} blubs ${s.blubs} helps ${s.helps} pumps ${s.pumps}`);
     for (const m of r.msgs) console.log('   ' + m);
     for (const m of r.tr) console.log('   . ' + m);
-    if (r.res) console.log('   medal: ' + r.res.find(x => x.label === 'Medal').value);
+    if (r.res) console.log('   medal: ' + (r.res.find(x => x && x.label === 'Medal') || {}).value  /* the medal is now on the results' medal ladder (js/medals.js) */);
     if (errors.length) { console.log('   ERRORS: ' + errors.slice(0, 5).join(' | ')); wrong++; }
     await page.close();
   }

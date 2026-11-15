@@ -1097,6 +1097,13 @@ function mansionHud() {
 }
 
 MODES.mansion = {
+  // medal goals (js/medals.js): time and Eeps plus falls
+  medals: { bronze: 'Escape the haunted mansion', goals: [
+    { key: 'time', gold: 270, silver: 480 },
+    { key: 'eeps', gold: 12, silver: 30, word: 'Eep or fall', text: n => `${n} or fewer Eeps and falls`,
+      gap: (v, n) => { const d = Math.max(1, Math.ceil(v - n)); return d + ' fewer ' + (d === 1 ? 'Eep or fall' : 'Eeps and falls'); } },
+  ] },
+  medalValues() { const s = G.mst.stats; return s ? { eeps: s.eeps[0] + s.eeps[1] + G.falls } : {}; },
   rand: Math.random,   // cosmetic randomness (giggles, Bertie's chatter); tests may swap in a seeded one
   debug: false,        // true: every ghost drawn awake and solid (for screenshots)
   setup(st, L) {
@@ -1124,15 +1131,14 @@ MODES.mansion = {
   drawTop() { mansionDrawTop(); },
   hud() { mansionHud(); },
   stats() {
-    const s = G.mst.stats, eeps = s.eeps[0] + s.eeps[1], falls = G.falls, time = G.time;
+    const s = G.mst.stats, eeps = s.eeps[0] + s.eeps[1], falls = G.falls;
     // (two computers: about 76 s with 7 Eeps and a fall; a first try by people takes a lot longer, with many more Eeps)
-    const medal = time <= 270 && eeps + falls <= 12 ? 'Gold' : time <= 480 && eeps + falls <= 30 ? 'Silver' : 'Bronze';
     const race = s.race ? (s.race.tries === 1 ? 'Won by ' + s.race.margin.toFixed(1) + ' s' : 'Won on try ' + s.race.tries) : '–';
     const words = eeps + falls === 0 ? 'Not one Eep! Super sneaky teamwork!' : eeps <= 12 ? 'A few Eeps, lots of brave teamwork!' : 'Lots of Eeps, and you made it together!';
     return [
       { label: 'Eeps (frozen)', values: s.eeps.slice() },
       { label: 'Ghost race', value: race },
-      medal + ' medal · ' + words,
+      words,
       'Portrait swaps: ' + s.swaps + ' · Ghosts woken: ' + s.woken,
     ];
   },

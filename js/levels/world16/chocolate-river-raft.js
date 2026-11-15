@@ -915,6 +915,9 @@ function raftMirror(st) {
 }
 
 MODES.raft = {
+  // medal (js/medals.js): Gold, most of the candy and quick; Silver, a fair basket in fair time
+  medals: { bronze: 'Reach the candy village', goals: [{ key: 'time', gold: 270, silver: 450 }, { key: 'candy', gold: 0.75, silver: 0.45, more: true, pct: true, word: 'the candy' }] },
+  medalValues() { const st = G.mst; return st.stats ? { candy: st.score / (st.scoreAll || 1) } : {}; },
   RAFT,
   compile: raftCompile, needs: raftNeeds, cy: raftCY, hw: raftHW, cs: raftCS, ly: raftLY, flow: raftFlow, candyPos: raftCandyPos,
   ringPos: raftRingPos, logEnds: raftLogEnds, reach: raftReach, key: raftKey, dockBox: raftDockBox,
@@ -951,13 +954,11 @@ MODES.raft = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const all = st.scoreAll || 1, got = st.score, frac = got / all, t = G.time;
-    const medal = raftMedal(frac, t);
+    const all = st.scoreAll || 1, got = st.score, frac = got / all;
     const out = [
       { label: 'Candy', value: got + ' of ' + all },
       { label: 'Candy hooked', values: s.hooked.slice() },
       { label: 'Bonks', value: s.bonks },
-      { label: 'Medal', value: medal },
     ];
     const words = frac >= 0.9 ? 'A basket full to the brim. Sweetest crew on the river!' : frac >= 0.6 ? 'A tasty haul of candy. Great paddling and hooking!' : 'Splashy, swirly, and home safe together!';
     out.push(words + ' Shoves: ' + (s.shoves[0] + s.shoves[1]) + '. Wheees: ' + s.spins + '. Splats: ' + s.splats + '.');
@@ -965,9 +966,6 @@ MODES.raft = {
     return out;
   },
 };
-// Gold: most of the candy and quick; Silver: a fair basket in fair time
-const RAFT_MEDAL = { gold: [0.75, 270], silver: [0.45, 450] };
-function raftMedal(frac, t) { return frac >= RAFT_MEDAL.gold[0] && t <= RAFT_MEDAL.gold[1] ? 'Gold' : frac >= RAFT_MEDAL.silver[0] && t <= RAFT_MEDAL.silver[1] ? 'Silver' : 'Bronze'; }
 
 /* ---------- drawing (top-down) ---------- */
 let raftBankG = null;

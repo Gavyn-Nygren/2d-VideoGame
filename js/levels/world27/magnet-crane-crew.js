@@ -21,8 +21,8 @@
    - Gold help (announced, only while both play): 2 Boings in one pit lay a gold plank over it; 30 s without placing a
      crate shows gold ghost crates where the path needs them.
    - Idle: 12 s with no person pressing anything: "Taking a break", the clock stops.
-   Medal (CRANE.medal): Gold <= 3:30 and <= 2 Boings; Silver <= 6:00 and <= 8. Results tiles: Crates placed, Grabs,
-   Boings, Medal.
+   Medal goals (CRANE.medal, MODES.magcrane.medals, js/medals.js; the crane clock, st.stats.time): Gold <= 3:30 and
+   <= 2 Boings; Silver <= 6:00 and <= 8. Results tiles: Crates placed, Grabs, Boings.
    Room def: { title, op: 0|1, look, tip, ground: 16 chars ('0'-'5' ground height in crates, 'p' a pit), crates:
    [[col, n]], exit: col, plan: [[col, height]] (the path the computer builds, in order) }.
    MODES.magcrane exposes CRANE, plan helpers and the magnet for the brain. Every top-level name starts with crane /
@@ -266,10 +266,6 @@ const CRANE = {
       if (changed && typeof fitActLabels === 'function') fitActLabels();
     } catch (e) { /* labels stay */ }
   }
-  function medal(st) {
-    const s = st.stats, g = K.medal.gold, sv = K.medal.silver;
-    return s.time <= g[0] && s.boings <= g[1] ? 'Gold' : s.time <= sv[0] && s.boings <= sv[1] ? 'Silver' : 'Bronze';
-  }
   function jobs(st) {
     const R = st.rider, O = st.op, nR = NAMES[R], nO = NAMES[O];
     const ra = key(R, 'act', 'grab');
@@ -289,7 +285,12 @@ const CRANE = {
   }
 
   MODES.magcrane = {
-    CRANE: K, colTop, baseTop, colOf, canGrab, deficit, planDone, curHeight, pits, magCol, medal,
+    CRANE: K, colTop, baseTop, colOf, canGrab, deficit, planDone, curHeight, pits, magCol,
+    medals: { bronze: 'Build your way out of every bay', goals: [
+      { key: 'time', gold: K.medal.gold[0], silver: K.medal.silver[0] },
+      { key: 'boings', gold: K.medal.gold[1], silver: K.medal.silver[1], word: 'Boing' },
+    ] },
+    medalValues() { const s = G.mst.stats; return s ? { time: s.time, boings: s.boings } : {}; },
     setup(st, L) {
       st.stats = { placed: 0, grabs: [0, 0], drops: [0, 0], boings: 0, called: 0, time: 0 };
       st.goldUsed = []; st.tick = 0;
@@ -321,7 +322,6 @@ const CRANE = {
         { label: 'Crates placed', value: s.placed },
         { label: 'Grabs', values: s.grabs.slice() },
         { label: 'Boings', value: s.boings },
-        { label: 'Medal', value: medal(st) },
         words + (s.called ? ' New crates called: ' + s.called + '.' : '') + gold,
       ];
     },

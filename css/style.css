@@ -490,7 +490,7 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
     .wpager .wmeta { justify-content: flex-start; }
     .wpager .wmeta > span:first-child { display: none; }
     .wpager .dots { gap: 3px; }
-    .wpager .dots i { width: 6px; height: 6px; border-width: 1px; }
+    .wpager .dots i { width: 9px; height: 9px; border-width: 1px; }
   }
   @container wpager (max-width: 400px) { .wpager .world-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 }
@@ -534,8 +534,12 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 .wname, .lname { font: 400 20px/1.05 var(--font-display); padding-inline: 2px; }
 .wmeta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); padding-inline: 2px; }
 .dots { display: inline-flex; gap: 4px; }
-.dots i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--muted); box-sizing: border-box; }
-.dots i.on { background: var(--gold); border-color: var(--gold); }
+.dots { gap: 5px; }
+.dots i { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--muted); box-sizing: border-box; }
+/* a level's best medal (js/medals.js); empty until one is earned */
+.dots i.m-gold { background: radial-gradient(circle at 35% 30%, #fff1b0 0 18%, #ffcf4a 20%); border-color: #c98a0e; }
+.dots i.m-silver { background: radial-gradient(circle at 35% 30%, #fff 0 18%, #e3e8ef 20%); border-color: #8b95a5; }
+.dots i.m-bronze { background: radial-gradient(circle at 35% 30%, #ffd2a8 0 18%, #e39a5c 20%); border-color: #8f4f1f; }
 .lmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-inline: 2px; }
 .lbest { font-size: 12px; font-weight: 700; color: var(--gold); }
 .lblurb { font-size: 13px; line-height: 1.4; color: var(--muted); padding-inline: 2px; }
@@ -600,7 +604,12 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 .medal-goals .mg { display: inline-flex; gap: 7px; align-items: center; color: var(--paper); }
 .medal-goals .mg .medal { filter: none; }
 .mg-hd { font: 700 11px var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
-.mg-best { color: var(--muted); letter-spacing: 0.04em; }
+.mg-best { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.mg-best b { color: var(--paper); }
+.medal-tally { margin-left: auto; display: flex; gap: 12px; align-items: center; background: var(--cabinet); border-radius: 999px; padding: 4px 14px; }
+.medal-tally .mt { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); }
+.medal-tally .mt b { font: 400 18px var(--font-display); color: var(--paper); }
+.medal-tally .mt.none .medal { opacity: 0.45; filter: grayscale(0.6); }
 .lmedal { position: absolute; top: 4px; right: 6px; line-height: 0; }
 @media (max-height: 520px) {
   .medal-ladder { gap: 5px; }

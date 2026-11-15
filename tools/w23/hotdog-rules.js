@@ -183,7 +183,7 @@ const { chromium } = require('playwright');
   await page.waitForTimeout(2200);
   const txt = await page.evaluate(() => document.getElementById('overlay').innerText.replace(/\s+/g, ' ').slice(0, 400));
   await page.screenshot({ path: path.resolve(__dirname, '..', '..', 'build', 'w23', 'hotdog-results.png') });
-  const okCard = /Happy customers/i.test(txt) && /Medal/i.test(txt) && !/\bTime\b/i.test(txt);
+  const okCard = /Happy customers/i.test(txt) && /medal/i.test(txt) && !/\bTime\b/i.test(txt);
   console.log((okCard ? 'ok   ' : 'FAIL ') + 'computer pair plays to the results card (' + card.t + ' s): ' + txt);
   const bad = res.filter(l => l.startsWith('FAIL')).length + (okCard ? 0 : 1);
   console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no page errors');

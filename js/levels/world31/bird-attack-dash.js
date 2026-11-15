@@ -24,7 +24,8 @@
    GOLD HELP (only while both are playing, announced, counted): snatched twice in one stretch = the gold pinwheel: every
      strike spot shows the moment the robin stares, without a warn, for the rest of the stretch.
    IDLE: no person presses anything for 12 s: "Taking a break", the robin waits and the clock stops.
-   MEDAL: Gold <= S.goldT, snatched <= 1, >= 70% of the seeds; Silver <= S.silverT, snatched <= 5.
+   MEDAL goals (MODES.birddash.medals, js/medals.js): Gold <= S.goldT, snatched <= 1, >= 70% of the seeds;
+   Silver <= S.silverT, snatched <= 5.
    MODES.birddash.plan(st) says what each job should do now; the prompts, HUD chips and computer brain read it.
    Everything lives inside this block; sounds are Sfx.extra.birddash*. */
 (() => {
@@ -534,10 +535,15 @@
       P.say(id, s, sx(r), sy(r), col, pulse);
     }
   }
-  const medal = (t, sn, frac) => K.medal(t <= S.goldT && sn <= 1 && frac >= 0.7, t <= S.silverT && sn <= 5);
 
   MODES.birddash = {
-    S, compile, plan, medal, coverAt, hidden,
+    S, compile, plan, coverAt, hidden,
+    medals: { bronze: 'Dash across the lawn past the robin', goals: [
+      { key: 'time', gold: S.goldT, silver: S.silverT },
+      { key: 'snatched', gold: 1, silver: 5, text: n => (!n ? 'Never snatched' : n === 1 ? 'Snatched at most once' : `Snatched at most ${n} times`), gap: (v, n) => { const d = Math.max(1, Math.ceil(v - n)); return `snatched ${d} fewer time${d === 1 ? '' : 's'}`; } },
+      { key: 'seeds', gold: 0.7, more: true, pct: true, word: 'the seeds' },
+    ] },
+    medalValues() { const st = G.mst, s = st.stats; return s ? { snatched: s.snatched, seeds: st.seeds / (st.totalSeeds || 1) } : {}; },
     setup(st, L) {
       st.stats = { snatched: 0, warns: 0, falses: 0, dodged: 0, rolls: 0, helps: 0, roomT: [] };
       st.seeds = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
@@ -554,12 +560,10 @@
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const frac = st.seeds / (st.totalSeeds || 1);
       const out = [
         { label: 'Seeds', value: st.seeds + ' of ' + st.totalSeeds },
         { label: 'Snatched', value: String(s.snatched) },
         { label: 'Warnings', value: String(s.warns) },
-        { label: 'Medal', value: medal(G.time, s.snatched, frac) },
       ];
       out.push('Swoops dodged: ' + s.dodged + '. Dive-rolls: ' + s.rolls + (s.falses ? '. False alarms: ' + s.falses : '') + '.');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

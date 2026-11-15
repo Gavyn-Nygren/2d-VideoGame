@@ -24,8 +24,9 @@
      smashes); 2 Boings at one gap lay a gold plank over it; 2 Clonks in one crate zone give a gold umbrella (crates
      bonk off whatever the arm does) for that zone; 15 s at one ledge raises a gold lift under the mech.
    - Idle: 12 s with no person pressing anything is "Taking a break" and the clock stops.
-   Medal (MECH.medal): Gold <= 3:30, <= 3 Boings + Clonks and >= 50% of the bolts; Silver <= 5:30 with <= 10. Results
-   tiles: Bolts, Walls smashed, Boings, Clonks, Medal.
+   Medal goals (MECH.medal, MODES.mechduo.medals, js/medals.js; the mech clock, st.stats.time): Gold <= 3:30, <= 3
+   Boings + Clonks and >= 50% of the bolts; Silver <= 5:30 with <= 10. Results tiles: Bolts, Walls smashed, Boings,
+   Clonks.
    Room def: { title, legs: 0|1, look, tip, act, course: [items] }. Items, left to right (x is a cursor; y is the floor
    top, 440 at the start; up is smaller y):
      ['f', len]                  floor
@@ -415,14 +416,19 @@ const MECH = {
       if (changed && typeof fitActLabels === 'function') fitActLabels();
     } catch (e) { /* the framework's labels stay */ }
   }
-  function medal(st) {
-    const s = st.stats, t = s.time, oops = s.boings + s.clonks, frac = s.boltsTotal ? s.bolts / s.boltsTotal : 0;
-    const g = M.medal.gold, sv = M.medal.silver;
-    return t <= g[0] && oops <= g[1] && frac >= g[2] ? 'Gold' : t <= sv[0] && oops <= sv[1] ? 'Silver' : 'Bronze';
+  function medalValues(st) {
+    const s = st.stats;
+    return s ? { time: s.time, oops: s.boings + s.clonks, bolts: s.boltsTotal ? s.bolts / s.boltsTotal : 0 } : {};
   }
 
   MODES.mechduo = {
     MECH: M, plan, jobs, solids, floorAt, front,
+    medals: { bronze: 'Pilot the mech out of the factory', goals: [
+      { key: 'time', gold: M.medal.gold[0], silver: M.medal.silver[0] },
+      { key: 'oops', gold: M.medal.gold[1], silver: M.medal.silver[1], word: 'bump', text: n => (n === 0 ? 'No Boings or Clonks' : `${n} or fewer Boings + Clonks`) },
+      { key: 'bolts', gold: M.medal.gold[2], more: true, pct: true, word: 'the bolts' },
+    ] },
+    medalValues() { return medalValues(G.mst); },
     setup(st, L) {
       st.stats = { bolts: 0, boltsTotal: 0, walls: 0, boings: 0, clonks: 0, bonks: 0, punches: 0, clangs: 0, grabs: 0, jumps: 0, time: 0, zoneT: [] };
       st.goldUsed = []; st.tick = 0;
@@ -449,7 +455,7 @@ const MECH = {
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const md = medal(st), oops = s.boings + s.clonks;
+      const oops = s.boings + s.clonks;
       const words = oops === 0 ? 'Not one Boing or Clonk! Perfect piloting!' : oops <= 3 ? 'Legs and arms in perfect step!' : 'A bumpy ride, and you got the mech out together!';
       const gold = st.goldUsed.length ? ' · Gold help: ' + [...new Set(st.goldUsed)].map(k => ({ fist: 'gold fist', plank: 'gold plank', umbrella: 'gold umbrella', lift: 'gold lift' }[k])).join(', ') : '';
       return [
@@ -457,11 +463,9 @@ const MECH = {
         { label: 'Walls smashed', value: s.walls },
         { label: 'Boings', value: s.boings },
         { label: 'Clonks', value: s.clonks },
-        { label: 'Medal', value: md },
         words + (s.bonks ? ' Crates bonked: ' + s.bonks + '.' : '') + gold,
       ];
     },
-    medal,
   };
 
   /* ===================================== drawing ===================================== */

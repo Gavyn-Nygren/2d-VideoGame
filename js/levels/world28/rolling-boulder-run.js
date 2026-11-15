@@ -29,7 +29,8 @@
    into it with a huge crash and a cloud of dust ("Phew!"). Both in the doorway: the run is done. After Run 3 the
    doorway opens onto the desert.
    "Wait for me!": nobody can get more than 560 px ahead of their partner.
-   Results: time, squishes, whoopses, levers and rubble per player, close calls; medal from time and squishes.
+   Results: time, squishes, whoopses, levers and rubble per player, close calls.
+   Medal goals (MODES.boulderrun.medals, js/medals.js): Gold <= 3:20 with <= 1 squish; Silver <= 5:30 with <= 5.
    Course tokens (room def `course`, an array; x grows to the right, the floor is at BR.floor):
      'fN' floor N px; 'g' a gap (90 px); 'cN' crumbling floor N px (60 px tiles); 'D' a lever and its door; 'R' a
      rubble pile; 'S' a step (a block 50 px high); 'X' a falling ceiling rock; 'E' the chasm and the exit.
@@ -464,6 +465,11 @@ function brTick(st, dt) {
 }
 
 MODES.boulderrun = {
+  medals: { bronze: 'Outrun the boulder through every run', goals: [
+    { key: 'time', gold: 200, silver: 330 },
+    { key: 'squish', gold: 1, silver: 5, word: 'squish', text: n => `At most ${n} squish${n === 1 ? '' : 'es'}` },
+  ] },
+  medalValues() { const s = G.mst.stat; return s ? { time: s.time || G.time, squish: s.squish[0] + s.squish[1] } : {}; },
   BR,
   setup(st, L) { brSetup(st, L); },
   room(k, L) { brRoom(G.mst, L, k); },
@@ -483,14 +489,12 @@ MODES.boulderrun = {
   stats() {
     const st = G.mst, s = st.stat;
     if (!s) return [];
-    const sq = s.squish[0] + s.squish[1], t = s.time || G.time;
-    const medal = t <= 200 && sq <= 1 ? 'Gold' : t <= 330 && sq <= 5 ? 'Silver' : 'Bronze';
+    const sq = s.squish[0] + s.squish[1];
     const words = sq === 0 ? 'Not one squish! Fastest feet in the pyramid!' : sq <= 2 ? 'Only flattened a little. Great running!' : 'Lots of squishes, and you still got out!';
     return [
       { label: 'Squishes', values: s.squish.slice() },
       { label: 'Levers pulled', values: s.levers.slice() },
       { label: 'Rubble smashed', values: s.rubble.slice() },
-      { label: 'Medal', value: medal },
       words + ' Close calls: ' + s.close + ' · Whoopses: ' + (s.whoops[0] + s.whoops[1]) + (st.goldUsed ? ' · Gold help: tired boulder ×' + st.goldUsed : ''),
     ];
   },

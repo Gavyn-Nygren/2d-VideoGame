@@ -23,7 +23,7 @@
      'dust' 'leaf'), K.spark, K.confetti, K.dust, K.poof, K.drawParts(st, camX), K.drawPops(st, camX, camY), K.star.
    Messages and prompts: K.msg, K.BREAK, K.goldHelp(st, text, life) (THE gold-help banner: plays shrunkHelp and counts
      st.stats.helps), K.drawMsg, K.hint, K.hintOnce, K.prompter(st) then P.say(id, str, x, y, col, pulse).
-   HUD: K.chip, K.panel, K.meter, K.medal(gold, silver), K.helpLine(n).
+   HUD: K.chip, K.panel, K.meter, K.medal(gold, silver) (old; kits of later worlds copy it), K.helpLine(n).
    Pip and Bo: K.hero(id, x, y, o) the plain engine look, feet at x, y (o: face, rot, s, sy, sx, vy, stun).
    Garden scenery (bug's-eye view, daytime)
      K.sky(camX, t, o)               full screen, no transform: blue sky, a big soft sun, drifting clouds and the far-off

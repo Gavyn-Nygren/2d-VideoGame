@@ -56,7 +56,8 @@
      kinds, more HP, faster digging, every wave), so sooner or later the heart falls. A wave ends when its last zombie
      is down; then a FORT BONUS pays coins for how wide and how tall the fort is.
    - GAME OVER: the heart at 0. A banner, then the results card: waves survived (best kept in the browser as
-     'zfwave:<name>'). Medal (def.noTime): Gold at ZF.medal.gold waves survived, Silver at ZF.medal.silver.
+     'zfwave:<name>'). Medal (MODES.zombiefort.medals, js/medals.js; def.noTime): Gold at ZF.medal.gold waves survived,
+     Silver at ZF.medal.silver, Bronze for any stand.
    - When no person has pressed anything for ZF.idleAfter s, the zombies wait (nothing moves, the clocks stop).
    MODES.zombiefort exposes helpers the computer brain reads (target, cellAt, solid, canPlace, trees, ...). State in
    G.mst. Every top-level name starts with zf / ZF / zombiefort (Sfx.extra.zombiefort* too). */
@@ -675,6 +676,8 @@ function zfWaveSpec(n) {
 
   /* ---------- the mode ---------- */
   MODES.zombiefort = {
+    medals: { bronze: 'Defend the heart (any stand counts)', goals: [{ key: 'waves', gold: ZF.medal.gold, silver: ZF.medal.silver, more: true, word: 'wave' }] },
+    medalValues() { const s = G.mst.stats; return { waves: s ? s.waves : 0 }; },
     setup(st, L) {
       const N = COLS * ROWS;
       st.cell = new Array(N).fill(null); st.tun = new Array(N).fill(0); st.ver = 1; st.fieldVer = -1; st.fieldT = 0; st.fields = null;
@@ -781,14 +784,12 @@ function zfWaveSpec(n) {
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const medal = zfMedal(st);
-      const words = medal === 'Gold' ? 'An amazing stand! ' : medal === 'Silver' ? 'A strong fort and a long fight! ' : 'Build wider and taller next time! ';
+      const words = s.waves >= ZF.medal.gold ? 'An amazing stand! ' : s.waves >= ZF.medal.silver ? 'A strong fort and a long fight! ' : 'Build wider and taller next time! ';
       const rec = st.newBest ? 'New best!' : 'Best: ' + st.best + ' waves';
       return [
         { label: 'Waves survived', value: String(s.waves) },
         { label: 'Zombies stopped', values: s.downed.slice() },
         { label: 'Blocks built', values: s.built.slice() },
-        { label: 'Medal', value: medal },
         words + rec + ' · Time ' + fmtTime(s.playT) + ' · Biggest fort: ' + s.bestFort.wide + ' wide, ' + s.bestFort.tall + ' tall' + (s.turret ? ' · Turrets stopped ' + s.turret : '') + ' · Times down: ' + (s.downs[0] + s.downs[1]),
       ];
     },
@@ -802,7 +803,6 @@ function zfWaveSpec(n) {
     target: zfTarget, cellAt, solid: zSolid, canPlace, isPad, inHeart, isLane, fortSize, material, treeUp, upCost, payCost, canPay, zRect, HX, HY,
     test: { startWave, waveCleared, gameOver, spawnZombie, buildField },
   };
-  function zfMedal(st) { const w = st.stats.waves; return w >= ZF.medal.gold ? 'Gold' : w >= ZF.medal.silver ? 'Silver' : 'Bronze'; }
 
   /* ---------- drawing ---------- */
   const COLS_K = {

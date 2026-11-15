@@ -30,6 +30,8 @@ function lavaKey(id) {
   return pad ? 'stick ↓' : touch ? '▼' : id === 0 ? 'S' : '↓';
 }
 MODES.lava = {
+  medals: { bronze: 'Climb out of the lava', goals: [{ key: 'time', gold: 120, silver: 210 }, { key: 'ouches', gold: 1, silver: 5, text: n => n === 1 ? 'At most 1 lava ouch' : `${n} or fewer lava ouches`, gap: (v, n) => `${v - n} fewer ouch${v - n === 1 ? '' : 'es'}` }] },
+  medalValues() { const st = G.mst; return st && st.ouch ? { ouches: st.ouch[0] + st.ouch[1] } : {}; },
   rand: Math.random,   // cosmetic randomness only (bubbles, embers, smoke); tests swap in a seeded one
   setup(st, L) {       // match-long stats, then floor 1
     st.ouch = [0, 0]; st.presses = [0, 0]; st.ices = 0; st.closest = [999, 999]; st.near = [999, 999]; st.floorT = []; st.floorStart = 0; st.returns = [0, 0];
@@ -775,7 +777,6 @@ MODES.lava = {
     const closest = cl >= 999 ? 'The lava never even got close. Cool!' : cl < 0.5 ? 'Closest call: ' + NAMES[who] + '’s toes touched the lava!'
       : cl < 40 ? 'Closest call: ' + NAMES[who] + ', ' + Math.round(cl) + ' px from the lava!'
       : 'Never closer than ' + Math.round(cl) + ' px to the lava. Cool!';
-    const medal = time <= 120 && tot <= 1 ? 'Gold' : time <= 210 && tot <= 5 ? 'Silver' : 'Bronze';
     const words = tot === 0 ? 'Not one toe toasted!' : tot <= 3 ? 'Warm toes, cool heads!' : 'Hot stuff, and you made it together!';
     return [
       { label: 'Lava ouches', values: st.ouch.slice() },
@@ -783,7 +784,7 @@ MODES.lava = {
       { label: 'Ice pops', value: st.ices },
       closest,
       'Floors: ' + floors.map(mmss).join(' · '),
-      medal + ' medal · ' + words,
+      words,
     ];
   },
 };

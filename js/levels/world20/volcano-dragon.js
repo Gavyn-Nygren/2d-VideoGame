@@ -136,10 +136,10 @@
      GOLF        Do not set G.golf: main.step() would hand the whole tick to golfStep and skip MODES.dragon. Run your
                  own ball (GOLF constants, golfSolid, golfCollide(b) work on the grid; golfCollide reads
                  G.golf.bumps / G.golf.ball only when it hits an 'X' bumper), and draw rings with drawRing(rg).
-   STATS.  The results card shows 4 tiles: Time + Record (framework), then the core's Bonks [pip, bo] and Trophy; and
+   STATS.  The results card shows 3 tiles: Time + Record (framework), then the core's Bonks [pip, bo]; and
    2 lines: the phases' statLine()s and stat() tiles as text, last phase first ('Surf champ: Pip (2-1). Golf strokes:
-   4 (par 6).'), then the trophy and a happy end. Trophy by play time (G.time, which stops while Cinder waits for an
-   away person) and bonks: VD.medal (tuned with bots, see there).
+   4 (par 6).'), then a happy end. Medal by play time (G.time, which stops while Cinder waits for an away person) and
+   bonks: VD.medal (tuned with bots, see there), given to js/medals.js as MODES.dragon.medals.
 
    BRAINS (js/cpu/levels/world20/): the core brain is cpuBrain('dragon'); it dispatches every step to
    VD_BRAINS[st.phase] = { reset(bst, p, info), think(bst, p, o, dt, info, S) -> { left, right, jump, down, up, act,
@@ -684,6 +684,9 @@ function vdEndStep(st, dt) {
 }
 
 MODES.dragon = {
+  medals: { bronze: 'Make friends with Cinder', goals: [{ key: 'time', gold: VD.medal.gold.t, silver: VD.medal.silver.t },
+    { key: 'bonks', gold: VD.medal.gold.bonks, silver: VD.medal.silver.bonks, word: 'bonk' }] },
+  medalValues() { const s = G.mst.stats; return s ? { bonks: s.bonks[0] + s.bonks[1] } : {}; },
   rand: Math.random,   // gameplay randomness (vdRand); tests may swap in a seeded one (MODES.dragon.test.seed)
   setup(st, L) { vdInit(st); vdStartPhase(st, L); },
   room(k, L) { vdStartPhase(G.mst, L); },
@@ -702,15 +705,11 @@ MODES.dragon = {
   stats() { return vdStatsOut(G.mst); },
 };
 
-// The results card: the framework's Time and Record tiles, then Bonks and Trophy (4 tiles, a 2 x 2 grid), and two
-// lines: the phases' tiles and lines as text ("Surf champ: Pip (2-1). Golf strokes: 4 (par 6).") and the trophy.
-function vdMedal(st) {
-  const s = st.stats, bonks = s.bonks[0] + s.bonks[1], t = G.time, M = VD.medal;
-  return t <= M.gold.t && bonks <= M.gold.bonks ? 'Gold' : t <= M.silver.t && bonks <= M.silver.bonks ? 'Silver' : 'Bronze';
-}
+// The results card: the framework's Time and Record tiles, then Bonks (the medal is js/medals.js's), and two
+// lines: the phases' tiles and lines as text ("Surf champ: Pip (2-1). Golf strokes: 4 (par 6).") and a happy end.
 function vdStatsOut(st) {
-  const s = st.stats, bonks = s.bonks[0] + s.bonks[1], medal = vdMedal(st);
-  const out = [{ label: 'Bonks', values: [s.bonks[0], s.bonks[1]] }, { label: 'Trophy', value: medal }];
+  const s = st.stats, bonks = s.bonks[0] + s.bonks[1];
+  const out = [{ label: 'Bonks', values: [s.bonks[0], s.bonks[1]] }];
   const bits = [];
   for (const ph of VD_ORDER.slice().reverse()) {   // (surf first: the race is the last thing they did)
     const P = VD_PHASES[ph];
@@ -720,7 +719,7 @@ function vdStatsOut(st) {
     if (line) bits.push(line);
   }
   if (bits.length) out.push(bits.map(l => l + '.').join(' '));
-  out.push(medal + ' trophy! ' + (bonks === 0 ? 'Not one bonk! ' : bonks <= 3 ? 'Hardly toasty at all! ' : '') + 'Cinder is your friend now!');
+  out.push((bonks === 0 ? 'Not one bonk! ' : bonks <= 3 ? 'Hardly toasty at all! ' : '') + 'Cinder is your friend now!');
   return out;
 }
 

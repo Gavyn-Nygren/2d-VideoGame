@@ -51,6 +51,8 @@
      ['dock', h, x, w]           the landing dock (its top at h): the end of the climb
    MODES.balloon.plan (st.plan, made once a step) is the one place that reads what's ahead: the prompts, the job
    panels and the computer brain all read it.
+   Medal (MODES.balloon.medals, js/medals.js): Gold at <= 4:30 with <= 6 bumps (zaps + bird boings + bonks) and 50% of
+   the star coins, Silver at <= 6:00 with <= 16 bumps, else Bronze.
    Every global is prefixed balloon / BALLOON (and Sfx.extra.balloon*); all state lives in G.mst. */
 const BALLOON = {
   heatUp: 0.5, cool: 0.15, hot: 0.86, hotT: 1.1, sputT: 1.8, hover: 0.4, upK: 300, downK: 175, vyK: 1.4,
@@ -757,6 +759,8 @@ function balloonMirror(st) {
 
 MODES.balloon = {
   BALLOON,
+  medals: { bronze: 'Land at the Cloud Castle', goals: [{ key: 'time', gold: 270, silver: 360 }, { key: 'bumps', gold: 6, silver: 16, word: 'bump' }, { key: 'stars', gold: 0.5, more: true, pct: true, word: 'the star coins' }] },
+  medalValues() { const st = G.mst, s = st.stats; return s ? { bumps: s.zaps + s.birds + s.bonks, stars: s.stars / (st.starsAll || 1) } : {}; },
   plan: balloonPlan, heatFor: balloonHeatFor, windAt: balloonWindAt, pushAt: balloonPushAt, key: balloonKey, side: balloonSide,
   // where the computer's speech bubble goes: beside the envelope, on its own side
   bubblePos(p) {
@@ -795,13 +799,11 @@ MODES.balloon = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const t = G.time, all = st.starsAll || 1, frac = s.stars / all, bumps = s.zaps + s.birds + s.bonks;
-    const medal = t <= 270 && bumps <= 6 && frac >= 0.5 ? 'Gold' : t <= 360 && bumps <= 16 ? 'Silver' : 'Bronze';
+    const all = st.starsAll || 1, frac = s.stars / all, bumps = s.zaps + s.birds + s.bonks;
     const out = [
       { label: 'Star coins', value: s.stars + ' of ' + st.starsAll },
       { label: 'Party balloons', value: s.pbs + ' of ' + st.pbsAll },
       { label: 'Bumps', value: String(bumps) },
-      { label: 'Medal', value: medal },
     ];
     const words = frac >= 0.9 ? 'Every star in the sky! What a team!' : frac >= 0.6 ? 'A basket full of stars. Up, up and away!' : 'All the way up to the Cloud Castle together!';
     out.push(words + ' Zaps: ' + s.zaps + ', bird boings: ' + s.birds + ', bonks: ' + s.bonks + ', bounces: ' + s.bounces + ', Gus tows: ' + s.tows + '.');

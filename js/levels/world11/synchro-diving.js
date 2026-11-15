@@ -15,7 +15,7 @@
    judge (counts double) compares the two divers: takeoff together, each move of the dive together (only moves that
    match the call, or the lead's first max moves, count), entry together (worth less when the moves did not match or
    the entries differ). So a partner who only jumps, or two mashers, get little sync.
-   Dive points = (Pip card + Bo card + 2 x sync card) x the dive's difficulty. Gold, silver or bronze by the total; the
+   Dive points = (Pip card + Bo card + 2 x sync card) x the dive's difficulty. Gold, silver or bronze by the total (MODES.dive.medals); the
    level is scored by points, not time (noTime). Help, gold and announced: after a messy dive, "Gold air time" (+0.3 s).
    The mode owns the tick, the whole picture and the HUD (def.ownStep + def.ownHUD); the grid is empty apart from the
    spawns. Players are mirrored into p.x / p.y every step for name tags and speech bubbles.
@@ -400,6 +400,11 @@ function diveFx(st, dt) {
 }
 
 MODES.dive = {
+  // medal goals (js/medals.js): the points total, from DIVE.medals (the podium medal uses the same lines, diveMedal)
+  medals: { bronze: 'Finish every dive', goals: [
+    { key: 'points', gold: DIVE.medals[0][1], silver: DIVE.medals[1][1], more: true, word: 'point' },
+  ] },
+  medalValues() { const st = G.mst; return { points: Math.round((st.total || 0) * 10) / 10 }; },
   DIVE,
   key: diveKey, cards: diveCards, flipDur: diveFlipDur, moveDur: diveMoveDur, go: diveGo,
   setup(st, L) { diveSetup(st, L); },
@@ -425,7 +430,6 @@ MODES.dive = {
     const n = Math.max(1, st.hist.length), m = diveMedal(st.total);
     const out = [
       { label: 'Points', value: st.total.toFixed(1) },
-      { label: 'Medal', value: m[0] },
       { label: 'Sync', value: (s.syncSum / n).toFixed(1) + ' / 10' },
       { label: 'Clean dives', values: [s.rips[0], s.rips[1]] },
     ];
@@ -434,7 +438,7 @@ MODES.dive = {
     if (best) out.push('Best dive: ' + best.title + ' (' + best.h + ' m), ' + best.score.toFixed(1) + ' points, sync ' + best.S.toFixed(1));
     const flops = s.flops[0] + s.flops[1] + s.cannons[0] + s.cannons[1];
     const words = m[0] === 'Gold' ? (s.syncSum / n >= 8.5 ? 'Perfectly in sync!' : 'What a team!') : m[0] === 'Silver' ? 'Lovely diving together!' : flops >= 4 ? 'The biggest splashes in town!' : 'Splashing good fun!';
-    out.push(m[0] + ' medal · ' + words);
+    out.push(words);
     return out;
   },
 };

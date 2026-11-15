@@ -610,6 +610,10 @@ function spacewalkMirror(st) {
 
 MODES.spacewalk = {
   SPACEWALK,
+  // medal (js/medals.js): Gold by 3:30 with at most 6 bonks and tows together, Silver by 6:40 with at most 15
+  medals: { bronze: 'Fix the station', goals: [{ key: 'time', gold: 210, silver: 400 },
+    { key: 'oops', gold: 6, silver: 15, text: n => (n === 0 ? 'No bonks or tows' : `${n} or fewer bonks and tows`), gap: (v, n) => `${Math.max(1, Math.ceil(v - n))} fewer bonks and tows` }] },
+  medalValues() { const s = G.mst.stats; return s ? { oops: s.bonks + s.tows } : {}; },
   plan: spacewalkPlan, key: spacewalkKey, grabR: spacewalkGrabR, fixR: spacewalkFixR, Lmax: spacewalkLmax,
   setup(st, L) {
     st.stats = { bonks: 0, tows: 0, helps: 0, grabs: [0, 0], fixes: [0, 0], spinT: [0, 0], roomT: [], roomTitles: [] };
@@ -635,13 +639,11 @@ MODES.spacewalk = {
   stats() {
     const s = G.mst.stats;
     if (!s) return [];
-    const oops = s.bonks + s.tows, t = G.time;
-    const medal = t <= 210 && oops <= 6 ? 'Gold' : t <= 400 && oops <= 15 ? 'Silver' : 'Bronze';
+    const oops = s.bonks + s.tows;
     const out = [
       { label: 'Panels fixed', values: s.fixes.slice() },
       { label: 'Bonks', value: s.bonks },
       { label: 'Tows', value: s.tows },
-      { label: 'Medal', value: medal },
     ];
     const words = oops === 0 ? 'Not one bonk or tow. Smooth spacewalkers!' : oops <= 4 ? 'Swing, grab, swap: great teamwork out there!' : 'Lots of boings, and you fixed the whole station together!';
     out.push(words + ' Handles grabbed: Pip ' + s.grabs[0] + ', Bo ' + s.grabs[1] + '.');

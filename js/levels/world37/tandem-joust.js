@@ -39,7 +39,7 @@
      help: with the gold lance a late jump still clears (a jump up to 0.35 s late still clears), so a
      rider who keeps jumping late isn't stuck going round the same half stretch.
    IDLE: no person presses anything for 12 s: "Taking a break", the course and the clock wait.
-   MEDAL: by time. Gold <= 175 s, Silver <= 300 s.
+   MEDAL (MODES.tandemjoust.medals, js/medals.js): by time. Gold <= 175 s, Silver <= 300 s.
    OUTFITS (Gavyn's rule): the overslept knight's borrowed armour, shared badly (TOURNEY_OUTFITS 'borrowed'). Pip in
      the oversized breastplate and a cooking-pot helmet, Bo in the oversized great helm with a blue plume (the visor
      drops at bumps). The lancer has the buckler on the back, the rider the knight's one spur; a Bonk knocks the pot or
@@ -729,9 +729,10 @@
       P.say(Ln, s, sp.lancer.x - 30, sp.lancer.y - 60, col, pulse);
     }
   }
-  const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
   MODES.tandemjoust = {
-    S, R, HY, plan, medal, eff: st => eff(st),
+    S, R, HY, plan, eff: st => eff(st),
+    medals: { bronze: 'Finish the joust run', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }] },
+    medalValues() { return {}; },
     setup(st, L) {
       st.stats = { rings: 0, perfect: 0, good: 0, bonks: 0, unhorsed: 0, bestStreak: 0, jumps: 0, clears: 0, ducks: 0, knights: 0, pops: 0, soaks: 0, vaults: 0, missed: [], bonkWhy: [], helps: 0, roomT: [] };
       st.rings = 0; st.streak = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0; st.T = 0; st.items = null;
@@ -750,7 +751,6 @@
         { label: 'Rings', value: st.rings + ' of ' + S.rings },
         { label: 'Perfect hits', value: String(s.perfect) },
         { label: 'Bonks', value: String(s.bonks) },
-        { label: 'Medal', value: medal(G.time) },
       ];
       out.push('Unhorsed: ' + s.unhorsed + '. Longest hit streak: ' + s.bestStreak + '. Melons and water skins popped: ' + s.pops + '. The knight never found out!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

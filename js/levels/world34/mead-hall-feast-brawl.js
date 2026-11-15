@@ -40,7 +40,7 @@
    GOLD HELP (announced, counted): 3 tantrums in a feast: a gold serving horn, patience drains 40% slower for the rest
      of the feast.
    IDLE: no person presses anything for 12 s: "Taking a break", the hall waits and the clock stops.
-   MEDAL: by time: Gold <= 190 s, Silver <= 330 s.
+   MEDAL (MODES.meadhall.medals, js/medals.js): by time: Gold <= 190 s, Silver <= 330 s.
    MODES.meadhall.plan(st) lists the open orders (most urgent first, with the charge needed from each end), what to
    pick at the rack, where to stand, and the SKOL / wrestle / platter jobs (the prompts, the HUD chips and the computer
    brain read it). Everything lives inside this block; sounds are Sfx.extra.meadhall*. */
@@ -923,10 +923,11 @@
     if (h.ground === 'floor' && h.x < 300 && o.ground && o.ground !== 'floor') { out.say = 'Food at the rack ◀'; out.col = '#ffe7a8'; return out; }
     return out;
   }
-  const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
 
   MODES.meadhall = {
-    S, plan, best, medal, chargeFor, stopAt, servingAt, atRack, LEDGES,
+    S, plan, best, chargeFor, stopAt, servingAt, atRack, LEDGES,
+    medals: { bronze: 'Feed the whole mead hall', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }] },
+    medalValues() { return {}; },
     setup(st, L) {
       st.stats = { fed: 0, wrong: 0, messes: 0, brawls: 0, tantrums: 0, best: 0, tosses: 0, catches: 0, skols: 0, wrestles: 0, platters: 0, platterLost: 0, ducks: 0, bonks: 0, dog: 0, helps: 0, feastT: [] };
       st.streak = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.seed = (Math.random() * 4294967296) >>> 0 || 7;
@@ -945,7 +946,6 @@
         { label: 'Vikings fed', value: String(s.fed) },
         { label: 'Wrong orders', value: String(s.wrong) },
         { label: 'Messes', value: String(s.messes) },
-        { label: 'Medal', value: medal(G.time) },
       ];
       out.push('Brawls: ' + s.brawls + '. Best streak of right orders: ' + s.best + '. SKOL mugs filled: ' + s.skols + '. The hall is full and happy!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

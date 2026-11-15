@@ -53,7 +53,7 @@ const only = opt('only', '');
         }
         P.keys.clear();
         const st = G.mst, s = st.stats;
-        const medal = (G.lmode.stats().find(x => x && x.label === 'Medal') || {}).value;
+        const medal = (G.results[G.levelIndex] && G.results[G.levelIndex].medal) ? ['none', 'Bronze', 'Silver', 'Gold'][G.results[G.levelIndex].medal.tier] : undefined;
         return { mode: G.mode, t: +G.time.toFixed(1), wall: +wall.toFixed(0), room: G.room + 1, del: st.delivered + '/' + st.totalAll, spills: s.spills, missed: s.missed, helps: s.helps, hard: s.hard, medal, roomT: s.roomT.map(x => x == null ? '-' : x.toFixed(0)).join(',') };
       }, { a, b, seed, limit });
       const cleared = r.mode !== 'play';

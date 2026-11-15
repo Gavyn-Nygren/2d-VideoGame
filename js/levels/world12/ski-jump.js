@@ -24,7 +24,7 @@
      the jumper is in the air) with a small air tank per jump, full again before every take-off.
    Score per jump: distance points (60 at the K line, ± per metre) + style (3 penguin judges, 6-20 each) + 5 per ring.
    Telemark: only the first ▼ press in the air (after its first 0.2 s) counts, and it must come within 0.5 s of touchdown.
-   Stars per hill (1 for both jumps counted, 2 and 3 by the hill's points), 12 in all; def.noTime.
+   Stars per hill (1 for both jumps counted, 2 and 3 by the hill's points), 12 in all (medal: MODES.skijump.medals); def.noTime.
    def.ownStep: the mode runs the whole tick. The players stay alive; the jumper is hidden while the engine draws
    the players (draw) and drawn on skis in drawTop. Only MODES.skijump and Sfx.extra.skijump* are visible outside.
    MODES.skijump.api has helpers (hill geometry, distances, key names) for the computer brain and bot tests. */
@@ -1069,6 +1069,9 @@
   const fmtPts = v => (Math.round(v * 2) / 2).toFixed(v % 1 ? 1 : 0);
 
   MODES.skijump = {
+    // medal goals (js/medals.js): the stars, 12 in all
+    medals: { bronze: 'Jump all four hills', goals: [{ key: 'stars', gold: 10, silver: 7, more: true, word: 'star' }] },
+    medalValues() { const st = G.mst; return { stars: (st.hillStars || []).reduce((a, b) => a + b, 0) }; },
     CFG: SKI, HILLS: SJ_HILLS,
     setup(st, L) {
       Object.assign(st, { total: 0, hillStars: [0, 0, 0, 0], hillTotal: [0, 0, 0, 0], clock: 0, fx: [], idle: [0, 0],
@@ -1093,13 +1096,12 @@
     hud() { if (G.mst.j) sjHud(G.mst); },
     stats() {
       const st = G.mst, s = st.stats, stars = st.hillStars.reduce((a, b) => a + b, 0);
-      const medal = stars >= 10 ? 'Gold medal' : stars >= 7 ? 'Silver medal' : 'Bronze medal';
       return [
         { label: 'Stars', value: stars + ' of 12' },
         { label: 'Points', value: fmtPts(st.total) },
         { label: 'Longest jump (m)', values: s.longest.map(m => m.toFixed(1)) },
         { label: 'Telemarks', values: s.teles.slice() },
-        medal + '! ' + (stars >= 10 ? 'Flying champions!' : stars >= 7 ? 'Super soaring!' : 'Great teamwork on the hill!') +
+        (stars >= 10 ? 'Flying champions!' : stars >= 7 ? 'Super soaring!' : 'Great teamwork on the hill!') +
           (s.rings ? ' Rings: ' + s.rings + '.' : ''),
       ];
     },

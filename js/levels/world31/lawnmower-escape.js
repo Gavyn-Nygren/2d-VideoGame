@@ -25,7 +25,8 @@
    GOLD HELP (only while both are playing, announced, counted): caught twice in one stretch = the gold sprinkler soaks
      the mower, which sputters at 60% speed for 20 s.
    IDLE: no person presses anything for 12 s: "Taking a break", the mower waits and the clock stops.
-   MEDAL: Gold <= S.goldT with <= 1 close call and >= 75% of the dew; Silver <= S.silverT with <= 5 close calls.
+   MEDAL goals (MODES.mowrun.medals, js/medals.js): Gold <= S.goldT with <= 1 close call and >= 75% of the dew;
+   Silver <= S.silverT with <= 5 close calls.
    MODES.mowrun.plan(st) says what each job should do now (the prompts, the HUD chips and the computer brain read it).
    Everything lives inside this block; sounds are Sfx.extra.mowrun*. */
 (() => {
@@ -661,10 +662,15 @@
     }
   }
   const FONT = K.FONT;
-  const medal = (t, caught, frac) => K.medal(t <= S.goldT && caught <= 1 && frac >= 0.75, t <= S.silverT && caught <= 5);
 
   MODES.mowrun = {
-    S, compile, plan, medal,
+    S, compile, plan,
+    medals: { bronze: 'Escape the lawnmower', goals: [
+      { key: 'time', gold: S.goldT, silver: S.silverT },
+      { key: 'caught', gold: 1, silver: 5, word: 'close call', text: n => (n ? `At most ${n} close call${n === 1 ? '' : 's'}` : 'No close calls') },
+      { key: 'dew', gold: 0.75, more: true, pct: true, word: 'the dew' },
+    ] },
+    medalValues() { const st = G.mst, s = st.stats; return s ? { caught: s.caught, dew: st.dew / (st.totalDew || 1) } : {}; },
     setup(st, L) {
       st.stats = { chops: 0, boosts: 0, hoists: 0, caught: 0, helps: 0, roomT: [] };
       st.dew = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0;
@@ -681,12 +687,10 @@
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const frac = st.dew / (st.totalDew || 1);
       const out = [
         { label: 'Dewdrops', value: st.dew + ' of ' + st.totalDew },
         { label: 'Close calls', value: String(s.caught) },
         { label: 'Grass chopped', value: String(s.chops) },
-        { label: 'Medal', value: medal(G.time, s.caught, frac) },
       ];
       out.push('Boosts: ' + s.boosts + '. Pull-ups: ' + s.hoists + '. The mower never got you both for good!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

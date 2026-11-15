@@ -159,17 +159,18 @@
                  tthFont(px) / tthLilita(px) the two fonts.   tthBig() -> true on phones (use bigger HUD text: your
                  own HUD texts must be readable at 844x390, about 1.4x).
      Random      tthRand() (all gameplay randomness; tests seed it). No Math.random in gameplay.
-   STATS.  The results card shows 4 tiles: Time + Record (framework), then the core's Bumps and Trophy; and 2 lines:
-   the phases' statLine()s and stat()s as text, then the trophy line. Trophy by play time (G.time, which stops while
-   the Thief waits for an away person) and bumps: TTH.medal (tuned with bots).
+   STATS.  The results card shows 4 tiles: Time + Record (framework), then the core's Bumps and Treasures; and 2 lines:
+   the phases' statLine()s and stat()s as text, then the closing line. MEDAL goals (MODES.timethief.medals, built from
+   TTH.medal, tuned with bots; js/medals.js shows them): play time (G.time, which stops while the Thief waits for an
+   away person) and bumps (tthBumps).
    CHECKPOINTS (core only). The core saves { v, era, time, stats, loot } in the browser (store key 'tth:cp') for every
    era after the first: as soon as the era before it is won (tthPhaseDone, so quitting during the portal cutscene
    keeps the win) and again when it starts. Loading the level (R, "Restart this era" on the pause card, picking the
    level again, another day) starts at that era with the stats as they were at its start, and tells the pair so (a
    gold "Checkpoint" line on the room card and for 6 s of play). The CLOCK and the BUMPS are never rolled back: every
    TTH.cpEvery s of play (and on the pause card) the core adds live: { time, bumps, team } to the checkpoint, and a
-   restart goes on from those, so the Time, the Record and the Trophy count everything that was played (restarting an
-   era is no way to a better trophy). The pause card has "Start over from Era 1" (two presses: it asks first);
+   restart goes on from those, so the Time, the Record and the medal count everything that was played (restarting an
+   era is no way to a better medal). The pause card has "Start over from Era 1" (two presses: it asks first);
    clearing the level forgets the checkpoint. A reload during the ending replays the race (its checkpoint stays until
    levelClear()). A stored value that is not a well-formed checkpoint of this version (TTH.cpV: raise it when the
    saved shape changes, e.g. when an era's stat() needs new fields in st.stats.<phase>) is dropped: Era 1.
@@ -196,7 +197,7 @@ const TTH = {
   celebT: 1.6, leaveT: 4.4,    // calm after a big moment; the portal cutscene between eras
   badgeT: 5, swapT: 2.2, hintLife: 3, newsLife: 3.2, sayLife: 2.6, arriveT: 1.1,
   bonk: { vx: 230, vy: 300, stun: 0.7, slide: 0.3, safe: 1.4, popV: 320 },
-  // the trophy: play time (s, idle waits not counted) and bumps (players' and the team's; race hits are no bumps).
+  // the medal goals (MODES.timethief.medals): play time (s, idle waits not counted) and bumps (players' and the team's; race hits are no bumps).
   // PLACEHOLDER until the whole level is tuned with bots.
   medal: { gold: { t: 1800, bumps: 30 }, silver: { t: 2700, bumps: 80 } },
   thief: { s: 0.9 },
@@ -677,6 +678,11 @@ function tthEndStep(st, dt) {
 // each era plays the song of the world it visits (js/music-tracks.js); the End of Time and the race home play the boss song
 const TTH_MUSIC = { dino: 'dino', henge: 'wizard', troy: 'escapes', olympics: 'summer', vikings: 'viking', davinci: 'castle', wright: 'sky', moon: 'space' };
 MODES.timethief = {
+  medals: { bronze: 'Catch the Time Thief and save history', goals: [
+    { key: 'time', gold: TTH.medal.gold.t, silver: TTH.medal.silver.t },
+    { key: 'bumps', gold: TTH.medal.gold.bumps, silver: TTH.medal.silver.bumps, word: 'bump' },
+  ] },
+  medalValues() { const st = G.mst; return st && st.stats ? { bumps: tthBumps(st) } : {}; },
   music() { const st = G.mst, k = st && st.phase; return k && TTH_MUSIC[k] ? { song: TTH_MUSIC[k] } : null; },
   rand: Math.random,   // gameplay randomness (tthRand); tests may swap in a seeded one (MODES.timethief.test.seed)
   cpOn: false,         // tests: true makes checkpoints work under G.manual too
@@ -701,7 +707,7 @@ MODES.timethief = {
   step(dt) {
     const st = G.mst;
     tthStep(st, dt);
-    // the clock stops while the Thief waits for an away person: the trophy and the record count play time only
+    // the clock stops while the Thief waits for an away person: the medal and the record count play time only
     if (st.thief && st.idle && !st.cut && G.mode === 'play') { G.time = Math.max(0, G.time - dt); st.stats.idleT += dt; }
     st.askOver = 0;   // (playing again: "Start over from Era 1" asks anew)
     if (st.cp && (st.cpT -= dt) <= 0) tthCpLive(st);
@@ -729,15 +735,11 @@ MODES.timethief = {
   },
 };
 
-// The results card: the framework's Time and Record tiles, then Bumps and Trophy (4 tiles), and two lines.
+// The results card: the framework's Time and Record tiles, then Bumps and Treasures (4 tiles), and two lines.
 const tthBumps = st => st.stats.bumps[0] + st.stats.bumps[1] + st.stats.team;
-function tthMedal(st) {
-  const bumps = tthBumps(st), t = G.time, M = TTH.medal;
-  return t <= M.gold.t && bumps <= M.gold.bumps ? 'Gold' : t <= M.silver.t && bumps <= M.silver.bumps ? 'Silver' : 'Bronze';
-}
 function tthStatsOut(st) {
-  const bumps = tthBumps(st), medal = tthMedal(st), saved = st.loot.filter(Boolean).length;
-  const out = [{ label: 'Bumps', value: bumps }, { label: 'Trophy', value: medal }];
+  const bumps = tthBumps(st), saved = st.loot.filter(Boolean).length;
+  const out = [{ label: 'Bumps', value: bumps }, { label: 'Treasures', value: saved + ' of ' + st.loot.length }];
   const bits = [];
   for (const ph of TTH_ORDER.slice().reverse()) {   // (the race first: it is the last thing they did)
     const P = TTH_PHASES[ph];
@@ -746,9 +748,8 @@ function tthStatsOut(st) {
     if (tile && tile.label) bits.push(tile.label + ': ' + (tile.values ? tile.values.join(' - ') : tile.value));
     if (line) bits.push(line);
   }
-  bits.push('Saved ' + saved + ' of ' + st.loot.length + ' treasures');
-  out.push(bits.map(l => l + '.').join(' '));
-  out.push(medal + ' trophy! ' + (bumps === 0 ? 'Not one bump! ' : '') + 'History is safe, and the Time Thief guards it now!');
+  if (bits.length) out.push(bits.map(l => l + '.').join(' '));
+  out.push((bumps === 0 ? 'Not one bump! ' : '') + 'History is safe, and the Time Thief guards it now!');
   return out;
 }
 

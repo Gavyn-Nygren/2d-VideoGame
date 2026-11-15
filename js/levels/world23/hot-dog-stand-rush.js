@@ -55,8 +55,9 @@
      until one useful press. So the computer can't get through a shift alone (and it stops too after CPU.idleStop).
    - Medal by happy customers, not time: Gold = >= 85% of the fairgoers who reached the window left happy (happy /
      (happy + missed)), 3 of the 4 shift goals reached and 2 stars a customer on average; Silver = >= 60% happy and at
-     least half as many happy customers as the four goals together (10 of 19); else Bronze.
-   - Results: Happy customers (N of M), Missed, Hot dogs made and Lemonade per player, the medal, plus stars, shift
+     least half as many happy customers as the four goals together (10 of 19); else Bronze. The goals are
+     MODES.hotdog.medals (js/medals.js); medalOf (same rules) is kept for the results words and the tools.
+   - Results: Happy customers (N of M), Missed, Hot dogs made and Lemonade per player, plus stars, shift
      goals reached and the gold help used.
    Room def: { title, cook: 0|1, look, tip, news, act, len (s), goal, tops ('km'...), topMin, topMax, two, three,
    maxDogs, bigAt (line length that adds a hot dog), lemon (chance), every (s between fairgoers), first (s), patience,
@@ -840,8 +841,22 @@ const HOTDOG = {
     return pct >= 0.6 && s.happy >= goals / 2 ? 'Silver' : 'Bronze';
   }
 
+  // the medal goals (js/medals.js), the same rules as medalOf: Silver's happy-customer count is half of all the shift goals
+  const goalsAll = ((LEVELS.find(l => l.mode === 'hotdog') || {}).rooms || []).reduce((a, r) => a + (r.goal || 0), 0);
   MODES.hotdog = {
     HD, TOPS,
+    medals: { bronze: 'Work all four shifts', goals: [
+      { key: 'happyPct', gold: 0.85, silver: 0.6, more: true, pct: true, word: 'the fairgoers happy' },
+      { key: 'happy', silver: Math.ceil(goalsAll / 2), more: true, word: 'happy customer' },
+      { key: 'goals', gold: 3, more: true, word: 'shift goal', text: n => n + ' of the 4 shift goals' },
+      { key: 'starsEach', gold: 2, more: true, text: n => n + ' stars a customer on average', gap: () => 'more stars a customer' },
+    ] },
+    medalValues() {
+      const s = G.mst.stats;
+      if (!s) return {};
+      const n = s.happy + s.missed;
+      return { happyPct: n ? s.happy / n : 0, happy: s.happy, goals: s.goals, starsEach: s.happy ? s.stars / s.happy : 3 };
+    },
     plan, job, jobText, atJob, stationAt, sausageState, goldenLeft, uncovered, urgent, waiting, medalOf, dogKey,
     setup(st, L) { setup(st, L); },
     room(k, L) { room(G.mst, L, k); },
@@ -863,10 +878,10 @@ const HOTDOG = {
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const n = s.happy + s.missed, medal = medalOf(st);
+      const n = s.happy + s.missed, tier = medalOf(st);
       const words = !s.missed ? 'Not one fairgoer walked off! The best hot dogs at the fair!'
-        : medal === 'Gold' ? 'Sizzling teamwork: the whole fair is full and happy!'
-        : medal === 'Silver' ? 'Lots of happy fairgoers and yummy hot dogs!' : 'Every hot dog made someone smile. Great job, you two!';
+        : tier === 'Gold' ? 'Sizzling teamwork: the whole fair is full and happy!'
+        : tier === 'Silver' ? 'Lots of happy fairgoers and yummy hot dogs!' : 'Every hot dog made someone smile. Great job, you two!';
       const goldNames = { bell: 'Gold bell', timer: 'Gold timer', jug: 'Gold jug' };
       const gold = st.goldUsed.length ? ' · Gold help: ' + [...new Set(st.goldUsed.map(k => goldNames[k] || 'Gold'))].join(', ') : '';
       return [
@@ -874,7 +889,6 @@ const HOTDOG = {
         { label: 'Missed', value: String(s.missed) },
         { label: 'Hot dogs made', values: s.made.slice() },
         { label: 'Lemonade', values: s.lemon.slice() },
-        { label: 'Medal', value: medal },
         words + ' Stars: ' + s.stars + ' of ' + n * 3 + ' · Shift goals: ' + s.goals + ' of ' + s.shifts.length + gold,
       ];
     },

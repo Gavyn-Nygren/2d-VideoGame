@@ -658,6 +658,12 @@ function quakeFx(st, dt) {
 
 /* ---------- the mode ---------- */
 MODES.quake = {
+  // medal goals (js/medals.js): time and slips (Whoas plus falls)
+  medals: { bronze: 'Cross the shaking city', goals: [
+    { key: 'time', gold: 200, silver: 330 },
+    { key: 'slips', gold: 3, silver: 9, word: 'slip', text: n => `${n} or fewer slips (Whoas and falls)` },
+  ] },
+  medalValues() { const S = G.mst.stats; return S ? { slips: S.whoas + G.falls } : {}; },
   rand: Math.random,   // wave timing and cosmetic randomness; tests swap in a seeded one
   setup(st, L) {
     st.stats = { held: [0, 0], saved: [0, 0], whoas: 0, oops: [0, 0], bestStreak: 0, fast: null, crates: 0, boings: 0, bonks: 0, golds: 0, rides: [0, 0], roomT: [] };
@@ -720,15 +726,14 @@ MODES.quake = {
   drawTop() { quakeDrawTop(G.mst); },
   hud() { quakeHud(G.mst); },
   stats() {
-    const st = G.mst, S = st.stats, t = G.time, slips = S.whoas + G.falls;
-    const medal = t <= 200 && slips <= 3 ? 'Gold' : t <= 330 && slips <= 9 ? 'Silver' : 'Bronze';
+    const st = G.mst, S = st.stats, slips = S.whoas + G.falls;
     const words = slips === 0 ? 'Steady as a rock!' : slips <= 4 ? 'Wobbly, but wonderful!' : 'Shaky streets, brave hearts!';
     const out = [
       { label: 'Bridges held', values: S.held.slice() },
       { label: 'Wobbles saved', values: S.saved.slice() },
       { label: 'Whoas', value: S.whoas },
       { label: 'Steady in a row', value: S.bestStreak },
-      medal + ' medal · ' + words,
+      words,
     ];
     if (S.fast) out.push('Fastest crossing: ' + NAMES[S.fast.id] + ' in ' + S.fast.t.toFixed(1) + ' s');
     return out;

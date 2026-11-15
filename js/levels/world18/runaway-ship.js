@@ -900,6 +900,9 @@ function runshipSplashPos(st, b, xf) {
 
 MODES.runship = {
   RUNSHIP,
+  // the medal (js/medals.js): Gold by 4:00 with at most 4 bonks, Silver by 5:30 with at most 12
+  medals: { bronze: 'Reach Treasure Cove', goals: [{ key: 'time', gold: 240, silver: 330 }, { key: 'bonks', gold: 4, silver: 12, word: 'bonk' }] },
+  medalValues() { const s = G.mst.stats; return s ? { bonks: s.bonks } : {}; },
   needs: runshipNeeds, xf: runshipXf, toScreen: runshipToScreen, groundAt: runshipGroundAt, cleatWanted: runshipCleatWanted,
   setup(st, L) {
     let coinsAll = 0;
@@ -932,7 +935,6 @@ MODES.runship = {
       { label: 'Bonks', value: s.bonks },
       { label: 'Leaks patched', values: s.fixed.slice() },
       { label: 'Coins', value: s.coins + ' of ' + s.coinsAll },
-      { label: 'Medal', value: runshipMedal(G.time, s) },
     ];
     let best = -1;
     s.roomT.forEach((t, k) => { if (t == null) return; if (best < 0 || t < s.roomT[best]) best = k; });
@@ -943,12 +945,6 @@ MODES.runship = {
     return out;
   },
 };
-// the medal: Gold by 4:00 with at most 4 bonks, Silver by 5:30 with at most 12
-const RUNSHIP_MEDAL = { gold: 240, silver: 330, goldBonks: 4, silverBonks: 12 };
-function runshipMedal(t, s) {
-  const M = RUNSHIP_MEDAL;
-  return t <= M.gold && s.bonks <= M.goldBonks ? 'Gold' : t <= M.silver && s.bonks <= M.silverBonks ? 'Silver' : 'Bronze';
-}
 
 /* ---------- drawing ---------- */
 function runshipDrawWorld(st) {

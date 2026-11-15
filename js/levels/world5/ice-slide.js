@@ -237,6 +237,8 @@
   }
 
   MODES.ice = {
+    medals: { bronze: 'Slide out of every room', goals: [{ key: 'time', gold: 105, silver: 180 }, { key: 'neat', gold: 1, more: true, text: () => 'Every room in the fewest moves', show: v => Math.round(v * 100) + '% neat', gap: () => 'every room in the fewest moves' }] },
+    medalValues() { const s = G.mst.stats, rooms = LEVELS[G.levelIndex].rooms || []; if (!s || !rooms.length) return {}; return { neat: s.roomMoves.filter((m, i) => rooms[i] && rooms[i].ice && m <= rooms[i].ice.par).length / rooms.length }; },
     rand: Math.random,
     K: ICE,          // (tests read the numbers)
     keyName: iceKey, // (tests: the device's name for ▼)

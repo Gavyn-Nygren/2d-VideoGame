@@ -30,7 +30,7 @@
    good candies ride past the trapdoor into the recycler.
    An unwrapped toffee anywhere but on the wrapper's belt goes "Back to the wrapper!" after a moment (a toffee in the gift
    box is a lesson, not a Blech). When junk fills the floor and belts, the oldest junk poofs back so the chutes never stall.
-   Medal: Gold ≤ 4:00 with ≤ 3 Blechs, Silver ≤ 7:00 with ≤ 8 (two computers about 2:40, noisy computer pairs 3:20-4:00, prompt-following scripted kids 3:00-4:00).
+   Medal (MODES.conveyor.medals, js/medals.js): Gold ≤ 4:00 with ≤ 3 Blechs, Silver ≤ 7:00 with ≤ 8 (two computers about 2:40, noisy computer pairs 3:20-4:00, prompt-following scripted kids 3:00-4:00).
    Room def: { title, sorter: 0|1, tip, act, belts: [{ id, name, c0, c1, r, col, ends: [l, r] ('fall'|'wall'|'mouth'),
    st (station x), spd, dir }], chutes: [{ belt, x, every, mix: [kinds] }], bins: [{ kind, x, y }], shelves: [[c0, c1,
    r]], lift: { x0, x1, lo, hi, st }, trap: { belt, c0, c1, st }, wrap: { belt, x }, order: { kind: n } }.
@@ -841,6 +841,10 @@ function conveyorActLabels(st) {
 }
 
 MODES.conveyor = {
+  // medal (js/medals.js): two computers about 2:40 with no Blechs; noisy computer pairs 3:20-4:00; a parent and a kid take longer and mix up a few bins
+  medals: { bronze: 'Send out every order', goals: [{ key: 'time', gold: 240, silver: 420 }, { key: 'blechs', gold: 3, silver: 8, text: n => (n === 1 ? '1 or fewer Blechs' : `${n} or fewer Blechs`),
+    gap: (v, n) => { const d = Math.max(1, Math.ceil(v - n)); return d + (d === 1 ? ' fewer Blech' : ' fewer Blechs'); } }] },
+  medalValues() { const s = G.mst.stats; return s ? { blechs: s.blechs } : {}; },
   CONVEYOR, KINDS: CONVEYOR_KINDS,
   needs: conveyorNeeds, useful: conveyorUseful, candyUseful: conveyorCandyUseful, binFor: conveyorBinFor, inReach: conveyorInReach, tossTarget: conveyorTossTarget,
   stationAt: conveyorStationAt, canGrab: conveyorCanGrab, key: conveyorKey,
@@ -858,14 +862,11 @@ MODES.conveyor = {
   stats() {
     const st = G.mst, s = st.stats;
     if (!s) return [];
-    const t = G.time, b = s.blechs;
-    // (two computers: about 2:40 with no Blechs; noisy computer pairs 3:20-4:00; a parent and a kid take longer and mix up a few bins)
-    const medal = t <= 240 && b <= 3 ? 'Gold' : t <= 420 && b <= 8 ? 'Silver' : 'Bronze';
+    const b = s.blechs;
     const out = [
       { label: 'Candy sorted', values: s.sorted.slice() },
       { label: 'Blechs!', value: b },
       { label: 'Recycled', value: s.recycled },
-      { label: 'Medal', value: medal },
     ];
     const words = b === 0 ? 'Not one wrong flavour! Boss Bonbon is over the moon!' : b <= 3 ? 'Sweet sorting, candy crew!' : 'A few Blechs, but every order went out!';
     out.push(words + ' Lever pulls: Pip ' + (s.flips[0] + s.speeds[0] + s.lifts[0] + s.traps[0]) + ', Bo ' + (s.flips[1] + s.speeds[1] + s.lifts[1] + s.traps[1]) + (s.wrapped ? ' · Toffees wrapped: ' + s.wrapped : '') + '.');

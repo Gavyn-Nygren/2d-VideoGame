@@ -30,7 +30,7 @@
    RAIN GAUGES: 20, on the ledges (some just above the water at the start) and on little shelves a plain jump reaches.
    GOLD HELP (3 sweeps in a stretch, restarts included, only while both are playing): a gold life ring, the water
    rises 30% slower for the rest of the stretch.
-   MEDAL: Gold <= 190 s with 16 or more gauges and 2 or fewer sweeps; Silver <= 330 s.
+   MEDAL (MODES.floodclimb.medals, js/medals.js): Gold <= 190 s with 16 or more gauges and 2 or fewer sweeps; Silver <= 330 s.
    MODES.floodclimb.plan(st) says what each hero should do now (the prompts, the HUD chips and the computer brain read
    it). Sounds are Sfx.extra.floodclimb*. */
 (() => {
@@ -859,10 +859,11 @@
     say(Rn, R, pl.rope, true);
     say(Bn, B, pl.boost, false);
   }
-  const medal = (t, sweeps, got, total) => K.medal(t <= S.goldT && got >= total - 4 && sweeps <= 2, t <= S.silverT);
 
   MODES.floodclimb = {
-    S, plan, medal,
+    S, plan,
+    medals: { bronze: 'Climb out of the canyon', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }, { key: 'gauges', gold: 16, more: true, word: 'rain gauge' }, { key: 'sweeps', gold: 2, word: 'sweep' }] },
+    medalValues() { const st = G.mst; return st.stats ? { gauges: st.gaugeN, sweeps: st.stats.sweeps } : {}; },
     setup(st, L) {
       st.stats = { sweeps: 0, restarts: 0, boosts: 0, shoves: 0, gushes: 0, helps: 0, roomT: [] };
       st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0; st.gaugeN = 0;
@@ -883,7 +884,6 @@
         { label: 'Rain gauges', value: st.gaugeN + ' of ' + st.totalG },
         { label: 'Sweeps', value: String(s.sweeps) },
         { label: 'Boosts', value: String(s.boosts) },
-        { label: 'Medal', value: medal(G.time, s.sweeps, st.gaugeN, st.totalG) },
       ];
       out.push('Closest the flood got at a stretch end: ' + (s.lowest === undefined ? '-' : s.lowest + ' px') + '. Boulders shoved: ' + s.shoves + '. Spout soakings: ' + s.gushes + '.');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);
