@@ -30,7 +30,7 @@
    INTEL: 20 envelopes (5 a stretch), one in every swing gap, on the swing's path.
    GOLD HELP (3 Slips / Slides / Spotteds in a stretch, while both are playing): gold suction cups: lights fill Spotted
      40% slower and window and gust tells show 0.5 s earlier for the rest of the stretch.
-   CHECKPOINT halfway through each stretch (after its first swing or band). MEDAL by time: Gold <= 190 s, Silver <= 330 s.
+   CHECKPOINT halfway through each stretch (after its first swing or band). MEDAL by time: Gold <= S.goldT s, Silver <= S.silverT s.
    OUTFITS (Gavyn's rule, the shared system, 'spyclimb' in spy-kit.js): night climbers: Pip a charcoal harness with
      brass buckles, a rolled-up knit cap and a yellow chalk bag; Bo a harness with silver buckles, a headlamp band and
      teal knee pads; both big white suction cups (flat when clamped). After a Slip the cap or band sits crooked.
@@ -208,6 +208,8 @@
       const tryMove = (nx, ny, ax) => {
         if (Math.hypot(nx - o.x, ny - o.y) > S.rope && Math.hypot(nx - o.x, ny - o.y) > Math.hypot(a.x - o.x, a.y - o.y)) {
           if (G.time - a.rope > 1.2) { a.rope = G.time; Sfx.play('spyclimbRopeTwang'); K.pop(st, a.x, scrY(st, a.y) - 30, 'Rope!', '#ffffff', 16); }
+          if (G.time - (a.tautAt || 0) > 0.5) a.tautT = 0;
+          a.tautT = (a.tautT || 0) + dt / (mx && my ? 2 : 1); a.tautAt = G.time;
           return false;
         }
         if (nx < W_.x0 + 8 || nx > W_.x1 - 8 || ny < 16 || ny > st.L.top - 16) return false;
@@ -221,6 +223,7 @@
       };
       if (mx && tryMove(a.x + mx, a.y, 'x')) a.moved = true;
       if (a.st === 'climb' && my && tryMove(a.x, a.y + my, 'y')) a.moved = true;
+      if (a.moved) a.tautT = 0;
       if (a.moved) { a.moveT += dt; a.squeak -= dt; if (a.squeak <= 0) { a.squeak = 0.22; a.sq2 = !a.sq2; Sfx.play(a.sq2 ? 'spyclimbCupSqueak' : 'spyclimbCupSqueakHi'); } }
       else a.moveT = 0;
       return;
@@ -421,7 +424,11 @@
       let n = a.leg;
       while (n < R.length - 1) {
         const lg = R[n];
-        if (lg.t === 'go') { const t = legPt(lg, a.id); if (Math.hypot(a.x - t.x, a.y - t.y) < 16) { n++; continue; } }
+        // (a point also counts once you have climbed well past it: people don't follow the route's exact points, and
+        // every route runs upward, so without this a free climber never got the checkpoint, the gold rings or the hook)
+        if (lg.t === 'go') { const t = legPt(lg, a.id); if (Math.hypot(a.x - t.x, a.y - t.y) < 16 || (a.st === 'climb' && a.y > lg.y + 30)) { n++; continue; }
+          // the computer gives a point up when the rope has held it short of it for 5 s (its partner is waiting somewhere else)
+          if (cpuOn(a.id) && a.tautT > 5) { a.tautT = 0; n++; continue; } }
         else if (lg.t === 'swing') { if (crossed(st, a, lg) && crossed(st, partnerOf(st, a), lg)) { n++; continue; } }
         break;
       }
@@ -519,10 +526,12 @@
       if (lg.t === 'go') P.to = legPt(lg, a.id);
       else if (lg.t === 'hook') {
         const H = st.L.hook;
-        // (the hooker waits for the partner's last point first, so the rope never holds the partner short of it)
-        if (H.who === a.id && o.leg < R.length - 1) { P.to = null; P.why = 'follow'; }
+        // (the hooker waits for the partner's last point first, so the rope never holds the partner short of it; a
+        // partner who is already up by the hook counts as there, whatever points they skipped on the way)
+        const oUp = o.leg >= R.length - 1 || (o.st === 'climb' && Math.hypot(o.x - H.x, o.y - H.y) < S.rope - 30);
+        if (H.who === a.id && !oUp) { P.to = null; P.why = 'follow'; }
         else if (H.who === a.id) { P.to = { x: H.x, y: H.y }; P.why = H.cut ? 'cut' : 'hook'; if (Math.hypot(a.x - H.x, a.y - H.y) < S.hookR - 6) P.clamp = true; P.mark = H; }
-        else if (o.leg < R.length - 1) { P.to = null; P.why = 'follow'; }
+        else if (!oUp) { P.to = null; P.why = 'follow'; }
         else { P.to = { x: H.x + (H.x > W / 2 ? -60 : 60), y: H.y - 20 }; P.why = 'hold'; if (Math.hypot(a.x - P.to.x, a.y - P.to.y) < 30 || o.leg >= R.length - 1 && Math.hypot(o.x - H.x, o.y - H.y) < 60) P.clamp = Math.hypot(a.x - P.to.x, a.y - P.to.y) < 50; }
       } else {
         // a swing gap
@@ -816,8 +825,8 @@
   SPY.defs.spyclimb = {
     name: 'Skyscraper Window Climb', world: 37, kind: 'team', mode: 'spyclimb', outfit: 'spyclimb', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd><kbd>W</kbd><kbd>S</kbd> climb <kbd>F</kbd> clamp (hold)',
-      bo: '<kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> climb <kbd>/</kbd> clamp (hold)',
+      pip: '<kbd>A</kbd><kbd>D</kbd><kbd>W</kbd><kbd>S</kbd> climb',
+      bo: '<kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> climb',
     },
     tip: 'One clamps, one swings. Stay still when a light passes over you.',
     howTo: [

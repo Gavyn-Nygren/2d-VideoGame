@@ -59,7 +59,9 @@
       // pacing: the one ahead waits (the light stays within about 150 px of the hacker, and the hacker never crawls
       // off into the dark ahead of the light)
       const far = ahead(st, m, a, b, pl);
-      if (!inSteam && P.why !== 'rush' && far > ((P.why === 'catch' || P.why === 'shine') ? 6 : isLight ? 4 : 3)) return out;
+      // (a reel is a short side trip: it goes and comes back, rather than wait at the side duct for a person who
+      // has crawled on along the main duct)
+      if (!inSteam && P.why !== 'rush' && P.why !== 'reel' && far > ((P.why === 'catch' || P.why === 'shine') ? 6 : isLight ? 4 : 3)) return out;
       // the next cell along the shortest way
       const D = m.bfs(st, tc, tr, a);
       const id = here.c + here.r * st.L.cols;

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// World 38 checks for a computer pair: node tools/w37/check.js [modes] [--seeds=1,2,3] [--max=600]
+// World 38 checks for a computer pair: node tools/w38/check.js [modes] [--seeds=1,2,3] [--max=600]
 // For each team level and seed it prints how it ended, the time, the level's end stats (to check that Gold is possible
 // and every collectable can be reached), and the most held-key flips in any one second for each computer player
 // (12 or more is a twitch: the plan depends on something the computer's own move changes). --expr="JS" (st = G.mst,

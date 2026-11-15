@@ -897,7 +897,7 @@ Secret agents at night: Pip and Bo steal the Sunrise Diamond back from Count Zer
   - The last ramp needs a Boost; you land in the seaplane.
   - The Chase meter full means Caught. A shut gate, the claw winning, or falling short of the seaplane all go back to the checkpoint, with at least 1 Boost.
   - Gold help comes after 3 bumps.
-  - Medal goals: time (Gold 185, Silver 300; the spec had 175, but the 3.4 s stretch intros count, and the computer pair takes 177 s), Bumps, Intel bottles (20).
+  - Medal goals: time (Gold 195, Silver 300; the spec had 175, but the 3.4 s stretch intros count, and the computer pair takes 177 s at full throttle, so the review gave people 18 s of room), Bumps, Intel bottles (20).
 - Code:
   - `js/levels/world38/`:
     - the kit `spy-kit.js` (global `SPY`), which wraps World 31's `SHRUNK` helpers and adds the Control radio, `K.alertBar`, `K.zero`, `K.briefcase`, `K.laser`, `K.intel`, `K.nightSky`, `K.skyline`, `K.searchBeam`, the outfit parts and outfits, and the music and ambience (`spysneak`, `spysneakLow`, `spychase`, `spychaseUp`; `spyHeights`, `spyVaultHum`, `spyDucts`, `spyHarbour`), registered from the kit so World 38 never touches `music-tracks.js`. Its header is the manual.
@@ -907,6 +907,12 @@ Secret agents at night: Pip and Bo steal the Sunrise Diamond back from Count Zer
   - Tools are in `tools/w38/`: `check.js` for a computer pair, `stuck.js` for person-like partners (lag, eager, slow, noact), `trace.js`. `tools/w37/shots.js` works for 38-x codes.
   - Each level has a `plan(st)` that the prompts, the HUD and the brain all read. Level sounds are `Sfx.extra.<mode>*`; kit sounds are `spy*`.
 - Status: built and bot-tested (Nov 2026). The computer pair clears all four (38-1 Gold, 38-2 99 s with 0 zaps, 38-3 199 s with 0 heard, 38-4 177 s with 0 bumps), with every collectable. The person-like partners clear all four; the extreme "slow" partner takes 650-800 s in 38-3. Waiting for a Fable review; not yet played by hand.
+- Review (Fable, Nov 2026): matches the spec; the computer pair still clears all four with no bad events and 20/20 pick-ups. Fixed, all found by playing a person-like partner next to the computer:
+  - 38-1: a route leg only counted when a climber stood within 16 px of an unmarked point, so two people who climbed their own way never got the checkpoint, the gold rings or the hook prompt, and the computer waited at the hook for ever. A leg now also counts once a climber is above it, and a computer held short by the rope gives up on the point after 5 s (`a.tautT`) and asks the person over. The computer no longer lets go while its partner is dangling. The hook prompt shows whenever the partner is within rope reach of the hook.
+  - 38-2: a slide that ended under a beam stood up for one frame and got zapped even with duck held; the mirror could go up facing backward (then "tilt up-forward" bounced the wrong way with no hint), so it now always goes up facing into the vault; a zap can no longer knock anyone back through a shut door.
+  - 38-3: the optional reels blocked the route steps, so people who skipped one got no checkpoint or prompts and the computer waited in a side duct (each waiting for the other). A reel step now also ends when someone is at the next real step, or when the leash holds the computer back (`a.leashT`). Steam hopped a crawler into solid metal on a diagonal; the facing now follows real movement; restarts before the first checkpoint count toward the slower Sniffer; the torch holder is asked to light whichever panel is open.
+  - 38-4: Gold time 185 to 195 s. Ready cards: the action key was listed twice (the legend and the automatic action chip), so the legends now only list movement; the horn is in the how-to. Bo's earpiece light is green (no red on Bo).
+  - Slow, stop-and-go partners take 12 minutes in 38-3 next to the computer (it waits for them, never stuck). An idle partner cannot finish any of the four, as in every team level.
 
 ## How the game is built
 

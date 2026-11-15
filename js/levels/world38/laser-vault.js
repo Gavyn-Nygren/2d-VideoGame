@@ -358,7 +358,7 @@
     if (isMir) {
       const was = a.mirror;
       a.mirror = w.act && a.ground;
-      if (a.mirror && !was) { a.tilt = 2; Sfx.play('spyvaultMirrorUp'); }
+      if (a.mirror && !was) { a.tilt = 2; a.face = 1; Sfx.play('spyvaultMirrorUp'); } // (the mirror always goes up facing into the vault, so the tilt names mean what they say)
       if (a.mirror) {
         if (upP) { a.tilt = Math.min(4, a.tilt + 1); Sfx.play('spyvaultMirrorTilt'); }
         if (downP) { a.tilt = Math.max(0, a.tilt - 1); Sfx.play('spyvaultMirrorTilt'); }
@@ -371,7 +371,7 @@
       a.duck = false;
     } else {
       a.mirror = false;
-      if (a.slideT > 0) { a.slideT -= dt; vx = a.face * S.slideV; if (a.slideT <= 0) a.slideCD = S.slideCD; }
+      if (a.slideT > 0) { a.slideT -= dt; vx = a.face * S.slideV; if (a.slideT <= 0) { a.slideCD = S.slideCD; a.duck = w.down && a.ground; } } // (a slide that ends under a beam stays low while duck is held)
       else {
         a.duck = w.down && a.ground;
         if (w.x) a.face = w.x;
@@ -411,7 +411,7 @@
       const d = b.does;
       if (d.turn != null) { const wm = L.wm[d.turn]; wm.n = (wm.n + 1) % wm.notch.length; Sfx.play('spyvaultMirrorTurn'); K.pop(st, wm.x - st.camX, FY - wm.y - 26, 'Click!', '#ffffff', 15); }
       else if (!b.done) {
-        b.done = true; Sfx.play('spyvaultButtonClunk');
+        b.done = true; st.doneT = G.time; Sfx.play('spyvaultButtonClunk');
         if (d.latch === 'curt') { L.curt[d.id].off = true; L.em[L.curt[d.id].src].dead = true; }
         if (d.latch === 'door') { L.doors[d.id].latched = true; for (const s of L.steps) if (s.target && s.target.door === d.id) L.em[s.feed].dead = true; }
         if (d.latch === 'grid') { L.grids[d.id].latched = true; for (const s of L.steps) if (s.target && s.target.grid === d.id) L.em[s.feed].dead = true; }
@@ -458,7 +458,9 @@
   function zap(st, a) {
     if (a.inv > 0) return;
     a.inv = S.zapInv; a.frizz = S.frizz; a.mirror = false; a.slideT = 0;
-    a.x = Math.max(20, a.x - S.hop); a.vy = 220; a.ground = false; a.y = Math.max(a.y, 1);
+    let hx = Math.max(20, a.x - S.hop);
+    for (const d of st.L.doors) if (!d.open && a.x >= d.x + S.hw && hx < d.x + S.hw) hx = d.x + S.hw; // (never knocked back through a shut door)
+    a.x = hx; a.vy = 220; a.ground = false; a.y = Math.max(a.y, 1);
     st.alarm = Math.min(100, st.alarm + S.alarmZap); st.stats.zaps++; st.rc.zaps++;
     Sfx.play('spyvaultZapBuzz'); Sfx.play('spyvaultShutterRumble');
     K.pop(st, a.x - st.camX, FY - 80, 'Zap!', '#ffd0c8', 20); K.spark(st, a.x - st.camX, FY - 30 - a.y, 10);
@@ -898,8 +900,8 @@
   SPY.defs.spyvault = {
     name: 'Laser Vault Heist', world: 37, kind: 'team', mode: 'spyvault', outfit: 'spyvault', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck / slide <kbd>F</kbd> mirror (hold, <kbd>W</kbd><kbd>S</kbd> tilt) / grab',
-      bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> duck / slide <kbd>/</kbd> mirror (hold, <kbd>↑</kbd><kbd>↓</kbd> tilt) / grab',
+      pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck / slide',
+      bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> duck / slide',
     },
     tip: 'The mirror stops a beam and bends it. Light the green lenses to open the way.',
     howTo: [

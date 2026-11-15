@@ -396,7 +396,7 @@ const SPY = (() => {
   defineOutfitPart('spyEarpiece', { layer: 'front', draw(c, o, k) {
     const g = c.g, b = c.face >= 0 ? -1 : 1;
     g.fillStyle = '#f4f4f4'; ofCircle(g, b * 10.4, -16, 1.8); g.fill(); g.strokeStyle = OF_INK; g.lineWidth = 0.6; g.stroke();
-    g.strokeStyle = '#d8dce0'; g.lineWidth = 1; g.beginPath(); g.moveTo(b * 10.4, -17.6); g.lineTo(b * 12.6, -24); g.stroke(); g.fillStyle = '#ff6060'; ofCircle(g, b * 12.6, -24.4, 0.8); g.fill();
+    g.strokeStyle = '#d8dce0'; g.lineWidth = 1; g.beginPath(); g.moveTo(b * 10.4, -17.6); g.lineTo(b * 12.6, -24); g.stroke(); g.fillStyle = '#7df0a0'; ofCircle(g, b * 12.6, -24.4, 0.8); g.fill();
   } });
   defineOutfitPart('spyVest', { draw(c, o, k) {
     const g = c.g, col = k(o.col || '#2a8a8a', c);

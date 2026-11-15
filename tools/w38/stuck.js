@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Looks for spots where the computer partner gets stuck in a World 38 team level when a person-like player is the other
-// character. node tools/w37/stuck.js [modes] [--human=lag,eager,slow] [--seeds=1,2,3] [--max=600] [--human-is=0,1]
+// character. node tools/w38/stuck.js [modes] [--human=lag,eager,slow,noact] [--seeds=1,2,3] [--max=600] [--human-is=0,1] [--stats]
+//   --stats  print each run's end stats (the level's bad events) instead of the stuck spots
 //   lag    plays the role well but starts each move, jump and press 0.35 s late (a careful person)
 //   eager  plays the role, but every 4-12 s often runs ahead to the right for 1-3 s, jumping now and then (an excited kid)
 //   --log=T0:T1:EVERY  print --expr every EVERY s between T0 and T1 (simulated)
@@ -86,7 +87,7 @@ const maxT = +opt('max', 600), expr = opt('expr', ''), logA = opt('log', '').spl
           const t = n * P.DT;
           if (logA.length === 3 && t >= logA[0] && t <= logA[1] && n % Math.max(1, Math.round(logA[2] / P.DT)) === 0) {
             const st = G.mst; let x; try { x = JSON.stringify(eval(expr)); } catch (e) { x = 'ERR ' + e.message; }
-            stuck.push('log t=' + t.toFixed(2) + ' ' + x);
+            if (x !== '""' && x !== 'null' && x !== undefined) stuck.push('log t=' + t.toFixed(2) + ' ' + x); // (an empty answer prints nothing)
           }
           const q = pos();
           if (Math.hypot(q.x - anchor.x, q.y - anchor.y) > 24) { anchor = Object.assign(q, { t }); flagged = false; }
@@ -102,10 +103,11 @@ const maxT = +opt('max', 600), expr = opt('expr', ''), logA = opt('log', '').spl
       }
       P.CPU.filter = null; B.think = think0;
       const res = G.results[i];
-      return { done: !!res, time: res ? Math.round(res.time) : null, room: G.room, stuck };
+      return { done: !!res, time: res ? Math.round(res.time) : null, room: G.room, stuck, raw: JSON.stringify(G.mst.stats || {}) };
     }, { mode, hum, hid, seed, maxT, expr, logA });
     console.log(`${mode.padEnd(9)} ${hum.padEnd(5)} human=${['Pip', 'Bo'][hid]} s${seed}: ${r.done ? 'CLEARED ' + r.time + 's' : 'NOT done, room ' + (r.room + 1)}  stuck ${r.stuck.length}${errs.length ? ' ERR ' + errs[0] : ''}`);
-    for (const s of r.stuck.slice(0, logA.length === 3 ? 400 : 4)) console.log('   ' + s);
+    if (args.includes('--stats')) console.log('   ' + r.raw);
+    for (const s of r.stuck.slice(0, logA.length === 3 ? 400 : args.includes('--stats') ? 0 : 4)) console.log('   ' + s);
   }
   await browser.close();
 })().catch(e => { console.error(e); process.exit(1); });

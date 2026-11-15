@@ -35,6 +35,9 @@
         if (a.Lr < S.swingL - 12) out.down = true; else if (a.Lr > S.swingL + 14) out.jump = true;
         return out;
       }
+      // the partner is hanging from the rope (a swing, or a dangle after a slip): we are the anchor, whatever the plan
+      // says. Letting go would send both sliding down to the ledge.
+      if (b.st === 'hang') { out.act = true; return out; }
       if (P.clamp) { out.act = true; anchorTalk(s, p, a, b, info, dt); return out; }
       // (a clamp for a tell is held at least 0.4 s, so it never flickers on and off)
       if (s.hold > 0) { s.hold -= dt; out.act = true; return out; }
@@ -58,6 +61,8 @@
         return out;
       }
       if (!P.to) return out;
+      // the rope is holding us short of where we're going: ask the person to come closer
+      if (a.tautT > 1.2 && !info.partnerCpu) cpuSay(p, 'The rope is tight! Climb over this way.', 1.8);
       // keep the rope slack: the one ahead waits
       const d = Math.hypot(a.x - b.x, a.y - b.y);
       const ahead = a.leg > b.leg || (a.leg === b.leg && Math.hypot(a.x - P.to.x, a.y - P.to.y) < Math.hypot(b.x - P.to.x, b.y - P.to.y) - 10);

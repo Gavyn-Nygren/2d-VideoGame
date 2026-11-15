@@ -36,7 +36,7 @@
     hornCd: 3, hornR: 560, smokeT: 2.5, smokeR: 460, oilR: 380, oilLife: 7, magR: 650, netLock: 0.6, netDelay: 1.5,
     netFall: 0.5, netCd: 3.2, stallT: 0.6, stallV: 0.4, sandV: 0.55, idleWait: 12, restartT: 2.4, gateK: 0.94,
     bumpC: 18, netC: 18, gullC: 8, slowC: 4, wreckC: 12, drainC: 3, cleanT: 8, goldRe: 8, tugDrain: 0.3, tugFill: 0.3,
-    goldT: 185, silverT: 300, bottles: 20,
+    goldT: 195, silverT: 300, bottles: 20,
   };
   const GADGETS = ['smoke', 'oil', 'boost', 'magnet'], GNAME = { smoke: 'Smoke', oil: 'Oil', boost: 'Boost', magnet: 'Magnet' };
   const MAXC = { smoke: 3, oil: 3, boost: 2, magnet: 2 };
@@ -1017,12 +1017,12 @@
   SPY.defs.spyboat = {
     name: 'Speedboat Getaway', world: 37, kind: 'team', mode: 'spyboat', outfit: 'spyboat', music: 'spychase', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     legend: {
-      pip: 'STEERER <kbd>W</kbd><kbd>S</kbd> change channel <kbd>D</kbd> faster <kbd>A</kbd> slower <kbd>F</kbd> horn · GADGETS <kbd>A</kbd><kbd>D</kbd> pick gadget <kbd>F</kbd> use it',
-      bo: 'STEERER <kbd>↑</kbd><kbd>↓</kbd> change channel <kbd>→</kbd> faster <kbd>←</kbd> slower <kbd>/</kbd> horn · GADGETS <kbd>←</kbd><kbd>→</kbd> pick gadget <kbd>/</kbd> use it',
+      pip: 'STEERER <kbd>W</kbd><kbd>S</kbd> change channel <kbd>D</kbd> faster <kbd>A</kbd> slower · GADGETS <kbd>A</kbd><kbd>D</kbd> pick gadget',
+      bo: 'STEERER <kbd>↑</kbd><kbd>↓</kbd> change channel <kbd>→</kbd> faster <kbd>←</kbd> slower · GADGETS <kbd>←</kbd><kbd>→</kbd> pick gadget',
     },
     tip: 'The steerer lines them up, the gadgets knock them out. Save a Boost for ramps and gates.',
     howTo: [
-      'STEERER: change channel to dodge, and drive through the brass crates to refill the gadgets.',
+      'STEERER: change channel to dodge, honk the horn at gulls and fish, and drive through the brass crates to refill the gadgets.',
       'GADGETS: Smoke blinds them, Oil spins the boat right behind you, Boost is for ramps and gates.',
       'Chasers copy your channel a moment late. Dodge late and they hit what you missed.',
     ],

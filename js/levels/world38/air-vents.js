@@ -268,7 +268,8 @@
     st.camX = clamp(st.ag[0].x - W / 2, 0, L.cols * Z - W); st.camY = clamp(st.ag[0].y - H / 2, 0, Math.max(0, L.rows * Z - H));
     st.litT = {};
   }
-  function restart(st, why) { st.cpTries = st.cp && st.cpKey === st.cp.c + ',' + st.cp.r + ',' + st.k ? (st.cpTries || 0) + 1 : 1; st.cpKey = st.cp ? st.cp.c + ',' + st.cp.r + ',' + st.k : ''; place(st, true); st.state = 'go'; K.msg(st, why, '#ffffff', 2.6); }
+  // (restarts from the stretch's start count too, so the Sniffer slows down for a team that keeps being caught there)
+  function restart(st, why) { const key = (st.cp ? st.cp.c + ',' + st.cp.r : 'start') + ',' + st.k; st.cpTries = st.cpKey === key ? (st.cpTries || 0) + 1 : 1; st.cpKey = key; place(st, true); st.state = 'go'; K.msg(st, why, '#ffffff', 2.6); }
 
   /* ---------- light ---------- */
   const strobeOn = st => (st.T % S.strobeEvery) < S.strobeT;
@@ -407,19 +408,20 @@
         if (Math.abs(a.y - my) > 0.5) return false;
         const nx = a.x + dx * step, beyond = (nx - mx) * dx > 0;
         if (beyond && !passable(st, cc.c + dx, cc.r, a)) { if ((a.x - mx) * dx < 0) { a.x = mx; return true; } bump(st, a, cc.c + dx, cc.r); return false; }
-        if (Math.hypot(nx - o.x, a.y - o.y) > S.leash && Math.hypot(nx - o.x, a.y - o.y) > Math.hypot(a.x - o.x, a.y - o.y)) return false;
+        if (Math.hypot(nx - o.x, a.y - o.y) > S.leash && Math.hypot(nx - o.x, a.y - o.y) > Math.hypot(a.x - o.x, a.y - o.y)) { a.leashT = (a.leashT || 0) + dt; return false; }
         a.x = nx; return true;
       }
       if (Math.abs(a.x - mx) > 0.5) return false;
       const ny = a.y + dy * step, beyond = (ny - my) * dy > 0;
       if (dy < 0 && chAt(st, cc.c, cc.r - 1) === 'v' && beyond) return false;
       if (beyond && !passable(st, cc.c, cc.r + dy, a)) { if ((a.y - my) * dy < 0) { a.y = my; return true; } bump(st, a, cc.c, cc.r + dy); return false; }
-      if (Math.hypot(a.x - o.x, ny - o.y) > S.leash && Math.hypot(a.x - o.x, ny - o.y) > Math.hypot(a.x - o.x, a.y - o.y)) return false;
+      if (Math.hypot(a.x - o.x, ny - o.y) > S.leash && Math.hypot(a.x - o.x, ny - o.y) > Math.hypot(a.x - o.x, a.y - o.y)) { a.leashT = (a.leashT || 0) + dt; return false; }
       a.y = ny; return true;
     };
     // line up for a turn a few px early, then go
     const cc = cellOf(a.x, a.y), mx = cx(cc.c), my = cy(cc.r);
     let moved = false;
+    const px0 = a.x, py0 = a.y;
     if (w.y) {
       if (Math.abs(a.x - mx) <= S.turn && (passable(st, cc.c, cc.r + w.y, a) || (a.y - my) * w.y < 0)) { a.x = mx; moved = tryAxis(0, w.y); }
       else if (!w.x && Math.abs(a.x - mx) > 0.5 && Math.abs(a.x - mx) <= Z / 2) { const d = Math.sign(mx - a.x); if (Math.abs(a.x - mx) < step) a.x = mx; else a.x += d * step; moved = true; }
@@ -429,7 +431,10 @@
       else if (Math.abs(a.y - my) <= Z / 2) { const d = Math.sign(my - a.y); if (Math.abs(a.y - my) < step) a.y = my; else a.y += d * step; moved = true; }
     }
     if (!moved) return;
-    a.dir = w.y && Math.abs(a.x - cx(cellOf(a.x, a.y).c)) < 1 ? [0, w.y] : [w.x || a.dir[0], 0];
+    a.leashT = 0;
+    // the way it really went (a held diagonal used to read as "up" at every cell's middle, so a steam burst there
+    // hopped the agent back into the solid metal above the duct)
+    { const mx2 = a.x - px0, my2 = a.y - py0; if (Math.abs(my2) > Math.abs(mx2)) a.dir = [0, Math.sign(my2)]; else if (mx2) a.dir = [Math.sign(mx2), 0]; }
     // what's underfoot
     const now = cellOf(a.x, a.y), ch2 = chAt(st, now.c, now.r);
     if (ch2 === 'm') {
@@ -443,8 +448,10 @@
     if (sv && steamPhase(sv, st.T) === 'on' && a.yowT <= 0) yow(st, a);
   }
   function yow(st, a) {
-    a.yowT = 1.2; a.x -= a.dir[0] * Z; a.y -= a.dir[1] * Z;
-    const c = cellOf(a.x, a.y); a.x = cx(c.c); a.y = cy(c.r);
+    a.yowT = 1.2;
+    // a hop back one cell the way it came (never into solid metal: else it just stays put)
+    const c0 = cellOf(a.x, a.y), bc = c0.c - a.dir[0], br = c0.r - a.dir[1], c = passable(st, bc, br, a) ? { c: bc, r: br } : c0;
+    a.x = cx(c.c); a.y = cy(c.r);
     makeNoise(st, S.noiseYow, a.x, a.y, 'Yow!'); Sfx.play('spyventsSteamYow'); st.stats.yows++; bad(st);
   }
   function bump(st, a, c, r) { if (G.time - (a.bumpT || 0) > 0.8) { a.bumpT = G.time; if (chAt(st, c, r) === 'f') Sfx.play('spyventsFanThwack'); } }
@@ -573,7 +580,7 @@
     const R = st.L.steps;
     for (const a of st.ag) {
       let n = a.step;
-      while (n < R.length - 1 && stepDone(st, a, R[n])) n++;
+      while (n < R.length - 1 && stepDone(st, a, R[n], n)) n++;
       a.step = n;
     }
     const cp = st.L.cp;
@@ -582,11 +589,27 @@
     }
   }
   const atCell = (a, c, r, tol = 12) => Math.hypot(a.x - cx(c), a.y - cy(r)) < tol;
-  function stepDone(st, a, s) {
+  // where a step happens (the cells a person would be standing in when they have got that far)
+  function stepCells(st, s) {
+    const L = st.L;
+    if (s.t === 'hack' || s.t === 'close') { const p = L.panels[s.p]; return [[p.hc, p.hr], [p.lc, p.lr]]; }
+    if (s.t === 'fan') return [[s.wc, s.wr]];
+    if (s.t === 'squeeze') { const q = L.squeezes[s.q]; return [[q.bc, q.r]]; }
+    return [[s.c, s.r]];
+  }
+  function stepDone(st, a, s, n) {
     const L = st.L;
     if (s.t === 'go') return atCell(a, s.c, s.r, 16) || (s.rush != null && atCell(a, s.c, s.r, 30));
     // (a side trip for a reel is skipped when a Sniffer is within 320 px)
-    if (s.t === 'reel') return st.got[s.i] || st.snif.some(q => q.on && st.ag.some(b => Math.hypot(b.x - q.x, b.y - q.y) < 320));
+    if (s.t === 'reel') {
+      if (st.got[s.i] || st.snif.some(q => q.on && st.ag.some(b => Math.hypot(b.x - q.x, b.y - q.y) < 320))) return true;
+      // reels are optional. A person who crawls on past the side duct has skipped it (their step used to wait on the
+      // reel for ever: no checkpoint, no prompts, and the computer waiting at the side duct for them to come back);
+      // the computer gives one up when the leash holds it back from it (its person is too far ahead)
+      if (cpuOn(a.id)) return a.leashT > 1.2;
+      let m = n + 1; while (m < L.steps.length - 1 && L.steps[m].t === 'reel') m++;
+      return stepCells(st, L.steps[m]).some(([c, r]) => atCell(a, c, r, 20));
+    }
     if (s.t === 'hack') { const p = L.panels[s.p]; if (p.kind === 'fan') return L.fans[p.target].stopT > 0; return p.done; }
     if (s.t === 'close') { const p = L.panels[s.p], d = L.doors[p.target]; return p.done || d.broken || (bothPast(st, p) && !snifNear(st, d)); }
     if (s.t === 'fan') return a.x > cx(s.ac) - 4 && cellOf(a.x, a.y).r === s.ar;
@@ -632,7 +655,9 @@
     for (const a of st.ag) {
       const s = R[Math.min(a.step, R.length - 1)], isLight = a.id === st.lightId;
       const P = { step: a.step, kind: s.t, to: null, face: null, cover: false, hack: null, act: false, why: 'go', wait: false };
-      if (s.t === 'go' || s.t === 'reel' || s.t === 'exit') { P.to = [s.c, s.r]; P.why = s.t; }
+      // a wrist screen is open: whatever step the light agent is on, the hacker needs the torch on that panel
+      if (isLight && st.hack && !(s.t === 'hack' && s.p === st.hack.p)) { const p = L.panels[st.hack.p]; P.panel = p.id; P.to = [p.lc, p.lr]; P.face = DIRS[p.ld]; P.why = 'shine'; }
+      else if (s.t === 'go' || s.t === 'reel' || s.t === 'exit') { P.to = [s.c, s.r]; P.why = s.t; }
       else if (s.t === 'hack') {
         const p = L.panels[s.p];
         P.panel = p.id;
@@ -886,8 +911,8 @@
   SPY.defs.spyvents = {
     name: 'Air Vent Crawl', world: 37, kind: 'team', mode: 'spyvents', outfit: 'spyvents', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> crawl <kbd>W</kbd><kbd>S</kbd> climb <kbd>F</kbd> cover torch (hold) / hack, then press the arrows shown',
-      bo: '<kbd>←</kbd><kbd>→</kbd> crawl <kbd>↑</kbd><kbd>↓</kbd> climb <kbd>/</kbd> cover torch (hold) / hack, then press the arrows shown',
+      pip: '<kbd>A</kbd><kbd>D</kbd> crawl <kbd>W</kbd><kbd>S</kbd> climb',
+      bo: '<kbd>←</kbd><kbd>→</kbd> crawl <kbd>↑</kbd><kbd>↓</kbd> climb',
     },
     tip: 'Shine the torch on the panel so your partner can read it. Cover it over the grates.',
     howTo: [
