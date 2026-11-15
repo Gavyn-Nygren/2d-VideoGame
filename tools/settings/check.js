@@ -89,7 +89,7 @@ const onSettings = page => page.evaluate(() => !!document.querySelector('.settin
     await page.screenshot({ path: path.join(out, '5-from-pause.png') });
     await page.keyboard.press('Escape'); await page.waitForTimeout(400);
     check(await page.evaluate(() => window.__pipbo.G.mode) === 'paused' && await page.locator('[data-act="resume"]').count() === 1, 'Esc on Settings goes back to the pause card');
-    const ctl = await page.locator('.ctl-lines').textContent();
+    const ctl = await page.locator('.ctl-cards').textContent();
     check(/Q/.test(ctl), 'the pause card\'s controls show Q');
     // reset
     await page.click('.card [data-act="settings"]'); await page.waitForTimeout(500);   // (past the overlay's 350 ms click guard)

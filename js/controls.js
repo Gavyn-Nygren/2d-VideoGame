@@ -181,16 +181,72 @@ function drawBtn(id, what, x, y, o = {}) {
   return total;
 }
 
-/* ---------- cards: each player's controls ---------- */
-// one line per person for the pause card: "Pip  [A][D] move [W] jump [S] drop [F] punch"
+/* ---------- cards: each player's controls, one row per action ---------- */
+// Gavyn (Nov 2026): controls are listed down the card, one action a row, its key or button on the left and what it
+// does on the right. The rows come from the same keyboard line (def.legend): each group of keys starts a row and the
+// words after it are its label; words before the first key join that row's label; a line with no keys at all (a role
+// that only uses the action) becomes a note under the rows. Each row's keys go through controlsLine(), so remapped
+// keys and the player's own controller or touch buttons show.
+const tidyLabel = t => t.replace(/\s+/g, ' ').trim().replace(/^(or\s+)?[·,;:/\s]+/, '').replace(/^or\s+/, '').replace(/(\s+or)?[\s·,;:/]*$/, '');
+const plainText = h => h.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+// Gavyn (2026-11-15): on a controller the table shows plain arrows, not the word "stick"
+const STICK_ALL = ['left', 'right', 'up', 'down'].map(d => `<kbd class="k-stick">${ARROWS[d]}</kbd>`).join('');
+const arrowsOnly = h => h.replace(/<span class="k-word">stick<\/span>/g, '').replace(/<kbd class="k-stick">stick<\/kbd>/g, STICK_ALL);
+function controlRows(id, lg, act) {
+  const base = String(legendBase(id, lg)), rows = [], re = /(?:<kbd>[^<]*<\/kbd>)+/g;
+  let m, last = 0, pre = '';
+  while ((m = re.exec(base))) {
+    const between = plainText(base.slice(last, m.index)), prev = rows[rows.length - 1];
+    if (prev) {
+      // "jump · fans: [A][D] run": the words after the last "·" name the next row (a role, or "or")
+      // ("move · power" is one key doing two things and stays on its row)
+      const cut = between.lastIndexOf('·'), after = cut < 0 ? '' : between.slice(cut + 1).trim();
+      const split = cut >= 0 && (/:$/.test(after) || /^or$/.test(after));
+      prev.label = tidyLabel(split ? between.slice(0, cut) : between);
+      pre = split ? after : '';
+    } else pre = between.trim();
+    // a role name ("fans:") keeps its colon in front of the row's words
+    rows.push({ keys: arrowsOnly(controlsLine(id, m[0])), label: '', pre: tidyLabel(pre), role: /:$/.test(pre) });
+    last = m.index + m[0].length;
+  }
+  const tail = plainText(base.slice(last));
+  let note = '';
+  if (rows.length) rows[rows.length - 1].label = tidyLabel(tail); else note = tidyLabel(tail);
+  // "[W] hop · claw [W][A][S][D]": keys with no words take the words after the last "·" of the row before
+  rows.forEach((r, k) => {
+    const prev = rows[k - 1];
+    if (r.label || r.pre || !prev || prev.label.indexOf('·') < 0) return;
+    const cut = prev.label.lastIndexOf('·');
+    r.label = tidyLabel(prev.label.slice(cut + 1)); prev.label = tidyLabel(prev.label.slice(0, cut));
+  });
+  rows.forEach(r => { r.label = tidyLabel(r.pre ? r.pre + (r.role && r.label ? ': ' : ' ') + r.label : r.label); });
+  if (act) {
+    // an action that does the same as a row above (Ski Jump: the jumper jumps with jump or the action) joins that row
+    const same = rows.find(r => r.label === actLabel(id));
+    if (same) { if (!same.keys.includes(btnHTML(id, 'act'))) same.keys += ' <span class="k-word">or</span> ' + btnHTML(id, 'act'); }
+    else rows.push({ keys: btnHTML(id, 'act'), label: actLabel(id), act: true });
+  }
+  // keys with no words of their own share the next row ("[W][A][S][D] [F] grab")
+  for (let k = rows.length - 2; k >= 0; k--) if (!rows[k].label && rows[k + 1]) { rows[k + 1].keys = rows[k].keys + ' <span class="k-word">+</span> ' + rows[k + 1].keys; rows.splice(k, 1); }
+  rows.forEach(r => { r.label = esc(r.label || '…'); });
+  return { rows, note: note ? esc(note) : '' };
+}
+// that player's controls as a two-column table (keys | what they do)
+function controlsTableHTML(id, lg, act) {
+  const { rows, note } = controlRows(id, lg, act);
+  return `<div class="ctl-table">${rows.map(r => `<div class="ctl-row${r.act ? ' is-act' : ''}"><span class="ctl-k">${r.keys}</span><span class="ctl-v">${r.label}</span></div>`).join('')}</div>`
+    + (note ? `<p class="ctl-note">${note}</p>` : '');
+}
+// the pause card: a card per person (side by side with two), with their device and their rows
 function controlsLinesHTML() {
   const l = LEVELS[G.levelIndex], lg = (G.level && G.level.def.legend) || l.legend, act = G.level && G.level.def.act;
-  const rows = [0, 1].filter(k => !isCpuPlayer(k)).map(k => {
-    const a = act ? ` <span class="ctl-act">${btnHTML(k, 'act')} ${esc(actLabel(k))}</span>` : '';
-    return `<p class="ctl-line"><b class="nm-${k === 0 ? 'pip' : 'bo'}">${NAMES[k]}</b> <span class="ctl-keys">${playerControlsHTML(k, lg)}${a}</span></p>`;
+  const cards = [0, 1].filter(k => !isCpuPlayer(k)).map(k => {
+    const cls = k === 0 ? 'pip' : 'bo', d = playerDevice(k);
+    return `<div class="pcard ${cls} ctl-card"><div class="rdy-head"><span class="nm nm-${cls}">${NAMES[k]}</span><span class="devchip dev-${d.kind}">${esc(d.name)}</span></div>${controlsTableHTML(k, lg, act)}</div>`;
   });
-  if (cpuSolo() && act && actLabel(0) !== actLabel(1)) { const c = 1 - cpuHuman(); rows.push(`<p class="ctl-line"><b class="nm-${c === 0 ? 'pip' : 'bo'}">${NAMES[c]}</b> <span class="ctl-keys">(computer) ${esc(actLabel(c))}</span></p>`); }
-  return `<div class="ctl-lines">${rows.join('')}</div>`;
+  let cpu = '';
+  if (cpuSolo() && act && actLabel(0) !== actLabel(1)) { const c = 1 - cpuHuman(); cpu = `<p class="hint"><b class="nm-${c === 0 ? 'pip' : 'bo'}">${NAMES[c]}</b> (computer): ${esc(actLabel(c))}</p>`; }
+  return `<div class="ctl-cards${cards.length > 1 ? ' two' : ''}">${cards.join('')}</div>${cpu}`;
 }
 
 /* ---------- the ready card ---------- */
@@ -234,11 +290,10 @@ function readyRender() {
       </div>`;
     }
     const d = playerDevice(k), ok = Ready.ok[k];
-    const a = act ? ` <span class="ctl-act">${btnHTML(k, 'act')} ${esc(actLabel(k))}</span>` : '';
     const press = d.kind === 'touch' ? 'Tap here when ready' : `Press ${btnHTML(k, 'jump')} when ready`;
     return `<div class="pcard ${cls} rdy${ok ? ' is-ready' : ''}">
       <div class="rdy-head">${nm}<span class="devchip dev-${d.kind}">${esc(d.name)}</span></div>
-      <div class="ctl-keys">${playerControlsHTML(k, lg)}${a}</div>
+      ${controlsTableHTML(k, lg, act)}
       <button type="button" class="rdy-btn" data-act="ready" data-p="${k}" aria-pressed="${ok}">${ok ? '✔ Ready!' : press}</button>
     </div>`;
   }).join('');
