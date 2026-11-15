@@ -855,7 +855,7 @@
   const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
   MODES.spyvents = {
     S, Z, plan, medal, build, bfs, passable, chAt, cellOf, inCone, grateRisk, zeroX, steamPhase, steamAt, readable, strobeSince, cx, cy, DIRS,
-    medals: { bronze: 'Get the diamond down to the boathouse', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }, { key: 'heard', gold: 0, silver: 2, word: 'Heard or Caught' }, { key: 'reels', gold: S.reels, silver: 14, more: true, word: 'Microfilm reel' }] },
+    medals: { bronze: 'Get the diamond down to the boathouse', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }, { key: 'heard', gold: 0, silver: 2, text: n => (n === 0 ? 'Never heard or caught' : 'Heard or caught ' + n + ' times at most'), gap: (v, n) => Math.ceil(v - n) + ' fewer times heard or caught' }, { key: 'reels', gold: S.reels, silver: 14, more: true, word: 'Microfilm reel' }] },
     medalValues() { const st = G.mst; return { heard: st.stats.heard + st.stats.caught, reels: st.reels }; },
     music() { const st = G.mst; if (!st || !st.snif) return null; const near = st.snif.some(s => s.on && st.ag.some(a => Math.hypot(a.x - s.x, a.y - s.y) < 250)); return { song: near ? 'spychase' : 'spysneakLow' }; },
     setup(st, L) {

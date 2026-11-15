@@ -868,7 +868,7 @@
   const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
   MODES.spyvault = {
     S, CH, TILT, plan, medal, build, pathClear, safeToLower, traceAt, boxOf, gridX, emOn, holdOpen,
-    medals: { bronze: 'Escape with the Sunrise Diamond', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }, { key: 'zaps', gold: 0, silver: 3, word: 'Zap' }, { key: 'loot', gold: S.loot, silver: 14, more: true, word: 'Keycard and gem' }] },
+    medals: { bronze: 'Escape with the Sunrise Diamond', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }, { key: 'zaps', gold: 0, silver: 3, word: 'Zap' }, { key: 'loot', gold: S.loot, silver: 14, more: true, text: n => 'At least ' + n + ' keycards and gems', gap: (v, n) => Math.ceil(n - v) + ' more keycards and gems' }] },
     medalValues() { const st = G.mst; return { zaps: st.stats.zaps, loot: st.loot }; },
     setup(st, L) {
       st.stats = { zaps: 0, locks: 0, bent: 0, lit: 0, cards: 0, latched: 0, helps: 0, roomT: [] };

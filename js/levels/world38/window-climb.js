@@ -785,7 +785,7 @@
   const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
   MODES.spyclimb = {
     S, W_, plan, medal, build, cx, cy, good, surf, dangerAt, winDanger, lookingNear, lightAt, inEllipse, cellOf,
-    medals: { bronze: 'Climb in through the vault-floor window', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }, { key: 'slips', gold: 0, silver: 3, word: 'Slip or Spotted' }, { key: 'intel', gold: S.intel, silver: 14, more: true, word: 'Intel envelope' }] },
+    medals: { bronze: 'Climb in through the vault-floor window', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }, { key: 'slips', gold: 0, silver: 3, text: n => (n === 0 ? 'Never slipped or spotted' : 'Slipped or spotted ' + n + ' times at most'), gap: (v, n) => Math.ceil(v - n) + ' fewer slips or spottings' }, { key: 'intel', gold: S.intel, silver: 14, more: true, word: 'Intel envelope' }] },
     medalValues() { const st = G.mst; return { slips: st.stats.slips + st.stats.spotted, intel: st.intel }; },
     setup(st, L) {
       st.stats = { slips: 0, slides: 0, spotted: 0, swings: 0, pigeons: 0, helps: 0, roomT: [] };
