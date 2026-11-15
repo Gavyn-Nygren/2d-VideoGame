@@ -471,6 +471,8 @@ function ironFistDrawEyeLight(st, d) {
   ctx.beginPath(); ctx.ellipse(E.x, sy - 4, r + 6, 9, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
   d.stroke(SKETCH.ell(E.x, sy - 4, r + 6, 9, 16, 0), { w: 1.2, curve: true, alpha: 0.7, sh: 0, col: narrow ? SKETCH.PAL.rust : SKETCH.INK });
+  // the cone's edges: two dry, broken strokes, so the beam is drawn and not a flat shape
+  for (const sg of [-1, 1]) d.stroke([[ex + sg * 10, ey], [(ex + E.x) / 2 + sg * (r + 10) / 2, (ey + sy) / 2], [E.x + sg * r, sy - 4]], { w: 1.1, alpha: 0.4, sh: 0, brk: 1.6, col: narrow ? SKETCH.PAL.rust : '#8a7a58', p: [0.2, 1, 0.6] });
 }
 function ironFistDraw(st) {
   const ph = st.ph, K = IRONFIST, E = ph.eye, d = SKETCH.live(ctx, 5150, SKETCH.boil()), lk = ironFistLock(ph);

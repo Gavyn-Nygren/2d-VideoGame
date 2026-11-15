@@ -21,7 +21,7 @@ IRON_ART.thumbClasp = () => {
   if (SKETCH.has(key) && !IRON_ART.redraw) return key;
   SKETCH.sheet(key, 960, 540, d => {
     const P = IRON_P, H = IRON_ART.helpers;
-    const plate = (pts, o = {}) => { d.solid(pts); H.ironPlate(d, pts, Object.assign({ fill: P.iron, fillAlpha: 0.72, w: 2.3 }, o)); };
+    const plate = (pts, o = {}) => { d.solid(pts); H.ironPlate(d, pts, Object.assign({ fill: P.iron, fillAlpha: 0.88, w: 2.3 }, o)); };
     // the grass the hands lie in: a shadow under them
     d.wash(SKETCH.ell(480, 522, 470, 26, 40), P.greenDark, { alpha: 0.5, off: 0, spread: 1.6, edge: false });
     // the forearms: banded iron cylinders from the bottom corners up to the wrists (mirrored), lit from the top left
@@ -52,6 +52,22 @@ IRON_ART.thumbClasp = () => {
         d.stroke(arc, { w: 2.2, curve: true }); d.stroke(arc2, { w: 1.2, curve: true, alpha: 0.7 });
         for (let i = 2; i <= 12; i += 2) d.rivet((arc[i][0] + arc2[i][0]) / 2, (arc[i][1] + arc2[i][1]) / 2, 1.8);
       }
+      // rust weeping down from every seam, a patched panel and a little access door between the bands
+      for (const k of [0.18, 0.38, 0.58, 0.78]) for (let j = 0; j < 4; j++) {
+        const v = vb * (-0.5 + j * 0.42 + d.r() * 0.1), q = along(k + 0.02, v), L2 = 10 + d.r() * 22;
+        d.washIn(arm, () => d.stroke([q, [q[0] + 0.6, q[1] + L2]], { w: 2.2, col: P.rustDark, alpha: 0.5, p: [1, 0.7, 0.1], sh: 0, layer: 'wash' }));
+      }
+      { const pa = [along(0.44, vt * 0.1), along(0.54, vt * 0.1), along(0.54, vb * 0.5), along(0.44, vb * 0.5)];
+        d.washIn(arm, () => d.wash(pa, P.rust, { alpha: 0.55, off: 0.5 })); d.outline(pa, { w: 1.5, corner: 30 });
+        for (const q of pa) d.rivet(q[0] + (480 - q[0]) * 0.008, q[1] - 3 * vt * 0 + 0, 1.5);
+        d.hatch(pa, { a: 70, gap: 2.6, w: 0.5, alpha: 0.4, force: true });
+        const dr = [along(0.64, vt * 0.3), along(0.72, vt * 0.3), along(0.72, vb * 0.3), along(0.64, vb * 0.3)];
+        d.outline(dr, { w: 1.3, corner: 30 }); d.stroke([along(0.7, vb * 0.02), along(0.7, vb * 0.14)], { w: 2.6 });
+        d.hatch(dr, { a: 20, gap: 2.4, w: 0.45, alpha: 0.35, force: true }); }
+      // the wrist cuff: a heavy riveted collar where the arm meets the hand
+      { const cuff = [along(0.86, vt * 1.1), along(1.0, vt * 1.12), along(1.0, vb * 1.12), along(0.86, vb * 1.1)];
+        plate(s > 0 ? cuff : cuff.slice().reverse(), { fill: P.rust, tone: (x, y) => 0.3 + (y - 330) / 220, rivetEdges: [0, 2], spacing: 13, r: 2, rustPatches: 2, scratch: 2 });
+        d.stroke([along(0.88, vt * 0.9), along(0.98, vt * 0.92)], { w: 1.6, col: '#fbf3df', alpha: 0.7, sh: 0, layer: 'white' }); }
       // a fat cable and a pipe along the top of the arm
       H.ironPipe(d, [[mx(30), 470], [mx(150), 412], [mx(270), 372]], 6, { col: P.verd });
       // the wrist cab: a hatch opened in the top of the arm, a seat, a little dash with two levers (the hero sits in it)
@@ -85,6 +101,45 @@ IRON_ART.thumbClasp = () => {
       plate(seg3, { fill: P.ironLight, tone: () => 0.5, rustWash: false, w: 1.8, curve: true });
       d.ellipse(x0 + 56, y + 13, 5, 13, { fill: P.ironLight, w: 1.5 }); d.rivet(x0 + 56, y + 13, 1.6);
     }
+    // --- the long look (review pass): what the backs of the hands are made of ---
+    const ALL = ['wash', 'hatch', 'ink', 'white', 'pencil'];
+    d.within(pipBack, () => {
+      // tendon rods from the four knuckles back to the wrist, each a pair of lines with a worn bright edge
+      for (let k = 0; k < 4; k++) {
+        const kx = 337 + k * 38, ky = 350 - k * 4.5, wx = 304 + k * 5, wy = 428 + k * 10;
+        const mid = [(kx + wx) / 2 + 8, (ky + wy) / 2 - 6];
+        d.stroke([[kx - 4, ky + 10], [mid[0] - 4, mid[1]], [wx, wy]], { w: 1.8, curve: true, p: [0.6, 1, 0.5] });
+        d.stroke([[kx + 4, ky + 10], [mid[0] + 4, mid[1] + 2], [wx + 5, wy + 6]], { w: 1.2, curve: true, alpha: 0.8 });
+        d.stroke([[kx, ky + 12], [mid[0], mid[1] + 1]], { w: 1.2, col: '#fbf3df', alpha: 0.65, sh: 0, layer: 'white', curve: true });
+        for (let j = 0; j < 2; j++) { const yy = ky + 16 + d.r() * 6, xx = kx - 6 + j * 12; d.stroke([[xx, yy], [xx + 0.5, yy + 10 + d.r() * 16]], { w: 2, col: P.rustDark, alpha: 0.5, p: [1, 0.7, 0.1], sh: 0, layer: 'wash' }); }
+      }
+      // a cross seam with its rivets, the lower half in cool shade
+      d.stroke([[290, 404], [390, 396], [494, 398]], { w: 1.6, curve: true });
+      d.rivets(300, 410, 486, 404, 13, { r: 1.5, rust: 0.3 });
+      d.wash([[286, 436], [496, 430], [496, 494], [286, 494]], P.shadowInk, { alpha: 0.24, off: 0, spread: 2, layers: 2, edge: false });
+      d.hatch([[286, 446], [496, 440], [496, 494], [286, 494]], { a: 24, gap: 3, w: 0.55, alpha: 0.4, force: true });
+    }, ALL);
+    // the wrist hub on Pip's hand: a bolted round cover with a square key hole, lit at its top left
+    { const hx = 372, hy = 440, hr = 27, cap = SKETCH.ell(hx, hy, hr, hr * 0.94, 26);
+      d.solid(cap); d.ellipse(hx, hy, hr, hr * 0.94, { fill: P.ironLight, w: 2.6, hatch: { a: 40, gap: 2.2, w: 0.55, alpha: 0.55, tone: (x, y) => ((x - hx) + (y - hy)) / hr * 0.6 + 0.3 } });
+      d.ellipse(hx, hy, hr * 0.44, hr * 0.42, { fill: P.soot, w: 1.8, hatch: { a: -30, gap: 1.8, w: 0.5, tone: () => 0.7 } });
+      d.line(hx - 5, hy, hx + 5, hy, { w: 2.4, ov: 0.4 }); d.line(hx, hy - 5, hx, hy + 5, { w: 2.4, ov: 0.4 });
+      for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2 + 0.2; H.ironBolt(d, hx + Math.cos(a) * hr * 0.72, hy + Math.sin(a) * hr * 0.68, 2.6); }
+      d.stroke(SKETCH.ell(hx, hy, hr * 0.88, hr * 0.84, 18, 0, -2.5, -1.2), { w: 1.8, col: '#fbf3df', alpha: 0.8, layer: 'white', sh: 0, curve: true }); }
+    // a patched panel with a stencilled number, riveted at its corners
+    { const pa = [[424, 356], [470, 352], [474, 388], [428, 392]];
+      d.solid(pa); H.ironPlate(d, pa, { fill: P.rust, fillAlpha: 0.85, tone: () => 0.35, rivetEdges: [0, 2], spacing: 11, inset: 4, r: 1.5, rustPatches: 0, w: 1.8, leave: 0 });
+      H.ironStencil(d, '40', 449, 380, 13, {}); }
+    // Bo's hand: the fingers' shadow across it, a small hub, a seam, a stencil
+    d.within(boBack, () => {
+      d.wash([[596, 336], [622, 340], [626, 486], [600, 490]], P.shadowInk, { alpha: 0.4, off: 0, spread: 2, layers: 2, edge: false });
+      d.hatch([[598, 340], [620, 342], [624, 486], [602, 488]], { a: 60, gap: 2.4, w: 0.55, alpha: 0.5, force: true });
+      d.stroke([[628, 344], [634, 410], [630, 486]], { w: 1.5, curve: true }); d.rivets(638, 352, 640, 478, 9, { r: 1.5, rust: 0.3 });
+      for (let k = 0; k < 4; k++) { const kx = 509 + k * 38, ky = 330 + k * 4.5; for (let j = 0; j < 2; j++) { const xx = kx - 6 + j * 12, yy = ky + 14; d.stroke([[xx, yy], [xx + 0.5, yy + 6 + d.r() * 8]], { w: 2, col: P.rustDark, alpha: 0.5, p: [1, 0.7, 0.1], sh: 0, layer: 'wash' }); } }
+    }, ALL);
+    { const hx = 650, hy = 424, hr = 12; d.ellipse(hx, hy, hr, hr, { fill: P.ironLight, w: 2 }); H.ironBolt(d, hx, hy, 4.5); }
+    // the dark slots between Pip's fingers, and each finger's shadow on the one below
+    for (let k = 0; k < 4; k++) { const y = 344 + k * 34; d.spot([[484, y + 29.5], [596, y + 30], [600, y + 34], [484, y + 33.5]], { alpha: 0.75, spread: 0.4 }); }
     // under the grip: a deep shadow where the palms meet the grass
     d.spot([[300, 482], [660, 482], [640, 496], [320, 496]], { alpha: 0.5 });
     // grass blades in front of everything, and clover
@@ -101,7 +156,7 @@ IRON_ART.thumb = id => {
   if (SKETCH.has(key) && !IRON_ART.redraw) return key;
   SKETCH.sheet(key, K.w, K.h, d => {
     const P = IRON_P, H = IRON_ART.helpers, x = K.ox, b = K.oy, f = id ? -1 : 1;
-    const plate = (pts, o = {}) => { d.solid(pts); H.ironPlate(d, pts, Object.assign({ fill: P.iron, fillAlpha: 0.72, w: 2.4 }, o)); };
+    const plate = (pts, o = {}) => { d.solid(pts); H.ironPlate(d, pts, Object.assign({ fill: P.iron, fillAlpha: 0.88, w: 2.4 }, o)); };
     // the base: a broad plate down into the grip
     plate([[x - 32, b + 26], [x - 31, b - 78], [x + 31, b - 80], [x + 32, b + 26]], { fill: P.iron, tone: THUMB_LIGHT(x - 32, x + 32), rivetEdges: [0, 2], spacing: 16, rustPatches: 2, scratch: 2 });
     // the knuckle band, with the player's stripe
@@ -157,7 +212,7 @@ IRON_ART.thumbLift = id => {
   if (SKETCH.has(key) && !IRON_ART.redraw) return key;
   SKETCH.sheet(key, 460, 420, d => {
     const P = IRON_P, H = IRON_ART.helpers, top = 110;
-    const plate = (pts, o = {}) => { d.solid(pts); H.ironPlate(d, pts, Object.assign({ fill: P.iron, fillAlpha: 0.72, w: 2.4 }, o)); };
+    const plate = (pts, o = {}) => { d.solid(pts); H.ironPlate(d, pts, Object.assign({ fill: P.iron, fillAlpha: 0.88, w: 2.4 }, o)); };
     // the forearm, down and out of the picture
     plate([[160, top + 56], [300, top + 56], [318, 420], [140, 420]], { fill: P.iron, tone: THUMB_LIGHT(140, 318), rivetEdges: [0, 2], spacing: 18, rustPatches: 3, scratch: 3 });
     plate([[150, top + 74], [310, top + 74], [312, top + 104], [148, top + 104]], { fill: P.ironLight, tone: () => 0.3, rivetEdges: [0], spacing: 14, rustWash: false });

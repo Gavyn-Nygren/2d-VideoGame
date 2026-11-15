@@ -77,7 +77,6 @@ IRON_ART.city = (l) => {
         if (kind === 'slab' && d.r() < 0.6) { const bx = x + w2 * 0.3; d.shape([[bx, y], [bx + 14, y - 10], [bx + 18, y - 6], [bx + 6, y + 2]], { fill: P.ironLight, w: 1, corner: 20 }); }
       }
       // a beacon beam from the dish tower: the hero signal on the clouds (a little lightning-bolt shape)
-      d.wash([[434, 150], [470, 0], [520, 0], [446, 150]], P.coreHot, { alpha: 0.22, off: 0, spread: 2, layers: 2, edge: false });
       d.shape([[488, 18], [500, 18], [494, 30], [504, 30], [486, 50], [492, 34], [482, 34]], { fill: P.core, w: 1, corner: 20 });
     } else {
       // near rooftops: water tanks on stilts, a billboard (POW!), chimneys, a fire escape; warm last light on the tops
@@ -135,8 +134,21 @@ IRON_ART.chestWall = (k) => {
       for (let i = 1; i < path.length - 1; i += 1) { const [x, y] = path[i]; if (x < 0 || x > 480) continue; H.ironBolt(d, x, y + 6, 2.2); H.ironBolt(d, x + side * 10, y + th - 6, 2); }
       d.within(band, () => d.hatch(bot.map(([x, y]) => [x, y + 1]).concat(top.map(([x, y]) => [x, y + th * 0.6]).reverse()), { a: -40 * side, gap: 2, w: 0.6, tone: () => 0.8 }));
     }
+    // a clamp round each rib where it crosses a sheet boundary (the joint line down its middle is the boundary)
+    for (const side of [-1, 1]) for (let r = 0; r < 3; r++) {
+      const path = ironRibPath(side, r), th = 30 - r * 3;
+      for (const wx of [480, 1440]) for (const e of [bx, bx + 480]) {
+        if (e !== wx) continue;
+        let yy = null; for (let i = 1; i < path.length; i++) { const [xa, ya] = path[i - 1], [xb, yb] = path[i]; if ((xa - wx) * (xb - wx) <= 0 && xa !== xb) yy = ya + (yb - ya) * (wx - xa) / (xb - xa); }
+        if (yy == null) continue;
+        const lx = wx - bx, a = lx === 0 ? 0 : 468, q = [[a, yy - by - 5], [a + 12, yy - by - 5], [a + 12, yy - by + th + 5], [a, yy - by + th + 5]];
+        d.solid(q, { kind: 'dusk' });
+        H.ironPlate(d, q, { fill: P.soot, fillAlpha: 0.92, tone: () => 0.6, hatchA: 90, gap: 2, rustPatches: 0, leave: 0, w: 2 });
+        H.ironBolt(d, a + 6, yy - by + 4, 2.4); H.ironBolt(d, a + 6, yy - by + th - 4, 2.4);
+      }
+    }
     // struts between the ribs (vertical ties) and a gallery rail
-    for (let gx = 160; gx < 1920; gx += 320) {
+    for (let gx = 240; gx < 1920; gx += 320) {   // (never on a sheet boundary: a strut cut in two shows its seam)
       if (Math.abs(gx - 960) < 200) continue;
       const [x] = L(gx, 0); if (x < -30 || x > 510) continue;
       const strut = [[x - 9, 40], [x + 9, 40], [x + 9, 262], [x - 9, 262]];
@@ -177,11 +189,17 @@ IRON_ART.chestWall = (k) => {
     }
     // the shoulders: great round pauldrons at both ends of the chest
     if (k === 0 || k === 3) {
-      const sxx = k === 0 ? 30 : 450, sh = SKETCH.ell(sxx, 60, 170, 150, 28);
+      const sxx = k === 0 ? 30 : 450, shY = 196, sh = SKETCH.ell(sxx, shY, 176, 168, 32);   // (wholly inside the sheet: its top is not cut off flat)
       d.solid(sh, { kind: 'dusk' });
-      H.ironPlate(d, sh, { fill: P.iron, fillAlpha: 0.9, shadeAlpha: 0.2, tone: (x, y) => Math.hypot(x - sxx - (k ? -60 : 60), y - 10) / 220, hatchA: 50, gap: 2.6, cross: true, crossTone: (x, y) => (y - 60) / 120, rustPatches: 2, w: 3, curve: true, scratch: 4 });
-      for (let i = 0; i < 9; i++) { const a = (k === 0 ? 0.2 : Math.PI - 0.2 - 1.6) + i * 0.2; H.ironBolt(d, sxx + Math.cos(a) * 140, 60 + Math.sin(a) * 124, 3.4); }
-      d.stroke(SKETCH.ell(sxx, 60, 150, 132, 30, 0, k === 0 ? -0.2 : Math.PI - 1.2, k === 0 ? 1.0 : Math.PI + 0.2), { w: 2, col: '#fbf3df', alpha: 0.65, layer: 'white', sh: 0, curve: true });
+      H.ironPlate(d, sh, { fill: P.iron, fillAlpha: 0.9, shadeAlpha: 0.2, tone: (x, y) => Math.hypot(x - sxx - (k ? -60 : 60), y - shY + 70) / 240, hatchA: 50, gap: 2.6, cross: true, crossTone: (x, y) => (y - shY) / 130, rustPatches: 2, w: 3, curve: true, scratch: 4 });
+      for (let i = 0; i < 9; i++) { const a = (k === 0 ? 0.2 : Math.PI - 0.2 - 1.6) + i * 0.2; H.ironBolt(d, sxx + Math.cos(a) * 150, shY + Math.sin(a) * 142, 3.6); }
+      d.stroke(SKETCH.ell(sxx, shY, 120, 114, 30), { w: 1.8, curve: true, sh: 0.3 });
+      d.ellipse(sxx + (k ? -40 : 40), shY + 10, 40, 38, { fill: P.soot, w: 2.6, hatch: { a: 30, gap: 2, w: 0.6, tone: () => 0.7 } });
+      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + 0.3; H.ironBolt(d, sxx + (k ? -40 : 40) + Math.cos(a) * 28, shY + 10 + Math.sin(a) * 26, 3); }
+      d.ellipse(sxx + (k ? -40 : 40), shY + 10, 11, 11, { fill: P.ironLight, w: 1.8 });
+      for (let j = 0; j < 5; j++) { const x = sxx + (k ? -150 : 20) + j * 30 + d.r() * 10, y = shY + 60 + d.r() * 60; d.stroke([[x, y], [x + 0.5, y + 16 + d.r() * 26]], { w: 2.4, col: P.rustDark, alpha: 0.5, p: [1, 0.7, 0.1], sh: 0, layer: 'wash' }); }
+      H.ironStencil(d, k ? 'R-ARM' : 'L-ARM', sxx + (k ? -70 : 70), shY + 100, 16, {});
+      d.stroke(SKETCH.ell(sxx, shY, 158, 150, 30, 0, k === 0 ? -0.2 : Math.PI - 1.2, k === 0 ? 1.0 : Math.PI + 0.2), { w: 2, col: '#fbf3df', alpha: 0.65, layer: 'white', sh: 0, curve: true });
     }
   }, { seed: 5300 + k, versions: 2, ox: 0, oy: 0 });
   return key;
@@ -243,7 +261,7 @@ IRON_ART.fist = (side) => {
     d.solid(cuff, { kind: 'dusk' });
     H.ironPlate(d, cuff, { fill: P.soot, fillAlpha: 0.9, rivetEdges: [2], spacing: 10, inset: 4, r: 1.6, tone: () => 0.55, hatchA: 0, gap: 2, rustPatches: 0, leave: 0 });
     const back = pts([[16, 24], [114, 22], [120, 56], [10, 58]]);
-    d.solid(back, { kind: 'dusk', curve: true });
+    d.solid(back.map(([x, y]) => [65 + (x - 65) * 0.9, 40 + (y - 40) * 0.9]), { kind: 'dusk', curve: true });   // (inset: no paper halo round the hand)
     H.ironPlate(d, back, { fill: P.iron, fillAlpha: 0.9, shadeAlpha: 0.2, tone: (x, y) => 0.15 + (y - 22) / 60, hatchA: 0, gap: 2.4, rustPatches: 1, w: 3, curve: true, leave: 0.3 });
     // four fingers, each a rounded roll, the middle two longest
     const fw = 26, x0 = 12, len = [44, 52, 50, 42];
