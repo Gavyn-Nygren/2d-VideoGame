@@ -41,10 +41,27 @@ IRON_HUD.draw = (g, s) => {
     d.stroke(SKETCH.ell(x, y, 4, 4, 10, 0, 0, 5.8), { w: 0.8, curve: true, col: full ? SKETCH.INK : '#f6ecd4', sh: 0 });
   }
   g.restore();
-  // right: time, Clangs, rivets
+  // right: time, Clangs, rivets: cached paper pills by size, the numbers lettered live (they change every second)
   const t = s.time || 0, m = Math.floor(t / 60), sec = Math.floor(t % 60);
-  const tw = IRON_HUD.pill(g, 948, 8, m + ':' + (sec < 10 ? '0' : '') + sec, { size: 17, align: 'right', alpha: fadeR, kind: 't' });
-  IRON_HUD.pill(g, 948 - tw - 4, 8, 'CLANGS ' + (s.clangs || 0), { size: 13, align: 'right', alpha: fadeR, kind: 'c' });
-  IRON_HUD.pill(g, 948, 44, 'RIVETS ' + (s.rivets || 0) + '/' + (s.rivetsMax || 60), { size: 12, align: 'right', alpha: fadeR, kind: 'r', col: '#6e4a12' });
+  const tw = IRON_HUD.live(g, 948, 8, m + ':' + (sec < 10 ? '0' : '') + sec, 17, { align: 'right', alpha: fadeR });
+  IRON_HUD.live(g, 948 - tw - 4, 8, 'CLANGS ' + (s.clangs || 0), 13, { align: 'right', alpha: fadeR });
+  if (!s.versus) IRON_HUD.live(g, 948, 44, 'RIVETS ' + (s.rivets || 0) + '/' + (s.rivetsMax || 60), 12, { align: 'right', alpha: fadeR, col: '#6e4a12' });
   void w;
+};
+// a pill whose text changes: the paper is a cached blank (by width), the letters are drawn live
+IRON_HUD.live = (g, x, y, text, size, o = {}) => {
+  const pad = 10, tw = SKETCH.wordWidth(text, size), w = Math.ceil((tw + pad * 2) / 6) * 6, h = size + 14;
+  const key = 'iron:hud:blank:' + w + ':' + size;
+  if (!SKETCH.has(key)) SKETCH.sheet(key, w + 8, h + 8, d => {
+    const box = [[4, 6], [w * 0.5, 4.5], [w + 3, 6], [w + 4.5, h * 0.5 + 4], [w + 3, h + 3], [w * 0.5, h + 4.2], [5, h + 3], [3.5, h * 0.5 + 4]];
+    const gg = d.ctx('wash'); gg.fillStyle = '#f6ecd4'; gg.globalAlpha = 0.94; gg.beginPath(); SKETCH.spline(box, true, 3).forEach((p, i) => (i ? gg.lineTo(p[0], p[1]) : gg.moveTo(p[0], p[1]))); gg.fill(); gg.globalAlpha = 1;
+    d.outline(box, { curve: true, w: 1.8, c: [w / 2 + 4, h / 2 + 4], strokes: 2 });
+    d.hatch([[w * 0.6, h + 3], [w + 3, h + 2], [w + 4, h * 0.6]], { a: 50, gap: 2, w: 0.5, force: true, alpha: 0.5 });
+  }, { versions: 3, seed: 950 + w });
+  const x0 = o.align === 'right' ? x - w - 8 : x;
+  SKETCH.blit(g, key, x0, y, { alpha: o.alpha });
+  g.save(); if (o.alpha != null) g.globalAlpha *= o.alpha;
+  SKETCH.live(g, 960 + text.length, SKETCH.boil()).word(text, x0 + 4 + (w - tw) / 2, y + h / 2 + 4.5, size, { w: Math.max(1.6, size * 0.14), col: o.col, jit: 0.3, bounce: 0.04 });
+  g.restore();
+  return w + 8;
 };
