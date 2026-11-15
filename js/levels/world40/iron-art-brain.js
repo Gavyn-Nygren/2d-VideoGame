@@ -22,128 +22,153 @@ const L_CHALK = '#efe8d8';
 IRON_ART.lampWall = (k = 0) => {
   const key = 'iron:lamp:wall:' + k;
   if (!SKETCH.has(key)) SKETCH.sheet(key, 960, 540, d => {
-    const P = IRON_P, H = IRON_ART.helpers, Y0 = 60 - 540 * (k + 1), Y = y => y - Y0, E = IRON_ART.LAMP_EYE;
-    // the round wall: ribs bunch up toward the sides (it curves away), plate rows between them bend a little
-    const th = [-1.25, -1, -0.72, -0.42, -0.14, 0.14, 0.42, 0.72, 1, 1.25], rx = t => 480 + 560 * Math.sin(t) / Math.sin(1.25) * 0.9;
-    const bend = (x, y) => y + 10 * Math.cos((x - 480) / 560 * 1.4) - 10;
-    for (let row = -1; row < 16; row++) {
-      const ya = -150 * row + 60, yb = ya - 150;                 // world rows match the floors
-      if (yb > Y0 + 560 || ya < Y0 - 20) continue;
+    const P = IRON_P, H = IRON_ART.helpers, Y0 = 60 - 540 * (k + 1), Y = y => y - Y0, E = IRON_ART.LAMP_EYE, INK = SKETCH.INK;
+    const vis = (y0, y1) => y1 > Y0 - 40 && y0 < Y0 + 580;
+    // the round wall: wide plates in world rows (one per floor), narrower toward the sides where the wall turns away
+    const th = [-1.3, -0.95, -0.5, 0, 0.5, 0.95, 1.3], rx = t => 480 + 520 * Math.sin(t) / Math.sin(1.3);
+    for (let row = -1; row < 13; row++) {
+      const ya = -150 * row + 60, yb = ya - 150;
+      if (!vis(yb, ya)) continue;
       for (let i = 0; i < th.length - 1; i++) {
-        const xa = rx(th[i]), xb = rx(th[i + 1]), edge = Math.abs(th[i] + th[i + 1]) / 2.5;
-        const pts = [[xa, Y(bend(xa, yb))], [xb, Y(bend(xb, yb))], [xb, Y(bend(xb, ya))], [xa, Y(bend(xa, ya))]];
-        d.wash(pts, (row + i) % 2 ? '#342d2a' : '#3a322e', { alpha: 0.55, off: 1.2, spread: 1.2, blooms: 1 });
-        // darker toward the sides (the wall turns away from the eye's light)
-        d.hatch(pts, { a: 80 + (i - 4) * 4, gap: 3.6 - edge * 1.2, w: 0.5, alpha: 0.18 + edge * 0.3, tone: (x2, y2) => 0.3 + edge + (y2 - Y(bend(x2, yb))) / 300 });
-        d.outline(pts, { w: 1, corner: 40, alpha: 0.3 });
-        d.rivets(xa + 6, Y(bend(xa, yb)) + 7, xb - 6, Y(bend(xb, yb)) + 7, Math.max(3, Math.round((xb - xa) / 16)), { r: 1.1, rust: 0.15 });
+        const xa = rx(th[i]), xb = rx(th[i + 1]), edge = Math.abs(th[i] + th[i + 1]) / 2.6;
+        const sag = x => 8 * Math.cos((x - 480) / 520 * 1.3);
+        const pts = [[xa, Y(yb) + sag(xa)], [xb, Y(yb) + sag(xb)], [xb, Y(ya) + sag(xb)], [xa, Y(ya) + sag(xa)]];
+        d.wash(pts, (row + i) % 2 ? '#352d2a' : '#3b322e', { alpha: 0.6, off: 1.2, spread: 1.2, blooms: 1 });
+        d.hatch(pts, { a: 84 + (i - 2.5) * 5, gap: 3.8 - edge * 1.4, w: 0.5, alpha: 0.14 + edge * 0.28, tone: (x2, y2) => 0.25 + edge * 0.8 + (y2 - Y(yb)) / 360 });
+        d.outline(pts, { w: 1, corner: 40, alpha: 0.22 });
+        d.rivets(xa + 8, Y(yb) + sag(xa) + 8, xb - 8, Y(yb) + sag(xb) + 8, Math.max(3, Math.round((xb - xa) / 22)), { r: 1.1, rust: 0.15 });
       }
     }
-    // the ribs: tall curved iron bands with a lit edge
-    for (const t of th.slice(1, -1)) {
-      const x = rx(t), w = 10 * Math.cos(t) + 4;
+    // the wall turns away at the sides: shadow pooled there
+    for (const sd of [-1, 1]) for (let i = 0; i < 4; i++) {
+      const w = 40 + i * 34, x0 = sd < 0 ? -10 : 970 - w;
+      d.wash([[x0, -20], [x0 + w, -20], [x0 + w, 560], [x0, 560]], P.shadowInk, { alpha: 0.1, off: 0, spread: 2, edge: false, layers: 1 });
+    }
+    // two great ribs, lit on the side toward the eye
+    for (const t of [-0.95, 0.95]) {
+      const x = rx(t), w = 9;
       const band = [[x - w, -20], [x + w, -20], [x + w, 560], [x - w, 560]];
-      d.wash(band, '#2a2421', { alpha: 0.7, off: 0.6, spread: 1 });
-      d.stroke([[x - w, -20], [x - w, 560]], { w: 1.2, alpha: 0.5 });
-      d.stroke([[x + w, -20], [x + w, 560]], { w: 1.2, alpha: 0.5 });
-      d.stroke([[x + (t < 0 ? w - 2 : -w + 2), -20], [x + (t < 0 ? w - 2 : -w + 2), 560]], { w: 1, col: '#e8c890', alpha: 0.22, sh: 0, layer: 'white' });
-      for (let y = 10 + ((Y0 % 30) + 30) % 30; y < 540; y += 30) d.rivet(x, y, 1.3);
+      d.solid(band, { kind: 'dark' });
+      d.wash(band, '#2a2421', { alpha: 0.9, off: 0.4 });
+      d.hatch(band, { a: 90, gap: 2.2, w: 0.5, alpha: 0.5, force: true });
+      d.stroke([[x - w, -20], [x - w, 560]], { w: 1.6 }); d.stroke([[x + w, -20], [x + w, 560]], { w: 1.6 });
+      const lit = t < 0 ? x + w - 2.5 : x - w + 2.5;
+      d.stroke([[lit, -20], [lit, 560]], { w: 1.4, col: '#f2c98a', alpha: 0.4, sh: 0, layer: 'white' });
+      for (let y = ((10 - Y0) % 36 + 36) % 36; y < 540; y += 36) d.rivet(x, y, 1.5);
     }
-    // the side walls: racks of thinking valves (left), a switchboard (right), cable trunks between
-    for (const sd of [-1, 1]) {
-      const x0 = sd < 0 ? 70 : 760;
-      for (let row = 0; row < 12; row++) {
-        const wy = -150 * row - 95;                               // half way up each floor
-        if (wy < Y0 - 80 || wy > Y0 + 600 || row === 0) continue;
-        const yy = Y(wy);
-        if ((row + (sd < 0 ? 0 : 1)) % 2 === 0) {
-          // a valve rack: glass tubes in a frame (their glow is faint: they think slowly)
-          const box = SKETCH.box(x0, yy - 34, 130, 60);
-          d.solid(box, { kind: 'dark' });
-          d.shape(box, { fill: '#2a2421', w: 1.6, corner: 30 });
-          for (let i = 0; i < 6; i++) {
-            const vx = x0 + 14 + i * 20, tube = [[vx - 6, yy + 18], [vx - 6, yy - 12], [vx - 4, yy - 22], [vx + 4, yy - 22], [vx + 6, yy - 12], [vx + 6, yy + 18]];
-            d.wash(tube, i % 2 ? '#8a6a3a' : '#a37a3c', { alpha: 0.5, off: 0.4, spread: 1 });
-            d.outline(tube, { w: 1, curve: true, alpha: 0.8 });
-            d.stroke([[vx - 2, yy + 14], [vx - 2, yy - 6], [vx + 2, yy - 10], [vx + 2, yy + 14]], { w: 0.8, col: '#ffd27a', alpha: 0.6, sh: 0, layer: 'white' });
-            d.shape(SKETCH.box(vx - 7, yy + 18, 14, 6), { fill: '#5a463c', w: 1, corner: 30 });
-          }
-          H.ironStencil(d, ['THINKING', 'DO NOT DISTURB', 'IDEAS', 'MEMORY', 'GRUMBLES', 'PLANS'][row % 6], x0 + 65, yy - 42, 10);
-        } else {
-          // a switchboard: dials and knife switches
-          const box = SKETCH.box(x0, yy - 40, 130, 70);
-          d.solid(box, { kind: 'dark' });
-          d.shape(box, { fill: '#3a322d', w: 1.6, corner: 30, hatch: { a: 70, gap: 2.4, w: 0.45, alpha: 0.4 } });
-          for (let i = 0; i < 3; i++) {
-            const gx = x0 + 22 + i * 43, gy = yy - 18;
-            d.solid(SKETCH.ell(gx, gy, 12, 12, 16), { kind: 'dawn' });
-            d.ellipse(gx, gy, 12, 12, { w: 1.4, col: SKETCH.INK });
-            d.ellipse(gx, gy, 14, 14, { w: 1.6 });
-            const a = -2.4 + ((row * 3 + i * 7) % 10) / 10 * 1.8;
-            d.line(gx, gy, gx + Math.cos(a) * 9, gy + Math.sin(a) * 9, { w: 1.3, col: P.rust, ov: 0 });
-            d.stroke([[gx - 8, yy + 14], [gx + 2, yy + 2]], { w: 2, col: P.ochre, sh: 0 });
-            d.ellipse(gx - 8, yy + 14, 2.4, 2.4, { fill: '#2a2421', w: 1 });
-          }
-          d.rivets(x0 + 6, yy - 34, x0 + 124, yy - 34, 9, { r: 1.1 });
-        }
+    // the copper pipes up the edges of the lightning zone, a flange at every floor
+    for (const [px, col] of [[198, '#6b7d70'], [762, '#7a5a48']]) {
+      H.ironPipe(d, [[px, -20], [px + 1, 270], [px, 560]], 6, { col, alpha: 0.7 });
+      for (let q = 0; q < 13; q++) { const fy = Y(-150 * q - 120); if (fy > -10 && fy < 550) { d.shape(SKETCH.box(px - 10, fy - 3, 20, 6), { fill: '#5a463c', w: 1.1, corner: 30 }); } }
+    }
+    // per floor: a pair of dials on the rod side, a caged work lamp over the stairs (it is lit live)
+    for (let q = 0; q < 9; q++) {
+      const fy = -150 * q;
+      if (!vis(fy - 150, fy)) continue;
+      const rodLeft = q % 2 === 0, dx = rodLeft ? [104, 140] : [856, 820];
+      for (let i = 0; i < 2; i++) {
+        const gx = dx[i], gy = Y(fy - 104 + i * 6), r = 12 - i * 2;
+        d.solid(SKETCH.ell(gx, gy, r, r, 16), { kind: 'dawn' });
+        d.ellipse(gx, gy, r, r, { w: 1.3, col: INK });
+        d.ellipse(gx, gy, r + 2.5, r + 2.5, { w: 1.6 });
+        const a = -2.2 + ((q * 5 + i * 3) % 7) / 7 * 1.6;
+        d.line(gx, gy, gx + Math.cos(a) * (r - 3), gy + Math.sin(a) * (r - 3), { w: 1.2, col: P.rust, ov: 0 });
+        d.stroke([[gx, gy - r - 2], [gx + (i ? 3 : -2), gy - r - 16]], { w: 1.2, alpha: 0.8 });
       }
-      // a cable trunk up the wall: three bundled cables in clamps
-      const tx = sd < 0 ? 218 : 742;
-      for (let c = -1; c <= 1; c++) d.stroke([[tx + c * 6, -20], [tx + c * 6 + 2, 270], [tx + c * 6, 560]], { w: 4, col: ['#4a3a2e', '#5a2a1c', '#3a3a30'][c + 1], sh: 0, curve: true, alpha: 0.85 });
-      for (let y = ((40 - Y0) % 120 + 120) % 120; y < 540; y += 120) { d.shape(SKETCH.box(tx - 12, y - 4, 24, 8), { fill: '#6a5446', w: 1.2, corner: 30 }); d.rivet(tx, y, 1.2); }
+      if (q < 8) {
+        const lx = q % 2 === 0 ? 835 : 125, ly = Y(fy - 122);
+        d.shape(SKETCH.box(lx - 9, ly - 14, 18, 6), { fill: '#5a463c', w: 1.2, corner: 30 });
+        d.solid(SKETCH.ell(lx, ly - 2, 8, 8, 14), { kind: 'dark' });
+        d.ellipse(lx, ly - 2, 8, 8, { fill: P.coreHot, w: 1.2 });
+        for (const a of [-0.9, 0, 0.9]) d.stroke([[lx + Math.sin(a) * 9, ly - 8], [lx + Math.sin(a) * 10, ly + 6]], { w: 1.1, sh: 0 });
+        d.stroke(SKETCH.ell(lx, ly - 2, 10, 10, 12, 0, 0.2, 2.9), { w: 1.1, curve: true, sh: 0 });
+      }
     }
-    // the back of the lantern eye: a great amber window with an iris of brass blades, seen from inside
+    // THE JAW, from inside (floors 0 and 1): a long grille, dawn light between its bars
+    if (vis(-262, -40)) {
+      const gx0 = 300, gx1 = 660, gy0 = Y(-262), gy1 = Y(-48);
+      const frame = SKETCH.box(gx0 - 16, gy0 - 16, gx1 - gx0 + 32, gy1 - gy0 + 32);
+      d.solid(frame, { kind: 'dark' });
+      H.ironPlate(d, frame, { fill: P.soot, fillAlpha: 0.9, tone: () => 0.6, hatchA: 0, gap: 2.4, rivetEdges: [0, 1, 2, 3], spacing: 16, w: 2.6, rustPatches: 2, leave: 0 });
+      const win = SKETCH.box(gx0, gy0, gx1 - gx0, gy1 - gy0);
+      d.solid(win, { kind: 'dawn', plain: true });
+      d.wash(win, '#f2c27a', { alpha: 0.7, off: 0, spread: 1.6, layers: 2, edge: false });
+      d.washIn(win, () => {
+        d.wash([[gx0, gy1 - 50], [gx0 + 120, gy1 - 76], [gx0 + 240, gy1 - 58], [gx1, gy1 - 84], [gx1, gy1], [gx0, gy1]], '#9aa86a', { alpha: 0.7, off: 0, spread: 1.6, edge: false, curve: true });
+        d.wash(SKETCH.ell(gx0 + 250, gy0 + 60, 50, 50, 20), '#fff0c0', { alpha: 0.9, off: 0, spread: 2, edge: false });
+      });
+      for (let x = gx0 + 10; x < gx1; x += 26) {
+        const bar = [[x - 4, gy0 - 2], [x + 4, gy0 - 2], [x + 4, gy1 + 2], [x - 4, gy1 + 2]];
+        d.solid(bar, { kind: 'dark' });
+        d.shape(bar, { fill: '#2a2421', w: 1.5, corner: 30 });
+        d.stroke([[x - 2, gy0 + 4], [x - 2, gy1 - 4]], { w: 1, col: '#f2c98a', alpha: 0.5, sh: 0, layer: 'white' });
+      }
+      H.ironStencil(d, 'JAW  -  DO NOT OPEN', (gx0 + gx1) / 2, gy0 - 30, 13);
+    }
+    // THE EYE: the back of the lantern lens, a great amber window with an iris of brass blades
     const ey = Y(E.y);
     if (ey + E.r + 60 > 0 && ey - E.r - 60 < 540) {
-      const rim = SKETCH.ell(E.x, ey, E.r + 30, E.r + 30, 60);
-      d.solid(rim, { kind: 'dark' });
-      d.ellipse(E.x, ey, E.r + 30, E.r + 30, { fill: '#2a2421', w: 3.4, hatch: { a: 30, gap: 2, w: 0.5, tone: (x, y) => 0.5 + ((x - E.x) + (y - ey)) / (E.r * 3) } });
-      for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2; H.ironBolt(d, E.x + Math.cos(a) * (E.r + 16), ey + Math.sin(a) * (E.r + 16), 4); }
-      // the glass: amber, brighter in the middle, with the world outside a soft blur
-      d.solid(SKETCH.ell(E.x, ey, E.r, E.r, 56), { kind: 'dawn', plain: true });
-      d.wash(SKETCH.ell(E.x, ey, E.r, E.r, 48), P.ochre, { alpha: 0.85, off: 0, spread: 1.6, layers: 2, edge: false });
-      d.wash(SKETCH.ell(E.x, ey + 10, E.r * 0.72, E.r * 0.66, 40), P.core, { alpha: 0.75, off: 0, spread: 1.8, layers: 2, edge: false });
-      d.wash(SKETCH.ell(E.x - 20, ey - 10, E.r * 0.36, E.r * 0.32, 30), P.coreHot, { alpha: 0.85, off: 0, spread: 2, layers: 2, edge: false });
-      // outside, through the glass: the far meadow hills at dawn, blurred and reversed
-      d.wash([[E.x - E.r, ey + 70], [E.x - 120, ey + 40], [E.x, ey + 60], [E.x + 140, ey + 34], [E.x + E.r, ey + 64], [E.x + E.r, ey + E.r], [E.x - E.r, ey + E.r]], '#b9803e', { alpha: 0.5, off: 0, spread: 2, edge: false, curve: true });
-      // the iris: eight brass blades round an open middle (held open: the Colossus is looking)
+      d.solid(SKETCH.ell(E.x, ey, E.r + 32, E.r + 32, 60), { kind: 'dark' });
+      d.ellipse(E.x, ey, E.r + 32, E.r + 32, { fill: '#2a2421', w: 3.6, hatch: { a: 30, gap: 2, w: 0.5, tone: (x, y) => 0.45 + ((x - E.x) + (y - ey)) / (E.r * 3) } });
+      d.stroke(SKETCH.ell(E.x, ey, E.r + 26, E.r + 26, 40, 0, 3.4, 4.7), { w: 1.6, col: '#f2c98a', alpha: 0.45, curve: true, sh: 0, layer: 'white' });
+      for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2; H.ironBolt(d, E.x + Math.cos(a) * (E.r + 17), ey + Math.sin(a) * (E.r + 17), 4); }
+      const glass = SKETCH.ell(E.x, ey, E.r, E.r, 56);
+      d.solid(glass, { kind: 'dawn', plain: true });
+      d.washIn(glass, () => {
+        d.wash(glass, P.ochre, { alpha: 0.85, off: 0, spread: 1.6, layers: 2, edge: false });
+        d.wash(SKETCH.ell(E.x, ey + 10, E.r * 0.74, E.r * 0.68, 40), P.core, { alpha: 0.75, off: 0, spread: 1.8, layers: 2, edge: false });
+        d.wash(SKETCH.ell(E.x - 20, ey - 10, E.r * 0.36, E.r * 0.32, 30), P.coreHot, { alpha: 0.85, off: 0, spread: 2, layers: 2, edge: false });
+        // outside, reversed through the glass: the meadow hills and a little house, soft
+        d.wash([[E.x - E.r - 10, ey + 74], [E.x - 120, ey + 44], [E.x, ey + 66], [E.x + 140, ey + 36], [E.x + E.r + 10, ey + 70], [E.x + E.r + 10, ey + E.r + 10], [E.x - E.r - 10, ey + E.r + 10]], '#b9803e', { alpha: 0.55, off: 0, spread: 2, edge: false, curve: true });
+        d.wash(SKETCH.box(E.x + 90, ey + 22, 26, 20), '#8a5a30', { alpha: 0.5, off: 0, spread: 1.4, edge: false });
+      });
       for (let i = 0; i < 8; i++) {
         const a = i / 8 * Math.PI * 2, b = a + Math.PI / 4 + 0.18, r0 = E.r * 0.62, r1 = E.r - 4;
         const blade = [[E.x + Math.cos(a) * r1, ey + Math.sin(a) * r1], [E.x + Math.cos(b) * r1, ey + Math.sin(b) * r1], [E.x + Math.cos(b - 0.1) * r0, ey + Math.sin(b - 0.1) * r0], [E.x + Math.cos(a + 0.25) * (r0 + 6), ey + Math.sin(a + 0.25) * (r0 + 6)]];
-        d.wash(blade, P.ochreDeep, { alpha: 0.65, off: 0.6, spread: 1.2 });
-        d.hatch(blade, { a: (a * 57 + 45) % 180, gap: 2.6, w: 0.5, alpha: 0.45, force: true });
-        d.outline(blade, { w: 1.6, corner: 40 });
+        d.washIn(glass, () => { d.wash(blade, P.ochreDeep, { alpha: 0.75, off: 0.6, spread: 1.2 }); d.wash(blade, P.shadowInk, { alpha: 0.12, off: 0, spread: 1.6, edge: false }); });
+        d.outline(blade, { w: 1.6, corner: 40, alpha: 0.85 });
+        d.stroke([blade[0], blade[1]], { w: 1.4, col: '#fff3cf', alpha: 0.35, sh: 0, layer: 'white' });
       }
       d.stroke(SKETCH.ell(E.x, ey, E.r * 0.62, E.r * 0.62, 40, 0, 0, Math.PI * 2), { w: 2.2, curve: true, alpha: 0.7 });
-      // mullions: a cross of iron bars and a ring, the rivets where they meet
-      for (const a of [0, Math.PI / 2]) {
-        const bar = [[E.x + Math.cos(a) * E.r - Math.sin(a) * 7, ey + Math.sin(a) * E.r + Math.cos(a) * 7], [E.x - Math.cos(a) * E.r - Math.sin(a) * 7, ey - Math.sin(a) * E.r + Math.cos(a) * 7],
-          [E.x - Math.cos(a) * E.r + Math.sin(a) * 7, ey - Math.sin(a) * E.r - Math.cos(a) * 7], [E.x + Math.cos(a) * E.r + Math.sin(a) * 7, ey + Math.sin(a) * E.r - Math.cos(a) * 7]];
+      for (const a of [Math.PI / 4, -Math.PI / 4]) {
+        const c = Math.cos(a), sn = Math.sin(a);
+        const bar = [[E.x + c * E.r - sn * 6, ey + sn * E.r + c * 6], [E.x - c * E.r - sn * 6, ey - sn * E.r + c * 6], [E.x - c * E.r + sn * 6, ey - sn * E.r - c * 6], [E.x + c * E.r + sn * 6, ey + sn * E.r - c * 6]];
         d.solid(bar, { kind: 'dark' });
         d.shape(bar, { fill: '#2a2421', w: 1.6, corner: 30 });
       }
       d.ellipse(E.x, ey, 30, 30, { fill: '#2a2421', w: 2 });
       H.ironBolt(d, E.x, ey, 8);
-      // the glass's own shine, and the stencil seen backwards from inside
       d.stroke(SKETCH.ell(E.x, ey, E.r - 16, E.r - 16, 30, 0, 3.5, 4.4), { w: 3, col: '#fff3cf', alpha: 0.7, curve: true, sh: 0, layer: 'white' });
       d.stroke(SKETCH.ell(E.x, ey, E.r - 30, E.r - 30, 20, 0, 3.7, 4.1), { w: 1.6, col: '#fff3cf', alpha: 0.6, curve: true, sh: 0, layer: 'white' });
-      d.outline(SKETCH.ell(E.x, ey, E.r, E.r, 56), { w: 3, curve: true });
-      H.ironStencil(d, 'I KM', E.x, ey + E.r + 52, 16);
+      d.outline(glass, { w: 3, curve: true });
+      H.ironStencil(d, 'I KM', E.x, ey + E.r + 56, 16);
+    }
+    // THE EAR (floors 7 and 8): a round louvred vent, sound tubes curling out of it
+    const ex = 480, eyy = -1118, er = 74;
+    if (vis(eyy - er - 20, eyy + er + 20)) {
+      const ey2 = Y(eyy);
+      d.solid(SKETCH.ell(ex, ey2, er + 14, er + 14, 40), { kind: 'dark' });
+      d.ellipse(ex, ey2, er + 14, er + 14, { fill: '#2a2421', w: 3, hatch: { a: 40, gap: 2, w: 0.5, tone: () => 0.7 } });
+      for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; H.ironBolt(d, ex + Math.cos(a) * (er + 7), ey2 + Math.sin(a) * (er + 7), 2.8); }
+      for (let r = er; r > 10; r -= 12) d.stroke(SKETCH.ell(ex, ey2, r, r, 30, 0, 0, Math.PI * 2), { w: 2, curve: true, alpha: 0.8 });
+      d.ellipse(ex, ey2, 12, 12, { fill: P.ochre, w: 1.6 });
+      for (const sd of [-1, 1]) H.ironPipe(d, [[ex + sd * (er + 10), ey2 - 10], [ex + sd * (er + 70), ey2 - 50], [ex + sd * (er + 90), ey2 - 120]], 7, { col: '#a37a3c', alpha: 0.75, flanges: [0.2] });
+      H.ironStencil(d, 'EAR (LEFT)', ex, ey2 + er + 32, 12);
     }
     // the dome at the top: ribs bending in toward the crown, the bulb's cable trunk coming down
     const crown = Y(-1720);
     if (crown > -200 && crown < 600) {
       for (const t of th) {
         const x = rx(t);
-        d.stroke([[x, Y(-1450)], [x + (480 - x) * 0.15, Y(-1560)], [x + (480 - x) * 0.45, Y(-1660)], [480 + (x - 480) * 0.2, crown - 20]], { w: 3, curve: true, alpha: 0.8 });
+        d.stroke([[x, Y(-1420)], [x + (480 - x) * 0.15, Y(-1540)], [x + (480 - x) * 0.45, Y(-1650)], [480 + (x - 480) * 0.2, crown - 20]], { w: 3.2, curve: true, alpha: 0.85 });
       }
-      for (const yy of [-1560, -1640]) d.stroke(SKETCH.ell(480, Y(yy) + 40, 470 - (-yy - 1500) * 2.2, 60, 40, 0, Math.PI, Math.PI * 2), { w: 2, curve: true, alpha: 0.6 });
-      H.ironStencil(d, 'HEAD ROOM', 260, Y(-1520), 14);
-      H.ironStencil(d, 'QUIET PLEASE', 760, Y(-1580), 12, { rot: 0.05 });
-      // the bulb's power: a fat cable trunk from the crown to the socket
+      for (const [yy, rr] of [[-1540, 440], [-1630, 300]]) d.stroke(SKETCH.ell(480, Y(yy) + 50, rr, 56, 40, 0, Math.PI, Math.PI * 2), { w: 2.2, curve: true, alpha: 0.6 });
+      H.ironStencil(d, 'HEAD ROOM', 230, Y(-1500), 14);
+      H.ironStencil(d, 'QUIET PLEASE', 800, Y(-1560), 12, { rot: 0.05 });
       for (let c = -2; c <= 2; c++) d.stroke([[480 + c * 6, crown - 20], [560 + c * 5, Y(-1620)], [640 + c * 4, Y(-1530)], [642 + c * 2, Y(-1480)]], { w: 4.4, col: ['#4a3a2e', '#5a2a1c', '#3a3a30', '#5a2a1c', '#4a3a2e'][c + 2], sh: 0, curve: true });
     }
-    H.ironStencil(d, ['MIND THE SPARKS', 'EARTH YOURSELF', 'NO RUNNING IN THE HEAD', 'TOP FLOOR: TICK ONLY'][k], k % 2 ? 300 : 660, k === 1 ? 470 : 80, 13);
+    const sp = [[820, 430], [330, 300], [200, 300], [300, 490]][k];
+    H.ironStencil(d, ['MIND THE SPARKS', 'EARTH YOURSELF', 'NO RUNNING IN THE HEAD', 'TOP FLOOR: TICK ONLY'][k], sp[0], sp[1], 13);
   }, { flat: true, paper: 'dark', seed: 9200 + k });
   return key;
 };
@@ -168,15 +193,21 @@ IRON_ART.lampStep = (side = 1) => {
   const key = 'iron:lamp:step:' + side;
   if (!SKETCH.has(key)) SKETCH.sheet(key, 90, 100, d => {
     const P = IRON_P, H = IRON_ART.helpers, x0 = 10, top = 15, bot = 90, x1 = 80;
+    // an iron plinth: a tread plate with hazard stripes on top, a riveted front with rungs to climb
     const box = [[x0, top], [x1, top], [x1, bot], [x0, bot]];
     d.solid(box, { kind: 'dark' });
-    H.ironPlate(d, box, { fill: '#6a5446', fillAlpha: 0.7, tone: (x, y) => 0.25 + (y - top) / 120, hatchA: 70, gap: 2.6, rivetEdges: [0, 2], spacing: 12, w: 2.2, rustPatches: 1 });
-    d.stroke([[x0, top + 1], [x1, top + 1]], { w: 2.4, col: '#e8c890', alpha: 0.5, sh: 0, layer: 'white' });
-    // a chalk arrow up, on the side the stairs climb from
-    const ax = side > 0 ? x0 + 22 : x1 - 22;
-    d.stroke([[ax, bot - 14], [ax, top + 24]], { w: 2.4, col: P.core, sh: 0 });
-    d.stroke([[ax - 8, top + 34], [ax, top + 22], [ax + 8, top + 34]], { w: 2.4, col: P.core, sh: 0 });
-    d.word('UP', side > 0 ? x1 - 20 : x0 + 20, top + 42, 11, { align: 'center', col: L_CHALK, w: 1.6 });
+    H.ironPlate(d, box, { fill: '#4a3c34', fillAlpha: 0.8, tone: (x, y) => 0.45 + (y - top) / 140, hatchA: 80, gap: 2.4, rivetEdges: [1, 3], spacing: 12, w: 2.2, rustPatches: 1, leave: 0 });
+    const tread = [[x0 - 3, top], [x1 + 3, top], [x1 + 3, top + 8], [x0 - 3, top + 8]];
+    d.solid(tread, { kind: 'dark' });
+    d.shape(tread, { fill: '#2a2421', w: 1.6, corner: 30 });
+    for (let x = x0; x < x1; x += 10) d.shape([[x, top + 1], [x + 5, top + 1], [x + 1, top + 7], [x - 4, top + 7]], { fill: P.core, w: 0.6, corner: 30 });
+    d.stroke([[x0 - 3, top], [x1 + 3, top]], { w: 2.2, col: '#f2c98a', alpha: 0.6, sh: 0, layer: 'white' });
+    const rx0 = x0 + 16, rx1 = x1 - 16;
+    for (let y = top + 22; y < bot - 4; y += 14) { d.stroke([[rx0, y], [rx1, y + 0.5]], { w: 2.4, col: P.ironLight, sh: 0 }); d.rivet(rx0, y, 1.3); d.rivet(rx1, y, 1.3); }
+    // a chalk arrow up beside the rungs
+    const ax = side > 0 ? x0 - 0 : x1;
+    d.stroke([[ax + (side > 0 ? 6 : -6), bot - 18], [ax + (side > 0 ? 6 : -6), top + 30]], { w: 2.2, col: P.core, sh: 0 });
+    d.stroke([[ax + (side > 0 ? -1 : -13), top + 38], [ax + (side > 0 ? 6 : -6), top + 28], [ax + (side > 0 ? 13 : 1), top + 38]], { w: 2.2, col: P.core, sh: 0 });
   }, { ox: 10, oy: 90, paper: 'dark', seed: 9310 + (side > 0 ? 0 : 1) });
   return key;
 };
@@ -189,17 +220,17 @@ IRON_ART.lampRod = () => {
     d.solid(base, { kind: 'dark' });
     d.shape(base, { fill: '#5a463c', w: 1.8, corner: 30 });
     H.ironBolt(d, fx - 12, fy - 5, 2.4); H.ironBolt(d, fx + 12, fy - 5, 2.4);
-    const rod = [[fx - 3.5, fy - 10], [fx + 3.5, fy - 10], [fx + 3, fy - 104], [fx - 3, fy - 104]];
+    const rod = [[fx - 5, fy - 10], [fx + 5, fy - 10], [fx + 4.5, fy - 104], [fx - 4.5, fy - 104]];
     d.solid(rod, { kind: 'dark' });
     d.wash(rod, '#c0703a', { alpha: 0.9, off: 0.3 });
     d.outline(rod, { w: 1.4, corner: 30 });
     d.stroke([[fx - 1.5, fy - 12], [fx - 1.5, fy - 102]], { w: 1, col: '#ffd0a0', alpha: 0.7, sh: 0, layer: 'white' });
-    for (const y of [fy - 24, fy - 30, fy - 36]) d.shape(SKETCH.ell(fx, y, 8, 3, 12), { fill: '#d8d0bc', w: 1.1, curve: true });
-    const grip = SKETCH.box(fx - 5, fy - 74, 10, 24);
+    for (const y of [fy - 24, fy - 31, fy - 38]) d.shape(SKETCH.ell(fx, y, 10, 3.5, 12), { fill: '#d8d0bc', w: 1.1, curve: true });
+    const grip = SKETCH.box(fx - 7, fy - 74, 14, 24);
     d.shape(grip, { fill: '#5a2a1c', w: 1.4, corner: 30 });
-    for (let y = fy - 70; y < fy - 52; y += 4) d.line(fx - 5, y, fx + 5, y + 1, { w: 0.8, ov: 0 });
-    d.solid(SKETCH.ell(fx, fy - 110, 8, 8, 16), { kind: 'dark' });
-    d.ellipse(fx, fy - 110, 8, 8, { fill: '#c0703a', w: 1.6, hatch: { a: 45, gap: 1.8, w: 0.4, tone: (x, y) => (x - fx + y - fy + 118) / 16 } });
+    for (let y = fy - 70; y < fy - 52; y += 4) d.line(fx - 7, y, fx + 7, y + 1, { w: 0.8, ov: 0 });
+    d.solid(SKETCH.ell(fx, fy - 110, 10, 10, 16), { kind: 'dark' });
+    d.ellipse(fx, fy - 110, 10, 10, { fill: '#c0703a', w: 1.6, hatch: { a: 45, gap: 1.8, w: 0.4, tone: (x, y) => (x - fx + y - fy + 118) / 16 } });
     d.stroke(SKETCH.ell(fx, fy - 110, 5, 5, 10, 0, 3.6, 5), { w: 1.2, col: '#ffe0c0', curve: true, sh: 0, layer: 'white' });
     // the earthing strap to the floor, a stencil plate
     d.stroke([[fx + 4, fy - 16], [fx + 18, fy - 8], [fx + 30, fy - 2]], { w: 2.2, col: '#c0703a', curve: true, sh: 0 });
@@ -232,58 +263,65 @@ IRON_ART.lampMat = () => {
   }, { ox: 40, oy: 26, paper: 'dark', seed: 9340 });
   return key;
 };
-// Tick's chair: an iron throne far too big for him (stool, seat, back), studded leather, pedals with blocks on them
+// Tick's chair: an iron throne far too big for him, seen side on (stool, seat, tall back), studded red leather,
+// pedals with wooden blocks strapped on, a winding key in its back
 IRON_ART.lampChair = () => {
   const key = 'iron:lamp:chair';
-  if (!SKETCH.has(key)) SKETCH.sheet(key, 340, 330, d => {
-    const P = IRON_P, H = IRON_ART.helpers, X = r => 160 + r, fy = 310;
-    // the footstool (world x 520..580, 55 high)
-    const stool = [[X(-100), fy - 55], [X(-40), fy - 55], [X(-42), fy], [X(-98), fy]];
-    d.solid(stool, { kind: 'dark' });
-    H.ironPlate(d, stool, { fill: '#5a463c', fillAlpha: 0.7, tone: (x, y) => 0.3 + (y - fy + 55) / 80, hatchA: 80, gap: 2.4, rivetEdges: [0], spacing: 12, w: 2, rustPatches: 0 });
-    d.shape([[X(-104), fy - 55], [X(-36), fy - 55], [X(-38), fy - 49], [X(-102), fy - 49]], { fill: '#7a2e22', w: 1.4, corner: 30 });
-    // the seat box (580..700, 110 high) with a buttoned cushion
+  if (!SKETCH.has(key)) SKETCH.sheet(key, 360, 340, d => {
+    const P = IRON_P, H = IRON_ART.helpers, X = r => 170 + r, fy = 320, LEATHER = '#8a3426';
+    // the footstool (world x 520..580, 55 high): a padded drum on stubby legs
+    const stool = [[X(-100), fy - 50], [X(-40), fy - 50], [X(-44), fy - 10], [X(-96), fy - 10]];
+    d.solid(stool.concat([[X(-96), fy], [X(-44), fy]]), { kind: 'dark' });
+    d.shape(stool, { fill: LEATHER, w: 2, corner: 40, hatch: { a: 70, gap: 2.2, w: 0.45, alpha: 0.5, tone: (x, y) => 0.2 + (y - fy + 50) / 50 } });
+    d.shape([[X(-104), fy - 56], [X(-36), fy - 56], [X(-38), fy - 48], [X(-102), fy - 48]], { fill: '#5a463c', w: 1.6, corner: 30 });
+    for (const x of [X(-92), X(-48)]) d.shape([[x - 4, fy - 10], [x + 4, fy - 10], [x + 3, fy], [x - 3, fy]], { fill: '#2a2421', w: 1.2, corner: 30 });
+    for (let x = X(-92); x < X(-44); x += 12) d.ellipse(x, fy - 44, 1.6, 1.6, { fill: P.core, w: 0.7 });
+    // the seat (580..700, 110 high): an upholstered side panel in an iron frame, carved trim, claw feet
     const seat = [[X(-40), fy - 110], [X(80), fy - 110], [X(80), fy], [X(-40), fy]];
     d.solid(seat, { kind: 'dark' });
-    H.ironPlate(d, seat, { fill: '#6a5446', fillAlpha: 0.75, tone: (x, y) => 0.2 + (y - fy + 110) / 160 + (x - X(-40)) / 400, hatchA: 75, gap: 2.4, rivetEdges: [1, 3], spacing: 14, w: 2.4, rustPatches: 2, scratch: 3 });
-    const cush = [[X(-44), fy - 110], [X(84), fy - 110], [X(82), fy - 96], [X(20), fy - 92], [X(-42), fy - 96]];
+    H.ironPlate(d, seat, { fill: '#4a3c34', fillAlpha: 0.85, tone: (x, y) => 0.35 + (y - fy + 110) / 200, hatchA: 80, gap: 2.4, w: 2.4, rustPatches: 1, leave: 0 });
+    const panel = [[X(-30), fy - 92], [X(70), fy - 92], [X(70), fy - 22], [X(-30), fy - 22]];
+    d.shape(panel, { fill: LEATHER, w: 1.8, corner: 40, hatch: { a: 60, gap: 2.2, w: 0.45, alpha: 0.5, tone: (x, y) => 0.15 + (y - fy + 92) / 90 } });
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) { const bx = X(-18 + c * 26 + (r % 2) * 13), by = fy - 80 + r * 22; if (bx < X(66)) { d.ellipse(bx, by, 2, 2, { fill: P.core, w: 0.7 }); d.stroke([[bx - 6, by - 5], [bx, by], [bx + 6, by - 5]], { w: 0.7, alpha: 0.6, sh: 0 }); } }
+    const cush = [[X(-46), fy - 112], [X(84), fy - 112], [X(82), fy - 100], [X(20), fy - 96], [X(-44), fy - 100]];
     d.solid(cush, { kind: 'dark' });
-    d.shape(cush, { fill: '#8a3426', w: 1.8, corner: 40, curve: true, hatch: { a: 60, gap: 2, w: 0.45, alpha: 0.5, tone: (x, y) => (y - fy + 110) / 18 } });
-    for (let x = X(-30); x < X(80); x += 22) { d.ellipse(x, fy - 102, 1.8, 1.8, { fill: P.core, w: 0.8 }); }
+    d.shape(cush, { fill: LEATHER, w: 1.8, corner: 40 });
+    d.stroke([[X(-44), fy - 111], [X(82), fy - 111]], { w: 1.6, col: '#f2b28a', alpha: 0.5, sh: 0, layer: 'white' });
+    for (const x of [X(-36), X(76)]) d.shape([[x - 12, fy], [x + 12, fy], [x + 7, fy - 14], [x - 7, fy - 14]], { fill: '#2a2421', w: 1.6, corner: 30 });
     // the pedals: two long levers out the front of the seat, wooden blocks strapped on top (Tick's legs are short)
-    for (const [px, py] of [[X(-30), fy - 64], [X(-14), fy - 48]]) {
-      d.stroke([[px + 30, py - 6], [px, py]], { w: 3 });
+    for (const [px, py] of [[X(-34), fy - 70], [X(-20), fy - 54]]) {
+      d.stroke([[px + 34, py - 8], [px, py]], { w: 3.2 });
       d.shape(SKETCH.box(px - 14, py - 3, 18, 7), { fill: P.ochreDeep, w: 1.4, corner: 30 });
       d.shape(SKETCH.box(px - 12, py - 13, 13, 10), { fill: '#a37a3c', w: 1.2, corner: 30, hatch: { a: 0, gap: 2, w: 0.4, alpha: 0.5 } });
+      d.stroke([[px - 12, py - 8], [px + 1, py - 8]], { w: 0.9, col: '#5a2a1c', sh: 0 });
     }
-    // claw feet
-    for (const x of [X(-36), X(76)]) d.shape([[x - 10, fy], [x + 10, fy], [x + 6, fy - 12], [x - 6, fy - 12]], { fill: '#2a2421', w: 1.6, corner: 30 });
-    // the back (700..728, 270 high): a tall riveted slab with a crest, a name plate and a winding key
-    const back = [[X(80), fy - 270], [X(108), fy - 262], [X(108), fy], [X(80), fy]];
+    // the back (700..728, 270 high): a tall slab, an arched top, a round crest with a T, the winding key
+    const back = [[X(80), fy - 250], [X(90), fy - 268], [X(100), fy - 268], [X(110), fy - 250], [X(110), fy], [X(80), fy]];
     d.solid(back, { kind: 'dark' });
-    H.ironPlate(d, back, { fill: '#5a463c', fillAlpha: 0.8, tone: (x, y) => 0.3 + (x - X(80)) / 40, hatchA: 90, gap: 2.2, rivetEdges: [1], spacing: 14, w: 2.4, rustPatches: 1 });
-    const crest = [[X(72), fy - 270], [X(94), fy - 300], [X(116), fy - 262], [X(108), fy - 262], [X(80), fy - 270]];
-    d.solid(crest, { kind: 'dark' });
-    d.shape(crest, { fill: P.ochre, w: 1.8, corner: 30 });
-    d.shape(SKETCH.box(X(82), fy - 200, 24, 46), { fill: '#2a2421', w: 1.2, corner: 30 });
-    d.word('T', X(94), fy - 186, 10, { align: 'center', col: P.core, w: 1.4 });
-    d.word('I', X(94), fy - 176, 10, { align: 'center', col: P.core, w: 1.4 });
-    d.word('C', X(94), fy - 166, 10, { align: 'center', col: P.core, w: 1.4 });
-    d.word('K', X(94), fy - 156, 10, { align: 'center', col: P.core, w: 1.4 });
-    d.stroke([[X(108), fy - 130], [X(130), fy - 130]], { w: 4 });
-    d.shape([[X(130), fy - 148], [X(146), fy - 138], [X(146), fy - 122], [X(130), fy - 112], [X(138), fy - 130]], { fill: P.ochre, w: 1.6, corner: 30 });
-    // an armrest on the back side, and the SWAP lever box beside the chair
-    d.shape([[X(40), fy - 150], [X(82), fy - 156], [X(82), fy - 142], [X(44), fy - 138]], { fill: '#6a5446', w: 1.8, corner: 30 });
-    d.stroke([[X(46), fy - 140], [X(50), fy - 110]], { w: 3 });
-    const lb = SKETCH.box(X(120), fy - 50, 40, 50);
+    H.ironPlate(d, back, { fill: '#4a3c34', fillAlpha: 0.85, tone: (x, y) => 0.3 + (x - X(80)) / 50, hatchA: 90, gap: 2.2, rivetEdges: [4], spacing: 16, w: 2.4, rustPatches: 1, leave: 0 });
+    d.shape([[X(84), fy - 240], [X(106), fy - 240], [X(106), fy - 118], [X(84), fy - 118]], { fill: LEATHER, w: 1.6, corner: 40, hatch: { a: 90, gap: 2.2, w: 0.45, alpha: 0.5 } });
+    for (let y = fy - 228; y < fy - 124; y += 18) d.ellipse(X(95), y, 1.8, 1.8, { fill: P.core, w: 0.7 });
+    d.solid(SKETCH.ell(X(95), fy - 282, 18, 18, 20), { kind: 'dark' });
+    d.ellipse(X(95), fy - 282, 18, 18, { fill: P.ochre, w: 2, hatch: { a: 45, gap: 2, w: 0.45, alpha: 0.5, tone: (x, y) => (x - X(77) + y - fy + 300) / 36 } });
+    d.ellipse(X(95), fy - 282, 12, 12, { w: 1.2 });
+    d.word('T', X(95), fy - 276, 14, { align: 'center', col: INK_DARK(), w: 2 });
+    d.stroke([[X(110), fy - 160], [X(132), fy - 160]], { w: 4.4 });
+    for (const sy of [-1, 1]) d.ellipse(X(140), fy - 160 + sy * 11, 7, 10, { fill: P.ochre, w: 1.6, hatch: { a: 45, gap: 2, w: 0.4, alpha: 0.5 } });
+    d.ellipse(X(134), fy - 160, 4, 4, { fill: P.ochreDeep, w: 1.2 });
+    // an armrest along the back's front edge, and the SWAP lever box beside the chair
+    d.shape([[X(46), fy - 156], [X(82), fy - 160], [X(82), fy - 146], [X(50), fy - 144]], { fill: '#5a463c', w: 1.8, corner: 30 });
+    d.shape(SKETCH.ell(X(46), fy - 150, 6, 7, 10), { fill: P.ochre, w: 1.4, curve: true });
+    d.stroke([[X(52), fy - 144], [X(56), fy - 112]], { w: 3 });
+    const lb = SKETCH.box(X(122), fy - 50, 40, 50);
     d.solid(lb, { kind: 'dark' });
     d.shape(lb, { fill: '#3a322d', w: 1.6, corner: 30, hatch: { a: 45, gap: 2.2, w: 0.45, alpha: 0.5 } });
-    d.stroke([[X(140), fy - 46], [X(152), fy - 86]], { w: 3, col: P.ironLight });
-    d.ellipse(X(152), fy - 88, 5, 5, { fill: '#a7462a', w: 1.4 });
-    d.word('SWAP', X(140), fy - 20, 9, { align: 'center', col: '#ffd9a8', w: 1.3 });
-  }, { ox: 160, oy: 310, paper: 'dark', seed: 9350 });
+    d.stroke([[X(142), fy - 46], [X(154), fy - 86]], { w: 3, col: P.ironLight });
+    d.ellipse(X(154), fy - 88, 5, 5, { fill: '#a7462a', w: 1.4 });
+    d.word('SWAP', X(142), fy - 20, 9, { align: 'center', col: '#ffd9a8', w: 1.3 });
+  }, { ox: 170, oy: 320, paper: 'dark', seed: 9350 });
   return key;
 };
+const INK_DARK = () => '#2a1a12';
 // the bulb: a big pear of glass, a glowing zig-zag filament on its wires, a brass screw cap on top
 IRON_ART.lampBulb = () => {
   const key = 'iron:lamp:bulb';

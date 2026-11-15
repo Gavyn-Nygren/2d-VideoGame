@@ -355,12 +355,22 @@ function ironLampDrawBack(st) {
     if (q > 0) SKETCH.blit(ctx, IRON_ART.lampDeck(), 0, y);
     if (q < K.top) {
       const [a] = ironLampStairs(q);
+      SKETCH.glow(ctx, q % 2 === 0 ? 835 : 125, y - 124, 90, '255,200,110', 0.28);
       SKETCH.blit(ctx, IRON_ART.lampStep(q % 2 === 0 ? 1 : -1), a, y);
       SKETCH.blit(ctx, IRON_ART.lampMat(), (K.mat[0] + K.mat[1]) / 2, y);
       const xs = q >= 4 ? K.arcsA.concat(K.arcsB) : K.arcsA;
       for (const x of xs) { SKETCH.blit(ctx, IRON_ART.lampKnob(), x, y); SKETCH.blit(ctx, IRON_ART.lampKnob(), x, y - 136, { sy: -1 }); }
     }
   }
+}
+// a claw arm segment: a riveted iron strut with a lit edge
+function ironLampArm(d, a, b, w) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L * w / 2, ny = dx / L * w / 2;
+  const pts = [[a[0] + nx, a[1] + ny], [b[0] + nx, b[1] + ny], [b[0] - nx, b[1] - ny], [a[0] - nx, a[1] - ny]];
+  d.shape(pts, { fill: '#4a3c34', w: 1.8, corner: 30 });
+  d.stroke([[a[0] - nx * 0.5, a[1] - ny * 0.5], [b[0] - nx * 0.5, b[1] - ny * 0.5]], { w: 1.2, col: '#f2c98a', alpha: 0.5, sh: 0 });
+  const n = Math.floor(L / 26);
+  for (let i = 1; i < n; i++) d.rivet(a[0] + dx * i / n, a[1] + dy * i / n, 1.4);
 }
 // a lightning bolt: a jagged white chalk line with black spotting, a glow, sparks at the knobs
 function ironLampBolt(d, x, y0, y1, seed, on) {
@@ -369,9 +379,9 @@ function ironLampBolt(d, x, y0, y1, seed, on) {
   const n = 9, pts = [];
   for (let i = 0; i <= n; i++) { const k = i / n, w = i === 0 || i === n ? 0 : (r() - 0.5) * (on ? 26 : 8); pts.push([x + w, y0 + (y1 - y0) * k]); }
   if (on) {
-    SKETCH.glow(ctx, x, (y0 + y1) / 2, 70, '220,235,255', 0.35);
-    d.stroke(pts, { w: 7, col: '#cfe6ff', alpha: 0.35, sh: 0, curve: false });
-    d.stroke(pts, { w: 3.4, col: '#ffffff', sh: 0, curve: false });
+    SKETCH.glow(ctx, x, (y0 + y1) / 2, 90, '200,225,255', 0.45);
+    d.stroke(pts, { w: 10, col: '#cfe6ff', alpha: 0.3, sh: 0, curve: false });
+    d.stroke(pts, { w: 4.4, col: '#ffffff', sh: 0, curve: false });
     // black spotting along the bolt (the chalk's tooth)
     for (let i = 1; i < n; i++) if (r() < 0.6) { const [px, py] = pts[i]; ctx.fillStyle = '#16120f'; ctx.fillRect(px - 1 + (r() - 0.5) * 3, py - 1 + (r() - 0.5) * 6, 2, 2); }
     // a fork or two
@@ -429,10 +439,11 @@ function ironLampDraw(st) {
     const r = ph.rods[Cw.k], y = ironLampY(r.k), reach = gold ? K.claw.goldReach : K.claw.reach;
     const k = Cw.st === 'reach' ? Math.min(1, Cw.t / (reach * 0.7)) : Cw.st === 'shut' ? 1 : 1 - Cw.t / K.claw.back;
     const tipX = r.x + (r.k % 2 === 0 ? 4 : -4), tipY = y - 130 + (1 - k) * -220, top = cy - 30;
-    const jx = tipX + (r.k % 2 === 0 ? 70 : -70);
-    d.stroke([[480, top], [jx, (top + tipY) / 2], [tipX, tipY - 40]], { w: 6, col: '#3a322d', sh: 0 });
-    d.stroke([[480, top], [jx, (top + tipY) / 2], [tipX, tipY - 40]], { w: 2.2, col: '#efe8d8', sh: 0 });
-    d.ellipse(jx, (top + tipY) / 2, 7, 7, { fill: IRON_P.ironLight, w: 1.4 });
+    const jx = tipX + (r.k % 2 === 0 ? 90 : -90), jy = (top + tipY) / 2 - 10;
+    ironLampArm(d, [480, top], [jx, jy], 11);
+    ironLampArm(d, [jx, jy], [tipX, tipY - 6], 8);
+    d.ellipse(jx, jy, 9, 9, { fill: IRON_P.ironLight, w: 1.6 });
+    d.rivet(jx, jy, 2.2);
     SKETCH.blit(ctx, IRON_ART.lampClaw(Cw.st === 'reach' ? 0 : 1), tipX, tipY);
     if (Cw.st === 'reach' && Cw.t > reach - 0.5 && Math.floor(ph.t * 8) % 2) d.word('SNAP?', tipX + (r.k % 2 === 0 ? 40 : -40), tipY - 10, 12, { align: 'center', col: '#ff8a5a', w: 1.8 });
   }
