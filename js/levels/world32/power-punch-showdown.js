@@ -146,7 +146,7 @@
   function ringOut(st, F) {
     F.out = true; F.vy = 200;
     st.shake = 0.5; G.shake = Math.max(G.shake || 0, 0.4);
-    K.pop(st, clamp(F.x, 120, W - 120), 420, 'RING OUT!', PCOL[1 - F.id], 34);
+    K.sound(st, clamp(F.x, 160, W - 160), 400, 'RING OUT!', { size: 46, life: 1.4, rot: -0.06 });
     rumble(F.id, 0.5, 0.8, 300);
   }
   // a punch's fist: where it is and how far it reaches
@@ -185,6 +185,7 @@
     st.bursts.push({ x: fx, y: fy, s: giant ? 'KA-POW!' : ['POW!', 'BAM!', 'WHAM!', 'BIFF!'][st.stat.hits[A.id] % 4], t: 0, big: giant, rot: (Math.random() - 0.5) * 0.5 });
     if (st.bursts.length > 4) st.bursts.shift();
     Sfx.play(giant ? 'punchoutGiant' : 'punchoutHit');
+    K.focusAt(st, fx, fy);
     K.spark(st, fx, fy, giant ? 14 : 8, ['#ffe14a', '#ffffff', PCOL[A.id]]);
     st.shake = Math.max(st.shake, giant ? 0.35 : 0.18);
     rumble(B.id, 0.3, 0.6, 140);
@@ -278,6 +279,7 @@
     draw() { const st = G.mst; if (!st.f) return; drawWorld(st); K.hide(st); },
     drawTop() { const st = G.mst; K.unhide(st); if (st.f) drawTop(st); },
     hud() { const st = G.mst; if (st.f && G.match) hud(st); },
+    printPage() { if (G.mst.f) K.page(); },
     stats() {
       const st = G.mst, s = st.stat;
       if (!s) return [];
@@ -296,126 +298,144 @@
     test: { take },
   };
 
-  /* ---------- drawing ---------- */
+  /* ---------- drawing (the comic-book look: ink outlines, flat colours, halftone dots) ---------- */
+  const INK = K.INK, GLOVE = ['#2fc45a', '#ffe14a']; // gloves: Pip wears no blue, Bo no orange or red
+  // the sky and skyline never move here, so one frame of them is kept and copied back (the blimp, birds and searchlights
+  // are drawn live over it). The copy is taken straight off the canvas, so it is redone whenever the canvas changes size.
+  let still = null;
+  function backdrop(t) {
+    const m = ctx.getTransform(), key = [m.a, m.d, m.e, m.f, canvas.width, canvas.height].map(v => Math.round(v * 100)).join(',');
+    if (still && still.key === key) { ctx.drawImage(still.c, 0, 0, W, H); return; }
+    K.sky(0, 0, { mode: 'night', moonX: 800, moonY: 90, life: false });
+    K.skyline(0, 0, { base: 470 });
+    if (G.shake > 0 || m.b || m.c) return; // (not mid-shake: the copy would be off by the shake)
+    const x0 = Math.round(m.e), y0 = Math.round(m.f), w = Math.round(W * m.a), h = Math.round(H * m.d);
+    if (w < 1 || h < 1 || x0 < 0 || y0 < 0 || x0 + w > canvas.width || y0 + h > canvas.height) return;
+    const c = still && still.c.width === w && still.c.height === h ? still.c : document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(canvas, x0, y0, w, h, 0, 0, w, h);
+    still = { c, key };
+  }
   function drawWorld(st) {
-    const t = st.t, sh = st.shake > 0 ? (Math.random() - 0.5) * st.shake * 14 : 0;
-    K.sky(0, G.clock || t, { mode: 'night', moonX: 800, moonY: 90, beams: true });
-    K.skyline(0, G.clock || t, { base: 470 });
+    const t = st.t, tt = G.clock || t, sh = st.shake > 0 ? (Math.random() - 0.5) * st.shake * 14 : 0;
+    backdrop(tt);
+    K.skyLife(0, tt);
+    K.beams(0, tt);
     ctx.save(); ctx.translate(sh, sh * 0.5);
-    // the street far below on both sides
-    ctx.fillStyle = '#10142c'; ctx.fillRect(0, 500, W, H - 500);
-    // far below: street lamps and cars on both sides (a long way down)
-    const tt = G.clock || t;
-    for (const x of [30, 70, 890, 930]) { ctx.fillStyle = 'rgba(255,224,138,0.55)'; circle(x, 512, 2.5); ctx.fill(); }
+    // the street far below on both sides: deep navy fading into dots, tiny inked lamps and cars
+    ctx.fillStyle = '#14183a'; ctx.fillRect(0, 500, W, H - 500);
+    K.dotFade(0, W, 470, 500, '#14183a', 8, 0.7);
+    for (const x of [30, 70, 890, 930]) { circle(x, 512, 3); K.inkFill('#ffe14a', 1); }
     for (let k = 0; k < 4; k++) {
       const u = (tt * (0.08 + k * 0.03) + k * 0.27) % 1, x = k % 2 ? W * (1 - u) : W * u;
       if (x > PO.L - 10 && x < PO.R + 10) continue;
-      ctx.fillStyle = k % 2 ? 'rgba(255,90,74,0.8)' : 'rgba(255,240,200,0.9)'; ctx.fillRect(x, 526 + k % 2 * 6, 5, 2);
+      K.inkRect(x, 524 + k % 2 * 6, 8, 4, k % 2 ? '#e8222e' : '#fff3a8', 1);
     }
-    // the building
-    K.facade(PO.L, PO.GY, PO.R - PO.L, { seed: 32, col: '#5b4a7a' });
-    // the roof deck: tar paper with a lip
-    ctx.fillStyle = K.COL.tar; ctx.fillRect(PO.L - 6, PO.GY, PO.R - PO.L + 12, 10);
-    ctx.fillStyle = K.COL.tarHi; ctx.fillRect(PO.L - 6, PO.GY, PO.R - PO.L + 12, 3);
+    // the building: steel blue
+    K.facade(PO.L, PO.GY, PO.R - PO.L, { seed: 32, col: true });
+    // the roof deck: thick ink outline, a cream top edge (the floor you fight on reads at once)
+    K.inkRect(PO.L - 6, PO.GY, PO.R - PO.L + 12, 10, '#2a3a8a', 2.5);
+    ctx.fillStyle = '#fff3a8'; ctx.fillRect(PO.L - 6, PO.GY, PO.R - PO.L + 12, 3.5);
     // the roof's ends: hazard stripes and a blinking red warning light (past here is a long drop)
     for (const [x0, dir] of [[PO.L - 6, 1], [PO.R + 6, -1]]) {
-      for (let k = 0; k < 4; k++) { ctx.fillStyle = k % 2 ? '#2a2a34' : '#ffc53d'; ctx.fillRect(x0 + dir * k * 8 - (dir < 0 ? 8 : 0), PO.GY, 8, 10); }
-      const on = Math.sin(tt * 5 + (dir > 0 ? 0 : 1.6)) > 0;
-      ctx.fillStyle = K.COL.steelDark; ctx.fillRect(x0 + dir * 6 - 2, PO.GY - 14, 4, 14);
-      ctx.fillStyle = on ? '#ff4a3a' : '#6a2a2a'; circle(x0 + dir * 6, PO.GY - 16, 4); ctx.fill();
-      if (on) { const g = ctx.createRadialGradient(x0 + dir * 6, PO.GY - 16, 1, x0 + dir * 6, PO.GY - 16, 18); g.addColorStop(0, 'rgba(255,74,58,0.5)'); g.addColorStop(1, 'rgba(255,74,58,0)'); ctx.fillStyle = g; circle(x0 + dir * 6, PO.GY - 16, 18); ctx.fill(); }
+      for (let k = 0; k < 4; k++) { ctx.fillStyle = k % 2 ? INK : '#ffe14a'; ctx.fillRect(x0 + dir * k * 8 - (dir < 0 ? 8 : 0), PO.GY + 3.5, 8, 6.5); }
+      const on = Math.sin(tt * 5 + (dir > 0 ? 0 : 1.6)) > 0, lx = x0 + dir * 6;
+      K.inkRect(lx - 2, PO.GY - 14, 4, 14, '#5fe0cc', 1.2);
+      if (on) K.spikes(lx, PO.GY - 16, 13, '#ff3b30', tt, 8);
+      circle(lx, PO.GY - 16, 4.5); K.inkFill(on ? '#ff3b30' : '#6a1410', 1.5);
     }
     // rooftop props (behind the fighters, no collisions)
     K.vent(470, PO.GY, 26, 20);
-    K.antenna(820, PO.GY, 80, G.clock || t);
-    // the catwalks: steel grating on legs, with a box under each one
-    K.ac(PLATS[0].x0 + 20, PO.GY, 70, 44, G.clock || t);
+    K.antenna(820, PO.GY, 80, tt);
+    // the catwalks: bright teal steel on legs, with a box under each one
+    for (const q of PLATS.slice(0, 2)) drawLegs(q, PO.GY);
+    K.ac(PLATS[0].x0 + 20, PO.GY, 70, 44, tt);
     K.waterTower(PLATS[1].x0 + 70, PO.GY - 2, 0.8);
-    for (const q of PLATS.slice(0, 2)) drawWalk(q, PO.GY);
-    // the neon sign on top: a catwalk on two poles
-    const s = PLATS[2];
-    ctx.fillStyle = K.COL.steelDark; ctx.fillRect(s.x0 + 14, s.y, 6, PO.GY - s.y); ctx.fillRect(s.x1 - 20, s.y, 6, PO.GY - s.y);
-    const blink = Math.sin((G.clock || t) * 3) > -0.8;
-    ctx.fillStyle = 'rgba(28,26,54,0.92)'; rr(s.x0 - 6, s.y + 12, s.x1 - s.x0 + 12, 52, 8); ctx.fill();
-    ctx.strokeStyle = blink ? '#ff4ad8' : '#6a2a5a'; ctx.lineWidth = 3; rr(s.x0 - 6, s.y + 12, s.x1 - s.x0 + 12, 52, 8); ctx.stroke();
-    if (blink) { ctx.shadowColor = '#ff4ad8'; ctx.shadowBlur = 14; }
-    text('HERO', (s.x0 + s.x1) / 2, s.y + 30, 18, blink ? '#ffd0f4' : '#7a4a6a', 'center');
-    text('CITY', (s.x0 + s.x1) / 2, s.y + 50, 16, blink ? '#8fdcff' : '#3a5a6a', 'center');
-    ctx.shadowBlur = 0;
-    drawWalk(s, null);
+    for (const q of PLATS.slice(0, 2)) drawWalk(q);
+    // the HERO CITY sign on top: an inked neon billboard on two poles, with a catwalk along its top
+    const s = PLATS[2], blink = Math.sin(tt * 3) > -0.8;
+    for (const px of [s.x0 + 17, s.x1 - 17]) { const pole = () => { ctx.beginPath(); ctx.moveTo(px, s.y); ctx.lineTo(px, PO.GY); }; K.edge(pole, '#19a89a', 4); }
+    ctx.fillStyle = INK; ctx.fillRect(s.x0 - 1, s.y + 17, s.x1 - s.x0 + 12, 52);
+    K.inkRect(s.x0 - 6, s.y + 12, s.x1 - s.x0 + 12, 52, '#1c2470', 2.5);
+    if (blink) { ctx.strokeStyle = '#ff5ab4'; ctx.lineWidth = 3; ctx.strokeRect(s.x0, s.y + 18, s.x1 - s.x0, 40); }
+    K.word('HERO', (s.x0 + s.x1) / 2, s.y + 30, 20, blink ? '#ffd0f4' : '#5a3a6a', { lw: blink ? 4 : 2.5, shadow: 0 });
+    K.word('CITY', (s.x0 + s.x1) / 2, s.y + 50, 18, blink ? '#7af0ff' : '#2a4a6a', { lw: blink ? 4 : 2.5, shadow: 0 });
+    for (let k = 0; k < 5; k++) { circle(s.x0 + 4 + k * (s.x1 - s.x0 - 8) / 4, s.y + 66, 2.5); K.inkFill(blink && (k + Math.floor(tt * 4)) % 2 ? '#ffe14a' : '#6a5a2a', 0.8); }
+    drawWalk(s);
     // the power-up
-    if (st.orb) drawOrb(st.orb, G.clock || t);
-    // the fighters
-    for (const F of st.f) drawFighter(st, F, G.clock || t);
-    K.drawParts(st, 0);
-    // comic bursts
+    if (st.orb) drawOrb(st.orb, tt);
+    // comic bursts, big, above the punch and behind the fighters (so the heroes always show)
     for (const b of st.bursts) {
       const u = b.t / 0.6;
       if (u >= 1) continue;
       ctx.globalAlpha = clamp((1 - u) / 0.3, 0, 1);
-      K.comic(b.x, b.y - 30 - u * 16, b.s, (b.big ? 1.15 : 0.85) * (1 + 0.3 * Math.max(0, 1 - b.t / 0.08)), b.rot);
+      K.comic(b.x, b.y - 52 - u * 16, b.s, (b.big ? 1.3 : 1) * (1 + 0.3 * Math.max(0, 1 - b.t / 0.08)), b.rot);
       ctx.globalAlpha = 1;
     }
+    // the fighters
+    for (const F of st.f) drawFighter(st, F, tt);
+    K.drawParts(st, 0);
     ctx.restore();
   }
-  function drawWalk(q, legsTo) {
+  function drawLegs(q, to) {
+    const legs = () => {
+      ctx.beginPath(); ctx.moveTo(q.x0 + 8, q.y + 6); ctx.lineTo(q.x0 + 8, to); ctx.moveTo(q.x1 - 8, q.y + 6); ctx.lineTo(q.x1 - 8, to);
+      ctx.moveTo(q.x0 + 8, q.y + 14); ctx.lineTo(q.x1 - 8, to - 10); ctx.moveTo(q.x1 - 8, q.y + 14); ctx.lineTo(q.x0 + 8, to - 10);
+    };
+    K.edge(legs, '#0c5c56', 3);
+  }
+  function drawWalk(q) {
     const w = q.x1 - q.x0;
-    if (legsTo) {
-      ctx.strokeStyle = K.COL.steelDark; ctx.lineWidth = 5;
-      ctx.beginPath(); ctx.moveTo(q.x0 + 8, q.y + 6); ctx.lineTo(q.x0 + 8, legsTo); ctx.moveTo(q.x1 - 8, q.y + 6); ctx.lineTo(q.x1 - 8, legsTo); ctx.stroke();
-      ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(q.x0 + 8, q.y + 14); ctx.lineTo(q.x1 - 8, legsTo - 10); ctx.moveTo(q.x1 - 8, q.y + 14); ctx.lineTo(q.x0 + 8, legsTo - 10); ctx.stroke();
-    }
-    ctx.fillStyle = K.COL.steel; ctx.fillRect(q.x0, q.y, w, 8);
-    ctx.fillStyle = K.COL.steelHi; ctx.fillRect(q.x0, q.y, w, 2);
-    ctx.strokeStyle = K.COL.steelDark; ctx.lineWidth = 1;
-    for (let x = q.x0 + 6; x < q.x1; x += 8) { ctx.beginPath(); ctx.moveTo(x, q.y + 2); ctx.lineTo(x, q.y + 8); ctx.stroke(); }
-    // a yellow-black safety edge
-    for (let x = q.x0; x < q.x1; x += 12) { ctx.fillStyle = (x - q.x0) % 24 ? '#2a2a34' : '#ffc53d'; ctx.fillRect(x, q.y + 8, 12, 3); }
+    // bright steel grating with a thick outline and a cream top edge, a yellow-and-ink safety edge under it
+    K.inkRect(q.x0, q.y, w, 9, '#19a89a', 2.5);
+    ctx.fillStyle = '#fff3a8'; ctx.fillRect(q.x0, q.y, w, 3);
+    ctx.fillStyle = INK; for (let x = q.x0 + 6; x < q.x1 - 2; x += 8) ctx.fillRect(x, q.y + 4, 1.6, 5);
+    for (let x = q.x0; x < q.x1; x += 12) { ctx.fillStyle = (x - q.x0) % 24 ? INK : '#ffe14a'; ctx.fillRect(x, q.y + 9, Math.min(12, q.x1 - x), 4); }
   }
   function drawOrb(o, t) {
     const P = POWERS[o.kind], fade = o.landed && o.lt > PO.powLife - 2 ? (Math.sin(t * 20) > 0 ? 1 : 0.35) : 1, bob = o.landed ? Math.sin(t * 4) * 3 : 0;
     const x = o.x, y = o.y + bob;
     ctx.globalAlpha = fade;
     if (!o.landed) {
-      // a little parachute
-      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y - 34, 20, Math.PI, 0); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = P.col; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x, y - 34); ctx.arc(x, y - 34, 20, Math.PI + k * Math.PI / 4, Math.PI + (k + 0.5) * Math.PI / 4); ctx.closePath(); ctx.fill(); }
-      ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x - 20, y - 34); ctx.lineTo(x - 6, y - 10); ctx.moveTo(x + 20, y - 34); ctx.lineTo(x + 6, y - 10); ctx.stroke();
+      // a little inked parachute in the power's colour and white
+      const lines = () => { ctx.beginPath(); ctx.moveTo(x - 20, y - 34); ctx.lineTo(x - 6, y - 10); ctx.moveTo(x + 20, y - 34); ctx.lineTo(x + 6, y - 10); ctx.moveTo(x, y - 34); ctx.lineTo(x, y - 14); };
+      K.edge(lines, '#ffffff', 1.2);
+      ctx.beginPath(); ctx.arc(x, y - 34, 21, Math.PI, 0); ctx.closePath(); K.inkFill('#ffffff', 2.5);
+      ctx.fillStyle = P.col; for (let k = 0; k < 4; k += 2) { ctx.beginPath(); ctx.moveTo(x, y - 34); ctx.arc(x, y - 34, 19.5, Math.PI + k * Math.PI / 4, Math.PI + (k + 1) * Math.PI / 4); ctx.closePath(); ctx.fill(); }
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.beginPath(); for (let k = 1; k < 4; k++) { ctx.moveTo(x, y - 34); ctx.lineTo(x + Math.cos(Math.PI + k * Math.PI / 4) * 20, y - 34 + Math.sin(Math.PI + k * Math.PI / 4) * 20); } ctx.stroke();
     }
-    const g = ctx.createRadialGradient(x, y, 2, x, y, 30);
-    g.addColorStop(0, P.glow); g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g; circle(x, y, 30); ctx.fill();
-    ctx.fillStyle = '#1c1a36'; circle(x, y, 14); ctx.fill();
-    ctx.strokeStyle = P.col; ctx.lineWidth = 3; circle(x, y, 14); ctx.stroke();
+    // a flat badge with comic spikes in the power's colour, no soft glow
+    K.spikes(x, y, 26, P.col, t, 10);
+    circle(x, y, 15); K.inkFill('#1c2470', 2.5);
+    ctx.strokeStyle = P.col; ctx.lineWidth = 3; circle(x, y, 11.5); ctx.stroke();
     powIcon(o.kind, x, y, 1, t);
     ctx.globalAlpha = 1;
   }
-  // a small picture of each power, centred at x, y
+  // a small inked picture of each power, centred at x, y
   function powIcon(kind, x, y, s, t) {
     const P = POWERS[kind];
     ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
-    ctx.fillStyle = P.col; ctx.strokeStyle = P.col; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-    if (kind === 'speed') { ctx.beginPath(); ctx.moveTo(2, -9); ctx.lineTo(-5, 1); ctx.lineTo(0, 1); ctx.lineTo(-2, 9); ctx.lineTo(5, -1); ctx.lineTo(0, -1); ctx.closePath(); ctx.fill(); }
-    else if (kind === 'fly') { const f = Math.sin(t * 10) * 2; ctx.beginPath(); ctx.moveTo(0, 2); ctx.quadraticCurveTo(-6, -8 - f, -10, -2); ctx.quadraticCurveTo(-6, 0, 0, 4); ctx.quadraticCurveTo(6, 0, 10, -2); ctx.quadraticCurveTo(6, -8 - f, 0, 2); ctx.fill(); }
-    else if (kind === 'shield') { ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(7, -6); ctx.lineTo(6, 3); ctx.lineTo(0, 9); ctx.lineTo(-6, 3); ctx.lineTo(-7, -6); ctx.closePath(); ctx.stroke(); }
-    else { rr(-7, -6, 13, 12, 4); ctx.fill(); ctx.fillStyle = '#1c1a36'; for (let k = 0; k < 3; k++) ctx.fillRect(-4 + k * 4, -6, 1, 5); }
+    ctx.lineJoin = 'round';
+    if (kind === 'speed') { ctx.beginPath(); ctx.moveTo(2, -9); ctx.lineTo(-5, 1); ctx.lineTo(0, 1); ctx.lineTo(-2, 9); ctx.lineTo(5, -1); ctx.lineTo(0, -1); ctx.closePath(); K.inkFill(P.col, 1.4); }
+    else if (kind === 'fly') { const f = Math.sin(t * 10) * 2; ctx.beginPath(); ctx.moveTo(0, 2); ctx.quadraticCurveTo(-6, -8 - f, -10, -2); ctx.quadraticCurveTo(-6, 0, 0, 4); ctx.quadraticCurveTo(6, 0, 10, -2); ctx.quadraticCurveTo(6, -8 - f, 0, 2); K.inkFill(P.col, 1.4); }
+    else if (kind === 'shield') { ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(7, -6); ctx.lineTo(6, 3); ctx.lineTo(0, 9); ctx.lineTo(-6, 3); ctx.lineTo(-7, -6); ctx.closePath(); K.inkFill(P.col, 1.4); ctx.fillStyle = '#ffffff'; ctx.fillRect(-3.5, -5, 2.5, 6); }
+    else { ctx.beginPath(); rr(-7, -6, 13, 12, 4); K.inkFill(P.col, 1.4); ctx.fillStyle = INK; for (let k = 0; k < 3; k++) ctx.fillRect(-4 + k * 4, -6, 1.2, 5); }
     ctx.restore();
   }
   function drawFighter(st, F, t) {
     const P = F.pow ? POWERS[F.pow] : null;
-    // after-images at speed
-    if (F.pow === 'speed' && Math.abs(F.vx) > 120 && !F.out) K.speedLines(F.x, F.y - 6, Math.sign(F.vx), t, { col: 'rgba(255,225,74,0.7)' });
+    // speed lines at speed (ink, every third white)
+    if (F.pow === 'speed' && Math.abs(F.vx) > 120 && !F.out) K.speedLines(F.x, F.y - 6, Math.sign(F.vx), t);
     if (F.pow === 'fly' && !F.grounded && !F.out) {
-      for (let k = 0; k < 4; k++) { ctx.globalAlpha = 0.5 - k * 0.1; ctx.fillStyle = '#8fdcff'; circle(F.x + (Math.random() - 0.5) * 6, F.y + 4 + k * 7, 5 - k); ctx.fill(); }
-      ctx.globalAlpha = 1;
+      // white inked puffs under a flyer
+      for (let k = 0; k < 4; k++) { circle(F.x + Math.sin(t * 23 + k * 2) * 3, F.y + 4 + k * 7, 5 - k); K.inkFill('#ffffff', 1.2); }
     }
     const pv = F.punch >= 0 ? F.punch : -1;
     const lean = pv >= 0 && pv < PO.hitT ? F.face * 0.12 : 0;
     const rot = F.hurt > 0 ? F.face * -0.35 * Math.min(1, F.hurt * 4) : lean;
     const sy = F.block ? 0.86 : F.sq > 0 ? 1 - F.sq * 0.18 : 1;
     if ((F.flash > 0 && Math.sin(t * 60) > 0) || (F.safe > 0 && F.hurt <= 0 && Math.sin(t * 40) > 0)) ctx.globalAlpha = 0.55;
-    K.suit(F.id, F.x, F.y, { face: F.face, rot, sy, capeV: clamp(Math.abs(F.vx) / 300 + (F.grounded ? 0 : 0.4), 0, 1), vy: F.vy, stun: F.hurt > 0.12, glow: P ? P.glow : F.gold && F.shield ? 'rgba(255,197,61,0.35)' : null });
+    K.suit(F.id, F.x, F.y, { face: F.face, rot, sy, kit: 'champ', capeV: clamp(Math.abs(F.vx) / 300 + (F.grounded ? 0 : 0.4), 0, 1), vy: F.vy, stun: F.hurt > 0.12, glow: P ? P.col : F.gold && F.shield ? '#ffc53d' : null });
     ctx.globalAlpha = 1;
     // fists: the punching one shoots out
     const giant = F.pow === 'giant', fr = giant ? 11 : 6;
@@ -423,73 +443,81 @@
     if (pv >= 0) ext = pv < PO.windT ? -0.3 * (pv / PO.windT) : pv < PO.hitT ? 1 : Math.max(0, 1 - (pv - PO.hitT) / 0.12);
     const fx = F.x + F.face * (8 + Math.max(0, ext) * (reachOf(F) - 14)), fy = F.y - 14 - (F.block ? 6 : 0);
     if (ext > 0.1) {
-      ctx.strokeStyle = PDARK[F.id]; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(F.x + F.face * 6, F.y - 14); ctx.lineTo(fx - F.face * fr * 0.6, fy); ctx.stroke();
-      if (ext >= 1) { ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2; for (const o of [-5, 0, 5]) { ctx.beginPath(); ctx.moveTo(fx - F.face * (fr + 6), fy + o); ctx.lineTo(fx - F.face * (fr + 22), fy + o); ctx.stroke(); } }
+      const arm = () => { ctx.beginPath(); ctx.moveTo(F.x + F.face * 6, F.y - 14); ctx.lineTo(fx - F.face * fr * 0.6, fy); };
+      ctx.lineCap = 'round'; K.edge(arm, PCOL[F.id], 4); ctx.lineCap = 'butt';
+      if (ext >= 1) {
+        // ink speed streaks behind the fist, every third one white
+        for (const [k, o] of [[0, -5], [1, 0], [2, 5]]) { ctx.strokeStyle = k === 1 ? '#ffffff' : INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(fx - F.face * (fr + 6), fy + o); ctx.lineTo(fx - F.face * (fr + 22), fy + o); ctx.stroke(); }
+        if (giant) { K.star(fx + F.face * (fr + 6), fy, 12, 5, t * 6); K.inkFill('#ffe14a', 1.5); } // impact star
+      }
     }
     fist(F, fx, fy, fr);
     if (!F.block && ext <= 0.1) fist(F, F.x - F.face * 7, F.y - 12, fr * 0.85);
-    // blocking: arms crossed and a blue guard in front
+    // blocking: arms crossed and an inked guard in front
     if (F.block) {
-      ctx.strokeStyle = 'rgba(191,230,255,0.85)'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(F.x, F.y - 14, 24, F.face > 0 ? -0.9 : Math.PI - 0.9, F.face > 0 ? 0.9 : Math.PI + 0.9); ctx.stroke();
+      const guard = () => { ctx.beginPath(); ctx.arc(F.x, F.y - 14, 24, F.face > 0 ? -0.9 : Math.PI - 0.9, F.face > 0 ? 0.9 : Math.PI + 0.9); };
+      K.edge(guard, '#bff6ff', 3);
       fist(F, F.x + F.face * 9, F.y - 20, fr * 0.9);
     }
-    // the shield bubble
+    // the shield bubble: an inked ring, a flat tint and a white glint
     if (F.shield > 0) {
-      const gold = F.shield === 2 && !(F.pow === 'shield');
-      ctx.strokeStyle = gold ? 'rgba(255,197,61,0.9)' : 'rgba(122,255,216,0.85)'; ctx.lineWidth = 2.5;
-      ctx.fillStyle = gold ? 'rgba(255,197,61,0.12)' : 'rgba(122,255,216,0.12)';
-      circle(F.x, F.y - 14, 26 + Math.sin(t * 6) * 1.5); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(F.x - 8, F.y - 24, 9, Math.PI * 1.1, Math.PI * 1.5); ctx.stroke();
+      const gold = F.shield === 2 && !(F.pow === 'shield'), r = 26 + Math.sin(t * 6) * 1.5, col = gold ? '#ffc53d' : '#5fe0cc';
+      ctx.globalAlpha = 0.2; ctx.fillStyle = col; circle(F.x, F.y - 14, r); ctx.fill(); ctx.globalAlpha = 1;
+      ctx.strokeStyle = INK; ctx.lineWidth = 5; circle(F.x, F.y - 14, r); ctx.stroke();
+      ctx.strokeStyle = col; ctx.lineWidth = 2.5; circle(F.x, F.y - 14, r); ctx.stroke();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(F.x, F.y - 14, r - 6, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke(); ctx.lineCap = 'butt';
     }
   }
   function fist(F, x, y, r) {
-    ctx.fillStyle = PCOL[F.id]; circle(x, y, r); ctx.fill();
-    ctx.strokeStyle = PDARK[F.id]; ctx.lineWidth = r > 8 ? 2.5 : 1.5; circle(x, y, r); ctx.stroke();
-    // knuckles
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
+    // a boxing glove in the hero's glove colour, inked, with knuckle lines
+    circle(x, y, r); K.inkFill(GLOVE[F.id], r > 8 ? 2.5 : 1.6);
+    ctx.strokeStyle = INK; ctx.lineWidth = 1;
     for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(x + F.face * r * 0.4, y + k * r * 0.4); ctx.lineTo(x + F.face * r * 0.85, y + k * r * 0.4); ctx.stroke(); }
   }
   function drawTop(st) {
     K.drawPops(st, 0, 0);
+    K.drawWords(st, 0, 0, st.f.filter(F => !F.out));
     // off-screen arrows for anyone above the top of the screen
-    for (const F of st.f) if (F.y < 10 && !F.out) { ctx.fillStyle = PCOL[F.id]; ctx.beginPath(); ctx.moveTo(F.x, 8); ctx.lineTo(F.x - 8, 22); ctx.lineTo(F.x + 8, 22); ctx.closePath(); ctx.fill(); }
+    for (const F of st.f) if (F.y < 10 && !F.out) { ctx.beginPath(); ctx.moveTo(F.x, 8); ctx.lineTo(F.x - 8, 22); ctx.lineTo(F.x + 8, 22); ctx.closePath(); K.inkFill(PCOL[F.id], 2); }
   }
 
   /* ---------- HUD ---------- */
   function hud(st) {
     const big = hudBig(), z = big ? 1.25 : 1, live = G.match && G.match.phase === 'live';
+    K.pills(st);
     K.drawMsg(st, st.msg, W - 14);
-    // a damage card for each hero along the bottom
+    const P = K.prompter(st);
+    // a cream damage card for each hero along the bottom, with a portrait
     for (const F of st.f) {
-      const w = 180 * z, h = 54 * z, x = F.id ? W - 16 - w : 16, y = H - 14 - h;
-      ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(x, y, w, h, 12); ctx.fill();
-      ctx.strokeStyle = PCOL[F.id]; ctx.lineWidth = 2; rr(x, y, w, h, 12); ctx.stroke();
-      text(NAMES[F.id] + (K.quiet(F.id) ? ' (computer)' : ''), x + 12, y + 14 * z, 13 * z, PCOL[F.id], 'left', 'body');
-      const d = Math.round(F.dmg), col = d < 40 ? '#ffffff' : d < 80 ? '#ffd84a' : '#ff5a4a';
+      const w = 180 * z, h = 54 * z, x = F.id ? W - 16 - w : 16, y = H - 14 - h, q = 44 * z;
+      K.card(x, y, w, h, K.PAPER);
+      ctx.save(); rr(x, y, w, h, 3); ctx.clip(); ctx.fillStyle = PCOL[F.id]; ctx.fillRect(x, y, w, 20 * z); ctx.fillStyle = INK; ctx.fillRect(x, y + 20 * z - 1, w, 2.5); ctx.restore();
+      ctx.strokeStyle = INK; ctx.lineWidth = 2.5; rr(x, y, w, h, 3); ctx.stroke();
+      const nx = F.id ? x + 12 * z : x + q + 14 * z, dx = F.id ? x + w - q - 14 * z : x + q + 14 * z;
+      let nfs = 14 * z; const name = (NAMES[F.id] + (K.quiet(F.id) ? ' (computer)' : '')).toUpperCase();
+      ctx.font = K.disp(nfs); while (nfs > 9 && ctx.measureText(name).width > w - q - 30 * z) { nfs -= 0.5; ctx.font = K.disp(nfs); }
+      K.word(name, nx, y + 11 * z, nfs, '#ffffff', { align: 'left', lw: 3 });
+      K.portrait(F.id, F.id ? x + w - q - 6 : x + 6, y - q * 0.4, q, 'champ', F.id ? 0.06 : -0.06);
+      const d = Math.round(F.dmg), col = d < 40 ? INK : d < 80 ? '#e08a00' : '#e8222e';
       const shake = F.flash > 0 ? (Math.random() - 0.5) * 4 : 0;
-      text(d + '%', x + 12 + shake, y + 38 * z, 24 * z, col, 'left');
+      K.word(d + '%', (F.id ? dx - 4 : dx) + shake, y + 37 * z, 26 * z, d < 40 ? '#ffffff' : col, { align: F.id ? 'right' : 'left', lw: 4.5, shadow: 2 });
       if (F.pow) {
-        const P = POWERS[F.pow], px = x + w - 30 * z, py = y + h / 2 + 2;
-        ctx.fillStyle = 'rgba(255,255,255,0.08)'; circle(px, py, 16 * z); ctx.fill();
-        ctx.strokeStyle = P.col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(px, py, 16 * z, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(F.powT / (F.pow === 'shield' ? PO.shieldT : PO.powT), 0, 1)); ctx.stroke();
-        powIcon(F.pow, px, py, z, G.clock || 0);
-        text(P.name, px - 22 * z, py + 2, 11 * z, P.col, 'right', 'body');
-      } else if (F.shield === 2) text('Gold shield', x + w - 12, y + h / 2 + 2, 12 * z, C.gold, 'right', 'body');
-      // a prompt over the head of a person in the first rounds
+        const Pw = POWERS[F.pow], px = F.id ? x + 30 * z : x + w - 30 * z, py = y + h / 2 + 8 * z, r = 14 * z;
+        circle(px, py, r); K.inkFill('#1c2470', 2);
+        ctx.strokeStyle = Pw.col; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(px, py, r - 3, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(F.powT / (F.pow === 'shield' ? PO.shieldT : PO.powT), 0, 1)); ctx.stroke();
+        powIcon(F.pow, px, py, z * 0.85, G.clock || 0);
+        ctx.font = K.body(11 * z); ctx.textAlign = F.id ? 'left' : 'right'; ctx.textBaseline = 'middle'; ctx.fillStyle = INK;
+        ctx.fillText(Pw.name, F.id ? px + r + 5 : px - r - 5, py + 1);
+      } else if (F.shield === 2) { ctx.font = K.body(12 * z); ctx.textAlign = F.id ? 'left' : 'right'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#b07a00'; ctx.fillText('★ GOLD SHIELD', F.id ? x + 12 * z : x + w - 12 * z, y + h / 2 + 8 * z); }
+      // a prompt balloon over the head of a person in the first rounds
       if (live && !K.quiet(F.id) && !F.out && (st.round <= 2 || F.gold)) {
         const pl = plan(st, F.id);
-        let s = null, c = '#ffe7a8';
-        if (pl.off && !F.grounded) { s = 'Jump back! ' + K.key(F.id, 'jump') + ' ' + K.key(F.id, 'jump'); c = C.gold; }
-        else if (pl.theyWind && !F.block) { s = 'Block! Hold ' + K.key(F.id, 'down'); c = '#bfe6ff'; }
-        else if (pl.inReach && pl.facing && F.punch < 0) { s = 'Punch! ' + K.key(F.id, 'act'); c = C.gold; }
+        let s = null, pulse = false;
+        if (pl.off && !F.grounded) { s = 'Jump back! ' + K.key(F.id, 'jump') + ' ' + K.key(F.id, 'jump'); pulse = true; }
+        else if (pl.theyWind && !F.block) { s = 'Block! Hold ' + K.key(F.id, 'down'); pulse = true; }
+        else if (pl.inReach && pl.facing && F.punch < 0) s = 'Punch! ' + K.key(F.id, 'act');
         else if (st.orb && st.orb.landed && pl.orbMine) s = 'Grab the power!';
-        if (s) {
-          ctx.font = FONT(12 * z); const tw = ctx.measureText(s).width + 16, sx = clamp(F.x, tw / 2 + 8, W - tw / 2 - 8), sy = clamp(F.y - 62, 70, H - 90);
-          ctx.fillStyle = 'rgba(28,26,54,0.85)'; rr(sx - tw / 2, sy - 11 * z, tw, 22 * z, 11 * z); ctx.fill();
-          text(s, sx, sy, 12 * z, c, 'center', 'body');
-        }
+        P.say(F.id, s, clamp(F.x, 70, W - 70), clamp(F.y, 100, H - 60) - 44, null, pulse);
       }
     }
   }
@@ -511,7 +539,7 @@
 
   /* ---------- the level ---------- */
   HEROCITY.defs.punchout = {
-    name: 'Power Punch Showdown', world: 31, kind: 'versus', mode: 'punchout', ownStep: true,
+    name: 'Power Punch Showdown', world: 31, kind: 'versus', mode: 'punchout', ownStep: true, ownPills: true,
     match: { bestOf: 5, roundTime: PO.roundTime },
     act: { label: 'punch' },
     tagLift: 30,
