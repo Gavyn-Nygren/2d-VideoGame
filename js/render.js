@@ -49,13 +49,15 @@ function drawBackground() {
     const y = 50 + ((i * 71) % 130);
     drawCloud(x, y, 0.7 + (i % 2) * 0.4);
   }
+  // a scrolling level (G.camX) slides the hills a little, far ones slower
+  const fx = (G.camX || 0) * 0.15, nx = (G.camX || 0) * 0.35;
   ctx.fillStyle = C.hillFar;
   ctx.beginPath(); ctx.moveTo(0, H);
-  for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 330 + Math.sin(x * 0.007 + 1.3) * 34 + Math.sin(x * 0.019) * 12);
+  for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 330 + Math.sin((x + fx) * 0.007 + 1.3) * 34 + Math.sin((x + fx) * 0.019) * 12);
   ctx.lineTo(W, H); ctx.fill();
   ctx.fillStyle = C.hillNear;
   ctx.beginPath(); ctx.moveTo(0, H);
-  for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 400 + Math.sin(x * 0.011 + 4) * 26 + Math.sin(x * 0.027 + 1) * 8);
+  for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 400 + Math.sin((x + nx) * 0.011 + 4) * 26 + Math.sin((x + nx) * 0.027 + 1) * 8);
   ctx.lineTo(W, H); ctx.fill();
 }
 function drawCloud(x, y, s) {
@@ -357,7 +359,7 @@ function text(str, x, y, size, col, align = 'left', font = 'display') {
   ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.fillText(str, x, y);
 }
 function drawBumper(x, y, tx, ty) {
-  const lit = G.golf && G.golf.bumps[ty * COLS + tx] > 0;
+  const lit = G.golf && G.golf.bumps[ty * 1000 + tx] > 0;
   ctx.fillStyle = lit ? '#ffd2dc' : '#ff4d6d'; rr(x + 1, y + 1, T - 2, T - 2, 8); ctx.fill();
   ctx.strokeStyle = '#8a1f38'; ctx.lineWidth = 2; rr(x + 1, y + 1, T - 2, T - 2, 8); ctx.stroke();
   ctx.fillStyle = '#ffffff'; circle(x + T / 2, y + T / 2, lit ? 7 : 5.5); ctx.fill();
@@ -489,14 +491,14 @@ function drawMatchHUD() {
 // or under the card when the hero is behind it, and points up
 function drawNameTags(alpha, card) {
   const tagHw = p => cpuSolo() && cpuOn(p.id) ? 30 : 18;
-  const onCard = (p, y0, y1) => card && p.x + p.w / 2 + tagHw(p) > card[0] && p.x + p.w / 2 - tagHw(p) < card[0] + card[2] && y1 > card[1] && y0 < card[1] + card[3];
+  const onCard = (p, y0, y1) => card && p.x - (G.camX || 0) + p.w / 2 + tagHw(p) > card[0] && p.x - (G.camX || 0) + p.w / 2 - tagHw(p) < card[0] + card[2] && y1 > card[1] && y0 < card[1] + card[3];
   const lift = (LEVELS[G.levelIndex] || {}).tagLift || 0;
   const moved = p => onCard(p, p.y - 27 - lift, p.y - 5 - lift) || onCard(p, p.y, p.y + p.h); // the tag, or the hero, is on the card
   let row = 0; // moved tags share one row, under the lowest of those heroes
   for (const p of G.players) if (p.alive && moved(p)) row = Math.max(row, p.y + p.h + 18);
   for (const p of G.players) {
     if (!p.alive) continue;
-    const x = p.x + p.w / 2; let y = p.y - 16 - lift; // tagLift: a level that carries things overhead
+    const x = p.x + p.w / 2 - (G.camX || 0); let y = p.y - 16 - lift; // (on the screen: a wide level scrolls) // tagLift: a level that carries things overhead
     const cpu = cpuSolo() && cpuOn(p.id), hw = tagHw(p); // the computer's tag says so
     const up = moved(p);
     if (up) y = onCard(p, row - 15, row + 7) ? card[1] + card[3] + 20 : row;
@@ -624,12 +626,17 @@ function render(dt) {
   ctx.setTransform(s, 0, 0, canvas.height / H, 0, 0);
   if (G.shake > 0) { const m = G.shake * 14; ctx.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m); }
   drawBackground();
+  // the world scrolls by G.camX in a wide level (0 everywhere else); the HUD and cards below stay on the screen
+  const camX = Math.round(G.camX || 0);
+  ctx.save(); ctx.translate(-camX, 0);
+  if (G.golf && L.def.cave) drawGolfCaves(camX);
   for (const sg of L.def.signs || []) {
     ctx.font = '17px "Lilita One", "Arial Rounded MT Bold", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = 'rgba(28,26,54,0.5)'; ctx.fillText(sg.text, sg.x, sg.y);
   }
-  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+  const tx0 = Math.max(0, Math.floor(camX / T)), tx1 = Math.min((L.cols || COLS) - 1, Math.floor((camX + W) / T));
+  for (let ty = 0; ty < ROWS; ty++) for (let tx = tx0; tx <= tx1; tx++) {
     const ch = L.grid[ty][tx], x = tx * T, y = ty * T;
     if (ch === '#') drawStone(tx, ty);
     else if (ch === '^') drawSpikes(x, y);
@@ -663,6 +670,7 @@ function render(dt) {
     else { circle(q.x, q.y, q.size * (0.5 + 0.5 * q.life / q.max)); ctx.fill(); }
   }
   ctx.globalAlpha = 1;
+  ctx.restore();
   if (G.mode !== 'title') { drawHUD(); drawMatchOverlay(); drawIntro(); }
   ctx.restore();
 }
