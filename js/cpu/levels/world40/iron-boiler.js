@@ -23,7 +23,7 @@ IRON_BRAINS.boiler = {
       const v = ph.valves[ph.n], dash = G.players[1 - p.id];
       if (Math.abs(cx - v.x) > 12) { bst.bleed = false; ironLegNear(bst, out, p, v.x, 8); return ironBrainHop(bst, out, p); }
       const dx = cpuCx(dash), safe = !dash.alive || (dash.grounded && (ironBoilerInAlcove(dx) || ironBoilerStretchAt(dx) < 0));
-      if (!ironHasGold(S, 'boiler') && !bst.bleed && (v.p >= 0.95 || (v.p >= 0.8 && safe))) bst.bleed = true;
+      if (!ironHasGold(S, 'boiler') && !bst.bleed && (v.p >= 0.95 || (v.p >= 0.8 && safe))) { bst.bleed = true; ironBrainSay(bst, p, 'bleed', 'Bleeding!', 8); }
       if (bst.bleed && v.p <= 0.25) bst.bleed = false;
       if (!bst.bleed && v.kick <= 0) out.act = true;
       return out;
