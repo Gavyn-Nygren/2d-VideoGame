@@ -85,7 +85,8 @@ cpuBrain('colossus', {
   bubblePos(p) {
     const S = G.mst, ph = S && IRON_PHASES[S.phase];
     if (ph && typeof ph.bubblePos === 'function' && !(S.cut && S.cut.kind === 'end')) return ph.bubblePos(S, p);
-    return { x: cpuCx(p), y: p.y - ((S && S.tick && ironHeadLift(S, p)) || 0) };
+    const y = p.y - ((S && S.tick && ironHeadLift(S, p)) || 0);
+    return S && S.tick ? ironViewPt(S, cpuCx(p), y) : { x: cpuCx(p), y };
   },
   think(bst, p, o, dt, info) {
     const S = info.mst;

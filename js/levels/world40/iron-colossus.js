@@ -299,7 +299,7 @@ function ironBody(p, dt, solids, o = {}) {
     }
   }
   if (!ground && was && p.vy >= 0) for (const r of list) {
-    if (r.off || p.x + p.w <= r.x0 + 0.5 || p.x >= r.x1 - 0.5) continue;
+    if (r.off || p.x + p.w <= r.x0 + 0.5 || p.x >= r.x1 - 0.5 || (r.one || r.slope) && p.dropT > 0 && !r.head) continue;
     const ty = r.slope ? r.ya + (r.yb - r.ya) * (clamp(p.x + p.w / 2, r.x0, r.x1) - r.x0) / (r.x1 - r.x0) : r.y0;
     if (Math.abs(p.y + p.h - ty) < (r.slope ? 7 : 3)) { p.y = ty - p.h; ground = r; p.vy = 0; break; }
   }
@@ -729,18 +729,39 @@ function ironHideMask(st) {
   return [true, true];   // (this world draws its heroes itself, in the sketch style)
 }
 function ironUnhide(st) { if (st.hid) { for (const p of G.players) if (st.hid[p.id]) p.alive = true; st.hid = null; } }
+/* The view: a part may tilt the whole page about a screen point (the Swinging Leg): view(st) -> { cx, cy, a } (a in
+   radians, clockwise). drawSky(st) draws under it, unturned, in screen coords. Everything else is drawn turned. */
+const ironView = st => { const v = st && st.tick && !(st.cut && st.cut.kind === 'end') ? ironCall(ironPh(st), 'view', st) : null; return v && v.a ? v : null; };
+function ironViewApply(st) { const v = ironView(st); if (v) { ctx.translate(v.cx, v.cy); ctx.rotate(v.a); ctx.translate(-v.cx, -v.cy); } }
+// a screen point (as the part sees it, unturned) -> where it shows on the turned page
+function ironViewPt(st, x, y) {
+  const v = ironView(st);
+  if (!v) return { x, y };
+  const c = Math.cos(v.a), s = Math.sin(v.a), dx = x - v.cx, dy = y - v.cy;
+  return { x: v.cx + dx * c - dy * s, y: v.cy + dx * s + dy * c };
+}
+// runs fn with the heroes moved (screen coords) to where they show on the turned page (for bubbles, hints, the "!")
+function ironAtView(st, fn) {
+  if (!ironView(st)) return fn();
+  const ps = G.players, keep = ps.map(p => [p.x, p.y]);
+  for (const p of ps) { const q = ironViewPt(st, p.x + p.w / 2, p.y + p.h / 2); p.x = q.x - p.w / 2; p.y = q.y - p.h / 2; }
+  try { return fn(); } finally { ps.forEach((p, i) => { p.x = keep[i][0]; p.y = keep[i][1]; }); }
+}
 function ironDraw(st) {
   const ph = ironPh(st);
   ironUnhide(st);
   SKETCH.t = G.clock;
   if (st.cut && st.cut.kind === 'end') { ironDrawEnd(st); ironHideAll(st); return; }
-  ctx.save(); ctx.translate(-st.cam.x, -st.cam.y);
+  ironCall(ph, 'drawSky', st);
+  ctx.save(); ironViewApply(st); ctx.translate(-st.cam.x, -st.cam.y);
   ironCall(ph, 'drawBack', st);
   ironCall(ph, 'draw', st);
   ironRivetsDraw(st);
   ctx.restore();
   // the heroes, in the style (screen coords: between ticks the players are in screen coords)
+  ctx.save(); ironViewApply(st);
   ironDrawHeroes(st);
+  ctx.restore();
   ironHideAll(st);
 }
 function ironHideAll(st) {
@@ -773,7 +794,7 @@ function ironDrawHeroes(st) {
 function ironDrawTop(st) {
   const ph = ironPh(st), end = st.cut && st.cut.kind === 'end';
   ironUnhide(st);
-  ctx.save(); ctx.translate(-st.cam.x, -st.cam.y);
+  ctx.save(); ironViewApply(st); ctx.translate(-st.cam.x, -st.cam.y);
   if (!end) ironCall(ph, 'drawTop', st);
   // stars of a Clang
   const d = SKETCH.live(ctx, 515, SKETCH.boil()), dark = ironDark(st), ink = dark ? SKETCH.CHALK : SKETCH.INK;
@@ -788,11 +809,11 @@ function ironDrawTop(st) {
   // the page's soft edge (darker toward the corners): the frame every part sits in
   if (!end) SKETCH.edge(ctx, ironPaper(st));
   // the "!" warnings over heads
-  for (const p of G.players) {
+  ironAtView(st, () => { for (const p of G.players) {
     if (!p.alive || end || !(st.warn[p.id] > 0)) continue;
     const bob = Math.abs(Math.sin(G.clock * 12)) * 5;
     SKETCH.live(ctx, 77 + p.id, SKETCH.boil()).word('!', p.x + p.w / 2, p.y - 30 - bob - ironHeadLift(st, p), 24, { align: 'center', col: dark ? SKETCH.CHALK : SKETCH.INK, fill: SKETCH.PAL.core, w: 3 });
-  }
+  } });
   // the impact frame: one frame of white on black (after everything in the level, before the HUD)
   if (st.impact && !reduceMotion) {
     ctx.save(); ctx.fillStyle = '#17110c'; ctx.globalAlpha = 0.92; ctx.fillRect(0, 0, W, H); ctx.restore();
@@ -957,7 +978,7 @@ function ironHud(st) {
   // Tick's megaphone line (or the caption)
   if (st.say && G.introT <= 0) ironDrawSay(st, y, z);
   if (!end) ironCall(ph, 'hud', st);
-  ironDrawHeads(st, z);
+  ironAtView(st, () => ironDrawHeads(st, z));
   if (st.swapT > 0 && G.introT <= 0) {
     const k = 1 - st.swapT / IRON.swapT, a = clamp(st.swapT / 0.4, 0, 1);
     ctx.save(); ctx.globalAlpha = a;
