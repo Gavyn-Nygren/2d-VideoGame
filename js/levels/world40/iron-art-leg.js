@@ -75,6 +75,7 @@ IRON_ART.legChunk = (k) => {
     const P = IRON_P, H = IRON_ART.helpers, L = IRON_ART.LEG, x0 = 40, x1 = 620, mid = 330;
     // the shade of the cylinder: dark at the left edge, a lit band at the right third, a cool rim at the far right
     const shade = x => { const u = (x - x0) / (x1 - x0); return 1.05 - u * 1.45 + Math.max(0, u - 0.86) * 4; };
+    d.solid([[x0, 0], [x1, 0], [x1, 540], [x0, 540]]);   // the shell is solid iron: the sky never shows through it
     for (let r = 0; r < 4; r++) {
       const gr = k * 4 + r, ya = r * L.rowH, yb = ya + L.rowH, off = gr % 2 ? 72 : 0;
       const xs = [x0, ...L.seams.slice(1, -1).map(x => x + off - (off && x + off > x1 - 30 ? 145 : 0)), x1].sort((a, b) => a - b);
@@ -96,6 +97,7 @@ IRON_ART.legChunk = (k) => {
     const feat = [['hatch', 210, 230], ['grille', 330, 120], [], ['hatch', 470, 330], ['grille', 250, 260]][k] || [];
     if (feat[0] === 'hatch') {
       const [, ax, ay] = feat, ar = 62;
+      d.solid(SKETCH.ell(ax, ay, ar, ar * 0.97, 28));
       const cap = d.ellipse(ax, ay, ar, ar * 0.97, { fill: '#8a6e60', w: 2.8 });
       d.arcHatch(cap, ax - 6, ay - 8, { r0: ar * 0.4, r1: ar * 1.02, n: 16, mid: 0.85, span: 2.6, w: 0.7 });
       d.hatch(cap, { a: 40, gap: 2.2, w: 0.55, alpha: 0.6, tone: (x, y) => ((x - ax) * -0.6 + (y - ay) * 0.8) / ar * 1.3 - 0.2 });
@@ -125,12 +127,13 @@ IRON_ART.legLedge = (w, i) => {
   SKETCH.sheet(key, w + 12, 58, d => {
     const P = IRON_P, x0 = 6, x1 = w + 6, top = 4;
     // brackets: triangles from under the beam back to the shell
-    for (let x = x0 + 30; x < x1 - 20; x += 90) { const q = [[x - 3, top + 22], [x + 26, top + 22], [x - 3, top + 50]]; d.shape(q, { fill: P.iron, w: 1.6, corner: 30, hatch: { a: 70, gap: 2.2, w: 0.5, tone: () => 0.7 } }); d.rivets(x + 2, top + 28, x + 2, top + 42, 2, { r: 1.4 }); }
+    for (let x = x0 + 30; x < x1 - 20; x += 90) { const q = [[x - 3, top + 22], [x + 26, top + 22], [x - 3, top + 50]]; d.solid(q); d.shape(q, { fill: P.iron, w: 1.6, corner: 30, hatch: { a: 70, gap: 2.2, w: 0.5, tone: () => 0.7 } }); d.rivets(x + 2, top + 28, x + 2, top + 42, 2, { r: 1.4 }); }
     // the beam's front face and the grated walking top (lit)
     const face = [[x0, top + 5], [x1, top + 5], [x1, top + 22], [x0, top + 22]];
+    d.solid(face);
     IRON_ART.helpers.ironPlate(d, face, { fill: P.iron, rivetEdges: [0], spacing: 14, inset: 4, r: 1.5, tone: (x, y) => 0.3 + (y - top) / 22, hatchA: 0, gap: 2.4, rustPatches: 1, leave: 0 });
     const deck = [[x0 - 2, top], [x1 + 2, top], [x1, top + 5], [x0, top + 5]];
-    d.shape(deck, { fill: P.dust, w: 1.6, corner: 20 });
+    d.solid(deck); d.shape(deck, { fill: P.dust, w: 1.6, corner: 20 });
     d.stroke([[x0, top + 22], [x1, top + 22]], { w: 2.6, sh: 0.5 }); d.stroke([[x0, top], [x0, top + 22]], { w: 2.2, sh: 0.3 }); d.stroke([[x1, top], [x1, top + 22]], { w: 2.2, sh: 0.3 });
     for (let x = x0 + 4; x < x1 - 2; x += 5) d.stroke([[x, top + 0.5], [x + 1, top + 4.5]], { w: 0.5, sh: 0, alpha: 0.7, bend: 0 });
     // a drip or two of oil off the edge, a scuff of light along the deck
@@ -148,7 +151,9 @@ IRON_ART.legPlate = (k) => {
     const ax = ox, ay = oy, bx = ox + dx, by = oy + dy, nx = 0.766 * th, ny = 0.643 * th;   // the slab's thickness, down-right
     const top = [[ax, ay], [bx, by], [bx + nx, by + ny], [ax + nx, ay + ny]];
     // a strut under it back to the ledge
+    d.solid([[ax + 50, ay - 50], [ax + 60, ay - 58], [ax + 62, ay + 2], [ax + 52, ay + 2]]);
     d.shape([[ax + 50, ay - 50], [ax + 60, ay - 58], [ax + 62, ay + 2], [ax + 52, ay + 2]], { fill: P.iron, w: 1.6, corner: 30, hatch: { a: 80, gap: 2, w: 0.5, tone: () => 0.75 } });
+    d.solid(top);
     IRON_ART.helpers.ironPlate(d, top, { fill: P.soot, fillAlpha: 0.65, rivetEdges: [1, 3], spacing: 14, inset: 4, r: 1.6, tone: () => 0.4, hatchA: 40, gap: 2.6, rustPatches: 0, leave: 0, glint: false });
     // the oil sheen: long white highlights along the slab, a gold-brown glaze
     d.wash(top, '#8a6a2c', { alpha: 0.35, off: 0.4, layers: 1 });
@@ -165,11 +170,12 @@ IRON_ART.ballast = () => {
   SKETCH.sheet(key, 72, 90, d => {
     const P = IRON_P, x0 = 6, x1 = 66, y1 = 80, y0 = 5;
     const body = [[x0, y0 + 6], [x0 + 6, y0], [x1 - 6, y0], [x1, y0 + 6], [x1, y1 - 8], [x0, y1 - 8]];
+    d.solid(body);
     IRON_ART.helpers.ironPlate(d, body, { fill: P.ironLight, rivetEdges: [1, 3, 5], spacing: 12, inset: 5, r: 1.8, tone: (x, y) => 0.95 - (x - x0) / 60 * 0.9 + (y - y0) / 300, hatchA: 70, gap: 2.4, cross: true, crossTone: x => 0.6 - (x - x0) / 60, rustPatches: 2, scratch: 3 });
     IRON_ART.helpers.ironStencil(d, '5T', 36, 40, 16, {});
     d.stroke([[x0 + 14, y0 + 2], [x0 + 14, y0 - 4], [x1 - 14, y0 - 4], [x1 - 14, y0 + 2]], { w: 2.4, sh: 0 });
     // rail wheels
-    for (const x of [x0 + 12, x1 - 12]) { d.shape(SKETCH.ell(x, y1 - 5, 6, 6, 12), { fill: P.soot, w: 1.6, corner: 30 }); d.spot(SKETCH.ell(x, y1 - 5, 1.6, 1.6, 6), {}); }
+    for (const x of [x0 + 12, x1 - 12]) { d.solid(SKETCH.ell(x, y1 - 5, 6, 6, 12)); d.shape(SKETCH.ell(x, y1 - 5, 6, 6, 12), { fill: P.soot, w: 1.6, corner: 30 }); d.spot(SKETCH.ell(x, y1 - 5, 1.6, 1.6, 6), {}); }
   }, { seed: 4980, ox: 6, oy: 80 });
   return key;
 };
@@ -179,10 +185,12 @@ IRON_ART.piston = () => {
   SKETCH.sheet(key, 72, 230, d => {
     const P = IRON_P, x0 = 6, x1 = 66, cx = 36;
     // the polished shaft (lit stripe), then the head plate on it
+    d.solid([[cx - 13, 18], [cx + 13, 18], [cx + 13, 226], [cx - 13, 226]]);
     d.shape([[cx - 13, 18], [cx + 13, 18], [cx + 13, 226], [cx - 13, 226]], { fill: P.greyBlue, w: 2, corner: 20, hatch: { a: 90, gap: 2.2, w: 0.5, tone: x => (cx + 13 - x) / 26 * 0.9 - 0.2 } });
     d.stroke([[cx + 6, 22], [cx + 6, 222]], { w: 2, col: '#fbf3df', alpha: 0.8, layer: 'white', sh: 0, brk: 1.2 });
     for (let y = 60; y < 226; y += 50) d.stroke([[cx - 13, y], [cx + 13, y]], { w: 0.8, sh: 0, alpha: 0.6 });
     const head = [[x0, 2], [x1, 2], [x1 - 4, 18], [x0 + 4, 18]];
+    d.solid(head);
     IRON_ART.helpers.ironPlate(d, head, { fill: P.iron, rivetEdges: [0], spacing: 10, inset: 4, r: 1.6, tone: (x, y) => 0.2 + y / 30, hatchA: 0, gap: 2.2, rustPatches: 1, leave: 0 });
     d.stroke([[x0 + 4, 2.5], [x1 - 4, 2.5]], { w: 1.2, col: '#fbf3df', alpha: 0.8, layer: 'white', sh: 0 });
   }, { seed: 4990, ox: 6, oy: 2 });
@@ -194,9 +202,10 @@ IRON_ART.legLever = () => {
   SKETCH.sheet(key, 60, 70, d => {
     const P = IRON_P, px = 30, py = 60;
     // base block (turns with the arm a little: drawn small), arm, red knob
+    d.solid([[px - 12, py + 8], [px + 12, py + 8], [px + 9, py - 4], [px - 9, py - 4]]);
     d.shape([[px - 12, py + 8], [px + 12, py + 8], [px + 9, py - 4], [px - 9, py - 4]], { fill: P.soot, w: 1.8, corner: 30 });
     d.stroke([[px, py], [px, py - 48]], { w: 4.2, sh: 0.3 }); d.stroke([[px + 1, py - 4], [px + 1, py - 44]], { w: 1, col: '#fbf3df', alpha: 0.7, layer: 'white', sh: 0 });
-    d.shape(SKETCH.ell(px, py - 52, 7, 7, 12), { fill: P.rust, w: 1.8, corner: 30 }); d.stroke(SKETCH.ell(px - 2, py - 54, 2, 2, 6), { w: 1, col: '#fbf3df', layer: 'white', sh: 0 });
+    d.solid(SKETCH.ell(px, py - 52, 7, 7, 12)); d.shape(SKETCH.ell(px, py - 52, 7, 7, 12), { fill: P.rust, w: 1.8, corner: 30 }); d.stroke(SKETCH.ell(px - 2, py - 54, 2, 2, 6), { w: 1, col: '#fbf3df', layer: 'white', sh: 0 });
     d.spot(SKETCH.ell(px, py, 3, 3, 8), {});
   }, { seed: 4995, ox: 30, oy: 60 });
   return key;
@@ -207,6 +216,7 @@ IRON_ART.kneeGate = () => {
   SKETCH.sheet(key, 40, 130, d => {
     const P = IRON_P, x0 = 12, x1 = 28, y1 = 122;
     const panel = [[x0, 6], [x1, 6], [x1, y1], [x0, y1]];
+    d.solid(panel);
     IRON_ART.helpers.ironPlate(d, panel, { fill: P.rust, rivetEdges: [1, 3], spacing: 12, inset: 3, r: 1.4, tone: x => (x1 - x) / 16 * 0.8, hatchA: 80, gap: 2, rustPatches: 1, leave: 0 });
     // teeth at the bottom (it bites shut), hazard stripes
     for (let x = x0; x < x1; x += 5) d.shape([[x, y1], [x + 5, y1], [x + 2.5, y1 + 6]], { fill: P.iron, w: 1, corner: 10 });
@@ -251,7 +261,7 @@ IRON_ART.crow = (pose) => {
     const ink = '#4a4a52';
     if (pose === 'sit') {
       const body = [[x - 12, y - 10], [x - 4, y - 18], [x + 6, y - 18], [x + 12, y - 24], [x + 18, y - 22], [x + 16, y - 16], [x + 8, y - 8], [x - 2, y - 4], [x - 14, y - 4]];
-      d.shape(body, { fill: '#6b6e78', w: 1.6, corner: 30, hatch: { a: 60, gap: 1.8, w: 0.5, tone: () => 0.75 } });
+      d.solid(body); d.shape(body, { fill: '#6b6e78', w: 1.6, corner: 30, hatch: { a: 60, gap: 1.8, w: 0.5, tone: () => 0.75 } });
       d.shape([[x + 18, y - 22], [x + 25, y - 20], [x + 17, y - 18]], { fill: P.ochreDeep, w: 1, corner: 20 });
       d.spot(SKETCH.ell(x + 13, y - 21, 1.4, 1.4, 6), {});
       d.stroke([[x - 2, y - 4], [x - 4, y]], { w: 1, col: ink, sh: 0 }); d.stroke([[x + 3, y - 5], [x + 3, y]], { w: 1, col: ink, sh: 0 });
@@ -259,7 +269,7 @@ IRON_ART.crow = (pose) => {
       d.stroke([[x - 8, y - 12], [x + 6, y - 12]], { w: 0.8, sh: 0, col: '#fbf3df', alpha: 0.6, layer: 'white' });
     } else {
       const body = SKETCH.ell(x, y - 18, 10, 6, 12, -0.2);
-      d.shape(body, { fill: '#6b6e78', w: 1.6, corner: 30 });
+      d.solid(body); d.shape(body, { fill: '#6b6e78', w: 1.6, corner: 30 });
       for (const s of [-1, 1]) d.shape([[x - 2, y - 20], [x + s * 26, y - 38], [x + s * 22, y - 30], [x + s * 18, y - 32], [x + s * 14, y - 24]], { fill: '#6b6e78', w: 1.4, corner: 20, hatch: { a: 60, gap: 1.8, w: 0.5, tone: () => 0.7 } });
       d.shape([[x + 10, y - 20], [x + 17, y - 19], [x + 10, y - 16]], { fill: P.ochreDeep, w: 1, corner: 20 });
       for (let i = 0; i < 3; i++) d.stroke([[x - 20 + i * 6, y - 4], [x - 22 + i * 6, y + 2]], { w: 0.8, sh: 0, alpha: 0.6 });
@@ -324,18 +334,20 @@ IRON_ART.kneeDrum = () => {
     const P = IRON_P, H = IRON_ART.helpers, cx = 430, cy = 150;
     // the drum's band across the shell
     const band = [[cx - 330, cy - 58], [cx + 330, cy - 58], [cx + 330, cy + 58], [cx - 330, cy + 58]];
+    d.solid(band);
     H.ironPlate(d, band, { fill: P.iron, rivetEdges: [0, 2], spacing: 15, inset: 6, r: 2, tone: (x, y) => 0.95 - (x - 100) / 660 * 0.9 + Math.abs(y - cy) / 120, hatchA: 0, gap: 2.6, cross: true, crossTone: x => 0.7 - (x - 100) / 500, rustPatches: 3, scratch: 4 });
     d.stroke([[cx - 330, cy], [cx + 330, cy]], { w: 1.2, sh: 0, alpha: 0.5 });
     // the end caps, left (in shade) and right (lit)
     for (const s of [-1, 1]) {
       const ex = cx + s * 320;
       const cap = SKETCH.ell(ex, cy, 96, 120, 36);
+      d.solid(cap);
       H.ironPlate(d, cap, { fill: s > 0 ? P.ironLight : P.iron, tone: (x, y) => (s > 0 ? 0.25 : 0.75) + (x - ex) / 200 * -0.6 * s + (y - cy) / 260, hatchA: 60, gap: 2.6, rustPatches: 2, glint: s > 0, w: 3 });
       d.stroke(SKETCH.ell(ex, cy, 70, 88, 30), { w: 1.6, sh: 0.3, curve: true });
       for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; d.spot(SKETCH.ell(ex + Math.cos(a) * 80, cy + Math.sin(a) * 100, 3, 3, 8), {}); }
       // the hub: a hex nut and a cotter pin
       const hex = []; for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.3; hex.push([ex + Math.cos(a) * 28, cy + Math.sin(a) * 32]); }
-      d.shape(hex, { fill: P.soot, w: 2.2, corner: 20, hatch: { a: 45, gap: 1.8, w: 0.5, tone: () => 0.6 } });
+      d.solid(hex); d.shape(hex, { fill: P.soot, w: 2.2, corner: 20, hatch: { a: 45, gap: 1.8, w: 0.5, tone: () => 0.6 } });
       d.shape(SKETCH.ell(ex, cy, 10, 11, 12), { fill: P.ironLight, w: 1.6 });
       if (s > 0) d.stroke(SKETCH.ell(ex, cy, 86, 108, 40, 0, -1.3, -0.1), { w: 2, col: '#fbf3df', alpha: 0.75, layer: 'white', sh: 0, curve: true });
       // oil weeping from the joint
@@ -352,6 +364,7 @@ IRON_ART.legCuff = () => {
   SKETCH.sheet(key, 720, 120, d => {
     const P = IRON_P, H = IRON_ART.helpers, c = 360;
     const cuff = [[c - 330, 18], [c + 330, 18], [c + 346, 44], [c + 346, 104], [c - 346, 104], [c - 346, 44]];
+    d.solid(cuff);
     H.ironPlate(d, cuff, { fill: P.rust, rivetEdges: [0, 3], spacing: 16, inset: 7, r: 2.2, tone: (x, y) => 0.9 - (x - 20) / 680 * 0.85 + (y - 18) / 200, hatchA: 0, gap: 2.6, cross: true, crossTone: x => 0.6 - (x - 20) / 600, rustPatches: 4, scratch: 4 });
     for (let x = c - 300; x < c + 330; x += 110) d.stroke([[x, 46], [x, 102]], { w: 1.4, sh: 0.2 });
     d.stroke([[c - 330, 18], [c + 330, 18]], { w: 3, sh: 0.5 });

@@ -24,7 +24,7 @@ const ORDER = ['chase', 'leg', 'fists', 'boiler', 'heart', 'brain', 'fall', 'thu
   const browser = await chromium.launch();
   // no isMobile: the page has no viewport meta of its own, so mobile emulation would lay it out 980 px wide and every text
   // would look 16% bigger than on a real 844x390 phone (the published page gets a device-width layout)
-  const ctx = await browser.newContext(phone ? { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: false, deviceScaleFactor: 2 } : { viewport: { width: 1280, height: 800 }, deviceScaleFactor: opt('crop', '') ? 3 : 1 });
+  const ctx = await browser.newContext(phone ? { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: false, deviceScaleFactor: 2 } : { viewport: { width: 1280, height: 800 }, deviceScaleFactor: +opt('dpr', opt('crop', '') ? 3 : 1) });
   const page = await ctx.newPage();
   const errs = [];
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errs.push(m.text()); });

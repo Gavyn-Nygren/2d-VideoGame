@@ -426,6 +426,11 @@ function ironFallDraw(st) {
   const S = IRONFALL_SLIDE;
   if (S.x1 > ph.ex && S.x0 < cx + W + 40 && S.x1 > cx - 40) {
     const x0 = Math.max(S.x0, ph.ex);
+    // the slide's top plate: a strip of clean paper with a firm edge (the forearm's upper plating, in pencil)
+    { const ya = ironFallSlideY(x0), q = [[x0, ya], [S.x1, S.yb], [S.x1, S.yb + 26], [x0, ya + 26]];
+      ctx.save(); ctx.fillStyle = '#efe7d6'; ctx.beginPath(); q.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.fill(); ctx.restore();
+      for (let x = Math.ceil(x0 / 40) * 40 + 20; x < S.x1; x += 40) { const y = ironFallSlideY(x) + 13; d.ellipse(x, y, 1.6, 1.6, { fill: '#8a8580', w: 0.7, col: '#4c4743' }); }
+      for (let x = Math.ceil(x0 / 9) * 9; x < S.x1; x += 9) d.line(x, ironFallSlideY(x) + 1.5, x + 2, ironFallSlideY(x) + 6, { w: 0.5, col: '#4c4743', ov: 0, alpha: 0.5 }); }
     d.stroke([[x0, ironFallSlideY(x0)], [S.x1, S.yb]], { w: 3, col: SKETCH.INK });
     d.stroke([[x0, ironFallSlideY(x0) + 26], [S.x1, S.yb + 26]], { w: 1.6, col: SKETCH.INK, alpha: 0.7 });
     for (let x = Math.ceil(x0 / 40) * 40; x < S.x1; x += 40) d.line(x, ironFallSlideY(x) + 2, x - 8, ironFallSlideY(x) + 24, { w: 0.8, col: SKETCH.INK, ov: 0, alpha: 0.6 });

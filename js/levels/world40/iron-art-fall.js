@@ -176,11 +176,34 @@ IRON_ART.fallBody = (k = 0) => {
     const shade = (pts, a = 0.18) => d.hatch(pts.map(([x, y]) => [X(x), Y(y)]), { a: 55, gap: 4.2, w: 0.6, alpha: a, force: true });
     // bare page where the colour has gone: a paper wash with a faint grey glaze, hatching, a loose pencil outline
     // drawn twice (the construction line under the firm one) and a row of rivets along the top edge
-    const fill = (pts, a = 0.62) => { const q = pts.map(([x, y]) => [X(x), Y(y)]); d.wash(q, P.paper, { alpha: a, off: 0, spread: 1.2, edge: false }); d.wash(q, '#bdb5a6', { alpha: 0.12, off: 2, spread: 1.6, edge: true }); };
+    const fill = (pts, a = 0.62) => { const q = pts.map(([x, y]) => [X(x), Y(y)]); d.solid(q, { kind: 'dawn' }); d.wash(q, '#d9d2c4', { alpha: 0.35, off: 0, spread: 1.2, edge: false }); d.wash(q, '#bdb5a6', { alpha: 0.12, off: 2, spread: 1.6, edge: true }); };
     const plate = pts => {
-      fill(pts); shade(pts);
+      fill(pts, 0.8); shade(pts);
+      const q = pts.map(([x, y]) => [X(x), Y(y)]);
+      const xs = q.map(p2 => p2[0]), ys = q.map(p2 => p2[1]), bx0 = Math.min(...xs), bx1 = Math.max(...xs), by0 = Math.min(...ys), by1 = Math.max(...ys);
+      // inside the plate: panel seams with rivets beside them, a second, cooler shading low down, the construction
+      // lines the artist left in (the two diagonals, a centre line, a circle where a hatch or a joint will go)
+      d.within(q, () => {
+        const sx = 120 + d.r() * 40, sy = 110 + d.r() * 30, lean = (d.r() - 0.5) * 0.2;
+        for (let x = bx0 + sx * (0.4 + d.r() * 0.4); x < bx1; x += sx) {
+          d.stroke([[x, by0 - 4], [x + (by1 - by0) * lean, by1 + 4]], { w: 1.1, col: '#5a5450', alpha: 0.5, p: [0.5, 1, 0.5] });
+          d.rivets(x + 7, by0 + 10, x + 7 + (by1 - by0) * lean, by1 - 10, Math.max(2, Math.round((by1 - by0) / 34)), { r: 1.3, rust: 0 });
+        }
+        for (let y = by0 + sy * (0.5 + d.r() * 0.4); y < by1; y += sy) {
+          d.stroke([[bx0 - 4, y], [bx1 + 4, y + (bx1 - bx0) * 0.02]], { w: 1, col: '#5a5450', alpha: 0.45, p: [0.5, 1, 0.5] });
+          d.rivets(bx0 + 10, y + 7, bx1 - 10, y + 7 + (bx1 - bx0) * 0.02, Math.max(2, Math.round((bx1 - bx0) / 34)), { r: 1.3, rust: 0 });
+        }
+        d.hatch([[bx0, (by0 + by1) / 2], [bx1, (by0 + by1) / 2], [bx1, by1], [bx0, by1]], { a: -35, gap: 5, w: 0.55, alpha: 0.16, force: true });
+        d.pencil([[bx0, by0], [bx1, by1]], { alpha: 0.2 }); d.pencil([[bx0, by1], [bx1, by0]], { alpha: 0.2 });
+        d.pencil([[(bx0 + bx1) / 2, by0], [(bx0 + bx1) / 2, by1]], { alpha: 0.22 });
+        const cr = Math.min(bx1 - bx0, by1 - by0) * (0.16 + d.r() * 0.08), ccx = bx0 + (bx1 - bx0) * (0.3 + d.r() * 0.4), ccy = by0 + (by1 - by0) * (0.35 + d.r() * 0.3);
+        d.pcircle(ccx, ccy, cr * 1.15, { alpha: 0.3 });
+        d.stroke(SKETCH.ell(ccx, ccy, cr, cr * 0.95, 28), { w: 1.3, col: '#5a5450', alpha: 0.6, curve: true });
+        d.stroke(SKETCH.ell(ccx, ccy, cr * 0.4, cr * 0.38, 16), { w: 1, col: '#5a5450', alpha: 0.5, curve: true });
+        for (let i = 0; i < 10; i++) { const an = i / 10 * Math.PI * 2; d.rivet(ccx + Math.cos(an) * cr * 0.72, ccy + Math.sin(an) * cr * 0.7, 1.4); }
+      }, ['ink', 'hatch', 'pencil', 'wash', 'white']);
       d.pencil(pts.map(([x, y]) => [X(x) + 3, Y(y) - 2]), { closed: true, alpha: 0.35 });
-      pen(pts.concat([pts[0]]), { curve: false });
+      pen(pts.concat([pts[0]]), { curve: false, w: 2 });
       const [a, b] = pts; const n = Math.max(2, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 60));
       d.rivets(X(a[0]) + 14, Y(a[1]) + 12, X(b[0]) - 14, Y(b[1]) + 12, n, { r: 1.6, rust: 0 });
     };
@@ -214,17 +237,62 @@ IRON_ART.fallPlate = (w, wall) => {
   const key = 'iron:fall:plate:' + Math.round(w) + ':' + (wall ? 1 : 0);
   if (SKETCH.has(key)) return key;
   const h = wall ? 240 : 46;
-  SKETCH.sheet(key, w + 20, h + 20, d => {
-    const x0 = 10, x1 = w + 10, top = 10, bot = wall ? 10 + 230 : 10 + 30;
+  SKETCH.sheet(key, w + 20, h + 44, d => {
+    // a plate of the Colossus with its colour gone: bare page, a pencil drawing with the artist's construction lines
+    // left in (guide lines that overshoot, panel diagonals, a centre mark), soft graphite shading, a firm walking edge
+    const x0 = 10, x1 = w + 10, top = 10, bot = wall ? 10 + 230 : 10 + 30, lip = 8, PEN = '#4c4743', seed = Math.round(w);
     const pts = [[x0, top], [x1, top], [x1 - 4, bot], [x0 + 4, bot]];
-    d.wash(pts, '#cfc7b8', { alpha: 0.7, off: 0.6, spread: 1.2 });
-    d.hatch(pts, { a: 60, gap: 3.2, w: 0.6, alpha: 0.4, force: true, tone: (x, y) => 0.3 + (y - top) / (bot - top) });
-    d.stroke([[x0, top], [x1, top]], { w: 2.6, col: F_INK() });
-    d.stroke([[x1, top], [x1 - 4, bot], [x0 + 4, bot], [x0, top]], { w: 1.6, col: F_INK(), alpha: 0.8 });
-    d.stroke([[x0 + 4, top + 3], [x1 - 4, top + 3]], { w: 1, col: '#ffffff', alpha: 0.6, sh: 0, layer: 'white' });
-    const n = Math.max(2, Math.round(w / 34));
-    d.rivets(x0 + 8, top + 8, x1 - 8, top + 8, n, { r: 1.4, rust: 0 });
-    if (wall) for (let y = top + 50; y < bot - 10; y += 50) d.stroke([[x0 + 2, y], [x1 - 2, y + 2]], { w: 1, col: F_INK(), alpha: 0.5 });
+    // brackets under a ledge (behind it): pencil triangles back to the body
+    if (!wall) for (let x = x0 + 26; x < x1 - 30; x += 96) {
+      const q = [[x, bot - 2], [x + 30, bot - 2], [x + 2, bot + 22]];
+      d.solid(q); d.wash(q, '#c9c1b2', { alpha: 0.5, off: 0.4 });
+      d.hatch(q, { a: 70, gap: 2.4, w: 0.5, alpha: 0.5, force: true, col: PEN });
+      d.stroke(q.concat([q[0]]), { w: 1.1, col: PEN, alpha: 0.85 });
+    }
+    d.solid(pts);
+    d.wash(pts, '#d6cfc1', { alpha: 0.55, off: 0.6, spread: 1.2 });
+    // the ghost of the rust that was here: one pale bloom, nearly rubbed away
+    d.washIn(pts, () => {
+      d.wash(SKETCH.ell(x0 + w * (0.25 + d.r() * 0.5), (top + bot) / 2 + 6, Math.min(60, w * 0.3), wall ? 46 : 12, 14, d.r()), '#c9a08c', { alpha: 0.16, off: 0, spread: 2.4, edge: false });
+      d.wash([[x0, top + lip], [x1, top + lip], [x1, top + lip + 11], [x0, top + lip + 11]], '#77726c', { alpha: 0.3, off: 0, spread: 2, edge: false });
+    });
+    // panels: seams, graphite shading that changes angle panel to panel, a construction diagonal, rivets by each seam
+    const n = Math.max(1, Math.round(w / 74)), pw = (w - 8) / n;
+    for (let i = 0; i < n; i++) {
+      const a = x0 + 4 + i * pw, b = a + pw, box = [[a + 2, top + lip + 1], [b - 2, top + lip + 1], [b - 2, bot - 2], [a + 2, bot - 2]];
+      d.hatch(box, { a: i % 2 ? 64 : 50, gap: 2.9, w: 0.55, alpha: 0.46, force: true, col: PEN, tone: (x, y) => 0.2 + (y - top) / (bot - top) * 0.55 + (x - a) / pw * 0.25 });
+      if (wall) d.hatch([[a + 2, bot - 70], [b - 2, bot - 70], [b - 2, bot - 2], [a + 2, bot - 2]], { a: i % 2 ? -30 : -42, gap: 3.4, w: 0.5, alpha: 0.3, force: true, col: PEN });
+      d.pencil([[a + 3, bot - 3], [b - 3, top + lip + 3]], { alpha: 0.2 });
+      if (i) {
+        d.stroke([[a, top + lip], [a + (d.r() - 0.5) * 2.4, bot]], { w: 1.2, col: PEN, alpha: 0.8, p: [0.5, 1, 0.3] });
+        const m = wall ? 8 : 2; d.rivets(a - 5, top + lip + 8, a - 5, bot - 7, m, { r: 1.3, rust: 0 }); d.rivets(a + 5, top + lip + 8, a + 5, bot - 7, m, { r: 1.3, rust: 0 });
+      }
+    }
+    if (wall) {
+      // a tall plate: cross seams with rivet rows, a round inspection cover sketched with its centre lines, a number
+      for (let y = top + 62; y < bot - 20; y += 58) { d.stroke([[x0 + 3, y], [x1 - 3, y + (d.r() - 0.5) * 3]], { w: 1.1, col: PEN, alpha: 0.7, p: [0.4, 1, 0.4] }); d.rivets(x0 + 12, y + 6, x1 - 12, y + 6, Math.max(2, Math.round(w / 30)), { r: 1.2, rust: 0 }); }
+      const cx = x0 + w * 0.5, cy = top + 120, r = Math.min(34, w * 0.2);
+      if (r > 14) {
+        d.pcircle(cx, cy, r + 6, { alpha: 0.3 }); d.pencil([[cx - r - 14, cy], [cx + r + 14, cy]], { alpha: 0.3 }); d.pencil([[cx, cy - r - 14], [cx, cy + r + 14]], { alpha: 0.3 });
+        d.stroke(SKETCH.ell(cx, cy, r, r * 0.96, 26), { w: 1.4, col: PEN, alpha: 0.85, curve: true });
+        d.stroke(SKETCH.ell(cx, cy, r * 0.45, r * 0.43, 16), { w: 1, col: PEN, alpha: 0.7, curve: true });
+        for (let k = 0; k < 8; k++) { const an = k / 8 * Math.PI * 2 + 0.3; d.rivet(cx + Math.cos(an) * r * 0.74, cy + Math.sin(an) * r * 0.72, 1.3); }
+        d.hatch(SKETCH.ell(cx, cy, r, r * 0.96, 20), { a: 40, gap: 2.4, w: 0.5, alpha: 0.4, force: true, col: PEN, tone: (x, y) => ((x - cx) + (y - cy)) / r * 0.5 + 0.3 });
+      }
+      d.word(['L-2', '07', 'K-4', 'R-9'][seed % 4], x0 + 26, top + 44, 13, { w: 1.5, col: PEN, alpha: 0.45, align: 'center' });
+    }
+    // the artist's guide lines, left in: they run past the corners
+    d.pencil([[x0 - 9, top - 2.5], [x1 + 9, top - 3.5]], { alpha: 0.45 });
+    d.pencil([[x0 - 7, bot + 2.5], [x1 + 7, bot + 3]], { alpha: 0.35 });
+    d.pencil([[x0 - 1.5, top - 8], [x0 + 3, bot + 9]], { alpha: 0.35 }); d.pencil([[x1 + 1.5, top - 8], [x1 - 3, bot + 9]], { alpha: 0.35 });
+    // the walking edge: a lip plate left as clean paper, a firm top line (heavier toward the shadow end), ticks
+    const lp = [[x0 - 2, top], [x1 + 2, top], [x1, top + lip], [x0, top + lip]];
+    d.solid(lp); d.wash(lp, '#efe7d6', { alpha: 0.8, off: 0.3, layers: 1 });
+    for (let x = x0 + 5; x < x1 - 3; x += 7) d.stroke([[x, top + 1.5], [x + 1.6, top + lip - 1.5]], { w: 0.5, col: PEN, alpha: 0.55, sh: 0 });
+    d.stroke([[x0 - 2, top + lip], [x1 + 2, top + lip]], { w: 1.4, col: PEN, alpha: 0.9 });
+    d.stroke([[x0 - 3, top], [x1 + 3, top]], { w: 2.8, col: F_INK(), p: [0.7, 1, 0.9] });
+    d.stroke([[x1, top], [x1 - 4, bot], [x0 + 4, bot], [x0, top]], { w: 1.7, col: PEN, alpha: 0.9 });
+    d.rivets(x0 + 9, top + lip + 5, x1 - 9, top + lip + 5, Math.max(2, Math.round(w / 30)), { r: 1.4, rust: 0 });
   }, { ox: 10, oy: 10, seed: 9700 + Math.round(w) + (wall ? 1 : 0) });
   return key;
 };

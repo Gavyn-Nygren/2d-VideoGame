@@ -182,6 +182,16 @@ const SKETCH = (() => {
       g.fillStyle = g.createPattern(cv, 'repeat'); g.beginPath(); q.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); g.fill();
       if (o.lw) { g.lineWidth = o.lw; g.strokeStyle = g.fillStyle; g.stroke(); }
       g.restore();
+      // on a sheet the layers are separate canvases, so the paper alone cannot hide ink and wash drawn earlier in the
+      // same sheet: rub those out inside the form too (a form drawn later is in front of what was drawn before it)
+      if (!live && layers.base && o.keep !== true) {
+        for (const n of ['pencil', 'wash', 'hatch', 'ink', 'white']) {
+          const h = layers[n]; if (!h || h === g) continue;
+          h.save(); h.globalCompositeOperation = 'destination-out'; h.globalAlpha = 1; h.fillStyle = '#000';
+          h.beginPath(); q.forEach((p, i) => (i ? h.lineTo(p[0], p[1]) : h.moveTo(p[0], p[1]))); h.closePath(); h.fill();
+          h.restore();
+        }
+      }
     };
     // washes laid inside a clip polygon (soft-edged glazes inside a form; the form's own ink line hides the clip)
     d.washIn = (clip, fn) => {
