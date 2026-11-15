@@ -99,6 +99,9 @@ function showTitle() {
 function showHowTo() {
   Home.screen = 'howto';
   const kc = (p, w) => `<kbd>${esc(KEYCAPS[p][w])}</kbd>`;
+  // each player's keys as rows: key | what it does (the same table as the ready and pause cards)
+  const kbTable = p => `<div class="ctl-table">${[[kc(p, 'left') + kc(p, 'right'), 'move'], [kc(p, 'jump'), 'jump'], [kc(p, 'down'), 'drop down'], [kc(p, 'act'), 'action (some levels)']]
+    .map(([k, v]) => `<div class="ctl-row"><span class="ctl-k">${k}</span><span class="ctl-v">${v}</span></div>`).join('')}</div>`;
   showOverlay(`
     <div class="card home-card howto-card" data-nav>
       <div class="home-head">
@@ -107,14 +110,16 @@ function showHowTo() {
       </div>
       <p class="lede">${titleLede()}</p>
       <div class="duo kb-only">
-        <div class="pcard pip"><div class="nm nm-pip">Pip</div><div class="keys"><span>${kc(0, 'left')}${kc(0, 'right')} move</span><span>${kc(0, 'jump')} jump</span><span>${kc(0, 'down')} drop down</span></div></div>
-        <div class="pcard bo"><div class="nm nm-bo">Bo</div><div class="keys"><span>${kc(1, 'left')}${kc(1, 'right')} move</span><span>${kc(1, 'jump')} jump</span><span>${kc(1, 'down')} drop down</span></div></div>
+        <div class="pcard pip"><div class="nm nm-pip">Pip</div>${kbTable(0)}</div>
+        <div class="pcard bo"><div class="nm nm-bo">Bo</div>${kbTable(1)}</div>
       </div>
-      <p class="hint kb-only">Some levels add an action button: ${kc(0, 'act')} for Pip, ${kc(1, 'act')} for Bo. <kbd>R</kbd> restarts a level and <kbd>Esc</kbd> pauses. In menus, the arrow keys move, <kbd>Enter</kbd> picks and <kbd>Esc</kbd> goes back.</p>
+      <p class="hint kb-only">The action button is only used in some levels. <kbd>R</kbd> restarts a level and <kbd>Esc</kbd> pauses. In menus, the arrow keys move, <kbd>Enter</kbd> picks and <kbd>Esc</kbd> goes back.</p>
       <p class="hint touch-only" data-two-only${CPU.cfg.players === 1 ? ' hidden' : ''}>Pip uses the orange buttons on the left, Bo uses the blue buttons on the right. ▲ jumps, ▼ drops through planks.</p>
       <p class="hint touch-only" data-solo-only${CPU.cfg.players === 1 ? '' : ' hidden'}>Use the buttons on your side of the screen. ▲ jumps, ▼ drops through planks.</p>
       <div class="pcard pad-only">
-        <div class="keys"><span>Stick or d-pad: move</span><span><span data-glyph="a"></span> jump (you can change the keys and buttons in Settings)</span><span>Down: drop through planks</span><span><span data-glyph="start"></span> pause</span></div>
+        <div class="ctl-table">${[['<kbd class="k-stick">stick</kbd>', 'move (or the d-pad)'], ['<span data-glyph="a"></span>', 'jump'], ['<kbd class="k-stick">▼</kbd>', 'drop through planks'],
+          ['<span data-glyph="act"></span>', 'action (some levels)'], ['<span data-glyph="start"></span>', 'pause']].map(([k, v]) => `<div class="ctl-row"><span class="ctl-k">${k}</span><span class="ctl-v">${v}</span></div>`).join('')}</div>
+        <p class="hint">You can change the keys and buttons in Settings.</p>
         <p class="hint" data-padwho></p>
         <p class="hint">Press <span data-glyph="view"></span> to swap who plays which character<span data-solo-only${CPU.cfg.players === 1 ? '' : ' hidden'}> (you and the computer)</span>. In menus, the stick moves between buttons, <span data-glyph="a"></span> picks and <span data-glyph="b"></span> goes back.</p>
       </div>
