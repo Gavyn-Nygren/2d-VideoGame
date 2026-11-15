@@ -14,7 +14,8 @@
      ramps     plates from one ledge up to the next (rivets on them; some have a steam vent that puffs mid-swing on
                alternate strides, hissing for `vent.tell` s first: a puff knocks you off, a Clang)
      ballast   a block on a rail slides downhill (right) in every swing and creeps back when upright. One BRACES it
-               (holds the action beside it), the climber hops block -> upper ledge, then gives the HAND UP from the edge.
+               (holds the action beside it), the climber hops block -> upper ledge, then pulls the CLAMP LEVER up there:
+               the block is locked at rest and the bracer climbs it too. (Gavyn, 2026-11-15: replaced the hand up.)
      pistons   two pistons: crouch on one and the other rises 150 px. The rider steps off onto the ledge above and
                pulls the LEVER there: both lock high, a lift for the presser.
      the knee  a gate in the knee hinge opens in the swing and shuts at the plant. Through it, the far side's LEVER
@@ -36,7 +37,7 @@ const IRONLEG = {
   // plates (ramps): [x at the bottom, the ledge it starts on, vent (0 none, 1 puffs on odd strides, 2 on even)]
   plates: [[-270, 0, 0], [-60, 1, 0], [-260, 3, 1], [-100, 4, 0], [-260, 6, 0], [-90, 7, 2], [-260, 9, 0], [-260, 11, 1], [-60, 12, 0]],
   // the stations, by the ledge they start from
-  blocks: [{ from: 2, rest: 110, end: 196, w: 60, h: 75 }, { from: 8, rest: 80, end: 196, w: 60, h: 75 }],
+  blocks: [{ from: 2, rest: 110, end: 196, w: 60, h: 75, lever: 170 }, { from: 8, rest: 80, end: 196, w: 60, h: 75, lever: 170 }],
   pistons: [{ from: 5, a: 100, b: 170, w: 60, h0: 30, lever: 66 }, { from: 10, a: 100, b: 170, w: 60, h0: 30, lever: 66 }],
   knee: { ledge: 6, gate: -70, gateW: 16, gateH: 110, lever: -128 },
   ring: { ledge: 13, x0: 130, x1: 290 },
@@ -55,7 +56,7 @@ function ironLegSetup(st, L) {
   ph.first = L.def.first || 0;
   ph.t = 0; ph.sc = 0.4; ph.strides = 0; ph.theta = 0; ph.swinging = false; ph.told = false;
   ph.plateList = K.plates.map((_, i) => ironLegPlate(i));
-  ph.blocks = K.blocks.map((b, i) => Object.assign({ i, x: b.rest, dx: 0, braced: -1, done: false }, b));
+  ph.blocks = K.blocks.map((b, i) => Object.assign({ i, x: b.rest, dx: 0, braced: -1, done: false, clamped: false }, b));
   ph.pistons = K.pistons.map((q, i) => Object.assign({ i, ha: q.h0, hb: q.h0, locked: false, done: false }, q));
   ph.gate = { open: 0, held: -1, done: false };
   ph.crows = K.crows.map(([l, x], i) => ({ i, l, x, t: 0, away: 0, flap: 0 }));
@@ -113,7 +114,7 @@ function ironLegPlant(st) {
   Sfx.play('ironlegPlantClang'); rumble(0, 0.6, 0.5, 200); rumble(1, 0.6, 0.5, 200);
   if (!reduceMotion) G.shake = Math.max(G.shake, 0.25);
   ironWord(st, 'KLANG!', st.cam.x + 480, st.cam.y + 120, 40, { life: 0.9, grow: 0.25, rise: 8 });
-  for (const p of G.players) if (p.alive && !p.grounded && !(st.haul && st.haul.who === p.id)) { p.vx -= 160; ironPop(st, p.x + p.w / 2, p.y - 6, 'WHOA!', { size: 12 }); }
+  for (const p of G.players) if (p.alive && !p.grounded) { p.vx -= 160; ironPop(st, p.x + p.w / 2, p.y - 6, 'WHOA!', { size: 12 }); }
   if (!ph.gate.done && ph.gate.held < 0) ph.gate.open = 0;
 }
 // how steep a surface is on screen right now (radians, positive rising to the right)
@@ -150,9 +151,7 @@ function ironLegStep(st, dt) {
   ironLegBlocks(st, dt);
   ironLegPistons(st, dt);
   ironLegGate(st, dt);
-  ironHandUp(st, dt, { edge: 70 });
   for (const p of ps) {
-    if (st.haul && st.haul.who === p.id) continue;
     const was = p.grounded;
     ironBody(p, dt, ph.solids, { partner: true, ctl: ironLegCtl });
     // falls: a long drop is a Clang (slid off a plate and down past the ledge below)
@@ -219,7 +218,14 @@ function ironLegBlocks(st, dt) {
       if (bp.x + bp.w / 2 > b.x + b.w / 2) { const m = Math.min(110 * dt, b.x - b.rest); b.x -= m; bp.x -= m; }
     }
     b.bracedWas = b.braced >= 0;
-    if (b.braced < 0) {
+    // the clamp lever on the ledge above: anyone up there pressing the action beside it locks the block at rest
+    const ly = ironLegLedge(b.from + 1)[0];
+    if (!b.clamped) for (const p of G.players) {
+      if (!p.alive || !p.grounded || Math.abs(p.y + p.h - ly) > 3 || !(p.input.act || p.pendingAct) || Math.abs(p.x + p.w / 2 - b.lever) >= 30) continue;
+      b.clamped = true; p.pendingAct = false; Sfx.play('ironlegLeverClunk'); ironPop(st, b.lever, ly - 50, 'CLUNK!', { size: 15 }); ironNews(st, 'Clamped! Climb the block.');
+    }
+    if (b.clamped) b.x = Math.max(b.rest, b.x - 110 * dt);
+    else if (b.braced < 0) {
       if (ph.theta > 0.1) b.x = Math.min(b.end, b.x + 150 * dt * ph.theta / K.lean);
       else if (!ph.swinging) b.x = Math.max(b.rest, b.x - 40 * dt);
       // a hero standing in its way at the wall end stops it
@@ -362,9 +368,10 @@ function ironLegPlan(st) {
     const ahead = l > lo;
     if (s.kind === 'block') {
       const b = s.b, climb = (ph.first + b.i) % 2, ly = ironLegLedge(l + 1);
-      out[id] = L[1 - id] === l + 1 ? { why: 'reach', x: ly[2] + 22, say: 'Stand under the edge for a hand up!' }
-        : id === climb
-        ? (p.grounded && p.ground === b.solid ? { why: 'hop', x: b.x + 11, say: 'Jump up onto the ledge!' } : { why: 'climb', x: b.x + 11, say: b.braced >= 0 ? 'Up onto the block, then the ledge!' : 'Brace it!' })
+      const up = L[1 - id] === l + 1;
+      out[id] = up && !b.clamped ? { why: 'brace', x: Math.min(b.x + b.w + 12, IRONLEG.halfW - 12), hold: 'act', say: 'Keep bracing: ' + NAMES[1 - id] + ' pulls the clamp lever up there.' }
+        : up || id === climb
+        ? (p.grounded && p.ground === b.solid ? { why: 'hop', x: b.x + 11, say: 'Jump up onto the ledge!' } : { why: 'climb', x: b.x + 11, say: b.braced >= 0 || b.clamped ? 'Up onto the block, then the ledge!' : 'Brace it!' })
         : { why: 'brace', x: Math.min(b.x + b.w + 12, IRONLEG.halfW - 12), hold: 'act', say: 'Lean on the block (or hold ' + ironKey(id, 'act') + ' beside it): brace it!' };
       void ly;
     } else if (s.kind === 'piston') {
@@ -381,7 +388,8 @@ function ironLegPlan(st) {
     // someone on the ledge above a two-hero station helps from there
     if (ahead && l === lo + 1) {
       const sl = ironLegStation(ph, lo, o);
-      if (sl.kind === 'block') out[id] = { why: 'hand', x: ironLegLedge(l)[2] - 36, hold: 'act', say: 'Hold ' + ironKey(id, 'act') + ' at the edge: pull ' + NAMES[1 - id] + ' up!' };
+      if (sl.kind === 'block' && !sl.b.clamped) out[id] = { why: 'lever', x: sl.b.lever, tap: 'act', say: 'Pull the clamp lever! (' + ironKey(id, 'act') + ')' };
+      else if (sl.kind === 'block') out[id] = { why: 'wait', x: ironLegWaitX(ph, l) };
       else if (sl.kind === 'piston' && !sl.q.locked) out[id] = { why: 'lever', x: sl.q.lever, tap: 'act', say: 'Pull the lever! (' + ironKey(id, 'act') + ')' };
       else if (sl.kind === 'piston') out[id] = { why: 'wait', x: sl.q.lever - 40 };
       else if (sl.kind === 'ramp') out[id] = { why: 'wait', x: ironLegWaitX(ph, l) };
@@ -494,10 +502,13 @@ function ironLegDrawBack(st) {
   }
   K.ledges.forEach(([y, x0, x1], i) => SKETCH.blit(ctx, IRON_ART.legLedge(x1 - x0, i), x0, y));
   for (const b of ph.blocks) {
-    const y = ironLegLedge(b.from)[0];
+    const y = ironLegLedge(b.from)[0], ly = ironLegLedge(b.from + 1)[0];
+    // the clamp lever up on the next ledge, its rod down to the rail
+    IRON_ART.helpers.ironPipe(d, [[b.lever, ly + 10], [b.lever, y - 9]], 3, {});
+    SKETCH.blit(ctx, IRON_ART.legLever(), b.lever, ly, { rot: b.clamped ? 0.7 : -0.5 });
     d.stroke([[b.rest - 4, y - 3], [b.end + b.w + 4, y - 3]], { w: 2, sh: 0 }); d.stroke([[b.rest - 4, y - 7], [b.end + b.w + 4, y - 7]], { w: 1, sh: 0, alpha: 0.6 });
     SKETCH.blit(ctx, IRON_ART.ballast(), b.x, y);
-    if (b.braced >= 0) d.word('BRACED', b.x + b.w / 2, y - b.h - 12, 11, { align: 'center', fill: SKETCH.PAL.core });
+    if (b.clamped || b.braced >= 0) d.word(b.clamped ? 'CLAMPED' : 'BRACED', b.x + b.w / 2, y - b.h - 12, 11, { align: 'center', fill: SKETCH.PAL.core });
   }
   const G0 = K.knee, gy = ironLegLedge(G0.ledge)[0];
   SKETCH.blit(ctx, IRON_ART.kneeGate(), G0.gate + G0.gateW / 2, gy - G0.gateH * ph.gate.open * 0.92, {});
@@ -539,7 +550,7 @@ IRON_PHASES.leg = {
   step(st, dt) { const ph = st.ph; if (ph.prep && ph.prep.length) ph.prep.shift()(); ironLegStep(st, dt); },
   plan(st) { return ironLegPlan(st); },
   busy(st) { return st.ph.ring.t >= 0; },
-  labels(st) { const P = ironLegPlan(st); return [0, 1].map(id => ({ brace: 'brace', hand: 'pull up', lever: 'lever', gate: 'hold' }[P[id] && P[id].why] || 'brace')); },
+  labels(st) { const P = ironLegPlan(st); return [0, 1].map(id => ({ brace: 'brace', lever: 'lever', gate: 'hold' }[P[id] && P[id].why] || 'brace')); },
   hudText(st) {
     const ph = st.ph, L = Math.max(ph.ledgeOf[0], ph.ledgeOf[1]);
     return (ph.swinging ? 'Swing: run the ramps!' : 'Planted') + '  ·  Ledge ' + L + ' of ' + (IRONLEG.ledges.length - 1);

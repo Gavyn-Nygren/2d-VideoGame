@@ -24,7 +24,7 @@
      thumbs  Thumb War          dawn   versus, best of 3 (the two giant hands; Tick referees)
 
    FILES. This file is the CORE: the level entry (IRON_DEF; world.js adds World 40), MODES.colossus, the IRON_PHASES
-   registry (a working stub per part), Tick (state, poses, drawing), the shared two-hero moves (Boost, Hand up), soft
+   registry (a working stub per part), Tick (state, poses, drawing), the shared two-hero helpers (the steam lift), soft
    fails (Clangs), gold help, rivets, sound words and impact frames, news / hint / megaphone bubbles, per-role act labels,
    the idle wait (the giant winds down), part changes (a page turn), checkpoints, the drawn HUD, the ending, stats and
    the test hook. The drawing kit is sketch-kit.js (SKETCH); the Colossus's drawings iron-art*.js; each part lives in
@@ -65,9 +65,12 @@
                  o: { kind, word, to, still, flat (squashed like paper first), safe }.   ironTeamClang(st, o).
      Gold help   ironMiss(st, part) -> the Clangs in that stretch so far (+1).  ironGoldOnce(st, key, text, o).
      Bodies      ironBody(p, dt, solids, o)  a hero on a list of rects ({ x0, y0, x1, y1, one, dx, dy, off, slope }).
-                 Partners: o.partner true makes each hero's head a one-way step; a hero who crouches (▼) is a BOOST step
-                 (a jump off their head goes half as high again).   ironHandUp(st, dt, solids)  the HAND UP (World 1's
-                 hand-up grown up): a hero at a ledge holding the action hauls up a partner just below.
+                 Partners: o.partner true makes each hero's head a one-way step (a plain step: no boost).
+     Steam lift  ironLiftMake(o)  ironLiftStep(st, lifts, dt)  ironLiftDraw(st, L)  ironLiftOn(L, p)  ironLiftAt(L, p)
+                 (Gavyn, 2026-11-15: it replaced the crouch Boost and the Hand up) an iron piston plate at the foot of
+                 a wall, a valve lever at the foot (out of reach of the plate) and one on the wall's top. While someone
+                 holds the action at either valve the plate rises to the top; let go and it sinks. One rides while the
+                 other holds the low valve; then the one on top holds the high valve to bring the partner up.
                  ironCoast(st, dt, solids)  ironInWorld(st, fn)  ironScreen(st, fn)  ironHumanIds()  ironUp(p)
      Rivets      ironRivetsSetup(st, list) (list of [x, y]); ironRivetsStep(st); ironRivetsDraw(st) (world coords).
      Tick        st.tick = { x, y, s, face, pose, mood, hidden, ride (a hero id: on that hero's head) }.
@@ -89,8 +92,7 @@ const IRON = {
   badgeT: 5, swapT: 2.2, hintLife: 3, newsLife: 3.2, sayLife: 2.8, arriveT: 1.0,
   clang: { vx: 230, vy: 300, stun: 0.6, slide: 0.3, safe: 1.5, popV: 300, flatT: 0.45 },
   goldAfter: 3,                // Clangs inside one stretch of a part before its gold helper
-  boost: 1.5,                  // a jump off a crouching partner's head: this times as high
-  handUp: { reach: 46, below: 170, t: 0.42 },
+  lift: { w: 60, gap: 34, valveR: 22, up: 190, down: 150 },   // the steam lift: plate width, valve distance, speeds
   // the medal: play time (s; idle waits and Part 8 not counted) and team Clangs. Set from bot runs (see GAME_NOTES).
   medal: { gold: { t: 720, clangs: 12 }, silver: { t: 1080, clangs: 30 } },   // bots: pair 528 s / 0 Clangs, noisy 742 s / ~32
   endT: 8.6,
@@ -146,9 +148,9 @@ const IRON_EMPTY_MAP = [...Array(18).fill('.'.repeat(32))].map((r, i) => (i === 
 const IRON_DEF = { name: 'The Iron Colossus', world: 39, kind: 'team', mode: 'colossus', ownHUD: true, ownPills: true, noFalls: true, roomWord: 'Part',
   tip: 'Chase it, climb it, trick it, then pull out its three cores. You will need each other the whole way.',
   act: { label: 'action' },
-  legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> crouch (a step for your partner)',
-    bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> crouch (a step for your partner)' },
-  howTo: ['Crouch to be a step. Jump off your partner\'s head to go higher.', 'At a ledge, hold the action to pull your partner up.',
+  legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> crouch',
+    bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> crouch' },
+  howTo: ['A wall too high? One stands on the steam lift, the other holds the action at its lever.', 'Up top, hold the action at the top lever to lift your partner.',
     'When its shadow grows, get out from under it.', 'The game saves at the start of every part.'],
   map: IRON_EMPTY_MAP,
   rooms: IRON_ORDER.map((phase, k) => ({ phase, title: IRON_PARTS[phase].title, ownStep: true, first: k % 2, outfit: IRON_PARTS[phase].outfit,
@@ -259,18 +261,13 @@ const ironClangN = st => st.stats.clangs[0] + st.stats.clangs[1] + st.stats.team
 /* --- bodies: a hero on a list of rectangles (world coords) --- */
 const ironUp = p => !!(p.input.jump || p.input.up);
 // solids: [{ x0, y0, x1, y1, one (one-way top), dx, dy (moved this tick: riders go with it), off, src }].
-// o.still: no input; o.ctl(p, dt) runs instead of control(); o.partner: heroes stand on each other's heads (Boost).
+// o.still: no input; o.ctl(p, dt) runs instead of control(); o.partner: heroes stand on each other's heads.
 function ironBody(p, dt, solids, o = {}) {
   if (!p.alive) return null;
   const real = p.input;
   if (o.still) { p.input = NO_INPUT; p.pendingJump = false; }
   const was = p.grounded, g0 = p.ground;
-  const boosting = was && g0 && g0.head && g0.crouch;
-  const vy0 = p.vy;
   try { if (o.ctl) o.ctl(p, dt); else control(p, dt); } finally { p.input = real; }
-  // a jump off a crouching partner's head (the Boost): half as high again
-  if (boosting && p.vy < -100 && vy0 >= -1) { p.vy *= Math.sqrt(IRON.boost); p.boostT = 0.5; Sfx.play('ironBoost', p.id); }
-  p.boostT = Math.max(0, (p.boostT || 0) - dt);
   if (was && g0 && !g0.off) { const m = g0.src || g0; p.x += m.dx || 0; p.y += m.dy || 0; }
   const xOld = p.x;
   p.x += p.vx * dt;
@@ -310,58 +307,69 @@ function ironBody(p, dt, solids, o = {}) {
   p.ground = ground; p.grounded = !!ground; p.tileGround = !!(ground && !ground.head); p.onPartner = !!(ground && ground.head); p.onOneWay = !!(ground && ground.one);
   if (p.grounded && !was && p.lastVy > 260) { p.sx = 1.25; p.sy = 0.78; Sfx.play('land'); }
   p.lastVy = p.grounded ? 0 : p.vy;
-  // crouching: a step for the partner (drawn lower)
-  p.crouch = !!(p.grounded && !p.onPartner && p.input.down && p.stun <= 0 && !ironHauled(p));
+  // crouching (drawn lower)
+  p.crouch = !!(p.grounded && !p.onPartner && p.input.down && p.stun <= 0);
   return ground;
 }
-// the partner's head as a one-way step (a crouching partner is a Boost step)
+// the partner's head as a one-way step
 function ironHeads(p) {
   const o = G.players[1 - p.id];
   if (!o || !o.alive || o.ground && o.ground.head) return [];
   const top = o.y + (o.crouch ? o.h * 0.3 : 0);
-  return [{ x0: o.x + 2, x1: o.x + o.w - 2, y0: top, y1: top + 6, one: true, head: true, crouch: !!o.crouch, dx: o.vx * DT, dy: 0, src: { dx: o.lastDx || 0, dy: o.lastDy || 0 } }];
+  return [{ x0: o.x + 2, x1: o.x + o.w - 2, y0: top, y1: top + 6, one: true, head: true, dx: o.vx * DT, dy: 0, src: { dx: o.lastDx || 0, dy: o.lastDy || 0 } }];
 }
 // call once a tick after both bodies moved: remembers how far each moved (riders on heads go with them)
 function ironTrack(st) {
   for (const p of G.players) { const q = st.trk[p.id]; p.lastDx = q ? p.x - q.x : 0; p.lastDy = q ? p.y - q.y : 0; st.trk[p.id] = { x: p.x, y: p.y }; }
 }
-const ironHauled = p => !!(G.mst && G.mst.haul && G.mst.haul.who === p.id);
-// THE HAND UP: a hero standing at a ledge edge holds the action while the partner is just below: they are hauled up.
-// o.can(p, o) -> false stops it (a part's own action uses the button there). Returns true while a haul runs.
-function ironHandUp(st, dt, o = {}) {
-  const H = IRON.handUp;
-  if (st.haul) {
-    const h = st.haul, q = G.players[h.who], by = G.players[h.by];
-    h.t += dt;
-    const k = Math.min(1, h.t / H.t), e = k * k * (3 - 2 * k);
-    q.x = h.x0 + (h.x1 - h.x0) * e; q.y = h.y0 + (h.y1 - h.y0) * e - Math.sin(k * Math.PI) * 18;
-    q.vx = 0; q.vy = 0; q.grounded = false;
-    by.vx = 0;
-    if (k >= 1) { q.y = h.y1; q.grounded = true; q.ground = h.g; st.haul = null; Sfx.play('ironHandClasp'); ironPop(st, q.x + q.w / 2, q.y - 6, 'HUP!', { size: 14 }); }
-    return true;
+// THE STEAM LIFT. o: { x0 (the plate's left edge), base (the floor's y at the foot), top (the wall top's y), low (the
+// low valve's x), high (the high valve's x) }. Its plate is a one-way solid (L.solid): put it in the part's solids.
+function ironLiftMake(o) {
+  const K = IRON.lift, L = Object.assign({ h: 0, held: -1, was: -1, pull: [0, 0], ups: 0 }, o);
+  L.x1 = L.x0 + K.w;
+  L.solid = { x0: L.x0, x1: L.x1, y0: L.base, y1: L.base + 12, one: true, kind: 'lift', lift: L, dx: 0, dy: 0, ox0: L.x0 };
+  return L;
+}
+const ironLiftFull = L => L.base - L.top;
+// p stands on the plate
+const ironLiftOn = (L, p) => !!(p.alive && p.grounded && p.ground === L.solid);
+// which valve p stands at: 'low', 'high' or null
+function ironLiftAt(L, p) {
+  if (!p.alive || !p.grounded || ironLiftOn(L, p) || p.onPartner) return null;
+  const cx = p.x + p.w / 2, f = p.y + p.h, R = IRON.lift.valveR;
+  if (Math.abs(cx - L.low) < R && Math.abs(f - L.base) < 4) return 'low';
+  if (Math.abs(cx - L.high) < R && Math.abs(f - L.top) < 4) return 'high';
+  return null;
+}
+// call before the bodies move: the plate rises while a valve is held, sinks when none is
+function ironLiftStep(st, lifts, dt) {
+  const K = IRON.lift;
+  for (const L of lifts) {
+    if (L.solid.off) continue;
+    const by = G.players.find(p => p.input.act && ironLiftAt(L, p));
+    L.held = by ? by.id : -1;
+    for (const k of [0, 1]) L.pull[k] = Math.max(0, L.pull[k] - dt * 4);
+    if (by) L.pull[ironLiftAt(L, by) === 'low' ? 0 : 1] = 1;
+    if (L.held >= 0 && L.was < 0) Sfx.play('ironLiftHiss');
+    const h0 = L.h, full = ironLiftFull(L);
+    L.h = clamp(L.h + (L.held >= 0 ? K.up : -K.down) * dt, 0, full);
+    if (L.h >= full && h0 < full) { Sfx.play('ironLiftClunk'); for (const p of G.players) if (ironLiftOn(L, p)) { L.ups++; st.stats.lifts = (st.stats.lifts || 0) + 1; } }
+    L.solid.dy = -(L.h - h0); L.solid.y0 = L.base - L.h; L.solid.y1 = L.solid.y0 + 12;
+    L.was = L.held;
   }
-  for (const p of G.players) {
-    if (!p.alive || !p.grounded || p.onPartner || !p.input.act || !p.ground || p.ground.slope || !isFinite(p.ground.y0)) continue;
-    if (o.can && !o.can(p)) continue;
-    const q = G.players[1 - p.id], g = p.ground;
-    if (!q.alive || q.ground === g) continue;
-    const pc = p.x + p.w / 2, qc = q.x + q.w / 2;
-    const E = o.edge || 40, edgeL = pc - g.x0 < E, edgeR = g.x1 - pc < E;
-    if (!edgeL && !edgeR) continue;
-    const side = edgeR && (!edgeL || qc > pc) ? 1 : -1;
-    if (Math.abs(qc - pc) > H.reach + 20 || (qc - pc) * side < -6) continue;
-    const below = q.y + q.h - g.y0;
-    if (below < 12 || below > H.below) continue;
-    if (q.y + q.h < g.y0) continue;
-    // haul q up beside p, on p's ledge (on the inner side, so nobody is left hanging off the edge)
-    const tx = clamp(pc - side * 24, g.x0 + 4, g.x1 - 4 - q.w) ;
-    st.haul = { who: q.id, by: p.id, t: 0, x0: q.x, y0: q.y, x1: clamp(tx - q.w / 2, g.x0, g.x1 - q.w), y1: g.y0 - q.h, g };
-    q.stun = 0; q.knockT = 0;
-    Sfx.play('ironHandUp');
-    st.stats.handUps = (st.stats.handUps || 0) + 1;
-    return true;
+}
+// the plate on its polished shaft (clipped at the floor), and the two valve levers (thrown while held)
+function ironLiftDraw(st, L) {
+  if (L.solid.off) return;
+  ctx.save(); ctx.beginPath(); ctx.rect(L.x0 - 20, L.top - 400, IRON.lift.w + 40, L.base - L.top + 400); ctx.clip();
+  SKETCH.blit(ctx, IRON_ART.piston(), L.x0, L.base - L.h);
+  ctx.restore();
+  SKETCH.blit(ctx, IRON_ART.legLever(), L.low, L.base, { rot: L.pull[0] > 0.5 ? 0.7 : -0.5 });
+  SKETCH.blit(ctx, IRON_ART.legLever(), L.high, L.top, { rot: L.pull[1] > 0.5 ? 0.7 : -0.5 });
+  if (L.h < 2 && !L.done) {
+    const d = SKETCH.live(ctx, 4060, SKETCH.boil());
+    d.word('LIFT', L.x0 + IRON.lift.w / 2, L.base - 16, 11, { align: 'center', fill: SKETCH.PAL.core });
   }
-  return false;
 }
 // players stand and land with no input (cards, cutscenes); on solids if given
 function ironCoast(st, dt, solids) {
@@ -539,7 +547,7 @@ function ironStartPhase(st, L) {
   const prev = IRON_PHASES[st.phase];
   if (prev && st.phase !== def.phase) ironCall(prev, 'leave', st);
   st.phase = def.phase; st.phaseNo = def.roomIndex || 0; st.part = IRON_PARTS[st.phase] || IRON_PARTS.chase;
-  st.ph = {}; st.phT = 0; st.cam = { x: 0, y: 0 }; st.miss = {}; st.goldGot = {}; st.trk = [null, null]; st.haul = null;
+  st.ph = {}; st.phT = 0; st.cam = { x: 0, y: 0 }; st.miss = {}; st.goldGot = {}; st.trk = [null, null];
   st.cut = null; st.celebT = 0; st.say = null; st.news = null; st.hints = [null, null]; st.words = []; st.stars = []; st.flat = [null, null];
   st.badgeT = 0; st.badgeArm = true; st.swapT = 0; st.safe = [0, 0]; st.teamSafe = 0; st.warn = [0, 0]; st.idleT = 0; st.idle = false; st.labKey = '';
   st.impact = null; st.impactAt = -9; st.rivStreak = 0; st.rivStreakT = 0; st.lineSaid = false;
@@ -554,7 +562,7 @@ function ironStartPhase(st, L) {
   if (G.mode === 'play') setLegend(def.legend || IRON_DEF.legend);
   if (!IRON_PHASES[def.phase]) console.warn('The Iron Colossus: no IRON_PHASES.' + def.phase);
   ironCpSave(st);
-  for (const p of G.players) { p.crouch = false; p.ground = null; p.boostT = 0; }
+  for (const p of G.players) { p.crouch = false; p.ground = null; }
   ironCall(ironPh(st), 'setup', st, L);
   ironActLabels(st);
   st.cpNote = null;
@@ -1118,9 +1126,8 @@ Sfx.extra.ironKeyWind = function () { for (let k = 0; k < 5; k++) this.tone(1500
 Sfx.extra.ironKeyUnwind = function () { for (let k = 0; k < 6; k++) this.tone(1700 - k * 110, 0.035, 'square', 0.018, null, k * 0.1 + k * k * 0.01); };
 Sfx.extra.ironStompTell = function () { this.tone(60, 1.1, 'sawtooth', 0.025, 110); this.noise(1.0, { type: 'lowpass', f: 300, to: 700, vol: 0.03, a: 0.6 }); };
 Sfx.extra.ironStomp = function () { this.tone(70, 0.5, 'sine', 0.12, 32); this.noise(0.5, { type: 'lowpass', f: 400, to: 90, vol: 0.09, a: 0.004 }); for (let k = 0; k < 4; k++) this.tone(900 + k * 230, 0.05, 'square', 0.012, null, 0.06 + k * 0.05); };
-Sfx.extra.ironBoost = function (p) { this.tone(260 * p, 0.14, 'triangle', 0.04, 700 * p); };
-Sfx.extra.ironHandUp = function () { this.tone(330, 0.12, 'triangle', 0.035, 520); };
-Sfx.extra.ironHandClasp = function () { this.tone(220, 0.05, 'square', 0.03); this.noise(0.05, { f: 2000, vol: 0.02 }); };
+Sfx.extra.ironLiftHiss = function () { this.noise(0.5, { type: 'highpass', f: 2400, vol: 0.03, a: 0.05 }); this.tone(110, 0.3, 'sawtooth', 0.015, 150); };
+Sfx.extra.ironLiftClunk = function () { this.tone(140, 0.1, 'square', 0.035, 90); this.noise(0.06, { f: 1600, vol: 0.025 }); };
 Sfx.extra.ironCrowning = function () { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.2, 'triangle', 0.05, null, i * 0.09)); };
 
 /* ===== STUB PHASES (a part with no file yet: walk right together to the flag) ===== */
