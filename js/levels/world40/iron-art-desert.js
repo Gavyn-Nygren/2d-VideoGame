@@ -11,6 +11,7 @@
    Chunks differ by seed; the landmarks sit in set chunks. */
 
 IRON_ART.GROUND_Y = 450;
+const S_BONE = () => SKETCH.INK;
 IRON_ART.desert = (layer, chunk = 0) => {
   const key = 'iron:desert:' + layer + ':' + chunk;
   if (SKETCH.has(key) && !IRON_ART.redraw) return key;
@@ -43,10 +44,17 @@ IRON_ART.desertDraw[0] = (d, chunk) => {
   // the sun (top right): left as paper, a ring of wash round it, short pencil rays
   if (chunk === 0) {
     const sx = 790, sy = 90;
-    d.wash(SKETCH.ell(sx, sy, 62, 58, 30), P.core, { alpha: 0.3, off: 0, spread: 1.5, layers: 3 });
-    d.lift(SKETCH.ell(sx, sy, 34, 33, 16), 1);
-    d.stroke(SKETCH.ell(sx, sy, 34, 33, 28, 0, -0.6, Math.PI * 1.7), { w: 1.2, curve: true, alpha: 0.6 });
-    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2 + 0.1, r0 = 44 + d.r() * 6, r1 = r0 + 10 + d.r() * 14; d.pencil([[sx + Math.cos(a) * r0, sy + Math.sin(a) * r0], [sx + Math.cos(a) * r1, sy + Math.sin(a) * r1]], { alpha: 0.45, w: 0.9 }); }
+    // the glare: blotchy glazes of core yellow and ochre round a disc of bare paper
+    for (let i = 0; i < 6; i++) { const a = d.r() * 6.3, rr = 46 + d.r() * 26; d.wash(SKETCH.ell(sx + Math.cos(a) * 8, sy + Math.sin(a) * 6, rr, rr * 0.9, 18, d.r()), i % 2 ? P.core : P.dust, { alpha: 0.16, off: 0, spread: 2.2, edge: i === 0, blooms: 1 }); }
+    d.lift(SKETCH.ell(sx, sy, 32, 31, 16), 1);
+    // an ink contour only on its lower right (the light side is lost in glare) and tapering brush rays
+    d.stroke(SKETCH.ell(sx, sy, 33, 32, 20, 0, -0.3, 2.3), { w: 1.4, curve: true, alpha: 0.7, p: [0.05, 1, 0.05] });
+    for (let i = 0; i < 22; i++) {
+      const a = i / 22 * Math.PI * 2 + d.r() * 0.1, r0 = 40 + d.r() * 8, r1 = r0 + 8 + d.r() * (i % 2 ? 10 : 26);
+      d.stroke([[sx + Math.cos(a) * r0, sy + Math.sin(a) * r0], [sx + Math.cos(a) * r1, sy + Math.sin(a) * r1]], { w: i % 2 ? 0.7 : 1.1, alpha: 0.45, p: [1, 0.8, 0.05], sh: 0 });
+    }
+    // heat shimmer over the horizon: wavy pencil lines
+    for (let k = 0; k < 6; k++) { const y = 262 + k * 6, x0 = 520 + d.r() * 200, pts = []; for (let x = 0; x <= 160; x += 8) pts.push([x0 + x, y + Math.sin(x / 9 + k) * 1.4]); d.pencil(pts, { alpha: 0.28, curve: true }); }
   }
   // clouds: long flat ones, inked lightly on their undersides, grey-blue glaze
   const clouds = chunk === 0 ? [[150, 70, 120], [470, 120, 90], [640, 40, 70]] : [[200 + d.r() * 200, 60 + d.r() * 60, 100], [600 + d.r() * 200, 40 + d.r() * 80, 80]];
@@ -107,8 +115,22 @@ IRON_ART.desertDraw[1] = (d, chunk) => {
       d.shape(b, { fill: P.ochre, w: 1, corner: 30 }); d.hatch([[x, y - s * 0.6], [x + s, y - s * 0.7], [x + s * 0.9, y + s * 0.6], [x, y + s * 0.7]], { a: 60, gap: 1.6, w: 0.45 });
     }
     // the silhouette, inked heavier on the shadow side
-    d.stroke([[ax + 14, ay + 4], [R[0] + 3, R[1] + 1]], { w: 2.2, c: [ax, 260], sh: 1 });
-    d.stroke([[L[0] - 2, L[1] + 1], [ax - 12, ay + 8]], { w: 1.4, c: [ax, 260], sh: 1 });
+    // the silhouette is stepped (one notch per course), inked heavier on the shadow side; some blocks are missing
+    const stepEdge = (x0, y0, x1, y1, w, side) => {
+      const pts = []; const n = Math.round((y1 - y0) / 9.3);
+      for (let k = 0; k <= n; k++) { const t = k / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; pts.push([x, y]); if (k < n) pts.push([x + (x1 - x0) / n, y]); }
+      for (let k = 0; k + 1 < pts.length; k += 2) if (d.r() > 0.12) d.stroke([pts[k], pts[k + 1], pts[k + 2] || pts[k + 1]], { w, sh: 0, alpha: 0.9, bend: 0.2, jit: 0.3 });
+      void side;
+    };
+    stepEdge(ax + 14, ay + 4, R[0], R[1], 1.9, 1);
+    stepEdge(ax - 12, ay + 8, L[0], L[1], 1.2, -1);
+    // stipple and a few weathered pits on the lit face
+    d.stipple(lit, { n: 160, r: 0.55, alpha: 0.5 });
+    // sand drifts lapping its foot
+    const drift = [[60, base + 2], [120, base - 14], [190, base - 8], [240, base - 20], [300, base - 6], [380, base - 16], [450, base + 2]];
+    d.wash(drift.concat(drift.slice().reverse().map(([x, y]) => [x, base + 4 + (y - base) * 0.2])), P.sand, { alpha: 0.9, off: 0.6 });
+    d.stroke(drift, { w: 1.3, curve: true, sh: 0 });
+    d.stroke(drift.map(([x, y]) => [x + 10, y + 5]).slice(1, 5), { w: 0.6, curve: true, sh: 0, alpha: 0.6 });
     d.stroke([[ax + 14, ay + 4], [M[0], M[1] - 4]], { w: 0.9, sh: 0, alpha: 0.7 });
     // a dark doorway and a giant toe-scrape across the lit face
     d.spot([[ax - 6, base - 34], [ax + 6, base - 34], [ax + 7, base - 2], [ax - 7, base - 2]], { spread: 0.3 });
@@ -197,13 +219,24 @@ IRON_ART.desertDraw[3] = (d, chunk) => {
   const poly = top.concat([[970, 545], [-10, 545]]);
   d.wash(poly, P.sand, { alpha: 0.75, off: 0, spread: 0.8, layers: 4 });
   d.wash(top.map(([x, y]) => [x, y + 30]).concat([[970, 545], [-10, 545]]), P.ochre, { alpha: 0.3, off: 0, spread: 1.6, layers: 3, edge: false });
-  // strata and ripples under the surface: rows of short wavy strokes, denser lower down
-  for (let row = 0; row < 7; row++) {
-    const y = gy + 14 + row * 12 + row * row * 0.8;
-    for (let x = -10 + (row % 2) * 25; x < 970; x += 34 + d.r() * 30) {
-      const l = 14 + d.r() * 22;
-      d.stroke([[x, y], [x + l * 0.33, y - 1.6], [x + l * 0.66, y + 0.5], [x + l, y - 0.8]], { w: 0.55 + row * 0.06, curve: true, sh: 0, alpha: 0.45 + row * 0.04 });
+  // wind ripples: long sinuous lines roughly parallel to the ground, closer together farther away (lower = nearer)
+  for (let row = 0; row < 9; row++) {
+    const y = gy + 10 + row * 9 + row * row * 0.9;
+    for (let x = -30 + d.r() * 60; x < 990; x += 90 + d.r() * 110) {
+      const l = 60 + d.r() * 110, pts = [];
+      for (let k = 0; k <= 8; k++) { const t = k / 8; pts.push([x + l * t, y + Math.sin(t * Math.PI * 2 + row + x) * (1.4 + row * 0.15) + (t - 0.5) * (d.r() - 0.5) * 3]); }
+      d.stroke(pts, { w: 0.5 + row * 0.07, curve: true, sh: 0, alpha: 0.35 + row * 0.04, p: [0.05, 1, 0.05] });
+      // the ripple's lee: a short hatched shadow under each crest
+      if (row > 2 && d.r() < 0.5) d.hatch([[x + l * 0.2, y + 1], [x + l * 0.6, y + 1], [x + l * 0.55, y + 4], [x + l * 0.25, y + 4]], { a: 0, gap: 1.3, w: 0.45, alpha: 0.45 });
     }
+  }
+  // grain: a stipple of sand, thicker toward the bottom
+  d.stipple([[-10, gy + 6], [970, gy + 6], [970, 545], [-10, 545]], { n: 900, r: 0.6, alpha: 0.5, tone: (x, y) => 0.25 + (y - gy) / 120 });
+  // a broken pot and a bleached rib bone half in the sand
+  if (chunk === 0) {
+    const bx = 420, by = gy + 34;
+    d.shape([[bx, by], [bx + 14, by - 6], [bx + 26, by - 4], [bx + 30, by + 4], [bx + 4, by + 6]], { fill: IRON_P.rustLight, w: 1.2, corner: 40, hatch: { a: 70, gap: 1.8, w: 0.5, tone: x => (x - bx) / 30 } });
+    d.stroke([[bx + 6, by - 2], [bx + 20, by - 3]], { w: 0.7, sh: 0 });
   }
   d.hatch(top.map(([x, y]) => [x, y + 56]).concat([[970, 545], [-10, 545]]), { a: 12, gap: 3, w: 0.55, alpha: 0.55, tone: (x, y) => (y - gy - 50) / 40 });
   // stones with a hatched shadow

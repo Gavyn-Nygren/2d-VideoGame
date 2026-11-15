@@ -27,7 +27,7 @@
     d.spot(SKETCH.ell((shL + shR) / 2 + 20, gy + 5, (shR - shL) / 2 * 0.72, 3.5, 30), { force: true, alpha: 0.7 });
     d.stroke([[shL, gy + 3], [shL + 40, gy - 2], [shR - 40, gy - 2], [shR, gy + 4]], { w: 1.2, curve: true, alpha: 0.55 });
     // the shin above, then the foot (a hair tilted: the heel comes down first)
-    SKETCH.blit(g, 'iron:shin', fx - 380 + 196, sole - 320 + 10, { rot: -0.025 });
+    SKETCH.blit(g, "iron:shin", fx - 380 + 196, sole - 320 + 14, { rot: -0.025 });
     SKETCH.blit(g, 'iron:foot', fx, sole, { rot: -0.025 });
     // speed lines over its top edge: it is coming down fast
     d.speed(fx + 250, sole - 150, 0, -70, 6, { spread: 120, w: 1.3 });
@@ -73,8 +73,8 @@
     if (G.mst) G.mst.outfit = 'ironcrew';
     SKETCH.blit(g, IRON_ART.boilerWall(0), 0, 0);
     SKETCH.blit(g, IRON_ART.porthole('hollow'), 150, 186);
-    SKETCH.blit(g, IRON_ART.furnace(), 620, 268);
-    IRON_ART.flames(g, 620, 268, 70, t);
+    SKETCH.blit(g, IRON_ART.furnace(), 560, 268);
+    IRON_ART.flames(g, 560, 268, 70, t);
     SKETCH.blit(g, IRON_ART.boilerFloor(), 0, 0);
     const d = SKETCH.live(g, 400, SKETCH.boil()); d.dark = true;
     // the jets: two shut (a drip and a wisp), one live at the right, an alcove (safe) between
@@ -87,7 +87,7 @@
       for (let k = -2; k <= 2; k++) d.line(x + k * 8 - 2, gy + 4, x + k * 8 + 3, gy - 1, { w: 1.4, col: IRON_P.core, ov: 0 });
     }
     // the alcove: a chalk arch drawn on the wall with an arrow, painted SAFE
-    const ax = 680;
+    const ax = 710;
     d.stroke([[ax - 30, gy], [ax - 30, gy - 60], [ax, gy - 84], [ax + 30, gy - 60], [ax + 30, gy]], { w: 2.4, curve: true, col: '#efe8d8' });
     d.hatch([[ax - 26, gy], [ax - 26, gy - 58], [ax, gy - 80], [ax + 26, gy - 58], [ax + 26, gy]], { a: 60, gap: 3, w: 0.6, force: true, alpha: 0.35, col: '#efe8d8' });
     d.word('SAFE', ax, gy - 98, 13, { align: 'center', col: IRON_P.core, w: 2 });
@@ -98,16 +98,26 @@
     d.word('TSSS', 300, gy - 120, 11, { col: '#efe8d8', rot: -0.15, w: 1.4 });
     // coal sifting down from the chute
     const R = SKETCH.rng(4);
-    for (let i = 0; i < 18; i++) { const f = (t * 0.7 + R()) % 1, x = 712 + R() * 50, y = 42 + f * 60; g.fillStyle = '#100d0b'; g.beginPath(); g.ellipse(x, y, 2.4, 2, R() * 3, 0, 6.3); g.fill(); }
+    for (let i = 0; i < 9; i++) {
+      const f = (t * 0.7 + i / 9 + R() * 0.05) % 1, x = 728 + R() * 26 + f * 6, y = 44 + f * 70, s2 = 3.5 + R() * 3, rt = R() * 6;
+      const ch = [0, 1, 2, 3, 4].map(k => { const a = rt + k * 1.26, rr = s2 * (0.7 + R() * 0.45); return [x + Math.cos(a) * rr, y + Math.sin(a) * rr]; });
+      g.fillStyle = '#17120f'; g.beginPath(); ch.forEach((p, k) => (k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); g.fill();
+      d.outline(ch, { w: 0.8, col: '#efe8d8', alpha: 0.75 });
+      d.stroke([ch[3], ch[4], ch[0]], { w: 1.1, col: '#f2b25a', alpha: 0.55, sh: 0 });
+    }
+    d.speed(740, 44, 0, 40, 3, { spread: 24, w: 0.8, col: '#efe8d8', alpha: 0.4 });
+    // the fire's light pooled on the grating in front of the furnace
+    g.save(); g.globalCompositeOperation = 'screen'; g.fillStyle = 'rgba(232,138,44,0.22)'; g.beginPath(); SKETCH.ell(560, gy + 8, 150, 12, 30).forEach((p, k) => (k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.fill(); g.restore();
+    for (let k = 0; k < 14; k++) { const x = 440 + k * 18; d.stroke([[x, gy + 3], [x + 8, gy + 3]], { w: 1.4, col: '#f2b25a', alpha: 0.7, sh: 0 }); }
     // the heroes: Bo holds the valve, Pip dashes between the jets toward the alcove
     hero(1, 214, gy, { face: 1, dark: true });
-    hero(0, 600, gy, { face: 1, vx: 220, dark: true });
-    d.speed(570, gy - 14, -36, 0, 4, { spread: 18, w: 1.1, col: '#efe8d8' });
+    hero(0, 640, gy, { face: 1, vx: 220, dark: true });
+    d.speed(610, gy - 14, -36, 0, 4, { spread: 18, w: 1.1, col: '#efe8d8' });
     // a chalk speech bubble from Pip, hint chip over Bo
-    const bub = [[540, 356], [624, 352], [628, 380], [604, 382], [596, 394], [592, 382], [544, 384]];
+    const bub = [[580, 356], [664, 352], [668, 380], [644, 382], [636, 394], [632, 382], [584, 384]];
     g.fillStyle = '#f6ecd4'; g.beginPath(); SKETCH.spline(bub, true, 3).forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.fill();
     SKETCH.live(g, 401).outline(bub, { curve: true, w: 1.6, col: SKETCH.INK });
-    SKETCH.live(g, 402).word('WAIT!', 584, 368, 15, { align: 'center', col: SKETCH.INK, w: 2 });
+    SKETCH.live(g, 402).word('WAIT!', 624, 368, 15, { align: 'center', col: SKETCH.INK, w: 2 });
     IRON_HUD.pill(g, 186, gy - 66, 'HOLD F', { size: 11, kind: 'h' });
     IRON_HUD.draw(g, { part: 3, cores: 0, time: 412, clangs: 5, rivets: 31, rivetsMax: 60, dark: true });
     SKETCH.edge(g, 'dark');

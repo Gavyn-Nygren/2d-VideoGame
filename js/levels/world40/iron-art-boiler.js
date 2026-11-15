@@ -33,6 +33,23 @@ IRON_ART.boilerWall = (chunk = 0) => {
         d.outline(pts, { w: 1.5, corner: 40, alpha: 0.75, c: [(xa + xb) / 2, (ya + yb) / 2] });
         d.rivets(xa + 8, ya + 8, xb - 8, ya + 8, Math.round((xb - xa) / 17), { r: 1.7, rust: 0.25 });
         if (d.r() < 0.5) ironScratches(d, xa + (xb - xa) * 0.5, (ya + yb) / 2, 3);
+        // a rib down the middle of the plate (the barrel's curve), and now and then a hatch, a patch or a number
+        const mx = (xa + xb) / 2 + (d.r() - 0.5) * 30;
+        d.stroke([[mx, ya + 14], [mx + 3, (ya + yb) / 2], [mx, yb - 14]], { w: 0.9, curve: true, alpha: 0.5, sh: 0 });
+        const roll = d.r();
+        if (roll < 0.18 && yb - ya > 110) {
+          const hx = xa + 24 + d.r() * (xb - xa - 80), hy = ya + 30 + d.r() * (yb - ya - 80);
+          const hd = [[hx, hy], [hx + 34, hy], [hx + 34, hy + 40], [hx, hy + 40]];
+          d.shape(hd, { fill: '#2c2623', w: 1.4, corner: 30, hatch: { a: 80, gap: 2.2, w: 0.5, alpha: 0.6, tone: x => 1 - (x - hx) / 34 } });
+          d.rivets(hx + 4, hy + 4, hx + 30, hy + 4, 3, { r: 1.2 }); d.stroke([[hx + 28, hy + 16], [hx + 30, hy + 24]], { w: 2, sh: 0 });
+        } else if (roll < 0.34 && yb - ya > 100) {
+          const px = xa + 20 + d.r() * (xb - xa - 70), py = ya + 24 + d.r() * (yb - ya - 70), pw = 40 + d.r() * 20, ph2 = 28 + d.r() * 16;
+          const pt = [[px, py], [px + pw, py + 2], [px + pw - 2, py + ph2], [px + 2, py + ph2 - 1]];
+          d.wash(pt, '#5c4a40', { alpha: 0.6, off: 1 }); d.outline(pt, { w: 1.2, corner: 30 });
+          d.rivets(px + 4, py + 4, px + pw - 4, py + 5, Math.round(pw / 9), { r: 1.1 }); d.rivets(px + 5, py + ph2 - 4, px + pw - 5, py + ph2 - 4, Math.round(pw / 9), { r: 1.1 });
+        } else if (roll < 0.46) {
+          IRON_ART.helpers.ironStencil(d, String(2 + Math.floor(d.r() * 40)), (xa + xb) / 2 + 16, ya + 30, 15);
+        }
       }
     }
     // the ceiling pipe (the jets hang off it) and a second pipe run with flanges and a little valve wheel
@@ -52,7 +69,16 @@ IRON_ART.boilerWall = (chunk = 0) => {
     // hanging chains with hooks
     for (const cx of [470, 820]) {
       H.ironChain(d, [[cx, 56], [cx + 1, 130], [cx - 1, 200]], { link: 11, w: 1.3 });
-      d.stroke([[cx, 200], [cx, 210], [cx + 6, 218], [cx + 10, 212]], { w: 2, curve: true });
+      if (true) { d.stroke([[cx, 200], [cx, 210], [cx + 6, 218], [cx + 10, 212]], { w: 2, curve: true }); continue; }
+      // a caged lamp: a warm bulb behind wire bars, with a little pool of light hatched round it
+      const ly = 226;
+      for (let k = 0; k < 40; k++) { const a = k / 40 * Math.PI * 2, r0 = 22, r1 = r0 + 6 + d.r() * 18; d.stroke([[cx + Math.cos(a) * r0, ly + Math.sin(a) * r0], [cx + Math.cos(a) * r1, ly + Math.sin(a) * r1]], { w: 0.6, col: '#f3d9a0', alpha: 0.45, sh: 0, p: [1, 0.6, 0.05] }); }
+      d.wash(SKETCH.ell(cx, ly, 14, 17, 14), IRON_P.core, { alpha: 0.9, off: 0, op: 'source-over', layer: 'white' });
+      d.wash(SKETCH.ell(cx - 2, ly - 3, 6, 8, 10), IRON_P.coreHot, { alpha: 1, off: 0, op: 'source-over', layer: 'white' });
+      d.stroke([[cx - 9, 204], [cx + 9, 204]], { w: 3 });
+      for (const bx of [-14, -6, 4, 12]) d.stroke([[cx + bx * 0.6, 204], [cx + bx, ly], [cx + bx * 0.5, ly + 22]], { w: 1.2, curve: true });
+      d.stroke(SKETCH.ell(cx, ly, 15, 6, 14, 0, 0, Math.PI), { w: 1.1, curve: true });
+      d.stroke([[cx - 6, ly + 22], [cx + 6, ly + 22]], { w: 2.2 });
     }
     // a ladder up the right wall to a high hatch, and the hatch
     H.ironLadder(d, 856, 150, 452, 18, { step: 13 });
@@ -101,11 +127,11 @@ IRON_ART.furnace = () => {
     const P = IRON_P, cx = 180, cy = 170, R = 150;
     // the furnace face: a big round riveted plate on a square frame, the door hanging open
     const face = SKETCH.ell(cx, cy, R, R * 0.96, 48);
-    // two heavy brackets bolt the furnace to the floor
+    // two squat feet bolt the furnace to the floor
     for (const sx of [-1, 1]) {
-      const b = [[cx + sx * 96, cy + 100], [cx + sx * 150, cy + 150], [cx + sx * 150, cy + 190], [cx + sx * 70, cy + 190], [cx + sx * 60, cy + 130]];
-      d.solid(b, { kind: 'dark' }); d.shape(b, { fill: '#3a322d', w: 2, corner: 30, hatch: { a: 60, gap: 2.6, w: 0.55, alpha: 0.5, tone: (x, y) => 1 - (y - cy - 100) / 90 } });
-      d.rivets(cx + sx * 80, cy + 180, cx + sx * 140, cy + 180, 4, { r: 2 });
+      const b = [[cx + sx * 70, cy + 132], [cx + sx * 104, cy + 140], [cx + sx * 112, cy + 186], [cx + sx * 60, cy + 186]];
+      d.solid(b, { kind: 'dark' }); d.shape(b, { fill: '#3a322d', w: 2, corner: 30, hatch: { a: 70, gap: 2.4, w: 0.55, alpha: 0.5, tone: (x, y) => 1 - (y - cy - 132) / 50 } });
+      d.rivet(cx + sx * 86, cy + 176, 2.2);
     }
     d.solid(face, { kind: 'dark', curve: true });
     d.wash(face, '#5a4038', { alpha: 0.65, off: 2, blooms: 2 });
@@ -131,15 +157,27 @@ IRON_ART.furnace = () => {
     for (let k = 0; k < 14; k++) { const x = cx - 60 + d.r() * 120, y = cy + 56 + d.r() * 14, s = 5 + d.r() * 5; d.spot([[x - s, y], [x - s * 0.3, y - s * 0.7], [x + s * 0.8, y - s * 0.4], [x + s, y + s * 0.4], [x, y + s * 0.6]], { col: '#2a1610', alpha: 0.9, layer: 'white' }); d.stroke([[x - s * 0.6, y - s * 0.3], [x + s * 0.5, y - s * 0.4]], { w: 1.2, col: '#ffcf6a', layer: 'white', sh: 0 }); }
     d.outline(mouth, { curve: true, w: 3, c: [cx, cy] });
     d.stroke(SKETCH.ell(cx, cy, 96, 92, 36, 0, 0.2, Math.PI * 2 - 0.4), { w: 1.6, curve: true, c: [cx, cy] });
-    // the open door swung to the left, seen edge-on-ish: a heavy round lid on big hinges
-    const door = [[cx - 98, cy - 80], [cx - 62, cy - 88], [cx - 58, cy + 82], [cx - 96, cy + 92]];
-    d.solid(door, { kind: 'dark' });
-    d.shape(door, { fill: '#4a3b33', w: 2.4, corner: 30, hatch: { a: 85, gap: 2.4, w: 0.55, alpha: 0.6, tone: (x) => (x - cx + 98) / 40 } });
-    d.rivets(cx - 90, cy - 70, cx - 88, cy + 80, 8, { r: 2 });
-    d.stroke([[cx - 72, cy - 20], [cx - 62, cy - 18], [cx - 62, cy + 18], [cx - 72, cy + 20]], { w: 2.4, curve: true });
-    for (const hy of [cy - 60, cy + 64]) d.shape([[cx - 106, hy - 8], [cx - 92, hy - 8], [cx - 92, hy + 8], [cx - 106, hy + 8]], { fill: '#2a2421', w: 1.5, corner: 30 });
+    // the open door: a heavy round lid swung out toward us on its left hinges, seen as a tall ellipse
+    const dcx = cx - 104, dcy = cy + 4;
+    const door = SKETCH.ell(dcx, dcy, 30, 90, 30);
+    d.solid(door, { kind: 'dark', curve: true });
+    d.shape(door, { fill: '#5a463c', w: 2.6, curve: true });
+    d.arcHatch(door, dcx - 6, dcy - 10, { r0: 20, r1: 96, n: 12, mid: 0.6, span: 2.2, sq: 1, w: 0.6, alpha: 0.7 });
+    // its rim catches the fire light on the inside edge
+    d.stroke(SKETCH.ell(dcx, dcy, 30, 90, 24, 0, -1.3, 1.3), { w: 2.6, col: '#f2b25a', curve: true, sh: 0, layer: 'white', alpha: 0.85 });
+    d.stroke(SKETCH.ell(dcx, dcy, 22, 74, 24, 0, 0, 6.2), { w: 1.2, curve: true });
+    for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; d.rivet(dcx + Math.cos(a) * 26, dcy + Math.sin(a) * 82, 1.9); }
+    // a latch handle and the two hinge straps reaching back to the frame
+    d.stroke([[dcx - 10, dcy - 6], [dcx - 18, dcy - 4], [dcx - 18, dcy + 12], [dcx - 10, dcy + 14]], { w: 2.6, curve: true });
+    for (const hy of [dcy - 58, dcy + 58]) { const st = [[dcx + 8, hy - 6], [cx - 84, hy - 5], [cx - 84, hy + 5], [dcx + 8, hy + 6]]; d.solid(st, { kind: 'dark' }); d.shape(st, { fill: '#2a2421', w: 1.5, corner: 30 }); d.rivet(cx - 90, hy, 2.4); }
+    // radial seams and a brass maker's plate on the face
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + 0.4; d.stroke([[cx + Math.cos(a) * 100, cy + Math.sin(a) * 96], [cx + Math.cos(a) * (R - 22), cy + Math.sin(a) * (R - 22) * 0.96]], { w: 1.2, sh: 0 }); }
+    const plateB = [[cx + 40, cy - 128], [cx + 96, cy - 132], [cx + 98, cy - 110], [cx + 42, cy - 106]];
+    d.solid(plateB, { kind: 'dark' }); d.shape(plateB, { fill: IRON_P.ochre, w: 1.4, corner: 30 });
+    d.word('NO 1', cx + 69, cy - 119, 9, { align: 'center', col: SKETCH.INK, w: 1.3, rot: -0.08 });
+    // heat scorch: soot hatching up the face above the mouth
+    d.hatch([[cx - 70, cy - 96], [cx + 70, cy - 96], [cx + 50, cy - 140], [cx - 40, cy - 146]], { a: 88, gap: 2, w: 0.6, alpha: 0.5, col: '#120e0c', tone: (x, y) => 1 - (cy - 96 - y) / 50 });
     // stencil over the door
-    IRON_ART.helpers.ironStencil(d, 'STOKE ME', cx + 18, 42, 15);
   }, { ox: 180, oy: 170, paper: 'dark', seed: 7400 });
   return key;
 };

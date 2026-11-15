@@ -153,7 +153,7 @@ function ironPlate(d, pts, o = {}) {
         d.wash(SKETCH.ell(cx, cy, r * (bw / Math.max(bw, bh) + 0.2), r * (bh / Math.max(bw, bh) + 0.2), 14, d.r()), o.shade || IRON_P.shadowInk, { alpha: (o.shadeAlpha || 0.13) * (0.7 + d.r() * 0.5), off: 0, spread: 2, layers: 2, edge: i === 0 });
       }
     });
-    if (o.leave !== 0) d.lift(SKETCH.ell(bx0 + bw * 0.12, by0 + bh * 0.14, bw * (o.leave || 0.22) + 6, bh * (o.leave || 0.22) * 0.8 + 5, 12, -0.6), 0.5);
+    if (o.leave !== 0) d.lift(SKETCH.ell(bx0 + bw * 0.12, by0 + bh * 0.14, bw * (o.leave || 0.22) + 6, bh * (o.leave || 0.22) * 0.8 + 5, 12, -0.6), 0.32);
     if (o.rustWash !== false) {
       // rust runs down from the seams: tall ragged streaks, darker at the top
       const [x0, y0, x1, y1] = SKETCH.bbox(pts);
@@ -168,6 +168,18 @@ function ironPlate(d, pts, o = {}) {
   if (o.tone && d.round >= 4) d.hatch(pts, { a: o.hatchA == null ? 55 : o.hatchA, gap: o.gap || 3.2, w: 0.7, tone: o.tone, cross: o.cross, crossTone: o.crossTone, alpha: 0.78 });
   if (d.round >= 2) d.outline(pts, { w: o.w || 2.2, c: o.c || c, corner: o.corner == null ? 34 : o.corner, ov: o.ov == null ? 2.8 : o.ov, curve: !!o.curve, smooth: !!o.smooth });
   else d.pencil(pts, { closed: true });
+  if (d.round >= 4 && o.glint !== false) {
+    // worn edges catch the light: a broken paper line just inside every edge that faces the light
+    const n = pts.length;
+    for (let i = 0; i < n; i++) {
+      const a = pts[i], b = pts[(i + 1) % n], len = Math.hypot(b[0] - a[0], b[1] - a[1]); if (len < 14) continue;
+      let nx = -(b[1] - a[1]) / len, ny = (b[0] - a[0]) / len; const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+      if ((mx - c[0]) * nx + (my - c[1]) * ny < 0) { nx = -nx; ny = -ny; }
+      if (nx * 0.6 + ny * 0.8 > -0.35) continue;
+      const ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len, ins = 2.6;
+      d.stroke([[a[0] - nx * ins + ux * 4, a[1] - ny * ins + uy * 4], [b[0] - nx * ins - ux * 4, b[1] - ny * ins - uy * 4]], { w: 1.4, col: d.dark ? '#f3ecdc' : '#fbf3df', alpha: 0.8, layer: 'white', sh: 0, brk: 1.4, p: [0.1, 1, 0.1] });
+    }
+  }
   if (d.round >= 3) {
     const n = pts.length, inset = o.inset || 6;
     for (const ei of o.rivetEdges || []) {
@@ -229,7 +241,11 @@ IRON_ART.foot = () => SKETCH.sheet('iron:foot', IRON_ART.FOOT.w, IRON_ART.FOOT.h
   plate(d, patch, { fill: '#857560', rivetEdges: [0, 1, 2, 3], patch: true, inset: 4, spacing: 10, tone: tn(140, 150, 70, 80, 0.9), hatchA: 35, rust: 0.15, rustPatches: 1 });
   // ---- the toes, back to front; each overlap throws a black crease ----
   toes.forEach((tp, i) => {
-    plate(d, tp, { fill: i === 1 ? '#946450' : IRON_P.iron, rivetEdges: [], tone: tn(tp[1][0], tp[4][1], 150, 150, 1.05), hatchA: 48 + i * 8, rust: 0, scratch: 3, curve: true, w: 2.6, rustPatches: 1, cross: true, crossTone: tn(tp[1][0], tp[4][1], 140, 140, 1.1) });
+    plate(d, tp, { fill: i === 1 ? '#946450' : IRON_P.iron, rivetEdges: [], rust: 0, scratch: 3, curve: true, w: 2.6, rustPatches: 1 });
+    // contour hatching that wraps round the dome of the toe, and a few straight strokes in the deepest shadow
+    const tcx = (tp[1][0] + tp[7][0]) / 2 - 14, tcy = tp[4][1] + 40;
+    d.arcHatch(tp, tcx, tcy, { r0: 30, r1: (tp[7][0] - tp[1][0]) * 0.62, n: 13, mid: 0.55, span: 2.1, w: 0.75, sq: 1.05 });
+    d.hatch(tp, { a: 62, gap: 2.4, w: 0.6, alpha: 0.7, tone: (x, y) => (x - tcx) / 70 + (y - tcy) / 90 - 0.25 });
     // the knuckle band: two curved lines with rivets between
     const bx = tp[1][0] + (tp[7][0] - tp[1][0]) * 0.32, top = tp[3][1] + 8 + i * 2;
     d.stroke([[bx, top + 2], [bx - 4, (top + 250) / 2], [bx - 2, 250]], { curve: true, w: 1.5 });
@@ -243,7 +259,9 @@ IRON_ART.foot = () => SKETCH.sheet('iron:foot', IRON_ART.FOOT.w, IRON_ART.FOOT.h
   });
   // ---- the ankle hinge cap ----
   const ax = 205, ay = 100, ar = 74;
-  d.ellipse(ax, ay, ar, ar * 0.97, { fill: '#7b6c60', w: 2.8, hatch: { a: 40, gap: 2.6, w: 0.65, tone: (x, y) => ((x - ax) * 0.6 + (y - ay) * 0.8) / ar * 1.1 + 0.2 } });
+  const capPts = d.ellipse(ax, ay, ar, ar * 0.97, { fill: '#8a6e60', w: 2.8 });
+  d.arcHatch(capPts, ax - 6, ay - 8, { r0: ar * 0.4, r1: ar * 1.02, n: 16, mid: 0.85, span: 2.6, w: 0.7 });
+  d.hatch(capPts, { a: 40, gap: 2.2, w: 0.55, alpha: 0.6, tone: (x, y) => ((x - ax) * 0.6 + (y - ay) * 0.8) / ar * 1.3 - 0.2 });
   d.stroke(SKETCH.ell(ax, ay, ar * 0.8, ar * 0.78, 40, 0, 0.3, Math.PI * 2 + 0.2), { w: 1.4, curve: true, c: [ax, ay], sh: 1.2 });
   if (d.round >= 4) d.spot(SKETCH.crescent(ax, ay, ar * 0.8, 7, -0.5, 2.3), { spread: 0.2 });
   for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + 0.2, x = ax + Math.cos(a) * ar * 0.66, y = ay + Math.sin(a) * ar * 0.64; H.ironBolt(d, x, y, 4.2); if (d.r() < 0.45) d.drip(x, y + 4, 8 + d.r() * 12); }
@@ -260,13 +278,24 @@ IRON_ART.foot = () => SKETCH.sheet('iron:foot', IRON_ART.FOOT.w, IRON_ART.FOOT.h
   d.ellipse(28, 286, 4.5, 4.2, { fill: IRON_P.soot, w: 1.3 });
   if (d.round >= 3) {
     d.stroke([[34, 246], [250, 252], [470, 260], [744, 268]], { w: 1.5, curve: true });
-    for (let i = 0; i < 15; i++) { const x = 64 + i * 46; H.ironBolt(d, x, 249 + (x / 760) * 18, 3.8); }
+    for (let i = 0; i < 15; i++) { const x = 64 + i * 46, y = 249 + (x / 760) * 18; H.ironBolt(d, x, y, 3.8); if (d.r() < 0.45) d.drip(x, y + 4, 10 + d.r() * 16); }
     for (let i = 0; i < 26; i++) {
       const x = 74 + i * 25.6;
       d.shape([[x - 8, 314], [x + 8, 314], [x + 6, 327], [x - 6, 327]], { w: 1.2, corner: 30 });
       if (d.round >= 4) d.spot([[x - 6, 319], [x + 6, 319], [x + 5, 326], [x - 5, 326]], { spread: 0.3 });
     }
-    if (d.round >= 4) { d.wash([[330, 314], [380, 312], [396, 322], [322, 324]], IRON_P.sand, { alpha: 0.85, off: 0.5 }); d.stipple([[330, 314], [380, 312], [396, 322], [322, 324]], { n: 20, r: 0.5 }); }
+    // the sole is built of slabs: seams with bolt heads; the bottom edge is scuffed bright; caked sand and a stone
+    for (const sx of [150, 290, 430, 580, 690]) {
+      const y0 = 250 + sx / 760 * 16;
+      d.stroke([[sx, y0 + 4], [sx - 1, (y0 + 312) / 2], [sx + 1, 312]], { w: 1.5, curve: true });
+      d.stroke([[sx + 3, y0 + 6], [sx + 2, 310]], { w: 0.9, col: '#fbf3df', layer: 'white', alpha: 0.45, sh: 0, brk: 1 });
+      H.ironBolt(d, sx + 8, y0 + 22, 3.2); H.ironBolt(d, sx + 8, 296, 3.2);
+    }
+    if (d.round >= 4) {
+      for (let i = 0; i < 18; i++) { const x = 70 + d.r() * 640; d.stroke([[x, 311.5], [x + 6 + d.r() * 12, 311]], { w: 1.2, col: '#fbf3df', layer: 'white', alpha: 0.7, sh: 0 }); }
+      for (const [mx, mw] of [[330, 60], [520, 40], [120, 30]]) { const m = [[mx, 313], [mx + mw * 0.4, 309], [mx + mw, 313], [mx + mw * 0.8, 322], [mx + 6, 322]]; d.wash(m, IRON_P.sand, { alpha: 0.9, off: 0.4 }); d.stipple(m, { n: 16, r: 0.5 }); d.stroke(m.slice(0, 3), { w: 0.8, curve: true, sh: 0 }); }
+      d.shape([[612, 316], [624, 312], [632, 318], [626, 325], [614, 324]], { fill: IRON_P.ochreDeep, w: 1, corner: 40 });
+    }
     // the heel hatch
     const hb = [[54, 140], [102, 138], [106, 198], [56, 200]];
     d.shape(hb, { fill: IRON_P.rustLight, w: 1.8, corner: 30, hatch: { a: 70, gap: 2.3, w: 0.55, tone: (x, y) => (x - 54) / 52 * 0.7 + 0.15 } });
@@ -302,16 +331,28 @@ IRON_ART.shin = () => SKETCH.sheet('iron:shin', IRON_ART.SHIN.w, IRON_ART.SHIN.h
   const x0 = 40, x1 = 250, cx = (x0 + x1) / 2;
   d.solid([[x0, 0], [x1, 0], [x1 + 18, 512], [x0 - 18, 512]], { lw: 3 }); d.solid([[x1 + 2, 40], [x1 + 22, 40], [x1 + 22, 450], [x1 + 2, 450]]);
   d.pencil([[cx, 0], [cx, 520]], { alpha: 0.2 });
-  // the cylinder: bands of plates, round-shaded with vertical contour hatching on the right
-  const bands = [[0, 130], [130, 270], [270, 410], [410, 470]];
+  // the cylinder seen from below: every ring bows down in the middle (we look up at the near half of each circle)
+  const bowY = (x, y, k = 10) => y + Math.sin(((x - x0) / (x1 - x0)) * Math.PI) * k;
+  const ringPts = (y, k, xa = x0, xb = x1) => { const p = []; for (let i = 0; i <= 12; i++) { const x = xa + (xb - xa) * i / 12; p.push([x, bowY(x, y, k)]); } return p; };
+  const bands = [[0, 130], [130, 270], [270, 410], [410, 466]];
   bands.forEach(([a, b], i) => {
-    const pts = [[x0 + 2, a], [x1 - 2, a], [x1, b], [x0, b]];
-    plate(d, pts, { fill: i % 2 ? '#7a6b5f' : IRON_P.iron, rivetEdges: [0, 2], tone: (x, y) => (x - x0) / (x1 - x0) * 1.4 - 0.45, hatchA: 88, gap: 2.8, cross: i === 1, crossTone: (x, y) => (x - x0) / (x1 - x0) * 1.5 - 1, rust: 0.35, scratch: 3, corner: 30 });
+    const pts = ringPts(a, 8).concat(ringPts(b, 9).reverse());
+    plate(d, pts, { fill: i % 2 ? '#8e604a' : IRON_P.iron, rivetEdges: [], rust: 0.35, scratch: 3, corner: 60, glint: false });
+    // contour hatching: vertical strokes that crowd together toward the shadow side of the cylinder
+    if (d.round >= 4) {
+      const lines = [];
+      for (let k = 0; k < 26; k++) { const u = Math.pow(k / 25, 0.6), x = x0 + 6 + (x1 - x0 - 10) * (0.35 + 0.65 * u); if (d.r() < 0.15) continue; lines.push([[x, bowY(x, a, 8) + 3], [x + 0.6, (a + b) / 2 + 4], [x, bowY(x, b, 9) - 3]]); }
+      d.contour(lines, { w: 0.7, alpha: 0.7 });
+      d.hatch(pts, { a: 8, gap: 2.6, w: 0.55, alpha: 0.55, tone: (x) => (x - x0) / (x1 - x0) * 1.6 - 0.75 });
+      d.stroke(ringPts(a + 4, 8, x0 + 12, x0 + 90), { w: 1.3, col: '#fbf3df', layer: 'white', alpha: 0.6, curve: true, sh: 0, brk: 1 });
+    }
+    const rr = ringPts(b - 7, 9); for (let k = 1; k < rr.length - 1; k++) d.rivet(rr[k][0], rr[k][1], 2.1);
   });
-  // the cuff: a thick ring where the shin meets the foot
-  const cuff = [[x0 - 14, 462], [x1 + 14, 462], [x1 + 18, 512], [x0 - 18, 512]];
-  plate(d, cuff, { fill: IRON_P.rust, rivetEdges: [0, 2], tone: (x, y) => (x - x0) / (x1 - x0) * 1.3 - 0.3, hatchA: 80, gap: 2.4, rust: 0.2, w: 2.6, corner: 30 });
-  if (d.round >= 4) d.spot([[x0 - 14, 513], [x1 + 18, 513], [x1 + 18, 519], [x0 - 14, 519]], { spread: 0.3 });
+  // the cuff: a thick ring where the shin meets the foot, with big bolts and a black shadow under its lip
+  const cuff = ringPts(462, 10, x0 - 14, x1 + 14).concat(ringPts(510, 12, x0 - 18, x1 + 18).reverse());
+  plate(d, cuff, { fill: IRON_P.rust, rivetEdges: [], tone: (x, y) => (x - x0) / (x1 - x0) * 1.3 - 0.3, hatchA: 80, gap: 2.4, rust: 0.2, w: 2.8, corner: 60 });
+  { const rr = ringPts(486, 11, x0 - 10, x1 + 10); for (let k = 1; k < rr.length - 1; k++) IRON_ART.helpers.ironBolt(d, rr[k][0], rr[k][1], 4.6); }
+  if (d.round >= 4) d.spot(ringPts(510, 12, x0 - 18, x1 + 18).concat(ringPts(518, 12, x0 - 12, x1 + 12).reverse()), { spread: 0.3 });
   // the front piston: a polished rod in a housing
   const px = x1 + 8;
   d.shape([[px - 6, 40], [px + 14, 40], [px + 14, 300], [px - 6, 300]], { fill: IRON_P.soot, w: 2, corner: 30, hatch: { a: 90, gap: 2, w: 0.6, tone: (x) => (x - px + 6) / 20 } });

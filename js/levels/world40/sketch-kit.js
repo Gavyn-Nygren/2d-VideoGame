@@ -189,6 +189,25 @@ const SKETCH = (() => {
       const g = L('wash'); g.save(); g.beginPath(); clip.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); g.clip();
       try { fn(); } finally { g.restore(); }
     };
+    // draw fn() clipped to a polygon on the wash and hatch layers (contour hatching inside a curved form)
+    d.within = (clip, fn, names = ['wash', 'hatch']) => {
+      const gs = [...new Set(names.map(n => L(n)))];
+      for (const g of gs) { g.save(); g.beginPath(); clip.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); g.clip(); }
+      try { fn(); } finally { for (const g of gs) g.restore(); }
+    };
+    // contour hatching round a dome or a disc: arcs about (cx, cy) on the shadow side (bottom right), denser and
+    // longer toward the edge; o.r0..o.r1 radii, o.n arcs, o.a0 o.a1 the arc span, o.sq (vertical squash), clipped to poly
+    d.arcHatch = (poly, cx, cy, o = {}) => {
+      if (d.round < 4 && !o.force) return;
+      const n = o.n || 10, r0 = o.r0 || 10, r1 = o.r1 || 60, sq = o.sq || 1;
+      d.within(poly, () => {
+        for (let i = 0; i < n; i++) {
+          const k = i / Math.max(1, n - 1), r = r0 + (r1 - r0) * Math.pow(k, 0.8), span = (o.span || 1.5) * (0.35 + 0.65 * k);
+          const mid = o.mid == null ? 0.75 : o.mid, a0 = mid - span / 2 + (d.r() - 0.5) * 0.2, a1 = mid + span / 2 + (d.r() - 0.5) * 0.2;
+          d.stroke(S.ell(cx, cy, r, r * sq, 14, o.rot || 0, a0, a1), { w: (o.w || 0.75) * (0.7 + 0.5 * k), curve: true, sh: 0, p: [0.15, 1, 0.15], layer: 'hatch', alpha: o.alpha || 0.75, jit: 0.4, col: o.col });
+        }
+      }, ['hatch']);
+    };
     // lift paint out (a damp brush): paper shows again through the washes in a soft blob
     d.lift = (pts, a = 0.6) => {
       if (d.round < 4) return;
