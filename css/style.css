@@ -390,6 +390,7 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 }
 .ts-menu .play-btn:focus-visible, .use-pad .ts-menu .play-btn:focus { outline: 3px solid #fff; outline-offset: 4px; animation: glow 1.6s ease-in-out infinite; }
 .ts-btn { text-align: center; background: rgba(255, 255, 255, 0.04); }
+.ts-pair { justify-self: stretch; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ts-menu .cpu-cfg { justify-items: center; text-align: center; }
 .ts-menu .seg-row { justify-content: center; }
 .ts-menu .seg { white-space: nowrap; }
@@ -436,6 +437,30 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 }
 @media (max-width: 560px) and (min-height: 521px) {
   .logo { font-size: clamp(56px, 17vw, 96px); }
+}
+/* the Settings screen (js/settings.js): sound and screen, then each player's keys and controller buttons */
+.settings-card { width: min(860px, 100%); display: grid; gap: 14px; }
+.set-sec { display: grid; gap: 10px; }
+.set-h { margin: 0; font: 400 20px var(--font-display); letter-spacing: 0.02em; color: var(--paper); }
+.settings-card .vol-row .seg-k { min-width: 4.2em; }
+.set-binds { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.set-p { display: grid; gap: 8px; align-content: start; }
+.set-k { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.bind-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg.bind { display: inline-flex; align-items: center; gap: 8px; padding: 5px 6px 5px 12px; border-radius: 12px; }
+.seg.bind .bw { font-weight: 400; font-size: 13px; color: var(--muted); }
+.seg.bind .bk { min-width: 28px; padding: 2px 8px; border-radius: 7px; background: var(--cabinet-2); border: 1px solid var(--line); text-align: center; }
+.seg.bind.waiting { border-color: var(--gold); animation: blink 1.2s ease-in-out infinite; }
+.seg.bind.waiting .bk { color: var(--gold); }
+.set-reset { justify-self: start; font-size: 13px; padding: 6px 12px; }
+.set-reset[aria-disabled="true"] { opacity: 0.5; }
+.set-status:empty { display: none; }
+.set-status { color: var(--gold); }
+@media (max-height: 520px) {
+  .settings-card { gap: 8px; }
+  .set-binds { grid-template-columns: 1fr 1fr; }
+  .seg.bind { padding: 3px 4px 3px 8px; gap: 5px; }
+  .seg.bind .bw { font-size: 11px; }
 }
 /* the How to play screen */
 .howto-card { width: min(760px, 100%); }

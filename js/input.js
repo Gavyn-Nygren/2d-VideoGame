@@ -20,11 +20,13 @@ const GAME_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'Space', 'ArrowLeft',
 // Enter pressed on a menu card and still held when the level starts must not count as Bo's action button
 const menuHeld = new Set();
 const touchState = [{}, {}];
+// set by js/settings.js while it waits for a controller button to pick (returns true to swallow the press)
+let bindHook = null;
 /* ---------- controllers ----------
    Works with any controller the browser reports. Xbox, PlayStation and Switch Pro pads use the
    browser's "standard" layout; other pads fall back to stick + first buttons + hat-switch d-pad.
    The first controller you press a button on plays Pip, the second plays Bo (View/Select swaps). */
-const Pads = { slots: [], prev: {}, quiet: {}, swap: false, nav: {}, family: 'xbox', kind: 'kb', fam: {}, ctxFam: null };
+const Pads = { slots: [], prev: {}, quiet: {}, swap: false, nav: {}, family: 'xbox', kind: 'kb', fam: {}, ctxFam: null, ctxId: null };
 // Which device each player is using right now (js/controls.js reads it): last[k] is 'kb', 'pad' or 'touch', set by that
 // player's own last press (null until they press something); keyset is the set of keys (0 = W A S D, 1 = arrows) the
 // person last used in 1-player mode, where both sets work.
@@ -44,6 +46,28 @@ const GLYPHS = {
   nintendo: { a: 'B', b: 'A', act: 'Y', start: '+', view: '−', name: 'Switch' },
   generic: { a: '1', b: '2', act: '3', start: 'Start', view: 'Select', name: 'Controller' },
 };
+// Controller buttons a player picked in Settings (js/settings.js): PadBind[k] = { jump: [n], act: [n, ...] }, button
+// numbers in the browser's standard layout, or null for the usual ones (A or B jump; X, Y, RB or RT act).
+// readPads applies them, so every level that reads a pad's jump / act gets the player's own buttons.
+const PadBind = [null, null];
+const PAD_BTN_NAMES = {
+  xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'LS', 'RS', '↑', '↓', '←', '→', 'Home'],
+  ps: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Create', 'Options', 'L3', 'R3', '↑', '↓', '←', '→', 'PS'],
+  nintendo: ['B', 'A', 'Y', 'X', 'L', 'R', 'ZL', 'ZR', '−', '+', 'LS', 'RS', '↑', '↓', '←', '→', 'Home'],
+};
+const padBtnName = (fam, n) => (PAD_BTN_NAMES[fam] || [])[n] || String(n + 1);
+// which colour a button number gets in a prompt (css .g-xbox-a ...)
+const padBtnKey = n => ['a', 'b', 'act'][n] || 'x';
+// glyph 'a' is the jump button and 'act' the action button: their names on this player's controller when they rebound them
+const bindWhat = k => (k === 'a' ? 'jump' : k === 'act' ? 'act' : null);
+function padBound(id, k) {
+  const b = id == null ? null : PadBind[id], w = bindWhat(k);
+  return b && w ? padBtnName(padFamilyFor(id), b[w][0]) : null;
+}
+function glyphClass(k, id) {
+  const fam = id == null ? Pads.family : padFamilyFor(id), b = id == null ? null : PadBind[id], w = bindWhat(k);
+  return 'glyph g-' + fam + '-' + (b && w ? padBtnKey(b[w][0]) : k);
+}
 // the family of the controller that plays this character (the last controller used when it has none)
 function padFamilyFor(id) {
   const pad = padFor(padSlots(), id);
@@ -51,7 +75,7 @@ function padFamilyFor(id) {
 }
 // glyph('a', id): the button's name on that player's own controller. Without an id it is the controller of the
 // player last asked about with actKey(id) (older level code asks, then prints), or else the last controller used.
-const glyph = (k, id) => (GLYPHS[id == null ? Pads.ctxFam || Pads.family : padFamilyFor(id)] || GLYPHS.xbox)[k];
+const glyph = (k, id) => padBound(id == null ? Pads.ctxId : id, k) || (GLYPHS[id == null ? Pads.ctxFam || Pads.family : padFamilyFor(id)] || GLYPHS.xbox)[k];
 document.documentElement.classList.add('use-kb');
 function readPad(gp) {
   const b = n => { const x = gp.buttons[n]; return !!(x && (x.pressed || x.value > 0.5)); };
@@ -83,6 +107,7 @@ function readPad(gp) {
   }
   const anyBtn = gp.buttons.some(x => x && x.pressed);
   return {
+    btns: gp.buttons.map((x, n) => b(n)),
     left: ax < -0.35 || dl, right: ax > 0.35 || dr, up: ay < -0.6 || du, down: ay > 0.6 || dd,
     jump, act, ok, back, start, view, active: anyBtn || ax !== 0 || ay !== 0 || dl || dr || du || dd,
   };
@@ -106,11 +131,19 @@ function readPads() {
     Pads.prev[gp.index] = readPad(gp); Pads.quiet[gp.index] = G.clock + 0.3;
     onPadJoined(gp, slot);
   }
-  return Pads.slots.map(ix => {
+  const states = Pads.slots.map(ix => {
     if (ix === null) return null;
     const gp = list.find(g => g.index === ix);
     return { ix, gp, s: readPad(gp) };
   });
+  // each player's own jump and action buttons (Settings)
+  for (const k of [0, 1]) {
+    const bd = PadBind[k], mine = bd && padFor(states, k);
+    if (!mine) continue;
+    mine.s.jump = bd.jump.some(n => mine.s.btns[n]);
+    mine.s.act = bd.act.some(n => mine.s.btns[n]);
+  }
+  return states;
 }
 const padSlots = () => Pads.slots.map(ix => (ix === null ? null : { ix }));
 // which controller belongs to which player (slot list may have gaps)
@@ -133,9 +166,9 @@ function setKind(k) {
 function refreshGlyphs() {
   // (data-gp="0|1": that player's own controller; without it, the last controller used)
   document.querySelectorAll('[data-glyph]').forEach(el => {
-    const fam = el.dataset.gp === undefined ? Pads.family : padFamilyFor(+el.dataset.gp);
-    el.textContent = (GLYPHS[fam] || GLYPHS.xbox)[el.dataset.glyph];
-    el.className = 'glyph g-' + fam + '-' + el.dataset.glyph;
+    const id = el.dataset.gp === undefined ? null : +el.dataset.gp, fam = id == null ? Pads.family : padFamilyFor(id);
+    el.textContent = padBound(id, el.dataset.glyph) || (GLYPHS[fam] || GLYPHS.xbox)[el.dataset.glyph];
+    el.className = glyphClass(el.dataset.glyph, id);
   });
   document.querySelectorAll('[data-padblocked]').forEach(el => { el.hidden = !Pads.blocked; });
   const who = document.querySelectorAll('[data-padwho]');
@@ -235,6 +268,8 @@ function pollInput(dt = 1 / 60) {
   const inMenu = !overlay.hidden;
   for (const { ix, s: st } of pads.filter(Boolean)) {
     const prev = Pads.prev[ix] || {};
+    // Settings is waiting for a controller button to pick: that press does nothing else
+    if (bindHook && bindHook(ix, st, prev)) { Pads.prev[ix] = st; continue; }
     const quiet = G.clock < (Pads.quiet[ix] || 0);
     if (quiet && inMenu && ['ok', 'start', 'back'].some(k => st[k] && !prev[k])) extendArm();
     const pressed = k => st[k] && !prev[k] && !quiet;

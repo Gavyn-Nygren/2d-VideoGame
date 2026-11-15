@@ -48,9 +48,9 @@ function fitMatchCard() {
 // each player's own device: 'kb', 'pad' or 'touch' (playerDevice in js/controls.js has the controller family too).
 // It also remembers that player's controller for a glyph() call without an id right after it (older level code).
 function actKey(id) {
-  if (isCpuPlayer(id)) { Pads.ctxFam = null; return 'kb'; }
+  if (isCpuPlayer(id)) { Pads.ctxFam = null; Pads.ctxId = null; return 'kb'; }
   const d = playerDevice(id);
-  Pads.ctxFam = d.family;
+  Pads.ctxFam = d.family; Pads.ctxId = id;
   return d.kind;
 }
 // one line for the level intro card: how to use the action button, in each player's own buttons
@@ -150,10 +150,10 @@ function showPauseCard() {
         <button class="primary" type="button" data-act="resume" data-primary>Keep playing</button>
         <button class="ghost" type="button" data-act="replay">${px.replay ? esc(px.replay) : m ? 'Restart match' : 'Restart level'}</button>${moreBtns}
         <button class="ghost" type="button" data-act="worlds">Choose a level</button>
+        <button class="ghost" type="button" data-act="settings">Settings</button>
         <button class="ghost" type="button" data-act="menu">Title screen</button>
       </div>
       ${cpuCfgHTML()}
-      ${sysCfgHTML()}
     </div>`);
 }
 // the pause card's "You play Pip..." note and action keys (redrawn when the Players setting changes on the card)

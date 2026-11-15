@@ -597,7 +597,8 @@
   // crates are on the walkway, so they are drawn again in front (the roof pass drew pipes)
   function drawCrateFront(st, t) { const keep = st.haz; st.haz = keep.filter(h => h.kind === 'crate'); drawHaz(st, t); st.haz = keep; }
   function drawHero(st, r, t) {
-    const zoom = r.job === 'zoom';
+    const zoom = r.job === 'zoom', lift = r.job === 'lift';
+    // the roof hero keeps both hands up, braced to catch the next girder; straight up while holding one
     if (zoom && r !== st.run[st.zoom]) return;
     let sy = 1 - r.sq * 0.18, rot = 0;
     if (r.duck) sy = 0.55;
@@ -611,7 +612,7 @@
       ctx.globalAlpha = 1;
       K.speedLines(r.x - 6, r.y - 2, 1, t, { n: 5, len: 50 + st.v * 0.08, col: PCOL[r.id] });
     }
-    K.suit(r.id, r.x, r.y, { face: r.pulling ? 1 : r.face, rot, sy, sx: 2 - sy, vy: r.grounded ? 0 : r.vy, stun: r.stun > 0, capeV: zoom ? clamp(0.6 + st.v / 600, 0, 1) : 0.3 + st.v / 1200, arms: r.st === 'hold' ? 'up' : null, glow: r.st === 'hold' ? 'rgba(255,210,90,0.45)' : null });
+    K.suit(r.id, r.x, r.y, { face: r.pulling ? 1 : r.face, rot, sy, sx: 2 - sy, vy: r.grounded ? 0 : r.vy, stun: r.stun > 0, capeV: zoom ? clamp(0.6 + st.v / 600, 0, 1) : 0.3 + st.v / 1200, arms: lift && r.st === 'hold' ? 'up' : lift && !r.duck && r.stun <= 0 ? 'ready' : null, hands: lift, glow: r.st === 'hold' ? 'rgba(255,210,90,0.45)' : null });
     if (zoom && r.stun <= 0) {
       // blurred running legs
       ctx.strokeStyle = PDARK[r.id]; ctx.lineWidth = 3;

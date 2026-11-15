@@ -19,7 +19,8 @@
    Superheroes
      K.suit(id, x, y, o)             Pip or Bo in costume, feet at x, y: cape (behind), body (K.hero), mask, chest star.
                                      o: face, rot, s, sy, sx, vy, stun, alpha (see-through), capeV (how hard the cape
-                                     flies: 0 still .. 1 flat out), arms ('up' holding something overhead), glow (a colour
+                                     flies: 0 still .. 1 flat out), arms ('up' holding something overhead, 'ready'
+                                     braced to catch: elbows out, hands up), hands (gloves on the arm ends), glow (a colour
                                      for a power aura).
      K.speedLines(x, y, dir, t, o)   streaks behind a fast hero. o: n, len, col.
      K.comic(x, y, str, s, rot, col) a comic-book burst ("POW!") centred at x, y.
@@ -107,12 +108,26 @@ const HEROCITY = (() => {
     // a gold star on the chest
     ctx.fillStyle = '#ffffff'; K.star(face * 2 * s, -h * 0.22, 5.2 * s, 2.3 * s, 0); ctx.fill();
     ctx.fillStyle = id === 0 ? '#ffd23a' : '#d8283a'; K.star(face * 2 * s, -h * 0.22, 3.8 * s, 1.6 * s, 0); ctx.fill();
-    if (o.arms === 'up') {
-      ctx.strokeStyle = PDARK[id]; ctx.lineWidth = 5 * s; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(-w / 2 + 2, -h * 0.55); ctx.lineTo(-w / 2 - 2 * s, -h - 12 * s); ctx.moveTo(w / 2 - 2, -h * 0.55); ctx.lineTo(w / 2 + 2 * s, -h - 12 * s); ctx.stroke();
-      ctx.strokeStyle = PCOL[id]; ctx.lineWidth = 3 * s;
-      ctx.beginPath(); ctx.moveTo(-w / 2 + 2, -h * 0.55); ctx.lineTo(-w / 2 - 2 * s, -h - 12 * s); ctx.moveTo(w / 2 - 2, -h * 0.55); ctx.lineTo(w / 2 + 2 * s, -h - 12 * s); ctx.stroke();
-      ctx.lineCap = 'butt';
+    if (o.arms === 'up' || o.arms === 'ready') {
+      // 'up': arms straight overhead (holding something). 'ready': elbows out, forearms up, open hands above the
+      // head, bouncing a little: braced to catch something falling. o.hands draws round hands on the ends.
+      const sxL = -w / 2 + 2, sxR = w / 2 - 2, sh = -h * 0.55;
+      let segs;
+      if (o.arms === 'up') segs = [[sxL, sh, -w / 2 - 2 * s, -h - 12 * s], [sxR, sh, w / 2 + 2 * s, -h - 12 * s]];
+      else {
+        const bob = Math.sin(t * 7 + id) * 1.5 * s, ex = w / 2 + 7 * s, ey2 = -h * 0.72, hy = -h - 7 * s + bob;
+        segs = [[sxL, sh, -ex, ey2, -w / 2 - 4 * s, hy], [sxR, sh, ex, ey2, w / 2 + 4 * s, hy]];
+      }
+      const path = () => { ctx.beginPath(); for (const g of segs) { ctx.moveTo(g[0], g[1]); for (let k = 2; k < g.length; k += 2) ctx.lineTo(g[k], g[k + 1]); } };
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = PDARK[id]; ctx.lineWidth = 5 * s; path(); ctx.stroke();
+      ctx.strokeStyle = PCOL[id]; ctx.lineWidth = 3 * s; path(); ctx.stroke();
+      if (o.hands) for (const g of segs) {
+        const hx = g[g.length - 2], hy = g[g.length - 1];
+        ctx.fillStyle = PDARK[id]; circle(hx, hy, 3.6 * s); ctx.fill();
+        ctx.fillStyle = '#ffffff'; circle(hx, hy, 2.5 * s); ctx.fill();   // white superhero gloves
+      }
+      ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
     }
     ctx.restore();
     ctx.globalAlpha = a0;

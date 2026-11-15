@@ -65,7 +65,7 @@ function btnLabel(id, what) {
 }
 // def.act.padGlyph names another controller button for the action (e.g. 'a' where A does it for a seated role)
 function padActGlyph() { const a = G.level && G.level.def.act; return (a && a.padGlyph) || 'act'; }
-const padGlyphHTML = (g, id) => `<span data-glyph="${esc(g)}" data-gp="${id}" class="glyph g-${padFamilyFor(id)}-${esc(g)}">${esc(glyph(g, id))}</span>`;
+const padGlyphHTML = (g, id) => `<span data-glyph="${esc(g)}" data-gp="${id}" class="${esc(glyphClass(g, id))}">${esc(glyph(g, id))}</span>`;
 function btnHTML(id, what) {
   const d = playerDevice(id);
   if (what === 'move') return d.kind === 'pad' ? '<kbd class="k-stick">stick</kbd>' : btnHTML(id, 'left') + btnHTML(id, 'right');
@@ -161,7 +161,8 @@ function drawBtn(id, what, x, y, o = {}) {
   const lw = o.label ? Math.ceil(ctx.measureText(o.label).width) + s * 0.3 : 0, total = bw + lw;
   const x0 = o.align === 'left' ? x : o.align === 'right' ? x - total : x - total / 2;
   if (isBtn) {
-    const g = what === 'jump' ? 'a' : padActGlyph();
+    const g0 = what === 'jump' ? 'a' : padActGlyph(), bw0 = PadBind[id] && bindWhat(g0);
+    const g = bw0 ? padBtnKey(PadBind[id][bw0][0]) : g0;
     ctx.fillStyle = ((PAD_COLS[d.family] || PAD_COLS.generic)[g]) || '#4a4766';
     rr(x0, y - s / 2, bw, s, s / 2); ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5; rr(x0, y - s / 2, bw, s, s / 2); ctx.stroke();
