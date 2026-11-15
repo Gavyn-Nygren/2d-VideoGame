@@ -57,6 +57,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 35. **Wizard Academy** (one long level at a wizard school: ten magic classes, a final exam against an ink monster and a graduation duel): Moonwick Academy
 36. **Movie Studio** (stunt performers at a chaotic film studio where some things are fake and some are very real: film a car chase, stop a runaway tour tram, fall off a skyscraper and win the live stunt show): Car Chase, Take One, Backlot Tram Runaway, Stunt Double Fall, Stunt Show Showdown
 37. **Medieval Tournament** (the King's Grand Tournament: stop a runaway royal carriage, ride one horse with one lance, push a siege tower to the wall and win the Grand Joust): Runaway Royal Carriage, Tandem Joust Run, Siege Tower Push, Grand Joust
+38. **Operation Midnight** (secret agents steal the Sunrise Diamond back from Count Zero in one heist: climb the glass tower, cross the laser vault, crawl the dark air vents and race the speedboat to the seaplane): Skyscraper Window Climb, Laser Vault Heist, Air Vent Crawl, Speedboat Getaway
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 
