@@ -37,7 +37,8 @@
    on its palm and see the shard is a tooth, and the wall behind them cracks. Level clear.
    GOLD HELP (3 bad events in a stretch, both playing): a gold chime: its ring reaches twice as far, Stomp tells show
    0.5 s earlier and Rage fills 30% slower.
-   COLLECTABLES: 20 glow gems on the body (some only on the arm). MEDAL by time: Gold <= 215 s, Silver <= 370 s.
+   COLLECTABLES: 20 glow gems on the body (some only on the arm). MEDALS (MODES.cavegolem.medals): time (Gold <= 215 s,
+   Silver <= 370 s), Tumbles (Gold 1 or fewer, Silver 4) and glow gems (Gold all 20, Silver 12).
    MODES.cavegolem.plan(st) says what each hero should do now (the prompts, the HUD chips and the brain read it).
    Sounds are Sfx.extra.cavegolem*. */
 (() => {
@@ -892,7 +893,7 @@
       bronze: 'Calm the Guardian',
       goals: [
         { key: 'time', gold: S.goldT, silver: S.silverT },
-        { key: 'tumbles', gold: 0, silver: 4, word: 'Tumble' },
+        { key: 'tumbles', gold: 1, silver: 4, word: 'Tumble' },
         { key: 'gems', gold: S.gems, silver: 12, more: true, word: 'glow gem' },
       ],
     },

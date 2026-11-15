@@ -37,7 +37,8 @@
      counted): gold cranks: Lurch only past 28 degrees, bats nibble at half speed, and every tell shows 0.5 s earlier.
    COLLECTABLES: 20 glow gems on the shaft walls, grabbed by a hero standing at that end of the lift as it passes
      (the gems set deep in the wall need that end low or level, not pulled in). Bonus: the lamp crate delivered.
-   MEDAL by time: Gold <= 190 s, Silver <= 330 s.
+   MEDALS (MODES.cavelift.medals): time (Gold <= 190 s, Silver <= 330 s), Lurches (Gold none, Silver 3 or fewer) and glow
+     gems (Gold all 20, Silver 12).
    OUTFIT 'cavelift' (old-time miners, js/levels/world39/cave-kit.js): soot builds up (G.mst.ofx[id].soot) and a
      Lurch knocks the hats crooked for a few seconds (ofx.crook).
    MODES.cavelift.plan(st) says what each side should do now (the prompts, the HUD chips and the brain read it).

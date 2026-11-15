@@ -57,6 +57,7 @@ Download this repository (Code > Download ZIP), unzip it, and double-click `inde
 35. **Wizard Academy** (one long level at a wizard school: ten magic classes, a final exam against an ink monster and a graduation duel): Moonwick Academy
 36. **Movie Studio** (stunt performers at a chaotic film studio where some things are fake and some are very real: film a car chase, stop a runaway tour tram, fall off a skyscraper and win the live stunt show): Car Chase, Take One, Backlot Tram Runaway, Stunt Double Fall, Stunt Show Showdown
 37. **Medieval Tournament** (the King's Grand Tournament: stop a runaway royal carriage, ride one horse with one lance, push a siege tower to the wall and win the Grand Joust): Runaway Royal Carriage, Tandem Joust Run, Siege Tower Push, Grand Joust
+39. **Crystal Caverns** (one trip down the deep mine under Glimmer Gulch: crank an old lift down the shaft, calm a giant crystal golem, outrun a crystal-eating worm and race for the golem's gems): Mine Lift Plunge, Sleeping Golem, Cave Worm Chase, Gem Rush
 
 Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md).
 

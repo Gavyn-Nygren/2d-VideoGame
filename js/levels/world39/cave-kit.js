@@ -699,7 +699,7 @@ const CAVE = (() => {
   // cavedeep (39-1): wonder with a little unease. Glassy bells with long echoes, a slow plucked bass, dripping mallets,
   // a low hum, and a creaking wooden tick in time like the crank ratchet. The hook: 4 - 7 - 6 4 2 -
   SONGS.cavedeep = {
-    bpm: 84, vol: 0.3, root: 57, scale: 'minor', form: ['A', 'A2', 'B', 'A2'],
+    bpm: 84, vol: 0.42, root: 57, scale: 'minor', form: ['A', 'A2', 'B', 'A2'],
     inst: { lead: 'bell', bass: 'upright', arp: 'musicbox', pad: 'softpad' }, oct: { lead: 1 },
     bass: '0 . . . 2 . . .', arp: '. . 2 . . 4 . .',
     drums: { w: 'o.o.o.o.o.o.o.o.', D: 'x.......o.......', e: '......o.......o.' },
@@ -722,12 +722,12 @@ const CAVE = (() => {
       B: { ch: [5, 3, 0, 4], lead: ['9 - - 8 7 - 5 -', '6 - - 5 4 - 2 -', '4 - 7 - 9 - 7 -', '4 - - - - - . .'] },
     },
   });
-  SONGS.cavegolem0 = golem('minor', 0.3); SONGS.cavegolem1 = golem('dorian', 0.3); SONGS.cavegolem2 = golem('mixo', 0.3); SONGS.cavegolem3 = golem('major', 0.3);
+  SONGS.cavegolem0 = golem('minor', 0.47); SONGS.cavegolem1 = golem('dorian', 0.47); SONGS.cavegolem2 = golem('mixo', 0.47); SONGS.cavegolem3 = golem('major', 0.47);
   // cavechase (39-3, and the rope snap in 39-1, a tantrum warning in 39-2): fast, pounding, a little frightening.
   // Driving low drums, a growling bass ostinato, the bell hook played fast, brass-like stabs; a key step up each
   // stretch (cavechase1-3) and bass and drums alone during the inhale (cavechaseLow)
   const chase = (root, low) => ({
-    bpm: 150, vol: low ? 0.42 : 0.32, root, scale: 'minor', form: ['A', 'B'],
+    bpm: 150, vol: low ? 0.38 : 0.32, root, scale: 'minor', form: ['A', 'B'],
     inst: low ? { bass: 'sawbass' } : { lead: 'bell', bass: 'sawbass', comp: 'brass', pad: 'strings' }, oct: { lead: 1 },
     bass: '0 0 3 0 0 0 3 0 0 0 3 0 1 1 2 1',
     comp: '. . . . . . X . . . . . . . . .',
@@ -740,8 +740,8 @@ const CAVE = (() => {
   SONGS.cavechase = chase(57); SONGS.cavechase1 = chase(59); SONGS.cavechase2 = chase(60); SONGS.cavechase3 = chase(62); SONGS.cavechaseLow = chase(57, true);
   // cavedig (39-4): bright, bouncy and competitive: a skipping pickaxe-clink rhythm, a jaunty marimba and bell tune on
   // the same hook in a major key, a tuba oompah; cavedigFast for the last 10 s of a round
-  const dig = (bpm) => ({
-    bpm, vol: 0.3, root: 60, scale: 'major', swing: 0.16, form: ['A', 'A2', 'B', 'A2'],
+  const dig = (bpm, vol) => ({
+    bpm, vol, root: 60, scale: 'major', swing: 0.16, form: ['A', 'A2', 'B', 'A2'],
     inst: { lead: 'marimba', lead2: 'bell', bass: 'tuba', comp: 'pizz' }, oct: { lead2: 1 },
     bass: '0 . 2 . 0 . 2 .', comp: '. x . x . x . x',
     drums: { w: 'x.x..x.xx.x..x.x', k: 'x.......x.......', s: '....o.......o...' },
@@ -751,7 +751,7 @@ const CAVE = (() => {
       B: { ch: [3, 0, 3, 4], lead: ['5 . 7 . 10 . 9 7', '9 . 7 . 4 . . .', '5 . 7 . 10 . 9 7', '8 . 6 . 8 . 11 .'] },
     },
   });
-  SONGS.cavedig = dig(132); SONGS.cavedigFast = dig(156);
+  SONGS.cavedig = dig(132, 0.51); SONGS.cavedigFast = dig(156, 0.48);
   MUSIC_BY_WORLD[38] = 'cavedeep';
   const DRIP = (A, t) => { A.chirp(t, 1500 + Math.random() * 600, 800, 0.05, 0.018); A.chirp(t + 0.18, 1300, 700, 0.04, 0.006); };
   Object.assign(AMBIENCE, {
