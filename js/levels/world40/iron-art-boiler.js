@@ -19,23 +19,26 @@ IRON_ART.boilerWall = (chunk = 0) => {
   const key = 'iron:boiler:wall:' + chunk;
   if (!SKETCH.has(key)) SKETCH.sheet(key, 960, 540, d => {
     const P = IRON_P, H = IRON_ART.helpers;
-    // the shell: tall curved plates (seams bow outward like the inside of a barrel), lit from the furnace (right)
-    const cols = [-30, 110, 260, 420, 590, 760, 910, 1000];
-    for (let i = 0; i < cols.length - 1; i++) {
-      const xa = cols[i], xb = cols[i + 1];
+    // the shell: tall curved plates (seams bow outward like the inside of a barrel), lit from the furnace. The plate
+    // grid is laid out in WORLD columns (a fixed hash per column) so the five chunks join up without a seam.
+    const X0 = chunk * 960, colW = gi => 130 + ((gi * 73) % 5) * 12, cols = [];
+    for (let gi = 0, x = -30; x < X0 + 1000; x += colW(gi), gi++) if (x + colW(gi) > X0 - 40) cols.push([gi, x - X0, x + colW(gi) - X0]);
+    for (const [gi, xa, xb] of cols) {
+      const i = gi;
       const o1 = (i % 3) * 34 - 30, o2 = ((i + 1) % 3) * 30 - 20;
       for (const [ya, yb] of [[-10, 150 + o1], [150 + o1, 300 + o2], [300 + o2, 452]]) {
         const bow = 14;
         const pts = [[xa, ya], [(xa + xb) / 2, ya - bow * 0.4], [xb, ya], [xb + 3, (ya + yb) / 2], [xb, yb], [(xa + xb) / 2, yb + bow * 0.4], [xa, yb], [xa - 3, (ya + yb) / 2]];
         d.wash(pts, i % 2 ? '#3e3632' : '#463c35', { alpha: 0.55, off: 1.5, spread: 1.3, blooms: 1 });
         // chalk hatching where the light falls (the upper part of each plate), paper left dark below
-        d.hatch(pts, { a: 62 + i * 3, gap: 3.4, w: 0.6, alpha: 0.42, tone: (x, y) => 1.05 - (y - ya) / (yb - ya) * 0.9 - Math.hypot(x + chunk * 960 - 560, (y - 268) * 1.3) / 330 });
+        d.hatch(pts, { a: 62 + (i % 7) * 3, gap: 3.4, w: 0.6, alpha: 0.42, tone: (x, y) => 1.05 - (y - ya) / (yb - ya) * 0.9 - Math.hypot(x + X0 - 560 - chunk * 700, (y - 268) * 1.3) / 420 });
         d.outline(pts, { w: 1.5, corner: 40, alpha: 0.75, c: [(xa + xb) / 2, (ya + yb) / 2] });
         d.rivets(xa + 8, ya + 8, xb - 8, ya + 8, Math.round((xb - xa) / 17), { r: 1.7, rust: 0.25 });
         if (d.r() < 0.5) ironScratches(d, xa + (xb - xa) * 0.5, (ya + yb) / 2, 3);
         // a rib down the middle of the plate (the barrel's curve), and now and then a hatch, a patch or a number
-        const mx = (xa + xb) / 2 + (d.r() - 0.5) * 30;
+        const mx = (xa + xb) / 2 + (((gi * 37) % 9) - 4) * 3;
         d.stroke([[mx, ya + 14], [mx + 3, (ya + yb) / 2], [mx, yb - 14]], { w: 0.9, curve: true, alpha: 0.5, sh: 0 });
+        if (xa < 6 || xb > 954) continue;   // nothing cut in half at a chunk's edge
         const roll = d.r();
         if (roll < 0.18 && yb - ya > 110) {
           const hx = xa + 24 + d.r() * (xb - xa - 80), hy = ya + 30 + d.r() * (yb - ya - 80);
@@ -47,49 +50,64 @@ IRON_ART.boilerWall = (chunk = 0) => {
           const pt = [[px, py], [px + pw, py + 2], [px + pw - 2, py + ph2], [px + 2, py + ph2 - 1]];
           d.wash(pt, '#5c4a40', { alpha: 0.6, off: 1 }); d.outline(pt, { w: 1.2, corner: 30 });
           d.rivets(px + 4, py + 4, px + pw - 4, py + 5, Math.round(pw / 9), { r: 1.1 }); d.rivets(px + 5, py + ph2 - 4, px + pw - 5, py + ph2 - 4, Math.round(pw / 9), { r: 1.1 });
-        } else if (roll < 0.46) {
+        } else if (roll < 0.42) {
           IRON_ART.helpers.ironStencil(d, String(2 + Math.floor(d.r() * 40)), (xa + xb) / 2 + 16, ya + 30, 15);
         }
       }
     }
-    // the ceiling pipe (the jets hang off it) and a second pipe run with flanges and a little valve wheel
-    H.ironPipe(d, [[-20, 46], [300, 44], [640, 50], [980, 46]], 11, { flanges: [0.08, 0.31, 0.55, 0.79], col: '#6b7d70', alpha: 0.6 });
-    H.ironPipe(d, [[-20, 96], [180, 98], [260, 120], [330, 122], [420, 100], [520, 100]], 6, { flanges: [0.3, 0.75], col: '#7a5a48', alpha: 0.55 });
-    // a vertical pipe bundle on the right wall
-    for (let k = 0; k < 3; k++) H.ironPipe(d, [[900 + k * 16, -10], [898 + k * 16, 200], [902 + k * 16, 452]], 6, { flanges: [0.2 + k * 0.1, 0.65], col: k === 1 ? '#7a5a48' : '#6b7d70', alpha: 0.5 });
-    // gauges on the pipe run
-    for (const [gx, gy, r] of [[380, 150, 14], [420, 162, 10]]) {
+    // the ceiling pipe (the jets hang off it): one long run joined across chunks, flanges at fixed world spacing
+    H.ironPipe(d, [[-20, 46], [300, 44 + chunk % 2], [640, 49], [980, 46]], 11, { flanges: [0.08, 0.31, 0.55, 0.79], col: '#6b7d70', alpha: 0.6 });
+    // each chunk gets its own furniture, so the corridor never repeats
+    const F = [
+      { pipe2: [[-20, 96], [180, 98], [260, 120], [330, 122], [420, 100], [520, 100]], gauges: [[380, 150, 14], [420, 162, 10]], chains: [470], stencil: ['MIND THE STEAM', 300, 250], cobweb: true },
+      { pipe2: [[300, 104], [520, 102], [580, 126], [980, 128]], bundle: 900 - 140, ladder: 716, chute: 420, chains: [240, 610], stencil: ['VALVE 2', 120, 236] },
+      { pipe2: [[-20, 128], [260, 126], [320, 96], [700, 94]], tank: 280, gauges: [[640, 130, 13]], chains: [120], stencil: ['HOLD TO SHUT', 820, 300], cobweb: true },
+      { pipe2: [[100, 100], [400, 104], [460, 132], [980, 130]], bundle: 160, chute: 640, chains: [380, 830], gauges: [[540, 170, 15], [578, 182, 10]], stencil: ['PRESSURE', 800, 244] },
+      { pipe2: [[-20, 130], [300, 128], [360, 104], [520, 102]], gauges: [[160, 150, 13]], chains: [60], stencil: ['CORE 1', 380, 300] },
+    ][chunk] || {};
+    if (F.pipe2) H.ironPipe(d, F.pipe2, 6, { flanges: [0.3, 0.75], col: '#7a5a48', alpha: 0.55 });
+    if (F.bundle != null) for (let k = 0; k < 3; k++) H.ironPipe(d, [[F.bundle + k * 16, -10], [F.bundle - 2 + k * 16, 200], [F.bundle + 2 + k * 16, 452]], 6, { flanges: [0.2 + k * 0.1, 0.65], col: k === 1 ? '#7a5a48' : '#6b7d70', alpha: 0.5 });
+    for (const [gx, gy, r] of F.gauges || []) {
       d.solid(SKETCH.ell(gx, gy, r, r, 16), { kind: 'dawn' });
       d.ellipse(gx, gy, r, r, { w: 1.8, col: S_INKDARK() });
       d.ellipse(gx, gy, r + 3, r + 3, { w: 1.5 });
       for (let k = 0; k < 7; k++) { const a = Math.PI * (0.8 + k * 0.233); d.line(gx + Math.cos(a) * r * 0.7, gy + Math.sin(a) * r * 0.7, gx + Math.cos(a) * r * 0.9, gy + Math.sin(a) * r * 0.9, { w: 0.7, col: S_INKDARK(), ov: 0 }); }
-      d.line(gx, gy, gx + Math.cos(-0.6) * r * 0.75, gy + Math.sin(-0.6) * r * 0.75, { w: 1.3, col: P.rust, ov: 0 });
+      d.line(gx, gy, gx + Math.cos(-0.6 + gx * 0.01) * r * 0.75, gy + Math.sin(-0.6 + gx * 0.01) * r * 0.75, { w: 1.3, col: P.rust, ov: 0 });
       d.line(gx, gy - r - 3, gx, 124, { w: 1.6 });
     }
     // hanging chains with hooks
-    for (const cx of [470, 820]) {
-      H.ironChain(d, [[cx, 56], [cx + 1, 130], [cx - 1, 200]], { link: 11, w: 1.3 });
-      if (true) { d.stroke([[cx, 200], [cx, 210], [cx + 6, 218], [cx + 10, 212]], { w: 2, curve: true }); continue; }
-      // a caged lamp: a warm bulb behind wire bars, with a little pool of light hatched round it
-      const ly = 226;
-      for (let k = 0; k < 40; k++) { const a = k / 40 * Math.PI * 2, r0 = 22, r1 = r0 + 6 + d.r() * 18; d.stroke([[cx + Math.cos(a) * r0, ly + Math.sin(a) * r0], [cx + Math.cos(a) * r1, ly + Math.sin(a) * r1]], { w: 0.6, col: '#f3d9a0', alpha: 0.45, sh: 0, p: [1, 0.6, 0.05] }); }
-      d.wash(SKETCH.ell(cx, ly, 14, 17, 14), IRON_P.core, { alpha: 0.9, off: 0, op: 'source-over', layer: 'white' });
-      d.wash(SKETCH.ell(cx - 2, ly - 3, 6, 8, 10), IRON_P.coreHot, { alpha: 1, off: 0, op: 'source-over', layer: 'white' });
-      d.stroke([[cx - 9, 204], [cx + 9, 204]], { w: 3 });
-      for (const bx of [-14, -6, 4, 12]) d.stroke([[cx + bx * 0.6, 204], [cx + bx, ly], [cx + bx * 0.5, ly + 22]], { w: 1.2, curve: true });
-      d.stroke(SKETCH.ell(cx, ly, 15, 6, 14, 0, 0, Math.PI), { w: 1.1, curve: true });
-      d.stroke([[cx - 6, ly + 22], [cx + 6, ly + 22]], { w: 2.2 });
+    for (const cx of F.chains || []) {
+      const len = 150 + ((cx * 7) % 5) * 14;
+      H.ironChain(d, [[cx, 56], [cx + 1, 56 + len * 0.5], [cx - 1, 56 + len]], { link: 11, w: 1.3 });
+      d.stroke([[cx, 56 + len], [cx, 66 + len], [cx + 6, 74 + len], [cx + 10, 68 + len]], { w: 2, curve: true });
     }
-    // a ladder up the right wall to a high hatch, and the hatch
-    H.ironLadder(d, 856, 150, 452, 18, { step: 13 });
-    d.shape([[846, 108], [884, 108], [884, 150], [846, 150]], { fill: '#2c2623', w: 1.8, corner: 30 });
-    d.rivets(850, 112, 880, 112, 3, { r: 1.3 }); H.ironStencil(d, '4', 865, 132, 14);
-    // a stencilled warning and a coal chute mouth at the top right
-    H.ironStencil(d, 'MIND THE STEAM', 300, 250, 13, { rot: -0.01 });
-    d.shape([[700, -10], [780, -10], [772, 34], [708, 34]], { fill: '#2a2421', w: 2, corner: 30, hatch: { a: 80, gap: 2.4, w: 0.55, alpha: 0.5, tone: x => 1 - (x - 700) / 80 } });
-    d.spot([[712, 30], [768, 30], [762, 40], [718, 40]], { spread: 0.3, col: '#151210' });
-    // a far crow's-nest of soot cobwebs in a corner (a little life)
-    d.stroke([[0, 160], [30, 140], [60, 150]], { w: 0.5, curve: true, alpha: 0.5 }); d.stroke([[0, 175], [24, 150], [44, 132]], { w: 0.5, curve: true, alpha: 0.5 });
+    // a ladder up the wall to a high hatch
+    if (F.ladder != null) {
+      const lx = F.ladder;
+      H.ironLadder(d, lx, 150, 452, 18, { step: 13 });
+      d.shape([[lx - 10, 108], [lx + 28, 108], [lx + 28, 150], [lx - 10, 150]], { fill: '#2c2623', w: 1.8, corner: 30 });
+      d.rivets(lx - 6, 112, lx + 24, 112, 3, { r: 1.3 }); H.ironStencil(d, String(chunk + 3), lx + 9, 132, 14);
+    }
+    // a coal chute mouth in the ceiling, with a spill of coal dust under it
+    if (F.chute != null) {
+      const c = F.chute;
+      d.shape([[c, -10], [c + 80, -10], [c + 72, 34], [c + 8, 34]], { fill: '#2a2421', w: 2, corner: 30, hatch: { a: 80, gap: 2.4, w: 0.55, alpha: 0.5, tone: x => 1 - (x - c) / 80 } });
+      d.spot([[c + 12, 30], [c + 68, 30], [c + 62, 40], [c + 18, 40]], { spread: 0.3, col: '#151210' });
+      for (let k = 0; k < 9; k++) d.spot(SKETCH.ell(c + 40 + (d.r() - 0.5) * 20, 50 + k * 9 + d.r() * 4, 2 + d.r() * 2, 2 + d.r() * 2, 6), { col: '#151210', alpha: 0.6 * (1 - k / 9) });
+    }
+    // a big riveted pressure tank lying on the wall
+    if (F.tank != null) {
+      const tx = F.tank, ty = 170, tw = 220, th = 90;
+      const tank = [[tx, ty], [tx + tw, ty], [tx + tw + 30, ty + th / 2], [tx + tw, ty + th], [tx, ty + th], [tx - 30, ty + th / 2]];
+      d.solid(tank, { kind: 'dark', curve: true });
+      d.shape(tank, { fill: '#5a463c', w: 2.4, curve: true, hatch: { a: 0, gap: 2.6, w: 0.55, alpha: 0.6, tone: (x, y) => 1 - Math.abs(y - ty - th * 0.3) / (th * 0.7) } });
+      for (const bx of [tx + 30, tx + tw - 30]) { d.stroke([[bx, ty + 2], [bx + 2, ty + th / 2], [bx, ty + th - 2]], { w: 1.4, curve: true }); d.rivets(bx, ty + 8, bx, ty + th - 8, 6, { r: 1.3 }); }
+      H.ironStencil(d, 'NO 2', tx + tw / 2, ty + th / 2 + 4, 16);
+      for (const sx of [tx + 40, tx + tw - 40]) d.stroke([[sx, ty + th], [sx - 10, ty + th + 40], [sx + 10, ty + th + 40]], { w: 2 });
+    }
+    if (F.stencil) H.ironStencil(d, F.stencil[0], F.stencil[1], F.stencil[2], 13, { rot: -0.01 });
+    // soot cobwebs in a corner (a little life)
+    if (F.cobweb) { d.stroke([[0, 160], [30, 140], [60, 150]], { w: 0.5, curve: true, alpha: 0.5 }); d.stroke([[0, 175], [24, 150], [44, 132]], { w: 0.5, curve: true, alpha: 0.5 }); }
   }, { flat: true, paper: 'dark', seed: 7100 + chunk });
   return key;
 };
@@ -190,23 +208,45 @@ IRON_ART.porthole = (world = 'hollow') => {
     const glass = SKETCH.ell(c, c, r, r, 36);
     d.solid(glass, { kind: 'dawn' });
     const ink = SKETCH.INK;
-    d.washIn(glass, () => {
-      d.wash(SKETCH.box(c - r - 6, c - r - 6, r * 2 + 12, r * 1.1 + 6), P.greyBlue, { alpha: 0.55, off: 0, spread: 1.4, edge: false });
-      d.wash(SKETCH.box(c - r - 6, c - 10, r * 2 + 12, 20), P.ochre, { alpha: 0.4, off: 0, spread: 1.6, edge: false });
-    });
-    // the moon left as paper, a crooked tree, a fence, a far house with a lit window, two muted pumpkins
-    d.lift(SKETCH.ell(c + 22, c - 26, 9, 9, 12), 1);
-    d.stroke(SKETCH.ell(c + 22, c - 26, 9, 9, 14, 0, -0.4, 5.6), { w: 0.8, curve: true, col: ink });
-    const hill = [[c - r, c + 14], [c - 20, c + 6], [c + 10, c + 10], [c + r, c + 2], [c + r, c + r], [c - r, c + r]];
-    d.washIn(glass, () => d.wash(hill, '#4d5a50', { alpha: 0.75, off: 0.5 })); d.stroke(hill.slice(0, 4), { w: 1, curve: true, col: ink });
-    d.stroke([[c - 24, c + 8], [c - 26, c - 14], [c - 20, c - 30], [c - 28, c - 40]], { w: 2.2, curve: true, col: ink, p: [1, 0.8, 0.1] });
-    d.stroke([[c - 25, c - 18], [c - 36, c - 26], [c - 42, c - 24]], { w: 1.2, curve: true, col: ink });
-    d.stroke([[c - 22, c - 26], [c - 12, c - 34], [c - 8, c - 42]], { w: 1.1, curve: true, col: ink });
-    for (let k = 0; k < 6; k++) d.line(c - 4 + k * 7, c + 4 - k * 0.6, c - 4 + k * 7, c - 6 - k * 0.6, { w: 0.9, col: ink, ov: 0.5 });
-    d.line(c - 6, c - 2, c + 36, c - 6, { w: 0.8, col: ink });
-    d.shape([[c + 30, c - 2], [c + 30, c - 14], [c + 36, c - 22], [c + 42, c - 14], [c + 42, c - 2]], { w: 1, col: ink, fill: '#2d2a33', corner: 30 });
-    d.wash(SKETCH.box(c + 34, c - 12, 3.5, 4), P.core, { alpha: 0.95, off: 0, layers: 1 });
-    for (const [px, py] of [[c - 34, c + 22], [c - 18, c + 26]]) { d.wash(SKETCH.ell(px, py, 6, 4.5, 10), '#c58a3e', { alpha: 0.85, off: 0.4 }); d.stroke(SKETCH.ell(px, py, 6, 4.5, 12, 0, 0, 5.8), { w: 0.9, curve: true, col: ink }); d.stroke([[px, py - 4], [px + 1, py - 7]], { w: 1, col: ink }); }
+    if (world === 'candy') {
+      // Sugar Rush Factory (World 16) at sunset: a pink sky, gumdrop hills, a candy-cane chimney puffing, a lollipop
+      d.washIn(glass, () => {
+        d.wash(SKETCH.box(c - r - 6, c - r - 6, r * 2 + 12, r * 1.1 + 6), '#e9a7b4', { alpha: 0.6, off: 0, spread: 1.4, edge: false });
+        d.wash(SKETCH.box(c - r - 6, c - 6, r * 2 + 12, 16), P.ochre, { alpha: 0.4, off: 0, spread: 1.6, edge: false });
+      });
+      for (const [hx, hy, hr, col] of [[c - 26, c + 30, 26, '#7fb08a'], [c + 20, c + 34, 30, '#d98aa0'], [c - 2, c + 44, 22, '#9fc3d8']]) {
+        const hill = SKETCH.ell(hx, hy, hr, hr * 0.8, 18, 0, Math.PI, Math.PI * 2).concat([[hx + hr, hy + 30], [hx - hr, hy + 30]]);
+        d.washIn(glass, () => d.wash(hill, col, { alpha: 0.85, off: 0.4 }));
+        d.stroke(SKETCH.ell(hx, hy, hr, hr * 0.8, 18, 0, Math.PI, Math.PI * 2), { w: 1, curve: true, col: ink });
+        for (let k = 0; k < 4; k++) d.ellipse(hx - hr * 0.5 + k * hr * 0.33, hy - hr * 0.45 + (k % 2) * 6, 1.3, 1.3, { w: 0.8, col: '#fffaf0', ink: false });
+      }
+      // the factory chimney: a striped candy cane with a puff of pink smoke
+      d.shape([[c + 24, c + 10], [c + 24, c - 26], [c + 34, c - 26], [c + 34, c + 10]], { fill: '#fffaf0', w: 1.1, col: ink, corner: 30 });
+      for (let k = 0; k < 4; k++) d.line(c + 24, c + 4 - k * 9, c + 34, c - 2 - k * 9, { w: 2, col: '#c0392b', ov: 0 });
+      for (let k = 0; k < 3; k++) d.cloud(c + 34 + k * 8, c - 34 - k * 8, 5 + k * 2, { fill: '#f6c6d0', fillAlpha: 0.7, puffs: 5, w: 0.8, col: ink, seed: 60 + k });
+      // a big lollipop on the hill
+      d.stroke([[c - 30, c + 12], [c - 30, c - 12]], { w: 1.6, col: ink });
+      d.ellipse(c - 30, c - 20, 9, 9, { fill: '#e7b84a', w: 1.1, col: ink });
+      d.stroke(SKETCH.ell(c - 30, c - 20, 5, 5, 14, 0, 0, 5.5), { w: 1, curve: true, col: '#c0392b' });
+    } else {
+      d.washIn(glass, () => {
+        d.wash(SKETCH.box(c - r - 6, c - r - 6, r * 2 + 12, r * 1.1 + 6), P.greyBlue, { alpha: 0.55, off: 0, spread: 1.4, edge: false });
+        d.wash(SKETCH.box(c - r - 6, c - 10, r * 2 + 12, 20), P.ochre, { alpha: 0.4, off: 0, spread: 1.6, edge: false });
+      });
+      // the moon left as paper, a crooked tree, a fence, a far house with a lit window, two muted pumpkins
+      d.lift(SKETCH.ell(c + 22, c - 26, 9, 9, 12), 1);
+      d.stroke(SKETCH.ell(c + 22, c - 26, 9, 9, 14, 0, -0.4, 5.6), { w: 0.8, curve: true, col: ink });
+      const hill = [[c - r, c + 14], [c - 20, c + 6], [c + 10, c + 10], [c + r, c + 2], [c + r, c + r], [c - r, c + r]];
+      d.washIn(glass, () => d.wash(hill, '#4d5a50', { alpha: 0.75, off: 0.5 })); d.stroke(hill.slice(0, 4), { w: 1, curve: true, col: ink });
+      d.stroke([[c - 24, c + 8], [c - 26, c - 14], [c - 20, c - 30], [c - 28, c - 40]], { w: 2.2, curve: true, col: ink, p: [1, 0.8, 0.1] });
+      d.stroke([[c - 25, c - 18], [c - 36, c - 26], [c - 42, c - 24]], { w: 1.2, curve: true, col: ink });
+      d.stroke([[c - 22, c - 26], [c - 12, c - 34], [c - 8, c - 42]], { w: 1.1, curve: true, col: ink });
+      for (let k = 0; k < 6; k++) d.line(c - 4 + k * 7, c + 4 - k * 0.6, c - 4 + k * 7, c - 6 - k * 0.6, { w: 0.9, col: ink, ov: 0.5 });
+      d.line(c - 6, c - 2, c + 36, c - 6, { w: 0.8, col: ink });
+      d.shape([[c + 30, c - 2], [c + 30, c - 14], [c + 36, c - 22], [c + 42, c - 14], [c + 42, c - 2]], { w: 1, col: ink, fill: '#2d2a33', corner: 30 });
+      d.wash(SKETCH.box(c + 34, c - 12, 3.5, 4), P.core, { alpha: 0.95, off: 0, layers: 1 });
+      for (const [px, py] of [[c - 34, c + 22], [c - 18, c + 26]]) { d.wash(SKETCH.ell(px, py, 6, 4.5, 10), '#c58a3e', { alpha: 0.85, off: 0.4 }); d.stroke(SKETCH.ell(px, py, 6, 4.5, 12, 0, 0, 5.8), { w: 0.9, curve: true, col: ink }); d.stroke([[px, py - 4], [px + 1, py - 7]], { w: 1, col: ink }); }
+    }
     // a glare streak across the glass (chalk) and the brass rim with bolts
     d.stroke([[c - 30, c - 30], [c - 10, c - 44]], { w: 3, col: '#fffaf0', alpha: 0.6, layer: 'white', sh: 0 });
     d.stroke([[c - 36, c - 18], [c - 26, c - 26]], { w: 1.6, col: '#fffaf0', alpha: 0.5, layer: 'white', sh: 0 });
@@ -315,4 +355,53 @@ IRON_ART.dial = (g, x, y, r, k) => {
   d.stroke([[x - Math.cos(a) * r * 0.15, y - Math.sin(a) * r * 0.15], [x + Math.cos(a) * r * 0.82, y + Math.sin(a) * r * 0.82]], { w: 2, col: SKETCH.INK, p: [1, 1, 0.2], sh: 0 });
   d.stroke(SKETCH.ell(x, y, r, r, 20, 0, 0.3, 6.5), { w: 1.6, curve: true, col: SKETCH.INK, c: [x, y] });
   g.fillStyle = SKETCH.INK; g.beginPath(); SKETCH.ell(x, y, 2.4, 2.4, 8).forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.fill();
+};
+// the ember cage at the core: a squat plinth, a domed cage of riveted bars round the ember (drawn live), and the two
+// locking-wheel axle housings out at +-92 (wheels live at y -70). Anchor: the bottom middle (floor).
+IRON_ART.emberCage = () => {
+  const key = 'iron:embercage';
+  if (!SKETCH.has(key)) SKETCH.sheet(key, 280, 240, d => {
+    const P = IRON_P, cx = 140, fy = 232, H = IRON_ART.helpers;
+    // the plinth: a stepped iron block with a lit top edge
+    const pl = [[cx - 74, fy], [cx - 66, fy - 30], [cx + 66, fy - 30], [cx + 74, fy]];
+    d.solid(pl, { kind: 'dark' });
+    d.shape(pl, { fill: '#3a322d', w: 2.2, corner: 30, hatch: { a: 70, gap: 2.2, w: 0.55, alpha: 0.55, tone: (x, y) => 1 - (y - fy + 30) / 30 } });
+    d.stroke([[cx - 66, fy - 30], [cx + 66, fy - 30]], { w: 1.8, col: '#f2b25a', sh: 0, layer: 'white', alpha: 0.7 });
+    d.rivets(cx - 58, fy - 12, cx + 58, fy - 12, 7, { r: 1.8 });
+    d.word('CORE', cx, fy - 16, 10, { align: 'center', col: P.ochre, w: 1.4 });
+    // axle housings: a pipe out each side to a flanged boss the wheel sits on
+    for (const s of [-1, 1]) {
+      H.ironPipe(d, [[cx + s * 50, fy - 66], [cx + s * 74, fy - 68], [cx + s * 92, fy - 70]], 5, { flanges: [0.55], col: '#6b7d70', alpha: 0.85 });
+      const boss = SKETCH.ell(cx + s * 92, fy - 70, 12, 12, 16);
+      d.solid(boss, { kind: 'dark' }); d.shape(boss, { fill: P.ochreDeep, w: 1.6, curve: true });
+      // a ratchet pawl and the chain down to the plinth
+      d.stroke([[cx + s * 92, fy - 58], [cx + s * 92, fy - 30], [cx + s * 74, fy - 22]], { w: 1.3, curve: true });
+      for (let k = 0; k < 4; k++) d.ellipse(cx + s * 92, fy - 54 + k * 7, 2.2, 3.4, { w: 0.9 });
+    }
+    // the cage: a dome of curved bars springing from a base ring on the plinth
+    const ringY = fy - 34, topY = fy - 196, rx = 56;
+    d.stroke(SKETCH.ell(cx, ringY, rx + 4, 8, 30, 0, 0, Math.PI * 2), { w: 2.6, curve: true });
+    for (let i = 0; i <= 6; i++) {
+      const f = i / 6, bx = cx - rx + f * rx * 2, bulge = Math.sin(f * Math.PI);
+      const pts = [[bx, ringY], [cx + (bx - cx) * 1.12, ringY - 60], [cx + (bx - cx) * 0.9, ringY - 120], [cx + (bx - cx) * 0.35, topY + 12], [cx, topY]];
+      const front = i % 2 === 0;
+      d.stroke(pts, { w: front ? 2.6 : 1.4, curve: true, alpha: front ? 1 : 0.6, p: [1, 1, 0.6] });
+      if (front && bulge > 0.2) d.stroke(pts.slice(0, 3).map(([x, y]) => [x + 1.6, y]), { w: 0.8, col: '#f2b25a', sh: 0, curve: true, layer: 'white', alpha: 0.55 * bulge });
+    }
+    // two hoop bands round the cage, riveted where they cross the bars
+    for (const [y, r] of [[ringY - 60, rx * 1.12], [ringY - 120, rx * 0.9]]) {
+      d.stroke(SKETCH.ell(cx, y, r, 7, 30, 0, 0, Math.PI), { w: 2, curve: true });
+      d.stroke(SKETCH.ell(cx, y, r, 7, 30, 0, Math.PI, Math.PI * 2), { w: 1, curve: true, alpha: 0.5 });
+      for (let i = 0; i <= 6; i += 2) d.rivet(cx - r + i / 6 * r * 2, y + Math.sin(i / 6 * Math.PI) * 6, 1.6);
+    }
+    // the crown: a cap with a lifting ring (the ember comes up through it)
+    const cap = SKETCH.ell(cx, topY, 16, 8, 16);
+    d.solid(cap, { kind: 'dark' }); d.shape(cap, { fill: P.rust, w: 1.8, curve: true });
+    d.stroke(SKETCH.ell(cx, topY - 14, 9, 9, 16, 0, 0, Math.PI * 2), { w: 1.8, curve: true });
+    // the ember's glow on the bars from inside (glaze only, the ember itself is live)
+    d.wash(SKETCH.ell(cx, ringY - 80, 46, 56, 24), P.ember, { alpha: 0.16, off: 0, spread: 2.2, edge: false, layers: 3 });
+    // scorch hatching on the plinth under the cage
+    d.hatch([[cx - 50, fy - 30], [cx + 50, fy - 30], [cx + 40, fy - 26], [cx - 40, fy - 26]], { a: 10, gap: 1.6, w: 0.5, alpha: 0.6, col: '#120e0c' });
+  }, { ox: 140, oy: 232, paper: 'dark', seed: 7900 });
+  return key;
 };

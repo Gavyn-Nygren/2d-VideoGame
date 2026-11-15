@@ -174,7 +174,7 @@ const SKETCH = (() => {
     d.ctx = name => L(name);
     // an opaque underlayer of paper inside a form, so a solid thing hides what is behind it (o.kind: the paper)
     d.solid = (pts, o = {}) => {
-      const g = layers.base || L('wash'), cv = paperCanvas(o.kind || d.paperKind);
+      const g = layers.base || L('wash'), cv = paperCanvas(o.kind || d.paperKind, true);
       g.save(); g.fillStyle = g.createPattern(cv, 'repeat');
       const q = o.curve ? spline(pts, true, 3) : pts;
       g.beginPath(); q.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath();
@@ -708,8 +708,9 @@ const SKETCH = (() => {
   };
   S.PAPERS = PAPERS;
   const paperCv = {};
-  function paperCanvas(kind) {
-    const k = kind + '@' + S.res; if (paperCv[k]) return paperCv[k];
+  // plain: no darkened page edge (the paper laid under a sheet's solids, so tiled sheets join without a seam)
+  function paperCanvas(kind, plain) {
+    const k = kind + '@' + S.res + (plain ? ':plain' : ''); if (paperCv[k]) return paperCv[k];
     const P = PAPERS[kind] || PAPERS.sand, res = S.res, w = Math.round(W * res), h = Math.round(H * res);
     // the mottle at half size (it is soft), grain and fibres at full size
     const cv = mk(w, h), g = cv.getContext('2d'), im = g.createImageData(w, h), D = im.data, R = rng(kind.length * 7 + 1);
@@ -720,7 +721,7 @@ const SKETCH = (() => {
       const gr = (noise2(6, X / 1.7, Y / 1.7) - 0.5) * 0.9 + (R() - 0.5) * 0.5;
       // the page edge: darker toward every side, with a ragged falloff
       const ex = Math.min(X, W - X), ey = Math.min(Y, H - Y), e = Math.min(ex / 70, ey / 60) + (noise2(7, X / 40, Y / 40) - 0.5) * 0.35;
-      const edge = e < 1 ? Math.pow(1 - Math.max(0, e), 2.2) : 0;
+      const edge = !plain && e < 1 ? Math.pow(1 - Math.max(0, e), 2.2) : 0;
       const i = (y * w + x) * 4, v = m * P.mott + gr * (dark ? 7 : 9);
       for (let c = 0; c < 3; c++) D[i + c] = Math.max(0, Math.min(255, P.base[c] + v * (dark ? 0.8 : 1) - edge * (P.base[c] - P.edge[c]) * 0.42));
       D[i + 3] = 255;

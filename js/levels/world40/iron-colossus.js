@@ -1021,7 +1021,7 @@ function ironDrawSay(st, y, z) {
 // hints and job badges over the heroes' heads
 function ironDrawHeads(st, z) {
   if (G.introT > 0) return;
-  const roles = st.badgeT > 0 && !st.cut ? ironCall(ironPh(st), 'roles', st) : null;
+  const roles = st.badgeT > 0 && !st.cut ? ironCall(ironPh(st), 'roles', st) : null, placed = [];
   for (const p of G.players) {
     if (!p.alive) continue;
     let top = p.y - 10 - ironHeadLift(st, p);
@@ -1042,6 +1042,9 @@ function ironDrawHeads(st, z) {
     const tw = ctx.measureText(h.text).width + 22, th = fs + 12;
     let x = clamp(p.x + p.w / 2 - tw / 2, 4, W - tw - 4), yy = top - th - 6;
     if (yy < 74 * z) yy = p.y + p.h + 10;
+    // the two heroes close together: stack the second hint above the first rather than over it
+    for (const b of placed) if (x < b.x + b.w + 4 && b.x < x + tw + 4 && yy < b.y + b.h + 4 && b.y < yy + th + 4) yy = b.y - th - 6;
+    placed.push({ x, y: yy, w: tw, h: th });
     ironPillBg(ctx, x, yy, tw, th, { gold: h.gold, ring: h.gold ? '#a77812' : PCOL[p.id], alpha: a });
     ctx.save(); ctx.globalAlpha *= a; text_(ctx, h.text, x + tw / 2, yy + th / 2 + 1, fs, h.gold ? '#7a520a' : SKETCH.INK); ctx.restore();
   }
