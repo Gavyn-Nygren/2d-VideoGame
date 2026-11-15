@@ -271,6 +271,7 @@ function ironBody(p, dt, solids, o = {}) {
   if (boosting && p.vy < -100 && vy0 >= -1) { p.vy *= Math.sqrt(IRON.boost); p.boostT = 0.5; Sfx.play('ironBoost', p.id); }
   p.boostT = Math.max(0, (p.boostT || 0) - dt);
   if (was && g0 && !g0.off) { const m = g0.src || g0; p.x += m.dx || 0; p.y += m.dy || 0; }
+  const xOld = p.x;
   p.x += p.vx * dt;
   for (const r of solids) {
     if (r.one || r.off || r.head || r.slope || p.y + p.h <= r.y0 + 4 || p.y >= r.y1 - 0.5) continue;
@@ -288,7 +289,9 @@ function ironBody(p, dt, solids, o = {}) {
       // a one-way slope (a ramp, a tilted plate): its top is ya at x0 .. yb at x1, under the hero's middle
       const cx = clamp(p.x + p.w / 2, r.x0, r.x1), sy = r.ya + (r.yb - r.ya) * (cx - r.x0) / (r.x1 - r.x0);
       const tol = 3 + Math.abs(r.yb - r.ya) / (r.x1 - r.x0) * Math.abs(p.vx * dt) + Math.max(0, r.dy || 0) + (was && g0 === r ? 8 : 0);
-      if (p.vy >= 0 && p.y + p.h >= sy && feet0 <= sy + tol && !(p.dropT > 0)) { p.y = sy - p.h; p.vy = 0; ground = r; }
+      // r.catch: a ramp rising into the feet of someone still going up (jumping onto it toward its high end) catches them
+      const sy0 = r.catch ? r.ya + (r.yb - r.ya) * (clamp(xOld + p.w / 2, r.x0, r.x1) - r.x0) / (r.x1 - r.x0) : 0;
+      if ((p.vy >= 0 || r.catch && feet0 <= sy0 + 0.5) && p.y + p.h >= sy && feet0 <= sy + tol && !(p.dropT > 0)) { p.y = sy - p.h; p.vy = 0; ground = r; }
       continue;
     }
     if (p.vy >= 0 && p.y + p.h >= r.y0 && feet0 <= r.y0 + 2 + Math.max(0, r.dy || 0) && !(r.one && p.dropT > 0 && !r.head)) { p.y = r.y0 - p.h; p.vy = 0; ground = r; }
