@@ -2,7 +2,7 @@
 'use strict';
 
 /* ===== 33-2 Flash Flood Climb (mode 'floodclimb', team, scrolls UP, Gavyn's pick) =====
-   A canyon is filling with brown floodwater. Climb, boost and rope each other up before the water reaches you. The
+   A canyon is filling with brown floodwater. Winch and rope each other up before the water reaches you. The
    water never stops.
    World px: y grows downward, the canyon floor of a stretch is ledge 0 at y = 480 and the ledges go up from there
    (negative y). Ledges stick out from the canyon walls, left and right in turn, and you can jump up through them from
@@ -12,9 +12,11 @@
    ROPE HERO (G.mst.rope): runs and jumps. On a ledge end with an anchor ring, HOLD the action to drop the rope (it
      reaches 190 px down); the partner climbs it with ▲ ▼. Let go while someone is on it and they get 0.4 s, then slide
      back down to where they started.
-   BOOST HERO (G.mst.boost): stronger legs. HOLD the action while standing still to crouch into a springboard: a
-     partner who jumps from next to you goes 1.77 times higher (high enough for the next ledge; a plain jump is not).
-     Tap the action next to a wedged boulder to shove it off into the flood.
+   WINCH HERO (G.mst.boost; 'boost' is only the old name in the code): strong arms. Every climb has an ORE BUCKET on a
+     rope (a lift cage on the Mine Scaffold) with a crank 100 px along the ledge: the rope hero stands in the bucket and
+     the winch hero HOLDS the action at the crank to wind it up to the next ledge (a plain jump is not high enough).
+     Tap the action next to a wedged boulder to shove it off into the flood. (Gavyn, 2026-11-15: the winch replaced a
+     crouch springboard, "jump off your partner".)
    Both jump, climb a dropped rope (jump next to it to grab on; ▲ or jump climbs, ▼ slides, jump with ◀ ▶ lets go) and can ride a
    floating log (it rolls over 2.5 s after you step on it).
    WATER: rises all the time (faster each stretch), and keeps up with fast climbers: it is never more than 250 px
@@ -24,9 +26,9 @@
    again. CRUMBLING SHELVES crack when touched and fall 1.8 s later. WATERFALL SPOUTS burst from the wall on a rhythm
    (a drip, then a 1 s gush that shoves you along the ledge and knocks you off a rope). FLASH SURGE (once a stretch
    from stretch 2): a siren, "SURGE!", the water jumps 90 px over 2 s; a white line on the wall shows where to.
-   STRETCHES (roles swap): The Dry Wash (teaches boost then rope), Root Wall (logs, crumbling shelves, a boulder), The
-   Narrows (spouts, a surge), Mine Scaffold (planks too wobbly to boost on: a hand-cranked lift, the boost hero holds
-   the action at the crank while the rope hero rides; ending on the rim next to the van as the canyon brims over).
+   STRETCHES (roles swap): The Dry Wash (teaches winch then rope), Root Wall (logs, crumbling shelves, a boulder), The
+   Narrows (spouts, a surge), Mine Scaffold (two of the climbs are old mine lift cages instead of buckets; ending on the
+   rim next to the van as the canyon brims over).
    RAIN GAUGES: 20, on the ledges (some just above the water at the start) and on little shelves a plain jump reaches.
    GOLD HELP (3 sweeps in a stretch, restarts included, only while both are playing): a gold life ring, the water
    rises 30% slower for the rest of the stretch.
@@ -36,9 +38,9 @@
 (() => {
   const K = STORMCHASE, TAU = Math.PI * 2, FONT = K.FONT;
   const S = {
-    floor: 480, g: 1700, jumpV: 600, boostK: 1.33, runV: 220, acc: 2400, maxFall: 900, climbV: 160, ropeLen: 190, ropeDrop: 0.3,
-    graceT: 0.4, boostR: 24, grabR: 18, anchorR: 22, bw: 22, bh: 26, sweepT: 1.5, sweepJump: 16, crumbleT: 1.8, logRoll: 2.5,
-    surge: 90, surgeT: 2, spoutIdle: 3.2, spoutWarn: 1, spoutGush: 1, spoutPush: 260, crankV: 85, shelfH: 84, goldT: 190, silverT: 330,
+    floor: 480, g: 1700, jumpV: 600, runV: 220, acc: 2400, maxFall: 900, climbV: 160, ropeLen: 190, ropeDrop: 0.3,
+    graceT: 0.4, grabR: 18, anchorR: 22, bw: 22, bh: 26, sweepT: 1.5, sweepJump: 16, crumbleT: 1.8, logRoll: 2.5,
+    surge: 90, surgeT: 2, spoutIdle: 3.2, spoutWarn: 1, spoutGush: 1, spoutPush: 260, crankV: 150, shelfH: 84, goldT: 190, silverT: 330,
     idleWait: 12, ledgeH: 16, wallL: 130, wallR: 830, chase: 250, chaseV: 120, calmT: 4,
   };
 
@@ -52,7 +54,7 @@
     restart(st);
     K.fx(st); labels(st); mirror(st);
   }
-  function labels(st) { const w = []; w[st.rope] = 'rope'; w[st.boost] = 'boost'; K.actLabels(w, 'rope'); }
+  function labels(st) { const w = []; w[st.rope] = 'rope'; w[st.boost] = 'winch'; K.actLabels(w, 'rope'); }
   // the canyon for one stretch: ledges zig-zag up between the walls, one climb column per ledge
   function build(st, def) {
     const wl = def.wallL || S.wallL, wr = def.wallR || S.wallR;
@@ -81,12 +83,13 @@
     const rim = ledges[n], a = X[n - 1];
     if (a > (wl + wr) / 2) { rim.x0 = a - 20; rim.ax = a - 2; rim.rx = a - 30; rim.end = -1; } else { rim.x1 = a + 20; rim.ax = a + 2; rim.rx = a + 30; rim.end = 1; }
     st.X = X; st.ledges = ledges; st.topY = rim.y;
-    // lifts (Mine Scaffold): the climb from ledge j uses a cage at the column and a crank 90 px along the ledge
-    st.lifts = (def.lifts || []).map(j => {
-      const lx = X[j], L0 = ledges[j], dir = L0.x1 - lx > lx - L0.x0 ? 1 : -1;
-      return { j, x: lx, y: L0.y, top: ledges[j + 1].y, crankX: lx + dir * 100, u: 0, cy: L0.y };
+    // a winch at every climb: the climb from ledge j uses an ore bucket (def.lifts: a lift cage) at the column and a
+    // crank 100 px along the ledge
+    st.lifts = X.map((lx, j) => {
+      const L0 = ledges[j], dir = L0.x1 - lx > lx - L0.x0 ? 1 : -1;
+      return { j, x: lx, y: L0.y, top: ledges[j + 1].y, crankX: lx + dir * 100, dir, u: 0, cy: L0.y, kind: (def.lifts || []).includes(j) ? 'cage' : 'bucket' };
     });
-    // boulders: wedged at the boost column of ledge j; shoved, they roll to the wall and drop into the flood
+    // boulders: wedged at the winch column of ledge j (in the bucket's way); shoved, they roll to the wall and drop into the flood
     st.rocks = (def.rocks || []).map(j => ({ j, x: X[j], y: ledges[j].y, w: 54, h: 120, gone: false, vx: 0, fall: 0 }));
     // shelves with gauges, near the wall on each ledge listed
     st.shelves = []; st.gauges = [];
@@ -212,15 +215,13 @@
       }
       return;
     }
-    const want = h.st === 'crouch' || h.st === 'hold' || h.st === 'crank' ? 0 : (i.right ? 1 : 0) - (i.left ? 1 : 0);
+    const want = h.st === 'hold' || h.st === 'crank' ? 0 : (i.right ? 1 : 0) - (i.left ? 1 : 0);
     if (want) h.face = want;
-    // the boost hero's crouch and crank; the rope hero's rope
+    // the winch hero's crank; the rope hero's rope
     const atCrank = !isRope && h.grounded && st.lifts.find(l => Math.abs(h.x - l.crankX) < 22 && Math.abs(h.y - l.y) < 2);
-    if (!isRope && h.grounded && i.act && Math.abs(h.vx) < 40 && h.stun <= 0) {
-      if (atCrank) h.st = 'crank';
-      else if (h.on >= 0 && !onScaffold(st, h)) h.st = 'crouch';
-      else { h.st = 'free'; K.hintOnce(st, 'wobble', h.id, 'Too wobbly to boost here: use the lift!'); }
-    } else if (h.st === 'crouch' || h.st === 'crank') h.st = 'free';
+    if (!isRope && h.grounded && i.act && Math.abs(h.vx) < 40 && h.stun <= 0 && atCrank) h.st = 'crank';
+    else if (h.st === 'crank') h.st = 'free';
+    if (!isRope && p.pendingAct && h.grounded && !atCrank && !st.rocks.some(r => !r.gone && !r.vx && Math.abs(r.y - h.y) < 2 && Math.abs(r.x - h.x) < r.w / 2 + 26)) K.hintOnce(st, 'crank' + st.k + h.on, h.id, 'Hold the action at the crank to wind the bucket up');
     if (isRope) {
       const L1 = st.ledges[h.on];
       const at = h.grounded && L1 && L1.ax !== undefined && L1.j > 0 && Math.abs(h.x - L1.ax) < S.anchorR;
@@ -233,28 +234,22 @@
       }
       if (p.pendingAct && !at && h.grounded) K.hintOnce(st, 'anchor' + st.k + h.on, h.id, 'Drop the rope at the ring on a ledge end');
     }
-    // the boost hero shoves a boulder
+    // the winch hero shoves a boulder
     if (!isRope && p.pendingAct && h.grounded) {
       const r = st.rocks.find(r => !r.gone && !r.vx && Math.abs(r.y - h.y) < 2 && Math.abs(r.x - h.x) < r.w / 2 + 26);
       if (r) { r.vx = Math.sign(r.x - h.x || 1) * 340; Sfx.play('floodclimbShove'); K.pop(st, r.x, r.y - 140, 'SHOVE!', '#ffffff', 22); st.stats.shoves++; h.st = 'free'; }
     }
-    if (h.st === 'hold' || h.st === 'crouch' || h.st === 'crank') { h.vx = 0; gravity(st, h, dt); return; }
+    if (h.st === 'hold' || h.st === 'crank') { h.vx = 0; gravity(st, h, dt); return; }
     const acc = h.grounded ? S.acc : S.acc * 0.55;
     if (h.pushT <= 0) h.vx = approach(h.vx, want * S.runV, acc * dt);
-    // jumping: from next to a crouching boost hero it is a boost; next to a dropped rope it grabs on
+    // jumping: next to a dropped rope it grabs on
     if (jump && h.stun <= 0) {
       const R = st.ropeOn, rl = R && st.ropeU >= 1;
       if (rl && Math.abs(h.x - R.rx) < S.grabR && h.y > R.y + 20 && h.y <= R.y + S.ropeLen + 30 && h.id !== st.rope) {
         h.st = 'rope'; h.ropeT = 0; h.vx = 0; h.vy = 0; h.grounded = false; h.y = Math.min(h.y - 4, R.y + S.ropeLen); Sfx.play('floodclimbGrab');
         return;
       }
-      if (h.grounded) {
-        const B = st.h[st.boost];
-        const boost = h.id === st.rope && B.st === 'crouch' && Math.abs(B.x - h.x) < S.boostR + 4 && Math.abs(B.y - h.y) < 4;
-        h.vy = -S.jumpV * (boost ? S.boostK : 1); h.grounded = false; h.sq = 0.5;
-        if (boost) { st.stats.boosts++; B.sq = 1; Sfx.play('floodclimbBoing'); K.pop(st, B.x, B.y - 40, 'BOING!', '#ffe08a', 20); for (let k = 0; k < 8; k++) K.part(st, B.x, B.y, (Math.random() - 0.5) * 200, -100 - Math.random() * 100, 0.5, '#ffffff', 3, 400, 'star'); }
-        else Sfx.play('floodclimbJump', h.id);
-      }
+      if (h.grounded) { h.vy = -S.jumpV; h.grounded = false; h.sq = 0.5; Sfx.play('floodclimbJump', h.id); }
     }
     h.x += h.vx * dt;
     // walls and boulders
@@ -268,7 +263,6 @@
     }
     gravity(st, h, dt);
   }
-  const onScaffold = (st, h) => st.def.scaffold && st.lifts.some(l => l.j === h.on);
   function gravity(st, h, dt) {
     const oy = h.y;
     if (h.grounded) {
@@ -332,7 +326,7 @@
         const dx = (h.x - sp.x) * -sp.side;
         if (dx < 0 || dx > 200 || h.y < sp.y - 10 || h.y > sp.y + 40) continue;
         if (h.st === 'rope') { h.st = 'free'; h.vy = 100; h.grounded = false; }
-        if (h.st === 'crouch' || h.st === 'hold' || h.st === 'crank') h.st = 'free';
+        if (h.st === 'hold' || h.st === 'crank') h.st = 'free';
         h.vx = -sp.side * S.spoutPush; h.pushT = 0.15;
         const cycN = Math.round((sp.t - u) / cyc) + 1;
         if (h.gushHit !== cycN) { h.gushHit = cycN; st.stats.gushes++; K.pop(st, h.x, h.y - 50, 'Splosh!', '#bfe6ff', 18); K.hintOnce(st, 'spout' + st.k, h.id, 'Wait for the gush to stop!'); }
@@ -344,7 +338,11 @@
       const B = st.h[st.boost], rid = st.h.find(h => h.grounded && Math.abs(h.y - l.cy) < 3 && Math.abs(h.x - l.x) < 28);
       const crank = B.st === 'crank' && Math.abs(B.x - l.crankX) < 22;
       const oy = l.cy;
-      if (crank && l.cy > l.top) { l.cy = Math.max(l.top, l.cy - S.crankV * dt); if (Math.random() < 0.2) Sfx.play('floodclimbCrank'); }
+      if (crank && l.cy > l.top) {
+        l.cy = Math.max(l.top, l.cy - S.crankV * dt); if (Math.random() < 0.2) Sfx.play('floodclimbCrank');
+        if (l.cy - l.top < 3) l.cy = l.top;   // (the last few px at once: a rider this close steps onto the ledge)
+        if (l.cy <= l.top && rid) { st.stats.rides++; Sfx.play('floodclimbClank'); K.pop(st, l.x, l.top - 60, 'CLANK!', '#ffe08a', 18); }
+      }
       // an empty cage goes back down only when both heroes are below its top (someone may still need a ride)
       else if (!crank && !rid && l.cy < l.y && st.h.every(h => h.st === 'swept' || h.on <= l.j)) l.cy = Math.min(l.y, l.cy + S.crankV * 1.5 * dt);
       // carry whoever stands in the cage (at the top the cage is level with the ledge: nobody is carried down)
@@ -479,7 +477,7 @@
   }
 
   /* ---------- what to do next ----------
-     plan(st): { stage ('boost' | 'rope' | 'lift' | 'down' | 'top'), j (the ledge both should leave), rope: { x, act, jump,
+     plan(st): { stage ('rope' | 'lift' | 'down' | 'top'), j (the ledge both should leave), rope: { x, act, jump,
        up, why }, boost: { x, act, jump, up, why }, waterGap (px from the lower hero's feet to the water), gauge (one worth
        a detour, or null) } */
   function ledgeOf(st, h) {
@@ -498,7 +496,7 @@
     const lowY = Math.max(R.st === 'swept' ? -1e9 : R.y, B.st === 'swept' ? -1e9 : B.y);
     out.waterGap = st.water - lowY;
     if (R.st === 'swept' || B.st === 'swept') { out.stage = 'wait'; return out; }
-    // the rope hero fell below the boost hero: the boost hero comes down to them (off the open end of its ledge)
+    // the rope hero fell below the winch hero: the winch hero comes down to them (off the open end of its ledge)
     if (r < b) {
       const L1 = st.ledges[b];
       out.stage = 'down'; out.j = r;
@@ -515,22 +513,9 @@
     const X = st.X[j], up = st.ledges[j + 1], lift = st.lifts.find(l => l.j === j);
     const inward = up.end === -1 ? 1 : -1; // which way ledge j+1 runs from its end
     if (r === j && lift) {
-      // the lift: the boost hero cranks, the rope hero rides
+      // the winch: the winch hero cranks, the rope hero rides
       out.stage = 'lift';
-      // a gauge on this ledge first (while the cage is still down)
-      const gg = lift.cy >= lift.y - 0.5 ? gaugeFor(st, j, out.waterGap) : null;
-      if (gg) { out.gauge = gg; out.rope = { x: gg.x, why: 'gauge' }; out.boost = { x: lift.crankX, act: false, why: 'crank-wait' }; return out; }
-      const inCage = Math.abs(R.x - lift.x) < 14 && R.grounded && Math.abs(R.y - lift.cy) < 3;
-      out.rope = { x: lift.x, why: inCage ? 'ride' : 'cage' };
-      const atCrank = Math.abs(B.x - lift.crankX) < 14 && B.grounded;
-      out.boost = { x: lift.crankX, act: atCrank && inCage, why: inCage ? 'crank' : 'crank-wait' };
-      // the cage at the top: step off onto the ledge
-      if (lift.cy <= lift.top + 0.5 && inCage) out.rope = { x: up.ax, why: 'off' };
-      return out;
-    }
-    if (r === j) {
-      out.stage = 'boost';
-      // a boulder in the way: the boost hero shoves it first
+      // a boulder in the bucket's way: the winch hero shoves it first
       const rock = st.rocks.find(k => !k.gone && k.j === j && k.fall <= 0);
       if (rock) {
         const side = Math.sign(B.x - rock.x) || 1, bx = rock.x + side * (rock.w / 2 + 14);
@@ -538,13 +523,19 @@
         out.rope = { x: rock.x + Math.sign(R.x - rock.x || 1) * (rock.w / 2 + 50), why: 'wait' };
         return out;
       }
-      const bx = X + inward * 6, rx = X + inward * 20;
-      const bAt = Math.abs(B.x - bx) < 8 && B.grounded;
-      const spout = st.spouts.find(sp => sp.j === j && (sp.phase !== 'idle' || sp.left < 0.5) && Math.abs(X - sp.x) < 230);
-      out.boost = { x: spout ? clear(spout, bx) : bx, act: bAt && !spout, why: spout ? 'spout' : bAt ? 'crouch' : 'go' };
-      const rAt = Math.abs(R.x - rx) < 7 && R.grounded;
-      out.rope = { x: spout ? clear(spout, rx) + spout.side * 14 : rx, jump: rAt && B.st === 'crouch' && Math.abs(B.x - R.x) < S.boostR - 4 && !spout, why: spout ? 'spout' : B.st === 'crouch' ? 'jump' : 'go' };
-      out.gauge = gaugeFor(st, j, out.waterGap);
+      const down = lift.cy >= lift.y - 0.5;
+      // a gauge on this ledge first (while the bucket is still down)
+      const gg = down ? gaugeFor(st, j, out.waterGap) : null;
+      if (gg) { out.gauge = gg; out.rope = { x: gg.x, why: 'gauge' }; out.boost = { x: lift.crankX, act: false, why: 'crank-wait' }; return out; }
+      // a spout about to gush over the bucket or the crank: wait it out clear of it (before the ride starts)
+      const spout = down && st.spouts.find(sp => sp.j === j && (sp.phase !== 'idle' || sp.left < 0.8) && (Math.abs(lift.x - sp.x) < 230 || Math.abs(lift.crankX - sp.x) < 230));
+      if (spout) { out.boost = { x: clear(spout, lift.crankX), why: 'spout' }; out.rope = { x: clear(spout, lift.x) + spout.side * 14, why: 'spout' }; return out; }
+      const inCage = Math.abs(R.x - lift.x) < 14 && R.grounded && Math.abs(R.y - lift.cy) < 3;
+      out.rope = { x: lift.x, why: inCage ? 'ride' : 'cage' };
+      const atCrank = Math.abs(B.x - lift.crankX) < 14 && B.grounded;
+      out.boost = { x: lift.crankX, act: atCrank && inCage, why: inCage ? 'crank' : 'crank-wait' };
+      // at the top: step off onto the ledge
+      if (lift.cy <= lift.top + 0.5 && inCage) out.rope = { x: up.ax, why: 'off' };
       return out;
     }
     // r === j + 1: the rope
@@ -680,14 +671,29 @@
       if (s.crumbly) { ctx.strokeStyle = 'rgba(40,24,12,0.7)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(s.x0 + 20, s.y); ctx.lineTo(s.x0 + 26, s.y + 6); ctx.lineTo(s.x0 + 22, s.y + 12); if (s.crack >= 0) { ctx.moveTo(s.x1 - 18, s.y); ctx.lineTo(s.x1 - 26, s.y + 8); ctx.lineTo(s.x1 - 20, s.y + 12); } ctx.stroke(); }
       ctx.restore();
     }
-    // lifts: a frame, a cage on a cable and a crank wheel
+    // winches: an ore bucket on a timber boom (or a lift cage in a frame), and a crank wheel
     for (const l of st.lifts) {
-      ctx.strokeStyle = '#4a3420'; ctx.lineWidth = 6;
-      ctx.beginPath(); ctx.moveTo(l.x - 34, l.y); ctx.lineTo(l.x - 34, l.top - 70); ctx.moveTo(l.x + 34, l.y); ctx.lineTo(l.x + 34, l.top - 70); ctx.moveTo(l.x - 40, l.top - 70); ctx.lineTo(l.x + 40, l.top - 70); ctx.stroke();
-      ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(l.x, l.top - 70); ctx.lineTo(l.x, l.cy - 56); ctx.stroke();
-      ctx.strokeStyle = '#8a8c94'; ctx.lineWidth = 2; ctx.strokeRect(l.x - 26, l.cy - 56, 52, 56);
-      ctx.fillStyle = '#6a4a2a'; ctx.fillRect(l.x - 28, l.cy, 56, 6);
-      for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(l.x - 26 + k * 13, l.cy - 56); ctx.lineTo(l.x - 26 + k * 13, l.cy); ctx.stroke(); }
+      if (l.kind === 'cage') {
+        ctx.strokeStyle = '#4a3420'; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(l.x - 34, l.y); ctx.lineTo(l.x - 34, l.top - 70); ctx.moveTo(l.x + 34, l.y); ctx.lineTo(l.x + 34, l.top - 70); ctx.moveTo(l.x - 40, l.top - 70); ctx.lineTo(l.x + 40, l.top - 70); ctx.stroke();
+        ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(l.x, l.top - 70); ctx.lineTo(l.x, l.cy - 56); ctx.stroke();
+        ctx.strokeStyle = '#8a8c94'; ctx.lineWidth = 2; ctx.strokeRect(l.x - 26, l.cy - 56, 52, 56);
+        ctx.fillStyle = '#6a4a2a'; ctx.fillRect(l.x - 28, l.cy, 56, 6);
+        for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(l.x - 26 + k * 13, l.cy - 56); ctx.lineTo(l.x - 26 + k * 13, l.cy); ctx.stroke(); }
+      } else {
+        // a timber post on the crank's side, a boom out over the column with a pulley, the rope down to the bucket's bail
+        const px = l.x + l.dir * 40, by = l.top - 64;
+        ctx.strokeStyle = '#4a3420'; ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.moveTo(px, l.y); ctx.lineTo(px, by); ctx.lineTo(l.x - l.dir * 10, by); ctx.stroke();
+        ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(px, by + 34); ctx.lineTo(px - l.dir * 30, by); ctx.stroke();
+        ctx.fillStyle = '#5a5e66'; circle(l.x, by + 4, 7); ctx.fill(); ctx.fillStyle = '#c8a050'; circle(l.x, by + 4, 2.5); ctx.fill();
+        ctx.strokeStyle = '#d8c8a0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(l.x, by + 4); ctx.lineTo(l.x, l.cy - 44); ctx.stroke();
+        // the bail (the bucket's handle) and the back of the tub
+        ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(l.x - 24, l.cy - 20); ctx.quadraticCurveTo(l.x, l.cy - 62, l.x + 24, l.cy - 20); ctx.stroke();
+        ctx.fillStyle = '#3a3e46'; ctx.beginPath(); ctx.moveTo(l.x - 26, l.cy - 22); ctx.lineTo(l.x + 26, l.cy - 22); ctx.lineTo(l.x + 22, l.cy + 2); ctx.lineTo(l.x - 22, l.cy + 2); ctx.closePath(); ctx.fill();
+        if (l.cy >= l.y - 0.5 && st.h.every(h => Math.abs(h.x - l.x) > 20 || Math.abs(h.y - l.cy) > 3)) { ctx.fillStyle = '#8a7a6a'; circle(l.x - 8, l.cy - 22, 6); ctx.fill(); circle(l.x + 7, l.cy - 21, 5); ctx.fill(); }
+        ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(l.crankX, l.y - 40); ctx.lineTo(px, by + 4); ctx.lineTo(l.x, by + 4); ctx.stroke();
+      }
       // the crank
       const a = (l.y - l.cy) / 12;
       ctx.fillStyle = '#5a5e66'; ctx.fillRect(l.crankX - 4, l.y - 40, 8, 40);
@@ -696,7 +702,7 @@
       for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(k * Math.PI / 2) * 14, Math.sin(k * Math.PI / 2) * 14); ctx.stroke(); }
       ctx.fillStyle = '#e8322a'; circle(14, 0, 4); ctx.fill();
       ctx.restore();
-      ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(l.crankX, l.y - 40); ctx.lineTo(l.x + 30, l.top - 70); ctx.stroke();
+      if (l.kind === 'cage') { ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(l.crankX, l.y - 40); ctx.lineTo(l.x + 30, l.top - 70); ctx.stroke(); }
     }
     // boulders
     for (const r of st.rocks) {
@@ -764,12 +770,10 @@
   function drawHero(st, h, t) {
     if (h.st === 'swept') return;
     let sy = 1 - h.sq * 0.16, rot = 0;
-    if (h.st === 'crouch') sy = 0.62;
     if (h.st === 'rope') rot = Math.sin(t * 6) * 0.06;
     else if (!h.grounded) rot = h.face * clamp(h.vy / 2000, -0.15, 0.15);
     const arms = h.st === 'hold' || h.st === 'crank' ? 'bat' : h.st === 'rope' ? 'up' : null;
     K.chaser(h.id, h.x, h.y, { face: h.face, rot, sy, sx: 2 - sy, vy: h.grounded ? 0 : h.vy, stun: h.stun > 0, arms, armA: h.st === 'crank' ? t * 8 : 0.4, hood: true });
-    if (h.st === 'crouch') { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.globalAlpha = 0.5 + 0.4 * Math.sin(t * 10); ctx.beginPath(); ctx.ellipse(h.x, h.y - 20, 18, 5, 0, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; }
   }
   function drawRope(st, t) {
     const R = st.ropeOn;
@@ -791,6 +795,14 @@
     ctx.save(); ctx.translate(0, -cy + sh);
     drawRope(st, t);
     for (const h of st.h) drawHero(st, h, t);
+    // the ore buckets' front: whoever rides stands inside
+    for (const l of st.lifts) {
+      if (l.kind !== 'bucket') continue;
+      ctx.fillStyle = '#6a6e78'; ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(l.x - 27, l.cy - 18); ctx.lineTo(l.x + 27, l.cy - 18); ctx.lineTo(l.x + 22, l.cy + 4); ctx.lineTo(l.x - 22, l.cy + 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#4a4e58'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(l.x - 26, l.cy - 12); ctx.lineTo(l.x + 26, l.cy - 12); ctx.stroke();
+      ctx.fillStyle = '#c8a050'; circle(l.x - 24, l.cy - 18, 2.5); ctx.fill(); circle(l.x + 24, l.cy - 18, 2.5); ctx.fill();
+    }
     drawWater(st, t);
     K.drawParts(st, 0);
     ctx.restore();
@@ -824,8 +836,8 @@
       K.chip(x0 + cw + 6 * z, cy, cw, chh, kk(Rn, 'up') + 'JUMP', !!pl.rope.jump, !R.grounded && R.st !== 'rope', z);
     }
     {
-      const bx = K.panel(Bn, 'boost hero', 236, 58, z), cy = bx.y + 27 * z, chh = 23 * z, cw = (bx.w - 24 * z - 6 * z) / 2, x0 = bx.x + 12 * z;
-      K.chip(x0, cy, cw, chh, kk(Bn, 'act') + (pl.stage === 'lift' ? 'CRANK' : pl.boost.why === 'shove' ? 'SHOVE' : 'BOOST'), !!pl.boost.act && B.st !== 'crouch' && B.st !== 'crank', B.st === 'crouch' || B.st === 'crank', z);
+      const bx = K.panel(Bn, 'winch hero', 236, 58, z), cy = bx.y + 27 * z, chh = 23 * z, cw = (bx.w - 24 * z - 6 * z) / 2, x0 = bx.x + 12 * z;
+      K.chip(x0, cy, cw, chh, kk(Bn, 'act') + (pl.boost.why === 'shove' ? 'SHOVE' : 'CRANK'), !!pl.boost.act && B.st !== 'crank', B.st === 'crank', z);
       K.chip(x0 + cw + 6 * z, cy, cw, chh, kk(Bn, 'up') + 'CLIMB', pl.boost.why === 'grab' || pl.boost.why === 'climb', B.st === 'rope', z);
     }
     // the water meter: how close the flood is to the lower hero
@@ -845,17 +857,17 @@
       if (pp.why === 'climb') { s = 'Climb! Hold ' + K.key(id, 'up'); pulse = true; }
       else if (pp.why === 'grab') { s = dir ? 'To the rope ' + K.key(id, dir) : 'Grab the rope: ' + K.key(id, 'up'); pulse = !dir; }
       else if (pp.why === 'anchor') { s = h.st === 'hold' ? 'Hold on until ' + NAMES[1 - id] + ' is up!' : dir ? 'To the ring ' + K.key(id, dir) : 'HOLD ' + K.key(id, 'act') + ' to drop the rope'; pulse = !dir && h.st !== 'hold'; if (h.st === 'hold') col = '#d9ffd0'; }
-      else if (pp.why === 'crouch' || pp.why === 'go' && !isRope) { s = dir ? 'To the boost spot ' + K.key(id, dir) : 'HOLD ' + K.key(id, 'act') + ' to crouch'; pulse = !dir; if (h.st === 'crouch') { s = 'Springboard ready!'; col = '#d9ffd0'; } }
-      else if (pp.why === 'jump') { s = dir ? 'Next to ' + NAMES[1 - id] + ' ' + K.key(id, dir) : 'Jump off ' + NAMES[1 - id] + '! ' + K.key(id, 'up'); pulse = !dir; }
       else if (pp.why === 'shove') { s = dir ? 'To the boulder ' + K.key(id, dir) : 'Shove it! ' + K.key(id, 'act'); pulse = !dir; }
-      else if (pp.why === 'crank' || pp.why === 'crank-wait') { s = dir ? 'To the crank ' + K.key(id, dir) : pp.act ? 'HOLD ' + K.key(id, 'act') + ' to crank!' : 'Wait for ' + NAMES[1 - id] + ' in the cage'; pulse = !!pp.act; }
-      else if (pp.why === 'cage') { s = 'Into the lift cage ' + (dir ? K.key(id, dir) : ''); col = '#ffe7a8'; }
+      else if (pp.why === 'crank' || pp.why === 'crank-wait') { s = dir ? 'To the crank ' + K.key(id, dir) : pp.act ? 'HOLD ' + K.key(id, 'act') + ' to crank!' : 'Wait for ' + NAMES[1 - id] + ' in the ' + (cageAt(st, h) ? 'cage' : 'bucket'); pulse = !!pp.act; }
+      else if (pp.why === 'cage') { s = 'Into the ' + (cageAt(st, h) ? 'lift cage ' : 'ore bucket ') + (dir ? K.key(id, dir) : ''); col = '#ffe7a8'; }
+      else if (pp.why === 'ride') { s = 'Hold on, ' + NAMES[1 - id] + ' winds you up!'; col = '#d9ffd0'; }
       else if (pp.why === 'off') { s = 'Step off ' + (dir ? K.key(id, dir) : ''); }
       else if (pp.why === 'spout') { s = 'Wait for the gush...'; col = '#bfe6ff'; }
       else if (pp.why === 'down') { s = 'Drop down to ' + NAMES[1 - id] + ' ' + (dir ? K.key(id, dir) : ''); col = '#ffe7a8'; }
       else if (isRope && pp.why === 'go') { s = 'To ' + NAMES[1 - id] + ' ' + (dir ? K.key(id, dir) : ''); col = '#ffe7a8'; }
       P.say(id, s, h.x, h.y - cy - 46, col, pulse);
     };
+    const cageAt = (st2, h) => { const l = st2.lifts.find(q => q.j === h.on); return !!l && l.kind === 'cage'; };
     say(Rn, R, pl.rope, true);
     say(Bn, B, pl.boost, false);
   }
@@ -865,7 +877,7 @@
     medals: { bronze: 'Climb out of the canyon', goals: [{ key: 'time', gold: S.goldT, silver: S.silverT }, { key: 'gauges', gold: 16, more: true, word: 'rain gauge' }, { key: 'sweeps', gold: 2, word: 'sweep' }] },
     medalValues() { const st = G.mst; return st.stats ? { gauges: st.gaugeN, sweeps: st.stats.sweeps } : {}; },
     setup(st, L) {
-      st.stats = { sweeps: 0, restarts: 0, boosts: 0, shoves: 0, gushes: 0, helps: 0, roomT: [] };
+      st.stats = { sweeps: 0, restarts: 0, rides: 0, shoves: 0, gushes: 0, helps: 0, roomT: [] };
       st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0; st.gaugeN = 0;
       const def = LEVELS[G.levelIndex];
       st.totalG = (def.rooms || [def]).reduce((n, r) => n + (r.gauges || []).length, 0);
@@ -883,7 +895,7 @@
       const out = [
         { label: 'Rain gauges', value: st.gaugeN + ' of ' + st.totalG },
         { label: 'Sweeps', value: String(s.sweeps) },
-        { label: 'Boosts', value: String(s.boosts) },
+        { label: 'Bucket rides', value: String(s.rides) },
       ];
       out.push('Closest the flood got at a stretch end: ' + (s.lowest === undefined ? '-' : s.lowest + ' px') + '. Boulders shoved: ' + s.shoves + '. Spout soakings: ' + s.gushes + '.');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);
@@ -892,7 +904,7 @@
   };
 
   /* ---------- the level ---------- */
-  const acts = r => ({ label: 'rope', labels: r === 0 ? ['rope', 'boost'] : ['boost', 'rope'] });
+  const acts = r => ({ label: 'rope', labels: r === 0 ? ['rope', 'winch'] : ['winch', 'rope'] });
   STORMCHASE.defs.floodclimb = {
     name: 'Flash Flood Climb', world: 32, kind: 'team', mode: 'floodclimb', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     legend: {
@@ -900,28 +912,28 @@
       bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump / climb <kbd>↓</kbd> slide down',
       pad: 'stick runs and climbs, <span data-glyph="a"></span> jumps,',
     },
-    tip: 'The flood is rising! The boost hero crouches (hold the action) so the rope hero can jump high; the rope hero holds the action at the ring to drop the rope.',
+    tip: 'The flood is rising! The rope hero rides the ore bucket while the winch hero holds the action at the crank; then the rope hero holds the action at the ring to drop the rope.',
     act: acts(0),
     map: K.stubMap(),
     rooms: [
       { title: 'The Dry Wash', ropeHero: 0, steps: 6, wv: 10, water0: 150, gaps: [164, 168],
         gauges: [{ j: 0, u: 0.1 }, { j: 0, u: 0.9 }, { j: 1, shelf: true }, { j: 2, u: 0.5 }, { j: 3, shelf: true }], done: 'Out of the dry wash!', act: acts(0),
-        tip: 'Bo holds the action to crouch: Pip jumps from next to Bo, way up! Then Pip holds the action at the ring and Bo climbs the rope.' },
+        tip: 'Pip stands in the ore bucket and Bo holds the action at the crank to wind Pip up! Then Pip holds the action at the ring and Bo climbs the rope.' },
       { title: 'Root Wall', ropeHero: 1, steps: 7, wv: 12, water0: 140, gaps: [166, 170, 164], logs: true, crumbly: true, rocks: [2], surge: 22, flip: true,
         gauges: [{ j: 0, u: 0.15 }, { j: 1, shelf: true }, { j: 2, shelf: true }, { j: 3, u: 0.5 }, { j: 4, shelf: true }], done: 'Up the root wall!', act: acts(1),
-        tip: 'Swap jobs! Shelves crumble when you stand on them, and the boost hero can shove a boulder off a ledge. Watch for the SURGE!' },
+        tip: 'Swap jobs! Shelves crumble when you stand on them, and the winch hero can shove a boulder out of the bucket\'s way. Watch for the SURGE!' },
       { title: 'The Narrows', ropeHero: 0, steps: 7, wv: 13.5, water0: 140, wallL: 200, wallR: 760, gaps: [168, 164, 170], logs: true, crumbly: true, spouts: [1, 3, 5], surge: 18,
         gauges: [{ j: 0, u: 0.8 }, { j: 1, shelf: true }, { j: 2, u: 0.4 }, { j: 3, shelf: true }, { j: 4, u: 0.6 }], done: 'Through the narrows!', act: acts(0),
         tip: 'Waterfall spouts gush from the walls on a beat: wait for the drip to stop, then go.' },
       { title: 'Mine Scaffold', ropeHero: 1, steps: 7, wv: 14.5, water0: 140, gaps: [166, 168], scaffold: true, lifts: [1, 4], surge: 20, flip: true, logs: true,
         gauges: [{ j: 0, u: 0.2 }, { j: 1, shelf: true }, { j: 2, u: 0.5 }, { j: 3, shelf: true }, { j: 4, u: 0.4 }], act: acts(1),
-        tip: 'The planks are too wobbly to boost on: the boost hero holds the action at the crank while the rope hero rides the lift!' },
+        tip: 'Old mine lifts! Some climbs have a lift cage instead of a bucket: same job, the winch hero cranks while the rope hero rides.' },
     ],
   };
 
   /* ---------- sounds ---------- */
   Sfx.extra.floodclimbJump = function (id) { this.tone(id ? 330 : 392, 0.1, 'triangle', 0.035, id ? 520 : 620); };
-  Sfx.extra.floodclimbBoing = function () { this.tone(140, 0.35, 'sine', 0.06, 620); this.tone(420, 0.2, 'triangle', 0.03, 900, 0.05); };
+  Sfx.extra.floodclimbClank = function () { this.tone(160, 0.12, 'square', 0.04, 110); this.tone(1200, 0.05, 'triangle', 0.02, 900, 0.03); };
   Sfx.extra.floodclimbRope = function () { this.tone(500, 0.25, 'sawtooth', 0.012, 160); };
   Sfx.extra.floodclimbGrab = function () { this.tone(300, 0.06, 'square', 0.02, 260); };
   Sfx.extra.floodclimbTop = function () { this.tone(523, 0.08, 'triangle', 0.04, null); this.tone(784, 0.12, 'triangle', 0.04, null, 0.07); };
