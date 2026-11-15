@@ -64,8 +64,9 @@ const skills = opt('skills', '') ? opt('skills', '').split(',') : null;
         if (p.id !== clumsy) return out;
         if (who === 'kid') {   // everything 0.5 s late
           // (what the brain wanted 0.5 s ago, standing still included; the last one again only while none is due yet)
-          nz.q.push({ t: G.time + 0.5, out }); let o2 = null;
-          while (nz.q.length && nz.q[0].t <= G.time) o2 = nz.q.shift().out;
+          nz.clock = (nz.clock || 0) + dt;   // (its own clock: G.time stands still in the Thumb War)
+          nz.q.push({ t: nz.clock + 0.5, out }); let o2 = null;
+          while (nz.q.length && nz.q[0].t <= nz.clock) o2 = nz.q.shift().out;
           if (nz.q.length > 200) nz.q.shift();
           out = nz.last = (o2 || nz.last) || {};
           out = Object.assign({}, out);

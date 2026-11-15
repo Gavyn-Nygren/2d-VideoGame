@@ -55,7 +55,7 @@ IRON_ART.meadowDraw[0] = (d, c) => {
     }
   }
   // cloud streaks: long thin lenses, lit gold underneath, rose on top, an ink line only under the belly
-  const streaks = c === 0 ? [[60, 96, 240], [330, 168, 300], [800, 70, 180], [520, 250, 200], [880, 214, 150]] : [[120, 130, 280], [520, 62, 220], [700, 200, 300], [300, 240, 140]];
+  const streaks = c === 0 ? [[60, 96, 240], [330, 168, 300], [740, 70, 180], [520, 250, 200], [790, 214, 150]] : [[120, 130, 280], [520, 62, 220], [640, 200, 300], [300, 240, 140]];
   for (const [x, y, w] of streaks) {
     const top = [], bel = [];
     for (let k = 0; k <= 16; k++) { const t = k / 16, h = Math.sin(t * Math.PI); top.push([x + w * t, y - h * (8 + 6 * Math.sin(t * 7 + x))]); bel.push([x + w * (1 - t), y + Math.sin((1 - t) * Math.PI) * 4]); }
