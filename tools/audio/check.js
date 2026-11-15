@@ -139,7 +139,8 @@ function wav(b64, sr) {
   await page.evaluate(() => { const P = window.__pipbo; P.G.mode = 'play'; P.pause(); });
   await page.waitForTimeout(300); s = await st();
   ok(s.mode === 'paused' && s.duck < 1, 'pausing turns the music down');
-  ok(await page.locator('[data-act="syscfg"][data-k="music"]').count() === 4 && await page.locator('[data-act="syscfg"][data-k="sfx"]').count() === 4, 'the pause menu has Music and Sounds volume buttons');
+  await page.click('.card [data-act="settings"]'); await page.waitForTimeout(300);
+  ok(await page.locator('[data-act="syscfg"][data-k="music"]').count() === 4 && await page.locator('[data-act="syscfg"][data-k="sfx"]').count() === 4, 'Settings (from the pause menu) has Music and Sounds volume buttons');
   await page.click('[data-act="syscfg"][data-k="music"][data-v="0"]'); await page.waitForTimeout(300); s = await st();
   ok(s.song === null, 'Music: Off stops the music');
   ok(await page.evaluate(() => localStorage.getItem('pipbo:volMusic')) === '0', 'the music volume is saved');
