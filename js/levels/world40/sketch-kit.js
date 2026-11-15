@@ -12,7 +12,7 @@
      SKETCH.sheet(key, w, h, draw, o)  -> the cached sheet (made on first use). draw(d, v) draws version v (0..2) with
                                          the drawer d (below), in sheet pixels (0..w, 0..h). o: { ox, oy } the anchor
                                          (blit puts this point at x, y), seed, versions (default 3), res (default
-                                         SKETCH.res), flat (true: one canvas, no undo layers; backdrops use it),
+                                         SKETCH.res), layers (true: keep the undo layers; default is one flat canvas),
                                          paper ('dark' for chalk-on-charcoal drawings: ink and hatching become chalk).
      SKETCH.blit(g, key, x, y, o)      draws the sheet's current boil version. o: { undo 0..3, alpha, sx, sy, rot,
                                          t (time; default SKETCH.t) }. undo: 0 full, 1 no colour, 2 pencil only, 3 gone
@@ -667,7 +667,7 @@ const SKETCH = (() => {
     const have = SHEETS[key];
     if (have && have.round === S.round) return have;
     const res = o.res || S.res, nv = o.versions || 3, pw = w * res, ph = h * res, seed = o.seed != null ? o.seed : hashStr(key);
-    const sh = { key, w, h, res, ox: o.ox || 0, oy: o.oy || 0, flat: !!o.flat, round: S.round, v: [] };
+    const sh = { key, w, h, res, ox: o.ox || 0, oy: o.oy || 0, flat: o.layers !== true, round: S.round, v: [] };
     for (let v = 0; v < nv; v++) {
       const L = {}; for (const n of ['base', 'pencil', 'wash', 'hatch', 'ink', 'white']) { L[n] = mk(pw, ph).getContext('2d'); L[n].setTransform(res, 0, 0, res, 0, 0); L[n].lineCap = L[n].lineJoin = 'round'; }
       const d = makeDrawer(L, seed, v, false); d.dark = o.paper === 'dark'; d.paperKind = o.paper || 'sand'; d.w = w; d.h = h;
@@ -678,6 +678,8 @@ const SKETCH = (() => {
         const out = mk(pw, ph), g = out.getContext('2d');
         for (const n of ['base', 'pencil', 'wash', 'hatch', 'ink', 'white']) g.drawImage(L[n].canvas, 0, 0);
         sh.v.push({ all: out });
+        // the six working layers are done with: give their memory back now, not whenever the browser tidies up
+        for (const n in L) L[n].canvas.width = L[n].canvas.height = 0;
       } else {
         const line = L.hatch.canvas, lg = L.hatch; lg.setTransform(1, 0, 0, 1, 0, 0); lg.drawImage(L.ink.canvas, 0, 0); lg.drawImage(L.white.canvas, 0, 0);
         sh.v.push({ base: L.base.canvas, pencil: L.pencil.canvas, wash: L.wash.canvas, line });
@@ -688,7 +690,12 @@ const SKETCH = (() => {
   };
   const hashStr = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) % 1000003; };
   S.has = key => !!SHEETS[key];
-  S.forget = prefix => { for (const k in SHEETS) if (k.startsWith(prefix)) delete SHEETS[k]; };
+  S.forget = prefix => {
+    for (const k in SHEETS) if (k.startsWith(prefix)) {
+      for (const V of SHEETS[k].v) for (const n in V) V[n].width = V[n].height = 0;   // free the memory at once (phones run out otherwise)
+      delete SHEETS[k];
+    }
+  };
   S.blit = (g, key, x, y, o = {}) => {
     const sh = SHEETS[key]; if (!sh) return;
     const vi = o.v != null ? o.v : (S.reduce ? 0 : Math.floor((o.t != null ? o.t : S.t) * 8 + (o.phase || 0)) % sh.v.length);

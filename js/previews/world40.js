@@ -31,8 +31,7 @@ function pw40Leg(far) {
     // toe plates and a heel spur
     d.stroke([[134, 314], [150, 372]], { w: 1.6 }); d.stroke([[100, 316], [108, 372]], { w: 1.4 });
     d.rivets(26, 362, 160, 362, 8, { r: 1.8, rust: 0.3 });
-    if (far) d.wash([[10, 0], [180, 0], [180, 380], [10, 380]], P.soot, { alpha: 0.18, layers: 1, edge: false });
-  }, { ox: 80, oy: 28 });
+  }, { layers: true, ox: 80, oy: 28 });
   return key;
 }
 function pw40Arm(far) {
@@ -48,8 +47,7 @@ function pw40Arm(far) {
     const fist = [[24, 248], [108, 248], [116, 300], [100, 326], [30, 326], [16, 300]];
     d.solid(fist, { kind: 'sand' }); H.ironPlate(d, fist, { fill, fillAlpha: 0.9, tone: x => 0.25 + (x - 16) / 120, rivetEdges: [], w: 2.6, rustPatches: 1 });
     for (let k = 0; k < 4; k++) d.stroke([[30 + k * 22, 300], [36 + k * 22, 324]], { w: 1.4 });
-    if (far) d.wash([[0, 0], [130, 0], [130, 330], [0, 330]], P.soot, { alpha: 0.18, layers: 1, edge: false });
-  }, { ox: 66, oy: 26 });
+  }, { layers: true, ox: 66, oy: 26 });
   return key;
 }
 function pw40Body() {
@@ -81,7 +79,7 @@ function pw40Body() {
     for (const ex of [168, 232]) { d.shape([[ex - 18, 46], [ex + 18, 46], [ex + 18, 72], [ex - 18, 72]], { fill: P.coreHot, w: 2.2, corner: 30 }); d.stroke([[ex, 46], [ex, 72]], { w: 1.2 }); }
     d.shape([[150, 18], [cx, -2 + 6], [250, 18]], { fill: P.rustDark, w: 2.4, corner: 30 });
     d.stroke([[166, 86], [234, 86]], { w: 2 }); d.rivets(150, 34, 250, 34, 6, { r: 1.6 });
-  }, { ox: 200, oy: 440 });
+  }, { layers: true, ox: 200, oy: 440 });
   return key;
 }
 // the desert page: paper, a pale sun, dunes and a hatched ground line (flat sheet, blitted at 0.5)
