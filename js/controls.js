@@ -220,7 +220,12 @@ function controlRows(id, lg, act) {
     r.label = tidyLabel(prev.label.slice(cut + 1)); prev.label = tidyLabel(prev.label.slice(0, cut));
   });
   rows.forEach(r => { r.label = tidyLabel(r.pre ? r.pre + (r.role && r.label ? ': ' : ' ') + r.label : r.label); });
-  if (act) rows.push({ keys: btnHTML(id, 'act'), label: actLabel(id), act: true });
+  if (act) {
+    // an action that does the same as a row above (Ski Jump: the jumper jumps with jump or the action) joins that row
+    const same = rows.find(r => r.label === actLabel(id));
+    if (same) { if (!same.keys.includes(btnHTML(id, 'act'))) same.keys += ' <span class="k-word">or</span> ' + btnHTML(id, 'act'); }
+    else rows.push({ keys: btnHTML(id, 'act'), label: actLabel(id), act: true });
+  }
   // keys with no words of their own share the next row ("[W][A][S][D] [F] grab")
   for (let k = rows.length - 2; k >= 0; k--) if (!rows[k].label && rows[k + 1]) { rows[k + 1].keys = rows[k].keys + ' <span class="k-word">+</span> ' + rows[k + 1].keys; rows.splice(k, 1); }
   rows.forEach(r => { r.label = esc(r.label || '…'); });
