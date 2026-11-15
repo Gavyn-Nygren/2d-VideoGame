@@ -5,9 +5,12 @@
    It has noticed you. Make it punch itself. A wide stage on the Colossus's chest (two screens, the camera slides
    sideways): the chest ledge, split in two by the breastbone pillar, and the sternum plate above it. Its head leans in
    at the top with the LANTERN EYE; Superhero City at dusk goes by far below, mirrored in its glass towers.
-   THE EYE: a cone of bare paper that hunts a hero in the live lock's zone (the one who taunted in the last `taunt` s,
-   else whoever moved last). Held on them `hold` s, it NARROWS: a fist rises (`rise` s, a "skree..." and its shadow)
-   and slams where that hero stood when it narrowed: KLANG. Under it (within `hitR`) is a Clang, flattened.
+   THE EYE (the spotlight): a cone of bare paper that hunts a hero in the live lock's zone. A taunt LOCKS it on: it
+   follows the last hero to taunt until they leave the zone (a partner walking about never steals it); with no taunt
+   it drifts after whoever moved last but never narrows. Held on the taunter `hold` s (a rust ring closes round the
+   pool), it NARROWS: a fist rises (`rise` s, a "skree..." and its shadow) and slams where that hero stood when it
+   narrowed (anywhere within `snapR` of the lock snaps to the lock): KLANG. Under it (within `hitR`) is a Clang.
+   A yellow arrow over the lock ("PIP: TAUNT HERE!") and over the elbow ("BO: HOLD HERE TO PULL!") name the jobs.
    THE THREE CHEST LOCKS. A slam within `crackR` of a lock cracks it (three cracks break it). After a slam the fist is
    STUCK for `stuck` s: its forearm is a ramp up to the elbow, and a hero holding the action on the elbow for `pullT` s
    pulls the elbow pin a third of the way out. The eye stays on its target the whole time it is stuck, and anyone it
@@ -24,8 +27,8 @@
    Names: ironFist* / IRONFIST*, sounds ironfist*. */
 const IRONFIST = {
   W: 1920, camY: -470, plateY: -190, plate: [740, 1180], pillar: [940, 980],
-  eye: { x: 960, y: -428, v: 230, vStuck: 320, hold: 1.0, near: 26, see: 36 },
-  rise: 1.3, goldRise: 1.8, hitR: 56, crackR: 40, stuck: 4.2, goldStuck: 7, goldHold: 3, pullT: 1.5, tellT: 0.8, sweepV: 820, cool: 1.0, taunt: 3.0,
+  eye: { x: 960, y: -428, v: 560, vStuck: 320, hold: 0.8, near: 40, see: 36 },
+  rise: 1.3, goldRise: 1.8, hitR: 56, crackR: 40, snapR: 74, stuck: 4.2, goldStuck: 7, goldHold: 3, pullT: 1.5, tellT: 0.8, sweepV: 820, cool: 1.0, taunt: 3.0,
   fist: { hw: 50, h: 90 }, elbowW: 80, elbowUp: 150,
   // the locks: x, the surface they sit on, the zone, the elbow side of each slam in turn, forearm length, slam range
   locks: [
@@ -53,7 +56,7 @@ function ironFistSetup(st, L) {
   ph.t = 0; ph.li = 0; ph.hatch = null;
   ph.locks = K.locks.map((q, i) => Object.assign({ i, cracks: 0, pins: 0, cycle: 0, done: false, limp: false, broke: false }, q));
   ph.eye = { st: 'wake', t: 0, x: K.locks[0].x, tgt: -1, holdT: 0, sx: 0, sy: 0, side: 1, fx: 0, fy: 0, lift: 0, pulled: false, pull: [0, 0], said: 0 };
-  ph.taunt = [0, 0]; ph.moved = [-1, -1]; ph.tauntCd = [0, 0];
+  ph.taunt = [0, 0]; ph.moved = [-1, -1]; ph.tauntCd = [0, 0]; ph.lockOn = -1; ph.onLockT = 0;
   ph.mice = []; ph.miceT = 3; ph.soot = []; ph.sootT = 4;
   ph.arm = null; ph.limp = [];
   st.cam = { x: 0, y: K.camY };
@@ -142,6 +145,7 @@ function ironFistTaunts(st) {
     p.pendingAct = false;
     if (ph.tauntCd[p.id] > 0 || p.grounded && p.ground && p.ground.kind === 'elbow') continue;
     ph.taunt[p.id] = IRONFIST.taunt; ph.tauntCd[p.id] = 0.5; ph.tauntAt = p.id;
+    ph.lockOn = p.id;   // the eye stays on whoever taunted last, however their partner moves
     p.tauntT = 0.5;
     Sfx.play('ironfistTaunt', p.id);
     ironPop(st, p.x + p.w / 2, p.y - 10, p.id === 0 ? 'PBBT!' : 'NYAH!', { size: 13 });
@@ -151,22 +155,28 @@ function ironFistTaunts(st) {
 function ironFistEye(st, dt) {
   const ph = st.ph, K = IRONFIST, E = ph.eye, lk = ironFistLock(ph), ps = G.players;
   E.t += dt;
-  if (E.st === 'wake') { if (E.t > 1.2) { E.st = 'hunt'; E.t = 0; ironSay(st, IRON_PARTS.fists.line, 3); } return; }
+  if (E.st === 'wake') {
+    if (E.t > 1.2) { E.st = 'hunt'; E.t = 0; ironSay(st, IRON_PARTS.fists.line, 3.4); ironNews(st, 'Make it punch its own locks! Taunt on the lock, the spotlight follows you, then jump clear.', false, 7); }
+    return;
+  }
   if (E.st === 'done') { E.x += (960 - E.x) * Math.min(1, dt * 2); return; }
   const inZone = ps.filter(p => p.alive && ironFistZone(p) === lk.zone && !ironHauled(p));
   if (E.st === 'hunt') {
     // who: the taunter, else whoever moved last (an idle hero is never picked)
-    let tgt = -1;
-    const taunters = inZone.filter(p => ph.taunt[p.id] > 0);
-    if (taunters.length) tgt = taunters.reduce((a, b) => (ph.taunt[b.id] > ph.taunt[a.id] ? b : a)).id;
-    else { const mv = inZone.filter(p => ph.moved[p.id] >= 0); if (mv.length) tgt = mv.reduce((a, b) => (ph.moved[b.id] > ph.moved[a.id] ? b : a)).id; }
+    // (a taunt LOCKS it on: it stays on the last one to taunt until they leave the zone or the lock breaks, so a
+    // partner walking about never steals it)
+    if (ph.lockOn >= 0 && !inZone.some(p => p.id === ph.lockOn)) ph.lockOn = -1;
+    let tgt = ph.lockOn;
+    if (tgt < 0) { const mv = inZone.filter(p => ph.moved[p.id] >= 0); if (mv.length) tgt = mv.reduce((a, b) => (ph.moved[b.id] > ph.moved[a.id] ? b : a)).id; }
     if (tgt !== E.tgt) { E.tgt = tgt; E.holdT = 0; }
     const want = tgt >= 0 ? ps[tgt].x + ps[tgt].w / 2 : lk.x;
     E.x += clamp(want - E.x, -K.eye.v * dt, K.eye.v * dt);
-    if (tgt >= 0 && Math.abs(want - E.x) < K.eye.near && E.t > K.cool) E.holdT += dt; else E.holdT = Math.max(0, E.holdT - dt * 2);
+    // it only narrows on someone who taunted it: the fist never comes for a hero who is just walking about
+    if (tgt >= 0 && tgt === ph.lockOn && Math.abs(want - E.x) < K.eye.near && E.t > K.cool) E.holdT += dt; else E.holdT = Math.max(0, E.holdT - dt * 2);
     if (E.holdT >= K.eye.hold) {
       const p = ps[tgt], cx = p.x + p.w / 2;
-      E.st = 'rise'; E.t = 0; E.sx = clamp(cx, lk.range[0], lk.range[1]); E.sy = lk.y;
+      // anywhere on the lock counts: the slam snaps to its middle
+      E.st = 'rise'; E.t = 0; E.sx = Math.abs(cx - lk.x) < K.snapR ? lk.x : clamp(cx, lk.range[0], lk.range[1]); E.sy = lk.y;
       E.side = lk.sides[lk.cycle % lk.sides.length];
       Sfx.play('ironfistEyeNarrow'); Sfx.play('ironfistFistRise');
       ironWord(st, 'skree...', E.sx + E.side * 60, E.sy - 230, 16, { life: ironFistRiseT(st), grow: 0.6, fill: SKETCH.PAL.ochre, key: 'skree' });
@@ -286,7 +296,7 @@ function ironFistLockDone(st) {
     ph.limp.push(ironFistArm(lk.x, lk.y, side, lk.len, to));
     ironFistSolids(ph);
     ph.li++;
-    E.st = 'back'; E.t = -1; E.tgt = -1;
+    E.st = 'back'; E.t = -1; E.tgt = -1; ph.lockOn = -1;
     ironSwap(st);
     ironNews(st, lk.i === 0 ? 'Lock 1 broken! Its arm is a bridge: up it, over to the other side.' : 'Lock 2 broken! Up the limp arm to the last lock.');
     ironSay(st, lk.i === 0 ? 'MY ARM! IT HAS GONE ALL FLOPPY!' : 'NOT THE OTHER ONE TOO!', 2.6);
@@ -395,13 +405,14 @@ function ironFistPlan(st) {
       continue;
     }
     if (id === decoy) {
-      if (E.st === 'rise' && E.tgt === id) out[id] = { why: 'clear', x: ironFistClearX(lk, E, side), say: 'Now get off the lock!' };
-      else out[id] = { why: 'lure', x: lk.x, tap: 'act', say: 'Stand on the lock, tap ' + ironKey(id, 'act') + ': taunt the eye!' };
+      const onLock = ironFistZone(p) === lk.zone && Math.abs(cx - lk.x) < K.snapR && p.y + p.h > lk.y - 30;
+      if (E.st === 'rise' && E.tgt === id) out[id] = { why: 'clear', x: ironFistClearX(lk, E, side), say: 'The fist is coming! Jump off the lock!' };
+      else if (onLock && E.tgt === id && ph.lockOn === id) out[id] = { why: 'lure', x: lk.x, tap: 'act', say: 'The spotlight is on you. Stay on the lock...' };
+      else out[id] = { why: 'lure', x: lk.x, tap: 'act', say: 'Stand on the lock and tap ' + ironKey(id, 'act') + ' to taunt: the spotlight follows you!' };
     } else {
       const rx = lk.x + side * 92;
-      out[id] = { why: 'ready', x: rx, say: E.st === 'rise' ? 'Get ready to run up its arm!' : 'Wait here. When the fist lands, run up its arm!' };
+      out[id] = { why: 'ready', x: rx, say: E.st === 'rise' ? 'Get ready to run up its arm!' : 'Wait by the lock. When the fist lands, run up its arm!' };
     }
-    void cx;
   }
   return out;
 }
@@ -462,15 +473,20 @@ function ironFistDrawBack(st) {
 function ironFistDrawEyeLight(st, d) {
   const ph = st.ph, K = IRONFIST, E = ph.eye, lk = ironFistLock(ph);
   if (E.st === 'done' || E.st === 'wake' && E.t < 0.6) return;
-  const sy = lk.y, narrow = E.st === 'rise' || E.st === 'stuck', r = narrow ? 30 : 46;
+  const sy = lk.y, narrow = E.st === 'rise' || E.st === 'stuck', r = narrow ? 34 : 52;
   const ex = K.eye.x, ey = K.eye.y + 10;
   ctx.save(); ctx.globalCompositeOperation = 'screen';
-  ctx.fillStyle = narrow ? 'rgba(255,214,120,0.3)' : 'rgba(255,236,190,0.24)';
-  ctx.beginPath(); ctx.moveTo(ex - 10, ey); ctx.lineTo(E.x - r, sy); ctx.lineTo(E.x + r, sy); ctx.lineTo(ex + 10, ey); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = narrow ? 'rgba(255,220,130,0.55)' : 'rgba(255,244,214,0.5)';
-  ctx.beginPath(); ctx.ellipse(E.x, sy - 4, r + 6, 9, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = narrow ? 'rgba(255,214,120,0.4)' : 'rgba(255,236,190,0.34)';
+  ctx.beginPath(); ctx.moveTo(ex - 12, ey); ctx.lineTo(E.x - r, sy); ctx.lineTo(E.x + r, sy); ctx.lineTo(ex + 12, ey); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = narrow ? 'rgba(255,220,130,0.7)' : 'rgba(255,244,214,0.66)';
+  ctx.beginPath(); ctx.ellipse(E.x, sy - 4, r + 6, 11, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  d.stroke(SKETCH.ell(E.x, sy - 4, r + 6, 9, 16, 0), { w: 1.2, curve: true, alpha: 0.7, sh: 0, col: narrow ? SKETCH.PAL.rust : SKETCH.INK });
+  d.stroke(SKETCH.ell(E.x, sy - 4, r + 6, 11, 16, 0), { w: 1.8, curve: true, alpha: 0.85, sh: 0, col: narrow ? SKETCH.PAL.rust : SKETCH.INK });
+  // the eye locking on: a rust ring drawn round the pool as it holds (it narrows when the ring closes)
+  if (E.st === 'hunt' && E.holdT > 0.02) {
+    const k = Math.min(1, E.holdT / K.eye.hold);
+    d.stroke(SKETCH.ell(E.x, sy - 4, r + 14, 17, 22, 0, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2), { w: 3.2, curve: true, sh: 0, col: SKETCH.PAL.rust });
+  }
   // the cone's edges: two dry, broken strokes, so the beam is drawn and not a flat shape
   for (const sg of [-1, 1]) d.stroke([[ex + sg * 10, ey], [(ex + E.x) / 2 + sg * (r + 10) / 2, (ey + sy) / 2], [E.x + sg * r, sy - 4]], { w: 1.1, alpha: 0.4, sh: 0, brk: 1.6, col: narrow ? SKETCH.PAL.rust : '#8a7a58', p: [0.2, 1, 0.6] });
 }
@@ -535,6 +551,34 @@ function ironFistDrawTop(st) {
   // the eye's light cuts through the soot
   const E = ph.eye;
   if (ph.soot.length && E.st !== 'done') ironFistDrawEyeLight(st, d);
+  ironFistDrawMarks(st);
+}
+// the job marks, so the goal reads at a glance: a hand-drawn arrow bobbing over the live lock ("PIP: TAUNT HERE!")
+// while the eye hunts, and over the elbow ("BO: HOLD - PULL!") while the fist is stuck
+function ironFistDrawMarks(st) {
+  const ph = st.ph, K = IRONFIST, E = ph.eye;
+  if (ph.hatch || ph.li > 2 || E.st === 'wake' || E.st === 'done' || st.cut) return;
+  const lk = ironFistLock(ph), P = ironFistPlan(st), d = SKETCH.live(ctx, 5170, SKETCH.boil());
+  const name = id => (id === 0 ? 'PIP' : 'BO'), bob = reduceMotion ? 0 : Math.sin(G.clock * 5) * 5;
+  // (solid paper and a solid yellow arrow under the ink, so it reads over the busy chest plates)
+  const blob = (pts, col) => { ctx.save(); ctx.fillStyle = col; ctx.beginPath(); SKETCH.spline(pts, true, 3).forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.fill(); ctx.restore(); };
+  const mark = (x, yTip, text) => {
+    const y = yTip - 8 + bob, arrow = [[x - 14, y - 30], [x + 14, y - 30], [x + 14, y - 14], [x + 27, y - 14], [x, y + 8], [x - 27, y - 14], [x - 14, y - 14]];
+    ctx.save(); ctx.fillStyle = SKETCH.PAL.core; ctx.beginPath(); arrow.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.closePath(); ctx.fill(); ctx.restore();
+    d.shape(arrow, { w: 2.2, corner: 50 });
+    const tw = SKETCH.wordWidth(text, 16) + 22, ty = y - 50, box = [[x - tw / 2, ty - 15], [x, ty - 17], [x + tw / 2, ty - 14], [x + tw / 2 + 3, ty], [x + tw / 2, ty + 14], [x, ty + 16], [x - tw / 2, ty + 14], [x - tw / 2 - 3, ty]];
+    blob(box, SKETCH.PAL.cream);
+    d.stroke(SKETCH.spline(box, true, 3).concat([SKETCH.spline(box, true, 3)[0]]), { w: 1.8, sh: 0 });
+    d.word(text, x, ty + 6, 16, { align: 'center', w: 2.3, bounce: 0.04 });
+  };
+  if (E.st === 'hunt' || E.st === 'back') {
+    const id = [0, 1].find(k => P[k] && P[k].why === 'lure');
+    if (id != null) mark(lk.x, lk.y - 168, name(id) + ': TAUNT HERE!');
+  } else if (E.st === 'stuck' && ph.arm) {
+    const id = [0, 1].find(k => P[k] && P[k].why === 'pull');
+    const p = id != null && G.players[id], onArm = p && p.grounded && ph.arm.solids.includes(p.ground);
+    if (id != null && !onArm) mark(ph.arm.ex, ph.arm.ey - 24, name(id) + ': HOLD HERE TO PULL!');
+  }
 }
 function ironFistHeroO(st, p) {
   if (p.tauntT > 0) { p.tauntT -= DT * 2; return { mood: 'cheeky', sy: 1.06 }; }
