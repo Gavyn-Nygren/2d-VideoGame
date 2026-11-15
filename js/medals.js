@@ -170,3 +170,17 @@ function medalTallyHTML(levels) {
     return `<span class="mt ${n[k] ? '' : 'none'}">${medalSVG(t, true, 20)}<b>${n[k]}</b><small>/${ls.length}</small></span>`;
   }).join('')}</div>`;
 }
+
+// a versus level's mark in a world tile's level dots: blue crossed swords (it never earns a medal)
+const VERSUS_SWORDS = (() => {
+  const one = '<path d="M2.5 2.5 L7 3.6 L17.2 13.8 L13.8 17.2 L3.6 7 Z" fill="#5b95ff"/><path d="M12.2 20.2 L20.2 12.2" stroke="#2f62c4" stroke-width="2.8" stroke-linecap="round"/>'
+    + '<path d="M16 16 L20 20" stroke="#2f62c4" stroke-width="3" stroke-linecap="round"/><circle cx="21" cy="21" r="1.9" fill="#2f62c4"/>';
+  return `<svg class="vs-swords" viewBox="0 0 24 24" aria-hidden="true">${one}<g transform="translate(24 0) scale(-1 1)">${one}</g></svg>`;
+})();
+
+// a team level's mark in a world tile's row: a little medal on a ribbon in its best medal, or an empty outline
+function medalDotSVG(best) {
+  if (best) return medalSVG(MEDAL_TIERS[best - 1], true, 14, 'mdot').replace(/<path d="M10\.5 29[^>]*>/, '');
+  return '<svg class="medal mdot empty" width="14" height="18" viewBox="0 0 40 52" aria-hidden="true"><path d="M9.5 1.5h6.5l6 17h-6.5zM24 1.5h6.5l-5.5 17h-6.5z" fill="none" stroke="#7b818c" stroke-width="2.5" stroke-linejoin="round"/>'
+    + '<circle cx="20" cy="34" r="15" fill="none" stroke="#7b818c" stroke-width="3"/></svg>';
+}

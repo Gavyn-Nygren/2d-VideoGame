@@ -132,8 +132,9 @@ const worldPageCount = () => Math.max(1, Math.ceil(liveWorlds().length / WORLDS_
 const worldPageOf = w => Math.max(0, Math.floor(liveWorlds().indexOf(w) / WORLDS_PER_PAGE));
 function worldTileHTML(w, focusW) {
   const ls = worldLevels(w), done = ls.filter(levelDone).length, wd = WORLDS[w], kind = worldKind(w);
-  // one dot per level, filled with the level's best medal (Gavyn: empty until a medal is earned)
-  const dots = ls.map(i => { const b = medalBest(i); return `<i class="${b ? 'm-' + MEDAL_TIERS[b - 1] : ''}"></i>`; }).join('');
+  // one little medal per level, in the level's best medal (Gavyn: an empty outline until a medal is earned)
+  // versus levels have no medals: they always show blue crossed swords instead (Gavyn, Nov 2026)
+  const dots = ls.map(i => { if (LEVELS[i].kind === 'versus') return VERSUS_SWORDS; return medalDotSVG(medalBest(i)); }).join('');
   return `<li><button type="button" class="wtile${isBossWorld(w) ? ' boss' : ''}" data-act="openworld" data-w="${w}"${w === focusW ? ' data-primary' : ''}
       aria-label="World ${w + 1}: ${esc(wd.name)}. ${plural(ls.length, 'level')}, ${kind.toLowerCase()}. ${done} played.">
     <span class="thumb"><canvas data-pv="world:${w}" aria-hidden="true"></canvas><span class="wnum">${w + 1}</span>${isBossWorld(w) ? '<span class="bossb">Boss</span>' : ''}</span>
