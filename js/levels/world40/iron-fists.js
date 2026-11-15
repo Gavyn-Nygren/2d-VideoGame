@@ -556,7 +556,7 @@ IRON_PHASES.fists = {
   draw(st) { ironFistDraw(st); },
   drawTop(st) { ironFistDrawTop(st); },
   heroO(st, p) { return ironFistHeroO(st, p); },
-  music() { return { song: 'ironmarch', amb: 'ironCity' }; },
+  music() { return { song: 'ironmarch3', amb: 'ironCity' }; },
   stat(st) { const s = st.stats.fists; return s && s.slams ? { label: 'Fists tricked', value: s.slams } : null; },
   leave() { for (const k of ['iron:city', 'iron:chestwall', 'iron:head', 'iron:fist', 'iron:forearm', 'iron:elbow', 'iron:padlock', 'iron:chestledge', 'iron:sternum', 'iron:windmouse', 'iron:chesthatch']) SKETCH.forget(k); },
 };

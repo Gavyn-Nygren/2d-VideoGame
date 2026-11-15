@@ -260,7 +260,7 @@ function ironChaseWaves(st, dt) {
       } else if (p.grounded && p.y + p.h >= gy - 2 && !(p.ground && p.ground.kind === 'wall')) {
         const toss = ironHasGold(st, 'stretch' + ph.stretch) ? K.wave.goldToss : K.wave.toss;
         knock(p, w.dir * toss, -230, 0.25, 0.3);
-        ironStats(st).tossed++; IRON_OUTFIT.dusty = 3; ironPop(st, cx, p.y - 8, 'WHOA!', { size: 13 });
+        ironStats(st).tossed++; IRON_OUTFIT.dusty[p.id] = 3; ironPop(st, cx, p.y - 8, 'WHOA!', { size: 13 });
       }
     }
   }
@@ -630,7 +630,7 @@ function ironChaseHeroO(st, p) {
 IRON_PHASES.chase = {
   setup(st, L) { ironChaseSetup(st, L); },
   wait(st, dt) { const ph = st.ph; if (ph.prep && ph.prep.length) ph.prep.shift()(); ironCoast(st, dt, ph.solids); },
-  step(st, dt) { const ph = st.ph; if (ph.prep && ph.prep.length) ph.prep.shift()(); ironChaseStep(st, dt); },
+  step(st, dt) { const ph = st.ph; if (ph.prep && ph.prep.length) ph.prep.shift()(); ironChaseStep(st, dt); IRON_OUTFIT.snap = !!(ph.chain && ph.chain.state === 'tow'); },
   plan(st) { return ironChasePlan(st); },
   present(st, p) { return !!st.ph.tow; },
   busy(st, p) { return !!st.ph.reel; },

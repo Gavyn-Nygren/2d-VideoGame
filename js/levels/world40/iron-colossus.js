@@ -235,6 +235,7 @@ function ironClang(st, p, o = {}) {
     knock(p, (cx >= fx ? 1 : -1) * B.vx, -B.vy, B.stun, B.slide);
   }
   st.safe[p.id] = o.safe != null ? o.safe : B.safe;
+  IRON_OUTFIT.crooked[p.id] = 3;
   st.stats.clangs[p.id]++; st.stats.kinds[kind] = (st.stats.kinds[kind] || 0) + 1;
   st.cpT = 0;
   Sfx.play('ironClang', p.id); rumble(p.id, 0.6, 0.4, 160);
@@ -547,6 +548,9 @@ function ironStartPhase(st, L) {
   st.rivets[st.phaseNo] = 0;   // (a restarted part collects its rivets again)
   if (!st.stats[st.phase]) st.stats[st.phase] = {};
   setOutfit(st.part.outfit);
+  // soot builds up through the inside parts; hats sit straight and dust and bolts come off on a new part
+  IRON_OUTFIT.soot = { boiler: 0.25, heart: 0.5, brain: 0.75, fall: 1, thumbs: 1 }[st.phase] || 0;
+  IRON_OUTFIT.crooked = [0, 0]; IRON_OUTFIT.dusty = [0, 0]; IRON_OUTFIT.bolt = [0, 0]; IRON_OUTFIT.snap = false;
   if (G.mode === 'play') setLegend(def.legend || IRON_DEF.legend);
   if (!IRON_PHASES[def.phase]) console.warn('The Iron Colossus: no IRON_PHASES.' + def.phase);
   ironCpSave(st);
@@ -561,6 +565,7 @@ function ironTick(st, dt) {
   const ph = ironPh(st);
   if (G.introT <= 0) st.phT += dt;
   ironIdleTick(st, dt);
+  for (const k of ['crooked', 'dusty']) for (let i = 0; i < 2; i++) IRON_OUTFIT[k][i] = Math.max(0, IRON_OUTFIT[k][i] - dt);
   if (st.celebT > 0) st.celebT = Math.max(0, st.celebT - dt);
   if (st.arriveT > 0) st.arriveT = Math.max(0, st.arriveT - dt);
   if (st.say && (st.say.t += dt) >= st.say.life) st.say = null;

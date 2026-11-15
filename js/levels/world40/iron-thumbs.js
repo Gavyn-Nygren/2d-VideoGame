@@ -196,7 +196,7 @@ function ironThumbPin(st, dt) {
 function ironThumbRoundWon(st, w, how) {
   const ph = st.ph;
   if (ph.mode !== 'fight') return;
-  ph.mode = 'over'; ph.mt = 0; ph.winner = w; ph.wins[w]++; ph.thimble = 1 - w; ph.pin = null;
+  ph.mode = 'over'; ph.mt = 0; ph.winner = w; ph.wins[w]++; IRON_OUTFIT.bolt[w] = ph.wins[w]; ph.thimble = 1 - w; ph.pin = null;
   for (const h of ph.th) if (h.s !== 'pinned' && h.s !== 'pinning') { h.s = 'up'; h.t = 0; }
   const champ = ph.wins[w] >= IRONTHUMB.wins;
   ironNews(st, champ ? NAMES[w] + ' wins the Thumb War!' : NAMES[w] + ' takes round ' + ph.round + '! (' + ph.wins[0] + ' - ' + ph.wins[1] + ')', true, 2.6);
@@ -334,7 +334,7 @@ IRON_PHASES.thumbs = {
   drawBack(st) { ironThumbDrawBack(st); },
   draw(st) { ironThumbDraw(st); },
   drawTop(st) { ironThumbDrawTop(st); },
-  music(st) { const ph = st.ph; return { song: 'ironthumb', amb: 'ironMeadow', fast: !!(ph && ph.mode === 'fight' && (ph.slamOff || ph.rt > IRONTHUMB.cap - 10)) }; },
+  music(st) { const ph = st.ph; return { song: ph && ph.mode === 'fight' && (ph.slamOff || ph.rt > IRONTHUMB.cap - 10) ? 'ironthumbFast' : 'ironthumb', amb: 'ironMeadow' }; },
   stat() { return null; },
   statLine(st) { const s = st.stats.thumbs; return s && s.champ != null && s.champ >= 0 ? 'Thumb champ: ' + NAMES[s.champ] + ' (' + s.wins[s.champ] + '-' + s.wins[1 - s.champ] + ')' : ''; },
   leave() { },

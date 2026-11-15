@@ -549,7 +549,7 @@ IRON_PHASES.leg = {
   drawBack(st) { ironLegDrawBack(st); },
   draw(st) { ironLegDraw(st); },
   drawHero(st, p) { return ironLegDrawHero(st, p); },
-  music() { return { song: 'ironmarch', amb: 'ironHeights' }; },
+  music() { return { song: 'ironmarch2', amb: 'ironHeights' }; },
   stat(st) { const s = st.stats.leg; return s && s.ramps ? { label: 'Ramps run', value: s.ramps } : null; },
   leave() { for (const k of ['iron:gulch', 'iron:legchunk', 'iron:legledge', 'iron:farleg', 'iron:cloudbank', 'iron:kneedrum', 'iron:legcuff']) SKETCH.forget(k); },
 };
