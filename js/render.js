@@ -399,9 +399,9 @@ function drawHUD() {
   ctx.font = '700 14px "Atkinson Hyperlegible", system-ui, sans-serif';
   const label = `${levelCode(i)} · ${L.def.name}`;
   const lw = ctx.measureText(label).width + 28;
-  pill(14, 12, lw, 28);
-  text(label, 28, 26.5, 14, C.paper, 'left', 'body');
-  if (L.def.rooms && !L.def.golf) {
+  // (a level that draws its own level and room pills, World 40's hand-drawn HUD, sets def.ownPills)
+  if (!L.def.ownPills) { pill(14, 12, lw, 28); text(label, 28, 26.5, 14, C.paper, 'left', 'body'); }
+  if (L.def.rooms && !L.def.golf && !L.def.ownPills) {
     const rl = `${L.def.roomWord || 'Room'} ${L.def.roomIndex + 1} of ${L.def.roomCount}: ${L.def.title}`;
     ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
     pill(14, 46, ctx.measureText(rl).width + 44, 26);
