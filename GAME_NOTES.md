@@ -19,6 +19,7 @@ Demo: https://claude.ai/artifact/85NPz4hhcdi429juHSXUx7
 - World 25 was built early (Gavyn, Nov 2026) with gaps still to fill; a world can add itself from its own file (see World 25). World 24 was added that way too.
 - Clean controls (Gavyn, Nov 2026): the game sees what each player is using (keyboard, Xbox, PlayStation, Switch or another controller, touch) and shows that player's own buttons everywhere. Every level opens on a ready card you can read first, and with two people both must ready up before it starts (in 1-player mode only the person does). See "Controls and the ready card" below; every new level uses it.
 - Outfits (Gavyn, Nov 2026): Pip and Bo wear outfits unique to each level where it fits (space suits, pirate gear, knight armour...). Every new world and level gets its outfits while it is built (see "Outfits" below). Opus designs them; a Fable 5.2 review checks they look good and fit the theme.
+- Medals (Gavyn, 2026-11-14): every team level has Bronze, Silver and Gold goals the players can see. The ready card lists them; the results card shows a ladder of the three medals (earned ones in colour with "Earned", the rest grey with a lock, each goal ticked or showing your result) and what the next medal needs; the world page shows each level's best medal. Earning Silver also earns Bronze. Every new team level writes its goals in the shared format (see "Medals" below). Versus levels have no medals.
 
 ## Controls
 
@@ -883,6 +884,15 @@ The King's Grand Tournament: striped pavilions, pennants, a royal stand, a castl
 - Status: built, bot-tested and reviewed (Nov 2026); not yet played by hand.
 
 ## How the game is built
+
+### Medals (js/medals.js)
+
+- A team level gives its goals once, as `medals` on its `MODES` object (or on its `LEVELS` entry when it has no mode):
+  `medals: { bronze: 'Reach the castle', goals: [{ key: 'time', gold: 210, silver: 330 }, { key: 'boings', gold: 3, silver: 10, word: 'Boing' }] }`.
+- Each goal names a value by `key`. Fewer (or faster) is better unless `more: true`. Leave out `silver` (or `gold`) when that medal doesn't ask for it. Gold needs every gold goal, Silver every silver goal, Bronze only the finish (the `bronze` words). `pct: true` shows a 0-1 fraction as a percent; `word` names the thing counted ("Boing" becomes "3 or fewer Boings"; "the stars" with `pct` becomes "At least 50% of the stars"); `text: n => '...'` replaces the words.
+- Values: `time` (G.time at the clear) and `falls` are built in. Everything else comes from the mode's `medalValues()` hook at the clear, e.g. `medalValues() { return { boings: 5, stars: 0.6 }; }` (it may return `time` too, or `{ noMedal: true }` for a finish that earns nothing).
+- The medal is worked out by js/medals.js only. A level's `stats()` must not compute or print its own medal any more (no "Medal" tile, no "Silver medal · " line). Results keep `rec.medal = { tier: 0-3, vals }`; the best tier is saved as `medal:<level name>`.
+- Medal goals should be reachable: Bronze for any finish, Silver for a decent run, Gold for a clean, quick one (check with the computer pair: tools/cpu-test.js).
 
 ### Conventions for every level
 - Fixed physics step `DT` = 1/120 s; canvas 960×540 with 30 px tiles (32×18). Maps are 18 rows of 32 characters with spawns `1` and `2`.

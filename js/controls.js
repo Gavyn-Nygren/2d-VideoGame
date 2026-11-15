@@ -212,7 +212,7 @@ function showReadyCard() {
         <button class="ghost back" type="button" data-act="ready-back" data-back><span aria-hidden="true">◀</span> Back</button>
         <div class="home-title"><p class="eyebrow">${bits.join(' · ')}</p><h2>${esc(l.name)} ${kindTag(l.kind, l)}</h2></div>
       </div>
-      <p class="lede">${esc(l.tip || '')}</p>${how}${note ? `<p class="hint">${esc(note)}</p>` : ''}
+      <p class="lede">${esc(l.tip || '')}</p>${how}${medalGoalsHTML(i)}${note ? `<p class="hint">${esc(note)}</p>` : ''}
       <div class="rdy-duo" data-ready-duo></div>
       <p class="rdy-foot" data-ready-foot role="status" aria-live="polite"></p>
     </div>`);

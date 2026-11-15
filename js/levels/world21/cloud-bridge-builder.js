@@ -42,8 +42,8 @@
      away at one gap make that gap's puffs gold too (gold puffs ignore the wind); 32 s spent on one gap (both playing)
      makes it gold as well. 25 s without progress: a gold hint line for whoever is stuck.
    - Leash: on the ground you can't get more than 700 px ahead of your partner ("Wait for Bo!").
-   Medal: Gold at <= 3:30 with <= 3 Boings, Silver at <= 5:30 with <= 10, else Bronze. Results: Boings, clouds puffed and
-   clouds called per player, the medal, stars and gold help.
+   Medal (MODES.cloudbridge.medals, js/medals.js): Gold at <= 3:30 with <= 3 Boings, Silver at <= 5:30 with <= 10, else
+   Bronze. Results: Boings, clouds puffed and clouds called per player, stars and gold help.
    Room def: { title, caller: 0|1, look, tip, news, act, course: [items] }, items in order left to right:
      ['isle', len, top, { signs: [[dx, text]], spring: dx, flag, castle }]   an island (top = its surface y)
      ['gap', width, { wind: phaseSeconds, sun: true, star: true }]           a gap to bridge
@@ -826,6 +826,8 @@ const CLOUDBRIDGE = {
 
   MODES.cloudbridge = {
     CB,
+    medals: { bronze: 'Reach the castle', goals: [{ key: 'time', gold: 210, silver: 330 }, { key: 'boings', gold: 3, silver: 10, word: 'Boing' }] },
+    medalValues() { const s = G.mst.stats; return s ? { time: s.time || G.time, boings: s.boings[0] + s.boings[1] } : {}; },
     spot, target, nozzle, markC, chain, reaches, surfaces, curGap, windAt, windState, wx, groundOf, topFor, inSun, onGoal, job,
     setup(st, L) { setup(st, L); },
     room(k, L) { room(G.mst, L, k); },
@@ -847,15 +849,13 @@ const CLOUDBRIDGE = {
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
-      const b = s.boings[0] + s.boings[1], t = s.time || G.time;
-      const medal = t <= 210 && b <= 3 ? 'Gold' : t <= 330 && b <= 10 ? 'Silver' : 'Bronze';
+      const b = s.boings[0] + s.boings[1];
       const words = b === 0 ? 'Not one Boing! Master bridge builders!' : b <= 3 ? 'Puff, step, puff, step: lovely teamwork!' : 'Lots of Boings, and you made it to the castle together!';
       const gold = st.goldUsed.length ? ' · Gold help: ' + [...new Set(st.goldUsed.map(k => (k === 'wind' ? 'Gold puffs' : 'Gold clouds')))].join(', ') : '';
       return [
         { label: 'Boings', values: s.boings.slice() },
         { label: 'Clouds puffed', values: s.puffs.slice() },
         { label: 'Clouds called', values: s.calls.slice() },
-        { label: 'Medal', value: medal },
         words + ' Stars: ' + s.stars + ' of ' + s.starsTotal + (s.blown ? ' · Blown away: ' + s.blown : '') + gold,
       ];
     },

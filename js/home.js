@@ -194,7 +194,7 @@ function showWorld(w) {
   const cards = ls.map(i => {
     const l = LEVELS[i], best = levelBest(i), done = levelDone(i), blurb = levelBlurb(i);
     return `<li><button type="button" class="lvl" data-act="level" data-i="${i}" aria-label="Level ${levelCode(i)}: ${esc(l.name)}, ${l.kind === 'versus' ? 'versus' : 'team'}. ${esc(blurb)}">
-      <span class="thumb"><canvas data-pv="level:${i}" aria-hidden="true"></canvas><span class="lcode">${levelCode(i)}</span>${done ? '<span class="ldone" aria-hidden="true">✓</span>' : ''}</span>
+      <span class="thumb"><canvas data-pv="level:${i}" aria-hidden="true"></canvas><span class="lcode">${levelCode(i)}</span>${medalBest(i) ? `<span class="lmedal">${medalSVG(MEDAL_TIERS[medalBest(i) - 1], true, 22)}</span>` : done ? '<span class="ldone" aria-hidden="true">✓</span>' : ''}</span>
       <span class="lname">${esc(l.name)}</span>
       <span class="lmeta">${kindTag(l.kind, l)}${best ? `<span class="lbest">${esc(best)}</span>` : ''}</span>
       <span class="lblurb">${esc(blurb)}</span>

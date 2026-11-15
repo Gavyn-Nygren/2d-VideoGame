@@ -166,6 +166,8 @@ function resume() { if (G.mode !== 'paused') return; G.mode = 'play'; hideOverla
 // stat tiles from a mode's stats(): { label, values: [pip, bo] } | { label, value } | 'a line of text'
 function statsHTML(stats) {
   if (!stats || !stats.length) return '';
+  // the medal has its own ladder now (js/medals.js): an old "Medal" tile or "Silver medal · " lead-in is left out
+  stats = stats.filter(x => !(x && typeof x === 'object' && /^medal$/i.test(x.label || ''))).map(x => typeof x === 'string' ? x.replace(/^(Gold|Silver|Bronze) medal[^·!]*[·!]\s*/, '') : x);
   const tiles = stats.filter(x => x && typeof x === 'object').map(x => `<div class="stat"><span class="k">${esc(x.label || '')}</span><span class="v">${x.values
     ? `<span class="nm-pip">${esc(x.values[0])}</span><span style="color:var(--muted)"> – </span><span class="nm-bo">${esc(x.values[1])}</span>` : esc(x.value == null ? '' : x.value)}</span></div>`).join('');
   const lines = stats.filter(x => typeof x === 'string').map(x => `<p class="lede">${esc(x)}</p>`).join('');
@@ -244,6 +246,10 @@ function showResult() {
         ${l.noFalls ? '' : `<div class="stat"><span class="k">Falls</span><span class="v">${r.falls}</span></div>`}
         ${l.noTime ? '' : `<div class="stat"><span class="k">Record</span><span class="v" style="font-size:20px">${bestLine}</span></div>`}
       </div>`}${statsHTML(r.stats)}`;
+  }
+  if (r.medal) {
+    // the medal: its name as the title (a level's own title stays), the three medals beside it, the ladder under it
+    body = body.replace(/<h2>([\s\S]*?)<\/h2>/, (m, h) => `<h2 class="medal-h2"><span>${r.title || r.golf || r.pong || r.build ? h : (medalTitle(r.medal) || h)}</span>${medalShelfHTML(r.medal)}</h2>${medalLadderHTML(i, r.medal)}`);
   }
   showOverlay(`
     <div class="card ${r.rounds ? 'match-card' : 'fit-card'}">
