@@ -160,9 +160,9 @@ const pw33Cow = (v, x, y, s, rot) => {
       c.strokeStyle = '#3a3f4a'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(bkX - 11, bkY - 10); c.lineTo(bkX, bkY - 14); c.lineTo(bkX + 11, bkY - 10); c.stroke();
       // Pip: walks in 0-0.7, rides 0.85-1.85, steps off onto the ledge 1.9-2.2
       let px, py;
-      if (t < 0.7) { const k = v.seg(t, 0, 0.7); px = v.lerp(150, bkX, e.inOut(k)); py = 148 - v.hop(v.seg(t, 0.5, 0.7), 8); }
+      if (t < 0.7) { const k = v.seg(t, 0, 0.7); px = v.lerp(150, bkX, e.inOut(k)); py = 148 + v.hop(v.seg(t, 0.5, 0.7), 8); }
       else if (t < 1.9) { px = bkX; py = bkY; }
-      else { const k = v.seg(t, 1.9, 2.2); px = v.lerp(bkX, 182, k); py = 90 - v.hop(k, 8); }
+      else { const k = v.seg(t, 1.9, 2.2); px = v.lerp(bkX, 182, k); py = 90 + v.hop(k, 8); }
       // the rope drops 2.3-2.6 and Bo climbs it 2.8-4.2
       const drop = v.seg(t, 2.3, 2.6), climb = e.inOut(v.seg(t, 2.8, 4.2));
       if (drop > 0) { const len = drop * 58; v.line(186, 90, 196, 92, '#c89a10', 3); v.line(196, 92, 196 + Math.sin(t * 3) * 2, 92 + len, '#ffd23a', 2.5); }

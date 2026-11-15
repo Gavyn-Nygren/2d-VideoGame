@@ -260,7 +260,7 @@ if (typeof definePreview === 'function') {
     const G = 160;
     if (t < 0.9) return { x: v.lerp(84, 181, v.ease.inOut(t / 0.9)), y: G, sq: 0, mood: 'happy', face: 1 };
     if (t < 2.0) return { x: 181, y: pw17wDeck(v, t), sq: t < 1.05 ? 0.15 * Math.sin(v.seg(t, 0.9, 1.05) * Math.PI) : 0, mood: t < 1.05 ? 'happy' : 'wow', face: -1 };
-    if (t < 2.35) { const k = v.seg(t, 2.0, 2.35); return { x: v.lerp(181, 210, k), y: pw17wWall.top - v.hop(k, 10), sq: 0, mood: 'joy', face: 1 }; }
+    if (t < 2.35) { const k = v.seg(t, 2.0, 2.35); return { x: v.lerp(181, 210, k), y: pw17wWall.top + v.hop(k, 10), sq: 0, mood: 'joy', face: 1 }; }
     if (t < 4.5) return { x: 210, y: pw17wWall.top, sq: t > 3.0 ? 0.08 * Math.sin(t * 14) : 0, mood: t > 3.0 ? 'grit' : 'happy', face: -1 };
     return { x: 210 + 6 * v.ease.inOut(v.seg(t, 4.5, 4.9)), y: pw17wWall.top + v.hop(v.phase(t - 4.9, 0.55), 10) * (t > 4.9 ? 1 : 0), sq: 0, mood: 'joy', face: -1 };
   };
