@@ -249,31 +249,50 @@ if (typeof definePreview === 'function') {
   // ----- END 17-2 River Rapids Canoe preview -----
   //
   // ----- BEGIN 17-3 Waterfall Climb preview -----
-  // beside a jungle waterfall Bo braces at the foot of a tall ledge; Pip hops on Bo's hands and BOOSTS way up, the view
-  // climbs with them, Pip drops a vine at the post and Bo climbs it; both cheer as Tico the toucan flies past.
+  // beside a jungle waterfall Pip steps onto the bamboo lift and Bo pulls its lever; the lift hauls Pip up the tall
+  // ledge, the view climbs with them, Pip drops a vine at the post and Bo climbs it; both cheer as Tico flies past.
   const pw17wWall = { x: 196, top: 74 };            // the ledge (world px; ground at 160)
+  const pw17wLift = { x0: 166, x1: 196, lever: 140 };
+  // the lift deck's top (world px): up with Pip, a pause at the top, then back down
+  const pw17wDeck = (v, t) => 160 - (160 - pw17wWall.top) * (v.ease.inOut(v.seg(t, 1.05, 1.95)) - v.ease.inOut(v.seg(t, 2.35, 2.95)));
   const pw17wPip = (v, t) => {
     // Pip's feet (world px), its squash and mood along the loop
-    const G = 160, onHands = G - 15;
-    if (t < 0.9) return { x: 58 + 92 * v.ease.inOut(t / 0.9), y: G, sq: 0, mood: 'happy', face: 1 };
-    if (t < 1.25) { const k = v.seg(t, 0.9, 1.25); return { x: v.lerp(150, 176, k), y: v.lerp(G, onHands, k) + v.hop(k, 18), sq: -0.1, mood: 'happy', face: 1 }; }
-    if (t < 1.45) return { x: 176, y: onHands, sq: 0.35 * Math.sin(v.seg(t, 1.25, 1.45) * Math.PI), mood: 'grit', face: 1 };
-    if (t < 2.25) {
-      // the BIG boost: way up and over onto the ledge
-      const k = v.seg(t, 1.45, 2.25), up = v.ease.out(Math.min(1, k * 1.25));
-      return { x: v.lerp(176, 222, v.ease.inOut(k)), y: v.lerp(onHands, pw17wWall.top, up) - Math.sin(k * Math.PI) * 22, sq: -0.3 * (1 - k), mood: 'wow', face: 1 };
-    }
-    if (t < 2.6) return { x: v.lerp(222, 210, v.seg(t, 2.25, 2.6)), y: pw17wWall.top, sq: 0.3 * Math.max(0, 1 - (t - 2.25) * 6), mood: 'joy', face: -1 };
+    const G = 160;
+    if (t < 0.9) return { x: v.lerp(84, 181, v.ease.inOut(t / 0.9)), y: G, sq: 0, mood: 'happy', face: 1 };
+    if (t < 2.0) return { x: 181, y: pw17wDeck(v, t), sq: t < 1.05 ? 0.15 * Math.sin(v.seg(t, 0.9, 1.05) * Math.PI) : 0, mood: t < 1.05 ? 'happy' : 'wow', face: -1 };
+    if (t < 2.35) { const k = v.seg(t, 2.0, 2.35); return { x: v.lerp(181, 210, k), y: pw17wWall.top - v.hop(k, 10), sq: 0, mood: 'joy', face: 1 }; }
     if (t < 4.5) return { x: 210, y: pw17wWall.top, sq: t > 3.0 ? 0.08 * Math.sin(t * 14) : 0, mood: t > 3.0 ? 'grit' : 'happy', face: -1 };
     return { x: 210 + 6 * v.ease.inOut(v.seg(t, 4.5, 4.9)), y: pw17wWall.top + v.hop(v.phase(t - 4.9, 0.55), 10) * (t > 4.9 ? 1 : 0), sq: 0, mood: 'joy', face: -1 };
   };
   const pw17wBo = (v, t) => {
     const G = 160;
-    if (t < 1.45) return { x: 176, y: G, sq: 0.35, mood: 'grit', face: 1 };
-    if (t < 3.0) return { x: v.lerp(176, 184, v.seg(t, 2.6, 3.0)), y: G, sq: t < 1.7 ? 0.35 * (1 - v.seg(t, 1.45, 1.7)) : 0, mood: t < 2.3 ? 'wow' : 'happy', face: 1 };
+    if (t < 0.8) return { x: v.lerp(56, 128, v.ease.inOut(t / 0.8)), y: G, sq: 0, mood: 'happy', face: 1 };
+    if (t < 2.0) return { x: 128, y: G, sq: t > 0.85 && t < 1.1 ? 0.25 * Math.sin(v.seg(t, 0.85, 1.1) * Math.PI) : 0, mood: t < 1.1 ? 'grit' : 'wow', face: 1 };
+    if (t < 3.0) return { x: v.lerp(128, 184, v.ease.inOut(v.seg(t, 2.0, 2.8))), y: G, sq: 0, mood: 'happy', face: 1 };
     if (t < 4.2) { const k = v.ease.inOut(v.seg(t, 3.0, 4.2)); return { x: 184, y: v.lerp(G, pw17wWall.top + 4, k), sq: -0.08 + 0.08 * Math.sin(t * 16), mood: 'grit', face: 1, climb: true }; }
     if (t < 4.5) { const k = v.seg(t, 4.2, 4.5); return { x: v.lerp(184, 252, k), y: pw17wWall.top + v.hop(k, 14), sq: 0, mood: 'joy', face: 1 }; }
     return { x: 252, y: pw17wWall.top + v.hop(v.phase(t - 4.65, 0.55), 10) * (t > 4.65 ? 1 : 0), sq: 0, mood: 'joy', face: -1 };
+  };
+  // the bamboo lift: a beam and pulley on the ledge, ropes down to a slatted deck, and its lever on the ground
+  const pw17wDrawLift = (v, t, Y) => {
+    const ctx = v.ctx, L = pw17wLift, top = Y(pw17wWall.top), dy = Y(pw17wDeck(v, t)), mid = (L.x0 + L.x1) / 2;
+    // beam and pulley
+    ctx.fillStyle = '#b8a04a'; ctx.fillRect(L.x0 - 4, top - 26, L.x1 - L.x0 + 14, 5);
+    ctx.fillStyle = '#8a7430'; ctx.fillRect(L.x1 + 2, top - 26, 4, 26);
+    v.fillCircle(mid, top - 20, 5, '#6b5424'); v.fillCircle(mid, top - 20, 2, '#d8c27a');
+    // ropes
+    ctx.strokeStyle = '#7a5a34'; ctx.lineWidth = 1.5; ctx.beginPath();
+    ctx.moveTo(mid - 3, top - 20); ctx.lineTo(L.x0 + 3, dy - 1); ctx.moveTo(mid + 3, top - 20); ctx.lineTo(L.x1 - 3, dy - 1); ctx.stroke();
+    // the deck: bamboo slats
+    for (let k = 0; k < 3; k++) { ctx.fillStyle = k % 2 ? '#a9c85a' : '#c3dc6c'; v.rr(L.x0, dy + k * 2.4, L.x1 - L.x0, 3, 1.5); ctx.fill(); }
+    ctx.fillStyle = '#6e8a30'; ctx.fillRect(L.x0 + 9, dy, 1.2, 7); ctx.fillRect(L.x1 - 10, dy, 1.2, 7);
+    // the lever: pivots on a stump, tips toward the wall when pulled
+    const pull = v.ease.out(v.seg(t, 0.85, 1.0)) - v.ease.inOut(v.seg(t, 2.35, 2.75)), ang = -0.55 + 1.1 * pull, g = Y(160);
+    ctx.save(); ctx.translate(L.lever, g - 5); ctx.rotate(ang);
+    ctx.fillStyle = '#9db84a'; v.rr(-2, -24, 4, 24, 2); ctx.fill();
+    v.fillCircle(0, -25, 4, '#e8443a');
+    ctx.restore();
+    ctx.fillStyle = '#8a6a3c'; v.rr(L.lever - 7, g - 7, 14, 7, 3); ctx.fill();
   };
   const pw17wToucan = (v, x, y, flap) => {
     const ctx = v.ctx;
@@ -287,13 +306,13 @@ if (typeof definePreview === 'function') {
     ctx.restore();
   };
   definePreview('Waterfall Climb', {
-    blurb: 'Brace for a BIG boost up the falls, then drop a vine for your partner!',
+    blurb: 'Ride the bamboo lift while your partner pulls the lever, then drop a vine for them!',
     loop: 6,
-    still: 1.9,
+    still: 1.6,
     draw(v, t) {
       const ctx = v.ctx, W = v.W, H = v.H;
-      // the view climbs with the boost
-      const cam = 34 * v.ease.inOut(v.seg(t, 1.5, 2.6)) * (1 - v.ease.inOut(v.seg(t, 5.55, 6)));
+      // the view climbs with the lift
+      const cam = 34 * v.ease.inOut(v.seg(t, 1.1, 2.2)) * (1 - v.ease.inOut(v.seg(t, 5.55, 6)));
       const Y = y => y + cam;
       // jungle sky and leafy sides
       const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -319,10 +338,11 @@ if (typeof definePreview === 'function') {
       const blink = v.phase(t, 2.3) > 0.93;
       v.fillCircle(56, Y(156), 7, '#7fcf5a'); v.fillCircle(52, Y(150), 3.2, '#7fcf5a'); v.fillCircle(60, Y(150), 3.2, '#7fcf5a');
       if (!blink) { v.fillCircle(52, Y(150), 1.4, v.c.ink); v.fillCircle(60, Y(150), 1.4, v.c.ink); }
-      // the vine post and the vine (unrolls at 2.6-3.0, rolls up after Bo is up)
+      pw17wDrawLift(v, t, Y);
+      // the vine post and the vine (unrolls at 2.5-2.9, rolls up after Bo is up)
       const px = pw17wWall.x + 4;
       ctx.fillStyle = '#9a6a3c'; ctx.fillRect(px - 2, Y(pw17wWall.top) - 14, 5, 14);
-      const len = (pw17wWall.top < 160 ? 160 - pw17wWall.top : 0) * (v.seg(t, 2.6, 3.0) - v.seg(t, 4.3, 4.7));
+      const len = (pw17wWall.top < 160 ? 160 - pw17wWall.top : 0) * (v.seg(t, 2.5, 2.9) - v.seg(t, 4.3, 4.7));
       if (len > 1) {
         ctx.strokeStyle = '#3f9b4d'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(px - 8, Y(pw17wWall.top) - 10);
         for (let k = 0; k <= 10; k++) ctx.lineTo(px - 12 + Math.sin(k * 1.3 + t * 2) * 1.5, Y(pw17wWall.top) - 10 + len * k / 10);
@@ -335,10 +355,10 @@ if (typeof definePreview === 'function') {
       v.hero(1, b.x, Y(b.y), { sq: b.sq, mood: b.mood, face: b.face, shadow: !b.climb });
       v.hero(0, p.x, Y(p.y), { sq: p.sq, mood: p.mood, face: p.face });
       // words
-      if (t > 1.3 && t < 2.0) { ctx.save(); ctx.globalAlpha = 1 - v.seg(t, 1.75, 2.0); v.label('BOOST!', 176, Y(122) - 20 * v.seg(t, 1.3, 2.0), 20, v.c.gold); ctx.restore(); }
-      if (t < 1.3) v.bubble('Hop on!', 176, Y(122), { size: 11 });
-      if (t > 2.65 && t < 3.3) v.label('Vine!', 214, Y(pw17wWall.top) - 36, 15, '#9cf06a');
-      if (t > 3.2 && t < 4.2) v.label('Heave!', 228, Y(pw17wWall.top) - 36, 15, '#fff');
+      if (t > 0.35 && t < 0.95) v.bubble('Pull it!', 181, Y(122), { size: 11 });
+      if (t > 0.9 && t < 1.6) { ctx.save(); ctx.globalAlpha = 1 - v.seg(t, 1.35, 1.6); v.label('CLUNK!', 140, Y(118) - 10 * v.seg(t, 0.9, 1.6), 16, v.c.gold); ctx.restore(); }
+      if (t > 2.55 && t < 3.2) v.label('Vine!', 214, Y(pw17wWall.top) - 36, 15, '#9cf06a');
+      if (t > 3.2 && t < 4.2) v.label('Climb!', 228, Y(pw17wWall.top) - 36, 15, '#fff');
       // the happy payoff: Tico flies past, sparkles
       if (t > 4.5) {
         const k = v.seg(t, 4.5, 6);
