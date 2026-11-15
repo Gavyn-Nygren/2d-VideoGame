@@ -92,7 +92,7 @@ const IRON = {
   boost: 1.5,                  // a jump off a crouching partner's head: this times as high
   handUp: { reach: 46, below: 170, t: 0.42 },
   // the medal: play time (s; idle waits and Part 8 not counted) and team Clangs. Set from bot runs (see GAME_NOTES).
-  medal: { gold: { t: 1080, clangs: 15 }, silver: { t: 1680, clangs: 45 } },
+  medal: { gold: { t: 720, clangs: 12 }, silver: { t: 1080, clangs: 30 } },   // bots: pair 528 s / 0 Clangs, noisy 742 s / ~32
   endT: 8.6,
   cpKey: 'iron:cp', cpV: 1, cpEvery: 2, cpNoteLife: 6, askOverMs: 700,
   impactGap: 1.0,
