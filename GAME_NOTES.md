@@ -2,7 +2,8 @@
 
 Read this before building a new world, level or feature, then read the code files named under "How the game is built". Update this file in the same push whenever a design decision, level or convention changes.
 
-Demo: https://claude.ai/artifact/85NPz4hhcdi429juHSXUx7
+Play: https://gavyn-nygren.github.io/2d-VideoGame/ (GitHub Pages, updates itself on every merge to main)
+Older demo: https://claude.ai/artifact/85NPz4hhcdi429juHSXUx7 (claude.ai artifact, near its 16 MB limit)
 
 ## Gavyn's standing decisions
 
@@ -1094,6 +1095,7 @@ Gavyn asked for a new title and home screen where every world can be picked and 
 - For refactors: `/mnt/project-files/pip-and-bo/refactor-tools/` (in the Claude project files) has a deterministic old-vs-new play-through (`harness.js` + `cmp.js`, run with `runall.sh`): fake clock, seeded random, every level, all three input types, comparing canvas, game state, menus, audio and saves.
 
 ### Publishing
+- The main home is GitHub Pages at https://gavyn-nygren.github.io/2d-VideoGame/. `.github/workflows/pages.yml` deploys it on every push to `main` (a merged PR counts), so there is nothing to publish by hand and no size limit. It copies `css/` and `js/` as they are and puts a doctype and phone viewport on top of `index.html` (the repo's `index.html` stays a page body for the artifact). Check a deploy under the repo's Actions tab ("Deploy game to GitHub Pages"); it can also be run by hand from there. One-time setup: the repo must be public (or the account on GitHub Pro) and Settings > Pages > Source set to "GitHub Actions". Saves live per website, so progress from the artifact demo does not carry over.
 - The demo is a multi-file claude.ai Artifact at https://claude.ai/artifact/85NPz4hhcdi429juHSXUx7: the page is the repo's `index.html` and every css/js file is published next to it under its own path (`files`). To update it, read the page and list its files first, then publish `index.html` with the changed files. Always republish to that same link. (Older single-file demos, which got too big to update: 3KFgRXoujADJ9PMR1rTErY, 5jJ7SJw7gwSttznxFP56TG.)
 - `node tools/bundle.js` (needs only Node) writes `build/pip-and-bo.html`, one self-contained file that is not committed (handy for sharing offline; the demo no longer uses it). Like `index.html`, it is the page body without the outer html/head/body tags, which the publisher adds.
 - Then push to `main` here and update the README's world list and this file.

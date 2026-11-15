@@ -2,7 +2,7 @@
 
 A 2D local co-op game for two players on one screen, made for playing with friends and family. It's a run of short levels with a different twist each time. Most are teamwork, and a few are head-to-head.
 
-**Play it now:** https://claude.ai/artifact/85NPz4hhcdi429juHSXUx7
+**Play it now:** https://gavyn-nygren.github.io/2d-VideoGame/
 
 ## How to play
 

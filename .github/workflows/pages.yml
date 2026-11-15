@@ -1,0 +1,45 @@
+# Publishes the game to GitHub Pages every time main changes.
+# Only the files the game needs are published (index.html, css/, js/);
+# tools/, notes and build/ stay out of the site.
+name: Deploy game to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect the game files
+        run: |
+          mkdir _site
+          cp -r css js _site/
+          touch _site/.nojekyll
+          # index.html is only the page body (the Claude demo adds the outer page),
+          # so give the Pages copy a doctype and a phone viewport.
+          {
+            echo '<!doctype html>'
+            echo '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
+            cat index.html
+          } > _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
