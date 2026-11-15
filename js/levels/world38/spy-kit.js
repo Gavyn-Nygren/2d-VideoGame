@@ -475,7 +475,7 @@ const SPY = (() => {
   // a tiptoe spy theme: walking upright bass, finger snaps on 2 and 4, a four-note vibes hook that answers itself,
   // a soft brushed hat and now and then one sly muted-brass "wah". Sparse, with rests, so the level sounds come through.
   SONGS.spysneak = {
-    bpm: 104, vol: 0.33, root: 52, scale: 'minor', swing: 0.22, form: ['A', 'A', 'B', 'A'],
+    bpm: 104, vol: 0.54, root: 52, scale: 'minor', swing: 0.22, form: ['A', 'A', 'B', 'A'],
     inst: { lead: 'vibes', lead2: 'brass', bass: 'upright' }, oct: { lead: 1 },
     bass: '0 2 3 2',
     drums: { c: '..x...x.', h: 'o.oo.oo.' },
@@ -490,7 +490,7 @@ const SPY = (() => {
   };
   // 38-3: the same song, slower and darker: bass, snaps and a low drone, no hook
   SONGS.spysneakLow = {
-    bpm: 88, vol: 0.4, root: 48, scale: 'minor', swing: 0.22, form: ['A', 'A', 'B', 'A'],
+    bpm: 88, vol: 0.47, root: 48, scale: 'minor', swing: 0.22, form: ['A', 'A', 'B', 'A'],
     inst: { pad: 'softpad', bass: 'upright', lead: 'vibes' }, oct: { lead: 0 },
     bass: '0 . 2 . 3 . 2 .',
     drums: { c: '..x...x.', z: 'o...o...' },
@@ -501,7 +501,7 @@ const SPY = (() => {
   };
   // the chase: the same four-note hook fast and loud on brass stabs over a driving surf bass, bongos and a full kit
   SONGS.spychase = {
-    bpm: 164, vol: 0.3, root: 52, scale: 'minor', form: ['A', 'A', 'B', 'A'],
+    bpm: 164, vol: 0.39, root: 52, scale: 'minor', form: ['A', 'A', 'B', 'A'],
     inst: { lead: 'brass', lead2: 'pluck', bass: 'sawbass', comp: 'pluck' }, oct: { lead: 1, lead2: 1 },
     bass: '0 0 2 0 3 0 2 0', comp: '. x . x',
     drums: { k: 'x...x...', s: '..x...x.', h: 'xxxxxxxx', D: 'x..x..x.', e: '..x..x.x' },
@@ -513,7 +513,7 @@ const SPY = (() => {
         lead: ['3 . 4 . 5 . 4 .', '3 - - - . . 5 .', '5 . 4 . 3 . 1 .', '4 - - - 4 . 4 .'] },
     },
   };
-  SONGS.spychaseUp = Object.assign({}, SONGS.spychase, { root: 54, vol: 0.3 });
+  SONGS.spychaseUp = Object.assign({}, SONGS.spychase, { root: 54, vol: 0.38 });
   MUSIC_BY_WORLD[37] = 'spysneak';
   const SIREN = (A, t, v) => { for (let i = 0; i < 2; i++) { A.chirp(t + i * 0.7, 620, 900, 0.35, v, 'triangle'); A.chirp(t + i * 0.7 + 0.35, 900, 620, 0.35, v, 'triangle'); } };
   Object.assign(AMBIENCE, {
