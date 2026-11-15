@@ -873,9 +873,17 @@
     text('▼', x + w / 2, y0 + 9, 10, '#ffffff', 'center', 'body');
   }
 
-  const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
   MODES.cavelift = {
-    S, plan, medal, tiltDeg, ends, mid, HOME, RANGE, swingAt,
+    S, plan, tiltDeg, ends, mid, HOME, RANGE, swingAt,
+    medals: {
+      bronze: 'Reach the cavern floor',
+      goals: [
+        { key: 'time', gold: S.goldT, silver: S.silverT },
+        { key: 'lurches', gold: 0, silver: 3, word: 'Lurch' },
+        { key: 'gems', gold: S.gems, silver: 12, more: true, word: 'glow gem' },
+      ],
+    },
+    medalValues() { const st = G.mst; return { lurches: st.stats ? st.stats.lurches : 0, gems: st.gems || 0 }; },
     setup(st, L) {
       st.stats = { lurches: 0, snags: 0, bonks: 0, shooed: 0, stamps: 0, fires: 0, gems: 0, slams: 0, scrapes: 0, chains: 0, winched: 0, crateLost: false, missed: [], badWhy: [], helps: 0, roomT: [] };
       st.gems = 0; st.gotGem = {}; st.fray = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0; st.T = 0; st.items = null;
@@ -898,7 +906,6 @@
         { label: 'Glow gems', value: st.gems + ' of ' + S.gems },
         { label: 'Lurches', value: String(s.lurches) },
         { label: 'Snags', value: String(s.snags + s.scrapes) },
-        { label: 'Medal', value: medal(G.time) },
       ];
       out.push('Bonks: ' + s.bonks + '. Bats shooed: ' + s.shooed + '. ' + (st.crate.on ? 'Mabel\'s lamps delivered!' : 'The lamp crate was lost down the shaft.'));
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);

@@ -887,9 +887,17 @@
     }
   }
 
-  const medal = t => K.medal(t <= S.goldT, t <= S.silverT);
   MODES.cavegolem = {
-    S, SURF, SI, plan, medal, world, spotXY, armPose, legPose, stompIn, atShard, atEar, inHollow,
+    medals: {
+      bronze: 'Calm the Guardian',
+      goals: [
+        { key: 'time', gold: S.goldT, silver: S.silverT },
+        { key: 'tumbles', gold: 0, silver: 4, word: 'Tumble' },
+        { key: 'gems', gold: S.gems, silver: 12, more: true, word: 'glow gem' },
+      ],
+    },
+    medalValues() { const st = G.mst; return { tumbles: st.stats ? st.stats.tumbles : 0, gems: st.gems || 0 }; },
+    S, SURF, SI, plan, world, spotXY, armPose, legPose, stompIn, atShard, atEar, inHollow,
     setup(st, L) {
       st.stats = { shards: 0, tumbles: 0, tantrums: 0, soothed: 0, flinches: 0, brushed: 0, bonks: 0, shaken: 0, stomps: 0, fisted: 0, geysered: 0, heaves: 0, mites: 0, gems: 0, helps: 0, roomT: [] };
       st.gems = 0; st.gotGem = {}; st.rage = 0; st.pulled = 0; st.inT = [G.time, G.time]; st.personT = G.time; st.clock = 0; st.T = 0;
@@ -911,7 +919,6 @@
         { label: 'Shards pulled', value: s.shards + ' of 12' },
         { label: 'Glow gems', value: st.gems + ' of ' + S.gems },
         { label: 'Tumbles', value: String(s.tumbles) },
-        { label: 'Medal', value: medal(G.time) },
       ];
       out.push('Tantrums: ' + s.tantrums + '. Flinches soothed: ' + s.soothed + '.');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);
