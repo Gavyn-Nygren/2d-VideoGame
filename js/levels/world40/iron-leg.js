@@ -22,16 +22,17 @@
      the hip   a huge slow gear: both stand on its tooth at once and it carries them up into the belt gallery.
    FAILS (Clangs): a vent's puff; a fall of more than a ledge and a half. Crows (oil birds) on some ledges flap in
    your face if you walk into them: a stumble, no Clang.
-   GOLD HELP after IRON.goldAfter Clangs: the leg stays planted `goldUp` s and the plant tell is `goldTell` s.
+   GOLD HELP after IRON.goldAfter misses (Clangs, or sliding back down a ramp): the swing takes `goldSwing` s and the plant
+   tell is `goldTell` s.
    Rivets: 10 (8 on ramps that only work in a swing, 2 on ledges).   Stats (st.stats.leg): ramps, braces, lifts.
    Names: ironLeg* / IRONLEG*, sounds ironleg*. */
 const IRONLEG = {
-  stride: 3.3, up: 1.5, swing: 1.8, lean: 30 * Math.PI / 180, tell: 0.6, goldUp: 2.2, goldTell: 1.0,
+  stride: 3.3, up: 1.5, swing: 1.8, lean: 30 * Math.PI / 180, tell: 0.6, goldUp: 1.5, goldSwing: 2.5, goldTell: 1.0,
   plateA: 50 * Math.PI / 180, maxA: 38 * Math.PI / 180, lip: 26, dropHold: 0.4, slideV: 270, storey: 150, plateDX: 126,
   halfW: 290, view: { cx: 480, cy: 300 },
   // ledges: [y, x0, x1] in the leg's frame (y up is negative; 0 is the ankle cuff)
-  ledges: [[0, -290, 290], [-150, -144, 290], [-300, 66, 290], [-450, -290, 150], [-600, -134, 290], [-750, 26, 290], [-900, -290, 100],
-    [-1050, -134, 290], [-1200, 36, 290], [-1350, -290, 100], [-1500, -134, 290], [-1650, -290, 100], [-1800, -134, 290], [-1950, 66, 290]],
+  ledges: [[0, -290, 290], [-150, -144, 290], [-300, 66, 290], [-450, -290, 200], [-600, -134, 290], [-750, 26, 290], [-900, -290, 100],
+    [-1050, -134, 290], [-1200, 36, 290], [-1350, -290, 200], [-1500, -134, 290], [-1650, -290, 100], [-1800, -134, 290], [-1950, 66, 290]],
   // plates (ramps): [x at the bottom, the ledge it starts on, vent (0 none, 1 puffs on odd strides, 2 on even)]
   plates: [[-270, 0, 0], [-60, 1, 0], [-260, 3, 1], [-100, 4, 0], [-260, 6, 0], [-90, 7, 2], [-260, 9, 0], [-260, 11, 1], [-60, 12, 0]],
   // the stations, by the ledge they start from
@@ -46,6 +47,7 @@ const IRONLEG = {
 const ironLegLedge = i => IRONLEG.ledges[i];
 const ironLegPlate = i => { const [x, from, vent] = IRONLEG.plates[i]; return { i, x0: x, x1: x + IRONLEG.plateDX, yb: ironLegLedge(from)[0], yt: ironLegLedge(from)[0] - IRONLEG.storey, from, to: from + 1, vent }; };
 const ironLegUp = st => (ironHasGold(st, 'leg') ? IRONLEG.goldUp : IRONLEG.up);
+const ironLegSwing = st => (ironHasGold(st, 'leg') ? IRONLEG.goldSwing : IRONLEG.swing);
 const ironLegTellT = st => (ironHasGold(st, 'leg') ? IRONLEG.goldTell : IRONLEG.tell);
 
 function ironLegSetup(st, L) {
@@ -95,12 +97,12 @@ function ironLegBuild(ph) {
 }
 // the stride clock: 0 .. up (planted), up .. up + swing (the swing); theta follows a half sine
 function ironLegClock(st, dt) {
-  const ph = st.ph, K = IRONLEG, up = ironLegUp(st), T = up + K.swing;
+  const ph = st.ph, K = IRONLEG, up = ironLegUp(st), sw = ironLegSwing(st), T = up + sw;
   const was = ph.sc;
   ph.sc += dt;
   if (!ph.told && ph.sc >= T - ironLegTellT(st)) { ph.told = true; Sfx.play('ironStompTell'); ironWord(st, 'kla...', st.cam.x + 480, st.cam.y + 470, 18, { life: ironLegTellT(st), grow: 1.1, fill: SKETCH.PAL.ochre, key: 'kla' }); }
   if (ph.sc >= T) { ph.sc -= T; ph.strides++; ph.told = false; ironLegPlant(st); }
-  const u = (ph.sc - up) / K.swing;
+  const u = (ph.sc - up) / sw;
   ph.theta = u > 0 && u < 1 ? K.lean * Math.sin(Math.PI * u) : 0;
   ph.swinging = u > 0 && u < 1;
   ph.u = u;
@@ -132,6 +134,8 @@ function ironLegCtl(p, dt) {
     p.sliding = false; return;
   }
   if (!steep) { control(p, dt); p.sliding = false; return; }
+  // starting to slide back down a ramp counts as a miss toward the gold help (no Clang)
+  if (!p.sliding && p.y + p.h < pl.yb - 30 && ironMiss(G.mst, 'leg') >= IRON.goldAfter) ironLegGold(G.mst);
   const real = p.input;
   p.input = Object.assign({}, real, { left: false, right: false, jump: false, up: false }); p.pendingJump = false;
   try { control(p, dt); } finally { p.input = real; }
@@ -179,7 +183,7 @@ function ironLegStep(st, dt) {
   ironRivetsStep(st, dt);
   ironLegHints(st);
 }
-function ironLegGold(st) { ironGoldOnce(st, 'leg', 'Gold help! The leg stays planted longer and the stomp is called earlier.'); }
+function ironLegGold(st) { ironGoldOnce(st, 'leg', 'Gold help! The leg swings slower now, and the stomp is called earlier.'); }
 // the camera: follows the lower hero, keeps the upper in view when it can
 function ironLegCamera(st, dt) {
   const ps = G.players.filter(p => p.alive);
@@ -284,7 +288,7 @@ function ironLegGate(st, dt) {
 /* --- steam vents on some plates: they puff mid-swing on alternate strides --- */
 function ironLegVents(st, dt) {
   const ph = st.ph, K = IRONLEG, up = ironLegUp(st);
-  const at = up + K.swing * K.vent.at;
+  const at = up + ironLegSwing(st) * K.vent.at;
   for (const v of ph.vents) {
     const pl = ph.plateList[v.plate], due = pl.vent === 1 ? ph.strides % 2 === 1 : ph.strides % 2 === 0;
     v.t += dt;
@@ -342,10 +346,10 @@ function ironLegStation(ph, ledge, p) {
 }
 // can a hero at x start this ramp now and be up before the plant? (the brain's rule, with 0.25 s to spare)
 function ironLegRampOk(st, pl, x) {
-  const ph = st.ph, K = IRONLEG, up = ironLegUp(st), u = (ph.sc - up) / K.swing;
+  const ph = st.ph, K = IRONLEG, up = ironLegUp(st), sw = ironLegSwing(st), u = (ph.sc - up) / sw;
   const uOff = Math.asin(Math.min(1, (K.plateA - K.maxA) / K.lean)) / Math.PI;   // the share of the swing it is too steep
   if (u < uOff - 0.04 || u > 1 - uOff) return false;
-  const tLeft = (1 - uOff - u) * K.swing, need = (Math.abs(pl.x0 - x) + K.plateDX) / PHYS.maxRun + 0.25;
+  const tLeft = (1 - uOff - u) * sw, need = (Math.abs(pl.x0 - x) + K.plateDX) / PHYS.maxRun + 0.25;
   return tLeft > need;
 }
 function ironLegPlan(st) {
