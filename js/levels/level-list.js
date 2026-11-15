@@ -580,14 +580,24 @@ const LEVELS = [
   {
     name: 'Snowball Fight', world: 3, kind: 'versus', mode: 'snow',
     match: { bestOf: 7, roundTime: 60 }, act: { label: 'throw' }, stomp: false,
-    legend: { down: 'duck', padDown: 'down ducks' },   // ▼ ducks (and packs snow) here; on a plank it still drops through
-    tip: 'Hit them 4 times to make a snowman! Tap to throw, hold to lob, ▼ to duck. Don’t hide too long!',
-    signs: [{ x: 480, y: 104, text: 'Hold throw to aim far · ▼ ducks under snowballs' }],
+    // ▼ ducks (and packs snow) here; on a plank it still drops through. While throw is held, ▲ ▼ tilt the aim instead.
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck · hold throw: <kbd>W</kbd><kbd>S</kbd> aim up / down',
+      bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> duck · hold throw: <kbd>↑</kbd><kbd>↓</kbd> aim up / down',
+    },
+    tip: 'Hit them 4 times to make a snowman! Hold throw to aim, catch their snowballs, and hide behind your fort.',
+    howTo: [
+      'Tap throw for a quick throw. Hold throw to aim: ▲ ▼ tilt the dotted line, let go to throw. Aim high to lob over a fort.',
+      'Catch! When a snowball is about to hit you, a gold “Catch!” pops up: press throw to catch it. A catch shakes 1 snow off you.',
+      'Your fort: your snowballs fly over your own wall, theirs can’t get through. Grab more snowballs at your pile.',
+      '▼ ducks under quick throws. At 40 seconds the sun comes out and both forts melt.',
+    ],
+    signs: [{ x: 480, y: 104, text: 'Hold throw to aim  ·  “Catch!” pops up? Press throw!' }],
     theme: { skyTop: '#bcdcf2', skyBot: '#e6f0f9', hillFar: '#d5e5f2', hillNear: '#b9d0e4',
       stone: '#56688c', stoneLight: '#667aa0', stoneEdge: '#3b4a6c', grass: '#f8fcff', grassDark: '#c4d8ec',
       sun: 'rgba(255, 252, 238, 0.95)', sunGlow: 'rgba(255, 252, 238, 0.35)' },
     switches: {},
-    // f = snow-fort brick (3 hits), m = centre MEGA spot, n = side MEGA spots (Pip's left, Bo's right)
+    // f = snow-fort brick (3 hits), o = snowball pile, m = centre MEGA spot, n = side MEGA spots (Pip's left, Bo's right)
     map: [
       '################################',
       '#..............................#',
@@ -603,8 +613,8 @@ const LEVELS = [
       '#......n...............n.......#',
       '#.....====............====.....#',
       '#..............m...............#',
-      '#.......f......##......f.......#',
-      '#..1....f....######....f....2..#',
+      '#..............##..............#',
+      '#..1.o.fff...######...fff.o.2..#',
       '################################',
       '################################',
     ],
