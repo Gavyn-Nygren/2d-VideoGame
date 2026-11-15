@@ -33,7 +33,7 @@ function solidFor(ch, p) {
 }
 const isVersus = () => G.level && G.level.def.kind === 'versus';
 // In rope levels the two of you pass through each other: no stacking, no carrying, no knocking each other off.
-const solidPartners = () => !(G.level && G.level.def.tether);
+const solidPartners = () => !(G.level && (G.level.def.tether || G.level.def.passPartners));   // (passPartners: no standing on heads)
 
 /* ---------- movement ---------- */
 function moveX(p, dx, ignorePartner) {

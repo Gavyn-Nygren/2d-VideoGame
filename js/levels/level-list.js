@@ -2196,15 +2196,15 @@ const LEVELS = [
   // ----- BEGIN 9-1 Pompeii Escape (mode 'pompeii', js/levels/world9/pompeii-escape.js) -----
   // 9-1 Pompeii Escape (mode 'pompeii', team): boost each other up the walls, then reach down from the edge (help)
   // and pull your partner up; lava creeps in sideways, ash makes you sneeze. Map chars and rules: the top of the file.
-  { name: 'Pompeii Escape', world: 8, kind: 'team', mode: 'pompeii', ownHUD: true, noFalls: true,
-    act: { label: 'help' },
-    legend: { down: 'hold: hop back', padDown: 'hold down: hop back' },
-    tip: 'Boost each other up the walls, then press help at the edge to pull your partner up. Run to the boat!',
+  { name: 'Pompeii Escape', world: 8, kind: 'team', mode: 'pompeii', ownHUD: true, noFalls: true, passPartners: true,
+    act: { label: 'use' },
+    legend: { jump: 'jump · climb', down: 'hold: hop back', padDown: 'hold down: hop back' },
+    tip: 'Pull the lever to hoist your partner up on the crane lift, then they drop the rope ladder for you. Run to the boat!',
     switches: {}, signs: [],
     rooms: [
-      { // ---------- Room 1: Market Square (learn the boost and the hand-up) ----------
+      { // ---------- Room 1: Market Square (learn the crane lift and the rope ladder) ----------
         title: 'Market Square', bg: 'town', leads: [0, 1], awnB: [58, 70], exitLabel: 'PORTA MARINA',
-        tip: 'Bo, be the step! Pip hops on Bo’s head, jumps up, then presses help at the edge to pull Bo up.',
+        tip: 'Pip stands on the lift and Bo pulls the lever. Up top, Pip drops the rope ladder for Bo to climb!',
         lava: { delay: 4, speed: 10, caps: [6, 12, 20] }, ash: { every: 2.6, aim: 0.4 },
         boards: [{ x: 420, y: 420, text: 'POMPEII', size: 26, paint: true }, { x: 420, y: 448, text: '79 AD', size: 17, paint: true },
           { x: 600, y: 300, text: 'Swap jobs!', size: 18, paint: true }],
@@ -2245,7 +2245,7 @@ const LEVELS = [
           '..........................mmmmmm', //  6
           '..........................mmmmmm', //  7
           '..........................mmmmmm', //  8
-          '......................!.N.mmmmmm', //  9
+          '......................!N..mmmmmm', //  9
           '.........!............mmmmmmmmmm', // 10
           '.........KK...........mmmmmmmmmm', // 11
           '.........KK...........mmmmmmmmmm', // 12
@@ -2270,7 +2270,7 @@ const LEVELS = [
           '..........................hhh...', //  5
           '..........................hhh...', //  6
           '..........................hhh...', //  7
-          '.....................!..N.hhh...', //  8
+          '.....................!.N..hhh...', //  8
           '.....................vvvvvhhh...', //  9
           '.....................vvvvvhhh...', // 10
           '.....!..N............vvvvvhhh...', // 11
