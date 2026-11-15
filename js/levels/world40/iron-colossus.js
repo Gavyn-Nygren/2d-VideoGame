@@ -273,7 +273,7 @@ function ironBody(p, dt, solids, o = {}) {
   if (was && g0 && !g0.off) { const m = g0.src || g0; p.x += m.dx || 0; p.y += m.dy || 0; }
   p.x += p.vx * dt;
   for (const r of solids) {
-    if (r.one || r.off || r.head || p.y + p.h <= r.y0 + 4 || p.y >= r.y1 - 0.5) continue;
+    if (r.one || r.off || r.head || r.slope || p.y + p.h <= r.y0 + 4 || p.y >= r.y1 - 0.5) continue;
     if (p.x + p.w > r.x0 && p.x < r.x1) {
       if (p.x + p.w / 2 < (r.x0 + r.x1) / 2) { p.x = r.x0 - p.w; p.vx = Math.min(0, p.vx); } else { p.x = r.x1; p.vx = Math.max(0, p.vx); }
     }
@@ -284,6 +284,13 @@ function ironBody(p, dt, solids, o = {}) {
   const list = o.partner ? solids.concat(ironHeads(p)) : solids;
   for (const r of list) {
     if (r.off || p.x + p.w <= r.x0 + 0.5 || p.x >= r.x1 - 0.5) continue;
+    if (r.slope) {
+      // a one-way slope (a ramp, a tilted plate): its top is ya at x0 .. yb at x1, under the hero's middle
+      const cx = clamp(p.x + p.w / 2, r.x0, r.x1), sy = r.ya + (r.yb - r.ya) * (cx - r.x0) / (r.x1 - r.x0);
+      const tol = 3 + Math.abs(r.yb - r.ya) / (r.x1 - r.x0) * Math.abs(p.vx * dt) + Math.max(0, r.dy || 0) + (was && g0 === r ? 8 : 0);
+      if (p.vy >= 0 && p.y + p.h >= sy && feet0 <= sy + tol && !(p.dropT > 0)) { p.y = sy - p.h; p.vy = 0; ground = r; }
+      continue;
+    }
     if (p.vy >= 0 && p.y + p.h >= r.y0 && feet0 <= r.y0 + 2 + Math.max(0, r.dy || 0) && !(r.one && p.dropT > 0 && !r.head)) { p.y = r.y0 - p.h; p.vy = 0; ground = r; }
     else if (!r.one && !r.head && p.vy < 0 && p.y < r.y1 && top0 >= r.y1 - 2) { p.y = r.y1; p.vy = 0; p.jumping = false; }
     else if (!r.one && !r.head && p.y + p.h > r.y0 + 0.5 && p.y < r.y1 - 0.5 && p.x + p.w > r.x0 + 0.5 && p.x < r.x1 - 0.5) {
@@ -291,7 +298,11 @@ function ironBody(p, dt, solids, o = {}) {
       if (up < dn) { p.y = r.y0 - p.h; p.vy = Math.min(0, p.vy); ground = r; } else { p.y = r.y1; p.vy = Math.max(0, p.vy); }
     }
   }
-  if (!ground && was && p.vy >= 0) for (const r of list) if (!r.off && p.x + p.w > r.x0 + 0.5 && p.x < r.x1 - 0.5 && Math.abs(p.y + p.h - r.y0) < 3) { p.y = r.y0 - p.h; ground = r; p.vy = 0; break; }
+  if (!ground && was && p.vy >= 0) for (const r of list) {
+    if (r.off || p.x + p.w <= r.x0 + 0.5 || p.x >= r.x1 - 0.5) continue;
+    const ty = r.slope ? r.ya + (r.yb - r.ya) * (clamp(p.x + p.w / 2, r.x0, r.x1) - r.x0) / (r.x1 - r.x0) : r.y0;
+    if (Math.abs(p.y + p.h - ty) < (r.slope ? 7 : 3)) { p.y = ty - p.h; ground = r; p.vy = 0; break; }
+  }
   p.ground = ground; p.grounded = !!ground; p.tileGround = !!(ground && !ground.head); p.onPartner = !!(ground && ground.head); p.onOneWay = !!(ground && ground.one);
   if (p.grounded && !was && p.lastVy > 260) { p.sx = 1.25; p.sy = 0.78; Sfx.play('land'); }
   p.lastVy = p.grounded ? 0 : p.vy;
@@ -326,12 +337,12 @@ function ironHandUp(st, dt, o = {}) {
     return true;
   }
   for (const p of G.players) {
-    if (!p.alive || !p.grounded || p.onPartner || !p.input.act || !p.ground) continue;
+    if (!p.alive || !p.grounded || p.onPartner || !p.input.act || !p.ground || p.ground.slope || !isFinite(p.ground.y0)) continue;
     if (o.can && !o.can(p)) continue;
     const q = G.players[1 - p.id], g = p.ground;
     if (!q.alive || q.ground === g) continue;
     const pc = p.x + p.w / 2, qc = q.x + q.w / 2;
-    const edgeL = pc - g.x0 < 40, edgeR = g.x1 - pc < 40;
+    const E = o.edge || 40, edgeL = pc - g.x0 < E, edgeR = g.x1 - pc < E;
     if (!edgeL && !edgeR) continue;
     const side = edgeR && (!edgeL || qc > pc) ? 1 : -1;
     if (Math.abs(qc - pc) > H.reach + 20 || (qc - pc) * side < -6) continue;
@@ -774,6 +785,8 @@ function ironDrawTop(st) {
   for (const q of st.words) if (!q.screen) ironDrawWord(q, dark);
   ctx.restore();
   for (const q of st.words) if (q.screen) ironDrawWord(q, dark);
+  // the page's soft edge (darker toward the corners): the frame every part sits in
+  if (!end) SKETCH.edge(ctx, ironPaper(st));
   // the "!" warnings over heads
   for (const p of G.players) {
     if (!p.alive || end || !(st.warn[p.id] > 0)) continue;

@@ -21,11 +21,21 @@ IRON_ART.desert = (layer, chunk = 0) => {
 IRON_ART.desertDraw = [];
 
 // a dune ridge as points along x (a sum of slow bumps), seeded
-function ironDuneLine(d, y0, amp, x0, x1, step, seed) {
+// edge: true flattens it to y0 at the chunk's two edges (x 0 and 960), so chunks tile with no seam
+function ironDuneLine(d, y0, amp, x0, x1, step, seed, edge) {
   const pts = [];
-  for (let x = x0; x <= x1; x += step) pts.push([x, y0 - amp * (0.55 * Math.sin(x / 170 + seed) + 0.3 * Math.sin(x / 61 + seed * 2.3) + 0.15 * Math.sin(x / 23 + seed * 5))]);
+  for (let x = x0; x <= x1; x += step) {
+    const e = edge ? Math.max(0, Math.min(1, x / 140, (960 - x) / 140)) : 1, k = e * e * (3 - 2 * e);
+    pts.push([x, y0 - k * amp * (0.55 * Math.sin(x / 170 + seed) + 0.3 * Math.sin(x / 61 + seed * 2.3) + 0.15 * Math.sin(x / 23 + seed * 5))]);
+  }
   return pts;
 }
+// a seeded random for one chunk's shapes, so a neighbour chunk can draw the same shape where it spills over the seam
+function ironChunkRand(layer, chunk) {
+  let s = (layer * 7919 + chunk * 104729 + 17) >>> 0;
+  return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+}
+const IRON_DESERT_N = [2, 4, 3, 3];
 
 /* ---- layer 0: the sky and the far horizon ---- */
 IRON_ART.desertDraw[0] = (d, chunk) => {
@@ -35,12 +45,16 @@ IRON_ART.desertDraw[0] = (d, chunk) => {
   d.pencil([[0, 210], [960, 252]], { alpha: 0.12 }); d.pencil([[480, 296], [960, 120]], { alpha: 0.1 });
   // sky washes: loose horizontal glazes, warmer near the ground, paper left at the top for the glare
   // the haze over the sand: loose overlapping glazes with ragged tops (never a band with a straight edge)
-  for (let i = 0; i < 9; i++) {
-    const x = -80 + i * 120 + d.r() * 40, top = 150 + d.r() * 70, w2 = 160 + d.r() * 80;
-    const blob = []; for (let k = 0; k <= 10; k++) { const t = k / 10; blob.push([x + w2 * t, top + Math.sin(t * Math.PI * 2 + i) * 14 - Math.sin(t * Math.PI) * 30 + (1 - Math.sin(t * Math.PI)) * 60]); }
-    d.wash(blob.concat([[x + w2 + 20, 302], [x - 20, 302]]), i % 3 ? P.dust : P.ochre, { alpha: 0.16 + d.r() * 0.1, off: 0, spread: 2, layers: 2, edge: false, curve: true });
+  // (each chunk also draws its neighbours' blobs that spill over its edges, so the haze runs on across the seams)
+  for (const nb of [-1, 0, 1]) {
+    const n = IRON_DESERT_N[0], c = ((chunk + nb) % n + n) % n, R = ironChunkRand(0, c);
+    for (let i = 0; i < 8; i++) {
+      const x = nb * 960 + i * 120 + R() * 40, top = 150 + R() * 70, w2 = 160 + R() * 80, al = 0.16 + R() * 0.1;
+      if (x + w2 + 20 < 0 || x - 20 > 960) continue;
+      const blob = []; for (let k = 0; k <= 10; k++) { const t = k / 10; blob.push([x + w2 * t, top + Math.sin(t * Math.PI * 2 + i) * 14 - Math.sin(t * Math.PI) * 30 + (1 - Math.sin(t * Math.PI)) * 60]); }
+      d.wash(blob.concat([[x + w2 + 20, 302], [x - 20, 302]]), i % 3 ? P.dust : P.ochre, { alpha: al, off: 0, spread: 2, layers: 2, edge: false, curve: true });
+    }
   }
-  d.wash([[960, 0], [560, 0], [660, 60], [960, 100]], P.greyBlue, { alpha: 0.22, off: 0, spread: 2, layers: 3, edge: false, blooms: 1 });
   // the sun (top right): left as paper, a ring of wash round it, short pencil rays
   if (chunk === 0) {
     const sx = 168, sy = 172;
@@ -68,7 +82,7 @@ IRON_ART.desertDraw[0] = (d, chunk) => {
     d.hatch(under.concat([[cx - r * 0.6, cy - 4], [cx + r * 0.6, cy - 5]]).slice(0, 4), { a: 5, gap: 2.4, w: 0.5, alpha: 0.35 });
   }
   // far mesas and dunes: pale grey-blue, light line only on top
-  const far = ironDuneLine(d, 286, 14, -10, 970, 20, 1.3 + chunk);
+  const far = ironDuneLine(d, 286, 14, -10, 970, 20, 1.3 + chunk, true);
   if (chunk % 2 === 0) { far.splice(10, 6, [190, 262], [204, 240], [262, 238], [276, 262], [300, 270], [330, 276]); }
   d.wash(far.concat([[970, 300], [-10, 300]]), P.greyBlue, { alpha: 0.42, off: 1.5, spread: 1.2 });
   d.stroke(far, { w: 1.1, alpha: 0.5, p: [0.2, 1, 0.2], sh: 0 });
@@ -88,7 +102,7 @@ IRON_ART.desertDraw[1] = (d, chunk) => {
   const P = IRON_P;
   const base = 336;
   // a low dune band underneath everything
-  const band = ironDuneLine(d, 326, 10, -10, 970, 16, 3.1 + chunk);
+  const band = ironDuneLine(d, 326, 10, -10, 970, 16, 3.1 + chunk, true);
   d.wash(band.concat([[970, 360], [-10, 360]]), P.sand, { alpha: 0.6, off: 1, spread: 1.3 });
   d.stroke(band, { w: 1.2, alpha: 0.6, sh: 0, p: [0.3, 1, 0.3] });
   if (chunk === 0) {
@@ -158,8 +172,15 @@ IRON_ART.desertDraw[1] = (d, chunk) => {
 IRON_ART.desertDraw[2] = (d, chunk) => {
   const P = IRON_P;
   const taper = (c, a, b) => c.map(([x, y]) => { const k = Math.min(1, (x - a) / 90, (b - x) / 90); return [x, k >= 1 ? y : 466 + (y - 466) * Math.max(0, k) * (2 - Math.max(0, k))]; });
-  const crest1 = taper(ironDuneLine(d, 382, 26, -100, 560, 12, 0.7 + chunk * 1.9), -1e9, 560), crest2 = taper(ironDuneLine(d, 394, 30, 380, 1060, 12, 2.2 + chunk * 1.3), 380, 1e9);
-  for (const [crest, col] of [[crest1, P.sand], [crest2, P.dust]]) {
+  // two overlapping dunes a chunk; the neighbours' dunes are drawn too where they spill over the seams
+  const crests = [];
+  for (const nb of [-1, 0, 1]) {
+    const c = ((chunk + nb) % 3 + 3) % 3, o = nb * 960;
+    const c1 = taper(ironDuneLine(d, 382, 26, -100, 560, 12, 0.7 + c * 1.9), -100, 560).map(([x, y]) => [x + o, y]);
+    const c2 = taper(ironDuneLine(d, 394, 30, 380, 1060, 12, 2.2 + c * 1.3), 380, 1060).map(([x, y]) => [x + o, y]);
+    for (const [cr, col] of [[c1, P.sand], [c2, P.dust]]) if (cr[cr.length - 1][0] > -20 && cr[0][0] < 980) crests.push([cr, col]);
+  }
+  for (const [crest, col] of crests) {
     const poly = crest.concat([[crest[crest.length - 1][0], 470], [crest[0][0], 470]]);
     d.wash(poly, col, { alpha: 0.7, off: 1.5, spread: 1.2, blooms: 1 });
     // the lee side of the dune: a darker glaze and contour hatching that follows the slope
