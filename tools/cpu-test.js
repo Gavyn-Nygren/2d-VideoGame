@@ -120,7 +120,7 @@ const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0);
       if (res) {
         out.kind = res.kind;
         if (res.kind === 'versus') { out.winner = res.winner; out.rounds = res.rounds; out.history = res.history && res.history.map(h => h.winner + ':' + h.reason); }
-        else { out.time = Math.round(res.time); out.falls = res.falls; if (res.pong) out.pong = res.pong.score; if (res.golf) out.golf = res.golf.strokes; }
+        else { out.time = Math.round(res.time); out.falls = res.falls; if (res.pong) out.pong = res.pong.score; if (res.golf) out.golf = res.golf.strokes; if (res.medal) out.medal = ['none', 'Bronze', 'Silver', 'Gold'][res.medal.tier] + ' ' + JSON.stringify(res.medal.vals); }
         out.stats = res.stats;
       }
       if (lines.length) out.trace = lines;
@@ -132,7 +132,7 @@ const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0);
     if (r.trace && !flag('json')) console.log(r.trace.join('\n'));
     if (!flag('json')) {
       const end = r.kind === 'versus' ? `match over: ${r.winner < 0 ? 'draw' : ['Pip', 'Bo'][r.winner]} ${r.rounds && r.rounds.join('-')}`
-        : r.kind === 'team' ? `CLEARED in ${r.time}s, falls ${r.falls}${r.pong ? ' pong ' + r.pong.join('-') : ''}${r.golf ? ' golf ' + r.golf.join('+') : ''}`
+        : r.kind === 'team' ? `CLEARED in ${r.time}s, falls ${r.falls}${r.pong ? ' pong ' + r.pong.join('-') : ''}${r.golf ? ' golf ' + r.golf.join('+') : ''}${r.medal ? ' medal ' + r.medal : ''}`
         : `not finished (room ${r.room + 1}/${r.rooms}${r.match ? ', round ' + r.match.round + ' ' + r.match.wins.join('-') : ''})`;
       console.log(`${r.code.padEnd(5)} ${r.name.padEnd(26)} s${seed} ${end}  [sim ${r.simT}s, wall ${r.wallS}s]${r.cpuErrs.length ? ' CPU ERR ' + r.cpuErrs.join(',') : ''}${r.errors.length ? ' PAGE ERR ' + r.errors.join(' | ').slice(0, 300) : ''}`);
     }

@@ -472,6 +472,7 @@ window.__pipbo = { PONG, G, LEVELS, loadLevel, nextRoom, BUNGEE, CHAIN, GOLF, st
   // controls
   Dev, Pads, playerDevice, btnLabel, btnHTML, drawBtn, controlsLine, startLevel, readyPress, Ready,
   CPU, cpuBrain, cpuBrainKey, cpuSeek, cpuApplyCfg, cpuSetCfg, cpuNav, cpuNavReach, cpuNavCell, NAV };
+window.__pipboMedals = { medalSpec, medalGoalText, medalResult, medalBest };
 
 fit();
 cpuLoadCfg();
