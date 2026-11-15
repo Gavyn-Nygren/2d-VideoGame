@@ -46,7 +46,9 @@ const maxT = +opt('max', 600), expr = opt('expr', ''), logA = opt('log', '').spl
             if (out[k] !== 'tap') h['tp' + k] = 0;
           }
           h.q.push(cur); const o = h.q.length > 42 ? Object.assign({}, h.q.shift()) : {};
-          if (!out.left) o.left = false; if (!out.right) o.right = false;
+          // (38-3: arrows on the wrist screen are single presses: a late person still presses them, late)
+          const typing = G.mst && G.mst.hack && G.mst.hack.who === p.id;
+          if (!typing) { if (!out.left) o.left = false; if (!out.right) o.right = false; }
           return o;
         }
         if (hum === 'eager') {
