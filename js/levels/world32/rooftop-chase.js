@@ -217,6 +217,7 @@
     st.swing = { g, state: 'ready', t: 0 };
     r.st = 'aim'; r.vx = 0; r.face = 1;
     Sfx.play('roofchaseThwip'); K.part(st, g.ax, g.ay, 0, 0, 0.4, '#ffffff', 6, 0, 'star');
+    K.sound(st, g.ax + 40, g.ay - 40, 'THWIP!', { size: 30 });
     if (!K.quiet(st.gho)) K.hint(st, st.gho, 'Hold on to ' + NAMES[r.id] + ': ' + K.key(st.gho, 'act') + ' next to them');
   }
   function grab(st, r) {
@@ -275,7 +276,9 @@
     if (sw.state !== 'swing') return;
     // a pendulum (with a little extra push on the way out so the far roof is always in reach)
     sw.w += -(S.g / sw.len) * Math.sin(sw.th) * dt;
+    const th0 = sw.th;
     sw.th += sw.w * dt;
+    if (th0 < 0 && sw.th >= 0) K.sound(st, sw.g.ax, sw.g.ay + sw.len - 110, 'WHOOSH!', { size: 26, c1: '#ffffff', c2: '#19a89a' });
     swingPos(st);
     const pr = predict(st);
     sw.good = !!(pr && pr.ok);
@@ -355,12 +358,14 @@
     st.net = { d, t: 0, x: r.x, y: r.y };
     Sfx.play('cityAlarm');
     K.pop(st, r.x, r.y - 90, 'SPOTTED!', '#ff8a7a', 28);
+    K.sound(st, d.x, d.y + 60, 'ZZT!', { size: 26, c1: '#7af0ff', c2: '#e8222e' });
     for (const q of st.run) { q.st = 'net'; q.vx = 0; q.inv = false; }
     if (st.swing) st.swing = null;
     goldCheck(st);
   }
   function netStep(st, dt) {
     const n = st.net;
+    if (n.t < 0.3 && n.t + dt >= 0.3) K.sound(st, n.x, n.y - 70, 'SNAG!', { size: 26, c1: '#ffffff', c2: '#e8222e' });
     n.t += dt;
     if (n.t < S.netT) return;
     st.net = null;
@@ -398,8 +403,8 @@
     st.state = 'end'; st.endT = 0; st.lastRoom = last;
     st.stats.roomT[st.k] = G.time - st.segStart;
     Sfx.play('cityCheer');
-    if (last) { st.thief.caught = true; Sfx.play('roofchaseThwip'); }
-    K.pop(st, c.endX + 120, c.b[c.b.length - 1].top - 200, last ? 'GOTCHA! Webbed up with the jewels!' : 'He jumped to the next block! Swap powers!', '#ffffff', 26);
+    if (last) { st.thief.caught = true; Sfx.play('roofchaseThwip'); K.sound(st, st.thief.x, st.thief.y - 110, 'GOTCHA!', { size: 40, life: 1.4 }); K.focusAt(st, st.thief.x, st.thief.y - 24); }
+    K.pop(st, c.endX + 120, c.b[c.b.length - 1].top - 200, last ? 'Webbed up with the jewels!' : 'He jumped to the next block! Swap powers!', '#ffffff', 26);
     for (const r of st.run) { r.vx = 0; r.inv = false; }
   }
   function endStep(st, dt) {
@@ -426,7 +431,7 @@
       if (R && T.y >= top && T.vy > 0) { T.y = top; T.vy = 0; }
       if (T.y > 700) { T.y = top; T.vy = 0; }
     } else T.y = top;
-    if (T.t > 1 && Math.random() < dt * 0.3 && st.state === 'go') K.pop(st, T.x, T.y - 60, ['Catch me if you can!', 'Too slow, heroes!', 'Ha ha ha!', 'These jewels are mine!'][Math.floor(Math.random() * 4)], '#ffd6f0', 16);
+    if (T.t > 1 && Math.random() < dt * 0.3 && st.state === 'go') K.pop(st, T.x, T.y - 60, ['Catch me if you can!', 'Too slow, heroes!', 'Ha ha ha!', 'These jewels are mine!'][Math.floor(Math.random() * 4)], '#ffd6f0', 16, { from: T });
   }
 
   /* ---------- the camera ---------- */
@@ -512,21 +517,27 @@
     return out;
   }
 
-  /* ---------- drawing ---------- */
+  /* ---------- drawing (the comic-book look: ink outlines, flat colours, halftone dots) ---------- */
+  const INK = K.INK;
   const THEME = [
-    { sign: null, tint: null },
-    { sign: ['PIZZA', 'NEON', 'HERO', 'POW', 'OPEN'], tint: 'rgba(255,80,200,0.06)' },
-    { sign: null, tint: 'rgba(255,190,80,0.05)', crane: true },
-    { sign: ['TICK', 'TOCK'], tint: 'rgba(120,200,255,0.05)', clock: true },
+    { sky: {}, line: {} },                                                         // Moonlit Roofs
+    { sky: {}, line: { neon: 1 }, sign: ['PIZZA', 'NEON', 'HERO', 'POW!', 'OPEN'] }, // Neon Alley: more neon
+    { sky: { dawn: true }, line: { site: true }, crane: true },                      // The Building Site: cranes, an orange dawn
+    { sky: { deep: true }, line: {}, clock: true },                                // Clock Tower: deeper navy, the tower comes closer
   ];
   function draw(st) {
     const cx = st.cam.x, t = st.clock, th = THEME[st.k % THEME.length];
-    K.sky(cx, t, { mode: 'night', moonX: 720, moonY: 92, beams: true });
-    K.skyline(cx, t, { base: 470 });
-    if (th.tint) { ctx.fillStyle = th.tint; ctx.fillRect(0, 0, W, H); }
+    K.sky(cx, t, Object.assign({ mode: 'night', moonX: 720, moonY: 92, beams: true }, th.sky));
+    const line = Object.assign({ base: 470 }, th.line);
+    if (th.clock) {
+      // the clock tower in the distance comes closer, then gives way to the real one at the end of the stretch
+      line.clock = 0.7 * clamp(cx / Math.max(1, st.c.endX - W * 0.6), 0, 1);
+      line.clockA = clamp((st.c.endX + 180 - cx - W) / 300, 0, 1);
+    }
+    K.skyline(cx, t, line);
     ctx.save(); ctx.translate(-Math.round(cx * 10) / 10, 0);
     // the hooks over the wide gaps
-    for (const g of st.c.gaps) if (g.wide && g.ax > cx - 200 && g.ax < cx + W + 200) drawHook(st, g, t, th);
+    for (const g of st.c.gaps) if (g.wide && g.ax > cx - 300 && g.ax < cx + W + 300) drawHook(st, g, t, th);
     // buildings
     for (const b of st.c.b) {
       if (b.x1 < cx - 40 || b.x0 > cx + W + 40) continue;
@@ -544,65 +555,93 @@
     }
     // the finish: the clock tower top in the last stretch, a rooftop door otherwise
     const lb = st.c.b[st.c.b.length - 1];
-    if (th.clock) {
-      const x = st.c.endX + 180, y = lb.top;
-      ctx.fillStyle = '#5a5e72'; ctx.fillRect(x - 70, y - 220, 140, 220);
-      ctx.fillStyle = '#6e7286'; ctx.beginPath(); ctx.moveTo(x - 84, y - 220); ctx.lineTo(x, y - 300); ctx.lineTo(x + 84, y - 220); ctx.fill();
-      ctx.fillStyle = '#fff6d0'; circle(x, y - 150, 46); ctx.fill(); ctx.strokeStyle = '#3a3a4a'; ctx.lineWidth = 4; circle(x, y - 150, 46); ctx.stroke();
-      ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x, y - 150); ctx.lineTo(x + Math.sin(t * 0.5) * 30, y - 150 - Math.cos(t * 0.5) * 30); ctx.moveTo(x, y - 150); ctx.lineTo(x + Math.sin(t * 6) * 38, y - 150 - Math.cos(t * 6) * 38); ctx.stroke();
-    } else {
+    if (th.clock) clockTop(st.c.endX + 180, lb.top, t);
+    else {
       const x = lb.x1 - 160, y = lb.top;
-      ctx.fillStyle = '#4a4e60'; ctx.fillRect(x, y - 70, 70, 70); ctx.fillStyle = '#2a2c3a'; ctx.fillRect(x + 18, y - 54, 34, 54);
-      ctx.fillStyle = '#ffe08a'; circle(x + 46, y - 26, 2.5); ctx.fill();
+      ctx.fillStyle = INK; ctx.fillRect(x + 5, y - 66, 70, 66);
+      K.inkRect(x, y - 70, 70, 70, '#19a89a', 2);
+      K.inkRect(x - 4, y - 76, 78, 8, '#5fe0cc', 2);
+      K.inkRect(x + 18, y - 54, 34, 54, '#0c5c56', 1.5);
+      circle(x + 46, y - 26, 3); K.inkFill('#ffe14a', 1);
     }
     ctx.restore();
+  }
+  // the clock tower the thief is cornered on: inked stone, a cream face, a red roof
+  function clockTop(x, y, t) {
+    ctx.fillStyle = INK; ctx.fillRect(x - 64, y - 214, 140, 214);
+    K.inkRect(x - 70, y - 220, 140, 220, '#3e7fb0', 2.5);
+    ctx.save(); ctx.beginPath(); ctx.rect(x - 70, y - 220, 140, 220); ctx.clip(); K.dotFadeX(y - 220, y, x + 20, x + 70, '#1f4a78', 8, 0.6); ctx.restore();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.6; ctx.beginPath();
+    for (let k = 0; k < 6; k++) { const by = y - 80 + k * 13; ctx.moveTo(x - 60, by); ctx.lineTo(x - 40, by); ctx.moveTo(x + 36, by + 6); ctx.lineTo(x + 58, by + 6); }
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 84, y - 220); ctx.lineTo(x, y - 300); ctx.lineTo(x + 84, y - 220); ctx.closePath(); K.inkFill('#d8322e', 2.5);
+    ctx.save(); ctx.beginPath(); ctx.moveTo(x - 84, y - 220); ctx.lineTo(x, y - 300); ctx.lineTo(x + 84, y - 220); ctx.closePath(); ctx.clip(); K.dotFadeX(y - 300, y - 220, x + 10, x + 84, '#8e1018', 7, 0.6); ctx.restore();
+    circle(x, y - 150, 50); K.inkFill('#ffe14a', 3);
+    circle(x, y - 150, 42); K.inkFill('#fff3d6', 2);
+    ctx.fillStyle = INK;
+    for (let k = 0; k < 12; k++) { const a = k / 12 * TAU; ctx.fillRect(x + Math.cos(a) * 35 - 2, y - 150 + Math.sin(a) * 35 - 2, 4, 4); }
+    ctx.strokeStyle = INK; ctx.lineCap = 'round';
+    ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x, y - 150); ctx.lineTo(x + Math.sin(t * 0.5) * 24, y - 150 - Math.cos(t * 0.5) * 24); ctx.stroke();
+    ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y - 150); ctx.lineTo(x + Math.sin(t * 6) * 34, y - 150 - Math.cos(t * 6) * 34); ctx.stroke();
+    ctx.lineCap = 'butt';
+    circle(x, y - 150, 4); K.inkFill('#e8222e', 1.5);
   }
   function drawHook(st, g, t, th) {
     const x = g.ax, y = g.ay;
     if (th.crane) {
-      // a crane arm reaching over the gap with a hook
-      ctx.strokeStyle = '#e8a42a'; ctx.lineWidth = 6;
-      ctx.beginPath(); ctx.moveTo(x - 260, y - 40); ctx.lineTo(x + 120, y - 40); ctx.stroke();
-      ctx.lineWidth = 2; ctx.beginPath(); for (let k = -260; k < 120; k += 20) { ctx.moveTo(x + k, y - 40); ctx.lineTo(x + k + 10, y - 52); ctx.lineTo(x + k + 20, y - 40); } ctx.stroke();
-      ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - 40); ctx.lineTo(x, y - 6); ctx.stroke();
-      ctx.fillStyle = '#c8ccd6'; rr(x - 8, y - 8, 16, 10, 3); ctx.fill();
+      // a crane arm reaching over the gap with a hook, an orange inked truss
+      K.inkRect(x - 260, y - 46, 380, 8, '#ffb02e', 2.5);
+      const truss = () => { ctx.beginPath(); for (let k = -260; k < 120; k += 20) { ctx.moveTo(x + k, y - 46); ctx.lineTo(x + k + 10, y - 60); ctx.lineTo(x + k + 20, y - 46); } ctx.moveTo(x - 260, y - 60); ctx.lineTo(x + 120, y - 60); };
+      K.edge(truss, '#ffb02e', 2.5);
+      const cable = () => { ctx.beginPath(); ctx.moveTo(x, y - 40); ctx.lineTo(x, y - 6); };
+      K.edge(cable, '#ffffff', 1.6);
+      ctx.beginPath(); rr(x - 9, y - 9, 18, 11, 3); K.inkFill('#ffe14a', 2);
     } else if (th.sign) {
-      // a big sign hanging over the alley on a bar
-      ctx.strokeStyle = '#2a2c34'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x - 160, y - 30); ctx.lineTo(x + 30, y - 30); ctx.lineTo(x, y); ctx.stroke();
-      ctx.fillStyle = '#1c1a30'; rr(x - 120, y - 20, 90, 70, 8); ctx.fill();
-      text(['EAT', 'HERO', 'POW!', 'JAZZ'][Math.floor(K.hash(x) * 4)], x - 75, y + 15, 24, Math.sin(t * 9 + x) > -0.85 ? '#6af0ff' : '#2a4a5a', 'center');
+      // a big neon sign hanging over the alley on a bar
+      const bar = () => { ctx.beginPath(); ctx.moveTo(x - 160, y - 30); ctx.lineTo(x + 30, y - 30); ctx.lineTo(x, y); };
+      K.edge(bar, '#5fe0cc', 3);
+      ctx.fillStyle = INK; ctx.fillRect(x - 115, y - 15, 90, 70);
+      K.inkRect(x - 120, y - 20, 90, 70, '#1c2470', 2.5);
+      const on = Math.sin(t * 9 + x) > -0.85, word = ['EAT', 'HERO', 'POW!', 'JAZZ'][Math.floor(K.hash(x) * 4)];
+      K.word(word, x - 75, y + 15, 26, on ? '#7af0ff' : '#2a4a8a', { lw: on ? 5 : 3, shadow: 0 });
+      if (on) { ctx.strokeStyle = '#ff5ab4'; ctx.lineWidth = 2.5; ctx.strokeRect(x - 113, y - 13, 76, 56); }
     } else {
-      // a flagpole sticking out from a cornice, with a ring
-      ctx.strokeStyle = '#c8ccd6'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(g.a - 10, y + 60); ctx.lineTo(x, y); ctx.stroke();
-      ctx.fillStyle = PCOL[(st.k + 1) % 2]; ctx.beginPath(); ctx.moveTo(x - 30, y + 18); ctx.lineTo(x - 30, y + 46 + Math.sin(t * 4) * 4); ctx.lineTo(x - 70, y + 34); ctx.closePath(); ctx.fill();
+      // a flagpole sticking out from a cornice, with a ring and a pennant
+      const pole = () => { ctx.beginPath(); ctx.moveTo(g.a - 10, y + 60); ctx.lineTo(x, y); };
+      K.edge(pole, '#d8dcf0', 3.5);
+      ctx.beginPath(); ctx.moveTo(x - 30, y + 18); ctx.lineTo(x - 30, y + 46 + Math.sin(t * 4) * 4); ctx.lineTo(x - 74, y + 34); ctx.closePath(); K.inkFill(PCOL[(st.k + 1) % 2], 2);
     }
-    // the hook ring (glows when the web-slinger can use it)
+    // the hook ring: inked, yellow with spikes when the web-slinger can use it
     const Wb = st.run[st.web], near = gapAt(st, Wb) === g;
-    ctx.strokeStyle = near ? C.gold : '#e8e8f0'; ctx.lineWidth = 3; circle(x, y, 7); ctx.stroke();
-    if (near) { ctx.globalAlpha = 0.4 + 0.3 * Math.sin(t * 10); ctx.fillStyle = C.gold; circle(x, y, 14); ctx.fill(); ctx.globalAlpha = 1; }
+    if (near) K.spikes(x, y, 20, '#ffe14a', t, 10);
+    ctx.lineWidth = 7; ctx.strokeStyle = INK; circle(x, y, 8); ctx.stroke();
+    ctx.lineWidth = 3.5; ctx.strokeStyle = near ? '#ffe14a' : '#ffffff'; circle(x, y, 8); ctx.stroke();
   }
   function drawDrone(st, d, t) {
     const a = beamA(st, d), half = S.cone * (st.gold ? 0.6 : 1), x = d.x, y = d.y + Math.sin(t * 3 + d.ph) * 4;
-    // the searchlight
+    // the searchlight: a flat printed cone with a dot screen, inked edges
     const alarm = d.alarm > 0, lit = d.see[0] > 0 || d.see[1] > 0;
+    const col = alarm ? '#ff3b4a' : lit ? '#ffe14a' : '#d6f4ff', len = 560;
     ctx.save(); ctx.translate(x, y + 12);
-    const len = 560, g = ctx.createLinearGradient(0, 0, 0, len);
-    const col = alarm ? '255,80,70' : lit ? '255,220,120' : '220,240,255';
-    g.addColorStop(0, 'rgba(' + col + ',0.42)'); g.addColorStop(1, 'rgba(' + col + ',0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0);
-    ctx.lineTo(Math.sin(-a - half) * len, Math.cos(-a - half) * len); ctx.lineTo(Math.sin(-a + half) * len, Math.cos(-a + half) * len); ctx.closePath(); ctx.fill();
+    const cone = () => { ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.sin(-a - half) * len, Math.cos(-a - half) * len); ctx.lineTo(Math.sin(-a + half) * len, Math.cos(-a + half) * len); ctx.closePath(); };
+    cone(); ctx.globalAlpha = 0.22; ctx.fillStyle = col; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.save(); cone(); ctx.clip(); ctx.globalAlpha = 0.55; K.dotScreen(-len, 0, len, len, col, 9, 1.8); ctx.globalAlpha = 1; ctx.restore();
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.setLineDash([10, 8]);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.sin(-a - half) * len, Math.cos(-a - half) * len); ctx.moveTo(0, 0); ctx.lineTo(Math.sin(-a + half) * len, Math.cos(-a + half) * len); ctx.stroke();
+    ctx.setLineDash([]);
     ctx.restore();
-    // the drone: a round body, four rotors, a red eye
-    ctx.fillStyle = '#2a2e3c'; rr(x - 26, y - 6, 52, 18, 9); ctx.fill();
-    ctx.fillStyle = '#4a5064'; rr(x - 26, y - 6, 52, 6, 3); ctx.fill();
+    // the drone: an inked round body, two rotors, a red eye
     for (const ox of [-30, 30]) {
-      ctx.strokeStyle = '#2a2e3c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + ox * 0.6, y); ctx.lineTo(x + ox, y - 10); ctx.stroke();
-      ctx.fillStyle = 'rgba(200,210,230,0.6)'; ctx.beginPath(); ctx.ellipse(x + ox, y - 12, 18 * Math.abs(Math.sin(t * 40 + ox)), 2.5, 0, 0, TAU); ctx.fill();
+      const arm = () => { ctx.beginPath(); ctx.moveTo(x + ox * 0.6, y); ctx.lineTo(x + ox, y - 10); };
+      K.edge(arm, '#5f6aa0', 3);
+      ctx.beginPath(); ctx.ellipse(x + ox, y - 12, 4 + 16 * Math.abs(Math.sin(t * 40 + ox)), 3, 0, 0, TAU); K.inkFill('#d6f4ff', 1.5);
     }
-    ctx.fillStyle = alarm && Math.sin(t * 20) > 0 ? '#ff3a3a' : lit ? '#ffb43a' : '#ff5a5a'; circle(x, y + 6, 5); ctx.fill();
-    ctx.fillStyle = '#ffffff'; circle(x - 1.5, y + 4.5, 1.5); ctx.fill();
-    if (lit && !alarm) text('?', x, y - 26, 20, '#ffd27a', 'center');
-    if (alarm) text('!', x, y - 26, 24, '#ff5a4a', 'center');
+    ctx.beginPath(); rr(x - 26, y - 6, 52, 18, 9); K.inkFill('#3a4478', 2.5);
+    ctx.fillStyle = '#7a8ad0'; ctx.fillRect(x - 18, y - 4, 36, 4);
+    circle(x, y + 6, 6); K.inkFill(alarm && Math.sin(t * 20) > 0 ? '#ff3b30' : lit ? '#ffb02e' : '#ff5a5a', 1.5);
+    ctx.fillStyle = '#ffffff'; circle(x - 1.5, y + 4.5, 1.8); ctx.fill();
+    if (lit && !alarm) K.word('?', x, y - 30, 26, '#ffe14a', { lw: 5, shadow: 2 });
+    if (alarm) K.word('!', x, y - 30, 30, '#ff3b4a', { lw: 5, shadow: 2 });
   }
   function drawThief(st, t) {
     const T = st.thief;
@@ -610,24 +649,27 @@
     const x = T.x, y = T.y, run = Math.abs(T.vx || 0) > 20;
     ctx.save(); ctx.translate(x, y);
     if (T.caught) {
-      // webbed up
-      ctx.fillStyle = '#f2f2f6'; ctx.beginPath(); ctx.ellipse(0, -22, 16, 24, 0, 0, TAU); ctx.fill();
-      ctx.strokeStyle = '#c8c8d0'; ctx.lineWidth = 1.5; for (let k = -18; k < 0; k += 6) { ctx.beginPath(); ctx.moveTo(-16, -22 + k); ctx.lineTo(16, -18 + k + 6); ctx.stroke(); }
-      ctx.fillStyle = '#2a2a34'; circle(0, -42, 9); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.fillRect(-7, -45, 14, 4); ctx.fillStyle = C.ink; circle(-3, -43, 1.5); ctx.fill(); circle(3, -43, 1.5); ctx.fill();
+      // webbed up: a white cocoon with inked web strands
+      ctx.beginPath(); ctx.ellipse(0, -22, 16, 24, 0, 0, TAU); K.inkFill('#ffffff', 2.5);
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.4; for (let k = -18; k < 0; k += 6) { ctx.beginPath(); ctx.moveTo(-15, -22 + k); ctx.lineTo(15, -18 + k + 6); ctx.stroke(); }
+      circle(0, -42, 9); K.inkFill('#f2c8a0', 2);
+      ctx.fillStyle = INK; ctx.fillRect(-8, -46, 16, 5); ctx.beginPath(); ctx.arc(0, -46, 9, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#ffffff'; circle(-3, -43.5, 1.6); ctx.fill(); circle(3, -43.5, 1.6); ctx.fill();
       ctx.restore(); return;
     }
     const leg = run ? Math.sin(t * 18) * 8 : 0;
-    ctx.strokeStyle = '#1c1c24'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(-3, -16); ctx.lineTo(-5 + leg, 0); ctx.moveTo(3, -16); ctx.lineTo(5 - leg, 0); ctx.stroke();
+    const legs = () => { ctx.beginPath(); ctx.moveTo(-3, -16); ctx.lineTo(-5 + leg, 0); ctx.moveTo(3, -16); ctx.lineTo(5 - leg, 0); };
+    ctx.lineCap = 'round'; K.edge(legs, '#3a3a58', 3.5);
     // striped shirt
-    ctx.fillStyle = '#f2f2f2'; rr(-9, -36, 18, 22, 5); ctx.fill();
-    ctx.fillStyle = '#1c1c24'; for (let k = 0; k < 4; k++) ctx.fillRect(-9, -33 + k * 5, 18, 2.4);
+    ctx.beginPath(); rr(-9, -36, 18, 22, 5); K.inkFill('#ffffff', 2);
+    ctx.fillStyle = INK; for (let k = 0; k < 4; k++) ctx.fillRect(-8, -33 + k * 5, 16, 2.4);
     // the loot sack over a shoulder
-    ctx.fillStyle = '#8a6a3a'; circle(-12, -36, 10); ctx.fill(); text('$', -12, -36, 10, '#ffe08a', 'center', 'body');
+    circle(-12, -36, 10); K.inkFill('#e08a2e', 2);
+    K.word('$', -12, -36, 13, '#ffe14a', { lw: 3, shadow: 0 });
     // head, cap and mask
-    ctx.fillStyle = '#f2c8a0'; circle(2, -44, 8); ctx.fill();
-    ctx.fillStyle = '#1c1c24'; ctx.fillRect(-6, -47, 16, 4); ctx.beginPath(); ctx.arc(2, -48, 8, Math.PI, 0); ctx.fill();
-    ctx.fillStyle = '#ffffff'; circle(5, -45, 1.5); ctx.fill();
+    circle(2, -44, 8); K.inkFill('#f2c8a0', 2);
+    ctx.fillStyle = INK; ctx.fillRect(-6, -47, 16, 4); ctx.beginPath(); ctx.arc(2, -48, 8, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#ffffff'; circle(5, -45, 1.6); ctx.fill();
     ctx.lineCap = 'butt';
     ctx.restore();
   }
@@ -635,40 +677,42 @@
     const cx = st.cam.x, t = st.clock;
     ctx.save(); ctx.translate(-Math.round(cx * 10) / 10, 0);
     for (const q of st.c.jewels) {
+      // jewels: flat inked gems with a white facet, no soft halo
       if (q.got || q.x < cx - 40 || q.x > cx + W + 40) continue;
-      const yy = q.y + Math.sin(t * 3 + q.x) * 3, col = ['#7ae8ff', '#ff6ab4', '#8aff9a'][q.col];
-      ctx.fillStyle = 'rgba(255,255,255,0.25)'; circle(q.x, yy, 13); ctx.fill();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(q.x, yy - 10); ctx.lineTo(q.x + 9, yy - 3); ctx.lineTo(q.x, yy + 10); ctx.lineTo(q.x - 9, yy - 3); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.moveTo(q.x - 3, yy - 6); ctx.lineTo(q.x + 2, yy - 6); ctx.lineTo(q.x - 2, yy); ctx.fill();
+      const yy = q.y + Math.sin(t * 3 + q.x) * 3, col = ['#7af0ff', '#ff5ab4', '#5ff07a'][q.col];
+      ctx.beginPath(); ctx.moveTo(q.x, yy - 11); ctx.lineTo(q.x + 10, yy - 3); ctx.lineTo(q.x, yy + 11); ctx.lineTo(q.x - 10, yy - 3); ctx.closePath(); K.inkFill(col, 2);
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(q.x - 4, yy - 6); ctx.lineTo(q.x + 2, yy - 6); ctx.lineTo(q.x - 2, yy); ctx.fill();
     }
     drawThief(st, t);
-    // the web line
+    // the web line: white with an ink edge
     const sw = st.swing, Wb = st.run[st.web];
     if (sw) {
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(sw.g.ax, sw.g.ay); ctx.lineTo(Wb.x + (sw.state === 'ready' ? 8 : 0), Wb.y - 22); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(sw.g.ax - 2, sw.g.ay); ctx.lineTo(Wb.x - 2, Wb.y - 22); ctx.stroke();
+      const web = () => { ctx.beginPath(); ctx.moveTo(sw.g.ax, sw.g.ay); ctx.lineTo(Wb.x + (sw.state === 'ready' ? 8 : 0), Wb.y - 22); };
+      K.edge(web, '#ffffff', 2.5);
       // the web splat on the hook
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; for (let k = 0; k < 6; k++) { const a = k / 6 * TAU; ctx.beginPath(); ctx.moveTo(sw.g.ax, sw.g.ay); ctx.lineTo(sw.g.ax + Math.cos(a) * 12, sw.g.ay + Math.sin(a) * 12); ctx.stroke(); }
+      const splat = () => { ctx.beginPath(); for (let k = 0; k < 6; k++) { const a = k / 6 * TAU; ctx.moveTo(sw.g.ax, sw.g.ay); ctx.lineTo(sw.g.ax + Math.cos(a) * 13, sw.g.ay + Math.sin(a) * 13); } };
+      K.edge(splat, '#ffffff', 1.8);
     }
-    for (const r of st.run) if (r.st === 'rescue') { ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(r.rx1, r.ry1 - 160); ctx.lineTo(r.x, r.y - 22); ctx.stroke(); }
+    for (const r of st.run) if (r.st === 'rescue') { const web = () => { ctx.beginPath(); ctx.moveTo(r.rx1, r.ry1 - 160); ctx.lineTo(r.x, r.y - 22); }; K.edge(web, '#ffffff', 2); }
     // holding hands while invisible
     const Gh = st.run[st.gho];
-    if (Gh.inv && Wb.inv) { ctx.strokeStyle = 'rgba(200,240,255,0.6)'; ctx.lineWidth = 3; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(Gh.x, Gh.y - 12); ctx.lineTo(Wb.x, Wb.y - 12); ctx.stroke(); ctx.setLineDash([]); }
+    if (Gh.inv && Wb.inv) { ctx.strokeStyle = '#d6f4ff'; ctx.lineWidth = 3; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(Gh.x, Gh.y - 12); ctx.lineTo(Wb.x, Wb.y - 12); ctx.stroke(); ctx.setLineDash([]); }
     for (const r of st.run) drawRunner(st, r, t);
     for (const d of st.c.drones) if (d.x > cx - 300 && d.x < cx + W + 300) drawDrone(st, d, t);
     if (st.net) {
       const n = st.net, u = clamp(n.t / 0.3, 0, 1);
       for (const r of st.run) {
-        ctx.strokeStyle = 'rgba(230,230,240,0.85)'; ctx.lineWidth = 1.5;
         const x = r.x, y = r.y - 14, s = 22 * u;
-        ctx.beginPath(); for (let k = -2; k <= 2; k++) { ctx.moveTo(x - s, y + k * s / 2.5); ctx.lineTo(x + s, y + k * s / 2.5); ctx.moveTo(x + k * s / 2.5, y - s); ctx.lineTo(x + k * s / 2.5, y + s); } ctx.stroke();
+        const net = () => { ctx.beginPath(); for (let k = -2; k <= 2; k++) { ctx.moveTo(x - s, y + k * s / 2.5); ctx.lineTo(x + s, y + k * s / 2.5); ctx.moveTo(x + k * s / 2.5, y - s); ctx.lineTo(x + k * s / 2.5, y + s); } };
+        K.edge(net, '#ffffff', 1.6);
       }
     }
-    // a let-go marker while swinging
-    if (sw && sw.state === 'swing' && sw.good) { const pr = predict(st); if (pr) { ctx.fillStyle = 'rgba(143,227,176,0.5)'; ctx.beginPath(); ctx.ellipse(pr.x, pr.b ? pr.b.top : 400, 18, 5, 0, 0, TAU); ctx.fill(); } }
+    // a let-go marker while swinging: a flat green landing spot
+    if (sw && sw.state === 'swing' && sw.good) { const pr = predict(st); if (pr) { ctx.beginPath(); ctx.ellipse(pr.x, (pr.b ? pr.b.top : 400) - 2, 18, 5, 0, 0, TAU); K.inkFill('#5ff07a', 2); } }
     K.drawParts(st, cx);
     ctx.restore();
     K.drawPops(st, cx, 0);
+    K.drawWords(st, cx, 0, st.run);
   }
   function drawRunner(st, r, t) {
     let sy = 1 - r.sq * 0.18, rot = 0;
@@ -677,42 +721,30 @@
     else if (r.st === 'rescue') rot = Math.sin(r.rt * 18) * 0.3;
     else if (!r.grounded || r.st === 'fly') rot = r.face * clamp(r.vy / 2000, -0.2, 0.2);
     else if (Math.abs(r.vx) > 20) rot = r.face * 0.08;
-    if (r.grounded && r.st === 'run') { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(r.x, r.y, 13, 4, 0, 0, TAU); ctx.fill(); }
+    if (r.grounded && r.st === 'run' && !r.inv) { ctx.fillStyle = 'rgba(20,18,28,0.45)'; ctx.beginPath(); ctx.ellipse(r.x, r.y, 13, 4, 0, 0, TAU); ctx.fill(); }
     const inv = r.inv, alpha = inv ? 0.22 + 0.08 * Math.sin(t * 9 + r.id) : 1;
-    K.suit(r.id, r.x, r.y, { face: r.face, rot, sy, sx: 2 - sy, vy: r.grounded ? 0 : r.vy, stun: r.stun > 0 || r.st === 'net', alpha, capeV: clamp(Math.abs(r.vx) / 280 + (r.st === 'swing' ? 0.8 : 0.2), 0, 1), arms: r.st === 'swing' && r.job === 'web' ? 'up' : null });
-    if (inv) {
-      // a shimmer outline so a player can still see themselves
-      ctx.strokeStyle = 'rgba(190,240,255,' + (0.5 + 0.3 * Math.sin(t * 12 + r.id)) + ')'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
-      rr(r.x - 12, r.y - 27, 24, 27, 8); ctx.stroke(); ctx.setLineDash([]);
-    }
-    if (r.st === 'swing' && r.job === 'ghost') { const Wb = st.run[st.web]; ctx.strokeStyle = PCOL[r.id]; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(r.x, r.y - 22); ctx.lineTo(Wb.x, Wb.y - 2); ctx.stroke(); }
+    if (r.st === 'swing' && r.job === 'ghost') { const Wb = st.run[st.web]; const hand = () => { ctx.beginPath(); ctx.moveTo(r.x, r.y - 22); ctx.lineTo(Wb.x, Wb.y - 2); }; K.edge(hand, PCOL[r.id], 3); }
+    K.suit(r.id, r.x, r.y, { face: r.face, rot, sy, sx: 2 - sy, vy: r.grounded ? 0 : r.vy, stun: r.stun > 0 || r.st === 'net', alpha, vanish: inv, kit: r.job === 'web' ? 'web' : 'ghost', capeV: clamp(Math.abs(r.vx) / 280 + (r.st === 'swing' ? 0.8 : 0.2), 0, 1), arms: r.st === 'swing' && r.job === 'web' ? 'up' : null });
   }
 
   /* ---------- HUD ---------- */
   function hud(st) {
     const big = hudBig(), z = big ? 1.35 : 1, play = G.mode === 'play' || G.mode === 'paused';
-    let timeX0;
-    {
-      const fs = big ? 20 : 14, h = big ? 40 : 28, tm = fmtTime(G.time), n = '💎 ' + st.jewel + ' / ' + st.totalJewel;
-      ctx.font = FONT(fs);
-      const w = ctx.measureText(tm).width + ctx.measureText(n).width + fs + 30, x0 = pill(W - 14, 12, w, h, 'right'), cy = 12 + h / 2 + 0.5;
-      text(tm, x0 + 15, cy, fs, st.waiting ? '#aab' : C.paper, 'left', 'body');
-      text(n, x0 + w - 15, cy, fs, '#9fe8ff', 'right', 'body');
-      timeX0 = x0;
-    }
+    K.pills(st);
+    const timeX0 = K.counter(st, fmtTime(G.time), '💎 ' + st.jewel + ' / ' + st.totalJewel);
     K.drawMsg(st, st.waiting ? { text: K.BREAK, col: '#ffffff', t: 1, life: 2 } : st.msg, timeX0);
     if (!play) return;
     const pl = plan(st), Wn = st.web, Gn = st.gho, Wb = st.run[Wn], Gh = st.run[Gn], sw = st.swing;
     const kk = (id, what) => (K.quiet(id) ? '' : K.key(id, what) + ' ');
     {
-      const bx = K.panel(Wn, 'web-slinger', 236, 58, z), cy = bx.y + 27 * z, chh = 23 * z, cw = bx.w - 24 * z, x0 = bx.x + 12 * z;
+      const bx = K.panel(Wn, 'web-slinger', 236, 58, z), cy = bx.y + 29 * z, chh = 23 * z, cw = bx.w - 24 * z, x0 = bx.x + 12 * z;
       const word = sw && sw.state === 'swing' ? 'LET GO' : sw ? 'CANCEL' : 'WEB LINE';
       K.chip(x0, cy, cw, chh, kk(Wn, 'act') + word, !!pl.web.act || (sw && sw.state === 'swing' && sw.good), !!sw && sw.state === 'ready', z);
     }
     {
-      const bx = K.panel(Gn, 'ghost', 236, 58, z), cy = bx.y + 27 * z, chh = 23 * z, x0 = bx.x + 12 * z, cw = (bx.w - 24 * z) * 0.52;
+      const bx = K.panel(Gn, 'ghost', 236, 58, z), cy = bx.y + 29 * z, chh = 23 * z, x0 = bx.x + 12 * z, cw = (bx.w - 24 * z) * 0.52;
       K.chip(x0, cy, cw, chh, kk(Gn, 'act') + (sw && sw.state === 'ready' ? 'HOLD ON' : 'VANISH'), !!pl.ghost.act && !Gh.inv, Gh.inv, z);
-      K.meter(x0 + cw + 8 * z, cy + chh / 2 - 5 * z, bx.w - 24 * z - cw - 8 * z, 10 * z, st.meter, st.lock ? '#ff8a7a' : '#bff6ff');
+      K.meter(x0 + cw + 8 * z, cy + chh / 2 - 5 * z, bx.w - 24 * z - cw - 8 * z, 10 * z, st.meter, st.lock ? '#e8222e' : '#5fe0cc');
     }
     if (G.introT > 0 || st.state !== 'go' || st.waiting) return;
     const P = K.prompter(st), cx = st.cam.x;
@@ -757,6 +789,7 @@
     draw() { const st = G.mst; if (!st.c) return; draw(st); K.hide(st); },
     drawTop() { const st = G.mst; K.unhide(st); if (st.c) drawTop(st); },
     hud() { const st = G.mst; if (st.c) hud(st); },
+    printPage() { if (G.mst.c) K.page(); },
     stats() {
       const st = G.mst, s = st.stats;
       if (!s) return [];
@@ -774,7 +807,7 @@
   /* ---------- the level ---------- */
   const acts = w => ({ label: 'web', labels: w === 0 ? ['web', 'vanish'] : ['vanish', 'web'] });
   HEROCITY.defs.roofchase = {
-    name: 'Rooftop Chase', world: 31, kind: 'team', mode: 'roofchase', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
+    name: 'Rooftop Chase', world: 31, kind: 'team', mode: 'roofchase', ownStep: true, ownHUD: true, ownPills: true, noFalls: true, roomWord: 'Stretch',
     legend: {
       pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
       bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump',
@@ -784,19 +817,19 @@
     act: acts(0),
     map: K.stubMap(),
     rooms: [
-      { title: 'Moonlit Roofs', web: 0, act: acts(0),
+      { title: 'Moonlit Roofs', narr: 'AFTER THAT THIEF!', web: 0, act: acts(0),
         tip: 'Pip: tap the action at a wide gap for a web line. Bo: tap the action next to Pip to hold on. Pip: tap again to let go!',
         course: ['R560:380', 'a300', 'j200:30', 'j420:90', 'g80', 'R320:360', 'v140', 'j160:40', 'J', 'G230', 'R420:380', 'T200', 'j120:30', 'j300:30', 'g90', 'R560:350',
           'D300:480', 'j150:30', 'g70', 'R520:370', 'a240', 'n400', 'j100:100', 'J', 'G250', 'R560:380', 'j200:30'] },
-      { title: 'Neon Alley', web: 1, act: acts(1),
+      { title: 'Neon Alley', narr: 'DOWN NEON ALLEY!', web: 1, act: acts(1),
         tip: 'Swap powers! Bo webs, Pip vanishes. Guard drones sweep the roofs: hold hands and vanish to slip past.',
         course: ['R520:370', 'a260', 'j200:30', 'g80', 'R360:340', 'j180:90', 'J', 'G240', 'R560:370', 'D320:500', 'j120:30', 'j320:30', 'g70', 'R300:390',
           'v200', 'J', 'G270', 'R420:360', 'j200:100', 'g90', 'R620:380', 'D320:520', 'j160:30', 'j360:30', 'g80', 'R520:370'] },
-      { title: 'The Building Site', web: 0, act: acts(0),
+      { title: 'The Building Site', narr: 'ACROSS THE BUILDING SITE!', web: 0, act: acts(0),
         tip: 'Cranes over the gaps! Pip webs, Bo vanishes. Let go when it says "Let go!" to land on the far roof.',
         course: ['R520:380', 'v260', 'j200:40', 'J', 'G260', 'R380:350', 'a160', 'j120:90', 'g90', 'R760:380', 'D300:460', 'j220:30', 'J', 'G290', 'R360:340', 'j120:30',
           'g80', 'R420:370', 'T120', 'j300:90', 'J', 'G270', 'R1000:380', 'D300:460', 'a760', 'j200:30', 'j420:30'] },
-      { title: 'Clock Tower', web: 1, act: acts(1),
+      { title: 'Clock Tower', narr: 'CORNERED AT THE CLOCK TOWER!', web: 1, act: acts(1),
         tip: 'The thief is trapped at the clock tower! Bo webs, Pip vanishes. Everything you learned, all at once!',
         course: ['R520:370', 'a240', 'j180:30', 'J', 'G270', 'R620:340', 'D320:440', 'j200:30', 'g80', 'R380:370', 'v160', 'j120:100', 'J', 'G300', 'R680:380',
           'D320:460', 'j300:30', 'g90', 'R360:350', 'j180:30', 'J', 'G280', 'R720:370', 'D300:440', 'a540', 'j120:30', 'g70', 'R680:360', 'j200:30'] },

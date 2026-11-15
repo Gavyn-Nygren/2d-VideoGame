@@ -663,6 +663,8 @@ function render(dt) {
     else { circle(q.x, q.y, q.size * (0.5 + 0.5 * q.life / q.max)); ctx.fill(); }
   }
   ctx.globalAlpha = 1;
+  // a level's own printPage() over the whole scene, under the HUD (World 32's printed comic page; not 'finish', which 11-3 already uses)
+  if (G.mode !== 'title') drawHook('printPage');
   if (G.mode !== 'title') { drawHUD(); drawMatchOverlay(); drawIntro(); }
   ctx.restore();
 }
