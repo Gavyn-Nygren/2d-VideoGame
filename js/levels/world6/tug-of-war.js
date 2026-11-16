@@ -2,17 +2,24 @@
 'use strict';
 
 /* ===== 6-2 Tug of War (mode 'tug', versus, World 6 Backyard Bash) =====
-   A rope over a mud puddle and a frog with a drum. Every pull press tugs the rope (mash!); a press on the drum's BOOM
-   is a big heave. Jump = let go of the rope (to grab a goodie from the sky); pull at your rope end = grab it again.
+   A rope over a mud puddle and a frog with a drum. Every pull press tugs the rope a little (mash); a press on the drum's
+   BOOM is a big heave, and Perfects in a row pull harder (the beat track in the sky shows when). The beat speeds up and
+   its windows tighten through each round, and each round starts a bit faster. Big drum: your next 3 BOOMs are yours
+   (any press in the window is a double Perfect) and the other one gets no heave on them. Jump = let go of the rope (to grab a goodie from the sky); pull at your rope end = grab it again.
    Whoever's toes are pulled into the mud loses the round. Best of 5, 60 s round clock (the mud spreads from 20 s).
    Spec: w6/tug/SPEC.md + the orchestrator's mash override (every press is a real tug, see TUG.tug / postTug). */
 const TUG = {
   half: 180, body: 14, floorY: 420, mid: 480,          // hands at mid + ro -/+ half (y floorY - 12); body centre `body` px behind
   mud0: 60, spreadAt: 20, spreadV: 3.2, mudMax: 183,   // mud half-width; it spreads from spreadAt s (px/s per side) until it reaches both
                                                        //   players' toes (lim 0 at 58.4 s): even two mashers can't stall a round
-  P0: 0.80, P1: 0.62, Pramp: 40, firstBeat: 0.8,       // drum period P0 -> P1 over Pramp s of round time; first BOOM 0.8 s after GO
-  winE: 0.25, winL: 0.20, perfect: 0.07, good: 0.15,   // heave window [beat - winE, beat + winL]; grade half-widths
-  hP: 14, hG: 12, hW: 3.5,                             // heave px: Perfect, Good, Too early / Late (= a tug: mashing into the beat isn't punished)
+  // THE BEAT (Gavyn, Nov 2026: the rhythm is the real strength, and it speeds up and tightens as the round goes on)
+  // drum period P0 -> P1 over Pramp s of round time; every round starts roundStep s faster (never past P1); first BOOM 0.8 s after GO.
+  // The windows follow the tempo: at P0 they are the "0" values, at P1 the "1" values (linear in the period in between).
+  P0: 0.85, P1: 0.50, Pramp: 45, roundStep: 0.04, firstBeat: 0.8,
+  winE0: 0.25, winL0: 0.20, perfect0: 0.075, good0: 0.16,   // heave window [beat - winE, beat + winL]; grade half-widths (slow beat)
+  winE1: 0.16, winL1: 0.13, perfect1: 0.045, good1: 0.10,   //   ... and at the fastest beat
+  hP: 22, hG: 12, hW: 1.5,                             // heave px: Perfect, Good, Too early / Late (= a tug: mashing into the beat isn't punished)
+  streakStep: 3, streakMax: 12,                        // Perfects in a row: each one after the first pulls streakStep px more (up to +streakMax)
   // MASH (orchestrator override: mashing is a real force): every press tugs `tug` px. Hand over hand: a press sooner than
   // tugCap after your last one pulls (dt / tugCap) ^ tugGamma of that, so 9 presses/s pull ~35 % more than 5/s (not 80 %).
   // mashMin: the mash ceiling: presses closer together than mashMin pull pro rata, so pull per second stops growing past
@@ -25,12 +32,14 @@ const TUG = {
   // so two equal mashers don't see-saw on the boots when the mud closes in. digMash false: a dug-in early/late press in
   // the window counts Good unless it is part of a fast mash (closer than digMashGap to your last press: > ~6 presses/s).
   // (digLinear false, digTugHelp > 0 and digBase false were measured too and rejected: turbo mashers / a Big-boots see-saw.)
-  tug: 3.5, tugCap: 0.2, tugGamma: 0.5, mashMin: 0.1, postTug: true,
-  digTug: 2.0, digCap: 0.25, digLinear: true, digBase: true, digTugHelp: 0, digMash: false, digMashGap: 0.17,
+  // (Nov 2026 rebalance: tug 3.5 -> 1.5, so a fast mash is ~11 px/s and a Perfect on every BOOM is ~30-60 px/s:
+  // all Perfects beats any amount of mashing, and mashing still helps between beats)
+  tug: 1.5, tugCap: 0.2, tugGamma: 0.5, mashMin: 0.1, postTug: true,
+  digTug: 2.0, digCap: 0.25, digLinear: true, digBase: true, digTugHelp: 0, digMash: true, digMashGap: 0.17,
   tau: 0.10, freeMul: 0.75,                            // rope speed decay (a pull of D px moves the rope ~D px); pulls on a rope nobody holds
   crateFirst: 5, crateEvery: 7, crateGap: 1.5,         // goodies: first at 5 s, then every 7 s (never sooner than 1.5 s after the last one is gone)
   crateY0: 100, crateVy: 120, crateR: 12, swayA: 28, swayW: 2.2, crateBias: 45, crateFloat: 3,
-  spinMul: 1.6, spinT: 5, tickleT: 3.5, drumN: 3, drumMul: 2,
+  spinMul: 1.6, spinT: 5, tickleT: 3.5, drumN: 3, drumMul: 2,   // Big drum: the next drumN BOOMs are yours (see heave / press)
   digGap: 40, digActive: 3, helpMax: 2, helpDig: 25,   // Dig in: gap < digGap + helpDig * help; auto-heave needs a press in the last digActive s
   grabR: 26, mudRun: 0.55, slipT: 0.2, comeback: 10, earlyGap: 2,
   twists: ['classic', 'party', 'bigmud', 'tickle', 'classic'],
@@ -44,7 +53,7 @@ const TUG = {
 };
 const TUG_TYPES = ['spinach', 'feather', 'drum'];
 const TUG_CARDS = {
-  classic: ['Classic', 'Mash pull! Pull on the BOOM for a big heave!'],
+  classic: ['Classic', 'Pull when your note hits the drum! Perfects in a row pull harder!'],
   party: ['Crate Party!', 'Lots of goodies: jump off and grab them!'],
   bigmud: ['Big Mud!', 'The mud is big: every pull counts!'],
   tickle: ['Tickle Fight!', 'Only feathers! Grab one to tickle the other!'],
@@ -57,7 +66,12 @@ const tugLim = st => TUG.half + TUG.body - PW / 2 - st.mud;                     
 const tugHand = (st, k) => TUG.mid + st.ro + (k === 0 ? -TUG.half : TUG.half);    // hand x
 const tugBodyX = (st, k) => tugHand(st, k) + (k === 0 ? -TUG.body : TUG.body);    // body centre x while holding
 const tugGap = (st, k) => tugLim(st) - (k === 0 ? st.ro : -st.ro);               // px left before k's toes are in the mud
-const tugPer = (K, t) => K.P0 + (K.P1 - K.P0) * Math.min(1, t / K.Pramp);
+const tugPer = (K, t) => K.P0 + (K.P1 - K.P0) * Math.min(1, t / K.Pramp);   // (K.P0 is this round's start: TUG.P0 - roundStep x round)
+// the beat at time tb: its windows from how fast the drum is going (u 0 at TUG.P0, 1 at TUG.P1)
+function tugWin(K, b) {
+  const u = clamp((TUG.P0 - tugPer(K, b.next)) / (TUG.P0 - TUG.P1), 0, 1), L = (a, c) => a + (c - a) * u;
+  b.wE = L(K.winE0, K.winE1); b.wL = L(K.winL0, K.winL1); b.wP = L(K.perfect0, K.perfect1); b.wG = L(K.good0, K.good1); b.u = u;
+}
 // the let-go hint with the player's real keys: push toward the middle and jump (the anti-slip guard ignores a plain jump mid-mash)
 function tugLetGoKeys(k) {
   const how = actKey(k), dir = k === 0 ? '▶' : '◀';
@@ -80,9 +94,12 @@ MODES.tug = {
     const st = G.mst;
     st.twist = this.testTwist || (info.suddenDeath ? 'sudden' : TUG.twists[(n - 1) % TUG.twists.length]);
     const K = st.K = Object.assign({}, TUG, TUG.tw[st.twist] || {});
+    K.P0 = Math.max(TUG.P1 + 0.1, TUG.P0 - TUG.roundStep * (Math.min(n, 6) - 1));   // every round's beat starts a bit faster
     st.help = this.testHelp ? this.testHelp.slice() : [0, 1].map(k => clamp(info.wins[1 - k] - info.wins[k], 0, K.helpMax));
     st.t = 0; st.ro = 0; st.rv = 0; st.mud = K.mud0; st.spreading = false;
     st.beat = { next: K.firstBeat, id: 0, drum: -1, half: -1, hitT: 9 };
+    tugWin(K, st.beat); st.faster = Math.floor(st.beat.u * 3);
+    st.hitFx = [null, null]; st.denyPop = [-1, -1];                      // the beat track: the last graded press per player
     st.hold = [true, true]; st.used = [-1, -1]; st.last = [-9, -9]; st.anyPress = [-99, -99]; st.earlyT = [-99, -99];
     st.run = [0, 0]; st.spin = [0, 0]; st.tickle = [0, 0]; st.tickleBuzz = [0, 0]; st.drum = [0, 0];
     st.crate = null; st.crateNext = K.crateFirst; st.lastType = null;
@@ -97,20 +114,29 @@ MODES.tug = {
     const st = G.mst, p = G.players[k];
     p.x = tugBodyX(st, k) - p.w / 2; p.vx = 0; p.face = k === 0 ? 1 : -1;
   },
+  // the other player has Big drum beats left (and holds the rope): this BOOM is theirs, k gets no heave on it
+  denied(k) { const st = G.mst; return st.drum[1 - k] > 0 && st.hold[1 - k] && st.drum[k] <= 0; },
   digging(k) { const st = G.mst, K = st.K; return st.hold[k] && tugGap(st, k) < K.digGap + K.helpDig * st.help[k]; },
   // ---- before the players move: the beat, presses, let go / re-grab ----
   pre(dt) {
     const st = G.mst, K = st.K, b = st.beat;
     st.t += dt;
     this.age(dt);
-    while (st.t > b.next + K.winL) {
-      // Dig in: a holder close to their mud who let this beat go by heaves Good by itself (if they pressed pull lately)
-      for (const k of [0, 1]) if (st.used[k] !== b.id && st.tickle[k] <= 0 && this.digging(k) && st.t - st.anyPress[k] < K.digActive) this.heave(k, 'G', false, true);
-      b.next += tugPer(K, b.next); b.id++;
+    while (st.t > b.next + b.wL) {
+      for (const k of [0, 1]) {
+        if (st.used[k] === b.id) continue;
+        // Dig in: a holder close to their mud who let this beat go by heaves Good by itself (if they pressed pull lately)
+        if (st.tickle[k] <= 0 && !this.denied(k) && this.digging(k) && st.t - st.anyPress[k] < K.digActive) this.heave(k, 'G', false, true);
+        else if (!this.denied(k)) st.run[k] = 0;                           // a BOOM let go by ends the Perfect streak
+      }
+      for (const k of [0, 1]) if (st.drum[k] > 0 && st.hold[k]) st.drum[k]--;   // each BOOM held through uses one Big drum beat
+      b.next += tugPer(K, b.next); b.id++; tugWin(K, b);
+      const fz = Math.floor(b.u * 3);
+      if (fz > st.faster) { st.faster = fz; tugPop(st, TUG.mid, 240, 'Faster!', C.gold, 18, 1.1, 'faster'); Sfx.play('tugFaster'); }
     }
     if (st.t >= b.next && b.drum !== b.id) { b.drum = b.id; b.hitT = 0; Sfx.play('tugDrum'); }
     const per = tugPer(K, b.next);
-    if (st.t >= b.next - per / 2 && st.t < b.next - K.winE && b.half !== b.id) { b.half = b.id; Sfx.play('tugTock'); }
+    if (st.t >= b.next - per / 2 && st.t < b.next - b.wE && b.half !== b.id) { b.half = b.id; Sfx.play('tugTock'); }
     for (const p of G.players) {
       const k = p.id;
       if (st.hold[k]) st.spin[k] = Math.max(0, st.spin[k] - dt);          // spinach only wears off while you hold the rope
@@ -157,17 +183,22 @@ MODES.tug = {
     // below mashMin it pulls pro rata (the mash ceiling: no gain past 10 presses/s)
     const shareOf = d => K.tugGamma > 0 ? Math.pow(Math.min(1, d / K.tugCap), K.tugGamma) : d >= K.tugCap ? 1 : 0;
     const share = since >= K.mashMin ? shareOf(since) : shareOf(K.mashMin) * Math.max(0, since) / K.mashMin;
-    if (t >= b.next - K.winE && st.used[k] !== b.id) {
+    if (t >= b.next - b.wE && st.used[k] !== b.id && this.denied(k)) {
+      // the other one's Big drum BOOM: no heave for k on it, the press is a plain tug (below)
+      st.used[k] = b.id; st.hitFx[k] = { g: 'X', t: st.t, id: b.id };
+      if (st.denyPop[k] !== b.id) { st.denyPop[k] = b.id; const p = G.players[k]; tugPop(st, p.x + p.w / 2, p.y - 12, 'Their drum!', '#ff9b9b', 14, 0.7, 'g' + k); }
+    } else if (t >= b.next - b.wE && st.used[k] !== b.id) {
       st.used[k] = b.id; st.last[k] = t;
       const d = t - b.next, ad = Math.abs(d);
-      let g = ad <= K.perfect ? 'P' : ad <= K.good ? 'G' : d < 0 ? 'E' : 'L', drum = false, dug = false;
+      let g = ad <= b.wP ? 'P' : ad <= b.wG ? 'G' : d < 0 ? 'E' : 'L', drum = false, dug = false;
       // dug in: a press in the window counts at least Good (not a press in the middle of a fast mash, unless digMash)
       if ((g === 'E' || g === 'L') && this.digging(k) && (K.digMash || since >= K.digMashGap)) { g = 'G'; dug = true; }
-      if (st.drum[k] > 0) { st.drum[k]--; g = 'P'; drum = true; }
+      if (st.drum[k] > 0) { g = 'P'; drum = true; }                      // Big drum: any press in the window is a double Perfect
+      st.hitFx[k] = { g: drum ? 'D' : g, t: st.t, id: b.id, d };
       this.heave(k, g, drum, dug, (g === 'E' || g === 'L') && K.tugGamma > 0 ? share : 1);
       return;
     }
-    if (t >= b.next - K.winE && !K.postTug) return;                        // (postTug off: the hands are busy until the window ends)
+    if (t >= b.next - b.wE && !K.postTug) return;                        // (postTug off: the hands are busy until the window ends)
     if (share <= 0) return;
     st.last[k] = t;
     // dug in (base zone): x digTug on a linear share, so the pull plateaus at 4 presses/s (never less than a plain tug)
@@ -184,10 +215,11 @@ MODES.tug = {
   // a heave: g = 'P' Perfect, 'G' Good, 'E' Too early, 'L' Late; gold = a Good that Dig in gave (auto-heave or an early press)
   heave(k, g, drum, gold, share = 1) {
     const st = G.mst, K = st.K, p = G.players[k], o = G.players[1 - k];
-    const D = (g === 'P' ? K.hP : g === 'G' ? K.hG : K.hW * share) * (st.spin[k] > 0 ? K.spinMul : 1) * (drum ? K.drumMul : 1);
+    if (g === 'P') { st.stats.perfect[k]++; st.run[k]++; st.stats.streak[k] = Math.max(st.stats.streak[k], st.run[k]); } else if (!gold) st.run[k] = 0;
+    const bonus = g === 'P' ? Math.min(K.streakMax, K.streakStep * (st.run[k] - 1)) : 0;   // Perfects in a row pull harder
+    const D = (g === 'P' ? K.hP + bonus : g === 'G' ? K.hG : K.hW * share) * (st.spin[k] > 0 ? K.spinMul : 1) * (drum ? K.drumMul : 1);
     this.pull(k, D);
     st.stats.heaves[k]++;
-    if (g === 'P') { st.stats.perfect[k]++; st.run[k]++; st.stats.streak[k] = Math.max(st.stats.streak[k], st.run[k]); } else st.run[k] = 0;
     if (D >= 20) st.lastBig = { k, t: st.t, why: drum ? 'drum' : st.spin[k] > 0 ? 'spin' : 'heave' };
     const hx = tugHand(st, k), hy = TUG.floorY - 12, px = p.x + p.w / 2;
     st.fx.mitt[k] = 0; st.fx.twang = 0; st.fx.swingV += (k === 0 ? -1 : 1) * Math.min(6, D * 0.25);
@@ -196,7 +228,7 @@ MODES.tug = {
       Sfx.play('tugBigDrum', k); burst(px, p.y - 36, '#ff6b6b', 8);
       if (!reduceMotion) G.shake = Math.max(G.shake, 0.12);
     } else if (g === 'P') {
-      tugPop(st, px, p.y - 12, 'Perfect!', PCOL[k], 18, 0.7, 'g' + k); Sfx.play('tugPerfect', k);
+      tugPop(st, px, p.y - 12, st.run[k] > 1 ? 'Perfect x' + st.run[k] + '!' : 'Perfect!', PCOL[k], 18, 0.7, 'g' + k); Sfx.play('tugPerfect', k);
     } else if (g === 'G') {
       tugPop(st, px, p.y - 12, 'Good!', gold ? C.gold : '#ffffff', 14, 0.7, 'g' + k); Sfx.play('tugGood', k);
     } else if (st.t - st.earlyT[k] >= K.earlyGap) {                       // no scolding of mashers: at most one pop + buzz per 2 s
@@ -283,7 +315,7 @@ MODES.tug = {
     Sfx.play('tugGet', k); rumble(k, 0.2, 0.5, 90);
     st.fx.cheer[k] = Math.max(st.fx.cheer[k], 0.8);
     if (c.type === 'spinach') { st.spin[k] = K.spinT; tugPop(st, px, p.y - 44, 'Spinach!', '#7be37b', 18, 1.0, 'i' + k); Sfx.play('tugSpinach', k); }
-    else if (c.type === 'drum') { st.drum[k] = K.drumN; tugPop(st, px, p.y - 44, 'Big drum!', '#ff6b6b', 18, 1.0, 'i' + k); }
+    else if (c.type === 'drum') { st.drum[k] = K.drumN; tugPop(st, px, p.y - 44, 'Big drum! Next 3 BOOMs are yours!', '#ff6b6b', 16, 1.4, 'i' + k); }
     else {
       const q = G.players[1 - k];
       st.tickle[q.id] = K.tickleT; st.tickleBuzz[q.id] = 0.6;
@@ -386,7 +418,7 @@ MODES.tug = {
     const sw = wn[0] > wn[1] ? 0 : 1, solo = typeof cpuSolo === 'function' && cpuSolo();
     // (1-player mode: no easing tip for the computer; a person who swept it gets a cheer instead)
     if (sweep && solo) out.push(cpuOn(sw) ? 'Too tough? Try the computer on Easy!' : 'Clean sweep, ' + NAMES[sw] + '!');
-    else if (sweep) out.push(NAMES[sw] + ', go easy: only pull on the BOOM!');
+    else if (sweep) out.push(NAMES[sw] + ', go easy: just mash, skip the BOOMs!');
     else if (s.close && s.close.gap <= 60) out.push('Closest call: ' + NAMES[s.close.k] + ' won ' + s.close.gap + ' px from the mud');
     return out;
   },
@@ -625,8 +657,8 @@ MODES.tug = {
         if (live && st.tickle[k] <= 0) {
           const dtb = b.next - st.t;
           ctx.strokeStyle = big ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.5)'; ctx.lineWidth = big ? 2.5 : 1.5; circle(hx, hy, 9 * rs); ctx.stroke();
-          if (dtb < 0.6 && dtb > -K.winL && st.used[k] !== b.id) {
-            const rad = (9 + 25 * clamp(dtb / 0.6, 0, 1)) * rs, inWin = dtb <= K.winE;
+          if (dtb < 0.6 && dtb > -b.wL && st.used[k] !== b.id && !this.denied(k)) {
+            const rad = (9 + 25 * clamp(dtb / 0.6, 0, 1)) * rs, inWin = dtb <= b.wE;
             ctx.strokeStyle = st.drum[k] > 0 ? '#ff6b6b' : dug ? C.gold : inWin ? PCOL[k] : 'rgba(255,255,255,0.75)';
             ctx.lineWidth = big ? 5 : 3.5; circle(hx, hy, rad); ctx.stroke();
           }
@@ -761,6 +793,7 @@ MODES.tug = {
       text(label, W - 28, 12 + ch / 2 + 0.5, fs, '#e2b07a', 'right', 'body');
     }
     this.drawMeter(st, big);
+    this.drawTrack(st, big, m.phase);
     // twist card (C4) during "Round N" and 3-2-1, every round
     if (m.phase === 'ready' || m.phase === 'count') {
       // phones: name 30 / hint 17 px on a 74 px panel (284..358, still above the name tags at y 367)
@@ -776,6 +809,69 @@ MODES.tug = {
         if (big) bigText('Big boots!', p.x + p.w / 2 + (p.id === 0 ? -64 : 64), p.y + p.h - 10 - bob, 20, C.gold);   // beside the gold boots (the card is above)
         else bigText('Big boots!', p.x + p.w / 2, p.y - 42 - bob, 16, C.gold);
       }
+    }
+  },
+  // THE BEAT TRACK (Nov 2026, Gavyn: the pull timing must be much clearer): a lane in the sky over the frog. Each BOOM is a
+  // note: Pip's slide in from the left, Bo's from the right, and they meet the drum in the middle on the BOOM: press pull
+  // when your note is in the gold ring (Perfect) or the white band (Good). The bands shrink as the beat speeds up, and the
+  // notes bunch up, so the speed-up is plain to see. A Big drum makes your notes red drums and the other one's notes grey.
+  drawTrack(st, big, ph) {
+    const b = st.beat, K = st.K, s = big ? 1.3 : 1, cx = TUG.mid, y = big ? 176 : 168, L = big ? 290 : 250, LT = 1.15, v = L / LT;
+    const live = ph === 'live', t = st.t;
+    // the lane: two halves in the players' colours
+    ctx.fillStyle = 'rgba(28,26,54,0.6)'; rr(cx - L - 18 * s, y - 20 * s, 2 * L + 36 * s, 40 * s, 20 * s); ctx.fill();
+    rr(cx - 16 * s, y - 38 * s, 32 * s, 22 * s, 8 * s); ctx.fill();          // a tab for the little drum
+    for (const k of [0, 1]) {
+      ctx.fillStyle = PCOL[k]; ctx.globalAlpha = 0.22;
+      if (k === 0) rr(cx - L, y - 5 * s, L, 10 * s, 5 * s); else rr(cx, y - 5 * s, L, 10 * s, 5 * s);
+      ctx.fill(); ctx.globalAlpha = 1;
+    }
+    // the hit zone: Good band (white) and Perfect band (gold), as wide as the timing windows at this speed
+    const gw = Math.max(b.wG, b.wP + 0.01) * v, pw = b.wP * v, pulse = live && b.hitT < 0.15 ? 1 - b.hitT / 0.15 : 0;
+    ctx.fillStyle = 'rgba(255,255,255,0.28)'; rr(cx - gw, y - 15 * s, 2 * gw, 30 * s, 8 * s); ctx.fill();
+    ctx.fillStyle = 'rgba(255,197,61,' + (0.55 + 0.4 * pulse) + ')'; rr(cx - pw, y - 17 * s, 2 * pw, 34 * s, 6 * s); ctx.fill();
+    // the target in the middle: a note inside this ring on the BOOM is dead on (it thumps on the BOOM); a little drum over it
+    const dr = (11 + 3 * pulse) * s;
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3 * s; circle(cx, y, dr); ctx.stroke();
+    ctx.fillStyle = '#d24b4b'; ctx.strokeStyle = '#7c2424'; ctx.lineWidth = 1.5 * s;
+    rr(cx - 9 * s, y - 33 * s - 2 * pulse, 18 * s, 11 * s, 3 * s); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#f6efdf'; rr(cx - 8 * s, y - 33 * s - 2 * pulse, 16 * s, 3 * s, 1.5 * s); ctx.fill();
+    if (!live) return;
+    // the notes: this BOOM and the ones after it, while they are within LT s
+    let tb = b.next, id = b.id;
+    for (let j = 0; j < 8 && tb - t < LT; j++) {
+      const off = (tb - t) * v;
+      for (const k of [0, 1]) {
+        if (j === 0 && st.used[k] === id) continue;                          // already pressed: the hit flash shows instead
+        const x = cx + (k === 0 ? -1 : 1) * off, held = st.hold[k] && st.tickle[k] <= 0;
+        const mine = st.drum[k] > 0 && st.hold[k] && j < st.drum[k], theirs = st.drum[1 - k] > 0 && st.hold[1 - k] && j < st.drum[1 - k] && !mine;
+        const fade = off < 0 ? clamp(1 + off / (b.wL * v), 0, 1) : 1;        // a missed note fades out past the drum
+        ctx.globalAlpha = (held ? 1 : 0.35) * fade;
+        if (mine) {                                                        // a Big drum beat: a red drum note
+          ctx.fillStyle = '#d24b4b'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5 * s;
+          rr(x - 11 * s, y - 9 * s, 22 * s, 18 * s, 5 * s); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#f6efdf'; rr(x - 9 * s, y - 7 * s, 18 * s, 4 * s, 2 * s); ctx.fill();
+        } else if (theirs) {                                               // the other one's Big drum beat: grey with a cross
+          ctx.fillStyle = '#8a8698'; circle(x, y, 7 * s); ctx.fill();
+          ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * s; ctx.beginPath();
+          ctx.moveTo(x - 4 * s, y - 4 * s); ctx.lineTo(x + 4 * s, y + 4 * s); ctx.moveTo(x + 4 * s, y - 4 * s); ctx.lineTo(x - 4 * s, y + 4 * s); ctx.stroke();
+        } else {
+          ctx.fillStyle = PCOL[k]; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5 * s; circle(x, y, 9 * s); ctx.fill(); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
+      tb += tugPer(K, tb); id++;
+    }
+    // hit flashes: a ring on your side of the drum in the grade's colour, and the grade word under the lane
+    const GR = { P: ['PERFECT', C.gold], D: ['BIG DRUM', '#ff6b6b'], G: ['GOOD', '#ffffff'], E: ['EARLY', '#c9c3df'], L: ['LATE', '#c9c3df'], X: ['THEIR DRUM', '#c9c3df'] };
+    for (const k of [0, 1]) {
+      const h = st.hitFx[k];
+      if (!h || t - h.t > 0.45) continue;
+      const a = 1 - (t - h.t) / 0.45, gr = GR[h.g] || GR.G, x = cx + (k === 0 ? -1 : 1) * (dr + 14 * s);
+      ctx.globalAlpha = a; ctx.strokeStyle = gr[1]; ctx.lineWidth = 3 * s; circle(x, y, (9 + 10 * (1 - a)) * s); ctx.stroke();
+      const word = h.g === 'P' && st.run[k] > 1 ? gr[0] + ' x' + st.run[k] : gr[0];
+      text(word, cx + (k === 0 ? -1 : 1) * (dr + 60 * s), y + 34 * s, Math.round(14 * s), gr[1], 'center', 'body');
+      ctx.globalAlpha = 1;
     }
   },
   // the tug meter (bottom band): the red bow slides toward whoever is winning; reach your own end to win
@@ -806,6 +902,7 @@ MODES.tug = {
 };
 // Tug of War sounds (prefix tug; pitch 1 Pip / 0.84 Bo for player sounds)
 Sfx.extra.tugDrum = function () { this.tone(110, 0.14, 'sine', 0.045, 55); this.tone(220, 0.05, 'triangle', 0.025, 140); };   // every BOOM: the metronome (lead exception: 0.045)
+Sfx.extra.tugFaster = function () { [523, 659, 784].forEach((f, i) => this.tone(f, 0.06, 'triangle', 0.035, null, i * 0.06)); };   // the beat steps up
 Sfx.extra.tugTock = function () { this.tone(760, 0.03, 'square', 0.015); };                                              // half-way between beats
 Sfx.extra.tugPerfect = function (p) { this.tone(880 * p, 0.08, 'triangle', 0.06); this.tone(1320 * p, 0.1, 'triangle', 0.05, null, 0.04); };
 Sfx.extra.tugGood = function (p) { this.tone(660 * p, 0.08, 'triangle', 0.05); };

@@ -13,12 +13,14 @@
                   are far from the mud, the walk there and back is short) and grab the rope again with the action; easy
                   sometimes jumps off for one it shouldn't (a kid loves goodies).
        tickled    nothing works, so it just waits.
+     Easy goes quiet around the BOOMs it doesn't try (so its slow mash can't land lucky Perfects); nobody tries a BOOM
+     that the other player's Big drum owns.
      Skill sets the mash speed, the beat timing, how many beats it tries and how wisely it goes for crates. */
   const SK = { // mash presses/s, rate wobble, share of beats tried, timing spread (s), crate sense, wild crate chance,
     //            rope lost before a crate trip is worth it, the press gap (s) when dug in (0: keeps mashing), share of the
     //            beats it still holds back for when dug in (a steady press there is worth about as much)
-    easy: { rate: 3.3, wob: 0.45, beatP: 0.25, sig: 0.14, crate: 0.4, wild: 0.3, margin: 30, dig: 0, digBeat: 1 },
-    normal: { rate: 5.8, wob: 0.3, beatP: 0.7, sig: 0.07, crate: 0.75, wild: 0, margin: 40, dig: 0.16, digBeat: 0.85 },
+    easy: { rate: 3.0, wob: 0.45, beatP: 0.2, sig: 0.15, crate: 0.4, wild: 0.3, margin: 30, dig: 0, digBeat: 1, hush: true },
+    normal: { rate: 5.8, wob: 0.3, beatP: 0.6, sig: 0.08, crate: 0.75, wild: 0, margin: 40, dig: 0.16, digBeat: 0.85 },
     hard: { rate: 7.0, wob: 0.15, beatP: 0.85, sig: 0.05, crate: 1, wild: 0, margin: 35, dig: 0.16, digBeat: 0.85 },
   };
   const skOf = s => (s <= 0.4 ? SK.easy : s < 0.9 ? SK.normal : SK.hard);
@@ -38,7 +40,7 @@
   const reachable = (k, x) => (k === 0 ? x < TUG.mid + 6 : x > TUG.mid - 6);
 
   // should we let go for this crate? what it is worth (px of rope, roughly) against the rope we lose while off it
-  const VALUE = { feather: 130, spinach: 100, drum: 45 };
+  const VALUE = { feather: 130, spinach: 100, drum: 110 };
   function crateWorth(S, st, p, k, info, sk) {
     const c = st.crate, K = st.K;
     if (!c || S.skip.has(c.born)) return false;
@@ -81,7 +83,7 @@
         // the next BOOM: try it or not (decided once per beat), and when to press it
         if (S.beatId !== b.id) {
           S.beatId = b.id;
-          S.beatAt = Math.random() < sk.beatP ? b.next + clamp(gauss() * sk.sig, -K.winE + 0.01, K.winL - 0.01) : null;
+          S.beatAt = Math.random() < sk.beatP && !MODES.tug.denied(k) ? b.next + clamp(gauss() * sk.sig, -b.wE + 0.01, b.wL - 0.01) : null;
         }
         // dug in (the gold "Dig in!" by its mud): a steady 5-6 presses a second pulls as hard as a fast mash there and
         // makes a press in the window a Good heave, so normal and hard stop mashing fast
@@ -90,9 +92,11 @@
         let press = false;
         if (S.beatAt != null && st.used[k] !== b.id) {
           if (t >= S.beatAt) { press = true; S.beatAt = null; }
-          else if (t >= b.next - K.winE - 0.01) return out;  // hold the mash: the timed press must come first in the window
+          else if (t >= b.next - b.wE - 0.01) return out;  // hold the mash: the timed press must come first in the window
         }
-        if (!press && t >= S.next) press = true;
+        // easy goes quiet around a BOOM it isn't trying (a beginner stops to watch the frog), so its mash can't land a lucky Perfect
+        const hush = sk.hush && S.beatAt == null && st.used[k] !== b.id && t >= b.next - b.wE - 0.02;
+        if (!press && !hush && t >= S.next) press = true;
         if (press) {
           out.act = 'tap';
           const r = sk.rate * (1 + (Math.random() - 0.5) * 2 * sk.wob);

@@ -1414,7 +1414,7 @@ const LEVELS = [
     legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> let go', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> let go',
       pad: 'stick or d-pad move, <span data-glyph="a"></span> lets go,' },
     stomp: false,                          // the players never meet (a middle line keeps them apart)
-    tip: 'Mash pull to tug! Pull on the BOOM for a big heave. Jump off for goodies. Stay out of the mud!',
+    tip: 'Pull when your note hits the drum! Perfects in a row pull harder, and the beat speeds up. Jump off for goodies!',
     switches: {}, signs: [],
     // the field is raised 2 rows (floor surface y 420) so the animal fans fit on a bench below it; crates fall from y 100
     map: [
