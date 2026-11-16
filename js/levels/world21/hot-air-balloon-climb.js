@@ -885,7 +885,24 @@ function balloonDrawSky(st) {
   }
   ctx.fillStyle = 'rgba(255,246,200,0.35)'; circle(sx, sy, 80); ctx.fill();
   ctx.fillStyle = 'rgba(255,248,215,0.6)'; circle(sx, sy, 56); ctx.fill();
+  if (look !== 'storm') {
+    ctx.save(); ctx.translate(sx, sy); ctx.rotate(G.clock * 0.05); ctx.fillStyle = 'rgba(255,250,215,0.3)';
+    for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(-5, 46); ctx.lineTo(0, 90 + (i % 2) * 16); ctx.lineTo(5, 46); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  }
   ctx.fillStyle = '#fffbe6'; circle(sx, sy, 40); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(sx - 9, sy - 9, 22); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,220,140,0.7)'; ctx.lineWidth = 2; circle(sx, sy, 40); ctx.stroke();
+  // far floating islands drift by very slowly (a hazy layer)
+  if (look !== 'storm') {
+    const off = st.cam * 0.06, span = 420;
+    for (let k = Math.floor((off - 100) / span); k <= Math.floor((off + H + 100) / span); k++) {
+      const hs = hash(k, 151), y = H - (k * span - off) - (hs % 160), x = (hs >> 4) % 900 + 30, w = 70 + (hs >> 9) % 60;
+      ctx.fillStyle = 'rgba(150,140,210,0.24)'; ctx.beginPath(); ctx.moveTo(x - w / 2, y); ctx.lineTo(x + w / 2, y); ctx.quadraticCurveTo(x + w * 0.35, y + w * 0.2, x + w * 0.05, y + w * 0.42); ctx.quadraticCurveTo(x - w * 0.3, y + w * 0.22, x - w / 2, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(120,200,120,0.32)'; rr(x - w / 2, y - 5, w, 7, 3.5); ctx.fill();
+      if (hs % 2) { ctx.fillStyle = 'rgba(90,170,100,0.3)'; circle(x - w * 0.2, y - 12, 8); ctx.fill(); }
+    }
+  }
   // far cloud banks drift up slowly as you climb
   for (const [par, sz, al] of [[0.12, 0.7, 0.45], [0.3, 1.0, 0.6]]) {
     const off = st.cam * par, span = 260;
@@ -899,9 +916,11 @@ function balloonDrawSky(st) {
 }
 // a soft cloud puff (3 bumps on a flat bottom) centred at x, y
 function balloonPuff(x, y, s, col) {
-  ctx.fillStyle = col;
-  circle(x - s * 0.55, y, s * 0.45); ctx.fill(); circle(x, y - s * 0.22, s * 0.6); ctx.fill(); circle(x + s * 0.6, y, s * 0.42); ctx.fill();
-  rr(x - s * 0.95, y - s * 0.05, s * 1.95, s * 0.45, s * 0.22); ctx.fill();
+  // a soft blue-grey underside, the puff, then a bright top
+  const shape = (dx, dy) => { ctx.beginPath(); ctx.arc(x - s * 0.55 + dx, y + dy, s * 0.45, 0, Math.PI * 2); ctx.arc(x + dx, y - s * 0.22 + dy, s * 0.6, 0, Math.PI * 2); ctx.arc(x + s * 0.6 + dx, y + dy, s * 0.42, 0, Math.PI * 2); ctx.roundRect(x - s * 0.95 + dx, y - s * 0.05 + dy, s * 1.95, s * 0.45, s * 0.22); };
+  ctx.fillStyle = 'rgba(150,170,210,0.3)'; shape(s * 0.04, s * 0.08); ctx.fill();
+  ctx.fillStyle = col; shape(0, 0); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(x - s * 0.12, y - s * 0.45, s * 0.24); ctx.fill(); circle(x - s * 0.62, y - s * 0.12, s * 0.16); ctx.fill();
 }
 // near clouds float by (world layer, a little slower than the balloon)
 function balloonDrawFar(st) {
@@ -944,15 +963,25 @@ function balloonDrawMeadow(st) {
   for (let x = 0; x <= W; x += 40) ctx.lineTo(x, -70 - Math.sin(x * 0.008 + 1) * 30 - Math.sin(x * 0.021) * 12);
   ctx.lineTo(W, 0); ctx.closePath(); ctx.fill();
   // the barn
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = 0; x <= W; x += 40) ctx.lineTo(x, -69 - Math.sin(x * 0.008 + 1) * 30 - Math.sin(x * 0.021) * 12);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(40,40,60,0.12)'; ctx.beginPath(); ctx.ellipse(770, 0, 70, 6, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#d9584a'; ctx.fillRect(720, -78, 90, 78);
+  ctx.strokeStyle = 'rgba(120,30,25,0.35)'; ctx.lineWidth = 1.5; for (let bx = 730; bx < 810; bx += 10) { ctx.beginPath(); ctx.moveTo(bx, -76); ctx.lineTo(bx, 0); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.fillRect(796, -78, 14, 78);
+  ctx.strokeStyle = '#8a2e24'; ctx.lineWidth = 2; ctx.strokeRect(720, -78, 90, 78);
   ctx.fillStyle = '#9e3a30'; ctx.beginPath(); ctx.moveTo(710, -76); ctx.lineTo(765, -118); ctx.lineTo(820, -76); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.strokeRect(745, -48, 40, 48);
   ctx.beginPath(); ctx.moveTo(745, -48); ctx.lineTo(785, 0); ctx.moveTo(785, -48); ctx.lineTo(745, 0); ctx.stroke();
   ctx.fillStyle = '#fff6d8'; ctx.fillRect(757, -72, 16, 14);
   // trees
   for (const [tx, s] of [[90, 1], [150, 0.8], [610, 1.1], [890, 0.9]]) {
+    ctx.fillStyle = 'rgba(30,60,30,0.2)'; ctx.beginPath(); ctx.ellipse(tx + 4, 0, 24 * s, 4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#8a5a34'; ctx.fillRect(tx - 4 * s, -28 * s, 8 * s, 28 * s);
-    ctx.fillStyle = '#4fb05a'; circle(tx, -44 * s, 22 * s); ctx.fill(); circle(tx - 14 * s, -32 * s, 15 * s); ctx.fill(); circle(tx + 14 * s, -33 * s, 15 * s); ctx.fill();
+    ctx.fillStyle = '#3f9a4a'; circle(tx + 3 * s, -42 * s, 22 * s); ctx.fill(); circle(tx + 15 * s, -31 * s, 15 * s); ctx.fill();
+    ctx.fillStyle = '#4fb05a'; circle(tx, -44 * s, 21 * s); ctx.fill(); circle(tx - 14 * s, -32 * s, 14 * s); ctx.fill(); circle(tx + 12 * s, -34 * s, 13 * s); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; circle(tx - 6 * s, -52 * s, 8 * s); ctx.fill();
   }
   // the field
   ctx.fillStyle = '#7bcf62'; ctx.fillRect(0, -6, W, 120);
@@ -1060,9 +1089,20 @@ function balloonDrawSolid(st, r) {
     for (let x = x1 - rrd; x > x0 + rl; x -= 30) ctx.lineTo(x - 15, bot + 6 + (hash(x | 0, 7) % 8));
     ctx.lineTo(x0 + rl, bot); ctx.quadraticCurveTo(x0, bot, x0, bot - rl);
     ctx.closePath(); ctx.fill();
+    // shade toward the bottom, rock layers and specks, inside the island's outline
+    ctx.save(); ctx.clip();
+    const sg = ctx.createLinearGradient(0, top, 0, bot + 10); sg.addColorStop(0, 'rgba(20,20,40,0)'); sg.addColorStop(1, 'rgba(20,20,40,0.28)');
+    ctx.fillStyle = sg; ctx.fillRect(x0, top, w, bot - top + 20);
+    ctx.strokeStyle = 'rgba(40,30,80,0.18)'; ctx.lineWidth = 2;
+    for (let yy = top + 34; yy < bot - 6; yy += 22) { ctx.beginPath(); ctx.moveTo(x0, yy); for (let x = x0; x <= x1; x += 30) ctx.lineTo(x, yy + Math.sin(x * 0.03 + yy) * 3); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; for (let x = x0 + 12; x < x1; x += 23) { const hs = hash(x | 0, 17); circle(x, top + 18 + hs % Math.max(1, (bot - top - 24) | 0), 1.4); ctx.fill(); }
+    ctx.fillStyle = 'rgba(30,20,60,0.2)'; for (let x = x0 + 20; x < x1; x += 31) { const hs = hash(x | 0, 19); circle(x, top + 24 + hs % Math.max(1, (bot - top - 28) | 0), 1.8); ctx.fill(); }
+    ctx.restore();
     ctx.strokeStyle = C.stoneEdge; ctx.lineWidth = 2.5; ctx.stroke();
     ctx.fillStyle = C.stoneLight;
     for (let x = x0 + 30; x < x1 - 20; x += 70) { rr(x, top + 22 + (hash(x | 0, 3) % 10), 26, 8, 4); ctx.fill(); }
+    // the grass casts a soft shadow on the rock
+    ctx.fillStyle = 'rgba(20,20,50,0.18)'; ctx.fillRect(x0 + 4, top + 14, w - 8, 5);
     // little roots hanging down
     ctx.strokeStyle = '#5d8f4a'; ctx.lineWidth = 2;
     for (let x = x0 + 40; x < x1 - 30; x += 90) { const l = 10 + hash(x | 0, 4) % 14; ctx.beginPath(); ctx.moveTo(x, bot + 2); ctx.quadraticCurveTo(x + 5, bot + l / 2, x, bot + l); ctx.stroke(); }
@@ -1072,9 +1112,21 @@ function balloonDrawSolid(st, r) {
   rr(x0, top - 2, w, 16, 8); ctx.fill();
   if (!cloud) {
     ctx.fillStyle = '#5fbf55'; ctx.fillRect(x0 + 6, top + 10, w - 12, 4);
+    // a lit lip, a scalloped edge and blades of grass
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x0 + 8, top - 1, w - 16, 2);
+    ctx.fillStyle = '#5fbf55'; for (let x = x0 + 10; x < x1 - 8; x += 12) { ctx.beginPath(); ctx.arc(x, top + 13, 4, 0, Math.PI); ctx.fill(); }
+    ctx.strokeStyle = '#4fae46'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let x = x0 + 9; x < x1 - 8; x += 9) { const hs = hash(x | 0, 23); if (hs % 3) continue; ctx.moveTo(x, top); ctx.lineTo(x - 1.5, top - 5 - hs % 4); ctx.moveTo(x + 2, top); ctx.lineTo(x + 3.5, top - 4 - hs % 3); }
+    ctx.stroke();
     for (let x = x0 + 14; x < x1 - 10; x += 34) {
       const hs = hash(x | 0, 11);
-      if (hs % 5 === 0) { ctx.fillStyle = '#8a5a34'; ctx.fillRect(x - 3, top - 22, 6, 22); ctx.fillStyle = '#4fb05a'; circle(x, top - 30, 14); ctx.fill(); circle(x - 9, top - 22, 9); ctx.fill(); circle(x + 9, top - 23, 9); ctx.fill(); }
+      if (hs % 5 === 0) {
+        ctx.fillStyle = 'rgba(30,60,30,0.2)'; ctx.beginPath(); ctx.ellipse(x + 2, top, 14, 3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#8a5a34'; ctx.fillRect(x - 3, top - 22, 6, 22); ctx.fillStyle = '#6a4224'; ctx.fillRect(x + 1, top - 22, 2, 22);
+        ctx.fillStyle = '#3f9a4a'; circle(x + 2, top - 28, 14); ctx.fill(); circle(x - 7, top - 20, 9); ctx.fill(); circle(x + 11, top - 21, 9); ctx.fill();
+        ctx.fillStyle = '#4fb05a'; circle(x, top - 30, 13); ctx.fill(); circle(x - 9, top - 22, 8); ctx.fill(); circle(x + 9, top - 23, 8); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.25)'; circle(x - 4, top - 35, 5); ctx.fill();
+      }
       else if (hs % 3 === 0) { ctx.fillStyle = ['#ffe36b', '#ff9ec0', '#ffffff'][hs % 3]; circle(x, top - 4, 3.4); ctx.fill(); }
     }
   }
