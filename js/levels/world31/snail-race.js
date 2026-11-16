@@ -239,9 +239,12 @@
     ctx.save();
     ctx.beginPath(); rr(6, y0, W - 12, y1 - y0, 14); ctx.clip();
     // sky and far garden
-    const g = ctx.createLinearGradient(0, y0, 0, y1);
-    g.addColorStop(0, '#8ccff2'); g.addColorStop(1, '#dff3d8');
-    ctx.fillStyle = g; ctx.fillRect(0, y0, W, y1 - y0);
+    // (a picture: a gradient fill this big each frame is slow on a phone)
+    K.pic('snailsky|' + y0 + '|' + y1, W, y1 - y0, 0, 0, () => {
+      const g = ctx.createLinearGradient(0, 0, 0, y1 - y0);
+      g.addColorStop(0, '#8ccff2'); g.addColorStop(1, '#dff3d8');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, y1 - y0);
+    }, 0, y0, true);
     ctx.save(); ctx.translate(0, y0 - 250);
     K.farGrass(cx, { y: 330, par: 0.25, n: 20 });
     ctx.restore();

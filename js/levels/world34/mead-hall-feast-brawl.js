@@ -728,75 +728,88 @@
     ctx.save(); if (shake) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     // the hall: timber walls, roof beams, a smoke hole with the northern sky
     ctx.fillStyle = '#3a2416'; ctx.fillRect(-10, -10, W + 20, H + 20);
-    // the timber wall: upright planks with grain, knots, dark seams and a lit edge
-    for (let x = 0; x < W; x += 48) {
-      const k = x / 48;
-      ctx.fillStyle = k % 2 ? '#4a2e1a' : '#43291a'; ctx.fillRect(x, 0, 48, S.floor);
-      ctx.fillStyle = 'rgba(255,200,140,0.07)'; ctx.fillRect(x + 2, 0, 3, S.floor);
-      ctx.fillStyle = '#25150b'; ctx.fillRect(x + 46, 0, 2, S.floor);
-      ctx.strokeStyle = 'rgba(30,16,8,0.35)'; ctx.lineWidth = 1; ctx.beginPath();
-      for (let g = 0; g < 3; g++) { const gx = x + 10 + g * 12 + K.hash(k * 7 + g) * 4; ctx.moveTo(gx, 0); ctx.bezierCurveTo(gx + 3, S.floor * 0.3, gx - 3, S.floor * 0.6, gx + 1, S.floor); }
+    // the still parts of the hall (walls, beams, smoke hole, shields, chair, hearth stones) are one picture
+    K.pic('meadhall', W, H, 0, 0, () => {
+      // the timber wall: upright planks with grain, knots, dark seams and a lit edge
+      for (let x = 0; x < W; x += 48) {
+        const k = x / 48;
+        ctx.fillStyle = k % 2 ? '#4a2e1a' : '#43291a'; ctx.fillRect(x, 0, 48, S.floor);
+        ctx.fillStyle = 'rgba(255,200,140,0.07)'; ctx.fillRect(x + 2, 0, 3, S.floor);
+        ctx.fillStyle = '#25150b'; ctx.fillRect(x + 46, 0, 2, S.floor);
+        ctx.strokeStyle = 'rgba(30,16,8,0.35)'; ctx.lineWidth = 1; ctx.beginPath();
+        for (let g = 0; g < 3; g++) { const gx = x + 10 + g * 12 + K.hash(k * 7 + g) * 4; ctx.moveTo(gx, 0); ctx.bezierCurveTo(gx + 3, S.floor * 0.3, gx - 3, S.floor * 0.6, gx + 1, S.floor); }
+        ctx.stroke();
+        if (K.hash(k + 40) < 0.5) { const ky = 140 + K.hash(k + 41) * 260; ctx.fillStyle = 'rgba(30,16,8,0.3)'; ctx.beginPath(); ctx.ellipse(x + 24, ky, 3, 5, 0, 0, TAU); ctx.fill(); }
+      }
+      // smoke-darkened high up, warm firelight low down around the hearth
+      const sg = ctx.createLinearGradient(0, 0, 0, 200); sg.addColorStop(0, 'rgba(10,6,4,0.55)'); sg.addColorStop(1, 'rgba(10,6,4,0)');
+      ctx.fillStyle = sg; ctx.fillRect(0, 0, W, 200);
+      // roof beams with a lit top and dark underside, and carved knotwork on the lower one
+      for (const y of [60, 110]) {
+        ctx.fillStyle = '#2a180e'; ctx.fillRect(0, y, W, 10);
+        ctx.fillStyle = 'rgba(255,200,140,0.14)'; ctx.fillRect(0, y, W, 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(0, y + 10, W, 4);
+      }
+      ctx.strokeStyle = 'rgba(200,150,90,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let x = 0; x < W; x += 24) { ctx.moveTo(x, 115); ctx.quadraticCurveTo(x + 6, 111, x + 12, 115); ctx.quadraticCurveTo(x + 18, 119, x + 24, 115); }
       ctx.stroke();
-      if (K.hash(k + 40) < 0.5) { const ky = 140 + K.hash(k + 41) * 260; ctx.fillStyle = 'rgba(30,16,8,0.3)'; ctx.beginPath(); ctx.ellipse(x + 24, ky, 3, 5, 0, 0, TAU); ctx.fill(); }
-    }
-    // smoke-darkened high up, warm firelight low down around the hearth
-    const sg = ctx.createLinearGradient(0, 0, 0, 200); sg.addColorStop(0, 'rgba(10,6,4,0.55)'); sg.addColorStop(1, 'rgba(10,6,4,0)');
-    ctx.fillStyle = sg; ctx.fillRect(0, 0, W, 200);
+      // two rafters slanting up into the dark
+      ctx.fillStyle = '#24140a';
+      for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(W / 2 + d * 70, 0); ctx.lineTo(W / 2 + d * 480, 60); ctx.lineTo(W / 2 + d * 480, 70); ctx.lineTo(W / 2 + d * 70, 12); ctx.closePath(); ctx.fill(); }
+      // the smoke hole: night sky, stars, the aurora, a timber frame
+      ctx.fillStyle = '#1a2a48'; rr(W / 2 - 50, 0, 100, 40, 8); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; for (let k = 0; k < 7; k++) ctx.fillRect(W / 2 - 44 + K.hash(k + 3) * 88, 4 + K.hash(k + 9) * 30, 1.5, 1.5);
+      ctx.strokeStyle = '#5a3418'; ctx.lineWidth = 4; rr(W / 2 - 50, -4, 100, 44, 8); ctx.stroke();
+      // hanging shields
+      for (let k = 0; k < 7; k++) { const sc = K.SHIELD_COLS[k % K.SHIELD_COLS.length]; ctx.fillStyle = 'rgba(0,0,0,0.3)'; circle(302 + k * 85, 95, 15); ctx.fill(); K.shield(300 + k * 85, 92, 15, { col: sc[0], col2: sc[1], rot: k * 0.5 }); }
+      // the chieftain's chair, top right
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; rr(874, 116, 70, 80, 8); ctx.fill();
+      ctx.fillStyle = '#6a3a1a'; rr(870, 112, 70, 80, 8); ctx.fill();
+      ctx.fillStyle = '#5a2e12'; rr(905, 112, 35, 80, 8); ctx.fill();
+      ctx.fillStyle = 'rgba(255,200,140,0.2)'; ctx.fillRect(873, 116, 3, 72);
+      ctx.fillStyle = '#c8323a'; rr(878, 124, 54, 40, 6); ctx.fill();
+      ctx.fillStyle = '#9a2028'; rr(878, 146, 54, 18, 6); ctx.fill();
+      ctx.strokeStyle = '#ffc53d'; ctx.lineWidth = 1.2; ctx.setLineDash([2, 3]); rr(881, 127, 48, 34, 5); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = '#3a1e0a'; ctx.lineWidth = 2; rr(870, 112, 70, 80, 8); ctx.stroke();
+      // carved dragon heads on the posts
+      for (const d of [-1, 1]) { const px = 905 + d * 35; ctx.fillStyle = '#7a4a22'; ctx.beginPath(); ctx.moveTo(px - 5, 118); ctx.quadraticCurveTo(px - 6, 100, px + d * 4, 98); ctx.quadraticCurveTo(px + d * 12, 98, px + d * 12, 104); ctx.lineTo(px + d * 4, 106); ctx.lineTo(px + 5, 118); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#3a1e0a'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.fillStyle = '#ffc53d'; circle(px + d * 5, 102, 1.4); ctx.fill(); }
+      ctx.fillStyle = '#ffc53d'; circle(905, 112, 8); ctx.fill(); ctx.strokeStyle = '#a8761a'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(902, 109, 2.2); ctx.fill();
+      const fx = 540, fy = S.floor;
+      // a ring of hearth stones and crossed logs, flames, then sparks drifting up
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(fx, fy + 2, 62, 6, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#5a5a60'; rr(fx - 50, fy - 10, 100, 12, 5); ctx.fill();
+      for (let k = 0; k < 7; k++) { const sx = fx - 48 + k * 16; ctx.fillStyle = k % 2 ? '#6e6e76' : '#64646c'; ctx.beginPath(); ctx.ellipse(sx, fy - 6, 9, 7, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = '#38383e'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.fillStyle = 'rgba(255,170,90,0.35)'; ctx.beginPath(); ctx.ellipse(sx - 2, fy - 10, 5, 2, 0, 0, TAU); ctx.fill(); }
+      ctx.fillStyle = '#4a2a14'; ctx.strokeStyle = '#2a160a'; ctx.lineWidth = 1.5;
+      for (const d of [-1, 1]) { ctx.save(); ctx.translate(fx, fy - 12); ctx.rotate(d * 0.35); rr(-32, -4, 64, 8, 4); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#c8783a'; circle(d * 31, 0, 3.5); ctx.fill(); ctx.fillStyle = '#4a2a14'; ctx.restore(); }
+    }, 0, 0, true);
     const fl = 0.85 + 0.15 * Math.sin(t * 7) * Math.sin(t * 3.1);
-    const fg = ctx.createRadialGradient(540, S.floor - 20, 10, 540, S.floor - 20, 360);
-    fg.addColorStop(0, 'rgba(255,150,60,' + 0.32 * fl + ')'); fg.addColorStop(1, 'rgba(255,150,60,0)');
-    ctx.fillStyle = fg; ctx.fillRect(180, 100, 720, S.floor - 100);
-    // roof beams with a lit top and dark underside, and carved knotwork on the lower one
-    for (const y of [60, 110]) {
-      ctx.fillStyle = '#2a180e'; ctx.fillRect(0, y, W, 10);
-      ctx.fillStyle = 'rgba(255,200,140,0.14)'; ctx.fillRect(0, y, W, 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(0, y + 10, W, 4);
-    }
-    ctx.strokeStyle = 'rgba(200,150,90,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath();
-    for (let x = 0; x < W; x += 24) { ctx.moveTo(x, 115); ctx.quadraticCurveTo(x + 6, 111, x + 12, 115); ctx.quadraticCurveTo(x + 18, 119, x + 24, 115); }
-    ctx.stroke();
-    // two rafters slanting up into the dark
-    ctx.fillStyle = '#24140a';
-    for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(W / 2 + d * 70, 0); ctx.lineTo(W / 2 + d * 480, 60); ctx.lineTo(W / 2 + d * 480, 70); ctx.lineTo(W / 2 + d * 70, 12); ctx.closePath(); ctx.fill(); }
-    // the smoke hole: night sky, stars, the aurora, a timber frame
-    ctx.fillStyle = '#1a2a48'; rr(W / 2 - 50, 0, 100, 40, 8); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.8)'; for (let k = 0; k < 7; k++) ctx.fillRect(W / 2 - 44 + K.hash(k + 3) * 88, 4 + K.hash(k + 9) * 30, 1.5, 1.5);
+    // (glows are pictures too, faded in and out with globalAlpha: a big gradient fill each frame is slow on a phone)
+    ctx.globalAlpha = fl;
+    K.pic('meadfire', 720, S.floor - 100, 0, 0, () => {
+      const fg = ctx.createRadialGradient(360, S.floor - 120, 10, 360, S.floor - 120, 360);
+      fg.addColorStop(0, 'rgba(255,150,60,0.32)'); fg.addColorStop(1, 'rgba(255,150,60,0)');
+      ctx.fillStyle = fg; ctx.fillRect(0, 0, 720, S.floor - 100);
+    }, 180, 100);
+    ctx.globalAlpha = 1;
     ctx.fillStyle = 'rgba(120,255,180,0.35)'; ctx.fillRect(W / 2 - 46, 14 + Math.sin(t) * 3, 92, 6);
-    ctx.strokeStyle = '#5a3418'; ctx.lineWidth = 4; rr(W / 2 - 50, -4, 100, 44, 8); ctx.stroke();
     ctx.fillStyle = 'rgba(200,190,180,0.12)'; for (let k = 0; k < 3; k++) { const u = (t * 0.25 + k / 3) % 1; circle(W / 2 + Math.sin(t + k * 2) * 14, 60 - u * 70, 14 + u * 18); ctx.fill(); }
     // torches on the walls with flickering halos
     for (const [tx, ty] of [[56, 200], [W - 26, 268]]) {
       const f2 = 0.8 + 0.2 * Math.sin(t * 11 + tx);
-      const tg = ctx.createRadialGradient(tx, ty - 14, 2, tx, ty - 14, 70); tg.addColorStop(0, 'rgba(255,170,70,' + 0.4 * f2 + ')'); tg.addColorStop(1, 'rgba(255,170,70,0)');
-      ctx.fillStyle = tg; ctx.fillRect(tx - 70, ty - 84, 140, 140);
+      ctx.globalAlpha = f2;
+      K.pic('meadtorch', 140, 140, 70, 70, () => {
+        const tg = ctx.createRadialGradient(0, 0, 2, 0, 0, 70); tg.addColorStop(0, 'rgba(255,170,70,0.4)'); tg.addColorStop(1, 'rgba(255,170,70,0)');
+        ctx.fillStyle = tg; ctx.fillRect(-70, -70, 140, 140);
+      }, tx, ty - 14);
+      ctx.globalAlpha = 1;
       ctx.fillStyle = '#2a180e'; ctx.fillRect(tx - 3, ty - 6, 6, 26); ctx.fillStyle = '#6a6e76'; ctx.fillRect(tx - 6, ty - 8, 12, 5);
       ctx.fillStyle = '#ff8a2a'; ctx.beginPath(); ctx.moveTo(tx - 6, ty - 8); ctx.quadraticCurveTo(tx - 7, ty - 22 * f2, tx + Math.sin(t * 13) * 2, ty - 30 * f2); ctx.quadraticCurveTo(tx + 7, ty - 18, tx + 6, ty - 8); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.moveTo(tx - 3, ty - 8); ctx.quadraticCurveTo(tx - 3, ty - 16, tx, ty - 20 * f2); ctx.quadraticCurveTo(tx + 3, ty - 14, tx + 3, ty - 8); ctx.closePath(); ctx.fill();
     }
-    // hanging shields
-    for (let k = 0; k < 7; k++) { const sc = K.SHIELD_COLS[k % K.SHIELD_COLS.length]; ctx.fillStyle = 'rgba(0,0,0,0.3)'; circle(302 + k * 85, 95, 15); ctx.fill(); K.shield(300 + k * 85, 92, 15, { col: sc[0], col2: sc[1], rot: k * 0.5 }); }
-    // the chieftain's chair, top right
-    ctx.fillStyle = 'rgba(0,0,0,0.25)'; rr(874, 116, 70, 80, 8); ctx.fill();
-    ctx.fillStyle = '#6a3a1a'; rr(870, 112, 70, 80, 8); ctx.fill();
-    ctx.fillStyle = '#5a2e12'; rr(905, 112, 35, 80, 8); ctx.fill();
-    ctx.fillStyle = 'rgba(255,200,140,0.2)'; ctx.fillRect(873, 116, 3, 72);
-    ctx.fillStyle = '#c8323a'; rr(878, 124, 54, 40, 6); ctx.fill();
-    ctx.fillStyle = '#9a2028'; rr(878, 146, 54, 18, 6); ctx.fill();
-    ctx.strokeStyle = '#ffc53d'; ctx.lineWidth = 1.2; ctx.setLineDash([2, 3]); rr(881, 127, 48, 34, 5); ctx.stroke(); ctx.setLineDash([]);
-    ctx.strokeStyle = '#3a1e0a'; ctx.lineWidth = 2; rr(870, 112, 70, 80, 8); ctx.stroke();
-    // carved dragon heads on the posts
-    for (const d of [-1, 1]) { const px = 905 + d * 35; ctx.fillStyle = '#7a4a22'; ctx.beginPath(); ctx.moveTo(px - 5, 118); ctx.quadraticCurveTo(px - 6, 100, px + d * 4, 98); ctx.quadraticCurveTo(px + d * 12, 98, px + d * 12, 104); ctx.lineTo(px + d * 4, 106); ctx.lineTo(px + 5, 118); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#3a1e0a'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.fillStyle = '#ffc53d'; circle(px + d * 5, 102, 1.4); ctx.fill(); }
-    ctx.fillStyle = '#ffc53d'; circle(905, 112, 8); ctx.fill(); ctx.strokeStyle = '#a8761a'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(902, 109, 2.2); ctx.fill();
     npc({ look: 2, state: st.party || (st.platter && st.platter.state === 'carry') ? 'eat' : 'quiet', mood: st.party ? 1 : 0, reactT: st.party ? 1 : 0, skol: !!st.party }, 905, 186, t);
     // the fire pit
     const fx = 540, fy = S.floor;
-    // a ring of hearth stones and crossed logs, flames, then sparks drifting up
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(fx, fy + 2, 62, 6, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#5a5a60'; rr(fx - 50, fy - 10, 100, 12, 5); ctx.fill();
-    for (let k = 0; k < 7; k++) { const sx = fx - 48 + k * 16; ctx.fillStyle = k % 2 ? '#6e6e76' : '#64646c'; ctx.beginPath(); ctx.ellipse(sx, fy - 6, 9, 7, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = '#38383e'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.fillStyle = 'rgba(255,170,90,0.35)'; ctx.beginPath(); ctx.ellipse(sx - 2, fy - 10, 5, 2, 0, 0, TAU); ctx.fill(); }
-    ctx.fillStyle = '#4a2a14'; ctx.strokeStyle = '#2a160a'; ctx.lineWidth = 1.5;
-    for (const d of [-1, 1]) { ctx.save(); ctx.translate(fx, fy - 12); ctx.rotate(d * 0.35); rr(-32, -4, 64, 8, 4); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#c8783a'; circle(d * 31, 0, 3.5); ctx.fill(); ctx.fillStyle = '#4a2a14'; ctx.restore(); }
     for (let k = 0; k < 5; k++) { const f = Math.sin(t * 9 + k * 1.7) * 6; ctx.fillStyle = k % 2 ? '#ff8a2a' : '#ffc53d'; ctx.beginPath(); ctx.moveTo(fx - 30 + k * 15, fy - 8); ctx.quadraticCurveTo(fx - 34 + k * 15, fy - 40 - f, fx - 24 + k * 15 + f * 0.3, fy - 52 - f); ctx.quadraticCurveTo(fx - 18 + k * 15, fy - 30, fx - 20 + k * 15, fy - 8); ctx.fill(); }
     for (let k = 0; k < 6; k++) { const u = (t * 0.6 + K.hash(k)) % 1; ctx.fillStyle = 'rgba(255,' + (200 - u * 120 | 0) + ',80,' + (1 - u) + ')'; ctx.fillRect(fx - 20 + K.hash(k + 5) * 40 + Math.sin(t * 3 + k) * 10 * u, fy - 50 - u * 120, 2.5, 2.5); }
     // the kitchen hatch and rack
@@ -810,19 +823,23 @@
     ctx.fillStyle = COLW.woodDark; ctx.fillRect(10, S.rackY + 10, 124, 8);
     for (let k = 0; k < 3; k++) if (st.rack[k]) drawFood(st.rack[k].k, S.rack[k], S.rackY + 2, 1.05);
     if (st.barrel) drawFood('barrel', S.barrelX, S.floor - 14, 1.1);
-    // the floor
-    ctx.fillStyle = '#6a4424'; ctx.fillRect(0, S.floor, W, H - S.floor);
-    // floorboards: rows of planks, staggered joints, grain, nail heads, a worn lit edge and the wall's shadow
-    for (let r2 = 0; r2 < 4; r2++) {
-      const y0 = S.floor + r2 * 20;
-      ctx.fillStyle = r2 % 2 ? '#64401f' : '#6e4726'; ctx.fillRect(0, y0, W, 20);
-      ctx.fillStyle = 'rgba(255,210,150,0.12)'; ctx.fillRect(0, y0, W, 1.5);
-      ctx.fillStyle = '#4a2c14'; ctx.fillRect(0, y0 + 19, W, 1);
-      for (let x = (r2 % 2) * 60; x < W; x += 120) { ctx.fillStyle = '#4a2c14'; ctx.fillRect(x, y0, 2, 20); ctx.fillStyle = '#c8ccd6'; ctx.fillRect(x + 5, y0 + 4, 1.6, 1.6); ctx.fillRect(x + 5, y0 + 14, 1.6, 1.6); }
-      ctx.fillStyle = 'rgba(40,20,8,0.3)'; for (let k = 0; k < 10; k++) ctx.fillRect(K.hash(r2 * 19 + k) * W, y0 + 6 + (k % 3) * 4, 18 + K.hash(k + r2) * 26, 1);
-    }
-    const shg = ctx.createLinearGradient(0, S.floor, 0, S.floor + 16); shg.addColorStop(0, 'rgba(0,0,0,0.35)'); shg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = shg; ctx.fillRect(0, S.floor, W, 16);
+    // the floor never changes: one picture (its own space starts at the floor line)
+    K.pic('meadfloor', W, H - S.floor, 0, 0, () => {
+      ctx.translate(0, -S.floor);
+      // the floor
+      ctx.fillStyle = '#6a4424'; ctx.fillRect(0, S.floor, W, H - S.floor);
+      // floorboards: rows of planks, staggered joints, grain, nail heads, a worn lit edge and the wall's shadow
+      for (let r2 = 0; r2 < 4; r2++) {
+        const y0 = S.floor + r2 * 20;
+        ctx.fillStyle = r2 % 2 ? '#64401f' : '#6e4726'; ctx.fillRect(0, y0, W, 20);
+        ctx.fillStyle = 'rgba(255,210,150,0.12)'; ctx.fillRect(0, y0, W, 1.5);
+        ctx.fillStyle = '#4a2c14'; ctx.fillRect(0, y0 + 19, W, 1);
+        for (let x = (r2 % 2) * 60; x < W; x += 120) { ctx.fillStyle = '#4a2c14'; ctx.fillRect(x, y0, 2, 20); ctx.fillStyle = '#c8ccd6'; ctx.fillRect(x + 5, y0 + 4, 1.6, 1.6); ctx.fillRect(x + 5, y0 + 14, 1.6, 1.6); }
+        ctx.fillStyle = 'rgba(40,20,8,0.3)'; for (let k = 0; k < 10; k++) ctx.fillRect(K.hash(r2 * 19 + k) * W, y0 + 6 + (k % 3) * 4, 18 + K.hash(k + r2) * 26, 1);
+      }
+      const shg = ctx.createLinearGradient(0, S.floor, 0, S.floor + 16); shg.addColorStop(0, 'rgba(0,0,0,0.35)'); shg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = shg; ctx.fillRect(0, S.floor, W, 16);
+    }, 0, S.floor, true);
     // the serving steps
     for (const l of LEDGES) {
       ctx.fillStyle = COLW.wood; rr(l.x0, l.y, l.x1 - l.x0, 10, 3); ctx.fill();

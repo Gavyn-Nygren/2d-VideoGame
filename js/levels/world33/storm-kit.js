@@ -46,7 +46,7 @@
      waterDark, foam, snow, snowDark, ice, iceDark, rock, rockDark, wood, woodDark, flare, gold }. */
 const STORMCHASE = (() => {
   const S = SHRUNK, K = { defs: {} };
-  for (const k of ['FONT', 'lerp', 'smooth', 'hash', 'mmss', 'stubMap', 'BREAK', 'quiet', 'key', 'track', 'both', 'idle', 'actLabels',
+  for (const k of ['FONT', 'pic', 'lerp', 'smooth', 'hash', 'mmss', 'stubMap', 'BREAK', 'quiet', 'key', 'track', 'both', 'idle', 'actLabels',
     'hide', 'unhide', 'place', 'fx', 'pop', 'part', 'spark', 'confetti', 'dust', 'poof', 'hint', 'hintOnce', 'msg', 'tickFx', 'star',
     'drawParts', 'drawPops', 'chip', 'panel', 'meter', 'medal', 'helpLine', 'drawMsg', 'prompter', 'hero']) K[k] = S[k];
   const TAU = Math.PI * 2, H_ = K.hash;
@@ -145,9 +145,14 @@ const STORMCHASE = (() => {
     clear: ['#4a7ab0', '#8ab4d8', '#e8d4a8', '#9aa8b8', '#c4ccd6'],
   };
   K.sky = (cx, t, o = {}) => {
-    const M = MOODS[o.mood || 'storm'], g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, M[0]); g.addColorStop(0.55, M[1]); g.addColorStop(1, M[2]);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const M = MOODS[o.mood || 'storm'];
+    // the gradient never moves on the screen: one solid picture per mood (a full-screen gradient fill each frame is
+    // one of the slowest things to draw on a phone)
+    K.pic('ssky|' + (o.mood || 'storm'), W, H, 0, 0, () => {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, M[0]); g.addColorStop(0.55, M[1]); g.addColorStop(1, M[2]);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }, 0, 0, true);
     // three banks of cloud: far ones slow, near ones fast and low
     for (let layer = 0; layer < 3; layer++) {
       const par = [0.04, 0.1, 0.2][layer], y0 = [70, 40, 10][layer], sc = [0.8, 1.1, 1.5][layer];
@@ -161,17 +166,23 @@ const STORMCHASE = (() => {
       }
       // each bank gets a darker, heavy belly and a softly lit top on its puffs (the puffs are cached by k, so they stay put)
       const ga = ctx.globalAlpha;
+      // (one path for all the bellies of a layer and one for all its lit tops)
+      ctx.globalAlpha = ga * 0.35; ctx.fillStyle = M[0]; ctx.beginPath();
       for (let x = -off - span; x < W + span; x += span) {
         const k = Math.round((x + off) / span) + layer * 31, yy = y0 + H_(k) * 30;
-        ctx.globalAlpha = ga * 0.35; ctx.fillStyle = M[0];
-        ctx.beginPath(); ctx.ellipse(x + 110 * sc, yy + 30 * sc, 140 * sc, 14 * sc, 0, 0, TAU); ctx.fill();
-        ctx.globalAlpha = ga * 0.22; ctx.fillStyle = M[2];
-        for (let j = 0; j < 5; j++) { const r = (36 + H_(k + j) * 24) * sc; circle(x + j * 52 * sc - r * 0.2, yy + Math.sin(j * 1.7 + k) * 10 * sc - r * 0.35, r * 0.62); ctx.fill(); }
-        ctx.fillStyle = M[layer === 2 ? 3 : 4];
+        ctx.moveTo(x + 250 * sc, yy + 30 * sc); ctx.ellipse(x + 110 * sc, yy + 30 * sc, 140 * sc, 14 * sc, 0, 0, TAU);
       }
+      ctx.fill();
+      ctx.globalAlpha = ga * 0.22; ctx.fillStyle = M[2]; ctx.beginPath();
+      for (let x = -off - span; x < W + span; x += span) {
+        const k = Math.round((x + off) / span) + layer * 31, yy = y0 + H_(k) * 30;
+        for (let j = 0; j < 5; j++) { const r = (36 + H_(k + j) * 24) * sc, cx2 = x + j * 52 * sc - r * 0.2, cy2 = yy + Math.sin(j * 1.7 + k) * 10 * sc - r * 0.35; ctx.moveTo(cx2 + r * 0.62, cy2); ctx.arc(cx2, cy2, r * 0.62, 0, TAU); }
+      }
+      ctx.fill();
+      ctx.fillStyle = M[layer === 2 ? 3 : 4];
       ctx.globalAlpha = ga;
       // a bright rim under the near bank
-      if (layer === 2) { ctx.globalAlpha = 0.18; ctx.fillStyle = '#ffffff'; for (let x = -off - span; x < W + span; x += span) ctx.fillRect(x, 66 + H_(Math.round((x + off) / span) + 62) * 30, 220 * sc, 3); }
+      if (layer === 2) { ctx.globalAlpha = 0.18; ctx.fillStyle = '#ffffff'; ctx.beginPath(); for (let x = -off - span; x < W + span; x += span) ctx.rect(x, 66 + H_(Math.round((x + off) / span) + 62) * 30, 220 * sc, 3); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
     const fl = o.flash || 0;

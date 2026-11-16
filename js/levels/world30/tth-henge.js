@@ -1059,7 +1059,7 @@ function tthHengeDrawSky(st) {
   };
   hills(0.12, 330, 26, '#a9dcc0');
   // a soft haze between the far and near downs
-  { const hz = ctx.createLinearGradient(0, 330 - cam.y * 0.2, 0, 400 - cam.y * 0.2); hz.addColorStop(0, 'rgba(255,240,200,0)'); hz.addColorStop(1, 'rgba(255,240,200,0.25)'); ctx.fillStyle = hz; ctx.fillRect(0, 300 - cam.y * 0.2, W, 120); }
+  { const hy = 330 - cam.y * 0.2; ctx.fillStyle = 'rgba(255,240,200,0.08)'; ctx.fillRect(0, hy + 12, W, 108); ctx.fillRect(0, hy + 36, W, 84); ctx.fillRect(0, hy + 58, W, 62); } // (solid steps: a gradient fill is slow on a phone)
   hills(0.3, 372, 20, '#93d28c');
   const ox = cam.x * 0.3, oy = 372 - cam.y * 0.3;
   for (let i = Math.floor(ox / 170); i <= Math.floor((ox + W) / 170) + 1; i++) {
