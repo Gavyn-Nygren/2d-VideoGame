@@ -17,7 +17,7 @@ function makePlayer(id) {
 const other = p => G.players[1 - p.id];
 
 function tile(tx, ty) {
-  if (tx < 0 || tx >= COLS || ty < 0) return '#';
+  if (tx < 0 || tx >= (G.level.cols || COLS) || ty < 0) return '#';
   if (ty >= ROWS) return '.';
   if (G.activeSet && G.activeSet.has(ty * COLS + tx)) return 'P';
   return G.level.grid[ty][tx];
