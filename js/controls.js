@@ -354,7 +354,7 @@ function controlsLinesHTML() {
 }
 
 /* ---------- the ready card ---------- */
-const pluralWord = w => w + (/(s|x|ch|sh)$/.test(w) ? 'es' : 's');
+const pluralWord = w => (/lf$/.test(w) ? w.slice(0, -1) + 'ves' : w + (/(s|x|ch|sh)$/.test(w) ? 'es' : 's'));
 const Ready = { ok: [false, false], goAt: 0, armAt: 0 };
 // from the menus: load the level, then wait on its ready card
 function startLevel(i) { loadLevel(i, 'play', { ready: true }); }
