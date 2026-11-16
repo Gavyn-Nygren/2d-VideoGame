@@ -974,6 +974,14 @@ The boss of worlds 31 to 40, one long level **40-1 The Iron Colossus** (mode `co
 
 ## How the game is built
 
+### Graphics polish (Nov 2026)
+Gavyn (2026-11-16): refine and add detail to every level's graphics (not World 32 or 40), every word inside its box, a professional look. Style guide and batch plan: project file `pip-and-bo/notes/graphics-polish/style-guide.md`.
+- **Shared art** (`js/render.js`): sky with sun rays and shaded clouds, three layers of hills with bushes, carved stone with grass blades and flowers, planks with grain and brackets, spikes, water, sand, buttons, flags, the door, bridges, HUD pills and the intro card. Worlds 32 and 40 keep the plain versions (`artPlain()`, `ART_PLAIN_WORLDS`).
+- **Speed**: the sky and hills are drawn once per level and theme into pictures (`bgLayers`), and each stone tile look into a small picture (`artSprite` / `blitSprite`, copied onto whole screen pixels without smoothing). Drawing it all live cost about 5 ms a frame on a computer without a graphics chip; this costs about 1 ms more than the old plain art.
+- Helpers for levels: `mixCol(a, b, t)`, `shade(c, t)`, `tint(c, t)` ('#rrggbb' colours), `artPlain()`.
+- The intro card grows to its widest line, and name tags to their words.
+- **Checking**: `node tools/polish/survey.js [w1-5|codes|all] [--sizes=laptop,phone]` saves ready / play / pause screenshots on laptop and phone sizes to `build/polish/` and reports text that spills out of its box or off screen (canvas and menus); `node tools/polish/summary.js build/polish/report-*.json` lists the findings.
+
 ### Medals (js/medals.js)
 
 - A team level gives its goals once, as `medals` on its `MODES` object (or on its `LEVELS` entry when it has no mode):
