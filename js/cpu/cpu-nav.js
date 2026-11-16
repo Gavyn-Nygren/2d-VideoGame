@@ -19,6 +19,10 @@
      whenever avoid changes its answer (so the map is rebuilt), solid(ch, p): replaces solidFor for the map,
      maxDx / maxUp / maxDown: how far one move may go in tiles (6, 4, 10), tol: px,
      run / jump: this player's top speed and jump speed as a share of normal (1, 1; 2-4's crown holder is slower).
+     pads: Map(ty * COLS + tx -> launch speed) of bounce pads (stepping into that cell throws you straight up; the map
+       gets 'pad' moves from it, steered in the air, and no others). portals: Map(cell -> twin's cell) of portals
+       (a body whose middle enters the cell comes out standing in the twin's cell and must step out of it before it
+       works again: every move into the cell ends in the twin, and no move may pass through one). 4-4 uses both.
    cpuNavCell(p) -> { tx, ty } the cell the player stands in (or null in the air).
    cpuNavReach(p, x, feetY, opts) -> seconds the way takes from the player's cell, or Infinity.
    While walking, a partner standing right in the way is hopped over (opts.noHop turns that off). */
@@ -102,6 +106,8 @@ function navTry(opts, p, a, b, kind) {
   if (kind === 'run') { if (!dir) return 0; s.vx = dir * PHYS.maxRun * (opts.run || 1); }
   let t = 0, air = false;
   if (kind === 'jump' || kind === 'high' || kind === 'run') { s.vy = -PHYS.jumpV * (opts.jump || 1); s.jumping = true; s.g = false; air = true; }
+  if (kind === 'pad') { s.vy = -opts.pads.get(a.ty * COLS + a.tx); s.g = false; air = true; }
+  const ports = opts.portals, home = a.ty * COLS + a.tx, end = b.ty * COLS + b.tx;
   if (kind === 'drop') { if (tile(a.tx, a.ty + 1) !== '=') return 0; s.dropT = 0.2; s.g = false; }
   const dt = 1 / 60;
   for (; t < NAV.maxT; t += dt) {
@@ -112,6 +118,7 @@ function navTry(opts, p, a, b, kind) {
     if (navSpike(s.x, s.y, PW, PH)) return 0;
     const cx = Math.floor((s.x + PW / 2) / T), cy = Math.floor((s.y + PH - 1) / T);
     if (opts.avoid && opts.avoid(cx, cy)) return 0;
+    if (ports) { const m = Math.floor((s.y + PH / 2) / T) * COLS + cx; if (m !== home && m !== end && ports.has(m)) return 0; } // (through a portal)
     if (air && s.g) {
       if (cx !== b.tx || cy !== b.ty) return 0;
       // settle: it must be able to come to rest there (not slide off)
@@ -141,7 +148,18 @@ function navGraph(p, opts) {
   const cells = [], at = new Map();
   for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) if (navStand(opts, p, tx, ty)) { const n = { tx, ty, i: cells.length, edges: [] }; cells.push(n); at.set(ty * COLS + tx, n); }
   const walkT = T / (PHYS.maxRun * (opts.run || 1));
+  const pads = opts.pads, ports = opts.portals;
   for (const a of cells) {
+    // a bounce pad throws you up: its only moves are where you can steer to from the throw
+    if (pads && pads.has(a.ty * COLS + a.tx)) {
+      for (const b of cells) {
+        const dx = b.tx - a.tx, dy = b.ty - a.ty;
+        if (b === a || Math.abs(dx) > 9 || dy < -10 || dy > maxDown) continue;
+        const t = navTry(opts, p, a, b, 'pad');
+        if (t) a.edges.push({ to: b.i, kind: 'pad', t });
+      }
+      continue;
+    }
     for (const d of [-1, 1]) {
       const b = at.get(a.ty * COLS + a.tx + d);
       if (b && a.tx + d >= 0 && a.tx + d < COLS) a.edges.push({ to: b.i, kind: 'walk', t: walkT });
@@ -155,13 +173,21 @@ function navGraph(p, opts) {
       for (const kind of kinds) {
         if (kind === 'drop' && (dx !== 0 && Math.abs(dx) > 3)) continue;
         if (kind === 'off' && (!dx || navStand(opts, p, a.tx + Math.sign(dx), a.ty))) continue;
-        if (kind === 'run') { const back = at.get(a.ty * COLS + a.tx - Math.sign(dx)); if (!back || !dx) continue; }
+        if (kind === 'run') { const back = at.get(a.ty * COLS + a.tx - Math.sign(dx)); if (!back || !dx || (ports && ports.has(back.ty * COLS + back.tx)) || (pads && pads.has(back.ty * COLS + back.tx))) continue; }
         const t = navTry(opts, p, a, b, kind);
         if (t) { a.edges.push({ to: b.i, kind, t: t + (kind === 'run' ? 0.35 : kind === 'off' || kind === 'drop' ? 0 : 0.15) }); break; }
       }
     }
   }
-  const g = { key, cells, at };
+  // a move into a portal's cell ends in its twin's cell (via: the portal's cell, where to steer)
+  if (ports) for (const a of cells) {
+    for (const e of a.edges) {
+      const c = cells[e.to], tw = ports.get(c.ty * COLS + c.tx), q = tw != null && at.get(tw);
+      if (q) { e.via = e.to; e.to = q.i; e.t += 0.05; }
+    }
+    a.edges = a.edges.filter(e => e.to !== a.i);
+  }
+  const g = { key, cells, at, pads: pads || null, ports: ports || null };
   NAV.cache[p.id] = g;
   return g;
 }
@@ -177,7 +203,7 @@ function navPath(g, from, goal) {
   }
   if (dist[goal] === Infinity) return null;
   const path = [];
-  for (let v = goal; v !== from; v = prev[v]) path.unshift({ from: prev[v], to: v, kind: pe[v].kind });
+  for (let v = goal; v !== from; v = prev[v]) path.unshift({ from: prev[v], to: v, kind: pe[v].kind, via: pe[v].via });
   return { path, t: dist[goal] };
 }
 function cpuNavCell(p) {
@@ -188,7 +214,10 @@ function cpuNavCell(p) {
 function navGoal(g, x, feetY) {
   let best = null, bd = Infinity;
   const gx = x / T - 0.5, gy = feetY / T - 1;
-  for (const c of g.cells) { const d = Math.abs(c.tx - gx) + Math.abs(c.ty - gy) * 2; if (d < bd) { bd = d; best = c; } }
+  for (const c of g.cells) {
+    if ((g.pads && g.pads.has(c.ty * COLS + c.tx)) || (g.ports && g.ports.has(c.ty * COLS + c.tx))) continue; // (nobody stays there)
+    const d = Math.abs(c.tx - gx) + Math.abs(c.ty - gy) * 2; if (d < bd) { bd = d; best = c; }
+  }
   return best;
 }
 function navFrom(g, p) {
@@ -219,7 +248,13 @@ function cpuNav(st, p, x, feetY, opts = {}) {
   // in the air: keep steering the move under way
   if (!p.grounded) {
     N.airborne = true;
-    const e = N.cur, b = e && g.cells[e.to];
+    // walked onto a bounce pad: the pad's move (where to steer the throw) is under way now
+    // (or jumped or dropped onto one: thrown up faster than any jump)
+    if (N.cur && N.cur.kind !== 'pad' && g.pads && N.plan && (N.cur.kind === 'walk' || p.vy < -PHYS.jumpV * 1.1)) {
+      const c = g.cells[N.cur.to];
+      if (c && g.pads.has(c.ty * COLS + c.tx)) { const nx = N.plan.path.find(s => s.from === N.cur.to); if (nx) N.cur = nx; }
+    }
+    const e = N.cur, b = e && g.cells[e.via != null ? e.via : e.to];
     if (b && e.kind !== 'walk') {
       const m = navSteer(e.kind, { x: p.x, vy: p.vy }, b.tx, true); out.left = m < 0; out.right = m > 0;
       out.jump = p.vy < 0 && (e.kind === 'jump' || e.kind === 'high' || e.kind === 'run');
@@ -253,10 +288,10 @@ function cpuNav(st, p, x, feetY, opts = {}) {
     if (k < 0) { N.plan = navPath(g, here.i, goal.i); N.goalKey = gk; N.replanT = 0.8; k = N.plan ? 0 : -1; }
     if (k < 0) { N.status = 'noPath'; return navGreedy(N, p, x, out, tol); }
     N.cur = N.plan.path[k]; N.phase = '';
-    if (N.cur.kind === 'run') { const a = g.cells[N.cur.from], bk = g.at.get(a.ty * COLS + a.tx - Math.sign(g.cells[N.cur.to].tx - a.tx)); N.backI = bk ? bk.i : -1; }
+    if (N.cur.kind === 'run') { const a = g.cells[N.cur.from], bk = g.at.get(a.ty * COLS + a.tx - Math.sign(g.cells[N.cur.via != null ? N.cur.via : N.cur.to].tx - a.tx)); N.backI = bk ? bk.i : -1; }
   }
   N.status = 'moving';
-  const e = N.cur, a = g.cells[e.from], b = g.cells[e.to], dir = Math.sign(b.tx - a.tx), cx = cpuCx(p), ax = navCellX(a.tx);
+  const e = N.cur, a = g.cells[e.from], b = g.cells[e.via != null ? e.via : e.to], dir = Math.sign(b.tx - a.tx), cx = cpuCx(p), ax = navCellX(a.tx);
   // stuck (a partner in the way, a moving thing): hop
   const still = Math.abs(cx - N.lastX) < 0.3;
   N.stuckT = still && (e.kind === 'walk' || e.kind === 'off') ? N.stuckT + dt : 0; N.lastX = cx;
@@ -267,6 +302,7 @@ function cpuNav(st, p, x, feetY, opts = {}) {
     if (!opts.noHop && navPartnerAhead(p, dir)) { out.jump = !CPU.last[p.id].jump; N.hop = true; }
     return out;
   }
+  if (e.kind === 'pad') { cpuSteer(out, p, ax, 2); return out; } // (standing on a pad that hasn't thrown yet)
   if (e.kind === 'drop') {
     if (N.phase !== 'go' && !cpuSteer(out, p, ax, 3)) return out;
     N.phase = 'go'; out.left = out.right = false; out.down = true; return out;
