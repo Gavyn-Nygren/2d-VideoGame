@@ -90,31 +90,78 @@ function drawCloudPlain(x, y, s) {
   ctx.arc(x + 46 * s, y, 17 * s, 0, Math.PI * 2); ctx.rect(x, y, 46 * s, 17 * s);
   ctx.fill();
 }
-// the sky's look is cached per theme (sky gradient, sun and its rays are redrawn cheaply from it)
-let _skyKey = '', _skyGrad = null;
-function hillPath(base, amp1, f1, ph1, amp2, f2, ph2, off) {
-  ctx.beginPath(); ctx.moveTo(-2, H);
-  for (let x = -2; x <= W + 16; x += 12) ctx.lineTo(x, base + Math.sin((x + off) * f1 + ph1) * amp1 + Math.sin((x + off) * f2 + ph2) * amp2);
-  ctx.lineTo(W + 16, H); ctx.closePath();
+// The sky (gradient, sun) and each layer of hills are drawn once per level and theme into pictures and copied every
+// frame; a scrolling level's hills are drawn as long strips covering its whole width, slid by the camera. Only the
+// sun's rays and the clouds are drawn live.
+const HILLS = [ // base, two sine waves (amp, freq, phase), parallax
+  { base: 292, a1: 22, f1: 0.005, p1: 2.2, a2: 10, f2: 0.023, p2: 0.5, par: 0.07 },
+  { base: 330, a1: 34, f1: 0.007, p1: 1.3, a2: 12, f2: 0.019, p2: 0, par: 0.15 },
+  { base: 400, a1: 26, f1: 0.011, p1: 4, a2: 8, f2: 0.027, p2: 1, par: 0.35 },
+];
+const hillY = (k, X) => { const h = HILLS[k]; return h.base + Math.sin(X * h.f1 + h.p1) * h.a1 + Math.sin(X * h.f2 + h.p2) * h.a2; };
+let _bg = { key: '' };
+function bgLayers() {
+  const L = G.level, sc = Math.max(1, Math.min(3, canvas.width / W));
+  const levelW = L ? (L.cols || COLS) * T : W, maxCam = Math.max(0, levelW - W);
+  const key = [C.skyTop, C.skyBot, C.sun, C.sunGlow, C.hillFar, C.hillNear, maxCam, sc].join('|');
+  if (_bg.key === key) return _bg;
+  const mk = (w, h) => { const cv = document.createElement('canvas'); cv.width = Math.ceil(w * sc); cv.height = Math.ceil(h * sc); const c = cv.getContext('2d'); c.scale(sc, sc); return [cv, c]; };
+  // the sky and the sun
+  const [sky, c] = mk(W, H);
+  const g = c.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, C.skyTop); g.addColorStop(0.62, mixCol(C.skyTop, C.skyBot, 0.75)); g.addColorStop(1, C.skyBot);
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const sunOn = !/,\s*0\)\s*$/.test(C.sun);
+  if (sunOn) {
+    c.fillStyle = C.sunGlow; circleOn(c, 810, 105, 92); c.fill(); circleOn(c, 810, 105, 66); c.fill();
+  }
+  // the hills, each as a strip as wide as the screen plus how far that layer slides
+  const top = 250, strips = [];
+  for (let k = 0; k < 3; k++) {
+    const sw = Math.min(W + Math.ceil(maxCam * HILLS[k].par) + 16, 4096 / sc);
+    const [cv, h] = mk(sw, H - top); h.translate(0, -top);
+    const path = () => { h.beginPath(); h.moveTo(-2, H); for (let X = -2; X <= sw + 12; X += 12) h.lineTo(X, hillY(k, X)); h.lineTo(sw + 12, H); h.closePath(); };
+    const rim = (dy) => { h.beginPath(); for (let X = -2; X <= sw + 12; X += 12) { const y = hillY(k, X) + dy; X === -2 ? h.moveTo(X, y) : h.lineTo(X, y); } };
+    if (k === 0) { h.fillStyle = mixCol(C.hillFar, C.skyBot, 0.45); path(); h.fill(); }
+    if (k === 1) {
+      h.fillStyle = C.hillFar; path(); h.fill();
+      h.strokeStyle = tint(C.hillFar, 0.28); h.lineWidth = 2.5; rim(1.5); h.stroke();
+      h.fillStyle = shade(C.hillFar, 0.07);
+      for (let i = 0; i * 97 + 30 < sw + 60; i++) {
+        const x = i * 97 + 30, y = hillY(1, x), r = 7 + (hash(i % 14, 7) % 6);
+        circleOn(h, x, y + r * 0.55, r); h.fill(); circleOn(h, x + r * 0.9, y + r * 0.8, r * 0.75); h.fill();
+      }
+    }
+    if (k === 2) {
+      const ng = h.createLinearGradient(0, 360, 0, H);
+      ng.addColorStop(0, C.hillNear); ng.addColorStop(1, shade(C.hillNear, 0.16));
+      h.fillStyle = ng; path(); h.fill();
+      h.strokeStyle = tint(C.hillNear, 0.3); h.lineWidth = 3; rim(2); h.stroke();
+      for (let i = 0; i * 151 + 60 < sw + 80; i++) {
+        const x = i * 151 + 60, y = hillY(2, x), r = 9 + (hash(i % 9, 3) % 7);
+        h.fillStyle = shade(C.hillNear, 0.1);
+        circleOn(h, x, y + r * 0.5, r); h.fill(); circleOn(h, x + r, y + r * 0.75, r * 0.78); h.fill(); circleOn(h, x - r * 0.85, y + r * 0.85, r * 0.6); h.fill();
+        h.fillStyle = tint(C.hillNear, 0.18); circleOn(h, x - r * 0.3, y + r * 0.1, r * 0.35); h.fill();
+      }
+    }
+    strips.push({ cv, sw });
+  }
+  _bg = { key, sky, strips, sunOn, sc, top };
+  return _bg;
 }
 function drawBackground() {
   if (artPlain()) return drawBackgroundPlain();
-  const key = C.skyTop + C.skyBot;
-  if (key !== _skyKey) {
-    _skyKey = key; _skyGrad = ctx.createLinearGradient(0, 0, 0, H);
-    _skyGrad.addColorStop(0, C.skyTop); _skyGrad.addColorStop(0.62, mixCol(C.skyTop, C.skyBot, 0.75)); _skyGrad.addColorStop(1, C.skyBot);
-  }
-  ctx.fillStyle = _skyGrad; ctx.fillRect(0, 0, W, H);
-  // sun: a soft glow, slow turning rays, a bright core with a rim
-  const sunOn = !/,\s*0\)\s*$/.test(C.sun);
-  if (sunOn) {
+  const B = bgLayers(), sc = B.sc, exact = sc === canvas.width / W, sm = ctx.imageSmoothingEnabled;
+  if (exact) ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(B.sky, 0, 0, W, H);
+  ctx.imageSmoothingEnabled = sm;
+  // the sun: slow turning rays over the glow, a bright core with a highlight
+  if (B.sunOn) {
     ctx.save(); ctx.translate(810, 105);
-    ctx.fillStyle = C.sunGlow; circle(0, 0, 92); ctx.fill(); circle(0, 0, 66); ctx.fill();
-    {
-      if (!reduceMotion) ctx.rotate(G.clock * 0.05);
-      ctx.fillStyle = C.sunGlow;
-      for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(-7, 52); ctx.lineTo(7, 52); ctx.lineTo(0, 86 + (i % 2) * 14); ctx.closePath(); ctx.fill(); }
-    }
+    if (!reduceMotion) ctx.rotate(G.clock * 0.05);
+    ctx.fillStyle = C.sunGlow; ctx.beginPath();
+    for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.moveTo(-7, 52); ctx.lineTo(7, 52); ctx.lineTo(0, 86 + (i % 2) * 14); ctx.closePath(); }
+    ctx.fill();
     ctx.restore();
     ctx.fillStyle = C.sun; circle(810, 105, 44); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; circle(800, 95, 26); ctx.fill();
@@ -125,40 +172,12 @@ function drawBackground() {
     const y = 50 + ((i * 71) % 130);
     drawCloud(x, y, 0.7 + (i % 2) * 0.4);
   }
-  // three layers of hills: a hazy far ridge, the far hills, the near hills (far ones slide slower in a scrolling level)
-  const cam = G.camX || 0, vx = cam * 0.07, fx = cam * 0.15, nx = cam * 0.35;
-  ctx.fillStyle = mixCol(C.hillFar, C.skyBot, 0.45);
-  hillPath(292, 22, 0.005, 2.2, 10, 0.023, 0.5, vx); ctx.fill();
-  ctx.fillStyle = C.hillFar;
-  hillPath(330, 34, 0.007, 1.3, 12, 0.019, 0, fx); ctx.fill();
-  // a light rim on the far hills and soft round bushes along them
-  ctx.strokeStyle = tint(C.hillFar, 0.28); ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  for (let x = -2; x <= W + 16; x += 12) { const y = 330 + Math.sin((x + fx) * 0.007 + 1.3) * 34 + Math.sin((x + fx) * 0.019) * 12 + 1.5; x === -2 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
-  ctx.stroke();
-  ctx.fillStyle = shade(C.hillFar, 0.07);
-  for (let i = 0; i < 14; i++) {
-    const wx = i * 97 + 30, x = ((wx - fx) % (W + 120) + W + 120) % (W + 120) - 60;
-    const y = 330 + Math.sin((x + fx) * 0.007 + 1.3) * 34 + Math.sin((x + fx) * 0.019) * 12;
-    const r = 7 + (hash(i, 7) % 6);
-    circle(x, y + r * 0.55, r); ctx.fill(); circle(x + r * 0.9, y + r * 0.8, r * 0.75); ctx.fill();
-  }
-  // near hills, with a lit rim, a darker foot and a few bushes
-  const ng = ctx.createLinearGradient(0, 360, 0, H);
-  ng.addColorStop(0, C.hillNear); ng.addColorStop(1, shade(C.hillNear, 0.16));
-  ctx.fillStyle = ng;
-  hillPath(400, 26, 0.011, 4, 8, 0.027, 1, nx); ctx.fill();
-  ctx.strokeStyle = tint(C.hillNear, 0.3); ctx.lineWidth = 3;
-  ctx.beginPath();
-  for (let x = -2; x <= W + 16; x += 12) { const y = 400 + Math.sin((x + nx) * 0.011 + 4) * 26 + Math.sin((x + nx) * 0.027 + 1) * 8 + 2; x === -2 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
-  ctx.stroke();
-  for (let i = 0; i < 9; i++) {
-    const wx = i * 151 + 60, x = ((wx - nx) % (W + 160) + W + 160) % (W + 160) - 80;
-    const y = 400 + Math.sin((x + nx) * 0.011 + 4) * 26 + Math.sin((x + nx) * 0.027 + 1) * 8;
-    const r = 9 + (hash(i, 3) % 7);
-    ctx.fillStyle = shade(C.hillNear, 0.1);
-    circle(x, y + r * 0.5, r); ctx.fill(); circle(x + r, y + r * 0.75, r * 0.78); ctx.fill(); circle(x - r * 0.85, y + r * 0.85, r * 0.6); ctx.fill();
-    ctx.fillStyle = tint(C.hillNear, 0.18); circle(x - r * 0.3, y + r * 0.1, r * 0.35); ctx.fill();
+  const cam = G.camX || 0;
+  for (let k = 0; k < 3; k++) {
+    const st = B.strips[k], off = Math.max(0, Math.min(cam * HILLS[k].par, st.sw - W));
+    if (exact) ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(st.cv, Math.round(off * sc), 0, Math.round(W * sc), Math.round((H - B.top) * sc), 0, B.top, W, H - B.top);
+    ctx.imageSmoothingEnabled = sm;
   }
 }
 function drawCloud(x, y, s) {
@@ -194,61 +213,111 @@ function drawStonePlain(tx, ty) {
     for (let i = 0; i < 3; i++) { circle(x + 5 + i * 10, y + 6, 3); ctx.fill(); }
   }
 }
+// The polished stone is drawn once per look into a small picture (sprite) and copied after that: a tile's look depends
+// on which sides meet air, how deep it sits, one of 12 variants and the theme's colours. Drawing every tile from
+// scratch cost about 5 ms a frame; copying costs about what the plain tiles did.
+const STONE_VARIANTS = 12, _sprites = new Map();
+let _spriteScale = 0;
+function artSprite(key, w, h, ox, oy, paint) {
+  const sc = Math.max(1, Math.min(3, canvas.width / W));
+  if (sc !== _spriteScale) { _sprites.clear(); _spriteScale = sc; }
+  let sp = _sprites.get(key);
+  if (!sp) {
+    if (_sprites.size > 3000) _sprites.clear();
+    // the picture's origin sits on a whole pixel, so a copy can land exactly on the screen's pixels
+    const px = Math.ceil(ox * sc), py = Math.ceil(oy * sc);
+    sp = document.createElement('canvas'); sp.width = Math.ceil(px + (w - ox) * sc); sp.height = Math.ceil(py + (h - oy) * sc);
+    const c = sp.getContext('2d'); c.translate(px, py); c.scale(sc, sc); paint(c);
+    sp.px = px; sp.py = py;
+    _sprites.set(key, sp);
+  }
+  return sp;
+}
+// copy a picture made by artSprite with its origin at (x, y): onto whole screen pixels without smoothing when the
+// screen isn't rotated or zoomed (smoothing made each copy several times slower on a computer without a graphics
+// chip, and whole pixels leave no seams between tiles)
+function blitSprite(sp, x, y) {
+  const m = ctx.getTransform();
+  if (m.b === 0 && m.c === 0 && Math.abs(m.a - _spriteScale) < 1e-6 && Math.abs(m.d - _spriteScale) < 1e-6) {
+    const X = Math.round(m.a * x + m.e) - sp.px, Y = Math.round(m.d * y + m.f) - sp.py, sm = ctx.imageSmoothingEnabled;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(sp, X, Y);
+    ctx.setTransform(m); ctx.imageSmoothingEnabled = sm;
+  } else ctx.drawImage(sp, x - sp.px / _spriteScale, y - sp.py / _spriteScale, sp.width / _spriteScale, sp.height / _spriteScale);
+}
+function rrOn(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function circleOn(c, x, y, r) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); }
 function drawStone(tx, ty) {
   if (artPlain()) return drawStonePlain(tx, ty);
-  const x = tx * T, y = ty * T, h = hash(tx, ty);
+  const x = tx * T, y = ty * T;
   const L = tile(tx - 1, ty) !== '#', R = tile(tx + 1, ty) !== '#';
   const B = ty + 1 < ROWS && !'#s'.includes(tile(tx, ty + 1)), top = ty > 0 && !'#sw'.includes(tile(tx, ty - 1));
-  ctx.fillStyle = C.stone; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1); // slight overlap hides seams when scaled
-  // depth: rock gets a little darker the deeper it is under a surface
   let d = 0; for (let k = 1; k <= 3 && tile(tx, ty - k) === '#'; k++) d++;
-  if (d) { ctx.fillStyle = 'rgba(10,10,30,' + (0.035 * d) + ')'; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1); }
-  // carved stones: one or two rounded slabs per tile with a lit top and a shaded foot
+  const v = hash(tx, ty) % STONE_VARIANTS;
+  const key = 'st' + C.stone + C.stoneLight + C.stoneEdge + C.grass + C.grassDark + (L ? 1 : 0) + (R ? 1 : 0) + (B ? 1 : 0) + (top ? 1 : 0) + d + ':' + v;
+  const sp = artSprite(key, T + 8, T + 10, 4, 8, c => paintStone(c, hash(v * 7 + 3, 911), L, R, B, top, d));
+  blitSprite(sp, x, y);
+}
+// one stone tile at (0, 0) on canvas c
+function paintStone(c, h, L, R, B, top, d) {
+  const x = 0, y = 0;
+  // (fills reach half a pixel past the right and bottom edges, under the next tile, so no seam shows between tiles)
+  c.fillStyle = C.stone; c.fillRect(x, y, T + 0.6, T + 0.6);
+  // depth: rock gets a little darker the deeper it is under a surface (a smooth ramp over the top four rows)
+  if (d < 4) {
+    const g = c.createLinearGradient(0, y, 0, y + T);
+    g.addColorStop(0, 'rgba(10,10,30,' + (0.035 * d) + ')'); g.addColorStop(1, 'rgba(10,10,30,' + (0.035 * Math.min(3, d + 1)) + ')');
+    c.fillStyle = g;
+  } else c.fillStyle = 'rgba(10,10,30,0.105)';
+  c.fillRect(x, y, T + 0.6, T + 0.6);
+  // carved stones: one or two rounded slabs with a lit top and a shaded foot
   const sl = shade(C.stone, 0.18), li = C.stoneLight;
   const n = 1 + (h % 2);
   for (let i = 0; i < n; i++) {
     const hh = h >>> (i * 7 + 3);
     const w = 9 + (hh % 9), hgt = 5 + ((hh >>> 4) % 5);
     const sx = x + 3 + ((hh >>> 2) % Math.max(1, T - w - 6)), sy = y + (top ? 12 : 4) + ((hh >>> 6) % Math.max(1, T - hgt - (top ? 15 : 8)));
-    ctx.fillStyle = sl; rr(sx, sy + 1.5, w, hgt, 2.5); ctx.fill();
-    ctx.fillStyle = li; rr(sx, sy, w, hgt, 2.5); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(sx + 2, sy + 1, w - 4, 1.2);
+    c.fillStyle = sl; rrOn(c, sx, sy + 1.5, w, hgt, 2.5); c.fill();
+    c.fillStyle = li; rrOn(c, sx, sy, w, hgt, 2.5); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(sx + 2, sy + 1, w - 4, 1.2);
   }
-  // specks
-  ctx.fillStyle = sl;
-  if (h & 64) { circle(x + 6 + (h >>> 9) % 18, y + 18 + (h >>> 13) % 9, 1.2); ctx.fill(); }
-  if (h & 128) { circle(x + 4 + (h >>> 11) % 22, y + 9 + (h >>> 15) % 12, 0.9); ctx.fill(); }
+  c.fillStyle = sl;
+  if (h & 64) { circleOn(c, x + 6 + (h >>> 9) % 18, y + 18 + (h >>> 13) % 9, 1.2); c.fill(); }
+  if (h & 128) { circleOn(c, x + 4 + (h >>> 11) % 22, y + 9 + (h >>> 15) % 12, 0.9); c.fill(); }
   // edges: dark outline where the rock meets air, a thin lit bevel inside on the left
-  ctx.fillStyle = C.stoneEdge;
-  if (L) ctx.fillRect(x, y, 2.5, T);
-  if (R) ctx.fillRect(x + T - 2.5, y, 2.5, T);
-  if (B) { ctx.fillRect(x, y + T - 3.5, T, 3.5); ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x, y + T - 6, T, 2.5); }
-  if (L) { ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + 2.5, y, 1.5, T); }
-  if (R) { ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(x + T - 5, y, 2.5, T); }
+  c.fillStyle = C.stoneEdge;
+  if (L) c.fillRect(x, y, 2.5, T);
+  if (R) c.fillRect(x + T - 2.5, y, 2.5, T);
+  if (B) { c.fillRect(x, y + T - 3.5, T, 3.5); c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(x, y + T - 6, T, 2.5); }
+  if (L) { c.fillStyle = 'rgba(255,255,255,0.1)'; c.fillRect(x + 2.5, y, 1.5, T); }
+  if (R) { c.fillStyle = 'rgba(0,0,0,0.1)'; c.fillRect(x + T - 5, y, 2.5, T); }
   if (top) {
-    // a shadow the turf throws on the rock, the turf itself with a scalloped lip, then blades and the odd flower
-    ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.fillRect(x, y + 8, T, 5);
-    ctx.fillStyle = C.grassDark; ctx.fillRect(x, y, T, 9);
-    for (let i = 0; i < 3; i++) { circle(x + 5 + i * 10, y + 8, 3.6); ctx.fill(); }
-    ctx.fillStyle = C.grass; ctx.fillRect(x, y, T, 6);
-    for (let i = 0; i < 3; i++) { circle(x + 5 + i * 10, y + 6, 3.1); ctx.fill(); }
-    ctx.fillStyle = tint(C.grass, 0.35); ctx.fillRect(x, y, T, 1.6);
-    // blades poking up
-    ctx.fillStyle = C.grass;
+    // a shadow the turf throws on the rock, the turf with a scalloped lip, then blades and the odd flower
+    c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(x, y + 8, T, 5);
+    c.fillStyle = C.grassDark; c.fillRect(x, y, T, 9);
+    for (let i = 0; i < 3; i++) { circleOn(c, x + 5 + i * 10, y + 8, 3.6); c.fill(); }
+    c.fillStyle = C.grass; c.fillRect(x, y, T, 6);
+    for (let i = 0; i < 3; i++) { circleOn(c, x + 5 + i * 10, y + 6, 3.1); c.fill(); }
+    c.fillStyle = tint(C.grass, 0.35); c.fillRect(x, y, T, 1.6);
+    c.fillStyle = C.grass;
     for (let i = 0; i < 3; i++) {
       if (!((h >>> (i + 2)) & 1)) continue;
       const bx = x + 3 + i * 10 + ((h >>> (i * 3)) % 5), bh = 3 + ((h >>> (i * 2 + 5)) % 3);
-      ctx.beginPath(); ctx.moveTo(bx - 1.6, y + 0.5); ctx.lineTo(bx + 0.6, y - bh); ctx.lineTo(bx + 1.6, y + 0.5); ctx.closePath(); ctx.fill();
+      c.beginPath(); c.moveTo(bx - 1.6, y + 0.5); c.lineTo(bx + 0.6, y - bh); c.lineTo(bx + 1.6, y + 0.5); c.closePath(); c.fill();
     }
-    if (h % 11 === 0) {
+    if (h % 4 === 0) {
       const fx = x + 8 + (h >>> 5) % 14;
-      ctx.fillStyle = ['#fff4c2', '#ffd1e6', '#ffffff'][(h >>> 3) % 3];
-      for (let a = 0; a < 5; a++) { circle(fx + Math.cos(a * 1.257) * 1.8, y - 2 + Math.sin(a * 1.257) * 1.8, 1.3); ctx.fill(); }
-      ctx.fillStyle = '#ffc53d'; circle(fx, y - 2, 1.1); ctx.fill();
+      c.fillStyle = ['#fff4c2', '#ffd1e6', '#ffffff'][(h >>> 3) % 3];
+      for (let a = 0; a < 5; a++) { circleOn(c, fx + Math.cos(a * 1.257) * 1.8, y - 2 + Math.sin(a * 1.257) * 1.8, 1.3); c.fill(); }
+      c.fillStyle = '#ffc53d'; circleOn(c, fx, y - 2, 1.1); c.fill();
     }
     // the turf's ends curl down over the side
-    if (L) { ctx.fillStyle = C.grassDark; rr(x - 1.5, y, 4, 11, 2); ctx.fill(); }
-    if (R) { ctx.fillStyle = C.grassDark; rr(x + T - 2.5, y, 4, 11, 2); ctx.fill(); }
+    if (L) { c.fillStyle = C.grassDark; rrOn(c, x - 1.5, y, 4, 11, 2); c.fill(); }
+    if (R) { c.fillStyle = C.grassDark; rrOn(c, x + T - 2.5, y, 4, 11, 2); c.fill(); }
   }
 }
 function drawSpikes(x, y) {
@@ -337,6 +406,7 @@ function drawSwitchTile(ch, x, y) {
       ctx.fillStyle = col; ctx.fillRect(x, y, T, T);
       ctx.fillStyle = 'rgba(28,26,54,0.22)';
       ctx.fillRect(x, y + 10, T, 2); ctx.fillRect(x, y + 20, T, 2); ctx.fillRect(x + T - 2, y, 2, T);
+      if (!artPlain()) { ctx.fillRect(x + 14, y, 2, 10); ctx.fillRect(x + 6, y + 12, 2, 8); ctx.fillRect(x + 21, y + 12, 2, 8); ctx.fillRect(x + 14, y + 22, 2, 8); ctx.fillStyle = 'rgba(28,26,54,0.3)'; ctx.fillRect(x, y + T - 2, T, 2); }
       ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x + 2, y + 2, T - 4, 3);
       ctx.restore();
     }
@@ -350,16 +420,23 @@ function drawSwitchTile(ch, x, y) {
 }
 function drawPlate(pl) {
   const x = pl.x * T, y = pl.y * T, col = LETTER_COL[pl.letter] || C.gold;
+  const plain = artPlain();
+  if (!plain) { ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(x + T / 2, y + 29, T / 2, 2.5, 0, 0, Math.PI * 2); ctx.fill(); }
   ctx.fillStyle = C.ink; rr(x + 2, y + 25, T - 4, 5, 2); ctx.fill();
+  if (!plain) { ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x + 4, y + 25.5, T - 8, 1); }
   const top = pl.down ? y + 23 : y + 19;
-  ctx.fillStyle = col; rr(x + 5, top, T - 10, (y + 26) - top, 3); ctx.fill();
+  if (!plain) { ctx.fillStyle = shade(col, 0.3); rr(x + 5, top + 1.5, T - 10, (y + 26) - top - 1.5, 3); ctx.fill(); }
+  ctx.fillStyle = col; rr(x + 5, top, T - 10, (y + 26) - top - (plain ? 0 : 2), 3); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x + 8, top + 1, T - 16, 2);
+  if (!plain && !pl.down) { ctx.fillStyle = 'rgba(255,255,255,' + (0.18 + 0.12 * Math.sin(G.clock * 3 + x)) + ')'; ctx.beginPath(); ctx.ellipse(x + T / 2, top - 1, 9, 3, 0, 0, Math.PI * 2); ctx.fill(); }
 }
 function drawDoor(d) {
   const L = G.level, locked = L.key && !L.key.got;
   const { x, y, w, h } = d;
+  if (!artPlain()) { ctx.fillStyle = 'rgba(255,215,90,' + (0.16 + 0.06 * Math.sin(G.clock * 2.5)) + ')'; rr(x - 9, y - 12, w + 18, h + 12, 20); ctx.fill(); }
   ctx.fillStyle = C.goldDark; rr(x - 3, y - 6, w + 6, h + 6, 14); ctx.fill();
   ctx.fillStyle = C.gold; rr(x - 1, y - 4, w + 2, h + 4, 12); ctx.fill();
+  if (!artPlain()) { ctx.fillStyle = 'rgba(255,255,255,0.4)'; rr(x + 1, y - 3, w - 2, 3, 1.5); ctx.fill(); ctx.fillStyle = C.goldDark; for (const sx of [x + 0.5, x + w - 2.5]) for (let k = 0; k < 3; k++) { circle(sx + 1, y + 8 + k * ((h - 16) / 2), 1.2); ctx.fill(); } }
   if (locked) { ctx.fillStyle = C.doorIn; }
   else {
     const g = ctx.createLinearGradient(0, y, 0, y + h);
@@ -392,11 +469,19 @@ function drawKey(k) {
 }
 function drawFlag(f) {
   const x = f.x + 15, base = f.y + T;
+  const plain = artPlain();
+  if (!plain) { ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(x, base, 7, 2.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = C.ink; rr(x - 5, base - 4, 10, 4, 1.5); ctx.fill(); }
   ctx.fillStyle = C.ink; ctx.fillRect(x - 1.5, base - 52, 3, 52);
-  ctx.fillStyle = f.on ? C.grass : '#b9b6cc';
+  if (!plain) { ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x - 1.5, base - 52, 1, 48); ctx.fillStyle = C.gold; circle(x, base - 53, 2.8); ctx.fill(); }
+  const fc = f.on ? C.grass : '#c4c0b8';
   const wave = Math.sin(G.clock * 6) * 2;
   const top = f.on ? base - 52 : base - 28;
+  ctx.fillStyle = fc;
   ctx.beginPath(); ctx.moveTo(x + 1.5, top); ctx.lineTo(x + 22, top + 8 + wave); ctx.lineTo(x + 1.5, top + 16); ctx.closePath(); ctx.fill();
+  if (!plain) {
+    ctx.strokeStyle = shade(fc, 0.3); ctx.lineWidth = 1.2; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.moveTo(x + 1.5, top + 8); ctx.lineTo(x + 22, top + 8 + wave); ctx.lineTo(x + 1.5, top + 16); ctx.closePath(); ctx.fill();
+  }
 }
 function drawCrownShape(x, y, s) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
