@@ -3009,11 +3009,11 @@ const LEVELS = [
           '################################', // 16
           '################################', // 17
         ] },
-      { // ---------- Room 2: Crooked Crypts (stack up on the stool for the hip bone, hold the crank for the other leg) ----------
-        title: 'Crooked Crypts', unlock: 'ladder', exitVia: 'ladder', exitLabel: 'PUMPKIN PLOT',
-        tip: 'Stack up on Mr. Bones to reach the high roof. One holds the crank while the other digs in the crypt!',
-        mounds: [{ piece: 'hips', how: 'tower', foot: { x: 136, feet: 480 }, land: 60 }, { piece: 'leg2', how: 'gate' }],
-        plan: ['tower:0', 'gate:1', 'exit'], stones: ['BOO!'],
+      { // ---------- Room 2: Crooked Crypts (ride the jack stool up for the hip bone, hold the crank for the other leg) ----------
+        title: 'Crooked Crypts', unlock: 'ladder', exitVia: 'ladder', exitLabel: 'PUMPKIN PLOT', passPartners: true,
+        tip: 'One stands on Mr. Bones, the other pulls his arm: up you go! One holds the crank while the other digs in the crypt.',
+        mounds: [{ piece: 'hips', how: 'jack', lift: 3, foot: { x: 136, feet: 480 }, land: 60 }, { piece: 'leg2', how: 'gate' }],
+        plan: ['jack:0', 'gate:1', 'exit'], stones: ['BOO!'],
         decor: [{ k: 'grave', x: 300, text: ['Gone to', 'lunch'] }, { k: 'tree', x: 460, s: 0.9 }, { k: 'owl', x: 494, y: 330 },
           { k: 'grave', x: 640, text: ['Napping.', 'Do not disturb'], tilt: 0.06 }, { k: 'ghost', x: 380, y: 360 },
           { k: 'fence', x0: 150, x1: 700 }, { k: 'sign', x: 752, y: 228, text: 'THE CRYPT' }],
@@ -3067,11 +3067,11 @@ const LEVELS = [
           '######################~~~~~~~###', // 16
           '######################~~~~~~~###', // 17
         ] },
-      { // ---------- Room 4: Old Bell Tower (bridge the grave, stack up for the arm, ring the bell together) ----------
-        title: 'Old Bell Tower', unlock: 'done', bellPiece: 'hand', bellY: 92, finale: { x: 840, feet: 210 },
-        tip: 'Bridge the big grave, stack up for the arm bone, then climb to the bell and pull both ropes together!',
-        mounds: [{ piece: 'arm', how: 'tower', foot: { x: 435, feet: 480 }, land: 410 }],
-        plan: ['cross', 'tower:0', 'bell', 'finale'],
+      { // ---------- Room 4: Old Bell Tower (bridge the grave, ride the jack stool up for the arm, ring the bell together) ----------
+        title: 'Old Bell Tower', unlock: 'done', bellPiece: 'hand', bellY: 92, finale: { x: 840, feet: 210 }, passPartners: true,
+        tip: 'Bridge the big grave, ride Mr. Bones up for the arm bone, then climb to the bell and pull both ropes together!',
+        mounds: [{ piece: 'arm', how: 'jack', lift: 3, foot: { x: 435, feet: 480 }, land: 410 }],
+        plan: ['cross', 'jack:0', 'bell', 'finale'],
         decor: [{ k: 'grave', x: 594, text: ['Here lies', 'Steve’s homework'] }, { k: 'tree', x: 655, s: 0.8 }, { k: 'owl', x: 624, y: 346 },
           { k: 'ghost', x: 270, y: 300 }, { k: 'fence', x0: 380, x1: 700 }, { k: 'pumpkins', x: 494 }],
         switches: {}, signs: [],
