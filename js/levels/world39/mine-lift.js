@@ -663,6 +663,13 @@
       rim.forEach(([x, y], n) => (n ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
       for (let n = y0; n <= y0 + H / step + 2; n++) {
         const y = n * step - camY, h = K.hash(n * 3 + (sd > 0 ? 11 : 0));
+        // cracks, strata and loose pebbles on the wall face
+        {
+          const cx0 = edge + sd * (30 + h * 80);
+          ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx0, y + 10); ctx.lineTo(cx0 + sd * 10, y + 30); ctx.lineTo(cx0 + sd * 4, y + 48); ctx.lineTo(cx0 + sd * 16, y + 70); ctx.stroke();
+          ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(sd < 0 ? 0 : edge, y + 60 + h * 20, Math.abs((sd < 0 ? 0 : W) - edge), 3);
+          ctx.fillStyle = 'rgba(255,255,255,0.09)'; for (let q = 0; q < 3; q++) { circle(edge + sd * (14 + K.hash(n * 5 + q) * 120), y + 20 + q * 22, 2.2); ctx.fill(); }
+        }
         if (k === 0) {
           // timber cribbing and an old lantern now and then
           K.timber(sd < 0 ? edge - 130 : edge, y, 130, 12, sd);
