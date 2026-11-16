@@ -907,15 +907,21 @@
   function farBarn(x, y, s) {
     ctx.fillStyle = '#c8483c'; ctx.fillRect(x - 24 * s, y - 34 * s, 48 * s, 34 * s);
     ctx.fillStyle = '#7e2a22'; ctx.beginPath(); ctx.moveTo(x - 28 * s, y - 32 * s); ctx.lineTo(x - 16 * s, y - 50 * s); ctx.lineTo(x + 16 * s, y - 50 * s); ctx.lineTo(x + 28 * s, y - 32 * s); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(80,20,20,0.25)'; ctx.fillRect(x + 8 * s, y - 34 * s, 16 * s, 34 * s);
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2 * s; ctx.strokeRect(x - 9 * s, y - 20 * s, 18 * s, 20 * s);
+    ctx.beginPath(); ctx.moveTo(x - 9 * s, y - 20 * s); ctx.lineTo(x + 9 * s, y); ctx.moveTo(x + 9 * s, y - 20 * s); ctx.lineTo(x - 9 * s, y); ctx.stroke();
   }
   function silo(x, y, s) {
     ctx.fillStyle = '#d8dce6'; ctx.fillRect(x - 9 * s, y - 60 * s, 18 * s, 60 * s);
     ctx.fillStyle = '#a8b0c0'; ctx.beginPath(); ctx.arc(x, y - 60 * s, 9 * s, Math.PI, 0); ctx.fill();
+    ctx.fillRect(x + 3 * s, y - 60 * s, 6 * s, 60 * s);
+    ctx.fillStyle = 'rgba(90,100,120,0.35)'; for (let k = 1; k < 5; k++) ctx.fillRect(x - 9 * s, y - k * 12 * s, 18 * s, 1.5 * s);
   }
   function tree(x, y, s) {
     ctx.fillStyle = '#8a5a36'; ctx.fillRect(x - 3 * s, y - 24 * s, 6 * s, 24 * s);
-    ctx.fillStyle = '#4fa04a'; circle(x, y - 34 * s, 17 * s); ctx.fill(); circle(x - 11 * s, y - 26 * s, 12 * s); ctx.fill(); circle(x + 11 * s, y - 27 * s, 12 * s); ctx.fill();
+    ctx.fillStyle = '#3f8a3e'; circle(x + 2 * s, y - 32 * s, 17 * s); ctx.fill(); circle(x + 13 * s, y - 25 * s, 12 * s); ctx.fill();
+    ctx.fillStyle = '#4fa04a'; circle(x - 1 * s, y - 35 * s, 16 * s); ctx.fill(); circle(x - 11 * s, y - 27 * s, 11 * s); ctx.fill(); circle(x + 9 * s, y - 29 * s, 10 * s); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; circle(x - 6 * s, y - 41 * s, 6 * s); ctx.fill();
   }
   function windmill(x, y, s, t) {
     ctx.fillStyle = '#e8e2d4'; ctx.beginPath(); ctx.moveTo(x - 8 * s, y); ctx.lineTo(x - 3 * s, y - 60 * s); ctx.lineTo(x + 3 * s, y - 60 * s); ctx.lineTo(x + 8 * s, y); ctx.closePath(); ctx.fill();
@@ -984,6 +990,9 @@
     for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, gyAt(st, x) - 12);
     for (let x = x1; x >= x0; x -= 8) ctx.lineTo(x, gyAt(st, x) + 8);
     ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, gyAt(st, x) - 11);
+    ctx.stroke();
     // wheel ruts and pebbles
     ctx.strokeStyle = lk.dirtD; ctx.lineWidth = 2; ctx.beginPath();
     for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, gyAt(st, x) - 4);
@@ -993,9 +1002,13 @@
     ctx.fillStyle = lk.grass; ctx.beginPath(); ctx.moveTo(x0, H + 10);
     for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, gyAt(st, x) + 6);
     ctx.lineTo(x1, H + 10); ctx.closePath(); ctx.fill();
+    { const gg = ctx.createLinearGradient(0, 420, 0, H); gg.addColorStop(0, 'rgba(0,0,0,0)'); gg.addColorStop(1, 'rgba(30,70,20,0.22)'); ctx.fillStyle = gg; ctx.beginPath(); ctx.moveTo(x0, H + 10); for (let x = x0; x <= x1; x += 16) ctx.lineTo(x, gyAt(st, x) + 8); ctx.lineTo(x1, H + 10); ctx.closePath(); ctx.fill(); }
     ctx.strokeStyle = lk.grassD; ctx.lineWidth = 3; ctx.beginPath();
     for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, gyAt(st, x) + 7);
     ctx.stroke();
+    // mown stripes across the near grass
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    for (let x = Math.floor(x0 / 120) * 120; x < x1; x += 240) { ctx.beginPath(); ctx.moveTo(x, gyAt(st, x) + 10); ctx.lineTo(x + 120, gyAt(st, x + 120) + 10); ctx.lineTo(x + 60, H + 10); ctx.lineTo(x - 60, H + 10); ctx.closePath(); ctx.fill(); }
     // bridges: planks and rails over the creeks
     for (const cr of st.c.creeks) {
       if (cr.x1 < x0 || cr.x0 > x1) continue;
@@ -1016,12 +1029,17 @@
   function drawSign(st, s) {
     const cam = st.cam;
     if (s.x < cam.x - 400 || s.x > cam.x + W + 400) return;
-    const y = gyAt(st, s.x) - 22;
+    const y = gyAt(st, s.x) - 22, top = y - 176; // the board sits up high, over the rig and its load
     ctx.font = '700 15px "Atkinson Hyperlegible", system-ui, sans-serif';
-    const w = ctx.measureText(s.text).width + 22;
-    ctx.fillStyle = '#8a5a36'; ctx.fillRect(s.x - 3, y - 54, 6, 54);
-    ctx.fillStyle = '#fff6dc'; ctx.strokeStyle = '#a8784a'; ctx.lineWidth = 3; rr(s.x - w / 2, y - 86, w, 32, 8); ctx.fill(); ctx.stroke();
-    text(s.text, s.x, y - 69.5, 15, C.ink, 'center', 'body');
+    const w = ctx.measureText(s.text).width + 24;
+    ctx.fillStyle = '#8a5a36'; ctx.fillRect(s.x - 3, top + 30, 6, y - top - 30);
+    ctx.fillStyle = '#6a4226'; ctx.fillRect(s.x + 1, top + 30, 2, y - top - 30);
+    ctx.fillStyle = 'rgba(40,30,20,0.18)'; ctx.beginPath(); ctx.ellipse(s.x, y + 1, 10, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(40,30,20,0.18)'; rr(s.x - w / 2 + 3, top + 4, w, 34, 8); ctx.fill();
+    ctx.fillStyle = '#fff6dc'; ctx.strokeStyle = '#a8784a'; ctx.lineWidth = 3; rr(s.x - w / 2, top, w, 34, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(168,120,74,0.18)'; ctx.beginPath(); ctx.rect(s.x - w / 2 + 3, top + 25, w - 6, 6); ctx.fill();
+    ctx.fillStyle = '#a8784a'; circle(s.x - w / 2 + 7, top + 7, 1.6); ctx.fill(); circle(s.x + w / 2 - 7, top + 7, 1.6); ctx.fill();
+    text(s.text, s.x, top + 17.5, 15, C.ink, 'center', 'body');
   }
   // a little yellow warning sign before every bump
   function drawBumpSign(st, b) {
@@ -1145,6 +1163,8 @@
     const hitch = toWorld(pose, -40, 6);
     ctx.strokeStyle = '#5a4030'; ctx.lineWidth = 5; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(dr - 6, yr + 12); ctx.lineTo(hitch.x, hitch.y); ctx.stroke();
+    // a soft shadow on the road under the wagon
+    ctx.fillStyle = 'rgba(60,40,20,0.2)'; ctx.beginPath(); ctx.ellipse(tc, gyAt(st, tc) + 1, S.deckHalf + 14, 6, 0, 0, Math.PI * 2); ctx.fill();
     // wheels
     for (const wx of [tc - S.wheelOff, tc + S.wheelOff]) {
       const wy = gyAt(st, wx) - S.wheelR;
@@ -1208,6 +1228,7 @@
   /* the little red tractor (rear axle at the pose, leaning with the road) */
   function drawTractor(st) {
     const pose = tractorPose(st), tr = st.tr;
+    { const sx = pose.x + 30; ctx.fillStyle = 'rgba(60,40,20,0.2)'; ctx.beginPath(); ctx.ellipse(sx, gyAt(st, sx) + 1, 78, 7, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.save(); ctx.translate(pose.x, pose.y); ctx.rotate(pose.a);
     // cab roof posts and the sun roof (behind the driver)
     ctx.strokeStyle = '#3a3a4a'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(-30, -30); ctx.lineTo(-30, -92); ctx.moveTo(16, -30); ctx.lineTo(16, -92); ctx.stroke();

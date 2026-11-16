@@ -865,6 +865,11 @@ const SHIPWRECK = {
       ctx.fillStyle = 'rgba(20,40,60,0.18)'; ctx.fillRect(0, y + 28, W, 2);
       const off = ((r * 97) % 180) - (px % 180);
       for (let x = off - 180; x < W + 180; x += 180) ctx.fillRect(x, y, 2, 30);
+      // grain and nails on each plank
+      ctx.fillStyle = 'rgba(20,40,60,0.1)';
+      for (let x = off - 180; x < W + 180; x += 180) { const h = hash(r, Math.round((x - off) / 180) + Math.floor(px / 180)); ctx.fillRect(x + 20 + (h % 40), y + 9 + (h % 8), 60 + (h % 50), 1.5); ctx.fillRect(x + 90 + (h % 30), y + 18 + (h % 6), 40 + (h % 30), 1.5); }
+      ctx.fillStyle = 'rgba(230,200,140,0.22)';
+      for (let x = off - 180; x < W + 180; x += 180) { circle(x + 7, y + 8, 1.6); ctx.fill(); circle(x + 7, y + 22, 1.6); ctx.fill(); }
     }
     if (st.look === 'cabin') { // wallpaper dots
       ctx.fillStyle = 'rgba(255,220,240,0.12)';
@@ -1005,7 +1010,13 @@ const SHIPWRECK = {
   }
   function drawCrate(c, lk) {
     const x = c.x0, y = c.y0, s = c.w;
+    ctx.fillStyle = 'rgba(10,16,30,0.3)'; ctx.beginPath(); ctx.ellipse(x + s / 2, y + s + 2, s * 0.55, 6, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = c.gold ? '#ffd36b' : '#b5864f'; rr(x, y, s, s, 5); ctx.fill();
+    // planks, a shadowed lower face, nails
+    ctx.fillStyle = c.gold ? 'rgba(150,100,10,0.25)' : 'rgba(70,40,15,0.28)'; ctx.beginPath(); ctx.rect(x + 2, y + s * 0.62, s - 4, s * 0.38 - 2); ctx.fill();
+    ctx.strokeStyle = c.gold ? 'rgba(168,120,26,0.5)' : 'rgba(110,74,38,0.55)'; ctx.lineWidth = 1.5;
+    for (let k = 1; k < 3; k++) { ctx.beginPath(); ctx.moveTo(x + 3, y + s * k / 3); ctx.lineTo(x + s - 3, y + s * k / 3); ctx.stroke(); }
+    ctx.fillStyle = '#4a3a2a'; for (const [nx, ny] of [[5, 5], [s - 5, 5], [5, s - 5], [s - 5, s - 5]]) { circle(x + nx, y + ny, 1.6); ctx.fill(); }
     ctx.strokeStyle = c.gold ? '#a8781a' : '#6e4a26'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(x + 7, y + 7); ctx.lineTo(x + s - 7, y + s - 7); ctx.moveTo(x + s - 7, y + 7); ctx.lineTo(x + 7, y + s - 7); ctx.stroke();
     ctx.lineWidth = 3; rr(x + 2, y + 2, s - 4, s - 4, 5); ctx.stroke();
@@ -1424,7 +1435,7 @@ const SHIPWRECK = {
     ctx.restore();
     // hint chips over each person
     if (st.state === 'play' && G.introT <= SW.introHold) {
-      const boxes = [];
+      const boxes = G.players.filter(p => p.alive).map(p => ({ x0: p.x - 2, y0: p.y - 6, x1: p.x + p.w + 2, y1: p.y + p.h })); // don't cover anyone
       for (const p of G.players) {
         const bb = isCpu(p.id) && typeof CPU !== 'undefined' && CPU.bubbles[p.id];
         if (!bb || bb.t <= 0 || !p.alive) continue;
@@ -1446,7 +1457,7 @@ const SHIPWRECK = {
         if (urgent && done >= 3 && chipT < 2.5) continue;
         if (!urgent && !(chipT > SW.chipAgain || (st.k === 0 && chipT < 4))) continue;
         ctx.save(); if (chipT > SW.chipAgain) ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 5);
-        boxes.push(chip(NAMES[p.id] + ': ' + lines[0], lines[1], p.x + p.w / 2, p.y - 30, PCOL[p.id], boxes));
+        boxes.push(chip(NAMES[p.id] + ': ' + lines[0], lines[1], p.x + p.w / 2, p.y - 30, PCOL[p.id], boxes, p.y + p.h + 14));
         ctx.restore();
       }
     }
@@ -1490,7 +1501,7 @@ const SHIPWRECK = {
     ctx.restore();
     void st;
   }
-  function chip(t1, t2, x, y, col, avoid) {
+  function chip(t1, t2, x, y, col, avoid, yBelow) {
     const z = big() ? 1.45 : 1, f1 = Math.round(13 * z), f2 = Math.round(12 * z);
     ctx.font = '700 ' + f1 + 'px ' + FONT;
     let w = ctx.measureText(t1).width;
@@ -1498,7 +1509,14 @@ const SHIPWRECK = {
     w = Math.min(W - 16, w + 22 * z); const h = (t2 ? 38 : 22) * z;
     const x0 = clamp(x - w / 2, 8, W - 8 - w);
     let y0 = clamp(y - h, 92, H - 8 - h);
-    for (const b of avoid || []) if (x0 < b.x1 + 4 && x0 + w > b.x0 - 4 && y0 < b.y1 + 4 && y0 + h > b.y0 - 4) y0 = b.y0 - h - 6 >= 92 ? b.y0 - h - 6 : b.y1 + 6;
+    // find a spot that covers no chip already placed and no one's head: above, below the feet, or stacked above/below a box
+    const hits = yy => (avoid || []).some(b => x0 < b.x1 + 4 && x0 + w > b.x0 - 4 && yy < b.y1 + 4 && yy + h > b.y0 - 4);
+    const cands = [y0];
+    if (yBelow != null) cands.push(yBelow);
+    for (const b of avoid || []) cands.push(b.y0 - h - 6, b.y1 + 6);
+    const ok = cands.find(yy => yy >= 92 && yy <= H - 8 - h && !hits(yy));
+    if (ok != null) y0 = ok;
+    y0 = clamp(y0, 92, H - 8 - h);
     ctx.fillStyle = 'rgba(12,24,54,0.88)'; rr(x0, y0, w, h, 10 * z); ctx.fill();
     ctx.strokeStyle = col; ctx.lineWidth = 2; rr(x0, y0, w, h, 10 * z); ctx.stroke();
     text(t1, x0 + w / 2, y0 + 11 * z, f1, col, 'center', 'body');

@@ -865,6 +865,9 @@ function jackboxDrawWorld(st) {
     for (let y = -20; y <= H + 20; y += 30) { const wy = y + cam; ctx.lineTo(x + Math.sin(wy * 0.012 + i) * 6, y); }
     ctx.stroke();
   }
+  // the back panel is made of boards: seams with a lit edge, and the sides fall into shade
+  for (let i = 0; i < 6; i++) { const x = 80 + i * 160; ctx.fillStyle = 'rgba(60,30,10,0.16)'; ctx.fillRect(x, 0, 3, H); ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + 3, 0, 2, H); }
+  { const g = jackboxDrawWorld.side || (jackboxDrawWorld.side = (() => { const g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(40,20,5,0.22)'); g.addColorStop(0.18, 'rgba(40,20,5,0)'); g.addColorStop(0.82, 'rgba(40,20,5,0)'); g.addColorStop(1, 'rgba(40,20,5,0.22)'); return g; })()); ctx.fillStyle = g; ctx.fillRect(0, 0, W * 0.18, H); ctx.fillRect(W * 0.82, 0, W * 0.18, H); }
   // knots in the wood
   ctx.fillStyle = lk.grain;
   for (let i = 0; i < 40; i++) {
@@ -992,6 +995,8 @@ function jackboxDrawShelf(st, l, i) {
   ctx.fillStyle = 'rgba(60,30,10,0.18)'; ctx.fillRect(x0 + 6, y + 18, w - 4, 10);
   ctx.fillStyle = top ? '#9a5f30' : '#c98a52'; rr(x0, y, w, 18, 3); ctx.fill();
   ctx.fillStyle = top ? '#b4743e' : '#dca06a'; ctx.fillRect(x0 + 2, y, w - 4, 5);
+  ctx.fillStyle = 'rgba(110,60,25,0.3)'; for (let gx = x0 + 18; gx < x0 + w - 40; gx += 70 + (hash(gx | 0, i) % 40)) ctx.fillRect(gx, y + 10, 30 + (hash(gx | 0, 3) % 30), 1.5);
+  ctx.fillStyle = 'rgba(60,30,10,0.18)'; ctx.fillRect(x0 + 2, y + 13, w - 4, 5);
   ctx.strokeStyle = '#8e5a2e'; ctx.lineWidth = 2; rr(x0, y, w, 18, 3); ctx.stroke();
   // brackets under the shelf
   ctx.fillStyle = '#8e5a2e';
@@ -1015,7 +1020,12 @@ function jackboxDrawDeco(st, d, top, bot) {
       ctx.save(); ctx.translate(x, y);
       if (lean) ctx.rotate(0.22);
       ctx.fillStyle = col; ctx.strokeStyle = 'rgba(28,26,54,0.55)'; ctx.lineWidth = 1.5;
-      rr(0, -bh, bw, bh, 2); ctx.fill(); ctx.stroke();
+      rr(0, -bh, bw, bh, 2); ctx.fill();
+      // a rounded spine: shade on the right, a lit strip on the left, a title label
+      ctx.fillStyle = 'rgba(20,10,40,0.2)'; ctx.fillRect(bw - 4, -bh + 1, 3, bh - 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(1.5, -bh + 1, 2.5, bh - 2);
+      if (bh > 60) { ctx.fillStyle = 'rgba(255,255,255,0.7)'; rr(3, -bh * 0.62, bw - 6, 12, 2); ctx.fill(); ctx.fillStyle = 'rgba(28,26,54,0.35)'; ctx.fillRect(5, -bh * 0.62 + 5, bw - 10, 1.5); }
+      ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(2, -bh + 8, bw - 4, 3); ctx.fillRect(2, -14, bw - 4, 3);
       ctx.restore();
       x += bw + (lean ? 14 : 1); n++;
