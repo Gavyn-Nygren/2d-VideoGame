@@ -1260,7 +1260,7 @@ function tidedigDrawPosts(st, t) {
   for (const x of st.posts) {
     ctx.fillStyle = '#7a5228'; rr(x - 5, surf - 38, 10, 40, 3); ctx.fill();
     ctx.fillStyle = '#9a6a38'; rr(x - 7, surf - 42, 14, 7, 3); ctx.fill();
-    ctx.strokeStyle = C.rope; ctx.lineWidth = 2; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(x - 5, surf - 28 + k * 4); ctx.lineTo(x + 5, surf - 26 + k * 4); ctx.stroke(); }
+    ctx.strokeStyle = C.rope; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 3; k++) { ctx.moveTo(x - 5, surf - 28 + k * 4); ctx.lineTo(x + 5, surf - 26 + k * 4); } ctx.stroke();
   }
   void t;
 }

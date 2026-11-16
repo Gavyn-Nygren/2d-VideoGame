@@ -507,7 +507,7 @@ function qdSky() {
   ctx.fillStyle = 'rgba(255,246,206,0.6)'; circle(706, 64, 44); ctx.fill();
   const t = G.clock;
   ctx.save(); ctx.translate(706, 64); ctx.rotate(t * 0.05); ctx.fillStyle = 'rgba(255,246,206,0.25)';
-  for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(-5, 36); ctx.lineTo(0, 74 + (i % 2) * 12); ctx.lineTo(5, 36); ctx.closePath(); ctx.fill(); }
+  ctx.beginPath(); for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.moveTo(-5, 36); ctx.lineTo(0, 74 + (i % 2) * 12); ctx.lineTo(5, 36); ctx.closePath(); } ctx.fill();
   ctx.restore();
   ctx.fillStyle = '#fff7d6'; circle(706, 64, 30); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(700, 58, 16); ctx.fill();
@@ -528,14 +528,14 @@ function qdMesa(x0, x1, top, base, col, topCol) {
   ctx.moveTo(x0 - w * 0.16, base); ctx.lineTo(x0, top + 8); ctx.lineTo(x0 + w * 0.06, top); ctx.lineTo(x1 - w * 0.05, top); ctx.lineTo(x1, top + 10); ctx.lineTo(x1 + w * 0.18, base); ctx.closePath(); ctx.fill();
   // a shaded right cliff, gullies, then the sunlit rim and a soft outline
   ctx.fillStyle = 'rgba(110,40,25,0.18)'; ctx.beginPath(); ctx.moveTo(x1 - w * 0.12, top); ctx.lineTo(x1 - w * 0.05, top); ctx.lineTo(x1, top + 10); ctx.lineTo(x1 + w * 0.18, base); ctx.lineTo(x1 + w * 0.02, base); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(110,40,25,0.16)'; ctx.lineWidth = 1.5; for (let g = 1; g < 5; g++) { const gx = x0 + w * g / 5; ctx.beginPath(); ctx.moveTo(gx, top + 6); ctx.lineTo(gx + 3, top + (base - top) * 0.6); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(110,40,25,0.16)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let g = 1; g < 5; g++) { const gx = x0 + w * g / 5; ctx.moveTo(gx, top + 6); ctx.lineTo(gx + 3, top + (base - top) * 0.6); } ctx.stroke();
   ctx.fillStyle = topCol; ctx.fillRect(x0 + w * 0.06, top, w * 0.89, 5);
   ctx.fillStyle = 'rgba(255,240,210,0.45)'; ctx.fillRect(x0 + w * 0.06, top, w * 0.89, 1.5);
   ctx.strokeStyle = 'rgba(110,40,25,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath();
   ctx.moveTo(x0 - w * 0.16, base); ctx.lineTo(x0, top + 8); ctx.lineTo(x0 + w * 0.06, top); ctx.lineTo(x1 - w * 0.05, top); ctx.lineTo(x1, top + 10); ctx.lineTo(x1 + w * 0.18, base); ctx.stroke();
   // rock stripes
   ctx.strokeStyle = 'rgba(120,50,30,0.25)'; ctx.lineWidth = 2;
-  for (let k = 1; k <= 3; k++) { const y = top + (base - top) * k / 4.5; ctx.beginPath(); ctx.moveTo(x0 - w * 0.03 * k, y); ctx.lineTo(x1 + w * 0.04 * k, y); ctx.stroke(); }
+  ctx.beginPath(); for (let k = 1; k <= 3; k++) { const y = top + (base - top) * k / 4.5; ctx.moveTo(x0 - w * 0.03 * k, y); ctx.lineTo(x1 + w * 0.04 * k, y); } ctx.stroke();
 }
 function qdCactus(x, y, s) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
@@ -549,8 +549,8 @@ function qdCactus(x, y, s) {
 function qdBoards(x, y, w, h, col, dk, vertical) {
   ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = dk; ctx.lineWidth = 1.5;
-  if (vertical) for (let bx = x + 14; bx < x + w; bx += 14) { ctx.beginPath(); ctx.moveTo(bx, y); ctx.lineTo(bx, y + h); ctx.stroke(); }
-  else for (let by = y + 10; by < y + h; by += 10) { ctx.beginPath(); ctx.moveTo(x, by); ctx.lineTo(x + w, by); ctx.stroke(); }
+  if (vertical) { ctx.beginPath(); for (let bx = x + 14; bx < x + w; bx += 14) { ctx.moveTo(bx, y); ctx.lineTo(bx, y + h); } ctx.stroke(); }
+  else { ctx.beginPath(); for (let by = y + 10; by < y + h; by += 10) { ctx.moveTo(x, by); ctx.lineTo(x + w, by); } ctx.stroke(); }
 }
 function qdSign(str, x, y, w, h, bg, fg, fs) {
   ctx.fillStyle = 'rgba(60,30,10,0.35)'; rr(x - w / 2 + 3, y - h / 2 + 3, w, h, 4); ctx.fill();
@@ -588,7 +588,7 @@ function qdDrawBuildings(st) {
   // the balcony (Mayor Mosey stands on it)
   ctx.fillStyle = QD_COL.woodDk; ctx.fillRect(330, QD.refY, 300, 10);
   ctx.strokeStyle = QD_COL.woodDk; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(330, QD.refY - 26); ctx.lineTo(630, QD.refY - 26); ctx.stroke();
-  ctx.lineWidth = 2; for (let x = 340; x <= 620; x += 16) { ctx.beginPath(); ctx.moveTo(x, QD.refY - 26); ctx.lineTo(x, QD.refY); ctx.stroke(); }
+  ctx.lineWidth = 2; ctx.beginPath(); for (let x = 340; x <= 620; x += 16) { ctx.moveTo(x, QD.refY - 26); ctx.lineTo(x, QD.refY); } ctx.stroke();
   // the bell frame on the balcony
   ctx.fillStyle = QD_COL.woodDk; ctx.fillRect(QD.bellX - 22, QD.bellY - 30, 44, 5); ctx.fillRect(QD.bellX - 22, QD.bellY - 30, 5, QD.refY - QD.bellY + 30); ctx.fillRect(QD.bellX + 17, QD.bellY - 30, 5, QD.refY - QD.bellY + 30);
   // downstairs: windows and the swinging doors
@@ -600,7 +600,7 @@ function qdDrawBuildings(st) {
     ctx.scale(1 - Math.abs(dk) * 0.75, 1);
     ctx.fillStyle = QD_COL.woodLt; ctx.strokeStyle = QD_COL.woodDk; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-side * 31, 4); ctx.lineTo(-side * 31, 50); ctx.lineTo(0, 50); ctx.closePath(); ctx.fill(); ctx.stroke();
-    for (let y = 12; y < 48; y += 8) { ctx.beginPath(); ctx.moveTo(-side * 4, y); ctx.lineTo(-side * 27, y); ctx.stroke(); }
+    ctx.beginPath(); for (let y = 12; y < 48; y += 8) { ctx.moveTo(-side * 4, y); ctx.lineTo(-side * 27, y); } ctx.stroke();
     ctx.restore();
   }
   // ---- Hats & Boots (right)
@@ -1101,7 +1101,7 @@ function qdDrawTop() {
     ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, cy);
     ctx.rotate(G.clock * 0.6);
     ctx.fillStyle = 'rgba(255,197,61,0.35)';
-    for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-18, -150); ctx.lineTo(18, -150); ctx.closePath(); ctx.fill(); }
+    ctx.beginPath(); for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.moveTo(0, 0); ctx.lineTo(-18, -150); ctx.lineTo(18, -150); ctx.closePath(); } ctx.fill();
     ctx.restore();
     ctx.save(); ctx.globalAlpha = a;
     bigText('DRAW!', W / 2, cy, big ? 120 : 104, C.gold, sc);

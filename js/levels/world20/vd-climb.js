@@ -690,7 +690,7 @@ function vdClimbDrawWall(st, w) {
   // the face: stacked stone blocks
   ctx.fillStyle = VDCLC.wallLt; ctx.fillRect(x, w.top, 9, hgt);
   ctx.strokeStyle = 'rgba(28,26,54,0.45)'; ctx.lineWidth = 2;
-  for (let y = w.top + 28, n = 0; y < w.base - 6; y += 28, n++) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 40 + (n % 2) * 14, y + 2); ctx.stroke(); }
+  ctx.beginPath(); for (let y = w.top + 28, n = 0; y < w.base - 6; y += 28, n++) { ctx.moveTo(x, y); ctx.lineTo(x + 40 + (n % 2) * 14, y + 2); } ctx.stroke();
   // grips (in the climber's colour while the ladder is still rolled up)
   const gc = w.down ? '#a08a7a' : PCOL[cl];
   for (let y = w.base - 18, n = 0; y > w.top + 8; y -= 22, n++) {
@@ -722,7 +722,7 @@ function vdClimbDrawWall(st, w) {
     ctx.beginPath(); ctx.moveTo(hx - 6, hy - 26); ctx.quadraticCurveTo(x + 4, hy - 20, lx1, hy); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(lx0, hy); ctx.lineTo(lx0 + sway, hy + len); ctx.moveTo(lx1, hy); ctx.lineTo(lx1 + sway, hy + len); ctx.stroke();
     ctx.strokeStyle = VDCLC.rung; ctx.lineWidth = 3.5;
-    for (let y = 12; y < len; y += 16) { const s2 = sway * y / Math.max(1, len); ctx.beginPath(); ctx.moveTo(lx0 + s2, hy + y); ctx.lineTo(lx1 + s2, hy + y); ctx.stroke(); }
+    ctx.beginPath(); for (let y = 12; y < len; y += 16) { const s2 = sway * y / Math.max(1, len); ctx.moveTo(lx0 + s2, hy + y); ctx.lineTo(lx1 + s2, hy + y); } ctx.stroke();
     if (w.unroll < 1) { ctx.fillStyle = VDCLC.rope; ctx.beginPath(); ctx.ellipse((lx0 + lx1) / 2 + sway, hy + len, 11, 6, 0, 0, Math.PI * 2); ctx.fill(); }
   }
 }

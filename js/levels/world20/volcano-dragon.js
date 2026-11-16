@@ -799,7 +799,7 @@ function vdDrawCinder(c) {
   ctx.strokeStyle = VDC.ink; ctx.lineWidth = 4;
   const brow = c.mood === 'grumpy' && g.eyes === 'open' ? [[4, -156, 22, -148], [32, -152, 54, -158]]
     : c.mood === 'surprised' ? [[4, -160, 22, -164], [32, -166, 54, -164]] : [[4, -154, 22, -158], [32, -160, 54, -158]];
-  if (g.eyes !== 'swirl') for (const [x0, y0, x1, y1] of brow) { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); }
+  if (g.eyes !== 'swirl') { ctx.beginPath(); for (const [x0, y0, x1, y1] of brow) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); } ctx.stroke(); }
   // mouth
   vdDrawMouth(g, t);
   // near arm (over the belly)
@@ -944,7 +944,7 @@ function vdDrawBackdrop(t, o = {}) {
   ctx.fillStyle = 'rgba(255,170,110,0.18)'; circle(150, 120, 86); ctx.fill();
   ctx.fillStyle = 'rgba(255,170,110,0.3)'; circle(150, 120, 62); ctx.fill();
   ctx.save(); ctx.translate(150, 120); ctx.rotate(t * 0.04); ctx.fillStyle = 'rgba(255,214,160,0.16)';
-  for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(-5, 46); ctx.lineTo(0, 92 + (i % 2) * 16); ctx.lineTo(5, 46); ctx.closePath(); ctx.fill(); }
+  ctx.beginPath(); for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.moveTo(-5, 46); ctx.lineTo(0, 92 + (i % 2) * 16); ctx.lineTo(5, 46); ctx.closePath(); } ctx.fill();
   ctx.restore();
   ctx.fillStyle = 'rgba(255,214,150,0.95)'; circle(150, 120, 40); ctx.fill();
   ctx.fillStyle = 'rgba(255,240,200,0.55)'; circle(142, 112, 22); ctx.fill();
@@ -962,7 +962,7 @@ function vdDrawBackdrop(t, o = {}) {
   ctx.fillStyle = 'rgba(30,10,25,0.28)'; ctx.beginPath(); ctx.moveTo(vx + 20, vy); ctx.lineTo(vx + 60, vy); ctx.lineTo(vx + 420, H); ctx.lineTo(vx + 140, H); ctx.closePath(); ctx.fill();
   ctx.fillStyle = 'rgba(255,150,110,0.14)'; ctx.beginPath(); ctx.moveTo(vx - 60, vy); ctx.lineTo(vx - 30, vy); ctx.lineTo(vx - 250, H); ctx.lineTo(vx - 420, H); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = 'rgba(30,10,25,0.25)'; ctx.lineWidth = 2;
-  for (const k of [-0.6, -0.2, 0.3, 0.7]) { ctx.beginPath(); ctx.moveTo(vx + k * 50, vy + 4); ctx.lineTo(vx + k * 260, vy + 200); ctx.stroke(); }
+  ctx.beginPath(); for (const k of [-0.6, -0.2, 0.3, 0.7]) { ctx.moveTo(vx + k * 50, vy + 4); ctx.lineTo(vx + k * 260, vy + 200); } ctx.stroke();
   ctx.strokeStyle = `rgba(255,140,60,${0.55 + 0.2 * Math.sin(t * 2)})`; ctx.lineWidth = 3; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(vx - 18, vy + 2); ctx.quadraticCurveTo(vx - 40, vy + 60, vx - 30, vy + 120); ctx.moveTo(vx + 22, vy + 2); ctx.quadraticCurveTo(vx + 30, vy + 50, vx + 60, vy + 90); ctx.stroke();
   ctx.lineCap = 'butt';

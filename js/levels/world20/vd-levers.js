@@ -554,7 +554,7 @@ function vdlDrawBack(st) {
   ctx.stroke();
   ctx.strokeStyle = 'rgba(25,8,18,0.22)'; ctx.lineWidth = 3;
   for (const dy of [34, 70]) { ctx.beginPath(); for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 214 + dy + Math.sin(x / W * Math.PI) * 120 + Math.sin(x * 0.03 + dy) * 5); ctx.stroke(); }
-  ctx.fillStyle = 'rgba(25,8,18,0.25)'; for (let k = 0; k < 30; k++) { const h = hash(k, 61), x = h % W; circle(x, 230 + Math.sin(x / W * Math.PI) * 120 + (h >> 10) % 70, 1.5 + (k % 3)); ctx.fill(); }
+  ctx.fillStyle = 'rgba(25,8,18,0.25)'; ctx.beginPath(); for (let k = 0; k < 30; k++) { const h = hash(k, 61), x = h % W; vdlDot(x, 230 + Math.sin(x / W * Math.PI) * 120 + (h >> 10) % 70, 1.5 + (k % 3)); } ctx.fill();
   ctx.fillStyle = '#5c2e3c';
   ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, 280);
   for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 290 + Math.sin(x / W * Math.PI) * 90 + Math.sin(x * 0.07 + 1) * 5);
@@ -621,7 +621,7 @@ function vdlDrawPillar(st, q) {
   ctx.fillStyle = '#5b5062'; ctx.fillRect(x0 + 6, top + 8, 12, bot - top - 8);
   ctx.fillStyle = '#3a3240'; ctx.fillRect(x0 + w - 14, top + 8, 10, bot - top - 8);
   ctx.strokeStyle = 'rgba(28,26,54,0.5)'; ctx.lineWidth = 2;
-  for (let y = top + 30; y < bot; y += 34) { ctx.beginPath(); ctx.moveTo(x0 + 2, y); ctx.lineTo(x0 + w - 2, y + 4); ctx.stroke(); }
+  ctx.beginPath(); for (let y = top + 30; y < bot; y += 34) { ctx.moveTo(x0 + 2, y); ctx.lineTo(x0 + w - 2, y + 4); } ctx.stroke();
   // the lava's glow up its foot
   const g = ctx.createLinearGradient(0, bot - 50, 0, bot);
   g.addColorStop(0, 'rgba(255,140,60,0)'); g.addColorStop(1, 'rgba(255,150,60,0.55)');
@@ -705,3 +705,5 @@ Sfx.extra.vdLevHop = function () { this.tone(220, 0.2, 'triangle', 0.05, 540); t
 Sfx.extra.vdLevLand = function () { this.tone(110, 0.16, 'triangle', 0.07, 55); this.tone(260, 0.05, 'square', 0.025, 170); };
 Sfx.extra.vdLevLocked = function (p) { this.tone(240 * p, 0.05, 'square', 0.035, 200 * p); this.tone(240 * p, 0.05, 'square', 0.035, 200 * p, 0.09); };
 Sfx.extra.vdLevAww = function () { this.tone(520, 0.18, 'triangle', 0.035, 380); this.tone(400, 0.26, 'triangle', 0.035, 300, 0.16); };
+// a dot added to the current path, so many dots fill in one call
+function vdlDot(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }

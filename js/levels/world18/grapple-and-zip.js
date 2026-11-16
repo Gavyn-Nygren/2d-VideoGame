@@ -1014,7 +1014,7 @@ function grappleDrawSky(st) {
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, 312);
   ctx.fillStyle = 'rgba(255,244,190,0.35)'; circle(820, 86, 74); ctx.fill();
   ctx.save(); ctx.translate(820, 86); ctx.rotate(t * 0.05); ctx.fillStyle = 'rgba(255,248,210,0.3)';
-  for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(-5, 46); ctx.lineTo(0, 86 + (i % 2) * 14); ctx.lineTo(5, 46); ctx.closePath(); ctx.fill(); }
+  ctx.beginPath(); for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.moveTo(-5, 46); ctx.lineTo(0, 86 + (i % 2) * 14); ctx.lineTo(5, 46); ctx.closePath(); } ctx.fill();
   ctx.restore();
   ctx.fillStyle = 'rgba(255,246,190,0.98)'; circle(820, 86, 40); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(811, 78, 22); ctx.fill();
@@ -1034,7 +1034,7 @@ function grappleDrawSky(st) {
     ctx.fillStyle = GRAPPLE_COL.island; ctx.beginPath(); ctx.ellipse(ix, hy, w * 0.5, hgt, 0, Math.PI, 0); ctx.fill();
     ctx.fillStyle = GRAPPLE_COL.islandDk; ctx.beginPath(); ctx.ellipse(ix + w * 0.12, hy, w * 0.3, hgt * 0.7, 0, Math.PI, 0); ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(ix, hy, w * 0.5 - 2, hgt - 2, 0, Math.PI * 1.12, Math.PI * 1.6); ctx.stroke();
-    ctx.fillStyle = GRAPPLE_COL.islandDk; for (let j = 0; j < 4; j++) { circle(ix - w * 0.4 + (hash(k, j + 30) % Math.max(1, w * 0.8 | 0)), hy - 2, 4 + (j % 2) * 2.5); ctx.fill(); }
+    ctx.fillStyle = GRAPPLE_COL.islandDk; ctx.beginPath(); for (let j = 0; j < 4; j++) { grappleDot(ix - w * 0.4 + (hash(k, j + 30) % Math.max(1, w * 0.8 | 0)), hy - 2, 4 + (j % 2) * 2.5); } ctx.fill();
     ctx.fillStyle = 'rgba(40,120,110,0.22)'; ctx.beginPath(); ctx.ellipse(ix, hy + 8, w * 0.5, 4, 0, 0, Math.PI * 2); ctx.fill();
     for (let j = 0; j < 2; j++) grapplePalm(ix - w * 0.2 + j * w * 0.36, hy - hgt * 0.75, 0.55, t + k);
     if (k % 2 === 0) {
@@ -1055,7 +1055,7 @@ function grappleDrawSky(st) {
     ctx.fillStyle = ['#ef6a55', '#5bd8c9', '#ffcf4a', '#b78cff'][k]; ctx.beginPath(); ctx.moveTo(bx - 1, by - 2); ctx.lineTo(bx - 1, by - 18); ctx.lineTo(bx - 10, by - 4); ctx.closePath(); ctx.fill();
   }
   ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1.5;
-  for (let k = 0; k < 18; k++) { const x = ((k * 97 - cam.x * 0.5) % 1000 + 1000) % 1000 - 20, y = hy + 8 + (hash(k, 11) % 110); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 16 + (k % 3) * 6, y); ctx.stroke(); }
+  ctx.beginPath(); for (let k = 0; k < 18; k++) { const x = ((k * 97 - cam.x * 0.5) % 1000 + 1000) % 1000 - 20, y = hy + 8 + (hash(k, 11) % 110); ctx.moveTo(x, y); ctx.lineTo(x + 16 + (k % 3) * 6, y); } ctx.stroke();
 }
 function grapplePalm(x, y, s, t) {
   ctx.strokeStyle = GRAPPLE_COL.trunk; ctx.lineWidth = 5 * s; ctx.lineCap = 'round';
@@ -1139,7 +1139,7 @@ function grappleDrawShip(st, sh) {
   ctx.clip();
   // planks
   ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1.5;
-  for (let y = dk + 6; y < S + 30; y += 9) { ctx.beginPath(); ctx.moveTo(x - 10, y); ctx.lineTo(x + L + 10, y); ctx.stroke(); }
+  ctx.beginPath(); for (let y = dk + 6; y < S + 30; y += 9) { ctx.moveTo(x - 10, y); ctx.lineTo(x + L + 10, y); } ctx.stroke();
   // the bright band with round windows (flower boxes, no cannons on these friendly ships)
   ctx.fillStyle = pal.band; ctx.fillRect(x - 10, dk + 6, L + 20, 15);
   for (let px = x + 50; px < x + L - 40; px += 40) {
@@ -1150,7 +1150,7 @@ function grappleDrawShip(st, sh) {
   // lit edges on the band, nails along the planks, a shaded stern and a lit bow
   ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - 10, dk + 6, L + 20, 1.5); ctx.fillRect(x - 10, dk - 2, L + 20, 2);
   ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x - 10, dk + 19, L + 20, 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.2)'; for (let px = x + 30; px < x + L - 30; px += 26) { circle(px, dk + 30, 1.1); ctx.fill(); circle(px + 13, dk + 48, 1.1); ctx.fill(); }
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); for (let px = x + 30; px < x + L - 30; px += 26) { grappleDot(px, dk + 30, 1.1); grappleDot(px + 13, dk + 48, 1.1); } ctx.fill();
   const hg = ctx.createLinearGradient(x - 4, 0, x + L + 6, 0); hg.addColorStop(0, 'rgba(0,0,0,0.16)'); hg.addColorStop(0.25, 'rgba(0,0,0,0)'); hg.addColorStop(0.85, 'rgba(255,255,255,0)'); hg.addColorStop(1, 'rgba(255,255,255,0.12)');
   ctx.fillStyle = hg; ctx.fillRect(x - 10, dk - 40, L + 20, S - dk + 80);
   ctx.restore();
@@ -1166,7 +1166,7 @@ function grappleDrawShip(st, sh) {
   ctx.strokeStyle = pal.trim; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(x + 74, dk - 16); ctx.lineTo(x + L - 46, dk - 16); ctx.stroke();
   ctx.lineWidth = 2;
-  for (let px = x + 80; px < x + L - 46; px += 22) { ctx.beginPath(); ctx.moveTo(px, dk - 16); ctx.lineTo(px, dk - 2); ctx.stroke(); }
+  ctx.beginPath(); for (let px = x + 80; px < x + L - 46; px += 22) { ctx.moveTo(px, dk - 16); ctx.lineTo(px, dk - 2); } ctx.stroke();
   // the bowsprit and a smiling dolphin figurehead
   ctx.strokeStyle = GRAPPLE_COL.woodDk; ctx.lineWidth = 5; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(x + L - 20, dk - 12); ctx.lineTo(x + L + 52, dk - 44); ctx.stroke();
@@ -1224,7 +1224,7 @@ function grappleLadder(lx, y0, y1) {
   ctx.strokeStyle = GRAPPLE_COL.ropeDk; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(lx - 7, y0); ctx.lineTo(lx - 6, y1); ctx.moveTo(lx + 7, y0); ctx.lineTo(lx + 6, y1); ctx.stroke();
   ctx.strokeStyle = GRAPPLE_COL.rope; ctx.lineWidth = 2.2;
-  for (let y = y0 - 8; y > y1 + 2; y -= 14) { ctx.beginPath(); ctx.moveTo(lx - 7, y); ctx.lineTo(lx + 7, y); ctx.stroke(); }
+  ctx.beginPath(); for (let y = y0 - 8; y > y1 + 2; y -= 14) { ctx.moveTo(lx - 7, y); ctx.lineTo(lx + 7, y); } ctx.stroke();
 }
 // the front of the crow's nest (drawn over the players' feet)
 function grappleDrawNestFront(st, sh) {
@@ -1232,11 +1232,11 @@ function grappleDrawNestFront(st, sh) {
   if (sh.dock) {
     ctx.strokeStyle = GRAPPLE_COL.woodDk; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(x0 - 2, nestY - 16); ctx.lineTo(x1 + 2, nestY - 16); ctx.stroke();
-    for (let px = x0; px <= x1; px += 15) { ctx.beginPath(); ctx.moveTo(px, nestY - 16); ctx.lineTo(px, nestY); ctx.stroke(); }
+    ctx.beginPath(); for (let px = x0; px <= x1; px += 15) { ctx.moveTo(px, nestY - 16); ctx.lineTo(px, nestY); } ctx.stroke();
   } else {
     ctx.fillStyle = GRAPPLE_COL.wood; rr(x0 - 4, nestY - 14, x1 - x0 + 8, 20, 5); ctx.fill();
     ctx.strokeStyle = GRAPPLE_COL.woodDk; ctx.lineWidth = 2;
-    for (let px = x0 + 6; px < x1; px += 11) { ctx.beginPath(); ctx.moveTo(px, nestY - 12); ctx.lineTo(px, nestY + 5); ctx.stroke(); }
+    ctx.beginPath(); for (let px = x0 + 6; px < x1; px += 11) { ctx.moveTo(px, nestY - 12); ctx.lineTo(px, nestY + 5); } ctx.stroke();
     ctx.fillStyle = sh.pal.trim; ctx.fillRect(x0 - 6, nestY - 16, x1 - x0 + 12, 4);
   }
   // the gold X where the thrower stands (and the zipper grabs the handle)
@@ -1352,7 +1352,7 @@ function grappleDrawDock(st, sh) {
   // the planks
   ctx.fillStyle = GRAPPLE_COL.woodLt; ctx.fillRect(x, dk, L, 12);
   ctx.strokeStyle = GRAPPLE_COL.woodDk; ctx.lineWidth = 1.5;
-  for (let px = x; px < x + L; px += 24) { ctx.beginPath(); ctx.moveTo(px, dk); ctx.lineTo(px, dk + 12); ctx.stroke(); }
+  ctx.beginPath(); for (let px = x; px < x + L; px += 24) { ctx.moveTo(px, dk); ctx.lineTo(px, dk + 12); } ctx.stroke();
   ctx.fillStyle = GRAPPLE_COL.woodDk; ctx.fillRect(x, dk + 10, L, 3);
   // barrels, a crate and a coil of rope
   for (const [bx, s] of [[x + 30, 1], [x + 56, 0.85]]) {
@@ -1667,7 +1667,7 @@ function grappleDrawPlayer(st, pl) {
     ctx.fillStyle = '#5a5a6a'; circle(q.x, q.y, 5); ctx.fill(); ctx.fillStyle = '#c9c9d6'; circle(q.x, q.y, 2.2); ctx.fill();
     ctx.strokeStyle = '#5a5a6a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(q.x, q.y + 3); ctx.lineTo(q.x, q.y + 10); ctx.stroke();
     ctx.fillStyle = GRAPPLE_COL.woodLt; rr(q.x - 11, q.y + 9, 22, 5, 2.5); ctx.fill();
-    if (fast) { ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(q.x - 22 - i * 8, q.y + z.off - 6 + i * 7); ctx.lineTo(q.x - 36 - i * 8, q.y + z.off - 6 + i * 7); ctx.stroke(); } }
+    if (fast) { ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i < 3; i++) { ctx.moveTo(q.x - 22 - i * 8, q.y + z.off - 6 + i * 7); ctx.lineTo(q.x - 36 - i * 8, q.y + z.off - 6 + i * 7); } ctx.stroke(); }
     return;
   }
   if (pl.mode === 'chair' && hop && hop.rope) {
@@ -2001,3 +2001,5 @@ Sfx.extra.grappleHelp = function () { [784, 988, 1175, 1568].forEach((f, i) => t
 Sfx.extra.grappleStep = function (p) { this.tone(240 * p, 0.04, 'triangle', 0.025); };
 Sfx.extra.grappleChest = function () { this.tone(200, 0.2, 'triangle', 0.05, 400); [1047, 1319, 1568, 2093].forEach((f, i) => this.tone(f, 0.1, 'triangle', 0.035, null, 0.15 + i * 0.06)); };
 Sfx.extra.grappleParty = function () { [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.13, 'triangle', 0.045, null, i * 0.11)); };
+// a dot added to the current path, so many dots fill in one call
+function grappleDot(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }

@@ -556,12 +556,17 @@ const PP_SKY = {
 const PP_BCOL = ['#ff8fc7', '#8fe3b0', '#b28dff', '#ffd94a'];   // balloon colours (never Pip orange or Bo blue)
 const PP_BLDG = [['#f2c6a0', '#d39a72'], ['#c9c4ee', '#9d97d0'], ['#f6e3a6', '#d2b46a'], ['#b8e2cf', '#83b9a2']];
 const ppSX = (st, x) => x - st.cam.x;
+// drawn once into a picture per size and colour, then copied (the shading costs nothing per frame)
 function ppCloud(x, y, s, col) {
+  s = Math.round(s * 20) / 20; col = col;
+  blitSprite(artSprite('ppCloud' + s + col, 120 * s, 80 * s, (30 * s), (48 * s), c => ppCloudPaint(c, 0, 0, s, col)), x, y);
+}
+function ppCloudPaint(c, x, y, s, col) {
   // a soft blue-grey underside, the puffs, a bright top
-  const shape = (dx, dy) => { ctx.beginPath(); ctx.arc(x + dx, y + dy, 22 * s, 0, Math.PI * 2); ctx.arc(x + 24 * s + dx, y - 10 * s + dy, 26 * s, 0, Math.PI * 2); ctx.arc(x + 50 * s + dx, y + dy, 20 * s, 0, Math.PI * 2); ctx.roundRect(x - 12 * s + dx, y - 4 * s + dy, 76 * s, 22 * s, 11 * s); };
-  ctx.fillStyle = 'rgba(150,170,210,0.22)'; shape(2 * s, 5 * s); ctx.fill();
-  ctx.fillStyle = col; shape(0, 0); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.55)'; circle(x + 18 * s, y - 22 * s, 10 * s); ctx.fill(); circle(x - 6 * s, y - 7 * s, 7 * s); ctx.fill();
+  const shape = (dx, dy) => { c.beginPath(); c.arc(x + dx, y + dy, 22 * s, 0, Math.PI * 2); c.arc(x + 24 * s + dx, y - 10 * s + dy, 26 * s, 0, Math.PI * 2); c.arc(x + 50 * s + dx, y + dy, 20 * s, 0, Math.PI * 2); c.roundRect(x - 12 * s + dx, y - 4 * s + dy, 76 * s, 22 * s, 11 * s); };
+  c.fillStyle = 'rgba(150,170,210,0.22)'; shape(2 * s, 5 * s); c.fill();
+  c.fillStyle = col; shape(0, 0); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.55)'; circleOn(c, x + 18 * s, y - 22 * s, 10 * s); c.fill(); circleOn(c, x - 6 * s, y - 7 * s, 7 * s); c.fill();
 }
 function ppDrawSky(st) {
   const key = st.course.key, sk = PP_SKY[key] || PP_SKY.meadow, cx = st.cam.x;
@@ -572,7 +577,7 @@ function ppDrawSky(st) {
   const sx = 760 - (cx * 0.02) % 40, sy = 150;
   ctx.fillStyle = 'rgba(255,240,190,0.45)'; circle(sx, sy, 62); ctx.fill();
   ctx.save(); ctx.translate(sx, sy); ctx.rotate(st.t * 0.05); ctx.fillStyle = 'rgba(255,248,210,0.3)';
-  for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(-5, 44); ctx.lineTo(0, 88 + (i % 2) * 16); ctx.lineTo(5, 44); ctx.closePath(); ctx.fill(); }
+  ctx.beginPath(); for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.moveTo(-5, 44); ctx.lineTo(0, 88 + (i % 2) * 16); ctx.lineTo(5, 44); ctx.closePath(); } ctx.fill();
   ctx.restore();
   ctx.fillStyle = key === 'final' ? '#fff3c0' : '#fff7d6'; circle(sx, sy, 38); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.55)'; circle(sx - 8, sy - 8, 20); ctx.fill();
@@ -602,11 +607,13 @@ function ppDrawSky(st) {
     for (let x = 0; x <= W + 40; x += 40) ctx.lineTo(x, 401 - Math.sin((x + far) / 170) * 26 - Math.sin((x + far) / 63) * 10);
     ctx.stroke();
     // little far trees and hedges on the back hills
+    ctx.fillStyle = key === 'final' ? '#cf8fb4' : '#7fbf7a'; ctx.beginPath();
     for (let i = -1; i < W / 90 + 2; i++) {
       const n = Math.floor(far / 90) + i, x = n * 90 - far + ppHash(n, 31) * 50, y = 404 - Math.sin((x + far) / 170) * 26 - Math.sin((x + far) / 63) * 10;
       if (ppHash(n, 32) < 0.5) continue;
-      ctx.fillStyle = key === 'final' ? '#cf8fb4' : '#7fbf7a'; circle(x, y - 8, 9); ctx.fill(); circle(x + 9, y - 5, 7); ctx.fill();
+      ctx.moveTo(x + 9, y - 8); ctx.arc(x, y - 8, 9, 0, Math.PI * 2); ctx.moveTo(x + 16, y - 5); ctx.arc(x + 9, y - 5, 7, 0, Math.PI * 2);
     }
+    ctx.fill();
     ctx.fillStyle = key === 'final' ? '#d99fc0' : '#93d08e';
     const mid = cx * 0.5;
     ctx.beginPath(); ctx.moveTo(0, H);
@@ -624,7 +631,7 @@ function ppDrawSky(st) {
         ctx.fillRect(x, PP.groundY - h, bw - 6, h);
         if (!layer && ppHash(n, 9) < 0.3) { ctx.fillRect(x + bw / 2 - 6, PP.groundY - h - 26, 4, 26); }
         ctx.fillStyle = 'rgba(60,50,120,0.1)'; ctx.fillRect(x + bw - 16, PP.groundY - h, 10, h);
-        ctx.fillStyle = 'rgba(255,255,255,' + (layer ? 0.3 : 0.4) + ')'; for (let wy = PP.groundY - h + 12; wy < PP.groundY - 10; wy += 18) for (let wx = x + 6; wx < x + bw - 16; wx += 12) if (ppHash(wx + n * 7, wy) > 0.35) ctx.fillRect(wx, wy, 5, 8);
+        ctx.fillStyle = 'rgba(255,255,255,' + (layer ? 0.3 : 0.4) + ')'; ctx.beginPath(); for (let wy = PP.groundY - h + 12; wy < PP.groundY - 10; wy += 18) for (let wx = x + 6; wx < x + bw - 16; wx += 12) if (ppHash(wx + n * 7, wy) > 0.35) ctx.rect(wx, wy, 5, 8); ctx.fill();
         ctx.fillStyle = col;
       }
     }

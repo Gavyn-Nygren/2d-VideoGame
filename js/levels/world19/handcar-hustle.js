@@ -818,7 +818,7 @@ function handcarDrawSky(st) {
   ctx.fillStyle = 'rgba(255,236,170,0.35)'; circle(sx, sy, 110); ctx.fill();
   ctx.fillStyle = 'rgba(255,240,190,0.55)'; circle(sx, sy, 76); ctx.fill();
   ctx.save(); ctx.translate(sx, sy); ctx.rotate(G.clock * 0.04); ctx.fillStyle = 'rgba(255,240,190,0.22)';
-  for (let i = 0; i < 14; i++) { ctx.rotate(Math.PI / 7); ctx.beginPath(); ctx.moveTo(-7, 60); ctx.lineTo(0, 124 + (i % 2) * 22); ctx.lineTo(7, 60); ctx.closePath(); ctx.fill(); }
+  ctx.beginPath(); for (let i = 0; i < 14; i++) { ctx.rotate(Math.PI / 7); ctx.moveTo(-7, 60); ctx.lineTo(0, 124 + (i % 2) * 22); ctx.lineTo(7, 60); ctx.closePath(); } ctx.fill();
   ctx.restore();
   ctx.fillStyle = '#fff6d6'; circle(sx, sy, 54); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.45)'; circle(sx - 12, sy - 12, 30); ctx.fill();
@@ -846,13 +846,13 @@ function handcarDrawFar(st) {
       ctx.beginPath(); ctx.moveTo(x - 40, base + 4); ctx.lineTo(x, base - h + 10); ctx.lineTo(x + 12, base - h); ctx.lineTo(x + w - 12, base - h); ctx.lineTo(x + w, base - h + 12); ctx.lineTo(x + w + 50, base + 4); ctx.closePath(); ctx.fill();
       // a shaded right cliff and gullies, then the sunlit top and a soft outline
       ctx.fillStyle = 'rgba(120,45,25,0.16)'; ctx.beginPath(); ctx.moveTo(x + w - 12, base - h); ctx.lineTo(x + w, base - h + 12); ctx.lineTo(x + w + 50, base + 4); ctx.lineTo(x + w + 6, base + 4); ctx.lineTo(x + w - 30, base - h + 10); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(120,45,25,0.14)'; ctx.lineWidth = 2; for (let g = 1; g < 5; g++) { const gx = x + (w * g) / 5 + (hh >> g) % 14; ctx.beginPath(); ctx.moveTo(gx, base - h + 8); ctx.lineTo(gx + 4, base - h * 0.4); ctx.stroke(); }
+      ctx.strokeStyle = 'rgba(120,45,25,0.14)'; ctx.lineWidth = 2; ctx.beginPath(); for (let g = 1; g < 5; g++) { const gx = x + (w * g) / 5 + (hh >> g) % 14; ctx.moveTo(gx, base - h + 8); ctx.lineTo(gx + 4, base - h * 0.4); } ctx.stroke();
       ctx.fillStyle = top; ctx.fillRect(x + 12, base - h, w - 24, 6);
       ctx.fillStyle = 'rgba(255,240,210,0.4)'; ctx.fillRect(x + 12, base - h, w - 24, 1.5);
       ctx.strokeStyle = 'rgba(120,45,25,0.2)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 40, base + 4); ctx.lineTo(x, base - h + 10); ctx.lineTo(x + 12, base - h); ctx.lineTo(x + w - 12, base - h); ctx.lineTo(x + w, base - h + 12); ctx.lineTo(x + w + 50, base + 4); ctx.stroke();
       // rock layers
       ctx.strokeStyle = 'rgba(140,60,30,0.18)'; ctx.lineWidth = 3;
-      for (let j = 1; j < 3; j++) { ctx.beginPath(); ctx.moveTo(x - 4 + j * 6, base - h + j * h / 3); ctx.lineTo(x + w + 6 + j * 12, base - h + j * h / 3); ctx.stroke(); }
+      ctx.beginPath(); for (let j = 1; j < 3; j++) { ctx.moveTo(x - 4 + j * 6, base - h + j * h / 3); ctx.lineTo(x + w + 6 + j * 12, base - h + j * h / 3); } ctx.stroke();
       // a lone butte now and then
       if (hh % 3 === 0) { const bx = x + w + 90; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(bx - 14, base + 4); ctx.lineTo(bx - 6, base - h * 0.9); ctx.lineTo(bx + 22, base - h * 0.9); ctx.lineTo(bx + 30, base + 4); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(120,45,25,0.16)'; ctx.beginPath(); ctx.moveTo(bx + 12, base - h * 0.9); ctx.lineTo(bx + 22, base - h * 0.9); ctx.lineTo(bx + 30, base + 4); ctx.lineTo(bx + 16, base + 4); ctx.closePath(); ctx.fill(); ctx.fillStyle = top; ctx.fillRect(bx - 6, base - h * 0.9, 28, 3); }
     }
@@ -919,7 +919,7 @@ function handcarRock(x, y, r, h) {
 }
 function handcarBush(x, y, h) {
   ctx.strokeStyle = '#a57a3e'; ctx.lineWidth = 1.5;
-  for (let i = 0; i < 7; i++) { const a = -Math.PI * (0.1 + 0.8 * i / 6); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * (12 + (h >> i) % 6), y + Math.sin(a) * (12 + (h >> i) % 6)); ctx.stroke(); }
+  ctx.beginPath(); for (let i = 0; i < 7; i++) { const a = -Math.PI * (0.1 + 0.8 * i / 6); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * (12 + (h >> i) % 6), y + Math.sin(a) * (12 + (h >> i) % 6)); } ctx.stroke();
 }
 function handcarWindmill(x, y) {
   ctx.strokeStyle = '#7a5032'; ctx.lineWidth = 4;
@@ -932,6 +932,8 @@ function handcarWindmill(x, y) {
   ctx.fillStyle = '#7a5032'; circle(x, y - 126, 5); ctx.fill();
 }
 // the little town: false-front buildings, a water tower, bunting
+// each shop word's font size, measured once
+const HANDCAR_SIGN_FS = new Map();
 function handcarDrawTown(st, z) {
   const fronts = [
     { w: 150, h: 120, col: '#c98e57', trim: '#7d5030', word: 'GENERAL STORE' },
@@ -952,17 +954,17 @@ function handcarDrawTown(st, z) {
     ctx.fillStyle = f.trim; ctx.fillRect(x - 6, y - f.h - 6, f.w + 12, 10);
     // the sign board
     // wall boards, then the sign board with its word sized to fit
-    ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1.5; for (let bx = x + 12; bx < x + f.w - 4; bx += 12) { ctx.beginPath(); ctx.moveTo(bx, y - f.h + 4); ctx.lineTo(bx, y - 2); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let bx = x + 12; bx < x + f.w - 4; bx += 12) { ctx.moveTo(bx, y - f.h + 4); ctx.lineTo(bx, y - 2); } ctx.stroke();
     ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x + f.w - 14, y - f.h + 2, 12, f.h - 4);
     ctx.fillStyle = '#fff3d6'; rr(x + 10, y - f.h + 14, f.w - 20, 24, 4); ctx.fill();
     ctx.strokeStyle = f.trim; ctx.lineWidth = 1.5; rr(x + 10, y - f.h + 14, f.w - 20, 24, 4); ctx.stroke();
-    let fs = 16; ctx.font = fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
-    const tw = ctx.measureText(f.word).width; if (tw > f.w - 36) fs = Math.max(9, Math.floor(fs * (f.w - 36) / tw));
+    const fkey = f.word + '|' + f.w; let fs = HANDCAR_SIGN_FS.get(fkey);
+    if (fs === undefined) { fs = 16; ctx.font = fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif'; const tw = ctx.measureText(f.word).width; if (tw > f.w - 36) fs = Math.max(9, Math.floor(fs * (f.w - 36) / tw)); if (document.fonts.status === 'loaded') HANDCAR_SIGN_FS.set(fkey, fs); }
     text(f.word, x + f.w / 2, y - f.h + 27, fs, f.trim, 'center');
     // windows and door, a porch roof
     ctx.fillStyle = '#7a5a3a'; for (const wx of [0.2, 0.62]) { rr(x + f.w * wx, y - f.h + 52, f.w * 0.2, 26, 3); ctx.fill(); }
     ctx.fillStyle = '#ffe9a8'; for (const wx of [0.2, 0.62]) { ctx.fillRect(x + f.w * wx + 3, y - f.h + 55, f.w * 0.2 - 6, 9); }
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'; for (const wx of [0.2, 0.62]) { ctx.fillRect(x + f.w * wx + 4, y - f.h + 56, 3, 7); }
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); for (const wx of [0.2, 0.62]) { ctx.rect(x + f.w * wx + 4, y - f.h + 56, 3, 7); } ctx.fill();
     ctx.fillStyle = f.trim; rr(x + f.w * 0.42, y - 40, f.w * 0.16, 40, 3); ctx.fill();
     ctx.fillStyle = '#a36a3a'; ctx.fillRect(x - 4, y - 48, f.w + 8, 6);
     for (const px of [x + 2, x + f.w - 6]) ctx.fillRect(px, y - 44, 4, 44);
@@ -973,7 +975,7 @@ function handcarDrawTown(st, z) {
   ctx.strokeStyle = '#6b4426'; ctx.lineWidth = 5;
   ctx.beginPath(); ctx.moveTo(wx - 28, wy); ctx.lineTo(wx - 20, wy - 100); ctx.moveTo(wx + 28, wy); ctx.lineTo(wx + 20, wy - 100); ctx.moveTo(wx - 24, wy - 40); ctx.lineTo(wx + 24, wy - 70); ctx.moveTo(wx + 24, wy - 40); ctx.lineTo(wx - 24, wy - 70); ctx.stroke();
   ctx.fillStyle = '#b77a45'; ctx.strokeStyle = '#704622'; ctx.lineWidth = 2.5; rr(wx - 36, wy - 160, 72, 62, 6); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = '#704622'; for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(wx - 36, wy - 160 + k * 15); ctx.lineTo(wx + 36, wy - 160 + k * 15); ctx.stroke(); }
+  ctx.strokeStyle = '#704622'; ctx.beginPath(); for (let k = 1; k < 4; k++) { ctx.moveTo(wx - 36, wy - 160 + k * 15); ctx.lineTo(wx + 36, wy - 160 + k * 15); } ctx.stroke();
   ctx.fillStyle = '#8a5228'; ctx.beginPath(); ctx.moveTo(wx - 42, wy - 158); ctx.lineTo(wx, wy - 190); ctx.lineTo(wx + 42, wy - 158); ctx.closePath(); ctx.fill();
   // bunting across the street
   const bx0 = z.x0 + 20, bx1 = Math.min(z.x1, bx0 + 700), by = handcarTerrain(st, bx0) - 190;
@@ -1001,12 +1003,13 @@ function handcarDrawGround(st) {
     }
   }
   ctx.beginPath(); ctx.moveTo(x0, yB);
-  for (let x = x0; x <= x1; x += 6) ctx.lineTo(x, handcarTerrain(st, x));
+  const topY = [];
+  for (let x = x0; x <= x1; x += 6) { const y = handcarTerrain(st, x); topY.push(y); ctx.lineTo(x, y); }
   ctx.lineTo(x1, yB); ctx.closePath();
   ctx.fillStyle = '#c06a48'; ctx.fill();
-  // darker deeper down
+  // darker deeper down (the same outline filled again, no clip mask)
   const gg = ctx.createLinearGradient(0, cam.y + 300, 0, cam.y + H); gg.addColorStop(0, 'rgba(90,30,15,0)'); gg.addColorStop(1, 'rgba(90,30,15,0.22)');
-  ctx.save(); ctx.clip(); ctx.fillStyle = gg; ctx.fillRect(x0, cam.y, x1 - x0, H + 40); ctx.restore();
+  ctx.fillStyle = gg; ctx.fill();
   // rock bands following the ground
   ctx.strokeStyle = 'rgba(122,58,38,0.35)'; ctx.lineWidth = 6;
   for (const dy of [44, 96]) {
@@ -1021,12 +1024,15 @@ function handcarDrawGround(st) {
   ctx.stroke();
   // pebbles
   ctx.fillStyle = 'rgba(122,58,38,0.45)';
-  for (let k = Math.floor(x0 / 37); k < x1 / 37; k++) { const h = hash(k, 5), x = k * 37 + h % 20; circle(x, handcarTerrain(st, x) + 24 + (h >> 4) % 40, 2 + (h >> 9) % 3); ctx.fill(); }
-  ctx.fillStyle = 'rgba(255,220,180,0.35)';
-  for (let k = Math.floor(x0 / 37); k < x1 / 37; k++) { const h = hash(k, 5), x = k * 37 + h % 20; circle(x - 0.8, handcarTerrain(st, x) + 23 + (h >> 4) % 40, 0.9); ctx.fill(); }
+  const peb = []; ctx.beginPath();
+  for (let k = Math.floor(x0 / 37); k < x1 / 37; k++) { const h = hash(k, 5), x = k * 37 + h % 20, y = handcarTerrain(st, x) + 24 + (h >> 4) % 40, r = 2 + (h >> 9) % 3; peb.push(x, y); ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,220,180,0.35)'; ctx.beginPath();
+  for (let i = 0; i < peb.length; i += 2) { ctx.moveTo(peb[i] + 0.1, peb[i + 1] - 1); ctx.arc(peb[i] - 0.8, peb[i + 1] - 1, 0.9, 0, Math.PI * 2); }
+  ctx.fill();
   // a sunlit lip on the sandy top and the odd dry tuft
   ctx.strokeStyle = 'rgba(255,240,200,0.6)'; ctx.lineWidth = 2; ctx.beginPath();
-  for (let x = x0; x <= x1; x += 6) { const y = handcarTerrain(st, x) - 0.5; if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+  for (let i = 0, x = x0; i < topY.length; i++, x += 6) { if (i) ctx.lineTo(x, topY[i] - 0.5); else ctx.moveTo(x, topY[i] - 0.5); }
   ctx.stroke();
   // creeks
   for (const s of st.c.spans) {
@@ -1053,7 +1059,7 @@ function handcarDrawTrack(st) {
     } else {
       // the tall canyon trestle: a timber lattice to the bottom of the screen
       ctx.strokeStyle = '#7a4a26'; ctx.lineWidth = 5;
-      for (let x = s.x0 - 60; x <= s.x1 + 60; x += 80) { ctx.beginPath(); ctx.moveTo(x, ty + 6); ctx.lineTo(x - 10, yB); ctx.stroke(); }
+      ctx.beginPath(); for (let x = s.x0 - 60; x <= s.x1 + 60; x += 80) { ctx.moveTo(x, ty + 6); ctx.lineTo(x - 10, yB); } ctx.stroke();
       ctx.lineWidth = 3; ctx.strokeStyle = '#8f5a30';
       for (let y = ty + 40; y < yB; y += 70) {
         for (let x = s.x0 - 60; x < s.x1 + 60; x += 80) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 80, y + 70); ctx.moveTo(x + 80, y); ctx.lineTo(x, y + 70); ctx.stroke(); }
@@ -1366,7 +1372,7 @@ function handcarDrawCar(st) {
     ctx.save(); ctx.translate(s * H.wb, -H.wr); ctx.rotate(spin);
     ctx.fillStyle = '#3a3448'; circle(0, 0, H.wr + 1); ctx.fill();
     ctx.strokeStyle = '#8a8498'; ctx.lineWidth = 2;
-    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * (H.wr - 2), Math.sin(a) * (H.wr - 2)); ctx.stroke(); }
+    ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * (H.wr - 2), Math.sin(a) * (H.wr - 2)); } ctx.stroke();
     ctx.fillStyle = '#c9c5d6'; circle(0, 0, 3.5); ctx.fill();
     ctx.restore();
   }
@@ -1382,7 +1388,7 @@ function handcarDrawCar(st) {
   ctx.fillStyle = '#704622'; rr(-H.half, H.deckY, H.half * 2, 10, 3); ctx.fill();
   ctx.fillStyle = '#b77a45'; rr(-H.half, H.deckY - 2, H.half * 2, 8, 3); ctx.fill();
   ctx.strokeStyle = 'rgba(112,70,34,0.7)'; ctx.lineWidth = 1.5;
-  for (let x = -H.half + 18; x < H.half; x += 18) { ctx.beginPath(); ctx.moveTo(x, H.deckY - 2); ctx.lineTo(x, H.deckY + 6); ctx.stroke(); }
+  ctx.beginPath(); for (let x = -H.half + 18; x < H.half; x += 18) { ctx.moveTo(x, H.deckY - 2); ctx.lineTo(x, H.deckY + 6); } ctx.stroke();
   ctx.fillStyle = '#5a3a22'; ctx.fillRect(-H.half + 4, H.deckY + 8, H.half * 2 - 8, 4);
   // a lantern on the front, a little flag on the back
   ctx.fillStyle = '#3a3448'; ctx.fillRect(H.half - 6, H.deckY - 16, 6, 14);
@@ -1445,7 +1451,7 @@ function handcarDrawRider(st, p, P) {
     ctx.fillStyle = PCOL[p.id]; ctx.strokeStyle = PDARK[p.id]; ctx.lineWidth = 1.5; circle(grip.x, grip.y + 2, 3.8); ctx.fill(); ctx.stroke();
   }
   // a clunk: a little shake line
-  if (st.clunkT[p.id] > 0) { ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2; for (const d of [-8, 8]) { ctx.beginPath(); ctx.moveTo(grip.x + d, grip.y - 10); ctx.lineTo(grip.x + d * 1.6, grip.y - 18); ctx.stroke(); } }
+  if (st.clunkT[p.id] > 0) { ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2; ctx.beginPath(); for (const d of [-8, 8]) { ctx.moveTo(grip.x + d, grip.y - 10); ctx.lineTo(grip.x + d * 1.6, grip.y - 18); } ctx.stroke(); }
   Object.assign(p, save);
 }
 // whose turn: a glowing arrow over the end that is up, with that player's key

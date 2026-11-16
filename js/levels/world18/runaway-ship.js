@@ -986,7 +986,7 @@ function runshipDrawSky(st) {
     // a soft glow, slow turning rays, a bright core with a rim
     ctx.fillStyle = C.sunGlow; circle(780, 92, 74); ctx.fill(); circle(780, 92, 56); ctx.fill();
     ctx.save(); ctx.translate(780, 92); ctx.rotate(t * 0.05); ctx.fillStyle = 'rgba(255,248,210,0.32)';
-    for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(-5, 44); ctx.lineTo(0, 84 + (i % 2) * 14); ctx.lineTo(5, 44); ctx.closePath(); ctx.fill(); }
+    ctx.beginPath(); for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.moveTo(-5, 44); ctx.lineTo(0, 84 + (i % 2) * 14); ctx.lineTo(5, 44); ctx.closePath(); } ctx.fill();
     ctx.restore();
     ctx.fillStyle = C.sun; circle(780, 92, 38); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.45)'; circle(772, 84, 22); ctx.fill();
@@ -1011,28 +1011,36 @@ function runshipDrawSky(st) {
   }
   ctx.lineCap = 'butt';
 }
+// drawn once into a picture per size and colour, then copied (the shading costs nothing per frame)
 function runshipCloud(x, y, s, col) {
-  // a soft blue-grey underside, the white puffs, then a bright top
-  const puffs = () => { ctx.beginPath(); ctx.arc(x, y, 16 * s, 0, Math.PI * 2); ctx.arc(x + 20 * s, y - 9 * s, 21 * s, 0, Math.PI * 2); ctx.arc(x + 44 * s, y - 2 * s, 17 * s, 0, Math.PI * 2); ctx.arc(x + 32 * s, y + 2 * s, 14 * s, 0, Math.PI * 2); ctx.roundRect(x - 10 * s, y - 2 * s, 70 * s, 16 * s, 8 * s); };
-  ctx.save(); ctx.translate(2 * s, 4 * s); ctx.fillStyle = 'rgba(150,170,205,0.3)'; puffs(); ctx.fill(); ctx.restore();
-  ctx.fillStyle = col; puffs(); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.75)'; circle(x + 16 * s, y - 16 * s, 9 * s); ctx.fill(); circle(x - 4 * s, y - 5 * s, 6 * s); ctx.fill(); circle(x + 42 * s, y - 9 * s, 6 * s); ctx.fill();
+  s = Math.round(s * 20) / 20;
+  blitSprite(artSprite('runshipCloud' + s + col, 130 * s, 80 * s, (40 * s), (45 * s), c => runshipCloudPaint(c, 0, 0, s, col)), x, y);
 }
+function runshipCloudPaint(c, x, y, s, col) {
+  // a soft blue-grey underside, the white puffs, then a bright top
+  const puffs = () => { c.beginPath(); c.arc(x, y, 16 * s, 0, Math.PI * 2); c.arc(x + 20 * s, y - 9 * s, 21 * s, 0, Math.PI * 2); c.arc(x + 44 * s, y - 2 * s, 17 * s, 0, Math.PI * 2); c.arc(x + 32 * s, y + 2 * s, 14 * s, 0, Math.PI * 2); c.roundRect(x - 10 * s, y - 2 * s, 70 * s, 16 * s, 8 * s); };
+  c.save(); c.translate(2 * s, 4 * s); c.fillStyle = 'rgba(150,170,205,0.3)'; puffs(); c.fill(); c.restore();
+  c.fillStyle = col; puffs(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.75)'; circleOn(c, x + 16 * s, y - 16 * s, 9 * s); c.fill(); circleOn(c, x - 4 * s, y - 5 * s, 6 * s); c.fill(); circleOn(c, x + 42 * s, y - 9 * s, 6 * s); c.fill();
+}
+// far islands are drawn once into a picture each, then copied at the haze alpha
 function runshipIsland(x, y, w, h, pal, a, k) {
-  ctx.save(); ctx.globalAlpha = a;
+  const ox = w / 2 + 12, oy = h + 40, sp = artSprite('rsIsle' + k + '|' + w + '|' + h + '|' + pal.isle + pal.sand, w + 24, oy + 10, ox, oy, c => runshipIslandPaint(c, 0, 0, w, h, pal, k));
+  ctx.save(); ctx.globalAlpha = a; blitSprite(sp, x, y); ctx.restore();
+}
+function runshipIslandPaint(c, x, y, w, h, pal, k) {
   // its reflection on the sea, a sandy rim, the green hump with a lit top and a shaded side
-  ctx.fillStyle = 'rgba(40,120,110,0.25)'; ctx.beginPath(); ctx.ellipse(x, y + 2, w / 2 + 4, 4, 0, 0, Math.PI); ctx.fill();
-  ctx.fillStyle = pal.sand; ctx.beginPath(); ctx.ellipse(x, y, w / 2 + 8, 7, 0, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = pal.isle; ctx.beginPath(); ctx.ellipse(x, y - 2, w / 2, h, 0, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = pal.isleDark; ctx.beginPath(); ctx.ellipse(x + w * 0.15, y - 2, w * 0.3, h * 0.7, 0, Math.PI, 0); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y - 2, w / 2 - 2, h - 2, 0, Math.PI * 1.15, Math.PI * 1.6); ctx.stroke();
-  ctx.fillStyle = pal.isleDark; for (let i = 0; i < 4; i++) { const bx = x - w * 0.35 + (hash(k, i) % Math.max(1, w * 0.7 | 0)); circle(bx, y - 3, 4 + (i % 2) * 2); ctx.fill(); }
+  c.fillStyle = 'rgba(40,120,110,0.25)'; c.beginPath(); c.ellipse(x, y + 2, w / 2 + 4, 4, 0, 0, Math.PI); c.fill();
+  c.fillStyle = pal.sand; c.beginPath(); c.ellipse(x, y, w / 2 + 8, 7, 0, Math.PI, 0); c.fill();
+  c.fillStyle = pal.isle; c.beginPath(); c.ellipse(x, y - 2, w / 2, h, 0, Math.PI, 0); c.fill();
+  c.fillStyle = pal.isleDark; c.beginPath(); c.ellipse(x + w * 0.15, y - 2, w * 0.3, h * 0.7, 0, Math.PI, 0); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 2; c.beginPath(); c.ellipse(x, y - 2, w / 2 - 2, h - 2, 0, Math.PI * 1.15, Math.PI * 1.6); c.stroke();
+  c.fillStyle = pal.isleDark; c.beginPath(); for (let i = 0; i < 4; i++) { const bx = x - w * 0.35 + (hash(k, i) % Math.max(1, w * 0.7 | 0)); { const r = 4 + (i % 2) * 2; c.moveTo(bx + r, y - 3); c.arc(bx, y - 3, r, 0, Math.PI * 2); } } c.fill();
   // a palm tree
   const px = x - w * 0.15, ph = h + 22;
-  ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(px, y - h + 4); ctx.quadraticCurveTo(px + 6, y - ph + 10, px + 4, y - ph); ctx.stroke();
-  ctx.fillStyle = pal.isleDark;
-  for (let i = 0; i < 5; i++) { const a2 = -Math.PI / 2 + (i - 2) * 0.7; ctx.beginPath(); ctx.ellipse(px + 4 + Math.cos(a2) * 9, y - ph + Math.sin(a2) * 4 + 4, 11, 3.5, a2 + Math.PI / 2 * 0.2 + (i - 2) * 0.25, 0, Math.PI * 2); ctx.fill(); }
-  ctx.restore();
+  c.strokeStyle = '#8a6a44'; c.lineWidth = 3; c.beginPath(); c.moveTo(px, y - h + 4); c.quadraticCurveTo(px + 6, y - ph + 10, px + 4, y - ph); c.stroke();
+  c.fillStyle = pal.isleDark;
+  for (let i = 0; i < 5; i++) { const a2 = -Math.PI / 2 + (i - 2) * 0.7; c.beginPath(); c.ellipse(px + 4 + Math.cos(a2) * 9, y - ph + Math.sin(a2) * 4 + 4, 11, 3.5, a2 + Math.PI / 2 * 0.2 + (i - 2) * 0.25, 0, Math.PI * 2); c.fill(); }
 }
 function runshipDrawSea(st) {
   const pal = st.pal, d = st.ship.d, t = G.clock;
@@ -1130,15 +1138,13 @@ function runshipBarrel(x, y, s, t) {
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(0, 4 - bob, 26, 5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#b77a3e'; rr(-16, -30, 32, 34, 9); ctx.fill();
   // staves, a shaded right side and a lit left edge
-  ctx.save(); rr(-16, -30, 32, 34, 9); ctx.clip();
-  ctx.fillStyle = '#93602f'; ctx.fillRect(6, -30, 10, 34);
-  ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(-13, -30, 4, 34);
-  ctx.strokeStyle = 'rgba(90,50,20,0.45)'; ctx.lineWidth = 1.2; for (const sx of [-6, 3]) { ctx.beginPath(); ctx.moveTo(sx, -30); ctx.lineTo(sx, 4); ctx.stroke(); }
-  ctx.restore();
+  ctx.fillStyle = '#93602f'; rr(6, -29, 9, 32, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(-13, -26, 4, 26);
+  ctx.strokeStyle = 'rgba(90,50,20,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-6, -30); ctx.lineTo(-6, 4); ctx.moveTo(3, -30); ctx.lineTo(3, 4); ctx.stroke();
   ctx.strokeStyle = '#7a4c22'; ctx.lineWidth = 2.5; rr(-16, -30, 32, 34, 9); ctx.stroke();
   ctx.fillStyle = '#8a8f9e'; ctx.fillRect(-16, -22, 32, 4); ctx.fillRect(-16, -6, 32, 4);
   ctx.fillStyle = '#c2c6d2'; ctx.fillRect(-16, -22, 32, 1.4); ctx.fillRect(-16, -6, 32, 1.4);
-  ctx.fillStyle = '#5c6070'; for (const ry of [-20, -4]) { circle(-11, ry, 1.1); ctx.fill(); circle(11, ry, 1.1); ctx.fill(); }
+  ctx.fillStyle = '#5c6070'; ctx.beginPath(); for (const ry of [-20, -4]) { runshipDot(-11, ry, 1.1); runshipDot(11, ry, 1.1); } ctx.fill();
   // gold spilling out of the top
   for (const [cx, cy] of [[-7, -32], [3, -35], [10, -31], [-1, -29]]) { ctx.fillStyle = C.gold; circle(cx, cy, 5); ctx.fill(); ctx.strokeStyle = '#b9850f'; ctx.lineWidth = 1.2; circle(cx, cy, 5); ctx.stroke(); }
   ctx.fillStyle = '#fff'; circle(12 + Math.sin(t * 5) * 1, -40, 1.8 + Math.max(0, Math.sin(t * 4)) * 1.8); ctx.fill();
@@ -1154,7 +1160,7 @@ function runshipCrab(x, y, s, t, scared) {
   ctx.fillStyle = '#e0533a'; ctx.beginPath(); ctx.ellipse(0, 3, 12, 5.5, 0, 0, Math.PI); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(-4, -4, 5, 2.4, -0.3, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = '#b23a22'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(0, 0, 13, 9, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = '#d24a2c'; ctx.lineWidth = 2; for (const k of [-1, 1]) { ctx.beginPath(); ctx.moveTo(k * 8, 6); ctx.lineTo(k * 14, 11); ctx.stroke(); }
+  ctx.strokeStyle = '#d24a2c'; ctx.lineWidth = 2; ctx.beginPath(); for (const k of [-1, 1]) { ctx.moveTo(k * 8, 6); ctx.lineTo(k * 14, 11); } ctx.stroke();
   ctx.fillStyle = '#fff'; circle(-4, -10, 3); ctx.fill(); circle(4, -10, 3); ctx.fill();
   ctx.fillStyle = C.ink; circle(-4, -10, 1.5); ctx.fill(); circle(4, -10, 1.5); ctx.fill();
   ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); if (scared) ctx.arc(0, 3, 2.5, 0, Math.PI * 2); else ctx.arc(0, 1, 4, 0.2, Math.PI - 0.2); ctx.stroke();
@@ -1331,8 +1337,8 @@ function runshipDrawHull(st, t) {
   ctx.save(); runshipHullPath(); ctx.clip();
   // planks
   ctx.strokeStyle = 'rgba(70,34,12,0.35)'; ctx.lineWidth = 1.5;
-  for (let y = 262; y < 372; y += 13) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(600, y + 4); ctx.stroke(); }
-  for (let i = 0; i < 26; i++) { const x = 20 + i * 23 + (i % 2) * 11, y = 264 + (i % 8) * 13; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 12); ctx.stroke(); }
+  ctx.beginPath(); for (let y = 262; y < 372; y += 13) { ctx.moveTo(0, y); ctx.lineTo(600, y + 4); } ctx.stroke();
+  ctx.beginPath(); for (let i = 0; i < 26; i++) { const x = 20 + i * 23 + (i % 2) * 11, y = 264 + (i % 8) * 13; ctx.moveTo(x, y); ctx.lineTo(x, y + 12); } ctx.stroke();
   // trim stripes
   ctx.fillStyle = '#ffc53d'; ctx.fillRect(0, 300, 600, 7);
   ctx.fillStyle = '#e8503c'; ctx.fillRect(0, 307, 600, 5);
@@ -1341,7 +1347,7 @@ function runshipDrawHull(st, t) {
   ctx.fillStyle = '#ffe28a'; ctx.fillRect(0, 300, 600, 1.5);
   // brass nails along the planks, a shaded stern end and a lit bow
   ctx.fillStyle = 'rgba(60,30,10,0.45)';
-  for (let i = 0; i < 40; i++) { const nx = 16 + (i % 20) * 28 + (i >= 20 ? 14 : 0), ny = i >= 20 ? 330 : 270; circle(nx, ny + (nx * 4 / 600), 1.2); ctx.fill(); }
+  ctx.beginPath(); for (let i = 0; i < 40; i++) { const nx = 16 + (i % 20) * 28 + (i >= 20 ? 14 : 0), ny = (i >= 20 ? 330 : 270) + nx * 4 / 600; ctx.moveTo(nx + 1.2, ny); ctx.arc(nx, ny, 1.2, 0, Math.PI * 2); } ctx.fill();
   const sg = ctx.createLinearGradient(0, 0, 120, 0); sg.addColorStop(0, 'rgba(40,18,6,0.35)'); sg.addColorStop(1, 'rgba(40,18,6,0)');
   ctx.fillStyle = sg; ctx.fillRect(0, 180, 120, 200);
   ctx.fillStyle = 'rgba(255,220,170,0.16)'; ctx.fillRect(0, 252, 600, 8);
@@ -1367,7 +1373,7 @@ function runshipDrawHull(st, t) {
   ctx.fillStyle = C.gold; circle(P.qdX - 18, P.qdY + 26, 2); ctx.fill();
   // rails: posts and a top rail
   ctx.strokeStyle = '#7a4420'; ctx.lineWidth = 3;
-  const rail = (x0, x1, y) => { ctx.beginPath(); ctx.moveTo(x0, y - 20); ctx.lineTo(x1, y - 20); ctx.stroke(); for (let x = x0; x <= x1; x += 18) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 20); ctx.stroke(); } };
+  const rail = (x0, x1, y) => { ctx.beginPath(); ctx.moveTo(x0, y - 20); ctx.lineTo(x1, y - 20); ctx.stroke(); ctx.beginPath(); for (let x = x0; x <= x1; x += 18) { ctx.moveTo(x, y); ctx.lineTo(x, y - 20); } ctx.stroke(); };
   ctx.globalAlpha = 0.85;
   rail(14, 128, P.qdY); rail(P.fcX + 8, 534, P.fcY);
   ctx.globalAlpha = 1;
@@ -1486,7 +1492,7 @@ function runshipDrawDeckThings(st, t) {
   ctx.fillStyle = '#6a3a18'; ctx.fillRect(P.wheelX - 4, 222, 8, P.qdY - 222);
   ctx.save(); ctx.translate(P.wheelX, 222); ctx.rotate(sh.wheelA);
   ctx.strokeStyle = '#8a5428'; ctx.lineWidth = 4; circle(0, 0, 17); ctx.stroke();
-  ctx.lineWidth = 3; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 4, Math.sin(a) * 4); ctx.lineTo(Math.cos(a) * 23, Math.sin(a) * 23); ctx.stroke(); }
+  ctx.lineWidth = 3; ctx.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.moveTo(Math.cos(a) * 4, Math.sin(a) * 4); ctx.lineTo(Math.cos(a) * 23, Math.sin(a) * 23); } ctx.stroke();
   ctx.fillStyle = C.gold; circle(0, 0, 4.5); ctx.fill();
   ctx.restore();
   // the bell (swings when rung)
@@ -1643,7 +1649,7 @@ function runshipDrawNestFront(st, t) {
   const P = RUNSHIP;
   ctx.fillStyle = '#9a5a2e'; rr(P.nestX0 - 12, P.nestY - 12, P.nestX1 - P.nestX0 + 24, 22, 6); ctx.fill();
   ctx.strokeStyle = '#5a3216'; ctx.lineWidth = 2.5; rr(P.nestX0 - 12, P.nestY - 12, P.nestX1 - P.nestX0 + 24, 22, 6); ctx.stroke();
-  ctx.strokeStyle = '#6a3a18'; ctx.lineWidth = 1.5; for (const y of [P.nestY - 5, P.nestY + 3]) { ctx.beginPath(); ctx.moveTo(P.nestX0 - 12, y); ctx.lineTo(P.nestX1 + 12, y); ctx.stroke(); }
+  ctx.strokeStyle = '#6a3a18'; ctx.lineWidth = 1.5; ctx.beginPath(); for (const y of [P.nestY - 5, P.nestY + 3]) { ctx.moveTo(P.nestX0 - 12, y); ctx.lineTo(P.nestX1 + 12, y); } ctx.stroke();
   // a spyglass glint when someone looks out in fog
   if (runshipLookout(st) && st.c.fogs.some(f => st.ship.d < f.X1 && f.X0 - st.ship.d < 900)) {
     const b = st.body[st.deck];
@@ -1790,7 +1796,7 @@ function runshipChart(st, z, big) {
   // lanes
   for (let l = 0; l < 3; l++) { ctx.fillStyle = l === sh.lane ? 'rgba(80,170,200,0.42)' : 'rgba(80,170,200,0.2)'; ctx.fillRect(x0 + 4, y0 + 6 + l * rowH, w - 8, rowH); }
   ctx.strokeStyle = 'rgba(60,110,140,0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]);
-  for (let l = 1; l < 3; l++) { ctx.beginPath(); ctx.moveTo(x0 + 4, y0 + 6 + l * rowH); ctx.lineTo(x0 + w - 4, y0 + 6 + l * rowH); ctx.stroke(); }
+  ctx.beginPath(); for (let l = 1; l < 3; l++) { ctx.moveTo(x0 + 4, y0 + 6 + l * rowH); ctx.lineTo(x0 + w - 4, y0 + 6 + l * rowH); } ctx.stroke();
   ctx.setLineDash([]);
   const cx = X => x0 + 30 + (X - sh.d) * k, cy = l => y0 + 6 + (l + 0.5) * rowH;
   // fog banks (hidden unless someone is in the crow's nest)
@@ -1930,3 +1936,5 @@ Sfx.extra.runshipLand = function () { [392, 523, 659, 784, 1047].forEach((f, i) 
 Sfx.extra.runshipChain = function () { this.tone(1800 + Math.random() * 400, 0.03, 'square', 0.015); };
 Sfx.extra.runshipAnchor = function () { this.tone(140, 0.5, 'triangle', 0.08, 60); this.tone(1200, 0.4, 'sawtooth', 0.02, 200, 0.05); };
 Sfx.extra.runshipParty = function () { [392, 494, 587, 784, 988, 784, 988, 1175].forEach((f, i) => this.tone(f, 0.14, 'triangle', 0.055, null, i * 0.09)); this.tone(1568, 0.5, 'sine', 0.04, null, 0.75); };
+// a dot added to the current path, so many dots fill in one call
+function runshipDot(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }

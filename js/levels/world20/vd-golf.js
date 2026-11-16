@@ -657,7 +657,7 @@ function vdgDrawBack(st) {
   ctx.stroke();
   ctx.strokeStyle = 'rgba(25,8,18,0.22)'; ctx.lineWidth = 3;
   for (const dy of [30, 62]) { ctx.beginPath(); for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 236 + dy + Math.sin(x / W * Math.PI) * 110 + Math.sin(x * 0.03 + dy) * 5); ctx.stroke(); }
-  ctx.fillStyle = 'rgba(25,8,18,0.25)'; for (let k = 0; k < 26; k++) { const h = hash(k, 67), x = h % W; circle(x, 250 + Math.sin(x / W * Math.PI) * 110 + (h >> 10) % 60, 1.5 + (k % 3)); ctx.fill(); }
+  ctx.fillStyle = 'rgba(25,8,18,0.25)'; ctx.beginPath(); for (let k = 0; k < 26; k++) { const h = hash(k, 67), x = h % W; vdgDot(x, 250 + Math.sin(x / W * Math.PI) * 110 + (h >> 10) % 60, 1.5 + (k % 3)); } ctx.fill();
   ctx.fillStyle = '#5c2e3c';
   ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, 300);
   for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 316 + Math.sin(x / W * Math.PI) * 70 + Math.sin(x * 0.07 + 2) * 5);
@@ -989,3 +989,5 @@ Sfx.extra.vdgBlorp = function () { this.tone(180, 0.22, 'sine', 0.08, 60); this.
 Sfx.extra.vdgPlop = function () { this.tone(150, 0.14, 'sine', 0.035, 70); };
 Sfx.extra.vdgSizzle = function () { this.tone(1200, 0.4, 'sawtooth', 0.018, 200); this.tone(260, 0.35, 'sine', 0.06, 80, 0.03); this.tone(90, 0.3, 'triangle', 0.05, 50, 0.08); };
 Sfx.extra.vdgBoing = function () { this.tone(140, 0.32, 'sine', 0.09, 520); this.tone(700, 0.08, 'square', 0.025, 1100, 0.02); };
+// a dot added to the current path, so many dots fill in one call
+function vdgDot(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }
