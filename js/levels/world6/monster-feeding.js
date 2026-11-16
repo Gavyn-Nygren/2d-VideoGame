@@ -13,7 +13,7 @@ const MONSTER = {
   refDrop: 34,                               // the throw distance is measured at a grounded catcher's rim height (ground - 34)
   gStart: 30, gBite: 22, gGold: 40, gWrong: 3, gBonk: 0, bonkCD: 0.8, wantT: 15, giveIn: 2,
   gAfter: 55, tantrumT: 1.6, riseMul: 0.85, riseMin: 0.6, shockR: 260,
-  gobbleT: 0.2, tossRange: 160, tossCD: 0.25,
+  gobbleT: 0.2, tossRange: 120, tossCD: 0.25,
   feedDX: 24, feedDY: 36, afkT: 10, doneT: 2.2, popT: 1.0, goldEvery: 6,
 };
 const MONSTER_FOODS = ['apple', 'cake', 'fish'];
@@ -351,7 +351,7 @@ function monKey(id) {
 function monTouchHint() { return document.documentElement.classList.contains('has-touch') && Pads.kind === 'touch'; }
 
 MODES.monster = {
-  medals: { bronze: 'Fill up every monster', goals: [{ key: 'stars', gold: 11, silver: 8, more: true, text: n => `${n} of 12 stars or more`, gap: (v, n) => `${n - v} more star${n - v === 1 ? '' : 's'}` }, { key: 'time', gold: 180 }] },
+  medals: { bronze: 'Fill up every monster', goals: [{ key: 'stars', gold: 11, silver: 8, more: true, text: n => `${n} of 12 stars or more`, gap: (v, n) => `${n - v} more star${n - v === 1 ? '' : 's'}` }, { key: 'time', gold: 225 }] },
   medalValues() { const s = G.mst.stats; return s ? { stars: s.stars.reduce((a, b) => a + b, 0) } : {}; },
   rand: Math.random,
   // test hooks for bots (no engine edits)

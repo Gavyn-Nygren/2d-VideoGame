@@ -1268,12 +1268,12 @@ const LEVELS = [
     act: { label: 'throw' },
     // brown earth so the purple monster always stands out; rope = the dot in the "Room N of 4" pill: Munch purple
     theme: { stone: '#6b5a4a', stoneLight: '#7d6a58', stoneEdge: '#4a3c30', rope: '#8f7be8' },
-    tip: 'One throws, one catches in the basket. Feed the monster before it gets grumpy!',
+    tip: 'One throws, one runs out to catch. Food can\'t fly all the way, so carry it to the monster before it gets grumpy!',
     switches: {},
     rooms: [
       {
-        title: 'Snack Time', thrower: 0, need: 8, rise: 3.4, throwRange: [150, 560],
-        tip: 'Pip throws from the kitchen. Bo catches in the basket and feeds Munch!',
+        title: 'Snack Time', thrower: 0, need: 8, rise: 3.4, throwRange: [120, 300],
+        tip: 'Pip throws from the kitchen. Bo runs out to catch it, then carries it over to Munch!',
         signs: [{ x: 330, y: 150, text: 'Hold throw, let go. Watch the X!' },
           { x: 560, y: 330, text: 'Catch it, then walk it into the mouth' }],
         switches: {},
@@ -1299,7 +1299,7 @@ const LEVELS = [
         ],
       },
       {
-        title: 'Picky Eater', thrower: 1, need: 8, rise: 3.5, throwRange: [150, 560],
+        title: 'Picky Eater', thrower: 1, need: 8, rise: 3.5, throwRange: [120, 300],
         bins: ['apple', 'cake', 'fish'], firstWant: 'cake',
         tip: 'Swap! Bo throws. Munch is picky: only feed it the food in its bubble!',
         signs: [{ x: 560, y: 150, text: 'Pick the crate it wants' }],
@@ -1326,7 +1326,7 @@ const LEVELS = [
         ],
       },
       {
-        title: 'Peek-a-Boo', thrower: 0, need: 9, rise: 4.0, throwRange: [150, 600],
+        title: 'Peek-a-Boo', thrower: 0, need: 9, rise: 4.0, throwRange: [120, 265],
         burrowOrder: [2, 1, 0], gold: true,
         tip: 'Swap! Pip throws. After every meal Munch pops up from another hole!',
         signs: [{ x: 420, y: 100, text: 'Gold cupcake = 2 bites!' }],
@@ -1353,7 +1353,7 @@ const LEVELS = [
         ],
       },
       {
-        title: 'Twin Trouble', thrower: 1, need: [5, 5], rise: 2.8, throwRange: [110, 250], gold: true,
+        title: 'Twin Trouble', thrower: 1, need: [5, 5], rise: 2.8, throwRange: [120, 150], gold: true,
         names: ['Nom', 'Nibble'],
         tip: 'Swap! Bo throws. Twin monsters: keep Nom AND Nibble happy!',
         signs: [{ x: 480, y: 112, text: 'Two mouths to feed!' }],
