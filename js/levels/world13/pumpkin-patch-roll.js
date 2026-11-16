@@ -926,6 +926,12 @@ function pumpkinDrawFar(st) {
   ctx.beginPath(); ctx.moveTo(0, H);
   for (let sx = 0; sx <= W; sx += 16) ctx.lineTo(sx, yAt(sx));
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(230,170,200,0.22)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let sx = 0; sx <= W; sx += 16) sx ? ctx.lineTo(sx, yAt(sx) + 1) : ctx.moveTo(sx, yAt(sx) + 1);
+  ctx.stroke();
+  // fields in rows on the far hills
+  ctx.strokeStyle = 'rgba(40,24,64,0.28)'; ctx.lineWidth = 1.5;
+  for (let k = 1; k <= 3; k++) { ctx.beginPath(); for (let sx = 0; sx <= W; sx += 16) { const y = yAt(sx) + k * 14 + Math.sin((sx + off) * 0.01 + k) * 3; sx ? ctx.lineTo(sx, y) : ctx.moveTo(sx, y); } ctx.stroke(); }
   const RW = 1700;
   for (const [bx0, kind] of [[260, 'barn'], [900, 'house'], [1350, 'mill']]) for (const rep of [-1, 0, 1, 2]) {
     const sx = bx0 - (off % RW) + rep * RW;
@@ -934,6 +940,8 @@ function pumpkinDrawFar(st) {
     ctx.fillStyle = '#3f2c5a';
     if (kind === 'barn') {
       ctx.beginPath(); ctx.moveTo(sx - 34, gy); ctx.lineTo(sx - 34, gy - 34); ctx.lineTo(sx - 20, gy - 52); ctx.lineTo(sx + 20, gy - 52); ctx.lineTo(sx + 34, gy - 34); ctx.lineTo(sx + 34, gy); ctx.fill();
+      ctx.fillStyle = 'rgba(230,170,200,0.2)'; ctx.fillRect(sx - 34, gy - 34, 3, 34);
+      ctx.strokeStyle = '#4f3970'; ctx.lineWidth = 1.5; ctx.strokeRect(sx - 12, gy - 22, 24, 22); ctx.beginPath(); ctx.moveTo(sx - 12, gy - 22); ctx.lineTo(sx + 12, gy); ctx.moveTo(sx + 12, gy - 22); ctx.lineTo(sx - 12, gy); ctx.stroke();
       ctx.fillStyle = '#ffcf6e'; ctx.fillRect(sx - 6, gy - 40, 12, 9);
       ctx.fillStyle = 'rgba(255,207,110,0.25)'; circle(sx, gy - 36, 14); ctx.fill();
     } else if (kind === 'house') {
@@ -956,6 +964,9 @@ function pumpkinDrawMid(st) {
   ctx.beginPath(); ctx.moveTo(0, H);
   for (let sx = 0; sx <= W; sx += 16) ctx.lineTo(sx, yAt(sx));
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(200,150,220,0.2)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let sx = 0; sx <= W; sx += 16) sx ? ctx.lineTo(sx, yAt(sx) + 1) : ctx.moveTo(sx, yAt(sx) + 1);
+  ctx.stroke();
   const TW = 120;
   for (let k = Math.floor(off / TW) - 1; k < Math.floor(off / TW) + W / TW + 2; k++) {
     const h = hash(k, 31), sx = k * TW - off + (h % 50), gy = yAt(sx) + 4;
@@ -1008,11 +1019,24 @@ function pumpkinDrawGround(st) {
   ctx.beginPath(); ctx.moveTo(xa - cam.x, bot);
   for (const x of pts) ctx.lineTo(x - cam.x, pumpkinGY(st, x) + basin(x) - cam.y);
   ctx.lineTo(xb - cam.x, bot); ctx.closePath(); ctx.fill();
-  // soil layers and pebbles
-  ctx.strokeStyle = 'rgba(30,18,20,0.35)'; ctx.lineWidth = 8;
-  ctx.beginPath(); pts.forEach((x, i) => { const y = pumpkinGY(st, x) + basin(x) + 44 - cam.y; if (i) ctx.lineTo(x - cam.x, y); else ctx.moveTo(x - cam.x, y); }); ctx.stroke();
-  ctx.fillStyle = 'rgba(120,80,60,0.5)';
-  for (let x = Math.floor(xa / 37) * 37; x < xb; x += 37) { const h = hash(x, 7); if (basin(x) > 0) continue; circle(x - cam.x + (h % 20), pumpkinGY(st, x) + 20 + (h % 60) - cam.y, 2 + (h % 3)); ctx.fill(); }
+  // soil layers (darker the deeper), roots and pebbles
+  const band = (dy, lw, col) => { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); pts.forEach((x, i) => { const y = pumpkinGY(st, x) + basin(x) + dy - cam.y; if (i) ctx.lineTo(x - cam.x, y); else ctx.moveTo(x - cam.x, y); }); ctx.stroke(); };
+  const deep = (dy, lw, col) => { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); pts.forEach((x, i) => { const y = pumpkinGY(st, x) + dy - cam.y; if (i) ctx.lineTo(x - cam.x, y); else ctx.moveTo(x - cam.x, y); }); ctx.stroke(); };
+  deep(190, 160, 'rgba(24,12,22,0.35)'); deep(100, 14, 'rgba(24,12,22,0.18)');
+  band(44, 8, 'rgba(30,18,20,0.35)'); band(14, 6, 'rgba(110,70,55,0.22)');
+  ctx.strokeStyle = 'rgba(130,90,70,0.45)'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+  for (let x = Math.floor(xa / 53) * 53; x < xb; x += 53) {
+    const h = hash(x, 13); if (basin(x) > 0 || h % 3) continue;
+    const sx = x - cam.x, y = pumpkinGY(st, x) + 10 - cam.y;
+    ctx.beginPath(); ctx.moveTo(sx, y); ctx.quadraticCurveTo(sx - 6, y + 10, sx + 2, y + 20); ctx.moveTo(sx - 2, y + 9); ctx.lineTo(sx - 9, y + 14); ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+  for (let x = Math.floor(xa / 37) * 37; x < xb; x += 37) {
+    const h = hash(x, 7); if (basin(x) > 0) continue;
+    const px = x - cam.x + (h % 20), py = pumpkinGY(st, x) + 20 + (h % 60) - cam.y, r = 2 + (h % 3);
+    ctx.fillStyle = 'rgba(120,80,60,0.5)'; circle(px, py, r); ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,190,0.18)'; circle(px - r * 0.3, py - r * 0.35, r * 0.45); ctx.fill();
+  }
   // the grass (not over the water)
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   const grass = (lw, col, dy) => {
@@ -1025,7 +1049,7 @@ function pumpkinDrawGround(st) {
     }
     ctx.stroke();
   };
-  grass(12, '#3f7a3c', 5); grass(6, '#6fae55', 1);
+  grass(12, '#3f7a3c', 5); grass(6, '#6fae55', 1); grass(2, '#a3d97a', -1);
   ctx.lineCap = 'butt';
   // grass tufts
   ctx.strokeStyle = '#6fae55'; ctx.lineWidth = 2;
@@ -1045,6 +1069,8 @@ function pumpkinDrawBridge(st, b) {
   for (const x of [b.x0, b.x1]) {
     const y = pumpkinGY(st, x) - cam.y;
     ctx.fillStyle = gold ? '#c9952a' : '#6b4630'; ctx.fillRect(x - cam.x - 4, y - 30, 8, 64);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x - cam.x - 4, y - 30, 2, 64);
+    ctx.fillStyle = 'rgba(20,10,20,0.3)'; ctx.fillRect(x - cam.x + 2, y - 30, 2, 64);
     ctx.fillStyle = gold ? C.gold : '#8a5c3a'; circle(x - cam.x, y - 31, 5); ctx.fill();
   }
   ctx.strokeStyle = gold ? C.gold : '#d7b07a'; ctx.lineWidth = 2.5;
@@ -1114,8 +1140,11 @@ function pumpkinDrawBales(st) {
     if (sx < -60 || sx > W + 60) return;
     const y = pumpkinGY(st, b.x) - cam.y + 3, a = Math.atan(pumpkinGSlope(st, b.x));
     ctx.save(); ctx.translate(sx, y); ctx.rotate(a);
+    ctx.fillStyle = 'rgba(20,10,30,0.25)'; ctx.beginPath(); ctx.ellipse(4, 0, 34, 5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#d9a63a'; rr(-26, -36, 52, 36, 7); ctx.fill();
+    ctx.fillStyle = '#b9862a'; rr(8, -36, 18, 36, 7); ctx.fill();
     ctx.fillStyle = '#e8bd55'; rr(-26, -36, 52, 12, 7); ctx.fill();
+    ctx.strokeStyle = '#8a5a1a'; ctx.lineWidth = 1.8; rr(-26, -36, 52, 36, 7); ctx.stroke();
     ctx.strokeStyle = '#a8761e'; ctx.lineWidth = 1.5;
     for (let k = -18; k <= 18; k += 6) { ctx.beginPath(); ctx.moveTo(k, -33); ctx.lineTo(k + 3, -4); ctx.stroke(); }
     ctx.strokeStyle = '#8a5a1a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-14, -36); ctx.lineTo(-14, 0); ctx.moveTo(14, -36); ctx.lineTo(14, 0); ctx.stroke();
@@ -1140,7 +1169,9 @@ function pumpkinDrawRocks(st) {
     const sx = r.x - cam.x;
     if (sx < -30 || sx > W + 30) continue;
     const y = pumpkinGY(st, r.x) - cam.y + 2;
-    ctx.fillStyle = '#7a7390'; ctx.beginPath(); ctx.ellipse(sx, y - 6, 15, 10, 0, Math.PI, 0); ctx.lineTo(sx + 15, y); ctx.lineTo(sx - 15, y); ctx.fill();
+    ctx.fillStyle = 'rgba(20,10,30,0.25)'; ctx.beginPath(); ctx.ellipse(sx + 3, y, 19, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7a7390'; ctx.strokeStyle = '#4e4866'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.ellipse(sx, y - 6, 15, 10, 0, Math.PI, 0); ctx.lineTo(sx + 15, y); ctx.lineTo(sx - 15, y); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#655e7e'; ctx.beginPath(); ctx.ellipse(sx + 7, y - 4, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#958eab'; ctx.beginPath(); ctx.ellipse(sx - 4, y - 10, 7, 4, -0.3, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#5f9a4c'; ctx.beginPath(); ctx.ellipse(sx + 7, y - 13, 4, 2.4, 0.4, 0, Math.PI * 2); ctx.fill();
   }
@@ -1555,14 +1586,19 @@ function pumpkinHud(st) {
       for (const [a, b, , lab] of zones) if (lab) text(lab, (X(a) + X(b)) / 2, by + bh / 2 + 0.5, 10 * z, '#3a2a40', 'center', 'body');
     } else {
       const chips = [['right', 'PUSH', nd.pusher === 'push' && (nd.onUp || Math.abs(pk.v) < 40)], ['jump', 'LEAPFROG', nd.pusher === 'front' || nd.pusher === 'behind'], ['left', 'HOLD', nd.pusher === 'hold']];
-      const cw = (pw - 24 * z - 16 * z) / 3;
+      // each chip as wide as its words need (LEAPFROG is the long one)
+      const kw = chips.map(([k, lab]) => { const kk = cpuSeat ? '' : pumpkinKey(id, k); ctx.font = '700 ' + (lab.length > 6 ? 11 : 12.5) * z + 'px "Atkinson Hyperlegible", system-ui, sans-serif'; return ctx.measureText((kk ? kk + ' ' : '') + lab).width + 16 * z; });
+      const room = pw - 24 * z - 16 * z, sum = kw.reduce((a, b) => a + b, 0), cws = kw.map(v => v + (room - sum) / 3);
       chips.forEach(([k, lab, on], i) => {
-        const cx = px + 12 * z + i * (cw + 8 * z), cy = py + 26 * z, chh = 24 * z;
+        const cw = cws[i], cx = px + 12 * z + cws.slice(0, i).reduce((a, b) => a + b, 0) + i * 8 * z, cy = py + 26 * z, chh = 24 * z;
         const doing = (k === 'right' && st.pu.act > 0) || (k === 'left' && st.pu.act < 0) || (k === 'jump' && st.pu.frog);
         ctx.fillStyle = doing ? '#8fe3b0' : on ? (Math.sin(t * 12) > -0.3 ? C.gold : 'rgba(255,197,61,0.55)') : 'rgba(255,255,255,0.12)';
         rr(cx, cy, cw, chh, chh / 2); ctx.fill();
-        const kk = cpuSeat ? '' : pumpkinKey(id, k);
-        text((kk ? kk + ' ' : '') + lab, cx + cw / 2, cy + chh / 2 + 0.5, (lab.length > 6 ? 11 : 12.5) * z, on || doing ? C.ink : '#d9d3ef', 'center', 'body');
+        const kk = cpuSeat ? '' : pumpkinKey(id, k), word = (kk ? kk + ' ' : '') + lab;
+        let fs = (lab.length > 6 ? 11 : 12.5) * z;
+        ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+        while (fs > 8 && ctx.measureText(word).width > cw - 14 * z) { fs -= 0.5; ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif'; }
+        text(word, cx + cw / 2, cy + chh / 2 + 0.5, fs, on || doing ? C.ink : '#d9d3ef', 'center', 'body');
       });
     }
   }

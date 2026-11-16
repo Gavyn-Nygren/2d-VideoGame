@@ -1289,6 +1289,18 @@ function bonehuntDrawBack(st, t) {
     const x = -40 + ph * (W + 80), y = 70 + i * 55 + Math.sin(ph * 14 + i) * 18;
     bonehuntBat(x, y, 0.8 + (i % 2) * 0.25, t * 10 + i);
   }
+  // a hazy farthest ridge with a row of tiny distant headstones and bare trees
+  ctx.fillStyle = '#56407e';
+  ctx.beginPath(); ctx.moveTo(0, H);
+  for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 322 + Math.sin(x * 0.004 + 2.2) * 22 + Math.sin(x * 0.013 + 0.4) * 8);
+  ctx.lineTo(W, H); ctx.fill();
+  ctx.fillStyle = '#4b3672';
+  for (let i = 0; i < 14; i++) {
+    const h = hash(i, 77), x = 30 + i * 68 + (h % 30), y = 322 + Math.sin(x * 0.004 + 2.2) * 22 + Math.sin(x * 0.013 + 0.4) * 8 + 4;
+    if (h % 3 === 0) { ctx.fillRect(x - 1, y - 16, 2, 16); ctx.fillRect(x - 5, y - 12, 10, 2); }
+    else if (h % 3 === 1) { ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.lineTo(x - 4, y - 7); ctx.arc(x, y - 7, 4, Math.PI, 0); ctx.lineTo(x + 4, y); ctx.fill(); }
+    else { ctx.strokeStyle = '#4b3672'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 1, y - 24); ctx.moveTo(x + 1, y - 14); ctx.lineTo(x + 8, y - 22); ctx.moveTo(x, y - 10); ctx.lineTo(x - 7, y - 17); ctx.stroke(); }
+  }
   // far hills with a little chapel, then the near hill
   ctx.fillStyle = '#3d2a62';
   ctx.beginPath(); ctx.moveTo(0, H);
@@ -1299,11 +1311,25 @@ function bonehuntDrawBack(st, t) {
     ctx.fillRect(cx - 26, cy - 34, 52, 40); ctx.beginPath(); ctx.moveTo(cx - 32, cy - 34); ctx.lineTo(cx, cy - 58); ctx.lineTo(cx + 32, cy - 34); ctx.fill();
     ctx.fillRect(cx + 14, cy - 82, 14, 50); ctx.beginPath(); ctx.moveTo(cx + 10, cy - 82); ctx.lineTo(cx + 21, cy - 100); ctx.lineTo(cx + 32, cy - 82); ctx.fill();
     ctx.fillStyle = 'rgba(255,190,110,0.75)'; ctx.fillRect(cx - 8, cy - 22, 7, 10); ctx.fillRect(cx + 4, cy - 22, 7, 10); ctx.fillRect(cx + 18, cy - 70, 6, 8);
+    // moonlit roof edges and a soft window glow
+    ctx.strokeStyle = 'rgba(255,200,150,0.28)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx - 32, cy - 34); ctx.lineTo(cx, cy - 58); ctx.moveTo(cx + 10, cy - 82); ctx.lineTo(cx + 21, cy - 100); ctx.stroke();
   }
   ctx.fillStyle = '#2f2150';
   ctx.beginPath(); ctx.moveTo(0, H);
   for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 404 + Math.sin(x * 0.011 + 3.4) * 16 + Math.sin(x * 0.031 + 1) * 5);
   ctx.lineTo(W, H); ctx.fill();
+  // moonlight on the near hill's crest
+  ctx.strokeStyle = 'rgba(190,150,230,0.22)'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = 0; x <= W; x += 16) { const y = 405 + Math.sin(x * 0.011 + 3.4) * 16 + Math.sin(x * 0.031 + 1) * 5; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.stroke();
+  // a low mist that drifts along the ground
+  for (let i = 0; i < 5; i++) {
+    const sp = reduceMotion ? 0 : 6 + i * 2, x = ((i * 263 + t * sp) % (W + 360)) - 180, y = 440 + (i % 3) * 14;
+    ctx.fillStyle = 'rgba(200,180,240,0.07)';
+    ctx.beginPath(); ctx.ellipse(x, y, 150, 14, 0, 0, Math.PI * 2); ctx.ellipse(x + 70, y - 6, 80, 10, 0, 0, Math.PI * 2); ctx.fill();
+  }
   // the room's decor, back to front
   for (const d of st.cfg.decor || []) {
     if (d.k === 'fence') bonehuntFence(d.x0, d.x1, t);
@@ -1340,6 +1366,7 @@ function bonehuntFence(x0, x1, t) {
     ctx.save(); ctx.translate(x, y + 26); ctx.rotate(lean);
     ctx.fillRect(-2, -h - 26, 4, h);
     ctx.beginPath(); ctx.moveTo(-4, -h - 26); ctx.lineTo(0, -h - 34); ctx.lineTo(4, -h - 26); ctx.fill();
+    ctx.fillStyle = 'rgba(170,140,220,0.3)'; ctx.fillRect(-2, -h - 26, 1.2, h); ctx.fillStyle = '#25193d';
     ctx.restore();
   }
 }
@@ -1356,14 +1383,32 @@ function bonehuntTree(x, s) {
 }
 function bonehuntGrave(x, text, tilt) {
   const y = 470;
+  ctx.fillStyle = 'rgba(16,10,32,0.3)'; ctx.beginPath(); ctx.ellipse(x + 8, y + 6, 50, 7, 0, 0, Math.PI * 2); ctx.fill();
   ctx.save(); ctx.translate(x, y); ctx.rotate(tilt);
-  ctx.fillStyle = '#6f6790'; ctx.strokeStyle = '#3f365e'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(-36, 6); ctx.lineTo(-36, -50); ctx.arc(0, -50, 36, Math.PI, 0); ctx.lineTo(36, 6); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.moveTo(-30, 0); ctx.lineTo(-30, -50); ctx.arc(0, -50, 30, Math.PI, Math.PI * 1.4); ctx.lineTo(-22, 0); ctx.fill();
+  const stone = () => { ctx.beginPath(); ctx.moveTo(-36, 6); ctx.lineTo(-36, -50); ctx.arc(0, -50, 36, Math.PI, 0); ctx.lineTo(36, 6); ctx.closePath(); };
+  ctx.fillStyle = '#6f6790'; stone(); ctx.fill();
+  ctx.save(); stone(); ctx.clip();
+  // the shaded side, a bevelled rim, weathering specks, a hairline crack and a lick of moss
+  ctx.fillStyle = '#5c547c'; ctx.fillRect(18, -90, 20, 100);
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-33, 6); ctx.lineTo(-33, -50); ctx.arc(0, -50, 33, Math.PI, Math.PI * 1.55); ctx.stroke();
+  const hh = hash(Math.round(x), 5);
+  ctx.fillStyle = 'rgba(40,30,70,0.35)';
+  for (let i = 0; i < 7; i++) { const q = hash(hh, i); circle(-28 + (q % 56), -76 + ((q >> 8) % 76), 0.8 + (q >> 16) % 2 * 0.6); ctx.fill(); }
+  ctx.strokeStyle = 'rgba(40,30,70,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(22, -78); ctx.lineTo(16, -66); ctx.lineTo(20, -58); ctx.lineTo(14, -48); ctx.stroke();
+  ctx.fillStyle = 'rgba(95,154,82,0.55)'; ctx.beginPath(); ctx.ellipse(-30, 2, 12, 9, 0, 0, Math.PI * 2); ctx.ellipse(-24, -6, 5, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = '#3f365e'; ctx.lineWidth = 2; stone(); ctx.stroke();
+  // an inset panel for the words
+  ctx.strokeStyle = 'rgba(42,33,69,0.35)'; ctx.lineWidth = 1.2; rr(-30, -73, 60, 36, 7); ctx.stroke();
   ctx.fillStyle = '#5f9a52'; ctx.beginPath(); ctx.ellipse(0, 6, 42, 6, 0, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = '#2a2145'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = '700 11px "Atkinson Hyperlegible", system-ui, sans-serif';
-  text.forEach((ln, k) => ctx.fillText(ln, 0, -58 + k * 14, 64));
+  ctx.fillStyle = '#76b066'; for (let i = 0; i < 9; i++) { const gx = -38 + i * 9.5; ctx.beginPath(); ctx.moveTo(gx, 4); ctx.lineTo(gx + 2.5, -3 - (i % 3) * 1.5); ctx.lineTo(gx + 5, 4); ctx.fill(); }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  let fs = 11; ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+  while (fs > 8 && Math.max(...text.map(ln => ctx.measureText(ln).width)) > 54) { fs -= 0.5; ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif'; }
+  text.forEach((ln, k) => {   // carved: a pale lower lip under dark letters
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillText(ln, 0, -62 + k * 14 + 1, 54);
+    ctx.fillStyle = '#2a2145'; ctx.fillText(ln, 0, -62 + k * 14, 54);
+  });
   ctx.restore();
 }
 // the seesaw: a weathered plank on a little tipped-over tombstone, a stone ball weighting the long (left) end
@@ -1474,7 +1519,10 @@ function bonehuntCell(st, ch, c, r, t) {
     const off = r % 2 ? 0 : 15;
     ctx.beginPath(); ctx.moveTo(x, y + 15); ctx.lineTo(x + T, y + 15);
     ctx.moveTo(x + off, y); ctx.lineTo(x + off, y + 15); ctx.moveTo(x + (off + 15) % 30, y + 15); ctx.lineTo(x + (off + 15) % 30, y + T); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(x, y + 1, T, 2); ctx.fillRect(x, y + 16, T, 2);
+    ctx.fillStyle = 'rgba(20,12,40,0.18)'; ctx.fillRect(x, y + 12, T, 3); ctx.fillRect(x, y + T - 3, T, 3);
     if (h % 5 === 0) { ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(x + 3, y + 3, 10, 9); }
+    if (h % 7 === 1) { ctx.fillStyle = 'rgba(95,154,82,0.4)'; ctx.beginPath(); ctx.ellipse(x + (h >> 3) % 24 + 3, y + 15, 5, 2.5, 0, 0, Math.PI * 2); ctx.fill(); }
     if (top) { ctx.fillStyle = '#7f78a0'; ctx.fillRect(x, y, T, 4); ctx.fillStyle = '#6ea05e'; if (h % 3) { ctx.beginPath(); ctx.ellipse(x + 8 + (h % 12), y + 1, 7, 3, 0, Math.PI, 0); ctx.fill(); } }
     if (!solid(c - 1, r)) { ctx.fillStyle = '#3d3658'; ctx.fillRect(x, y, 2, T); }
     if (!solid(c + 1, r)) { ctx.fillStyle = '#3d3658'; ctx.fillRect(x + T - 2, y, 2, T); }
@@ -1489,9 +1537,16 @@ function bonehuntCell(st, ch, c, r, t) {
     return;
   }
   // earth with a mossy top
-  ctx.fillStyle = '#3b2c47'; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
-  if (h % 3 === 0) { ctx.fillStyle = '#4a3958'; ctx.beginPath(); ctx.ellipse(x + 6 + (h % 16), y + 12 + ((h >> 4) % 12), 3.5, 2.5, 0, 0, Math.PI * 2); ctx.fill(); }
+  let depth = 0; while (depth < 4 && solid(c, r - depth - 1)) depth++;
+  ctx.fillStyle = ['#3b2c47', '#36283f', '#30233a', '#2b1f35', '#271c31'][depth]; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
+  if ((r + (c >> 2)) % 2 === 0) { ctx.strokeStyle = 'rgba(20,12,36,0.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 20 + Math.sin(c * 1.3) * 3); ctx.lineTo(x + T, y + 20 + Math.sin(c * 1.3 + 1.3) * 3); ctx.stroke(); }
+  if (h % 3 === 0) {
+    const px = x + 6 + (h % 16), py = y + 12 + ((h >> 4) % 12);
+    ctx.fillStyle = '#4a3958'; ctx.beginPath(); ctx.ellipse(px, py, 3.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.ellipse(px - 0.8, py - 1, 2, 1, 0, 0, Math.PI * 2); ctx.fill();
+  }
   if (h % 11 === 0 && !top) { ctx.fillStyle = 'rgba(246,240,222,0.35)'; ctx.fillRect(x + 8, y + 14, 9, 2.5); }
+  if (top && h % 2) { ctx.strokeStyle = 'rgba(120,90,70,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 10 + h % 10, y + 8); ctx.quadraticCurveTo(x + 6 + h % 10, y + 14, x + 12 + h % 10, y + 19); ctx.stroke(); }
   if (top) {
     ctx.fillStyle = '#41734a'; ctx.fillRect(x, y, T, 8);
     ctx.fillStyle = '#5f9a52'; ctx.fillRect(x, y, T, 5);
