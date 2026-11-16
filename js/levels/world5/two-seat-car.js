@@ -52,6 +52,26 @@ function carOnPad(id) { return Pads.kind === 'pad' && !!padFor(padSlots(), id); 
 // button). The core maps A and B both to jump, so this reads the pad's own state (Pads.prev = this frame's readPad).
 function carPadB(id) { return carOnPad(id) && Pads.family !== 'nintendo'; }
 function carPadState(id) { const sl = padFor(padSlots(), id); return (sl && Pads.prev[sl.ix]) || null; }
+// the steerer's stick angle on a controller (null: not on a pad, stick at rest, or a direction still locked from a
+// seat change). The 8-way left/right/up/down flags need a 35% push sideways but 60% up or down (made for platformers),
+// so a gentle push up or down did nothing and most diagonals read as plain left or right: the car would not turn
+// some ways. The stick's own angle points the nose exactly where it is pushed.
+function carStickAngle(id, lock) {
+  if (!carOnPad(id) || (lock && (lock.left || lock.right || lock.up || lock.down))) return null;
+  const s = carPadState(id);
+  if (!s || !(Math.abs(s.ax) + Math.abs(s.ay) > 0)) return null;
+  return Math.atan2(s.ay, s.ax);
+}
+// a seat change locks the buttons a player is holding (the old pedal player's held gas would otherwise steer "up",
+// the old steerer's held arrow would press gas); each one works again once it has been let go. Every other button
+// works at once, so a player who keeps holding one button can still use the rest.
+const CAR_LOCK_KEYS = ['left', 'right', 'up', 'down', 'jump'];
+function carMasked(inp, lock) {
+  if (!lock) return inp;
+  const o = Object.assign({}, inp);
+  for (const b in lock) o[b] = false;
+  return o;
+}
 function carHow(id) { return actKey(id); } // (each player's own device: js/controls.js)
 // the key hint for a seat: 'steer' or 'pedals'
 function carKeys(id, role) {
@@ -159,10 +179,13 @@ function carStep(st, dt) {
   st.t += dt;
   for (const p of ps) p.pendingJump = false;
   carTimers(st, dt);
-  // a seat change locks a player's controls until they have let go of every move button once
+  // a seat change locks the buttons each player is holding until they let go of them (true = lock what is held now)
   for (let k = 0; k < 2; k++) if (st.lock[k]) {
     const i = ps[k].input;
-    if (!(i.left || i.right || i.up || i.jump || i.down)) { st.lock[k] = false; st.lockT[k] = 0; }
+    if (st.lock[k] === true) { const held = {}; for (const b of CAR_LOCK_KEYS) if (i[b]) held[b] = true; st.lock[k] = held; }
+    const L = st.lock[k];
+    for (const b in L) if (!i[b]) delete L[b];
+    if (!Object.keys(L).length) { st.lock[k] = false; st.lockT[k] = 0; }
     else if (live) st.lockT[k] += dt;
   }
   // honk (both players, any time after the room card)
@@ -178,9 +201,9 @@ function carStep(st, dt) {
     return;
   }
   const c = st.car, sk = st.steer, pk = 1 - sk;
-  const I = k => (st.lock[k] ? NO_INPUT : ps[k].input);
+  const I = k => carMasked(ps[k].input, st.lock[k]);
   const si = I(sk), pi = I(pk);
-  const steer = { l: !!si.left, r: !!si.right, u: !!(si.up || (si.jump && !carOnPad(sk))), d: !!si.down };
+  const steer = { l: !!si.left, r: !!si.right, u: !!(si.up || (si.jump && !carOnPad(sk))), d: !!si.down, ang: carStickAngle(sk, st.lock[sk]) };
   const pb = pi.jump && carPadB(pk) ? carPadState(pk) : null; // B held on a pad = brake, not gas (A + B = brake only)
   const gas = !!(pi.up || (pi.jump && !(pb && pb.back && !pb.ok))), brake = !!(pi.down || (pb && pb.back));
   st.gas = gas; st.brake = brake; st.steerIn = steer;
@@ -248,8 +271,8 @@ function carDrive(st, dt, steer, gas, brake) {
   let wheelT = 0; c.w = 0;
   if (CAR.steerMode === 'wheel') {
     if (sx) { c.a = carWrap(c.a + sx * w * dt); c.w = sx * w; wheelT = sx * 0.5; }
-  } else if (sx || sy) {
-    let d = carWrap(Math.atan2(sy, sx) - c.a);
+  } else if (sx || sy || steer.ang != null) {
+    let d = carWrap((steer.ang != null ? steer.ang : Math.atan2(sy, sx)) - c.a);
     if (Math.abs(d) > Math.PI - 0.01) d = c.lastTurn * Math.PI;
     const da = clamp(d, -w * dt, w * dt);
     c.a = carWrap(c.a + da); c.w = da / dt;
@@ -689,7 +712,7 @@ function carWaitReason(st) {
 function carCoach(st, dt, steer, gas, brake) {
   const c = st.car, sk = st.steer, pk = 1 - sk, raw = G.players[pk].input;
   st.pedalIdle = gas || brake ? 0 : st.pedalIdle + dt;
-  if (steer.l || steer.r || steer.u || steer.d) { st.steerIdle = 0; st.steerBump = false; } else st.steerIdle += dt;
+  if (steer.l || steer.r || steer.u || steer.d || steer.ang != null) { st.steerIdle = 0; st.steerBump = false; } else st.steerIdle += dt;
   const wrong = !st.lock[pk] && (raw.left || raw.right) && !gas && !brake;
   st.wrongT = wrong ? st.wrongT + dt : 0;
   if (st.wrongT >= 0.7) st.wrongShow = 2.5;
