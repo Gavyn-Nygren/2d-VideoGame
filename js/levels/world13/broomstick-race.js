@@ -658,6 +658,7 @@ function broomDrawSky(st) {
     const k = Math.floor(off2 / RW) + i, x = k * RW - off2, h = 50 + broomHash(k, 3) * 50, w = 70 + broomHash(k, 4) * 40;
     ctx.fillStyle = '#2f2050'; ctx.fillRect(x, 470 - h, w, h + 40);
     ctx.beginPath(); ctx.moveTo(x - 6, 472 - h); ctx.lineTo(x + w / 2, 440 - h - broomHash(k, 5) * 20); ctx.lineTo(x + w + 6, 472 - h); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,190,150,0.16)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 6, 472 - h); ctx.lineTo(x + w / 2, 440 - h - broomHash(k, 5) * 20); ctx.stroke();
     ctx.fillStyle = 'rgba(255,215,122,0.55)';
     for (let j = 0; j < 3; j++) if (broomHash(k, j + 9) > 0.45) ctx.fillRect(x + 10 + j * (w - 26) / 2, 486 - h, 6, 8);
   }
@@ -666,13 +667,22 @@ function broomDrawHouse(h) {
   const K = BROOM_COLS, x = h.x, w = h.w, y0 = h.wallTop, base = BROOM.street;
   // walls
   ctx.fillStyle = K.wall[h.col]; ctx.fillRect(x, y0, w, base - y0 + 40);
+  // clapboard siding, a stone footing and the soft shadow under the eaves
+  ctx.fillStyle = 'rgba(20,10,40,0.16)'; for (let yy = y0 + 9; yy < base; yy += 9) ctx.fillRect(x, yy, w, 1.4);
+  ctx.fillStyle = 'rgba(255,255,255,0.04)'; for (let yy = y0 + 10.4; yy < base; yy += 9) ctx.fillRect(x, yy, w, 1);
+  ctx.fillStyle = 'rgba(20,10,40,0.3)'; ctx.fillRect(x, y0, w, 6);
+  ctx.fillStyle = '#3a2a4a'; ctx.fillRect(x - 2, base - 8, w + 4, 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (let bx = x + (h.seed % 9); bx < x + w - 6; bx += 16) ctx.fillRect(bx, base - 7, 10, 2);
   ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(x, y0, 6, base - y0);
   ctx.fillStyle = 'rgba(20,10,40,0.25)'; ctx.fillRect(x + w - 8, y0, 8, base - y0);
   // windows (lit, with a cross frame) and a door
   const nw = Math.max(1, Math.floor((w - 30) / 44));
   for (let i = 0; i < nw; i++) {
     const wx = x + 18 + i * (w - 36) / Math.max(1, nw) + ((w - 36) / Math.max(1, nw) - 20) / 2, wy = y0 + 14, lit = broomHash(h.seed, i) > 0.25;
+    ctx.fillStyle = 'rgba(20,10,40,0.45)'; rr(wx - 3, wy - 3, 26, 28, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(255,230,200,0.22)'; ctx.fillRect(wx - 4, wy + 23, 28, 3);
     ctx.fillStyle = lit ? K.win : K.winDk; rr(wx, wy, 20, 22, 3); ctx.fill();
+    if (lit) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(wx + 2.5, wy + 2.5, 5, 6); }
     if (lit) { ctx.fillStyle = 'rgba(255,215,122,0.18)'; circle(wx + 10, wy + 11, 20); ctx.fill(); }
     ctx.strokeStyle = 'rgba(30,20,50,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(wx + 10, wy); ctx.lineTo(wx + 10, wy + 22); ctx.moveTo(wx, wy + 11); ctx.lineTo(wx + 20, wy + 11); ctx.stroke();
     if (lit && broomHash(h.seed, i + 5) > 0.8) { // a little ghost peeking out of a window
@@ -680,12 +690,15 @@ function broomDrawHouse(h) {
       ctx.fillStyle = C.ink; circle(wx + 4.5, wy + 14, 1); ctx.fill(); circle(wx + 7.5, wy + 14, 1); ctx.fill();
     }
   }
-  if (base - y0 > 60) { ctx.fillStyle = '#2a1c30'; rr(x + w * 0.5 - 9, base - 30, 18, 30, 7); ctx.fill(); ctx.fillStyle = C.gold; circle(x + w * 0.5 + 4, base - 15, 1.6); ctx.fill(); }
+  if (base - y0 > 60) { ctx.fillStyle = 'rgba(20,10,40,0.4)'; rr(x + w * 0.5 - 12, base - 33, 24, 33, 9); ctx.fill(); ctx.fillStyle = '#2a1c30'; rr(x + w * 0.5 - 9, base - 30, 18, 30, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + w * 0.5, base - 28); ctx.lineTo(x + w * 0.5, base); ctx.stroke(); ctx.fillStyle = C.gold; circle(x + w * 0.5 + 4, base - 15, 1.6); ctx.fill(); }
   // roof
   ctx.fillStyle = K.roof[h.roofCol];
   if (h.flat) { ctx.fillRect(x - 6, y0 - 8, w + 12, 10); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(x - 6, y0 - 8, w + 12, 3); }
   else {
     ctx.beginPath(); ctx.moveTo(x - 10, y0 + 2); ctx.lineTo(x + w / 2, h.peak); ctx.lineTo(x + w + 10, y0 + 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(20,10,40,0.22)'; ctx.beginPath(); ctx.moveTo(x + w / 2, h.peak); ctx.lineTo(x + w + 10, y0 + 2); ctx.lineTo(x + w / 2, y0 + 2); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(20,10,40,0.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 10, y0 + 2); ctx.lineTo(x + w + 10, y0 + 2); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1.5;
     for (let k = 1; k < 4; k++) { const yy = h.peak + (y0 - h.peak) * k / 4, hw = (w / 2 + 10) * k / 4; ctx.beginPath(); ctx.moveTo(x + w / 2 - hw, yy); ctx.lineTo(x + w / 2 + hw, yy); ctx.stroke(); }
     ctx.strokeStyle = 'rgba(255,200,140,0.25)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 10, y0 + 2); ctx.lineTo(x + w / 2, h.peak); ctx.stroke(); // moonlit edge
@@ -694,6 +707,8 @@ function broomDrawHouse(h) {
   if (h.chim) {
     const c = h.chim;
     ctx.fillStyle = '#7a4a5a'; ctx.fillRect(c.x, c.top, c.w, y0 - c.top);
+    ctx.fillStyle = 'rgba(20,10,30,0.3)'; ctx.fillRect(c.x + c.w - 4, c.top, 4, y0 - c.top);
+    ctx.fillStyle = 'rgba(255,200,160,0.18)'; ctx.fillRect(c.x, c.top, 2, y0 - c.top);
     ctx.fillStyle = '#5a3444'; ctx.fillRect(c.x - 3, c.top - 2, c.w + 6, 7);
     ctx.strokeStyle = 'rgba(30,10,20,0.35)'; ctx.lineWidth = 1;
     for (let yy = c.top + 12; yy < y0; yy += 9) { ctx.beginPath(); ctx.moveTo(c.x, yy); ctx.lineTo(c.x + c.w, yy); ctx.stroke(); }
@@ -725,7 +740,10 @@ function broomDrawTree(t) {
   const cols = [['#8a3a2e', '#a84a32'], ['#9a5a24', '#b87030'], ['#5a3a6a', '#704a82']][t.col];
   ctx.fillStyle = '#2e1f2e'; ctx.beginPath(); ctx.moveTo(t.x - 7, BROOM.street + 10); ctx.lineTo(t.x - 4, t.y); ctx.lineTo(t.x + 4, t.y); ctx.lineTo(t.x + 8, BROOM.street + 10); ctx.fill();
   ctx.fillStyle = cols[0]; circle(t.x, t.y, t.r); ctx.fill();
+  ctx.fillStyle = 'rgba(20,10,40,0.25)'; ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0.1, Math.PI - 0.1); ctx.fill();
   ctx.fillStyle = cols[1]; circle(t.x - t.r * 0.3, t.y - t.r * 0.3, t.r * 0.62); ctx.fill(); circle(t.x + t.r * 0.4, t.y - t.r * 0.1, t.r * 0.45); ctx.fill();
+  ctx.fillStyle = 'rgba(255,220,180,0.14)'; circle(t.x - t.r * 0.42, t.y - t.r * 0.45, t.r * 0.3); ctx.fill();
+  ctx.fillStyle = cols[1]; for (let k = 0; k < 4; k++) { const q = broomHash(t.seed || 1, k + 20); circle(t.x - t.r * 0.8 + q * t.r * 1.6, t.y + t.r * 0.2 + broomHash(t.seed || 1, k + 30) * t.r * 0.5, 2.2); ctx.fill(); }
   if (t.owl) { // a cute owl on a branch, blinking
     const ox = t.x + (t.seed % 2 ? 10 : -12), oy = t.y + 4;
     ctx.strokeStyle = '#2e1f2e'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(t.x, oy + 9); ctx.lineTo(ox + (t.seed % 2 ? 14 : -14), oy + 7); ctx.stroke();
@@ -778,6 +796,8 @@ function broomDrawWorld() {
   // the street with a little fence
   ctx.fillStyle = '#241838'; ctx.fillRect(cam.x - 10, BROOM.street, W + 20, H - BROOM.street);
   ctx.fillStyle = '#33244a'; ctx.fillRect(cam.x - 10, BROOM.street, W + 20, 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.05)';
+  for (let x = Math.floor(cam.x / 26) * 26 - 26; x < cam.x + W + 26; x += 26) for (let r = 0; r < 3; r++) { const yy = BROOM.street + 9 + r * 9; if (yy > H - 22) break; rr(x + (r % 2) * 13, yy, 20, 6, 3); ctx.fill(); }
   ctx.strokeStyle = '#463560'; ctx.lineWidth = 3;
   const fx0 = Math.floor(cam.x / 22) * 22;
   for (let x = fx0; x < cam.x + W + 22; x += 22) { ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x, H - 18); ctx.stroke(); }
