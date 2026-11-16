@@ -37,7 +37,31 @@ function rr(x, y, w, h, r) {
 }
 function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); }
 
-function drawBackground() {
+/* ---------- polished shared art (Nov 2026) ----------
+   Gavyn asked for more detail and a more professional look across Worlds 1-39. The shared sky, hills, clouds, stone,
+   grass, planks, spikes, water and sand below have shading, outlines and small hashed details. World 32 (comic book)
+   and World 40 (hand-drawn) have their own looks, so they keep the plain versions (artPlain()). */
+const ART_PLAIN_WORLDS = [31, 39];
+function artPlain() { const d = G.level && G.level.def; return !!(d && ART_PLAIN_WORLDS.includes(d.world)); }
+// colour helpers: mix two '#rrggbb' colours (anything else comes back as the first colour)
+const _rgbCache = {};
+function hexRgb(c) {
+  if (_rgbCache[c] !== undefined) return _rgbCache[c];
+  let m = /^#([0-9a-f]{6})$/i.exec(c || ''), r = null;
+  if (m) { const n = parseInt(m[1], 16); r = [n >> 16, (n >> 8) & 255, n & 255]; }
+  else if ((m = /^#([0-9a-f]{3})$/i.exec(c || ''))) r = m[1].split('').map(h => parseInt(h + h, 16));
+  return (_rgbCache[c] = r);
+}
+const _mixCache = {};
+function mixCol(a, b, t) {
+  const k = a + '|' + b + '|' + t; if (_mixCache[k]) return _mixCache[k];
+  const A = hexRgb(a), B = hexRgb(b);
+  if (!A || !B) return (_mixCache[k] = a);
+  return (_mixCache[k] = 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',') + ')');
+}
+const shade = (c, t) => mixCol(c, '#141428', t), tint = (c, t) => mixCol(c, '#ffffff', t);
+
+function drawBackgroundPlain() {
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, C.skyTop); g.addColorStop(1, C.skyBot);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -47,9 +71,8 @@ function drawBackground() {
     const speed = 6 + (i % 3) * 4;
     const x = ((i * 233 + G.clock * speed) % (W + 220)) - 110;
     const y = 50 + ((i * 71) % 130);
-    drawCloud(x, y, 0.7 + (i % 2) * 0.4);
+    drawCloudPlain(x, y, 0.7 + (i % 2) * 0.4);
   }
-  // a scrolling level (G.camX) slides the hills a little, far ones slower
   const fx = (G.camX || 0) * 0.15, nx = (G.camX || 0) * 0.35;
   ctx.fillStyle = C.hillFar;
   ctx.beginPath(); ctx.moveTo(0, H);
@@ -60,19 +83,106 @@ function drawBackground() {
   for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 400 + Math.sin((x + nx) * 0.011 + 4) * 26 + Math.sin((x + nx) * 0.027 + 1) * 8);
   ctx.lineTo(W, H); ctx.fill();
 }
-function drawCloud(x, y, s) {
+function drawCloudPlain(x, y, s) {
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.beginPath();
   ctx.arc(x, y, 18 * s, 0, Math.PI * 2); ctx.arc(x + 22 * s, y - 8 * s, 22 * s, 0, Math.PI * 2);
   ctx.arc(x + 46 * s, y, 17 * s, 0, Math.PI * 2); ctx.rect(x, y, 46 * s, 17 * s);
   ctx.fill();
 }
+// the sky's look is cached per theme (sky gradient, sun and its rays are redrawn cheaply from it)
+let _skyKey = '', _skyGrad = null;
+function hillPath(base, amp1, f1, ph1, amp2, f2, ph2, off) {
+  ctx.beginPath(); ctx.moveTo(-2, H);
+  for (let x = -2; x <= W + 16; x += 12) ctx.lineTo(x, base + Math.sin((x + off) * f1 + ph1) * amp1 + Math.sin((x + off) * f2 + ph2) * amp2);
+  ctx.lineTo(W + 16, H); ctx.closePath();
+}
+function drawBackground() {
+  if (artPlain()) return drawBackgroundPlain();
+  const key = C.skyTop + C.skyBot;
+  if (key !== _skyKey) {
+    _skyKey = key; _skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+    _skyGrad.addColorStop(0, C.skyTop); _skyGrad.addColorStop(0.62, mixCol(C.skyTop, C.skyBot, 0.75)); _skyGrad.addColorStop(1, C.skyBot);
+  }
+  ctx.fillStyle = _skyGrad; ctx.fillRect(0, 0, W, H);
+  // sun: a soft glow, slow turning rays, a bright core with a rim
+  const sunOn = !/,\s*0\)\s*$/.test(C.sun);
+  if (sunOn) {
+    ctx.save(); ctx.translate(810, 105);
+    ctx.fillStyle = C.sunGlow; circle(0, 0, 92); ctx.fill(); circle(0, 0, 66); ctx.fill();
+    {
+      if (!reduceMotion) ctx.rotate(G.clock * 0.05);
+      ctx.fillStyle = C.sunGlow;
+      for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(-7, 52); ctx.lineTo(7, 52); ctx.lineTo(0, 86 + (i % 2) * 14); ctx.closePath(); ctx.fill(); }
+    }
+    ctx.restore();
+    ctx.fillStyle = C.sun; circle(810, 105, 44); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; circle(800, 95, 26); ctx.fill();
+  }
+  for (let i = 0; i < 5; i++) {
+    const speed = 6 + (i % 3) * 4;
+    const x = ((i * 233 + G.clock * speed) % (W + 220)) - 110;
+    const y = 50 + ((i * 71) % 130);
+    drawCloud(x, y, 0.7 + (i % 2) * 0.4);
+  }
+  // three layers of hills: a hazy far ridge, the far hills, the near hills (far ones slide slower in a scrolling level)
+  const cam = G.camX || 0, vx = cam * 0.07, fx = cam * 0.15, nx = cam * 0.35;
+  ctx.fillStyle = mixCol(C.hillFar, C.skyBot, 0.45);
+  hillPath(292, 22, 0.005, 2.2, 10, 0.023, 0.5, vx); ctx.fill();
+  ctx.fillStyle = C.hillFar;
+  hillPath(330, 34, 0.007, 1.3, 12, 0.019, 0, fx); ctx.fill();
+  // a light rim on the far hills and soft round bushes along them
+  ctx.strokeStyle = tint(C.hillFar, 0.28); ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (let x = -2; x <= W + 16; x += 12) { const y = 330 + Math.sin((x + fx) * 0.007 + 1.3) * 34 + Math.sin((x + fx) * 0.019) * 12 + 1.5; x === -2 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+  ctx.stroke();
+  ctx.fillStyle = shade(C.hillFar, 0.07);
+  for (let i = 0; i < 14; i++) {
+    const wx = i * 97 + 30, x = ((wx - fx) % (W + 120) + W + 120) % (W + 120) - 60;
+    const y = 330 + Math.sin((x + fx) * 0.007 + 1.3) * 34 + Math.sin((x + fx) * 0.019) * 12;
+    const r = 7 + (hash(i, 7) % 6);
+    circle(x, y + r * 0.55, r); ctx.fill(); circle(x + r * 0.9, y + r * 0.8, r * 0.75); ctx.fill();
+  }
+  // near hills, with a lit rim, a darker foot and a few bushes
+  const ng = ctx.createLinearGradient(0, 360, 0, H);
+  ng.addColorStop(0, C.hillNear); ng.addColorStop(1, shade(C.hillNear, 0.16));
+  ctx.fillStyle = ng;
+  hillPath(400, 26, 0.011, 4, 8, 0.027, 1, nx); ctx.fill();
+  ctx.strokeStyle = tint(C.hillNear, 0.3); ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let x = -2; x <= W + 16; x += 12) { const y = 400 + Math.sin((x + nx) * 0.011 + 4) * 26 + Math.sin((x + nx) * 0.027 + 1) * 8 + 2; x === -2 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+  ctx.stroke();
+  for (let i = 0; i < 9; i++) {
+    const wx = i * 151 + 60, x = ((wx - nx) % (W + 160) + W + 160) % (W + 160) - 80;
+    const y = 400 + Math.sin((x + nx) * 0.011 + 4) * 26 + Math.sin((x + nx) * 0.027 + 1) * 8;
+    const r = 9 + (hash(i, 3) % 7);
+    ctx.fillStyle = shade(C.hillNear, 0.1);
+    circle(x, y + r * 0.5, r); ctx.fill(); circle(x + r, y + r * 0.75, r * 0.78); ctx.fill(); circle(x - r * 0.85, y + r * 0.85, r * 0.6); ctx.fill();
+    ctx.fillStyle = tint(C.hillNear, 0.18); circle(x - r * 0.3, y + r * 0.1, r * 0.35); ctx.fill();
+  }
+}
+function drawCloud(x, y, s) {
+  if (artPlain()) return drawCloudPlain(x, y, s);
+  // a soft shadow under the puffs, then the white puffs, then a bright top
+  ctx.fillStyle = 'rgba(160,175,205,0.28)';
+  ctx.beginPath();
+  ctx.arc(x + 2 * s, y + 4 * s, 18 * s, 0, Math.PI * 2); ctx.arc(x + 24 * s, y - 4 * s, 22 * s, 0, Math.PI * 2);
+  ctx.arc(x + 48 * s, y + 4 * s, 17 * s, 0, Math.PI * 2); ctx.rect(x + 2 * s, y + 4 * s, 46 * s, 17 * s);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath();
+  ctx.arc(x, y, 18 * s, 0, Math.PI * 2); ctx.arc(x + 22 * s, y - 8 * s, 22 * s, 0, Math.PI * 2);
+  ctx.arc(x + 46 * s, y, 17 * s, 0, Math.PI * 2); ctx.arc(x + 34 * s, y - 2 * s, 14 * s, 0, Math.PI * 2); ctx.rect(x, y, 46 * s, 17 * s);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  circle(x + 17 * s, y - 15 * s, 9 * s); ctx.fill(); circle(x - 4 * s, y - 5 * s, 6 * s); ctx.fill();
+}
 
-function drawStone(tx, ty) {
+function drawStonePlain(tx, ty) {
   const x = tx * T, y = ty * T;
-  ctx.fillStyle = C.stone; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1); // slight overlap hides seams when scaled
+  ctx.fillStyle = C.stone; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
   const h = hash(tx, ty);
-  if (h % 3 === 0) { ctx.fillStyle = C.stoneLight; rr(x + 4 + (h % 15), y + 10 + ((h >> 4) % 12), 7, 4, 2); ctx.fill(); }
+  if (h % 3 === 0) { ctx.fillStyle = C.stoneLight; rr(x + 4 + (h % 15), y + 10 + ((h >>> 4) % 12), 7, 4, 2); ctx.fill(); }
   ctx.fillStyle = C.stoneEdge;
   if (tile(tx - 1, ty) !== '#') ctx.fillRect(x, y, 2, T);
   if (tile(tx + 1, ty) !== '#') ctx.fillRect(x + T - 2, y, 2, T);
@@ -84,21 +194,112 @@ function drawStone(tx, ty) {
     for (let i = 0; i < 3; i++) { circle(x + 5 + i * 10, y + 6, 3); ctx.fill(); }
   }
 }
+function drawStone(tx, ty) {
+  if (artPlain()) return drawStonePlain(tx, ty);
+  const x = tx * T, y = ty * T, h = hash(tx, ty);
+  const L = tile(tx - 1, ty) !== '#', R = tile(tx + 1, ty) !== '#';
+  const B = ty + 1 < ROWS && !'#s'.includes(tile(tx, ty + 1)), top = ty > 0 && !'#sw'.includes(tile(tx, ty - 1));
+  ctx.fillStyle = C.stone; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1); // slight overlap hides seams when scaled
+  // depth: rock gets a little darker the deeper it is under a surface
+  let d = 0; for (let k = 1; k <= 3 && tile(tx, ty - k) === '#'; k++) d++;
+  if (d) { ctx.fillStyle = 'rgba(10,10,30,' + (0.035 * d) + ')'; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1); }
+  // carved stones: one or two rounded slabs per tile with a lit top and a shaded foot
+  const sl = shade(C.stone, 0.18), li = C.stoneLight;
+  const n = 1 + (h % 2);
+  for (let i = 0; i < n; i++) {
+    const hh = h >>> (i * 7 + 3);
+    const w = 9 + (hh % 9), hgt = 5 + ((hh >>> 4) % 5);
+    const sx = x + 3 + ((hh >>> 2) % Math.max(1, T - w - 6)), sy = y + (top ? 12 : 4) + ((hh >>> 6) % Math.max(1, T - hgt - (top ? 15 : 8)));
+    ctx.fillStyle = sl; rr(sx, sy + 1.5, w, hgt, 2.5); ctx.fill();
+    ctx.fillStyle = li; rr(sx, sy, w, hgt, 2.5); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(sx + 2, sy + 1, w - 4, 1.2);
+  }
+  // specks
+  ctx.fillStyle = sl;
+  if (h & 64) { circle(x + 6 + (h >>> 9) % 18, y + 18 + (h >>> 13) % 9, 1.2); ctx.fill(); }
+  if (h & 128) { circle(x + 4 + (h >>> 11) % 22, y + 9 + (h >>> 15) % 12, 0.9); ctx.fill(); }
+  // edges: dark outline where the rock meets air, a thin lit bevel inside on the left
+  ctx.fillStyle = C.stoneEdge;
+  if (L) ctx.fillRect(x, y, 2.5, T);
+  if (R) ctx.fillRect(x + T - 2.5, y, 2.5, T);
+  if (B) { ctx.fillRect(x, y + T - 3.5, T, 3.5); ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x, y + T - 6, T, 2.5); }
+  if (L) { ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + 2.5, y, 1.5, T); }
+  if (R) { ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(x + T - 5, y, 2.5, T); }
+  if (top) {
+    // a shadow the turf throws on the rock, the turf itself with a scalloped lip, then blades and the odd flower
+    ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.fillRect(x, y + 8, T, 5);
+    ctx.fillStyle = C.grassDark; ctx.fillRect(x, y, T, 9);
+    for (let i = 0; i < 3; i++) { circle(x + 5 + i * 10, y + 8, 3.6); ctx.fill(); }
+    ctx.fillStyle = C.grass; ctx.fillRect(x, y, T, 6);
+    for (let i = 0; i < 3; i++) { circle(x + 5 + i * 10, y + 6, 3.1); ctx.fill(); }
+    ctx.fillStyle = tint(C.grass, 0.35); ctx.fillRect(x, y, T, 1.6);
+    // blades poking up
+    ctx.fillStyle = C.grass;
+    for (let i = 0; i < 3; i++) {
+      if (!((h >>> (i + 2)) & 1)) continue;
+      const bx = x + 3 + i * 10 + ((h >>> (i * 3)) % 5), bh = 3 + ((h >>> (i * 2 + 5)) % 3);
+      ctx.beginPath(); ctx.moveTo(bx - 1.6, y + 0.5); ctx.lineTo(bx + 0.6, y - bh); ctx.lineTo(bx + 1.6, y + 0.5); ctx.closePath(); ctx.fill();
+    }
+    if (h % 11 === 0) {
+      const fx = x + 8 + (h >>> 5) % 14;
+      ctx.fillStyle = ['#fff4c2', '#ffd1e6', '#ffffff'][(h >>> 3) % 3];
+      for (let a = 0; a < 5; a++) { circle(fx + Math.cos(a * 1.257) * 1.8, y - 2 + Math.sin(a * 1.257) * 1.8, 1.3); ctx.fill(); }
+      ctx.fillStyle = '#ffc53d'; circle(fx, y - 2, 1.1); ctx.fill();
+    }
+    // the turf's ends curl down over the side
+    if (L) { ctx.fillStyle = C.grassDark; rr(x - 1.5, y, 4, 11, 2); ctx.fill(); }
+    if (R) { ctx.fillStyle = C.grassDark; rr(x + T - 2.5, y, 4, 11, 2); ctx.fill(); }
+  }
+}
 function drawSpikes(x, y) {
+  if (artPlain()) {
+    for (let i = 0; i < 3; i++) {
+      const sx = x + i * 10;
+      ctx.fillStyle = C.spike;
+      ctx.beginPath(); ctx.moveTo(sx, y + T); ctx.lineTo(sx + 5, y + 14); ctx.lineTo(sx + 10, y + T); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = C.spikeHi;
+      ctx.beginPath(); ctx.moveTo(sx + 5, y + 14); ctx.lineTo(sx + 7, y + 22); ctx.lineTo(sx + 5, y + 21); ctx.closePath(); ctx.fill();
+    }
+    return;
+  }
+  // a metal base strip, then three spikes with a shaded right face, a lit left edge and a bright tip
+  ctx.fillStyle = shade(C.spike, 0.25); rr(x, y + T - 4, T, 4, 1.5); ctx.fill();
   for (let i = 0; i < 3; i++) {
     const sx = x + i * 10;
     ctx.fillStyle = C.spike;
-    ctx.beginPath(); ctx.moveTo(sx, y + T); ctx.lineTo(sx + 5, y + 14); ctx.lineTo(sx + 10, y + T); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(sx, y + T - 2); ctx.lineTo(sx + 5, y + 12); ctx.lineTo(sx + 10, y + T - 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.moveTo(sx + 5, y + 12); ctx.lineTo(sx + 10, y + T - 2); ctx.lineTo(sx + 5.5, y + T - 2); ctx.closePath(); ctx.fill();
     ctx.fillStyle = C.spikeHi;
-    ctx.beginPath(); ctx.moveTo(sx + 5, y + 14); ctx.lineTo(sx + 7, y + 22); ctx.lineTo(sx + 5, y + 21); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(sx + 5, y + 12); ctx.lineTo(sx + 3.6, y + 21); ctx.lineTo(sx + 4.6, y + 21); ctx.closePath(); ctx.fill();
+    circle(sx + 5, y + 13, 1); ctx.fill();
   }
 }
 function drawPlank(x, y, tx, ty) {
-  ctx.fillStyle = C.plankDark; ctx.fillRect(x, y + 2, T, 9);
-  ctx.fillStyle = C.plank; ctx.fillRect(x, y, T, 7);
-  ctx.fillStyle = C.plankDark; circle(x + 5, y + 4, 1.4); ctx.fill(); circle(x + T - 5, y + 4, 1.4); ctx.fill();
-  if (tile(tx - 1, ty) !== '=') { ctx.fillStyle = C.plankDark; ctx.fillRect(x + 3, y + 10, 3, 8); }
-  if (tile(tx + 1, ty) !== '=') { ctx.fillStyle = C.plankDark; ctx.fillRect(x + T - 6, y + 10, 3, 8); }
+  const lEnd = tile(tx - 1, ty) !== '=', rEnd = tile(tx + 1, ty) !== '=';
+  if (artPlain()) {
+    ctx.fillStyle = C.plankDark; ctx.fillRect(x, y + 2, T, 9);
+    ctx.fillStyle = C.plank; ctx.fillRect(x, y, T, 7);
+    ctx.fillStyle = C.plankDark; circle(x + 5, y + 4, 1.4); ctx.fill(); circle(x + T - 5, y + 4, 1.4); ctx.fill();
+    if (lEnd) { ctx.fillStyle = C.plankDark; ctx.fillRect(x + 3, y + 10, 3, 8); }
+    if (rEnd) { ctx.fillStyle = C.plankDark; ctx.fillRect(x + T - 6, y + 10, 3, 8); }
+    return;
+  }
+  const h = hash(tx, ty);
+  // brackets under the ends
+  ctx.fillStyle = C.plankDark;
+  if (lEnd) { ctx.fillRect(x + 3, y + 9, 3, 9); ctx.beginPath(); ctx.moveTo(x + 6, y + 9); ctx.lineTo(x + 12, y + 9); ctx.lineTo(x + 6, y + 15); ctx.closePath(); ctx.fill(); }
+  if (rEnd) { ctx.fillRect(x + T - 6, y + 9, 3, 9); ctx.beginPath(); ctx.moveTo(x + T - 6, y + 9); ctx.lineTo(x + T - 12, y + 9); ctx.lineTo(x + T - 6, y + 15); ctx.closePath(); ctx.fill(); }
+  // the board: a dark underside, the face, a lit top edge, grain and a seam between boards
+  ctx.fillStyle = C.plankDark; rr(x + (lEnd ? 0.5 : -0.5), y + 1.5, T - (lEnd ? 0.5 : -0.5) - (rEnd ? 0.5 : -0.5), 9.5, lEnd || rEnd ? 2.5 : 0); ctx.fill();
+  ctx.fillStyle = C.plank; ctx.fillRect(x + (lEnd ? 1 : 0), y, T - (lEnd ? 1 : 0) - (rEnd ? 1 : 0), 7.5);
+  ctx.fillStyle = tint(C.plank, 0.3); ctx.fillRect(x + (lEnd ? 1 : 0), y, T - (lEnd ? 1 : 0) - (rEnd ? 1 : 0), 1.5);
+  ctx.strokeStyle = shade(C.plank, 0.18); ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(x + 2, y + 3.5 + (h % 2)); ctx.quadraticCurveTo(x + 15, y + 2.5 + (h % 3), x + T - 2, y + 4 + ((h >>> 2) % 2)); ctx.stroke();
+  if (h % 3 === 0) { ctx.beginPath(); ctx.ellipse(x + 8 + (h >>> 4) % 14, y + 4.5, 2.2, 1.1, 0, 0, Math.PI * 2); ctx.stroke(); }
+  if (!rEnd && (h >>> 3) % 3 === 0) { ctx.fillStyle = C.plankDark; ctx.fillRect(x + T - 1, y + 1, 1, 6); }
+  ctx.fillStyle = C.plankDark; circle(x + 5, y + 4, 1.3); ctx.fill(); circle(x + T - 5, y + 4, 1.3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; circle(x + 4.6, y + 3.6, 0.5); ctx.fill(); circle(x + T - 5.4, y + 3.6, 0.5); ctx.fill();
 }
 function drawColorBlock(x, y, id, tx, ty) {
   const col = PCOL[id], dark = PDARK[id];
@@ -351,7 +552,9 @@ function drawPlayer(p) {
 
 function pill(x, y, w, h, align) {
   const px = align === 'right' ? x - w : align === 'center' ? x - w / 2 : x;
-  ctx.fillStyle = 'rgba(23,25,29,0.78)'; rr(px, y, w, h, h / 2); ctx.fill();
+  if (!artPlain()) { ctx.fillStyle = 'rgba(0,0,0,0.16)'; rr(px, y + 2, w, h, h / 2); ctx.fill(); }
+  ctx.fillStyle = 'rgba(23,25,29,0.8)'; rr(px, y, w, h, h / 2); ctx.fill();
+  if (!artPlain()) { ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1; rr(px + 0.5, y + 0.5, w - 1, h - 1, (h - 1) / 2); ctx.stroke(); }
   return px;
 }
 function text(str, x, y, size, col, align = 'left', font = 'display') {
@@ -378,14 +581,14 @@ function drawPad(p) {
   ctx.fillStyle = ctx.strokeStyle = 'rgba(255,255,255,0.9)'; if (p.dir) { ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(0, -3); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(5.5, -1); ctx.lineTo(-5.5, -1); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
-function drawSand(x, y, tx, ty) {
+function drawSandPlain(x, y, tx, ty) {
   ctx.fillStyle = '#e9cf8f'; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
   ctx.fillStyle = '#d2b06a';
   const h = hash(tx, ty);
-  for (let i = 0; i < 5; i++) { circle(x + 4 + ((h >> (i * 3)) % 23), y + 6 + ((h >> (i * 4 + 2)) % 20), 1.4); ctx.fill(); }
+  for (let i = 0; i < 5; i++) { circle(x + 4 + ((h >>> (i * 3)) % 23), y + 6 + ((h >>> (i * 4 + 2)) % 20), 1.4); ctx.fill(); }
   if (tile(tx, ty - 1) !== 's' && tile(tx, ty - 1) !== '#') { ctx.fillStyle = '#f6e2a8'; ctx.fillRect(x, y, T, 4); }
 }
-function drawWater(x, y, tx, ty) {
+function drawWaterPlain(x, y, tx, ty) {
   const top = tile(tx, ty - 1) !== 'w';
   ctx.fillStyle = 'rgba(70,150,220,0.78)'; ctx.fillRect(x, y + (top ? 6 : 0), T, T - (top ? 6 : 0));
   if (top) {
@@ -394,6 +597,42 @@ function drawWater(x, y, tx, ty) {
     ctx.beginPath(); ctx.moveTo(x, y + 8);
     for (let i = 0; i <= 6; i++) ctx.lineTo(x + i * 5, y + 6 + Math.sin(ph + i * 0.9) * 1.6);
     ctx.lineTo(x + T, y + 10); ctx.lineTo(x, y + 10); ctx.closePath(); ctx.fill();
+  }
+}
+function drawSand(x, y, tx, ty) {
+  if (artPlain()) return drawSandPlain(x, y, tx, ty);
+  const h = hash(tx, ty), top = tile(tx, ty - 1) !== 's' && tile(tx, ty - 1) !== '#';
+  ctx.fillStyle = '#e9cf8f'; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
+  // ripples and grains
+  ctx.strokeStyle = 'rgba(190,150,80,0.45)'; ctx.lineWidth = 1;
+  for (let i = 0; i < 2; i++) {
+    const ry = y + 11 + i * 9 + ((h >>> (i * 3)) % 4);
+    ctx.beginPath(); ctx.moveTo(x + 2, ry); ctx.quadraticCurveTo(x + 9, ry - 2.5, x + 15, ry); ctx.quadraticCurveTo(x + 22, ry + 2.5, x + T - 2, ry); ctx.stroke();
+  }
+  ctx.fillStyle = '#d2b06a';
+  for (let i = 0; i < 5; i++) { circle(x + 4 + ((h >>> (i * 3)) % 23), y + 6 + ((h >>> (i * 4 + 2)) % 20), 1.2); ctx.fill(); }
+  ctx.fillStyle = '#fff1c6';
+  for (let i = 0; i < 2; i++) { circle(x + 6 + ((h >>> (i * 5 + 1)) % 19), y + 8 + ((h >>> (i * 6 + 3)) % 18), 0.9); ctx.fill(); }
+  if (top) { ctx.fillStyle = '#f6e2a8'; ctx.fillRect(x, y, T, 4); ctx.fillStyle = '#fff3cf'; ctx.fillRect(x, y, T, 1.5); }
+}
+function drawWater(x, y, tx, ty) {
+  if (artPlain()) return drawWaterPlain(x, y, tx, ty);
+  const top = tile(tx, ty - 1) !== 'w', deep = tile(tx, ty - 1) === 'w' && tile(tx, ty - 2) === 'w';
+  ctx.fillStyle = deep ? 'rgba(40,110,190,0.84)' : 'rgba(70,150,220,0.8)'; ctx.fillRect(x, y + (top ? 6 : 0), T, T - (top ? 6 : 0));
+  // light ripples drifting through the water
+  const ph = G.clock * 1.6 + tx * 2.3 + ty * 1.1;
+  ctx.strokeStyle = 'rgba(200,235,255,0.28)'; ctx.lineWidth = 1.2;
+  const ry = y + (top ? 16 : 10) + Math.sin(ph) * 3;
+  ctx.beginPath(); ctx.moveTo(x + 4, ry); ctx.quadraticCurveTo(x + 10, ry - 2, x + 16, ry); ctx.stroke();
+  if (top) {
+    ctx.fillStyle = 'rgba(190,230,255,0.92)';
+    const p2 = G.clock * 3 + tx * 1.7;
+    ctx.beginPath(); ctx.moveTo(x, y + 8);
+    for (let i = 0; i <= 6; i++) ctx.lineTo(x + i * 5, y + 6 + Math.sin(p2 + i * 0.9) * 1.6);
+    ctx.lineTo(x + T, y + 10); ctx.lineTo(x, y + 10); ctx.closePath(); ctx.fill();
+    // a glint now and then
+    const g = (Math.sin(G.clock * 2.1 + tx * 3.7) + 1) / 2;
+    if (g > 0.8) { ctx.fillStyle = 'rgba(255,255,255,' + ((g - 0.8) * 4) + ')'; circle(x + 8 + (tx * 7) % 14, y + 6.5, 1.6); ctx.fill(); }
   }
 }
 function drawHUD() {
@@ -490,7 +729,8 @@ function drawMatchHUD() {
 // card: the intro card's box [x, y, w, h]. A tag that would sit on it goes under the hero's feet,
 // or under the card when the hero is behind it, and points up
 function drawNameTags(alpha, card) {
-  const tagHw = p => cpuSolo() && cpuOn(p.id) ? 30 : 18;
+  // half the tag's width: its words plus 8 px of air each side (12 px bold)
+  const tagHw = p => { ctx.font = '700 12px "Atkinson Hyperlegible", system-ui, sans-serif'; return Math.max(18, Math.ceil(ctx.measureText(cpuSolo() && cpuOn(p.id) ? NAMES[p.id] + ' · CPU' : NAMES[p.id]).width / 2) + 8); };
   const onCard = (p, y0, y1) => card && p.x - (G.camX || 0) + p.w / 2 + tagHw(p) > card[0] && p.x - (G.camX || 0) + p.w / 2 - tagHw(p) < card[0] + card[2] && y1 > card[1] && y0 < card[1] + card[3];
   const lift = (LEVELS[G.levelIndex] || {}).tagLift || 0;
   const moved = p => onCard(p, p.y - 27 - lift, p.y - 5 - lift) || onCard(p, p.y, p.y + p.h); // the tag, or the hero, is on the card
@@ -563,7 +803,7 @@ function drawMatchOverlay() {
     else { title = 'Tie! Replay the round'; tcol = C.paper; }
     const lines = [];
     if (e.reason) lines.push([e.reason, C.paper, 16]);
-    if (final && e.winner < 0) lines.push(['Too many ties in a row: the match is called', '#d9d3ef', 13]);
+    if (final && e.winner < 0) lines.push(['Too many ties in a row: the match is called', '#e6e2d8', 13]);
     const sc = easeBack(m.t / 0.28);
     ctx.font = '34px "Lilita One", "Arial Rounded MT Bold", sans-serif';
     let bw = ctx.measureText(title).width;
@@ -593,18 +833,25 @@ function drawIntro() {
   if (G.introQuick) { if (!(G.mst && G.mst.arriveT > 0)) drawNameTags(a, null); return; }
   const actLine = def.act ? actHintLine() : null, note = cpuTipNote(def.tip);
   ctx.save(); ctx.globalAlpha = a;
-  ctx.font = '14px "Atkinson Hyperlegible", system-ui, sans-serif';
-  const tw = Math.max(380, ctx.measureText(def.tip).width + 60, actLine ? ctx.measureText(actLine).width + 80 : 0, note ? ctx.measureText(note).width + 60 : 0);
-  const card = [W / 2 - tw / 2, 168, tw, (actLine ? 120 : 92) + (note ? 22 : 0)];
-  ctx.fillStyle = 'rgba(23,25,29,0.86)'; rr(card[0], card[1], card[2], card[3], 18); ctx.fill();
   const code = levelCode(G.levelIndex), wd = WORLDS[LEVELS[G.levelIndex].world];
   const first = code.endsWith('-1') && (!def.rooms || def.roomIndex === 0);
   const sub = (first ? `World ${LEVELS[G.levelIndex].world + 1}: ${wd.name} · ` : '') + (def.golf ? `Level ${code} · Hole ${def.roomIndex + 1} of ${def.roomCount} · Par ${def.par}`
     : def.rooms ? `Level ${code} · ${def.name} · ${def.roomWord || 'Room'} ${def.roomIndex + 1} of ${def.roomCount}` : `Level ${code}${def.kind === 'versus' ? ' · Versus' : ''}`);
+  // the card is as wide as its widest line (tip, heading, the gold line over it, the action pill, the 1-player note)
+  ctx.font = '14px "Atkinson Hyperlegible", system-ui, sans-serif';
+  let tw = Math.max(380, ctx.measureText(def.tip).width + 60, actLine ? ctx.measureText(actLine).width + 80 : 0);
+  ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
+  tw = Math.max(tw, ctx.measureText(sub).width + 60, note ? ctx.measureText(note).width + 60 : 0);
+  ctx.font = '30px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+  tw = Math.min(W - 40, Math.max(tw, ctx.measureText(def.rooms ? def.title + '!' : def.name).width + 60));
+  const card = [W / 2 - tw / 2, 168, tw, (actLine ? 120 : 92) + (note ? 22 : 0)];
+  if (!artPlain()) { ctx.fillStyle = 'rgba(0,0,0,0.2)'; rr(card[0], card[1] + 4, card[2], card[3], 18); ctx.fill(); }
+  ctx.fillStyle = 'rgba(23,25,29,0.88)'; rr(card[0], card[1], card[2], card[3], 18); ctx.fill();
+  if (!artPlain()) { ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1.5; rr(card[0] + 0.75, card[1] + 0.75, card[2] - 1.5, card[3] - 1.5, 17); ctx.stroke(); }
   text(sub, W / 2, 190, 13, C.gold, 'center', 'body');
   text(def.rooms ? def.title + '!' : def.name, W / 2, 216, 30, C.paper, 'center');
   ctx.font = '400 14px "Atkinson Hyperlegible", system-ui, sans-serif';
-  ctx.textAlign = 'center'; ctx.fillStyle = '#d9d3ef'; ctx.fillText(def.tip, W / 2, 244);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#e6e2d8'; ctx.fillText(def.tip, W / 2, 244, W - 80);
   // (1-player mode: the tip talks to the computer's character too)
   if (note) { ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.fillStyle = C.paper; ctx.fillText(note, W / 2, actLine ? 297 : 266); }
   if (actLine) {
@@ -633,7 +880,8 @@ function render(dt) {
   for (const sg of L.def.signs || []) {
     ctx.font = '17px "Lilita One", "Arial Rounded MT Bold", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(28,26,54,0.5)'; ctx.fillText(sg.text, sg.x, sg.y);
+    if (!artPlain()) { ctx.strokeStyle = 'rgba(255,255,255,0.32)'; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeText(sg.text, sg.x, sg.y); }
+    ctx.fillStyle = artPlain() ? 'rgba(28,26,54,0.5)' : 'rgba(28,26,54,0.62)'; ctx.fillText(sg.text, sg.x, sg.y);
   }
   const tx0 = Math.max(0, Math.floor(camX / T)), tx1 = Math.min((L.cols || COLS) - 1, Math.floor((camX + W) / T));
   for (let ty = 0; ty < ROWS; ty++) for (let tx = tx0; tx <= tx1; tx++) {
