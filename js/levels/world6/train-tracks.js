@@ -988,11 +988,33 @@ function trainDrawGround(g, st) {
   const rick = !!G.level.def.rickety;
   // the rug and a soft 2x2-cell checker
   g.fillStyle = '#8fd16f'; g.fillRect(0, 0, W, H);
+  // mowed lawn: wide stripes, a soft 2x2-cell checker, then blades, clover, daisies and pebbles on open cells
+  g.fillStyle = 'rgba(40,90,30,0.05)';
+  for (let x = 0; x < COLS; x += 4) g.fillRect(x * T, 0, 2 * T, H);
   g.fillStyle = 'rgba(255,255,255,0.05)';
   for (let y = 0; y < ROWS; y += 2) for (let x = (y / 2) % 2 ? 2 : 0; x < COLS; x += 4) g.fillRect(x * T, y * T, 2 * T, 2 * T);
+  const signBox = (G.level.def.signs || []).map(sg => [sg.x - sg.text.length * 4.8 - 10, sg.y - 16, sg.x + sg.text.length * 4.8 + 10, sg.y + 16]);
+  for (const c of st.cells) {
+    if (c.solid || c.water || c.track || c.foot || c.hut) continue;
+    const h = hash(c.x * 13 + 5, c.y * 7 + 11), x = c.x * T, y = c.y * T;
+    if (signBox.some(b => x + T > b[0] && x < b[2] && y + T > b[1] && y < b[3])) continue;   // keep the signs' words clear
+    g.strokeStyle = 'rgba(60,130,60,0.5)'; g.lineWidth = 1.2; g.beginPath();
+    for (let k = 0; k < 3; k++) { const bx = x + 4 + ((h >> (k * 4)) % 22), by = y + 6 + ((h >> (k * 4 + 2)) % 20); g.moveTo(bx, by); g.lineTo(bx - 1.5, by - 4); g.moveTo(bx + 2, by); g.lineTo(bx + 3, by - 4); }
+    g.stroke();
+    const r = h % 23, px = x + 8 + (h >> 7) % 14, py = y + 8 + (h >> 11) % 14;
+    if (r === 0 || r === 1) { g.fillStyle = '#ffffff'; for (let k = 0; k < 5; k++) { trainDisc(g, px + Math.cos(k * 1.257) * 2.6, py + Math.sin(k * 1.257) * 2.6, 1.8); g.fill(); } g.fillStyle = '#ffcf3d'; trainDisc(g, px, py, 1.4); g.fill(); }
+    else if (r === 2) { g.fillStyle = '#ffd34a'; for (let k = 0; k < 4; k++) { trainDisc(g, px + Math.cos(k * 1.57) * 2.2, py + Math.sin(k * 1.57) * 2.2, 1.7); g.fill(); } }
+    else if (r === 3 || r === 4) { g.fillStyle = 'rgba(28,26,54,0.15)'; g.beginPath(); g.ellipse(px + 1, py + 2, 4, 2.2, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = '#c9c3b6'; g.beginPath(); g.ellipse(px, py, 3.6, 2.6, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = '#e8e3d8'; trainDisc(g, px - 1, py - 1, 1.1); g.fill(); }
+    else if (r === 5) { g.fillStyle = '#6fbf5a'; for (let k = 0; k < 3; k++) { trainDisc(g, px + Math.cos(k * 2.09) * 2.4, py + Math.sin(k * 2.09) * 2.4, 2.3); g.fill(); } }
+  }
   // water, banks, footbridges
   const isW = (x, y) => { const c = trainCell(x, y); return !!c && c.water; };
-  for (const c of st.cells) if (c.water) { g.fillStyle = '#5bb8e8'; g.fillRect(c.x * T, c.y * T, T, T); }
+  for (const c of st.cells) if (c.water) {
+    g.fillStyle = '#5bb8e8'; g.fillRect(c.x * T, c.y * T, T, T);
+    const h = hash(c.x * 3 + 1, c.y * 5 + 2), x = c.x * T, y = c.y * T;
+    g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + 5 + h % 8, y + 10 + (h >> 4) % 10); g.quadraticCurveTo(x + 11 + h % 8, y + 6 + (h >> 4) % 10, x + 17 + h % 8, y + 10 + (h >> 4) % 10); g.stroke();
+    if (h % 3 === 0) { g.fillStyle = 'rgba(255,255,255,0.7)'; trainDisc(g, x + 22 - h % 6, y + 22 - (h >> 6) % 6, 1.3); g.fill(); }
+  }
   for (const c of st.cells) if (c.water) {
     const x = c.x * T, y = c.y * T;
     for (const d of 'NSEW') {
@@ -1030,9 +1052,26 @@ function trainDrawGround(g, st) {
   const base = ['#3f8f5c', '#3a8757', '#46966a'], hi = ['#5cb87a', '#55af72', '#63bf82'];
   for (const c of st.cells) if (c.solid && !c.hut) {
     const x = c.x * T + 15, y = c.y * T + 15;
-    if (c.tree) { g.fillStyle = 'rgba(28,26,54,0.18)'; g.beginPath(); g.ellipse(x + 3, y + 5, 14, 11, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = '#2f7449'; trainDisc(g, x, y, 15); g.fill(); g.fillStyle = base[c.shade]; trainDisc(g, x, y, 11.5); g.fill(); }
-    else { g.fillStyle = base[c.shade]; trainDisc(g, x, y, 14); g.fill(); }
-    g.fillStyle = hi[c.shade]; trainDisc(g, x - 3, y - 3, c.tree ? 7 : 9); g.fill();
+    const hh = hash(c.x * 5 + 3, c.y * 9 + 1);
+    if (c.tree) {
+      // a round treetop seen from above: shadow, dark rim, leafy clumps, a lit crown and a few leaf flecks
+      g.fillStyle = 'rgba(28,26,54,0.2)'; g.beginPath(); g.ellipse(x + 4, y + 6, 15, 12, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#2a6a42'; trainDisc(g, x, y, 15.5); g.fill();
+      g.fillStyle = base[c.shade]; for (let k = 0; k < 6; k++) { const a = k * 1.047 + (hh % 7) * 0.2; trainDisc(g, x + Math.cos(a) * 6.5, y + Math.sin(a) * 6.5, 7.5); g.fill(); }
+      trainDisc(g, x, y, 10); g.fill();
+      g.fillStyle = hi[c.shade]; trainDisc(g, x - 3.5, y - 3.5, 7); g.fill(); trainDisc(g, x - 8, y + 1, 3.5); g.fill(); trainDisc(g, x + 1, y - 9, 3.5); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.28)'; trainDisc(g, x - 5, y - 6, 2.4); g.fill();
+      if (hh % 4 === 0) { g.fillStyle = '#e5413a'; trainDisc(g, x + 5, y + 2, 2); g.fill(); trainDisc(g, x - 2, y + 7, 2); g.fill(); }   // apples
+      g.strokeStyle = '#21573a'; g.lineWidth = 1.5; trainDisc(g, x, y, 15.5); g.stroke();
+    } else {
+      // a hedge ball: dark rim and underside, bumpy leaves, a lit top-left
+      g.fillStyle = 'rgba(28,26,54,0.14)'; g.beginPath(); g.ellipse(x + 2, y + 4, 14, 12, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = shade(base[c.shade], 0.22); trainDisc(g, x, y, 14.5); g.fill();
+      g.fillStyle = base[c.shade]; trainDisc(g, x - 1, y - 1, 12.5); g.fill();
+      g.fillStyle = hi[c.shade]; trainDisc(g, x - 3, y - 3, 8.5); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.18)'; trainDisc(g, x - 6, y - 6, 2.5); g.fill(); trainDisc(g, x + 2, y - 8, 1.6); g.fill();
+      g.fillStyle = 'rgba(30,80,50,0.35)'; trainDisc(g, x + 5 + hh % 3, y + 4, 1.6); g.fill(); trainDisc(g, x - 4, y + 7, 1.4); g.fill();
+    }
   }
   // station huts and their badges
   for (const h of st.huts) trainDrawHut(g, h);
@@ -1040,12 +1079,19 @@ function trainDrawGround(g, st) {
 const trainStaticTrack = (c, rick) => !!c.track && !c.ghost && !c.junction && !c.pop && !c.falling && !(rick && c.bridge);
 function trainDrawHut(g, h) {
   const s = trainStation(h.hut), x = h.x * T, y = h.y * T;
-  g.fillStyle = 'rgba(28,26,54,0.16)'; g.fillRect(x + 4, y + 26, 26, 5);
+  g.fillStyle = 'rgba(28,26,54,0.18)'; g.beginPath(); g.ellipse(x + 17, y + 29.5, 15, 3.5, 0, 0, Math.PI * 2); g.fill();
   g.fillStyle = '#fff6e6'; g.fillRect(x + 3, y + 12, 24, 18);
-  g.strokeStyle = '#d6c3a0'; g.lineWidth = 1.5; g.strokeRect(x + 3, y + 12, 24, 18);
+  g.fillStyle = '#eadcc2'; g.fillRect(x + 20, y + 12, 7, 18);                           // shaded side wall
+  g.fillStyle = 'rgba(214,195,160,0.6)'; for (let k = 0; k < 3; k++) g.fillRect(x + 3, y + 17 + k * 4.5, 24, 1);   // siding boards
+  g.strokeStyle = '#c4ad86'; g.lineWidth = 1.5; g.strokeRect(x + 3, y + 12, 24, 18);
+  g.fillStyle = shade(s.col, 0.3); trainRR(g, x + 10, y + 18, 10, 12, 3.5); g.fill();
   g.fillStyle = s.col; trainRR(g, x + 11, y + 19, 8, 11, 3); g.fill();
+  g.fillStyle = '#ffd77a'; trainDisc(g, x + 17, y + 25, 0.9); g.fill();             // door knob
   g.beginPath(); g.moveTo(x, y + 14); g.lineTo(x + 30, y + 14); g.lineTo(x + 15, y + 1); g.closePath();
-  g.fillStyle = s.col; g.fill(); g.strokeStyle = 'rgba(28,26,54,0.45)'; g.lineWidth = 1.5; g.stroke();
+  g.fillStyle = s.col; g.fill();
+  g.save(); g.clip(); g.fillStyle = 'rgba(28,26,54,0.2)'; g.fillRect(x + 15, y, 16, 15); g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(x, y + 12, 30, 2); g.restore();
+  g.beginPath(); g.moveTo(x, y + 14); g.lineTo(x + 30, y + 14); g.lineTo(x + 15, y + 1); g.closePath();
+  g.strokeStyle = shade(s.col, 0.5); g.lineWidth = 1.5; g.stroke();
   const b = trainBadgePos(h);
   trainBadge(g, b.x, b.y, 11, h.hut);
 }

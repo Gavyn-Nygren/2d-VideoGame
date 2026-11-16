@@ -653,6 +653,7 @@ MODES.ash = {
   },
   draw() { const st = G.mst; if (st.dens) ashDraw(st); },
   drawTop() { const st = G.mst; if (st.dens) ashDrawTop(st); },
+  printPage() { const st = G.mst; if (st.dens && st.pops) ashDrawWords(st); },
   hud() { const st = G.mst; if (st.dens) ashHud(st); },
   stats() {
     const s = G.mst.stats, falls = G.falls;
@@ -1110,6 +1111,11 @@ function ashDrawTop(st) {
     ctx.lineWidth = 3 * rs; ctx.strokeStyle = 'rgba(255,255,255,0.4)'; circle(cx, cy, R); ctx.stroke();
     ctx.strokeStyle = PCOL[p.id]; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * fr); ctx.stroke(); ctx.lineCap = 'butt';
   }
+}
+// (polish) the words (role badges, hint bubbles, pops) go on the printPage layer, drawn after the core's particles, so
+// the fan's dust puffs never cover a word
+function ashDrawWords(st) {
+  const big = hudBig(), f = G.players[st.fanner], ld = G.players[st.leader];
   // role badges for the first seconds of a room (boxes: where words are, so the pops can keep clear of them)
   const boxes = [];
   if (G.introT <= 0 && st.roomT < ASH.badgeT + 3.4 + 0.6 && !st.done) {
@@ -1162,7 +1168,7 @@ function ashDrawTop(st) {
     ctx.font = size + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
     const w = ctx.measureText(q.s).width + size * 0.3, h = size * 1.1, x = clamp(q.x, w / 2 + 6, W - w / 2 - 6);
     let y = Math.max(24, q.y - q.t * 30);
-    for (let pass = 0; pass < 3; pass++) for (const b of boxes) if (x + w / 2 > b.x0 && x - w / 2 < b.x1 && y + h / 2 > b.y0 && y - h / 2 < b.y1) y = b.y0 - h / 2 - 3;
+    for (let pass = 0; pass < 3; pass++) for (const b of boxes) if (x + w / 2 > b.x0 - 4 && x - w / 2 < b.x1 + 4 && y + h / 2 > b.y0 - 4 && y - h / 2 < b.y1 + 4) y = b.y0 - h / 2 - 6;
     y = Math.max(h / 2 + 4, y);
     ctx.globalAlpha = clamp(1.1 - q.t, 0, 1); bigText(q.s, x, y, size, q.col); ctx.globalAlpha = 1;
     boxes.push({ x0: x - w / 2, y0: y - h / 2, x1: x + w / 2, y1: y + h / 2 });   // a newer pop goes above this one

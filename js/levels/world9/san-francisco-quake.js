@@ -777,6 +777,14 @@ function quakeLayout(st, grid) {
     for (let i = 0; i < n; i++) st.items.push({ x: win.x + (i + 0.5) * win.w / n, y: shelf, kind, col: sp[2], ph: R() * 6 });
     k += 1; x += w;
   }
+  // (polish) each shop's name slides along its board so no rope or prop pole (in front of it) runs through the word
+  const poles = []; for (const br of st.bridges) { poles.push(br.cx); if (br.crank) poles.push(br.crank.x); }
+  for (const sh of st.shops) {
+    const tw = sh.name.length * 9 + 8, lo2 = sh.x + 14 + tw / 2, hi2 = sh.x + sh.w - 14 - tw / 2, mid = sh.x + sh.w / 2;
+    let best = mid, bd = 1e9;
+    for (let c = lo2; c <= hi2; c += 2) { if (poles.some(px => Math.abs(px - c) < tw / 2 + 5)) continue; if (Math.abs(c - mid) < bd) { bd = Math.abs(c - mid); best = c; } }
+    sh.signX = best;
+  }
   // lamp posts on the streets, clear of the cracks, cranks, the gate and the door
   st.lamps = [];
   const busy = [];
@@ -784,7 +792,8 @@ function quakeLayout(st, grid) {
   for (const g of st.gate) busy.push([0, g.c * T - 50, g.c * T + T + 50]);
   if (G.level.door) busy.push([1, G.level.door.x - 30, G.level.door.x + G.level.door.w + 30]);
   for (const p of G.players) busy.push([quakeLaneOf(p), p.x - 40, p.x + p.w + 40]);
-  busy.push([0, 40, 160]);   // the street sign
+  busy.push([0, 20, 196]);   // the street sign (its board reaches x 170 on Nob Hill)
+  for (const sh of st.shops) { const tw = sh.name.length * 9; busy.push([1, sh.signX - tw / 2 - 16, sh.signX + tw / 2 + 16]); }   // (polish) never a lamp over a shop's name
   for (const ln of [0, 1]) {
     let last = -1e9, n = 0;
     for (let lx = 60; lx < W - 40 && n < 2; lx += 10) {
@@ -939,9 +948,11 @@ function quakePaintShop(g, sh) {
   g.fillStyle = 'rgba(60,40,80,0.12)'; g.fillRect(x, top, 3, lo - top); g.fillRect(x + w - 3, top, 3, lo - top);
   g.fillStyle = '#5a4a6a'; g.fillRect(x - 2, top - 5, w + 4, 6);
   // the sign board
+  g.fillStyle = 'rgba(40,30,60,0.3)'; quakeRRg(g, x + 11, top + 7, w - 20, 19, 4); g.fill();
   g.fillStyle = '#3b2f4a'; quakeRRg(g, x + 10, top + 5, w - 20, 19, 4); g.fill();
+  g.strokeStyle = '#c9a85a'; g.lineWidth = 1.2; quakeRRg(g, x + 12, top + 7, w - 24, 15, 3); g.stroke();
   g.font = quakeFont(13); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffe9b8';
-  g.fillText(sh.name, x + w / 2, top + 15);
+  g.fillText(sh.name, sh.signX || x + w / 2, top + 15);
   // a striped awning with a scalloped edge
   const ay = top + 27, ah = 12;
   for (let sx = x + 4, i = 0; sx < x + w - 4; sx += 12, i++) {

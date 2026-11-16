@@ -396,6 +396,40 @@ MODES.slots = {
 };
 MODES.slots.test = { SLOTS, slotsPlat, slotsSym, slotsGoodCh, slotsZone, slotsOver, slotsPress, slotsStop, slotsWaitReel, slotsAhead };
 /* ---------- drawing ---------- */
+/* World 8 backdrop (graphics polish, Nov 2026): a twilight row of casino-town buildings with lit windows, neon trims
+   and rooftop signs (stars and diamonds: no words), hazed toward the sky. A cached layer for paBehindTiles(). Coin Pusher
+   uses it too. */
+function paCasinoCity(groundY, seed, haze, tall) {
+  haze = haze === undefined ? 0.5 : haze; tall = tall || 1;
+  return paLayer('casino|' + groundY + '|' + seed + '|' + haze + '|' + tall + '|' + C.skyBot, W, H, g => {
+    const hz = c => mixCol(c, C.skyBot, haze), neon = ['#ff5fa2', '#ffc53d', '#5bd3ff', '#7cf0b0'];
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0, x = -20 + pass * 50; x < W + 20; i++) {
+        const h = hash(i * 7 + seed + pass * 50, 13 + pass), w = 60 + h % 50, ht = ((pass ? 70 : 120) + (h >> 6) % (pass ? 60 : 90)) * tall, y = groundY - ht;
+        const body = pass ? hz('#5a3a7a') : mixCol(hz('#5a3a7a'), C.skyBot, 0.35);
+        g.fillStyle = body; g.fillRect(x, y, w, ht + 40);
+        g.fillStyle = 'rgba(20,10,40,0.18)'; g.fillRect(x + w - 10, y, 10, ht + 40);
+        if (h % 3 === 0) { g.fillStyle = body; g.beginPath(); g.moveTo(x + 6, y); g.lineTo(x + w / 2, y - 26); g.lineTo(x + w - 6, y); g.closePath(); g.fill(); }
+        // windows: a few lit warm, the rest dim
+        for (let wy = y + 12; wy < groundY - 8; wy += 16) for (let wx = x + 8; wx < x + w - 14; wx += 13) {
+          const q = hash(wx, wy + seed); g.fillStyle = q % 4 === 0 ? hz('#ffe9a8') : 'rgba(20,10,40,0.18)'; g.fillRect(wx, wy, 6, 8);
+        }
+        // a neon trim along the roof and, on some, a shape sign
+        const nc = neon[(i + seed) % 4];
+        g.fillStyle = mixCol(nc, C.skyBot, haze * 0.6); g.fillRect(x, y, w, 3);
+        if (!pass && h % 2 === 0) {
+          const sx = x + w / 2, sy = y - 20 - (h % 3 === 0 ? 26 : 0);
+          g.strokeStyle = mixCol(nc, C.skyBot, haze * 0.5); g.lineWidth = 3; g.beginPath();
+          if (h % 4 === 0) { for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 6 : 14; g.lineTo(sx + Math.cos(a) * r, sy + Math.sin(a) * r); } g.closePath(); }
+          else { g.moveTo(sx, sy - 12); g.lineTo(sx + 10, sy); g.lineTo(sx, sy + 12); g.lineTo(sx - 10, sy); g.closePath(); }
+          g.stroke(); g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 1; g.stroke();
+          g.fillStyle = hz('#3c2a58'); g.fillRect(sx - 1.5, sy + 12, 3, y - sy - 12);
+        }
+        x += w + 6 + (h >> 12) % 20;
+      }
+    }
+  });
+}
 let slotsBeamG = null;          // cached canvas gradients (the canvas and its context never change)
 const slotsShadeG = {};
 function slotsTicketShape(x, y, s) {
@@ -436,21 +470,41 @@ function slotsDrawSym(ch, x, y, w, h, a) {
 }
 function slotsDraw(st) {
   const t = G.time, big = hudBig();   // (phones: the world's small labels get bigger too)
-  // cabinet behind the reels: one big machine from the first to the last reel
+  // the city, the cabinet and the reels' gold frames never move in a room, so they are baked into one picture (bulbs and
+  // reels are drawn live on top)
+  let cab = null, top = SLOTS.trayY - 285, bot = SLOTS.trayY;
   if (st.reels.length) {
     const x0 = st.reels[0].x0 - 22, x1 = Math.min(st.reels[st.reels.length - 1].x1 + 22, st.goalX);   // (never over the goal block)
     const y0 = Math.max(76, Math.min(...st.reels.map(r => r.wy)) - 40);   // (under the room pill, y 46-72)
-    ctx.fillStyle = 'rgba(120,20,60,0.55)'; rr(x0, y0, x1 - x0, SLOTS.trayY - y0, 18); ctx.fill();
-    // marquee bulbs along the top edge
-    for (let x = x0 + 14, k = 0; x < x1 - 8; x += 24, k++) {
-      const on = ((k + Math.floor(t * 6)) % 3) === 0;
-      ctx.fillStyle = on ? '#fff6c2' : 'rgba(255,197,61,0.55)'; circle(x, y0 + 10, on ? 4.5 : 3.5); ctx.fill();
-    }
+    cab = { x0, x1, y0 }; top = Math.min(top, y0 - 2); bot = Math.max(bot, ...st.reels.map(r => r.wy + 190));
+  }
+  paBehindTiles(paCasinoCity(SLOTS.trayY, (G.room || 0) + 1), undefined, top, bot, {
+    key: cab ? [cab.x0, cab.x1, cab.y0, ...st.reels.map(r => r.x0 + ',' + r.wy)].join('|') : '',
+    paint: g => {
+      if (cab) {
+        const { x0, x1, y0 } = cab;
+        g.fillStyle = 'rgba(120,20,60,0.62)'; paRR(g, x0, y0, x1 - x0, SLOTS.trayY - y0, 18); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.1)'; paRR(g, x0 + 4, y0 + 3, x1 - x0 - 8, 5, 3); g.fill();
+        g.strokeStyle = 'rgba(255,197,61,0.55)'; g.lineWidth = 2; paRR(g, x0, y0, x1 - x0, SLOTS.trayY - y0, 18); g.stroke();
+      }
+      for (const r of st.reels) {
+        // a gold frame with depth: drop shadow, darker lower half, lit rim, rivets at the corners
+        g.fillStyle = 'rgba(40,10,40,0.3)'; paRR(g, r.x0 - 3, r.wy - 2, 102, 192, 10); g.fill();
+        g.fillStyle = '#ffd75e'; paRR(g, r.x0 - 6, r.wy - 6, 102, 192, 10); g.fill();
+        g.fillStyle = '#e0ac2c'; paRR(g, r.x0 - 6, r.wy + 90, 102, 96, 10); g.fill();
+        g.strokeStyle = '#a8740c'; g.lineWidth = 1.5; paRR(g, r.x0 - 6, r.wy - 6, 102, 192, 10); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillRect(r.x0 + 2, r.wy - 4.5, 86, 1.5);
+        g.fillStyle = '#fff3c4'; for (const [qx, qy] of [[r.x0 - 2, r.wy - 2], [r.x1 + 2, r.wy - 2], [r.x0 - 2, r.wy + 182], [r.x1 + 2, r.wy + 182]]) { paCirc(g, qx, qy, 1.6); g.fill(); }
+        g.fillStyle = '#fffaf0'; paRR(g, r.x0, r.wy, 90, 180, 6); g.fill();
+      }
+    },
+  });
+  // marquee bulbs along the cabinet's top edge
+  if (cab) for (let x = cab.x0 + 14, k = 0; x < cab.x1 - 8; x += 24, k++) {
+    const on = ((k + Math.floor(t * 6)) % 3) === 0;
+    ctx.fillStyle = on ? '#fff6c2' : 'rgba(255,197,61,0.55)'; circle(x, cab.y0 + 10, on ? 4.5 : 3.5); ctx.fill();
   }
   for (const r of st.reels) {
-    // window frame
-    ctx.fillStyle = '#ffd75e'; rr(r.x0 - 6, r.wy - 6, 102, 192, 10); ctx.fill();
-    ctx.fillStyle = '#fffaf0'; rr(r.x0, r.wy, 90, 180, 6); ctx.fill();
     // the strip
     ctx.save(); rr(r.x0, r.wy, 90, 180, 6); ctx.clip();
     const base = Math.floor(r.pos);
@@ -519,8 +573,11 @@ function slotsDraw(st) {
   for (const r of st.reels) {
     const bx = (r.x0 + r.x1) / 2, by = SLOTS.trayY + 22;
     const here = sz === r.i && st.phase === 'play', pulse = here ? 1 + 0.08 * Math.sin(t * 9) : 1;
+    // a domed arcade button: its dark skirt under it, then the cap with a glint
+    ctx.fillStyle = '#7a1428'; ctx.beginPath(); ctx.ellipse(bx, by + 3, (big ? 28 : 22) * pulse, (big ? 10.5 : 9) * pulse, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = here ? '#ff6b7c' : '#d83a50'; ctx.strokeStyle = here ? '#fff3c4' : '#7a1428'; ctx.lineWidth = here ? 2.5 : 2;
     ctx.beginPath(); ctx.ellipse(bx, by, (big ? 28 : 22) * pulse, (big ? 10.5 : 9) * pulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.ellipse(bx - 6, by - 4, 8, 2.2, 0, 0, Math.PI * 2); ctx.fill();
     text('STOP', bx, by + 0.5, big ? 14 : 10, '#fff', 'center', 'body');
     if (r.need) { ctx.save(); ctx.translate(bx + (big ? 37 : 30), by); ctx.scale(0.22, 0.22); slotsDrawSym(r.need, -45, -30, 90, 60); ctx.restore(); }
   }

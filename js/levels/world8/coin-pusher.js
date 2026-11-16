@@ -795,6 +795,7 @@ function coinDraw() {
   coinSprFrame();
   const S = st.pile, P = S.P, c = st.c || COIN.cx, t = G.clock, big = hudBig();
   const x0 = COIN.stripX0, x1 = COIN.stripX1, ry = COIN.roofY;
+  paBehindTiles(paCasinoCity(ry - 4, 7, 0.8, 0.6), ry, ry - 195, ry);
   coinStaticLayer();
   // score tubes
   for (let k = 0; k < 2; k++) {

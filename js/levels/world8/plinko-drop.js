@@ -491,18 +491,28 @@
   function plinkoCabinet(st) {
     const B = st.B;
     // felt
-    const gr = ctx.createLinearGradient(0, 60, 0, 510);
-    gr.addColorStop(0, PL_FELT2); gr.addColorStop(1, PL_FELT);
-    ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
-    // starry sparkle pattern on the felt
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    for (let k = 0; k < 60; k++) { const x = (hash(k, 3) % 900) + 30, y = (hash(k, 7) % 420) + 70; circle(x, y, 1.2 + (k % 3) * 0.5); ctx.fill(); }
+    // felt and frame are static: painted once into a cached layer (quilted felt, sparkles, bevelled frame, rivets)
+    ctx.drawImage(paLayer('plinko|' + PL_FELT + PL_FELT2, W, H, g => {
+      const gr = g.createLinearGradient(0, 60, 0, 510);
+      gr.addColorStop(0, PL_FELT2); gr.addColorStop(1, PL_FELT);
+      g.fillStyle = gr; g.fillRect(0, 0, W, H);
+      g.strokeStyle = 'rgba(255,255,255,0.035)'; g.lineWidth = 1; g.beginPath();
+      for (let k = -H; k < W; k += 40) { g.moveTo(k, 60); g.lineTo(k + 450, 510); g.moveTo(k + 450, 60); g.lineTo(k, 510); }
+      g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.06)';
+      for (let k = 0; k < 60; k++) { const x = (hash(k, 3) % 900) + 30, y = (hash(k, 7) % 420) + 70; paCirc(g, x, y, 1.2 + (k % 3) * 0.5); g.fill(); }
+      const vg = g.createRadialGradient(W / 2, 290, 180, W / 2, 290, 560); vg.addColorStop(0, 'rgba(10,8,30,0)'); vg.addColorStop(1, 'rgba(10,8,30,0.28)');
+      g.fillStyle = vg; g.fillRect(0, 60, W, 450);
+      // the frame, with a lit top edge, a shaded foot and brass rivets
+      g.fillStyle = '#7a2a6e'; g.fillRect(0, 0, W, 60); g.fillRect(0, 0, T, H); g.fillRect(W - T, 0, T, H); g.fillRect(0, 510, W, 30);
+      g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, 0, W, 3); g.fillRect(0, 0, 3, H); g.fillRect(W - T, 0, 3, H);
+      g.fillStyle = 'rgba(20,8,30,0.25)'; g.fillRect(0, 44, W, 10); g.fillRect(0, 528, W, 12);
+      g.fillStyle = '#a63c8f'; g.fillRect(0, 54, W, 6); g.fillRect(T - 6, 60, 6, 450); g.fillRect(W - T, 60, 6, 450);
+      g.fillStyle = PL_GOLD; g.fillRect(0, 58, W, 3); g.fillRect(T - 2, 60, 3, 450); g.fillRect(W - T - 1, 60, 3, 450); g.fillRect(0, 509, W, 3);
+      for (let x = 60; x < W - 40; x += 60) { g.fillStyle = '#5a1c50'; paCirc(g, x, 524, 2.6); g.fill(); g.fillStyle = '#ffd77a'; paCirc(g, x - 0.6, 523.4, 1.5); g.fill(); }
+    }), 0, 0, W, H);
     // the lanes (peg-free bands above each rail) get a soft stripe, so kids see "the paddle's lane"
     for (const r of B.rails) { ctx.fillStyle = 'rgba(255,255,255,0.04)'; ctx.fillRect(T, r.y - 75, W - 2 * T, 90); }
-    // frame: top band, sides, bottom
-    ctx.fillStyle = '#7a2a6e'; ctx.fillRect(0, 0, W, 60); ctx.fillRect(0, 0, T, H); ctx.fillRect(W - T, 0, T, H); ctx.fillRect(0, 510, W, 30);
-    ctx.fillStyle = '#a63c8f'; ctx.fillRect(0, 54, W, 6); ctx.fillRect(T - 6, 60, 6, 450); ctx.fillRect(W - T, 60, 6, 450);
-    ctx.fillStyle = PL_GOLD; ctx.fillRect(0, 58, W, 3); ctx.fillRect(T - 2, 60, 3, 450); ctx.fillRect(W - T - 1, 60, 3, 450); ctx.fillRect(0, 509, W, 3);
     // chasing bulbs on the sides
     const ph = Math.floor(G.clock * 6);
     for (let k = 0; k < 15; k++) for (const x of [12, W - 12]) {
@@ -535,9 +545,11 @@
     // pegs
     for (const pg of B.pegs) {
       const hit = pg.t > 0;
+      // a brass stud: shadow, dark rim, shaded body, a bright glint
       ctx.fillStyle = 'rgba(10,8,30,0.35)'; circle(pg.x + 1, pg.y + 2, P.pegR + 0.5); ctx.fill();
-      ctx.fillStyle = hit ? '#ffffff' : '#f3e2b0'; circle(pg.x, pg.y, P.pegR + (hit ? 1 : 0)); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.8)'; circle(pg.x - 1.5, pg.y - 1.5, 1.6); ctx.fill();
+      ctx.fillStyle = hit ? '#ffffff' : '#a8864a'; circle(pg.x, pg.y, P.pegR + (hit ? 1 : 0.6)); ctx.fill();
+      ctx.fillStyle = hit ? '#ffffff' : '#f3e2b0'; circle(pg.x - 0.5, pg.y - 0.5, P.pegR - 0.6 + (hit ? 1 : 0)); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; circle(pg.x - 1.5, pg.y - 1.5, 1.6); ctx.fill();
       if (hit) { ctx.strokeStyle = 'rgba(255,240,180,' + (pg.t / 0.18) + ')'; ctx.lineWidth = 2; circle(pg.x, pg.y, P.pegR + 5 * (1 - pg.t / 0.18) + 2); ctx.stroke(); }
     }
     // pop bumpers
@@ -606,8 +618,11 @@
     });
     // posts
     for (const po of B.posts) {
+      ctx.fillStyle = 'rgba(10,8,30,0.3)'; rr(po.x - 2, po.y0 + 3, 8, po.y1 - po.y0, 4); ctx.fill();
       ctx.fillStyle = '#d9c38a'; rr(po.x - 4, po.y0, 8, po.y1 - po.y0, 4); ctx.fill();
-      ctx.fillStyle = '#fff3b0'; circle(po.x, po.y0 + 1, 4.5); ctx.fill();
+      ctx.fillStyle = '#b39a5c'; ctx.fillRect(po.x + 1, po.y0 + 4, 3, po.y1 - po.y0 - 6);
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(po.x - 3, po.y0 + 4, 1.5, po.y1 - po.y0 - 8);
+      ctx.fillStyle = '#fff3b0'; circle(po.x, po.y0 + 1, 4.5); ctx.fill(); ctx.strokeStyle = '#b39a5c'; ctx.lineWidth = 1; ctx.stroke();
     }
     // the lucky light marker on a moving board: a little gold arrow over the lit slot
     if (st.light) {

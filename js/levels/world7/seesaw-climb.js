@@ -644,7 +644,7 @@ function seesawPaintBackdrop(g, st) {
   } else if (deco.far) {
     // outdoors: a far castle on the hills, behind everything solid
     g.save(); g.clip(air);
-    seesawPaintFarCastle(g);
+    g.drawImage(paCastlesLayer(392, 5, 0.55), 0, 0, W, H);   // the shared World 7 far castle (shaded, with pennants)
     g.restore();
   }
   // castle blocks: mortar courses on the stone tiles (below the cap of a top surface)
@@ -735,20 +735,6 @@ function seesawPaintTorch(g, x, y) {
   g.fillStyle = SEESAW_IRON; g.fillRect(x - 7, y + 4, 14, 4); g.fillRect(x - 2, y + 4, 4, 12);
   g.fillStyle = '#7a5230'; g.beginPath(); g.moveTo(x - 6, y - 4); g.lineTo(x + 6, y - 4); g.lineTo(x + 3, y + 6); g.lineTo(x - 3, y + 6); g.closePath(); g.fill();
   g.fillStyle = SEESAW_IRON; g.fillRect(x - 7, y - 6, 14, 3);
-  g.restore();
-}
-function seesawPaintFarCastle(g) {
-  g.save();
-  g.fillStyle = 'rgba(126,141,178,0.55)';
-  const tower = (x, base, w, h, roof) => {
-    g.fillRect(x, base - h, w, h);
-    for (let k = 0; k < w; k += 10) g.fillRect(x + k, base - h - 6, 6, 6);
-    if (roof) { g.beginPath(); g.moveTo(x - 4, base - h); g.lineTo(x + w / 2, base - h - roof); g.lineTo(x + w + 4, base - h); g.closePath(); g.fill(); }
-  };
-  tower(600, 360, 160, 46, 0); tower(590, 360, 34, 96, 40); tower(736, 360, 34, 86, 34); tower(660, 360, 40, 120, 52);
-  tower(60, 380, 120, 40, 0); tower(48, 380, 30, 80, 30); tower(158, 380, 30, 72, 28);
-  g.strokeStyle = 'rgba(126,141,178,0.7)'; g.lineWidth = 2; g.beginPath(); g.moveTo(680, 188); g.lineTo(680, 170); g.stroke();
-  g.fillStyle = 'rgba(255,107,74,0.55)'; g.beginPath(); g.moveTo(681, 170); g.lineTo(694, 175); g.lineTo(681, 180); g.closePath(); g.fill();
   g.restore();
 }
 function seesawPaintCrenels(g, st, solid) {
@@ -842,7 +828,8 @@ function seesawPadlock(x, y, a) {
 function seesawDrawBeam(st, s) {
   const xl = s.cx - SEESAW.half, xr = s.cx + SEESAW.half;
   const pitY = s.py + SEESAW.pivotH;
-  // the pivot: an iron triangle on the pit floor
+  // the pivot: an iron triangle on the pit floor, with its shadow
+  paShadow(s.cx, pitY + 1, 24, 3.5, 0.25);
   ctx.fillStyle = '#34304a'; ctx.beginPath(); ctx.moveTo(s.cx - 16, pitY + 1); ctx.lineTo(s.cx, s.py - 2); ctx.lineTo(s.cx + 16, pitY + 1); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#6e6a86'; ctx.beginPath(); ctx.moveTo(s.cx - 12, pitY); ctx.lineTo(s.cx, s.py + 3); ctx.lineTo(s.cx + 12, pitY); ctx.closePath(); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.beginPath(); ctx.moveTo(s.cx - 12, pitY); ctx.lineTo(s.cx, s.py + 3); ctx.lineTo(s.cx - 3, pitY); ctx.closePath(); ctx.fill();
@@ -910,6 +897,7 @@ function seesawDrawLever(lv) {
   const a = -0.7 + 1.4 * ease + (lv.pulled && lv.pullT < 0.5 ? Math.sin(lv.pullT * 30) * 0.08 * (1 - lv.pullT / 0.5) : 0)
     + (!lv.pulled && lv.pokeT > 0.9 ? Math.sin(lv.pokeT * 40) * 0.25 * (lv.pokeT - 0.9) / 0.6 : 0);   // poked from below: a wiggle, no pull
   const bx = lv.x, by = lv.y;
+  paShadow(bx, by, 14, 2.5, 0.22);
   ctx.fillStyle = '#34304a'; rr(bx - 10, by - 7, 20, 7, 2); ctx.fill();
   ctx.fillStyle = '#6e6a86'; rr(bx - 8, by - 6, 16, 3, 1.5); ctx.fill();
   const kx = bx + Math.sin(a) * 20, ky = by - 6 - Math.cos(a) * 20;
@@ -1000,7 +988,7 @@ function seesawDraw(st) {
   seesawBackdrop(st);
   seesawDrawWires(st);
   // the backdrop covers what the framework drew before it: signs, planks and the door go back on top
-  if (st.indoor) for (const sg of L.def.signs || []) { ctx.font = '17px "Lilita One", "Arial Rounded MT Bold", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(28,26,54,0.55)'; ctx.fillText(sg.text, sg.x, sg.y); }
+  if (st.indoor) for (const sg of L.def.signs || []) { ctx.font = '17px "Lilita One", "Arial Rounded MT Bold", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeText(sg.text, sg.x, sg.y); ctx.fillStyle = 'rgba(28,26,54,0.66)'; ctx.fillText(sg.text, sg.x, sg.y); }
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (L.grid[r][c] === '=') drawPlank(c * T, r * T, c, r);
   if (L.door && st.indoor) drawDoor(L.door);
   for (const t of deco.torches || []) seesawDrawTorchFlame(t[0], t[1] - 4);

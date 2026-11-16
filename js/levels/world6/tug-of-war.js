@@ -428,6 +428,8 @@ MODES.tug = {
     const st = G.mst;
     if (!st.beat) return;
     const F = TUG.floorY, m = st.mud, ph = G.match ? G.match.phase : 'live';
+    paBehindTiles(paBackyard(F, 4), undefined, F - 195, F);
+    this.drawLawn(F);
     this.drawFans(st);
     // dig-in lines: a gold dash on the grass where each player's toes start digging in
     for (const k of [0, 1]) {
@@ -571,15 +573,37 @@ MODES.tug = {
     ctx.restore();
   },
   // the animal fans on a bench below the field: they bob on the beat and cheer for their player
+  // the crowd's lawn under the rope: mowed stripes, a soil lip under the grass and a few daisies (cached)
+  drawLawn(F) {
+    const key = 'tuglawn|' + F + '|' + C.grass;
+    const layer = paLayer(key, W, H - F, g => {
+      const top = 12, hgt = H - F;
+      g.fillStyle = '#7a5537'; g.fillRect(30, 0, W - 60, top + 6);
+      g.fillStyle = '#5f4029'; for (let x = 36; x < W - 36; x += 22) { paCirc(g, x + (hash(x, 3) % 10), 8 + hash(x, 5) % 8, 2 + hash(x, 9) % 2); g.fill(); }
+      g.fillStyle = C.grass; g.fillRect(30, 0, W - 60, 4); g.fillStyle = C.grassDark; g.fillRect(30, 4, W - 60, 2);
+      for (let i = 0; i < 16; i++) { g.fillStyle = i % 2 ? '#86c97c' : '#7bbd72'; g.fillRect(30 + i * (W - 60) / 16, top + 6, (W - 60) / 16 + 1, hgt); }
+      const sh = g.createLinearGradient(0, top + 6, 0, top + 30); sh.addColorStop(0, 'rgba(30,40,30,0.32)'); sh.addColorStop(1, 'rgba(30,40,30,0)');
+      g.fillStyle = sh; g.fillRect(30, top + 6, W - 60, 24);
+      for (let i = 0; i < 40; i++) {
+        const h = hash(i, 77), x = 40 + h % (W - 80), y = top + 40 + (h >> 10) % (hgt - 60);
+        if (h % 3 === 0) { g.fillStyle = '#ffffff'; for (let k = 0; k < 5; k++) { paCirc(g, x + Math.cos(k * 1.257) * 3, y + Math.sin(k * 1.257) * 3, 2); g.fill(); } g.fillStyle = '#ffd34a'; paCirc(g, x, y, 1.6); g.fill(); }
+        else { g.strokeStyle = '#5ea35a'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y); g.lineTo(x - 3, y - 6); g.moveTo(x, y); g.lineTo(x + 2, y - 7); g.stroke(); }
+      }
+    });
+    ctx.drawImage(layer, 0, F, W, H - F);
+  },
   drawFans(st) {
     const F = TUG.floorY, by = F + 66, hit = st.beat.hitT, live = G.match && G.match.phase === 'live';
     const beatBob = live && hit < 0.2 ? Math.sin(hit / 0.2 * Math.PI) * 3 : 0;
     for (const side of [0, 1]) {
       const xs = TUG_FANS.filter(f => f[2] === side).map(f => f[0]);
       const bx0 = Math.min(...xs) - 38, bx1 = Math.max(...xs) + 38;
-      ctx.fillStyle = C.plankDark; ctx.fillRect(bx0 + 10, by + 4, 6, 20); ctx.fillRect(bx1 - 16, by + 4, 6, 20);
-      ctx.fillStyle = C.plank; rr(bx0, by - 4, bx1 - bx0, 10, 4); ctx.fill();
-      ctx.strokeStyle = C.plankDark; ctx.lineWidth = 2; ctx.stroke();
+      paShadow((bx0 + bx1) / 2, by + 25, (bx1 - bx0) / 2 + 6, 6, 0.2);
+      paBox(bx0 + 10, by + 4, 6, 21, 1.5, C.plankDark, { lw: 1.5 }); paBox(bx1 - 16, by + 4, 6, 21, 1.5, C.plankDark, { lw: 1.5 });
+      paBox(bx0, by - 4, bx1 - bx0, 10, 4, C.plank, { foot: 0.6 });
+      ctx.strokeStyle = 'rgba(107,70,48,0.35)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let x = bx0 + 18; x < bx1 - 10; x += 34) { ctx.moveTo(x, by - 1); ctx.lineTo(x + 14, by - 1); }
+      ctx.stroke();
     }
     TUG_FANS.forEach(([x, kind, side], i) => {
       const ch = st.fx.cheer[side], hop = ch > 0 ? Math.abs(Math.sin((ch * 9) + i)) * 8 : 0;
