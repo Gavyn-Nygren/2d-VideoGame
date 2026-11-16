@@ -1055,6 +1055,8 @@
     // the Royal Nerves meter with the King's face, and the tilt gauge
     {
       const w = 220 * z, h = 13 * z, x = W / 2 - w / 2 - 70 * z, y = H - 40 * z;
+      // a dark panel behind the gauge, so its words read on the pale dirt
+      ctx.fillStyle = 'rgba(20,22,52,0.86)'; rr(x - 28 * z, y - 19 * z, (W / 2 + 110 * z + 40 * z) - (x - 28 * z), 56 * z, 13 * z); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1; rr(x - 28 * z + 0.5, y - 19 * z + 0.5, (W / 2 + 110 * z + 40 * z) - (x - 28 * z) - 1, 56 * z - 1, 13 * z); ctx.stroke();
       text('Royal Nerves', x + w / 2, y - 9 * z, 11 * z, '#ffffff', 'center', 'body');
       const u = clamp(st.nerves / 100, 0, 1);
       K.meter(x, y, w, h, u, u > 0.7 ? '#ff5a4a' : u > 0.4 ? '#ffb04a' : '#8fe3b0');

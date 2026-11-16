@@ -522,7 +522,11 @@ const BELT = {
     const sp = st.room.speed || [80, 120], k = clamp((st.v - 60) / 140, 0, 1), gx = W - 160, gy = big ? 58 : 50;
     ctx.fillStyle = 'rgba(28,26,54,0.78)'; rr(gx, gy, 146, big ? 26 : 22, 11); ctx.fill();
     ctx.fillStyle = st.running ? (k > 0.6 ? '#ff8a5a' : '#7aff9a') : '#ff5a5a'; rr(gx + 4, gy + 4, 138 * Math.max(0.05, st.running ? k : 0.05), (big ? 26 : 22) - 8, 7); ctx.fill();
-    text(st.running ? 'Belt speed' : 'LINE STOP', gx + 73, gy + (big ? 13.5 : 11.5), big ? 14 : 11, '#ffffff', 'center', 'body');
+    // (a dark rim round the words, so they still read when the bright bar runs under them)
+    { const lbl = st.running ? 'Belt speed' : 'LINE STOP', fs = big ? 14 : 11, ly = gy + (big ? 13.5 : 11.5);
+      ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(20,18,44,0.9)'; ctx.strokeText(lbl, gx + 73, ly);
+      text(lbl, gx + 73, ly, fs, '#ffffff', 'center', 'body'); }
     void sp;
     rf27DrawNews(st, big ? 104 : 86);
     const j = jobs(st), cR = isCpu(st.runner), cF = isCpu(st.fixer);

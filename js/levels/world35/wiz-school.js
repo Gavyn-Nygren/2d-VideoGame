@@ -930,11 +930,19 @@ function wizLawn(x0, y0, x1, y1, o = {}) {
   ctx.fillStyle = top; ctx.fillRect(x0, y0, w, 8);
   ctx.fillStyle = tint(top, 0.3); ctx.fillRect(x0, y0, w, 2);
   ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x0, y0 + 8, w, 4);
-  for (let x = Math.ceil(x0 / 14) * 14; x < x1 - 4; x += 14) {
+  // mown stripes (every other band a touch lighter), then blades, clover and flecks placed by hash
+  if (h > 20) {
+    ctx.fillStyle = 'rgba(255,255,255,0.035)';
+    for (let x = Math.floor(x0 / 112) * 112; x < x1; x += 112) { const a = Math.max(x0, x), b = Math.min(x1, x + 56); if (b > a) ctx.fillRect(a, y0 + 12, b - a, Math.min(h - 12, 48)); }
+  }
+  const lit = tint(top, 0.28), dk = shade(body, 0.16);
+  for (let x = Math.ceil(x0 / 7) * 7; x < x1 - 2; x += 7) {
     const hh = hash(x, 77);
-    if (hh % 3 === 0) { ctx.fillStyle = top; ctx.beginPath(); ctx.moveTo(x - 3, y0 + 1); ctx.lineTo(x, y0 - 4 - (hh >> 3) % 4); ctx.lineTo(x + 3, y0 + 1); ctx.fill(); }
+    if (hh % 3 === 0) { ctx.fillStyle = hh % 2 ? top : lit; ctx.beginPath(); ctx.moveTo(x - 2.5, y0 + 1); ctx.lineTo(x + ((hh >> 6) % 3 - 1), y0 - 3 - (hh >> 3) % 5); ctx.lineTo(x + 2.5, y0 + 1); ctx.fill(); }
     if (h > 30 && hh % 7 === 2) { ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(x + (hh >> 5) % 10, y0 + 18 + (hh >> 9) % Math.max(1, Math.min(60, h - 24)), 6, 2); }
-    if (!o.noFlowers && hh % 23 === 5) { ctx.fillStyle = ['#ffe9a8', '#ffb3d9', '#bfe3ff'][(hh >> 4) % 3]; circle(x, y0 - 2, 2.2); ctx.fill(); }
+    if (h > 30 && hh % 9 === 4) { const gx = x + (hh >> 4) % 6, gy = y0 + 16 + (hh >> 8) % Math.max(1, Math.min(50, h - 22)); ctx.fillStyle = dk; ctx.fillRect(gx, gy, 1.5, 4); ctx.fillRect(gx + 3, gy + 1, 1.5, 3); ctx.fillStyle = lit; ctx.fillRect(gx + 1.5, gy - 1, 1.5, 4); }
+    if (h > 30 && hh % 31 === 6) { const gx = x + 2, gy = y0 + 20 + (hh >> 7) % Math.max(1, Math.min(40, h - 26)); ctx.fillStyle = tint(top, 0.12); circle(gx, gy, 2); ctx.fill(); circle(gx + 3, gy + 1, 2); ctx.fill(); circle(gx + 1.5, gy - 2.2, 2); ctx.fill(); }
+    if (!o.noFlowers && hh % 23 === 5) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x - 0.5, y0 - 3, 1, 4); ctx.fillStyle = ['#ffe9a8', '#ffb3d9', '#bfe3ff'][(hh >> 4) % 3]; circle(x, y0 - 4, 2.4); ctx.fill(); ctx.fillStyle = '#fff6d0'; circle(x, y0 - 4, 0.9); ctx.fill(); }
   }
 }
 function wizSkyline(sx, y) {

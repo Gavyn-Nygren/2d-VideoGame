@@ -400,11 +400,37 @@ function wizBroomDraw(st) {
           ctx.strokeStyle = WIZC.stoneDk; ctx.lineWidth = 2; for (let y = o.g - o.h + 22; y < o.g; y += 22) { ctx.beginPath(); ctx.moveTo(o.x - o.w / 2, y); ctx.lineTo(o.x + o.w / 2, y); ctx.stroke(); }
           ctx.fillStyle = '#3f6a5a'; ctx.beginPath(); ctx.ellipse(o.x, o.g - o.h, o.w / 2 + 4, 6, 0, 0, Math.PI * 2); ctx.fill();
         } else {
-          ctx.fillStyle = C2.hedge; ctx.beginPath(); ctx.moveTo(o.x - o.w / 2, o.g + 4);
-          for (let k = 0; k <= 4; k++) { const hx = o.x - o.w / 2 + k * o.w / 4; ctx.lineTo(hx, o.g - o.h + 8 + (k % 2) * 6); }
-          ctx.lineTo(o.x + o.w / 2, o.g + 4); ctx.closePath(); ctx.fill(); ctx.stroke();
-          for (let k = 0; k < 4; k++) { ctx.fillStyle = C2.hedge; circle(o.x - o.w / 2 + 8 + k * (o.w - 16) / 3, o.g - o.h + 10, 10); ctx.fill(); }
-          ctx.fillStyle = C2.hedgeDk; for (let k = 0; k < 6; k++) { circle(o.x - o.w / 2 + 10 + (k % 3) * (o.w - 20) / 2, o.g - o.h + 16 + Math.floor(k / 3) * 30, 6); ctx.fill(); }
+          // a clipped topiary hedge: a scalloped leafy top, a moonlit left side and a shaded right, leaf clusters and
+          // the odd night flower (placed by hash, so nothing flickers); the box it bonks with is unchanged
+          const hx = o.x - o.w / 2, hy = o.g - o.h, n = Math.max(3, Math.round(o.w / 18)), r = o.w / (2 * n);
+          ctx.fillStyle = 'rgba(10,5,30,0.22)'; ctx.beginPath(); ctx.ellipse(o.x, o.g + 3, o.w / 2 + 12, 5, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = C2.hedge; ctx.beginPath(); ctx.moveTo(hx, o.g + 4); ctx.lineTo(hx, hy + r);
+          for (let k = 0; k < n; k++) ctx.arc(hx + r + 2 * r * k, hy + r, r, Math.PI, 0);
+          ctx.lineTo(hx + o.w, o.g + 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = 'rgba(8,30,24,0.24)'; ctx.fillRect(hx + o.w * 0.68, hy + r, o.w * 0.32 - 1, o.h - r + 3);
+          ctx.fillStyle = 'rgba(8,30,24,0.2)'; ctx.fillRect(hx + 1, o.g - 8, o.w - 2, 11);
+          ctx.fillStyle = 'rgba(210,255,210,0.13)'; ctx.fillRect(hx + 1, hy + r, 5, o.h - r + 3);
+          // leaves: a dark crescent with a lit dab on its upper left
+          ctx.fillStyle = C2.hedgeDk; ctx.beginPath();
+          for (let ly = hy + r + 6, row = 0; ly < o.g - 6; ly += 15, row++) for (let lx = hx + 9 + (row % 2) * 7; lx < hx + o.w - 7; lx += 15) {
+            const hv = hash(Math.round(o.x) + Math.round(lx - hx), row * 7 + 3), ax = lx + hv % 5 - 2, ay = ly + (hv >> 3) % 5 - 2;
+            ctx.moveTo(ax + 5, ay); ctx.arc(ax, ay, 5, 0, Math.PI * 2);
+          }
+          ctx.fill();
+          ctx.fillStyle = tint(C2.hedge, 0.22); ctx.beginPath();
+          for (let ly = hy + r + 6, row = 0; ly < o.g - 6; ly += 15, row++) for (let lx = hx + 9 + (row % 2) * 7; lx < hx + o.w - 7; lx += 15) {
+            const hv = hash(Math.round(o.x) + Math.round(lx - hx), row * 7 + 3), ax = lx + hv % 5 - 2, ay = ly + (hv >> 3) % 5 - 2;
+            ctx.moveTo(ax + 1, ay - 2); ctx.arc(ax - 1.5, ay - 2, 2.5, 0, Math.PI * 2);
+          }
+          ctx.fill();
+          // moonlight on the scallops
+          ctx.strokeStyle = 'rgba(210,255,210,0.3)'; ctx.lineWidth = 2; ctx.beginPath();
+          for (let k = 0; k < n; k++) { const bx = hx + r + 2 * r * k; ctx.moveTo(bx - r * 0.75, hy + r * 0.62); ctx.arc(bx, hy + r, r - 3, Math.PI * 1.2, Math.PI * 1.62); }
+          ctx.stroke();
+          for (let k = 0; k < 3; k++) {
+            const hv = hash(Math.round(o.x) + k * 31, 91);
+            if (hv % 3) { const fx = hx + 8 + hv % Math.max(1, o.w - 16), fy = hy + r + 8 + (hv >> 5) % Math.max(1, o.h - r - 22); ctx.fillStyle = ['#ffe9a8', '#ffb3d9', '#e8f4ff'][(hv >> 2) % 3]; circle(fx, fy, 2.4); ctx.fill(); ctx.fillStyle = '#fff6d0'; circle(fx, fy, 0.9); ctx.fill(); }
+          }
         }
         break;
       }
