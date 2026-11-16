@@ -483,6 +483,8 @@ const MECH = {
       ctx.fillStyle = 'rgba(20,18,40,0.55)'; ctx.fillRect(g.x0, g.top, g.x1 - g.x0, 600);
       const py = g.top + 240;
       ctx.fillStyle = '#ff7ab8'; rr(g.x0 + 10, py, g.x1 - g.x0 - 20, 12, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; rr(g.x0 + 16, py + 2, g.x1 - g.x0 - 32, 3, 1.5); ctx.fill();
+      ctx.strokeStyle = '#b8407a'; ctx.lineWidth = 1.5; rr(g.x0 + 10, py, g.x1 - g.x0 - 20, 12, 6); ctx.stroke();
       ctx.strokeStyle = '#d9dbe8'; ctx.lineWidth = 3; ctx.beginPath();
       for (let k = 0; k <= 6; k++) ctx.lineTo(g.x0 + 20 + ((g.x1 - g.x0 - 40) * k) / 6, py + 12 + (k % 2) * 14); ctx.stroke();
       if (g.gold) { ctx.fillStyle = C.gold; ctx.strokeStyle = C.goldDark; ctx.lineWidth = 3; rr(g.x0 - 10, g.top - 4, g.x1 - g.x0 + 20, 16, 4); ctx.fill(); ctx.stroke(); }
@@ -508,14 +510,18 @@ const MECH = {
     ctx.font = '700 15px ' + RF27.FONT;
     const w = ctx.measureText(s.s).width + 26, y = s.y - 250;
     ctx.fillStyle = '#2a2f4f'; ctx.fillRect(s.x + w / 2 - 3, y + 30, 6, 40);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(s.x + w / 2 - 3, y + 30, 2, 40);
+    ctx.fillStyle = 'rgba(20,18,40,0.25)'; rr(s.x + 3, y + 4, w, 32, 8); ctx.fill();
     ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(s.x, y, w, 32, 8); ctx.fill();
     ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(s.x, y, w, 32, 8); ctx.stroke();
     text(s.s, s.x + w / 2, y + 16.5, 15, C.paper, 'center', 'body');
   }
   function drawBeam(b, t, lk) {
     const y = b.top - 160;
-    ctx.fillStyle = '#5a6488'; ctx.fillRect(b.x0, y - 300, 14, 300); ctx.fillRect(b.x1 - 14, y - 300, 14, 300);
+    for (const px of [b.x0, b.x1 - 14]) { ctx.fillStyle = '#5a6488'; ctx.fillRect(px, y - 300, 14, 300); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(px, y - 300, 3, 300); ctx.fillStyle = 'rgba(20,18,40,0.25)'; ctx.fillRect(px + 10, y - 300, 4, 300); }
     rf27Stripes(b.x0, y, b.x1 - b.x0, 40);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(b.x0, y, b.x1 - b.x0, 3);
+    ctx.fillStyle = 'rgba(20,18,40,0.3)'; ctx.fillRect(b.x0, y + 34, b.x1 - b.x0, 6);
     ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 3; ctx.strokeRect(b.x0, y, b.x1 - b.x0, 40);
     // a little steam puff from the pipe
     for (let k = 0; k < 3; k++) {
@@ -527,6 +533,8 @@ const MECH = {
   function drawWall(st, w, t) {
     const sx = w.shake > 0 ? (Math.random() - 0.5) * 8 : 0, x = w.x + sx, top = w.top - 230;
     ctx.fillStyle = '#b07a5a'; ctx.fillRect(x, top, 36, 230);
+    for (let y = top, r = 0; y < w.top; y += 23, r++) { const o = r % 2 ? 18 : 0; ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(x, y + 2, 36, 2.5); ctx.fillStyle = 'rgba(60,30,20,0.18)'; ctx.fillRect(x, y + 17, 36, 5); if (hash(r, Math.round(w.x)) % 3 === 0) { ctx.fillStyle = 'rgba(60,30,20,0.12)'; ctx.fillRect(x + o, y, 18, 23); } }
+    ctx.fillStyle = 'rgba(20,18,40,0.25)'; ctx.fillRect(x + 30, top, 6, 230);
     ctx.strokeStyle = '#7a4a32'; ctx.lineWidth = 2;
     for (let y = top; y < w.top; y += 23) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 36, y); ctx.stroke(); const o = ((y - top) / 23) % 2 ? 18 : 0; ctx.beginPath(); ctx.moveTo(x + o, y); ctx.lineTo(x + o, y + 23); ctx.stroke(); }
     // cracks grow as it's punched
@@ -547,8 +555,12 @@ const MECH = {
   function drawDoor(st, t) {
     const d = st.door, x = d.x, top = d.top - 230, open = st.state === 'clear' ? Math.min(1, st.clearT * 1.5) : 0;
     ctx.fillStyle = '#2a2f4f'; ctx.fillRect(x - 14, top - 14, 188, 244);
+    ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(x - 14, top - 14, 188, 3); ctx.fillRect(x - 14, top - 14, 3, 244);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; for (const [a, b] of [[-7, -7], [167, -7], [-7, 222], [167, 222]]) { circle(x + a, top + b, 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,233,168,0.12)'; ctx.beginPath(); ctx.ellipse(x + 80, top + 232, 120, 16, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#ffe9a8'; ctx.fillRect(x, top, 160, 230);
     ctx.fillStyle = '#6a7296'; ctx.fillRect(x, top, 160, 230 * (0.92 - open * 0.92) + 18);
+    ctx.fillStyle = 'rgba(20,18,40,0.15)'; for (let yy = top + 20; yy < top + 230 * (0.92 - open * 0.92); yy += 22) ctx.fillRect(x, yy, 160, 3);
     rf27Stripes(x, top + 230 * (0.92 - open * 0.92), 160, 18);
     text(st.final ? 'EXIT' : 'ZONE ' + (st.k + 2), x + 80, top - 32, 22, C.gold, 'center');
     const on = Math.sin(t * 5) > 0;
@@ -565,6 +577,9 @@ const MECH = {
     const f = floorAt(st, (z.x0 + z.x1) / 2) || { top: M.floor0 }, y = f.top - M.crateDrop - 60;
     for (let x = z.x0; x < z.x1; x += 120) {
       ctx.fillStyle = '#4a5270'; ctx.fillRect(x + 20, y - 400, 60, 400);
+      ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(x + 20, y - 400, 5, 400);
+      ctx.fillStyle = 'rgba(20,18,40,0.25)'; ctx.fillRect(x + 70, y - 400, 10, 400);
+      ctx.fillStyle = '#3a4260'; for (let yy = y - 380; yy < y; yy += 90) { ctx.fillRect(x + 16, yy, 68, 7); }
       ctx.fillStyle = '#2a2f4f'; ctx.fillRect(x + 14, y, 72, 22);
       rf27Stripes(x + 14, y + 22, 72, 8);
     }
@@ -590,6 +605,7 @@ const MECH = {
     const m = st.m, x = m.x, y = m.y, cx = x + M.w / 2;
     const Lc = PCOL[st.legs], Ld = PDARK[st.legs], Ac = PCOL[st.arms], Ad = PDARK[st.arms];
     const feet = y + m.h, hip = y + 100, walk = m.walkT, sw = m.grounded ? Math.sin(walk * 2.2) : 0.5;
+    { const f = floorAt(st, cx); if (f && f.top >= feet - 2) { const up = clamp((f.top - feet) / 200, 0, 1); ctx.fillStyle = 'rgba(20,18,40,' + (0.25 * (1 - up)) + ')'; ctx.beginPath(); ctx.ellipse(cx, f.top, 52 * (1 - up * 0.4), 7, 0, 0, Math.PI * 2); ctx.fill(); } }
     ctx.save();
     if (m.stun > 0) { ctx.translate(cx, feet); ctx.rotate(Math.sin(G.clock * 30) * 0.04); ctx.translate(-cx, -feet); }
     // legs: two thick piston legs (shorter when ducking)
@@ -598,7 +614,11 @@ const MECH = {
       const ph = k ? -sw : sw, kx = cx + off + ph * 8, fx2 = cx + off + ph * 14;
       ctx.strokeStyle = k ? '#4a5270' : '#5a6488'; ctx.lineWidth = 16; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(cx + off * 0.6, hip); ctx.lineTo(kx + 8, hip + legLen * 0.5); ctx.lineTo(fx2, feet - 8); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(cx + off * 0.6 - 4, hip); ctx.lineTo(kx + 4, hip + legLen * 0.5); ctx.lineTo(fx2 - 4, feet - 8); ctx.stroke();
       ctx.fillStyle = Ld; rr(fx2 - 20, feet - 14, 40, 14, 5); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; rr(fx2 - 17, feet - 13, 34, 3, 1.5); ctx.fill();
+      ctx.fillStyle = '#2a2f4f'; ctx.fillRect(fx2 - 20, feet - 3, 40, 3);
       ctx.fillStyle = Lc; circle(kx + 8, hip + legLen * 0.5, 7); ctx.fill();
     }
     // the back arm
@@ -607,12 +627,18 @@ const MECH = {
     ctx.fillStyle = Ad; circle(x - 2, y + 94, 11); ctx.fill();
     // the torso (legs pilot's window) and the head dome (arms pilot)
     ctx.fillStyle = '#c4cee6'; ctx.strokeStyle = '#4a5270'; ctx.lineWidth = 3;
-    rr(x + 4, y + 42, M.w - 8, 62, 12); ctx.fill(); ctx.stroke();
+    rr(x + 4, y + 42, M.w - 8, 62, 12); ctx.fill();
+    ctx.fillStyle = '#9aa8c8'; rr(x + M.w - 20, y + 44, 14, 58, 10); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; rr(x + 8, y + 46, 5, 46, 2.5); ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#7a86a8'; for (const [a, b] of [[12, 50], [M.w - 12, 50], [12, 90], [M.w - 12, 90]]) { circle(x + a, y + b, 2.2); ctx.fill(); }
     ctx.fillStyle = Lc; ctx.fillRect(x + 4, y + 96, M.w - 8, 8);
     ctx.fillStyle = 'rgba(20,30,60,0.75)'; rr(x + 20, y + 52, M.w - 40, 44, 8); ctx.fill();
     ctx.fillStyle = '#c4cee6'; rr(x + 14, y - 2, M.w - 28, 46, 18); ctx.fill(); ctx.stroke();
     ctx.fillStyle = Ac; ctx.fillRect(x + 14, y + 36, M.w - 28, 6);
     ctx.fillStyle = 'rgba(20,30,60,0.75)'; rr(x + 24, y + 4, M.w - 48, 34, 14); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.moveTo(x + 30, y + 34); ctx.lineTo(x + 44, y + 6); ctx.lineTo(x + 54, y + 6); ctx.lineTo(x + 40, y + 34); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x + 26, y + 92); ctx.lineTo(x + 40, y + 54); ctx.lineTo(x + 50, y + 54); ctx.lineTo(x + 36, y + 92); ctx.fill();
     // antenna light
     ctx.strokeStyle = '#4a5270'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx + 26, y + 2); ctx.lineTo(cx + 30, y - 14); ctx.stroke();
     ctx.fillStyle = Math.sin(t * 6) > 0 ? '#ff6b6b' : '#ffd36b'; circle(cx + 30, y - 16, 4); ctx.fill();

@@ -261,29 +261,67 @@ function strDrawWorld() {
   g.addColorStop(0, night ? '#1a1640' : '#4a3a90'); g.addColorStop(1, night ? '#7a3a6a' : '#ffa080');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   for (let i = 0; i < 30; i++) { ctx.fillStyle = 'rgba(255,255,240,' + (0.4 + 0.4 * Math.sin(t * 2 + i)) + ')'; circle((i * 137) % W, 20 + (i * 53) % 140, 1.4); ctx.fill(); }
+  // the moon, and a dim line of far trees and roofs
+  ctx.fillStyle = 'rgba(255,240,220,0.18)'; circle(W * 0.16, 92, 46); ctx.fill();
+  ctx.fillStyle = night ? '#fff4d8' : 'rgba(255,244,216,0.75)'; circle(W * 0.16, 92, 26); ctx.fill();
+  ctx.fillStyle = 'rgba(220,200,180,0.35)'; circle(W * 0.16 + 7, 86, 5); ctx.fill(); circle(W * 0.16 - 8, 100, 3.5); ctx.fill();
+  { const sk = cx * 0.08; ctx.fillStyle = night ? '#3a2a5a' : '#7a4a7a';
+    ctx.beginPath(); ctx.moveTo(0, 330);
+    for (let x = -20; x <= W + 20; x += 20) { const n = Math.floor((x + sk) / 20), hh = hash(n, 5); ctx.lineTo(x - (sk % 20), 262 - (hh % 4 === 0 ? 26 + hh % 20 : 6 + Math.abs(Math.sin(n * 0.6)) * 14)); }
+    ctx.lineTo(W, 330); ctx.closePath(); ctx.fill(); }
   // far: tents and a ferris wheel
   const far = cx * 0.2;
   for (let i = -1; i < 5; i++) { const n = Math.floor(far / 380) + i, x = n * 380 - far + 120; K26tent(x, 330, n); }
   // booths and lights (mid)
   const mid = cx * 0.5;
   ctx.fillStyle = '#3a2048'; ctx.fillRect(0, 300, W, 40);
+  ctx.fillStyle = 'rgba(255,200,160,0.12)'; ctx.fillRect(0, 300, W, 2);
   for (let i = -1; i < 6; i++) {
-    const n = Math.floor(mid / 260) + i, x = n * 260 - mid;
-    ctx.fillStyle = ['#ff5f6d', '#5b95ff', '#ffc53d', '#8fe3b0'][((n % 4) + 4) % 4]; rr(x + 20, 250, 120, 70, 8); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.85)'; rr(x + 34, 266, 92, 22, 6); ctx.fill();
-    text(['POPCORN', 'GAMES', 'PRIZES', 'LEMONADE'][((n % 4) + 4) % 4], x + 80, 277.5, 12, '#3a2048', 'center', 'body');
+    const n = Math.floor(mid / 260) + i, x = n * 260 - mid, k = ((n % 4) + 4) % 4, c = ['#ff5f6d', '#5b95ff', '#ffc53d', '#8fe3b0'][k];
+    // a lit stall: wooden counter, striped awning with scallops, a glowing sign and a string of bulbs
+    ctx.fillStyle = 'rgba(20,10,30,0.3)'; ctx.beginPath(); ctx.ellipse(x + 80, 322, 70, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6a3a3a'; ctx.fillRect(x + 24, 262, 112, 58);
+    ctx.fillStyle = 'rgba(255,220,150,0.35)'; ctx.fillRect(x + 32, 288, 96, 18);
+    ctx.fillStyle = '#8a5038'; ctx.fillRect(x + 22, 304, 116, 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x + 22, 304, 116, 2);
+    ctx.fillStyle = '#5a2c2c'; ctx.fillRect(x + 124, 262, 12, 58);
+    for (let s = 0; s < 6; s++) { ctx.fillStyle = s % 2 ? '#fff4e6' : c; ctx.fillRect(x + 18 + s * 21, 246, 21, 18); ctx.beginPath(); ctx.arc(x + 28.5 + s * 21, 264, 10.5, 0, Math.PI); ctx.fill(); }
+    ctx.fillStyle = 'rgba(20,10,30,0.18)'; ctx.fillRect(x + 81, 246, 63, 18);
+    ctx.strokeStyle = shade(c, 0.45); ctx.lineWidth = 1.5; ctx.strokeRect(x + 18, 246, 126, 18);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x + 18, 246, 126, 1.5);
+    const lab = ['POPCORN', 'GAMES', 'PRIZES', 'LEMONADE'][k];
+    ctx.font = CIRCUS.FONT(12); const sw = ctx.measureText(lab).width + 18;
+    ctx.fillStyle = shade(c, 0.4); rr(x + 80 - sw / 2, 278, sw, 22, 6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.92)'; rr(x + 80 - sw / 2 + 2, 280, sw - 4, 18, 5); ctx.fill();
+    text(lab, x + 80, 289.5, 12, '#3a2048', 'center', 'body');
+    for (let b = 0; b < 6; b++) { const on = (b + n + Math.floor(t * 2)) % 3 !== 0; if (on) { ctx.fillStyle = 'rgba(255,240,170,0.25)'; circle(x + 30 + b * 20, 244, 5); ctx.fill(); } ctx.fillStyle = on ? '#fff2b0' : '#a88050'; circle(x + 30 + b * 20, 244, 2.2); ctx.fill(); }
   }
   CIRCUS.bunting(-20, 200, W + 20, 215, 14, 28);
   // the midway path: two lanes
   ctx.fillStyle = '#c9a46a'; ctx.fillRect(0, 330, W, H - 330);
-  ctx.fillStyle = '#d9b47a'; ctx.fillRect(0, STR.laneY[0] - 14, W, 22); ctx.fillRect(0, STR.laneY[1] - 14, W, 22);
+  ctx.fillStyle = 'rgba(20,10,30,0.18)'; ctx.fillRect(0, 330, W, 6);
+  for (const ly of STR.laneY) {
+    ctx.fillStyle = '#d9b47a'; ctx.fillRect(0, ly - 14, W, 22);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, ly - 14, W, 2);
+    ctx.fillStyle = 'rgba(120,80,40,0.25)'; ctx.fillRect(0, ly + 6, W, 2);
+  }
+  // sawdust specks and trodden popcorn (fixed to the ground)
+  for (let x = -(cx % 36) - 36; x < W + 36; x += 36) {
+    const n = Math.floor((x + cx) / 36 + 0.5), hh = hash(n, 17);
+    ctx.fillStyle = '#b08a52'; circle(x + hh % 30, 344 + (hh >> 5) % 150, 1.6); ctx.fill();
+    if (hh % 5 === 0) { ctx.fillStyle = '#fff4d0'; circle(x + (hh >> 3) % 30, 350 + (hh >> 8) % 140, 2.4); ctx.fill(); }
+  }
   ctx.save(); ctx.translate(-Math.round(cx * 10) / 10, 0);
   // start and finish
   for (const [x, lab] of [[0, 'START'], [st.course.len, 'FINISH']]) {
     ctx.fillStyle = '#ffffff'; for (let k = 0; k < 8; k++) { ctx.fillStyle = k % 2 ? '#2a2a3a' : '#ffffff'; ctx.fillRect(x - 4, 340 + k * 20, 8, 20); }
     if (lab === 'FINISH') {
-      ctx.fillStyle = '#c9b39a'; ctx.fillRect(x - 90, 120, 8, 360); ctx.fillRect(x + 82, 120, 8, 360);
+      for (const px of [x - 90, x + 82]) { ctx.fillStyle = '#c9b39a'; ctx.fillRect(px, 120, 8, 360); ctx.fillStyle = '#9a8470'; ctx.fillRect(px + 5, 120, 3, 360); for (let k = 0; k < 6; k++) { ctx.fillStyle = '#e8443a'; ctx.fillRect(px, 160 + k * 52, 8, 10); } }
+      ctx.fillStyle = 'rgba(20,10,30,0.25)'; rr(x - 93, 114, 192, 40, 10); ctx.fill();
       ctx.fillStyle = C.gold; rr(x - 96, 110, 192, 40, 10); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; rr(x - 92, 112, 184, 6, 3); ctx.fill();
+      ctx.strokeStyle = '#a8781a'; ctx.lineWidth = 2; rr(x - 96, 110, 192, 40, 10); ctx.stroke();
+      for (let k = 0; k < 9; k++) { ctx.fillStyle = (k + Math.floor(t * 4)) % 2 ? '#fff2b0' : '#ff8a5a'; circle(x - 84 + k * 21, 106, 3); ctx.fill(); }
       text('FINISH', x, 131, 24, '#3a2048', 'center');
     } else text(lab, x, 336, 14, '#ffffff', 'center', 'body');
   }
@@ -295,13 +333,19 @@ function K26tent(x, y, n) { CIRCUS.tent(x, y, 220, 160, n % 2 ? ['#5b3a8a', '#e8
 function strDrawOb(o, y, lane, t) {
   if (o.k === 's') { ctx.fillStyle = 'rgba(255,240,120,0.75)'; ctx.beginPath(); ctx.ellipse(o.x + o.w / 2, y - 2, o.w / 2, 8, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(o.x + o.w * 0.3, y - 4, 3); ctx.fill(); return; }
   if (o.k === 'p') {
-    ctx.fillStyle = '#ff5f6d'; ctx.beginPath(); ctx.moveTo(o.x - 13, y - 30); ctx.lineTo(o.x + 13, y - 30); ctx.lineTo(o.x + 10, y); ctx.lineTo(o.x - 10, y); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(o.x - 4, y - 30, 4, 30);
+    ctx.fillStyle = 'rgba(40,20,30,0.22)'; ctx.beginPath(); ctx.ellipse(o.x + 2, y, 16, 4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#fff6c0'; for (let k = 0; k < 5; k++) { circle(o.x - 10 + k * 5, y - 32 - (k % 2) * 3, 4); ctx.fill(); }
+    ctx.fillStyle = '#e8c870'; for (let k = 0; k < 5; k++) { circle(o.x - 9 + k * 5, y - 31 - (k % 2) * 3, 1.6); ctx.fill(); }
+    ctx.fillStyle = '#ff5f6d'; ctx.beginPath(); ctx.moveTo(o.x - 13, y - 30); ctx.lineTo(o.x + 13, y - 30); ctx.lineTo(o.x + 10, y); ctx.lineTo(o.x - 10, y); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(o.x - 4, y - 30, 4, 30); ctx.fillRect(o.x + 6, y - 30, 3, 30);
+    ctx.fillStyle = 'rgba(40,10,20,0.2)'; ctx.beginPath(); ctx.moveTo(o.x + 3, y - 30); ctx.lineTo(o.x + 13, y - 30); ctx.lineTo(o.x + 10, y); ctx.lineTo(o.x + 3, y); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#a02838'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(o.x - 13, y - 30); ctx.lineTo(o.x + 13, y - 30); ctx.lineTo(o.x + 10, y); ctx.lineTo(o.x - 10, y); ctx.closePath(); ctx.stroke();
     return;
   }
   if (o.k === 'd') {
     const bob = Math.abs(Math.sin(t * 6 + o.x)) * 3;
+    ctx.fillStyle = 'rgba(40,20,30,0.2)'; ctx.beginPath(); ctx.ellipse(o.x - 2, y, 14, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#e8b820'; ctx.beginPath(); ctx.ellipse(o.x + 1, y - 9 - bob, 12, 8, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#ffe14a'; ctx.beginPath(); ctx.ellipse(o.x, y - 10 - bob, 12, 9, 0, 0, Math.PI * 2); ctx.fill();
     circle(o.x - 9, y - 22 - bob, 7); ctx.fill();
     ctx.fillStyle = '#ff9a2a'; ctx.beginPath(); ctx.moveTo(o.x - 15, y - 22 - bob); ctx.lineTo(o.x - 22, y - 20 - bob); ctx.lineTo(o.x - 15, y - 18 - bob); ctx.fill();
@@ -311,12 +355,13 @@ function strDrawOb(o, y, lane, t) {
   if (o.k === 'b') {
     // low bunting at head height on stilts, on two poles
     const top = y - STR.height - 40;
-    ctx.fillStyle = '#c9b39a'; ctx.fillRect(o.x - 30, top - 10, 5, y - top + 10); ctx.fillRect(o.x + 26, top - 10, 5, y - top + 10);
+    for (const px of [o.x - 30, o.x + 26]) { ctx.fillStyle = 'rgba(40,20,30,0.2)'; ctx.beginPath(); ctx.ellipse(px + 2.5, y, 7, 2.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#c9b39a'; ctx.fillRect(px, top - 10, 5, y - top + 10); ctx.fillStyle = '#9a8470'; ctx.fillRect(px + 3, top - 10, 2, y - top + 10); ctx.fillStyle = C.gold; circle(px + 2.5, top - 11, 3.5); ctx.fill(); }
     CIRCUS.bunting(o.x - 30, top, o.x + 30, top, 3, 4);
   }
 }
 function strDrawRacer(st, D) {
   const ground = STR.laneY[D.lane], x = D.x, id = D.k, t = G.clock;
+  if (D.st !== 'fall') { ctx.fillStyle = 'rgba(40,20,30,' + (0.22 - Math.min(0.1, D.hopY * 0.004)) + ')'; ctx.beginPath(); ctx.ellipse(x, ground + 1, 18, 4, 0, 0, Math.PI * 2); ctx.fill(); }
   ctx.save(); ctx.translate(x, ground - D.hopY);
   if (D.st === 'fall') {
     // flopped over on the sawdust, stilts beside
@@ -332,8 +377,12 @@ function strDrawRacer(st, D) {
   const sw = Math.sin(D.step * Math.PI) * 10;
   for (const [k, off] of [[0, sw], [1, -sw]]) {
     ctx.save(); ctx.translate(0, -STR.height); ctx.rotate(off * 0.012);
-    ctx.fillStyle = PCOL[id]; ctx.fillRect(-4 + (k ? 5 : -5), 0, 7, STR.height);
-    ctx.fillStyle = '#ffffff'; for (let s = 8; s < STR.height; s += 16) ctx.fillRect(-4 + (k ? 5 : -5), s, 7, 7);
+    const sx0 = -4 + (k ? 5 : -5);
+    ctx.fillStyle = PCOL[id]; ctx.fillRect(sx0, 0, 7, STR.height);
+    ctx.fillStyle = '#ffffff'; for (let s = 8; s < STR.height; s += 16) ctx.fillRect(sx0, s, 7, 7);
+    ctx.fillStyle = 'rgba(20,20,40,0.22)'; ctx.fillRect(sx0 + 4.5, 0, 2.5, STR.height);
+    ctx.strokeStyle = PDARK[id]; ctx.lineWidth = 1.2; ctx.strokeRect(sx0, 0, 7, STR.height);
+    ctx.fillStyle = '#3a3a4a'; rr(sx0 - 1, STR.height - 5, 9, 6, 2); ctx.fill();
     ctx.restore();
   }
   // arms windmilling when steadying

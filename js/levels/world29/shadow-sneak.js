@@ -799,9 +799,22 @@
     ctx.moveTo(x0, gy - 44); ctx.lineTo(x1, gy - 44); ctx.moveTo(x0, gy - 22); ctx.lineTo(x1, gy - 22);
     for (let x = Math.floor(x0 / 56) * 56; x < x1; x += 56) { ctx.moveTo(x, gy - 44); ctx.lineTo(x, gy - 22); ctx.moveTo(x + 28, gy - 22); ctx.lineTo(x + 28, gy); }
     ctx.stroke();
-    ctx.fillStyle = '#2a264e';
-    for (let x = Math.floor(x0 / 190) * 190; x < x1; x += 190) ctx.fillRect(x, top + 14, 8, gy - 44 - top - 14);
-    ctx.fillRect(x0, top + 96, w, 5);
+    // weathered plaster: faint stains and hairline cracks, fixed to the world
+    for (let x = Math.floor(x0 / 95) * 95; x < x1; x += 95) {
+      const hv = K.hash(x * 0.21);
+      if (hv > 0.45) { ctx.fillStyle = 'rgba(20,18,50,0.12)'; ctx.beginPath(); ctx.ellipse(x + hv * 60, top + 130 + hv * 120, 18 + hv * 16, 8 + hv * 6, 0, 0, Math.PI * 2); ctx.fill(); }
+      if (hv < 0.2) { ctx.strokeStyle = 'rgba(16,16,44,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 20, top + 110); ctx.lineTo(x + 28, top + 130); ctx.lineTo(x + 22, top + 150); ctx.lineTo(x + 30, top + 168); ctx.stroke(); }
+    }
+    ctx.fillStyle = 'rgba(16,16,44,0.3)'; ctx.fillRect(x0, gy - 48, w, 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(x0, gy - 42, w, 1.5); ctx.fillRect(x0, gy - 20, w, 1.5);
+    for (let x = Math.floor(x0 / 190) * 190; x < x1; x += 190) {
+      ctx.fillStyle = '#2a264e'; ctx.fillRect(x, top + 14, 8, gy - 44 - top - 14);
+      ctx.fillStyle = 'rgba(200,200,255,0.10)'; ctx.fillRect(x, top + 14, 2, gy - 44 - top - 14);
+      ctx.fillStyle = 'rgba(10,8,30,0.3)'; ctx.fillRect(x + 8, top + 14, 4, gy - 44 - top - 14);
+      ctx.fillStyle = '#6a6590'; circle(x + 4, top + 99, 2.5); ctx.fill();
+    }
+    ctx.fillStyle = '#2a264e'; ctx.fillRect(x0, top + 96, w, 5);
+    ctx.fillStyle = 'rgba(200,200,255,0.12)'; ctx.fillRect(x0, top + 96, w, 1.5);
     // the tile cap: the wall walk
     ctx.fillStyle = COL.tileEdge; ctx.fillRect(x0, top, w, 14);
     ctx.fillStyle = COL.tile; ctx.fillRect(x0, top, w, 10);

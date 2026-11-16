@@ -286,15 +286,34 @@
     const g = ctx.createLinearGradient(0, 0, 0, S.ground);
     g.addColorStop(0, lk.skyT); g.addColorStop(1, lk.skyB);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // the sun, drifting clouds, a hazy line of hills with trees, then the tents (each layer slower than the next)
+    ctx.fillStyle = 'rgba(255,250,220,0.3)'; circle(W * 0.82, 110, 62); ctx.fill();
+    ctx.fillStyle = '#fff6d0'; circle(W * 0.82, 110, 38); ctx.fill();
     for (let i = -1; i < 7; i++) {
       const base = Math.floor(cx * 0.08 / 220) + i, x = base * 220 - cx * 0.08, y = 60 + (hash(base, 3) % 70);
-      ctx.fillStyle = 'rgba(255,255,255,0.75)'; circle(x, y, 18); ctx.fill(); circle(x + 20, y - 8, 22); ctx.fill(); circle(x + 42, y, 16); ctx.fill();
+      drawCloud(x, y, 0.8 + (hash(base, 5) % 3) * 0.15);
     }
+    { const hz = cx * 0.12, hc = mixCol(lk.far, lk.skyB, 0.45), hy = x => S.ground - 120 - Math.sin((x + hz) * 0.006) * 28 - Math.sin((x + hz) * 0.017) * 10;
+      ctx.fillStyle = hc; ctx.beginPath(); ctx.moveTo(0, S.ground);
+      for (let x = 0; x <= W + 20; x += 20) ctx.lineTo(x, hy(x));
+      ctx.lineTo(W, S.ground); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = mixCol(lk.far, '#4a7a4a', 0.3);
+      for (let x = -(hz % 46) - 46; x < W + 46; x += 46) { const n = Math.floor((x + hz) / 46 + 0.5), hh = hash(n, 9); if (hh % 3 === 0) continue;
+        const ty = hy(x) + 4; circle(x, ty - 8, 10 + hh % 6); ctx.fill(); ctx.fillRect(x - 1.5, ty - 4, 3, 8); } }
     const far = cx * 0.25;
     for (let i = -1; i < 5; i++) { const n = Math.floor(far / 360) + i, x = n * 360 - far + 100; K.tent(x, S.ground - 30, 200, 150, n % 2 ? ['#5b95ff', '#fff4e6'] : ['#e8443a', '#fff4e6']); }
+    // a grassy verge with a lit lip and tufts, then the dirt track
     ctx.fillStyle = lk.far; ctx.fillRect(0, S.ground - 34, W, 40);
+    ctx.fillStyle = tint(lk.far, 0.3); ctx.fillRect(0, S.ground - 34, W, 3);
+    ctx.fillStyle = shade(lk.far, 0.15); ctx.fillRect(0, S.ground - 4, W, 6);
+    for (let x = -(cx * 0.9 % 30) - 30; x < W + 30; x += 30) { const n = Math.floor((x + cx * 0.9) / 30 + 0.5), hh = hash(n, 21); ctx.fillStyle = shade(lk.far, 0.2);
+      ctx.beginPath(); ctx.moveTo(x, S.ground - 20 + hh % 10); ctx.lineTo(x + 3, S.ground - 30 + hh % 10); ctx.lineTo(x + 6, S.ground - 20 + hh % 10); ctx.fill();
+      if (hh % 7 === 0) { ctx.fillStyle = ['#ffffff', '#ffd36b', '#ff9fb5'][hh % 3]; circle(x + 3, S.ground - 30 + hh % 10, 2.5); ctx.fill(); } }
     ctx.fillStyle = lk.ground; ctx.fillRect(0, S.ground, W, H - S.ground);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, S.ground, W, 2);
     ctx.fillStyle = lk.groundD; for (let x = -(cx % 80); x < W; x += 80) ctx.fillRect(x, S.ground + 18, 40, 3);
+    ctx.fillStyle = shade(lk.ground, 0.18);
+    for (let x = -(cx % 50) - 50; x < W + 50; x += 50) { const n = Math.floor((x + cx) / 50 + 0.5), hh = hash(n, 13); circle(x + hh % 40, S.ground + 34 + (hh >> 6) % 80, 1.6 + hh % 2); ctx.fill(); }
     ctx.save(); ctx.translate(-Math.round(cx * 10) / 10, 0);
     // the end tent
     K.tent(st.c.end + 200, S.ground, 320, 250, ['#ffc53d', '#fff4e6']);
@@ -322,35 +341,58 @@
     const s = 1 + (r.t > 0 ? r.t * 0.5 : 0);
     ctx.save(); ctx.translate(r.x, r.y); ctx.scale(0.45 * s, s);
     ctx.globalAlpha = r.got ? 0.35 : 1;
+    if (!r.got) { ctx.strokeStyle = 'rgba(255,214,90,0.22)'; ctx.lineWidth = 18; circle(0, 0, S.ringR); ctx.stroke(); }
+    ctx.strokeStyle = '#b8801a'; ctx.lineWidth = 10; circle(0, 1, S.ringR); ctx.stroke();
     ctx.strokeStyle = C.gold; ctx.lineWidth = 8; circle(0, 0, S.ringR); ctx.stroke();
     ctx.strokeStyle = '#ff5f6d'; ctx.lineWidth = 3; ctx.setLineDash([8, 8]); ctx.lineDashOffset = t * 30; circle(0, 0, S.ringR); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(255,255,240,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, S.ringR - 2, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
     ctx.restore(); ctx.globalAlpha = 1;
   }
   function drawBalloon(bl, t) {
     const y = bl.y + Math.sin(t * 2 + bl.x) * 4;
     ctx.strokeStyle = 'rgba(80,60,60,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bl.x, y + S.balloonR); ctx.lineTo(bl.x + 4, y + S.balloonR + 30); ctx.stroke();
-    ctx.fillStyle = ['#ff5f8a', '#ffc53d', '#5bb8ff', '#8fe36b'][bl.col]; ctx.beginPath(); ctx.ellipse(bl.x, y, S.balloonR * 0.85, S.balloonR, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(bl.x - 4, y - 6, 4); ctx.fill();
+    const bc = ['#ff5f8a', '#ffc53d', '#5bb8ff', '#8fe36b'][bl.col], R = S.balloonR;
+    ctx.fillStyle = shade(bc, 0.22); ctx.beginPath(); ctx.ellipse(bl.x, y, R * 0.85, R, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = bc; ctx.beginPath(); ctx.ellipse(bl.x - R * 0.1, y - R * 0.08, R * 0.72, R * 0.88, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = shade(bc, 0.3); ctx.beginPath(); ctx.moveTo(bl.x - 3, y + R + 3); ctx.lineTo(bl.x + 3, y + R + 3); ctx.lineTo(bl.x, y + R - 1); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = shade(bc, 0.4); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(bl.x, y, R * 0.85, R, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.ellipse(bl.x - R * 0.35, y - R * 0.4, R * 0.15, R * 0.28, -0.4, 0, Math.PI * 2); ctx.fill();
   }
   function drawCannon(st, cn, k) {
     const b = st.ball, cur = k === b.ci, a = cur && (b.state === 'aim' || b.state === 'load') ? b.a : cn.a;
     const kick = Math.max(0, cn.kick || 0);
     // the loading spot glows while the truck should stop there
     if (k === b.ci + 1 && (b.state === 'ride' || b.state === 'net')) { ctx.fillStyle = 'rgba(255,214,90,' + (0.35 + 0.25 * Math.sin(G.clock * 8)) + ')'; rr(cn.x - 10 - S.loadDX, S.ground - 4, S.loadDX * 2, 10, 5); ctx.fill(); }
+    ctx.fillStyle = 'rgba(40,30,30,0.2)'; ctx.beginPath(); ctx.ellipse(cn.x, S.ground + 1, 46, 6, 0, 0, Math.PI * 2); ctx.fill();
     ctx.save(); ctx.translate(cn.x, S.cannonY);
     ctx.save(); ctx.rotate(-a); ctx.translate(-kick * 20, 0);
     ctx.fillStyle = '#5a5a7a'; rr(-24, -17, S.mouth + 24, 34, 10); ctx.fill();
     for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? '#e8443a' : '#fff4e6'; ctx.fillRect(-12 + i * 14, -17, 7, 34); }
+    ctx.fillStyle = 'rgba(20,20,40,0.22)'; ctx.fillRect(-20, 6, S.mouth + 14, 11);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-18, -14, S.mouth + 10, 3);
+    ctx.strokeStyle = '#2e2e48'; ctx.lineWidth = 2; rr(-24, -17, S.mouth + 24, 34, 10); ctx.stroke();
     ctx.fillStyle = '#3a3a5a'; rr(S.mouth - 6, -20, 10, 40, 4); ctx.fill();
+    ctx.fillStyle = '#7a7a9a'; rr(S.mouth - 6, -20, 3, 40, 2); ctx.fill();
+    ctx.fillStyle = C.gold; circle(-24, 0, 6); ctx.fill(); ctx.fillStyle = '#b8801a'; circle(-24, 0, 2.5); ctx.fill();
     ctx.restore();
     ctx.fillStyle = '#8a5a3a'; ctx.beginPath(); ctx.moveTo(-34, S.ground - S.cannonY); ctx.lineTo(-10, 0); ctx.lineTo(14, 0); ctx.lineTo(30, S.ground - S.cannonY); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#3a2a3a'; circle(-14, S.ground - S.cannonY - 14, 16); ctx.fill(); circle(18, S.ground - S.cannonY - 14, 16); ctx.fill();
-    ctx.fillStyle = C.gold; circle(-14, S.ground - S.cannonY - 14, 5); ctx.fill(); circle(18, S.ground - S.cannonY - 14, 5); ctx.fill();
+    ctx.fillStyle = '#6a4228'; ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(14, 0); ctx.lineTo(30, S.ground - S.cannonY); ctx.lineTo(10, S.ground - S.cannonY); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#4a2a18'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(-34, S.ground - S.cannonY); ctx.lineTo(-10, 0); ctx.lineTo(14, 0); ctx.lineTo(30, S.ground - S.cannonY); ctx.stroke();
+    for (const wx of [-14, 18]) {
+      const wy = S.ground - S.cannonY - 14;
+      ctx.fillStyle = '#3a2a3a'; circle(wx, wy, 16); ctx.fill();
+      ctx.strokeStyle = '#8a6a5a'; ctx.lineWidth = 2; for (let s2 = 0; s2 < 4; s2++) { const aa = s2 * Math.PI / 4; ctx.beginPath(); ctx.moveTo(wx - Math.cos(aa) * 12, wy - Math.sin(aa) * 12); ctx.lineTo(wx + Math.cos(aa) * 12, wy + Math.sin(aa) * 12); ctx.stroke(); }
+      ctx.strokeStyle = '#5a4a4a'; ctx.lineWidth = 3; circle(wx, wy, 13.5); ctx.stroke();
+      ctx.fillStyle = C.gold; circle(wx, wy, 5); ctx.fill();
+    }
     ctx.restore();
-    text(String(k + 1), cn.x, S.ground + 30, 16, '#ffffff', 'center');
+    ctx.font = FONT(15); const bw = Math.max(26, ctx.measureText(String(k + 1)).width + 16);
+    ctx.fillStyle = 'rgba(40,26,40,0.8)'; rr(cn.x - bw / 2, S.ground + 18, bw, 24, 12); ctx.fill();
+    text(String(k + 1), cn.x, S.ground + 30.5, 15, '#ffffff', 'center', 'body');
   }
   function drawTruck(st) {
     const tr = st.truck, x = tr.x, y = S.ground, nw = netW(st);
+    ctx.fillStyle = 'rgba(40,30,30,0.22)'; ctx.beginPath(); ctx.ellipse(x + 20, y + 1, nw / 2 + 50, 6, 0, 0, Math.PI * 2); ctx.fill();
     ctx.save(); ctx.translate(x, y);
     // the net frame on the back
     ctx.strokeStyle = st.gold.net ? C.gold : '#e8d8b8'; ctx.lineWidth = 4;
@@ -362,13 +404,21 @@
     // the truck: red with a gold stripe, the cab in front (right)
     ctx.fillStyle = '#e8443a'; rr(-nw / 2 - 10, -40, nw + 20, 22, 6); ctx.fill();
     ctx.fillStyle = C.gold; ctx.fillRect(-nw / 2 - 10, -32, nw + 20, 5);
+    ctx.fillStyle = '#b02a28'; ctx.fillRect(-nw / 2 - 8, -24, nw + 16, 6);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(-nw / 2 - 6, -40, nw + 12, 2);
+    ctx.strokeStyle = '#8a1e1e'; ctx.lineWidth = 1.8; rr(-nw / 2 - 10, -40, nw + 20, 22, 6); ctx.stroke();
     ctx.fillStyle = '#e8443a'; rr(nw / 2 + 4, -64, 48, 46, 8); ctx.fill();
+    ctx.fillStyle = '#b02a28'; rr(nw / 2 + 38, -62, 14, 44, 6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(nw / 2 + 10, -63, 34, 2);
+    ctx.strokeStyle = '#8a1e1e'; ctx.lineWidth = 1.8; rr(nw / 2 + 4, -64, 48, 46, 8); ctx.stroke();
+    ctx.fillStyle = '#fff6c0'; rr(nw / 2 + 48, -34, 6, 7, 2); ctx.fill();
     ctx.fillStyle = 'rgba(190,230,255,0.9)'; rr(nw / 2 + 12, -58, 32, 20, 5); ctx.fill();
     ctx.save(); ctx.beginPath(); ctx.rect(nw / 2 + 12, -58, 32, 20); ctx.clip(); K.hero(st.drv, nw / 2 + 28, -30, { face: tr.v < -10 ? -1 : 1, s: 0.8 }); ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.moveTo(nw / 2 + 16, -38); ctx.lineTo(nw / 2 + 26, -58); ctx.lineTo(nw / 2 + 31, -58); ctx.lineTo(nw / 2 + 21, -38); ctx.fill();
     if (tr.beepT > 0) { ctx.fillStyle = '#ffffff'; text('♪', nw / 2 + 64, -58, 18, '#ffffff', 'center', 'body'); }
     for (const wx of [-nw / 2 + 8, nw / 2 - 4, nw / 2 + 36]) {
       ctx.save(); ctx.translate(wx, -14); ctx.rotate(tr.wheel);
-      ctx.fillStyle = '#2a2a3a'; circle(0, 0, 14); ctx.fill(); ctx.fillStyle = '#ffffff'; circle(0, 0, 5); ctx.fill();
+      ctx.fillStyle = '#2a2a3a'; circle(0, 0, 14); ctx.fill(); ctx.strokeStyle = '#4a4a5e'; ctx.lineWidth = 2; circle(0, 0, 10); ctx.stroke(); ctx.fillStyle = '#ffffff'; circle(0, 0, 5); ctx.fill();
       ctx.fillStyle = '#ffc53d'; ctx.fillRect(-1.5, -12, 3, 5);
       ctx.restore();
     }

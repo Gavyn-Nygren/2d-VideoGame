@@ -332,17 +332,22 @@ const CRANE = {
     const t = G.clock;
     rf27Backdrop(0, 0, st.look, t);
     // the rail
+    for (let x = 30; x < W; x += 120) { ctx.fillStyle = '#3c4468'; ctx.fillRect(x, 0, 10, K.railY - 8); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, 0, 2, K.railY - 8); }
     ctx.fillStyle = '#4a5270'; ctx.fillRect(0, K.railY - 8, W, 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, K.railY - 8, W, 2.5);
+    ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(0, K.railY + 5, W, 3);
+    ctx.fillStyle = 'rgba(10,10,30,0.4)'; for (let x = 15; x < W; x += 40) { circle(x, K.railY, 2); ctx.fill(); }
     rf27Stripes(0, K.railY + 8, W, 6);
-    for (let x = 30; x < W; x += 120) { ctx.fillStyle = '#3c4468'; ctx.fillRect(x, 0, 10, K.railY - 8); }
     // the chute at the top left
     ctx.fillStyle = '#5a6488'; ctx.fillRect(6, K.railY + 34, 48, 40); rf27Stripes(6, K.railY + 74, 48, 6);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(6, K.railY + 34, 48, 2.5); ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.fillRect(48, K.railY + 34, 6, 40);
     text('NEW', 30, K.railY + 56, 12, '#ffffff', 'center');
     for (let c = 0; c < K.cols; c++) {
       const x = c * CW, bt = baseTop(st, c);
       if (st.ground[c] === 'p') {
         ctx.fillStyle = '#1c1a36'; ctx.fillRect(x, K.GY, CW, H - K.GY);
-        ctx.fillStyle = '#ff9fd6'; for (let k = 0; k < 4; k++) { circle(x + 8 + k * 15, H - 6 + Math.sin(t * 3 + k + c) * 2, 9); ctx.fill(); }
+        ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(x + 4, K.GY, 3, H - K.GY);
+        for (let k = 0; k < 4; k++) { const by = H - 6 + Math.sin(t * 3 + k + c) * 2; ctx.fillStyle = '#e07ab8'; circle(x + 8 + k * 15, by + 1.5, 9); ctx.fill(); ctx.fillStyle = '#ff9fd6'; circle(x + 8 + k * 15, by, 8); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.55)'; circle(x + 5 + k * 15, by - 3, 2.5); ctx.fill(); }
         if (st.planks[c]) { ctx.fillStyle = C.gold; ctx.strokeStyle = C.goldDark; ctx.lineWidth = 3; ctx.fillRect(x, K.GY, CW, 14); ctx.strokeRect(x, K.GY, CW, 14); }
       } else rf27Floor(x, bt, CW, H - bt, st.look);
       for (let k = 0; k < st.stacks[c]; k++) rf27Crate(x, bt - (k + 1) * CW, CW, CW, 'metal', t);
@@ -350,11 +355,18 @@ const CRANE = {
     // the START pad
     { const sx = st.start * CW, sy = colTop(st, st.start);
       ctx.fillStyle = st.walked ? '#7aff9a' : '#4fb276'; rr(sx + 6, sy - 6, CW - 12, 8, 4); ctx.fill();
-      text('START', sx + 30, sy + 14, 12, '#ffffff', 'center'); }
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; rr(sx + 9, sy - 5, CW - 18, 2, 1); ctx.fill();
+      ctx.font = '700 12px ' + RF27.FONT; const lw = ctx.measureText('START').width + 14;
+      ctx.fillStyle = 'rgba(28,26,54,0.8)'; rr(sx + 30 - lw / 2, sy + 5, lw, 18, 9); ctx.fill();
+      text('START', sx + 30, sy + 14.5, 12, '#ffffff', 'center', 'body'); }
     // the exit door
     const ex = st.exit * CW, et = colTop(st, st.exit);
+    ctx.fillStyle = 'rgba(122,255,154,0.12)'; ctx.beginPath(); ctx.ellipse(ex + 30, et - 40, 46, 60, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2a2f4f'; ctx.fillRect(ex + 4, et - 92, 52, 92);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(ex + 4, et - 92, 52, 2.5);
     ctx.fillStyle = st.state === 'clear' ? '#ffe9a8' : '#7aff9a'; ctx.fillRect(ex + 10, et - 84, 40, 84);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(ex + 12, et - 82, 6, 80);
+    rf27Stripes(ex + 4, et - 92, 52, 6);
     text('EXIT', ex + 30, et - 104, 16, C.gold, 'center');
     // the gold ghosts (gold guide) and the drop ghost
     if (st.guide) for (const [c] of st.plan) { const d = deficit(st, c); for (let k = 0; k < d; k++) { ctx.strokeStyle = 'rgba(255,197,61,0.8)'; ctx.setLineDash([6, 5]); ctx.lineWidth = 3; ctx.strokeRect(c * CW + 4, colTop(st, c) - (k + 1) * CW + 4, CW - 8, CW - 8); ctx.setLineDash([]); } }
@@ -370,15 +382,24 @@ const CRANE = {
     const m = st.mag, mb = magBox(st);
     // trolley and cab
     ctx.fillStyle = '#ffc53d'; ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 3;
-    rr(m.x - 40, K.railY - 14, 80, 22, 6); ctx.fill(); ctx.stroke();
+    rr(m.x - 40, K.railY - 14, 80, 22, 6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(m.x - 36, K.railY - 12, 72, 3);
+    ctx.fillStyle = 'rgba(120,70,0,0.25)'; ctx.fillRect(m.x - 38, K.railY + 1, 76, 5);
+    rr(m.x - 40, K.railY - 14, 80, 22, 6); ctx.stroke();
     ctx.fillStyle = '#2a2f4f'; circle(m.x - 26, K.railY - 12, 6); ctx.fill(); circle(m.x + 26, K.railY - 12, 6); ctx.fill();
-    ctx.fillStyle = PCOL[st.op]; rr(m.x - 24, K.railY + 4, 48, 34, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = PCOL[st.op]; rr(m.x - 24, K.railY + 4, 48, 34, 8); ctx.fill();
+    ctx.fillStyle = PDARK[st.op]; rr(m.x + 12, K.railY + 6, 11, 30, 6); ctx.fill();
+    rr(m.x - 24, K.railY + 4, 48, 34, 8); ctx.stroke();
     ctx.fillStyle = 'rgba(20,30,60,0.75)'; rr(m.x - 18, K.railY + 6, 36, 28, 6); ctx.fill();
     // cable
     ctx.strokeStyle = '#2a2f4f'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(m.x, K.railY + 38); ctx.lineTo(m.x, mb.y); ctx.stroke();
     // the magnet (with a hanging crate)
     if (st.carry) rf27Crate(m.x - CW / 2, mb.y + K.magH, CW, CW, 'metal', t);
-    ctx.fillStyle = '#e8574a'; ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 3; rr(mb.x, mb.y, mb.w, mb.h, 5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e8574a'; ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 3; rr(mb.x, mb.y, mb.w, mb.h, 5); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(mb.x + 4, mb.y + 3, mb.w - 8, 3);
+    ctx.fillStyle = 'rgba(80,10,10,0.25)'; ctx.fillRect(mb.x + 3, mb.y + mb.h - 10, mb.w - 6, 4);
+    ctx.fillStyle = '#2a2f4f'; rr(mb.x + mb.w / 2 - 8, mb.y - 5, 16, 7, 3); ctx.fill();
+    rr(mb.x, mb.y, mb.w, mb.h, 5); ctx.stroke();
     ctx.fillStyle = '#d9dbe8'; ctx.fillRect(mb.x + 4, mb.y + mb.h - 6, 12, 6); ctx.fillRect(mb.x + mb.w - 16, mb.y + mb.h - 6, 12, 6);
     if (st.carry || canGrab(st)) {
       ctx.strokeStyle = st.carry ? 'rgba(122,255,255,0.9)' : 'rgba(122,255,255,' + (0.4 + 0.4 * Math.sin(t * 10)) + ')'; ctx.lineWidth = 2;
