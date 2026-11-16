@@ -1397,6 +1397,9 @@ Sfx.extra.gc1Clonk = function () { this.tone(520, 0.06, 'square', 0.04, 300); };
 Sfx.extra.gc1Plop = function () { this.tone(600, 0.1, 'sine', 0.05, 200); };
 
 /* --- phase 1 drawing --- */
+let gc1CastleCache = null;
+function gcRR(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function gcCirc(c, x, y, r) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); }
 function gc1DrawBack(st) {
   // a castle behind him: two towers with flags, in the room's stone colours
   const x0 = 640, base = st.ph.wall.floor, wall = '#8f88a8';
@@ -1410,7 +1413,35 @@ function gc1DrawBack(st) {
     ctx.fillStyle = wall;
   }
   for (let k = 0; k < 7; k++) ctx.fillRect(x0 + 10 + k * 42, base - 266, 22, 16);
-  ctx.fillStyle = 'rgba(28,26,54,0.35)'; for (const wx of [x0 + 20, x0 + 270]) { rr(wx, base - 300, 16, 30, 8); ctx.fill(); }
+  // the castle's stone detail is static: painted once into a cached layer (it is many small strokes)
+  const cw = canvas.width, chh = canvas.height, key = base + '|' + cw + '|' + chh;
+  if (!gc1CastleCache || gc1CastleCache.key !== key) {
+    const cv = (gc1CastleCache && gc1CastleCache.cv) || document.createElement('canvas');
+    const k = cw / W, bx = x0 - 12, by = base - 352;   // (only the castle's own box: a small layer is cheap to draw)
+    cv.width = Math.ceil(324 * k); cv.height = Math.ceil(356 * k);
+    const c = cv.getContext('2d'); c.setTransform(k, 0, 0, chh / H, -bx * k, -by * chh / H);
+    // stone courses, a shaded side on each tower, lit tops on the battlements and moss at the foot
+    c.strokeStyle = 'rgba(40,34,70,0.22)'; c.lineWidth = 1.2; c.beginPath();
+    const course = (xa, xb, ya, yb) => {
+      for (let y = yb - 18, n = 0; y > ya; y -= 18, n++) {
+        c.moveTo(xa, y); c.lineTo(xb, y);
+        for (let x = xa + (n % 2 ? 14 : 0) + 14; x < xb - 4; x += 28) { c.moveTo(x, y); c.lineTo(x, y + 18); }
+      }
+    };
+    course(x0 + 50, x0 + 250, base - 250, base); course(x0 - 10, x0 + 50, base - 330, base); course(x0 + 250, x0 + 310, base - 330, base);
+    c.stroke();
+    c.fillStyle = 'rgba(40,34,70,0.18)'; c.fillRect(x0 + 32, base - 330, 18, 330); c.fillRect(x0 + 292, base - 330, 18, 330);
+    c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x0 - 10, base - 330, 3, 330); c.fillRect(x0 + 250, base - 330, 3, 330);
+    for (const tx of [x0 - 10, x0 + 250]) for (let k = 0; k < 3; k++) { c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(tx + k * 22, base - 346, 14, 3); }
+    for (let k = 0; k < 7; k++) { c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(x0 + 10 + k * 42, base - 266, 22, 3); }
+    c.fillStyle = 'rgba(95,154,82,0.45)'; for (let x = x0 - 10; x < x0 + 310; x += 13) { const hh = hash(x, 4); c.beginPath(); c.ellipse(x + hh % 8, base - 2, 9, 4 + hh % 4, 0, Math.PI, 0); c.fill(); }
+    // windows with stone frames and a warm glow, and an arched gate
+    for (const wx of [x0 + 20, x0 + 270]) { c.fillStyle = 'rgba(28,26,54,0.35)'; gcRR(c, wx, base - 300, 16, 30, 8); c.fill(); c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 2; gcRR(c, wx - 2, base - 302, 20, 34, 9); c.stroke(); c.fillStyle = 'rgba(255,214,120,0.35)'; gcRR(c, wx + 3, base - 288, 10, 14, 4); c.fill(); }
+    c.fillStyle = 'rgba(28,26,54,0.3)'; c.beginPath(); c.moveTo(x0 + 120, base); c.lineTo(x0 + 120, base - 60); c.arc(x0 + 150, base - 60, 30, Math.PI, 0); c.lineTo(x0 + 180, base); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(120,80,50,0.5)'; c.lineWidth = 2; for (let x = x0 + 128; x < x0 + 180; x += 10) { c.beginPath(); c.moveTo(x, base - 80 + Math.abs(x - x0 - 150) * 0.6); c.lineTo(x, base); c.stroke(); }
+    gc1CastleCache = { key, cv };
+  }
+  ctx.drawImage(gc1CastleCache.cv, x0 - 12, base - 352, 324, 356);
 }
 function gc1DrawBlock(col, b) {
   const sh = b.hitT > 0 ? Math.sin(b.hitT * 80) * 2 : 0, x = col.x + sh, y = b.y;
@@ -1994,6 +2025,9 @@ function gc2DrawBack(st) {
   // the big machine behind the reels, with marquee bulbs along its top
   const x0 = rs[0].x0 - 24, x1 = rs[rs.length - 1].x1 + 24, y0 = Math.max(84, Math.min(...rs.map(r => r.wy)) - 36);
   ctx.fillStyle = 'rgba(120,20,60,0.5)'; rr(x0, y0, x1 - x0, GC2.panelY - y0, 18); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,197,61,0.45)'; ctx.lineWidth = 3; rr(x0 + 4, y0 + 4, x1 - x0 - 8, GC2.panelY - y0 - 4, 15); ctx.stroke();
+  ctx.strokeStyle = 'rgba(40,6,24,0.5)'; ctx.lineWidth = 2; rr(x0, y0, x1 - x0, GC2.panelY - y0, 18); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; rr(x0 + 10, y0 + 22, (x1 - x0) * 0.35, 10, 5); ctx.fill();
   for (let x = x0 + 14, k = 0; x < x1 - 8; x += 24, k++) {
     const on = ((k + Math.floor(t * 6)) % 3) === 0;
     ctx.fillStyle = on ? '#fff6c2' : 'rgba(255,197,61,0.55)'; circle(x, y0 + 10, on ? 4.5 : 3.5); ctx.fill();
@@ -3282,7 +3316,12 @@ function gc4DrawBack(st) {
   ctx.fillStyle = '#e8c896'; ctx.fillRect(0, F - 118, W, 118);
   ctx.fillStyle = 'rgba(138,88,51,0.28)';
   for (let x = 0; x < W; x += 36) ctx.fillRect(x, F - 118, 3, 118);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; for (let x = 3; x < W; x += 36) ctx.fillRect(x, F - 118, 2, 118);
+  ctx.strokeStyle = 'rgba(138,88,51,0.18)'; ctx.lineWidth = 1; for (let x = 0; x < W; x += 36) { const hh = hash(x, 9); ctx.beginPath(); ctx.moveTo(x + 10 + hh % 8, F - 112); ctx.quadraticCurveTo(x + 14 + hh % 8, F - 70, x + 9 + hh % 8, F - 10); ctx.stroke(); }
   ctx.fillStyle = '#d9b37a'; ctx.fillRect(0, F - 96, W, 8); ctx.fillRect(0, F - 40, W, 8);
+  ctx.fillStyle = 'rgba(138,88,51,0.35)'; ctx.fillRect(0, F - 89, W, 1.5); ctx.fillRect(0, F - 33, W, 1.5);
+  ctx.fillStyle = '#8a7a6a'; for (let x = 18; x < W; x += 36) { circle(x, F - 92, 1.4); ctx.fill(); circle(x, F - 36, 1.4); ctx.fill(); }
+  ctx.fillStyle = 'rgba(138,88,51,0.25)'; ctx.fillRect(0, F - 14, W, 14);
   ctx.fillStyle = '#f0d7aa';
   for (let x = 0; x < W; x += 36) { ctx.beginPath(); ctx.moveTo(x + 2, F - 118); ctx.lineTo(x + 19, F - 132); ctx.lineTo(x + 35, F - 118); ctx.closePath(); ctx.fill(); }
   const cols = [C.pip, C.gold, C.bo, '#7fd36b', '#ff8fc7'];

@@ -614,8 +614,29 @@ function mansionPaintBack(c, st, L) {
     c.fillStyle = 'rgba(255,255,255,0.035)';
     for (let x = 0; x < W; x += 48) c.fillRect(x, 0, 14, H);
     c.fillStyle = 'rgba(255,214,150,0.07)';
-    for (let y = 18; y < H; y += 40) for (let x = (y / 40) % 2 ? 24 : 0; x < W; x += 48) { c.beginPath(); c.moveTo(x, y - 5); c.lineTo(x + 4, y); c.lineTo(x, y + 5); c.lineTo(x - 4, y); c.closePath(); c.fill(); }
+    for (let y = 18; y < H; y += 40) for (let x = (y / 40) % 2 ? 24 : 0; x < W; x += 48) {
+      c.beginPath(); c.moveTo(x, y - 5); c.lineTo(x + 4, y); c.lineTo(x, y + 5); c.lineTo(x - 4, y); c.closePath(); c.fill();
+      // a little damask curl either side of each diamond
+      c.strokeStyle = 'rgba(255,214,150,0.05)'; c.lineWidth = 1.2;
+      c.beginPath(); c.arc(x - 8, y - 2, 4, 0.2, Math.PI * 1.4); c.moveTo(x + 12, y - 2); c.arc(x + 8, y - 2, 4, 0, Math.PI * 1.2, true); c.stroke();
+    }
+    c.strokeStyle = 'rgba(255,255,255,0.05)'; c.lineWidth = 1; for (let x = 0; x < W; x += 48) { c.beginPath(); c.moveTo(x + 0.5, 0); c.lineTo(x + 0.5, H); c.stroke(); }
+    // panelled wainscot along every floor, with a chair rail on top
+    for (let ty = 1; ty < ROWS; ty++) for (let tx = 2; tx < COLS - 2; tx++) {
+      if (L.grid[ty][tx] !== '#' || tile(tx, ty - 1) === '#') continue;
+      const x = tx * T, y = ty * T, top = y - 54;
+      let free = true; for (let k = 1; k <= 2; k++) if (ty - k >= 0 && L.grid[ty - k][tx] === '#') free = false;
+      if (!free) continue;
+      c.fillStyle = 'rgba(30,16,30,0.35)'; c.fillRect(x, top, T, 54);
+      c.fillStyle = 'rgba(255,220,180,0.06)'; c.fillRect(x + 4, top + 12, T - 8, 1.5); c.fillRect(x + 4, top + 12, 1.5, 34);
+      c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(x + 4, top + 45, T - 8, 1.5); c.fillRect(x + T - 5.5, top + 12, 1.5, 34);
+      c.fillStyle = '#5a3a2c'; c.fillRect(x, top, T, 5); c.fillStyle = 'rgba(255,220,180,0.18)'; c.fillRect(x, top, T, 1.5);
+    }
   }
+  // a soft vignette: the corners of the room fall into shadow
+  const vg = c.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.62);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(8,4,16,0.4)');
+  c.fillStyle = vg; c.fillRect(0, 0, W, H);
   for (const d of st.deco) mansionPaintDeco(c, d);
   // stone and wood: floorboards on top, panelled walls, a dark frame around the room
   for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
@@ -624,12 +645,23 @@ function mansionPaintBack(c, st, L) {
     const edge = tx <= 1 || tx >= COLS - 2 || ty <= 0 || ty >= ROWS - 2;
     c.fillStyle = edge ? '#1f1630' : '#4a3352'; c.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
     if (!edge) { c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + 2, y + 4, T - 4, T - 8); c.fillStyle = 'rgba(255,220,180,0.06)'; c.fillRect(x + 3, y + 5, T - 6, 2); }
-    else if ((tx + ty) % 2 === 0) { c.fillStyle = 'rgba(255,255,255,0.03)'; c.fillRect(x + 3, y + 3, 12, 8); }
+    else {
+      c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 1; const off = ty % 2 ? 0 : T / 2;
+      c.beginPath(); c.moveTo(x, y + T / 2); c.lineTo(x + T, y + T / 2); c.moveTo(x + off, y); c.lineTo(x + off, y + T / 2); c.moveTo(x + (off + T / 2) % T, y + T / 2); c.lineTo(x + (off + T / 2) % T, y + T); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.035)'; c.fillRect(x + 1, y + 1, T - 2, 1.5); c.fillRect(x + 1, y + T / 2 + 1, T - 2, 1.5);
+    }
+    if (!edge) {   // wood grain on the inner floor blocks
+      c.strokeStyle = 'rgba(30,14,30,0.35)'; c.lineWidth = 1; const g = hash(tx, ty);
+      c.beginPath(); c.moveTo(x + 2, y + 14 + g % 6); c.lineTo(x + T - 2, y + 15 + (g >> 3) % 6); c.stroke();
+      if (g % 4 === 0) { c.beginPath(); c.ellipse(x + 8 + g % 14, y + 20, 3, 1.6, 0, 0, Math.PI * 2); c.stroke(); }
+    }
     if (ty > 0 && open(tx, ty - 1)) {
       c.fillStyle = '#6b4127'; c.fillRect(x, y, T, 9);
       c.fillStyle = '#9b6a40'; c.fillRect(x, y, T, 6);
       c.fillStyle = 'rgba(60,30,15,0.5)'; c.fillRect(x + (hash(tx, ty) % 18) + 4, y + 1, 2, 5);
       c.fillStyle = 'rgba(255,230,180,0.25)'; c.fillRect(x, y, T, 1.5);
+      c.fillStyle = 'rgba(40,20,10,0.55)'; c.fillRect(x + T - 1, y, 1, 6);   // board seams
+      if (hash(tx, ty) % 3 === 0) { c.fillStyle = '#3a2418'; c.fillRect(x + 4, y + 2.5, 1.6, 1.6); c.fillRect(x + T - 6, y + 2.5, 1.6, 1.6); }
     }
     if (open(tx, ty + 1) && ty < ROWS - 1) { c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x, y + T - 3, T, 3); }
   }
@@ -655,8 +687,11 @@ function mansionPaintDeco(c, d) {
     c.beginPath(); c.moveTo(x - 16, y + 60); c.quadraticCurveTo(x - 10, y + 54, x - 6, y + 60); c.quadraticCurveTo(x - 2, y + 56, x + 2, y + 60); c.quadraticCurveTo(x - 6, y + 64, x - 16, y + 60); c.fill();
   } else if (d.kind === 'frame') {
     const w = d.w || 40, h = d.h || 50;
+    c.fillStyle = 'rgba(8,4,16,0.35)'; c.fillRect(x - w / 2 - 1, y - h / 2 + 1, w + 10, h + 10);
     c.fillStyle = '#8a6a2a'; c.fillRect(x - w / 2 - 4, y - h / 2 - 4, w + 8, h + 8);
     c.fillStyle = '#d9b35a'; c.fillRect(x - w / 2 - 2, y - h / 2 - 2, w + 4, h + 4);
+    c.fillStyle = '#f0d488'; c.fillRect(x - w / 2 - 4, y - h / 2 - 4, w + 8, 1.5); c.fillRect(x - w / 2 - 4, y - h / 2 - 4, 1.5, h + 8);
+    c.fillStyle = '#6a4e1a'; c.fillRect(x - w / 2 - 4, y + h / 2 + 2.5, w + 8, 1.5); c.fillRect(x + w / 2 + 2.5, y - h / 2 - 4, 1.5, h + 8);
     c.fillStyle = d.bg || '#3b5a6a'; c.fillRect(x - w / 2, y - h / 2, w, h);
     if (d.art === 'pumpkin') { c.fillStyle = '#ff8a2a'; c.beginPath(); c.ellipse(x, y + 4, w * 0.3, h * 0.24, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#3a6a2a'; c.fillRect(x - 2, y - h * 0.24, 4, 7); c.fillStyle = '#2a1a10'; c.fillRect(x - 6, y, 4, 4); c.fillRect(x + 3, y, 4, 4); }
     else if (d.art === 'moon') { c.fillStyle = '#ffe2a0'; c.beginPath(); c.arc(x, y, w * 0.26, 0, Math.PI * 2); c.fill(); c.fillStyle = d.bg || '#3b5a6a'; c.beginPath(); c.arc(x + 6, y - 4, w * 0.24, 0, Math.PI * 2); c.fill(); }
@@ -664,13 +699,17 @@ function mansionPaintDeco(c, d) {
     else { c.fillStyle = '#eef3ff'; c.beginPath(); c.arc(x, y - 4, w * 0.22, Math.PI, 0); c.lineTo(x + w * 0.22, y + h * 0.26); c.lineTo(x - w * 0.22, y + h * 0.26); c.closePath(); c.fill(); c.fillStyle = '#1c1a36'; c.fillRect(x - 5, y - 6, 3, 4); c.fillRect(x + 3, y - 6, 3, 4); }
   } else if (d.kind === 'shelf') {   // a background bookcase (library)
     const w = d.w || 120, h = d.h || 150;
+    c.fillStyle = 'rgba(8,4,16,0.3)'; c.fillRect(x + 6, y + 6, w, h);
     c.fillStyle = '#3a2418'; c.fillRect(x, y, w, h);
+    c.fillStyle = '#24160f'; c.fillRect(x + 4, y + 4, w - 8, h - 8);
     const cols = ['#c0504d', '#4f81bd', '#9bbb59', '#e0a040', '#8064a2', '#4bacc6', '#d07c9a'];
     for (let sy = y + 8; sy < y + h - 20; sy += 34) {
       let bx = x + 6;
       while (bx < x + w - 10) { const bw = 6 + (hash(bx, sy) % 7), bh = 18 + (hash(sy, bx) % 9); c.fillStyle = cols[hash(bx, sy) % cols.length]; c.globalAlpha = 0.55; c.fillRect(bx, sy + 26 - bh, bw, bh); c.globalAlpha = 1; bx += bw + 1; }
-      c.fillStyle = '#5a3a24'; c.fillRect(x, sy + 26, w, 5);
+      c.fillStyle = '#5a3a24'; c.fillRect(x, sy + 26, w, 5); c.fillStyle = 'rgba(255,220,180,0.15)'; c.fillRect(x, sy + 26, w, 1.2);
     }
+    c.fillStyle = '#5a3a24'; c.fillRect(x - 4, y - 6, w + 8, 8); c.fillStyle = 'rgba(255,220,180,0.18)'; c.fillRect(x - 4, y - 6, w + 8, 1.5);
+    c.fillStyle = '#4a2e1c'; c.fillRect(x, y, 4, h); c.fillRect(x + w - 4, y, 4, h);
   } else if (d.kind === 'pillar') {
     const h = d.h || 200;
     c.fillStyle = 'rgba(30,18,40,0.55)'; c.fillRect(x - 14, y, 28, h);
@@ -687,8 +726,13 @@ function mansionPaintDeco(c, d) {
   } else if (d.kind === 'trunk') {
     c.fillStyle = '#6a3e24'; c.fillRect(x, y - 30, 56, 30); c.fillStyle = '#8a5432'; c.fillRect(x, y - 36, 56, 10);
     c.fillStyle = '#d9b35a'; c.fillRect(x + 25, y - 30, 6, 8); c.fillRect(x + 6, y - 36, 4, 36); c.fillRect(x + 46, y - 36, 4, 36);
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x + 40, y - 26, 16, 26); c.fillStyle = 'rgba(255,230,190,0.2)'; c.fillRect(x, y - 36, 56, 1.5);
+    c.strokeStyle = '#3a2214'; c.lineWidth = 1.6; c.strokeRect(x, y - 36, 56, 36);
   } else if (d.kind === 'boxes') {
     c.fillStyle = '#7a5a3a'; c.fillRect(x, y - 34, 40, 34); c.fillRect(x + 44, y - 24, 30, 24); c.fillRect(x + 8, y - 60, 30, 26);
+    c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(x + 30, y - 34, 10, 34); c.fillRect(x + 66, y - 24, 8, 24); c.fillRect(x + 30, y - 60, 8, 26);
+    c.fillStyle = 'rgba(255,230,190,0.16)'; c.fillRect(x, y - 34, 40, 2); c.fillRect(x + 44, y - 24, 30, 2); c.fillRect(x + 8, y - 60, 30, 2);
+    c.strokeStyle = 'rgba(40,24,14,0.35)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x + 20, y - 34); c.lineTo(x + 20, y); c.moveTo(x + 23, y - 60); c.lineTo(x + 23, y - 34); c.stroke();
     c.strokeStyle = 'rgba(40,24,14,0.6)'; c.lineWidth = 2; c.strokeRect(x, y - 34, 40, 34); c.strokeRect(x + 44, y - 24, 30, 24); c.strokeRect(x + 8, y - 60, 30, 26);
   } else if (d.kind === 'rails') {   // a balcony railing (scenery only)
     c.fillStyle = 'rgba(160,110,70,0.75)'; c.fillRect(x, y - 22, d.w, 4);
