@@ -16,10 +16,12 @@
     budget: 2,          // ms of map building per step (more while the room card is up)
     budgetIntro: 4,
     maxSim: 8,          // s: a move that takes longer than this doesn't count
-    yourTurn: 4,        // s the partner stands still on their turn before "Your turn!"
-    tellWay: 20,        // ... before saying which way (well before the level's own arrows, but not giving the puzzle away)
-    sayEvery: 9,        // s between those bubbles
-    courtesy: 1.2,      // s a person gets to take a move either of you could make
+    yourTurn: 2.5,      // s the partner stands still on their turn before "Your turn!"
+    tellWay: 8,         // ... before saying which way (well before the level's own arrows)
+    sayEvery: 6,        // s between those bubbles
+    courtesy: 0.45,     // s a person gets to take a move either of you could make (Gavyn, Nov 2026: it felt slow at 1.2 s)
+    react: 0.15,        // s it stands still before its own move
+    ownAfter: 1.6,      // s: when the partner's move would be best but they don't make it, take its own helpful move instead
   };
   const ICE_SAY = { L: 'Slide left!', R: 'Slide right!', U: 'Hop up!', D: 'Drop down!', B: 'Hold ▼ to go back' };
 
@@ -163,6 +165,7 @@
         if (p.vy >= 0) p.jumping = false;
         p.vy = Math.min(p.vy + PHYS.g * dt, PHYS.maxFall);
         p.dropT -= dt;
+        if (!p.grounded) p.vx = 0; // (no steering in the air off the snow, as in the mode)
         continue;
       }
       p.walk = 0; p.dropT -= dt;
@@ -359,7 +362,7 @@
         return es.filter(e => e.to.d === dmin).sort((a, b) => a.t - b.t);
       };
       const mine = best(p.id), theirs = best(o.id);
-      const react = 0.2 + (1 - info.skill) * 0.35; // (quick enough to get a turn with a partner who keeps sliding about)
+      const react = ICE_K.react + (1 - info.skill) * 0.35; // (quick enough to get a turn with a partner who keeps sliding about)
       let go = null;
       if (mine.length && !theirs.length) go = mine[0];
       else if (mine.length && theirs.length) {
@@ -368,7 +371,7 @@
         else if (mineD === theirD) {
           // either of us could go: Pip goes first between two computers; a person gets a moment first
           if (info.partnerCpu ? p.id === 0 : st.stillT >= react + ICE_K.courtesy) go = mine[0];
-        }
+        } else if (!info.partnerCpu && st.stillT >= ICE_K.ownAfter) go = mine[0]; // (the person's move is better, but they wait for me)
       }
       if (go) {
         if (st.stillT < react) return out;
@@ -387,6 +390,21 @@
       return out;
     },
   });
+  // the level's "who moves next" arrows: the best move from where you both stand, { id, a } (a: L R U D B), or null
+  // (still thinking, at the door, or no way on). Both must be standing still. Between moves that are equally good, the
+  // quicker one, then Pip's.
+  function iceGuide() {
+    const M = iceMap();
+    if (!M) return null;
+    const n = iceNode(M, icePosOf(G.players));
+    if (!iceGrow(M, 1.5) || !n.edges || n.goal || n.d === Infinity) return null;
+    let best = null;
+    for (const e of n.edges) {
+      if (!(e.to.d < n.d)) continue;
+      if (!best || e.to.d < best.to.d || (e.to.d === best.to.d && (e.t < best.t - 0.05 || (Math.abs(e.t - best.t) <= 0.05 && e.k < best.k)))) best = e;
+    }
+    return best && { id: best.k, a: best.m };
+  }
   // (tests read the model: CPU.brains.ice.model)
-  CPU.brains.ice.model = { wMove, iceWorld, iceMap, iceGrow, iceNode, icePosOf, iceStill };
+  CPU.brains.ice.model = { wMove, iceWorld, iceMap, iceGrow, iceNode, icePosOf, iceStill, guide: iceGuide };
 })();

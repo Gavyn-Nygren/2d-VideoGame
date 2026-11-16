@@ -318,6 +318,40 @@ function pw5Trail(v, x, y, dir, a) {
   ctx.restore();
 }
 
+// packed ice blocks (the level's rock): staggered blocks with seams, a glassy streak here and there, a frosty rim
+function pw5IceBlocks(v, x, y, w, h) {
+  const ctx = v.ctx, S = 15;
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  const gr = ctx.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, '#7eaee0'); gr.addColorStop(1, '#4e78b6');
+  ctx.fillStyle = gr; ctx.fillRect(x, y, w, h);
+  for (let r = 0, yy = y; yy < y + h; r++, yy += S) {
+    ctx.fillStyle = 'rgba(32,58,120,0.35)'; ctx.fillRect(x, yy, w, 1);
+    ctx.fillStyle = 'rgba(225,244,255,0.22)'; ctx.fillRect(x, yy + 1, w, 1);
+    for (let xx = x - (r % 2) * S, k = 0; xx < x + w; xx += S * 2, k++) {
+      ctx.fillStyle = 'rgba(32,58,120,0.35)'; ctx.fillRect(xx, yy, 1, S);
+      if ((k * 7 + r * 3) % 4 === 0) { ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.beginPath(); ctx.moveTo(xx + 6, yy + S - 3); ctx.lineTo(xx + 12, yy + 3); ctx.lineTo(xx + 15, yy + 3); ctx.lineTo(xx + 9, yy + S - 3); ctx.closePath(); ctx.fill(); }
+    }
+  }
+  ctx.fillStyle = 'rgba(214,240,255,0.75)'; ctx.fillRect(x, y, 1.5, h); ctx.fillRect(x + w - 1.5, y, 1.5, h);
+  ctx.restore();
+}
+// far snowy mountains, base line y
+function pw5Mountains(v, y) {
+  const ctx = v.ctx;
+  for (const [base, amp, step, body] of [[y - 10, 60, 70, 'rgba(196,224,248,0.8)'], [y, 44, 52, 'rgba(170,206,240,0.7)']]) {
+    const pts = [];
+    for (let x = -step, i = 0; x <= v.W + step; x += step / 2, i++) pts.push([x + ((i * 37) % 13) - 6, i % 2 ? base - amp * 0.15 : base - amp * (0.55 + ((i * 53) % 40) / 100)]);
+    ctx.fillStyle = body; ctx.beginPath(); ctx.moveTo(-10, v.H);
+    for (const [px, py] of pts) ctx.lineTo(px, py);
+    ctx.lineTo(v.W + 10, v.H); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath();
+    for (let k = 2; k < pts.length - 1; k += 2) {
+      const [px, py] = pts[k], [lx, ly] = pts[k - 1], [rx, ry] = pts[k + 1], f = 0.3;
+      ctx.moveTo(px, py); ctx.lineTo(px + (rx - px) * f, py + (ry - py) * f); ctx.lineTo(px, py + (ry - py) * f * 0.7); ctx.lineTo(px + (lx - px) * f, py + (ly - py) * f); ctx.closePath();
+    }
+    ctx.fill();
+  }
+}
 // the level's first room: Pip slides to the gate, Bo bumps into Pip and lands on the gate's button; the gate opens,
 // Pip slides through onto the door's own button (it keeps the gate open), and Bo slides after and bumps to a stop in the door
 definePreview('Ice Slide', {
@@ -330,6 +364,7 @@ definePreview('Ice Slide', {
       v.sky();
       v.sun(150, 28, 12);
       v.cloud(40 + Math.sin(k * Math.PI * 2) * 6, 30, 0.8);
+      pw5Mountains(v, gy - 10);
       // a far ice palace
       ctx.save(); ctx.translate(118, gy); ctx.globalAlpha = 0.85;
       ctx.fillStyle = 'rgba(255,255,255,0.6)';
@@ -342,7 +377,7 @@ definePreview('Ice Slide', {
       ctx.restore();
       v.hills(gy - 16);
       // floor: grippy snow on the left, shiny ice to the right
-      v.block(0, gy, v.W, v.H - gy, false);
+      pw5IceBlocks(v, 0, gy, v.W, v.H - gy);
       ctx.fillStyle = '#7cc7ec'; ctx.fillRect(snowW, gy, v.W - snowW, 10);
       ctx.fillStyle = '#c9f0ff'; ctx.fillRect(snowW, gy, v.W - snowW, 6);
       ctx.fillStyle = 'rgba(255,255,255,0.85)'; for (let x = snowW + 8; x < v.W; x += 30) ctx.fillRect(x + (x % 7), gy + 1.5, 10, 2);
@@ -350,8 +385,8 @@ definePreview('Ice Slide', {
       ctx.fillStyle = '#ffffff'; ctx.fillRect(0, gy, snowW, 6);
       for (let x = 5; x < snowW; x += 10) { v.circle(x, gy + 4, 4.5); ctx.fill(); }
       // the wall down the middle with the gate at its foot, and the room's outer wall
-      v.block(gx, -2, gw, gy - gh + 2, false);
-      v.block(wallX, -2, v.W - wallX, gy + 2, false);
+      pw5IceBlocks(v, gx, -2, gw, gy - gh + 2);
+      pw5IceBlocks(v, wallX, -2, v.W - wallX, gy + 2);
       // who is where: a push slides you all the way, and you stop dead at what you hit
       const slide = (a, b, x0, x1) => v.lerp(x0, x1, Math.min(1, Math.pow(v.seg(k, a, b), 0.85)));
       const pA = gx - 11, bA = pA - 22, pB = wallX - 11, bB = pB - 22;
