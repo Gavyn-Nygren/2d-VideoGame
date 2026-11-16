@@ -548,8 +548,8 @@
     const sc = Math.max(1, Math.abs(ctx.getTransform().a)), key = f + '|' + x0 + '|' + x1 + '|' + sc; let cv = floorCache.get(key);
     if (cv) return cv;
     if (floorCache.size > 24) floorCache.clear();
-    cv = document.createElement('canvas'); cv.width = Math.ceil((x1 - x0) * sc); cv.height = Math.ceil(FL * sc);
-    const c = cv.getContext('2d'); c.scale(cv.width / (x1 - x0), cv.height / FL); c.translate(-x0, 0);
+    cv = document.createElement('canvas'); cv.width = Math.round((x1 - x0) * sc); cv.height = Math.round(FL * sc) + 1;
+    const c = cv.getContext('2d'); c.scale(sc, sc); c.translate(-x0, 0);
     const y = 0;
     c.fillStyle = wallC; c.fillRect(x0, 0, x1 - x0, FL);
       // painted brick courses and a cornice band
@@ -620,7 +620,9 @@
         continue;
       }
       const wallC = f % 2 ? '#8a7a9a' : '#867696';
-      ctx.drawImage(floorSprite(f, wallC, x0, x1), x0, y, x1 - x0, FL);
+      // (copied pixel for pixel at a whole-pixel spot: a scaled or half-pixel copy is slow to draw)
+      { const spr = floorSprite(f, wallC, x0, x1), m = ctx.getTransform();
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(spr, Math.round(m.a * x0 + m.e), Math.round(m.d * y + m.f)); ctx.restore(); }
       // a floor-to-floor seam where two painted flats meet
       ctx.fillStyle = K.COL.wood; ctx.fillRect(x0, y, x1 - x0, 3);
     }
