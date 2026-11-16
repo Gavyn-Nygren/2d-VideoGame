@@ -1397,6 +1397,9 @@ Sfx.extra.gc1Clonk = function () { this.tone(520, 0.06, 'square', 0.04, 300); };
 Sfx.extra.gc1Plop = function () { this.tone(600, 0.1, 'sine', 0.05, 200); };
 
 /* --- phase 1 drawing --- */
+let gc1CastleCache = null;
+function gcRR(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function gcCirc(c, x, y, r) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); }
 function gc1DrawBack(st) {
   // a castle behind him: two towers with flags, in the room's stone colours
   const x0 = 640, base = st.ph.wall.floor, wall = '#8f88a8';
@@ -1410,25 +1413,35 @@ function gc1DrawBack(st) {
     ctx.fillStyle = wall;
   }
   for (let k = 0; k < 7; k++) ctx.fillRect(x0 + 10 + k * 42, base - 266, 22, 16);
-  // stone courses, a shaded side on each tower, lit tops on the battlements and moss at the foot
-  ctx.strokeStyle = 'rgba(40,34,70,0.22)'; ctx.lineWidth = 1.2; ctx.beginPath();
-  const course = (xa, xb, ya, yb) => {
-    for (let y = yb - 18, n = 0; y > ya; y -= 18, n++) {
-      ctx.moveTo(xa, y); ctx.lineTo(xb, y);
-      for (let x = xa + (n % 2 ? 14 : 0) + 14; x < xb - 4; x += 28) { ctx.moveTo(x, y); ctx.lineTo(x, y + 18); }
-    }
-  };
-  course(x0 + 50, x0 + 250, base - 250, base); course(x0 - 10, x0 + 50, base - 330, base); course(x0 + 250, x0 + 310, base - 330, base);
-  ctx.stroke();
-  ctx.fillStyle = 'rgba(40,34,70,0.18)'; ctx.fillRect(x0 + 32, base - 330, 18, 330); ctx.fillRect(x0 + 292, base - 330, 18, 330);
-  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x0 - 10, base - 330, 3, 330); ctx.fillRect(x0 + 250, base - 330, 3, 330);
-  for (const tx of [x0 - 10, x0 + 250]) for (let k = 0; k < 3; k++) { ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(tx + k * 22, base - 346, 14, 3); }
-  for (let k = 0; k < 7; k++) { ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x0 + 10 + k * 42, base - 266, 22, 3); }
-  ctx.fillStyle = 'rgba(95,154,82,0.45)'; for (let x = x0 - 10; x < x0 + 310; x += 13) { const hh = hash(x, 4); ctx.beginPath(); ctx.ellipse(x + hh % 8, base - 2, 9, 4 + hh % 4, 0, Math.PI, 0); ctx.fill(); }
-  // windows with stone frames and a warm glow, and an arched gate
-  for (const wx of [x0 + 20, x0 + 270]) { ctx.fillStyle = 'rgba(28,26,54,0.35)'; rr(wx, base - 300, 16, 30, 8); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2; rr(wx - 2, base - 302, 20, 34, 9); ctx.stroke(); ctx.fillStyle = 'rgba(255,214,120,0.35)'; rr(wx + 3, base - 288, 10, 14, 4); ctx.fill(); }
-  ctx.fillStyle = 'rgba(28,26,54,0.3)'; ctx.beginPath(); ctx.moveTo(x0 + 120, base); ctx.lineTo(x0 + 120, base - 60); ctx.arc(x0 + 150, base - 60, 30, Math.PI, 0); ctx.lineTo(x0 + 180, base); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = 'rgba(120,80,50,0.5)'; ctx.lineWidth = 2; for (let x = x0 + 128; x < x0 + 180; x += 10) { ctx.beginPath(); ctx.moveTo(x, base - 80 + Math.abs(x - x0 - 150) * 0.6); ctx.lineTo(x, base); ctx.stroke(); }
+  // the castle's stone detail is static: painted once into a cached layer (it is many small strokes)
+  const cw = canvas.width, chh = canvas.height, key = base + '|' + cw + '|' + chh;
+  if (!gc1CastleCache || gc1CastleCache.key !== key) {
+    const cv = (gc1CastleCache && gc1CastleCache.cv) || document.createElement('canvas');
+    const k = cw / W, bx = x0 - 12, by = base - 352;   // (only the castle's own box: a small layer is cheap to draw)
+    cv.width = Math.ceil(324 * k); cv.height = Math.ceil(356 * k);
+    const c = cv.getContext('2d'); c.setTransform(k, 0, 0, chh / H, -bx * k, -by * chh / H);
+    // stone courses, a shaded side on each tower, lit tops on the battlements and moss at the foot
+    c.strokeStyle = 'rgba(40,34,70,0.22)'; c.lineWidth = 1.2; c.beginPath();
+    const course = (xa, xb, ya, yb) => {
+      for (let y = yb - 18, n = 0; y > ya; y -= 18, n++) {
+        c.moveTo(xa, y); c.lineTo(xb, y);
+        for (let x = xa + (n % 2 ? 14 : 0) + 14; x < xb - 4; x += 28) { c.moveTo(x, y); c.lineTo(x, y + 18); }
+      }
+    };
+    course(x0 + 50, x0 + 250, base - 250, base); course(x0 - 10, x0 + 50, base - 330, base); course(x0 + 250, x0 + 310, base - 330, base);
+    c.stroke();
+    c.fillStyle = 'rgba(40,34,70,0.18)'; c.fillRect(x0 + 32, base - 330, 18, 330); c.fillRect(x0 + 292, base - 330, 18, 330);
+    c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x0 - 10, base - 330, 3, 330); c.fillRect(x0 + 250, base - 330, 3, 330);
+    for (const tx of [x0 - 10, x0 + 250]) for (let k = 0; k < 3; k++) { c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(tx + k * 22, base - 346, 14, 3); }
+    for (let k = 0; k < 7; k++) { c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(x0 + 10 + k * 42, base - 266, 22, 3); }
+    c.fillStyle = 'rgba(95,154,82,0.45)'; for (let x = x0 - 10; x < x0 + 310; x += 13) { const hh = hash(x, 4); c.beginPath(); c.ellipse(x + hh % 8, base - 2, 9, 4 + hh % 4, 0, Math.PI, 0); c.fill(); }
+    // windows with stone frames and a warm glow, and an arched gate
+    for (const wx of [x0 + 20, x0 + 270]) { c.fillStyle = 'rgba(28,26,54,0.35)'; gcRR(c, wx, base - 300, 16, 30, 8); c.fill(); c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 2; gcRR(c, wx - 2, base - 302, 20, 34, 9); c.stroke(); c.fillStyle = 'rgba(255,214,120,0.35)'; gcRR(c, wx + 3, base - 288, 10, 14, 4); c.fill(); }
+    c.fillStyle = 'rgba(28,26,54,0.3)'; c.beginPath(); c.moveTo(x0 + 120, base); c.lineTo(x0 + 120, base - 60); c.arc(x0 + 150, base - 60, 30, Math.PI, 0); c.lineTo(x0 + 180, base); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(120,80,50,0.5)'; c.lineWidth = 2; for (let x = x0 + 128; x < x0 + 180; x += 10) { c.beginPath(); c.moveTo(x, base - 80 + Math.abs(x - x0 - 150) * 0.6); c.lineTo(x, base); c.stroke(); }
+    gc1CastleCache = { key, cv };
+  }
+  ctx.drawImage(gc1CastleCache.cv, x0 - 12, base - 352, 324, 356);
 }
 function gc1DrawBlock(col, b) {
   const sh = b.hitT > 0 ? Math.sin(b.hitT * 80) * 2 : 0, x = col.x + sh, y = b.y;

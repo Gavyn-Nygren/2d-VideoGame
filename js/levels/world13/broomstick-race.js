@@ -797,7 +797,7 @@ function broomDrawWorld() {
   ctx.fillStyle = '#241838'; ctx.fillRect(cam.x - 10, BROOM.street, W + 20, H - BROOM.street);
   ctx.fillStyle = '#33244a'; ctx.fillRect(cam.x - 10, BROOM.street, W + 20, 4);
   ctx.fillStyle = 'rgba(255,255,255,0.05)';
-  for (let x = Math.floor(cam.x / 26) * 26 - 26; x < cam.x + W + 26; x += 26) for (let r = 0; r < 3; r++) { const yy = BROOM.street + 9 + r * 9; if (yy > H - 22) break; rr(x + (r % 2) * 13, yy, 20, 6, 3); ctx.fill(); }
+  for (let x = Math.floor(cam.x / 26) * 26 - 26; x < cam.x + W + 26; x += 26) for (let r = 0; r < 3; r++) { const yy = BROOM.street + 9 + r * 9; if (yy > H - 22) break; ctx.fillRect(x + (r % 2) * 13, yy, 20, 6); }
   ctx.strokeStyle = '#463560'; ctx.lineWidth = 3;
   const fx0 = Math.floor(cam.x / 22) * 22;
   for (let x = fx0; x < cam.x + W + 22; x += 22) { ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x, H - 18); ctx.stroke(); }
