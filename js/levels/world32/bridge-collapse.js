@@ -755,11 +755,13 @@
   const acts = y => ({ label: 'lift', labels: y === 0 ? ['stretch', 'lift'] : ['lift', 'stretch'] });
   HEROCITY.defs.bridge = {
     name: 'Bridge Collapse', world: 31, kind: 'team', mode: 'bridge', ownStep: true, ownHUD: true, ownPills: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump',
-      pad: 'stick runs, <span data-glyph="a"></span> jumps,',
+    jobs: {
+      stretchy: { title: 'Stretchy hero', act: 'stretch', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Hold stretch at a gap to become a bridge.'] },
+      strong: { title: 'Strong hero', act: 'lift', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Lift picks up the bus; lift again sets it down.'] },
     },
+    jobOf: 'stretchy', jobSwap: 'You swap powers every stretch.',
     tip: 'Save the bus! The stretchy hero holds the action at a gap to become a bridge; the strong hero lifts the bus and walks it over.',
     act: acts(0),
     map: K.stubMap(),

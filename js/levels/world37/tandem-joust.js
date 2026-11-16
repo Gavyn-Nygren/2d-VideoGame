@@ -762,11 +762,12 @@
   const acts = d => ({ label: 'couch', labels: d === 0 ? ['spur', 'couch'] : ['couch', 'spur'] });
   TOURNEY.defs.tandemjoust = {
     name: 'Tandem Joust Run', world: 36, kind: 'team', mode: 'tandemjoust', outfit: 'none', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> canter, gallop / <kbd>W</kbd><kbd>S</kbd> jump, duck or lance height',
-      bo: '<kbd>←</kbd><kbd>→</kbd> canter, gallop / <kbd>↑</kbd><kbd>↓</kbd> jump, duck or lance height',
-      pad: 'stick rides,',
+    jobs: {
+      rider: { title: 'Rider', act: 'spur', legend: '<kbd>W</kbd> jump, hold for longer <kbd>D</kbd> gallop <kbd>A</kbd> canter <kbd>S</kbd> hold to duck' },
+      lancer: { title: 'Lancer', act: 'couch', legend: '<kbd>W</kbd><kbd>S</kbd> lance up, down',
+        howTo: ['Hold couch just before each target.'] },
     },
+    jobOf: 'rider', jobSwap: 'You swap jobs every stretch.',
     tip: 'Two squires, one horse, one very long lance! The rider jumps, ducks and gallops; the lancer sets the height and holds the action to couch just before each target.',
     act: acts(0),
     map: K.stubMap(),

@@ -918,11 +918,13 @@
   const acts = d => ({ label: 'job', labels: d === 0 ? ['heave', 'job'] : ['job', 'heave'] });
   TOURNEY.defs.siegetower = {
     name: 'Siege Tower Push', world: 36, kind: 'team', mode: 'siegetower', outfit: 'none', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> push, brake or walk / <kbd>W</kbd><kbd>S</kbd> climb, duck',
-      bo: '<kbd>←</kbd><kbd>→</kbd> push, brake or walk / <kbd>↑</kbd><kbd>↓</kbd> climb, duck',
-      pad: 'stick pushes or walks,',
+    jobs: {
+      pusher: { title: 'Pusher', act: 'heave', legend: '<kbd>D</kbd> hold to push <kbd>A</kbd> hold to brake <kbd>S</kbd> duck',
+        howTo: ['Heave over ruts: double force for a moment.'] },
+      tower: { title: 'Tower hero', act: ['roof', 'douse', 'chock', 'plank', 'bridge', 'job'], legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd><kbd>S</kbd> climb a ladder',
+        howTo: ['Top deck: hold to raise the roof. Tap at a fire 3 times.', 'The action word shows the job where you stand.'] },
     },
+    jobOf: 'pusher', jobSwap: 'You swap jobs every stretch.',
     tip: 'Push the siege tower up to the baron\'s wall! The pusher pushes, brakes and heaves; the tower hero climbs to raise the roof, beat out fires and fix the wheels.',
     act: acts(0),
     map: K.stubMap(),

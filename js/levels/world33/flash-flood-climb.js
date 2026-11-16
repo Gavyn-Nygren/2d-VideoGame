@@ -907,11 +907,13 @@
   const acts = r => ({ label: 'rope', labels: r === 0 ? ['rope', 'winch'] : ['winch', 'rope'] });
   STORMCHASE.defs.floodclimb = {
     name: 'Flash Flood Climb', world: 32, kind: 'team', mode: 'floodclimb', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump / climb <kbd>S</kbd> slide down',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump / climb <kbd>↓</kbd> slide down',
-      pad: 'stick runs and climbs, <span data-glyph="a"></span> jumps,',
+    jobs: {
+      rope: { title: 'Rope hero', act: 'rope', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump, climb <kbd>S</kbd> slide down',
+        howTo: ['Ride the ore bucket up. At a ring, hold rope to drop it for your partner.'] },
+      winch: { title: 'Winch hero', act: 'winch', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump, climb <kbd>S</kbd> slide down',
+        howTo: ['Hold winch at the crank to wind the bucket up. Tap it at a boulder to shove it.'] },
     },
+    jobOf: 'ropeHero', jobSwap: 'You swap jobs every stretch.',
     tip: 'The flood is rising! The rope hero rides the ore bucket while the winch hero holds the action at the crank; then the rope hero holds the action at the ring to drop the rope.',
     act: acts(0),
     map: K.stubMap(),

@@ -837,12 +837,14 @@
   const J = (small, large, cow) => ({ small, large, cow });
   STORMCHASE.defs.tornadorun = {
     name: 'Tornado Alley Run', world: 32, kind: 'team', mode: 'tornadorun', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>S</kbd> lane / duck <kbd>A</kbd><kbd>D</kbd> ease / aim',
-      bo: '<kbd>↑</kbd><kbd>↓</kbd> lane / duck <kbd>←</kbd><kbd>→</kbd> ease / aim',
-      pad: 'stick steers and aims, down ducks,',
+    jobs: {
+      driver: { title: 'Driver', act: 'boost', legend: '<kbd>W</kbd><kbd>S</kbd> change lane <kbd>A</kbd><kbd>D</kbd> slower, faster',
+        howTo: ['Boost (the horn) jumps a broken bridge.'] },
+      spotter: { title: 'Spotter', act: 'swing', legend: '<kbd>A</kbd><kbd>D</kbd> aim the bat <kbd>S</kbd> hold to duck',
+        howTo: ['Swing at the junk. Keep holding after a swing to brace for a cow.'] },
     },
-    tip: 'Outrun the tornado! The driver dodges with ▲ ▼ and honks over broken bridges; the spotter aims ◀ ▶ and swings at the junk.',
+    jobOf: 'drv', jobSwap: 'You swap jobs every stretch.',
+    tip: 'Outrun the tornado! The driver dodges and boosts over broken bridges; the spotter aims and swings at the junk.',
     act: acts(0),
     map: K.stubMap(),
     rooms: [

@@ -575,11 +575,13 @@
   const acts = wat => ({ label: 'warn', labels: wat === 0 ? ['warn', 'dive'] : ['dive', 'warn'] });
   SHRUNK.defs.birddash = {
     name: 'Bird Attack Dash', world: 30, kind: 'team', mode: 'birddash', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>S</kbd> look up',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump <kbd>↓</kbd> look up',
-      pad: 'stick runs, down looks up, <span data-glyph="a"></span> jumps,',
+    jobs: {
+      watcher: { title: 'Watcher', act: 'warn', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>S</kbd> hold to watch the sky',
+        howTo: ['Warn when the robin stares: its strike spot shows.'] },
+      dasher: { title: 'Dasher', act: 'dive', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Run from cover to cover. Dive is a quick roll.'] },
     },
+    jobOf: 'watcher', jobSwap: 'You swap jobs every stretch.',
     tip: 'A hungry robin! The watcher holds ▼ to watch the sky and warns when it stares. Run from cover to cover!',
     act: acts(0),
     map: K.stubMap(),

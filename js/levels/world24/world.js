@@ -23,12 +23,14 @@ LEVELS.push(
   // and rings the bell at the end of each stretch, then they swap. The map is only the two spawns; the mode builds each
   // stretch from its course (tokens: see the top of the level file).
   { name: 'Wind-Up Train Ride', world: 23, kind: 'team', mode: 'windtrain', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump (or wind) <kbd>S</kbd> brake',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump (or wind) <kbd>↓</kbd> brake',
-      pad: 'stick runs, <span data-glyph="a"></span> jumps (or winds), down brakes,',
+    jobs: {
+      winder: { title: 'Winder', act: 'wind', legend: '<kbd>F</kbd> wind on the gold ring <kbd>S</kbd> hold to brake',
+        howTo: ['Wind with steady presses, not mashing.'] },
+      switcher: { title: 'Switcher', act: 'switch', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>S</kbd> drop down',
+        howTo: ['Switch flips levers and kicks blocks off the track.'] },
     },
-    tip: 'Winder: the action winds the key (press on the gold ring), ▼ brakes. Switcher: run ahead, flip levers, kick blocks!',
+    jobOf: 'wind', jobSwap: 'You swap jobs every stretch.',
+    tip: 'The winder winds the train, the switcher runs ahead to flip levers and kick blocks!',
     act: { label: 'switch', labels: ['wind', 'switch'] },
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     rooms: [
@@ -76,11 +78,13 @@ LEVELS.push(
   // The map is only the two spawns; the mode builds each shelf from its room def (see the top of the level file).
   // y is world px, down positive: the carpet is y 0 and higher shelves are negative.
   { name: 'Jack-in-the-Box Launch', world: 23, kind: 'team', mode: 'jackbox', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Shelf',
-    legend: {
-      pip: 'crank: <kbd>F</kbd> turn <kbd>A</kbd><kbd>D</kbd> aim · jump: <kbd>S</kbd> squish <kbd>A</kbd><kbd>D</kbd> steer <kbd>W</kbd> hop',
-      bo: 'crank: <kbd>/</kbd> turn <kbd>←</kbd><kbd>→</kbd> aim · jump: <kbd>↓</kbd> squish <kbd>←</kbd><kbd>→</kbd> steer <kbd>↑</kbd> hop',
-      pad: 'crank: stick aims; jump: down squishes, stick steers, <span data-glyph="a"></span> hop,',
+    jobs: {
+      cranker: { title: 'Cranker', act: 'crank', legend: '<kbd>F</kbd> crank on the beat <kbd>A</kbd><kbd>D</kbd> tilt the box',
+        howTo: ['One crank per beat: mashing does nothing.', 'At the top, hook the yo-yo string and hop in.'] },
+      jumper: { title: 'Jumper', act: 'haul', legend: '<kbd>S</kbd> hold to squish <kbd>A</kbd><kbd>D</kbd> steer <kbd>W</kbd> air hop',
+        howTo: ['On the shelf, drop the yo-yo and haul the box up.'] },
     },
+    jobSwap: 'You swap jobs every launch.',
     tip: 'Crank on the beat to pop your partner up the bookshelf! Steer to the shelf, yo-yo the box up, then swap.',
     act: { label: 'crank', labels: ['haul', 'crank'] },
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
@@ -140,12 +144,14 @@ LEVELS.push(
   // soft "Whoa!" back up to the last step. Swap jobs every flight; Pip flips first. The map is only the two spawns; the
   // mode builds each flight from its course (tokens: see the top of the level file). y is world px, down positive.
   { name: 'Slinky Stairs', world: 23, kind: 'team', mode: 'slinky', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Flight',
-    legend: {
-      pip: 'steer: <kbd>A</kbd><kbd>D</kbd> point &amp; lean, <kbd>S</kbd> stick · flip: hold the action, let go to flop · this flight:',
-      bo: 'steer: <kbd>←</kbd><kbd>→</kbd> point &amp; lean, <kbd>↓</kbd> stick · flip: hold the action, let go to flop · this flight:',
-      pad: 'steer: stick points and leans, down sticks; flip: hold <span data-glyph="a"></span> or',
+    jobs: {
+      flipper: { title: 'Flipper', act: 'flop', legend: '<kbd>F</kbd> hold, let go to flop',
+        howTo: ['Let go in the green part of the meter.'] },
+      steerer: { title: 'Steerer', act: 'stick', legend: '<kbd>A</kbd><kbd>D</kbd> point, lean in the air <kbd>S</kbd> stick the landing',
+        howTo: ['Press down just as the slinky lands for a Perfect.'] },
     },
-    tip: 'Flipper: hold the action, let go in the green to flop. Steerer: ◀ ▶ point and lean, ▼ just as you land!',
+    jobOf: 'flip', jobSwap: 'You swap jobs every flight.',
+    tip: 'The flipper flops the slinky down the stairs, the steerer points it and sticks each landing!',
     act: { label: 'flop', labels: ['flop', 'stick'] },
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     rooms: [

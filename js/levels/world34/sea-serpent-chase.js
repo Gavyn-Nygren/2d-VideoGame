@@ -909,11 +909,13 @@
   const acts = h => ({ label: 'fire', labels: h === 0 ? ['row', 'fire'] : ['fire', 'row'] });
   VIKING.defs.serpentchase = {
     name: 'Sea Serpent Chase', world: 33, kind: 'team', mode: 'serpentchase', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>S</kbd> steer / <kbd>A</kbd><kbd>D</kbd> aim',
-      bo: '<kbd>↑</kbd><kbd>↓</kbd> steer / <kbd>←</kbd><kbd>→</kbd> aim',
-      pad: 'stick steers or aims,',
+    jobs: {
+      helm: { title: 'Helm', act: 'row', legend: '<kbd>W</kbd><kbd>S</kbd> change row <kbd>A</kbd><kbd>D</kbd> ease back, surge',
+        howTo: ['Row for a quick burst of speed.'] },
+      harpooner: { title: 'Harpooner', act: 'fire', legend: '<kbd>A</kbd><kbd>D</kbd> aim the ballista <kbd>F</kbd> hold, let go to fire',
+        howTo: ['Shoot the open mouth before it bites.'] },
     },
+    jobOf: 'helm', jobSwap: 'You swap jobs every stretch.',
     tip: 'Outrun the sea serpent! The helm steers between the coils and rows; the harpooner cranks the ballista and shoots the open mouth.',
     act: acts(0),
     map: K.stubMap(),

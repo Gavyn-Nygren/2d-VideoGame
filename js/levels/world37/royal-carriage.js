@@ -1047,11 +1047,13 @@
   const acts = d => ({ label: 'shove', labels: d === 0 ? ['whip', 'shove'] : ['shove', 'whip'] });
   TOURNEY.defs.royalcarriage = {
     name: 'Runaway Royal Carriage', world: 36, kind: 'team', mode: 'royalcarriage', outfit: 'none', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> speed or run / <kbd>W</kbd><kbd>S</kbd> lean, hop, duck',
-      bo: '<kbd>←</kbd><kbd>→</kbd> speed or run / <kbd>↑</kbd><kbd>↓</kbd> lean, hop, duck',
-      pad: 'stick drives or runs,',
+    jobs: {
+      driver: { title: 'Driver', act: 'whip', legend: '<kbd>D</kbd> faster <kbd>A</kbd> rein in <kbd>W</kbd><kbd>S</kbd> lean, pick a road',
+        howTo: ['Lean against the tilt. The whip scares animals off the road.'] },
+      roof: { title: 'Roof hero', act: 'shove', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> hop forward, back <kbd>S</kbd> duck flat',
+        howTo: ['Shove bandits off. Hold shove at a loose strap to re-hitch it.'] },
     },
+    jobOf: 'drv', jobSwap: 'You swap jobs every stretch.',
     tip: 'Stop the King\'s runaway carriage! The driver steers the speed and leans against the tilt; the roof hero ducks signs and shoves bandits off.',
     act: acts(0),
     map: K.stubMap(),

@@ -883,11 +883,13 @@
   const acts = a => ({ label: 'chop', labels: a === 0 ? ['chop', 'shield'] : ['shield', 'chop'] });
   VIKING.defs.icefort = {
     name: 'Ice Fortress Raid', world: 33, kind: 'team', mode: 'icefort', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> climb',
-      bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> climb',
-      pad: 'stick or d-pad climbs,',
+    jobs: {
+      axe: { title: 'Axe hero', act: 'chop', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> climb',
+        howTo: ['Tap chop to cut a handhold the way you hold.'] },
+      shield: { title: 'Shield hero', act: 'shield', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> climb',
+        howTo: ['Hold shield to keep arrows off you both; ◀ ▶ tilt it.', 'With the shield up you climb slowly.'] },
     },
+    jobSwap: 'You swap jobs at every ledge.',
     tip: 'Climb the ice! The axe hero taps the action to chop handholds; the shield hero holds the action to keep the arrows off you both. Swap at every ledge.',
     act: acts(0),
     map: K.stubMap(),

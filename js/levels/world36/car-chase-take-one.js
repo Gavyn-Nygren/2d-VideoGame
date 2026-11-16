@@ -834,12 +834,14 @@
   const acts = d => ({ label: 'clap', labels: d === 0 ? ['stunt', 'clap'] : ['clap', 'stunt'] });
   STUDIO.defs.takeone = {
     name: 'Car Chase, Take One', world: 35, kind: 'team', mode: 'takeone', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Take', outfit: 'none',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>S</kbd> lane / <kbd>A</kbd><kbd>D</kbd> dial',
-      bo: '<kbd>↑</kbd><kbd>↓</kbd> lane / <kbd>←</kbd><kbd>→</kbd> dial',
-      pad: 'stick steers or turns the dial,',
+    jobs: {
+      driver: { title: 'Driver', act: 'stunt', legend: '<kbd>W</kbd><kbd>S</kbd> change lane <kbd>A</kbd><kbd>D</kbd> slower, faster',
+        howTo: ['Stunt! is a hop over low things.'] },
+      scene: { title: 'Scene hero', act: 'clap', legend: '<kbd>A</kbd><kbd>D</kbd> turn the scene dial',
+        howTo: ['Clap rolls the backdrop to the scene on the dial.'] },
     },
-    tip: 'Film the chase! The driver changes lanes and Stunt!s over low things; the scene hero dials the movie and Claps so the paper flats match.',
+    jobOf: 'drv', jobSwap: 'You swap jobs every take.',
+    tip: 'Film the chase! The driver changes lanes and hops low things; the scene hero dials the movie and claps so the paper flats match.',
     act: acts(0),
     map: K.stubMap(),
     rooms: [

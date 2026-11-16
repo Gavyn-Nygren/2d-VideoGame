@@ -950,6 +950,13 @@
   };
   const acts = k => ({ label: 'hold on', labels: [k % 2 === 0 ? 'pull' : 'ring', k % 2 === 0 ? 'ring' : 'pull'] });
   CAVE.defs.cavegolem = {
+    jobs: {
+      puller: { title: 'Puller', act: 'pull', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump, climb <kbd>S</kbd> crouch, climb down',
+        howTo: ['Hold pull at the dark shard while it rings.'] },
+      soother: { title: 'Soother', act: 'ring', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump, climb <kbd>S</kbd> crouch, climb down',
+        howTo: ['Hold ring at the teal crystal to calm it.'] },
+    },
+    jobSwap: 'You swap jobs every stretch.',
     name: 'Sleeping Golem', world: 38, kind: 'team', mode: 'cavegolem', outfit: 'cavegolem', music: 'cavegolem0', amb: 'caveCavern',
     ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     legend,

@@ -121,14 +121,26 @@ const ok = (cond, what) => { if (!cond) { fails++; console.log('FAIL  ' + what);
   // --- every level: card up, text present, ready, then half a second of play without an error
   page = await open();
   const bad = await page.evaluate(async () => {
-    const P = window.__pipbo, G = P.G, out = [];
+    const P = window.__pipbo, G = P.G, out = [], rows = [];
     for (let i = 0; i < P.LEVELS.length; i++) {
       try {
         P.startLevel(i);
         if (G.mode !== 'ready') { out.push(P.LEVELS[i].name + ': no ready card'); continue; }
         const card = document.querySelector('.ready-card');
         if (!card || !card.querySelector('.lede').textContent.trim()) out.push(P.LEVELS[i].name + ': empty card');
-        if (card.querySelectorAll('.rdy-duo .ctl-table').length !== 2) out.push(P.LEVELS[i].name + ': controls missing');
+        if (card.querySelectorAll('.rdy-duo .rdy-ctl > .ctl-table').length !== 2) out.push(P.LEVELS[i].name + ': controls missing');
+        // (controls audit, 2026-11-16) every row a player can read: short plain words, no "role:" or "·" left over from an
+        // old one-line legend, and no key listed twice for one player (a level with jobs shows each player only theirs)
+        const code = P.levelCode(i);
+        if (P.LEVELS[i].world >= 5) card.querySelectorAll('.rdy-duo .ctl-table').forEach(t => {   // (Worlds 6-40: the audit's levels)
+          const seen = new Set();
+          t.querySelectorAll('.ctl-row').forEach(r => {
+            const lab = r.querySelector('.ctl-v').textContent.trim();
+            if (/[:·]/.test(lab) || lab.length > 24) rows.push(code + ' "' + lab + '"');
+            r.querySelectorAll('.ctl-k kbd').forEach(k => { const c = k.textContent; if (seen.has(c)) rows.push(code + ' key ' + c + ' twice'); seen.add(c); });
+          });
+        });
+        if (P.LEVELS[i].jobs && card.querySelectorAll('.rdy-duo .job-name').length !== 2) out.push(code + ': job names missing');
         P.Ready.armAt = 0; P.readyPress(0); P.readyPress(1);
         G.clock += 1; P.pollInput(0);
         if (G.mode !== 'play') { out.push(P.LEVELS[i].name + ': did not start'); continue; }
@@ -138,9 +150,10 @@ const ok = (cond, what) => { if (!cond) { fails++; console.log('FAIL  ' + what);
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // (draw it once too)
       } catch (e) { G.manual = false; out.push(P.LEVELS[i].name + ': ' + e.message); }
     }
-    return out;
+    return { out, rows };
   });
-  ok(!bad.length, 'all levels: ready card, start and play ' + bad.join(' | '));
+  ok(!bad.out.length, 'all levels: ready card, start and play ' + bad.out.join(' | '));
+  ok(!bad.rows.length, 'all levels: every control row is short and plain, no key twice ' + bad.rows.join(' | '));
   ok(!page.errs.length, 'all levels: no page errors ' + page.errs.slice(0, 5).join(' | '));
   await page.close();
   await browser.close();

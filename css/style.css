@@ -113,7 +113,7 @@ kbd.k-touch.k-round { border-radius: 999px; }
 .ctl-note { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
 .ctl-cards { display: grid; gap: 12px; }
 .ctl-cards.two { grid-template-columns: 1fr 1fr; }
-.pcard.ctl-card { gap: 6px; }
+.pcard.ctl-card { gap: 6px; align-content: start; }
 .ctl-cards:not(.two) .ctl-card { max-width: 460px; }
 .card:has(.ctl-cards.two) { width: min(820px, 100%); }
 /* the ready card before a level: the tip, each player's controls on their own device, and a Ready button each */
@@ -137,6 +137,16 @@ button.rdy-btn:hover { border-color: var(--muted); }
 .pcard.pip.is-ready { background: rgba(255, 107, 74, 0.14); } .pcard.bo.is-ready { background: rgba(91, 149, 255, 0.14); }
 .is-ready .rdy-btn { border-style: solid; color: var(--cabinet); font-family: var(--font-display); font-weight: 400; font-size: 19px; letter-spacing: 0.02em; cursor: default; }
 .pip.is-ready .rdy-btn { background: var(--pip); border-color: var(--pip); } .bo.is-ready .rdy-btn { background: var(--bo); border-color: var(--bo); }
+.rdy-ctl { display: grid; gap: 8px; align-content: start; }
+.job-name { font-family: var(--font-body); font-weight: 700; font-size: 0.62em; color: var(--paper); margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); vertical-align: middle; }
+.job-how { font-size: 13px; padding-left: 18px; }
+.job-next { opacity: 0.78; display: grid; gap: 2px; }
+.job-next-h { margin: 2px 0 0; font-size: 12px; color: var(--muted); text-transform: none; }
+.job-next .ctl-table { font-size: 12px; }
+.job-next .ctl-row > span { padding: 3px 0; min-height: 0; }
+.job-next .ctl-v { font-size: 13px; }
+.job-next .ctl-k { font-size: 12px; }
+.rdy-swap { margin: -4px 0 0; text-align: center; font-size: 14px; color: var(--gold, #ffc53d); font-weight: 700; }
 .rdy-foot { margin: 0; text-align: center; font-size: 14px; color: var(--muted); min-height: 1.3em; }
 @media (max-height: 520px) {
   .ready-card { gap: 8px; padding-block: 10px; }
@@ -149,6 +159,9 @@ button.rdy-btn:hover { border-color: var(--muted); }
   .ctl-v { font-size: 13px; }
   .rdy-btn { min-height: 40px; padding-block: 5px; }
   .rdy-foot { font-size: 12px; }
+  /* a phone: only your own job (the next job shows on the room card after the swap) */
+  .job-next { display: none; }
+  .job-how { font-size: 12px; }
 }
 @media (max-width: 520px) { .rdy-duo, .ctl-cards.two { grid-template-columns: 1fr; } }
 @media (max-height: 400px) { .rdy-foot { display: none; } }

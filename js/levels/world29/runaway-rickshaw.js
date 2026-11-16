@@ -1053,12 +1053,14 @@
   const acts = steer => ({ label: 'hop', labels: steer === 0 ? ['hop', 'swing'] : ['swing', 'hop'] });
   NINJA.defs.rickshaw = {
     name: 'Runaway Rickshaw', world: 28, kind: 'team', mode: 'rickshaw', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>S</kbd> swerve / sword up, duck <kbd>A</kbd><kbd>D</kbd> brake / sword side',
-      bo: '<kbd>↑</kbd><kbd>↓</kbd> swerve / sword up, duck <kbd>←</kbd><kbd>→</kbd> brake / sword side',
-      pad: 'stick swerves or points the sword, down ducks,',
+    jobs: {
+      steerer: { title: 'Steerer', act: 'hop', legend: '<kbd>W</kbd><kbd>S</kbd> far, near lane <kbd>A</kbd> hold to brake',
+        howTo: ['Hop bounces over the low things.'] },
+      rider: { title: 'Sword rider', act: 'swing', legend: '<kbd>A</kbd><kbd>D</kbd><kbd>W</kbd> point back, ahead, up <kbd>S</kbd> hold to duck',
+        howTo: ['Point at the star, swing as it arrives.'] },
     },
-    tip: 'Steerer: ▲ ▼ swerve, hop the low things. Sword rider: point ◀ ▲ ▶ at the star, swing as it arrives!',
+    jobOf: 'steer', jobSwap: 'You swap jobs every stretch.',
+    tip: 'The steerer swerves and hops the low things. The sword rider points at the star and swings as it arrives!',
     act: acts(0),
     map: K.stubMap(),
     rooms: [

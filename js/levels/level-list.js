@@ -1154,6 +1154,13 @@ const LEVELS = [
     name: 'Monster Feeding', world: 5, kind: 'team', mode: 'monster', ownHUD: true, noFalls: true,
     tagLift: 18,   // name tags clear the chef's toque and the catcher's basket
     act: { label: 'throw' },
+    jobs: {
+      chef: { title: 'Chef', act: 'throw', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>F</kbd> hold, let go to throw',
+        howTo: ['Hold longer for a longer throw.'] },
+      catcher: { title: 'Catcher', act: 'throw', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>F</kbd> toss into a mouth',
+        howTo: ['Catch food in your basket, then carry it to the monster.'] },
+    },
+    jobOf: 'thrower', jobSwap: 'You swap jobs every room.',
     // brown earth so the purple monster always stands out; rope = the dot in the "Room N of 4" pill: Munch purple
     theme: { stone: '#6b5a4a', stoneLight: '#7d6a58', stoneEdge: '#4a3c30', rope: '#8f7be8' },
     tip: 'One throws, one runs out to catch. Food can\'t fly all the way, so carry it to the monster before it gets grumpy!',
@@ -1460,9 +1467,13 @@ const LEVELS = [
      world: 6 — see API.md. */
   { name: 'Cannon Crew', world: 6, kind: 'team', mode: 'cannon', ownStep: true, ownHUD: true, noFalls: true,
     act: { label: 'fire' },
-    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move · power <kbd>W</kbd><kbd>S</kbd> jump · aim', bo: '<kbd>←</kbd><kbd>→</kbd> move · power <kbd>↑</kbd><kbd>↓</kbd> jump · aim',
-      pad: 'stick: move or aim, <span data-glyph="a"></span> jump or fire,' },
-    tip: 'Take turns: one loads the cannon, one aims and fires (the loader’s fire button just shouts FIRE!). Knock the blocks out from under every flag!',
+    jobs: {
+      gunner: { title: 'Gunner', act: 'fire', legend: '<kbd>W</kbd><kbd>S</kbd> aim up, down <kbd>A</kbd><kbd>D</kbd> less, more power' },
+      loader: { title: 'Loader', act: 'shout', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+        howTo: ['Bring powder and a ball to the cannon. Your action shouts FIRE!'] },
+    },
+    jobOf: 'gunner', jobSwap: 'You swap jobs every castle.',
+    tip: 'Take turns: one loads the cannon, one aims and fires. Knock the blocks out from under every flag!',
     switches: {}, signs: [],
     rooms: [
       { title: 'Toy Fort', gunner: 1, par: 3, signs: [],
@@ -1671,9 +1682,12 @@ const LEVELS = [
   },
   { name: 'Laser Vault', world: 6, kind: 'team', mode: 'laser', ownStep: true, ownHUD: true, noFalls: true,
     act: { label: 'flip' },
-    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> light',
-              bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> duck · arrows light',
-              pad: 'stick: move or light, <span data-glyph="a"></span> jump or flip, down ducks,' },
+    jobs: {
+      runner: { title: 'Runner', act: 'shout', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck' },
+      lookout: { title: 'Lookout', act: 'flip', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move the light',
+        howTo: ['Shine on a fuse box and press flip to shut a laser wall.'] },
+    },
+    jobOf: 'runner', jobSwap: 'You swap jobs every room.',
     theme: { skyTop: '#2b2547', skyBot: '#3a3157', hillFar: '#322b50', hillNear: '#2e2849', sun: 'rgba(0,0,0,0)', sunGlow: 'rgba(0,0,0,0)',
       stone: '#4d4570', stoneLight: '#5d5484', stoneEdge: '#2e2849', grass: '#8b80b5', grassDark: '#5f558a' },
     tip: "Win back the king's lost gems! One shines the lantern, one sneaks past the hidden lasers.",
@@ -1834,9 +1848,12 @@ const LEVELS = [
   { name: 'Plinko Drop', world: 7, kind: 'team', mode: 'plinko', ownStep: true, ownHUD: true,
     noFalls: true, noTime: true,   // (review) scored in stars: no Time / Record tiles once the framework reads def.noTime (engine note)
     tip: 'Take turns: one of you is the chip, the other kicks it with the paddles. Aim for the JACKPOT!',
-    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> hop · kick <kbd>S</kbd> drop',
-      bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> hop · kick <kbd>↓</kbd> drop',
-      pad: 'stick or d-pad move, <span data-glyph="a"></span> hop · kick, down drops,' },
+    jobs: {
+      chip: { title: 'Chip', legend: '<kbd>A</kbd><kbd>D</kbd> roll, then lean <kbd>S</kbd> drop, fall fast <kbd>W</kbd> hop' },
+      paddles: { title: 'Paddles', legend: '<kbd>A</kbd><kbd>D</kbd> slide the paddles <kbd>W</kbd> power kick',
+        howTo: ['Put the shiny end under the chip: it kicks it that way.'] },
+    },
+    jobSwap: 'You swap jobs every drop.',
     switches: {}, signs: [],
     rooms: [
       { title: 'Classic Plinko', tip: 'Chip: ◀ ▶ roll, ▼ drop. Paddles: catch the chip on the shiny end. It kicks to the JACKPOT!',
@@ -1935,8 +1952,13 @@ const LEVELS = [
     ] },
   { name: 'Slot Machine Run', world: 7, kind: 'team', mode: 'slots', ownHUD: true,
     act: { label: 'stop' },
-    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump',
-      pad: 'stick or d-pad move, <span data-glyph="a"></span> jump,' },   // (rev2) nothing drops here: no 'S drop' / 'down drops'
+    jobs: {
+      stopper: { title: 'Stopper', act: 'stop', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+        howTo: ['Stand under a reel and press stop.'] },
+      hopper: { title: 'Hopper', act: 'shout', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+        howTo: ['Hop across on the pictures.'] },
+    },
+    jobOf: 'stopper', jobSwap: 'You swap jobs every room.',
     tip: 'One stops the reels, one hops across on the pictures. Reach the JACKPOT ledge!',
     switches: {}, signs: [],
     rooms: [
@@ -2328,11 +2350,11 @@ const LEVELS = [
   // ----- BEGIN 9-3 Ice Age Glacier (mode 'glacier', js/levels/world9/ice-age-glacier.js) -----
   { name: 'Ice Age Glacier', world: 8, kind: 'team', mode: 'glacier', ownStep: true, ownHUD: true, noFalls: true,
     // side-on ice-floe run (MODES.glacier): the map is only the two spawns, the mode builds each room from its course
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> slow · fast <kbd>W</kbd> hop <kbd>S</kbd> duck',
-      bo: '<kbd>←</kbd><kbd>→</kbd> slow · fast <kbd>↑</kbd> hop <kbd>↓</kbd> duck',
-      pad: 'stick ◀ ▶ slow · fast, <span data-glyph="a"></span> hop, down ducks,',
+    jobs: {
+      steerer: { title: 'Steerer', legend: '<kbd>A</kbd> slow down <kbd>D</kbd> speed up <kbd>W</kbd><kbd>S</kbd> high or low path' },
+      hopper: { title: 'Hopper', legend: '<kbd>W</kbd> hop <kbd>S</kbd> duck' },
     },
+    jobOf: 'steer', jobSwap: 'You swap jobs at every crack.',
     tip: 'Ride one ice floe down the glacier! One steers, one hops and ducks. Each crack swaps your jobs.',
     theme: { skyTop: '#7ec8f7', skyBot: '#eef9ff', hillFar: '#cfe2f3', hillNear: '#e3f3fc', grass: '#ffffff', grassDark: '#bfe3f7',
       sun: 'rgba(255, 253, 235, 0.95)', sunGlow: 'rgba(255, 255, 245, 0.4)' },
@@ -2410,8 +2432,12 @@ const LEVELS = [
   // ----- BEGIN 9-4 Krakatoa Ash Run (mode 'ash', js/levels/world9/krakatoa-ash-run.js) -----
   { name: 'Krakatoa Ash Run', world: 8, kind: 'team', mode: 'ash', ownHUD: true,
     act: { label: 'fan' },
-    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> hold: camp', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> hold: camp',
-      pad: 'stick or d-pad move, <span data-glyph="a"></span> jump, hold down: camp,' },
+    jobs: {
+      fanner: { title: 'Fanner', act: 'fan', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>F</kbd> hold to fan <kbd>S</kbd> hold to go back' },
+      leader: { title: 'Leader', act: 'pull', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>F</kbd> pull a lever <kbd>S</kbd> hold to go back',
+        howTo: ['Follow the footprints. Press the action anywhere else to shout "This way!"'] },
+    },
+    jobSwap: 'You swap jobs every room.',
     tip: 'The ash cloud hides the way! One blows it clear with a fan, the other leads the way.',
     switches: {}, signs: [],
     rooms: [
@@ -2707,11 +2733,13 @@ const LEVELS = [
   // race; scored by place (noTime). Room fields: ped (who pedals), laps, rivals [{ team, v, pos, p }], us, sprint, pacer.
   // The tip is rebuilt by the mode from ped (and the twist); the map is only the two spawns.
   { name: 'Tandem Velodrome', world: 10, roomWord: 'Race', kind: 'team', mode: 'tandem', ownStep: true, ownHUD: true, noFalls: true, noTime: true,
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> pedal · <kbd>W</kbd><kbd>S</kbd> lean',
-      bo: '<kbd>←</kbd><kbd>→</kbd> pedal · <kbd>↑</kbd><kbd>↓</kbd> lean',
-      pad: 'stick ◀ ▶ pedal, <span data-glyph="a"></span> leans in, down sits up,',
+    jobs: {
+      pedaler: { title: 'Pedaler', legend: '<kbd>A</kbd><kbd>D</kbd> pedal on the beat',
+        howTo: ['Press ◀ and ▶ in turn, on the drum beat.'] },
+      leaner: { title: 'Leaner', legend: '<kbd>W</kbd> hold to lean in <kbd>S</kbd> sit up',
+        howTo: ['Keep the needle in the gold wedge.'] },
     },
+    jobOf: 'ped', jobSwap: 'You swap jobs every race.',
     tip: 'One tandem, two jobs: one pedals on the drum beat, one leans into the banked turns. Swap every race!',
     switches: {}, signs: [],
     map: [
@@ -2829,9 +2857,13 @@ const LEVELS = [
   // snow [[x0, y0, x1, y1]] (all in px; the house is at 790, 300).
   { name: 'Curling', world: 11, kind: 'team', mode: 'curling', ownStep: true, ownHUD: true, noFalls: true, noTime: true,
     act: { label: 'throw', labels: ['throw', 'sweep'] },
-    legend: { pip: '<kbd>W</kbd><kbd>S</kbd> aim <kbd>A</kbd><kbd>D</kbd> curl · or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> skate',
-      bo: '<kbd>↑</kbd><kbd>↓</kbd> aim <kbd>←</kbd><kbd>→</kbd> curl · or arrows skate',
-      pad: 'stick aims, curls or skates, <span data-glyph="a"></span> or' },
+    jobs: {
+      thrower: { title: 'Thrower', act: 'throw', legend: '<kbd>W</kbd><kbd>S</kbd> aim <kbd>A</kbd><kbd>D</kbd> pick the curl <kbd>F</kbd> hold, let go to throw',
+        howTo: ['Let go when the meter is where you want it.'] },
+      sweeper: { title: 'Sweeper', act: 'sweep', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> skate <kbd>F</kbd> hold to sweep',
+        howTo: ['Skate beside the stone and sweep: it slides farther.'] },
+    },
+    jobOf: 'thrower', jobSwap: 'You swap jobs every end.',
     tip: 'One slides the stone, one skates along and sweeps in front of it so it goes farther. Swap every end.',
     switches: {}, signs: [],
     map: Array.from({ length: 18 }, (_, y) => (y === 10 ? '.1....2' + '.'.repeat(25) : '.'.repeat(32))),
@@ -2859,8 +2891,13 @@ const LEVELS = [
   // o<u> ring at lateral u, F finish), see the file header.
   { name: 'Bobsled', world: 11, kind: 'team', mode: 'bobsled', ownStep: true, ownHUD: true, noFalls: true,
     act: { label: 'push', labels: ['push', 'push'] },
-    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> lean <kbd>W</kbd> hop <kbd>S</kbd> tuck', bo: '<kbd>←</kbd><kbd>→</kbd> lean <kbd>↑</kbd> hop <kbd>↓</kbd> tuck',
-      pad: 'stick ◀ ▶ lean, <span data-glyph="a"></span> hop, down tucks,' },
+    jobs: {
+      pilot: { title: 'Pilot', act: ['push', 'call'], legend: '<kbd>F</kbd> push, then call curves <kbd>W</kbd> hop in, hop the bumps <kbd>A</kbd><kbd>D</kbd> hold to lean <kbd>S</kbd> tuck',
+        howTo: ['Push on the beat at the start.', 'Call each curve so your partner sees it. Steer through snow rings.'] },
+      brakeman: { title: 'Brakeman', act: ['push', 'brake'], legend: '<kbd>F</kbd> push, then brake <kbd>W</kbd> hop in, hop the bumps <kbd>A</kbd><kbd>D</kbd> hold to lean <kbd>S</kbd> tuck',
+        howTo: ['Push on the beat at the start.', 'Hold brake from the red boards down to hairpin speed.'] },
+    },
+    jobOf: 'pilot', jobSwap: 'You swap seats every run.',
     tip: 'Push on the beat, hop in, then BOTH lean into every curve! One leaning just wobbles. Jobs swap each run.',
     switches: {}, signs: [],
     map: Array.from({ length: 18 }, (_, y) => (y === 15 ? '..1.2' + '.'.repeat(27) : '.'.repeat(32))),
@@ -2891,10 +2928,14 @@ const LEVELS = [
   // the snow), stars [2-star points, 3-star points] for the hill's two jumps.
   { name: 'Ski Jump', world: 11, kind: 'team', mode: 'skijump', ownStep: true, ownHUD: true, noFalls: true, noTime: true,
     act: { label: 'fan', labels: ['jump', 'fan'] },
-    legend: { pip: 'ski: <kbd>S</kbd> tuck <kbd>W</kbd> jump <kbd>A</kbd><kbd>D</kbd> lean · fans: <kbd>A</kbd><kbd>D</kbd> run',
-      bo: 'ski: <kbd>↓</kbd> tuck <kbd>↑</kbd> jump <kbd>←</kbd><kbd>→</kbd> lean · fans: <kbd>←</kbd><kbd>→</kbd> run',
-      pad: 'stick leans or runs, down tucks, <span data-glyph="a"></span> jumps,' },
-    tip: 'One skis and jumps, one runs the wind fans. Fans push the jumper farther! Swap every jump.',
+    jobs: {
+      skier: { title: 'Skier', act: 'jump', legend: '<kbd>W</kbd> jump <kbd>S</kbd> tuck (tap to land) <kbd>A</kbd><kbd>D</kbd> lean in the air',
+        howTo: ['Jump to push off, then jump again at the gold edge.', 'Tap down just before you land for style.'] },
+      fans: { title: 'Fan crew', act: 'fan', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> hop',
+        howTo: ['Blow a fan as the skier flies over it. Hold to keep blowing.'] },
+    },
+    jobSwap: 'You swap jobs every jump.',
+    tip: 'One skis and jumps, one runs the wind fans. Fans push the jumper farther!',
     switches: {}, signs: [],
     map: Array.from({ length: 18 }, (_, y) => (y === 10 ? '.1....2' + '.'.repeat(25) : '.'.repeat(32))),
     rooms: [
@@ -2930,11 +2971,13 @@ const LEVELS = [
   // ----- BEGIN 13-1 Pumpkin Patch Roll (mode 'pumpkin', js/levels/world13/pumpkin-patch-roll.js) -----
   { name: 'Pumpkin Patch Roll', world: 12, kind: 'team', mode: 'pumpkin', ownStep: true, ownHUD: true, noFalls: true,
     // side-on giant-pumpkin roll (MODES.pumpkin): the map is only the two spawns, the mode builds each room from its course
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> push · balance <kbd>W</kbd> leapfrog <kbd>S</kbd> hug',
-      bo: '<kbd>←</kbd><kbd>→</kbd> push · balance <kbd>↑</kbd> leapfrog <kbd>↓</kbd> hug',
-      pad: 'stick: push · balance, <span data-glyph="a"></span> leapfrog, down hugs,',
+    jobs: {
+      pusher: { title: 'Pusher', act: 'push', legend: '<kbd>A</kbd><kbd>D</kbd> walk, push <kbd>W</kbd> hop, leapfrog in front',
+        howTo: ['Walk into the pumpkin to push it.', 'Before a steep drop, leapfrog to the front and hold it back.'] },
+      rider: { title: 'Rider', act: 'hug', legend: '<kbd>A</kbd><kbd>D</kbd> lean back, forward <kbd>S</kbd> hug the stem',
+        howTo: ['Where you stand is your lean. Lean uphill on climbs.'] },
     },
+    jobOf: 'pusher', jobSwap: 'You swap jobs every room.',
     tip: 'Roll the giant pumpkin to the hayride! One pushes, one rides on top and leans. Big hills need you both.',
     act: { label: 'push', labels: ['push', 'hug'] },
     theme: { skyTop: '#241b4d', skyBot: '#f0915a' },
@@ -3103,8 +3146,13 @@ const LEVELS = [
   // light: "Eep!"). Map chars (read by the mode): g sleepy ghost platform, p haunted portrait (swaps Pip and Bo), d candle.
   { name: 'Haunted Mansion', world: 12, kind: 'team', mode: 'mansion', ownStep: true, ownHUD: true,
     act: { label: 'light', labels: ['light', 'swap'] },
-    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> drop',
-              pad: 'stick or d-pad move (▲▼ aims the light), <span data-glyph="a"></span> jump,' },
+    jobs: {
+      holder: { title: 'Light holder', act: 'light', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd><kbd>S</kbd> aim the beam (light on) <kbd>F</kbd> light on, off',
+        howTo: ['With the light off, ▲ jumps and ▼ drops.', 'Shine on sleepy ghosts: they wake up as platforms for the mover.'] },
+      mover: { title: 'Mover', act: 'swap', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop',
+        howTo: ['Press swap at a haunted painting to trade places.'] },
+    },
+    jobOf: 'holder', jobSwap: 'You swap jobs every room.',
     theme: { skyTop: '#2a1f45', skyBot: '#3b2a55', hillFar: '#2e2348', hillNear: '#2a2042', sun: 'rgba(0,0,0,0)', sunGlow: 'rgba(0,0,0,0)',
       stone: '#4a3352', stoneLight: '#5a4062', stoneEdge: '#1f1630', grass: '#9b6a40', grassDark: '#6b4127' },
     tip: 'A silly-spooky house! One of you holds the flashlight, the other hops on the ghosts it wakes up.',
@@ -3332,11 +3380,13 @@ const LEVELS = [
   // switches that open the log gates. Course tokens: the top of the level file. The map is only the two spawns.
   { name: 'Pterodactyl Express', world: 13, kind: 'team', mode: 'ptero', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Route',
     act: { label: 'flap', labels: ['flap', 'grab'] },
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> speed · swing <kbd>W</kbd> flap · grab <kbd>S</kbd> dive',
-      bo: '<kbd>←</kbd><kbd>→</kbd> speed · swing <kbd>↑</kbd> flap · grab <kbd>↓</kbd> dive',
-      pad: 'stick: speed · swing, <span data-glyph="a"></span> flap · grab, down dives,',
+    jobs: {
+      flyer: { title: 'Flyer', act: 'flap', legend: '<kbd>W</kbd> flap at the TOP <kbd>A</kbd><kbd>D</kbd> slow down, speed up <kbd>S</kbd> dive',
+        howTo: ['Flap when the wings reach the gold TOP. Mashing sinks.'] },
+      hanger: { title: 'Hanger', act: 'grab', legend: '<kbd>A</kbd><kbd>D</kbd> swing <kbd>W</kbd> grab, drop',
+        howTo: ['Grab fruit or a rock, then drop it into a nest or onto a switch.'] },
     },
+    jobOf: 'flyer', jobSwap: 'You swap jobs every route.',
     tip: 'Petra the pterodactyl gives you a ride! One flaps her wings, one hangs below and grabs fruit and rocks.',
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     rooms: [
@@ -3759,11 +3809,13 @@ const LEVELS = [
   // 15-3: side-on moon buggy (MODES.buggy): one drives, one works the grabber arm; jobs swap every room. The map is only the
   // two spawns, the mode builds each room from its course (tokens: see the top of the level file).
   { name: 'Moon Buggy Crew', world: 14, kind: 'team', mode: 'buggy', ownStep: true, ownHUD: true, noFalls: true,
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> drive <kbd>W</kbd> hop · claw <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>',
-      bo: '<kbd>←</kbd><kbd>→</kbd> drive <kbd>↑</kbd> hop · claw <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>',
-      pad: 'stick: drive · claw, <span data-glyph="a"></span> hop,',
+    jobs: {
+      driver: { title: 'Driver', act: 'honk', legend: '<kbd>A</kbd><kbd>D</kbd> drive, brake, reverse <kbd>W</kbd> hop <kbd>S</kbd> hold to go back',
+        howTo: ['In the air, ◀ ▶ tilt the buggy to land level.', 'Honk to wake a sleepy critter on the track.'] },
+      arm: { title: 'Claw', act: 'grab', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move the claw',
+        howTo: ['Grab a boulder and toss it away; grab shiny moon rocks.'] },
     },
+    jobOf: 'driver', jobSwap: 'You swap jobs every room.',
     tip: 'One drives the moon buggy, one works the grabber arm: toss boulders away and grab shiny moon rocks!',
     act: { label: 'grab', labels: ['honk', 'grab'] },
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
@@ -3838,11 +3890,13 @@ const LEVELS = [
   // trapdoor), the other runs and jumps on the belts below and sorts candy into the right bins; jobs swap every room.
   // The map is only the two spawns: the mode builds each room's grid from its belts and shelves (see the level file).
   { name: 'Conveyor Belt Chaos', world: 15, kind: 'team', mode: 'conveyor', ownStep: true, ownHUD: true, noFalls: true,
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run · walk <kbd>W</kbd> jump · faster <kbd>S</kbd> drop · slower',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run · walk <kbd>↑</kbd> jump · faster <kbd>↓</kbd> drop · slower',
-      pad: 'stick: run · walk · belt speed, <span data-glyph="a"></span> jump · faster,',
+    jobs: {
+      sorter: { title: 'Sorter', act: 'grab', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>S</kbd> drop down <kbd>F</kbd> grab, toss into a bin',
+        howTo: ['Hold down and press grab to put a candy down.'] },
+      operator: { title: 'Lever operator', act: 'lever', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> faster, lift up <kbd>S</kbd> slower, lift down <kbd>F</kbd> flip the lever',
+        howTo: ['Stand on a lever to work the belt, lift or trapdoor under it.'] },
     },
+    jobOf: 'sorter', jobSwap: 'You swap jobs every room.',
     tip: 'One works the levers that run the belts, one grabs the candy and tosses it into the right bin!',
     act: { label: 'grab', labels: ['grab', 'lever'] },
     map: [...Array(14).fill('.'.repeat(32)), '...1....2' + '.'.repeat(23), ...Array(3).fill('.'.repeat(32))],
@@ -3907,11 +3961,13 @@ const LEVELS = [
   // the map only holds the keeper's wafer ledges ('=' one-way, levers stand on rows 8, 11 and 14) and the board's walls.
   { name: 'Gumball Machine Puzzle', world: 15, kind: 'team', mode: 'gumball', ownStep: true, ownHUD: true, noFalls: true,
     roomWord: 'Machine',
-    legend: {
-      pip: 'crank: <kbd>A</kbd><kbd>D</kbd> chute <kbd>S</kbd> swap · levers: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move',
-      bo: 'crank: <kbd>←</kbd><kbd>→</kbd> chute <kbd>↓</kbd> swap · levers: <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move',
-      pad: 'stick: chute · swap · move, <span data-glyph="a"></span> hop,',
+    jobs: {
+      cranker: { title: 'Cranker', act: 'crank', legend: '<kbd>A</kbd><kbd>D</kbd> pick a chute <kbd>S</kbd> swap the next two <kbd>W</kbd> call the colour',
+        howTo: ['Crank drops one gumball.'] },
+      keeper: { title: 'Gate keeper', act: 'flip', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> hop <kbd>S</kbd> drop down',
+        howTo: ['Flip at a lever to work the part with the same picture.'] },
     },
+    jobOf: 'crank', jobSwap: 'You swap jobs every machine.',
     tip: 'One turns the crank to drop gumballs, one flips the levers so every colour rolls into its matching cup!',
     act: { label: 'crank', labels: ['crank', 'flip'] },
     map: [
@@ -3940,11 +3996,13 @@ const LEVELS = [
   // dock. The map is only the two spawns, the mode builds each stretch of river from its course (tokens: see the top of
   // the level file).
   { name: 'Chocolate River Raft', world: 15, kind: 'team', mode: 'raft', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> steer · aim the hook',
-      bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> steer · aim the hook',
-      pad: 'stick: steer · aim the hook,',
+    jobs: {
+      paddler: { title: 'Paddler', act: 'paddle', legend: '<kbd>D</kbd> faster <kbd>A</kbd> slower, back <kbd>W</kbd><kbd>S</kbd> across',
+        howTo: ['Paddle for a strong stroke.'] },
+      hooker: { title: 'Hooker', act: 'hook', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> aim the hook',
+        howTo: ['Hook candy into the basket and shove rocks and logs away.'] },
     },
+    jobOf: 'paddler', jobSwap: 'You swap jobs every stretch.',
     tip: 'Ride a cookie raft down the chocolate river! One paddles, one hooks candy and shoves logs away.',
     act: { label: 'hook', labels: ['paddle', 'hook'] },
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
@@ -4157,11 +4215,13 @@ const LEVELS = [
   // Jobs swap at the calm pool after each stretch. Course tokens: the top of the level file. The map is only the spawns.
   { name: 'River Rapids Canoe', world: 16, kind: 'team', mode: 'canoe', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     act: { label: 'paddle', labels: ['paddle', 'bail'] },
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> paddle · aim <kbd>S</kbd> slow <kbd>W</kbd> poke',
-      bo: '<kbd>←</kbd><kbd>→</kbd> paddle · aim <kbd>↓</kbd> slow <kbd>↑</kbd> poke',
-      pad: 'stick: paddle · aim, down slows, <span data-glyph="a"></span> poke,',
+    jobs: {
+      paddler: { title: 'Paddler', act: 'paddle', legend: '<kbd>A</kbd><kbd>D</kbd> stroke on that side <kbd>S</kbd> back-paddle, slow',
+        howTo: ['Paddle (or ▲) is a straight stroke.', 'Mashing only splashes: steady strokes!'] },
+      bailer: { title: 'Bailer', act: 'bail', legend: '<kbd>A</kbd><kbd>D</kbd> aim the oar <kbd>W</kbd> poke',
+        howTo: ['Bail when the bucket is full of water.'] },
     },
+    jobOf: 'paddler', jobSwap: 'You swap jobs every stretch.',
     tip: 'Paddle down the jungle river together! One paddles and steers, one bails water and pokes logs away.',
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     rooms: [
@@ -4401,11 +4461,13 @@ const LEVELS = [
   // after each stretch. Course tokens: the top of the level file. The map is only the spawns.
   { name: 'Runaway Ship', world: 17, kind: 'team', mode: 'runship', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     act: { label: 'bell', labels: ['bell', 'fix'] },
-    legend: {
-      pip: '<kbd>W</kbd><kbd>S</kbd> steer · climb <kbd>A</kbd><kbd>D</kbd> run · <kbd>A</kbd> ease off',
-      bo: '<kbd>↑</kbd><kbd>↓</kbd> steer · climb <kbd>←</kbd><kbd>→</kbd> run · <kbd>←</kbd> ease off',
-      pad: 'stick: steer · run · climb, ◀ eases off, <span data-glyph="a"></span> jump,',
+    jobs: {
+      helm: { title: 'Helm', act: 'bell', legend: '<kbd>W</kbd><kbd>S</kbd> steer to a lane <kbd>A</kbd> hold to ease off',
+        howTo: ['Ring the bell as a big wave reaches the ship.'] },
+      deckhand: { title: 'Deckhand', act: 'fix', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump, climb <kbd>S</kbd> hold on (big wave)',
+        howTo: ['Hold fix at a leak, a rope or a sail.'] },
     },
+    jobOf: 'helm', jobSwap: 'You swap jobs at every buoy.',
     tip: 'Sail the runaway ship to Treasure Cove! One steers round the rocks, one fixes leaks, ropes and sails.',
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     rooms: [
@@ -4458,11 +4520,13 @@ const LEVELS = [
   // gap, nest, ring, coins 'm.h.l', chair coins, obs, wind, gust, boom, lines, gulls, sign).
   { name: 'Grapple & Zip', world: 17, kind: 'team', mode: 'grapple', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Fleet',
     act: { label: 'throw', labels: ['throw', 'grab'] },
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd><kbd>S</kbd> climb · aim · legs',
-      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd><kbd>↓</kbd> climb · aim · legs',
-      pad: 'stick: walk, climb, aim, legs,',
+    jobs: {
+      thrower: { title: 'Thrower', act: ['throw', 'ride'], legend: '<kbd>W</kbd><kbd>S</kbd> aim <kbd>F</kbd> hold, let go to throw',
+        howTo: ['Throw the hook through the ring.', 'Then press the action in the chair to ride across.'] },
+      zipper: { title: 'Zipper', act: ['grab', 'drop', 'crank'], legend: '<kbd>A</kbd><kbd>D</kbd> walk, then brake, tuck <kbd>W</kbd> climb, legs up <kbd>S</kbd> dangle low',
+        howTo: ['Grab the handle and zip down for coins; let go at the knot.', 'Crank the capstan on a steady beat.'] },
     },
+    jobSwap: 'You swap jobs every hop.',
     tip: 'Throw the hook through the next ring, zip down the rope for coins, then crank your partner across!',
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     rooms: [
@@ -4530,7 +4594,13 @@ const LEVELS = [
   // tide coming in: the numbers move to these over the room) }, crabs: { max, every, first } (null: no crabs).
   { name: 'Tide Pool Dig', world: 17, kind: 'team', mode: 'tidedig', noFalls: true, ownHUD: true,
     act: { label: 'dig', labels: ['dig', 'bail'] },
-    legend: { jump: 'jump (hold: climb out)', padJump: 'jump (hold: climb out)' },
+    jobs: {
+      digger: { title: 'Digger', act: 'dig', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump (hold to climb out)',
+        howTo: ['Dig on the X. The action shoos a crab away too.'] },
+      bailer: { title: 'Bailer', act: 'bail', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+        howTo: ['Bail at the hole, dump it in the sea. The action shoos a crab away too.'] },
+    },
+    jobOf: 'digger', jobSwap: 'You swap jobs every room.',
     tip: 'One digs at the X, the other bails the waves out with a bucket and shoos the coin-grabbing crabs!',
     signs: [],
     rooms: [
@@ -4780,11 +4850,13 @@ const LEVELS = [
   // (picks the upper or lower track at every fork, brakes down steep slopes); jobs swap every stretch. The map is only the
   // two spawns, the mode builds each stretch from its course (tokens: see the top of the level file).
   { name: 'Gold Mine Cart', world: 18, kind: 'team', mode: 'minecart', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>W</kbd> jump · lever up <kbd>S</kbd> duck · lever down',
-      bo: '<kbd>↑</kbd> jump · lever up <kbd>↓</kbd> duck · lever down',
-      pad: '<span data-glyph="a"></span> or stick ▲ jump · lever up, stick ▼ duck · lever down,',
+    jobs: {
+      rider: { title: 'Rider', act: 'grab', legend: '<kbd>W</kbd> hop, hold to hop higher <kbd>S</kbd> hold to duck',
+        howTo: ['Grab a dangling gold lantern.'] },
+      switcher: { title: 'Switcher', act: 'brake', legend: '<kbd>W</kbd><kbd>S</kbd> lever up, down <kbd>F</kbd> hold to brake',
+        howTo: ['Read the signs and set the lever before each fork.'] },
     },
+    jobOf: 'rider', jobSwap: 'You swap jobs every stretch.',
     tip: 'One rides up front: jump gaps, duck beams. One works the lever: read the signs, find the gold!',
     act: { label: 'grab', labels: ['grab', 'brake'] },
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
@@ -5011,12 +5083,13 @@ const LEVELS = [
   // it overheats), one steers (◀ ▶ vent ropes, steady); jobs swap every climb. The map is only the two spawns; the mode
   // builds each climb from its course (items: see the top of the level file). Altitudes h are px above the start.
   { name: 'Hot Air Balloon Climb', world: 20, kind: 'team', mode: 'balloon', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Climb',
-    legend: {
-      pip: 'burner: hold <kbd>W</kbd> · steerer: <kbd>A</kbd><kbd>D</kbd> ropes, <kbd>S</kbd> steady',
-      bo: 'burner: hold <kbd>↑</kbd> · steerer: <kbd>←</kbd><kbd>→</kbd> ropes, <kbd>↓</kbd> steady',
-      pad: 'burner holds <span data-glyph="a"></span>, steerer: stick ◀ ▶, ▼ steady,',
+    jobs: {
+      burner: { title: 'Burner', act: 'burn', legend: '<kbd>W</kbd> hold to burn and rise',
+        howTo: ['Let go to cool down and sink. Not too long!'] },
+      steerer: { title: 'Steerer', act: 'steady', legend: '<kbd>A</kbd><kbd>D</kbd> pull a vent rope <kbd>S</kbd> hold steady' },
     },
-    tip: 'One burns (hold ▲ to rise, but not too long!), one steers (◀ ▶). Thread the islands and land on the dock!',
+    jobOf: 'burner', jobSwap: 'You swap jobs every climb.',
+    tip: 'One burns to rise, one steers. Thread the islands and land on the dock!',
     act: { label: 'burn', labels: ['burn', 'steady'] },
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     rooms: [
@@ -5098,12 +5171,14 @@ const LEVELS = [
   // spires. Each stretch ends at a tower whose flag only the rider can grab. The map is only the two spawns; the mode
   // builds each stretch from its course (tokens: see the top of the level file). Jobs swap every stretch.
   { name: 'Kite Tandem', world: 20, kind: 'team', mode: 'kite', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>S</kbd> reel · kite: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> steer',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump <kbd>↓</kbd> reel · kite: arrows steer',
-      pad: 'runner: stick run, <span data-glyph="a"></span> jump, stick ▼ reel; kite: stick steers,',
+    jobs: {
+      runner: { title: 'Runner', act: 'reel', legend: '<kbd>D</kbd> hold to run <kbd>W</kbd> jump <kbd>S</kbd> hold to reel in',
+        howTo: ['Let go of reel to let the string out.'] },
+      rider: { title: 'Kite rider', act: 'tuck', legend: '<kbd>W</kbd><kbd>S</kbd> lean up, down <kbd>A</kbd><kbd>D</kbd> slide on the string',
+        howTo: ['Tuck spins you past birds.', 'At the tower, lean up to grab the flag.'] },
     },
-    tip: 'Runner: hold ▶ to run, ▲ jump, hold ▼ to reel in. Kite rider: ▲ ▼ ◀ ▶ steer. Grab the flag at each tower!',
+    jobOf: 'runner', jobSwap: 'You swap jobs at every tower.',
+    tip: 'The runner flies the kite, the kite rider steers it. Grab the flag at each tower!',
     act: { label: 'reel', labels: ['reel', 'tuck'] },
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     rooms: [
@@ -5152,11 +5227,13 @@ const LEVELS = [
   // Clouds melt after about 6 s, so keep moving; both must cross every gap. Jobs swap every stretch (Pip calls 1 and 3).
   // The map is only the two spawns; the mode builds each stretch from its course (items: see the top of the level file).
   { name: 'Cloud Bridge Builder', world: 20, kind: 'team', mode: 'cloudbridge', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump',
-      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> jump',
-      pad: 'stick or d-pad walk, <span data-glyph="a"></span> jump,',
+    jobs: {
+      caller: { title: 'Caller', act: 'call', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump <kbd>F</kbd> hold, let go to plant',
+        howTo: ['At an island edge, hold call to show a flag.', 'While you hold it, ▲ ▼ nudge the flag. Let go to plant it.'] },
+      builder: { title: 'Builder', act: 'puff', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump',
+        howTo: ['Puff sends a cloud to the flag. Stand on it, jump up through it.'] },
     },
+    jobOf: 'caller', jobSwap: 'You swap jobs every stretch.',
     tip: 'At the edge the caller presses call for a flag, the builder presses puff to send a cloud there. Clouds melt: keep moving!',
     act: { label: 'call', labels: ['call', 'puff'] },
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
@@ -5283,12 +5360,14 @@ const LEVELS = [
   // ends at a buoy ring only the claw can clip onto, then they swap jobs. The map is only the two spawns; the mode builds
   // each stretch from its course (tokens: see the top of the level file).
   { name: 'Submarine Duo', world: 21, kind: 'team', mode: 'subduo', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> steer the sub or move the claw',
-      bo: 'arrows steer the sub or move the claw',
-      pad: 'stick steers the sub or moves the claw,',
+    jobs: {
+      steerer: { title: 'Steerer', act: 'toot', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> push the sub',
+        howTo: ['Toot the horn to move sleepy pufferfish.'] },
+      claw: { title: 'Claw', act: 'grab', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move the claw',
+        howTo: ['Grab, then grab again to let go.'] },
     },
-    tip: 'Steerer: arrows push the sub, the action toots. Claw: arrows move the arm, the action grabs and lets go!',
+    jobOf: 'steer', jobSwap: 'You swap jobs every stretch.',
+    tip: 'One steers the sub, one works the claw. Grab pearls and clear the way!',
     act: { label: 'grab', labels: ['toot', 'grab'] },
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     rooms: [
@@ -5338,12 +5417,14 @@ const LEVELS = [
   // bubble ride back up. Jobs swap every dive. The map is only the two spawns; the mode builds each dive from its course
   // (items: see the top of the level file). y is the depth in px below the surface.
   { name: 'Treasure Diver Rope', world: 21, kind: 'team', mode: 'diverope', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Dive',
-    legend: {
-      pip: 'diver: <kbd>A</kbd><kbd>D</kbd> swim <kbd>W</kbd> kick · boat: <kbd>S</kbd> rope out <kbd>W</kbd> reel',
-      bo: 'diver: <kbd>←</kbd><kbd>→</kbd> swim <kbd>↑</kbd> kick · boat: <kbd>↓</kbd> rope out <kbd>↑</kbd> reel',
-      pad: 'diver: stick swims, <span data-glyph="a"></span> kick; boat: stick ▼ rope out, <span data-glyph="a"></span> reel,',
+    jobs: {
+      diver: { title: 'Diver', act: 'grab', legend: '<kbd>A</kbd><kbd>D</kbd> swim <kbd>W</kbd> kick off <kbd>S</kbd> sink, tug for rope',
+        howTo: ['Hold down on a tight hose to ask for more rope.', 'Grab hooks the chest.'] },
+      boat: { title: 'Boat', act: 'pump', legend: '<kbd>S</kbd> let out rope <kbd>W</kbd> reel in',
+        howTo: ['Pump air while the winch is still.'] },
     },
-    tip: 'One dives for treasure, one runs the boat: ▼ lets out rope, the action pumps air, ▲ reels the diver up!',
+    jobOf: 'diver', jobSwap: 'You swap jobs every dive.',
+    tip: 'One dives for treasure, one runs the boat: let out rope, pump air, reel the diver up!',
     act: { label: 'grab', labels: ['grab', 'pump'] },
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     rooms: [
@@ -5455,11 +5536,13 @@ const LEVELS = [
   // only the two spawns; the mode builds each section from its items (see the top of the level file). Ceiling y 104,
   // floor y 476.
   { name: 'Shipwreck Lights', world: 21, kind: 'team', mode: 'shipwreck', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Section',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> swim',
-      bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> swim',
-      pad: 'stick or d-pad swims,',
+    jobs: {
+      lantern: { title: 'Lantern', act: 'flash', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> swim',
+        howTo: ['Things only show in your light. Flash wakes sleepy anemones.'] },
+      grabber: { title: 'Grabber', act: 'grab', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> swim',
+        howTo: ['Tap grab at a lever; hold it to turn a wheel. Only in the light!'] },
     },
+    jobOf: 'lantern', jobSwap: 'You swap jobs every section.',
     tip: 'One carries Glimmer the lantern fish (flash!), one grabs. Levers, keys and treasure only show in the light!',
     act: { label: 'flash', labels: ['flash', 'grab'] },
     map: [...Array(9).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), ...Array(8).fill('.'.repeat(32))],
@@ -5612,12 +5695,14 @@ const LEVELS = [
   // field ends at a barn where the load is counted, then they swap jobs. The map is only the two spawns; the mode builds
   // each field from its course (tokens: see the top of the level file).
   { name: 'Tractor & Trailer', world: 22, kind: 'team', mode: 'haytractor', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Field',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> drive or walk <kbd>W</kbd> jump <kbd>S</kbd> brake',
-      bo: '<kbd>←</kbd><kbd>→</kbd> drive or walk <kbd>↑</kbd> jump <kbd>↓</kbd> brake',
-      pad: 'stick drives or walks, <span data-glyph="a"></span> jumps,',
+    jobs: {
+      driver: { title: 'Driver', act: 'honk', legend: '<kbd>D</kbd> gas <kbd>A</kbd> brake, back up',
+        howTo: ['Slow down over bumps or the load wobbles.'] },
+      catcher: { title: 'Catcher', act: 'hold', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump',
+        howTo: ['Walk under the tosses. Hold the action to steady the load.'] },
     },
-    tip: 'Driver: ▶ gas, ◀ slow down, the action honks. Catcher: walk under the tosses, ▲ jumps, hold the action to steady the load!',
+    jobOf: 'drive', jobSwap: 'You swap jobs every field.',
+    tip: 'One drives the tractor, one catches the tosses on the wagon. Don\'t spill the load!',
     act: { label: 'honk', labels: ['honk', 'hold'] },
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     rooms: [
@@ -5663,11 +5748,13 @@ const LEVELS = [
   // levers, pulls the barn door rope and opens and shuts the pen). Jobs swap every chase (Pip herds 1 and 3). The map is
   // only the two spawns; the mode builds each chase from its items (see the top of the level file). Field y 104 to 492.
   { name: 'Runaway Pigs', world: 22, kind: 'team', mode: 'pigherd', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Chase',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk',
-      bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> walk',
-      pad: 'stick or d-pad walks,',
+    jobs: {
+      herder: { title: 'Herder', act: 'clap', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk',
+        howTo: ['Clap: every pig nearby dashes away from you.'] },
+      gatekeeper: { title: 'Gatekeeper', act: 'gate', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk',
+        howTo: ['Press gate at a gate or lever to open or shut it.'] },
     },
+    jobOf: 'herder', jobSwap: 'You swap jobs every chase.',
     tip: 'One herds the slippery pigs (clap!), one opens and shuts the gates. Get every pig into the pen!',
     act: { label: 'clap', labels: ['clap', 'gate'] },
     map: [...Array(9).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), ...Array(8).fill('.'.repeat(32))],
@@ -5791,11 +5878,13 @@ const LEVELS = [
   // Room fields: cook, len (s), goal, tops, topMin/topMax, two/three (chance of 2/3 hot dogs), maxDogs, bigAt (line
   // length that adds a hot dog), lemon (chance), every (s between fairgoers), first, patience, extraPat, bus.
   { name: 'Hot Dog Stand Rush', world: 22, kind: 'team', mode: 'hotdog', ownStep: true, ownHUD: true, noFalls: true, noTime: true, roomWord: 'Shift',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> hop',
-      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> hop',
-      pad: 'stick or d-pad walks, <span data-glyph="a"></span> hops,',
+    jobs: {
+      cook: { title: 'Cook', act: 'cook', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> hop',
+        howTo: ['Cook at the grill, the buns and the toppings.'] },
+      server: { title: 'Server', act: 'serve', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> hop',
+        howTo: ['Serve takes orders and hands out food.', 'Lemonade: hold, let go in the green.'] },
     },
+    jobOf: 'cook', jobSwap: 'You swap jobs every shift.',
     tip: 'One cooks the hot dogs, one serves the fairgoers. Follow the arrow, then press the action!',
     act: { label: 'cook', labels: ['cook', 'serve'] },
     map: [...Array(9).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), ...Array(8).fill('.'.repeat(32))],

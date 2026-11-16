@@ -937,11 +937,13 @@
   const acts = b => ({ label: 'brake', labels: b === 0 ? ['brake', 'do it'] : ['do it', 'brake'] });
   STUDIO.defs.tramrun = {
     name: 'Backlot Tram Runaway', world: 35, kind: 'team', mode: 'tramrun', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Take', outfit: 'none',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> walk / <kbd>W</kbd><kbd>S</kbd> switch or jump',
-      bo: '<kbd>←</kbd><kbd>→</kbd> walk / <kbd>↑</kbd><kbd>↓</kbd> switch or jump',
-      pad: 'stick walks, A jumps,',
+    jobs: {
+      brake: { title: 'Brake hero', act: 'brake', legend: '<kbd>W</kbd><kbd>S</kbd> throw the switch <kbd>A</kbd><kbd>D</kbd> walk the cars',
+        howTo: ['Brake in short pulls, or it overheats.', 'Tap brake to pull the runner aboard.'] },
+      runner: { title: 'Runner', act: 'clear', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Clear props ahead: push, crank or unplug at the ring.'] },
     },
+    jobOf: 'brk', jobSwap: 'You swap jobs every take.',
     tip: 'Stop the runaway tram! The brake hero brakes in short pulls and throws the switches; the runner jumps off and clears the props ahead.',
     act: acts(0),
     map: K.stubMap(),

@@ -808,11 +808,13 @@
   const acts = w => ({ label: 'web', labels: w === 0 ? ['web', 'vanish'] : ['vanish', 'web'] });
   HEROCITY.defs.roofchase = {
     name: 'Rooftop Chase', world: 31, kind: 'team', mode: 'roofchase', ownStep: true, ownHUD: true, ownPills: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump',
-      pad: 'stick runs, <span data-glyph="a"></span> jumps,',
+    jobs: {
+      web: { title: 'Web-slinger', act: 'web', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['At a wide gap, web shoots a line; web again lets go.'] },
+      ghost: { title: 'Ghost', act: 'vanish', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Hold vanish to turn you both invisible past drones.', 'Next to the web-slinger, press it to hold on for a swing.'] },
     },
+    jobOf: 'web', jobSwap: 'You swap powers every stretch.',
     tip: 'Catch the jewel thief! The web-slinger swings you both over wide gaps; the ghost holds the action to vanish past drones.',
     act: acts(0),
     map: K.stubMap(),

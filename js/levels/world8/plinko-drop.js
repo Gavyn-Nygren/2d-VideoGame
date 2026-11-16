@@ -96,6 +96,7 @@
   function plinkoNewDrop(st, swap) {
     const P = PLINKO, B = st.B;
     st.ball = (st.d + st.k) % 2; st.steer = 1 - st.ball;
+    if (typeof setJobs === 'function') setJobs(st.ball === 0 ? ['chip', 'paddles'] : ['paddles', 'chip']);   // (the cards show each player their own job)
     st.b = { x: B.chute.x0 + (0.2 + 0.6 * MODES.plinko.rand()) * (B.chute.x1 - B.chute.x0), y: B.chute.y, vx: 0, vy: 0, hops: P.hops, stallT: 0, pegT: 0, lastPeg: -1,
       spin: 0, heavy: false, mult: 1, diveLatch: true, sq: 0, fallT: 0, settle: 0, pop: swap ? 0 : 1, squint: 0, diving: false,
       pops: 0, sx: 0, sy: 0, sxT: 0 };

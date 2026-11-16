@@ -141,6 +141,7 @@ function jackboxLaunch(st, li, fresh) {
   const L = st.c.launches[li], c = st.c;
   st.li = li; st.L = L; st.gi = st.k * 2 + li;
   st.jumper = st.gi % 2; st.cranker = 1 - st.jumper;
+  if (typeof setJobs === 'function') setJobs(st.cranker === 0 ? ['cranker', 'jumper'] : ['jumper', 'cranker']);   // (each card shows the player's own job)
   const from = c.ledges[L.from];
   st.box = { x: L.box, y: from.y, tilt: 0, lid: 0, spring: 0, crankA: 0, shake: 0, hop: 0, gold: false };
   st.tiltT = 0; st.tiltDir = 0;
