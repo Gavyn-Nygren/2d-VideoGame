@@ -590,10 +590,33 @@
   }
   function drawFortress(x, y, s, t, st) {
     ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    // a cliff of ice under the walls, then the walls with jagged ice battlements and two towers, all hazy with distance
+    ctx.fillStyle = 'rgba(150,180,200,0.45)';
+    ctx.beginPath(); ctx.moveTo(-340, 140); ctx.lineTo(-290, 96); ctx.lineTo(-200, 104); ctx.lineTo(-120, 92); ctx.lineTo(0, 100); ctx.lineTo(130, 90); ctx.lineTo(220, 104); ctx.lineTo(300, 94); ctx.lineTo(350, 140); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(80,110,140,0.55)';
     ctx.fillRect(-260, 20, 520, 80);
     for (let k = -6; k <= 6; k++) { ctx.beginPath(); ctx.moveTo(k * 40 - 16, 20); ctx.lineTo(k * 40, -6); ctx.lineTo(k * 40 + 16, 20); ctx.closePath(); ctx.fill(); }
     for (const d of [-1, 1]) { ctx.fillRect(d * 240 - 30, -40, 60, 140); ctx.beginPath(); ctx.moveTo(d * 240 - 36, -40); ctx.lineTo(d * 240, -86); ctx.lineTo(d * 240 + 36, -40); ctx.closePath(); ctx.fill(); }
+    // the big hall roof peeking over the walls
+    ctx.fillStyle = 'rgba(70,96,124,0.5)'; ctx.beginPath(); ctx.moveTo(-120, 20); ctx.lineTo(-90, -26); ctx.lineTo(90, -26); ctx.lineTo(120, 20); ctx.closePath(); ctx.fill();
+    // the shaded right side of each tower and of the wall's foot
+    ctx.fillStyle = 'rgba(30,50,70,0.22)';
+    for (const d of [-1, 1]) { ctx.fillRect(d * 240 + 6, -40, 24, 140); ctx.beginPath(); ctx.moveTo(d * 240, -86); ctx.lineTo(d * 240 + 36, -40); ctx.lineTo(d * 240 + 6, -40); ctx.closePath(); ctx.fill(); }
+    ctx.fillRect(-260, 80, 520, 20);
+    // frosty lit edges and windows glowing with fire light
+    ctx.fillStyle = 'rgba(235,248,255,0.55)'; ctx.fillRect(-260, 20, 520, 3);
+    for (const d of [-1, 1]) ctx.fillRect(d * 240 - 30, -40, 3, 140);
+    const fl = 0.55 + 0.25 * Math.sin(t * 5);
+    ctx.fillStyle = 'rgba(255,190,90,' + fl + ')';
+    for (const d of [-1, 1]) for (const yy of [-16, 22]) rr(d * 240 - 6, yy, 12, 18, 6), ctx.fill();
+    for (let k = -4; k <= 4; k += 2) { rr(k * 40 - 5, 46, 10, 14, 5); ctx.fill(); }
+    // the gate, dark, under an arch
+    ctx.fillStyle = 'rgba(30,40,56,0.6)'; ctx.beginPath(); ctx.moveTo(-26, 100); ctx.lineTo(-26, 66); ctx.arc(0, 66, 26, Math.PI, 0); ctx.lineTo(26, 100); ctx.closePath(); ctx.fill();
+    // banners on the towers and the flag over the hall
+    for (const d of [-1, 1]) {
+      ctx.fillStyle = 'rgba(60,60,70,0.7)'; ctx.fillRect(d * 240 - 1, -112, 2, 28);
+      ctx.fillStyle = 'rgba(200,60,60,0.7)'; ctx.beginPath(); ctx.moveTo(d * 240 + 1, -112); ctx.lineTo(d * 240 + 22 + Math.sin(t * 4 + d) * 3, -106); ctx.lineTo(d * 240 + 1, -100); ctx.closePath(); ctx.fill();
+    }
     ctx.fillStyle = 'rgba(200,60,60,0.7)'; ctx.fillRect(-4, -60, 4, 40); ctx.beginPath(); ctx.moveTo(0, -60); ctx.lineTo(30 + Math.sin(t * 4) * 4, -52); ctx.lineTo(0, -44); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
@@ -604,11 +627,45 @@
     const g = ctx.createLinearGradient(0, top, 0, bot);
     g.addColorStop(0, '#a8d4ea'); g.addColorStop(1, '#7fb4cc');
     ctx.fillStyle = g; ctx.fillRect(X0 - S.cw * 0.5 - 30, top, (S.cols) * S.cw + 60, bot - top);
-    // frozen-waterfall streaks
+    // frozen-waterfall columns: wide pale bands and darker seams between them
+    const fx0 = X0 - S.cw * 0.5 - 30, fw = S.cols * S.cw + 60;
+    for (let k = 0; k < 9; k++) { const x = fx0 + k * fw / 9; ctx.fillStyle = k % 2 ? 'rgba(255,255,255,0.08)' : 'rgba(40,90,120,0.06)'; ctx.fillRect(x, top, fw / 9, bot - top); }
     ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 3;
     for (let k = 0; k < 12; k++) { const x = X0 - 20 + k * 58 + Math.sin(k) * 10; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x + Math.sin(k * 3) * 14, bot); ctx.stroke(); }
-    // dark rock walls at the sides
-    ctx.fillStyle = '#4a4e56'; ctx.fillRect(0, top, X0 - S.cw * 0.5 - 30, bot - top); ctx.fillRect(cx(S.cols - 1) + S.cw * 0.5 + 30, top, W, bot - top);
+    ctx.strokeStyle = 'rgba(60,110,140,0.22)'; ctx.lineWidth = 1.5;
+    for (let k = 0; k < 12; k++) { const x = X0 - 6 + k * 58 + Math.sin(k) * 10; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x + Math.sin(k * 3) * 14, bot); ctx.stroke(); }
+    // bubbles and hairline cracks frozen in the ice (fixed to the wall, so they scroll with it)
+    for (let r = r0; r <= r1; r++) {
+      const ry = wy(r);
+      for (let k = 0; k < 4; k++) {
+        const hx2 = fx0 + K.hash(r * 13 + k) * fw, hy2 = ry + (K.hash(r * 17 + k) - 0.5) * S.rh;
+        if (k < 3) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; circle(hx2, hy2, 1.5 + K.hash(r + k * 5) * 2.5); ctx.fill(); }
+        else { ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx2, hy2); ctx.lineTo(hx2 + 12, hy2 + 8); ctx.lineTo(hx2 + 8, hy2 + 20); ctx.moveTo(hx2 + 12, hy2 + 8); ctx.lineTo(hx2 + 24, hy2 + 6); ctx.stroke(); }
+      }
+    }
+    // dark rock walls at the sides: rough blocks with snowy ledges, shaded towards the ice
+    const lw = fx0, rx0 = cx(S.cols - 1) + S.cw * 0.5 + 30;
+    ctx.fillStyle = '#4a4e56'; ctx.fillRect(0, top, lw, bot - top); ctx.fillRect(rx0, top, W, bot - top);
+    for (let r = r0 - 1; r <= r1 + 1; r++) {
+      const ry = wy(r) - S.rh / 2;
+      for (const [x0, x1, sd] of [[0, lw, 1], [rx0, W, 2]]) {
+        const off = (r % 2) * 34;
+        for (let bx = x0 - off; bx < x1; bx += 68) {
+          const a = Math.max(x0, bx + 2), b = Math.min(x1, bx + 66); if (b - a < 6) continue;
+          const hv = K.hash(r * 7 + bx * 3 + sd);
+          ctx.fillStyle = hv < 0.33 ? '#53575f' : hv < 0.66 ? '#4e525a' : '#575b64'; ctx.fillRect(a, ry + 2, b - a, S.rh - 4);
+          ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(a, ry + 2, b - a, 3);
+          ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(a, ry + S.rh - 6, b - a, 4);
+          if (hv > 0.6) { ctx.fillStyle = '#eef4f8'; rr(a + 2, ry, b - a - 4, 5, 2.5); ctx.fill(); }
+        }
+      }
+    }
+    // the rock darkens towards the ice so the climbing face stands out
+    const lg = ctx.createLinearGradient(lw - 70, 0, lw, 0); lg.addColorStop(0, 'rgba(20,24,30,0)'); lg.addColorStop(1, 'rgba(20,24,30,0.45)');
+    ctx.fillStyle = lg; ctx.fillRect(lw - 70, top, 70, bot - top);
+    const rg = ctx.createLinearGradient(rx0, 0, rx0 + 70, 0); rg.addColorStop(0, 'rgba(20,24,30,0.45)'); rg.addColorStop(1, 'rgba(20,24,30,0)');
+    ctx.fillStyle = rg; ctx.fillRect(rx0, top, 70, bot - top);
+    ctx.fillStyle = 'rgba(235,248,255,0.6)'; ctx.fillRect(lw - 3, top, 3, bot - top); ctx.fillRect(rx0, top, 3, bot - top);
     for (let r = r0; r <= r1; r++) for (let c = 0; c < S.cols; c++) drawCell(st, c, r, t);
     // the frost line
     if (st.frost > st.base) {
@@ -643,6 +700,8 @@
       const x = cx(q.c) + (q.state === 'shake' ? Math.sin(t * 50) * 2 : 0), y = q.state === 'fall' ? q.y : wy(q.r) - S.rh / 2 + 4;
       ctx.fillStyle = '#e8f8ff'; ctx.strokeStyle = '#7fb4cc'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(x - 10, y); ctx.lineTo(x + 10, y); ctx.lineTo(x + 2, y + 40); ctx.lineTo(x, y + 46); ctx.lineTo(x - 2, y + 40); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(127,180,204,0.45)'; ctx.beginPath(); ctx.moveTo(x + 2, y); ctx.lineTo(x + 10, y); ctx.lineTo(x + 1, y + 42); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 6, y + 3); ctx.lineTo(x - 1, y + 34); ctx.stroke();
       if (q.state === 'shake') { ctx.strokeStyle = 'rgba(255,90,70,0.8)'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(cx(q.c), y + 46); ctx.lineTo(cx(q.c), y + 46 + 4 * S.rh); ctx.stroke(); ctx.setLineDash([]); }
     }
     // the chutes and their rollers
@@ -656,8 +715,17 @@
         continue;
       }
       ctx.save(); ctx.translate(x, q.y); ctx.rotate(q.y * 0.04);
-      if (q.kind === 'snow') { ctx.fillStyle = '#ffffff'; circle(0, 0, 18); ctx.fill(); ctx.strokeStyle = '#bcd6e4'; ctx.lineWidth = 2; ctx.stroke(); }
-      else { ctx.fillStyle = '#8a5a32'; rr(-16, -18, 32, 36, 6); ctx.fill(); ctx.fillStyle = '#4a4e56'; ctx.fillRect(-16, -10, 32, 3); ctx.fillRect(-16, 7, 32, 3); }
+      if (q.kind === 'snow') {
+        ctx.fillStyle = '#ffffff'; circle(0, 0, 18); ctx.fill(); ctx.strokeStyle = '#bcd6e4'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = 'rgba(160,190,214,0.45)'; for (const [a, b, rr2] of [[-6, 5, 4], [7, -4, 3], [3, 9, 2.5], [-8, -7, 2]]) { circle(a, b, rr2); ctx.fill(); }
+      } else {
+        ctx.fillStyle = '#8a5a32'; rr(-16, -18, 32, 36, 6); ctx.fill();
+        ctx.fillStyle = '#6a4424'; ctx.fillRect(4, -18, 12, 36);
+        ctx.strokeStyle = 'rgba(40,20,8,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); for (const sx of [-8, 0, 8]) { ctx.moveTo(sx, -17); ctx.lineTo(sx, 17); } ctx.stroke();
+        ctx.fillStyle = 'rgba(255,220,170,0.3)'; ctx.fillRect(-14, -18, 3, 36);
+        ctx.fillStyle = '#4a4e56'; ctx.fillRect(-16, -10, 32, 3); ctx.fillRect(-16, 7, 32, 3);
+        ctx.strokeStyle = '#2e2010'; ctx.lineWidth = 1.5; rr(-16, -18, 32, 36, 6); ctx.stroke();
+      }
       ctx.restore();
     }
     // the arrow volley: shadows during the tell, arrows during the rain
@@ -715,16 +783,46 @@
     const melted = st.melt[r][c] > 0;
     if (ch === 'L') {
       if (c === 0) {
-        ctx.fillStyle = '#6a4424'; ctx.fillRect(X0 - S.cw * 0.5 - 30, y + 10, S.cols * S.cw + 60, 14);
-        ctx.fillStyle = '#9a6a3a'; ctx.fillRect(X0 - S.cw * 0.5 - 30, y + 8, S.cols * S.cw + 60, 5);
-        for (let k = 0; k < S.cols + 1; k++) { ctx.fillStyle = '#4a2c14'; ctx.fillRect(X0 - S.cw * 0.5 - 20 + k * S.cw, y + 24, 6, 26); }
+        const lx = X0 - S.cw * 0.5 - 30, lw2 = S.cols * S.cw + 60;
+        // the struts under the walkway (with their shadow on the ice), then the planks with grain, nails and snow
+        ctx.fillStyle = 'rgba(30,60,80,0.22)'; ctx.fillRect(lx, y + 24, lw2, 10);
+        for (let k = 0; k < S.cols + 1; k++) {
+          const sx = X0 - S.cw * 0.5 - 20 + k * S.cw;
+          ctx.fillStyle = 'rgba(30,60,80,0.2)'; ctx.fillRect(sx + 6, y + 26, 4, 26);
+          ctx.fillStyle = '#4a2c14'; ctx.fillRect(sx, y + 24, 6, 26);
+          ctx.fillStyle = '#6a4424'; ctx.fillRect(sx, y + 24, 2, 26);
+          ctx.strokeStyle = '#c8b08a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx - 1, y + 27); ctx.lineTo(sx + 7, y + 30); ctx.moveTo(sx - 1, y + 31); ctx.lineTo(sx + 7, y + 34); ctx.stroke();
+        }
+        ctx.fillStyle = '#6a4424'; ctx.fillRect(lx, y + 10, lw2, 14);
+        ctx.fillStyle = '#9a6a3a'; ctx.fillRect(lx, y + 8, lw2, 5);
+        ctx.fillStyle = 'rgba(255,220,170,0.35)'; ctx.fillRect(lx, y + 8, lw2, 1.5);
+        ctx.fillStyle = '#3a2210'; ctx.fillRect(lx, y + 22, lw2, 2);
+        ctx.strokeStyle = 'rgba(40,20,8,0.4)'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let k = 0; k < S.cols * 2 + 2; k++) { const px = lx + k * S.cw / 2 + 10; ctx.moveTo(px, y + 13); ctx.lineTo(px, y + 22); }
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(60,30,10,0.35)';
+        for (let k = 0; k < S.cols * 3; k++) { const gx = lx + K.hash(r * 31 + k) * lw2; ctx.fillRect(gx, y + 15 + (k % 3) * 2, 10 + K.hash(k + r) * 14, 1); }
+        ctx.fillStyle = '#c8ccd6'; for (let k = 0; k < S.cols * 2 + 2; k++) { const px = lx + k * S.cw / 2 + 6; ctx.fillRect(px, y + 16, 1.6, 1.6); }
+        ctx.fillStyle = '#f2f7fa';
+        for (let k = 0; k < S.cols; k++) if (K.hash(r * 5 + k) < 0.45) { const px = lx + 20 + k * S.cw + K.hash(k * 9 + r) * 20; ctx.beginPath(); ctx.ellipse(px, y + 8, 10 + K.hash(k + r * 3) * 14, 2.6, 0, Math.PI, 0); ctx.fill(); }
       }
       return;
     }
     if (ch === 'R') {
+      // a frozen boulder: shaded lower half, lit top facet, a crack, specks, an outline and a snow cap with a drip
+      const hv = K.hash(c * 17 + r * 29);
       ctx.fillStyle = '#5a5e66'; rr(x - hw + 1, y - hh + 1, S.cw - 2, S.rh - 2, 6); ctx.fill();
+      ctx.fillStyle = '#4a4e56'; rr(x - hw + 1, y + 2, S.cw - 2, hh - 1, 6); ctx.fill();
       ctx.fillStyle = '#6e737a'; rr(x - hw + 4, y - hh + 4, S.cw - 14, S.rh / 2 - 4, 4); ctx.fill();
-      ctx.fillStyle = '#f2f6f8'; ctx.fillRect(x - hw + 2, y - hh + 1, S.cw - 4, 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; rr(x - hw + 6, y - hh + 6, S.cw - 22, 4, 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(30,32,38,0.55)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(x - 8 + hv * 16, y - 6); ctx.lineTo(x - 4 + hv * 10, y + 4); ctx.lineTo(x - 8 + hv * 14, y + 14); ctx.stroke();
+      ctx.fillStyle = 'rgba(30,32,38,0.4)'; for (let k = 0; k < 3; k++) { circle(x - hw + 8 + K.hash(c + r * 3 + k) * (S.cw - 16), y + 6 + K.hash(c * 3 + r + k) * 12, 1.3); ctx.fill(); }
+      ctx.strokeStyle = '#33363d'; ctx.lineWidth = 1.5; rr(x - hw + 1, y - hh + 1, S.cw - 2, S.rh - 2, 6); ctx.stroke();
+      ctx.fillStyle = '#f2f6f8'; ctx.beginPath(); ctx.moveTo(x - hw + 2, y - hh + 6); ctx.quadraticCurveTo(x - hw + 2, y - hh, x - hw + 8, y - hh); ctx.lineTo(x + hw - 8, y - hh); ctx.quadraticCurveTo(x + hw - 2, y - hh, x + hw - 2, y - hh + 6);
+      ctx.lineTo(x + hw - 10, y - hh + 6); ctx.quadraticCurveTo(x + hw - 14, y - hh + 11, x + hw - 18, y - hh + 6); ctx.lineTo(x - hw + 2, y - hh + 6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(160,190,210,0.6)'; ctx.fillRect(x - hw + 6, y - hh + 5, S.cw - 16, 1.2);
       return;
     }
     if (ch === 'P') {
@@ -733,7 +831,13 @@
       if (!st.ropeFree) { ctx.fillStyle = 'rgba(220,240,255,0.8)'; ctx.fillRect(x - 6, y - hh, 12, S.rh); }
       return;
     }
-    if (ch === 'B') { ctx.fillStyle = 'rgba(60,140,210,0.75)'; rr(x - hw + 2, y - hh + 2, S.cw - 4, S.rh - 4, 6); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 10, y - 12); ctx.lineTo(x + 6, y + 10); ctx.stroke(); }
+    if (ch === 'B') {
+      ctx.fillStyle = 'rgba(60,140,210,0.75)'; rr(x - hw + 2, y - hh + 2, S.cw - 4, S.rh - 4, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(20,70,130,0.35)'; rr(x - hw + 2, y + 4, S.cw - 4, hh - 6, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.moveTo(x - hw + 5, y - hh + 5); ctx.lineTo(x - hw + 18, y - hh + 5); ctx.lineTo(x - hw + 5, y - hh + 22); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 10, y - 12); ctx.lineTo(x + 6, y + 10); ctx.moveTo(x - 2, y - 2); ctx.lineTo(x + 10, y - 6); ctx.stroke();
+      ctx.strokeStyle = 'rgba(20,70,130,0.7)'; ctx.lineWidth = 1.5; rr(x - hw + 2, y - hh + 2, S.cw - 4, S.rh - 4, 6); ctx.stroke();
+    }
     else if (ch === 'N') { ctx.fillStyle = '#f4f8fb'; ctx.beginPath(); ctx.ellipse(x, y + 4, hw - 3, hh - 6, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#dce8f0'; ctx.beginPath(); ctx.ellipse(x + 4, y + 8, hw - 12, hh - 14, 0, 0, TAU); ctx.fill(); }
     else if (ch === 'U') {
       const pulse = 0.6 + 0.4 * Math.sin(t * 4 + c + r);
@@ -883,11 +987,13 @@
   const acts = a => ({ label: 'chop', labels: a === 0 ? ['chop', 'shield'] : ['shield', 'chop'] });
   VIKING.defs.icefort = {
     name: 'Ice Fortress Raid', world: 33, kind: 'team', mode: 'icefort', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> climb',
-      bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> climb',
-      pad: 'stick or d-pad climbs,',
+    jobs: {
+      axe: { title: 'Axe hero', act: 'chop', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> climb',
+        howTo: ['Tap chop to cut a handhold the way you hold.'] },
+      shield: { title: 'Shield hero', act: 'shield', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> climb',
+        howTo: ['Hold shield to keep arrows off you both; ◀ ▶ tilt it.', 'With the shield up you climb slowly.'] },
     },
+    jobSwap: 'You swap jobs at every ledge.',
     tip: 'Climb the ice! The axe hero taps the action to chop handholds; the shield hero holds the action to keep the arrows off you both. Swap at every ledge.',
     act: acts(0),
     map: K.stubMap(),

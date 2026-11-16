@@ -872,6 +872,15 @@ function gumballPaintBack(c, st, L) {
   const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#ffc6e2'); gr.addColorStop(1, '#ffe9d2');
   c.fillStyle = gr; c.fillRect(0, 0, W, H);
   for (let x = 0; x < W; x += 48) { c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x, 0, 24, H); }
+  // a wafer wainscot along the lower wall with a cream rail on top
+  { const wy = 372;
+    c.fillStyle = '#f7c9a0'; c.fillRect(0, wy, W, 140);
+    c.strokeStyle = 'rgba(160,90,40,0.22)'; c.lineWidth = 1.5;
+    for (let x = 0; x < W; x += 14) { c.beginPath(); c.moveTo(x, wy + 10); c.lineTo(x, wy + 140); c.stroke(); }
+    for (let y = wy + 24; y < wy + 140; y += 14) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
+    c.fillStyle = '#fff3f8'; c.fillRect(0, wy - 4, W, 12); c.fillStyle = 'rgba(200,90,140,0.25)'; c.fillRect(0, wy + 6, W, 3);
+    c.fillStyle = 'rgba(255,255,255,0.8)'; c.fillRect(0, wy - 4, W, 2);
+    const sg = c.createLinearGradient(0, wy + 80, 0, wy + 140); sg.addColorStop(0, 'rgba(120,50,30,0)'); sg.addColorStop(1, 'rgba(120,50,30,0.18)'); c.fillStyle = sg; c.fillRect(0, wy + 80, W, 60); }
   // cotton candy clouds high up the wall
   for (const [x, y, s] of [[60, 56, 1], [880, 50, 0.9], [130, 150, 0.7], [840, 160, 0.8]]) {
     c.fillStyle = 'rgba(255,255,255,0.55)';
@@ -879,15 +888,24 @@ function gumballPaintBack(c, st, L) {
   }
   // lollipops planted along the floor
   for (const [x, col, h] of [[30, '#ff7eb6', 60], [150, '#7fd8ff', 46], [810, '#b98cff', 52], [935, '#ffd23f', 64]]) {
-    c.strokeStyle = '#fff'; c.lineWidth = 4; c.beginPath(); c.moveTo(x, 510); c.lineTo(x, 510 - h); c.stroke();
+    c.fillStyle = 'rgba(90,30,50,0.2)'; c.beginPath(); c.ellipse(x, 511, 10, 3, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#e6dce6'; c.lineWidth = 4; c.beginPath(); c.moveTo(x + 1, 510); c.lineTo(x + 1, 510 - h); c.stroke();
+    c.strokeStyle = '#fff'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x - 0.5, 510); c.lineTo(x - 0.5, 510 - h); c.stroke();
     c.fillStyle = col; c.beginPath(); c.arc(x, 510 - h - 12, 14, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(80,20,60,0.35)'; c.lineWidth = 2; c.stroke();
     c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 2.5; c.beginPath(); for (let a = 0; a < 9; a += 0.25) { const rr = a * 1.5; c.lineTo(x + Math.cos(a) * rr, 510 - h - 12 + Math.sin(a) * rr); } c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.55)'; c.beginPath(); c.ellipse(x - 6, 510 - h - 18, 4, 2.5, -0.6, 0, Math.PI * 2); c.fill();
   }
   // the machine: a big cherry-red frame around the glass board, standing over the walkway on candy-cane legs
   const X0 = 180, X1 = 780;
   c.fillStyle = 'rgba(80,20,50,0.18)'; c.beginPath(); c.roundRect ? c.roundRect(X0 + 6, 116, X1 - X0, 348, 26) : c.rect(X0 + 6, 116, X1 - X0, 348); c.fill();
   c.fillStyle = '#e8384f'; c.beginPath(); c.roundRect ? c.roundRect(X0, 110, X1 - X0, 348, 26) : c.rect(X0, 110, X1 - X0, 348); c.fill();
   c.fillStyle = '#ff6b7f'; c.fillRect(X0 + 6, 116, 10, 330); c.fillRect(X1 - 16, 116, 10, 330);
+  // the frame's lit top lip, a darker foot, an outline and four shiny bolts
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.roundRect ? c.roundRect(X0 + 20, 113, X1 - X0 - 40, 4, 2) : c.rect(X0 + 20, 113, X1 - X0 - 40, 4); c.fill();
+  c.fillStyle = 'rgba(110,10,30,0.25)'; c.fillRect(X0 + 16, 446, X1 - X0 - 32, 10);
+  c.strokeStyle = '#a81f35'; c.lineWidth = 2.5; c.beginPath(); c.roundRect ? c.roundRect(X0, 110, X1 - X0, 348, 26) : c.rect(X0, 110, X1 - X0, 348); c.stroke();
+  for (const [bx, by] of [[X0 + 22, 128], [X1 - 22, 128], [X0 + 22, 440], [X1 - 22, 440]]) { c.fillStyle = '#b8bcd6'; c.beginPath(); c.arc(bx, by, 4.5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#ffffff'; c.beginPath(); c.arc(bx - 1.3, by - 1.3, 1.6, 0, Math.PI * 2); c.fill(); }
   // glass board
   const gb = c.createLinearGradient(0, R.boardY0, 0, 452); gb.addColorStop(0, '#fff6fb'); gb.addColorStop(1, '#ffe3f0');
   c.fillStyle = gb; c.beginPath(); c.roundRect ? c.roundRect(R.boardX0, R.boardY0, R.boardX1 - R.boardX0, 452 - R.boardY0 + 6, 14) : c.rect(R.boardX0, R.boardY0, R.boardX1 - R.boardX0, 256); c.fill();
@@ -918,7 +936,9 @@ function gumballPaintBack(c, st, L) {
   for (let r = 0; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) {
     const ch = g[r][cc], x = cc * T, y = r * T;
     if (ch === '=') {
+      c.fillStyle = 'rgba(120,40,60,0.15)'; c.fillRect(x, y + 11, T, 5);
       c.fillStyle = '#e7b06c'; c.fillRect(x, y, T, 11); c.fillStyle = '#ffd1ec'; c.fillRect(x, y + 4, T, 3);
+      c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x, y, T, 1.5); c.fillStyle = 'rgba(140,80,30,0.3)'; c.fillRect(x, y + 9.5, T, 1.5);
       c.strokeStyle = 'rgba(140,80,30,0.45)'; c.lineWidth = 1; for (let k = 4; k < T; k += 7) { c.beginPath(); c.moveTo(x + k, y + 1); c.lineTo(x + k, y + 10); c.stroke(); }
       if (g[r][cc - 1] !== '=') { c.fillStyle = '#c98c4a'; c.fillRect(x, y, 3, 11); }
       if (g[r][cc + 1] !== '=') { c.fillStyle = '#c98c4a'; c.fillRect(x + T - 3, y, 3, 11); }

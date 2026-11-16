@@ -320,6 +320,14 @@ function wizBeastDrawBack(st) {
     // far hills
     ctx.fillStyle = k === 1 ? '#5a5a78' : k === 2 ? '#30304a' : '#4a7a6a';
     ctx.beginPath(); ctx.moveTo(0, K.g); for (let x = 0; x <= W + 40; x += 40) ctx.lineTo(x, K.g - 70 - Math.sin((x + cx * 0.3) * 0.006) * 40 - Math.sin((x + cx * 0.3) * 0.017) * 14); ctx.lineTo(W, K.g); ctx.closePath(); ctx.fill();
+    // a nearer, darker rise with a lit crest
+    const near = k === 1 ? '#4c4c6a' : k === 2 ? '#262640' : '#3e6a5c';
+    ctx.fillStyle = near; ctx.beginPath(); ctx.moveTo(0, K.g);
+    for (let x = 0; x <= W + 40; x += 30) ctx.lineTo(x, K.g - 26 - Math.sin((x + cx * 0.55) * 0.011) * 16);
+    ctx.lineTo(W + 40, K.g); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,240,220,0.14)'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let x = 0; x <= W + 40; x += 30) { const y = K.g - 26 - Math.sin((x + cx * 0.55) * 0.011) * 16; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+    ctx.stroke();
     if (k === 2) { ctx.strokeStyle = 'rgba(180,190,230,0.35)'; ctx.lineWidth = 1.5; for (let n = 0; n < 40; n++) { const x = ((n * 97 + t * 60) % (W + 40)) - 20, y = ((n * 53 + t * 520) % (H + 20)) - 10; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 4, y + 14); ctx.stroke(); } }
   });
   // the ground (none over the gaps), the troughs
@@ -328,6 +336,13 @@ function wizBeastDrawBack(st) {
     const r = wizBeastRunAt(xx);
     ctx.fillStyle = r === 0 ? '#5fae66' : r === 1 ? '#8a8aa0' : '#4a5a5a'; ctx.fillRect(xx, K.g, 21, H - K.g);
     ctx.fillStyle = r === 0 ? '#79c47e' : r === 1 ? '#a8a8bc' : '#5e7070'; ctx.fillRect(xx, K.g, 21, 7);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(xx, K.g, 21, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(xx, K.g + 7, 21, 4); ctx.fillRect(xx, K.g + 46, 21, H - K.g - 46);
+    const hh = hash(xx, 41);
+    ctx.fillStyle = r === 1 ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.14)';
+    if (hh % 3 === 0) { circle(xx + hh % 18, K.g + 20 + (hh >> 5) % 22, 2 + (hh >> 9) % 2); ctx.fill(); }
+    if (r === 0 && hh % 4 === 1) { ctx.fillStyle = '#79c47e'; ctx.beginPath(); ctx.moveTo(xx + 6, K.g + 1); ctx.lineTo(xx + 9, K.g - 5); ctx.lineTo(xx + 12, K.g + 1); ctx.fill(); }
+    if (r === 1 && hh % 4 === 1) { ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(xx + 10, K.g + 1, 5); ctx.fill(); }
   }
   for (const o of ph.items) if ((o.kind === 'gap' || o.kind === 'leap') && o.x1 > cx - 40 && o.x0 < cx + W + 40) {
     ctx.fillStyle = 'rgba(200,220,255,0.35)'; for (let n = 0; n < 4; n++) { circle(o.x0 + 30 + n * (o.w - 60) / 3, K.g + 60 + Math.sin(t * 2 + n) * 6, 26); ctx.fill(); }
@@ -468,6 +483,7 @@ WIZ_PHASES.beast = {
   plan(st) { return wizBeastPlan(st); },
   labels(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.rider ? 'hup' : 'feed')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.rider ? 'Ride!' : 'Feed!')); },
+  jobKeys(st) { return st.ph.rider === 1 ? ['feeder', 'rider'] : ['rider', 'feeder']; },
   legend(st) {
     const ph = st.ph, ride = k => (k ? '<kbd>↑</kbd> jump <kbd>↓</kbd> duck' : '<kbd>W</kbd> jump <kbd>S</kbd> duck'), feed = k => (k ? '<kbd>←</kbd><kbd>→</kbd> pick a snack' : '<kbd>A</kbd><kbd>D</kbd> pick a snack');
     return { pip: ph.rider === 0 ? ride(0) : feed(0), bo: ph.rider === 1 ? ride(1) : feed(1), pad: 'rider: up jumps, down ducks; feeder: left / right picks,' };
@@ -498,6 +514,12 @@ Sfx.extra.wizBeastDrink = function () { [500, 600, 500, 600].forEach((f, i) => t
 
 /* ---------- the room ---------- */
 wizRoom('beast', {
+  jobs: {
+    rider: { title: 'Rider', act: 'hup', legend: '<kbd>W</kbd> jump <kbd>S</kbd> duck <kbd>A</kbd><kbd>D</kbd> slow down, speed up',
+      howTo: ['Hup charges through hay walls and over long gaps.'] },
+    feeder: { title: 'Feeder', act: 'feed', legend: '<kbd>A</kbd><kbd>D</kbd> pick a snack <kbd>S</kbd> pet the tail',
+      howTo: ['Feed the snack in its thought bubble. Pet the tail when the static is high.'] },
+  },
   act: { label: 'hup', labels: ['hup', 'feed'] },
   tip: 'Front rides (up jumps, down ducks, "Hup!" charges), back feeds it the snack it asks for. Pepper makes it sneeze!',
   legend: { pip: '<kbd>W</kbd> jump <kbd>S</kbd> duck', bo: '<kbd>←</kbd><kbd>→</kbd> pick a snack', pad: 'rider: up jumps, down ducks; feeder: left / right picks,' },

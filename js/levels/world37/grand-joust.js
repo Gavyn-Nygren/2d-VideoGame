@@ -274,13 +274,23 @@
     K.pennants(0, W, 196, t, { sag: 18, wind: windGust ? 1 : st.tw.wind ? 0.4 : 0.2, gust: windGust ? -1 : 0 });
     // the lists: far track, the barrier, near track
     ctx.fillStyle = K.COL.dirt; ctx.fillRect(0, 360, W, H - 360);
+    { const lg = ctx.createLinearGradient(0, 360, 0, H); lg.addColorStop(0, 'rgba(90,60,20,0.25)'); lg.addColorStop(0.2, 'rgba(90,60,20,0)'); lg.addColorStop(1, 'rgba(90,60,20,0.15)'); ctx.fillStyle = lg; ctx.fillRect(0, 360, W, H - 360); }
+    ctx.fillStyle = 'rgba(255,240,200,0.3)'; ctx.fillRect(0, 360, W, 2);
     ctx.fillStyle = 'rgba(120,90,50,0.35)'; for (let k = 0; k < 18; k++) ctx.fillRect((k * 61) % W, 380 + (k % 4) * 30, 30, 3);
+    // churned hoof prints and pebbles
+    for (let k = 0; k < 22; k++) {
+      const x = (k * 97 + 13) % W, y = 372 + (k * 41) % 160, r = 2 + (k % 3);
+      ctx.fillStyle = k % 3 ? '#9a8a72' : 'rgba(110,80,40,0.45)'; ctx.beginPath(); ctx.ellipse(x, y, r * 1.5, r, 0, 0, TAU); ctx.fill();
+      if (k % 3) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - r * 0.6, y - r * 0.6, r * 0.8, 1); }
+    }
     if (st.tw.mud) { ctx.fillStyle = 'rgba(90,60,30,0.55)'; for (let k = 0; k < 9; k++) { ctx.beginPath(); ctx.ellipse(60 + k * 110, 470 + (k % 2) * 30, 50, 9, 0, 0, TAU); ctx.fill(); } }
     drawRider(st, st.r[1], t);
     // the barrier (the tilt)
-    for (let x = 0; x < W; x += 48) { ctx.fillStyle = (x / 48) % 2 ? '#d8323a' : '#f6ecd0'; ctx.fillRect(x, R.bar - 20, 48, 22); }
-    ctx.fillStyle = '#5e3a1c'; for (let x = 20; x < W; x += 96) ctx.fillRect(x, R.bar - 26, 6, 40);
-    ctx.fillStyle = '#7a4e2a'; ctx.fillRect(0, R.bar - 24, W, 5);
+    ctx.fillStyle = 'rgba(40,25,10,0.22)'; ctx.fillRect(0, R.bar + 2, W, 7);
+    for (let x = 0; x < W; x += 48) { const red = (x / 48) % 2; ctx.fillStyle = red ? '#d8323a' : '#f6ecd0'; ctx.fillRect(x, R.bar - 20, 48, 22); ctx.fillStyle = red ? '#8a1a22' : '#c8bc9c'; ctx.fillRect(x, R.bar - 4, 48, 6); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x, R.bar - 19, 48, 2); }
+    ctx.strokeStyle = 'rgba(60,20,10,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(-1, R.bar - 20.5, W + 2, 22);
+    for (let x = 20; x < W; x += 96) { ctx.fillStyle = '#5e3a1c'; ctx.fillRect(x, R.bar - 26, 6, 40); ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 4, R.bar - 26, 2, 40); ctx.fillStyle = '#ffd23a'; circ(x + 3, R.bar - 27, 3.5); ctx.fill(); }
+    ctx.fillStyle = '#7a4e2a'; ctx.fillRect(0, R.bar - 24, W, 5); ctx.fillStyle = 'rgba(255,220,170,0.3)'; ctx.fillRect(0, R.bar - 24, W, 1.5);
     // the lock ribbon
     if (st.phase === 'charge') {
       const lu = clamp((st.t - (GJ.charge - GJ.lock - 0.6)) / 0.6, 0, 1), locked = st.t >= GJ.charge - GJ.lock;

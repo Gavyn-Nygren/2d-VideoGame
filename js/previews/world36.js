@@ -10,15 +10,27 @@ const pw36Sky = (v, o = {}) => {
   else if (o.dusk) { g.addColorStop(0, '#ff9a6a'); g.addColorStop(1, '#ffd8a8'); }
   else { g.addColorStop(0, '#7ab8ff'); g.addColorStop(1, '#d8eeff'); }
   c.fillStyle = g; c.fillRect(0, 0, v.W, v.H);
+  if (o.night) { for (let k = 0; k < 24; k++) { c.fillStyle = 'rgba(255,255,240,' + (0.3 + 0.4 * Math.abs(Math.sin(v.t + k))) + ')'; c.fillRect(v.rand(k) * v.W, v.rand(k + 30) * 70, 1.2, 1.2); } }
+  else if (!o.plain) { // a soft cloud or two
+    for (let k = 0; k < 2; k++) { const cx = ((k * 180 + 60 - v.t * 3) % 400 + 400) % 400 - 40, cy = 18 + k * 14;
+      c.fillStyle = o.dusk ? 'rgba(255,236,210,0.7)' : 'rgba(255,255,255,0.8)'; v.circle(cx, cy, 7); c.fill(); v.circle(cx + 9, cy - 3, 9); c.fill(); v.circle(cx + 19, cy, 7); c.fill(); c.fillRect(cx, cy, 19, 5); }
+  }
 };
-// the soundstages far behind (big numbered sheds)
+// the soundstages far behind (big numbered sheds with a lit side, ribs, a door and a roof lamp)
 const pw36Stages = (v, base, scroll) => {
   const c = v.ctx;
   for (let k = -1; k < 6; k++) {
     const x = k * 70 - (scroll * 0.2) % 70;
     c.fillStyle = '#c8c0b0'; c.fillRect(x, base - 46, 62, 46);
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x, base - 46, 3, 46);
+    c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(x + 56, base - 46, 6, 46);
+    c.fillStyle = 'rgba(120,100,80,0.18)'; for (let r = 10; r < 62; r += 10) c.fillRect(x + r, base - 46, 1, 46);
+    c.fillStyle = '#8a7a6a'; c.fillRect(x + 8, base - 16, 14, 16); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(x + 8, base - 16, 14, 2);
     c.fillStyle = '#a89a8a'; c.beginPath(); c.moveTo(x - 2, base - 46); c.quadraticCurveTo(x + 31, base - 62, x + 64, base - 46); c.fill();
-    v.text(String(3 + ((k + Math.floor(scroll * 0.2 / 70)) % 9 + 9) % 9), x + 31, base - 26, 12, '#7a6a5a', 'center');
+    c.fillStyle = 'rgba(255,255,255,0.25)'; c.beginPath(); c.moveTo(x - 2, base - 46); c.quadraticCurveTo(x + 31, base - 62, x + 64, base - 46); c.quadraticCurveTo(x + 31, base - 58, x - 2, base - 46); c.fill();
+    c.fillStyle = '#f6efdf'; v.circle(x + 31, base - 30, 7); c.fill(); c.strokeStyle = '#8a7a6a'; c.lineWidth = 1; c.stroke();
+    v.text(String(3 + ((k + Math.floor(scroll * 0.2 / 70)) % 9 + 9) % 9), x + 31, base - 29.5, 9, '#7a6a5a', 'center');
+    c.fillStyle = '#ffe9a8'; c.fillRect(x + 28, base - 18, 6, 2);
   }
 };
 const pw36Clapper = (v, x, y, s, open) => {
@@ -87,9 +99,14 @@ const pw36Real = (v, x, y, w) => { const c = v.ctx; for (let k = 0; k < w; k += 
       pw36Sky(v, { dusk: desert });
       // the painted backdrop: city, then desert (it rolls down like a blind)
       c.fillStyle = '#6a7a9a'; for (let k = -1; k < 8; k++) { const x = k * 48 - (scroll * 0.4) % 48; c.fillRect(x, 60 - v.rand(k + Math.floor(scroll * 0.4 / 48)) * 30, 40, 70); }
-      if (roll > 0 && t < 5.4) { c.fillStyle = '#e8b878'; c.fillRect(0, 0, v.W, 130 * (desert ? 1 : roll)); c.fillStyle = '#c88a4a'; for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(k * 90 - 20, 130); c.lineTo(k * 90 + 30, 90); c.lineTo(k * 90 + 80, 130); c.fill(); } }
+      if (roll > 0 && t < 5.4) { c.fillStyle = '#e8b878'; c.fillRect(0, 0, v.W, 130 * (desert ? 1 : roll)); c.fillStyle = 'rgba(255,240,200,0.5)'; v.circle(250, 34, 14); c.fill(); c.fillStyle = '#fff4d0'; v.circle(250, 34, 8); c.fill();
+        c.fillStyle = '#d8a060'; for (let k = 0; k < 5; k++) { c.beginPath(); c.moveTo(k * 80 - 50, 130); c.lineTo(k * 80 - 10, 104); c.lineTo(k * 80 + 30, 130); c.fill(); }
+        c.fillStyle = '#c88a4a'; for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(k * 90 - 20, 130); c.lineTo(k * 90 + 30, 90); c.lineTo(k * 90 + 80, 130); c.fill(); }
+        c.fillStyle = '#a86a36'; for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(k * 90 + 30, 90); c.lineTo(k * 90 + 80, 130); c.lineTo(k * 90 + 40, 130); c.fill(); } }
       // the road
       c.fillStyle = '#3a3a44'; c.fillRect(0, 130, v.W, 50);
+      c.fillStyle = '#8a8a96'; c.fillRect(0, 130, v.W, 3); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, 133, v.W, 2); c.fillRect(0, 172, v.W, 8);
+      c.fillStyle = 'rgba(255,255,255,0.06)'; for (let k = 0; k < 14; k++) c.fillRect(((k * 41 - scroll) % 340 + 340) % 340 - 10, 140 + v.rand(k + 5) * 28, 6, 1);
       c.fillStyle = '#ffd23a'; for (let k = 0; k < 8; k++) c.fillRect(k * 50 - (scroll % 50), 154, 24, 3);
       // the flat: a desert scene on paper, swings up 1.2, burst at 3.2
       const fx = 260 - v.seg(t, 1.2, 3.2) * 150, up = v.ease.out(v.seg(t, 1.2, 1.6)), burst = t > 3.2;
@@ -176,7 +193,14 @@ const pw36Real = (v, x, y, w) => { const c = v.ctx; for (let k = 0; k < w; k += 
       pw36Sky(v);
       // the building face scrolls up
       c.fillStyle = '#8a7a9a'; c.fillRect(40, 0, 240, v.H);
-      for (let r = -1; r < 5; r++) for (let k = 0; k < 4; k++) { const y = r * 50 - (scroll % 50); c.fillStyle = '#3a4a6a'; c.fillRect(56 + k * 58, y + 10, 34, 34); c.strokeStyle = '#ece4f4'; c.lineWidth = 2; c.strokeRect(56 + k * 58, y + 10, 34, 34); }
+      c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(40, 0, 4, v.H); c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(272, 0, 8, v.H);
+      c.fillStyle = 'rgba(60,40,80,0.18)'; for (let y = -(scroll % 10); y < v.H; y += 10) c.fillRect(40, y, 240, 1);
+      for (let r = -1; r < 5; r++) for (let k = 0; k < 4; k++) { const y = r * 50 - (scroll % 50), wx = 56 + k * 58;
+        const wg = c.createLinearGradient(wx, y + 10, wx + 34, y + 44); wg.addColorStop(0, '#4a5e86'); wg.addColorStop(1, '#2e3a58');
+        c.fillStyle = wg; c.fillRect(wx, y + 10, 34, 34);
+        c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.moveTo(wx + 4, y + 40); c.lineTo(wx + 16, y + 14); c.lineTo(wx + 22, y + 14); c.lineTo(wx + 10, y + 40); c.fill();
+        c.strokeStyle = '#ece4f4'; c.lineWidth = 2; c.strokeRect(wx, y + 10, 34, 34);
+        c.fillStyle = '#b8aac8'; c.fillRect(wx - 3, y + 45, 40, 3); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(wx - 3, y + 48, 40, 2); }
       c.fillStyle = '#5a3a1a'; c.fillRect(36, 0, 4, v.H); c.fillRect(280, 0, 4, v.H);
       // the glass at y 100 - scroll, smashed at 1.8
       const gy = 160 - v.seg(t, 0, 1.8) * 60, smash = t > 1.8;
@@ -211,9 +235,14 @@ const pw36Real = (v, x, y, w) => { const c = v.ctx; for (let k = 0; k < w; k += 
     draw(v, t) {
       const c = v.ctx;
       c.fillStyle = '#241a44'; c.fillRect(0, 0, v.W, v.H);
+      // sweeping spotlights over the stands
+      for (let k = 0; k < 2; k++) { const a = Math.sin(t * 0.9 + k * 2.2) * 0.5, x0 = 60 + k * 200;
+        c.fillStyle = 'rgba(255,240,200,0.07)'; c.beginPath(); c.moveTo(x0, 0); c.lineTo(x0 + Math.sin(a) * 200 - 30, v.H); c.lineTo(x0 + Math.sin(a) * 200 + 30, v.H); c.closePath(); c.fill(); }
       // the crowd
       for (let r = 0; r < 3; r++) for (let k = 0; k < 24; k++) { const x = k * 14 + (r % 2) * 7, y = 50 + r * 12 + Math.sin(t * 6 + k + r) * 1.5; c.fillStyle = ['#e86a6a', '#6ab0e8', '#e8d26a', '#8ae86a', '#c88ae8'][(k * 7 + r * 3) % 5]; v.circle(x, y, 4); c.fill(); }
-      c.fillStyle = '#5a4a3a'; c.fillRect(0, 160, v.W, 20);
+      { const fg = c.createLinearGradient(0, 160, 0, v.H); fg.addColorStop(0, '#6a5a48'); fg.addColorStop(1, '#4a3a2e'); c.fillStyle = fg; c.fillRect(0, 160, v.W, 20);
+        c.fillStyle = 'rgba(255,240,210,0.3)'; c.fillRect(0, 160, v.W, 1.5);
+        c.strokeStyle = 'rgba(30,20,10,0.35)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(20, 172); c.quadraticCurveTo(120, 164, 220, 174); c.moveTo(60, 177); c.quadraticCurveTo(160, 168, 300, 176); c.stroke(); }
       // the tyre wall
       for (let y = 90; y < 160; y += 10) { c.fillStyle = '#1a1a20'; c.beginPath(); c.ellipse(160, y, 6, 5, 0, 0, pw36TAU); c.fill(); }
       // the judges, paddles up at 3.0+

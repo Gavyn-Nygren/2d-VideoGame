@@ -551,9 +551,17 @@
     }
     // far mountains with snowy tops
     const peaks = [[-40, 330, 120], [120, 250, 150], [300, 300, 130], [470, 230, 170], [660, 280, 140], [840, 240, 160], [1010, 310, 120]];
+    // a hazy range further back
+    ctx.fillStyle = night ? 'rgba(40,60,110,0.55)' : 'rgba(200,220,240,0.55)';
+    for (const [px, py, pw] of peaks) { ctx.beginPath(); ctx.moveTo(px - pw * 0.9 + 90, 400); ctx.lineTo(px + 90, py + 40); ctx.lineTo(px + pw * 0.9 + 90, 400); ctx.closePath(); ctx.fill(); }
     for (const [px, py, pw] of peaks) {
       ctx.fillStyle = night ? '#24365f' : C.hillFar;
       ctx.beginPath(); ctx.moveTo(px - pw, 420); ctx.lineTo(px, py); ctx.lineTo(px + pw, 420); ctx.closePath(); ctx.fill();
+      // the shaded side and a couple of rocky ridges
+      ctx.fillStyle = night ? 'rgba(10,20,50,0.3)' : 'rgba(40,70,120,0.16)';
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + pw, 420); ctx.lineTo(px + pw * 0.15, 420); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = night ? 'rgba(10,20,50,0.25)' : 'rgba(40,70,120,0.15)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px - pw * 0.2, py + 60); ctx.lineTo(px - pw * 0.4, py + 120); ctx.moveTo(px + pw * 0.25, py + 70); ctx.lineTo(px + pw * 0.35, py + 130); ctx.stroke();
       ctx.fillStyle = night ? '#4c6496' : '#ffffff';
       ctx.beginPath(); ctx.moveTo(px - pw * 0.32, py + 44); ctx.lineTo(px, py); ctx.lineTo(px + pw * 0.32, py + 44);
       ctx.lineTo(px + pw * 0.12, py + 36); ctx.lineTo(px, py + 48); ctx.lineTo(px - pw * 0.14, py + 34); ctx.closePath(); ctx.fill();
@@ -563,6 +571,10 @@
       const x = i * 40 + (hash(i, 3) % 20), y = 404 + (hash(i, 5) % 18), s = 0.8 + (hash(i, 9) % 5) / 10;
       ctx.fillStyle = night ? '#1b3a3f' : '#3f7d68';
       ctx.beginPath(); ctx.moveTo(x, y - 34 * s); ctx.lineTo(x + 12 * s, y); ctx.lineTo(x - 12 * s, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = night ? '#132c30' : '#336a58';
+      ctx.beginPath(); ctx.moveTo(x, y - 34 * s); ctx.lineTo(x + 12 * s, y); ctx.lineTo(x, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = night ? 'rgba(159,179,214,0.6)' : 'rgba(255,255,255,0.75)';
+      ctx.beginPath(); ctx.moveTo(x - 9 * s, y - 8 * s); ctx.lineTo(x + 2 * s, y - 13 * s); ctx.lineTo(x + 9 * s, y - 7 * s); ctx.lineTo(x, y - 10 * s); ctx.closePath(); ctx.fill();
       ctx.fillStyle = night ? '#9fb3d6' : '#ffffff';
       ctx.beginPath(); ctx.moveTo(x, y - 34 * s); ctx.lineTo(x + 5 * s, y - 20 * s); ctx.lineTo(x - 5 * s, y - 20 * s); ctx.closePath(); ctx.fill();
     }
@@ -578,6 +590,21 @@
     ctx.beginPath(); ctx.moveTo(-10, H); ctx.lineTo(-10, mt.y0); ctx.quadraticCurveTo(mt.cx, mt.cy, E.x, mt.y1);
     for (let x = E.x; x <= W + 10; x += 6) ctx.lineTo(x, sjHillY(h, x));
     ctx.lineTo(W + 10, H); ctx.closePath(); ctx.fill();
+    // the lit snow rim, soft drifts and a sparkle here and there
+    ctx.strokeStyle = night ? 'rgba(230,240,255,0.6)' : 'rgba(255,255,255,0.95)'; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(-10, mt.y0 - 1); ctx.quadraticCurveTo(mt.cx, mt.cy - 1, E.x, mt.y1 - 1); ctx.stroke();
+    ctx.strokeStyle = night ? 'rgba(60,80,140,0.2)' : 'rgba(140,175,215,0.28)'; ctx.lineWidth = 2;
+    for (let k = 1; k <= 4; k++) { ctx.beginPath(); ctx.moveTo(-10, mt.y0 + k * 34); ctx.quadraticCurveTo(mt.cx - k * 10, mt.cy + k * 30, E.x - k * 30, mt.y1 + k * 40); ctx.stroke(); }
+    for (let k = 1; k <= 3; k++) {
+      ctx.beginPath(); let on = false;
+      for (let x = E.x + 40; x <= W + 10; x += 8) { const y = sjHillY(h, x) + 30 + k * 26 + Math.sin(x * 0.02 + k * 2) * 5; if (sjInGap(h, x)) { on = false; continue; } on ? ctx.lineTo(x, y) : ctx.moveTo(x, y); on = true; }
+      ctx.stroke();
+    }
+    for (let i = 0; i < 26; i++) {
+      const hs = hash(i, 71), x = E.x + 20 + hs % Math.max(1, W - E.x), y = sjHillY(h, x) + 16 + (hs >> 12) % 90;
+      if (sjInGap(h, x) || y > H) continue;
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.4 + 0.5 * Math.abs(Math.sin(G.clock * 2 + i))).toFixed(2) + ')'; ctx.fillRect(x, y, 2, 2);
+    }
     // a soft shadow line along the landing hill
     ctx.strokeStyle = night ? 'rgba(40,60,110,0.35)' : 'rgba(120,160,205,0.35)'; ctx.lineWidth = 3; ctx.beginPath();
     for (let x = E.x; x <= W + 10; x += 6) ctx.lineTo(x, sjHillY(h, x) + 14);
@@ -658,6 +685,8 @@
     // the start hut and bar
     const g0 = pts[0];
     ctx.fillStyle = night ? '#6a3f4a' : '#c0584a'; rr(g0.x - 36, g0.y - 30, 28, 28, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(g0.x - 16, g0.y - 28, 8, 26);
+    ctx.strokeStyle = night ? '#3c2230' : '#8a3a30'; ctx.lineWidth = 1.5; rr(g0.x - 36, g0.y - 30, 28, 28, 4); ctx.stroke();
     ctx.fillStyle = night ? '#d9c98a' : '#ffe8a6'; ctx.fillRect(g0.x - 30, g0.y - 23, 10, 8);
     ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(g0.x - 40, g0.y - 28); ctx.lineTo(g0.x - 22, g0.y - 42); ctx.lineTo(g0.x - 4, g0.y - 28); ctx.closePath(); ctx.fill();
     const lit = st.phase === 'gate' ? (G.introT > K.introLock ? '#ff5f6d' : SJ_GREEN) : '#ffffff55';
@@ -689,6 +718,8 @@
     // the crew hut at the left end, where the fan crew starts each jump
     const hy = sjCatY(h, x0);
     ctx.fillStyle = night ? '#6a3f4a' : '#c0584a'; rr(x0 - 6, hy - 30, 30, 30, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x0 + 15, hy - 28, 8, 28);
+    ctx.strokeStyle = night ? '#3c2230' : '#8a3a30'; ctx.lineWidth = 1.5; rr(x0 - 6, hy - 30, 30, 30, 4); ctx.stroke();
     ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(x0 - 10, hy - 28); ctx.lineTo(x0 + 9, hy - 42); ctx.lineTo(x0 + 28, hy - 28); ctx.closePath(); ctx.fill();
     ctx.fillStyle = night ? '#d9c98a' : '#ffe8a6'; ctx.fillRect(x0, hy - 22, 8, 7);
     // posts

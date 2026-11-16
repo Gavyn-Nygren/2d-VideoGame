@@ -137,20 +137,28 @@ function pyrBlocks(x, y, w, h, tone, bw = 60, bh = 30, seed = 0) {
   ctx.fillStyle = t.mid; ctx.fillRect(x, y, w, h);
   const r0 = Math.floor(y / bh), r1 = Math.ceil((y + h) / bh);
   ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  const specks = [];
   for (let r = r0; r < r1; r++) {
     const off = (r & 1) * bw / 2, c0 = Math.floor((x - off) / bw) - 1, c1 = Math.ceil((x + w - off) / bw);
     for (let c = c0; c <= c1; c++) {
       const bx = c * bw + off, by = r * bh, hv = hash(c + seed, r);
-      ctx.fillStyle = hv % 5 === 0 ? t.lite : hv % 7 === 0 ? t.dark : t.mid;
-      ctx.fillRect(bx + 1, by + 1, bw - 2, bh - 2);
+      // (a plain block is the base colour already, so only the light and dark ones are filled)
+      if (hv % 5 === 0 || hv % 7 === 0) { ctx.fillStyle = hv % 5 === 0 ? t.lite : t.dark; ctx.fillRect(bx + 1, by + 1, bw - 2, bh - 2); }
       ctx.fillStyle = 'rgba(255,240,200,0.18)'; ctx.fillRect(bx + 2, by + 2, bw - 4, 3);
+      ctx.fillStyle = 'rgba(70,40,15,0.16)'; ctx.fillRect(bx + bw - 5, by + 4, 4, bh - 6);
+      if (hv % 4 === 1) { const px = bx + 8 + (hv >> 4) % (bw - 16), py = by + 8 + (hv >> 9) % Math.max(1, bh - 16); specks.push(px, py); }
       if (hv % 11 === 0) { ctx.strokeStyle = 'rgba(60,36,16,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx + 10, by + 6); ctx.lineTo(bx + 18, by + 14); ctx.lineTo(bx + 15, by + 24); ctx.stroke(); }
     }
+    ctx.fillStyle = 'rgba(70,40,15,0.13)'; ctx.fillRect(x, r * bh + bh - 5, w, 4);
   }
+  // little pits in the stone, all in one path
+  if (specks.length) { ctx.fillStyle = 'rgba(70,40,15,0.22)'; ctx.beginPath(); for (let k = 0; k < specks.length; k += 2) { const px = specks[k], py = specks[k + 1]; ctx.moveTo(px + 1.3, py); ctx.arc(px, py, 1.3, 0, 7); ctx.moveTo(px + 5.9, py + 3); ctx.arc(px + 5, py + 3, 0.9, 0, 7); } ctx.fill(); }
   ctx.restore();
 }
 // a hieroglyph (simple shapes, no writing): eye, bird, scarab, sun, snake, cat, reed, wave
-function pyrGlyph(kind, x, y, s, col, lw) {
+function pyrGlyph(kind, x, y, s, col, lw, inner) {
+  // carved look: a pale lip under-right of the cut, then the cut itself
+  if (!inner && typeof artPlain === 'function' && !artPlain()) pyrGlyph(kind, x + 1.2 * s, y + 1.2 * s, s, 'rgba(255,236,190,0.32)', lw, true);
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
   ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = (lw || 2.4) / s; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   switch (kind) {
@@ -207,18 +215,24 @@ function pyrFlame(x, y, s, t, bright) {
 function pyrTorchStick(x, y, len, ang) {
   ctx.save(); ctx.translate(x, y); ctx.rotate(ang || 0);
   ctx.fillStyle = '#7a4b25'; rr(-2.5, 0, 5, len, 2); ctx.fill();
+  ctx.fillStyle = '#4e2e14'; ctx.fillRect(0.8, 1, 1.7, len - 2);
   ctx.fillStyle = '#c9a25a'; ctx.fillRect(-4, -2, 8, 5);
+  ctx.fillStyle = '#8a6a2a'; ctx.fillRect(-4, 2, 8, 1.5); ctx.fillRect(-3.5, len * 0.55, 7, 3);
   ctx.restore();
 }
 // a floor lever (pivot at x, y on the floor); a 0 (left, closed) .. 1 (right, pulled)
 function pyrLever(x, y, a, glow) {
+  ctx.fillStyle = 'rgba(40,20,8,0.25)'; ctx.beginPath(); ctx.ellipse(x + 2, y + 1, 18, 3.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#6e4a26'; rr(x - 13, y - 9, 26, 9, 3); ctx.fill();
+  ctx.strokeStyle = '#3a2614'; ctx.lineWidth = 1.2; rr(x - 13, y - 9, 26, 9, 3); ctx.stroke();
   ctx.fillStyle = '#a8783e'; rr(x - 11, y - 8, 22, 3, 1.5); ctx.fill();
   const ang = pyrLerp(-0.7, 0.7, a), kx = x + Math.sin(ang) * 30, ky = y - 6 - Math.cos(ang) * 30;
-  ctx.strokeStyle = '#5a4030'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(kx, ky); ctx.stroke();
+  ctx.strokeStyle = '#3a2614'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(kx, ky); ctx.stroke();
+  ctx.strokeStyle = '#7a5a40'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(kx, ky); ctx.stroke();
   if (glow) { ctx.fillStyle = 'rgba(255,205,80,0.35)'; circle(kx, ky, 13); ctx.fill(); }
   ctx.fillStyle = a > 0.5 ? C.gold : '#d9573a'; circle(kx, ky, 6.5); ctx.fill();
   ctx.strokeStyle = 'rgba(40,20,10,0.6)'; ctx.lineWidth = 1.5; circle(kx, ky, 6.5); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; circle(kx - 2, ky - 2, 1.8); ctx.fill();
   ctx.lineCap = 'butt';
 }
 // a small rounded HUD pill with text (screen coords); returns its width

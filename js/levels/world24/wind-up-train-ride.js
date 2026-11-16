@@ -14,7 +14,7 @@
    apart) winds only a little, and 0.22-0.3 s ramps up to a full click. The speed aims at vmax * min(1, 0.45 + 0.9 *
    spring), so a spring 60% full runs at full speed and a slow but steady winder still rolls. Pressing
    with the spring already full is a harmless "Sproing!": the key spins back a bit, the train shudders at low speed for
-   about a second and the key can't be wound meanwhile. ▼ is the brake (hold it): the train stops quickly and the
+   about a second and the key can't be wound meanwhile. ▼ is the brake (hold it; ◀ works too): the train stops quickly and the
    spring doesn't drain. The winder can't leave the engine. The prompt over the engine says when to brake, when to
    hold the brake at a stop, and "Let go of ▼ to roll on" when the brake is held short of where the train must be.
    THE SWITCHER runs and jumps freely along the floor, the decks and the roofs of the wagon and the caboose (platform
@@ -307,7 +307,7 @@ function wtrTrain(st, dt) {
   const S = WTR, tr = st.tr, p = G.players[st.wind], i = p.input, x0 = tr.x;
   if (p.pendingAct || p.pendingJump) { p.pendingAct = false; p.pendingJump = false; wtrWind(st); }
   const e = st.c.end, auto = !!(e && e.goldStop && !e.rung && tr.x > e.x0 - 60);
-  const brake = !!i.down || auto;
+  const brake = !!i.down || !!i.left || auto;   // (◀ brakes too, like the other side-on rides; the card shows ▼)
   tr.brake = brake;
   if (tr.sproing > 0) tr.sproing -= dt;
   if (tr.wob > 0) tr.wob -= dt;
@@ -958,12 +958,14 @@ function wtrDrawBack(st, lk) {
       const x = k * 1500 - o2 + 300;
       wtrDrawWindow(x, 70, st.look === 'box');
       const px = x + 520, h = hash(k, 3);
+      ctx.fillStyle = 'rgba(40,30,70,0.12)'; rr(px + 5, 95, 90, 110, 6); ctx.fill(); ctx.fillRect(px + 164, 182, 180, 6);
       ctx.fillStyle = ['#ff9fb5', '#9fe8ff', '#b8f28a'][h % 3]; rr(px, 90, 90, 110, 6); ctx.fill();
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; rr(px, 90, 90, 110, 6); ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,0.8)'; wtrStarPath(px + 45, 140, 24, 10, 0); ctx.fill();
       ctx.fillStyle = '#c98a52'; ctx.fillRect(px + 160, 170, 180, 12);
-      for (let i = 0; i < 4; i++) { ctx.fillStyle = WTR_BLOCK[(h + i) % 4]; rr(px + 172 + i * 40, 140, 28, 30, 4); ctx.fill(); }
+      for (let i = 0; i < 4; i++) { ctx.fillStyle = WTR_BLOCK[(h + i) % 4]; rr(px + 172 + i * 40, 140, 28, 30, 4); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.fillRect(px + 192 + i * 40, 142, 8, 28); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(px + 174 + i * 40, 142, 22, 3); }
     }
+    { const g = ctx.createLinearGradient(0, 230, 0, 300); g.addColorStop(0, 'rgba(40,30,70,0)'); g.addColorStop(1, 'rgba(40,30,70,0.1)'); ctx.fillStyle = g; ctx.fillRect(0, 230, W, 70); }
     if (st.look === 'box') {
       // an evening lamp glow
       const lx = W * 0.75 - (cam.x * 0.15) % 600;
@@ -972,6 +974,8 @@ function wtrDrawBack(st, lk) {
     }
     // skirting board and the far floorboards
     ctx.fillStyle = lk.skirt; ctx.fillRect(0, 300, W, 20);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, 300, W, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fillRect(0, 308, W, 1.5);
     ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.fillRect(0, 318, W, 3);
     ctx.fillStyle = lk.board; ctx.fillRect(0, 320, W, H - 320);
     ctx.strokeStyle = lk.boardD; ctx.lineWidth = 1.5;
@@ -1082,6 +1086,11 @@ function wtrDrawFloor(st, lk) {
   for (let k = Math.floor(x0 / 48); k * 48 < x1; k++) { const x = k * 48; ctx.beginPath(); ctx.moveTo(x, F + 92); ctx.lineTo(x + 12, F + 80); ctx.lineTo(x + 24, F + 92); ctx.lineTo(x + 12, F + 104); ctx.fill(); }
   ctx.fillStyle = 'rgba(0,0,0,0.08)';
   for (let k = Math.floor(x0 / 12); k * 12 < x1; k++) ctx.fillRect(k * 12, F - 44, 3, 6);
+  // woven threads, a few fluffy flecks, and shade towards the front edge
+  ctx.fillStyle = 'rgba(255,255,255,0.06)'; for (let y = F - 28; y < H; y += 7) ctx.fillRect(x0, y, x1 - x0, 1.5);
+  ctx.fillStyle = 'rgba(40,20,60,0.06)'; for (let y = F - 25; y < H; y += 7) ctx.fillRect(x0, y, x1 - x0, 1);
+  for (let k = Math.floor(x0 / 23); k * 23 < x1; k++) { const h = hash(k, 47); ctx.fillStyle = h % 2 ? 'rgba(255,255,255,0.14)' : 'rgba(40,20,60,0.1)'; ctx.fillRect(k * 23 + (h % 15), F + 8 + (h % (H - F - 16)), 4, 2); }
+  { const g = ctx.createLinearGradient(0, F + 40, 0, H); g.addColorStop(0, 'rgba(30,20,50,0)'); g.addColorStop(1, 'rgba(30,20,50,0.16)'); ctx.fillStyle = g; ctx.fillRect(x0, F + 40, x1 - x0, H - F - 40); }
 }
 function wtrDrawSigns(st) {
   for (const s of st.c.signs) {
@@ -1091,6 +1100,8 @@ function wtrDrawSigns(st) {
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
     const w = ctx.measureText(s.text).width + 22, y = s.y - 190 - (bh - 30);
     ctx.fillStyle = '#8e5a2e'; ctx.fillRect(s.x - 3, y + bh - 4, 6, 150 + 30 - bh + 4);
+    ctx.fillStyle = '#6e4220'; ctx.fillRect(s.x + 1, y + bh - 4, 2, 150 + 30 - bh + 4);
+    ctx.fillStyle = 'rgba(40,30,70,0.16)'; rr(s.x - w / 2 + 3, y + 4, w, bh, 8); ctx.fill();
     ctx.fillStyle = '#fff8e8'; ctx.strokeStyle = '#c98a52'; ctx.lineWidth = 3; rr(s.x - w / 2, y, w, bh, 8); ctx.fill(); ctx.stroke();
     text(s.text, s.x, y + bh / 2 + 0.5, fs, C.ink, 'center', 'body');
   }
@@ -1418,6 +1429,8 @@ function wtrDrawToyBox(st, e) {
 function wtrDrawTrain(st) {
   const tr = st.tr, S = WTR, t = G.clock;
   const wob = tr.wob > 0 ? Math.sin(t * 30) * 0.04 * tr.wob : 0;
+  // soft shadows on the floor (or on the high track) under each car
+  for (let k = 2; k >= 0; k--) { const car = S.cars[k], cx = tr.x - car.off, ry = wtrRailY(st, cx); ctx.fillStyle = 'rgba(30,20,50,0.18)'; ctx.beginPath(); ctx.ellipse(cx, ry + 3, car.half + 6, 5, 0, 0, Math.PI * 2); ctx.fill(); }
   for (let k = 2; k >= 0; k--) {
     const car = S.cars[k], cx = tr.x - car.off, ry = wtrRailY(st, cx);
     const a = Math.atan2(wtrRailY(st, cx + car.half * 0.8) - wtrRailY(st, cx - car.half * 0.8), car.half * 1.6);
@@ -1622,10 +1635,17 @@ function wtrHud(st) {
     if (typeof CPU === 'object' && cpuSolo() && !cpuOn(id)) { const cb = CPU.bubbles[1 - id]; if (cb && cb.t > 0 && Math.abs(sp.x - ps[1 - id].x) < w + 80 && sp.y > ps[1 - id].y - 80) top = Math.min(top, ps[1 - id].y - 22 - (big ? 30 : 22) - 8 - h); }
     let x = clamp(sp.x - w / 2, 4, W - w - 4), y = clamp(top, big ? 96 : 80, yMax - h);
     if (place.last && Math.abs(place.last.y - y) < h + 4 && x < place.last.x + place.last.w && x + w > place.last.x) y = clamp(place.last.y - h - 6, big ? 96 : 80, yMax - h);
+    // keep the track signs readable: step above (or below) any sign board the bubble would cover
+    for (const b of place.signs) if (x < b.x1 + 4 && x + w > b.x0 - 4 && y < b.y1 + 4 && y + h > b.y0 - 4) { const up = b.y0 - h - 6; y = up >= (big ? 96 : 80) ? up : Math.min(yMax - h, b.y1 + 6); }
     place.last = { x, y, w };
     return { x, y };
   };
   place.last = null;
+  place.signs = st.c.signs.filter(sg => sg.x > st.cam.x - 300 && sg.x < st.cam.x + W + 300).map(sg => {
+    const sfs = hudBig() ? 20 : 15, bh = sfs * 2; ctx.font = '700 ' + sfs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+    const sw = ctx.measureText(sg.text).width + 22, sy = sg.y - 190 - (bh - 30), sx = sg.x - st.cam.x;
+    return { x0: sx - sw / 2, x1: sx + sw / 2, y0: sy, y1: sy + bh };
+  });
   const say = (id, str, col, pulse) => {
     if (wtrQuiet(id) || st.hints[id] || !str) return;
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';

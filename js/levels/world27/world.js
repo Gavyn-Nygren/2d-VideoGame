@@ -20,12 +20,13 @@ LEVELS.push(
   // jumps and ducks; the arms pilot raises and lowers the arm, punches walls at their glowing spot, grabs ledges and
   // holds the arm up to block falling crates. They swap every zone; Pip works the legs first.
   { name: 'Mech Suit Duo', world: 26, kind: 'team', mode: 'mechduo', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Zone',
-    legend: {
-      pip: 'legs: <kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump <kbd>S</kbd> duck · arms: <kbd>W</kbd><kbd>S</kbd> arm up/down <kbd>F</kbd> punch',
-      bo: 'legs: <kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> jump <kbd>↓</kbd> duck · arms: <kbd>↑</kbd><kbd>↓</kbd> arm up/down <kbd>/</kbd> punch',
-      pad: 'legs: stick walks, <span data-glyph="a"></span> jumps, down ducks; arms: <span data-glyph="a"></span>/down move the arm,',
+    jobs: {
+      legs: { title: 'Legs', act: 'jump', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump <kbd>S</kbd> hold to duck' },
+      arms: { title: 'Arms', act: 'punch', legend: '<kbd>W</kbd><kbd>S</kbd> arm up, down',
+        howTo: ['Punch the glowing spot. With the arm high, punch at a ledge to grab it.'] },
     },
-    tip: 'Legs: walk, jump and duck. Arms: ▲ ▼ move the arm, punch the glowing spot, grab ledges, block crates!',
+    jobOf: 'legs', jobSwap: 'You swap jobs every zone.',
+    tip: 'Legs walk, jump and duck. Arms move the big arm, punch glowing spots, grab ledges and block crates!',
     act: { label: 'punch', labels: ['jump', 'punch'] },
     map: W27_MAP,
     rooms: [
@@ -69,11 +70,12 @@ LEVELS.push(
   // runner rides the belt, jumps broken pieces and dodges stampers; the fixer runs the catwalk above and hits the switch
   // box before each broken piece to fix it (wide ones stop the line until fixed). They swap every stretch; Pip runs first.
   { name: 'Runaway Assembly Line', world: 26, kind: 'team', mode: 'runbelt', ownStep: true, ownHUD: true, noFalls: true, noTime: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump · fixer: <kbd>F</kbd> hits a switch box',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump · fixer: <kbd>/</kbd> hits a switch box',
-      pad: 'stick runs, <span data-glyph="a"></span> jumps,',
+    jobs: {
+      runner: { title: 'Runner', act: 'jump', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump' },
+      fixer: { title: 'Fixer', act: 'fix', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Press fix at a switch box to mend the belt ahead.'] },
     },
+    jobOf: 'runner', jobSwap: 'You swap jobs every stretch.',
     tip: 'Runner: ride the belt, jump the gaps, dodge the stampers. Fixer: run the catwalk and hit the switch boxes!',
     act: { label: 'fix', labels: ['jump', 'fix'] },
     map: W27_MAP,
@@ -119,11 +121,13 @@ LEVELS.push(
   // (◀ ▶, cable ▲ ▼, the action calls a fresh crate down the chute); the rider stands on the magnet and grabs and drops
   // metal crates (the action) to fill pits and build steps up to the exit. They swap every bay; Pip runs the crane first.
   { name: 'Magnet Crane Crew', world: 26, kind: 'team', mode: 'magcrane', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Bay',
-    legend: {
-      pip: 'crane: <kbd>A</kbd><kbd>D</kbd> drive <kbd>W</kbd><kbd>S</kbd> cable <kbd>F</kbd> new crate · magnet: <kbd>F</kbd> grab/drop',
-      bo: 'crane: <kbd>←</kbd><kbd>→</kbd> drive <kbd>↑</kbd><kbd>↓</kbd> cable <kbd>/</kbd> new crate · magnet: <kbd>/</kbd> grab/drop',
-      pad: 'crane: stick drives, <span data-glyph="a"></span>/down move the cable;',
+    jobs: {
+      operator: { title: 'Crane', act: 'crate', legend: '<kbd>A</kbd><kbd>D</kbd> drive <kbd>W</kbd><kbd>S</kbd> cable up, down',
+        howTo: ['Crate drops a fresh crate from the chute.'] },
+      rider: { title: 'Magnet', act: 'grab', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump',
+        howTo: ['Grab turns the magnet on a crate; grab again drops it.', 'Build a path, then walk it from START to the exit.'] },
     },
+    jobOf: 'op', jobSwap: 'You swap jobs every bay.',
     tip: 'Crane: drive the magnet. Rider: grab crates, drop them to build a path, then walk it from START to the exit!',
     act: { label: 'grab', labels: ['crate', 'grab'] },
     map: W27_MAP,
@@ -163,7 +167,8 @@ LEVELS.push(
   // braces). The map is the build floor and the belt ('=' row 12, cols 10-21); the mode draws everything else.
   { name: 'Robot Rumble', world: 26, kind: 'versus', mode: 'robotrumble', ownStep: true, ownHUD: true, match: { bestOf: 5 },
     act: { label: 'shove' }, stomp: false,
-    legend: { down: 'brace / drop', padDown: 'down braces' },
+    legend: { down: 'drop a part, brace', padDown: 'down drops a part or braces' },
+    howTo: ['Build: press down to put a part down. Rumble: hold down to brace.'],
     tip: 'Build: grab parts off the belt, carry them to your pad. Rumble: hold the action to charge, let go to shove them off!',
     switches: {}, signs: [],
     map: [

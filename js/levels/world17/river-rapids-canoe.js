@@ -964,9 +964,25 @@ function canoeDrawRiver(st) {
   g.addColorStop(0, pal.deep); g.addColorStop(0.5, pal.water); g.addColorStop(1, pal.deep);
   ctx.fillStyle = g; ctx.fill();
   ctx.save(); ctx.clip();
-  // shallow edges
+  // the banks' shadow on the water, then the bright shallow edge
+  for (const [lw, al] of [[56, 0.06], [36, 0.06], [20, 0.06]]) {
+    ctx.strokeStyle = 'rgba(10,50,60,' + al + ')'; ctx.lineWidth = lw;
+    for (const side of [L, R]) { ctx.beginPath(); side.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); }
+  }
   ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 10;
   for (const side of [L, R]) { ctx.beginPath(); side.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); }
+  // soft patches of sunlight dancing on the water and pebbles on the bottom near the edges
+  {
+    const fl = 46 * G.clock, cl = 120;
+    const a0 = Math.floor((canoeSD(st, H + 60) - fl) / cl), a1 = Math.ceil((canoeSD(st, -60) - fl) / cl);
+    for (let k = a0; k <= a1; k++) {
+      const h = hash(k, 401), d = k * cl + fl + (h % cl), y = canoeSY(st, d), cx = canoeCX(st, d), hw = canoeHW(st, d);
+      const x = cx + (((h >> 5) % 1000) / 1000 - 0.5) * 1.4 * hw;
+      ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.beginPath(); ctx.ellipse(x, y, 34 + (h >> 11) % 24, 9, 0, 0, Math.PI * 2); ctx.fill();
+      const tw = reduceMotion ? 0.6 : 0.5 + 0.5 * Math.sin(G.clock * 4 + k);
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.5 * tw) + ')'; ctx.fillRect(x + 14, y - 3, 7, 1.6); ctx.fillRect(x + 16.7, y - 5.5, 1.6, 6.6);
+    }
+  }
   // ripples drift down the river with the current
   const flow = 46 * G.clock, cell = 64;
   ctx.strokeStyle = pal.ripple; ctx.lineWidth = 2.2;
@@ -1237,8 +1253,10 @@ function canoeDrawBankLife(st) {
     const h = hash(k, side + 5), d = k * cell + (h % cell), y = canoeSY(st, d), edge = canoeCX(st, d) + side * canoeHW(st, d);
     const x = edge + side * (26 + (h >> 7) % 40);
     if (x < -40 || x > W + 40) continue;
-    // a bush: 3 leafy blobs
+    // a bush: a soft shadow, 3 leafy blobs and a sunny highlight
+    ctx.fillStyle = 'rgba(20,60,30,0.18)'; ctx.beginPath(); ctx.ellipse(x + 4, y + 14, 28, 9, 0, 0, Math.PI * 2); ctx.fill();
     for (let i = 0; i < 3; i++) { ctx.fillStyle = pal.leaf[(h >> (i * 2)) % 4]; circle(x + (i - 1) * 12 * side, y + (i % 2 ? -8 : 6), 15 - i * 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,255,220,0.22)'; circle(x - 5, y - 10, 6); ctx.fill();
     if (h % 5 === 0) { ctx.fillStyle = pal.flower[(h >> 3) % 3]; for (let i = 0; i < 4; i++) { circle(x + Math.cos(i * 1.57) * 4, y - 2 + Math.sin(i * 1.57) * 4, 3); ctx.fill(); } ctx.fillStyle = '#fff6c0'; circle(x, y - 2, 2.2); ctx.fill(); }
   }
   for (const dc of st.c.deco) {
@@ -1256,6 +1274,8 @@ function canoeDrawCanopy(st) {
     ctx.fillStyle = 'rgba(20,60,30,0.18)'; circle(x + 10, y + 14, 46); ctx.fill();
     for (let i = 0; i < 5; i++) { const a = i * 1.256 + (h % 7); ctx.fillStyle = pal.leaf[(i + h) % 4]; circle(x + Math.cos(a) * 24, y + Math.sin(a) * 20, 26); ctx.fill(); }
     ctx.fillStyle = pal.leaf[3]; circle(x - 6, y - 6, 16); ctx.fill();
+    // sunlit leaf tips and a few leaf veins
+    ctx.fillStyle = 'rgba(255,255,210,0.2)'; circle(x - 14, y - 18, 10); ctx.fill(); circle(x + 18, y - 12, 7); ctx.fill();
   }
 }
 // friendly jungle animals (top-down-ish cartoon): toucan monkey parrot frog tapir turtle sloth capy
@@ -1490,9 +1510,13 @@ function canoeHud(st) {
       if (bw * wf >= bh) { ctx.fillStyle = wf > 0.75 ? (Math.sin(t * 12) > 0 ? '#ff8a8a' : '#5ab8e0') : '#5ab8e0'; rr(bx, by, bw * wf, bh, bh / 2); ctx.fill(); }
       text('water ' + Math.round(cn.water) + '%', bx + 8 * z, by + bh / 2 + 0.5, 10.5 * z, '#ffffff', 'left', 'body');
       const full = cn.dip >= canoeGoldAt(st), cx = bx + bw + 25 * z, cy = by + bh / 2;
-      ctx.fillStyle = full ? (Math.sin(t * 14) > -0.3 ? C.gold : '#ffe39a') : 'rgba(255,255,255,0.2)'; rr(cx - 19 * z, cy - 11 * z, 38 * z, 22 * z, 7 * z); ctx.fill();
-      ctx.fillStyle = '#5ab8e0'; const fh = 16 * z * cn.dip; if (fh > 2) { rr(cx - 15 * z, cy + 8 * z - fh, 30 * z, fh, 4 * z); ctx.fill(); }
-      text(full ? 'SCOOP' : 'fill', cx, cy + 0.5, (full ? 10 : 10.5) * z, full ? C.ink : '#ffffff', 'center', 'body');
+      ctx.fillStyle = full ? (Math.sin(t * 14) > -0.3 ? C.gold : '#ffe39a') : 'rgba(255,255,255,0.2)'; rr(cx - 23 * z, cy - 11 * z, 46 * z, 22 * z, 7 * z); ctx.fill();
+      ctx.fillStyle = '#5ab8e0'; const fh = 16 * z * cn.dip; if (fh > 2) { rr(cx - 19 * z, cy + 8 * z - fh, 38 * z, fh, 4 * z); ctx.fill(); }
+      // the button is 46 px wide; shrink the word if it would come within 6 px of its edges
+      const sw = full ? 'SCOOP' : 'fill'; let sfs = (full ? 10 : 10.5) * z;
+      ctx.font = '700 ' + sfs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+      const smw = ctx.measureText(sw).width; if (smw > 32 * z) sfs *= 32 * z / smw;
+      text(sw, cx, cy + 0.5, sfs, full ? C.ink : '#ffffff', 'center', 'body');
     }
   }
   // the message line (gold help): between the level pill and the clock when it fits, else lower down

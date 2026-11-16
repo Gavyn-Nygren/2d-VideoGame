@@ -642,6 +642,11 @@
     ctx.fillStyle = SKIN2;
     ctx.beginPath(); ctx.moveTo(x - 60 * s, y + 10); ctx.quadraticCurveTo(x, y - 70 * s, x + 60 * s, y + 10); ctx.closePath(); ctx.fill();
     ctx.fillStyle = SKIN; ctx.beginPath(); ctx.moveTo(x - 52 * s, y + 10); ctx.quadraticCurveTo(x, y - 60 * s, x + 52 * s, y + 10); ctx.closePath(); ctx.fill();
+    // rows of scales and a wet lit rim along the top
+    ctx.strokeStyle = 'rgba(18,48,40,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let r = 0; r < 3; r++) for (let k = -3; k <= 3; k++) { const sx = x + k * 12 * s + (r % 2) * 6 * s, sy = y - (8 + r * 9) * s; if (Math.abs(sx - x) > (44 - r * 10) * s) continue; ctx.moveTo(sx - 6 * s, sy); ctx.arc(sx, sy, 6 * s, Math.PI, 0, true); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(200,255,230,0.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 40 * s, y - 8 * s); ctx.quadraticCurveTo(x - 8 * s, y - 46 * s, x + 20 * s, y - 22 * s); ctx.stroke();
     // fin spikes
     ctx.fillStyle = '#5a2a3a';
     for (let k = -2; k <= 2; k++) { const fx = x + k * 16 * s, fy = y - 50 * s * (1 - (k * k) / 9); ctx.beginPath(); ctx.moveTo(fx - 5, fy + 4); ctx.lineTo(fx, fy - 12 * s); ctx.lineTo(fx + 5, fy + 4); ctx.closePath(); ctx.fill(); }
@@ -688,6 +693,14 @@
           ctx.beginPath(); ctx.moveTo(q.x - q.w * 0.9, y); ctx.quadraticCurveTo(q.x - q.w * 0.6, y - h, q.x, y - h); ctx.quadraticCurveTo(q.x + q.w * 0.6, y - h, q.x + q.w * 0.9, y); ctx.closePath(); ctx.fill(); ctx.stroke();
         }
         ctx.fillStyle = SKIN; ctx.beginPath(); ctx.ellipse(q.x, y - h * 0.8, q.w * 0.35, h * 0.12 + 1, 0, 0, TAU); ctx.fill();
+        if (h > 20) {
+          // scales on the coil, a wet shine, and darker water-line where it leaves the sea
+          ctx.strokeStyle = 'rgba(18,48,40,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath();
+          for (let r2 = 1; r2 < 4; r2++) for (let k = -2; k <= 2; k++) { const sx = q.x + k * 12 + (r2 % 2) * 6, sy = y - h * r2 / 4.2; if (Math.abs(sx - q.x) > q.w * (0.75 - r2 * 0.12)) continue; ctx.moveTo(sx - 5, sy); ctx.arc(sx, sy, 5, Math.PI, 0, true); }
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(200,255,230,0.4)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(q.x - q.w * 0.55, y - h * 0.5); ctx.quadraticCurveTo(q.x - q.w * 0.3, y - h * 0.95, q.x + 4, y - h * 0.96); ctx.stroke();
+          ctx.fillStyle = 'rgba(10,30,40,0.35)'; ctx.fillRect(q.x - q.w * 0.9, y - 4, q.w * 1.8, 4);
+        }
         ctx.fillStyle = '#5a2a3a'; for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(q.x + k * 14 - 5, y - h + 4); ctx.lineTo(q.x + k * 14, y - h - 12 * s); ctx.lineTo(q.x + k * 14 + 5, y - h + 4); ctx.closePath(); ctx.fill(); }
         ctx.fillStyle = 'rgba(232,244,246,0.8)'; for (const d of [-1, 1]) { ctx.beginPath(); ctx.ellipse(q.x + d * q.w * 0.9, y + 2, 14, 4, 0, 0, TAU); ctx.fill(); }
       }
@@ -695,6 +708,10 @@
       const y = rowY(q.row) + 8, s = rowSc(q.row);
       ctx.fillStyle = '#5a5e66'; ctx.strokeStyle = '#2e3036'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(q.x - 34 * s, y); ctx.lineTo(q.x - 24 * s, y - 40 * s); ctx.lineTo(q.x - 4 * s, y - 56 * s); ctx.lineTo(q.x + 18 * s, y - 38 * s); ctx.lineTo(q.x + 34 * s, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#44484f'; ctx.beginPath(); ctx.moveTo(q.x - 4 * s, y - 56 * s); ctx.lineTo(q.x + 18 * s, y - 38 * s); ctx.lineTo(q.x + 34 * s, y); ctx.lineTo(q.x + 2 * s, y); ctx.lineTo(q.x - 2 * s, y - 30 * s); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(30,32,38,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(q.x - 18 * s, y - 24 * s); ctx.lineTo(q.x - 10 * s, y - 14 * s); ctx.moveTo(q.x + 10 * s, y - 20 * s); ctx.lineTo(q.x + 20 * s, y - 8 * s); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.beginPath(); ctx.moveTo(q.x - 34 * s, y); ctx.lineTo(q.x - 24 * s, y - 40 * s); ctx.lineTo(q.x - 18 * s, y - 40 * s); ctx.lineTo(q.x - 26 * s, y); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#2e3036'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(q.x - 34 * s, y); ctx.lineTo(q.x - 24 * s, y - 40 * s); ctx.lineTo(q.x - 4 * s, y - 56 * s); ctx.lineTo(q.x + 18 * s, y - 38 * s); ctx.lineTo(q.x + 34 * s, y); ctx.stroke();
       ctx.fillStyle = '#f2f6f8'; ctx.beginPath(); ctx.moveTo(q.x - 14 * s, y - 50 * s); ctx.lineTo(q.x - 4 * s, y - 56 * s); ctx.lineTo(q.x + 10 * s, y - 46 * s); ctx.lineTo(q.x, y - 44 * s); ctx.closePath(); ctx.fill();
       ctx.fillStyle = 'rgba(232,244,246,0.7)'; ctx.beginPath(); ctx.ellipse(q.x, y + 2, 42 * s, 5, 0, 0, TAU); ctx.fill();
     } else if (q.kind === 'tail') {
@@ -751,6 +768,10 @@
     ctx.save(); ctx.rotate(-jaw * 0.5);
     ctx.fillStyle = SKIN; ctx.strokeStyle = '#123028'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(-30, 8); ctx.quadraticCurveTo(-30, -26, 0, -24); ctx.quadraticCurveTo(30, -20, 50, -2); ctx.quadraticCurveTo(52, 6, 44, 6); ctx.lineTo(-14, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(200,255,230,0.25)'; ctx.beginPath(); ctx.moveTo(-24, -6); ctx.quadraticCurveTo(-22, -22, 0, -21); ctx.quadraticCurveTo(24, -18, 40, -6); ctx.quadraticCurveTo(20, -14, 0, -15); ctx.quadraticCurveTo(-16, -15, -24, -6); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(18,48,40,0.45)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let k = 0; k < 4; k++) { const sx = -22 + k * 8, sy = -2 - (k % 2) * 6; ctx.moveTo(sx - 4, sy); ctx.arc(sx, sy, 4, Math.PI, 0, true); }
+    ctx.stroke();
     ctx.fillStyle = '#ffffff'; for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.moveTo(4 + k * 8, 5); ctx.lineTo(7 + k * 8, 14); ctx.lineTo(10 + k * 8, 5); ctx.closePath(); ctx.fill(); }
     // horns and frill
     ctx.fillStyle = '#5a2a3a'; ctx.beginPath(); ctx.moveTo(-22, -16); ctx.lineTo(-40, -36); ctx.lineTo(-14, -22); ctx.closePath(); ctx.fill();
@@ -909,11 +930,13 @@
   const acts = h => ({ label: 'fire', labels: h === 0 ? ['row', 'fire'] : ['fire', 'row'] });
   VIKING.defs.serpentchase = {
     name: 'Sea Serpent Chase', world: 33, kind: 'team', mode: 'serpentchase', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>S</kbd> steer / <kbd>A</kbd><kbd>D</kbd> aim',
-      bo: '<kbd>↑</kbd><kbd>↓</kbd> steer / <kbd>←</kbd><kbd>→</kbd> aim',
-      pad: 'stick steers or aims,',
+    jobs: {
+      helm: { title: 'Helm', act: 'row', legend: '<kbd>W</kbd><kbd>S</kbd> change row <kbd>A</kbd><kbd>D</kbd> ease back, surge',
+        howTo: ['Row for a quick burst of speed.'] },
+      harpooner: { title: 'Harpooner', act: 'fire', legend: '<kbd>A</kbd><kbd>D</kbd> aim the ballista <kbd>F</kbd> hold, let go to fire',
+        howTo: ['Shoot the open mouth before it bites.'] },
     },
+    jobOf: 'helm', jobSwap: 'You swap jobs every stretch.',
     tip: 'Outrun the sea serpent! The helm steers between the coils and rows; the harpooner cranks the ballista and shoots the open mouth.',
     act: acts(0),
     map: K.stubMap(),

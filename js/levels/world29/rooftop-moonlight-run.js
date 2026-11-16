@@ -960,11 +960,13 @@
   const acts = thr => ({ label: 'hook', labels: thr === 0 ? ['throw', 'grab'] : ['grab', 'throw'] });
   NINJA.defs.roofrun = {
     name: 'Rooftop Moonlight Run', world: 28, kind: 'team', mode: 'roofrun', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run / pump <kbd>W</kbd> jump',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run / pump <kbd>↑</kbd> jump',
-      pad: 'stick runs and pumps, <span data-glyph="a"></span> jumps,',
+    jobs: {
+      thrower: { title: 'Thrower', act: 'throw', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Throw the hook through the ring.', 'Then hold the action to hold on while you are pulled across.'] },
+      swinger: { title: 'Swinger', act: 'grab', legend: '<kbd>A</kbd><kbd>D</kbd> run, pump the swing <kbd>W</kbd> jump',
+        howTo: ['Grab the rope, pump, press again to leap.', 'Then tap in rhythm to heave your friend across.'] },
     },
+    jobOf: 'thrower', jobSwap: 'You swap jobs every roof.',
     tip: 'Thrower: hook the ring over the gap. Swinger: grab, pump ◀ ▶, leap, then heave your friend across!',
     act: acts(0),
     map: K.stubMap(),

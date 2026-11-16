@@ -13,10 +13,18 @@ const pw38Night = (v, o = {}) => {
 };
 const pw38City = (v, base, s = 1, scroll = 0) => {
   const c = v.ctx;
+  // a dimmer far row first, then the near towers with a moonlit edge, rooftop bits and lit windows
+  c.fillStyle = 'rgba(14,52,64,0.7)';
+  for (let i = 0; i < 12; i++) { const w = (18 + v.rand(i + 101) * 20) * s, h = (16 + v.rand(i + 107) * 40) * s, x = ((i * 30 * s - scroll * 0.5) % (12 * 30 * s) + 12 * 30 * s) % (12 * 30 * s) - 20; c.fillRect(x, base - h, w, h); }
   for (let i = 0; i < 16; i++) {
     const w = (14 + v.rand(i + 3) * 22) * s, h = (24 + v.rand(i + 7) * 60) * s;
     let x = ((i * 24 * s - scroll) % (16 * 24 * s) + 16 * 24 * s) % (16 * 24 * s) - 20;
     c.fillStyle = '#0a2a34'; c.fillRect(x, base - h, w, h);
+    c.fillStyle = 'rgba(150,220,230,0.18)'; c.fillRect(x, base - h, 1.2 * s, h); c.fillRect(x, base - h, w, 1);
+    const top = v.rand(i + 13);
+    c.fillStyle = '#0a2a34';
+    if (top > 0.75) { c.fillRect(x + w / 2 - 0.6, base - h - 8 * s, 1.2, 8 * s); c.fillStyle = 'rgba(255,60,60,' + (0.5 + 0.5 * Math.sin(v.t * 3 + i)) + ')'; c.fillRect(x + w / 2 - 1, base - h - 9 * s, 2, 2); }
+    else if (top > 0.5) c.fillRect(x + 2 * s, base - h - 4 * s, 6 * s, 4 * s);
     c.fillStyle = 'rgba(255,207,106,0.75)';
     for (let wy = base - h + 4 * s; wy < base - 3; wy += 6 * s) for (let wx = x + 3 * s; wx < x + w - 3; wx += 5 * s) if (v.rand(wx * 0.7 + wy * 1.3) > 0.6) c.fillRect(wx, wy, 1.6 * s, 2.4 * s);
   }

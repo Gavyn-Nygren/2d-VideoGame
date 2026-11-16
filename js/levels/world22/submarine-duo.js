@@ -1004,11 +1004,18 @@ function subduoDrawFront(st) {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
-  const big = hudBig();
-  for (const q of st.pops) {
-    const x = clamp(q.x - cam.x, 110, W - 110), y = clamp(q.y - q.t * 30, 96, H - 120);
+  const big = hudBig(), placed = [];
+  for (let i = st.pops.length - 1; i >= 0; i--) {
+    const q = st.pops[i], sz = q.size * (big ? 1.3 : 1);
+    ctx.font = sz + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+    const hw = ctx.measureText(q.s).width / 2 + 12;
+    let x = clamp(q.x - cam.x, 110, W - 110), y = clamp(q.y - q.t * 30, 96, H - 120);
+    // newer pops keep their spot; older ones step up out of the way so words never pile on each other
+    for (let k = 0; k < 6; k++) { const hit = placed.find(o => Math.abs(o.x - x) < o.hw + hw && Math.abs(o.y - y) < (o.sz + sz) * 0.62); if (!hit) break; y = hit.y - (hit.sz + sz) * 0.65; }
+    y = Math.max(y, 60);
+    placed.push({ x, y, hw, sz });
     ctx.globalAlpha = clamp((1.3 - q.t) / 0.3, 0, 1);
-    bigText(q.s, x, y, q.size * (big ? 1.3 : 1), q.col, 1 + 0.25 * Math.max(0, 1 - q.t / 0.15));
+    bigText(q.s, x, y, sz, q.col, 1 + 0.25 * Math.max(0, 1 - q.t / 0.15));
     ctx.globalAlpha = 1;
   }
 }
@@ -1033,6 +1040,22 @@ function subduoDrawRays(st, lk) {
 // a far reef (slow parallax), little drifting specks
 function subduoDrawFar(st, lk) {
   const cam = st.cam;
+  { // hazy distant rock arches and spires
+    const par = 0.07, col = mixCol(lk.far, lk.wT, 0.45), off = cam.x * par;
+    ctx.fillStyle = col;
+    for (let k = Math.floor((off - 300) / 520); k <= Math.floor((off + W + 300) / 520); k++) {
+      const h = hash(k, 61), x = k * 520 + (h % 140) - off, hh = 120 + h % 90, wd = 90 + (h >> 4) % 70;
+      if (h % 3 === 0) { // an arch
+        ctx.beginPath(); ctx.moveTo(x - wd, 420); ctx.lineTo(x - wd * 0.8, 420 - hh); ctx.quadraticCurveTo(x, 420 - hh * 1.35, x + wd * 0.8, 420 - hh); ctx.lineTo(x + wd, 420);
+        ctx.lineTo(x + wd * 0.45, 420); ctx.quadraticCurveTo(x, 420 - hh * 0.95, x - wd * 0.45, 420); ctx.closePath(); ctx.fill();
+      } else { // a spire
+        ctx.beginPath(); ctx.moveTo(x - wd * 0.5, 420); ctx.quadraticCurveTo(x - wd * 0.3, 420 - hh * 0.6, x - 8, 420 - hh); ctx.lineTo(x + 10, 420 - hh * 0.92); ctx.quadraticCurveTo(x + wd * 0.35, 420 - hh * 0.5, x + wd * 0.5, 420); ctx.closePath(); ctx.fill();
+      }
+    }
+    // a slow school of far fish
+    ctx.fillStyle = mixCol(lk.far, lk.wT, 0.2);
+    for (let k = 0; k < 9; k++) { const x = ((k * 23 + G.clock * 14 - off * 2) % (W + 300) + W + 300) % (W + 300) - 150, y = 170 + (k % 3) * 11 + Math.sin(G.clock + k) * 3; ctx.beginPath(); ctx.ellipse(x, y, 7, 3, 0, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.moveTo(x - 6, y); ctx.lineTo(x - 11, y - 3); ctx.lineTo(x - 11, y + 3); ctx.fill(); }
+  }
   for (const [par, col, base, amp] of [[0.15, lk.far, 360, 40], [0.32, lk.far2, 410, 34]]) {
     ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, H);
     for (let x = 0; x <= W; x += 16) { const wx = x + cam.x * par; ctx.lineTo(x, base + Math.sin(wx * 0.007) * amp + Math.sin(wx * 0.021 + 1) * 12); }
@@ -1100,8 +1123,18 @@ function subduoDrawGround(st, lk) {
   ctx.save(); ctx.beginPath(); ctx.moveTo(x0, -10);
   for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, rockY(x));
   ctx.lineTo(x1, -10); ctx.closePath(); ctx.clip();
-  ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 12; ctx.beginPath();
-  for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, rockY(x) - 4);
+  // layers in the rock (strata following the edge), a shadowed band, then the lit lip
+  ctx.lineWidth = 3;
+  for (const [d, a] of [[34, 0.10], [70, 0.08], [112, 0.06]]) {
+    ctx.strokeStyle = 'rgba(60,20,50,' + a + ')'; ctx.beginPath();
+    for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, rockY(x) - d + Math.sin(x * 0.05 + d) * 3);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = shade(lk.rock, 0.22); ctx.globalAlpha = 0.45; ctx.lineWidth = 22; ctx.beginPath();
+  for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, rockY(x) - 16);
+  ctx.stroke(); ctx.globalAlpha = 1;
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 8; ctx.beginPath();
+  for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, rockY(x) - 3);
   ctx.stroke();
   for (let x = Math.floor(x0 / 38) * 38; x < x1; x += 38) {
     const h = hash(x, 19), y = rockY(x) - 20 - (h % 160);
@@ -1126,13 +1159,22 @@ function subduoDrawGround(st, lk) {
   ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(x0, H + 10);
   for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, subduoFloor(st, x));
   ctx.lineTo(x1, H + 10); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = shade(lk.sandD, 0.1); ctx.globalAlpha = 0.35; ctx.lineWidth = 10; ctx.beginPath();
+  for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, subduoFloor(st, x) + 9);
+  ctx.stroke(); ctx.globalAlpha = 1;
   ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 3; ctx.beginPath();
   for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, subduoFloor(st, x) + 1.5);
   ctx.stroke();
+  // sand grains
+  ctx.fillStyle = shade(lk.sandD, 0.15);
+  for (let x = Math.floor(x0 / 14) * 14; x < x1; x += 14) { const h = hash(x, 91), y = subduoFloor(st, x) + 18 + (h % 90); if (y < H) { ctx.globalAlpha = 0.25 + (h % 3) * 0.1; ctx.fillRect(x + (h % 11), y, 2, 2); } }
+  ctx.globalAlpha = 1;
   // ripples, pebbles, starfish, little shells and anemones on the sand
   for (let x = Math.floor(x0 / 46) * 46; x < x1; x += 46) {
     const h = hash(x, 77), y = subduoFloor(st, x);
-    ctx.fillStyle = 'rgba(160,120,60,0.25)'; ctx.fillRect(x + (h % 20), y + 14 + (h % 18), 14, 3);
+    ctx.strokeStyle = 'rgba(160,120,60,0.3)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x + (h % 20), y + 16 + (h % 18)); ctx.quadraticCurveTo(x + (h % 20) + 9, y + 11 + (h % 18), x + (h % 20) + 18, y + 16 + (h % 18)); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.moveTo(x + (h % 20) + 2, y + 13 + (h % 18)); ctx.quadraticCurveTo(x + (h % 20) + 9, y + 9 + (h % 18), x + (h % 20) + 15, y + 13 + (h % 18)); ctx.stroke();
     if (h % 7 === 0) { ctx.fillStyle = '#ff8a6a'; subduoStarPath(x + 10, y + 6, 8, 3.4, (h % 10) * 0.3); ctx.fill(); }
     else if (h % 7 === 3) { ctx.fillStyle = '#b48ad8'; ctx.beginPath(); ctx.ellipse(x + 8, y + 2, 7, 4, 0, Math.PI, 0); ctx.fill(); for (let i = 0; i < 4; i++) { ctx.strokeStyle = '#d8b8f2'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x + 3 + i * 3.4, y); ctx.lineTo(x + 2 + i * 3.6 + Math.sin(G.clock * 2 + i + x) * 2, y - 8 - (i % 2) * 3); ctx.stroke(); } }
     else if (h % 7 === 5) { ctx.fillStyle = '#e8e2d4'; circle(x + 10, y + 4, 3.5); ctx.fill(); circle(x + 16, y + 6, 2.5); ctx.fill(); }
@@ -1233,7 +1275,10 @@ function subduoDrawBoulder(b, t) {
   ctx.fillStyle = '#8f96a8'; ctx.strokeStyle = '#5c6278'; ctx.lineWidth = 4;
   ctx.beginPath();
   for (let i = 0; i < 11; i++) { const a = i / 11 * Math.PI * 2, rr2 = r * (0.92 + (hash(h, i) % 10) / 100); ctx.lineTo(Math.cos(a) * rr2, Math.sin(a) * rr2); }
-  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.closePath(); ctx.fill();
+  ctx.save(); ctx.clip(); ctx.fillStyle = 'rgba(60,64,88,0.32)'; circle(r * 0.35, r * 0.4, r * 0.95); ctx.fill(); ctx.restore();
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(70,74,96,0.5)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-r * 0.1, -r * 0.1); ctx.lineTo(r * 0.2, r * 0.05); ctx.lineTo(r * 0.15, r * 0.35); ctx.moveTo(r * 0.2, r * 0.05); ctx.lineTo(r * 0.5, -r * 0.05); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.ellipse(-r * 0.3, -r * 0.35, r * 0.35, r * 0.2, -0.5, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#6fbf73';
   for (let i = 0; i < 4; i++) { const a = -2.4 + i * 0.5; circle(Math.cos(a) * r * 0.78, Math.sin(a) * r * 0.78, 7 - i); ctx.fill(); }
@@ -1487,6 +1532,7 @@ function subduoDrawSub(st) {
     g.addColorStop(0, 'rgba(255,250,200,' + (st.look === 'grotto' ? 0.32 : 0.16) + ')'); g.addColorStop(1, 'rgba(255,250,200,0)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(s.x + 56, s.y - 2 + bob); ctx.lineTo(s.x + 420, s.y - 90 + bob); ctx.lineTo(s.x + 420, s.y + 100 + bob); ctx.closePath(); ctx.fill();
   }
+  { const fy = subduoFloor(st, s.x), gap = fy - s.y; if (gap > 0 && gap < 420) { ctx.fillStyle = 'rgba(20,40,60,' + (0.2 * (1 - gap / 420)).toFixed(3) + ')'; ctx.beginPath(); ctx.ellipse(s.x, fy + 4, 62 * (1 - gap / 900), 9, 0, 0, Math.PI * 2); ctx.fill(); } }
   ctx.save(); ctx.translate(s.x, s.y + bob); ctx.rotate(s.tilt + wob);
   // propeller
   ctx.fillStyle = '#5a6a80'; rr(-70, -4, 14, 8, 3); ctx.fill();
@@ -1507,8 +1553,12 @@ function subduoDrawSub(st) {
   ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = '#b8901a'; ctx.lineWidth = 3.5;
   ctx.beginPath(); ctx.ellipse(0, 6, 58, 27, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.save(); ctx.beginPath(); ctx.ellipse(0, 6, 56.5, 25.5, 0, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = 'rgba(184,120,10,0.35)'; ctx.beginPath(); ctx.ellipse(4, 26, 62, 16, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#2bb5a8'; ctx.fillRect(-60, 8, 120, 9);
+  ctx.fillStyle = '#17786f'; ctx.globalAlpha = 0.45; ctx.fillRect(-60, 15, 120, 2); ctx.globalAlpha = 1;
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; for (let i = -4; i <= 4; i++) { circle(i * 12, 12.5, 1.3); ctx.fill(); }
   ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(-12, -6, 34, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(184,144,26,0.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-18, -16); ctx.lineTo(-18, 30); ctx.moveTo(18, -16); ctx.lineTo(18, 30); ctx.stroke();
   ctx.restore();
   ctx.fillStyle = '#b8901a'; for (let i = -3; i <= 3; i++) { circle(i * 13, 24, 1.6); ctx.fill(); }
   // portholes and the headlight

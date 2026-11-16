@@ -12,17 +12,47 @@ const pw37Hero = (v, id, x, y, outfit, o = {}) => {
   TOURNEY_OUTFITS.draw(v.ctx, id, outfit, Object.assign({}, o, { x, y, s, bw: 20, bh: 24, face, t: v.t }), () => v.hero(id, 0, 0, { s: 1, face, mood: o.mood, shadow: false }));
 };
 const pw37Sky = (v, o = {}) => {
-  const c = v.ctx, g = c.createLinearGradient(0, 0, 0, v.H);
+  const c = v.ctx, g = c.createLinearGradient(0, 0, 0, v.H), base = o.base || 110, sc = o.scroll || 0;
   g.addColorStop(0, o.dusk ? '#f0a070' : '#7cc8f4'); g.addColorStop(1, o.dusk ? '#ffe0b0' : '#dff2fb');
   c.fillStyle = g; c.fillRect(0, 0, v.W, v.H);
-  const sc = o.scroll || 0;
-  c.fillStyle = '#9ad06a'; c.beginPath(); c.moveTo(0, o.base || 110);
-  for (let x = 0; x <= v.W + 20; x += 20) c.lineTo(x, (o.base || 110) - 14 - Math.sin((x + sc * 0.2) * 0.02) * 10);
+  // the sun (or the low evening sun) and two soft clouds drifting by
+  const sx = o.dusk ? 70 : 46, sy = o.dusk ? base - 30 : 30;
+  c.fillStyle = o.dusk ? 'rgba(255,230,170,0.35)' : 'rgba(255,250,210,0.45)'; v.circle(sx, sy, 20); c.fill();
+  c.fillStyle = o.dusk ? '#fff0c0' : '#fffbe6'; v.circle(sx, sy, 11); c.fill();
+  for (let k = 0; k < 2; k++) {
+    const cx = ((k * 170 + 90 - v.t * 4 - sc * 0.05) % 400 + 400) % 400 - 40, cy = 22 + k * 16;
+    c.fillStyle = 'rgba(255,255,255,0.85)'; v.circle(cx, cy, 8); c.fill(); v.circle(cx + 10, cy - 4, 10); c.fill(); v.circle(cx + 22, cy, 8); c.fill(); c.fillRect(cx, cy, 22, 6);
+    c.fillStyle = 'rgba(150,180,210,0.25)'; c.fillRect(cx - 2, cy + 4, 28, 3);
+  }
+  // a hazy far ridge
+  c.fillStyle = o.dusk ? 'rgba(200,130,120,0.45)' : 'rgba(140,190,170,0.55)'; c.beginPath(); c.moveTo(0, base);
+  for (let x = 0; x <= v.W + 20; x += 20) c.lineTo(x, base - 26 - Math.sin((x + sc * 0.1) * 0.013 + 1) * 8);
+  c.lineTo(v.W, base); c.fill();
+  if (o.castle !== false) { // a far castle with merlons, a lit side and a flag
+    const cx = 250 - (sc * 0.1) % 400, cb = base - 10;
+    c.fillStyle = 'rgba(120,120,140,0.6)'; c.fillRect(cx, cb - 34, 40, 34); c.fillRect(cx - 8, cb - 44, 12, 44); c.fillRect(cx + 36, cb - 44, 12, 44);
+    for (let k = 0; k < 4; k++) c.fillRect(cx + 2 + k * 10, cb - 38, 6, 6);
+    for (const tx of [cx - 8, cx + 36]) for (let k = 0; k < 2; k++) c.fillRect(tx + k * 7, cb - 48, 4, 4);
+    c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(cx - 8, cb - 44, 3, 44); c.fillRect(cx, cb - 34, 3, 34);
+    c.fillStyle = 'rgba(60,50,70,0.4)'; c.beginPath(); c.arc(cx + 20, cb - 6, 6, Math.PI, 0); c.lineTo(cx + 26, cb); c.lineTo(cx + 14, cb); c.fill();
+    c.strokeStyle = 'rgba(80,70,80,0.7)'; c.lineWidth = 1; c.beginPath(); c.moveTo(cx + 42, cb - 48); c.lineTo(cx + 42, cb - 60); c.stroke();
+    c.fillStyle = '#d8323a'; c.beginPath(); c.moveTo(cx + 42, cb - 60); c.lineTo(cx + 52 + Math.sin(v.t * 5) * 1.5, cb - 57); c.lineTo(cx + 42, cb - 54); c.fill();
+  }
+  // the near hill: a lit crest, a shaded foot, and a few round trees
+  const hy = x => base - 14 - Math.sin((x + sc * 0.2) * 0.02) * 10;
+  const hg = c.createLinearGradient(0, base - 24, 0, v.H); hg.addColorStop(0, '#9ad06a'); hg.addColorStop(1, '#6aa64a');
+  c.fillStyle = hg; c.beginPath(); c.moveTo(0, base);
+  for (let x = 0; x <= v.W + 20; x += 20) c.lineTo(x, hy(x));
   c.lineTo(v.W, v.H); c.lineTo(0, v.H); c.fill();
-  if (o.castle !== false) { // a far castle
-    const cx = 250 - (sc * 0.1) % 400;
-    c.fillStyle = 'rgba(120,120,140,0.55)'; c.fillRect(cx, (o.base || 110) - 44, 40, 34); c.fillRect(cx - 8, (o.base || 110) - 54, 12, 44); c.fillRect(cx + 36, (o.base || 110) - 54, 12, 44);
-    for (let k = 0; k < 4; k++) c.fillRect(cx + 2 + k * 10, (o.base || 110) - 48, 6, 6);
+  c.strokeStyle = 'rgba(230,255,190,0.6)'; c.lineWidth = 1.5; c.beginPath();
+  for (let x = 0; x <= v.W + 20; x += 20) { if (x) c.lineTo(x, hy(x)); else c.moveTo(x, hy(x)); }
+  c.stroke();
+  for (let k = 0; k < 5; k++) {
+    const tx = ((k * 83 + 30 - sc * 0.2) % 420 + 420) % 420 - 50, ty = hy(tx) + 3, r = 6 + v.rand(k + 60) * 3;
+    c.fillStyle = 'rgba(40,70,30,0.25)'; c.beginPath(); c.ellipse(tx + 2, ty + 1, r + 2, 2, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#6a4a2a'; c.fillRect(tx - 1, ty - 6, 2, 6);
+    c.fillStyle = '#4e8a3a'; v.circle(tx, ty - 8 - r * 0.5, r); c.fill();
+    c.fillStyle = '#6aaa4a'; v.circle(tx - r * 0.3, ty - 10 - r * 0.6, r * 0.6); c.fill();
   }
 };
 const pw37Pennants = (v, x0, x1, y, sag = 10) => {
@@ -75,9 +105,14 @@ const pw37Shield = (v, x, y, r, col, col2, moon) => {
   c.fillStyle = col2; if (moon) { v.circle(x, y, r * 0.5); c.fill(); c.fillStyle = col; v.circle(x + r * 0.22, y - r * 0.1, r * 0.42); c.fill(); } else { v.circle(x, y, r * 0.38); c.fill(); }
 };
 const pw37Dirt = (v, y, scroll) => {
-  const c = v.ctx;
-  c.fillStyle = '#c8a06a'; c.fillRect(0, y, v.W, v.H - y);
+  const c = v.ctx, g = c.createLinearGradient(0, y, 0, v.H);
+  g.addColorStop(0, '#d2aa72'); g.addColorStop(1, '#b08a58');
+  c.fillStyle = g; c.fillRect(0, y, v.W, v.H - y);
+  c.fillStyle = 'rgba(255,240,200,0.45)'; c.fillRect(0, y, v.W, 1.5);
+  c.fillStyle = 'rgba(90,60,30,0.25)'; c.fillRect(0, y + 1.5, v.W, 2);
   c.fillStyle = 'rgba(120,90,50,0.35)'; for (let k = 0; k < 10; k++) c.fillRect(((k * 47 - scroll) % (v.W + 40) + v.W + 40) % (v.W + 40) - 20, y + 6 + (k % 3) * 10, 18, 2);
+  for (let k = 0; k < 12; k++) { const px = ((k * 29 + 7 - scroll) % (v.W + 20) + v.W + 20) % (v.W + 20) - 10, py = y + 5 + v.rand(k + 80) * (v.H - y - 8);
+    c.fillStyle = 'rgba(90,70,50,0.45)'; v.circle(px, py, 1.4); c.fill(); c.fillStyle = 'rgba(255,240,210,0.5)'; c.fillRect(px - 1, py - 1.2, 1, 1); }
 };
 
 // ----- BEGIN 37-1 Runaway Royal Carriage -----
@@ -182,8 +217,14 @@ const pw37Dirt = (v, y, scroll) => {
       const c = v.ctx, gx = Math.min(t, 4.2) * 12;
       pw37Sky(v, { castle: false });
       c.fillStyle = '#8a7a5a'; c.fillRect(0, 150, v.W, 30);
+      c.fillStyle = 'rgba(255,240,200,0.3)'; c.fillRect(0, 150, v.W, 1.5); c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(0, 162, v.W, 18);
+      for (let k = 0; k < 14; k++) { c.fillStyle = 'rgba(60,50,30,0.4)'; v.circle(v.rand(k + 30) * v.W, 154 + v.rand(k + 50) * 22, 1.3); c.fill(); }
       // the baron's wall
       c.fillStyle = '#9aa0aa'; c.fillRect(250, 40, 80, 120); c.fillStyle = '#7a808a'; for (let k = 0; k < 4; k++) c.fillRect(250 + k * 22, 30, 14, 12);
+      c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(250, 40, 3, 120); for (let k = 0; k < 4; k++) c.fillRect(250 + k * 22, 30, 14, 2);
+      c.strokeStyle = 'rgba(60,64,80,0.35)'; c.lineWidth = 1; c.beginPath();
+      for (let y = 52, r = 0; y < 160; y += 12, r++) { c.moveTo(250, y); c.lineTo(330, y); for (let x = 250 + (r % 2) * 10; x < 330; x += 20) { c.moveTo(x, y); c.lineTo(x, y - 12); } }
+      c.stroke(); c.fillStyle = 'rgba(90,130,60,0.6)'; for (let k = 0; k < 6; k++) { v.circle(254 + v.rand(k + 70) * 20, 120 + v.rand(k + 90) * 36, 3); c.fill(); }
       c.fillStyle = '#d8323a'; c.fillRect(300, 10, 2, 22); c.fillStyle = '#ffd23a'; c.beginPath(); c.moveTo(302, 10); c.lineTo(318, 15); c.lineTo(302, 20); c.fill();
       // the tower
       const tx = 150 + gx, ty = 150;

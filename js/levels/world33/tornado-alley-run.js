@@ -64,7 +64,7 @@
     st.junkN = 0; st.windT = 0; st.spinT = 0;
     st.obs = build(st);
   }
-  function labels(st) { const w = []; w[st.drv] = 'horn'; w[st.spt] = 'swing'; K.actLabels(w, 'horn'); }
+  function labels(st) { const w = []; w[st.drv] = 'boost'; w[st.spt] = 'swing'; K.actLabels(w, 'boost'); }
 
   // the road for one stretch: things spaced in time along the distance, at least one free lane every time
   function build(st) {
@@ -478,6 +478,13 @@
     ctx.fillStyle = '#2e2e34'; for (let x = -(off % 37); x < W; x += 37) ctx.fillRect(x, 386 + (Math.floor((x + off) / 37) % 5) * 22, 6, 2);
     ctx.fillStyle = K.COL.roadLine;
     for (const y of [425, 467]) for (let x = -(off % 80); x < W; x += 80) ctx.fillRect(x, y, 40, 3);
+    // patches, tar seams and a wet shine on the asphalt
+    for (let x = -(off % 300); x < W + 300; x += 300) {
+      const k = Math.round((x + off) / 300);
+      ctx.fillStyle = 'rgba(30,30,36,0.35)'; rr(x + K.hash(k) * 120, 398 + K.hash(k + 3) * 80, 50 + K.hash(k + 5) * 40, 14, 4); ctx.fill();
+      ctx.strokeStyle = 'rgba(24,24,28,0.55)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 160, 392); ctx.lineTo(x + 172, 410); ctx.lineTo(x + 166, 430); ctx.lineTo(x + 180, 452); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(200,210,220,0.07)'; for (let k = 0; k < 4; k++) ctx.fillRect(0, 400 + k * 28, W, 6);
     ctx.fillStyle = '#e8e8e0'; ctx.fillRect(0, 388, W, 2); ctx.fillRect(0, 508, W, 2);
     // the near verge with fence posts and grass flattened by the wind
     ctx.fillStyle = '#5e7040'; ctx.fillRect(0, 512, W, H - 512);
@@ -487,13 +494,25 @@
     for (let x = -(off % 520); x < W + 60; x += 520) {
       const k = Math.round((x + off) / 520);
       ctx.fillStyle = '#5a5e66'; ctx.fillRect(x + 20, 334, 4, 50);
-      if (k % 3 === 0) { ctx.fillStyle = '#2a7a3a'; rr(x - 10, 320, 64, 24, 3); ctx.fill(); text('SHELTER ' + (3 + (k % 5)) + ' mi', x + 22, 332, 10, '#ffffff', 'center', 'body'); }
-      else { ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.moveTo(x + 22, 316); ctx.lineTo(x + 36, 330); ctx.lineTo(x + 22, 344); ctx.lineTo(x + 8, 330); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#1c1a20'; ctx.fillRect(x + 21, 324, 2, 8); }
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x + 20, 334, 1.5, 50);
+      if (k % 3 === 0) {
+        // a green highway sign sized to its words, with a white inner border
+        ctx.fillStyle = 'rgba(0,0,0,0.3)'; rr(x - 18, 322, 84, 26, 4); ctx.fill();
+        ctx.fillStyle = '#2a7a3a'; rr(x - 20, 319, 84, 26, 4); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.2; rr(x - 17, 322, 78, 20, 3); ctx.stroke();
+        text('SHELTER ' + (3 + (k % 5)) + ' mi', x + 22, 332, 10, '#ffffff', 'center', 'body');
+      } else {
+        ctx.fillStyle = '#ffd23a'; ctx.strokeStyle = '#1c1a20'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x + 22, 316); ctx.lineTo(x + 36, 330); ctx.lineTo(x + 22, 344); ctx.lineTo(x + 8, 330); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#1c1a20'; ctx.fillRect(x + 21, 324, 2, 8); ctx.fillRect(x + 21, 334, 2, 2);
+      }
     }
     // telephone poles along the far side with sagging wires
     ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 1.2;
     for (let x = -(off * 0.9 % 240); x < W + 240; x += 240) {
       ctx.fillStyle = '#4a3a2a'; ctx.fillRect(x, 270, 5, 100); ctx.fillRect(x - 12, 278, 29, 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x, 270, 1.5, 100);
+      ctx.fillStyle = '#c8c8c0'; for (const ix of [-10, 13]) ctx.fillRect(x + ix, 275, 3, 3);
       ctx.beginPath(); ctx.moveTo(x - 10, 280); ctx.quadraticCurveTo(x + 110, 296 + Math.sin(t * 4 + x) * 4, x + 230, 280); ctx.stroke();
     }
   }
@@ -760,7 +779,7 @@
     {
       const bx = K.panel(D, 'driver', 236, 58, z), cy = bx.y + 27 * z, chh = 23 * z, cw = (bx.w - 24 * z - 6 * z) / 2, x0 = bx.x + 12 * z;
       K.chip(x0, cy, cw, chh, (K.quiet(D) ? '' : K.key(D, 'up') + K.key(D, 'down') + ' ') + 'LANE', pl.drv.lane !== st.lane, st.lane !== st.laneF, z);
-      K.chip(x0 + cw + 6 * z, cy, cw, chh, st.hornCd > 0 ? 'HORN ' + Math.ceil(st.hornCd) + 's' : kk(D, 'act') + 'HORN', pl.drv.horn || (pl.ramp < 1.2 && st.hornCd <= 0), st.boostT > 0, z);
+      K.chip(x0 + cw + 6 * z, cy, cw, chh, st.hornCd > 0 ? 'BOOST ' + Math.ceil(st.hornCd) + 's' : kk(D, 'act') + 'BOOST', pl.drv.horn || (pl.ramp < 1.2 && st.hornCd <= 0), st.boostT > 0, z);
     }
     {
       const bx = K.panel(P_, 'spotter', 236, 58, z), cy = bx.y + 27 * z, chh = 23 * z, cw = (bx.w - 24 * z - 6 * z) / 2, x0 = bx.x + 12 * z;
@@ -783,7 +802,7 @@
     const P = K.prompter(st), s = vanScale(st.laneF), y = vanY(st.laneF);
     {
       let str = null, col = C.gold, pulse = false;
-      if (pl.drv.horn || (pl.ramp < 1.0 && st.hornCd <= 0 && st.boostT <= 0)) { str = 'HORN! ' + K.key(D, 'act'); pulse = true; }
+      if (pl.drv.horn || (pl.ramp < 1.0 && st.hornCd <= 0 && st.boostT <= 0)) { str = 'BOOST! ' + K.key(D, 'act'); pulse = true; }
       else if (pl.drv.lane !== st.lane) { str = (pl.drv.lane < st.lane ? 'Up a lane ' + K.key(D, 'up') : 'Down a lane ' + K.key(D, 'down')); pulse = pl.drv.clear[st.lane] < 0.9; }
       else if (pl.low < 1.5) { str = 'Middle lane!'; col = '#ffe7a8'; }
       else if (st.dish) { str = 'Hold steady!'; col = '#ffe7a8'; }
@@ -833,16 +852,18 @@
   };
 
   /* ---------- the level ---------- */
-  const acts = d => ({ label: 'horn', labels: d === 0 ? ['horn', 'swing'] : ['swing', 'horn'] });
+  const acts = d => ({ label: 'boost', labels: d === 0 ? ['boost', 'swing'] : ['swing', 'boost'] });
   const J = (small, large, cow) => ({ small, large, cow });
   STORMCHASE.defs.tornadorun = {
     name: 'Tornado Alley Run', world: 32, kind: 'team', mode: 'tornadorun', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>S</kbd> lane / duck <kbd>A</kbd><kbd>D</kbd> ease / aim',
-      bo: '<kbd>↑</kbd><kbd>↓</kbd> lane / duck <kbd>←</kbd><kbd>→</kbd> ease / aim',
-      pad: 'stick steers and aims, down ducks,',
+    jobs: {
+      driver: { title: 'Driver', act: 'boost', legend: '<kbd>W</kbd><kbd>S</kbd> change lane <kbd>A</kbd><kbd>D</kbd> slower, faster',
+        howTo: ['Boost (the horn) jumps a broken bridge.'] },
+      spotter: { title: 'Spotter', act: 'swing', legend: '<kbd>A</kbd><kbd>D</kbd> aim the bat <kbd>S</kbd> hold to duck',
+        howTo: ['Swing at the junk. Keep holding after a swing to brace for a cow.'] },
     },
-    tip: 'Outrun the tornado! The driver dodges with ▲ ▼ and honks over broken bridges; the spotter aims ◀ ▶ and swings at the junk.',
+    jobOf: 'drv', jobSwap: 'You swap jobs every stretch.',
+    tip: 'Outrun the tornado! The driver dodges and boosts over broken bridges; the spotter aims and swings at the junk.',
     act: acts(0),
     map: K.stubMap(),
     rooms: [

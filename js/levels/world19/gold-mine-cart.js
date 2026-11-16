@@ -760,6 +760,10 @@ function minecartDrawBack(st) {
     const x = k * 180 - px, r = minecartHash(k * 7 + 1), yy = 120 + r * 260;
     ctx.fillStyle = k % 2 ? lk.rock2 : lk.rock; ctx.globalAlpha = 0.55;
     ctx.beginPath(); ctx.ellipse(x, yy, 110 + r * 60, 70 + r * 40, r, 0, Math.PI * 2); ctx.fill();
+    // a lamp-lit upper face, a darker underside and a few cracks, so the far rock reads as rock
+    ctx.globalAlpha = 0.18; ctx.fillStyle = '#ffd9a0'; ctx.beginPath(); ctx.ellipse(x - 14, yy - 22 - r * 10, 70 + r * 40, 28 + r * 14, r, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+    ctx.globalAlpha = 0.25; ctx.fillStyle = '#120a05'; ctx.beginPath(); ctx.ellipse(x + 10, yy + 30 + r * 16, 90 + r * 40, 30 + r * 16, r, 0, Math.PI); ctx.fill();
+    ctx.globalAlpha = 0.3; ctx.strokeStyle = '#120a05'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 40, yy - 20); ctx.lineTo(x - 26, yy); ctx.lineTo(x - 32, yy + 22); ctx.moveTo(x + 50, yy - 30); ctx.lineTo(x + 40, yy - 8); ctx.stroke();
     ctx.globalAlpha = 1;
     // a gold vein with glints
     if (r > 0.35) {
@@ -786,6 +790,10 @@ function minecartDrawBack(st) {
     const x = k * 320 - mx;
     ctx.fillStyle = '#2a190e'; ctx.globalAlpha = 0.75;
     ctx.fillRect(x - 6, 40, 12, H); ctx.fillRect(x + 150, 40, 12, H); ctx.fillRect(x - 14, 40, 184, 14);
+    // lit left edges, wood grain and corner braces on the timbers
+    ctx.fillStyle = '#6a4426'; ctx.fillRect(x - 6, 54, 2, H); ctx.fillRect(x + 150, 54, 2, H); ctx.fillRect(x - 14, 40, 184, 2);
+    ctx.fillStyle = '#2a190e'; ctx.beginPath(); ctx.moveTo(x + 6, 54); ctx.lineTo(x + 30, 54); ctx.lineTo(x + 6, 78); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(x + 150, 54); ctx.lineTo(x + 126, 54); ctx.lineTo(x + 150, 78); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#8a8f9e'; ctx.beginPath(); for (const bx of [x, x + 156]) { minecartDot(bx, 47, 1.6); } ctx.fill();
     ctx.globalAlpha = 1;
     if (!st.dark) {
       const lx = x + 78, ly = 96 + Math.sin(t * 1.4 + k) * 2;
@@ -809,8 +817,15 @@ function minecartDrawCavern(st) {
   ctx.lineTo(xin + 20, cam.y - 10); ctx.closePath(); ctx.fill();
   for (let k = Math.floor(x0 / 140); k <= xin / 140; k++) {
     const x = k * 140 + 40 * minecartHash(k), y = minecartBase(st, x) - 268 + Math.sin(x / 57) * 10;
-    ctx.fillStyle = lk.rock2; ctx.beginPath(); ctx.moveTo(x - 10, y - 2); ctx.lineTo(x, y + 18 + 14 * minecartHash(k + 5)); ctx.lineTo(x + 10, y - 2); ctx.closePath(); ctx.fill();
+    const tip = y + 18 + 14 * minecartHash(k + 5);
+    ctx.fillStyle = lk.rock2; ctx.beginPath(); ctx.moveTo(x - 10, y - 2); ctx.lineTo(x, tip); ctx.lineTo(x + 10, y - 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.moveTo(x + 2, y - 2); ctx.lineTo(x, tip); ctx.lineTo(x + 10, y - 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,170,0.25)'; ctx.beginPath(); ctx.moveTo(x - 7, y); ctx.lineTo(x - 1, tip - 4); ctx.lineTo(x - 4, y); ctx.closePath(); ctx.fill();
   }
+  // the ceiling's lower lip catches the lamplight
+  ctx.strokeStyle = 'rgba(255,215,160,0.22)'; ctx.lineWidth = 3; ctx.beginPath();
+  for (let x = Math.floor(x0 / 20) * 20; x <= xin + 20; x += 20) ctx.lineTo(x, minecartBase(st, x) - 270 + Math.sin(x / 57) * 10 + Math.sin(x / 23) * 4);
+  ctx.stroke();
   // floor: sand and rock, with crates, barrels and pickaxes
   const floorY = x => minecartBase(st, x) + 228 + Math.sin(x / 71) * 8;
   ctx.fillStyle = lk.rock;
@@ -820,6 +835,11 @@ function minecartDrawCavern(st) {
   ctx.strokeStyle = 'rgba(232,194,122,0.55)'; ctx.lineWidth = 3; ctx.beginPath();
   for (let x = Math.floor(x0 / 16) * 16; x <= xin + 16; x += 16) ctx.lineTo(x, floorY(x));
   ctx.stroke();
+  // pebbles and gold flecks in the floor
+  for (let k = Math.floor(x0 / 46); k <= xin / 46; k++) {
+    const h = hash(k, 313), x = k * 46 + (h % 30), y = floorY(x) + 12 + (h >> 5) % 40;
+    ctx.fillStyle = h % 7 === 0 ? 'rgba(255,207,74,0.75)' : 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(x, y, 2 + (h >> 9) % 3, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+  }
   if (st.look === 'river') {
     // the underground river along the floor
     ctx.fillStyle = 'rgba(70,160,210,0.75)';
@@ -834,10 +854,11 @@ function minecartDrawCavern(st) {
     const r = minecartHash(k * 11 + 3), x = k * 260 + r * 120, y = floorY(x);
     if (st.look === 'river') continue;
     ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(2, 1, 20, 4, 0, 0, Math.PI * 2); ctx.fill();
     if (r < 0.3) { ctx.fillStyle = '#8a5a30'; rr(-16, -26, 32, 26, 3); ctx.fill(); ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 2; ctx.strokeRect(-16, -26, 32, 26); ctx.beginPath(); ctx.moveTo(-16, -26); ctx.lineTo(16, 0); ctx.moveTo(16, -26); ctx.lineTo(-16, 0); ctx.stroke(); }
-    else if (r < 0.55) { ctx.fillStyle = '#7a4a28'; rr(-13, -30, 26, 30, 7); ctx.fill(); ctx.fillStyle = '#4a2d18'; ctx.fillRect(-13, -24, 26, 3); ctx.fillRect(-13, -8, 26, 3); }
+    else if (r < 0.55) { ctx.fillStyle = '#7a4a28'; rr(-13, -30, 26, 30, 7); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(4, -29, 8, 28); ctx.fillStyle = 'rgba(255,220,170,0.25)'; ctx.fillRect(-10, -29, 3, 28); ctx.fillStyle = '#4a2d18'; ctx.fillRect(-13, -24, 26, 3); ctx.fillRect(-13, -8, 26, 3); ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 1.5; rr(-13, -30, 26, 30, 7); ctx.stroke(); }
     else if (r < 0.75) { ctx.strokeStyle = '#7a5228'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(10, -26); ctx.stroke(); ctx.strokeStyle = '#9aa0ae'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(10, -18, 12, -2.3, -0.6); ctx.stroke(); }
-    else { ctx.fillStyle = '#ffcf4a'; for (let j = 0; j < 4; j++) { circle(-10 + j * 7, -4 - (j % 2) * 4, 4); ctx.fill(); } }
+    else { for (let j = 0; j < 4; j++) { ctx.fillStyle = '#c99a1a'; circle(-10 + j * 7, -4 - (j % 2) * 4, 4.4); ctx.fill(); ctx.fillStyle = '#ffcf4a'; circle(-10.5 + j * 7, -4.5 - (j % 2) * 4, 3.6); ctx.fill(); ctx.fillStyle = '#fff3b0'; circle(-12 + j * 7, -6 - (j % 2) * 4, 1.2); ctx.fill(); } }
     ctx.restore();
   }
   if (ex && x1 > ex.x) minecartDrawOutside(st, ex, Math.max(x0, ex.x), x1);
@@ -858,6 +879,9 @@ function minecartDrawOutside(st, ex, xa, xb) {
   for (let k = 0; k < 6; k++) {
     const mx = cam.x + ((k * 260 - cam.x * 0.3) % 1560 + 1560) % 1560 - 200, my = cam.y + 300 - (k % 3) * 30;
     ctx.beginPath(); ctx.moveTo(mx - 120, cam.y + H); ctx.lineTo(mx - 90, my); ctx.lineTo(mx + 90, my); ctx.lineTo(mx + 120, cam.y + H); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(120,45,25,0.18)'; ctx.beginPath(); ctx.moveTo(mx + 70, my); ctx.lineTo(mx + 90, my); ctx.lineTo(mx + 120, cam.y + H); ctx.lineTo(mx + 90, cam.y + H); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,230,190,0.35)'; ctx.fillRect(mx - 90, my, 180, 2); ctx.fillStyle = 'rgba(120,45,25,0.12)'; ctx.fillRect(mx - 100, my + 30, 205, 5);
+    ctx.fillStyle = '#d97a4a';
   }
   ctx.fillStyle = '#b85a33';
   for (let k = 0; k < 4; k++) {
@@ -975,7 +999,7 @@ function minecartDrawTracks(st) {
       ctx.fillStyle = '#5a3a1c'; ctx.fillRect(a0 - 4, y + 6, 8, 104); ctx.fillRect(a1 - 4, y + 6, 8, 104);
       const netY = u => ny - 22 + (22 + sag) * Math.sin(Math.PI * u);
       ctx.strokeStyle = 'rgba(233,210,154,0.9)'; ctx.lineWidth = 1.5;
-      for (let k = 1; k < 10; k++) { const u = k / 10, xx = minecartLerp(a0, a1, u); ctx.beginPath(); ctx.moveTo(xx, netY(u) - 12); ctx.lineTo(xx, netY(u)); ctx.stroke(); }
+      ctx.beginPath(); for (let k = 1; k < 10; k++) { const u = k / 10, xx = minecartLerp(a0, a1, u); ctx.moveTo(xx, netY(u) - 12); ctx.lineTo(xx, netY(u)); } ctx.stroke();
       ctx.lineWidth = 2.5; ctx.strokeStyle = '#e9d29a';
       for (const dy of [0, -12]) { ctx.beginPath(); for (let k = 0; k <= 16; k++) { const u = k / 16; ctx.lineTo(minecartLerp(a0, a1, u), netY(u) + dy * Math.sin(Math.PI * u)); } ctx.stroke(); }
     }
@@ -1013,7 +1037,7 @@ function minecartDrawSwitch(st, fk) {
 function minecartDrawBuffer(st, fk) {
   const x = fk.deadEnd, y = minecartRail(st, fk.dead, fk, x);
   ctx.fillStyle = '#e8c27a'; rr(x - 8, y - 46, 40, 46, 8); ctx.fill();
-  ctx.strokeStyle = '#b98f45'; ctx.lineWidth = 2; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x - 6, y - 40 + k * 11); ctx.lineTo(x + 30, y - 38 + k * 11); ctx.stroke(); }
+  ctx.strokeStyle = '#b98f45'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 4; k++) { ctx.moveTo(x - 6, y - 40 + k * 11); ctx.lineTo(x + 30, y - 38 + k * 11); } ctx.stroke();
   // the boarded X behind it
   ctx.fillStyle = '#8a5a30'; ctx.save(); ctx.translate(x + 50, y - 60);
   ctx.rotate(0.7); ctx.fillRect(-46, -7, 92, 14); ctx.rotate(-1.4); ctx.fillRect(-46, -7, 92, 14);
@@ -1171,7 +1195,7 @@ function minecartDrawCurtain(st, w) {
   g.addColorStop(0, 'rgba(140,210,250,0.15)'); g.addColorStop(1, 'rgba(170,230,255,0.75)');
   ctx.fillStyle = g; ctx.fillRect(w.x - 26, top, 52, bot - top);
   ctx.strokeStyle = 'rgba(230,250,255,0.8)'; ctx.lineWidth = 2;
-  for (let k = 0; k < 5; k++) { const xx = w.x - 20 + k * 10, off = ((t * 220 + k * 40) % 60); ctx.beginPath(); ctx.moveTo(xx, bot - off - 30); ctx.lineTo(xx, bot - off); ctx.stroke(); }
+  ctx.beginPath(); for (let k = 0; k < 5; k++) { const xx = w.x - 20 + k * 10, off = ((t * 220 + k * 40) % 60); ctx.moveTo(xx, bot - off - 30); ctx.lineTo(xx, bot - off); } ctx.stroke();
   ctx.fillStyle = 'rgba(220,245,255,0.8)'; for (let k = 0; k < 4; k++) { circle(w.x - 18 + k * 12, bot + Math.sin(t * 9 + k) * 3, 4); ctx.fill(); }
 }
 function minecartDrawLantern(st, l) {
@@ -1266,7 +1290,7 @@ function minecartDrawCart(st) {
   for (const s of [-1, 1]) {
     ctx.save(); ctx.translate(s * M.wheelX, -M.wheelR + 2); ctx.rotate(cart.spin);
     ctx.fillStyle = '#3b3a45'; circle(0, 0, M.wheelR); ctx.fill();
-    ctx.strokeStyle = '#8a8fa0'; ctx.lineWidth = 2; for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 8, Math.sin(a) * 8); ctx.stroke(); }
+    ctx.strokeStyle = '#8a8fa0'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 8, Math.sin(a) * 8); } ctx.stroke();
     ctx.fillStyle = '#c9ced8'; circle(0, 0, 3); ctx.fill();
     ctx.restore();
   }
@@ -1528,3 +1552,5 @@ Sfx.extra.minecartLoaded = function () { [392, 523, 659, 784, 1047].forEach((f, 
 Sfx.extra.minecartPour = function () { for (let i = 0; i < 9; i++) this.tone(1200 + (i % 3) * 300, 0.06, 'triangle', 0.035, null, i * 0.11); };
 Sfx.extra.minecartDing = function () { this.tone(1568, 0.6, 'sine', 0.06); [1047, 1319, 1568, 2093].forEach((f, i) => this.tone(f, 0.14, 'triangle', 0.045, null, 0.15 + i * 0.08)); };
 /* ===== end of MODES.minecart ===== */
+// a dot added to the current path, so many dots fill in one call
+function minecartDot(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }

@@ -1415,6 +1415,7 @@ TTH_PHASES.finale = {
   coast(st, dt) { tthFinCoast(st, dt); },
   busy(st, p) { return tthFinBusy(st, p); },
   labels(st) { return st.ph.stage ? tthFinLabels(st) : ['brake', 'press']; },
+  jobKeys(st) { const ph = st.ph; return ph.stage === 'top' || ph.stage === 'fin' ? ['smash', 'smash'] : ph.holder === 1 ? ['climber', 'holder'] : ['holder', 'climber']; },
   roles(st) { const ph = st.ph; return ph.stage === 'top' ? ['Smash!', 'Smash!'] : ph.stage === 'fin' ? null : ph.holder === 0 ? ['Brake!', 'Climb!'] : ['Climb!', 'Brake!']; },
   legend(st) {
     const ph = st.ph, top = ph.stage === 'top' || ph.stage === 'fin';
@@ -1455,6 +1456,14 @@ Sfx.extra.tthFinHome = function (p, i) { const f = [523, 587, 659, 784, 880, 988
 
 /* ---------- the room (this file fills in its own room of the level def) ---------- */
 tthRoom('finale', {
+  jobs: {
+    holder: { title: 'Brake holder', act: 'brake', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      howTo: ['Hold brake at the lever to slow the gears. Let go when it says let go.'] },
+    climber: { title: 'Climber', act: 'press', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump, climb',
+      howTo: ['Climb the gears and press the button at the hatch.'] },
+    smash: { title: 'Smash it', act: 'smash', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      howTo: ['Both press smash at a plunger together.'] },
+  },
   act: { label: 'brake', labels: ['brake', 'press'] },
   tip: 'One holds the brake lever to slow the gears. The other climbs up to the button. Then smash it together!',
   legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump, at the lever, hold:', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump, climb! At the button:',

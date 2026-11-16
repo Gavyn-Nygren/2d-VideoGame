@@ -12,6 +12,10 @@
      would (someone on my head makes me the step, a person waiting at the foot makes me the climber, a person who
      waits elsewhere gets me taking the step job). Once the partner is up, the step moves off and helps with the next
      job if it can be done at the same time (a big bone, the crank).
+   - jack (rooms 2 and 4, Gavyn 2026-11-16: no head stacks): one rides Mr. Bones the stool, the other holds dig at his
+     arm lever on the ground beside him; his neck grows and the rider jumps from the top onto the roof and digs. Two
+     computers: Bo rides. With a person: the computer pulls the lever, unless the person goes to the lever first (then
+     it rides). The puller only holds while someone stands on the stool, and lets go once the rider is up.
    - seesaw (room 1): one stands still on the low end, the other stands at the high end and jumps straight up (coming
      down onto it slams it and flings the partner up to the roof; the flung one steers onto the roof and digs). Two
      computers: Bo is flung. With a person: the computer takes the low end unless the person is standing on it.
@@ -96,7 +100,7 @@
     const mr = m.mr, s = m.spots[mr.spot];
     if (!s || !q.alive) return false;
     if (mr.form === 'ladder') return m.pl[q.id].climb;
-    if (mr.form === 'stool') return q.grounded && near(cpuFeet(q), s.r * T, 3) && q.x + q.w > s.c * T && q.x < (s.c + 1) * T;
+    if (mr.form === 'stool') return q.grounded && near(cpuFeet(q), (s.r - bonehuntJackLift(m)) * T, 3) && q.x + q.w > s.c * T && q.x < (s.c + 1) * T;
     if (mr.form === 'bridge') return near(cpuFeet(q), s.y0, 3) && q.x + q.w > s.x0 && q.x < s.x1;
     return false;
   }
@@ -275,6 +279,47 @@
     const at = near(cpuCx(p), g.waitX, 10);
     if (at && cpuFor(st, 'askStep', true, dt) > 3) say(st, p, info, g.k >= 0 ? 'Stand on Mr. Bones!' : 'Be my step!');
     return go(st, p, m, g.waitX, g.ground, 6, true);
+  }
+
+  /* ---------- jack: one rides Mr. Bones the stool, the other holds his arm lever ---------- */
+  function jack(st, p, o, m, mound, dt, info) {
+    const j = m.jack;
+    if (!j) return null;
+    const up = q => q.alive && q.grounded && near(cpuFeet(q), mound.feet, 3) && near(cpuCx(q), mound.x, 140);
+    if (up(p)) return dig(st, p, m, mound);
+    if (up(o)) {
+      // the partner is up there: step off the stool or the lever, then the next job
+      if (onMr(m, p)) return nav(st, p, m, j.x + j.dir * 30, j.feet, 6, true);
+      return null;
+    }
+    const s = m.spots[j.spot];
+    if (!(m.mr.form === 'stool' && m.mr.spot === j.spot)) return call(st, p, o, m, j.spot, info) || {};
+    if (st.jackFor !== mound) { st.jackFor = mound; st.jackRole = info.partnerCpu ? (p.id === 1 ? 'ride' : 'pull') : 'pull'; }
+    if (!info.partnerCpu) {
+      // a person on the stool gets me on the lever; a person at the lever gets me riding
+      if (cpuFor(st, 'oJackRide', bonehuntOnJack(m, o), dt) > 0.3) st.jackRole = 'pull';
+      else if (cpuFor(st, 'oJackLever', bonehuntAtLever(m, o) && !bonehuntOnJack(m, p), dt) > 0.6) st.jackRole = 'ride';
+    }
+    const out = {};
+    if (st.jackRole === 'pull') {
+      if (!bonehuntAtLever(m, p) || !near(cpuCx(p), j.x, 8)) { if (onMr(m, p)) return nav(st, p, m, j.x, j.feet, 6, true); return go(st, p, m, j.x, j.feet, 6, true); }
+      cpuSeek(out, p, j.x, 6);
+      if (bonehuntOnJack(m, o) || (j.lift > 0 && !o.grounded && cpuFeet(o) < s.r * T)) out.act = true;
+      else if (cpuFor(st, 'askRide', still(p), dt) > 3) say(st, p, info, 'Stand on Mr. Bones!');
+      return out;
+    }
+    // ride: up onto the stool, wait for the neck to grow, then jump onto the roof
+    if (!bonehuntOnJack(m, p)) return go(st, p, m, s.x, (s.r - j.lift) * T, 3, true);
+    cpuSeek(out, p, s.x, 3);
+    if (j.lift >= j.max) {
+      if (CPU.last[p.id].jump) return out;
+      const land = mound.cfg.land != null ? mound.cfg.land : mound.x;
+      st.air = 'boost'; st.landX = land;
+      out.jump = true; cpuSteer(out, p, land, 3);
+      return out;
+    }
+    if (cpuFor(st, 'askPull', j.held < 0 && still(p), dt) > 2.5) say(st, p, info, 'Pull Mr. Bones’ arm!');
+    return out;
   }
 
   /* ---------- the seesaw: one on the low end, the other jumps onto the high end ---------- */
@@ -532,6 +577,7 @@
       }
       let out = null;
       if (kind === 'tower') out = stack(st, p, o, m, mound, dt, info);
+      else if (kind === 'jack') out = jack(st, p, o, m, mound, dt, info);
       else if (kind === 'seesaw') out = seesaw(st, p, o, m, mound, dt, info);
       else if (kind === 'gate') out = gate(st, p, o, m, mound, dt, info);
       else if (kind === 'big') out = big(st, p, o, m, mound, dt, info);

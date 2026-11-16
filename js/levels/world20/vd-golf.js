@@ -92,6 +92,13 @@ const VDG = {
 
 vdRoom('golf', {
   title: 'Gong Golf', first: 0,
+  jobs: {
+    golfer: { title: 'Golfer', act: 'swing', legend: '<kbd>A</kbd><kbd>D</kbd> aim <kbd>W</kbd> hold, let go to swing <kbd>S</kbd> cancel',
+      howTo: ['Hold longer for a harder shot.'] },
+    ball: { title: 'Ball', act: 'zoom', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> push in the air',
+      howTo: ['Zoom pushes you along the flight. A little boost each shot.'] },
+  },
+  jobSwap: 'You swap jobs every hole.',
   act: { label: 'swing', labels: ['swing', 'zoom'] },
   tip: 'Pip golfs and Bo is the ball, then swap! Shoot through the fire rings to ring Cinder\'s gong.',
   map: VDG.holes[0].map,
@@ -652,17 +659,28 @@ function vdgDrawBack(st) {
   ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, 200);
   for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 236 + Math.sin(x / W * Math.PI) * 110 + Math.sin(x * 0.045 + ph.hole) * 7 + (hash(x, 9) % 8));
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,160,120,0.3)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 237 + Math.sin(x / W * Math.PI) * 110 + Math.sin(x * 0.045 + ph.hole) * 7 + (hash(x, 9) % 8));
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(25,8,18,0.22)'; ctx.lineWidth = 3;
+  for (const dy of [30, 62]) { ctx.beginPath(); for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 236 + dy + Math.sin(x / W * Math.PI) * 110 + Math.sin(x * 0.03 + dy) * 5); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(25,8,18,0.25)'; ctx.beginPath(); for (let k = 0; k < 26; k++) { const h = hash(k, 67), x = h % W; vdgDot(x, 250 + Math.sin(x / W * Math.PI) * 110 + (h >> 10) % 60, 1.5 + (k % 3)); } ctx.fill();
   ctx.fillStyle = '#5c2e3c';
   ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, 300);
   for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 316 + Math.sin(x / W * Math.PI) * 70 + Math.sin(x * 0.07 + 2) * 5);
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,170,120,0.28)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 317 + Math.sin(x / W * Math.PI) * 70 + Math.sin(x * 0.07 + 2) * 5);
+  ctx.stroke();
   const gl = ctx.createLinearGradient(0, 320, 0, Hd.lavaY);
   gl.addColorStop(0, 'rgba(255,120,50,0)'); gl.addColorStop(1, `rgba(255,140,60,${0.42 + 0.06 * Math.sin(t * 2)})`);
   ctx.fillStyle = gl; ctx.fillRect(0, 320, W, Hd.lavaY - 320);
   // steam off the lake (a pure function of the clock)
   for (let k = 0; k < 6; k++) {
     const u = (t * 0.15 + k / 6) % 1, x = 220 + ((k * 151) % 540) + Math.sin(u * 6 + k) * 16;
-    ctx.fillStyle = `rgba(255,220,200,${0.15 * Math.sin(u * Math.PI)})`; circle(x, Hd.lavaY - 20 - u * 230, 14 + u * 26); ctx.fill();
+    const a = 0.15 * Math.sin(u * Math.PI), y = Hd.lavaY - 20 - u * 230, r = 14 + u * 26;
+    ctx.fillStyle = `rgba(255,220,200,${a})`; ctx.beginPath(); ctx.arc(x, y, r * 0.8, 0, Math.PI * 2); ctx.arc(x - r * 0.5, y + r * 0.25, r * 0.55, 0, Math.PI * 2); ctx.arc(x + r * 0.5, y + r * 0.2, r * 0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(255,240,225,${a * 0.9})`; circle(x - r * 0.2, y - r * 0.3, r * 0.35); ctx.fill();
   }
   // the lava (each surface span), then the rock over the backdrop
   for (let ty = 0; ty < ROWS; ty++) {
@@ -691,7 +709,8 @@ function vdgDrawAsh(tx, ty) {
   ctx.fillStyle = VDGC.ash; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
   ctx.fillStyle = VDGC.ashLt;
   for (let i = 0; i < 5; i++) { circle(x + 4 + ((h >> (i * 3)) % 23), y + 6 + ((h >> (i * 4 + 2)) % 20), 1.5); ctx.fill(); }
-  if (vdgTile(tx, ty - 1) !== 's' && vdgTile(tx, ty - 1) !== '#') { ctx.fillStyle = '#8f8592'; ctx.fillRect(x, y, T, 4); }
+  if (h % 4 === 0) { ctx.fillStyle = 'rgba(30,20,35,0.25)'; ctx.beginPath(); ctx.ellipse(x + 8 + (h >> 7) % 16, y + 14 + (h >> 11) % 10, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill(); }
+  if (vdgTile(tx, ty - 1) !== 's' && vdgTile(tx, ty - 1) !== '#') { ctx.fillStyle = '#8f8592'; ctx.fillRect(x, y, T, 4); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x, y, T, 1.5); }
 }
 function vdgDrawGong(st) {
   const ph = st.ph, g = ph.gong, R = vdgGongR(ph), t = G.clock, top = g.top;
@@ -977,3 +996,5 @@ Sfx.extra.vdgBlorp = function () { this.tone(180, 0.22, 'sine', 0.08, 60); this.
 Sfx.extra.vdgPlop = function () { this.tone(150, 0.14, 'sine', 0.035, 70); };
 Sfx.extra.vdgSizzle = function () { this.tone(1200, 0.4, 'sawtooth', 0.018, 200); this.tone(260, 0.35, 'sine', 0.06, 80, 0.03); this.tone(90, 0.3, 'triangle', 0.05, 50, 0.08); };
 Sfx.extra.vdgBoing = function () { this.tone(140, 0.32, 'sine', 0.09, 520); this.tone(700, 0.08, 'square', 0.025, 1100, 0.02); };
+// a dot added to the current path, so many dots fill in one call
+function vdgDot(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }

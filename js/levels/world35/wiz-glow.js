@@ -487,6 +487,7 @@ WIZ_PHASES.glow = {
   present(st, p) { return p.id === st.ph.light && (!!p.input.down || wizUp(p)); },
   labels(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.light ? 'flash' : 'pull')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.light ? 'Light!' : 'Find!')); },
+  jobKeys(st) { return st.ph.light === 1 ? ['finder', 'light'] : ['light', 'finder']; },
   legend(st) {
     const ph = st.ph, l = k => (k ? '<kbd>↑</kbd> raise <kbd>↓</kbd> lower the light' : '<kbd>W</kbd> raise <kbd>S</kbd> lower the light');
     return { pip: ph.light === 0 ? l(0) : 'stay in the light', bo: ph.light === 1 ? l(1) : 'stay in the light', pad: 'light: stick up raises, down lowers,' };
@@ -511,6 +512,12 @@ Sfx.extra.wizGlowRoom = function () { [392, 523, 659].forEach((f, i) => this.ton
 
 /* ---------- the room ---------- */
 wizRoom('glow', {
+  jobs: {
+    light: { title: 'Light', act: 'flash', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> raise the light <kbd>S</kbd> lower it',
+      howTo: ['Flash puffs away the ink shadows.'] },
+    finder: { title: 'Finder', act: 'pull', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      howTo: ['You can only jump in the light. Pull levers to open the way.'] },
+  },
   act: { label: 'flash', labels: ['flash', 'pull'] },
   tip: 'One holds the light (up raises it, the action flashes shadows away); the other can only jump in the light!',
   legend: { pip: '<kbd>W</kbd> raise <kbd>S</kbd> lower the light', bo: 'stay in the light', pad: 'light: stick up raises, down lowers,' },

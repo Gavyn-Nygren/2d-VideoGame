@@ -58,6 +58,7 @@ function roomDef(def, k) {
 function loadLevel(i, mode = 'play', opts = {}) {
   G.levelIndex = i;
   G.room = 0;
+  Jobs.now = null;
   G.level = parseLevel(roomDef(LEVELS[i], 0));
   const L = G.level;
   applyTheme(LEVELS[i].world, L.def.theme);
@@ -257,6 +258,7 @@ function step(dt) {
 
 function nextRoom() {
   G.room++;
+  Jobs.now = null;
   G.level = parseLevel(roomDef(LEVELS[G.levelIndex], G.room));
   const L = G.level;
   G.doorHold = 0; G.doorIn = [false, false]; G.taut = false; G.held = null; G.stretch = 0;
@@ -269,6 +271,9 @@ function nextRoom() {
   G.introT = 3.4; G.introQuick = false;
   applyTheme(LEVELS[G.levelIndex].world, L.def.theme); // a room can have its own def.theme
   Sfx.play('room'); rumble(0, 0.2, 0.4, 120); rumble(1, 0.2, 0.4, 120);
+  // (review, 2026-11-16) the new room's own action words and jobs on the touch buttons and the top bar, before the
+  // level's room hook (as loadLevel does): they used to keep room 1's words all level
+  setActUI(!!L.def.act); legendRender();
   hook('room', G.room, L);
   cpuRoom();
 }
@@ -473,7 +478,7 @@ window.__pipbo = { PONG, G, LEVELS, loadLevel, nextRoom, BUNGEE, CHAIN, GOLF, st
   pollInput, readPad, fit, liveWorlds, worldLevels, levelCode, makePlayer, NO_INPUT, keys,
   // computer partner
   // controls
-  Dev, Pads, playerDevice, btnLabel, btnHTML, drawBtn, controlsLine, startLevel, readyPress, Ready,
+  Dev, Pads, playerDevice, btnLabel, btnHTML, drawBtn, controlsLine, startLevel, readyPress, Ready, readyGo, controlRows, jobFor, setJobs, Jobs,
   // settings
   BIND, PadBind, KEYCAPS, showSettings, readPads, glyph,
   CPU, cpuBrain, cpuBrainKey, cpuSeek, cpuApplyCfg, cpuSetCfg, cpuNav, cpuNavReach, cpuNavCell, NAV };

@@ -961,7 +961,15 @@ function conveyorPaintBack(c, st) {
   // a scalloped frosting trim under the catwalk
   c.fillStyle = '#fff4fa'; for (let x = 0; x < W; x += 20) { c.beginPath(); c.arc(x + 10, C0.ceilY, 10, 0, Math.PI); c.fill(); }
   // the factory floor: chocolate and cream checks, a candy-stripe edge
-  for (let y = C0.floorY; y < H; y += 30) for (let x = 0; x < W; x += 30) { c.fillStyle = ((x + y) / 30) % 2 ? '#8f5a3e' : '#a46a4a'; c.fillRect(x, y, 30, 30); }
+  for (let y = C0.floorY; y < H; y += 30) for (let x = 0; x < W; x += 30) {
+    c.fillStyle = ((x + y) / 30) % 2 ? '#8f5a3e' : '#a46a4a'; c.fillRect(x, y, 30, 30);
+    // each tile a little bevelled: lit top edge, shady bottom edge, a glossy fleck
+    c.fillStyle = 'rgba(255,230,210,0.14)'; c.fillRect(x, y, 30, 2); c.fillRect(x, y, 2, 30);
+    c.fillStyle = 'rgba(40,15,5,0.18)'; c.fillRect(x, y + 28, 30, 2); c.fillRect(x + 28, y, 2, 30);
+    if (hash(x, y) % 4 === 0) { c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(x + 6, y + 6, 8, 2); }
+  }
+  // a soft shadow along the foot of the wall
+  { const fg = c.createLinearGradient(0, C0.floorY - 26, 0, C0.floorY); fg.addColorStop(0, 'rgba(160,60,110,0)'); fg.addColorStop(1, 'rgba(160,60,110,0.18)'); c.fillStyle = fg; c.fillRect(0, C0.floorY - 26, W, 26); }
   for (let x = 0; x < W; x += 24) { c.fillStyle = (x / 24) % 2 ? '#ff6fa8' : '#ffffff'; c.fillRect(x, C0.floorY, 24, 7); }
   c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(0, C0.floorY + 7, W, 3);
   // shelves: candy-cane ledges
@@ -971,6 +979,8 @@ function conveyorPaintBack(c, st) {
     c.fillStyle = '#ff4f86'; for (let x = s.x0 - 30; x < s.x1 + 30; x += 22) { c.beginPath(); c.moveTo(x, s.y + 30); c.lineTo(x + 11, s.y + 30); c.lineTo(x + 41, s.y); c.lineTo(x + 30, s.y); c.closePath(); c.fill(); }
     c.restore();
     c.strokeStyle = '#a8346a'; c.lineWidth = 2; c.strokeRect(s.x0 + 1, s.y + 1, s.x1 - s.x0 - 2, 28);
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(s.x0 + 3, s.y + 3, s.x1 - s.x0 - 6, 2);
+    c.fillStyle = 'rgba(120,30,70,0.16)'; c.fillRect(s.x0 + 4, s.y + 30, s.x1 - s.x0 - 4, 8);
     // a little support post
     c.fillStyle = '#d96aa3'; c.fillRect(s.x1 - 22, s.y + 30, 10, C0.floorY - s.y - 30);
   }
@@ -1170,14 +1180,19 @@ function conveyorDrawBin(st, bn, t) {
   const sh = bn.shake > 0 ? Math.sin(t * 50) * 3 * bn.shake : 0;
   ctx.save(); ctx.translate(x + sh, y);
   if (bn.glow > 0) { ctx.save(); ctx.globalAlpha = 0.35 + 0.35 * Math.sin(t * 8); ctx.fillStyle = C.gold; rr(-w / 2 - 8, -h - 12, w + 16, h + 14, 14); ctx.fill(); ctx.restore(); }
-  // the tub
+  // a soft shadow under it, then the tub
+  ctx.fillStyle = 'rgba(60,20,30,0.2)'; ctx.beginPath(); ctx.ellipse(0, 1, w / 2 + 6, 4, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = k.col; ctx.beginPath(); ctx.moveTo(-w / 2, -h); ctx.lineTo(w / 2, -h); ctx.lineTo(w / 2 - 6, 0); ctx.lineTo(-w / 2 + 6, 0); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = k.dark; ctx.lineWidth = 3; ctx.stroke();
   ctx.fillStyle = k.tint; rr(-w / 2 + 9, -h + 10, w - 18, h - 18, 8); ctx.fill();
   // the big picture of its candy
   conveyorDrawCandy(bn.kind, 0, -h / 2 + 2 + (bn.yum > 0 ? -Math.sin(bn.yum * Math.PI) * 4 : 0), 1.25, 0);
+  // a shine down the left side, a shade on the right
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.moveTo(-w / 2 + 3, -h + 4); ctx.lineTo(-w / 2 + 9, -h + 4); ctx.lineTo(-w / 2 + 12, -4); ctx.lineTo(-w / 2 + 8, -4); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.beginPath(); ctx.moveTo(w / 2 - 8, -h + 4); ctx.lineTo(w / 2 - 2, -h + 4); ctx.lineTo(w / 2 - 7, -2); ctx.lineTo(w / 2 - 12, -2); ctx.closePath(); ctx.fill();
   // the rim
   ctx.fillStyle = k.dark; rr(-w / 2 - 4, -h - 5, w + 8, 9, 4.5); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; rr(-w / 2 - 2, -h - 4, w + 4, 2.5, 1.2); ctx.fill();
   // a happy or a yucky face on the rim when something lands in it
   if (bn.blech > 0) { ctx.globalAlpha = bn.blech; text('blech', 0, -h - 15, 12, '#e8ffb0', 'center'); ctx.globalAlpha = 1; }
   ctx.restore();
@@ -1189,9 +1204,12 @@ function conveyorDrawBin(st, bn, t) {
   text(k.bin, x, y + 3 + (fs + 5) / 2 + 0.5, fs, '#ffffff', 'center', 'body');
   if (o) {
     const done = o.got >= o.need, s = done ? '✓' : o.got + '/' + o.need, r = (big ? 15 : 12) * (1 + o.pop * 0.3);
-    ctx.fillStyle = done ? '#3ccb6c' : '#ffffff'; circle(x + w / 2 - 2, y - h - 4, r); ctx.fill();
-    ctx.strokeStyle = done ? '#1d7d40' : k.dark; ctx.lineWidth = 2; ctx.stroke();
-    text(s, x + w / 2 - 2, y - h - 3.5, done ? r * 1.1 : r * 0.78, done ? '#ffffff' : C.ink, 'center', 'body');
+    // a round badge, or a pill wide enough for its words (with air on each side)
+    const fsz = done ? r * 1.1 : r * 0.78; ctx.font = conveyorFont(Math.round(fsz));
+    const bw = Math.max(2 * r, ctx.measureText(s).width + 14), bx = x + w / 2 - 2;
+    ctx.fillStyle = done ? '#3ccb6c' : '#ffffff'; rr(bx - bw / 2, y - h - 4 - r, bw, 2 * r, r); ctx.fill();
+    ctx.strokeStyle = done ? '#1d7d40' : k.dark; ctx.lineWidth = 2; rr(bx - bw / 2, y - h - 4 - r, bw, 2 * r, r); ctx.stroke();
+    text(s, bx, y - h - 3.5, fsz, done ? '#ffffff' : C.ink, 'center', 'body');
   }
 }
 function conveyorDrawCandyObj(st, c) {

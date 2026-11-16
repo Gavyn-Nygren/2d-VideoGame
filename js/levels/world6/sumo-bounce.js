@@ -489,22 +489,37 @@ function sumoLooks(dt) {
 function sumoArcCap(cx, cy, R, a) { ctx.beginPath(); ctx.arc(cx, cy, R, -Math.PI / 2 - a, -Math.PI / 2 + a); ctx.closePath(); }
 function sumoDrawBackdrop() {
   const st = G.mst, wy = st.waterY;
-  // a garden fence behind the pool
-  ctx.fillStyle = 'rgba(224,168,104,0.55)';
-  for (let x = 38; x < W - 38; x += 26) { ctx.beginPath(); ctx.moveTo(x, wy); ctx.lineTo(x, wy - 54); ctx.lineTo(x + 8, wy - 62); ctx.lineTo(x + 16, wy - 54); ctx.lineTo(x + 16, wy); ctx.closePath(); ctx.fill(); }
-  ctx.fillStyle = 'rgba(154,98,54,0.35)'; ctx.fillRect(30, wy - 42, W - 60, 6); ctx.fillRect(30, wy - 20, W - 60, 6);
+  // the neighbours' houses, trees and a picket fence behind the pool (cached; walls stay in front)
+  // (with a striped umbrella at each end of the far poolside, small and hazy, baked onto the same picture)
+  paBehindTiles(paBackyard(wy + 4, 6), undefined, wy - 191, wy + 4, { key: 'umb' + wy, paint: g => {
+    for (const [ux, flip] of [[120, 1], [W - 120, -1]]) {
+      g.fillStyle = 'rgba(122,82,50,0.55)'; g.fillRect(ux - 1.5, wy - 66, 3, 66);
+      for (let k = 0; k < 6; k++) { g.fillStyle = k % 2 ? 'rgba(255,255,255,0.75)' : (flip > 0 ? 'rgba(255,107,74,0.7)' : 'rgba(91,149,255,0.7)'); g.beginPath(); g.moveTo(ux, wy - 82); g.lineTo(ux - 42 + k * 14, wy - 62); g.lineTo(ux - 28 + k * 14, wy - 62); g.closePath(); g.fill(); }
+    }
+  } });
   // party bunting from wall to wall
   const cols = [C.pip, C.gold, C.bo, '#ff8fc7', C.grass];
   for (const [y0, sag, x0, x1] of [[88, 34, 30, W / 2], [88, 34, W / 2, W - 30]]) {
     ctx.strokeStyle = 'rgba(122,82,50,0.7)'; ctx.lineWidth = 1.5; ctx.beginPath();
     for (let i = 0; i <= 16; i++) { const f = i / 16, x = x0 + (x1 - x0) * f, y = y0 + sag * 4 * f * (1 - f); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
     ctx.stroke();
-    for (let i = 1; i < 12; i++) {
-      const f = i / 12, x = x0 + (x1 - x0) * f, y = y0 + sag * 4 * f * (1 - f), sw = Math.sin(G.clock * 2 + i + x0) * 1.5;
-      ctx.fillStyle = cols[(i + (x0 > 100 ? 2 : 0)) % cols.length];
-      ctx.beginPath(); ctx.moveTo(x - 8, y); ctx.lineTo(x + 8, y); ctx.lineTo(x + sw, y + 16); ctx.closePath(); ctx.fill();
-    }
   }
+  // the flags, one path per colour (and one for all the shaded halves): far fewer draws than flag by flag
+  const flag = (x0, x1, i) => { const f = i / 12; return [x0 + (x1 - x0) * f, 88 + 34 * 4 * f * (1 - f), Math.sin(G.clock * 2 + i + x0) * 1.5]; };
+  const runs = [[30, W / 2], [W / 2, W - 30]];
+  ctx.lineWidth = 1;
+  for (let c = 0; c < cols.length; c++) {
+    ctx.beginPath();
+    for (const [x0, x1] of runs) for (let i = 1; i < 12; i++) {
+      if ((i + (x0 > 100 ? 2 : 0)) % cols.length !== c) continue;
+      const [x, y, sw] = flag(x0, x1, i);
+      ctx.moveTo(x - 8, y); ctx.lineTo(x + 8, y); ctx.lineTo(x + sw, y + 16); ctx.closePath();
+    }
+    ctx.fillStyle = cols[c]; ctx.fill(); ctx.strokeStyle = shade(cols[c], 0.35); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(20,20,40,0.14)'; ctx.beginPath();
+  for (const [x0, x1] of runs) for (let i = 1; i < 12; i++) { const [x, y, sw] = flag(x0, x1, i); ctx.moveTo(x, y); ctx.lineTo(x + 8, y); ctx.lineTo(x + sw, y + 16); ctx.closePath(); }
+  ctx.fill();
 }
 function sumoDrawMat() {
   const st = G.mst, g = st.geo, P = st.P, R = g.R, ry = sumoRimY(), wy = st.waterY;
@@ -514,7 +529,12 @@ function sumoDrawMat() {
   ctx.fillStyle = C.stoneEdge; ctx.fillRect(g.cx - 40, top, 80, H - T - top);
   ctx.fillStyle = C.stone; ctx.fillRect(g.cx - 32, top, 64, H - T - top);
   ctx.fillStyle = C.stoneLight; ctx.fillRect(g.cx - 32, top, 10, H - T - top);
+  ctx.fillStyle = shade(C.stone, 0.25); ctx.fillRect(g.cx + 20, top, 12, H - T - top);
+  ctx.strokeStyle = C.stoneEdge; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let y = top + 22, k = 0; y < H - T; y += 22, k++) { ctx.moveTo(g.cx - 32, y); ctx.lineTo(g.cx + 32, y); const bx = g.cx + (k % 2 ? -10 : 12); ctx.moveTo(bx, y); ctx.lineTo(bx, y + 22); }
+  ctx.stroke();
   ctx.fillStyle = C.stoneEdge; rr(g.cx - 52, top - 2, 104, 10, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(g.cx - 48, top - 1, 96, 2);
   // ... the part under water looks under water
   ctx.fillStyle = 'rgba(70,150,220,0.62)'; ctx.fillRect(g.cx - 40, wy, 80, H - T - wy);
   ctx.fillStyle = 'rgba(190,230,255,0.9)'; ctx.beginPath(); ctx.moveTo(g.cx - 40, wy + 4);
@@ -529,8 +549,16 @@ function sumoDrawMat() {
   // side band (the clay drum), then the light clay top
   ctx.fillStyle = SUMO_SIDE; sumoArcCap(g.cx, st.cy + ct, R, a); ctx.fill(); ctx.fillRect(g.cx - st.hw, ry, st.hw * 2, ct);
   ctx.fillStyle = SUMO_SIDE_DK; ctx.fillRect(g.cx - st.hw, ry + ct - 4, st.hw * 2, 4);
+  // the drum's woven straw band and a darker line under the top edge
+  ctx.fillStyle = 'rgba(255,240,200,0.22)'; for (let x = g.cx - st.hw + 6; x < g.cx + st.hw - 6; x += 14) ctx.fillRect(x, ry + 3, 7, ct - 9);
+  ctx.strokeStyle = SUMO_SIDE_DK; ctx.lineWidth = 2; ctx.strokeRect(g.cx - st.hw, ry, st.hw * 2, ct);
   ctx.fillStyle = SUMO_CLAY; sumoArcCap(g.cx, st.cy, R, a); ctx.fill();
   ctx.save(); sumoArcCap(g.cx, st.cy, R, a); ctx.clip();
+  // packed clay: little speckles and a soft shade low on the dome
+  ctx.fillStyle = 'rgba(120,80,40,0.16)';
+  ctx.beginPath();
+  for (let i = 0; i < 46; i++) { const h = hash(i, 41), x = g.cx - st.hw + (h % 1000) / 1000 * st.hw * 2, y = ry - 4 - ((h >> 10) % 60), r = 1 + (h >> 20) % 2; ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }
+  ctx.fill();
   ctx.fillStyle = SUMO_CLAY_HI; ctx.beginPath(); ctx.arc(g.cx, st.cy, R, -Math.PI / 2 - a, -Math.PI / 2 + a); ctx.arc(g.cx, st.cy, R - 7, -Math.PI / 2 + a, -Math.PI / 2 - a, true); ctx.fill();
   ctx.restore();
   // the straw ring line (tawara) and the two starting lines (shikiri-sen)

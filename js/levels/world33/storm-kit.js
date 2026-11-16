@@ -46,7 +46,7 @@
      waterDark, foam, snow, snowDark, ice, iceDark, rock, rockDark, wood, woodDark, flare, gold }. */
 const STORMCHASE = (() => {
   const S = SHRUNK, K = { defs: {} };
-  for (const k of ['FONT', 'lerp', 'smooth', 'hash', 'mmss', 'stubMap', 'BREAK', 'quiet', 'key', 'track', 'both', 'idle', 'actLabels',
+  for (const k of ['FONT', 'pic', 'lerp', 'smooth', 'hash', 'mmss', 'stubMap', 'BREAK', 'quiet', 'key', 'track', 'both', 'idle', 'actLabels',
     'hide', 'unhide', 'place', 'fx', 'pop', 'part', 'spark', 'confetti', 'dust', 'poof', 'hint', 'hintOnce', 'msg', 'tickFx', 'star',
     'drawParts', 'drawPops', 'chip', 'panel', 'meter', 'medal', 'helpLine', 'drawMsg', 'prompter', 'hero']) K[k] = S[k];
   const TAU = Math.PI * 2, H_ = K.hash;
@@ -145,9 +145,14 @@ const STORMCHASE = (() => {
     clear: ['#4a7ab0', '#8ab4d8', '#e8d4a8', '#9aa8b8', '#c4ccd6'],
   };
   K.sky = (cx, t, o = {}) => {
-    const M = MOODS[o.mood || 'storm'], g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, M[0]); g.addColorStop(0.55, M[1]); g.addColorStop(1, M[2]);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const M = MOODS[o.mood || 'storm'];
+    // the gradient never moves on the screen: one solid picture per mood (a full-screen gradient fill each frame is
+    // one of the slowest things to draw on a phone)
+    K.pic('ssky|' + (o.mood || 'storm'), W, H, 0, 0, () => {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, M[0]); g.addColorStop(0.55, M[1]); g.addColorStop(1, M[2]);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }, 0, 0, true);
     // three banks of cloud: far ones slow, near ones fast and low
     for (let layer = 0; layer < 3; layer++) {
       const par = [0.04, 0.1, 0.2][layer], y0 = [70, 40, 10][layer], sc = [0.8, 1.1, 1.5][layer];
@@ -159,8 +164,25 @@ const STORMCHASE = (() => {
         for (let j = 0; j < 5; j++) { circle(x + j * 52 * sc, yy + Math.sin(j * 1.7 + k) * 10 * sc, (36 + H_(k + j) * 24) * sc); ctx.fill(); }
         ctx.fillRect(x - 20, yy - 10, 260 * sc, 40 * sc);
       }
+      // each bank gets a darker, heavy belly and a softly lit top on its puffs (the puffs are cached by k, so they stay put)
+      const ga = ctx.globalAlpha;
+      // (one path for all the bellies of a layer and one for all its lit tops)
+      ctx.globalAlpha = ga * 0.35; ctx.fillStyle = M[0]; ctx.beginPath();
+      for (let x = -off - span; x < W + span; x += span) {
+        const k = Math.round((x + off) / span) + layer * 31, yy = y0 + H_(k) * 30;
+        ctx.moveTo(x + 250 * sc, yy + 30 * sc); ctx.ellipse(x + 110 * sc, yy + 30 * sc, 140 * sc, 14 * sc, 0, 0, TAU);
+      }
+      ctx.fill();
+      ctx.globalAlpha = ga * 0.22; ctx.fillStyle = M[2]; ctx.beginPath();
+      for (let x = -off - span; x < W + span; x += span) {
+        const k = Math.round((x + off) / span) + layer * 31, yy = y0 + H_(k) * 30;
+        for (let j = 0; j < 5; j++) { const r = (36 + H_(k + j) * 24) * sc, cx2 = x + j * 52 * sc - r * 0.2, cy2 = yy + Math.sin(j * 1.7 + k) * 10 * sc - r * 0.35; ctx.moveTo(cx2 + r * 0.62, cy2); ctx.arc(cx2, cy2, r * 0.62, 0, TAU); }
+      }
+      ctx.fill();
+      ctx.fillStyle = M[layer === 2 ? 3 : 4];
+      ctx.globalAlpha = ga;
       // a bright rim under the near bank
-      if (layer === 2) { ctx.globalAlpha = 0.18; ctx.fillStyle = '#ffffff'; for (let x = -off - span; x < W + span; x += span) ctx.fillRect(x, 66 + H_(Math.round((x + off) / span) + 62) * 30, 220 * sc, 3); }
+      if (layer === 2) { ctx.globalAlpha = 0.18; ctx.fillStyle = '#ffffff'; ctx.beginPath(); for (let x = -off - span; x < W + span; x += span) ctx.rect(x, 66 + H_(Math.round((x + off) / span) + 62) * 30, 220 * sc, 3); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
     const fl = o.flash || 0;
@@ -325,21 +347,45 @@ const STORMCHASE = (() => {
       const par = [0.08, 0.2, 0.45][layer], y = hy + [0, 14, 34][layer], step = [230, 300, 380][layer];
       const sx = cx * par, i0 = Math.floor(sx / step) - 1, i1 = Math.ceil((sx + W) / step) + 1;
       ctx.fillStyle = ['#6e8452', '#7a9256', '#86a05c'][layer]; ctx.fillRect(0, y, W, H - y);
+      // a soft dark line where each field meets the one behind, then crop rows / furrows across it
+      ctx.fillStyle = 'rgba(30,40,20,0.25)'; ctx.fillRect(0, y, W, 2);
+      ctx.fillStyle = ['rgba(50,66,36,0.18)', 'rgba(50,66,36,0.2)', 'rgba(50,66,36,0.22)'][layer];
+      const fh = [14, 20, H - y][layer], rows = [3, 4, 6][layer];
+      for (let r = 1; r <= rows; r++) { const ry = y + r * fh / (rows + 1); ctx.fillRect(0, ry, W, layer + 1); }
+      if (layer === 0) {
+        // a hazy tree line along the far edge
+        ctx.fillStyle = 'rgba(64,82,56,0.85)';
+        const tsx = cx * 0.06, t0 = Math.floor(tsx / 26) - 1;
+        ctx.beginPath(); ctx.moveTo(0, y);
+        for (let i = t0; i < t0 + W / 26 + 3; i++) { const tx = i * 26 - tsx, th = 8 + H_(i * 5 + 77) * 10; ctx.lineTo(tx, y - th * 0.4); ctx.quadraticCurveTo(tx + 13, y - th - 4, tx + 26, y - th * 0.4); }
+        ctx.lineTo(W, y); ctx.closePath(); ctx.fill();
+      }
       for (let i = i0; i <= i1; i++) {
         const x = i * step - sx + H_(i * 3 + layer) * step * 0.4, kind = Math.floor(H_(i * 7 + layer * 13) * 6);
         const sc = [0.45, 0.7, 1][layer];
         if (kind === 0) { // a barn
-          ctx.fillStyle = layer === 0 ? '#6a3a34' : '#8a3a30'; ctx.fillRect(x, y - 40 * sc, 60 * sc, 40 * sc);
-          ctx.beginPath(); ctx.moveTo(x - 6 * sc, y - 40 * sc); ctx.lineTo(x + 30 * sc, y - 64 * sc); ctx.lineTo(x + 66 * sc, y - 40 * sc); ctx.fill();
+          const bc = layer === 0 ? '#6a3a34' : '#8a3a30';
+          ctx.fillStyle = bc; ctx.fillRect(x, y - 40 * sc, 60 * sc, 40 * sc);
+          ctx.fillStyle = 'rgba(20,10,10,0.28)'; ctx.fillRect(x + 42 * sc, y - 40 * sc, 18 * sc, 40 * sc);
+          ctx.fillStyle = 'rgba(20,10,10,0.18)'; for (let k = 1; k < 6; k++) ctx.fillRect(x + k * 10 * sc, y - 40 * sc, 1, 40 * sc);
+          ctx.fillStyle = '#4a3a36'; ctx.beginPath(); ctx.moveTo(x - 6 * sc, y - 40 * sc); ctx.lineTo(x + 30 * sc, y - 64 * sc); ctx.lineTo(x + 66 * sc, y - 40 * sc); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.moveTo(x - 6 * sc, y - 40 * sc); ctx.lineTo(x + 30 * sc, y - 64 * sc); ctx.lineTo(x + 30 * sc, y - 60 * sc); ctx.lineTo(x - 2 * sc, y - 40 * sc); ctx.closePath(); ctx.fill();
           ctx.strokeStyle = 'rgba(240,230,210,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(x + 20 * sc, y - 26 * sc, 20 * sc, 26 * sc);
+          ctx.beginPath(); ctx.moveTo(x + 20 * sc, y - 26 * sc); ctx.lineTo(x + 40 * sc, y); ctx.moveTo(x + 40 * sc, y - 26 * sc); ctx.lineTo(x + 20 * sc, y); ctx.stroke();
+          ctx.fillStyle = 'rgba(255,220,140,0.55)'; ctx.fillRect(x + 26 * sc, y - 50 * sc, 8 * sc, 7 * sc);
         } else if (kind === 1) { // a silo
           ctx.fillStyle = '#9aa0a6'; ctx.fillRect(x, y - 70 * sc, 22 * sc, 70 * sc);
           ctx.beginPath(); ctx.arc(x + 11 * sc, y - 70 * sc, 11 * sc, Math.PI, 0); ctx.fill();
+          ctx.fillStyle = 'rgba(30,34,40,0.28)'; ctx.fillRect(x + 14 * sc, y - 70 * sc, 8 * sc, 70 * sc);
+          ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x + 3 * sc, y - 70 * sc, 3 * sc, 70 * sc);
+          ctx.fillStyle = 'rgba(60,64,70,0.4)'; for (let k = 1; k < 5; k++) ctx.fillRect(x, y - k * 14 * sc, 22 * sc, 1.2);
         } else if (kind === 2) { // a tree bending in the wind
           ctx.strokeStyle = '#3a3026'; ctx.lineWidth = 4 * sc; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 4 * sc, y - 30 * sc, x + 12 * sc, y - 46 * sc); ctx.stroke();
           ctx.fillStyle = layer === 2 ? '#3e5a2e' : '#4a6238';
           const b = Math.sin(t * 3 + i) * 4 * sc;
           circle(x + 14 * sc + b, y - 52 * sc, 18 * sc); ctx.fill(); circle(x + 28 * sc + b, y - 46 * sc, 14 * sc); ctx.fill();
+          ctx.fillStyle = 'rgba(20,30,16,0.3)'; circle(x + 20 * sc + b, y - 44 * sc, 13 * sc); ctx.fill();
+          ctx.fillStyle = 'rgba(200,230,170,0.18)'; circle(x + 10 * sc + b, y - 58 * sc, 9 * sc); ctx.fill();
         } else if (kind === 3) { // a windmill pump
           ctx.strokeStyle = '#3a3a40'; ctx.lineWidth = 2 * sc; ctx.beginPath(); ctx.moveTo(x - 10 * sc, y); ctx.lineTo(x, y - 60 * sc); ctx.lineTo(x + 10 * sc, y); ctx.stroke();
           for (let k = 0; k < 8; k++) { const a = t * 8 + k * TAU / 8; ctx.beginPath(); ctx.moveTo(x, y - 60 * sc); ctx.lineTo(x + Math.cos(a) * 16 * sc, y - 60 * sc + Math.sin(a) * 16 * sc); ctx.stroke(); }
@@ -397,7 +443,9 @@ const STORMCHASE = (() => {
     }
     // wheels
     for (const wx of [-52, 54]) {
+      ctx.fillStyle = '#2a2c32'; ctx.beginPath(); ctx.arc(wx, -10, 19, Math.PI, 0); ctx.fill();
       ctx.fillStyle = '#1a1a20'; circle(wx, -10, 15); ctx.fill();
+      ctx.strokeStyle = '#33343a'; ctx.lineWidth = 2; circle(wx, -10, 12.5); ctx.stroke();
       const lost = wx < 0 && dents >= 2;
       ctx.fillStyle = lost ? '#3a3a40' : '#b8bcc4'; circle(wx, -10, lost ? 5 : 8); ctx.fill();
       ctx.strokeStyle = '#5a5e66'; ctx.lineWidth = 1.5;

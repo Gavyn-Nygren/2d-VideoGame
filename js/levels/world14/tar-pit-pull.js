@@ -879,11 +879,27 @@ function tarPaintBack(c, st, L) {
   c.beginPath(); c.ellipse(dx + 55, 251, 9, 6, 0.2, 0, Math.PI * 2); c.fill();
   // the gully: tall cliffs and a waterfall behind
   if (st.style === 'gully') {
-    c.fillStyle = '#9a7f68'; c.fillRect(380, 120, 210, 200);
-    c.fillStyle = 'rgba(255,255,255,0.08)'; for (let y = 130; y < 320; y += 26) c.fillRect(380, y, 210, 3);
+    // a cliff of stacked rock blocks: lit left face, shady right, a ragged top with moss and hanging creepers
+    const cg = c.createLinearGradient(380, 0, 590, 0); cg.addColorStop(0, '#a88c74'); cg.addColorStop(0.55, '#9a7f68'); cg.addColorStop(1, '#826a56');
+    c.fillStyle = cg;
+    c.beginPath(); c.moveTo(376, 322); c.lineTo(378, 134);
+    for (let x = 378; x <= 592; x += 14) c.lineTo(x, 124 + (hash(x, 31) % 10));
+    c.lineTo(594, 322); c.closePath(); c.fill();
+    for (let row = 0, y = 136; y < 320; row++, y += 26) {
+      c.fillStyle = 'rgba(60,40,28,0.22)'; c.fillRect(380, y + 22, 210, 3);
+      c.fillStyle = 'rgba(255,240,220,0.12)'; c.fillRect(380, y, 210, 2);
+      for (let x = 380 + (row % 2) * 24; x < 590; x += 48) { c.fillStyle = 'rgba(60,40,28,0.18)'; c.fillRect(x, y + 2, 3, 20); c.fillStyle = 'rgba(255,240,220,0.08)'; c.fillRect(x + 3, y + 2, 2, 20); }
+    }
+    c.strokeStyle = '#6e5644'; c.lineWidth = 2.5;
+    c.beginPath(); c.moveTo(376, 322); c.lineTo(378, 134); for (let x = 378; x <= 592; x += 14) c.lineTo(x, 124 + (hash(x, 31) % 10)); c.lineTo(594, 322); c.stroke();
+    c.fillStyle = '#4fa244'; for (let x = 382; x < 590; x += 12) { c.beginPath(); c.arc(x, 127 + (hash(x, 31) % 10), 6 + (hash(x, 5) % 4), 0, Math.PI * 2); c.fill(); }
+    c.strokeStyle = '#3f8f3a'; c.lineWidth = 2; for (const vx2 of [396, 432, 548, 574]) { c.beginPath(); c.moveTo(vx2, 128); c.quadraticCurveTo(vx2 + 6, 170, vx2 - 2, 200 + (hash(vx2, 1) % 50)); c.stroke(); }
     const wg = c.createLinearGradient(0, 120, 0, 320); wg.addColorStop(0, 'rgba(170,225,255,0.9)'); wg.addColorStop(1, 'rgba(210,240,255,0.6)');
     c.fillStyle = wg; c.fillRect(468, 110, 34, 210);
     c.fillStyle = 'rgba(255,255,255,0.6)'; for (let k = 0; k < 4; k++) c.fillRect(472 + k * 8, 110, 2, 210);
+    c.fillStyle = 'rgba(80,140,190,0.35)'; c.fillRect(498, 110, 4, 210);
+    // spray where it lands
+    c.fillStyle = 'rgba(255,255,255,0.55)'; for (let k = 0; k < 7; k++) { c.beginPath(); c.arc(462 + k * 8, 314 - (k % 3) * 4, 7 + (k % 2) * 3, 0, Math.PI * 2); c.fill(); }
   }
   // palms and ferns (deco)
   for (const d of st.deco) tarPaintDeco(c, d);
@@ -899,7 +915,13 @@ function tarPaintBack(c, st, L) {
   }
   c.fillStyle = 'rgba(30,80,30,0.25)'; for (let i = 0; i < 26; i++) { const x = i * 40 + 6; c.beginPath(); c.arc(x, 10 + (hash(i, 5) % 10), 10, 0, Math.PI * 2); c.fill(); }
   // dark goo stains inside the pits (behind the tar)
-  for (const rg of st.regions) if (!rg.shallow) { c.fillStyle = 'rgba(40,28,52,0.55)'; c.fillRect(rg.x0, rg.surf - 30, rg.x1 - rg.x0, 30); }
+  for (const rg of st.regions) if (!rg.shallow) {
+    const pg = c.createLinearGradient(0, rg.surf - 44, 0, rg.surf); pg.addColorStop(0, 'rgba(40,28,52,0)'); pg.addColorStop(0.35, 'rgba(40,28,52,0.35)'); pg.addColorStop(1, 'rgba(40,28,52,0.75)');
+    c.fillStyle = pg; c.fillRect(rg.x0, rg.surf - 44, rg.x1 - rg.x0, 44);
+    // tar drips staining the pit walls
+    c.fillStyle = 'rgba(40,28,52,0.6)';
+    for (const ex of [rg.x0, rg.x1 - 6]) for (let k = 0; k < 3; k++) { const dx = ex + (k % 2) * 2, len = 8 + hash(ex, k) % 16; tarRrc(c, dx, rg.surf - len - 4, 4, len + 6, 2); c.fill(); }
+  }
   // the banks: warm rock with moss on top
   for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
     if (L.grid[ty][tx] !== '#') continue;
@@ -908,9 +930,12 @@ function tarPaintBack(c, st, L) {
     c.fillStyle = ['#a07a52', '#916c48', '#80603f', '#715438', '#634a32', '#58422d'][Math.min(5, depth)];
     c.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
     const h = hash(tx, ty);
+    // layered sediment: a thin dark seam and a lit band every few rows, plus pebbles with a lit top
+    if (ty % 2 === 0) { c.fillStyle = 'rgba(60,38,22,0.18)'; c.fillRect(x - 0.5, y + 20 + (tx % 2), T + 1, 2.5); c.fillStyle = 'rgba(255,230,190,0.08)'; c.fillRect(x - 0.5, y + 23 + (tx % 2), T + 1, 2); }
+    if (h % 7 === 2) { const px = x + 6 + (h % 18), py = y + 8 + ((h >> 4) % 14); c.fillStyle = 'rgba(70,48,30,0.5)'; c.beginPath(); c.ellipse(px, py, 4, 3, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,240,215,0.25)'; c.beginPath(); c.arc(px - 1.2, py - 1.2, 1.4, 0, Math.PI * 2); c.fill(); }
     c.fillStyle = 'rgba(255,230,190,0.12)'; if (h % 3 === 0) { tarRrc(c, x + 4 + (h % 12), y + 9 + ((h >> 3) % 10), 9, 5, 2.5); c.fill(); }
     c.fillStyle = 'rgba(60,40,25,0.25)'; if (h % 4 === 1) { tarRrc(c, x + 3 + ((h >> 5) % 14), y + 6 + ((h >> 2) % 14), 7, 4, 2); c.fill(); }
-    if (open(tx - 1, ty)) { c.fillStyle = 'rgba(50,32,20,0.45)'; c.fillRect(x, y, 3, T); }
+    if (open(tx - 1, ty)) { c.fillStyle = 'rgba(50,32,20,0.45)'; c.fillRect(x, y, 3, T); c.fillStyle = 'rgba(255,230,190,0.14)'; c.fillRect(x + 3, y, 2, T); }
     if (open(tx + 1, ty)) { c.fillStyle = 'rgba(50,32,20,0.45)'; c.fillRect(x + T - 3, y, 3, T); }
     if (ty > 0 && open(tx, ty - 1) && tile(tx, ty - 1) !== 't') {
       c.fillStyle = '#3f8f3a'; c.fillRect(x, y, T, 9);
@@ -953,8 +978,13 @@ function tarPaintDeco(c, d) {
       for (let j = 1; j < 6; j++) { const u = j / 6, px = x + (ex - x) * u, py = y + (ey + 6 - y) * u - 6 * Math.sin(u * Math.PI); c.beginPath(); c.ellipse(px, py, 5 * s * (1 - u * 0.5), 2 * s, a + 1.2, 0, Math.PI * 2); c.fill(); }
     }
   } else if (d.k === 'rock') {
-    c.fillStyle = '#8f7a66'; c.beginPath(); c.ellipse(x, y, d.w || 26, 14, 0, Math.PI, 0); c.fill();
-    c.fillStyle = 'rgba(255,255,255,0.15)'; c.beginPath(); c.ellipse(x - 6, y - 8, 8, 4, -0.3, 0, Math.PI * 2); c.fill();
+    const rw = d.w || 26;
+    c.fillStyle = 'rgba(30,20,10,0.2)'; c.beginPath(); c.ellipse(x + 3, y + 1, rw + 6, 4, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#8f7a66'; c.beginPath(); c.ellipse(x, y, rw, 14, 0, Math.PI, 0); c.fill();
+    c.fillStyle = '#76634f'; c.beginPath(); c.ellipse(x + rw * 0.25, y, rw * 0.75, 8, 0, Math.PI, 0); c.fill();
+    c.strokeStyle = '#5e4c3c'; c.lineWidth = 2; c.beginPath(); c.ellipse(x, y, rw, 14, 0, Math.PI, 0); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.22)'; c.beginPath(); c.ellipse(x - 6, y - 8, 8, 4, -0.3, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#6fbf4a'; c.beginPath(); c.ellipse(x - rw * 0.3, y - 11, 7, 3, -0.2, 0, Math.PI * 2); c.fill();
   } else if (d.k === 'reeds') {
     for (let k = 0; k < 5; k++) {
       const rx = x + k * 7 - 14, h = 40 + (hash(k, x) % 20);
@@ -962,10 +992,14 @@ function tarPaintDeco(c, d) {
       if (k % 2 === 0) { c.fillStyle = '#7a4f2a'; tarRrc(c, rx + (k - 2) * 2 - 3, y - h - 2, 6, 14, 3); c.fill(); }
     }
   } else if (d.k === 'sign') {
+    c.fillStyle = 'rgba(30,20,10,0.2)'; c.beginPath(); c.ellipse(x, y + 1, 12, 3, 0, 0, Math.PI * 2); c.fill();
     c.fillStyle = '#7d5530'; c.fillRect(x - 3, y - 44, 6, 44);
+    c.fillStyle = '#5e3e22'; c.fillRect(x + 1, y - 44, 2, 44);
     c.font = '13px "Lilita One", "Arial Rounded MT Bold", sans-serif';
     const w = Math.max(70, c.measureText(d.text || '').width + 20);
+    c.fillStyle = 'rgba(40,25,10,0.2)'; tarRrc(c, x - w / 2 + 2, y - 61, w, 26, 6); c.fill();
     c.fillStyle = '#c9925a'; tarRrc(c, x - w / 2, y - 64, w, 26, 6); c.fill();
+    c.fillStyle = '#b98250'; tarRrc(c, x - w / 2, y - 44, w, 6, 3); c.fill();
     c.strokeStyle = '#7d5530'; c.lineWidth = 2; tarRrc(c, x - w / 2, y - 64, w, 26, 6); c.stroke();
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#3a2410';
     c.fillText(d.text || '', x, y - 50.5);

@@ -679,7 +679,11 @@
       }
       if (H_(seed + 3) > 0.45) { // a ship
         const sx = x + 80; ctx.fillStyle = '#0f3038'; ctx.beginPath(); ctx.moveTo(sx, 290); ctx.lineTo(sx + 150, 290); ctx.lineTo(sx + 140, 302); ctx.lineTo(sx + 8, 302); ctx.fill();
-        ctx.fillRect(sx + 100, 270, 30, 20); ctx.fillStyle = 'rgba(255,207,106,0.6)'; for (let j = 0; j < 3; j++) ctx.fillRect(sx + 104 + j * 9, 276, 4, 4);
+        ctx.fillRect(sx + 100, 270, 30, 20); ctx.fillRect(sx + 112, 258, 6, 12);
+        for (let j = 0; j < 4; j++) { ctx.fillStyle = ['#1a4048', '#2a3a3a', '#183a44'][j % 3]; ctx.fillRect(sx + 14 + j * 21, 280, 19, 10); }
+        ctx.fillStyle = 'rgba(140,210,230,0.15)'; ctx.fillRect(sx, 290, 150, 1.5);
+        ctx.fillStyle = 'rgba(255,207,106,0.6)'; for (let j = 0; j < 3; j++) ctx.fillRect(sx + 104 + j * 9, 276, 4, 4);
+        ctx.fillStyle = Math.sin(G.clock * 2.5 + i) > 0 ? '#5aff9a' : '#1a4a2a'; ctx.fillRect(sx + 146, 286, 3, 3);
       }
     }
     if (k === 3) { ctx.fillStyle = '#16323a'; ctx.fillRect(0, 300, W, 14); ctx.fillStyle = '#20444c'; for (let i = 0; i < 20; i++) { const x = ((i * 70 - b.d * 0.5) % 1400 + 1400) % 1400 - 70; ctx.fillRect(x, 296, 40, 6); } }
@@ -702,8 +706,21 @@
   function canalWalls(st) {
     const off = st.b.d % 60;
     ctx.fillStyle = '#2a3236'; ctx.fillRect(0, 300, W, 72);
-    ctx.fillStyle = '#343e44'; for (let y = 304; y < 368; y += 12) for (let x = -off - ((y / 12) % 2) * 30; x < W; x += 60) ctx.fillRect(x, y, 56, 9);
-    for (let x = -(st.b.d * 1 % 300); x < W; x += 300) { ctx.fillStyle = '#5a646a'; ctx.fillRect(x, 270, 4, 34); ctx.fillStyle = 'rgba(255,214,120,0.9)'; circle(x + 2, 268, 5); ctx.fill(); ctx.fillStyle = 'rgba(255,214,120,0.12)'; circle(x + 2, 300, 40); ctx.fill(); }
+    for (let y = 304; y < 368; y += 12) for (let x = -off - ((y / 12) % 2) * 30; x < W; x += 60) {
+      ctx.fillStyle = '#343e44'; ctx.fillRect(x, y, 56, 9);
+      ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(x, y, 56, 1.5); ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x, y + 7.5, 56, 1.5);
+    }
+    ctx.fillStyle = '#4a5458'; ctx.fillRect(0, 298, W, 6); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(0, 298, W, 1.5);
+    // damp moss and a dark waterline along the foot of the wall
+    ctx.fillStyle = 'rgba(40,90,70,0.35)'; for (let x = -((st.b.d * 1) % 90); x < W; x += 90) { ctx.beginPath(); ctx.ellipse(x + 30, 366, 26, 5, 0, Math.PI, TAU); ctx.fill(); }
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 366, W, 6);
+    for (let x = -(st.b.d * 1 % 300); x < W; x += 300) {
+      ctx.fillStyle = 'rgba(255,214,120,0.12)'; circle(x + 2, 300, 40); ctx.fill();
+      ctx.fillStyle = '#3a4448'; ctx.fillRect(x - 3, 296, 10, 4);
+      ctx.fillStyle = '#5a646a'; ctx.fillRect(x, 270, 4, 28); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x, 270, 1.5, 28);
+      ctx.fillStyle = '#2a3236'; ctx.beginPath(); ctx.moveTo(x - 5, 264); ctx.lineTo(x + 9, 264); ctx.lineTo(x + 2, 258); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,214,120,0.9)'; circle(x + 2, 268, 5); ctx.fill(); ctx.fillStyle = '#fff4d0'; circle(x + 2, 268, 2.2); ctx.fill();
+    }
   }
   function drawObj(st, ob, x) {
     const t = G.clock;
@@ -1016,14 +1033,15 @@
   /* ---------- the level ---------- */
   SPY.defs.spyboat = {
     name: 'Speedboat Getaway', world: 37, kind: 'team', mode: 'spyboat', outfit: 'spyboat', music: 'spychase', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: 'STEERER <kbd>W</kbd><kbd>S</kbd> change channel <kbd>D</kbd> faster <kbd>A</kbd> slower · GADGETS <kbd>A</kbd><kbd>D</kbd> pick gadget',
-      bo: 'STEERER <kbd>↑</kbd><kbd>↓</kbd> change channel <kbd>→</kbd> faster <kbd>←</kbd> slower · GADGETS <kbd>←</kbd><kbd>→</kbd> pick gadget',
+    jobs: {
+      steerer: { title: 'Steerer', act: 'horn', legend: '<kbd>W</kbd><kbd>S</kbd> change channel <kbd>D</kbd> faster <kbd>A</kbd> slower',
+        howTo: ['Dodge, honk at gulls and fish, and drive through brass crates to refill.'] },
+      gadgets: { title: 'Gadgets', act: 'gadget', legend: '<kbd>A</kbd><kbd>D</kbd> pick a gadget',
+        howTo: ['Smoke blinds them, Oil spins the boat behind you, Boost is for ramps and gates.'] },
     },
+    jobAlt: true, jobSwap: 'You swap jobs every stretch.',
     tip: 'The steerer lines them up, the gadgets knock them out. Save a Boost for ramps and gates.',
     howTo: [
-      'STEERER: change channel to dodge, honk the horn at gulls and fish, and drive through the brass crates to refill the gadgets.',
-      'GADGETS: Smoke blinds them, Oil spins the boat right behind you, Boost is for ramps and gates.',
       'Chasers copy your channel a moment late. Dodge late and they hit what you missed.',
     ],
     act: { label: 'gadget' },

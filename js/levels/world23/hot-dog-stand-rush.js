@@ -397,7 +397,7 @@ const HOTDOG = {
       if (c.state === 'hi') {
         c.taken = true; c.state = 'wait'; c.takenAt = st.t; c.pat = Math.min(c.patMax, c.pat + c.patMax * HD.takeBonus);
         st.stats.taken[p.id]++;
-        Sfx.play('hotdogDing'); pop(st, c.x, 268, 'Order!', '#fff3d6', 16);
+        Sfx.play('hotdogDing'); pop(st, clamp(c.x, 652, 912), 196, 'Order!', '#fff3d6', 16);
         c.say = pick(st, ['Yes please!', 'Ooh, thank you!', 'Yummy!', 'Thanks!']); c.sayT = 1.3;
         useful(st, p.id);
         if (isCpu(p.id) && !isCpu(st.cook) && typeof cpuSay === 'function') cpuSay(p, 'New order on the board!');
@@ -949,6 +949,7 @@ const HOTDOG = {
     ctx.fillStyle = '#ffd36b'; circle(fx, fy, 7); ctx.fill();
     // a red barn far off and a striped fair tent
     ctx.fillStyle = '#c8483c'; ctx.fillRect(640, 296, 50, 40);
+    ctx.fillStyle = 'rgba(80,20,20,0.25)'; ctx.fillRect(676, 296, 14, 40);
     ctx.fillStyle = '#7e2a22'; ctx.beginPath(); ctx.moveTo(634, 298); ctx.lineTo(665, 272); ctx.lineTo(696, 298); ctx.fill();
     ctx.strokeStyle = '#fff3da'; ctx.lineWidth = 2; ctx.strokeRect(655, 312, 20, 24); ctx.beginPath(); ctx.moveTo(655, 312); ctx.lineTo(675, 336); ctx.moveTo(675, 312); ctx.lineTo(655, 336); ctx.stroke();
     for (let k = 0; k < 6; k++) { ctx.fillStyle = k % 2 ? '#fff3da' : '#3f7fd8'; ctx.beginPath(); ctx.moveTo(720 + k * 14, 340); ctx.lineTo(762, 286); ctx.lineTo(734 + k * 14, 340); ctx.fill(); }
@@ -957,7 +958,9 @@ const HOTDOG = {
     ctx.fillStyle = '#8cc65a'; ctx.fillRect(x0, 336, x1 - x0, y1 - 336);
     ctx.fillStyle = '#7fd05a'; ctx.fillRect(x0, 336, x1 - x0, 6);
     for (const [hx, hy] of [[700, 352], [930, 350]]) {
+      ctx.fillStyle = 'rgba(40,80,20,0.22)'; ctx.beginPath(); ctx.ellipse(hx, hy + 26, 26, 4, 0, 0, TAU); ctx.fill();
       ctx.fillStyle = '#f2d27a'; rr(hx - 22, hy, 44, 26, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(160,110,30,0.25)'; rr(hx - 22, hy + 16, 44, 10, 5); ctx.fill();
       ctx.strokeStyle = '#c9a24a'; ctx.lineWidth = 1.5; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(hx - 18, hy + 6 + k * 5); ctx.lineTo(hx + 18, hy + 6 + k * 5); ctx.stroke(); }
     }
     // bunting across the top of the window
@@ -1082,7 +1085,7 @@ const HOTDOG = {
         ctx.fillStyle = '#ff8fc7'; circle(-17, hy - 6, 3.5); ctx.fill(); circle(17, hy - 6, 3.5); ctx.fill();
       } else if (c.look === 'dad') {
         ctx.fillStyle = '#e2493b'; ctx.beginPath(); ctx.arc(0, hy - 6, 17, Math.PI, TAU); ctx.fill(); ctx.fillRect(-2, hy - 9, 26, 4);
-        ctx.fillStyle = '#ffffff'; ctx.font = '700 9px ' + FONT; ctx.textAlign = 'center'; ctx.fillText('FAIR', 0, hy - 11);
+        ctx.fillStyle = '#ffffff'; ctx.font = '700 8px ' + FONT; ctx.textAlign = 'center'; ctx.fillText('FAIR', 0, hy - 12, 24);
       }
     }
     // the face
@@ -1177,6 +1180,9 @@ const HOTDOG = {
     const x1 = 614;
     for (let x = 0, k = 0; x < x1; x += 30, k++) { ctx.fillStyle = k % 2 ? WALL.soft : WALL.cream; ctx.fillRect(x, HD.awn, Math.min(30, x1 - x), T0 - HD.awn); }
     ctx.fillStyle = 'rgba(120,40,20,0.08)'; ctx.fillRect(0, HD.awn, x1, 10);
+    { const gw = ctx.createLinearGradient(0, T0 - 90, 0, T0); gw.addColorStop(0, 'rgba(120,60,30,0)'); gw.addColorStop(1, 'rgba(120,60,30,0.14)'); ctx.fillStyle = gw; ctx.beginPath(); ctx.rect(0, T0 - 90, x1, 90); ctx.fill();
+      const ga = ctx.createLinearGradient(0, HD.awn, 0, HD.awn + 40); ga.addColorStop(0, 'rgba(120,40,20,0.16)'); ga.addColorStop(1, 'rgba(120,40,20,0)'); ctx.fillStyle = ga; ctx.beginPath(); ctx.rect(0, HD.awn, x1, 40); ctx.fill(); }
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(110, 300, 200, 4);
     // a shelf with jars and a blue ribbon
     ctx.fillStyle = WALL.woodD; ctx.fillRect(110, 292, 200, 8);
     const jars = [['#ff6b6b', 124], ['#ffd21f', 152], ['#7fd05a', 180], ['#ff9f1c', 208]];
@@ -1355,7 +1361,12 @@ const HOTDOG = {
       const ix = sx - 16 + (i % 2) * 32, iy = i < 2 ? T0 - 8 : T0 - 40;
       drawDog(ix, iy, 0.85, topsOf(k));
     }
-    text('PASS', sx, T0 - 52, 11, '#8f5524', 'center', 'body');
+    // a little wooden plaque with the word on it (sized to the word)
+    { ctx.font = '700 11px "Atkinson Hyperlegible", system-ui, sans-serif'; const pw = ctx.measureText('PASS').width + 16;
+      ctx.fillStyle = 'rgba(60,30,10,0.18)'; rr(sx - pw / 2 + 1.5, T0 - 62.5, pw, 18, 5); ctx.fill();
+      ctx.fillStyle = WALL.woodL; rr(sx - pw / 2, T0 - 64, pw, 18, 5); ctx.fill();
+      ctx.strokeStyle = WALL.woodD; ctx.lineWidth = 1.5; rr(sx - pw / 2, T0 - 64, pw, 18, 5); ctx.stroke();
+      text('PASS', sx, T0 - 54.5, 11, '#5e3014', 'center', 'body'); }
     // the lemonade jug (from Lunch Rush)
     if (st.room.lemon > 0) drawJug(st, t);
     // the gold bell on the counter

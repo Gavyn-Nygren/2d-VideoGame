@@ -562,6 +562,10 @@ Sfx.extra.ironfallLeap = function () { this.tone(330, 1.2, 'triangle', 0.04, 880
 Sfx.extra.ironfallThump = function () { this.tone(70, 0.6, 'sine', 0.1, 35); this.noise(0.5, { type: 'lowpass', f: 400, to: 100, vol: 0.06 }); };
 
 ironRoom('fall', {
+  jobs: {
+    both: { act: ['throw', 'lever'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck <kbd>F</kbd> lever, throw the chain',
+      howTo: ['On the arm slide, duck under the snapped cables.', 'The last jump: both jump together on JUMP!'] },
+  },
   act: { label: 'throw', labels: ['throw', 'throw'] },
   tip: IRON_PARTS.fall.tip,
 });

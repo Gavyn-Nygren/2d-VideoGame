@@ -230,8 +230,24 @@ const TT_BACK = [
   { band: '#8f3f2f', mural: ['snake', 'cat', 'reed', 'eye'] },
   { band: '#b8902a', mural: ['sun', 'scarab', 'bird', 'wave'] },
 ];
+// the back wall and the stone tiles only change when a gate opens: drawn once, then copied each frame
+let ttBg = { key: '' };
 function ttDraw(st) {
-  const L = G.level, t = G.clock, look = TT_BACK[(L.def.roomIndex || 0) % TT_BACK.length];
+  const L = G.level, t = G.clock;
+  let gates = 0; for (const row of L.grid) for (const ch of row) if (ch === 'P') gates++;
+  const key = [L.def.roomIndex || 0, gates, canvas.width, canvas.height, typeof artPlain === 'function' && artPlain()].join('|');
+  if (ttBg.key === key && ttBg.level === L) ctx.drawImage(ttBg.cv, 0, 0, W, H);
+  else {
+    ttDrawRoom(L);
+    const m = ctx.getTransform();
+    if (!m.b && !m.c && !m.e && !m.f && Math.abs(m.a * W - canvas.width) < 1 && Math.abs(m.d * H - canvas.height) < 1 && ctx.globalAlpha === 1 && ctx.globalCompositeOperation === 'source-over') {
+      const cv = document.createElement('canvas'); cv.width = canvas.width; cv.height = canvas.height; cv.getContext('2d').drawImage(canvas, 0, 0); ttBg = { key, level: L, cv };
+    }
+  }
+  ttDrawLive(st);
+}
+function ttDrawRoom(L) {
+  const look = TT_BACK[(L.def.roomIndex || 0) % TT_BACK.length];
   // the back wall
   pyrBlocks(0, 0, W, H, { lite: '#b08758', mid: '#9a7448', dark: '#7f5c36' }, 60, 30, 31 + (L.def.roomIndex || 0));
   ctx.fillStyle = look.band; ctx.fillRect(0, 96, W, 5); ctx.fillRect(0, 146, W, 5);
@@ -250,14 +266,20 @@ function ttDraw(st) {
       const h = hash(tx, ty);
       ctx.fillStyle = h % 5 === 0 ? TT_WALL.lite : h % 7 === 0 ? TT_WALL.dark : TT_WALL.mid;
       ctx.fillRect(x, y, T, T);
+      ctx.fillStyle = 'rgba(255,235,190,0.12)'; ctx.fillRect(x + 1, y + 1, T - 3, 2); ctx.fillRect(x + 1, y + 3, 2, T - 6);
       ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x, y + T - 3, T, 3); ctx.fillRect(x + T - 2, y, 2, T);
-      if (L.grid[ty - 1] && L.grid[ty - 1][tx] !== '#' && L.grid[ty - 1][tx] !== 'P') { ctx.fillStyle = '#c49a5e'; ctx.fillRect(x, y, T, 4); }
+      if (h % 6 === 1) { ctx.fillStyle = 'rgba(40,20,8,0.3)'; circle(x + 6 + (h >> 4) % (T - 12), y + 6 + (h >> 8) % (T - 12), 1.3); ctx.fill(); }
+      if (L.grid[ty - 1] && L.grid[ty - 1][tx] !== '#' && L.grid[ty - 1][tx] !== 'P') { ctx.fillStyle = '#c49a5e'; ctx.fillRect(x, y, T, 4); ctx.fillStyle = 'rgba(255,240,200,0.4)'; ctx.fillRect(x, y, T, 1.2); ctx.fillStyle = 'rgba(40,20,8,0.3)'; ctx.fillRect(x, y + 4, T, 2); }
     } else if (ch === '=') {
       ctx.fillStyle = '#8a6338'; rr(x, y + 2, T, 9, 3); ctx.fill();
       ctx.fillStyle = '#b98d58'; ctx.fillRect(x + 2, y + 3, T - 4, 3);
+      ctx.strokeStyle = '#4a2c12'; ctx.lineWidth = 1.2; rr(x, y + 2, T, 9, 3); ctx.stroke();
       ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + T / 2 - 2, y + 11, 4, 8);
     }
   }
+}
+function ttDrawLive(st) {
+  const L = G.level, t = G.clock;
   // the exit doorway
   if (st.exit) {
     const d = st.exit;
@@ -278,6 +300,8 @@ function ttDraw(st) {
     ctx.save(); ctx.beginPath(); ctx.rect(x - 2, top * T, T + 4, h); ctx.clip();
     ctx.fillStyle = '#5e4128'; ctx.fillRect(x + jig, top * T + sink, T, h);
     ctx.fillStyle = '#7f5c36'; ctx.fillRect(x + 3 + jig, top * T + sink + 3, T - 6, h - 6);
+    ctx.fillStyle = 'rgba(255,235,190,0.18)'; ctx.fillRect(x + 3 + jig, top * T + sink + 3, 3, h - 6);
+    ctx.fillStyle = 'rgba(30,16,6,0.25)'; ctx.fillRect(x + T - 7 + jig, top * T + sink + 3, 4, h - 6);
     for (let i = 0; i < bot - top + 1; i++) pyrGlyph(['eye', 'scarab', 'reed', 'sun', 'bird'][i % 5], x + T / 2 + jig, top * T + sink + i * T + 15, 0.55, 'rgba(30,16,6,0.55)');
     ctx.restore();
   }
@@ -310,9 +334,13 @@ function ttDraw(st) {
   }
   // braziers
   for (const b of st.braziers) {
+    ctx.fillStyle = 'rgba(20,10,4,0.3)'; ctx.beginPath(); ctx.ellipse(b.x + 1, b.y + 1, 14, 3, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#4a3020'; ctx.fillRect(b.x - 3, b.y - 24, 6, 24); ctx.fillRect(b.x - 10, b.y - 4, 20, 4);
+    ctx.fillStyle = '#7a5a40'; ctx.fillRect(b.x - 3, b.y - 24, 2, 24);
     ctx.fillStyle = '#b8902a'; ctx.beginPath(); ctx.moveTo(b.x - 15, b.y - 30); ctx.lineTo(b.x + 15, b.y - 30); ctx.lineTo(b.x + 9, b.y - 20); ctx.lineTo(b.x - 9, b.y - 20); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = '#6e5418'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,240,180,0.45)'; ctx.fillRect(b.x - 13, b.y - 30, 26, 2);
+    ctx.fillStyle = 'rgba(80,50,10,0.3)'; ctx.beginPath(); ctx.moveTo(b.x + 4, b.y - 28); ctx.lineTo(b.x + 15, b.y - 30); ctx.lineTo(b.x + 9, b.y - 20); ctx.lineTo(b.x + 3, b.y - 20); ctx.closePath(); ctx.fill();
     if (b.lit) pyrFlame(b.x, b.y - 28, 1.1 * Math.min(1, b.litT * 3), t + b.x, true);
     else { ctx.fillStyle = '#2a1a10'; ctx.fillRect(b.x - 10, b.y - 33, 20, 4); }
   }
@@ -320,16 +348,24 @@ function ttDraw(st) {
   for (const g of st.gems) {
     if (g.got) continue;
     const bob = Math.sin(g.t * 3 + g.x) * 3;
+    ctx.fillStyle = 'rgba(20,10,4,0.22)'; ctx.beginPath(); ctx.ellipse(g.x, g.y + 16, 7 - bob * 0.5, 2, 0, 0, Math.PI * 2); ctx.fill();
     ctx.save(); ctx.translate(g.x, g.y + bob);
+    ctx.fillStyle = 'rgba(79,208,255,0.18)'; circle(0, 0, 13); ctx.fill();
     ctx.fillStyle = '#4fd0ff'; ctx.strokeStyle = '#1a6f9a'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(8, -2); ctx.lineTo(0, 10); ctx.lineTo(-8, -2); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#2a9ad0'; ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(8, -2); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.moveTo(-3, -5); ctx.lineTo(0, -8); ctx.lineTo(1, -3); ctx.closePath(); ctx.fill();
+    const sp = Math.sin(t * 4 + g.x); if (sp > 0.6) { ctx.fillStyle = 'rgba(255,255,255,' + (sp - 0.6) * 2 + ')'; ctx.fillRect(5, -12, 1.5, 6); ctx.fillRect(2.75, -9.75, 6, 1.5); }
     ctx.restore();
   }
   // the treasure chest
   if (st.chest) {
     const c = st.chest, o = pyrEase(c.open);
+    ctx.fillStyle = 'rgba(20,10,4,0.3)'; ctx.beginPath(); ctx.ellipse(c.x + 2, c.y + 1, 32, 4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#b8902a'; rr(c.x - 26, c.y - 30, 52, 30, 4); ctx.fill();
+    ctx.fillStyle = '#8a6a1a'; ctx.fillRect(c.x + 14, c.y - 28, 10, 26); ctx.fillRect(c.x - 26, c.y - 8, 52, 6);
+    ctx.fillStyle = '#e8c860'; ctx.fillRect(c.x - 24, c.y - 28, 48, 2); ctx.fillRect(c.x - 20, c.y - 30, 6, 30); ctx.fillRect(c.x + 14, c.y - 30, 6, 30);
+    ctx.fillStyle = '#6e5418'; rr(c.x - 5, c.y - 22, 10, 10, 2); ctx.fill(); ctx.fillStyle = '#ffe08a'; circle(c.x, c.y - 17, 1.8); ctx.fill();
     ctx.strokeStyle = '#6e5418'; ctx.lineWidth = 2; rr(c.x - 26, c.y - 30, 52, 30, 4); ctx.stroke();
     ctx.save(); ctx.translate(c.x - 26, c.y - 30); ctx.rotate(-o * 1.1);
     ctx.fillStyle = '#d9b03a'; rr(0, -14, 52, 14, 6); ctx.fill(); ctx.strokeStyle = '#6e5418'; ctx.stroke();

@@ -122,7 +122,17 @@
     K.fx(st);
   }
   const climber = (lvl, x) => ({ lvl, x, climb: null, face: 1, act: 0, bucket: false, knock: 0, hold: 0, across: false, beat: 0 });
-  function labels(st) { const w = []; w[st.push] = 'heave'; w[st.tw] = 'job'; K.actLabels(w, 'job'); }
+  function labels(st) { const w = []; w[st.push] = 'heave'; w[st.tw] = heroWord(st); K.actLabels(w, w[st.tw]); setActWords(w); }
+  // the tower hero's action word where they stand now (what a press or a hold would do there)
+  function heroWord(st) {
+    const c = st.he;
+    if (!c) return 'roof';
+    if (st.fires && st.fires.some(f => f.lvl === c.lvl && Math.abs(f.x - c.x) < 22)) return 'douse';
+    if (c.lvl === 3) return st.state === 'bridge' ? 'bridge' : 'roof';
+    if (c.lvl === 2) return 'winch';
+    if (c.lvl === 1) return c.x < (T.chock + T.plank) / 2 ? 'chock' : 'plank';
+    return 'kick';
+  }
   // the slope and the climb so far at world x
   function slopeAt(st, x) { for (const s of st.slopes) if (x >= s.x0 && x < s.x1) return s.s; return 0; }
   function height(st, x) { let h = 0; for (const s of st.slopes) { if (x <= s.x0) continue; h += (Math.min(x, s.x1) - s.x0) * s.s; } return h; }
@@ -150,6 +160,7 @@
       else if (!st.last && st.tx >= st.len) endStretch(st);
     } else if (st.state === 'end') endStep(st, dt);
     for (const p of P) { p.pendingJump = false; p.pendingAct = false; }
+    if (st.he) labels(st);
     K.tickFx(st, dt);
     st.cx = st.tx - SCR.x;
     mirror(st);
@@ -631,9 +642,21 @@
     const top = K.lerp(250, 40, prog), base = st.last ? groundY(st, st.items.find(it => it.kind === 'wall').x) : 330;
     ctx.fillStyle = st.last ? K.COL.stone : 'rgba(110,108,100,0.7)';
     ctx.fillRect(wx, top, W + 200, base - top + 20);
+    // the wall face: courses of stone, a lit left edge, a darker foot
+    {
+      const sh = Math.max(14, (base - top) / 9), ink = st.last ? 'rgba(80,78,70,0.55)' : 'rgba(70,68,60,0.35)';
+      ctx.fillStyle = ink;
+      for (let y = top + sh, r = 0; y < base; y += sh, r++) { ctx.fillRect(wx, y, W + 200, st.last ? 2 : 1.2); for (let x = wx + (r % 2) * sh; x < W + 40; x += sh * 2) ctx.fillRect(x, y - sh, st.last ? 2 : 1.2, sh); }
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(wx, top, 4, base - top + 20);
+      const fg = ctx.createLinearGradient(0, base - 60, 0, base + 20); fg.addColorStop(0, 'rgba(40,40,50,0)'); fg.addColorStop(1, 'rgba(40,40,50,0.25)'); ctx.fillStyle = fg; ctx.fillRect(wx, base - 60, W + 200, 80);
+      // ivy on the old stones
+      ctx.fillStyle = st.last ? 'rgba(62,138,52,0.75)' : 'rgba(62,110,60,0.45)';
+      for (let k = 0; k < 4; k++) { const ix = wx + 40 + k * 130; for (let q = 0; q < 6; q++) { circ(ix + Math.sin(q * 1.7 + k) * 8, base - 6 - q * 12, 6 - q * 0.6); ctx.fill(); } }
+    }
     ctx.fillStyle = st.last ? K.COL.stoneDark : 'rgba(90,88,80,0.7)';
     for (let k = 0; k < 14; k++) ctx.fillRect(wx + k * 32, top - 18, 20, 18);
-    if (st.last) { ctx.fillStyle = K.COL.stoneDark; for (let y = top + 30; y < base; y += 34) for (let x = wx + ((y / 34) % 2) * 20; x < W + 40; x += 40) ctx.fillRect(x, y, 36, 2); }
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; for (let k = 0; k < 14; k++) ctx.fillRect(wx + k * 32, top - 18, 20, 3);
+    ctx.fillStyle = 'rgba(40,38,34,0.35)'; ctx.fillRect(wx, top, W + 200, 4);
     // the defenders: helmets and arms over the wall; they stand up for a volley
     const up = st.volley ? clamp(st.volley.t / 0.4, 0, 1) : 0;
     for (let k = 0; k < 8; k++) {
@@ -652,17 +675,32 @@
     }
   }
   function drawGround(st, t) {
-    const cx = st.cx;
-    ctx.fillStyle = st.k === 2 ? '#7a8a4a' : K.COL.grass;
+    const cx = st.cx, grass = st.k === 2 ? '#7a8a4a' : K.COL.grass;
+    ctx.fillStyle = grass;
     ctx.beginPath(); ctx.moveTo(0, H);
     for (let x = -10; x <= W + 10; x += 20) ctx.lineTo(x, groundY(st, cx + x) - 6);
     ctx.lineTo(W + 10, H); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = tint(grass, 0.3); ctx.lineWidth = 2; ctx.beginPath();
+    for (let x = -10; x <= W + 10; x += 20) { const y = groundY(st, cx + x) - 5; x === -10 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    ctx.stroke();
+    ctx.fillStyle = shade(grass, 0.18);
+    for (let k = 0; k < 26; k++) { const x = ((k * 43 - cx) % (W + 60) + W + 60) % (W + 60) - 30, y = groundY(st, cx + x) - 6; ctx.beginPath(); ctx.moveTo(x - 5, y + 2); ctx.lineTo(x - 2, y - 6); ctx.lineTo(x, y); ctx.lineTo(x + 3, y - 7); ctx.lineTo(x + 5, y + 2); ctx.closePath(); ctx.fill(); }
     ctx.fillStyle = K.COL.dirt;
     ctx.beginPath(); ctx.moveTo(0, H);
     for (let x = -10; x <= W + 10; x += 20) ctx.lineTo(x, groundY(st, cx + x));
     ctx.lineTo(W + 10, H); ctx.closePath(); ctx.fill();
+    // a darker band deeper down, wheel ruts, pebbles
+    ctx.fillStyle = 'rgba(100,70,30,0.18)';
+    ctx.beginPath(); ctx.moveTo(0, H);
+    for (let x = -10; x <= W + 10; x += 20) ctx.lineTo(x, groundY(st, cx + x) + 40);
+    ctx.lineTo(W + 10, H); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(120,90,50,0.35)';
     for (let k = 0; k < 14; k++) { const x = ((k * 97 - cx) % (W + 100) + W + 100) % (W + 100) - 50; ctx.fillRect(x, groundY(st, cx + x) + 16 + (k % 3) * 14, 24, 3); }
+    for (let k = 0; k < 16; k++) {
+      const x = ((k * 67 - cx) % (W + 80) + W + 80) % (W + 80) - 40, y = groundY(st, cx + x) + 8 + (k * 31) % 80, r = 2 + (k % 3);
+      ctx.fillStyle = '#9a8a72'; ctx.beginPath(); ctx.ellipse(x, y, r * 1.4, r, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - r * 0.6, y - r * 0.6, r * 0.8, 1);
+    }
     // the last chock
     const chx = st.chockX + T.wheel[0] - 28 - cx;
     if (chx > -20 && chx < W) { const y = groundY(st, st.chockX + T.wheel[0] - 28); ctx.fillStyle = '#5e3a1c'; ctx.beginPath(); ctx.moveTo(chx - 10, y); ctx.lineTo(chx + 10, y); ctx.lineTo(chx + 10, y - 14); ctx.closePath(); ctx.fill(); }
@@ -701,7 +739,12 @@
     if (b.landed) { const k = clamp((b.t - S.boulderT) / 1.2, 0, 1); ctx.globalAlpha = 1 - k; ctx.fillStyle = '#7a7870'; circ(sx, y - 20, 22); ctx.fill(); ctx.globalAlpha = 1; return; }
     if (u < 0.35) return;
     const by = K.lerp(-40, y - 22, (u - 0.35) / 0.65);
-    ctx.fillStyle = '#7a7870'; circ(sx + (1 - u) * 160, by, 22); ctx.fill(); ctx.fillStyle = '#5e5c56'; circ(sx + (1 - u) * 160 - 6, by + 4, 6); ctx.fill();
+    const bx = sx + (1 - u) * 160;
+    ctx.fillStyle = '#7a7870'; circ(bx, by, 22); ctx.fill();
+    ctx.fillStyle = '#5e5c56'; ctx.beginPath(); ctx.arc(bx, by, 22, -0.2, Math.PI * 0.9); ctx.lineTo(bx + 4, by + 4); ctx.fill();
+    ctx.fillStyle = '#4a4844'; circ(bx - 6, by + 4, 6); ctx.fill(); circ(bx + 9, by - 6, 3.5); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; circ(bx - 8, by - 9, 6); ctx.fill();
+    ctx.strokeStyle = '#3e3c38'; ctx.lineWidth = 2; circ(bx, by, 22); ctx.stroke();
   }
   function drawBarrel(st, b, t) {
     if (b.split && b.t > 0.2) return;
@@ -716,9 +759,14 @@
     const x0 = scrX(st, 0), gy = SCR.gy, s = slopeAt(st, st.tx), ang = -Math.atan(s);
     ctx.save(); ctx.translate(x0, gy); ctx.rotate(ang * 0.8); ctx.translate(-x0, -gy);
     const L = x0 - T.half, Rr = x0 + T.half, gold = st.gold;
-    // the frame: four corner posts, the decks, cross-braces
-    ctx.fillStyle = '#7a4e2a';
-    for (const px of [L, L + 8, Rr - 16, Rr - 8]) ctx.fillRect(px, gy - T.top, 8, T.top - 18);
+    ctx.fillStyle = 'rgba(30,20,10,0.22)'; ctx.beginPath(); ctx.ellipse(x0, gy + 2, T.half + 30, 8, 0, 0, TAU); ctx.fill();
+    // the frame: four corner posts (grain, a lit side), the decks, cross-braces
+    for (const px of [L, L + 8, Rr - 16, Rr - 8]) {
+      ctx.fillStyle = '#7a4e2a'; ctx.fillRect(px, gy - T.top, 8, T.top - 18);
+      ctx.fillStyle = 'rgba(255,220,170,0.18)'; ctx.fillRect(px, gy - T.top, 2, T.top - 18);
+      ctx.fillStyle = 'rgba(40,20,5,0.28)'; ctx.fillRect(px + 6, gy - T.top, 2, T.top - 18);
+    }
+    ctx.fillStyle = '#3a2a1a'; for (let l = 1; l <= 3; l++) for (const px of [L + 4, L + 12, Rr - 12, Rr - 4]) { circ(px, gy - T.deck[l] + 4, 1.4); ctx.fill(); }
     for (let l = 1; l <= 3; l++) {
       const y = gy - T.deck[l];
       for (const side of [0, 1]) {
@@ -915,14 +963,16 @@
   };
 
   /* ---------- the level ---------- */
-  const acts = d => ({ label: 'job', labels: d === 0 ? ['heave', 'job'] : ['job', 'heave'] });
+  const acts = d => ({ label: 'roof', labels: d === 0 ? ['heave', 'roof'] : ['roof', 'heave'] });
   TOURNEY.defs.siegetower = {
     name: 'Siege Tower Push', world: 36, kind: 'team', mode: 'siegetower', outfit: 'none', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> push, brake or walk / <kbd>W</kbd><kbd>S</kbd> climb, duck',
-      bo: '<kbd>←</kbd><kbd>→</kbd> push, brake or walk / <kbd>↑</kbd><kbd>↓</kbd> climb, duck',
-      pad: 'stick pushes or walks,',
+    jobs: {
+      pusher: { title: 'Pusher', act: 'heave', legend: '<kbd>D</kbd> hold to push <kbd>A</kbd> hold to brake <kbd>S</kbd> duck',
+        howTo: ['Heave over ruts: double force for a moment.'] },
+      tower: { title: 'Tower hero', act: ['roof', 'douse', 'winch', 'chock', 'plank', 'kick', 'bridge'], legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd><kbd>S</kbd> climb a ladder',
+        howTo: ['Top deck: hold to raise the roof. Tap at a fire 3 times.', 'The action word shows the job where you stand.'] },
     },
+    jobOf: 'pusher', jobSwap: 'You swap jobs every stretch.',
     tip: 'Push the siege tower up to the baron\'s wall! The pusher pushes, brakes and heaves; the tower hero climbs to raise the roof, beat out fires and fix the wheels.',
     act: acts(0),
     map: K.stubMap(),

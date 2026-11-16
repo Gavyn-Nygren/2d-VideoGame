@@ -796,7 +796,71 @@ function cannonStep(st, dt) {
 }
 
 /* ---------- drawing ---------- */
+/* World 7 backdrop (graphics polish, Nov 2026): a far-off castle on a hill, hazed toward the sky, with pennants. Cached;
+   paste it with paBehindTiles() so the level's walls stay in front. Seesaw Climb uses it too. */
+function paCastlesLayer(groundY, seed, haze) {
+  haze = haze === undefined ? 0.68 : haze;
+  const key = 'castle|' + groundY + '|' + seed + '|' + haze + '|' + C.skyBot + C.stone;
+  const layer = paLayer(key, W, H, g => {
+    const hz = c => mixCol(c, C.skyBot, haze), wall = hz('#9aa0bf'), dark = hz('#7c82a6'), roof = hz('#c4545a'), lit = hz('#b9bed8');
+    const cx = 330 + (seed % 3) * 50;   // left of middle: the targets stand on the right
+    g.fillStyle = hz('#7fae86'); g.beginPath(); g.moveTo(cx - 260, groundY); g.quadraticCurveTo(cx, groundY - 120, cx + 260, groundY); g.closePath(); g.fill();
+    const top = groundY - 100;
+    const tower = (x, w, h, cone) => {
+      g.fillStyle = wall; g.fillRect(x, top - h, w, h + 60);
+      g.fillStyle = dark; g.fillRect(x + w * 0.66, top - h, w * 0.34, h + 60);
+      g.fillStyle = lit; g.fillRect(x, top - h, 3, h + 60);
+      if (cone) {
+        g.fillStyle = roof; g.beginPath(); g.moveTo(x - 5, top - h); g.lineTo(x + w / 2, top - h - w * 1.3); g.lineTo(x + w + 5, top - h); g.closePath(); g.fill();
+        g.strokeStyle = hz('#6b6f8f'); g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + w / 2, top - h - w * 1.3); g.lineTo(x + w / 2, top - h - w * 1.3 - 16); g.stroke();
+        g.fillStyle = hz(seed % 2 ? '#ff6b4a' : '#5b95ff'); g.beginPath(); g.moveTo(x + w / 2, top - h - w * 1.3 - 16); g.lineTo(x + w / 2 + 13, top - h - w * 1.3 - 12); g.lineTo(x + w / 2, top - h - w * 1.3 - 8); g.closePath(); g.fill();
+      } else { g.fillStyle = wall; for (let k = 0; k < w; k += 10) g.fillRect(x + k, top - h - 7, 6, 7); }
+      g.fillStyle = hz('#4b4f73'); paRR(g, x + w / 2 - 3, top - h + 16, 6, 11, 3); g.fill();
+    };
+    // curtain wall with battlements and a gate
+    g.fillStyle = wall; g.fillRect(cx - 130, top, 260, 70);
+    g.fillStyle = dark; g.fillRect(cx - 130, top + 44, 260, 26);
+    for (let k = -130; k < 130; k += 14) { g.fillStyle = wall; g.fillRect(cx + k, top - 8, 8, 8); }
+    g.fillStyle = hz('#4b4f73'); g.beginPath(); g.moveTo(cx - 16, top + 70); g.lineTo(cx - 16, top + 34); g.arc(cx, top + 34, 16, Math.PI, 0); g.lineTo(cx + 16, top + 70); g.closePath(); g.fill();
+    g.strokeStyle = hz('#868bb0'); g.lineWidth = 1; g.beginPath();
+    for (let y = top + 10; y < top + 70; y += 12) { g.moveTo(cx - 130, y); g.lineTo(cx + 130, y); }
+    g.stroke();
+    tower(cx - 150, 40, 70, true); tower(cx + 110, 40, 70, true); tower(cx - 26, 52, 120, true); tower(cx - 90, 30, 40, false); tower(cx + 60, 30, 40, false);
+  });
+  return layer;
+}
 const cannonFont = px => '700 ' + px + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+// a block's still look, cached per block (its id picks the grain), at the canvas's own pixel scale
+const _cannonPics = new Map();
+function cannonBlockPic(b, md) {
+  const k = Math.max(1, canvas.width / W), key = b.id + '|' + b.mat + '|' + b.shape + '|' + b.w + '|' + b.h + '|' + md.col + '|' + k;
+  let pic = _cannonPics.get(key);
+  if (!pic) {
+    if (_cannonPics.size > 400) _cannonPics.clear();
+    const cv = document.createElement('canvas'); cv.width = Math.ceil((b.w + 4) * k); cv.height = Math.ceil((b.h + 4) * k);
+    const g = cv.getContext('2d'); g.scale(k, k); g.translate(2, 2);
+    const x = 0, y = 0;
+    g.fillStyle = md.col; g.fillRect(x, y, b.w, b.h);
+    // depth: a shaded right side and foot, a lit top and left edge, and grain knots or stone specks
+    g.fillStyle = 'rgba(28,26,54,0.12)'; g.fillRect(x + b.w - 4, y, 4, b.h);
+    g.fillStyle = 'rgba(255,255,255,0.28)'; g.fillRect(x, y, b.w, 3); g.fillStyle = 'rgba(255,255,255,0.14)'; g.fillRect(x, y, 3, b.h);
+    g.fillStyle = 'rgba(28,26,54,0.22)'; g.fillRect(x, y + b.h - 3, b.w, 3);
+    { const h0 = hash(b.id * 7 + 3, 11);
+      if (b.mat === 'stone') { g.fillStyle = 'rgba(28,26,54,0.16)'; g.beginPath(); for (let k = 0; k < 4; k++) { const hh = hash(b.id, k), sx = x + 4 + hh % Math.max(1, b.w - 8), sy = y + 4 + (hh >> 8) % Math.max(1, b.h - 8); g.moveTo(sx + 1.2, sy); g.arc(sx, sy, 1.2, 0, Math.PI * 2); } g.fill(); }
+      else if (b.w > 14 && b.h > 14) { g.strokeStyle = 'rgba(110,60,25,0.35)'; g.lineWidth = 1; g.beginPath(); g.ellipse(x + 6 + h0 % Math.max(1, b.w - 12), y + 6 + (h0 >> 8) % Math.max(1, b.h - 12), 3, 1.8, 0, 0, Math.PI * 2); g.stroke(); } }
+    g.strokeStyle = 'rgba(28,26,54,0.2)'; g.lineWidth = 1; g.beginPath();
+    if (b.mat === 'stone') {
+      for (let yy = 15, row = 0; yy < b.h; yy += 15, row++) { g.moveTo(x, y + yy); g.lineTo(x + b.w, y + yy); }
+      for (let yy = 0, row = 0; yy < b.h; yy += 15, row++) { const vx = x + (row % 2 ? b.w * 0.3 : b.w * 0.7); g.moveTo(vx, y + yy); g.lineTo(vx, y + Math.min(b.h, yy + 15)); }
+    } else if (b.shape === 'plank') { g.moveTo(x + 4, y + b.h / 2); g.lineTo(x + b.w - 4, y + b.h / 2 + 1); }
+    else if (b.shape === 'pillar') { for (let k = 1; k < 3; k++) { g.moveTo(x + b.w * k / 3, y + 4); g.lineTo(x + b.w * k / 3 + 1, y + b.h - 4); } }
+    else { for (let k = 1; k < 3; k++) { g.moveTo(x + 4, y + b.h * k / 3); g.lineTo(x + b.w - 4, y + b.h * k / 3 + 1); } }
+    g.stroke();
+    g.strokeStyle = shade(md.col, 0.55); g.lineWidth = 1.8; g.strokeRect(x + 0.9, y + 0.9, b.w - 1.8, b.h - 1.8);
+    pic = { cv, k }; _cannonPics.set(key, pic);
+  }
+  return pic;
+}
 function cannonDrawBlock(b) {
   const md = CANNON_PHYS.mat[b.mat];
   ctx.save();
@@ -822,18 +886,9 @@ function cannonDrawBlock(b) {
     ctx.fillStyle = '#5a3a20'; for (const wx of [x + 10, x + b.w - 10]) { circle(wx, y + b.h - 3, 6); ctx.fill(); ctx.stroke(); }
     if (b.hp < b.maxHp) { ctx.strokeStyle = 'rgba(28,26,54,0.75)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + b.w * 0.5, y + b.h * 0.45); ctx.lineTo(x + b.w * 0.58, y + b.h * 0.7); ctx.stroke(); }
   } else {
-    ctx.fillStyle = md.col; ctx.fillRect(x, y, b.w, b.h);
-    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(x, y, b.w, 3);
-    ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.fillRect(x, y + b.h - 3, b.w, 3);
-    ctx.strokeStyle = 'rgba(28,26,54,0.2)'; ctx.lineWidth = 1; ctx.beginPath();
-    if (b.mat === 'stone') {
-      for (let yy = 15, row = 0; yy < b.h; yy += 15, row++) { ctx.moveTo(x, y + yy); ctx.lineTo(x + b.w, y + yy); }
-      for (let yy = 0, row = 0; yy < b.h; yy += 15, row++) { const vx = x + (row % 2 ? b.w * 0.3 : b.w * 0.7); ctx.moveTo(vx, y + yy); ctx.lineTo(vx, y + Math.min(b.h, yy + 15)); }
-    } else if (b.shape === 'plank') { ctx.moveTo(x + 4, y + b.h / 2); ctx.lineTo(x + b.w - 4, y + b.h / 2 + 1); }
-    else if (b.shape === 'pillar') { for (let k = 1; k < 3; k++) { ctx.moveTo(x + b.w * k / 3, y + 4); ctx.lineTo(x + b.w * k / 3 + 1, y + b.h - 4); } }
-    else { for (let k = 1; k < 3; k++) { ctx.moveTo(x + 4, y + b.h * k / 3); ctx.lineTo(x + b.w - 4, y + b.h * k / 3 + 1); } }
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(28,26,54,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.75, y + 0.75, b.w - 1.5, b.h - 1.5);
+    // the block's look (wood or stone, its grain and edges) is drawn once into a small picture and pasted after that
+    const pic = cannonBlockPic(b, md), k = pic.k;
+    ctx.drawImage(pic.cv, x - 2, y - 2, pic.cv.width / k, pic.cv.height / k);
     if (b.hp < b.maxHp) { // cracks (more of them the closer it is to breaking)
       const d = 1 - b.hp / b.maxHp;
       ctx.strokeStyle = 'rgba(28,26,54,0.75)'; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -895,6 +950,7 @@ function cannonDrawItem(kind, x, y, s = 1) {
 }
 function cannonDrawPile(p) {
   const x = p.tx0 * T, w = (p.tx1 - p.tx0 + 1) * T, y = (p.ty + 1) * T, s = 1 + p.pop * 0.15;
+  paShadow(x + w / 2, y - 1, w / 2 + 2, 4);
   if (p.kind === 'powder') { for (const [dx, dy] of [[12, -9], [w - 12, -9], [w / 2, -27]]) cannonDrawItem('powder', x + dx, y + dy, 1.05 * s); }
   else if (p.kind === 'iron') { for (const [dx, dy] of [[10, -9], [w / 2, -9], [w - 10, -9], [w / 2 - 10, -24], [w / 2 + 10, -24], [w / 2, -39]]) cannonDrawItem('iron', x + dx, y + dy, s); }
   else if (p.kind === 'big') { for (const [dx, dy] of [[15, -13], [w - 15, -13], [w / 2, -36]]) cannonDrawItem('big', x + dx, y + dy, s); }
@@ -936,17 +992,25 @@ function cannonDrawCannon(st) {
   for (let k = 1; k < Math.min(cn.balls.length, CANNON.rackShow + 1); k++) cannonDrawItem(cn.balls[k], x - 40, cn.floor - 8 - (k - 1) * 16, 0.75);
   const extra = Math.max(0, cn.powder - 1 - CANNON.rackShow) + Math.max(0, cn.balls.length - 1 - CANNON.rackShow);
   if (extra) text('+' + extra, x - 46, cn.floor - 62, 12, C.ink, 'center', 'body');
+  paShadow(x - 2, cn.floor - 1, 30, 4.5);
   ctx.save(); ctx.translate(x, y); ctx.rotate(-a); ctx.translate(-kick, 0);
   ctx.fillStyle = '#3c4260'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
   rr(-16, -9, CANNON_PHYS.barrel + 16, 18, 8); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#2a2f4f'; rr(CANNON_PHYS.barrel - 6, -11, 9, 22, 3); ctx.fill(); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.2)'; rr(-12, -7, CANNON_PHYS.barrel + 6, 4, 2); ctx.fill();
-  ctx.fillStyle = C.gold; ctx.fillRect(4, -9, 3, 18);
+  ctx.fillStyle = C.gold; ctx.fillRect(4, -9, 3, 18); ctx.fillStyle = C.goldDark; ctx.fillRect(18, -9, 2.5, 18);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)'; rr(-12, 3, CANNON_PHYS.barrel + 6, 5, 2.5); ctx.fill();
   ctx.restore();
   // carriage + wheels
   ctx.fillStyle = '#8a5833'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(x - 22, cn.floor - 6); ctx.lineTo(x - 6, y - 6); ctx.lineTo(x + 8, y - 2); ctx.lineTo(x + 18, cn.floor - 6); ctx.closePath(); ctx.fill(); ctx.stroke();
-  for (const wx of [x - 12, x + 10]) { ctx.fillStyle = '#c98b5a'; circle(wx, cn.floor - 9, 9); ctx.fill(); ctx.stroke(); ctx.fillStyle = C.ink; circle(wx, cn.floor - 9, 2.5); ctx.fill(); }
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.moveTo(x - 19, cn.floor - 8); ctx.lineTo(x - 6, y - 4); ctx.lineTo(x - 4, y - 2); ctx.lineTo(x - 16, cn.floor - 8); ctx.closePath(); ctx.fill();
+  for (const wx of [x - 12, x + 10]) {
+    ctx.fillStyle = '#c98b5a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(wx, cn.floor - 9, 9); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#8a5833'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let k = 0; k < 3; k++) { const q = k * Math.PI / 3 + 0.3; ctx.moveTo(wx + Math.cos(q) * 7, cn.floor - 9 + Math.sin(q) * 7); ctx.lineTo(wx - Math.cos(q) * 7, cn.floor - 9 - Math.sin(q) * 7); } ctx.stroke();
+    ctx.strokeStyle = '#5a3a20'; ctx.lineWidth = 1.5; circle(wx, cn.floor - 9, 7.5); ctx.stroke();
+    ctx.fillStyle = C.ink; circle(wx, cn.floor - 9, 2.5); ctx.fill();
+  }
   // the hopper: a funnel on the breech where the loader drops things in
   const hx = st.hop.x + st.hop.w / 2, hy = y - 16, gold = cn.readyT > 0;
   ctx.fillStyle = gold ? C.gold : '#c98b5a';
@@ -999,10 +1063,17 @@ function cannonDotHits(st, x, y, r) {
 }
 function cannonDraw() {
   const st = G.mst; if (!st.W) return;
-  // a castle-wall look for the yard's back (behind the piles): crenellations on the rampart
+  // the castle on the hill far away (behind the tiles)
+  paBehindTiles(paCastlesLayer((ROWS - 2) * T - 6, (G.room || 0) + 2), undefined, (ROWS - 2) * T - 325, (ROWS - 2) * T);
   for (const p of st.piles) cannonDrawPile(p);
   ctx.font = cannonFont(hudBig() ? 16 : 11); ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
-  for (const lb of cannonPileLabels(st)) { ctx.fillStyle = lb.onStone ? 'rgba(255,255,255,0.82)' : 'rgba(28,26,54,0.62)'; ctx.fillText(lb.str, lb.x, lb.y); }
+  // each pile's name on a little parchment tag sized to its word, so it reads over balls, walls and sky alike
+  for (const lb of cannonPileLabels(st)) {
+    const pw = lb.w + 12, ph = lb.h + 6;
+    ctx.fillStyle = 'rgba(28,26,54,0.18)'; rr(lb.x - pw / 2 + 1, lb.y - ph / 2 + 2, pw, ph, 4); ctx.fill();
+    ctx.fillStyle = '#f6efdf'; ctx.strokeStyle = '#a7865c'; ctx.lineWidth = 1.2; rr(lb.x - pw / 2, lb.y - ph / 2, pw, ph, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#4a3a2a'; ctx.fillText(lb.str, lb.x, lb.y + 0.5);
+  }
   ctx.fillStyle = '#8a5833'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5;
   rr(st.fence - 6, st.cannon.floor - 26, 5, 26, 2); ctx.fill(); ctx.stroke();
   cannonDrawCannon(st);
@@ -1098,7 +1169,7 @@ function cannonDrawTop() {
   // calls and bubbles, laid out so none covers another: shouts and calls keep their place, then bubbles in order of
   // importance (what's missing, the nudges, the role hints) each take the first free spot just above or below theirs
   const carryH = cannonHolding(st) ? (both ? 44 : 22) : 0, items = [], keepClear = [];
-  for (const lb of cannonPileLabels(st)) keepClear.push({ x0: lb.x - lb.w / 2, x1: lb.x + lb.w / 2, y0: lb.y - lb.h / 2, y1: lb.y + lb.h / 2 });
+  for (const lb of cannonPileLabels(st)) keepClear.push({ x0: lb.x - lb.w / 2 - 7, x1: lb.x + lb.w / 2 + 7, y0: lb.y - lb.h / 2 - 4, y1: lb.y + lb.h / 2 + 5 }); // (its parchment tag)
   keepClear.push({ x0: gn.x - 2, x1: gn.x + gn.w + 2, y0: gn.y - 2, y1: gn.y + gn.h }, { x0: cn.x - 30, x1: cn.x + 44, y0: cn.y - 34, y1: cn.floor });
   if (ld.alive) keepClear.push({ x0: ld.x - 2, x1: ld.x + ld.w + 2, y0: ld.y - 2 - carryH, y1: ld.y + ld.h });
   const bigAt = (str, x, y, size, col, scale, maxScale) => items.push({ big: true, str, x, y, size, col, scale, maxScale });

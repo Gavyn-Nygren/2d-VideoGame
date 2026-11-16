@@ -717,14 +717,19 @@ function vdSurfDrawSky(st, k, cam) {
   const K = VDSURF, LH = K.laneH, t = G.clock, ph = st.ph;
   if (!vdSurfSkyG) { vdSurfSkyG = ctx.createLinearGradient(0, 0, 0, LH); vdSurfSkyG.addColorStop(0, '#4a1f45'); vdSurfSkyG.addColorStop(0.6, '#c8504a'); vdSurfSkyG.addColorStop(1, '#ff9a55'); }
   ctx.fillStyle = vdSurfSkyG; ctx.fillRect(0, 0, W, LH);
-  ctx.fillStyle = 'rgba(255,214,150,0.85)'; circle(780, 46, 24); ctx.fill();
+  ctx.fillStyle = 'rgba(255,170,110,0.2)'; circle(780, 46, 52); ctx.fill();
   ctx.fillStyle = 'rgba(255,170,110,0.25)'; circle(780, 46, 40); ctx.fill();
+  ctx.fillStyle = 'rgba(255,214,150,0.9)'; circle(780, 46, 24); ctx.fill();
+  ctx.fillStyle = 'rgba(255,240,200,0.55)'; circle(775, 41, 13); ctx.fill();
+  for (let n = 0; n < 8; n++) { const h = hash(n, 33), sx2 = h % W, sy2 = 8 + (h >> 9) % 40, tw = 0.5 + 0.5 * Math.sin(t * 1.5 + n); ctx.fillStyle = `rgba(255,236,220,${0.2 + 0.4 * tw})`; circle(sx2, sy2, 1); ctx.fill(); }
   const dy = clamp(-cam.y * 0.04, -40, 40);
   // the peak you came down from, drifting away to the left as you race
   const px = 260 - cam.x * 0.035, py = 40 + dy;
   if (px > -320) {
     ctx.fillStyle = '#6b2f3a';
     ctx.beginPath(); ctx.moveTo(px - 300, LH); ctx.lineTo(px - 46, py); ctx.lineTo(px + 46, py); ctx.lineTo(px + 300, LH); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(30,10,25,0.25)'; ctx.beginPath(); ctx.moveTo(px + 14, py); ctx.lineTo(px + 46, py); ctx.lineTo(px + 300, LH); ctx.lineTo(px + 110, LH); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,150,110,0.14)'; ctx.beginPath(); ctx.moveTo(px - 46, py); ctx.lineTo(px - 24, py); ctx.lineTo(px - 180, LH); ctx.lineTo(px - 300, LH); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(255,140,60,0.7)'; ctx.beginPath(); ctx.ellipse(px, py, 46, 7, 0, 0, Math.PI * 2); ctx.fill();
     for (let n = 0; n < 4; n++) { const u = (t * 0.15 + n / 4) % 1; ctx.fillStyle = `rgba(110,90,110,${0.45 * (1 - u)})`; circle(px + Math.sin(u * 5 + n) * 20 + u * 50, py - 12 - u * 70, 12 + u * 22); ctx.fill(); }
     // its lava glow streak (the river you are on)
@@ -736,6 +741,9 @@ function vdSurfDrawSky(st, k, cam) {
   ctx.beginPath(); ctx.moveTo(0, LH);
   for (let x = 0; x <= W + 20; x += 20) { const wx = x + off; ctx.lineTo(x, 110 + dy * 1.4 + Math.sin(wx * 0.006) * 18 + Math.sin(wx * 0.017 + 1) * 8); }
   ctx.lineTo(W, LH); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,160,120,0.3)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = 0; x <= W + 20; x += 20) { const wx = x + off; ctx.lineTo(x, 111 + dy * 1.4 + Math.sin(wx * 0.006) * 18 + Math.sin(wx * 0.017 + 1) * 8); }
+  ctx.stroke();
   // a far glowing lava stream on the ridge, and Cinder surfing it (cheering you on)
   const sy = 124 + dy * 1.4;
   ctx.strokeStyle = 'rgba(255,170,80,0.75)'; ctx.lineWidth = 2.5; ctx.beginPath();
@@ -754,6 +762,12 @@ function vdSurfDrawSky(st, k, cam) {
   ctx.beginPath(); ctx.moveTo(0, LH);
   for (let x = 0; x <= W + 16; x += 16) { const wx = x + off2; ctx.lineTo(x, 150 + dy * 2.4 + Math.sin(wx * 0.011) * 14 + (hash(Math.floor(wx / 64), 5) % 13)); }
   ctx.lineTo(W, LH); ctx.closePath(); ctx.fill();
+  // the cliffs' lava-lit rim and a few glowing seams
+  ctx.strokeStyle = 'rgba(255,140,80,0.35)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = 0; x <= W + 16; x += 16) { const wx = x + off2; ctx.lineTo(x, 151 + dy * 2.4 + Math.sin(wx * 0.011) * 14 + (hash(Math.floor(wx / 64), 5) % 13)); }
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(255,140,60,${0.45 + 0.15 * Math.sin(t * 2)})`; ctx.lineWidth = 1.8;
+  for (let n = Math.floor(off2 / 220); n < Math.floor((off2 + W) / 220) + 2; n++) { const x = n * 220 - off2 + (hash(n, 8) % 80), y = 168 + dy * 2.4 + Math.sin((x + off2) * 0.011) * 14; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 6, y + 10); ctx.lineTo(x + 2, y + 18); ctx.stroke(); }
 }
 // the lava river from X0 to X1 (world coords), with its gold streams, flowing glints and crust
 function vdSurfDrawRiver(st, k, cam, X0, X1) {
@@ -778,6 +792,13 @@ function vdSurfDrawRiver(st, k, cam, X0, X1) {
     const x = n * 90 + t * 140 + (hash(n, 1) % 40), gy = vdSurfBase(T, x) + 6 + (hash(n, 6) % 10);
     ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + 14, gy + vdSurfSlope(T, x) * 14); ctx.stroke();
   }
+  // darker crust swirls deeper in the flow
+  ctx.strokeStyle = 'rgba(160,40,20,0.3)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  for (let n = Math.floor((X0 - t * 40) / 130); n * 130 + t * 40 < X1 + 60; n++) {
+    const x = n * 130 + t * 40 + (hash(n, 13) % 60), gy = vdSurfBase(T, x) + 40 + (hash(n, 14) % 60);
+    ctx.beginPath(); ctx.moveTo(x - 18, gy); ctx.quadraticCurveTo(x, gy - 6, x + 18, gy); ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
   // the bright skin of the surface
   ctx.strokeStyle = 'rgba(255,240,170,0.9)'; ctx.lineWidth = 3; ctx.beginPath();
   for (const q of pts) ctx.lineTo(q[0], q[1]);
@@ -1094,6 +1115,10 @@ Sfx.extra.vdSurfCrown = function () { [392, 523, 659, 784, 1047, 1319].forEach((
 /* ---------- the room ---------- */
 vdRoom('surf', {
   title: 'Lava Surf Race', first: 0,
+  jobs: {
+    surfer: { title: 'Surfer', act: 'trick', legend: '<kbd>D</kbd> hold to go faster <kbd>A</kbd> slow down <kbd>W</kbd> hop',
+      howTo: ['Trick in the air: land it for a boost.'] },
+  },
   act: { label: 'trick', labels: ['trick', 'trick'] },
   legend: { jump: 'hop', down: 'slow', padJump: 'hop', padDown: 'down slows' },
   tip: 'Cinder wants a race! Hold ▶ to surf fast, hop rocks, POP off ramps and trick in the air. First to 2 wins!',

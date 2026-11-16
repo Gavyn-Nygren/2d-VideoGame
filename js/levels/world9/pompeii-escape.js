@@ -47,7 +47,7 @@ const POMPEII_HOUSE = { h: ['#f2c784', '#c98b4c', '#e3b26e'], q: ['#f0a487', '#b
 // the player's own key for hint bubbles: keyboard (F / '/', W / ↑, S / ↓), controller or touch
 function pompeiiKey(id, what) {
   const how = actKey(id);
-  if (what === 'act') return how === 'pad' ? glyph('act') : how === 'touch' ? 'use' : id === 0 ? 'F' : '/';
+  if (what === 'act') return how === 'pad' ? glyph('act') : how === 'touch' ? 'the round button' : id === 0 ? 'F' : '/';
   if (what === 'jump') return how === 'pad' ? glyph('a') : how === 'touch' ? '▲' : id === 0 ? 'W' : '↑';
   if (what === 'right') return how === 'pad' ? 'stick ▶' : how === 'touch' ? '▶' : id === 0 ? 'D' : '→';
   return how === 'pad' ? 'stick ▼' : how === 'touch' ? '▼' : id === 0 ? 'S' : '↓';
@@ -868,6 +868,10 @@ MODES.pompeii = {
     pompeiiClimbStep(st, dt);
     pompeiiColumnStep(st, dt);
     for (const p of G.players) if (p.pendingAct) { p.pendingAct = false; pompeiiPress(st, p); }
+    { // the action's word: the ladder for whoever is up top at the wall, else the lever
+      const s = pompeiiCurSpot(st);
+      setActWords(G.players.map(p => (s && pompeiiUp(p, s) ? 'ladder' : 'lever')));
+    }
     pompeiiCartStep(st, dt);
     pompeiiBanners(st);
     pompeiiLavaStep(st, dt);
@@ -1016,6 +1020,10 @@ function pompeiiCell(st, ch, c, r) {
     const [wall, trim, shade] = POMPEII_HOUSE[ch];
     ctx.fillStyle = wall; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
     if (h % 4 === 1) { ctx.fillStyle = shade; ctx.fillRect(x + 4 + (h >> 3) % 12, y + 6 + (h >> 7) % 14, 8, 4); }
+    // (polish) plaster: a few specks, now and then a hairline crack, the shade side of the house darker
+    ctx.fillStyle = 'rgba(120,70,30,0.12)'; ctx.fillRect(x + (h >> 4) % 26, y + (h >> 9) % 26, 2, 2); ctx.fillRect(x + (h >> 11) % 26, y + (h >> 15) % 26, 1.5, 1.5);
+    if (h % 11 === 3) { ctx.strokeStyle = 'rgba(110,60,30,0.28)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 6, y + 4); ctx.lineTo(x + 10, y + 12); ctx.lineTo(x + 8, y + 19); ctx.stroke(); }
+    if (rgt) { ctx.fillStyle = 'rgba(90,40,20,0.12)'; ctx.fillRect(x + T - 9, y, 9, T); }
     const below = tile(c, r + 1) === '#' && st.sty[r + 1] && st.sty[r + 1][c] !== ch;
     if (below || r === ROWS - 1) { ctx.fillStyle = '#b8463a'; ctx.fillRect(x, y + T - 11, T, 11); ctx.fillStyle = '#8f3229'; ctx.fillRect(x, y + T - 12, T, 2); }
     else if (!top && h % 5 === 0 && !lft && !rgt && !(st.boardBox || []).some(k => x + T > k[0] && x < k[2] && y + T > k[1] && y < k[3])) {   // a window with shutters
@@ -1035,6 +1043,7 @@ function pompeiiCell(st, ch, c, r) {
       ctx.fillStyle = '#d65f3f';
       for (let k = 0; k < 3; k++) { rr(x + k * 10 + 0.5, y + 1, 9, 7, 3); ctx.fill(); }
       ctx.fillStyle = 'rgba(255,220,190,0.5)'; ctx.fillRect(x, y + 1, T, 2);
+      ctx.fillStyle = 'rgba(90,40,20,0.18)'; ctx.fillRect(x, y + 10, T, 4);   // the eave's shadow on the wall
     }
     return;
   }
@@ -1424,10 +1433,16 @@ function pompeiiDrawTop(st) {
     }
   }
   // floating words: Up you go!, Hot foot!, Ah-choo!
+  // (polish) a pop never sits on a role badge or hint bubble (their boxes from the last frame): it steps up over them
+  const busy = (st.wordBoxes || []).slice();
   for (const q of st.pops) {
     const k = q.t / q.life, a = clamp((1 - k) / 0.3, 0, 1), s = (big ? 1.25 : 1) * (0.8 + 0.2 * Math.min(1, q.t / 0.12));
+    const x = clamp(q.x, 60, W - 60), hw = q.text.length * q.size * 0.3 * s, hh = q.size * 0.6 * s;
+    let y = q.y - k * 26;
+    for (let n = 0; n < 6; n++) { const r = busy.find(b => x - hw < b[0] + b[2] && x + hw > b[0] && y - hh < b[1] + b[3] && y + hh > b[1]); if (!r) break; y = r[1] - hh - 3; }
+    busy.push([x - hw, y - hh, hw * 2, hh * 2]);   // (later pops step over this one too)
     ctx.save(); ctx.globalAlpha = a;
-    bigText(q.text, clamp(q.x, 60, W - 60), q.y - k * 26, q.size, q.col, s);
+    bigText(q.text, x, y, q.size, q.col, s);
     ctx.restore();
   }
 }
@@ -1492,7 +1507,7 @@ function pompeiiHud(st) {
     if (newsBox && x1 > newsBox[0] - 6 && x0 < newsBox[1] + 6) y = Math.max(y, newsBox[2] + 6);
     return y;
   };
-  const placed = [];
+  const placed = st.wordBoxes = [];
   const hit = (x0, y0, w, hh) => placed.find(r => x0 < r[0] + r[2] + 3 && x0 + w > r[0] - 3 && y0 < r[1] + r[3] + 3 && y0 + hh > r[1] - 3);
   const place = (x0, w, hh, k) => {   // a w x hh box over k's head (or under the feet): its top y
     let y = k.by - hh, under = false;

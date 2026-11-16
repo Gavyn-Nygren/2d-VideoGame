@@ -358,13 +358,46 @@ function wizSizeCoast(st, dt) {
 
 /* ---------- drawing ---------- */
 function wizSizeDrawBack(st) {
-  const ph = st.ph, K = WIZSIZE, cx = st.cam.x, F = K.floor, C2 = WIZSIZE_C;
-  ctx.fillStyle = '#3a2c3e'; ctx.fillRect(cx - 40, 0, W + 80, H);
-  // shelves of clutter far behind
+  const ph = st.ph, K = WIZSIZE, cx = st.cam.x, F = K.floor, C2 = WIZSIZE_C, t = G.clock;
+  const g = ctx.createLinearGradient(0, 0, 0, F); g.addColorStop(0, '#2e2232'); g.addColorStop(1, '#46344a');
+  ctx.fillStyle = g; ctx.fillRect(cx - 40, 0, W + 80, H);
+  // wall boards behind the shelves
+  ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = Math.floor((cx - 40) / 34) * 34; x < cx + W + 40; x += 34) { ctx.moveTo(x, 0); ctx.lineTo(x, F); }
+  ctx.stroke();
+  // tall shelves of clutter far behind: boxes, jars, a clock and old books, all a little dusty
   for (let x = Math.floor((cx - 100) / 160) * 160; x < cx + W + 160; x += 160) {
+    ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(x + 16, 96, 130, F - 96);
     ctx.fillStyle = '#4a3a4e'; ctx.fillRect(x + 10, 90, 130, F - 90);
-    ctx.fillStyle = '#5a4a5e'; for (let y = 140; y < F; y += 70) ctx.fillRect(x + 10, y, 130, 6);
-    ctx.fillStyle = '#6a5070'; for (let y = 110; y < F - 20; y += 70) { ctx.fillRect(x + 24, y, 14, 30); ctx.fillRect(x + 60, y + 8, 22, 22); ctx.fillRect(x + 100, y + 4, 10, 26); }
+    ctx.fillStyle = '#3a2c3e'; ctx.fillRect(x + 10, 90, 6, F - 90); ctx.fillRect(x + 134, 90, 6, F - 90);
+    for (let y = 140, row = 0; y < F; y += 70, row++) {
+      const h = hash(x, row);
+      // the things on this shelf
+      const items = [[24, 14, 30], [60, 22, 22], [100, 10, 26]];
+      items.forEach(([dx, w, hh], j) => {
+        const kind = (hash(x * 7 + j * 31, row * 13 + j) >> 4) % 4, ix = x + dx, top = y - hh;
+        if (kind === 0) { // a box with a lid line
+          ctx.fillStyle = '#6a5070'; ctx.fillRect(ix, top, w + 4, hh); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(ix, top, w + 4, 3); ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(ix + w, top, 4, hh);
+        } else if (kind === 1) { // a jar
+          ctx.fillStyle = '#5e6a80'; rr(ix, top + 4, w, hh - 4, 4); ctx.fill(); ctx.fillStyle = '#7a6a5a'; ctx.fillRect(ix + 2, top, w - 4, 5); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(ix + 2, top + 7, 2, hh - 12);
+        } else if (kind === 2) { // a stack of old books
+          for (let b = 0; b < 3; b++) { ctx.fillStyle = ['#6a4048', '#4a5a6a', '#6a6040'][b]; ctx.fillRect(ix - 2 + b, y - 8 - b * 8, w + 8 - b * 2, 8); }
+        } else { // a little clock
+          ctx.fillStyle = '#7a5a40'; rr(ix, top + 2, w + 4, hh - 2, 4); ctx.fill(); ctx.fillStyle = '#d8ccb0'; circle(ix + (w + 4) / 2, top + hh / 2, Math.min(w, hh) / 2 - 2); ctx.fill();
+          ctx.strokeStyle = '#4a3a2a'; ctx.lineWidth = 1.5; ctx.beginPath(); const cxk = ix + (w + 4) / 2, cyk = top + hh / 2; ctx.moveTo(cxk, cyk); ctx.lineTo(cxk, cyk - 5); ctx.moveTo(cxk, cyk); ctx.lineTo(cxk + 4, cyk); ctx.stroke();
+        }
+      });
+      ctx.fillStyle = '#5a4a5e'; ctx.fillRect(x + 10, y, 130, 6); ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + 10, y, 130, 1.5);
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + 16, y + 6, 124, 4);
+    }
+    // a cobweb in the top corner of some shelves
+    if (hash(x, 9) % 2) { ctx.strokeStyle = 'rgba(230,230,250,0.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 16, 96); ctx.lineTo(x + 46, 96); ctx.moveTo(x + 16, 96); ctx.lineTo(x + 16, 126); ctx.moveTo(x + 16, 96); ctx.lineTo(x + 38, 118); ctx.moveTo(x + 32, 96); ctx.quadraticCurveTo(x + 26, 104, x + 16, 112); ctx.moveTo(x + 42, 96); ctx.quadraticCurveTo(x + 30, 112, x + 16, 122); ctx.stroke(); }
+  }
+  // moonlight from a high window and dust drifting in it
+  ctx.fillStyle = 'rgba(220,210,255,0.05)'; ctx.beginPath(); ctx.moveTo(cx + 560, 0); ctx.lineTo(cx + 680, 0); ctx.lineTo(cx + 520, F); ctx.lineTo(cx + 300, F); ctx.closePath(); ctx.fill();
+  for (let k = 0; k < 18; k++) {
+    const h = hash(k, 21), py = (h % 400 + (reduceMotion ? 0 : t * 6 * (1 + k % 3))) % F, px = cx + 300 + (h >> 9) % 360 - py * 0.42;
+    ctx.fillStyle = 'rgba(255,248,220,0.35)'; ctx.fillRect(px, py, 2, 2);
   }
 }
 function wizSizeDraw(st) {
@@ -373,7 +406,12 @@ function wizSizeDraw(st) {
   for (const r of ph.solids) {
     if (r.x1 < cx - 40 || r.x0 > cx + W + 40 || r.off) continue;
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
-    if (r.kind === 'floor' || r.kind === 'shelf') { ctx.fillStyle = C2.floorDk; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = C2.floor; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 8); ctx.beginPath(); ctx.moveTo(r.x0, r.y0); ctx.lineTo(r.x1, r.y0); ctx.stroke(); if (r.kind === 'shelf') { ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); } }
+    if (r.kind === 'floor' || r.kind === 'shelf') { ctx.fillStyle = C2.floorDk; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = C2.floor; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 8); ctx.fillStyle = 'rgba(255,240,200,0.25)'; ctx.fillRect(r.x0, r.y0 + 1, r.x1 - r.x0, 2);
+      { const a = Math.max(r.x0, cx - 40), b = Math.min(r.x1, cx + W + 40); ctx.save(); ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath();
+        for (let y = r.y0 + 22; y < r.y1 - 4; y += 16) { ctx.moveTo(a, y); ctx.lineTo(b, y); }
+        for (let x = Math.ceil(a / 90) * 90; x < b; x += 90) { ctx.moveTo(x, r.y0 + 8); ctx.lineTo(x, Math.min(r.y1, r.y0 + 22)); }
+        ctx.stroke(); ctx.restore(); }
+      ctx.beginPath(); ctx.moveTo(r.x0, r.y0); ctx.lineTo(r.x1, r.y0); ctx.stroke(); if (r.kind === 'shelf') { ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); } }
     else if (r.kind === 'ceil') { ctx.fillStyle = C2.wallDk; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
     else if (r.kind === 'mousewall') {
       ctx.fillStyle = C2.wall; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0 + 12); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0 + 12);
@@ -455,6 +493,7 @@ WIZ_PHASES.size = {
   headLift(st, p) { const ph = st.ph; if (!ph.pieces || p.id !== ph.siz) return 0; return ph.size === 'giant' ? 40 : ph.size === 'tiny' ? -16 : 0; },
   labels(st) { const ph = st.ph, w = { normal: 'pull', tiny: 'pull', giant: 'lift' }; return [0, 1].map(id => (id === ph.zap ? 'zap' : w[ph.size])); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.zap ? 'Zap!' : 'Size!')); },
+  jobKeys(st) { return st.ph.zap === 1 ? ['sizer', 'zapper'] : ['zapper', 'sizer']; },
   legend(st) {
     const ph = st.ph, c = k => (k ? '<kbd>↑</kbd> grow, <kbd>↓</kbd> shrink, then zap' : '<kbd>W</kbd> grow, <kbd>S</kbd> shrink, then zap');
     return { pip: ph.zap === 0 ? c(0) : 'tiny or giant', bo: ph.zap === 1 ? c(1) : 'tiny or giant', pad: 'zapper: stick up / down arms the wand,' };
@@ -481,6 +520,12 @@ Sfx.extra.wizSizeSwat = function () { this.tone(160, 0.12, 'square', 0.04, 90); 
 
 /* ---------- the room ---------- */
 wizRoom('size', {
+  jobs: {
+    zapper: { title: 'Zapper', act: 'zap', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> get grow ready <kbd>S</kbd> get shrink ready',
+      howTo: ['Press up or down, then zap your friend. Zap with nothing ready for normal size.'] },
+    sizer: { title: 'Sizer', act: ['pull', 'lift'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> tiptoe',
+      howTo: ['Tiny fits mouse holes. Giant shoves bookcases and lifts your friend.'] },
+  },
   act: { label: 'zap', labels: ['zap', 'pull'] },
   tip: 'The zapper presses up (grow) or down (shrink), then the action, to change the partner\'s size!',
   legend: { pip: '<kbd>W</kbd> grow, <kbd>S</kbd> shrink, then zap', bo: 'tiny or giant', pad: 'zapper: stick up / down arms the wand,' },

@@ -37,7 +37,31 @@ function rr(x, y, w, h, r) {
 }
 function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); }
 
-function drawBackground() {
+/* ---------- polished shared art (Nov 2026) ----------
+   Gavyn asked for more detail and a more professional look across Worlds 1-39. The shared sky, hills, clouds, stone,
+   grass, planks, spikes, water and sand below have shading, outlines and small hashed details. World 32 (comic book)
+   and World 40 (hand-drawn) have their own looks, so they keep the plain versions (artPlain()). */
+const ART_PLAIN_WORLDS = [31, 39];
+function artPlain() { const d = G.level && G.level.def; return !!(d && ART_PLAIN_WORLDS.includes(d.world)); }
+// colour helpers: mix two '#rrggbb' colours (anything else comes back as the first colour)
+const _rgbCache = {};
+function hexRgb(c) {
+  if (_rgbCache[c] !== undefined) return _rgbCache[c];
+  let m = /^#([0-9a-f]{6})$/i.exec(c || ''), r = null;
+  if (m) { const n = parseInt(m[1], 16); r = [n >> 16, (n >> 8) & 255, n & 255]; }
+  else if ((m = /^#([0-9a-f]{3})$/i.exec(c || ''))) r = m[1].split('').map(h => parseInt(h + h, 16));
+  return (_rgbCache[c] = r);
+}
+const _mixCache = {};
+function mixCol(a, b, t) {
+  const k = a + '|' + b + '|' + t; if (_mixCache[k]) return _mixCache[k];
+  const A = hexRgb(a), B = hexRgb(b);
+  if (!A || !B) return (_mixCache[k] = a);
+  return (_mixCache[k] = 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',') + ')');
+}
+const shade = (c, t) => mixCol(c, '#141428', t), tint = (c, t) => mixCol(c, '#ffffff', t);
+
+function drawBackgroundPlain() {
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, C.skyTop); g.addColorStop(1, C.skyBot);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -47,9 +71,8 @@ function drawBackground() {
     const speed = 6 + (i % 3) * 4;
     const x = ((i * 233 + G.clock * speed) % (W + 220)) - 110;
     const y = 50 + ((i * 71) % 130);
-    drawCloud(x, y, 0.7 + (i % 2) * 0.4);
+    drawCloudPlain(x, y, 0.7 + (i % 2) * 0.4);
   }
-  // a scrolling level (G.camX) slides the hills a little, far ones slower
   const fx = (G.camX || 0) * 0.15, nx = (G.camX || 0) * 0.35;
   ctx.fillStyle = C.hillFar;
   ctx.beginPath(); ctx.moveTo(0, H);
@@ -60,19 +83,146 @@ function drawBackground() {
   for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 400 + Math.sin((x + nx) * 0.011 + 4) * 26 + Math.sin((x + nx) * 0.027 + 1) * 8);
   ctx.lineTo(W, H); ctx.fill();
 }
-function drawCloud(x, y, s) {
+function drawCloudPlain(x, y, s) {
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.beginPath();
   ctx.arc(x, y, 18 * s, 0, Math.PI * 2); ctx.arc(x + 22 * s, y - 8 * s, 22 * s, 0, Math.PI * 2);
   ctx.arc(x + 46 * s, y, 17 * s, 0, Math.PI * 2); ctx.rect(x, y, 46 * s, 17 * s);
   ctx.fill();
 }
+// The sky (gradient, sun) and each layer of hills are drawn once per level and theme into pictures and copied every
+// frame; a scrolling level's hills are drawn as long strips covering its whole width, slid by the camera. Only the
+// sun's rays and the clouds are drawn live.
+const HILLS = [ // base, two sine waves (amp, freq, phase), parallax
+  { base: 292, a1: 22, f1: 0.005, p1: 2.2, a2: 10, f2: 0.023, p2: 0.5, par: 0.07 },
+  { base: 330, a1: 34, f1: 0.007, p1: 1.3, a2: 12, f2: 0.019, p2: 0, par: 0.15 },
+  { base: 400, a1: 26, f1: 0.011, p1: 4, a2: 8, f2: 0.027, p2: 1, par: 0.35 },
+];
+const hillY = (k, X) => { const h = HILLS[k]; return h.base + Math.sin(X * h.f1 + h.p1) * h.a1 + Math.sin(X * h.f2 + h.p2) * h.a2; };
+let _bg = { key: '' };
+function bgLayers() {
+  const L = G.level, sc = Math.max(1, Math.min(3, canvas.width / W));
+  const levelW = L ? (L.cols || COLS) * T : W, maxCam = Math.max(0, levelW - W);
+  const key = [C.skyTop, C.skyBot, C.sun, C.sunGlow, C.hillFar, C.hillNear, maxCam, sc].join('|');
+  if (_bg.key === key) return _bg;
+  const mk = (w, h) => { const cv = document.createElement('canvas'); cv.width = Math.ceil(w * sc); cv.height = Math.ceil(h * sc); const c = cv.getContext('2d'); c.scale(sc, sc); return [cv, c]; };
+  // the sky and the sun
+  const [sky, c] = mk(W, H);
+  const g = c.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, C.skyTop); g.addColorStop(0.62, mixCol(C.skyTop, C.skyBot, 0.75)); g.addColorStop(1, C.skyBot);
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const sunOn = !/,\s*0\)\s*$/.test(C.sun);
+  if (sunOn) {
+    c.fillStyle = C.sunGlow; circleOn(c, 810, 105, 92); c.fill(); circleOn(c, 810, 105, 66); c.fill();
+  }
+  // the hills, each as a strip as wide as the screen plus how far that layer slides
+  const top = 250, strips = [];
+  for (let k = 0; k < 3; k++) {
+    const sw = Math.min(W + Math.ceil(maxCam * HILLS[k].par) + 16, 4096 / sc);
+    const [cv, h] = mk(sw, H - top); h.translate(0, -top);
+    const path = () => { h.beginPath(); h.moveTo(-2, H); for (let X = -2; X <= sw + 12; X += 12) h.lineTo(X, hillY(k, X)); h.lineTo(sw + 12, H); h.closePath(); };
+    const rim = (dy) => { h.beginPath(); for (let X = -2; X <= sw + 12; X += 12) { const y = hillY(k, X) + dy; X === -2 ? h.moveTo(X, y) : h.lineTo(X, y); } };
+    if (k === 0) { h.fillStyle = mixCol(C.hillFar, C.skyBot, 0.45); path(); h.fill(); }
+    if (k === 1) {
+      h.fillStyle = C.hillFar; path(); h.fill();
+      h.strokeStyle = tint(C.hillFar, 0.28); h.lineWidth = 2.5; rim(1.5); h.stroke();
+      h.fillStyle = shade(C.hillFar, 0.07);
+      for (let i = 0; i * 97 + 30 < sw + 60; i++) {
+        const x = i * 97 + 30, y = hillY(1, x), r = 7 + (hash(i % 14, 7) % 6);
+        circleOn(h, x, y + r * 0.55, r); h.fill(); circleOn(h, x + r * 0.9, y + r * 0.8, r * 0.75); h.fill();
+      }
+    }
+    if (k === 2) {
+      const ng = h.createLinearGradient(0, 360, 0, H);
+      ng.addColorStop(0, C.hillNear); ng.addColorStop(1, shade(C.hillNear, 0.16));
+      h.fillStyle = ng; path(); h.fill();
+      h.strokeStyle = tint(C.hillNear, 0.3); h.lineWidth = 3; rim(2); h.stroke();
+      for (let i = 0; i * 151 + 60 < sw + 80; i++) {
+        const x = i * 151 + 60, y = hillY(2, x), r = 9 + (hash(i % 9, 3) % 7);
+        h.fillStyle = shade(C.hillNear, 0.1);
+        circleOn(h, x, y + r * 0.5, r); h.fill(); circleOn(h, x + r, y + r * 0.75, r * 0.78); h.fill(); circleOn(h, x - r * 0.85, y + r * 0.85, r * 0.6); h.fill();
+        h.fillStyle = tint(C.hillNear, 0.18); circleOn(h, x - r * 0.3, y + r * 0.1, r * 0.35); h.fill();
+      }
+    }
+    strips.push({ cv, sw });
+  }
+  _bg = { key, sky, strips, sunOn, sc, top };
+  return _bg;
+}
+function drawBackground() {
+  if (artPlain()) return drawBackgroundPlain();
+  const B = bgLayers(), sc = B.sc, exact = sc === canvas.width / W, sm = ctx.imageSmoothingEnabled;
+  if (exact) ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(B.sky, 0, 0, W, H);
+  ctx.imageSmoothingEnabled = sm;
+  // the sun: slow turning rays over the glow, a bright core with a highlight
+  if (B.sunOn) {
+    ctx.save(); ctx.translate(810, 105);
+    if (!reduceMotion) ctx.rotate(G.clock * 0.05);
+    ctx.fillStyle = C.sunGlow; ctx.beginPath();
+    for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.moveTo(-7, 52); ctx.lineTo(7, 52); ctx.lineTo(0, 86 + (i % 2) * 14); ctx.closePath(); }
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = C.sun; circle(810, 105, 44); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; circle(800, 95, 26); ctx.fill();
+  }
+  for (let i = 0; i < 5; i++) {
+    const speed = 6 + (i % 3) * 4;
+    const x = ((i * 233 + G.clock * speed) % (W + 220)) - 110;
+    const y = 50 + ((i * 71) % 130);
+    drawCloud(x, y, 0.7 + (i % 2) * 0.4);
+  }
+  const cam = G.camX || 0;
+  // a level that doesn't scroll copies its hills as one picture (the three strips flattened once); copying the three
+  // see-through strips each frame cost a slow CPU a few ms
+  if (!cam && B.strips.every(st => st.sw >= W)) {
+    if (!B.flat) {
+      const cv = document.createElement('canvas'); cv.width = Math.round(W * sc); cv.height = Math.round((H - B.top) * sc);
+      const c = cv.getContext('2d');
+      for (const st of B.strips) c.drawImage(st.cv, 0, 0, cv.width, cv.height, 0, 0, cv.width, cv.height);
+      B.flat = cv;
+    }
+    if (exact) ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(B.flat, 0, B.top, W, H - B.top);
+    ctx.imageSmoothingEnabled = sm;
+    return;
+  }
+  for (let k = 0; k < 3; k++) {
+    const st = B.strips[k], off = Math.max(0, Math.min(cam * HILLS[k].par, st.sw - W));
+    if (exact) ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(st.cv, Math.round(off * sc), 0, Math.round(W * sc), Math.round((H - B.top) * sc), 0, B.top, W, H - B.top);
+    ctx.imageSmoothingEnabled = sm;
+  }
+}
+// a cloud is drawn once per size into a picture and copied onto whole pixels after that
+function drawCloud(x, y, s) {
+  if (artPlain()) return drawCloudPlain(x, y, s);
+  const m = ctx.getTransform(), sc = Math.max(1, Math.min(3, canvas.width / W));
+  if (m.b !== 0 || m.c !== 0 || Math.abs(m.a - sc) > 1e-6) return paintCloud(ctx, x, y, s);
+  const sp = artSprite('cloud' + s, 92 * s, 58 * s, 23 * s, 33 * s, c => paintCloud(c, 0, 0, s));
+  blitSprite(sp, x, y);
+}
+function paintCloud(ctx, x, y, s) {
+  // a soft shadow under the puffs, then the white puffs, then a bright top
+  ctx.fillStyle = 'rgba(160,175,205,0.28)';
+  ctx.beginPath();
+  ctx.arc(x + 2 * s, y + 4 * s, 18 * s, 0, Math.PI * 2); ctx.arc(x + 24 * s, y - 4 * s, 22 * s, 0, Math.PI * 2);
+  ctx.arc(x + 48 * s, y + 4 * s, 17 * s, 0, Math.PI * 2); ctx.rect(x + 2 * s, y + 4 * s, 46 * s, 17 * s);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath();
+  ctx.arc(x, y, 18 * s, 0, Math.PI * 2); ctx.arc(x + 22 * s, y - 8 * s, 22 * s, 0, Math.PI * 2);
+  ctx.arc(x + 46 * s, y, 17 * s, 0, Math.PI * 2); ctx.arc(x + 34 * s, y - 2 * s, 14 * s, 0, Math.PI * 2); ctx.rect(x, y, 46 * s, 17 * s);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  circleOn(ctx, x + 17 * s, y - 15 * s, 9 * s); ctx.fill(); circleOn(ctx, x - 4 * s, y - 5 * s, 6 * s); ctx.fill();
+}
 
-function drawStone(tx, ty) {
+function drawStonePlain(tx, ty) {
   const x = tx * T, y = ty * T;
-  ctx.fillStyle = C.stone; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1); // slight overlap hides seams when scaled
+  ctx.fillStyle = C.stone; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
   const h = hash(tx, ty);
-  if (h % 3 === 0) { ctx.fillStyle = C.stoneLight; rr(x + 4 + (h % 15), y + 10 + ((h >> 4) % 12), 7, 4, 2); ctx.fill(); }
+  if (h % 3 === 0) { ctx.fillStyle = C.stoneLight; rr(x + 4 + (h % 15), y + 10 + ((h >>> 4) % 12), 7, 4, 2); ctx.fill(); }
   ctx.fillStyle = C.stoneEdge;
   if (tile(tx - 1, ty) !== '#') ctx.fillRect(x, y, 2, T);
   if (tile(tx + 1, ty) !== '#') ctx.fillRect(x + T - 2, y, 2, T);
@@ -84,21 +234,210 @@ function drawStone(tx, ty) {
     for (let i = 0; i < 3; i++) { circle(x + 5 + i * 10, y + 6, 3); ctx.fill(); }
   }
 }
+// The polished stone is drawn once per look into a small picture (sprite) and copied after that: a tile's look depends
+// on which sides meet air, how deep it sits, one of 12 variants and the theme's colours. Drawing every tile from
+// scratch cost about 5 ms a frame; copying costs about what the plain tiles did.
+const STONE_VARIANTS = 12, _sprites = new Map();
+let _spriteScale = 0;
+function artSprite(key, w, h, ox, oy, paint) {
+  const sc = Math.max(1, Math.min(3, canvas.width / W));
+  if (sc !== _spriteScale) { _sprites.clear(); _spriteScale = sc; }
+  let sp = _sprites.get(key);
+  if (!sp) {
+    if (_sprites.size > 3000) _sprites.clear();
+    // the picture's origin sits on a whole pixel, so a copy can land exactly on the screen's pixels
+    const px = Math.ceil(ox * sc), py = Math.ceil(oy * sc);
+    sp = document.createElement('canvas'); sp.width = Math.ceil(px + (w - ox) * sc); sp.height = Math.ceil(py + (h - oy) * sc);
+    const c = sp.getContext('2d'); c.translate(px, py); c.scale(sc, sc); paint(c);
+    sp.px = px; sp.py = py;
+    _sprites.set(key, sp);
+  }
+  return sp;
+}
+// copy a picture made by artSprite with its origin at (x, y): onto whole screen pixels without smoothing when the
+// screen isn't rotated or zoomed (smoothing made each copy several times slower on a computer without a graphics
+// chip, and whole pixels leave no seams between tiles)
+function blitSprite(sp, x, y) {
+  const m = ctx.getTransform();
+  if (m.b === 0 && m.c === 0 && Math.abs(m.a - _spriteScale) < 1e-6 && Math.abs(m.d - _spriteScale) < 1e-6) {
+    const X = Math.round(m.a * x + m.e) - sp.px, Y = Math.round(m.d * y + m.f) - sp.py, sm = ctx.imageSmoothingEnabled;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(sp, X, Y);
+    ctx.setTransform(m); ctx.imageSmoothingEnabled = sm;
+  } else ctx.drawImage(sp, x - sp.px / _spriteScale, y - sp.py / _spriteScale, sp.width / _spriteScale, sp.height / _spriteScale);
+}
+function rrOn(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function circleOn(c, x, y, r) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); }
+function drawStone(tx, ty) {
+  if (artPlain()) return drawStonePlain(tx, ty);
+  const x = tx * T, y = ty * T;
+  const L = tile(tx - 1, ty) !== '#', R = tile(tx + 1, ty) !== '#';
+  const B = ty + 1 < ROWS && !'#s'.includes(tile(tx, ty + 1)), top = ty > 0 && !'#sw'.includes(tile(tx, ty - 1));
+  let d = 0; for (let k = 1; k <= 3 && tile(tx, ty - k) === '#'; k++) d++;
+  const v = hash(tx, ty) % STONE_VARIANTS;
+  const key = 'st' + C.stone + C.stoneLight + C.stoneEdge + C.grass + C.grassDark + (L ? 1 : 0) + (R ? 1 : 0) + (B ? 1 : 0) + (top ? 1 : 0) + d + ':' + v;
+  const sp = artSprite(key, T + 8, T + 10, 4, 8, c => paintStone(c, hash(v * 7 + 3, 911), L, R, B, top, d));
+  blitSprite(sp, x, y);
+}
+// The level's stone tiles are drawn in chunks of 16 columns into pictures, rebuilt only when a chunk's tiles (or the
+// theme) change, and copied in one go: copying ~200 small tile pictures a frame still cost a phone-speed CPU several
+// ms. render() draws them before its tile loop and the loop skips '#'. Off (null) when the screen is rotated or zoomed.
+const STONE_CHUNK = 16, _chunks = new Map();
+function drawStoneChunks(tx0, tx1) {
+  if (artPlain()) return false;
+  const m = ctx.getTransform(), sc = Math.max(1, Math.min(3, canvas.width / W));
+  if (m.b !== 0 || m.c !== 0 || Math.abs(m.a - sc) > 1e-6 || Math.abs(m.d - sc) > 1e-6) return false;
+  if (sc !== _spriteScale) { _sprites.clear(); _spriteScale = sc; }
+  const theme = C.stone + C.stoneLight + C.stoneEdge + C.grass + C.grassDark + '|' + sc;
+  for (let c0 = Math.floor(tx0 / STONE_CHUNK) * STONE_CHUNK; c0 <= tx1; c0 += STONE_CHUNK) {
+    // what the chunk's tiles look like depends on its cells and the ones around it
+    let sig = 0;
+    for (let ty = -3; ty <= ROWS; ty++) for (let tx = c0 - 1; tx <= c0 + STONE_CHUNK; tx++) sig = (Math.imul(sig, 31) + tile(tx, ty).charCodeAt(0)) | 0;
+    const id = G.level.def.name + '|' + (G.level.def.roomIndex || 0) + '|' + c0;
+    let ch = _chunks.get(id);
+    if (!ch || ch.sig !== sig || ch.theme !== theme) {
+      if (!ch) {
+        if (_chunks.size >= 5) _chunks.delete(_chunks.keys().next().value); // the oldest
+        const px = Math.ceil(4 * sc), py = Math.ceil(8 * sc);
+        const cv = document.createElement('canvas'); cv.width = Math.ceil(px + (STONE_CHUNK * T + 4) * sc); cv.height = Math.ceil(py + (ROWS * T + 2) * sc);
+        ch = { cv, px, py };
+      }
+      const c = ch.cv.getContext('2d');
+      c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, ch.cv.width, ch.cv.height);
+      c.setTransform(sc, 0, 0, sc, ch.px, ch.py);
+      let r0 = ROWS, r1 = -1;
+      for (let ty = 0; ty < ROWS; ty++) for (let tx = c0; tx < c0 + STONE_CHUNK; tx++) {
+        if (tile(tx, ty) !== '#' || tx >= (G.level.cols || COLS)) continue;
+        r0 = Math.min(r0, ty); r1 = Math.max(r1, ty);
+        const L = tile(tx - 1, ty) !== '#', R = tile(tx + 1, ty) !== '#';
+        const B = ty + 1 < ROWS && !'#s'.includes(tile(tx, ty + 1)), top = ty > 0 && !'#sw'.includes(tile(tx, ty - 1));
+        let d = 0; for (let k = 1; k <= 3 && tile(tx, ty - k) === '#'; k++) d++;
+        const v = hash(tx, ty) % STONE_VARIANTS;
+        c.save(); c.translate((tx - c0) * T, ty * T); paintStone(c, hash(v * 7 + 3, 911), L, R, B, top, d); c.restore();
+      }
+      ch.sig = sig; ch.theme = theme;
+      // only the rows that hold stone get copied
+      ch.sy = r1 < 0 ? 0 : Math.max(0, Math.floor(ch.py + (r0 * T - 8) * sc)); ch.sh = r1 < 0 ? 0 : Math.min(ch.cv.height, Math.ceil(ch.py + ((r1 + 1) * T + 2) * sc)) - ch.sy;
+      _chunks.delete(id); _chunks.set(id, ch);
+    }
+    const X = Math.round(m.a * c0 * T + m.e) - ch.px, Y = Math.round(m.f) - ch.py, sm = ctx.imageSmoothingEnabled;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+    if (ch.sh > 0) ctx.drawImage(ch.cv, 0, ch.sy, ch.cv.width, ch.sh, X, Y + ch.sy, ch.cv.width, ch.sh);
+    ctx.setTransform(m); ctx.imageSmoothingEnabled = sm;
+  }
+  return true;
+}
+// one stone tile at (0, 0) on canvas c
+function paintStone(c, h, L, R, B, top, d) {
+  const x = 0, y = 0;
+  // (fills reach half a pixel past the right and bottom edges, under the next tile, so no seam shows between tiles)
+  c.fillStyle = C.stone; c.fillRect(x, y, T + 0.6, T + 0.6);
+  // depth: rock gets a little darker the deeper it is under a surface (a smooth ramp over the top four rows)
+  if (d < 4) {
+    const g = c.createLinearGradient(0, y, 0, y + T);
+    g.addColorStop(0, 'rgba(10,10,30,' + (0.035 * d) + ')'); g.addColorStop(1, 'rgba(10,10,30,' + (0.035 * Math.min(3, d + 1)) + ')');
+    c.fillStyle = g;
+  } else c.fillStyle = 'rgba(10,10,30,0.105)';
+  c.fillRect(x, y, T + 0.6, T + 0.6);
+  // carved stones: one or two rounded slabs with a lit top and a shaded foot
+  const sl = shade(C.stone, 0.18), li = C.stoneLight;
+  const n = 1 + (h % 2);
+  for (let i = 0; i < n; i++) {
+    const hh = h >>> (i * 7 + 3);
+    const w = 9 + (hh % 9), hgt = 5 + ((hh >>> 4) % 5);
+    const sx = x + 3 + ((hh >>> 2) % Math.max(1, T - w - 6)), sy = y + (top ? 12 : 4) + ((hh >>> 6) % Math.max(1, T - hgt - (top ? 15 : 8)));
+    c.fillStyle = sl; rrOn(c, sx, sy + 1.5, w, hgt, 2.5); c.fill();
+    c.fillStyle = li; rrOn(c, sx, sy, w, hgt, 2.5); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(sx + 2, sy + 1, w - 4, 1.2);
+  }
+  c.fillStyle = sl;
+  if (h & 64) { circleOn(c, x + 6 + (h >>> 9) % 18, y + 18 + (h >>> 13) % 9, 1.2); c.fill(); }
+  if (h & 128) { circleOn(c, x + 4 + (h >>> 11) % 22, y + 9 + (h >>> 15) % 12, 0.9); c.fill(); }
+  // edges: dark outline where the rock meets air, a thin lit bevel inside on the left
+  c.fillStyle = C.stoneEdge;
+  if (L) c.fillRect(x, y, 2.5, T);
+  if (R) c.fillRect(x + T - 2.5, y, 2.5, T);
+  if (B) { c.fillRect(x, y + T - 3.5, T, 3.5); c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(x, y + T - 6, T, 2.5); }
+  if (L) { c.fillStyle = 'rgba(255,255,255,0.1)'; c.fillRect(x + 2.5, y, 1.5, T); }
+  if (R) { c.fillStyle = 'rgba(0,0,0,0.1)'; c.fillRect(x + T - 5, y, 2.5, T); }
+  if (top) {
+    // a shadow the turf throws on the rock, the turf with a scalloped lip, then blades and the odd flower
+    c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(x, y + 8, T, 5);
+    c.fillStyle = C.grassDark; c.fillRect(x, y, T, 9);
+    for (let i = 0; i < 3; i++) { circleOn(c, x + 5 + i * 10, y + 8, 3.6); c.fill(); }
+    c.fillStyle = C.grass; c.fillRect(x, y, T, 6);
+    for (let i = 0; i < 3; i++) { circleOn(c, x + 5 + i * 10, y + 6, 3.1); c.fill(); }
+    c.fillStyle = tint(C.grass, 0.35); c.fillRect(x, y, T, 1.6);
+    c.fillStyle = C.grass;
+    for (let i = 0; i < 3; i++) {
+      if (!((h >>> (i + 2)) & 1)) continue;
+      const bx = x + 3 + i * 10 + ((h >>> (i * 3)) % 5), bh = 3 + ((h >>> (i * 2 + 5)) % 3);
+      c.beginPath(); c.moveTo(bx - 1.6, y + 0.5); c.lineTo(bx + 0.6, y - bh); c.lineTo(bx + 1.6, y + 0.5); c.closePath(); c.fill();
+    }
+    if (h % 4 === 0) {
+      const fx = x + 8 + (h >>> 5) % 14;
+      c.fillStyle = ['#fff4c2', '#ffd1e6', '#ffffff'][(h >>> 3) % 3];
+      for (let a = 0; a < 5; a++) { circleOn(c, fx + Math.cos(a * 1.257) * 1.8, y - 2 + Math.sin(a * 1.257) * 1.8, 1.3); c.fill(); }
+      c.fillStyle = '#ffc53d'; circleOn(c, fx, y - 2, 1.1); c.fill();
+    }
+    // the turf's ends curl down over the side
+    if (L) { c.fillStyle = C.grassDark; rrOn(c, x - 1.5, y, 4, 11, 2); c.fill(); }
+    if (R) { c.fillStyle = C.grassDark; rrOn(c, x + T - 2.5, y, 4, 11, 2); c.fill(); }
+  }
+}
 function drawSpikes(x, y) {
+  if (artPlain()) {
+    for (let i = 0; i < 3; i++) {
+      const sx = x + i * 10;
+      ctx.fillStyle = C.spike;
+      ctx.beginPath(); ctx.moveTo(sx, y + T); ctx.lineTo(sx + 5, y + 14); ctx.lineTo(sx + 10, y + T); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = C.spikeHi;
+      ctx.beginPath(); ctx.moveTo(sx + 5, y + 14); ctx.lineTo(sx + 7, y + 22); ctx.lineTo(sx + 5, y + 21); ctx.closePath(); ctx.fill();
+    }
+    return;
+  }
+  // a metal base strip, then three spikes with a shaded right face, a lit left edge and a bright tip
+  ctx.fillStyle = shade(C.spike, 0.25); rr(x, y + T - 4, T, 4, 1.5); ctx.fill();
   for (let i = 0; i < 3; i++) {
     const sx = x + i * 10;
     ctx.fillStyle = C.spike;
-    ctx.beginPath(); ctx.moveTo(sx, y + T); ctx.lineTo(sx + 5, y + 14); ctx.lineTo(sx + 10, y + T); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(sx, y + T - 2); ctx.lineTo(sx + 5, y + 12); ctx.lineTo(sx + 10, y + T - 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.moveTo(sx + 5, y + 12); ctx.lineTo(sx + 10, y + T - 2); ctx.lineTo(sx + 5.5, y + T - 2); ctx.closePath(); ctx.fill();
     ctx.fillStyle = C.spikeHi;
-    ctx.beginPath(); ctx.moveTo(sx + 5, y + 14); ctx.lineTo(sx + 7, y + 22); ctx.lineTo(sx + 5, y + 21); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(sx + 5, y + 12); ctx.lineTo(sx + 3.6, y + 21); ctx.lineTo(sx + 4.6, y + 21); ctx.closePath(); ctx.fill();
+    circle(sx + 5, y + 13, 1); ctx.fill();
   }
 }
 function drawPlank(x, y, tx, ty) {
-  ctx.fillStyle = C.plankDark; ctx.fillRect(x, y + 2, T, 9);
-  ctx.fillStyle = C.plank; ctx.fillRect(x, y, T, 7);
-  ctx.fillStyle = C.plankDark; circle(x + 5, y + 4, 1.4); ctx.fill(); circle(x + T - 5, y + 4, 1.4); ctx.fill();
-  if (tile(tx - 1, ty) !== '=') { ctx.fillStyle = C.plankDark; ctx.fillRect(x + 3, y + 10, 3, 8); }
-  if (tile(tx + 1, ty) !== '=') { ctx.fillStyle = C.plankDark; ctx.fillRect(x + T - 6, y + 10, 3, 8); }
+  const lEnd = tile(tx - 1, ty) !== '=', rEnd = tile(tx + 1, ty) !== '=';
+  if (artPlain()) {
+    ctx.fillStyle = C.plankDark; ctx.fillRect(x, y + 2, T, 9);
+    ctx.fillStyle = C.plank; ctx.fillRect(x, y, T, 7);
+    ctx.fillStyle = C.plankDark; circle(x + 5, y + 4, 1.4); ctx.fill(); circle(x + T - 5, y + 4, 1.4); ctx.fill();
+    if (lEnd) { ctx.fillStyle = C.plankDark; ctx.fillRect(x + 3, y + 10, 3, 8); }
+    if (rEnd) { ctx.fillStyle = C.plankDark; ctx.fillRect(x + T - 6, y + 10, 3, 8); }
+    return;
+  }
+  const h = hash(tx, ty);
+  // brackets under the ends
+  ctx.fillStyle = C.plankDark;
+  if (lEnd) { ctx.fillRect(x + 3, y + 9, 3, 9); ctx.beginPath(); ctx.moveTo(x + 6, y + 9); ctx.lineTo(x + 12, y + 9); ctx.lineTo(x + 6, y + 15); ctx.closePath(); ctx.fill(); }
+  if (rEnd) { ctx.fillRect(x + T - 6, y + 9, 3, 9); ctx.beginPath(); ctx.moveTo(x + T - 6, y + 9); ctx.lineTo(x + T - 12, y + 9); ctx.lineTo(x + T - 6, y + 15); ctx.closePath(); ctx.fill(); }
+  // the board: a dark underside, the face, a lit top edge, grain and a seam between boards
+  ctx.fillStyle = C.plankDark; rr(x + (lEnd ? 0.5 : -0.5), y + 1.5, T - (lEnd ? 0.5 : -0.5) - (rEnd ? 0.5 : -0.5), 9.5, lEnd || rEnd ? 2.5 : 0); ctx.fill();
+  ctx.fillStyle = C.plank; ctx.fillRect(x + (lEnd ? 1 : 0), y, T - (lEnd ? 1 : 0) - (rEnd ? 1 : 0), 7.5);
+  ctx.fillStyle = tint(C.plank, 0.3); ctx.fillRect(x + (lEnd ? 1 : 0), y, T - (lEnd ? 1 : 0) - (rEnd ? 1 : 0), 1.5);
+  ctx.strokeStyle = shade(C.plank, 0.18); ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(x + 2, y + 3.5 + (h % 2)); ctx.quadraticCurveTo(x + 15, y + 2.5 + (h % 3), x + T - 2, y + 4 + ((h >>> 2) % 2)); ctx.stroke();
+  if (h % 3 === 0) { ctx.beginPath(); ctx.ellipse(x + 8 + (h >>> 4) % 14, y + 4.5, 2.2, 1.1, 0, 0, Math.PI * 2); ctx.stroke(); }
+  if (!rEnd && (h >>> 3) % 3 === 0) { ctx.fillStyle = C.plankDark; ctx.fillRect(x + T - 1, y + 1, 1, 6); }
+  ctx.fillStyle = C.plankDark; circle(x + 5, y + 4, 1.3); ctx.fill(); circle(x + T - 5, y + 4, 1.3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; circle(x + 4.6, y + 3.6, 0.5); ctx.fill(); circle(x + T - 5.4, y + 3.6, 0.5); ctx.fill();
 }
 function drawColorBlock(x, y, id, tx, ty) {
   const col = PCOL[id], dark = PDARK[id];
@@ -136,6 +475,7 @@ function drawSwitchTile(ch, x, y) {
       ctx.fillStyle = col; ctx.fillRect(x, y, T, T);
       ctx.fillStyle = 'rgba(28,26,54,0.22)';
       ctx.fillRect(x, y + 10, T, 2); ctx.fillRect(x, y + 20, T, 2); ctx.fillRect(x + T - 2, y, 2, T);
+      if (!artPlain()) { ctx.fillRect(x + 14, y, 2, 10); ctx.fillRect(x + 6, y + 12, 2, 8); ctx.fillRect(x + 21, y + 12, 2, 8); ctx.fillRect(x + 14, y + 22, 2, 8); ctx.fillStyle = 'rgba(28,26,54,0.3)'; ctx.fillRect(x, y + T - 2, T, 2); }
       ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x + 2, y + 2, T - 4, 3);
       ctx.restore();
     }
@@ -149,16 +489,23 @@ function drawSwitchTile(ch, x, y) {
 }
 function drawPlate(pl) {
   const x = pl.x * T, y = pl.y * T, col = LETTER_COL[pl.letter] || C.gold;
+  const plain = artPlain();
+  if (!plain) { ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(x + T / 2, y + 29, T / 2, 2.5, 0, 0, Math.PI * 2); ctx.fill(); }
   ctx.fillStyle = C.ink; rr(x + 2, y + 25, T - 4, 5, 2); ctx.fill();
+  if (!plain) { ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x + 4, y + 25.5, T - 8, 1); }
   const top = pl.down ? y + 23 : y + 19;
-  ctx.fillStyle = col; rr(x + 5, top, T - 10, (y + 26) - top, 3); ctx.fill();
+  if (!plain) { ctx.fillStyle = shade(col, 0.3); rr(x + 5, top + 1.5, T - 10, (y + 26) - top - 1.5, 3); ctx.fill(); }
+  ctx.fillStyle = col; rr(x + 5, top, T - 10, (y + 26) - top - (plain ? 0 : 2), 3); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x + 8, top + 1, T - 16, 2);
+  if (!plain && !pl.down) { ctx.fillStyle = 'rgba(255,255,255,' + (0.18 + 0.12 * Math.sin(G.clock * 3 + x)) + ')'; ctx.beginPath(); ctx.ellipse(x + T / 2, top - 1, 9, 3, 0, 0, Math.PI * 2); ctx.fill(); }
 }
 function drawDoor(d) {
   const L = G.level, locked = L.key && !L.key.got;
   const { x, y, w, h } = d;
+  if (!artPlain()) { ctx.fillStyle = 'rgba(255,215,90,' + (0.16 + 0.06 * Math.sin(G.clock * 2.5)) + ')'; rr(x - 9, y - 12, w + 18, h + 12, 20); ctx.fill(); }
   ctx.fillStyle = C.goldDark; rr(x - 3, y - 6, w + 6, h + 6, 14); ctx.fill();
   ctx.fillStyle = C.gold; rr(x - 1, y - 4, w + 2, h + 4, 12); ctx.fill();
+  if (!artPlain()) { ctx.fillStyle = 'rgba(255,255,255,0.4)'; rr(x + 1, y - 3, w - 2, 3, 1.5); ctx.fill(); ctx.fillStyle = C.goldDark; for (const sx of [x + 0.5, x + w - 2.5]) for (let k = 0; k < 3; k++) { circle(sx + 1, y + 8 + k * ((h - 16) / 2), 1.2); ctx.fill(); } }
   if (locked) { ctx.fillStyle = C.doorIn; }
   else {
     const g = ctx.createLinearGradient(0, y, 0, y + h);
@@ -191,11 +538,19 @@ function drawKey(k) {
 }
 function drawFlag(f) {
   const x = f.x + 15, base = f.y + T;
+  const plain = artPlain();
+  if (!plain) { ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(x, base, 7, 2.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = C.ink; rr(x - 5, base - 4, 10, 4, 1.5); ctx.fill(); }
   ctx.fillStyle = C.ink; ctx.fillRect(x - 1.5, base - 52, 3, 52);
-  ctx.fillStyle = f.on ? C.grass : '#b9b6cc';
+  if (!plain) { ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x - 1.5, base - 52, 1, 48); ctx.fillStyle = C.gold; circle(x, base - 53, 2.8); ctx.fill(); }
+  const fc = f.on ? C.grass : '#c4c0b8';
   const wave = Math.sin(G.clock * 6) * 2;
   const top = f.on ? base - 52 : base - 28;
+  ctx.fillStyle = fc;
   ctx.beginPath(); ctx.moveTo(x + 1.5, top); ctx.lineTo(x + 22, top + 8 + wave); ctx.lineTo(x + 1.5, top + 16); ctx.closePath(); ctx.fill();
+  if (!plain) {
+    ctx.strokeStyle = shade(fc, 0.3); ctx.lineWidth = 1.2; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.moveTo(x + 1.5, top + 8); ctx.lineTo(x + 22, top + 8 + wave); ctx.lineTo(x + 1.5, top + 16); ctx.closePath(); ctx.fill();
+  }
 }
 function drawCrownShape(x, y, s) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
@@ -351,7 +706,9 @@ function drawPlayer(p) {
 
 function pill(x, y, w, h, align) {
   const px = align === 'right' ? x - w : align === 'center' ? x - w / 2 : x;
-  ctx.fillStyle = 'rgba(23,25,29,0.78)'; rr(px, y, w, h, h / 2); ctx.fill();
+  if (!artPlain()) { ctx.fillStyle = 'rgba(0,0,0,0.16)'; rr(px, y + 2, w, h, h / 2); ctx.fill(); }
+  ctx.fillStyle = 'rgba(23,25,29,0.8)'; rr(px, y, w, h, h / 2); ctx.fill();
+  if (!artPlain()) { ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1; rr(px + 0.5, y + 0.5, w - 1, h - 1, (h - 1) / 2); ctx.stroke(); }
   return px;
 }
 function text(str, x, y, size, col, align = 'left', font = 'display') {
@@ -378,14 +735,14 @@ function drawPad(p) {
   ctx.fillStyle = ctx.strokeStyle = 'rgba(255,255,255,0.9)'; if (p.dir) { ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(0, -3); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(5.5, -1); ctx.lineTo(-5.5, -1); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
-function drawSand(x, y, tx, ty) {
+function drawSandPlain(x, y, tx, ty) {
   ctx.fillStyle = '#e9cf8f'; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
   ctx.fillStyle = '#d2b06a';
   const h = hash(tx, ty);
-  for (let i = 0; i < 5; i++) { circle(x + 4 + ((h >> (i * 3)) % 23), y + 6 + ((h >> (i * 4 + 2)) % 20), 1.4); ctx.fill(); }
+  for (let i = 0; i < 5; i++) { circle(x + 4 + ((h >>> (i * 3)) % 23), y + 6 + ((h >>> (i * 4 + 2)) % 20), 1.4); ctx.fill(); }
   if (tile(tx, ty - 1) !== 's' && tile(tx, ty - 1) !== '#') { ctx.fillStyle = '#f6e2a8'; ctx.fillRect(x, y, T, 4); }
 }
-function drawWater(x, y, tx, ty) {
+function drawWaterPlain(x, y, tx, ty) {
   const top = tile(tx, ty - 1) !== 'w';
   ctx.fillStyle = 'rgba(70,150,220,0.78)'; ctx.fillRect(x, y + (top ? 6 : 0), T, T - (top ? 6 : 0));
   if (top) {
@@ -394,6 +751,42 @@ function drawWater(x, y, tx, ty) {
     ctx.beginPath(); ctx.moveTo(x, y + 8);
     for (let i = 0; i <= 6; i++) ctx.lineTo(x + i * 5, y + 6 + Math.sin(ph + i * 0.9) * 1.6);
     ctx.lineTo(x + T, y + 10); ctx.lineTo(x, y + 10); ctx.closePath(); ctx.fill();
+  }
+}
+function drawSand(x, y, tx, ty) {
+  if (artPlain()) return drawSandPlain(x, y, tx, ty);
+  const h = hash(tx, ty), top = tile(tx, ty - 1) !== 's' && tile(tx, ty - 1) !== '#';
+  ctx.fillStyle = '#e9cf8f'; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
+  // ripples and grains
+  ctx.strokeStyle = 'rgba(190,150,80,0.45)'; ctx.lineWidth = 1;
+  for (let i = 0; i < 2; i++) {
+    const ry = y + 11 + i * 9 + ((h >>> (i * 3)) % 4);
+    ctx.beginPath(); ctx.moveTo(x + 2, ry); ctx.quadraticCurveTo(x + 9, ry - 2.5, x + 15, ry); ctx.quadraticCurveTo(x + 22, ry + 2.5, x + T - 2, ry); ctx.stroke();
+  }
+  ctx.fillStyle = '#d2b06a';
+  for (let i = 0; i < 5; i++) { circle(x + 4 + ((h >>> (i * 3)) % 23), y + 6 + ((h >>> (i * 4 + 2)) % 20), 1.2); ctx.fill(); }
+  ctx.fillStyle = '#fff1c6';
+  for (let i = 0; i < 2; i++) { circle(x + 6 + ((h >>> (i * 5 + 1)) % 19), y + 8 + ((h >>> (i * 6 + 3)) % 18), 0.9); ctx.fill(); }
+  if (top) { ctx.fillStyle = '#f6e2a8'; ctx.fillRect(x, y, T, 4); ctx.fillStyle = '#fff3cf'; ctx.fillRect(x, y, T, 1.5); }
+}
+function drawWater(x, y, tx, ty) {
+  if (artPlain()) return drawWaterPlain(x, y, tx, ty);
+  const top = tile(tx, ty - 1) !== 'w', deep = tile(tx, ty - 1) === 'w' && tile(tx, ty - 2) === 'w';
+  ctx.fillStyle = deep ? 'rgba(40,110,190,0.84)' : 'rgba(70,150,220,0.8)'; ctx.fillRect(x, y + (top ? 6 : 0), T, T - (top ? 6 : 0));
+  // light ripples drifting through the water
+  const ph = G.clock * 1.6 + tx * 2.3 + ty * 1.1;
+  ctx.strokeStyle = 'rgba(200,235,255,0.28)'; ctx.lineWidth = 1.2;
+  const ry = y + (top ? 16 : 10) + Math.sin(ph) * 3;
+  ctx.beginPath(); ctx.moveTo(x + 4, ry); ctx.quadraticCurveTo(x + 10, ry - 2, x + 16, ry); ctx.stroke();
+  if (top) {
+    ctx.fillStyle = 'rgba(190,230,255,0.92)';
+    const p2 = G.clock * 3 + tx * 1.7;
+    ctx.beginPath(); ctx.moveTo(x, y + 8);
+    for (let i = 0; i <= 6; i++) ctx.lineTo(x + i * 5, y + 6 + Math.sin(p2 + i * 0.9) * 1.6);
+    ctx.lineTo(x + T, y + 10); ctx.lineTo(x, y + 10); ctx.closePath(); ctx.fill();
+    // a glint now and then
+    const g = (Math.sin(G.clock * 2.1 + tx * 3.7) + 1) / 2;
+    if (g > 0.8) { ctx.fillStyle = 'rgba(255,255,255,' + ((g - 0.8) * 4) + ')'; circle(x + 8 + (tx * 7) % 14, y + 6.5, 1.6); ctx.fill(); }
   }
 }
 function drawHUD() {
@@ -490,7 +883,8 @@ function drawMatchHUD() {
 // card: the intro card's box [x, y, w, h]. A tag that would sit on it goes under the hero's feet,
 // or under the card when the hero is behind it, and points up
 function drawNameTags(alpha, card) {
-  const tagHw = p => cpuSolo() && cpuOn(p.id) ? 30 : 18;
+  // half the tag's width: its words plus 8 px of air each side (12 px bold)
+  const tagHw = p => { ctx.font = '700 12px "Atkinson Hyperlegible", system-ui, sans-serif'; return Math.max(18, Math.ceil(ctx.measureText(cpuSolo() && cpuOn(p.id) ? NAMES[p.id] + ' · CPU' : NAMES[p.id]).width / 2) + 8); };
   const onCard = (p, y0, y1) => card && p.x - (G.camX || 0) + p.w / 2 + tagHw(p) > card[0] && p.x - (G.camX || 0) + p.w / 2 - tagHw(p) < card[0] + card[2] && y1 > card[1] && y0 < card[1] + card[3];
   const lift = (LEVELS[G.levelIndex] || {}).tagLift || 0;
   const moved = p => onCard(p, p.y - 27 - lift, p.y - 5 - lift) || onCard(p, p.y, p.y + p.h); // the tag, or the hero, is on the card
@@ -563,7 +957,7 @@ function drawMatchOverlay() {
     else { title = 'Tie! Replay the round'; tcol = C.paper; }
     const lines = [];
     if (e.reason) lines.push([e.reason, C.paper, 16]);
-    if (final && e.winner < 0) lines.push(['Too many ties in a row: the match is called', '#d9d3ef', 13]);
+    if (final && e.winner < 0) lines.push(['Too many ties in a row: the match is called', '#e6e2d8', 13]);
     const sc = easeBack(m.t / 0.28);
     ctx.font = '34px "Lilita One", "Arial Rounded MT Bold", sans-serif';
     let bw = ctx.measureText(title).width;
@@ -591,20 +985,29 @@ function drawIntro() {
   const def = G.level.def;
   // straight after the ready card (which showed the tip and the controls): only the name tags
   if (G.introQuick) { if (!(G.mst && G.mst.arriveT > 0)) drawNameTags(a, null); return; }
+  // a level with jobs: each player's job and its buttons (drawIntroJobs)
+  if (def.jobs && jobFor(0)) { drawIntroJobs(a, def); return; }
   const actLine = def.act ? actHintLine() : null, note = cpuTipNote(def.tip);
   ctx.save(); ctx.globalAlpha = a;
-  ctx.font = '14px "Atkinson Hyperlegible", system-ui, sans-serif';
-  const tw = Math.max(380, ctx.measureText(def.tip).width + 60, actLine ? ctx.measureText(actLine).width + 80 : 0, note ? ctx.measureText(note).width + 60 : 0);
-  const card = [W / 2 - tw / 2, 168, tw, (actLine ? 120 : 92) + (note ? 22 : 0)];
-  ctx.fillStyle = 'rgba(23,25,29,0.86)'; rr(card[0], card[1], card[2], card[3], 18); ctx.fill();
   const code = levelCode(G.levelIndex), wd = WORLDS[LEVELS[G.levelIndex].world];
   const first = code.endsWith('-1') && (!def.rooms || def.roomIndex === 0);
   const sub = (first ? `World ${LEVELS[G.levelIndex].world + 1}: ${wd.name} · ` : '') + (def.golf ? `Level ${code} · Hole ${def.roomIndex + 1} of ${def.roomCount} · Par ${def.par}`
     : def.rooms ? `Level ${code} · ${def.name} · ${def.roomWord || 'Room'} ${def.roomIndex + 1} of ${def.roomCount}` : `Level ${code}${def.kind === 'versus' ? ' · Versus' : ''}`);
+  // the card is as wide as its widest line (tip, heading, the gold line over it, the action pill, the 1-player note)
+  ctx.font = '14px "Atkinson Hyperlegible", system-ui, sans-serif';
+  let tw = Math.max(380, ctx.measureText(def.tip).width + 60, actLine ? ctx.measureText(actLine).width + 80 : 0);
+  ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
+  tw = Math.max(tw, ctx.measureText(sub).width + 60, note ? ctx.measureText(note).width + 60 : 0);
+  ctx.font = '30px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+  tw = Math.min(W - 40, Math.max(tw, ctx.measureText(def.rooms ? def.title + '!' : def.name).width + 60));
+  const card = [W / 2 - tw / 2, 168, tw, (actLine ? 120 : 92) + (note ? 22 : 0)];
+  if (!artPlain()) { ctx.fillStyle = 'rgba(0,0,0,0.2)'; rr(card[0], card[1] + 4, card[2], card[3], 18); ctx.fill(); }
+  ctx.fillStyle = 'rgba(23,25,29,0.88)'; rr(card[0], card[1], card[2], card[3], 18); ctx.fill();
+  if (!artPlain()) { ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1.5; rr(card[0] + 0.75, card[1] + 0.75, card[2] - 1.5, card[3] - 1.5, 17); ctx.stroke(); }
   text(sub, W / 2, 190, 13, C.gold, 'center', 'body');
   text(def.rooms ? def.title + '!' : def.name, W / 2, 216, 30, C.paper, 'center');
   ctx.font = '400 14px "Atkinson Hyperlegible", system-ui, sans-serif';
-  ctx.textAlign = 'center'; ctx.fillStyle = '#d9d3ef'; ctx.fillText(def.tip, W / 2, 244);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#e6e2d8'; ctx.fillText(def.tip, W / 2, 244, W - 80);
   // (1-player mode: the tip talks to the computer's character too)
   if (note) { ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.fillStyle = C.paper; ctx.fillText(note, W / 2, actLine ? 297 : 266); }
   if (actLine) {
@@ -616,6 +1019,78 @@ function drawIntro() {
   }
   ctx.restore();
   // name tags over the players, kept off the card (and not yet, while a level's warp-in still hides them)
+  if (!(G.mst && G.mst.arriveT > 0)) drawNameTags(a, card);
+}
+
+// a job's rows drawn on the canvas, in that player's own buttons, from y down; returns the height used
+function drawJobRows(id, x, y, w, job) {
+  const { rows } = controlRows(id, null, G.level.def.act, job), d = playerDevice(id);
+  let yy = y;
+  for (const r of rows.slice(0, 6)) {
+    const vertical = r.whats.includes('jump') && r.whats.includes('down');
+    let bx = x;
+    for (const wt of r.whats) {
+      if (wt === '+') { text('+', bx + 4, yy, 13, C.paper, 'center', 'body'); bx += 10; continue; }
+      if (wt === 'or') { text('or', bx + 9, yy + 0.5, 12, '#b9b3cf', 'center', 'body'); bx += 20; continue; }
+      if (!['left', 'right', 'jump', 'down', 'act'].includes(wt)) continue;
+      const what = wt === 'jump' && vertical && d.kind !== 'kb' ? 'up' : wt;
+      bx += drawBtn(id, what, bx, yy, { size: 20, align: 'left' }) + 3;
+    }
+    ctx.save(); ctx.beginPath(); ctx.rect(bx + 4, yy - 12, Math.max(0, x + w - bx - 4), 24); ctx.clip();
+    text(r.text, bx + 8, yy + 0.5, 14, C.paper, 'left', 'body');
+    ctx.restore();
+    yy += 25;
+  }
+  return yy - y;
+}
+// the room or part card of a level with jobs: the tip, then a column per player with their job and buttons
+// the jobs card's box: [x, y, w, h] (a boss level, jobParts, keeps it under the big era / class title at y 128)
+function introJobsBox(def) {
+  const note = cpuTipNote(def.tip), ids = [0, 1].filter(k => !isCpuPlayer(k));
+  const nRows = Math.max(...ids.map(k => Math.min(6, controlRows(k, null, def.act).rows.length)), 1);
+  ctx.save();
+  ctx.font = '400 14px "Atkinson Hyperlegible", system-ui, sans-serif';
+  const tw = Math.min(W - 40, Math.max(ids.length * 280 + 40, ctx.measureText(def.tip).width + 60));
+  ctx.restore();
+  const h = 124 + 30 + nRows * 25 + (note ? 22 : 0) + (cpuSolo() ? 20 : 0);
+  const top = Math.max(LEVELS[G.levelIndex].jobParts ? 152 : 60, Math.min(150, (H - h) / 2));
+  return [W / 2 - tw / 2, top, tw, h];
+}
+// the bottom of the room card while it is up (levels that put a line under it: the 30-1 / 35-1 / 40-1 checkpoint)
+function introCardBottom() {
+  const def = G.level && G.level.def;
+  if (!def) return 168;
+  if (def.jobs && jobFor(0)) { const b = introJobsBox(def); return b[1] + b[3]; }
+  return 168 + (def.act ? 120 : 92) + (cpuTipNote(def.tip) ? 22 : 0);
+}
+function drawIntroJobs(a, def) {
+  const note = cpuTipNote(def.tip), ids = [0, 1].filter(k => !isCpuPlayer(k));
+  const colW = 280, card = introJobsBox(def), top = card[1], h = card[3];
+  ctx.save(); ctx.globalAlpha = a;
+  ctx.fillStyle = 'rgba(23,25,29,0.9)'; rr(card[0], card[1], card[2], card[3], 18); ctx.fill();
+  const code = levelCode(G.levelIndex), wd = WORLDS[LEVELS[G.levelIndex].world];
+  const first = code.endsWith('-1') && (!def.rooms || def.roomIndex === 0);
+  const sub = (first ? `World ${LEVELS[G.levelIndex].world + 1}: ${wd.name} · ` : '') + (def.rooms ? `Level ${code} · ${def.name} · ${def.roomWord || 'Room'} ${def.roomIndex + 1} of ${def.roomCount}` : `Level ${code}`);
+  text(sub, W / 2, top + 22, 13, C.gold, 'center', 'body');
+  text(def.rooms ? def.title + '!' : def.name, W / 2, top + 48, 30, C.paper, 'center');
+  ctx.font = '400 14px "Atkinson Hyperlegible", system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.fillStyle = '#d9d3ef'; ctx.fillText(def.tip, W / 2, top + 76);
+  let y = top + 104;
+  if (note) { ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.fillStyle = C.paper; ctx.fillText(note, W / 2, y - 4); y += 22; }
+  const x0 = W / 2 - (ids.length * colW) / 2;
+  ids.forEach((k, n) => {
+    const x = x0 + n * colW + 14, j = jobFor(k);
+    ctx.font = '22px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+    const nw = ctx.measureText(NAMES[k]).width;
+    text(NAMES[k], x, y + 6, 22, PCOL[k], 'left');
+    if (j && j.title) text(j.title, x + nw + 10, y + 7, 15, C.gold, 'left', 'body');
+    drawJobRows(k, x, y + 34, colW - 24, j);
+  });
+  if (cpuSolo()) {
+    const c = 1 - cpuHuman(), cj = jobFor(c);
+    if (cj && cj.title) text(`${NAMES[c]} (computer): ${cj.title}`, W / 2, card[1] + h - 16, 13, C.paper, 'center', 'body');
+  }
+  ctx.restore();
   if (!(G.mst && G.mst.arriveT > 0)) drawNameTags(a, card);
 }
 
@@ -633,12 +1108,14 @@ function render(dt) {
   for (const sg of L.def.signs || []) {
     ctx.font = '17px "Lilita One", "Arial Rounded MT Bold", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(28,26,54,0.5)'; ctx.fillText(sg.text, sg.x, sg.y);
+    if (!artPlain()) { ctx.strokeStyle = 'rgba(255,255,255,0.32)'; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeText(sg.text, sg.x, sg.y); }
+    ctx.fillStyle = artPlain() ? 'rgba(28,26,54,0.5)' : 'rgba(28,26,54,0.62)'; ctx.fillText(sg.text, sg.x, sg.y);
   }
   const tx0 = Math.max(0, Math.floor(camX / T)), tx1 = Math.min((L.cols || COLS) - 1, Math.floor((camX + W) / T));
+  const chunked = drawStoneChunks(tx0, tx1);
   for (let ty = 0; ty < ROWS; ty++) for (let tx = tx0; tx <= tx1; tx++) {
     const ch = L.grid[ty][tx], x = tx * T, y = ty * T;
-    if (ch === '#') drawStone(tx, ty);
+    if (ch === '#') { if (!chunked) drawStone(tx, ty); }
     else if (ch === '^') drawSpikes(x, y);
     else if (ch === '=') drawPlank(x, y, tx, ty);
     else if (ch === 'o') drawColorBlock(x, y, 0, tx, ty);

@@ -815,6 +815,11 @@ function bumperPaintStatic(g, near, box = [0, 0, W, H]) {
   g.fillStyle = K.stand; g.fillRect(box[0], box[1], box[2] - box[0], box[3] - box[1]);
   // moat
   g.fillStyle = K.water; g.fillRect(T, T, 30 * T, 15 * T);
+  // (polish) deeper water along the castle walls, and still glints on the surface
+  { const dg = g.createLinearGradient(0, T, 0, T + 50); dg.addColorStop(0, 'rgba(16,52,96,0.3)'); dg.addColorStop(1, 'rgba(16,52,96,0)'); g.fillStyle = dg; g.fillRect(T, T, 30 * T, 50);
+    for (const [x0, dir] of [[T, 1], [31 * T, -1]]) { const sg = g.createLinearGradient(x0, 0, x0 + dir * 40, 0); sg.addColorStop(0, 'rgba(16,52,96,0.22)'); sg.addColorStop(1, 'rgba(16,52,96,0)'); g.fillStyle = sg; g.fillRect(Math.min(x0, x0 + dir * 40), T, 40, 15 * T); }
+    g.fillStyle = 'rgba(255,255,255,0.35)';
+    for (let i = 0; i < 40; i++) { const h = hash(i, 91), x = T + 6 + h % (30 * T - 12), y = T + 6 + (h >> 10) % (15 * T - 12); if (hit(x - 4, y - 2, x + 4, y + 2)) { g.fillRect(x, y, 4 + (h >> 20) % 4, 1.5); } } }
   for (const [lx, ly] of [[62, 448], [W - 62, 62]]) if (hit(lx - 12, ly - 17, lx + 24, ly + 12)) { // lily pads (point-symmetric decoration)
     g.fillStyle = '#5cb860'; g.beginPath(); g.moveTo(lx, ly); g.arc(lx, ly, 11, 0.5, Math.PI * 2 - 0.1); g.closePath(); g.fill();
     g.fillStyle = '#4a9a50'; g.beginPath(); g.moveTo(lx + 16, ly - 9); g.arc(lx + 16, ly - 9, 7, 2.2, Math.PI * 2 + 1.6); g.closePath(); g.fill();
@@ -876,6 +881,9 @@ function bumperTile(g, tx, ty, jit, crackK, ice, fl) {
     if (h > 0.55) { g.fillStyle = h > 0.8 ? 'rgba(255,255,255,0.18)' : 'rgba(150,118,70,0.08)'; g.fillRect(x + 1, y + 1, T - 2, T - 2); }
     if (h < 0.3) { g.fillStyle = 'rgba(140,110,70,0.22)'; bumperCirc(g, x + 6 + h * 50, y + 8 + h * 30, 1.4); g.fill(); bumperCirc(g, x + 20 - h * 20, y + 21, 1.1); g.fill(); }
   } else if (h < 0.35) { g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + 6, y + 20); g.lineTo(x + 14, y + 10); g.moveTo(x + 13, y + 23); g.lineTo(x + 17, y + 18); g.stroke(); }
+  // (polish) each stone bevelled: lit top-left, shaded bottom-right
+  g.fillStyle = 'rgba(255,255,255,0.16)'; g.fillRect(x + 1, y + 1, T - 2, 1.5); g.fillRect(x + 1, y + 1, 1.5, T - 2);
+  g.fillStyle = ice ? 'rgba(60,110,160,0.12)' : 'rgba(110,80,40,0.14)'; g.fillRect(x + 1, y + T - 2.5, T - 2, 1.5); g.fillRect(x + T - 2.5, y + 1, 1.5, T - 2);
   g.strokeStyle = K.joint; g.lineWidth = 1; g.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
   if (crackK > 0) { // the crack grows while the ring gets ready to fall (each stone cracks its own way)
     const gr = 0.4 + 0.6 * crackK, q = Math.floor(h * 4) * Math.PI / 2 + h, cx = x + T / 2 + (h - 0.5) * 8, cy = y + T / 2 + (0.5 - h) * 6;

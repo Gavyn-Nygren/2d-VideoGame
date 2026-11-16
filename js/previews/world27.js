@@ -9,8 +9,13 @@ if (typeof definePreview === 'function') {
     const c = v.ctx;
     const g = c.createLinearGradient(0, 0, 0, 180); g.addColorStop(0, '#4b5d86'); g.addColorStop(1, '#a8b8d8');
     c.fillStyle = g; c.fillRect(0, 0, 320, 180);
+    // tall factory windows far behind, then the girders
+    for (let x = -((scroll * 0.12) % 160) + 30; x < 330; x += 160) {
+      c.fillStyle = 'rgba(220,232,255,0.28)'; c.fillRect(x, 30, 60, 90);
+      c.fillStyle = 'rgba(75,93,134,0.45)'; for (let k = 1; k < 3; k++) c.fillRect(x + k * 20 - 1, 30, 2, 90); for (let k = 1; k < 4; k++) c.fillRect(x, 30 + k * 22.5 - 1, 60, 2);
+    }
     c.fillStyle = '#3c4a6e';
-    for (let x = -((scroll * 0.3) % 120); x < 330; x += 120) c.fillRect(x, 0, 8, 180);
+    for (let x = -((scroll * 0.3) % 120); x < 330; x += 120) { c.fillStyle = '#3c4a6e'; c.fillRect(x, 0, 8, 180); c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(x, 0, 2, 180); }
     c.save(); c.globalAlpha = 0.3;
     const gear = (x, y, r, a) => { c.save(); c.translate(x, y); c.rotate(a); c.fillStyle = '#6f86b6'; c.beginPath(); for (let k = 0; k < 20; k++) { const rr = k % 2 ? r * 0.8 : r, a0 = k / 20 * Math.PI * 2; c.lineTo(Math.cos(a0) * rr, Math.sin(a0) * rr); } c.closePath(); c.fill(); c.restore(); };
     gear(70 - (scroll * 0.4) % 400, 60, 34, t * 0.6); gear(250 - (scroll * 0.4) % 400 + 400 * (scroll > 0 ? 1 : 0), 50, 26, -t * 0.8);
@@ -24,10 +29,17 @@ if (typeof definePreview === 'function') {
     for (let k = -h; k < w + h; k += 10) { c.beginPath(); c.moveTo(x + k, y + h); c.lineTo(x + k + 5, y + h); c.lineTo(x + k + 5 + h, y); c.lineTo(x + k + h, y); c.closePath(); c.fill(); }
     c.restore();
   };
-  const pw27Floor = (v, x, y, w) => { const c = v.ctx; c.fillStyle = '#56607e'; c.fillRect(x, y, w, 180 - y); c.fillStyle = '#8a96b4'; c.fillRect(x, y, w, 6); };
+  const pw27Floor = (v, x, y, w) => {
+    const c = v.ctx; c.fillStyle = '#56607e'; c.fillRect(x, y, w, 180 - y); c.fillStyle = '#8a96b4'; c.fillRect(x, y, w, 6);
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x, y, w, 1.2); c.fillStyle = 'rgba(28,26,54,0.25)'; c.fillRect(x, y + 6, w, 2);
+    c.fillStyle = 'rgba(28,26,54,0.3)'; for (let k = x + 6; k < x + w; k += 16) { v.circle(k, y + 3, 1); c.fill(); }
+    for (let k = x + 30; k < x + w; k += 40) c.fillRect(k, y + 10, 1.5, 180 - y - 10);
+  };
   const pw27Crate = (v, x, y, s, kind) => {
     const c = v.ctx, pal = kind === 'wood' ? ['#d39a5c', '#8e5a2e'] : kind === 'gold' ? ['#ffd36b', '#b9850f'] : ['#9aa8c8', '#5d6a8e'];
-    c.fillStyle = pal[0]; c.strokeStyle = pal[1]; c.lineWidth = 1.6; v.rr(x, y, s, s, 2); c.fill(); c.stroke();
+    c.fillStyle = pal[0]; c.strokeStyle = pal[1]; c.lineWidth = 1.6; v.rr(x, y, s, s, 2); c.fill();
+    c.fillStyle = 'rgba(28,26,54,0.16)'; c.fillRect(x + 1, y + s - 4, s - 2, 3); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x + 2, y + 2, s - 4, 1.5);
+    c.stroke();
     if (kind === 'wood') { c.beginPath(); c.moveTo(x + 3, y + 3); c.lineTo(x + s - 3, y + s - 3); c.moveTo(x + s - 3, y + 3); c.lineTo(x + 3, y + s - 3); c.stroke(); }
     else { c.fillStyle = pal[1]; c.fillRect(x + 3, y + 3, s - 6, 2); }
   };

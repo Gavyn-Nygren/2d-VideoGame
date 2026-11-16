@@ -705,8 +705,15 @@
       const x = rm.c0 * Z - ox, y = rm.r0 * Z - oy, w = (rm.c1 - rm.c0 + 1) * Z, h = (rm.r1 - rm.r0 + 1) * Z;
       if (x > W || x + w < 0 || y > H || y + h < 0) continue;
       ctx.fillStyle = '#4a4230'; ctx.fillRect(x, y, w, h);
+      // striped wallpaper, a framed picture, a ceiling lamp, floorboards with a skirting board
+      ctx.fillStyle = 'rgba(120,90,50,0.35)'; for (let k = x + 6; k < x + w; k += 18) ctx.fillRect(k, y, 6, h - 10);
       ctx.fillStyle = 'rgba(255,214,120,0.35)'; ctx.fillRect(x, y, w, h);
+      { const lg = ctx.createRadialGradient(x + w / 2, y + 8, 2, x + w / 2, y + 8, Math.max(w, h) * 0.7); lg.addColorStop(0, 'rgba(255,230,160,0.35)'); lg.addColorStop(1, 'rgba(255,230,160,0)'); ctx.fillStyle = lg; ctx.fillRect(x, y, w, h); }
+      ctx.fillStyle = '#2a2418'; ctx.fillRect(x + w / 2 - 1, y, 2, 8); ctx.fillStyle = '#ffe6a8'; ctx.beginPath(); ctx.moveTo(x + w / 2 - 9, y + 14); ctx.lineTo(x + w / 2 + 9, y + 14); ctx.lineTo(x + w / 2 + 5, y + 7); ctx.lineTo(x + w / 2 - 5, y + 7); ctx.closePath(); ctx.fill();
+      if (w > 120) { const fx = x + 24, fy = y + 22; ctx.fillStyle = '#8a6a30'; ctx.fillRect(fx, fy, 30, 22); ctx.fillStyle = '#3a5a6a'; ctx.fillRect(fx + 3, fy + 3, 24, 16); ctx.fillStyle = '#5a8a5a'; ctx.beginPath(); ctx.moveTo(fx + 3, fy + 19); ctx.lineTo(fx + 12, fy + 9); ctx.lineTo(fx + 20, fy + 15); ctx.lineTo(fx + 27, fy + 8); ctx.lineTo(fx + 27, fy + 19); ctx.closePath(); ctx.fill(); }
       ctx.fillStyle = '#5a3e2a'; ctx.fillRect(x, y + h - 10, w, 10);
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; for (let k = x + 20; k < x + w; k += 34) ctx.fillRect(k, y + h - 10, 1.5, 10);
+      ctx.fillStyle = '#3a281a'; ctx.fillRect(x, y + h - 14, w, 4); ctx.fillStyle = 'rgba(255,230,180,0.25)'; ctx.fillRect(x, y + h - 10, w, 1.5);
       if (rm.prop === 'cup') { ctx.fillStyle = '#6a4a30'; ctx.fillRect(x + w / 2 - 20, y + h - 30, 40, 20); ctx.fillStyle = '#f4f2ee'; ctx.fillRect(x + w / 2 - 6, y + h - 38, 8, 8); }
       const zx = zeroX(rm, st.T) - ox, look = st.looking && st.looking.includes(rm);
       K.zero(zx, y + h - 10, { s: 0.7, pose: look ? 'look' : 'walk', t: st.T * 3, face: Math.sign(zeroX(rm, st.T + 0.1) - zeroX(rm, st.T)) || 1, torch: rm.prop === 'torch' && !look, broom: rm.prop !== 'torch' });
@@ -716,6 +723,10 @@
       const ch = L.g[r][c], x = c * Z - ox, y = r * Z - oy;
       if (ch === '#') { if (!L.rooms.some(rm => c >= rm.c0 && c <= rm.c1 && r >= rm.r0 && r <= rm.r1)) { ctx.fillStyle = (c + r) % 2 ? '#2a3036' : '#283036'; ctx.fillRect(x, y, Z, Z); ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(x + 4, y + 4, 2, 2); ctx.fillRect(x + Z - 6, y + Z - 6, 2, 2); } continue; }
       ctx.fillStyle = '#1a2024'; ctx.fillRect(x, y, Z, Z);
+      // sheet-metal seams and rivets inside the duct
+      ctx.fillStyle = 'rgba(255,255,255,0.04)'; ctx.fillRect(x, y + 3, Z, Z * 0.3);
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + Z - 1.5, y, 1.5, Z);
+      ctx.fillStyle = 'rgba(150,165,175,0.25)'; circle(x + Z - 5, y + 6, 1.2); ctx.fill(); circle(x + Z - 5, y + Z - 6, 1.2); ctx.fill();
       ctx.fillStyle = '#5a646a';
       if (chAt(st, c, r - 1) === '#') ctx.fillRect(x, y, Z, 3);
       if (chAt(st, c, r + 1) === '#' && ch !== 'g') ctx.fillRect(x, y + Z - 3, Z, 3);
@@ -910,14 +921,15 @@
   /* ---------- the level ---------- */
   SPY.defs.spyvents = {
     name: 'Air Vent Crawl', world: 37, kind: 'team', mode: 'spyvents', outfit: 'spyvents', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> crawl <kbd>W</kbd><kbd>S</kbd> climb',
-      bo: '<kbd>←</kbd><kbd>→</kbd> crawl <kbd>↑</kbd><kbd>↓</kbd> climb',
+    jobs: {
+      light: { title: 'Light', act: 'cover', legend: '<kbd>A</kbd><kbd>D</kbd> crawl <kbd>W</kbd><kbd>S</kbd> climb',
+        howTo: ['Your torch shows the way. Hold cover when a guard is under a grate.'] },
+      hacker: { title: 'Hacker', act: 'hack', legend: '<kbd>A</kbd><kbd>D</kbd> crawl <kbd>W</kbd><kbd>S</kbd> climb',
+        howTo: ['Press the action at a door, then the arrows in order.', 'You can only read them in the torch light.'] },
     },
+    jobAlt: true, jobSwap: 'You swap jobs every stretch.',
     tip: 'Shine the torch on the panel so your partner can read it. Cover it over the grates.',
     howTo: [
-      'LIGHT: your torch shows the way. Hold the action to cover it when a guard is under a grate.',
-      'HACKER: press the action at a door, then the arrows in order. You can only read them in the torch light.',
       'Crawl gently on dented metal. Noise brings the guards, and the Sniffer.',
     ],
     act: { label: 'cover' },

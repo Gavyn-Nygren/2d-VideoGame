@@ -577,10 +577,13 @@
       if (x + w < 0 || x - w > W) continue;
       ctx.fillStyle = layer ? '#a9cbe8' : '#c1daf0';
       ctx.beginPath(); ctx.moveTo(x - w, y); ctx.lineTo(x, y - h); ctx.lineTo(x + w, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = layer ? 'rgba(60,100,150,0.16)' : 'rgba(60,100,150,0.1)';
+      ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x + w, y); ctx.lineTo(x + w * 0.1, y); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.moveTo(x - w * 0.3, y - h * 0.7); ctx.lineTo(x, y - h); ctx.lineTo(x + w * 0.3, y - h * 0.7); ctx.lineTo(x + w * 0.12, y - h * 0.62); ctx.lineTo(x, y - h * 0.72); ctx.lineTo(x - w * 0.14, y - h * 0.6); ctx.closePath(); ctx.fill();
     }
     ctx.fillStyle = mix(COL.snow, 0.6); ctx.fillRect(0, K.hor + 4, W, H - K.hor);
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(0, K.hor - 4, W, 10);   // a little haze where the snow meets the sky
   }
   function quad(a, b, c2, d, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(a.X, a.Y); ctx.lineTo(b.X, b.Y); ctx.lineTo(c2.X, c2.Y); ctx.lineTo(d.X, d.Y); ctx.closePath(); ctx.fill(); }
   function bobDrawTrack(st, v) {
@@ -669,15 +672,18 @@
   }
   function bobPine(x, y, s) {
     ctx.fillStyle = '#6f4a32'; ctx.fillRect(x - 12 * s, y - 40 * s, 24 * s, 42 * s);
+    if (s > 0.08) { ctx.fillStyle = 'rgba(60,90,140,0.18)'; ctx.beginPath(); ctx.ellipse(x + 20 * s, y, 100 * s, 16 * s, 0, 0, Math.PI * 2); ctx.fill(); }
     for (let i = 0; i < 3; i++) {
       const w = (110 - i * 26) * s, ty = y - 30 * s - i * 62 * s;
       ctx.fillStyle = '#3f8a6e'; ctx.beginPath(); ctx.moveTo(x - w, ty); ctx.lineTo(x, ty - 110 * s); ctx.lineTo(x + w, ty); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#33745c'; ctx.beginPath(); ctx.moveTo(x, ty - 110 * s); ctx.lineTo(x + w, ty); ctx.lineTo(x, ty); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(x - w * 0.5, ty - 52 * s); ctx.lineTo(x, ty - 110 * s); ctx.lineTo(x + w * 0.5, ty - 52 * s); ctx.quadraticCurveTo(x, ty - 36 * s, x - w * 0.5, ty - 52 * s); ctx.fill();
     }
   }
   const FAN_COLS = ['#ff5f6d', '#4f8fe0', '#8fe3b0', '#ffc53d'];
   function bobFan(x, y, s, col, ph) {
     const hop = Math.max(0, Math.sin(G.clock * 7 + ph)) * 12 * s, c = FAN_COLS[col % 4];
+    if (s > 0.08) { ctx.fillStyle = 'rgba(60,90,140,0.2)'; ctx.beginPath(); ctx.ellipse(x, y - 16 * s, 26 * s, 6 * s, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = c; rr(x - 20 * s, y - 70 * s - hop, 40 * s, 52 * s, 14 * s); ctx.fill();
     ctx.fillStyle = '#ffe0c8'; circle(x, y - 84 * s - hop, 16 * s); ctx.fill();
     ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y - 88 * s - hop, 16 * s, Math.PI, 0); ctx.fill();
@@ -700,6 +706,7 @@
     ctx.fillStyle = '#5a4a3a'; ctx.fillRect(x - 3 * s, top + h, 6 * s, 22 * s);
     const col = b.kind === 'brake' ? '#e8434f' : b.kind === 'tuck' ? '#4f8fe0' : b.kind === 'hop' ? '#ff9a3d' : b.hair ? '#e8434f' : '#ffc53d';
     ctx.fillStyle = col; rr(x - w / 2, top, w, h, 8 * s); ctx.fill();
+    if (s > 0.1) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; rr(x - w / 2 + 5 * s, top + 4 * s, w - 10 * s, 8 * s, 4 * s); ctx.fill(); }
     ctx.strokeStyle = '#2a2740'; ctx.lineWidth = Math.max(1, 4 * s); rr(x - w / 2, top, w, h, 8 * s); ctx.stroke();
     if (b.kind === 'chev' || b.kind === 'call') {
       ctx.fillStyle = '#2a2740';

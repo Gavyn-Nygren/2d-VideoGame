@@ -722,6 +722,8 @@ function wfallTick(st, dt) {
   for (const p of order) { st.pl[p.id].dx = 0; wfallPlayer(st, p, dt); }
   wfallLeash(st, yb);
   for (const p of ps) wfallAct(st, p);
+  // the action's word: the vine (then heave on it) at a vine post up top, else the lift lever
+  setActWords(ps.map(p => { const P = st.pl[p.id], w = P.post >= 0 ? st.walls[P.post] : null; return w ? (w.down ? 'heave' : 'vine') : 'lever'; }));
   for (const p of ps) wfallHazards(st, p);
   wfallWalls(st, dt);
   wfallCheckpoints(st);
@@ -805,6 +807,20 @@ function wfallDrawBack(st, t) {
   ctx.beginPath(); ctx.moveTo(W, H);
   for (let y = H; y >= -20; y -= 30) { const u = y + par + 300; ctx.lineTo(W - 170 - Math.sin(u / 85) * 30 - Math.sin(u / 41) * 12, y); }
   ctx.lineTo(W, -20); ctx.closePath(); ctx.fill();
+  // a lit rim along each far cliff, rock ledges and round tree crowns clinging to them
+  ctx.strokeStyle = 'rgba(220,255,200,0.35)'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); for (let y = H; y >= -20; y -= 30) { const u = y + par; ctx.lineTo(170 + Math.sin(u / 90) * 30 + Math.sin(u / 37) * 10 - 1.5, y); } ctx.stroke();
+  ctx.beginPath(); for (let y = H; y >= -20; y -= 30) { const u = y + par + 300; ctx.lineTo(W - 170 - Math.sin(u / 85) * 30 - Math.sin(u / 41) * 12 + 1.5, y); } ctx.stroke();
+  for (let i = -1; i < 8; i++) {
+    const row = Math.floor(par / 110) + i, y = row * 110 - par, h = hash(row, 17);
+    if (y < -60 || y > H + 60) continue;
+    for (const side of [0, 1]) {
+      const u = y + par + (side ? 300 : 0), ex = side ? W - 170 - Math.sin(u / 85) * 30 - Math.sin(u / 41) * 12 : 170 + Math.sin(u / 90) * 30 + Math.sin(u / 37) * 10;
+      const tx = side ? ex + 20 + (h % 50) : ex - 20 - (h % 50);
+      ctx.fillStyle = '#4f9e60'; circle(tx, y, 18 + (h % 8)); ctx.fill(); circle(tx + 16, y + 6, 13); ctx.fill(); circle(tx - 15, y + 7, 12); ctx.fill();
+      ctx.fillStyle = 'rgba(200,255,190,0.25)'; circle(tx - 5, y - 8, 7); ctx.fill();
+    }
+  }
   // the big waterfall behind it all
   const x0 = 330, x1 = 640;
   const wg = ctx.createLinearGradient(x0, 0, x1, 0);
@@ -841,15 +857,23 @@ function wfallDrawRock(st, ch, c, r, x, y, t) {
   const edge = c === 0 || c === COLS - 1;
   ctx.fillStyle = ch === 's' ? '#6f7f8a' : edge ? C.stoneEdge : C.stone; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
   const h = hash(c, r);
+  if (ch !== 's') {
+    // rock gets darker deeper inside a cliff, and has rounded slabs with a lit top and a shaded foot, and the odd crack
+    let d = 0; for (let k2 = 1; k2 <= 3 && wfallSolidAt(st, c, r - k2); k2++) d++;
+    if (d) { ctx.fillStyle = 'rgba(20,24,10,' + (0.05 * d) + ')'; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1); }
+    const w2 = 10 + (h % 9), h2 = 6 + ((h >> 3) % 5), sx = x + 3 + ((h >> 5) % Math.max(1, T - w2 - 6)), sy = y + 11 + ((h >> 7) % Math.max(1, T - h2 - 14));
+    if (h % 2) { ctx.fillStyle = 'rgba(20,24,10,0.16)'; ctx.fillRect(sx, sy + 1.5, w2, h2); ctx.fillStyle = 'rgba(255,250,220,0.10)'; ctx.fillRect(sx, sy, w2, h2); }
+    if (h % 5 === 2) { ctx.strokeStyle = 'rgba(20,24,10,0.25)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 6 + (h % 10), y + 12); ctx.lineTo(x + 10 + (h % 10), y + 19); ctx.lineTo(x + 7 + (h % 10), y + 26); ctx.stroke(); }
+  }
   if (ch === 's') {
     // wet slippery rock: blue-grey with a shine and drips
     ctx.fillStyle = 'rgba(190,235,255,0.35)'; rr(x + 3, y + 5, T - 10, 4, 2); ctx.fill();
     if (!reduceMotion) { const d = ((t * 0.9 + h % 10 / 10) % 1); ctx.fillStyle = 'rgba(190,235,255,' + (0.7 * (1 - d)).toFixed(2) + ')'; circle(x + 8 + (h % 14), y + T + d * 14, 2); ctx.fill(); }
   } else if (h % 3 === 0) { ctx.fillStyle = C.stoneLight; rr(x + 4 + (h % 15), y + 10 + ((h >> 4) % 12), 7, 4, 2); ctx.fill(); }
   ctx.fillStyle = C.stoneEdge;
-  if (open(-1, 0) && c > 0) ctx.fillRect(x, y, 2, T);
-  if (open(1, 0) && c < COLS - 1) ctx.fillRect(x + T - 2, y, 2, T);
-  if (open(0, 1)) ctx.fillRect(x, y + T - 3, T, 3);
+  if (open(-1, 0) && c > 0) { ctx.fillRect(x, y, 2, T); ctx.fillStyle = 'rgba(255,250,220,0.14)'; ctx.fillRect(x + 2, y, 2, T); ctx.fillStyle = C.stoneEdge; }
+  if (open(1, 0) && c < COLS - 1) { ctx.fillRect(x + T - 2, y, 2, T); ctx.fillStyle = 'rgba(20,24,10,0.16)'; ctx.fillRect(x + T - 6, y, 4, T); ctx.fillStyle = C.stoneEdge; }
+  if (open(0, 1)) { ctx.fillRect(x, y + T - 3, T, 3); ctx.fillStyle = 'rgba(20,24,10,0.12)'; ctx.fillRect(x, y + T - 7, T, 4); ctx.fillStyle = C.stoneEdge; }
   if (open(0, -1) && wfallCell(st, c, r - 1) !== '~') {
     if (ch === 'm') {
       // springy moss: a fat bright cushion

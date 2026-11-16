@@ -533,8 +533,18 @@
   }
   function drawSafe(st, x, kind, t) {
     if (kind === 'pot') {
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(x + 130, GY + 4, 150, 10, 0, 0, TAU); ctx.fill();
       ctx.fillStyle = '#c8643a'; ctx.beginPath(); ctx.moveTo(x - 20, GY - 300); ctx.lineTo(x + 260, GY - 300); ctx.lineTo(x + 230, GY + 4); ctx.lineTo(x + 10, GY + 4); ctx.closePath(); ctx.fill();
+      // the clay's shaded side, a lit stripe, a few chips and a water stain at the foot
+      ctx.fillStyle = 'rgba(80,24,8,0.25)'; ctx.beginPath(); ctx.moveTo(x + 170, GY - 300); ctx.lineTo(x + 260, GY - 300); ctx.lineTo(x + 230, GY + 4); ctx.lineTo(x + 160, GY + 4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,220,190,0.25)'; ctx.beginPath(); ctx.moveTo(x + 4, GY - 300); ctx.lineTo(x + 22, GY - 300); ctx.lineTo(x + 34, GY + 4); ctx.lineTo(x + 22, GY + 4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(70,40,20,0.25)'; ctx.fillRect(x + 12, GY - 30, 216, 34);
+      ctx.fillStyle = 'rgba(90,30,10,0.35)'; for (const [dx, dy, r] of [[120, -220, 5], [200, -150, 4], [70, -120, 3], [150, -80, 4]]) { ctx.beginPath(); ctx.ellipse(x + dx, GY + dy, r * 1.4, r, 0.3, 0, TAU); ctx.fill(); }
+      ctx.strokeStyle = '#8a3a1e'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 20, GY - 300); ctx.lineTo(x + 10, GY + 4); ctx.moveTo(x + 260, GY - 300); ctx.lineTo(x + 230, GY + 4); ctx.stroke();
       ctx.fillStyle = '#e07a4a'; rr(x - 34, GY - 340, 308, 50, 8); ctx.fill();
+      ctx.fillStyle = 'rgba(255,230,200,0.35)'; rr(x - 30, GY - 338, 300, 8, 4); ctx.fill();
+      ctx.fillStyle = 'rgba(80,24,8,0.3)'; rr(x - 34, GY - 300, 308, 10, 4); ctx.fill();
+      ctx.strokeStyle = '#8a3a1e'; ctx.lineWidth = 2.5; rr(x - 34, GY - 340, 308, 50, 8); ctx.stroke();
       ctx.fillStyle = '#3a2416'; ctx.beginPath(); ctx.ellipse(x + 46, GY - 40, 40, 44, 0, Math.PI, 0); ctx.lineTo(x + 86, GY); ctx.lineTo(x + 6, GY); ctx.fill();
       K.daisy(x + 120, GY - 340, 140, t, { col: '#ff9fc0' }); K.daisy(x + 200, GY - 340, 110, t);
     } else if (kind === 'can') {
@@ -577,6 +587,8 @@
     ctx.fillStyle = dark; rr(x - 900, GY - 168, 900, 150, 26); ctx.fill();
     ctx.fillStyle = body; rr(x - 900, GY - 176, 896, 128, 30); ctx.fill();
     ctx.fillStyle = hi; rr(x - 880, GY - 168, 860, 16, 8); ctx.fill();
+    ctx.strokeStyle = dark; ctx.lineWidth = 3; rr(x - 900, GY - 176, 896, 128, 30); ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'; rr(x - 900, GY - 90, 896, 40, 20); ctx.fill();
     ctx.fillStyle = 'rgba(0,0,0,0.18)'; for (let k = 0; k < 8; k++) { circle(x - 860 + k * 110, GY - 120, 6); ctx.fill(); }
     // headlights like two angry eyes
     const glow = 0.6 + 0.4 * Math.sin(t * 6);
@@ -756,11 +768,13 @@
   const acts = cut => ({ label: 'chop', labels: cut === 0 ? ['chop', 'bend'] : ['bend', 'chop'] });
   SHRUNK.defs.mowrun = {
     name: 'Lawnmower Escape', world: 30, kind: 'team', mode: 'mowrun', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump',
-      pad: 'stick runs, <span data-glyph="a"></span> jumps,',
+    jobs: {
+      cutter: { title: 'Cutter', act: 'chop', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Chop tall grass. On top of a tall thing, hold chop to drop the string.'] },
+      springer: { title: 'Springer', act: 'bend', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump, climb <kbd>S</kbd> slide down',
+        howTo: ['Hold bend at a springy blade; your partner jumps on its tip.'] },
     },
+    jobOf: 'cutter', jobSwap: 'You swap jobs every stretch.',
     tip: 'RUN from the mower! The cutter chops tall grass. The springer bends the springy grass at a pebble to fling the cutter up; then the cutter drops a string.',
     act: acts(0),
     map: K.stubMap(),

@@ -812,11 +812,13 @@
   const acts = z => ({ label: 'pull', labels: z === 0 ? ['pull', 'hold'] : ['hold', 'pull'] });
   HEROCITY.defs.subway = {
     name: 'Runaway Subway', world: 31, kind: 'team', mode: 'subway', ownStep: true, ownHUD: true, ownPills: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>S</kbd> duck',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump <kbd>↓</kbd> duck',
-      pad: 'stick runs, <span data-glyph="a"></span> jumps,',
+    jobs: {
+      speedster: { title: 'Speedster', act: 'pull', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Hold pull at each red brake lever.'] },
+      strong: { title: 'Strong hero', act: 'hold', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>S</kbd> hold to duck',
+        howTo: ['Stand under a falling girder and hold to catch it.'] },
     },
+    jobOf: 'zoom', jobSwap: 'You swap powers every stretch.',
     tip: 'Stop the runaway train! The speedster holds the action at each red brake lever; the strong hero catches the falling girders.',
     act: acts(0),
     map: K.stubMap(),

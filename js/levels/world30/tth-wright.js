@@ -798,14 +798,20 @@ function tthWrightDrawBack(st) {
     // a pale December sun and streaky clouds
     ctx.fillStyle = 'rgba(255,248,220,0.45)'; circle(590, 150, 46); ctx.fill();
     ctx.fillStyle = '#fff8dc'; circle(590, 150, 29); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
     for (let k = 0; k < 6; k++) {
       const x = tthWrightWrap(k * 233 + 60 - cx * 0.05 - t * 3, 1400) - 200, y = 96 + (k * 67) % 150, s = 0.8 + (k % 3) * 0.3;
+      ctx.fillStyle = 'rgba(170,186,206,0.45)'; ctx.beginPath(); ctx.ellipse(x + 4, y + 5 * s, 60 * s, 7 * s, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
       ctx.beginPath(); ctx.ellipse(x, y, 62 * s, 9 * s, 0, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.ellipse(x + 30 * s, y - 7 * s, 36 * s, 8 * s, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.ellipse(x + 24 * s, y - 11 * s, 20 * s, 3.5 * s, 0, 0, Math.PI * 2); ctx.fill();
     }
     // the Atlantic
     ctx.fillStyle = CC.sea; ctx.fillRect(0, 326, W, 44);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, 326, W, 2);
+    // waves breaking white on the shore
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    for (let k = 0; k < 9; k++) { const x = tthWrightWrap(k * 157 - cx * 0.1 + Math.sin(t * 0.8 + k) * 8, W + 120) - 60; ctx.beginPath(); ctx.ellipse(x, 360, 34 + (k % 3) * 10, 2.5, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = CC.seaLt;
     for (let k = 0; k < 12; k++) { const x = tthWrightWrap(k * 131 - cx * 0.08, W + 80) - 40; ctx.fillRect(x, 332 + (k % 4) * 8, 24 + (k % 3) * 12, 2.5); }
     // far dunes with the lifesaving station's lookout
@@ -813,6 +819,9 @@ function tthWrightDrawBack(st) {
     ctx.fillStyle = CC.far; ctx.beginPath(); ctx.moveTo(0, 430);
     for (let sx = 0; sx <= W; sx += 24) ctx.lineTo(sx, 358 - 11 * Math.sin((sx + fx) * 0.006) - 6 * Math.sin((sx + fx) * 0.017 + 1));
     ctx.lineTo(W, 430); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,250,235,0.45)'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let sx = 0; sx <= W; sx += 24) { const y = 359 - 11 * Math.sin((sx + fx) * 0.006) - 6 * Math.sin((sx + fx) * 0.017 + 1); sx ? ctx.lineTo(sx, y) : ctx.moveTo(sx, y); }
+    ctx.stroke();
     const lx = tthWrightWrap(700 - fx, 1900) - 200;
     ctx.fillStyle = '#e9e2cf'; ctx.strokeStyle = 'rgba(28,26,54,0.55)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(lx - 7, 352); ctx.lineTo(lx - 4, 312); ctx.lineTo(lx + 4, 312); ctx.lineTo(lx + 7, 352); ctx.closePath(); ctx.fill(); ctx.stroke();
@@ -822,6 +831,12 @@ function tthWrightDrawBack(st) {
     ctx.fillStyle = CC.mid; ctx.beginPath(); ctx.moveTo(0, H);
     for (let sx = 0; sx <= W; sx += 24) ctx.lineTo(sx, 398 - 15 * Math.sin((sx + mx) * 0.004 + 2) - 7 * Math.sin((sx + mx) * 0.011));
     ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+    // wind ripples across the near dunes and a lit crest
+    ctx.strokeStyle = 'rgba(255,250,235,0.5)'; ctx.lineWidth = 2.5; ctx.beginPath();
+    for (let sx = 0; sx <= W; sx += 24) { const y = 399 - 15 * Math.sin((sx + mx) * 0.004 + 2) - 7 * Math.sin((sx + mx) * 0.011); sx ? ctx.lineTo(sx, y) : ctx.moveTo(sx, y); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(150,120,80,0.22)'; ctx.lineWidth = 1.5;
+    for (let k = Math.floor(mx / 70); k * 70 < mx + W + 70; k++) { const h = hash(k, 19), sx = k * 70 + h % 40 - mx, y = 420 + (h >>> 5) % 50; ctx.beginPath(); ctx.moveTo(sx, y); ctx.quadraticCurveTo(sx + 14, y - 4, sx + 28, y); ctx.quadraticCurveTo(sx + 40, y + 3, sx + 52, y); ctx.stroke(); }
     ctx.strokeStyle = CC.grass; ctx.lineWidth = 2;
     for (let k = Math.floor(mx / 110); k * 110 < mx + W + 110; k++) {
       const h = hash(k, 5); if (h % 3 === 0) continue;
@@ -1167,6 +1182,7 @@ TTH_PHASES.wright = {
   headLift: () => 30,
   labels(st) { const ph = st.ph, grab = ph.catch && ph.catch.fill >= 1 && !ph.got; return [0, 1].map(id => (id === ph.bal ? 'bell' : grab ? 'grab' : 'pedal')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.bal ? 'Wings!' : 'Engine!')); },
+  jobKeys(st) { return st.ph.bal === 1 ? ['engine', 'wings'] : ['wings', 'engine']; },
   legend(st) {
     const ph = st.ph;
     const wings = k => (k ? '<kbd>←</kbd><kbd>→</kbd> level the wings' : '<kbd>A</kbd><kbd>D</kbd> level the wings');
@@ -1211,6 +1227,12 @@ Sfx.extra.tthWrightGrab = function () { [659, 880, 1175, 1568].forEach((f, i) =>
 
 /* ---------- the room (this file fills in its own room of the level def) ---------- */
 tthRoom('wright', {
+  jobs: {
+    wings: { title: 'Wings', act: 'bell', legend: '<kbd>A</kbd><kbd>D</kbd> level the wings',
+      howTo: ['Lean toward the high wing. Ring the bell to scatter seagulls.', 'To take off, both hold right.'] },
+    engine: { title: 'Engine', act: ['pedal', 'grab'], legend: '<kbd>W</kbd> climb <kbd>S</kbd> dive <kbd>D</kbd> take off (both hold)',
+      howTo: ['Pedal on the beat, when the ring closes. Climbing heats the engine.'] },
+  },
   act: { label: 'pedal', labels: ['bell', 'pedal'] },
   tip: 'One keeps the wobbly wings level, one pedals the engine on the beat. Hold right together to take off!',
   legend: { pip: '<kbd>A</kbd><kbd>D</kbd> level the wings', bo: '<kbd>↑</kbd> climb <kbd>↓</kbd> dive', pad: 'wings: stick ◀ ▶ levels them; engine: stick up climbs, down dives,' },

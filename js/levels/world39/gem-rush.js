@@ -647,22 +647,37 @@
     for (let r = r0; r <= r1; r++) for (let c = 0; c < NC; c++) {
       const k = st.g[r][c], x = scrX(st, c * C_), y = scrY(st, r * C_);
       if (r < 3 && k === E) { ctx.fillStyle = 'rgba(79,232,214,0.07)'; ctx.fillRect(x, y, C_, C_); continue; }
-      if (k === E) { ctx.fillStyle = '#1e140e'; ctx.fillRect(x, y, C_, C_); continue; }
+      const emp = (rr2, cc) => rr2 >= 0 && rr2 < NR && cc >= 0 && cc < NC && st.g[rr2][cc] === E;
+      if (k === E) {
+        // a dug tunnel: dark, with the shadow of the dirt above it and a faint floor
+        ctx.fillStyle = '#1e140e'; ctx.fillRect(x, y, C_, C_);
+        if (!emp(r - 1, c)) { ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y, C_, 5); }
+        if (!emp(r + 1, c)) { ctx.fillStyle = 'rgba(120,80,50,0.25)'; ctx.fillRect(x, y + C_ - 3, C_, 3); }
+        continue;
+      }
       const h = K.hash(r * 97 + c * 13 + st.round * 7);
       ctx.fillStyle = KCOL[k]; ctx.fillRect(x, y, C_ + 0.5, C_ + 0.5);
       if (k === SOFT || k === PACK || k === CRUM) {
+        // a lit lip where the dirt faces a tunnel above, a darker underside over a tunnel below, crumbs and a pebble
+        if (emp(r - 1, c)) { ctx.fillStyle = 'rgba(255,220,170,0.22)'; ctx.fillRect(x, y, C_, 3); ctx.fillStyle = 'rgba(80,120,40,0.35)'; if (h > 0.6) { ctx.fillRect(x + 4 + h * 8, y - 2, 2, 4); ctx.fillRect(x + 8 + h * 8, y - 3, 2, 5); } }
+        if (emp(r + 1, c)) { ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(x, y + C_ - 4, C_, 4); if (h < 0.3) { ctx.strokeStyle = 'rgba(200,170,120,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 6 + h * 20, y + C_); ctx.quadraticCurveTo(x + 9 + h * 20, y + C_ + 5, x + 5 + h * 20, y + C_ + 8); ctx.stroke(); } }
+        if (emp(r, c - 1)) { ctx.fillStyle = 'rgba(255,220,170,0.1)'; ctx.fillRect(x, y, 2, C_); }
+        if (emp(r, c + 1)) { ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + C_ - 3, y, 3, C_); }
+        if (h > 0.72 && k !== CRUM) { ctx.fillStyle = '#9a8a7a'; ctx.beginPath(); ctx.ellipse(x + 6 + h * 10, y + 18, 3.2, 2.4, 0, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x + 5 + h * 10, y + 16.5, 2, 1); }
         ctx.fillStyle = k === PACK ? 'rgba(0,0,0,0.18)' : 'rgba(255,230,190,0.1)';
         ctx.fillRect(x + h * 14, y + 4 + h * 10, 5, 3); ctx.fillRect(x + 4 + (1 - h) * 12, y + 14, 4, 3);
         if (k === CRUM) { ctx.strokeStyle = 'rgba(60,40,20,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + 3, y + 8); ctx.lineTo(x + 12, y + 14); ctx.lineTo(x + 22, y + 6); ctx.stroke(); }
         if (k === PACK) { ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 9); ctx.lineTo(x + C_, y + 11); ctx.moveTo(x, y + 19); ctx.lineTo(x + C_, y + 18); ctx.stroke(); }
       } else if (k === ROCK || k === DOOR) {
-        ctx.fillStyle = '#6e737c'; rr(x + 2, y + 2, C_ - 4, C_ - 4, 6); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x + 5, y + 5, 8, 3);
+        ctx.fillStyle = '#4a4e56'; rr(x + 2, y + 3, C_ - 4, C_ - 4, 6); ctx.fill();
+        ctx.fillStyle = '#6e737c'; rr(x + 2, y + 2, C_ - 4, C_ - 6, 6); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(x + 5, y + 5, 8, 3); ctx.fillRect(x + 5, y + 5, 3, 6);
+        ctx.strokeStyle = 'rgba(40,42,48,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + C_ * 0.55, y + 4); ctx.lineTo(x + C_ * 0.45 + h * 4, y + C_ * 0.5); ctx.lineTo(x + C_ * 0.6, y + C_ - 6); ctx.stroke();
         if (k === DOOR) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 3, y + 3, C_ - 6, C_ - 6); }
       } else if (k === GAS) { ctx.fillStyle = 'rgba(160,230,110,0.5)'; for (let n = 0; n < 3; n++) { circle(x + 6 + n * 7, y + 9 + (n % 2) * 8, 3 + Math.sin(t * 3 + n) * 0.8); ctx.fill(); } }
       else if (k === WAT) { ctx.fillStyle = 'rgba(150,210,255,0.55)'; for (let n = 0; n < 3; n++) { ctx.beginPath(); ctx.ellipse(x + 6 + n * 7, y + 12 + Math.sin(t * 2 + n) * 2, 3, 4, 0, 0, TAU); ctx.fill(); } }
       else if (k === PIL) { ctx.fillStyle = '#2a1e16'; ctx.fillRect(x, y, C_, C_); K.crystal(x + C_ / 2, y + C_ + 2, C_ + 6, 0, { col: K.GLOW.ice, w: 14, glow: st.flash.some(f => f.r <= r + 1 && f.r >= r - 1 && f.c === c && f.t > 0) ? 1 : 0.5, t, seed: r }); }
-      else if (k === BOUL) { ctx.fillStyle = '#1e140e'; ctx.fillRect(x, y, C_, C_); ctx.fillStyle = '#8a847e'; circle(x + C_ / 2, y + C_ / 2, C_ * 0.48); ctx.fill(); ctx.strokeStyle = '#4a4440'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,0.2)'; circle(x + C_ * 0.38, y + C_ * 0.36, 4); ctx.fill(); }
+      else if (k === BOUL) { ctx.fillStyle = '#1e140e'; ctx.fillRect(x, y, C_, C_); ctx.fillStyle = '#8a847e'; circle(x + C_ / 2, y + C_ / 2, C_ * 0.48); ctx.fill(); ctx.fillStyle = '#6a645e'; ctx.beginPath(); ctx.arc(x + C_ / 2, y + C_ / 2, C_ * 0.48, -0.2, Math.PI * 0.85); ctx.lineTo(x + C_ / 2, y + C_ / 2); ctx.fill(); ctx.strokeStyle = '#4a4440'; ctx.lineWidth = 2; circle(x + C_ / 2, y + C_ / 2, C_ * 0.48); ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; circle(x + C_ * 0.38, y + C_ * 0.36, 4); ctx.fill(); }
       else if (k === VENT) { ctx.fillStyle = '#3a3e46'; ctx.fillRect(x, y, C_, C_); ctx.fillStyle = st.geyOn ? '#dff6ff' : '#2a8a90'; ctx.fillRect(x + 8, y, 10, 6); }
       else if (k === PLATE) { ctx.fillStyle = st.pl.some(P => P.plate && cellOf(P).c === c) ? '#ffe28a' : '#b8862a'; rr(x + 2, y, C_ - 4, 8, 3); ctx.fill(); }
       // a boulder's shadow line: where it would fall
@@ -755,7 +770,18 @@
   /* ---------- HUD ---------- */
   function hud(st) {
     const big = hudBig(), z = big ? 1.3 : 1, live = G.match && G.match.phase === 'live';
-    K.drawMsg(st, st.msg, W - 14);
+    // the message goes in its own pill above the golem's timer, clear of the score boxes and the round pill at the top
+    if (st.msg) {
+      const m = st.msg, hgt = big ? 32 : 26, str = m.gold ? '★ ' + m.text : m.text;
+      let fs = big ? 18 : 14; text('', 0, 0, fs, '#ffffff', 'center', 'body');
+      let w = ctx.measureText(str).width + 32;
+      while (w > W - 60 && fs > 11) { fs--; text('', 0, 0, fs, '#ffffff', 'center', 'body'); w = ctx.measureText(str).width + 32; }
+      const y = H - 66 - hgt;
+      ctx.globalAlpha = clamp((m.life - m.t) / 0.3, 0, 1);
+      const px = pill(W / 2, y, w, hgt, 'center');
+      if (m.gold) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(px, y, w, hgt, hgt / 2); ctx.stroke(); }
+      text(str, W / 2, y + hgt / 2 + 0.5, fs, m.col, 'center', 'body'); ctx.globalAlpha = 1;
+    }
     // each digger's points (top corners)
     for (const P of st.pl) {
       const bw = 150 * z, bh = 40 * z, bx = P.id === 0 ? W / 2 - 250 * z - bw / 2 : W / 2 + 250 * z - bw / 2, by = 8;

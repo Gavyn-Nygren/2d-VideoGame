@@ -280,11 +280,32 @@ function wizPoCoast(st, dt) {
 
 /* ---------- drawing ---------- */
 function wizPoDrawBack(st) {
-  const cy = st.cam.y;
+  const cy = st.cam.y, t = G.clock;
   ctx.fillStyle = '#3a3050'; ctx.fillRect(0, cy - 40, W, H + 80);
-  // the tower's inner wall: stones, and the big clock face far behind
-  ctx.fillStyle = '#463c5e'; for (let y = Math.floor((cy - 40) / 40) * 40; y < cy + H + 40; y += 40) for (let x = 80 + ((y / 40) % 2 ? 0 : 30); x < 880; x += 60) ctx.fillRect(x, y, 56, 36);
+  // the tower's inner wall: bevelled stones (lit top edge, dark bottom edge, the odd crack)
+  for (let y = Math.floor((cy - 40) / 40) * 40; y < cy + H + 40; y += 40) for (let x = 80 + ((y / 40) % 2 ? 0 : 30); x < 880; x += 60) {
+    const h = hash(x, y), v = h % 3;
+    ctx.fillStyle = v === 0 ? '#463c5e' : v === 1 ? '#4a4062' : '#42385a'; ctx.fillRect(x, y, 56, 36);
+    ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(x, y, 56, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x, y + 33, 56, 3); ctx.fillRect(x + 53, y, 3, 36);
+    if (h % 11 === 0) { ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 10 + h % 20, y + 4); ctx.lineTo(x + 18 + h % 20, y + 16); ctx.lineTo(x + 14 + h % 20, y + 28); ctx.stroke(); }
+  }
+  // the big clock face far behind, turning slowly, half lost in the dark
+  const fy = Math.floor((cy + H / 2) / 900) * 900 + 300;
+  for (const yy of [fy - 900, fy, fy + 900]) {
+    if (yy + 220 < cy || yy - 220 > cy + H) continue;
+    ctx.save(); ctx.globalAlpha = 0.15;
+    ctx.fillStyle = '#d8c89a'; circle(480, yy, 190); ctx.fill();
+    ctx.strokeStyle = '#6a5a3a'; ctx.lineWidth = 10; ctx.stroke();
+    ctx.fillStyle = '#6a5a3a'; for (let i = 0; i < 12; i++) { const q = i * Math.PI / 6; rr(480 + Math.cos(q) * 160 - 5, yy + Math.sin(q) * 160 - 12, 10, 24, 3); ctx.fill(); }
+    const a = (reduceMotion ? 0 : t * 0.05);
+    ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(480, yy); ctx.lineTo(480 + Math.cos(a - 1.6) * 140, yy + Math.sin(a - 1.6) * 140); ctx.moveTo(480, yy); ctx.lineTo(480 + Math.cos(a * 0.1 + 0.4) * 90, yy + Math.sin(a * 0.1 + 0.4) * 90); ctx.stroke();
+    ctx.restore();
+  }
+  // the deep side walls, with a soft inner shadow
   ctx.fillStyle = '#2a2240'; ctx.fillRect(0, cy - 40, 80, H + 80); ctx.fillRect(880, cy - 40, 80, H + 80);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(80, cy - 40, 10, H + 80); ctx.fillRect(870, cy - 40, 10, H + 80);
+  ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(74, cy - 40, 6, H + 80); ctx.fillRect(880, cy - 40, 6, H + 80);
 }
 function wizPoDrawDoor(x, y, kind, t, life, pad) {
   ctx.save(); ctx.translate(x, y);
@@ -297,7 +318,13 @@ function wizPoDrawDoor(x, y, kind, t, life, pad) {
 function wizPoDraw(st) {
   const ph = st.ph, K = WIZPO, t = G.clock, sp = wizPoStep_(ph);
   ctx.lineJoin = 'round';
-  for (const r of ph.solids) if (r.kind === 'ledge' || r.kind === 'floor') { ctx.fillStyle = '#7a5a3a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.kind === 'floor' ? 300 : 16); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.kind === 'floor' ? 300 : 16); ctx.fillStyle = '#e8c860'; for (let x = r.x0 + 10; x < r.x1 - 10; x += 60) { ctx.beginPath(); ctx.moveTo(x, r.y0); ctx.lineTo(x + 18, r.y0 - 6); ctx.lineTo(x + 36, r.y0); ctx.fill(); } }
+  for (const r of ph.solids) if (r.kind === 'ledge' || r.kind === 'floor') { const hh = r.kind === 'floor' ? 300 : 16;
+    if (r.kind === 'ledge') { ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(r.x0 + 6, r.y0 + 16, r.x1 - r.x0 - 6, 7);
+      ctx.fillStyle = '#4a3622'; for (const bx of [r.x0 + 24, r.x1 - 30]) { ctx.beginPath(); ctx.moveTo(bx, r.y0 + 16); ctx.lineTo(bx + 6, r.y0 + 16); ctx.lineTo(bx + 6, r.y0 + 40); ctx.closePath(); ctx.fill(); } }
+    ctx.fillStyle = '#7a5a3a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, hh);
+    ctx.fillStyle = 'rgba(255,226,170,0.35)'; ctx.fillRect(r.x0 + 2, r.y0 + 2, r.x1 - r.x0 - 4, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(r.x0 + 2, r.y0 + 11, r.x1 - r.x0 - 4, 3);
+    ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, hh); ctx.fillStyle = '#e8c860'; for (let x = r.x0 + 10; x < r.x1 - 10; x += 60) { ctx.beginPath(); ctx.moveTo(x, r.y0); ctx.lineTo(x + 18, r.y0 - 6); ctx.lineTo(x + 36, r.y0); ctx.fill(); } }
   // the clock hand
   if (sp.hand) { ctx.save(); ctx.globalAlpha = 0.35; ctx.strokeStyle = '#c8a040'; ctx.lineWidth = 6; circle(sp.hand.x, sp.hand.y, K.hand.len + 10); ctx.stroke(); ctx.fillStyle = '#c8a040'; for (let i = 0; i < 12; i++) { const q = i * Math.PI / 6; circle(sp.hand.x + Math.cos(q) * (K.hand.len - 8), sp.hand.y + Math.sin(q) * (K.hand.len - 8), i % 3 ? 5 : 9); ctx.fill(); } ctx.restore(); }
   if (sp.hand) { const a = wizPoHandA(ph, sp.hand); ctx.strokeStyle = '#2a2018'; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(sp.hand.x, sp.hand.y); ctx.lineTo(sp.hand.x + Math.cos(a) * K.hand.len, sp.hand.y + Math.sin(a) * K.hand.len); ctx.stroke(); ctx.fillStyle = '#c8a040'; circle(sp.hand.x, sp.hand.y, 14); ctx.fill(); }
@@ -330,6 +357,7 @@ WIZ_PHASES.portal = {
   plan(st) { return wizPoPlan(st); },
   labels(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.dr ? 'door' : 'pull')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.dr ? 'Draw!' : 'Jump!')); },
+  jobKeys(st) { return st.ph.dr === 1 ? ['jumper', 'drawer'] : ['drawer', 'jumper']; },
   legend(st) { const ph = st.ph, c = k => (k ? '<kbd>↑</kbd><kbd>↓</kbd> pick a plate' : '<kbd>W</kbd><kbd>S</kbd> pick a plate'); return { pip: ph.dr === 0 ? c(0) : 'through the doors', bo: ph.dr === 1 ? c(1) : 'through the doors', pad: 'drawer: up / down picks a plate,' }; },
   hudText(st) { const ph = st.ph; return 'Ledge ' + Math.min(7, ph.step) + ' of 7'; },
   progress(st) { const ph = st.ph; return { n: ph.step - 1 + (ph.done ? 1 : 0), of: 7 }; },
@@ -352,6 +380,12 @@ Sfx.extra.wizPoFlag = function () { [523, 659, 784].forEach((f, i) => this.tone(
 
 /* ---------- the room ---------- */
 wizRoom('portal', {
+  jobs: {
+    drawer: { title: 'Door drawer', act: 'door', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd><kbd>S</kbd> pick a plate',
+      howTo: ['Press door once for the IN door, again for the OUT door.'] },
+    jumper: { title: 'Jumper', act: 'pull', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      howTo: ['Walk into the IN door. Pull the rope to lower the ladder.'] },
+  },
   act: { label: 'door', labels: ['door', 'pull'] },
   tip: 'The drawer picks a plate with up / down and stamps an IN door, then an OUT door. Jumper, walk on through!',
   legend: { pip: '<kbd>W</kbd><kbd>S</kbd> pick a plate', bo: 'through the doors', pad: 'drawer: up / down picks a plate,' },

@@ -844,12 +844,22 @@ function kiteStarPath(x, y, ro, ri, rot) {
   for (let i = 0; i < 10; i++) { const a = rot - Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? ri : ro; ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
   ctx.closePath();
 }
+// drawn once into a picture per size and colour, then copied (the shading costs nothing per frame)
 function kiteCloud(x, y, s, col) {
-  ctx.fillStyle = col || 'rgba(255,255,255,0.9)';
-  ctx.beginPath();
-  ctx.arc(x, y, 22 * s, Math.PI * 0.5, Math.PI * 1.5); ctx.arc(x + 22 * s, y - 14 * s, 22 * s, Math.PI, Math.PI * 1.9);
-  ctx.arc(x + 50 * s, y - 10 * s, 26 * s, Math.PI * 1.2, Math.PI * 1.95); ctx.arc(x + 74 * s, y, 20 * s, Math.PI * 1.5, Math.PI * 0.5);
-  ctx.closePath(); ctx.fill();
+  s = Math.round(s * 20) / 20; col = (col || 'rgba(255,255,255,0.9)');
+  blitSprite(artSprite('kiteCloud' + s + col, 140 * s, 85 * s, (30 * s), (52 * s), c => kiteCloudPaint(c, 0, 0, s, col)), x, y);
+}
+function kiteCloudPaint(c, x, y, s, col) {
+  const shape = (dx, dy) => {
+    c.beginPath();
+    c.arc(x + dx, y + dy, 22 * s, Math.PI * 0.5, Math.PI * 1.5); c.arc(x + 22 * s + dx, y - 14 * s + dy, 22 * s, Math.PI, Math.PI * 1.9);
+    c.arc(x + 50 * s + dx, y - 10 * s + dy, 26 * s, Math.PI * 1.2, Math.PI * 1.95); c.arc(x + 74 * s + dx, y + dy, 20 * s, Math.PI * 1.5, Math.PI * 0.5);
+    c.closePath();
+  };
+  // a soft blue-grey underside, the cloud, a bright top
+  c.fillStyle = 'rgba(150,170,210,0.25)'; shape(2 * s, 5 * s); c.fill();
+  c.fillStyle = col || 'rgba(255,255,255,0.9)'; shape(0, 0); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.6)'; circleOn(c, x + 22 * s, y - 24 * s, 9 * s); c.fill(); circleOn(c, x + 46 * s, y - 24 * s, 10 * s); c.fill();
 }
 // a bright morning sky, a soft sun and drifting clouds
 function kiteDrawSky(st) {
@@ -860,7 +870,12 @@ function kiteDrawSky(st) {
   const sx = 790 - (st.cam.x * 0.01) % 30, sy = 92;
   ctx.fillStyle = 'rgba(255,236,170,0.28)'; circle(sx, sy, 86); ctx.fill();
   ctx.fillStyle = 'rgba(255,244,200,0.6)'; circle(sx, sy, 56); ctx.fill();
+  ctx.save(); ctx.translate(sx, sy); ctx.rotate(G.clock * 0.05); ctx.fillStyle = 'rgba(255,248,210,0.3)';
+  ctx.beginPath(); for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.moveTo(-5, 46); ctx.lineTo(0, 92 + (i % 2) * 16); ctx.lineTo(5, 46); ctx.closePath(); } ctx.fill();
+  ctx.restore();
   ctx.fillStyle = '#fff8dc'; circle(sx, sy, 40); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(sx - 9, sy - 9, 22); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,220,140,0.7)'; ctx.lineWidth = 2; circle(sx, sy, 40); ctx.stroke();
   for (let k = 0; k < 7; k++) {
     const span = 1500, x = ((k * 241 - st.cam.x * (0.06 + (k % 3) * 0.03) - G.clock * (5 + k)) % span + span) % span - 200, y = 60 + (k % 4) * 46 + (hash(k, 5) % 24) - st.cam.y * 0.05;
     kiteCloud(x, y, 0.6 + (k % 3) * 0.25, 'rgba(255,255,255,' + (0.55 + (k % 2) * 0.25) + ')');
@@ -879,6 +894,10 @@ function kiteDrawFar(st) {
         ctx.fillRect(x, y, w, H);
         if (h % 3 === 0) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w / 2, y - 26); ctx.lineTo(x + w, y); ctx.fill(); }
         if (h % 7 === 1) { ctx.fillRect(x + w / 2 - 6, y - 60, 12, 60); ctx.beginPath(); ctx.moveTo(x + w / 2 - 9, y - 60); ctx.lineTo(x + w / 2, y - 80); ctx.lineTo(x + w / 2 + 9, y - 60); ctx.fill(); }
+        // a shaded side and rows of little windows, so the far town has depth
+        ctx.fillStyle = 'rgba(60,60,120,0.08)'; ctx.fillRect(x + w - 12, y, 12, H);
+        ctx.fillStyle = 'rgba(255,255,255,0.32)'; ctx.beginPath(); for (let wy = y + 12; wy < y + 70; wy += 16) for (let wx = x + 8; wx < x + w - 14; wx += 14) if (hash(wx | 0, wy | 0) % 3) ctx.rect(wx, wy, 5, 7); ctx.fill();
+        ctx.fillStyle = col;
       }
     }
   } else if (st.look === 'hill') {
@@ -902,7 +921,7 @@ function kiteDrawFar(st) {
     ctx.fillStyle = lk.far; ctx.fillRect(0, hy, W, H);
     ctx.fillStyle = lk.far2; ctx.fillRect(0, hy + 40, W, H);
     ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2;
-    for (let k = 0; k < 12; k++) { const x = ((k * 97 - cam.x * 0.2 + G.clock * 10) % 1100 + 1100) % 1100 - 70; ctx.beginPath(); ctx.moveTo(x, hy + 14 + (k % 4) * 12); ctx.lineTo(x + 30, hy + 14 + (k % 4) * 12); ctx.stroke(); }
+    ctx.beginPath(); for (let k = 0; k < 12; k++) { const x = ((k * 97 - cam.x * 0.2 + G.clock * 10) % 1100 + 1100) % 1100 - 70; ctx.moveTo(x, hy + 14 + (k % 4) * 12); ctx.lineTo(x + 30, hy + 14 + (k % 4) * 12); } ctx.stroke();
     const off = cam.x * 0.12, k0 = Math.floor((off - 200) / 520), k1 = Math.floor((off + W + 200) / 520);
     for (let k = k0; k <= k1; k++) {
       const x = k * 520 + 200 - off + Math.sin(G.clock * 0.3 + k) * 10, y = hy + 6;
@@ -940,6 +959,7 @@ function kiteDrawBackThings(st) {
     if (o.kind === 'tree') {
       const cy = o.top + 56;
       ctx.fillStyle = '#8a5a36'; ctx.fillRect(o.tx - 9, cy + 20, 18, o.gy - cy - 20 + 60);
+      ctx.fillStyle = '#6a4224'; ctx.fillRect(o.tx + 3, cy + 20, 6, o.gy - cy - 20 + 60);
       const cols = st.look === 'hill' ? ['#5fb46a', '#7fcf7c', '#4a9e5a'] : ['#6cc07a', '#8fd88a', '#56aa66'];
       ctx.fillStyle = cols[2]; circle(o.tx - 34, cy + 26, 40); ctx.fill(); circle(o.tx + 34, cy + 26, 40); ctx.fill();
       ctx.fillStyle = cols[0]; circle(o.tx, cy, 56); ctx.fill();
@@ -1059,6 +1079,10 @@ function kiteDrawRoofRun(st, r, yB) {
       const h = hash(Math.floor(hx / 220), 17);
       ctx.fillStyle = KITE_HOUSE[h % KITE_HOUSE.length]; ctx.fillRect(ha, s.y + 10, hb - ha + 0.5, yB - s.y);
       ctx.fillStyle = 'rgba(28,26,54,0.08)'; ctx.fillRect(ha, s.y + 10, 3, yB - s.y);
+      // soft shade under the eaves, faint brick courses and a lit corner
+      ctx.fillStyle = 'rgba(28,26,54,0.1)'; ctx.fillRect(ha, s.y + 12, hb - ha + 0.5, 8);
+      ctx.strokeStyle = 'rgba(28,26,54,0.05)'; ctx.lineWidth = 1; ctx.beginPath(); for (let by = s.y + 28; by < yB; by += 14) { ctx.moveTo(ha, by); ctx.lineTo(hb, by); } ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; if (hx + 220 <= sx1) ctx.fillRect(hb - 4, s.y + 10, 4, yB - s.y);
       // windows
       for (let wx = hx + 26; wx < hx + 200; wx += 52) {
         if (wx + 26 < ha || wx > hb) continue;
@@ -1069,11 +1093,27 @@ function kiteDrawRoofRun(st, r, yB) {
           if (hash(wx | 0, (wy | 0) + 1) % 3 === 0) { ctx.fillStyle = '#ff8fa8'; ctx.fillRect(wx - 2, wy + 28, 30, 5); ctx.fillStyle = '#7fcf7c'; circle(wx + 6, wy + 27, 3); ctx.fill(); circle(wx + 18, wy + 27, 3); ctx.fill(); }
         }
       }
+      // a glint on every pane, all in one fill
+      ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath();
+      for (let wx = hx + 26; wx < hx + 200; wx += 52) {
+        if (wx + 26 < ha || wx > hb) continue;
+        for (let wy = s.y + 34; wy < yB; wy += 58) { ctx.moveTo(wx + 4, wy + 26); ctx.lineTo(wx + 12, wy + 4); ctx.lineTo(wx + 17, wy + 4); ctx.lineTo(wx + 9, wy + 26); ctx.closePath(); }
+      }
+      ctx.fill();
+      // a thin frame line round every window, all in one stroke
+      ctx.strokeStyle = 'rgba(28,26,54,0.18)'; ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let wx = hx + 26; wx < hx + 200; wx += 52) {
+        if (wx + 26 < ha || wx > hb) continue;
+        for (let wy = s.y + 34; wy < yB; wy += 58) ctx.roundRect(wx, wy, 26, 30, 5);
+      }
+      ctx.stroke();
     }
     // the roof top: tiles and a white edge
     ctx.fillStyle = '#c96a5a'; ctx.fillRect(sx0, s.y, sx1 - sx0 + 0.5, 12);
     ctx.fillStyle = '#e88a6e'; ctx.fillRect(sx0, s.y, sx1 - sx0 + 0.5, 4);
     ctx.fillStyle = 'rgba(120,50,40,0.35)'; for (let x = Math.ceil(sx0 / 14) * 14; x < sx1; x += 14) ctx.fillRect(x, s.y + 4, 2, 8);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(sx0, s.y, sx1 - sx0 + 0.5, 1.5);
+    ctx.fillStyle = 'rgba(100,40,30,0.4)'; ctx.fillRect(sx0, s.y + 10, sx1 - sx0 + 0.5, 2);
   }
 }
 function kiteDrawHillRun(st, r, yB) {
@@ -1145,7 +1185,7 @@ function kiteDrawChims(st) {
     } else if (st.look === 'hill') {
       if (ch.k % 2) {
         ctx.fillStyle = '#f2d06a'; rr(x - 4, y + 4, w + 8, hh, 10); ctx.fill();
-        ctx.strokeStyle = '#c9a040'; ctx.lineWidth = 2; for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x - 2, y + 4 + k * hh / 4); ctx.lineTo(x + w + 2, y + 4 + k * hh / 4); ctx.stroke(); }
+        ctx.strokeStyle = '#c9a040'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 1; k < 4; k++) { ctx.moveTo(x - 2, y + 4 + k * hh / 4); ctx.lineTo(x + w + 2, y + 4 + k * hh / 4); } ctx.stroke();
       } else {
         ctx.fillStyle = '#fff6e6'; ctx.strokeStyle = '#b8a07a'; ctx.lineWidth = 1.5;
         for (const fx of [x + 2, x + w - 8]) { ctx.fillRect(fx, y, 6, hh + 2); ctx.strokeRect(fx, y, 6, hh + 2); }

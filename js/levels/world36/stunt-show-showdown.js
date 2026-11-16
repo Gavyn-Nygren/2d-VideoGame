@@ -372,21 +372,43 @@
   }
 
   /* ---------- drawing ---------- */
+  let crowdSprites = null;
   function drawArena(st) {
     const t = st.t;
     // grandstand, crowd and the judges' desk
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#1a1438'); g.addColorStop(1, '#3a2a5a');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    for (let r = 0; r < 4; r++) for (let c = 0; c < 40; c++) {
-      const x = c * 25 + (r % 2) * 12, y = 120 + r * 26, bob = Math.sin(t * 6 + c * 1.3 + r) * (st.flash > 0 ? 6 : 2);
-      ctx.fillStyle = ['#e86a6a', '#6ab0e8', '#e8d26a', '#8ae86a', '#c88ae8'][(c * 7 + r * 3) % 5];
-      circle(x, y + bob, 7); ctx.fill(); ctx.fillRect(x - 7, y + 6 + bob, 14, 12);
+    // the roof truss and its lights, sweeping beams over the crowd
+    ctx.strokeStyle = '#2e2650'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(W, 30); ctx.moveTo(0, 46); ctx.lineTo(W, 46); for (let x = 0; x < W; x += 32) { ctx.moveTo(x, 30); ctx.lineTo(x + 16, 46); ctx.lineTo(x + 32, 30); } ctx.stroke();
+    for (let k = 0; k < 4; k++) {
+      const lx = 120 + k * 240, a = Math.PI / 2 + Math.sin(t * 0.7 + k * 1.7) * 0.35;
+      ctx.fillStyle = 'rgba(255,240,200,0.07)'; ctx.beginPath(); ctx.moveTo(lx - 6, 50); ctx.lineTo(lx + Math.cos(a - 0.12) * 260, 46 + Math.sin(a - 0.12) * 260); ctx.lineTo(lx + Math.cos(a + 0.12) * 260, 46 + Math.sin(a + 0.12) * 260); ctx.lineTo(lx + 6, 50); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#3a3a4a'; rr(lx - 8, 44, 16, 12, 3); ctx.fill(); ctx.fillStyle = '#fff6d0'; circle(lx, 56, 4); ctx.fill();
     }
+    // the stands: tier steps with rails, then the people (shaded bodies, faces), a little flash now and then
+    for (let r = 0; r < 4; r++) { ctx.fillStyle = r % 2 ? '#2e2448' : '#342a52'; ctx.fillRect(0, 106 + r * 26, W, 26); ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(0, 106 + r * 26, W, 2); }
+    // (the people are stamped from five little sprites, one per shirt colour, drawn once)
+    const CROWD = ['#e86a6a', '#6ab0e8', '#e8d26a', '#8ae86a', '#c88ae8'], amp = st.flash > 0 ? 6 : 2;
+    if (!crowdSprites) crowdSprites = CROWD.map(col => {
+      const cv = document.createElement('canvas'); cv.width = 32; cv.height = 52; const c = cv.getContext('2d'); c.scale(2, 2); c.translate(8, 8);
+      c.fillStyle = col; c.beginPath(); c.arc(0, 0, 7, 0, Math.PI * 2); c.fill(); c.beginPath(); c.roundRect(-7, 6, 14, 12, 4); c.fill();
+      c.fillStyle = 'rgba(20,10,40,0.3)'; c.fillRect(2, 6, 5, 12); c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, 7, -0.6, 1.4); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.3)'; c.beginPath(); c.arc(-2.5, -2.5, 2, 0, Math.PI * 2); c.fill();
+      return cv;
+    });
+    const ppl = [];
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 40; c++) ppl.push({ x: c * 25 + (r % 2) * 12, y: 120 + r * 26 + Math.sin(t * 6 + c * 1.3 + r) * amp, k: (c * 7 + r * 3) % 5, r, c });
+    for (const p of ppl) ctx.drawImage(crowdSprites[p.k], p.x - 8, p.y - 8, 16, 26);
+    for (const p of ppl) if (p.r === 3 && (p.c * 13) % 7 === 0 && Math.sin(t * 2.3 + p.c * 5) > 0.97) { ctx.fillStyle = 'rgba(255,255,255,0.9)'; circle(p.x, 120 + 3 * 26 - 4, 5); ctx.fill(); }
     ctx.fillStyle = '#2a2040'; ctx.fillRect(0, 210, W, 16);
-    // floor of the arena
+    ctx.fillStyle = '#ffd86a'; ctx.fillRect(0, 210, W, 2);
+    for (let x = 12; x < W; x += 110) { ctx.fillStyle = ['#e8322a', '#2a6ae8', '#ffd23a'][(x / 110 | 0) % 3]; rr(x, 213, 70, 10, 3); ctx.fill(); }
+    // floor of the arena: packed dirt, a darker front, tyre marks
     ctx.fillStyle = '#5a4a3a'; ctx.fillRect(0, SS.ground, W, H - SS.ground);
+    { const fg = ctx.createLinearGradient(0, SS.ground, 0, H); fg.addColorStop(0, 'rgba(255,220,170,0.1)'); fg.addColorStop(1, 'rgba(0,0,0,0.3)'); ctx.fillStyle = fg; ctx.fillRect(0, SS.ground, W, H - SS.ground); }
     ctx.fillStyle = '#6a5a4a'; for (let x = 0; x < W; x += 40) ctx.fillRect(x, SS.ground, 20, 6);
+    ctx.strokeStyle = 'rgba(30,20,10,0.25)'; ctx.lineWidth = 3; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(k * 260 - 40, SS.ground + 40 + k * 6); ctx.quadraticCurveTo(k * 260 + 80, SS.ground + 26, k * 260 + 220, SS.ground + 48 - k * 3); ctx.stroke(); }
     // the big screen (the stunt's name) and the judges
     // (below the round pill at the top)
     ctx.fillStyle = '#101018'; rr(W / 2 - 130, 74, 260, 42, 8); ctx.fill();
@@ -398,6 +420,8 @@
   function judges(st, t) {
     const x0 = W / 2 - 90, y = 120;
     ctx.fillStyle = '#6a3a1a'; rr(x0, y + 40, 180, 30, 6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,170,0.25)'; ctx.fillRect(x0 + 6, y + 41, 168, 2); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x0 + 4, y + 64, 172, 5);
+    ctx.strokeStyle = '#3a1e0a'; ctx.lineWidth = 1.5; rr(x0, y + 40, 180, 30, 6); ctx.stroke();
     ctx.fillStyle = '#ffe58a'; text('JUDGES', W / 2, y + 56, 12, '#ffe58a', 'center', 'display');
     for (let k = 0; k < 3; k++) {
       const jx = x0 + 30 + k * 60, bob = k === 2 ? Math.sin(t * 9) * 3 : 0, sleepy = k === 1;

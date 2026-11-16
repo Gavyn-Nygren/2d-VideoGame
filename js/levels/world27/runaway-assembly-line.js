@@ -382,6 +382,13 @@ const BELT = {
     for (const g of st.grates) if (g.x1 > vx0 && g.x0 < vx1) drawGrate(g);
     // the floor under the belt
     ctx.fillStyle = '#3c4468'; ctx.fillRect(vx0, B.BY + 40, vx1 - vx0, H - B.BY);
+    ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(vx0, B.BY + 26, vx1 - vx0, 14);
+    // the belt frame legs and floor plates under the line
+    for (let x = Math.floor(vx0 / 130) * 130; x < vx1; x += 130) {
+      ctx.fillStyle = '#4a5270'; ctx.fillRect(x + 20, B.BY + 24, 12, 18); ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(x + 20, B.BY + 24, 3, 18);
+      ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.fillRect(x, B.BY + 40, 2, H); ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(x + 2, B.BY + 40, 2, H);
+      ctx.fillStyle = 'rgba(10,10,30,0.3)'; circle(x + 12, B.BY + 54, 2); ctx.fill(); circle(x + 118, B.BY + 54, 2); ctx.fill();
+    }
     for (const b of st.belts) if (b.x1 > vx0 && b.x0 < vx1) drawBelt(st, b.x0, b.x1, t);
     for (const g of st.gaps) if (g.x1 > vx0 && g.x0 < vx1) drawGap(st, g, t);
     for (const g of st.gaps) if (g.sw.x > vx0 && g.sw.x < vx1) drawSwitch(st, g, t);
@@ -392,9 +399,10 @@ const BELT = {
     ctx.restore();
   }
   function drawGrate(g) {
-    ctx.fillStyle = '#5a6488';
-    for (let x = g.x0 + 30; x < g.x1; x += 160) ctx.fillRect(x, g.y + 10, 8, B.BY - g.y - 10);
+    for (let x = g.x0 + 30; x < g.x1; x += 160) { ctx.fillStyle = '#5a6488'; ctx.fillRect(x, g.y + 10, 8, B.BY - g.y - 10); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x, g.y + 10, 2, B.BY - g.y - 10); ctx.fillStyle = '#4a5270'; ctx.beginPath(); ctx.moveTo(x, g.y + 10); ctx.lineTo(x - 18, g.y + 10); ctx.lineTo(x, g.y + 28); ctx.fill(); ctx.beginPath(); ctx.moveTo(x + 8, g.y + 10); ctx.lineTo(x + 26, g.y + 10); ctx.lineTo(x + 8, g.y + 28); ctx.fill(); }
+    ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.fillRect(g.x0, g.y + 10, g.x1 - g.x0, 4);
     ctx.fillStyle = '#8a96b4'; ctx.fillRect(g.x0, g.y, g.x1 - g.x0, 10);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(g.x0, g.y, g.x1 - g.x0, 2);
     ctx.fillStyle = 'rgba(28,26,54,0.35)'; for (let x = g.x0 + 6; x < g.x1 - 4; x += 12) ctx.fillRect(x, g.y + 2, 6, 6);
     ctx.strokeStyle = '#c4cee6'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(g.x0 + 4, g.y - 26); ctx.lineTo(g.x1 - 4, g.y - 26); ctx.stroke();
     ctx.lineWidth = 2; for (let x = g.x0 + 4; x <= g.x1 - 4; x += 40) { ctx.beginPath(); ctx.moveTo(x, g.y - 26); ctx.lineTo(x, g.y); ctx.stroke(); }
@@ -404,10 +412,16 @@ const BELT = {
   function drawBelt(st, x0, x1, t, gold) {
     const y = B.BY;
     ctx.fillStyle = gold ? '#b9850f' : '#2a2f4f'; rr(x0, y, x1 - x0, 26, 10); ctx.fill();
-    // rollers
-    ctx.fillStyle = '#6a7296';
-    for (let x = x0 + 13; x < x1 - 6; x += 26) { circle(x, y + 13, 9); ctx.fill(); }
+    // rollers (turning with the belt: a lit rim and a spoke)
+    const ra = st.beltPhase / 9;
+    for (let x = x0 + 13; x < x1 - 6; x += 26) {
+      ctx.fillStyle = '#6a7296'; circle(x, y + 13, 9); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(x, y + 13, 9, Math.PI, Math.PI * 1.6); ctx.lineTo(x, y + 13); ctx.fill();
+      ctx.strokeStyle = '#3c4060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - Math.cos(ra) * 6, y + 13 - Math.sin(ra) * 6); ctx.lineTo(x + Math.cos(ra) * 6, y + 13 + Math.sin(ra) * 6); ctx.stroke();
+      ctx.fillStyle = '#2a2f4f'; circle(x, y + 13, 2.5); ctx.fill();
+    }
     ctx.fillStyle = gold ? C.gold : '#3c4060'; ctx.fillRect(x0 + 2, y, x1 - x0 - 4, 7);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x0 + 2, y, x1 - x0 - 4, 1.5);
     // moving chevrons
     ctx.save(); ctx.beginPath(); ctx.rect(x0, y, x1 - x0, 7); ctx.clip();
     ctx.strokeStyle = gold ? '#fff0b0' : '#ffc53d'; ctx.lineWidth = 2;
@@ -440,9 +454,14 @@ const BELT = {
   }
   function drawSwitch(st, g, t) {
     const x = g.sw.x, y = g.sw.y, gold = g.goldSw, done = g.fixed || g.gold;
+    ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.beginPath(); ctx.ellipse(x, y, 14, 3.5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#4a5270'; ctx.fillRect(x - 3, y - 50, 6, 50);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x - 3, y - 50, 2, 50);
     ctx.fillStyle = gold ? C.gold : '#ffc53d'; ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 2.5;
-    rr(x - 18, y - 74, 36, 30, 6); ctx.fill(); ctx.stroke();
+    rr(x - 18, y - 74, 36, 30, 6); ctx.fill();
+    ctx.fillStyle = 'rgba(10,10,30,0.2)'; rr(x - 18, y - 52, 36, 8, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x - 14, y - 72, 28, 2);
+    rr(x - 18, y - 74, 36, 30, 6); ctx.stroke();
     const on = !done && Math.sin(t * 7) > 0;
     ctx.fillStyle = done ? '#7aff9a' : on ? '#ff5a5a' : '#b03a3a'; circle(x, y - 59, 9); ctx.fill(); ctx.stroke();
     // a dashed line down to its gap
@@ -454,9 +473,17 @@ const BELT = {
   function drawStamp(st, s, t) {
     const ss = stampState(s), y = ss.y, x = s.x, hw = B.headW / 2;
     ctx.fillStyle = '#5a6488'; ctx.fillRect(x - 10, 50, 20, y - 70);
+    ctx.fillStyle = '#c4cee6'; ctx.fillRect(x - 6, 50, 4, y - 70);
+    ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.fillRect(x + 5, 50, 5, y - 70);
     ctx.fillStyle = '#4a5270'; rr(x - 40, 40, 80, 30, 6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x - 36, 41, 72, 3);
+    ctx.fillStyle = 'rgba(10,10,30,0.3)'; for (const dx of [-32, 32]) { circle(x + dx, 55, 2.5); ctx.fill(); }
+    if (ss.y < B.BY - 4) { ctx.fillStyle = 'rgba(10,10,30,' + clamp(0.35 - (B.BY - ss.y) * 0.0015, 0.08, 0.35) + ')'; ctx.beginPath(); ctx.ellipse(x, B.BY + 1, hw + 6, 4, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = s.gold ? C.gold : '#9aa8c8'; ctx.strokeStyle = '#2a2f4f'; ctx.lineWidth = 3;
-    rr(x - hw, y - 30, hw * 2, 30, 4); ctx.fill(); ctx.stroke();
+    rr(x - hw, y - 30, hw * 2, 30, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x - hw + 4, y - 28, hw * 2 - 8, 3);
+    ctx.fillStyle = 'rgba(10,10,30,0.18)'; ctx.fillRect(x + hw - 10, y - 28, 8, 20);
+    rr(x - hw, y - 30, hw * 2, 30, 4); ctx.stroke();
     rf27Stripes(x - hw + 3, y - 8, hw * 2 - 6, 6);
     const warn = ss.ph === 'warn' && Math.sin(t * 22) > 0;
     ctx.fillStyle = s.gold ? '#fff0b0' : warn ? '#ff5a5a' : ss.danger ? '#ff8a5a' : '#3a5a3a'; circle(x, 56, 7); ctx.fill();
@@ -467,6 +494,11 @@ const BELT = {
     const x = st.endX, y = B.BY;
     ctx.fillStyle = '#8e5a2e'; ctx.fillRect(x + 80, y - 140, 220, 140);
     ctx.fillStyle = '#d39a5c'; ctx.fillRect(x + 90, y - 130, 200, 120);
+    ctx.fillStyle = 'rgba(90,50,20,0.15)'; for (let yy = y - 120; yy < y - 10; yy += 20) ctx.fillRect(x + 90, yy, 200, 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x + 90, y - 130, 200, 3);
+    ctx.fillStyle = 'rgba(90,50,20,0.25)'; ctx.fillRect(x + 276, y - 130, 14, 120);
+    ctx.fillStyle = '#5a3a1a'; for (const [a, b] of [[86, -134], [294, -134], [86, -6], [294, -6]]) { circle(x + a, y + b, 3); ctx.fill(); }
+    ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 2; ctx.strokeRect(x + 80, y - 140, 220, 140);
     text('PACKING', x + 190, y - 100, 24, '#5a3a1a', 'center');
     text(st.final ? 'ALL DONE!' : 'NEXT LINE ▶', x + 190, y - 66, 16, '#5a3a1a', 'center');
     ctx.fillStyle = Math.sin(t * 4) > 0 ? '#7aff9a' : '#2f6a3f'; circle(x + 190, y - 156, 8); ctx.fill();

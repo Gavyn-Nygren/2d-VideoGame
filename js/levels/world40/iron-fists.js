@@ -624,6 +624,10 @@ Sfx.extra.ironfistSootCough = function () { this.noise(0.25, { type: 'lowpass', 
 Sfx.extra.ironfistHatchDrop = function () { this.tone(90, 0.4, 'square', 0.05, 50); this.noise(0.4, { type: 'lowpass', f: 900, vol: 0.06, delay: 0.1 }); };
 
 ironRoom('fists', {
+  jobs: {
+    both: { act: ['taunt', 'pull'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>F</kbd> taunt, or hold to pull',
+      howTo: ['Taunt on the lock so the fist punches it. Jump clear!', 'Then the other runs up the arm and holds pull at the elbow.'] },
+  },
   act: { label: 'taunt', labels: ['taunt', 'pull'] },
   tip: IRON_PARTS.fists.tip,
 });

@@ -22,11 +22,12 @@ LEVELS.push(
   // One player pulls levers to open doors ahead, the other clears rubble"). Scrolls right; three runs, the jobs swap
   // every run. The map is only the two spawns; the mode builds each run from its course (tokens: see the level file).
   { name: 'Rolling Boulder Run', world: 27, kind: 'team', mode: 'boulderrun', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Run',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump',
-      pad: 'stick runs, <span data-glyph="a"></span> jumps,',
+    jobs: {
+      puller: { title: 'Lever puller', act: 'pull', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>F</kbd> hold at a lever' },
+      smasher: { title: 'Smasher', act: 'smash', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Smash a rubble pile three times.'] },
     },
+    jobOf: 'puller', jobSwap: 'You swap jobs every run.',
     tip: 'RUN! One holds the action at levers to open doors, the other smashes rubble. Jump the gaps!',
     act: { label: 'pull', labels: ['pull', 'smash'] },
     map: W28_SPAWN_MAP,
@@ -59,6 +60,13 @@ LEVELS.push(
   { name: 'Tomb Torch Explorers', world: 27, kind: 'team', mode: 'tombtorch', noFalls: true, ownHUD: true, roomWord: 'Chamber',
     tip: 'One carries the torch and lights braziers. The other presses the switches found in the light, and disarms traps.',
     act: { label: 'light', labels: ['light', 'press'] },
+    jobs: {
+      torch: { title: 'Torch', act: 'light', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop down',
+        howTo: ['Light a brazier to keep a spot lit.'] },
+      seeker: { title: 'Seeker', act: 'press', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop down',
+        howTo: ['Press a switch you have seen in the light; press next to a trap to disarm it.'] },
+    },
+    jobOf: 'torch', jobSwap: 'You swap jobs every chamber.',
     map: W28_SPAWN_MAP,
     rooms: [
       {
@@ -150,6 +158,7 @@ LEVELS.push(
       pad: 'stick or d-pad walks and pushes,',
     },
     tip: 'Push the stones to match the picture! Heavy stones need both of you in a line. Hold the action to pull.',
+    howTo: ['Stuck? Stand on the reset tile in the corner and hold the action for 1 s to start the puzzle over.'],
     act: { label: 'pull' },
     map: W28_SPAWN_MAP,
     rooms: [

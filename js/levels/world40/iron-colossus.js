@@ -145,7 +145,7 @@ const ironDark = st => ironPaper(st) === 'dark';
 
 /* --- the level entry (World 40 and its one level are added by world.js) --- */
 const IRON_EMPTY_MAP = [...Array(18).fill('.'.repeat(32))].map((r, i) => (i === 15 ? '..1.2' + '.'.repeat(27) : r));
-const IRON_DEF = { name: 'The Iron Colossus', world: 39, kind: 'team', mode: 'colossus', ownHUD: true, ownPills: true, noFalls: true, roomWord: 'Part',
+const IRON_DEF = { name: 'The Iron Colossus', world: 39, kind: 'team', mode: 'colossus', ownHUD: true, ownPills: true, noFalls: true, roomWord: 'Part', jobParts: true,
   tip: 'Chase it, climb it, trick it, then pull out its three cores. You will need each other the whole way.',
   act: { label: 'action' },
   legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> crouch',
@@ -987,7 +987,7 @@ function ironHud(st) {
   // the checkpoint line
   if (st.cpNote && (G.introT <= 0 || G.mode === 'play')) {
     const c = st.cpNote, a = G.introT > 0 ? clamp(G.introT / 0.5, 0, 1) : clamp((c.life - c.t) / 0.3, 0, 1);
-    const yy = G.introT > 0 ? 168 + 128 : y;
+    const yy = G.introT > 0 ? introCardBottom() + 8 : y;
     const r = ironTextPill(ctx, W / 2, yy, c.text, Math.round(13 * z), { gold: true, alpha: a });
     if (G.introT <= 0) y = r.y1 + 4;
   }

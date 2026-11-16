@@ -152,7 +152,7 @@
     st.final = { prog: 0, done: false }; st.tixTake = 0; st.party = false; st.cleared = false; st.planMemo = null;
     st.prevUp = [false, false]; st.prevDown = [false, false]; st.leftT = 0; st.tailUntil = 0; st.brkRest = false;
   }
-  function labels(st) { const w = []; w[st.brk] = 'brake'; w[st.run] = 'do it'; K.actLabels(w, 'brake'); }
+  function labels(st) { const w = []; w[st.brk] = 'brake'; w[st.run] = 'clear'; K.actLabels(w, 'brake'); }
   const zog = st => !!st.set.zog;
 
   /* ---------- the tick ---------- */
@@ -590,22 +590,73 @@
       const x = i * step - off, h = 150 + K.hash(i) * 50, y = 330;
       ctx.save(); ctx.translate(x, y);
       if (look === 'west') {
-        ctx.fillStyle = ['#c8844a', '#a8643a', '#d8a46a'][((i % 3) + 3) % 3]; ctx.fillRect(0, -h, 200, h);
-        ctx.fillRect(30, -h - 24, 140, 24);
+        const wc = ['#c8844a', '#a8643a', '#d8a46a'][((i % 3) + 3) % 3], name = ['SALOON', 'BANK', 'HOTEL', 'JAIL'][((i % 4) + 4) % 4];
+        // the struts behind the false front
+        ctx.fillStyle = '#6a4a2a'; ctx.fillRect(190, -h + 20, 8, h - 20); ctx.fillRect(196, -h * 0.5, 30, 6);
+        // the false front: siding boards, a lit left edge, a shaded right side
+        ctx.fillStyle = wc; ctx.fillRect(0, -h, 200, h); ctx.fillRect(30, -h - 24, 140, 24);
+        ctx.fillStyle = shade(wc, 0.12); ctx.fillRect(150, -h, 50, h);
+        ctx.fillStyle = 'rgba(80,40,10,0.18)'; for (let yy = -h + 12; yy < 0; yy += 12) ctx.fillRect(0, yy, 200, 1.5);
+        ctx.fillStyle = 'rgba(255,240,210,0.25)'; ctx.fillRect(0, -h, 3, h); ctx.fillRect(30, -h - 24, 140, 3);
+        ctx.fillStyle = shade(wc, 0.3); ctx.fillRect(24, -h - 28, 152, 5); ctx.fillRect(-4, -h - 2, 208, 5);
+        // windows with frames and a glint, the porch awning on posts, the door
+        for (const wx of [20, 150]) {
+          ctx.fillStyle = '#f2e2c0'; ctx.fillRect(wx - 3, -h + 27, 36, 46);
+          ctx.fillStyle = '#2a1a0a'; ctx.fillRect(wx, -h + 30, 30, 40);
+          ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.moveTo(wx + 4, -h + 66); ctx.lineTo(wx + 18, -h + 34); ctx.lineTo(wx + 24, -h + 34); ctx.lineTo(wx + 10, -h + 66); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#f2e2c0'; ctx.fillRect(wx + 14, -h + 30, 2, 40);
+        }
+        ctx.fillStyle = 'rgba(40,20,5,0.25)'; ctx.fillRect(0, -96, 200, 10);
+        ctx.fillStyle = '#7a4a24'; ctx.fillRect(-6, -104, 212, 9); ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(-6, -104, 212, 2);
+        ctx.fillStyle = '#6a4220'; for (const px of [0, 96, 194]) ctx.fillRect(px, -95, 6, 95);
         ctx.fillStyle = '#5a3418'; ctx.fillRect(70, -70, 60, 70);
-        ctx.fillStyle = '#2a1a0a'; for (const wx of [20, 150]) ctx.fillRect(wx, -h + 30, 30, 40);
-        text(['SALOON', 'BANK', 'HOTEL', 'JAIL'][((i % 4) + 4) % 4], 100, -h - 10, 16, '#fff2c8', 'center', 'display');
+        ctx.fillStyle = '#3a200c'; ctx.fillRect(99, -70, 2, 70); ctx.fillStyle = '#c8a46a'; for (const dx of [70, 101]) { ctx.fillRect(dx + 4, -40, 25, 3); ctx.fillRect(dx + 4, -52, 25, 3); }
+        // the sign board sized to its word
+        text('', 0, 0, 16, '#fff2c8', 'center', 'display'); const sw = ctx.measureText(name).width + 24;
+        ctx.fillStyle = shade(wc, 0.4); rr(100 - sw / 2, -h - 22, sw, 22, 3); ctx.fill();
+        text(name, 100, -h - 10, 16, '#fff2c8', 'center', 'display');
       } else if (look === 'zog') {
+        // crater mountains: a lit face, a shaded face, glowing pods
         ctx.fillStyle = '#3a2a6a'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(40, -h * 0.6); ctx.lineTo(100, -h * 0.4); ctx.lineTo(160, -h * 0.8); ctx.lineTo(220, 0); ctx.fill();
-        ctx.fillStyle = '#8a5aff'; circle(150, -h - 30, 30); ctx.fill(); ctx.strokeStyle = '#ffb0ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(150, -h - 30, 50, 10, -0.3, 0, TAU); ctx.stroke();
-        ctx.fillStyle = '#5affc8'; for (let k = 0; k < 4; k++) { circle(20 + k * 50, -20 - k * 8, 4); ctx.fill(); }
+        ctx.fillStyle = '#2a1e52'; ctx.beginPath(); ctx.moveTo(40, -h * 0.6); ctx.lineTo(70, 0); ctx.lineTo(0, 0); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(160, -h * 0.8); ctx.lineTo(220, 0); ctx.lineTo(170, 0); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(180,150,255,0.45)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(10, -h * 0.15); ctx.lineTo(40, -h * 0.6); ctx.lineTo(100, -h * 0.4); ctx.lineTo(160, -h * 0.8); ctx.stroke();
+        ctx.fillStyle = '#241848'; ctx.beginPath(); ctx.ellipse(120, -h * 0.25, 22, 6, 0, 0, TAU); ctx.fill();
+        // the ringed planet: shaded, banded, the ring passing in front
+        const px = 150, py = -h - 30;
+        ctx.strokeStyle = '#ffb0ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(px, py, 50, 10, -0.3, Math.PI, TAU); ctx.stroke();
+        ctx.fillStyle = '#8a5aff'; circle(px, py, 30); ctx.fill();
+        ctx.save(); circle(px, py, 30); ctx.clip();
+        ctx.fillStyle = 'rgba(255,180,255,0.25)'; ctx.fillRect(px - 30, py - 12, 60, 6); ctx.fillRect(px - 30, py + 6, 60, 4);
+        ctx.fillStyle = 'rgba(30,10,60,0.35)'; circle(px + 14, py + 10, 30); ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = 'rgba(255,255,255,0.3)'; circle(px - 10, py - 12, 7); ctx.fill();
+        ctx.strokeStyle = '#ffb0ff'; ctx.beginPath(); ctx.ellipse(px, py, 50, 10, -0.3, 0, Math.PI); ctx.stroke();
+        for (let k = 0; k < 4; k++) { const gx = 20 + k * 50, gy = -20 - k * 8; ctx.fillStyle = 'rgba(90,255,200,0.25)'; circle(gx, gy, 9); ctx.fill(); ctx.fillStyle = '#5affc8'; circle(gx, gy, 4); ctx.fill(); }
       } else if (look === 'jungle') {
-        ctx.fillStyle = '#2a6a3a'; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.ellipse(k * 60 + 20, -h + 30, 50, 34, 0, 0, TAU); ctx.fill(); }
-        ctx.fillStyle = '#8a7a5a'; ctx.fillRect(60, -h * 0.75, 120, h * 0.75); ctx.fillStyle = '#6a5a3a'; for (let k = 0; k < 4; k++) ctx.fillRect(56 + k * 8, -h * 0.75 - 8 - k * 8, 128 - k * 16, 8);
-        ctx.fillStyle = '#2a1a0a'; ctx.fillRect(105, -50, 30, 50);
+        // the temple: stepped stone with blocks, a dark doorway, vines, then the canopy clumps over it
+        ctx.fillStyle = '#8a7a5a'; ctx.fillRect(60, -h * 0.75, 120, h * 0.75);
+        ctx.fillStyle = 'rgba(40,30,10,0.2)'; ctx.fillRect(140, -h * 0.75, 40, h * 0.75);
+        ctx.fillStyle = 'rgba(60,50,30,0.35)'; for (let yy = -h * 0.75 + 16, r = 0; yy < 0; yy += 16, r++) { ctx.fillRect(60, yy, 120, 1.5); for (let xx = 60 + (r % 2) * 15; xx < 180; xx += 30) ctx.fillRect(xx, yy - 16, 1.5, 16); }
+        for (let k = 0; k < 4; k++) { ctx.fillStyle = '#6a5a3a'; ctx.fillRect(56 + k * 8, -h * 0.75 - 8 - k * 8, 128 - k * 16, 8); ctx.fillStyle = 'rgba(255,240,200,0.25)'; ctx.fillRect(56 + k * 8, -h * 0.75 - 8 - k * 8, 128 - k * 16, 2); }
+        ctx.fillStyle = '#2a1a0a'; ctx.fillRect(105, -50, 30, 50); ctx.beginPath(); ctx.arc(120, -50, 15, Math.PI, TAU); ctx.fill();
+        ctx.strokeStyle = '#3a7a3a'; ctx.lineWidth = 2.5; for (const vx of [70, 160]) { ctx.beginPath(); ctx.moveTo(vx, -h * 0.75); ctx.quadraticCurveTo(vx + 8, -h * 0.4, vx - 2, -h * 0.2); ctx.stroke(); }
+        for (let k = 0; k < 4; k++) {
+          ctx.fillStyle = '#1e5a2e'; ctx.beginPath(); ctx.ellipse(k * 60 + 24, -h + 36, 50, 34, 0, 0, TAU); ctx.fill();
+          ctx.fillStyle = '#2a6a3a'; ctx.beginPath(); ctx.ellipse(k * 60 + 20, -h + 30, 46, 30, 0, 0, TAU); ctx.fill();
+          ctx.fillStyle = '#3e8a4a'; circle(k * 60 + 8, -h + 18, 14); ctx.fill(); circle(k * 60 + 26, -h + 12, 10); ctx.fill();
+        }
       } else {
+        // the volcano with a lit flank and a smoking top, palm trees in front
         ctx.fillStyle = '#4a3a5a'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(60, -h * 1.2, 120, -h * 0.6); ctx.quadraticCurveTo(170, -h * 0.9, 230, 0); ctx.fill();
-        ctx.fillStyle = '#2a8a5a'; for (let k = 0; k < 3; k++) { ctx.fillRect(30 + k * 70, -60, 8, 60); ctx.beginPath(); ctx.ellipse(34 + k * 70, -64, 26, 10, 0, 0, TAU); ctx.fill(); }
+        ctx.fillStyle = '#5e4a70'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(40, -h * 0.8, 70, -h * 0.82); ctx.lineTo(50, 0); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,120,60,0.6)'; ctx.beginPath(); ctx.moveTo(68, -h * 0.8); ctx.quadraticCurveTo(76, -h * 0.5, 66, -h * 0.25); ctx.lineTo(72, -h * 0.25); ctx.quadraticCurveTo(82, -h * 0.5, 74, -h * 0.82); ctx.fill();
+        for (let k = 0; k < 3; k++) { const ph = (t * 0.3 + k / 3) % 1; ctx.fillStyle = 'rgba(90,80,100,' + (0.5 - ph * 0.45) + ')'; circle(70 + ph * 30, -h * 0.85 - ph * 60, 10 + ph * 16); ctx.fill(); }
+        for (let k = 0; k < 3; k++) {
+          const px = 34 + k * 70;
+          ctx.fillStyle = '#6a4a2a'; for (let q = 0; q < 6; q++) ctx.fillRect(px + q * 0.6, -10 - q * 10, 8, 9);
+          ctx.fillStyle = '#2a8a5a'; for (let f = 0; f < 5; f++) { const a = Math.PI + f * Math.PI / 4; ctx.beginPath(); ctx.ellipse(px + 4 + Math.cos(a) * 16, -66 + Math.sin(a) * 4 + 6, 20, 5, a + Math.PI / 2 + Math.PI / 2, 0, TAU); ctx.fill(); }
+          ctx.fillStyle = '#1e6a44'; ctx.beginPath(); ctx.ellipse(px + 12, -62, 18, 4, 0.5, 0, TAU); ctx.fill();
+        }
       }
       ctx.restore();
     }
@@ -623,8 +674,11 @@
     const t = st.clock, cx = st.cam;
     setBack(st, t);
     // the ground and the main line
-    ctx.fillStyle = st.set.look === 'zog' ? '#4a3a6a' : st.set.look === 'jungle' ? '#5a6a3a' : st.set.look === 'monster' ? '#4a4a3a' : '#c8a06a';
-    ctx.fillRect(0, S.base - 4, W, H - S.base + 4);
+    const gc = st.set.look === 'zog' ? '#4a3a6a' : st.set.look === 'jungle' ? '#5a6a3a' : st.set.look === 'monster' ? '#4a4a3a' : '#c8a06a';
+    ctx.fillStyle = gc; ctx.fillRect(0, S.base - 4, W, H - S.base + 4);
+    ctx.fillStyle = tint(gc, 0.2); ctx.fillRect(0, S.base - 4, W, 2);
+    { const gg = ctx.createLinearGradient(0, S.base, 0, H); gg.addColorStop(0, 'rgba(0,0,0,0)'); gg.addColorStop(1, 'rgba(0,0,0,0.22)'); ctx.fillStyle = gg; ctx.fillRect(0, S.base, W, H - S.base); }
+    ctx.fillStyle = shade(gc, 0.15); for (let k = 0; k < 30; k++) { const gx = ((k * 61 - cx) % (W + 40) + W + 40) % (W + 40) - 20, gy = S.base + 16 + (k * 29) % (H - S.base - 30); ctx.beginPath(); ctx.ellipse(gx, gy, 3 + (k % 3), 1.8, 0, 0, TAU); ctx.fill(); }
     ctx.save(); ctx.translate(-cx, 0);
     drawRails(st, cx, cx + W, 'low');
     for (const j of st.jobs) if (j.k === 'mud') { ctx.fillStyle = '#4a3420'; rr(j.x, S.base - 6, j.len, 14, 7); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.15)'; for (let k = 0; k < 6; k++) { circle(j.x + 20 + k * 30, S.base - 1, 3); ctx.fill(); } K.realTag(j.x + j.len / 2, S.base + 22, 70, 1); }
@@ -659,10 +713,11 @@
   function drawRails(st, x0, x1, line, f) {
     const a = Math.max(x0, f ? f.x0 : x0), b = Math.min(x1, f ? f.x1 : x1);
     // sleepers and two rails
-    ctx.fillStyle = '#6a4a2a';
-    for (let x = Math.floor(a / 26) * 26; x < b; x += 26) { const y = lineY(st, x, line); ctx.fillRect(x, y - 2, 14, 7); }
-    ctx.strokeStyle = '#9aa2ae'; ctx.lineWidth = 3;
-    ctx.beginPath(); for (let x = a; x <= b; x += 10) { const y = lineY(st, x, line) - 3; if (x === a) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
+    for (let x = Math.floor(a / 26) * 26; x < b; x += 26) { const y = lineY(st, x, line); ctx.fillStyle = '#6a4a2a'; ctx.fillRect(x, y - 2, 14, 7); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x, y + 3, 14, 2); ctx.fillStyle = 'rgba(255,220,170,0.2)'; ctx.fillRect(x, y - 2, 14, 1.5); }
+    ctx.strokeStyle = '#5a626e'; ctx.lineWidth = 4;
+    ctx.beginPath(); for (let x = a; x <= b; x += 10) { const y = lineY(st, x, line) - 2.5; if (x === a) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
+    ctx.strokeStyle = '#c8d0da'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); for (let x = a; x <= b; x += 10) { const y = lineY(st, x, line) - 4; if (x === a) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
   }
   function drawTrestle(st, f, t) {
     // wooden legs under the upper line, then its rails
@@ -792,6 +847,7 @@
       const ang = Math.atan2(lineY(st, c.x1, tramLine(st, c.x1)) - lineY(st, c.x0, tramLine(st, c.x0)), S.carL);
       ctx.save(); ctx.translate(mx, y - 8); ctx.rotate(ang);
       // wheels, the open body, the striped canopy on posts, cardboard tourists
+      ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(0, 9, S.carL / 2 + 6, 4, 0, 0, TAU); ctx.fill();
       ctx.fillStyle = '#1a1a22'; for (const d of [-36, 36]) { circle(d, 0, 9); ctx.fill(); ctx.fillStyle = '#9aa2ae'; circle(d, 0, 3.5); ctx.fill(); ctx.fillStyle = '#1a1a22'; }
       const body = ctx.createLinearGradient(0, -34, 0, -2); body.addColorStop(0, '#ffffff'); body.addColorStop(1, '#c8d0dc');
       ctx.fillStyle = body; ctx.strokeStyle = '#2a2e38'; ctx.lineWidth = 2; rr(-S.carL / 2, -26, S.carL, 22, 5); ctx.fill(); ctx.stroke();
@@ -799,6 +855,9 @@
       ctx.fillStyle = '#e8322a'; ctx.fillRect(-S.carL / 2, -12, S.carL, 4);
       ctx.strokeStyle = '#3a3e48'; ctx.lineWidth = 3; for (const d of [-S.carL / 2 + 6, S.carL / 2 - 6]) { ctx.beginPath(); ctx.moveTo(d, -26); ctx.lineTo(d, -88); ctx.stroke(); }
       for (let k = 0; k < 8; k++) { ctx.fillStyle = k % 2 ? '#ffffff' : '#e8322a'; ctx.beginPath(); ctx.moveTo(-S.carL / 2 - 4 + k * (S.carL + 8) / 8, -88); ctx.lineTo(-S.carL / 2 - 4 + (k + 1) * (S.carL + 8) / 8, -88); ctx.lineTo(-S.carL / 2 - 4 + (k + 1) * (S.carL + 8) / 8, -80 + (k % 2 ? 4 : 0)); ctx.lineTo(-S.carL / 2 - 4 + k * (S.carL + 8) / 8, -80); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(-S.carL / 2 - 4, -80, S.carL + 8, 3);
+      ctx.fillStyle = '#3a3e48'; ctx.fillRect(-S.carL / 2 - 4, -90, S.carL + 8, 3);
+      ctx.fillStyle = '#9aa2ae'; for (const d of [-20, 20]) { circle(d, -4, 1.5); ctx.fill(); }
       text('TOUR', 0, -16, 9, '#2a2e38', 'center', 'body');
       // cardboard tourists (flat, wobbling, PROP tag on one)
       for (let k = 0; k < 3; k++) {
@@ -934,14 +993,16 @@
   };
 
   /* ---------- the level ---------- */
-  const acts = b => ({ label: 'brake', labels: b === 0 ? ['brake', 'do it'] : ['do it', 'brake'] });
+  const acts = b => ({ label: 'brake', labels: b === 0 ? ['brake', 'clear'] : ['clear', 'brake'] });
   STUDIO.defs.tramrun = {
     name: 'Backlot Tram Runaway', world: 35, kind: 'team', mode: 'tramrun', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Take', outfit: 'none',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> walk / <kbd>W</kbd><kbd>S</kbd> switch or jump',
-      bo: '<kbd>←</kbd><kbd>→</kbd> walk / <kbd>↑</kbd><kbd>↓</kbd> switch or jump',
-      pad: 'stick walks, A jumps,',
+    jobs: {
+      brake: { title: 'Brake hero', act: 'brake', legend: '<kbd>W</kbd><kbd>S</kbd> throw the switch <kbd>A</kbd><kbd>D</kbd> walk the cars',
+        howTo: ['Brake in short pulls, or it overheats.', 'Tap brake to pull the runner aboard.'] },
+      runner: { title: 'Runner', act: 'clear', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Clear props ahead: push, crank or unplug at the ring.'] },
     },
+    jobOf: 'brk', jobSwap: 'You swap jobs every take.',
     tip: 'Stop the runaway tram! The brake hero brakes in short pulls and throws the switches; the runner jumps off and clears the props ahead.',
     act: acts(0),
     map: K.stubMap(),

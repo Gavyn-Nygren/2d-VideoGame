@@ -364,6 +364,16 @@
     const ceil = () => { ctx.beginPath(); let f = true; for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) { const y = c.fl(x) - S.tunH - 10 + Math.sin(x * 0.013) * 12; if (f) { ctx.moveTo(x, y); f = false; } else ctx.lineTo(x, y); } };
     const flo = () => { ctx.beginPath(); let f = true; for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) { const y = c.fl(x) + 6; if (f) { ctx.moveTo(x, y); f = false; } else ctx.lineTo(x, y); } };
     ceil(); ctx.strokeStyle = 'rgba(30,16,8,0.22)'; ctx.lineWidth = 90; ctx.stroke(); ctx.lineWidth = 44; ctx.stroke();
+    // layers of packed soil along the tunnel wall, with grains and tiny embedded stones
+    for (let i = Math.floor(x0 / 110); i <= Math.ceil(x1 / 110); i++) {
+      const lx = i * 110 + K.hash(i + 71) * 40, fy = c.fl(lx);
+      for (let k = 0; k < 3; k++) {
+        const ly = fy - 40 - K.hash(i * 3 + k + 72) * (S.tunH - 80);
+        ctx.strokeStyle = k % 2 ? 'rgba(50,28,14,0.22)' : 'rgba(255,214,160,0.1)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.quadraticCurveTo(lx + 30, ly - 4, lx + 60 + K.hash(i + k) * 40, ly + 2); ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(160,140,120,0.5)'; ctx.beginPath(); ctx.ellipse(lx + 50, fy - 30 - K.hash(i + 79) * 60, 4, 3, 0, 0, TAU); ctx.fill();
+    }
     flo(); ctx.strokeStyle = 'rgba(255,214,150,0.06)'; ctx.lineWidth = 120; ctx.stroke();
     ctx.restore();
     for (let i = Math.floor(x0 / 90); i <= Math.ceil(x1 / 90); i++) {
@@ -393,6 +403,7 @@
       const fy = c.fl(x), got = st.cp >= x;
       ctx.strokeStyle = '#e8d0a0'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, fy); ctx.lineTo(x, fy - 90); ctx.stroke();
       ctx.fillStyle = got ? '#8fe3b0' : '#c8b890'; ctx.beginPath(); ctx.moveTo(x, fy - 90); ctx.lineTo(x + 30, fy - 80); ctx.lineTo(x, fy - 68); ctx.fill();
+      ctx.strokeStyle = got ? '#4a9a6a' : '#8a7a50'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, fy - 79); ctx.lineTo(x + 26, fy - 80); ctx.stroke();
     }
     // march shafts: a hole in the ceiling going up
     for (const sh of c.shafts) {
@@ -405,7 +416,9 @@
     for (const z of c.sleepers) {
       if (z.x < x0 - 100 || z.x > x1 + 100) continue;
       ctx.fillStyle = '#5a3c24'; ctx.beginPath(); ctx.ellipse(z.x, z.y - 40, 90, 60, 0, Math.PI, 0); ctx.fill();
-      for (let k = 0; k < 4; k++) { ctx.fillStyle = '#f4ead8'; ctx.beginPath(); ctx.ellipse(z.x - 60 + k * 14, z.y - 8, 6, 9, 0.3, 0, TAU); ctx.fill(); }
+      ctx.fillStyle = 'rgba(20,10,4,0.3)'; ctx.beginPath(); ctx.ellipse(z.x, z.y - 40, 90, 60, 0, Math.PI, Math.PI * 1.5); ctx.lineTo(z.x, z.y - 40); ctx.fill();
+      ctx.strokeStyle = 'rgba(160,120,80,0.4)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(z.x, z.y - 40, 90, 60, 0, Math.PI, 0); ctx.stroke();
+      for (let k = 0; k < 4; k++) { ctx.fillStyle = '#f4ead8'; ctx.beginPath(); ctx.ellipse(z.x - 60 + k * 14, z.y - 8, 6, 9, 0.3, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(160,140,110,0.7)'; ctx.lineWidth = 1; ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(z.x - 62 + k * 14, z.y - 12, 2, 3, 0.3, 0, TAU); ctx.fill(); }
     }
     // the way out
     const ex = c.endX + 60, ey = c.fl(ex);
@@ -415,7 +428,7 @@
     // sugar
     for (const q of c.sugar) if (!q.got && q.x > x0 && q.x < x1) {
       ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#e8e0d0'; ctx.lineWidth = 1;
-      ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(0.4 + K.hash(q.x) * 0.5); ctx.fillRect(-6, -6, 12, 12); ctx.strokeRect(-6, -6, 12, 12); ctx.restore();
+      ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(0.4 + K.hash(q.x) * 0.5); ctx.fillRect(-6, -6, 12, 12); ctx.fillStyle = 'rgba(180,170,150,0.35)'; ctx.fillRect(0, -6, 6, 12); ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#c8bca8'; ctx.strokeRect(-6, -6, 12, 12); ctx.fillStyle = 'rgba(200,190,170,0.6)'; ctx.fillRect(-3, -2, 1.5, 1.5); ctx.fillRect(2, 2, 1.5, 1.5); ctx.restore();
       if (Math.sin(t * 3 + q.x) > 0.8) { ctx.fillStyle = '#ffffff'; K.star(q.x + 7, q.y - 8, 4, 1.5, 0); ctx.fill(); }
     }
     ctx.restore();
@@ -437,6 +450,14 @@
     ctx.beginPath(); ctx.ellipse(-30, -24, 20, 14, -0.2, 0, TAU); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.ellipse(-2, -22, 11, 8, 0, 0, TAU); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.ellipse(22, -26, 14, 12, 0.1, 0, TAU); ctx.fill(); ctx.stroke();
+    // a glossy shell: darker bands on the abdomen, a shine on each segment
+    ctx.strokeStyle = 'rgba(60,10,6,0.4)'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (const bx of [-40, -32, -24]) { ctx.moveTo(bx, -36); ctx.quadraticCurveTo(bx - 3, -24, bx, -12); }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,220,200,0.45)';
+    ctx.beginPath(); ctx.ellipse(-34, -32, 8, 3.5, -0.3, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-4, -27, 4, 2, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(18, -33, 5, 2.5, 0, 0, TAU); ctx.fill();
     // eye and jaws
     const mad = o.mad || 0;
     ctx.fillStyle = mad > 0.5 ? '#ffec5a' : '#1a0a08'; circle(27, -30, 4); ctx.fill();

@@ -29,7 +29,10 @@ const JAV = {
   ang0: 12, angRate: 46, angMax: 75,
   vMin: 12, vMax: 30, g: 9.8, drag: 0.02, kw: 0.22, h0: 2.0, hand: -0.5,
   shot: 10, setT: 1.0, showT: 1.5, foulT: 1.1, noneT: 0.9,
-  attempts: 3, ringR: 3.5, ringBonus: 4,
+  attempts: 3, ringR: 4, ringBonus: 4,
+  ringBack: 3,                             // a stuck javelin's shaft (and its shadow) lies about 3 m behind its tip: it counts in
+                                           // the ring when any of that is in it, so a throw that looks in the ring always scores
+  ringNear: 4,                             // a miss by less than this (m) says "Just missed the ring!"
   slowT: 0.45, slowK: 0.22,
   idlePause: 40,                           // nobody pressed anything for 40 s of live play: pause (family touch, like 8-4)
 };
@@ -148,7 +151,13 @@ function javStick(st, j, xl) {
     return;
   }
   let d = Math.max(0, Math.round(xl * 10) / 10);
-  if (st.twist === 'ring' && Math.abs(xl - st.ringX) <= JAV.ringR) { j.bonus = JAV.ringBonus; st.stat.rings[j.k]++; st.ringFx.push({ k: j.k, t: 0 }); }
+  // the ring: the tip or the shaft lying behind it on the ground is in the gold ring (what the player sees)
+  let ringMiss = 0;
+  if (st.twist === 'ring') {
+    const lo = st.ringX - JAV.ringR, hi = st.ringX + JAV.ringR + JAV.ringBack;
+    if (xl >= lo && xl <= hi) { j.bonus = JAV.ringBonus; st.stat.rings[j.k]++; st.ringFx.push({ k: j.k, t: 0 }); }
+    else ringMiss = xl < lo ? lo - xl : xl - hi;
+  }
   j.dist = Math.round((d + j.bonus) * 10) / 10;
   st.marks[j.k][j.att] = { d: j.dist, bonus: j.bonus };
   const prevBest = st.best[j.k];
@@ -157,6 +166,7 @@ function javStick(st, j, xl) {
   st.stat.total[j.k] += j.dist; st.stat.marksN[j.k]++; st.matchDist[j.k] += j.dist;
   javPop(xl, j.k, 34, j.dist.toFixed(1) + ' m', PCOL[j.k], 24, 1.6);
   if (j.bonus) javPop(xl, j.k, 64, 'Ring bonus +' + j.bonus + ' m!', C.gold, 17, 1.6);
+  else if (ringMiss && ringMiss < JAV.ringNear) javPop(xl, j.k, 64, 'Just missed the ring!', '#ffffff', 15, 1.4);
   else if (prevBest != null && j.dist > prevBest) javPop(xl, j.k, 64, 'New best!', '#ffffff', 15, 1.3);
   st.dust.push({ xm: xl, k: j.k, t: 0 });
   if (st.judge.flag !== 'red') st.judge = { flag: 'white', t: 0 };
@@ -406,9 +416,17 @@ function javStandsLayer() {
     // the front wall: a long banner with made-up colours
     g.fillStyle = '#2e3b6b'; g.fillRect(0, 268, W, 32);
     const bands = ['#ff6f91', '#ffd34d', '#3ec7a8', '#8a7cf0', '#ff9a52'];
-    for (let i = 0; i < 10; i++) { g.fillStyle = bands[i % 5]; g.fillRect(i * 96 + 4, 272, 88, 22); }
-    g.font = '15px "Lilita One", "Arial Rounded MT Bold", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    for (let i = 0; i < 10; i++) { g.fillStyle = i % 5 === 1 ? '#5a3a00' : '#ffffff'; g.fillText(i % 2 ? 'JAVELIN' : 'SUMMER GAMES', i * 96 + 48, 283.5); }
+    for (let i = 0; i < 10; i++) {
+      g.fillStyle = bands[i % 5]; g.fillRect(i * 96 + 4, 272, 88, 22);
+      g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(i * 96 + 4, 272, 88, 2); g.fillStyle = 'rgba(0,0,0,0.15)'; g.fillRect(i * 96 + 4, 292, 88, 2);
+    }
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (let i = 0; i < 10; i++) {   // each word shrinks to fit its panel, with air either side
+      const word = i % 2 ? 'JAVELIN' : 'SUMMER GAMES';
+      let fs = 15; g.font = fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+      while (fs > 9 && g.measureText(word).width > 76) { fs -= 0.5; g.font = fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif'; }
+      g.fillStyle = i % 5 === 1 ? '#5a3a00' : '#ffffff'; g.fillText(word, i * 96 + 48, 283.5);
+    }
     // the scoreboard
     g.fillStyle = '#1c1a36'; javRR(g, 584, 150, 168, 58, 8); g.fill();
     g.strokeStyle = '#ffd34d'; g.lineWidth = 3; javRR(g, 584, 150, 168, 58, 8); g.stroke();
@@ -416,6 +434,10 @@ function javStandsLayer() {
     g.fillStyle = '#f6efdf'; g.font = '700 12px "Atkinson Hyperlegible", system-ui, sans-serif'; g.fillText(lab, 668, 186);
     for (let i = 0; i < 9; i++) { g.fillStyle = i % 2 ? '#ff6f91' : '#3ec7a8'; g.fillRect(596 + i * 17, 198, 9, 3); }
     g.fillStyle = '#3b4672'; g.fillRect(660, 208, 16, 20);
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(660, 208, 4, 20);
+    // the stand's shadow falling on the tiers under the roof
+    const rs = g.createLinearGradient(0, 140, 0, 175); rs.addColorStop(0, 'rgba(10,16,40,0.35)'); rs.addColorStop(1, 'rgba(10,16,40,0)');
+    g.fillStyle = rs; g.fillRect(0, 140, 584, 35); g.fillRect(752, 140, W - 752, 35);
     javCache.stands = c;
   }
   ctx.drawImage(javCache.stands, 0, 118, W, 182);
@@ -491,11 +513,18 @@ function javDrawWorld() {
   const gr = ctx.createLinearGradient(0, 300, 0, H);
   gr.addColorStop(0, '#79c95e'); gr.addColorStop(1, '#8edb6d');
   ctx.fillStyle = gr; ctx.fillRect(0, 300, W, H - 300);
+  ctx.fillStyle = 'rgba(20,60,20,0.18)'; ctx.fillRect(0, 300, W, 8);   // the stands' shadow on the grass
   const c = st.cam, xL = c.x0, xR = c.x0 + W / c.s;
   // mowing stripes every 5 m
   for (let m = Math.floor(xL / 5) * 5; m < xR; m += 5) {
     if (((m / 5) | 0) % 2 === 0) continue;
     ctx.fillStyle = 'rgba(40,110,40,0.10)'; ctx.fillRect(javSX(m), 300, 5 * c.s + 0.5, H - 300);
+  }
+  // little tufts and clover in the grass (they move with the field)
+  for (let m = Math.floor(xL / 2) * 2; m < xR; m += 2) {
+    const hh = hash(m + 1000, 3); if (hh % 3) continue;
+    const x = javSX(m) + (hh >> 4) % 10, y = 318 + (hh >> 9) % (H - 330);
+    ctx.fillStyle = hh % 2 ? 'rgba(40,110,40,0.28)' : 'rgba(255,255,255,0.18)'; ctx.fillRect(x, y, 1.5, 3); ctx.fillRect(x + 2.5, y + 1, 1.5, 2);
   }
   // runways
   for (const k of [0, 1]) {
@@ -516,9 +545,12 @@ function javDrawWorld() {
   for (let m = 10; m < xR + 10; m += 10) {
     const x = javSX(m); if (x < -20 || x > W + 20) continue;
     ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(x - 1, 312, 2, H - 312);
-    const bw2 = big ? 42 : 30, bh2 = big ? 20 : 15;
+    ctx.font = '700 ' + (big ? 15 : 11) + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+    const bw2 = Math.max(big ? 42 : 30, ctx.measureText(m + ' m').width + (big ? 14 : 12)), bh2 = big ? 20 : 15;
+    ctx.fillStyle = 'rgba(20,60,20,0.25)'; rr(x - bw2 / 2 + 1.5, 301.5, bw2, bh2, 4); ctx.fill();
     ctx.fillStyle = '#ffffff'; rr(x - bw2 / 2, 300, bw2, bh2, 4); ctx.fill();
-    ctx.font = '700 ' + (big ? 15 : 11) + 'px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.fillStyle = C.ink; ctx.fillText(m + ' m', x, 300 + bh2 / 2 + 0.8);
+    ctx.strokeStyle = 'rgba(28,26,54,0.25)'; ctx.lineWidth = 1; rr(x - bw2 / 2, 300, bw2, bh2, 4); ctx.stroke();
+    ctx.fillStyle = C.ink; ctx.fillText(m + ' m', x, 300 + bh2 / 2 + 0.8);
     if (m % 20 === 0) javFlag(x + 14, 312, 24, JAV_COL.flags[(m / 20) % 4], st.windShow, m * 0.37, 0.8);
   }
   // the foul line, across both lanes
@@ -862,7 +894,8 @@ function javHud() {
   if (st.twist && st.twist !== 'calm') {
     const tw = JAV_TWISTS[st.twist], fs = big ? 20 : 13, h = big ? 36 : 26, y0 = 46;
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-    const w = ctx.measureText(tw.name).width + (big ? 36 : 28); pill(14, y0, w, h); text(tw.name, 14 + (big ? 18 : 14), y0 + h / 2 + 0.5, fs, C.gold, 'left', 'body');
+    const name = st.twist === 'ring' ? tw.name + ' at ' + st.ringX + ' m' : tw.name;   // (the ring is off screen during the run-up)
+    const w = ctx.measureText(name).width + (big ? 36 : 28); pill(14, y0, w, h); text(name, 14 + (big ? 18 : 14), y0 + h / 2 + 0.5, fs, C.gold, 'left', 'body');
   }
   // throw counter under the match pill
   if (m.phase === 'live' || m.phase === 'end') {

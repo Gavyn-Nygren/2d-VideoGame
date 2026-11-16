@@ -6,7 +6,7 @@
    Every round has two parts. The mode owns the tick, the picture and the HUD (ownStep, ownHUD).
    1. BUILD (up to 22 s): the factory floor. A hopper in the middle drops two copies of the same part onto the belt
       every 1.4 s: one rides left toward Pip's pad, the other right toward Bo's (so it's fair). Parts that reach a belt end
-      drop to the floor and wait there 7 s. Walk into a part to pick it up (one at a time; ▼ + the action drops it), walk
+      drop to the floor and wait there 7 s. Walk into a part to pick it up (one at a time; ▼ on the floor drops it), walk
       onto your own pad (Pip's is on the left, Bo's on the right) and it goes on your robot. A robot has four slots,
       and each slot has two kinds of part:
         legs:  Treads (heavy, hard to push, a bit slower) or Springs (big jumps)
@@ -97,11 +97,14 @@ const RUMBLE = {
     st.parts = st.parts.filter(q => !(q.on === 'floor' && q.life <= 0) && !q.gone);
     for (const p of G.players) {
       const rb = st.robots[p.id];
-      // drop what you carry: ▼ + the action
-      if (p.pendingAct) {
-        p.pendingAct = false;
-        if (rb.carry && p.input.down) { st.parts.push({ k: rb.carry, x: p.x + p.w / 2, y: p.y, vy: -200, vx: p.face * 120, on: 'fall', life: R.partLife, id: Math.random(), skip: p.id, skipT: 0.8 }); rb.carry = null; Sfx.play('rf27Drop'); }
-      }
+      // drop what you carry: press ▼ on the floor (Gavyn, 2026-11-16, controls audit: ▼ alone, like the card says; on
+      // the belt ▼ drops you through it instead), or ▼ + the action anywhere (the old way, kept)
+      const downNow = !!p.input.down, downPress = downNow && !rb.downWas;
+      rb.downWas = downNow;
+      let drop = false;
+      if (p.pendingAct) { p.pendingAct = false; if (p.input.down) drop = true; }
+      if (downPress && p.y + p.h > R.floorY - 10) drop = true;   // (near the floor, not up on the belt)
+      if (drop && rb.carry) { st.parts.push({ k: rb.carry, x: p.x + p.w / 2, y: p.y, vy: -200, vx: p.face * 120, on: 'fall', life: R.partLife, id: Math.random(), skip: p.id, skipT: 0.8 }); rb.carry = null; Sfx.play('rf27Drop'); }
       // pick up a part you touch
       if (!rb.carry) {
         const q = st.parts.find(q => !(q.skip === p.id && q.skipT > 0) && (q.on === 'belt' || q.on === 'floor' || q.on === 'fall') && Math.abs(q.x - (p.x + p.w / 2)) < 24 && Math.abs(q.y - (p.y + p.h / 2)) < 30);
@@ -311,9 +314,14 @@ const RUMBLE = {
     // the hopper and the belt
     const mid = (R.beltX0 + R.beltX1) / 2;
     ctx.fillStyle = '#5a6488'; ctx.beginPath(); ctx.moveTo(mid - 50, 150); ctx.lineTo(mid + 50, 150); ctx.lineTo(mid + 20, 220); ctx.lineTo(mid - 20, 220); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.beginPath(); ctx.moveTo(mid + 10, 150); ctx.lineTo(mid + 50, 150); ctx.lineTo(mid + 20, 220); ctx.lineTo(mid + 5, 220); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#3a4260'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(mid - 50, 150); ctx.lineTo(mid - 20, 220); ctx.lineTo(mid + 20, 220); ctx.lineTo(mid + 50, 150); ctx.stroke();
     rf27Stripes(mid - 50, 140, 100, 10);
     ctx.fillStyle = '#4a5270'; ctx.fillRect(mid - 6, 220, 12, R.beltY - 220);
+    ctx.fillStyle = 'rgba(10,10,30,0.2)'; ctx.beginPath(); ctx.ellipse(mid, R.floorY, (R.beltX1 - R.beltX0) / 2 + 10, 6, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2a2f4f'; rr(R.beltX0 - 10, R.beltY - 2, R.beltX1 - R.beltX0 + 20, 22, 10); ctx.fill();
+    ctx.fillStyle = '#6a7296'; for (let x = R.beltX0; x <= R.beltX1; x += 24) { circle(x, R.beltY + 12, 6); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'; for (let x = R.beltX0; x <= R.beltX1; x += 24) { circle(x - 1.5, R.beltY + 10.5, 2); ctx.fill(); }
     ctx.save(); ctx.beginPath(); ctx.rect(R.beltX0, R.beltY - 2, R.beltX1 - R.beltX0, 8); ctx.clip();
     ctx.strokeStyle = '#ffc53d'; ctx.lineWidth = 2;
     const off = (t * R.beltV) % 30;
@@ -324,6 +332,8 @@ const RUMBLE = {
     // pads and the robots being built
     for (const k of [0, 1]) {
       const pad = R.pads[k], cx = (pad[0] + pad[1]) / 2;
+      ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.beginPath(); ctx.ellipse(cx, R.floorY + 2, (pad[1] - pad[0]) / 2 + 6, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PDARK[k]; rr(pad[0], R.floorY - 6, pad[1] - pad[0], 10, 5); ctx.fill();
       ctx.fillStyle = PCOL[k]; rr(pad[0], R.floorY - 8, pad[1] - pad[0], 10, 5); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(pad[0] + 6, R.floorY - 6, pad[1] - pad[0] - 12, 3);
       drawRobot(cx, R.floorY - 8, st.robots[k].parts, k, 1, t, { ghost: true, face: k ? -1 : 1 });
@@ -335,18 +345,24 @@ const RUMBLE = {
   function drawArena(st, t) {
     // the foam pit
     ctx.fillStyle = '#ff9fd6'; ctx.fillRect(0, R.AY + 80, W, H - R.AY - 80);
-    ctx.fillStyle = '#ffc3e6';
-    for (let x = 10; x < W; x += 34) { circle(x, R.AY + 84 + Math.sin(t * 2 + x) * 3, 18); ctx.fill(); }
+    // foam blocks in the pit: a back row in shade, a front row lit, each with a highlight
+    for (let x = -7; x < W + 20; x += 34) { ctx.fillStyle = '#e07ab8'; circle(x + 17, R.AY + 100 + Math.sin(t * 2 + x * 0.7) * 2, 16); ctx.fill(); }
+    for (let x = 10; x < W; x += 34) { const yy = R.AY + 84 + Math.sin(t * 2 + x) * 3; ctx.fillStyle = '#ffb3dc'; circle(x, yy + 2, 18); ctx.fill(); ctx.fillStyle = '#ffc3e6'; circle(x - 1, yy, 16); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(x - 6, yy - 6, 4); ctx.fill(); }
     // the platform (with its folding edges)
     const e0 = st.edge[0], e1 = st.edge[1];
     ctx.fillStyle = '#4a5270'; ctx.fillRect((e0 + e1) / 2 - 40, R.AY + 20, 80, 80);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect((e0 + e1) / 2 - 40, R.AY + 20, 6, 80);
+    ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect((e0 + e1) / 2 + 28, R.AY + 20, 12, 80);
+    rf27Stripes((e0 + e1) / 2 - 40, R.AY + 26, 80, 8);
     rf27Floor(e0, R.AY, e1 - e0, 26, 'test');
+    ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(e0, R.AY + 26, e1 - e0, 6);
     rf27Stripes(e0, R.AY, 10, 26); rf27Stripes(e1 - 10, R.AY, 10, 26);
     ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect((R.AX0 + R.AX1) / 2 - 2, R.AY + 3, 4, 10);
     for (const b of st.bots || []) drawBot(st, b, t);
   }
   function drawBot(st, b, t) {
     const cx = b.x + b.w / 2, feet = b.y + b.h;
+    if (feet <= R.AY + 2 && cx > st.edge[0] && cx < st.edge[1]) { const up = clamp((R.AY - feet) / 120, 0, 1); ctx.fillStyle = 'rgba(10,10,30,' + (0.28 * (1 - up)) + ')'; ctx.beginPath(); ctx.ellipse(cx, R.AY + 1, 30 * (1 - up * 0.4), 5, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.save();
     if (b.stun > 0) { ctx.translate(cx, feet); ctx.rotate(Math.sin(G.clock * 40) * 0.06); ctx.translate(-cx, -feet); }
     drawRobot(cx, feet, b.parts, b.id, 1, t, { face: b.face, charge: b.charging ? clamp(b.charge / b.S.charge, 0, 1) : 0, lunge: b.lunge > 0, brace: b.brace, turbo: b.turbo > 0 });
@@ -369,7 +385,13 @@ const RUMBLE = {
     if (!B) { if (o.ghost) ghost(-22, by - 34, 44, 34); }
     else {
       ctx.fillStyle = B === 'rusty' ? '#a07a5a' : B === 'tank' ? '#8a96b4' : '#c4cee6'; ctx.strokeStyle = '#2a2f4f'; ctx.lineWidth = 3;
-      rr(B === 'tank' ? -25 : -21, by - 34, B === 'tank' ? 50 : 42, 34, B === 'turbo' ? 14 : 6); ctx.fill(); ctx.stroke();
+      const bx0 = B === 'tank' ? -25 : -21, bw0 = B === 'tank' ? 50 : 42;
+      rr(bx0, by - 34, bw0, 34, B === 'turbo' ? 14 : 6); ctx.fill();
+      ctx.fillStyle = 'rgba(20,20,50,0.18)'; rr(bx0 + bw0 - 12, by - 32, 10, 30, 5); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(bx0 + 4, by - 31, 3, 24);
+      if (B === 'rusty') { ctx.fillStyle = 'rgba(120,60,30,0.35)'; circle(bx0 + 30, by - 6, 4); ctx.fill(); circle(bx0 + 8, by - 26, 3); ctx.fill(); }
+      ctx.fillStyle = '#5a6488'; for (const [a, b] of [[bx0 + 5, by - 5], [bx0 + bw0 - 5, by - 5]]) { circle(a, b, 1.8); ctx.fill(); }
+      rr(bx0, by - 34, bw0, 34, B === 'turbo' ? 14 : 6); ctx.stroke();
       ctx.fillStyle = col; ctx.fillRect(-18, by - 10, 36, 5);
       ctx.fillStyle = 'rgba(20,30,60,0.7)'; rr(-12, by - 30, 24, 18, 6); ctx.fill();
       if (B === 'turbo') { ctx.fillStyle = o.turbo ? '#ffb84d' : '#ff8a5a'; ctx.beginPath(); ctx.moveTo(-face * 22, by - 22); ctx.lineTo(-face * (34 + Math.sin(t * 30) * 4), by - 17); ctx.lineTo(-face * 22, by - 12); ctx.fill(); }
@@ -392,7 +414,10 @@ const RUMBLE = {
     if (!Hh) { if (o.ghost) ghost(-14, hy - 22, 28, 22); }
     else {
       ctx.fillStyle = Hh === 'rusty' ? '#a07a5a' : '#c4cee6'; ctx.strokeStyle = '#2a2f4f'; ctx.lineWidth = 3;
-      rr(-14, hy - 22, 28, 22, 6); ctx.fill(); ctx.stroke();
+      rr(-14, hy - 22, 28, 22, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(-11, hy - 20, 22, 2.5);
+      ctx.fillStyle = 'rgba(20,20,50,0.15)'; ctx.fillRect(-12, hy - 6, 24, 4);
+      rr(-14, hy - 22, 28, 22, 6); ctx.stroke();
       if (Hh === 'visor') { ctx.fillStyle = '#7affff'; rr(-11 + face * 2, hy - 16, 22, 8, 4); ctx.fill(); }
       else { ctx.fillStyle = '#1c1a36'; circle(-5 + face * 2, hy - 12, 2.5); ctx.fill(); circle(5 + face * 2, hy - 12, 2.5); ctx.fill(); }
       if (Hh === 'antenna') { ctx.strokeStyle = '#2a2f4f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, hy - 22); ctx.lineTo(0, hy - 34); ctx.stroke(); ctx.fillStyle = Math.sin(t * 8) > 0 ? '#ff6b6b' : '#ffd36b'; circle(0, hy - 36, 4); ctx.fill(); }
@@ -423,7 +448,8 @@ const RUMBLE = {
   }
   function drawHud(st) {
     const big = rf27Big();
-    rf27DrawNews(st, big ? 100 : 84);
+    // the news line sits under the timer pill (it used to sit on top of it)
+    rf27DrawNews(st, big ? 132 : 108);
     if (st.phase === 'build') {
       const left = Math.max(0, st.hurryT != null ? Math.min(st.hurryT, R.buildMax - st.t) : R.buildMax - st.t);
       const s = st.hurryT != null ? 'Hurry! ' + Math.ceil(left) : 'Build your robot! ' + Math.ceil(left);
@@ -466,7 +492,7 @@ const RUMBLE = {
         if (st.rumbleT < 6) {
           const s2 = 'Hold ' + key(h.id, 'act') + ' to charge, let go to shove! Hold ' + key(h.id, 'down') + ' to brace';
           ctx.font = '700 13px ' + RF27.FONT; const w2 = ctx.measureText(s2).width + 26;
-          pill(W / 2, 112 + (big ? 20 : 0), w2, 24, 'center'); text(s2, W / 2, 124.5 + (big ? 20 : 0), 13, '#d9d3ef', 'center', 'body');
+          pill(W / 2, big ? 176 : 146, w2, 24, 'center'); text(s2, W / 2, (big ? 176 : 146) + 12.5, 13, '#d9d3ef', 'center', 'body');
         }
       }
     }

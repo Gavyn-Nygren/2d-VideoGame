@@ -467,17 +467,38 @@ function wizCaulDrawBack(st) {
   const ph = st.ph, cx = st.cam.x, cy = st.cam.y, C2 = WIZCAUL_C, t = G.clock, k = wizCaulSlopeAt(cx + 300);
   wizScreen(st, () => {
     const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, k === 2 ? '#2a1a2a' : '#1e1830'); g.addColorStop(1, k === 2 ? '#4a2a2a' : '#3a3150'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // a far row of small arches, dim
+    const off2 = cx * 0.25, sp2 = 150;
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    for (let x = -((off2 % sp2) + sp2) % sp2 - sp2; x < W + sp2; x += sp2) { ctx.beginPath(); ctx.moveTo(x + 20, H); ctx.lineTo(x + 20, 300); ctx.arc(x + sp2 / 2, 300, sp2 / 2 - 20, Math.PI, 0); ctx.lineTo(x + sp2 - 20, H); ctx.fill(); }
     // stone arches going by (parallax)
     const off = cx * 0.5, span = 300;
     for (let x = -((off % span) + span) % span - span; x < W + span; x += span) {
       ctx.fillStyle = C2.stoneDk; ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x, 200); ctx.arc(x + span / 2, 200, span / 2, Math.PI, 0); ctx.lineTo(x + span, H); ctx.closePath(); ctx.fill();
+      // the arch's voussoirs, and a shadow inside the curve
+      ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x + span / 2, 200, span / 2 - 16, Math.PI, 0); ctx.stroke();
+      for (let a = 0; a <= 8; a++) { const ang = Math.PI + a * Math.PI / 8; ctx.beginPath(); ctx.moveTo(x + span / 2 + Math.cos(ang) * (span / 2 - 16), 200 + Math.sin(ang) * (span / 2 - 16)); ctx.lineTo(x + span / 2 + Math.cos(ang) * span / 2, 200 + Math.sin(ang) * span / 2); ctx.stroke(); }
+      // the pillar: blocks, a lit edge and a shaded edge
       ctx.fillStyle = C2.stone; ctx.fillRect(x - 18, 0, 36, H);
-      // a candle sconce
-      ctx.fillStyle = C2.brass; ctx.fillRect(x - 6, 150, 12, 6); ctx.fillStyle = '#fff4d6'; ctx.fillRect(x - 3, 138, 6, 12);
-      ctx.fillStyle = 'rgba(255,207,106,' + (0.25 + 0.05 * Math.sin(t * 9 + x)) + ')'; circle(x, 132, 26); ctx.fill(); ctx.fillStyle = '#ffcf6a'; circle(x, 134, 3.5); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(x - 18, 0, 5, H);
+      ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(x + 12, 0, 6, H);
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let y = 30; y < H; y += 34) { ctx.moveTo(x - 18, y); ctx.lineTo(x + 18, y); const jx = x + (((y / 34) | 0) % 2 ? -4 : 6); ctx.moveTo(jx, y); ctx.lineTo(jx, y + 34); }
+      ctx.stroke();
+      // a candle sconce with a drip of wax and a warm glow on the stone
+      const fl = reduceMotion ? 0 : Math.sin(t * 9 + x);
+      const gl = ctx.createRadialGradient(x, 134, 2, x, 134, 60); gl.addColorStop(0, 'rgba(255,207,106,' + (0.32 + 0.05 * fl) + ')'); gl.addColorStop(1, 'rgba(255,207,106,0)');
+      ctx.fillStyle = gl; circle(x, 134, 60); ctx.fill();
+      ctx.fillStyle = C2.brass; ctx.beginPath(); ctx.moveTo(x - 10, 150); ctx.lineTo(x + 10, 150); ctx.lineTo(x + 4, 160); ctx.lineTo(x - 4, 160); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x - 4, 157, 8, 3);
+      ctx.fillStyle = '#fff4d6'; ctx.fillRect(x - 3, 138, 6, 12); ctx.fillStyle = '#e8dcbc'; ctx.fillRect(x + 1, 138, 2, 12); ctx.fillRect(x - 3, 140, 2, 5);
+      ctx.fillStyle = '#ffcf6a'; ctx.beginPath(); ctx.ellipse(x, 133, 3, 5 + fl, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff6d8'; circle(x, 134, 1.5); ctx.fill();
     }
     // racks of jars far back on slope 2, pipes on slope 3
-    if (k === 1) for (let x = -((cx * 0.7) % 120 + 120) % 120; x < W; x += 120) { ctx.fillStyle = 'rgba(90,58,30,0.6)'; ctx.fillRect(x, 230, 100, 8); for (let j = 0; j < 4; j++) { ctx.fillStyle = ['#5a8a6a', '#8a5a7a', '#5a6a9a', '#9a8a4a'][j]; ctx.fillRect(x + 8 + j * 22, 208, 14, 22); } }
+    if (k === 1) for (let x = -((cx * 0.7) % 120 + 120) % 120; x < W; x += 120) { ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + 2, 238, 98, 5); ctx.fillStyle = 'rgba(90,58,30,0.75)'; ctx.fillRect(x, 230, 100, 8); ctx.fillStyle = 'rgba(255,220,160,0.18)'; ctx.fillRect(x, 230, 100, 2);
+      for (let j = 0; j < 4; j++) { const jx = x + 8 + j * 22, jh = 16 + (hash(j, 4) % 3) * 3; ctx.fillStyle = ['#5a8a6a', '#8a5a7a', '#5a6a9a', '#9a8a4a'][j]; rr(jx, 230 - jh, 14, jh, 3); ctx.fill(); ctx.fillRect(jx + 4, 226 - jh, 6, 5);
+        ctx.fillStyle = '#8a6a48'; ctx.fillRect(jx + 3, 223 - jh, 8, 4); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(jx + 2, 232 - jh, 2, jh - 6); ctx.fillStyle = 'rgba(240,230,200,0.5)'; ctx.fillRect(jx + 3, 238 - jh - 2 + jh / 3, 8, 5); } }
     if (k === 2) { ctx.strokeStyle = 'rgba(160,110,80,0.55)'; ctx.lineWidth = 10; for (let x = -((cx * 0.7) % 260 + 260) % 260; x < W; x += 260) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 120); ctx.lineTo(x + 140, 120); ctx.lineTo(x + 140, 260); ctx.stroke(); } }
   });
   // the floor: one slope line
@@ -485,6 +506,18 @@ function wizCaulDrawBack(st) {
   ctx.fillStyle = C2.floor; ctx.beginPath(); ctx.moveTo(x0, cy + H + 20);
   for (let x = x0; x <= x1; x += 20) ctx.lineTo(x, wizCaulFloor(x));
   ctx.lineTo(x1, cy + H + 20); ctx.closePath(); ctx.fill();
+  // flagstones under the slope: two courses that follow it, with staggered joints and a darker depth
+  ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 2;
+  for (const [d, sp, sh] of [[26, 70, 0], [62, 90, 35]]) {
+    ctx.beginPath();
+    for (let x = x0; x <= x1; x += 20) { if (x === x0) ctx.moveTo(x, wizCaulFloor(x) + d); else ctx.lineTo(x, wizCaulFloor(x) + d); }
+    for (let x = Math.floor((x0 - sh) / sp) * sp + sh; x <= x1; x += sp) { const y = wizCaulFloor(x); ctx.moveTo(x, y + d - (d === 26 ? 24 : 34)); ctx.lineTo(x, y + d); }
+    ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.moveTo(x0, cy + H + 20);
+  for (let x = x0; x <= x1; x += 20) ctx.lineTo(x, wizCaulFloor(x) + 62);
+  ctx.lineTo(x1, cy + H + 20); ctx.closePath(); ctx.fill();
+  for (let x = Math.floor(x0 / 37) * 37; x <= x1; x += 37) { const h = hash(x, 9); if (h % 3) continue; ctx.fillStyle = 'rgba(255,255,255,0.08)'; circle(x + (h % 20), wizCaulFloor(x) + 10 + ((h >> 4) % 12), 2 + (h >> 8) % 2); ctx.fill(); }
   ctx.strokeStyle = C2.floorLt; ctx.lineWidth = 4; ctx.beginPath();
   for (let x = x0; x <= x1; x += 20) { if (x === x0) ctx.moveTo(x, wizCaulFloor(x)); else ctx.lineTo(x, wizCaulFloor(x)); }
   ctx.stroke();
@@ -635,6 +668,7 @@ WIZ_PHASES.cauldron = {
   headLift: () => 8,
   labels(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.stir ? 'stir' : 'toss')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.stir ? 'Stir!' : 'Fetch!')); },
+  jobKeys(st) { return st.ph.stir === 1 ? ['runner', 'stirrer'] : ['stirrer', 'runner']; },
   legend(st) {
     const ph = st.ph, s = k => (k ? '<kbd>/</kbd> stir, <kbd>←</kbd><kbd>→</kbd> rail, <kbd>↓</kbd> brake' : '<kbd>F</kbd> stir, <kbd>A</kbd><kbd>D</kbd> rail, <kbd>S</kbd> brake');
     return { pip: ph.stir === 0 ? s(0) : 'touch, then <kbd>F</kbd> toss', bo: ph.stir === 1 ? s(1) : 'touch, then <kbd>/</kbd> toss', pad: 'stirrer: stick picks the rail, down brakes,' };
@@ -665,6 +699,12 @@ Sfx.extra.wizCaulClunk = function () { this.tone(110, 0.15, 'square', 0.05, 70);
 
 /* ---------- the room ---------- */
 wizRoom('cauldron', {
+  jobs: {
+    stirrer: { title: 'Stirrer', act: 'stir', legend: '<kbd>A</kbd><kbd>D</kbd> pick a rail <kbd>S</kbd> brake',
+      howTo: ['Stir when the bubble ring crosses the gold mark.'] },
+    runner: { title: 'Runner', act: 'toss', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+      howTo: ['Touch the next thing on the recipe card, then toss it in.'] },
+  },
   act: { label: 'stir', labels: ['stir', 'toss'] },
   tip: 'One stirs on the gold mark (and picks the clean rail); one runs ahead and tosses in what the recipe card shows!',
   legend: { pip: '<kbd>F</kbd> stir, <kbd>A</kbd><kbd>D</kbd> rail, <kbd>S</kbd> brake', bo: 'touch, then <kbd>/</kbd> toss', pad: 'stirrer: stick picks the rail, down brakes,' },

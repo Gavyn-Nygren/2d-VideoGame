@@ -1005,11 +1005,27 @@ function raftDrawRiver(st) {
   for (let x = Math.floor(x1 / 8) * 8; x >= x0; x -= 8) ctx.lineTo(x, raftCY(st, x) + raftHW(st, x));
   ctx.closePath(); ctx.fill();
   // a glossy highlight down the river
-  ctx.strokeStyle = 'rgba(255,220,190,0.07)'; ctx.lineWidth = 60; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.beginPath(); for (let x = x0; x <= x1; x += 16) ctx.lineTo(x, raftCY(st, x) - raftHW(st, x) * 0.25); ctx.stroke();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); for (let x = x0; x <= x1; x += 16) ctx.lineTo(x, raftCY(st, x) - raftHW(st, x) * 0.25);
+  for (const [lw, al] of [[96, 0.025], [64, 0.03], [34, 0.035]]) { ctx.strokeStyle = 'rgba(255,220,190,' + al + ')'; ctx.lineWidth = lw; ctx.stroke(); }
   // darker water along both banks
   ctx.strokeStyle = 'rgba(60,26,10,0.22)'; ctx.lineWidth = 36;
   for (const s of [-1, 1]) { ctx.beginPath(); for (let x = x0; x <= x1; x += 16) ctx.lineTo(x, raftCY(st, x) + s * (raftHW(st, x) - 14)); ctx.stroke(); }
+  // marbled swirls of milk and dark chocolate drifting with the current, and glossy glints
+  const t = reduceMotion ? 0 : G.clock;
+  ctx.lineWidth = 7;
+  for (let gx = Math.floor((cam.x - 200) / 150); gx * 150 < cam.x + W + 200; gx++) {
+    for (let k = 0; k < 2; k++) {
+      const h = hash(gx, k + 301), drift = (t * 22 + (h % 150)) % 150, bx = gx * 150 + drift, l = ((h >>> 7) % 160) / 100 - 0.8;
+      const hw = raftHW(st, bx);
+      if (hw < 30) continue;
+      const by = raftCY(st, bx) + l * (hw - 30), len = 60 + (h >>> 3) % 60, a = Math.sin(Math.PI * drift / 150);
+      ctx.strokeStyle = gx % 3 === 0 ? 'rgba(60,24,8,' + (0.3 * a) + ')' : 'rgba(176,108,62,' + (0.32 * a) + ')';
+      ctx.beginPath(); ctx.moveTo(bx - len / 2, by);
+      ctx.bezierCurveTo(bx - len / 6, by - 10, bx + len / 6, by + 10, bx + len / 2, by - 2); ctx.stroke();
+      if (k === 0) { ctx.fillStyle = 'rgba(255,236,214,' + (0.16 * a) + ')'; ctx.beginPath(); ctx.ellipse(bx + 10, by - 12, 9, 2.4, -0.1, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
 }
 // the water moving: ripple streaks with the current, foam on the rapids, eddies, whirlpools
 function raftDrawWater(st) {
@@ -1067,6 +1083,7 @@ function raftDrawBanks(st) {
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     ctx.strokeStyle = '#c98a45'; ctx.lineWidth = 18; ctx.beginPath(); for (const [x, y] of pts) ctx.lineTo(x, y + s * 4); ctx.stroke();
     ctx.strokeStyle = '#e8b06a'; ctx.lineWidth = 12; ctx.beginPath(); for (const [x, y] of pts) ctx.lineTo(x, y + s * 4); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,240,210,0.45)'; ctx.lineWidth = 2; ctx.beginPath(); for (const [x, y] of pts) ctx.lineTo(x, y + s * 4 - 4); ctx.stroke();
     ctx.strokeStyle = 'rgba(150,96,40,0.55)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); for (let i = 0; i < pts.length; i += 2) { const [x, y] = pts[i]; ctx.moveTo(x, y - 2 + s * 4); ctx.lineTo(x, y + 6 + s * 4); } ctx.stroke();
     ctx.strokeStyle = 'rgba(255,248,236,0.9)'; ctx.lineWidth = 4; ctx.beginPath();
@@ -1094,6 +1111,7 @@ function raftDrawBanks(st) {
       y = Math.max(y, st.cam.y + topLim + 34);
     }
     ctx.fillStyle = '#9a6a2e'; ctx.fillRect(s.x - 2, y - 4, 4, 22);
+    ctx.fillStyle = 'rgba(40,15,5,0.25)'; rr(s.x - w / 2 + 2, y - 31, w, 30, 9); ctx.fill();
     ctx.fillStyle = 'rgba(92,44,24,0.92)'; rr(s.x - w / 2, y - 34, w, 30, 9); ctx.fill();
     ctx.strokeStyle = '#ffb3d6'; ctx.lineWidth = 2; rr(s.x - w / 2, y - 34, w, 30, 9); ctx.stroke();
     text(s.text, s.x, y - 18.5, 13, C.paper, 'center', 'body');

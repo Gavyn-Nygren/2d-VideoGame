@@ -240,9 +240,39 @@ MODES.stonepuzzle = {
 /* ---------- drawing ---------- */
 function spDraw(st) {
   const b = st.b, cs = b.cs, t = G.clock;
+  const torchXs = [b.ox - 70, b.ox + b.w * cs + 34].filter(px => px >= 6 && px <= W - 42), torchY = b.oy + b.h * cs * 0.35;
+  // the tomb, the room's floor and walls never change while a room is up: drawn once, then copied each frame
+  const m = ctx.getTransform();
+  const plain = typeof artPlain === 'function' && artPlain();
+  if (b._bg && b._bg.width === canvas.width && b._bg.height === canvas.height && b._bgPlain === plain) ctx.drawImage(b._bg, 0, 0, W, H);
+  else { spDrawRoom(st); if (!m.b && !m.c && !m.e && !m.f && Math.abs(m.a * W - canvas.width) < 1 && Math.abs(m.d * H - canvas.height) < 1 && ctx.globalAlpha === 1 && ctx.globalCompositeOperation === 'source-over') { const cv = document.createElement('canvas'); cv.width = canvas.width; cv.height = canvas.height; cv.getContext('2d').drawImage(canvas, 0, 0); b._bg = cv; b._bgPlain = plain; } }
+  for (const px of torchXs) pyrFlame(px + 18, torchY, 0.9, t + px, true);
+  spDrawLive(st);
+}
+function spDrawRoom(st) {
+  const b = st.b, cs = b.cs;
   // the tomb around the room
   pyrBlocks(0, 0, W, H, { lite: '#7a5634', mid: '#6a482a', dark: '#553820' }, 80, 40, 41 + st.k);
   ctx.fillStyle = 'rgba(20,10,4,0.35)'; ctx.fillRect(0, 0, W, H);
+  // a painted band of glyphs across the far wall, pillars and wall torches either side of the room
+  { const bx0 = b.ox, bx1 = b.ox + b.w * cs, by0 = b.oy, by1 = b.oy + b.h * cs;
+    ctx.fillStyle = 'rgba(160,40,30,0.35)'; ctx.fillRect(0, 70, W, 4); ctx.fillRect(0, 112, W, 4);
+    for (let i = 0; i < 16; i++) { const gx = 30 + i * 62; if (gx < 300 || gx > W - 150 || (gx > bx0 - 20 && gx < bx1 + 20 && by0 < 130)) continue; pyrGlyph(['eye', 'bird', 'reed', 'sun', 'cat', 'wave', 'snake', 'scarab'][(i + st.k) % 8], gx, 93, 0.9, 'rgba(30,14,4,0.45)'); }
+    for (const px of [bx0 - 70, bx1 + 34]) {
+      if (px < 6 || px > W - 42) continue;
+      ctx.fillStyle = 'rgba(20,10,4,0.3)'; ctx.fillRect(px + 4, by0 - 20, 40, by1 - by0 + 40);
+      ctx.fillStyle = '#8f6436'; ctx.fillRect(px, by0 - 24, 36, by1 - by0 + 40);
+      ctx.fillStyle = 'rgba(255,235,190,0.2)'; ctx.fillRect(px + 4, by0 - 24, 6, by1 - by0 + 40);
+      ctx.fillStyle = 'rgba(40,20,8,0.3)'; ctx.fillRect(px + 26, by0 - 24, 10, by1 - by0 + 40);
+      ctx.fillStyle = 'rgba(40,20,8,0.2)'; for (let y = by0; y < by1 + 16; y += 26) ctx.fillRect(px, y, 36, 2);
+      ctx.fillStyle = '#a87a46'; ctx.fillRect(px - 6, by0 - 34, 48, 12); ctx.fillRect(px - 6, by1 + 10, 48, 12);
+      ctx.strokeStyle = '#4a2c12'; ctx.lineWidth = 1.5; ctx.strokeRect(px - 6, by0 - 34, 48, 12); ctx.strokeRect(px - 6, by1 + 10, 48, 12);
+      const ty = by0 + (by1 - by0) * 0.35;
+      { const g = ctx.createRadialGradient(px + 18, ty - 14, 4, px + 18, ty - 14, 70); g.addColorStop(0, 'rgba(255,180,80,0.3)'); g.addColorStop(1, 'rgba(255,150,60,0)'); ctx.fillStyle = g; circle(px + 18, ty - 14, 70); ctx.fill(); }
+      pyrTorchStick(px + 18, ty, 18, 0);
+    }
+    // the room sits a little sunk into the floor
+    ctx.fillStyle = 'rgba(20,10,4,0.45)'; rr(bx0 - 6, by0 - 6, bx1 - bx0 + 12, by1 - by0 + 14, 8); ctx.fill(); }
   // floor and walls
   for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) {
     const X = b.ox + x * cs, Y = b.oy + y * cs, h = hash(x + st.k * 31, y);
@@ -250,12 +280,20 @@ function spDraw(st) {
       ctx.fillStyle = '#8f6436'; ctx.fillRect(X, Y, cs, cs);
       ctx.fillStyle = h % 3 ? '#b98d58' : '#c49a5e'; ctx.fillRect(X + 2, Y + 2, cs - 4, cs * 0.62);
       ctx.fillStyle = 'rgba(255,235,190,0.22)'; ctx.fillRect(X + 3, Y + 3, cs - 6, 4);
+      ctx.fillStyle = 'rgba(60,34,14,0.2)'; ctx.fillRect(X + 2, Y + 2 + cs * 0.62 - 4, cs - 4, 4);
+      ctx.strokeStyle = 'rgba(60,34,14,0.45)'; ctx.lineWidth = 1; ctx.strokeRect(X + 2.5, Y + 2.5, cs - 5, cs * 0.62 - 1);
     } else {
       ctx.fillStyle = h % 4 === 0 ? '#e0bc82' : h % 5 === 0 ? '#c99d62' : '#d6ad72'; ctx.fillRect(X, Y, cs, cs);
+      ctx.fillStyle = 'rgba(255,245,215,0.25)'; ctx.fillRect(X + 1.5, Y + 1.5, cs - 3, 2);
+      ctx.fillStyle = 'rgba(90,60,28,0.12)'; ctx.fillRect(X + 1.5, Y + cs - 5, cs - 3, 3.5);
+      if (h % 7 === 2) { ctx.fillStyle = 'rgba(90,60,28,0.25)'; circle(X + cs * 0.7, Y + cs * 0.65, 1.4); ctx.fill(); circle(X + cs * 0.3, Y + cs * 0.4, 1); ctx.fill(); }
       ctx.strokeStyle = 'rgba(90,60,28,0.45)'; ctx.lineWidth = 1.5; ctx.strokeRect(X + 0.75, Y + 0.75, cs - 1.5, cs - 1.5);
       if (h % 9 === 0) { ctx.strokeStyle = 'rgba(90,60,28,0.4)'; ctx.beginPath(); ctx.moveTo(X + cs * 0.2, Y + cs * 0.3); ctx.lineTo(X + cs * 0.45, Y + cs * 0.5); ctx.stroke(); }
     }
   }
+}
+function spDrawLive(st) {
+  const b = st.b, cs = b.cs, t = G.clock;
   // the secret door
   if (b.door) {
     const X = b.ox + b.door.x * cs, Y = b.oy + b.door.y * cs, k = st.state === 'open' ? pyrEase(Math.min(1, st.openT / SP.openT)) : b.doorOpen ? 1 : 0;

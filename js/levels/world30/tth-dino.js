@@ -931,6 +931,7 @@ TTH_PHASES.dino = {
     if (++ph.bonks >= TTHDINO.goldBonks && !ph.sleepy) { ph.sleepy = true; tthHelp(st, 'Gold help: sleepy Thief! Slower meteors, slower dives.'); }
   },
   labels(st) { return [tthDinoWord(st, 0), tthDinoWord(st, 1)]; },
+  jobKeys(st) { const e = st.ph.egg; return !e || e.state === 'loose' || e.state === 'nest' ? null : e.by === 0 ? ['carrier', 'clearer'] : ['clearer', 'carrier']; },
   roles(st) { const e = st.ph.egg; return e.state === 'loose' || e.state === 'nest' ? null : e.by === 0 ? ['Carry!', 'Clear!'] : ['Clear!', 'Carry!']; },
   legend() {
     return { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> duck', padDown: 'down ducks' };
@@ -1486,6 +1487,12 @@ Sfx.extra.tthDinoRoar = function () { this.tone(140, 1.1, 'sawtooth', 0.09, 60);
 
 /* ---------- the room (this file fills in its own room of the level def) ---------- */
 tthRoom('dino', {
+  jobs: {
+    carrier: { title: 'Egg carrier', act: ['toss', 'smash'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> small hop <kbd>S</kbd> duck, hug the egg',
+      howTo: ['Toss the egg to your friend at ledges and pits.'] },
+    clearer: { title: 'Path clearer', act: ['smash', 'shoo', 'pull', 'whack'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      howTo: ['Tap to smash rocks and logs. Hold at a vine post to pull the bridge tight.'] },
+  },
   act: { label: 'toss', labels: ['toss', 'smash'] },
   tip: 'One carries the egg (small hops only), one clears the way: smash, shoo, pull vines. Toss the egg at ledges!',
   legend: TTH_PHASES.dino.legend(),

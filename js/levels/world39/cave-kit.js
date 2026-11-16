@@ -217,6 +217,10 @@ const CAVE = (() => {
     for (let k = 0; k <= n; k++) ctx.lineTo(x + (k / n) * w, y + (H_(seed + k) * 0.35) * Math.min(18, h * 0.3));
     ctx.lineTo(x + w, y + h); ctx.closePath(); ctx.fill();
     ctx.fillStyle = dark; ctx.fillRect(x, y + h * 0.72, w, h * 0.28);
+    ctx.save(); ctx.beginPath(); ctx.moveTo(x, y + h); for (let k = 0; k <= n; k++) ctx.lineTo(x + (k / n) * w, y + (H_(seed + k) * 0.35) * Math.min(18, h * 0.3)); ctx.lineTo(x + w, y + h); ctx.closePath(); ctx.clip();
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let k = 0; k < n; k++) { const cx0 = x + (k + 0.5) * w / n; ctx.beginPath(); ctx.moveTo(cx0, y + h * 0.15); ctx.lineTo(cx0 + 6, y + h * 0.4); ctx.lineTo(cx0 + 2, y + h * 0.6); ctx.lineTo(cx0 - 2, y + h * 0.6); ctx.lineTo(cx0 + 2, y + h * 0.4); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k <= n; k++) { const yy = y + (H_(seed + k) * 0.35) * Math.min(18, h * 0.3) + 1.5; k ? ctx.lineTo(x + (k / n) * w, yy) : ctx.moveTo(x, yy); } ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     for (let k = 0; k < n; k++) { ctx.fillRect(x + (k + 0.2) * w / n, y + 6 + H_(seed + k * 5) * h * 0.4, w / n * 0.5, 2); }
     if (o.wet) { ctx.fillStyle = 'rgba(160,210,240,0.25)'; for (let k = 0; k < n; k++) ctx.fillRect(x + (k + 0.5) * w / n, y + 4, 2, h * (0.3 + H_(seed + k * 9) * 0.5)); }
@@ -227,6 +231,8 @@ const CAVE = (() => {
       const w = 14 + H_(seed + k) * 22, l = len * (0.4 + H_(seed + k * 3) * 0.9);
       ctx.fillStyle = k % 2 ? col : shade(col, -0.15);
       ctx.beginPath(); ctx.moveTo(x, y - 2); ctx.lineTo(x + w / 2, y + l); ctx.lineTo(x + w, y - 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.moveTo(x + w * 0.6, y - 2); ctx.lineTo(x + w / 2, y + l); ctx.lineTo(x + w, y - 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + 1.5, y); ctx.lineTo(x + w / 2, y + l - 2); ctx.stroke();
       if (o.drip && H_(seed + k * 11) > 0.6) { const dy = ((t * 80 + H_(k) * 200) % 160); ctx.fillStyle = 'rgba(170,220,255,' + (0.7 * (1 - dy / 160)) + ')'; circ(x + w / 2, y + l + dy, 1.8); ctx.fill(); }
       x += w * 0.8;
     }
@@ -237,6 +243,8 @@ const CAVE = (() => {
       const w = 18 + H_(seed + k) * 26, l = len * (0.3 + H_(seed + k * 3) * 1.0);
       ctx.fillStyle = k % 2 ? col : shade(col, -0.12);
       ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.quadraticCurveTo(x + w * 0.45, y - l * 0.5, x + w / 2, y - l); ctx.quadraticCurveTo(x + w * 0.55, y - l * 0.5, x + w, y + 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.moveTo(x + w * 0.55, y + 2); ctx.quadraticCurveTo(x + w * 0.52, y - l * 0.4, x + w / 2, y - l); ctx.quadraticCurveTo(x + w * 0.55, y - l * 0.5, x + w, y + 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + 2, y); ctx.quadraticCurveTo(x + w * 0.45, y - l * 0.5, x + w / 2, y - l + 2); ctx.stroke();
       x += w * (0.9 + H_(seed + k * 7) * 1.4);
     }
   };
@@ -272,12 +280,17 @@ const CAVE = (() => {
       const i0 = Math.floor(ox / step) - 1;
       for (let i = i0; i < i0 + W / step + 3; i++) {
         const x = i * step - ox, w = 40 + H_(i + k0) * 70, hx = H_(i * 3 + k0);
-        if (hx > 0.45) { // a pillar floor to roof
+        const rim = rgba(shade(Z.glows[(((i + k0) % Z.glows.length) + Z.glows.length) % Z.glows.length], 0.2), 0.18 * br);
+        if (hx > 0.45) { // a pillar floor to roof, lit on one edge by the far crystals, with rock strata
           ctx.beginPath(); ctx.moveTo(x, -20); ctx.quadraticCurveTo(x + w * 0.5 + 10, H * 0.5 - oy % 50, x + w * 0.2, H + 20); ctx.lineTo(x + w * 1.1, H + 20); ctx.quadraticCurveTo(x + w * 0.7, H * 0.5, x + w, -20); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = rim; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x, -20); ctx.quadraticCurveTo(x + w * 0.5 + 10, H * 0.5 - oy % 50, x + w * 0.2, H + 20); ctx.stroke();
+          ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let q = 0; q < 6; q++) { const sy = ((H_(i * 17 + q + k0) * H - oy * 0.5) % H + H) % H; ctx.fillRect(x + w * 0.35, sy, w * 0.55, 2); }
+          ctx.fillStyle = col;
         } else { // teeth from the roof and the floor
           const l = 60 + H_(i * 5 + k0) * 120;
           ctx.beginPath(); ctx.moveTo(x, -10); ctx.lineTo(x + w / 2, l); ctx.lineTo(x + w, -10); ctx.closePath(); ctx.fill();
           ctx.beginPath(); ctx.moveTo(x + 20, H + 10); ctx.lineTo(x + 20 + w / 2, H - l * 0.8); ctx.lineTo(x + 20 + w, H + 10); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = rim; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, -10); ctx.lineTo(x + w / 2, l); ctx.moveTo(x + 20, H + 10); ctx.lineTo(x + 20 + w / 2, H - l * 0.8); ctx.stroke();
         }
         if (Z.lamp && H_(i * 9 + k0) > 0.6) {
           // an old mine lantern on a beam
