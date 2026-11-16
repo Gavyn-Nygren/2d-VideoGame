@@ -18,7 +18,7 @@ const other = p => G.players[1 - p.id];
 
 function tile(tx, ty) {
   if (tx < 0 || tx >= COLS || ty < 0) return '#';
-  if (ty >= ROWS) return '.';
+  if (ty >= G.level.grid.length) return '.';   // (18 rows, or a tall climb's grid while its mode steps: 5-4)
   if (G.activeSet && G.activeSet.has(ty * COLS + tx)) return 'P';
   return G.level.grid[ty][tx];
 }
@@ -33,7 +33,7 @@ function solidFor(ch, p) {
 }
 const isVersus = () => G.level && G.level.def.kind === 'versus';
 // In rope levels the two of you pass through each other: no stacking, no carrying, no knocking each other off.
-const solidPartners = () => !(G.level && G.level.def.tether);
+const solidPartners = () => !(G.level && (G.level.def.tether || G.level.def.passPartners));   // (passPartners: no standing on heads)
 
 /* ---------- movement ---------- */
 function moveX(p, dx, ignorePartner) {

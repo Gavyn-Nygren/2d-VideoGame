@@ -474,61 +474,78 @@ function pw5Lava(v, y, t) {
   ctx.stroke();
 }
 
-// like floor 1: Pip (left) presses his button and blue steps pop in for Bo (right); Bo climbs, presses his, and orange
-// steps pop in for Pip, who climbs out before the lava; they meet at the door
+// a tall tower that scrolls up as they climb: three times Pip presses and blue steps pop in for Bo, Bo climbs and
+// presses, orange steps pop in for Pip; the lava follows them up and they meet at the door on top
+const PW5_TOWER = { worldH: 430, gy: 400, ledges: [300, 200, 100], S: 24 };
 definePreview('Rising Lava', {
-  blurb: 'Your button makes steps for your partner. Climb before the lava does!',
-  loop: 8, still: 4.95,
+  blurb: 'Your button makes steps for your partner. Climb the tower before the lava does!',
+  loop: 11, still: 6.2,
   draw(v, t) {
     pw5Themed(v, pw5LavaTheme, () => {
-      const k = t / 8, gy = 160, top = 66, S = 24;
-      v.sky(); v.sun(286, 30, 13); v.hills(112);
-      v.ground(gy);
-      v.block(102, top, 116, 14);
-      const doorOpen = v.seg(k, 0.82, 0.86) * (1 - v.seg(k, 0.94, 0.99));
-      v.door(160, top, doorOpen);
-      // the steps: blue ones (they hold Bo) up the right, orange ones (they hold Pip) up the left
-      const blue = [[266, 136], [242, 112], [218, 88]], orange = [[30, 136], [54, 112], [78, 88]];
-      const gone = 1 - v.seg(k, 0.9, 0.97);
-      const built = (at, i) => (k >= at + i * 0.03 ? gone : 0);
-      blue.forEach(([x, y], i) => pw5Step(v, x, y, S, 1, built(0.15, i), v.seg(k, 0.15 + i * 0.03, 0.18 + i * 0.03)));
-      orange.forEach(([x, y], i) => pw5Step(v, x, y, S, 0, built(0.51, i), v.seg(k, 0.51 + i * 0.03, 0.54 + i * 0.03)));
-      const pipDown = k > 0.09 && k < 0.58, boDown = k > 0.45 && k < 0.78;
-      pw5LavaButton(v, 16, gy, 0, pipDown);
-      pw5LavaButton(v, 200, top, 1, boDown);
-      pw5Zip(v, 16, gy - 10, 278, 136, v.seg(k, 0.09, 0.16), v.c.bo);
-      pw5Zip(v, 200, top - 10, 42, 136, v.seg(k, 0.45, 0.52), v.c.pip, 100); // high, over the door
-      // hops from step to step: [time from, time to, x0, y0, x1, y1]
-      const climb = (path, x, y) => {
-        for (const [a, b, x0, y0, x1, y1] of path) {
-          if (k < a) break;
-          const f = v.seg(k, a, b);
-          x = v.lerp(x0, x1, f); y = v.lerp(y0, y1, f) + (y1 !== y0 ? v.hop(f, 16) : v.hop(v.phase(t, 0.34), 3) * (f > 0 && f < 1 ? 1 : 0));
-        }
-        return [x, y];
+      const k = t / 11, { worldH, gy, ledges, S } = PW5_TOWER, ctx = v.ctx;
+      const L = 0.28, st0 = 0.04, floors = [gy, ...ledges];
+      // where each hero is: [x, y feet] along their flights, from the stage they're in
+      const hop = (f, pts) => {   // f 0..1 over a list of points, hopping between them
+        const n = pts.length - 1, i = Math.min(n - 1, Math.floor(f * n)), u = f * n - i;
+        const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+        return [v.lerp(x0, x1, u), v.lerp(y0, y1, u) + v.hop(u, 14)];
       };
-      const [bx, by] = climb([[0.24, 0.29, 306, gy, 278, 136], [0.29, 0.34, 278, 136, 254, 112], [0.34, 0.39, 254, 112, 230, 88],
-        [0.39, 0.45, 230, 88, 200, top], [0.78, 0.83, 200, top, 179, top]], 306, gy);
-      const [px, py] = climb([[0.03, 0.09, 70, gy, 16, gy], [0.58, 0.63, 16, gy, 42, 136], [0.63, 0.68, 42, 136, 66, 112],
-        [0.68, 0.73, 66, 112, 90, 88], [0.73, 0.78, 90, 88, 124, top], [0.78, 0.83, 124, top, 140, top]], 70, gy);
-      const lavaY = k < 0.84 ? (k < 0.6 ? v.lerp(198, 171, v.ease.out(v.seg(k, 0.02, 0.6))) : v.lerp(172, 148, v.ease.out(v.seg(k, 0.6, 0.8)))) : v.lerp(148, 198, v.ease.inOut(v.seg(k, 0.84, 0.96)));
-      const fade = k < 0.04 ? v.seg(k, 0, 0.04) : 1 - v.seg(k, 0.92, 0.97), joy = k > 0.84 && k < 0.95;
-      const jh = id => (joy ? v.hop(v.phase(t, 0.5, id * 0.25), 8) : 0);
-      const bMove = k > 0.24 && k < 0.45, pMove = k > 0.58 && k < 0.78;
-      v.hero(1, bx, by + jh(1), { face: -1, alpha: fade, mood: joy ? 'joy' : bMove ? 'grit' : 'happy', sq: boDown && !joy && k < 0.48 ? 0.12 : 0 });
-      v.hero(0, px, py + jh(0), { face: k < 0.09 ? -1 : 1, alpha: fade,
-        mood: joy ? 'joy' : pMove ? 'grit' : lavaY < 180 && k < 0.6 ? 'wow' : 'happy', sq: pipDown && k < 0.13 ? 0.12 : 0 });
-      pw5Lava(v, lavaY, t);
-      if (k > 0.5 && k < 0.59) {
-        const cx = px, cy = py - 40 + Math.sin(t * 12) * 1.5;
-        v.ctx.fillStyle = '#ffffff'; v.rr(cx - 8, cy - 8, 16, 16, 5); v.ctx.fill();
-        v.text('!', cx, cy + 1, 13, '#e5322d');
+      const flight = (side, y) => (side ? [[286, y - 25], [262, y - 50], [286, y - 75]] : [[34, y - 25], [58, y - 50], [34, y - 75]]);
+      let bx = 290, by = gy, px = 60, py = gy, pDown = false, bDown = false;
+      for (let s = 0; s < 3; s++) {
+        const b = st0 + s * L, f = q => v.seg(k, b + q[0] * L, b + q[1] * L), y = floors[s], top = floors[s + 1];
+        if (k < b) break;
+        const bPts = [[s ? 240 : 290, y], ...flight(1, y), [240, top]], pPts = [[s ? 80 : 60, y], ...flight(0, y), [80, top]];
+        if (s) { px = 80; py = y; bx = 240; by = y; }
+        if (k < b + 0.1 * L) { px = v.lerp(s ? 80 : 60, 100, f([0, 0.08])); }
+        else px = 100;
+        pDown = k > b + 0.08 * L && k < b + 0.62 * L;
+        if (k > b + 0.2 * L) [bx, by] = hop(f([0.2, 0.46]), [[240, y], ...bPts.slice(1)]);
+        if (k > b + 0.46 * L && k < b + 0.5 * L) { bx = v.lerp(240, 220, f([0.46, 0.5])); by = top; }
+        if (k >= b + 0.5 * L) { bx = 220; by = top; }
+        bDown = k > b + 0.5 * L && k < b + L;
+        if (k > b + 0.62 * L) [px, py] = hop(f([0.62, 0.95]), [[100, y], ...pPts.slice(1)]);
+        if (k >= b + 0.95 * L) { px = 80; py = top; }
+        if (s === 2 && k > b + 0.5 * L) { bx = v.lerp(220, 240, f([0.5, 0.56])); by = top; }
       }
-      if (k > 0.47 && k < 0.6) v.bubble('Hurry!', bx, top - 30);
-      if (k > 0.1 && k < 0.2) v.label('STEPS!', 160, 112, 15, v.c.bo);
-      if (k > 0.46 && k < 0.55) v.label('STEPS!', 90, 40, 15, v.c.pip);
-      if (joy) v.star(160, top - 52 - Math.sin(t * 5) * 3, 9);
-      v.confetti(160, top - 30, v.seg(k, 0.84, 0.97));
+      const end = st0 + 3 * L;
+      if (k > end) { px = v.lerp(80, 148, v.seg(k, end, end + 0.04)); bx = v.lerp(240, 172, v.seg(k, end, end + 0.04)); py = by = ledges[2]; }
+      // camera: the lower hero stays on screen (like the game)
+      const low = Math.max(py, by), camY = v.clamp(low - 108, 0, worldH - v.H);
+      // the lava: follows about a hundred px under the lower hero, sinks away at the end
+      const lavaY = k > end + 0.02 ? v.lerp(low + 52, worldH + 20, v.seg(k, end + 0.02, end + 0.1)) : Math.min(worldH + 10, low + 52 + 8 * Math.sin(t * 1.7));
+      v.sky(); v.sun(286, 30 + camY * 0.08, 13); v.hills(112 + (worldH - v.H - camY) * 0.25);
+      ctx.save(); ctx.translate(0, -camY);
+      v.block(0, gy, v.W, worldH - gy + 4);
+      for (const y of ledges) v.block(70, y, 180, 12, y === ledges[2]);
+      const doorOpen = v.seg(k, end + 0.03, end + 0.05) * (1 - v.seg(k, 0.95, 0.99));
+      v.door(160, ledges[2], doorOpen);
+      const gone = 1 - v.seg(k, 0.93, 0.98);
+      for (let s = 0; s < 3; s++) {
+        const b = st0 + s * L, y = floors[s];
+        flight(1, y).forEach(([x, yy], i) => { const at = b + (0.09 + i * 0.03) * L; pw5Step(v, x - 12, yy, S, 1, k >= at ? gone : 0, v.seg(k, at, at + 0.03 * L)); });
+        flight(0, y).forEach(([x, yy], i) => { const at = b + (0.52 + i * 0.03) * L; pw5Step(v, x - 12, yy, S, 0, k >= at ? gone : 0, v.seg(k, at, at + 0.03 * L)); });
+        const live = k >= b && k < b + L;
+        pw5LavaButton(v, 100, y, 0, live && pDown || k >= b + 0.08 * L);
+        pw5LavaButton(v, 220, floors[s + 1], 1, live && bDown || k >= b + 0.5 * L);
+        if (live) {
+          pw5Zip(v, 100, y - 10, 286, y - 25, v.seg(k, b + 0.08 * L, b + 0.16 * L), v.c.bo, 30);
+          pw5Zip(v, 220, floors[s + 1] - 10, 34, y - 25, v.seg(k, b + 0.5 * L, b + 0.58 * L), v.c.pip, 40);
+        }
+      }
+      const fade = k < 0.03 ? v.seg(k, 0, 0.03) : 1 - v.seg(k, 0.95, 0.99), joy = k > end + 0.04 && k < 0.96;
+      const jh = id => (joy ? v.hop(v.phase(t, 0.5, id * 0.25), 8) : 0), near = lavaY - low < 50;
+      v.hero(1, bx, by + jh(1), { face: bx > 160 ? -1 : 1, alpha: fade, mood: joy ? 'joy' : near ? 'grit' : 'happy' });
+      v.hero(0, px, py + jh(0), { face: px < 160 ? 1 : -1, alpha: fade, mood: joy ? 'joy' : near ? 'wow' : 'happy' });
+      pw5Lava(Object.assign(Object.create(v), { H: camY + v.H }), lavaY, t);
+      if (joy) v.star(160, ledges[2] - 52 - Math.sin(t * 5) * 3, 9);
+      v.confetti(160, ledges[2] - 30, v.seg(k, end + 0.04, 0.97));
+      ctx.restore();
+      // the climb strip on the right edge: how high they are
+      const f = 1 - (low - ledges[2]) / (gy - ledges[2]);
+      ctx.fillStyle = 'rgba(40,30,50,0.35)'; v.rr(v.W - 9, 12, 5, v.H - 24, 2.5); ctx.fill();
+      ctx.fillStyle = '#ffb347'; v.rr(v.W - 9, 12 + (v.H - 24) * (1 - v.clamp(f, 0, 1)), 5, (v.H - 24) * v.clamp(f, 0, 1), 2.5); ctx.fill();
+      if (k > 0.1 && k < 0.2) v.label('STEPS!', 230, 60, 15, v.c.bo);
     });
   },
 });
