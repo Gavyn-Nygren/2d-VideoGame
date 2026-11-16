@@ -17,7 +17,8 @@
      at walls and gaps).
    opts: avoid(tx, ty) -> true for extra cells to stay out of (water, lava...), key: a short string that changes
      whenever avoid changes its answer (so the map is rebuilt), solid(ch, p): replaces solidFor for the map,
-     maxDx / maxUp / maxDown: how far one move may go in tiles (6, 4, 10), tol: px.
+     maxDx / maxUp / maxDown: how far one move may go in tiles (6, 4, 10), tol: px,
+     run / jump: this player's top speed and jump speed as a share of normal (1, 1; 2-4's crown holder is slower).
      pads: Map(ty * COLS + tx -> launch speed) of bounce pads (stepping into that cell throws you straight up; the map
        gets 'pad' moves from it, steered in the air, and no others). portals: Map(cell -> twin's cell) of portals
        (a body whose middle enters the cell comes out standing in the twin's cell and must step out of it before it
@@ -25,7 +26,7 @@
    cpuNavCell(p) -> { tx, ty } the cell the player stands in (or null in the air).
    cpuNavReach(p, x, feetY, opts) -> seconds the way takes from the player's cell, or Infinity.
    While walking, a partner standing right in the way is hopped over (opts.noHop turns that off). */
-const NAV = { maxT: 2.4, hold: 0.06, cache: [null, null] };
+const NAV = { maxT: 2.4, hold: 0.06, cache: [null, null], spare: [null, null] };
 
 function navSolid(opts, ch, p) { return opts.solid ? opts.solid(ch, p) : solidFor(ch, p); }
 function navSpike(x, y, w, h) {
@@ -51,7 +52,7 @@ function navStand(opts, p, tx, ty) {
 
 /* a copy of the game's movement (control + moveX + moveY + probe), tiles only */
 function navSim(opts, p, s, mv, jumpHeld, dt) {
-  if (mv) s.vx = approach(s.vx, mv * PHYS.maxRun, (s.g ? PHYS.accG : PHYS.accA) * dt);
+  if (mv) s.vx = approach(s.vx, mv * PHYS.maxRun * (opts.run || 1), (s.g ? PHYS.accG : PHYS.accA) * dt);
   else s.vx = approach(s.vx, 0, (s.g ? PHYS.fricG : PHYS.fricA) * dt);
   if (s.jumping && !jumpHeld && s.vy < 0) { s.vy *= PHYS.cut; s.jumping = false; }
   if (s.vy >= 0) s.jumping = false;
@@ -102,9 +103,9 @@ function navSteer(kind, s, tx, airborne) {
 function navTry(opts, p, a, b, kind) {
   const dir = Math.sign(b.tx - a.tx);
   const s = { x: navCellX(a.tx) - PW / 2, y: navFeet(a.ty) - PH, vx: 0, vy: 0, g: true, jumping: false, dropT: 0 };
-  if (kind === 'run') { if (!dir) return 0; s.vx = dir * PHYS.maxRun; }
+  if (kind === 'run') { if (!dir) return 0; s.vx = dir * PHYS.maxRun * (opts.run || 1); }
   let t = 0, air = false;
-  if (kind === 'jump' || kind === 'high' || kind === 'run') { s.vy = -PHYS.jumpV; s.jumping = true; s.g = false; air = true; }
+  if (kind === 'jump' || kind === 'high' || kind === 'run') { s.vy = -PHYS.jumpV * (opts.jump || 1); s.jumping = true; s.g = false; air = true; }
   if (kind === 'pad') { s.vy = -opts.pads.get(a.ty * COLS + a.tx); s.g = false; air = true; }
   const ports = opts.portals, home = a.ty * COLS + a.tx, end = b.ty * COLS + b.tx;
   if (kind === 'drop') { if (tile(a.tx, a.ty + 1) !== '=') return 0; s.dropT = 0.2; s.g = false; }
@@ -134,15 +135,19 @@ function navGridKey(p, opts) {
   for (let y = 0; y < ROWS; y++) { const r = L.grid[y]; for (let x = 0; x < COLS; x++) h = (h * 31 + r[x].charCodeAt(0)) | 0; }
   let sw = '';
   for (const k in L.sw) sw += L.sw[k].on ? '1' : '0';
-  return p.id + ':' + h + ':' + sw + ':' + (G.activeSet ? G.activeSet.size : 0) + ':' + (opts.key || '') + ':' + (G.levelIndex) + ':' + (G.room || 0);
+  return p.id + ':' + h + ':' + sw + ':' + (G.activeSet ? G.activeSet.size : 0) + ':' + (opts.key || '') + ':' + (opts.run || 1) + ':' + (opts.jump || 1) + ':' + (G.levelIndex) + ':' + (G.room || 0);
 }
 function navGraph(p, opts) {
   const key = navGridKey(p, opts), c = NAV.cache[p.id];
   if (c && c.key === key) return c;
+  // the map before this one, kept so flipping back and forth (2-4: the crown changes hands) needs no rebuild
+  const sp = NAV.spare[p.id];
+  NAV.spare[p.id] = c;
+  if (sp && sp.key === key) return (NAV.cache[p.id] = sp);
   const maxDx = opts.maxDx || 6, maxUp = opts.maxUp || 4, maxDown = opts.maxDown || 10;
   const cells = [], at = new Map();
   for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) if (navStand(opts, p, tx, ty)) { const n = { tx, ty, i: cells.length, edges: [] }; cells.push(n); at.set(ty * COLS + tx, n); }
-  const walkT = T / PHYS.maxRun;
+  const walkT = T / (PHYS.maxRun * (opts.run || 1));
   const pads = opts.pads, ports = opts.portals;
   for (const a of cells) {
     // a bounce pad throws you up: its only moves are where you can steer to from the throw
@@ -325,7 +330,7 @@ function cpuNav(st, p, x, feetY, opts = {}) {
   out.left = out.right = false;
   if (CPU.last[p.id].jump) return out; // let go first so the press counts
   out.jump = true;
-  const m = navSteer(e.kind, { x: p.x, vy: -PHYS.jumpV }, b.tx, true); out.left = m < 0; out.right = m > 0;
+  const m = navSteer(e.kind, { x: p.x, vy: -PHYS.jumpV * (opts.jump || 1) }, b.tx, true); out.left = m < 0; out.right = m > 0;
   return out;
 }
 // is the other player standing right in front of p, at the same height, in the way of walking `dir`?

@@ -333,7 +333,18 @@
       if (Math.abs(c) > 0.25) { const iy = Math.sign(c) * dir; out.down = iy > 0; out.jump = iy < 0; }
     } else if (c < -0.2) out.jump = true; // hold it there against the sag (left side)
     else if (c > 0.2) out.down = true;    // (right side)
+    // a push that points at the holder would climb the chain instead of swinging: keep just the sideways part
+    const o = G.players[1 - p.id];
+    if (chainClimbPush(p, o, out) !== 0) { out.jump = false; out.down = false; }
+    if (chainClimbPush(p, o, out) !== 0) { out.left = false; out.right = false; }
     return true;
+  }
+  // climb the chain: push straight at the partner holding it
+  function chainClimb(out, p, o) {
+    const dx = cpuCx(o) - cpuCx(p), dy = cpuCy(o) - cpuCy(p), d = Math.hypot(dx, dy) || 1;
+    out.right = dx / d > 0.38; out.left = dx / d < -0.38;
+    out.jump = dy / d < -0.38; out.down = dy / d > 0.38;
+    return out;
   }
   function chainRoom(st, p, o, dt, info) {
     const out = {}, L = info.L, d = L.door;
@@ -342,6 +353,13 @@
     const holding = G.held && G.held.hanger === o.id, hanging = G.held && G.held.hanger === p.id;
     // hold still while the partner swings... but a partner who fell in before I was at the pit edge needs me there
     if (holding && !L.key.got && p.grounded && cpuCx(p) > tileX(8) + 12) return cpuNav(st, p, tileX(8) + 6, floorAt(11), { tol: 3, noHop: true });
+    // key in hand and the partner still hanging in the pit: walk away from the edge to haul them up and out
+    if (holding && L.key.got && p.grounded && cpuCx(o) < tileX(8) + 20) {
+      if (cpuFor(st, 'haul', true, dt) < 0.3) return out; // (a moment to see the key go)
+      cpuSay(p, 'I\u2019ll pull you up!', 1.5);
+      out.right = true; return out;
+    }
+    cpuFor(st, 'haul', false, dt);
     if (holding) return out;
     if (!L.key.got) {
       // the key hangs over the pit: one holds at the pit's edge, the other drops off and swings up to it
@@ -368,14 +386,11 @@
     }
     // key in hand: the tall wall. Swing over it, one at a time.
     if (hanging) {
-      // the holder isn't at the wall yet (just got the key): swing round to the floor on the right and land
+      // the holder isn't at the wall yet (just got the key): climb up the chain to them and out onto the floor
       const hx0 = cpuCx(o);
       if (Math.abs(hx0 - tileX(18)) > 14 && Math.abs(hx0 - tileX(20)) > 14) {
-        // still on the pit side: up over the holder's head first (the pit wall is in the way underneath)
-        const th = G.held.th, up = Math.sin(th) < -0.5 && Math.cos(th) > -0.3;
-        if (cpuCx(p) < hx0 - 4 || (!up && Math.cos(th) < 0.3)) st.overTop = true;
-        if (st.overTop && up) st.overTop = false;
-        chainSwing(out, p, st.overTop ? Math.PI * 1.5 : 0.45);
+        chainClimb(out, p, o);
+        cpuSay(p, 'Climbing up!', 1.2);
         return out;
       }
       // over the top of the holder to the far side

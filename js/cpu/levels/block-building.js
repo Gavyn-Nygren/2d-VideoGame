@@ -76,6 +76,8 @@
       else if (d > 0) bad += d * (w > 0 ? 3 : g.tower ? 6 : 1);   // blocks where they aren't needed
       // (Brick by Brick: a column up near the ceiling becomes a wall nobody can get past, and nothing breaks it)
       if (!g.tower && h[x] > g.ledgeH + 2) bad += (h[x] - g.ledgeH - 2) * 10;
+      // (Sky Tower: a column right up to the top of the screen is a wall too: head-butts only break blocks from below)
+      else if (g.tower && h[x] >= g.floor - 2) bad += 30;
       if (x < g.x1) {
         const r = (h[x + 1] - h[x]) * (g.right ? 1 : -1);          // a step up on the way to the ledge
         if (r > 3) bad += 3 + (r - 3) * 12; else if (r === 3) bad += 3;
@@ -93,6 +95,11 @@
   function onClimber(cl, tx, ty, padX, padY, lead = 0) {
     const ahead = cl.vx * lead, x0 = cl.x + Math.min(0, ahead) - padX, x1 = cl.x + cl.w + Math.max(0, ahead) + padX;
     return cl.alive && tx * T < x1 && tx * T + T > x0 && ty * T < cl.y + cl.h + 2 && ty * T + T > cl.y - padY;
+  }
+  // would the piece touch the climber anywhere on its way down from where it is to row `toY` (tower: it falls through)?
+  function sweepHits(cl, pc, toY, padX, lead) {
+    for (let y = pc.y; y <= toY; y++) if (pc.cells.some(([cx, cy]) => onClimber(cl, pc.x + cx, y + cy, padX, 0, lead))) return true;
+    return false;
   }
   // is the cell (tx, ty) a roof beside the climber: in their column or the next, above their head, with open space
   // under it at their height?
@@ -183,7 +190,13 @@
     // a new piece: how many blocks the stairs still miss, and for how many pieces that hasn't changed; then think for
     // a moment (longer on easy) before moving it
     if (st.pc !== pc) {
-      st.pc = pc; st.plan = null; st.wait = 0.15 + 0.6 * (1 - info.skill) + Math.random() * 0.2; st.tapT = 0; st.stuckT = 0; st.lastX = pc.x;
+      // (Sky Tower, Gavyn: it used to place blocks far faster than a person could. It now plays at a person's pace:
+      // a proper look at each new piece, one press per turn or column, and a short check before it drops it. It
+      // hurries up only when the piece would land before it got there: then a slow builder would just be a bad one.)
+      const room = ghostY(pc) - pc.y, calm = g.tower ? clamp((room * BUILD.fall - 1.2) / 3, 0, 1) : 0;
+      st.pace = calm;
+      st.pc = pc; st.plan = null; st.wait = 0.15 + 0.6 * (1 - info.skill) + Math.random() * 0.2 + calm * (0.25 + Math.random() * 0.2);
+      st.tapT = 0; st.stuckT = 0; st.lastX = pc.x; st.settleT = calm * (0.3 + Math.random() * 0.2);
       const h = survey(g, new Set()).h;
       let miss = 0;
       for (let x = g.x0; x <= g.x1; x++) miss += Math.max(0, g.want[x] - h[x]);
@@ -200,6 +213,9 @@
         else if (st.stall >= 3 && (need(cc) || need(cc - 1) || need(cc + 1)) && (!st.movedT || G.time - st.movedT > 12)) { st.movedT = G.time; cpuSay(p, 'Move over, please!', 4); }
       }
     }
+    // (the climber is in the way of the piece, or about to be: no more dawdling, it gets the piece out of the way at
+    // full speed for the rest of this piece, as a person would hurry)
+    if (st.pace > 0 && g.tower && sweepHits(cl, pc, pc.y + 6, 8, 0.4)) { st.pace = 0; st.settleT = 0; st.wait = Math.min(st.wait, 0.1); }
     if (st.wait > 0) { st.wait -= dt; return out; }
     st.replanT = (st.replanT || 0) - dt;
     if (!st.plan || st.replanT <= 0) { st.plan = choose(g, pc, cl); st.replanT = 0.25; }
@@ -209,7 +225,7 @@
     const same = JSON.stringify(pc.cells) === JSON.stringify(P.cells);
     // turn it (one press at a time, at a person's pace)
     if (!same) {
-      if (st.tapT <= 0 && !CPU.last[p.id].jump) { out.jump = true; st.tapT = 0.07 + 0.12 * (1 - info.skill); }
+      if (st.tapT <= 0 && !CPU.last[p.id].jump) { out.jump = true; st.tapT = 0.07 + 0.12 * (1 - info.skill) + st.pace * (0.15 + Math.random() * 0.1); }
       return out;
     }
     // slide it over: hold for a long way, tap for the last column
@@ -217,13 +233,21 @@
     if (dx) {
       const dir = Math.sign(dx), held = dir > 0 ? CPU.last[p.id].right : CPU.last[p.id].left;
       st.stuckT = pc.x === st.lastX ? st.stuckT + dt : 0; st.lastX = pc.x;
-      if (st.stuckT > 0.4) { st.plan = null; st.stuckT = 0; return out; } // blocked: pick again from here
+      if (st.stuckT > 0.4 + st.pace * 0.3) { st.plan = null; st.stuckT = 0; return out; } // blocked: pick again from here
+      // (at a person's pace: one tap a column, with a little gap between taps)
+      if (st.pace > 0) {
+        if (st.tapT <= 0 && !held) { out.left = dir < 0; out.right = dir > 0; st.tapT = 0.1 + st.pace * (0.08 + Math.random() * 0.08); }
+        return out;
+      }
       if (Math.abs(dx) >= 2 || !held) { out.left = dir < 0; out.right = dir > 0; }
       return out;
     }
     // in place: drop it fast, unless that would now land on the climber
-    const gy = ghostY(pc), hit = pc.cells.some(([cx, cy]) => onClimber(cl, pc.x + cx, gy + cy, 2, g.tower ? 20 : 400, 0.3));
+    // (in the tower the piece falls through where the climber is, so every row on the way down counts)
+    const gy = ghostY(pc), hit = g.tower ? sweepHits(cl, pc, gy, 2, 0.3) : pc.cells.some(([cx, cy]) => onClimber(cl, pc.x + cx, gy + cy, 2, 400, 0.3));
     if (hit) { st.replanT = Math.min(st.replanT, 0.05); return out; }
+    // a last look before dropping it (a person checks the shadow before pressing down)
+    if (st.settleT > 0) { st.settleT -= dt; return out; }
     // (the climber has a way up, or the last pieces couldn't help: no hurry, a spare piece only gets in the way, so it
     // lets it fall by itself and the climber has time to go)
     out.down = !(st.way || st.stall >= 3);
@@ -272,6 +296,10 @@
       for (let n = x + (g.right ? 1 : -1); n >= g.x0 && n <= g.x1; n += g.right ? 1 : -1) if (s.h[n] > g.want[n]) rise = Math.max(rise, s.h[n] - s.h[x]);
       const v = s.h[x] * 3 - (danger.has(x) ? 100 : 0) - pit - (need(x) ? (g.tower ? 10 : 25) : 0) - (rise >= 2 ? (rise - 1) * 15 : 0)
         - (need(x - 1) || need(x + 1) ? 12 : 0) - Math.abs(x - here) * (g.tower ? 1.5 : 0.3)
+        // (Sky Tower: it doesn't hop down into a column the stairs still need to get out of a piece's way: the builder
+        // can't put blocks there while it stands in it, the columns beside it grow into walls, and it ends up shut in
+        // a shaft right where the top steps have to go)
+        - (g.tower && need(x) && s.h[x] < s.h[clamp(here, g.x0, g.x1)] - 1 ? 80 : 0)
         + (x === was ? 4 : 0) + (x === here ? 2 : 0);
       if (v <= bs) continue;
       const reach = noPiece(() => cpuNavReach(p, x * T + T / 2, feet));

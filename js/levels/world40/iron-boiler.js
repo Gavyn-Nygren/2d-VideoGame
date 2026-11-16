@@ -113,7 +113,7 @@ function ironBoilerJets(st, dt) {
     else J.on = 1;
     if (!J.on) continue;
     for (const p of G.players) {
-      if (!p.alive || st.safe[p.id] > 0 || ironHauled(p)) continue;
+      if (!p.alive || st.safe[p.id] > 0) continue;
       const cx = p.x + p.w / 2;
       if (ironBoilerInJet(J.j, cx) && p.y < 0) {
         // scalded back to the last safe spot (a valve, an alcove)

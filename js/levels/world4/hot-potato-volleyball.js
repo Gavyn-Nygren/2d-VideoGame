@@ -6,6 +6,11 @@
    it burns down on the potato and in the HUD timer (under the match pill) from the start of every round, and gets
    urgent in its last 10 s (red, faster ticks). When it goes BOOM, whoever has it on their side loses the round.
    Tap hit = bump, hold hit = wind-up and power shot, jump + hit near the net = spike, ▼ + hit = set. Best of 7.
+   Where the potato meets you aims the hit (Gavyn, Nov 2026): hit it from underneath (it is above you) and it pops up
+   high and lands shorter; hit it from the side (beside your head) and it flies flat and long. potContact() turns the
+   contact point into u (1 = under, 0 = side) and potShape() turns u, power and aim into a landing spot and flight time.
+   Each round brings its own potato (POT.twists): Classic, Feather Spud (light: low gravity, slow and floaty, hits carry
+   further), Bouncy Spud (rubbery: boings high off the sand, walls and net), Big Spud and Two Spuds.
    Everything this level adds to the game scope starts with POT / pot. */
 const POT = {
   // court: the net is a mode object (a pole the potato bounces off, and a line players can't cross); setup() reads def.potato
@@ -30,21 +35,42 @@ const POT = {
   // body contact
   bonkV: 650, bonkStun: 0.45, bonkSafe: 1.0, popVy: 430, popFwd: 60, touchCD: 0.15,
   serveY: 150, setV: 560, setBack: 60, setMaxVx: 260,
-  twists: ['classic', 'big', 'two', 'classic', 'big', 'two', 'classic'],
-  big: { r: 17, g: 760, tMul: 1.12 },
+  // contact: the angle from your forehead (p.y + cY) up to the potato's centre. cHi degrees or steeper = hit from under
+  // it (u = 1), cLo or flatter = hit from the side (u = 0). cD: the landing spot moves by (0.5 - u) * cD of the half;
+  // cT: the flight time is x(1 + (u - 0.5) * cT), so under is a slow high pop and the side a quick flat drive
+  cY: 4, cLo: 25, cHi: 70, cD: 0.5, cT: 0.7,
+  twists: ['classic', 'light', 'bouncy', 'big', 'two', 'light', 'bouncy'],
+  // the potatoes: physics per kind (missing values come from the numbers above). dB: hits land this much deeper (part
+  // of the half); popMul: bumps off a head or side fly this much harder; oneSizzle: only the first landing after a touch costs 1 s
+  kinds: {
+    classic: {},
+    big: { r: 17, g: 760, tMul: 1.12 },
+    light: { g: 560, tMul: 1.28, dB: 0.08, popMul: 1.25, wallE: 0.9 },
+    bouncy: { floorE: 0.82, floorFric: 0.96, wallE: 0.95, netE: 0.8, ceilE: 0.85, popMul: 1.15, oneSizzle: true },
+  },
 };
+POT.big = POT.kinds.big;
 const POT_TWISTS = {
   classic: { name: 'Classic', hint: 'Don’t let it BOOM on your side!', hint2: 'Red-hot? Don’t let it touch the sand!' },
   big: { name: 'Big Spud!', hint: 'Floaty and easy to hit' },
+  light: { name: 'Feather Spud!', hint: 'Light and floaty: it drifts far!' },
+  bouncy: { name: 'Bouncy Spud!', hint: 'Boing! It bounces high off the sand' },
   two: { name: 'Two Spuds!', hint: 'First BOOM ends the round' },
   quick: { name: 'Quick Fuse!', hint: 'Short fuse: get it over fast!' },
 };
 const potSide = x => (x < POT.netX ? 0 : 1);
 const potNetTop = () => POT.floorY - POT.netH;
 const potNow = () => (G.match ? G.match.roundT : 0);
+// a potato kind's physics, filled in from the classic numbers
+function potKind(kind) {
+  const d = POT.kinds[kind] || POT.kinds.classic;
+  return { kind: POT.kinds[kind] ? kind : 'classic', r: d.r || POT.r, g: d.g || POT.g, tMul: d.tMul || 1, dB: d.dB || 0, popMul: d.popMul || 1,
+    wallE: d.wallE || POT.wallE, ceilE: d.ceilE || POT.ceilE, floorE: d.floorE || POT.floorE, floorFric: d.floorFric || POT.floorFric,
+    netE: d.netE || POT.netE, oneSizzle: !!d.oneSizzle };
+}
 function potMake(x, y, fuse, twist) {
-  const big = twist === 'big';
-  return { x, y, vx: 0, vy: 0, r: big ? POT.big.r : POT.r, g: big ? POT.big.g : POT.g, tMul: big ? POT.big.tMul : 1, big,
+  const ph = potKind(twist), big = ph.kind === 'big';
+  return { x, y, vx: 0, vy: 0, r: ph.r, g: ph.g, tMul: ph.tMul, big, kind: ph.kind, ph, landed: false, squash: 0,
     fuse, fuse0: fuse, rest: false, hover: true, last: -1, cd: [0, 0], ramp: 0, spin: 0, tickT: 0.8, alive: true,
     lastCross: -9, crossings: 0, netHitT: -9, landT: -9, setUsed: [false, false], hotLand: false, hot: false,
     pulse: 0, sparkT: 0, trail: [], trailCol: 0, sizzleT: 0 };
@@ -59,15 +85,15 @@ function potPhys(pt, dt, ev, rnd) {
   if (sp > POT.maxSpeed) { pt.vx *= POT.maxSpeed / sp; pt.vy *= POT.maxSpeed / sp; }
   // substeps of at most 5 px, so the potato never tunnels through the 8 px net pole
   const n = Math.max(1, Math.ceil(Math.max(Math.abs(pt.vx), Math.abs(pt.vy)) * dt / 5)), sdt = dt / n;
-  const nt = potNetTop(), r = pt.r, nx0 = POT.netX - POT.netHalf, nx1 = POT.netX + POT.netHalf;
+  const nt = potNetTop(), r = pt.r, nx0 = POT.netX - POT.netHalf, nx1 = POT.netX + POT.netHalf, ph = pt.ph || POT;
   for (let i = 0; i < n; i++) {
     pt.x += pt.vx * sdt; pt.y += pt.vy * sdt;
-    if (pt.x - r < POT.left) { pt.x = POT.left + r; if (pt.vx < 0) { pt.vx = -pt.vx * POT.wallE; if (ev) ev.push('wall'); } }
-    if (pt.x + r > POT.right) { pt.x = POT.right - r; if (pt.vx > 0) { pt.vx = -pt.vx * POT.wallE; if (ev) ev.push('wall'); } }
-    if (pt.y - r < POT.ceil) { pt.y = POT.ceil + r; if (pt.vy < 0) pt.vy = -pt.vy * POT.ceilE; }
+    if (pt.x - r < POT.left) { pt.x = POT.left + r; if (pt.vx < 0) { pt.vx = -pt.vx * ph.wallE; if (ev) ev.push('wall'); } }
+    if (pt.x + r > POT.right) { pt.x = POT.right - r; if (pt.vx > 0) { pt.vx = -pt.vx * ph.wallE; if (ev) ev.push('wall'); } }
+    if (pt.y - r < POT.ceil) { pt.y = POT.ceil + r; if (pt.vy < 0) pt.vy = -pt.vy * ph.ceilE; }
     if (pt.y + r >= POT.floorY) {
       pt.y = POT.floorY - r;
-      if (pt.vy > POT.restV) { pt.vy = -pt.vy * POT.floorE; pt.vx *= POT.floorFric; if (ev) ev.push('land'); }
+      if (pt.vy > POT.restV) { pt.vy = -pt.vy * ph.floorE; pt.vx *= ph.floorFric; if (ev) ev.push('land'); }
       else if (!pt.rest && pt.vy >= 0) { pt.vy = 0; pt.rest = true; if (ev) ev.push('rest'); }
     }
     // the net pole: a box [netX - netHalf, netX + netHalf] x [netTop, floor]
@@ -78,14 +104,14 @@ function potPhys(pt, dt, ev, rnd) {
       if (pt.y >= nt) { // the side of the net
         const s = pt.x < POT.netX ? -1 : 1;
         pt.x = POT.netX + s * (POT.netHalf + r);
-        pt.vx = s * Math.max(40, Math.abs(pt.vx) * POT.netE);
+        pt.vx = s * Math.max(40, Math.abs(pt.vx) * ph.netE);
       } else { // the top of the net (or its corners): bounce off along the normal, and never balance on it
         let nxn = dx, nyn = dy, d = Math.sqrt(d2);
         if (d < 0.01) { nxn = 0; nyn = -1; d = 1; }
         nxn /= d; nyn /= d;
         pt.x = cx + nxn * r; pt.y = cy + nyn * r;
         const vn = pt.vx * nxn + pt.vy * nyn;
-        if (vn < 0) { pt.vx -= (1 + POT.netE) * vn * nxn; pt.vy -= (1 + POT.netE) * vn * nyn; }
+        if (vn < 0) { pt.vx -= (1 + ph.netE) * vn * nxn; pt.vy -= (1 + ph.netE) * vn * nyn; }
         // sitting on the flat top of the pole: roll it off (to a random side when it's dead centre)
         if (Math.abs(pt.x - POT.netX) <= POT.netHalf + 1 && Math.abs(pt.vx) < 30) {
           const off = pt.x - POT.netX;
@@ -95,12 +121,30 @@ function potPhys(pt, dt, ev, rnd) {
     }
   }
 }
+// where the potato meets you: 1 = from under it (it's above you), 0 = from the side (level with your head or lower)
+function potContact(p, pt) {
+  const dx = Math.abs(pt.x - (p.x + p.w / 2)), dy = p.y + POT.cY - pt.y;
+  const a = Math.atan2(dy, Math.max(1, dx)) * 180 / Math.PI;
+  return clamp((a - POT.cLo) / (POT.cHi - POT.cLo), 0, 1);
+}
+// the shape of a shot before the net check: { dist } px past the net and { T } s of flight.
+// power 0..1, aim +1 deep / -1 short / 0, u = potContact (spikes ignore it), q = the potato (tMul, ramp, ph)
+function potShape(power, aim, u, spike, q) {
+  const half = POT.right - POT.netX - POT.netHalf, ph = q.ph || {}, tMul = q.tMul || 1, ramp = q.ramp || 0;
+  if (spike) return { dist: POT.spikeD0 + (POT.spikeD1 - POT.spikeD0) * power + aim * POT.aimSpike,
+    T: (POT.spikeT0 + (POT.spikeT1 - POT.spikeT0) * power) * (1 - ramp) * tMul };
+  const dist = clamp(POT.lobD + (POT.deepD - POT.lobD) * power + (aim > 0 ? POT.aimLong : aim < 0 ? -POT.aimShort : 0)
+    + (0.5 - u) * POT.cD + (ph.dB || 0), POT.minD, POT.maxD) * half;
+  let T = (POT.lobT + (POT.driveT - POT.lobT) * power) * (1 - ramp) * tMul * (1 + (u - 0.5) * POT.cT);
+  T *= aim > 0 ? 1 + POT.aimT * POT.aimLong : aim < 0 ? 1 - POT.aimTS * POT.aimShort : 1;
+  return { dist, T };
+}
 // an aimed shot: land at a point on the other side after T seconds, raising the arc until it clears the net
-function potShot(pt, k, power, spike, aim = 0) {
+function potShot(pt, k, power, spike, aim = 0, u = 0.5) {
   const dir = k === 0 ? 1 : -1, half = POT.right - POT.netX - POT.netHalf, R = MODES.potato.rand;
   // aim: +1 = holding toward the other side (lands deeper), -1 = holding back toward your own wall (lands short)
-  let dist = spike ? POT.spikeD0 + (POT.spikeD1 - POT.spikeD0) * power + aim * POT.aimSpike
-    : clamp(POT.lobD + (POT.deepD - POT.lobD) * power + (aim > 0 ? POT.aimLong : aim < 0 ? -POT.aimShort : 0), POT.minD, POT.maxD) * half;
+  const shape = potShape(power, aim, u, spike, pt);
+  let dist = shape.dist;
   dist += (R() * 2 - 1) * POT.jitter * (spike ? 0.5 : 1 - 0.5 * power);
   dist = clamp(dist, spike ? POT.spikeMin : 40, half - pt.r - 8);
   // jammed low against the net pole: scoop it a little way out first (from there every straight-up arc meets the pole)
@@ -108,8 +152,7 @@ function potShot(pt, k, power, spike, aim = 0) {
   if (pt.y > potNetTop() - pt.r && Math.abs(pt.x - POT.netX) < jam) pt.x = POT.netX - dir * jam;
   let xT = POT.netX + dir * (POT.netHalf + dist);
   const yT = POT.floorY - pt.r;
-  let T = (spike ? POT.spikeT0 + (POT.spikeT1 - POT.spikeT0) * power : POT.lobT + (POT.driveT - POT.lobT) * power) * (1 - pt.ramp) * pt.tMul;
-  if (!spike) T *= aim > 0 ? 1 + POT.aimT * POT.aimLong : aim < 0 ? 1 - POT.aimTS * POT.aimShort : 1;
+  let T = shape.T;
   const g = pt.g, clear = potNetTop() - pt.r - 6, e = POT.netHalf + pt.r;
   let vx = 0, vy = 0;
   const yAt = x => { const t = (x - pt.x) / vx; return t > 0 ? pt.y + vy * t + 0.5 * g * t * t : -1e9; };
@@ -247,12 +290,12 @@ function potSparks(pt, dt) {
 MODES.potato = {
   rand: Math.random,
   testTwist: null,
-  K: POT, potPhys, potShot, potMake, potSide, potHitbox, potExplode, potResolve,
+  K: POT, potPhys, potShot, potShape, potContact, potMake, potSide, potHitbox, potExplode, potResolve,
   setup(st, L) {
     const d = L.def.potato || {};
     if (d.netX) POT.netX = d.netX;
     if (d.netH) POT.netH = d.netH;
-    st.stats = { hits: [0, 0], spikes: [0, 0], bonks: [0, 0], sets: [0, 0], power: [0, 0], sideT: [0, 0], longest: 0, drops: [0, 0], booms: [0, 0] };
+    st.stats = { hits: [0, 0], high: [0, 0], long: [0, 0], spikes: [0, 0], bonks: [0, 0], sets: [0, 0], power: [0, 0], sideT: [0, 0], longest: 0, drops: [0, 0], booms: [0, 0] };
     st.help = [0, 0]; st.serve = -1; st.sawPause = false; st.pops = [];
     st.swings = [0, 0]; st.pows = [0, 0]; st.lastPow = [0, 0]; // swing counters (results/tests)
   },
@@ -349,15 +392,20 @@ MODES.potato = {
             Sfx.play('potSet', k); rumble(k, 0.15, 0.35, 60);
             puff(pt.x, pt.y, 5, 'rgba(255,255,255,0.85)');
           } else {
-            potShot(pt, k, power, spike, aim);
+            const u = potContact(p, pt);
+            potShot(pt, k, power, spike, aim, u);
             st.stats.hits[k]++;
+            if (!spike) {
+              if (u >= 0.75) { st.stats.high[k]++; potPop('HIGH!', pt.x, pt.y - 22, '#fff6e6', 13, { life: 0.6, rise: 20 }); }
+              else if (u <= 0.25) { st.stats.long[k]++; potPop('LONG!', pt.x, pt.y - 22, '#fff6e6', 13, { life: 0.6, rise: 20 }); }
+            }
             if (spike) { st.stats.spikes[k]++; Sfx.play('whoosh', k); potPop('SPIKE!', pt.x, pt.y - 26, PCOL[k], 18); }
             if (power >= 0.5) st.stats.power[k]++;
             Sfx.play(big ? 'potSmash' : 'potWhack', k);
             if (big) { rumble(k, 0.4, 0.6, 110); burst(pt.x, pt.y, PCOL[k], 10); } else { rumble(k, 0.15, 0.35, 60); puff(pt.x, pt.y, 5, 'rgba(255,255,255,0.85)'); }
             pt.trailCol = k; pt.trail = [];
           }
-          pt.last = k; pt.cd[k] = POT.touchCD; pt.ramp = Math.min(POT.rampMax, pt.ramp + POT.rampPer);
+          pt.last = k; pt.cd[k] = POT.touchCD; pt.ramp = Math.min(POT.rampMax, pt.ramp + POT.rampPer); pt.landed = false;
           sw.s = 'cool'; sw.t = POT.cool; sw.charge = 0;
           continue;
         }
@@ -375,7 +423,7 @@ MODES.potato = {
           burst(p.x + p.w / 2, p.y, C.gold, 8);
           potPop('BONK!', p.x + p.w / 2, p.y - 20, C.gold, 18);
         } else if (pt.y < p.y + 4) {
-          pt.y = p.y - pt.r; pt.vy = -POT.popVy + Math.min(0, p.vy) * 0.3;
+          pt.y = p.y - pt.r; pt.vy = -POT.popVy * pt.ph.popMul + Math.min(0, p.vy) * 0.3;
           pt.vx = pt.vx * 0.4 + p.vx * 0.4 + fwd * POT.popFwd; pt.rest = false;
           Sfx.play('potPop', k);
         } else {
@@ -384,15 +432,15 @@ MODES.potato = {
           const nx = s > 0 ? p.x + p.w + pt.r : p.x - pt.r, lim = POT.netX - fwd * (POT.netHalf + pt.r);
           if ((nx - lim) * fwd > 0) {
             pt.x = k === 0 ? Math.min(pt.x, lim) : Math.max(pt.x, lim); pt.y = Math.min(pt.y, p.y - pt.r);
-            pt.vy = -POT.popVy; pt.vx = -fwd * POT.popFwd;
+            pt.vy = -POT.popVy * pt.ph.popMul; pt.vx = -fwd * POT.popFwd;
           } else {
             pt.x = nx;
-            pt.vx = s * Math.max(140, Math.abs(pt.vx - p.vx) * 0.5) + p.vx * 0.5; pt.vy = Math.min(pt.vy, -200);
+            pt.vx = s * Math.max(140, Math.abs(pt.vx - p.vx) * 0.5) * pt.ph.popMul + p.vx * 0.5; pt.vy = Math.min(pt.vy, -200 * pt.ph.popMul);
           }
           pt.rest = false;
           Sfx.play('potPop', k);
         }
-        pt.last = k; pt.cd[k] = POT.touchCD;
+        pt.last = k; pt.cd[k] = POT.touchCD; pt.landed = false;
       }
       if (pt.hover) continue;
       // flight
@@ -409,12 +457,14 @@ MODES.potato = {
       if (landed || rested) st.rally = 0;
       // red-hot: touching the floor sets it off at once
       if (pt.fuse <= POT.hotAt && (landed || rested || pt.rest)) { pt.hotLand = true; booms.push(pt); continue; }
-      if (landed) {
-        pt.fuse -= POT.sizzle; pt.landT = rt; pt.sizzleT = 0.35; st.stats.drops[side1]++;
+      if (landed) pt.squash = 0.16;
+      // (the Bouncy Spud only pays for its first landing after a touch: its boings that follow are free)
+      if (landed && !(pt.ph.oneSizzle && pt.landed)) {
+        pt.fuse -= POT.sizzle; pt.landT = rt; pt.sizzleT = 0.35; st.stats.drops[side1]++; pt.landed = true;
         Sfx.play('potSizzle'); rumble(side1, 0.1, 0.3, 80);
         puff(pt.x, pt.y + pt.r, 5, 'rgba(120,110,110,0.6)'); burst(pt.x, pt.y + pt.r, '#ff9a3c', 4);
         potPop('-1 s', pt.x, pt.y - pt.r - 18, '#ffb37a', 15, { life: 0.7, rise: 22 });
-      }
+      } else if (landed) Sfx.play('potBoing');
       // the fuse: 1 s/s, x3 while it lies on the floor
       pt.fuse -= dt * (pt.rest ? POT.restBurn : 1);
       st.stats.sideT[side1] += dt / st.pots.length;
@@ -431,6 +481,7 @@ MODES.potato = {
       } else if (!pt.hot && pt.fuse <= POT.hotAt) potGoHot(pt, false);
       if (pt.pulse > 0) pt.pulse = Math.max(0, pt.pulse - dt);
       if (pt.sizzleT > 0) pt.sizzleT = Math.max(0, pt.sizzleT - dt);
+      if (pt.squash > 0) pt.squash = Math.max(0, pt.squash - dt);
       pt.spin += pt.vx * dt * 0.02;
       // a fast shot leaves a streak
       if (Math.hypot(pt.vx, pt.vy) > 700) { pt.trail.push([pt.x, pt.y]); if (pt.trail.length > 6) pt.trail.shift(); } else if (pt.trail.length) pt.trail.shift();
@@ -525,6 +576,8 @@ MODES.potato = {
     for (const q of st.pops) if (q.under) potDrawPop(q, hudBig());
     // potatoes (in front of the players)
     for (const pt of st.pots) if (pt.alive) potDrawPotato(pt, st, m);
+    // a potato in your reach: a little arrow shows where a hit right now would send it (up = high pop, flat = long drive)
+    if (m && m.phase === 'live') for (const p of G.players) potDrawAim(p, st);
     // fizzled potatoes (Two Spuds) and the explosions
     for (const f of st.fizz) if (f.t < 0.6) {
       ctx.save(); ctx.globalAlpha = 1 - f.t / 0.6;
@@ -571,6 +624,30 @@ MODES.potato = {
 };
 
 /* potato drawing helpers */
+// the aim arrow: from the potato, toward the other side, steeper the more you are under it
+function potDrawAim(p, st) {
+  const k = p.id, sw = st.sw[k], fwd = k === 0 ? 1 : -1;
+  if (!p.alive || p.stun > 0 || sw.s === 'cool' || p.input.down) return;
+  const hb = potHitbox(p);
+  for (const pt of st.pots) {
+    if (!pt.alive || pt.hover || potSide(pt.x) !== k) continue;
+    const hx = clamp(pt.x, hb.x0, hb.x1), hy = clamp(pt.y, hb.y0, hb.y1);
+    if ((pt.x - hx) ** 2 + (pt.y - hy) ** 2 > pt.r * pt.r) continue;
+    const u = potContact(p, pt), a = (12 + 66 * u) * Math.PI / 180, L = pt.r + 22;
+    // (it starts beside the potato on the net side, so a steep arrow doesn't sit on the wick)
+    const dx = Math.cos(a) * fwd, dy = -Math.sin(a), bx = pt.x + fwd * (pt.r + 7), by = pt.y + 2;
+    const x0 = bx + dx * 2, y0 = by + dy * 2, x1 = bx + dx * (L - pt.r), y1 = by + dy * (L - pt.r);
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const [col, lw] of [['rgba(28,26,54,0.55)', 6], [PCOL[k], 3]]) {
+      ctx.strokeStyle = col; ctx.lineWidth = lw;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+      ctx.moveTo(x1 - dx * 7 + dy * 5, y1 - dy * 7 - dx * 5); ctx.lineTo(x1, y1);
+      ctx.lineTo(x1 - dx * 7 - dy * 5, y1 - dy * 7 + dx * 5);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
 // one pop: rises over its life and fades at the end ("Big mitts!" follows its player and stays through the countdown)
 function potDrawPop(q, big) {
   let x = q.x, y = q.y, a;
@@ -645,8 +722,21 @@ function potDrawPotato(pt, st, m) {
   } else if (warmth > 0) {
     ctx.fillStyle = `rgba(255,140,80,${0.18 * warmth})`; circle(x, y, r + 4); ctx.fill();
   }
-  const sc = 1 + (hot ? 0.12 : 0.05) * (pt.pulse / 0.1);
+  const sc = 1 + (hot ? 0.12 : 0.05) * (pt.pulse / 0.1), kind = pt.kind || 'classic';
+  // its colours: Classic and Big are brown, the Feather Spud pale gold, the Bouncy Spud rubbery green; all go red-hot
+  const COL = { light: ['#f3dfa2', '#b3924a', '#d9bf78'], bouncy: ['#5cc79a', '#2a7a5a', '#3fa57c'] }[kind] || ['#c99a5b', '#7a5530', '#a07440'];
   ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc);
+  // the Bouncy Spud squashes flat for a moment when it boings off the sand
+  if (pt.squash > 0 && !reduceMotion) { const q = pt.squash / 0.16; ctx.translate(0, r * 0.25 * q); ctx.scale(1 + 0.28 * q, 1 - 0.25 * q); }
+  // the Feather Spud: a white feather stuck in its back (behind the body)
+  if (kind === 'light') {
+    const wv = Math.sin(G.clock * 6 + x * 0.02) * 0.12;
+    ctx.save(); ctx.rotate(-0.9 + wv); ctx.translate(0, -r * 0.9);
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = 'rgba(28,26,54,0.55)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, -r * 0.55, r * 0.32, r * 0.75, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, r * 0.25); ctx.lineTo(0, -r * 1.2); ctx.stroke();
+    ctx.restore();
+  }
   // the lumpy body, turning with its spin
   ctx.save(); ctx.rotate(pt.spin);
   ctx.beginPath();
@@ -656,10 +746,17 @@ function potDrawPotato(pt, st, m) {
     if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
   }
   ctx.closePath();
-  ctx.fillStyle = potMix('#c99a5b', '#ff5a3c', warmth); ctx.fill();
-  ctx.strokeStyle = potMix('#7a5530', '#a8321e', warmth); ctx.lineWidth = 2; ctx.stroke();
-  ctx.fillStyle = potMix('#a07440', '#c83a22', warmth);
-  for (const [ex, ey] of [[-0.62, 0.42], [0.66, 0.3], [0.18, 0.66]]) { circle(ex * r, ey * r, 1.5 * r / 11); ctx.fill(); }
+  ctx.fillStyle = potMix(COL[0], '#ff5a3c', warmth); ctx.fill();
+  ctx.strokeStyle = potMix(COL[1], '#a8321e', warmth); ctx.lineWidth = 2; ctx.stroke();
+  if (kind === 'bouncy') {
+    // a bouncy-ball band round its middle
+    ctx.save(); ctx.clip();
+    ctx.fillStyle = potMix('#fff6e6', '#ffd0b0', warmth); ctx.fillRect(-r * 1.3, -r * 0.18, r * 2.6, r * 0.36);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = potMix(COL[2], '#c83a22', warmth);
+    for (const [ex, ey] of [[-0.62, 0.42], [0.66, 0.3], [0.18, 0.66]]) { circle(ex * r, ey * r, 1.5 * r / 11); ctx.fill(); }
+  }
   ctx.restore();
   // shine
   ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.beginPath(); ctx.ellipse(-r * 0.45, -r * 0.42, r * 0.32, r * 0.18, -0.5, 0, Math.PI * 2); ctx.fill();
@@ -843,6 +940,7 @@ function potDrawTimer(st, m, big) {
 Sfx.extra.potWhack = function (p) { this.tone(520 * p, 0.05, 'square', 0.05, 300 * p); this.tone(160, 0.08, 'triangle', 0.06, 110); };
 Sfx.extra.potSmash = function (p) { this.tone(1400, 0.04, 'square', 0.05, 500); this.tone(220 * p, 0.14, 'sawtooth', 0.04, 90); };
 Sfx.extra.potSet = function (p) { this.tone(440 * p, 0.08, 'triangle', 0.05, 880 * p); };
+Sfx.extra.potBoing = function () { this.tone(260, 0.12, 'sine', 0.05, 620); };
 Sfx.extra.potPop = function (p) { this.tone(300 * p, 0.06, 'sine', 0.06, 520 * p); };
 Sfx.extra.potFull = function (p) { this.tone(1320 * p, 0.1, 'triangle', 0.05); this.tone(1760 * p, 0.12, 'triangle', 0.04, null, 0.05); };
 Sfx.extra.potSizzle = function () { this.tone(2400, 0.22, 'sawtooth', 0.012, 900); this.tone(180, 0.08, 'triangle', 0.05, 120); };
