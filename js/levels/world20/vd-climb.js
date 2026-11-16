@@ -852,6 +852,12 @@ Sfx.extra.vdClimbFlag = function () { [523, 659, 784, 1047, 1319].forEach((f, i)
 /* ---------- the room (this file fills in its own room of the level def) ---------- */
 vdRoom('climb', {
   title: 'Slope Climb', phase: 'climb', ownStep: true, first: 0,
+  jobs: {
+    shielder: { title: 'Shielder', act: 'shield', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> hop',
+      howTo: ['Hold shield over you both when he breathes fire.'] },
+    climber: { title: 'Climber', act: 'ladder', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump, hold to climb',
+      howTo: ['Climb the grip wall. On top, hold ladder at the gold hook post.'] },
+  },
   act: { label: 'shield', labels: ['shield', 'ladder'] },
   tip: 'Shielder: hold the action to shield you both. Climber: climb the grips and drop the rope ladder!',
   legend: VD_PHASES.climb.legend(),

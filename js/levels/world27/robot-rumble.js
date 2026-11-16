@@ -6,7 +6,7 @@
    Every round has two parts. The mode owns the tick, the picture and the HUD (ownStep, ownHUD).
    1. BUILD (up to 22 s): the factory floor. A hopper in the middle drops two copies of the same part onto the belt
       every 1.4 s: one rides left toward Pip's pad, the other right toward Bo's (so it's fair). Parts that reach a belt end
-      drop to the floor and wait there 7 s. Walk into a part to pick it up (one at a time; ▼ + the action drops it), walk
+      drop to the floor and wait there 7 s. Walk into a part to pick it up (one at a time; ▼ on the floor drops it), walk
       onto your own pad (Pip's is on the left, Bo's on the right) and it goes on your robot. A robot has four slots,
       and each slot has two kinds of part:
         legs:  Treads (heavy, hard to push, a bit slower) or Springs (big jumps)
@@ -97,11 +97,14 @@ const RUMBLE = {
     st.parts = st.parts.filter(q => !(q.on === 'floor' && q.life <= 0) && !q.gone);
     for (const p of G.players) {
       const rb = st.robots[p.id];
-      // drop what you carry: ▼ + the action
-      if (p.pendingAct) {
-        p.pendingAct = false;
-        if (rb.carry && p.input.down) { st.parts.push({ k: rb.carry, x: p.x + p.w / 2, y: p.y, vy: -200, vx: p.face * 120, on: 'fall', life: R.partLife, id: Math.random(), skip: p.id, skipT: 0.8 }); rb.carry = null; Sfx.play('rf27Drop'); }
-      }
+      // drop what you carry: press ▼ on the floor (Gavyn, 2026-11-16, controls audit: ▼ alone, like the card says; on
+      // the belt ▼ drops you through it instead), or ▼ + the action anywhere (the old way, kept)
+      const downNow = !!p.input.down, downPress = downNow && !rb.downWas;
+      rb.downWas = downNow;
+      let drop = false;
+      if (p.pendingAct) { p.pendingAct = false; if (p.input.down) drop = true; }
+      if (downPress && p.y + p.h > R.floorY - 10) drop = true;   // (near the floor, not up on the belt)
+      if (drop && rb.carry) { st.parts.push({ k: rb.carry, x: p.x + p.w / 2, y: p.y, vy: -200, vx: p.face * 120, on: 'fall', life: R.partLife, id: Math.random(), skip: p.id, skipT: 0.8 }); rb.carry = null; Sfx.play('rf27Drop'); }
       // pick up a part you touch
       if (!rb.carry) {
         const q = st.parts.find(q => !(q.skip === p.id && q.skipT > 0) && (q.on === 'belt' || q.on === 'floor' || q.on === 'fall') && Math.abs(q.x - (p.x + p.w / 2)) < 24 && Math.abs(q.y - (p.y + p.h / 2)) < 30);

@@ -55,6 +55,12 @@ const VDL = {
 
 vdRoom('levers', {
   title: 'Hopping Pillars', first: 0,
+  jobs: {
+    shielder: { title: 'Shielder', act: 'shield', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> hop <kbd>S</kbd> drop down',
+      howTo: ['Hold shield over the puller when he breathes fire.'] },
+    puller: { title: 'Puller', act: 'pull', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop down',
+      howTo: ['Hold pull at the lever under the pillar he sits on.'] },
+  },
   act: { label: 'pull', labels: ['shield', 'pull'] },
   tip: 'Pull the lever under the pillar Cinder sits on to dunk him in his hot tub! Shield the puller from his fire.',
   map: [

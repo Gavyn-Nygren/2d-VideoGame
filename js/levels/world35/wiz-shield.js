@@ -361,6 +361,7 @@ WIZ_PHASES.shield = {
   plan(st) { return wizShPlan(st); },
   labels(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.sh ? 'shield' : 'zap')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.sh ? 'Shield!' : 'Zap!')); },
+  jobKeys(st) { return st.ph.sh === 1 ? ['zapper', 'shielder'] : ['shielder', 'zapper']; },
   legend(st) { const ph = st.ph, z = k => (k ? '<kbd>↑</kbd><kbd>↓</kbd> aim, then zap' : '<kbd>W</kbd><kbd>S</kbd> aim, then zap'); return { pip: ph.sh === 0 ? 'hold to shield' : z(0), bo: ph.sh === 1 ? 'hold to shield' : z(1), pad: 'shielder holds the action, zapper aims with up / down,' }; },
   hudText(st) { const ph = st.ph; return 'Gallery ' + (ph.gal + 1) + ' of 3'; },
   progress(st) { const ph = st.ph; return { n: ph.gal, of: 3 }; },
@@ -389,6 +390,12 @@ Sfx.extra.wizShPot = function () { this.tone(150, 0.15, 'sawtooth', 0.03, 80); }
 
 /* ---------- the room ---------- */
 wizRoom('shield', {
+  jobs: {
+    shielder: { title: 'Shielder', act: 'shield', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> tilt the shield up',
+      howTo: ['Hold shield for the bubble. Let go to let it refill.'] },
+    zapper: { title: 'Zapper', act: 'zap', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd><kbd>S</kbd> aim',
+      howTo: ['Zap from inside the bubble. Three hits on a glowing gem.'] },
+  },
   act: { label: 'shield', labels: ['shield', 'zap'] },
   tip: 'The shielder holds the action for the bubble; the zapper aims with up / down and zaps from inside it!',
   legend: { pip: 'hold to shield', bo: '<kbd>↑</kbd><kbd>↓</kbd> aim, then zap', pad: 'shielder holds the action, zapper aims with up / down,' },

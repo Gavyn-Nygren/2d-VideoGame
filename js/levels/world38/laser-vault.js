@@ -899,14 +899,15 @@
   /* ---------- the level ---------- */
   SPY.defs.spyvault = {
     name: 'Laser Vault Heist', world: 37, kind: 'team', mode: 'spyvault', outfit: 'spyvault', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck / slide',
-      bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> duck / slide',
+    jobs: {
+      mirror: { title: 'Mirror', act: 'mirror', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>F</kbd> hold to raise the mirror',
+        howTo: ['Hold the mirror up in a beam to stop it.', 'With the mirror up, ▲ ▼ tilt where the beam bounces.'] },
+      runner: { title: 'Runner', act: 'grab', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck, slide',
+        howTo: ['Jump, duck and slide through the gaps. Press the buttons on the far side.'] },
     },
+    jobAlt: true, jobSwap: 'You swap jobs every stretch.',
     tip: 'The mirror stops a beam and bends it. Light the green lenses to open the way.',
     howTo: [
-      'MIRROR: hold the action in a beam to stop it. Up and down tilt where it bounces.',
-      'RUNNER: jump, duck and slide through the gaps, and press the buttons on the far side.',
       'Every zap sends the steel shutter after you. Keep moving.',
     ],
     act: { label: 'mirror' },

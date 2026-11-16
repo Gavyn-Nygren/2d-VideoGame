@@ -25,6 +25,17 @@ function setActUI(on) {
   if (root.classList.contains('act-on') !== on) { root.classList.toggle('act-on', on); if (root.classList.contains('has-touch')) fit(); }
   if (on) fitActLabels();
 }
+// a level whose action does what is right where you stand (a lever, a ladder; grab, let go) names it live:
+// setActWords(['lever', 'ladder']), Pip's word and Bo's. The cards, the touch buttons and the top bar follow; a call with
+// the same words does nothing, so a level can call it every tick.
+function setActWords(words) {
+  const def = G.level && G.level.def;
+  if (!def || !def.act || !words) return;
+  const cur = def.act.labels || [];
+  if (cur[0] === words[0] && cur[1] === words[1]) return;
+  def.act = Object.assign({}, def.act, { labels: [words[0], words[1]] });   // (a copy: the level's own def stays as written)
+  try { if (typeof document !== 'undefined') { setActUI(true); if (typeof jobsChanged === 'function') jobsChanged(); } } catch (e) { /* (tests without a page) */ }
+}
 // a long or wide label ("MMMMMM") shrinks until it fits inside the round touch button
 function fitActLabels() {
   document.querySelectorAll('.tbtn-act').forEach(el => {

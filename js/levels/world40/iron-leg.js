@@ -580,6 +580,10 @@ Sfx.extra.ironlegCrowCaw = function () { this.tone(520, 0.18, 'sawtooth', 0.025,
 Sfx.extra.ironlegGearCarry = function () { for (let k = 0; k < 12; k++) this.tone(200 + (k % 3) * 40, 0.05, 'square', 0.015, null, k * 0.18); };
 
 ironRoom('leg', {
+  jobs: {
+    both: { act: ['brace', 'lever', 'hold'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> crouch, hold to drop <kbd>F</kbd> brace, pull a lever',
+      howTo: ['Run the ramps while the leg swings. Be on a ledge when it stomps.', 'Crouch on a piston to raise the other one.'] },
+  },
   act: { label: 'brace', labels: ['brace', 'brace'] },
   tip: IRON_PARTS.leg.tip,
 });

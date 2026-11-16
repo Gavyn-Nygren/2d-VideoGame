@@ -1173,6 +1173,7 @@ LEVELS.push(
     act: { label: 'shoot' },
     legend: { down: 'aim low, dig', padDown: 'down aims low' },
     tip: 'Chop, dig and build a fort round the heart, then survive endless zombie waves. Tap to shoot, hold to build!',
+    howTo: ['Tap to shoot. Hold to build in front of you.', 'Hold at a tree to chop.', 'Hold down and the action to dig, or to buy on a pad.', 'Ready early? Both stand by the heart and hold down.'],
     switches: {}, signs: [],
     map: [
       '................................', '................................', '................................',

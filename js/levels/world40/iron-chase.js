@@ -669,6 +669,10 @@ Sfx.extra.ironchaseHandClasp = function () { this.tone(330, 0.08, 'triangle', 0.
 Sfx.extra.ironchaseChainReel = function () { for (let k = 0; k < 10; k++) this.tone(900 + (k % 2) * 200, 0.03, 'square', 0.015, null, k * 0.06); };
 
 ironRoom('chase', {
+  jobs: {   // (both do the same things here: whoever is nearer takes the lever, the lift or the chain)
+    both: { act: ['grab', 'lever'], legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump <kbd>S</kbd> crouch <kbd>F</kbd> lever, grab the chain',
+      howTo: ['Jump just before a foot wave reaches you to ride it.', 'A high wall: one rides the steam lift, the other holds its lever.', 'At the chain, one grabs it, the other takes their hand.'] },
+  },
   act: { label: 'grab', labels: ['grab', 'grab'] },
   tip: IRON_PARTS.chase.tip,
 });

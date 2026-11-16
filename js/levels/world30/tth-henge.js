@@ -910,6 +910,7 @@ TTH_PHASES.henge = {
     return [w(0), w(1)];
   },
   roles(st) { const ph = st.ph; return ph.fin.stage > 0 ? ['Pull!', 'Pull!'] : ph.pusher === 0 ? ['Push!', 'Logs!'] : ['Logs!', 'Push!']; },
+  jobKeys(st) { return st.ph.pusher === 1 ? ['logs', 'pusher'] : ['pusher', 'logs']; },
   legend() { return { pip: '<kbd>A</kbd><kbd>D</kbd> move · push <kbd>W</kbd> jump', bo: '<kbd>←</kbd><kbd>→</kbd> move · push <kbd>↑</kbd> jump', padJump: 'jump', padDown: 'left / right: walk, push, haul' }; },
   hudText(st) { const ph = st.ph; return ph.fin.stage > 0 ? 'Lintel ' + Math.round(ph.fin.lift * 100) + '%' : 'Leg ' + (ph.leg + 1) + '/3'; },
   progress(st) { return { n: st.ph.leg + (st.ph.fin.stage === 3 ? 1 : 0), of: 4 }; },
@@ -1371,6 +1372,12 @@ Sfx.extra.tthHengeFlag = function () { [523, 659, 784, 1047, 1319].forEach((f, i
 
 /* ---------- the room ---------- */
 tthRoom('henge', {
+  jobs: {
+    pusher: { title: 'Stone pusher', act: ['shoo', 'pull'], legend: '<kbd>A</kbd><kbd>D</kbd> move, push <kbd>W</kbd> jump',
+      howTo: ['Push the stone while a log is under its front. Shoo sheep and the claw.'] },
+    logs: { title: 'Log mover', act: ['grab', 'drop', 'pull'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      howTo: ['Grab a log behind the stone, hop over it and drop the log in front.'] },
+  },
   act: { label: 'grab', labels: ['grab', 'shoo'] },
   tip: 'One pushes the giant stone. The other carries each log from the back to the front. Swap at every post!',
   legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move · push <kbd>W</kbd> jump', bo: '<kbd>←</kbd><kbd>→</kbd> move · push <kbd>↑</kbd> jump', padJump: 'jump', padDown: 'left / right: walk, push, haul' },

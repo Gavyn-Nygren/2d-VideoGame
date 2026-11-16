@@ -47,7 +47,7 @@ const POMPEII_HOUSE = { h: ['#f2c784', '#c98b4c', '#e3b26e'], q: ['#f0a487', '#b
 // the player's own key for hint bubbles: keyboard (F / '/', W / ↑, S / ↓), controller or touch
 function pompeiiKey(id, what) {
   const how = actKey(id);
-  if (what === 'act') return how === 'pad' ? glyph('act') : how === 'touch' ? 'use' : id === 0 ? 'F' : '/';
+  if (what === 'act') return how === 'pad' ? glyph('act') : how === 'touch' ? 'the round button' : id === 0 ? 'F' : '/';
   if (what === 'jump') return how === 'pad' ? glyph('a') : how === 'touch' ? '▲' : id === 0 ? 'W' : '↑';
   if (what === 'right') return how === 'pad' ? 'stick ▶' : how === 'touch' ? '▶' : id === 0 ? 'D' : '→';
   return how === 'pad' ? 'stick ▼' : how === 'touch' ? '▼' : id === 0 ? 'S' : '↓';
@@ -868,6 +868,10 @@ MODES.pompeii = {
     pompeiiClimbStep(st, dt);
     pompeiiColumnStep(st, dt);
     for (const p of G.players) if (p.pendingAct) { p.pendingAct = false; pompeiiPress(st, p); }
+    { // the action's word: the ladder for whoever is up top at the wall, else the lever
+      const s = pompeiiCurSpot(st);
+      setActWords(G.players.map(p => (s && pompeiiUp(p, s) ? 'ladder' : 'lever')));
+    }
     pompeiiCartStep(st, dt);
     pompeiiBanners(st);
     pompeiiLavaStep(st, dt);

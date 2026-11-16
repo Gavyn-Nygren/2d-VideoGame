@@ -323,6 +323,10 @@ Sfx.extra.ironboilerEmberLift = function () { this.tone(220, 0.8, 'triangle', 0.
 Sfx.extra.ironboilerBoilerCold = function () { this.noise(2.2, { type: 'lowpass', f: 1500, to: 200, vol: 0.05, a: 0.2 }); this.tone(160, 2, 'sine', 0.03, 60); };
 
 ironRoom('boiler', {
+  jobs: {
+    both: { act: 'valve', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>F</kbd> hold a valve wheel',
+      howTo: ['One holds a valve to shut the steam, the other dashes to the next valve.', 'Let go before the dial goes red.'] },
+  },
   act: { label: 'valve', labels: ['valve', 'valve'] },
   tip: IRON_PARTS.boiler.tip,
 });

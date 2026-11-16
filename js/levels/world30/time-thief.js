@@ -43,7 +43,9 @@
        tthRoom('dino', { tip: '...', act: {...}, legend: {...}, map: [...18 rows of 32...], myField: ... });
    tthRoom(phase, fields) Object.assign()s fields into that room of the def (returns the room). Room fields the core
    reads: title, phase, tip (about 100 characters: the intro and pause cards show it), act ({ label, labels: [pip, bo]
-   }: every room keeps an act, the touch pads always show the round button), legend (a setLegend object), map, theme
+   }: every room keeps an act, the touch pads always show the round button), legend (a setLegend object), jobs (the
+   era's two jobs as in js/controls.js: title, keys in Pip's keys, act word, howTo; the phase's jobKeys says who has
+   which; the room card, the pause card and the top bar show them), map, theme
    (extra colours for C), look (a world index whose colours to use first), first (who takes job A first, 0 Pip / 1 Bo:
    it alternates by era; swap jobs about halfway through your era so both players do both jobs).
    The default map is empty air with the two spawns on a floor two tiles thick at the bottom (TTH_FLOOR_MAP); an era
@@ -88,6 +90,8 @@
      hudText(st)       -> a short text for the top-right time pill (e.g. 'Logs 3/8').
      progress(st)      -> { n, of } for the pips under your slot of the era strip (checkpoints, laps, stones).
      labels(st)        -> [pip word, bo word]: the action button word per player (lowercase, 6 letters or fewer).
+     jobKeys(st)       -> [pip job, bo job]: keys of the room's `jobs` (js/controls.js) each player has now, or null to
+                          keep the last ones. The cards and the top bar show each player only their own job's buttons.
      legend(st)        -> a setLegend object when the keys change with the job (read when the labels change).
      roles(st)         -> [pip badge, bo badge] ('Carry!', 'Clear!') or null: shown over heads at the phase start and
                        on tthSwap(st).
@@ -246,7 +250,7 @@ const TTH_EMPTY_MAP = [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(2
 const TTH_FLOOR_MAP = [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '#'.repeat(32), '#'.repeat(32)];
 LEVELS.push(
   // ----- BEGIN 30-1 The Time Thief (mode 'timethief', js/levels/world30/time-thief.js + tth-<era>.js) -----
-  { name: 'The Time Thief', world: 29, kind: 'team', mode: 'timethief', ownHUD: true, noFalls: true, roomWord: 'Era',
+  { name: 'The Time Thief', world: 29, kind: 'team', mode: 'timethief', ownHUD: true, noFalls: true, roomWord: 'Era', jobParts: true,
     tip: 'Chase the Time Thief through history! Every era has two jobs, so work together.',
     act: { label: 'go' },
     map: TTH_FLOOR_MAP,
@@ -454,6 +458,9 @@ let tthLabelEls = null;
 function tthActLabels(st) {
   const def = G.level && G.level.def;
   if (!def || !def.act) return;
+  // who has which of the era's jobs (def.jobs: the cards and the top bar show each player their own job's buttons)
+  const jk = tthCall(tthPh(st), 'jobKeys', st);
+  if (jk && typeof setJobs === 'function') setJobs(jk);
   let want = tthCall(tthPh(st), 'labels', st);
   if (!want) want = def.act.labels || [def.act.label, def.act.label];
   const key = want[0] + '|' + want[1];
@@ -1123,8 +1130,8 @@ function tthCpNoteBox(st) {
   ctx.font = tthFont(fs);
   while (fs > 11 && ctx.measureText(n.text).width + 34 > W - 40) ctx.font = tthFont(--fs);
   const w = Math.min(ctx.measureText(n.text).width + 34, W - 40), nb = card ? null : tthNewsBox(st);
-  // (the room card, render.js drawIntro: from y 168, 120 tall with the action line, 22 more with the 1-player note)
-  let y = card ? 168 + (d && d.act ? 120 : 92) + (d && typeof cpuTipNote === 'function' && cpuTipNote(d.tip) ? 22 : 0) + 8 : nb ? nb.y1 + 4 : B.y0 + B.h + 6;
+  // (under the room card: render.js introCardBottom)
+  let y = card ? introCardBottom() + 8 : nb ? nb.y1 + 4 : B.y0 + B.h + 6;
   if (!card && !nb && d && d.rooms && y < 78) {   // (like the news line: never under the engine's era pill, top left)
     ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
     if (W / 2 - w / 2 < 14 + ctx.measureText(`${d.roomWord || 'Room'} ${d.roomIndex + 1} of ${d.roomCount}: ${d.title}`).width + 44 + 6) y = 78;

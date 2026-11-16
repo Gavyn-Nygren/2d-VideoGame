@@ -282,6 +282,10 @@ Sfx.extra.wizDuWarn = function () { [600, 800].forEach((f, i) => this.tone(f, 0.
 
 /* ---------- the room ---------- */
 wizRoom('duel', {
+  jobs: {
+    duelist: { title: 'Duelist', act: 'cast', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> shield (hold)',
+      howTo: ['Tap cast for a spark. Hold, then let go for a big bolt.'] },
+  },
   act: { label: 'cast', labels: ['cast', 'cast'] },
   tip: 'The graduation duel, best of three! Tap to cast a spark, hold and let go for a big bolt, hold down to shield.',
   legend: { pip: '<kbd>S</kbd> shield, tap / hold to cast', bo: '<kbd>↓</kbd> shield, tap / hold to cast', pad: 'down shields, tap or hold the action to cast,' },

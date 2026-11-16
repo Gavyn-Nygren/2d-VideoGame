@@ -1167,6 +1167,7 @@ TTH_PHASES.wright = {
   headLift: () => 30,
   labels(st) { const ph = st.ph, grab = ph.catch && ph.catch.fill >= 1 && !ph.got; return [0, 1].map(id => (id === ph.bal ? 'bell' : grab ? 'grab' : 'pedal')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.bal ? 'Wings!' : 'Engine!')); },
+  jobKeys(st) { return st.ph.bal === 1 ? ['engine', 'wings'] : ['wings', 'engine']; },
   legend(st) {
     const ph = st.ph;
     const wings = k => (k ? '<kbd>←</kbd><kbd>→</kbd> level the wings' : '<kbd>A</kbd><kbd>D</kbd> level the wings');
@@ -1211,6 +1212,12 @@ Sfx.extra.tthWrightGrab = function () { [659, 880, 1175, 1568].forEach((f, i) =>
 
 /* ---------- the room (this file fills in its own room of the level def) ---------- */
 tthRoom('wright', {
+  jobs: {
+    wings: { title: 'Wings', act: 'bell', legend: '<kbd>A</kbd><kbd>D</kbd> level the wings',
+      howTo: ['Lean toward the high wing. Ring the bell to scatter seagulls.', 'To take off, both hold right.'] },
+    engine: { title: 'Engine', act: ['pedal', 'grab'], legend: '<kbd>W</kbd> climb <kbd>S</kbd> dive <kbd>D</kbd> take off (both hold)',
+      howTo: ['Pedal on the beat, when the ring closes. Climbing heats the engine.'] },
+  },
   act: { label: 'pedal', labels: ['bell', 'pedal'] },
   tip: 'One keeps the wobbly wings level, one pedals the engine on the beat. Hold right together to take off!',
   legend: { pip: '<kbd>A</kbd><kbd>D</kbd> level the wings', bo: '<kbd>↑</kbd> climb <kbd>↓</kbd> dive', pad: 'wings: stick ◀ ▶ levels them; engine: stick up climbs, down dives,' },

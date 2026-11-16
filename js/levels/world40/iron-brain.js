@@ -527,6 +527,10 @@ Sfx.extra.ironlampBulbOut = function () { this.noise(0.25, { type: 'highpass', f
 Sfx.extra.ironlampEyeDark = function () { this.tone(110, 2.2, 'sine', 0.035, 40); this.noise(1.8, { type: 'lowpass', f: 900, to: 120, vol: 0.03, a: 0.2 }); };
 
 ironRoom('brain', {
+  jobs: {
+    both: { act: ['earth', 'unscrew', 'pull'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>F</kbd> hold an earthing rod',
+      howTo: ['A held rod switches off the lightning near it. The other dashes to the next rod.', 'At the top, hold to unscrew the bulb, then hold and pull left.'] },
+  },
   act: { label: 'earth', labels: ['earth', 'earth'] },
   tip: IRON_PARTS.brain.tip,
 });

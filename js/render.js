@@ -985,6 +985,8 @@ function drawIntro() {
   const def = G.level.def;
   // straight after the ready card (which showed the tip and the controls): only the name tags
   if (G.introQuick) { if (!(G.mst && G.mst.arriveT > 0)) drawNameTags(a, null); return; }
+  // a level with jobs: each player's job and its buttons (drawIntroJobs)
+  if (def.jobs && jobFor(0)) { drawIntroJobs(a, def); return; }
   const actLine = def.act ? actHintLine() : null, note = cpuTipNote(def.tip);
   ctx.save(); ctx.globalAlpha = a;
   const code = levelCode(G.levelIndex), wd = WORLDS[LEVELS[G.levelIndex].world];
@@ -1017,6 +1019,78 @@ function drawIntro() {
   }
   ctx.restore();
   // name tags over the players, kept off the card (and not yet, while a level's warp-in still hides them)
+  if (!(G.mst && G.mst.arriveT > 0)) drawNameTags(a, card);
+}
+
+// a job's rows drawn on the canvas, in that player's own buttons, from y down; returns the height used
+function drawJobRows(id, x, y, w, job) {
+  const { rows } = controlRows(id, null, G.level.def.act, job), d = playerDevice(id);
+  let yy = y;
+  for (const r of rows.slice(0, 6)) {
+    const vertical = r.whats.includes('jump') && r.whats.includes('down');
+    let bx = x;
+    for (const wt of r.whats) {
+      if (wt === '+') { text('+', bx + 4, yy, 13, C.paper, 'center', 'body'); bx += 10; continue; }
+      if (wt === 'or') { text('or', bx + 9, yy + 0.5, 12, '#b9b3cf', 'center', 'body'); bx += 20; continue; }
+      if (!['left', 'right', 'jump', 'down', 'act'].includes(wt)) continue;
+      const what = wt === 'jump' && vertical && d.kind !== 'kb' ? 'up' : wt;
+      bx += drawBtn(id, what, bx, yy, { size: 20, align: 'left' }) + 3;
+    }
+    ctx.save(); ctx.beginPath(); ctx.rect(bx + 4, yy - 12, Math.max(0, x + w - bx - 4), 24); ctx.clip();
+    text(r.text, bx + 8, yy + 0.5, 14, C.paper, 'left', 'body');
+    ctx.restore();
+    yy += 25;
+  }
+  return yy - y;
+}
+// the room or part card of a level with jobs: the tip, then a column per player with their job and buttons
+// the jobs card's box: [x, y, w, h] (a boss level, jobParts, keeps it under the big era / class title at y 128)
+function introJobsBox(def) {
+  const note = cpuTipNote(def.tip), ids = [0, 1].filter(k => !isCpuPlayer(k));
+  const nRows = Math.max(...ids.map(k => Math.min(6, controlRows(k, null, def.act).rows.length)), 1);
+  ctx.save();
+  ctx.font = '400 14px "Atkinson Hyperlegible", system-ui, sans-serif';
+  const tw = Math.min(W - 40, Math.max(ids.length * 280 + 40, ctx.measureText(def.tip).width + 60));
+  ctx.restore();
+  const h = 124 + 30 + nRows * 25 + (note ? 22 : 0) + (cpuSolo() ? 20 : 0);
+  const top = Math.max(LEVELS[G.levelIndex].jobParts ? 152 : 60, Math.min(150, (H - h) / 2));
+  return [W / 2 - tw / 2, top, tw, h];
+}
+// the bottom of the room card while it is up (levels that put a line under it: the 30-1 / 35-1 / 40-1 checkpoint)
+function introCardBottom() {
+  const def = G.level && G.level.def;
+  if (!def) return 168;
+  if (def.jobs && jobFor(0)) { const b = introJobsBox(def); return b[1] + b[3]; }
+  return 168 + (def.act ? 120 : 92) + (cpuTipNote(def.tip) ? 22 : 0);
+}
+function drawIntroJobs(a, def) {
+  const note = cpuTipNote(def.tip), ids = [0, 1].filter(k => !isCpuPlayer(k));
+  const colW = 280, card = introJobsBox(def), top = card[1], h = card[3];
+  ctx.save(); ctx.globalAlpha = a;
+  ctx.fillStyle = 'rgba(23,25,29,0.9)'; rr(card[0], card[1], card[2], card[3], 18); ctx.fill();
+  const code = levelCode(G.levelIndex), wd = WORLDS[LEVELS[G.levelIndex].world];
+  const first = code.endsWith('-1') && (!def.rooms || def.roomIndex === 0);
+  const sub = (first ? `World ${LEVELS[G.levelIndex].world + 1}: ${wd.name} · ` : '') + (def.rooms ? `Level ${code} · ${def.name} · ${def.roomWord || 'Room'} ${def.roomIndex + 1} of ${def.roomCount}` : `Level ${code}`);
+  text(sub, W / 2, top + 22, 13, C.gold, 'center', 'body');
+  text(def.rooms ? def.title + '!' : def.name, W / 2, top + 48, 30, C.paper, 'center');
+  ctx.font = '400 14px "Atkinson Hyperlegible", system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.fillStyle = '#d9d3ef'; ctx.fillText(def.tip, W / 2, top + 76);
+  let y = top + 104;
+  if (note) { ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.fillStyle = C.paper; ctx.fillText(note, W / 2, y - 4); y += 22; }
+  const x0 = W / 2 - (ids.length * colW) / 2;
+  ids.forEach((k, n) => {
+    const x = x0 + n * colW + 14, j = jobFor(k);
+    ctx.font = '22px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+    const nw = ctx.measureText(NAMES[k]).width;
+    text(NAMES[k], x, y + 6, 22, PCOL[k], 'left');
+    if (j && j.title) text(j.title, x + nw + 10, y + 7, 15, C.gold, 'left', 'body');
+    drawJobRows(k, x, y + 34, colW - 24, j);
+  });
+  if (cpuSolo()) {
+    const c = 1 - cpuHuman(), cj = jobFor(c);
+    if (cj && cj.title) text(`${NAMES[c]} (computer): ${cj.title}`, W / 2, card[1] + h - 16, 13, C.paper, 'center', 'body');
+  }
+  ctx.restore();
   if (!(G.mst && G.mst.arriveT > 0)) drawNameTags(a, card);
 }
 

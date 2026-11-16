@@ -455,6 +455,7 @@ WIZ_PHASES.size = {
   headLift(st, p) { const ph = st.ph; if (!ph.pieces || p.id !== ph.siz) return 0; return ph.size === 'giant' ? 40 : ph.size === 'tiny' ? -16 : 0; },
   labels(st) { const ph = st.ph, w = { normal: 'pull', tiny: 'pull', giant: 'lift' }; return [0, 1].map(id => (id === ph.zap ? 'zap' : w[ph.size])); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.zap ? 'Zap!' : 'Size!')); },
+  jobKeys(st) { return st.ph.zap === 1 ? ['sizer', 'zapper'] : ['zapper', 'sizer']; },
   legend(st) {
     const ph = st.ph, c = k => (k ? '<kbd>↑</kbd> grow, <kbd>↓</kbd> shrink, then zap' : '<kbd>W</kbd> grow, <kbd>S</kbd> shrink, then zap');
     return { pip: ph.zap === 0 ? c(0) : 'tiny or giant', bo: ph.zap === 1 ? c(1) : 'tiny or giant', pad: 'zapper: stick up / down arms the wand,' };
@@ -481,6 +482,12 @@ Sfx.extra.wizSizeSwat = function () { this.tone(160, 0.12, 'square', 0.04, 90); 
 
 /* ---------- the room ---------- */
 wizRoom('size', {
+  jobs: {
+    zapper: { title: 'Zapper', act: 'zap', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> get grow ready <kbd>S</kbd> get shrink ready',
+      howTo: ['Press up or down, then zap your friend. Zap with nothing ready for normal size.'] },
+    sizer: { title: 'Sizer', act: ['pull', 'lift'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> tiptoe',
+      howTo: ['Tiny fits mouse holes. Giant shoves bookcases and lifts your friend.'] },
+  },
   act: { label: 'zap', labels: ['zap', 'pull'] },
   tip: 'The zapper presses up (grow) or down (shrink), then the action, to change the partner\'s size!',
   legend: { pip: '<kbd>W</kbd> grow, <kbd>S</kbd> shrink, then zap', bo: 'tiny or giant', pad: 'zapper: stick up / down arms the wand,' },

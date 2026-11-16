@@ -50,12 +50,13 @@
    st.cls (WIZ_CLASSES[st.phase]: { title, spell, spellName, col, where }), st.hm (Thimblewick), st.cam, st.stars (12
    booleans: the 10 spells, the exam seal, the duel trophy), st.idle, st.cut, st.celebT, st.stats ({ oops: [pip, bo],
    team, kinds, help, phaseT, <phase>: {} }), st.safe, st.warn.
-   HOOKS of WIZ_PHASES.<phase>: setup step wait coast drawBack draw drawTop hide hud hudText progress labels legend roles
+   HOOKS of WIZ_PHASES.<phase>: setup step wait coast drawBack draw drawTop hide hud hudText progress labels legend roles jobKeys
    busy present headLift onBonk onKill onRespawn bubblePos stat statLine, and one more:
      plan(st)          -> [pip, bo]: per player { x, y (world coords, optional), hold: 'act'|'up'|..., tap, why }: what
                        that player should be doing right now. The hint bubbles, the HUD and the brain all read it, so
                        the computer partner and the prompts never disagree (Moonwick rule 5).
-   ROOM FIELDS as in 30-1 (title, phase, tip, act, legend, map, theme, look, first).
+   ROOM FIELDS as in 30-1 (title, phase, tip, act, legend, jobs, map, theme, look, first); the jobKeys(st) hook says
+   who has which job (see time-thief.js).
 
    HELPERS (inside the tick unless noted) — the 30-1 ones renamed, plus:
      Phase flow  wizPhaseDone(st, { say, got })  the class is won: the spell's star flies from Thimblewick's wand to
@@ -168,7 +169,7 @@ const WIZ_EMPTY_MAP = [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(2
 const WIZ_FLOOR_MAP = [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '#'.repeat(32), '#'.repeat(32)];
 LEVELS.push(
   // ----- BEGIN 35-1 Moonwick Academy (mode 'wizschool', js/levels/world35/wiz-school.js + wiz-<class>.js) -----
-  { name: 'Moonwick Academy', world: 34, kind: 'team', mode: 'wizschool', ownHUD: true, noFalls: true, roomWord: 'Class',
+  { name: 'Moonwick Academy', world: 34, kind: 'team', mode: 'wizschool', ownHUD: true, noFalls: true, roomWord: 'Class', jobParts: true,
     tip: 'One long school day: ten classes, ten spells, then the final exam. Every class has two jobs!',
     act: { label: 'cast' },
     map: WIZ_FLOOR_MAP,
@@ -434,6 +435,9 @@ let wizLabelEls = null;
 function wizActLabels(st) {
   const def = G.level && G.level.def;
   if (!def || !def.act) return;
+  // who has which of the class's jobs (def.jobs: the cards and the top bar show each player their own job's buttons)
+  const jk = wizCall(wizPh(st), 'jobKeys', st);
+  if (jk && typeof setJobs === 'function') setJobs(jk);
   let want = wizCall(wizPh(st), 'labels', st);
   if (!want) want = def.act.labels || [def.act.label, def.act.label];
   const key = want[0] + '|' + want[1];
@@ -1018,8 +1022,8 @@ function wizCpNoteBox(st) {
   ctx.font = wizFont(fs);
   while (fs > 11 && ctx.measureText(n.text).width + 34 > W - 40) ctx.font = wizFont(--fs);
   const w = Math.min(ctx.measureText(n.text).width + 34, W - 40), nb = card ? null : wizNewsBox(st);
-  // (the room card, render.js drawIntro: from y 168, 120 tall with the action line, 22 more with the 1-player note)
-  let y = card ? 168 + (d && d.act ? 120 : 92) + (d && typeof cpuTipNote === 'function' && cpuTipNote(d.tip) ? 22 : 0) + 8 : nb ? nb.y1 + 4 : B.y0 + B.h + 6;
+  // (under the room card: render.js introCardBottom)
+  let y = card ? introCardBottom() + 8 : nb ? nb.y1 + 4 : B.y0 + B.h + 6;
   if (!card && !nb && d && d.rooms && y < 78) {   // (like the news line: never under the engine's class pill, top left)
     ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
     if (W / 2 - w / 2 < 14 + ctx.measureText(`${d.roomWord || 'Room'} ${d.roomIndex + 1} of ${d.roomCount}: ${d.title}`).width + 44 + 6) y = 78;

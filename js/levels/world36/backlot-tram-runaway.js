@@ -152,7 +152,7 @@
     st.final = { prog: 0, done: false }; st.tixTake = 0; st.party = false; st.cleared = false; st.planMemo = null;
     st.prevUp = [false, false]; st.prevDown = [false, false]; st.leftT = 0; st.tailUntil = 0; st.brkRest = false;
   }
-  function labels(st) { const w = []; w[st.brk] = 'brake'; w[st.run] = 'do it'; K.actLabels(w, 'brake'); }
+  function labels(st) { const w = []; w[st.brk] = 'brake'; w[st.run] = 'clear'; K.actLabels(w, 'brake'); }
   const zog = st => !!st.set.zog;
 
   /* ---------- the tick ---------- */
@@ -934,14 +934,16 @@
   };
 
   /* ---------- the level ---------- */
-  const acts = b => ({ label: 'brake', labels: b === 0 ? ['brake', 'do it'] : ['do it', 'brake'] });
+  const acts = b => ({ label: 'brake', labels: b === 0 ? ['brake', 'clear'] : ['clear', 'brake'] });
   STUDIO.defs.tramrun = {
     name: 'Backlot Tram Runaway', world: 35, kind: 'team', mode: 'tramrun', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Take', outfit: 'none',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> walk / <kbd>W</kbd><kbd>S</kbd> switch or jump',
-      bo: '<kbd>←</kbd><kbd>→</kbd> walk / <kbd>↑</kbd><kbd>↓</kbd> switch or jump',
-      pad: 'stick walks, A jumps,',
+    jobs: {
+      brake: { title: 'Brake hero', act: 'brake', legend: '<kbd>W</kbd><kbd>S</kbd> throw the switch <kbd>A</kbd><kbd>D</kbd> walk the cars',
+        howTo: ['Brake in short pulls, or it overheats.', 'Tap brake to pull the runner aboard.'] },
+      runner: { title: 'Runner', act: 'clear', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Clear props ahead: push, crank or unplug at the ring.'] },
     },
+    jobOf: 'brk', jobSwap: 'You swap jobs every take.',
     tip: 'Stop the runaway tram! The brake hero brakes in short pulls and throws the switches; the runner jumps off and clears the props ahead.',
     act: acts(0),
     map: K.stubMap(),

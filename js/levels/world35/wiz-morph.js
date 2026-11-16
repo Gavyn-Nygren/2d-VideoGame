@@ -419,6 +419,7 @@ WIZ_PHASES.morph = {
   plainHero(st, p) { const ph = st.ph; return !!ph.obs && p.id === ph.shift && ph.shape !== 'plain'; },
   labels(st) { const ph = st.ph, w = { plain: 'pull', frog: 'hop', fish: 'dash', bat: 'flap' }; return [0, 1].map(id => (id === ph.cast ? 'morph' : w[ph.shape] || 'pull')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.cast ? 'Cast!' : 'Shift!')); },
+  jobKeys(st) { return st.ph.cast === 1 ? ['shifter', 'caster'] : ['caster', 'shifter']; },
   legend(st) {
     const ph = st.ph, c = k => (k ? '<kbd>↑</kbd><kbd>↓</kbd> turn the dial' : '<kbd>W</kbd><kbd>S</kbd> turn the dial');
     return { pip: ph.cast === 0 ? c(0) : 'be the right animal', bo: ph.cast === 1 ? c(1) : 'be the right animal', pad: 'caster: stick up / down turns the dial,' };
@@ -445,6 +446,12 @@ Sfx.extra.wizMorphPoof = function () { this.tone(400, 0.25, 'sine', 0.04, 1000);
 
 /* ---------- the room ---------- */
 wizRoom('morph', {
+  jobs: {
+    caster: { title: 'Caster', act: 'morph', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd><kbd>S</kbd> turn the dial',
+      howTo: ['Frog for hedges, fish for water, bat for holes.'] },
+    shifter: { title: 'Shifter', act: ['pull', 'hop', 'dash', 'flap'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      howTo: ['A fish swims with all four arrows. A bat flaps.', 'Pull the rope at the end to open the gate.'] },
+  },
   act: { label: 'morph', labels: ['morph', 'pull'] },
   tip: 'The caster turns the dial (up / down) and casts the right animal: frog for hedges, fish for water, bat for holes!',
   legend: { pip: '<kbd>W</kbd><kbd>S</kbd> turn the dial', bo: 'be the right animal', pad: 'caster: stick up / down turns the dial,' },

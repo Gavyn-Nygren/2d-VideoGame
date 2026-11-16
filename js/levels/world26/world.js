@@ -22,12 +22,14 @@ LEVELS.push(
   // of the bar at the top of the swing (the action), flips with ▲ held, opens up and steers ◀ ▶ into the catcher's
   // reaching hands (hold the action). A miss is a "Boing!" into the net. 4 catches an act, swap jobs every act.
   { name: 'Trapeze Catch', world: 25, kind: 'team', mode: 'trapeze', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Act',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> swing / steer <kbd>W</kbd> flip',
-      bo: '<kbd>←</kbd><kbd>→</kbd> swing / steer <kbd>↑</kbd> flip',
-      pad: 'stick swings / steers, <span data-glyph="a"></span> flips,',
+    jobs: {
+      flyer: { title: 'Flyer', act: 'let go', legend: '<kbd>W</kbd> hold to flip <kbd>A</kbd><kbd>D</kbd> steer a little',
+        howTo: ['Let go on the gold. Let go of flip to open up for the catch.'] },
+      catcher: { title: 'Catcher', act: 'hep', legend: '<kbd>A</kbd><kbd>D</kbd> pump the swing',
+        howTo: ['Call Hep! on the gold ring. Hold it to catch.'] },
     },
-    tip: 'Catcher: swing ◀ ▶ and call Hep! on the gold ring. Flyer: let go on the gold, hold ▲ to flip, open up for the catch!',
+    jobOf: 'fly', jobSwap: 'You swap jobs every act.',
+    tip: 'The catcher swings and calls Hep!, the flyer lets go and flips. Open up for the catch!',
     act: { label: 'hep', labels: ['let go', 'hep'] },
     map: W26_STUB_MAP,
     rooms: [
@@ -51,12 +53,13 @@ LEVELS.push(
   // roof): ◀ ▶ lean, ▼ ducks under banners, the action honks animals off the road. Catch the clowns who leap for the car.
   // Each stretch ends at a pit-stop tent, then they swap seats. The map is only the two spawns (tokens: see the level file).
   { name: 'Clown Car Getaway', world: 25, kind: 'team', mode: 'clowncar', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> drive / lean <kbd>W</kbd> hop <kbd>S</kbd> brake / duck',
-      bo: '<kbd>←</kbd><kbd>→</kbd> drive / lean <kbd>↑</kbd> hop <kbd>↓</kbd> brake / duck',
-      pad: 'stick drives / leans, <span data-glyph="a"></span> hops, down ducks,',
+    jobs: {
+      driver: { title: 'Driver', act: 'hop', legend: '<kbd>D</kbd> gas <kbd>A</kbd> brake <kbd>W</kbd> hop the pies' },
+      popper: { title: 'Popper', act: 'honk', legend: '<kbd>A</kbd><kbd>D</kbd> lean <kbd>S</kbd> hold to duck',
+        howTo: ['Honk the animals away. Lean under a leaping clown to catch it.'] },
     },
-    tip: 'Driver: ▶ gas, ▲ hop the pies. Popper: honk the animals away, duck the banners, catch the leaping clowns!',
+    jobOf: 'drive', jobSwap: 'You swap jobs every stretch.',
+    tip: 'The driver hops the pies, the popper honks the animals away, ducks the banners and catches the clowns!',
     act: { label: 'honk', labels: ['hop', 'honk'] },
     map: W26_STUB_MAP,
     rooms: [
@@ -88,12 +91,14 @@ LEVELS.push(
   // parks the safety-net truck (◀ ▶) under the landing ring, catches them, and drives them to the next cannon. 4 cannons
   // a tour, then swap jobs. Cannon defs: [angle in degrees, items] (items: see the level file).
   { name: 'Human Cannonball Tour', world: 25, kind: 'team', mode: 'cannonball', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Tour',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>S</kbd> aim / flap <kbd>A</kbd><kbd>D</kbd> drive / drift',
-      bo: '<kbd>↑</kbd><kbd>↓</kbd> aim / flap <kbd>←</kbd><kbd>→</kbd> drive / drift',
-      pad: 'stick aims and drives, <span data-glyph="a"></span> flaps,',
+    jobs: {
+      cannonball: { title: 'Cannonball', act: 'fire', legend: '<kbd>W</kbd><kbd>S</kbd> aim, then flap, dive <kbd>A</kbd><kbd>D</kbd> drift in the air',
+        howTo: ['Fire when the net is ready. Fly through the rings!'] },
+      driver: { title: 'Net driver', act: 'beep', legend: '<kbd>A</kbd><kbd>D</kbd> drive the net truck',
+        howTo: ['Park the net under the landing ring.'] },
     },
-    tip: 'Driver: park the net under the landing ring. Cannonball: aim ▲ ▼, fire when the net is ready, flap through the rings!',
+    jobOf: 'fly', jobSwap: 'You swap jobs every show.',
+    tip: 'The driver parks the net under the landing ring. The cannonball aims, fires and flaps through the rings!',
     act: { label: 'fire', labels: ['fire', 'beep'] },
     map: W26_STUB_MAP,
     rooms: [

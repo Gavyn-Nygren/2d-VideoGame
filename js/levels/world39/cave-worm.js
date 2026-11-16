@@ -1098,13 +1098,18 @@
   };
   const acts = k => ({ label: 'throw', labels: [k % 2 === 0 ? 'strike' : 'throw', k % 2 === 0 ? 'throw' : 'strike'] });
   CAVE.defs.caveworm = {
+    jobs: {
+      lurer: { title: 'Lurer', act: 'throw', legend: '<kbd>A</kbd><kbd>D</kbd> run slower, faster <kbd>W</kbd> jump <kbd>S</kbd> slide',
+        howTo: ['Throw glow gems; hold up or down to aim. The worm goes where the light lands.'] },
+      pathfinder: { title: 'Pathfinder', act: 'strike', legend: '<kbd>A</kbd><kbd>D</kbd> run slower, faster <kbd>W</kbd> jump <kbd>S</kbd> slide',
+        howTo: ['Strike crystal walls, and the clear crystals to see the real tunnel.'] },
+    },
+    jobSwap: 'You swap jobs every stretch.',
     name: 'Cave Worm Chase', world: 38, kind: 'team', mode: 'caveworm', outfit: 'caveworm', music: 'cavechase', amb: 'caveRumble',
     ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     legend,
     tip: 'The worm chases light. Throw a glow gem down the tunnel you are NOT taking.',
     howTo: [
-      'LURER: throw glow gems (hold up or down to aim). The worm goes where the light lands.',
-      'PATHFINDER: smash crystal walls, and hit the clear crystals to see which tunnel is the real one.',
       'If the floor ahead bulges and glows, the worm is coming through it.',
       'Jump, slide under roots, and keep up: the Jaws meter is how close it is.',
     ],

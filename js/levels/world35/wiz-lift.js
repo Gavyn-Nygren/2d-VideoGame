@@ -560,6 +560,7 @@ WIZ_PHASES.lift = {
   present(st, p) { const ph = st.ph; return p.id === ph.ride && !!(p.ground && p.ground.slab && ph.held); },
   labels(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.lift ? 'lift' : 'grab')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.lift ? 'Lift!' : 'Ride!')); },
+  jobKeys(st) { return st.ph.lift === 1 ? ['rider', 'lifter'] : ['lifter', 'rider']; },
   legend(st) {
     const ph = st.ph, l = k => (k ? 'hold <kbd>/</kbd> lift, <kbd>←</kbd><kbd>→</kbd> slide it' : 'hold <kbd>F</kbd> lift, <kbd>A</kbd><kbd>D</kbd> slide it');
     return { pip: ph.lift === 0 ? l(0) : '<kbd>S</kbd> duck', bo: ph.lift === 1 ? l(1) : '<kbd>↓</kbd> duck', pad: 'lifter: hold the action and steer with the stick,' };
@@ -585,6 +586,12 @@ Sfx.extra.wizLiftPoof = function () { this.tone(300, 0.25, 'sine', 0.04, 900); t
 
 /* ---------- the room ---------- */
 wizRoom('lift', {
+  jobs: {
+    lifter: { title: 'Lifter', act: 'lift', legend: '<kbd>A</kbd><kbd>D</kbd> slide the slab',
+      howTo: ['Hold lift to raise the slab. Let go to rest.', 'While you hold lift, left and right slide it.'] },
+    rider: { title: 'Rider', act: 'grab', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck',
+      howTo: ['Grab runaway books, then press the brass switch.'] },
+  },
   act: { label: 'lift', labels: ['lift', 'grab'] },
   tip: 'One holds the action to float the slab up, the other rides it and grabs runaway books. Then press the switch!',
   legend: { pip: 'hold <kbd>F</kbd> lift, <kbd>A</kbd><kbd>D</kbd> slide it', bo: '<kbd>↓</kbd> duck', pad: 'lifter: hold the action and steer with the stick,' },

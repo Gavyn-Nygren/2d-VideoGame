@@ -99,6 +99,8 @@ const SHRUNK = (() => {
   // the touch buttons and the legend name each player's own action (roles swap between rooms)
   let labelEls = null;
   K.actLabels = (words, both) => {
+    // (review, 2026-11-16) the cards read the level's action words too (js/ui.js setActWords), so they follow a swap
+    if (words && words[0] && words[1] && typeof setActWords === 'function') setActWords(words);
     try {
       if (!labelEls || !labelEls.every(o => document.contains(o.el))) labelEls = Array.from(document.querySelectorAll('[data-actlabel]')).map(el => {
         const box = el.closest('[data-p]') || el.closest('[data-legp]') || el.closest('.kb-only') || el.closest('.pad-only');

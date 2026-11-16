@@ -468,6 +468,7 @@ WIZ_PHASES.beast = {
   plan(st) { return wizBeastPlan(st); },
   labels(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.rider ? 'hup' : 'feed')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.rider ? 'Ride!' : 'Feed!')); },
+  jobKeys(st) { return st.ph.rider === 1 ? ['feeder', 'rider'] : ['rider', 'feeder']; },
   legend(st) {
     const ph = st.ph, ride = k => (k ? '<kbd>↑</kbd> jump <kbd>↓</kbd> duck' : '<kbd>W</kbd> jump <kbd>S</kbd> duck'), feed = k => (k ? '<kbd>←</kbd><kbd>→</kbd> pick a snack' : '<kbd>A</kbd><kbd>D</kbd> pick a snack');
     return { pip: ph.rider === 0 ? ride(0) : feed(0), bo: ph.rider === 1 ? ride(1) : feed(1), pad: 'rider: up jumps, down ducks; feeder: left / right picks,' };
@@ -498,6 +499,12 @@ Sfx.extra.wizBeastDrink = function () { [500, 600, 500, 600].forEach((f, i) => t
 
 /* ---------- the room ---------- */
 wizRoom('beast', {
+  jobs: {
+    rider: { title: 'Rider', act: 'hup', legend: '<kbd>W</kbd> jump <kbd>S</kbd> duck <kbd>A</kbd><kbd>D</kbd> slow down, speed up',
+      howTo: ['Hup charges through hay walls and over long gaps.'] },
+    feeder: { title: 'Feeder', act: 'feed', legend: '<kbd>A</kbd><kbd>D</kbd> pick a snack <kbd>S</kbd> pet the tail',
+      howTo: ['Feed the snack in its thought bubble. Pet the tail when the static is high.'] },
+  },
   act: { label: 'hup', labels: ['hup', 'feed'] },
   tip: 'Front rides (up jumps, down ducks, "Hup!" charges), back feeds it the snack it asks for. Pepper makes it sneeze!',
   legend: { pip: '<kbd>W</kbd> jump <kbd>S</kbd> duck', bo: '<kbd>←</kbd><kbd>→</kbd> pick a snack', pad: 'rider: up jumps, down ducks; feeder: left / right picks,' },

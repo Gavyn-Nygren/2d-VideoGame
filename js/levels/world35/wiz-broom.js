@@ -523,6 +523,7 @@ WIZ_PHASES.broom = {
   plan(st) { return wizBroomPlan(st); },
   labels(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.steer ? 'swat' : 'kick')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.steer ? 'Steer!' : 'Kick!')); },
+  jobKeys(st) { return st.ph.steer === 1 ? ['kicker', 'steerer'] : ['steerer', 'kicker']; },
   legend(st) {
     const ph = st.ph;
     const steer = k => (k ? '<kbd>↑</kbd> climb <kbd>↓</kbd> dive' : '<kbd>W</kbd> climb <kbd>S</kbd> dive');
@@ -548,6 +549,12 @@ Sfx.extra.wizBroomWarn = function () { [700, 900].forEach((f, i) => this.tone(f,
 
 /* ---------- the room ---------- */
 wizRoom('broom', {
+  jobs: {
+    steerer: { title: 'Steerer', act: 'swat', legend: '<kbd>W</kbd> climb <kbd>S</kbd> dive',
+      howTo: ['Swat knocks away a weather vane or a flapping sheet.'] },
+    kicker: { title: 'Kicker', act: 'kick', legend: '',
+      howTo: ['Kick on a steady beat, about 2 a second. Mashing makes the bristles smoke.'] },
+  },
   act: { label: 'kick', labels: ['swat', 'kick'] },
   tip: 'Front steers (up climbs, down dives), back kicks on a steady beat. Fly through the lantern rings!',
   legend: { pip: '<kbd>W</kbd> climb <kbd>S</kbd> dive', bo: 'kick on a steady beat', pad: 'steerer: stick up climbs, down dives,' },

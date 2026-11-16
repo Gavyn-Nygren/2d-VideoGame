@@ -1163,11 +1163,13 @@
   /* ---------- the level ---------- */
   NINJA.defs.shadowsneak = {
     name: 'Shadow Sneak', world: 28, kind: 'team', mode: 'shadowsneak', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> creep / walk <kbd>W</kbd> hop / aim far <kbd>S</kbd> slide / aim near',
-      bo: '<kbd>←</kbd><kbd>→</kbd> creep / walk <kbd>↑</kbd> hop / aim far <kbd>↓</kbd> slide / aim near',
-      pad: 'stick creeps, walks, aims and slides, <span data-glyph="a"></span> hops,',
+    jobs: {
+      sneaker: { title: 'Sneaker', act: 'dash', legend: '<kbd>A</kbd><kbd>D</kbd> creep <kbd>W</kbd> hop <kbd>S</kbd> slide (in a chase) <kbd>F</kbd> hold to dash',
+        howTo: ['Dashing is loud: the guards come to look.', 'At the gate lever, dash pulls it.'] },
+      thrower: { title: 'Pebble thrower', act: 'toss', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd><kbd>S</kbd> aim farther, nearer',
+        howTo: ['Toss a pebble: the guards look where it lands.'] },
     },
+    jobOf: 'sneak', jobSwap: 'You swap jobs every stretch.',
     tip: 'Sneaker: creep from hiding spot to hiding spot. Thrower: toss pebbles so the guards look the other way!',
     act: { label: 'dash', labels: ['dash', 'toss'] },
     map: K.stubMap(),

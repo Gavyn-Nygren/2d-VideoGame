@@ -26,9 +26,8 @@
       if (pl.crouch[id]) { out.down = true; if (pl.hold[id]) out.act = true; return out; }
       if (pl.dodge[id]) { if (pl.dodge[id] > 0) out.right = true; else out.left = true; return out; }
       if (pl.hop[id]) { out.jump = 'tap'; return out; }
-      // hold on (at the shard or a ring spot ▼ + action, so it holds without pulling or ringing)
-      // (always ▼ + action on a ledge: near a shard or a teal crystal the action alone pulls or rings, and a ringer is
-      // shaken off; on a climb the action alone holds)
+      // hold on: ▼ on a ledge (with the action as well, the old way, so ▼ at the top of a climb holds instead of
+      // climbing down; the action alone only pulls or rings); on a climb the action alone holds
       if (pl.hold[id]) { out.act = true; if (h.mode === 'stand') out.down = true; return out; }
       const job = pl.act[id], oid = 1 - id;
       if (job === 'pull') {

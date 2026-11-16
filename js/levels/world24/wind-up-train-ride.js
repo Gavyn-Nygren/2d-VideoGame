@@ -14,7 +14,7 @@
    apart) winds only a little, and 0.22-0.3 s ramps up to a full click. The speed aims at vmax * min(1, 0.45 + 0.9 *
    spring), so a spring 60% full runs at full speed and a slow but steady winder still rolls. Pressing
    with the spring already full is a harmless "Sproing!": the key spins back a bit, the train shudders at low speed for
-   about a second and the key can't be wound meanwhile. ▼ is the brake (hold it): the train stops quickly and the
+   about a second and the key can't be wound meanwhile. ▼ is the brake (hold it; ◀ works too): the train stops quickly and the
    spring doesn't drain. The winder can't leave the engine. The prompt over the engine says when to brake, when to
    hold the brake at a stop, and "Let go of ▼ to roll on" when the brake is held short of where the train must be.
    THE SWITCHER runs and jumps freely along the floor, the decks and the roofs of the wagon and the caboose (platform
@@ -307,7 +307,7 @@ function wtrTrain(st, dt) {
   const S = WTR, tr = st.tr, p = G.players[st.wind], i = p.input, x0 = tr.x;
   if (p.pendingAct || p.pendingJump) { p.pendingAct = false; p.pendingJump = false; wtrWind(st); }
   const e = st.c.end, auto = !!(e && e.goldStop && !e.rung && tr.x > e.x0 - 60);
-  const brake = !!i.down || auto;
+  const brake = !!i.down || !!i.left || auto;   // (◀ brakes too, like the other side-on rides; the card shows ▼)
   tr.brake = brake;
   if (tr.sproing > 0) tr.sproing -= dt;
   if (tr.wob > 0) tr.wob -= dt;

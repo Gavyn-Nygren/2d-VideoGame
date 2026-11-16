@@ -141,6 +141,7 @@ function jackboxLaunch(st, li, fresh) {
   const L = st.c.launches[li], c = st.c;
   st.li = li; st.L = L; st.gi = st.k * 2 + li;
   st.jumper = st.gi % 2; st.cranker = 1 - st.jumper;
+  if (typeof setJobs === 'function') setJobs(st.cranker === 0 ? ['cranker', 'jumper'] : ['jumper', 'cranker']);   // (each card shows the player's own job)
   const from = c.ledges[L.from];
   st.box = { x: L.box, y: from.y, tilt: 0, lid: 0, spring: 0, crankA: 0, shake: 0, hop: 0, gold: false };
   st.tiltT = 0; st.tiltDir = 0;
@@ -730,6 +731,7 @@ function jackboxActLabels(st) {
     });
     const ph = st.phase;
     const word = id => id < 0 ? 'action' : id === st.cranker ? (ph === 'hook' || ph === 'yoyo' ? 'hook' : 'crank') : (ph === 'yoyo' ? 'yo-yo' : 'haul');
+    if (typeof setActWords === 'function') setActWords([word(0), word(1)]);   // (the cards follow the live words)
     let changed = false;
     for (const o of jackboxLabelEls) { const want = word(o.id); if (o.el.textContent !== want) { o.el.textContent = want; changed = true; } }
     if (changed && typeof fitActLabels === 'function') fitActLabels();

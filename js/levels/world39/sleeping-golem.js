@@ -12,14 +12,16 @@
    for each, out of step: a footfall every 4 s) and carry anyone on them; the near arm is a lift: its forearm rises
    from hip height to shoulder height and back (S.armPer), pausing at each end, and its palm closes into a fist once on
    the way down (tell: the fingers curl). Hollows (dark gaps between blocks) are steady spots.
-   BOTH: ◀ ▶ walk, ▲ jump (or climb, in a climb zone), ▼ crouch (or climb down, at the top of a climb), action held =
-   HOLD ON (no moving; a Stomp cannot shake you off).
+   BOTH: ◀ ▶ walk, ▲ jump (or climb, in a climb zone), ▼ held = crouch and HOLD ON (no moving; a Stomp cannot shake
+   you off; at the top of a climb ▼ climbs down instead). On a climb ▼ climbs, so there the action held holds on.
+   (Gavyn, 2026-11-16, controls audit: holding on is ▼ on a ledge; the action only pulls or rings. ▼ + action still
+   holds on as well, the old way, so the computer and anyone used to it keep working.)
    ROLES (swap each stretch; tongs and chime change hands): the PULLER holds the action at the current shard to pull
    (a 3 s bar; the crown takes three bars). The SOOTHER holds the action at that shard's teal ear crystal to ring the
    chime: Rage falls while it rings, and the golem's flinches (one at each third of a bar) are cancelled. An unsoothed
    flinch throws the puller off. Ringing is not holding on: a Stomp shakes off a ringer who is not in a hollow (hop
-   over it: anyone in the air is not shaken; ▼ + action = hold on flat, through a stomp and a sweep at once, never
-   pulling or ringing). Big shards (one per stretch from stretch 2) come loose when the bar is
+   over it: anyone in the air is not shaken; ▼ = hold on flat, through a stomp and a sweep at once, never pulling or
+   ringing). Big shards (one per stretch from stretch 2) come loose when the bar is
    full and then need a HEAVE: both next to it press the action within 0.5 s of each other.
    TROUBLE: Stomps (a groan and the foot's shadow 1 s before); scratches from stretch 2 (the eye looks at the next
    shard and a hand lifts 1.5 s before, then it sweeps there: crouch or be brushed off); the fist (palm riders are
@@ -161,7 +163,7 @@
     if (k === 0) Music.cue({ song: 'cavegolem0' });
   }
   const roleWord = (st, id) => (id === st.puller ? 'pull' : 'ring');
-  function labels(st) { K.actLabels([roleWord(st, 0), roleWord(st, 1)], 'hold on'); }
+  function labels(st) { K.actLabels([roleWord(st, 0), roleWord(st, 1)], 'pull'); }
   // put a hero on the stretch's base ledge (the start, a tumble, a tantrum)
   function spawn(st, id) {
     let [n, lx] = STRETCH[st.k].base;
@@ -233,16 +235,19 @@
       // ledges have one climb straight above another, and nobody could stop on the knee or the back ledge between
       // them without letting go on the exact tick). Let go, then press again to climb on.
       if ((h.climbLock === 'up' && !up) || (h.climbLock === 'down' && !down)) h.climbLock = null;
-      if (act && down) { h.hold = true; h.crouch = true; } // (▼ + action: hold on, flat, without pulling or ringing)
-      else if (act) {
+      if (act && !down) {
+        // (the action only pulls or rings here: holding on is ▼)
         if (id === st.puller && atShard(st, h) && !curShard(st).loose) h.pull = true;
         else if (id === st.soother && atEar(st, h) && !curShard(st).mite) h.ring = true;
-        else h.hold = true;
         if (id === st.soother && atEar(st, h) && curShard(st).mite) K.hintOnce(st, 'mite' + st.k + st.cur, id, 'A crystal mite is on it! Jump on it', 2.4);
-      } else if (down) {
+      }
+      if (act && down) { h.hold = true; h.crouch = true; } // (▼ + action: hold on, flat, without pulling or ringing)
+      else if (h.pull || h.ring) { /* busy pulling or ringing: stands still */ }
+      // (review, 2026-11-16) the action held with nothing to pull or ring no longer roots you to the spot: you walk on
+      else if (down) {
         const c = h.climbLock === 'down' ? null : CLIMBS.find(c => c.up === s.n && overClimb(st, c, h, s.y));
         if (c) { h.mode = 'climb'; h.s = c.i; h.ly = c.top + 2; h.lx = clamp(h.x - world(st, c.part, 0, h.ly).x, c.x0, c.x1); }
-        else h.crouch = true;
+        else { h.crouch = true; h.hold = true; }   // ▼ held: crouch and hold on tight
       } else {
         if (lr) { h.lx += lr * S.walk * sp * dt; h.face = lr; h.walkPh += dt * 10; }
         const c = up && h.climbLock !== 'up' ? CLIMBS.find(c => c.down === s.n && overClimb(st, c, h, s.y)) : null;
@@ -344,7 +349,7 @@
         if ((h.mode === 'stand' || h.mode === 'climb') && !h.hold && !h.pull && !inHollow(h)) {
           knock(st, id, (h.x >= 0 ? 1 : -1) * (60 + Math.random() * 90), -250);
           st.stats.shaken++; Sfx.play('cavegolemShake');
-          K.hint(st, id, 'Hold on with the action when it stomps!', 2);
+          K.hint(st, id, h.mode === 'climb' ? 'On a climb, hold ' + K.key(id, 'act') + ' when it stomps!' : 'Hold ' + K.key(id, 'down') + ' to hold on when it stomps!', 2);
         }
       }
     }
@@ -877,7 +882,7 @@
       const kk = what => (K.quiet(id) ? '' : K.key(id, what) + ' ');
       const job = pl.act[id];
       K.chip(x0, cy, cw, chh, kk('act') + (id === st.puller ? (pl.shard && pl.shard.loose ? 'HEAVE' : 'PULL') : 'RING'), (job === 'pull' || job === 'ring' || job === 'heave') && !h.pull && !h.ring, h.pull || h.ring, z);
-      K.chip(x0 + cw + 6 * z, cy, cw, chh, 'HOLD ON', pl.hold[id] && !h.hold && !h.pull, h.hold, z);
+      K.chip(x0 + cw + 6 * z, cy, cw, chh, kk(h.mode === 'climb' ? 'act' : 'down') + 'HOLD ON', pl.hold[id] && !h.hold && !h.pull, h.hold, z);
       K.chip(x0 + (cw + 6 * z) * 2, cy, cw, chh, kk('down') + 'CROUCH', pl.crouch[id] && !h.crouch, h.crouch, z);
     }
     if (G.introT > 0 || st.state !== 'go' || st.waiting) return;
@@ -890,7 +895,7 @@
       if (pl.crouch[id]) { s = (st.arch ? 'Arch! Crouch ' : 'The hand! Crouch ') + K.key(id, 'down'); pulse = true; }
       else if (pl.dodge[id]) { s = 'Step ' + K.key(id, pl.dodge[id] > 0 ? 'right' : 'left'); pulse = true; }
       else if (pl.hop[id]) { s = 'Stomp! Hop ' + K.key(id, 'jump'); pulse = true; }
-      else if (pl.hold[id] && !h.hold && !h.pull) { s = 'Stomp! Hold on ' + K.key(id, 'act'); pulse = true; }
+      else if (pl.hold[id] && !h.hold && !h.pull) { s = 'Stomp! Hold on ' + K.key(id, h.mode === 'climb' ? 'act' : 'down'); pulse = true; }
       else if (sh && sh.loose && pl.act[id] === 'heave') { s = 'HEAVE together! ' + K.key(id, 'act'); pulse = true; }
       else if (pl.act[id] === 'pull' && !h.pull) { s = (st.h[st.soother].ring ? 'Pull now! Hold ' : 'Pull (wait for the chime) ') + K.key(id, 'act'); pulse = st.h[st.soother].ring; }
       else if (pl.act[id] === 'ring' && !h.ring) { s = 'Ring the chime! Hold ' + K.key(id, 'act'); pulse = true; }
@@ -948,15 +953,22 @@
     pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump / climb <kbd>S</kbd> crouch',
     bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump / climb <kbd>↓</kbd> crouch',
   };
-  const acts = k => ({ label: 'hold on', labels: [k % 2 === 0 ? 'pull' : 'ring', k % 2 === 0 ? 'ring' : 'pull'] });
+  const acts = k => ({ label: 'pull', labels: [k % 2 === 0 ? 'pull' : 'ring', k % 2 === 0 ? 'ring' : 'pull'] });
   CAVE.defs.cavegolem = {
+    jobs: {
+      puller: { title: 'Puller', act: 'pull', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump, climb <kbd>S</kbd> hold on, crouch',
+        howTo: ['Hold pull at the dark shard while it rings.'] },
+      soother: { title: 'Soother', act: 'ring', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump, climb <kbd>S</kbd> hold on, crouch',
+        howTo: ['Hold ring at the teal crystal to calm it.'] },
+    },
+    jobSwap: 'You swap jobs every stretch.',
     name: 'Sleeping Golem', world: 38, kind: 'team', mode: 'cavegolem', outfit: 'cavegolem', music: 'cavegolem0', amb: 'caveCavern',
     ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     legend,
     tip: 'One rings the chime to calm it, one pulls the shard. Hold on when it stomps.',
     howTo: [
-      'Hold the action to hold on tight. A stomp shakes off anyone who isn\'t.',
-      'SOOTHER: ring the chime at the teal crystal. PULLER: pull the dark shard while it rings.',
+      'Hold down to crouch and hold on tight. A stomp shakes off anyone who isn\'t.',
+      'On a climb, down climbs: hold the action there to hold on.',
       'The red face is its temper. Too angry and it shakes you both off.',
       'Climb moss, ropes and crystal studs with up and down. Crouch when its hand or a low arch comes.',
     ],

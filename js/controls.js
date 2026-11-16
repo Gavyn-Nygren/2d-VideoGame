@@ -103,7 +103,10 @@ function controlsLine(id, html) {
 // a level's legend (def.legend) as each player's keyboard line. { pip, bo } replace a whole line; { jump, down }
 // replace just those words in the default line.
 const LEGEND_DEFAULT = ['<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop', '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> drop'];
-function legendBase(id, lg) {
+function legendBase(id, lg, job) {
+  // a level with jobs (def.jobs): the player's own job's line, written in Pip's keys (controlsLine gives each player theirs)
+  const j = job === undefined ? jobFor(id) : job;
+  if (j) return j.legend || '';
   if (typeof lg === 'function') lg = lg();
   if (lg && lg[id === 0 ? 'pip' : 'bo']) return lg[id === 0 ? 'pip' : 'bo'];
   let h = LEGEND_DEFAULT[id];
@@ -114,6 +117,76 @@ function legendBase(id, lg) {
 // that player's controls for this level, in their own buttons. (Older levels also carry a hand-written controller
 // line, legend.pad, one sentence for both roles. It is no longer shown: the player's own line is rewritten instead.)
 function playerControlsHTML(id, lg) { return controlsLine(id, legendBase(id, lg)); }
+
+/* ---------- jobs: two-job levels ---------- */
+// Gavyn (2026-11-16, controls audit): in a level where the two players do different jobs, each card shows a player
+// only their own job's buttons. A level (or a room, or a boss part) lists its jobs:
+//   jobs: { skier: { title: 'Skier', legend: '<kbd>S</kbd> tuck <kbd>W</kbd> jump', act: 'jump', howTo: ['...'] },
+//           fans:  { title: 'Fan crew', legend: '<kbd>A</kbd><kbd>D</kbd> run', act: 'fan' } },
+//   jobSwap: 'You swap jobs every jump',     (optional: the line under the two boxes; the card then also shows "Next")
+// A boss level whose parts each have their own jobs sets jobParts: true on its LEVELS entry (the ready card then says
+// "Each era has new jobs..." instead of the swap line, and shows no "Next" strip).
+// A job's legend is a keyboard line in Pip's keys (W A S D, F); every player sees it in their own buttons. act is that
+// job's action word (or a list of the words it can show); a job with no action button leaves it out.
+// Who has which job, first that applies:
+//   setJobs(['thrower', 'zipper'])   from level code, for jobs that change inside a room (cleared on each room)
+//   def.job: ['skier', 'fans']       a room's fixed jobs, by player id
+//   def.jobOf: 'pilot'               a room field holding the id of the player with the FIRST listed job
+//   def.jobAlt: true                 Pip has the first job in rooms 1 and 3, Bo in rooms 2 and 4
+//   the action word                  the job whose act matches actLabel(id) (most levels already swap def.act.labels)
+//   otherwise                        Pip the first job, Bo the second
+const Jobs = { now: null };
+function setJobs(keys) {
+  const was = Jobs.now ? Jobs.now.join('|') : '';
+  Jobs.now = keys ? [keys[0], keys[1]] : null;
+  if ((Jobs.now ? Jobs.now.join('|') : '') !== was) jobsChanged();
+}
+function jobsChanged() {
+  try {
+    if (typeof document === 'undefined') return;
+    if (G.mode === 'paused') overlay.querySelectorAll('[data-pause-who]').forEach(el => { el.innerHTML = pauseWhoHTML(); });
+    legendRender();
+  } catch (e) { /* (tests without a page) */ }
+}
+const jobActs = j => (j && j.act == null ? [] : Array.isArray(j.act) ? j.act : [j.act]);
+function jobKeys(def) {
+  def = def || (G.level && G.level.def);
+  const js = def && def.jobs;
+  if (!js) return null;
+  const keys = Object.keys(js);
+  if (keys.length < 2) return keys.length ? [keys[0], keys[0]] : null;
+  if (Jobs.now && js[Jobs.now[0]] && js[Jobs.now[1]]) return Jobs.now.slice();
+  if (Array.isArray(def.job) && js[def.job[0]] && js[def.job[1]]) return def.job.slice();
+  if (def.jobOf && (def[def.jobOf] === 0 || def[def.jobOf] === 1)) return def[def.jobOf] === 0 ? [keys[0], keys[1]] : [keys[1], keys[0]];
+  if (def.jobAlt && def.roomIndex != null) return def.roomIndex % 2 ? [keys[1], keys[0]] : [keys[0], keys[1]];
+  // by the action word each player has now
+  const byAct = [0, 1].map(id => { const w = actLabel(id); return keys.find(k => jobActs(js[k]).includes(w)); });
+  if (byAct[0] && byAct[1] && byAct[0] !== byAct[1]) return byAct;
+  if (byAct[0] && !byAct[1]) return [byAct[0], keys.find(k => k !== byAct[0])];
+  if (byAct[1] && !byAct[0]) return [keys.find(k => k !== byAct[1]), byAct[1]];
+  return [keys[0], keys[1]];
+}
+// the player's job now ({ key, title, legend, act, howTo }), or null in a level without jobs
+function jobFor(id, def) {
+  def = def || (G.level && G.level.def);
+  const ks = jobKeys(def);
+  if (!ks) return null;
+  return Object.assign({ key: ks[id] }, def.jobs[ks[id]]);
+}
+// the other job (what this player does after a swap), or null
+function otherJobFor(id, def) {
+  def = def || (G.level && G.level.def);
+  const ks = jobKeys(def);
+  if (!ks || ks[0] === ks[1]) return null;
+  return Object.assign({ key: ks[1 - id] }, def.jobs[ks[1 - id]]);
+}
+// the job's action word for its rows: the live word while it is that player's job, else the job's own first word
+function jobActWord(id, j) {
+  const cur = jobFor(id);
+  // (a live word the job doesn't list is another job's: a level that swaps jobs without telling setActWords)
+  if (cur && j && cur.key === j.key && jobActs(j).length) { const w = actLabel(id); return jobActs(j).includes(w) ? w : jobActs(j)[0]; }
+  return jobActs(j)[0] || '';
+}
 
 /* ---------- the top-bar legend ---------- */
 const Legend = { cur: null };
@@ -192,8 +265,9 @@ const plainText = h => h.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/
 // Gavyn (2026-11-15): on a controller the table shows plain arrows, not the word "stick"
 const STICK_ALL = ['left', 'right', 'up', 'down'].map(d => `<kbd class="k-stick">${ARROWS[d]}</kbd>`).join('');
 const arrowsOnly = h => h.replace(/<span class="k-word">stick<\/span>/g, '').replace(/<kbd class="k-stick">stick<\/kbd>/g, STICK_ALL);
-function controlRows(id, lg, act) {
-  const base = String(legendBase(id, lg)), rows = [], re = /(?:<kbd>[^<]*<\/kbd>)+/g;
+function controlRows(id, lg, act, job) {
+  if (job === undefined) job = jobFor(id);
+  const base = String(legendBase(id, lg, job)), rows = [], re = /(?:<kbd>[^<]*<\/kbd>)+/g;
   let m, last = 0, pre = '';
   while ((m = re.exec(base))) {
     const between = plainText(base.slice(last, m.index)), prev = rows[rows.length - 1];
@@ -206,7 +280,7 @@ function controlRows(id, lg, act) {
       pre = split ? after : '';
     } else pre = between.trim();
     // a role name ("fans:") keeps its colon in front of the row's words
-    rows.push({ keys: arrowsOnly(controlsLine(id, m[0])), label: '', pre: tidyLabel(pre), role: /:$/.test(pre) });
+    rows.push({ keys: arrowsOnly(controlsLine(id, m[0])), whats: capsWhats(m[0]), label: '', pre: tidyLabel(pre), role: /:$/.test(pre) });
     last = m.index + m[0].length;
   }
   const tail = plainText(base.slice(last));
@@ -220,37 +294,68 @@ function controlRows(id, lg, act) {
     r.label = tidyLabel(prev.label.slice(cut + 1)); prev.label = tidyLabel(prev.label.slice(0, cut));
   });
   rows.forEach(r => { r.label = tidyLabel(r.pre ? r.pre + (r.role && r.label ? ': ' : ' ') + r.label : r.label); });
-  if (act) {
+  // the action button's row (a job names its own word; a job without the action has none)
+  const aw = job ? jobActWord(id, job) : act ? actLabel(id) : '';
+  if (aw && (act || job)) {
     // an action that does the same as a row above (Ski Jump: the jumper jumps with jump or the action) joins that row
-    const same = rows.find(r => r.label === actLabel(id));
-    if (same) { if (!same.keys.includes(btnHTML(id, 'act'))) same.keys += ' <span class="k-word">or</span> ' + btnHTML(id, 'act'); }
-    else rows.push({ keys: btnHTML(id, 'act'), label: actLabel(id), act: true });
+    // (or a row that starts with the word: "stick the landing"; not "hold to duck", where hold means the key)
+    const same = rows.find(r => r.label === aw || (r.label.startsWith(aw + ' ') && !/^\S+ to /.test(r.label)));
+    if (same) { if (!same.keys.includes(btnHTML(id, 'act'))) { same.keys += ' <span class="k-word">or</span> ' + btnHTML(id, 'act'); same.whats.push('or', 'act'); } }
+    else if (!rows.some(r => r.whats.includes('act'))) rows.push({ keys: btnHTML(id, 'act'), whats: ['act'], label: aw, act: true });
   }
   // keys with no words of their own share the next row ("[W][A][S][D] [F] grab")
-  for (let k = rows.length - 2; k >= 0; k--) if (!rows[k].label && rows[k + 1]) { rows[k + 1].keys = rows[k].keys + ' <span class="k-word">+</span> ' + rows[k + 1].keys; rows.splice(k, 1); }
-  rows.forEach(r => { r.label = esc(r.label || '…'); });
+  for (let k = rows.length - 2; k >= 0; k--) if (!rows[k].label && rows[k + 1]) { rows[k + 1].keys = rows[k].keys + ' <span class="k-word">+</span> ' + rows[k + 1].keys; rows[k + 1].whats = rows[k].whats.concat(['+'], rows[k + 1].whats); rows.splice(k, 1); }
+  rows.forEach(r => { r.text = r.label || '…'; r.label = esc(r.text); });
   return { rows, note: note ? esc(note) : '' };
 }
+// the buttons a group of keycaps means ('<kbd>A</kbd><kbd>D</kbd>' -> ['left', 'right']), for drawing on the canvas
+const capsWhats = g => (g.match(/<kbd>[^<]*<\/kbd>/g) || []).map(t => KEY_MEANS[t.slice(5, -6)] || t.slice(5, -6));
 // that player's controls as a two-column table (keys | what they do)
-function controlsTableHTML(id, lg, act) {
-  const { rows, note } = controlRows(id, lg, act);
+function controlsTableHTML(id, lg, act, job) {
+  const { rows, note } = controlRows(id, lg, act, job);
   return `<div class="ctl-table">${rows.map(r => `<div class="ctl-row${r.act ? ' is-act' : ''}"><span class="ctl-k">${r.keys}</span><span class="ctl-v">${r.label}</span></div>`).join('')}</div>`
     + (note ? `<p class="ctl-note">${note}</p>` : '');
 }
-// the pause card: a card per person (side by side with two), with their device and their rows
+// the legend the cards read: one a level's code set while playing (a boss part's), else the level's own
+function cardLegend() {
+  const l = LEVELS[G.levelIndex], def = G.level && G.level.def;
+  if (Legend.cur && Legend.cur !== l.legend && G.mode !== 'ready') return Legend.cur;
+  return (def && def.legend) || l.legend;
+}
+// "Pip · Skier": a player's name, and their job's name in a level with jobs
+const jobTitleHTML = j => (j && j.title ? `<span class="job-name">${esc(j.title)}</span>` : '');
+const jobHowHTML = j => (j && Array.isArray(j.howTo) && j.howTo.length ? `<ul class="rdy-how job-how">${j.howTo.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : '');
+// a boss level (LEVELS entry jobParts: true) whose parts each bring new jobs: the ready card says so, and the card at
+// the start of every part shows that part's jobs
+function jobPartsLine(l) {
+  if (!l || !l.jobParts) return '';
+  const w = (l.roomWord || 'Room').toLowerCase();
+  return `Each ${w} has new jobs. A card shows your buttons at the start of every ${w}.`;
+}
+// a smaller strip with the job a player gets after the swap
+function nextJobHTML(id, lg, act) {
+  const def = G.level && G.level.def, o = def && def.jobSwap && !LEVELS[G.levelIndex].jobParts && otherJobFor(id);
+  if (!o) return '';
+  return `<div class="job-next"><p class="job-next-h">After the swap: <b>${esc(o.title || '')}</b></p>${controlsTableHTML(id, lg, act, o)}</div>`;
+}
+// the pause card: a card per person (side by side with two), with their device, their job and their rows
 function controlsLinesHTML() {
-  const l = LEVELS[G.levelIndex], lg = (G.level && G.level.def.legend) || l.legend, act = G.level && G.level.def.act;
+  const lg = cardLegend(), act = G.level && G.level.def.act;
   const cards = [0, 1].filter(k => !isCpuPlayer(k)).map(k => {
-    const cls = k === 0 ? 'pip' : 'bo', d = playerDevice(k);
-    return `<div class="pcard ${cls} ctl-card"><div class="rdy-head"><span class="nm nm-${cls}">${NAMES[k]}</span><span class="devchip dev-${d.kind}">${esc(d.name)}</span></div>${controlsTableHTML(k, lg, act)}</div>`;
+    const cls = k === 0 ? 'pip' : 'bo', d = playerDevice(k), j = jobFor(k);
+    return `<div class="pcard ${cls} ctl-card"><div class="rdy-head"><span class="nm nm-${cls}">${NAMES[k]}${jobTitleHTML(j)}</span><span class="devchip dev-${d.kind}">${esc(d.name)}</span></div>${controlsTableHTML(k, lg, act)}${jobHowHTML(j)}</div>`;
   });
   let cpu = '';
-  if (cpuSolo() && act && actLabel(0) !== actLabel(1)) { const c = 1 - cpuHuman(); cpu = `<p class="hint"><b class="nm-${c === 0 ? 'pip' : 'bo'}">${NAMES[c]}</b> (computer): ${esc(actLabel(c))}</p>`; }
+  if (cpuSolo()) {
+    const c = 1 - cpuHuman(), cj = jobFor(c), nm = `<b class="nm-${c === 0 ? 'pip' : 'bo'}">${NAMES[c]}</b> (computer)`;
+    if (cj && cj.title) cpu = `<p class="hint">${nm}: ${esc(cj.title)}</p>`;
+    else if (act && actLabel(0) !== actLabel(1)) cpu = `<p class="hint">${nm}: ${esc(actLabel(c))}</p>`;
+  }
   return `<div class="ctl-cards${cards.length > 1 ? ' two' : ''}">${cards.join('')}</div>${cpu}`;
 }
 
 /* ---------- the ready card ---------- */
-const pluralWord = w => w + (/(s|x|ch|sh)$/.test(w) ? 'es' : 's');
+const pluralWord = w => (/lf$/.test(w) ? w.slice(0, -1) + 'ves' : w + (/(s|x|ch|sh)$/.test(w) ? 'es' : 's'));
 const Ready = { ok: [false, false], goAt: 0, armAt: 0 };
 // from the menus: load the level, then wait on its ready card
 function startLevel(i) { loadLevel(i, 'play', { ready: true }); }
@@ -271,6 +376,7 @@ function showReadyCard() {
       </div>
       <p class="lede">${esc(l.tip || '')}</p>${how}${medalGoalsHTML(i)}${note ? `<p class="hint">${esc(note)}</p>` : ''}
       <div class="rdy-duo" data-ready-duo></div>
+      <p class="rdy-swap" data-ready-swap hidden></p>
       <p class="rdy-foot" data-ready-foot role="status" aria-live="polite"></p>
     </div>`);
   readyRender();
@@ -278,14 +384,16 @@ function showReadyCard() {
 function readyRender() {
   const duo = overlay.querySelector('[data-ready-duo]');
   if (!duo) return;
-  const l = LEVELS[G.levelIndex], lg = (G.level && G.level.def.legend) || l.legend, act = G.level && G.level.def.act;
+  const l = LEVELS[G.levelIndex], lg = cardLegend(), act = G.level && G.level.def.act, def = G.level && G.level.def;
   const vs = l.kind === 'versus';
+  duo.classList.toggle('job-parts', !!l.jobParts);
   duo.innerHTML = [0, 1].map(k => {
-    const cls = k === 0 ? 'pip' : 'bo', nm = `<span class="nm nm-${cls}">${NAMES[k]}</span>`;
+    const cls = k === 0 ? 'pip' : 'bo', j = jobFor(k), nm = `<span class="nm nm-${cls}">${NAMES[k]}${jobTitleHTML(j)}</span>`;
     if (isCpuPlayer(k)) {
+      const its = j && j.title ? ` Its job: ${esc(j.title)}.` : act && actLabel(k) !== actLabel(1 - k) ? ` Its job: ${esc(actLabel(k))}.` : '';
       return `<div class="pcard ${cls} rdy is-ready">
         <div class="rdy-head">${nm}<span class="devchip">Computer</span></div>
-        <p class="hint">${vs ? 'The computer plays against you.' : 'The computer is your teammate.'}${act && actLabel(k) !== actLabel(1 - k) ? ` Its job: ${esc(actLabel(k))}.` : ''}</p>
+        <p class="hint">${vs ? 'The computer plays against you.' : 'The computer is your teammate.'}${its}</p>
         <div class="rdy-btn" aria-hidden="true">✔ Ready</div>
       </div>`;
     }
@@ -293,10 +401,12 @@ function readyRender() {
     const press = d.kind === 'touch' ? 'Tap here when ready' : `Press ${btnHTML(k, 'jump')} when ready`;
     return `<div class="pcard ${cls} rdy${ok ? ' is-ready' : ''}">
       <div class="rdy-head">${nm}<span class="devchip dev-${d.kind}">${esc(d.name)}</span></div>
-      ${controlsTableHTML(k, lg, act)}
+      <div class="rdy-ctl">${controlsTableHTML(k, lg, act)}${jobHowHTML(j)}${nextJobHTML(k, lg, act)}</div>
       <button type="button" class="rdy-btn" data-act="ready" data-p="${k}" aria-pressed="${ok}">${ok ? '✔ Ready!' : press}</button>
     </div>`;
   }).join('');
+  const sw = overlay.querySelector('[data-ready-swap]');
+  if (sw) { sw.textContent = jobPartsLine(l) || (def && def.jobs && def.jobSwap) || ''; sw.hidden = !sw.textContent; }
   const foot = overlay.querySelector('[data-ready-foot]'), people = [0, 1].filter(k => !isCpuPlayer(k)), left = people.filter(k => !Ready.ok[k]);
   if (foot) foot.textContent = !left.length ? 'Here we go!' : people.length === 1 ? 'The level starts when you are ready.'
     : left.length === 2 ? 'The level starts when you are both ready.' : `Waiting for ${NAMES[left[0]]}...`;

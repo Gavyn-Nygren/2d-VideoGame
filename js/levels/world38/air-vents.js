@@ -910,14 +910,15 @@
   /* ---------- the level ---------- */
   SPY.defs.spyvents = {
     name: 'Air Vent Crawl', world: 37, kind: 'team', mode: 'spyvents', outfit: 'spyvents', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> crawl <kbd>W</kbd><kbd>S</kbd> climb',
-      bo: '<kbd>←</kbd><kbd>→</kbd> crawl <kbd>↑</kbd><kbd>↓</kbd> climb',
+    jobs: {
+      light: { title: 'Light', act: 'cover', legend: '<kbd>A</kbd><kbd>D</kbd> crawl <kbd>W</kbd><kbd>S</kbd> climb',
+        howTo: ['Your torch shows the way. Hold cover when a guard is under a grate.'] },
+      hacker: { title: 'Hacker', act: 'hack', legend: '<kbd>A</kbd><kbd>D</kbd> crawl <kbd>W</kbd><kbd>S</kbd> climb',
+        howTo: ['Press the action at a door, then the arrows in order.', 'You can only read them in the torch light.'] },
     },
+    jobAlt: true, jobSwap: 'You swap jobs every stretch.',
     tip: 'Shine the torch on the panel so your partner can read it. Cover it over the grates.',
     howTo: [
-      'LIGHT: your torch shows the way. Hold the action to cover it when a guard is under a grate.',
-      'HACKER: press the action at a door, then the arrows in order. You can only read them in the torch light.',
       'Crawl gently on dented metal. Noise brings the guards, and the Sniffer.',
     ],
     act: { label: 'cover' },

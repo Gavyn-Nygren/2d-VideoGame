@@ -1110,12 +1110,15 @@
   const P = (x, high) => ({ k: 'probe', x, high: !!high });
   STORMCHASE.defs.whiteout = {
     name: 'Blizzard Whiteout', world: 32, kind: 'team', mode: 'whiteout', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump / climb <kbd>S</kbd> crouch',
-      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> jump / climb <kbd>↓</kbd> crouch',
-      pad: 'stick walks and crouches, <span data-glyph="a"></span> jumps,',
+    jobs: {
+      flare: { title: 'Flare hero', act: 'flare', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump, climb <kbd>S</kbd> hold to crouch',
+        howTo: ['Hold flare to raise it: more light, but it burns faster.'] },
+      ice: { title: 'Ice hero', act: 'pick', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> jump, climb <kbd>S</kbd> hold to crouch',
+        howTo: ['Tap pick to swing at ice walls; hold it at a crate to dig.'] },
     },
-    tip: 'You only see inside the flare\'s glow. The flare hero holds the action to raise it; the ice hero taps it to swing the pick. Crouch in gusts, and brace when your partner falls!',
+    howTo: ['Crouch in gusts. When your partner falls, press the action fast to brace.'],
+    jobOf: 'flare', jobSwap: 'You swap jobs every stretch.',
+    tip: 'You only see inside the flare\'s glow. Stay together on the rope!',
     act: acts(0),
     map: K.stubMap(),
     rooms: [

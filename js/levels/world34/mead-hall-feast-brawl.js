@@ -957,8 +957,8 @@
   VIKING.defs.meadhall = {
     name: 'Mead Hall Feast Brawl', world: 33, kind: 'team', mode: 'meadhall', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Feast',
     legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> step up <kbd>S</kbd> duck',
-      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> step up <kbd>↓</kbd> duck',
+      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> step up <kbd>S</kbd> duck, drop off a table',
+      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> step up <kbd>↓</kbd> duck, drop off a table',
       pad: 'stick walks, jump steps up,',
     },
     tip: 'Feed the crew! Pick food at the kitchen rack, toss it to your partner, and on a serving step hold the action and let go to slide it to the Viking who wants it.',

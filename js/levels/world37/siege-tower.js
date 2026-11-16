@@ -122,7 +122,17 @@
     K.fx(st);
   }
   const climber = (lvl, x) => ({ lvl, x, climb: null, face: 1, act: 0, bucket: false, knock: 0, hold: 0, across: false, beat: 0 });
-  function labels(st) { const w = []; w[st.push] = 'heave'; w[st.tw] = 'job'; K.actLabels(w, 'job'); }
+  function labels(st) { const w = []; w[st.push] = 'heave'; w[st.tw] = heroWord(st); K.actLabels(w, w[st.tw]); setActWords(w); }
+  // the tower hero's action word where they stand now (what a press or a hold would do there)
+  function heroWord(st) {
+    const c = st.he;
+    if (!c) return 'roof';
+    if (st.fires && st.fires.some(f => f.lvl === c.lvl && Math.abs(f.x - c.x) < 22)) return 'douse';
+    if (c.lvl === 3) return st.state === 'bridge' ? 'bridge' : 'roof';
+    if (c.lvl === 2) return 'winch';
+    if (c.lvl === 1) return c.x < (T.chock + T.plank) / 2 ? 'chock' : 'plank';
+    return 'kick';
+  }
   // the slope and the climb so far at world x
   function slopeAt(st, x) { for (const s of st.slopes) if (x >= s.x0 && x < s.x1) return s.s; return 0; }
   function height(st, x) { let h = 0; for (const s of st.slopes) { if (x <= s.x0) continue; h += (Math.min(x, s.x1) - s.x0) * s.s; } return h; }
@@ -150,6 +160,7 @@
       else if (!st.last && st.tx >= st.len) endStretch(st);
     } else if (st.state === 'end') endStep(st, dt);
     for (const p of P) { p.pendingJump = false; p.pendingAct = false; }
+    if (st.he) labels(st);
     K.tickFx(st, dt);
     st.cx = st.tx - SCR.x;
     mirror(st);
@@ -915,14 +926,16 @@
   };
 
   /* ---------- the level ---------- */
-  const acts = d => ({ label: 'job', labels: d === 0 ? ['heave', 'job'] : ['job', 'heave'] });
+  const acts = d => ({ label: 'roof', labels: d === 0 ? ['heave', 'roof'] : ['roof', 'heave'] });
   TOURNEY.defs.siegetower = {
     name: 'Siege Tower Push', world: 36, kind: 'team', mode: 'siegetower', outfit: 'none', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> push, brake or walk / <kbd>W</kbd><kbd>S</kbd> climb, duck',
-      bo: '<kbd>←</kbd><kbd>→</kbd> push, brake or walk / <kbd>↑</kbd><kbd>↓</kbd> climb, duck',
-      pad: 'stick pushes or walks,',
+    jobs: {
+      pusher: { title: 'Pusher', act: 'heave', legend: '<kbd>D</kbd> hold to push <kbd>A</kbd> hold to brake <kbd>S</kbd> duck',
+        howTo: ['Heave over ruts: double force for a moment.'] },
+      tower: { title: 'Tower hero', act: ['roof', 'douse', 'winch', 'chock', 'plank', 'kick', 'bridge'], legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd><kbd>S</kbd> climb a ladder',
+        howTo: ['Top deck: hold to raise the roof. Tap at a fire 3 times.', 'The action word shows the job where you stand.'] },
     },
+    jobOf: 'pusher', jobSwap: 'You swap jobs every stretch.',
     tip: 'Push the siege tower up to the baron\'s wall! The pusher pushes, brakes and heaves; the tower hero climbs to raise the roof, beat out fires and fix the wheels.',
     act: acts(0),
     map: K.stubMap(),

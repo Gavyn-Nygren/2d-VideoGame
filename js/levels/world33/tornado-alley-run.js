@@ -64,7 +64,7 @@
     st.junkN = 0; st.windT = 0; st.spinT = 0;
     st.obs = build(st);
   }
-  function labels(st) { const w = []; w[st.drv] = 'horn'; w[st.spt] = 'swing'; K.actLabels(w, 'horn'); }
+  function labels(st) { const w = []; w[st.drv] = 'boost'; w[st.spt] = 'swing'; K.actLabels(w, 'boost'); }
 
   // the road for one stretch: things spaced in time along the distance, at least one free lane every time
   function build(st) {
@@ -760,7 +760,7 @@
     {
       const bx = K.panel(D, 'driver', 236, 58, z), cy = bx.y + 27 * z, chh = 23 * z, cw = (bx.w - 24 * z - 6 * z) / 2, x0 = bx.x + 12 * z;
       K.chip(x0, cy, cw, chh, (K.quiet(D) ? '' : K.key(D, 'up') + K.key(D, 'down') + ' ') + 'LANE', pl.drv.lane !== st.lane, st.lane !== st.laneF, z);
-      K.chip(x0 + cw + 6 * z, cy, cw, chh, st.hornCd > 0 ? 'HORN ' + Math.ceil(st.hornCd) + 's' : kk(D, 'act') + 'HORN', pl.drv.horn || (pl.ramp < 1.2 && st.hornCd <= 0), st.boostT > 0, z);
+      K.chip(x0 + cw + 6 * z, cy, cw, chh, st.hornCd > 0 ? 'BOOST ' + Math.ceil(st.hornCd) + 's' : kk(D, 'act') + 'BOOST', pl.drv.horn || (pl.ramp < 1.2 && st.hornCd <= 0), st.boostT > 0, z);
     }
     {
       const bx = K.panel(P_, 'spotter', 236, 58, z), cy = bx.y + 27 * z, chh = 23 * z, cw = (bx.w - 24 * z - 6 * z) / 2, x0 = bx.x + 12 * z;
@@ -783,7 +783,7 @@
     const P = K.prompter(st), s = vanScale(st.laneF), y = vanY(st.laneF);
     {
       let str = null, col = C.gold, pulse = false;
-      if (pl.drv.horn || (pl.ramp < 1.0 && st.hornCd <= 0 && st.boostT <= 0)) { str = 'HORN! ' + K.key(D, 'act'); pulse = true; }
+      if (pl.drv.horn || (pl.ramp < 1.0 && st.hornCd <= 0 && st.boostT <= 0)) { str = 'BOOST! ' + K.key(D, 'act'); pulse = true; }
       else if (pl.drv.lane !== st.lane) { str = (pl.drv.lane < st.lane ? 'Up a lane ' + K.key(D, 'up') : 'Down a lane ' + K.key(D, 'down')); pulse = pl.drv.clear[st.lane] < 0.9; }
       else if (pl.low < 1.5) { str = 'Middle lane!'; col = '#ffe7a8'; }
       else if (st.dish) { str = 'Hold steady!'; col = '#ffe7a8'; }
@@ -833,16 +833,18 @@
   };
 
   /* ---------- the level ---------- */
-  const acts = d => ({ label: 'horn', labels: d === 0 ? ['horn', 'swing'] : ['swing', 'horn'] });
+  const acts = d => ({ label: 'boost', labels: d === 0 ? ['boost', 'swing'] : ['swing', 'boost'] });
   const J = (small, large, cow) => ({ small, large, cow });
   STORMCHASE.defs.tornadorun = {
     name: 'Tornado Alley Run', world: 32, kind: 'team', mode: 'tornadorun', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>W</kbd><kbd>S</kbd> lane / duck <kbd>A</kbd><kbd>D</kbd> ease / aim',
-      bo: '<kbd>↑</kbd><kbd>↓</kbd> lane / duck <kbd>←</kbd><kbd>→</kbd> ease / aim',
-      pad: 'stick steers and aims, down ducks,',
+    jobs: {
+      driver: { title: 'Driver', act: 'boost', legend: '<kbd>W</kbd><kbd>S</kbd> change lane <kbd>A</kbd><kbd>D</kbd> slower, faster',
+        howTo: ['Boost (the horn) jumps a broken bridge.'] },
+      spotter: { title: 'Spotter', act: 'swing', legend: '<kbd>A</kbd><kbd>D</kbd> aim the bat <kbd>S</kbd> hold to duck',
+        howTo: ['Swing at the junk. Keep holding after a swing to brace for a cow.'] },
     },
-    tip: 'Outrun the tornado! The driver dodges with ▲ ▼ and honks over broken bridges; the spotter aims ◀ ▶ and swings at the junk.',
+    jobOf: 'drv', jobSwap: 'You swap jobs every stretch.',
+    tip: 'Outrun the tornado! The driver dodges and boosts over broken bridges; the spotter aims and swings at the junk.',
     act: acts(0),
     map: K.stubMap(),
     rooms: [

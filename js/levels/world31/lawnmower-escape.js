@@ -756,11 +756,13 @@
   const acts = cut => ({ label: 'chop', labels: cut === 0 ? ['chop', 'bend'] : ['bend', 'chop'] });
   SHRUNK.defs.mowrun = {
     name: 'Lawnmower Escape', world: 30, kind: 'team', mode: 'mowrun', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
-      bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump',
-      pad: 'stick runs, <span data-glyph="a"></span> jumps,',
+    jobs: {
+      cutter: { title: 'Cutter', act: 'chop', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+        howTo: ['Chop tall grass. On top of a tall thing, hold chop to drop the string.'] },
+      springer: { title: 'Springer', act: 'bend', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump, climb <kbd>S</kbd> slide down',
+        howTo: ['Hold bend at a springy blade; your partner jumps on its tip.'] },
     },
+    jobOf: 'cutter', jobSwap: 'You swap jobs every stretch.',
     tip: 'RUN from the mower! The cutter chops tall grass. The springer bends the springy grass at a pebble to fling the cutter up; then the cutter drops a string.',
     act: acts(0),
     map: K.stubMap(),

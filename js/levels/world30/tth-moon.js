@@ -1254,6 +1254,7 @@ TTH_PHASES.moon = {
   hide(st) { return tthMoonRiding(st.ph); },
   busy: () => true,
   labels(st) { const ph = st.ph; return tthMoonRiding(ph) ? (ph.pilot === 0 ? ['burn', 'pump'] : ['pump', 'burn']) : ['plant', 'plant']; },
+  jobKeys(st) { const ph = st.ph; return !tthMoonRiding(ph) ? ['flag', 'flag'] : ph.pilot === 1 ? ['engineer', 'pilot'] : ['pilot', 'engineer']; },
   roles(st) { const ph = st.ph; return tthMoonRiding(ph) ? (ph.pilot === 0 ? ['Fly!', 'Fuel!'] : ['Fuel!', 'Fly!']) : ['Plant!', 'Plant!']; },
   legend(st) {
     const ph = st.ph;
@@ -1293,6 +1294,14 @@ Sfx.extra.tthMoonPlant = function () { this.tone(200, 0.12, 'square', 0.05, 120)
 
 /* ---------- the room (this file fills in its own room of the level def) ---------- */
 const TTHMOON_ROOM = tthRoom('moon', {
+  jobs: {
+    pilot: { title: 'Pilot', act: 'burn', legend: '<kbd>A</kbd><kbd>D</kbd> side jets <kbd>W</kbd> burn',
+      howTo: ['Burn to slow the fall. Fly close to fuel cells. Land softly on the pad.'] },
+    engineer: { title: 'Engineer', act: 'pump', legend: '<kbd>A</kbd><kbd>D</kbd> swing the arm',
+      howTo: ['Pump about every 2 s to feed the engine.', 'At a glowing fuel cell, the button grabs it.'] },
+    flag: { title: 'Flag crew', act: 'plant', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> moon hop',
+      howTo: ['Both hold plant at the flag.'] },
+  },
   tip: 'Pilot: steer and burn to slow the fall. Engineer: pump fuel and grab fuel cells. Land softly on the pad!',
   map: TTH_EMPTY_MAP,
 });

@@ -8,11 +8,13 @@
      1 Front Gate      a tipping-tombstone SEESAW flings one up to a crypt roof for his leg bone (one stands on the
                        low end, the other jumps onto the high end), then carry the big backbone together.     -> STOOL
                        (Gavyn, 2026-11-15: the seesaw replaced a head boost. Partners pass through each other here.)
-     2 Crooked Crypts  stack up on Mr. Bones (stool + a head) for his hip bone; one holds the creaky crank while the
-                       other digs inside the gated crypt.                                                  -> LADDER
+     2 Crooked Crypts  the JACK STOOL: one stands on Mr. Bones the stool, the other holds dig at his arm (a lever on
+                       the ground beside him) and his springy neck pushes the rider up to the crypt roof for his hip
+                       bone; one holds the creaky crank while the other digs inside the gated crypt.        -> LADDER
+                       (Gavyn, 2026-11-16: the jack stool replaced the last head stack. Partners pass through each other.)
      3 Pumpkin Plot    climb Mr. Bones up the old tree for his funny bone; dig the giant ribcage together (both shovels
                        at once) and carry it home over the pumpkins.                                        -> BRIDGE
-     4 Old Bell Tower  bridge the big open grave, stack up for his other arm, climb him to the belfry and pull both bell
+     4 Old Bell Tower  bridge the big open grave, ride the jack stool up for his other arm, climb him to the belfry and pull both bell
                        ropes together: his hand (the bell's clapper!) and a top hat fly down. He dances. The end.
    The action is 'dig'. It digs a mound (3 digs, a big bone 6), grabs an end of a big bone (both lift it together; it
    drops with a "Clatter!" if you pull apart or one of you ends up much higher), calls Mr. Bones to a chalk X once he
@@ -25,8 +27,10 @@
    holding down 1.2 s on the ground hops you back there too (stuck in a crypt). A dropped big bone lies where it fell
    (over a grave it pops back to where you lifted it). Mr. Bones won't move while someone is on him: "Hop off me
    first!" to the one on him, "Bo is on me! Hop off, Bo!" when it's the partner.
-   Room 4's balcony (the arm bone) is out of jump reach from the tower top (a running jump falls about 25 px short),
-   so it needs the stool and a head.
+   The jack stool (a mound with how 'jack', lift: cells): the roof is out of jump reach from the plain stool (120 px
+   up, a jump is about 109), so it needs the partner on the arm lever. While the lever is held AND someone stands on him his neck
+   grows one cell at a time up to lift cells (the rider rides up on it); let go, or hop off, and it sinks back. The lever is beside him on the
+   ground, on the side away from the mound, so the rider can't pull it.
    Help, always gold and announced: after 30 s with no progress a gold arrow points at the next job and the next
    mound digs up at once (the giant ribcage then also takes lone digs); after 3 clatters a bone gets gold glue and
    can't slip; once Mr. Bones has a new shape, his chalk X glows gold if nobody calls him for a while.
@@ -52,6 +56,8 @@ const BONEHUNT = {
   hintGap: 5, hintLife: 3,
   // the seesaw: plank half-length, how high the up end sits, the fling (about 180 px up, toward the crypt), the end pads
   seesaw: { half: 54, rise: 30, flingV: 850, flingVx: -110, pad: 30, back: 0.8 },
+  // the jack stool: seconds per cell up and down, how far the arm lever sits from him, its reach
+  jack: { up: 0.26, down: 0.2, leverDx: 60, reach: 24 },
 };
 const BONEHUNT_SOLID = '#BWSp';
 // what each bone is called and what Mr. Bones says when it goes back in
@@ -150,6 +156,13 @@ function bonehuntRoom(st, L) {
   }
   // the seesaw (room def seesaw: { x, feet }): a = -1 left end down (the launch end, at rest), +1 right end down
   st.seesaw = def.seesaw ? { x: def.seesaw.x, feet: def.seesaw.feet, a: -1, down: -1, backT: 0, flings: 0, wob: 0, feetWas: [1e9, 1e9] } : null;
+  // the jack stool (rooms 2 and 4): his arm lever on the ground beside the stool spot, away from the mound
+  st.jack = null;
+  const jm = st.mounds.find(m => m.how === 'jack'), js = st.spots.findIndex(q => q.type === 'stool');
+  if (jm && js >= 0) {
+    const sp = st.spots[js], dir = Math.sign(sp.x - jm.x) || 1;
+    st.jack = { spot: js, lift: 0, max: jm.cfg.lift || 3, t: 0, held: -1, pull: 0, x: sp.x + dir * BONEHUNT.jack.leverDx, feet: sp.feet, dir, boing: 0, ups: 0 };
+  }
   st.bell = st.ropes.length ? { meter: 0, rung: false, swing: 0, t: 0, alone: 0, bongs: 0, bongT: 0 } : null;
   // the exit arch: the engine's door, taken over (drawn and checked here)
   st.exit = L.door ? { ...L.door } : null; L.door = null; st.exitT = 0; st.inExit = [false, false]; st.leaving = null;
@@ -260,7 +273,7 @@ const bonehuntInCrypt = (st, p) => !!st.gate && p.alive && bonehuntCx(p) > st.ga
 function bonehuntMrRect(st) {
   const mr = st.mr, s = st.spots[mr.spot];
   if (mr.form === 'hop' || (mr.form !== 'sit' && mr.form !== 'dance' && !s)) return null;
-  if (mr.form === 'stool') return { x: s.c * T - 8, y: s.r * T - 12, w: T + 16, h: T + 12 };
+  if (mr.form === 'stool') { const up = bonehuntJackLift(st) * T; return { x: s.c * T - 8, y: s.r * T - 12 - up, w: T + 16, h: T + 12 + up }; }
   if (mr.form === 'ladder') return { x: s.x - 18, y: s.top - 10, w: 36, h: s.feet - s.top + 10 };
   if (mr.form === 'bridge') return { x: s.x0, y: s.y0 - 18, w: s.x1 - s.x0, h: 30 };
   return { x: mr.x - 20, y: mr.feet - 58, w: 40, h: 58 };
@@ -285,7 +298,8 @@ function bonehuntWhoOnMr(st) {
     const P = st.pl[p.id], f = bonehuntFeet(p);
     if (mr.form === 'ladder') return P.climb;
     // (standing on top, or stacked on someone who is; leaning on his side doesn't count)
-    if (mr.form === 'stool') return rectHit(p, s.c * T, s.r * T - 3, T, 6) || (other(p).alive && p.onPartner && rectHit(other(p), s.c * T, s.r * T - 3, T, 6));
+    const top = (s.r - bonehuntJackLift(st)) * T;
+    if (mr.form === 'stool') return rectHit(p, s.c * T, top - 3, T, 6) || (other(p).alive && p.onPartner && rectHit(other(p), s.c * T, top - 3, T, 6));
     return f <= s.y0 + 2 && f >= s.y0 - 3 && p.x + p.w > s.x0 && p.x < s.x1;
   }).map(p => p.id);
 }
@@ -552,6 +566,66 @@ function bonehuntFlyStep(st, dt) {
   st.flyers = st.flyers.filter(f => !f.done);
 }
 
+/* ---------- the jack stool: one rides Mr. Bones, the other holds his arm lever ---------- */
+// how many cells his neck is up right now (0 when he isn't the jack's stool)
+const bonehuntJackLift = st => (st.jack && st.mr.form === 'stool' && st.mr.spot === st.jack.spot ? st.jack.lift : 0);
+const bonehuntAtLever = (st, p) => !!st.jack && p.alive && p.grounded && Math.abs(bonehuntCx(p) - st.jack.x) <= BONEHUNT.jack.reach && Math.abs(bonehuntFeet(p) - st.jack.feet) < 4;
+// someone stands on the stool's top (at any height)
+function bonehuntOnJack(st, p) {
+  const j = st.jack;
+  if (!j || !p.alive || st.mr.form !== 'stool' || st.mr.spot !== j.spot) return false;
+  const s = st.spots[j.spot];
+  return p.grounded && Math.abs(bonehuntFeet(p) - (s.r - j.lift) * T) < 3 && bonehuntCx(p) > s.c * T - 6 && bonehuntCx(p) < s.c * T + T + 6;
+}
+function bonehuntJackSet(st, n) {
+  const j = st.jack, s = st.spots[j.spot], g = G.level.grid;
+  while (j.lift < n) {
+    j.lift++;
+    const r = s.r - j.lift;
+    if (r < 0) { j.lift--; break; }
+    g[r][s.c] = '#'; st.sty[r][s.c] = 'm';
+    // whoever stands on top rides up
+    for (const p of G.players) if (p.alive && rectHit(p, s.c * T, r * T, T, T)) { p.y = r * T - p.h; p.vy = Math.min(0, p.vy); }
+  }
+  while (j.lift > n) {
+    const r = s.r - j.lift;
+    g[r][s.c] = '.'; st.sty[r][s.c] = null;
+    j.lift--;
+  }
+}
+function bonehuntJackStep(st, dt) {
+  const j = st.jack;
+  if (!j) return;
+  const on = st.mr.form === 'stool' && st.mr.spot === j.spot;
+  const holder = on ? G.players.find(p => !st.pl[p.id].lock && !st.pl[p.id].hold && p.input.act && bonehuntAtLever(st, p)) : null;
+  j.held = holder ? holder.id : -1;
+  j.pull = approach(j.pull, holder ? 1 : 0, dt * 7);
+  j.boing = Math.max(0, j.boing - dt * 3);
+  if (!on) { j.lift = 0; j.t = 0; return; }
+  // (review, 2026-11-16) his neck only grows under a rider: a lever pulled too early used to raise the empty stool out of
+  // the partner's reach (and left the computer hopping at it). A short grace covers the step up and a little hop.
+  j.riderT = G.players.some(p => bonehuntOnJack(st, p)) ? 0.35 : Math.max(0, (j.riderT || 0) - dt);
+  j.askT = Math.max(0, (j.askT || 0) - dt);
+  if (holder && j.riderT <= 0 && j.lift === 0 && j.askT <= 0 && st.mounds.some(m => m.how === 'jack' && !m.done && !st.pieces[m.piece])) {
+    j.askT = 3.5; Sfx.play('bonehuntCreak');   // (a creak; the hint over the puller's head says who stands where)
+  }
+  const want = holder && j.riderT > 0 ? j.max : 0;
+  if (want === j.lift) { j.t = 0; return; }
+  j.t += dt;
+  if (j.t < (want > j.lift ? BONEHUNT.jack.up : BONEHUNT.jack.down)) return;
+  j.t = 0;
+  const up = want > j.lift;
+  bonehuntJackSet(st, j.lift + (up ? 1 : -1));
+  j.boing = 1;
+  Sfx.play(up ? 'bonehuntRattle' : 'bonehuntCreak');
+  if (up && j.lift === j.max) {
+    j.ups++;
+    const rider = G.players.find(p => bonehuntOnJack(st, p));
+    if (rider) bonehuntPop(st, bonehuntCx(rider), rider.y - 14, 'Going up!', PCOL[rider.id], 14);
+    bonehuntMrSay(st, j.ups === 1 ? 'Boi-oi-oing! Neck stretch!' : 'Up we go!', 1.6);
+  }
+}
+
 /* ---------- Mr. Bones: hop to a chalk X, become a stool, a ladder or a bridge ---------- */
 function bonehuntPlace(st, k) {
   const s = st.spots[k], mr = st.mr, g = G.level.grid;
@@ -567,6 +641,7 @@ function bonehuntPlace(st, k) {
 }
 function bonehuntUnplace(st) {
   const mr = st.mr, s = st.spots[mr.spot], g = G.level.grid;
+  if (s && mr.form === 'stool' && st.jack && st.jack.spot === mr.spot && st.jack.lift) bonehuntJackSet(st, 0);
   if (s && (mr.form === 'stool' || mr.form === 'bridge')) {
     const cells = s.type === 'stool' ? [{ c: s.c, r: s.r }] : s.cells;
     for (const c of cells) { g[c.r][c.c] = '.'; st.sty[c.r][c.c] = null; }
@@ -937,15 +1012,17 @@ function bonehuntHints(st, dt) {
     for (const mm of st.mounds) {
       if (mm.done || !mm.cfg.foot || st.pieces[mm.piece]) continue;
       const f = mm.cfg.foot;
-      if (Math.abs(bonehuntCx(p) - f.x) > 70 || Math.abs(bonehuntFeet(p) - f.feet) > 40 || bonehuntFeet(p) <= mm.feet + 2) continue;
+      if (Math.abs(bonehuntCx(p) - f.x) > 70 || Math.abs(bonehuntFeet(p) - f.feet) > (mm.how === 'jack' ? 130 : 40) || bonehuntFeet(p) <= mm.feet + 2) continue;
       const unDug = () => !mm.done && bonehuntFeet(p) > mm.feet + 2;
       const onMe = () => o.alive && o.onPartner && Math.abs(bonehuntFeet(o) - p.y) < 3;   // (the partner is on my head)
       const was = p.onPartner, same = () => unDug() && p.onPartner === was && !onMe();
       if (onMe()) { bonehuntSay(st, p, 'Hold still! ' + NAMES[o.id] + ' jumps from your head', false, () => unDug() && onMe()); break; }
-      if (mm.how === 'tower') {
-        const s = st.spots.find(s2 => s2.type === 'stool');
-        if (st.mr.form !== 'stool') bonehuntSay(st, p, 'Too high! Call Mr. Bones the stepstool here', false, () => unDug() && st.mr.form !== 'stool');
-        else bonehuntSay(st, p, p.onPartner ? bonehuntPressKey(p.id, 'jump', 'jump up!') : (s && O && !o.onPartner && Math.abs(bonehuntFeet(o) - s.r * T) < 3 ? 'Hop on ' + NAMES[o.id] + '’s head!' : 'Stack up: one on Mr. Bones, one on top!'), false, same);
+      if (mm.how === 'jack') {
+        const j = st.jack;
+        if (st.mr.form !== 'stool' || !j || st.mr.spot !== j.spot) bonehuntSay(st, p, 'Too high! Call Mr. Bones the stepstool here', false, () => unDug() && st.mr.form !== 'stool');
+        else if (bonehuntOnJack(st, p)) bonehuntSay(st, p, j.lift >= j.max ? bonehuntPressKey(p.id, 'jump', 'jump onto the roof!') : j.held === o.id ? 'Hold on, up you go!' : 'Ride Mr. Bones! ' + NAMES[o.id] + ' pulls his arm', false, () => unDug() && bonehuntOnJack(st, p));
+        else if (bonehuntOnJack(st, o)) bonehuntSay(st, p, bonehuntAtLever(st, p) ? bonehuntPress(p.id, 'lift ' + NAMES[o.id] + ' up', true) : 'Pull Mr. Bones’ arm to lift ' + NAMES[o.id] + '!', false, () => unDug() && bonehuntOnJack(st, o) && j.held !== p.id);
+        else bonehuntSay(st, p, 'One stands on Mr. Bones, the other pulls his arm!', false, unDug);
       } else if (mm.how === 'ladder' && st.mr.form !== 'ladder') bonehuntSay(st, p, 'Way up there! Call Mr. Bones the ladder', false, () => unDug() && st.mr.form !== 'ladder');
       break;
     }
@@ -1023,6 +1100,7 @@ MODES.bonehunt = {
     bonehuntGateStep(st, dt);
     bonehuntBellStep(st, dt);
     bonehuntSeesawStep(st, dt);
+    bonehuntJackStep(st, dt);
     bonehuntMrStep(st, dt);
     bonehuntFlyStep(st, dt);
     bonehuntPitCheck(st);
@@ -1070,7 +1148,7 @@ function bonehuntAct(st, p) {
   if (m) { bonehuntDig(st, p, m); return; }
   const e = bonehuntEndAt(st, p);
   if (e) { bonehuntGrab(st, p, e); return; }
-  if (bonehuntAtCrank(st, p) || bonehuntRopeAt(st, p) >= 0) return;
+  if (bonehuntAtCrank(st, p) || bonehuntAtLever(st, p) || bonehuntRopeAt(st, p) >= 0) return;
   // nothing here: a little shovel wiggle
   if (P.digCD <= 0) { P.digT = 0; P.digCD = BONEHUNT.digCD; Sfx.play('bonehuntSwish', p.id); }
 }
@@ -1198,7 +1276,18 @@ function bonehuntDrawForm(st, s, t) {
   const mr = st.mr, P = st.pieces;
   ctx.lineCap = 'round';
   if (mr.form === 'stool') {
-    const x0 = s.c * T, y0 = s.r * T;
+    const lift = bonehuntJackLift(st), x0 = s.c * T, y0 = s.r * T - lift * T;
+    if (lift) {
+      // the jack stool: a springy backbone neck from the ground up to the seat
+      const bot = s.r * T + T, top = y0 + T, j = st.jack, wob = reduceMotion ? 0 : Math.sin(t * 30) * j.boing * 2;
+      ctx.strokeStyle = BONEHUNT_BONE_EDGE; ctx.lineWidth = 7; ctx.beginPath();
+      const n = Math.max(3, lift * 3);
+      for (let k = 0; k <= n; k++) { const yy = bot - (bot - top) * k / n, xx = x0 + T / 2 + (k % 2 ? 9 : -9) * (k === 0 || k === n ? 0 : 1) + wob; if (k) ctx.lineTo(xx, yy); else ctx.moveTo(xx, yy); }
+      ctx.stroke();
+      ctx.strokeStyle = BONEHUNT_BONE; ctx.lineWidth = 4; ctx.stroke();
+      ctx.fillStyle = BONEHUNT_BONE; ctx.strokeStyle = BONEHUNT_BONE_EDGE; ctx.lineWidth = 1.5;
+      for (const fx of [-9, 9]) { ctx.beginPath(); ctx.ellipse(x0 + T / 2 + fx, bot - 2, 6, 2.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    }
     bonehuntBoneShape(x0 + 5, y0 + 9, x0 + 2, y0 + T - 2, 5);
     bonehuntBoneShape(x0 + T - 5, y0 + 9, x0 + T - 2, y0 + T - 2, 5);
     bonehuntSkull(x0 + T / 2, y0 + 17, 9, 0, (t % 3.7) > 3.55, 1);
@@ -1236,6 +1325,24 @@ function bonehuntDrawForm(st, s, t) {
     if (st.hatOn) bonehuntHat(near - d * 22, y - 2, 0.7, -d * 0.5);
   }
   ctx.lineCap = 'butt';
+}
+// the jack stool's arm lever: a bone arm sticking out of the ground, pulled down while someone holds dig at it
+function bonehuntDrawLever(st, t) {
+  const j = st.jack;
+  if (!j) return;
+  const on = st.mr.form === 'stool' && st.mr.spot === j.spot, x = j.x, y = j.feet;
+  ctx.save(); ctx.globalAlpha *= on ? 1 : 0.55; ctx.lineCap = 'round';
+  // a little stone base, the arm bone pivoting on it, a bony hand at the end
+  ctx.fillStyle = '#4a3f66'; rr(x - 11, y - 10, 22, 10, 4); ctx.fill();
+  const a = -Math.PI / 2 - j.dir * (0.75 - j.pull * 1.3), hx = x + Math.cos(a) * 30, hy = y - 8 + Math.sin(a) * 30;
+  bonehuntBoneShape(x, y - 8, hx, hy, 6);
+  ctx.fillStyle = BONEHUNT_BONE; ctx.strokeStyle = BONEHUNT_BONE_EDGE; ctx.lineWidth = 1.5;
+  circle(hx, hy, 5); ctx.fill(); ctx.stroke();
+  if (on && st.mounds.some(m => m.how === 'jack' && !m.done && !st.pieces[m.piece]) && j.held < 0) {
+    ctx.globalAlpha *= 0.55 + Math.sin(t * 4) * 0.25;
+    text('PULL', x, y - 50, 12, '#f3e9ff', 'center', 'body');
+  }
+  ctx.restore();
 }
 function bonehuntDrawMr(st, t) {
   const mr = st.mr;
@@ -1768,6 +1875,7 @@ function bonehuntDraw(st) {
   for (const m of st.mounds) if (!m.done) bonehuntDrawMound(st, m, t);
   for (const b of st.bones) bonehuntDrawBone(st, b, t);
   bonehuntDrawMr(st, t);
+  bonehuntDrawLever(st, t);
   bonehuntFireflies(st, t);
 }
 

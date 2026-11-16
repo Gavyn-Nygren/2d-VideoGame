@@ -1016,14 +1016,15 @@
   /* ---------- the level ---------- */
   SPY.defs.spyboat = {
     name: 'Speedboat Getaway', world: 37, kind: 'team', mode: 'spyboat', outfit: 'spyboat', music: 'spychase', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
-    legend: {
-      pip: 'STEERER <kbd>W</kbd><kbd>S</kbd> change channel <kbd>D</kbd> faster <kbd>A</kbd> slower · GADGETS <kbd>A</kbd><kbd>D</kbd> pick gadget',
-      bo: 'STEERER <kbd>↑</kbd><kbd>↓</kbd> change channel <kbd>→</kbd> faster <kbd>←</kbd> slower · GADGETS <kbd>←</kbd><kbd>→</kbd> pick gadget',
+    jobs: {
+      steerer: { title: 'Steerer', act: 'horn', legend: '<kbd>W</kbd><kbd>S</kbd> change channel <kbd>D</kbd> faster <kbd>A</kbd> slower',
+        howTo: ['Dodge, honk at gulls and fish, and drive through brass crates to refill.'] },
+      gadgets: { title: 'Gadgets', act: 'gadget', legend: '<kbd>A</kbd><kbd>D</kbd> pick a gadget',
+        howTo: ['Smoke blinds them, Oil spins the boat behind you, Boost is for ramps and gates.'] },
     },
+    jobAlt: true, jobSwap: 'You swap jobs every stretch.',
     tip: 'The steerer lines them up, the gadgets knock them out. Save a Boost for ramps and gates.',
     howTo: [
-      'STEERER: change channel to dodge, honk the horn at gulls and fish, and drive through the brass crates to refill the gadgets.',
-      'GADGETS: Smoke blinds them, Oil spins the boat right behind you, Boost is for ramps and gates.',
       'Chasers copy your channel a moment late. Dodge late and they hit what you missed.',
     ],
     act: { label: 'gadget' },

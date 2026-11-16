@@ -340,6 +340,10 @@ IRON_PHASES.thumbs = {
   leave() { },
 };
 ironRoom('thumbs', {
+  jobs: {
+    thumb: { title: 'Thumb', act: 'slam', legend: '<kbd>A</kbd><kbd>D</kbd> lean in, lean back <kbd>W</kbd> juke <kbd>S</kbd> tuck (hold)',
+      howTo: ['Slam a thumb that is flat or cramped to pin it.', 'Pinned? Tap the button on each bounce of the flag.'] },
+  },
   act: { label: 'slam', labels: ['slam', 'slam'] },
   tip: IRON_PARTS.thumbs.tip,
 });

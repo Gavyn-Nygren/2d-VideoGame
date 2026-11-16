@@ -1304,6 +1304,7 @@ TTH_PHASES.troy = {
   hide: () => true,
   bubbleHidden: true,   // (this file draws Pip and Bo inside the horse: the computer's bubbles still show over its player)
   labels(st) { return st.ph.roller === 0 ? ['brake', 'peek'] : ['peek', 'brake']; },
+  jobKeys(st) { return st.ph.roller === 1 ? ['lookout', 'roller'] : ['roller', 'lookout']; },
   legend(st) {
     const r = st.ph.roller;
     const roll = k => (k ? '<kbd>→</kbd> roll <kbd>↓</kbd> tiptoe <kbd>←</kbd> brake' : '<kbd>D</kbd> roll <kbd>S</kbd> tiptoe <kbd>A</kbd> brake');
@@ -1341,6 +1342,12 @@ Sfx.extra.tthTroySafe = function () { [523, 659, 784, 1047].forEach((f, i) => th
 
 /* ---------- the room (this file fills in its own room of the level def) ---------- */
 tthRoom('troy', {
+  jobs: {
+    roller: { title: 'Roller', act: 'brake', legend: '<kbd>D</kbd> roll <kbd>S</kbd> tiptoe <kbd>A</kbd> brake',
+      howTo: ['Roll between the lantern sweeps. Stand still when a beam is on the horse.'] },
+    lookout: { title: 'Lookout', act: 'peek', legend: '<kbd>W</kbd> peek',
+      howTo: ['Hold peek to open the hatch and light the way. Shut it before a beam reaches your head.'] },
+  },
   act: { label: 'peek', labels: ['brake', 'peek'] },
   tip: 'One rolls the horse, one peeks from the hatch to light the way. Freeze when a lantern beam is on the horse!',
   legend: { pip: '<kbd>D</kbd> roll <kbd>S</kbd> tiptoe <kbd>A</kbd> brake', bo: 'the hatch: hold <kbd>↑</kbd> or', padJump: 'peek (lookout)', padDown: 'right rolls, down tiptoes, left brakes (roller)' },

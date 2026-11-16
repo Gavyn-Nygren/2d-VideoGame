@@ -330,6 +330,7 @@ WIZ_PHASES.portal = {
   plan(st) { return wizPoPlan(st); },
   labels(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.dr ? 'door' : 'pull')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.dr ? 'Draw!' : 'Jump!')); },
+  jobKeys(st) { return st.ph.dr === 1 ? ['jumper', 'drawer'] : ['drawer', 'jumper']; },
   legend(st) { const ph = st.ph, c = k => (k ? '<kbd>↑</kbd><kbd>↓</kbd> pick a plate' : '<kbd>W</kbd><kbd>S</kbd> pick a plate'); return { pip: ph.dr === 0 ? c(0) : 'through the doors', bo: ph.dr === 1 ? c(1) : 'through the doors', pad: 'drawer: up / down picks a plate,' }; },
   hudText(st) { const ph = st.ph; return 'Ledge ' + Math.min(7, ph.step) + ' of 7'; },
   progress(st) { const ph = st.ph; return { n: ph.step - 1 + (ph.done ? 1 : 0), of: 7 }; },
@@ -352,6 +353,12 @@ Sfx.extra.wizPoFlag = function () { [523, 659, 784].forEach((f, i) => this.tone(
 
 /* ---------- the room ---------- */
 wizRoom('portal', {
+  jobs: {
+    drawer: { title: 'Door drawer', act: 'door', legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd><kbd>S</kbd> pick a plate',
+      howTo: ['Press door once for the IN door, again for the OUT door.'] },
+    jumper: { title: 'Jumper', act: 'pull', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      howTo: ['Walk into the IN door. Pull the rope to lower the ladder.'] },
+  },
   act: { label: 'door', labels: ['door', 'pull'] },
   tip: 'The drawer picks a plate with up / down and stamps an IN door, then an OUT door. Jumper, walk on through!',
   legend: { pip: '<kbd>W</kbd><kbd>S</kbd> pick a plate', bo: 'through the doors', pad: 'drawer: up / down picks a plate,' },
