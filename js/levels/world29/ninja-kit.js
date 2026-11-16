@@ -660,8 +660,22 @@ const NINJA = (() => {
     ctx.fillStyle = 'rgba(20,22,52,0.25)'; ctx.fillRect(x - w / 2 - 5, y - h - 6, w + 16, 3);
   };
   // inside the dojo: full screen, call with no transform
+  // the hall never changes, so it is drawn once and copied each frame; only the hanging scrolls sway live
+  let _dojo = { key: '' };
   K.dojo = (t, o = {}) => {
     const fy = o.floor === undefined ? 440 : o.floor;
+    const key = [fy, !!o.noMoon, canvas.width, canvas.height, typeof artPlain === 'function' && artPlain()].join('|');
+    if (_dojo.key === key) ctx.drawImage(_dojo.cv, 0, 0, W, H);
+    else {
+      dojoHall(fy, o);
+      const m = ctx.getTransform();
+      if (!m.b && !m.c && !m.e && !m.f && Math.abs(m.a * W - canvas.width) < 1 && Math.abs(m.d * H - canvas.height) < 1 && ctx.globalAlpha === 1 && ctx.globalCompositeOperation === 'source-over') {
+        const cv = document.createElement('canvas'); cv.width = canvas.width; cv.height = canvas.height; cv.getContext('2d').drawImage(canvas, 0, 0); _dojo = { key, cv };
+      }
+    }
+    dojoScrolls(t);
+  };
+  const dojoHall = (fy, o) => {
     const g = ctx.createLinearGradient(0, 0, 0, fy);
     g.addColorStop(0, '#1b1838'); g.addColorStop(1, '#3a2e58');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, fy);
@@ -706,6 +720,9 @@ const NINJA = (() => {
       ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(px + 10, 0, 4, fy);
       ctx.fillStyle = 'rgba(10,6,20,0.25)'; for (let y = 120; y < fy; y += 140) ctx.fillRect(px + 5, y, 1.5, 40);
     }
+    K.ground(0, W, fy, 'tatami', H);
+  };
+  const dojoScrolls = (t) => {
     for (const k of [0, 1]) {
       const sx = k ? W - 96 : 96, sw = Math.sin(t * 1.1 + k * 2) * 2;
       ctx.fillStyle = 'rgba(10,6,20,0.3)'; ctx.beginPath(); ctx.moveTo(sx - 22, 100); ctx.lineTo(sx + 30, 100); ctx.lineTo(sx + 30 + sw, 256); ctx.lineTo(sx - 22 + sw, 256); ctx.closePath(); ctx.fill();
@@ -718,7 +735,6 @@ const NINJA = (() => {
       ctx.fillStyle = COL.trim; ctx.fillRect(sx - 2 + sw, 216, 4 , 4); ctx.fillStyle = '#c8474a'; rr(sx + 8 + sw * 0.6, 222, 10, 10, 2); ctx.fill();
       ctx.fillStyle = '#3c2634'; for (const ex of [-33, 27]) { rr(sx + ex, 91, 6, 9, 2); ctx.fill(); rr(sx + ex + sw, 247, 6, 9, 2); ctx.fill(); }
     }
-    K.ground(0, W, fy, 'tatami', H);
   };
 
   /* ---------- props ---------- */

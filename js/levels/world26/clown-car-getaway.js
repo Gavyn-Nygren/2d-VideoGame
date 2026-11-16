@@ -414,9 +414,10 @@
     ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(0, S.road - 12, W, 2);
     ctx.fillStyle = lk.pathD; for (let x = -((cx) % 60); x < W; x += 60) ctx.fillRect(x, S.road + 4, 30, 3);
     // pebbles and trodden popcorn in the dirt
+    const peb = shade(lk.ground, 0.2);
     for (let x = -((cx) % 40) - 40; x < W + 40; x += 40) {
       const n = Math.floor((x + cx) / 40 + 0.5), hh = hash(n, 11);
-      ctx.fillStyle = shade(lk.ground, 0.2); circle(x + hh % 30, S.road + 30 + (hh >> 5) % 60, 2 + hh % 2); ctx.fill();
+      ctx.fillStyle = peb; circle(x + hh % 30, S.road + 30 + (hh >> 5) % 60, 2 + hh % 2); ctx.fill();
       if (hh % 4 === 0) { ctx.fillStyle = '#fff4d0'; circle(x + (hh >> 3) % 30, S.road + 40 + (hh >> 7) % 50, 2.2); ctx.fill(); }
     }
     ctx.save(); ctx.translate(-Math.round(cx * 10) / 10, 0);
@@ -435,7 +436,7 @@
     ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 30, y + R * 0.7); ctx.lineTo(x + 30, y + R * 0.7); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,240,220,0.6)'; ctx.lineWidth = 3; circle(x, y, R); ctx.stroke();
     ctx.lineWidth = 1.5; circle(x, y, R - 10); ctx.stroke();
-    for (let i = 0; i < 16; i++) { const b = a + i * Math.PI / 8; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(b) * R, y + Math.sin(b) * R); ctx.stroke(); }
+    ctx.beginPath(); for (let i = 0; i < 16; i++) { const b = a + i * Math.PI / 8; ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(b) * R, y + Math.sin(b) * R); } ctx.stroke();
     for (let i = 0; i < 16; i++) { const b = a + i * Math.PI / 8; ctx.fillStyle = i % 2 ? '#ffe9a8' : '#fff6e0'; circle(x + Math.cos(b) * R, y + Math.sin(b) * R, 2); ctx.fill(); }
     for (let i = 0; i < 8; i++) {
       const b = a + i * Math.PI / 4, px = x + Math.cos(b) * R, py = y + Math.sin(b) * R, c = ['#ff6b8a', '#ffc53d', '#5b95ff', '#8fe3b0'][i % 4];
@@ -446,29 +447,41 @@
     }
     ctx.fillStyle = '#e8d0c0'; circle(x, y, 7); ctx.fill(); ctx.fillStyle = '#b89080'; circle(x, y, 3); ctx.fill();
   }
-  function booth(x, y, n) {
-    const cols = [['#ff5f6d', '#fff4e6'], ['#5b95ff', '#fff4e6'], ['#8fe3b0', '#fff4e6'], ['#ffc53d', '#fff4e6']][((n % 4) + 4) % 4];
-    ctx.fillStyle = 'rgba(40,20,30,0.18)'; ctx.beginPath(); ctx.ellipse(x + 60, y + 2, 72, 7, 0, 0, Math.PI * 2); ctx.fill();
+  // a booth's stall and awning never change: one picture per colour and prize, copied onto whole pixels; the bulbs
+  // are drawn live. The picture spans x - 12 .. x + 132 and y - 94 .. y + 10.
+  const boothPics = {};
+  function boothPic(ci, prize, cols) {
+    const sc = Math.max(1, Math.min(3, canvas.width / W)), key = ci + '|' + prize + '|' + sc;
+    if (boothPics[key]) return boothPics[key];
+    const cv = document.createElement('canvas'); cv.width = Math.ceil(144 * sc); cv.height = Math.ceil(104 * sc);
+    const c = cv.getContext('2d'); c.scale(sc, sc); c.translate(12, 94);
+    const x = 0, y = 0, pc = ['#ff9fd0', '#9fe8ff', '#ffd36b'][prize];
+    c.fillStyle = 'rgba(40,20,30,0.18)'; c.beginPath(); c.ellipse(x + 60, y + 2, 72, 7, 0, 0, Math.PI * 2); c.fill();
     // wooden stall with planks, a dark hatch and a counter
-    ctx.fillStyle = '#8a5a3a'; ctx.fillRect(x, y - 70, 120, 70);
-    ctx.fillStyle = '#7a4c30'; for (let k = 1; k < 5; k++) ctx.fillRect(x + k * 24, y - 70, 1.5, 70);
-    ctx.fillStyle = '#6a4026'; ctx.fillRect(x + 104, y - 70, 16, 70);
-    ctx.fillStyle = '#5a3a2a'; ctx.fillRect(x + 10, y - 50, 100, 30);
-    ctx.fillStyle = '#3e2618'; ctx.fillRect(x + 10, y - 50, 100, 6);
-    const prize = ((n * 7) % 3 + 3) % 3, pc = ['#ff9fd0', '#9fe8ff', '#ffd36b'][prize];
+    c.fillStyle = '#8a5a3a'; c.fillRect(x, y - 70, 120, 70);
+    c.fillStyle = '#7a4c30'; for (let k = 1; k < 5; k++) c.fillRect(x + k * 24, y - 70, 1.5, 70);
+    c.fillStyle = '#6a4026'; c.fillRect(x + 104, y - 70, 16, 70);
+    c.fillStyle = '#5a3a2a'; c.fillRect(x + 10, y - 50, 100, 30);
+    c.fillStyle = '#3e2618'; c.fillRect(x + 10, y - 50, 100, 6);
     for (const px of [30, 60, 90]) {
-      ctx.fillStyle = pc; circle(x + px, y - 34, 8); ctx.fill();
-      ctx.fillStyle = shade(pc, 0.22); ctx.beginPath(); ctx.arc(x + px, y - 34, 8, -0.4, Math.PI * 0.7); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.75)'; circle(x + px - 3, y - 37, 2.2); ctx.fill();
+      c.fillStyle = pc; circleOn(c, x + px, y - 34, 8); c.fill();
+      c.fillStyle = shade(pc, 0.22); c.beginPath(); c.arc(x + px, y - 34, 8, -0.4, Math.PI * 0.7); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.75)'; circleOn(c, x + px - 3, y - 37, 2.2); c.fill();
     }
-    ctx.fillStyle = '#a8744a'; ctx.fillRect(x + 4, y - 22, 112, 6);
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x + 4, y - 22, 112, 1.5);
-    ctx.strokeStyle = '#4a2a18'; ctx.lineWidth = 1.8; ctx.strokeRect(x, y - 70, 120, 70);
+    c.fillStyle = '#a8744a'; c.fillRect(x + 4, y - 22, 112, 6);
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x + 4, y - 22, 112, 1.5);
+    c.strokeStyle = '#4a2a18'; c.lineWidth = 1.8; c.strokeRect(x, y - 70, 120, 70);
     // striped awning with scallops and a shaded underside
-    for (let i = 0; i < 6; i++) { ctx.fillStyle = cols[i % 2]; ctx.beginPath(); ctx.moveTo(x - 6 + i * 22, y - 70); ctx.lineTo(x + 16 + i * 22, y - 70); ctx.lineTo(x + 16 + i * 22, y - 92); ctx.lineTo(x - 6 + i * 22, y - 92); ctx.fill(); }
-    for (let i = 0; i < 6; i++) { ctx.fillStyle = cols[i % 2]; ctx.beginPath(); ctx.arc(x + 5 + i * 22, y - 70, 11, 0, Math.PI); ctx.fill(); ctx.fillStyle = 'rgba(30,20,40,0.15)'; ctx.beginPath(); ctx.arc(x + 5 + i * 22, y - 70, 11, 0, Math.PI * 0.5); ctx.lineTo(x + 5 + i * 22, y - 70); ctx.fill(); }
-    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 6, y - 92, 132, 2);
-    ctx.strokeStyle = shade(cols[0], 0.45); ctx.lineWidth = 1.5; ctx.strokeRect(x - 6, y - 92, 132, 22);
+    for (let i = 0; i < 6; i++) { c.fillStyle = cols[i % 2]; c.beginPath(); c.moveTo(x - 6 + i * 22, y - 70); c.lineTo(x + 16 + i * 22, y - 70); c.lineTo(x + 16 + i * 22, y - 92); c.lineTo(x - 6 + i * 22, y - 92); c.fill(); }
+    for (let i = 0; i < 6; i++) { c.fillStyle = cols[i % 2]; c.beginPath(); c.arc(x + 5 + i * 22, y - 70, 11, 0, Math.PI); c.fill(); c.fillStyle = 'rgba(30,20,40,0.15)'; c.beginPath(); c.arc(x + 5 + i * 22, y - 70, 11, 0, Math.PI * 0.5); c.lineTo(x + 5 + i * 22, y - 70); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x - 6, y - 92, 132, 2);
+    c.strokeStyle = shade(cols[0], 0.45); c.lineWidth = 1.5; c.strokeRect(x - 6, y - 92, 132, 22);
+    boothPics[key] = cv;
+    return cv;
+  }
+  function booth(x, y, n) {
+    const ci = ((n % 4) + 4) % 4, cols = [['#ff5f6d', '#fff4e6'], ['#5b95ff', '#fff4e6'], ['#8fe3b0', '#fff4e6'], ['#ffc53d', '#fff4e6']][ci];
+    K.blit(boothPic(ci, ((n * 7) % 3 + 3) % 3, cols), x - 12, y - 94, 144, 104);
     // a string of bulbs under the awning
     for (let k = 0; k < 7; k++) { const on = (k + n + Math.floor(G.clock * 2)) % 3 !== 0; ctx.fillStyle = on ? '#fff2b0' : '#c9a060'; circle(x + 6 + k * 18, y - 56, 2.2); ctx.fill(); }
   }

@@ -230,8 +230,24 @@ const TT_BACK = [
   { band: '#8f3f2f', mural: ['snake', 'cat', 'reed', 'eye'] },
   { band: '#b8902a', mural: ['sun', 'scarab', 'bird', 'wave'] },
 ];
+// the back wall and the stone tiles only change when a gate opens: drawn once, then copied each frame
+let ttBg = { key: '' };
 function ttDraw(st) {
-  const L = G.level, t = G.clock, look = TT_BACK[(L.def.roomIndex || 0) % TT_BACK.length];
+  const L = G.level, t = G.clock;
+  let gates = 0; for (const row of L.grid) for (const ch of row) if (ch === 'P') gates++;
+  const key = [L.def.roomIndex || 0, gates, canvas.width, canvas.height, typeof artPlain === 'function' && artPlain()].join('|');
+  if (ttBg.key === key && ttBg.level === L) ctx.drawImage(ttBg.cv, 0, 0, W, H);
+  else {
+    ttDrawRoom(L);
+    const m = ctx.getTransform();
+    if (!m.b && !m.c && !m.e && !m.f && Math.abs(m.a * W - canvas.width) < 1 && Math.abs(m.d * H - canvas.height) < 1 && ctx.globalAlpha === 1 && ctx.globalCompositeOperation === 'source-over') {
+      const cv = document.createElement('canvas'); cv.width = canvas.width; cv.height = canvas.height; cv.getContext('2d').drawImage(canvas, 0, 0); ttBg = { key, level: L, cv };
+    }
+  }
+  ttDrawLive(st);
+}
+function ttDrawRoom(L) {
+  const look = TT_BACK[(L.def.roomIndex || 0) % TT_BACK.length];
   // the back wall
   pyrBlocks(0, 0, W, H, { lite: '#b08758', mid: '#9a7448', dark: '#7f5c36' }, 60, 30, 31 + (L.def.roomIndex || 0));
   ctx.fillStyle = look.band; ctx.fillRect(0, 96, W, 5); ctx.fillRect(0, 146, W, 5);
@@ -261,6 +277,9 @@ function ttDraw(st) {
       ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + T / 2 - 2, y + 11, 4, 8);
     }
   }
+}
+function ttDrawLive(st) {
+  const L = G.level, t = G.clock;
   // the exit doorway
   if (st.exit) {
     const d = st.exit;

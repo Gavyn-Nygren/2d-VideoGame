@@ -278,22 +278,8 @@ function strDrawWorld() {
   ctx.fillStyle = 'rgba(255,200,160,0.12)'; ctx.fillRect(0, 300, W, 2);
   for (let i = -1; i < 6; i++) {
     const n = Math.floor(mid / 260) + i, x = n * 260 - mid, k = ((n % 4) + 4) % 4, c = ['#ff5f6d', '#5b95ff', '#ffc53d', '#8fe3b0'][k];
-    // a lit stall: wooden counter, striped awning with scallops, a glowing sign and a string of bulbs
-    ctx.fillStyle = 'rgba(20,10,30,0.3)'; ctx.beginPath(); ctx.ellipse(x + 80, 322, 70, 5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#6a3a3a'; ctx.fillRect(x + 24, 262, 112, 58);
-    ctx.fillStyle = 'rgba(255,220,150,0.35)'; ctx.fillRect(x + 32, 288, 96, 18);
-    ctx.fillStyle = '#8a5038'; ctx.fillRect(x + 22, 304, 116, 16);
-    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x + 22, 304, 116, 2);
-    ctx.fillStyle = '#5a2c2c'; ctx.fillRect(x + 124, 262, 12, 58);
-    for (let s = 0; s < 6; s++) { ctx.fillStyle = s % 2 ? '#fff4e6' : c; ctx.fillRect(x + 18 + s * 21, 246, 21, 18); ctx.beginPath(); ctx.arc(x + 28.5 + s * 21, 264, 10.5, 0, Math.PI); ctx.fill(); }
-    ctx.fillStyle = 'rgba(20,10,30,0.18)'; ctx.fillRect(x + 81, 246, 63, 18);
-    ctx.strokeStyle = shade(c, 0.45); ctx.lineWidth = 1.5; ctx.strokeRect(x + 18, 246, 126, 18);
-    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x + 18, 246, 126, 1.5);
-    const lab = ['POPCORN', 'GAMES', 'PRIZES', 'LEMONADE'][k];
-    ctx.font = CIRCUS.FONT(12); const sw = ctx.measureText(lab).width + 18;
-    ctx.fillStyle = shade(c, 0.4); rr(x + 80 - sw / 2, 278, sw, 22, 6); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.92)'; rr(x + 80 - sw / 2 + 2, 280, sw - 4, 18, 5); ctx.fill();
-    text(lab, x + 80, 289.5, 12, '#3a2048', 'center', 'body');
+    // a lit stall (a picture drawn once per kind) and its string of bulbs
+    CIRCUS.blit(strStall(k), x, 236, 160, 96);
     for (let b = 0; b < 6; b++) { const on = (b + n + Math.floor(t * 2)) % 3 !== 0; if (on) { ctx.fillStyle = 'rgba(255,240,170,0.25)'; circle(x + 30 + b * 20, 244, 5); ctx.fill(); } ctx.fillStyle = on ? '#fff2b0' : '#a88050'; circle(x + 30 + b * 20, 244, 2.2); ctx.fill(); }
   }
   CIRCUS.bunting(-20, 200, W + 20, 215, 14, 28);
@@ -328,6 +314,34 @@ function strDrawWorld() {
   // obstacles in each lane (back lane first)
   for (const lane of [0, 1]) for (const o of st.course.obs) if (o.x > cx - 220 && o.x < cx + W + 220) strDrawOb(o, STR.laneY[lane], lane, t);
   ctx.restore();
+}
+// a stall: wooden counter, striped awning with scallops and a glowing sign, drawn once per kind into a picture
+// (160 x 96, from the stall's left edge and y 236)
+const _strStalls = {};
+function strStall(k) {
+  const sc = Math.max(1, Math.min(3, canvas.width / W)), key = k + '|' + sc;
+  if (_strStalls[key]) return _strStalls[key];
+  const cv = document.createElement('canvas'); cv.width = Math.ceil(160 * sc); cv.height = Math.ceil(96 * sc);
+  const c = cv.getContext('2d'); c.scale(sc, sc); c.translate(0, -236);
+  const x = 0, col = ['#ff5f6d', '#5b95ff', '#ffc53d', '#8fe3b0'][k];
+  c.fillStyle = 'rgba(20,10,30,0.3)'; c.beginPath(); c.ellipse(x + 80, 322, 70, 5, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#6a3a3a'; c.fillRect(x + 24, 262, 112, 58);
+  c.fillStyle = 'rgba(255,220,150,0.35)'; c.fillRect(x + 32, 288, 96, 18);
+  c.fillStyle = '#8a5038'; c.fillRect(x + 22, 304, 116, 16);
+  c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(x + 22, 304, 116, 2);
+  c.fillStyle = '#5a2c2c'; c.fillRect(x + 124, 262, 12, 58);
+  for (let s = 0; s < 6; s++) { c.fillStyle = s % 2 ? '#fff4e6' : col; c.fillRect(x + 18 + s * 21, 246, 21, 18); c.beginPath(); c.arc(x + 28.5 + s * 21, 264, 10.5, 0, Math.PI); c.fill(); }
+  c.fillStyle = 'rgba(20,10,30,0.18)'; c.fillRect(x + 81, 246, 63, 18);
+  c.strokeStyle = shade(col, 0.45); c.lineWidth = 1.5; c.strokeRect(x + 18, 246, 126, 18);
+  c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(x + 18, 246, 126, 1.5);
+  const lab = ['POPCORN', 'GAMES', 'PRIZES', 'LEMONADE'][k];
+  c.font = CIRCUS.FONT(12); const sw = c.measureText(lab).width + 18;
+  c.fillStyle = shade(col, 0.4); rrOn(c, x + 80 - sw / 2, 278, sw, 22, 6); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.92)'; rrOn(c, x + 80 - sw / 2 + 2, 280, sw - 4, 18, 5); c.fill();
+  c.font = '700 12px "Atkinson Hyperlegible", system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#3a2048'; c.fillText(lab, x + 80, 289.5);
+  // keep the picture only once the fonts are in, so the sign is never drawn in a stand-in font
+  if (!document.fonts || document.fonts.status === 'loaded') _strStalls[key] = cv;
+  return cv;
 }
 function K26tent(x, y, n) { CIRCUS.tent(x, y, 220, 160, n % 2 ? ['#5b3a8a', '#e8d8f0'] : ['#8a2a3a', '#f0d8d0']); }
 function strDrawOb(o, y, lane, t) {

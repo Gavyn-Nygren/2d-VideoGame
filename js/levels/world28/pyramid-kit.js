@@ -137,19 +137,21 @@ function pyrBlocks(x, y, w, h, tone, bw = 60, bh = 30, seed = 0) {
   ctx.fillStyle = t.mid; ctx.fillRect(x, y, w, h);
   const r0 = Math.floor(y / bh), r1 = Math.ceil((y + h) / bh);
   ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  const specks = [];
   for (let r = r0; r < r1; r++) {
     const off = (r & 1) * bw / 2, c0 = Math.floor((x - off) / bw) - 1, c1 = Math.ceil((x + w - off) / bw);
     for (let c = c0; c <= c1; c++) {
       const bx = c * bw + off, by = r * bh, hv = hash(c + seed, r);
-      ctx.fillStyle = hv % 5 === 0 ? t.lite : hv % 7 === 0 ? t.dark : t.mid;
-      ctx.fillRect(bx + 1, by + 1, bw - 2, bh - 2);
+      // (a plain block is the base colour already, so only the light and dark ones are filled)
+      if (hv % 5 === 0 || hv % 7 === 0) { ctx.fillStyle = hv % 5 === 0 ? t.lite : t.dark; ctx.fillRect(bx + 1, by + 1, bw - 2, bh - 2); }
       ctx.fillStyle = 'rgba(255,240,200,0.18)'; ctx.fillRect(bx + 2, by + 2, bw - 4, 3);
-      ctx.fillStyle = 'rgba(70,40,15,0.16)'; ctx.fillRect(bx + bw - 5, by + 4, 4, bh - 6);
-      if (hv % 4 === 1) { ctx.fillStyle = 'rgba(70,40,15,0.22)'; const px = bx + 8 + (hv >> 4) % (bw - 16), py = by + 8 + (hv >> 9) % Math.max(1, bh - 16); circle(px, py, 1.3); ctx.fill(); circle(px + 5, py + 3, 0.9); ctx.fill(); }
+      if (hv % 4 === 1) { const px = bx + 8 + (hv >> 4) % (bw - 16), py = by + 8 + (hv >> 9) % Math.max(1, bh - 16); specks.push(px, py); }
       if (hv % 11 === 0) { ctx.strokeStyle = 'rgba(60,36,16,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx + 10, by + 6); ctx.lineTo(bx + 18, by + 14); ctx.lineTo(bx + 15, by + 24); ctx.stroke(); }
     }
     ctx.fillStyle = 'rgba(70,40,15,0.13)'; ctx.fillRect(x, r * bh + bh - 5, w, 4);
   }
+  // little pits in the stone, all in one path
+  if (specks.length) { ctx.fillStyle = 'rgba(70,40,15,0.22)'; ctx.beginPath(); for (let k = 0; k < specks.length; k += 2) { const px = specks[k], py = specks[k + 1]; ctx.moveTo(px + 1.3, py); ctx.arc(px, py, 1.3, 0, 7); ctx.moveTo(px + 5.9, py + 3); ctx.arc(px + 5, py + 3, 0.9, 0, 7); } ctx.fill(); }
   ctx.restore();
 }
 // a hieroglyph (simple shapes, no writing): eye, bird, scarab, sun, snake, cat, reed, wave
