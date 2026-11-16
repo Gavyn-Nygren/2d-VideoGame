@@ -145,6 +145,7 @@ function pyrBlocks(x, y, w, h, tone, bw = 60, bh = 30, seed = 0) {
       // (a plain block is the base colour already, so only the light and dark ones are filled)
       if (hv % 5 === 0 || hv % 7 === 0) { ctx.fillStyle = hv % 5 === 0 ? t.lite : t.dark; ctx.fillRect(bx + 1, by + 1, bw - 2, bh - 2); }
       ctx.fillStyle = 'rgba(255,240,200,0.18)'; ctx.fillRect(bx + 2, by + 2, bw - 4, 3);
+      ctx.fillStyle = 'rgba(70,40,15,0.16)'; ctx.fillRect(bx + bw - 5, by + 4, 4, bh - 6);
       if (hv % 4 === 1) { const px = bx + 8 + (hv >> 4) % (bw - 16), py = by + 8 + (hv >> 9) % Math.max(1, bh - 16); specks.push(px, py); }
       if (hv % 11 === 0) { ctx.strokeStyle = 'rgba(60,36,16,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx + 10, by + 6); ctx.lineTo(bx + 18, by + 14); ctx.lineTo(bx + 15, by + 24); ctx.stroke(); }
     }

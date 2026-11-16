@@ -212,17 +212,20 @@ let rf27Far = { key: '' };
 function rf27BackdropFar(camX, camY, look, L) {
   if (!rf27Grad[look]) { const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, L.top); g.addColorStop(1, L.bot); rf27Grad[look] = g; }
   ctx.fillStyle = rf27Grad[look]; ctx.fillRect(0, 0, W, H);
-  // the far wall (slowest): tall factory windows with a cool glow
+  // the far wall (slowest): tall factory windows with a cool glow and riveted wall panels between them
   {
     const wx0 = -((camX * 0.1) % 360) - 360, wy = 70 - camY * 0.1, win = mixCol(L.bot, '#ffffff', 0.35), frame = mixCol(L.top, L.bot, 0.55), pane = mixCol(frame, win, 0.5);
     for (let x = wx0; x < W + 360; x += 360) {
-      if (x + 250 < 0 || x + 100 > W) continue;
+      if (x + 350 < 0 || x + 20 > W) continue;
       ctx.fillStyle = frame; ctx.fillRect(x + 100, wy, 150, 260);
       ctx.fillStyle = pane; ctx.fillRect(x + 108, wy + 8, 134, 244);
       ctx.fillStyle = mixCol(L.top, L.bot, 0.45);
       for (let k = 1; k < 4; k++) ctx.fillRect(x + 108 + k * 33.5 - 2, wy + 8, 4, 244);
       for (let k = 1; k < 6; k++) ctx.fillRect(x + 108, wy + 8 + k * 40.6 - 2, 134, 4);
       ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.moveTo(x + 120, wy + 252); ctx.lineTo(x + 170, wy + 8); ctx.lineTo(x + 196, wy + 8); ctx.lineTo(x + 146, wy + 252); ctx.fill();
+      ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.beginPath();
+      for (const sx of [x + 20, x + 290]) for (let y = wy; y < wy + 260; y += 52) { ctx.rect(sx, y, 60, 1.5); ctx.moveTo(sx + 7.6, y + 6); ctx.arc(sx + 6, y + 6, 1.6, 0, 7); ctx.moveTo(sx + 55.6, y + 6); ctx.arc(sx + 54, y + 6, 1.6, 0, 7); }
+      ctx.fill();
     }
   }
   // far girders (a slow parallax)
@@ -248,6 +251,10 @@ function rf27BackdropNear(camX, camY, look, L, t) {
     rf27Gear(x + 140, 150 - camY * 0.35, 70, 12, t * 0.4 * (k % 2 ? 1 : -1), L.pipe, L.top);
     rf27Gear(x + 236, 214 - camY * 0.35, 40, 9, -t * 0.7 * (k % 2 ? 1 : -1) + 0.2, L.pipe, L.top);
     ctx.globalAlpha = 1;
+    // the chain belt between the two gears
+    ctx.strokeStyle = mixCol(L.far, L.pipe, 0.4); ctx.lineWidth = 3; ctx.globalAlpha = 0.45; ctx.setLineDash([6, 4]); ctx.lineDashOffset = -t * 30;
+    ctx.beginPath(); ctx.moveTo(x + 140, 150 - camY * 0.35 - 62); ctx.lineTo(x + 236, 214 - camY * 0.35 - 36); ctx.moveTo(x + 140, 150 - camY * 0.35 + 62); ctx.lineTo(x + 236, 214 - camY * 0.35 + 36); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
   }
   // a hazy row of machines along the bottom of the hall: tanks, a chimney, control cabinets with blinking lights
   {
@@ -283,7 +290,7 @@ function rf27BackdropNear(camX, camY, look, L, t) {
     ctx.fillStyle = L.side; rr(x + 192, 44 - camY * 0.6, 16, 6, 2); ctx.fill();
     ctx.fillStyle = on ? L.light : 'rgba(0,0,0,0.25)'; circle(x + 200, 56 - camY * 0.6, 6); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(x + 198, 54 - camY * 0.6, 1.8); ctx.fill();
-    if (on) { ctx.fillStyle = 'rgba(255,255,255,0.12)'; circle(x + 200, 56 - camY * 0.6, 16); ctx.fill(); }
+    if (on) { ctx.fillStyle = 'rgba(255,255,255,0.12)'; circle(x + 200, 56 - camY * 0.6, 16); ctx.fill(); ctx.globalAlpha = 0.07; ctx.fillStyle = L.light; ctx.beginPath(); ctx.moveTo(x + 194, 60 - camY * 0.6); ctx.lineTo(x + 206, 60 - camY * 0.6); ctx.lineTo(x + 250, 220 - camY * 0.6); ctx.lineTo(x + 150, 220 - camY * 0.6); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1; }
   }
 }
 function rf27Floor(x, y, w, h, look) {
@@ -307,6 +314,8 @@ function rf27Floor(x, y, w, h, look) {
   if (h > th) { ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.fillRect(x, y + th, w, 5); }
   ctx.fillStyle = 'rgba(28,26,54,0.35)';
   ctx.beginPath(); for (let k = x + 10 + Math.max(0, Math.floor((vx0 - x) / 30) * 30); k < Math.min(x + w - 4, vx1); k += 30) { ctx.moveTo(k + 2, y + 8); ctx.arc(k, y + 8, 2, 0, 7); } ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.beginPath(); for (let k = x + 10 + Math.max(0, Math.floor((vx0 - x) / 30) * 30); k < Math.min(x + w - 4, vx1); k += 30) { ctx.moveTo(k + 0.2, y + 7.4); ctx.arc(k - 0.6, y + 7.4, 0.8, 0, 7); } ctx.fill();
   if (h > 30) {
     // riveted side panels with seams, lit on the left edge
     ctx.fillStyle = 'rgba(28,26,54,0.22)'; for (let k = k0; k < vx1; k += 60) ctx.fillRect(k + 57, y + 18, 3, h - 18);
