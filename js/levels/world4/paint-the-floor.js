@@ -4,10 +4,17 @@
 /* ===== 4-4 Paint the Floor (mode 'paint') =====
    Run to paint every floor and plank top your colour. act = SPLAT: in the air you dive straight down, on the ground you
    hop first; the higher the dive, the bigger the splash. A dive onto the other player's head is a head-splat (dizzy +
-   your paint around them). 45 s rounds, best of 5: whoever owns more paint cells at the bell wins the round.
-   Catch-up: behind by 6 % of the cells for 0.5 s -> Super Paint (your splashes get bigger and become shiny paint that
-   walking can't cover); a golden bucket
-   (MEGA SPLASH) drops near whoever is behind with 12 s left. Twists by round: Classic, Speedy Paint, Splat Party. */
+   your paint around them). A splat takes 2.4 s to recharge, so running is the main way to paint (Gavyn, 2026-11-15).
+   45 s rounds, best of 5: whoever owns more paint cells at the bell wins the round.
+   Every round has its own floor (def.floors, in order): Paint Studio (plain), Bounce House (bounce pads, map J),
+   Warp Gallery (portal pairs O/Q and U/V), Roller Rink (paint rollers, map y, plus Speedy Paint: your own colour is a
+   fast lane) and Funhouse (all three). A floor swaps G.level for its own parsed map in resetRound (useFloor).
+   Bounce pad: step on it and it flings you about 7 tiles up. Portal: your middle inside it sends you to its twin (you
+   must step out of the twin before it works again; a twin with the other player in it waits). Paint roller: one at a
+   time on the floor, walk into it to grab it; for 6 s you run faster and your feet paint a wider strip over anything,
+   shiny Super Paint too.
+   Catch-up: behind by 6 % of the cells for 0.5 s -> Super Paint (your splashes get bigger, recharge faster and become
+   shiny paint that walking can't cover); a golden bucket (MEGA SPLASH) drops near whoever is behind with 12 s left. */
 const PAINT = {
   cell: 10,                  // px per paint cell (3 per tile top)
   feetInset: 2,              // the brush is the feet: [x + 2, x + w - 2]
@@ -17,35 +24,37 @@ const PAINT = {
   diveVx: 0.35,              // horizontal speed kept when a dive starts
   diveHang: 0.08,            // s with no gravity at the start of a dive (the wind-up pose)
   diveV: 900,                // dive speed (= PHYS.maxFall)
-  cool: 0.95,                // s after a splat lands before the next press works (Splat Party: 0.5)
-  bonkCool: 0.4,             // a dive that bounced off a protected head
-  rSmall: 30, rMed: 60, rBig: 90,   // splash reach past each side of the body (half-width = 11 + r)
+  cool: 3.0,                 // s after a splat lands before the next press works (was 0.95: splats ruled the floor)
+  bonkCool: 0.6,             // a dive that bounced off a protected head
+  rSmall: 20, rMed: 38, rBig: 58,   // splash reach past each side of the body (half-width = 11 + r)
   hMed: 70, hBig: 150,       // fall height (landing y - highest y of this airtime) for a medium / big splash
   rowTol: 1,                 // a splash also paints surfaces up to 1 tile row above / below the landing row
-  splatR: 60, splatStun: 1.0, // head-splat: patch reach around the victim, victim stun
+  splatR: 50, splatStun: 1.0, // head-splat: patch reach around the victim, victim stun
   shoveV: 300, shoveVy: -220, shoveStun: 0.3, shoveSlide: 0.3, shoveSafe: 1.0, shoveDy: 36,
   // comeback = Super Paint
   cbOn: 0.06,                // behind by >= 6 % of all cells ...
   cbArm: 0.5,                // ... for 0.5 s in a row -> on (fewer on/off flips; 1.5 s measured: kid 17 %, sandbag 55 %)
   cbOff: 0.03,               // behind by < 3 % -> off
-  cbSplash: 150,             // extra splash reach while on (only splashes lay Super Paint, so they are big)
+  cbSplash: 90,              // extra splash reach while on (only splashes lay Super Paint, so they are big)
   cbRows: 1,                 // extra rows (+-2 instead of +-1) while on
+  cbCool: 0.6,               // the splat recharges in 60 % of the time while on
   // golden bucket
   bucketAt: 12, bucketFall: 1.2, megaR: 135, megaRows: 2,
-  // twists
-  twists: ['classic', 'speedy', 'party'],
-  speedy: { ownSpeed: 0.30 },
-  party: { cool: 0.5, hopV: 520, rSmall: 45 },
-  ownSpeed: 0,
+  // floor helpers
+  padV: 930,                 // bounce pad launch speed (about 216 px, 7 tiles, up; a jump is 109 px)
+  padR: 15,                  // a pad throws you when your middle is within this of its centre (its whole tile)
+  portR: 15,                 // a portal sends you on when your middle is within this of its centre, both ways
+  rollFirst: 4,              // s into a round before the first paint roller shows up
+  rollGap: 6,                // s after a roller is grabbed before the next one shows up
+  rollT: 6,                  // s you push a roller
+  rollSpeed: 0.4,            // ... running 40 % faster
+  rollReach: 30,             // ... and painting this far past each side of your feet (over anything)
+  ownSpeed: 0,               // Speedy Paint: this much faster on your own colour (a floor's own: 0.3)
   // feedback
   tinkGap: 1.0,              // s between "tink" sounds when walking over Super Paint you can't cover
   hintAt: 8, hints: 2,       // "Press F to SPLAT!" bubble: s into a round, for a player who never splatted (max per match)
 };
-const PAINT_CARDS = {
-  classic: { name: 'Classic', hint: 'Run to paint. Splat in the air!' },
-  speedy: { name: 'Speedy Paint', hint: 'Your own colour is a fast lane!' },
-  party: { name: 'Splat Party', hint: 'Splats recharge fast. Splat, splat, splat!' },
-};
+const PAINT_FLOOR0 = { name: 'Paint Studio', hint: 'Run to paint. Splat in the air!' };
 const paintRow = p => Math.floor((p.y + p.h + 1) / T);
 // both players, in the engine's alternating versus order (same-tick ties are a fair coin flip)
 const paintOrder = () => (G.tickN & 1 ? [G.players[1], G.players[0]] : [G.players[0], G.players[1]]);
@@ -57,43 +66,78 @@ MODES.paint = {
   K: PAINT,
   rand: Math.random,
   setup(st, L) {
-    // 'B' = golden-bucket spot (right edge of its tile, on the surface under it): remember it, clear the tile
-    st.spots = [];
-    for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) if (L.grid[ty][tx] === 'B') {
-      st.spots.push({ x: (tx + 1) * T, y: (ty + 1) * T }); L.grid[ty][tx] = '.';
+    st.def = L.def; st.floors = L.def.floors && L.def.floors.length ? L.def.floors : [PAINT_FLOOR0];
+    this.build(st, L, 0);
+    st.stats = { splats: [0, 0], bigSplats: [0, 0], headSplats: [0, 0], buckets: [0, 0], comebacks: [0, 0], flips: [0, 0], best: [0, 0], bounces: [0, 0], warps: [0, 0], rollers: [0, 0] };
+    st.pressed = [false, false];   // has this player ever splatted this match (for the "Press F to SPLAT!" hint)
+    st.hintSplat = [0, 0]; st.hintRd = [0, 0]; // splat hints shown this match, and the round of the last one
+    st.hintTink = [false, false];  // the one-time "Shiny paint: SPLAT it!" bubble
+  },
+  // the level's markers and paint cells for floor fi (G.level already parsed from its map)
+  build(st, L, fi) {
+    st.floorI = fi; st.floor = st.floors[fi] || PAINT_FLOOR0;
+    // 'B' = golden-bucket spot (right edge of its tile, on the surface under it), 'y' = paint-roller spot (on the
+    // surface under its tile): remember them, clear the tiles
+    st.spots = []; st.rollSpots = [];
+    for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+      const ch = L.grid[ty][tx];
+      if (ch === 'B') { st.spots.push({ x: (tx + 1) * T, y: (ty + 1) * T }); L.grid[ty][tx] = '.'; }
+      else if (ch === 'y') { st.rollSpots.push({ x: tx * T + T / 2, y: (ty + 1) * T }); L.grid[ty][tx] = '.'; }
     }
-    // paint cells: every exposed top of a stone or plank tile, 3 cells per tile
+    // bounce pads (parseLevel made the J tiles L.pads) and portals (L.portals): the mode runs them, so take them over
+    st.pads = L.pads.map(q => ({ tx: q.tx, ty: q.ty, x: q.tx * T + T / 2, y: (q.ty + 1) * T, t: 0, dir: 0 }));
+    st.ports = L.portals.map(q => ({ x: q.x, y: q.y, ch: q.ch, pair: q.pair, tx: Math.floor(q.x / T), ty: Math.floor(q.y / T), t: 0 }));
+    for (const q of st.ports) q.to = st.ports.find(o => o.ch === q.pair) || null;
+    st.ports = st.ports.filter(q => q.to);
+    L.pads = []; L.portals = [];
+    // paint cells: every exposed top of a stone or plank tile, 3 cells per tile (not under a pad or a portal)
+    const busy = new Set(st.pads.map(q => q.ty * COLS + q.tx).concat(st.ports.map(q => q.ty * COLS + q.tx)));
     const idx = new Int32Array(ROWS * COLS * 3).fill(-1), cells = [];
     for (let ty = 1; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
       const ch = L.grid[ty][tx];
-      if ((ch === '#' || ch === '=') && L.grid[ty - 1][tx] === '.') for (let i = 0; i < 3; i++) {
+      if ((ch === '#' || ch === '=') && L.grid[ty - 1][tx] === '.' && !busy.has((ty - 1) * COLS + tx)) for (let i = 0; i < 3; i++) {
         idx[(ty * COLS + tx) * 3 + i] = cells.length;
         cells.push({ tx, ty, i, x0: tx * T + i * PAINT.cell, top: ty * T, plank: ch === '=', drip: !(hash(tx * 3 + i, ty) % 4) ? 5 + hash(ty, tx * 3 + i) % 7 : 0 });
       }
     }
     st.idx = idx; st.cells = cells; st.n = cells.length;
-    st.stats = { splats: [0, 0], bigSplats: [0, 0], headSplats: [0, 0], buckets: [0, 0], comebacks: [0, 0], flips: [0, 0], best: [0, 0] };
-    st.pressed = [false, false];   // has this player ever splatted this match (for the "Press F to SPLAT!" hint)
-    st.hintSplat = [0, 0]; st.hintRd = [0, 0]; // splat hints shown this match, and the round of the last one
-    st.hintTink = [false, false];  // the one-time "Shiny paint: SPLAT it!" bubble
+    // for the computer's map (js/cpu/cpu-nav.js): pads throw you up, a portal's tile is really its twin's
+    st.navOpts = { key: 'paint' + fi, pads: new Map(st.pads.map(q => [q.ty * COLS + q.tx, PAINT.padV])), portals: new Map(st.ports.map(q => [q.ty * COLS + q.tx, q.to.ty * COLS + q.to.tx])) };
+    st.own = null;
+  },
+  // a new round on another floor: parse its map into G.level and put both players on its spawns
+  useFloor(fi) {
+    const st = G.mst, f = st.floors[fi] || PAINT_FLOOR0, def = Object.assign({}, st.def, { map: f.map || st.def.map });
+    G.level = parseLevel(def);
+    const L = G.level;
+    applyTheme(LEVELS[G.levelIndex].world, Object.assign({}, st.def.theme, f.theme));
+    G.spawnPts = L.spawns.map(s => ({ ...s }));
+    G.players.forEach((p, k) => { p.x = L.spawns[k].x; p.y = L.spawns[k].y; p.vx = 0; p.vy = 0; });
+    this.build(st, L, fi);
   },
   resetRound(n) {
+    const fi = (n - 1) % G.mst.floors.length;
+    if (fi !== G.mst.floorI) this.useFloor(fi);
     const st = G.mst, N = st.n;
     st.own = new Int8Array(N).fill(-1); st.thick = new Uint8Array(N); st.wet = new Float32Array(N).fill(-99);
     st.count = [0, 0]; st.cb = [false, false]; st.cbShown = [false, false]; st.cbArm = [0, 0];
-    st.dive = [0, 0]; st.diveT = [0, 0]; st.diveFrom = [-1, -1]; st.cool = [0, 0];
+    st.dive = [0, 0]; st.diveT = [0, 0]; st.diveFrom = [-1, -1]; st.cool = [0, 0]; st.coolMax = [1, 1];
     st.peak = G.players.map(p => p.y); st.safeT = [0, 0]; st.lead = [0, 0]; st.lastLead = -1; st.leadT = -99;
     st.bucket = null; st.bucketDone = false; st.bucketGot = -1;
-    st.twist = PAINT.twists[(n - 1) % PAINT.twists.length];
-    st.K = Object.assign({}, PAINT, PAINT[st.twist] || {});
+    st.K = Object.assign({}, PAINT, st.floor.own ? { ownSpeed: st.floor.own } : {});
+    st.portLock = [null, null]; st.roll = null; st.rollAt = st.rollSpots.length ? PAINT.rollFirst : Infinity;
+    st.rollHeld = [0, 0]; st.rollLast = -1; st.roundT = 0;
+    for (const q of st.pads) q.t = 0;
+    for (const q of st.ports) q.t = 0;
     st.fx = []; st.pops = []; st.bub = [null, null]; st.blob = [null, null];
     st.tinkT = [0, 0]; st.sparkT = [0, 0]; st.trailT = [0, 0]; st.blk = false;
   },
   // ----- painting -----
   // returns 1 if the cell changed hands, 0 if not, -1 if walking was blocked by someone else's Super Paint.
   // Only a splash lays Super Paint (walking never does: no "shiny carpet" by sandbagging behind and walking about)
-  paintCell(ci, k, splat) {
-    const st = G.mst, prev = st.own[ci], sup = st.cb[k] && splat ? 1 : 0;
+  // (roll: a paint roller, which covers Super Paint like a splash but lays plain paint)
+  paintCell(ci, k, splat, roll) {
+    const st = G.mst, prev = st.own[ci], sup = st.cb[k] && splat && !roll ? 1 : 0;
     if (prev === k) { if (sup && !st.thick[ci]) { st.thick[ci] = 1; st.wet[ci] = G.time; } return 0; }
     if (prev >= 0 && st.thick[ci] && !splat) return -1;
     st.thick[ci] = sup;
@@ -102,7 +146,7 @@ MODES.paint = {
     return 1;
   },
   // paint every cell of row ty whose [x0, x0 + 10) overlaps [xa, xb)
-  paintSpan(ty, xa, xb, k, splat) {
+  paintSpan(ty, xa, xb, k, splat, roll) {
     const st = G.mst;
     if (ty < 0 || ty >= ROWS) return 0;
     const c0 = Math.max(0, Math.floor(xa / PAINT.cell)), c1 = Math.min(COLS * 3 - 1, Math.floor((xb - 0.001) / PAINT.cell));
@@ -110,7 +154,7 @@ MODES.paint = {
     for (let c = c0; c <= c1; c++) {
       const ci = st.idx[ty * COLS * 3 + c];
       if (ci < 0) continue;
-      const r = this.paintCell(ci, k, splat);
+      const r = this.paintCell(ci, k, splat, roll);
       if (r > 0) got++; else if (r < 0) st.blk = true;
     }
     return got;
@@ -155,7 +199,7 @@ MODES.paint = {
       if (!p.alive || p.stun > 0) { st.dive[k] = 0; continue; }
       if (st.dive[k] === 1 && p.vy >= K.hopTop) this.startDive(p);
       if (st.dive[k] === 2) {
-        if (p.vy < -1) { st.dive[k] = 0; st.cool[k] = K.bonkCool; continue; } // bounced off a protected head: the dive is over
+        if (p.vy < -1) { st.dive[k] = 0; st.cool[k] = st.coolMax[k] = K.bonkCool; continue; } // bounced off a protected head: the dive is over
         if (p.dropT > 0 && st.diveFrom[k] >= 0 && p.y + p.h > st.diveFrom[k] + 1) p.dropT = 0;
         st.diveT[k] += dt;
         p.vy = st.diveT[k] < K.diveHang ? -PHYS.g * dt : K.diveV; // control() adds gravity: a short hang, then straight down
@@ -167,7 +211,7 @@ MODES.paint = {
     const h = p.y - st.peak[k], big = h >= K.hBig ? 2 : h >= K.hMed ? 1 : 0;
     const half = p.w / 2 + [K.rSmall, K.rMed, K.rBig][big] + (st.cb[k] ? K.cbSplash : 0), cx = p.x + p.w / 2;
     this.splash(cx, ty, half, k, K.rowTol + (st.cb[k] ? K.cbRows : 0));
-    st.dive[k] = 0; st.cool[k] = K.cool;
+    st.dive[k] = 0; st.cool[k] = this.coolFor(k);
     st.stats.splats[k]++; if (big === 2) st.stats.bigSplats[k]++;
     const top = ty * T;
     st.fx.push({ x: cx, y: top, half, k, t0: G.time });
@@ -196,7 +240,7 @@ MODES.paint = {
     const ty = paintRow(o), cx = o.x + o.w / 2, half = o.w / 2 + K.splatR;
     this.splash(cx, ty, half, p.id, K.rowTol);
     st.stats.headSplats[p.id]++; st.stats.splats[p.id]++;
-    st.dive[p.id] = 0; st.cool[p.id] = K.cool; st.dive[o.id] = 0;
+    st.dive[p.id] = 0; st.cool[p.id] = this.coolFor(p.id); st.dive[o.id] = 0;
     st.blob[o.id] = { k: p.id, t0: G.time, life: K.splatStun };
     st.fx.push({ x: cx, y: ty * T, half, k: p.id, t0: G.time });
     st.pops.push({ txt: 'SPLAT!', x: cx, y: o.y - 8, t0: G.time, life: 0.8, size: 20, col: PCOL[p.id], rise: 26 });
@@ -204,13 +248,51 @@ MODES.paint = {
     rumble(o.id, 0.9, 0.5, 220);
     burst(cx, o.y + 4, PCOL[p.id], 14);
   },
+  coolFor(k) { const st = G.mst, c = st.K.cool * (st.cb[k] ? st.K.cbCool : 1); st.coolMax[k] = c; return c; },
+  // ----- bounce pads, portals and paint rollers -----
+  bounce(p, q) {
+    const st = G.mst, k = p.id;
+    p.vy = -st.K.padV; p.grounded = false; p.jumping = false; p.coyote = 0; p.jumpBuf = 0; p.pendingJump = false; p.offT = 0.05;
+    p.sx = 0.7; p.sy = 1.35; q.t = 0.2;
+    st.dive[k] = 0; st.peak[k] = p.y; st.stats.bounces[k]++;
+    Sfx.play('paintBoing', k);
+    rumble(k, 0.2, 0.3, 90);
+    puff(q.x, q.y, 5, 'rgba(255,255,255,0.85)');
+  },
+  inPort(p, q, m = 0) { const R = G.mst.K.portR + m; return Math.abs(p.x + p.w / 2 - q.x) < R && Math.abs(p.y + p.h / 2 - q.y) < R; },
+  warp(p, q) {
+    const st = G.mst, k = p.id, e = q.to;
+    burst(p.x + p.w / 2, p.y + p.h / 2, PORTAL_COL[q.ch], 10);
+    p.x = e.x - p.w / 2; p.y = e.y + T / 2 - p.h; p.vy = 0; p.jumping = false; p.dropT = 0;
+    st.portLock[k] = e; st.peak[k] = p.y; st.stats.warps[k]++;
+    q.t = e.t = 0.3;
+    burst(e.x, e.y, PORTAL_COL[e.ch], 12);
+    Sfx.play('paintWarp', k);
+    rumble(k, 0.15, 0.35, 90);
+  },
+  // the next roller: on the spot (not the last one) about as far from both players, so neither gets it handed
+  dropRoller() {
+    const st = G.mst, ps = G.players;
+    st.rollAt = Infinity;
+    const d = (p, s) => Math.hypot(p.x + p.w / 2 - s.x, p.y + p.h - s.y);
+    let best = null, bv = Infinity;
+    st.rollSpots.forEach((s, i) => {
+      if (i === st.rollLast && st.rollSpots.length > 1) return;
+      const v = Math.abs(d(ps[0], s) - d(ps[1], s)) + this.rand() * 60;
+      if (v < bv) { bv = v; best = i; }
+    });
+    if (best == null) return;
+    st.rollLast = best;
+    st.roll = { x: st.rollSpots[best].x, y: st.rollSpots[best].y, t0: G.time };
+    Sfx.play('paintRollerUp');
+  },
   // ----- the golden bucket -----
   dropBucket() {
     const st = G.mst, ps = G.players;
     st.bucketDone = true;
     if (!st.spots.length) return;
     const c = st.count, behind = c[0] < c[1] ? 0 : c[1] < c[0] ? 1 : -1;
-    let spot = st.spots[3] || st.spots[0]; // even paint: the stage centre
+    let spot = st.spots.reduce((a, s) => (!a || Math.abs(s.x - W / 2) + Math.abs(s.y - H / 2) < Math.abs(a.x - W / 2) + Math.abs(a.y - H / 2) ? s : a), null); // even paint: the spot nearest the middle
     if (behind >= 0) {
       const lead = ps[1 - behind], tr = ps[behind];
       const d = (p, s) => Math.hypot(p.x + p.w / 2 - s.x, p.y + p.h - s.y);
@@ -269,11 +351,13 @@ MODES.paint = {
       }
       st.cb[k] = on;
     }
-    // 2. Speedy Paint: 30 % faster on your own colour
-    if (K.ownSpeed > 0) for (const p of ord) if (p.alive && p.tileGround && p.stun <= 0) {
+    // 2. Speedy Paint (30 % faster on your own colour) and the paint roller (40 % faster)
+    st.roundT += dt;
+    for (const p of ord) if (p.alive && p.tileGround && p.stun <= 0) {
       const ci = st.idx[paintRow(p) * COLS * 3 + Math.floor((p.x + p.w / 2) / K.cell)];
-      if (ci >= 0 && st.own[ci] === p.id) {
-        moveX(p, p.vx * dt * K.ownSpeed);
+      const fast = (st.rollHeld[p.id] > 0 ? K.rollSpeed : 0) + (K.ownSpeed > 0 && ci >= 0 && st.own[ci] === p.id ? K.ownSpeed : 0);
+      if (fast > 0) {
+        moveX(p, p.vx * dt * fast);
         // a little speed trail behind the feet while the fast lane carries you
         if (Math.abs(p.vx) > 150 && (st.trailT[p.id] -= dt) <= 0) {
           st.trailT[p.id] = 0.07;
@@ -289,10 +373,36 @@ MODES.paint = {
       if (st.dive[k] === 2 && p.tileGround) this.land(p);
       st.peak[k] = p.y;
     }
-    // 4. feet paint
+    // 3b. bounce pads, portals, the paint roller
+    for (const p of ord) {
+      const k = p.id;
+      if (!p.alive) continue;
+      const cx = p.x + p.w / 2;
+      if (p.grounded && p.vy >= 0) for (const q of st.pads) if (Math.abs(cx - q.x) < K.padR && Math.abs(p.y + p.h - q.y) < 0.5) { this.bounce(p, q); break; }
+      const lk = st.portLock[k];
+      if (lk && !this.inPort(p, lk, 6)) st.portLock[k] = null;
+      for (const q of st.ports) {
+        if (q === st.portLock[k] || !this.inPort(p, q)) continue;
+        const o = other(p);
+        if (o.alive && rectHit(o, q.to.x - T / 2, q.to.y - T / 2, T, T)) { q.t = Math.max(q.t, 0.1); continue; } // the twin is taken: wait
+        this.warp(p, q);
+        break;
+      }
+      const r = st.roll;
+      if (r && G.time - r.t0 > 0.3 && rectHit(p, r.x - 14, r.y - 30, 28, 30)) {
+        st.roll = null; st.rollHeld[k] = K.rollT; st.rollAt = st.roundT + K.rollGap; st.stats.rollers[k]++;
+        st.pops.push({ txt: 'PAINT ROLLER!', k, dy: -34, t0: G.time, life: 0.9, size: 18, col: PCOL[k], rise: 30 });
+        Sfx.play('paintRoller', k);
+        rumble(k, 0.2, 0.4, 120);
+        burst(r.x, r.y - 12, '#ffffff', 10);
+      }
+    }
+    if (!st.roll && st.roundT >= st.rollAt) this.dropRoller();
+    // 4. feet paint (with a roller: a wider strip, over anything)
     for (const p of ord) if (p.alive && p.tileGround) {
       st.blk = false;
-      this.paintSpan(paintRow(p), p.x + K.feetInset, p.x + p.w - K.feetInset, p.id, false);
+      const rl = st.rollHeld[p.id] > 0, w = rl ? K.rollReach : 0;
+      this.paintSpan(paintRow(p), p.x + K.feetInset - w, p.x + p.w - K.feetInset + w, p.id, rl, rl);
       if (st.blk && Math.abs(p.vx) > 30) this.tink(p);
     }
     // 5. who leads (decides an exact tie)
@@ -309,9 +419,12 @@ MODES.paint = {
       if (b.t >= K.bucketFall) for (const p of ord) if (p.alive && rectHit(p, b.x - 13, b.y - 26, 26, 26)) { this.grabBucket(p, b); break; }
     }
     // timers, sparkles, hints
+    for (const q of st.pads) q.t = Math.max(0, q.t - dt);
+    for (const q of st.ports) q.t = Math.max(0, q.t - dt);
     for (const p of ps) {
       const k = p.id;
       st.tinkT[k] -= dt;
+      if (st.rollHeld[k] > 0) st.rollHeld[k] = Math.max(0, st.rollHeld[k] - dt);
       if (st.cb[k] && p.alive) {
         st.sparkT[k] -= dt;
         if (st.sparkT[k] <= 0) {
@@ -369,6 +482,9 @@ MODES.paint = {
     ];
     if (s.headSplats[0] || s.headSplats[1]) out.push({ label: 'Head splats', values: s.headSplats.slice() });
     if (s.buckets[0] || s.buckets[1]) out.push({ label: 'Golden buckets', values: s.buckets.slice() });
+    if (s.rollers[0] || s.rollers[1]) out.push({ label: 'Paint rollers', values: s.rollers.slice() });
+    const nb = s.bounces[0] + s.bounces[1], nw = s.warps[0] + s.warps[1];
+    if (nb || nw) out.push([nb ? 'Bounces: ' + NAMES[0] + ' ' + s.bounces[0] + ' · ' + NAMES[1] + ' ' + s.bounces[1] : '', nw ? 'Warps: ' + NAMES[0] + ' ' + s.warps[0] + ' · ' + NAMES[1] + ' ' + s.warps[1] : ''].filter(Boolean).join('   '));
     if (s.bigSplats[0] || s.bigSplats[1]) out.push('Big splats: ' + NAMES[0] + ' ' + s.bigSplats[0] + ' · ' + NAMES[1] + ' ' + s.bigSplats[1]);
     return out;
   },
@@ -383,6 +499,16 @@ MODES.paint = {
       ctx.beginPath(); ctx.ellipse(p.x + p.w / 2, p.y + p.h / 2 + 1, 21, 22, 0, 0, Math.PI * 2); ctx.fill();
     }
     paintDrawCells(st, now);
+    for (const q of st.pads) drawPad(q);
+    for (const q of st.ports) drawPortal(q);
+    // the paint roller waiting on its spot: it pops up, bobs and glows white
+    const r = st.roll;
+    if (r) {
+      const a = now - r.t0, u = clamp(a / 0.3, 0, 1), bob = Math.sin(now * 4) * 2 * u;
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.22 + 0.08 * Math.sin(now * 5)).toFixed(3) + ')'; circle(r.x, r.y - 15, 19); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2; circle(r.x, r.y - 15, 22 + 2 * Math.sin(now * 5)); ctx.stroke();
+      paintDrawRoller(r.x, r.y - 4 - bob, 0.4 + 0.6 * u, null, 0);
+    }
     // splash rings
     for (const f of st.fx) {
       const a = now - f.t0;
@@ -439,20 +565,23 @@ MODES.paint = {
         for (const dx of [-6, 0, 6]) { const len = dx ? 10 : 16; ctx.beginPath(); ctx.moveTo(cx + dx, p.y - 6 - len); ctx.lineTo(cx + dx, p.y - 5); ctx.stroke(); }
         ctx.globalAlpha = 1;
       }
+      // pushing a paint roller (it blinks in its last 1.5 s)
+      const rh = st.rollHeld[k];
+      if (rh > 0 && (rh > 1.5 || Math.floor(now * 8) % 2 === 0)) paintDrawRoller(cx + p.face * 17, p.y + p.h, 1, k, p.face);
       // splat recharging: a paint drop over the head that fills up
-      if (live && st.cool[k] > 0 && !st.bub[k]) paintDrawDrop(cx, p.y - 19, 1 - st.cool[k] / st.K.cool, PCOL[k]);
+      if (live && st.cool[k] > 0 && !st.bub[k]) paintDrawDrop(cx, p.y - 19, 1 - st.cool[k] / st.coolMax[k], PCOL[k]);
     }
   },
   hud() {
     const st = G.mst, m = G.match;
     if (!st.own || !m) return;
-    const big = hudBig(), now = G.time, card = PAINT_CARDS[st.twist] || PAINT_CARDS.classic;
-    // twist pill under the level pill (twist rounds only)
-    if (st.twist !== 'classic') {
+    const big = hudBig(), now = G.time, card = st.floor || PAINT_FLOOR0;
+    // the floor's name in a pill under the level pill
+    {
       const fs = big ? 18 : 13, ph = big ? 34 : 26;
       ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
       pill(14, 46, ctx.measureText(card.name).width + 28, ph);
-      text(card.name, 28, 46 + ph / 2 + 0.5, fs, C.gold, 'left', 'body');
+      text(card.name, 28, 46 + ph / 2 + 0.5, fs, C.paper, 'left', 'body');
     }
     // top right: the golden bucket alert
     if (st.bucket && (m.phase === 'live' || m.phase === 'end')) {
@@ -465,7 +594,7 @@ MODES.paint = {
       text(s, W - 28, 12 + ph / 2 + 0.5, fs, flash ? '#ffffff' : C.gold, 'right', 'body');
     }
     paintDrawBar(st, big, now);
-    // the twist card under "Round N" / the 3-2-1 (every round)
+    // the floor's card under "Round N" / the 3-2-1 (every round)
     if (m.phase === 'ready' || m.phase === 'count') {
       const fn = big ? 34 : 26, fh = big ? 19 : 14, ph = big ? 78 : 60;
       ctx.font = '700 ' + fh + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
@@ -673,6 +802,24 @@ function paintDrawBucket(x, y, s, tip) {
   ctx.fillStyle = '#ffffff'; paintStar(6, -16, 2.6); ctx.fill();
   ctx.restore();
 }
+// a paint roller standing on the floor at (x, y = the floor): k = whose paint is on it (null: a fresh white one,
+// standing up), face = which way it is pushed (the handle goes back to the hands)
+function paintDrawRoller(x, y, s, k, face) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // the handle: up and back to the hands (or straight up, waiting)
+  ctx.strokeStyle = '#4a4766'; ctx.lineWidth = 2.5; ctx.beginPath();
+  if (k == null) { ctx.moveTo(0, -10); ctx.lineTo(0, -16); ctx.lineTo(-7, -16); ctx.lineTo(-7, -27); }
+  else { ctx.moveTo(0, -8); ctx.lineTo(-face * 5, -12); ctx.lineTo(-face * 15, -15); }
+  ctx.stroke();
+  if (k == null) { ctx.fillStyle = '#d9925c'; rr(-10, -33, 6, 9, 3); ctx.fill(); }
+  // the roller: a soaked sleeve with a gloss line
+  ctx.fillStyle = k == null ? '#ffffff' : PCOL[k]; ctx.strokeStyle = 'rgba(28,26,54,0.75)'; ctx.lineWidth = 1.5;
+  rr(-11, -11, 22, 10, 5); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(-8, -9.5, 16, 2);
+  if (k != null) { ctx.fillStyle = PDARK[k]; ctx.fillRect(-8, -4, 16, 1.5); }
+  ctx.restore();
+}
 // the splat cooldown: a paint drop over the head, filled from the bottom by f (0..1)
 function paintDrawDrop(x, y, f, col) {
   const path = () => {
@@ -721,6 +868,10 @@ Sfx.extra.paintHeadSplat = function (p) { this.tone(500 * p, 0.1, 'square', 0.05
 Sfx.extra.paintShove = function (p) { this.tone(260 * p, 0.08, 'square', 0.04, 140 * p); };
 Sfx.extra.paintTink = function () { this.tone(1400, 0.03, 'square', 0.015); };
 Sfx.extra.paintSuper = function (p) { [660, 880, 1100].forEach((f, i) => this.tone(f * p, 0.08, 'triangle', 0.04, null, i * 0.05)); };
+Sfx.extra.paintBoing = function (p) { this.tone(220 * p, 0.18, 'triangle', 0.06, 660 * p); this.tone(440 * p, 0.12, 'sine', 0.03, 990 * p, 0.04); };
+Sfx.extra.paintWarp = function (p) { this.tone(500 * p, 0.16, 'sine', 0.04, 1400 * p); this.tone(1400 * p, 0.14, 'sine', 0.025, 600 * p, 0.08); };
+Sfx.extra.paintRollerUp = function () { [700, 900].forEach((f, i) => this.tone(f, 0.07, 'triangle', 0.025, null, i * 0.06)); };
+Sfx.extra.paintRoller = function (p) { [520, 660, 780].forEach((f, i) => this.tone(f * p, 0.07, 'square', 0.03, null, i * 0.04)); };
 Sfx.extra.paintBucket = function () { this.tone(1200, 1.1, 'sine', 0.025, 500); };
 Sfx.extra.paintMega = function (p) { [523, 784, 1047].forEach((f, i) => this.tone(f * p, 0.12, 'triangle', 0.06, null, i * 0.05)); this.tone(120, 0.4, 'triangle', 0.1, 45, 0.12); };
 

@@ -13,7 +13,8 @@
    spots follow a pattern on the screen, so standing still is never safe for long.
    THREE STRETCHES with a flag between (the stomps pause `flagPause` s at a flag; the flags are safe spots):
      1 Open dunes       shadows and wave hops; toppled obelisks lie as ramps (rivets over them).
-     2 Trampled ruins   temple walls too high to jump: a BOOST then a HAND UP (the plan alternates who climbs first);
+     2 Trampled ruins   temple walls too high to jump: a STEAM LIFT at each (one rides, one holds the low lever;
+                        then the one on top holds the high lever for the other; the plan alternates who rides first);
                         cracks open in the ground after each footfall (jump them); pillars lean (1 s) and topple.
                         The feet never land near a wall someone is climbing.
      3 The heel chain   the chain's ring drags on the sand ahead. One grabs it (action), the other must take their hand
@@ -54,7 +55,8 @@ function ironChaseSetup(st, L) {
   ph.t = 0; ph.strideT = 1.6; ph.pat = 0; ph.feet = [{ id: 0, state: 'air', t: 0, x: 0 }, { id: 1, state: 'air', t: 0, x: 0 }]; ph.next = 0;
   ph.waves = []; ph.rain = []; ph.dust = []; ph.flagAt = -1; ph.pauseT = 0; ph.stretch = 0; ph.jumpAt = [-9, -9];
   ph.obelisks = K.obelisks.map(([x, k]) => ({ x, k }));
-  ph.walls = K.walls.map((x, i) => ({ x, i, done: false, first: (ph.first + i) % 2 }));
+  ph.walls = K.walls.map((x, i) => ({ x, i, done: false, first: (ph.first + i) % 2,
+    lift: ironLiftMake({ x0: x - IRON.lift.w, base: gy, top: gy - K.wallH, low: x - IRON.lift.w - IRON.lift.gap, high: x + 62 }) }));
   ph.cracks = K.cracks.map(x => ({ x, open: false, t: 0 }));
   ph.pillars = K.pillars.map(x => ({ x, state: 'up', t: 0 }));
   ph.chain = { x: K.chain.x0, state: 'drag', who: -1, t: 0, tries: 0 };
@@ -75,7 +77,7 @@ function ironChaseSetup(st, L) {
   ph.prep.push(() => IRON_ART.foot(), () => IRON_ART.shin(), () => IRON_ART.paving(0), () => IRON_ART.paving(1), () => IRON_ART.ring(), () => IRON_ART.pillar(), () => IRON_ART.boneArch());
   for (let k = 0; k < 2; k++) ph.prep.push(() => IRON_ART.obelisk(k), () => IRON_ART.rock(k), () => IRON_ART.cactus(k));
   for (let k = 0; k < 3; k++) ph.prep.push(() => IRON_ART.ruinWall(k));
-  ph.prep.push(() => IRON_ART.rubble(0), () => IRON_ART.rubble(1));
+  ph.prep.push(() => IRON_ART.rubble(0), () => IRON_ART.rubble(1), () => IRON_ART.piston(), () => IRON_ART.legLever());
 }
 // the static world: the ground (with the open cracks as gaps), walls, obelisk ramps, fallen pillars, planted feet
 function ironChaseBuild(ph) {
@@ -87,6 +89,7 @@ function ironChaseBuild(ph) {
   for (const w of ph.walls) {
     S.push({ x0: w.x, y0: gy - K.wallH, x1: w.x + K.wallW, y1: gy, kind: 'wall', wall: w });
     S.push({ x0: w.x + K.wallW, y0: gy - IRON_ART.RUBBLE.h, x1: w.x + K.wallW + IRON_ART.RUBBLE.w, y1: gy, kind: 'rubble' });
+    S.push(w.lift.solid);
   }
   for (const o of ph.obelisks) { const [a, b] = IRON_ART.OBELISK.ramp; S.push({ slope: true, x0: o.x + a[0], x1: o.x + b[0], ya: gy - 100 + a[1], yb: gy - 100 + b[1], kind: 'obelisk', one: true }); }
   for (const pl of ph.pillars) if (pl.state === 'down') S.push({ x0: pl.x - K.pillarLen, y0: gy - 30, x1: pl.x - 6, y1: gy, kind: 'pillar' });
@@ -196,9 +199,8 @@ function ironChaseStep(st, dt) {
     else if (f.state === 'lift' && f.t >= K.lift) { f.state = 'air'; f.t = 0; }
   }
   // the heroes
-  ironHandUp(st, dt, { edge: 70 });
+  ironLiftStep(st, ph.walls.map(w => w.lift), dt);
   for (const p of ps) {
-    if (st.haul && st.haul.who === p.id) continue;
     const was = p.grounded;
     ironBody(p, dt, ph.solids, { partner: true, ctl: ph.chain.who === p.id ? ironChaseHeld : null });
     if (was && !p.grounded && p.vy < -300) ph.jumpAt[p.id] = ph.t;
@@ -243,21 +245,20 @@ function ironChaseWaves(st, dt) {
   for (const w of ph.waves) {
     if (w.dead) continue;
     const x0 = w.x; w.x += w.dir * K.wave.v * dt; w.t += dt;
-    // a wave runs out after `reach` px, and a temple wall stops it (so a Boost at a wall is never shaken apart)
+    // a wave runs out after `reach` px, and a temple wall stops it (so a lift at a wall is never shaken apart)
     if (w.t * K.wave.v > K.wave.reach || ph.walls.some(q => (x0 - q.x - K.wallW / 2) * (w.x - q.x - K.wallW / 2) <= 0)) { w.dead = true; continue; }
     for (const p of G.players) {
       if (!p.alive || w.hit[p.id] || ph.chain.who === p.id) continue;
       const cx = p.x + p.w / 2;
       if ((x0 - cx) * (w.x - cx) > 0) continue;
       w.hit[p.id] = true;
-      if (st.haul && st.haul.who === p.id) continue;
       if (!p.grounded && p.y + p.h > gy - 70) {
         if (ph.t - ph.jumpAt[p.id] < K.wave.hopWin + 0.25) {
           // a WAVE HOP: a free forward leap
           p.vy = Math.min(p.vy, -K.wave.hopVy); p.vx = w.dir * K.wave.hopVx; p.carryVx = w.dir * K.wave.hopVx;
           ironStats(st).hops++; Sfx.play('ironchaseWaveHop', p.id); ironPop(st, cx, p.y - 8, 'WAVE HOP!', { size: 13, fill: SKETCH.PAL.core });
         }
-      } else if (p.grounded && p.y + p.h >= gy - 2 && !(p.ground && p.ground.kind === 'wall')) {
+      } else if (p.grounded && p.y + p.h >= gy - 2 && !(p.ground && (p.ground.kind === 'wall' || p.ground.kind === 'lift'))) {
         const toss = ironHasGold(st, 'stretch' + ph.stretch) ? K.wave.goldToss : K.wave.toss;
         knock(p, w.dir * toss, -230, 0.25, 0.3);
         ironStats(st).tossed++; IRON_OUTFIT.dusty[p.id] = 3; ironPop(st, cx, p.y - 8, 'WHOA!', { size: 13 });
@@ -413,22 +414,23 @@ function ironChasePlan(st) {
     const climb = w.first, step = 1 - climb, cp = ps[climb], sp = ps[step];
     const cOn = cp.x + cp.w / 2 > w.x - 2 && cp.y + cp.h <= gy - K.wallH + 2, sOn = sp.x + sp.w / 2 > w.x - 2 && sp.y + sp.h <= gy - K.wallH + 2;
     const past = q => q.x + q.w / 2 > w.x + K.wallW && q.y + q.h > gy - K.wallH + 2;
+    const L = w.lift, deck = L.x0 + IRON.lift.w / 2;
+    const ride = id => ironLiftOn(L, ps[id]) && L.h >= ironLiftFull(L) - 2 ? { why: 'off', x: w.x + 24, say: 'Step onto the wall!' }
+      : { why: 'ride', x: deck, lift: L, say: 'Stand on the steam lift!' };
     if (!cOn && !sOn && (past(cp) || past(sp)) && !(past(cp) && past(sp))) {
       const a = past(cp) ? climb : step, b = 1 - a;
-      out[a] = { why: 'back', x: w.x + 30, say: 'Back up the rubble onto the wall, then pull ' + NAMES[b] + ' up!' };
-      out[b] = { why: 'wait', x: w.x - 14, say: 'Wait by the wall for a hand up.' };
+      out[a] = { why: 'back', x: w.x + 30, say: 'Back up the rubble onto the wall, then hold ' + ironKey(a, 'act') + ' at the top lever!' };
+      out[b] = ride(b);
       out.wall = w;
       return out;
     }
     if (!cOn && !sOn) {
-      out[step] = { why: 'step', x: w.x - 20, hold: 'down', say: 'Crouch by the wall: be a step!' };
-      out[climb] = { why: 'boost', x: w.x - 20, say: 'Jump off ' + NAMES[step] + '\'s head, onto the wall!' };
-    } else if (cOn && !sOn) {
-      out[climb] = { why: 'hand', x: w.x + 10, hold: 'act', say: 'Hold ' + ironKey(climb, 'act') + ' at the edge: pull ' + NAMES[step] + ' up!' };
-      out[step] = { why: 'wait', x: w.x - 14, say: 'Wait by the wall for a hand up.' };
-    } else if (sOn && !cOn) {
-      out[step] = { why: 'hand', x: w.x + 10, hold: 'act', say: 'Pull ' + NAMES[climb] + ' up!' };
-      out[climb] = { why: 'wait', x: w.x - 14 };
+      out[step] = { why: 'valve', x: L.low, lift: L, hold: 'act', say: ironLiftOn(L, cp) ? 'Hold ' + ironKey(step, 'act') + ' at the lever: lift ' + NAMES[climb] + ' up!' : 'Go to the lever by the lift.' };
+      out[climb] = ride(climb);
+    } else if (cOn !== sOn) {
+      const a = cOn ? climb : step, b = 1 - a;
+      out[a] = { why: 'valve', x: L.high, lift: L, hold: 'act', say: ironLiftOn(L, ps[b]) ? 'Hold ' + ironKey(a, 'act') + ' at the top lever: lift ' + NAMES[b] + ' up!' : 'Go to the top lever.' };
+      out[b] = ride(b);
     } else { out[climb] = { why: 'run', x: w.x + 200 }; out[step] = { why: 'run', x: w.x + 200 }; }
     out.wall = w;
     return out;
@@ -498,7 +500,7 @@ function ironChaseDrawBack(st) {
     SKETCH.blit(ctx, IRON_ART.pillar(), pl.x, gy, { rot });
   }
   for (const o of ph.obelisks) SKETCH.blit(ctx, IRON_ART.obelisk(o.k), o.x, gy);
-  for (const w of ph.walls) { SKETCH.blit(ctx, IRON_ART.rubble(w.i % 2), w.x + K.wallW, gy); SKETCH.blit(ctx, IRON_ART.ruinWall(w.i % 3), w.x + K.wallW / 2, gy); }
+  for (const w of ph.walls) { SKETCH.blit(ctx, IRON_ART.rubble(w.i % 2), w.x + K.wallW, gy); SKETCH.blit(ctx, IRON_ART.ruinWall(w.i % 3), w.x + K.wallW / 2, gy); w.lift.done = w.done; ironLiftDraw(st, w.lift); }
   for (const pl of ph.pillars) if (pl.state === 'down') SKETCH.blit(ctx, IRON_ART.pillar(), pl.x - 4, gy - 2, { rot: -Math.PI / 2 });
   // flags
   K.flags.forEach((fx, i) => ironDrawFlag(fx, gy, ph.flagAt >= i));
@@ -634,10 +636,10 @@ IRON_PHASES.chase = {
   plan(st) { return ironChasePlan(st); },
   present(st, p) { return !!st.ph.tow; },
   busy(st, p) { return !!st.ph.reel; },
-  labels(st) { const P = ironChasePlan(st); return [0, 1].map(id => (P[id] && P[id].why === 'hand' ? 'hand' : 'grab')); },
+  labels(st) { const P = ironChasePlan(st); return [0, 1].map(id => (P[id] && P[id].why === 'valve' ? 'lever' : 'grab')); },
   roles(st) {
     const P = ironChasePlan(st);
-    return [0, 1].map(id => { const w = P[id] && P[id].why; return w === 'step' ? 'Step!' : w === 'boost' ? 'Climb!' : w === 'hand' ? 'Pull!' : w === 'grab' ? 'Grab!' : w === 'handchain' ? 'Hand!' : w === 'tow' ? 'Hold on!' : 'Run!'; });
+    return [0, 1].map(id => { const w = P[id] && P[id].why; return w === 'ride' ? 'Ride!' : w === 'off' ? 'Step off!' : w === 'valve' ? 'Lever!' : w === 'grab' ? 'Grab!' : w === 'handchain' ? 'Hand!' : w === 'tow' ? 'Hold on!' : 'Run!'; });
   },
   hudText(st) {
     const ph = st.ph;

@@ -16,6 +16,10 @@
        that lands just before the bell (too late for Super Paint to answer).
      - The golden bucket: it races for it when it can get there about as fast as you. A head-splat when it happens to
        be right above you. In the way of each other: it hops over you (two computers take turns).
+     - Floor helpers: cpuNav's map knows the bounce pads (a pad throws you up and you steer the fall) and the portals
+       (stepping in takes you to the twin), so its times to every spot, and so its plans, use them (mst.navOpts). Runs
+       stop short of a pad or portal, and it never plans a splat standing on one. A paint roller: it goes for it when it
+       can get there about as fast as you (like the bucket); while it pushes one, runs over your shiny paint count too.
      Skill: easy decides slowly, picks a so-so plan, runs off anywhere now and then, stops now and then, rarely splats on
      purpose, often just lands from a jump, sometimes dives too early and hardly uses its Super Paint (so a young kid
      who splats can win); hard decides quickly, picks the best plan, splats a lot, plays the bell
@@ -33,6 +37,7 @@
                                          // with Super Paint on, easy only a third as often: the catch-up is for you)
     head: s < 0.5 ? 0.1 : s * s,         // chance it dives onto your head when it is right above you
     bucket: 0.3 + 0.7 * s,               // chance it goes for the golden bucket
+    roller: 0.35 + 0.65 * s,             // chance it goes for a paint roller
     steal: s * s,                        // how much more it values painting over your colour than fresh floor
     bell: s >= 0.6,                      // plans for the bell (what is painted after it doesn't count)
     final: s > 0.9 ? 1 : s > 0.6 ? 0.7 : 0, // chance it saves a last splat for the bell in a round
@@ -41,6 +46,10 @@
   });
   const PK = () => G.mst.K || MODES.paint.K;
   const surf = ch => ch === '#' || ch === '=';
+  // the nav options for this floor (pads and portals); always the same object, so cpuNav's map stays cached
+  const NO = () => (G.mst && G.mst.navOpts) || {};
+  // a pad or a portal stands in this cell (walking into it throws you or warps you)
+  const busy = (tx, ty) => { const o = NO(), c = ty * COLS + tx; return !!((o.pads && o.pads.has(c)) || (o.portals && o.portals.has(c))); };
 
   // cells of row ty with [x0, x0 + 10) overlapping [xa, xb) that a splash (or walking) would turn its colour
   function gainSpan(mst, k, ty, xa, xb, splat, steal = 1) {
@@ -51,8 +60,8 @@
       const ci = mst.idx[ty * COLS * 3 + c];
       if (ci < 0) continue;
       const own = mst.own[ci];
-      if (own === k) { if (splat && mst.cb[k] && !mst.thick[ci]) n += 0.3; continue; } // Super Paint makes its own shiny
-      if (own >= 0 && mst.thick[ci] && !splat) continue;     // shiny paint: only a splash covers it
+      if (own === k) { if (splat === true && mst.cb[k] && !mst.thick[ci]) n += 0.3; continue; } // Super Paint makes its own shiny
+      if (own >= 0 && mst.thick[ci] && !splat) continue;     // shiny paint: only a splash (or a roller: splat 'roll') covers it
       // taking a cell from you counts up to twice (one more for it, one less for you): hard sees that best
       n += own < 0 ? 1 : (1 + steal) * (mst.thick[ci] ? 1.2 : 1);
     }
@@ -95,9 +104,10 @@
      (walking paints), a jump-splat right there, or (on a plank) a drop through it with a dive (a big splash below).
      Each is scored by how much it paints per second; it picks one of the best few (the best on hard). */
   function choosePlan(st, p, o, mst, sk, tl, ready) {
-    const g = navGraph(p, {}), here = navFrom(g, p);
+    const g = navGraph(p, NO()), here = navFrom(g, p);
     if (!here) return null;
-    const d = times(g, here.i), k = p.id, plans = [], walkT = T / PHYS.maxRun, cool = mst.cool[k], K = PK(), cbK = sk.super && mst.cb[k];
+    const k = p.id, roll = mst.rollHeld && mst.rollHeld[k] > 0, K = PK();
+    const d = times(g, here.i), plans = [], walkT = T / PHYS.maxRun / (roll ? 1 + K.rollSpeed : 1), cool = mst.cool[k], cbK = sk.super && mst.cb[k];
     const splats = ready || Math.random() < sk.jumpSplat, jumpH = (PHYS.jumpV * PHYS.jumpV) / (2 * PHYS.g);
     // near the bell (normal and hard): only what can be painted before it counts, and in the last seconds the most paint
     // wins, not the quickest
@@ -108,31 +118,31 @@
     // the other player's feet block a run along their row (walking into them just bumps)
     const og = o.alive ? groundBelow(o, cpuFeet(o)) : -9, oty = og >= 0 && og * T - cpuFeet(o) < 40 ? og - 1 : -9, otx0 = Math.floor((o.x - 4) / T), otx1 = Math.floor((o.x + o.w + 4) / T);
     for (const c of g.cells) {
-      if (d[c.i] === Infinity) continue;
+      if (d[c.i] === Infinity || busy(c.tx, c.ty)) continue; // (nobody stays on a pad or in a portal)
       const row = c.ty + 1, x0 = navCellX(c.tx), feet = navFeet(c.ty);
       for (const dir of [-1, 1]) {
         let gain = 0, best = null;
         for (let n = 0, tx = c.tx; n < 14; n++, tx += dir) {
-          if (n > 0 && !g.at.get(c.ty * COLS + tx)) break;
+          if (n > 0 && (!g.at.get(c.ty * COLS + tx) || busy(tx, c.ty))) break;
           if (c.ty === oty && tx >= otx0 && tx <= otx1) break;
-          gain += gainSpan(mst, k, row, tx * T, tx * T + T, false, sk.steal);
+          gain += gainSpan(mst, k, row, tx * T, tx * T + T, roll ? 'roll' : false, sk.steal);
           const rate = score(gain, d[c.i] + (n + 1) * walkT + 0.35);
           if (gain > 0 && rate > 0 && (!best || rate > best.rate)) best = { rate, kind: 'run', c, dir, endTx: tx };
         }
         if (best && !ready) plans.push(best);
       }
-      if (!splats || (c.ty === oty && c.tx >= otx0 && c.tx <= otx1)) continue;
+      if (!splats || busy(c.tx, c.ty) || (c.ty === oty && c.tx >= otx0 && c.tx <= otx1)) continue;
       const wait = Math.max(d[c.i], cool);
       // a jump-splat here: straight up, dive at the top (lands back here, or on a plank above)
       const lj = groundBelow({ x: x0 - PW / 2, w: PW }, feet - jumpH);
-      if (lj >= 0) {
+      if (lj >= 0 && !busy(c.tx, lj - 1)) {
         const sp = splashHalf(mst, k, lj * T - (feet - jumpH), cbK), gain = splashGain(mst, k, x0, lj, sp.half, sp.rows, stealS);
         plans.push({ rate: score(gain, wait + (ready ? 0.55 : 0.75)), kind: 'jump', c, t: wait + 0.55, exec: 0.55 });
       }
       // on a plank: drop through it and dive (a big splash on the floor or plank below)
       if (tile(c.tx, row) === '=') {
         const ld = groundBelow({ x: x0 - PW / 2, w: PW }, feet + 1);
-        if (ld >= 0) {
+        if (ld >= 0 && !busy(c.tx, ld - 1)) {
           const h = ld * T - feet, sp = splashHalf(mst, k, h, cbK), gain = splashGain(mst, k, x0, ld, sp.half, sp.rows, stealS), ex = 0.25 + h / K.diveV;
           plans.push({ rate: score(gain, wait + ex + (ready ? 0 : 0.1)), kind: 'drop', c, t: wait + ex, exec: ex });
         }
@@ -152,7 +162,7 @@
     st.airNav = { x, feet, tol };
     // standing on the other player's head: step off toward the goal
     if (p.onPartner && !p.tileGround) return { left: x < cpuCx(p), right: x >= cpuCx(p) };
-    const mv = cpuNav(st, p, x, feet, { tol, noHop: true }) || {};
+    const mv = cpuNav(st, p, x, feet, Object.assign({ tol, noHop: true }, NO())) || {};
     const dir = mv.right ? 1 : mv.left ? -1 : 0;
     if (dir && navPartnerAhead(p, dir)) {
       mv.jump = hopOver(st, p, dir, info);
@@ -174,7 +184,7 @@
   function goingUp(st, p) {
     const e = st.nav && st.nav.cur;
     if (!e || e.kind === 'walk' || e.kind === 'off' || e.kind === 'drop') return false;
-    const g = navGraph(p, {}), a = g.cells[e.from], b = g.cells[e.to];
+    const g = navGraph(p, NO()), a = g.cells[e.from], b = g.cells[e.via != null ? e.via : e.to];
     return !!(a && b && b.ty < a.ty);
   }
 
@@ -218,7 +228,7 @@
         if (mst.dive[k] === 2) return out;
         if (st.run && st.run.phase === 'run' && !st.airNav) { out.left = st.run.dir < 0; out.right = st.run.dir > 0; }
         else if (st.airNav) {
-          const mv = cpuNav(st, p, st.airNav.x, st.airNav.feet, { tol: st.airNav.tol }) || {};
+          const mv = cpuNav(st, p, st.airNav.x, st.airNav.feet, Object.assign({ tol: st.airNav.tol }, NO())) || {};
           out.left = mv.left; out.right = mv.right; out.jump = out.jump || mv.jump;
         }
         return out;
@@ -236,11 +246,25 @@
       if (b) {
         if (st.bucketFor !== b) {
           st.bucketFor = b;
-          const mine = cpuNavReach(p, b.x, b.y, {}), theirs = Math.hypot(cpuCx(o) - b.x, cpuFeet(o) - b.y) / PHYS.maxRun * 1.2;
+          const mine = cpuNavReach(p, b.x, b.y, NO()), theirs = Math.hypot(cpuCx(o) - b.x, cpuFeet(o) - b.y) / PHYS.maxRun * 1.2;
           st.bucketGo = Math.random() < sk.bucket && mine < theirs + sk.bucketT && mine < 6;
         }
         if (st.bucketGo) {
           const mv = go(st, p, b.x, b.y, 5, info);
+          return { left: mv.left, right: mv.right, jump: mv.jump, down: mv.down };
+        }
+      }
+
+      /* ---- a paint roller ---- */
+      const rl = mst.roll;
+      if (rl && !st.fin) {
+        if (st.rollFor !== rl) {
+          st.rollFor = rl;
+          const mine = cpuNavReach(p, rl.x, rl.y, NO()), theirs = Math.hypot(cpuCx(o) - rl.x, cpuFeet(o) - rl.y) / PHYS.maxRun * 1.2;
+          st.rollGo = Math.random() < sk.roller && mine < theirs + sk.bucketT && mine < 5 && !(mst.rollHeld[k] > 0);
+        }
+        if (st.rollGo) {
+          const mv = go(st, p, rl.x, rl.y, 5, info);
           return { left: mv.left, right: mv.right, jump: mv.jump, down: mv.down };
         }
       }
@@ -283,7 +307,7 @@
         let nr;
         // easy: now and then it just runs off somewhere, like a kid (it still paints on the way)
         if (Math.random() < sk.wander) {
-          const cs = navGraph(p, {}).cells, c = cs[Math.floor(Math.random() * cs.length)];
+          const cs = navGraph(p, NO()).cells, c = cs[Math.floor(Math.random() * cs.length)];
           if (c) nr = { kind: 'wander', x0: navCellX(c.tx), feet: navFeet(c.ty), ty: c.ty, rate: 0, phase: 'go' };
         }
         if (!nr) nr = choosePlan(st, p, o, mst, sk, M.timeLeft);

@@ -35,32 +35,32 @@ const COURSES = new WeakMap();
 function course() {
   const L = G.level;
   if (COURSES.has(L)) return COURSES.get(L);
-  const n = COLS * ROWS, solid = new Uint8Array(n), bad = new Uint8Array(n);
-  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+  const C_ = L.cols || COLS, n = C_ * ROWS, solid = new Uint8Array(n), bad = new Uint8Array(n); // (C_: the course's width in tiles)
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < C_; x++) {
     const ch = L.grid[y][x];
-    solid[y * COLS + x] = golfSolid(x, y) ? 1 : 0;
-    bad[y * COLS + x] = ch === 'w' || ch === '^' ? 1 : 0;
+    solid[y * C_ + x] = golfSolid(x, y) ? 1 : 0;
+    bad[y * C_ + x] = ch === 'w' || ch === '^' ? 1 : 0;
   }
   // distance (tiles) to the cup through open cells, with portals as two-way shortcuts
   const dist = new Float32Array(n).fill(1e6), open = i => !solid[i] && !bad[i];
-  const ci = L.cup.ty * COLS + L.cup.tx;
+  const ci = L.cup.ty * C_ + L.cup.tx;
   dist[ci] = 0;
   const q = [ci], links = {};
   for (const p of L.portals) {
     const o = L.portals.find(r => r.ch === p.pair);
-    if (o) (links[Math.floor(p.y / T) * COLS + Math.floor(p.x / T)] = links[Math.floor(p.y / T) * COLS + Math.floor(p.x / T)] || []).push(Math.floor(o.y / T) * COLS + Math.floor(o.x / T));
+    if (o) (links[Math.floor(p.y / T) * C_ + Math.floor(p.x / T)] = links[Math.floor(p.y / T) * C_ + Math.floor(p.x / T)] || []).push(Math.floor(o.y / T) * C_ + Math.floor(o.x / T));
   }
   // small grid: a simple relax-until-stable pass is plenty
   while (q.length) {
-    const i = q.shift(), x = i % COLS, y = (i / COLS) | 0;
+    const i = q.shift(), x = i % C_, y = (i / C_) | 0;
     const nb = [];
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       if (!dx && !dy) continue;
       const nx = x + dx, ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
-      const j = ny * COLS + nx;
+      if (nx < 0 || ny < 0 || nx >= C_ || ny >= ROWS) continue;
+      const j = ny * C_ + nx;
       if (!open(j)) continue;
-      if (dx && dy && (!open(y * COLS + nx) || !open(ny * COLS + x))) continue;
+      if (dx && dy && (!open(y * C_ + nx) || !open(ny * C_ + x))) continue;
       nb.push([j, dx && dy ? 1.414 : 1]);
     }
     for (const j of links[i] || []) nb.push([j, 1]);
@@ -68,18 +68,18 @@ function course() {
   }
   let per = 0;
   if (L.spinners.length) per = (2 * Math.PI / L.spinners[0].arms) / Math.abs(L.spinners[0].w) / DT; // sail period in steps
-  const m = { solid, bad, dist, per };
+  const m = { solid, bad, dist, per, cols: C_ };
   COURSES.set(L, m);
   return m;
 }
 function distAt(m, x, y) {
-  const tx = clamp(Math.floor(x / T), 0, COLS - 1), ty = clamp(Math.floor(y / T), 0, ROWS - 1);
-  let d = m.dist[ty * COLS + tx];
+  const C_ = m.cols, tx = clamp(Math.floor(x / T), 0, C_ - 1), ty = clamp(Math.floor(y / T), 0, ROWS - 1);
+  let d = m.dist[ty * C_ + tx];
   if (d >= 1e6) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     const nx = tx + dx, ny = ty + dy;
-    if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS) d = Math.min(d, m.dist[ny * COLS + nx] + 1);
+    if (nx >= 0 && ny >= 0 && nx < C_ && ny < ROWS) d = Math.min(d, m.dist[ny * C_ + nx] + 1);
   }
-  return Math.min(d, 200) * T;
+  return Math.min(d, 1000) * T;
 }
 // strokes still to play from a resting spot (rough): 0 in the cup, about 1 + distance / SHOT otherwise
 const restValue = (m, x, y) => 1 + distAt(m, x, y) / SHOT;
@@ -87,7 +87,7 @@ const restValue = (m, x, y) => 1 + distAt(m, x, y) / SHOT;
 /* ---------- a copy of the ball physics (golfFly and friends) without sounds, effects or game changes ---------- */
 const S = { x: 0, y: 0, vx: 0, vy: 0, fuel: 1, flyT: 0, rest: 0, ground: false, sand: false, padCD: 0, portCD: 0, lastPad: -1, padStreak: 0 };
 const ang = [], rings = [];
-const solidAt = (m, tx, ty) => (tx < 0 || tx >= COLS || ty < 0 ? true : ty >= ROWS ? false : m.solid[ty * COLS + tx] === 1);
+const solidAt = (m, tx, ty) => (tx < 0 || tx >= m.cols || ty < 0 ? true : ty >= ROWS ? false : m.solid[ty * m.cols + tx] === 1);
 function simCollide(m, b) {
   const r = GOLF.r, L = G.level;
   const x0 = Math.floor((b.x - r) / T), x1 = Math.floor((b.x + r) / T), y0 = Math.floor((b.y - r) / T), y1 = Math.floor((b.y + r) / T);
@@ -149,7 +149,7 @@ function simGadgets(b) {
     const x0 = p.tx * T, top = p.ty * T + 18, bot = (p.ty + 1) * T;
     if (b.x > x0 + 1 && b.x < x0 + T - 1 && b.y + r > top && b.y - r < bot) {
       if (p.dir === 0) {
-        const key = p.ty * COLS + p.tx;
+        const key = p.ty * 1000 + p.tx;
         b.padStreak = b.lastPad === key ? (b.padStreak || 0) + 1 : 1; b.lastPad = key;
         let dir = Math.sign(b.vx) || (L.cup.x >= b.x ? 1 : -1);
         if (Math.abs(b.vx) < 90 && [0, 1, 2].some(k => golfSolid(p.tx + dir, p.ty - k))) dir = -dir;
@@ -208,7 +208,7 @@ function simFly(m, b0, off, boost, maxT = GOLF.flyMax) {
       if (tile(tx, ty) === 'w' && b.y > ty * T + 6) { RES.k = 'pen'; break; }
       const sy = Math.floor((b.y + GOLF.r - 2) / T);
       if (tile(tx, sy) === '^' && b.y + GOLF.r > sy * T + 14) { RES.k = 'pen'; break; }
-      if (b.y > H + 40 || b.x < -30 || b.x > W + 30) { RES.k = 'pen'; break; }
+      if (b.y > H + 40 || b.x < -30 || b.x > m.cols * T + 30) { RES.k = 'pen'; break; }
     }
     if (RES.k === 'pen') break;
     if (b.ground) { const f = (b.sand ? GOLF.sandRoll : GOLF.roll) * dt; b.vx = Math.abs(b.vx) <= f ? 0 : b.vx - Math.sign(b.vx) * f; }

@@ -294,50 +294,60 @@ definePreview('Windmill Way', {
 
 // 3-4: Bo putts Pip into the purple portal down in the tunnel; Pip zips out of the other one up high and lands on the green
 definePreview('Portal Park', {
-  blurb: 'Putt into a magic portal and zoom out of the other one!',
-  loop: 6.5, still: 2.3,
+  blurb: 'Two long holes that scroll! Putt into a portal and zoom across the course.',
+  loop: 8, still: 3.3,
   draw(v, t) {
-    const gy = 170, slab = 118, green = 92, cupX = 262, inX = 298, inY = 150, outX = 52, outY = 52, ctx = v.ctx;
-    const purple = '#b48cff', ph = t / 6.5 * Math.PI * 2 * 4;
-    v.sky(); v.sun(v.W - 40, 30, 14); v.clouds(24); v.hills(slab - 18);
-    v.block(0, slab, v.W, 20);
-    v.block(196, green, 124, 30);
-    ctx.fillStyle = v.c.stoneEdge; ctx.fillRect(0, slab + 20, v.W, gy - slab - 20);
-    ctx.fillStyle = 'rgba(255,255,255,0.06)'; for (let x = 8; x < v.W; x += 40) ctx.fillRect(x, slab + 26, 24, 26);
-    v.ground(gy);
-    const ballX0 = 58, ballY0 = gy - 10;
+    // the course is wider than the scene: the view pans with the ball, then glides back to the tee for the next loop
+    const gy = 170, ctx = v.ctx, purple = '#b48cff', ph = t / 8 * Math.PI * 2 * 5;
+    const inX = 200, inY = gy - 16, outX = 262, outY = 64, mesa = 100, green = 128, cupX = 620, ringX = 500, ringY = 98;
+    const cam = 360 * (v.ease.inOut(v.seg(t, 1.7, 3.8)) - v.ease.inOut(v.seg(t, 7.0, 7.85)));
+    v.sky(); v.sun(v.W - 40, 30, 14); v.clouds(t * 3); v.hills(mesa + 20, cam);
+    ctx.save(); ctx.translate(-cam, 0);
+    // tee and pond, the tall wall, the mesa behind it, the windmill, the spike pit with its ring, the green
+    v.ground(gy, 0, 90); v.water(90, gy + 2, 62, 14, t); v.ground(gy + 14, 90, 62); v.ground(gy, 152, 60);
+    v.block(212, 30, 30, gy - 30 + 12); v.block(242, mesa, 112, gy - mesa + 12); v.ground(gy, 354, 126);
+    v.block(400, 112, 38, 16); pw3Mill(v, 419, 104, t * 0.9 + 0.3, 3, 34, 4, false);
+    v.ground(gy + 12, 480, 50, false); v.spikes(482, gy + 2, 46);
+    v.block(530, green, 160, gy - green + 12);
     pw3Portal(v, inX, inY, purple, ph, 1 - v.seg(Math.abs(t - 2.1), 0, 0.25));
     pw3Portal(v, outX, outY, purple, -ph, 1 - v.seg(Math.abs(t - 2.15), 0, 0.25));
-    pw3Cup(v, cupX, green, pw3Sunk(v, t, 6.5, 3.47), t / 1.625);
+    const ringHit = v.seg(t, 3.28, 3.6);
+    if (t < 3.28 || t > 7) { ctx.strokeStyle = v.c.goldDark || '#c98a1b'; ctx.lineWidth = 5; v.circle(ringX, ringY, 12); ctx.stroke(); ctx.strokeStyle = v.c.gold; ctx.lineWidth = 3; v.circle(ringX, ringY, 12); ctx.stroke(); }
+    else v.sparkle(ringX, ringY, ringHit, v.c.gold, 12);
+    const inT = 4.37;
+    pw3Cup(v, cupX, green, pw3Sunk(v, t, 8, inT), t / 1.6);
     {
-      const sw = pw3Swing(v, t, 0.65, 1.3, 0.7);
-      pw3Golfer(v, 1, 32, gy, t, 6.5, 3.47, t > 0.65 && t < 1.3 ? 'grit' : t > 1.3 ? 'wow' : 'happy', sw, ballX0, ballY0, 6);
+      const sw = pw3Swing(v, t, 0.65, 1.3, 0.55);
+      pw3Golfer(v, 1, 32, gy, t, 8, inT, t > 0.65 && t < 1.3 ? 'grit' : t > 1.3 ? 'wow' : 'happy', sw, 58, gy - 10, 6);
       if (t > 0.65 && t < 1.32) pw3Meter(v, 5, gy - 40, sw.p);
     }
-    pw3Fade(v, t, 6.5, 0.5, tt => {
-      const done = tt > 3.47;
-      // the ball: a fast putt into the low portal, out of the high one at the same speed, onto the green
-      let bx = ballX0, by = ballY0, spin = 0, show = tt > 0.55 && !done, lines = 0;
-      if (tt > 1.38 && tt < 2.1) { const k = v.seg(tt, 1.38, 2.1); bx = v.lerp(ballX0, inX, k); spin = k * 20; lines = k > 0.15 ? 1 : 0; }
+    pw3Fade(v, t, 8, 0.5, tt => {
+      const done = tt > inT;
+      // chip over the pond, roll into the portal, zap out on top of the wall and fly the course to the cup
+      let bx = 58, by = gy - 10, spin = 0, show = tt > 0.55 && !done, boost = 0;
+      const arc = (k, x0, y0, x1, y1, hh) => [v.lerp(x0, x1, k), v.lerp(y0, y1, k) - 4 * hh * k * (1 - k)];
+      if (tt > 1.35 && tt < 1.9) { [bx, by] = arc(v.seg(tt, 1.35, 1.9), 58, gy - 10, 172, gy - 10, 46); spin = tt * 12; }
+      else if (tt >= 1.9 && tt < 2.1) { bx = v.lerp(172, inX, v.seg(tt, 1.9, 2.1)); by = gy - 10; spin = tt * 14; }
       else if (tt >= 2.1 && tt < 2.15) show = false;
-      else if (tt >= 2.15 && tt < 3.1) { const k = v.seg(tt, 2.15, 3.1); bx = v.lerp(outX, 236, k); by = v.lerp(outY, green - 10, k) - 60 * k * (1 - k); spin = 20 + k * 12; lines = k > 0.08 && k < 0.45 ? 1 : 0; }
-      else if (tt >= 3.1) { const k = v.ease.out(v.seg(tt, 3.1, 3.35)); bx = v.lerp(236, cupX, k); by = green - 10 + v.seg(tt, 3.35, 3.47) * 14; spin = 32 + k * 3; }
-      if (show && lines) for (let q = 0; q < 3; q++) v.line(bx - 16 - q * 2, by - 5 + q * 5, bx - 30 - q * 6, by - 5 + q * 5, 'rgba(255,255,255,0.85)', 2);
-      // Pip curls up on the tee, zooms through, pops out of the cup
-      if (tt < 0.6) pw3Curl(v, 0, tt, 84, ballX0, gy, 0.05);
+      else if (tt >= 2.15 && tt < 3.0) { [bx, by] = arc(v.seg(tt, 2.15, 3.0), outX, outY, 470, 104, 34); spin = tt * 14; }
+      else if (tt >= 3.0 && tt < 3.6) { [bx, by] = arc(v.seg(tt, 3.0, 3.6), 470, 104, 548, green - 10, 14); spin = tt * 14; boost = v.seg(tt, 3.05, 3.55); }
+      else if (tt >= 3.6 && tt < inT) { const k = v.ease.out(v.seg(tt, 3.6, 4.25)); bx = v.lerp(548, cupX, k); by = green - 10 + v.seg(tt, 4.25, inT) * 14; spin = 50 + k * 6; }
+      if (tt < 0.6) pw3Curl(v, 0, tt, 84, 58, gy, 0.05);
       if (show) {
-        pw3Boost(v, bx, by, v.seg(tt, 2.55, 3.0), v.c.pip, 1);
+        if (tt > 1.92 && tt < 2.1) for (let q = 0; q < 3; q++) v.line(bx - 16 - q * 2, by - 5 + q * 5, bx - 30 - q * 6, by - 5 + q * 5, 'rgba(255,255,255,0.85)', 2);
+        pw3Boost(v, bx, by, boost, v.c.pip, 1);
         pw3Ball(v, 0, bx, by, { spin, lx: tt > 1.3 ? 1.8 : 1.2 });
       }
       pw3Pop2(v, 'ZAP!', inX - 26, inY - 26, v.seg(tt, 2.05, 2.6), 14, purple);
       pw3Pop2(v, 'ZAP!', outX + 4, outY - 28, v.seg(tt, 2.15, 2.7), 14, purple);
       if (done) {
-        const pk = v.seg(tt, 3.6, 3.9);
-        pw3Pop(v, 0, cupX - 2, green + (pk >= 1 ? v.hop(v.phase(tt - 3.9, 0.55), 7) : 0), pk, { face: -1, mood: 'joy' });
-        v.sparkle(cupX, green - 8, v.seg(tt, 3.47, 3.85), '#fff', 10);
-        v.confetti(cupX, green - 20, v.seg(tt, 3.5, 5.2));
-        pw3Pop2(v, 'IN!', cupX - 40, green - 30, v.seg(tt, 3.55, 5.5), 20, v.c.gold);
+        const pk = v.seg(tt, inT + 0.13, inT + 0.43);
+        pw3Pop(v, 0, cupX - 2, green + (pk >= 1 ? v.hop(v.phase(tt - inT - 0.43, 0.55), 7) : 0), pk, { face: -1, mood: 'joy' });
+        v.sparkle(cupX, green - 8, v.seg(tt, inT, inT + 0.38), '#fff', 10);
+        v.confetti(cupX, green - 20, v.seg(tt, inT + 0.03, inT + 1.7));
+        pw3Pop2(v, 'IN!', cupX - 40, green - 30, v.seg(tt, inT + 0.08, inT + 2), 20, v.c.gold);
       }
     });
+    ctx.restore();
   },
 });

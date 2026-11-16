@@ -253,16 +253,22 @@ function pw4Snowman(v, id, x, y, f, s, sq = 1) {
   ctx.fillStyle = 'rgba(255,120,140,0.45)'; v.circle(-7 + f, -36, 2.2); ctx.fill(); v.circle(7 + f, -36, 2.2); ctx.fill();
   ctx.restore();
 }
-// a snow fort (snowDrawForts): bricks from (x, top) down to y, a rounded snow cap; chip 0..1 shows a crack
-function pw4Fort(v, x, top, w, y, chip) {
+// a snow fort (snowDrawForts): a low wall of bricks from (x, top) down to y with snow-capped battlements, a flag in
+// the owner's colour (id) at its back end (back: -1 left, 1 right); chip 0..1 shows a crack
+function pw4Fort(v, x, top, w, y, chip, id, back) {
   const ctx = v.ctx, h = y - top;
   ctx.fillStyle = '#f4f9ff'; ctx.fillRect(x, top, w, h);
   ctx.fillStyle = 'rgba(120,150,190,0.22)'; ctx.fillRect(x + w - 3, top, 3, h);
   ctx.fillStyle = '#c3d3e7'; ctx.fillRect(x, top + h / 2, w, 1.6); ctx.fillRect(x + w / 2, top, 1.6, h / 2); ctx.fillRect(x + w / 4, top + h / 2, 1.6, h / 2); ctx.fillRect(x + w * 3 / 4, top + h / 2, 1.6, h / 2);
   ctx.strokeStyle = '#9fb6d3'; ctx.lineWidth = 1.4; ctx.strokeRect(x + 0.7, top + 0.7, w - 1.4, h - 1.4);
   if (chip > 0) { ctx.strokeStyle = '#7f97ba'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + 6, top + 1); ctx.lineTo(x + 10, top + 6); ctx.lineTo(x + 7, top + 10); ctx.stroke(); }
-  ctx.fillStyle = '#ffffff'; v.rr(x - 2, top - 4, w + 4, 7, 3.5); ctx.fill();
-  v.circle(x + 5, top + 3, 2.5); ctx.fill(); v.circle(x + w - 6, top + 3.5, 2); ctx.fill();
+  for (const bx of [x, x + w / 2 - 3, x + w - 6]) { // battlements
+    ctx.fillStyle = '#f4f9ff'; ctx.fillRect(bx, top - 5, 6, 6); ctx.strokeStyle = '#9fb6d3'; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, top - 4.5, 5, 5);
+    ctx.fillStyle = '#ffffff'; v.rr(bx - 1, top - 7, 8, 3.5, 1.7); ctx.fill();
+  }
+  const px = back > 0 ? x + w - 3 : x + 3, d = -back; // the flag
+  ctx.strokeStyle = '#6b4a35'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(px, top - 6); ctx.lineTo(px, top - 26); ctx.stroke();
+  ctx.fillStyle = pw4Col(v, id); ctx.beginPath(); ctx.moveTo(px, top - 26); ctx.lineTo(px + d * 13, top - 22); ctx.lineTo(px, top - 18); ctx.closePath(); ctx.fill();
 }
 // a snowy pine (snowDrawDecor), feet at (x, y)
 function pw4Pine(v, x, y, s) {
@@ -278,7 +284,7 @@ function pw4Pine(v, x, y, s) {
 
 // 4-2: Bo throws and Pip ducks, then Pip lands four hits and Bo turns into a (smiling) snowman
 definePreview('Snowball Fight', {
-  blurb: 'Throw snowballs and duck! Four hits turn your rival into a snowman.',
+  blurb: 'Aim your snowballs, catch theirs, hide behind your fort! Four hits turn your rival into a snowman.',
   loop: 7.5, still: 6.6,
   draw(v, t) {
     pw4Theme(v, 'snow');
@@ -294,7 +300,7 @@ definePreview('Snowball Fight', {
     const throws = [
       [1, 0.04, 0.08, 0.2, 10, gy - 2, 28, false],        // Bo's throw comes in at head height and flies over ducking Pip
       [0, 0.21, 0.25, 0.34, boX, gy - 13, 40, true],       // Pip: hit 1
-      [1, 0.35, 0.39, 0.48, 100, gy - 26, 30, false],      // Bo: thud into Pip's fort
+      [1, 0.35, 0.39, 0.48, 100, gy - 12, 30, false],      // Bo: thud into Pip's fort
       [0, 0.47, 0.51, 0.6, boX, gy - 13, 40, true],        // hit 2
       [0, 0.6, 0.63, 0.71, boX, gy - 13, 38, true],        // hit 3
       [0, 0.71, 0.74, 0.82, boX, gy - 13, 38, true],       // hit 4: snowman!
@@ -308,8 +314,8 @@ definePreview('Snowball Fight', {
     }
     if (reset) { hits = 0; chip = 0; }
     const frozen = hits >= 4, popK = v.seg(k, 0.82, 0.86);
-    pw4Fort(v, 90, gy - 24, 20, gy, chip);
-    pw4Fort(v, 210, gy - 24, 20, gy, 0);
+    pw4Fort(v, 84, gy - 13, 34, gy, chip, 0, -1);
+    pw4Fort(v, 202, gy - 13, 34, gy, 0, 1, 1);
     // Pip: ducks under Bo's first throw, cheers at the end
     const duck = v.ease.inOut(Math.min(v.seg(k, 0.09, 0.12), 1 - v.seg(k, 0.19, 0.22)));
     const pipWin = k > 0.84 && !reset;

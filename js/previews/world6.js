@@ -270,7 +270,7 @@ function pw6Fan(v, x, y, kind, side, cheer, s) {
 
 // 6-2: both mash to pull; Pip pulls on the frog's BOOM for big heaves and Bo slides into the mud
 definePreview('Tug of War', {
-  blurb: 'Pull, pull, pull! Pull on the drum\'s BOOM to tug the other one into the mud.',
+  blurb: 'Pull on the drum\'s BOOM! Perfects in a row tug the other one into the mud.',
   loop: 6.5, still: 3.75,
   scene(v, t, part = 3) {
     const ctx = v.ctx, k = t / 6.5, gy = 136, mid = v.W / 2, mud = 44, half = 62, body = 15, tw = pw6Cyc(t, 6.5, 1.6);

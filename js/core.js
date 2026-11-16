@@ -11,6 +11,9 @@ const PHYS = {
   accG: 2400, accA: 1600, fricG: 2600, fricA: 500,
   maxFall: 900, coyote: 0.08, buffer: 0.12, cut: 0.45,
 };
+// 2-4 Crown Keep: the crown is heavy. Its holder runs at 75% speed and jumps at 84% (about 70% as high: 77 px, just
+// over 2.5 tiles, so the map's steps are all 2 tiles apart). The computer's path finding reads these too.
+const CROWN_HOLD = { run: 0.75, jump: 0.84 };
 const C = {
   pip: '#ff6b4a', pipDark: '#b8402a', bo: '#5b95ff', boDark: '#2f5fc4',
   gold: '#ffc53d', goldDark: '#b9850f', ink: '#1c1a36', paper: '#f6efdf',

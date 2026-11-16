@@ -168,115 +168,120 @@ function pw5PizzaBox(v, x, y, rot, sc = 1) {
   ctx.restore();
 }
 
-// they carry the tray together, hop a crate together, both hold steady when a box teeters, and deliver to number 12
+// they carry the tray up a hill (Pip raises the back, Bo lowers the front), over the top, down the other side where
+// the stack slides toward Bo until Bo raises his end, and deliver to number 12
 definePreview('Pizza Delivery', {
-  blurb: 'Carry the pizzas together. Wobbly? Both stop and hold steady!',
-  loop: 8, still: 3.1,
+  blurb: 'Keep the tray level up and down the hills: raise your end, lower your end!',
+  loop: 9, still: 2.2,
   draw(v, t) {
     pw5Themed(v, pw5PizzaTheme, () => {
-      const ctx = v.ctx, k = t / 8, gy = 148, PX = 104, BX = 184, MX = (PX + BX) / 2;
-      // camera: walk, hop the crate, a wobble, steady, walk on to the house, stop
-      const cam = k < 0.04 ? 0 : k < 0.15 ? 76 * v.ease.in(v.seg(k, 0.04, 0.15)) : k < 0.27 ? v.lerp(76, 214, v.seg(k, 0.15, 0.27))
-        : k < 0.33 ? v.lerp(214, 226, v.ease.out(v.seg(k, 0.27, 0.33))) : v.lerp(226, 380, v.ease.inOut(v.seg(k, 0.5, 0.7)));
-      const walking = (k > 0.04 && k < 0.15) || (k > 0.27 && k < 0.32) || (k > 0.51 && k < 0.69);
+      const ctx = v.ctx, k = t / 9, SPAN = 80, base = 150;
+      // the street's heights (world x): up a hill, a flat top, down again to the house
+      const cosr = (x, a, b, d) => (x <= a ? 0 : x >= b ? d : d * (1 - Math.cos(Math.PI * (x - a) / (b - a))) / 2);
+      const gy = x => base - cosr(x, 150, 330, 38) + cosr(x, 410, 560, 38);
+      // the pair's middle: walks up, pauses on the slide, walks to the door
+      const MX = k < 0.06 ? 80 : k < 0.5 ? v.lerp(80, 470, v.ease.inOut(v.seg(k, 0.06, 0.5))) : k < 0.6 ? 470 + 20 * v.ease.out(v.seg(k, 0.5, 0.6))
+        : v.lerp(490, 640, v.ease.inOut(v.seg(k, 0.62, 0.74)));
+      const walking = (k > 0.07 && k < 0.49) || (k > 0.63 && k < 0.73);
+      const cam = Math.max(0, Math.min(MX - 150, 720 - v.W));
       v.sky(); v.sun(270, 30, 14);
-      v.cloud(40 + Math.sin(k * Math.PI * 2) * 6, 26, 0.8); v.cloud(170 - Math.sin(k * Math.PI * 2) * 5, 18, 0.6);
-      // the street: houses, a pale kerb, the road
-      const facades = ['#f2c9b6', '#cfe3c8', '#f4e2ad', '#cbd7ec', '#ebcadf', '#ddd0bd', '#c3e2dc'], roofs = ['#b8664e', '#8f6f9e', '#5f8a8b', '#a5694f'];
-      for (let b = 0; b < 7; b++) {
-        const x = b * 84 - 20 - cam, w = 78, topY = 58 + (b % 3) * 12;
-        if (x > v.W || x + w < 0) continue;
-        ctx.fillStyle = facades[b]; ctx.fillRect(x, topY, w, gy - topY);
-        ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.fillRect(x + w - 5, topY, 5, gy - topY);
-        ctx.fillStyle = roofs[b % 4]; ctx.beginPath(); ctx.moveTo(x - 4, topY + 2); ctx.lineTo(x + 12, topY - 16); ctx.lineTo(x + w - 12, topY - 16); ctx.lineTo(x + w + 4, topY + 2); ctx.closePath(); ctx.fill();
-        for (let c = 0; c < 2; c++) { ctx.fillStyle = 'rgba(28,26,54,0.2)'; ctx.fillRect(x + 14 + c * 32, topY + 12, 20, 24); ctx.fillStyle = '#e8f3fa'; ctx.fillRect(x + 16 + c * 32, topY + 14, 16, 20); }
-        ctx.fillStyle = 'rgba(28,26,54,0.25)'; v.rr(x + w / 2 - 10, gy - 36, 20, 36, 4); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x, topY - 16, w, gy - topY + 16);
-      }
-      // house number 12, with the customer at the window
-      const hx = 560 - cam, door = hx + 52;
-      const open = v.seg(k, 0.7, 0.73) * (1 - v.seg(k, 0.95, 0.99));
-      if (hx < v.W) {
-        ctx.fillStyle = '#ffd6a5'; ctx.fillRect(hx, 50, 120, gy - 50);
-        ctx.fillStyle = '#c0583c'; ctx.beginPath(); ctx.moveTo(hx - 8, 52); ctx.lineTo(hx + 60, 16); ctx.lineTo(hx + 128, 52); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#7a4a22'; v.rr(door - 19, 56, 38, 30, 4); ctx.fill();
-        ctx.fillStyle = '#ffe9a8'; v.rr(door - 16, 59, 32, 24, 3); ctx.fill();
-        ctx.fillStyle = '#7a4a22'; ctx.fillRect(door - 1, 59, 2, 24);
-        const bob = open > 0 ? Math.sin(t * 10) * 2 : Math.sin(t * 2);
-        v.fillCircle(door, 77 + bob, 8, '#b48cff'); v.fillCircle(door - 3, 75 + bob, 1.4, v.c.ink); v.fillCircle(door + 3, 75 + bob, 1.4, v.c.ink);
-        ctx.strokeStyle = v.c.ink; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(door, 77.5 + bob, 3, 0.2, Math.PI - 0.2); ctx.stroke();
-        ctx.fillStyle = '#5a3a20'; v.rr(door - 19, gy - 44, 38, 44, 6); ctx.fill();
-        ctx.fillStyle = open > 0 ? v.c.doorIn : '#8a5833'; v.rr(door - 16, gy - 41, 32, 41, 5); ctx.fill();
-        if (open > 0) {
-          ctx.save(); ctx.translate(door + 6, gy - 22); ctx.rotate(Math.sin(t * 14) * 0.5);
-          v.fillCircle(0, -7, 5, '#f2c29b'); ctx.fillStyle = '#f2c29b'; ctx.fillRect(-2, -4, 4, 10); ctx.restore();
-        } else v.fillCircle(door + 10, gy - 20, 2.4, v.c.gold);
-        ctx.fillStyle = '#fff8ea'; v.rr(door - 12, gy - 60, 24, 14, 4); ctx.fill();
-        v.text('12', door, gy - 52.5, 11, v.c.ink, 'center', true);
-        ctx.fillStyle = '#b84a3a'; v.rr(door - 24, gy - 3, 48, 4, 2); ctx.fill();
-      }
-      ctx.fillStyle = v.c.stone; ctx.fillRect(0, gy, v.W, v.H - gy);
-      ctx.fillStyle = v.c.stoneLight; ctx.fillRect(0, gy + 8, v.W, 12);
-      ctx.fillStyle = v.c.stoneEdge; ctx.fillRect(0, gy + 20, v.W, 3);
-      ctx.fillStyle = 'rgba(255,240,200,0.55)'; for (let x = -((cam * 1) % 64); x < v.W; x += 64) ctx.fillRect(x + 10, gy + 26, 30, 3);
-      ctx.fillStyle = v.c.grassDark; ctx.fillRect(0, gy, v.W, 9);
-      ctx.fillStyle = v.c.grass; ctx.fillRect(0, gy, v.W, 6);
-      // the crate to hop
-      const crX = 289 - cam, crS = 24;
-      if (crX > -30 && crX < v.W + 30) {
-        const x = crX - crS / 2, y = gy - crS;
-        ctx.fillStyle = v.c.plankDark; v.rr(x, y, crS, crS, 3); ctx.fill();
-        ctx.fillStyle = v.c.plank; ctx.fillRect(x + 3, y + 3, crS - 6, crS - 6);
-        ctx.strokeStyle = v.c.plankDark; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 4, y + 4); ctx.lineTo(x + crS - 4, y + crS - 4); ctx.moveTo(x + crS - 4, y + 4); ctx.lineTo(x + 4, y + crS - 4); ctx.stroke();
-      }
-      // the pair: one shared hop, a steady crouch, joy at the end
-      const hopK = v.seg(k, 0.15, 0.27), lift = v.hop(hopK, 46);
-      const steady = k > 0.33 && k < 0.49, joy = k > 0.83 && k < 0.95;
-      const stepBob = id => (walking ? v.hop(v.phase(t, 0.34, id * 0.17), 3) : 0);
-      const feet = [gy + lift + stepBob(0), gy + lift + stepBob(1)];
-      if (joy) { feet[0] += v.hop(v.phase(t, 0.5), 7); feet[1] += v.hop(v.phase(t, 0.5, 0.25), 7); }
-      const sq = steady ? 0.14 : hopK > 0 && hopK < 0.08 ? 0.2 : 0;
-      const handY = (feet[0] + feet[1]) / 2 - 36 + (steady ? 3 : 0);
-      // the stack: 3 boxes; the top one slides out after the landing and back while both hold steady
-      const delivered = Math.floor(v.seg(k, 0.715, 0.835) * 3 + 0.0001), n = 3 - Math.min(3, delivered);
-      const teeter = v.seg(k, 0.28, 0.36) * (1 - v.ease.inOut(v.seg(k, 0.4, 0.48)));
-      const sway = walking ? Math.sin(t * 9) * 1.2 : 0;
-      ctx.lineCap = 'round';
-      for (const id of [0, 1]) {
-        const x = id ? BX : PX, ft = feet[id], topY = ft - 24 * (1 - sq * 0.3);
-        v.hero(id, x, ft, { face: 1, sq, mood: joy ? 'joy' : steady ? 'grit' : teeter > 0.2 ? 'wow' : 'happy', shadow: lift === 0 });
-        if (lift !== 0) v.shadow(x, gy, 16);
-        const side = id ? 1 : -1, reach = steady && n > 0;
-        const hx = reach ? MX + side * 24 : x, hy = reach ? handY - 12 : handY;
-        ctx.strokeStyle = id ? v.c.boDark : v.c.pipDark; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(x - 7, topY + 7); ctx.lineTo(hx - 4, hy); ctx.moveTo(x + 7, topY + 7); ctx.lineTo(hx + 4, hy); ctx.stroke();
-        v.fillCircle(hx - 4, hy, 3, id ? v.c.bo : v.c.pip); v.fillCircle(hx + 4, hy, 3, id ? v.c.bo : v.c.pip);
-      }
-      ctx.fillStyle = v.c.plankDark; v.rr(PX - 8, handY - 6, BX - PX + 16, 6, 2); ctx.fill();
-      ctx.fillStyle = v.c.plank; v.rr(PX - 8, handY - 6, BX - PX + 16, 4, 2); ctx.fill();
-      for (let i = 0; i < n; i++) {
-        const top = i === n - 1 && n === 3, f = (i + 1) / 3;
-        const x = MX + sway * f + (top ? teeter * 20 : 0), y = handY - 11 - i * 10.5;
-        pw5PizzaBox(v, x, y, top ? teeter * 0.3 : sway * 0.02 * f, 1.05);
-        if (top && teeter > 0.15 && k < 0.42) {
-          const bx = x + 34, by = y - 6 + Math.sin(t * 14) * 1.5;
-          v.fillCircle(bx, by, 9, '#e4572e'); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
-          v.text('!', bx, by + 1, 14, '#ffffff');
+      v.cloud(40 + Math.sin(k * Math.PI * 2) * 6 - cam * 0.05, 26, 0.8); v.cloud(190 - Math.sin(k * Math.PI * 2) * 5 - cam * 0.05, 18, 0.6);
+      // far rooftops (parallax)
+      ctx.fillStyle = '#b9d3e2';
+      for (let b = 0; b < 12; b++) { const x = b * 46 - cam * 0.4, h = 20 + (b * 37 % 23); ctx.fillRect(x, 96 - h, 40, h + 60); }
+      ctx.fillStyle = 'rgba(255,241,214,0.4)'; ctx.fillRect(0, 50, v.W, 100);
+      // houses up the hillside, each on the ground under it
+      const facades = ['#f2c9b6', '#cfe3c8', '#f4e2ad', '#cbd7ec', '#ebcadf', '#e8d7bf', '#c3e2dc', '#d8cdea'], roofs = ['#b8664e', '#7d6a9e', '#4f7f80', '#a5694f'];
+      const shut = ['#4f7f80', '#c0583c', '#5b7bb5', '#8a6fb0'];
+      ctx.save(); ctx.translate(-cam, 0);
+      for (let b = 0; b < 8; b++) {
+        const x = b * 74 - 10, w = 68, g = Math.min(gy(x), gy(x + w)), topY = g - 62 - (b % 3) * 10;
+        ctx.fillStyle = facades[b]; ctx.fillRect(x, topY, w, base + 40 - topY);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 2, topY, w + 4, 3);
+        ctx.fillStyle = roofs[b % 4]; ctx.beginPath(); ctx.moveTo(x - 4, topY + 1); ctx.lineTo(x + 10, topY - 14); ctx.lineTo(x + w - 10, topY - 14); ctx.lineTo(x + w + 4, topY + 1); ctx.closePath(); ctx.fill();
+        for (let c = 0; c < 2; c++) for (let r = 0; r < 2; r++) {
+          const wx = x + 12 + c * 30, wy = topY + 8 + r * 24;
+          if (wy + 16 > gy(wx) - 26) continue;
+          ctx.fillStyle = shut[b % 4]; ctx.fillRect(wx - 4, wy, 3, 16); ctx.fillRect(wx + 15, wy, 3, 16);
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(wx - 1, wy - 1, 16, 18); ctx.fillStyle = '#cfe6f3'; ctx.fillRect(wx, wy, 14, 16);
         }
       }
-      // delivered boxes fly in through the door
-      for (let i = 0; i < 3; i++) {
-        const f = v.seg(k, 0.715 + i * 0.04, 0.75 + i * 0.04);
-        if (f <= 0 || f >= 1) continue;
-        const x0 = MX, y0 = handY - 11 - (2 - i) * 10.5, x1 = door, y1 = gy - 22;
-        pw5PizzaBox(v, v.lerp(x0, x1, f), v.lerp(y0, y1, f) - 40 * Math.sin(Math.PI * f), f * 2.4, 1.05 * (1 - 0.4 * f));
+      // number 12 at the end, with the customer at the window
+      const door = 640, open = v.seg(k, 0.76, 0.79) * (1 - v.seg(k, 0.95, 0.99));
+      ctx.fillStyle = '#ffd6a5'; ctx.fillRect(door - 50, 50, 110, base - 50);
+      ctx.fillStyle = '#c0583c'; ctx.beginPath(); ctx.moveTo(door - 58, 52); ctx.lineTo(door + 5, 18); ctx.lineTo(door + 68, 52); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(door - 32, 60, 34, 26); ctx.fillStyle = '#ffe9a8'; ctx.fillRect(door - 30, 62, 30, 22);
+      const bob = open > 0 ? Math.sin(t * 10) * 2 : Math.sin(t * 2);
+      v.fillCircle(door - 15, 78 + bob, 7, '#b48cff'); v.fillCircle(door - 18, 76 + bob, 1.3, v.c.ink); v.fillCircle(door - 12, 76 + bob, 1.3, v.c.ink);
+      ctx.fillStyle = '#5a3a20'; v.rr(door - 17, base - 42, 34, 42, 6); ctx.fill();
+      ctx.fillStyle = open > 0 ? v.c.doorIn : '#8a5833'; v.rr(door - 14, base - 39, 28, 39, 5); ctx.fill();
+      if (open > 0) { ctx.save(); ctx.translate(door + 4, base - 22); ctx.rotate(Math.sin(t * 14) * 0.5); v.fillCircle(0, -7, 5, '#f2c29b'); ctx.restore(); }
+      ctx.fillStyle = '#fff8ea'; v.rr(door - 11, base - 57, 22, 13, 4); ctx.fill();
+      v.text('12', door, base - 50, 10, v.c.ink, 'center', true);
+      // the pavement and the stone wall under it
+      ctx.beginPath(); ctx.moveTo(cam - 10, v.H);
+      for (let x = cam - 10; x <= cam + v.W + 10; x += 4) ctx.lineTo(x, gy(x));
+      ctx.lineTo(cam + v.W + 10, v.H); ctx.closePath();
+      ctx.fillStyle = '#c4ad92'; ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.fillStyle = 'rgba(90,60,40,0.16)';
+      for (let y = 100, r = 0; y < v.H; y += 12, r++) { ctx.fillRect(cam - 10, y, v.W + 20, 1); for (let x = Math.floor(cam / 26) * 26 + (r % 2) * 13; x < cam + v.W; x += 26) ctx.fillRect(x, y, 1, 12); }
+      ctx.restore();
+      ctx.strokeStyle = '#e3d8c4'; ctx.lineWidth = 5; ctx.beginPath();
+      for (let x = cam - 10; x <= cam + v.W + 10; x += 4) { if (x === cam - 10) ctx.moveTo(x, gy(x) + 2); else ctx.lineTo(x, gy(x) + 2); }
+      ctx.stroke();
+      // the pair: hands keep the tray level; on the way down Bo is late and the stack slides his way
+      const xs = [MX - SPAN / 2, MX + SPAN / 2], feet = xs.map(x => gy(x));
+      const step = id => (walking ? v.hop(v.phase(t, 0.34, id * 0.17), 2.5) : 0);
+      const mean = (feet[0] + feet[1]) / 2 - 34;
+      const late = v.seg(k, 0.44, 0.5) * (1 - v.ease.inOut(v.seg(k, 0.52, 0.6)));   // Bo's end hangs low for a moment
+      const hand = [mean, mean + late * 14];
+      const slide = v.seg(k, 0.46, 0.53) * (1 - v.ease.inOut(v.seg(k, 0.55, 0.64)));
+      const joy = k > 0.86 && k < 0.95;
+      ctx.lineCap = 'round';
+      for (const id of [0, 1]) {
+        const x = xs[id], ft = feet[id] + step(id) + (joy ? v.hop(v.phase(t, 0.5, id * 0.25), 6) : 0);
+        const lift = hand[id] - (feet[id] - 34);            // + lowered, - raised
+        const sq = Math.max(0, lift) / 30;
+        v.hero(id, x, ft, { face: 1, sq, mood: joy ? 'joy' : slide > 0.3 ? 'wow' : lift < -6 ? 'grit' : 'happy' });
+        const topY = ft - 24 * (1 - sq * 0.3);
+        ctx.strokeStyle = id ? v.c.boDark : v.c.pipDark; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x - 7, topY + 7); ctx.lineTo(x - 3, hand[id]); ctx.moveTo(x + 7, topY + 7); ctx.lineTo(x + 5, hand[id]); ctx.stroke();
+        v.fillCircle(x - 3, hand[id], 3, id ? v.c.bo : v.c.pip); v.fillCircle(x + 5, hand[id], 3, id ? v.c.bo : v.c.pip);
+        // raise / lower hints over their heads while they work the hill
+        if (k > 0.12 && k < 0.4 && Math.abs(lift) > 6) v.label(lift < 0 ? '▲' : '▼', x, ft - 52, 12, id ? v.c.bo : v.c.pip);
       }
-      if (hopK > 0.2 && hopK < 0.8) v.label('HOP!', MX, 34, 16, v.c.gold);
-      if (k > 0.35 && k < 0.47) v.bubble('Steady!', MX, handY - 46);
-      if (k > 0.48 && k < 0.56) v.label('Phew!', MX, handY - 54 - v.seg(k, 0.48, 0.56) * 6, 16, v.c.gold);
-      if (k > 0.8 && k < 0.95) v.bubble('Thanks!', door - 14, 64);
-      v.confetti(door, gy - 50, v.seg(k, 0.82, 0.97));
-      // fade through the cream sky at the seam (the boxes come back for the next trip)
+      const a = Math.atan2(hand[1] - hand[0], SPAN);
+      ctx.save(); ctx.translate(MX, (hand[0] + hand[1]) / 2); ctx.rotate(a);
+      ctx.fillStyle = v.c.plankDark; v.rr(-SPAN / 2 - 9, -6, SPAN + 18, 6, 2); ctx.fill();
+      ctx.fillStyle = v.c.plank; v.rr(-SPAN / 2 - 9, -6, SPAN + 18, 4, 2); ctx.fill();
+      ctx.fillStyle = '#2f3142'; v.rr(-9, -5, 18, 5, 2.5); ctx.fill();
+      ctx.fillStyle = late > 0.2 ? '#ffd23f' : '#9fe870'; v.rr(-8, -4.3, 16, 3.6, 1.8); ctx.fill();
+      v.fillCircle(-a * 40, -2.5, 1.8, '#ffffff');
+      // the stack: 4 boxes, sheared toward Bo while it slides
+      const delivered = Math.floor(v.seg(k, 0.76, 0.86) * 4 + 0.0001), n = 4 - Math.min(4, delivered);
+      for (let i = 0; i < n; i++) {
+        const f = i / 3, shift = slide * (5 + 16 * f) + (walking ? Math.sin(t * 9) * 0.8 * f : 0);
+        pw5PizzaBox(v, shift, -10.5 - i * 10, slide * 0.15 * f, 1.0);
+      }
+      ctx.restore();
+      if (slide > 0.35) {
+        const bx = MX + 30, by = (hand[0] + hand[1]) / 2 - 52 + Math.sin(t * 14) * 1.5;
+        v.fillCircle(bx, by, 8, '#e4572e'); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2); ctx.stroke();
+        v.text('!', bx, by + 1, 12, '#ffffff');
+      }
+      // delivered boxes fly in through the door
+      for (let i = 0; i < 4; i++) {
+        const f = v.seg(k, 0.76 + i * 0.025, 0.79 + i * 0.025);
+        if (f <= 0 || f >= 1) continue;
+        const y0 = mean - 12 - (3 - i) * 10;
+        pw5PizzaBox(v, v.lerp(MX, door, f), v.lerp(y0, base - 22, f) - 36 * Math.sin(Math.PI * f), f * 2.4, 1.0 * (1 - 0.4 * f));
+      }
+      ctx.restore();
+      if (k > 0.14 && k < 0.38) v.bubble('Keep it level!', MX - cam, Math.max(26, mean - 70));
+      if (k > 0.47 && k < 0.57) v.label('Raise it, Bo!', MX - cam, Math.max(22, mean - 72), 14, v.c.gold);
+      if (k > 0.86 && k < 0.95) v.bubble('Thanks!', door - cam - 15, 46);
+      v.confetti(door - cam, base - 50, v.seg(k, 0.86, 0.97));
       pw5Veil(v, k < 0.04 ? 1 - v.seg(k, 0, 0.04) : v.seg(k, 0.95, 1), v.c.skyBot);
     });
   },
@@ -313,6 +318,40 @@ function pw5Trail(v, x, y, dir, a) {
   ctx.restore();
 }
 
+// packed ice blocks (the level's rock): staggered blocks with seams, a glassy streak here and there, a frosty rim
+function pw5IceBlocks(v, x, y, w, h) {
+  const ctx = v.ctx, S = 15;
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  const gr = ctx.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, '#7eaee0'); gr.addColorStop(1, '#4e78b6');
+  ctx.fillStyle = gr; ctx.fillRect(x, y, w, h);
+  for (let r = 0, yy = y; yy < y + h; r++, yy += S) {
+    ctx.fillStyle = 'rgba(32,58,120,0.35)'; ctx.fillRect(x, yy, w, 1);
+    ctx.fillStyle = 'rgba(225,244,255,0.22)'; ctx.fillRect(x, yy + 1, w, 1);
+    for (let xx = x - (r % 2) * S, k = 0; xx < x + w; xx += S * 2, k++) {
+      ctx.fillStyle = 'rgba(32,58,120,0.35)'; ctx.fillRect(xx, yy, 1, S);
+      if ((k * 7 + r * 3) % 4 === 0) { ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.beginPath(); ctx.moveTo(xx + 6, yy + S - 3); ctx.lineTo(xx + 12, yy + 3); ctx.lineTo(xx + 15, yy + 3); ctx.lineTo(xx + 9, yy + S - 3); ctx.closePath(); ctx.fill(); }
+    }
+  }
+  ctx.fillStyle = 'rgba(214,240,255,0.75)'; ctx.fillRect(x, y, 1.5, h); ctx.fillRect(x + w - 1.5, y, 1.5, h);
+  ctx.restore();
+}
+// far snowy mountains, base line y
+function pw5Mountains(v, y) {
+  const ctx = v.ctx;
+  for (const [base, amp, step, body] of [[y - 10, 60, 70, 'rgba(196,224,248,0.8)'], [y, 44, 52, 'rgba(170,206,240,0.7)']]) {
+    const pts = [];
+    for (let x = -step, i = 0; x <= v.W + step; x += step / 2, i++) pts.push([x + ((i * 37) % 13) - 6, i % 2 ? base - amp * 0.15 : base - amp * (0.55 + ((i * 53) % 40) / 100)]);
+    ctx.fillStyle = body; ctx.beginPath(); ctx.moveTo(-10, v.H);
+    for (const [px, py] of pts) ctx.lineTo(px, py);
+    ctx.lineTo(v.W + 10, v.H); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath();
+    for (let k = 2; k < pts.length - 1; k += 2) {
+      const [px, py] = pts[k], [lx, ly] = pts[k - 1], [rx, ry] = pts[k + 1], f = 0.3;
+      ctx.moveTo(px, py); ctx.lineTo(px + (rx - px) * f, py + (ry - py) * f); ctx.lineTo(px, py + (ry - py) * f * 0.7); ctx.lineTo(px + (lx - px) * f, py + (ly - py) * f); ctx.closePath();
+    }
+    ctx.fill();
+  }
+}
 // the level's first room: Pip slides to the gate, Bo bumps into Pip and lands on the gate's button; the gate opens,
 // Pip slides through onto the door's own button (it keeps the gate open), and Bo slides after and bumps to a stop in the door
 definePreview('Ice Slide', {
@@ -325,6 +364,7 @@ definePreview('Ice Slide', {
       v.sky();
       v.sun(150, 28, 12);
       v.cloud(40 + Math.sin(k * Math.PI * 2) * 6, 30, 0.8);
+      pw5Mountains(v, gy - 10);
       // a far ice palace
       ctx.save(); ctx.translate(118, gy); ctx.globalAlpha = 0.85;
       ctx.fillStyle = 'rgba(255,255,255,0.6)';
@@ -337,7 +377,7 @@ definePreview('Ice Slide', {
       ctx.restore();
       v.hills(gy - 16);
       // floor: grippy snow on the left, shiny ice to the right
-      v.block(0, gy, v.W, v.H - gy, false);
+      pw5IceBlocks(v, 0, gy, v.W, v.H - gy);
       ctx.fillStyle = '#7cc7ec'; ctx.fillRect(snowW, gy, v.W - snowW, 10);
       ctx.fillStyle = '#c9f0ff'; ctx.fillRect(snowW, gy, v.W - snowW, 6);
       ctx.fillStyle = 'rgba(255,255,255,0.85)'; for (let x = snowW + 8; x < v.W; x += 30) ctx.fillRect(x + (x % 7), gy + 1.5, 10, 2);
@@ -345,8 +385,8 @@ definePreview('Ice Slide', {
       ctx.fillStyle = '#ffffff'; ctx.fillRect(0, gy, snowW, 6);
       for (let x = 5; x < snowW; x += 10) { v.circle(x, gy + 4, 4.5); ctx.fill(); }
       // the wall down the middle with the gate at its foot, and the room's outer wall
-      v.block(gx, -2, gw, gy - gh + 2, false);
-      v.block(wallX, -2, v.W - wallX, gy + 2, false);
+      pw5IceBlocks(v, gx, -2, gw, gy - gh + 2);
+      pw5IceBlocks(v, wallX, -2, v.W - wallX, gy + 2);
       // who is where: a push slides you all the way, and you stop dead at what you hit
       const slide = (a, b, x0, x1) => v.lerp(x0, x1, Math.min(1, Math.pow(v.seg(k, a, b), 0.85)));
       const pA = gx - 11, bA = pA - 22, pB = wallX - 11, bB = pB - 22;

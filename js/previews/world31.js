@@ -20,8 +20,9 @@ const pw31Lawn = (v, t, gy, o = {}) => {
 };
 
 // ----- BEGIN 31-1 Lawnmower Escape -----
-// A giant red mower roars in from the left. Pip chops through a clump of tall grass, Bo cups their hands at a pebble,
-// Pip jumps off Bo onto it and pulls Bo up, and the two of them cheer on top as the mower rattles behind.
+// A giant red mower roars in from the left. Pip chops through a clump of tall grass, Bo bends a springy grass blade
+// down at a pebble, Pip runs onto its tip and is flung up, drops a kite string, Bo climbs it, and the two of them cheer
+// on top as the mower rattles behind.
 {
   const pw31mwPebble = (v, x, y, w, h) => {
     const c = v.ctx;
@@ -43,8 +44,8 @@ const pw31Lawn = (v, t, gy, o = {}) => {
     for (let k = 0; k < 6; k++) { const u = ((t * 1.7 + k * 0.17) % 1); c.fillRect(x + 4 + u * 50, gy - 10 - Math.sin(u * Math.PI) * 30 - k * 2, 4, 2); }
   };
   definePreview('Lawnmower Escape', {
-    blurb: 'Outrun the roaring mower! Chop through tall grass and boost over pebbles.',
-    loop: 6, still: 4.9,
+    blurb: 'Outrun the roaring mower! Chop through tall grass, spring off a bent blade and drop a kite string.',
+    loop: 6, still: 3.0,
     draw(v, t) {
       const c = v.ctx, gy = 150, e = v.ease;
       pw31Lawn(v, t, gy);
@@ -56,24 +57,31 @@ const pw31Lawn = (v, t, gy, o = {}) => {
         else { pw31Blade(v, x, gy, 8, 0, '#378f30'); c.save(); c.translate(x, gy - 3); c.rotate(1.45); pw31Blade(v, 0, 0, 90, 0, '#378f30'); c.restore(); }
       }
       pw31mwPebble(v, 236, gy + 1, 50, 44);
-      // Bo walks to the pebble and braces (2.0-3.4), then is pulled up (3.6-4.1)
-      const boX = v.lerp(100, 204, e.inOut(v.seg(t, 1.5, 2.2)));
-      const up = e.inOut(v.seg(t, 3.6, 4.1));
-      const boPos = up > 0 ? { x: v.lerp(204, 232, up), y: v.lerp(gy, gy - 44, up) - Math.sin(up * Math.PI) * 10 } : { x: boX, y: gy };
-      // Pip: chops (0.6-1.4), runs onto Bo (2.4-2.8), jumps up onto the pebble (2.8-3.3), reaches down (3.3-4.1)
+      // the springy grass blade at the pebble's foot: Bo bends it down (2.0-2.2), it flings Pip up at 2.85
+      const sx = 206, slen = 40, bend = e.inOut(v.seg(t, 2.0, 2.2)), fl = v.seg(t, 2.85, 4);
+      const ang = t < 2.85 ? -1.35 * bend + 0.04 * Math.sin(t * 2.4) : 0.45 * Math.exp(-5 * fl) * Math.sin(fl * 26) - 1.35 * Math.max(0, 1 - fl * 9);
+      c.save(); c.translate(sx, gy); c.rotate(ang); pw31Blade(v, 0, 0, slen, 0, '#4fae3a'); v.fillCircle(0, -slen, 3.2, '#ffd23a'); c.restore();
+      // Bo walks to the blade and holds it down (2.0-2.85), jumps for the kite string (3.55) and climbs it (3.7-4.15)
+      let boX = v.lerp(100, sx - 2, e.inOut(v.seg(t, 1.5, 2.2))), boY = gy, boClimb = false;
+      if (t > 3.55) { const u = v.seg(t, 3.55, 3.7); boX = v.lerp(sx - 2, 216, u); boY = gy + v.hop(u, 12); }
+      if (t > 3.7) { boX = 216; boY = v.lerp(gy - 4, gy - 40, e.inOut(v.seg(t, 3.7, 4.15))); boClimb = true; }
+      if (t > 4.15) { const u = v.seg(t, 4.15, 4.35); boX = v.lerp(216, 242, u); boY = gy - 44 + v.hop(u, 6); boClimb = false; }
+      // Pip: chops (0.6-1.4), runs onto the blade's tip (2.3-2.8), is flung up onto the pebble (2.85-3.35), drops the string
       let pipX = v.lerp(60, 118, e.out(v.seg(t, 0.2, 0.7))), pipY = gy;
-      if (t > 2.3) pipX = v.lerp(118, 200, e.inOut(v.seg(t, 2.3, 2.8)));
-      if (t > 2.8) { const u = v.seg(t, 2.8, 3.3); pipX = v.lerp(200, 226, u); pipY = v.lerp(gy, gy - 44, u) + v.hop(u, 40); }
-      if (t > 4.2) { pipX = 226 + Math.sin(t * 9) * 1; }
+      if (t > 2.3) { const u = v.seg(t, 2.3, 2.8); pipX = v.lerp(118, 170, e.inOut(u)); pipY = gy - 7 * v.seg(t, 2.6, 2.8); }
+      if (t > 2.85) { const u = v.seg(t, 2.85, 3.35); pipX = v.lerp(170, 224, u); pipY = v.lerp(gy - 7, gy - 44, u) + v.hop(u, 46); }
+      if (t > 4.2) { pipX = 224 + Math.sin(t * 9) * 1; }
       const chop = t > 0.6 && t < 1.4 ? Math.abs(Math.sin(t * 12)) : 0;
       // the thorn
       if (t < 2.4) { c.fillStyle = '#7a2a3a'; c.save(); c.translate(pipX + 8, pipY - 12); c.rotate(-0.8 + chop * 1.4); c.beginPath(); c.moveTo(0, -2); c.lineTo(16, 0); c.lineTo(0, 2); c.fill(); c.restore(); }
-      const brace = t > 2.2 && t < 2.95;
-      v.hero(1, boPos.x, boPos.y, { s: 0.6, face: 1, sq: brace ? 0.35 : 0, mood: t > 4.2 ? 'joy' : 'happy' });
-      v.hero(0, pipX, pipY, { s: 0.6, face: t > 3.3 && t < 4.1 ? -1 : 1, mood: t > 4.2 ? 'joy' : t > 2.8 && t < 3.3 ? 'wow' : 'grit' });
-      if (t > 3.3 && t < 4.1) v.line(pipX - 4, pipY - 8, pipX - 12, pipY + 6, v.c.pipDark, 2);
-      if (t > 2.75 && t < 3.0) v.label('Boost!', 205, gy - 34, 11, v.c.bo);
-      if (t > 3.6 && t < 4.3) v.label('Up you come!', 230, gy - 70, 11, '#fff');
+      // the kite string, dropped from the pebble's edge (3.35-3.55) and pulled up once Bo is on top
+      const strLen = 42 * (v.seg(t, 3.35, 3.55) - v.seg(t, 4.3, 4.5));
+      if (strLen > 1) { v.line(214, gy - 46, 214 + Math.sin(t * 5) * 1.2, gy - 46 + strLen, '#fdf6e6', 1.6); v.fillCircle(214 + Math.sin(t * 5) * 1.2, gy - 46 + strLen, 2.2, '#e8443a'); }
+      const bent = t > 2.15 && t < 2.85;
+      v.hero(1, boX, boY, { s: 0.6, face: 1, sq: bent ? 0.3 : 0, shadow: !boClimb, mood: t > 4.2 ? 'joy' : bent || boClimb ? 'grit' : 'happy' });
+      v.hero(0, pipX, pipY, { s: 0.6, face: t > 3.35 && t < 4.2 ? -1 : 1, mood: t > 4.2 ? 'joy' : t > 2.85 && t < 3.35 ? 'wow' : 'grit' });
+      if (t > 2.85 && t < 3.15) v.label('BOING!', 186, gy - 44, 12, v.c.gold);
+      if (t > 3.45 && t < 4.1) v.bubble('Grab the string!', 214, gy - 76, { size: 10 });
       if (t > 1.35 && t < 1.9) v.label('Chop!', 134, gy - 50, 12, '#fff');
       if (t > 4.3) { v.confetti(232, gy - 60, t - 4.3); v.label('Made it!', 232, gy - 78, 13, v.c.gold); }
       // the mower creeps in from the left

@@ -6,11 +6,14 @@
      what a person sees (the food flying, the dotted aim line and the X, the craving bubble, the grumpy meters).
      Chef: waits for food (pot) or grabs the craved food from its crate (room 2). It throws when the catcher has room in
        the basket (food in the air counts), aimed at where the catcher stands: it holds the button and lets go when the
-       meter reaches the charge that drops the food on the catcher's basket (the aim line a person watches). A catcher
-       out of reach gets "Come closer!", a full basket that stays full gets "Feed Munch!".
+       meter reaches the charge that drops the food on the catcher's basket (the aim line a person watches). One food
+       at a time: it waits for the last one to be caught or dropped, then a short beat, and lets a catcher who is walking
+       food over to a monster feed it first. Food can't fly all the way to the monsters, so a catcher out of reach gets
+       "Come and get it!" (and one food at the nearest spot every 6 s); a full basket that stays full gets "Feed Munch!".
      Catcher: runs under food in the air (where it will come down at basket height), tosses the basket into a mouth in
-       reach, carries a full basket into toss reach, and otherwise waits on a spot near the hungriest mouth that the chef
-       can reach. Peek-a-Boo: it gathers a few before tossing, since every emptied basket sends Munch to another hole.
+       reach, carries a full basket into toss reach (or a part-full one when the monster gets grumpy or no food has come
+       for 2.5 s), and otherwise comes back to wait just inside the far end of the chef's throw, toward the hungriest
+       mouth. Peek-a-Boo: it gathers a few before tossing, since every emptied basket sends Munch to another hole.
      Both: a short human pause before reacting (longer at lower skill, and a less exact aim for an easy chef); a small
      shuffle now and then while waiting so the level's 10 s "nobody plays" pause is only ever set off by the person;
      and when the person stops playing for that long, the computer stops too. */
@@ -108,7 +111,8 @@
         if (!best || cost < best.cost) best = { x: q.x, feet: fl, cost };
       }
     }
-    if (best) best.x += Math.sign(f.x - best.x) * Math.min(8, Math.abs(f.x - best.x));
+    // a step back from the far edge of the throw toward the kitchen, so a full throw and a short one both reach us
+    if (best && Math.abs(f.x - best.x) > 1) best.x -= Math.sign(f.x - best.x) * 36;
     return (st._cpuSpot[key] = best || f);
   }
 
@@ -143,26 +147,32 @@
       return;
     }
     if (info.intro || !c.alive) return;
-    // throw when the catcher has room (food on its way counts), aimed at its basket
-    const flying = st.foods.filter(f => f.from === 'chef' && !f.dead).length;
+    // one food at a time, like a person playing catch: wait until the last one was caught or dropped, then a short beat
+    const air = st.foods.filter(f => f.from === 'chef' && !f.dead), flying = air.length;
     const room = Km.cap - st.basket.length - flying;
     const feet = feetOf(c), y = rimAt(feet), cx = cpuCx(c), side = sideOf(st, cx);
     // throw from the middle of the kitchen (where the catcher's waiting spot was planned from), facing the catcher's side
     const kx = (st.kitchen.x0 + st.kitchen.x1) / 2;
     if (Math.abs(cpuCx(p) - kx) > 3 || Math.abs(p.vx) > 5) { cpuSeek(out, p, kx, 2); if (out.left || out.right) return; }
     if (p.face !== side) { out[side > 0 ? 'right' : 'left'] = true; return; }
+    // (the next charge may start once the last food is coming down, so the catches come in a steady rhythm)
+    if (flying > 1 || (flying && air[0].vy < 0)) { S.ready = 0; return; }
     if (room <= 0 || c.stun > 0 || info.partnerIdle > Km.afkT) { S.ready = 0; talkFull(S, st, p, c, info, dt); return; }
-    // a moment's pause, like a person lining up
+    // the catcher is walking food over to a monster: let them feed it first
+    const away = Math.sign(cx - kx) * c.vx > 60;
+    if (st.basket.length && away) { S.ready = 0; S.far = 0; return; }
     S.ready = (S.ready || 0) + dt;
-    if (S.ready < sk.react) return;
+    if (S.ready < sk.react + 0.2) return;
     const sol = aimFor(st, p, cx + (Math.random() - 0.5) * 2 * sk.aim, y);
     if (!sol) return;
     if (sol.miss > 25) {
-      // out of reach: wait for the catcher to come where food can land (and say so once in a while)
+      // out of reach (the food can't fly all the way to the monsters): wait for the catcher to come and get it
+      if (st.basket.length) { S.far = 0; return; }   // they are off feeding: no nagging
       S.far = (S.far || 0) + dt;
-      if (S.far > 2.5 && G.time - (S.saidFar || -99) > 6 && info.partnerIdle > 1) { cpuSay(p, 'Come closer!', 2); S.saidFar = G.time; }
-      // a person who doesn't come gets food at the nearest spot after a while
-      if (S.far < 5) return;
+      if (S.far > 2 && G.time - (S.saidFar || -99) > 6 && info.partnerIdle > 1) { cpuSay(p, 'Come and get it!', 2); S.saidFar = G.time; }
+      // a person who doesn't come gets one food at the nearest spot now and then, so the X shows where to stand
+      if (S.far < 6) return;
+      S.far = 0;
     } else S.far = 0;
     S.want = sol.charge;
     S.ready = 0;
@@ -248,8 +258,13 @@
     }
     if (best) { goTo(S, p, out, best.x, best.feet); S.still = 0; return; }
     if (!m) return;
-    // a full basket, or something in it and nothing coming: carry it to the mouth
-    if (basket >= Km.cap || (basket && !foods.length && !(st.hand && st.charging))) {
+    // carry it to the mouth: a full basket, a monster getting grumpy, or a chef who has stopped throwing for a while
+    // (it's a walk now, so one food per trip is a waste)
+    const coming = foods.length || (st.hand && st.charging);
+    S.lull = basket && !coming ? (S.lull || 0) + dt : 0;
+    if (S.carry && !basket) S.carry = false;
+    if (basket >= Km.cap || (basket && (m.g > 68 || S.lull > 2.5)) || S.carry) {
+      S.carry = !!basket;   // once on the way, keep going (no turning back for one more catch)
       const sp = feedSpot(st, m);
       if (m.state === 'up') goTo(S, p, out, sp.x, sp.feet);
       return;
