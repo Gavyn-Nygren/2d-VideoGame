@@ -406,9 +406,17 @@ function javStandsLayer() {
     // the front wall: a long banner with made-up colours
     g.fillStyle = '#2e3b6b'; g.fillRect(0, 268, W, 32);
     const bands = ['#ff6f91', '#ffd34d', '#3ec7a8', '#8a7cf0', '#ff9a52'];
-    for (let i = 0; i < 10; i++) { g.fillStyle = bands[i % 5]; g.fillRect(i * 96 + 4, 272, 88, 22); }
-    g.font = '15px "Lilita One", "Arial Rounded MT Bold", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    for (let i = 0; i < 10; i++) { g.fillStyle = i % 5 === 1 ? '#5a3a00' : '#ffffff'; g.fillText(i % 2 ? 'JAVELIN' : 'SUMMER GAMES', i * 96 + 48, 283.5); }
+    for (let i = 0; i < 10; i++) {
+      g.fillStyle = bands[i % 5]; g.fillRect(i * 96 + 4, 272, 88, 22);
+      g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(i * 96 + 4, 272, 88, 2); g.fillStyle = 'rgba(0,0,0,0.15)'; g.fillRect(i * 96 + 4, 292, 88, 2);
+    }
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (let i = 0; i < 10; i++) {   // each word shrinks to fit its panel, with air either side
+      const word = i % 2 ? 'JAVELIN' : 'SUMMER GAMES';
+      let fs = 15; g.font = fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+      while (fs > 9 && g.measureText(word).width > 76) { fs -= 0.5; g.font = fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif'; }
+      g.fillStyle = i % 5 === 1 ? '#5a3a00' : '#ffffff'; g.fillText(word, i * 96 + 48, 283.5);
+    }
     // the scoreboard
     g.fillStyle = '#1c1a36'; javRR(g, 584, 150, 168, 58, 8); g.fill();
     g.strokeStyle = '#ffd34d'; g.lineWidth = 3; javRR(g, 584, 150, 168, 58, 8); g.stroke();
@@ -416,6 +424,10 @@ function javStandsLayer() {
     g.fillStyle = '#f6efdf'; g.font = '700 12px "Atkinson Hyperlegible", system-ui, sans-serif'; g.fillText(lab, 668, 186);
     for (let i = 0; i < 9; i++) { g.fillStyle = i % 2 ? '#ff6f91' : '#3ec7a8'; g.fillRect(596 + i * 17, 198, 9, 3); }
     g.fillStyle = '#3b4672'; g.fillRect(660, 208, 16, 20);
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(660, 208, 4, 20);
+    // the stand's shadow falling on the tiers under the roof
+    const rs = g.createLinearGradient(0, 140, 0, 175); rs.addColorStop(0, 'rgba(10,16,40,0.35)'); rs.addColorStop(1, 'rgba(10,16,40,0)');
+    g.fillStyle = rs; g.fillRect(0, 140, 584, 35); g.fillRect(752, 140, W - 752, 35);
     javCache.stands = c;
   }
   ctx.drawImage(javCache.stands, 0, 118, W, 182);
@@ -491,11 +503,18 @@ function javDrawWorld() {
   const gr = ctx.createLinearGradient(0, 300, 0, H);
   gr.addColorStop(0, '#79c95e'); gr.addColorStop(1, '#8edb6d');
   ctx.fillStyle = gr; ctx.fillRect(0, 300, W, H - 300);
+  ctx.fillStyle = 'rgba(20,60,20,0.18)'; ctx.fillRect(0, 300, W, 8);   // the stands' shadow on the grass
   const c = st.cam, xL = c.x0, xR = c.x0 + W / c.s;
   // mowing stripes every 5 m
   for (let m = Math.floor(xL / 5) * 5; m < xR; m += 5) {
     if (((m / 5) | 0) % 2 === 0) continue;
     ctx.fillStyle = 'rgba(40,110,40,0.10)'; ctx.fillRect(javSX(m), 300, 5 * c.s + 0.5, H - 300);
+  }
+  // little tufts and clover in the grass (they move with the field)
+  for (let m = Math.floor(xL / 2) * 2; m < xR; m += 2) {
+    const hh = hash(m + 1000, 3); if (hh % 3) continue;
+    const x = javSX(m) + (hh >> 4) % 10, y = 318 + (hh >> 9) % (H - 330);
+    ctx.fillStyle = hh % 2 ? 'rgba(40,110,40,0.28)' : 'rgba(255,255,255,0.18)'; ctx.fillRect(x, y, 1.5, 3); ctx.fillRect(x + 2.5, y + 1, 1.5, 2);
   }
   // runways
   for (const k of [0, 1]) {
@@ -516,9 +535,12 @@ function javDrawWorld() {
   for (let m = 10; m < xR + 10; m += 10) {
     const x = javSX(m); if (x < -20 || x > W + 20) continue;
     ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(x - 1, 312, 2, H - 312);
-    const bw2 = big ? 42 : 30, bh2 = big ? 20 : 15;
+    ctx.font = '700 ' + (big ? 15 : 11) + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+    const bw2 = Math.max(big ? 42 : 30, ctx.measureText(m + ' m').width + (big ? 14 : 12)), bh2 = big ? 20 : 15;
+    ctx.fillStyle = 'rgba(20,60,20,0.25)'; rr(x - bw2 / 2 + 1.5, 301.5, bw2, bh2, 4); ctx.fill();
     ctx.fillStyle = '#ffffff'; rr(x - bw2 / 2, 300, bw2, bh2, 4); ctx.fill();
-    ctx.font = '700 ' + (big ? 15 : 11) + 'px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.fillStyle = C.ink; ctx.fillText(m + ' m', x, 300 + bh2 / 2 + 0.8);
+    ctx.strokeStyle = 'rgba(28,26,54,0.25)'; ctx.lineWidth = 1; rr(x - bw2 / 2, 300, bw2, bh2, 4); ctx.stroke();
+    ctx.fillStyle = C.ink; ctx.fillText(m + ' m', x, 300 + bh2 / 2 + 0.8);
     if (m % 20 === 0) javFlag(x + 14, 312, 24, JAV_COL.flags[(m / 20) % 4], st.windShow, m * 0.37, 0.8);
   }
   // the foul line, across both lanes
