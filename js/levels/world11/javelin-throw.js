@@ -29,7 +29,10 @@ const JAV = {
   ang0: 12, angRate: 46, angMax: 75,
   vMin: 12, vMax: 30, g: 9.8, drag: 0.02, kw: 0.22, h0: 2.0, hand: -0.5,
   shot: 10, setT: 1.0, showT: 1.5, foulT: 1.1, noneT: 0.9,
-  attempts: 3, ringR: 3.5, ringBonus: 4,
+  attempts: 3, ringR: 4, ringBonus: 4,
+  ringBack: 3,                             // a stuck javelin's shaft (and its shadow) lies about 3 m behind its tip: it counts in
+                                           // the ring when any of that is in it, so a throw that looks in the ring always scores
+  ringNear: 4,                             // a miss by less than this (m) says "Just missed the ring!"
   slowT: 0.45, slowK: 0.22,
   idlePause: 40,                           // nobody pressed anything for 40 s of live play: pause (family touch, like 8-4)
 };
@@ -148,7 +151,13 @@ function javStick(st, j, xl) {
     return;
   }
   let d = Math.max(0, Math.round(xl * 10) / 10);
-  if (st.twist === 'ring' && Math.abs(xl - st.ringX) <= JAV.ringR) { j.bonus = JAV.ringBonus; st.stat.rings[j.k]++; st.ringFx.push({ k: j.k, t: 0 }); }
+  // the ring: the tip or the shaft lying behind it on the ground is in the gold ring (what the player sees)
+  let ringMiss = 0;
+  if (st.twist === 'ring') {
+    const lo = st.ringX - JAV.ringR, hi = st.ringX + JAV.ringR + JAV.ringBack;
+    if (xl >= lo && xl <= hi) { j.bonus = JAV.ringBonus; st.stat.rings[j.k]++; st.ringFx.push({ k: j.k, t: 0 }); }
+    else ringMiss = xl < lo ? lo - xl : xl - hi;
+  }
   j.dist = Math.round((d + j.bonus) * 10) / 10;
   st.marks[j.k][j.att] = { d: j.dist, bonus: j.bonus };
   const prevBest = st.best[j.k];
@@ -157,6 +166,7 @@ function javStick(st, j, xl) {
   st.stat.total[j.k] += j.dist; st.stat.marksN[j.k]++; st.matchDist[j.k] += j.dist;
   javPop(xl, j.k, 34, j.dist.toFixed(1) + ' m', PCOL[j.k], 24, 1.6);
   if (j.bonus) javPop(xl, j.k, 64, 'Ring bonus +' + j.bonus + ' m!', C.gold, 17, 1.6);
+  else if (ringMiss && ringMiss < JAV.ringNear) javPop(xl, j.k, 64, 'Just missed the ring!', '#ffffff', 15, 1.4);
   else if (prevBest != null && j.dist > prevBest) javPop(xl, j.k, 64, 'New best!', '#ffffff', 15, 1.3);
   st.dust.push({ xm: xl, k: j.k, t: 0 });
   if (st.judge.flag !== 'red') st.judge = { flag: 'white', t: 0 };
@@ -862,7 +872,8 @@ function javHud() {
   if (st.twist && st.twist !== 'calm') {
     const tw = JAV_TWISTS[st.twist], fs = big ? 20 : 13, h = big ? 36 : 26, y0 = 46;
     ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
-    const w = ctx.measureText(tw.name).width + (big ? 36 : 28); pill(14, y0, w, h); text(tw.name, 14 + (big ? 18 : 14), y0 + h / 2 + 0.5, fs, C.gold, 'left', 'body');
+    const name = st.twist === 'ring' ? tw.name + ' at ' + st.ringX + ' m' : tw.name;   // (the ring is off screen during the run-up)
+    const w = ctx.measureText(name).width + (big ? 36 : 28); pill(14, y0, w, h); text(name, 14 + (big ? 18 : 14), y0 + h / 2 + 0.5, fs, C.gold, 'left', 'body');
   }
   // throw counter under the match pill
   if (m.phase === 'live' || m.phase === 'end') {
