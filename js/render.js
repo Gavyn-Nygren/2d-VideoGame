@@ -337,6 +337,7 @@ function drawSwitchTile(ch, x, y) {
       ctx.fillStyle = col; ctx.fillRect(x, y, T, T);
       ctx.fillStyle = 'rgba(28,26,54,0.22)';
       ctx.fillRect(x, y + 10, T, 2); ctx.fillRect(x, y + 20, T, 2); ctx.fillRect(x + T - 2, y, 2, T);
+      if (!artPlain()) { ctx.fillRect(x + 14, y, 2, 10); ctx.fillRect(x + 6, y + 12, 2, 8); ctx.fillRect(x + 21, y + 12, 2, 8); ctx.fillRect(x + 14, y + 22, 2, 8); ctx.fillStyle = 'rgba(28,26,54,0.3)'; ctx.fillRect(x, y + T - 2, T, 2); }
       ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x + 2, y + 2, T - 4, 3);
       ctx.restore();
     }
@@ -350,16 +351,23 @@ function drawSwitchTile(ch, x, y) {
 }
 function drawPlate(pl) {
   const x = pl.x * T, y = pl.y * T, col = LETTER_COL[pl.letter] || C.gold;
+  const plain = artPlain();
+  if (!plain) { ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(x + T / 2, y + 29, T / 2, 2.5, 0, 0, Math.PI * 2); ctx.fill(); }
   ctx.fillStyle = C.ink; rr(x + 2, y + 25, T - 4, 5, 2); ctx.fill();
+  if (!plain) { ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x + 4, y + 25.5, T - 8, 1); }
   const top = pl.down ? y + 23 : y + 19;
-  ctx.fillStyle = col; rr(x + 5, top, T - 10, (y + 26) - top, 3); ctx.fill();
+  if (!plain) { ctx.fillStyle = shade(col, 0.3); rr(x + 5, top + 1.5, T - 10, (y + 26) - top - 1.5, 3); ctx.fill(); }
+  ctx.fillStyle = col; rr(x + 5, top, T - 10, (y + 26) - top - (plain ? 0 : 2), 3); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x + 8, top + 1, T - 16, 2);
+  if (!plain && !pl.down) { ctx.fillStyle = 'rgba(255,255,255,' + (0.18 + 0.12 * Math.sin(G.clock * 3 + x)) + ')'; ctx.beginPath(); ctx.ellipse(x + T / 2, top - 1, 9, 3, 0, 0, Math.PI * 2); ctx.fill(); }
 }
 function drawDoor(d) {
   const L = G.level, locked = L.key && !L.key.got;
   const { x, y, w, h } = d;
+  if (!artPlain()) { ctx.fillStyle = 'rgba(255,215,90,' + (0.16 + 0.06 * Math.sin(G.clock * 2.5)) + ')'; rr(x - 9, y - 12, w + 18, h + 12, 20); ctx.fill(); }
   ctx.fillStyle = C.goldDark; rr(x - 3, y - 6, w + 6, h + 6, 14); ctx.fill();
   ctx.fillStyle = C.gold; rr(x - 1, y - 4, w + 2, h + 4, 12); ctx.fill();
+  if (!artPlain()) { ctx.fillStyle = 'rgba(255,255,255,0.4)'; rr(x + 1, y - 3, w - 2, 3, 1.5); ctx.fill(); ctx.fillStyle = C.goldDark; for (const sx of [x + 0.5, x + w - 2.5]) for (let k = 0; k < 3; k++) { circle(sx + 1, y + 8 + k * ((h - 16) / 2), 1.2); ctx.fill(); } }
   if (locked) { ctx.fillStyle = C.doorIn; }
   else {
     const g = ctx.createLinearGradient(0, y, 0, y + h);
@@ -392,11 +400,19 @@ function drawKey(k) {
 }
 function drawFlag(f) {
   const x = f.x + 15, base = f.y + T;
+  const plain = artPlain();
+  if (!plain) { ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(x, base, 7, 2.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = C.ink; rr(x - 5, base - 4, 10, 4, 1.5); ctx.fill(); }
   ctx.fillStyle = C.ink; ctx.fillRect(x - 1.5, base - 52, 3, 52);
-  ctx.fillStyle = f.on ? C.grass : '#b9b6cc';
+  if (!plain) { ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x - 1.5, base - 52, 1, 48); ctx.fillStyle = C.gold; circle(x, base - 53, 2.8); ctx.fill(); }
+  const fc = f.on ? C.grass : '#c4c0b8';
   const wave = Math.sin(G.clock * 6) * 2;
   const top = f.on ? base - 52 : base - 28;
+  ctx.fillStyle = fc;
   ctx.beginPath(); ctx.moveTo(x + 1.5, top); ctx.lineTo(x + 22, top + 8 + wave); ctx.lineTo(x + 1.5, top + 16); ctx.closePath(); ctx.fill();
+  if (!plain) {
+    ctx.strokeStyle = shade(fc, 0.3); ctx.lineWidth = 1.2; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.moveTo(x + 1.5, top + 8); ctx.lineTo(x + 22, top + 8 + wave); ctx.lineTo(x + 1.5, top + 16); ctx.closePath(); ctx.fill();
+  }
 }
 function drawCrownShape(x, y, s) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);

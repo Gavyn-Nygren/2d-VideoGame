@@ -371,11 +371,15 @@ function drawMill(s) {
   for (let k = 0; k < s.arms; k++) {
     ctx.save(); ctx.rotate(s.a + k * Math.PI * 2 / s.arms);
     ctx.fillStyle = '#f6efdf'; ctx.strokeStyle = '#7a3b2e'; ctx.lineWidth = 2;
-    rr(6, -s.hw, s.len - 6, s.hw * 2, s.hw); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; rr(8, -s.hw + 3, s.len - 6, s.hw * 2, s.hw); ctx.fill(); // its shadow
+    ctx.fillStyle = '#f6efdf'; rr(6, -s.hw, s.len - 6, s.hw * 2, s.hw); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(10, -s.hw + 1.5, s.len * 0.35, 1.5);
     ctx.fillStyle = 'rgba(255,107,74,0.85)'; rr(s.len * 0.45, -s.hw + 1.5, s.len * 0.5, s.hw * 2 - 3, 2); ctx.fill();
     ctx.restore();
   }
-  ctx.fillStyle = s.t > 0 ? '#ffe3ae' : '#7a3b2e'; circle(0, 0, 8); ctx.fill();
+  ctx.fillStyle = s.t > 0 ? '#ffe3ae' : '#7a3b2e'; circle(0, 0, 8.5); ctx.fill();
+  ctx.strokeStyle = '#4e241b'; ctx.lineWidth = 1.5; circle(0, 0, 8.5); ctx.stroke();
+  ctx.fillStyle = '#c9a07a'; for (let k = 0; k < 4; k++) { const a = s.a + k * Math.PI / 2; circle(Math.cos(a) * 5.5, Math.sin(a) * 5.5, 1); ctx.fill(); }
   ctx.fillStyle = '#f6efdf'; circle(0, 0, 3); ctx.fill();
   ctx.restore();
 }
@@ -420,11 +424,17 @@ function drawGolf() {
   // the cup: a dark pocket with the flag standing in it
   ctx.fillStyle = C.doorIn; ctx.fillRect(c.x0 + 1, c.y0, T - 2, T);
   ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(c.x0 + 1, c.y0, T - 2, 6);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(c.x0 + 1, c.y0, T - 2, 1.5); // the cup's lit rim
   const fx = c.x0 + T / 2 + 6, wave = Math.sin(G.clock * 6) * 3;
+  // the pin: a white pole with red bands and a ball on top, the flag with a darker edge and a shadow fold
   ctx.fillStyle = '#e9e4f5'; ctx.fillRect(fx - 1.5, c.y0 - 70, 3, 70 + T - 4);
-  ctx.fillStyle = g.phase === 'sunk' ? C.grass : C.gold;
-  ctx.beginPath(); ctx.moveTo(fx + 1.5, c.y0 - 70); ctx.lineTo(fx + 34, c.y0 - 58 + wave); ctx.lineTo(fx + 1.5, c.y0 - 46); ctx.closePath(); ctx.fill();
-  text(String(g.hole + 1), fx + 13, c.y0 - 58 + wave * 0.5, 13, C.ink, 'center');
+  ctx.fillStyle = '#e8483a'; for (let k = 0; k < 4; k++) ctx.fillRect(fx - 1.5, c.y0 - 40 + k * 14, 3, 6);
+  ctx.fillStyle = '#ffffff'; circle(fx, c.y0 - 71, 2.6); ctx.fill();
+  const fc = g.phase === 'sunk' ? C.grass : C.gold;
+  ctx.fillStyle = fc; ctx.strokeStyle = shade(fc, 0.35); ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(fx + 1.5, c.y0 - 70); ctx.quadraticCurveTo(fx + 18, c.y0 - 66 + wave * 0.6, fx + 34, c.y0 - 58 + wave); ctx.quadraticCurveTo(fx + 18, c.y0 - 50 + wave * 0.4, fx + 1.5, c.y0 - 46); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.moveTo(fx + 1.5, c.y0 - 58); ctx.lineTo(fx + 34, c.y0 - 58 + wave); ctx.lineTo(fx + 1.5, c.y0 - 46); ctx.closePath(); ctx.fill();
+  text(String(g.hole + 1), fx + 12, c.y0 - 58 + wave * 0.5, 12, C.ink, 'center');
   if (g.phase !== 'aim' && g.phase !== 'fly') return;
   const gp = G.players[g.golfer], face = gp.face;
   if (g.phase === 'aim') {
