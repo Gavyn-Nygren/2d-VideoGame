@@ -25,16 +25,17 @@ const MONSTER_FOOD_NAME = { apple: 'an apple', cake: 'cake', fish: 'fish', gold:
 /* ===== Graphics polish helpers for Worlds 6-9 (Nov 2026, batch A). This file loads first of the four worlds, so the
    other World 6-9 levels use these too. Drawing only: nothing here touches gameplay or the seeded random numbers. ===== */
 // a soft ground shadow (ink at ~18%)
-function paShadow(x, y, rx, ry, a) { ctx.fillStyle = 'rgba(20,20,40,' + (a === undefined ? 0.18 : a) + ')'; ctx.beginPath(); ctx.ellipse(x, y, Math.max(1, rx), Math.max(1, ry || rx * 0.28), 0, 0, Math.PI * 2); ctx.fill(); }
+// (c: the context to draw on, ctx when left out; a baked layer passes its own)
+function paShadow(x, y, rx, ry, a, c) { c = c || ctx; c.fillStyle = 'rgba(20,20,40,' + (a === undefined ? 0.18 : a) + ')'; c.beginPath(); c.ellipse(x, y, Math.max(1, rx), Math.max(1, ry || rx * 0.28), 0, 0, Math.PI * 2); c.fill(); }
 // a filled, outlined, lit box: base colour, darker foot, light top edge and an outline in a dark shade of its own colour
-function paBox(x, y, w, h, r, col, o) {
-  o = o || {};
-  ctx.fillStyle = col; rr(x, y, w, h, r); ctx.fill();
-  ctx.save(); rr(x, y, w, h, r); ctx.clip();
-  ctx.fillStyle = shade(col, o.dark || 0.22); ctx.fillRect(x, y + h * (o.foot || 0.72), w, h);
-  ctx.fillStyle = 'rgba(255,255,255,' + (o.lit || 0.26) + ')'; ctx.fillRect(x, y, w, Math.max(1.5, Math.min(4, h * 0.14)));
-  ctx.restore();
-  ctx.strokeStyle = shade(col, o.edge || 0.55); ctx.lineWidth = o.lw || 2; rr(x, y, w, h, r); ctx.stroke();
+function paBox(x, y, w, h, r, col, o, c) {
+  o = o || {}; c = c || ctx;
+  c.fillStyle = col; paRR(c, x, y, w, h, r); c.fill();
+  c.save(); paRR(c, x, y, w, h, r); c.clip();
+  c.fillStyle = shade(col, o.dark || 0.22); c.fillRect(x, y + h * (o.foot || 0.72), w, h);
+  c.fillStyle = 'rgba(255,255,255,' + (o.lit || 0.26) + ')'; c.fillRect(x, y, w, Math.max(1.5, Math.min(4, h * 0.14)));
+  c.restore();
+  c.strokeStyle = shade(col, o.edge || 0.55); c.lineWidth = o.lw || 2; paRR(c, x, y, w, h, r); c.stroke();
 }
 // an offscreen layer drawn once (key changes = redraw), then pasted every frame: for static backdrops. paint(g) draws on g
 // (not ctx); paCirc / paRR are the circle() / rr() for any context
@@ -58,10 +59,12 @@ function paLayer(key, w, h, paint) {
 // paste a cached backdrop layer behind the level's walls: the solid cells (and anything below cutY) are cut out of a copy
 // once per room, so each frame is a single drawImage (a per-frame clip path cost 2-4 ms)
 // top / bottom: the band of the layer that has anything in it (only that band is copied each frame)
-function paBehindTiles(layer, cutY, top, bottom) {
+// over (optional): { key, paint(g) } paints still props on top of the cut copy, so they cost nothing per frame either
+function paBehindTiles(layer, cutY, top, bottom, over) {
   const L = G.level; if (!L || !L.grid) { ctx.drawImage(layer, 0, 0, W, H); return; }
   const c = layer.__cut;
-  if (!c || c.grid !== L.grid || c.cutY !== cutY) {
+  const ok = over ? over.key : '';
+  if (!c || c.grid !== L.grid || c.cutY !== cutY || c.ok !== ok) {
     const cv = (c && c.cv) || document.createElement('canvas'); cv.width = layer.width; cv.height = layer.height;
     const g = cv.getContext('2d'), sx = layer.width / W, sy = layer.height / H;
     g.drawImage(layer, 0, 0); g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000';
@@ -71,10 +74,29 @@ function paBehindTiles(layer, cutY, top, bottom) {
       if (ch === '#' || ch === 'P' || ch === 'w' || ch === 's') g.fillRect(tx * T * sx - 0.5, ty * T * sy - 0.5, T * sx + 1, T * sy + 1);
     }
     if (cutY !== undefined) g.fillRect(0, cutY * sy, cv.width, cv.height);
-    layer.__cut = { grid: L.grid, cutY, cv };
+    g.globalCompositeOperation = 'source-over';
+    if (over) { g.save(); g.setTransform(sx, 0, 0, sy, 0, 0); over.paint(g); g.restore(); }
+    // where the picture has anything, column by column (64 px wide), so each frame copies only those boxes
+    const y0 = clamp(Math.floor(top || 0), 0, H), y1 = clamp(Math.ceil(Math.min(bottom || H, cutY === undefined ? H : cutY)), y0 + 1, H);
+    const py0 = Math.round(y0 * sy), py1 = Math.round(y1 * sy), cw = Math.round(64 * sx), boxes = [];
+    const px = g.getImageData(0, py0, cv.width, py1 - py0).data;
+    for (let cx = 0; cx < cv.width; cx += cw) {
+      const cx1 = Math.min(cv.width, cx + cw); let lo = -1, hi = -1;
+      for (let yy = 0; yy < py1 - py0 && lo < 0; yy++) for (let xx = cx; xx < cx1; xx++) if (px[(yy * cv.width + xx) * 4 + 3]) { lo = yy; break; }
+      if (lo < 0) continue;
+      for (let yy = py1 - py0 - 1; yy >= lo && hi < 0; yy--) for (let xx = cx; xx < cx1; xx++) if (px[(yy * cv.width + xx) * 4 + 3]) { hi = yy + 1; break; }
+      const last = boxes[boxes.length - 1];
+      if (last && last.x1 === cx && Math.abs(last.lo - (py0 + lo)) <= 2 && Math.abs(last.hi - (py0 + hi)) <= 2) { last.x1 = cx1; last.lo = Math.min(last.lo, py0 + lo); last.hi = Math.max(last.hi, py0 + hi); }
+      else boxes.push({ x0: cx, x1: cx1, lo: py0 + lo, hi: py0 + hi });
+    }
+    layer.__cut = { grid: L.grid, cutY, cv, ok, boxes, band: top + '|' + bottom };
   }
-  const y0 = clamp(Math.floor(top || 0), 0, H), y1 = clamp(Math.ceil(Math.min(bottom || H, cutY === undefined ? H : cutY)), y0 + 1, H), k = layer.height / H;
-  ctx.drawImage(layer.__cut.cv, 0, Math.round(y0 * k), layer.width, Math.round((y1 - y0) * k), 0, y0, W, y1 - y0);
+  const cc = layer.__cut;
+  if (cc.band !== top + '|' + bottom) { cc.grid = null; return paBehindTiles(layer, cutY, top, bottom, over); }
+  // a 1:1 pixel copy with smoothing off is the cheap path on a software-drawn canvas
+  const sm = ctx.imageSmoothingEnabled, kx = cc.cv.width / W, ky = cc.cv.height / H; if (cc.cv.width === canvas.width) ctx.imageSmoothingEnabled = false;
+  for (const b of cc.boxes) ctx.drawImage(cc.cv, b.x0, b.lo, b.x1 - b.x0, b.hi - b.lo, b.x0 / kx, b.lo / ky, (b.x1 - b.x0) / kx, (b.hi - b.lo) / ky);
+  ctx.imageSmoothingEnabled = sm;
 }
 // World 6 backyard backdrop: neighbours' houses, round trees and a picket fence, hazed toward the sky (a cached layer,
 // pasted with paBehindTiles)
@@ -126,7 +148,7 @@ function monParseRoom(st, L) {
   st.thrower = def.thrower; st.catcher = 1 - def.thrower;
   st.dMin = def.throwRange[0]; st.dMax = def.throwRange[1];
   st.fieldY = (def.fieldRow || 16) * T;
-  st.monsters = []; st.burrows = []; st.bins = []; st.pot = null; st.fences = [];
+  st.monsters = []; st.burrows = []; st.bins = []; st.pot = null; st.fences = []; st.band = null;
   const names = def.names || ['Munch'];
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
     const ch = grid[y][x];
@@ -953,35 +975,6 @@ function monDrawMeter(st, m) {
 }
 function monDrawKitchen(st) {
   const k = st.kitchen, L = G.level, t = G.clock;
-  // room 4: the treehouse (trunk and leaves behind, plank boards over the platform)
-  if (k.open.length > 1) {
-    const ty = k.row + 1, x0 = (k.c0 - 1) * T, x1 = (k.c1 + 2) * T, py = ty * T, cx = (x0 + x1) / 2;
-    ctx.fillStyle = '#8a5833'; ctx.fillRect(cx - 20, py + 30, 40, st.fieldY - py - 30);
-    ctx.strokeStyle = '#6b4630'; ctx.lineWidth = 2; ctx.beginPath();
-    for (let y = py + 50; y < st.fieldY - 10; y += 34) { ctx.moveTo(cx - 12, y); ctx.quadraticCurveTo(cx - 4, y + 8, cx - 10, y + 18); ctx.moveTo(cx + 10, y + 14); ctx.quadraticCurveTo(cx + 4, y + 22, cx + 12, y + 30); }
-    ctx.stroke();
-    ctx.fillStyle = '#8a5833'; ctx.beginPath(); ctx.moveTo(cx - 30, st.fieldY); ctx.lineTo(cx - 20, st.fieldY - 26); ctx.lineTo(cx + 20, st.fieldY - 26); ctx.lineTo(cx + 30, st.fieldY); ctx.closePath(); ctx.fill();
-    ctx.globalAlpha = 0.9;
-    for (const [dx, dy, r, c] of [[-1, 0, 30, 0], [-1, 1, 22, 1], [1, 0, 30, 0], [1, 1, 22, 1]]) {
-      const lx = dx < 0 ? x0 - 18 - dy * 22 : x1 + 18 + dy * 22, ly = py - 30 + dy * 22;
-      ctx.fillStyle = c ? C.grassDark : C.grass; circle(lx, ly, r); ctx.fill();
-      ctx.fillStyle = c ? C.grass : C.grassDark; circle(lx + dx * 12, ly + 12, r * 0.6); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = C.plank; ctx.fillRect(x0, py, x1 - x0, T);
-    ctx.fillStyle = C.plankDark; ctx.fillRect(x0, py + T - 5, x1 - x0, 5); ctx.fillRect(x0, py, x1 - x0, 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x0, py + 2, x1 - x0, 4);
-    for (let x = x0; x <= x1; x += T) { ctx.fillStyle = C.plankDark; ctx.fillRect(x - 1, py, 2, T - 4); ctx.fillStyle = '#6b4630'; circle(x + 6, py + 9, 1.6); ctx.fill(); circle(x + 24, py + 9, 1.6); ctx.fill(); }
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(x0, py, x1 - x0, T);
-  }
-  // fences
-  for (const f of st.fences) {
-    const x = f.tx * T, y = f.ty * T;
-    paShadow(x + 15, y + 30, 15, 3);
-    paBox(x + 4, y + 6, 5, 24, 2, C.plankDark, { lw: 1.5 }); paBox(x + 21, y + 6, 5, 24, 2, C.plankDark, { lw: 1.5 });
-    paBox(x + 3, y + 8, 24, 4.5, 2, C.plank, { lw: 1.5, foot: 0.6 }); paBox(x + 3, y + 18, 24, 4, 1.5, C.plank, { lw: 1.5, foot: 0.6 });
-    ctx.fillStyle = '#6b4630'; circle(x + 6.5, y + 10, 1); ctx.fill(); circle(x + 23.5, y + 10, 1); ctx.fill(); circle(x + 6.5, y + 20, 1); ctx.fill(); circle(x + 23.5, y + 20, 1); ctx.fill();
-  }
   // the pot: a cauldron on a little fire
   if (st.pot) {
     const p = st.pot, fl = Math.sin(t * 20);
@@ -1023,24 +1016,67 @@ function monDrawKitchen(st) {
     }
   }
 }
-function monDrawWorld(st) {
-  const t = G.clock;
-  // the neighbours' gardens behind the meadow (cached, clipped to the open air so walls stay in front)
-  paBehindTiles(paBackyard(st.fieldY, (G.room || 0) + 1), undefined, st.fieldY - 195, st.fieldY);
+// 6-1's still props, painted once per room onto the backdrop picture (see monDrawWorld)
+function monStaticBand(st) {
+  let top = st.fieldY - 195, bot = st.fieldY;
+  const k = st.kitchen;
+  if (k.open.length > 1) top = Math.min(top, (k.row + 1) * T - 30 - 30 - 2);
+  for (const f of st.fences) { top = Math.min(top, f.ty * T); bot = Math.max(bot, f.ty * T + 34); }
+  for (const d of st.decor) { top = Math.min(top, d.y - 16); bot = Math.max(bot, d.y + 4); }
+  return [top, bot];
+}
+function monPaintStatic(g, st) {
+  const k = st.kitchen;
   // meadow dressing
   for (const d of st.decor) {
     if (d.kind === 'tuft') {
-      ctx.strokeStyle = C.grassDark; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath();
-      for (const a of [-0.5, 0, 0.5]) { ctx.moveTo(d.x, d.y + 1); ctx.lineTo(d.x + Math.sin(a) * 7 * d.s, d.y - Math.cos(a) * 8 * d.s); }
-      ctx.stroke();
+      g.strokeStyle = C.grassDark; g.lineWidth = 2; g.lineCap = 'round'; g.beginPath();
+      for (const a of [-0.5, 0, 0.5]) { g.moveTo(d.x, d.y + 1); g.lineTo(d.x + Math.sin(a) * 7 * d.s, d.y - Math.cos(a) * 8 * d.s); }
+      g.stroke();
     } else {
-      ctx.save(); ctx.translate(d.x, d.y + 1); ctx.scale(d.s, d.s);
-      ctx.fillStyle = '#f6e7c8'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; rr(-2.5, -8, 5, 8, 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#e5413a'; ctx.beginPath(); ctx.arc(0, -8, 7, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff'; circle(-3, -11, 1.3); ctx.fill(); circle(2.5, -12, 1.1); ctx.fill(); circle(0, -9.5, 0.9); ctx.fill();
-      ctx.restore();
+      g.save(); g.translate(d.x, d.y + 1); g.scale(d.s, d.s);
+      g.fillStyle = '#f6e7c8'; g.strokeStyle = C.ink; g.lineWidth = 1.5; paRR(g, -2.5, -8, 5, 8, 2); g.fill(); g.stroke();
+      g.fillStyle = '#e5413a'; g.beginPath(); g.arc(0, -8, 7, Math.PI, 0); g.closePath(); g.fill(); g.stroke();
+      g.fillStyle = '#fff'; paCirc(g, -3, -11, 1.3); g.fill(); paCirc(g, 2.5, -12, 1.1); g.fill(); paCirc(g, 0, -9.5, 0.9); g.fill();
+      g.restore();
     }
   }
+  // room 4: the treehouse (trunk and leaves behind, plank boards over the platform)
+  if (k.open.length > 1) {
+    const ty = k.row + 1, x0 = (k.c0 - 1) * T, x1 = (k.c1 + 2) * T, py = ty * T, cx = (x0 + x1) / 2;
+    g.fillStyle = '#8a5833'; g.fillRect(cx - 20, py + 30, 40, st.fieldY - py - 30);
+    g.strokeStyle = '#6b4630'; g.lineWidth = 2; g.beginPath();
+    for (let y = py + 50; y < st.fieldY - 10; y += 34) { g.moveTo(cx - 12, y); g.quadraticCurveTo(cx - 4, y + 8, cx - 10, y + 18); g.moveTo(cx + 10, y + 14); g.quadraticCurveTo(cx + 4, y + 22, cx + 12, y + 30); }
+    g.stroke();
+    g.fillStyle = '#8a5833'; g.beginPath(); g.moveTo(cx - 30, st.fieldY); g.lineTo(cx - 20, st.fieldY - 26); g.lineTo(cx + 20, st.fieldY - 26); g.lineTo(cx + 30, st.fieldY); g.closePath(); g.fill();
+    g.globalAlpha = 0.9;
+    for (const [dx, dy, r, c] of [[-1, 0, 30, 0], [-1, 1, 22, 1], [1, 0, 30, 0], [1, 1, 22, 1]]) {
+      const lx = dx < 0 ? x0 - 18 - dy * 22 : x1 + 18 + dy * 22, ly = py - 30 + dy * 22;
+      g.fillStyle = c ? C.grassDark : C.grass; paCirc(g, lx, ly, r); g.fill();
+      g.fillStyle = c ? C.grass : C.grassDark; paCirc(g, lx + dx * 12, ly + 12, r * 0.6); g.fill();
+    }
+    g.globalAlpha = 1;
+    g.fillStyle = C.plank; g.fillRect(x0, py, x1 - x0, T);
+    g.fillStyle = C.plankDark; g.fillRect(x0, py + T - 5, x1 - x0, 5); g.fillRect(x0, py, x1 - x0, 2);
+    g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(x0, py + 2, x1 - x0, 4);
+    for (let x = x0; x <= x1; x += T) { g.fillStyle = C.plankDark; g.fillRect(x - 1, py, 2, T - 4); g.fillStyle = '#6b4630'; paCirc(g, x + 6, py + 9, 1.6); g.fill(); paCirc(g, x + 24, py + 9, 1.6); g.fill(); }
+    g.strokeStyle = C.ink; g.lineWidth = 2; g.strokeRect(x0, py, x1 - x0, T);
+  }
+  // fences
+  for (const f of st.fences) {
+    const x = f.tx * T, y = f.ty * T;
+    paShadow(x + 15, y + 30, 15, 3, undefined, g);
+    paBox(x + 4, y + 6, 5, 24, 2, C.plankDark, { lw: 1.5 }, g); paBox(x + 21, y + 6, 5, 24, 2, C.plankDark, { lw: 1.5 }, g);
+    paBox(x + 3, y + 8, 24, 4.5, 2, C.plank, { lw: 1.5, foot: 0.6 }, g); paBox(x + 3, y + 18, 24, 4, 1.5, C.plank, { lw: 1.5, foot: 0.6 }, g);
+    g.fillStyle = '#6b4630'; paCirc(g, x + 6.5, y + 10, 1); g.fill(); paCirc(g, x + 23.5, y + 10, 1); g.fill(); paCirc(g, x + 6.5, y + 20, 1); g.fill(); paCirc(g, x + 23.5, y + 20, 1); g.fill();
+  }
+}
+function monDrawWorld(st) {
+  const t = G.clock;
+  // the neighbours' gardens behind the meadow (cached, clipped to the open air so walls stay in front)
+  // (the meadow dressing, the treehouse and the fences never move in a room: they are baked onto the same picture)
+  const band = st.band || (st.band = monStaticBand(st));
+  paBehindTiles(paBackyard(st.fieldY, (G.room || 0) + 1), undefined, band[0], band[1], { key: 'mon' + (G.room || 0), paint: g => monPaintStatic(g, st) });
   monDrawKitchen(st);
   for (const b of st.burrows) monDrawHole(b, false);
   // splats

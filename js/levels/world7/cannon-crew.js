@@ -830,6 +830,37 @@ function paCastlesLayer(groundY, seed, haze) {
   return layer;
 }
 const cannonFont = px => '700 ' + px + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
+// a block's still look, cached per block (its id picks the grain), at the canvas's own pixel scale
+const _cannonPics = new Map();
+function cannonBlockPic(b, md) {
+  const k = Math.max(1, canvas.width / W), key = b.id + '|' + b.mat + '|' + b.shape + '|' + b.w + '|' + b.h + '|' + md.col + '|' + k;
+  let pic = _cannonPics.get(key);
+  if (!pic) {
+    if (_cannonPics.size > 400) _cannonPics.clear();
+    const cv = document.createElement('canvas'); cv.width = Math.ceil((b.w + 4) * k); cv.height = Math.ceil((b.h + 4) * k);
+    const g = cv.getContext('2d'); g.scale(k, k); g.translate(2, 2);
+    const x = 0, y = 0;
+    g.fillStyle = md.col; g.fillRect(x, y, b.w, b.h);
+    // depth: a shaded right side and foot, a lit top and left edge, and grain knots or stone specks
+    g.fillStyle = 'rgba(28,26,54,0.12)'; g.fillRect(x + b.w - 4, y, 4, b.h);
+    g.fillStyle = 'rgba(255,255,255,0.28)'; g.fillRect(x, y, b.w, 3); g.fillStyle = 'rgba(255,255,255,0.14)'; g.fillRect(x, y, 3, b.h);
+    g.fillStyle = 'rgba(28,26,54,0.22)'; g.fillRect(x, y + b.h - 3, b.w, 3);
+    { const h0 = hash(b.id * 7 + 3, 11);
+      if (b.mat === 'stone') { g.fillStyle = 'rgba(28,26,54,0.16)'; g.beginPath(); for (let k = 0; k < 4; k++) { const hh = hash(b.id, k), sx = x + 4 + hh % Math.max(1, b.w - 8), sy = y + 4 + (hh >> 8) % Math.max(1, b.h - 8); g.moveTo(sx + 1.2, sy); g.arc(sx, sy, 1.2, 0, Math.PI * 2); } g.fill(); }
+      else if (b.w > 14 && b.h > 14) { g.strokeStyle = 'rgba(110,60,25,0.35)'; g.lineWidth = 1; g.beginPath(); g.ellipse(x + 6 + h0 % Math.max(1, b.w - 12), y + 6 + (h0 >> 8) % Math.max(1, b.h - 12), 3, 1.8, 0, 0, Math.PI * 2); g.stroke(); } }
+    g.strokeStyle = 'rgba(28,26,54,0.2)'; g.lineWidth = 1; g.beginPath();
+    if (b.mat === 'stone') {
+      for (let yy = 15, row = 0; yy < b.h; yy += 15, row++) { g.moveTo(x, y + yy); g.lineTo(x + b.w, y + yy); }
+      for (let yy = 0, row = 0; yy < b.h; yy += 15, row++) { const vx = x + (row % 2 ? b.w * 0.3 : b.w * 0.7); g.moveTo(vx, y + yy); g.lineTo(vx, y + Math.min(b.h, yy + 15)); }
+    } else if (b.shape === 'plank') { g.moveTo(x + 4, y + b.h / 2); g.lineTo(x + b.w - 4, y + b.h / 2 + 1); }
+    else if (b.shape === 'pillar') { for (let k = 1; k < 3; k++) { g.moveTo(x + b.w * k / 3, y + 4); g.lineTo(x + b.w * k / 3 + 1, y + b.h - 4); } }
+    else { for (let k = 1; k < 3; k++) { g.moveTo(x + 4, y + b.h * k / 3); g.lineTo(x + b.w - 4, y + b.h * k / 3 + 1); } }
+    g.stroke();
+    g.strokeStyle = shade(md.col, 0.55); g.lineWidth = 1.8; g.strokeRect(x + 0.9, y + 0.9, b.w - 1.8, b.h - 1.8);
+    pic = { cv, k }; _cannonPics.set(key, pic);
+  }
+  return pic;
+}
 function cannonDrawBlock(b) {
   const md = CANNON_PHYS.mat[b.mat];
   ctx.save();
@@ -855,23 +886,9 @@ function cannonDrawBlock(b) {
     ctx.fillStyle = '#5a3a20'; for (const wx of [x + 10, x + b.w - 10]) { circle(wx, y + b.h - 3, 6); ctx.fill(); ctx.stroke(); }
     if (b.hp < b.maxHp) { ctx.strokeStyle = 'rgba(28,26,54,0.75)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + b.w * 0.5, y + b.h * 0.45); ctx.lineTo(x + b.w * 0.58, y + b.h * 0.7); ctx.stroke(); }
   } else {
-    ctx.fillStyle = md.col; ctx.fillRect(x, y, b.w, b.h);
-    // depth: a shaded right side and foot, a lit top and left edge, and grain knots or stone specks
-    ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.fillRect(x + b.w - 4, y, 4, b.h);
-    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(x, y, b.w, 3); ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(x, y, 3, b.h);
-    ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.fillRect(x, y + b.h - 3, b.w, 3);
-    { const h0 = hash(b.id * 7 + 3, 11);
-      if (b.mat === 'stone') { ctx.fillStyle = 'rgba(28,26,54,0.16)'; ctx.beginPath(); for (let k = 0; k < 4; k++) { const hh = hash(b.id, k), sx = x + 4 + hh % Math.max(1, b.w - 8), sy = y + 4 + (hh >> 8) % Math.max(1, b.h - 8); ctx.moveTo(sx + 1.2, sy); ctx.arc(sx, sy, 1.2, 0, Math.PI * 2); } ctx.fill(); }
-      else if (b.w > 14 && b.h > 14) { ctx.strokeStyle = 'rgba(110,60,25,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x + 6 + h0 % Math.max(1, b.w - 12), y + 6 + (h0 >> 8) % Math.max(1, b.h - 12), 3, 1.8, 0, 0, Math.PI * 2); ctx.stroke(); } }
-    ctx.strokeStyle = 'rgba(28,26,54,0.2)'; ctx.lineWidth = 1; ctx.beginPath();
-    if (b.mat === 'stone') {
-      for (let yy = 15, row = 0; yy < b.h; yy += 15, row++) { ctx.moveTo(x, y + yy); ctx.lineTo(x + b.w, y + yy); }
-      for (let yy = 0, row = 0; yy < b.h; yy += 15, row++) { const vx = x + (row % 2 ? b.w * 0.3 : b.w * 0.7); ctx.moveTo(vx, y + yy); ctx.lineTo(vx, y + Math.min(b.h, yy + 15)); }
-    } else if (b.shape === 'plank') { ctx.moveTo(x + 4, y + b.h / 2); ctx.lineTo(x + b.w - 4, y + b.h / 2 + 1); }
-    else if (b.shape === 'pillar') { for (let k = 1; k < 3; k++) { ctx.moveTo(x + b.w * k / 3, y + 4); ctx.lineTo(x + b.w * k / 3 + 1, y + b.h - 4); } }
-    else { for (let k = 1; k < 3; k++) { ctx.moveTo(x + 4, y + b.h * k / 3); ctx.lineTo(x + b.w - 4, y + b.h * k / 3 + 1); } }
-    ctx.stroke();
-    ctx.strokeStyle = shade(md.col, 0.55); ctx.lineWidth = 1.8; ctx.strokeRect(x + 0.9, y + 0.9, b.w - 1.8, b.h - 1.8);
+    // the block's look (wood or stone, its grain and edges) is drawn once into a small picture and pasted after that
+    const pic = cannonBlockPic(b, md), k = pic.k;
+    ctx.drawImage(pic.cv, x - 2, y - 2, pic.cv.width / k, pic.cv.height / k);
     if (b.hp < b.maxHp) { // cracks (more of them the closer it is to breaking)
       const d = 1 - b.hp / b.maxHp;
       ctx.strokeStyle = 'rgba(28,26,54,0.75)'; ctx.lineWidth = 1.5; ctx.beginPath();

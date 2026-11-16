@@ -490,26 +490,36 @@ function sumoArcCap(cx, cy, R, a) { ctx.beginPath(); ctx.arc(cx, cy, R, -Math.PI
 function sumoDrawBackdrop() {
   const st = G.mst, wy = st.waterY;
   // the neighbours' houses, trees and a picket fence behind the pool (cached; walls stay in front)
-  paBehindTiles(paBackyard(wy + 4, 6), undefined, wy - 191, wy + 4);
-  // a striped umbrella and a deck chair at the far poolside, small and hazy
-  for (const [ux, flip] of [[120, 1], [W - 120, -1]]) {
-    ctx.fillStyle = 'rgba(122,82,50,0.55)'; ctx.fillRect(ux - 1.5, wy - 66, 3, 66);
-    for (let k = 0; k < 6; k++) { ctx.fillStyle = k % 2 ? 'rgba(255,255,255,0.75)' : (flip > 0 ? 'rgba(255,107,74,0.7)' : 'rgba(91,149,255,0.7)'); ctx.beginPath(); ctx.moveTo(ux, wy - 82); ctx.lineTo(ux - 42 + k * 14, wy - 62); ctx.lineTo(ux - 28 + k * 14, wy - 62); ctx.closePath(); ctx.fill(); }
-  }
+  // (with a striped umbrella at each end of the far poolside, small and hazy, baked onto the same picture)
+  paBehindTiles(paBackyard(wy + 4, 6), undefined, wy - 191, wy + 4, { key: 'umb' + wy, paint: g => {
+    for (const [ux, flip] of [[120, 1], [W - 120, -1]]) {
+      g.fillStyle = 'rgba(122,82,50,0.55)'; g.fillRect(ux - 1.5, wy - 66, 3, 66);
+      for (let k = 0; k < 6; k++) { g.fillStyle = k % 2 ? 'rgba(255,255,255,0.75)' : (flip > 0 ? 'rgba(255,107,74,0.7)' : 'rgba(91,149,255,0.7)'); g.beginPath(); g.moveTo(ux, wy - 82); g.lineTo(ux - 42 + k * 14, wy - 62); g.lineTo(ux - 28 + k * 14, wy - 62); g.closePath(); g.fill(); }
+    }
+  } });
   // party bunting from wall to wall
   const cols = [C.pip, C.gold, C.bo, '#ff8fc7', C.grass];
   for (const [y0, sag, x0, x1] of [[88, 34, 30, W / 2], [88, 34, W / 2, W - 30]]) {
     ctx.strokeStyle = 'rgba(122,82,50,0.7)'; ctx.lineWidth = 1.5; ctx.beginPath();
     for (let i = 0; i <= 16; i++) { const f = i / 16, x = x0 + (x1 - x0) * f, y = y0 + sag * 4 * f * (1 - f); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
     ctx.stroke();
-    for (let i = 1; i < 12; i++) {
-      const f = i / 12, x = x0 + (x1 - x0) * f, y = y0 + sag * 4 * f * (1 - f), sw = Math.sin(G.clock * 2 + i + x0) * 1.5;
-      const fc = cols[(i + (x0 > 100 ? 2 : 0)) % cols.length];
-      ctx.fillStyle = fc; ctx.beginPath(); ctx.moveTo(x - 8, y); ctx.lineTo(x + 8, y); ctx.lineTo(x + sw, y + 16); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = shade(fc, 0.35); ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = 'rgba(20,20,40,0.14)'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 8, y); ctx.lineTo(x + sw, y + 16); ctx.closePath(); ctx.fill();
-    }
   }
+  // the flags, one path per colour (and one for all the shaded halves): far fewer draws than flag by flag
+  const flag = (x0, x1, i) => { const f = i / 12; return [x0 + (x1 - x0) * f, 88 + 34 * 4 * f * (1 - f), Math.sin(G.clock * 2 + i + x0) * 1.5]; };
+  const runs = [[30, W / 2], [W / 2, W - 30]];
+  ctx.lineWidth = 1;
+  for (let c = 0; c < cols.length; c++) {
+    ctx.beginPath();
+    for (const [x0, x1] of runs) for (let i = 1; i < 12; i++) {
+      if ((i + (x0 > 100 ? 2 : 0)) % cols.length !== c) continue;
+      const [x, y, sw] = flag(x0, x1, i);
+      ctx.moveTo(x - 8, y); ctx.lineTo(x + 8, y); ctx.lineTo(x + sw, y + 16); ctx.closePath();
+    }
+    ctx.fillStyle = cols[c]; ctx.fill(); ctx.strokeStyle = shade(cols[c], 0.35); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(20,20,40,0.14)'; ctx.beginPath();
+  for (const [x0, x1] of runs) for (let i = 1; i < 12; i++) { const [x, y, sw] = flag(x0, x1, i); ctx.moveTo(x, y); ctx.lineTo(x + 8, y); ctx.lineTo(x + sw, y + 16); ctx.closePath(); }
+  ctx.fill();
 }
 function sumoDrawMat() {
   const st = G.mst, g = st.geo, P = st.P, R = g.R, ry = sumoRimY(), wy = st.waterY;

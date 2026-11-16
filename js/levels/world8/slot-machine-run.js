@@ -470,30 +470,41 @@ function slotsDrawSym(ch, x, y, w, h, a) {
 }
 function slotsDraw(st) {
   const t = G.time, big = hudBig();   // (phones: the world's small labels get bigger too)
-  paBehindTiles(paCasinoCity(SLOTS.trayY, (G.room || 0) + 1), undefined, SLOTS.trayY - 285, SLOTS.trayY);
-  // cabinet behind the reels: one big machine from the first to the last reel
+  // the city, the cabinet and the reels' gold frames never move in a room, so they are baked into one picture (bulbs and
+  // reels are drawn live on top)
+  let cab = null, top = SLOTS.trayY - 285, bot = SLOTS.trayY;
   if (st.reels.length) {
     const x0 = st.reels[0].x0 - 22, x1 = Math.min(st.reels[st.reels.length - 1].x1 + 22, st.goalX);   // (never over the goal block)
     const y0 = Math.max(76, Math.min(...st.reels.map(r => r.wy)) - 40);   // (under the room pill, y 46-72)
-    ctx.fillStyle = 'rgba(120,20,60,0.62)'; rr(x0, y0, x1 - x0, SLOTS.trayY - y0, 18); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.1)'; rr(x0 + 4, y0 + 3, x1 - x0 - 8, 5, 3); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,197,61,0.55)'; ctx.lineWidth = 2; rr(x0, y0, x1 - x0, SLOTS.trayY - y0, 18); ctx.stroke();
-    // marquee bulbs along the top edge
-    for (let x = x0 + 14, k = 0; x < x1 - 8; x += 24, k++) {
-      const on = ((k + Math.floor(t * 6)) % 3) === 0;
-      ctx.fillStyle = on ? '#fff6c2' : 'rgba(255,197,61,0.55)'; circle(x, y0 + 10, on ? 4.5 : 3.5); ctx.fill();
-    }
+    cab = { x0, x1, y0 }; top = Math.min(top, y0 - 2); bot = Math.max(bot, ...st.reels.map(r => r.wy + 190));
+  }
+  paBehindTiles(paCasinoCity(SLOTS.trayY, (G.room || 0) + 1), undefined, top, bot, {
+    key: cab ? [cab.x0, cab.x1, cab.y0, ...st.reels.map(r => r.x0 + ',' + r.wy)].join('|') : '',
+    paint: g => {
+      if (cab) {
+        const { x0, x1, y0 } = cab;
+        g.fillStyle = 'rgba(120,20,60,0.62)'; paRR(g, x0, y0, x1 - x0, SLOTS.trayY - y0, 18); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.1)'; paRR(g, x0 + 4, y0 + 3, x1 - x0 - 8, 5, 3); g.fill();
+        g.strokeStyle = 'rgba(255,197,61,0.55)'; g.lineWidth = 2; paRR(g, x0, y0, x1 - x0, SLOTS.trayY - y0, 18); g.stroke();
+      }
+      for (const r of st.reels) {
+        // a gold frame with depth: drop shadow, darker lower half, lit rim, rivets at the corners
+        g.fillStyle = 'rgba(40,10,40,0.3)'; paRR(g, r.x0 - 3, r.wy - 2, 102, 192, 10); g.fill();
+        g.fillStyle = '#ffd75e'; paRR(g, r.x0 - 6, r.wy - 6, 102, 192, 10); g.fill();
+        g.fillStyle = '#e0ac2c'; paRR(g, r.x0 - 6, r.wy + 90, 102, 96, 10); g.fill();
+        g.strokeStyle = '#a8740c'; g.lineWidth = 1.5; paRR(g, r.x0 - 6, r.wy - 6, 102, 192, 10); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillRect(r.x0 + 2, r.wy - 4.5, 86, 1.5);
+        g.fillStyle = '#fff3c4'; for (const [qx, qy] of [[r.x0 - 2, r.wy - 2], [r.x1 + 2, r.wy - 2], [r.x0 - 2, r.wy + 182], [r.x1 + 2, r.wy + 182]]) { paCirc(g, qx, qy, 1.6); g.fill(); }
+        g.fillStyle = '#fffaf0'; paRR(g, r.x0, r.wy, 90, 180, 6); g.fill();
+      }
+    },
+  });
+  // marquee bulbs along the cabinet's top edge
+  if (cab) for (let x = cab.x0 + 14, k = 0; x < cab.x1 - 8; x += 24, k++) {
+    const on = ((k + Math.floor(t * 6)) % 3) === 0;
+    ctx.fillStyle = on ? '#fff6c2' : 'rgba(255,197,61,0.55)'; circle(x, cab.y0 + 10, on ? 4.5 : 3.5); ctx.fill();
   }
   for (const r of st.reels) {
-    // window frame
-    // a gold frame with depth: drop shadow, darker lower half, lit rim, rivets at the corners
-    ctx.fillStyle = 'rgba(40,10,40,0.3)'; rr(r.x0 - 3, r.wy - 2, 102, 192, 10); ctx.fill();
-    ctx.fillStyle = '#ffd75e'; rr(r.x0 - 6, r.wy - 6, 102, 192, 10); ctx.fill();
-    ctx.fillStyle = '#e0ac2c'; rr(r.x0 - 6, r.wy + 90, 102, 96, 10); ctx.fill();
-    ctx.strokeStyle = '#a8740c'; ctx.lineWidth = 1.5; rr(r.x0 - 6, r.wy - 6, 102, 192, 10); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(r.x0 + 2, r.wy - 4.5, 86, 1.5);
-    ctx.fillStyle = '#fff3c4'; for (const [qx, qy] of [[r.x0 - 2, r.wy - 2], [r.x1 + 2, r.wy - 2], [r.x0 - 2, r.wy + 182], [r.x1 + 2, r.wy + 182]]) { circle(qx, qy, 1.6); ctx.fill(); }
-    ctx.fillStyle = '#fffaf0'; rr(r.x0, r.wy, 90, 180, 6); ctx.fill();
     // the strip
     ctx.save(); rr(r.x0, r.wy, 90, 180, 6); ctx.clip();
     const base = Math.floor(r.pos);
