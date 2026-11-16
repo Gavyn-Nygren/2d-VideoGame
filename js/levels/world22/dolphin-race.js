@@ -650,7 +650,7 @@ function dlrDrawSeabed(st) {
   for (let x = 0; x <= W + 30; x += 30) ctx.lineTo(x, b + 4 + Math.sin((x + cx) / 70) * 4);
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
   // a soft blend into the deeper sand, a lit lip along the top, ripples and grains
-  { const gs = ctx.createLinearGradient(0, b + 14, 0, b + 34); gs.addColorStop(0, 'rgba(0,0,0,0)'); gs.addColorStop(1, lk.sand[1]); ctx.fillStyle = gs; ctx.beginPath(); ctx.rect(0, b + 14, W, 20); ctx.fill(); }
+  ctx.save(); ctx.fillStyle = lk.sand[1]; ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.rect(0, b + 20, W, 14); ctx.fill(); ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.rect(0, b + 28, W, 6); ctx.fill(); ctx.restore();
   ctx.fillStyle = lk.sand[1]; ctx.beginPath(); ctx.rect(0, b + 34, W, H - b - 34); ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2.5; ctx.beginPath();
   for (let x = 0; x <= W + 30; x += 30) ctx.lineTo(x, b + 5 + Math.sin((x + cx) / 70) * 4);

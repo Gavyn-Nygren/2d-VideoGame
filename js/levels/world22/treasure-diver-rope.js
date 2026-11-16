@@ -1065,7 +1065,11 @@ function diveropeDrawRock(st, r) {
   ctx.strokeStyle = shade(lk.rockD, 0.1); ctx.globalAlpha = 0.28; ctx.lineWidth = 2;
   for (let yy = r.y0 + 22; yy < r.y1 - 8; yy += 24) { ctx.beginPath(); for (let xx = x0; xx <= x0 + w; xx += 12) ctx.lineTo(xx, yy + Math.sin(xx * 0.06 + r.seed + yy) * 2.5); ctx.stroke(); }
   ctx.globalAlpha = 1;
-  for (let k = 0; k < Math.floor(w * h / 9000); k++) { const hh = hash(r.seed + 5, k); ctx.fillStyle = hh % 3 ? 'rgba(40,30,60,0.14)' : 'rgba(255,255,255,0.14)'; const px = x0 + 14 + (hh % Math.max(1, w - 28)), py = r.y0 + 16 + ((hh >> 8) % Math.max(1, h - 30)); ctx.beginPath(); ctx.ellipse(px, py, 4 + (hh % 5), 3 + (hh % 3), 0, 0, Math.PI * 2); ctx.fill(); }
+  for (const lit of [0, 1]) {
+    ctx.fillStyle = lit ? 'rgba(255,255,255,0.14)' : 'rgba(40,30,60,0.14)'; ctx.beginPath();
+    for (let k = 0; k < Math.min(40, Math.floor(w * h / 9000)); k++) { const hh = hash(r.seed + 5, k); if ((hh % 3 === 0) !== !!lit) continue; const px = x0 + 14 + (hh % Math.max(1, w - 28)), py = r.y0 + 16 + ((hh >> 8) % Math.max(1, h - 30)), rx = 4 + (hh % 5); ctx.moveTo(px + rx, py); ctx.ellipse(px, py, rx, 3 + (hh % 3), 0, 0, Math.PI * 2); }
+    ctx.fill();
+  }
   ctx.strokeStyle = shade(lk.rockD, 0.25); ctx.globalAlpha = 0.45; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
   for (let k = 0; k < Math.max(1, Math.floor(w / 140)); k++) { const hh = hash(r.seed + 9, k), cx = x0 + 30 + (hh % Math.max(1, w - 60)), cy = r.y0 + 10; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + 5, cy + 10); ctx.lineTo(cx + 1, cy + 18); ctx.moveTo(cx + 5, cy + 10); ctx.lineTo(cx + 12, cy + 14); ctx.stroke(); }
   ctx.globalAlpha = 1;

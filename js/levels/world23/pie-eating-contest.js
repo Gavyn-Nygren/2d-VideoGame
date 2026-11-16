@@ -469,7 +469,7 @@ function pieeatDrawBack(st) {
   ctx.fillStyle = 'rgba(70,40,20,0.22)'; ctx.fillRect(0, 352, W, 18);
   ctx.fillStyle = 'rgba(90,55,25,0.35)'; for (let x = 0; x < W; x += 48) { const h = hash(x, 3); ctx.fillRect(x + 8 + h % 10, 338 + h % 6, 18 + h % 14, 1.5); ctx.fillRect(x + 20 + h % 8, 346 + h % 5, 14 + h % 10, 1.5); }
   ctx.fillStyle = '#8a5a36'; for (let x = 0; x < W; x += 48) ctx.fillRect(x, 330, 3, 40);
-  ctx.fillStyle = '#5e3c22'; for (let x = 0; x < W; x += 48) { circle(x + 7, 336, 1.5); ctx.fill(); circle(x + 7, 362, 1.5); ctx.fill(); }
+  ctx.fillStyle = '#5e3c22'; ctx.beginPath(); for (let x = 0; x < W; x += 48) { ctx.rect(x + 5.5, 334.5, 3, 3); ctx.rect(x + 5.5, 360.5, 3, 3); } ctx.fill();
   ctx.fillStyle = '#c08a5a'; ctx.fillRect(0, 326, W, 6);
   ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, 326, W, 1.5);
   for (const px of [22, W - 22]) {

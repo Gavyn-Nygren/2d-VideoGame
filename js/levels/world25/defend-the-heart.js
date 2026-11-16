@@ -811,11 +811,11 @@ function zfWaveSpec(n) {
     turret: { main: '#6c7686', dark: '#40495a', light: '#a7b1c2' }, bed: { main: '#2d2833', dark: '#1c1922', light: '#3c3644' },
   };
   function zfCol(k) { return COLS_K[k] || COLS_K.dirt; }
+  const ZF_SHADE = {}, zfShade = (c, t) => ZF_SHADE[c + t] || (ZF_SHADE[c + t] = shade(c, t));
   function drawCell(st, x, y, c) {
     const px = x * T, py = y * T, k = zfCol(c.k), h = hash(x, y);
     ctx.fillStyle = k.main; ctx.fillRect(px - 0.5, py - 0.5, T + 1, T + 1);
     if (c.k === 'dirt') {
-      ctx.fillStyle = shade(k.main, 0.12); ctx.beginPath(); ctx.rect(px, py + T - 8, T, 8); ctx.fill();
       ctx.fillStyle = k.dark; for (let i = 0; i < 3; i++) { circle(px + 5 + ((h >> (i * 3)) % 20), py + 6 + ((h >> (i * 4 + 2)) % 18), 2); ctx.fill(); }
       if (h % 5 === 0) { ctx.fillStyle = '#8a7d6e'; ctx.beginPath(); ctx.ellipse(px + 8 + ((h >> 6) % 16), py + 12 + ((h >> 9) % 12), 3.5, 2.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#a89a88'; circle(px + 7 + ((h >> 6) % 16), py + 11 + ((h >> 9) % 12), 1.2); ctx.fill(); }
       if (h % 7 === 1) { ctx.strokeStyle = 'rgba(220,190,150,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 4 + (h % 10), py + 8 + ((h >> 4) % 10)); ctx.quadraticCurveTo(px + 14, py + 18, px + 24, py + 14 + ((h >> 8) % 8)); ctx.stroke(); }
@@ -826,22 +826,22 @@ function zfWaveSpec(n) {
     } else if (c.k === 'wood') {
       ctx.fillStyle = k.dark; ctx.fillRect(px, py + 9, T, 2); ctx.fillRect(px, py + 19, T, 2);
       ctx.fillStyle = k.light; ctx.fillRect(px + 2, py + 2, T - 4, 3);
-      ctx.fillStyle = shade(k.main, 0.14); ctx.beginPath(); ctx.rect(px, py + 21, T, T - 21); ctx.fill();
-      ctx.strokeStyle = shade(k.main, 0.2); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 3, py + 6 + (h % 3)); ctx.lineTo(px + T - 3, py + 6 + ((h >> 2) % 3)); ctx.moveTo(px + 3, py + 15 + ((h >> 4) % 3)); ctx.lineTo(px + T - 3, py + 15); ctx.stroke();
-      ctx.fillStyle = shade(k.main, 0.3); ctx.beginPath(); ctx.ellipse(px + 7 + ((h >> 5) % 18), py + 25, 2.2, 1.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#cfd3da'; for (const a of [4, T - 4]) { circle(px + a, py + 10, 1.1); ctx.fill(); circle(px + a, py + 20, 1.1); ctx.fill(); }
+      ctx.fillStyle = zfShade(k.main, 0.14); ctx.beginPath(); ctx.rect(px, py + 21, T, T - 21); ctx.fill();
+      ctx.strokeStyle = zfShade(k.main, 0.2); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 3, py + 6 + (h % 3)); ctx.lineTo(px + T - 3, py + 6 + ((h >> 2) % 3)); ctx.moveTo(px + 3, py + 15 + ((h >> 4) % 3)); ctx.lineTo(px + T - 3, py + 15); ctx.stroke();
+      ctx.fillStyle = zfShade(k.main, 0.3); ctx.beginPath(); ctx.ellipse(px + 7 + ((h >> 5) % 18), py + 25, 2.2, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#cfd3da'; ctx.beginPath(); for (const a of [3, T - 5]) { ctx.rect(px + a, py + 9, 2, 2); ctx.rect(px + a, py + 19, 2, 2); } ctx.fill();
       ctx.strokeStyle = k.dark; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, T - 2, T - 2);
     } else if (c.k === 'stone') {
       if (c.by >= 0) {
         ctx.fillStyle = k.dark; ctx.fillRect(px, py + 14, T, 2); ctx.fillRect(px + 14, py, 2, 14); ctx.fillRect(px + 6, py + 16, 2, 14); ctx.fillRect(px + 22, py + 16, 2, 14);
-        ctx.fillStyle = shade(k.main, 0.12); ctx.beginPath(); ctx.rect(px + 1, py + 10, T - 2, 4); ctx.rect(px + 1, py + 26, T - 2, 5); ctx.fill();
+        ctx.fillStyle = zfShade(k.main, 0.12); ctx.beginPath(); ctx.rect(px + 1, py + 10, T - 2, 4); ctx.rect(px + 1, py + 26, T - 2, 5); ctx.fill();
         ctx.fillStyle = k.light; ctx.fillRect(px + 2, py + 2, 10, 3); ctx.fillRect(px + 17, py + 2, 10, 3); ctx.fillRect(px + 9, py + 18, 11, 2);
         ctx.strokeStyle = k.dark; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, T - 2, T - 2);
       } else {
         ctx.fillStyle = k.dark; rr(px + 3 + (h % 9), py + 4 + ((h >> 3) % 8), 10, 7, 3); ctx.fill();
         ctx.fillStyle = k.light; rr(px + 14 + ((h >> 5) % 8), py + 16 + ((h >> 7) % 8), 8, 5, 2); ctx.fill();
-        ctx.fillStyle = shade(k.main, 0.22); circle(px + 4 + ((h >> 11) % 22), py + 24 + ((h >> 13) % 5), 1.3); ctx.fill(); circle(px + 20 + ((h >> 15) % 8), py + 5 + ((h >> 17) % 6), 1); ctx.fill();
-        if (h % 6 === 2) { ctx.strokeStyle = shade(k.main, 0.3); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 2, py + 20 + (h % 6)); ctx.lineTo(px + 12, py + 22 + ((h >> 3) % 6)); ctx.lineTo(px + 18, py + 28); ctx.stroke(); }
+        ctx.fillStyle = zfShade(k.main, 0.22); circle(px + 4 + ((h >> 11) % 22), py + 24 + ((h >> 13) % 5), 1.3); ctx.fill(); circle(px + 20 + ((h >> 15) % 8), py + 5 + ((h >> 17) % 6), 1); ctx.fill();
+        if (h % 6 === 2) { ctx.strokeStyle = zfShade(k.main, 0.3); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 2, py + 20 + (h % 6)); ctx.lineTo(px + 12, py + 22 + ((h >> 3) % 6)); ctx.lineTo(px + 18, py + 28); ctx.stroke(); }
       }
     } else if (c.k === 'metal' || c.k === 'turret') {
       const g = ctx.createLinearGradient(px, py, px, py + T); g.addColorStop(0, k.light); g.addColorStop(1, k.main);

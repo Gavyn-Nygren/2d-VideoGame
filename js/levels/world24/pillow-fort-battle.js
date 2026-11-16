@@ -739,9 +739,8 @@ function pfbDrawRoom(st) {
   ctx.fillStyle = night ? '#6d5fa0' : '#ffd0a8'; rr(14, 228, 200, 70, 18); ctx.fill();          // mattress and quilt
   ctx.fillStyle = night ? '#7f74b8' : '#ffb38a';
   for (let n = 0; n < 5; n++) { rr(20 + n * 38, 240, 32, 28, 6); ctx.fill(); }
-  ctx.strokeStyle = night ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.2; ctx.setLineDash([3, 3]);
-  for (let n = 0; n < 5; n++) { rr(23 + n * 38, 243, 26, 22, 4); ctx.stroke(); }
-  ctx.setLineDash([]);
+  ctx.strokeStyle = night ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1;
+  ctx.beginPath(); for (let n = 0; n < 5; n++) ctx.rect(23.5 + n * 38, 243.5, 26, 22); ctx.stroke();
   ctx.fillStyle = 'rgba(60,30,40,0.14)'; rr(14, 276, 200, 22, 12); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(14 + 4, 160, 4, PFB.floorY - 160); ctx.fillRect(128 + 4, 160, 4, PFB.floorY - 160);
   ctx.fillStyle = night ? '#8f86c8' : '#ffffff'; rr(30, 206, 70, 30, 12); ctx.fill();           // a pillow on the bed
@@ -768,7 +767,7 @@ function pfbDrawRoom(st) {
   ctx.fillStyle = night ? '#ffe68a' : '#fff4c8'; ctx.beginPath(); ctx.arc(nx, ny + 4, 14, Math.PI, 0); ctx.fill();
   ctx.fillStyle = night ? '#ffd24d' : '#ffe68a'; pfbStarShape(nx, ny - 2, 6);
   // a skirting board and a soft shade where the wall meets it
-  { const gw = ctx.createLinearGradient(0, PFB.floorY - 90, 0, PFB.floorY); gw.addColorStop(0, 'rgba(40,30,70,0)'); gw.addColorStop(1, night ? 'rgba(10,10,30,0.25)' : 'rgba(80,50,60,0.12)'); ctx.fillStyle = gw; ctx.fillRect(0, PFB.floorY - 90, W, 90); }
+  ctx.fillStyle = night ? 'rgba(10,10,30,0.16)' : 'rgba(80,50,60,0.08)'; ctx.fillRect(0, PFB.floorY - 36, W, 24);
   ctx.fillStyle = night ? '#5a5a8a' : '#fff6ea'; ctx.fillRect(0, PFB.floorY - 12, W, 12);
   ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(0, PFB.floorY - 3, W, 3);
   // the carpet: Pip's peach rug and Bo's blue rug meet at a stitched line
@@ -781,8 +780,8 @@ function pfbDrawRoom(st) {
     ctx.fillStyle = k ? (night ? '#3a5a94' : '#6fa6e0') : (night ? '#9a6262' : '#ffad80');
     ctx.fillRect(x0, PFB.floorY, x1 - x0, 5);
   }
-  ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (let y = PFB.floorY + 8; y < H; y += 6) ctx.fillRect(0, y, W, 1.5);
-  { const gf = ctx.createLinearGradient(0, PFB.floorY, 0, H); gf.addColorStop(0, 'rgba(30,20,50,0)'); gf.addColorStop(1, 'rgba(30,20,50,0.14)'); ctx.fillStyle = gf; ctx.fillRect(0, PFB.floorY, W, H - PFB.floorY); }
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.beginPath(); for (let y = PFB.floorY + 8; y < H; y += 6) ctx.rect(0, y, W, 1.5); ctx.fill();
+  ctx.fillStyle = 'rgba(30,20,50,0.1)'; ctx.fillRect(0, H - (H - PFB.floorY) * 0.4, W, (H - PFB.floorY) * 0.4);
   // the stitched line down the middle
   ctx.strokeStyle = night ? 'rgba(255,240,200,0.7)' : 'rgba(255,255,255,0.95)'; ctx.lineWidth = 3; ctx.setLineDash([7, 6]);
   ctx.beginPath(); ctx.moveTo(PFB.line, PFB.floorY + 2); ctx.lineTo(PFB.line, H); ctx.stroke(); ctx.setLineDash([]);

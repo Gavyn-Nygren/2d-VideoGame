@@ -891,7 +891,7 @@ function slkDrawWorld(st) {
       const y = k * 160 - par + 40;
       const pc = mixCol(SLK_TOYS[hash(k + 20, i) % 6], lk.wall[1], 0.78);
       ctx.fillStyle = pc; rr(i * 150 - 20, y, 140, 150, 18); ctx.fill();
-      ctx.strokeStyle = mixCol(pc, '#ffffff', 0.5); ctx.lineWidth = 2; ctx.setLineDash([6, 5]); rr(i * 150 - 12, y + 8, 124, 134, 13); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = mixCol(pc, '#ffffff', 0.5); ctx.lineWidth = 1.5; rr(i * 150 - 12, y + 8, 124, 134, 13); ctx.stroke();
     }
   } else {
     // stripes, a window with the moon, and the night light

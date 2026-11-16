@@ -1002,7 +1002,7 @@
     ctx.fillStyle = lk.grass; ctx.beginPath(); ctx.moveTo(x0, H + 10);
     for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, gyAt(st, x) + 6);
     ctx.lineTo(x1, H + 10); ctx.closePath(); ctx.fill();
-    { const gg = ctx.createLinearGradient(0, 420, 0, H); gg.addColorStop(0, 'rgba(0,0,0,0)'); gg.addColorStop(1, 'rgba(30,70,20,0.22)'); ctx.fillStyle = gg; ctx.beginPath(); ctx.moveTo(x0, H + 10); for (let x = x0; x <= x1; x += 16) ctx.lineTo(x, gyAt(st, x) + 8); ctx.lineTo(x1, H + 10); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle = 'rgba(30,70,20,0.12)'; ctx.fillRect(x0, H - 46, x1 - x0, 46);
     ctx.strokeStyle = lk.grassD; ctx.lineWidth = 3; ctx.beginPath();
     for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, gyAt(st, x) + 7);
     ctx.stroke();
