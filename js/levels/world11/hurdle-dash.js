@@ -540,6 +540,7 @@ function hurdlesDrawStands(st, k, cam) {
   const g = ctx.createLinearGradient(0, 0, 0, K.laneTop);
   g.addColorStop(0, HURDLES_COL.standDk); g.addColorStop(1, HURDLES_COL.stand);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, 64);
+  ctx.fillStyle = 'rgba(255,255,255,0.05)'; for (let c = Math.floor(off / 160); c < off / 160 + W / 160 + 1; c++) ctx.fillRect(c * 160 - off, 0, 4, 64);   // aisles
   for (let row = 0; row < 3; row++) {
     const y = 8 + row * 18, sh = (row % 2) * 9;
     ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(0, y + 13, W, 3);
@@ -572,6 +573,8 @@ function hurdlesDrawBoards(st, k, cam) {
     const x = i * span - cam + 6, bc = HURDLES_COL.boards[((i % 5) + 5) % 5];
     ctx.fillStyle = bc[0]; rr(x, y + 2, span - 12, h - 4, 4); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x + 2, y + 3, span - 16, 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x + 2, y + h - 6, span - 16, 3);
+    ctx.strokeStyle = 'rgba(20,16,50,0.5)'; ctx.lineWidth = 1.5; rr(x, y + 2, span - 12, h - 4, 4); ctx.stroke();
     const s = HURDLES_ADS[((i % HURDLES_ADS.length) + HURDLES_ADS.length) % HURDLES_ADS.length];
     ctx.font = '15px "Lilita One", "Arial Rounded MT Bold", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = bc[1]; ctx.fillText(s, x + (span - 12) / 2, y + h / 2 + 1);
@@ -601,6 +604,9 @@ function hurdlesDrawBoards(st, k, cam) {
 function hurdlesDrawTrack(st, k, cam) {
   const K = HURDLES, col = HURDLES_COL, sx = x => x - cam;
   ctx.fillStyle = col.track; ctx.fillRect(0, K.laneTop, W, K.laneBot - K.laneTop);
+  // the far lane sits a little in the boards' shadow; the near lane catches the light
+  ctx.fillStyle = 'rgba(40,10,10,0.1)'; ctx.fillRect(0, K.laneTop, W, (K.laneMid - K.laneTop) * 0.6);
+  ctx.fillStyle = 'rgba(255,240,220,0.06)'; ctx.fillRect(0, K.laneMid + 4, W, K.laneBot - K.laneMid - 8);
   ctx.fillStyle = col.trackDk; ctx.fillRect(0, K.laneTop, W, 6);
   // a soft rubbery speckle (moves with the track)
   ctx.fillStyle = 'rgba(255,255,255,0.08)';
@@ -609,6 +615,7 @@ function hurdlesDrawTrack(st, k, cam) {
   // lane lines
   ctx.fillStyle = col.line;
   for (const y of [K.laneTop + 1, K.laneMid, K.laneBot - 2]) ctx.fillRect(0, y - 1, W, 2.5);
+  ctx.fillStyle = 'rgba(60,10,10,0.18)'; for (const y of [K.laneMid, K.laneBot - 2]) ctx.fillRect(0, y + 1.5, W, 1.5);
   // lane numbers at the start, start line, the blocks
   const x0 = sx(0);
   if (x0 > -200 && x0 < W + 60) {
@@ -645,10 +652,14 @@ function hurdlesDrawTrack(st, k, cam) {
   }
   // the kerb and the infield grass
   ctx.fillStyle = '#f1efe6'; ctx.fillRect(0, K.laneBot, W, 5);
+  ctx.fillStyle = '#c9c4b4'; ctx.fillRect(0, K.laneBot + 3.5, W, 1.5);
   ctx.fillStyle = col.grass; ctx.fillRect(0, K.laneBot + 5, W, K.stripH - K.laneBot - 5);
   ctx.fillStyle = col.grassDk;
   const g0 = Math.floor(cam / 40);
   for (let c = g0; c < g0 + W / 40 + 2; c++) if (c % 2 === 0) ctx.fillRect(c * 40 - cam, K.laneBot + 5, 40, K.stripH - K.laneBot - 5);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(0, K.laneBot + 5, W, 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.14)';
+  for (let c = Math.floor(cam / 13); c < cam / 13 + W / 13 + 1; c++) { const h = hash(c, 5); ctx.fillRect(c * 13 - cam + h % 9, K.laneBot + 9 + (h >> 5) % Math.max(1, K.stripH - K.laneBot - 14), 1.5, 3); }
 }
 // the gold take-off zone in front of obstacle i (where your feet should be when you jump), from your own speed
 function hurdlesDrawZone(st, k, i, cam) {
