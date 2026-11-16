@@ -897,6 +897,15 @@ function templePaintBack(c, st) {
   c.fillStyle = gr; c.fillRect(0, 0, W, H);
   c.strokeStyle = 'rgba(0,0,0,0.16)'; c.lineWidth = 2;
   for (let y = 60; y < H - 60; y += 45) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); for (let x = (y / 45) % 2 ? 0 : 45; x < W; x += 90) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + 45); c.stroke(); } }
+  // every wall block: a lit top lip, a shady foot, weathered patches, moss and the odd crack
+  for (let y = 60; y < H - 60; y += 45) for (let x = (y / 45) % 2 ? 0 : 45; x < W + 90; x += 90) {
+    const bx = x - 90, h = hash(bx, y);
+    c.fillStyle = 'rgba(255,240,200,0.07)'; c.fillRect(bx + 2, y + 2, 86, 2);
+    c.fillStyle = 'rgba(0,0,0,0.10)'; c.fillRect(bx + 2, y + 38, 86, 5);
+    if (h % 3 === 0) { c.fillStyle = 'rgba(0,0,0,0.07)'; c.beginPath(); c.ellipse(bx + 20 + h % 50, y + 22, 14 + h % 10, 7, 0, 0, Math.PI * 2); c.fill(); }
+    if (h % 11 === 1) { c.fillStyle = 'rgba(110,170,80,0.22)'; c.beginPath(); c.ellipse(bx + 26 + h % 30, y + 40, 18, 5, 0, Math.PI, 0); c.fill(); }
+    if (h % 7 === 3) { c.strokeStyle = 'rgba(0,0,0,0.18)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(bx + 30 + h % 30, y + 4); c.lineTo(bx + 36 + h % 30, y + 16); c.lineTo(bx + 31 + h % 30, y + 28); c.stroke(); c.strokeStyle = 'rgba(0,0,0,0.16)'; c.lineWidth = 2; }
+  }
   // sun shafts through gaps in the roof
   for (const [x, w] of [[180, 60], [520, 80], [800, 50]]) {
     const sg = c.createLinearGradient(x, 60, x + 120, H);
@@ -916,6 +925,9 @@ function templePaintBack(c, st) {
     if (g[r][cc] !== '#') continue;
     const x = cc * T, y = r * T, h = hash(cc, r);
     c.fillStyle = C.stone; c.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
+    { let d = 0; for (let k = 1; k <= 3 && r - k >= 0 && g[r - k][cc] === '#'; k++) d++; if (d) { c.fillStyle = 'rgba(10,10,0,' + (0.045 * d) + ')'; c.fillRect(x - 0.5, y - 0.5, T + 1, T + 1); } }
+    { const w2 = 10 + (h % 9), h2 = 6 + ((h >> 3) % 5), sx = x + 3 + ((h >> 5) % Math.max(1, T - w2 - 6)), sy = y + 11 + ((h >> 7) % Math.max(1, T - h2 - 14));
+      c.fillStyle = 'rgba(0,0,0,0.13)'; c.fillRect(sx, sy + 1.5, w2, h2); c.fillStyle = 'rgba(255,240,200,0.09)'; c.fillRect(sx, sy, w2, h2); }
     c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(x + 2, y + 2, T - 4, 3);
     c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x, y + T - 3, T, 3);
     if ((cc + r) % 2) c.fillRect(x + T - 2, y, 2, T);

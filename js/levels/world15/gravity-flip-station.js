@@ -527,6 +527,21 @@ function gravflipPaintBack(c, st, L) {
   for (let x = 60; x < W - 60; x += 120) { c.beginPath(); c.moveTo(x, 60); c.lineTo(x, H - 60); c.stroke(); }
   c.fillStyle = S.panel;
   for (let x = 66; x < W - 120; x += 120) for (let y = 70; y < H - 120; y += 140) c.fillRect(x, y, 108, 126);
+  // each panel is a shallow inset: lit top and left lip, shady bottom and right, a vent slot or a label plate
+  for (let x = 66; x < W - 120; x += 120) for (let y = 70; y < H - 120; y += 140) {
+    c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(x, y, 108, 2); c.fillRect(x, y, 2, 126);
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x, y + 124, 108, 2); c.fillRect(x + 106, y, 2, 126);
+    const h = hash(x, y);
+    if (h % 3 === 0) { c.fillStyle = 'rgba(0,0,0,0.22)'; for (let k = 0; k < 4; k++) c.fillRect(x + 34, y + 84 + k * 7, 40, 3); c.fillStyle = 'rgba(255,255,255,0.05)'; for (let k = 0; k < 4; k++) c.fillRect(x + 34, y + 87 + k * 7, 40, 1); }
+    else if (h % 3 === 1) { c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + 14, y + 16, 30, 10); c.fillStyle = 'rgba(255,215,120,0.18)'; c.fillRect(x + 17, y + 19, 18, 4); }
+  }
+  // a pipe run along the wall with brackets
+  for (const py of [62, H - 74]) {
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(60, py + 3, W - 120, 8);
+    c.fillStyle = S.panel; c.fillRect(60, py, W - 120, 8);
+    c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(60, py + 1, W - 120, 2);
+    c.fillStyle = 'rgba(0,0,0,0.3)'; for (let x = 96; x < W - 60; x += 120) c.fillRect(x, py - 2, 6, 12);
+  }
   c.fillStyle = 'rgba(255,255,255,0.08)';
   for (let x = 66; x < W - 120; x += 120) for (let y = 70; y < H - 120; y += 140) for (const [dx, dy] of [[5, 5], [103, 5], [5, 121], [103, 121]]) { c.beginPath(); c.arc(x + dx, y + dy, 2, 0, Math.PI * 2); c.fill(); }
   // round windows onto space (and the ringed planet)
@@ -559,6 +574,8 @@ function gravflipPaintBack(c, st, L) {
 function gravflipWindow(c, x, y, r, seed) {
   c.fillStyle = '#3a3f66'; c.beginPath(); c.arc(x, y, r + 7, 0, Math.PI * 2); c.fill();
   c.fillStyle = '#8f95bf'; c.beginPath(); c.arc(x, y, r + 4, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 2; c.beginPath(); c.arc(x, y, r + 5, Math.PI * 0.95, Math.PI * 1.7); c.stroke();
+  c.strokeStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.arc(x, y, r + 5, -0.05, Math.PI * 0.7); c.stroke();
   c.save(); c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.clip();
   gravflipSpace(c, x - r, y - r, 2 * r, 2 * r, seed + 11);
   if (seed % 3 === 1) { c.fillStyle = '#ff9fb8'; c.beginPath(); c.arc(x + r * 0.35, y + r * 0.2, r * 0.42, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.25)'; c.beginPath(); c.arc(x + r * 0.25, y + r * 0.08, r * 0.15, 0, Math.PI * 2); c.fill(); }
@@ -584,7 +601,10 @@ function gravflipDeco(c, st) {
   if (st.style === 'dock') {
     // cargo crates and a parked shuttle silhouette
     for (const [x, w, h, col] of [[100, 50, 40, '#7a6a9a'], [700, 60, 46, '#5f7aa8'], [756, 40, 30, '#8a6a7a']]) {
-      c.fillStyle = col; c.fillRect(x, 480 - h, w, h); c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 2; c.strokeRect(x + 1, 480 - h + 1, w - 2, h - 2);
+      c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(x + w / 2 + 3, 480, w / 2 + 6, 4, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = col; c.fillRect(x, 480 - h, w, h);
+      c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x, 480 - h, w, 4); c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + w - 6, 480 - h + 4, 6, h - 4);
+      c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 2; c.strokeRect(x + 1, 480 - h + 1, w - 2, h - 2);
       c.beginPath(); c.moveTo(x + 2, 480 - h + 2); c.lineTo(x + w - 2, 478); c.moveTo(x + w - 2, 480 - h + 2); c.lineTo(x + 2, 478); c.stroke();
     }
     c.fillStyle = 'rgba(255,215,120,0.18)'; c.font = '700 13px "Atkinson Hyperlegible", sans-serif'; c.textAlign = 'center'; c.fillText('DOCK 7', 560, 300);

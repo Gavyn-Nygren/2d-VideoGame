@@ -785,14 +785,16 @@ function sprinkleDrawSky() {
   const tt = G.clock;
   for (let i = 0; i < 4; i++) {
     const x = ((i * 280 + tt * (6 + i * 2)) % (W + 240)) - 120, y = 168 + (i % 2) * 40;
-    ctx.fillStyle = i % 2 ? 'rgba(255,224,240,0.7)' : 'rgba(255,255,255,0.65)';
-    circle(x, y, 22); ctx.fill(); circle(x + 26, y - 10, 28); ctx.fill(); circle(x + 56, y, 20); ctx.fill(); ctx.fillRect(x, y, 56, 16);
+    drawCloud(x, y, 1.1 + (i % 2) * 0.15);
   }
   // far hills with lollipop trees, near chocolate hills with a drizzle of frosting
   const farY = x => 330 + Math.sin(x / 120) * 26 + Math.sin(x / 47) * 8, nearY = x => 392 + Math.sin(x / 90 + 1) * 18;
   ctx.fillStyle = C.hillFar; ctx.beginPath(); ctx.moveTo(0, 480);
   for (let x = 0; x <= W; x += 20) ctx.lineTo(x, farY(x));
   ctx.lineTo(W, 480); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = tint(C.hillFar, 0.3); ctx.lineWidth = 2.5; ctx.beginPath();
+  for (let x = 0; x <= W; x += 20) x ? ctx.lineTo(x, farY(x) + 1.5) : ctx.moveTo(x, farY(x) + 1.5);
+  ctx.stroke();
   for (let i = 0; i < 7; i++) {
     const x = 70 + i * 140 + (i % 2) * 30;
     sprinkleLolly(x, farY(x) - 30, 13, ['#ffe066', '#9fe7ff', '#ffffff', '#c9b0ff'][i % 4], ['#ff7fae', '#ff9a4a', '#ff5f7e', '#7fc8ff'][i % 4], 30);
@@ -800,12 +802,23 @@ function sprinkleDrawSky() {
   // gingerbread house far off
   ctx.save(); ctx.translate(820, farY(820) + 4);
   ctx.fillStyle = '#c98b5a'; ctx.fillRect(-20, -24, 40, 26);
+  ctx.fillStyle = '#a8703f'; ctx.fillRect(8, -24, 12, 26);
+  ctx.strokeStyle = '#8a5530'; ctx.lineWidth = 1.5; ctx.strokeRect(-20, -24, 40, 26);
   ctx.fillStyle = '#fff6f0'; ctx.beginPath(); ctx.moveTo(-26, -22); ctx.lineTo(0, -44); ctx.lineTo(26, -22); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#e6c9d8'; ctx.stroke();
+  ctx.fillStyle = '#ff7fae'; for (let k = -2; k <= 2; k++) { circle(k * 9, -23, 2.2); ctx.fill(); }
   ctx.fillStyle = '#ff7fae'; ctx.fillRect(-5, -12, 10, 14); ctx.fillStyle = '#9fe7ff'; ctx.fillRect(-16, -18, 7, 7); ctx.fillRect(9, -18, 7, 7);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(-16, -18, 3, 2); ctx.fillRect(9, -18, 3, 2);
   ctx.restore();
   ctx.fillStyle = C.hillNear; ctx.beginPath(); ctx.moveTo(0, 480);
   for (let x = 0; x <= W; x += 20) ctx.lineTo(x, nearY(x));
   ctx.lineTo(W, 480); ctx.closePath(); ctx.fill();
+  // soft frosting mounds along the near hills (plain shapes, so nobody mistakes them for candy)
+  for (let i = 0; i < 9; i++) {
+    const x = 40 + i * 110 + (hash(i, 61) % 40), y = nearY(x) + 14 + (hash(i, 62) % 18), r = 9 + (hash(i, 63) % 6);
+    ctx.fillStyle = shade(C.hillNear, 0.08); circle(x, y, r); ctx.fill(); circle(x + r, y + r * 0.3, r * 0.75); ctx.fill();
+    ctx.fillStyle = tint(C.hillNear, 0.22); circle(x - r * 0.3, y - r * 0.35, r * 0.35); ctx.fill();
+  }
   ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath();
   for (let x = 0; x <= W; x += 20) { const y = nearY(x) + 5 + ((x / 20) % 3 === 0 ? 6 : 0); if (x) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
   ctx.stroke();
@@ -848,8 +861,13 @@ function sprinkleDrawFloor(st) {
   }
   // chocolate cake floor with a frosting top
   ctx.fillStyle = '#7a4a32'; ctx.fillRect(0, y, W, H - y);
+  // sponge layers: a darker crumb band, a cream filling with a lit edge, crumbs
+  ctx.fillStyle = '#6a3e28'; ctx.fillRect(0, y + 44, W, H - y - 44);
   ctx.fillStyle = '#8f5a3e'; for (let x = 0; x < W; x += 60) ctx.fillRect(x + 6, y + 36, 40, 4);
   ctx.fillStyle = '#ff9ccf'; ctx.fillRect(0, y + 24, W, 6);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(0, y + 24, W, 1.5);
+  ctx.fillStyle = 'rgba(80,30,40,0.25)'; ctx.fillRect(0, y + 30, W, 2);
+  ctx.fillStyle = 'rgba(40,18,8,0.35)'; for (let x = 4; x < W; x += 23) { circle(x + (hash(x, 9) % 12), y + 52 + (hash(x, 3) % 30), 1.5 + (x % 2)); ctx.fill(); }
   ctx.fillStyle = '#fff4fa'; ctx.beginPath(); ctx.moveTo(0, y - 2);
   for (let x = 0; x <= W; x += 24) { ctx.lineTo(x, y + 8); ctx.quadraticCurveTo(x + 6, y + 18 + ((x / 24) % 3) * 3, x + 12, y + 8); }
   ctx.lineTo(W, y - 2); ctx.closePath(); ctx.fill();

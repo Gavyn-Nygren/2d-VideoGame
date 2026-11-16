@@ -650,6 +650,14 @@ function vineSky(st) {
       const h = Math.sin((wx + cam.x * par) * 0.006 + seed) * 26;
       circle(wx, gy - h - rr0 * 0.25, rr0 * (0.55 + vineHash(i, seed) * 0.4)); ctx.fill();
     }
+    // light on the treetops (top-left) so the canopy isn't one flat colour
+    for (let i = 0; i < 9; i++) {
+      const wx = ((i * 190 + seed * 70 - cam.x * par) % span + span) % span - 120;
+      const h = Math.sin((wx + cam.x * par) * 0.006 + seed) * 26, r = rr0 * (0.55 + vineHash(i, seed) * 0.4), cy = gy - h - rr0 * 0.25;
+      ctx.fillStyle = tint(col, 0.12); circle(wx - r * 0.25, cy - r * 0.25, r * 0.62); ctx.fill();
+      ctx.fillStyle = tint(col, 0.2); circle(wx - r * 0.4, cy - r * 0.45, r * 0.28); ctx.fill();
+    }
+    ctx.fillStyle = col;
   }
   // hanging vines from the top edge (parallax)
   ctx.strokeStyle = night ? 'rgba(60,100,80,0.6)' : 'rgba(60,130,60,0.55)'; ctx.lineWidth = 3;
@@ -669,7 +677,15 @@ function vineLeafShape(x, y, len, wid, ang, col) {
 function vineDrawGround(st, v) {
   const x0 = Math.max(v.x0, -4000), x1 = v.x1;
   ctx.fillStyle = VINE_COL.soil; ctx.fillRect(x0, 4, x1 - x0, v.y1 - 4);
+  // layered earth: a shady band under the grass, deeper darker soil, roots and pebbles with lit tops
+  ctx.fillStyle = 'rgba(40,24,10,0.2)'; ctx.fillRect(x0, 8, x1 - x0, 10);
+  ctx.fillStyle = 'rgba(40,24,10,0.16)'; ctx.fillRect(x0, 54, x1 - x0, Math.max(0, v.y1 - 54));
+  ctx.fillStyle = 'rgba(255,230,190,0.1)'; ctx.fillRect(x0, 52, x1 - x0, 2);
   ctx.fillStyle = VINE_COL.soilDk; for (let x = Math.floor(x0 / 60) * 60; x < x1; x += 60) { circle(x + 20, 30 + (x % 120 ? 6 : 16), 5); ctx.fill(); }
+  ctx.fillStyle = 'rgba(255,240,215,0.22)'; for (let x = Math.floor(x0 / 60) * 60; x < x1; x += 60) { circle(x + 18.5, 28.5 + (x % 120 ? 6 : 16), 2); ctx.fill(); }
+  ctx.strokeStyle = 'rgba(50,30,14,0.4)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  for (let x = Math.floor(x0 / 90) * 90; x < x1; x += 90) { const h = vineHash(Math.round(x / 90), 7); if (h < 0.5) continue; ctx.beginPath(); ctx.moveTo(x + 40, 10); ctx.quadraticCurveTo(x + 46, 22, x + 41, 34 + h * 10); ctx.stroke(); }
+  ctx.lineCap = 'butt';
   // grass band from the back strip to the front
   const top = VINE_LANE[0] - 14;
   for (let x = Math.floor(x0 / (5 * VINE.M)) * 5 * VINE.M; x < x1; x += 5 * VINE.M) {
@@ -702,7 +718,10 @@ function vineDrawMud(q) {
 function vineDrawLog(q) {
   const w = q.x1 - q.x0, h = VINE.logH;
   for (const ly of VINE_LANE) {
+    ctx.fillStyle = 'rgba(30,40,10,0.22)'; ctx.beginPath(); ctx.ellipse(q.x0 + w / 2, ly + 2, w / 2 + 8, 4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = VINE_COL.log; rr(q.x0, ly - h, w, h + 2, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(40,20,5,0.22)'; rr(q.x0, ly - h * 0.4, w, h * 0.4 + 2, 5); ctx.fill();
+    ctx.fillStyle = 'rgba(255,230,190,0.22)'; rr(q.x0 + 6, ly - h + 2, w - 18, 2.5, 1.2); ctx.fill();
     ctx.strokeStyle = '#5e3e1e'; ctx.lineWidth = 2; rr(q.x0, ly - h, w, h + 2, 7); ctx.stroke();
     ctx.fillStyle = '#c99a62'; ctx.beginPath(); ctx.ellipse(q.x1 - 4, ly - h / 2 + 1, 5, h / 2, 0, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#8f6338'; ctx.lineWidth = 1; circle(q.x1 - 4, ly - h / 2 + 1, 2.5); ctx.stroke();
@@ -829,8 +848,12 @@ function vineDrawPosts(st, v) {
     ctx.fillStyle = '#c9b06a'; ctx.fillRect(x - 2.5, -22, 5, 30);
     ctx.fillStyle = '#a88f4a'; ctx.fillRect(x - 3, -14, 6, 2); ctx.fillRect(x - 3, -4, 6, 2);
     if (big) {
-      ctx.fillStyle = '#fff6d8'; rr(x - 17, -40, 34, 18, 5); ctx.fill(); ctx.strokeStyle = '#8a6a2c'; ctx.lineWidth = 1.5; rr(x - 17, -40, 34, 18, 5); ctx.stroke();
-      ctx.font = '700 12px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#5a4020'; ctx.fillText(m + ' m', x, -30.5);
+      // the board is as wide as its words plus 8 px of air each side
+      ctx.font = '700 12px "Atkinson Hyperlegible", system-ui, sans-serif';
+      const bw = Math.max(34, Math.ceil(ctx.measureText(m + ' m').width) + 16);
+      ctx.fillStyle = 'rgba(60,40,10,0.22)'; rr(x - bw / 2 + 1.5, -38.5, bw, 18, 5); ctx.fill();
+      ctx.fillStyle = '#fff6d8'; rr(x - bw / 2, -40, bw, 18, 5); ctx.fill(); ctx.strokeStyle = '#8a6a2c'; ctx.lineWidth = 1.5; rr(x - bw / 2, -40, bw, 18, 5); ctx.stroke();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#5a4020'; ctx.fillText(m + ' m', x, -30.5);
     }
   }
   if (st.record && st.record.d > 1) {

@@ -822,6 +822,12 @@ function planethopDrawPlanet(st, q) {
       ctx.fillStyle = 'rgba(40,30,80,0.18)'; ctx.beginPath(); ctx.ellipse(cx, cy, cr, cr * 0.8, a, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx - 1, cy - 1, cr, cr * 0.8, a, Math.PI, Math.PI * 1.8); ctx.stroke();
     }
+    // fine speckles and a few little rocks across the surface (they turn with it)
+    for (let k = 0; k < 10; k++) {
+      const a = planethopHash(q.seed + 7, k) * 6.28 + q.rot, dd = r * (0.15 + planethopHash(k, q.seed + 9) * 0.78);
+      ctx.fillStyle = k % 2 ? 'rgba(255,255,255,0.18)' : 'rgba(40,30,80,0.16)';
+      circle(x + Math.cos(a) * dd, y + Math.sin(a) * dd, 1.2 + (k % 3) * 0.6); ctx.fill();
+    }
     if (q.spin) {
       // swirly stripes that show the spin
       ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = r * 0.12;
@@ -843,6 +849,8 @@ function planethopDrawPlanet(st, q) {
   ctx.fillStyle = sh; ctx.fillRect(x - r - 8, y - r - 8, 2 * r + 16, 2 * r + 16);
   ctx.restore();
   ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, y, r + wob, r - wob, 0, 0, Math.PI * 2); ctx.stroke();
+  // a thin lit rim on the sunny side
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, r + wob - 3, r - wob - 3, 0, Math.PI * 1.02, Math.PI * 1.45); ctx.stroke();
   if (q.face) planethopDrawFace(st, q, x, y + (q.kind === 'finish' ? -r * 0.32 : 0), r);
   if (q.kind === 'start') text('START', x, y + 2, Math.round(r * 0.3), 'rgba(255,255,255,0.85)', 'center');
   if (q.spin) {
