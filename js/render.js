@@ -173,6 +173,20 @@ function drawBackground() {
     drawCloud(x, y, 0.7 + (i % 2) * 0.4);
   }
   const cam = G.camX || 0;
+  // a level that doesn't scroll copies its hills as one picture (the three strips flattened once); copying the three
+  // see-through strips each frame cost a slow CPU a few ms
+  if (!cam && B.strips.every(st => st.sw >= W)) {
+    if (!B.flat) {
+      const cv = document.createElement('canvas'); cv.width = Math.round(W * sc); cv.height = Math.round((H - B.top) * sc);
+      const c = cv.getContext('2d');
+      for (const st of B.strips) c.drawImage(st.cv, 0, 0, cv.width, cv.height, 0, 0, cv.width, cv.height);
+      B.flat = cv;
+    }
+    if (exact) ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(B.flat, 0, B.top, W, H - B.top);
+    ctx.imageSmoothingEnabled = sm;
+    return;
+  }
   for (let k = 0; k < 3; k++) {
     const st = B.strips[k], off = Math.max(0, Math.min(cam * HILLS[k].par, st.sw - W));
     if (exact) ctx.imageSmoothingEnabled = false;
@@ -180,8 +194,15 @@ function drawBackground() {
     ctx.imageSmoothingEnabled = sm;
   }
 }
+// a cloud is drawn once per size into a picture and copied onto whole pixels after that
 function drawCloud(x, y, s) {
   if (artPlain()) return drawCloudPlain(x, y, s);
+  const m = ctx.getTransform(), sc = Math.max(1, Math.min(3, canvas.width / W));
+  if (m.b !== 0 || m.c !== 0 || Math.abs(m.a - sc) > 1e-6) return paintCloud(ctx, x, y, s);
+  const sp = artSprite('cloud' + s, 92 * s, 58 * s, 23 * s, 33 * s, c => paintCloud(c, 0, 0, s));
+  blitSprite(sp, x, y);
+}
+function paintCloud(ctx, x, y, s) {
   // a soft shadow under the puffs, then the white puffs, then a bright top
   ctx.fillStyle = 'rgba(160,175,205,0.28)';
   ctx.beginPath();
@@ -194,7 +215,7 @@ function drawCloud(x, y, s) {
   ctx.arc(x + 46 * s, y, 17 * s, 0, Math.PI * 2); ctx.arc(x + 34 * s, y - 2 * s, 14 * s, 0, Math.PI * 2); ctx.rect(x, y, 46 * s, 17 * s);
   ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  circle(x + 17 * s, y - 15 * s, 9 * s); ctx.fill(); circle(x - 4 * s, y - 5 * s, 6 * s); ctx.fill();
+  circleOn(ctx, x + 17 * s, y - 15 * s, 9 * s); ctx.fill(); circleOn(ctx, x - 4 * s, y - 5 * s, 6 * s); ctx.fill();
 }
 
 function drawStonePlain(tx, ty) {
@@ -261,6 +282,54 @@ function drawStone(tx, ty) {
   const key = 'st' + C.stone + C.stoneLight + C.stoneEdge + C.grass + C.grassDark + (L ? 1 : 0) + (R ? 1 : 0) + (B ? 1 : 0) + (top ? 1 : 0) + d + ':' + v;
   const sp = artSprite(key, T + 8, T + 10, 4, 8, c => paintStone(c, hash(v * 7 + 3, 911), L, R, B, top, d));
   blitSprite(sp, x, y);
+}
+// The level's stone tiles are drawn in chunks of 16 columns into pictures, rebuilt only when a chunk's tiles (or the
+// theme) change, and copied in one go: copying ~200 small tile pictures a frame still cost a phone-speed CPU several
+// ms. render() draws them before its tile loop and the loop skips '#'. Off (null) when the screen is rotated or zoomed.
+const STONE_CHUNK = 16, _chunks = new Map();
+function drawStoneChunks(tx0, tx1) {
+  if (artPlain()) return false;
+  const m = ctx.getTransform(), sc = Math.max(1, Math.min(3, canvas.width / W));
+  if (m.b !== 0 || m.c !== 0 || Math.abs(m.a - sc) > 1e-6 || Math.abs(m.d - sc) > 1e-6) return false;
+  if (sc !== _spriteScale) { _sprites.clear(); _spriteScale = sc; }
+  const theme = C.stone + C.stoneLight + C.stoneEdge + C.grass + C.grassDark + '|' + sc;
+  for (let c0 = Math.floor(tx0 / STONE_CHUNK) * STONE_CHUNK; c0 <= tx1; c0 += STONE_CHUNK) {
+    // what the chunk's tiles look like depends on its cells and the ones around it
+    let sig = 0;
+    for (let ty = -3; ty <= ROWS; ty++) for (let tx = c0 - 1; tx <= c0 + STONE_CHUNK; tx++) sig = (Math.imul(sig, 31) + tile(tx, ty).charCodeAt(0)) | 0;
+    const id = G.level.def.name + '|' + (G.level.def.roomIndex || 0) + '|' + c0;
+    let ch = _chunks.get(id);
+    if (!ch || ch.sig !== sig || ch.theme !== theme) {
+      if (!ch) {
+        if (_chunks.size >= 5) _chunks.delete(_chunks.keys().next().value); // the oldest
+        const px = Math.ceil(4 * sc), py = Math.ceil(8 * sc);
+        const cv = document.createElement('canvas'); cv.width = Math.ceil(px + (STONE_CHUNK * T + 4) * sc); cv.height = Math.ceil(py + (ROWS * T + 2) * sc);
+        ch = { cv, px, py };
+      }
+      const c = ch.cv.getContext('2d');
+      c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, ch.cv.width, ch.cv.height);
+      c.setTransform(sc, 0, 0, sc, ch.px, ch.py);
+      let r0 = ROWS, r1 = -1;
+      for (let ty = 0; ty < ROWS; ty++) for (let tx = c0; tx < c0 + STONE_CHUNK; tx++) {
+        if (tile(tx, ty) !== '#' || tx >= (G.level.cols || COLS)) continue;
+        r0 = Math.min(r0, ty); r1 = Math.max(r1, ty);
+        const L = tile(tx - 1, ty) !== '#', R = tile(tx + 1, ty) !== '#';
+        const B = ty + 1 < ROWS && !'#s'.includes(tile(tx, ty + 1)), top = ty > 0 && !'#sw'.includes(tile(tx, ty - 1));
+        let d = 0; for (let k = 1; k <= 3 && tile(tx, ty - k) === '#'; k++) d++;
+        const v = hash(tx, ty) % STONE_VARIANTS;
+        c.save(); c.translate((tx - c0) * T, ty * T); paintStone(c, hash(v * 7 + 3, 911), L, R, B, top, d); c.restore();
+      }
+      ch.sig = sig; ch.theme = theme;
+      // only the rows that hold stone get copied
+      ch.sy = r1 < 0 ? 0 : Math.max(0, Math.floor(ch.py + (r0 * T - 8) * sc)); ch.sh = r1 < 0 ? 0 : Math.min(ch.cv.height, Math.ceil(ch.py + ((r1 + 1) * T + 2) * sc)) - ch.sy;
+      _chunks.delete(id); _chunks.set(id, ch);
+    }
+    const X = Math.round(m.a * c0 * T + m.e) - ch.px, Y = Math.round(m.f) - ch.py, sm = ctx.imageSmoothingEnabled;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+    if (ch.sh > 0) ctx.drawImage(ch.cv, 0, ch.sy, ch.cv.width, ch.sh, X, Y + ch.sy, ch.cv.width, ch.sh);
+    ctx.setTransform(m); ctx.imageSmoothingEnabled = sm;
+  }
+  return true;
 }
 // one stone tile at (0, 0) on canvas c
 function paintStone(c, h, L, R, B, top, d) {
@@ -969,9 +1038,10 @@ function render(dt) {
     ctx.fillStyle = artPlain() ? 'rgba(28,26,54,0.5)' : 'rgba(28,26,54,0.62)'; ctx.fillText(sg.text, sg.x, sg.y);
   }
   const tx0 = Math.max(0, Math.floor(camX / T)), tx1 = Math.min((L.cols || COLS) - 1, Math.floor((camX + W) / T));
+  const chunked = drawStoneChunks(tx0, tx1);
   for (let ty = 0; ty < ROWS; ty++) for (let tx = tx0; tx <= tx1; tx++) {
     const ch = L.grid[ty][tx], x = tx * T, y = ty * T;
-    if (ch === '#') drawStone(tx, ty);
+    if (ch === '#') { if (!chunked) drawStone(tx, ty); }
     else if (ch === '^') drawSpikes(x, y);
     else if (ch === '=') drawPlank(x, y, tx, ty);
     else if (ch === 'o') drawColorBlock(x, y, 0, tx, ty);
