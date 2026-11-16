@@ -3,14 +3,14 @@
 
 (() => {
   /* Crown Keep is head-to-head: the computer plays against you. It sees you a moment late (longer on easy).
-     - Crown on its stand: race to it (see "Getting around" for the planks).
+     - Crown on its stand: race to it.
      - Holding the crown: keep away. Every so often it picks the spot on the map that is far from you, not under you
        (where you could drop on it) and not past you, and makes for it. When you are close and above it or jumping at
        it, it runs away sideways (cornered, it dashes back past you, over you if it can). On normal and hard, if it is
        falling and you are right below, it lands on you (a stomp stuns you).
      - You hold the crown: chase. It goes to your level, then runs at you and jumps so it comes down on your head,
        steering in the air to where you will be. It doesn't jump at you while you're flashing (the crown can't be taken
-       yet). Easy reacts slowly, aims worse, jumps early and stops to think now and then; hard is quick and sharp. */
+       yet). Dropping off a plank over them, it steers down onto their head. Easy reacts slowly, aims worse, jumps early and stops to think now and then; hard is quick and sharp. */
   // per skill: how late it sees you (s; never under 0.15 s, a quick person's reaction), how far off its stomps aim (px), how often it picks a new spot to run to (s),
   // how often it stops to think (per s, for 0.3-0.8 s), and how much it just picks any spot instead of a good one
   const SK = s => ({ lag: Math.max(0.15, 0.42 - 0.3 * s), aimErr: 40 * (1 - s), replan: 1.2 - 0.7 * s, dawdle: Math.max(0, 1.3 * (0.85 - s)), sloppy: 40 + 300 * (1 - s) * (1 - s) });
@@ -26,68 +26,18 @@
     list.lv = G.levelIndex;
     return (st.spots = list);
   }
-  /* Getting around. cpuNav does the walking, the hops onto the low planks and every way down. The centre plank and
-     the two high planks are each a running jump across a 3-tile gap that lands on the plank's corner, which cpuNav
-     doesn't count (it wants to land in the middle of a tile), so those four leaps are done here: back up a little, run
-     at the edge and jump at the last moment, holding jump and the direction until it lands. */
-  const LEAPS = [
-    { from: 'L13', to: 'C10', edge: 270, dir: 1 }, { from: 'R13', to: 'C10', edge: 690, dir: -1 },
-    { from: 'C10', to: 'L7', edge: 360, dir: -1 }, { from: 'C10', to: 'R7', edge: 600, dir: 1 },
-  ];
-  const LOW = { F: 1, B: 1, L13: 1, R13: 1 };
-  // which part of the map a standing player (or a spot) is on
-  function area(x, feet) {
-    if (feet >= 470) return 'F';
-    if (Math.abs(feet - 420) < 8) return 'B';
-    if (Math.abs(feet - 390) < 8) return x < W / 2 ? 'L13' : 'R13';
-    if (Math.abs(feet - 300) < 8) return 'C10';
-    if (Math.abs(feet - 210) < 8) return x < W / 2 ? 'L7' : 'R7';
-    return '?';
-  }
-  // the next leap on the way up from `from` to `to`: from a low plank, its leap to the centre; from the centre, the
-  // leap to that high plank; from anywhere else, the leap from the nearer low plank
-  function leapFor(from, to, x) {
-    if (from === 'C10') return LEAPS.find(l => l.from === 'C10' && l.to === to);
-    if (from === 'L13' || from === 'R13') return LEAPS.find(l => l.from === from);
-    return x < W / 2 ? LEAPS[0] : LEAPS[1];
-  }
-  const leapStart = l => l.edge - l.dir * (70 + PW / 2); // where its centre backs up to
+  /* Getting around: cpuNav does it all. Every plank is 2 tiles above the one under it and overlaps it, so each way up is
+     a hop straight up (or up and across) through a plank, which the crown holder's lower jump can make too. The holder
+     plans with its own slower run and lower jump (CROWN_HOLD), so its map and timing match how it really moves. */
+  const navOpts = (p, tol) => G.crown && G.crown.holder === p.id ? { tol, run: CROWN_HOLD.run, jump: CROWN_HOLD.jump } : { tol };
   // cpuNav, but braking in time on the take-off spot of a standing jump (cpuNav's own steering could overshoot it and
   // walk back: in the race to the crown a float rounding made Pip do that every time, 0.06 s slower than Bo)
-  function nav(st, p, x, feet, opts) {
+  function go(st, p, x, feet, tol) {
+    const opts = navOpts(p, tol);
     const out = cpuNav(st, p, x, feet, opts), N = st.nav, g = NAV.cache[p.id];
     if (out && p.grounded && !out.jump && N && N.cur && (N.cur.kind === 'jump' || N.cur.kind === 'high') && g && g.cells[N.cur.from]) {
       const s = {}; cpuSeek(s, p, g.cells[N.cur.from].tx * T + T / 2, 1.5); out.left = s.left; out.right = s.right;
     }
-    return out;
-  }
-  // one step of going to (x, feet), anywhere on the map
-  function go(st, p, x, feet, tol) {
-    const out = {};
-    const L = st.leap;
-    if (!p.grounded) {
-      if (L && L.flying) { out.left = L.l.dir < 0; out.right = L.l.dir > 0; out.jump = p.vy < 0; return out; }
-      return nav(st, p, x, feet, { tol });
-    }
-    const here = area(cpuCx(p), cpuFeet(p)), want = area(x, feet);
-    if (L && L.flying) st.leap = null; // landed (on the far plank, or not)
-    if (here === want || LOW[want] || here === '?') { st.leap = null; return nav(st, p, x, feet, { tol }); }
-    // upward: the centre plank needs a low plank first, a high plank needs the centre one
-    const next = (want === 'L7' || want === 'R7') && here !== 'C10' ? 'C10' : want; // a high plank needs the centre first
-    const l = leapFor(here, next, cpuCx(p));
-    if (!l) return nav(st, p, x, feet, { tol });
-    if (l.from !== here) { st.leap = null; return nav(st, p, leapStart(l), l.from === 'C10' ? 300 : 390, { tol: 6 }); }
-    if (!st.leap || st.leap.l !== l) st.leap = { l, run: false, flying: false };
-    const S = st.leap, lead = l.dir > 0 ? p.x + p.w : p.x;
-    if (!S.run) {
-      // back up to the run-up spot
-      if (cpuSeek(out, p, leapStart(l), 4)) S.run = true;
-      else return out;
-    }
-    out.left = l.dir < 0; out.right = l.dir > 0;
-    if ((l.edge - lead) * l.dir <= 1) { out.jump = true; S.flying = true; }
-    // overran without jumping (bumped, slowed): back up again
-    if ((lead - l.edge) * l.dir > 6) S.run = false;
     return out;
   }
   // where a body falling from (y, vy) is after t seconds, and when its feet reach height y1 (or null)
@@ -121,7 +71,6 @@
         if (!st.held && G.time - st.said > 15) { st.said = G.time; cpuSay(p, 'Catch me!'); }
         st.held = true;
         const dx = ox - me, dy = ofeet - mfeet, d = Math.hypot(dx, dy);
-        if (!p.grounded && st.leap && st.leap.flying) return go(st, p, st.spot ? st.spot.x : me, st.spot ? st.spot.feet : mfeet, 10);
         // falling onto them from above: land on their head (normal and hard)
         if (info.skill > 0.5 && !p.grounded && p.vy > 0 && s.alive && dy > 10 && dy < 120 && Math.abs(dx) < 70) { cpuSeek(out, p, ox, 3); return out; }
         // they're close and above me (or jumping at me): run away sideways, the side away from them
@@ -158,7 +107,14 @@
       const dx = ox - me, dy = ofeet - mfeet;
       const safe = o.stompSafe > 0 || c.invuln > 0.15; // the crown is flashing: can't take it yet
       if (!p.grounded) {
-        // a jump on the way somewhere (onto a plank, a leap): carry on with it
+        // coming down from a higher step with them below: steer onto their head (the crown holder is slow, so a
+        // chaser that drops off a plank right over them can land on them)
+        if (!st.stomp && p.vy > 0 && !safe && dy > 10 && dy < 200 && Math.abs(dx) < 50 + dy * 0.6) {
+          const t = fallTime(mfeet, p.vy, ofeet - PH);
+          cpuSeek(out, p, ox + s.vx * Math.min(t || 0, 0.5) * 0.8 + st.aim, 3);
+          return out;
+        }
+        // a jump on the way somewhere (onto a plank): carry on with it
         if (!st.stomp) return go(st, p, ox, ofeet, 20);
         // a jump at them: steer to where they'll be when it comes down to their head height
         const t = p.vy > -200 ? fallTime(mfeet, p.vy, ofeet - PH) : null;

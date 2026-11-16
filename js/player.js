@@ -393,7 +393,7 @@ function control(p, dt) {
   const canAct = p.stun <= 0;
   const holder = G.crown && G.crown.holder === p.id;
   const mv = canAct ? (inp.right ? 1 : 0) - (inp.left ? 1 : 0) : 0;
-  const max = PHYS.maxRun * (holder ? 0.9 : 1);
+  const max = PHYS.maxRun * (holder ? CROWN_HOLD.run : 1);
   // a jump off a moving partner keeps its ride speed until you land or steer (like a moving platform)
   if (p.grounded || mv) p.carryVx = 0;
   if (mv) { p.vx = approach(p.vx, mv * max, (p.grounded ? PHYS.accG : PHYS.accA) * dt); p.face = mv; }
@@ -408,7 +408,7 @@ function control(p, dt) {
         p.vx = clamp(p.vx + o.vx, -PHYS.maxRun, PHYS.maxRun);
         p.carryVx = clamp(o.vx, -PHYS.maxRun, PHYS.maxRun);
       }
-      jump(p, PHYS.jumpV * (holder ? 0.96 : 1));
+      jump(p, PHYS.jumpV * (holder ? CROWN_HOLD.jump : 1));
     }
     else if (canRopeJump(p)) { jump(p, PHYS.ropeJumpV); p.ropeCD = 0.35; }
   }
