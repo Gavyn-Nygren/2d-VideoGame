@@ -730,10 +730,9 @@
     ice.addColorStop(0, CU_ICE); ice.addColorStop(0.5, '#f6fbff'); ice.addColorStop(1, CU_ICE2);
     ctx.fillStyle = ice; ctx.fillRect(S.x0, S.y0, S.x1 - S.x0, S.y1 - S.y0);
     // soft reflections of the arena lights, and the ice darkening where it meets the boards
-    ctx.save(); ctx.beginPath(); ctx.rect(S.x0, S.y0, S.x1 - S.x0, S.y1 - S.y0); ctx.clip();
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    for (const [x, w] of [[160, 60], [250, 18], [520, 80], [640, 22], [820, 40]]) { ctx.beginPath(); ctx.moveTo(x, S.y0); ctx.lineTo(x + w, S.y0); ctx.lineTo(x + w - 90, S.y1); ctx.lineTo(x - 90, S.y1); ctx.closePath(); ctx.fill(); }
-    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath();
+    for (const [x, w] of [[180, 44], [250, 14], [560, 60], [640, 16]]) { ctx.moveTo(x, S.y0); ctx.lineTo(x + w, S.y0); ctx.lineTo(x + w - 90, S.y1); ctx.lineTo(x - 90, S.y1); ctx.closePath(); }
+    ctx.fill();
     ctx.fillStyle = 'rgba(80,120,170,0.16)'; ctx.fillRect(S.x0, S.y0, S.x1 - S.x0, 6); ctx.fillRect(S.x0, S.y0, 5, S.y1 - S.y0);
     ctx.fillStyle = 'rgba(80,120,170,0.08)'; ctx.fillRect(S.x0, S.y0 + 6, S.x1 - S.x0, 6);
     ctx.fillStyle = st.lucky ? 'rgba(255,215,90,0.35)' : 'rgba(150,190,225,0.35)';
