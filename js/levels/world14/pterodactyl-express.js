@@ -711,7 +711,7 @@ function pteroHintOnce(st, key, id, text) { if (st.hinted[key]) return; st.hinte
 function pteroMsg(st, text, col, life) { st.msg = { text, col, t: 0, life }; }
 function pteroPop(st, x, y, s, col, size) {
   // (a new word over one still showing goes on top of it, so they never print over each other)
-  for (let k = 0; k < 4; k++) { const o = st.pops.find(q => q.t < 0.7 && Math.abs(q.x - x) < 110 && Math.abs(q.y - y) < 24); if (!o) break; y = o.y - 26; }
+  for (let k = 0; k < 4; k++) { const o = st.pops.find(q => q.t < 0.7 && Math.abs(q.x - x) < 50 + (q.s.length + s.length) * 5 && Math.abs(q.y - y) < 24); if (!o) break; y = o.y - 26; }
   st.pops.push({ x, y, s, col: col || '#ffffff', size: size || 18, t: 0 }); if (st.pops.length > 12) st.pops.shift();
 }
 function pteroPart(st, x, y, vx, vy, life, col, size, grav, kind) {

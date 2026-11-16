@@ -882,6 +882,8 @@
     // the strain meter and panels left
     {
       const w = 180 * z, h = 13 * z, x = W / 2 - w / 2, y = H - 40 * z;
+      // a dark panel behind the gauge, so its words read on the pale dirt
+      ctx.fillStyle = 'rgba(20,22,52,0.86)'; rr(x - 16 * z, y - 19 * z, w + 32 * z, 51 * z, 13 * z); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1; rr(x - 16 * z + 0.5, y - 19 * z + 0.5, w + 32 * z - 1, 51 * z - 1, 13 * z); ctx.stroke();
       text(st.state === 'bridge' ? 'Drawbridge' : 'Strain', x + w / 2, y - 9 * z, 11 * z, '#ffffff', 'center', 'body');
       if (st.state === 'bridge') K.meter(x, y, w, h, st.bridge.down ? 1 - st.bridge.t / S.crossT : st.bridge.hold / S.bridgeT, st.bridge.down ? '#ffb04a' : '#8fe3b0');
       else K.meter(x, y, w, h, st.strain || 0, (st.strain || 0) > 0.7 ? '#ff5a4a' : '#ffb04a');

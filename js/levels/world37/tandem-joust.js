@@ -705,6 +705,8 @@
     // the balance bar (three Bonks without a clean hit = Unhorsed)
     {
       const w = 180 * z, h = 13 * z, x = W / 2 - w / 2, y = H - 40 * z;
+      // a dark panel behind the gauge, so its words read on the pale dirt
+      ctx.fillStyle = 'rgba(20,22,52,0.86)'; rr(x - 16 * z, y - 19 * z, w + 32 * z, 51 * z, 13 * z); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1; rr(x - 16 * z + 0.5, y - 19 * z + 0.5, w + 32 * z - 1, 51 * z - 1, 13 * z); ctx.stroke();
       text('Balance', x + w / 2, y - 9 * z, 11 * z, '#ffffff', 'center', 'body');
       for (let k = 0; k < 3; k++) { const on = k < 3 - st.bonkRun; ctx.fillStyle = on ? (st.bonkRun >= 2 ? '#ff5a4a' : st.bonkRun === 1 ? '#ffb04a' : '#8fe3b0') : 'rgba(255,255,255,0.14)'; rr(x + k * (w / 3) + 2, y, w / 3 - 4, h, h / 2); ctx.fill(); }
       text(st.soak > 0 ? 'soaked: slippery reins' : 'streak ' + (st.streak || 0), x + w / 2, y + h + 9 * z, 10 * z, st.soak > 0 ? '#bfe8ff' : '#e8dcc8', 'center', 'body');

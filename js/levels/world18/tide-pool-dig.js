@@ -439,7 +439,9 @@ function tidedigAct(st, p) {
   }
   if (fresh) {
     const nearHole = st.holes.some(h => h.depth > 0 && Math.abs(tidedigCx(p) - h.cx) < 70);
-    tidedigPop(st, tidedigCx(p), p.y - 16, nearHole ? 'Stand right by the hole!' : 'Scoop water out of a hole!', C.paper, 13);
+    // (the same tip again while it is still up would only stack copies of it)
+    const tip = nearHole ? 'Stand right by the hole!' : 'Scoop water out of a hole!';
+    if (!st.pops.some(q => q.s === tip && q.t < 0.9)) tidedigPop(st, tidedigCx(p), p.y - 16, tip, C.paper, 13);
   }
 }
 
