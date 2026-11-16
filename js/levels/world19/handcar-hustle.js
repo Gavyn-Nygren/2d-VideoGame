@@ -817,13 +817,20 @@ function handcarDrawSky(st) {
   const sx = 700 - st.cam.x * 0.02 % 40, sy = 190;
   ctx.fillStyle = 'rgba(255,236,170,0.35)'; circle(sx, sy, 110); ctx.fill();
   ctx.fillStyle = 'rgba(255,240,190,0.55)'; circle(sx, sy, 76); ctx.fill();
+  ctx.save(); ctx.translate(sx, sy); ctx.rotate(G.clock * 0.04); ctx.fillStyle = 'rgba(255,240,190,0.22)';
+  for (let i = 0; i < 14; i++) { ctx.rotate(Math.PI / 7); ctx.beginPath(); ctx.moveTo(-7, 60); ctx.lineTo(0, 124 + (i % 2) * 22); ctx.lineTo(7, 60); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
   ctx.fillStyle = '#fff6d6'; circle(sx, sy, 54); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; circle(sx - 12, sy - 12, 30); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,200,120,0.7)'; ctx.lineWidth = 2; circle(sx, sy, 54); ctx.stroke();
   // long wispy clouds
   for (let k = 0; k < 6; k++) {
     const span = 1500, x = ((k * 263 - st.cam.x * 0.05 - G.clock * 6) % span + span) % span - 200, y = 50 + (k % 3) * 34 + (hash(k, 3) % 20);
-    ctx.fillStyle = k % 2 ? 'rgba(255,214,190,0.55)' : 'rgba(255,240,225,0.6)';
+    ctx.fillStyle = 'rgba(214,130,100,0.25)'; ctx.beginPath(); ctx.ellipse(x + 4, y + 4, 90 + (k % 3) * 30, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = k % 2 ? 'rgba(255,214,190,0.6)' : 'rgba(255,240,225,0.65)';
     ctx.beginPath(); ctx.ellipse(x, y, 90 + (k % 3) * 30, 7, 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(x + 50, y - 6, 50, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.ellipse(x + 46, y - 9, 30, 2.2, 0, 0, Math.PI * 2); ctx.fill();
   }
 }
 // the red mesas far away (slow) and nearer buttes (faster)
@@ -837,16 +844,24 @@ function handcarDrawFar(st) {
       const hh = hash(k, span), x = k * span - off + (hh % 300), w = 200 + (hh >> 3) % 260, h = hMin + (hh >> 6) % hVar;
       ctx.fillStyle = col;
       ctx.beginPath(); ctx.moveTo(x - 40, base + 4); ctx.lineTo(x, base - h + 10); ctx.lineTo(x + 12, base - h); ctx.lineTo(x + w - 12, base - h); ctx.lineTo(x + w, base - h + 12); ctx.lineTo(x + w + 50, base + 4); ctx.closePath(); ctx.fill();
+      // a shaded right cliff and gullies, then the sunlit top and a soft outline
+      ctx.fillStyle = 'rgba(120,45,25,0.16)'; ctx.beginPath(); ctx.moveTo(x + w - 12, base - h); ctx.lineTo(x + w, base - h + 12); ctx.lineTo(x + w + 50, base + 4); ctx.lineTo(x + w + 6, base + 4); ctx.lineTo(x + w - 30, base - h + 10); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(120,45,25,0.14)'; ctx.lineWidth = 2; for (let g = 1; g < 5; g++) { const gx = x + (w * g) / 5 + (hh >> g) % 14; ctx.beginPath(); ctx.moveTo(gx, base - h + 8); ctx.lineTo(gx + 4, base - h * 0.4); ctx.stroke(); }
       ctx.fillStyle = top; ctx.fillRect(x + 12, base - h, w - 24, 6);
+      ctx.fillStyle = 'rgba(255,240,210,0.4)'; ctx.fillRect(x + 12, base - h, w - 24, 1.5);
+      ctx.strokeStyle = 'rgba(120,45,25,0.2)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 40, base + 4); ctx.lineTo(x, base - h + 10); ctx.lineTo(x + 12, base - h); ctx.lineTo(x + w - 12, base - h); ctx.lineTo(x + w, base - h + 12); ctx.lineTo(x + w + 50, base + 4); ctx.stroke();
       // rock layers
       ctx.strokeStyle = 'rgba(140,60,30,0.18)'; ctx.lineWidth = 3;
       for (let j = 1; j < 3; j++) { ctx.beginPath(); ctx.moveTo(x - 4 + j * 6, base - h + j * h / 3); ctx.lineTo(x + w + 6 + j * 12, base - h + j * h / 3); ctx.stroke(); }
       // a lone butte now and then
-      if (hh % 3 === 0) { const bx = x + w + 90; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(bx - 14, base + 4); ctx.lineTo(bx - 6, base - h * 0.9); ctx.lineTo(bx + 22, base - h * 0.9); ctx.lineTo(bx + 30, base + 4); ctx.closePath(); ctx.fill(); }
+      if (hh % 3 === 0) { const bx = x + w + 90; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(bx - 14, base + 4); ctx.lineTo(bx - 6, base - h * 0.9); ctx.lineTo(bx + 22, base - h * 0.9); ctx.lineTo(bx + 30, base + 4); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(120,45,25,0.16)'; ctx.beginPath(); ctx.moveTo(bx + 12, base - h * 0.9); ctx.lineTo(bx + 22, base - h * 0.9); ctx.lineTo(bx + 30, base + 4); ctx.lineTo(bx + 16, base + 4); ctx.closePath(); ctx.fill(); ctx.fillStyle = top; ctx.fillRect(bx - 6, base - h * 0.9, 28, 3); }
     }
   }
   // the desert floor far away
   ctx.fillStyle = '#efc58a'; ctx.fillRect(0, yb + 30, W, H);
+  ctx.fillStyle = 'rgba(255,240,210,0.4)'; ctx.fillRect(0, yb + 30, W, 2);
+  ctx.strokeStyle = 'rgba(190,130,70,0.22)'; ctx.lineWidth = 1.2;
+  for (let k = 0; k < 9; k++) { const hh = hash(k, 91), x = ((k * 150 - cam.x * 0.3 + (hh % 80)) % 1350 + 1350) % 1350 - 120, y = yb + 40 + (hh % 40); ctx.beginPath(); ctx.moveTo(x - 22, y); ctx.quadraticCurveTo(x, y - 3, x + 22, y); ctx.stroke(); }
 }
 // scenery behind the track: telegraph poles, cacti, rocks, windmills, the town
 function handcarDrawBack(st) {
@@ -936,11 +951,18 @@ function handcarDrawTown(st, z) {
     ctx.fillRect(x, y - f.h, f.w, f.h); ctx.strokeRect(x, y - f.h, f.w, f.h);
     ctx.fillStyle = f.trim; ctx.fillRect(x - 6, y - f.h - 6, f.w + 12, 10);
     // the sign board
+    // wall boards, then the sign board with its word sized to fit
+    ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1.5; for (let bx = x + 12; bx < x + f.w - 4; bx += 12) { ctx.beginPath(); ctx.moveTo(bx, y - f.h + 4); ctx.lineTo(bx, y - 2); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x + f.w - 14, y - f.h + 2, 12, f.h - 4);
     ctx.fillStyle = '#fff3d6'; rr(x + 10, y - f.h + 14, f.w - 20, 24, 4); ctx.fill();
-    text(f.word, x + f.w / 2, y - f.h + 27, Math.min(16, (f.w - 26) / f.word.length * 1.7), f.trim, 'center');
+    ctx.strokeStyle = f.trim; ctx.lineWidth = 1.5; rr(x + 10, y - f.h + 14, f.w - 20, 24, 4); ctx.stroke();
+    let fs = 16; ctx.font = fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+    const tw = ctx.measureText(f.word).width; if (tw > f.w - 36) fs = Math.max(9, Math.floor(fs * (f.w - 36) / tw));
+    text(f.word, x + f.w / 2, y - f.h + 27, fs, f.trim, 'center');
     // windows and door, a porch roof
     ctx.fillStyle = '#7a5a3a'; for (const wx of [0.2, 0.62]) { rr(x + f.w * wx, y - f.h + 52, f.w * 0.2, 26, 3); ctx.fill(); }
     ctx.fillStyle = '#ffe9a8'; for (const wx of [0.2, 0.62]) { ctx.fillRect(x + f.w * wx + 3, y - f.h + 55, f.w * 0.2 - 6, 9); }
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; for (const wx of [0.2, 0.62]) { ctx.fillRect(x + f.w * wx + 4, y - f.h + 56, 3, 7); }
     ctx.fillStyle = f.trim; rr(x + f.w * 0.42, y - 40, f.w * 0.16, 40, 3); ctx.fill();
     ctx.fillStyle = '#a36a3a'; ctx.fillRect(x - 4, y - 48, f.w + 8, 6);
     for (const px of [x + 2, x + f.w - 6]) ctx.fillRect(px, y - 44, 4, 44);
@@ -982,6 +1004,9 @@ function handcarDrawGround(st) {
   for (let x = x0; x <= x1; x += 6) ctx.lineTo(x, handcarTerrain(st, x));
   ctx.lineTo(x1, yB); ctx.closePath();
   ctx.fillStyle = '#c06a48'; ctx.fill();
+  // darker deeper down
+  const gg = ctx.createLinearGradient(0, cam.y + 300, 0, cam.y + H); gg.addColorStop(0, 'rgba(90,30,15,0)'); gg.addColorStop(1, 'rgba(90,30,15,0.22)');
+  ctx.save(); ctx.clip(); ctx.fillStyle = gg; ctx.fillRect(x0, cam.y, x1 - x0, H + 40); ctx.restore();
   // rock bands following the ground
   ctx.strokeStyle = 'rgba(122,58,38,0.35)'; ctx.lineWidth = 6;
   for (const dy of [44, 96]) {
@@ -997,6 +1022,12 @@ function handcarDrawGround(st) {
   // pebbles
   ctx.fillStyle = 'rgba(122,58,38,0.45)';
   for (let k = Math.floor(x0 / 37); k < x1 / 37; k++) { const h = hash(k, 5), x = k * 37 + h % 20; circle(x, handcarTerrain(st, x) + 24 + (h >> 4) % 40, 2 + (h >> 9) % 3); ctx.fill(); }
+  ctx.fillStyle = 'rgba(255,220,180,0.35)';
+  for (let k = Math.floor(x0 / 37); k < x1 / 37; k++) { const h = hash(k, 5), x = k * 37 + h % 20; circle(x - 0.8, handcarTerrain(st, x) + 23 + (h >> 4) % 40, 0.9); ctx.fill(); }
+  // a sunlit lip on the sandy top and the odd dry tuft
+  ctx.strokeStyle = 'rgba(255,240,200,0.6)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = x0; x <= x1; x += 6) { const y = handcarTerrain(st, x) - 0.5; if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+  ctx.stroke();
   // creeks
   for (const s of st.c.spans) {
     if (s.kind !== 'creek' || s.x1 + 120 < x0 || s.x0 - 120 > x1) continue;
