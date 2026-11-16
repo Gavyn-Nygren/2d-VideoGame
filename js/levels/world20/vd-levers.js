@@ -548,10 +548,20 @@ function vdlDrawBack(st) {
   ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, 210);
   for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 214 + Math.sin(x / W * Math.PI) * 120 + Math.sin(x * 0.05) * 6 + (hash(x, 5) % 9));
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  // the far wall's sunlit rim, rock layers and specks
+  ctx.strokeStyle = 'rgba(255,160,120,0.3)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 215 + Math.sin(x / W * Math.PI) * 120 + Math.sin(x * 0.05) * 6 + (hash(x, 5) % 9));
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(25,8,18,0.22)'; ctx.lineWidth = 3;
+  for (const dy of [34, 70]) { ctx.beginPath(); for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 214 + dy + Math.sin(x / W * Math.PI) * 120 + Math.sin(x * 0.03 + dy) * 5); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(25,8,18,0.25)'; for (let k = 0; k < 30; k++) { const h = hash(k, 61), x = h % W; circle(x, 230 + Math.sin(x / W * Math.PI) * 120 + (h >> 10) % 70, 1.5 + (k % 3)); ctx.fill(); }
   ctx.fillStyle = '#5c2e3c';
   ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, 280);
   for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 290 + Math.sin(x / W * Math.PI) * 90 + Math.sin(x * 0.07 + 1) * 5);
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,170,120,0.28)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = 0; x <= W; x += 20) ctx.lineTo(x, 291 + Math.sin(x / W * Math.PI) * 90 + Math.sin(x * 0.07 + 1) * 5);
+  ctx.stroke();
   // the lake's glow on the wall, glowing cracks
   const gl = ctx.createLinearGradient(0, 300, 0, L.lavaY);
   gl.addColorStop(0, 'rgba(255,120,50,0)'); gl.addColorStop(1, `rgba(255,140,60,${0.42 + 0.06 * Math.sin(t * 2)})`);
@@ -563,7 +573,9 @@ function vdlDrawBack(st) {
   // steam puffs rising off the lake (a pure function of the clock)
   for (let k = 0; k < 6; k++) {
     const u = (t * 0.16 + k / 6) % 1, x = L.lavaX0 + 60 + ((k * 137) % (L.lavaX1 - L.lavaX0 - 120)) + Math.sin(u * 6 + k) * 16;
-    ctx.fillStyle = `rgba(255,220,200,${0.16 * Math.sin(u * Math.PI)})`; circle(x, L.lavaY - 20 - u * 220, 14 + u * 26); ctx.fill();
+    const a = 0.16 * Math.sin(u * Math.PI), y = L.lavaY - 20 - u * 220, r = 14 + u * 26;
+    ctx.fillStyle = `rgba(255,220,200,${a})`; ctx.beginPath(); ctx.arc(x, y, r * 0.8, 0, Math.PI * 2); ctx.arc(x - r * 0.5, y + r * 0.25, r * 0.55, 0, Math.PI * 2); ctx.arc(x + r * 0.5, y + r * 0.2, r * 0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(255,240,225,${a * 0.9})`; circle(x - r * 0.2, y - r * 0.3, r * 0.35); ctx.fill();
   }
   // the rock (stone tiles and the bridge planks), drawn again over the backdrop
   for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {

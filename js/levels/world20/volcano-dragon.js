@@ -930,24 +930,64 @@ function vdDrawLava(x0, x1, y, t, o = {}) {
 }
 // the volcanic sunset backdrop: sky, a distant smoking volcano (screen coords). o.x / o.y move the volcano.
 function vdDrawBackdrop(t, o = {}) {
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, '#4a1f45'); g.addColorStop(0.55, '#c8504a'); g.addColorStop(1, '#ffa255');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = 'rgba(255,214,150,0.9)'; circle(150, 120, 40); ctx.fill();
+  if (!vdSkyG) {
+    vdSkyG = ctx.createLinearGradient(0, 0, 0, H);
+    vdSkyG.addColorStop(0, '#4a1f45'); vdSkyG.addColorStop(0.55, '#c8504a'); vdSkyG.addColorStop(1, '#ffa255');
+  }
+  ctx.fillStyle = vdSkyG; ctx.fillRect(0, 0, W, H);
+  // the first stars of the evening, twinkling high up
+  for (let k = 0; k < 16; k++) {
+    const h = hash(k, 211), sx = h % W, sy = 12 + (h >> 10) % 120, tw = 0.5 + 0.5 * Math.sin(t * (1.2 + (k % 4) * 0.4) + k);
+    ctx.fillStyle = `rgba(255,236,220,${0.25 + 0.45 * tw * (1 - sy / 150)})`; circle(sx, sy, 0.9 + (k % 3) * 0.4); ctx.fill();
+  }
+  // the low sun: a wide glow, soft rays, a bright core with a rim
+  ctx.fillStyle = 'rgba(255,170,110,0.18)'; circle(150, 120, 86); ctx.fill();
   ctx.fillStyle = 'rgba(255,170,110,0.3)'; circle(150, 120, 62); ctx.fill();
+  ctx.save(); ctx.translate(150, 120); ctx.rotate(t * 0.04); ctx.fillStyle = 'rgba(255,214,160,0.16)';
+  for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(-5, 46); ctx.lineTo(0, 92 + (i % 2) * 16); ctx.lineTo(5, 46); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255,214,150,0.95)'; circle(150, 120, 40); ctx.fill();
+  ctx.fillStyle = 'rgba(255,240,200,0.55)'; circle(142, 112, 22); ctx.fill();
+  // long thin sunset clouds
+  for (let k = 0; k < 4; k++) {
+    const x = ((k * 330 + t * (3 + k)) % (W + 360)) - 180, y = 150 + k * 34;
+    ctx.fillStyle = 'rgba(120,40,70,0.28)'; ctx.beginPath(); ctx.ellipse(x + 4, y + 3, 120 - k * 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,170,140,0.45)'; ctx.beginPath(); ctx.ellipse(x, y, 120 - k * 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,180,0.45)'; ctx.beginPath(); ctx.ellipse(x - 20, y - 3, 60, 2, 0, 0, Math.PI * 2); ctx.fill();
+  }
   const vx = o.x != null ? o.x : 640, vy = o.y != null ? o.y : 230;
+  // the far volcano: a lit left slope, a shaded right slope, ridges, glowing rivulets and the crater glow
   ctx.fillStyle = '#5e2a33';
   ctx.beginPath(); ctx.moveTo(vx - 420, H); ctx.lineTo(vx - 60, vy); ctx.lineTo(vx + 60, vy); ctx.lineTo(vx + 420, H); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(30,10,25,0.28)'; ctx.beginPath(); ctx.moveTo(vx + 20, vy); ctx.lineTo(vx + 60, vy); ctx.lineTo(vx + 420, H); ctx.lineTo(vx + 140, H); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,150,110,0.14)'; ctx.beginPath(); ctx.moveTo(vx - 60, vy); ctx.lineTo(vx - 30, vy); ctx.lineTo(vx - 250, H); ctx.lineTo(vx - 420, H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(30,10,25,0.25)'; ctx.lineWidth = 2;
+  for (const k of [-0.6, -0.2, 0.3, 0.7]) { ctx.beginPath(); ctx.moveTo(vx + k * 50, vy + 4); ctx.lineTo(vx + k * 260, vy + 200); ctx.stroke(); }
+  ctx.strokeStyle = `rgba(255,140,60,${0.55 + 0.2 * Math.sin(t * 2)})`; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(vx - 18, vy + 2); ctx.quadraticCurveTo(vx - 40, vy + 60, vx - 30, vy + 120); ctx.moveTo(vx + 22, vy + 2); ctx.quadraticCurveTo(vx + 30, vy + 50, vx + 60, vy + 90); ctx.stroke();
+  ctx.lineCap = 'butt';
+  ctx.fillStyle = 'rgba(255,140,60,0.25)'; ctx.beginPath(); ctx.ellipse(vx, vy - 4, 90, 26, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = 'rgba(255,140,60,0.55)'; ctx.beginPath(); ctx.ellipse(vx, vy, 60, 9, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,220,140,0.6)'; ctx.beginPath(); ctx.ellipse(vx, vy, 34, 4, 0, 0, Math.PI * 2); ctx.fill();
+  // smoke puffs rising: a darker underside and a sunlit top
   for (let k = 0; k < 4; k++) {
-    const u = (t * 0.12 + k / 4) % 1;
-    ctx.fillStyle = `rgba(110,90,110,${0.45 * (1 - u)})`; circle(vx + Math.sin(u * 5 + k) * 30 + u * 60, vy - 20 - u * 160, 20 + u * 40); ctx.fill();
+    const u = (t * 0.12 + k / 4) % 1, px = vx + Math.sin(u * 5 + k) * 30 + u * 60, py = vy - 20 - u * 160, r = 20 + u * 40, a = 0.45 * (1 - u);
+    ctx.fillStyle = `rgba(70,50,75,${a})`; circle(px + r * 0.15, py + r * 0.15, r); ctx.fill();
+    ctx.fillStyle = `rgba(110,90,110,${a})`; ctx.beginPath(); ctx.arc(px, py, r * 0.85, 0, Math.PI * 2); ctx.arc(px - r * 0.5, py + r * 0.2, r * 0.55, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(255,170,140,${a * 0.6})`; circle(px - r * 0.3, py - r * 0.35, r * 0.35); ctx.fill();
   }
   ctx.fillStyle = '#3a1d2a';
   ctx.beginPath(); ctx.moveTo(0, H);
   for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 420 + Math.sin(x * 0.009 + 2) * 24 + Math.sin(x * 0.023) * 8);
   ctx.lineTo(W, H); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,150,100,0.22)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 421 + Math.sin(x * 0.009 + 2) * 24 + Math.sin(x * 0.023) * 8);
+  ctx.stroke();
+  // rock spires on the near ridge
+  ctx.fillStyle = '#3a1d2a';
+  for (const [sx, sh] of [[90, 46], [118, 30], [520, 38], [880, 54], [906, 34]]) { const sy = 424 + Math.sin(sx * 0.009 + 2) * 24 + Math.sin(sx * 0.023) * 8; ctx.beginPath(); ctx.moveTo(sx - 10, sy); ctx.lineTo(sx - 3, sy - sh); ctx.lineTo(sx + 4, sy - sh + 6); ctx.lineTo(sx + 10, sy); ctx.closePath(); ctx.fill(); }
 }
+let vdSkyG = null;
 
 /* --- drawing: shields, fire --- */
 function vdDrawShields(st) {
