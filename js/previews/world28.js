@@ -14,6 +14,10 @@ if (typeof definePreview === 'function') {
       c.beginPath(); c.moveTo(x, y + r * 14); c.lineTo(x + w, y + r * 14); c.stroke();
       for (let k = (r % 2) * 14; k < w; k += 28) { c.beginPath(); c.moveTo(x + k, y + r * 14); c.lineTo(x + k, y + Math.min(h, r * 14 + 14)); c.stroke(); }
     }
+    // a lit top and a shaded foot on each course, and the odd paler block
+    c.fillStyle = 'rgba(255,240,200,0.12)'; for (let r = 0; r * 14 < h; r++) c.fillRect(x, y + r * 14 + 1, w, 1.5);
+    c.fillStyle = 'rgba(60,30,10,0.12)'; for (let r = 0; r * 14 < h; r++) c.fillRect(x, y + r * 14 + 11, w, 2.5);
+    for (let r = 0; r * 14 < h; r++) for (let k = (r % 2) * 14 - 28; k < w; k += 28) if ((r * 7 + k) % 5 === 0) { c.fillStyle = dark ? 'rgba(255,220,170,0.07)' : 'rgba(255,245,215,0.18)'; c.fillRect(x + Math.max(0, k) + 1, y + r * 14 + 1, 26, 12); }
   };
 
   // ----- BEGIN 28-1 Rolling Boulder Run preview -----
@@ -115,7 +119,9 @@ if (typeof definePreview === 'function') {
     loop: 5, still: 3.3,
     draw(v, t) {
       const c = v.ctx, e = v.ease, S = 24, ox = 64, oy = 20;
-      c.fillStyle = '#5e4028'; c.fillRect(0, 0, 320, 180);
+      pw28Blocks(v, 0, 0, 320, 180, true);
+      c.fillStyle = 'rgba(20,10,4,0.3)'; c.fillRect(0, 0, 320, 180);
+      c.fillStyle = 'rgba(20,10,4,0.45)'; c.fillRect(ox - 3, oy - 3, 8 * S + 6, 6 * S + 7);
       // the floor grid (8 x 6)
       for (let gy = 0; gy < 6; gy++) for (let gx = 0; gx < 8; gx++) { c.fillStyle = (gx + gy) % 2 ? '#d6ad70' : '#cfa466'; c.fillRect(ox + gx * S, oy + gy * S, S, S); }
       c.strokeStyle = 'rgba(110,70,30,0.35)'; c.lineWidth = 1; for (let k = 0; k <= 8; k++) { c.beginPath(); c.moveTo(ox + k * S, oy); c.lineTo(ox + k * S, oy + 6 * S); c.stroke(); }

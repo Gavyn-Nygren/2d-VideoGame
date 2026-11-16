@@ -528,6 +528,15 @@ function brDraw(st) {
     ctx.fillStyle = 'rgba(70,40,18,0.25)'; ctx.fillRect(tx - 22, BR.ceil, 44, BR.floor - BR.ceil);
     ctx.fillStyle = look.wall.lite; ctx.fillRect(tx - 18, BR.ceil, 36, BR.floor - BR.ceil);
     ctx.fillStyle = 'rgba(80,50,20,0.2)'; for (let y = BR.ceil + 10; y < BR.floor; y += 24) ctx.fillRect(tx - 18, y, 36, 3);
+    // rounded shading, a lotus capital and a base block
+    ctx.fillStyle = 'rgba(255,240,200,0.22)'; ctx.fillRect(tx - 14, BR.ceil, 6, BR.floor - BR.ceil);
+    ctx.fillStyle = 'rgba(70,40,18,0.25)'; ctx.fillRect(tx + 8, BR.ceil, 10, BR.floor - BR.ceil);
+    ctx.fillStyle = look.wall.mid; ctx.beginPath(); ctx.moveTo(tx - 18, BR.ceil + 30); ctx.quadraticCurveTo(tx - 30, BR.ceil + 6, tx - 30, BR.ceil); ctx.lineTo(tx + 30, BR.ceil); ctx.quadraticCurveTo(tx + 30, BR.ceil + 6, tx + 18, BR.ceil + 30); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = look.wall.deep; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = look.band; ctx.fillRect(tx - 18, BR.ceil + 30, 36, 5);
+    ctx.fillStyle = look.wall.mid; ctx.fillRect(tx - 24, BR.floor - 14, 48, 14);
+    ctx.fillStyle = 'rgba(255,240,200,0.25)'; ctx.fillRect(tx - 24, BR.floor - 14, 48, 3);
+    ctx.strokeStyle = look.wall.deep; ctx.lineWidth = 1.5; ctx.strokeRect(tx - 24, BR.floor - 14, 48, 14);
   }
   // wall torches
   for (const tx of c.torches) {
@@ -583,6 +592,8 @@ function brDraw(st) {
     if (s.x1 < x0 || s.x0 > x1) continue;
     pyrBlocks(Math.max(s.x0, x0), BR.floor, Math.min(s.x1, x1) - Math.max(s.x0, x0), H - BR.floor, look.wall, 60, 30, 5);
     ctx.fillStyle = look.wall.lite; ctx.fillRect(Math.max(s.x0, x0), BR.floor, Math.min(s.x1, x1) - Math.max(s.x0, x0), 6);
+    ctx.fillStyle = 'rgba(255,245,215,0.35)'; ctx.fillRect(Math.max(s.x0, x0), BR.floor, Math.min(s.x1, x1) - Math.max(s.x0, x0), 1.5);
+    ctx.fillStyle = 'rgba(50,26,10,0.3)'; ctx.fillRect(Math.max(s.x0, x0), BR.floor + 6, Math.min(s.x1, x1) - Math.max(s.x0, x0), 3);
   }
   for (const g of c.gaps) {
     if (g.x1 < x0 || g.x0 > x1 || g.crumble) continue;
@@ -626,6 +637,10 @@ function brDraw(st) {
     const dy = BR.ceil - up;
     ctx.fillStyle = '#8a6338'; ctx.fillRect(d.x0, dy, d.x1 - d.x0, BR.floor - BR.ceil);
     ctx.fillStyle = '#a77a46'; ctx.fillRect(d.x0 + 3, dy + 3, d.x1 - d.x0 - 6, BR.floor - BR.ceil - 6);
+    ctx.fillStyle = 'rgba(255,240,200,0.25)'; ctx.fillRect(d.x0 + 3, dy + 3, 4, BR.floor - BR.ceil - 6);
+    ctx.fillStyle = 'rgba(60,34,14,0.25)'; ctx.fillRect(d.x1 - 9, dy + 3, 6, BR.floor - BR.ceil - 6);
+    ctx.fillStyle = 'rgba(60,34,14,0.18)'; for (let yy = dy + 40; yy < dy + BR.floor - BR.ceil; yy += 46) ctx.fillRect(d.x0 + 3, yy, d.x1 - d.x0 - 6, 2);
+    ctx.strokeStyle = '#4a2c12'; ctx.lineWidth = 2; ctx.strokeRect(d.x0 + 1, dy + 1, d.x1 - d.x0 - 2, BR.floor - BR.ceil - 2);
     pyrGlyph('eye', (d.x0 + d.x1) / 2, dy + 90, 0.9, 'rgba(60,34,14,0.6)');
     pyrGlyph('scarab', (d.x0 + d.x1) / 2, dy + 150, 0.8, 'rgba(60,34,14,0.6)');
     ctx.restore();
@@ -641,6 +656,8 @@ function brDraw(st) {
       if (by < BR.floor - 150) continue;
       ctx.fillStyle = ['#a8783e', '#c49a5e', '#8f6436'][i % 3]; ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(bx - s, by + s * 0.5); ctx.lineTo(bx - s * 0.6, by - s * 0.6); ctx.lineTo(bx + s * 0.5, by - s * 0.7); ctx.lineTo(bx + s, by + s * 0.4); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,240,200,0.3)'; ctx.beginPath(); ctx.moveTo(bx - s * 0.6, by - s * 0.6); ctx.lineTo(bx + s * 0.5, by - s * 0.7); ctx.lineTo(bx + s * 0.2, by - s * 0.3); ctx.lineTo(bx - s * 0.5, by - s * 0.25); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(60,34,14,0.22)'; ctx.beginPath(); ctx.moveTo(bx + s * 0.5, by - s * 0.7); ctx.lineTo(bx + s, by + s * 0.4); ctx.lineTo(bx + s * 0.3, by + s * 0.45); ctx.lineTo(bx + s * 0.2, by - s * 0.3); ctx.closePath(); ctx.fill();
     }
     if (r.hp < BR.rubbleHp) { ctx.strokeStyle = 'rgba(40,20,8,0.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx - 10, BR.floor - 120); ctx.lineTo(cx + 4, BR.floor - 80); ctx.lineTo(cx - 6, BR.floor - 40); ctx.stroke(); }
     ctx.restore();
@@ -656,6 +673,8 @@ function brDraw(st) {
     ctx.save(); ctx.translate(r.x + jig, r.y); if (r.st === 'down') ctx.rotate(0.3);
     ctx.fillStyle = '#9a703c'; ctx.strokeStyle = '#4a2c12'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(-20, -10); ctx.lineTo(-6, -20); ctx.lineTo(16, -14); ctx.lineTo(22, 6); ctx.lineTo(4, 18); ctx.lineTo(-18, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,240,200,0.3)'; ctx.beginPath(); ctx.moveTo(-18, -9); ctx.lineTo(-6, -18); ctx.lineTo(14, -12); ctx.lineTo(0, -4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(60,34,14,0.3)'; ctx.beginPath(); ctx.moveTo(20, 6); ctx.lineTo(4, 16); ctx.lineTo(2, 4); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
   pyrFxDraw(st, false);

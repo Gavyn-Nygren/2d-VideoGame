@@ -506,13 +506,18 @@ const NINJA = (() => {
     if (!o.noWall && bottom > y + th) {
       const wx = x + inset, ww = w - inset * 2, wy = y + th - 2;
       ctx.fillStyle = COL.wallLit; ctx.fillRect(wx, wy, ww, bottom - wy);
+      ctx.fillStyle = 'rgba(20,18,50,0.22)'; for (let px = wx + 34; px < wx + ww - 10; px += 34) ctx.fillRect(px, wy, 1.5, bottom - wy);
+      ctx.fillStyle = 'rgba(255,255,255,0.04)'; for (let px = wx + 35.5; px < wx + ww - 10; px += 34) ctx.fillRect(px, wy, 1.5, bottom - wy);
       ctx.fillStyle = COL.wallDark; ctx.fillRect(wx, wy, ww, 14); ctx.fillRect(wx, wy, 7, bottom - wy); ctx.fillRect(wx + ww - 7, wy, 7, bottom - wy);
       if (!o.noWindows) for (let ex = wx + 22; ex + 30 < wx + ww - 14; ex += 78) {
         if (K.hash(Math.round(ex)) < 0.25) continue;
         for (let ey = wy + 30; ey + 40 < bottom; ey += 96) {
           ctx.fillStyle = 'rgba(255,217,138,0.16)'; ctx.fillRect(ex - 5, ey - 5, 40, 46);
           ctx.fillStyle = COL.window; ctx.fillRect(ex, ey, 30, 36);
+          ctx.fillStyle = 'rgba(200,120,40,0.25)'; ctx.fillRect(ex, ey + 24, 30, 12);
           ctx.fillStyle = COL.woodDark; ctx.fillRect(ex + 14, ey, 2, 36); ctx.fillRect(ex, ey + 17, 30, 2);
+          ctx.strokeStyle = COL.woodDark; ctx.lineWidth = 2; ctx.strokeRect(ex - 1, ey - 1, 32, 38);
+          ctx.fillStyle = COL.wood; ctx.fillRect(ex - 3, ey + 37, 36, 4);
         }
       }
     }
@@ -523,8 +528,23 @@ const NINJA = (() => {
   K.wall = (x, y, w, h, o = {}) => {
     const cap = o.noCap ? 0 : 12, foot = Math.min(h * 0.4, 46);
     ctx.fillStyle = '#8f8ab8'; ctx.fillRect(x, y + cap - 2, w, h - cap + 2 - foot);
+    // plaster: soft stains and timber posts (fixed to the world, so they scroll with it)
+    { const ph = h - cap + 2 - foot;
+      if (ph > 20) {
+        ctx.fillStyle = 'rgba(60,50,110,0.10)';
+        for (let xi = Math.floor(x / 90) * 90; xi < x + w; xi += 90) { const hv = K.hash(xi * 0.37); if (xi + 20 < x || hv < 0.4) continue; ctx.beginPath(); ctx.ellipse(xi + hv * 50, y + cap + ph * (0.3 + 0.4 * K.hash(xi + 3)), 14 + hv * 14, 6 + hv * 5, 0, 0, Math.PI * 2); ctx.fill(); }
+        for (let xi = Math.ceil(x / 220) * 220; xi < x + w - 8; xi += 220) {
+          ctx.fillStyle = COL.woodDark; ctx.fillRect(xi, y + cap - 2, 12, ph);
+          ctx.fillStyle = 'rgba(255,220,180,0.15)'; ctx.fillRect(xi, y + cap - 2, 3, ph);
+          ctx.fillStyle = 'rgba(0,0,20,0.25)'; ctx.fillRect(xi + 12, y + cap - 2, 4, ph);
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(x, y + cap + 8, w, 2);
+      } }
     ctx.fillStyle = 'rgba(20,22,52,0.18)'; ctx.fillRect(x, y + cap - 2, w, 10);
     ctx.fillStyle = '#4a4668'; ctx.fillRect(x, y + h - foot, w, foot);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, y + h - foot + 2, w, 2);
+    if (foot > 24) ctx.fillRect(x, y + h - foot / 2 + 2, w, 2);
+    ctx.fillStyle = 'rgba(20,18,40,0.22)'; ctx.fillRect(x, y + h - foot, w, 4);
     ctx.strokeStyle = '#2a2742'; ctx.lineWidth = 2; ctx.beginPath();
     ctx.moveTo(x, y + h - foot); ctx.lineTo(x + w, y + h - foot);
     if (foot > 24) { ctx.moveTo(x, y + h - foot / 2); ctx.lineTo(x + w, y + h - foot / 2); }
@@ -537,10 +557,16 @@ const NINJA = (() => {
     const b = bottom === undefined ? H + 20 : bottom, w = x1 - x0;
     if (kind === 'tatami') {
       ctx.fillStyle = '#b9b274'; ctx.fillRect(x0, y, w, b - y);
+      // the woven rush: fine lines, mats alternating in tone, dark cloth borders with a lit edge
+      for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) if (((x / 160) | 0) % 2) { ctx.fillStyle = 'rgba(255,250,200,0.07)'; ctx.fillRect(Math.max(x0, x), y + 5, 160, 39); }
+      ctx.fillStyle = 'rgba(110,100,40,0.18)'; for (let yy = y + 8; yy < Math.min(b, y + 200); yy += 5) ctx.fillRect(x0, yy, w, 1);
       ctx.fillStyle = '#d2cb8c'; ctx.fillRect(x0, y, w, 5);
+      ctx.fillStyle = 'rgba(255,255,230,0.4)'; ctx.fillRect(x0, y, w, 1.5);
       ctx.fillStyle = '#4c5a3c';
       for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) ctx.fillRect(Math.max(x0, x), y, 5, b - y);
       ctx.fillRect(x0, y + 44, w, 4);
+      ctx.fillStyle = '#6a7a52'; ctx.fillRect(x0, y + 44, w, 1.2);
+      for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) if (x >= x0) ctx.fillRect(x, y, 1.2, b - y);
     } else if (kind === 'wood') {
       ctx.fillStyle = COL.wood; ctx.fillRect(x0, y, w, b - y);
       ctx.fillStyle = '#a8744c'; ctx.fillRect(x0, y, w, 4);
@@ -553,7 +579,9 @@ const NINJA = (() => {
       for (let x = Math.floor(x0 / 70) * 70; x < x1; x += 70) { const xx = x + K.hash(x) * 40; if (xx > x0 && xx < x1 - 14) ctx.fillRect(xx, y + 14 + K.hash(x + 1) * 20, 14, 4); }
     } else {
       ctx.fillStyle = '#3d3a64'; ctx.fillRect(x0, y, w, b - y);
+      for (let r = 0; r < 3; r++) { const yy = y + 5 + r * 20; if (yy > b) break; for (let x = Math.floor(x0 / 48) * 48 + (r % 2) * 24; x < x1; x += 48) { const hv = K.hash(x * 0.13 + r * 7); if (hv < 0.35) { ctx.fillStyle = hv < 0.15 ? 'rgba(255,255,255,0.05)' : 'rgba(10,8,30,0.12)'; ctx.fillRect(Math.max(x0, x), yy, 48, 20); } ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(Math.max(x0, x + 2), yy + 2, 44, 1.5); } }
       ctx.fillStyle = '#6a6590'; ctx.fillRect(x0, y, w, 5);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x0, y, w, 1.5);
       ctx.strokeStyle = 'rgba(20,22,52,0.45)'; ctx.lineWidth = 2; ctx.beginPath();
       for (let r = 0; r < 3; r++) {
         const yy = y + 5 + r * 20; if (yy > b) break;
@@ -634,21 +662,42 @@ const NINJA = (() => {
     ctx.fillStyle = 'rgba(20,22,52,0.25)'; ctx.fillRect(x - w / 2 - 5, y - h - 6, w + 16, 3);
   };
   // inside the dojo: full screen, call with no transform
+  // the hall never changes, so it is drawn once and copied each frame; only the hanging scrolls sway live
+  let _dojo = { key: '' };
   K.dojo = (t, o = {}) => {
     const fy = o.floor === undefined ? 440 : o.floor;
+    const key = [fy, !!o.noMoon, canvas.width, canvas.height, typeof artPlain === 'function' && artPlain()].join('|');
+    if (_dojo.key === key) ctx.drawImage(_dojo.cv, 0, 0, W, H);
+    else {
+      dojoHall(fy, o);
+      const m = ctx.getTransform();
+      if (!m.b && !m.c && !m.e && !m.f && Math.abs(m.a * W - canvas.width) < 1 && Math.abs(m.d * H - canvas.height) < 1 && ctx.globalAlpha === 1 && ctx.globalCompositeOperation === 'source-over') {
+        const cv = document.createElement('canvas'); cv.width = canvas.width; cv.height = canvas.height; cv.getContext('2d').drawImage(canvas, 0, 0); _dojo = { key, cv };
+      }
+    }
+    dojoScrolls(t);
+  };
+  const dojoHall = (fy, o) => {
     const g = ctx.createLinearGradient(0, 0, 0, fy);
     g.addColorStop(0, '#1b1838'); g.addColorStop(1, '#3a2e58');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, fy);
     // paper screens glowing with moonlight
     const top = 86, ph = fy - top - 18;
+    const sg = ctx.createLinearGradient(0, top, 0, top + ph);
+    sg.addColorStop(0, '#8e8ac8'); sg.addColorStop(0.55, '#7a76b6'); sg.addColorStop(1, '#5e5a96');
     for (let i = 0; i < 6; i++) {
       const x = 24 + i * 154;
-      ctx.fillStyle = i % 2 ? '#7471ae' : '#7f7cb8'; ctx.fillRect(x, top, 142, ph);
+      ctx.fillStyle = sg; ctx.fillRect(x, top, 142, ph);
+      if (i % 2) { ctx.fillStyle = 'rgba(20,18,50,0.06)'; ctx.fillRect(x, top, 142, ph); }
+      // paper fibres and a soft shadow from each lattice bar
+      ctx.fillStyle = 'rgba(255,255,255,0.05)'; for (let k = 0; k < 4; k++) for (let r = 0; r < 5; r++) ctx.fillRect(x + k * 35.5 + 4, top + r * ph / 5 + 4, 12, 1.5);
+      ctx.fillStyle = 'rgba(20,18,50,0.16)'; for (let k = 1; k < 4; k++) ctx.fillRect(x + k * 35.5 + 1.5, top, 3, ph); for (let k = 1; k < 5; k++) ctx.fillRect(x, top + k * ph / 5 + 1.5, 142, 3);
       ctx.strokeStyle = '#3c2a34'; ctx.lineWidth = 3; ctx.beginPath();
       for (let k = 1; k < 4; k++) { ctx.moveTo(x + k * 35.5, top); ctx.lineTo(x + k * 35.5, top + ph); }
       for (let k = 1; k < 5; k++) { ctx.moveTo(x, top + k * ph / 5); ctx.lineTo(x + 142, top + k * ph / 5); }
       ctx.stroke();
       ctx.lineWidth = 6; ctx.strokeRect(x, top, 142, ph);
+      ctx.strokeStyle = 'rgba(255,220,200,0.14)'; ctx.lineWidth = 1.5; ctx.strokeRect(x - 2, top - 2, 144, ph + 4);
     }
     // the round moon window
     if (!o.noMoon) {
@@ -662,16 +711,32 @@ const NINJA = (() => {
     }
     // beams, posts and two hanging scrolls
     ctx.fillStyle = '#4a3040'; ctx.fillRect(0, 0, W, 30); ctx.fillRect(0, 62, W, 16); ctx.fillRect(0, fy - 20, W, 20);
+    ctx.fillStyle = 'rgba(255,220,200,0.12)'; ctx.fillRect(0, 62, W, 2); ctx.fillRect(0, fy - 20, W, 2);
+    ctx.fillStyle = 'rgba(10,6,20,0.3)'; ctx.fillRect(0, 78, W, 5); ctx.fillRect(0, 30, W, 4);
     ctx.fillStyle = '#5c3c48'; ctx.fillRect(0, 26, W, 5); ctx.fillRect(0, 74, W, 4);
-    ctx.fillStyle = '#3c2634'; for (const px of [0, 164, W - 178, W - 14]) ctx.fillRect(px, 0, 14, fy);
+    // rafter ends along the top beam
+    for (let x = 30; x < W; x += 80) { ctx.fillStyle = '#5c3c48'; ctx.fillRect(x, 34, 22, 26); ctx.fillStyle = 'rgba(255,220,200,0.14)'; ctx.fillRect(x, 34, 22, 3); ctx.fillStyle = C.gold; circle(x + 11, 46, 3); ctx.fill(); }
+    for (const px of [0, 164, W - 178, W - 14]) {
+      ctx.fillStyle = '#3c2634'; ctx.fillRect(px, 0, 14, fy);
+      ctx.fillStyle = 'rgba(255,220,200,0.14)'; ctx.fillRect(px + 2, 0, 2, fy);
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(px + 10, 0, 4, fy);
+      ctx.fillStyle = 'rgba(10,6,20,0.25)'; for (let y = 120; y < fy; y += 140) ctx.fillRect(px + 5, y, 1.5, 40);
+    }
+    K.ground(0, W, fy, 'tatami', H);
+  };
+  const dojoScrolls = (t) => {
     for (const k of [0, 1]) {
       const sx = k ? W - 96 : 96, sw = Math.sin(t * 1.1 + k * 2) * 2;
+      ctx.fillStyle = 'rgba(10,6,20,0.3)'; ctx.beginPath(); ctx.moveTo(sx - 22, 100); ctx.lineTo(sx + 30, 100); ctx.lineTo(sx + 30 + sw, 256); ctx.lineTo(sx - 22 + sw, 256); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#3c2a34'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(sx - 18, 92); ctx.lineTo(sx, 80); ctx.lineTo(sx + 18, 92); ctx.stroke();
       ctx.fillStyle = COL.paper; ctx.beginPath(); ctx.moveTo(sx - 26, 96); ctx.lineTo(sx + 26, 96); ctx.lineTo(sx + 26 + sw, 250); ctx.lineTo(sx - 26 + sw, 250); ctx.closePath(); ctx.fill();
       ctx.fillStyle = COL.trim; ctx.fillRect(sx - 30, 92, 60, 7); ctx.fillRect(sx - 30 + sw, 248, 60, 7);
       ctx.strokeStyle = '#1c1a36'; ctx.lineWidth = 7; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.arc(sx + sw * 0.5, 172, 17, 0.5, 6.0); ctx.stroke();
+      ctx.fillStyle = 'rgba(160,130,80,0.25)'; ctx.fillRect(sx - 26 + sw * 0.5, 104, 52, 4); ctx.fillRect(sx - 26 + sw * 0.5, 236, 52, 4);
+      ctx.fillStyle = COL.trim; ctx.fillRect(sx - 2 + sw, 216, 4 , 4); ctx.fillStyle = '#c8474a'; rr(sx + 8 + sw * 0.6, 222, 10, 10, 2); ctx.fill();
+      ctx.fillStyle = '#3c2634'; for (const ex of [-33, 27]) { rr(sx + ex, 91, 6, 9, 2); ctx.fill(); rr(sx + ex + sw, 247, 6, 9, 2); ctx.fill(); }
     }
-    K.ground(0, W, fy, 'tatami', H);
   };
 
   /* ---------- props ---------- */

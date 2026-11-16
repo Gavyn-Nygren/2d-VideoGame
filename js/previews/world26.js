@@ -17,12 +17,21 @@ if (typeof definePreview === 'function') {
     for (let i = 0; i <= 16; i++) { const u = i / 16; v.fillCircle(u * 320, 18 + Math.sin(u * Math.PI) * 14, 1.6, i % 2 ? '#ffcf5a' : '#ff8fb0'); }
   };
   const pw26Tent = (v, x, y, w, h, a, b) => {
-    const c = v.ctx;
+    const c = v.ctx, ry = y - h * 0.45;
+    c.fillStyle = 'rgba(40,20,30,0.18)'; c.beginPath(); c.ellipse(x, y + 1, w * 0.56, 3.5, 0, 0, Math.PI * 2); c.fill();
     for (let i = 0; i < 6; i++) {
       c.fillStyle = i % 2 ? b : a;
-      c.beginPath(); c.moveTo(x, y - h); c.lineTo(x - w / 2 + i * w / 6, y - h * 0.45); c.lineTo(x - w / 2 + (i + 1) * w / 6, y - h * 0.45); c.closePath(); c.fill();
-      c.fillRect(x - w / 2 + i * w / 6, y - h * 0.45, w / 6 + 0.5, h * 0.45);
+      c.beginPath(); c.moveTo(x, y - h); c.lineTo(x - w / 2 + i * w / 6, ry); c.lineTo(x - w / 2 + (i + 1) * w / 6, ry); c.closePath(); c.fill();
+      c.fillRect(x - w / 2 + i * w / 6, ry, w / 6 + 0.5, h * 0.45);
+      c.beginPath(); c.arc(x - w / 2 + (i + 0.5) * w / 6, ry, w / 12, 0, Math.PI); c.fill();
     }
+    // the right half in shade, a gold trim, a dark doorway and an outline
+    c.fillStyle = 'rgba(40,20,50,0.16)'; c.beginPath(); c.moveTo(x, y - h); c.lineTo(x + w / 2, ry); c.lineTo(x + w / 2, y); c.lineTo(x, y); c.closePath(); c.fill();
+    c.fillStyle = '#ffc53d'; c.fillRect(x - w / 2, ry - 1, w, 1.6);
+    c.fillStyle = '#3a1c30'; c.beginPath(); c.moveTo(x - w * 0.09, y); c.lineTo(x, y - h * 0.3); c.lineTo(x + w * 0.09, y); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(60,20,30,0.55)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y - h); c.lineTo(x - w / 2, ry); c.lineTo(x - w / 2, y); c.moveTo(x, y - h); c.lineTo(x + w / 2, ry); c.lineTo(x + w / 2, y); c.stroke();
+    c.strokeStyle = '#7a3a2a'; c.beginPath(); c.moveTo(x, y - h); c.lineTo(x, y - h - 8); c.stroke();
+    c.fillStyle = '#ffc53d'; c.beginPath(); c.moveTo(x, y - h - 8); c.lineTo(x + 7, y - h - 6); c.lineTo(x, y - h - 4); c.closePath(); c.fill();
   };
 
   // ----- BEGIN 26-1 Trapeze Catch preview -----

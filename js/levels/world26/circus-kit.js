@@ -213,21 +213,76 @@ const CIRCUS = (() => {
   /* ---------- scenery ---------- */
   const STRIPE = ['#e8443a', '#fff4e6'];
   // inside the big top: striped canvas walls fading into the dark peak, spotlights, the ring and the crowd
-  K.bigTop = (t, o = {}) => {
-    const g = ctx.createLinearGradient(0, 0, 0, H);
+  // the tent's canvas, seat tiers and valance never change, so they are drawn once into pictures; the seated crowd is
+  // two pictures (every other person) that bob in turn when the crowd cheers
+  let _bt = { sc: 0 };
+  const bigTopLayers = () => {
+    const sc = Math.max(1, Math.min(3, canvas.width / W));
+    if (_bt.sc === sc) return _bt;
+    const mk = () => { const cv = document.createElement('canvas'); cv.width = Math.ceil(W * sc); cv.height = Math.ceil(H * sc); const c = cv.getContext('2d'); c.scale(sc, sc); return [cv, c]; };
+    const [base, c] = mk(), crowd = [mk(), mk()];
+    const g = c.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#2a1838'); g.addColorStop(0.45, '#5a2440'); g.addColorStop(1, '#7a3040');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
     // canvas stripes fanning up to the king pole
     for (let i = -8; i <= 8; i++) {
-      ctx.fillStyle = i % 2 ? 'rgba(232,68,58,0.42)' : 'rgba(255,244,230,0.13)';
-      ctx.beginPath(); ctx.moveTo(W / 2 + i * 14, -10); ctx.lineTo(W / 2 + i * 150 - 60, H * 0.7); ctx.lineTo(W / 2 + i * 150 + 90, H * 0.7); ctx.lineTo(W / 2 + i * 14 + 14, -10); ctx.closePath(); ctx.fill();
+      c.fillStyle = i % 2 ? 'rgba(232,68,58,0.42)' : 'rgba(255,244,230,0.13)';
+      c.beginPath(); c.moveTo(W / 2 + i * 14, -10); c.lineTo(W / 2 + i * 150 - 60, H * 0.7); c.lineTo(W / 2 + i * 150 + 90, H * 0.7); c.lineTo(W / 2 + i * 14 + 14, -10); c.closePath(); c.fill();
     }
-    // strings of little lights
+    // seams between the canvas panels
+    c.strokeStyle = 'rgba(40,10,30,0.28)'; c.lineWidth = 1.5;
+    for (let i = -8; i <= 9; i++) { c.beginPath(); c.moveTo(W / 2 + i * 14, -10); c.lineTo(W / 2 + i * 150 - 60, H * 0.7); c.stroke(); }
+    // the king pole far behind, and the tiers of seats fading into the dark at the back of the tent
+    c.fillStyle = 'rgba(30,14,30,0.35)'; c.fillRect(W / 2 - 7, 0, 14, H * 0.7);
+    c.fillStyle = 'rgba(255,230,200,0.08)'; c.fillRect(W / 2 - 7, 0, 4, H * 0.7);
+    const sy = H * 0.68;
+    c.fillStyle = '#3a1830'; c.fillRect(0, sy, W, H - sy);
+    for (let r = 0; r < 5; r++) {
+      const ry = sy + 6 + r * 22;
+      c.fillStyle = r % 2 ? '#4a2038' : '#45203a'; c.fillRect(0, ry + 12, W, 10);
+      c.fillStyle = 'rgba(255,220,180,0.07)'; c.fillRect(0, ry + 12, W, 1.5);
+    }
+    // the scalloped valance round the top of the tent, with a gold trim
+    c.fillStyle = '#9a2a30'; c.fillRect(0, 0, W, 16);
+    for (let x = 0; x < W + 30; x += 30) {
+      c.fillStyle = (x / 30) % 2 ? '#c8383a' : '#f0e2d0'; c.beginPath(); c.arc(x + 15, 16, 15, 0, Math.PI); c.fill();
+      c.fillStyle = 'rgba(20,10,30,0.18)'; c.beginPath(); c.arc(x + 15, 16, 15, 0, Math.PI * 0.5); c.lineTo(x + 15, 16); c.fill();
+    }
+    c.fillStyle = C.gold; c.fillRect(0, 14, W, 3);
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, 14, W, 1);
+    for (let r = 0; r < 5; r++) {
+      const ry = sy + 6 + r * 22;
+      for (let x = (r % 2) * 9; x < W; x += 18) {
+        const hh = hash(x, r * 31);
+        if (hh % 5 === 0) continue;
+        const c = crowd[hh % 2][1];
+        c.fillStyle = ['#5a2a48', '#4e2a50', '#6a3040', '#583050'][hh % 4];
+        c.beginPath(); c.arc(x, ry + 12, 6.5, Math.PI, 0); c.fill();
+        c.fillStyle = ['#7a4a50', '#6a4048', '#8a5a58'][hh % 3]; circleOn(c, x, ry + 3, 4.2); c.fill();
+      }
+    }
+    _bt = { sc, base, crowd: crowd.map(k => k[0]) };
+    return _bt;
+  };
+  K.bigTop = (t, o = {}) => {
+    const L = bigTopLayers(), sy = H * 0.68;
+    ctx.drawImage(L.base, 0, 0, W, H);
+    for (let k = 0; k < 2; k++) {
+      const bob = o.cheer && !reduceMotion ? Math.max(0, Math.sin(t * 10 + k * 2.6)) * 3 * o.cheer : 0;
+      const y0 = Math.floor(sy);
+      ctx.drawImage(L.crowd[k], 0, Math.round(y0 * L.sc), L.base.width, L.base.height - Math.round(y0 * L.sc), 0, y0 - bob, W, H - y0);
+    }
+    ctx.fillStyle = 'rgba(20,8,20,0.25)'; ctx.fillRect(0, sy, W, 5);
+    // strings of little lights (each bulb with a soft glow)
     for (let s = 0; s < 2; s++) {
+      ctx.strokeStyle = 'rgba(30,14,30,0.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); for (let i = 0; i <= 24; i++) { const u = i / 24; ctx.lineTo(u * W, 40 + s * 46 + Math.sin(u * Math.PI) * 36 - 3); } ctx.stroke();
       for (let i = 0; i <= 24; i++) {
-        const u = i / 24, x = u * W, y = 40 + s * 46 + Math.sin(u * Math.PI) * 36;
-        ctx.fillStyle = (i + s + Math.floor(t * 3)) % 3 === 0 ? '#fff2b0' : ['#ffcf5a', '#ff8fb0', '#8fd8ff'][(i + s) % 3];
-        circle(x, y, 2.6); ctx.fill();
+        const u = i / 24, x = u * W, y = 40 + s * 46 + Math.sin(u * Math.PI) * 36, on = (i + s + Math.floor(t * 3)) % 3 === 0;
+        const c = on ? '#fff2b0' : ['#ffcf5a', '#ff8fb0', '#8fd8ff'][(i + s) % 3];
+        if (on) { ctx.fillStyle = 'rgba(255,240,180,0.18)'; circle(x, y, 8); ctx.fill(); }
+        ctx.fillStyle = c; circle(x, y, 2.8); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(x - 0.8, y - 0.9, 1); ctx.fill();
       }
     }
     // spotlights
@@ -240,37 +295,94 @@ const CIRCUS = (() => {
   // rows of a cheering crowd along the bottom (cheer 0..1 makes them jump and wave)
   K.crowd = (y, cheer, t, x0 = 0, x1 = W) => {
     ctx.fillStyle = '#3a1c30'; ctx.fillRect(x0, y, x1 - x0, H - y);
+    ctx.fillStyle = '#4a2438'; for (let r = 0; r < 2; r++) ctx.fillRect(x0, y + 20 + r * 16, x1 - x0, 5);
     const cols = ['#ffb38a', '#e8a07a', '#c98a6a', '#8a5a4a', '#f2c8a0'], shirts = ['#5b95ff', '#ff6b8a', '#8fe3b0', '#ffc53d', '#b28dff', '#ff8a5a'];
+    const hair = ['#3a2418', '#6a3a1a', '#e8c070', '#1a1a24', '#9a4a2a'];
     for (let row = 0; row < 2; row++) for (let x = x0 + 10 + row * 13; x < x1; x += 26) {
       const n = Math.floor(x * 7 + row * 13), jump = cheer > 0 ? Math.max(0, Math.sin(t * 12 + n)) * 6 * cheer : 0;
-      const by = y + 14 + row * 16 - jump;
-      ctx.fillStyle = shirts[n % shirts.length]; rr(x - 8, by + 6, 16, 16, 6); ctx.fill();
-      ctx.fillStyle = cols[n % cols.length]; circle(x, by, 7); ctx.fill();
-      if (cheer > 0.3 && n % 3 === 0) { ctx.strokeStyle = cols[n % cols.length]; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 6, by + 8); ctx.lineTo(x - 11, by - 6 - jump); ctx.moveTo(x + 6, by + 8); ctx.lineTo(x + 11, by - 6 - jump); ctx.stroke(); }
+      const by = y + 14 + row * 16 - jump, sc = shirts[n % shirts.length], sk = cols[n % cols.length];
+      ctx.fillStyle = sc; rr(x - 8, by + 6, 16, 16, 6); ctx.fill();
+      ctx.fillStyle = shade(sc, 0.25); rr(x + 1, by + 7, 7, 15, 4); ctx.fill();
+      ctx.fillStyle = sk; circle(x, by, 7); ctx.fill();
+      ctx.fillStyle = shade(sk, 0.2); ctx.beginPath(); ctx.arc(x, by, 7, -Math.PI * 0.35, Math.PI * 0.65); ctx.fill();
+      ctx.fillStyle = hair[n % hair.length]; ctx.beginPath(); ctx.arc(x, by - 1, 7.3, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+      ctx.fillStyle = '#2a1a24'; circle(x - 2.4, by + 1, 0.9); ctx.fill(); circle(x + 2.4, by + 1, 0.9); ctx.fill();
+      if (cheer > 0.3 && n % 3 === 0) { ctx.strokeStyle = sk; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x - 6, by + 8); ctx.lineTo(x - 11, by - 6 - jump); ctx.moveTo(x + 6, by + 8); ctx.lineTo(x + 11, by - 6 - jump); ctx.stroke(); }
     }
   };
-  // a striped circus tent (bottom middle at x, y)
+  // a striped circus tent (bottom middle at x, y): shaded cone roof, scalloped valance, striped wall with its right
+  // side in shade, an open doorway with tied-back flaps, a soft ground shadow and a waving pennant
+  // a tent: its body is drawn once per size and colours into a picture (it never changes); the pennant waves live
+  const tentPics = {};
+  // copy a picture drawn at the screen's scale onto whole device pixels (a scaled copy is several times slower on a
+  // CPU-drawn canvas); falls back to a plain scaled copy under a rotation
+  K.blit = (pic, x, y, w, h) => {
+    const m = ctx.getTransform();
+    if (m.b || m.c || Math.abs(m.a * w - pic.width) > 2 || Math.abs(m.d * h - pic.height) > 2) { ctx.drawImage(pic, x, y, w, h); return; }
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(pic, Math.round(m.a * x + m.e), Math.round(m.d * y + m.f));
+    ctx.restore();
+  };
+  const tentBody = (c, x, y, w, h, cols) => {
+    const n = 6, ry = y - h * 0.45, top = y - h, wl = x - w / 2, sw = w / n;
+    const dk = cols.map(k => mixCol(k, '#3a1c40', 0.2)), ink = shade(cols[0], 0.62);
+    c.fillStyle = 'rgba(20,20,40,0.18)'; c.beginPath(); c.ellipse(x, y + 2, w * 0.58, 9, 0, 0, Math.PI * 2); c.fill();
+    // wall stripes (right half in shade)
+    for (let i = 0; i < n; i++) { c.fillStyle = (i >= n / 2 ? dk : cols)[i % 2]; c.fillRect(wl + i * sw, ry, sw + 0.5, y - ry); }
+    c.fillStyle = 'rgba(20,20,40,0.16)'; c.fillRect(wl, ry, w, 10);
+    // roof stripes fanning from the peak
+    for (let i = 0; i < n; i++) {
+      c.fillStyle = (i >= n / 2 ? dk : cols)[i % 2];
+      c.beginPath(); c.moveTo(x, top); c.lineTo(wl + i * sw, ry); c.lineTo(wl + (i + 1) * sw + 0.5, ry); c.closePath(); c.fill();
+    }
+    // lit edge down the left of the roof
+    c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(x - 2, top + 3); c.lineTo(wl + 3, ry - 1); c.stroke();
+    // scalloped valance under the roof edge
+    for (let i = 0; i < n * 2; i++) {
+      const sx = wl + (i + 0.5) * sw / 2;
+      c.fillStyle = ((i >> 1) >= n / 2 ? dk : cols)[(i >> 1) % 2];
+      c.beginPath(); c.arc(sx, ry, sw / 4, 0, Math.PI); c.fill();
+    }
+    c.fillStyle = C.gold; c.fillRect(wl, ry - 2, w, 3);
+    // the doorway, flaps tied back
+    const dw = w * 0.11, dh = h * 0.32;
+    c.fillStyle = '#2a1424'; c.beginPath(); c.moveTo(x - dw, y); c.lineTo(x, y - dh); c.lineTo(x + dw, y); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,214,140,0.22)'; c.beginPath(); c.moveTo(x - dw * 0.6, y); c.lineTo(x, y - dh * 0.75); c.lineTo(x + dw * 0.6, y); c.closePath(); c.fill();
+    c.fillStyle = dk[1]; for (const sd of [-1, 1]) { c.beginPath(); c.moveTo(x, y - dh); c.quadraticCurveTo(x + sd * dw * 0.4, y - dh * 0.4, x + sd * dw * 1.25, y); c.lineTo(x + sd * dw * 1.45, y); c.lineTo(x + sd * dw * 0.15, y - dh); c.closePath(); c.fill(); }
+    // outline
+    c.strokeStyle = ink; c.lineWidth = 1.8; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(x, top); c.lineTo(wl, ry); c.lineTo(wl, y); c.lineTo(wl + w, y); c.lineTo(wl + w, ry); c.closePath(); c.stroke();
+    // pole
+    c.strokeStyle = '#7a3a2a'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x, top); c.lineTo(x, top - 20); c.stroke();
+    c.fillStyle = '#ffd36b'; circleOn(c, x, top - 21, 2.5); c.fill();
+  };
   K.tent = (x, y, w, h, cols) => {
     cols = cols || STRIPE;
-    const n = 6;
-    for (let i = 0; i < n; i++) {
-      ctx.fillStyle = cols[i % 2];
-      ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x - w / 2 + i * w / n, y - h * 0.45); ctx.lineTo(x - w / 2 + (i + 1) * w / n, y - h * 0.45); ctx.closePath(); ctx.fill();
-      ctx.fillRect(x - w / 2 + i * w / n, y - h * 0.45, w / n + 0.5, h * 0.45);
+    const top = y - h, sc = Math.max(1, Math.min(3, canvas.width / W)), key = [w, h, cols.join(), sc].join('|');
+    // the picture spans the shadow's width and from 26 px above the peak to 12 px under the base
+    const pw = Math.ceil(w * 1.2) + 4, ph = h + 38;
+    let pic = tentPics[key];
+    if (!pic) {
+      pic = document.createElement('canvas'); pic.width = Math.ceil(pw * sc); pic.height = Math.ceil(ph * sc);
+      const c = pic.getContext('2d'); c.scale(sc, sc); tentBody(c, pw / 2, h + 26, w, h, cols); tentPics[key] = pic;
     }
-    ctx.fillStyle = '#3a1c30'; ctx.beginPath(); ctx.moveTo(x - w * 0.1, y); ctx.lineTo(x, y - h * 0.32); ctx.lineTo(x + w * 0.1, y); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#7a3a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x, y - h - 18); ctx.stroke();
-    ctx.fillStyle = '#ffc53d'; ctx.beginPath(); ctx.moveTo(x, y - h - 18); ctx.lineTo(x + 14, y - h - 13); ctx.lineTo(x, y - h - 8); ctx.closePath(); ctx.fill();
+    K.blit(pic, x - pw / 2, top - 26, pw, ph);
+    const wv = reduceMotion ? 0 : Math.sin(G.clock * 6 + x * 0.05) * 3;
+    ctx.fillStyle = '#ffc53d'; ctx.beginPath(); ctx.moveTo(x, top - 19); ctx.quadraticCurveTo(x + 8, top - 18 + wv, x + 16, top - 14 + wv); ctx.quadraticCurveTo(x + 8, top - 11 - wv, x, top - 9); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#c98a1a'; ctx.lineWidth = 1; ctx.stroke();
   };
-  // a string of triangle flags between two points, sagging
+  const BUNT = ['#ff5f6d', '#ffc53d', '#5b95ff', '#8fe3b0', '#ff9fd0']; let BUNT_SH = null;
   K.bunting = (x0, y0, x1, y1, sag, n) => {
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(60,40,50,0.55)'; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo((x0 + x1) / 2, (y0 + y1) / 2 + sag * 2, x1, y1); ctx.stroke();
-    const cols = ['#ff5f6d', '#ffc53d', '#5b95ff', '#8fe3b0', '#ff9fd0'];
+    const cols = BUNT, sh = BUNT_SH || (BUNT_SH = BUNT.map(c => [shade(c, 0.22), shade(c, 0.5)]));
     for (let i = 0; i < n; i++) {
       const u = (i + 0.5) / n, x = K.lerp(x0, x1, u), y = K.lerp(y0, y1, u) + sag * 4 * u * (1 - u);
-      ctx.fillStyle = cols[i % cols.length];
-      ctx.beginPath(); ctx.moveTo(x - 7, y); ctx.lineTo(x + 7, y); ctx.lineTo(x, y + 14); ctx.closePath(); ctx.fill();
+      const sw = reduceMotion ? 0 : Math.sin(G.clock * 2.4 + i * 0.9) * 1.8, c = cols[i % cols.length], cs = sh[i % cols.length];
+      ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x - 7, y); ctx.lineTo(x + 7, y); ctx.lineTo(x + sw, y + 14); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = cs[0]; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 7, y); ctx.lineTo(x + sw, y + 14); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = cs[1]; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 7, y); ctx.lineTo(x + sw, y + 14); ctx.lineTo(x + 7, y); ctx.stroke();
     }
   };
   return K;
