@@ -56,6 +56,22 @@ function ironBrainJump(bst, out, p, hold = 0.3) {
   return out;
 }
 function ironBrainJumpHold(bst, out) { if ((bst._jh = (bst._jh || 0) - DT) > 0) out.jump = true; return out; }
+// the steam lift (IRON.lift): P.why 'ride' (onto the plate and stand still), 'off' (step right onto the wall) or 'valve'
+// (stand at P.x and hold the action while the partner has stood on the plate for 0.2 s). Returns null for other jobs.
+function ironBrainLift(bst, p, o, P, out, dt) {
+  const w = P.why, L = P.lift, cx = cpuCx(p);
+  if (w === 'off') { out.right = true; return out; }
+  if (w === 'ride') {
+    if (L && ironLiftOn(L, p)) return out;
+    ironBrainSeek(out, p, P.x, 4);
+    return ironBrainJumpHold(bst, ironBrainHop(bst, out, p));
+  }
+  if (w !== 'valve') return null;
+  if (Math.abs(cx - P.x) > 8 || !ironLiftAt(L, p)) { ironBrainSeek(out, p, P.x, 4); return ironBrainJumpHold(bst, ironBrainHop(bst, out, p)); }
+  if (ironLiftOn(L, o)) { if (cpuFor(bst, 'onPlate', true, dt) > 0.2) out.act = true; }
+  else cpuFor(bst, 'onPlate', false, dt);
+  return out;
+}
 
 const IRON_STUB_BRAIN = {
   think(bst, p, o, dt, info, S) {

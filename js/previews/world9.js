@@ -39,9 +39,10 @@ function pw9Clump(v, x, y, r) {
 }
 
 /* ---------- 9-1 Pompeii Escape ---------- */
-// Bo is the step, Pip boosts up the wall and pulls Bo up by the hand, and both hop onto the boat ahead of the lava
+// Pip rides the crane lift up the wall while Bo pulls its lever, Pip drops the rope ladder and Bo climbs it, and both hop
+// onto the boat ahead of the lava
 definePreview('Pompeii Escape', {
-  blurb: 'Boost each other up the walls and run to the boat before the lava!',
+  blurb: 'Ride the crane lift up the walls, drop a rope ladder, and run to the boat before the lava!',
   loop: 6.5, still: 1.58,
   draw(v, t) { pw9Loop(v, t / 6.5, k => this.scene(v, k, k * 6.5)); },
   scene(v, k, t) {
@@ -114,18 +115,33 @@ definePreview('Pompeii Escape', {
       if (u > 0 && u < 1) { v.shadow(x, land, 8 + u * 8); pw9Clump(v, x, v.lerp(-12, land - 6, u * u), 6); }
       v.puff(x, land, (t - t0 - 0.9) / 0.5, 'rgba(200,192,206,0.9)');
     }
-    // Bo walks to the wall and is the step; Pip hops on and boosts up onto the roof
+    // Pip walks onto the crane lift's deck by the wall, Bo to its lever; Bo pulls, the deck hoists Pip up to the roof
     const walk = (a, b) => (k > a && k < b ? v.hop(v.phase(t, 0.3), 4) : 0);
-    let boX = v.lerp(98, 136, v.ease.inOut(v.seg(k, 0.02, 0.12))), boY = gy + walk(0.02, 0.12), boFace = 1;
-    let pipX = v.lerp(62, 108, v.ease.inOut(v.seg(k, 0, 0.12))), pipY = gy + walk(0, 0.12), pipFace = 1;
-    if (k > 0.13) { const s = v.seg(k, 0.13, 0.2); pipX = v.lerp(108, 136, s); pipY = v.lerp(gy, gy - 24, s) + v.hop(s, 14); }
-    if (k > 0.24) { const s = v.seg(k, 0.24, 0.34); pipX = v.lerp(136, 174, v.ease.out(s)); pipY = v.lerp(gy - 24, roof, s) + v.hop(s, 34); }
-    if (k > 0.34) { pipX = v.lerp(174, 160, v.ease.inOut(v.seg(k, 0.35, 0.39))); pipFace = -1; pipY = roof; }
-    // then Pip reaches down from the edge and pulls Bo up
-    const reach = v.ease.out(v.seg(k, 0.39, 0.45)), lift = v.ease.inOut(v.seg(k, 0.47, 0.55));
-    if (k > 0.47) { boX = v.lerp(136, 140, lift); boY = v.lerp(gy, roof, lift); }
-    if (k > 0.56) { const s = v.seg(k, 0.56, 0.62); boX = v.lerp(140, 182, s); boY = roof + v.hop(s, 12); }
+    const lvX = 102, dk0 = 128, dk1 = 150, up = v.ease.inOut(v.seg(k, 0.18, 0.32)) * (1 - v.ease.inOut(v.seg(k, 0.4, 0.5)));
+    const deckY = v.lerp(gy, roof, up), pull = k > 0.14 && k < 0.36 ? 1 : 0;
+    let boX = v.lerp(70, lvX + 8, v.ease.inOut(v.seg(k, 0.02, 0.12))), boY = gy + walk(0.02, 0.12), boFace = -1;
+    let pipX = v.lerp(84, 139, v.ease.inOut(v.seg(k, 0, 0.12))), pipY = gy + walk(0, 0.12), pipFace = 1;
+    if (k > 0.18) pipY = Math.min(pipY, deckY);
+    if (k > 0.32) { const s = v.seg(k, 0.33, 0.37); pipX = v.lerp(139, 160, s); pipY = roof + v.hop(s, 6); }
+    // then Pip drops the rope ladder from the edge and Bo climbs it
+    const ladder = v.ease.out(v.seg(k, 0.38, 0.43)), lx = wx - 4;
+    if (k > 0.37) pipFace = -1;
+    if (k > 0.42) { boX = v.lerp(lvX + 8, lx - 2, v.ease.inOut(v.seg(k, 0.42, 0.46))); boFace = 1; boY = gy + walk(0.42, 0.46); }
+    const climb = v.ease.inOut(v.seg(k, 0.46, 0.55));
+    if (k > 0.46) { boX = lx - 2; boY = v.lerp(gy, roof, climb); }
+    if (k > 0.55) { const s = v.seg(k, 0.55, 0.62); boX = v.lerp(lx - 2, 182, s); boY = roof + v.hop(s, 12); }
     if (k > 0.56) { pipX = v.lerp(160, 210, v.ease.inOut(v.seg(k, 0.56, 0.62))); pipFace = 1; pipY = roof + walk(0.56, 0.62); }
+    // the crane: a timber post and arm, the deck on its rope, the lever on the street
+    v.line(dk0 - 4, gy, dk0 - 4, roof - 26, '#6b4630', 4); v.line(dk0 - 6, roof - 26, dk1 - 2, roof - 26, '#6b4630', 4);
+    v.line(dk1 - 8, roof - 24, dk1 - 8, deckY - 4, '#3a2a20', 1.5);
+    ctx.fillStyle = '#8b5a3c'; ctx.fillRect(dk0, deckY - 3, dk1 - dk0, 5); ctx.fillStyle = '#c4935f'; ctx.fillRect(dk0, deckY - 3, dk1 - dk0, 1.5);
+    v.line(lvX, gy, lvX, gy - 10, '#5a4a40', 4);
+    const la = pull ? 0.7 : -0.5; v.line(lvX, gy - 8, lvX + Math.sin(la) * 16, gy - 8 - Math.cos(la) * 16, '#6b4630', 3); v.fillCircle(lvX + Math.sin(la) * 16, gy - 8 - Math.cos(la) * 16, 3.5, '#c9473a');
+    if (ladder > 0 && k < 0.6) {
+      const len = ladder * (gy - roof);
+      v.line(lx - 5, roof, lx - 5, roof + len, '#a87c4a', 2); v.line(lx + 3, roof, lx + 3, roof + len, '#a87c4a', 2);
+      for (let y = roof + 6; y < roof + len; y += 8) v.line(lx - 5, y, lx + 3, y, '#c89a5a', 2);
+    }
     // and both run along the roof and hop down onto the boat
     if (k > 0.63) {
       pipX = v.lerp(210, 232, v.seg(k, 0.63, 0.66)); pipY = roof;
@@ -137,35 +153,19 @@ definePreview('Pompeii Escape', {
     }
     if (k > 0.74) pipX += sail;
     if (k > 0.78) boX += sail;
-    const happy = k > 0.79, onHead = k > 0.19 && k < 0.25, flying = k > 0.24 && k < 0.34;
-    const boMood = happy ? 'joy' : onHead || (k > 0.45 && k < 0.56) ? 'grit' : 'happy';
-    const pipMood = happy ? 'joy' : flying ? 'grit' : k > 0.45 && k < 0.56 ? 'grit' : 'happy';
-    // the helping arm: from Pip's shoulder over the roof edge and down to Bo
-    if (reach > 0 && k < 0.56) {
-      const hx = k > 0.45 ? boX + 3 : 142, hy = k > 0.45 ? boY - 27 : v.lerp(roof + 8, gy - 28, reach);
-      pw9Arm(v, 0, pipX - 6, roof - 11, wx - 2, roof + 2, hx, hy, k > 0.45);
-      if (k > 0.45) { v.line(boX, boY - 16, hx, hy, v.c.boDark, 6); v.line(boX, boY - 16, hx, hy, v.c.bo, 3.5); }
-    }
-    v.hero(1, boX, boY, { face: boFace, sq: onHead ? 0.15 : 0, mood: boMood, shadow: boY >= gy - 1 || happy || (k > 0.56 && k < 0.78) });
-    v.hero(0, pipX, pipY, { face: pipFace, mood: pipMood, shadow: !flying && !(k > 0.66 && k < 0.74) });
-    if (k > 0.04 && k < 0.13) v.bubble('Hop on!', boX, gy - 30);
-    if (k > 0.24 && k < 0.36) v.label('BOING!', 108, 70, 16, v.c.gold);
-    if (k > 0.39 && k < 0.48) v.bubble('Grab on!', pipX, roof - 30);
+    const happy = k > 0.79, riding = k > 0.18 && k < 0.33, climbing = k > 0.46 && k < 0.55;
+    const boMood = happy ? 'joy' : climbing || (k > 0.14 && k < 0.33) ? 'grit' : 'happy';
+    const pipMood = happy ? 'joy' : riding ? 'wow' : 'happy';
+    v.hero(1, boX, boY, { face: boFace, mood: boMood, shadow: boY >= gy - 1 || happy || (k > 0.56 && k < 0.78) });
+    v.hero(0, pipX, pipY, { face: pipFace, mood: pipMood, shadow: !(k > 0.66 && k < 0.74) });
+    if (k > 0.04 && k < 0.14) v.bubble('Pull it!', pipX, gy - 30);
+    if (k > 0.2 && k < 0.33) v.label('CLUNK!', lvX, gy - 36, 14, v.c.gold);
+    if (k > 0.38 && k < 0.47) v.bubble('Climb up!', pipX, roof - 30);
     if (k > 0.8 && k < 0.93) v.bubble('Woof!', 304 + sail, deck - 24);
     v.confetti(272, 70, v.seg(k, 0.79, 0.99));
     v.star(272, 52 - 6 * v.seg(k, 0.8, 0.95), 9 * v.ease.back(v.seg(k, 0.79, 0.86)) * (k < 0.99 ? 1 : 0));
   },
 });
-// a helping arm in the player's colours: shoulder (sx, sy) to the edge (ex, ey) to the hand (hx, hy)
-function pw9Arm(v, id, sx, sy, ex, ey, hx, hy, grip) {
-  const ctx = v.ctx, col = id ? v.c.bo : v.c.pip, dark = id ? v.c.boDark : v.c.pipDark;
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  for (const [c, w] of [[dark, 7], [col, 4.2]]) { ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.lineTo(hx, hy); ctx.stroke(); }
-  ctx.fillStyle = col; ctx.strokeStyle = dark; ctx.lineWidth = 1.6;
-  v.circle(hx, hy, 4.8); ctx.fill(); ctx.stroke();
-  if (!grip) for (let q = -1; q <= 1; q++) { v.circle(hx + q * 3, hy + 4.5, 1.8); ctx.fill(); }
-  ctx.lineJoin = 'miter';
-}
 
 /* ---------- 9-2 San Francisco 1906 Quake ---------- */
 // a plank bridge balanced on its middle: centre cx, top y, half length hl, tilt th
