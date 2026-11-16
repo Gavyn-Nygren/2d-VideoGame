@@ -244,9 +244,12 @@ const STUDIO = (() => {
     ctx.fillStyle = slate; ctx.strokeStyle = gold ? '#ffe58a' : '#000000'; ctx.lineWidth = 2;
     rr(-30, -14, 60, 40, 3); ctx.fill(); ctx.stroke();
     ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-28, 0); ctx.lineTo(28, 0); ctx.moveTo(0, 0); ctx.lineTo(0, 24); ctx.stroke();
-    text(o.label || 'TAKE', -15, 8, 8, ink, 'center', 'body');
+    // (the words in the left cell are shrunk to keep a little air inside it)
+    const fit = (str, px, maxW) => { text('', 0, 0, px, ink, 'center', 'body'); const w = ctx.measureText(str).width; return w > maxW ? Math.max(4, px * maxW / w) : px; };
+    const lab = o.label || 'TAKE';
+    text(lab, -15, 7, fit(lab, 8, 20), ink, 'center', 'body');
     text(String(take), 14, 13, 14, ink, 'center', 'display');
-    if (o.scene) text(o.scene, -15, 18, 7, ink, 'center', 'body');
+    if (o.scene) text(o.scene, -15, 17, fit(o.scene, 7, 20), ink, 'center', 'body');
     // the stick, hinged at the left
     ctx.save(); ctx.translate(-30, -14); ctx.rotate(-clamp(open, 0, 1) * 0.6);
     ctx.fillStyle = slate; ctx.fillRect(0, -9, 60, 9);
@@ -470,7 +473,7 @@ const STUDIO = (() => {
     if (rec) {
       const on = Math.sin(t * 6) > 0, ry = 30 + (hudBig() ? 30 : 22);
       text('', 0, 0, 12, '#ffffff', 'left', 'body'); const tw = Math.max(26, ctx.measureText('REC').width);
-      ctx.fillStyle = 'rgba(14,14,20,0.55)'; rr(W - 132, ry - 10, tw + 34, 20, 10); ctx.fill();
+      ctx.fillStyle = 'rgba(14,14,20,0.55)'; rr(W - 132, ry - 13, tw + 36, 26, 13); ctx.fill();
       ctx.fillStyle = on ? '#ff3a3a' : 'rgba(255,58,58,0.35)'; circle(W - 120, ry, 5); ctx.fill();
       text('REC', W - 109, ry, 12, '#ffffff', 'left', 'body');
     }
