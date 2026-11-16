@@ -1092,7 +1092,14 @@ const PIGHERD = {
     ctx.fillStyle = lk.grass; ctx.fillRect(0, 0, W, H);
     ctx.save(); ctx.translate(-st.camX, 0);
     ctx.fillStyle = lk.grass2;
-    for (let x = Math.floor(st.camX / 120) * 120 - 120; x < st.camX + W + 120; x += 120) ctx.fillRect(x, PH0.top, 60, PH0.bot - PH0.top);
+    for (let x = Math.floor(st.camX / 120) * 120 - 120; x < st.camX + W + 120; x += 120) { ctx.beginPath(); ctx.rect(x, PH0.top, 60, PH0.bot - PH0.top); ctx.fill(); }
+    // soft patches of lighter and darker grass, and little clover clumps
+    for (let k = Math.floor(st.camX / 70) - 2; k < Math.floor(st.camX / 70) + 17; k++) {
+      const h = hash(k, 57), x = k * 70 + (h % 50), y = PH0.top + 20 + ((h >> 7) % (PH0.bot - PH0.top - 40));
+      ctx.fillStyle = h % 2 ? 'rgba(255,255,230,0.08)' : 'rgba(30,80,20,0.08)';
+      ctx.beginPath(); ctx.ellipse(x, y, 30 + h % 30, 12 + (h >> 4) % 10, 0, 0, TAU); ctx.fill();
+      if (h % 5 === 0) { ctx.fillStyle = 'rgba(60,130,50,0.45)'; for (let i = 0; i < 3; i++) { const a = i * 2.1; circle(x + 18 + Math.cos(a) * 3.5, y + 6 + Math.sin(a) * 3.5, 3); ctx.fill(); } }
+    }
     // grass tufts and flowers
     for (let k = Math.floor(st.camX / 90) - 1; k < Math.floor(st.camX / 90) + 13; k++) {
       const h = hash(k, 31), x = k * 90 + (h % 70), y = PH0.top + 14 + ((h >> 8) % (PH0.bot - PH0.top - 28));
@@ -1452,12 +1459,15 @@ const PIGHERD = {
       const str = s.replace(/\{Ha\}/g, key(st.herder, 'act')).replace(/\{Ka\}/g, key(st.keeper, 'act'));
       const fs = bg ? 21 : 16;
       ctx.font = fs + 'px ' + DISP;
-      const w = ctx.measureText(str).width + 26;
-      // a little wooden sign on a post
+      const w = ctx.measureText(str).width + 26, x = Math.max(sg.x, w / 2 + 12); // never hangs off the start of the farm
+      // a little wooden sign on a post, with a shadow on the grass
+      ctx.fillStyle = 'rgba(40,70,30,0.22)'; ctx.beginPath(); ctx.ellipse(sg.x + 3, sg.y + fs * 0.8 + 15, 9, 3, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(40,70,30,0.2)'; rr(x - w / 2 + 3, sg.y - fs * 0.9 + 4, w, fs * 1.8, 8); ctx.fill();
       ctx.fillStyle = '#7a5530'; ctx.fillRect(sg.x - 2, sg.y + fs * 0.8, 4, 14);
-      ctx.fillStyle = '#f6e7c4'; rr(sg.x - w / 2, sg.y - fs * 0.9, w, fs * 1.8, 8); ctx.fill();
-      ctx.strokeStyle = '#a8743f'; ctx.lineWidth = 2.5; rr(sg.x - w / 2, sg.y - fs * 0.9, w, fs * 1.8, 8); ctx.stroke();
-      text(str, sg.x, sg.y + 1, fs, '#6a3a1a', 'center');
+      ctx.fillStyle = '#f6e7c4'; rr(x - w / 2, sg.y - fs * 0.9, w, fs * 1.8, 8); ctx.fill();
+      ctx.fillStyle = 'rgba(168,116,63,0.16)'; ctx.beginPath(); ctx.rect(x - w / 2 + 3, sg.y + fs * 0.45, w - 6, fs * 0.35); ctx.fill();
+      ctx.strokeStyle = '#a8743f'; ctx.lineWidth = 2.5; rr(x - w / 2, sg.y - fs * 0.9, w, fs * 1.8, 8); ctx.stroke();
+      text(str, x, sg.y + 1, fs, '#6a3a1a', 'center');
     }
   }
   function drawDecor(st, dc, t) {
@@ -1672,7 +1682,7 @@ const PIGHERD = {
     }
     // hint chips over each person
     if (st.state === 'play' && G.introT <= PH0.introHold) {
-      const boxes = [];
+      const boxes = G.players.filter(p => p.alive).map(p => ({ x0: p.x - 2, y0: p.y - 6, x1: p.x + p.w + 2, y1: p.y + p.h })); // don't cover anyone
       for (const p of G.players) {
         const bb = isCpu(p.id) && typeof CPU !== 'undefined' && CPU.bubbles[p.id];
         if (!bb || bb.t <= 0 || !p.alive) continue;
@@ -1694,7 +1704,7 @@ const PIGHERD = {
         if (urgent && done >= 4 && chipT < 2.0) continue;
         if (!urgent && !(chipT > PH0.chipAgain || (st.k === 0 && chipT < 4))) continue;
         ctx.save(); if (chipT > PH0.chipAgain) ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 5);
-        boxes.push(chip(NAMES[p.id] + ': ' + lines[0], lines[1], p.x + p.w / 2, p.y - 30, PCOL[p.id], boxes));
+        boxes.push(chip(NAMES[p.id] + ': ' + lines[0], lines[1], p.x + p.w / 2, p.y - 30, PCOL[p.id], boxes, p.y + p.h + 14));
         ctx.restore();
       }
     }
@@ -1715,7 +1725,7 @@ const PIGHERD = {
     for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? ri : ro; ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
     ctx.closePath();
   }
-  function chip(t1, t2, x, y, col, avoid) {
+  function chip(t1, t2, x, y, col, avoid, yBelow) {
     const z = big() ? 1.45 : 1, f1 = Math.round(13 * z), f2 = Math.round(12 * z);
     ctx.font = '700 ' + f1 + 'px ' + FONT;
     let w = ctx.measureText(t1).width;
@@ -1723,7 +1733,13 @@ const PIGHERD = {
     w = Math.min(W - 16, w + 22 * z); const h = (t2 ? 38 : 22) * z;
     const x0 = clamp(x - w / 2, 8, W - 8 - w);
     let y0 = clamp(y - h, 92, H - 8 - h);
-    for (const b of avoid || []) if (x0 < b.x1 + 4 && x0 + w > b.x0 - 4 && y0 < b.y1 + 4 && y0 + h > b.y0 - 4) y0 = b.y0 - h - 6 >= 92 ? b.y0 - h - 6 : b.y1 + 6;
+    // find a spot that covers no chip already placed and no one: above, below the feet, or stacked above/below a box
+    const hits = yy => (avoid || []).some(b => x0 < b.x1 + 4 && x0 + w > b.x0 - 4 && yy < b.y1 + 4 && yy + h > b.y0 - 4);
+    const cands = [y0];
+    if (yBelow != null) cands.push(yBelow);
+    for (const b of avoid || []) cands.push(b.y0 - h - 6, b.y1 + 6);
+    const ok = cands.find(yy => yy >= 92 && yy <= H - 8 - h && !hits(yy));
+    if (ok != null) y0 = ok;
     ctx.fillStyle = 'rgba(28,26,54,0.88)'; rr(x0, y0, w, h, 10 * z); ctx.fill();
     ctx.strokeStyle = col; ctx.lineWidth = 2; rr(x0, y0, w, h, 10 * z); ctx.stroke();
     text(t1, x0 + w / 2, y0 + 11 * z, f1, col, 'center', 'body');

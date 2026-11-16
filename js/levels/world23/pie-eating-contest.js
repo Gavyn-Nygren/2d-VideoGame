@@ -184,7 +184,7 @@ function pieeatGulp(st, E) {
       pieeatPop(E, E.streak >= 3 ? 'GULP! x' + E.streak : 'GULP!', C.gold, true);
       Sfx.play('pieeatGulp', E.k);
       for (let i = 0; i < 9; i++) pieeatFx(st, PIEEAT_X[E.k] + (pieeatVR() - 0.5) * 40, PIEEAT_RING_Y + (pieeatVR() - 0.5) * 40, (pieeatVR() - 0.5) * 180, (pieeatVR() - 0.5) * 180, 0.6, i % 2 ? C.gold : '#ffffff', 3.5, 0, 'spark');
-      if (E.streak % 3 === 0) { st.cheerT = 0; st.cheerFor = E.k; Sfx.play('pieeatCheer'); pieeatWorldPop(st, 'Hooray, ' + NAMES[E.k] + '!', PIEEAT_X[E.k], 470, PCOL[E.k]); }
+      if (E.streak % 3 === 0) { st.cheerT = 0; st.cheerFor = E.k; Sfx.play('pieeatCheer'); pieeatWorldPop(st, 'Hooray, ' + NAMES[E.k] + '!', PIEEAT_X[E.k] + (E.k ? 170 : -170), 450, PCOL[E.k]); }
     } else pieeatPop(E, 'Gulp!', C.gold, false);
     E.gulpT = q.gulpT; E.glug = false;
   } else {
@@ -403,6 +403,8 @@ function pieeatTent(x, y, w, h, a, b) {
     ctx.lineTo(x - w / 2 + (w / n) * i, y - h * 0.42); ctx.lineTo(x - w / 2 + (w / n) * (i + 1), y - h * 0.42); ctx.closePath(); ctx.fill();
     ctx.fillRect(x - w / 2 + (w / n) * i, y - h * 0.42, w / n + 0.5, h * 0.42);
   }
+  // the right side of the tent in shade
+  ctx.fillStyle = 'rgba(60,30,40,0.14)'; ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x + w / 2, y - h * 0.42); ctx.lineTo(x + w / 2, y); ctx.lineTo(x + w * 0.12, y); ctx.lineTo(x + w * 0.12, y - h * 0.42); ctx.closePath(); ctx.fill();
   ctx.fillStyle = 'rgba(60,30,30,0.35)'; rr(x - w * 0.1, y - h * 0.3, w * 0.2, h * 0.3, 4); ctx.fill();
   // the scalloped edge
   ctx.fillStyle = a;
@@ -457,13 +459,19 @@ function pieeatDrawBack(st) {
   for (let i = 0; i < 7; i++) { const x = 30 + i * 140 + (i % 2) * 40; rr(x, 300 + (i % 3) * 6, 40, 22, 6); ctx.fill(); }
   ctx.fillStyle = '#c9a845';
   for (let i = 0; i < 7; i++) { const x = 30 + i * 140 + (i % 2) * 40; ctx.fillRect(x + 4, 308 + (i % 3) * 6, 32, 2); ctx.fillRect(x + 4, 314 + (i % 3) * 6, 32, 2); }
+  // the bales get a shaded lower half and a shadow on the grass
+  for (let i = 0; i < 7; i++) { const x = 30 + i * 140 + (i % 2) * 40, y = 300 + (i % 3) * 6; ctx.fillStyle = 'rgba(150,110,30,0.22)'; rr(x, y + 13, 40, 9, 5); ctx.fill(); ctx.fillStyle = 'rgba(40,80,20,0.18)'; ctx.beginPath(); ctx.ellipse(x + 22, y + 23, 24, 3.5, 0, 0, Math.PI * 2); ctx.fill(); }
   pieeatTent(250, 312, 120, 92, '#e2483c', '#ffffff');
   pieeatTent(700, 316, 104, 80, '#ffc53d', '#ffffff');
   pieeatTent(470, 300, 84, 64, '#5b95ff', '#ffffff');
   // the stage: a wooden back rail, the posts and the striped awning with bunting
   ctx.fillStyle = '#a06c44'; ctx.fillRect(0, 330, W, 40);
+  ctx.fillStyle = 'rgba(70,40,20,0.22)'; ctx.fillRect(0, 352, W, 18);
+  ctx.fillStyle = 'rgba(90,55,25,0.35)'; for (let x = 0; x < W; x += 48) { const h = hash(x, 3); ctx.fillRect(x + 8 + h % 10, 338 + h % 6, 18 + h % 14, 1.5); ctx.fillRect(x + 20 + h % 8, 346 + h % 5, 14 + h % 10, 1.5); }
   ctx.fillStyle = '#8a5a36'; for (let x = 0; x < W; x += 48) ctx.fillRect(x, 330, 3, 40);
+  ctx.fillStyle = '#5e3c22'; for (let x = 0; x < W; x += 48) { circle(x + 7, 336, 1.5); ctx.fill(); circle(x + 7, 362, 1.5); ctx.fill(); }
   ctx.fillStyle = '#c08a5a'; ctx.fillRect(0, 326, W, 6);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, 326, W, 1.5);
   for (const px of [22, W - 22]) {
     ctx.fillStyle = '#ffffff'; ctx.fillRect(px - 8, 92, 16, 280);
     ctx.fillStyle = '#e2483c'; for (let y = 100; y < 370; y += 34) { ctx.beginPath(); ctx.moveTo(px - 8, y); ctx.lineTo(px + 8, y - 10); ctx.lineTo(px + 8, y + 6); ctx.lineTo(px - 8, y + 16); ctx.closePath(); ctx.fill(); }
@@ -489,6 +497,9 @@ function pieeatDrawSign(st) {
   ctx.beginPath(); ctx.moveTo(x - 120, 96); ctx.lineTo(x - 116, y + 4); ctx.moveTo(x + 120, 96); ctx.lineTo(x + 116, y + 4); ctx.stroke();
   ctx.fillStyle = '#8a5a36'; rr(x - 150, y, 300, 40, 10); ctx.fill();
   ctx.fillStyle = '#c99a62'; rr(x - 145, y + 4, 290, 32, 8); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; rr(x - 140, y + 6, 280, 4, 2); ctx.fill();
+  ctx.fillStyle = 'rgba(120,70,30,0.25)'; for (const gy of [y + 14, y + 27]) ctx.fillRect(x - 138, gy, 276, 1.2);
+  ctx.fillStyle = '#5e3c22'; circle(x - 140, y + 9, 1.6); ctx.fill(); circle(x + 140, y + 9, 1.6); ctx.fill();
   text('PIE-EATING CONTEST', x, y + 21, 22, '#7e2a22', 'center');
   ctx.fillStyle = C.gold; pieeatStar(x - 128, y + 20, 7); pieeatStar(x + 128, y + 20, 7);
 }
@@ -926,7 +937,7 @@ function pieeatDrawTop() {
     const k = E.popT / 1.2, fs = E.popBig ? (big ? 34 : 28) : (big ? 26 : 19);
     ctx.font = fs + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
     const w = ctx.measureText(E.pop).width * 1.1 + 8;
-    const x = clamp(PIEEAT_X[E.k] + (E.k ? 1 : -1) * (big ? 30 : 60), w / 2 + 8, W - w / 2 - 8);
+    const x = clamp(PIEEAT_X[E.k] + (E.k ? 1 : -1) * ((big ? 52 : 66) + w / 2), w / 2 + 8, W - w / 2 - 8); // out past the hat brim
     ctx.globalAlpha = 1 - k * k;
     bigText(E.pop, x, 300 - 26 * k, fs, E.popCol, 1 + 0.25 * Math.max(0, 1 - k * 5));
     ctx.globalAlpha = 1;
