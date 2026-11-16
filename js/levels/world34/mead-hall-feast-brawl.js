@@ -678,11 +678,17 @@
     const mad = s.state === 'mad', up = s.skol || s.mood > 0 && s.reactT > 0, bob = mad ? Math.sin(t * 30) * 3 : up ? Math.sin(t * 8) * 2 : 0;
     const by = y - 6 + bob - (mad ? 10 : 0);
     ctx.fillStyle = c; rr(x - 15, by - 30, 30, 32, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; rr(x + 3, by - 30, 12, 32, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(x - 12, by - 26, 3, 20);
+    ctx.fillStyle = '#3a2210'; ctx.fillRect(x - 15, by - 10, 30, 4); ctx.fillStyle = '#d8b04a'; ctx.fillRect(x - 3, by - 10, 6, 4);
     ctx.fillStyle = '#f2c8a6'; circle(x, by - 38, 11); ctx.fill();
+    ctx.fillStyle = 'rgba(160,90,60,0.25)'; circle(x + 4, by - 36, 8); ctx.fill();
     ctx.fillStyle = bc; ctx.beginPath(); ctx.moveTo(x - 10, by - 36); ctx.quadraticCurveTo(x, by - 14, x + 10, by - 36); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#1a1a2a'; circle(x - 4, by - 41, 1.6); ctx.fill(); circle(x + 4, by - 41, 1.6); ctx.fill();
     // helmet
     ctx.fillStyle = '#9aa0aa'; ctx.beginPath(); ctx.arc(x, by - 44, 11, Math.PI, TAU); ctx.fill();
+    ctx.fillStyle = '#6e737a'; ctx.fillRect(x - 11, by - 45, 22, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(x - 4, by - 50, 3, 2, -0.5, 0, TAU); ctx.fill();
     if (s.look % 3 === 0) { ctx.fillStyle = '#f2e6c8'; ctx.beginPath(); ctx.moveTo(x - 10, by - 46); ctx.quadraticCurveTo(x - 20, by - 52, x - 18, by - 62); ctx.quadraticCurveTo(x - 14, by - 52, x - 7, by - 50); ctx.fill(); ctx.beginPath(); ctx.moveTo(x + 10, by - 46); ctx.quadraticCurveTo(x + 20, by - 52, x + 18, by - 62); ctx.quadraticCurveTo(x + 14, by - 52, x + 7, by - 50); ctx.fill(); }
     // arms: mugs up for SKOL, fists for a tantrum, locked for a wrestle
     ctx.strokeStyle = c; ctx.lineWidth = 6; ctx.lineCap = 'round';
@@ -722,22 +728,81 @@
     ctx.save(); if (shake) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     // the hall: timber walls, roof beams, a smoke hole with the northern sky
     ctx.fillStyle = '#3a2416'; ctx.fillRect(-10, -10, W + 20, H + 20);
-    for (let x = 0; x < W; x += 48) { ctx.fillStyle = (x / 48) % 2 ? '#4a2e1a' : '#43291a'; ctx.fillRect(x, 0, 48, S.floor); }
-    ctx.fillStyle = '#2a180e'; for (const y of [60, 110]) ctx.fillRect(0, y, W, 10);
+    // the timber wall: upright planks with grain, knots, dark seams and a lit edge
+    for (let x = 0; x < W; x += 48) {
+      const k = x / 48;
+      ctx.fillStyle = k % 2 ? '#4a2e1a' : '#43291a'; ctx.fillRect(x, 0, 48, S.floor);
+      ctx.fillStyle = 'rgba(255,200,140,0.07)'; ctx.fillRect(x + 2, 0, 3, S.floor);
+      ctx.fillStyle = '#25150b'; ctx.fillRect(x + 46, 0, 2, S.floor);
+      ctx.strokeStyle = 'rgba(30,16,8,0.35)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let g = 0; g < 3; g++) { const gx = x + 10 + g * 12 + K.hash(k * 7 + g) * 4; ctx.moveTo(gx, 0); ctx.bezierCurveTo(gx + 3, S.floor * 0.3, gx - 3, S.floor * 0.6, gx + 1, S.floor); }
+      ctx.stroke();
+      if (K.hash(k + 40) < 0.5) { const ky = 140 + K.hash(k + 41) * 260; ctx.fillStyle = 'rgba(30,16,8,0.3)'; ctx.beginPath(); ctx.ellipse(x + 24, ky, 3, 5, 0, 0, TAU); ctx.fill(); }
+    }
+    // smoke-darkened high up, warm firelight low down around the hearth
+    const sg = ctx.createLinearGradient(0, 0, 0, 200); sg.addColorStop(0, 'rgba(10,6,4,0.55)'); sg.addColorStop(1, 'rgba(10,6,4,0)');
+    ctx.fillStyle = sg; ctx.fillRect(0, 0, W, 200);
+    const fl = 0.85 + 0.15 * Math.sin(t * 7) * Math.sin(t * 3.1);
+    const fg = ctx.createRadialGradient(540, S.floor - 20, 10, 540, S.floor - 20, 360);
+    fg.addColorStop(0, 'rgba(255,150,60,' + 0.32 * fl + ')'); fg.addColorStop(1, 'rgba(255,150,60,0)');
+    ctx.fillStyle = fg; ctx.fillRect(180, 100, 720, S.floor - 100);
+    // roof beams with a lit top and dark underside, and carved knotwork on the lower one
+    for (const y of [60, 110]) {
+      ctx.fillStyle = '#2a180e'; ctx.fillRect(0, y, W, 10);
+      ctx.fillStyle = 'rgba(255,200,140,0.14)'; ctx.fillRect(0, y, W, 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(0, y + 10, W, 4);
+    }
+    ctx.strokeStyle = 'rgba(200,150,90,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let x = 0; x < W; x += 24) { ctx.moveTo(x, 115); ctx.quadraticCurveTo(x + 6, 111, x + 12, 115); ctx.quadraticCurveTo(x + 18, 119, x + 24, 115); }
+    ctx.stroke();
+    // two rafters slanting up into the dark
+    ctx.fillStyle = '#24140a';
+    for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(W / 2 + d * 70, 0); ctx.lineTo(W / 2 + d * 480, 60); ctx.lineTo(W / 2 + d * 480, 70); ctx.lineTo(W / 2 + d * 70, 12); ctx.closePath(); ctx.fill(); }
+    // the smoke hole: night sky, stars, the aurora, a timber frame
     ctx.fillStyle = '#1a2a48'; rr(W / 2 - 50, 0, 100, 40, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; for (let k = 0; k < 7; k++) ctx.fillRect(W / 2 - 44 + K.hash(k + 3) * 88, 4 + K.hash(k + 9) * 30, 1.5, 1.5);
     ctx.fillStyle = 'rgba(120,255,180,0.35)'; ctx.fillRect(W / 2 - 46, 14 + Math.sin(t) * 3, 92, 6);
+    ctx.strokeStyle = '#5a3418'; ctx.lineWidth = 4; rr(W / 2 - 50, -4, 100, 44, 8); ctx.stroke();
+    ctx.fillStyle = 'rgba(200,190,180,0.12)'; for (let k = 0; k < 3; k++) { const u = (t * 0.25 + k / 3) % 1; circle(W / 2 + Math.sin(t + k * 2) * 14, 60 - u * 70, 14 + u * 18); ctx.fill(); }
+    // torches on the walls with flickering halos
+    for (const [tx, ty] of [[56, 200], [W - 26, 268]]) {
+      const f2 = 0.8 + 0.2 * Math.sin(t * 11 + tx);
+      const tg = ctx.createRadialGradient(tx, ty - 14, 2, tx, ty - 14, 70); tg.addColorStop(0, 'rgba(255,170,70,' + 0.4 * f2 + ')'); tg.addColorStop(1, 'rgba(255,170,70,0)');
+      ctx.fillStyle = tg; ctx.fillRect(tx - 70, ty - 84, 140, 140);
+      ctx.fillStyle = '#2a180e'; ctx.fillRect(tx - 3, ty - 6, 6, 26); ctx.fillStyle = '#6a6e76'; ctx.fillRect(tx - 6, ty - 8, 12, 5);
+      ctx.fillStyle = '#ff8a2a'; ctx.beginPath(); ctx.moveTo(tx - 6, ty - 8); ctx.quadraticCurveTo(tx - 7, ty - 22 * f2, tx + Math.sin(t * 13) * 2, ty - 30 * f2); ctx.quadraticCurveTo(tx + 7, ty - 18, tx + 6, ty - 8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.moveTo(tx - 3, ty - 8); ctx.quadraticCurveTo(tx - 3, ty - 16, tx, ty - 20 * f2); ctx.quadraticCurveTo(tx + 3, ty - 14, tx + 3, ty - 8); ctx.closePath(); ctx.fill();
+    }
     // hanging shields
-    for (let k = 0; k < 7; k++) K.shield(300 + k * 85, 92, 15, { col: K.SHIELD_COLS[k % K.SHIELD_COLS.length] });
+    for (let k = 0; k < 7; k++) { const sc = K.SHIELD_COLS[k % K.SHIELD_COLS.length]; ctx.fillStyle = 'rgba(0,0,0,0.3)'; circle(302 + k * 85, 95, 15); ctx.fill(); K.shield(300 + k * 85, 92, 15, { col: sc[0], col2: sc[1], rot: k * 0.5 }); }
     // the chieftain's chair, top right
-    ctx.fillStyle = '#6a3a1a'; rr(870, 112, 70, 80, 8); ctx.fill(); ctx.fillStyle = '#c8323a'; rr(878, 124, 54, 40, 6); ctx.fill();
-    ctx.fillStyle = '#ffc53d'; circle(905, 112, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; rr(874, 116, 70, 80, 8); ctx.fill();
+    ctx.fillStyle = '#6a3a1a'; rr(870, 112, 70, 80, 8); ctx.fill();
+    ctx.fillStyle = '#5a2e12'; rr(905, 112, 35, 80, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(255,200,140,0.2)'; ctx.fillRect(873, 116, 3, 72);
+    ctx.fillStyle = '#c8323a'; rr(878, 124, 54, 40, 6); ctx.fill();
+    ctx.fillStyle = '#9a2028'; rr(878, 146, 54, 18, 6); ctx.fill();
+    ctx.strokeStyle = '#ffc53d'; ctx.lineWidth = 1.2; ctx.setLineDash([2, 3]); rr(881, 127, 48, 34, 5); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = '#3a1e0a'; ctx.lineWidth = 2; rr(870, 112, 70, 80, 8); ctx.stroke();
+    // carved dragon heads on the posts
+    for (const d of [-1, 1]) { const px = 905 + d * 35; ctx.fillStyle = '#7a4a22'; ctx.beginPath(); ctx.moveTo(px - 5, 118); ctx.quadraticCurveTo(px - 6, 100, px + d * 4, 98); ctx.quadraticCurveTo(px + d * 12, 98, px + d * 12, 104); ctx.lineTo(px + d * 4, 106); ctx.lineTo(px + 5, 118); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#3a1e0a'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.fillStyle = '#ffc53d'; circle(px + d * 5, 102, 1.4); ctx.fill(); }
+    ctx.fillStyle = '#ffc53d'; circle(905, 112, 8); ctx.fill(); ctx.strokeStyle = '#a8761a'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(902, 109, 2.2); ctx.fill();
     npc({ look: 2, state: st.party || (st.platter && st.platter.state === 'carry') ? 'eat' : 'quiet', mood: st.party ? 1 : 0, reactT: st.party ? 1 : 0, skol: !!st.party }, 905, 186, t);
     // the fire pit
     const fx = 540, fy = S.floor;
+    // a ring of hearth stones and crossed logs, flames, then sparks drifting up
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(fx, fy + 2, 62, 6, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = '#5a5a60'; rr(fx - 50, fy - 10, 100, 12, 5); ctx.fill();
+    for (let k = 0; k < 7; k++) { const sx = fx - 48 + k * 16; ctx.fillStyle = k % 2 ? '#6e6e76' : '#64646c'; ctx.beginPath(); ctx.ellipse(sx, fy - 6, 9, 7, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = '#38383e'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.fillStyle = 'rgba(255,170,90,0.35)'; ctx.beginPath(); ctx.ellipse(sx - 2, fy - 10, 5, 2, 0, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#4a2a14'; ctx.strokeStyle = '#2a160a'; ctx.lineWidth = 1.5;
+    for (const d of [-1, 1]) { ctx.save(); ctx.translate(fx, fy - 12); ctx.rotate(d * 0.35); rr(-32, -4, 64, 8, 4); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#c8783a'; circle(d * 31, 0, 3.5); ctx.fill(); ctx.fillStyle = '#4a2a14'; ctx.restore(); }
     for (let k = 0; k < 5; k++) { const f = Math.sin(t * 9 + k * 1.7) * 6; ctx.fillStyle = k % 2 ? '#ff8a2a' : '#ffc53d'; ctx.beginPath(); ctx.moveTo(fx - 30 + k * 15, fy - 8); ctx.quadraticCurveTo(fx - 34 + k * 15, fy - 40 - f, fx - 24 + k * 15 + f * 0.3, fy - 52 - f); ctx.quadraticCurveTo(fx - 18 + k * 15, fy - 30, fx - 20 + k * 15, fy - 8); ctx.fill(); }
+    for (let k = 0; k < 6; k++) { const u = (t * 0.6 + K.hash(k)) % 1; ctx.fillStyle = 'rgba(255,' + (200 - u * 120 | 0) + ',80,' + (1 - u) + ')'; ctx.fillRect(fx - 20 + K.hash(k + 5) * 40 + Math.sin(t * 3 + k) * 10 * u, fy - 50 - u * 120, 2.5, 2.5); }
     // the kitchen hatch and rack
     ctx.fillStyle = '#2a180e'; rr(8, 300, 130, 96, 6); ctx.fill();
+    ctx.strokeStyle = '#6a4424'; ctx.lineWidth = 5; rr(6, 298, 134, 100, 7); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,200,140,0.25)'; ctx.lineWidth = 1.5; rr(4, 296, 138, 104, 8); ctx.stroke();
     ctx.fillStyle = '#ffb060'; ctx.globalAlpha = 0.4 + 0.1 * Math.sin(t * 4); rr(14, 306, 118, 84, 4); ctx.fill(); ctx.globalAlpha = 1;
     text('KITCHEN', 73, 318, 11, '#ffe7c0', 'center', 'body');
     // the cook's arms through the hatch
@@ -747,21 +812,37 @@
     if (st.barrel) drawFood('barrel', S.barrelX, S.floor - 14, 1.1);
     // the floor
     ctx.fillStyle = '#6a4424'; ctx.fillRect(0, S.floor, W, H - S.floor);
-    ctx.fillStyle = '#5a361c'; for (let x = 0; x < W; x += 60) ctx.fillRect(x, S.floor, 2, H - S.floor);
+    // floorboards: rows of planks, staggered joints, grain, nail heads, a worn lit edge and the wall's shadow
+    for (let r2 = 0; r2 < 4; r2++) {
+      const y0 = S.floor + r2 * 20;
+      ctx.fillStyle = r2 % 2 ? '#64401f' : '#6e4726'; ctx.fillRect(0, y0, W, 20);
+      ctx.fillStyle = 'rgba(255,210,150,0.12)'; ctx.fillRect(0, y0, W, 1.5);
+      ctx.fillStyle = '#4a2c14'; ctx.fillRect(0, y0 + 19, W, 1);
+      for (let x = (r2 % 2) * 60; x < W; x += 120) { ctx.fillStyle = '#4a2c14'; ctx.fillRect(x, y0, 2, 20); ctx.fillStyle = '#c8ccd6'; ctx.fillRect(x + 5, y0 + 4, 1.6, 1.6); ctx.fillRect(x + 5, y0 + 14, 1.6, 1.6); }
+      ctx.fillStyle = 'rgba(40,20,8,0.3)'; for (let k = 0; k < 10; k++) ctx.fillRect(K.hash(r2 * 19 + k) * W, y0 + 6 + (k % 3) * 4, 18 + K.hash(k + r2) * 26, 1);
+    }
+    const shg = ctx.createLinearGradient(0, S.floor, 0, S.floor + 16); shg.addColorStop(0, 'rgba(0,0,0,0.35)'); shg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = shg; ctx.fillRect(0, S.floor, W, 16);
     // the serving steps
     for (const l of LEDGES) {
       ctx.fillStyle = COLW.wood; rr(l.x0, l.y, l.x1 - l.x0, 10, 3); ctx.fill();
       ctx.fillStyle = COLW.woodDark; ctx.fillRect(l.x0 + 6, l.y + 10, 6, (l.k === 0 ? S.floor : S.tables[l.k - 1].ly) - l.y - 10); ctx.fillRect(l.x1 - 12, l.y + 10, 6, (l.k === 0 ? S.floor : S.tables[l.k - 1].ly) - l.y - 10);
       ctx.fillStyle = COLW.woodHi; ctx.fillRect(l.x0 + 2, l.y + 1, l.x1 - l.x0 - 4, 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(l.x0 + 3, l.y + 10, l.x1 - l.x0 - 6, 3);
+      ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 1.2; rr(l.x0, l.y, l.x1 - l.x0, 10, 3); ctx.stroke();
+      ctx.fillStyle = '#c8ccd6'; ctx.fillRect(l.x0 + 8, l.y + 4, 1.6, 1.6); ctx.fillRect(l.x1 - 10, l.y + 4, 1.6, 1.6);
     }
     // the tables and their Vikings
     for (let tt = 2; tt >= 0; tt--) {
       const ty = S.tables[tt].y, open = tt < st.nTables;
       ctx.fillStyle = '#4a2a14'; ctx.fillRect(S.tx0 + 10, ty - 8, S.tx1 - S.tx0 - 20, 6); // the bench behind
       if (open) for (const s of st.seats) if (s.t === tt) npc(s, s.x, ty, t);
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(S.tx0 + 6, ty + 12, S.tx1 - S.tx0 - 12, 5);
       ctx.fillStyle = open ? COLW.wood : '#5a3a22'; rr(S.tx0, ty, S.tx1 - S.tx0, 12, 3); ctx.fill();
       ctx.fillStyle = COLW.woodHi; ctx.fillRect(S.tx0 + 4, ty + 1, S.tx1 - S.tx0 - 8, 2);
-      ctx.fillStyle = COLW.woodDark; for (const lx of [S.tx0 + 20, S.tx1 - 26]) ctx.fillRect(lx, ty + 12, 6, 16);
+      ctx.fillStyle = 'rgba(40,20,8,0.35)'; for (let k = 1; k < 6; k++) ctx.fillRect(S.tx0 + k * (S.tx1 - S.tx0) / 6, ty + 3, 1.5, 8);
+      ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 1.2; rr(S.tx0, ty, S.tx1 - S.tx0, 12, 3); ctx.stroke();
+      ctx.fillStyle = COLW.woodDark; for (const lx of [S.tx0 + 20, S.tx1 - 26]) { ctx.fillRect(lx, ty + 12, 6, 16); ctx.fillStyle = 'rgba(255,200,140,0.18)'; ctx.fillRect(lx, ty + 12, 1.5, 16); ctx.fillStyle = COLW.woodDark; }
       if (open) for (const s of st.seats) if (s.t === tt && s.plate) { ctx.fillStyle = '#e8e0d0'; ctx.beginPath(); ctx.ellipse(s.x, ty - 1, 12, 3, 0, 0, TAU); ctx.fill(); }
       if (!open) text('(not open yet)', (S.tx0 + S.tx1) / 2, ty - 16, 12, 'rgba(255,255,255,0.4)', 'center', 'body');
       // arm-wrestle

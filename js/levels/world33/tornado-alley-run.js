@@ -478,6 +478,13 @@
     ctx.fillStyle = '#2e2e34'; for (let x = -(off % 37); x < W; x += 37) ctx.fillRect(x, 386 + (Math.floor((x + off) / 37) % 5) * 22, 6, 2);
     ctx.fillStyle = K.COL.roadLine;
     for (const y of [425, 467]) for (let x = -(off % 80); x < W; x += 80) ctx.fillRect(x, y, 40, 3);
+    // patches, tar seams and a wet shine on the asphalt
+    for (let x = -(off % 300); x < W + 300; x += 300) {
+      const k = Math.round((x + off) / 300);
+      ctx.fillStyle = 'rgba(30,30,36,0.35)'; rr(x + K.hash(k) * 120, 398 + K.hash(k + 3) * 80, 50 + K.hash(k + 5) * 40, 14, 4); ctx.fill();
+      ctx.strokeStyle = 'rgba(24,24,28,0.55)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 160, 392); ctx.lineTo(x + 172, 410); ctx.lineTo(x + 166, 430); ctx.lineTo(x + 180, 452); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(200,210,220,0.07)'; for (let k = 0; k < 4; k++) ctx.fillRect(0, 400 + k * 28, W, 6);
     ctx.fillStyle = '#e8e8e0'; ctx.fillRect(0, 388, W, 2); ctx.fillRect(0, 508, W, 2);
     // the near verge with fence posts and grass flattened by the wind
     ctx.fillStyle = '#5e7040'; ctx.fillRect(0, 512, W, H - 512);
@@ -487,13 +494,25 @@
     for (let x = -(off % 520); x < W + 60; x += 520) {
       const k = Math.round((x + off) / 520);
       ctx.fillStyle = '#5a5e66'; ctx.fillRect(x + 20, 334, 4, 50);
-      if (k % 3 === 0) { ctx.fillStyle = '#2a7a3a'; rr(x - 10, 320, 64, 24, 3); ctx.fill(); text('SHELTER ' + (3 + (k % 5)) + ' mi', x + 22, 332, 10, '#ffffff', 'center', 'body'); }
-      else { ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.moveTo(x + 22, 316); ctx.lineTo(x + 36, 330); ctx.lineTo(x + 22, 344); ctx.lineTo(x + 8, 330); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#1c1a20'; ctx.fillRect(x + 21, 324, 2, 8); }
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x + 20, 334, 1.5, 50);
+      if (k % 3 === 0) {
+        // a green highway sign sized to its words, with a white inner border
+        ctx.fillStyle = 'rgba(0,0,0,0.3)'; rr(x - 18, 322, 84, 26, 4); ctx.fill();
+        ctx.fillStyle = '#2a7a3a'; rr(x - 20, 319, 84, 26, 4); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.2; rr(x - 17, 322, 78, 20, 3); ctx.stroke();
+        text('SHELTER ' + (3 + (k % 5)) + ' mi', x + 22, 332, 10, '#ffffff', 'center', 'body');
+      } else {
+        ctx.fillStyle = '#ffd23a'; ctx.strokeStyle = '#1c1a20'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(x + 22, 316); ctx.lineTo(x + 36, 330); ctx.lineTo(x + 22, 344); ctx.lineTo(x + 8, 330); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#1c1a20'; ctx.fillRect(x + 21, 324, 2, 8); ctx.fillRect(x + 21, 334, 2, 2);
+      }
     }
     // telephone poles along the far side with sagging wires
     ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 1.2;
     for (let x = -(off * 0.9 % 240); x < W + 240; x += 240) {
       ctx.fillStyle = '#4a3a2a'; ctx.fillRect(x, 270, 5, 100); ctx.fillRect(x - 12, 278, 29, 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x, 270, 1.5, 100);
+      ctx.fillStyle = '#c8c8c0'; for (const ix of [-10, 13]) ctx.fillRect(x + ix, 275, 3, 3);
       ctx.beginPath(); ctx.moveTo(x - 10, 280); ctx.quadraticCurveTo(x + 110, 296 + Math.sin(t * 4 + x) * 4, x + 230, 280); ctx.stroke();
     }
   }

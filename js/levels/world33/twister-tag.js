@@ -359,10 +359,22 @@
       ctx.beginPath(); ctx.moveTo(xTop, TT.Y0 - 30); ctx.lineTo(xBot, H); ctx.stroke();
     }
     for (let y = TT.Y0; y < H; y += 46) { ctx.fillStyle = 'rgba(60,80,36,0.12)'; ctx.fillRect(0, y, W, 3); }
+    // tufts of grass, little clover patches and the odd wildflower, nearer ones bigger (fixed spots, so they never jump)
+    for (let k = 0; k < 70; k++) {
+      const v = K.hash(k * 3 + 1), y = TT.Y0 + K.hash(k * 3 + 2) * (H - TT.Y0), sc = 0.6 + (y - TT.Y0) / (H - TT.Y0) * 0.8;
+      const x = K.lerp(K.lerp(TT.X0, -10, (y - TT.Y0 + 30) / (H - TT.Y0 + 30)), K.lerp(TT.X1, W + 10, (y - TT.Y0 + 30) / (H - TT.Y0 + 30)), K.hash(k * 3 + 3));
+      if (v < 0.6) {
+        ctx.strokeStyle = 'rgba(60,84,36,0.7)'; ctx.lineWidth = 1.5 * sc; ctx.beginPath();
+        for (let j = -1; j <= 1; j++) { ctx.moveTo(x + j * 3 * sc, y); ctx.lineTo(x + j * 5 * sc + Math.sin(t * 3 + k) * 1.5, y - 7 * sc); }
+        ctx.stroke();
+      } else if (v < 0.85) { ctx.fillStyle = 'rgba(80,110,50,0.55)'; ctx.beginPath(); ctx.ellipse(x, y, 10 * sc, 4 * sc, 0, 0, TAU); ctx.fill(); }
+      else { ctx.fillStyle = v < 0.93 ? '#f2e66a' : '#f4f0f8'; circle(x, y - 3 * sc, 2.2 * sc); ctx.fill(); ctx.fillStyle = 'rgba(60,84,36,0.7)'; ctx.fillRect(x - 0.5, y - 2 * sc, 1, 3 * sc); }
+    }
     // the fence on the far side
     ctx.strokeStyle = '#7a5434'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(TT.X0 - 10, TT.Y0 - 46); ctx.lineTo(TT.X1 + 10, TT.Y0 - 46); ctx.moveTo(TT.X0 - 10, TT.Y0 - 38); ctx.lineTo(TT.X1 + 10, TT.Y0 - 38); ctx.stroke();
-    for (let x = TT.X0 - 10; x <= TT.X1 + 10; x += 40) { ctx.fillStyle = '#5e3e20'; ctx.fillRect(x - 2, TT.Y0 - 54, 4, 22); }
+    for (let x = TT.X0 - 10; x <= TT.X1 + 10; x += 40) { ctx.fillStyle = '#5e3e20'; ctx.fillRect(x - 2, TT.Y0 - 54, 4, 22); ctx.fillStyle = 'rgba(255,230,190,0.25)'; ctx.fillRect(x - 2, TT.Y0 - 54, 1.2, 22); }
+    ctx.strokeStyle = 'rgba(255,230,190,0.2)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(TT.X0 - 10, TT.Y0 - 47.5); ctx.lineTo(TT.X1 + 10, TT.Y0 - 47.5); ctx.moveTo(TT.X0 - 10, TT.Y0 - 39.5); ctx.lineTo(TT.X1 + 10, TT.Y0 - 39.5); ctx.stroke();
     drawPond(st, t);
     // the wall cloud: dark churning cloud closing in
     const m = wallM(st);
@@ -383,12 +395,18 @@
   function drawPond(st, t) {
     const P = POND;
     ctx.fillStyle = '#5a7a3a'; ctx.beginPath(); ctx.ellipse(P.x, P.y + 4, P.rx + 10, P.ry + 8, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#8a7a5a'; ctx.beginPath(); ctx.ellipse(P.x, P.y + 2, P.rx + 4, P.ry + 4, 0, 0, TAU); ctx.fill();
     const g = ctx.createRadialGradient(P.x - 20, P.y - 10, 4, P.x, P.y, P.rx);
     g.addColorStop(0, '#7ab4d0'); g.addColorStop(1, '#3a6a8a');
     ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(P.x, P.y, P.rx, P.ry, 0, 0, TAU); ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5;
     for (let k = 0; k < 3; k++) { const u = (t * 0.4 + k / 3) % 1; ctx.globalAlpha = 1 - u; ctx.beginPath(); ctx.ellipse(P.x + (k - 1) * 30, P.y + (k % 2) * 8, 8 + u * 30, 3 + u * 10, 0, 0, TAU); ctx.stroke(); }
     ctx.globalAlpha = 1;
+    // the sky's reflection and a dark rim where the bank overhangs
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.beginPath(); ctx.ellipse(P.x - P.rx * 0.3, P.y - P.ry * 0.35, P.rx * 0.45, P.ry * 0.25, -0.1, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(20,40,50,0.35)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(P.x, P.y, P.rx - 1, P.ry - 1, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+    // lily pads
+    for (let k = 0; k < 3; k++) { const lx = P.x + P.rx * (0.3 + k * 0.18), ly = P.y + P.ry * (0.2 - k * 0.15); ctx.fillStyle = '#4e8a3e'; ctx.beginPath(); ctx.ellipse(lx, ly, 8, 3.5, 0, 0.3, TAU - 0.3); ctx.lineTo(lx, ly); ctx.fill(); }
     // reeds
     ctx.strokeStyle = '#3e5a2a'; ctx.lineWidth = 2;
     for (let k = 0; k < 9; k++) { const a = Math.PI * (0.9 + k * 0.05), x = P.x + Math.cos(a) * P.rx, y = P.y + Math.sin(a) * P.ry; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.sin(t * 2 + k) * 3, y - 18 - (k % 3) * 5); ctx.stroke(); }
