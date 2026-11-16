@@ -25,6 +25,13 @@ const pw39Cave = (v, o = {}) => {
   // far rock ribs and stalactites
   c.fillStyle = 'rgba(70,74,90,0.55)';
   for (let k = -1; k < 9; k++) { const x = ((k * 46 - sc * 0.3) % 414 + 414) % 414 - 46; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 18, 18 + v.rand(k + 3) * 22); c.lineTo(x + 34, 0); c.fill(); }
+  // nearer rock teeth with a cold rim, and faint strata across the back wall
+  c.strokeStyle = 'rgba(140,150,180,0.08)'; c.lineWidth = 1; c.beginPath();
+  for (let k = 0; k < 5; k++) { const y = 40 + k * 26; c.moveTo(0, y); for (let x = 0; x <= v.W; x += 40) c.lineTo(x, y + Math.sin((x + sc * 0.4) * 0.03 + k) * 3); }
+  c.stroke();
+  for (let k = -1; k < 7; k++) { const x = ((k * 62 + 20 - sc * 0.5) % 434 + 434) % 434 - 62, d = 10 + v.rand(k + 11) * 14;
+    c.fillStyle = 'rgba(46,48,62,0.9)'; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 12, d); c.lineTo(x + 24, 0); c.fill();
+    c.strokeStyle = 'rgba(120,220,230,0.25)'; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 12, d); c.stroke(); }
   // glow worms
   for (let k = 0; k < 18; k++) { const a = 0.4 + 0.4 * Math.sin(v.t * 2 + k); c.fillStyle = `rgba(150,240,255,${a})`; c.fillRect(((k * 37 - sc * 0.15) % 330 + 330) % 330, 4 + v.rand(k) * 14, 1.5, 1.5); }
 };
@@ -197,7 +204,10 @@ const pw39GolemFace = (v, x, y, s, calm, o = {}) => {
         if (open(r, k)) { c.fillStyle = '#120c0a'; c.fillRect(x, y, C_, C_); continue; }
         const rock = h > 0.88 || (r === 7 && (k === 7 || k === 10)) || (r === 8 && k > 6 && k < 11);
         c.fillStyle = rock ? '#5a5e66' : h > 0.6 ? '#6a4a30' : '#8a6040'; c.fillRect(x, y, C_ + 0.5, C_ + 0.5);
-        if (!rock) { c.fillStyle = 'rgba(255,230,190,0.1)'; c.fillRect(x + h * 9, y + 4, 3, 2); }
+        if (!rock) { c.fillStyle = 'rgba(255,230,190,0.1)'; c.fillRect(x + h * 9, y + 4, 3, 2); c.fillStyle = 'rgba(40,24,12,0.35)'; v.circle(x + 3 + h * 8, y + C_ - 4, 0.9); c.fill(); }
+        else { c.fillStyle = 'rgba(255,255,255,0.16)'; c.fillRect(x + 1, y + 1, C_ - 2, 1.5); c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x + 1, y + C_ - 2, C_ - 1, 1.5); }
+        if (open(r - 1, k)) { c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x, y, C_ + 0.5, 2); }
+        if (open(r + 1, k)) { c.fillStyle = 'rgba(255,220,170,0.18)'; c.fillRect(x, y + C_ - 1.5, C_ + 0.5, 1.5); }
       }
       // gems in the dirt
       const gems = [[3, 6, '#4fe8d6', 5], [4, 6, '#ffd56a', 6], [6, 3, '#ff9ec4', 4], [6, 13, '#8ef08a', 4], [2, 9, '#dff6ff', 4]];

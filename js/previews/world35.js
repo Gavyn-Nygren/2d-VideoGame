@@ -20,17 +20,33 @@ function pw35Sky(v, t, scroll = 0, ground = 150) {
   ctx.fillStyle = 'rgba(255,243,196,0.18)'; v.circle(262, 40, 30); ctx.fill();
   ctx.fillStyle = pw35C.moon; v.circle(262, 40, 22); ctx.fill();
   ctx.fillStyle = 'rgba(200,190,150,0.5)'; v.circle(255, 35, 4); ctx.fill(); v.circle(268, 47, 3); ctx.fill();
-  // the towers, a window or two lit
+  // a thin cloud drifting across the moon
+  { const cx = ((v.t * 6 + 200) % 420) - 60; ctx.fillStyle = 'rgba(200,180,230,0.25)'; ctx.beginPath(); ctx.ellipse(cx, 52, 34, 4, 0, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.ellipse(cx + 18, 48, 20, 3, 0, 0, Math.PI * 2); ctx.fill(); }
+  // a hazy far ridge of rooftops
+  ctx.fillStyle = 'rgba(70,56,120,0.55)';
+  for (let k = 0; k < 9; k++) { const x = ((k * 46 - scroll * 0.4) % 414 + 414) % 414 - 46, h = 22 + v.rand(k + 70) * 18; ctx.fillRect(x, ground - h, 22, h); ctx.beginPath(); ctx.moveTo(x - 2, ground - h); ctx.lineTo(x + 11, ground - h - 14); ctx.lineTo(x + 24, ground - h); ctx.fill(); }
+  // the towers: a lit side, stone courses, a slate roof with a pennant, a window or two lit
   for (let k = 0; k < 6; k++) {
     const x = ((k * 70 - scroll) % 420 + 420) % 420 - 50, h = 50 + v.rand(k + 3) * 40, w = 30;
     ctx.fillStyle = pw35C.stoneDk; ctx.fillRect(x, ground - h, w, h);
-    ctx.beginPath(); ctx.moveTo(x - 4, ground - h); ctx.lineTo(x + w / 2, ground - h - 28); ctx.lineTo(x + w + 4, ground - h); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,210,63,0.85)'; ctx.fillRect(x + 11, ground - h + 14, 7, 10);
-    if (v.rand(k + 20) > 0.4) ctx.fillRect(x + 11, ground - h + 34, 7, 9);
+    ctx.fillStyle = 'rgba(255,240,220,0.12)'; ctx.fillRect(x, ground - h, 4, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x + w - 5, ground - h, 5, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'; for (let y = ground - h + 9; y < ground; y += 9) ctx.fillRect(x, y, w, 1);
+    ctx.fillStyle = '#2e2a4e'; ctx.beginPath(); ctx.moveTo(x - 4, ground - h); ctx.lineTo(x + w / 2, ground - h - 28); ctx.lineTo(x + w + 4, ground - h); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.moveTo(x - 4, ground - h); ctx.lineTo(x + w / 2, ground - h - 28); ctx.lineTo(x + w / 2 - 2, ground - h); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#d8c89a'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x + w / 2, ground - h - 28); ctx.lineTo(x + w / 2, ground - h - 36); ctx.stroke();
+    ctx.fillStyle = k % 2 ? '#ff8a3c' : '#4aa8ff'; ctx.beginPath(); ctx.moveTo(x + w / 2, ground - h - 36); ctx.lineTo(x + w / 2 + 7 + Math.sin(t * 5 + k), ground - h - 34); ctx.lineTo(x + w / 2, ground - h - 32); ctx.fill();
+    ctx.fillStyle = 'rgba(255,210,63,0.18)'; v.circle(x + 14.5, ground - h + 19, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,210,63,0.85)'; v.rr(x + 11, ground - h + 14, 7, 10, 3.5); ctx.fill();
+    if (v.rand(k + 20) > 0.4) { v.rr(x + 11, ground - h + 34, 7, 9, 3.5); ctx.fill(); }
   }
-  ctx.fillStyle = pw35C.stone; ctx.fillRect(0, ground, v.W, v.H - ground);
+  const gg = ctx.createLinearGradient(0, ground, 0, v.H); gg.addColorStop(0, pw35C.stone); gg.addColorStop(1, pw35C.stoneDk);
+  ctx.fillStyle = gg; ctx.fillRect(0, ground, v.W, v.H - ground);
   ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (let x = -((scroll * 1.5) % 30); x < v.W; x += 30) ctx.fillRect(x + 2, ground + 3, 26, 5);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(0, ground, v.W, 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.15)'; for (let x = -((scroll * 1.5) % 30); x < v.W; x += 30) { ctx.fillRect(x + 15, ground + 12, 1, v.H - ground); }
 }
+
 // a pointed wizard hat, brim centre (x, y); id 0 Pip, 1 Bo (the band colour); s = 1 is about 28 px tall
 function pw35Hat(v, id, x, y, s, t, rot = 0) {
   const ctx = v.ctx, flop = Math.sin(t * 2.2 + id) * 1.5;
