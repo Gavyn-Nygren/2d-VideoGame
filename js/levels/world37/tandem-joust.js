@@ -481,25 +481,43 @@
     if (dusk) { ctx.fillStyle = 'rgba(30,20,60,0.2)'; ctx.fillRect(0, 0, W, H); }
   }
   function drawLane(st, t, dusk) {
-    ctx.fillStyle = dusk ? '#4a6a3a' : K.COL.grass; ctx.fillRect(0, 410, W, H - 410);
-    ctx.fillStyle = dusk ? '#8a7050' : K.COL.dirt; ctx.fillRect(0, R.gy - 8, W, H - R.gy + 8);
+    const grass = dusk ? '#4a6a3a' : K.COL.grass, dirt = dusk ? '#8a7050' : K.COL.dirt;
+    ctx.fillStyle = grass; ctx.fillRect(0, 410, W, H - 410);
+    ctx.fillStyle = shade(grass, 0.12); ctx.fillRect(0, 410, W, 4);
+    ctx.fillStyle = shade(dirt, 0.25); ctx.fillRect(0, R.gy - 11, W, 4);
+    ctx.fillStyle = dirt; ctx.fillRect(0, R.gy - 8, W, H - R.gy + 8);
+    ctx.fillStyle = 'rgba(255,240,200,0.3)'; ctx.fillRect(0, R.gy - 8, W, 2);
+    // grass tufts on the verge, hoof-churned marks and pebbles on the lane
+    ctx.fillStyle = shade(grass, 0.2);
+    for (let k = 0; k < 24; k++) { const x = ((k * 47 - st.d * 0.9) % (W + 60) + W + 60) % (W + 60) - 30, y = R.gy - 12; ctx.beginPath(); ctx.moveTo(x - 5, y + 2); ctx.lineTo(x - 2, y - 6); ctx.lineTo(x, y); ctx.lineTo(x + 3, y - 7); ctx.lineTo(x + 5, y + 2); ctx.closePath(); ctx.fill(); }
     ctx.fillStyle = 'rgba(120,90,50,0.35)';
     for (let k = 0; k < 14; k++) { const x = ((k * 97 - st.d) % (W + 100) + W + 100) % (W + 100) - 50; ctx.fillRect(x, R.gy + 14 + (k % 3) * 18, 26, 3); }
-    // the tilt barrier along the far side of the lane, striped
+    for (let k = 0; k < 16; k++) {
+      const x = ((k * 71 - st.d) % (W + 80) + W + 80) % (W + 80) - 40, y = R.gy + 8 + (k * 29) % 90, r = 2 + (k % 3);
+      ctx.fillStyle = '#9a8a72'; ctx.beginPath(); ctx.ellipse(x, y, r * 1.4, r, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - r * 0.6, y - r * 0.6, r * 0.8, 1);
+    }
+    // the tilt barrier along the far side of the lane, striped, with posts, a lit top and a shadow on the grass
     const off = st.d % 80;
-    ctx.fillStyle = '#5e3a1c'; for (let x = -off - 80; x < W + 80; x += 80) ctx.fillRect(x, 414, 6, 30);
-    for (let x = -off - 80; x < W + 80; x += 40) { ctx.fillStyle = (Math.round((x + st.d) / 40) % 2) ? '#d8323a' : '#f6ecd0'; ctx.fillRect(x, 416, 40, 9); }
+    ctx.fillStyle = 'rgba(30,40,10,0.18)'; ctx.fillRect(0, 425, W, 6);
+    for (let x = -off - 80; x < W + 80; x += 80) { ctx.fillStyle = '#5e3a1c'; ctx.fillRect(x, 414, 6, 30); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 4, 414, 2, 30); ctx.fillStyle = '#ffd23a'; circ(x + 3, 413, 3); ctx.fill(); }
+    for (let x = -off - 80; x < W + 80; x += 40) { const red = Math.round((x + st.d) / 40) % 2; ctx.fillStyle = red ? '#d8323a' : '#f6ecd0'; ctx.fillRect(x, 416, 40, 9); ctx.fillStyle = red ? '#8a1a22' : '#c8bc9c'; ctx.fillRect(x, 422, 40, 3); }
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, 416, W, 1.5);
+    ctx.strokeStyle = 'rgba(60,20,10,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(-1, 415.5, W + 2, 10);
   }
   function drawFlag(st, sx, t) {
     if (sx < -60 || sx > W + 60) return;
-    ctx.fillStyle = '#5e3a1c'; ctx.fillRect(sx - 2, R.gy - 150, 4, 150);
+    ctx.fillStyle = 'rgba(40,30,10,0.2)'; ctx.beginPath(); ctx.ellipse(sx, R.gy + 1, 10, 3, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#5e3a1c'; ctx.fillRect(sx - 2, R.gy - 150, 4, 150); ctx.fillStyle = '#ffd23a'; circ(sx, R.gy - 152, 3); ctx.fill();
     ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(sx + 2, R.gy - 150); ctx.lineTo(sx + 40 + Math.sin(t * 6) * 4, R.gy - 140); ctx.lineTo(sx + 2, R.gy - 128); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(120,130,150,0.3)'; ctx.beginPath(); ctx.moveTo(sx + 2, R.gy - 139); ctx.lineTo(sx + 40 + Math.sin(t * 6) * 4, R.gy - 140); ctx.lineTo(sx + 2, R.gy - 128); ctx.closePath(); ctx.fill();
     text('½', sx + 16, R.gy - 139, 11, '#3a2010', 'center', 'body');
   }
   function drawPatch(st, it, sx, t) {
     if (it.kind === 'mud') {
       ctx.fillStyle = '#6a4a2a'; ctx.beginPath(); ctx.ellipse(sx + it.len / 2, R.gy + 8, it.len / 2, 12, 0, 0, TAU); ctx.fill();
       ctx.fillStyle = 'rgba(40,24,10,0.4)'; for (let k = 0; k < 6; k++) { ctx.beginPath(); ctx.ellipse(sx + 40 + k * it.len / 6, R.gy + 6 + (k % 2) * 4, 18, 4, 0, 0, TAU); ctx.fill(); }
+      ctx.fillStyle = 'rgba(255,240,220,0.25)'; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.ellipse(sx + 60 + k * it.len / 4, R.gy + 2 + (k % 2) * 6, 10, 2, 0, 0, TAU); ctx.fill(); }
       if (sx > 0 && sx < W) text('MUD', sx + 40, R.gy + 30, 12, '#3a2010', 'center', 'body');
     } else if (it.kind === 'rough') {
       ctx.fillStyle = '#8a7a6a'; for (let k = 0; k < it.len / 24; k++) { const x = sx + k * 24 + K.hash(k) * 10; ctx.beginPath(); ctx.ellipse(x, R.gy + 2, 7 + K.hash(k * 3) * 5, 4, 0, Math.PI, TAU); ctx.fill(); }

@@ -356,14 +356,18 @@ function wizBroomDrawBack(st) {
   for (let xx = Math.floor(x0 / 40) * 40; xx < x1; xx += 40) {
     const g = wizBroomGround(ph, xx + 20), s = wizBroomStretchAt(xx + 20), pad = g === K.padTop;
     if (pad) continue;
-    if (s === 0) { ctx.fillStyle = '#4f9a58'; ctx.fillRect(xx, g, 41, H - g); ctx.fillStyle = '#5fb068'; ctx.fillRect(xx, g, 41, 8); }
+    if (s === 0) wizLawn(xx, g, xx + 40.5, H);
     else if (s === 1) {
       ctx.fillStyle = C2.roof; ctx.fillRect(xx, g, 41, H - g);
       ctx.fillStyle = C2.roofDk; for (let ry = g + 14; ry < H; ry += 18) ctx.fillRect(xx, ry, 41, 3);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; for (let ry = g + 14, r = 0; ry < H; ry += 18, r++) ctx.fillRect(xx + (r % 2 ? 10 : 30), ry - 15, 2, 15);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(xx, g, 41, 3);
       ctx.fillStyle = '#ffd77a'; if ((xx / 40) % 5 === 2) rr(xx + 10, g + 50, 16, 20, 6), ctx.fill();
     } else {
       ctx.fillStyle = C2.water; ctx.fillRect(xx, g, 41, H - g);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(xx, g + 40, 41, H - g - 40);
       ctx.fillStyle = C2.waterLt; ctx.fillRect(xx, g + 4 + Math.sin(t * 2 + xx * 0.05) * 2, 41, 3);
+      const hw = hash(xx, 31); if (hw % 3 === 0) { ctx.fillStyle = 'rgba(255,248,220,' + (0.2 + 0.15 * Math.sin(t * 3 + hw)) + ')'; ctx.fillRect(xx + hw % 24, g + 18 + (hw >> 4) % 40, 12, 2); }
     }
   }
   for (let n = 0; n <= 3; n++) {

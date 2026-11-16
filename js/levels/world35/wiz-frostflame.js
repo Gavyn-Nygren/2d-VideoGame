@@ -350,11 +350,16 @@ function wizFFDraw(st) {
     if (r.kind === 'floor') {
       // (grass outside, stone in the ice house)
       const d = ph.doors[1], a0 = Math.min(r.x1, Math.max(r.x0, d));
-      ctx.fillStyle = '#3f6a4a'; ctx.fillRect(r.x0, r.y0, a0 - r.x0, r.y1 - r.y0); ctx.fillStyle = '#5fae6a'; ctx.fillRect(r.x0, r.y0, a0 - r.x0, 8);
+      wizLawn(Math.max(r.x0, cx - 60), r.y0, Math.min(a0, cx + W + 60), r.y1, { top: '#5fae6a', body: '#3f6a4a' });
       ctx.fillStyle = C2.stoneDk; ctx.fillRect(a0, r.y0, r.x1 - a0, r.y1 - r.y0); ctx.fillStyle = C2.stone; ctx.fillRect(a0, r.y0, r.x1 - a0, 8);
+      ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(a0, r.y0, r.x1 - a0, 2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let x = Math.max(a0, Math.floor((cx - 60) / 48) * 48); x < Math.min(r.x1, cx + W + 60); x += 48) { ctx.moveTo(x, r.y0 + 8); ctx.lineTo(x, r.y0 + 30); ctx.moveTo(x + 24, r.y0 + 30); ctx.lineTo(x + 24, r.y0 + 54); }
+      ctx.moveTo(Math.max(a0, cx - 60), r.y0 + 30); ctx.lineTo(Math.min(r.x1, cx + W + 60), r.y0 + 30); ctx.stroke();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
     }
     else if (r.kind === 'raft') { ctx.fillStyle = '#9a6a3e'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 14); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, 14); }
-    else if (r.kind === 'ledge') { ctx.fillStyle = C2.stoneDk; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = C2.stone; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 8); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
+    else if (r.kind === 'ledge') { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(r.x0 + 6, r.y1, r.x1 - r.x0 - 6, 6); ctx.fillStyle = C2.stoneDk; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = C2.stone; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 8); ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(r.x0 + 2, r.y0 + 2, r.x1 - r.x0 - 4, 2); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
     else if (r.kind === 'thorn') {
       const k = 1 - r.burn / WIZFF.burn;
       ctx.strokeStyle = C2.thornDk; ctx.lineWidth = 6; ctx.beginPath();

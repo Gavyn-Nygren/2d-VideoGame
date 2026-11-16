@@ -1628,15 +1628,35 @@ function wizExDrawBack(st) {
   wizScreen(st, () => { const g = ctx.createLinearGradient(0, 0, 0, F); g.addColorStop(0, '#221a36'); g.addColorStop(1, '#3e3050'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); });
   // the school's corridors: windows, portraits whose eyes follow the Blot, ink dripping from the ceiling
   ctx.fillStyle = C2.wall; ctx.fillRect(cx - 40, 40, W + 80, F - 40);
+  // stone courses, a dado rail and darker wainscot panels low on the wall
+  ctx.strokeStyle = 'rgba(0,0,0,0.16)'; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let y = 80, r = 0; y < F - 110; y += 40, r++) { ctx.moveTo(cx - 40, y); ctx.lineTo(cx + W + 40, y); for (let x = Math.floor((cx - 40) / 90) * 90 + (r % 2) * 45; x < cx + W + 40; x += 90) { ctx.moveTo(x, y); ctx.lineTo(x, y + 40); } }
+  ctx.stroke();
+  ctx.fillStyle = C2.wallDk; ctx.fillRect(cx - 40, F - 100, W + 80, 100);
+  ctx.fillStyle = '#5a4a3a'; ctx.fillRect(cx - 40, F - 106, W + 80, 8); ctx.fillStyle = 'rgba(255,230,180,0.2)'; ctx.fillRect(cx - 40, F - 106, W + 80, 2);
+  for (let x = Math.floor((cx - 40) / 120) * 120; x < cx + W + 40; x += 120) { ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 2; ctx.strokeRect(x + 12, F - 86, 96, 72); ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.strokeRect(x + 14, F - 84, 96, 72); }
   for (let x = Math.floor((cx - 40) / 240) * 240; x < cx + W + 240; x += 240) {
-    ctx.fillStyle = '#1a2a4a'; rr(x + 60, 110, 70, 120, 34); ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = '#5a4a3a'; rr(x + 54, 104, 82, 132, 40); ctx.fill();
+    const wg = ctx.createLinearGradient(0, 110, 0, 230); wg.addColorStop(0, '#16224a'); wg.addColorStop(1, '#2e3a6a');
+    ctx.fillStyle = wg; rr(x + 60, 110, 70, 120, 34); ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,233,168,0.2)'; circle(x + 95, 140, 12); ctx.fill();
     ctx.fillStyle = '#ffe9a8'; circle(x + 95, 140, 6); ctx.fill();
-    ctx.fillStyle = '#6a4a2a'; ctx.fillRect(x + 160, 120, 44, 56); ctx.fillStyle = '#c8b090'; ctx.fillRect(x + 166, 126, 32, 44);
+    ctx.strokeStyle = 'rgba(20,16,40,0.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + 95, 112); ctx.lineTo(x + 95, 230); ctx.moveTo(x + 60, 176); ctx.lineTo(x + 130, 176); ctx.stroke();
+    ctx.fillStyle = '#6a5a4a'; ctx.fillRect(x + 52, 230, 86, 7);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 163, 123, 44, 56);
+    ctx.fillStyle = '#6a4a2a'; ctx.fillRect(x + 160, 120, 44, 56); ctx.fillStyle = '#c9a24a'; ctx.fillRect(x + 160, 120, 44, 3); ctx.fillStyle = '#c8b090'; ctx.fillRect(x + 166, 126, 32, 44);
+    ctx.fillStyle = '#7a6a8a'; ctx.beginPath(); ctx.moveTo(x + 170, 170); ctx.quadraticCurveTo(x + 182, 150, x + 194, 170); ctx.fill();
     const look = ph.part === 1 ? -2 : 0; ctx.fillStyle = '#ffffff'; circle(x + 176, 142, 3); ctx.fill(); circle(x + 188, 142, 3); ctx.fill(); ctx.fillStyle = C.ink; circle(x + 176 + look, 142, 1.5); ctx.fill(); circle(x + 188 + look, 142, 1.5); ctx.fill();
     ctx.fillStyle = C2.ink; const d = (t * 40 + x) % 120; rr(x + 220, 40, 10, 20 + d * 0.3, 5); ctx.fill(); circle(x + 225, 60 + d * 1.2, 5); ctx.fill();
   }
   ctx.fillStyle = C2.wallDk; ctx.fillRect(cx - 40, 0, W + 80, 44);
-  for (const r of ph.solids) if ((r.kind === 'floor' || r.kind === undefined) && r.y0 === F && r.x1 > cx - 40 && r.x0 < cx + W + 40) { ctx.fillStyle = C2.floor; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, H - r.y0); ctx.fillStyle = '#8a7458'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 6); }
+  for (const r of ph.solids) if ((r.kind === 'floor' || r.kind === undefined) && r.y0 === F && r.x1 > cx - 40 && r.x0 < cx + W + 40) { ctx.fillStyle = C2.floor; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, H - r.y0); ctx.fillStyle = '#8a7458'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 6);
+    ctx.fillStyle = 'rgba(255,235,190,0.25)'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 2);
+    const a = Math.max(r.x0, cx - 40), b = Math.min(r.x1, cx + W + 40);
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let x = Math.ceil(a / 64) * 64; x < b; x += 64) { ctx.moveTo(x, r.y0 + 6); ctx.lineTo(x, H); }
+    for (let y = r.y0 + 38; y < H; y += 32) { ctx.moveTo(a, y); ctx.lineTo(b, y); }
+    ctx.stroke(); }
   if (ph.part === 2 || cx + W > wizExHallX() - 100) wizExDrawHallBack(st);
 }
 function wizExDrawHallBack(st) {
@@ -1694,9 +1714,15 @@ function wizExDraw(st) {
     g.kind.draw(st, g);
     // the gate's sign: its spell, over the entrance
     const sp = WIZ_SPELLS[g.kind.spell] || WIZ_SPELLS.zoom, sx = g.x + 60;
-    ctx.fillStyle = sp.col; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(sx, 82, 16); ctx.fill(); ctx.stroke();
-    wizDrawSpellIcon(g.kind.key === 'frostflame' ? 'frostflame' : WIZ_ORDER.find(k => WIZ_CLASSES[k].spell === g.kind.spell) || 'broom', sx, 82, 11);
-    text(g.k + 1 + '. ' + (g.kind.key === 'frostflame' ? 'Frost + Flame' : sp.name), sx + 24, 84, 14, '#ffffff', 'left', 'body');
+    // (a hanging plaque below the top HUD band, sized to its words)
+    const label = g.k + 1 + '. ' + (g.kind.key === 'frostflame' ? 'Frost + Flame' : sp.name), sy = 150;
+    text('', 0, 0, 14, '#ffffff', 'left', 'body'); const tw = ctx.measureText(label).width;
+    ctx.strokeStyle = '#8a6420'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx - 4, 44); ctx.lineTo(sx - 4, sy - 16); ctx.moveTo(sx + tw + 20, 44); ctx.lineTo(sx + tw + 20, sy - 14); ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; rr(sx - 18, sy - 14 + 4, tw + 52, 28, 14); ctx.fill();
+    ctx.fillStyle = '#2a2238'; ctx.strokeStyle = '#d9a441'; ctx.lineWidth = 2; rr(sx - 18, sy - 14, tw + 52, 28, 14); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = sp.col; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(sx, sy, 16); ctx.fill(); ctx.stroke();
+    wizDrawSpellIcon(g.kind.key === 'frostflame' ? 'frostflame' : WIZ_ORDER.find(k => WIZ_CLASSES[k].spell === g.kind.spell) || 'broom', sx, sy, 11);
+    text(label, sx + 24, sy + 1, 14, '#ffffff', 'left', 'body');
   }
   if (ph.part === 2) wizExDrawHall(st);
 }

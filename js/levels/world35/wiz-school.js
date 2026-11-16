@@ -888,36 +888,96 @@ function wizStars(t, n = 40, alpha = 1, seed = 7) {
 function wizDusk(t, scrollX = 0, scrollY = 0, o = {}) {
   wizSky(o.top || '#241a52', o.bot || '#9a62a8');
   wizStars(t, 46, 0.8, 35);
+  // a few brighter twinkling stars with little crosses
+  for (let k = 0; k < 6; k++) {
+    const h = hash(k, 91), x = h % W, y = 20 + (h >>> 9) % 200, a = 0.5 + 0.5 * Math.sin(t * 1.7 + k * 2.1);
+    ctx.fillStyle = `rgba(255,250,230,${0.55 * a})`; ctx.fillRect(x - 5, y - 0.6, 10, 1.2); ctx.fillRect(x - 0.6, y - 5, 1.2, 10); circle(x, y, 1.6); ctx.fill();
+  }
   const mx = (o.moonX != null ? o.moonX : 760) - scrollX * 0.02, my = (o.moonY != null ? o.moonY : 96) - scrollY * 0.02;
-  const gl = ctx.createRadialGradient(mx, my, 20, mx, my, 120); gl.addColorStop(0, 'rgba(255,248,220,0.4)'); gl.addColorStop(1, 'rgba(255,248,220,0)');
-  ctx.fillStyle = gl; circle(mx, my, 120); ctx.fill();
+  ctx.fillStyle = 'rgba(255,248,220,0.07)'; circle(mx, my, 110); ctx.fill(); circle(mx, my, 80); ctx.fill(); circle(mx, my, 62); ctx.fill();
   ctx.fillStyle = '#fbf3dc'; circle(mx, my, 46); ctx.fill();
-  ctx.fillStyle = 'rgba(200,190,170,0.5)'; circle(mx - 14, my - 8, 9); ctx.fill(); circle(mx + 12, my + 14, 6); ctx.fill(); circle(mx + 16, my - 16, 4); ctx.fill();
-  // floating rocks with little trees
+  // the moon's shaded limb, craters with lit rims
+  ctx.fillStyle = 'rgba(180,160,190,0.22)'; ctx.beginPath(); ctx.arc(mx, my, 46, -0.9, 2.2); ctx.arc(mx - 8, my - 4, 42, 2.2, -0.9, true); ctx.fill();
+  for (const [cx, cy, r] of [[-14, -8, 9], [12, 14, 6], [16, -16, 4], [-6, 20, 4.5]]) { ctx.fillStyle = 'rgba(200,190,170,0.5)'; circle(mx + cx, my + cy, r); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,245,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(mx + cx, my + cy, r, 0.2, 1.9); ctx.stroke(); }
+  // thin clouds drifting across the lower sky
+  for (let k = 0; k < 4; k++) {
+    const span = W + 400, cx = ((k * 330 + t * (4 + k) - scrollX * 0.04) % span + span) % span - 200, cy = 200 + (k % 2) * 46 - scrollY * 0.03;
+    ctx.fillStyle = 'rgba(210,170,220,0.16)'; ctx.beginPath(); ctx.ellipse(cx, cy, 120, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.ellipse(cx + 50, cy - 6, 70, 7, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // floating rocks with little trees: a lit top, a shaded underside, a lantern glow on some
   for (let k = 0; k < 5; k++) {
     const span = W + 300, rx = ((k * 260 + 120 - scrollX * (0.08 + k * 0.02)) % span + span) % span - 150, ry = 150 + (k % 3) * 60 + Math.sin(t * 0.5 + k) * 6 - scrollY * 0.05;
     const s = 0.6 + (k % 3) * 0.25;
     ctx.fillStyle = '#4a3e72'; ctx.beginPath(); ctx.moveTo(rx - 30 * s, ry); ctx.lineTo(rx + 30 * s, ry); ctx.lineTo(rx + 8 * s, ry + 26 * s); ctx.lineTo(rx - 4 * s, ry + 34 * s); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#3a305e'; ctx.beginPath(); ctx.moveTo(rx + 2 * s, ry); ctx.lineTo(rx + 30 * s, ry); ctx.lineTo(rx + 8 * s, ry + 26 * s); ctx.lineTo(rx - 4 * s, ry + 34 * s); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,30,70,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(rx - 14 * s, ry + 8 * s); ctx.lineTo(rx - 4 * s, ry + 18 * s); ctx.moveTo(rx + 10 * s, ry + 6 * s); ctx.lineTo(rx + 4 * s, ry + 16 * s); ctx.stroke();
     ctx.fillStyle = '#3f6a5a'; ctx.beginPath(); ctx.ellipse(rx, ry - 2, 30 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#2f5546'; circle(rx - 8 * s, ry - 10 * s, 7 * s); ctx.fill();
+    ctx.fillStyle = 'rgba(160,230,190,0.35)'; ctx.beginPath(); ctx.ellipse(rx - 6 * s, ry - 4 * s, 18 * s, 2 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4a3a2a'; ctx.fillRect(rx - 9 * s, ry - 6 * s, 2 * s, 6 * s);
+    ctx.fillStyle = '#2f5546'; circle(rx - 8 * s, ry - 10 * s, 7 * s); ctx.fill(); ctx.fillStyle = '#3f7a62'; circle(rx - 10 * s, ry - 12 * s, 3.5 * s); ctx.fill();
+    if (k % 2 === 0) { ctx.fillStyle = 'rgba(255,214,120,0.2)'; circle(rx + 12 * s, ry - 6 * s, 12 * s); ctx.fill(); ctx.fillStyle = '#ffe08a'; ctx.fillRect(rx + 11 * s, ry - 8 * s, 2.5 * s, 3.5 * s); }
   }
   if (o.skyline !== false) wizSkyline(scrollX * 0.2, (o.skyY != null ? o.skyY : 380) - scrollY * 0.1);
 }
 // the school's leaning towers, far away (screen coords; the line where they stand is y)
+// a lawn strip in world space: a darker soil-shadowed body, a lit top edge, grass tufts and the odd flower
+// (placement from hash, so it never flickers; only the visible part is drawn by the callers)
+function wizLawn(x0, y0, x1, y1, o = {}) {
+  const top = o.top || '#5fb068', body = o.body || '#4f9a58', w = x1 - x0, h = y1 - y0;
+  if (w <= 0 || h <= 0) return;
+  ctx.fillStyle = body; ctx.fillRect(x0, y0, w, h);
+  if (h > 60) { ctx.fillStyle = shade(body, 0.2); ctx.fillRect(x0, y0 + 60, w, h - 60); }
+  ctx.fillStyle = top; ctx.fillRect(x0, y0, w, 8);
+  ctx.fillStyle = tint(top, 0.3); ctx.fillRect(x0, y0, w, 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x0, y0 + 8, w, 4);
+  for (let x = Math.ceil(x0 / 14) * 14; x < x1 - 4; x += 14) {
+    const hh = hash(x, 77);
+    if (hh % 3 === 0) { ctx.fillStyle = top; ctx.beginPath(); ctx.moveTo(x - 3, y0 + 1); ctx.lineTo(x, y0 - 4 - (hh >> 3) % 4); ctx.lineTo(x + 3, y0 + 1); ctx.fill(); }
+    if (h > 30 && hh % 7 === 2) { ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(x + (hh >> 5) % 10, y0 + 18 + (hh >> 9) % Math.max(1, Math.min(60, h - 24)), 6, 2); }
+    if (!o.noFlowers && hh % 23 === 5) { ctx.fillStyle = ['#ffe9a8', '#ffb3d9', '#bfe3ff'][(hh >> 4) % 3]; circle(x, y0 - 2, 2.2); ctx.fill(); }
+  }
+}
 function wizSkyline(sx, y) {
   const span = 1400;
-  ctx.fillStyle = '#3a2d66';
+  // a hazy far range of hills and smaller towers behind (paler, slower)
+  ctx.fillStyle = '#5a3f80';
+  ctx.beginPath(); ctx.moveTo(0, y); for (let x = 0; x <= W + 20; x += 20) ctx.lineTo(x, y - 40 - Math.sin((x + sx * 0.5) / 90) * 14 - Math.sin((x + sx * 0.5) / 37) * 5); ctx.lineTo(W + 20, y); ctx.closePath(); ctx.fill();
+  for (let k = 0; k < 6; k++) {
+    const x = ((k * 240 + 150 - sx * 0.5) % span + span) % span - 120, w = 22 + (k % 2) * 10, h = 70 + ((k * 53) % 50);
+    ctx.fillRect(x, y - h, w, h); ctx.beginPath(); ctx.moveTo(x - 4, y - h); ctx.lineTo(x + w / 2, y - h - 30); ctx.lineTo(x + w + 4, y - h); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,215,120,0.45)'; ctx.fillRect(x + w / 2 - 2, y - h + 14, 4, 6); ctx.fillStyle = '#5a3f80';
+  }
   for (let k = 0; k < 7; k++) {
     const x = ((k * 200 + 40 - sx) % span + span) % span - 120, w = 46 + (k % 3) * 18, h = 120 + ((k * 37) % 90), lean = ((k % 3) - 1) * 0.06;
     ctx.save(); ctx.translate(x + w / 2, y); ctx.rotate(lean);
-    ctx.fillRect(-w / 2, -h, w, h);
-    ctx.beginPath(); ctx.moveTo(-w / 2 - 6, -h); ctx.lineTo(0, -h - 50 - (k % 2) * 20); ctx.lineTo(w / 2 + 6, -h); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,215,120,0.75)'; for (let wy = -h + 20; wy < -20; wy += 34) { ctx.fillRect(-5, wy, 10, 13); }
-    ctx.fillStyle = '#3a2d66'; ctx.restore();
+    // the stone tower: base colour, a moonlit left edge, a shaded right side, stone courses
+    ctx.fillStyle = '#3a2d66'; ctx.fillRect(-w / 2, -h, w, h);
+    ctx.fillStyle = '#31265a'; ctx.fillRect(w * 0.18, -h, w * 0.32, h);
+    ctx.fillStyle = 'rgba(220,200,255,0.18)'; ctx.fillRect(-w / 2, -h, 2.5, h);
+    ctx.fillStyle = 'rgba(20,10,50,0.25)'; for (let sy = -h + 14; sy < 0; sy += 14) ctx.fillRect(-w / 2, sy, w, 1);
+    // a ring of battlements under the roof
+    ctx.fillStyle = '#433474'; ctx.fillRect(-w / 2 - 4, -h - 2, w + 8, 7);
+    // the cone roof: dark slate with a lit left slope and a gold finial and pennant
+    const rh = 50 + (k % 2) * 20;
+    ctx.fillStyle = '#2a2050'; ctx.beginPath(); ctx.moveTo(-w / 2 - 6, -h); ctx.lineTo(0, -h - rh); ctx.lineTo(w / 2 + 6, -h); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(200,180,255,0.18)'; ctx.beginPath(); ctx.moveTo(-w / 2 - 6, -h); ctx.lineTo(0, -h - rh); ctx.lineTo(-w / 6, -h); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(20,10,50,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); for (let q = 1; q < 4; q++) { const qy = -h - rh + rh * q / 4, hw = (w / 2 + 6) * q / 4; ctx.moveTo(-hw, qy); ctx.lineTo(hw, qy); } ctx.stroke();
+    ctx.fillStyle = '#ffd25a'; circle(0, -h - rh - 2, 2.5); ctx.fill();
+    ctx.fillStyle = k % 2 ? '#c85a6a' : '#5ab0c8'; ctx.beginPath(); ctx.moveTo(0, -h - rh - 2); ctx.lineTo(14 + Math.sin(G.clock * 3 + k) * 2, -h - rh + 2); ctx.lineTo(0, -h - rh + 6); ctx.closePath(); ctx.fill();
+    // arched windows with a warm glow
+    for (let wy = -h + 20; wy < -20; wy += 34) {
+      ctx.fillStyle = 'rgba(255,215,120,0.14)'; circle(0, wy + 7, 11); ctx.fill();
+      ctx.fillStyle = 'rgba(255,215,120,0.8)'; ctx.beginPath(); ctx.moveTo(-5, wy + 13); ctx.lineTo(-5, wy + 4); ctx.arc(0, wy + 4, 5, Math.PI, 0); ctx.lineTo(5, wy + 13); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#2a2050'; ctx.fillRect(-0.6, wy, 1.2, 13); ctx.fillRect(-5, wy + 7, 10, 1.2);
+    }
+    ctx.restore();
   }
-  ctx.fillRect(0, y, W, H - y);
+  // the grounds in front of the towers: a gradient lawn with a lit crest and dark hedges
+  const gg = ctx.createLinearGradient(0, y, 0, H); gg.addColorStop(0, '#3a2d66'); gg.addColorStop(1, '#2a2050');
+  ctx.fillStyle = gg; ctx.fillRect(0, y, W, H - y);
+  ctx.fillStyle = 'rgba(200,170,255,0.2)'; ctx.fillRect(0, y, W, 2);
+  ctx.fillStyle = '#30255a'; for (let k = 0; k < 10; k++) { const hx = ((k * 150 + 60 - sx) % span + span) % span - 80; ctx.beginPath(); ctx.ellipse(hx, y + 2, 26, 10, 0, Math.PI, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.ellipse(hx + 22, y + 2, 16, 7, 0, Math.PI, Math.PI * 2); ctx.fill(); }
 }
-
 /* --- drawing: the layers --- */
 function wizHideMask(st) { const h = wizCall(wizPh(st), 'hide', st); return Array.isArray(h) ? [!!h[0], !!h[1]] : [!!h, !!h]; }
 function wizUnhide(st) { if (st.hid) { for (const p of G.players) if (st.hid[p.id]) p.alive = true; st.hid = null; } }
