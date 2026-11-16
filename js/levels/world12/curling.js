@@ -676,7 +676,14 @@
     for (let x = 0; x <= W; x += 120) { const y = 40 + (hash(x, 1) % 34); ctx.beginPath(); ctx.moveTo(x - 12, y + 9); ctx.lineTo(x, y); ctx.lineTo(x + 12, y + 9); ctx.closePath(); ctx.fill(); }
     // the stands with the crowd (penguins and seals)
     ctx.fillStyle = '#5d7fa8'; ctx.fillRect(0, 74, W, 82);
-    for (let r = 0; r < 3; r++) { ctx.fillStyle = r % 2 ? '#6c8fba' : '#7a9cc6'; ctx.fillRect(0, 84 + r * 22, W, 12); }
+    for (let r = 0; r < 3; r++) {
+      ctx.fillStyle = r % 2 ? '#6c8fba' : '#7a9cc6'; ctx.fillRect(0, 84 + r * 22, W, 12);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(0, 84 + r * 22, W, 1.5);
+      ctx.fillStyle = 'rgba(30,50,90,0.25)'; ctx.fillRect(0, 96 + r * 22, W, 2);
+    }
+    // the stand's roof edge and its supports
+    ctx.fillStyle = '#4a6a94'; ctx.fillRect(0, 72, W, 5); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, 72, W, 1.5);
+    ctx.fillStyle = 'rgba(40,60,100,0.35)'; for (let x = 120; x < W; x += 240) ctx.fillRect(x - 3, 77, 6, 63);
     const ch = st.cheer || 0;
     for (let r = 0; r < 3; r++) for (let i = 0; i < 24; i++) {
       const x = 22 + i * 40 + (r % 2) * 20, y = 98 + r * 22, h = hash(i, r), bob = ch > 0 ? Math.abs(Math.sin(G.clock * 10 + i + r)) * 6 * Math.min(1, ch) : Math.abs(Math.sin(G.clock * 1.5 + h)) * 1.2;
@@ -685,6 +692,7 @@
     }
     // the banner on the boards: a row of snowflakes (Winter Games, no real logos or rings)
     ctx.fillStyle = '#2f4f7f'; ctx.fillRect(0, 140, W, 22);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(0, 140, W, 2); ctx.fillStyle = 'rgba(10,20,50,0.35)'; ctx.fillRect(0, 160, W, 2);
     const flakeCols = ['#9fd8ff', '#ffffff', '#c9b8ff', '#7fe0d8', '#d6e2f0'];
     const bx = W / 2;
     ctx.font = '15px "Lilita One", "Arial Rounded MT Bold", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -697,6 +705,10 @@
     for (let x = -20; x < W + 40; x += 46) { circle(x, S.y1 + 34 + (hash(x, 9) % 12), 28); ctx.fill(); }
     ctx.fillStyle = '#ffffff';
     for (let x = 0; x < W + 40; x += 38) { circle(x, S.y1 + 48 + (hash(x, 4) % 14), 24); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; for (let x = 0; x < W + 40; x += 38) { circle(x - 8, S.y1 + 38 + (hash(x, 4) % 14), 8); ctx.fill(); }
+    const sh = ctx.createLinearGradient(0, S.y1, 0, S.y1 + 26); sh.addColorStop(0, 'rgba(90,130,180,0.3)'); sh.addColorStop(1, 'rgba(90,130,180,0)');
+    ctx.fillStyle = sh; ctx.fillRect(0, S.y1, W, 26);
+    ctx.fillStyle = 'rgba(200,225,245,0.9)'; for (let k = 0; k < 40; k++) { const h = hash(k, 61); circle(h % W, S.y1 + 30 + (h >> 10) % 40, 1.2); ctx.fill(); }
     // cheering penguins and seals on the snow bank (away from the middle, where touch players look)
     const fans = [[70, 510, 0], [120, 520, 1], [250, 512, 0], [395, 522, 0], [560, 516, 1], [700, 520, 0], [840, 512, 1], [900, 522, 0]];
     fans.forEach(([x, y, k], i) => {
@@ -709,10 +721,21 @@
       ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, 466); ctx.lineTo(x + 18, 472 + Math.sin(G.clock * 3 + x) * 2); ctx.lineTo(x, 478); ctx.closePath(); ctx.fill();
     }
     // the sheet: boards, ice, lines and the house
+    ctx.fillStyle = 'rgba(40,60,100,0.25)'; ctx.fillRect(S.x0 - 6, S.y1 + 6, S.x1 - S.x0 + 16, 6);
     ctx.fillStyle = '#c99760'; ctx.fillRect(S.x0 - 10, S.y0 - 4, S.x1 - S.x0 + 20, S.y1 - S.y0 + 10);
+    ctx.fillStyle = '#e0b07a'; ctx.fillRect(S.x0 - 10, S.y0 - 4, S.x1 - S.x0 + 20, 2); ctx.fillRect(S.x0 - 10, S.y0 - 4, 2, S.y1 - S.y0 + 10);
+    ctx.fillStyle = '#9c6f40'; ctx.fillRect(S.x0 - 10, S.y1 + 4, S.x1 - S.x0 + 20, 2); ctx.fillRect(S.x1 + 8, S.y0 - 4, 2, S.y1 - S.y0 + 10);
+    ctx.fillStyle = 'rgba(110,70,30,0.35)'; for (let x = S.x0 + 60; x < S.x1; x += 120) { ctx.fillRect(x, S.y0 - 4, 1.5, 4); ctx.fillRect(x, S.y1, 1.5, 6); }
     const ice = ctx.createLinearGradient(0, S.y0, 0, S.y1);
     ice.addColorStop(0, CU_ICE); ice.addColorStop(0.5, '#f6fbff'); ice.addColorStop(1, CU_ICE2);
     ctx.fillStyle = ice; ctx.fillRect(S.x0, S.y0, S.x1 - S.x0, S.y1 - S.y0);
+    // soft reflections of the arena lights, and the ice darkening where it meets the boards
+    ctx.save(); ctx.beginPath(); ctx.rect(S.x0, S.y0, S.x1 - S.x0, S.y1 - S.y0); ctx.clip();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    for (const [x, w] of [[160, 60], [250, 18], [520, 80], [640, 22], [820, 40]]) { ctx.beginPath(); ctx.moveTo(x, S.y0); ctx.lineTo(x + w, S.y0); ctx.lineTo(x + w - 90, S.y1); ctx.lineTo(x - 90, S.y1); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    ctx.fillStyle = 'rgba(80,120,170,0.16)'; ctx.fillRect(S.x0, S.y0, S.x1 - S.x0, 6); ctx.fillRect(S.x0, S.y0, 5, S.y1 - S.y0);
+    ctx.fillStyle = 'rgba(80,120,170,0.08)'; ctx.fillRect(S.x0, S.y0 + 6, S.x1 - S.x0, 6);
     ctx.fillStyle = st.lucky ? 'rgba(255,215,90,0.35)' : 'rgba(150,190,225,0.35)';
     for (let k = 0; k < 160; k++) { const x = S.x0 + (hash(k, 11) % (S.x1 - S.x0)), y = S.y0 + (hash(k, 13) % (S.y1 - S.y0)); circle(x, y, st.lucky ? 1.6 : 1.1); ctx.fill(); }
     ctx.strokeStyle = 'rgba(160,200,230,0.5)'; ctx.lineWidth = 1;
@@ -723,6 +746,8 @@
     ctx.fillStyle = '#ffffff'; circle(B.x, B.y, K.rings[1]); ctx.fill();
     ctx.fillStyle = CU_RED; circle(B.x, B.y, K.rings[0]); ctx.fill();
     ctx.fillStyle = '#ffffff'; circle(B.x, B.y, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(30,60,120,0.35)'; ctx.lineWidth = 1.2; for (const r of [K.rings[2], K.rings[1], K.rings[0], 7]) { circle(B.x, B.y, r); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(B.x - K.rings[2] * 0.3, B.y - K.rings[2] * 0.45, K.rings[2] * 0.45, K.rings[2] * 0.14, -0.4, 0, Math.PI * 2); ctx.fill();
     // ring values (small, so kids can read what each ring is worth)
     ctx.font = '700 11px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fillText('1', B.x + 45, B.y - 38);
