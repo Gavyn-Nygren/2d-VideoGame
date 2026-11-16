@@ -21,6 +21,97 @@ const MONSTER_COL = { apple: '#e5413a', cake: '#ff9ccf', fish: '#7fb6e0', gold: 
 const MONSTER_BODY = { Munch: '#8f7be8', Nom: '#7fc8a9', Nibble: '#f29fc5' };
 const MONSTER_FOOD_NAME = { apple: 'an apple', cake: 'cake', fish: 'fish', gold: 'a cupcake' };
 
+
+/* ===== Graphics polish helpers for Worlds 6-9 (Nov 2026, batch A). This file loads first of the four worlds, so the
+   other World 6-9 levels use these too. Drawing only: nothing here touches gameplay or the seeded random numbers. ===== */
+// a soft ground shadow (ink at ~18%)
+function paShadow(x, y, rx, ry, a) { ctx.fillStyle = 'rgba(20,20,40,' + (a === undefined ? 0.18 : a) + ')'; ctx.beginPath(); ctx.ellipse(x, y, Math.max(1, rx), Math.max(1, ry || rx * 0.28), 0, 0, Math.PI * 2); ctx.fill(); }
+// a filled, outlined, lit box: base colour, darker foot, light top edge and an outline in a dark shade of its own colour
+function paBox(x, y, w, h, r, col, o) {
+  o = o || {};
+  ctx.fillStyle = col; rr(x, y, w, h, r); ctx.fill();
+  ctx.save(); rr(x, y, w, h, r); ctx.clip();
+  ctx.fillStyle = shade(col, o.dark || 0.22); ctx.fillRect(x, y + h * (o.foot || 0.72), w, h);
+  ctx.fillStyle = 'rgba(255,255,255,' + (o.lit || 0.26) + ')'; ctx.fillRect(x, y, w, Math.max(1.5, Math.min(4, h * 0.14)));
+  ctx.restore();
+  ctx.strokeStyle = shade(col, o.edge || 0.55); ctx.lineWidth = o.lw || 2; rr(x, y, w, h, r); ctx.stroke();
+}
+// an offscreen layer drawn once (key changes = redraw), then pasted every frame: for static backdrops. paint(g) draws on g
+// (not ctx); paCirc / paRR are the circle() / rr() for any context
+const _paLayers = {};
+function paCirc(g, x, y, r) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); }
+function paRR(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function paLayer(key, w, h, paint) {
+  // drawn at the game canvas's own pixel scale, so pasting it is a 1:1 copy (cheap, and sharp on any screen)
+  const sc = Math.max(1, canvas.width / W);
+  key += '|' + sc;
+  let L = _paLayers[key];
+  if (!L) {
+    for (const k in _paLayers) if (k.split('|')[0] === key.split('|')[0]) delete _paLayers[k];
+    const c = document.createElement('canvas'); c.width = Math.ceil(w * sc); c.height = Math.ceil(h * sc);
+    const g = c.getContext('2d'); g.scale(sc, sc);
+    paint(g);
+    L = _paLayers[key] = c;
+  }
+  return L;
+}
+// paste a cached backdrop layer behind the level's walls: the solid cells (and anything below cutY) are cut out of a copy
+// once per room, so each frame is a single drawImage (a per-frame clip path cost 2-4 ms)
+// top / bottom: the band of the layer that has anything in it (only that band is copied each frame)
+function paBehindTiles(layer, cutY, top, bottom) {
+  const L = G.level; if (!L || !L.grid) { ctx.drawImage(layer, 0, 0, W, H); return; }
+  const c = layer.__cut;
+  if (!c || c.grid !== L.grid || c.cutY !== cutY) {
+    const cv = (c && c.cv) || document.createElement('canvas'); cv.width = layer.width; cv.height = layer.height;
+    const g = cv.getContext('2d'), sx = layer.width / W, sy = layer.height / H;
+    g.drawImage(layer, 0, 0); g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000';
+    const cols = Math.min(L.cols || COLS, COLS);
+    for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < cols; tx++) {
+      const ch = L.grid[ty][tx];
+      if (ch === '#' || ch === 'P' || ch === 'w' || ch === 's') g.fillRect(tx * T * sx - 0.5, ty * T * sy - 0.5, T * sx + 1, T * sy + 1);
+    }
+    if (cutY !== undefined) g.fillRect(0, cutY * sy, cv.width, cv.height);
+    layer.__cut = { grid: L.grid, cutY, cv };
+  }
+  const y0 = clamp(Math.floor(top || 0), 0, H), y1 = clamp(Math.ceil(Math.min(bottom || H, cutY === undefined ? H : cutY)), y0 + 1, H), k = layer.height / H;
+  ctx.drawImage(layer.__cut.cv, 0, Math.round(y0 * k), layer.width, Math.round((y1 - y0) * k), 0, y0, W, y1 - y0);
+}
+// World 6 backyard backdrop: neighbours' houses, round trees and a picket fence, hazed toward the sky (a cached layer,
+// pasted with paBehindTiles)
+function paBackyard(groundY, seed) {
+  const key = 'yard|' + groundY + '|' + seed + '|' + C.skyBot + C.hillFar;
+  const layer = paLayer(key, W, H, g => {
+    const haze = (c, t) => mixCol(c, C.skyBot, t);
+    // far trees
+    for (let i = 0; i < 9; i++) {
+      const h = hash(i * 31 + seed, 7), x = i * 118 + (h % 60) - 20, r = 26 + (h >> 6) % 16, y = groundY - 70 - (h >> 10) % 30;
+      g.fillStyle = haze('#5f9e74', 0.62); paCirc(g, x, y, r); g.fill(); paCirc(g, x + r * 0.7, y + 8, r * 0.8); g.fill(); paCirc(g, x - r * 0.7, y + 10, r * 0.7); g.fill();
+      g.fillStyle = haze('#7a5a3e', 0.6); g.fillRect(x - 4, y + r * 0.6, 8, groundY - y);
+    }
+    // houses
+    const roofs = ['#c8654f', '#5d7fb0', '#7c9a58', '#b9784a'], walls = ['#f2dcc0', '#e9e1cf', '#f5d9b5', '#dfe6ea'];
+    for (let i = 0; i < 4; i++) {
+      const h = hash(i * 17 + seed, 3), w = 120 + h % 50, x = 40 + i * 240 + (h >> 4) % 70, hh = 70 + (h >> 8) % 30, y = groundY - 40 - hh;
+      const wall = haze(walls[(i + seed) % 4], 0.45), roof = haze(roofs[(i + seed) % 4], 0.5);
+      g.fillStyle = wall; g.fillRect(x, y, w, hh + 40);
+      g.fillStyle = haze(shade(walls[(i + seed) % 4], 0.12), 0.45); g.fillRect(x + w - 14, y, 14, hh + 40);
+      g.fillStyle = roof; g.beginPath(); g.moveTo(x - 12, y + 2); g.lineTo(x + w / 2, y - 42); g.lineTo(x + w + 12, y + 2); g.closePath(); g.fill();
+      g.fillStyle = haze(shade(roofs[(i + seed) % 4], 0.25), 0.5); g.fillRect(x - 12, y, w + 24, 5);
+      g.fillRect(x + w * 0.7, y - 34, 12, 22);   // chimney
+      g.fillStyle = haze('#8fb6cf', 0.42); g.strokeStyle = haze('#ffffff', 0.3); g.lineWidth = 2;
+      for (let k = 0; k < 2; k++) { const wx = x + 18 + k * (w - 56); g.fillRect(wx, y + 18, 20, 22); g.strokeRect(wx, y + 18, 20, 22); g.beginPath(); g.moveTo(wx + 10, y + 18); g.lineTo(wx + 10, y + 40); g.stroke(); }
+    }
+    // picket fence
+    const fy = groundY - 34, wood = haze('#f4ead6', 0.28), woodD = haze('#c9b89a', 0.3);
+    g.fillStyle = woodD; g.fillRect(0, fy + 8, W, 5); g.fillRect(0, fy + 22, W, 5);
+    for (let x = 4; x < W; x += 16) {
+      g.fillStyle = wood; g.beginPath(); g.moveTo(x, groundY); g.lineTo(x, fy); g.lineTo(x + 5, fy - 6); g.lineTo(x + 10, fy); g.lineTo(x + 10, groundY); g.closePath(); g.fill();
+      g.fillStyle = woodD; g.fillRect(x + 8, fy, 2, groundY - fy);
+    }
+  });
+  return layer;
+}
+
 /* ---- rules ---- */
 function monSolid(tx, ty) { if (ty < 0) return false; return tile(tx, ty) === '#'; }
 // the first surface (stone or plank top) at or below y in the column of x
@@ -740,8 +831,15 @@ function monDrawBig(st, m) {
     ctx.restore();
   }
   // body (it gets rounder with every bite)
-  ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(-rx * 0.35, -ry * 0.5, rx * 0.32, ry * 0.2, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  // round shading: a darker belly-side crescent, a few freckles, then the outline over it
+  ctx.save(); ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = 'rgba(20,20,50,0.16)'; ctx.beginPath(); ctx.ellipse(rx * 0.18, ry * 0.22, rx * 1.02, ry * 0.95, 0, 0, Math.PI * 2); ctx.ellipse(-rx * 0.08, -ry * 0.12, rx * 0.98, ry * 0.92, 0, 0, Math.PI * 2); ctx.fill('evenodd');
+  ctx.fillStyle = 'rgba(20,20,50,0.12)'; for (const [fx, fy, fr] of [[-0.62, -0.05, 4], [-0.5, 0.12, 3], [0.55, -0.35, 3.5], [0.66, -0.2, 2.5]]) { circle(fx * rx * f, fy * ry, fr); ctx.fill(); }
+  ctx.restore();
+  ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.ellipse(-rx * 0.35, -ry * 0.5, rx * 0.32, ry * 0.2, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; circle(-rx * 0.52, -ry * 0.62, 3.5); ctx.fill();
   // horn
   ctx.fillStyle = C.paper; ctx.beginPath(); ctx.moveTo(-f * 10 - 8, -ry + 6); ctx.lineTo(-f * 12, -ry - 18); ctx.lineTo(-f * 10 + 8, -ry + 6); ctx.closePath(); ctx.fill(); ctx.stroke();
   // belly patch with the tummy pie
@@ -879,13 +977,17 @@ function monDrawKitchen(st) {
   // fences
   for (const f of st.fences) {
     const x = f.tx * T, y = f.ty * T;
-    ctx.fillStyle = C.plankDark; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5;
-    rr(x + 4, y + 6, 5, 24, 2); ctx.fill(); ctx.stroke(); rr(x + 21, y + 6, 5, 24, 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = C.plank; rr(x + 3, y + 8, 24, 4, 2); ctx.fill(); ctx.stroke(); rr(x + 3, y + 18, 24, 3, 1.5); ctx.fill();
+    paShadow(x + 15, y + 30, 15, 3);
+    paBox(x + 4, y + 6, 5, 24, 2, C.plankDark, { lw: 1.5 }); paBox(x + 21, y + 6, 5, 24, 2, C.plankDark, { lw: 1.5 });
+    paBox(x + 3, y + 8, 24, 4.5, 2, C.plank, { lw: 1.5, foot: 0.6 }); paBox(x + 3, y + 18, 24, 4, 1.5, C.plank, { lw: 1.5, foot: 0.6 });
+    ctx.fillStyle = '#6b4630'; circle(x + 6.5, y + 10, 1); ctx.fill(); circle(x + 23.5, y + 10, 1); ctx.fill(); circle(x + 6.5, y + 20, 1); ctx.fill(); circle(x + 23.5, y + 20, 1); ctx.fill();
   }
   // the pot: a cauldron on a little fire
   if (st.pot) {
     const p = st.pot, fl = Math.sin(t * 20);
+    paShadow(p.x, p.y + 1, 20, 4);
+    // a ring of hearth stones under the fire
+    for (let i = -2; i <= 2; i++) { const sc = '#9a96a8'; ctx.fillStyle = i % 2 ? shade(sc, 0.12) : sc; ctx.strokeStyle = shade(sc, 0.5); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(p.x + i * 7.5, p.y - 1.5, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     for (let i = -1; i <= 1; i++) {
       ctx.fillStyle = i ? '#ffb347' : '#ffd75a';
       const hgt = 9 + (i ? 2 : 4) * (0.5 + 0.5 * Math.sin(t * 20 + i * 2)) + fl;
@@ -894,7 +996,11 @@ function monDrawKitchen(st) {
     ctx.fillStyle = '#3c3a52'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
     ctx.fillRect(p.x - 11, p.y - 7, 3, 7); ctx.fillRect(p.x + 8, p.y - 7, 3, 7);
     ctx.beginPath(); ctx.arc(p.x, p.y - 19, 14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.18)'; circle(p.x - 5, p.y - 23, 3.5); ctx.fill();
+    ctx.save(); circle(p.x, p.y - 19, 13); ctx.clip();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; circle(p.x + 6, p.y - 13, 13); ctx.fill();
+    ctx.fillStyle = 'rgba(255,170,80,0.28)'; ctx.fillRect(p.x - 14, p.y - 9, 28, 6);   // firelight on the belly
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; circle(p.x - 5, p.y - 23, 3.5); ctx.fill(); circle(p.x - 8, p.y - 17, 1.6); ctx.fill();
     ctx.fillStyle = '#9aa0c0'; rr(p.x - 15, p.y - 33, 30, 5, 2.5); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#7be08a'; ctx.beginPath(); ctx.ellipse(p.x, p.y - 33, 11, 2, 0, 0, Math.PI * 2); ctx.fill();
   }
@@ -903,8 +1009,12 @@ function monDrawKitchen(st) {
     const want = b.type === st.want, bob = want ? Math.sin(t * 6) * 3 : 0, pop = b.pop > 0 ? -Math.sin(b.pop / 0.2 * Math.PI) * 5 : 0;
     const x = b.x + 2, y = b.y + 10;
     if (want) { ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 + 0.4 * Math.sin(8 * t)) + ')'; ctx.lineWidth = 3; rr(x - 3, y - 18, 32, 41, 8); ctx.stroke(); }
-    ctx.fillStyle = C.plank; ctx.strokeStyle = C.plankDark; ctx.lineWidth = 2; rr(x, y, 26, 20, 3); ctx.fill(); ctx.stroke();
+    paShadow(x + 13, y + 20, 15, 3);
+    paBox(x, y, 26, 20, 3, C.plank, { foot: 0.8 });
+    ctx.strokeStyle = C.plankDark; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(x + 3, y + 3); ctx.lineTo(x + 23, y + 17); ctx.moveTo(x + 23, y + 3); ctx.lineTo(x + 3, y + 17); ctx.stroke();
+    ctx.strokeStyle = 'rgba(107,70,48,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 2, y + 7); ctx.lineTo(x + 8, y + 7); ctx.moveTo(x + 18, y + 13); ctx.lineTo(x + 24, y + 13); ctx.stroke();
+    ctx.fillStyle = '#6b4630'; for (const [dx, dy] of [[3, 3], [23, 3], [3, 17], [23, 17]]) { circle(x + dx, y + dy, 1.1); ctx.fill(); }
     monDrawFood(b.type, x + 13, y - 4 + bob + pop, 0.9);
     if (want && st.hand !== st.want && !st.done && G.introT <= 0.4) {
       const ay = b.y - 26 + Math.abs(Math.sin(t * 5)) * -6;
@@ -915,6 +1025,8 @@ function monDrawKitchen(st) {
 }
 function monDrawWorld(st) {
   const t = G.clock;
+  // the neighbours' gardens behind the meadow (cached, clipped to the open air so walls stay in front)
+  paBehindTiles(paBackyard(st.fieldY, (G.room || 0) + 1), undefined, st.fieldY - 195, st.fieldY);
   // meadow dressing
   for (const d of st.decor) {
     if (d.kind === 'tuft') {
@@ -949,6 +1061,7 @@ function monDrawWorld(st) {
   if (st.ghost && G.introT <= 0) { ctx.globalAlpha = 0.3; monX(st.ghost.x, st.ghost.y - 4, 14, 10, '#fff', 2); ctx.globalAlpha = 1; }
   // monsters
   for (const m of st.monsters) {
+    if (m.kind === 'big') { const tan = m.state === 'tantrum'; paShadow(m.bx, m.by + 60 * m.scale, (54 + 0.6 * m.eaten) * m.scale, 8 * m.scale, tan ? 0.14 : 0.2); }
     if (m.kind === 'big') monDrawBig(st, m); else monDrawHead(st, m);
     monDrawShock(m);
   }

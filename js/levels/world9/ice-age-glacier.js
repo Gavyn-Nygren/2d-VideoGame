@@ -775,6 +775,11 @@ function glacierDrawSky(st) {
     if (x + w < -20 || x - w > W + 20) continue;
     ctx.fillStyle = layer ? '#a5cbe9' : '#b9d6ef';
     ctx.beginPath(); ctx.moveTo(x - w, y + 40); ctx.lineTo(x - w * 0.18, y - h + 10); ctx.quadraticCurveTo(x, y - h - 6, x + w * 0.18, y - h + 10); ctx.lineTo(x + w, y + 40); ctx.closePath(); ctx.fill();
+    // (polish) the shaded east face and a few rock ribs
+    ctx.fillStyle = layer ? 'rgba(70,110,160,0.16)' : 'rgba(70,110,160,0.13)';
+    ctx.beginPath(); ctx.moveTo(x + w * 0.02, y - h + 2); ctx.quadraticCurveTo(x + w * 0.1, y - h + 4, x + w * 0.18, y - h + 10); ctx.lineTo(x + w, y + 40); ctx.lineTo(x + w * 0.12, y + 40); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = layer ? 'rgba(90,130,175,0.35)' : 'rgba(90,130,175,0.28)'; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(x - w * 0.3, y - h * 0.45); ctx.lineTo(x - w * 0.42, y - h * 0.1); ctx.moveTo(x + w * 0.3, y - h * 0.4); ctx.lineTo(x + w * 0.46, y - h * 0.05); ctx.stroke();
     ctx.fillStyle = '#ffffff';
     ctx.beginPath(); ctx.moveTo(x - w * 0.32, y - h * 0.6); ctx.lineTo(x - w * 0.18, y - h + 10); ctx.quadraticCurveTo(x, y - h - 6, x + w * 0.18, y - h + 10); ctx.lineTo(x + w * 0.32, y - h * 0.6);
     ctx.lineTo(x + w * 0.16, y - h * 0.52); ctx.lineTo(x + w * 0.04, y - h * 0.64); ctx.lineTo(x - w * 0.1, y - h * 0.5); ctx.lineTo(x - w * 0.22, y - h * 0.62); ctx.closePath(); ctx.fill();
@@ -790,6 +795,13 @@ function glacierDrawHills(st) {
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = '#c4e2f4'; ctx.lineWidth = 3;
   ctx.beginPath(); for (let sx = 0; sx <= W; sx += 16) { const y = yAt(sx) + 2; if (sx) ctx.lineTo(sx, y); else ctx.moveTo(sx, y); } ctx.stroke();
+  // (polish) snow sparkles that twinkle on the hills, fixed to the ground as it scrolls
+  if (!reduceMotion) for (let k = Math.floor(off / 37); k < Math.floor(off / 37) + W / 37 + 1; k++) {
+    const h = hash(k, 77), sx = k * 37 - off + (h % 30), tw = Math.sin(G.clock * 3 + h % 7);
+    if (tw < 0.6) continue;
+    ctx.fillStyle = 'rgba(255,255,255,' + ((tw - 0.6) * 2).toFixed(2) + ')'; const y = yAt(sx) + 14 + (h >> 6) % 40, r = 2.2;
+    ctx.beginPath(); ctx.moveTo(sx, y - r * 2); ctx.lineTo(sx + r * 0.5, y); ctx.lineTo(sx, y + r * 2); ctx.lineTo(sx - r * 0.5, y); ctx.closePath(); ctx.moveTo(sx - r * 2, y); ctx.lineTo(sx, y + r * 0.5); ctx.lineTo(sx + r * 2, y); ctx.lineTo(sx, y - r * 0.5); ctx.closePath(); ctx.fill();
+  }
   // pines
   const TW = 150;
   for (let k = Math.floor(off / TW) - 1; k < Math.floor(off / TW) + W / TW + 2; k++) {
@@ -815,6 +827,7 @@ function glacierPine(x, y, s) {
     const w = (26 - i * 6) * s, ty = y - 10 * s - i * 14 * s;
     ctx.fillStyle = '#3f8a6e';
     ctx.beginPath(); ctx.moveTo(x - w, ty); ctx.lineTo(x, ty - 26 * s); ctx.lineTo(x + w, ty); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#2f6e57'; ctx.beginPath(); ctx.moveTo(x, ty - 26 * s); ctx.lineTo(x + w, ty); ctx.lineTo(x, ty); ctx.closePath(); ctx.fill();   // (polish) shaded side
     ctx.fillStyle = '#ffffff';
     ctx.beginPath(); ctx.moveTo(x - w * 0.55, ty - 11 * s); ctx.lineTo(x, ty - 26 * s); ctx.lineTo(x + w * 0.55, ty - 11 * s); ctx.quadraticCurveTo(x, ty - 7 * s, x - w * 0.55, ty - 11 * s); ctx.fill();
   }
@@ -1201,6 +1214,7 @@ function glacierDrawFloeShape(w, h, dmg) {
   ctx.fillStyle = '#bfeaff'; rr(-w / 2, -h, w, h - 6, 8); ctx.fill();
   ctx.fillStyle = '#ffffff'; rr(-w / 2 + 2, -h - 3, w - 4, 9, 5); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.7)'; rr(-w / 2 + 10, -h + 9, w * 0.3, 4, 2); ctx.fill();
+  ctx.fillStyle = 'rgba(79,159,214,0.25)'; for (const fx of [0.2, 0.55, 0.8]) { circle(-w / 2 + w * fx, -h + 15 + (fx * 10 % 4), 2); ctx.fill(); }   // (polish) bubbles in the ice
   ctx.strokeStyle = '#4f9fd6'; ctx.lineWidth = 2.5; rr(-w / 2, -h, w, h, 8); ctx.stroke();
   if (dmg > 0) {
     ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 1.8;

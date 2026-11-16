@@ -496,7 +496,54 @@ function laserPaintBricks(c, L) {
     c.fillStyle = (tx + ty) % 2 ? '#3a3360' : '#37305b'; c.fillRect(x, y, T, T);
     c.fillStyle = 'rgba(20,16,44,0.35)';
     c.fillRect(x, y + 14, T, 2); c.fillRect(x + ((ty % 2) ? 0 : 15), y, 2, 14); c.fillRect(x + ((ty % 2) ? 15 : 0), y + 16, 2, 14);
+    // (polish) a few odd bricks, lit top edges, and the occasional crack
+    const h = hash(tx * 3 + 1, ty * 5 + 2);
+    if (h % 5 === 0) { c.fillStyle = h % 2 ? 'rgba(255,255,255,0.05)' : 'rgba(10,8,30,0.14)'; c.fillRect(x + ((ty % 2) ? 17 : 2), y + (h % 3 ? 0 : 16), 13, 14); }
+    c.fillStyle = 'rgba(255,255,255,0.045)'; c.fillRect(x, y + 16, T, 1); c.fillRect(x, y, T, 1);
+    if (h % 17 === 0) { c.strokeStyle = 'rgba(10,8,30,0.4)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x + 6, y + 3); c.lineTo(x + 11, y + 10); c.lineTo(x + 8, y + 17); c.lineTo(x + 14, y + 25); c.stroke(); }
   }
+  laserPaintVault(c, L);
+}
+// the vault's dressing, drawn into the same cached layer behind everything: stone pillars, arched alcoves with treasure,
+// shields and hanging chains (dim in the dark, they light up under the lantern)
+function laserPaintVault(c, L) {
+  const V = LASER.vault, open = new Path2D();
+  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) { const ch = L.grid[ty][tx]; if (ch !== '#' && ch !== '=') open.rect(tx * T, ty * T, T, T); }
+  c.save(); c.clip(open);
+  const rnd = k => hash(k * 13 + (G.room || 0) * 101, 7);
+  for (let i = 0, x = V.x0 + 90; x < V.x1 - 60; i++, x += 180) {
+    // a pillar: shaded shaft, capital and base
+    const px = x - 14;
+    c.fillStyle = '#463e72'; c.fillRect(px, V.y0, 28, V.y1 - V.y0);
+    c.fillStyle = '#524a82'; c.fillRect(px, V.y0, 8, V.y1 - V.y0);
+    c.fillStyle = '#332c58'; c.fillRect(px + 20, V.y0, 8, V.y1 - V.y0);
+    c.fillStyle = '#5a528c'; c.fillRect(px - 5, V.y0 + 4, 38, 9); c.fillRect(px - 5, V.y1 - 14, 38, 10);
+    c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(px - 5, V.y0 + 4, 38, 2);
+    // the alcove to its right: dark arch, a little treasure inside
+    const ax = x + 46, aw = 70, ay = V.y0 + 70 + (rnd(i) % 3) * 16, ah = 76, kind = rnd(i + 9) % 4;
+    if (ax + aw > V.x1 - 20) continue;
+    c.fillStyle = '#251f43'; c.beginPath(); c.moveTo(ax, ay + ah); c.lineTo(ax, ay + aw / 2); c.arc(ax + aw / 2, ay + aw / 2, aw / 2, Math.PI, 0); c.lineTo(ax + aw, ay + ah); c.closePath(); c.fill();
+    c.strokeStyle = '#5a528c'; c.lineWidth = 3; c.stroke();
+    c.fillStyle = '#5a528c'; c.fillRect(ax - 4, ay + ah, aw + 8, 6);
+    const bx = ax + aw / 2, by = ay + ah;
+    if (kind === 0) { // a vase
+      c.fillStyle = '#7a5aa8'; c.beginPath(); c.moveTo(bx - 6, by); c.quadraticCurveTo(bx - 16, by - 18, bx - 6, by - 28); c.lineTo(bx + 6, by - 28); c.quadraticCurveTo(bx + 16, by - 18, bx + 6, by); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(255,215,90,0.5)'; c.fillRect(bx - 12, by - 17, 24, 3);
+    } else if (kind === 1) { // a chest
+      c.fillStyle = '#6b4630'; c.fillRect(bx - 16, by - 18, 32, 18); c.fillStyle = '#8a5833'; c.beginPath(); c.moveTo(bx - 16, by - 18); c.quadraticCurveTo(bx, by - 30, bx + 16, by - 18); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(217,166,64,0.7)'; c.fillRect(bx - 2, by - 22, 4, 9); c.fillRect(bx - 16, by - 12, 32, 2);
+    } else if (kind === 2) { // a coin heap
+      c.fillStyle = 'rgba(217,166,64,0.75)'; c.beginPath(); c.moveTo(bx - 22, by); c.quadraticCurveTo(bx, by - 26, bx + 22, by); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(255,240,170,0.55)'; for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(bx - 10 + k * 5, by - 6 - (k % 2) * 6, 2, 0, Math.PI * 2); c.fill(); }
+    } else { // a knight's shield
+      c.fillStyle = '#4f5b92'; c.beginPath(); c.moveTo(bx - 13, by - 40); c.lineTo(bx + 13, by - 40); c.lineTo(bx + 13, by - 24); c.quadraticCurveTo(bx, by - 8, bx, by - 8); c.quadraticCurveTo(bx - 13, by - 18, bx - 13, by - 24); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(217,166,64,0.7)'; c.fillRect(bx - 2, by - 38, 4, 26); c.fillRect(bx - 11, by - 30, 22, 4);
+    }
+    // a chain hanging from the ceiling between them
+    c.strokeStyle = 'rgba(160,150,200,0.28)'; c.lineWidth = 2;
+    for (let y = V.y0, k = 0; y < V.y0 + 40 + (rnd(i + 3) % 40); y += 7, k++) { c.beginPath(); c.ellipse(x + 130, y, k % 2 ? 1.5 : 3, 3.5, 0, 0, Math.PI * 2); c.stroke(); }
+  }
+  c.restore();
 }
 function laserDrawBackdrop() {
   const L = G.level, cw = canvas.width, ch = canvas.height;
@@ -558,7 +605,8 @@ function laserDrawShape(shape, x, y, s) {
 }
 function laserDrawPrize(st, gm) {
   const base = (gm.r + 1) * T, x = gm.x;
-  ctx.fillStyle = '#5d5484'; rr(x - 10, base - 14, 20, 14, 3); ctx.fill(); ctx.fillStyle = '#8a82b0'; ctx.fillRect(x - 13, base - 17, 26, 4); ctx.fillRect(x - 12, base - 3, 24, 3);
+  paShadow(x, base, 16, 3, 0.3);
+  ctx.fillStyle = '#5d5484'; rr(x - 10, base - 14, 20, 14, 3); ctx.fill(); ctx.fillStyle = '#463e72'; ctx.fillRect(x + 4, base - 14, 6, 14); ctx.fillStyle = '#8a82b0'; ctx.fillRect(x - 13, base - 17, 26, 4); ctx.fillRect(x - 12, base - 3, 24, 3);
   if (gm.got) return;
   const bob = Math.sin(G.clock * 3) * 2, y = base - 31 + bob, kind = G.level.def.prize || 'gem';
   ctx.fillStyle = 'rgba(255,240,170,0.22)'; circle(x, y, 18 + Math.sin(G.clock * 5) * 2); ctx.fill();
