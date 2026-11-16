@@ -104,7 +104,7 @@
   function room(st, L, k) {
     st.k = k; st.title = L.def.title || TAKES[k].title; st.T = TAKES[k];
     st.goldUsed = false; st.gold = false;
-    K.actLabels(['hands', 'hands'], 'hands');
+    setActWords(['grab', 'grab']); K.actLabels(['grab', 'grab'], 'grab');
     const lay = layout(st, k);
     st.rows = lay.rows; st.starsL = lay.stars;
     st.bag = st.rows.find(r => r.k === 'bag');
@@ -139,6 +139,7 @@
       let d2 = dt;
       if (st.slow > 0) { st.slow -= dt; d2 = dt * 0.3; }
       hands(st);
+      { const w = st.link ? 'let go' : 'grab'; setActWords([w, w]); }   // (the action holds hands, then lets go)
       fall(st, d2);
       if (G.time - st.lastHit > 3) st.meter = Math.min(100, st.meter + S.regen * dt);
       if (st.meter <= 0) { st.state = 'cut'; st.stats.retakes++; K.retake(st); }
@@ -813,15 +814,16 @@
   };
 
   /* ---------- the level ---------- */
-  const act = { label: 'hands', labels: ['hands', 'hands'] };
+  const act = { label: 'grab', labels: ['grab', 'grab'] };
   STUDIO.defs.stuntfall = {
     name: 'Stunt Double Fall', world: 35, kind: 'team', mode: 'stuntfall', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Take', outfit: 'none',
     legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> steer / <kbd>W</kbd> spread <kbd>S</kbd> tuck',
-      bo: '<kbd>←</kbd><kbd>→</kbd> steer / <kbd>↑</kbd> spread <kbd>↓</kbd> tuck',
+      pip: '<kbd>A</kbd><kbd>D</kbd> steer <kbd>W</kbd> spread <kbd>S</kbd> tuck',
+      bo: '<kbd>←</kbd><kbd>→</kbd> steer <kbd>↑</kbd> spread <kbd>↓</kbd> tuck',
       pad: 'stick steers, up spreads, down tucks,',
     },
     tip: 'Fall off the skyscraper! Hold hands to smash the sugar glass, let go to slip through the gaps in the real steel.',
+    howTo: ['Press grab when you are close to hold hands. Together you smash the sugar glass.', 'Press let go to slip through the gaps.'],
     act,
     map: K.stubMap(),
     rooms: [

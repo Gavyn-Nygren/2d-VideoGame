@@ -8,7 +8,7 @@
    follow along for name tags and speech bubbles). The screen is split in two lanes: Pip rides the top lane, Bo the
    bottom one. Both lanes have the very same course, each with its own camera, and a strip in the middle shows how far
    along each snail is.
-   SPEED: every press of the action ('mash') gives your snail a nudge (+22 px/s); it slows by itself. The speed meter by
+   SPEED: every press of the action ('go') gives your snail a nudge (+22 px/s); it slows by itself. The speed meter by
      your snail has a green part and a red part. Over the line (110 px/s; gold shell 128) your snail gets NERVOUS: the
      nerve ring fills (faster the further over you are) and when it is full: "EEK!" it hides in its shell for 1.3 s and
      stops dead. Under the line the ring empties again. So: tap in a steady rhythm just under the line; wild mashing
@@ -24,7 +24,7 @@
      more rounds' total distance. Sudden death: the next win takes it.
    CATCH-UP HELP (gold, announced at GO, counted, off in sudden death, for whoever is behind, the computer too):
      1 round behind = a gold shell (the line is 128 instead of 110 and nerves fill slower).
-   CONTROLS (p.input / p.pendingAct only, so keyboard, controller and touch all work): action = mash, ▲ ▼ steer.
+   CONTROLS (p.input / p.pendingAct only, so keyboard, controller and touch all work): action = go (tap), ▲ ▼ steer.
    MODES.snailrace.plan(st, id) (speed, the line, nerve, what is ahead on each path) feeds the prompts, the meter and the
      computer brain. Everything lives inside this block; sounds are Sfx.extra.snailrace*. */
 (() => {
@@ -421,7 +421,7 @@
   SHRUNK.defs.snailrace = {
     name: 'Snail Race', world: 30, kind: 'versus', mode: 'snailrace', ownStep: true,
     match: { bestOf: 5, roundTime: SR.roundTime },
-    act: { label: 'mash' },
+    act: { label: 'go' },   // (one tap, not mashing: the card says so)
     tagLift: 30,
     legend: {
       pip: '<kbd>W</kbd><kbd>S</kbd> steer',

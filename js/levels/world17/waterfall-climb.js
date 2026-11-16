@@ -722,6 +722,8 @@ function wfallTick(st, dt) {
   for (const p of order) { st.pl[p.id].dx = 0; wfallPlayer(st, p, dt); }
   wfallLeash(st, yb);
   for (const p of ps) wfallAct(st, p);
+  // the action's word: the vine (then heave on it) at a vine post up top, else the lift lever
+  setActWords(ps.map(p => { const P = st.pl[p.id], w = P.post >= 0 ? st.walls[P.post] : null; return w ? (w.down ? 'heave' : 'vine') : 'lever'; }));
   for (const p of ps) wfallHazards(st, p);
   wfallWalls(st, dt);
   wfallCheckpoints(st);

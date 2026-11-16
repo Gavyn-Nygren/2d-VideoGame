@@ -297,7 +297,8 @@ function controlRows(id, lg, act, job) {
   const aw = job ? jobActWord(id, job) : act ? actLabel(id) : '';
   if (aw && (act || job)) {
     // an action that does the same as a row above (Ski Jump: the jumper jumps with jump or the action) joins that row
-    const same = rows.find(r => r.label === aw);
+    // (or a row that starts with the word: "stick the landing"; not "hold to duck", where hold means the key)
+    const same = rows.find(r => r.label === aw || (r.label.startsWith(aw + ' ') && !/^\S+ to /.test(r.label)));
     if (same) { if (!same.keys.includes(btnHTML(id, 'act'))) { same.keys += ' <span class="k-word">or</span> ' + btnHTML(id, 'act'); same.whats.push('or', 'act'); } }
     else if (!rows.some(r => r.whats.includes('act'))) rows.push({ keys: btnHTML(id, 'act'), whats: ['act'], label: aw, act: true });
   }

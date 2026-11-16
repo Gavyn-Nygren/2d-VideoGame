@@ -158,6 +158,7 @@ LEVELS.push(
       pad: 'stick or d-pad walks and pushes,',
     },
     tip: 'Push the stones to match the picture! Heavy stones need both of you in a line. Hold the action to pull.',
+    howTo: ['Stuck? Stand on the reset tile in the corner and hold the action for 1 s to start the puzzle over.'],
     act: { label: 'pull' },
     map: W28_SPAWN_MAP,
     rooms: [

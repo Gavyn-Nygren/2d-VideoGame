@@ -996,7 +996,7 @@ const LEVELS = [
   },
   {
     name: 'Ice Slide', world: 4, kind: 'team', mode: 'ice', ownStep: true, // no act button: "go back" is hold ▼ for 1 s
-    legend: { down: 'drop · hold: go back', padDown: 'down drops, hold: back' },
+    legend: { down: 'drop, hold to go back', padDown: 'down drops, hold to go back' },
     howTo: [
       'Push left or right once and you slide until you bump into something: a wall, a gate, a post or your partner.',
       'On ice you only hop straight up (through a hole above you) or drop down through the ice shelf you stand on.',
@@ -1281,10 +1281,11 @@ const LEVELS = [
     match: { bestOf: 5, roundTime: 60 },
     act: { label: 'pull' },
     // jump lets go of the rope here and down does nothing, so the top bar says so (the act line adds "F pull")
-    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> let go', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> let go',
+    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> let go, for a crate', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> let go, for a crate',
       pad: 'stick or d-pad move, <span data-glyph="a"></span> lets go,' },
     stomp: false,                          // the players never meet (a middle line keeps them apart)
     tip: 'Pull when your note hits the drum! Perfects in a row pull harder, and the beat speeds up. Jump off for goodies!',
+    howTo: ['Jump to let go of the rope and catch a crate. Press pull at your rope end to grab it again.'],
     switches: {}, signs: [],
     // the field is raised 2 rows (floor surface y 420) so the animal fans fit on a bench below it; crates fall from y 100
     map: [
@@ -1439,7 +1440,7 @@ const LEVELS = [
   { name: 'Sumo Bounce', world: 5, kind: 'versus', mode: 'sumo',
     match: { bestOf: 7, roundTime: 50 }, act: { label: 'boing' }, ownStep: true,
     tip: 'Bump the other ball into the pool! Your floatie saves you once. Hold down to squat heavy.',
-    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> roll <kbd>W</kbd> jump <kbd>S</kbd> squat', bo: '<kbd>←</kbd><kbd>→</kbd> roll <kbd>↑</kbd> jump <kbd>↓</kbd> squat',
+    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> roll <kbd>W</kbd> jump <kbd>S</kbd> squat <kbd>F</kbd> boing (hold to charge)', bo: '<kbd>←</kbd><kbd>→</kbd> roll <kbd>↑</kbd> jump <kbd>↓</kbd> squat <kbd>/</kbd> boing (hold to charge)',
       pad: 'stick or d-pad roll, <span data-glyph="a"></span> jump, down squats,' },
     switches: {}, signs: [],
     sumo: { cx: 480, top: 348, R: 700, hw: 280 },   // mat circle cap: centre x, top-surface y, radius, starting half-width
@@ -2129,8 +2130,8 @@ const LEVELS = [
   // 9-1 Pompeii Escape (mode 'pompeii', team): boost each other up the walls, then reach down from the edge (help)
   // and pull your partner up; lava creeps in sideways, ash makes you sneeze. Map chars and rules: the top of the file.
   { name: 'Pompeii Escape', world: 8, kind: 'team', mode: 'pompeii', ownHUD: true, noFalls: true, passPartners: true,
-    act: { label: 'use' },
-    legend: { jump: 'jump · climb', down: 'hold: hop back', padDown: 'hold down: hop back' },
+    act: { label: 'lever' },
+    legend: { jump: 'jump, climb', down: 'hold to go back', padJump: 'jump, climb', padDown: 'hold down to go back' },
     tip: 'Pull the lever to hoist your partner up on the crane lift, then they drop the rope ladder for you. Run to the boat!',
     switches: {}, signs: [],
     rooms: [
@@ -2163,7 +2164,7 @@ const LEVELS = [
         ] },
       { // ---------- Room 2: Forum Columns (ride the wobbly column over the lava river, then the podium and the temple) ----------
         title: 'Forum Columns', bg: 'forum', leads: [1, 0, 1], exitLabel: 'VIA ABBONDANZA',
-        tip: 'Climb the wobbly column together to ride it over the lava, then help each other up the temple steps!',
+        tip: 'Climb the wobbly column together to ride it over the lava, then ride the crane lift up the temple steps!',
         lava: { delay: 3, speed: 12, caps: [4, 15, 15, 15] }, ash: { every: 2.2, aim: 0.5 },
         boards: [{ x: 810, y: 400, text: 'FORUM', size: 30, carve: true }, { x: 870, y: 246, text: 'APOLLO', size: 18, carve: true }],
         switches: {}, signs: [],
@@ -2189,7 +2190,7 @@ const LEVELS = [
         ] },
       { // ---------- Room 3: Rooftop Run (an awning bounce over a lava stream, two houses and a tall tower) ----------
         title: 'Rooftop Run', bg: 'town', leads: [0, 1, 0], awnB: [90], exitLabel: 'TO THE HARBOR',
-        tip: 'Bounce on the awning over the hot stream, then help each other up two houses and the tall tower!',
+        tip: 'Bounce on the awning over the hot stream, then lift and ladder up two houses and the tall tower!',
         lava: { delay: 2, speed: 16, caps: [1, 15, 20, 26] }, ash: { every: 1.8, aim: 0.5 },
         boards: [{ x: 705, y: 340, text: 'CAVE CANEM', size: 14, paint: true, dog: true }],
         switches: {}, signs: [],
@@ -2249,9 +2250,9 @@ const LEVELS = [
   //   h crank: holds the bridge over the crack in the other street right above / below it   x crate on a plank
   //   D drop gate (solid until every crossing is done, then the upper player drops down to the door)
   { name: 'San Francisco 1906 Quake', world: 8, kind: 'team', mode: 'quake', ownHUD: true,
-    act: { label: 'hold' },
-    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move · balance <kbd>W</kbd> jump', bo: '<kbd>←</kbd><kbd>→</kbd> move · balance <kbd>↑</kbd> jump',
-      pad: 'stick or d-pad move · balance, <span data-glyph="a"></span> jump,' },
+    act: { label: 'crank' },
+    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move, balance <kbd>W</kbd> jump', bo: '<kbd>←</kbd><kbd>→</kbd> move, balance <kbd>↑</kbd> jump',
+      pad: 'stick or d-pad move, balance, <span data-glyph="a"></span> jump,' },
     tip: 'Hold up the wobbly bridge for each other: hold the action at the crank and keep the ball in the green!',
     switches: {}, signs: [],
     rooms: [
@@ -2724,9 +2725,9 @@ const LEVELS = [
     // a twin diving tower over a pool (MODES.dive draws it all): the map is only the two spawns
     tip: 'Dive off together! ▲ flip, ◀ ▶ twist, hold ▼ to tuck. Match the call, stay in sync, enter straight!',
     legend: {
-      pip: '<kbd>W</kbd> ready · go · flip <kbd>A</kbd><kbd>D</kbd> twist <kbd>S</kbd> tuck',
-      bo: '<kbd>↑</kbd> ready · go · flip <kbd>←</kbd><kbd>→</kbd> twist <kbd>↓</kbd> tuck',
-      pad: '<span data-glyph="a"></span> ready · go · flip, stick ◀ ▶ twist, down tucks,',
+      pip: '<kbd>W</kbd> ready, go, flip <kbd>A</kbd><kbd>D</kbd> twist <kbd>S</kbd> tuck',
+      bo: '<kbd>↑</kbd> ready, go, flip <kbd>←</kbd><kbd>→</kbd> twist <kbd>↓</kbd> tuck',
+      pad: '<span data-glyph="a"></span> ready, go, flip, stick ◀ ▶ twist, down tucks,',
     },
     // six dives, higher and harder each time. call: the moves in order; mirror: who picks the moves (the other copies),
     // max: how many moves the picker is scored for. air: seconds from takeoff to the water (springboard bounces add more)
@@ -3040,7 +3041,7 @@ const LEVELS = [
   // room's bones give him a new shape (stool, ladder, bridge). Map chars and rules: the top of the level file.
   { name: 'Graveyard Bone Hunt', world: 12, kind: 'team', mode: 'bonehunt', ownHUD: true, noFalls: true,
     act: { label: 'dig' },
-    legend: { jump: 'jump · climb', down: 'down · hold: back', padJump: 'jump · climb', padDown: 'hold down: back' },
+    legend: { jump: 'jump, climb', down: 'down, hold to go back', padJump: 'jump, climb', padDown: 'hold down to go back' },
     tip: 'Dig up Mr. Bones’s lost bones and bring them back. Every bone makes him a better helper!',
     switches: {}, signs: [],
     rooms: [
@@ -3330,8 +3331,8 @@ const LEVELS = [
     match: { bestOf: 5 },
     act: { label: 'zoom', padGlyph: 'a' },   // padGlyph: on a controller A zooms too (the stick climbs and dives)
     legend: {
-      pip: '<kbd>W</kbd><kbd>S</kbd> up · down <kbd>A</kbd><kbd>D</kbd> slow · fast',
-      bo: '<kbd>↑</kbd><kbd>↓</kbd> up · down <kbd>←</kbd><kbd>→</kbd> slow · fast',
+      pip: '<kbd>W</kbd><kbd>S</kbd> fly up, down <kbd>A</kbd><kbd>D</kbd> slower, faster',
+      bo: '<kbd>↑</kbd><kbd>↓</kbd> fly up, down <kbd>←</kbd><kbd>→</kbd> slower, faster',
       pad: 'stick: fly, <span data-glyph="a"></span> or',
     },
     tip: 'Fly through the glowing rings for speed, grab a star and zoom! Bumping a friendly bat slows you.',
@@ -3455,8 +3456,8 @@ const LEVELS = [
     act: { label: 'pull' },
     tip: 'Tar is sticky! Swing across on vines, then pull your partner out of the goo. Take turns!',
     theme: { grass: '#7fbf5a', grassDark: '#5a9a44' },   // the mode paints its own swamp; this is only for core uses
-    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move · wiggle, <kbd>W</kbd> jump · grab · let go,', bo: '<kbd>←</kbd><kbd>→</kbd> move · wiggle, <kbd>↑</kbd> jump · grab · let go,',
-      pad: 'stick move · wiggle, <span data-glyph="a"></span> jump · grab · let go,' },
+    legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move, wiggle <kbd>W</kbd> jump, grab, let go', bo: '<kbd>←</kbd><kbd>→</kbd> move, wiggle <kbd>↑</kbd> jump, grab, let go',
+      pad: 'stick move, wiggle, <span data-glyph="a"></span> jump, grab, let go,' },
     switches: {}, signs: [],
     rooms: [
       { // Room 1: plain vines, plain pulling
@@ -3580,9 +3581,9 @@ const LEVELS = [
     match: { bestOf: 5 },
     act: { label: 'dash' },
     legend: {
-      pip: '<kbd>W</kbd> jump <kbd>S</kbd> duck <kbd>A</kbd><kbd>D</kbd> slow · fast',
-      bo: '<kbd>↑</kbd> jump <kbd>↓</kbd> duck <kbd>←</kbd><kbd>→</kbd> slow · fast',
-      pad: 'stick ◀ ▶ slow · fast, ▲ ▼ pick a path, <span data-glyph="a"></span> jump, down ducks,',
+      pip: '<kbd>W</kbd> jump <kbd>S</kbd> duck <kbd>A</kbd><kbd>D</kbd> slower, faster',
+      bo: '<kbd>↑</kbd> jump <kbd>↓</kbd> duck <kbd>←</kbd><kbd>→</kbd> slower, faster',
+      pad: 'stick ◀ ▶ slower, faster, ▲ ▼ pick a path, <span data-glyph="a"></span> jump, down ducks,',
     },
     tip: 'Raptors run by themselves! Jump logs, duck branches, pick a path at forks, grab a speed egg and dash.',
     switches: {}, signs: [],
@@ -3609,8 +3610,8 @@ const LEVELS = [
   { name: 'Tethered Spacewalk', world: 14, kind: 'team', mode: 'spacewalk', ownStep: true, ownHUD: true, noFalls: true,
     act: { label: 'grab' },
     legend: {
-      pip: '<kbd>A</kbd><kbd>D</kbd> spin · puff <kbd>W</kbd><kbd>S</kbd> reel · puff',
-      bo: '<kbd>←</kbd><kbd>→</kbd> spin · puff <kbd>↑</kbd><kbd>↓</kbd> reel · puff',
+      pip: '<kbd>A</kbd><kbd>D</kbd> spin, puff <kbd>W</kbd><kbd>S</kbd> reel, puff',
+      bo: '<kbd>←</kbd><kbd>→</kbd> spin, puff <kbd>↑</kbd><kbd>↓</kbd> reel, puff',
       pad: 'stick: spin, reel, puff,',
     },
     tip: 'Tied together in space! One holds a handle and spins the other to the next one. Grab, let go, swap!',
@@ -3676,7 +3677,7 @@ const LEVELS = [
   // (checkpoint), E the exit (a floor airlock, or a ceiling hatch). Room plans: see the top of the level file.
   { name: 'Gravity Flip Station', world: 14, kind: 'team', mode: 'gravflip', ownStep: true, ownHUD: true, noFalls: true,
     act: { label: 'flip' },
-    legend: { down: 'hold: go back', padDown: 'hold down: go back' },
+    legend: { down: 'hold to go back', padDown: 'hold down to go back' },
     tip: 'Your switch flips your PARTNER’s gravity! Pip’s orange switches flip Bo, Bo’s blue ones flip Pip.',
     switches: { f: { plate: 'm', type: 'gate' } }, signs: [],
     rooms: [
@@ -3789,7 +3790,7 @@ const LEVELS = [
       },
       { // ---------- Room 4: Command Deck (flipped up mid-air over the goo, two buttons, the ceiling hatch) ----------
         title: 'Command Deck', goer: 1, style: 'deck',
-        tip: 'The shuttle hatch is on the ceiling! Run, jump, get flipped up over the goo, then help each other through.',
+        tip: 'The shuttle hatch is on the ceiling! Run, jump, get flipped up over the goo, then flip each other up to the hatch.',
         plan: [
           { A: { g: 1, zone: [18, 29] }, jump: [{ x: 338, dir: 1 }], say: { A: 'Run and jump ▶ over the goo: {B} flips you up!', B: 'Flip {A} at the top of the jump ({Bkey})!' } },
           { A: { g: 1, zone: [18, 29] }, B: { g: 1, zone: [18, 29] }, jump: [{ x: 338, dir: 1 }], say: { A: 'Flip {B} at the top of the jump ({Akey})!', B: 'Run and jump ▶ over the goo!' } },
@@ -4107,7 +4108,7 @@ const LEVELS = [
   // mango: [x, y] (Mango the monkey's perch).
   { name: 'Temple Doors', world: 16, kind: 'team', mode: 'temple', noFalls: true, ownHUD: true,
     act: { label: 'shout' },
-    legend: { down: 'hold: go back', padDown: 'hold down: go back' },
+    legend: { down: 'hold to go back', padDown: 'hold down to go back' },
     tip: 'Stand on a plate to open a stone door for your partner. Let go and it slides shut slowly: dash!',
     signs: [],
     rooms: [
@@ -4302,8 +4303,8 @@ const LEVELS = [
   // computer: jump (from: take-off column, to: [column, height]), wall (a boost wall, by order from the bottom), log,
   // geyser, frog, nest. Columns may have halves (x = col * 30 px). hop: the computer jumps from a standstill (no run-up).
   { name: 'Waterfall Climb', world: 16, kind: 'team', mode: 'waterfall', ownStep: true, ownHUD: true, noFalls: true,
-    act: { label: 'use' },
-    legend: { down: 'climb down', padDown: 'down: climb down', jump: 'jump · climb', padJump: 'jump · climb' },
+    act: { label: 'lever' },
+    legend: { down: 'climb down', padDown: 'down climbs down', jump: 'jump, climb', padJump: 'jump, climb' },
     tip: 'Ledges too high? One rides the bamboo lift, the other pulls its lever. Then drop a vine for your partner!',
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     sections: [{ name: 'Mossy Steps', h: 0 }, { name: 'Log Jam Falls', h: 18 }, { name: 'Misty Geysers', h: 44 }, { name: 'Toucan Top', h: 75 }],
@@ -4755,6 +4756,7 @@ const LEVELS = [
       pad: 'stick ◀ ▶ step, down guards low, <span data-glyph="a"></span> hops,',
     },
     tip: 'Swing high, or hold ▼ to swing low. Guard the same height to block. Bonk them off the end!',
+    howTo: ['Hold swing past the wind-up to charge a lunge, then let go.'],
     switches: {}, signs: [],
     map: [
       '................................', '................................', '................................',
@@ -4828,8 +4830,8 @@ const LEVELS = [
   // stretch from its course (tokens: see the top of the level file). Ends swap every stretch.
   { name: 'Handcar Hustle', world: 18, kind: 'team', mode: 'handcar', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     legend: {
-      pip: '<kbd>S</kbd> pump · hold <kbd>W</kbd> brake',
-      bo: '<kbd>↓</kbd> pump · hold <kbd>↑</kbd> brake',
+      pip: '<kbd>S</kbd> pump <kbd>W</kbd> both hold to brake',
+      bo: '<kbd>↓</kbd> pump <kbd>↑</kbd> both hold to brake',
       pad: 'stick down pumps, hold <span data-glyph="a"></span> to brake,',
     },
     tip: 'Take turns pumping the seesaw handle: Pip, Bo, Pip, Bo! Both hold ▲ to brake for signs, cows and stations.',

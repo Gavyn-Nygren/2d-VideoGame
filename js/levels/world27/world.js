@@ -167,7 +167,8 @@ LEVELS.push(
   // braces). The map is the build floor and the belt ('=' row 12, cols 10-21); the mode draws everything else.
   { name: 'Robot Rumble', world: 26, kind: 'versus', mode: 'robotrumble', ownStep: true, ownHUD: true, match: { bestOf: 5 },
     act: { label: 'shove' }, stomp: false,
-    legend: { down: 'brace / drop', padDown: 'down braces' },
+    legend: { down: 'drop a part, brace', padDown: 'down drops a part or braces' },
+    howTo: ['Build: press down to put a part down. Rumble: hold down to brace.'],
     tip: 'Build: grab parts off the belt, carry them to your pad. Rumble: hold the action to charge, let go to shove them off!',
     switches: {}, signs: [],
     map: [

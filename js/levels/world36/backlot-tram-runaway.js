@@ -152,7 +152,7 @@
     st.final = { prog: 0, done: false }; st.tixTake = 0; st.party = false; st.cleared = false; st.planMemo = null;
     st.prevUp = [false, false]; st.prevDown = [false, false]; st.leftT = 0; st.tailUntil = 0; st.brkRest = false;
   }
-  function labels(st) { const w = []; w[st.brk] = 'brake'; w[st.run] = 'do it'; K.actLabels(w, 'brake'); }
+  function labels(st) { const w = []; w[st.brk] = 'brake'; w[st.run] = 'clear'; K.actLabels(w, 'brake'); }
   const zog = st => !!st.set.zog;
 
   /* ---------- the tick ---------- */
@@ -934,7 +934,7 @@
   };
 
   /* ---------- the level ---------- */
-  const acts = b => ({ label: 'brake', labels: b === 0 ? ['brake', 'do it'] : ['do it', 'brake'] });
+  const acts = b => ({ label: 'brake', labels: b === 0 ? ['brake', 'clear'] : ['clear', 'brake'] });
   STUDIO.defs.tramrun = {
     name: 'Backlot Tram Runaway', world: 35, kind: 'team', mode: 'tramrun', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Take', outfit: 'none',
     jobs: {
