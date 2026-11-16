@@ -679,10 +679,17 @@ function hockeyDrawCrowd() {
     const x = 14 + i * 24 + (row % 2 ? 12 : 0), y = 64 + row * 16, side = x < W / 2 ? 0 : 1;
     const h = hash(i, row + 3), hop = v.hop > 0 && side === v.hopSide ? Math.abs(hopK) * 6 * ((h % 3) / 2 + 0.5) : 0;
     ctx.fillStyle = cols[h % cols.length]; rr(x - 8, y - 2 - hop, 16, 14, 6); ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.16)'; rr(x + 2, y - 2 - hop, 6, 14, 3); ctx.fill();
     ctx.fillStyle = ['#f6d2b0', '#e0a97c', '#b97a53', '#8a5636'][(h >> 3) % 4]; circle(x, y - 6 - hop, 6); ctx.fill();
     if (h % 5 === 0) { ctx.fillStyle = cols[(h >> 5) % cols.length]; ctx.beginPath(); ctx.arc(x, y - 7 - hop, 6.4, Math.PI, 0); ctx.fill(); }   // a woolly hat
   }
+  // the shaded side of each fan, in one path
+  ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.beginPath();
+  for (let row = 0; row < 3; row++) for (let i = 0; i < 40; i++) {
+    const x = 14 + i * 24 + (row % 2 ? 12 : 0), y = 64 + row * 16, side = x < W / 2 ? 0 : 1, h = hash(i, row + 3);
+    const hop = v.hop > 0 && side === v.hopSide ? Math.abs(hopK) * 6 * ((h % 3) / 2 + 0.5) : 0;
+    ctx.rect(x + 3, y + 2 - hop, 4, 9);
+  }
+  ctx.fill();
   for (let i = 0; i < 40; i++) {
     const x = 14 + i * 24, y = 532, h = hash(i, 9), side = x < W / 2 ? 0 : 1;
     const hop = v.hop > 0 && side === v.hopSide ? Math.abs(hopK) * 5 : 0;
@@ -707,7 +714,6 @@ function hockeyDrawRink() {
   ctx.fillStyle = 'rgba(0,0,0,0.25)'; hockeyRinkPath(ctx, -12); ctx.save(); ctx.translate(0, 5); ctx.fill(); ctx.restore();
   ctx.fillStyle = P.bouncy ? (v.boardFlash > 0 ? '#ffd1ea' : Q.spring) : Q.board; hockeyRinkPath(ctx, -10); ctx.fill();
   // a tall pane of glass on top of the boards, with its posts and a glint
-  ctx.strokeStyle = 'rgba(220,240,255,0.22)'; ctx.lineWidth = 6; hockeyRinkPath(ctx, -15); ctx.stroke();
   ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.2; hockeyRinkPath(ctx, -18); ctx.stroke();
   ctx.fillStyle = 'rgba(200,215,235,0.6)';
   for (let x = R.x0 + R.cr; x <= R.x1 - R.cr + 1; x += (R.x1 - R.x0 - 2 * R.cr) / 6) { ctx.fillRect(x - 1.5, R.y0 - 19, 3, 9); ctx.fillRect(x - 1.5, R.y1 + 10, 3, 9); }
@@ -747,10 +753,11 @@ function hockeyDrawRink() {
     ctx.strokeStyle = 'rgba(74,90,130,0.35)'; ctx.lineWidth = 6; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(gl + dir * P.botX, R.cy - P.botRange); ctx.lineTo(gl + dir * P.botX, R.cy + P.botRange); ctx.stroke(); ctx.lineCap = 'butt';
   }
-  // the arena lights reflected in the ice, and the ice greying a little towards the boards
+  // the arena lights reflected in the ice
   ctx.fillStyle = 'rgba(255,255,255,0.28)';
-  for (const [x, w] of [[220, 70], [320, 20], [560, 90], [680, 24], [860, 50]]) { ctx.beginPath(); ctx.moveTo(x, R.y0); ctx.lineTo(x + w, R.y0); ctx.lineTo(x + w - 110, R.y1); ctx.lineTo(x - 110, R.y1); ctx.closePath(); ctx.fill(); }
-  ctx.strokeStyle = 'rgba(120,150,190,0.16)'; ctx.lineWidth = 14; hockeyRinkPath(ctx, 0); ctx.stroke();
+  ctx.beginPath();
+  for (const [x, w] of [[220, 70], [320, 20], [560, 90], [680, 24], [860, 50]]) { ctx.moveTo(x, R.y0); ctx.lineTo(x + w, R.y0); ctx.lineTo(x + w - 110, R.y1); ctx.lineTo(x - 110, R.y1); ctx.closePath(); }
+  ctx.fill();
   // overtime: the half the puck is in glows in the colour of the player it would win for (last 8 s)
   const m = G.match;
   if (st.ot && st.pucks && m && m.phase === 'live' && m.timeLeft <= 8 && st.phase === 'play') {
