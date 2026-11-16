@@ -974,6 +974,14 @@ The boss of worlds 31 to 40, one long level **40-1 The Iron Colossus** (mode `co
 
 ## How the game is built
 
+### Graphics polish (Nov 2026)
+Gavyn (2026-11-16): refine and add detail to every level's graphics (not World 32 or 40), every word inside its box, a professional look. Style guide and batch plan: project file `pip-and-bo/notes/graphics-polish/style-guide.md`.
+- **Shared art** (`js/render.js`): sky with sun rays and shaded clouds, three layers of hills with bushes, carved stone with grass blades and flowers, planks with grain and brackets, spikes, water, sand, buttons, flags, the door, bridges, HUD pills and the intro card. Worlds 32 and 40 keep the plain versions (`artPlain()`, `ART_PLAIN_WORLDS`).
+- **Speed**: drawing all of this live made frames about twice as slow on a computer without a graphics chip (a slow phone draws the canvas the same way). So it is drawn into pictures and copied: the sky and hills once per level and theme (`bgLayers`; one flattened picture while the camera doesn't move), clouds once per size, and the level's stone in chunks of 16 columns (`drawStoneChunks`, rebuilt only when a chunk's tiles change; `drawStone` alone, used by levels that draw their own tiles, copies one small picture per tile). Copies land on whole screen pixels with smoothing off: smoothing made each copy several times slower. Measure with `node tools/polish/perf.js <repo folder> <levels>` (render time with the canvas flush, and live frames a second, on a CPU slowed 4x) against a checkout of main: frame cost is now within noise of main.
+- Helpers for levels: `mixCol(a, b, t)`, `shade(c, t)`, `tint(c, t)` ('#rrggbb' colours), `artPlain()`.
+- The intro card grows to its widest line, and name tags to their words.
+- **Checking**: `node tools/polish/survey.js [w1-5|codes|all] [--sizes=laptop,phone]` saves ready / play / pause screenshots on laptop and phone sizes to `build/polish/` and reports text that spills out of its box or off screen (canvas and menus); `node tools/polish/summary.js build/polish/report-*.json` lists the findings.
+
 ### Medals (js/medals.js)
 
 - A team level gives its goals once, as `medals` on its `MODES` object (or on its `LEVELS` entry when it has no mode):
