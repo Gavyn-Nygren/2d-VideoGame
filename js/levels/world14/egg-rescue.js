@@ -1017,9 +1017,7 @@ function eggDrawSky(st) {
   // puffy clouds drifting
   for (let i = 0; i < 4; i++) {
     const x = ((i * 290 - st.cam.x * 0.04 + G.clock * (5 + i * 2)) % (W + 300) + W + 300) % (W + 300) - 150, y = 56 + i * 34 + (i % 2) * 12;
-    ctx.fillStyle = k === 3 ? 'rgba(255,214,196,0.85)' : 'rgba(255,255,255,0.85)';
-    circle(x, y, 22); ctx.fill(); circle(x + 26, y - 8, 26); ctx.fill(); circle(x + 54, y, 20); ctx.fill();
-    ctx.fillRect(x, y, 54, 16);
+    drawCloud(x, y, 1.05 + (i % 2) * 0.2);
   }
   // little pterodactyls far away
   for (let i = 0; i < 2; i++) {
@@ -1039,18 +1037,28 @@ function eggDrawFar(st) {
   if (vx > -200 && vx < W + 200) {
     ctx.fillStyle = '#b08a7a';
     ctx.beginPath(); ctx.moveTo(vx - 170, vy + 30); ctx.lineTo(vx - 36, vy - 120); ctx.lineTo(vx + 36, vy - 120); ctx.lineTo(vx + 170, vy + 30); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#9c7568'; ctx.beginPath(); ctx.moveTo(vx - 36, vy - 120); ctx.lineTo(vx + 36, vy - 120); ctx.lineTo(vx + 20, vy - 104); ctx.lineTo(vx - 18, vy - 108); ctx.closePath(); ctx.fill();
+    // shaded right flank, gullies, a lit left edge and a warm glow in the crater
+    ctx.fillStyle = '#9c7568'; ctx.beginPath(); ctx.moveTo(vx + 4, vy - 120); ctx.lineTo(vx + 36, vy - 120); ctx.lineTo(vx + 170, vy + 30); ctx.lineTo(vx + 40, vy + 30); ctx.quadraticCurveTo(vx + 30, vy - 40, vx + 4, vy - 120); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(110,78,70,0.45)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (const [a, b, c2] of [[-22, -70, 10], [12, 60, 4], [-6, -20, 26]]) { ctx.beginPath(); ctx.moveTo(vx + a, vy - 112); ctx.quadraticCurveTo(vx + (a + b) / 2 + c2, vy - 50, vx + b, vy + 10); ctx.stroke(); }
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = 'rgba(255,236,214,0.45)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(vx - 168, vy + 28); ctx.lineTo(vx - 36, vy - 119); ctx.stroke();
+    ctx.fillStyle = '#7f5d55'; ctx.beginPath(); ctx.ellipse(vx, vy - 120, 36, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,150,90,' + (0.45 + 0.15 * Math.sin(G.clock * 1.7)) + ')'; ctx.beginPath(); ctx.ellipse(vx, vy - 121, 24, 3.5, 0, 0, Math.PI * 2); ctx.fill();
     for (let i = 0; i < 4; i++) {
       const u = ((G.clock * 0.12 + i / 4) % 1);
       ctx.fillStyle = 'rgba(255,255,255,' + (0.55 * (1 - u)) + ')';
       circle(vx + Math.sin(u * 5 + i) * 14 + u * 30, vy - 130 - u * 110, 12 + u * 22); ctx.fill();
     }
   }
-  ctx.fillStyle = lk.far;
   const yAt = sx => hy + Math.sin((sx + off) * 0.004) * 24 + Math.sin((sx + off) * 0.011 + 1) * 9;
+  // the far hills with a lit rim
+  ctx.fillStyle = lk.far;
   ctx.beginPath(); ctx.moveTo(0, H);
   for (let sx = 0; sx <= W; sx += 16) ctx.lineTo(sx, yAt(sx));
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = tint(lk.far, 0.3); ctx.lineWidth = 2.5;
+  ctx.beginPath(); for (let sx = 0; sx <= W; sx += 16) sx ? ctx.lineTo(sx, yAt(sx) + 1.5) : ctx.moveTo(sx, yAt(sx) + 1.5); ctx.stroke();
   // long-neck dinos on the far hills
   const RW = 1500;
   for (const [bx0, s] of [[620, 1], [1280, 0.8]]) for (const rep of [-1, 0, 1]) {
@@ -1079,6 +1087,8 @@ function eggDrawMid(st) {
   ctx.beginPath(); ctx.moveTo(0, H);
   for (let sx = 0; sx <= W; sx += 16) ctx.lineTo(sx, yAt(sx));
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = tint(lk.mid, 0.25); ctx.lineWidth = 3;
+  ctx.beginPath(); for (let sx = 0; sx <= W; sx += 16) sx ? ctx.lineTo(sx, yAt(sx) + 2) : ctx.moveTo(sx, yAt(sx) + 2); ctx.stroke();
   const TW = 130;
   for (let k = Math.floor(off / TW) - 1; k < Math.floor(off / TW) + W / TW + 2; k++) {
     const h = hash(k, 77), sx = k * TW - off + (h % 60), gy = yAt(sx) + 4;
@@ -1111,14 +1121,20 @@ function eggDrawBack(st) {
       s.w = Math.max(...s.lines.map(l => ctx.measureText(l).width)) + 22;
     }
     const bh = s.lines.length * 16 + 12, top = y - 62 - bh;
+    ctx.fillStyle = 'rgba(30,20,10,0.18)'; ctx.beginPath(); ctx.ellipse(x, y + 1, 14, 3.5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#7d5530'; ctx.fillRect(x - 3, top + bh - 2, 6, y - top - bh + 2);
+    ctx.fillStyle = '#5e3e22'; ctx.fillRect(x + 1, top + bh - 2, 2, y - top - bh + 2);
+    ctx.fillStyle = 'rgba(40,25,10,0.2)'; rr(x - s.w / 2 + 2, top + 3, s.w, bh, 8); ctx.fill();
     ctx.fillStyle = '#e8c48a'; rr(x - s.w / 2, top, s.w, bh, 8); ctx.fill();
+    ctx.fillStyle = '#d9b077'; rr(x - s.w / 2, top + bh - 6, s.w, 6, 3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - s.w / 2 + 8, top + 2.5, s.w - 16, 1.5);
     ctx.strokeStyle = '#8f5f32'; ctx.lineWidth = 2.5; rr(x - s.w / 2, top, s.w, bh, 8); ctx.stroke();
     s.lines.forEach((l, i) => text(l, x, top + 14 + i * 16, 13, '#4a2e18', 'center', 'body'));
   }
   for (const d of st.c.deco) {
     const x = d.x - cam.x, y = eggGY(st, d.x) - cam.y;
     if (x < -160 || x > W + 160) continue;
+    if (d.kind === 'trike' || d.kind === 'stego') { ctx.fillStyle = 'rgba(30,25,10,0.18)'; ctx.beginPath(); ctx.ellipse(x + 6, y + 1, 46, 6, 0, 0, Math.PI * 2); ctx.fill(); }
     if (d.kind === 'trike') eggTrike(x, y - 20, d.t, d.seen);
     else if (d.kind === 'stego') eggStego(x, y - 22, d.t, d.seen);
     else if (d.kind === 'bronto') eggBronto(x, y - 30, 0.9, '#8fbf7a', G.clock);
@@ -1222,14 +1238,47 @@ function eggDrawGround(st) {
   ctx.beginPath(); ctx.moveTo(xa - cam.x, bot);
   for (const x of pts) ctx.lineTo(x - cam.x, yDraw(x) - cam.y);
   ctx.lineTo(xb - cam.x, bot); ctx.closePath(); ctx.fill();
-  // soil stripes and pebbles
-  ctx.strokeStyle = lk.soilDark; ctx.lineWidth = 7; ctx.globalAlpha = 0.5;
-  ctx.beginPath(); pts.forEach((x, i) => { const y = yDraw(x) + 46 - cam.y; if (i) ctx.lineTo(x - cam.x, y); else ctx.moveTo(x - cam.x, y); }); ctx.stroke();
+  // soil: layered stripes
+  const band = (off, wdt, col, a) => {
+    ctx.strokeStyle = col; ctx.lineWidth = wdt; ctx.globalAlpha = a;
+    ctx.beginPath(); pts.forEach((x, i) => { const y = yDraw(x) + off - cam.y; if (i) ctx.lineTo(x - cam.x, y); else ctx.moveTo(x - cam.x, y); }); ctx.stroke();
+  };
+  band(46, 7, lk.soilDark, 0.5); band(98, 4, lk.soilDark, 0.35);
   ctx.globalAlpha = 1;
   for (let x = Math.floor(xa / 60) * 60; x < xb; x += 60) {
     if (gapAt(x)) continue;
-    const h = hash(x, 5); ctx.fillStyle = lk.soilDark; circle(x - cam.x + (h % 30), eggGY(st, x) + 22 + (h % 40) - cam.y, 3 + (h % 3)); ctx.fill();
+    const h = hash(x, 5), gy = eggGY(st, x) - cam.y, px = x - cam.x + (h % 30), py = gy + 22 + (h % 40), r = 3 + (h % 3);
+    // a pebble (its lit top is added below, all in one path)
+    ctx.fillStyle = lk.soilDark; circle(px, py, r); ctx.fill();
+    // a bigger buried rock now and then
+    if (h % 5 === 1) {
+      const bx = x - cam.x + 30, by = gy + 70 + (h % 30), bw = 16 + (h % 12);
+      ctx.fillStyle = '#9a8a7c'; ctx.beginPath(); ctx.ellipse(bx, by, bw, bw * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#7d6e62'; ctx.beginPath(); ctx.ellipse(bx + 3, by + 3, bw * 0.85, bw * 0.45, 0, 0, Math.PI); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(bx - bw * 0.3, by - bw * 0.25, bw * 0.35, bw * 0.15, -0.2, 0, Math.PI * 2); ctx.fill();
+    }
+    // a fossil: a little bone or a curled shell
+    if (h % 7 === 3) {
+      const fx = x - cam.x + 10, fy = gy + 120 + (h % 40);
+      ctx.strokeStyle = 'rgba(245,230,205,0.55)'; ctx.fillStyle = 'rgba(245,230,205,0.55)'; ctx.lineWidth = 2.5;
+      if (h % 2) { ctx.beginPath(); ctx.moveTo(fx - 12, fy); ctx.lineTo(fx + 12, fy - 3); ctx.stroke(); for (const [ex, ey] of [[-13, 0], [13, -3]]) { circle(fx + ex, fy + ey - 2, 2.6); ctx.fill(); circle(fx + ex, fy + ey + 2, 2.6); ctx.fill(); } }
+      else { ctx.beginPath(); for (let a = 0; a < 12; a += 0.8) { const rr2 = 1 + a * 0.85; ctx.lineTo(fx + Math.cos(a) * rr2, fy + Math.sin(a) * rr2); } ctx.stroke(); }
+    }
+    // roots poking out under the turf
+    if (h % 8 === 2) {
+      ctx.strokeStyle = 'rgba(60,38,22,0.45)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+      const rx = x - cam.x + (h % 40);
+      ctx.beginPath(); ctx.moveTo(rx, gy + 8); ctx.quadraticCurveTo(rx + 6, gy + 18, rx + 2, gy + 28); ctx.moveTo(rx + 4, gy + 16); ctx.lineTo(rx + 11, gy + 22); ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
   }
+  ctx.fillStyle = 'rgba(255,240,220,0.22)'; ctx.beginPath();
+  for (let x = Math.floor(xa / 60) * 60; x < xb; x += 60) {
+    if (gapAt(x)) continue;
+    const h = hash(x, 5), px = x - cam.x + (h % 30), py = eggGY(st, x) - cam.y + 22 + (h % 40), r = 3 + (h % 3);
+    ctx.moveTo(px - r * 0.3 + r * 0.45, py - r * 0.35); ctx.arc(px - r * 0.3, py - r * 0.35, r * 0.45, 0, Math.PI * 2);
+  }
+  ctx.fill();
   // water in the creeks and rivers (a ravine under the bridge is just deep and shady)
   for (const g of c.gaps) {
     if (g.x1 < xa || g.x0 > xb) continue;
@@ -1265,6 +1314,16 @@ function eggDrawGround(st) {
     if (!on) { ctx.moveTo(x - cam.x, y); on = true; } else ctx.lineTo(x - cam.x, y);
   }
   ctx.stroke();
+  // little scallops of turf hanging over the soil, and blades of grass
+  // (all scallops and blades in one path each: one fill call, not one per bump)
+  ctx.fillStyle = lk.grass; ctx.beginPath();
+  for (let x = Math.floor(xa / 20) * 20; x < xb; x += 20) {
+    if (gapAt(x) || gapAt(x + 20)) continue;
+    const y = eggGY(st, x + 10) - cam.y + 5, h = hash(x, 41), r = 8 + (h % 3);
+    ctx.moveTo(x - cam.x + 10 + r, y); ctx.arc(x - cam.x + 10, y, r, 0, Math.PI);
+    if (h % 3 === 0) { const bx = x - cam.x + (h % 12), by = eggGY(st, x) - cam.y - 1; ctx.moveTo(bx - 3, by); ctx.lineTo(bx - 1, by - 7 - (h % 4)); ctx.lineTo(bx + 1, by); ctx.moveTo(bx + 1, by); ctx.lineTo(bx + 4, by - 5 - (h % 3)); ctx.lineTo(bx + 5, by); }
+  }
+  ctx.fill();
   // ledges: a rocky face
   for (const l of c.ledges) {
     const x = l.x - cam.x;
@@ -1315,7 +1374,12 @@ function eggDrawObstacles(st) {
     if (x1 < -80 || x0 > W + 80) continue;
     if (o.kind === 'log') {
       const cx = (x0 + x1) / 2, r = o.h / 2;
+      ctx.fillStyle = 'rgba(30,20,10,0.18)'; ctx.beginPath(); ctx.ellipse(cx, gy + 1, (x1 - x0) / 2 + 12, 5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#8a5a34'; rr(x0 - 4, gy - o.h, x1 - x0 + 8, o.h, r); ctx.fill();
+      ctx.fillStyle = '#6e4428'; rr(x0 - 4, gy - o.h * 0.45, x1 - x0 + 8, o.h * 0.45, Math.min(r, o.h * 0.22)); ctx.fill();
+      ctx.fillStyle = 'rgba(255,230,190,0.25)'; rr(x0 + r * 0.6, gy - o.h + 2, x1 - x0 - r * 0.6, 3, 1.5); ctx.fill();
+      ctx.strokeStyle = 'rgba(70,40,20,0.5)'; ctx.lineWidth = 1.5;
+      for (let bx = x0 + r + 6; bx < x1 - 4; bx += 13) { ctx.beginPath(); ctx.moveTo(bx, gy - o.h + 5); ctx.quadraticCurveTo(bx + 4, gy - r, bx + 1, gy - 5); ctx.stroke(); }
       ctx.strokeStyle = '#5e3a1e'; ctx.lineWidth = 2; rr(x0 - 4, gy - o.h, x1 - x0 + 8, o.h, r); ctx.stroke();
       ctx.fillStyle = '#d9a86a'; ctx.beginPath(); ctx.ellipse(x0 + 2, gy - r, r * 0.55, r - 1, 0, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#a8753f'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x0 + 2, gy - r, r * 0.3, r * 0.55, 0, 0, Math.PI * 2); ctx.stroke();

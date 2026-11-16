@@ -854,7 +854,25 @@ function raptorDrawEarth(x0, x1, cam) {
   const a = Math.max(x0, cam.x - 20), b = Math.min(x1, cam.x + W + 20);
   if (b <= a) return;
   ctx.fillStyle = K.dirt; ctx.fillRect(a, gy, b - a, H - gy);
-  ctx.fillStyle = K.dirtDk; ctx.fillRect(a, gy + 52, b - a, 26); ctx.fillStyle = K.dirtDk2; ctx.fillRect(a, gy + 120, b - a, H);
+  // wavy layers of earth (not straight stripes), a shady band under the turf and a lit seam on each layer
+  const wav = (base, amp, k0) => { ctx.beginPath(); ctx.moveTo(a, H + 10); for (let xx = Math.floor(a / 16) * 16; xx <= b + 16; xx += 16) ctx.lineTo(Math.min(b, Math.max(a, xx)), base + Math.sin(xx * 0.011 + k0) * amp + Math.sin(xx * 0.033 + k0 * 2) * amp * 0.4); ctx.lineTo(b, H + 10); ctx.closePath(); };
+  ctx.fillStyle = K.dirtDk; wav(gy + 56, 7, 1); ctx.fill();
+  ctx.fillStyle = K.dirt; wav(gy + 80, 6, 3); ctx.fill();
+  ctx.fillStyle = K.dirtDk2; wav(gy + 122, 8, 5); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,230,190,0.16)'; ctx.lineWidth = 2;
+  for (const [bb, am, k0] of [[gy + 80, 6, 3], [gy + 122, 8, 5]]) { ctx.beginPath(); for (let xx = Math.floor(a / 16) * 16; xx <= b + 16; xx += 16) { const yy = bb + Math.sin(xx * 0.011 + k0) * am + Math.sin(xx * 0.033 + k0 * 2) * am * 0.4 + 2; xx === Math.floor(a / 16) * 16 ? ctx.moveTo(xx, yy) : ctx.lineTo(Math.min(b, xx), yy); } ctx.stroke(); }
+  ctx.fillStyle = 'rgba(40,24,12,0.22)'; ctx.fillRect(a, gy + 6, b - a, 10);
+  // roots hanging out of the turf, and half-buried rocks
+  for (let k = Math.floor(a / 54); k <= Math.ceil(b / 54); k++) {
+    const rx = k * 54 + raptorHash(k, 31) * 30; if (rx < x0 + 6 || rx > x1 - 6) continue;
+    if (raptorHash(k, 32) < 0.45) { ctx.strokeStyle = 'rgba(50,30,14,0.45)'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(rx, gy + 8); ctx.quadraticCurveTo(rx + 7, gy + 22, rx + 1, gy + 32 + raptorHash(k, 33) * 16); ctx.stroke(); ctx.lineCap = 'butt'; }
+    if (raptorHash(k, 34) < 0.16) {
+      const by = gy + 96 + raptorHash(k, 35) * 50, bw = 14 + raptorHash(k, 36) * 12;
+      ctx.fillStyle = '#8e7e70'; ctx.beginPath(); ctx.ellipse(rx, by, bw, bw * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#74655a'; ctx.beginPath(); ctx.ellipse(rx + 2, by + 2, bw * 0.85, bw * 0.45, 0, 0, Math.PI); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.ellipse(rx - bw * 0.3, by - bw * 0.25, bw * 0.35, bw * 0.14, -0.2, 0, Math.PI * 2); ctx.fill();
+    }
+  }
   // pebbles and a cute little fossil now and then
   const k0 = Math.floor(a / 70), k1 = Math.ceil(b / 70);
   for (let k = k0; k <= k1; k++) {
@@ -881,13 +899,23 @@ function raptorDrawForkBack(st, f) {
   const a = Math.max(f.x0, cam.x - 40), b = Math.min(f.x1, cam.x + W + 40);
   // the gully: a shady back wall with hanging roots, the creek bed
   ctx.fillStyle = K.wall; ctx.fillRect(a, gy, b - a, cy - gy);
+  // rocky layers and cracks in the gully wall
+  for (let k = Math.floor(a / 90); k <= Math.ceil(b / 90); k++) {
+    const rx = k * 90, h0 = raptorHash(k, 41);
+    ctx.fillStyle = 'rgba(40,24,12,0.16)'; rr(rx + 4, gy + 30 + h0 * 20, 60 + h0 * 24, 10, 5); ctx.fill();
+    ctx.fillStyle = 'rgba(255,230,190,0.08)'; rr(rx + 6, gy + 28 + h0 * 20, 56 + h0 * 24, 3, 1.5); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,24,12,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(rx + 70, gy + 50); ctx.lineTo(rx + 64, gy + 62 + h0 * 10); ctx.lineTo(rx + 72, cy - 10); ctx.stroke();
+  }
   ctx.fillStyle = K.wallDk; ctx.fillRect(a, gy, b - a, 22);
   for (let k = Math.floor(a / 48); k <= Math.ceil(b / 48); k++) {
     const rx = k * 48 + raptorHash(k, 21) * 30; if (rx < f.x0 + 20 || rx > f.x1 - 20) continue;
     ctx.strokeStyle = 'rgba(40,24,12,0.5)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(rx, gy + 16); ctx.quadraticCurveTo(rx + 6, gy + 40, rx - 2, gy + 40 + raptorHash(k, 22) * 40); ctx.stroke();
   }
   ctx.fillStyle = K.water; ctx.fillRect(a, cy - 6, b - a, H - cy + 6);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(a, cy - 6, b - a, 2);
+  ctx.fillStyle = 'rgba(20,40,60,0.15)'; ctx.fillRect(a, cy + 10, b - a, 12);
   ctx.fillStyle = K.mud; ctx.fillRect(a, cy + 22, b - a, H);
+  ctx.fillStyle = 'rgba(40,24,12,0.25)'; for (let k = Math.floor(a / 40); k <= Math.ceil(b / 40); k++) { const mx = k * 40 + raptorHash(k, 51) * 24; ctx.beginPath(); ctx.ellipse(mx, cy + 34 + raptorHash(k, 52) * 30, 6, 3, 0, 0, Math.PI * 2); ctx.fill(); }
   ctx.strokeStyle = 'rgba(207,232,238,0.55)'; ctx.lineWidth = 2;
   for (let k = Math.floor(a / 60); k <= Math.ceil(b / 60); k++) {
     const wx = k * 60 + ((G.clock * 20) % 60), wy = cy + 4 + (((k % 3) + 3) % 3) * 6;
@@ -966,7 +994,11 @@ function raptorDrawSign(st, sg) {
   ctx.fillStyle = '#6a4224'; ctx.fillRect(x - 3, gy - 100, 6, 100);
   const board = (y, label, col) => {
     ctx.save(); ctx.translate(x + 4, y);
+    ctx.fillStyle = 'rgba(40,25,10,0.22)'; ctx.beginPath(); ctx.moveTo(-6, -8); ctx.lineTo(78, -8); ctx.lineTo(90, 3); ctx.lineTo(78, 14); ctx.lineTo(-6, 14); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#c9925a'; ctx.beginPath(); ctx.moveTo(-8, -11); ctx.lineTo(76, -11); ctx.lineTo(88, 0); ctx.lineTo(76, 11); ctx.lineTo(-8, 11); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#b98250'; ctx.fillRect(-8, 6, 84, 5);
+    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(-4, -9, 76, 1.5);
+    ctx.beginPath(); ctx.moveTo(-8, -11); ctx.lineTo(76, -11); ctx.lineTo(88, 0); ctx.lineTo(76, 11); ctx.lineTo(-8, 11); ctx.closePath();
     ctx.strokeStyle = '#7d5530'; ctx.lineWidth = 2; ctx.stroke();
     text(label, 38, 0.5, 12, col, 'center', 'body');
     ctx.restore();

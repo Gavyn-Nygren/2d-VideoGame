@@ -1008,6 +1008,11 @@ function buggyDrawFar(st) {
   ctx.beginPath(); ctx.moveTo(0, H);
   for (let x = 0; x <= W + 20; x += 20) { const u = x + cam.x * 0.12, h = hash(Math.floor(u / 60), 7) % 70; ctx.lineTo(x, base - 30 - Math.abs(Math.sin(u / 95)) * 60 - h * 0.4); }
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  // sunlit ridge line on the far mountains
+  ctx.strokeStyle = st.dark ? 'rgba(255,255,255,0.06)' : 'rgba(200,200,255,0.22)'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = 0; x <= W + 20; x += 20) { const u = x + cam.x * 0.12, h = hash(Math.floor(u / 60), 7) % 70, y = base - 30 - Math.abs(Math.sin(u / 95)) * 60 - h * 0.4 + 1.5; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.stroke();
   ctx.fillStyle = st.dark ? '#1a1932' : '#3a3a66';
   ctx.beginPath(); ctx.moveTo(0, H);
   const b2 = 370 - clamp(cam.y * 0.18, -50, 60);
@@ -1028,6 +1033,8 @@ function buggyDrawBack(st) {
     ctx.fillStyle = st.dark ? '#2e2c4c' : '#5d5a85';
     ctx.beginPath(); ctx.moveTo(l.x - 26, g + 6); ctx.lineTo(l.x - 18, g - 60); ctx.lineTo(l.x - 22, g - 100); ctx.lineTo(l.x - 14, g - 128); ctx.lineTo(l.x + 16, g - 128); ctx.lineTo(l.x + 22, g - 96); ctx.lineTo(l.x + 18, g - 50); ctx.lineTo(l.x + 28, g + 6); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(l.x - 12, g - 124, 6, 110);
+    ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.beginPath(); ctx.moveTo(l.x + 4, g - 128); ctx.lineTo(l.x + 16, g - 128); ctx.lineTo(l.x + 22, g - 96); ctx.lineTo(l.x + 18, g - 50); ctx.lineTo(l.x + 28, g + 6); ctx.lineTo(l.x + 8, g + 6); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(l.x - 4, g - 110); ctx.lineTo(l.x + 2, g - 80); ctx.lineTo(l.x - 3, g - 40); ctx.stroke();
     ctx.fillStyle = st.dark ? '#3a3860' : '#7a77a6'; rr(l.x - 20, g - 132, 40, 10, 5); ctx.fill();
   }
   for (const pl of c.piles) if (vis(pl.x)) {
@@ -1039,7 +1046,9 @@ function buggyDrawBack(st) {
     const g = buggyGround(st, s.x);
     ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
     const w = ctx.measureText(s.text).width + 24;
+    ctx.fillStyle = 'rgba(20,18,50,0.25)'; ctx.beginPath(); ctx.ellipse(s.x, g + 1, 12, 3, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#5c6688'; ctx.fillRect(s.x - 2, g - 34, 4, 34);
+    ctx.fillStyle = 'rgba(10,8,30,0.3)'; rr(s.x - w / 2 + 2, g - 59, w, 30, 9); ctx.fill();
     ctx.fillStyle = st.dark ? 'rgba(40,38,80,0.95)' : 'rgba(28,26,54,0.88)'; rr(s.x - w / 2, g - 62, w, 30, 9); ctx.fill();
     ctx.strokeStyle = '#9aa6c4'; ctx.lineWidth = 2; rr(s.x - w / 2, g - 62, w, 30, 9); ctx.stroke();
     text(s.text, s.x, g - 46.5, 13, C.paper, 'center', 'body');
@@ -1067,9 +1076,21 @@ function buggyDrawGround(st) {
   for (let k = Math.floor(x0 / 70); k * 70 < x1; k++) {
     const h = hash(k, 41), x = k * 70 + (h % 50), gy = buggyGround(st, x);
     if (buggyPitAt(st, x)) continue;
-    ctx.fillStyle = dark ? 'rgba(0,0,0,0.18)' : 'rgba(40,36,80,0.18)';
-    ctx.beginPath(); ctx.ellipse(x, gy + 22 + (h >>> 4) % 40, 10 + (h >>> 8) % 12, 3 + (h >>> 3) % 2, 0, 0, Math.PI * 2); ctx.fill();
-    if (h % 3 === 0) { ctx.fillStyle = dark ? '#5a5880' : '#b3afd6'; circle(x + 20, gy - 2, 3); ctx.fill(); }
+    // a little crater: a shady bowl with a lit lower lip (light comes from above)
+    const cy = gy + 22 + (h >>> 4) % 40, cw = 10 + (h >>> 8) % 12, chh = 3 + (h >>> 3) % 2;
+    ctx.fillStyle = dark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.14)';
+    ctx.beginPath(); ctx.ellipse(x, cy + 1.5, cw + 2, chh + 1.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = dark ? 'rgba(0,0,0,0.22)' : 'rgba(40,36,80,0.22)';
+    ctx.beginPath(); ctx.ellipse(x, cy, cw, chh, 0, 0, Math.PI * 2); ctx.fill();
+    // a deeper band of rock lower down, and specks of dust
+    if (h % 4 === 1) { ctx.fillStyle = dark ? 'rgba(0,0,0,0.12)' : 'rgba(40,36,80,0.1)'; rr(x - 30, gy + 90 + (h % 30), 60 + (h % 40), 8, 4); ctx.fill(); }
+    ctx.fillStyle = dark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.18)'; circle(x + 34, gy + 12 + (h % 20), 1.4); ctx.fill(); circle(x - 18, gy + 40 + (h % 24), 1.2); ctx.fill();
+    if (h % 3 === 0) {
+      // a pebble on top, with its shadow and a lit cap
+      ctx.fillStyle = 'rgba(20,18,50,0.25)'; ctx.beginPath(); ctx.ellipse(x + 21, gy + 0.5, 5, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = dark ? '#5a5880' : '#b3afd6'; circle(x + 20, gy - 2, 3); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; circle(x + 19, gy - 3, 1.2); ctx.fill();
+    }
   }
   // the dusty top edge
   ctx.strokeStyle = dark ? '#6d6a96' : C.grass; ctx.lineWidth = 3; ctx.lineJoin = 'round';
@@ -1079,6 +1100,14 @@ function buggyDrawGround(st) {
     const p = buggyPitAt(st, x), inside = p && buggyOpen(p) && x > p.x0 + 6 && x < p.x1 - 6;
     if (inside) { pen = false; continue; }
     if (!pen) { ctx.moveTo(x, buggyGround(st, x)); pen = true; } else ctx.lineTo(x, buggyGround(st, x));
+  }
+  ctx.stroke();
+  ctx.strokeStyle = dark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); pen = false;
+  for (let x = x0; x <= x1; x += 4) {
+    const p = buggyPitAt(st, x), inside = p && buggyOpen(p) && x > p.x0 + 6 && x < p.x1 - 6;
+    if (inside) { pen = false; continue; }
+    if (!pen) { ctx.moveTo(x, buggyGround(st, x) - 2); pen = true; } else ctx.lineTo(x, buggyGround(st, x) - 2);
   }
   ctx.stroke();
   // craters: a dark hole, filled boulders, gold bridges

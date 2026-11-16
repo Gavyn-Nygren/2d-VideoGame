@@ -947,10 +947,11 @@ function pteroDrawSky(st) {
     pteroCloud(x, y, 0.7 + (i % 3) * 0.25, pal.cloud);
   }
 }
-function pteroCloud(x, y, s, col) {
+function pteroCloud(x, y, s, col, flat) {
   ctx.fillStyle = col;
   ctx.beginPath(); ctx.ellipse(x, y, 46 * s, 16 * s, 0, 0, Math.PI * 2); ctx.fill();
   circle(x - 18 * s, y - 8 * s, 18 * s); ctx.fill(); circle(x + 10 * s, y - 14 * s, 22 * s); ctx.fill(); circle(x + 32 * s, y - 4 * s, 14 * s); ctx.fill();
+  if (!flat) { ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(x + 4 * s, y - 22 * s, 10 * s, 0, Math.PI * 2); ctx.moveTo(x - 15 * s, y - 13 * s); ctx.arc(x - 22 * s, y - 13 * s, 7 * s, 0, Math.PI * 2); ctx.fill(); }
 }
 // far mountains and the sleepy volcano (always puffing little smoke rings)
 function pteroDrawFar(st) {
@@ -964,7 +965,16 @@ function pteroDrawFar(st) {
     const s = vk ? 1.35 : 0.9, top = 360 - 200 * s;
     ctx.fillStyle = vk ? '#5d4060' : pal.far2;
     ctx.beginPath(); ctx.moveTo(vx - 230 * s, 380); ctx.quadraticCurveTo(vx - 70 * s, top + 40 * s, vx - 34 * s, top); ctx.lineTo(vx + 34 * s, top); ctx.quadraticCurveTo(vx + 70 * s, top + 40 * s, vx + 230 * s, 380); ctx.fill();
+    // the shady right flank, rock gullies and a lit left edge
+    ctx.fillStyle = 'rgba(40,20,40,0.14)';
+    ctx.beginPath(); ctx.moveTo(vx + 6 * s, top); ctx.lineTo(vx + 34 * s, top); ctx.quadraticCurveTo(vx + 70 * s, top + 40 * s, vx + 230 * s, 380); ctx.lineTo(vx + 60 * s, 380); ctx.quadraticCurveTo(vx + 40 * s, top + 90 * s, vx + 6 * s, top); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,20,40,0.16)'; ctx.lineWidth = 3 * s; ctx.lineCap = 'round';
+    for (const [a, b] of [[-26, -110], [26, 120], [-8, -40], [10, 54]]) { ctx.beginPath(); ctx.moveTo(vx + a * s, top + 14 * s); ctx.quadraticCurveTo(vx + (a + b) * 0.45 * s, top + 110 * s, vx + b * s, 376); ctx.stroke(); }
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = 'rgba(255,240,230,0.35)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(vx - 228 * s, 378); ctx.quadraticCurveTo(vx - 70 * s, top + 40 * s, vx - 34 * s, top); ctx.stroke();
     ctx.fillStyle = vk ? '#ff9a6a' : '#e6977a'; ctx.beginPath(); ctx.ellipse(vx, top + 2, 34 * s, 7 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,150,' + (0.35 + 0.15 * Math.sin(G.clock * 1.6)) + ')'; ctx.beginPath(); ctx.ellipse(vx, top + 1, 22 * s, 3.5 * s, 0, 0, Math.PI * 2); ctx.fill();
     // a sleepy face on the volcano
     ctx.strokeStyle = vk ? '#3a2840' : 'rgba(60,40,50,0.5)'; ctx.lineWidth = 3 * s;
     for (const ex of [-22, 22]) { ctx.beginPath(); ctx.arc(vx + ex * s, top + 62 * s, 7 * s, 0.2, Math.PI - 0.2); ctx.stroke(); }
@@ -974,7 +984,7 @@ function pteroDrawFar(st) {
     for (let i = 0; i < 4; i++) {
       const u = ((G.clock * 0.12 + i / 4) % 1), r = (12 + u * 40) * s;
       ctx.globalAlpha = 0.55 * (1 - u); ctx.fillStyle = vk ? '#f3d0e0' : '#ffffff';
-      pteroCloud(vx + Math.sin(u * 5 + i) * 16 * s, top - 14 - u * 170 * s, r / 30, ctx.fillStyle);
+      pteroCloud(vx + Math.sin(u * 5 + i) * 16 * s, top - 14 - u * 170 * s, r / 30, ctx.fillStyle, true);
     }
     ctx.globalAlpha = 1;
   }
@@ -982,6 +992,8 @@ function pteroDrawFar(st) {
   ctx.beginPath(); ctx.moveTo(0, H);
   for (let sx = 0; sx <= W; sx += 16) ctx.lineTo(sx, yAt(sx));
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = tint(pal.far, 0.25); ctx.lineWidth = 2.5;
+  ctx.beginPath(); for (let sx = 0; sx <= W; sx += 16) sx ? ctx.lineTo(sx, yAt(sx) + 1.5) : ctx.moveTo(sx, yAt(sx) + 1.5); ctx.stroke();
 }
 // the nearer jungle hills with palm silhouettes
 function pteroDrawMid(st) {
@@ -991,6 +1003,8 @@ function pteroDrawMid(st) {
   ctx.beginPath(); ctx.moveTo(0, H);
   for (let sx = 0; sx <= W; sx += 16) ctx.lineTo(sx, yAt(sx));
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = tint(pal.mid, 0.22); ctx.lineWidth = 3;
+  ctx.beginPath(); for (let sx = 0; sx <= W; sx += 16) sx ? ctx.lineTo(sx, yAt(sx) + 2) : ctx.moveTo(sx, yAt(sx) + 2); ctx.stroke();
   const TW = 110;
   ctx.fillStyle = pal.midDark; ctx.strokeStyle = pal.midDark;
   for (let k = Math.floor(off / TW) - 1; k < Math.floor(off / TW) + W / TW + 2; k++) {
@@ -1095,10 +1109,21 @@ function pteroDrawGround(st) {
   ctx.beginPath(); ctx.moveTo(xa - cam.x, H + 10);
   for (let x = xa; x <= xb; x += 8) ctx.lineTo(x - cam.x, pteroGY(st, x));
   ctx.lineTo(xb - cam.x, H + 10); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = pal.dirtDark; ctx.lineWidth = 6; ctx.globalAlpha = 0.45;
-  ctx.beginPath(); for (let x = xa; x <= xb; x += 8) { const y = pteroGY(st, x) + 40; if (x === xa) ctx.moveTo(x - cam.x, y); else ctx.lineTo(x - cam.x, y); } ctx.stroke();
-  ctx.beginPath(); for (let x = xa; x <= xb; x += 8) { const y = pteroGY(st, x) + 80; if (x === xa) ctx.moveTo(x - cam.x, y); else ctx.lineTo(x - cam.x, y); } ctx.stroke();
+  const band = (off, wdt, a) => {
+    ctx.lineWidth = wdt; ctx.globalAlpha = a;
+    ctx.beginPath(); for (let x = xa; x <= xb; x += 8) { const y = pteroGY(st, x) + off; if (x === xa) ctx.moveTo(x - cam.x, y); else ctx.lineTo(x - cam.x, y); } ctx.stroke();
+  };
+  ctx.strokeStyle = pal.dirtDark;
+  band(40, 6, 0.45); band(80, 6, 0.45);
   ctx.globalAlpha = 1;
+  // buried rocks with a lit top
+  for (let x = Math.floor(xa / 140) * 140; x < xb; x += 140) {
+    const h = hash(x, 77); if (h % 3) continue;
+    const bx = x - cam.x + (h % 80), by = pteroGY(st, x) + 60 + (h % 40), bw = 14 + (h % 10);
+    ctx.fillStyle = '#9a8a7c'; ctx.beginPath(); ctx.ellipse(bx, by, bw, bw * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7d6e62'; ctx.beginPath(); ctx.ellipse(bx + 2, by + 2, bw * 0.85, bw * 0.45, 0, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(bx - bw * 0.3, by - bw * 0.25, bw * 0.35, bw * 0.14, -0.2, 0, Math.PI * 2); ctx.fill();
+  }
   // pebbles and fossils (a friendly bone or a shell now and then)
   for (let x = Math.floor(xa / 46) * 46; x < xb; x += 46) {
     const h = hash(x, 19), y = pteroGY(st, x) + 18 + (h % 50);
@@ -1110,6 +1135,10 @@ function pteroDrawGround(st) {
   ctx.beginPath(); for (let x = xa; x <= xb; x += 8) { const y = pteroGY(st, x) + 2; if (x === xa) ctx.moveTo(x - cam.x, y); else ctx.lineTo(x - cam.x, y); } ctx.stroke();
   ctx.strokeStyle = pal.grass; ctx.lineWidth = 6;
   ctx.beginPath(); for (let x = xa; x <= xb; x += 8) { const y = pteroGY(st, x) - 1; if (x === xa) ctx.moveTo(x - cam.x, y); else ctx.lineTo(x - cam.x, y); } ctx.stroke();
+  ctx.fillStyle = pal.grassDark;
+  ctx.beginPath();
+  for (let x = Math.floor(xa / 14) * 14; x < xb; x += 14) { const y = pteroGY(st, x + 7) + 5, r = 5 + (hash(x, 3) % 3); ctx.moveTo(x - cam.x + 7 + r, y); ctx.arc(x - cam.x + 7, y, r, 0, Math.PI); }
+  ctx.fill();
   // grass tufts and little flowers
   for (let x = Math.floor(xa / 34) * 34; x < xb; x += 34) {
     const h = hash(x, 23), y = pteroGY(st, x) - 2, sx = x - cam.x + (h % 14);
@@ -1153,8 +1182,13 @@ function pteroDrawSigns(st) {
     const gy = pteroGY(st, s.x);
     ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
     const w = Math.min(320, ctx.measureText(s.text).width + 22);
+    ctx.fillStyle = 'rgba(30,20,10,0.18)'; ctx.beginPath(); ctx.ellipse(x, gy + 1, 14, 3.5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#7d5530'; ctx.fillRect(x - 3, gy - 46, 6, 46);
+    ctx.fillStyle = '#5e3e22'; ctx.fillRect(x + 1, gy - 46, 2, 46);
+    ctx.fillStyle = 'rgba(40,25,10,0.2)'; rr(x - w / 2 + 2, gy - 71, w, 30, 7); ctx.fill();
     ctx.fillStyle = '#c9925a'; rr(x - w / 2, gy - 74, w, 30, 7); ctx.fill();
+    ctx.fillStyle = '#b98250'; rr(x - w / 2, gy - 50, w, 6, 3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(x - w / 2 + 7, gy - 71.5, w - 14, 1.5);
     ctx.strokeStyle = '#7d5530'; ctx.lineWidth = 2.5; rr(x - w / 2, gy - 74, w, 30, 7); ctx.stroke();
     text(s.text, x, gy - 58.5, 13, '#3a2410', 'center', 'body');
   }
