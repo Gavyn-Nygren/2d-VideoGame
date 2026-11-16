@@ -269,7 +269,7 @@ function drawPong() {
   ctx.save();
   ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.fillRect(0, PONG.top, W, PONG.bot - PONG.top);
   // a painted court: soft stripes, side lines, a centre circle and spot
-  ctx.fillStyle = 'rgba(255,255,255,0.045)';
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
   for (let x = 0; x < W; x += 120) ctx.fillRect(x, PONG.top, 60, PONG.bot - PONG.top);
   ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(0, PONG.top + 3); ctx.lineTo(W, PONG.top + 3); ctx.moveTo(0, PONG.bot - 3); ctx.lineTo(W, PONG.bot - 3); ctx.stroke();
