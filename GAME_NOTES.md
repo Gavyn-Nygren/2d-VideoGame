@@ -981,6 +981,7 @@ Gavyn (2026-11-16): refine and add detail to every level's graphics (not World 3
 - Helpers for levels: `mixCol(a, b, t)`, `shade(c, t)`, `tint(c, t)` ('#rrggbb' colours), `artPlain()`.
 - The intro card grows to its widest line, and name tags to their words.
 - **Checking**: `node tools/polish/survey.js [w1-5|codes|all] [--sizes=laptop,phone]` saves ready / play / pause screenshots on laptop and phone sizes to `build/polish/` and reports text that spills out of its box or off screen (canvas and menus); `node tools/polish/summary.js build/polish/report-*.json` lists the findings.
+- **Worlds 30, 31, 33, 34** (batch G): art only, inside each world's own files. W31 detail lives in `SHRUNK` (shrunk-kit.js; World 32 only uses its non-scenery helpers), W33 in `STORMCHASE` (storm-kit.js), W34 in `VIKING` (viking-kit.js: fjords, longship, shield, sea). W30 polished the Stonehenge, Leonardo and First Flight backdrops. Survey false alarms: pop words over the scene ("Rune stone 5!", "Caught!", "SKOL!"), the van's "STORM CHASERS", 31-4's scrolling slope labels, and 31-3's centred banner text (no box of its own). 30-1's computer-play time varies run to run on the base too.
 
 ### Medals (js/medals.js)
 
