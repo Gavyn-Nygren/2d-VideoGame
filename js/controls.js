@@ -385,6 +385,7 @@ function readyRender() {
   if (!duo) return;
   const l = LEVELS[G.levelIndex], lg = cardLegend(), act = G.level && G.level.def.act, def = G.level && G.level.def;
   const vs = l.kind === 'versus';
+  duo.classList.toggle('job-parts', !!l.jobParts);
   duo.innerHTML = [0, 1].map(k => {
     const cls = k === 0 ? 'pip' : 'bo', j = jobFor(k), nm = `<span class="nm nm-${cls}">${NAMES[k]}${jobTitleHTML(j)}</span>`;
     if (isCpuPlayer(k)) {
