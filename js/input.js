@@ -109,6 +109,7 @@ function readPad(gp) {
   return {
     btns: gp.buttons.map((x, n) => b(n)),
     left: ax < -0.35 || dl, right: ax > 0.35 || dr, up: ay < -0.6 || du, down: ay > 0.6 || dd,
+    ax, ay, // the stick itself (0, 0 inside the dead zone), for levels that steer with its angle (5-1)
     jump, act, ok, back, start, view, active: anyBtn || ax !== 0 || ay !== 0 || dl || dr || du || dd,
   };
 }

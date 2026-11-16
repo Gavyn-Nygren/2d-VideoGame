@@ -45,6 +45,7 @@ function setupGolfHole(k) {
   Object.assign(bp, makePlayer(bp.id), { input: bp.input, prevJump: true, alive: false, respawnT: Infinity });
   placeGolfer(golferSpot());
   G.spawnPts = [];
+  golfCam(0, true);
 }
 function golfNextHole() {
   G.room = 1;
@@ -75,7 +76,7 @@ function golfStartWalk() {
   g.aim = golfAutoAim(b.x, b.y);
   const to = golferSpot();
   const dist = Math.hypot(to.x - gp.x, to.y - gp.y);
-  g.walk = { fx: gp.x, fy: gp.y, to, t: 0, dur: clamp(dist / 520, 0.25, 1.1), hop: Math.min(70, dist * 0.3) + 10 };
+  g.walk = { fx: gp.x, fy: gp.y, to, t: 0, dur: clamp(dist / 520, 0.25, L.cols > COLS ? 1.8 : 1.1), hop: Math.min(70, dist * 0.3) + 10 };
   g.phase = 'walk'; g.phaseT = 0;
 }
 function golfHoleDone(pickedUp) {
@@ -126,7 +127,7 @@ function golfCollide(b) {
       b.vx += (out - vn) * nx; b.vy += (out - vn) * ny;
       // landing on top of a bumper also pushes the ball sideways, so it can't hop on the spot forever
       if (ny < -0.6 && Math.abs(b.vx) < 120) b.vx = 120 * (Math.sign(b.vx) || (G.level.cup.x >= b.x ? 1 : -1));
-      G.golf.bumps[ty * COLS + tx] = 0.25;
+      G.golf.bumps[ty * 1000 + tx] = 0.25;
       if (b.sfxT <= 0) { Sfx.play('bumper'); b.sfxT = 0.06; rumble(G.golf.ball, 0.3, 0.4, 60); }
     } else if (vn < 0) {
       const hard = -vn > 90, e = hard ? (sand ? GOLF.sandBounce : GOLF.bounce) : 0;
@@ -176,7 +177,7 @@ function golfGadgets(b) {
       // can never bounce on the same pad forever
       if (p.dir === 0) {
         // the same pad again and again (say, against a wall): push harder, away from the wall
-        const key = p.ty * COLS + p.tx;
+        const key = p.ty * 1000 + p.tx;
         b.padStreak = b.lastPad === key ? (b.padStreak || 0) + 1 : 1; b.lastPad = key;
         let dir = Math.sign(b.vx) || (L.cup.x >= b.x ? 1 : -1);
         if (Math.abs(b.vx) < 90 && [0, 1, 2].some(k => golfSolid(p.tx + dir, p.ty - k))) dir = -dir;
@@ -243,7 +244,7 @@ function golfFly(dt) {
     if (tile(tx, ty) === 'w' && b.y > ty * T + 6) { golfPenalty('water'); return; }
     const sy = Math.floor((b.y + GOLF.r - 2) / T);
     if (tile(tx, sy) === '^' && b.y + GOLF.r > sy * T + 14) { golfPenalty('spikes'); return; }
-    if (b.y > H + 40 || b.x < -30 || b.x > W + 30) { golfPenalty('out'); return; }
+    if (b.y > H + 40 || b.x < -30 || b.x > L.cols * T + 30) { golfPenalty('out'); return; }
   }
   if (b.ground) { const f = (b.sand ? GOLF.sandRoll : GOLF.roll) * dt; b.vx = Math.abs(b.vx) <= f ? 0 : b.vx - Math.sign(b.vx) * f; }
   b.spin += b.vx * dt / GOLF.r;
@@ -301,7 +302,68 @@ function golfStep(dt) {
   } else if (g.phase === 'sunk') {
     if (g.phaseT > 2.8) { if (g.hole === 0) golfNextHole(); else levelClear(); }
   }
+  golfCam(dt);
   for (const p of G.players) p.pendingJump = false;
+}
+
+/* ---------- the camera on a wide course (def.wide: 3-4 Portal Park) ----------
+   While the intro card is up it glides from the cup back to the tee, so you see the whole hole first. Aiming, it keeps
+   the ball near the back of the screen so you see the way ahead; in flight it follows the ball (a little ahead of it),
+   and it never lets the ball or the walking golfer leave the screen. One-screen holes keep G.camX at 0. */
+function golfCam(dt, snap) {
+  const L = G.level, g = G.golf, b = g.b, maxX = L.cols * T - W;
+  if (maxX <= 0) { G.camX = 0; return; }
+  let fx, rate = 3.2, keep = b.x;
+  if (g.phase === 'aim' && (G.introT > 0 || snap) && g.strokes[g.hole] === 0) {
+    // the flyover: from the cup to the tee while the card is up, then settle on the shot
+    const k = snap ? 1 : clamp((G.introT - 0.9) / 2.4, 0, 1), e = k * k * (3 - 2 * k);
+    const tee = b.x - (golfDir() > 0 ? W * 0.28 : W * 0.72), cup = L.cup.x - W / 2;
+    fx = tee + (cup - tee) * e; rate = 9; keep = null;
+  } else if (g.phase === 'aim' || g.phase === 'penalty') {
+    const at = g.phase === 'penalty' ? b.from : b;
+    fx = at.x - (golfDir() > 0 ? W * 0.28 : W * 0.72); keep = g.phase === 'penalty' ? null : b.x;
+  } else if (g.phase === 'fly') {
+    fx = b.x - W / 2 + clamp(b.vx * 0.35, -220, 220); rate = 4.5;
+  } else if (g.phase === 'walk') {
+    const gp = G.players[g.golfer], dir = g.walk.to.x >= g.walk.fx ? 1 : -1;
+    fx = gp.x + PW / 2 - (dir > 0 ? W * 0.3 : W * 0.7); keep = gp.x + PW / 2; rate = 3.5;
+  } else fx = L.cup.x - W / 2; // sunk
+  fx = clamp(fx, 0, maxX);
+  if (snap || G.camX == null) G.camX = fx;
+  else G.camX += (fx - G.camX) * Math.min(1, dt * rate);
+  // whatever we follow stays at least 90 px inside the screen
+  if (keep != null) G.camX = clamp(G.camX, keep - W + 90, keep - 90);
+  G.camX = clamp(G.camX, 0, maxX);
+}
+// the whole course in a strip at the bottom of the screen: tee, portals, the cup's flag, the ball and the golfer, and
+// a box for the part you can see now (wide courses only)
+function drawGolfMap() {
+  const L = G.level, g = G.golf, b = g.b, cw = L.cols * T;
+  if (cw <= W) return;
+  const mw = 340, mh = 20, x0 = W / 2 - mw / 2, y0 = H - mh - 10, sx = x => x0 + 8 + (x / cw) * (mw - 16);
+  ctx.save(); ctx.globalAlpha = 0.92;
+  ctx.fillStyle = 'rgba(23,25,29,0.72)'; rr(x0, y0, mw, mh, mh / 2); ctx.fill();
+  // the ground line: the top of each column, low = deep, high = raised
+  ctx.strokeStyle = 'rgba(143,224,113,0.8)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let tx = 0; tx < L.cols; tx++) {
+    let ty = 1; while (ty < ROWS && !golfSolid(tx, ty) && tile(tx, ty) !== 'w') ty++;
+    const y = y0 + 3 + (ty / ROWS) * (mh - 6);
+    if (tx === 0) ctx.moveTo(sx(tx * T), y); else ctx.lineTo(sx(tx * T + T / 2), y);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5;
+  rr(sx(G.camX), y0 + 2, (W / cw) * (mw - 16), mh - 4, 4); ctx.stroke();
+  for (const p of L.portals) { ctx.fillStyle = PORTAL_COL[p.ch]; circle(sx(p.x), y0 + mh / 2, 3); ctx.fill(); }
+  ctx.fillStyle = C.gold; const fx = sx(L.cup.x);
+  ctx.fillRect(fx - 0.75, y0 + 2, 1.5, mh - 6);
+  ctx.beginPath(); ctx.moveTo(fx + 0.75, y0 + 2); ctx.lineTo(fx + 8, y0 + 5); ctx.lineTo(fx + 0.75, y0 + 8); ctx.fill();
+  const gp = G.players[g.golfer];
+  ctx.fillStyle = PCOL[g.golfer]; circle(sx(gp.x + PW / 2), y0 + mh / 2 + 2, 3); ctx.fill();
+  if (!b.hidden && g.phase !== 'sunk') {
+    ctx.fillStyle = '#fbfaf5'; circle(sx(b.x), y0 + mh / 2, 4); ctx.fill();
+    ctx.strokeStyle = PCOL[g.ball]; ctx.lineWidth = 2; ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawMill(s) {
@@ -334,6 +396,19 @@ function drawRing(rg) {
   ctx.strokeStyle = C.goldDark; ctx.lineWidth = 6; circle(0, 0, 15); ctx.stroke();
   ctx.strokeStyle = C.gold; ctx.lineWidth = 3.5; circle(0, 0, 15); ctx.stroke();
   ctx.restore();
+}
+// a hole's `cave` (tile rectangles [x0, x1, y0, y1]: Portal Park's rabbit-hole tunnel) gets a dark cave wall behind its
+// open cells instead of the sky
+function drawGolfCaves(camX) {
+  const L = G.level, vx0 = Math.floor(camX / T), vx1 = Math.floor((camX + W) / T);
+  for (const [x0, x1, y0, y1] of L.def.cave || []) {
+    for (let tx = Math.max(x0, vx0); tx <= Math.min(x1, vx1); tx++) for (let ty = y0; ty <= y1; ty++) {
+      if (golfSolid(tx, ty)) continue;
+      const x = tx * T, y = ty * T, h = hash(tx, ty);
+      ctx.fillStyle = '#4d4054'; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
+      if (h % 4 === 0) { ctx.fillStyle = 'rgba(255,255,255,0.06)'; rr(x + 5 + (h % 13), y + 8 + ((h >> 4) % 14), 8, 4, 2); ctx.fill(); }
+    }
+  }
 }
 // cup, tee, aim dots, club and power meter (drawn under the players)
 function drawGolf() {
@@ -448,6 +523,7 @@ function golfKeys(id, what) {
 }
 function drawGolfHUD() {
   const g = G.golf, L = G.level, gn = NAMES[g.golfer], bn = NAMES[g.ball];
+  drawGolfMap();
   // hole and par
   const hl = `Hole ${g.hole + 1} of 2: ${L.def.title}  ·  Par ${L.def.par}`;
   ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';

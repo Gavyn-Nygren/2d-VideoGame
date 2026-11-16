@@ -4,7 +4,7 @@
 /* Follows ironFallPlan. Runs the marked route right and down (jumps each gap at the platform's end, walks onto chains
    and the slide), hops the slide's loose plates and ducks its cables. Launch plates: stands on the plate if the plan
    says so, otherwise waits beside the pump and hops onto it the moment the partner stands on the plate; throws the
-   chain at once. Walls: the step crouches, the climber jumps off its head; the one on top holds the action at the edge.
+   chain at once. Walls: rides the steam lift or holds its lever (ironBrainLift).
    The knee: presses jump 0.15 s after the person (or 0.1 s into "JUMP!" when it must lead). */
 IRON_BRAINS.fall = {
   reset(bst) { bst.kneeN = -1; },
@@ -17,7 +17,7 @@ IRON_BRAINS.fall = {
     // far from the job (another platform): run the course there first
     const L = ironFallPlan(S).launch;
     if (L && (w === 'plate' || w === 'pump' || w === 'pumpwait') && !(p.grounded && p.ground === ph.plats[L.from]) && !(p.grounded && p.ground === L.pumpS)) return ironFallGo(bst, out, p, S, P.x);
-    if ((w === 'step' || w === 'boost' || w === 'wait') && Math.abs(cx - P.x) > 80) return ironFallGo(bst, out, p, S, P.x);
+    if ((w === 'ride' || w === 'valve' || w === 'wait') && Math.abs(cx - P.x) > 80) return ironFallGo(bst, out, p, S, P.x);
     if (w === 'plate') { if (Math.abs(cx - P.x) > 5) ironLegNear(bst, out, p, P.x, 4); return ironBrainJumpHold(bst, ironBrainHop(bst, out, p)); }
     if (w === 'pumpwait' || w === 'pump') {
       const l = ironFallPlan(S).launch, pc = (l.pump[0] + l.pump[1]) / 2, stand = l.pump[1] + 16;
@@ -39,18 +39,7 @@ IRON_BRAINS.fall = {
       if (Math.abs(cx - P.x) > 26) return ironFallGo(bst, out, p, S, P.x);
       out.act = true; return out;
     }
-    if (w === 'step') {
-      if (p.onPartner) { out.left = true; return out; }
-      if (Math.abs(cx - P.x) > 8) { ironLegNear(bst, out, p, P.x, 3); return ironBrainJumpHold(bst, out); }
-      out.down = true; return out;
-    }
-    if (w === 'boost') return ironFallBoost(bst, p, o, S, out);
-    if (w === 'hand') {
-      const wl = ironFallPlan(S).wall, e = wl ? wl.x : P.x - 10;
-      if (cx > e + 40) out.left = ironBrainTap(bst, 'inch', 0.1); else if (cx < e + 8) out.right = ironBrainTap(bst, 'inch', 0.1);
-      if (p.grounded) out.act = true;
-      return out;
-    }
+    if (w === 'ride' || w === 'off' || w === 'valve') return ironBrainLift(bst, p, o, P, out, dt);
     if (w === 'knee') {
       const J = ph.jump;
       if (J.st !== 'go') { bst.kneeT = null; if (Math.abs(cx - P.x) > 8) return ironFallGo(bst, out, p, S, P.x); return out; }
@@ -87,20 +76,4 @@ function ironFallGo(bst, out, p, S, x) {
   }
   ironBrainSeek(out, p, x, 5);
   return ironBrainJumpHold(bst, ironBrainHop(bst, out, p));
-}
-// the climber at a wall: beside the crouching partner, jump onto its head, then jump again toward the wall
-function ironFallBoost(bst, p, o, S, out) {
-  const cx = cpuCx(p), w = ironFallPlan(S).wall;
-  if (!w) return out;
-  if (p.grounded && p.y + p.h <= w.top + 2) { if (cx > w.x + 30) out.left = ironBrainTap(bst, 'inch', 0.1); return ironBrainJumpHold(bst, out); }
-  if (!o.crouch && p.grounded && !p.onPartner) { ironBrainSeek(out, p, w.x - 60, 6); return ironBrainJumpHold(bst, out); }
-  // ended up between the step and the wall: back off past the step first, then come again
-  if (p.grounded && !p.onPartner) {
-    const ocx = cpuCx(o);
-    if (bst.bk || cx > ocx + 6) { bst.bk = cx > ocx - 34; if (bst.bk) { out.left = true; return ironBrainJumpHold(bst, out); } }
-  } else bst.bk = false;
-  out.right = true;
-  if (!p.grounded) { if (p.y + p.h < w.top && cpuCx(p) > w.x + 24) out.right = false; return ironBrainJumpHold(bst, out); }
-  if (p.onPartner || Math.abs(cx - cpuCx(o)) < 14) ironBrainJump(bst, out, p, 0.35);
-  return ironBrainJumpHold(bst, out);
 }

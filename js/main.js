@@ -13,11 +13,14 @@ function parseLevel(def) {
   const grid = def.map.map(r => r.split(''));
   const L = { def, grid, spawns: [], plates: [], door: null, key: null, flags: [], crownSpawn: null, goal: null, sw: {},
     pads: [], spinners: [], portals: [], rings: [] };
+  // a level is one screen (COLS wide) unless it sets `wide`: then the map can be any width and the camera scrolls
+  // (G.camX, js/render.js; only World 3's Portal Park uses it so far)
+  const cols = L.cols = def.wide ? grid[0].length : COLS;
   L.blockCol = grid.map(r => r.map(() => null));
   for (const [ch, cfg] of Object.entries(def.switches || {})) L.sw[ch] = { plate: cfg.plate, type: cfg.type, on: false, anim: 0, tiles: [] };
   for (let y = 0; y < ROWS; y++) {
-    if (!grid[y] || grid[y].length !== COLS) console.warn('Level "' + def.name + '" row ' + y + ' is not ' + COLS + ' wide');
-    for (let x = 0; x < COLS; x++) {
+    if (!grid[y] || grid[y].length !== cols) console.warn('Level "' + def.name + '" row ' + y + ' is not ' + cols + ' wide');
+    for (let x = 0; x < cols; x++) {
       const ch = grid[y][x];
       if (ch === '1' || ch === '2') { L.spawns[ch === '1' ? 0 : 1] = { x: x * T + (T - PW) / 2, y: (y + 1) * T - PH }; grid[y][x] = '.'; }
       else if (ch === 'a' || ch === 'b' || ch === 'c') { L.plates.push({ x, y, letter: ch, down: false }); grid[y][x] = '.'; }
@@ -67,7 +70,7 @@ function loadLevel(i, mode = 'play', opts = {}) {
     Object.assign(p, makePlayer(k), { x: L.spawns[k].x, y: L.spawns[k].y });
     p.prevJump = true;
   });
-  G.crown = null; G.vs = null; G.build = null; G.activeSet = null; G.golf = null; G.pong = null;
+  G.crown = null; G.vs = null; G.build = null; G.activeSet = null; G.golf = null; G.pong = null; G.camX = 0;
   G.mst = {}; G.match = null; G.matchHudBox = null; G.lmode = L.def.mode ? MODES[L.def.mode] || null : null;
   if (L.def.mode && !G.lmode) console.warn('Level "' + L.def.name + '": no MODES.' + L.def.mode);
   if (L.def.pong) setupPong();
@@ -300,12 +303,12 @@ function levelClear() {
     rec.golf = { strokes: G.golf.strokes.slice(), pars: G.golf.pars.slice() };
     const total = rec.golf.strokes[0] + rec.golf.strokes[1], best = levelRecord('golf', i);
     rec.best = best; rec.newBest = best == null || total < best;
-    if (rec.newBest) store.set('golf:' + LEVELS[i].name, total);
+    if (rec.newBest) store.set('golf:' + recordName(i), total);
   } else if (!LEVELS[i].noTime) {
     const best = levelRecord('best', i);
     rec.best = best;
     rec.newBest = best == null || rec.time < best;
-    if (rec.newBest) store.set('best:' + LEVELS[i].name, rec.time);
+    if (rec.newBest) store.set('best:' + recordName(i), rec.time);
   }
   if (G.lmode) rec.stats = modeStats();
   if (G.lmode) { const t = hook('resultTitle'); if (t) rec.title = String(t); }

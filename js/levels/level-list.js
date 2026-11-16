@@ -11,6 +11,11 @@
    J  bounce pad (straight up)   R / L  bounce pad (up and to the right / left)   X  bumper block (very bouncy)
    M  windmill (spinning sails, see the hole's `windmill` settings)   O-Q and U-V  portal pairs   @  boost ring (refills the ball's boost)
    Letters listed in `switches` are gates (solid until their button is held) or bridges (solid while held). */
+// World 3 golf: the controls the ready card, pause card and top bar list (the golfer's job, then the ball's)
+const GOLF_LEGEND = {
+  pip: '<kbd>A</kbd><kbd>D</kbd> aim <kbd>W</kbd> hold, let go to swing <kbd>S</kbd> cancel swing · as the ball: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> boost',
+  bo: '<kbd>←</kbd><kbd>→</kbd> aim <kbd>↑</kbd> hold, let go to swing <kbd>↓</kbd> cancel swing · as the ball: <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> boost',
+};
 const LEVELS = [
   {
     name: 'Hold the Door', world: 0, kind: 'team',
@@ -141,9 +146,10 @@ const LEVELS = [
       },
       {
         title: 'Chain', cord: 'chain', tether: 140, switches: {},
-        tip: 'A chain is stiff. Hanging from it? Hold jump and push \u25c0 \u25b6 to swing around.',
+        tip: 'A chain is stiff. Hanging from it? Push toward your partner to climb up, or hold jump and push \u25c0 \u25b6 to swing around.',
         signs: [
           { x: 205, y: 205, text: 'Hold your partner out for the key' },
+          { x: 205, y: 240, text: 'Push toward your partner to climb back up' },
           { x: 585, y: 120, text: 'Too tall? Swing over it!' },
         ],
       map: [
@@ -287,7 +293,7 @@ const LEVELS = [
   },
   {
     name: 'Crown Keep', world: 1, kind: 'versus', target: 15, timeLimit: 90,
-    tip: 'Hold the crown for 15 seconds. Stomp on the holder to steal it!',
+    tip: 'Hold the crown for 15 seconds. It’s heavy: you run slower and jump lower. Stomp the holder to steal it!',
     switches: {},
     signs: [
       { x: 480, y: 110, text: 'Hold the crown 15 seconds. Stomp the holder to steal it!' },
@@ -299,22 +305,22 @@ const LEVELS = [
       '#..............................#',
       '#..............................#',
       '#..............................#',
+      '#======..................======#',
       '#..............................#',
-      '#....====..............====....#',
-      '#..............................#',
+      '#....=======........=======....#',
       '#..............*...............#',
-      '#...........========...........#',
+      '#.........============.........#',
       '#..............................#',
+      '#.....======........======.....#',
       '#..............................#',
-      '#..======..............======..#',
-      '#.............####.............#',
+      '#.======......####......======.#',
       '#.1...........####...........2.#',
       '################################',
       '################################',
     ],
   },
   {
-    name: 'Tee for Two', world: 2, kind: 'team', golf: true,
+    name: 'Tee for Two', world: 2, kind: 'team', golf: true, legend: GOLF_LEGEND,
     medals: { bronze: 'Sink both balls', goals: [{ key: 'overPar', gold: 0, silver: 2, text: n => n === 0 ? 'Par or better' : `${n} or fewer over par`, show: v => v === 0 ? 'par' : v > 0 ? v + ' over' : -v + ' under', gap: (v, n) => `${v - n} fewer stroke${v - n === 1 ? '' : 's'}` }] },
     tip: 'One of you golfs, the other IS the ball and can boost mid-flight. Fewest strokes wins!',
     switches: {},
@@ -372,7 +378,7 @@ const LEVELS = [
     ],
   },
   {
-    name: 'Bounce House', world: 2, kind: 'team', golf: true,
+    name: 'Bounce House', world: 2, kind: 'team', golf: true, legend: GOLF_LEGEND,
     medals: { bronze: 'Sink both balls', goals: [{ key: 'overPar', gold: 0, silver: 2, text: n => n === 0 ? 'Par or better' : `${n} or fewer over par`, show: v => v === 0 ? 'par' : v > 0 ? v + ' over' : -v + ' under', gap: (v, n) => `${v - n} fewer stroke${v - n === 1 ? '' : 's'}` }] },
     tip: 'Pink pads bounce the ball. Red bumpers kick it back hard!',
     switches: {},
@@ -430,7 +436,7 @@ const LEVELS = [
     ],
   },
   {
-    name: 'Windmill Way', world: 2, kind: 'team', golf: true,
+    name: 'Windmill Way', world: 2, kind: 'team', golf: true, legend: GOLF_LEGEND,
     medals: { bronze: 'Sink both balls', goals: [{ key: 'overPar', gold: 0, silver: 2, text: n => n === 0 ? 'Par or better' : `${n} or fewer over par`, show: v => v === 0 ? 'par' : v > 0 ? v + ' over' : -v + ' under', gap: (v, n) => `${v - n} fewer stroke${v - n === 1 ? '' : 's'}` }] },
     tip: 'Windmill sails knock the ball around. Wait for a gap, then swing!',
     switches: {},
@@ -488,61 +494,63 @@ const LEVELS = [
     ],
   },
   {
-    name: 'Portal Park', world: 2, kind: 'team', golf: true, airBoost: true,
-    medals: { bronze: 'Sink both balls', goals: [{ key: 'overPar', gold: 0, silver: 2, text: n => n === 0 ? 'Par or better' : `${n} or fewer over par`, show: v => v === 0 ? 'par' : v > 0 ? v + ' over' : -v + ' under', gap: (v, n) => `${v - n} fewer stroke${v - n === 1 ? '' : 's'}` }] },
-    tip: 'Portals send the ball across the course. Speed in = speed out!',
+    // Nov 2026 (Gavyn): the last golf level is a long scrolling course, three screens per hole. Its records start fresh
+    // (`recordName`), since a best from the old one-screen holes could never be beaten.
+    name: 'Portal Park', recordName: 'Portal Park (long course)', world: 2, kind: 'team', golf: true, legend: GOLF_LEGEND, airBoost: true, wide: true,
+    medals: { bronze: 'Sink both balls', goals: [{ key: 'overPar', gold: 0, silver: 3, text: n => n === 0 ? 'Par or better' : `${n} or fewer over par`, show: v => v === 0 ? 'par' : v > 0 ? v + ' over' : -v + ' under', gap: (v, n) => `${v - n} fewer stroke${v - n === 1 ? '' : 's'}` }] },
+    tip: 'Two long holes! Portals send the ball across the course. Speed in = speed out!',
     switches: {},
     rooms: [
       {
-        title: 'Warp Zone', par: 3, flatY: 400, flatAim: 0,
-        tip: 'Pip golfs, Bo is the ball. Putt into the portal. Bo: boost in the air to reach the green!',
-        signs: [{ x: 330, y: 245, text: 'Speed in = speed out!' }],
+        title: 'Warp Zone', par: 5, windmill: { arms: 3, len: 105, speed: 0.85 },
+        tip: 'Pip golfs, Bo is the ball. Over the pond, then putt into the portal at the wall!',
+        signs: [{ x: 780, y: 300, text: 'Speed in = speed out!' }, { x: 2010, y: 150, text: 'Mind the sails!' }, { x: 2320, y: 220, text: 'Ball: the gold ring refills your boost!' }],
         map: [
-          '################################',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#.......Q......................#',
-          '#..............................#',
-          '#..............................#',
-          '#..............................#',
-          '#...................####H##ssss#',
-          '#...................X###########',
-          '################ssss############',
-          '################################',
-          '################################',
-          '#..............................#',
-          '#.T...........................O#',
-          '################################',
-          '################################',
-          '################################',
+          '####################################################################################################',
+          '#..................................................................................................#',
+          '#..................................................................................................#',
+          '#..................................................................................................#',
+          '#.........................................####.....................................................#',
+          '#.........................................####.....................................................#',
+          '#.........................................####.....................................................#',
+          '#.........................................####..Q..................................................#',
+          '#.........................................####.....................................................#',
+          '#.........................................####.....................M.........@.....................#',
+          '#.........................................##############sss.......###..............................#',
+          '#.........................................#################.......###..............................#',
+          '#.........................................#################.....................ss#########H##sssss#',
+          '#.........................................#################.....................####################',
+          '#..T....................................O.#################.................^^^^####################',
+          '####################wwwwwwwwwwwww#############################sss#####sss###########################',
+          '####################################################################################################',
+          '####################################################################################################',
         ],
       },
       {
-        title: 'Rabbit Hole', par: 3, flatY: 340,
-        tip: 'Swap! Bo golfs, Pip is the ball. Chip into the portal. Pip: steer it in!',
-        signs: [{ x: 650, y: 130, text: 'Down the rabbit hole!' }],
+        title: 'Rabbit Hole', par: 5, windmill: { arms: 4, len: 78, speed: 1.1 }, cave: [[1, 72, 11, 14]],
+        tip: 'Swap! Bo golfs, Pip is the ball. Down the rabbit hole, or brave the lake?',
+        signs: [{ x: 660, y: 190, text: 'Down the rabbit hole!' }, { x: 1440, y: 100, text: 'Too far? Grab the ring!' }],
         map: [
-          '################################',
-          '###########s...................#',
-          '###########s...................#',
-          '###########s...................#',
-          '###########s...................#',
-          '###########s...................#',
-          '###########sV..................#',
-          '###########s...................#',
-          '###########s...................#',
-          '###########s.........T.........#',
-          '############.###################',
-          '################################',
-          '#s.U...........................#',
-          '#s.............................#',
-          '#s.............................#',
-          '############H###################',
-          '################################',
-          '################################',
+          '########################################################################################################',
+          '#......................................................................................................#',
+          '#......................................................................................................#',
+          '#......................................................................................................#',
+          '#...............................................@......................................................#',
+          '#.........................................................................Q...........M................#',
+          '#....................................................................................###...............#',
+          '#....................................................................................###...............#',
+          '#..T..................U................................................................................#',
+          '##############################wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww#############################H##ssss#',
+          '########################################################################################################',
+          '##................................................XX......XX.............###############################',
+          '##.......................................................................###############################',
+          '##..V....................................................................###############################',
+          '##....................................^^^^^............................O.###############################',
+          '########################sss#############################################################################',
+          '########################################################################################################',
+          '########################################################################################################',
         ],
-      }
+      },
     ],
   },
   /* ===== World 4 (Rumble Park, versus): add the level defs here, in order 4-1, 4-2, 4-3, 4-4 =====
@@ -580,14 +588,24 @@ const LEVELS = [
   {
     name: 'Snowball Fight', world: 3, kind: 'versus', mode: 'snow',
     match: { bestOf: 7, roundTime: 60 }, act: { label: 'throw' }, stomp: false,
-    legend: { down: 'duck', padDown: 'down ducks' },   // ▼ ducks (and packs snow) here; on a plank it still drops through
-    tip: 'Hit them 4 times to make a snowman! Tap to throw, hold to lob, ▼ to duck. Don’t hide too long!',
-    signs: [{ x: 480, y: 104, text: 'Hold throw to aim far · ▼ ducks under snowballs' }],
+    // ▼ ducks (and packs snow) here; on a plank it still drops through. While throw is held, ▲ ▼ tilt the aim instead.
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck · hold throw: <kbd>W</kbd><kbd>S</kbd> aim up / down',
+      bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump <kbd>↓</kbd> duck · hold throw: <kbd>↑</kbd><kbd>↓</kbd> aim up / down',
+    },
+    tip: 'Hit them 4 times to make a snowman! Hold throw to aim, catch their snowballs, and hide behind your fort.',
+    howTo: [
+      'Tap throw for a quick throw. Hold throw to aim: ▲ ▼ tilt the dotted line, let go to throw. Aim high to lob over a fort.',
+      'Catch! When a snowball is about to hit you, a gold “Catch!” pops up: press throw to catch it. A catch shakes 1 snow off you.',
+      'Your fort: your snowballs fly over your own wall, theirs can’t get through. Grab more snowballs at your pile.',
+      '▼ ducks under quick throws. At 40 seconds the sun comes out and both forts melt.',
+    ],
+    signs: [{ x: 480, y: 104, text: 'Hold throw to aim  ·  “Catch!” pops up? Press throw!' }],
     theme: { skyTop: '#bcdcf2', skyBot: '#e6f0f9', hillFar: '#d5e5f2', hillNear: '#b9d0e4',
       stone: '#56688c', stoneLight: '#667aa0', stoneEdge: '#3b4a6c', grass: '#f8fcff', grassDark: '#c4d8ec',
       sun: 'rgba(255, 252, 238, 0.95)', sunGlow: 'rgba(255, 252, 238, 0.35)' },
     switches: {},
-    // f = snow-fort brick (3 hits), m = centre MEGA spot, n = side MEGA spots (Pip's left, Bo's right)
+    // f = snow-fort brick (3 hits), o = snowball pile, m = centre MEGA spot, n = side MEGA spots (Pip's left, Bo's right)
     map: [
       '################################',
       '#..............................#',
@@ -603,8 +621,8 @@ const LEVELS = [
       '#......n...............n.......#',
       '#.....====............====.....#',
       '#..............m...............#',
-      '#.......f......##......f.......#',
-      '#..1....f....######....f....2..#',
+      '#..............##..............#',
+      '#..1.o.fff...######...fff.o.2..#',
       '################################',
       '################################',
     ],
@@ -617,6 +635,10 @@ const LEVELS = [
     stomp: false,                         // the two players never meet (the net keeps them apart)
     theme: { grass: '#f3d68f', grassDark: '#d9ae5c' },   // sand on top of the stone: beach volleyball at dusk
     tip: 'Hit the potato over the net! If it goes BOOM on your side, you lose. Red-hot? Don’t let it land!',
+    howTo: [
+      'Where you hit it aims it: get under the potato to pop it up HIGH, or hit it beside your head to send it LONG and flat. The arrow on the potato shows which way it will go.',
+      'Each round has a new potato: Classic, Feather Spud (light and floaty), Bouncy Spud (boings off the sand), Big Spud and Two Spuds.',
+    ],
     switches: {}, signs: [],
     potato: { netX: 480, netH: 96 },      // read by the mode: net centre x, net height above the floor
     map: [
@@ -644,8 +666,104 @@ const LEVELS = [
     name: 'Paint the Floor', world: 3, kind: 'versus', mode: 'paint',
     match: { bestOf: 5, roundTime: 45 }, act: { label: 'splat' },
     theme: { grass: '#f3ead8', grassDark: '#d6c8ad' },
-    tip: 'Run to paint your colour! Splat in the air for a big SPLASH. Most paint at the end wins.',
+    tip: 'Run to paint your colour! Every round is a new floor. Most paint at the bell wins.',
+    howTo: [
+      'Walking paints. SPLAT in the air for a splash, then wait for it to recharge.',
+      'Pink bounce pads fling you up high.',
+      'Step into a portal to pop out of its twin.',
+      'Grab a paint roller: run fast and paint over anything!',
+    ],
     switches: {}, signs: [],
+    // one floor per round, in this order (round 6+ starts again). map: the round's own layout (none = def.map);
+    // own: Speedy Paint (your colour is a fast lane); theme: colours over the world's. Marks: J bounce pad,
+    // O/Q and U/V portal pairs, y paint-roller spot, B golden-bucket spot (MODES.paint, js/levels/world4/paint-the-floor.js)
+    floors: [
+      { name: 'Paint Studio', hint: 'Run to paint. Splat in the air!' },
+      { name: 'Bounce House', hint: 'Pink pads fling you up high!', theme: { skyTop: '#e98fb8', skyBot: '#ffd9b0' },
+        map: [
+          '################################',
+          '#..............................#',
+          '#..............................#',
+          '#....B...................B.....#',
+          '#..======..............======..#',
+          '#..............................#',
+          '#............B...B.............#',
+          '#...........========...........#',
+          '#..............................#',
+          '#.J....B...............B.....J.#',
+          '#.=======..............=======.#',
+          '#..............................#',
+          '#.....B.......J..J......B......#',
+          '#...====....========....====...#',
+          '#..............................#',
+          '#.1....J.......B........J....2.#',
+          '################################',
+          '################################',
+        ] },
+      { name: 'Warp Gallery', hint: 'Step in a portal to warp across!', theme: { skyTop: '#5fa8c9', skyBot: '#c9f0e0' },
+        map: [
+          '################################',
+          '#..............................#',
+          '#..............................#',
+          '#V.............B..............Q#',
+          '##====.......######.......====##',
+          '#..............................#',
+          '#.......B.............B........#',
+          '#.....=====..........=====.....#',
+          '#..............................#',
+          '#..B...........B...........B...#',
+          '#.=====......======......=====.#',
+          '#..............................#',
+          '#......B...............B.......#',
+          '#.....=====..........=====.....#',
+          '#...........########...........#',
+          '#O.1......B.########B.......2.U#',
+          '################################',
+          '################################',
+        ] },
+      { name: 'Roller Rink', hint: 'Grab a roller! Your colour is a fast lane.', own: 0.3, theme: { skyTop: '#f0a868', skyBot: '#fff0b8' },
+        map: [
+          '################################',
+          '#..............................#',
+          '#..............................#',
+          '#..............................#',
+          '#.....y.B.............B..y.....#',
+          '#....======================....#',
+          '#..............................#',
+          '#...B.....................B....#',
+          '#.=======..............=======.#',
+          '#..............................#',
+          '#..........y...B....y..........#',
+          '#.......================.......#',
+          '#..............................#',
+          '#....B...................B.....#',
+          '#..======..............======..#',
+          '#.1.......B.y......yB........2.#',
+          '################################',
+          '################################',
+        ] },
+      { name: 'Funhouse', hint: 'Pads, portals and rollers: use them all!', theme: { skyTop: '#7fc29b', skyBot: '#f9e6a8' },
+        map: [
+          '################################',
+          '#..............................#',
+          '#..............................#',
+          '#V......B.y..........yB.......Q#',
+          '##====..=====......=====..====##',
+          '#..............................#',
+          '#..............................#',
+          '#..B........J..B...J.......B...#',
+          '#.====.....==========.....====.#',
+          '#..............................#',
+          '#..............................#',
+          '#....yB.................B.y....#',
+          '#..======..............======..#',
+          '#..............................#',
+          '#..........==========..........#',
+          '#O.1..J.B.............B..J..2.U#',
+          '################################',
+          '################################',
+        ] },
+    ],
     map: [
       '################################',
       '#..............................#',
@@ -811,139 +929,68 @@ const LEVELS = [
     ],
   },
   {
-    name: 'Pizza Delivery', world: 4, kind: 'team', mode: 'pizza', ownStep: true, ownHUD: true,
-    legend: { jump: 'hop', down: 'duck', padJump: 'hop', padDown: 'down ducks' }, tagLift: 28,
-    act: { label: 'steady' },
-    tip: 'Carry the pizzas together: walk, hop and duck at the same time. Wobbly? Stop and BOTH hold steady!',
+    // 5-2 (Gavyn's rework, Nov 2026): carry one tray up and down a hilly town. No hold button and no hop: each player
+    // raises (▲) or lowers (▼) their own end to keep it level. Rooms are long scrolling streets (def.course, parsed by
+    // MODES.pizza, see js/levels/world5/pizza-delivery.js); the map is only the spawns.
+    name: 'Pizza Delivery', world: 4, kind: 'team', mode: 'pizza', ownStep: true, ownHUD: true, noFalls: true,
+    legend: {
+      pip: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd> raise your end <kbd>S</kbd> lower it',
+      bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd> raise your end <kbd>↓</kbd> lower it',
+    },
+    tagLift: 28,
+    tip: 'Keep the tray level! Uphill the back one raises and the front one lowers. Tilt it and the pizzas slide off!',
+    howTo: [
+      'The tray only moves when you both walk the same way.',
+      'Hold ▲ to raise your end, ▼ to lower it. It stays where you leave it.',
+      'A tilted tray makes the pizzas slide to the low end. Level it before they slide off!',
+      'Low awning: both lower. A jumping dog: both raise.',
+    ],
     theme: { skyTop: '#8fd3f0', skyBot: '#fff1d6', hillFar: '#bcd9e6', hillNear: '#a5c4d6',
       stone: '#5b5873', stoneLight: '#68657f', stoneEdge: '#3f3d55', grass: '#d9d2c3', grassDark: '#a69e8e',
       plank: '#c98b5a', plankDark: '#8a5833', rope: '#e4572e' },
-    switches: {},
+    switches: {}, signs: [],
+    map: [...Array(15).fill('.'.repeat(32)), '..1..2' + '.'.repeat(26), '#'.repeat(32), '#'.repeat(32)],
     rooms: [
       {
-        title: 'Pizza Street', order: 3, stack: 5, house: { num: '12', col: '#ffd6a5' }, switches: {},
-        tip: 'Carry the pizzas together! Walk at the same time, and stop at the door.',
-        signs: [
-          { x: 250, y: 130, text: 'Walk together: same time, same way!' },
-          { x: 610, y: 175, text: 'Bumps! Slow down a little' },
-          { x: 610, y: 205, text: 'Wobbly? Stop, and BOTH hold steady' },
-          { x: 850, y: 196, text: 'Stop at the door!' },
-        ],
-        map: [
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '..1..2....n.....n...nn......D...',
-          '################################',
-          '################################',
-          '################################',
-        ],
+        title: 'Pizza Street', order: 3, stack: 5, house: { num: '12', col: '#ffd6a5' }, switches: {}, signs: [],
+        tip: 'Walk together and keep the tray level. Uphill: the back one raises, the front one lowers.',
+        course: ['f260', 'S:Walk together: same time, same way!', 'f240', 'b', 'f220',
+          'S:Uphill! The back one RAISES, the front one LOWERS', 'f160', 'u420:50', 'f240',
+          'S:Downhill: swap! The front one raises', 'f80', 'u380:-50', 'f220',
+          'S:Low awning: BOTH lower your ends', 'f140', 'a220:82', 'f380', 'b', 'f160', 'h420:46', 'f200', 'E'],
       },
       {
-        title: 'Puddle Lane', order: 4, stack: 6, house: { num: '7', col: '#cdeac0' }, switches: {},
-        tip: 'Press hop at the same time to hop together. Crates need a team hop!',
+        title: 'Staircase Lane', order: 4, stack: 6, house: { num: '7', col: '#cdeac0' }, switches: {}, signs: [],
+        tip: 'Stairs are steep! Going up, the back one raises high. A dog? Both raise it out of reach!',
         theme: { skyTop: '#a3c3d8', skyBot: '#f1f0e4', hillFar: '#b7cfc6', hillNear: '#9fbcb2',
           sun: 'rgba(255, 246, 214, 0.75)', sunGlow: 'rgba(255, 246, 214, 0.25)',
           stone: '#555268', stoneLight: '#625f78', stoneEdge: '#3a384e', grass: '#cfcabe', grassDark: '#9c9587',
           plank: '#c98b5a', plankDark: '#8a5833', rope: '#e4572e' },
-        signs: [
-          { x: 330, y: 160, text: 'Puddle! Hop together to stay dry' },
-          { x: 640, y: 200, text: 'Crates need a TEAM hop: press together!' },
-        ],
-        map: [
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '..2..1............x.....x...D...',
-          '#########p###pp#################',
-          '################################',
-          '################################',
-        ],
+        course: ['f260', 'S:Stairs up! Back one raises, front one lowers', 'f120', 's6:10:26', 'f220', 'b', 'f140',
+          'S:A dip: front first, then back', 'f40', 'v380:50', 'f200',
+          'S:Stairs down: the front one raises', 'f80', 's6:-10:26', 'f200',
+          'S:A dog! BOTH raise the tray high', 'f80', 'dog', 'f320', 'u320:60', 'f160', 'a220:92', 'f340',
+          's4:-12:30', 'f180', 'E'],
       },
       {
-        title: 'Market Hill', order: 4, stack: 6, house: { num: '3', col: '#bde0fe' }, switches: {},
-        tip: 'Duck under the awning together. On the hill, the higher one ducks.',
+        title: 'Market Hill', order: 4, stack: 6, house: { num: '3', col: '#bde0fe' }, switches: {}, signs: [],
+        tip: 'A long hill, a dog, a hump bridge and awnings. Keep talking: who raises, who lowers?',
         theme: { skyTop: '#9fd8f5', skyBot: '#ffe9c4', hillFar: '#e9cfa0', hillNear: '#d9b783',
           stone: '#5b5873', stoneLight: '#68657f', stoneEdge: '#3f3d55', grass: '#ddd3bf', grassDark: '#ab9f88',
           plank: '#c98b5a', plankDark: '#8a5833', rope: '#e4572e' },
-        signs: [
-          { x: 330, y: 170, text: 'Low awning: BOTH hold down to duck' },
-          { x: 610, y: 215, text: 'Hill! The higher one ducks' },
-        ],
-        map: [
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '.........----...................',
-          '................................',
-          '................................',
-          '..1..2..........rrrmmmfffn..D...',
-          '################################',
-          '################################',
-          '################################',
-        ],
+        course: ['f260', 'S:A long hill! Keep it level all the way up', 'f80', 'u600:110', 'f160', 'a200:92', 'f440',
+          'dog', 'f300', 'S:Hump bridge: up and over!', 'f60', 'bridge460:56', 'f160', 's5:-11:28', 'f140', 'a240:90',
+          'f320', 'r300:-50', 'f120', 'dog', 'f280', 'E'],
       },
       {
-        title: 'Windy Corner', order: 5, stack: 8, house: { num: '21', col: '#ffc8dd' }, switches: {},
-        tip: 'When the wind whistles, stop and BOTH hold steady!',
-        wind: { x0: 7, x1: 17, dir: -1 },
+        title: 'Windy Corner', order: 5, stack: 8, house: { num: '21', col: '#ffc8dd' }, switches: {}, signs: [],
+        tip: 'Wind whistling? Tilt the tray into the wind: the left end up! Tall stack: lower for the awning.',
         theme: { skyTop: '#78c0e6', skyBot: '#e6f3fb', hillFar: '#b5d6c7', hillNear: '#97c2ad',
           stone: '#57546e', stoneLight: '#64617b', stoneEdge: '#3c3a52', grass: '#d6d0c4', grassDark: '#a39c8e',
           plank: '#c98b5a', plankDark: '#8a5833', rope: '#e4572e' },
-        signs: [
-          { x: 380, y: 150, text: 'Wind whistling? Stop and BOTH hold steady' },
-          { x: 660, y: 212, text: 'Tall stack: duck under the porch' },
-        ],
-        map: [
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '................................',
-          '.........................--.....',
-          '................................',
-          '................................',
-          '................................',
-          '..2..1..............x.......D...',
-          '######################mm########',
-          '################################',
-          '################################',
-        ],
+        course: ['f260', 'S:Wind! When it whistles, tilt into it: left end UP', 'wind1000', 'f360', 'h400:40', 'f300',
+          'f100', 'S:Big climb!', 'f80', 's6:11:28', 'u300:60', 'f200', 'a220:110', 'f380', 'dog', 'f300',
+          'bridge420:50', 'f140', 'r260:-70', 'f100', 's4:-12:28', 'f200', 'E'],
       },
     ],
   },
@@ -1246,12 +1293,12 @@ const LEVELS = [
     act: { label: 'throw' },
     // brown earth so the purple monster always stands out; rope = the dot in the "Room N of 4" pill: Munch purple
     theme: { stone: '#6b5a4a', stoneLight: '#7d6a58', stoneEdge: '#4a3c30', rope: '#8f7be8' },
-    tip: 'One throws, one catches in the basket. Feed the monster before it gets grumpy!',
+    tip: 'One throws, one runs out to catch. Food can\'t fly all the way, so carry it to the monster before it gets grumpy!',
     switches: {},
     rooms: [
       {
-        title: 'Snack Time', thrower: 0, need: 8, rise: 3.4, throwRange: [150, 560],
-        tip: 'Pip throws from the kitchen. Bo catches in the basket and feeds Munch!',
+        title: 'Snack Time', thrower: 0, need: 8, rise: 3.4, throwRange: [120, 300],
+        tip: 'Pip throws from the kitchen. Bo runs out to catch it, then carries it over to Munch!',
         signs: [{ x: 330, y: 150, text: 'Hold throw, let go. Watch the X!' },
           { x: 560, y: 330, text: 'Catch it, then walk it into the mouth' }],
         switches: {},
@@ -1277,7 +1324,7 @@ const LEVELS = [
         ],
       },
       {
-        title: 'Picky Eater', thrower: 1, need: 8, rise: 3.5, throwRange: [150, 560],
+        title: 'Picky Eater', thrower: 1, need: 8, rise: 3.5, throwRange: [120, 300],
         bins: ['apple', 'cake', 'fish'], firstWant: 'cake',
         tip: 'Swap! Bo throws. Munch is picky: only feed it the food in its bubble!',
         signs: [{ x: 560, y: 150, text: 'Pick the crate it wants' }],
@@ -1304,7 +1351,7 @@ const LEVELS = [
         ],
       },
       {
-        title: 'Peek-a-Boo', thrower: 0, need: 9, rise: 4.0, throwRange: [150, 600],
+        title: 'Peek-a-Boo', thrower: 0, need: 9, rise: 4.0, throwRange: [120, 265],
         burrowOrder: [2, 1, 0], gold: true,
         tip: 'Swap! Pip throws. After every meal Munch pops up from another hole!',
         signs: [{ x: 420, y: 100, text: 'Gold cupcake = 2 bites!' }],
@@ -1331,7 +1378,7 @@ const LEVELS = [
         ],
       },
       {
-        title: 'Twin Trouble', thrower: 1, need: [5, 5], rise: 2.8, throwRange: [110, 250], gold: true,
+        title: 'Twin Trouble', thrower: 1, need: [5, 5], rise: 2.8, throwRange: [120, 150], gold: true,
         names: ['Nom', 'Nibble'],
         tip: 'Swap! Bo throws. Twin monsters: keep Nom AND Nibble happy!',
         signs: [{ x: 480, y: 112, text: 'Two mouths to feed!' }],
@@ -2196,15 +2243,15 @@ const LEVELS = [
   // ----- BEGIN 9-1 Pompeii Escape (mode 'pompeii', js/levels/world9/pompeii-escape.js) -----
   // 9-1 Pompeii Escape (mode 'pompeii', team): boost each other up the walls, then reach down from the edge (help)
   // and pull your partner up; lava creeps in sideways, ash makes you sneeze. Map chars and rules: the top of the file.
-  { name: 'Pompeii Escape', world: 8, kind: 'team', mode: 'pompeii', ownHUD: true, noFalls: true,
-    act: { label: 'help' },
-    legend: { down: 'hold: hop back', padDown: 'hold down: hop back' },
-    tip: 'Boost each other up the walls, then press help at the edge to pull your partner up. Run to the boat!',
+  { name: 'Pompeii Escape', world: 8, kind: 'team', mode: 'pompeii', ownHUD: true, noFalls: true, passPartners: true,
+    act: { label: 'use' },
+    legend: { jump: 'jump · climb', down: 'hold: hop back', padDown: 'hold down: hop back' },
+    tip: 'Pull the lever to hoist your partner up on the crane lift, then they drop the rope ladder for you. Run to the boat!',
     switches: {}, signs: [],
     rooms: [
-      { // ---------- Room 1: Market Square (learn the boost and the hand-up) ----------
+      { // ---------- Room 1: Market Square (learn the crane lift and the rope ladder) ----------
         title: 'Market Square', bg: 'town', leads: [0, 1], awnB: [58, 70], exitLabel: 'PORTA MARINA',
-        tip: 'Bo, be the step! Pip hops on Bo’s head, jumps up, then presses help at the edge to pull Bo up.',
+        tip: 'Pip stands on the lift and Bo pulls the lever. Up top, Pip drops the rope ladder for Bo to climb!',
         lava: { delay: 4, speed: 10, caps: [6, 12, 20] }, ash: { every: 2.6, aim: 0.4 },
         boards: [{ x: 420, y: 420, text: 'POMPEII', size: 26, paint: true }, { x: 420, y: 448, text: '79 AD', size: 17, paint: true },
           { x: 600, y: 300, text: 'Swap jobs!', size: 18, paint: true }],
@@ -2245,7 +2292,7 @@ const LEVELS = [
           '..........................mmmmmm', //  6
           '..........................mmmmmm', //  7
           '..........................mmmmmm', //  8
-          '......................!.N.mmmmmm', //  9
+          '......................!N..mmmmmm', //  9
           '.........!............mmmmmmmmmm', // 10
           '.........KK...........mmmmmmmmmm', // 11
           '.........KK...........mmmmmmmmmm', // 12
@@ -2270,7 +2317,7 @@ const LEVELS = [
           '..........................hhh...', //  5
           '..........................hhh...', //  6
           '..........................hhh...', //  7
-          '.....................!..N.hhh...', //  8
+          '.....................!.N..hhh...', //  8
           '.....................vvvvvhhh...', //  9
           '.....................vvvvvhhh...', // 10
           '.....!..N............vvvvvhhh...', // 11
@@ -3069,11 +3116,12 @@ const LEVELS = [
     tip: 'Dig up Mr. Bones’s lost bones and bring them back. Every bone makes him a better helper!',
     switches: {}, signs: [],
     rooms: [
-      { // ---------- Room 1: Front Gate (a head boost for the leg bone, carry the backbone together) ----------
-        title: 'Front Gate', unlock: 'stool', exitVia: 'stool', exitLabel: 'CROOKED CRYPTS',
-        tip: 'Boost each other up to dig the leg bone, then carry the big backbone together. Don’t pull apart!',
-        mounds: [{ piece: 'leg1', how: 'boost', foot: { x: 136, feet: 480 }, land: 66 }, { piece: 'spine', how: 'big', len: 90 }],
-        plan: ['boost:0', 'big:1', 'exit'], stones: ['BRB'],
+      { // ---------- Room 1: Front Gate (the seesaw flings one up for the leg bone, carry the backbone together) ----------
+        title: 'Front Gate', unlock: 'stool', exitVia: 'stool', exitLabel: 'CROOKED CRYPTS', passPartners: true,
+        tip: 'Seesaw! One stands on the low end, the other jumps on the high end to fling them up to the leg bone. Then carry the big backbone together!',
+        seesaw: { x: 204, feet: 480 },
+        mounds: [{ piece: 'leg1', how: 'seesaw', land: 66 }, { piece: 'spine', how: 'big', len: 90 }],
+        plan: ['seesaw:0', 'big:1', 'exit'], stones: ['BRB'],
         decor: [{ k: 'tree', x: 300, s: 1 }, { k: 'owl', x: 336, y: 318 }, { k: 'grave', x: 380, text: ['Here lies', 'my left sock'] },
           { k: 'grave', x: 560, text: ['R.I.P.', 'Pizza crust'], tilt: -0.05 }, { k: 'ghost', x: 470, y: 380 },
           { k: 'fence', x0: 230, x1: 760 }, { k: 'sign', x: 112, y: 300, text: 'MR. BONES · BACK SOON!' }],
@@ -3094,7 +3142,7 @@ const LEVELS = [
           'BBBB......................######', // 12
           'BBBB......................######', // 13
           'BBBB......................######', // 14
-          'BBBB..h.1.2..N..S.....D..x######', // 15
+          'BBBB....1.2.hN..S.....D..x######', // 15
           '################################', // 16
           '################################', // 17
         ] },
@@ -4298,8 +4346,8 @@ const LEVELS = [
   //
   // ----- BEGIN 17-3 Waterfall Climb (mode 'waterfall', js/levels/world17/waterfall-climb.js) -----
   // 17-3 Waterfall Climb (mode 'waterfall', team, Gavyn's pick): a tall climb up beside a big jungle waterfall; the camera
-  // scrolls up with the pair. Ledges are too high for one jump: one braces (hold down or the action) and the other jumps
-  // off their hands for a BIG boost, then lowers a vine at the post for the partner. Wet rocks, a stream a log keeps
+  // scrolls up with the pair. Ledges are too high for one jump: one rides the bamboo lift while the other pulls its
+  // lever, then lowers a vine at the post for the partner. Wet rocks, a stream a log keeps
   // blocking, a drifting log, mist geysers, springy moss and friendly frogs on the way. The 18-row map is only for the
   // engine; the mode builds the climb from def.climb (rows top first, 32 wide). Climb chars (read by the mode):
   // # rock, s wet slippery rock, m springy moss, g mist geyser vent (solid), ~ water (Splash!), w falling stream,
@@ -4309,9 +4357,9 @@ const LEVELS = [
   // computer: jump (from: take-off column, to: [column, height]), wall (a boost wall, by order from the bottom), log,
   // geyser, frog, nest. Columns may have halves (x = col * 30 px). hop: the computer jumps from a standstill (no run-up).
   { name: 'Waterfall Climb', world: 16, kind: 'team', mode: 'waterfall', ownStep: true, ownHUD: true, noFalls: true,
-    act: { label: 'help' },
-    legend: { down: 'brace', padDown: 'down braces', jump: 'jump · climb', padJump: 'jump · climb' },
-    tip: 'Ledges too high? One braces (hold ▼), the other jumps off their hands. Then drop a vine for your partner!',
+    act: { label: 'use' },
+    legend: { down: 'climb down', padDown: 'down: climb down', jump: 'jump · climb', padJump: 'jump · climb' },
+    tip: 'Ledges too high? One rides the bamboo lift, the other pulls its lever. Then drop a vine for your partner!',
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     sections: [{ name: 'Mossy Steps', h: 0 }, { name: 'Log Jam Falls', h: 18 }, { name: 'Misty Geysers', h: 44 }, { name: 'Toucan Top', h: 75 }],
     streams: [{ flow: 3.2, off: 3.6 }],
