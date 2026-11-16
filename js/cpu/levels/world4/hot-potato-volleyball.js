@@ -15,6 +15,10 @@
        crosses before the BOOM but leaves you too little time to send it back, or one that hands you the potato with
        too much fuse to win it back right away (see chooseShot).
      - Set and spike (normal and hard, now and then): ▼ + hit pops the potato up by the net, then it jumps and spikes.
+     - Where it meets the potato aims it too (potContact: under it = a high pop that lands short, beside its head = a flat
+       long drive). For a high pop it stands under the potato and hits it at first reach; for a long or middle shot it
+       stands a little to the net side of where the potato comes down (contactSpot) and waits until the potato has
+       dropped to the right height beside it (or is about to get away) before it swings.
      Skill: easy sees late, often notices a potato coming over the net a moment late (like a kid looking elsewhere),
      misjudges where it comes down (and fixes it late), swings too early now and then, stumbles while chasing, mostly
      bumps and never aims or plays the fuse; hard sees quickly, picks the shot that is
@@ -40,12 +44,12 @@
   const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 0.5;
 
   // what it sees of a potato (cpuLag keeps these a moment)
-  const look = pt => ({ x: pt.x, y: pt.y, vx: pt.vx, vy: pt.vy, r: pt.r, g: pt.g, rest: pt.rest, hover: pt.hover, alive: pt.alive,
+  const look = pt => ({ x: pt.x, y: pt.y, vx: pt.vx, vy: pt.vy, r: pt.r, g: pt.g, ph: pt.ph, rest: pt.rest, hover: pt.hover, alive: pt.alive,
     fuse: pt.fuse, setUsed: pt.setUsed.slice(), ramp: pt.ramp, tMul: pt.tMul, cd: pt.cd.slice(), cross: pt.crossings, t: G.time });
   // the potato's flight from a seen state: positions once per physics step
   function predict(s) {
     const n = Math.round(HOR / DT), xs = new Float32Array(n + 1), ys = new Float32Array(n + 1);
-    const q = { x: s.x, y: s.y, vx: s.vx, vy: s.vy, r: s.r, g: s.g, rest: s.rest, hover: false, alive: true };
+    const q = { x: s.x, y: s.y, vx: s.vx, vy: s.vy, r: s.r, g: s.g, ph: s.ph, rest: s.rest, hover: false, alive: true };
     for (let i = 0; i <= n; i++) { xs[i] = q.x; ys[i] = q.y; if (i < n) MODES.potato.potPhys(q, DT, null, fixRnd); }
     return { t0: s.t, n, xs, ys, r: s.r };
   }
@@ -108,6 +112,34 @@
     return a0 || late;
   }
 
+  /* where to stand for a hit with contact u < 0.9: the potato on its way down, at the height that gives u with the
+     computer DX px to one side of it (the net side first: the potato drifts away from the net, so it doesn't run into
+     the body). { t, x, y, sx, M } or null when it can't get there in time (then it plays the plain plan) */
+  const sideDX = r => PW / 2 + r + 7;
+  function contactSpot(p, P, s, u) {
+    const KK = K(), k = p.id, fwd = k === 0 ? 1 : -1, j = Math.max(1, Math.round((G.time - P.t0) / DT)), r = P.r, DX = sideDX(r);
+    const head = KK.floorY - PH + KK.cY, a = (KK.cLo + u * (KK.cHi - KK.cLo)) * Math.PI / 180, yT = head - DX * Math.tan(a);
+    const lim0 = k === 0 ? KK.left + PW / 2 + 1 : KK.netX + KK.netHalf + PW / 2 + 1;
+    const lim1 = k === 0 ? KK.netX - KK.netHalf - PW / 2 - 1 : KK.right - PW / 2 - 1;
+    const cx = cpuCx(p), cdT = s.cd[k] - (G.time - s.t);
+    for (let i = j; i <= P.n; i++) {
+      const x = P.xs[i], y = P.ys[i];
+      if (y >= KK.floorY - r - 0.5) return null;
+      if (potSide(x) !== k || y < yT || y <= P.ys[i - 1]) continue;
+      const t = (i - j) * DT;
+      if (t < cdT) continue;
+      for (const sd of [fwd, -fwd]) {
+        const sx = x + sd * DX;
+        if (sx < lim0 || sx > lim1) continue;
+        const d = Math.abs(sx - cx), back = Math.sign(sx - cx) !== Math.sign(p.vx) ? Math.abs(p.vx) / PHYS.fricG : 0;
+        const M = d < 3 ? 0 : d / PHYS.maxRun + 0.08 + back;
+        if (M <= t + 0.02) return { t, x, y, sx, M, i };
+      }
+      return null;
+    }
+    return null;
+  }
+
   /* the shot: { mode: 'tap' | 'pow' | 'set', P (power), aim (+1 deep, -1 short) }.
      Every shot it could make is scored with the level's own shot numbers: when the potato crosses the net (Tc), when you
      could reach it at the earliest, and the fuse you would have then. Playing the fuse (normal sometimes, hard always,
@@ -116,6 +148,7 @@
      back to it in time for its own winning shot). Otherwise it picks the shot that is hardest for you to reach (or
      just bumps it, on easy). */
   function chooseShot(st, p, o, sk, plan, s, mst, info) {
+    const shape = MODES.potato.potShape;
     const KK = K(), k = p.id, half = KK.right - KK.netX - KK.netHalf;
     const fuseC = s.fuse - (G.time - s.t) - plan.t;
     const oD = Math.abs(cpuCx(o) - KK.netX), dC = Math.max(1, Math.abs(plan.x - KK.netX));
@@ -138,23 +171,29 @@
       return { run, Te, fs };
     };
     const opts = [];
-    const add = (mode, P, aim, L, T, delay = 0) => {
+    const add = (mode, P, aim, L, T, delay = 0, u = 1) => {
       const Tc = delay + T * (delay ? 1 : dC / (dC + L)), y = yours(L, delay + T, Tc, fuseC);
-      opts.push({ mode, P, aim, Tc, T, fs: y.fs, press: T - y.run });
+      opts.push({ mode, P, aim, u, Tc, T, fs: y.fs, press: T - y.run });
     };
     if (plan.spike) {
       for (const aim of [-1, 0, 1]) {
-        const L = clamp(KK.spikeD0 + aim * KK.aimSpike, KK.spikeMin, half - s.r - 8);
-        add('tap', 0, aim, L, KK.spikeT0 * (1 - ramp) * s.tMul);
+        const sh = shape(0, aim, 1, true, { tMul: s.tMul, ramp, ph: s.ph });
+        add('tap', 0, aim, clamp(sh.dist, KK.spikeMin, half - s.r - 8), sh.T);
       }
     } else {
-      const ct = KK.chargeT * Math.pow(KK.helpCharge, mst.help ? mst.help[k] : 0), spare = plan.t - plan.M;
-      for (const P of [0, 0.5, 1]) {
-        if (P > 0 && (spare < KK.tapWin + ct * P + 0.08 || plan.kind !== 'ground')) continue;
-        for (const aim of [-1, 0, 1]) {
-          const L = clamp(KK.lobD + (KK.deepD - KK.lobD) * P + (aim > 0 ? KK.aimLong : aim < 0 ? -KK.aimShort : 0), KK.minD, KK.maxD) * half;
-          const T = (KK.lobT + (KK.driveT - KK.lobT) * P) * (1 - ramp) * s.tMul * (aim > 0 ? 1 + KK.aimT * KK.aimLong : aim < 0 ? 1 - KK.aimTS * KK.aimShort : 1);
-          add(P > 0 ? 'pow' : 'tap', P, aim, L, T);
+      const ct = KK.chargeT * Math.pow(KK.helpCharge, mst.help ? mst.help[k] : 0);
+      // contact: under it (1, the plain plan), or from the side (0) / in between (0.5) where contactSpot finds a spot
+      const us = plan.kind === 'ground' ? [1, 0.5, 0] : [0.85];
+      for (const u of us) {
+        const c = u >= 0.85 ? plan : contactSpot(p, plan.P, s, u);
+        if (!c) continue;
+        const spare = c.t - c.M;
+        for (const P of [0, 0.5, 1]) {
+          if (P > 0 && (spare < KK.tapWin + ct * P + 0.08 || plan.kind !== 'ground')) continue;
+          for (const aim of [-1, 0, 1]) {
+            const sh = shape(P, aim, u, false, { tMul: s.tMul, ramp, ph: s.ph });
+            add(P > 0 ? 'pow' : 'tap', P, aim, sh.dist, sh.T, 0, u);
+          }
         }
       }
     }
@@ -169,10 +208,15 @@
     if (plan.spike) return Math.random() < sk.aim ? plain.reduce((a, b) => (b.press < a.press ? b : a)) : plain[1];
     const aimIt = Math.random() < sk.aim, powIt = Math.random() < sk.power;
     const pw = plain.filter(q => q.P > 0), pool = powIt && pw.length ? pw : plain.filter(q => q.P === 0);
-    // aiming: the shot that is hardest to reach; not aiming: a straight one (easy now and then holds a direction anyway)
+    // aiming: the shot that is hardest to reach; not aiming: a straight one (easy now and then holds a direction anyway),
+    // met under it or in between (easy mostly just gets under it)
     if (aimIt) return pool.reduce((a, b) => (b.press < a.press ? b : a));
-    const straight = pool.filter(q => q.aim === 0), pick = straight[Math.floor(Math.random() * straight.length)];
-    return { mode: pick.mode, P: pick.P, aim: Math.random() < 0.12 * (1 - info.skill) ? (Math.random() < 0.5 ? -1 : 1) : 0 };
+    let straight = pool.filter(q => q.aim === 0 && q.u > 0);
+    const under = straight.filter(q => q.u >= 0.85);
+    if (under.length && Math.random() < 0.7 * (1 - info.skill)) straight = under;
+    if (!straight.length) straight = pool.filter(q => q.aim === 0);
+    const pick = straight[Math.floor(Math.random() * straight.length)];
+    return { mode: pick.mode, P: pick.P, u: pick.u, aim: Math.random() < 0.12 * (1 - info.skill) ? (Math.random() < 0.5 ? -1 : 1) : 0 };
   }
 
   // is a potato inside p's swing box a few steps from now (p standing where it is)?
@@ -218,13 +262,26 @@
       if (st.forceSpike && !mst.pots.some(q => q.alive && potSide(q.x) === k)) st.forceSpike = false;
       const swinging = sw.s === 'tap' || sw.s === 'pow';
 
+      /* ---- the shot it means to play (picked once per flight) ---- */
+      const P = plan && plan.P, s = plan && plan.s;
+      const shotKey = plan ? plan.P.id + ':' + plan.kind : '';
+      if (plan && st.shotFor !== shotKey && !swinging && sw.s !== 'wind' && (p.grounded || !st.shot)) {
+        st.shotFor = shotKey;
+        st.shot = chooseShot(st, p, o, sk, plan, s, mst, info);
+        st.whiff = Math.random() < sk.whiff ? 0.17 + Math.random() * 0.2 : null;
+      }
+      const shot = st.shot;
+      // a long or middle shot: where to stand beside the potato and meet it (null: under it, the plain plan)
+      const ctg = plan && shot && shot.u < 0.85 && plan.kind === 'ground' && !plan.spike && shot.mode !== 'set' ? contactSpot(p, P, s, shot.u) : null;
+      const spot = ctg || plan;
+
       /* ---- moving ---- */
       let tx;
       if (plan) {
         // its guess of the spot is off at first (easy most) and gets better as the potato comes
         const key = plan.P.id;
         if (st.errFor !== key) { st.errFor = key; st.err = gauss() * sk.err; }
-        tx = plan.sx + st.err * Math.max(sk.resid, clamp((plan.t - 0.2) / 0.8, 0, 1));
+        tx = spot.sx + st.err * Math.max(sk.resid, clamp((spot.t - 0.2) / 0.8, 0, 1));
         // a potato that just came over the net: easy sometimes notices it late (like a kid looking elsewhere)
         if (st.lateFor[pi] !== plan.s.cross) { st.lateFor[pi] = plan.s.cross; st.lateT = Math.random() < sk.late ? 0.3 + Math.random() * 0.5 : 0; }
         if (st.lateT > 0) { st.lateT -= dt; tx = cpuCx(p); }
@@ -248,15 +305,15 @@
       if (!p.grounded && st.jumped && p.vy < 0) out.jump = true;
 
       /* ---- swinging ---- */
-      const P = plan && plan.P, s = plan && plan.s;
-      const shotKey = plan ? plan.P.id + ':' + plan.kind : '';
-      if (plan && st.shotFor !== shotKey && !swinging && sw.s !== 'wind' && (p.grounded || !st.shot)) {
-        st.shotFor = shotKey;
-        st.shot = chooseShot(st, p, o, sk, plan, s, mst, info);
-        st.whiff = Math.random() < sk.whiff ? 0.17 + Math.random() * 0.2 : null;
+      let inReach = potInReach(p, mst) || (P && soon(p, P, 2, mst.pots[pi]));
+      // meeting it beside its head: only swing once it has dropped to the height for that shot, or is about to get
+      // away (going up again, out of reach in 2 steps or on the sand in 3)
+      if (ctg) {
+        const pt = mst.pots[pi], j = Math.round((G.time - P.t0) / DT);
+        const now = potInReach(p, mst), atY = i => P.ys[Math.min(P.n, Math.max(0, i))];
+        const away = pt.vy < 0 || !soon(p, P, 2, pt) || atY(j + 3) >= KK.floorY - P.r - 1;
+        inReach = now && (potContact(p, pt) <= shot.u + 0.12 || away);
       }
-      const shot = st.shot;
-      const inReach = potInReach(p, mst) || (P && soon(p, P, 2, mst.pots[pi]));
       const ready = sw.s === 'idle' && p.stun <= 0;
       if (sw.s === 'wind' || (sw.s === 'tap' && st.hold > 0)) {
         // winding up: let go as the potato comes into reach (or when the plan is gone for a while)
@@ -266,7 +323,7 @@
       } else {
         st.hold = 0;
         if (plan && shot && ready) {
-          if (shot.mode === 'pow' && st.lateT <= 0 && plan.t <= KK.tapWin + KK.chargeT * Math.pow(KK.helpCharge, mst.help[k]) * shot.P + 0.03
+          if (shot.mode === 'pow' && st.lateT <= 0 && spot.t <= KK.tapWin + KK.chargeT * Math.pow(KK.helpCharge, mst.help[k]) * shot.P + 0.03
               && Math.abs(cpuCx(p) - tx) < 30) { out.act = true; st.hold = dt; }
           else if (st.whiff !== null && plan.t <= st.whiff && plan.t > 0.12) { out.act = 'tap'; st.whiff = null; }
           else if (inReach) out.act = 'tap';

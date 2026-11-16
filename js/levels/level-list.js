@@ -625,6 +625,10 @@ const LEVELS = [
     stomp: false,                         // the two players never meet (the net keeps them apart)
     theme: { grass: '#f3d68f', grassDark: '#d9ae5c' },   // sand on top of the stone: beach volleyball at dusk
     tip: 'Hit the potato over the net! If it goes BOOM on your side, you lose. Red-hot? Don’t let it land!',
+    howTo: [
+      'Where you hit it aims it: get under the potato to pop it up HIGH, or hit it beside your head to send it LONG and flat. The arrow on the potato shows which way it will go.',
+      'Each round has a new potato: Classic, Feather Spud (light and floaty), Bouncy Spud (boings off the sand), Big Spud and Two Spuds.',
+    ],
     switches: {}, signs: [],
     potato: { netX: 480, netH: 96 },      // read by the mode: net centre x, net height above the floor
     map: [
