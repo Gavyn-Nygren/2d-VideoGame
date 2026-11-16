@@ -4,15 +4,19 @@
 /* 5-4 Rising Lava (MODES.lava). Every button builds steps for the partner, so the brain plays its colour's jobs in
    whatever order the floor allows, using cpuNav (built steps of its colour count as ground, the partner's don't):
    1. press its own buttons that it can reach and that have not been pressed yet (they only ever help the partner);
-   2. hold its own hold plate while the partner has not yet climbed past the steps it builds (the level's "past" is
-      the partner's highest point this floor, so a person who goes a different way is still waited for);
+   2. hold its own hold plate until the partner stands above the steps it builds (standing, not mid-jump; a partner who
+      falls back below is waited for again);
    3. stand on its star button (top floor) until the hatch opens, then go to the door; on other floors go to the door
       once it can reach it;
    4. nothing to do: wait next to the lowest of the steps the partner will build for it, up out of the lava's way, and
       climb them as soon as they pop in (they make the next job reachable). Stuck below with no way up: hold ▼ to hop
       back to the checkpoint.
    It reads the same things a person sees: buttons, ghost steps, the lava, the partner. When the person has pressed
-   nothing for the level's own AFK time (and isn't holding a button), it stands still too, so the lava pauses. */
+   nothing for the level's own AFK time (and isn't holding a button), it stands still too, so the lava pauses.
+   Tall towers: the brain thinks in climb coordinates (MODES.lava.enter/leave) and gives cpuNav a window of rows round
+   the two players (LV_K.above rows over the higher one, LV_K.below under the lower one); jobs outside it wait. It
+   doesn't wait politely with the lava close, never climbs on more than LV_K.leash tiles above a person who is behind,
+   and drops its plan after every trip back to the checkpoint (G.mst.resetN). */
 (() => {
   const LV_K = {
     replan: 0.35,      // s between fresh looks at the jobs (sooner when the steps change)
@@ -21,7 +25,17 @@
     nudge: 5,          // s waiting for the person before a bubble
     hopMs: 2,          // ms per step looking for a tricky hop
     politeMax: 10,     // s at most waiting by a button for a partner who isn't climbing on to come to its new steps
+    lavaNear: 150,     // px: lava this close to either player: no polite waiting
+    above: 14, below: 6, snap: 3,   // rows of the nav window over the higher player / under the lower one; moves in steps of `snap`
+    leash: 10,         // tiles: a person this far below: don't climb on, wait for them
   };
+  // the nav window (rows) round the two players, in steps of LV_K.snap so the map isn't rebuilt every row
+  function lvWindow(S, p, o) {
+    const rowOf = q => Math.floor(((q.alive ? q.y + q.h : (S.cp[q.id].r + 1) * T) - 1) / T);
+    const hi = Math.min(rowOf(p), rowOf(o)), lo = Math.max(rowOf(p), rowOf(o)), n = LV_K.snap;
+    const r0 = Math.max(0, Math.floor((hi - LV_K.above) / n) * n), r1 = Math.min(S.N - 1, Math.ceil((lo + LV_K.below) / n) * n);
+    return { rows: S.N, r0, r1 };
+  }
 
   // shortest times (s) from the player's map cell to every cell of cpuNav's map
   function lvDist(g, from) {
@@ -47,8 +61,13 @@
   }
   const lvCell = (g, c, r) => g.at.get(r * COLS + c);
   const lvTop = gr => Math.min(...gr.cells.map(cl => cl.r)) * T;
-  // the partner has climbed past these steps (their highest point this floor is above the top step)
-  const lvPast = (st, gr, o) => st.best[o.id] < lvTop(gr) - T / 2;
+  // the partner has climbed past these steps: they stand (not jump) above the top step. In the air the last answer
+  // stands, so a hop on the top step doesn't count as past, and a fall back below makes it count again
+  const lvPast = (st, gr, o, mem) => {
+    if (!o.alive) return false;
+    if (o.grounded || !(gr.g in mem)) mem[gr.g] = o.grounded && cpuFeet(o) < lvTop(gr) - T / 2;
+    return mem[gr.g];
+  };
 
   /* ---------- tricky hops ----------
      cpuNav jumps with jump held all the way. Under a low ceiling (steps the partner built above you) the way on can
@@ -60,7 +79,7 @@
     const s = { x: a.tx * T + T / 2 + off - PW / 2, y: (a.ty + 1) * T - PH, vx: run ? dir * PHYS.maxRun : 0, vy: -PHYS.jumpV, g: false, jumping: true, dropT: 0 };
     for (let t = 0; t < 1.6; t += DT) {
       navSim({}, p, s, t >= delay ? dir : 0, t < hold, DT);
-      if (s.y > H || navSpike(s.x, s.y, PW, PH)) return false;
+      if (s.y > G.mst.N * T || navSpike(s.x, s.y, PW, PH)) return false;
       if (s.g && t > 0.03) {
         for (let k = 0; k < 18; k++) navSim({}, p, s, 0, false, DT); // let go on landing: does it stay there?
         return s.g && Math.floor((s.x + PW / 2) / T) === b.tx && Math.floor((s.y + PH - 1) / T) === b.ty;
@@ -107,7 +126,7 @@
   function lvHopRun(st, p, h, dt) {
     const out = {}, R = st.hopRun, ax = h.a.c * T + T / 2, tx = ax + h.off, cx = cpuCx(p);
     if (R.phase === 'goto') {
-      const r = cpuNav(st, p, ax, (h.a.r + 1) * T, { tol: 3 });
+      const r = cpuNav(st, p, ax, (h.a.r + 1) * T, Object.assign({ tol: 3 }, st.win));
       if (st.nav.status === 'arrived' && Math.abs(p.vx) < 20) R.phase = h.run ? 'back' : 'line';
       if (st.nav.status === 'noPath') return null;
       return r;
@@ -141,12 +160,14 @@
     const cat = list => { const j = pick(list); if (!j) st.want.push(...list); return j; };
     // 1. my buttons not pressed yet. Manners: new steps can be in the way (a low ceiling) while the partner is still on
     //    the way to them, so press when the partner stands by the lowest new step, or waits for me, or after politeMax s
-    const mine = S.buttons.filter(b => b.owner === k && !b.hold && !b.latched && S.groups[b.group]);
+    const inWin = j => j.r >= st.win.r0 && j.r <= st.win.r1;
+    const mine = S.buttons.filter(b => b.owner === k && !b.hold && !b.latched && S.groups[b.group] && inWin(b));
+    const lavaNear = S.lavaY - Math.max(cpuFeet(p), o.alive ? cpuFeet(o) : 0) < LV_K.lavaNear;
     const oc = Math.floor(cpuCx(o) / T), orow = Math.floor((cpuFeet(o) - 1) / T);
     const waiting = info.partnerIdle > 5;
     const rude = b => {
       // (two computers don't wait for each other: a computer gets past a low ceiling with a short hop, see below)
-      if (info.partnerCpu || (st.polite[b.ch] || 0) >= LV_K.politeMax) return false;
+      if (info.partnerCpu || lavaNear || (st.polite[b.ch] || 0) >= LV_K.politeMax) return false;
       if (!o.alive) return true; // (an ouch: wait to see where they pop back)
       const cells = S.groups[b.group].cells, low = Math.max(...cells.map(cl => cl.r));
       // (standing still up level with them, not under them: waiting for me. Not while they still climb up to that level
@@ -155,7 +176,7 @@
       if (waiting && orow <= low + 1 && !under) return false;
       // (a partner who hasn't climbed yet this floor and stands about level with the steps counts as near from anywhere
       //  on that level: the opening presses, where you both press at once and then climb, must not wait)
-      const fresh = S.best[o.id] >= G.level.spawns[o.id].y + PH - T / 2, span = fresh ? COLS : 3;
+      const fresh = S.best[o.id] >= (S.cp[o.id].r + 1) * T - T / 2, span = fresh ? COLS : 3;
       return !(o.grounded && orow >= low && orow <= low + 2 && cells.some(cl => cl.r === low && Math.abs(cl.c - oc) <= span));
     };
     let j = cat(mine.filter(b => !rude(b)).map(b => ({ c: b.c, r: b.r, kind: 'press' })));
@@ -179,15 +200,15 @@
       return { c: b.c, r: b.r, kind: 'press' }; // (nowhere to wait on my side: just press it)
     }
     // 2. my hold plates the partner still needs
-    j = cat(S.buttons.filter(b => b.owner === k && b.hold && S.groups[b.group] && !lvPast(S, S.groups[b.group], o)).map(b => ({ c: b.c, r: b.r, kind: 'hold' })));
+    j = cat(S.buttons.filter(b => b.owner === k && b.hold && S.groups[b.group] && inWin(b) && !lvPast(S, S.groups[b.group], o, st.past)).map(b => ({ c: b.c, r: b.r, kind: 'hold' })));
     if (j) return j;
     // 3. my star, then the door
     if (S.twins.length && !S.hatchOpen) {
-      j = cat(S.twins.filter(tw => tw.owner === k).map(tw => ({ c: tw.c, r: tw.r, kind: 'star' })));
+      j = cat(S.twins.filter(tw => tw.owner === k && inWin(tw)).map(tw => ({ c: tw.c, r: tw.r, kind: 'star' })));
       if (j) return j;
     }
-    const d = G.level.door;
-    if (d && (!S.twins.length || S.hatchOpen)) {
+    const d = S.door;
+    if (d && (!S.twins.length || S.hatchOpen) && inWin({ r: Math.round((d.y + d.h) / T) - 1 })) {
       const c0 = Math.floor(d.x / T), r = Math.round((d.y + d.h) / T) - 1;
       // Pip takes the left half, Bo the right, unless the partner already stands there
       const mySide = c0 + k, theirSide = c0 + 1 - k;
@@ -196,7 +217,8 @@
       st.want.push(...cs.map(c => ({ c, r, kind: 'door' })));
     }
     // 4. wait by the steps the partner will build for me, out of the lava's way
-    const ghosts = Object.values(S.groups).filter(gr => gr.holder === k && gr.state !== 'on' && gr.state !== 'building');
+    // (not steps that only lead up to where I already am: a hold plate's steps I climbed past and that are gone now)
+    const ghosts = Object.values(S.groups).filter(gr => gr.holder === k && gr.state !== 'on' && gr.state !== 'building' && lvTop(gr) < cpuFeet(p) - T / 2);
     const mineGhost = (c, r) => ghosts.some(gr => gr.cells.some(cl => cl.c === c && cl.r === r));
     const theirBtn = (c, r) => S.buttons.some(b => b.owner !== k && b.c === c && b.r === r) || S.twins.some(tw => tw.owner !== k && tw.c === c && tw.r === r);
     let best = null;
@@ -220,11 +242,26 @@
   }
 
   cpuBrain('lava', {
-    reset(st) { st.job = null; st.planT = 0; st.key = ''; st.back = 0; st.sayT = 0; st.waitT = 0; st.D = null; st.want = []; st.hops = null; st.hopBan = {}; st.polite = {}; st.react = 0; st.yieldT = 0; st.yieldCD = 0; st.stuckT = 0; },
+    reset(st) { st.past = {}; st.resetN = -1; st.win = null; st.job = null; st.planT = 0; st.key = ''; st.back = 0; st.sayT = 0; st.waitT = 0; st.D = null; st.want = []; st.hops = null; st.hopBan = {}; st.polite = {}; st.react = 0; st.yieldT = 0; st.yieldCD = 0; st.stuckT = 0; },
+    // (in climb coordinates: the tall grid, and the players down the whole tower)
     think(st, p, o, dt, info) {
+      const S = G.mst, M = MODES.lava;
+      if (!S.tall) return {};
+      M.enter(S);
+      try { return lvThink(st, p, o, dt, info); } finally { M.leave(S); }
+    },
+  });
+  function lvThink(st, p, o, dt, info) {
       const out = {};
       const S = G.mst, M = MODES.lava;
-      if (!S.buttons || !S.cfg || !p.alive) { st.job = null; return out; }
+      if (!S.buttons || !S.cfg || !p.alive || S.beatT > 0) { st.job = null; st.back = 0; return out; }
+      // a trip back to the checkpoint: everything above it is new again, think again from here
+      if (st.resetN !== S.resetN) { st.resetN = S.resetN; st.past = {}; st.job = null; st.planT = 0; st.polite = {}; st.hops = null; st.hopBan = {}; st.react = 0; st.nav = null; }
+      // (a new window only while standing: a jump under way follows its own map, whose cells a new map would renumber)
+      if (p.grounded || !st.win) {
+        const w = lvWindow(S, p, o);
+        if (!st.win || w.r0 !== st.win.r0 || w.r1 !== st.win.r1) { st.win = w; if (st.nav) { st.nav.cur = null; st.nav.plan = null; } st.hops = null; }
+      }
       if (st.sayT > 0) st.sayT -= dt;
       // hop back: let go a moment, then hold ▼ for a second
       if (st.back > 0) {
@@ -237,13 +274,21 @@
       if (info.intro && G.introT > 0.4) return out;
       // the person walked away (and isn't holding a button for us): stand still so the level's own pause kicks in
       if (!info.partnerCpu && info.partnerIdle > S.cfg.afkPause && !M.onOwnButton(o) && p.grounded) { st.job = null; return out; }
+      // in the air on a jump of the old map while the tiles change (steps popping in or fading): keep flying at the
+      // spot that jump was for (a new map numbers its cells differently, and holding the old keys overshoots)
+      const building = Object.values(S.groups).some(gr => gr.state === 'building');
+      const g = building && p.grounded ? null : navGraph(p, st.win);
+      if (!p.grounded && st.air && (building || !g || g.key !== st.air.key)) {
+        const m = navSteer(st.air.kind, { x: p.x, vy: p.vy }, st.air.tx, true);
+        return { left: m < 0, right: m > 0, jump: p.vy < 0 && st.air.jump };
+      }
+      if (p.grounded) st.air = null;
       // steps popping in one by one: wait for the whole group (each change rebuilds the way map, so don't look mid-build)
-      if (Object.values(S.groups).some(gr => gr.state === 'building')) {
+      if (building) {
         if (p.grounded) return out;
         const l = CPU.last[p.id];
         return { left: l.left, right: l.right, jump: l.jump };
       }
-      const g = navGraph(p, {});
       // a tricky hop under way (dropped if the tiles change before take-off)
       if (st.job && st.job.kind === 'hop') {
         const h = st.job.h;
@@ -280,8 +325,10 @@
       }
       const j = st.job;
       if (!j) return out;
+      // a person far behind: don't climb on any higher, wait for them where it is (pressing and holding still happen)
+      if (!info.partnerCpu && o.alive && cpuFeet(o) - cpuFeet(p) > LV_K.leash * T && p.grounded && (j.r + 1) * T < cpuFeet(p) - T / 2 && j.kind !== 'press' && j.kind !== 'hold') return out;
       if (j.kind === 'back') {
-        const canHold = p.grounded && !p.onOneWay && !M.onAnyButton(p);
+        const canHold = p.grounded && !p.onOneWay && !M.onAnyButton(p) && !M.cpHot(S);
         if (canHold) { st.back = 1.3; st.job = null; }
         return out;
       }
@@ -298,7 +345,10 @@
       if (st.stuckT > 0.8 && st.yieldCD <= 0 && (!info.partnerCpu || p.id === 0)) { st.stuckT = 0; st.yieldT = 1.4; st.yieldCD = 3.5; return out; }
       // (waiting by my button: the far half of the next cell, so I never stand on the button by mistake)
       const jx = j.c * T + T / 2 + (j.kind === 'polite' ? j.side * 5 : 0);
-      const res = cpuNav(st, p, jx, (j.r + 1) * T, { tol: j.kind === 'wait' ? 6 : j.kind === 'polite' ? 4 : 5 });
+      const res = cpuNav(st, p, jx, (j.r + 1) * T, Object.assign({ tol: j.kind === 'wait' ? 6 : j.kind === 'polite' ? 4 : 5 }, st.win));
+      // (the jump just started: remember where it goes, see above)
+      const e = st.nav.cur;
+      if (e && e.kind !== 'walk' && g.cells[e.to] && (!st.air || p.grounded)) st.air = { key: g.key, tx: g.cells[e.to].tx, kind: e.kind, jump: e.kind === 'jump' || e.kind === 'high' || e.kind === 'run' };
       const there = st.nav.status === 'arrived';
       st.waitT = there ? st.waitT + dt : 0;
       // a few words for a person who seems unsure (1-player mode only)
@@ -307,7 +357,6 @@
         if (line) { cpuSay(p, line, 2.5); st.sayT = LV_K.sayEvery; }
       }
       return res;
-    },
-  });
+  }
   CPU.brains.lava.model = { lvPlan, lvDist, lvFrom, lvHopFind }; // (tests)
 })();

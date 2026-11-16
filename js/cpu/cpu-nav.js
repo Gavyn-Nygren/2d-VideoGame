@@ -23,6 +23,8 @@
        gets 'pad' moves from it, steered in the air, and no others). portals: Map(cell -> twin's cell) of portals
        (a body whose middle enters the cell comes out standing in the twin's cell and must step out of it before it
        works again: every move into the cell ends in the twin, and no move may pass through one). 4-4 uses both.
+     rows / r0 / r1: a tall map (5-4's towers): the grid has `rows` rows (default ROWS) and the map is built only for
+     the cells in rows r0..r1 (a window round the players); the key includes the window.
    cpuNavCell(p) -> { tx, ty } the cell the player stands in (or null in the air).
    cpuNavReach(p, x, feetY, opts) -> seconds the way takes from the player's cell, or Infinity.
    While walking, a partner standing right in the way is hopped over (opts.noHop turns that off). */
@@ -38,14 +40,15 @@ function navSpike(x, y, w, h) {
 }
 const navCellX = tx => tx * T + T / 2;       // the centre x a player stands at in this cell
 const navFeet = ty => (ty + 1) * T;          // feet height in this cell
+const navRows = opts => opts.rows || ROWS;   // how many rows the grid has (a tall climb has more than the screen)
 function navOpen(opts, p, tx, ty) {
-  if (tx < 0 || tx >= COLS || ty < 0 || ty >= ROWS) return false;
+  if (tx < 0 || tx >= COLS || ty < 0 || ty >= navRows(opts)) return false;
   const ch = tile(tx, ty);
   return !navSolid(opts, ch, p) && ch !== '^' && !(opts.avoid && opts.avoid(tx, ty));
 }
 function navStand(opts, p, tx, ty) {
   if (!navOpen(opts, p, tx, ty)) return false;
-  if (ty + 1 >= ROWS) return false;
+  if (ty + 1 >= navRows(opts)) return false;
   const below = tile(tx, ty + 1);
   return navSolid(opts, below, p) || below === '=';
 }
@@ -114,7 +117,7 @@ function navTry(opts, p, a, b, kind) {
     const mv = navSteer(kind, s, b.tx, air);
     navSim(opts, p, s, kind === 'off' && !air ? dir : mv, true, dt);
     if (!s.g) air = true;
-    if (s.y > H + 20) return 0;
+    if (s.y > navRows(opts) * T + 20) return 0;
     if (navSpike(s.x, s.y, PW, PH)) return 0;
     const cx = Math.floor((s.x + PW / 2) / T), cy = Math.floor((s.y + PH - 1) / T);
     if (opts.avoid && opts.avoid(cx, cy)) return 0;
@@ -132,10 +135,11 @@ function navTry(opts, p, a, b, kind) {
 function navGridKey(p, opts) {
   const L = G.level;
   let h = 0;
-  for (let y = 0; y < ROWS; y++) { const r = L.grid[y]; for (let x = 0; x < COLS; x++) h = (h * 31 + r[x].charCodeAt(0)) | 0; }
+  const y0 = opts.r0 != null ? Math.max(0, opts.r0 - 5) : 0, y1 = opts.r1 != null ? Math.min(navRows(opts) - 1, opts.r1 + 1) : ROWS - 1;
+  for (let y = y0; y <= y1; y++) { const r = L.grid[y]; for (let x = 0; x < COLS; x++) h = (h * 31 + r[x].charCodeAt(0)) | 0; }
   let sw = '';
   for (const k in L.sw) sw += L.sw[k].on ? '1' : '0';
-  return p.id + ':' + h + ':' + sw + ':' + (G.activeSet ? G.activeSet.size : 0) + ':' + (opts.key || '') + ':' + (opts.run || 1) + ':' + (opts.jump || 1) + ':' + (G.levelIndex) + ':' + (G.room || 0);
+  return p.id + ':' + h + ':' + sw + ':' + (G.activeSet ? G.activeSet.size : 0) + ':' + (opts.key || '') + ':' + (opts.run || 1) + ':' + (opts.jump || 1) + ':' + (G.levelIndex) + ':' + (G.room || 0) + (opts.r0 != null ? ':' + opts.r0 + '-' + opts.r1 : '');
 }
 function navGraph(p, opts) {
   const key = navGridKey(p, opts), c = NAV.cache[p.id];
@@ -146,7 +150,8 @@ function navGraph(p, opts) {
   if (sp && sp.key === key) return (NAV.cache[p.id] = sp);
   const maxDx = opts.maxDx || 6, maxUp = opts.maxUp || 4, maxDown = opts.maxDown || 10;
   const cells = [], at = new Map();
-  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) if (navStand(opts, p, tx, ty)) { const n = { tx, ty, i: cells.length, edges: [] }; cells.push(n); at.set(ty * COLS + tx, n); }
+  const ra = opts.r0 != null ? Math.max(0, opts.r0) : 0, rb = opts.r1 != null ? Math.min(navRows(opts) - 1, opts.r1) : ROWS - 1;
+  for (let ty = ra; ty <= rb; ty++) for (let tx = 0; tx < COLS; tx++) if (navStand(opts, p, tx, ty)) { const n = { tx, ty, i: cells.length, edges: [] }; cells.push(n); at.set(ty * COLS + tx, n); }
   const walkT = T / (PHYS.maxRun * (opts.run || 1));
   const pads = opts.pads, ports = opts.portals;
   for (const a of cells) {
