@@ -195,9 +195,10 @@ const STUDIO = (() => {
   K.propTag = (x, y, s = 1) => {
     ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.rotate(-0.08);
     ctx.fillStyle = COL.prop; ctx.strokeStyle = COL.propInk; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(-15, -6); ctx.lineTo(12, -6); ctx.lineTo(16, 0); ctx.lineTo(12, 6); ctx.lineTo(-15, 6); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = COL.propInk; circle(11, 0, 1.4); ctx.fill();
-    text('PROP', -2, 0.5, 8, COL.propInk, 'center', 'body');
+    ctx.beginPath(); ctx.moveTo(-18, -6.5); ctx.lineTo(14, -6.5); ctx.lineTo(19, 0); ctx.lineTo(14, 6.5); ctx.lineTo(-18, 6.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-17, -5.5, 30, 1.5);
+    ctx.fillStyle = COL.propInk; circle(14, 0, 1.4); ctx.fill();
+    text('PROP', -2.5, 0.5, 8, COL.propInk, 'center', 'body');
     ctx.restore();
   };
   K.realTag = (x, y, w = 40, s = 1) => {
@@ -207,7 +208,7 @@ const STUDIO = (() => {
     ctx.fillStyle = COL.real;
     for (let k = -2; k < w / 8 + 2; k++) { const bx = x - w / 2 + k * 8 * s; ctx.beginPath(); ctx.moveTo(bx, y + h / 2); ctx.lineTo(bx + 4 * s, y + h / 2); ctx.lineTo(bx + 4 * s + h, y - h / 2); ctx.lineTo(bx + h, y - h / 2); ctx.closePath(); ctx.fill(); }
     ctx.restore();
-    if (w >= 26 * s) { ctx.fillStyle = '#ffffff'; rr(x - 11 * s, y - 5 * s, 22 * s, 10 * s, 3 * s); ctx.fill(); text('REAL', x, y + 0.5, 7.5 * s, COL.real, 'center', 'body'); }
+    if (w >= 30 * s) { ctx.fillStyle = '#ffffff'; rr(x - 14 * s, y - 5 * s, 28 * s, 10 * s, 3 * s); ctx.fill(); text('REAL', x, y + 0.5, 7.5 * s, COL.real, 'center', 'body'); }
     ctx.strokeStyle = '#2a2a34'; ctx.lineWidth = 1; ctx.strokeRect(x - w / 2, y - h / 2, w, h);
   };
   K.wobble = (seed, t, amt = 0.04) => Math.sin(t * 5 + seed * 7) * amt + Math.sin(t * 8.3 + seed * 3) * amt * 0.4;
@@ -395,28 +396,84 @@ const STUDIO = (() => {
     else if (o.dusk) { g.addColorStop(0, '#3a3a7a'); g.addColorStop(0.6, '#e88a6a'); g.addColorStop(1, '#ffd08a'); }
     else { g.addColorStop(0, '#6ab0e8'); g.addColorStop(0.7, '#cfe8f6'); g.addColorStop(1, '#f2ecd8'); }
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    if (o.night) for (let i = 0; i < 50; i++) { ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.5 * H_(i)) + ')'; ctx.fillRect(((H_(i + 3) * W - cx * 0.02) % W + W) % W, H_(i + 9) * 200, 1.5, 1.5); }
-    // big soundstage buildings with arched roofs and stage numbers, far behind
-    const base = o.base || 300, par = 0.15, step = 230, off = cx * par, i0 = Math.floor(off / step) - 1;
-    for (let i = i0; i < i0 + W / step + 3; i++) {
-      const x = i * step - off, w = 180 + H_(i) * 30, h = 110 + H_(i * 3) * 60;
-      ctx.fillStyle = o.night ? '#1c2440' : '#d8cdb6'; ctx.fillRect(x, base - h, w, h);
-      ctx.beginPath(); ctx.ellipse(x + w / 2, base - h, w / 2, 18, 0, Math.PI, TAU); ctx.fill();
-      ctx.fillStyle = o.night ? '#2a3458' : '#bfb398'; ctx.fillRect(x + w * 0.35, base - h * 0.45, w * 0.3, h * 0.45);
-      text(String(((i % 9) + 9) % 9 + 1), x + w / 2, base - h + 26, 22, o.night ? '#4a5a8a' : '#8a7a5a', 'center', 'display');
+    const base = o.base || 300;
+    if (o.night) {
+      for (let i = 0; i < 70; i++) { ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.5 * H_(i) * (0.7 + 0.3 * Math.sin(t * 2 + i))) + ')'; const s = H_(i + 21) > 0.85 ? 2.2 : 1.5; ctx.fillRect(((H_(i + 3) * W - cx * 0.02) % W + W) % W, H_(i + 9) * 220, s, s); }
+      // two searchlights sweeping the sky behind the stages (a premiere tonight)
+      for (const [bx, ph] of [[180, 0], [760, 2]]) {
+        const a = -Math.PI / 2 + Math.sin(t * 0.4 + ph) * 0.45, x1 = bx + Math.cos(a - 0.05) * 600, y1 = base + Math.sin(a - 0.05) * 600, x2 = bx + Math.cos(a + 0.05) * 600, y2 = base + Math.sin(a + 0.05) * 600;
+        const sg = ctx.createLinearGradient(bx, base, (x1 + x2) / 2, (y1 + y2) / 2); sg.addColorStop(0, 'rgba(200,220,255,0.16)'); sg.addColorStop(1, 'rgba(200,220,255,0)');
+        ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(bx - 4, base); ctx.lineTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(bx + 4, base); ctx.closePath(); ctx.fill();
+      }
+    } else {
+      // a warm sun, soft clouds
+      const sx = 820, sy = o.dusk ? 210 : 80;
+      ctx.fillStyle = o.dusk ? 'rgba(255,200,140,0.35)' : 'rgba(255,248,210,0.4)'; circle(sx, sy, 56); ctx.fill();
+      ctx.fillStyle = o.dusk ? '#ffd8a0' : '#fff6c8'; circle(sx, sy, 34); ctx.fill();
+      for (let i = 0; i < 4; i++) { const span = W + 300, x = ((i * 307 - cx * 0.03 + t * (4 + i * 2)) % span + span) % span - 150; if (!o.dusk) drawCloud(x, 50 + (i * 47) % 100, 0.8 + (i % 2) * 0.35); }
     }
-    // the studio water tower
-    const tx = ((700 - cx * 0.08) % (W + 300) + W + 300) % (W + 300) - 150;
-    ctx.fillStyle = o.night ? '#24304e' : '#9aa6b2'; ctx.fillRect(tx - 2, base - 190, 4, 120); ctx.fillRect(tx - 30, base - 190, 4, 120); ctx.fillRect(tx + 26, base - 190, 4, 120);
-    ctx.beginPath(); ctx.ellipse(tx, base - 200, 42, 26, 0, 0, TAU); ctx.fill();
+    // a far line of hills with palm trees (the studio sits in a dry valley)
+    {
+      const off = cx * 0.06, hc = o.night ? '#141c38' : o.dusk ? '#9a6a7a' : '#c8d6c8';
+      ctx.fillStyle = hc; ctx.beginPath(); ctx.moveTo(-10, base + 10);
+      for (let x = -10; x <= W + 20; x += 16) ctx.lineTo(x, base - 120 - Math.sin((x + off) / 160) * 22 - Math.sin((x + off) / 53 + 2) * 6);
+      ctx.lineTo(W + 20, base + 10); ctx.closePath(); ctx.fill();
+      const pc = o.night ? '#10162c' : o.dusk ? '#7a5262' : '#a8bca8', pstep = 140, p0 = Math.floor((cx * 0.1) / pstep) - 1;
+      for (let i = p0; i < p0 + W / pstep + 3; i++) {
+        const px = i * pstep - cx * 0.1 + H_(i * 7) * 60, ph = 70 + H_(i) * 50;
+        ctx.strokeStyle = pc; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(px, base); ctx.quadraticCurveTo(px + 8, base - ph * 0.5, px + 4, base - ph); ctx.stroke();
+        ctx.fillStyle = pc; for (let f = 0; f < 6; f++) { const a = f * TAU / 6 + 0.3; ctx.beginPath(); ctx.ellipse(px + 4 + Math.cos(a) * 12, base - ph + Math.sin(a) * 5 + 4, 15, 4, a, 0, TAU); ctx.fill(); }
+      }
+    }
+    // big soundstage buildings with arched roofs and stage numbers, far behind (shaded, with ribs, doors and vents)
+    const par = 0.15, step = 230, off = cx * par, i0 = Math.floor(off / step) - 1;
+    const wall = o.night ? '#1c2440' : '#d8cdb6', side = o.night ? '#151c34' : '#c2b69c', roofc = o.night ? '#232c4c' : '#e6dcc6', ink = o.night ? '#0e1428' : '#9a8a6a';
+    for (let i = i0; i < i0 + W / step + 3; i++) {
+      const x = i * step - off, w = 180 + H_(i) * 30, h = 110 + H_(i * 3) * 60, top = base - h;
+      ctx.fillStyle = wall; ctx.fillRect(x, top, w, h);
+      ctx.fillStyle = side; ctx.fillRect(x + w * 0.72, top, w * 0.28, h);
+      // the arched roof with ribs and a lit crown
+      ctx.fillStyle = roofc; ctx.beginPath(); ctx.ellipse(x + w / 2, top, w / 2, 18, 0, Math.PI, TAU); ctx.fill();
+      ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.beginPath(); for (let r = 1; r < 6; r++) { const rx = x + w * r / 6, ry = top - Math.sqrt(Math.max(0, 1 - Math.pow((rx - x - w / 2) / (w / 2), 2))) * 18; ctx.moveTo(rx, top); ctx.lineTo(rx, ry); } ctx.stroke();
+      ctx.strokeStyle = o.night ? 'rgba(120,140,200,0.3)' : 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x + w / 2, top, w / 2 - 2, 16, 0, Math.PI * 1.15, Math.PI * 1.6); ctx.stroke();
+      ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x, top, w, 5);
+      // the big sliding door with its track, a small door and a lamp, roof vents
+      const dx = x + w * 0.35, dw = w * 0.3, dh = h * 0.45;
+      ctx.fillStyle = o.night ? '#2a3458' : '#bfb398'; ctx.fillRect(dx, base - dh, dw, dh);
+      ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.beginPath(); for (let k = 1; k < 4; k++) { ctx.moveTo(dx + dw * k / 4, base - dh); ctx.lineTo(dx + dw * k / 4, base); } ctx.stroke();
+      ctx.strokeRect(dx, base - dh, dw, dh); ctx.fillStyle = ink; ctx.fillRect(dx - 6, base - dh - 4, dw + 12, 3);
+      ctx.fillStyle = o.night ? '#2a3458' : '#a8987a'; ctx.fillRect(x + w * 0.12, base - 34, 16, 34);
+      ctx.fillStyle = o.night ? '#ffd88a' : '#f6eedc'; circle(x + w * 0.12 + 8, base - 42, 3); ctx.fill();
+      if (o.night) { const lg = ctx.createRadialGradient(x + w * 0.12 + 8, base - 42, 1, x + w * 0.12 + 8, base - 42, 26); lg.addColorStop(0, 'rgba(255,216,138,0.4)'); lg.addColorStop(1, 'rgba(255,216,138,0)'); ctx.fillStyle = lg; circle(x + w * 0.12 + 8, base - 42, 26); ctx.fill(); }
+      ctx.fillStyle = side; for (const vx of [0.2, 0.8]) { ctx.fillRect(x + w * vx - 7, top - 22, 14, 10); ctx.fillStyle = ink; ctx.fillRect(x + w * vx - 8, top - 24, 16, 3); ctx.fillStyle = side; }
+      ctx.strokeStyle = ink; ctx.lineWidth = 1.5; ctx.strokeRect(x, top, w, h);
+      // the stage number painted in a circle
+      ctx.fillStyle = o.night ? '#2a3458' : '#f2ead8'; circle(x + w / 2, top + 26, 17); ctx.fill(); ctx.strokeStyle = ink; ctx.lineWidth = 1.5; ctx.stroke();
+      text(String(((i % 9) + 9) % 9 + 1), x + w / 2, top + 27, 20, o.night ? '#4a5a8a' : '#8a7a5a', 'center', 'display');
+    }
+    // the studio water tower: braced legs, a banded tank with a lit side
+    const tx = ((700 - cx * 0.08) % (W + 300) + W + 300) % (W + 300) - 150, tc = o.night ? '#24304e' : '#9aa6b2';
+    ctx.fillStyle = tc; ctx.fillRect(tx - 2, base - 190, 4, 120); ctx.fillRect(tx - 30, base - 190, 4, 120); ctx.fillRect(tx + 26, base - 190, 4, 120);
+    ctx.strokeStyle = tc; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 3; k++) { const y0 = base - 180 + k * 36; ctx.moveTo(tx - 28, y0); ctx.lineTo(tx + 28, y0 + 36); ctx.moveTo(tx + 28, y0); ctx.lineTo(tx - 28, y0 + 36); } ctx.stroke();
+    ctx.fillStyle = tc; ctx.beginPath(); ctx.ellipse(tx, base - 200, 42, 26, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = o.night ? 'rgba(0,0,0,0.25)' : 'rgba(40,50,70,0.18)'; ctx.beginPath(); ctx.ellipse(tx + 12, base - 196, 30, 22, 0, -0.9, 1.6); ctx.fill();
+    ctx.fillStyle = o.night ? 'rgba(120,140,200,0.18)' : 'rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.ellipse(tx - 22, base - 206, 8, 12, 0.3, 0, TAU); ctx.fill();
+    ctx.strokeStyle = o.night ? '#151c34' : '#6a7684'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(tx, base - 200, 42, 26, 0, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tx - 40, base - 210); ctx.quadraticCurveTo(tx, base - 214, tx + 40, base - 210); ctx.stroke();
+    ctx.fillStyle = o.night ? '#151c34' : '#6a7684'; ctx.beginPath(); ctx.moveTo(tx - 20, base - 222); ctx.lineTo(tx, base - 236); ctx.lineTo(tx + 20, base - 222); ctx.closePath(); ctx.fill();
     text('GIGANTIC', tx, base - 198, 11, o.night ? '#3a4a7a' : '#ffffff', 'center', 'body');
   };
-
   /* ---------- film effects ---------- */
   K.frame = (t, rec) => {
     ctx.fillStyle = 'rgba(10,10,14,0.75)'; ctx.fillRect(0, 0, W, 10); ctx.fillRect(0, H - 10, W, 10);
     ctx.fillStyle = 'rgba(240,240,230,0.55)'; for (let x = ((-t * 60) % 24) - 24; x < W; x += 24) { ctx.fillRect(x, 2.5, 10, 5); ctx.fillRect(x, H - 7.5, 10, 5); }
-    if (rec) { const on = Math.sin(t * 6) > 0; ctx.fillStyle = on ? '#ff3a3a' : 'rgba(255,58,58,0.35)'; circle(W - 120, 30 + (hudBig() ? 30 : 22), 6); ctx.fill(); text('REC', W - 108, 30 + (hudBig() ? 30 : 22), 12, '#ffffff', 'left', 'body'); }
+    if (rec) {
+      const on = Math.sin(t * 6) > 0, ry = 30 + (hudBig() ? 30 : 22);
+      text('', 0, 0, 12, '#ffffff', 'left', 'body'); const tw = Math.max(26, ctx.measureText('REC').width);
+      ctx.fillStyle = 'rgba(14,14,20,0.55)'; rr(W - 132, ry - 10, tw + 34, 20, 10); ctx.fill();
+      ctx.fillStyle = on ? '#ff3a3a' : 'rgba(255,58,58,0.35)'; circle(W - 120, ry, 5); ctx.fill();
+      text('REC', W - 109, ry, 12, '#ffffff', 'left', 'body');
+    }
   };
   K.scanlines = a => {
     if (a <= 0) return;

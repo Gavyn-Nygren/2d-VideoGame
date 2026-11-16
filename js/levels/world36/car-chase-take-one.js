@@ -513,26 +513,64 @@
     ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
     const base = y + h;
     if (sc === 0 || sc === 3) {
-      // a skyline (lit windows at night) and a moon at night
-      if (sc === 3) { ctx.fillStyle = '#fff6c8'; circle(x + w * 0.78, y + h * 0.22, Math.min(w, h) * 0.1); ctx.fill(); ctx.fillStyle = g; circle(x + w * 0.78 + Math.min(w, h) * 0.05, y + h * 0.2, Math.min(w, h) * 0.09); ctx.fill(); }
+      // a skyline in two layers (lit windows at night), rooftop tanks and aerials, and a moon at night
+      const night = sc === 3;
+      if (night) { ctx.fillStyle = 'rgba(255,246,200,0.12)'; circle(x + w * 0.78, y + h * 0.22, Math.min(w, h) * 0.16); ctx.fill(); ctx.fillStyle = '#fff6c8'; circle(x + w * 0.78, y + h * 0.22, Math.min(w, h) * 0.1); ctx.fill(); ctx.fillStyle = g; circle(x + w * 0.78 + Math.min(w, h) * 0.05, y + h * 0.2, Math.min(w, h) * 0.09); ctx.fill(); }
+      else { ctx.fillStyle = 'rgba(255,255,255,0.7)'; for (let k = 0; k < 3; k++) { const cx = x + (0.15 + k * 0.33) * w, cy = y + h * (0.16 + 0.08 * (k % 2)); circle(cx, cy, 14); ctx.fill(); circle(cx + 16, cy - 6, 18); ctx.fill(); circle(cx + 34, cy, 13); ctx.fill(); } }
+      ctx.fillStyle = night ? '#1e2450' : '#9aaac0';
+      for (let k = 0; k < Math.max(3, w / 34); k++) { const bw = 22 + K.hash(k + seed + 50) * 20, bh = h * (0.45 + K.hash(k * 5 + seed) * 0.35), bx = x + k * 34 + 10; ctx.fillRect(bx, base - bh, bw, bh); if (K.hash(k + 9) > 0.6) ctx.fillRect(bx + bw / 2 - 1, base - bh - 14, 2, 14); }
       for (let k = 0; k < Math.max(3, w / 40); k++) {
-        const bw = 26 + K.hash(k + seed) * 24, bh = h * (0.3 + K.hash(k * 3 + seed) * 0.5), bx = x + k * 40 - 6;
-        ctx.fillStyle = sc === 3 ? '#14183a' : '#5a6a82'; ctx.fillRect(bx, base - bh, bw, bh);
-        ctx.fillStyle = sc === 3 ? 'rgba(255,230,140,0.85)' : 'rgba(230,240,255,0.6)';
-        for (let wy = base - bh + 6; wy < base - 8; wy += 10) for (let wx = bx + 4; wx < bx + bw - 6; wx += 9) if (K.hash(wx * 0.3 + wy + seed) > (sc === 3 ? 0.55 : 0.3)) ctx.fillRect(wx, wy, 4, 5);
+        const bw = 26 + K.hash(k + seed) * 24, bh = h * (0.3 + K.hash(k * 3 + seed) * 0.5), bx = x + k * 40 - 6, bc = night ? '#14183a' : '#5a6a82';
+        ctx.fillStyle = bc; ctx.fillRect(bx, base - bh, bw, bh);
+        ctx.fillStyle = night ? 'rgba(0,0,0,0.25)' : 'rgba(30,40,60,0.22)'; ctx.fillRect(bx + bw * 0.68, base - bh, bw * 0.32, bh);
+        ctx.fillStyle = night ? 'rgba(120,140,220,0.25)' : 'rgba(255,255,255,0.3)'; ctx.fillRect(bx, base - bh, 2, bh); ctx.fillRect(bx, base - bh, bw, 2);
+        ctx.fillStyle = night ? 'rgba(255,230,140,0.85)' : 'rgba(230,240,255,0.6)';
+        for (let wy = base - bh + 6; wy < base - 8; wy += 10) for (let wx = bx + 4; wx < bx + bw - 6; wx += 9) if (K.hash(wx * 0.3 + wy + seed) > (night ? 0.55 : 0.3)) ctx.fillRect(wx, wy, 4, 5);
+        // a rooftop water tank or an aerial
+        const rk = K.hash(k * 7 + seed);
+        if (rk > 0.6) { ctx.fillStyle = bc; ctx.fillRect(bx + 6, base - bh - 10, 10, 10); ctx.beginPath(); ctx.moveTo(bx + 5, base - bh - 10); ctx.lineTo(bx + 11, base - bh - 15); ctx.lineTo(bx + 17, base - bh - 10); ctx.fill(); }
+        else if (rk > 0.3) { ctx.fillStyle = bc; ctx.fillRect(bx + bw - 8, base - bh - 18, 2, 18); if (night) { ctx.fillStyle = Math.sin(t * 3 + k) > 0 ? '#ff4a4a' : 'rgba(255,74,74,0.3)'; circle(bx + bw - 7, base - bh - 19, 1.8); ctx.fill(); } }
       }
     } else if (sc === 1) {
+      ctx.fillStyle = 'rgba(255,242,192,0.45)'; circle(x + w * 0.8, y + h * 0.3, Math.min(w, h) * 0.2); ctx.fill();
       ctx.fillStyle = '#fff2c0'; circle(x + w * 0.8, y + h * 0.3, Math.min(w, h) * 0.12); ctx.fill();
+      // far mesas with flat tops and banded cliffs
+      for (let k = 0; k < Math.max(2, w / 260); k++) {
+        const mx = x + k * 260 + K.hash(k + seed + 20) * 80, mw = 120 + K.hash(k * 3 + seed) * 80, mh = h * (0.3 + K.hash(k + 4) * 0.12);
+        ctx.fillStyle = '#e8a868'; ctx.beginPath(); ctx.moveTo(mx, base); ctx.lineTo(mx + 18, base - mh); ctx.lineTo(mx + mw - 18, base - mh); ctx.lineTo(mx + mw, base); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#d08a50'; ctx.beginPath(); ctx.moveTo(mx + mw * 0.6, base - mh); ctx.lineTo(mx + mw - 18, base - mh); ctx.lineTo(mx + mw, base); ctx.lineTo(mx + mw * 0.66, base); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(160,90,40,0.35)'; ctx.fillRect(mx + 10, base - mh * 0.62, mw - 20, 3); ctx.fillRect(mx + 6, base - mh * 0.32, mw - 12, 3);
+      }
       ctx.fillStyle = '#e09a4a'; ctx.beginPath(); ctx.moveTo(x, base); for (let k = 0; k <= 6; k++) ctx.lineTo(x + k * w / 6, base - h * (0.18 + 0.12 * K.hash(k + seed))); ctx.lineTo(x + w, base); ctx.fill();
-      // cacti
-      ctx.fillStyle = '#3a8a4a';
-      for (let k = 0; k < Math.max(1, w / 120); k++) { const cx = x + 30 + k * 120 + K.hash(k + seed) * 30, ch = h * 0.42; rr(cx - 6, base - ch, 12, ch, 6); ctx.fill(); rr(cx - 20, base - ch * 0.7, 8, ch * 0.35, 4); ctx.fill(); ctx.fillRect(cx - 16, base - ch * 0.45, 12, 6); rr(cx + 12, base - ch * 0.8, 8, ch * 0.4, 4); ctx.fill(); ctx.fillRect(cx + 4, base - ch * 0.5, 12, 6); }
+      ctx.strokeStyle = 'rgba(255,230,170,0.5)'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k <= 6; k++) { const yy = base - h * (0.18 + 0.12 * K.hash(k + seed)) + 2; k ? ctx.lineTo(x + k * w / 6, yy) : ctx.moveTo(x, yy); } ctx.stroke();
+      // cacti, each with a lit side, a shaded side and ribs
+      for (let k = 0; k < Math.max(1, w / 120); k++) {
+        const cx = x + 30 + k * 120 + K.hash(k + seed) * 30, ch = h * 0.42;
+        const arm = (ax, ay, aw, ah) => { rr(ax, ay, aw, ah, aw / 2); ctx.fill(); };
+        ctx.fillStyle = '#3a8a4a'; arm(cx - 6, base - ch, 12, ch); arm(cx - 20, base - ch * 0.7, 8, ch * 0.35); ctx.fillRect(cx - 16, base - ch * 0.45, 12, 6); arm(cx + 12, base - ch * 0.8, 8, ch * 0.4); ctx.fillRect(cx + 4, base - ch * 0.5, 12, 6);
+        ctx.fillStyle = '#2a6a38'; ctx.fillRect(cx + 2, base - ch + 6, 4, ch - 6); ctx.fillRect(cx + 16, base - ch * 0.8 + 4, 4, ch * 0.4 - 8);
+        ctx.fillStyle = 'rgba(200,255,200,0.35)'; ctx.fillRect(cx - 4, base - ch + 5, 2, ch - 10); ctx.fillRect(cx - 18, base - ch * 0.7 + 4, 1.5, ch * 0.3);
+        ctx.fillStyle = '#ff7aa0'; circle(cx, base - ch - 1, 3); ctx.fill();
+      }
     } else if (sc === 2) {
-      ctx.fillStyle = '#e8f0f8'; ctx.beginPath(); ctx.moveTo(x, base);
-      for (let k = 0; k <= 4; k++) { ctx.lineTo(x + (k + 0.5) * w / 4, base - h * (0.5 + 0.3 * K.hash(k + seed))); ctx.lineTo(x + (k + 1) * w / 4, base - h * 0.2); }
+      // far peaks behind, then the snowy mountains with shaded faces, then pines
+      ctx.fillStyle = '#c8d8ea'; ctx.beginPath(); ctx.moveTo(x, base);
+      for (let k = 0; k <= 6; k++) { ctx.lineTo(x + (k + 0.5) * w / 6, base - h * (0.62 + 0.2 * K.hash(k + seed + 7))); ctx.lineTo(x + (k + 1) * w / 6, base - h * 0.4); }
       ctx.lineTo(x + w, base); ctx.fill();
+      for (let k = 0; k <= 4; k++) {
+        const px = x + (k + 0.5) * w / 4, py = base - h * (0.5 + 0.3 * K.hash(k + seed)), lx = x + k * w / 4, rx = x + (k + 1) * w / 4, fy = base - h * 0.2;
+        ctx.fillStyle = '#e8f0f8'; ctx.beginPath(); ctx.moveTo(lx, fy); ctx.lineTo(px, py); ctx.lineTo(rx, fy); ctx.lineTo(rx, base); ctx.lineTo(lx, base); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#b8c8dc'; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(rx, fy); ctx.lineTo(rx, base); ctx.lineTo(px + (rx - px) * 0.2, base); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - (px - lx) * 0.3, py + (fy - py) * 0.3); ctx.lineTo(px - 6, py + (fy - py) * 0.22); ctx.lineTo(px + 4, py + (fy - py) * 0.34); ctx.lineTo(px + (rx - px) * 0.28, py + (fy - py) * 0.28); ctx.closePath(); ctx.fill();
+      }
       ctx.fillStyle = '#ffffff'; for (let k = 0; k < w * h / 900; k++) { circle(x + K.hash(k + seed) * w, y + ((K.hash(k * 7) * h + t * 30) % h), 1.8); ctx.fill(); }
-      ctx.fillStyle = '#3a6a5a'; for (let k = 0; k < Math.max(1, w / 90); k++) { const tx = x + 20 + k * 90; ctx.beginPath(); ctx.moveTo(tx, base - h * 0.42); ctx.lineTo(tx + 14, base - 4); ctx.lineTo(tx - 14, base - 4); ctx.closePath(); ctx.fill(); }
+      for (let k = 0; k < Math.max(1, w / 90); k++) {
+        const tx = x + 20 + k * 90, th = h * 0.42;
+        ctx.fillStyle = '#3a6a5a'; for (let q = 0; q < 3; q++) { ctx.beginPath(); ctx.moveTo(tx, base - th + q * th * 0.22); ctx.lineTo(tx + 10 + q * 3, base - th * 0.45 + q * th * 0.2); ctx.lineTo(tx - 10 - q * 3, base - th * 0.45 + q * th * 0.2); ctx.closePath(); ctx.fill(); }
+        ctx.fillStyle = '#2a5040'; ctx.beginPath(); ctx.moveTo(tx, base - th); ctx.lineTo(tx + 16, base - 4); ctx.lineTo(tx, base - 4); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffffff'; for (let q = 0; q < 3; q++) ctx.fillRect(tx - 6 - q * 2, base - th * 0.45 + q * th * 0.2 - 2, 10 + q * 3, 2);
+        ctx.fillStyle = '#4a3a2a'; ctx.fillRect(tx - 2, base - 6, 4, 6);
+      }
     } else {
       // PREMIERE: red curtains, spotlights and a star
       ctx.fillStyle = 'rgba(255,240,180,0.25)'; for (const d of [0.25, 0.75]) { ctx.beginPath(); ctx.moveTo(x + w * d, base); ctx.lineTo(x + w * d - w * 0.15 + Math.sin(t + d * 9) * w * 0.08, y); ctx.lineTo(x + w * d + w * 0.15 + Math.sin(t + d * 9) * w * 0.08, y); ctx.closePath(); ctx.fill(); }
@@ -574,6 +612,13 @@
     else if (st.scene === 2) { rg.addColorStop(0, '#dfe8f0'); rg.addColorStop(1, '#b8c8d8'); }
     else { rg.addColorStop(0, '#4a4a56'); rg.addColorStop(1, '#2e2e38'); }
     ctx.fillStyle = rg; ctx.fillRect(0, roadTop, W, roadBot - roadTop);
+    // the road: a kerb along the top, specks of grit, a shadowed lower edge
+    ctx.fillStyle = st.scene === 1 ? '#a87a3a' : st.scene === 2 ? '#a8b8c8' : '#6a6a76'; ctx.fillRect(0, roadTop, W, 6);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(0, roadTop, W, 1.5);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let x = ((-dist) % 40 + 40) % 40 - 40; x < W; x += 40) ctx.fillRect(x, roadTop + 1, 1.5, 5);
+    ctx.fillStyle = st.scene === 2 ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.12)';
+    for (let k = 0; k < 40; k++) { const gx = ((k * 53 - dist) % (W + 40) + W + 40) % (W + 40) - 20, gy = roadTop + 12 + (k * 37) % (roadBot - roadTop - 20); ctx.fillRect(gx, gy, 2, 2); }
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(0, roadBot - 6, W, 6);
     ctx.fillStyle = st.scene === 2 ? '#ffffff' : '#ffe27a';
     for (const yy of [353, 399]) for (let x = ((-dist) % 60 + 60) % 60 - 60; x < W; x += 60) ctx.fillRect(x, yy, 28, 3);
     ctx.fillStyle = '#20202a'; ctx.fillRect(0, roadBot, W, H - roadBot);

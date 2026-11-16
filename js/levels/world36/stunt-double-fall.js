@@ -548,7 +548,14 @@
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, st.k === 3 ? '#ffb07a' : '#8ac8ff'); g.addColorStop(1, st.k === 3 ? '#ff7a6a' : '#d8f0ff');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    for (let i = 0; i < 6; i++) { const x = (i * 197) % W, y = ((i * 131 - cy * 0.12) % (H + 200) + H + 200) % (H + 200) - 100; ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(x, y, 70, 22, 0, 0, TAU); ctx.fill(); }
+    for (let i = 0; i < 6; i++) { const x = (i * 197) % W, y = ((i * 131 - cy * 0.12) % (H + 200) + H + 200) % (H + 200) - 100; if (st.k === 3) { ctx.fillStyle = 'rgba(255,230,210,0.7)'; ctx.beginPath(); ctx.ellipse(x, y, 70, 22, 0, 0, TAU); ctx.fill(); } else drawCloud(x - 50, y, 1.2); }
+    // other studio towers far behind, sliding up slower than the facade (we're falling past them)
+    for (let i = 0; i < 6; i++) {
+      const bx = i * 180 - 40 + (i % 2) * 40, bw = 90 + (i * 37) % 50, by = ((i * 260 - cy * 0.3) % 1400 + 1400) % 1400 - 300;
+      ctx.fillStyle = st.k === 3 ? 'rgba(170,90,100,0.45)' : 'rgba(110,140,180,0.35)'; ctx.fillRect(bx, by, bw, 900);
+      ctx.fillStyle = st.k === 3 ? 'rgba(255,220,160,0.35)' : 'rgba(230,240,255,0.4)';
+      for (let wy = by + 14; wy < by + 900 && wy < H; wy += 26) for (let wx = bx + 10; wx < bx + bw - 12; wx += 20) if (wy > -20) ctx.fillRect(wx, wy, 9, 12);
+    }
     // the face of the building: painted flats with the wooden backs of the next flat showing at the joins
     const x0 = S.X0 - 24, x1 = S.X1 + 24;
     const f0 = Math.floor(cy / FL) - 1;
@@ -565,19 +572,38 @@
         text('SET ENDS', (x0 + x1) / 2, y + 40, 16, '#ffe7a8', 'center', 'display');
         continue;
       }
-      ctx.fillStyle = f % 2 ? '#8a7a9a' : '#867696'; ctx.fillRect(x0, y, x1 - x0, FL);
+      const wallC = f % 2 ? '#8a7a9a' : '#867696';
+      ctx.fillStyle = wallC; ctx.fillRect(x0, y, x1 - x0, FL);
+      // painted brick courses and a cornice band
+      ctx.fillStyle = 'rgba(60,40,80,0.12)';
+      for (let by = y + 14, r = 0; by < y + FL - 8; by += 14, r++) { ctx.fillRect(x0, by, x1 - x0, 1.2); for (let bx = x0 + (r % 2) * 18; bx < x1; bx += 36) ctx.fillRect(bx, by - 14, 1.2, 14); }
+      ctx.fillStyle = shade(wallC, 0.12); ctx.fillRect(x0, y + 22, x1 - x0, 12);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x0, y + 22, x1 - x0, 2);
+      for (let k = x0 + 6; k < x1; k += 24) { ctx.fillStyle = shade(wallC, 0.2); ctx.fillRect(k, y + 34, 10, 5); }
       ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x0, y + FL - 6, x1 - x0, 6);
       for (let c = 0; c < 6; c++) {
         const wx = x0 + 36 + c * 118, wy = y + 70;
-        ctx.fillStyle = '#3a4a6a'; ctx.fillRect(wx, wy, 70, 110);
+        // sill, lintel, the glass with a reflection of sky and a blind half down in some
+        ctx.fillStyle = shade(wallC, 0.25); ctx.fillRect(wx - 6, wy - 10, 82, 8); ctx.fillRect(wx - 8, wy + 112, 86, 8);
+        ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(wx - 8, wy + 112, 86, 2);
+        const gg = ctx.createLinearGradient(0, wy, 0, wy + 110); gg.addColorStop(0, '#5a7aa8'); gg.addColorStop(1, '#2e3a5a');
+        ctx.fillStyle = gg; ctx.fillRect(wx, wy, 70, 110);
+        if (K.hash(f * 7 + c) > 0.6) { ctx.fillStyle = '#d8d0b8'; ctx.fillRect(wx, wy, 70, 30 + K.hash(f + c * 3) * 30); ctx.fillStyle = 'rgba(0,0,0,0.15)'; for (let q = wy + 6; q < wy + 30; q += 6) ctx.fillRect(wx, q, 70, 1); }
         ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(wx + 6, wy + 6, 16, 98);
+        ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.moveTo(wx + 40, wy); ctx.lineTo(wx + 58, wy); ctx.lineTo(wx + 26, wy + 110); ctx.lineTo(wx + 8, wy + 110); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = '#ece4f4'; ctx.lineWidth = 4; ctx.strokeRect(wx, wy, 70, 110);
+        ctx.strokeStyle = '#ece4f4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(wx + 35, wy); ctx.lineTo(wx + 35, wy + 110); ctx.stroke();
+        ctx.strokeStyle = 'rgba(40,30,60,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(wx - 2.5, wy - 2.5, 75, 115);
       }
       // a floor-to-floor seam where two painted flats meet
       ctx.fillStyle = K.COL.wood; ctx.fillRect(x0, y, x1 - x0, 3);
     }
     // the side edges: you can see it's only a front (struts behind)
-    for (const ex of [x0 - 10, x1]) { ctx.fillStyle = K.COL.woodDark; ctx.fillRect(ex, 0, 10, H); }
+    for (const ex of [x0 - 10, x1]) {
+      ctx.fillStyle = K.COL.woodDark; ctx.fillRect(ex, 0, 10, H);
+      ctx.fillStyle = 'rgba(255,220,170,0.25)'; ctx.fillRect(ex, 0, 2, H);
+      ctx.fillStyle = '#c8c4b8'; for (let y = ((-cy) % 90 + 90) % 90; y < H; y += 90) { circle(ex + 5, y, 1.6); ctx.fill(); }
+    }
     // balconies with the crew: at each fan
   }
   function drawRow(st, r, t) {
