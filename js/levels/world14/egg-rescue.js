@@ -1052,11 +1052,7 @@ function eggDrawFar(st) {
     }
   }
   const yAt = sx => hy + Math.sin((sx + off) * 0.004) * 24 + Math.sin((sx + off) * 0.011 + 1) * 9;
-  // a hazy ridge behind, then the far hills with a lit rim
-  ctx.fillStyle = mixCol(lk.far, lk.sky[1], 0.5);
-  ctx.beginPath(); ctx.moveTo(0, H);
-  for (let sx = 0; sx <= W; sx += 16) ctx.lineTo(sx, hy - 26 + Math.sin((sx + off * 0.6) * 0.006 + 2) * 20);
-  ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  // the far hills with a lit rim
   ctx.fillStyle = lk.far;
   ctx.beginPath(); ctx.moveTo(0, H);
   for (let sx = 0; sx <= W; sx += 16) ctx.lineTo(sx, yAt(sx));
@@ -1242,20 +1238,18 @@ function eggDrawGround(st) {
   ctx.beginPath(); ctx.moveTo(xa - cam.x, bot);
   for (const x of pts) ctx.lineTo(x - cam.x, yDraw(x) - cam.y);
   ctx.lineTo(xb - cam.x, bot); ctx.closePath(); ctx.fill();
-  // soil: darker the deeper it goes, layered stripes, a shady band under the turf
+  // soil: layered stripes
   const band = (off, wdt, col, a) => {
     ctx.strokeStyle = col; ctx.lineWidth = wdt; ctx.globalAlpha = a;
     ctx.beginPath(); pts.forEach((x, i) => { const y = yDraw(x) + off - cam.y; if (i) ctx.lineTo(x - cam.x, y); else ctx.moveTo(x - cam.x, y); }); ctx.stroke();
   };
-  band(150, 120, lk.soilDark, 0.55); band(260, 120, shade(lk.soilDark, 0.2), 0.6);
-  band(46, 7, lk.soilDark, 0.5); band(98, 4, lk.soilDark, 0.35); band(14, 12, lk.soilDark, 0.28);
+  band(46, 7, lk.soilDark, 0.5); band(98, 4, lk.soilDark, 0.35);
   ctx.globalAlpha = 1;
   for (let x = Math.floor(xa / 60) * 60; x < xb; x += 60) {
     if (gapAt(x)) continue;
     const h = hash(x, 5), gy = eggGY(st, x) - cam.y, px = x - cam.x + (h % 30), py = gy + 22 + (h % 40), r = 3 + (h % 3);
-    // a pebble with a lit top
+    // a pebble (its lit top is added below, all in one path)
     ctx.fillStyle = lk.soilDark; circle(px, py, r); ctx.fill();
-    ctx.fillStyle = 'rgba(255,240,220,0.22)'; circle(px - r * 0.3, py - r * 0.35, r * 0.45); ctx.fill();
     // a bigger buried rock now and then
     if (h % 5 === 1) {
       const bx = x - cam.x + 30, by = gy + 70 + (h % 30), bw = 16 + (h % 12);
@@ -1268,16 +1262,23 @@ function eggDrawGround(st) {
       const fx = x - cam.x + 10, fy = gy + 120 + (h % 40);
       ctx.strokeStyle = 'rgba(245,230,205,0.55)'; ctx.fillStyle = 'rgba(245,230,205,0.55)'; ctx.lineWidth = 2.5;
       if (h % 2) { ctx.beginPath(); ctx.moveTo(fx - 12, fy); ctx.lineTo(fx + 12, fy - 3); ctx.stroke(); for (const [ex, ey] of [[-13, 0], [13, -3]]) { circle(fx + ex, fy + ey - 2, 2.6); ctx.fill(); circle(fx + ex, fy + ey + 2, 2.6); ctx.fill(); } }
-      else { ctx.beginPath(); for (let a = 0; a < 12; a += 0.3) { const rr2 = 1 + a * 0.85; ctx.lineTo(fx + Math.cos(a) * rr2, fy + Math.sin(a) * rr2); } ctx.stroke(); }
+      else { ctx.beginPath(); for (let a = 0; a < 12; a += 0.8) { const rr2 = 1 + a * 0.85; ctx.lineTo(fx + Math.cos(a) * rr2, fy + Math.sin(a) * rr2); } ctx.stroke(); }
     }
     // roots poking out under the turf
-    if (h % 4 === 2) {
+    if (h % 8 === 2) {
       ctx.strokeStyle = 'rgba(60,38,22,0.45)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
       const rx = x - cam.x + (h % 40);
       ctx.beginPath(); ctx.moveTo(rx, gy + 8); ctx.quadraticCurveTo(rx + 6, gy + 18, rx + 2, gy + 28); ctx.moveTo(rx + 4, gy + 16); ctx.lineTo(rx + 11, gy + 22); ctx.stroke();
       ctx.lineCap = 'butt';
     }
   }
+  ctx.fillStyle = 'rgba(255,240,220,0.22)'; ctx.beginPath();
+  for (let x = Math.floor(xa / 60) * 60; x < xb; x += 60) {
+    if (gapAt(x)) continue;
+    const h = hash(x, 5), px = x - cam.x + (h % 30), py = eggGY(st, x) - cam.y + 22 + (h % 40), r = 3 + (h % 3);
+    ctx.moveTo(px - r * 0.3 + r * 0.45, py - r * 0.35); ctx.arc(px - r * 0.3, py - r * 0.35, r * 0.45, 0, Math.PI * 2);
+  }
+  ctx.fill();
   // water in the creeks and rivers (a ravine under the bridge is just deep and shady)
   for (const g of c.gaps) {
     if (g.x1 < xa || g.x0 > xb) continue;
@@ -1313,22 +1314,16 @@ function eggDrawGround(st) {
     if (!on) { ctx.moveTo(x - cam.x, y); on = true; } else ctx.lineTo(x - cam.x, y);
   }
   ctx.stroke();
-  // a lit edge on the turf, little scallops hanging over the soil and blades of grass
-  ctx.strokeStyle = 'rgba(255,255,230,0.35)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); on = false;
-  for (const x of pts) {
-    if (gapAt(x)) { on = false; continue; }
-    const y = eggGY(st, x) - cam.y - 1.5;
-    if (!on) { ctx.moveTo(x - cam.x, y); on = true; } else ctx.lineTo(x - cam.x, y);
+  // little scallops of turf hanging over the soil, and blades of grass
+  // (all scallops and blades in one path each: one fill call, not one per bump)
+  ctx.fillStyle = lk.grass; ctx.beginPath();
+  for (let x = Math.floor(xa / 20) * 20; x < xb; x += 20) {
+    if (gapAt(x) || gapAt(x + 20)) continue;
+    const y = eggGY(st, x + 10) - cam.y + 5, h = hash(x, 41), r = 8 + (h % 3);
+    ctx.moveTo(x - cam.x + 10 + r, y); ctx.arc(x - cam.x + 10, y, r, 0, Math.PI);
+    if (h % 3 === 0) { const bx = x - cam.x + (h % 12), by = eggGY(st, x) - cam.y - 1; ctx.moveTo(bx - 3, by); ctx.lineTo(bx - 1, by - 7 - (h % 4)); ctx.lineTo(bx + 1, by); ctx.moveTo(bx + 1, by); ctx.lineTo(bx + 4, by - 5 - (h % 3)); ctx.lineTo(bx + 5, by); }
   }
-  ctx.stroke();
-  ctx.fillStyle = lk.grass; ctx.strokeStyle = lk.grassDark; ctx.lineWidth = 1.5;
-  for (let x = Math.floor(xa / 14) * 14; x < xb; x += 14) {
-    if (gapAt(x) || gapAt(x + 14)) continue;
-    const y = eggGY(st, x + 7) - cam.y + 5, h = hash(x, 41);
-    ctx.beginPath(); ctx.arc(x - cam.x + 7, y, 6 + (h % 3), 0, Math.PI); ctx.fill();
-    if (h % 3 === 0) { const bx = x - cam.x + (h % 12), by = eggGY(st, x) - cam.y - 1; ctx.beginPath(); ctx.moveTo(bx - 3, by); ctx.lineTo(bx - 1, by - 7 - (h % 4)); ctx.lineTo(bx + 1, by); ctx.moveTo(bx + 1, by); ctx.lineTo(bx + 4, by - 5 - (h % 3)); ctx.lineTo(bx + 5, by); ctx.fill(); }
-  }
+  ctx.fill();
   // ledges: a rocky face
   for (const l of c.ledges) {
     const x = l.x - cam.x;

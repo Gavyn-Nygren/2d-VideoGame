@@ -1015,12 +1015,12 @@ function raftDrawRiver(st) {
   const t = reduceMotion ? 0 : G.clock;
   ctx.lineWidth = 7;
   for (let gx = Math.floor((cam.x - 200) / 150); gx * 150 < cam.x + W + 200; gx++) {
-    for (let k = 0; k < 3; k++) {
+    for (let k = 0; k < 2; k++) {
       const h = hash(gx, k + 301), drift = (t * 22 + (h % 150)) % 150, bx = gx * 150 + drift, l = ((h >>> 7) % 160) / 100 - 0.8;
       const hw = raftHW(st, bx);
       if (hw < 30) continue;
       const by = raftCY(st, bx) + l * (hw - 30), len = 60 + (h >>> 3) % 60, a = Math.sin(Math.PI * drift / 150);
-      ctx.strokeStyle = k === 2 ? 'rgba(60,24,8,' + (0.3 * a) + ')' : 'rgba(176,108,62,' + (0.32 * a) + ')';
+      ctx.strokeStyle = gx % 3 === 0 ? 'rgba(60,24,8,' + (0.3 * a) + ')' : 'rgba(176,108,62,' + (0.32 * a) + ')';
       ctx.beginPath(); ctx.moveTo(bx - len / 2, by);
       ctx.bezierCurveTo(bx - len / 6, by - 10, bx + len / 6, by + 10, bx + len / 2, by - 2); ctx.stroke();
       if (k === 0) { ctx.fillStyle = 'rgba(255,236,214,' + (0.16 * a) + ')'; ctx.beginPath(); ctx.ellipse(bx + 10, by - 12, 9, 2.4, -0.1, 0, Math.PI * 2); ctx.fill(); }

@@ -948,15 +948,10 @@ function pteroDrawSky(st) {
   }
 }
 function pteroCloud(x, y, s, col, flat) {
-  if (!flat) {
-    // a soft shaded underside and a bright top, then the cloud itself
-    ctx.fillStyle = 'rgba(150,120,140,0.18)';
-    ctx.beginPath(); ctx.ellipse(x + 3 * s, y + 5 * s, 46 * s, 15 * s, 0, 0, Math.PI * 2); ctx.fill();
-  }
   ctx.fillStyle = col;
   ctx.beginPath(); ctx.ellipse(x, y, 46 * s, 16 * s, 0, 0, Math.PI * 2); ctx.fill();
   circle(x - 18 * s, y - 8 * s, 18 * s); ctx.fill(); circle(x + 10 * s, y - 14 * s, 22 * s); ctx.fill(); circle(x + 32 * s, y - 4 * s, 14 * s); ctx.fill();
-  if (!flat) { ctx.fillStyle = 'rgba(255,255,255,0.55)'; circle(x + 4 * s, y - 22 * s, 10 * s); ctx.fill(); circle(x - 22 * s, y - 13 * s, 7 * s); ctx.fill(); }
+  if (!flat) { ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(x + 4 * s, y - 22 * s, 10 * s, 0, Math.PI * 2); ctx.moveTo(x - 15 * s, y - 13 * s); ctx.arc(x - 22 * s, y - 13 * s, 7 * s, 0, Math.PI * 2); ctx.fill(); }
 }
 // far mountains and the sleepy volcano (always puffing little smoke rings)
 function pteroDrawFar(st) {
@@ -1119,7 +1114,6 @@ function pteroDrawGround(st) {
     ctx.beginPath(); for (let x = xa; x <= xb; x += 8) { const y = pteroGY(st, x) + off; if (x === xa) ctx.moveTo(x - cam.x, y); else ctx.lineTo(x - cam.x, y); } ctx.stroke();
   };
   ctx.strokeStyle = pal.dirtDark;
-  band(120, 90, 0.4); band(12, 12, 0.25);
   band(40, 6, 0.45); band(80, 6, 0.45);
   ctx.globalAlpha = 1;
   // buried rocks with a lit top
@@ -1141,10 +1135,10 @@ function pteroDrawGround(st) {
   ctx.beginPath(); for (let x = xa; x <= xb; x += 8) { const y = pteroGY(st, x) + 2; if (x === xa) ctx.moveTo(x - cam.x, y); else ctx.lineTo(x - cam.x, y); } ctx.stroke();
   ctx.strokeStyle = pal.grass; ctx.lineWidth = 6;
   ctx.beginPath(); for (let x = xa; x <= xb; x += 8) { const y = pteroGY(st, x) - 1; if (x === xa) ctx.moveTo(x - cam.x, y); else ctx.lineTo(x - cam.x, y); } ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,230,0.35)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); for (let x = xa; x <= xb; x += 8) { const y = pteroGY(st, x) - 3.5; if (x === xa) ctx.moveTo(x - cam.x, y); else ctx.lineTo(x - cam.x, y); } ctx.stroke();
   ctx.fillStyle = pal.grassDark;
-  for (let x = Math.floor(xa / 14) * 14; x < xb; x += 14) { const y = pteroGY(st, x + 7) + 5; ctx.beginPath(); ctx.arc(x - cam.x + 7, y, 5 + (hash(x, 3) % 3), 0, Math.PI); ctx.fill(); }
+  ctx.beginPath();
+  for (let x = Math.floor(xa / 14) * 14; x < xb; x += 14) { const y = pteroGY(st, x + 7) + 5, r = 5 + (hash(x, 3) % 3); ctx.moveTo(x - cam.x + 7 + r, y); ctx.arc(x - cam.x + 7, y, r, 0, Math.PI); }
+  ctx.fill();
   // grass tufts and little flowers
   for (let x = Math.floor(xa / 34) * 34; x < xb; x += 34) {
     const h = hash(x, 23), y = pteroGY(st, x) - 2, sx = x - cam.x + (h % 14);

@@ -777,6 +777,7 @@ function sprinkleCane(x, y0, y1, w) {
   ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x + 1, y0, w * 0.3, y1 - y0);
   ctx.restore();
 }
+let sprinkleMoundCols = [];
 function sprinkleDrawSky() {
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, C.skyTop); g.addColorStop(0.75, C.skyBot); g.addColorStop(1, C.skyBot);
@@ -785,7 +786,9 @@ function sprinkleDrawSky() {
   const tt = G.clock;
   for (let i = 0; i < 4; i++) {
     const x = ((i * 280 + tt * (6 + i * 2)) % (W + 240)) - 120, y = 168 + (i % 2) * 40;
-    drawCloud(x, y, 1.1 + (i % 2) * 0.15);
+    ctx.fillStyle = i % 2 ? 'rgba(255,224,240,0.75)' : 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2); ctx.arc(x + 26, y - 10, 28, 0, Math.PI * 2); ctx.arc(x + 56, y, 20, 0, Math.PI * 2); ctx.rect(x, y, 56, 16); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(x + 20, y - 22, 10); ctx.fill();
   }
   // far hills with lollipop trees, near chocolate hills with a drizzle of frosting
   const farY = x => 330 + Math.sin(x / 120) * 26 + Math.sin(x / 47) * 8, nearY = x => 392 + Math.sin(x / 90 + 1) * 18;
@@ -814,11 +817,12 @@ function sprinkleDrawSky() {
   for (let x = 0; x <= W; x += 20) ctx.lineTo(x, nearY(x));
   ctx.lineTo(W, 480); ctx.closePath(); ctx.fill();
   // soft frosting mounds along the near hills (plain shapes, so nobody mistakes them for candy)
-  for (let i = 0; i < 9; i++) {
-    const x = 40 + i * 110 + (hash(i, 61) % 40), y = nearY(x) + 14 + (hash(i, 62) % 18), r = 9 + (hash(i, 63) % 6);
-    ctx.fillStyle = shade(C.hillNear, 0.08); circle(x, y, r); ctx.fill(); circle(x + r, y + r * 0.3, r * 0.75); ctx.fill();
-    ctx.fillStyle = tint(C.hillNear, 0.22); circle(x - r * 0.3, y - r * 0.35, r * 0.35); ctx.fill();
-  }
+  const mc = sprinkleMoundCols[0] === C.hillNear ? sprinkleMoundCols : (sprinkleMoundCols = [C.hillNear, shade(C.hillNear, 0.08), tint(C.hillNear, 0.22)]);
+  ctx.fillStyle = mc[1]; ctx.beginPath();
+  for (let i = 0; i < 9; i++) { const x = 40 + i * 110 + (hash(i, 61) % 40), y = nearY(x) + 14 + (hash(i, 62) % 18), r = 9 + (hash(i, 63) % 6); ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.moveTo(x + r * 1.75, y + r * 0.3); ctx.arc(x + r, y + r * 0.3, r * 0.75, 0, Math.PI * 2); }
+  ctx.fill(); ctx.fillStyle = mc[2]; ctx.beginPath();
+  for (let i = 0; i < 9; i++) { const x = 40 + i * 110 + (hash(i, 61) % 40), y = nearY(x) + 14 + (hash(i, 62) % 18), r = 9 + (hash(i, 63) % 6); ctx.moveTo(x - r * 0.3 + r * 0.35, y - r * 0.35); ctx.arc(x - r * 0.3, y - r * 0.35, r * 0.35, 0, Math.PI * 2); }
+  ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath();
   for (let x = 0; x <= W; x += 20) { const y = nearY(x) + 5 + ((x / 20) % 3 === 0 ? 6 : 0); if (x) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
   ctx.stroke();

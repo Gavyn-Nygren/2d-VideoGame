@@ -860,8 +860,7 @@ function wfallDrawRock(st, ch, c, r, x, y, t) {
     let d = 0; for (let k2 = 1; k2 <= 3 && wfallSolidAt(st, c, r - k2); k2++) d++;
     if (d) { ctx.fillStyle = 'rgba(20,24,10,' + (0.05 * d) + ')'; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1); }
     const w2 = 10 + (h % 9), h2 = 6 + ((h >> 3) % 5), sx = x + 3 + ((h >> 5) % Math.max(1, T - w2 - 6)), sy = y + 11 + ((h >> 7) % Math.max(1, T - h2 - 14));
-    ctx.fillStyle = 'rgba(20,24,10,0.16)'; rr(sx, sy + 1.5, w2, h2, 3); ctx.fill();
-    ctx.fillStyle = 'rgba(255,250,220,0.10)'; rr(sx, sy, w2, h2, 3); ctx.fill();
+    if (h % 2) { ctx.fillStyle = 'rgba(20,24,10,0.16)'; ctx.fillRect(sx, sy + 1.5, w2, h2); ctx.fillStyle = 'rgba(255,250,220,0.10)'; ctx.fillRect(sx, sy, w2, h2); }
     if (h % 5 === 2) { ctx.strokeStyle = 'rgba(20,24,10,0.25)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 6 + (h % 10), y + 12); ctx.lineTo(x + 10 + (h % 10), y + 19); ctx.lineTo(x + 7 + (h % 10), y + 26); ctx.stroke(); }
   }
   if (ch === 's') {

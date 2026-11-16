@@ -653,7 +653,7 @@ MODES.spacewalk = {
 };
 
 /* ---------- drawing ---------- */
-let spacewalkStars = null, spacewalkSkyG = null, spacewalkBand = null;
+let spacewalkStars = null, spacewalkSkyG = null;
 function spacewalkDrawWorld(st) {
   spacewalkDrawSky(st);
   for (const h of st.hull) spacewalkDrawHull(st, h);
@@ -695,32 +695,31 @@ function spacewalkStar(x, y, ro, ri, rot) {
   ctx.closePath();
 }
 function spacewalkDrawSky(st) {
-  if (!spacewalkSkyG) {
-    spacewalkSkyG = ctx.createLinearGradient(0, 0, 0, H);
-    spacewalkSkyG.addColorStop(0, '#0b0d2e'); spacewalkSkyG.addColorStop(0.6, '#1d1a52'); spacewalkSkyG.addColorStop(1, '#3a2c6e');
+  // the sky, a soft nebula and a faint band of the galaxy: painted once, then one image per frame
+  const paintSky = c => {
+    const sg = c.createLinearGradient(0, 0, 0, H);
+    sg.addColorStop(0, '#0b0d2e'); sg.addColorStop(0.6, '#1d1a52'); sg.addColorStop(1, '#3a2c6e');
+    c.fillStyle = sg; c.fillRect(0, 0, W, H);
+    for (const [x, y, r, col] of [[220, 120, 220, 'rgba(160,110,255,0.10)'], [700, 420, 260, 'rgba(90,170,255,0.08)'], [520, 60, 160, 'rgba(255,140,200,0.06)']]) {
+      const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    c.save(); c.translate(W / 2, H / 2); c.rotate(-0.32);
+    const bg = c.createLinearGradient(0, -90, 0, 90); bg.addColorStop(0, 'rgba(170,150,255,0)'); bg.addColorStop(0.5, 'rgba(190,170,255,0.10)'); bg.addColorStop(1, 'rgba(170,150,255,0)');
+    c.fillStyle = bg; c.fillRect(-W, -90, W * 2, 180);
+    for (let i = 0; i < 420; i++) { const h = hash(i, 977), x = (h % (W * 2)) - W, y = (((h >>> 11) % 1000) / 1000 - 0.5) * 150 * (((h >>> 3) % 100) / 100 + 0.3); c.fillStyle = 'rgba(235,230,255,' + (0.15 + ((h >>> 5) % 40) / 100) + ')'; c.fillRect(x, y, 1.2, 1.2); }
+    c.restore();
+  };
+  const cw = canvas.width, ch = canvas.height;
+  if (!spacewalkSkyG || spacewalkSkyG.width !== cw || spacewalkSkyG.height !== ch) {
+    try { const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch; const c = cv.getContext('2d'); c.setTransform(cw / W, 0, 0, ch / H, 0, 0); paintSky(c); spacewalkSkyG = cv; }
+    catch (e) { spacewalkSkyG = null; }
   }
-  ctx.fillStyle = spacewalkSkyG; ctx.fillRect(0, 0, W, H);
-  // a soft nebula
-  for (const [x, y, r, col] of [[220, 120, 220, 'rgba(160,110,255,0.10)'], [700, 420, 260, 'rgba(90,170,255,0.08)'], [520, 60, 160, 'rgba(255,140,200,0.06)']]) {
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
-  }
+  if (spacewalkSkyG) ctx.drawImage(spacewalkSkyG, 0, 0, W, H); else paintSky(ctx);
   if (!spacewalkStars) {
     spacewalkStars = [];
     for (let i = 0; i < 140; i++) { const h = hash(i, 151); spacewalkStars.push({ x: h % W, y: (h >>> 10) % H, r: 0.6 + ((h >>> 4) % 10) / 9, ph: (h >>> 6) % 628 / 100 }); }
   }
-  // a faint band of the galaxy across the sky (painted once)
-  if (!spacewalkBand) {
-    try {
-      const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
-      c.translate(W / 2, H / 2); c.rotate(-0.32);
-      const bg = c.createLinearGradient(0, -90, 0, 90); bg.addColorStop(0, 'rgba(170,150,255,0)'); bg.addColorStop(0.5, 'rgba(190,170,255,0.10)'); bg.addColorStop(1, 'rgba(170,150,255,0)');
-      c.fillStyle = bg; c.fillRect(-W, -90, W * 2, 180);
-      for (let i = 0; i < 420; i++) { const h = hash(i, 977), x = (h % (W * 2)) - W, y = (((h >>> 11) % 1000) / 1000 - 0.5) * 150 * (((h >>> 3) % 100) / 100 + 0.3); c.fillStyle = 'rgba(235,230,255,' + (0.15 + ((h >>> 5) % 40) / 100) + ')'; c.fillRect(x, y, 1.2, 1.2); }
-      spacewalkBand = cv;
-    } catch (e) { spacewalkBand = 1; }
-  }
-  if (spacewalkBand !== 1) ctx.drawImage(spacewalkBand, 0, 0, W, H);
   const t = G.clock;
   for (const s of spacewalkStars) {
     ctx.globalAlpha = 0.45 + 0.4 * Math.sin(t * 1.3 + s.ph);
