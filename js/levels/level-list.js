@@ -146,9 +146,10 @@ const LEVELS = [
       },
       {
         title: 'Chain', cord: 'chain', tether: 140, switches: {},
-        tip: 'A chain is stiff. Hanging from it? Hold jump and push \u25c0 \u25b6 to swing around.',
+        tip: 'A chain is stiff. Hanging from it? Push toward your partner to climb up, or hold jump and push \u25c0 \u25b6 to swing around.',
         signs: [
           { x: 205, y: 205, text: 'Hold your partner out for the key' },
+          { x: 205, y: 240, text: 'Push toward your partner to climb back up' },
           { x: 585, y: 120, text: 'Too tall? Swing over it!' },
         ],
       map: [

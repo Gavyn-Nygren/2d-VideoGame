@@ -267,8 +267,28 @@ function limitLength(Lr, lip) {
 
 // CHAIN: stiff. When one of you stands and the other is off the ground at full length, the chain
 // holds them out like a crane arm. It sags slowly; the hanging player pushes jump / down / left /
-// right to swing around the one holding them (all the way over their head if they like).
-const CHAIN = { spin: 2.7, droop: 0.9 };
+// right to swing around the one holding them (all the way over their head if they like). The swing
+// eases in and out (it keeps a little of its speed), and a fall that the chain catches keeps swinging.
+// Pushing toward the one holding you climbs the chain hand over hand (hanging below them, jump climbs
+// too), and at a ledge you climb out onto it. A holder who walks away from the edge hauls you up.
+const CHAIN = { spin: 2.7, droop: 0.9, ease: 7, climb: 140, minLen: 30, maxW: 5 };
+// How hard the hanger's input pushes them toward the holder: > 0 climbs the chain, < 0 lets it out.
+function chainClimbPush(hanger, holder, inp) {
+  const ix = (inp.right ? 1 : 0) - (inp.left ? 1 : 0), iy = (inp.down ? 1 : 0) - (inp.jump || inp.up ? 1 : 0);
+  if (!ix && !iy) return 0;
+  const dx = holder.x + holder.w / 2 - (hanger.x + hanger.w / 2), dy = holder.y + holder.h / 2 - (hanger.y + hanger.h / 2);
+  const d = Math.hypot(dx, dy) || 1, n = Math.hypot(ix, iy);
+  // hanging below the holder: up climbs (unless also pushing away to swing), so does a push toward their side
+  if (-dy / d > 0.45) {
+    const away = ix && Math.sign(ix) === -Math.sign(dx) && Math.abs(dx) > 6;
+    if (iy < 0 && !away) return 1;
+    if (iy > 0 && !ix) return -1;
+    if (!iy && ix && !away && Math.abs(dx) > 6) return 0.8;
+    return 0;
+  }
+  const r = (ix * dx + iy * dy) / (d * n);
+  return r > 0.6 ? r : r < -0.8 ? r : 0;
+}
 function chainStep(dt) {
   const [a, b] = G.players, Lc = G.level.def.tether;
   if (!a.alive || !b.alive) { G.held = null; G.taut = false; return; }
@@ -280,22 +300,45 @@ function chainStep(dt) {
     const vx = hanger.x + hanger.w / 2 - hcx, vy = hanger.y + hanger.h / 2 - hcy;
     const was = G.held && G.held.hanger === hanger.id;
     if (was || Math.hypot(vx, vy) >= Lc - 1) {
-      if (!was && Math.hypot(hanger.vx, hanger.vy) > 220) {
-        Sfx.play('clank'); rumble(hanger.id, 0.25, 0.35, 80);
-        if (!reduceMotion) G.shake = Math.max(G.shake, 0.06);
+      let th = was ? G.held.th : Math.atan2(vy, vx), len = was ? G.held.len : Lc, w = was ? G.held.w : 0;
+      if (!was) {
+        const sp = Math.hypot(hanger.vx, hanger.vy);
+        if (sp > 220) {
+          Sfx.play('clank'); rumble(hanger.id, 0.25, 0.35, 80);
+          if (!reduceMotion) G.shake = Math.max(G.shake, 0.06);
+        }
+        // caught at the end of the chain: the sideways part of the fall carries on as a swing
+        w = clamp(((hanger.vx - holder.vx) * -Math.sin(th) + hanger.vy * Math.cos(th)) / Lc, -2.5, 2.5);
       }
-      let th = was ? G.held.th : Math.atan2(vy, vx);
       const inp = hanger.input;
+      const push = chainClimbPush(hanger, holder, inp);
+      if (push > 0) len = Math.max(CHAIN.minLen, len - CHAIN.climb * push * dt);
+      else if (push < 0) len = Math.min(Lc, len - CHAIN.climb * push * dt);
       const ix = (inp.right ? 1 : 0) - (inp.left ? 1 : 0), iy = (inp.down ? 1 : 0) - (inp.jump ? 1 : 0);
-      // push the way you want to go along the circle; with no push the chain slowly sags
-      const w = CHAIN.spin * (ix * -Math.sin(th) + iy * Math.cos(th)) + CHAIN.droop * Math.cos(th);
+      // push the way you want to go along the circle (not while climbing); with no push the chain slowly sags
+      const wT = (push ? 0 : CHAIN.spin * (ix * -Math.sin(th) + iy * Math.cos(th))) + CHAIN.droop * Math.cos(th);
+      w += (wT - w) * Math.min(1, CHAIN.ease * dt);
+      const th0 = th;
       th += w * dt;
-      moveBy(hanger, hcx + Math.cos(th) * Lc - hanger.w / 2 - hanger.x, hcy + Math.sin(th) * Lc - hanger.h / 2 - hanger.y);
+      moveBy(hanger, hcx + Math.cos(th) * len - hanger.w / 2 - hanger.x, hcy + Math.sin(th) * len - hanger.h / 2 - hanger.y);
       // a wall may have stopped them short: carry on from where they really are
       let rx = hanger.x + hanger.w / 2 - hcx, ry = hanger.y + hanger.h / 2 - hcy;
+      let rd = Math.hypot(rx, ry);
+      // the holder walking away from a hanger stuck at a wall hauls them up it (and over the lip)
+      const away = Math.sign(-rx), walking = Math.abs(holder.vx) > 20 && Math.sign(holder.vx) === away;
+      if (rd > len + 1 && walking) {
+        moveBy(hanger, (-rx / rd) * (rd - len), (-ry / rd) * (rd - len));
+        mantle(hanger, hcx, 28);
+        rx = hanger.x + hanger.w / 2 - hcx; ry = hanger.y + hanger.h / 2 - hcy; rd = Math.hypot(rx, ry);
+      }
+      // climbing at a ledge: step out onto it
+      if (push > 0) mantle(hanger, hcx, 28);
+      if (rd > len + 1) {
+        // the chain can't be shorter than the gap a wall leaves (so nothing yanks once the wall is passed)
+        len = Math.min(Lc, Math.max(len, rd - 1));
+      }
       // ...and if the wall left them further away than the chain is long, the chain holds the walker back
       // (sideways only, never off what they stand on), so it can't stretch and then snap
-      const rd = Math.hypot(rx, ry);
       if (rd > Lc + 1) {
         const x0 = holder.x;
         pullX(holder, (rx / rd) * (rd - Lc));
@@ -304,9 +347,14 @@ function chainStep(dt) {
         rx = hanger.x + hanger.w / 2 - (holder.x + holder.w / 2);
       }
       const rth = Math.atan2(ry, rx);
-      G.held = { hanger: hanger.id, th: th + Math.atan2(Math.sin(rth - th), Math.cos(rth - th)), w };
+      const nth = th + Math.atan2(Math.sin(rth - th), Math.cos(rth - th));
+      // a wall that stopped the swing stops its speed too (only what really moved carries on)
+      const moved = Math.atan2(Math.sin(nth - th0), Math.cos(nth - th0)) / dt;
+      if (Math.abs(moved) < Math.abs(w) - 0.05 || Math.sign(moved) !== Math.sign(w)) w = clamp(moved, -Math.abs(w), Math.abs(w));
+      w = clamp(w, -CHAIN.maxW, CHAIN.maxW);
+      G.held = { hanger: hanger.id, th: nth, w, len, climbing: push > 0 };
       // let go (holder jumps, or you land) and you keep the swing
-      G.held.vx = -Math.sin(rth) * w * Lc + holder.vx; G.held.vy = Math.cos(rth) * w * Lc;
+      G.held.vx = -Math.sin(rth) * w * len + holder.vx; G.held.vy = Math.cos(rth) * w * len;
       hanger.vx = 0; hanger.vy = 0; hanger.jumping = false;
       if (inp.left !== inp.right) hanger.face = inp.right ? 1 : -1;
       G.taut = true;
