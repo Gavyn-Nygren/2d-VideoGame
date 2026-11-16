@@ -857,8 +857,16 @@ function slkDrawWorld(st) {
     for (let i = 0; i < 9; i++) { const x = 70 + i * 110; ctx.beginPath(); ctx.moveTo(x, 0); ctx.bezierCurveTo(x + 14, H * 0.3, x - 10, H * 0.7, x + 6, H); ctx.stroke(); }
     for (let k = Math.floor(par / 300) - 1; k <= Math.floor((par + H) / 300) + 1; k++) {
       const y = k * 300 - par + 220;
-      ctx.fillStyle = 'rgba(142,90,46,0.25)'; ctx.fillRect(0, y, W, 12);
-      for (let i = 0; i < 26; i++) { const hh = hash(k + 50, i), bh = 50 + (hh % 40), bw = 18 + (hh >> 5) % 14, x = i * 38 + (hh >> 9) % 10; ctx.fillStyle = SLK_TOYS[hh % 6]; ctx.globalAlpha = 0.22; rr(x, y - bh, bw, bh, 3); ctx.fill(); ctx.globalAlpha = 1; }
+      // far books, hazed toward the wall colour (solid, so they read as far away rather than see-through)
+      for (let i = 0; i < 26; i++) {
+        const hh = hash(k + 50, i), bh = 50 + (hh % 40), bw = 18 + (hh >> 5) % 14, x = i * 38 + (hh >> 9) % 10, bc = mixCol(SLK_TOYS[hh % 6], lk.wall[1], 0.68);
+        ctx.fillStyle = bc; rr(x, y - bh, bw, bh, 3); ctx.fill();
+        ctx.fillStyle = mixCol(bc, '#5a3a20', 0.12); ctx.fillRect(x + bw - 4, y - bh + 2, 3, bh - 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x + 3, y - bh + 8, bw - 6, 2.5); ctx.fillRect(x + 3, y - 12, bw - 6, 2.5);
+      }
+      ctx.fillStyle = mixCol(lk.side, lk.wall[1], 0.5); ctx.fillRect(0, y, W, 12);
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, y, W, 2);
+      ctx.fillStyle = 'rgba(142,90,46,0.18)'; ctx.fillRect(0, y + 12, W, 8);
     }
   } else if (c.look === 'blocks') {
     // wallpaper stars, and big soft toy-block towers far behind
@@ -868,7 +876,10 @@ function slkDrawWorld(st) {
     }
     for (let k = Math.floor(par / 70) - 2; k <= Math.floor((par + H) / 70) + 1; k++) for (const side of [0, 1]) {
       const hh = hash(k, side + 3), x = side ? W - 150 + (hh % 20) : 70 + (hh % 20), y = k * 70 - par;
-      ctx.globalAlpha = 0.2; ctx.fillStyle = SLK_TOYS[(k + side * 3 + 60) % 6]; rr(x, y, 72, 66, 8); ctx.fill(); ctx.globalAlpha = 1;
+      const bc = mixCol(SLK_TOYS[(k + side * 3 + 60) % 6], lk.wall[1], 0.6);
+      ctx.fillStyle = bc; rr(x, y, 72, 66, 8); ctx.fill();
+      ctx.fillStyle = mixCol(bc, '#ffffff', 0.6); rr(x + 8, y + 8, 56, 50, 5); ctx.fill();
+      ctx.fillStyle = mixCol(bc, '#2a3a60', 0.18); ctx.fillRect(x + 64, y + 4, 6, 60);
     }
   } else if (c.look === 'pillows') {
     // polka dots and a quilt far behind
@@ -878,7 +889,9 @@ function slkDrawWorld(st) {
     }
     for (let k = Math.floor(par / 160) - 1; k <= Math.floor((par + H) / 160) + 1; k++) for (let i = 0; i < 7; i++) {
       const y = k * 160 - par + 40;
-      ctx.globalAlpha = 0.16; ctx.fillStyle = SLK_TOYS[hash(k + 20, i) % 6]; rr(i * 150 - 20, y, 140, 150, 18); ctx.fill(); ctx.globalAlpha = 1;
+      const pc = mixCol(SLK_TOYS[hash(k + 20, i) % 6], lk.wall[1], 0.78);
+      ctx.fillStyle = pc; rr(i * 150 - 20, y, 140, 150, 18); ctx.fill();
+      ctx.strokeStyle = mixCol(pc, '#ffffff', 0.5); ctx.lineWidth = 2; ctx.setLineDash([6, 5]); rr(i * 150 - 12, y + 8, 124, 134, 13); ctx.stroke(); ctx.setLineDash([]);
     }
   } else {
     // stripes, a window with the moon, and the night light
@@ -944,6 +957,7 @@ function slkDrawSign(s) {
   ctx.font = '700 15px "Atkinson Hyperlegible", system-ui, sans-serif';
   const w = ctx.measureText(str).width + 26, x = clamp(s.x, w / 2 + 50, W - w / 2 - 50);
   ctx.strokeStyle = '#a07a52'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - w / 2 + 16, s.y - 14); ctx.lineTo(x, s.y - 34); ctx.lineTo(x + w / 2 - 16, s.y - 14); ctx.stroke();
+  ctx.fillStyle = 'rgba(60,40,30,0.14)'; rr(x - w / 2 + 3, s.y - 10, w, 28, 8); ctx.fill();
   ctx.fillStyle = 'rgba(255,252,240,0.95)'; rr(x - w / 2, s.y - 14, w, 28, 8); ctx.fill();
   ctx.strokeStyle = '#a07a52'; rr(x - w / 2, s.y - 14, w, 28, 8); ctx.stroke();
   text(str, x, s.y + 0.5, 15, '#4a2f14', 'center', 'body');
@@ -954,6 +968,7 @@ function slkDrawStep(st, s) {
   ctx.lineWidth = 2.5; ctx.strokeStyle = C.ink;
   // a little peg into the shelf back (where it isn't held up by anything else)
   if (s.kind !== 'lift' && s.kind !== 'car' && s.kind !== 'goal') { ctx.fillStyle = 'rgba(80,50,20,0.22)'; ctx.fillRect(s.x0 + s.dx + w / 2 - 22, y + h, 44, 10); }
+  if (s.kind !== 'goal') { ctx.fillStyle = 'rgba(60,40,30,0.13)'; rr(x0 + 7, y + 9, w, h, 6); ctx.fill(); }
   if (s.gold) { ctx.fillStyle = 'rgba(255,211,74,' + (0.25 + 0.12 * Math.sin(t * 5)) + ')'; const cg = slkCatch(s); rr(x0 - cg, y - 16, w + cg * 2, h + 24, 14); ctx.fill(); }
   switch (s.kind) {
     case 'start': case 'book': {
