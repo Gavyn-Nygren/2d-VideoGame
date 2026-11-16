@@ -279,15 +279,55 @@ function wizShCoast(st, dt) {
 
 /* ---------- drawing ---------- */
 function wizShDrawBack(st) {
-  const ph = st.ph, cx = st.cam.x, F = WIZSH.floor;
-  ctx.fillStyle = '#4a3a5a'; ctx.fillRect(cx - 40, 0, W + 80, H);
-  for (let x = Math.floor((cx - 100) / 200) * 200; x < cx + W + 200; x += 200) {
-    ctx.fillStyle = '#5a4a6a'; ctx.fillRect(x + 20, 60, 160, F - 60);
-    ctx.fillStyle = '#3a2a4a'; rr(x + 70, 110, 60, 110, 30); ctx.fill();
-    ctx.fillStyle = 'rgba(255,220,140,0.25)'; rr(x + 76, 116, 48, 98, 24); ctx.fill();
+  const ph = st.ph, cx = st.cam.x, F = WIZSH.floor, t = G.clock;
+  const g = ctx.createLinearGradient(0, 0, 0, F); g.addColorStop(0, '#3e3050'); g.addColorStop(1, '#54426a');
+  ctx.fillStyle = g; ctx.fillRect(cx - 40, 0, W + 80, H);
+  // stone courses on the hall wall
+  ctx.strokeStyle = 'rgba(0,0,0,0.16)'; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let y = 40, r = 0; y < F; y += 36, r++) {
+    ctx.moveTo(cx - 40, y); ctx.lineTo(cx + W + 40, y);
+    for (let x = Math.floor((cx - 40) / 80) * 80 + (r % 2) * 40; x < cx + W + 40; x += 80) { ctx.moveTo(x, y); ctx.lineTo(x, y + 36); }
   }
+  ctx.stroke();
+  for (let x = Math.floor((cx - 100) / 200) * 200; x < cx + W + 200; x += 200) {
+    // a buttress between the windows, lit on one side
+    ctx.fillStyle = '#5a4a6a'; ctx.fillRect(x + 20, 60, 160, F - 60);
+    ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(x + 20, 60, 6, F - 60);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + 174, 60, 6, F - 60);
+    ctx.fillStyle = '#6a5a7c'; ctx.fillRect(x + 14, 52, 172, 10);
+    // the arched window: night sky, a few stars, mullions and a stone sill
+    ctx.fillStyle = '#2a2040'; rr(x + 64, 104, 72, 122, 36); ctx.fill();
+    ctx.save(); rr(x + 70, 110, 60, 110, 30); ctx.clip();
+    const wg = ctx.createLinearGradient(0, 110, 0, 220); wg.addColorStop(0, '#1e1a4a'); wg.addColorStop(1, '#5a3e7a'); ctx.fillStyle = wg; ctx.fillRect(x + 70, 110, 60, 110);
+    for (let s = 0; s < 5; s++) { const h = hash(x + s, 3); ctx.fillStyle = 'rgba(255,248,220,0.7)'; ctx.fillRect(x + 72 + h % 56, 116 + (h >> 6) % 90, 2, 2); }
+    ctx.restore();
+    ctx.strokeStyle = '#3a2a4a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 100, 110); ctx.lineTo(x + 100, 220); ctx.moveTo(x + 70, 160); ctx.lineTo(x + 130, 160); ctx.stroke();
+    ctx.fillStyle = '#7a6a8c'; ctx.fillRect(x + 62, 220, 76, 8); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 62, 228, 76, 3);
+    // a hanging banner with the academy star
+    const bx = x + 100, sw = reduceMotion ? 0 : Math.sin(t * 1.2 + x) * 2;
+    ctx.fillStyle = '#8a3a4a'; ctx.beginPath(); ctx.moveTo(bx - 22, 252); ctx.lineTo(bx + 22, 252); ctx.lineTo(bx + 22 + sw, 330); ctx.lineTo(bx + sw, 316); ctx.lineTo(bx - 22 + sw, 330); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(bx + 14, 252, 8, 70);
+    ctx.fillStyle = '#d9a441'; ctx.fillRect(bx - 26, 248, 52, 5);
+    wizDrawStar(bx + sw / 2, 282, 9, '#ffd36a');
+    // a torch on the buttress edge, with a warm pool of light
+    const tx = x + 200, fl = reduceMotion ? 0 : Math.sin(t * 10 + x) * 2;
+    const tg = ctx.createRadialGradient(tx, 176, 2, tx, 176, 70); tg.addColorStop(0, 'rgba(255,190,100,0.3)'); tg.addColorStop(1, 'rgba(255,190,100,0)');
+    ctx.fillStyle = tg; circle(tx, 176, 70); ctx.fill();
+    ctx.fillStyle = '#5a3a1e'; ctx.fillRect(tx - 3, 182, 6, 22); ctx.fillStyle = '#3a3040'; ctx.fillRect(tx - 7, 180, 14, 5);
+    ctx.fillStyle = '#ff9a3a'; ctx.beginPath(); ctx.moveTo(tx - 6, 182); ctx.quadraticCurveTo(tx, 160 - fl, tx + 6, 182); ctx.fill();
+    ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.moveTo(tx - 3, 182); ctx.quadraticCurveTo(tx, 170 - fl, tx + 3, 182); ctx.fill();
+  }
+  // the wooden floor: planks with joints, a skirting shadow and the long red runner
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(cx - 40, F - 6, W + 80, 6);
   ctx.fillStyle = '#6a4a3a'; ctx.fillRect(cx - 40, F, W + 80, H - F); ctx.fillStyle = '#8a6a4a'; ctx.fillRect(cx - 40, F, W + 80, 8);
+  ctx.fillStyle = 'rgba(255,230,180,0.25)'; ctx.fillRect(cx - 40, F, W + 80, 2);
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (const y of [F + 20, F + 56, F + 76]) { ctx.moveTo(cx - 40, y); ctx.lineTo(cx + W + 40, y); }
+  for (let x = Math.floor((cx - 40) / 120) * 120; x < cx + W + 40; x += 120) { ctx.moveTo(x, F + 8); ctx.lineTo(x, F + 20); ctx.moveTo(x + 60, F + 56); ctx.lineTo(x + 60, F + 76); }
+  ctx.stroke();
   ctx.fillStyle = '#9a3a3a'; ctx.fillRect(cx - 40, F + 30, W + 80, 18);
+  ctx.fillStyle = '#d9a441'; ctx.fillRect(cx - 40, F + 31, W + 80, 2); ctx.fillRect(cx - 40, F + 45, W + 80, 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(cx - 40, F + 48, W + 80, 3);
 }
 function wizShDrawArmor(a, t) {
   const g = wizShGem(a), s = a.cap ? 1.25 : 1;

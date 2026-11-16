@@ -917,6 +917,23 @@ function wizDusk(t, scrollX = 0, scrollY = 0, o = {}) {
   if (o.skyline !== false) wizSkyline(scrollX * 0.2, (o.skyY != null ? o.skyY : 380) - scrollY * 0.1);
 }
 // the school's leaning towers, far away (screen coords; the line where they stand is y)
+// a lawn strip in world space: a darker soil-shadowed body, a lit top edge, grass tufts and the odd flower
+// (placement from hash, so it never flickers; only the visible part is drawn by the callers)
+function wizLawn(x0, y0, x1, y1, o = {}) {
+  const top = o.top || '#5fb068', body = o.body || '#4f9a58', w = x1 - x0, h = y1 - y0;
+  if (w <= 0 || h <= 0) return;
+  const g = ctx.createLinearGradient(0, y0, 0, y0 + Math.min(h, 160)); g.addColorStop(0, body); g.addColorStop(1, shade(body, 0.35));
+  ctx.fillStyle = g; ctx.fillRect(x0, y0, w, h);
+  ctx.fillStyle = top; ctx.fillRect(x0, y0, w, 8);
+  ctx.fillStyle = tint(top, 0.3); ctx.fillRect(x0, y0, w, 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x0, y0 + 8, w, 4);
+  for (let x = Math.ceil(x0 / 14) * 14; x < x1 - 4; x += 14) {
+    const hh = hash(x, 77);
+    if (hh % 3 === 0) { ctx.fillStyle = top; ctx.beginPath(); ctx.moveTo(x - 3, y0 + 1); ctx.lineTo(x, y0 - 4 - (hh >> 3) % 4); ctx.lineTo(x + 3, y0 + 1); ctx.fill(); }
+    if (h > 30 && hh % 7 === 2) { ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(x + (hh >> 5) % 10, y0 + 18 + (hh >> 9) % Math.max(1, Math.min(60, h - 24)), 6, 2); }
+    if (!o.noFlowers && hh % 23 === 5) { ctx.fillStyle = ['#ffe9a8', '#ffb3d9', '#bfe3ff'][(hh >> 4) % 3]; circle(x, y0 - 2, 2.2); ctx.fill(); }
+  }
+}
 function wizSkyline(sx, y) {
   const span = 1400;
   // a hazy far range of hills and smaller towers behind (paler, slower)

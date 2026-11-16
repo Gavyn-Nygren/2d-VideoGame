@@ -323,11 +323,17 @@ function wizMorphDrawBack(st) {
   const ph = st.ph, K = WIZMORPH, cx = st.cam.x, t = G.clock, F = K.floor, C2 = WIZMORPH_C;
   wizScreen(st, () => wizDusk(t, cx, 0, { skyY: 330 }));
   // the garden wall under the walkway, far hedges
-  ctx.fillStyle = '#4a6a52'; for (let x = Math.floor((cx - 60) / 90) * 90; x < cx + W + 90; x += 90) { circle(x, F - 30, 46); ctx.fill(); }
+  for (let x = Math.floor((cx - 60) / 90) * 90; x < cx + W + 90; x += 90) {
+    const hh = hash(x, 12), r = 42 + hh % 8;
+    ctx.fillStyle = '#3e5c48'; circle(x, F - 26, r); ctx.fill();
+    ctx.fillStyle = '#4a6a52'; circle(x - 4, F - 30, r - 6); ctx.fill();
+    ctx.fillStyle = 'rgba(200,230,180,0.14)'; circle(x - 14, F - 52, r * 0.45); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let j = 0; j < 4; j++) { circle(x - 20 + ((hh >> (j * 3)) % 40), F - 40 + ((hh >> (j * 2 + 5)) % 28), 3); ctx.fill(); }
+  }
   for (const r of ph.shSolids) {
     if (r.x1 < cx - 40 || r.x0 > cx + W + 40) continue;
-    if (r.kind === 'floor') { ctx.fillStyle = C2.grassDk; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = C2.grass; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 8); }
-    if (r.kind === 'poolbed') { ctx.fillStyle = '#3a5a7a'; ctx.fillRect(r.x0, F, r.x1 - r.x0, K.pool + 40); }
+    if (r.kind === 'floor') wizLawn(Math.max(r.x0, cx - 40), r.y0, Math.min(r.x1, cx + W + 40), r.y1, { top: C2.grass, body: C2.grassDk });
+    if (r.kind === 'poolbed') { const g = ctx.createLinearGradient(0, F, 0, F + K.pool + 40); g.addColorStop(0, '#3a5a7a'); g.addColorStop(1, '#22384e'); ctx.fillStyle = g; ctx.fillRect(r.x0, F, r.x1 - r.x0, K.pool + 40); ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (let x = r.x0 + 12; x < r.x1 - 8; x += 26) { circle(x + hash(x, 2) % 10, F + K.pool - 6, 5); ctx.fill(); } }
   }
 }
 function wizMorphDraw(st) {
@@ -357,11 +363,19 @@ function wizMorphDraw(st) {
   for (const r of ph.shSolids) {
     if (r.x1 < cx - 40 || r.x0 > cx + W + 40) continue;
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
-    if (r.kind === 'hedge') { ctx.fillStyle = C2.hedge; rr(r.x0 - 6, r.y0, r.x1 - r.x0 + 12, r.y1 - r.y0 + 4, 14); ctx.fill(); ctx.stroke(); ctx.fillStyle = C2.hedgeDk; for (let y = r.y0 + 14; y < r.y1; y += 24) { circle(r.x0 + 10, y, 6); ctx.fill(); circle(r.x1 - 10, y + 10, 6); ctx.fill(); } }
+    if (r.kind === 'hedge') {
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse((r.x0 + r.x1) / 2, r.y1 + 3, (r.x1 - r.x0) / 2 + 12, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = C2.hedge; rr(r.x0 - 6, r.y0, r.x1 - r.x0 + 12, r.y1 - r.y0 + 4, 14); ctx.fill(); ctx.stroke();
+      ctx.save(); rr(r.x0 - 6, r.y0, r.x1 - r.x0 + 12, r.y1 - r.y0 + 4, 14); ctx.clip();
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(r.x1 - 6, r.y0, 12, r.y1 - r.y0 + 4);
+      ctx.fillStyle = 'rgba(200,240,170,0.22)'; ctx.fillRect(r.x0 - 6, r.y0, 8, r.y1 - r.y0 + 4); ctx.restore();
+      ctx.fillStyle = C2.hedgeDk; for (let y = r.y0 + 14; y < r.y1; y += 24) { circle(r.x0 + 10, y, 6); ctx.fill(); circle(r.x1 - 10, y + 10, 6); ctx.fill(); }
+      ctx.fillStyle = 'rgba(200,240,170,0.35)'; for (let y = r.y0 + 10; y < r.y1; y += 24) { circle(r.x0 + 8, y - 2, 2.5); ctx.fill(); }
+    }
     else if (r.kind === 'belfry' || r.kind === 'block') { ctx.fillStyle = C2.stone; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = C2.stoneDk; for (let y = r.y0 + 16; y < r.y1; y += 20) ctx.fillRect(r.x0 + 2, y, r.x1 - r.x0 - 4, 2); }
     else if (r.kind === 'plug') { ctx.fillStyle = 'rgba(20,10,30,0.85)'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
     else if (r.kind === 'fence' && !r.off) { ctx.fillStyle = C2.wood; for (let y = r.y0 + 4; y < r.y1; y += 18) ctx.fillRect(r.x0 - 3, y, r.x1 - r.x0 + 6, 12); ctx.fillStyle = C2.woodDk; ctx.fillRect(r.x0 + 1, r.y0, 4, r.y1 - r.y0); }
-    else if (r.kind === 'bank') { ctx.fillStyle = C2.grassDk; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = C2.grass; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 8); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
+    else if (r.kind === 'bank') { wizLawn(r.x0, r.y0, r.x1, r.y1, { top: C2.grass, body: C2.grassDk, noFlowers: true }); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
   }
 }
 // the SHIFTER in its shape (the engine skips them while not plain), the dial over the CASTER

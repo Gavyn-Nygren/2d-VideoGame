@@ -445,25 +445,79 @@ function wizLiftCoast(st, dt) {
 /* ---------- drawing ---------- */
 function wizLiftDrawBack(st) {
   const ph = st.ph, cy = st.cam.y, t = G.clock, C2 = WIZLIFT_C;
-  wizScreen(st, () => { ctx.fillStyle = C2.wallDk; ctx.fillRect(0, 0, W, H); });
-  // shelves full of books all the way up the round wall (a gentle parallax)
-  const sh = 60, off = cy * 0.85;
-  for (let y = Math.floor((cy) / sh) * sh - sh; y < cy + H + sh; y += sh) {
-    const yy = y + (cy - off) % sh * 0;
-    ctx.fillStyle = C2.wall; ctx.fillRect(0, yy, W, sh - 8);
-    ctx.fillStyle = C2.shelf; ctx.fillRect(0, yy + sh - 8, W, 8);
-    for (let x = 0; x < W; x += 13) {
-      const h2 = hash(x, Math.floor(y / sh));
-      ctx.fillStyle = C2.spine[h2 % 6]; ctx.globalAlpha = 0.55; ctx.fillRect(x + 1, yy + 14 + (h2 % 9), 11, sh - 22 - (h2 % 9)); ctx.globalAlpha = 1;
+  wizScreen(st, () => {
+    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#30264f'); g.addColorStop(1, C2.wallDk);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  });
+  // shelves full of books all the way up the round wall
+  const sh = 60;
+  for (let y = Math.floor(cy / sh) * sh - sh; y < cy + H + sh; y += sh) {
+    const row = Math.floor(y / sh);
+    ctx.fillStyle = C2.wall; ctx.fillRect(0, y, W, sh - 8);
+    ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(0, y, W, 6); // the shelf above casts a shadow
+    let x = 2;
+    while (x < W) {
+      const h2 = hash(x, row), bw = 8 + (h2 % 6), bh = sh - 20 - ((h2 >> 3) % 12);
+      if ((h2 >> 6) % 11 === 0) { x += 10; continue; } // a gap on the shelf
+      const col = C2.spine[h2 % 6], by = y + sh - 8 - bh;
+      ctx.globalAlpha = 0.62;
+      if ((h2 >> 9) % 9 === 0 && x > 4) { // a book leaning over
+        ctx.save(); ctx.translate(x, y + sh - 8); ctx.rotate(-0.28); ctx.fillStyle = col; ctx.fillRect(0, -bh, bw, bh); ctx.restore();
+        ctx.globalAlpha = 1; x += bw + 10; continue;
+      }
+      ctx.fillStyle = col; ctx.fillRect(x, by, bw, bh);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x + 1, by, 2, bh);
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + bw - 2, by, 2, bh);
+      ctx.fillStyle = 'rgba(255,214,120,0.55)'; ctx.fillRect(x, by + 5, bw, 2); ctx.fillRect(x, by + bh - 7, bw, 2);
+      ctx.globalAlpha = 1;
+      x += bw + 1;
     }
+    // the shelf board: lit top edge and a dark lip
+    ctx.fillStyle = C2.shelf; ctx.fillRect(0, y + sh - 8, W, 8);
+    ctx.fillStyle = 'rgba(255,220,160,0.25)'; ctx.fillRect(0, y + sh - 8, W, 2);
+    ctx.fillStyle = C2.shelfDk; ctx.fillRect(0, y + sh - 2, W, 2);
+  }
+  // keep the far shelves back so the books to catch and the ledges stand out
+  wizScreen(st, () => { ctx.fillStyle = 'rgba(28,20,58,0.42)'; ctx.fillRect(0, 0, W, H); });
+  // carved wooden uprights between the bays
+  for (const ux of [0, 236, 712, 948]) {
+    ctx.fillStyle = C2.shelfDk; ctx.fillRect(ux - 6, cy - 10, 18, H + 20);
+    ctx.fillStyle = C2.shelf; ctx.fillRect(ux - 4, cy - 10, 10, H + 20);
+    ctx.fillStyle = 'rgba(255,220,160,0.2)'; ctx.fillRect(ux - 4, cy - 10, 2, H + 20);
   }
   // tall windows with the moon outside
   for (let k = 0; k < 7; k++) {
     const wy = wizLiftBase(k) - 300;
-    if (wy > cy + H || wy + 180 < cy) continue;
-    ctx.fillStyle = '#4a3a7e'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; rr(380, wy, 120, 180, 60); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,248,220,0.6)'; circle(440, wy + 70, 22); ctx.fill();
-    ctx.strokeStyle = C2.shelfDk; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(440, wy); ctx.lineTo(440, wy + 180); ctx.moveTo(380, wy + 90); ctx.lineTo(500, wy + 90); ctx.stroke();
+    if (wy > cy + H + 20 || wy + 200 < cy) continue;
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; rr(372, wy - 6, 136, 196, 66); ctx.fill();
+    ctx.fillStyle = C2.shelfDk; ctx.strokeStyle = shade(C2.shelfDk, 0.3); ctx.lineWidth = 2; rr(374, wy - 6, 132, 192, 66); ctx.fill(); ctx.stroke();
+    ctx.save(); rr(380, wy, 120, 180, 60); ctx.clip();
+    const g = ctx.createLinearGradient(0, wy, 0, wy + 180); g.addColorStop(0, '#22195a'); g.addColorStop(1, '#6a4a9a');
+    ctx.fillStyle = g; ctx.fillRect(380, wy, 120, 180);
+    for (let s = 0; s < 9; s++) { const h3 = hash(k * 31 + s, 5); ctx.fillStyle = 'rgba(255,248,220,' + (0.4 + 0.5 * ((h3 >> 4) % 2)) + ')'; ctx.fillRect(384 + (h3 % 112), wy + 6 + ((h3 >> 7) % 160), 2, 2); }
+    ctx.fillStyle = 'rgba(255,248,220,0.18)'; circle(440, wy + 70, 32); ctx.fill();
+    ctx.fillStyle = 'rgba(255,248,220,0.8)'; circle(440, wy + 70, 20); ctx.fill();
+    ctx.fillStyle = 'rgba(200,190,170,0.5)'; circle(446, wy + 64, 4); ctx.fill(); circle(434, wy + 78, 3); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = C2.shelfDk; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(440, wy); ctx.lineTo(440, wy + 180); ctx.moveTo(380, wy + 90); ctx.lineTo(500, wy + 90); ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (const ly of [45, 135]) { ctx.moveTo(380, wy + ly); ctx.lineTo(500, wy + ly); }
+    for (const lx of [410, 470]) { ctx.moveTo(lx, wy + 8); ctx.lineTo(lx, wy + 180); }
+    ctx.stroke();
+    ctx.fillStyle = C2.shelf; ctx.strokeStyle = C2.shelfDk; ctx.lineWidth = 2; rr(366, wy + 180, 148, 10, 3); ctx.fill(); ctx.stroke();
+    // a pool of moonlight on the shelves below
+    ctx.fillStyle = 'rgba(200,190,255,0.06)'; ctx.beginPath(); ctx.moveTo(380, wy + 190); ctx.lineTo(500, wy + 190); ctx.lineTo(540, wy + 290); ctx.lineTo(340, wy + 290); ctx.fill();
+  }
+  // floating candles drifting near the shelves
+  for (let k = 0; k < 6; k++) {
+    for (const cx0 of [140, 820]) {
+      const h4 = hash(k, cx0), x = cx0 + (h4 % 60) - 30, y = wizLiftBase(k) - 150 - ((h4 >> 5) % 60) + (reduceMotion ? 0 : Math.sin(t * 1.3 + k + cx0) * 5);
+      if (y < cy - 40 || y > cy + H + 40) continue;
+      ctx.fillStyle = 'rgba(255,200,110,0.16)'; circle(x, y - 14, 18); ctx.fill();
+      ctx.fillStyle = '#f2e6c8'; ctx.strokeStyle = '#a89870'; ctx.lineWidth = 1.5; rr(x - 4, y - 8, 8, 22, 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffd36a'; ctx.beginPath(); ctx.ellipse(x, y - 13, 3, 5 + (reduceMotion ? 0 : Math.sin(t * 9 + k) * 1), 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff6d8'; circle(x, y - 12, 1.5); ctx.fill();
+    }
   }
   // the slab tracks glow on the wall
   for (const tr of WIZLIFT.tracks) {
@@ -471,8 +525,16 @@ function wizLiftDrawBack(st) {
     ctx.strokeStyle = C2.track; ctx.lineWidth = 3; ctx.setLineDash([6, 8]);
     ctx.strokeRect(tr.x0, y0, tr.x1 - tr.x0 + WIZLIFT.slab.w, y1 - y0); ctx.setLineDash([]);
   }
-  // floor labels
-  for (let k = 0; k < 6; k++) { const b = wizLiftBase(k); if (b < cy - 40 || b > cy + H + 40) continue; text('Floor ' + (k + 1), 20, b + 34, 14, 'rgba(255,240,200,0.6)', 'left', 'body'); }
+  // floor plaques, on the wall just above each floor
+  for (let k = 0; k < 6; k++) {
+    const b = wizLiftBase(k); if (b - 46 < cy + 120 || b > cy + H + 60) continue;   // (never under the top HUD)
+    const label = 'Floor ' + (k + 1);
+    text('', 0, 0, 13, C.paper, 'left', 'body'); const tw = ctx.measureText(label).width;
+    const px = 14, py = b - 46;
+    ctx.fillStyle = C2.brassDk; ctx.strokeStyle = shade(C2.brassDk, 0.4); ctx.lineWidth = 1.5; rr(px, py, tw + 16, 20, 5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,230,160,0.35)'; ctx.fillRect(px + 3, py + 2, tw + 10, 1.5);
+    text(label, px + 8, py + 10, 13, '#fff0c8', 'left', 'body');
+  }
 }
 function wizLiftDraw(st) {
   const ph = st.ph, K = WIZLIFT, C2 = WIZLIFT_C, t = G.clock;
@@ -481,7 +543,13 @@ function wizLiftDraw(st) {
     if (r.wall) continue;
     if (r.y1 < st.cam.y - 40 || r.y0 > st.cam.y + H + 40) continue;
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
-    if (r.kind === 'ground') { ctx.fillStyle = '#5a4630'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = '#7a5a3a'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 6); continue; }
+    if (r.kind === 'ground') {
+      ctx.fillStyle = '#5a4630'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = '#7a5a3a'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 6);
+      ctx.fillStyle = 'rgba(255,226,170,0.3)'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let x = r.x0 + 40; x < r.x1; x += 80) { ctx.moveTo(x + (hash(x, 3) % 20), r.y0 + 6); ctx.lineTo(x + (hash(x, 3) % 20), r.y0 + 40); }
+      ctx.moveTo(r.x0, r.y0 + 22); ctx.lineTo(r.x1, r.y0 + 22); ctx.stroke(); continue;
+    }
     if (r.kind === 'step') {
       if (r.off) { ctx.globalAlpha = 0.25; ctx.fillStyle = C2.shelf; ctx.fillRect(r.x0 + 30, r.y0, 24, r.y1 - r.y0); ctx.globalAlpha = 1; continue; }
       ctx.fillStyle = C2.shelf; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 3); ctx.fill(); ctx.stroke(); continue;
@@ -492,7 +560,9 @@ function wizLiftDraw(st) {
     }
     if (r.kind === 'arch') { ctx.fillStyle = C2.shelf; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); continue; }
     if (r.kind === 'railing') { ctx.fillStyle = C2.brass; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 2); ctx.fill(); ctx.stroke(); circle((r.x0 + r.x1) / 2, r.y0, 5); ctx.fill(); ctx.stroke(); continue; }
-    ctx.fillStyle = r.kind === 'balcony' ? '#7a5a3a' : C2.shelf; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; rr(r.x0 + 4, r.y1 - 2, r.x1 - r.x0 - 4, 8, 4); ctx.fill();
+    ctx.fillStyle = r.kind === 'balcony' ? '#8a6640' : '#7e5632'; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,226,170,0.45)'; ctx.fillRect(r.x0 + 4, r.y0 + 2, r.x1 - r.x0 - 8, 2.5);
     if (r.kind === 'balcony') { ctx.strokeStyle = C2.shelfDk; ctx.lineWidth = 2; for (let x = r.x0 + 10; x < r.x1; x += 16) { ctx.beginPath(); ctx.moveTo(x, r.y0); ctx.lineTo(x, r.y0 - 18); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(r.x0, r.y0 - 18); ctx.lineTo(r.x1, r.y0 - 18); ctx.stroke(); }
   }
   // the arch's opening, with its rail
