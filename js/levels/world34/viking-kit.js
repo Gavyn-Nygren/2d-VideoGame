@@ -48,7 +48,7 @@
      stoneDark, sail1, sail2, gold, fire }. Gold (C.gold) is kept for help and "press now". */
 const VIKING = (() => {
   const S = SHRUNK, K = { defs: {} };
-  for (const k of ['FONT', 'lerp', 'smooth', 'hash', 'mmss', 'stubMap', 'BREAK', 'quiet', 'key', 'track', 'both', 'idle', 'actLabels',
+  for (const k of ['FONT', 'pic', 'lerp', 'smooth', 'hash', 'mmss', 'stubMap', 'BREAK', 'quiet', 'key', 'track', 'both', 'idle', 'actLabels',
     'hide', 'unhide', 'place', 'fx', 'pop', 'part', 'spark', 'confetti', 'dust', 'poof', 'hint', 'hintOnce', 'msg', 'tickFx', 'star',
     'drawParts', 'drawPops', 'chip', 'panel', 'meter', 'medal', 'helpLine', 'drawMsg', 'prompter', 'hero']) K[k] = S[k];
   const TAU = Math.PI * 2, H_ = K.hash;
@@ -136,16 +136,29 @@ const VIKING = (() => {
     ctx.globalAlpha = a0;
   };
   // a round shield face-on: two coloured halves, a rim and a boss
+  // a shield is drawn once per look into a picture (K.pic) and copied: a longship carries seven
   K.shield = (x, y, r, o = {}) => {
+    const rot = Math.round((o.rot || 0) * 50) / 50, rr2 = Math.round(r * 2) / 2, e = Math.ceil(rr2 + 3);
+    K.pic('shield|' + (o.col || '') + (o.col2 || '') + '|' + rr2 + '|' + rot + '|' + (o.boss !== false), e * 2, e * 2, e, e, () => shieldArt(rr2, rot, o), x, y);
+  };
+  function shieldArt(r, rot, o) {
     const c1 = o.col || '#c8323a', c2 = o.col2 || '#f2e6c8';
-    ctx.save(); ctx.translate(x, y); ctx.rotate(o.rot || 0);
+    ctx.save(); ctx.rotate(rot);
     ctx.fillStyle = c1; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
     ctx.fillStyle = c2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r, -Math.PI / 2, 0); ctx.closePath(); ctx.fill();
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r, Math.PI / 2, Math.PI); ctx.closePath(); ctx.fill();
+    // a soft shade on the lower right, painted planks, the iron rim with rivets, a boss with a glint
+    ctx.fillStyle = 'rgba(20,10,0,0.16)'; ctx.beginPath(); ctx.arc(0, 0, r, -0.2, Math.PI * 0.85); ctx.arc(r * 0.18, -r * 0.18, r * 0.92, Math.PI * 0.85, -0.2, true); ctx.closePath(); ctx.fill();
+    if (r >= 8) { ctx.strokeStyle = 'rgba(60,30,10,0.18)'; ctx.lineWidth = 1; ctx.beginPath(); for (const d of [-0.5, 0.5]) { ctx.moveTo(d * r, -r * 0.86); ctx.lineTo(d * r, r * 0.86); } ctx.stroke(); }
     ctx.strokeStyle = '#5a3418'; ctx.lineWidth = Math.max(1.5, r * 0.14); ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
-    if (o.boss !== false) { ctx.fillStyle = '#b8bec8'; circle(0, 0, r * 0.28); ctx.fill(); ctx.strokeStyle = '#4a4e56'; ctx.lineWidth = 1; ctx.stroke(); }
+    if (r >= 8) { ctx.fillStyle = '#d8c8a0'; ctx.beginPath(); for (let k = 0; k < 8; k++) { const a = k / 8 * TAU + 0.2, rv = Math.max(0.7, r * 0.06), vx = Math.cos(a) * r * 0.93, vy = Math.sin(a) * r * 0.93; ctx.moveTo(vx + rv, vy); ctx.arc(vx, vy, rv, 0, TAU); } ctx.fill(); }
+    if (o.boss !== false) {
+      ctx.fillStyle = '#b8bec8'; circle(0, 0, r * 0.28); ctx.fill(); ctx.strokeStyle = '#4a4e56'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.75)'; circle(-r * 0.08, -r * 0.09, r * 0.09); ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.arc(0, 0, r * 0.82, Math.PI * 1.05, Math.PI * 1.45); ctx.arc(0, 0, r * 0.62, Math.PI * 1.45, Math.PI * 1.05, true); ctx.closePath(); ctx.fill();
     ctx.restore();
-  };
+  }
 
   /* ---------- the sea ---------- */
   K.waveLine = (x0, x1, y, scroll, t, amp, col, w) => {
@@ -156,9 +169,25 @@ const VIKING = (() => {
   K.sea = (scroll, t, y0, o = {}) => {
     const rough = o.rough || 0, rows = o.rows || [y0, y0 + 44, y0 + 88];
     const deep = o.col || COL.sea, hi = o.hi || COL.seaHi, dark = o.dark || COL.seaDark;
-    const g = ctx.createLinearGradient(0, y0 - 10, 0, H);
-    g.addColorStop(0, hi); g.addColorStop(0.35, deep); g.addColorStop(1, dark);
-    ctx.fillStyle = g; ctx.fillRect(0, y0 - 6, W, H - y0 + 6);
+    // the water's gradient and a pale sheen of sky on the far water never move: one solid picture
+    K.pic('vsea|' + y0 + deep + hi + dark, W, H - y0 + 6, 0, 0, () => {
+      ctx.translate(0, 6 - y0);
+      const g = ctx.createLinearGradient(0, y0 - 10, 0, H);
+      g.addColorStop(0, hi); g.addColorStop(0.35, deep); g.addColorStop(1, dark);
+      ctx.fillStyle = g; ctx.fillRect(0, y0 - 6, W, H - y0 + 6);
+      ctx.fillStyle = 'rgba(230,240,246,0.16)'; ctx.fillRect(0, y0 - 6, W, 5);
+      ctx.fillStyle = 'rgba(230,240,246,0.08)'; ctx.fillRect(0, y0 - 1, W, 9);
+    }, 0, y0 - 6, true);
+    // little glints that wink as the swell rolls
+    for (const [lo, hi2, al] of [[0.35, 0.7, 0.16], [0.7, 2, 0.4]]) {
+      ctx.fillStyle = 'rgba(240,250,255,' + al + ')'; ctx.beginPath();
+      for (let i = 0; i < 26; i++) {
+        const a = Math.sin(t * 2.2 + i * 1.7); if (a < lo || a >= hi2) continue;
+        const gx = ((H_(i + 70) * (W + 80) - scroll * (0.25 + H_(i + 71) * 0.4)) % (W + 80) + W + 80) % (W + 80) - 40, gy = y0 + 6 + H_(i + 72) * (H - y0 - 10);
+        ctx.rect(gx, gy, 6 + H_(i + 73) * 10, 1.5);
+      }
+      ctx.fill();
+    }
     rows.forEach((ry, k) => {
       const sp = 0.4 + k * 0.3, amp = 3 + k * 1.5 + rough * 4, sc = scroll * sp;
       // a slightly darker band under each crest line, then the crest with foam
@@ -168,8 +197,9 @@ const VIKING = (() => {
       ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
       K.waveLine(0, W, ry, sc, t * (1 + k * 0.2), amp, 'rgba(232,244,246,' + (0.35 + k * 0.12) + ')', 2 + k * 0.5);
       // foam flecks
-      ctx.fillStyle = 'rgba(232,244,246,0.5)';
-      for (let i = 0; i < 9; i++) { const fx = ((i * 131 - sc * 1.2) % (W + 60) + W + 60) % (W + 60) - 30, fy = ry + 10 + (i * 7) % 18; ctx.fillRect(fx, fy, 10 + (i % 3) * 6, 2); }
+      ctx.fillStyle = 'rgba(232,244,246,0.5)'; ctx.beginPath();
+      for (let i = 0; i < 9; i++) { const fx = ((i * 131 - sc * 1.2) % (W + 60) + W + 60) % (W + 60) - 30, fy = ry + 10 + (i * 7) % 18; ctx.rect(fx, fy, 10 + (i % 3) * 6, 2); }
+      ctx.fill();
     });
   };
   K.splash = (st, x, y, n = 8) => { for (let i = 0; i < n; i++) K.part(st, x + (Math.random() - 0.5) * 30, y, (Math.random() - 0.5) * 220, -120 - Math.random() * 220, 0.7, i % 2 ? '#e8f4f6' : '#9fd0e0', 3 + Math.random() * 2, 700, 'dot'); };
@@ -178,6 +208,8 @@ const VIKING = (() => {
     const s = o.s || 1, len = (o.len || 220), t = G.clock || 0;
     ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.rotate(-(o.tilt || 0));
     const hl = len / 2;
+    // the hull's dark reflection on the water
+    ctx.fillStyle = 'rgba(8,24,40,0.28)'; ctx.beginPath(); ctx.ellipse(0, 18, hl * 0.95, 7, 0, 0, TAU); ctx.fill();
     // mast and sail (behind the hull)
     const mastX = -6, mastTop = -150;
     ctx.fillStyle = COL.woodDark; ctx.fillRect(mastX - 3, mastTop, 6, 150);
@@ -195,16 +227,28 @@ const VIKING = (() => {
       ctx.quadraticCurveTo(x0 + belly * Math.sin(k / 6 * Math.PI) * 0.6 + luff, (top + bot) / 2, x0, top);
       ctx.closePath(); ctx.fill();
     }
+    // the sail's belly in shade low down and on its far edge, a stitched hem and the yard's shadow
+    {
+      const sg = ctx.createLinearGradient(0, top, 0, bot);
+      sg.addColorStop(0, 'rgba(255,255,255,0.12)'); sg.addColorStop(0.45, 'rgba(0,0,0,0)'); sg.addColorStop(1, 'rgba(40,20,10,0.22)');
+      ctx.fillStyle = sg; ctx.fillRect(mastX - 54, top, 108 + belly * 0.6, bot - top);
+      ctx.fillStyle = 'rgba(40,20,10,0.25)'; ctx.fillRect(mastX - 54, top, 108, 3);
+      ctx.strokeStyle = 'rgba(60,30,10,0.35)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(mastX - 52, bot - 3); ctx.lineTo(mastX + 54, bot - 3); ctx.stroke(); ctx.setLineDash([]);
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(mastX - 2, mastTop, 1.5, 150);
+    ctx.fillStyle = COL.woodHi; ctx.fillRect(mastX - 56, mastTop + 12, 112, 1.5);
     if (o.torn) { ctx.fillStyle = 'rgba(30,40,60,0.85)'; ctx.beginPath(); ctx.moveTo(mastX + 10, top + 20); ctx.lineTo(mastX + 24, top + 36 + o.torn * 30); ctx.lineTo(mastX + 2, top + 40 + o.torn * 20); ctx.closePath(); ctx.fill(); }
     ctx.strokeStyle = 'rgba(90,52,24,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(mastX, mastTop); ctx.lineTo(hl - 10, -26); ctx.moveTo(mastX, mastTop); ctx.lineTo(-hl + 14, -26); ctx.stroke();
     // oars below the shields, sweeping in time
     if (o.oars !== null && o.oars !== undefined) {
       const n = 7, ph = o.oars * TAU, spread = o.oarSpread === undefined ? 1 : o.oarSpread;
-      ctx.strokeStyle = '#c8a070'; ctx.lineWidth = 3;
+      ctx.strokeStyle = '#c8a070'; ctx.lineWidth = 3; ctx.beginPath();
       for (let k = 0; k < n; k++) {
         const ox = -hl + 40 + k * (len - 80) / (n - 1), a = Math.sin(ph + k * 0.15) * 0.45 * spread;
-        ctx.beginPath(); ctx.moveTo(ox, -8); ctx.lineTo(ox - 22 + Math.sin(a) * 30, 22 + Math.cos(ph + k * 0.15) * 6 * spread); ctx.stroke();
+        ctx.moveTo(ox, -8); ctx.lineTo(ox - 22 + Math.sin(a) * 30, 22 + Math.cos(ph + k * 0.15) * 6 * spread);
       }
+      ctx.stroke();
     }
     // the hull: a long curved boat with a stripe
     const hg = ctx.createLinearGradient(0, -24, 0, 18);
@@ -218,15 +262,32 @@ const VIKING = (() => {
     ctx.lineTo(-hl + 40, 14);
     ctx.quadraticCurveTo(-hl - 4, 0, -hl - 10, -40);
     ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = 'rgba(58,34,16,0.6)'; ctx.lineWidth = 1;
-    for (const yy of [-8, 2]) { ctx.beginPath(); ctx.moveTo(-hl + 10, yy); ctx.quadraticCurveTo(0, yy + 4, hl - 10, yy); ctx.stroke(); }
+    // overlapping strakes (clinker planks), each with a lit lip and a row of iron rivets
+    ctx.strokeStyle = 'rgba(58,34,16,0.6)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (const yy of [-12, -3, 6]) { ctx.moveTo(-hl + 6, yy - 6); ctx.quadraticCurveTo(0, yy + 4, hl - 6, yy - 6); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,220,170,0.22)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (const yy of [-12, -3, 6]) { ctx.moveTo(-hl + 8, yy - 4.8); ctx.quadraticCurveTo(0, yy + 5.2, hl - 8, yy - 4.8); }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(40,24,12,0.55)'; ctx.beginPath();
+    for (const yy of [-12, -3, 6]) for (let k = 1; k < 12; k++) { const u = k / 12, rx = -hl + 6 + u * (len - 12), ry = yy - 6 + 4 * (1 - (2 * u - 1) * (2 * u - 1)) * 2.5 + 2; ctx.rect(rx, ry, 1.6, 1.6); }
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,230,190,0.35)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-hl + 30, -19); ctx.lineTo(hl - 30, -19); ctx.stroke();
     ctx.fillStyle = '#e8b42a'; ctx.fillRect(-hl + 24, -19, len - 48, 3);
+    ctx.fillStyle = 'rgba(120,70,10,0.5)'; ctx.fillRect(-hl + 24, -17, len - 48, 1);
     // the bite out of the stern rail
     if (o.bitten) { ctx.fillStyle = 'rgba(20,30,40,0.9)'; ctx.beginPath(); ctx.arc(-hl + 30, -20, 8 + o.bitten * 8, 0, Math.PI); ctx.fill(); }
     // the dragon prow and the curled stern
     ctx.fillStyle = COL.wood; ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(hl + 4, -36); ctx.quadraticCurveTo(hl + 18, -60, hl + 10, -74); ctx.quadraticCurveTo(hl + 24, -82, hl + 34, -74); ctx.lineTo(hl + 30, -70); ctx.quadraticCurveTo(hl + 22, -72, hl + 18, -64); ctx.quadraticCurveTo(hl + 22, -46, hl + 12, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // carved scales down the neck and a lit edge on the curl
+    ctx.strokeStyle = 'rgba(58,34,16,0.5)'; ctx.lineWidth = 1;
+    ctx.beginPath(); for (let k = 0; k < 4; k++) { const sy = -40 - k * 8, sx2 = hl + 12 + k * 1.5; ctx.moveTo(sx2 + 3.2 * Math.cos(0.2), sy + 3.2 * Math.sin(0.2)); ctx.arc(sx2, sy, 3.2, 0.2, Math.PI - 0.2); } ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,220,170,0.4)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(hl + 6, -38); ctx.quadraticCurveTo(hl + 19, -60, hl + 12, -73); ctx.stroke();
     ctx.fillStyle = '#ffd23a'; circle(hl + 24, -76, 2.2); ctx.fill();
+    ctx.fillStyle = '#1a1008'; circle(hl + 24.5, -76, 1); ctx.fill();
     ctx.fillStyle = '#c8323a'; ctx.beginPath(); ctx.moveTo(hl + 34, -74); ctx.lineTo(hl + 40, -72); ctx.lineTo(hl + 33, -70); ctx.closePath(); ctx.fill();
     ctx.beginPath(); ctx.moveTo(-hl - 6, -36); ctx.quadraticCurveTo(-hl - 20, -58, -hl - 6, -66); ctx.quadraticCurveTo(-hl + 6, -66, -hl + 2, -56); ctx.quadraticCurveTo(-hl - 6, -56, -hl - 4, -48); ctx.quadraticCurveTo(-hl + 2, -40, -hl + 2, -32); ctx.closePath(); ctx.fillStyle = COL.wood; ctx.fill(); ctx.stroke();
     // shields along the rail
@@ -242,11 +303,25 @@ const VIKING = (() => {
 
   /* ---------- northern scenery ---------- */
   K.sky = (cx, t, o = {}) => {
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    if (o.night) { g.addColorStop(0, '#081428'); g.addColorStop(0.6, '#1a2e4a'); g.addColorStop(1, '#2e4a62'); }
-    else if (o.dusk) { g.addColorStop(0, '#3a3a6a'); g.addColorStop(0.55, '#c87a7a'); g.addColorStop(1, '#f2c27a'); }
-    else { g.addColorStop(0, '#7a8ea0'); g.addColorStop(0.6, '#b8c8d2'); g.addColorStop(1, '#dfe8ec'); }
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // the gradient (and the sun) never move on the screen: one solid picture, copied each frame (a full-screen
+    // gradient fill is one of the slowest things to draw on a phone)
+    const mode = o.night ? 'night' : o.dusk ? 'dusk' : 'day';
+    K.pic('vsky|' + mode, W, H, 0, 0, () => {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      if (o.night) { g.addColorStop(0, '#081428'); g.addColorStop(0.6, '#1a2e4a'); g.addColorStop(1, '#2e4a62'); }
+      else if (o.dusk) { g.addColorStop(0, '#3a3a6a'); g.addColorStop(0.55, '#c87a7a'); g.addColorStop(1, '#f2c27a'); }
+      else { g.addColorStop(0, '#7a8ea0'); g.addColorStop(0.6, '#b8c8d2'); g.addColorStop(1, '#dfe8ec'); }
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      if (o.dusk) {
+        const sg = ctx.createRadialGradient(760, 250, 4, 760, 250, 120);
+        sg.addColorStop(0, 'rgba(255,240,200,0.95)'); sg.addColorStop(0.2, 'rgba(255,210,150,0.6)'); sg.addColorStop(1, 'rgba(255,200,150,0)');
+        ctx.fillStyle = sg; ctx.fillRect(600, 120, 320, 260);
+      } else if (!o.night) {
+        // a pale sun behind the overcast
+        ctx.fillStyle = 'rgba(255,250,235,0.22)'; circle(780, 92, 70); ctx.fill();
+        ctx.fillStyle = 'rgba(255,250,235,0.45)'; circle(780, 92, 34); ctx.fill();
+      }
+    }, 0, 0, true);
     if (o.night) {
       for (let i = 0; i < 60; i++) { ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.5 * H_(i) * (0.6 + 0.4 * Math.sin(t * 2 + i))) + ')'; ctx.fillRect(((H_(i + 3) * W - cx * 0.02) % W + W) % W, H_(i + 9) * 220, 1.6, 1.6); }
       // the aurora: three soft green-violet curtains that ripple
@@ -257,17 +332,26 @@ const VIKING = (() => {
         for (let x = W; x >= 0; x -= 20) ctx.lineTo(x, base + 90 + Math.sin(x * 0.01 + t * 0.4 + k) * 20);
         ctx.closePath(); ctx.fill();
       }
-    } else if (o.dusk) {
-      const sg = ctx.createRadialGradient(760, 250, 4, 760, 250, 120);
-      sg.addColorStop(0, 'rgba(255,240,200,0.95)'); sg.addColorStop(0.2, 'rgba(255,210,150,0.6)'); sg.addColorStop(1, 'rgba(255,200,150,0)');
-      ctx.fillStyle = sg; ctx.fillRect(600, 120, 320, 260);
-    } else {
-      // low grey clouds drifting
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    } else if (!o.dusk) {
+      // low cloud banks drifting: a grey belly, puffy white tops and a lit rim
+      // (all six banks share three paths: one fill each for the bellies, the banks and the lit tops)
+      const banks = [];
       for (let i = 0; i < 6; i++) {
         const span = W + 400, x = ((i * 233 - cx * 0.04 + t * (5 + i)) % span + span) % span - 200, y = 40 + (i * 47) % 110;
-        ctx.beginPath(); ctx.ellipse(x, y, 90 + (i % 3) * 30, 16 + (i % 2) * 6, 0, 0, TAU); ctx.fill();
+        banks.push([i, x, y, 90 + (i % 3) * 30, 16 + (i % 2) * 6]);
       }
+      ctx.fillStyle = 'rgba(96,112,130,0.28)'; ctx.beginPath();
+      for (const [, x, y, rw, rh] of banks) { ctx.moveTo(x + 6 + rw, y + rh * 0.45); ctx.ellipse(x + 6, y + rh * 0.45, rw, rh * 0.8, 0, 0, TAU); }
+      ctx.fill();
+      ctx.fillStyle = 'rgba(236,242,246,0.5)'; ctx.beginPath();
+      for (const [i, x, y, rw, rh] of banks) {
+        ctx.moveTo(x + rw, y); ctx.ellipse(x, y, rw, rh, 0, 0, TAU);
+        for (let k = 0; k < 4; k++) { const px = x - rw * 0.6 + k * rw * 0.4, pr = rh * (0.9 + H_(i * 5 + k) * 0.7); ctx.moveTo(px + pr * 1.3, y - rh * 0.35); ctx.ellipse(px, y - rh * 0.35, pr * 1.3, pr, 0, 0, TAU); }
+      }
+      ctx.fill('nonzero');
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath();
+      for (const [, x, y, rw, rh] of banks) { ctx.moveTo(x - rw * 0.2 + rw * 0.4, y - rh * 0.85); ctx.ellipse(x - rw * 0.2, y - rh * 0.85, rw * 0.4, rh * 0.32, 0, 0, TAU); }
+      ctx.fill();
     }
     if (o.storm) { ctx.fillStyle = 'rgba(20,28,40,' + clamp(o.storm, 0, 1) * 0.45 + ')'; ctx.fillRect(0, 0, W, H); }
     if (o.sleet) {
@@ -278,23 +362,65 @@ const VIKING = (() => {
   };
   K.fjords = (cx, t, o = {}) => {
     const base = o.base || 300, par = o.par || 0.08;
-    for (const [k, p, col, snow, hMin, hMax] of [[0, par, '#5a6a7a', '#e8eef2', 120, 200], [1, par * 2.2, '#3e4a58', '#d8e2e8', 70, 150]]) {
-      const step = 140 + k * 40, off = cx * p;
-      ctx.fillStyle = o.dim ? 'rgba(40,50,60,1)' : col;
+    // a hazy far range first, barely darker than the sky
+    {
+      const step = 110, off = cx * par * 0.5, i0 = Math.floor(off / step) - 1;
+      ctx.fillStyle = o.dim ? 'rgba(52,62,74,0.5)' : 'rgba(132,148,164,0.4)';
       ctx.beginPath(); ctx.moveTo(0, base + 10);
-      const i0 = Math.floor(off / step) - 1;
-      for (let i = i0; i < i0 + W / step + 3; i++) {
+      for (let i = i0; i < i0 + W / step + 3; i++) { const x = i * step - off, h = 120 + H_(i * 3 + 91) * 70; ctx.lineTo(x, base - h * 0.6); ctx.lineTo(x + step * 0.5, base - h); }
+      ctx.lineTo(W, base + 10); ctx.closePath(); ctx.fill();
+    }
+    for (const [k, p, col, snow, hMin, hMax] of [[0, par, '#5a6a7a', '#e8eef2', 120, 200], [1, par * 2.2, '#3e4a58', '#d8e2e8', 70, 150]]) {
+      const step = 140 + k * 40, off = cx * p, base0 = o.dim ? '#28323c' : col;
+      ctx.fillStyle = base0;
+      ctx.beginPath(); ctx.moveTo(0, base + 10);
+      const i0 = Math.floor(off / step) - 1, i1 = i0 + W / step + 3;
+      for (let i = i0; i < i1; i++) {
         const x = i * step - off, h = hMin + H_(i * 7 + k * 31) * (hMax - hMin);
         ctx.lineTo(x, base - h * 0.35); ctx.lineTo(x + step * 0.4, base - h); ctx.lineTo(x + step * 0.7, base - h * 0.6);
       }
       ctx.lineTo(W, base + 10); ctx.closePath(); ctx.fill();
-      // snow caps
-      ctx.fillStyle = snow;
-      for (let i = i0; i < i0 + W / step + 3; i++) {
-        const x = i * step - off, h = hMin + H_(i * 7 + k * 31) * (hMax - hMin);
-        ctx.beginPath(); ctx.moveTo(x + step * 0.4, base - h); ctx.lineTo(x + step * 0.4 - 18, base - h + 26); ctx.lineTo(x + step * 0.4 - 4, base - h + 20); ctx.lineTo(x + step * 0.4 + 6, base - h + 28); ctx.lineTo(x + step * 0.4 + 16, base - h + 16); ctx.closePath(); ctx.fill();
+      // the shaded east face of every peak, a lit ridge line on the west, gullies, then snow caps with a shaded side
+      ctx.fillStyle = mixCol(base0, '#101824', 0.2 + k * 0.06); ctx.beginPath(); // solid: it never leaves its own cliff
+      for (let i = i0; i < i1; i++) {
+        const x = i * step - off, h = hMin + H_(i * 7 + k * 31) * (hMax - hMin), px = x + step * 0.4;
+        ctx.moveTo(px, base - h); ctx.lineTo(x + step * 0.7, base - h * 0.6); ctx.lineTo(x + step, base - (hMin + H_((i + 1) * 7 + k * 31) * (hMax - hMin)) * 0.35); ctx.lineTo(x + step * 0.62, base + 10); ctx.lineTo(px + 6, base + 10); ctx.closePath();
       }
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(230,238,244,' + (0.22 - k * 0.06) + ')'; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let i = i0; i < i1; i++) { const x = i * step - off, h = hMin + H_(i * 7 + k * 31) * (hMax - hMin); ctx.moveTo(x, base - h * 0.35); ctx.lineTo(x + step * 0.4, base - h); }
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(16,24,36,0.18)'; ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let i = i0; i < i1; i++) {
+        const x = i * step - off, h = hMin + H_(i * 7 + k * 31) * (hMax - hMin), px = x + step * 0.4;
+        for (let g = 0; g < 2; g++) { const gx = px - 14 + g * 22, gy = base - h + 30 + g * 12; ctx.moveTo(gx, gy); ctx.lineTo(gx - 6 + g * 10, gy + h * 0.35); }
+      }
+      ctx.stroke();
+      // the snow caps, then their shaded sides (each as one path: fewer fills are much quicker on a slow phone)
+      const capX = i => i * step - off + step * 0.4, capH = i => hMin + H_(i * 7 + k * 31) * (hMax - hMin);
+      ctx.fillStyle = o.dim ? 'rgba(170,184,196,0.8)' : snow; ctx.beginPath();
+      for (let i = i0; i < i1; i++) { const px = capX(i), h = capH(i); ctx.moveTo(px, base - h); ctx.lineTo(px - 18, base - h + 26); ctx.lineTo(px - 4, base - h + 20); ctx.lineTo(px + 6, base - h + 28); ctx.lineTo(px + 16, base - h + 16); ctx.closePath(); }
+      ctx.fill();
+      ctx.fillStyle = o.dim ? 'rgba(120,140,170,0.45)' : mixCol(snow, '#788caa', 0.45); ctx.beginPath();
+      for (let i = i0; i < i1; i++) { const px = capX(i), h = capH(i); ctx.moveTo(px, base - h); ctx.lineTo(px + 6, base - h + 28); ctx.lineTo(px + 16, base - h + 16); ctx.closePath(); }
+      ctx.fill();
     }
+    // a dark line of pines along the shore at the foot of the cliffs
+    {
+      const off = cx * par * 3.2, step = 13, i0 = Math.floor(off / step) - 1;
+      ctx.fillStyle = o.dim ? '#16202a' : '#2a3a40';
+      ctx.beginPath();
+      for (let i = i0; i < i0 + W / step + 3; i++) {
+        if (H_(i * 13 + 5) < 0.18) continue;
+        const x = i * step - off, h = 10 + H_(i * 13) * 16;
+        ctx.moveTo(x - 5, base + 10); ctx.lineTo(x, base + 10 - h); ctx.lineTo(x + 5, base + 10);
+      }
+      ctx.fill();
+    }
+    // mist lying on the water at the cliffs' feet
+    const mg = ctx.createLinearGradient(0, base - 30, 0, base + 12);
+    mg.addColorStop(0, 'rgba(220,230,236,0)'); mg.addColorStop(1, o.dim ? 'rgba(80,96,110,0.35)' : 'rgba(220,230,236,0.45)');
+    ctx.fillStyle = mg; ctx.fillRect(0, base - 30, W, 42);
     if (o.dim) { ctx.fillStyle = 'rgba(20,30,40,' + o.dim * 0.4 + ')'; ctx.fillRect(0, 0, W, base + 10); }
   };
   K.fog = (x0, x1, t, a) => {

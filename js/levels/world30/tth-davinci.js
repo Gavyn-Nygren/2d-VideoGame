@@ -744,9 +744,25 @@ function tthVinciDrawSky(st) {
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
   // nearer hills, with little cypress trees
   const off = cam * 0.3;
+  // a lit rim and rows of vines on the far hills
+  ctx.strokeStyle = 'rgba(240,250,245,0.55)'; ctx.lineWidth = 2.5; ctx.beginPath();
+  for (let x = 0; x <= W; x += 24) { const u = x + cam * 0.1, y = 357 - 34 * Math.sin(u * 0.0061) - 16 * Math.sin(u * 0.0147 + 2); x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.stroke();
   ctx.fillStyle = '#a5cf86'; ctx.beginPath(); ctx.moveTo(0, H);
   for (let x = 0; x <= W; x += 20) { const u = x + off; ctx.lineTo(x, 410 - 26 * Math.sin(u * 0.0052 + 1) - 12 * Math.sin(u * 0.0131)); }
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  // patchwork fields and vineyard rows on the near hills, and a sunlit crest
+  ctx.save(); ctx.clip();
+  for (let i = Math.floor(off / 210); i * 210 < off + W + 210; i++) {
+    const h = hash(i, 63), x = i * 210 - off, y = 400 - 26 * Math.sin((i * 210 + 100) * 0.0052 + 1) - 12 * Math.sin((i * 210 + 100) * 0.0131) + 20;
+    ctx.fillStyle = ['rgba(220,200,110,0.35)', 'rgba(120,170,90,0.35)', 'rgba(200,170,110,0.3)'][h % 3];
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 200, y - 8 + (h % 16)); ctx.lineTo(x + 210, y + 50); ctx.lineTo(x - 10, y + 56); ctx.closePath(); ctx.fill();
+    if (h % 2) { ctx.strokeStyle = 'rgba(90,120,60,0.35)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let r = 0; r < 4; r++) { ctx.moveTo(x + 10, y + 10 + r * 11); ctx.lineTo(x + 190, y + 6 + r * 11); } ctx.stroke(); }
+  }
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(240,255,220,0.5)'; ctx.lineWidth = 2.5; ctx.beginPath();
+  for (let x = 0; x <= W; x += 20) { const u = x + off, y = 411 - 26 * Math.sin(u * 0.0052 + 1) - 12 * Math.sin(u * 0.0131); x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.stroke();
   ctx.fillStyle = '#6fa36a';
   for (let i = Math.floor(off / 130); i * 130 < off + W + 60; i++) {
     const h = hash(i, 31), u = i * 130 + (h % 80), x = u - off, y = 410 - 26 * Math.sin(u * 0.0052 + 1) - 12 * Math.sin(u * 0.0131), hh = 16 + (h % 12);

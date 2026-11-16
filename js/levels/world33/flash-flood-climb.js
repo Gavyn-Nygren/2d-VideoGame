@@ -560,9 +560,42 @@
     const rimY = isLast() ? st.topY - cy : -1e9;
     ctx.save();
     if (rimY > -20) { ctx.beginPath(); ctx.rect(0, rimY, W, H - rimY + 20); ctx.clip(); }
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, 'rgba(90,60,40,0)'); g.addColorStop(0.3, 'rgba(90,60,40,0.85)'); g.addColorStop(1, 'rgba(60,40,28,1)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // the canyon's haze never moves on the screen: a picture (a full-screen gradient fill costs ~13 ms a frame on a phone)
+    K.pic('floodhaze', W, H, 0, 0, () => {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, 'rgba(90,60,40,0)'); g.addColorStop(0.3, 'rgba(90,60,40,0.85)'); g.addColorStop(1, 'rgba(60,40,28,1)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }, 0, 0);
+    // the far back wall of the canyon: sediment bands in warm shades, slow parallax, with dark vertical cracks
+    {
+      const par = 0.85, band = 38, off = cy * par, b0 = Math.floor((off - 40) / band), b1 = Math.ceil((off + H + 40) / band);
+      // (one path per shade, one for the dark seams and one for the cracks: fewer fills draw much quicker on a phone;
+      // only the middle shows between the far walls)
+      const xa = 30, xb = W - 30;
+      for (const [lo, hi2, col] of [[0, 0.33, 'rgba(120,80,52,0.28)'], [0.33, 0.66, 'rgba(80,52,34,0.22)'], [0.66, 1, 'rgba(150,104,66,0.18)']]) {
+        ctx.fillStyle = col; ctx.beginPath();
+        for (let b = b0; b <= b1; b++) {
+          const y = b * band - off, hv = K.hash(b * 7 + 3); if (hv < lo || hv >= hi2) continue;
+          ctx.moveTo(xa, y + Math.sin(xa * 0.01 + b) * 5);
+          for (let x = 80; x <= xb; x += 80) ctx.lineTo(x, y + Math.sin(x * 0.01 + b) * 5);
+          ctx.lineTo(xb, y + band); ctx.lineTo(xa, y + band); ctx.closePath();
+        }
+        ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(40,24,14,0.18)'; ctx.beginPath();
+      for (let b = b0; b <= b1; b++) ctx.rect(xa, b * band - off + band - 3, xb - xa, 3);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(40,24,14,0.3)'; ctx.lineWidth = 2; ctx.beginPath();
+      for (let b = b0; b <= b1; b++) {
+        const y = b * band - off; if (K.hash(b * 7 + 3) <= 0.5) continue;
+        const cx2 = 200 + K.hash(b * 3) * 560; ctx.moveTo(cx2, y); ctx.lineTo(cx2 + 6, y + band * 0.6); ctx.lineTo(cx2 + 2, y + band);
+      }
+      ctx.stroke();
+      // rain sheeting down the back wall
+      ctx.strokeStyle = 'rgba(220,230,240,0.08)'; ctx.lineWidth = 2; ctx.beginPath();
+      for (let k = 0; k < 6; k++) { const wx = 180 + k * 120 + K.hash(k) * 40; ctx.moveTo(wx, 0); ctx.lineTo(wx + 4, H); }
+      ctx.stroke();
+    }
     // far walls (parallax): strata bands
     for (let layer = 0; layer < 2; layer++) {
       const par = [0.3, 0.6][layer], col = ['#7a5238', '#8a5e40'][layer], inset = [60, 100][layer];
@@ -590,6 +623,30 @@
       if (side < 0) { ctx.moveTo(-10, y0); for (let y = Math.floor(y0 / 24) * 24; y <= y1; y += 24) ctx.lineTo(x + Math.sin(y * 0.05) * 6 + K.hash(y) * 8, y); ctx.lineTo(-10, y1); }
       else { ctx.moveTo(W + 10, y0); for (let y = Math.floor(y0 / 24) * 24; y <= y1; y += 24) ctx.lineTo(x - Math.sin(y * 0.05) * 6 - K.hash(y + 9) * 8, y); ctx.lineTo(W + 10, y1); }
       ctx.closePath(); ctx.fill();
+      // coloured strata bands, specks of grit, and a shadowed inner edge facing the canyon. Each follows the wall's
+      // wavy face (no clip: clipping to a wavy path is very slow on a phone)
+      const edgeAt = y => {
+        const g0 = Math.floor(y / 24) * 24, u = (y - g0) / 24, e = gy => side < 0 ? x + Math.sin(gy * 0.05) * 6 + K.hash(gy) * 8 : x - Math.sin(gy * 0.05) * 6 - K.hash(gy + 9) * 8;
+        return e(g0) + (e(g0 + 24) - e(g0)) * u;
+      };
+      const band = (ya, yb, outer) => {
+        ctx.moveTo(outer, ya); ctx.lineTo(edgeAt(ya), ya);
+        for (let gy = Math.floor(ya / 24) * 24 + 24; gy < yb; gy += 24) ctx.lineTo(edgeAt(gy), gy);
+        ctx.lineTo(edgeAt(yb), yb); ctx.lineTo(outer, yb); ctx.closePath();
+      };
+      const ys0 = Math.floor(y0 / 46) * 46, far = side < 0 ? -10 : W + 10;
+      for (const [lo, hi2, col] of [[0, 0.4, 'rgba(120,76,44,0.35)'], [0.4, 0.7, 'rgba(190,140,96,0.22)'], [0.7, 1, 'rgba(90,56,32,0.25)']]) {
+        ctx.fillStyle = col; ctx.beginPath();
+        for (let y = ys0; y <= y1; y += 46) { const hv = K.hash(y * 5 + side * 3); if (hv >= lo && hv < hi2 && y + 8 >= y0) band(y + 8, y + 26 + hv * 14, far); }
+        ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(60,36,20,0.4)'; ctx.beginPath();
+      for (let y = ys0; y <= y1; y += 46) for (let k = 0; k < 4; k++) { const gx = side < 0 ? K.hash(y + k) * (x - 10) : x + 10 + K.hash(y + k) * (W - x - 10), gy = y + K.hash(y * 3 + k) * 46, gr = 1.5 + K.hash(k + y) * 1.5; if (gy < y0 + 3) continue; ctx.moveTo(gx + gr, gy); ctx.arc(gx, gy, gr, 0, TAU); }
+      ctx.fill();
+      // (in three solid steps, not a gradient: gradient fills are slow on a phone)
+      ctx.fillStyle = 'rgba(50,30,16,0.12)';
+      for (const d of [40, 26, 14]) { ctx.beginPath(); band(y0, y1, x + side * d); ctx.fill(); }
+      ctx.fillStyle = '#9a6a44';
       // strata lines and cracks
       ctx.strokeStyle = 'rgba(70,40,24,0.45)'; ctx.lineWidth = 3;
       for (let y = Math.floor(y0 / 46) * 46; y <= y1; y += 46) {
@@ -632,7 +689,10 @@
     if (scaffold) {
       // wooden planks on beams with lanterns
       ctx.fillStyle = '#8a6a3a'; ctx.fillRect(x0, y, x1 - x0, 10);
+      ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(x0, y, x1 - x0, 2);
+      ctx.fillStyle = 'rgba(40,24,10,0.35)'; ctx.fillRect(x0, y + 8, x1 - x0, 2);
       ctx.strokeStyle = '#5e3e20'; ctx.lineWidth = 1.5; for (let x = x0; x < x1; x += 26) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 10); ctx.stroke(); }
+      ctx.fillStyle = '#c8ccd4'; ctx.beginPath(); for (let x = x0 + 5; x < x1; x += 26) { ctx.rect(x, y + 4, 1.6, 1.6); ctx.rect(x + 14, y + 4, 1.6, 1.6); } ctx.fill();
       ctx.strokeStyle = '#5e3e20'; ctx.lineWidth = 6;
       for (let x = x0 + 30; x < x1; x += 160) { ctx.beginPath(); ctx.moveTo(x, y + 10); ctx.lineTo(x - 30, y + 110); ctx.stroke(); }
       return;
@@ -644,6 +704,12 @@
     // a rough underside
     for (let x = x1; x >= x0; x -= 20) ctx.lineTo(x, y + 14 + K.hash(Math.round(x) + y) * 16);
     ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(60,38,22,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+    // embedded pebbles and a drip line of wet under the lip
+    const pb = [];
+    for (let k = 0; k < (x1 - x0) / 40; k++) pb.push([x0 + 12 + K.hash(y + k * 13) * (x1 - x0 - 24), y + 6 + K.hash(k + y * 3) * 8]);
+    ctx.fillStyle = 'rgba(200,170,130,0.55)'; ctx.beginPath(); for (const [px, py] of pb) { ctx.moveTo(px + 3.5, py); ctx.ellipse(px, py, 3.5, 2.2, 0, 0, TAU); } ctx.fill();
+    ctx.fillStyle = 'rgba(60,38,22,0.5)'; ctx.beginPath(); for (const [px, py] of pb) { ctx.moveTo(px + 4, py + 1); ctx.ellipse(px + 0.5, py + 1, 3.5, 1.2, 0, 0, Math.PI); } ctx.fill();
     ctx.fillStyle = '#5a8a3a'; ctx.fillRect(x0, y - 3, x1 - x0, 4);
     ctx.fillStyle = '#7aaa4a'; for (let x = x0 + 4; x < x1 - 4; x += 9) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 2, y - 5 - K.hash(x) * 4); ctx.lineTo(x + 4, y); ctx.fill(); }
     ctx.fillStyle = 'rgba(255,240,220,0.2)'; ctx.fillRect(x0, y, x1 - x0, 2);
@@ -691,6 +757,7 @@
         // the bail (the bucket's handle) and the back of the tub
         ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(l.x - 24, l.cy - 20); ctx.quadraticCurveTo(l.x, l.cy - 62, l.x + 24, l.cy - 20); ctx.stroke();
         ctx.fillStyle = '#3a3e46'; ctx.beginPath(); ctx.moveTo(l.x - 26, l.cy - 22); ctx.lineTo(l.x + 26, l.cy - 22); ctx.lineTo(l.x + 22, l.cy + 2); ctx.lineTo(l.x - 22, l.cy + 2); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(l.x - 24, l.cy - 22, 48, 3);
         if (l.cy >= l.y - 0.5 && st.h.every(h => Math.abs(h.x - l.x) > 20 || Math.abs(h.y - l.cy) > 3)) { ctx.fillStyle = '#8a7a6a'; circle(l.x - 8, l.cy - 22, 6); ctx.fill(); circle(l.x + 7, l.cy - 21, 5); ctx.fill(); }
         ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(l.crankX, l.y - 40); ctx.lineTo(px, by + 4); ctx.lineTo(l.x, by + 4); ctx.stroke();
       }
@@ -707,6 +774,7 @@
     // boulders
     for (const r of st.rocks) {
       if (r.gone) continue;
+      ctx.fillStyle = 'rgba(30,18,10,0.25)'; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.w / 2 + 8, 5, 0, 0, TAU); ctx.fill();
       ctx.save(); ctx.translate(r.x, r.y - r.h / 2); ctx.rotate(r.rot || 0);
       ctx.fillStyle = '#7a6a5a'; ctx.strokeStyle = '#4a3e34'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.ellipse(0, 0, r.w / 2 + 6, r.h / 2, 0, 0, TAU); ctx.fill(); ctx.stroke();

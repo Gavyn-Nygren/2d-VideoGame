@@ -350,6 +350,7 @@
     // the finish line: two carved posts and a banner
     const fx = sx(c.len);
     if (fx > -40 && fx < W + 40) {
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(fx + 4, 204, 4, 256);
       ctx.fillStyle = '#5a3418'; ctx.fillRect(fx - 4, 200, 8, 260);
       for (let k = 0; k < 12; k++) { ctx.fillStyle = k % 2 ? '#ffffff' : '#1a1a2a'; ctx.fillRect(fx - 4, 210 + k * 20, 8, 10); }
       ctx.fillStyle = '#c8323a'; rr(fx - 50, 186, 100, 22, 6); ctx.fill(); text('FINISH', fx, 198, 13, '#ffffff', 'center', 'body');
@@ -402,20 +403,34 @@
   }
   function rock(x, y, s) {
     ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    ctx.fillStyle = 'rgba(8,24,40,0.3)'; ctx.beginPath(); ctx.ellipse(0, 6, 36, 6, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = '#5a5e66'; ctx.beginPath(); ctx.moveTo(-30, 4); ctx.lineTo(-22, -26); ctx.lineTo(-4, -40); ctx.lineTo(16, -30); ctx.lineTo(30, 4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#464a52'; ctx.beginPath(); ctx.moveTo(-4, -40); ctx.lineTo(16, -30); ctx.lineTo(30, 4); ctx.lineTo(2, 4); ctx.lineTo(0, -20); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#8a8e96'; ctx.beginPath(); ctx.moveTo(-22, -26); ctx.lineTo(-4, -40); ctx.lineTo(0, -20); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(60,110,80,0.6)'; ctx.beginPath(); ctx.ellipse(-12, 0, 14, 3.5, 0, Math.PI, 0); ctx.fill();
+    ctx.strokeStyle = '#2e3138'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(-30, 4); ctx.lineTo(-22, -26); ctx.lineTo(-4, -40); ctx.lineTo(16, -30); ctx.lineTo(30, 4); ctx.stroke();
     ctx.strokeStyle = 'rgba(232,244,246,0.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-34, 4); ctx.quadraticCurveTo(0, -4, 34, 4); ctx.stroke();
+    ctx.fillStyle = 'rgba(232,244,246,0.7)'; for (const fx of [-36, 34]) { circle(fx, 3, 2.2); ctx.fill(); }
     ctx.restore();
   }
   function stack(x, y, s) {
     ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    ctx.fillStyle = 'rgba(8,24,40,0.3)'; ctx.beginPath(); ctx.ellipse(0, 8, 32, 6, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = '#4a4e56'; ctx.beginPath(); ctx.moveTo(-26, 6); ctx.lineTo(-18, -80); ctx.lineTo(0, -96); ctx.lineTo(18, -78); ctx.lineTo(26, 6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#383b42'; ctx.beginPath(); ctx.moveTo(0, -96); ctx.lineTo(18, -78); ctx.lineTo(26, 6); ctx.lineTo(4, 6); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(20,22,28,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (const yy of [-56, -30, -8]) { ctx.moveTo(-20, yy); ctx.lineTo(-4, yy + 4); ctx.moveTo(6, yy - 6); ctx.lineTo(20, yy - 2); } ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.beginPath(); ctx.moveTo(-18, -80); ctx.lineTo(-14, -80); ctx.lineTo(-20, 6); ctx.lineTo(-26, 6); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#25272c'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(-26, 6); ctx.lineTo(-18, -80); ctx.lineTo(0, -96); ctx.lineTo(18, -78); ctx.lineTo(26, 6); ctx.stroke();
     ctx.fillStyle = '#f4f8fb'; ctx.beginPath(); ctx.moveTo(-18, -80); ctx.lineTo(0, -96); ctx.lineTo(18, -78); ctx.lineTo(0, -84); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(232,244,246,0.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-30, 6); ctx.quadraticCurveTo(0, -2, 30, 6); ctx.stroke();
     ctx.restore();
   }
   function floe(x, y, w, s) {
     ctx.fillStyle = 'rgba(234,248,255,0.95)'; ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x + 14, y - 10 * s); ctx.lineTo(x + w * 0.5, y - 14 * s); ctx.lineTo(x + w - 10, y - 8 * s); ctx.lineTo(x + w, y + 2); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(127,180,204,0.6)'; ctx.fillRect(x + 6, y - 2, w - 12, 4);
+    ctx.fillStyle = 'rgba(160,200,220,0.5)'; ctx.beginPath(); ctx.moveTo(x + w * 0.5, y - 14 * s); ctx.lineTo(x + w - 10, y - 8 * s); ctx.lineTo(x + w, y + 2); ctx.lineTo(x + w * 0.55, y + 2); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + 14, y - 10 * s); ctx.lineTo(x + w * 0.5, y - 14 * s); ctx.stroke();
+    ctx.strokeStyle = 'rgba(80,130,160,0.8)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x + 14, y - 10 * s); ctx.lineTo(x + w * 0.5, y - 14 * s); ctx.lineTo(x + w - 10, y - 8 * s); ctx.lineTo(x + w, y + 2); ctx.stroke();
   }
   function whirl(x, y, s, t) {
     ctx.save(); ctx.translate(x, y); ctx.scale(s, s * 0.35);

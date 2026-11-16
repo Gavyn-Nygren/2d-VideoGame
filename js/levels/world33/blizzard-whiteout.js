@@ -698,10 +698,30 @@
         ctx.lineTo(x, base - (k % 2 ? hgt * (0.5 + K.hash(k) * 0.5) : hgt * 0.2 * K.hash(k + 3)));
       }
       ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+      // the shaded east face of each peak
+      ctx.fillStyle = layer ? 'rgba(70,90,120,0.16)' : 'rgba(70,90,120,0.12)';
+      {
+        const pts = [];
+        for (let x = -off - span; x <= W + span; x += span / 2) { const k = Math.round((x + off) / (span / 2)) + Math.floor(cx * par / (span / 2)) + layer * 17; pts.push([x, base - (k % 2 ? hgt * (0.5 + K.hash(k) * 0.5) : hgt * 0.2 * K.hash(k + 3)), k % 2]); }
+        for (let i = 0; i < pts.length - 1; i++) if (pts[i][2]) { const [px, py] = pts[i], [nx, ny] = pts[i + 1]; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(nx, ny); ctx.lineTo(nx, base + 40); ctx.lineTo(px + 10, base + 40); ctx.closePath(); ctx.fill(); }
+      }
       // snow caps
       ctx.fillStyle = 'rgba(255,255,255,0.4)';
       for (let x = -off - span; x <= W + span; x += span) { const k = Math.round((x + off) / span) + Math.floor(cx * par / span) + layer * 5; const px = x + span / 2, py = base - hgt * (0.5 + K.hash(k * 2 + 1 + layer * 17) * 0.5); ctx.beginPath(); ctx.moveTo(px - 30, py + 34); ctx.lineTo(px, py + 4); ctx.lineTo(px + 30, py + 34); ctx.closePath(); ctx.fill(); }
     }
+    // a nearer band of snow-laden pines, half lost in the blizzard
+    const par = 0.45, step = 46, off = cx * par, i0 = Math.floor(off / step) - 1;
+    for (let i = i0; i < i0 + W / step + 3; i++) {
+      if (K.hash(i * 11 + 4) < 0.35) continue;
+      const x = i * step - off + K.hash(i * 3) * 20, h = 46 + K.hash(i * 5) * 40, by = 392 + K.hash(i * 7) * 14;
+      ctx.fillStyle = 'rgba(96,116,140,0.7)';
+      ctx.fillRect(x - 2, by - 8, 4, 10);
+      for (let k = 0; k < 3; k++) { const w2 = (18 - k * 5) * h / 60, ty = by - 6 - k * h * 0.28; ctx.beginPath(); ctx.moveTo(x - w2, ty); ctx.lineTo(x, ty - h * 0.42); ctx.lineTo(x + w2, ty); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = 'rgba(250,252,255,0.75)';
+      for (let k = 0; k < 3; k++) { const w2 = (18 - k * 5) * h / 60, ty = by - 6 - k * h * 0.28; ctx.beginPath(); ctx.moveTo(x - w2 * 0.8, ty - 2); ctx.lineTo(x, ty - h * 0.42); ctx.lineTo(x + w2 * 0.3, ty - h * 0.2); ctx.closePath(); ctx.fill(); }
+    }
+    const hz = ctx.createLinearGradient(0, 300, 0, 420); hz.addColorStop(0, 'rgba(230,236,244,0)'); hz.addColorStop(1, 'rgba(230,236,244,0.55)');
+    ctx.fillStyle = hz; ctx.fillRect(0, 300, W, 120);
   }
   function drawGround(st, t) {
     const x0 = st.camX - 60, x1 = st.camX + W + 60;
@@ -718,6 +738,21 @@
     ctx.stroke();
     ctx.fillStyle = 'rgba(160,190,220,0.5)';
     for (let x = Math.floor(x0 / 37) * 37; x < x1; x += 37) { const y = groundY(st, x); ctx.fillRect(x + K.hash(x) * 20, y + 10 + K.hash(x + 1) * 40, 10 + K.hash(x + 2) * 18, 2); }
+    // wind-carved drifts with blue shadows on their lee side, a few stones and dry grass poking through, glints
+    for (let x = Math.floor(x0 / 150) * 150; x < x1; x += 150) {
+      const dx = x + K.hash(x + 5) * 80, y = groundY(st, dx); if (!(y < H)) continue;
+      const w2 = 40 + K.hash(x + 6) * 40, dy = y + 30 + K.hash(x + 7) * 50;
+      ctx.fillStyle = 'rgba(150,175,205,0.35)'; ctx.beginPath(); ctx.ellipse(dx + w2 * 0.25, dy + 4, w2, 7, 0, 0, Math.PI); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(dx, dy, w2, 8, 0, Math.PI, 0); ctx.fill();
+      if (K.hash(x + 8) < 0.45) {
+        const sx = dx + w2 + 20, sy = groundY(st, sx) + 18;
+        ctx.fillStyle = '#7a8290'; ctx.beginPath(); ctx.ellipse(sx, sy, 9, 6, 0, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(sx - 1, sy - 5, 7, 2.4, 0, Math.PI, 0); ctx.fill();
+        ctx.strokeStyle = 'rgba(150,130,90,0.7)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = 0; k < 4; k++) { ctx.moveTo(sx + 14 + k * 3, sy); ctx.lineTo(sx + 12 + k * 4, sy - 8 - k % 2 * 4); } ctx.stroke();
+      }
+    }
+    ctx.fillStyle = '#ffffff';
+    for (let x = Math.floor(x0 / 23) * 23; x < x1; x += 23) { if (Math.sin(t * 3 + x) < 0.8) continue; const y = groundY(st, x) + 6 + K.hash(x + 9) * 60; if (y < H) K.star(x, y, 3, 1, 0), ctx.fill(); }
     // the lake: grey-blue ice with cracks and holes
     if (st.lake && st.lake.x1 > x0 && st.lake.x0 < x1) {
       const L = st.lake;

@@ -1014,6 +1014,10 @@ function tthHengeGround(st, x0, x1, patch) {
     ctx.closePath(); ctx.fillStyle = col; ctx.fill();
   };
   band(0, Cc.grass, 20); band(20, Cc.grassDk, 30); band(30, '#efe6c8', 96); band(96, '#e3d7b2', 0);
+  if (!patch) {
+    band(30, 'rgba(120,100,60,0.12)', 38);
+    for (let x = x0; x <= x1; x += 48) { const h = hash(x, 41), gy = tthHengeG(ph, x); ctx.fillStyle = h % 2 ? 'rgba(160,140,100,0.35)' : 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.ellipse(x + (h % 30), gy + 44 + (h >>> 6) % 44, 3 + h % 4, 2, 0, 0, Math.PI * 2); ctx.fill(); }
+  }
   ctx.beginPath();
   for (let x = x0; x <= x1; x += step) { const y = tthHengeG(ph, x) + 3; if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
   ctx.strokeStyle = Cc.grassLt; ctx.lineWidth = 4; ctx.stroke();
@@ -1029,10 +1033,13 @@ function tthHengeDrawSky(st) {
   ctx.fillStyle = 'rgba(255,246,200,0.28)'; circle(sx, sy, 92 + Math.sin(t * 1.3) * 4); ctx.fill();
   ctx.fillStyle = 'rgba(255,246,200,0.4)'; circle(sx, sy, 68); ctx.fill();
   ctx.fillStyle = '#fff6c2'; circle(sx, sy, 48); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.86)';
   for (let k = 0; k < 5; k++) {
     const x = (((k * 263 + 90 - cam.x * 0.07 - t * 5) % (W + 320)) + W + 320) % (W + 320) - 160, y = 96 + (k * 57) % 100 - cam.y * 0.06, s = 0.8 + (k % 3) * 0.25;
+    // a soft blue-grey belly under each cloud, then the puffs and a bright top
+    ctx.fillStyle = 'rgba(170,196,222,0.45)'; circle(x + 2, y + 6, 20 * s); ctx.fill(); circle(x + 26 * s, y + 11 * s, 16 * s); ctx.fill(); circle(x - 22 * s, y + 12 * s, 14 * s); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.86)';
     circle(x, y, 20 * s); ctx.fill(); circle(x + 24 * s, y + 5 * s, 16 * s); ctx.fill(); circle(x - 24 * s, y + 6 * s, 14 * s); ctx.fill(); ctx.fillRect(x - 30 * s, y + 4 * s, 62 * s, 14 * s);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(x - 6 * s, y - 9 * s, 9 * s); ctx.fill();
   }
   // the far downs, then the near downs with a burial mound and far-away sheep
   const hills = (f, y0, a, col) => {
@@ -1040,8 +1047,20 @@ function tthHengeDrawSky(st) {
     ctx.beginPath(); ctx.moveTo(0, H);
     for (let x = 0; x <= W; x += 24) ctx.lineTo(x, oy + Math.sin((x + ox) * 0.0052) * a + Math.sin((x + ox) * 0.0131 + 1.3) * a * 0.45);
     ctx.lineTo(W, H); ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+    // a sunlit rim along the crest, and round bushes sitting on it
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 24) { const y = oy + Math.sin((x + ox) * 0.0052) * a + Math.sin((x + ox) * 0.0131 + 1.3) * a * 0.45 + 1.5; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.strokeStyle = tint(col, 0.3); ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = shade(col, 0.1);
+    for (let i = Math.floor(ox / 140); i <= Math.floor((ox + W) / 140) + 1; i++) {
+      const h = hash(i, 91 + a), x = i * 140 + (h % 100) - ox, y = oy + Math.sin((x + ox) * 0.0052) * a + Math.sin((x + ox) * 0.0131 + 1.3) * a * 0.45, r = 6 + (h % 6);
+      if (h % 3) continue;
+      circle(x, y + r * 0.5, r); ctx.fill(); circle(x + r, y + r * 0.8, r * 0.7); ctx.fill();
+    }
   };
   hills(0.12, 330, 26, '#a9dcc0');
+  // a soft haze between the far and near downs
+  { const hy = 330 - cam.y * 0.2; ctx.fillStyle = 'rgba(255,240,200,0.08)'; ctx.fillRect(0, hy + 12, W, 108); ctx.fillRect(0, hy + 36, W, 84); ctx.fillRect(0, hy + 58, W, 62); } // (solid steps: a gradient fill is slow on a phone)
   hills(0.3, 372, 20, '#93d28c');
   const ox = cam.x * 0.3, oy = 372 - cam.y * 0.3;
   for (let i = Math.floor(ox / 170); i <= Math.floor((ox + W) / 170) + 1; i++) {
