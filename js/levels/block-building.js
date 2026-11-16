@@ -320,10 +320,14 @@ function buildStep(dt) {
 
 function drawBrick(x, y, col, alpha = 1) {
   ctx.save(); ctx.globalAlpha = alpha;
-  ctx.fillStyle = col || '#cccccc'; ctx.fillRect(x, y, T, T);
-  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x, y, T, 4); ctx.fillRect(x, y, 4, T);
-  ctx.fillStyle = 'rgba(28,26,54,0.25)'; ctx.fillRect(x, y + T - 4, T, 4); ctx.fillRect(x + T - 4, y, 4, T);
-  ctx.strokeStyle = 'rgba(28,26,54,0.45)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
+  col = col || '#cccccc';
+  // a toy block: dark rim, a bevelled face (lit top-left, shaded bottom-right), a raised middle and a glint
+  ctx.fillStyle = shade(col, 0.32); rr(x + 0.5, y + 0.5, T - 1, T - 1, 4); ctx.fill();
+  ctx.fillStyle = shade(col, 0.12); rr(x + 1.5, y + 1.5, T - 3, T - 3, 3.5); ctx.fill();
+  ctx.fillStyle = tint(col, 0.32); rr(x + 1.5, y + 1.5, T - 5, T - 5, 3.5); ctx.fill();
+  ctx.fillStyle = col; rr(x + 4, y + 4, T - 8, T - 8, 3); ctx.fill();
+  ctx.fillStyle = tint(col, 0.14); rr(x + 8, y + 8, T - 16, T - 16, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; rr(x + 5, y + 5, 7, 2.5, 1.2); ctx.fill(); circle(x + 6, y + 10, 1.2); ctx.fill();
   ctx.restore();
 }
 function drawMini(type, cx, cy, size) {

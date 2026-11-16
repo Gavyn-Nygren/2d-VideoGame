@@ -268,6 +268,14 @@ function drawPong() {
   // the court: centre line, and each player's half on the left
   ctx.save();
   ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.fillRect(0, PONG.top, W, PONG.bot - PONG.top);
+  // a painted court: soft stripes, side lines, a centre circle and spot
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
+  for (let x = 0; x < W; x += 120) ctx.fillRect(x, PONG.top, 60, PONG.bot - PONG.top);
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0, PONG.top + 3); ctx.lineTo(W, PONG.top + 3); ctx.moveTo(0, PONG.bot - 3); ctx.lineTo(W, PONG.bot - 3); ctx.stroke();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  circle(W / 2, (PONG.top + PONG.bot) / 2, 64); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; circle(W / 2, (PONG.top + PONG.bot) / 2, 5); ctx.fill();
   ctx.fillStyle = 'rgba(255,107,74,0.10)'; ctx.fillRect(0, PONG.top, 110, PONG.mid - PONG.top);
   ctx.fillStyle = 'rgba(91,149,255,0.10)'; ctx.fillRect(0, PONG.mid, 110, PONG.bot - PONG.mid);
   ctx.setLineDash([12, 12]); ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 4;
