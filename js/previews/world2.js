@@ -235,6 +235,7 @@ definePreview('Crown Keep', {
     v.backdrop(gy);
     v.block(142, gy - 20, 36, 22, false); // the stone lump in the middle of the floor
     v.plank(118, pl, 84); v.plank(22, 86, 60); v.plank(238, 86, 60);
+    v.plank(58, 136, 46); v.plank(216, 136, 46); // the low steps: every plank is a short hop up, even with the heavy crown
     for (const px of [122, 194]) { ctx.fillStyle = v.c.plankDark; ctx.fillRect(px, pl + 5, 3, 6); }
     const reset = k >= 0.95, fade = k < 0.9 ? 1 : reset ? v.seg(k, 0.95, 1) : 1 - v.seg(k, 0.9, 0.95);
     const run = (a, b) => (k > a && k < b ? v.hop(v.phase(t, 0.34), 3) : 0);

@@ -14,7 +14,8 @@
    LAUNCH PLATES (twice): one stands on the spring plate, the partner jumps onto the foot pump: the first is flung over a
    gap too wide to jump. On the far side they throw the chain back (the action, "throw") and the pumper runs across.
    THE ARM SLIDE: the forearm tips and both slide down it fast (hop the loose plates, ▼ to duck the snapped cables).
-   THE LEG: two walls as it folds (a Boost up, then a hand up). THE LAST JUMP: off the knee as it buckles, both press
+   THE LEG: two walls as it folds, each with a STEAM LIFT (one rides, the other holds the low lever; then the one on
+   top holds the top lever for the other). THE LAST JUMP: off the knee as it buckles, both press
    jump inside the same half second of a drawn "ready... JUMP" count. They land in the meadow grass; behind them the
    Colossus is rubbed away except its two hands and its great key, which thump down in the grass. Part clear.
    Gold help: platforms give 2 s of warning, the edge is 25% slower, the slide's loose plates and cables are cleared,
@@ -62,7 +63,9 @@ function ironFallSetup(st, L) {
     ph.solids.push(pump);
     return Object.assign({}, l, { i, st: 'set', who: i === 0 ? ph.first : 1 - ph.first, pumpS: pump, y: from.y0, toY: ph.plats[l.to].y0, bridge: null, squash: 0 });
   });
-  ph.walls = IRONFALL_WALLS.map((w, i) => Object.assign({}, w, { i, done: false, first: i === 0 ? 1 - ph.first : ph.first }));
+  ph.walls = IRONFALL_WALLS.map((w, i) => Object.assign({}, w, { i, done: false, first: i === 0 ? 1 - ph.first : ph.first,
+    lift: ironLiftMake({ x0: w.x - IRON.lift.w, base: w.low, top: w.top, low: w.x - IRON.lift.w - IRON.lift.gap, high: w.x + 60 }) }));
+  for (const w of ph.walls) ph.solids.push(w.lift.solid);
   ph.fly = [null, null]; ph.last = [[], []];
   ph.jump = { st: 'off', t: 0, press: [null, null], prev: [false, false] };
   ph.end = null; ph.meadowOn = false;
@@ -76,7 +79,7 @@ function ironFallSetup(st, L) {
   ph.prep = [];
   for (let l = 0; l < 3; l++) for (let c = 0; c < 2; c++) ph.prep.push(() => IRON_ART.meadow(l, c));
   ph.prep.push(() => IRON_ART.fallBody(0), () => IRON_ART.fallBody(1), () => IRON_ART.fallBody(2), () => IRON_ART.fallBody(3), () => IRON_ART.fallBody(4),
-    () => IRON_ART.fallPump(), () => IRON_ART.fallSpring(), () => IRON_ART.fallPost(), () => IRON_ART.fallHands(), () => IRON_ART.fallKey(), () => IRON_ART.fallHome());
+    () => IRON_ART.piston(), () => IRON_ART.legLever(), () => IRON_ART.fallPump(), () => IRON_ART.fallSpring(), () => IRON_ART.fallPost(), () => IRON_ART.fallHands(), () => IRON_ART.fallKey(), () => IRON_ART.fallHome());
   for (const [, x0, x1, , o] of IRONFALL_PLATS) ph.prep.push(() => IRON_ART.fallPlate(x1 - x0, !!o.wall));
 }
 
@@ -93,10 +96,9 @@ function ironFallStep(st, dt) {
   if (ph.end) { ironFallEnd(st, dt); return; }
   ironFallEraser(st, dt);
   ironFallCrumble(st, dt);
-  ironHandUp(st, dt, { edge: 60 });
+  ironLiftStep(st, ph.walls.map(w => w.lift), dt);
   for (const p of ps) {
     if (ph.fly[p.id]) { ironFallFlight(st, p, dt); continue; }
-    if (ironHauled(p)) continue;
     ironBody(p, dt, ph.solids, { partner: true, ctl: ironFallCtl });
   }
   ironTrack(st);
@@ -176,7 +178,7 @@ function ironFallCrumble(st, dt) {
 function ironFallFalls(st) {
   const ph = st.ph;
   for (const p of G.players) {
-    if (!p.alive || ph.fly[p.id] || ironHauled(p)) continue;
+    if (!p.alive || ph.fly[p.id]) continue;
     const cx = p.x + p.w / 2, feet = p.y + p.h;
     let low = -999;
     for (const r of ph.solids) { if (r.off || r.x1 < cx - 360 || r.x0 > cx + 360) continue; low = Math.max(low, r.slope ? r.yb : r.y0); }
@@ -348,15 +350,18 @@ function ironFallPlan(st) {
   // a wall of the leg
   const w = ph.walls.find(q => !q.done);
   if (w && ps.every(p => w.x - (p.x + p.w / 2) < 360)) {
-    const top = ph.plats[w.plat], climb = w.first, step = 1 - climb, cp = ps[climb], sp = ps[step];
-    const on = p => p.grounded && p.ground === top;
-    if (!on(cp) && !on(sp)) {
-      out[step] = { why: 'step', x: w.x - 12, hold: 'down', say: 'Crouch by the wall: be a step!' };
-      out[climb] = { why: 'boost', x: w.x - 20, say: 'Jump off ' + NAMES[step] + '\'s head, onto the wall!' };
+    const top = ph.plats[w.plat], climb = w.first, step = 1 - climb, cp = ps[climb], sp = ps[step], L = w.lift;
+    // up: on the leg above the wall (or already past it)
+    const up = p => (p.grounded && p.ground === top) || (p.x + p.w / 2 > w.x + 4 && !ironLiftOn(L, p));
+    const ride = id => ironLiftOn(L, ps[id]) && L.h >= ironLiftFull(L) - 2 ? { why: 'off', x: w.x + 24, say: 'Step onto the leg!' }
+      : { why: 'ride', x: L.x0 + IRON.lift.w / 2, lift: L, say: 'Stand on the steam lift!' };
+    if (!up(cp) && !up(sp)) {
+      out[step] = { why: 'valve', x: L.low, lift: L, hold: 'act', say: ironLiftOn(L, cp) ? 'Hold ' + ironKey(step, 'act') + ' at the lever: lift ' + NAMES[climb] + ' up!' : 'Go to the lever by the lift.' };
+      out[climb] = ride(climb);
     } else {
-      const a = on(cp) ? climb : step, b = 1 - a;
-      out[a] = { why: 'hand', x: w.x + 10, hold: 'act', say: 'Hold ' + ironKey(a, 'act') + ' at the edge: pull ' + NAMES[b] + ' up!' };
-      out[b] = { why: 'wait', x: w.x - 14, say: 'Wait by the wall for a hand up.' };
+      const a = up(cp) ? climb : step, b = 1 - a;
+      out[a] = { why: 'valve', x: L.high, lift: L, hold: 'act', say: ironLiftOn(L, ps[b]) ? 'Hold ' + ironKey(a, 'act') + ' at the top lever: lift ' + NAMES[b] + ' up!' : 'Go to the top lever.' };
+      out[b] = ride(b);
     }
     out.wall = w;
     return out;
@@ -422,6 +427,8 @@ function ironFallDraw(st) {
     ctx.restore();
     if (r.crumble && r.st === 'full' && r.touched[0] !== r.touched[1]) d.word('?', (r.ox0 + r.x1) / 2, r.y0 + 22, 10, { align: 'center', col: SKETCH.INK, alpha: 0.5 });
   }
+  // the steam lifts at the leg's walls
+  for (const w of ph.walls) if (Math.abs(w.x - cx - 480) < 640) { w.lift.done = w.done; ironLiftDraw(st, w.lift); }
   // the arm slide
   const S = IRONFALL_SLIDE;
   if (S.x1 > ph.ex && S.x0 < cx + W + 40 && S.x1 > cx - 40) {
@@ -460,8 +467,7 @@ function ironFallDraw(st) {
       if (x0 < b.x1) IRON_ART.helpers.ironChain(d, [[x0, b.y0 + 3], [(x0 + b.x1) / 2, b.y0 + 10], [b.x1, b.y0 + 3]], { link: 12 });
     }
   }
-  // the walls' Boost marks, the gold arrows along the route (always right)
-  for (const w of ph.walls) if (!w.done && Math.abs(w.x - cx - 480) < 600) d.word('BOOST', w.x - 30, w.top - 16, 11, { align: 'center', col: IRON_P.core, w: 1.6 });
+  // the gold arrows along the route (always right)
   const arrows = [[460, 30, 0.35], [890, 150, 0.35], [1260, 120, 0], [1700, 180, 0.5], [2760, 560, 0], [3210, 660, 0.5], [3680, 600, 0.4], [4260, 520, 0.5], [4560, 600, 1.0]];
   for (const [x, y, a] of arrows) {
     if (x < ph.ex || Math.abs(x - cx - 480) > 560) continue;
@@ -527,7 +533,7 @@ IRON_PHASES.fall = {
     const ph = st && st.ph;
     if (!ph || !ph.launch) return ['throw', 'throw'];
     const P = ironFallPlan(st);
-    return [0, 1].map(id => (P[id] && P[id].why === 'hand' ? 'pull' : 'throw'));
+    return [0, 1].map(id => (P[id] && P[id].why === 'valve' ? 'lever' : 'throw'));
   },
   hudText(st) {
     const ph = st.ph, ps = G.players, mx = Math.max(...ps.map(p => p.x + p.w / 2 + st.cam.x));

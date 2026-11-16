@@ -5,7 +5,9 @@
    Gavyn's pick: dig up a friendly skeleton's lost bones around a moonlit graveyard. Each bone you put back makes him a
    better helper: first a stepstool, then a ladder, then a bridge. Mr. Bones starts as a grinning skull in a little wagon.
    Four rooms, each with its own teamwork twist; every room needs both players:
-     1 Front Gate      a head boost up to a crypt roof for his leg bone, then carry the big backbone together. -> STOOL
+     1 Front Gate      a tipping-tombstone SEESAW flings one up to a crypt roof for his leg bone (one stands on the
+                       low end, the other jumps onto the high end), then carry the big backbone together.     -> STOOL
+                       (Gavyn, 2026-11-15: the seesaw replaced a head boost. Partners pass through each other here.)
      2 Crooked Crypts  stack up on Mr. Bones (stool + a head) for his hip bone; one holds the creaky crank while the
                        other digs inside the gated crypt.                                                  -> LADDER
      3 Pumpkin Plot    climb Mr. Bones up the old tree for his funny bone; dig the giant ribcage together (both shovels
@@ -35,7 +37,7 @@
      N  jack-o'-lantern checkpoint   g  crypt gate cells   r  the crank   !  a bell rope   E  the exit arch
    Room def: { title, tip, unlock ('stool' | 'ladder' | 'bridge' | 'done'), mounds: [{ piece, how, len, together }],
      bellPiece, exitVia, exitLabel, finale: { x, feet }, plan (the computer's order of jobs), stones (headstone
-     epitaphs), decor: [{ k: 'grave' | 'tree' | 'owl' | 'ghost' | 'fence' | 'sign' ... }] }
+     epitaphs), seesaw: { x (pivot), feet (floor y) } (a mound with how 'seesaw' is reached with it), decor: [{ k: 'grave' | 'tree' | 'owl' | 'ghost' | 'fence' | 'sign' ... }] }
    Every top-level name starts with bonehunt / BONEHUNT (Sfx.extra.bonehunt* too); all level state lives in G.mst. */
 const BONEHUNT = {
   digSmall: 3, digBig: 6, digTogether: 5, togetherWin: 0.5, digCD: 0.14, digAnim: 0.28,
@@ -48,6 +50,8 @@ const BONEHUNT = {
   exitHold: 0.35, leaveT: 0.95, danceT: 4.8,
   goldAfter: 30, glueAfter: 3, chalkGold: 14,
   hintGap: 5, hintLife: 3,
+  // the seesaw: plank half-length, how high the up end sits, the fling (about 180 px up, toward the crypt), the end pads
+  seesaw: { half: 54, rise: 30, flingV: 850, flingVx: -110, pad: 30, back: 0.8 },
 };
 const BONEHUNT_SOLID = '#BWSp';
 // what each bone is called and what Mr. Bones says when it goes back in
@@ -144,6 +148,8 @@ function bonehuntRoom(st, L) {
     while (x1 >= 0 && x1 < COLS && !solidAt(x1 + dir, st.gate.r1)) x1 += dir;
     st.gate.dir = dir; st.gate.in0 = Math.min(c + dir, x1) * T; st.gate.in1 = (Math.max(c + dir, x1) + 1) * T;
   }
+  // the seesaw (room def seesaw: { x, feet }): a = -1 left end down (the launch end, at rest), +1 right end down
+  st.seesaw = def.seesaw ? { x: def.seesaw.x, feet: def.seesaw.feet, a: -1, down: -1, backT: 0, flings: 0, wob: 0, feetWas: [1e9, 1e9] } : null;
   st.bell = st.ropes.length ? { meter: 0, rung: false, swing: 0, t: 0, alone: 0, bongs: 0, bongT: 0 } : null;
   // the exit arch: the engine's door, taken over (drawn and checked here)
   st.exit = L.door ? { ...L.door } : null; L.door = null; st.exitT = 0; st.inExit = [false, false]; st.leaving = null;
@@ -209,6 +215,45 @@ function bonehuntRopeAt(st, p) {
   if (!p.alive || !p.grounded) return -1;
   for (let k = 0; k < st.ropes.length; k++) { const r = st.ropes[k]; if (Math.abs(bonehuntCx(p) - r.x) <= BONEHUNT.ropeReach && Math.abs(bonehuntFeet(p) - r.feet) < 4) return k; }
   return -1;
+}
+// the seesaw's two end pads (x ranges) and where each end's top is now
+function bonehuntSeesawEnds(ss) {
+  const K = BONEHUNT.seesaw;
+  return { l0: ss.x - K.half, l1: ss.x - K.half + K.pad, r0: ss.x + K.half - K.pad, r1: ss.x + K.half,
+    ly: ss.feet - (1 + ss.a) / 2 * K.rise, ry: ss.feet - (1 - ss.a) / 2 * K.rise };
+}
+// standing on the low (launch) end, ready to be flung
+const bonehuntOnLaunch = (st, p) => { const ss = st.seesaw; if (!ss || !p.alive || !p.grounded || Math.abs(bonehuntFeet(p) - ss.feet) > 3) return false; const e = bonehuntSeesawEnds(ss); return bonehuntCx(p) > e.l0 - 6 && bonehuntCx(p) < e.l1 + 6; };
+// landing on the high end slams it down and flings whoever stands on the low end up toward the crypt roof
+function bonehuntSeesawStep(st, dt) {
+  const ss = st.seesaw;
+  if (!ss) return;
+  const K = BONEHUNT.seesaw, e = bonehuntSeesawEnds(ss), upY = ss.feet - K.rise;
+  for (const p of G.players) {
+    const was = ss.feetWas[p.id], f = bonehuntFeet(p), cx = bonehuntCx(p);
+    ss.feetWas[p.id] = f;
+    if (ss.down !== -1 || !p.alive || st.pl[p.id].lock || was > upY + 2 || f <= upY || cx < e.r0 - 4 || cx > e.r1 + 4) continue;
+    // KA-THUNK: the right end goes down, the left end flies up
+    ss.down = 1; ss.backT = 0; ss.wob = 1;
+    Sfx.play('bonehuntSeesawThunk');
+    puff(e.r1 - K.pad / 2, ss.feet - 4, 6, 'rgba(200,190,230,0.8)');
+    for (const q of G.players) {
+      if (q === p || !bonehuntOnLaunch(st, q)) continue;
+      Object.assign(q, { vy: -K.flingV, vx: K.flingVx, carryVx: K.flingVx, grounded: false, jumping: false, coyote: 0, jumpBuf: 0 });
+      q.y -= 2;
+      ss.flings++; st.stats.flings = (st.stats.flings || 0) + 1;
+      Sfx.play('bonehuntSeesawFling', q.id);
+      bonehuntPop(st, bonehuntCx(q), q.y - 10, 'WHEEE!', PCOL[q.id], 16);
+    }
+  }
+  // it tips back (the long end is heavier) once nobody stands on the right end
+  if (ss.down === 1) {
+    const onR = G.players.some(p => p.alive && p.grounded && Math.abs(bonehuntFeet(p) - ss.feet) < 4 && bonehuntCx(p) > e.r0 - 4 && bonehuntCx(p) < e.r1 + 4);
+    ss.backT = onR ? 0 : ss.backT + dt;
+    if (ss.backT > K.back) { ss.down = -1; Sfx.play('bonehuntSeesawCreak'); }
+  }
+  ss.a = approach(ss.a, ss.down, dt * (ss.down === 1 ? 14 : 3));
+  ss.wob = Math.max(0, ss.wob - dt * 3);
 }
 const bonehuntInCrypt = (st, p) => !!st.gate && p.alive && bonehuntCx(p) > st.gate.in0 && bonehuntCx(p) < st.gate.in1 && bonehuntFeet(p) > st.gate.y0 && bonehuntFeet(p) <= st.gate.y1 + 2;
 // Mr. Bones' body, to touch with a bone (null while he hops)
@@ -879,7 +924,16 @@ function bonehuntHints(st, dt) {
     if (lad && Math.abs(bonehuntCx(p) - lad.x) < 30 && Math.abs(bonehuntFeet(p) - lad.feet) < 4 && P.idleT > 0.5) { bonehuntSay(st, p, 'Hold ' + bonehuntKey(p.id, 'jump') + ' to climb Mr. Bones!', false, () => !P.climb && bonehuntLadder(st) === lad && bonehuntFeet(p) > lad.top + 30); continue; }
     const rp = bonehuntRopeAt(st, p);
     if (rp >= 0 && st.bell && !st.bell.rung && !p.input.act) { bonehuntSay(st, p, bonehuntPress(p.id, 'pull the rope', true), false, () => !st.bell.rung && bonehuntRopeAt(st, p) === rp); continue; }
-    // mounds that need a boost or a stack: said near the foot of the wall
+    // the seesaw: said near it while its bone is still up there
+    const ssm = st.seesaw && st.mounds.find(mm => mm.how === 'seesaw' && !mm.done && !st.pieces[mm.piece]);
+    if (ssm && bonehuntFeet(p) > ssm.feet + 2 && Math.abs(bonehuntCx(p) - st.seesaw.x) < 110 && P.idleT > 0.6) {
+      const e = bonehuntSeesawEnds(st.seesaw), unDug = () => !ssm.done && bonehuntFeet(p) > ssm.feet + 2;
+      if (bonehuntOnLaunch(st, p)) bonehuntSay(st, p, 'Stand still! ' + NAMES[o.id] + ' jumps on the high end', false, () => unDug() && bonehuntOnLaunch(st, p));
+      else if (bonehuntCx(p) > e.r0 - 30) bonehuntSay(st, p, bonehuntOnLaunch(st, o) ? bonehuntPressKey(p.id, 'jump', 'jump onto the high end!') : 'Wait for ' + NAMES[o.id] + ' on the low end, then jump on this end', false, () => unDug() && bonehuntCx(p) > e.r0 - 30);
+      else bonehuntSay(st, p, 'Seesaw! One stands on the low end, the other jumps on the high end', false, unDug);
+      continue;
+    }
+    // mounds that need a stack: said near the foot of the wall
     for (const mm of st.mounds) {
       if (mm.done || !mm.cfg.foot || st.pieces[mm.piece]) continue;
       const f = mm.cfg.foot;
@@ -888,8 +942,7 @@ function bonehuntHints(st, dt) {
       const onMe = () => o.alive && o.onPartner && Math.abs(bonehuntFeet(o) - p.y) < 3;   // (the partner is on my head)
       const was = p.onPartner, same = () => unDug() && p.onPartner === was && !onMe();
       if (onMe()) { bonehuntSay(st, p, 'Hold still! ' + NAMES[o.id] + ' jumps from your head', false, () => unDug() && onMe()); break; }
-      if (mm.how === 'boost') bonehuntSay(st, p, p.onPartner ? bonehuntPressKey(p.id, 'jump', 'jump up!') : 'Too high! Hop on ' + NAMES[o.id] + '’s head', false, same);
-      else if (mm.how === 'tower') {
+      if (mm.how === 'tower') {
         const s = st.spots.find(s2 => s2.type === 'stool');
         if (st.mr.form !== 'stool') bonehuntSay(st, p, 'Too high! Call Mr. Bones the stepstool here', false, () => unDug() && st.mr.form !== 'stool');
         else bonehuntSay(st, p, p.onPartner ? bonehuntPressKey(p.id, 'jump', 'jump up!') : (s && O && !o.onPartner && Math.abs(bonehuntFeet(o) - s.r * T) < 3 ? 'Hop on ' + NAMES[o.id] + '’s head!' : 'Stack up: one on Mr. Bones, one on top!'), false, same);
@@ -969,6 +1022,7 @@ MODES.bonehunt = {
     bonehuntSmallStep(st, dt);
     bonehuntGateStep(st, dt);
     bonehuntBellStep(st, dt);
+    bonehuntSeesawStep(st, dt);
     bonehuntMrStep(st, dt);
     bonehuntFlyStep(st, dt);
     bonehuntPitCheck(st);
@@ -1311,6 +1365,35 @@ function bonehuntGrave(x, text, tilt) {
   ctx.font = '700 11px "Atkinson Hyperlegible", system-ui, sans-serif';
   text.forEach((ln, k) => ctx.fillText(ln, 0, -58 + k * 14, 64));
   ctx.restore();
+}
+// the seesaw: a weathered plank on a little tipped-over tombstone, a stone ball weighting the long (left) end
+function bonehuntDrawSeesaw(st, t) {
+  const ss = st.seesaw;
+  if (!ss) return;
+  const K = BONEHUNT.seesaw, e = bonehuntSeesawEnds(ss), F = ss.feet, wob = Math.sin(t * 40) * ss.wob * 1.5;
+  ctx.save();
+  // the pivot: a squat headstone
+  ctx.fillStyle = '#6f6790'; ctx.strokeStyle = '#3f365e'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(ss.x - 14, F); ctx.lineTo(ss.x - 14, F - 10); ctx.arc(ss.x, F - 10, 14, Math.PI, 0); ctx.lineTo(ss.x + 14, F); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#2a2145'; ctx.font = '700 8px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('RIP', ss.x, F - 6);
+  // the plank
+  const ang = Math.atan2(e.ry - e.ly, e.r1 - e.l0), cy = (e.ly + e.ry) / 2 - 4 + wob;
+  ctx.translate(ss.x, cy); ctx.rotate(ang);
+  const L = Math.hypot(e.r1 - e.l0, e.ry - e.ly) / 2 + 2;
+  ctx.fillStyle = '#8a6a4a'; ctx.strokeStyle = '#3f2e22'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.rect(-L, -4, L * 2, 8); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(63,46,34,0.6)'; ctx.lineWidth = 1;
+  for (const x of [-L + K.pad, L - K.pad]) { ctx.beginPath(); ctx.moveTo(x, -4); ctx.lineTo(x, 4); ctx.stroke(); }
+  ctx.fillStyle = '#5c5578'; ctx.beginPath(); ctx.arc(-L + 7, -9, 6, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#3f365e'; ctx.stroke();
+  ctx.restore();
+  // the high end's arrow while its bone is still up on the roof
+  if (ss.down === -1 && st.mounds.some(m => m.how === 'seesaw' && !m.done)) {
+    const bob = Math.sin(t * 5) * 3;
+    ctx.save(); ctx.fillStyle = 'rgba(255,214,90,0.9)'; ctx.strokeStyle = '#3f2e22'; ctx.lineWidth = 1.5;
+    const ax = (e.r0 + e.r1) / 2, ay = e.ry - 26 + bob;
+    ctx.beginPath(); ctx.moveTo(ax - 7, ay - 8); ctx.lineTo(ax + 7, ay - 8); ctx.lineTo(ax + 7, ay); ctx.lineTo(ax + 12, ay); ctx.lineTo(ax, ay + 10); ctx.lineTo(ax - 12, ay); ctx.lineTo(ax - 7, ay); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
 }
 function bonehuntPatch(x, t) {
   for (const [dx, s] of [[-26, 0.8], [0, 1], [24, 0.7]]) bonehuntPumpkin(x + dx, 474, 11 * s, t, false);
@@ -1681,6 +1764,7 @@ function bonehuntDraw(st) {
   bonehuntDrawGate(st, t);
   bonehuntDrawBell(st, t);
   st.spots.forEach((s, k) => bonehuntDrawSpot(st, s, k, t));
+  bonehuntDrawSeesaw(st, t);
   for (const m of st.mounds) if (!m.done) bonehuntDrawMound(st, m, t);
   for (const b of st.bones) bonehuntDrawBone(st, b, t);
   bonehuntDrawMr(st, t);
@@ -1855,6 +1939,9 @@ function bonehuntHud(st) {
 MODES.bonehunt.test = { BONEHUNT, bonehuntDone, bonehuntSpotAt, bonehuntMoundAt, bonehuntEndAt, bonehuntOnMr, bonehuntLadder, bonehuntNextJob };
 
 /* ---------- sounds ---------- */
+Sfx.extra.bonehuntSeesawThunk = function () { this.tone(110, 0.16, 'square', 0.05, 70); this.noise(0.12, { type: 'lowpass', f: 600, to: 200, vol: 0.05 }); };
+Sfx.extra.bonehuntSeesawFling = function (pitch) { this.tone(300 * pitch, 0.35, 'triangle', 0.045, 900 * pitch); };
+Sfx.extra.bonehuntSeesawCreak = function () { this.tone(240, 0.25, 'sawtooth', 0.012, 180); };
 Sfx.extra.bonehuntDig = function (pitch) { this.tone(180 * pitch, 0.07, 'square', 0.035, 110 * pitch); this.tone(900, 0.03, 'triangle', 0.02, 500, 0.02); };
 Sfx.extra.bonehuntSwish = function (pitch) { this.tone(500 * pitch, 0.06, 'sine', 0.02, 260 * pitch); };
 Sfx.extra.bonehuntUnearth = function () { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.11, 'triangle', 0.05, null, i * 0.06)); this.tone(1568, 0.2, 'sine', 0.03, null, 0.24); };

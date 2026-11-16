@@ -160,7 +160,7 @@ function ironFistEye(st, dt) {
     return;
   }
   if (E.st === 'done') { E.x += (960 - E.x) * Math.min(1, dt * 2); return; }
-  const inZone = ps.filter(p => p.alive && ironFistZone(p) === lk.zone && !ironHauled(p));
+  const inZone = ps.filter(p => p.alive && ironFistZone(p) === lk.zone);
   if (E.st === 'hunt') {
     // who: the taunter, else whoever moved last (an idle hero is never picked)
     // (a taunt LOCKS it on: it stays on the last one to taunt until they leave the zone or the lock breaks, so a
@@ -337,7 +337,7 @@ function ironFistMice(st, dt) {
     m.x += m.dir * M.v * dt;
     if (m.x < rng[0]) { m.x = rng[0]; m.dir = 1; } if (m.x > rng[1]) { m.x = rng[1]; m.dir = -1; }
     for (const p of G.players) {
-      if (!p.alive || ironHauled(p)) continue;
+      if (!p.alive) continue;
       const feet = p.y + p.h, ox = p.x + p.w > m.x - M.w / 2 && p.x < m.x + M.w / 2;
       if (!ox) continue;
       if (p.vy > 0 && feet >= m.y - M.h - 4 && feet <= m.y - M.h + 12) {

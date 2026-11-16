@@ -2,25 +2,27 @@
 'use strict';
 
 /* ===== 17-3 Waterfall Climb (mode 'waterfall', team) — Gavyn's pick =====
-   "A scrolling climb up a waterfall, giving each other boosts up the ledges." One tall climb (def.climb, 103 rows) beside a
+   "A scrolling climb up a waterfall, helping each other up the ledges." One tall climb (def.climb, 103 rows) beside a
    big jungle waterfall. The camera scrolls up with the pair and always keeps the lower player on screen; the higher one
    can't climb more than WFALL.maxSep above the partner ("Wait for me!").
-   - Boost walls (a vine post V on a ledge 5-6 tiles high): too high for a jump (about 3.6 tiles) or a jump off a standing
-     partner's head (4.5 tiles). One BRACES (hold ▼, or hold the action away from a post): they can't move, and a partner
-     who jumps off their hands flies about 7.6 tiles (WFALL.boostV). Then the one on top presses the action at the post:
+   - Lift walls (a vine post V on a ledge 5-6 tiles high): too high for a jump (about 3.6 tiles) or a jump off a standing
+     partner's head (4.5 tiles). At the foot is a BAMBOO LIFT (Gavyn, 2026-11-15: it replaced the braced-hands boost): a
+     bamboo deck by the wall face, hung from a pulley on the ledge, with a bamboo lever 58 px out from the wall. One stands
+     on the deck, the other presses the action at the lever: the deck hauls the rider up and they step onto the ledge
+     (nobody can ride it alone). Then the one on top presses the action at the post:
      the vine unrolls down the wall. The one below grabs it (▲, or jump into it) and climbs holding ▲ or jump (keyboard
      and touch have no ▲ of their own: W, ↑ and touch ▲ are jump); jump + ◀/▶ away from the wall hops off. Holding the action at
      the post meanwhile heaves them up faster. A vine stays down once dropped (so a fallen friend can climb back alone).
    - Someone standing on your head is carried when you walk, and you can't jump while carrying them ("Oof!"), so stacked
      jumps are no shortcut. Partners walk through each other.
-   - Wet rocks (s) are slippery (a brace still holds). Springy moss (m) throws a jump about 5.3 tiles. Friendly frogs (r)
+   - Wet rocks (s) are slippery. Springy moss (m) throws a jump about 5.3 tiles. Friendly frogs (r)
      bounce you about 6 tiles ("Ribbit!"). Mist geysers (g) bubble, then puff and lift you about 8.5 tiles. A stream (w)
      pushes you down and kills jumps while it flows; a log jams its top now and then and the water stops for a while. A
      drifting log (L) carries you over a pool.
    - Falling into water (~), or falling more than WFALL.splashBelow tiles below the team checkpoint, is a "Splash!": a
      bubble floats you back to the team checkpoint (C). A checkpoint counts for the team once BOTH players have reached
      it, so falling never puts you above your partner's last checkpoint and never skips a wall.
-   - Help, always gold and announced: Super boost (after 3 missed boosts at a wall, or 50 s at one wall's foot), Big log
+   - Help, always gold and announced: Big log
      jam (after 3 washes in a stream), Gold raft (after 2 splashes in a log pool). Tico the toucan flies over with a hint
      after a while with no progress.
    - The climb ends when both stand by the toucan nest at the top: Tico shows the treasure. Medal by time and splashes
@@ -30,7 +32,7 @@
    place. Particles made during the step are moved onto the screen the same way.
    Every top-level name starts with wfall / WFALL (Sfx.extra.waterfall* too); level state lives in G.mst. */
 const WFALL = {
-  boostV: 900, superV: 1010, frogV: 860, mossV: 800, mossSoft: 0.45,
+  liftW: 30, leverOff: 58, leverR: 18, liftV: 170, sinkV: 140, stepT: 0.35, frogV: 860, mossV: 800, mossSoft: 0.45,
   climbV: 125, heave: 1.9, vineRoll: 0.7, postReach: 28, vineReach: 15,
   slipFric: 420, slipAcc: 1000,
   streamDown: 2600, streamKill: 5200, streamSlow: 0.55, warn: 0.9,
@@ -39,7 +41,7 @@ const WFALL = {
   splashBelow: 2.5, float: 1.15,
   maxSep: 13.5, camTopMargin: 96, camBotMargin: 40,
   cpReach: 3.6, nestReach: 3.4,
-  superMiss: 3, superStuck: 50, jamWash: 3, raftSplash: 2, ticoAfter: 22,
+  jamWash: 3, raftSplash: 2, ticoAfter: 22,
   introHold: 0.4, winHold: 3.4, newsLife: 3.8, chipT: 9, chipAgain: 16,
 };
 const WFALL_SOLID = '#smg';
@@ -51,7 +53,7 @@ function wfallDev(id) { try { return actKey(id); } catch (e) { return 'kb'; } }
 const wfallSolo = () => typeof cpuSolo === 'function' && cpuSolo();
 function wfallKey(id, what) {
   const d = wfallDev(id), solo = wfallSolo();
-  if (what === 'act') return d === 'pad' ? glyph('act') : d === 'touch' ? 'the help button' : solo ? 'F' : id === 0 ? 'F' : '/';
+  if (what === 'act') return d === 'pad' ? glyph('act') : d === 'touch' ? 'the use button' : solo ? 'F' : id === 0 ? 'F' : '/';
   if (what === 'down') return d === 'pad' ? 'stick down' : d === 'touch' ? '▼' : solo ? 'S' : id === 0 ? 'S' : '↓';
   if (what === 'up') return d === 'pad' ? 'stick up' : d === 'touch' ? '▲' : solo ? 'W' : id === 0 ? 'W' : '↑';
   return '';
@@ -82,7 +84,7 @@ function wfallBuild(st, def) {
     // (a marker inside a stream is still stream water)
     g[r][c] = (c > 0 && g[r][c - 1] === 'w') || (c < COLS - 1 && g[r][c + 1] === 'w') ? 'w' : '.';
   }
-  // boost walls, from the vine posts: the post stands on the ledge's top edge, the wall face drops beside it
+  // lift walls, from the vine posts: the post stands on the ledge's top edge, the wall face drops beside it
   st.walls = posts.map(({ c, r }) => {
     const leftOpen = !isS(c - 1, r + 1), side = leftOpen ? 1 : -1;      // side: +1 the ledge is to the right of the face
     const faceX = leftOpen ? c * T : (c + 1) * T, bc = leftOpen ? c - 1 : c + 1;
@@ -90,7 +92,10 @@ function wfallBuild(st, def) {
     const topFeet = (r + 1) * T, baseFeet = br * T;
     return { c, r, side, faceX, topFeet, baseFeet, tall: Math.round((baseFeet - topFeet) / T), postX: c * T + T / 2,
       vineX: faceX - side * 10, boostX: faceX - side * (PW / 2 + 1), down: false, roll: 0, sway: 0,
-      done: false, up: [false, false], tries: 0, misses: 0, footT: 0, heave: 0, flash: 0 };
+      done: false, up: [false, false], heave: 0, flash: 0,
+      // the bamboo lift: its deck beside the wall face, the lever further out
+      lift: { x0: side > 0 ? faceX - WFALL.liftW : faceX, x1: side > 0 ? faceX : faceX + WFALL.liftW, leverX: faceX - side * WFALL.leverOff,
+        h: 0, phase: 'down', rider: -1, puller: -1, t: 0, pullT: 0 } };
   }).sort((a, b) => b.baseFeet - a.baseFeet).map((w, i) => Object.assign(w, { i }));
   // checkpoints (the starts count as the first), bottom first
   st.cps = [{ x: (st.spawns[0].x + st.spawns[1].x) / 2 + PW / 2, feet: st.spawns[0].y + PH, start: true }]
@@ -179,9 +184,9 @@ function wfallMoveY(st, p, dy) {
   if (dy > 0) {
     const r = Math.floor((p.y + p.h - 0.001) / T), top = r * T;
     for (let c = c1; c <= c2; c++) if (wfallSolidAt(st, c, r)) { p.y = top - p.h; P.landV = p.vy; P.landOn = wfallCell(st, c, r); p.vy = 0; return p.y - y0; }
-    // the partner's head (hands, when they brace)
+    // the partner's head
     const o = other(p), O = st.pl[o.id];
-    if (o.alive && o.grounded && O.vine < 0 && !O.splash && p.x < o.x + o.w - 4 && p.x + p.w > o.x + 4 && prevBottom <= o.y + 1 && p.y + p.h >= o.y) {   // (a partner in mid-jump is no ground: that gave a second full jump, higher than a boost)
+    if (o.alive && o.grounded && O.vine < 0 && !O.splash && p.x < o.x + o.w - 4 && p.x + p.w > o.x + 4 && prevBottom <= o.y + 1 && p.y + p.h >= o.y) {   // (a partner in mid-jump is no ground: that gave a second full jump)
       p.y = o.y - p.h; P.landV = p.vy; P.landOn = 'head'; p.vy = 0; return p.y - y0;
     }
     for (const ln of st.lanes) {
@@ -246,36 +251,26 @@ function wfallPlayer(st, p, dt) {
   if (P.splash) { wfallFloatStep(st, p, dt); return; }
   if (!p.alive) return;
   if (P.vine >= 0) { wfallClimb(st, p, dt); return; }
+  if (P.ride >= 0) return;   // (on a rising lift: wfallLifts moves them)
   const was = p.grounded, ground = was ? wfallGround(st, p) : '';
   const post = wfallPostAt(st, p);
   P.post = post ? post.i : -1;
-  // brace: hold ▼, or hold the action away from a vine post (not while standing on someone, or on a slippery slide)
-  const wantBrace = inp.down || (inp.act && !post && !P.actLatch);
-  P.brace = was && ground && ground !== 'head' && wantBrace;
-  if (!inp.act) P.actLatch = false;
-  P.braceT = P.brace ? P.braceT + dt : 0;
   const carrying = O.onHead && o.alive;
-  // jumps that can't happen: braced (you are the step), or carrying someone ("Oof!")
-  if ((P.brace || carrying) && (p.pendingJump || p.jumpBuf > 0)) {
-    if (carrying && !P.brace && P.oofCD <= 0) { P.oofCD = 2.5; wfallPop(st, p.x + p.w / 2, p.y - 18, 'Oof! Too heavy to jump', PCOL[p.id], 14); }
+  // a jump that can't happen: carrying someone ("Oof!")
+  if (carrying && (p.pendingJump || p.jumpBuf > 0)) {
+    if (P.oofCD <= 0) { P.oofCD = 2.5; wfallPop(st, p.x + p.w / 2, p.y - 18, 'Oof! Too heavy to jump', PCOL[p.id], 14); }
     p.pendingJump = false; p.jumpBuf = 0;
   }
   // physics tweaks for this player's control step
   const S = { g: PHYS.g, jumpV: PHYS.jumpV, fricG: PHYS.fricG, accG: PHYS.accG, maxFall: PHYS.maxFall };
-  const onHeadBraced = ground === 'head' && O.brace;
-  if (ground === 's' && !P.brace) { PHYS.fricG = WFALL.slipFric; PHYS.accG = WFALL.slipAcc; }
-  if (onHeadBraced) PHYS.jumpV = st.superBoost ? WFALL.superV : WFALL.boostV;
-  else if (ground === 'm') PHYS.jumpV = WFALL.mossV;
-  const realInput = p.input;
-  if (P.brace) p.input = { left: false, right: false, jump: false, down: true, up: false, act: inp.act };
+  if (ground === 's') { PHYS.fricG = WFALL.slipFric; PHYS.accG = WFALL.slipAcc; }
+  if (ground === 'm') PHYS.jumpV = WFALL.mossV;
   const vy0 = p.vy;
-  try { control(p, dt); } finally { Object.assign(PHYS, S); p.input = realInput; }
-  if (P.brace) { p.vx = approach(p.vx, 0, 4000 * dt); p.sx = 1.22; p.sy = 0.74; }
+  try { control(p, dt); } finally { Object.assign(PHYS, S); }
   P.oofCD -= dt;
-  const jumped = was && p.vy < Math.min(vy0, 0) - 50;   // (vy0 can be < 0: landing on a rising partner's hands)
+  const jumped = was && p.vy < Math.min(vy0, 0) - 50;
   if (jumped) {
-    if (onHeadBraced) { p.vy = -(st.superBoost ? WFALL.superV : WFALL.boostV); wfallBoost(st, p, o); }
-    else if (ground === 'm') { p.vy = -WFALL.mossV; p.jumping = false; P.mossJump = true; wfallPop(st, p.x + p.w / 2, p.y + p.h + 4, 'Boing!', '#b6f07a', 15); Sfx.play('waterfallBoing', p.id); st.stats.moss++; }
+    if (ground === 'm') { p.vy = -WFALL.mossV; p.jumping = false; P.mossJump = true; wfallPop(st, p.x + p.w / 2, p.y + p.h + 4, 'Boing!', '#b6f07a', 15); Sfx.play('waterfallBoing', p.id); st.stats.moss++; }
     else if (ground === 'head') P.headHop = true;
   }
   // the stream pushes down and slows you while it flows; a geyser puff lifts you
@@ -321,42 +316,66 @@ function wfallPlayer(st, p, dt) {
       p.vy = -Math.min((P.landV || 0) * WFALL.mossSoft, 360); p.grounded = false; p.onPartner = false; P.onHead = false;
       Sfx.play('waterfallBoing', p.id);
     } else if ((P.landV || 0) > 260) { p.sx = 1.25; p.sy = 0.78; puff(p.x + p.w / 2, p.y + p.h, 5, 'rgba(255,255,255,0.75)'); Sfx.play('land'); }
-    if (P.boostFrom >= 0) wfallBoostLanded(st, p);
     P.mossJump = false; P.headHop = false;
   }
   P.landV = 0;
 }
 const wfallLaneUnder = (st, p) => { for (const ln of st.lanes) if (Math.abs(p.y + p.h - ln.top) <= 1.5 && p.x < ln.x + ln.w - 3 && p.x + p.w > ln.x + 3) return ln.i; return -1; };
 
-/* ---------- boosts, vines ---------- */
-// the wall whose foot the booster stands at (null when the boost isn't at a wall)
-function wfallWallAtFoot(st, p) {
-  const feet = p.y + p.h, cx = p.x + p.w / 2;
-  for (const w of st.walls) if (Math.abs(feet - w.baseFeet) < 3 && Math.abs(cx - w.boostX) < 70) return w;
-  return null;
+/* ---------- the bamboo lift, vines ---------- */
+// p's feet in climb coordinates (inside the mode's step p.y already is; outside it, p.y is on screen)
+const wfallFeet = (st, p) => p.y + p.h + (st.ticking ? 0 : st.camY);
+// p stands on the lift's deck at the foot of wall w (ready to be hauled up)
+function wfallOnDeck(st, p, w) {
+  const L = w.lift, cx = p.x + p.w / 2, P = st.pl[p.id];
+  return p.alive && !P.splash && P.vine < 0 && P.ride < 0 && p.grounded && Math.abs(wfallFeet(st, p) - w.baseFeet) < 2 && cx > L.x0 - 6 && cx < L.x1 + 6;
 }
-function wfallBoost(st, p, o) {
-  const P = st.pl[p.id], O = st.pl[o.id];
-  p.jumping = false;   // (a boost can't be cut short)
-  p.sx = 0.7; p.sy = 1.35; O.pushT = 0.35;
-  const w = wfallWallAtFoot(st, o);
-  P.boostFrom = w ? w.i : 99;
-  if (w) w.tries++;
-  st.stats.boosts[o.id]++;
-  wfallPop(st, o.x + o.w / 2, o.y - 8, st.superBoost ? 'SUPER BOOST!' : 'Boost!', st.superBoost ? C.gold : PCOL[o.id], 20);
-  Sfx.play('waterfallBoost', p.id); rumble(p.id, 0.3, 0.5, 120); rumble(o.id, 0.4, 0.3, 140);
-  for (let i = 0; i < 10; i++) G.particles.push({ x: o.x + o.w / 2, y: o.y, vx: (Math.random() - 0.5) * 220, vy: -Math.random() * 160, life: 0.5, max: 0.5, col: st.superBoost ? C.gold : 'rgba(255,255,255,0.9)', size: 3 + Math.random() * 3, grav: 300, kind: 'dot' });
+// p stands at wall w's lever
+function wfallAtLever(st, p, w) {
+  const P = st.pl[p.id];
+  return p.alive && !P.splash && P.vine < 0 && p.grounded && Math.abs(wfallFeet(st, p) - w.baseFeet) < 2 && Math.abs(p.x + p.w / 2 - w.lift.leverX) < WFALL.leverR;
 }
-// a boosted player landed: on the wall's top (Up!) or back at its foot (a miss)
-function wfallBoostLanded(st, p) {
-  const P = st.pl[p.id], w = st.walls[P.boostFrom];
-  P.boostFrom = -1;
-  if (!w) return;
-  const feet = p.y + p.h;
-  if (feet <= w.topFeet + 2) { wfallPop(st, p.x + p.w / 2, p.y - 16, 'Up!', C.gold, 20); Sfx.play('waterfallUp', p.id); }
-  else if (feet >= w.baseFeet - 2) {
-    w.misses++;
-    if (!st.superBoost && w.misses >= WFALL.superMiss) wfallGold(st, 'boost');
+function wfallLiftGo(st, p, w) {
+  const L = w.lift, o = other(p), O = st.pl[o.id];
+  if (L.phase !== 'down') return;
+  L.phase = 'up'; L.t = 0; L.pullT = 0.5; L.rider = -1; L.puller = p.id;
+  Sfx.play('waterfallLever', p.id);
+  if (wfallOnDeck(st, o, w)) {
+    L.rider = o.id; O.ride = w.i; o.vx = 0; o.vy = 0; O.onHead = false;
+    wfallPop(st, o.x + o.w / 2, o.y - 16, 'Going up!', PCOL[p.id], 16);
+    rumble(o.id, 0.2, 0.4, 90);
+  }
+}
+// the lifts: up with the rider, a step onto the ledge at the top, then back down
+function wfallLifts(st, dt) {
+  for (const w of st.walls) {
+    const L = w.lift;
+    L.pullT = Math.max(0, L.pullT - dt);
+    if (L.phase === 'down') continue;
+    const full = w.baseFeet - w.topFeet;
+    L.t += dt;
+    if (L.phase === 'up') {
+      L.h = Math.min(full, L.h + WFALL.liftV * dt);
+      if (L.h >= full) { L.phase = 'top'; L.t = 0; Sfx.play('waterfallThunk'); }
+    } else if (L.phase === 'top') {
+      if (L.rider < 0 && L.t >= 0.6) { L.phase = 'sink'; L.t = 0; }
+    } else if (L.phase === 'sink') {
+      L.h = Math.max(0, L.h - WFALL.sinkV * dt);
+      if (L.h <= 0) { L.phase = 'down'; L.t = 0; }
+    }
+    if (L.rider < 0) continue;
+    const q = G.players[L.rider], Q = st.pl[q.id], sx = (L.x0 + L.x1) / 2 - q.w / 2;
+    if (!q.alive || Q.splash) { L.rider = -1; Q.ride = -1; continue; }
+    q.vx = 0; q.vy = 0; q.grounded = true; q.jumping = false; q.face = w.side;
+    if (L.phase === 'up' || (L.phase === 'top' && L.t <= 0)) { q.x = sx; q.y = w.baseFeet - L.h - q.h; continue; }
+    const lx = w.side > 0 ? w.faceX + 4 : w.faceX - 4 - q.w, k = clamp(L.t / WFALL.stepT, 0, 1), e = k * k * (3 - 2 * k);
+    q.x = sx + (lx - sx) * e; q.y = w.topFeet - q.h - Math.sin(Math.PI * k) * 10;
+    if (k >= 1) {
+      q.x = lx; q.y = w.topFeet - q.h; q.sx = 0.8; q.sy = 1.2; Q.ride = -1; L.rider = -1;
+      st.stats.lifts[L.puller]++;
+      wfallPop(st, q.x + q.w / 2, q.y - 16, 'Up!', C.gold, 20); Sfx.play('waterfallUp', q.id);
+      L.phase = 'sink'; L.t = 0;
+    }
   }
 }
 function wfallAct(st, p) {
@@ -365,8 +384,12 @@ function wfallAct(st, p) {
   p.pendingAct = false;
   if (!p.alive || P.splash || st.phase !== 'play') return;
   const w = P.post >= 0 ? st.walls[P.post] : null;
+  if (!w) {
+    // at a lever: send the lift up
+    for (const lw of st.walls) if (wfallAtLever(st, p, lw)) { wfallLiftGo(st, p, lw); return; }
+    return;
+  }
   if (w) {
-    P.actLatch = true;
     if (!w.down) {
       w.down = true; w.flash = 1;
       st.stats.vines[p.id]++;
@@ -378,7 +401,7 @@ function wfallAct(st, p) {
 // grab a lowered vine: ▲, or jump into it
 function wfallGrab(st, p) {
   const P = st.pl[p.id];
-  if (!p.alive || P.splash || P.vine >= 0 || P.boostFrom >= 0 && p.vy < 0) return;
+  if (!p.alive || P.splash || P.vine >= 0 || P.ride >= 0) return;
   if (!(p.input.up || (!p.grounded && p.input.jump) || p.pendingJump && !p.grounded)) return;
   if (P.grabCD > 0) return;
   const cx = p.x + p.w / 2, feet = p.y + p.h;
@@ -395,7 +418,7 @@ function wfallClimb(st, p, dt) {
   const P = st.pl[p.id], w = st.walls[P.vine], inp = p.input, o = other(p), O = st.pl[o.id];
   const heave = o.alive && !O.splash && O.post === w.i && o.input.act;
   w.heave = approach(w.heave, heave ? 1 : 0, dt * 6);
-  const v = WFALL.climbV * (heave ? WFALL.heave : 1) * (st.superBoost ? 1.15 : 1);
+  const v = WFALL.climbV * (heave ? WFALL.heave : 1);
   // ▲ climbs: the stick (controller), or the jump key / button held (keyboard W and ↑ and touch ▲ are jump keys)
   const upHeld = inp.up || (inp.jump && !inp.down);
   const dir = (upHeld ? -1 : 0) + (inp.down ? 1 : 0) + (heave && !inp.down ? -0.6 : 0);
@@ -430,7 +453,8 @@ function wfallSplash(st, p, why) {
   if (!p.alive || P.splash) return;
   const cp = st.cps[st.cp], spot = cp.spots[p.id], cx = p.x + p.w / 2, cy = p.y + p.h / 2;
   P.splash = { t: 0, x0: cx, y0: cy, x1: spot.x + PW / 2, y1: spot.y + PH / 2 };
-  P.vine = -1; P.brace = false; P.onHead = false; P.boostFrom = -1; P.onLog = -1;
+  P.vine = -1; P.ride = -1; P.onHead = false; P.onLog = -1;
+  for (const w of st.walls) if (w.lift.rider === p.id) w.lift.rider = -1;
   p.alive = false;
   st.stats.splash[p.id]++; st.roomSplash++;
   wfallPop(st, cx, cy - 18, 'Splash!', '#bfe9ff', 22);
@@ -494,9 +518,6 @@ function wfallWalls(st, dt) {
       if (!w.up[p.id]) { w.up[p.id] = true; st.progressT = 0; }
     }
     if (!w.done && w.up[0] && w.up[1]) w.done = true;
-    // both at its foot (or one on it): the stuck clock for Super boost
-    const atFoot = G.players.every(p => p.alive && Math.abs(p.y + p.h - w.baseFeet) < 4 && Math.abs(p.x + p.w / 2 - w.boostX) < 9 * T);
-    if (!w.done && !w.up[0] && !w.up[1] && atFoot) { w.footT += dt; if (!st.superBoost && w.footT >= WFALL.superStuck) wfallGold(st, 'boost'); }
   }
 }
 
@@ -546,12 +567,11 @@ const wfallOnScreen = (st, y) => y > st.camY - 60 && y < st.camY + H + 60;
 
 /* ---------- help: gold, Tico the toucan, news ---------- */
 function wfallGold(st, kind, thing) {
-  if (kind === 'boost') { if (st.superBoost) return; st.superBoost = true; wfallNews(st, 'Super boost! Gold hands throw you higher', true); }
-  else if (kind === 'jam') { thing.jam = true; wfallNews(st, 'Big log jam! The water stays off longer', true); }
+  if (kind === 'jam') { thing.jam = true; wfallNews(st, 'Big log jam! The water stays off longer', true); }
   else if (kind === 'raft') { thing.gold = true; wfallNews(st, 'Gold raft! A bigger, slower log', true); }
   st.goldUsed.push(kind);
   Sfx.play('waterfallGold');
-  st.tico.say = { boost: 'Golden hands!', jam: 'I jammed the log!', raft: 'Big raft for you!' }[kind]; st.tico.sayT = 2.6;
+  st.tico.say = { jam: 'I jammed the log!', raft: 'Big raft for you!' }[kind]; st.tico.sayT = 2.6;
 }
 function wfallNews(st, s, gold, life) { st.news = { s, gold: !!gold, t: 0, life: life || WFALL.newsLife }; }
 function wfallPop(st, x, y, s, col, size) { st.pops.push({ x, y, s, col: col || C.gold, size: size || 18, t: 0 }); }
@@ -568,7 +588,7 @@ function wfallTrack(st) {
   for (const p of G.players) {
     const P = st.pl[p.id];
     if (!p.alive) continue;
-    if (P.vine >= 0) { const w = st.walls[P.vine]; const s = st.route.findIndex(r => r.go === 'wall' && r.wall === w.i); if (s >= 0) P.step = s; continue; }
+    if (P.vine >= 0 || P.ride >= 0) { const w = st.walls[P.vine >= 0 ? P.vine : P.ride]; const s = st.route.findIndex(r => r.go === 'wall' && r.wall === w.i); if (s >= 0) P.step = s; continue; }
     if (!p.grounded || P.onHead) { if (P.onHead) { const o = other(p); const so = st.pl[o.id].step; if (so >= 0) P.step = so; } continue; }
     const s = wfallStepAt(st, p);
     if (s >= 0) { if (s > P.best) { P.best = s; st.progressT = 0; } P.step = s; }
@@ -582,23 +602,23 @@ function wfallJob(st, id) {
   if (P.vine >= 0) return { k: 'climb' };
   if (!s) return null;
   const nm = NAMES[1 - id];
-  // stacked up away from a boost wall: the carrier can't jump, so the one on top steps off
+  if (P.ride >= 0) return { k: 'riding' };
+  // stacked up away from a wall: the carrier can't jump, so the one on top steps off
   if (s.go !== 'wall' && P.onHead) return { k: 'hopOff' };
   if (s.go !== 'wall' && O.onHead && o.alive) return { k: 'carry' };
   if (s.go === 'wall') {
     const w = st.walls[s.wall];
     const oStep = O.step, oUp = o.alive && oStep > P.step;
     if (oUp) return w.down ? { k: 'grab', w } : { k: 'waitVine', w };
-    if (O.vine >= 0) return { k: 'none' };
-    // flying up off the partner's hands
-    if (P.boostFrom >= 0 && !p.grounded) return { k: 'fly' };
-    // who should brace: the computer by default in 1-player mode; with two people, Pip on even walls
-    const booster = wfallSolo() ? (cpuOn(id) ? id : 1 - id) : (w.i % 2 === 0 ? 0 : 1);
-    if (P.brace) return O.onHead ? { k: 'braceHold' } : O.brace && booster !== id ? { k: 'bothBrace' } : { k: 'bracing' };
-    if (P.onHead) return O.brace ? { k: 'boostJump' } : { k: 'askBrace' };
-    if (O.brace && Math.abs(o.x - w.boostX + o.w / 2) < 60) return { k: 'hopOn' };
+    if (O.vine >= 0 || O.ride >= 0 || w.lift.phase !== 'down') return { k: 'none' };
     if (oStep !== P.step) return { k: 'waitFriend', w };
-    return booster === id ? { k: 'brace', w } : { k: 'hopOn', w, wait: true };
+    // who pulls the lever: the computer by default in 1-player mode; with two people, Pip on even walls. Whoever is
+    // already in a spot keeps it.
+    if (wfallOnDeck(st, o, w)) return wfallAtLever(st, p, w) ? { k: 'pull', w } : { k: 'lever', w };
+    if (wfallAtLever(st, o, w)) return wfallOnDeck(st, p, w) ? { k: 'onDeck', w } : { k: 'deck', w };
+    const puller = wfallSolo() ? (cpuOn(id) ? id : 1 - id) : (w.i % 2 === 0 ? 0 : 1);
+    if (puller === id) return { k: 'lever', w };
+    return wfallOnDeck(st, p, w) ? { k: 'onDeck', w } : { k: 'deck', w };
   }
   // on top of a wall the partner hasn't climbed yet
   const prevWall = st.route.slice(0, P.step).reverse().find(r => r.go === 'wall');
@@ -613,14 +633,11 @@ function wfallJobText(st, id, j) {
   const nm = NAMES[1 - id], cpu = wfallCpu(1 - id), act = wfallKey(id, 'act'), dn = wfallKey(id, 'down'), up = wfallKey(id, 'up');
   const d = wfallDev(id), hold = k => (d === 'pad' ? 'hold the ' + k : 'hold ' + k);
   switch (j.k) {
-    case 'brace': return ['Brace by the wall: ' + hold(dn), cpu ? nm + ' hops on and jumps!' : nm + ' jumps off your hands'];
-    case 'bracing': return ['Bracing! Stay put', nm + ' hops on your hands'];
-    case 'bothBrace': return [cpu ? nm + ' is bracing too' : 'You’re both bracing!', 'Let go of ' + dn + ' and hop on ' + nm + '’s hands'];
-    case 'fly': return ['BIG boost! Steer onto the ledge', ''];
-    case 'braceHold': return ['Hold it! ' + nm + ' jumps off', ''];
-    case 'hopOn': return [j.wait ? 'Hop on ' + nm + '’s hands when they brace' : 'Hop on ' + nm + '’s hands!', 'Then jump for a BIG boost'];
-    case 'boostJump': return ['Jump now: BIG boost!', 'Steer onto the ledge'];
-    case 'askBrace': return [nm + ' isn’t bracing', cpu ? 'Hop down and wait a moment' : nm + ': ' + 'hold ' + wfallKey(1 - id, 'down') + ' to brace'];
+    case 'lever': return ['Go to the bamboo lever', nm + ' rides the lift up'];
+    case 'pull': return ['Pull the lever: press ' + act, nm + ' is on the lift'];
+    case 'deck': return ['Stand on the bamboo lift', cpu ? nm + ' pulls the lever' : nm + ' pulls the lever'];
+    case 'onDeck': return [cpu ? 'Hold on: ' + nm + ' pulls the lever' : 'Wait for ' + nm + ' to pull the lever', ''];
+    case 'riding': return ['Going up!', ''];
     case 'waitFriend': return ['Wait here for ' + nm, ''];
     case 'hopOff': return ['Hop off ' + nm + '’s head', nm + ' can’t jump with you up there'];
     case 'carry': return [nm + ' is riding on your head', 'You can’t jump while carrying'];
@@ -674,7 +691,9 @@ function wfallStep(st, dt) {
   // climb coordinates for the step
   for (const p of ps) p.y += st.camY;
   const n0 = G.particles.length;
+  st.ticking = true;
   try { wfallTick(st, dt); } finally {
+    st.ticking = false;
     for (const p of ps) p.y -= st.camY;
     for (let i = n0; i < G.particles.length; i++) G.particles[i].y -= st.camY;
   }
@@ -696,6 +715,7 @@ function wfallTick(st, dt) {
   wfallWorld(st, dt);
   for (const p of ps) { const P = st.pl[p.id]; P.grabCD -= dt; P.waitCD -= dt; P.pushT = Math.max(0, P.pushT - dt); }
   for (const p of ps) wfallGrab(st, p);
+  wfallLifts(st, dt);
   const yb = ps.map(p => p.y);
   // the carrier moves first, then whoever stands on them
   const order = st.pl[0].onHead ? [ps[1], ps[0]] : [ps[0], ps[1]];
@@ -970,7 +990,32 @@ function wfallDrawVine(st, w, t) {
   ctx.lineCap = 'butt';
   ctx.fillStyle = '#4fbf3f';
   for (let yy = top + 20; yy < top + len - 4; yy += 22) { const s = yy % 44 < 22 ? 1 : -1; ctx.beginPath(); ctx.ellipse(x + s * 6 + sway * 0.6, yy, 6, 3, s * 0.5, 0, Math.PI * 2); ctx.fill(); }
-  if (st.superBoost) { ctx.save(); ctx.globalAlpha = 0.5; ctx.strokeStyle = C.gold; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.moveTo(x - 5, top + 8); ctx.lineTo(x - 5 + sway * 0.5, top + len); ctx.stroke(); ctx.restore(); }
+}
+// the bamboo lift: a pulley on a bamboo frame on the ledge, two vine ropes to a bamboo deck, and the lever at the foot
+function wfallDrawLift(st, w, t) {
+  const L = w.lift, cx = (L.x0 + L.x1) / 2, dy = w.baseFeet - L.h, top = w.topFeet, armY = top - 46;
+  const cane = '#c9b25a', caneD = '#7d6a2a', knot = '#8f7a34';
+  ctx.lineCap = 'round';
+  const px = w.faceX + w.side * 10;
+  ctx.strokeStyle = caneD; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(px, top); ctx.lineTo(px, armY); ctx.lineTo(cx, armY); ctx.stroke();
+  ctx.strokeStyle = cane; ctx.lineWidth = 3.5; ctx.stroke();
+  ctx.fillStyle = knot; for (const yy of [top - 14, top - 30]) { ctx.fillRect(px - 3.5, yy, 7, 2); }
+  ctx.fillStyle = '#6b4a2a'; ctx.strokeStyle = '#3a2614'; ctx.lineWidth = 1.5; circle(cx, armY + 3, 4.5); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#3f8f2c'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(cx - 1, armY + 6); ctx.lineTo(L.x0 + 3, dy - 1); ctx.moveTo(cx + 1, armY + 6); ctx.lineTo(L.x1 - 3, dy - 1); ctx.stroke();
+  // the deck: three canes lashed together
+  for (let k = 0; k < 2; k++) { ctx.fillStyle = k ? cane : caneD; rr(L.x0 - 1, dy - 1 + k * 3, L.x1 - L.x0 + 2, 4, 2); ctx.fill(); }
+  ctx.strokeStyle = '#3f8f2c'; ctx.lineWidth = 1.5; for (const xx of [L.x0 + 5, L.x1 - 5]) { ctx.beginPath(); ctx.moveTo(xx, dy - 1); ctx.lineTo(xx, dy + 6); ctx.stroke(); }
+  const live = !w.done && !w.up[0] && !w.up[1] && L.phase === 'down';
+  if (live) { ctx.fillStyle = 'rgba(255,197,61,' + (0.18 + 0.12 * (reduceMotion ? 1 : Math.sin(t * 4))).toFixed(3) + ')'; rr(L.x0 - 2, w.baseFeet - 4, L.x1 - L.x0 + 4, 6, 3); ctx.fill(); }
+  // the lever: a stone block with a bamboo handle that swings toward the wall when pulled
+  const lx = L.leverX, lg = w.baseFeet, lean = (L.pullT > 0 ? 0.5 : -0.5) * w.side;
+  ctx.fillStyle = '#8c8f86'; ctx.strokeStyle = '#4a4c45'; ctx.lineWidth = 1.5; rr(lx - 8, lg - 8, 16, 8, 3); ctx.fill(); ctx.stroke();
+  const hx = lx + Math.sin(lean) * 24, hy = lg - 6 - Math.cos(lean) * 24;
+  ctx.strokeStyle = caneD; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(lx, lg - 6); ctx.lineTo(hx, hy); ctx.stroke();
+  ctx.strokeStyle = cane; ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = live ? '#ff7a3c' : '#c0602e'; ctx.strokeStyle = '#3a2614'; ctx.lineWidth = 1.5; circle(hx, hy, 4.5); ctx.fill(); ctx.stroke();
+  ctx.lineCap = 'butt';
 }
 function wfallDrawCp(cp, t) {
   if (cp.start) return;
@@ -1048,15 +1093,9 @@ function wfallDrawFloat(st, p, t) {
   ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2; circle(x, y, 22 * grow); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.ellipse(x - 8, y - 10, 5, 2.5, -0.6, 0, Math.PI * 2); ctx.fill();
 }
-// hands up over a bracing player (the step to jump off), arms on a vine
+// arms on a vine
 function wfallDrawExtras(st, p, t) {
-  const P = st.pl[p.id], x = p.x + p.w / 2, col = PCOL[p.id], dark = PDARK[p.id];
-  if (P.brace || P.pushT > 0) {
-    const lift = P.pushT > 0 ? -10 * (P.pushT / 0.35) : 0, hy = p.y + p.h - p.h * 0.74 - 2 + lift;
-    ctx.fillStyle = col; ctx.strokeStyle = dark; ctx.lineWidth = 2;
-    for (const d of [-1, 1]) { rr(x + d * 7 - 5, hy - 3, 10, 6, 3); ctx.fill(); ctx.stroke(); }
-    if (st.superBoost) { ctx.save(); ctx.globalAlpha = 0.5 + 0.3 * (reduceMotion ? 1 : Math.sin(t * 8)); ctx.strokeStyle = C.gold; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, hy, 16, 6, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
-  }
+  const P = st.pl[p.id], x = p.x + p.w / 2, dark = PDARK[p.id];
   if (P.vine >= 0) {
     const reach = (Math.floor(P.climbT * 6) % 2) * 6;
     ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.lineCap = 'round';
@@ -1075,7 +1114,7 @@ function wfallDraw() {
   for (const gy of st.geysers) if (wfallOnScreen(st, gy.feet) || wfallOnScreen(st, gy.top)) wfallDrawGeyser(st, gy, t);
   for (const ln of st.lanes) if (wfallOnScreen(st, ln.top)) wfallDrawLog(st, ln, t);
   for (const cp of st.cps) if (wfallOnScreen(st, cp.feet)) wfallDrawCp(cp, t);
-  for (const w of st.walls) if (wfallOnScreen(st, w.topFeet) || wfallOnScreen(st, w.baseFeet)) { wfallDrawVine(st, w, t); wfallDrawPost(st, w, t); }
+  for (const w of st.walls) if (wfallOnScreen(st, w.topFeet) || wfallOnScreen(st, w.baseFeet)) { wfallDrawLift(st, w, t); wfallDrawVine(st, w, t); wfallDrawPost(st, w, t); }
   for (const f of st.frogs) if (wfallOnScreen(st, f.feet)) wfallDrawFrog(f, t);
   wfallDrawGems(st, t);
   wfallDrawNest(st, t);
@@ -1118,7 +1157,7 @@ function wfallDrawTop() {
       const lines = j && wfallJobText(st, p.id, j);
       if (!lines || !lines[0]) continue;
       const showT = P.chipT < WFALL.chipT || P.chipT > WFALL.chipAgain || (st.cp === 0 && st.pl[p.id].best <= 0);
-      if (!showT && j.k !== 'boostJump' && j.k !== 'lower' && j.k !== 'grab') continue;
+      if (!showT && j.k !== 'pull' && j.k !== 'lower' && j.k !== 'grab') continue;
       ctx.save(); if (P.chipT > WFALL.chipAgain) ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 5);
       boxes.push(wfallChip(NAMES[p.id] + ': ' + lines[0], lines[1], p.x + p.w / 2, p.y - 24, PCOL[p.id], boxes));
       ctx.restore();
@@ -1208,7 +1247,6 @@ function wfallHud() {
   }
   // gold help chips under the time pill
   const chips = [];
-  if (st.superBoost) chips.push('SUPER BOOST');
   if (st.streams.some(s => s.jam)) chips.push('BIG LOG JAM');
   if (st.lanes.some(l => l.gold)) chips.push('GOLD RAFT');
   let cy2 = 12 + h + 6;
@@ -1225,12 +1263,12 @@ function wfallHud() {
 /* ---------- setup ---------- */
 function wfallSetup(st, L) {
   wfallBuild(st, L.def);
-  st.pl = [0, 1].map(() => ({ brace: false, braceT: 0, onHead: false, vine: -1, climbDir: 0, climbT: 0, splash: null, post: -1, pushT: 0,
-    boostFrom: -1, dx: 0, landV: 0, landOn: null, grabCD: 0, waitCD: 0, oofCD: 0, washS: -1, inStream: false, lifted: false, onLog: -1,
+  st.pl = [0, 1].map(() => ({ ride: -1, onHead: false, vine: -1, climbDir: 0, climbT: 0, splash: null, post: -1, pushT: 0,
+    dx: 0, landV: 0, landOn: null, grabCD: 0, waitCD: 0, oofCD: 0, washS: -1, inStream: false, lifted: false, onLog: -1,
     actLatch: false, step: 0, best: 0, chipKey: '', chipT: 0, mossJump: false, headHop: false }));
-  st.stats = { splash: [0, 0], boosts: [0, 0], vines: [0, 0], climbs: [0, 0], gems: 0, washes: 0, frogs: 0, moss: 0, geysers: 0, time: 0 };
+  st.stats = { splash: [0, 0], lifts: [0, 0], vines: [0, 0], climbs: [0, 0], gems: 0, washes: 0, frogs: 0, moss: 0, geysers: 0, time: 0 };
   st.cp = 0; st.section = 0; st.phase = 'play'; st.winT = 0; st.tick = 0; st.time = 0; st.progressT = 0; st.roomSplash = 0;
-  st.superBoost = false; st.goldMist = false; st.goldUsed = [];
+  st.goldMist = false; st.goldUsed = [];
   st.pops = []; st.news = null;
   st.tico = { x: W + 60, y: 0, on: false, t: 0, say: '', sayT: 0, hint: '', face: -1 };
   G.players.forEach((p, k) => { const s = st.spawns[k]; Object.assign(p, { x: s.x, y: s.y, vx: 0, vy: 0, grounded: true, face: 1, downLatch: true }); });
@@ -1253,10 +1291,10 @@ MODES.waterfall = {
   stats() {
     const st = G.mst, s = st.stats, sp = s.splash[0] + s.splash[1];
     const words = sp === 0 ? 'Not one splash! Super climbers!' : sp <= 5 ? 'Great teamwork up the falls!' : 'Lots of splashes, and you made it together!';
-    const gold = st.goldUsed.length ? ' · Gold help: ' + st.goldUsed.map(k => ({ boost: 'Super boost', jam: 'Big log jam', raft: 'Gold raft' }[k])).join(', ') : '';
+    const gold = st.goldUsed.length ? ' · Gold help: ' + st.goldUsed.map(k => ({ jam: 'Big log jam', raft: 'Gold raft' }[k])).join(', ') : '';
     return [
       { label: 'Splashes', values: s.splash.slice() },
-      { label: 'Boosts given', values: s.boosts.slice() },
+      { label: 'Lifts given', values: s.lifts.slice() },
       { label: 'Gems', value: s.gems + ' of ' + st.gems.length },
       words,
       'Vines dropped: Pip ' + s.vines[0] + ', Bo ' + s.vines[1] + ' · Frog bounces ' + s.frogs + ' · Geyser rides ' + s.geysers + gold,
@@ -1265,7 +1303,8 @@ MODES.waterfall = {
 };
 
 /* ---------- sounds ---------- */
-Sfx.extra.waterfallBoost = function (p) { this.tone(220 * p, 0.25, 'triangle', 0.07, 880 * p); this.tone(660 * p, 0.14, 'square', 0.025, 1320 * p, 0.05); };
+Sfx.extra.waterfallLever = function (p) { this.tone(200 * p, 0.08, 'square', 0.035, 130 * p); this.tone(340 * p, 0.12, 'triangle', 0.04, 560 * p, 0.06); };
+Sfx.extra.waterfallThunk = function () { this.tone(150, 0.12, 'triangle', 0.06, 95); this.noise(0.05, { f: 900, vol: 0.02 }); };
 Sfx.extra.waterfallUp = function (p) { [523 * p, 784 * p].forEach((f, i) => this.tone(f, 0.1, 'triangle', 0.05, null, i * 0.07)); };
 Sfx.extra.waterfallVine = function (p) { this.tone(900 * p, 0.3, 'sine', 0.04, 300 * p); this.tone(300 * p, 0.12, 'triangle', 0.04, null, 0.25); };
 Sfx.extra.waterfallGrab = function (p) { this.tone(400 * p, 0.06, 'triangle', 0.04, 500 * p); };
@@ -1283,4 +1322,4 @@ Sfx.extra.waterfallGold = function () { [784, 988, 1319].forEach((f, i) => this.
 Sfx.extra.waterfallSection = function () { [392, 523, 659].forEach((f, i) => this.tone(f, 0.14, 'triangle', 0.05, null, i * 0.1)); };
 Sfx.extra.waterfallTico = function () { this.tone(1500, 0.05, 'square', 0.012); this.tone(1900, 0.07, 'square', 0.01, null, 0.07); };
 Sfx.extra.waterfallWin = function () { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.18, 'triangle', 0.06, null, i * 0.1)); };
-MODES.waterfall.test = { WFALL, wfallJob, wfallJobText, wfallStepAt, wfallPostAt, wfallWallAtFoot, wfallGround, wfallStreamAt, wfallGeyserAt };
+MODES.waterfall.test = { WFALL, wfallJob, wfallJobText, wfallStepAt, wfallPostAt, wfallOnDeck, wfallAtLever, wfallGround, wfallStreamAt, wfallGeyserAt };

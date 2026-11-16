@@ -320,7 +320,8 @@ function cpuDraw() {
     const big = typeof hudBig === 'function' && hudBig(); // (phones: bigger, like the HUD)
     ctx.font = `700 ${big ? 19 : 13}px "Atkinson Hyperlegible", sans-serif`;
     const tw = ctx.measureText(b.text).width, w = tw + (big ? 22 : 16), h = big ? 30 : 22;
-    const px = at.x, x = clamp(px - w / 2, 4, W - w - 4), y = clamp(at.y - 22 - h, 4, H - h - 4);
+    const cx0 = G.camX || 0, px = at.x, x = clamp(px - w / 2, cx0 + 4, cx0 + W - w - 4), // (world coordinates: a wide level scrolls)
+      y = clamp(at.y - 22 - h, 4, H - h - 4);
     ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = PDARK[p.id]; ctx.lineWidth = 2;
     rr(x, y, w, h, 10); ctx.fill(); ctx.stroke();
     const tx = clamp(px, x + 10, x + w - 10);

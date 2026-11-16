@@ -3,22 +3,25 @@
 
 /* ===== 31-1 Lawnmower Escape (mode 'mowrun', team, scrolls right, Gavyn's pick) =====
    Gavyn's pick: "run ahead of a roaring mower through grass taller than you. One player cuts a path through the blades,
-   and the other boosts you both over pebbles and sticks."
+   and the other boosts you both over pebbles and sticks." (Gavyn, 2026-11-15: no more jumping off a partner's hands or
+   being pulled up by the hand: the springer uses a springy grass blade and a dangling kite string instead.)
    Side view of the lawn at bug size; the camera follows Pip and Bo to the right. The mode owns the tick, the camera and
    the picture (def.ownStep + ownHUD + noFalls); the engine grid is only spawns. World px, the ground is at S.ground.
    A giant red lawnmower roars along behind them. It never stops while you play: stand still too long and it catches up.
    BOTH run ◀ ▶ and jump ▲ (a plain jump clears the small stuff: acorn caps, bottle caps, little stones).
    THE CUTTER carries a rose thorn. A clump of tall grass blocks the way until the cutter chops through it: stand at the
      clump and tap the action ('chop'); each clump takes 3 to 6 chops (notches on the clump show how many are left).
-   THE BOOSTER gives a leg up. Pebbles and fallen sticks are far too tall to jump. The booster stands at the foot of one
-     and HOLDS the action ('boost') to cup their hands; the cutter runs onto them and jumps ▲ to fly up on top. Then the
-     cutter, on top at the near edge, HOLDS the action to reach down, and the booster jumps ▲ to grab their hand and is
-     pulled up. Over the top and down the far side.
+   THE SPRINGER (st.bst; 'boost' is the old name in the code) works the springy grass. Pebbles and fallen sticks are far
+     too tall to jump. A springy grass blade grows at the foot of each one: the springer stands there and HOLDS the
+     action ('bend') to bend it down to the ground; the cutter runs onto its tip and jumps ▲, and the blade flings them
+     up on top (SPROING!). A loop of old kite string is caught up there: the cutter, on top at the near edge, HOLDS the
+     action to drop it, and the springer jumps ▲ to grab it and climbs (hold ▲; ▼ slides back down). Once someone is
+     on the string it stays down. Over the top and down the far side.
    THE MOWER: its speed is set per stretch, it hurries when it is far behind (so it is always close and loud) and eases
      a little when it is right behind you. A red edge on the screen and a rattle say it is close. If it reaches the one
      at the back: "WHOOSH!" its wind tumbles you both back to the last safe spot (just past the last thing you got over)
      and the mower backs off to give you a start (counted as Close calls; soft fail).
-   DEWDROPS hang in the grass, some low, some up where only a boost reaches (55 in all).
+   DEWDROPS hang in the grass, some low, some up where only a fling reaches (55 in all).
    Each stretch ends at a safe spot the mower can't reach (a flowerpot, a watering can, a garden gnome, the patio step).
    STRETCHES (jobs swap each stretch): Front Lawn (Pip cuts), Dandelion Patch (Bo cuts), Pebble Path (Pip cuts),
      The Big Finish (Bo cuts). The mower gets a little faster each stretch.
@@ -33,7 +36,7 @@
   const K = SHRUNK, TAU = Math.PI * 2;
   const S = {
     ground: 430, runV: 235, acc: 2200, jumpV: 470, g: 1700, boostV: 830, boostVx: 120, maxFall: 1000,
-    bw: 22, bh: 26, chopCd: 0.17, braceR: 40, boostR: 36, reachR: 44, hoistT: 0.45,
+    bw: 22, bh: 26, chopCd: 0.17, braceR: 40, boostR: 36, reachR: 44, climbV: 210, grabR: 16,
     leash: 640, catchPad: 8, mowBack: 600, whirlT: 1.4, dewR: 20, idleWait: 12,
     goldSlow: 0.6, goldDur: 20, goldT: 160, silverT: 270,
   };
@@ -42,7 +45,7 @@
   /* ---------- the course ----------
      tokens (left to right): 'r300' open lawn for 300 px; 'G4' a grass clump needing 4 chops; 'P120:80' a pebble 120 tall,
      80 wide; 'T100:170' a fallen stick (twig) 100 thick, 170 long; 'l40:46' a little thing to jump (40 tall, 46 wide);
-     'd' a dewdrop just above the ground here, 'd150' one 150 px up (only a boost gets there); 'D' a row of 3 low drops. */
+     'd' a dewdrop just above the ground here, 'd150' one 150 px up (only a fling gets there); 'D' a row of 3 low drops. */
   function compile(def) {
     const c = { obs: [], dews: [], endX: 0 };
     let x = 260;
@@ -75,10 +78,10 @@
     st.mow = { x: -520, v: 0, base: def.mower || 95, shake: 0, gold: 0, back: 0, sput: 0 };
     st.state = 'go'; st.endT = 0; st.party = false; st.cleared = false; st.lastRoom = false;
     st.whirl = null; st.rc = { caught: 0 }; st.segStart = G.time; st.clock = st.clock || 0; st.roarT = 0; st.near = 0;
-    st.cam = { x: 0 };
+    st.cam = { x: 0 }; st.string = null;
     K.fx(st); labels(st); mirror(st);
   }
-  function labels(st) { const w = []; w[st.cut] = 'chop'; w[st.bst] = 'boost'; K.actLabels(w, 'chop'); }
+  function labels(st) { const w = []; w[st.cut] = 'chop'; w[st.bst] = 'bend'; K.actLabels(w, 'chop'); }
 
   /* ---------- the tick ---------- */
   function tick(st, dt) {
@@ -90,6 +93,8 @@
     for (const O of st.c.obs) if (O.kind === 'grass' && O.hp <= 0 && O.fall < 1) O.fall = Math.min(1, O.fall + dt * 2.6);
     for (const d of st.c.dews) if (d.t > 0) d.t -= dt;
     for (const r of st.run) runner(st, r, dt, live);
+    stringStep(st, dt);
+    for (const O of st.c.obs) if (O.spr > 0) O.spr = Math.max(0, O.spr - dt);
     for (const p of G.players) { p.pendingJump = false; p.pendingAct = false; }
     if (live) { leash(st); dew(st); checkpoint(st); goal(st); }
     mower(st, dt, live);
@@ -106,31 +111,35 @@
     if (r.chopT > 0) r.chopT -= dt;
     if (r.sq > 0) r.sq = Math.max(0, r.sq - dt * 4);
     if (r.st === 'whirl') return;
-    if (r.st === 'hoist') {
-      r.ht += dt;
-      const u = K.smooth(r.ht / S.hoistT);
-      r.x = K.lerp(r.hx0, r.hx1, u); r.y = K.lerp(r.hy0, r.hy1, u) - Math.sin(u * Math.PI) * 26;
-      if (r.ht >= S.hoistT) { r.st = 'run'; r.grounded = true; r.vy = 0; r.on = r.hoistO; r.y = r.hy1; r.sq = 1; Sfx.play('shrunkThud'); }
+    const p = G.players[r.id], i = live ? p.input : NO_INPUT, jump = live && p.pendingJump, act = live && p.pendingAct;
+    if (r.st === 'climb') {
+      // on the kite string: ▲ (or jump) climbs, ▼ slides down; at the top, step onto it
+      const O = r.climbO;
+      r.x = O.x - S.bw / 2 - 1; r.face = 1; r.vx = 0; r.vy = 0;
+      if (i.jump || i.up) r.y -= S.climbV * dt; else if (i.down) r.y += S.climbV * 1.3 * dt;
+      if (r.y <= topY(O) + 6) {
+        r.st = 'run'; r.grounded = true; r.on = O; r.y = topY(O); r.x = O.x + 14; r.sq = 1;
+        Sfx.play('shrunkThud'); K.pop(st, O.x + 14, topY(O) - 50, 'Up!', '#ffffff', 20); st.stats.hoists++;
+      } else if (r.y >= GY) { r.y = GY; r.st = 'run'; r.grounded = true; r.on = null; }
       return;
     }
-    const p = G.players[r.id], i = live ? p.input : NO_INPUT, jump = live && p.pendingJump, act = live && p.pendingAct;
     const job = r.id === st.cut ? 'cut' : 'boost', other = st.run[1 - r.id];
-    // the booster cups their hands at the foot of a pebble or stick
+    // the springer bends the springy grass blade at the foot of a pebble or stick down to the ground
     if (job === 'boost' && live && i.act && r.grounded && !r.on) {
       const O = st.c.obs.find(o => boostable(o) && o.x - (r.x + S.bw / 2) >= -2 && o.x - (r.x + S.bw / 2) <= S.braceR);
       if (O) { if (r.st !== 'brace') { r.st = 'brace'; r.braceO = O; Sfx.play('mowrunBrace'); } r.face = 1; r.vx = 0; }
       else if (r.st === 'brace') r.st = 'run';
-      if (!O && act) K.hintOnce(st, 'braceHere', r.id, 'Boost at the foot of a pebble or stick');
+      if (!O && act) K.hintOnce(st, 'braceHere', r.id, 'Bend the springy grass at the foot of a pebble or stick');
     } else if (r.st === 'brace') r.st = 'run';
-    // the cutter reaches down from the near edge of a pebble or stick to pull the booster up
+    // the cutter drops the kite string from the near edge of a pebble or stick
     if (r.st === 'reach' && !(live && i.act && r.grounded && r.on && r.x - r.on.x < S.reachR + 8)) r.st = 'run';
     if (r.st !== 'brace' && live && i.act && r.grounded && r.on && boostable(r.on) && r.x - r.on.x < S.reachR + 8 && other.y >= GY - 1 && other.x < r.on.x) {
       if (r.st !== 'reach') { r.st = 'reach'; Sfx.play('mowrunReach'); }
       r.face = -1; r.vx = 0;
     }
     if (r.st === 'brace' || r.st === 'reach') {
-      // a jump next to a bracing partner is a boost; a jump under a reaching partner is a hoist (handled by the jumper)
-      if (jump) K.hintOnce(st, 'holdStill' + r.st, r.id, r.st === 'brace' ? 'Hold still: ' + NAMES[1 - r.id] + ' jumps off you' : 'Hold on: ' + NAMES[1 - r.id] + ' jumps up to you');
+      // a jump onto the bent blade's tip is a fling; a jump at the dropped string grabs it (both handled by the jumper)
+      if (jump) K.hintOnce(st, 'holdStill' + r.st, r.id, r.st === 'brace' ? 'Hold it down: ' + NAMES[1 - r.id] + ' jumps on the tip' : 'Hold on: ' + NAMES[1 - r.id] + ' grabs the string');
       gravity(st, r, dt);
       return;
     }
@@ -145,17 +154,16 @@
     // run
     const want = (i.right ? 1 : 0) - (i.left ? 1 : 0);
     if (want) r.face = want;
-    // in the air with nothing pressed you keep your speed (so a boost carries you up onto the top)
+    // in the air with nothing pressed you keep your speed (so a fling carries you up onto the top)
     if (r.grounded || want) r.vx = approach(r.vx, want * S.runV, (r.grounded ? S.acc : S.acc * 0.6) * dt);
-    // jump: a boost off a bracing partner, a hoist from a reaching partner, or a plain jump
+    // jump: off the bent blade's tip it is a fling; at the dropped kite string it grabs on; otherwise a plain jump
+    const Sg = st.string;
     if (jump && r.grounded) {
       if (other.st === 'brace' && Math.abs(other.x - r.x) < S.boostR && !r.on) {
         boost(st, r, other);
-      } else if (other.st === 'reach' && other.on && !r.on && r.x < other.on.x && other.on.x - r.x < S.reachR + 14) {
-        const O = other.on;
-        r.st = 'hoist'; r.ht = 0; r.hx0 = r.x; r.hy0 = r.y; r.hx1 = O.x + 16; r.hy1 = topY(O); r.hoistO = O; r.vx = 0; r.vy = 0; r.grounded = false;
-        other.st = 'run'; other.x = Math.max(other.x, O.x + 38); other.face = 1;
-        Sfx.play('mowrunHeave'); K.pop(st, O.x, topY(O) - 50, 'Up you come!', '#ffffff', 22); st.stats.hoists++;
+      } else if (Sg && Sg.u >= 1 && !r.on && Math.abs(r.x - (Sg.O.x - S.bw / 2 - 1)) < S.grabR + 8) {
+        r.st = 'climb'; r.climbO = Sg.O; r.grounded = false; r.vx = 0; r.vy = 0; r.y -= 6;
+        Sfx.play('mowrunGrab');
         return;
       } else {
         r.vy = -S.jumpV; r.grounded = false; r.on = null; Sfx.play('mowrunJump', r.id);
@@ -170,30 +178,41 @@
         if (r.x <= (b.x0 + b.x1) / 2) nx = Math.min(nx, b.x0 - hw); else nx = Math.max(nx, b.x1 + hw);
         r.vx = 0;
         if (b.O.kind === 'grass') K.hintOnce(st, 'grassWall', r.id, r.id === st.cut ? 'Tall grass! Chop it ' + K.key(r.id, 'act') : 'Tall grass: ' + NAMES[st.cut] + ' chops it');
-        else if (boostable(b.O) && r.grounded && !r.on) K.hintOnce(st, 'tooTall' + r.id, r.id, 'Too tall to jump! Boost!');
+        else if (boostable(b.O) && r.grounded && !r.on) K.hintOnce(st, 'tooTall' + r.id, r.id, 'Too tall to jump! Use the springy grass!');
       }
     }
-    // a boost always lands on the top it was aimed at (no sailing over and leaving the partner stuck behind)
+    // a fling always lands on the top it was aimed at (no sailing over and leaving the partner stuck behind)
     if (r.boostO && !r.grounded && r.vy > 0 && r.y < topY(r.boostO) + 1) nx = Math.min(nx, r.boostO.x + r.boostO.w - hw - 6);
-    // up top with the partner still down behind: stay up here and pull them up (walking off would strand them)
+    // up top with the partner still down behind: stay up here and drop the string (walking off would strand them)
     if (r.grounded && r.on && boostable(r.on) && strandedBehind(other, r.on) && nx > r.on.x + r.on.w - hw - 2) {
       nx = r.on.x + r.on.w - hw - 2; r.vx = Math.min(r.vx, 0);
-      K.hint(st, r.id, 'Pull ' + NAMES[other.id] + ' up first: hold ' + K.key(r.id, 'act') + ' at the near edge');
+      K.hint(st, r.id, 'Drop the string for ' + NAMES[other.id] + ' first: hold ' + K.key(r.id, 'act') + ' at the near edge');
     }
     r.x = nx;
-    // dropping onto a bracing partner's hands is a boost too (so a jump that's a little early or late still works)
+    // dropping onto the bent blade's tip is a fling too (so a jump that's a little early or late still works)
     if (job === 'cut' && !r.grounded && r.vy > 0 && other.st === 'brace' && !r.on && Math.abs(other.x - r.x) < S.boostR + 6 &&
         r.y + r.vy * dt >= GY - S.bh && r.y < GY - S.bh + 4) { r.y = GY - S.bh; boost(st, r, other); return; }
     gravity(st, r, dt);
     if (r.grounded) r.boostO = null;
   }
+  // the bent blade springs up and flings whoever is on its tip up on top (the springer lets it go)
   function boost(st, r, other) {
     r.vy = -S.boostV; r.vx = S.boostVx; r.grounded = false; r.on = null; r.face = 1; other.sq = 1; r.boostO = other.braceO;
-    Sfx.play('shrunkBoing'); K.pop(st, r.x, r.y - 50, 'Boost!', PCOL[other.id], 22); K.dust(st, other.x, GY, null, 6);
+    if (other.braceO) other.braceO.spr = 0.8;
+    Sfx.play('shrunkBoing'); K.pop(st, r.x, r.y - 50, 'SPROING!', PCOL[other.id], 22); K.dust(st, other.x, GY, null, 6);
     st.stats.boosts++;
   }
+  // the kite string: down (u 0..1) while the cutter holds the action at the near edge, or while someone is on it
+  function stringStep(st, dt) {
+    const T = st.run[st.cut], on = st.run.find(r => r.st === 'climb');
+    const O = on ? on.climbO : T.st === 'reach' ? T.on : null;
+    if (O && (!st.string || st.string.O !== O)) { st.string = { O, u: 0 }; Sfx.play('mowrunReach'); }
+    if (!st.string) return;
+    st.string.u = O ? Math.min(1, st.string.u + dt / 0.25) : st.string.u - dt / 0.3;
+    if (st.string.u <= 0) st.string = null;
+  }
   // still on the ground in front of O (not on it, not past it)
-  const strandedBehind = (r, O) => r.st !== 'whirl' && r.on !== O && r.x < O.x && r.st !== 'hoist';
+  const strandedBehind = (r, O) => r.st !== 'whirl' && r.on !== O && r.x < O.x && r.st !== 'climb';
   function gravity(st, r, dt) {
     const hw = S.bw / 2;
     if (r.grounded) {
@@ -341,9 +360,10 @@
   }
 
   /* ---------- what to do next ----------
-     plan(st): { O (the next thing in the way), kind ('open' | 'low' | 'grass' | 'boost'), stage ('chop' | 'brace' |
-       'jump' | 'reach' | 'climb' | 'over'), and per job a target x (go there), act (true = hold, 'tap' = tap), jump
-       (true = tap now), face (-1 to turn back) and why (a word for the prompts) }: cut (the cutter) and bst (the booster). */
+     plan(st): { O (the next thing in the way), kind ('open' | 'low' | 'grass' | 'boost'), stage ('chop' | 'brace' (bend
+       the blade) | 'jump' | 'reach' (drop the string) | 'climb' | 'over'), and per job a target x (go there), act (true =
+       hold, 'tap' = tap), jump (true = tap now), up (hold ▲: climbing), face (-1 to turn back) and why (a word for the
+       prompts) }: cut (the cutter) and bst (the springer). */
   function plan(st) {
     const out = planCore(st), c = st.c;
     // little things to hop: jump when one is right in front (whatever else is going on)
@@ -373,7 +393,7 @@
     out.kind = 'boost';
     const top = r => r.on === O, base = O.x - S.bw / 2 - 4;
     // already down the far side (or jumping down it)
-    const past = r => !top(r) && r.st !== 'hoist' && r.x - S.bw / 2 > O.x + O.w - 4;
+    const past = r => !top(r) && r.st !== 'climb' && r.x - S.bw / 2 > O.x + O.w - 4;
     if (past(T) || past(B)) {
       out.stage = 'over';
       const P = past(T) ? T : B, Q = P === T ? B : T, pj = P === T ? 'cut' : 'bst', qj = pj === 'cut' ? 'bst' : 'cut';
@@ -389,11 +409,13 @@
       // (only after a respawn mix-up) the booster gets down and starts again
       out.stage = 'over'; out.bst = { x: O.x + O.w + 40 }; out.cut = { x: O.x - 70 };
     } else if (top(T)) {
-      out.stage = T.st === 'reach' ? 'climb' : 'reach';
+      // the kite string: the cutter drops it from the near edge, the springer grabs it and climbs
+      const climbing = B.st === 'climb', down = st.string && st.string.O === O && st.string.u >= 1;
+      out.stage = down || climbing ? 'climb' : 'reach';
       const atEdge = T.x - O.x < S.reachR;
-      out.cut = { x: O.x + 14, act: atEdge, face: -1, why: 'reach' };
-      const under = B.grounded && !B.on && O.x - B.x < S.reachR + 10 && O.x - B.x > 0;
-      out.bst = { x: base, jump: T.st === 'reach' && under, why: 'grab' };
+      out.cut = climbing ? { x: O.x + 40, why: 'wait' } : { x: O.x + 14, act: atEdge, face: -1, why: 'reach' };
+      const under = B.grounded && !B.on && Math.abs(B.x - (O.x - S.bw / 2 - 1)) < S.grabR;
+      out.bst = climbing ? { x: base, up: true, why: 'climb' } : { x: O.x - S.bw / 2 - 1, jump: down && under, why: 'grab' };
     } else if (!T.grounded && T.y < GY - 20) {
       // boosted: steer onto the top
       out.stage = 'jump'; out.cut = { x: O.x + Math.min(40, O.w / 2), why: 'jump' }; out.bst = { x: base, act: B.st === 'brace', why: 'brace' };
@@ -430,8 +452,43 @@
       else if (O.kind === 'rock') K.pebble(O.x + O.w / 2, GY + 2, O.w + 6, O.h + 2, { seed: O.seed });
       else if (O.kind === 'log') K.twig(O.x - 2, GY + 1, O.w + 4, O.h + 1);
       else drawLow(O);
+      if (boostable(O)) drawSpring(st, O, t);
     }
     for (const d of c.dews) if (!d.got && d.x > cx - 40 && d.x < cx + W + 40) K.dew(d.x, d.y, 8, t);
+    ctx.restore();
+  }
+  // the springy grass blade at the foot of a pebble or stick (bent to the ground by the springer, wobbling after a fling),
+  // and the loop of kite string caught on top (hanging down the near face while it is dropped)
+  function drawSpring(st, O, t) {
+    const B = st.run[st.bst], bent = B.st === 'brace' && B.braceO === O && !(O.spr > 0.45), rx = O.x - 6;
+    ctx.save();
+    ctx.lineCap = 'round';
+    if (bent) {
+      const tx = B.x - 14;
+      ctx.strokeStyle = '#3f8a34'; ctx.lineWidth = 9;
+      ctx.beginPath(); ctx.moveTo(rx, GY + 2); ctx.quadraticCurveTo(rx - 6, GY - 46, tx, GY - 8); ctx.stroke();
+      ctx.strokeStyle = '#7fcf5e'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(rx, GY + 2); ctx.quadraticCurveTo(rx - 6, GY - 46, tx, GY - 8); ctx.stroke();
+      ctx.fillStyle = '#ffe08a'; ctx.globalAlpha = 0.5 + 0.4 * Math.sin(t * 10); circle(tx, GY - 10, 5); ctx.fill(); ctx.globalAlpha = 1;
+    } else {
+      const w = O.spr > 0 ? Math.sin(t * 40) * 12 * O.spr : Math.sin(t * 2 + O.seed) * 3, h = Math.min(O.h - 14, 96);
+      ctx.strokeStyle = '#3f8a34'; ctx.lineWidth = 9;
+      ctx.beginPath(); ctx.moveTo(rx, GY + 2); ctx.quadraticCurveTo(rx - 14, GY - h * 0.6, rx - 20 + w, GY - h); ctx.stroke();
+      ctx.strokeStyle = '#7fcf5e'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(rx, GY + 2); ctx.quadraticCurveTo(rx - 14, GY - h * 0.6, rx - 20 + w, GY - h); ctx.stroke();
+      // a little yellow bud on its tip marks the springy one
+      ctx.fillStyle = '#ffd84a'; ctx.strokeStyle = '#9a7a1a'; ctx.lineWidth = 1.5; circle(rx - 20 + w, GY - h - 3, 5); ctx.fill(); ctx.stroke();
+    }
+    // the kite string: a coil on top by the near edge, and a line down the face while dropped
+    const sg = st.string && st.string.O === O ? st.string.u : 0, ty = topY(O), sx = O.x - 2;
+    ctx.strokeStyle = '#f2ecd8'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.ellipse(O.x + 12, ty - 3, 9, 3.5, 0, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = '#d24a4a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(O.x + 4, ty - 6); ctx.lineTo(O.x + 9, ty - 11); ctx.lineTo(O.x + 13, ty - 6); ctx.stroke();
+    if (sg > 0) {
+      const len = (GY - ty - 4) * sg;
+      ctx.strokeStyle = '#f2ecd8'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(O.x + 6, ty - 2); ctx.lineTo(sx, ty + 2); ctx.quadraticCurveTo(sx - 3 + Math.sin(t * 5) * 2, ty + len / 2, sx, ty + len); ctx.stroke();
+    }
     ctx.restore();
   }
   function drawLow(O) {
@@ -578,7 +635,7 @@
     const job = r.id === st.cut ? 'cut' : 'boost';
     let sy = 1 - r.sq * 0.18, rot = 0, y = r.y, x = r.x;
     if (r.st === 'whirl') rot = r.spin;
-    else if (r.st === 'brace') { sy = 0.7; }
+    else if (r.st === 'brace') { sy = 0.85; }
     else if (!r.grounded) rot = r.face * clamp(r.vy / 2000, -0.15, 0.15);
     else if (Math.abs(r.vx) > 20) rot = r.face * 0.1;
     // shadow
@@ -593,15 +650,12 @@
       ctx.moveTo(hx + Math.cos(a + 1.57) * 4, hy + Math.sin(a + 1.57) * 4); ctx.lineTo(hx + Math.cos(a) * 26, hy + Math.sin(a) * 26); ctx.lineTo(hx + Math.cos(a - 1.57) * 4, hy + Math.sin(a - 1.57) * 4); ctx.fill();
       ctx.fillStyle = PCOL[r.id]; ctx.strokeStyle = dark; ctx.lineWidth = 2; circle(hx, hy, 3.6); ctx.fill(); ctx.stroke();
     }
-    if (r.st === 'brace') {
-      // cupped hands in front
-      ctx.fillStyle = PCOL[r.id]; ctx.strokeStyle = dark; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(x + 13, y - 6, 8, 4, 0, 0, Math.PI); ctx.fill(); ctx.stroke();
-    }
-    if (r.st === 'reach') {
-      ctx.strokeStyle = dark; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x - 6, y - 12); ctx.lineTo(x - 22, y + 10); ctx.stroke();
-      ctx.strokeStyle = PCOL[r.id]; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 6, y - 12); ctx.lineTo(x - 22, y + 10); ctx.stroke();
-      ctx.fillStyle = PCOL[r.id]; circle(x - 22, y + 10, 4); ctx.fill();
+    if (r.st === 'brace' || r.st === 'reach' || r.st === 'climb') {
+      // hands: holding the blade's tip down in front, paying out the string at the edge, gripping the string above
+      const hx = r.st === 'brace' ? x - 12 : r.st === 'reach' ? x - 14 : x + 10, hy = r.st === 'brace' ? y - 10 : r.st === 'reach' ? y - 4 : y - 30;
+      ctx.strokeStyle = dark; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x, y - 14); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.strokeStyle = PCOL[r.id]; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y - 14); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.fillStyle = PCOL[r.id]; circle(hx, hy, 4); ctx.fill();
     }
   }
 
@@ -624,12 +678,12 @@
     {
       const bx = K.panel(Tn, 'cutter', 236, 58, z), cy = bx.y + 27 * z, chh = 23 * z, cw = (bx.w - 24 * z - 6 * z) / 2, x0 = bx.x + 12 * z;
       K.chip(x0, cy, cw, chh, kk(Tn, 'act') + 'CHOP', pl.cut.why === 'chop' && !!pl.cut.act, Tr.chopT > 0, z);
-      K.chip(x0 + cw + 6 * z, cy, cw, chh, kk(Tn, 'act') + 'PULL UP', pl.stage === 'reach' && pl.cut.act, Tr.st === 'reach', z);
+      K.chip(x0 + cw + 6 * z, cy, cw, chh, kk(Tn, 'act') + 'STRING', pl.stage === 'reach' && pl.cut.act, Tr.st === 'reach', z);
     }
     {
-      const bx = K.panel(Bn, 'booster', 236, 58, z), cy = bx.y + 27 * z, chh = 23 * z, cw = (bx.w - 24 * z - 6 * z) / 2, x0 = bx.x + 12 * z;
-      K.chip(x0, cy, cw, chh, kk(Bn, 'act') + 'BOOST', pl.stage === 'brace' && !!pl.bst.act, Br.st === 'brace', z);
-      K.chip(x0 + cw + 6 * z, cy, cw, chh, kk(Bn, 'up') + 'GRAB', !!pl.bst.jump && pl.bst.why === 'grab', Br.st === 'hoist', z);
+      const bx = K.panel(Bn, 'springer', 236, 58, z), cy = bx.y + 27 * z, chh = 23 * z, cw = (bx.w - 24 * z - 6 * z) / 2, x0 = bx.x + 12 * z;
+      K.chip(x0, cy, cw, chh, kk(Bn, 'act') + 'BEND', pl.stage === 'brace' && !!pl.bst.act, Br.st === 'brace', z);
+      K.chip(x0 + cw + 6 * z, cy, cw, chh, kk(Bn, 'up') + 'CLIMB', (!!pl.bst.jump && pl.bst.why === 'grab') || pl.bst.why === 'climb', Br.st === 'climb', z);
     }
     // how close the mower is
     {
@@ -645,18 +699,18 @@
       let s = null, col = C.gold, pulse = false;
       if (pl.kind === 'grass' && pl.cut.act) { s = 'Chop! ' + K.key(Tn, 'act'); pulse = true; }
       else if (pl.kind === 'grass') { s = 'Chop the grass ' + K.key(Tn, 'right'); col = '#ffe7a8'; }
-      else if (pl.stage === 'jump') { s = Math.abs(Tr.x - Br.x) < S.boostR ? 'Jump! ' + K.key(Tn, 'up') : 'Run onto ' + NAMES[Bn] + ', then jump ' + K.key(Tn, 'up'); pulse = Math.abs(Tr.x - Br.x) < S.boostR; }
-      else if (pl.stage === 'brace') { s = K.quiet(Bn) ? NAMES[Bn] + ' will boost you' : 'Wait for ' + NAMES[Bn] + '\'s boost'; col = '#ffe7a8'; }
-      else if (pl.stage === 'reach') { s = pl.cut.act ? 'Hold ' + K.key(Tn, 'act') + ' to reach down' : 'To the edge ' + K.key(Tn, 'left'); pulse = !!pl.cut.act; }
-      else if (pl.stage === 'climb') { s = 'Keep holding ' + K.key(Tn, 'act'); col = '#d9ffd0'; }
+      else if (pl.stage === 'jump') { s = Math.abs(Tr.x - Br.x) < S.boostR ? 'Jump on the tip! ' + K.key(Tn, 'up') : 'Run onto the blade\'s tip, then jump ' + K.key(Tn, 'up'); pulse = Math.abs(Tr.x - Br.x) < S.boostR; }
+      else if (pl.stage === 'brace') { s = 'Wait for ' + NAMES[Bn] + ' to bend the springy grass'; col = '#ffe7a8'; }
+      else if (pl.stage === 'reach') { s = pl.cut.act ? 'Hold ' + K.key(Tn, 'act') + ' to drop the string' : 'To the edge ' + K.key(Tn, 'left'); pulse = !!pl.cut.act; }
+      else if (pl.stage === 'climb') { s = Br.st === 'climb' ? NAMES[Bn] + ' is climbing up!' : 'Keep holding ' + K.key(Tn, 'act'); col = '#d9ffd0'; }
       P.say(Tn, s, sx(Tr), sy(Tr), col, pulse);
     }
     {
       let s = null, col = C.gold, pulse = false;
-      if (pl.stage === 'brace') { s = pl.bst.act ? 'Hold ' + K.key(Bn, 'act') + ' to boost' : 'To the ' + (pl.O.kind === 'log' ? 'stick' : 'pebble') + ' ' + K.key(Bn, 'right'); pulse = !!pl.bst.act; }
+      if (pl.stage === 'brace') { s = pl.bst.act ? 'Hold ' + K.key(Bn, 'act') + ' to bend the springy grass' : 'To the springy grass ' + K.key(Bn, 'right'); pulse = !!pl.bst.act; }
       else if (pl.stage === 'jump') { s = 'Keep holding ' + K.key(Bn, 'act'); col = '#d9ffd0'; }
-      else if (pl.stage === 'climb') { s = pl.bst.jump ? 'Jump! ' + K.key(Bn, 'up') + ' Grab the hand' : 'Under ' + NAMES[Tn] + '\'s hand ' + K.key(Bn, 'right'); pulse = !!pl.bst.jump; }
-      else if (pl.stage === 'reach') { s = 'Wait for a hand'; col = '#ffe7a8'; }
+      else if (pl.stage === 'climb') { s = Br.st === 'climb' ? 'Climb! Hold ' + K.key(Bn, 'up') : pl.bst.jump ? 'Jump! ' + K.key(Bn, 'up') + ' Grab the string' : 'Under the string ' + K.key(Bn, Br.x < pl.bst.x ? 'right' : 'left'); pulse = Br.st === 'climb' || !!pl.bst.jump; }
+      else if (pl.stage === 'reach') { s = 'Wait for the string'; col = '#ffe7a8'; }
       else if (pl.kind === 'grass' && Br.x > pl.O.x - 90) { s = NAMES[Tn] + ' chops this one'; col = '#ffe7a8'; }
       P.say(Bn, s, sx(Br), sy(Br), col, pulse);
     }
@@ -692,14 +746,14 @@
         { label: 'Close calls', value: String(s.caught) },
         { label: 'Grass chopped', value: String(s.chops) },
       ];
-      out.push('Boosts: ' + s.boosts + '. Pull-ups: ' + s.hoists + '. The mower never got you both for good!');
+      out.push('Grass flings: ' + s.boosts + '. String climbs: ' + s.hoists + '. The mower never got you both for good!');
       const hl = K.helpLine(s.helps); if (hl) out.push(hl);
       return out;
     },
   };
 
   /* ---------- the level ---------- */
-  const acts = cut => ({ label: 'chop', labels: cut === 0 ? ['chop', 'boost'] : ['boost', 'chop'] });
+  const acts = cut => ({ label: 'chop', labels: cut === 0 ? ['chop', 'bend'] : ['bend', 'chop'] });
   SHRUNK.defs.mowrun = {
     name: 'Lawnmower Escape', world: 30, kind: 'team', mode: 'mowrun', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     legend: {
@@ -707,24 +761,24 @@
       bo: '<kbd>←</kbd><kbd>→</kbd> run <kbd>↑</kbd> jump',
       pad: 'stick runs, <span data-glyph="a"></span> jumps,',
     },
-    tip: 'RUN from the mower! The cutter chops tall grass. The booster holds the action at a pebble so the cutter can jump up.',
+    tip: 'RUN from the mower! The cutter chops tall grass. The springer bends the springy grass at a pebble to fling the cutter up; then the cutter drops a string.',
     act: acts(0),
     map: K.stubMap(),
     rooms: [
       { title: 'Front Lawn', cutter: 0, mower: 80, safe: 'Under the flowerpot!', safeKind: 'pot', act: acts(0),
-        tip: 'Pip chops the tall grass. Bo holds the action at a pebble, Pip jumps off Bo, then pulls Bo up!',
+        tip: 'Pip chops the tall grass. Bo holds the action to bend the springy grass, Pip jumps on its tip: SPROING! Then Pip drops the string for Bo.',
         course: ['r200', 'd', 'r160', 'D', 'r100', 'G3', 'r220', 'd', 'l36:44', 'r200', 'd', 'r120', 'P110:90', 'd150', 'r260', 'D', 'r100', 'G4', 'r200',
           'l40:46', 'r160', 'd', 'r140', 'P120:100', 'd160', 'r200', 'G3', 'r140', 'D', 'r200', 'l34:40', 'r200'] },
       { title: 'Dandelion Patch', cutter: 1, mower: 88, safe: 'Behind the watering can!', safeKind: 'can', act: acts(1),
-        tip: 'Swap! Bo chops, Pip boosts. Fallen sticks are long: boost up, pull up, run along the top.',
+        tip: 'Swap! Bo chops, Pip bends the grass. Fallen sticks are long: fling up, drop the string, run along the top.',
         course: ['r200', 'D', 'r160', 'G4', 'r200', 'd', 'r100', 'T100:170', 'd150', 'r240', 'l38:44', 'r160', 'G5', 'r180', 'D', 'r140', 'P120:90', 'd170',
           'r180', 'G3', 'r220', 'd', 'l40:46', 'r180', 'T110:200', 'd160', 'r200', 'D', 'r100', 'G4', 'r240'] },
       { title: 'Pebble Path', cutter: 0, mower: 96, safe: 'Under the garden gnome!', safeKind: 'gnome', act: acts(0),
-        tip: 'Pip chops again. Pebbles one after another: boost, pull up, drop down, and again!',
+        tip: 'Pip chops again. Pebbles one after another: fling, string, drop down, and again!',
         course: ['r200', 'd', 'r140', 'P110:80', 'd150', 'r200', 'P130:100', 'd170', 'r180', 'G4', 'r200', 'D', 'r120', 'l40:44', 'r160', 'P120:90', 'd160',
           'r160', 'G5', 'r180', 'T100:180', 'd150', 'r220', 'D', 'r100', 'P140:100', 'd180', 'r200', 'G4', 'r200'] },
       { title: 'The Big Finish', cutter: 1, mower: 104, safe: 'Up on the patio!', safeKind: 'patio', act: acts(1),
-        tip: 'The last dash to the patio! Bo chops, Pip boosts. The mower is fast now, so no dawdling!',
+        tip: 'The last dash to the patio! Bo chops, Pip bends the grass. The mower is fast now, so no dawdling!',
         course: ['r200', 'D', 'r140', 'G4', 'r200', 'P120:90', 'd160', 'r200', 'l40:46', 'r140', 'G5', 'r160', 'd', 'T110:190', 'd160', 'r220', 'D', 'r120',
           'P130:100', 'd170', 'r160', 'G4', 'r160', 'l38:44', 'r160', 'G6', 'r200', 'D', 'r100', 'P140:110', 'd180', 'r240'] },
     ],
@@ -736,7 +790,7 @@
   Sfx.extra.mowrunTimber = function () { [600, 480, 380, 300].forEach((f, i) => this.tone(f, 0.08, 'triangle', 0.035, f * 0.8, i * 0.05)); };
   Sfx.extra.mowrunBrace = function () { this.tone(240, 0.08, 'triangle', 0.035, 300); };
   Sfx.extra.mowrunReach = function () { this.tone(420, 0.08, 'triangle', 0.03, 520); };
-  Sfx.extra.mowrunHeave = function () { this.tone(200, 0.16, 'sawtooth', 0.03, 400); this.tone(500, 0.1, 'triangle', 0.03, 700, 0.12); };
+  Sfx.extra.mowrunGrab = function () { this.tone(300, 0.06, 'square', 0.02, 260); };
   Sfx.extra.mowrunRoar = function (p) { p = p || 1; this.tone(55 * p, 0.24, 'sawtooth', 0.02 * p, 62 * p); this.tone(110 * p, 0.12, 'square', 0.008 * p, 100 * p); };
   Sfx.extra.mowrunWhoosh = function () { this.tone(200, 0.5, 'sawtooth', 0.03, 1200); this.tone(900, 0.4, 'sine', 0.02, 200, 0.2); };
   Sfx.extra.mowrunPhew = function () { this.tone(520, 0.08, 'triangle', 0.035, 700); this.tone(700, 0.12, 'triangle', 0.03, 880, 0.08); };

@@ -2,14 +2,14 @@
 'use strict';
 
 /* Follows ironLegPlan. Knows the stride clock: never starts a ramp it cannot finish before the plant (0.25 s to
-   spare, ironLegRampOk) and never runs a plate whose vent puffs this swing. Braces a block until the climber is up,
-   and as the climber waits for the brace (after 8 s with none it climbs in the upright phase, when the block is back
+   spare, ironLegRampOk) and never runs a plate whose vent puffs this swing. Braces a block until the climber is up and
+   has pulled the clamp lever (then climbs the clamped block), and as the climber waits for the brace (after 8 s with none it climbs in the upright phase, when the block is back
    at rest). Holds the knee lever until the partner is through. Hops over oil crows. */
 IRON_BRAINS.leg = {
   reset(bst) { bst.noBrace = 0; },
   think(bst, p, o, dt, info, S) {
     const ph = S.ph, K = IRONLEG, out = {}, cx = cpuCx(p);
-    if (!p.alive || S.haul && S.haul.who === p.id) return out;
+    if (!p.alive) return out;
     if (ph.ring.t >= 0) return out;
     const P = ironLegPlan(S)[p.id] || {};
     const g = p.ground, onPlate = p.grounded && g && g.kind === 'plate';
@@ -41,8 +41,6 @@ IRON_BRAINS.leg = {
       return out;
     }
     if (w === 'drop') { ironLegNear(bst, out, p, P.x, 6); if (p.grounded && p.ground && p.ground.kind === 'ledge' && Math.abs(cx - P.x) < 12) { out.left = out.right = false; out.down = true; } return ironBrainHop(bst, out, p); }
-    if (w === 'reach') { ironBrainSeek(out, p, P.x, 8); return ironBrainHop(bst, out, p); }
-    if (w === 'hand') { ironLegNear(bst, out, p, P.x, 5); if (p.grounded && Math.abs(cx - P.x) < 14) { out.left = out.right = false; out.act = true; } return out; }
     if (w === 'ride' || w === 'press' || w === 'lift') return ironLegCpuPiston(bst, p, o, P, ph, out);
     if (w === 'lever') { ironLegNear(bst, out, p, P.x, 4); if (p.grounded && Math.abs(cx - P.x) < 16 && ironBrainTap(bst, 'lever', 0.4)) out.act = 'tap'; return ironBrainHop(bst, out, p); }
     if (w === 'knee') {
@@ -88,10 +86,10 @@ function ironLegCpuClimb(bst, p, o, P, ph, out, dt) {
   if (!b) return out;
   const onBlock = p.grounded && p.ground === b.solid;
   if (b.braced < 0) bst.noBrace += dt; else bst.noBrace = 0;
-  const ok = b.braced >= 0 && b.x - b.rest < 10 || (bst.noBrace > 8 && !ph.swinging && Math.abs(b.x - b.rest) < 4);
+  const ok = b.clamped && b.x - b.rest < 4 || b.braced >= 0 && b.x - b.rest < 10 || (bst.noBrace > 8 && !ph.swinging && Math.abs(b.x - b.rest) < 4);
   if (onBlock) {
     ironBrainSeek(out, p, b.x + 11, 3);
-    if (Math.abs(cx - (b.x + 11)) < 6 && (b.braced >= 0 || !ph.swinging)) out.jump = ironBrainTap(bst, 'up', 0.45) ? true : out.jump;
+    if (Math.abs(cx - (b.x + 11)) < 6 && (b.clamped || b.braced >= 0 || !ph.swinging)) out.jump = ironBrainTap(bst, 'up', 0.45) ? true : out.jump;
     if (bst._uph > 0) { bst._uph -= dt; out.jump = true; } else if (out.jump) bst._uph = 0.3;
     return out;
   }

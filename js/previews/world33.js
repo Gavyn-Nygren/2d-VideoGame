@@ -129,12 +129,12 @@ const pw33Cow = (v, x, y, s, rot) => {
 // ----- END 33-1 Tornado Alley Run -----
 
 // ----- BEGIN 33-2 Flash Flood Climb -----
-// A canyon fills with brown water. Bo crouches like a springboard, Pip jumps off Bo up to the next ledge, then holds
-// the rope at the ring while Bo climbs it, just ahead of the rising flood.
+// A canyon fills with brown water. Pip steps into the ore bucket and Bo cranks the winch: the bucket hauls Pip up to the
+// next ledge, then Pip holds the rope at the ring while Bo climbs it, just ahead of the rising flood.
 {
   definePreview('Flash Flood Climb', {
-    blurb: 'The canyon is flooding! Boost each other up, drop the rope and climb before the water gets you.',
-    loop: 6, still: 2.2,
+    blurb: 'The canyon is flooding! Crank the ore bucket up, drop the rope and climb before the water gets you.',
+    loop: 6, still: 1.4,
     draw(v, t) {
       const c = v.ctx, e = v.ease;
       pw33Sky(v, t, { mood: 'flood', flash: 6, boltX: 200 });
@@ -145,18 +145,36 @@ const pw33Cow = (v, x, y, s, rot) => {
       c.fillStyle = '#a87a52'; c.fillRect(40, 150, v.W - 80, 10); c.fillStyle = '#5a8a3a'; c.fillRect(40, 148, v.W - 80, 3);
       c.fillStyle = '#a87a52'; c.fillRect(40, 92, 150, 10); c.fillStyle = '#5a8a3a'; c.fillRect(40, 90, 150, 3);
       v.circle(186, 88, 3); c.strokeStyle = '#c8ccd4'; c.lineWidth = 1.5; c.stroke();
-      // Bo crouches at 0.6-1.6; Pip jumps off at 1.3 and lands up top at 1.9
-      const crouch = t > 0.6 && t < 1.7 ? 1 : 0;
-      const jump = v.seg(t, 1.3, 1.9), up = t >= 1.9;
-      const px = up ? v.lerp(176, 182, v.seg(t, 1.9, 2.2)) : v.lerp(186, 176, jump), py = up ? 90 : 148 + v.hop(jump, 76) - (jump > 0 ? jump * 58 : 0);
+      // the winch: a timber gantry over the bucket, its cable down to a crank drum on the low ledge
+      const bkX = 205, crX = 252, bkY = 148 - 58 * (e.inOut(v.seg(t, 0.85, 1.85)) - e.inOut(v.seg(t, 2.25, 2.85)));
+      c.fillStyle = '#6e4a2c'; c.fillRect(224, 52, 5, 96); c.fillRect(196, 50, 33, 5);
+      v.fillCircle(bkX, 58, 4, '#4a4f5a'); v.fillCircle(bkX, 58, 1.5, '#c8ccd4');
+      v.line(bkX, 58, bkX, bkY - 13, '#3a3f4a', 1.4);
+      v.line(bkX + 3, 57, crX, 136, '#3a3f4a', 1.4);
+      c.fillStyle = '#6e4a2c'; c.fillRect(crX - 2, 136, 4, 12);
+      v.fillCircle(crX, 136, 6, '#5a5f6a'); v.fillCircle(crX, 136, 2, '#c8ccd4');
+      const turn = t * 11 * (t > 0.8 && t < 1.85 ? 1 : 0) + (t >= 1.85 ? 1.85 * 11 : 0);
+      v.line(crX, 136, crX + Math.cos(turn) * 9, 136 + Math.sin(turn) * 9, '#8a5a2a', 2.2); v.fillCircle(crX + Math.cos(turn) * 9, 136 + Math.sin(turn) * 9, 2, '#e8443a');
+      // the bucket's back and handle
+      c.fillStyle = '#5a5f6a'; c.fillRect(bkX - 11, bkY - 11, 22, 3);
+      c.strokeStyle = '#3a3f4a'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(bkX - 11, bkY - 10); c.lineTo(bkX, bkY - 14); c.lineTo(bkX + 11, bkY - 10); c.stroke();
+      // Pip: walks in 0-0.7, rides 0.85-1.85, steps off onto the ledge 1.9-2.2
+      let px, py;
+      if (t < 0.7) { const k = v.seg(t, 0, 0.7); px = v.lerp(150, bkX, e.inOut(k)); py = 148 + v.hop(v.seg(t, 0.5, 0.7), 8); }
+      else if (t < 1.9) { px = bkX; py = bkY; }
+      else { const k = v.seg(t, 1.9, 2.2); px = v.lerp(bkX, 182, k); py = 90 + v.hop(k, 8); }
       // the rope drops 2.3-2.6 and Bo climbs it 2.8-4.2
       const drop = v.seg(t, 2.3, 2.6), climb = e.inOut(v.seg(t, 2.8, 4.2));
       if (drop > 0) { const len = drop * 58; v.line(186, 90, 196, 92, '#c89a10', 3); v.line(196, 92, 196 + Math.sin(t * 3) * 2, 92 + len, '#ffd23a', 2.5); }
-      const bx = t < 2.6 ? 200 : 198, by = t < 2.8 ? 148 : v.lerp(148, 90, climb);
-      pw33Chaser(v, 1, t < 2.8 ? (crouch ? 196 : 200) : bx, t >= 4.2 ? 90 : by, { s: 0.6, face: -1, sq: crouch ? 0.35 : 0, mood: t > 2.8 && t < 4.2 ? 'grit' : t > 4.4 ? 'joy' : 'happy' });
-      if (crouch) { c.strokeStyle = v.c.gold; c.lineWidth = 1.5; c.beginPath(); c.ellipse(196, 138, 10, 3, 0, 0, pw33TAU); c.stroke(); }
-      pw33Chaser(v, 0, px, py, { s: 0.6, face: 1, mood: jump > 0 && jump < 1 ? 'wow' : t > 2.6 && t < 4.2 ? 'grit' : 'happy' });
-      if (t > 1.3 && t < 1.8) v.label('BOING!', 200, 120, 12, v.c.gold);
+      const cranking = t > 0.8 && t < 1.85;
+      const bx = t < 2.2 ? crX - 12 : t < 2.8 ? v.lerp(crX - 12, 198, e.inOut(v.seg(t, 2.2, 2.75))) : 198, by = t < 2.8 ? 148 : v.lerp(148, 90, climb);
+      pw33Chaser(v, 1, bx, t >= 4.2 ? 90 : by, { s: 0.6, face: t < 2.2 ? 1 : -1, sq: cranking ? 0.1 * Math.sin(t * 22) : 0, mood: cranking || (t > 2.8 && t < 4.2) ? 'grit' : t > 4.4 ? 'joy' : 'happy' });
+      pw33Chaser(v, 0, px, py, { s: 0.6, face: t < 1.9 ? 1 : -1, mood: t > 0.85 && t < 1.9 ? 'wow' : t > 2.6 && t < 4.2 ? 'grit' : 'happy' });
+      // the tub's front, over Pip's legs
+      c.fillStyle = '#7a808c'; c.beginPath(); c.moveTo(bkX - 12, bkY - 9); c.lineTo(bkX + 12, bkY - 9); c.lineTo(bkX + 9, bkY + 2); c.lineTo(bkX - 9, bkY + 2); c.closePath(); c.fill();
+      c.fillStyle = '#5a5f6a'; c.fillRect(bkX - 12, bkY - 9, 24, 2.5); c.fillRect(bkX - 10, bkY - 3, 20, 1.5);
+      if (t > 0.25 && t < 0.85) v.bubble('Crank me up!', 196, 112, { size: 10 });
+      if (t > 0.9 && t < 1.6) v.label('CLANK!', crX - 4, 116 - 8 * v.seg(t, 0.9, 1.6), 12, v.c.gold);
       // the water rises the whole time
       const wy = v.lerp(178, 140, v.seg(t, 0, 5.2));
       c.fillStyle = '#8a6a44'; c.beginPath(); c.moveTo(0, wy); for (let x = 0; x <= v.W; x += 10) c.lineTo(x, wy + Math.sin(x * 0.08 + t * 4) * 2.5); c.lineTo(v.W, v.H); c.lineTo(0, v.H); c.closePath(); c.fill();
