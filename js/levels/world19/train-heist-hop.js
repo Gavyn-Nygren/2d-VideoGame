@@ -843,14 +843,21 @@ function heistDrawSky(st, t) {
   ctx.fillStyle = heistSkyG; ctx.fillRect(0, 0, W, H);
   // a big low sun
   ctx.fillStyle = 'rgba(255,236,170,0.35)'; circle(720, 200, 92); ctx.fill();
+  ctx.save(); ctx.translate(720, 200); ctx.rotate(t * 0.04); ctx.fillStyle = 'rgba(255,240,190,0.22)';
+  ctx.beginPath(); for (let i = 0; i < 14; i++) { ctx.rotate(Math.PI / 7); ctx.moveTo(-7, 60); ctx.lineTo(0, 120 + (i % 2) * 20); ctx.lineTo(7, 60); ctx.closePath(); } ctx.fill();
+  ctx.restore();
   ctx.fillStyle = 'rgba(255,246,206,0.95)'; circle(720, 200, 54); ctx.fill();
-  // wispy clouds drift slowly
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; circle(708, 188, 30); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,200,120,0.7)'; ctx.lineWidth = 2; circle(720, 200, 54); ctx.stroke();
+  // wispy clouds drift slowly: a warm shaded underside, the cloud, a bright top
   const off = (st.scroll + st.camX) * 0.02 + t * 4;
-  ctx.fillStyle = 'rgba(255,248,232,0.75)';
   for (let i = 0; i < 5; i++) {
     const span = W + 300, x = ((i * 290 - off) % span + span) % span - 150, y = 70 + (i % 3) * 34;
+    ctx.fillStyle = 'rgba(214,130,100,0.28)'; ctx.beginPath(); ctx.ellipse(x + 4, y + 4, 70, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,248,232,0.8)';
     ctx.beginPath(); ctx.ellipse(x, y, 70, 10, 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(x + 30, y - 7, 36, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(x + 24, y - 11, 22, 3, 0, 0, Math.PI * 2); ctx.fill();
   }
 }
 // far mesas, near buttes, the desert with cactus streaming by, telegraph poles
@@ -863,8 +870,16 @@ function heistDrawLand(st, t) {
     for (let i = i0; i < i0 + Math.ceil(W / step) + 3; i++) {
       const hv = hash(i, seedK), x = i * step - off + (hv % 60), w = step * (0.5 + (hv % 100) / 160), h = hgt * (0.55 + ((hv >> 8) % 100) / 220);
       ctx.beginPath(); ctx.moveTo(x - 30, y0); ctx.lineTo(x, y0 - h); ctx.lineTo(x + w, y0 - h); ctx.lineTo(x + w + 34, y0); ctx.closePath(); ctx.fill();
-      // a stripe of lighter rock
-      ctx.fillStyle = 'rgba(255,220,170,0.18)'; ctx.fillRect(x + 4, y0 - h + 12, w - 6, 6); ctx.fillStyle = col;
+      // bands of lighter and darker rock, a shaded right cliff, a sunlit rim and a soft outline
+      // (each band spans the slopes at its own height, so no clip mask is needed)
+      const band = (yy, bh) => { const f = (yy - (y0 - h)) / h, l = x - 30 * f, r = x + w + 34 * f; ctx.rect(l, yy, r - l, bh); };
+      ctx.fillStyle = 'rgba(255,220,170,0.2)'; ctx.beginPath(); band(y0 - h + 12, 6); band(y0 - h * 0.45, 4); ctx.fill();
+      ctx.fillStyle = 'rgba(120,50,30,0.12)'; ctx.beginPath(); band(y0 - h * 0.7, 5); band(y0 - h * 0.22, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(110,40,30,0.18)'; ctx.beginPath(); ctx.moveTo(x + w - 10, y0 - h); ctx.lineTo(x + w, y0 - h); ctx.lineTo(x + w + 34, y0); ctx.lineTo(x + w + 4, y0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(110,40,30,0.18)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let g = 1; g < 4; g++) { const gx = x + (w * g) / 4 + (hv >> g) % 10; ctx.moveTo(gx, y0 - h + 4); ctx.lineTo(gx + 3, y0 - h * 0.5); } ctx.stroke();
+      ctx.fillStyle = 'rgba(255,236,200,0.45)'; ctx.fillRect(x, y0 - h, w, 2);
+      ctx.strokeStyle = 'rgba(110,40,30,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 30, y0); ctx.lineTo(x, y0 - h); ctx.lineTo(x + w, y0 - h); ctx.lineTo(x + w + 34, y0); ctx.stroke();
+      ctx.fillStyle = col;
     }
   };
   mesas(0.03, '#e3a27a', 300, 120, 340, 11);
@@ -872,6 +887,11 @@ function heistDrawLand(st, t) {
   // the desert floor
   ctx.fillStyle = '#efc78a'; ctx.fillRect(0, 300, W, H - 300);
   ctx.fillStyle = '#e2b273'; ctx.fillRect(0, 300, W, 8);
+  ctx.fillStyle = 'rgba(255,240,200,0.35)'; ctx.fillRect(0, 308, W, 2);
+  // wind ripples in the sand (slow)
+  const o1 = base * 0.3;
+  ctx.strokeStyle = 'rgba(190,130,70,0.25)'; ctx.lineWidth = 1.2;
+  for (let i = Math.floor(o1 / 120) - 1; i < Math.floor(o1 / 120) + 10; i++) { const hv = hash(i, 63), x = i * 120 - o1 + (hv % 60), y = 318 + (hv % 30); ctx.beginPath(); ctx.moveTo(x - 20, y); ctx.quadraticCurveTo(x, y - 3, x + 20, y); ctx.stroke(); }
   // small cactus and rocks far off (half speed)
   const o2 = base * 0.45;
   for (let i = Math.floor(o2 / 90) - 1; i < Math.floor(o2 / 90) + 13; i++) {
@@ -906,6 +926,9 @@ function heistCactus(x, y, s, col) {
   rr(x - 17 * s, y - 32 * s, 7 * s, 18 * s, 3.5 * s); ctx.fill(); rr(x - 17 * s, y - 18 * s, 14 * s, 6 * s, 3 * s); ctx.fill();
   rr(x + 10 * s, y - 38 * s, 7 * s, 20 * s, 3.5 * s); ctx.fill(); rr(x + 3 * s, y - 22 * s, 14 * s, 6 * s, 3 * s); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.18)'; rr(x - 3 * s, y - 44 * s, 3 * s, 40 * s, 1.5 * s); ctx.fill();
+  ctx.fillStyle = 'rgba(0,40,10,0.2)'; rr(x + 1.5 * s, y - 44 * s, 3 * s, 42 * s, 1.5 * s); ctx.fill();
+  if (s > 0.8) { ctx.fillStyle = 'rgba(255,250,220,0.7)'; ctx.beginPath(); for (let k = 0; k < 4; k++) { ctx.rect(x - 6 * s, y - (38 - k * 10) * s, 2, 1); ctx.rect(x + 5 * s, y - (34 - k * 10) * s, 2, 1); } ctx.fill(); }
+  ctx.fillStyle = 'rgba(120,70,30,0.2)'; ctx.beginPath(); ctx.ellipse(x + 2 * s, y, 16 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
 }
 function heistDrawTrack(st) {
   const R = HEIST.railY, x0 = st.camX - 20, x1 = st.camX + W + 20;
@@ -964,7 +987,7 @@ function heistDrawCar(st, c, t) {
     ctx.fillStyle = '#4a4048'; ctx.fillRect(x, R + B - 16, w, 10);
     ctx.fillStyle = col; rr(x + 6, R + 12, w - 12, B - 30, 34); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.3)'; rr(x + 20, R + 20, w - 40, 10, 5); ctx.fill();
-    ctx.strokeStyle = dark; ctx.lineWidth = 2; for (const f of [0.3, 0.7]) { ctx.beginPath(); ctx.moveTo(x + w * f, R + 12); ctx.lineTo(x + w * f, R + B - 18); ctx.stroke(); }
+    ctx.strokeStyle = dark; ctx.lineWidth = 2; ctx.beginPath(); for (const f of [0.3, 0.7]) { ctx.moveTo(x + w * f, R + 12); ctx.lineTo(x + w * f, R + B - 18); } ctx.stroke();
     ctx.fillStyle = dark; ctx.fillRect(x + w / 2 - 14, R + 4, 28, 10);
     text('WATER', x + w / 2, R + 52, 15, '#6b6658', 'center');
     heistDrawRoof(x, w, '#8a6a46', '#5e452c');
@@ -979,7 +1002,7 @@ function heistDrawCar(st, c, t) {
       const bx = x + 4 + k * ((w - 8) / Math.floor(w / 48)) + (r % 2) * 6, bw = (w - 8) / Math.floor(w / 48) - 4, by = R + r * 24;
       ctx.fillStyle = '#e8c35a'; rr(bx, by, bw - (r % 2) * 6, 23, 4); ctx.fill();
       ctx.strokeStyle = '#b8913a'; ctx.lineWidth = 1.2;
-      for (let s = 0; s < 4; s++) { ctx.beginPath(); ctx.moveTo(bx + 4, by + 5 + s * 4.5); ctx.lineTo(bx + bw - 10, by + 4 + s * 4.5); ctx.stroke(); }
+      ctx.beginPath(); for (let s = 0; s < 4; s++) { ctx.moveTo(bx + 4, by + 5 + s * 4.5); ctx.lineTo(bx + bw - 10, by + 4 + s * 4.5); } ctx.stroke();
       ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx + bw * 0.3, by); ctx.lineTo(bx + bw * 0.3, by + 23); ctx.moveTo(bx + bw * 0.7, by); ctx.lineTo(bx + bw * 0.7, by + 23); ctx.stroke();
     }
     ctx.fillStyle = '#f6d878'; ctx.fillRect(x + 2, R - 1, w - 4, 3);
@@ -988,6 +1011,10 @@ function heistDrawCar(st, c, t) {
   // the box body
   ctx.fillStyle = col; ctx.fillRect(x, R + 4, w, B - 10);
   ctx.fillStyle = dark; ctx.fillRect(x, R + B - 12, w, 6); ctx.fillRect(x, R + 4, 4, B - 10); ctx.fillRect(x + w - 4, R + 4, 4, B - 10);
+  ctx.fillStyle = 'rgba(255,240,210,0.18)'; ctx.fillRect(x + 4, R + 4, w - 8, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(x + 4, R + B - 26, w - 8, 14);
+  ctx.fillStyle = 'rgba(255,230,190,0.45)'; ctx.beginPath(); for (let k = 10; k < w - 6; k += 22) { heistDot(x + k, R + B - 9, 1.3); } ctx.fill();
+  ctx.strokeStyle = mixCol(dark, '#141428', 0.4); ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.75, R + 4.75, w - 1.5, B - 11.5);
   if (c.kind === 'box' || c.kind === 'stock') {
     ctx.fillStyle = 'rgba(0,0,0,0.12)';
     for (let k = 14; k < w - 6; k += 16) ctx.fillRect(x + k, R + 6, 2, B - 18);
@@ -1079,11 +1106,14 @@ function heistDrawEngine(st, c, t, wheel) {
   ctx.fillStyle = '#2a2228'; ctx.fillRect(x, R + B - 14, w, 12);
   // the cowcatcher
   ctx.fillStyle = '#c8452f'; ctx.beginPath(); ctx.moveTo(x + w - 8, R + B - 14); ctx.lineTo(x + w + 34, HEIST.railY - 2); ctx.lineTo(x + w - 8, HEIST.railY - 2); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#8f2c1e'; ctx.lineWidth = 2; for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x + w - 8, R + B - 14 + k * 4); ctx.lineTo(x + w - 8 + k * 9, HEIST.railY - 2); ctx.stroke(); }
+  ctx.strokeStyle = '#8f2c1e'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 1; k < 4; k++) { ctx.moveTo(x + w - 8, R + B - 14 + k * 4); ctx.lineTo(x + w - 8 + k * 9, HEIST.railY - 2); } ctx.stroke();
   // the boiler
   ctx.fillStyle = '#2d2a36'; rr(x + 126, R + 18, w - 130, 66, 30); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.12)'; rr(x + 140, R + 26, w - 170, 10, 5); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; rr(x + 130, R + 64, w - 138, 18, 9); ctx.fill();
   ctx.fillStyle = '#c9a24a'; for (const f of [0.45, 0.65, 0.85]) ctx.fillRect(x + w * f, R + 18, 5, 66);
+  ctx.fillStyle = '#f2d68a'; ctx.beginPath(); for (const f of [0.45, 0.65, 0.85]) ctx.rect(x + w * f, R + 18, 1.5, 66); ctx.fill();
+  ctx.fillStyle = 'rgba(200,200,220,0.35)'; ctx.beginPath(); for (let k = x + 150; k < x + w - 40; k += 18) { heistDot(k, R + 80, 1.3); } ctx.fill();
   // the front: smokebox door and lamp
   ctx.fillStyle = '#17151d'; circle(x + w - 6, R + 51, 30); ctx.fill();
   ctx.fillStyle = '#ffe9a0'; rr(x + w - 30, R - 2, 26, 20, 5); ctx.fill(); ctx.fillStyle = 'rgba(255,240,170,0.35)'; circle(x + w - 4, R + 8, 22); ctx.fill();
@@ -1094,7 +1124,11 @@ function heistDrawEngine(st, c, t, wheel) {
   ctx.fillStyle = C.gold; ctx.beginPath(); ctx.moveTo(x + w - 230, R + 18); ctx.quadraticCurveTo(x + w - 224, R - 2, x + w - 218, R + 18); ctx.closePath(); ctx.fill();
   // the cab: walls with a window, the canopy roof on posts, the floor
   ctx.fillStyle = '#b8302a'; ctx.fillRect(x, R + 6, cab.x1 - cab.x0, B - 20);
+  ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.fillRect(x, R + B - 34, cab.x1 - cab.x0, 20);
+  ctx.strokeStyle = '#6e1e16'; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.75, R + 6.75, cab.x1 - cab.x0 - 1.5, B - 21.5);
   ctx.fillStyle = '#ffe9b0'; rr(x + 20, R + 22, 36, 26, 4); ctx.fill(); rr(x + 76, R + 22, 36, 26, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(x + 23, R + 25, 8, 20); ctx.fillRect(x + 79, R + 25, 8, 20);
+  ctx.strokeStyle = '#6e1e16'; ctx.lineWidth = 2; rr(x + 20, R + 22, 36, 26, 4); ctx.stroke(); rr(x + 76, R + 22, 36, 26, 4); ctx.stroke();
   ctx.fillStyle = '#8f2c1e'; ctx.fillRect(x, R + 6, cab.x1 - cab.x0, 5);
   text('GULCH No. 9', x + 65, R + 68, 13, '#ffd27a', 'center');
   ctx.fillStyle = '#5a3a22'; ctx.fillRect(x + 2, R - 96, 6, 96); ctx.fillRect(x + 122, R - 96, 6, 96);
@@ -1115,7 +1149,7 @@ function heistDrawCrate(k) {
   if (k.kind === 'hay') {
     ctx.fillStyle = '#e8c35a'; rr(k.x0, k.y0, w, h, 5); ctx.fill();
     ctx.strokeStyle = '#b8913a'; ctx.lineWidth = 1.2;
-    for (let s = 0; s < 4; s++) { ctx.beginPath(); ctx.moveTo(k.x0 + 4, k.y0 + 5 + s * 4.5); ctx.lineTo(k.x1 - 4, k.y0 + 4 + s * 4.5); ctx.stroke(); }
+    ctx.beginPath(); for (let s = 0; s < 4; s++) { ctx.moveTo(k.x0 + 4, k.y0 + 5 + s * 4.5); ctx.lineTo(k.x1 - 4, k.y0 + 4 + s * 4.5); } ctx.stroke();
     ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(k.x0 + w * 0.3, k.y0); ctx.lineTo(k.x0 + w * 0.3, R); ctx.moveTo(k.x0 + w * 0.7, k.y0); ctx.lineTo(k.x0 + w * 0.7, R); ctx.stroke();
     return;
   }
@@ -1236,7 +1270,13 @@ function heistDrawTop(st) {
   ctx.restore();
   heistDrawDark(st, t);
   // engine smoke
-  for (const q of st.smoke) { ctx.fillStyle = 'rgba(244,236,226,' + ((q.far ? 0.3 : 0.55) * (1 - q.t / q.life)) + ')'; circle(q.x, q.y, q.far ? Math.min(q.r, 22) : q.r); ctx.fill(); }
+  // (each puff: a few soft lobes, a greyer underside and a lit top)
+  for (const q of st.smoke) {
+    const a = (q.far ? 0.3 : 0.55) * (1 - q.t / q.life), r = q.far ? Math.min(q.r, 22) : q.r;
+    ctx.fillStyle = 'rgba(170,150,150,' + (a * 0.5) + ')'; circle(q.x + r * 0.15, q.y + r * 0.2, r); ctx.fill();
+    ctx.fillStyle = 'rgba(244,236,226,' + a + ')'; ctx.beginPath(); ctx.arc(q.x, q.y, r * 0.85, 0, Math.PI * 2); ctx.arc(q.x - r * 0.55, q.y + r * 0.2, r * 0.6, 0, Math.PI * 2); ctx.arc(q.x + r * 0.5, q.y + r * 0.1, r * 0.65, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,' + (a * 0.6) + ')'; circle(q.x - r * 0.25, q.y - r * 0.35, r * 0.35); ctx.fill();
+  }
   // pops
   ctx.save(); ctx.translate(-st.camX, 0);
   for (const q of st.pops) {
@@ -1499,3 +1539,5 @@ Sfx.extra.heistRatchet = function () { this.tone(180, 0.04, 'square', 0.03, 140)
 Sfx.extra.heistScreech = function () { this.tone(1800, 1.6, 'sawtooth', 0.012, 900); this.tone(2400, 1.4, 'square', 0.006, 1300, 0.1); };
 Sfx.extra.heistTip = function () { this.tone(520, 0.1, 'triangle', 0.05, 660); this.tone(780, 0.14, 'triangle', 0.05, null, 0.1); };
 Sfx.extra.heistWin = function () { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.18, 'triangle', 0.06, null, i * 0.1)); };
+// a dot added to the current path, so many dots fill in one call
+function heistDot(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }

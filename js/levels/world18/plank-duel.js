@@ -578,17 +578,16 @@ function plankduelSky(st) {
   // the sun with soft rays
   ctx.save(); ctx.translate(830, 92);
   ctx.fillStyle = 'rgba(255,246,190,0.25)';
-  for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(-8, 50); ctx.lineTo(8, 50); ctx.lineTo(0, 96 + Math.sin(t * 1.5 + i) * 6); ctx.closePath(); ctx.fill(); }
+  ctx.beginPath(); for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.moveTo(-8, 50); ctx.lineTo(8, 50); ctx.lineTo(0, 96 + Math.sin(t * 1.5 + i) * 6); ctx.closePath(); } ctx.fill();
   ctx.fillStyle = 'rgba(255,240,170,0.45)'; circle(0, 0, 56); ctx.fill();
   ctx.fillStyle = '#fff5bf'; circle(0, 0, 40); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(-8, -8, 22); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,214,120,0.75)'; ctx.lineWidth = 2; circle(0, 0, 40); ctx.stroke();
   ctx.restore();
   // drifting clouds
   for (let i = 0; i < 5; i++) {
     const x = ((i * 233 + t * (6 + i * 2)) % 1180) - 110, y = 46 + (i * 47) % 110, s = 0.8 + (i % 3) * 0.3;
-    ctx.fillStyle = 'rgba(255,255,255,0.88)';
-    ctx.beginPath(); ctx.moveTo(x - 18 * s, y + 8 * s);
-    ctx.arc(x, y, 18 * s, Math.PI * 0.85, Math.PI * 1.75); ctx.arc(x + 22 * s, y - 10 * s, 22 * s, Math.PI * 1.15, Math.PI * 1.9);
-    ctx.arc(x + 46 * s, y, 17 * s, Math.PI * 1.3, Math.PI * 0.2); ctx.closePath(); ctx.fill();
+    drawCloud(x, y, s);
   }
   // seagulls far off
   ctx.strokeStyle = 'rgba(40,60,90,0.55)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
@@ -604,7 +603,7 @@ function plankduelPalm(x, y, s, sway) {
   ctx.strokeStyle = K.trunk; ctx.lineWidth = 7; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(6, -40, 2 + sway, -78); ctx.stroke();
   ctx.strokeStyle = 'rgba(90,60,30,0.4)'; ctx.lineWidth = 2;
-  for (let k = 1; k < 7; k++) { ctx.beginPath(); ctx.moveTo(-3 + k * 0.6, -k * 11); ctx.lineTo(5 + k * 0.6, -k * 11 - 2); ctx.stroke(); }
+  ctx.beginPath(); for (let k = 1; k < 7; k++) { ctx.moveTo(-3 + k * 0.6, -k * 11); ctx.lineTo(5 + k * 0.6, -k * 11 - 2); } ctx.stroke();
   ctx.translate(2 + sway, -78);
   for (let i = 0; i < 6; i++) {
     const a = -Math.PI / 2 + (i - 2.5) * 0.55 + Math.sin(G.clock * 1.2 + i) * 0.04;
@@ -624,15 +623,20 @@ function plankduelSea(st) {
   g.addColorStop(0, K.seaFar); g.addColorStop(1, K.seaMid);
   ctx.fillStyle = g; ctx.fillRect(0, 270, W, P.SEA - 270 + 2);
   // far islands
+  // a hazy far ridge, then the near islands with a lit top and a shaded side
+  ctx.fillStyle = 'rgba(150,215,215,0.55)'; ctx.beginPath(); ctx.ellipse(120, 274, 130, 9, 0, Math.PI, 0); ctx.fill(); ctx.beginPath(); ctx.ellipse(780, 274, 100, 7, 0, Math.PI, 0); ctx.fill();
   ctx.fillStyle = '#7fd0b8';
   ctx.beginPath(); ctx.ellipse(330, 276, 120, 18, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#62b89e'; ctx.beginPath(); ctx.ellipse(380, 276, 60, 12, 0, Math.PI, 0); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(330, 276, 118, 16, 0, Math.PI * 1.1, Math.PI * 1.55); ctx.stroke();
   ctx.fillStyle = '#9fe0c4'; ctx.beginPath(); ctx.ellipse(630, 276, 70, 11, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#84cdb0'; ctx.beginPath(); ctx.ellipse(660, 276, 34, 7, 0, Math.PI, 0); ctx.fill();
   ctx.fillStyle = K.sand; ctx.beginPath(); ctx.ellipse(330, 277, 110, 5, 0, 0, Math.PI * 2); ctx.fill();
   plankduelPalm(300, 268, 0.5, 2); plankduelPalm(352, 270, 0.42, -2); plankduelPalm(640, 272, 0.36, 1);
   // sparkles on the water
   for (let i = 0; i < 26; i++) {
     const x = (i * 157 + Math.sin(t * 0.5 + i) * 20) % W, y = 284 + (i * 37) % (P.SEA - 290), a = 0.35 + 0.35 * Math.sin(t * 3 + i * 1.7);
-    ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(2) + ')'; ctx.fillRect(x, y, 12 + (i % 3) * 6, 2);
+    ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(x + 6 + (i % 3) * 3, y + 1, 6 + (i % 3) * 3, 1.1, 0, 0, Math.PI * 2); ctx.fill();
   }
 }
 // a friendly pirate ship in the back with its cheering crew (k: whose flag, 0 = Pip's orange on the left)
@@ -642,8 +646,13 @@ function plankduelShip(st, k) {
   ctx.save(); ctx.translate(cx, y); ctx.scale(-side, 1);
   // mast, sail and flag
   ctx.fillStyle = K.woodDk; ctx.fillRect(8, -196, 7, 170);
+  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(9, -196, 2, 170);
   ctx.fillStyle = '#fbf3e0'; ctx.strokeStyle = '#d8c8a8'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(-58, -176); ctx.quadraticCurveTo(-10, -150, -60, -74); ctx.lineTo(4, -78); ctx.lineTo(4, -178); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-58, -176); ctx.quadraticCurveTo(-10, -150, -60, -74); ctx.lineTo(4, -78); ctx.lineTo(4, -178); ctx.closePath(); ctx.fill();
+  // a soft shade in the sail's belly and seams, kept inside the canvas (no clip mask)
+  ctx.fillStyle = 'rgba(170,140,100,0.16)'; ctx.beginPath(); ctx.ellipse(-13, -126, 14, 44, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(170,140,100,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); for (let sy = -160; sy < -80; sy += 20) { ctx.moveTo(-30, sy); ctx.lineTo(3, sy - 1); } ctx.stroke();
+  ctx.strokeStyle = '#d8c8a8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-58, -176); ctx.quadraticCurveTo(-10, -150, -60, -74); ctx.lineTo(4, -78); ctx.lineTo(4, -178); ctx.closePath(); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(20, -170); ctx.quadraticCurveTo(70, -140, 22, -84); ctx.closePath(); ctx.fill(); ctx.stroke();
   // a friendly emblem on the sail: a big star (no skulls in this cove)
   ctx.fillStyle = PCOL[k]; plankduelStar(-28, -126, 16);
@@ -654,8 +663,10 @@ function plankduelShip(st, k) {
   ctx.beginPath(); ctx.moveTo(-110, -30); ctx.lineTo(96, -38); ctx.quadraticCurveTo(84, 10, 60, 26); ctx.lineTo(-84, 26); ctx.quadraticCurveTo(-104, 6, -110, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(-100, -24, 190, 6);
   ctx.strokeStyle = K.hullDk; ctx.lineWidth = 1.5;
-  for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-100, -8 + i * 11); ctx.lineTo(84, -12 + i * 11); ctx.stroke(); }
+  ctx.beginPath(); for (let i = 0; i < 3; i++) { ctx.moveTo(-100, -8 + i * 11); ctx.lineTo(84, -12 + i * 11); } ctx.stroke();
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.moveTo(-84, 26); ctx.lineTo(60, 26); ctx.quadraticCurveTo(70, 18, 76, 10); ctx.lineTo(-100, 10); ctx.closePath(); ctx.fill();
   ctx.fillStyle = PCOL[k]; ctx.fillRect(-104, -36, 196, 6);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-104, -36, 196, 1.5);
   // portholes
   for (let i = 0; i < 3; i++) { ctx.fillStyle = '#ffe9a8'; circle(-60 + i * 48, 2, 6); ctx.fill(); ctx.strokeStyle = '#4a2d14'; ctx.lineWidth = 2; circle(-60 + i * 48, 2, 6); ctx.stroke(); }
   ctx.restore();
@@ -674,7 +685,7 @@ function plankduelStar(x, y, r) {
 function plankduelCrab(x, y, s, face, cheer) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s * face, s);
   ctx.strokeStyle = '#c23a2a'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-  for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(sx * 8, -4); ctx.lineTo(sx * (14 + i * 2), 2 + i * 2); ctx.stroke(); }
+  ctx.beginPath(); for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) { ctx.moveTo(sx * 8, -4); ctx.lineTo(sx * (14 + i * 2), 2 + i * 2); } ctx.stroke();
   const up = cheer ? -10 : 0;
   ctx.beginPath(); ctx.moveTo(-10, -8); ctx.lineTo(-16, -16 + up); ctx.moveTo(10, -8); ctx.lineTo(16, -16 + up); ctx.stroke();
   ctx.fillStyle = '#ff5a43'; circle(-17, -19 + up, 5); ctx.fill(); circle(17, -19 + up, 5); ctx.fill();
@@ -736,11 +747,18 @@ function plankduelPlank(st) {
   ctx.fillStyle = K.rockDk; ctx.beginPath(); ctx.ellipse(P.X0, P.SEA + 6, 92, 26, 0, Math.PI, 0); ctx.fill();
   ctx.fillStyle = K.rock; ctx.beginPath(); ctx.ellipse(P.X0 - 8, P.SEA + 2, 74, 22, 0, Math.PI, 0); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(P.X0 - 26, P.SEA - 10, 26, 7, -0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = mixCol(K.rockDk, '#141428', 0.35); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(P.X0, P.SEA + 6, 92, 26, 0, Math.PI, 0); ctx.stroke();
+  ctx.fillStyle = 'rgba(30,30,50,0.25)'; ctx.beginPath(); for (const [sx, sy] of [[-40, -6], [-10, -14], [22, -4], [50, -2], [-60, 0]]) { plankDot(P.X0 + sx, P.SEA + sy, 1.6); } ctx.fill();
   ctx.fillStyle = '#5fbf6a'; ctx.beginPath(); ctx.ellipse(P.X0 + 30, P.SEA - 12, 16, 5, 0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3f9a52'; ctx.beginPath(); ctx.ellipse(P.X0 - 48, P.SEA - 4, 12, 4, -0.3, 0, Math.PI * 2); ctx.fill();
   const by = P.PY + th, bh = P.SEA - 12 - by;
   ctx.fillStyle = K.woodDk; rr(P.X0 - 26, by, 52, bh, 10); ctx.fill();
   ctx.fillStyle = K.wood; rr(P.X0 - 22, by + 2, 44, bh - 4, 9); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.16)'; rr(P.X0 + 8, by + 2, 14, bh - 4, 8); ctx.fill();
+  ctx.fillStyle = 'rgba(255,240,210,0.25)'; ctx.fillRect(P.X0 - 18, by + 8, 4, bh - 16);
+  ctx.strokeStyle = 'rgba(70,40,20,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (const sx of [-8, 4]) { ctx.moveTo(P.X0 + sx, by + 2); ctx.lineTo(P.X0 + sx, by + bh - 2); } ctx.stroke();
   ctx.fillStyle = '#5a5a6a'; ctx.fillRect(P.X0 - 24, by + 8, 48, 4); ctx.fillRect(P.X0 - 24, by + bh - 12, 48, 4);
+  ctx.fillStyle = '#9a9aac'; ctx.fillRect(P.X0 - 24, by + 8, 48, 1.3); ctx.fillRect(P.X0 - 24, by + bh - 12, 48, 1.3);
   // posts out in the water (not under the rocking plank)
   if (st.twist !== 'rock') for (const s of [-1, 1]) {
     const px = P.X0 + s * Math.min(E - 70, 150);
@@ -1175,3 +1193,5 @@ Sfx.extra.plankduelSquawk = function () { this.tone(1200, 0.08, 'square', 0.025,
 Sfx.extra.plankduelGust = function () { this.tone(200, 0.6, 'sine', 0.03, 420); };
 Sfx.extra.plankduelGustWarn = function () { [880, 660].forEach((f, i) => this.tone(f, 0.08, 'triangle', 0.03, null, i * 0.09)); };
 Sfx.extra.plankduelGold = function () { this.tone(784, 0.1, 'triangle', 0.05); this.tone(1046, 0.12, 'triangle', 0.045, null, 0.08); this.tone(1318, 0.16, 'triangle', 0.04, null, 0.16); };
+// a dot added to the current path, so many dots fill in one call
+function plankDot(x, y, r) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }

@@ -896,7 +896,12 @@ const CLOUDBRIDGE = {
     const sx = 800 - (st.camX * 0.01) % 30, sy = 96, sun = st.look === 'sunny';
     ctx.fillStyle = 'rgba(255,236,170,' + (sun ? 0.4 : 0.26) + ')'; circle(sx, sy, sun ? 110 : 84); ctx.fill();
     ctx.fillStyle = 'rgba(255,244,200,0.6)'; circle(sx, sy, sun ? 70 : 54); ctx.fill();
+    ctx.save(); ctx.translate(sx, sy); ctx.rotate(t * 0.05); ctx.fillStyle = 'rgba(255,248,210,0.3)';
+    ctx.beginPath(); for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.moveTo(-5, sun ? 54 : 44); ctx.lineTo(0, (sun ? 112 : 90) + (i % 2) * 16); ctx.lineTo(5, sun ? 54 : 44); ctx.closePath(); } ctx.fill();
+    ctx.restore();
     ctx.fillStyle = '#fff6d0'; circle(sx, sy, sun ? 48 : 38); ctx.fill();
+    if (!sun) { ctx.fillStyle = 'rgba(255,255,255,0.55)'; circle(sx - 9, sy - 9, 20); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(255,214,130,0.7)'; ctx.lineWidth = 2; circle(sx, sy, sun ? 48 : 38); ctx.stroke();
     if (sun) { // a friendly face
       ctx.fillStyle = '#c98a3a'; circle(sx - 14, sy - 6, 3.4); ctx.fill(); circle(sx + 14, sy - 6, 3.4); ctx.fill();
       ctx.strokeStyle = '#c98a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(sx, sy + 4, 14, 0.2, Math.PI - 0.2); ctx.stroke();
@@ -909,7 +914,9 @@ const CLOUDBRIDGE = {
       const w = 60 + hash(k, 9) % 50;
       ctx.fillStyle = 'rgba(200,196,236,0.55)';
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.quadraticCurveTo(x + w * 0.7, y + 18, x + w * 0.5, y + 34); ctx.quadraticCurveTo(x + w * 0.3, y + 18, x, y); ctx.fill();
+      ctx.fillStyle = 'rgba(150,140,210,0.3)'; ctx.beginPath(); ctx.moveTo(x + w * 0.5, y + 3); ctx.lineTo(x + w, y); ctx.quadraticCurveTo(x + w * 0.7, y + 18, x + w * 0.5, y + 34); ctx.closePath(); ctx.fill();
       ctx.fillStyle = 'rgba(176,226,190,0.7)'; rr(x - 2, y - 4, w + 4, 7, 3); ctx.fill();
+      if (hash(k, 13) % 2) { ctx.fillStyle = 'rgba(130,200,150,0.6)'; circle(x + w * 0.25, y - 9, 7); ctx.fill(); circle(x + w * 0.25 + 8, y - 7, 5); ctx.fill(); }
     }
     // the far Cloud Castle in the last stretch
     if (st.look === 'sunny') {
@@ -927,14 +934,27 @@ const CLOUDBRIDGE = {
     }
     // the soft cloud sea far below (the safety clouds live there)
     const off = (st.camX * 0.5) % 120;
+    ctx.fillStyle = 'rgba(190,200,240,0.2)'; ctx.beginPath();
+    for (let k = -1; k < 11; k++) { const x = k * 120 - off + 6, r = 56 + (k % 3) * 8; ctx.moveTo(x + r, 546); ctx.arc(x, 546, r, 0, Math.PI * 2); }
+    ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
     for (let k = -1; k < 11; k++) { const x = k * 120 - off; circle(x, 540, 56 + (k % 3) * 8); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath();
+    for (let k = -1; k < 11; k++) { const x = k * 120 - off - 16, y = 500 - (k % 3) * 6; ctx.moveTo(x + 14, y); ctx.arc(x, y, 14, 0, Math.PI * 2); }
+    ctx.fill();
     ctx.fillStyle = 'rgba(236,232,255,0.9)'; ctx.fillRect(0, 528, W, 12);
   }
+  // drawn once into a picture per size and colour, then copied (the shading costs nothing per frame)
   function cloudShape(x, y, s, col) {
-    ctx.fillStyle = col;
-    circle(x, y, 18 * s); ctx.fill(); circle(x + 20 * s, y - 8 * s, 22 * s); ctx.fill(); circle(x + 42 * s, y, 16 * s); ctx.fill();
-    rr(x - 10 * s, y - 2 * s, 66 * s, 16 * s, 8 * s); ctx.fill();
+    s = Math.round(s * 20) / 20; col = col;
+    blitSprite(artSprite('cloudShape' + s + col, 100 * s, 66 * s, (26 * s), (40 * s), c => cloudShapePaint(c, 0, 0, s, col)), x, y);
+  }
+  function cloudShapePaint(c, x, y, s, col) {
+    // a soft blue-grey underside, the puffs, a bright top
+    const shape = (dx, dy) => { c.beginPath(); c.arc(x + dx, y + dy, 18 * s, 0, Math.PI * 2); c.arc(x + 20 * s + dx, y - 8 * s + dy, 22 * s, 0, Math.PI * 2); c.arc(x + 42 * s + dx, y + dy, 16 * s, 0, Math.PI * 2); c.roundRect(x - 10 * s + dx, y - 2 * s + dy, 66 * s, 16 * s, 8 * s); };
+    c.fillStyle = 'rgba(150,170,210,0.25)'; shape(2 * s, 4 * s); c.fill();
+    c.fillStyle = col; shape(0, 0); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.6)'; circleOn(c, x + 16 * s, y - 17 * s, 8 * s); c.fill(); circleOn(c, x - 4 * s, y - 5 * s, 6 * s); c.fill();
   }
   function drawIsle(st, s, lk, t) {
     const x0 = s.x0, x1 = s.x1, y = s.top, w = x1 - x0, depth = Math.min(150, 50 + w * 0.22);
@@ -948,6 +968,25 @@ const CLOUDBRIDGE = {
     ctx.beginPath(); ctx.moveTo(x0 + w * 0.5, y + 10); ctx.lineTo(x1 - 2, y + 10);
     ctx.quadraticCurveTo(x1 - 6, y + depth * 0.45, x0 + w * 0.6, y + depth * 0.85);
     ctx.quadraticCurveTo(x0 + w * 0.52, y + depth * 0.98, x0 + w * 0.5, y + depth * 0.7); ctx.closePath(); ctx.fill();
+    // rock layers, specks and a soft shade where the grass overhangs
+    ctx.beginPath(); ctx.moveTo(x0, y + 4); ctx.lineTo(x1, y + 4);
+    ctx.quadraticCurveTo(x1 - 4, y + depth * 0.45, x0 + w * 0.6, y + depth * 0.85);
+    ctx.quadraticCurveTo(x0 + w * 0.5, y + depth * 1.05, x0 + w * 0.42, y + depth * 0.85);
+    ctx.quadraticCurveTo(x0 + 4, y + depth * 0.45, x0, y + 4); ctx.closePath();
+    ctx.strokeStyle = 'rgba(60,40,110,0.4)'; ctx.lineWidth = 2; ctx.stroke();
+    // strata: short wavy lines kept inside the tapering rock (no clip, one stroke)
+    ctx.strokeStyle = 'rgba(60,40,110,0.14)'; ctx.beginPath();
+    for (let yy = y + 30; yy < y + depth * 0.8; yy += 20) {
+      const f = (yy - y) / depth, inset = w * (0.08 + f * f * 0.45), xa = x0 + inset, xb = x1 - inset;
+      if (xb - xa < 20) break;
+      ctx.moveTo(xa, yy); for (let x = xa + 24; x <= xb; x += 24) ctx.lineTo(x, yy + Math.sin(x * 0.04 + yy) * 3);
+    }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.beginPath();
+    for (let k = 0; k < w / 26; k++) { const h = hash(s.seed, k + 90), dy = 18 + h % Math.max(1, depth * 0.6 | 0), f = dy / depth, px = x0 + 8 + k * 26 + h % 12;
+      if (px < x0 + w * (0.08 + f * f * 0.45) || px > x1 - w * (0.08 + f * f * 0.45)) continue; ctx.moveTo(px + 1.4, y + dy); ctx.arc(px, y + dy, 1.4, 0, Math.PI * 2); }
+    ctx.fill();
+    ctx.fillStyle = 'rgba(40,30,90,0.18)'; ctx.fillRect(x0 + 2, y + 10, w - 4, 6);
     // little rock stripes and a dangling crystal
     ctx.fillStyle = lk.rockE;
     for (let k = 0; k < Math.floor(w / 70); k++) { const rx = x0 + 24 + k * 70 + (hash(s.seed, k) % 20); rr(rx, y + 22 + (k % 2) * 14, 22, 4, 2); ctx.fill(); }
@@ -956,6 +995,7 @@ const CLOUDBRIDGE = {
     // the grass top
     ctx.fillStyle = lk.grassD; rr(x0 - 3, y - 2, w + 6, 14, 6); ctx.fill();
     ctx.fillStyle = lk.grass; rr(x0 - 3, y - 3, w + 6, 10, 5); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x0 + 4, y - 2, w - 8, 1.5);
     for (let k = 0; k < w / 16; k++) { ctx.fillStyle = lk.grassD; const gx = x0 + 6 + k * 16 + (hash(s.seed, k + 50) % 8); ctx.beginPath(); ctx.moveTo(gx, y + 9); ctx.lineTo(gx + 4, y + 16); ctx.lineTo(gx + 8, y + 9); ctx.fill(); }
     // flowers, bushes and the odd round tree
     for (let k = 0; k < Math.floor(w / 46); k++) {
@@ -963,8 +1003,10 @@ const CLOUDBRIDGE = {
       if (Math.abs(fx - (s.spring || -999)) < 30) continue;
       if (s.flag && Math.abs(fx - flagX(st)) < 30) continue;
       if (h % 7 === 0 && w > 200 && !s.castle) {
-        ctx.fillStyle = '#9a6a4a'; ctx.fillRect(fx - 3, y - 26, 6, 24);
+        ctx.fillStyle = 'rgba(30,60,30,0.2)'; ctx.beginPath(); ctx.ellipse(fx + 3, y - 1, 16, 3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#9a6a4a'; ctx.fillRect(fx - 3, y - 26, 6, 24); ctx.fillStyle = '#6e4a32'; ctx.fillRect(fx + 1, y - 26, 2, 24);
         ctx.fillStyle = lk.grassD; circle(fx, y - 34, 16); ctx.fill(); ctx.fillStyle = lk.grass; circle(fx - 4, y - 38, 11); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.3)'; circle(fx - 7, y - 42, 4); ctx.fill();
       } else if (h % 3 === 0) {
         ctx.fillStyle = lk.grassD; circle(fx, y - 4, 8); ctx.fill(); circle(fx + 8, y - 3, 6); ctx.fill();
       } else {
@@ -1066,7 +1108,7 @@ const CLOUDBRIDGE = {
     const by = 150 + Math.sin(t * 2) * 3;
     ctx.fillStyle = '#ffd36b'; circle(cx, by, 13); ctx.fill();
     ctx.strokeStyle = '#ffd36b'; ctx.lineWidth = 3;
-    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + t; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * 17, by + Math.sin(a) * 17); ctx.lineTo(cx + Math.cos(a) * 23, by + Math.sin(a) * 23); ctx.stroke(); }
+    ctx.beginPath(); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + t; ctx.moveTo(cx + Math.cos(a) * 17, by + Math.sin(a) * 17); ctx.lineTo(cx + Math.cos(a) * 23, by + Math.sin(a) * 23); } ctx.stroke();
     ctx.fillStyle = '#c98a3a'; circle(cx - 4, by - 2, 1.6); ctx.fill(); circle(cx + 4, by - 2, 1.6); ctx.fill();
     ctx.restore();
   }

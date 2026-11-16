@@ -761,8 +761,14 @@ const TIDEDIG_SAND = ['#f6dc9a', '#ecca80', '#e0b96c', '#d3a75c', '#c79a52', '#b
 function tidedigPalm(c, x, y, h, lean, t) {
   // a curvy palm trunk with rings and a crown of leaves, coconuts under them
   const tx = x + lean, ty = y - h;
-  c.strokeStyle = '#8a5a32'; c.lineWidth = 12; c.lineCap = 'round';
+  c.strokeStyle = '#5e3a1c'; c.lineWidth = 15; c.lineCap = 'round';
   c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + lean * 0.2, y - h * 0.55, tx, ty); c.stroke();
+  c.strokeStyle = '#8a5a32'; c.lineWidth = 12;
+  c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + lean * 0.2, y - h * 0.55, tx, ty); c.stroke();
+  c.strokeStyle = 'rgba(255,220,170,0.25)'; c.lineWidth = 3;
+  c.beginPath(); c.moveTo(x - 3, y); c.quadraticCurveTo(x + lean * 0.2 - 3, y - h * 0.55, tx - 3, ty); c.stroke();
+  // its shadow on the sand
+  c.fillStyle = 'rgba(120,80,30,0.18)'; c.beginPath(); c.ellipse(x + 8, y, 30, 5, 0, 0, Math.PI * 2); c.fill();
   c.strokeStyle = '#a8703e'; c.lineWidth = 2;
   for (let k = 0.12; k < 1; k += 0.11) {
     const px = x + (tx - x) * k + lean * 0.2 * Math.sin(k * Math.PI) * 0.5, py = y - h * k;
@@ -774,27 +780,48 @@ function tidedigPalm(c, x, y, h, lean, t) {
     c.fillStyle = i % 2 ? '#3fae5a' : '#2f9a4c';
     c.beginPath(); c.moveTo(tx, ty); c.quadraticCurveTo((tx + ex) / 2, ty - 26 + Math.abs(i - 2.5) * 6, ex, ey);
     c.quadraticCurveTo((tx + ex) / 2, ty - 8, tx, ty + 4); c.fill();
+    c.strokeStyle = 'rgba(20,90,40,0.55)'; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(tx, ty + 2); c.quadraticCurveTo((tx + ex) / 2, ty - 16 + Math.abs(i - 2.5) * 6, ex, ey); c.stroke();
   }
   c.fillStyle = '#6b4a28'; for (const [dx, dy] of [[-5, 6], [5, 7], [0, 11]]) { c.beginPath(); c.arc(tx + dx, ty + dy, 5, 0, Math.PI * 2); c.fill(); }
 }
 function tidedigRockBlob(c, x, y, w, h, col, dark) {
+  c.fillStyle = 'rgba(110,70,20,0.2)'; c.beginPath(); c.ellipse(x + 4, y + 2, w / 2 + 6, 5, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = dark; c.beginPath(); c.ellipse(x, y + 3, w / 2, h / 2, 0, Math.PI, 0); c.fill();
   c.fillStyle = col; c.beginPath(); c.ellipse(x, y, w / 2, h / 2, 0, Math.PI, 0); c.fill();
-  c.fillStyle = 'rgba(255,255,255,0.14)'; c.beginPath(); c.ellipse(x - w * 0.15, y - h * 0.28, w * 0.18, h * 0.1, -0.3, 0, Math.PI * 2); c.fill();
+  // a shaded right flank, specks and a dark outline
+  c.save(); c.beginPath(); c.ellipse(x, y, w / 2, h / 2, 0, Math.PI, 0); c.clip();
+  c.fillStyle = 'rgba(30,20,10,0.16)'; c.beginPath(); c.ellipse(x + w * 0.32, y, w * 0.3, h / 2, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(40,30,20,0.25)'; for (let i = 0; i < 5; i++) { const hh = hash(Math.round(x) + i, Math.round(w)); c.beginPath(); c.arc(x - w * 0.35 + (hh % Math.max(1, Math.round(w * 0.7))), y - 3 - (hh >>> 6) % Math.max(1, Math.round(h * 0.35)), 1.3, 0, Math.PI * 2); c.fill(); }
+  c.restore();
+  c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.ellipse(x - w * 0.15, y - h * 0.28, w * 0.18, h * 0.1, -0.3, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = mixCol(dark, '#141428', 0.3); c.lineWidth = 1.8; c.beginPath(); c.ellipse(x, y, w / 2, h / 2, 0, Math.PI, 0); c.stroke();
 }
 function tidedigPaintBack(c, st) {
   const g = G.level.grid, S = TIDEDIG.S, surf = tidedigSurf();
   // the sky
   const sky = c.createLinearGradient(0, 0, 0, surf); sky.addColorStop(0, C.skyTop); sky.addColorStop(1, C.skyBot);
   c.fillStyle = sky; c.fillRect(0, 0, W, surf + 10);
-  c.fillStyle = C.sunGlow; c.beginPath(); c.arc(640, 112, 58, 0, Math.PI * 2); c.fill();
+  c.fillStyle = C.sunGlow; c.beginPath(); c.arc(640, 112, 70, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(640, 112, 54, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,248,210,0.3)';
+  for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6 + 0.2, r1 = 44, r2 = 80 + (i % 2) * 14; c.beginPath(); c.moveTo(640 + Math.cos(a - 0.08) * r1, 112 + Math.sin(a - 0.08) * r1); c.lineTo(640 + Math.cos(a) * r2, 112 + Math.sin(a) * r2); c.lineTo(640 + Math.cos(a + 0.08) * r1, 112 + Math.sin(a + 0.08) * r1); c.closePath(); c.fill(); }
   c.fillStyle = C.sun; c.beginPath(); c.arc(640, 112, 36, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.arc(632, 104, 20, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = 'rgba(255,214,120,0.75)'; c.lineWidth = 2; c.beginPath(); c.arc(640, 112, 36, 0, Math.PI * 2); c.stroke();
   // the far sea and its horizon
   const hz = 196;
   const sea = c.createLinearGradient(0, hz, 0, surf); sea.addColorStop(0, '#2fb6d8'); sea.addColorStop(1, '#6fdbe0');
   c.fillStyle = sea; c.fillRect(0, hz, W, surf - hz + 10);
-  c.fillStyle = 'rgba(255,255,255,0.5)';
-  for (let i = 0; i < 26; i++) { const x = (i * 137) % W, y = hz + 8 + (i * 29) % (surf - hz - 14); c.fillRect(x, y, 14 + (i % 3) * 6, 2); }
+  // a hazy band at the horizon, then little wave curls that grow nearer the beach
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, hz, W, 2); c.fillStyle = 'rgba(200,240,250,0.25)'; c.fillRect(0, hz + 2, W, 8);
+  c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineCap = 'round';
+  for (let i = 0; i < 30; i++) { const x = (i * 137) % W, y = hz + 10 + (i * 29) % (surf - hz - 16), k = (y - hz) / (surf - hz), w2 = 7 + k * 10; c.lineWidth = 1 + k * 1.2; c.beginPath(); c.moveTo(x - w2, y); c.quadraticCurveTo(x, y - 2 - k * 2, x + w2, y); c.stroke(); }
+  c.lineCap = 'butt';
+  // far-off islands in the haze
+  for (const [ix, iw, ih] of [[330, 46, 9], [880, 70, 12], [1000, 40, 7]]) {
+    c.fillStyle = 'rgba(120,190,170,0.55)'; c.beginPath(); c.ellipse(ix, hz + 1, iw, ih, 0, Math.PI, 0); c.fill();
+    c.fillStyle = 'rgba(240,225,180,0.6)'; c.fillRect(ix - iw - 4, hz, iw * 2 + 8, 2);
+  }
   // a little island with a palm, and a friendly pirate ship far away (smiley flag)
   c.fillStyle = '#e9cf8f'; c.beginPath(); c.ellipse(170, hz + 4, 70, 12, 0, Math.PI, 0); c.fill();
   c.fillStyle = '#5fbf6a'; c.beginPath(); c.ellipse(170, hz - 6, 40, 12, 0, Math.PI, 0); c.fill();
@@ -820,6 +847,8 @@ function tidedigPaintBack(c, st) {
       c.fillStyle = r >= 16 ? '#6e5238' : '#7a6c60';
       c.beginPath(); c.ellipse(x + 8 + hh % 14, y + 9 + (hh >> 3) % 12, 7, 4, 0, 0, Math.PI * 2); c.fill();
       c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(x + 3, y + 3, T - 8, 2);
+      c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.arc(x + 4 + (hh >> 5) % 20, y + 6 + (hh >> 9) % 16, 1.2, 0, Math.PI * 2); c.fill();
+      if (hh % 5 === 1) { c.strokeStyle = 'rgba(40,28,18,0.35)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x + 6, y + 4); c.lineTo(x + 12, y + 14); c.lineTo(x + 9, y + 22); c.stroke(); }
       continue;
     }
     const k = clamp(r - S, 0, TIDEDIG_SAND.length - 1);
@@ -827,7 +856,8 @@ function tidedigPaintBack(c, st) {
     c.fillStyle = 'rgba(150,100,40,0.22)';
     for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(x + 3 + ((hh >> (i * 3)) % 24), y + 4 + ((hh >> (i * 4 + 2)) % 22), 1.3, 0, Math.PI * 2); c.fill(); }
     if (hh % 11 === 0 && r > S) { c.fillStyle = '#fff1e0'; c.beginPath(); c.arc(x + 15, y + 15, 4, Math.PI, 0); c.fill(); c.fillStyle = '#f2b8a0'; c.fillRect(x + 11, y + 15, 8, 1.5); }
-    if (hh % 13 === 3 && r > S + 1) { c.fillStyle = '#a89c90'; c.beginPath(); c.ellipse(x + 10, y + 20, 4, 3, 0.3, 0, Math.PI * 2); c.fill(); }
+    if (hh % 13 === 3 && r > S + 1) { c.fillStyle = '#a89c90'; c.beginPath(); c.ellipse(x + 10, y + 20, 4, 3, 0.3, 0, Math.PI * 2); c.fill(); c.strokeStyle = 'rgba(70,60,50,0.5)'; c.lineWidth = 1; c.stroke(); c.fillStyle = 'rgba(255,255,255,0.4)'; c.beginPath(); c.arc(x + 9, y + 19, 1, 0, Math.PI * 2); c.fill(); }
+    if (hh % 23 === 7 && r > S + 3) { c.strokeStyle = 'rgba(110,70,30,0.35)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x + 4, y + 6); c.quadraticCurveTo(x + 12, y + 14, x + 8, y + 24); c.moveTo(x + 10, y + 14); c.lineTo(x + 18, y + 18); c.stroke(); }
     if (hh % 17 === 5 && r > S + 2) {
       // a little starfish fossil
       c.fillStyle = 'rgba(255,170,110,0.5)'; c.beginPath();
@@ -836,8 +866,20 @@ function tidedigPaintBack(c, st) {
     }
   }
   // strata lines across the cut face
-  c.strokeStyle = 'rgba(140,90,30,0.18)'; c.lineWidth = 2;
-  for (let r = S + 1; r < 16; r++) { c.beginPath(); for (let x = 0; x <= st.seaX; x += 20) c.lineTo(x, r * T + Math.sin(x * 0.03 + r) * 3); c.stroke(); }
+  c.lineWidth = 2;
+  for (let r = S + 1; r < 16; r++) {
+    c.strokeStyle = 'rgba(140,90,30,0.2)'; c.beginPath(); for (let x = 0; x <= st.seaX; x += 20) c.lineTo(x, r * T + Math.sin(x * 0.03 + r) * 3); c.stroke();
+    c.strokeStyle = 'rgba(255,240,200,0.18)'; c.beginPath(); for (let x = 0; x <= st.seaX; x += 20) c.lineTo(x, r * T + 2.5 + Math.sin(x * 0.03 + r) * 3); c.stroke();
+  }
+  // a soft lighter or darker patch now and then, so the layers are not flat (after the tiles, so none cuts them off)
+  for (let r = S + 1; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) {
+    const hh = hash(cc, r);
+    if (hh % 5 !== 2 || g[r][cc] !== '#' || tidedigIsRock(st, cc, r) || st.holes.some(h => h.c === cc)) continue;
+    c.fillStyle = hh % 2 ? 'rgba(255,240,200,0.12)' : 'rgba(120,80,30,0.08)'; c.beginPath(); c.ellipse(cc * T + 16, r * T + 16, 22, 7, 0, 0, Math.PI * 2); c.fill();
+  }
+  // the deeper sand is a little darker, and the rows of the bedrock get a rounded lit top
+  const dg = c.createLinearGradient(0, surf, 0, H); dg.addColorStop(0, 'rgba(90,50,10,0)'); dg.addColorStop(1, 'rgba(90,50,10,0.16)');
+  c.fillStyle = dg; c.fillRect(0, surf + 6, st.seaX, H - surf);
   // the bright dry top of the beach
   for (let cc = 0; cc < COLS; cc++) {
     if (g[S][cc] !== '#' || tidedigIsRock(st, cc, S)) continue;
@@ -924,8 +966,7 @@ function tidedigDrawBack(st) {
 function tidedigCloudsDraw(t) {
   for (let i = 0; i < 4; i++) {
     const x = ((i * 260 + t * (5 + i * 2)) % (W + 200)) - 100, y = 70 + (i * 47) % 90;
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2); ctx.arc(x + 20, y - 8, 20, 0, Math.PI * 2); ctx.arc(x + 42, y, 15, 0, Math.PI * 2); ctx.rect(x, y, 42, 15); ctx.fill();
+    drawCloud(x, y, 0.85 + (i % 2) * 0.15);
   }
 }
 function tidedigDrawSea(st, t) {
@@ -951,7 +992,10 @@ function tidedigDrawSea(st, t) {
   ctx.fillStyle = '#e8c57a'; ctx.fillRect(x0, surf + T, W - x0, 6);
   // sparkles
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  for (let i = 0; i < 6; i++) { const x = x0 + 12 + ((i * 53 + t * 14) % (W - x0 - 20)); ctx.fillRect(x, lvl + 8 + (i % 3) * 5, 8, 1.5); }
+  for (let i = 0; i < 6; i++) { const x = x0 + 12 + ((i * 53 + t * 14) % (W - x0 - 20)); ctx.beginPath(); ctx.ellipse(x + 4, lvl + 8 + (i % 3) * 5, 4.5, 0.9, 0, 0, Math.PI * 2); ctx.fill(); }
+  // bubbles rising in the near sea
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  for (let i = 0; i < 5; i++) { const ph = (t * 0.5 + i * 0.23) % 1, bx = x0 + 20 + (hash(i, 77) % Math.max(1, W - x0 - 40)); ctx.beginPath(); ctx.arc(bx + Math.sin(t * 3 + i) * 2, surf + T - ph * (surf + T - lvl - 6), 1.6 + i % 2, 0, Math.PI * 2); ctx.fill(); }
   // the tide line: wet sand where the waves reach
   const reach = tidedigWaveCfg(st).reach;
   ctx.fillStyle = 'rgba(160,120,60,0.22)'; ctx.fillRect(reach, surf, x0 - reach, 4);
@@ -985,7 +1029,10 @@ function tidedigDrawChest(x, y, open, big, alpha, lift) {
   ctx.fillStyle = '#5f3418'; rr(-w / 2 - 1, -h - 1, w + 2, h + 2, 4); ctx.fill();
   ctx.fillStyle = '#9a5a2e'; rr(-w / 2, -h, w, h, 3); ctx.fill();
   ctx.fillStyle = '#b06c38'; ctx.fillRect(-w / 2 + 2, -h + 3, w - 4, 3);
+  ctx.fillStyle = 'rgba(40,20,5,0.22)'; ctx.fillRect(w / 2 - 6, -h, 5, h);
+  ctx.strokeStyle = 'rgba(60,30,10,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-w / 2 + 1, -h / 2); ctx.lineTo(w / 2 - 1, -h / 2); ctx.stroke();
   ctx.fillStyle = C.gold; ctx.fillRect(-w / 2 + 4, -h, 4, h); ctx.fillRect(w / 2 - 8, -h, 4, h);
+  ctx.fillStyle = '#fff1a8'; ctx.fillRect(-w / 2 + 4, -h, 1.2, h); ctx.fillRect(w / 2 - 8, -h, 1.2, h);
   if (open > 0) {
     // gold heaped inside and the lid tipped back
     ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.ellipse(0, -h, w / 2 - 2, 6 + open * 3, 0, Math.PI, 0); ctx.fill();
@@ -1138,6 +1185,7 @@ function tidedigDrawCrab(st, cr, t) {
     ctx.restore(); return;
   }
   const bob = Math.sin(cr.legs) * 1.2, flee = cr.ph === 'flee';
+  ctx.fillStyle = 'rgba(90,60,20,0.2)'; ctx.beginPath(); ctx.ellipse(0, cr.hopY + 1, 15 - Math.min(6, cr.hopY * 0.2), 3, 0, 0, Math.PI * 2); ctx.fill();
   // legs
   ctx.strokeStyle = '#c23c22'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
   for (let i = 0; i < 3; i++) for (const s of [-1, 1]) {
@@ -1212,7 +1260,7 @@ function tidedigDrawPosts(st, t) {
   for (const x of st.posts) {
     ctx.fillStyle = '#7a5228'; rr(x - 5, surf - 38, 10, 40, 3); ctx.fill();
     ctx.fillStyle = '#9a6a38'; rr(x - 7, surf - 42, 14, 7, 3); ctx.fill();
-    ctx.strokeStyle = C.rope; ctx.lineWidth = 2; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(x - 5, surf - 28 + k * 4); ctx.lineTo(x + 5, surf - 26 + k * 4); ctx.stroke(); }
+    ctx.strokeStyle = C.rope; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 3; k++) { ctx.moveTo(x - 5, surf - 28 + k * 4); ctx.lineTo(x + 5, surf - 26 + k * 4); } ctx.stroke();
   }
   void t;
 }
