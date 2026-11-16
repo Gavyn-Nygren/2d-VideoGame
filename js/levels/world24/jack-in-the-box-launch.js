@@ -863,8 +863,9 @@ function jackboxDrawWorld(st) {
     for (let y = -20; y <= H + 20; y += 30) { const wy = y + cam; ctx.lineTo(x + Math.sin(wy * 0.012 + i) * 6, y); }
     ctx.stroke();
   }
-  // the back panel is made of boards: seams with a lit edge
+  // the back panel is made of boards: seams with a lit edge, and the sides fall into shade
   for (let i = 0; i < 6; i++) { const x = 80 + i * 160; ctx.fillStyle = 'rgba(60,30,10,0.16)'; ctx.fillRect(x, 0, 3, H); ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + 3, 0, 2, H); }
+  { const g = jackboxDrawWorld.side || (jackboxDrawWorld.side = (() => { const g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(40,20,5,0.22)'); g.addColorStop(0.18, 'rgba(40,20,5,0)'); g.addColorStop(0.82, 'rgba(40,20,5,0)'); g.addColorStop(1, 'rgba(40,20,5,0.22)'); return g; })()); ctx.fillStyle = g; ctx.fillRect(0, 0, W * 0.18, H); ctx.fillRect(W * 0.82, 0, W * 0.18, H); }
   // knots in the wood
   ctx.fillStyle = lk.grain;
   for (let i = 0; i < 40; i++) {

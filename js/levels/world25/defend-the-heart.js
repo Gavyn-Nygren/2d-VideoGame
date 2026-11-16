@@ -816,6 +816,7 @@ function zfWaveSpec(n) {
     const px = x * T, py = y * T, k = zfCol(c.k), h = hash(x, y);
     ctx.fillStyle = k.main; ctx.fillRect(px - 0.5, py - 0.5, T + 1, T + 1);
     if (c.k === 'dirt') {
+      ctx.fillStyle = zfShade(k.main, 0.12); ctx.beginPath(); ctx.rect(px, py + T - 8, T, 8); ctx.fill();
       ctx.fillStyle = k.dark; for (let i = 0; i < 3; i++) { circle(px + 5 + ((h >> (i * 3)) % 20), py + 6 + ((h >> (i * 4 + 2)) % 18), 2); ctx.fill(); }
       if (h % 5 === 0) { ctx.fillStyle = '#8a7d6e'; ctx.beginPath(); ctx.ellipse(px + 8 + ((h >> 6) % 16), py + 12 + ((h >> 9) % 12), 3.5, 2.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#a89a88'; circle(px + 7 + ((h >> 6) % 16), py + 11 + ((h >> 9) % 12), 1.2); ctx.fill(); }
       if (h % 7 === 1) { ctx.strokeStyle = 'rgba(220,190,150,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 4 + (h % 10), py + 8 + ((h >> 4) % 10)); ctx.quadraticCurveTo(px + 14, py + 18, px + 24, py + 14 + ((h >> 8) % 8)); ctx.stroke(); }
@@ -829,7 +830,7 @@ function zfWaveSpec(n) {
       ctx.fillStyle = zfShade(k.main, 0.14); ctx.beginPath(); ctx.rect(px, py + 21, T, T - 21); ctx.fill();
       ctx.strokeStyle = zfShade(k.main, 0.2); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 3, py + 6 + (h % 3)); ctx.lineTo(px + T - 3, py + 6 + ((h >> 2) % 3)); ctx.moveTo(px + 3, py + 15 + ((h >> 4) % 3)); ctx.lineTo(px + T - 3, py + 15); ctx.stroke();
       ctx.fillStyle = zfShade(k.main, 0.3); ctx.beginPath(); ctx.ellipse(px + 7 + ((h >> 5) % 18), py + 25, 2.2, 1.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#cfd3da'; ctx.beginPath(); for (const a of [3, T - 5]) { ctx.rect(px + a, py + 9, 2, 2); ctx.rect(px + a, py + 19, 2, 2); } ctx.fill();
+      ctx.fillStyle = '#cfd3da'; ctx.beginPath(); for (const a of [4, T - 4]) for (const b of [10, 20]) { ctx.moveTo(px + a + 1.1, py + b); ctx.arc(px + a, py + b, 1.1, 0, Math.PI * 2); } ctx.fill();
       ctx.strokeStyle = k.dark; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, T - 2, T - 2);
     } else if (c.k === 'stone') {
       if (c.by >= 0) {
