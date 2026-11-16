@@ -9,7 +9,7 @@
    Touching the lava: a short "Hot toes!" beat, then BOTH go back to the last team checkpoint (a ledge both have stood
    on; the tower's start until then), everything above it resets (latch buttons, steps, ice pops, the hatch) and the
    lava sinks below the checkpoint and waits. Each ouch also makes the lava a little slower for that tower, and two
-   ouches close together give a breather. Holding a hold plate keeps you safe from the lava. Standing where your own
+   ouches close together give a breather. Holding a hold plate keeps you safe from the lava (it sinks to holdShield under you). No hopping back once the lava has reached the checkpoint. Standing where your own
    step should pop in? The rest pops in, and after a moment the step lifts you up onto it ("boing") or, with no room
    above, a hint + arrow say "scoot over". No standing on heads (def.passPartners).
    Climb map chars (this mode parses them itself; the level def is in rising-lava-map.js):
@@ -26,10 +26,10 @@
    Every global here is prefixed (LAVA, LAVA_BTN, lavaKey, Sfx.extra.lava*); all state lives in G.mst. */
 const LAVA = {
   // rules, per tower (a room's def.lava overrides any of them)
-  startGap: 60, delay: 6, speed: 10, catchGap: 230, catchMul: 3, catchMax: 330, capGap: 50,
+  startGap: 150, delay: 6, speed: 10, catchGap: 230, catchMul: 3, catchMax: 330, capGap: 50,
   sinkGap: 120, pauseAfterOuch: 2.0, assistStep: 0.85, assistMin: 0.5, killDepth: 4, hotBeat: 0.8,
   breatherN: 2, breatherWindow: 20, breatherWait: 4, breatherGap: 250, freeze: 5, holdGrace: 0.5, twinHold: 0.25,
-  returnHold: 1.0, returnShow: 0.15, afkPause: 10, waitStill: 3, waitBack: 30, autoReturn: 8, autoRows: 3, buildStep: 0.06, strandT: 3, holdShield: 30,
+  returnHold: 1.0, returnShow: 0.15, afkPause: 10, waitStill: 3, waitBack: 30, autoReturn: 8, autoRows: 3, buildStep: 0.06, strandT: 3, holdShield: 90, shieldMin: 30, shieldSink: 60,
   surge: null, surgeStart: 10, surgeAfterOuch: 2, holds: '',
   maxSep: 13, waitCD: 3.5, camEase: 4.5, camFast: 14, camTop: 110, camBot: 70,
   // feedback only (s / px)
@@ -49,7 +49,7 @@ function lavaKey(id) {
 }
 MODES.lava = {
   // medal (js/medals.js): one ouch = one team trip back to the checkpoint (see GAME_NOTES for the bot times)
-  medals: { bronze: 'Climb out of the lava', goals: [{ key: 'time', gold: 210, silver: 350 }, { key: 'ouches', gold: 2, silver: 8, text: n => n === 1 ? 'At most 1 lava ouch' : `${n} or fewer lava ouches`, gap: (v, n) => `${v - n} fewer ouch${v - n === 1 ? '' : 'es'}` }] },
+  medals: { bronze: 'Climb out of the lava', goals: [{ key: 'time', gold: 250, silver: 390 }, { key: 'ouches', gold: 2, silver: 8, text: n => n === 1 ? 'At most 1 lava ouch' : `${n} or fewer lava ouches`, gap: (v, n) => `${v - n} fewer ouch${v - n === 1 ? '' : 'es'}` }] },
   medalValues() { const st = G.mst; return st && st.ouch ? { ouches: st.ouches } : {}; },
   rand: Math.random,   // cosmetic randomness only (bubbles, embers, smoke); tests swap in a seeded one
   setup(st, L) {       // match-long stats, then tower 1
@@ -245,6 +245,8 @@ MODES.lava = {
   },
   // the feet height of a checkpoint (climb px)
   cpFeet(cp) { return (cp.r + 1) * T; },
+  // the lava has reached the team checkpoint (or is about to): hopping back there would be a burn
+  cpHot(st) { return st.lavaY < MODES.lava.cpFeet(st.cps[st.cpIdx]) + st.cfg.heatGap; },
   // a player stands on a lava spot or not: both go back to the last team checkpoint, the tower above it resets
   touch(p) {
     const st = G.mst, cfg = st.cfg, k = p.id, R = MODES.lava.rand;
@@ -505,8 +507,9 @@ MODES.lava = {
     for (const p of ps) {
       const i = p.input, k = p.id;
       st.afk[k] = (i.left || i.right || i.jump || i.down || i.up) ? 0 : st.afk[k] + dt;
-      const canHold = p.alive && p.grounded && !i.left && !i.right && !p.onOneWay && !M.onAnyButton(p);
-      if (i.down && !st.prevDown[k]) st.downOk[k] = canHold;
+      // (no hopping back into the lava: once it has reached the checkpoint the only way is up)
+      const still = p.alive && p.grounded && !i.left && !i.right && !p.onOneWay && !M.onAnyButton(p), canHold = still && !M.cpHot(st);
+      if (i.down && !st.prevDown[k]) { st.downOk[k] = canHold; if (still && !canHold) { M.hint(k, 'Too hot down there! Climb!', { life: 1.6 }); Sfx.play('lavaNope', k); } }
       if (!i.down || !canHold) st.downOk[k] = false;
       st.prevDown[k] = i.down;
       if (st.downOk[k]) {
@@ -564,7 +567,11 @@ MODES.lava = {
         st.lavaY = Math.max(st.capY, st.lavaY - v * dt);
       }
       // plate shield: whoever holds a hold plate is never punished for it
-      for (const b of st.buttons) if (b.hold && b.down) { const q = ps[b.owner]; st.lavaY = Math.max(st.lavaY, q.y + q.h + cfg.holdShield); }
+      // (and the lava sinks to holdShield under them, so stepping off the plate later leaves time to get away)
+      for (const b of st.buttons) if (b.hold && b.down) {
+        const q = ps[b.owner], f = q.y + q.h;
+        if (st.lavaY < f + cfg.holdShield) st.lavaY = Math.min(f + cfg.holdShield, Math.max(st.lavaY + cfg.shieldSink * dt, f + cfg.shieldMin));
+      }
     }
     // --- ouch + closest call ---
     for (const p of ps) {

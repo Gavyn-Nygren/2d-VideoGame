@@ -328,7 +328,7 @@
       // a person far behind: don't climb on any higher, wait for them where it is (pressing and holding still happen)
       if (!info.partnerCpu && o.alive && cpuFeet(o) - cpuFeet(p) > LV_K.leash * T && p.grounded && (j.r + 1) * T < cpuFeet(p) - T / 2 && j.kind !== 'press' && j.kind !== 'hold') return out;
       if (j.kind === 'back') {
-        const canHold = p.grounded && !p.onOneWay && !M.onAnyButton(p);
+        const canHold = p.grounded && !p.onOneWay && !M.onAnyButton(p) && !M.cpHot(S);
         if (canHold) { st.back = 1.3; st.job = null; }
         return out;
       }

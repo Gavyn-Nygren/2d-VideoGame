@@ -209,7 +209,7 @@ const TOWERS = [
     tip: 'Orange buttons are Pip’s, blue ones are Bo’s. Each one makes steps for the other!',
     theme: THEME('#ffb08a', '#ffe6c4'), lava: { delay: 6, speed: 13 },
     signs: [[150, 2, 'Pip: step on your button!'], [150, 1.2, 'It makes steps for Bo'], [810, 2, 'Bo: climb, then press yours'], [810, 1.2, 'It makes steps for Pip'],
-      [480, 16, 'Jump right through your partner’s color!'], [480, 46, 'Meet at the door!']] },
+      [480, 16, 'Jump right through your partner’s color!'], [480, 43, 'Meet at the door!']] },
   { key: 'criss', build: crissCross, title: 'Criss-Cross',
     tip: 'Press your buttons at the same time, then climb. You pass right through each other’s blocks!',
     theme: THEME('#ff9f7e', '#ffdcb4'), lava: { delay: 5, speed: 16 },
@@ -223,7 +223,7 @@ const TOWERS = [
     tip: 'Quick turns all the way up. At the top, stand on your star buttons together!',
     theme: THEME('#ff7d63', '#ffc895'), lava: { delay: 4, speed: 19, surge: { every: 9, warn: 1.5, time: 0.7, speed: 70, from: 15, to: 31 } },
     signs: [[480, 2.2, 'Quick turns all the way up!'], [480, 17.4, 'Hold your plate while your partner climbs!'], [720, 25.6, 'Leap for an ice pop?'],
-      [255, 65.3, 'Both stand on'], [705, 65.3, 'your star buttons!']] },
+      [255, 64.2, 'Both stand on'], [705, 64.2, 'your star buttons!']] },
 ];
 
 // a small JS literal: { key: 'text', n: 1, sub: { ... } }

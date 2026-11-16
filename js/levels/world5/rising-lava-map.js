@@ -21,7 +21,7 @@ Object.assign(LEVELS.find(l => l.name === 'Rising Lava'), {
         { x: 810, y: 1395, text: 'Bo: climb, then press yours' },
         { x: 810, y: 1419, text: 'It makes steps for Pip' },
         { x: 480, y: 975, text: 'Jump right through your partner’s color!' },
-        { x: 480, y: 75, text: 'Meet at the door!' },
+        { x: 480, y: 165, text: 'Meet at the door!' },
       ],
       map: LAVA_DUMMY,
       climb: [
@@ -221,8 +221,8 @@ Object.assign(LEVELS.find(l => l.name === 'Rising Lava'), {
         { x: 480, y: 1959, text: 'Quick turns all the way up!' },
         { x: 480, y: 1503, text: 'Hold your plate while your partner climbs!' },
         { x: 720, y: 1257, text: 'Leap for an ice pop?' },
-        { x: 255, y: 66, text: 'Both stand on' },
-        { x: 705, y: 66, text: 'your star buttons!' },
+        { x: 255, y: 99, text: 'Both stand on' },
+        { x: 705, y: 99, text: 'your star buttons!' },
       ],
       map: LAVA_DUMMY,
       climb: [
