@@ -2204,15 +2204,15 @@ const LEVELS = [
   // ----- BEGIN 9-1 Pompeii Escape (mode 'pompeii', js/levels/world9/pompeii-escape.js) -----
   // 9-1 Pompeii Escape (mode 'pompeii', team): boost each other up the walls, then reach down from the edge (help)
   // and pull your partner up; lava creeps in sideways, ash makes you sneeze. Map chars and rules: the top of the file.
-  { name: 'Pompeii Escape', world: 8, kind: 'team', mode: 'pompeii', ownHUD: true, noFalls: true,
-    act: { label: 'help' },
-    legend: { down: 'hold: hop back', padDown: 'hold down: hop back' },
-    tip: 'Boost each other up the walls, then press help at the edge to pull your partner up. Run to the boat!',
+  { name: 'Pompeii Escape', world: 8, kind: 'team', mode: 'pompeii', ownHUD: true, noFalls: true, passPartners: true,
+    act: { label: 'use' },
+    legend: { jump: 'jump · climb', down: 'hold: hop back', padDown: 'hold down: hop back' },
+    tip: 'Pull the lever to hoist your partner up on the crane lift, then they drop the rope ladder for you. Run to the boat!',
     switches: {}, signs: [],
     rooms: [
-      { // ---------- Room 1: Market Square (learn the boost and the hand-up) ----------
+      { // ---------- Room 1: Market Square (learn the crane lift and the rope ladder) ----------
         title: 'Market Square', bg: 'town', leads: [0, 1], awnB: [58, 70], exitLabel: 'PORTA MARINA',
-        tip: 'Bo, be the step! Pip hops on Bo’s head, jumps up, then presses help at the edge to pull Bo up.',
+        tip: 'Pip stands on the lift and Bo pulls the lever. Up top, Pip drops the rope ladder for Bo to climb!',
         lava: { delay: 4, speed: 10, caps: [6, 12, 20] }, ash: { every: 2.6, aim: 0.4 },
         boards: [{ x: 420, y: 420, text: 'POMPEII', size: 26, paint: true }, { x: 420, y: 448, text: '79 AD', size: 17, paint: true },
           { x: 600, y: 300, text: 'Swap jobs!', size: 18, paint: true }],
@@ -2253,7 +2253,7 @@ const LEVELS = [
           '..........................mmmmmm', //  6
           '..........................mmmmmm', //  7
           '..........................mmmmmm', //  8
-          '......................!.N.mmmmmm', //  9
+          '......................!N..mmmmmm', //  9
           '.........!............mmmmmmmmmm', // 10
           '.........KK...........mmmmmmmmmm', // 11
           '.........KK...........mmmmmmmmmm', // 12
@@ -2278,7 +2278,7 @@ const LEVELS = [
           '..........................hhh...', //  5
           '..........................hhh...', //  6
           '..........................hhh...', //  7
-          '.....................!..N.hhh...', //  8
+          '.....................!.N..hhh...', //  8
           '.....................vvvvvhhh...', //  9
           '.....................vvvvvhhh...', // 10
           '.....!..N............vvvvvhhh...', // 11
@@ -3077,11 +3077,12 @@ const LEVELS = [
     tip: 'Dig up Mr. Bones’s lost bones and bring them back. Every bone makes him a better helper!',
     switches: {}, signs: [],
     rooms: [
-      { // ---------- Room 1: Front Gate (a head boost for the leg bone, carry the backbone together) ----------
-        title: 'Front Gate', unlock: 'stool', exitVia: 'stool', exitLabel: 'CROOKED CRYPTS',
-        tip: 'Boost each other up to dig the leg bone, then carry the big backbone together. Don’t pull apart!',
-        mounds: [{ piece: 'leg1', how: 'boost', foot: { x: 136, feet: 480 }, land: 66 }, { piece: 'spine', how: 'big', len: 90 }],
-        plan: ['boost:0', 'big:1', 'exit'], stones: ['BRB'],
+      { // ---------- Room 1: Front Gate (the seesaw flings one up for the leg bone, carry the backbone together) ----------
+        title: 'Front Gate', unlock: 'stool', exitVia: 'stool', exitLabel: 'CROOKED CRYPTS', passPartners: true,
+        tip: 'Seesaw! One stands on the low end, the other jumps on the high end to fling them up to the leg bone. Then carry the big backbone together!',
+        seesaw: { x: 204, feet: 480 },
+        mounds: [{ piece: 'leg1', how: 'seesaw', land: 66 }, { piece: 'spine', how: 'big', len: 90 }],
+        plan: ['seesaw:0', 'big:1', 'exit'], stones: ['BRB'],
         decor: [{ k: 'tree', x: 300, s: 1 }, { k: 'owl', x: 336, y: 318 }, { k: 'grave', x: 380, text: ['Here lies', 'my left sock'] },
           { k: 'grave', x: 560, text: ['R.I.P.', 'Pizza crust'], tilt: -0.05 }, { k: 'ghost', x: 470, y: 380 },
           { k: 'fence', x0: 230, x1: 760 }, { k: 'sign', x: 112, y: 300, text: 'MR. BONES · BACK SOON!' }],
@@ -3102,7 +3103,7 @@ const LEVELS = [
           'BBBB......................######', // 12
           'BBBB......................######', // 13
           'BBBB......................######', // 14
-          'BBBB..h.1.2..N..S.....D..x######', // 15
+          'BBBB....1.2.hN..S.....D..x######', // 15
           '################################', // 16
           '################################', // 17
         ] },
@@ -4306,8 +4307,8 @@ const LEVELS = [
   //
   // ----- BEGIN 17-3 Waterfall Climb (mode 'waterfall', js/levels/world17/waterfall-climb.js) -----
   // 17-3 Waterfall Climb (mode 'waterfall', team, Gavyn's pick): a tall climb up beside a big jungle waterfall; the camera
-  // scrolls up with the pair. Ledges are too high for one jump: one braces (hold down or the action) and the other jumps
-  // off their hands for a BIG boost, then lowers a vine at the post for the partner. Wet rocks, a stream a log keeps
+  // scrolls up with the pair. Ledges are too high for one jump: one rides the bamboo lift while the other pulls its
+  // lever, then lowers a vine at the post for the partner. Wet rocks, a stream a log keeps
   // blocking, a drifting log, mist geysers, springy moss and friendly frogs on the way. The 18-row map is only for the
   // engine; the mode builds the climb from def.climb (rows top first, 32 wide). Climb chars (read by the mode):
   // # rock, s wet slippery rock, m springy moss, g mist geyser vent (solid), ~ water (Splash!), w falling stream,
@@ -4317,9 +4318,9 @@ const LEVELS = [
   // computer: jump (from: take-off column, to: [column, height]), wall (a boost wall, by order from the bottom), log,
   // geyser, frog, nest. Columns may have halves (x = col * 30 px). hop: the computer jumps from a standstill (no run-up).
   { name: 'Waterfall Climb', world: 16, kind: 'team', mode: 'waterfall', ownStep: true, ownHUD: true, noFalls: true,
-    act: { label: 'help' },
-    legend: { down: 'brace', padDown: 'down braces', jump: 'jump · climb', padJump: 'jump · climb' },
-    tip: 'Ledges too high? One braces (hold ▼), the other jumps off their hands. Then drop a vine for your partner!',
+    act: { label: 'use' },
+    legend: { down: 'climb down', padDown: 'down: climb down', jump: 'jump · climb', padJump: 'jump · climb' },
+    tip: 'Ledges too high? One rides the bamboo lift, the other pulls its lever. Then drop a vine for your partner!',
     map: [...Array(15).fill('.'.repeat(32)), '..1.2' + '.'.repeat(27), '.'.repeat(32), '.'.repeat(32)],
     sections: [{ name: 'Mossy Steps', h: 0 }, { name: 'Log Jam Falls', h: 18 }, { name: 'Misty Geysers', h: 44 }, { name: 'Toucan Top', h: 75 }],
     streams: [{ flow: 3.2, off: 3.6 }],
