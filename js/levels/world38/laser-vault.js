@@ -643,18 +643,50 @@
     const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#10181c'); g.addColorStop(1, '#1c2830'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     const top = scrY(CH);
     ctx.fillStyle = '#26323a'; ctx.fillRect(0, top, W, FY - top);
-    const off = st.camX;
+    const off = st.camX, wain = FY - Math.min(70, (FY - top) * 0.3);
+    // a soft wash of light from the wall lamps down the wall
+    { const wg = ctx.createLinearGradient(0, top, 0, FY); wg.addColorStop(0, 'rgba(255,220,160,0.06)'); wg.addColorStop(0.5, 'rgba(0,0,0,0)'); wg.addColorStop(1, 'rgba(0,0,0,0.18)'); ctx.fillStyle = wg; ctx.fillRect(0, top, W, FY - top); }
     for (let px = Math.floor(off / 120) * 120; px < off + W + 120; px += 120) {
       const x = px - off, h = K.hash(px * 0.37 + st.k);
-      ctx.fillStyle = 'rgba(255,255,255,0.04)'; ctx.fillRect(x + 2, top + 8, 116, FY - top - 16);
-      ctx.strokeStyle = '#33424a'; ctx.lineWidth = 2; ctx.strokeRect(x + 2, top + 8, 116, FY - top - 16);
+      // raised steel panels: a lit top-left bevel, a dark lower-right bevel
+      ctx.fillStyle = 'rgba(255,255,255,0.04)'; ctx.fillRect(x + 2, top + 8, 116, wain - top - 16);
+      ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(x + 2, top + 8, 116, 2); ctx.fillRect(x + 2, top + 8, 2, wain - top - 16);
+      ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(x + 2, wain - 10, 116, 2); ctx.fillRect(x + 116, top + 8, 2, wain - top - 16);
+      ctx.strokeStyle = '#33424a'; ctx.lineWidth = 2; ctx.strokeRect(x + 2, top + 8, 116, wain - top - 16);
+      ctx.fillStyle = '#5a666e'; for (const [rx, ry] of [[8, top + 14], [112, top + 14], [8, wain - 14], [112, wain - 14]]) { circle(x + rx, ry, 1.6); ctx.fill(); }
+      // a brass wall lamp between panels, with its glow
+      if (((px / 120) | 0) % 2 === 0) {
+        const lx = x, ly = top + 34;
+        const lg = ctx.createRadialGradient(lx, ly, 2, lx, ly, 60); lg.addColorStop(0, 'rgba(255,214,140,0.28)'); lg.addColorStop(1, 'rgba(255,214,140,0)');
+        ctx.fillStyle = lg; ctx.fillRect(lx - 60, ly - 60, 120, 120);
+        ctx.fillStyle = COL.brass; ctx.fillRect(lx - 2, ly, 4, 12); ctx.fillStyle = '#ffe6a8'; ctx.beginPath(); ctx.moveTo(lx - 8, ly); ctx.lineTo(lx + 8, ly); ctx.lineTo(lx + 5, ly - 10); ctx.lineTo(lx - 5, ly - 10); ctx.closePath(); ctx.fill();
+      }
       if (h > 0.55) portrait(x + 60, top + 70, h, t);
     }
-    // ceiling and floor
+    // the dado rail and a dark wainscot along the bottom of the wall
+    ctx.fillStyle = '#1e282e'; ctx.fillRect(0, wain, W, FY - wain);
+    for (let px = Math.floor(off / 60) * 60; px < off + W + 60; px += 60) { ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1; ctx.strokeRect(px - off + 6, wain + 10, 48, FY - wain - 18); }
+    ctx.fillStyle = COL.brass; ctx.fillRect(0, wain - 4, W, 4); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(0, wain - 4, W, 1);
+    // ceiling: recessed lights, a moulding
     ctx.fillStyle = '#0e1418'; ctx.fillRect(0, 0, W, top);
-    ctx.fillStyle = '#3a464e'; ctx.fillRect(0, top - 6, W, 6);
+    // the ceiling void: steel girders with rivets, a run of pipes, vent grilles
+    if (top > 30) {
+      for (let px = Math.floor(off * 0.9 / 200) * 200; px < off * 0.9 + W + 200; px += 200) {
+        const x = px - off * 0.9;
+        ctx.fillStyle = '#18222a'; ctx.fillRect(x, 0, 18, top); ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(x, 0, 2, top); ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 15, 0, 3, top);
+        ctx.fillStyle = '#3a464e'; for (let y = 12; y < top - 6; y += 22) { circle(x + 5, y, 1.4); ctx.fill(); circle(x + 13, y, 1.4); ctx.fill(); }
+        ctx.fillStyle = '#141c22'; rr(x + 70, top - 46, 60, 26, 3); ctx.fill(); ctx.fillStyle = '#26323a'; for (let k = 0; k < 5; k++) ctx.fillRect(x + 76, top - 42 + k * 4.5, 48, 2);
+      }
+      for (const [py, col] of [[top - 70, '#1e2a32'], [top - 60, '#22303a']]) { if (py < 6) continue; ctx.fillStyle = col; ctx.fillRect(0, py, W, 6); ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(0, py, W, 1.5); }
+      for (let px = Math.floor(off / 240) * 240; px < off + W + 240; px += 240) { ctx.fillStyle = '#2a363e'; ctx.fillRect(px - off + 30, top - 74, 10, 20); }
+    }
+    for (let px = Math.floor(off / 160) * 160; px < off + W + 160; px += 160) { ctx.fillStyle = 'rgba(255,240,200,0.5)'; rr(px - off + 50, top - 12, 60, 4, 2); ctx.fill(); ctx.fillStyle = 'rgba(255,240,200,0.08)'; ctx.beginPath(); ctx.moveTo(px - off + 50, top - 8); ctx.lineTo(px - off + 110, top - 8); ctx.lineTo(px - off + 130, top + 40); ctx.lineTo(px - off + 30, top + 40); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle = '#3a464e'; ctx.fillRect(0, top - 6, W, 6); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(0, top - 6, W, 1.5); ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, top, W, 3);
+    // polished floor: tiles, a sheen that reflects the lamps, a skirting shadow
     const fg = ctx.createLinearGradient(0, FY, 0, H); fg.addColorStop(0, '#2a3a44'); fg.addColorStop(1, '#0e161a'); ctx.fillStyle = fg; ctx.fillRect(0, FY, W, H - FY);
-    for (let px = Math.floor(off / 80) * 80; px < off + W + 80; px += 80) { ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(px - off, FY, 2, H - FY); }
+    for (let px = Math.floor(off / 80) * 80; px < off + W + 80; px += 80) { ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(px - off, FY, 2, H - FY); if (((px / 80) | 0) % 3 === 0) { ctx.fillStyle = 'rgba(255,214,140,0.06)'; ctx.fillRect(px - off + 20, FY + 6, 10, H - FY - 10); } }
+    for (let y = FY + 24; y < H; y += 24) { ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(0, y, W, 1); }
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, FY, W, 3);
     // the stretch's ends
     ctx.fillStyle = '#1a2228'; if (off < 40) ctx.fillRect(0 - off, top, 20, FY - top);
     exitDoor(st, scrX(st, L.len - 40), t);
@@ -738,17 +770,29 @@
     else if (st.alarm > 60) K.strobe((st.alarm - 60) / 80 * (0.5 + 0.5 * Math.sin(t * 10)));
   }
   function portrait(x, y, h, t) {
-    ctx.fillStyle = COL.brass; ctx.fillRect(x - 26, y - 32, 52, 64); ctx.fillStyle = '#2a2018'; ctx.fillRect(x - 21, y - 27, 42, 54);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x - 23, y - 28, 52, 64);
+    ctx.fillStyle = COL.brass; ctx.fillRect(x - 26, y - 32, 52, 64);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - 26, y - 32, 52, 2); ctx.fillRect(x - 26, y - 32, 2, 64);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x - 26, y + 30, 52, 2); ctx.fillRect(x + 24, y - 32, 2, 64);
+    ctx.fillStyle = '#2a2018'; ctx.fillRect(x - 21, y - 27, 42, 54);
+    ctx.fillStyle = '#3a2e22'; ctx.fillRect(x - 21, y - 27, 42, 24);
     // Count Zero's portrait collection: Count Zero in many poses, a bowler and a big 0
     ctx.fillStyle = '#f0c8a0'; circle(x, y - 4, 9); ctx.fill(); ctx.fillStyle = '#111316'; ctx.fillRect(x - 10, y - 14, 20, 4); ctx.fillRect(x - 6, y - 20, 12, 7);
     ctx.fillStyle = h > 0.8 ? '#5a2a3a' : '#23272e'; ctx.fillRect(x - 14, y + 6, 28, 20); text('0', x, y + 16, 10, '#ffffff', 'center', 'body');
     ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 6, y - 6, 4, 2); ctx.fillRect(x + 2, y - 6, 4, 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.moveTo(x - 21, y - 27); ctx.lineTo(x - 6, y - 27); ctx.lineTo(x - 21, y - 6); ctx.closePath(); ctx.fill();
   }
   function exitDoor(st, x, t) {
     if (x < -60 || x > W + 60) return;
     const top = scrY(CH);
     ctx.fillStyle = '#1a2228'; ctx.fillRect(x, top, 60, FY - top);
-    ctx.fillStyle = '#3a4a52'; ctx.fillRect(x + 8, FY - 110, 40, 110); ctx.fillStyle = '#8fe3b0'; text('EXIT ▶', x + 28, FY - 124, 12, '#8fe3b0', 'center', 'body');
+    ctx.fillStyle = '#3a4a52'; ctx.fillRect(x + 8, FY - 110, 40, 110);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + 8, FY - 110, 2, 110); ctx.fillStyle = '#c8d0d4'; ctx.fillRect(x + 38, FY - 58, 6, 3);
+    // the lit EXIT sign over the door, sized to its words
+    text('', 0, 0, 12, '#8fe3b0', 'center', 'body'); const ew = ctx.measureText('EXIT ▶').width + 16;
+    ctx.fillStyle = 'rgba(143,227,176,0.15)'; rr(x + 28 - ew / 2 - 4, FY - 138, ew + 8, 28, 6); ctx.fill();
+    ctx.fillStyle = '#0e1a14'; rr(x + 28 - ew / 2, FY - 134, ew, 20, 4); ctx.fill();
+    text('EXIT ▶', x + 28, FY - 124, 12, '#8fe3b0', 'center', 'body');
   }
   function drawDiamond(st, t, top) {
     const D = st.dia, dd = st.L.dia, px = scrX(st, dd.ped);

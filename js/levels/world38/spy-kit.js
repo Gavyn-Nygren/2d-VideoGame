@@ -285,8 +285,15 @@ const SPY = (() => {
         const seed = i * 13.7 + pp * 100, bw = 40 + H_(seed) * 70, bh = 70 + H_(seed + 1) * (lit < 1 ? 160 : 230);
         let x = i * 70 - (off % span); x = ((x % span) + span) % span - 120;
         if (x > W + 60) continue;
-        const y = base - bh - oy * 0.3;
-        ctx.fillStyle = lit < 1 ? '#0f3440' : '#0a2a34'; ctx.fillRect(x, y, bw, base - y + 400);
+        const y = base - bh - oy * 0.3, bc = lit < 1 ? '#0f3440' : '#0a2a34';
+        ctx.fillStyle = bc; ctx.fillRect(x, y, bw, base - y + 400);
+        // a moonlit left edge, a darker right side, a setback or a spire on some
+        ctx.fillStyle = lit < 1 ? 'rgba(120,200,220,0.08)' : 'rgba(140,210,230,0.12)'; ctx.fillRect(x, y, 2, base - y);
+        ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(x + bw * 0.7, y, bw * 0.3, base - y);
+        const roof = H_(seed + 7);
+        if (roof > 0.7) { ctx.fillStyle = bc; ctx.fillRect(x + bw * 0.2, y - 18, bw * 0.6, 18); ctx.fillRect(x + bw / 2 - 1, y - 40, 2, 22); }
+        else if (roof > 0.45) { ctx.fillStyle = bc; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + bw / 2, y - 22); ctx.lineTo(x + bw, y); ctx.closePath(); ctx.fill(); }
+        else if (roof > 0.25) { ctx.fillStyle = bc; ctx.fillRect(x + 6, y - 10, 12, 10); }
         for (let wy = y + 8; wy < base - 6; wy += 12) for (let wx = x + 6; wx < x + bw - 6; wx += 10) {
           const h = H_(wx * 0.37 + wy * 1.13 + seed);
           if (h > 0.62) { ctx.fillStyle = 'rgba(255,207,106,' + (0.35 + 0.5 * h) * lit + ')'; ctx.fillRect(wx, wy, 4, 6); }
@@ -299,6 +306,8 @@ const SPY = (() => {
       const g = ctx.createLinearGradient(0, wy, 0, H); g.addColorStop(0, '#0d3542'); g.addColorStop(1, '#061a22');
       ctx.fillStyle = g; ctx.fillRect(0, wy, W, H - wy);
       for (let k = 0; k < 40; k++) { const x = (H_(k) * W + t * 10 * (k % 3)) % W, y = wy + 4 + H_(k + 9) * (H - wy); ctx.fillStyle = 'rgba(255,207,106,' + 0.25 * H_(k + 3) + ')'; ctx.fillRect(x, y, 10 + H_(k + 5) * 20, 1.5); }
+      for (let k = 0; k < 24; k++) { const x = (H_(k + 40) * W - t * 14 * (1 + k % 2)) % W, y = wy + 10 + H_(k + 50) * (H - wy - 10); ctx.fillStyle = 'rgba(160,220,235,0.12)'; ctx.fillRect((x + W) % W, y, 16 + H_(k + 60) * 24, 1); }
+      ctx.fillStyle = 'rgba(160,220,235,0.18)'; ctx.fillRect(0, wy, W, 1.5);
     }
   };
   K.searchBeam = (x0, y0, x1, y1, w, a = 1) => {
