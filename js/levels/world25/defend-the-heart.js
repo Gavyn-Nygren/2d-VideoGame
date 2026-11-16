@@ -815,7 +815,10 @@ function zfWaveSpec(n) {
     const px = x * T, py = y * T, k = zfCol(c.k), h = hash(x, y);
     ctx.fillStyle = k.main; ctx.fillRect(px - 0.5, py - 0.5, T + 1, T + 1);
     if (c.k === 'dirt') {
+      ctx.fillStyle = shade(k.main, 0.12); ctx.beginPath(); ctx.rect(px, py + T - 8, T, 8); ctx.fill();
       ctx.fillStyle = k.dark; for (let i = 0; i < 3; i++) { circle(px + 5 + ((h >> (i * 3)) % 20), py + 6 + ((h >> (i * 4 + 2)) % 18), 2); ctx.fill(); }
+      if (h % 5 === 0) { ctx.fillStyle = '#8a7d6e'; ctx.beginPath(); ctx.ellipse(px + 8 + ((h >> 6) % 16), py + 12 + ((h >> 9) % 12), 3.5, 2.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#a89a88'; circle(px + 7 + ((h >> 6) % 16), py + 11 + ((h >> 9) % 12), 1.2); ctx.fill(); }
+      if (h % 7 === 1) { ctx.strokeStyle = 'rgba(220,190,150,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 4 + (h % 10), py + 8 + ((h >> 4) % 10)); ctx.quadraticCurveTo(px + 14, py + 18, px + 24, py + 14 + ((h >> 8) % 8)); ctx.stroke(); }
       if (c.by >= 0) { ctx.strokeStyle = k.dark; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, T - 2, T - 2); }
       else if (!cellAt(x, y - 1) && y > 0) { ctx.fillStyle = C.grassDark; ctx.fillRect(px, py, T, 7); ctx.fillStyle = C.grass; ctx.fillRect(px, py, T, 5); for (let i = 0; i < 3; i++) { circle(px + 5 + i * 10, py + 5, 2.5); ctx.fill(); } }
     } else if (c.k === 'bed') {
@@ -823,15 +826,22 @@ function zfWaveSpec(n) {
     } else if (c.k === 'wood') {
       ctx.fillStyle = k.dark; ctx.fillRect(px, py + 9, T, 2); ctx.fillRect(px, py + 19, T, 2);
       ctx.fillStyle = k.light; ctx.fillRect(px + 2, py + 2, T - 4, 3);
+      ctx.fillStyle = shade(k.main, 0.14); ctx.beginPath(); ctx.rect(px, py + 21, T, T - 21); ctx.fill();
+      ctx.strokeStyle = shade(k.main, 0.2); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 3, py + 6 + (h % 3)); ctx.lineTo(px + T - 3, py + 6 + ((h >> 2) % 3)); ctx.moveTo(px + 3, py + 15 + ((h >> 4) % 3)); ctx.lineTo(px + T - 3, py + 15); ctx.stroke();
+      ctx.fillStyle = shade(k.main, 0.3); ctx.beginPath(); ctx.ellipse(px + 7 + ((h >> 5) % 18), py + 25, 2.2, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#cfd3da'; for (const a of [4, T - 4]) { circle(px + a, py + 10, 1.1); ctx.fill(); circle(px + a, py + 20, 1.1); ctx.fill(); }
       ctx.strokeStyle = k.dark; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, T - 2, T - 2);
     } else if (c.k === 'stone') {
       if (c.by >= 0) {
         ctx.fillStyle = k.dark; ctx.fillRect(px, py + 14, T, 2); ctx.fillRect(px + 14, py, 2, 14); ctx.fillRect(px + 6, py + 16, 2, 14); ctx.fillRect(px + 22, py + 16, 2, 14);
-        ctx.fillStyle = k.light; ctx.fillRect(px + 2, py + 2, 10, 3); ctx.fillRect(px + 17, py + 2, 10, 3);
+        ctx.fillStyle = shade(k.main, 0.12); ctx.beginPath(); ctx.rect(px + 1, py + 10, T - 2, 4); ctx.rect(px + 1, py + 26, T - 2, 5); ctx.fill();
+        ctx.fillStyle = k.light; ctx.fillRect(px + 2, py + 2, 10, 3); ctx.fillRect(px + 17, py + 2, 10, 3); ctx.fillRect(px + 9, py + 18, 11, 2);
         ctx.strokeStyle = k.dark; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, T - 2, T - 2);
       } else {
         ctx.fillStyle = k.dark; rr(px + 3 + (h % 9), py + 4 + ((h >> 3) % 8), 10, 7, 3); ctx.fill();
         ctx.fillStyle = k.light; rr(px + 14 + ((h >> 5) % 8), py + 16 + ((h >> 7) % 8), 8, 5, 2); ctx.fill();
+        ctx.fillStyle = shade(k.main, 0.22); circle(px + 4 + ((h >> 11) % 22), py + 24 + ((h >> 13) % 5), 1.3); ctx.fill(); circle(px + 20 + ((h >> 15) % 8), py + 5 + ((h >> 17) % 6), 1); ctx.fill();
+        if (h % 6 === 2) { ctx.strokeStyle = shade(k.main, 0.3); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 2, py + 20 + (h % 6)); ctx.lineTo(px + 12, py + 22 + ((h >> 3) % 6)); ctx.lineTo(px + 18, py + 28); ctx.stroke(); }
       }
     } else if (c.k === 'metal' || c.k === 'turret') {
       const g = ctx.createLinearGradient(px, py, px, py + T); g.addColorStop(0, k.light); g.addColorStop(1, k.main);
@@ -871,18 +881,29 @@ function zfWaveSpec(n) {
     }
     const hgt = t.h * T * (0.4 + 0.6 * t.grow), k = t.wood / ZF.treeWood;
     ctx.save(); ctx.translate(x + sh, by);
-    ctx.fillStyle = '#4a3220'; ctx.fillRect(-6, -hgt, 12, hgt);
-    ctx.fillStyle = '#5e4129'; ctx.fillRect(-6, -hgt, 4, hgt);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(-sh, 0, 16, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4a3220'; ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(-6, -8); ctx.lineTo(-6, -hgt); ctx.lineTo(6, -hgt); ctx.lineTo(6, -8); ctx.lineTo(9, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#5e4129'; ctx.fillRect(-6, -hgt, 4, hgt - 2);
+    ctx.fillStyle = '#3a2618'; ctx.fillRect(3, -hgt, 3, hgt);
+    ctx.strokeStyle = '#33221a'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 0; i < 4; i++) { const yy = -10 - ((hash(t.col, i) % 1000) / 1000) * (hgt - 20); ctx.moveTo(-3, yy); ctx.lineTo(-1, yy - 6); }
+    ctx.stroke();
     if (k < 1) { ctx.fillStyle = '#c49a68'; ctx.beginPath(); ctx.moveTo(-6, -14); ctx.lineTo(-6 + 7 * (1 - k), -10); ctx.lineTo(-6, -6); ctx.fill(); }
     const cols = ['#1f4a2c', '#275a34', '#2f6b3c'];
+    ctx.fillStyle = '#163a22'; circle(2, -hgt + 2, 17); ctx.fill();
     for (let i = 0; i < 3; i++) { ctx.fillStyle = cols[i]; circle((i - 1) * 11, -hgt - 4 + (i === 1 ? -10 : 0), 18 - i * 2); ctx.fill(); }
-    ctx.fillStyle = 'rgba(180,220,255,0.08)'; circle(-6, -hgt - 16, 10); ctx.fill();
+    ctx.fillStyle = '#367844'; circle(-8, -hgt - 12, 7); ctx.fill(); circle(4, -hgt - 20, 6); ctx.fill();
+    ctx.fillStyle = 'rgba(180,220,255,0.1)'; circle(-6, -hgt - 16, 10); ctx.fill();
     ctx.restore();
   }
   function drawHeart(st) {
     const x = HX, by = HY, t = G.clock, u = st.heart / ZF.heartMax, pulse = 1 + Math.sin(t * (u < 0.4 ? 9 : 3)) * 0.04;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, by, 32, 3.5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#3d3a4a'; rr(x - 26, by - 12, 52, 12, 3); ctx.fill();
+    ctx.fillStyle = '#2c2a37'; ctx.beginPath(); ctx.rect(x - 26, by - 5, 52, 5); ctx.fill();
     ctx.fillStyle = '#56526a'; rr(x - 22, by - 16, 44, 6, 2); ctx.fill();
+    ctx.fillStyle = '#7a7690'; ctx.beginPath(); ctx.rect(x - 20, by - 16, 40, 1.5); ctx.fill();
+    ctx.strokeStyle = '#2c2a37'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 9, by - 12); ctx.lineTo(x - 9, by - 5); ctx.moveTo(x + 9, by - 12); ctx.lineTo(x + 9, by - 5); ctx.stroke();
     ctx.save(); ctx.translate(x, by - 36 + Math.sin(t * 1.6) * 2); ctx.scale(pulse, pulse);
     const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, 48);
     glow.addColorStop(0, 'rgba(255,70,110,0.55)'); glow.addColorStop(1, 'rgba(255,70,110,0)');
@@ -898,14 +919,18 @@ function zfWaveSpec(n) {
   }
   function drawPad(col, label, sub) {
     const x = col * T + T / 2, y = (ZF.pads.row + 1) * T;
-    ctx.fillStyle = '#ffc53d'; rr(x - 14, y - 5, 28, 5, 2); ctx.fill();
-    const fs = big() ? 12 : 10;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y, 17, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c9931f'; rr(x - 15, y - 6, 30, 6, 2); ctx.fill();
+    ctx.fillStyle = '#ffc53d'; rr(x - 14, y - 6, 28, 3.5, 2); ctx.fill();
+    const fs = big() ? 13 : 11, bh = fs * 2 + 14;
     ctx.font = '700 ' + fs + 'px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const w = Math.max(60, ctx.measureText(sub).width + 12, ctx.measureText(label).width + 12);
-    ctx.fillStyle = 'rgba(20,18,34,0.82)'; rr(x - w / 2, y - 76, w, 30, 6); ctx.fill();
-    ctx.fillStyle = '#8a8f9e'; ctx.fillRect(x - 1.5, y - 46, 3, 41);
-    ctx.fillStyle = '#fff'; ctx.fillText(label, x, y - 67);
-    ctx.fillStyle = '#ffd36b'; ctx.fillText(sub, x, y - 55);
+    const w = Math.max(64, ctx.measureText(sub).width + 16, ctx.measureText(label).width + 16), top = y - 46 - bh;
+    ctx.fillStyle = '#6c7180'; ctx.fillRect(x - 1.5, y - 46, 3, 41); ctx.fillStyle = '#a3a8b6'; ctx.fillRect(x - 1.5, y - 46, 1.2, 41);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; rr(x - w / 2 + 2, top + 3, w, bh, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(20,18,34,0.88)'; rr(x - w / 2, top, w, bh, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,211,107,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.fillText(label, x, top + 7 + fs / 2);
+    ctx.fillStyle = '#ffd36b'; ctx.fillText(sub, x, top + bh - 7 - fs / 2);
   }
   const ZSKIN = { walker: ['#8aa37c', '#5f7655'], digger: ['#93a582', '#647558'], leaper: ['#9fb08a', '#6c7d5e'], brute: ['#7d8f73', '#53644c'], behemoth: ['#6f8466', '#465540'] };
   const ZCLOTH = ['#5a5f7a', '#6e4a4a', '#4a6670', '#6b6145', '#55456b'];
@@ -953,9 +978,53 @@ function zfWaveSpec(n) {
       ctx.fillStyle = '#c94a4a'; rr(z.px - w / 2, y, w * clamp(z.hp / z.max, 0, 1), 3, 1.5); ctx.fill();
     }
   }
+  // far silhouettes on the horizon: an old farmhouse with one lit window, a broken windmill, a leaning fence, dead trees
+  function zfFarBack() {
+    const gy = ZF.ground * T, col = '#1d2333', t = G.clock;
+    ctx.save();
+    ctx.fillStyle = col;
+    // farmhouse (left)
+    const fx = 150;
+    ctx.beginPath(); ctx.rect(fx, gy - 58, 74, 58); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(fx - 8, gy - 56); ctx.lineTo(fx + 37, gy - 92); ctx.lineTo(fx + 82, gy - 56); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.rect(fx + 54, gy - 96, 9, 22); ctx.fill();
+    ctx.fillStyle = 'rgba(255,196,110,' + (0.55 + 0.15 * Math.sin(t * 2.3) * Math.sin(t * 0.7)) + ')'; ctx.beginPath(); ctx.rect(fx + 14, gy - 44, 10, 12); ctx.fill();
+    ctx.fillStyle = '#141826'; ctx.beginPath(); ctx.rect(fx + 46, gy - 44, 10, 12); ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(fx + 18.5, gy - 44); ctx.lineTo(fx + 18.5, gy - 32); ctx.moveTo(fx + 14, gy - 38); ctx.lineTo(fx + 24, gy - 38); ctx.stroke();
+    // windmill (right), slowly turning with a missing blade
+    const wx = 800;
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(wx - 4, gy); ctx.lineTo(wx - 1.5, gy - 100); ctx.lineTo(wx + 1.5, gy - 100); ctx.lineTo(wx + 4, gy); ctx.closePath(); ctx.fill();
+    ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(wx - 16, gy); ctx.lineTo(wx, gy - 70); ctx.lineTo(wx + 16, gy); ctx.moveTo(wx - 10, gy - 30); ctx.lineTo(wx + 10, gy - 30); ctx.stroke();
+    ctx.save(); ctx.translate(wx, gy - 100); ctx.rotate(t * 0.25);
+    for (let i = 0; i < 6; i++) { if (i === 4) continue; ctx.rotate(Math.PI / 3); ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(26, -5); ctx.lineTo(26, 4); ctx.lineTo(0, 2); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    ctx.beginPath(); ctx.moveTo(wx + 2, gy - 100); ctx.lineTo(wx + 22, gy - 104); ctx.lineTo(wx + 22, gy - 96); ctx.closePath(); ctx.fill();
+    // leaning fence
+    ctx.strokeStyle = col; ctx.lineWidth = 3;
+    for (const [x0, x1] of [[300, 420], [600, 720]]) {
+      ctx.beginPath();
+      for (let x = x0; x <= x1; x += 24) { const lean = ((hash(x, 3) % 7) - 3) * 0.8; ctx.moveTo(x, gy); ctx.lineTo(x + lean, gy - 18 - (hash(x, 5) % 5)); }
+      ctx.stroke();
+      ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0, gy - 12); ctx.lineTo(x1, gy - 10); ctx.moveTo(x0, gy - 6); ctx.lineTo(x1 - 24, gy - 5); ctx.stroke(); ctx.lineWidth = 3;
+    }
+    // dead trees
+    ctx.lineCap = 'round';
+    for (const [x, hh] of [[96, 70], [880, 58], [262, 44]]) {
+      ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + 3, gy - hh); ctx.stroke();
+      ctx.lineWidth = 2; ctx.beginPath();
+      ctx.moveTo(x + 2, gy - hh * 0.55); ctx.lineTo(x - 14, gy - hh * 0.8);
+      ctx.moveTo(x + 2, gy - hh * 0.7); ctx.lineTo(x + 16, gy - hh * 0.95);
+      ctx.moveTo(x + 3, gy - hh); ctx.lineTo(x - 6, gy - hh - 12);
+      ctx.moveTo(x - 8, gy - hh * 0.75); ctx.lineTo(x - 12, gy - hh * 0.92);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   function zfDraw() {
     const st = G.mst;
     if (!st.cell) return;
+    zfFarBack();
     // dug-out holes under the ground (zombie tunnels are darker)
     for (let y = ZF.ground; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       if (st.cell[idx(x, y)]) continue;
@@ -1064,14 +1133,17 @@ function zfWaveSpec(n) {
     text(line, mx, B ? 27 : 24.5, fs, st.phase === 'wave' ? '#ff9c8a' : C.paper, 'center', 'body');
     // the heart's health
     const bw = B ? 220 : 190, bx = mx - bw / 2, by = B ? 50 : 44, bh = B ? 14 : 10;
-    ctx.fillStyle = 'rgba(20,18,34,0.8)'; rr(bx - 30, by - 4, bw + 70, bh + 8, 9); ctx.fill();
+    const hpS = Math.ceil(st.heart) + ' HP', hpF = B ? 13 : 11;
+    ctx.font = '700 ' + hpF + 'px ' + FONT;
+    const hpW = ctx.measureText(hpS).width;
+    ctx.fillStyle = 'rgba(20,18,34,0.8)'; rr(bx - 30, by - 4, bw + 38 + hpW + 10, bh + 8, 9); ctx.fill();
     ctx.fillStyle = '#ff4d7a'; ctx.save(); ctx.translate(bx - 16, by + bh / 2); ctx.scale(0.5, 0.5);
     ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-11, -1); ctx.lineTo(-9, -8); ctx.lineTo(-4, -10); ctx.lineTo(0, -6); ctx.lineTo(4, -10); ctx.lineTo(9, -8); ctx.lineTo(11, -1); ctx.closePath(); ctx.fill(); ctx.restore();
     ctx.fillStyle = 'rgba(255,255,255,0.15)'; rr(bx, by, bw, bh, 5); ctx.fill();
     const u = clamp(st.heart / ZF.heartMax, 0, 1);
     ctx.fillStyle = u < 0.35 ? '#ff5050' : '#ff4d7a';
     if (u > 0) { rr(bx, by, Math.max(8, bw * u), bh, 5); ctx.fill(); }
-    text(Math.ceil(st.heart) + ' HP', bx + bw + 8, by + bh / 2 + 0.5, B ? 13 : 11, C.paper, 'left', 'body');
+    text(hpS, bx + bw + 8, by + bh / 2 + 0.5, hpF, C.paper, 'left', 'body');
     ctx.font = '700 ' + fs + 'px ' + FONT;
     const rx = pill(W - 14, 12, rw, B ? 32 : 28, 'right');
     let cx = rx + 10;
@@ -1113,14 +1185,18 @@ function zfWaveSpec(n) {
       let px = tx0 + 20 + labW;
       tiers.forEach((k, i) => { ctx.fillStyle = COLS_K[k].main; rr(px, ty - 5, 10, 10, 2); ctx.fill(); ctx.strokeStyle = COLS_K[k].dark; ctx.lineWidth = 1; ctx.stroke(); text(parts[i], px + 14, ty, ts, C.paper, 'left', 'body'); px += pw[i]; });
       const sub = st.readyT > 0 ? 'Wave ' + st.wave + ' starts in ' + Math.max(1, Math.ceil(ZF.readyHold - st.readyT)) + '...' : 'Ready early? Both stand still by the heart and hold ' + (solo() ? key(cpuHuman(), 'down') : '▼');
-      ctx.save(); ctx.globalAlpha = 0.85; text(sub, W / 2, ty - th / 2 - (B ? 13 : 11), B ? 15 : 12, '#fff', 'center', 'body'); ctx.restore();
+      const sf = B ? 15 : 12, sh2 = sf + 12, sy = ty - th / 2 - 4 - sh2 / 2;
+      ctx.font = '700 ' + sf + 'px ' + FONT;
+      const sw = ctx.measureText(sub).width + 26;
+      ctx.fillStyle = 'rgba(20,18,34,0.72)'; rr(W / 2 - sw / 2, sy - sh2 / 2, sw, sh2, sh2 / 2); ctx.fill();
+      text(sub, W / 2, sy + 0.5, sf, st.readyT > 0 ? '#ffd36b' : '#fff', 'center', 'body');
       if (st.wave === 1) {
         const hs = B ? 14 : 12, lh = hs + 7;
         for (const k of [0, 1]) {
           if (isCpu(k) || (st.usedHold[k] && st.usedTap[k] && st.hintT > 30)) continue;
           const lines = ['Tap ' + key(k, 'act') + ' to shoot, hold it to build', 'Hold ' + key(k, 'act') + ' at a tree to chop wood', 'Hold ' + key(k, 'down') + ' + ' + key(k, 'act') + ' to dig, mine, or buy on a pad', 'Hold on a full wall to upgrade it'];
           ctx.font = '700 ' + hs + 'px ' + FONT;
-          const w3 = Math.max(...lines.map(s => ctx.measureText(s).width)) + 22, x3 = k === 0 ? 14 : W - 14 - w3, hh = lines.length * lh + 10, y3 = H - (B ? 84 : 72) - hh;
+          const w3 = Math.max(...lines.map(s => ctx.measureText(s).width)) + 22, ins = (B || (typeof playerDevice === 'function' && playerDevice(k).kind === 'touch')) ? 62 : 14, x3 = k === 0 ? ins : W - ins - w3, hh = lines.length * lh + 10, y3 = H - (B ? 84 : 72) - hh;
           ctx.fillStyle = 'rgba(20,18,34,0.82)'; rr(x3, y3, w3, hh, 10); ctx.fill();
           lines.forEach((s, i) => text(s, x3 + 11, y3 + 5 + lh / 2 + i * lh, hs, i === 0 ? PCOL[k] : C.paper, 'left', 'body'));
         }

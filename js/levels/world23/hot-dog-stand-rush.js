@@ -397,7 +397,7 @@ const HOTDOG = {
       if (c.state === 'hi') {
         c.taken = true; c.state = 'wait'; c.takenAt = st.t; c.pat = Math.min(c.patMax, c.pat + c.patMax * HD.takeBonus);
         st.stats.taken[p.id]++;
-        Sfx.play('hotdogDing'); pop(st, c.x, 268, 'Order!', '#fff3d6', 16);
+        Sfx.play('hotdogDing'); pop(st, clamp(c.x, 652, 912), 196, 'Order!', '#fff3d6', 16);
         c.say = pick(st, ['Yes please!', 'Ooh, thank you!', 'Yummy!', 'Thanks!']); c.sayT = 1.3;
         useful(st, p.id);
         if (isCpu(p.id) && !isCpu(st.cook) && typeof cpuSay === 'function') cpuSay(p, 'New order on the board!');
