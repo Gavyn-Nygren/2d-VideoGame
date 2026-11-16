@@ -235,13 +235,16 @@
       // ledges have one climb straight above another, and nobody could stop on the knee or the back ledge between
       // them without letting go on the exact tick). Let go, then press again to climb on.
       if ((h.climbLock === 'up' && !up) || (h.climbLock === 'down' && !down)) h.climbLock = null;
-      if (act && down) { h.hold = true; h.crouch = true; } // (▼ + action: hold on, flat, without pulling or ringing)
-      else if (act) {
+      if (act && !down) {
         // (the action only pulls or rings here: holding on is ▼)
         if (id === st.puller && atShard(st, h) && !curShard(st).loose) h.pull = true;
         else if (id === st.soother && atEar(st, h) && !curShard(st).mite) h.ring = true;
         if (id === st.soother && atEar(st, h) && curShard(st).mite) K.hintOnce(st, 'mite' + st.k + st.cur, id, 'A crystal mite is on it! Jump on it', 2.4);
-      } else if (down) {
+      }
+      if (act && down) { h.hold = true; h.crouch = true; } // (▼ + action: hold on, flat, without pulling or ringing)
+      else if (h.pull || h.ring) { /* busy pulling or ringing: stands still */ }
+      // (review, 2026-11-16) the action held with nothing to pull or ring no longer roots you to the spot: you walk on
+      else if (down) {
         const c = h.climbLock === 'down' ? null : CLIMBS.find(c => c.up === s.n && overClimb(st, c, h, s.y));
         if (c) { h.mode = 'climb'; h.s = c.i; h.ly = c.top + 2; h.lx = clamp(h.x - world(st, c.part, 0, h.ly).x, c.x0, c.x1); }
         else { h.crouch = true; h.hold = true; }   // ▼ held: crouch and hold on tight

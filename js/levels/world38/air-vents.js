@@ -913,7 +913,7 @@
     jobs: {
       light: { title: 'Light', act: 'cover', legend: '<kbd>A</kbd><kbd>D</kbd> crawl <kbd>W</kbd><kbd>S</kbd> climb',
         howTo: ['Your torch shows the way. Hold cover when a guard is under a grate.'] },
-      hacker: { title: 'Hacker', act: 'cover', legend: '<kbd>A</kbd><kbd>D</kbd> crawl <kbd>W</kbd><kbd>S</kbd> climb',
+      hacker: { title: 'Hacker', act: 'hack', legend: '<kbd>A</kbd><kbd>D</kbd> crawl <kbd>W</kbd><kbd>S</kbd> climb',
         howTo: ['Press the action at a door, then the arrows in order.', 'You can only read them in the torch light.'] },
     },
     jobAlt: true, jobSwap: 'You swap jobs every stretch.',

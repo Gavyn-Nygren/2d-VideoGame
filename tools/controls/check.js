@@ -72,7 +72,7 @@ const ok = (cond, what) => { if (!cond) { fails++; console.log('FAIL  ' + what);
   // a key press moves only that player to the keyboard
   await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(150);
   ok(await devs(page) === 'pad:xbox kb', 'mixed: Bo pressing a key shows Bo keys, Pip keeps the Xbox buttons (' + await devs(page) + ')');
-  await page.click('#menuBtn'); await page.waitForTimeout(300);
+  await page.click('#menuBtn'); await page.waitForTimeout(500)   /* (a fresh card ignores clicks for 350 ms) */;
   ok(await mode(page) === 'paused', 'mixed: the on-screen Menu button opens the pause menu');
   ok(await page.evaluate(() => { const l = document.querySelectorAll('#overlay .ctl-card'); return l.length === 2 && !!l[0].querySelector('.g-xbox-a') && l[1].textContent.includes('←'); }), 'mixed: the pause menu shows each player\'s own buttons');
   await page.click('#overlay [data-act="settings"]'); await page.waitForTimeout(300);

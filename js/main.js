@@ -271,6 +271,9 @@ function nextRoom() {
   G.introT = 3.4; G.introQuick = false;
   applyTheme(LEVELS[G.levelIndex].world, L.def.theme); // a room can have its own def.theme
   Sfx.play('room'); rumble(0, 0.2, 0.4, 120); rumble(1, 0.2, 0.4, 120);
+  // (review, 2026-11-16) the new room's own action words and jobs on the touch buttons and the top bar, before the
+  // level's room hook (as loadLevel does): they used to keep room 1's words all level
+  setActUI(!!L.def.act); legendRender();
   hook('room', G.room, L);
   cpuRoom();
 }

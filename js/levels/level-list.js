@@ -1155,9 +1155,9 @@ const LEVELS = [
     tagLift: 18,   // name tags clear the chef's toque and the catcher's basket
     act: { label: 'throw' },
     jobs: {
-      chef: { title: 'Chef', act: 'throw', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>F</kbd> hold, let go to throw',
+      chef: { title: 'Chef', act: 'throw', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop down <kbd>F</kbd> hold, let go to throw',
         howTo: ['Hold longer for a longer throw.'] },
-      catcher: { title: 'Catcher', act: 'throw', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>F</kbd> toss into a mouth',
+      catcher: { title: 'Catcher', act: 'throw', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop down <kbd>F</kbd> toss into a mouth',
         howTo: ['Catch food in your basket, then carry it to the monster.'] },
     },
     jobOf: 'thrower', jobSwap: 'You swap jobs every room.',

@@ -731,6 +731,7 @@ function jackboxActLabels(st) {
     });
     const ph = st.phase;
     const word = id => id < 0 ? 'action' : id === st.cranker ? (ph === 'hook' || ph === 'yoyo' ? 'hook' : 'crank') : (ph === 'yoyo' ? 'yo-yo' : 'haul');
+    if (typeof setActWords === 'function') setActWords([word(0), word(1)]);   // (the cards follow the live words)
     let changed = false;
     for (const o of jackboxLabelEls) { const want = word(o.id); if (o.el.textContent !== want) { o.el.textContent = want; changed = true; } }
     if (changed && typeof fitActLabels === 'function') fitActLabels();

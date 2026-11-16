@@ -79,9 +79,9 @@ LEVELS.push(
   // y is world px, down positive: the carpet is y 0 and higher shelves are negative.
   { name: 'Jack-in-the-Box Launch', world: 23, kind: 'team', mode: 'jackbox', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Shelf',
     jobs: {
-      cranker: { title: 'Cranker', act: 'crank', legend: '<kbd>F</kbd> crank on the beat <kbd>A</kbd><kbd>D</kbd> tilt the box',
+      cranker: { title: 'Cranker', act: ['crank', 'hook'], legend: '<kbd>F</kbd> crank on the beat <kbd>A</kbd><kbd>D</kbd> tilt the box',
         howTo: ['One crank per beat: mashing does nothing.', 'At the top, hook the yo-yo string and hop in.'] },
-      jumper: { title: 'Jumper', act: 'haul', legend: '<kbd>S</kbd> hold to squish <kbd>A</kbd><kbd>D</kbd> steer <kbd>W</kbd> air hop',
+      jumper: { title: 'Jumper', act: ['haul', 'yo-yo'], legend: '<kbd>S</kbd> hold to squish <kbd>A</kbd><kbd>D</kbd> steer <kbd>W</kbd> air hop',
         howTo: ['On the shelf, drop the yo-yo and haul the box up.'] },
     },
     jobSwap: 'You swap jobs every launch.',

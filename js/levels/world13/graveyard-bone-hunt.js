@@ -28,8 +28,8 @@
    (over a grave it pops back to where you lifted it). Mr. Bones won't move while someone is on him: "Hop off me
    first!" to the one on him, "Bo is on me! Hop off, Bo!" when it's the partner.
    The jack stool (a mound with how 'jack', lift: cells): the roof is out of jump reach from the plain stool (120 px
-   up, a jump is about 109), so it needs the partner on the arm lever. While the lever is held his neck grows one cell
-   at a time up to lift cells (the rider rides up on it); let go and it sinks back. The lever is beside him on the
+   up, a jump is about 109), so it needs the partner on the arm lever. While the lever is held AND someone stands on him his neck
+   grows one cell at a time up to lift cells (the rider rides up on it); let go, or hop off, and it sinks back. The lever is beside him on the
    ground, on the side away from the mound, so the rider can't pull it.
    Help, always gold and announced: after 30 s with no progress a gold arrow points at the next job and the next
    mound digs up at once (the giant ribcage then also takes lone digs); after 3 clatters a bone gets gold glue and
@@ -602,7 +602,14 @@ function bonehuntJackStep(st, dt) {
   j.pull = approach(j.pull, holder ? 1 : 0, dt * 7);
   j.boing = Math.max(0, j.boing - dt * 3);
   if (!on) { j.lift = 0; j.t = 0; return; }
-  const want = holder ? j.max : 0;
+  // (review, 2026-11-16) his neck only grows under a rider: a lever pulled too early used to raise the empty stool out of
+  // the partner's reach (and left the computer hopping at it). A short grace covers the step up and a little hop.
+  j.riderT = G.players.some(p => bonehuntOnJack(st, p)) ? 0.35 : Math.max(0, (j.riderT || 0) - dt);
+  j.askT = Math.max(0, (j.askT || 0) - dt);
+  if (holder && j.riderT <= 0 && j.lift === 0 && j.askT <= 0 && st.mounds.some(m => m.how === 'jack' && !m.done && !st.pieces[m.piece])) {
+    j.askT = 3.5; Sfx.play('bonehuntCreak');   // (a creak; the hint over the puller's head says who stands where)
+  }
+  const want = holder && j.riderT > 0 ? j.max : 0;
   if (want === j.lift) { j.t = 0; return; }
   j.t += dt;
   if (j.t < (want > j.lift ? BONEHUNT.jack.up : BONEHUNT.jack.down)) return;

@@ -1373,9 +1373,9 @@ Sfx.extra.tthHengeFlag = function () { [523, 659, 784, 1047, 1319].forEach((f, i
 /* ---------- the room ---------- */
 tthRoom('henge', {
   jobs: {
-    pusher: { title: 'Stone pusher', act: 'shoo', legend: '<kbd>A</kbd><kbd>D</kbd> move, push <kbd>W</kbd> jump',
+    pusher: { title: 'Stone pusher', act: ['shoo', 'pull'], legend: '<kbd>A</kbd><kbd>D</kbd> move, push <kbd>W</kbd> jump',
       howTo: ['Push the stone while a log is under its front. Shoo sheep and the claw.'] },
-    logs: { title: 'Log mover', act: ['grab', 'drop'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+    logs: { title: 'Log mover', act: ['grab', 'drop', 'pull'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
       howTo: ['Grab a log behind the stone, hop over it and drop the log in front.'] },
   },
   act: { label: 'grab', labels: ['grab', 'shoo'] },

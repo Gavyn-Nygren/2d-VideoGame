@@ -902,7 +902,7 @@
     jobs: {
       mirror: { title: 'Mirror', act: 'mirror', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>F</kbd> hold to raise the mirror',
         howTo: ['Hold the mirror up in a beam to stop it.', 'With the mirror up, ▲ ▼ tilt where the beam bounces.'] },
-      runner: { title: 'Runner', act: 'mirror', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck, slide',
+      runner: { title: 'Runner', act: 'grab', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> duck, slide',
         howTo: ['Jump, duck and slide through the gaps. Press the buttons on the far side.'] },
     },
     jobAlt: true, jobSwap: 'You swap jobs every stretch.',

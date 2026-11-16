@@ -183,7 +183,8 @@ function otherJobFor(id, def) {
 // the job's action word for its rows: the live word while it is that player's job, else the job's own first word
 function jobActWord(id, j) {
   const cur = jobFor(id);
-  if (cur && j && cur.key === j.key && jobActs(j).length) return actLabel(id);
+  // (a live word the job doesn't list is another job's: a level that swaps jobs without telling setActWords)
+  if (cur && j && cur.key === j.key && jobActs(j).length) { const w = actLabel(id); return jobActs(j).includes(w) ? w : jobActs(j)[0]; }
   return jobActs(j)[0] || '';
 }
 

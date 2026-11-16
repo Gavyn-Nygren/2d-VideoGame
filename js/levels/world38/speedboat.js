@@ -1017,7 +1017,7 @@
   SPY.defs.spyboat = {
     name: 'Speedboat Getaway', world: 37, kind: 'team', mode: 'spyboat', outfit: 'spyboat', music: 'spychase', ownStep: true, ownHUD: true, noFalls: true, roomWord: 'Stretch',
     jobs: {
-      steerer: { title: 'Steerer', act: 'gadget', legend: '<kbd>W</kbd><kbd>S</kbd> change channel <kbd>D</kbd> faster <kbd>A</kbd> slower',
+      steerer: { title: 'Steerer', act: 'horn', legend: '<kbd>W</kbd><kbd>S</kbd> change channel <kbd>D</kbd> faster <kbd>A</kbd> slower',
         howTo: ['Dodge, honk at gulls and fish, and drive through brass crates to refill.'] },
       gadgets: { title: 'Gadgets', act: 'gadget', legend: '<kbd>A</kbd><kbd>D</kbd> pick a gadget',
         howTo: ['Smoke blinds them, Oil spins the boat behind you, Boost is for ramps and gates.'] },

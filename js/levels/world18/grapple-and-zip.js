@@ -862,6 +862,7 @@ function grappleActLabels(st) {
     return hop.phase === 'zip' ? 'drop' : hop.phase === 'haul' || hop.phase === 'arrive' ? 'crank' : 'grab';
   };
   const key = word(0) + '/' + word(1);
+  if (typeof setActWords === 'function') setActWords([word(0), word(1)]);   // (the cards follow the live words)
   if (st.labKey === key && grappleLabelEls && grappleLabelEls.every(o => document.contains(o.el))) return;
   st.labKey = key;
   try {

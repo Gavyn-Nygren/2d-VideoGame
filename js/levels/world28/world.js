@@ -61,9 +61,9 @@ LEVELS.push(
     tip: 'One carries the torch and lights braziers. The other presses the switches found in the light, and disarms traps.',
     act: { label: 'light', labels: ['light', 'press'] },
     jobs: {
-      torch: { title: 'Torch', act: 'light', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      torch: { title: 'Torch', act: 'light', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop down',
         howTo: ['Light a brazier to keep a spot lit.'] },
-      seeker: { title: 'Seeker', act: 'press', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      seeker: { title: 'Seeker', act: 'press', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop down',
         howTo: ['Press a switch you have seen in the light; press next to a trap to disarm it.'] },
     },
     jobOf: 'torch', jobSwap: 'You swap jobs every chamber.',
