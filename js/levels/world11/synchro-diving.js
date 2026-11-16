@@ -501,6 +501,8 @@ function diveDrawStands(st) {
   ctx.fillStyle = '#5a6fa8'; ctx.fillRect(0, top - 22, W, 448 - top + 22);
   ctx.fillStyle = '#4a5c92'; ctx.fillRect(0, top - 22, W, 6);
   ctx.fillStyle = '#ffd23f'; ctx.fillRect(0, top - 16, W, 3);
+  ctx.fillStyle = '#44568a'; for (let x = 60; x < W; x += 180) ctx.fillRect(x - 4, top - 13, 8, 448 - top + 13);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; for (let x = 60; x < W; x += 180) ctx.fillRect(x - 4, top - 13, 2, 448 - top + 13);
   for (let r = 0; r < 5; r++) {
     const y = top + r * rh;
     // the crowd in this row (heads first, then the seat row in front hides their bodies)
@@ -543,6 +545,7 @@ function diveDrawStands(st) {
   ctx.fillStyle = 'rgba(200,232,255,0.28)'; ctx.fillRect(0, top - 22, W, 448 - top + 22);
   // the banner along the front of the stands
   const by = 430;
+  ctx.fillStyle = 'rgba(30,50,90,0.2)'; ctx.fillRect(0, by + 8, W, 3);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, by - 8, W, 16);
   ctx.fillStyle = '#2ec4b6'; ctx.fillRect(0, by - 8, W, 3); ctx.fillStyle = '#ff6b6b'; ctx.fillRect(0, by + 5, W, 3);
   ctx.font = '12px "Lilita One", "Arial Rounded MT Bold", sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
@@ -564,12 +567,22 @@ function diveDrawPoolBack() {
   // the far pool edge (white tiles) and the water behind everything
   ctx.fillStyle = '#f3f7fb'; ctx.fillRect(0, y - 10, W, 10);
   ctx.fillStyle = '#c9d8e8'; for (let x = 0; x < W; x += 16) ctx.fillRect(x, y - 10, 1, 10);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, y - 10, W, 2);
+  ctx.fillStyle = '#2b6fb0'; for (let x = 8; x < W; x += 32) ctx.fillRect(x, y - 6, 16, 3);   // a band of blue edge tiles
   const g = ctx.createLinearGradient(0, y, 0, H);
   g.addColorStop(0, '#3fb4e8'); g.addColorStop(1, '#1d6fb8');
   ctx.fillStyle = g; ctx.fillRect(0, y, W, H - y);
   // pool floor tiles and wobbly light lines
   ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
   for (let x = -20; x < W + 20; x += 40) { ctx.beginPath(); ctx.moveTo(x, y + 10); ctx.lineTo(x - 30, H); ctx.stroke(); }
+  // dappled light on the pool floor
+  ctx.strokeStyle = 'rgba(220,250,255,0.12)'; ctx.lineWidth = 1.5;
+  for (let k = 0; k < 14; k++) {
+    const cx = (k * 71 + G.clock * 8) % (W + 60) - 30, cy = y + 40 + (k * 37) % Math.max(10, H - y - 50);
+    ctx.beginPath(); ctx.ellipse(cx, cy, 16 + (k % 3) * 5, 5, Math.sin(G.clock * 0.7 + k) * 0.3, 0, Math.PI * 2); ctx.stroke();
+  }
+  // the water darker right under the far edge (its shadow)
+  ctx.fillStyle = 'rgba(16,60,120,0.18)'; ctx.fillRect(0, y, W, 5);
   ctx.strokeStyle = 'rgba(200,240,255,0.3)'; ctx.lineWidth = 2;
   for (let k = 0; k < 3; k++) {
     ctx.beginPath();
@@ -598,7 +611,9 @@ function diveDrawTower(st) {
     if (st.phase === 'podium') break;   // (hidden on the podium: the 3 m sign would peek out between Pip and Bo)
     const y = diveBoardY(h) + 18;
     const lab = (h === 7.5 ? '7.5' : String(h)) + ' m';
-    ctx.fillStyle = h === act ? '#ffc53d' : '#2b3f63'; rr(480 - 17, y - 8, 34, 16, 8); ctx.fill();
+    ctx.font = '700 11px "Atkinson Hyperlegible", system-ui, sans-serif';
+    const pw = Math.max(34, ctx.measureText(lab).width + 16);
+    ctx.fillStyle = h === act ? '#ffc53d' : '#2b3f63'; rr(480 - pw / 2, y - 8, pw, 16, 8); ctx.fill();
     text(lab, 480, y + 0.5, 11, h === act ? C.ink : '#ffffff', 'center', 'body');
   }
   // the boards on both sides
