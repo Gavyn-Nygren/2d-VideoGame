@@ -596,8 +596,18 @@ function tandemPaintBg(g) {
     path(r + 6);
     g.fillStyle = i % 2 ? '#56689f' : '#6476ad'; g.fill();
   }
+  // aisles of steps up through the stands, and a lit edge on each row
+  g.save(); g.beginPath(); g.rect(0, 0, W, H); stadiumOn(g, K.rOut + 14); g.clip('evenodd');
+  for (let i = 0; i < 10; i++) { const r = K.rOut + 20 + i * 13; path(r); g.strokeStyle = 'rgba(255,255,255,0.08)'; g.lineWidth = 1; g.stroke(); }
+  g.strokeStyle = 'rgba(216,210,196,0.55)'; g.lineWidth = 6;
+  for (const x of [K.XA + 60, K.XA + 230, K.XB - 230 + 60, K.XB - 60]) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, K.CY - K.rOut - 14); g.moveTo(x, K.CY + K.rOut + 14); g.lineTo(x, H); g.stroke(); }
+  for (const [cx, a] of [[K.XA, Math.PI * 0.8], [K.XA, Math.PI * 1.2], [K.XB, Math.PI * 0.2], [K.XB, -Math.PI * 0.2]]) { g.beginPath(); g.moveTo(cx + Math.cos(a) * (K.rOut + 14), K.CY + Math.sin(a) * (K.rOut + 14)); g.lineTo(cx + Math.cos(a) * (K.rOut + 160), K.CY + Math.sin(a) * (K.rOut + 160)); g.stroke(); }
+  g.strokeStyle = 'rgba(120,110,95,0.5)'; g.lineWidth = 1; g.setLineDash([1, 4]);
+  for (const x of [K.XA + 60, K.XA + 230, K.XB - 230 + 60, K.XB - 60]) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, K.CY - K.rOut - 14); g.moveTo(x, K.CY + K.rOut + 14); g.lineTo(x, H); g.stroke(); }
+  g.setLineDash([]); g.restore();
   // a walkway ring and the wall round the track
   path(K.rOut + 14); g.fillStyle = '#d8d2c4'; g.fill();
+  path(K.rOut + 14); g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 1.2; g.stroke();
   path(K.rOut + 6); g.fillStyle = '#2b3f63'; g.fill();
   // the boards
   path(K.rOut); g.fillStyle = '#e4b273'; g.fill();
@@ -645,12 +655,17 @@ function tandemPaintBg(g) {
   g.fillStyle = '#7cc66a'; g.fillRect(0, 0, W, H);
   g.fillStyle = 'rgba(255,255,255,0.08)';
   for (let x = 0; x < W; x += 56) g.fillRect(x, 0, 28, H);
+  // the bank's shadow on the grass edge, and tufts here and there
+  path(K.rIn); g.strokeStyle = 'rgba(30,70,30,0.25)'; g.lineWidth = 16; g.stroke();
+  g.fillStyle = 'rgba(60,120,50,0.45)';
+  for (let i = 0; i < 60; i++) { const hh = hash(i, 88), x = K.XA - K.rIn + hh % (K.XB - K.XA + 2 * K.rIn), y = K.CY - K.rIn + (hh >> 11) % (2 * K.rIn); g.fillRect(x, y, 1.5, 3); g.fillRect(x + 2, y + 1, 1.5, 2); }
   g.restore();
   path(K.rIn); g.lineWidth = 3; g.strokeStyle = '#4c9a48'; g.stroke();
   // little benches and rollers in the infield bends
   for (const [x, y] of [[170, 350], [790, 220]]) {
     g.fillStyle = 'rgba(28,26,54,0.18)'; rr2(x - 22, y - 5, 44, 12, 4); g.fill();
     g.fillStyle = '#c98b5a'; rr2(x - 22, y - 8, 44, 10, 4); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(x - 19, y - 7, 38, 1.5); g.strokeStyle = '#8a5833'; g.lineWidth = 1; rr2(x - 22, y - 8, 44, 10, 4); g.stroke();
     g.fillStyle = '#8a5833'; g.fillRect(x - 18, y + 2, 4, 6); g.fillRect(x + 14, y + 2, 4, 6);
   }
   // banner boards on the wall along the straights (made-up colours, no words but "SUMMER GAMES")
@@ -698,6 +713,7 @@ function tandemDrawCrowd(st) {
         else { const th = -Math.PI / 2 - (d - S3) / r; x = K.XA + r * Math.cos(th); y = K.CY + r * Math.sin(th); }
         if (x < -8 || x > W + 8 || y < -8 || y > H + 8) continue;
         if (h % 7 === 0) continue;   // an empty seat
+        if ((y < K.CY - K.rOut - 10 || y > K.CY + K.rOut + 10) && [K.XA + 60, K.XA + 230, K.XB - 170, K.XB - 60].some(ax => Math.abs(x - ax) < 7)) continue;   // the aisles
         if ((x > 428 && x < 536 && y > 478) || (x > 546 && x < 614 && y > 470 && y < 506)) continue;   // Bongo's drum, the judges
         tandemFans.push({ x: x + ((h >> 3) % 5) - 2, y: y + ((h >> 6) % 3) - 1, col: cols[h % cols.length], skin: ['#f3c9a0', '#c98b5a', '#8a5833', '#ffe0c2'][(h >> 9) % 4],
           flag: h % 11 === 0 ? cols[(h >> 4) % cols.length] : null, ph: (h % 100) / 16 });
