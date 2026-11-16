@@ -217,15 +217,53 @@ const TOURNEY = (() => {
     ctx.restore();
   };
 
+  /* ---------- a still layer, drawn once and then copied ----------
+     K.layer(key, draw): when the same key comes up two frames running (a camera that holds still, say), draw() is
+     captured once into a picture the size of the canvas and copied from then on; a key that changes every frame
+     (scrolling) just draws live. The key must hold everything the drawing depends on. */
+  const LAYERS = new Map();
+  let layerTmp = null;
+  K.layer = (key, draw) => {
+    const cv = ctx.canvas, m = ctx.getTransform(), full = key + '|' + [m.a, m.b, m.c, m.d, m.e, m.f, cv.width, cv.height].join(',');
+    const L = LAYERS.get(key.split('|')[0]) || {};
+    if (L.full === full && L.cv) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(L.cv, 0, 0); ctx.restore(); return; }
+    if (L.pending !== full || typeof document === 'undefined') { LAYERS.set(key.split('|')[0], { pending: full }); draw(); return; }
+    // second time in a row: capture it (keep what is on the canvas, draw the layer alone, copy it, put both back)
+    if (!layerTmp || layerTmp.width !== cv.width || layerTmp.height !== cv.height) { layerTmp = document.createElement('canvas'); layerTmp.width = cv.width; layerTmp.height = cv.height; }
+    const tc = layerTmp.getContext('2d'); tc.clearRect(0, 0, cv.width, cv.height); tc.drawImage(cv, 0, 0);
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.restore();
+    ctx.save(); draw(); ctx.restore();
+    const out = document.createElement('canvas'); out.width = cv.width; out.height = cv.height; out.getContext('2d').drawImage(cv, 0, 0);
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.drawImage(layerTmp, 0, 0); ctx.drawImage(out, 0, 0); ctx.restore();
+    LAYERS.set(key.split('|')[0], { full, cv: out });
+  };
+  // a white cloud as a picture (the soft shadow, the puffs and a bright top), made once per size
+  const CLOUDS = new Map();
+  const cloudSprite = s => {
+    const k = Math.round(s * 100); let cv = CLOUDS.get(k);
+    if (!cv) {
+      cv = document.createElement('canvas'); const w = 110 * s, h = 70 * s; cv.width = Math.ceil(w * 2); cv.height = Math.ceil(h * 2);
+      const c = cv.getContext('2d'); c.scale(2, 2); c.translate(22 * s, 36 * s);
+      c.fillStyle = 'rgba(160,175,205,0.28)'; c.beginPath(); c.arc(2 * s, 4 * s, 18 * s, 0, TAU); c.arc(24 * s, -4 * s, 22 * s, 0, TAU); c.arc(48 * s, 4 * s, 17 * s, 0, TAU); c.rect(2 * s, 4 * s, 46 * s, 17 * s); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.arc(0, 0, 18 * s, 0, TAU); c.arc(22 * s, -8 * s, 22 * s, 0, TAU); c.arc(46 * s, 0, 17 * s, 0, TAU); c.arc(34 * s, -2 * s, 14 * s, 0, TAU); c.rect(0, 0, 46 * s, 17 * s); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.arc(18 * s, -16 * s, 10 * s, 0, TAU); c.fill();
+      CLOUDS.set(k, cv);
+    }
+    return cv;
+  };
   /* ---------- scenery ---------- */
   K.sky = (cx, t, o = {}) => {
+    K.layer('sky|' + (o.night ? 'n' : o.dusk ? 'd' : 'day'), () => skyBack(o));
+    if (o.night) for (let i = 0; i < 70; i++) { ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.5 * H_(i) * (0.6 + 0.4 * Math.sin(t * 2 + i))) + ')'; const s = H_(i + 21) > 0.85 ? 2.4 : 1.6; ctx.fillRect(((H_(i + 3) * W - cx * 0.02) % W + W) % W, H_(i + 9) * 250, s, s); }
+    skyClouds(cx, t, o);
+  };
+  const skyBack = o => {
     const g = ctx.createLinearGradient(0, 0, 0, H);
     if (o.night) { g.addColorStop(0, '#101a3a'); g.addColorStop(0.7, '#2a3a6a'); g.addColorStop(1, '#4a4a7a'); }
     else if (o.dusk) { g.addColorStop(0, '#4a4a8a'); g.addColorStop(0.55, '#e88a6a'); g.addColorStop(1, '#ffd08a'); }
     else { g.addColorStop(0, '#5ab4ee'); g.addColorStop(0.65, '#a8dcf6'); g.addColorStop(1, '#e8f6f0'); }
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     if (o.night) {
-      for (let i = 0; i < 70; i++) { ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.5 * H_(i) * (0.6 + 0.4 * Math.sin(t * 2 + i))) + ')'; const s = H_(i + 21) > 0.85 ? 2.4 : 1.6; ctx.fillRect(((H_(i + 3) * W - cx * 0.02) % W + W) % W, H_(i + 9) * 250, s, s); }
       // the moon: a soft halo, a crescent with a lit rim
       ctx.fillStyle = 'rgba(246,242,216,0.08)'; circ(780, 80, 58); ctx.fill(); circ(780, 80, 40); ctx.fill();
       ctx.fillStyle = '#f6f2d8'; circ(780, 80, 26); ctx.fill(); ctx.fillStyle = '#101a3a'; circ(792, 72, 22); ctx.fill();
@@ -236,18 +274,20 @@ const TOURNEY = (() => {
       ctx.strokeStyle = 'rgba(255,170,120,0.35)'; ctx.lineWidth = 2;
       for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(560 + k * 30, 160 + k * 26); ctx.lineTo(960, 160 + k * 26); ctx.stroke(); }
     } else {
-      // the sun: a glow, slow turning rays, a bright core
-      ctx.save(); ctx.translate(820, 80); if (!reduceMotion) ctx.rotate(t * 0.05);
+      // the sun: a glow, rays, a bright core
+      ctx.save(); ctx.translate(820, 80); ctx.rotate(0.1);
       ctx.fillStyle = 'rgba(255,248,210,0.35)';
       for (let k = 0; k < 12; k++) { ctx.rotate(TAU / 12); ctx.beginPath(); ctx.moveTo(-6, 40); ctx.lineTo(6, 40); ctx.lineTo(0, 70 + (k % 2) * 12); ctx.closePath(); ctx.fill(); }
       ctx.restore();
       ctx.fillStyle = 'rgba(255,248,210,0.5)'; circ(820, 80, 50); ctx.fill(); ctx.fillStyle = '#fff6c8'; circ(820, 80, 32); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.45)'; circ(812, 72, 17); ctx.fill();
     }
-    // fat clouds: shaded puffs by day, tinted ones at dusk and night
+  };
+  // fat clouds: shaded puffs by day (pictures), tinted ones at dusk and night
+  const skyClouds = (cx, t, o) => {
     for (let i = 0; i < 5; i++) {
       const span = W + 360, x = ((i * 271 - cx * 0.03 + t * (5 + i * 2)) % span + span) % span - 180, y = 46 + (i * 53) % 110, s = 0.8 + (i % 3) * 0.3;
-      if (!o.night && !o.dusk) { drawCloud(x, y, s * 1.12); continue; }
+      if (!o.night && !o.dusk) { const sp = cloudSprite(s * 1.12), k = s * 1.12; ctx.drawImage(sp, x - 22 * k, y - 36 * k, sp.width / 2, sp.height / 2); continue; }
       ctx.fillStyle = o.night ? 'rgba(20,24,60,0.25)' : 'rgba(170,90,110,0.3)';
       circ(x + 2, y + 5 * s, 20 * s); ctx.fill(); circ(x + 54 * s, y + 5 * s, 18 * s); ctx.fill(); ctx.fillRect(x, y + 5 * s, 54 * s, 16 * s);
       ctx.fillStyle = o.night ? 'rgba(160,170,210,0.25)' : 'rgba(255,220,200,0.6)';
@@ -268,7 +308,8 @@ const TOURNEY = (() => {
     ctx.fill();
     ctx.fillStyle = tint(col, 0.22); circ(x - 3 * s, y - (poplar ? 26 : 19) * s, 3.2 * s); ctx.fill();
   };
-  K.hills = (cx, o = {}) => {
+  K.hills = (cx, o = {}) => K.layer('hills|' + cx + '|' + JSON.stringify(o), () => hillsRaw(cx, o));
+  const hillsRaw = (cx, o = {}) => {
     const base = o.base || 330, par = o.par || 0.08, dim = o.dim || 0;
     // a hazy blue ridge far behind everything
     {
@@ -376,6 +417,25 @@ const TOURNEY = (() => {
     }
   };
   const SKIN = ['#f2c8a0', '#d89a6a', '#a86a42', '#f8dcc0', '#7a4a2a'], HATS = ['#d8323a', '#2e6ad8', '#2e8a4a', '#ffd23a', '#7a3aa8', '#f6ecd0', null, null];
+  const crowdCache = new Map();
+  const crowdSprite = (key, w, h, draw) => {
+    let cv = crowdCache.get(key);
+    if (!cv) { cv = document.createElement('canvas'); cv.width = w * 2; cv.height = h * 2; const c = cv.getContext('2d'); c.scale(2, 2); draw(c); crowdCache.set(key, cv); }
+    return cv;
+  };
+  // (stamped from cached sprites: a body, its centre bottom at 10, 10 of 20x12; a head with hat, mouth and arms, centre 12, 14 of 24x24)
+  const crowdTorso = body => crowdSprite('t' + body, 20, 12, c => {
+    c.fillStyle = body; c.beginPath(); c.ellipse(10, 10, 7, 8, 0, Math.PI, TAU); c.fill();
+    c.fillStyle = 'rgba(30,16,30,0.22)'; c.beginPath(); c.ellipse(12.5, 10, 4.5, 7, 0, Math.PI * 1.5, TAU); c.lineTo(12.5, 10); c.fill();
+  });
+  const crowdHead = (body, sk, hat, mouth, armsUp) => crowdSprite('h' + (armsUp ? body : '') + sk + hat + mouth, 24, 24, c => {
+    const x = 12, hy = 14, o = (r, yy) => { c.beginPath(); c.arc(x, yy, r, 0, TAU); };
+    if (armsUp) { c.strokeStyle = body; c.lineWidth = 3; c.beginPath(); c.moveTo(x - 5, hy + 6); c.lineTo(x - 9, hy - 6); c.moveTo(x + 5, hy + 6); c.lineTo(x + 9, hy - 6); c.stroke(); }
+    c.fillStyle = sk; o(5.5, hy); c.fill(); c.strokeStyle = shade(sk, 0.4); c.lineWidth = 0.8; c.stroke();
+    if (hat) { c.fillStyle = hat; c.beginPath(); c.ellipse(x, hy - 4, 5.8, 2.6, 0, Math.PI, TAU); c.fill(); }
+    c.fillStyle = '#2a1a1a';
+    if (mouth === 2) { o(1.6, hy + 2); c.fill(); } else if (mouth === 1) { c.beginPath(); c.arc(x, hy + 1.5, 1.8, 0, Math.PI); c.fill(); }
+  });
   K.crowd = (x0, x1, y, t, o = {}) => {
     const rows = o.rows || 3, mood = o.mood || 'idle', seed = o.seed || 0, rh = 22;
     // the tiers (timber)
@@ -401,15 +461,10 @@ const TOURNEY = (() => {
         else if (mood === 'wave') { const w = Math.sin((x - t * 380) * 0.012); lift = Math.max(0, w) * 10; armsUp = w > 0.4; mouth = w > 0.4 ? 1 : 0; }
         else lift = Math.sin(t * 2 + h * 9) * 0.8;
         const hy = by - 12 - lift, body = BANNER[Math.floor(H_(n + 3) * 7)];
-        ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(x, by - 2 - lift * 0.5, 7, 8, 0, Math.PI, TAU); ctx.fill();
-        ctx.fillStyle = 'rgba(30,16,30,0.22)'; ctx.beginPath(); ctx.ellipse(x + 2.5, by - 2 - lift * 0.5, 4.5, 7, 0, Math.PI * 1.5, TAU); ctx.lineTo(x + 2.5, by - 2 - lift * 0.5); ctx.fill();
-        if (armsUp) { ctx.strokeStyle = body; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 5, hy + 6); ctx.lineTo(x - 9, hy - 6); ctx.moveTo(x + 5, hy + 6); ctx.lineTo(x + 9, hy - 6); ctx.stroke(); }
-        const sk = SKIN[Math.floor(H_(n + 7) * 5)];
-        ctx.fillStyle = sk; circ(x, hy, 5.5); ctx.fill(); ctx.strokeStyle = shade(sk, 0.4); ctx.lineWidth = 0.8; ctx.stroke();
-        const hat = HATS[Math.floor(H_(n + 11) * 8)];
-        if (hat) { ctx.fillStyle = hat; ctx.beginPath(); ctx.ellipse(x, hy - 4, 5.8, 2.6, 0, Math.PI, TAU); ctx.fill(); }
-        ctx.fillStyle = '#2a1a1a';
-        if (mouth === 2) { circ(x, hy + 2, 1.6); ctx.fill(); } else if (mouth === 1) { ctx.beginPath(); ctx.arc(x, hy + 1.5, 1.8, 0, Math.PI); ctx.fill(); }
+        const sk = SKIN[Math.floor(H_(n + 7) * 5)], hat = HATS[Math.floor(H_(n + 11) * 8)];
+        // (stamped from cached sprites: dozens of tiny shaded shapes per person are slow to draw every frame)
+        ctx.drawImage(crowdTorso(body), x - 10, by - 2 - lift * 0.5 - 10, 20, 12);
+        ctx.drawImage(crowdHead(body, sk, hat, mouth, armsUp), x - 12, hy - 14, 24, 24);
       }
     }
     if (o.royal) {

@@ -890,8 +890,7 @@ function wizDusk(t, scrollX = 0, scrollY = 0, o = {}) {
     ctx.fillStyle = `rgba(255,250,230,${0.55 * a})`; ctx.fillRect(x - 5, y - 0.6, 10, 1.2); ctx.fillRect(x - 0.6, y - 5, 1.2, 10); circle(x, y, 1.6); ctx.fill();
   }
   const mx = (o.moonX != null ? o.moonX : 760) - scrollX * 0.02, my = (o.moonY != null ? o.moonY : 96) - scrollY * 0.02;
-  const gl = ctx.createRadialGradient(mx, my, 20, mx, my, 120); gl.addColorStop(0, 'rgba(255,248,220,0.4)'); gl.addColorStop(1, 'rgba(255,248,220,0)');
-  ctx.fillStyle = gl; circle(mx, my, 120); ctx.fill();
+  ctx.fillStyle = 'rgba(255,248,220,0.07)'; circle(mx, my, 110); ctx.fill(); circle(mx, my, 80); ctx.fill(); circle(mx, my, 62); ctx.fill();
   ctx.fillStyle = '#fbf3dc'; circle(mx, my, 46); ctx.fill();
   // the moon's shaded limb, craters with lit rims
   ctx.fillStyle = 'rgba(180,160,190,0.22)'; ctx.beginPath(); ctx.arc(mx, my, 46, -0.9, 2.2); ctx.arc(mx - 8, my - 4, 42, 2.2, -0.9, true); ctx.fill();
@@ -912,7 +911,7 @@ function wizDusk(t, scrollX = 0, scrollY = 0, o = {}) {
     ctx.fillStyle = 'rgba(160,230,190,0.35)'; ctx.beginPath(); ctx.ellipse(rx - 6 * s, ry - 4 * s, 18 * s, 2 * s, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#4a3a2a'; ctx.fillRect(rx - 9 * s, ry - 6 * s, 2 * s, 6 * s);
     ctx.fillStyle = '#2f5546'; circle(rx - 8 * s, ry - 10 * s, 7 * s); ctx.fill(); ctx.fillStyle = '#3f7a62'; circle(rx - 10 * s, ry - 12 * s, 3.5 * s); ctx.fill();
-    if (k % 2 === 0) { const lg = ctx.createRadialGradient(rx + 12 * s, ry - 6 * s, 1, rx + 12 * s, ry - 6 * s, 16 * s); lg.addColorStop(0, 'rgba(255,214,120,0.6)'); lg.addColorStop(1, 'rgba(255,214,120,0)'); ctx.fillStyle = lg; circle(rx + 12 * s, ry - 6 * s, 16 * s); ctx.fill(); ctx.fillStyle = '#ffe08a'; ctx.fillRect(rx + 11 * s, ry - 8 * s, 2.5 * s, 3.5 * s); }
+    if (k % 2 === 0) { ctx.fillStyle = 'rgba(255,214,120,0.2)'; circle(rx + 12 * s, ry - 6 * s, 12 * s); ctx.fill(); ctx.fillStyle = '#ffe08a'; ctx.fillRect(rx + 11 * s, ry - 8 * s, 2.5 * s, 3.5 * s); }
   }
   if (o.skyline !== false) wizSkyline(scrollX * 0.2, (o.skyY != null ? o.skyY : 380) - scrollY * 0.1);
 }
@@ -922,8 +921,8 @@ function wizDusk(t, scrollX = 0, scrollY = 0, o = {}) {
 function wizLawn(x0, y0, x1, y1, o = {}) {
   const top = o.top || '#5fb068', body = o.body || '#4f9a58', w = x1 - x0, h = y1 - y0;
   if (w <= 0 || h <= 0) return;
-  const g = ctx.createLinearGradient(0, y0, 0, y0 + Math.min(h, 160)); g.addColorStop(0, body); g.addColorStop(1, shade(body, 0.35));
-  ctx.fillStyle = g; ctx.fillRect(x0, y0, w, h);
+  ctx.fillStyle = body; ctx.fillRect(x0, y0, w, h);
+  if (h > 60) { ctx.fillStyle = shade(body, 0.2); ctx.fillRect(x0, y0 + 60, w, h - 60); }
   ctx.fillStyle = top; ctx.fillRect(x0, y0, w, 8);
   ctx.fillStyle = tint(top, 0.3); ctx.fillRect(x0, y0, w, 2);
   ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x0, y0 + 8, w, 4);
@@ -963,8 +962,7 @@ function wizSkyline(sx, y) {
     ctx.fillStyle = k % 2 ? '#c85a6a' : '#5ab0c8'; ctx.beginPath(); ctx.moveTo(0, -h - rh - 2); ctx.lineTo(14 + Math.sin(G.clock * 3 + k) * 2, -h - rh + 2); ctx.lineTo(0, -h - rh + 6); ctx.closePath(); ctx.fill();
     // arched windows with a warm glow
     for (let wy = -h + 20; wy < -20; wy += 34) {
-      const gw = ctx.createRadialGradient(0, wy + 6, 1, 0, wy + 6, 16); gw.addColorStop(0, 'rgba(255,215,120,0.35)'); gw.addColorStop(1, 'rgba(255,215,120,0)');
-      ctx.fillStyle = gw; ctx.fillRect(-16, wy - 10, 32, 32);
+      ctx.fillStyle = 'rgba(255,215,120,0.14)'; circle(0, wy + 7, 11); ctx.fill();
       ctx.fillStyle = 'rgba(255,215,120,0.8)'; ctx.beginPath(); ctx.moveTo(-5, wy + 13); ctx.lineTo(-5, wy + 4); ctx.arc(0, wy + 4, 5, Math.PI, 0); ctx.lineTo(5, wy + 13); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#2a2050'; ctx.fillRect(-0.6, wy, 1.2, 13); ctx.fillRect(-5, wy + 7, 10, 1.2);
     }

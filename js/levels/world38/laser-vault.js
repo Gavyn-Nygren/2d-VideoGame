@@ -644,12 +644,9 @@
     const top = scrY(CH);
     ctx.fillStyle = '#26323a'; ctx.fillRect(0, top, W, FY - top);
     const off = st.camX, wain = FY - Math.min(70, (FY - top) * 0.3);
-    // a soft wash of light from the wall lamps down the wall
-    { const wg = ctx.createLinearGradient(0, top, 0, FY); wg.addColorStop(0, 'rgba(255,220,160,0.06)'); wg.addColorStop(0.5, 'rgba(0,0,0,0)'); wg.addColorStop(1, 'rgba(0,0,0,0.18)'); ctx.fillStyle = wg; ctx.fillRect(0, top, W, FY - top); }
     for (let px = Math.floor(off / 120) * 120; px < off + W + 120; px += 120) {
       const x = px - off, h = K.hash(px * 0.37 + st.k);
       // raised steel panels: a lit top-left bevel, a dark lower-right bevel
-      ctx.fillStyle = 'rgba(255,255,255,0.04)'; ctx.fillRect(x + 2, top + 8, 116, wain - top - 16);
       ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(x + 2, top + 8, 116, 2); ctx.fillRect(x + 2, top + 8, 2, wain - top - 16);
       ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(x + 2, wain - 10, 116, 2); ctx.fillRect(x + 116, top + 8, 2, wain - top - 16);
       ctx.strokeStyle = '#33424a'; ctx.lineWidth = 2; ctx.strokeRect(x + 2, top + 8, 116, wain - top - 16);
@@ -657,8 +654,7 @@
       // a brass wall lamp between panels, with its glow
       if (((px / 120) | 0) % 2 === 0) {
         const lx = x, ly = top + 34;
-        const lg = ctx.createRadialGradient(lx, ly, 2, lx, ly, 60); lg.addColorStop(0, 'rgba(255,214,140,0.28)'); lg.addColorStop(1, 'rgba(255,214,140,0)');
-        ctx.fillStyle = lg; ctx.fillRect(lx - 60, ly - 60, 120, 120);
+        ctx.fillStyle = 'rgba(255,214,140,0.08)'; circle(lx, ly - 2, 34); ctx.fill(); circle(lx, ly - 2, 18); ctx.fill();
         ctx.fillStyle = COL.brass; ctx.fillRect(lx - 2, ly, 4, 12); ctx.fillStyle = '#ffe6a8'; ctx.beginPath(); ctx.moveTo(lx - 8, ly); ctx.lineTo(lx + 8, ly); ctx.lineTo(lx + 5, ly - 10); ctx.lineTo(lx - 5, ly - 10); ctx.closePath(); ctx.fill();
       }
       if (h > 0.55) portrait(x + 60, top + 70, h, t);
