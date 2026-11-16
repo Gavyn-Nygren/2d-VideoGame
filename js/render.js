@@ -630,6 +630,7 @@ function drawJobRows(id, x, y, w, job) {
     let bx = x;
     for (const wt of r.whats) {
       if (wt === '+') { text('+', bx + 4, yy, 13, C.paper, 'center', 'body'); bx += 10; continue; }
+      if (wt === 'or') { text('or', bx + 9, yy + 0.5, 12, '#b9b3cf', 'center', 'body'); bx += 20; continue; }
       if (!['left', 'right', 'jump', 'down', 'act'].includes(wt)) continue;
       const what = wt === 'jump' && vertical && d.kind !== 'kb' ? 'up' : wt;
       bx += drawBtn(id, what, bx, yy, { size: 20, align: 'left' }) + 3;
@@ -642,15 +643,29 @@ function drawJobRows(id, x, y, w, job) {
   return yy - y;
 }
 // the room or part card of a level with jobs: the tip, then a column per player with their job and buttons
-function drawIntroJobs(a, def) {
+// the jobs card's box: [x, y, w, h] (a boss level, jobParts, keeps it under the big era / class title at y 128)
+function introJobsBox(def) {
   const note = cpuTipNote(def.tip), ids = [0, 1].filter(k => !isCpuPlayer(k));
   const nRows = Math.max(...ids.map(k => Math.min(6, controlRows(k, null, def.act).rows.length)), 1);
-  ctx.save(); ctx.globalAlpha = a;
+  ctx.save();
   ctx.font = '400 14px "Atkinson Hyperlegible", system-ui, sans-serif';
-  const colW = 280, tw = Math.min(W - 40, Math.max(ids.length * colW + 40, ctx.measureText(def.tip).width + 60));
+  const tw = Math.min(W - 40, Math.max(ids.length * 280 + 40, ctx.measureText(def.tip).width + 60));
+  ctx.restore();
   const h = 124 + 30 + nRows * 25 + (note ? 22 : 0) + (cpuSolo() ? 20 : 0);
-  const top = Math.max(60, Math.min(150, (H - h) / 2));
-  const card = [W / 2 - tw / 2, top, tw, h];
+  const top = Math.max(LEVELS[G.levelIndex].jobParts ? 152 : 60, Math.min(150, (H - h) / 2));
+  return [W / 2 - tw / 2, top, tw, h];
+}
+// the bottom of the room card while it is up (levels that put a line under it: the 30-1 / 35-1 / 40-1 checkpoint)
+function introCardBottom() {
+  const def = G.level && G.level.def;
+  if (!def) return 168;
+  if (def.jobs && jobFor(0)) { const b = introJobsBox(def); return b[1] + b[3]; }
+  return 168 + (def.act ? 120 : 92) + (cpuTipNote(def.tip) ? 22 : 0);
+}
+function drawIntroJobs(a, def) {
+  const note = cpuTipNote(def.tip), ids = [0, 1].filter(k => !isCpuPlayer(k));
+  const colW = 280, card = introJobsBox(def), top = card[1], h = card[3];
+  ctx.save(); ctx.globalAlpha = a;
   ctx.fillStyle = 'rgba(23,25,29,0.9)'; rr(card[0], card[1], card[2], card[3], 18); ctx.fill();
   const code = levelCode(G.levelIndex), wd = WORLDS[LEVELS[G.levelIndex].world];
   const first = code.endsWith('-1') && (!def.rooms || def.roomIndex === 0);

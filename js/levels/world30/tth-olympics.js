@@ -1121,6 +1121,7 @@ TTH_PHASES.olympics = {
   hudText: st => (st.ph.mode === 'won' || st.ph.mode === 'done' ? 'Lap 3/3' : 'Lap ' + Math.min(3, st.ph.lap + 1) + '/3'),
   progress: st => ({ n: st.ph.mode === 'won' || st.ph.mode === 'done' ? 3 : st.ph.lap, of: 3 }),
   labels: st => (st.ph.driver === 0 ? ['gallop', 'grab'] : ['grab', 'gallop']),
+  jobKeys: st => (st.ph.driver === 1 ? ['grabber', 'driver'] : ['driver', 'grabber']),
   legend(st) {
     const d = st.ph.driver, drive = (r, l, u, dn) => `<kbd>${r}</kbd> gallop <kbd>${l}</kbd> rein in <kbd>${u}</kbd><kbd>${dn}</kbd> lanes`, grab = 'hold, then let go:';
     return { pip: d === 0 ? drive('D', 'A', 'W', 'S') : grab, bo: d === 1 ? drive('→', '←', '↑', '↓') : grab,
@@ -1131,6 +1132,12 @@ TTH_PHASES.olympics = {
   headLift: st => (tthBig() || st.ph.mode === 'tease' ? 62 : 4),
 };
 tthRoom('olympics', {
+  jobs: {
+    driver: { title: 'Driver', act: 'gallop', legend: '<kbd>D</kbd> gallop <kbd>A</kbd> rein in <kbd>W</kbd><kbd>S</kbd> change lanes',
+      howTo: ['Steer into the lane of the glowing branch.'] },
+    grabber: { title: 'Grabber', act: 'grab', legend: '<kbd>F</kbd> hold, let go to grab',
+      howTo: ['Hold to swing the hook out. Let go as a glowing branch passes.'] },
+  },
   tip: 'One drives: hold right to gallop, up and down change lanes. One grabs: hold the button, let go to snatch!',
   act: { label: 'grab', labels: ['grab', 'gallop'] },
   legend: { pip: 'hold, then let go:', bo: '<kbd>→</kbd> gallop <kbd>←</kbd> rein in <kbd>↑</kbd><kbd>↓</kbd> lanes', pad: 'driver: stick ▶ gallop, ◀ rein in, up / down lanes; grabber: hold, then let go:' },

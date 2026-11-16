@@ -1094,6 +1094,10 @@ Sfx.extra.vdSurfCrown = function () { [392, 523, 659, 784, 1047, 1319].forEach((
 /* ---------- the room ---------- */
 vdRoom('surf', {
   title: 'Lava Surf Race', first: 0,
+  jobs: {
+    surfer: { title: 'Surfer', act: 'trick', legend: '<kbd>D</kbd> hold to go faster <kbd>A</kbd> slow down <kbd>W</kbd> hop',
+      howTo: ['Trick in the air: land it for a boost.'] },
+  },
   act: { label: 'trick', labels: ['trick', 'trick'] },
   legend: { jump: 'hop', down: 'slow', padJump: 'hop', padDown: 'down slows' },
   tip: 'Cinder wants a race! Hold ▶ to surf fast, hop rocks, POP off ramps and trick in the air. First to 2 wins!',

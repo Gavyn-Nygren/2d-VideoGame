@@ -635,6 +635,7 @@ WIZ_PHASES.cauldron = {
   headLift: () => 8,
   labels(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.stir ? 'stir' : 'toss')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.stir ? 'Stir!' : 'Fetch!')); },
+  jobKeys(st) { return st.ph.stir === 1 ? ['runner', 'stirrer'] : ['stirrer', 'runner']; },
   legend(st) {
     const ph = st.ph, s = k => (k ? '<kbd>/</kbd> stir, <kbd>←</kbd><kbd>→</kbd> rail, <kbd>↓</kbd> brake' : '<kbd>F</kbd> stir, <kbd>A</kbd><kbd>D</kbd> rail, <kbd>S</kbd> brake');
     return { pip: ph.stir === 0 ? s(0) : 'touch, then <kbd>F</kbd> toss', bo: ph.stir === 1 ? s(1) : 'touch, then <kbd>/</kbd> toss', pad: 'stirrer: stick picks the rail, down brakes,' };
@@ -665,6 +666,12 @@ Sfx.extra.wizCaulClunk = function () { this.tone(110, 0.15, 'square', 0.05, 70);
 
 /* ---------- the room ---------- */
 wizRoom('cauldron', {
+  jobs: {
+    stirrer: { title: 'Stirrer', act: 'stir', legend: '<kbd>A</kbd><kbd>D</kbd> pick a rail <kbd>S</kbd> brake',
+      howTo: ['Stir when the bubble ring crosses the gold mark.'] },
+    runner: { title: 'Runner', act: 'toss', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> jump',
+      howTo: ['Touch the next thing on the recipe card, then toss it in.'] },
+  },
   act: { label: 'stir', labels: ['stir', 'toss'] },
   tip: 'One stirs on the gold mark (and picks the clean rail); one runs ahead and tosses in what the recipe card shows!',
   legend: { pip: '<kbd>F</kbd> stir, <kbd>A</kbd><kbd>D</kbd> rail, <kbd>S</kbd> brake', bo: 'touch, then <kbd>/</kbd> toss', pad: 'stirrer: stick picks the rail, down brakes,' },

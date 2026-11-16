@@ -92,6 +92,13 @@ const VDG = {
 
 vdRoom('golf', {
   title: 'Gong Golf', first: 0,
+  jobs: {
+    golfer: { title: 'Golfer', act: 'swing', legend: '<kbd>A</kbd><kbd>D</kbd> aim <kbd>W</kbd> hold, let go to swing <kbd>S</kbd> cancel',
+      howTo: ['Hold longer for a harder shot.'] },
+    ball: { title: 'Ball', act: 'zoom', legend: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> push in the air',
+      howTo: ['Zoom pushes you along the flight. A little boost each shot.'] },
+  },
+  jobSwap: 'You swap jobs every hole.',
   act: { label: 'swing', labels: ['swing', 'zoom'] },
   tip: 'Pip golfs and Bo is the ball, then swap! Shoot through the fire rings to ring Cinder\'s gong.',
   map: VDG.holes[0].map,

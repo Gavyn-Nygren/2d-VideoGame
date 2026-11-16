@@ -405,6 +405,7 @@ WIZ_PHASES.frostflame = {
   plan(st) { return wizFFPlan(st); },
   labels(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.frost ? 'frost' : 'flame')); },
   roles(st) { const ph = st.ph; return [0, 1].map(id => (id === ph.frost ? 'Frost!' : 'Flame!')); },
+  jobKeys(st) { return st.ph.frost === 1 ? ['flame', 'frost'] : ['frost', 'flame']; },
   legend(st) { const ph = st.ph; return { pip: ph.frost === 0 ? 'hold to lay ice' : 'hold to flame', bo: ph.frost === 1 ? 'hold to lay ice' : 'hold to flame', pad: 'hold the action to frost or flame,' }; },
   hudText(st) { const ph = st.ph; return 'Part ' + (Math.min(2, wizFFPc(ph).part) + 1) + ' of 3'; },
   progress(st) { const ph = st.ph; return { n: Math.min(3, wizFFPc(ph).part + (ph.done ? 1 : 0)), of: 3 }; },
@@ -427,6 +428,12 @@ Sfx.extra.wizFFDone = function () { this.tone(660, 0.1, 'triangle', 0.03, 880); 
 
 /* ---------- the room ---------- */
 wizRoom('frostflame', {
+  jobs: {
+    frost: { title: 'Frost', act: 'frost', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      howTo: ['Hold frost to lay an ice bridge as you walk. It freezes plants and fire too.'] },
+    flame: { title: 'Flame', act: 'flame', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+      howTo: ['Hold flame to burn thorns, light lamps and melt ice. Not the ice bridge!'] },
+  },
   act: { label: 'frost', labels: ['frost', 'flame'] },
   tip: 'Hold the action! Frost lays ice over water and freezes plants and fire; flame burns thorns and lights lamps.',
   legend: { pip: 'hold to lay ice', bo: 'hold to flame', pad: 'hold the action to frost or flame,' },

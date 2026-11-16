@@ -2558,7 +2558,7 @@ const LEVELS = [
      Room fields the core reads: title, tip, phase, pieces (the world numbers this phase wins back, in order),
      look (the world index whose colours the room uses; theme adds to them), act (labels per player), legend, map.
      Each phase builder edits only its own room block below (between its BEGIN and END lines). ===== */
-  { name: 'The Grand Collector', world: 9, kind: 'team', mode: 'collector', ownHUD: true, noFalls: true,
+  { name: 'The Grand Collector', world: 9, kind: 'team', mode: 'collector', ownHUD: true, noFalls: true, jobParts: true,
     act: { label: 'act' },
     tip: 'A giant robot took a piece of every world! Team up and win all nine back.',
     switches: {}, signs: [],
@@ -2566,6 +2566,11 @@ const LEVELS = [
       // ----- BEGIN 10-1 room 1 (cannons) -----
       { // Castle Cannons (Castle Quest look): one loads the cannon, one aims and fires at the wall and his belly
         title: 'Castle Cannons', phase: 'cannons', pieces: [7, 2], look: 6, ownStep: true,
+        jobs: {
+          gunner: { title: 'Gunner', act: 'fire', legend: '<kbd>W</kbd><kbd>S</kbd> aim up, down <kbd>A</kbd><kbd>D</kbd> less, more power' },
+          loader: { title: 'Loader', act: 'load', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+            howTo: ['Load picks up powder or a ball at a pile, and loads it at the cannon.'] },
+        },
         gunner: 1, fence: 13,
         act: { label: 'fire', labels: ['load', 'fire'], padGlyph: 'act' },
         legend: { pad: 'stick: move or aim, <span data-glyph="a"></span> jump or fire,' },   // (the pip / bo keys follow the jobs: GC_PHASES.cannons.legend)
@@ -2597,6 +2602,12 @@ const LEVELS = [
       // ----- BEGIN 10-1 room 2 (reels) -----
       { // Jackpot Reels (Lucky Casino look): one stops the reels from the deck below, one hops up them to bop his hat
         title: 'Jackpot Reels', phase: 'reels', pieces: [8, 3], look: 7,
+        jobs: {
+          stopper: { title: 'Stopper', act: 'stop', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+            howTo: ['Stand under a reel and press stop.'] },
+          hopper: { title: 'Hopper', act: 'shout', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+            howTo: ['Hop up the stopped reels.'] },
+        },
         stopper: 0,
         act: { label: 'stop', labels: ['stop', 'shout'] },
         legend: { pip: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump', bo: '<kbd>←</kbd><kbd>→</kbd> move <kbd>↑</kbd> jump',
@@ -2636,6 +2647,10 @@ const LEVELS = [
       // ----- BEGIN 10-1 room 3 (lava) -----
       { // Hot Floor Climb (Great Escapes look): every button builds steps or a bridge for the partner, then turn the steam valves together
         title: 'Hot Floor Climb', phase: 'lava', pieces: [5, 9], look: 8,
+        jobs: {
+          climber: { title: 'Climber', act: 'turn', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>S</kbd> drop down',
+            howTo: ['Your buttons build steps for your partner.', 'Both hold turn on your own valves together.'] },
+        },
         act: { label: 'turn', labels: ['turn', 'turn'] },
         tip: 'Your buttons make steps for your partner. Climb up, then turn your steam valves together!',
         floors: [16, 12, 8, 4],   // the tile rows of the four floors' tops, bottom first
@@ -2666,6 +2681,13 @@ const LEVELS = [
       { // Grand Finale (a bright Sunny Meadow + Rumble Park + Backyard Bash mix): set and spike his balls back, then
         // pull his plug together. setter = who sets first (the jobs swap after every bonk)
         title: 'Grand Finale', phase: 'finale', pieces: [4, 6, 1], look: 0, setter: 0,
+        jobs: {
+          setter: { title: 'Setter', act: ['set', 'pull'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+            howTo: ['Set bumps a ball up to your partner.'] },
+          spiker: { title: 'Spiker', act: ['spike', 'pull'], legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump',
+            howTo: ['Hit the gold ball at him. Jump, then spike, for a SPIKE.', 'Then both grab the cord and pull.'] },
+        },
+        jobSwap: 'You swap jobs after every hit.',
         theme: { skyTop: '#8fd3ff', skyBot: '#fff1d6', hillFar: '#b8e6a0', hillNear: '#94d27f', grass: '#7fdc6a', grassDark: '#47a84a',
           stone: '#6b5a8f', stoneLight: '#7d6ba3', stoneEdge: '#4a3d6b' },
         act: { label: 'set', labels: ['set', 'spike'] },
@@ -4965,7 +4987,7 @@ const LEVELS = [
      Room fields the core reads: title, phase, tip, act (labels per player), legend, map, ownStep, theme, look.
      The core reads one map char: 'Z' (Cinder's feet). ===== */
   // ----- BEGIN 20-1 Volcano Dragon (mode 'dragon', js/levels/world20/volcano-dragon.js) -----
-  { name: 'Volcano Dragon', world: 19, kind: 'team', mode: 'dragon', ownHUD: true, noFalls: true, roomWord: 'Phase',
+  { name: 'Volcano Dragon', world: 19, kind: 'team', mode: 'dragon', ownHUD: true, noFalls: true, roomWord: 'Phase', jobParts: true,
     act: { label: 'shield', labels: ['shield', 'ladder'] },
     tip: 'Grumpy Cinder the dragon guards Dragon Peak! Climb it, dunk him, ring his gong, then race him down.',
     switches: {}, signs: [],

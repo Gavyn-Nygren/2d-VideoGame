@@ -1213,6 +1213,12 @@ Sfx.extra.tthVikHiss = function () { this.tone(2400, 0.3, 'triangle', 0.012, 180
 
 /* ---------- the room (this file fills in its own room of the level def) ---------- */
 tthRoom('vikings', {
+  jobs: {
+    rower: { title: 'Rower', act: 'row', legend: '<kbd>W</kbd><kbd>S</kbd> steer the ship',
+      howTo: ['Press row on the drum beat. Mashing only splashes.'] },
+    lookout: { title: 'Lookout', act: ['bail', 'grab'], legend: '<kbd>A</kbd><kbd>D</kbd> walk <kbd>W</kbd><kbd>S</kbd> climb the mast',
+      howTo: ['Hold bail at the bucket. Climb the mast to see through the fog.'] },
+  },
   act: { label: 'row', labels: ['row', 'bail'] },
   tip: 'Rower: press on the drum beat and steer. Lookout: bail at the bucket and climb the mast to see through the fog.',
   legend: { pip: '<kbd>W</kbd><kbd>S</kbd> steer the ship', bo: '<kbd>←</kbd><kbd>→</kbd> walk <kbd>↑</kbd><kbd>↓</kbd> mast',
@@ -1274,6 +1280,7 @@ TTH_PHASES.vikings = {
   hide: () => true,
   present(st, p) { const ph = st.ph; return p.id !== ph.rower && tthVikWatching(ph); },
   labels(st) { const ph = st.ph, a = 'row', b = ph.fin ? 'grab' : 'bail'; return ph.rower === 0 ? [a, b] : [b, a]; },
+  jobKeys(st) { return st.ph.rower === 1 ? ['lookout', 'rower'] : ['rower', 'lookout']; },
   roles(st) { const ph = st.ph, a = 'Row!', b = ph.fin ? 'Grab it!' : ph.k === 0 ? 'Bail!' : 'Lookout!'; return ph.rower === 0 ? [a, b] : [b, a]; },
   legend(st) {
     const r = st.ph.rower;

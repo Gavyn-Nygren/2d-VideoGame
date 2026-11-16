@@ -1492,6 +1492,10 @@ Sfx.extra.tthRaceCrown = function () { [392, 523, 659, 784, 1047, 1319].forEach(
 
 /* ---------- the room ---------- */
 tthRoom('race', {
+  jobs: {
+    racer: { title: 'Racer', act: 'dash', legend: '<kbd>A</kbd><kbd>D</kbd> run <kbd>W</kbd> hop <kbd>S</kbd> slide',
+      howTo: ['Dash for a burst of speed. First to 2 wins!'] },
+  },
   first: 0,
   act: { label: 'dash', labels: ['dash', 'dash'] },
   legend: { jump: 'hop', down: 'slide', padJump: 'hop', padDown: 'down slides' },

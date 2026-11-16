@@ -1283,6 +1283,7 @@ TTH_PHASES.davinci = {
   hudText(st) { const s = tthStats(st); return 'Pages ' + (s.pages || 0) + '/' + (s.of || 0); },
   progress(st) { return { n: st.ph.mode === 'won' ? 3 : st.ph.stage, of: 3 }; },
   labels(st) { return st.ph.flap === 0 ? ['flap', 'shoo'] : ['shoo', 'flap']; },
+  jobKeys(st) { return st.ph.flap === 1 ? ['steerer', 'flapper'] : ['flapper', 'steerer']; },
   roles(st) { return st.ph.mode === 'won' ? null : st.ph.flap === 0 ? ['Flap!', 'Steer!'] : ['Steer!', 'Flap!']; },
   legend(st) {
     const f = st.ph.flap, steer = (u, d) => `<kbd>${u}</kbd> climb <kbd>${d}</kbd> dive`, flap = 'a steady beat:';
@@ -1294,6 +1295,12 @@ TTH_PHASES.davinci = {
 
 /* ---------- the room (this file fills in its own room of the level def) ---------- */
 tthRoom('davinci', {
+  jobs: {
+    flapper: { title: 'Flapper', act: 'flap', legend: '',
+      howTo: ['Flap with a steady beat, about 2 a second. Mashing tires the wings.'] },
+    steerer: { title: 'Steerer', act: 'shoo', legend: '<kbd>W</kbd> climb <kbd>S</kbd> dive',
+      howTo: ['Shoo toots the horn to scatter pigeons.'] },
+  },
   tip: 'One flaps the wings with a steady beat. One steers: up climbs, down dives. Follow the pages and catch him!',
   act: { label: 'flap', labels: ['shoo', 'flap'] },
   legend: { pip: '<kbd>W</kbd> climb <kbd>S</kbd> dive', bo: 'a steady beat:', pad: 'steerer: stick up climbs, down dives; flapper: a steady beat of' },

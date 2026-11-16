@@ -513,6 +513,10 @@ Sfx.extra.ironheartNutSpin = function () { for (let k = 0; k < 3; k++) this.tone
 Sfx.extra.ironheartHeartStop = function () { this.tone(1200, 0.06, 'square', 0.02); this.tone(900, 0.08, 'square', 0.02, null, 0.35); this.tone(600, 0.12, 'square', 0.02, null, 0.9); };
 
 ironRoom('heart', {
+  jobs: {
+    both: { act: 'route', legend: '<kbd>A</kbd><kbd>D</kbd> move <kbd>W</kbd> jump <kbd>F</kbd> hold the signal lever',
+      howTo: ['At the lever, hold the button and press up or down to pick a rail.', 'The other rides the carriage. Jump the pendulums.'] },
+  },
   act: { label: 'route', labels: ['route', 'route'] },
   tip: IRON_PARTS.heart.tip,
 });
