@@ -649,7 +649,23 @@ function dlrDrawSeabed(st) {
   ctx.beginPath(); ctx.moveTo(0, H);
   for (let x = 0; x <= W + 30; x += 30) ctx.lineTo(x, b + 4 + Math.sin((x + cx) / 70) * 4);
   ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = lk.sand[1]; ctx.fillRect(0, b + 30, W, H - b - 30);
+  // a soft blend into the deeper sand, a lit lip along the top, ripples and grains
+  { const gs = ctx.createLinearGradient(0, b + 14, 0, b + 34); gs.addColorStop(0, 'rgba(0,0,0,0)'); gs.addColorStop(1, lk.sand[1]); ctx.fillStyle = gs; ctx.beginPath(); ctx.rect(0, b + 14, W, 20); ctx.fill(); }
+  ctx.fillStyle = lk.sand[1]; ctx.beginPath(); ctx.rect(0, b + 34, W, H - b - 34); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2.5; ctx.beginPath();
+  for (let x = 0; x <= W + 30; x += 30) ctx.lineTo(x, b + 5 + Math.sin((x + cx) / 70) * 4);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(140,100,50,0.22)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  for (let i = -1; i < W / 52 + 2; i++) { const n = Math.floor(cx / 52) + i, x = n * 52 - cx + dlrHash(n, 21) * 20, y = b + 30 + dlrHash(n, 22) * (H - b - 40); ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 9, y - 4, x + 18, y); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(120,90,50,0.25)';
+  for (let i = -1; i < W / 17 + 2; i++) { const n = Math.floor(cx / 17) + i, x = n * 17 - cx, y = b + 22 + dlrHash(n, 23) * (H - b - 26); ctx.fillRect(x, y, 2, 2); }
+  ctx.lineCap = 'butt';
+  // the dolphins' soft shadows on the sand (smaller and fainter the higher they swim)
+  for (const D of st.pl || []) {
+    const x = dlrSX(st, D.x); if (x < -80 || x > W + 80) continue;
+    const k = clamp((D.y - DLR.surf + 60) / (b - DLR.surf + 60), 0, 1);
+    ctx.fillStyle = 'rgba(20,40,70,' + (0.06 + 0.14 * k).toFixed(3) + ')'; ctx.beginPath(); ctx.ellipse(x, b + 12, 30 + 20 * k, 5 + 2 * k, 0, 0, Math.PI * 2); ctx.fill();
+  }
   for (let i = -1; i < W / 70 + 2; i++) {
     const n = Math.floor(cx / 70) + i, x = n * 70 - cx, h = dlrHash(n, 13), y = b + 14 + h * 14;
     if (h < 0.3) { // a coral clump
@@ -803,6 +819,12 @@ function dlrDrawObstacle(st, o) {
       const x = dlrSX(st, o.x) + hit * 5, cy = b + 34, r = o.r, cols = [['#9c8fc0', '#7d70a6'], ['#a8a0b8', '#857c98'], ['#8fa6b8', '#6f879a']][o.col];
       ctx.fillStyle = cols[1]; ctx.beginPath(); ctx.arc(x, cy, r, Math.PI, Math.PI * 2); ctx.fill();
       ctx.fillStyle = cols[0]; ctx.beginPath(); ctx.arc(x - 4, cy, r - 8, Math.PI, Math.PI * 2); ctx.fill();
+      // pits, cracks and barnacles, then an outline in its own dark shade
+      ctx.save(); ctx.beginPath(); ctx.arc(x, cy, r, Math.PI, Math.PI * 2); ctx.clip();
+      for (let k = 0; k < 9; k++) { const hh = hash(o.id + 7, k), px = x - r + 16 + (hh % Math.max(1, r * 2 - 32)), py = cy - 10 - ((hh >> 7) % Math.max(1, Math.round(r * 0.8))); ctx.fillStyle = k % 3 ? 'rgba(40,30,70,0.16)' : 'rgba(255,255,255,0.2)'; ctx.beginPath(); ctx.ellipse(px, py, 4 + hh % 6, 3 + hh % 3, 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.strokeStyle = 'rgba(40,30,70,0.3)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + r * 0.1, cy - r * 0.9); ctx.lineTo(x + r * 0.2, cy - r * 0.6); ctx.lineTo(x + r * 0.05, cy - r * 0.4); ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle = shade(cols[1], 0.35); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, cy, r, Math.PI, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.ellipse(x - r * 0.35, cy - r * 0.6, r * 0.22, r * 0.12, -0.5, 0, Math.PI * 2); ctx.fill();
       // coral and sea anemones on top
       for (let k = 0; k < 4; k++) {

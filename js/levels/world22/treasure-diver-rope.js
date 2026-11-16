@@ -940,6 +940,19 @@ function diveropeDrawWorld(st) {
     const left = i % 2 === 0, x = left ? -40 + (h % 60) : W + 40 - (h % 60);
     ctx.beginPath(); ctx.ellipse(x, yy, 120 + (h % 50), 90, 0, 0, Math.PI * 2); ctx.fill();
   }
+  // a nearer layer: rock pillars with swaying kelp, on both sides, a bit darker than the water
+  { const col = diveropeWaterRGB(cam + 260).map(v => v * 0.72);
+    for (let i = -1; i < 14; i++) {
+      const h = hash(i + 70, 5), wy = i * 190, yy = wy - cam * 0.7 + 260;
+      if (yy < y0 - 220 || yy > H + 240) continue;
+      const left = i % 2 === 1, bx = left ? 30 + (h % 90) : W - 30 - (h % 90), hh = 150 + (h % 90), wd = 34 + (h >> 5) % 26;
+      if (yy - hh < -cam + 60) continue; // none poke up to the surface
+      ctx.fillStyle = diveropeRGB(col, 0.6);
+      ctx.beginPath(); ctx.moveTo(bx - wd, yy + 30); ctx.quadraticCurveTo(bx - wd * 0.8, yy - hh * 0.5, bx - wd * 0.3, yy - hh); ctx.lineTo(bx + wd * 0.35, yy - hh * 0.95); ctx.quadraticCurveTo(bx + wd * 0.9, yy - hh * 0.4, bx + wd, yy + 30); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = diveropeRGB(col, 0.6); ctx.lineWidth = 4; ctx.lineCap = 'round';
+      for (let k = 0; k < 2; k++) { const kx = bx + (k ? wd * 0.6 : -wd * 0.7), kh = 60 + ((h >> (k + 3)) % 50); ctx.beginPath(); ctx.moveTo(kx, yy - hh * 0.3); for (let u = 0.2; u <= 1.01; u += 0.2) ctx.lineTo(kx + Math.sin(G.clock * 1.1 + k + u * 3) * 6 * u, yy - hh * 0.3 - kh * u); ctx.stroke(); }
+    }
+  }
   for (let i = 0; i < 6; i++) {
     const dir = i % 2 ? 1 : -1, wy = 120 + i * 320, yy = wy - cam * 0.6;
     if (yy < y0 - 20 || yy > H + 20) continue;
@@ -1004,11 +1017,16 @@ function diveropeDrawFront(st) {
       ctx.beginPath(); ctx.moveTo(x, y + 18); ctx.lineTo(x - 13, y); ctx.lineTo(x - 5, y); ctx.lineTo(x - 5, y - 14); ctx.lineTo(x + 5, y - 14); ctx.lineTo(x + 5, y); ctx.lineTo(x + 13, y); ctx.closePath(); ctx.fill(); ctx.stroke();
     }
   }
-  const big = hudBig();
-  for (const q of st.pops) {
-    const x = clamp(q.x, 130, W - 130), y = clamp(q.y - cam - q.t * 30, 96, H - 120);
+  const big = hudBig(), placed = [];
+  for (let i = st.pops.length - 1; i >= 0; i--) {
+    const q = st.pops[i], sz = q.size * (big ? 1.25 : 1);
+    ctx.font = sz + 'px "Lilita One", "Arial Rounded MT Bold", sans-serif';
+    const hw = ctx.measureText(q.s).width / 2 + 12;
+    const x = clamp(q.x, 130, W - 130); let y = clamp(q.y - cam - q.t * 30, 96, H - 120);
+    for (let k = 0; k < 6; k++) { const hit = placed.find(o => Math.abs(o.x - x) < o.hw + hw && Math.abs(o.y - y) < (o.sz + sz) * 0.62); if (!hit) break; y = hit.y - (hit.sz + sz) * 0.65; }
+    y = Math.max(y, 60); placed.push({ x, y, hw, sz });
     ctx.globalAlpha = clamp((1.4 - q.t) / 0.3, 0, 1);
-    bigText(q.s, x, y, q.size * (big ? 1.25 : 1), q.col, 1 + 0.25 * Math.max(0, 1 - q.t / 0.15));
+    bigText(q.s, x, y, sz, q.col, 1 + 0.25 * Math.max(0, 1 - q.t / 0.15));
     ctx.globalAlpha = 1;
   }
 }
@@ -1034,16 +1052,28 @@ function diveropeDrawKelp(st, k) {
 }
 function diveropeDrawRock(st, r) {
   const lk = DIVEROPE_LOOK[st.c.look] || DIVEROPE_LOOK.shelf, x0 = r.x0, w = r.x1 - r.x0, h = r.y1 - r.y0;
+  // a lumpy underside first (same rock, in shadow), so the ledge doesn't end in a ruler-straight line
+  ctx.fillStyle = mixCol(lk.rock, lk.rockD, 0.55); ctx.strokeStyle = shade(lk.rockD, 0.3); ctx.lineWidth = 2;
+  for (let k = 0; k < Math.floor(w / 46); k++) { const hh = hash(r.seed, k); circle(x0 + 22 + k * 46 + (hh % 14), r.y1 - 4, 11 + (hh % 7)); ctx.fill(); ctx.stroke(); }
   ctx.fillStyle = lk.rock; rr(x0, r.y0, w, h, 16); ctx.fill();
   // a darker underside and lumpy bits
   const g = ctx.createLinearGradient(0, r.y0, 0, r.y1);
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(20,20,60,0.28)');
   ctx.fillStyle = g; rr(x0, r.y0, w, h, 16); ctx.fill();
-  ctx.fillStyle = lk.rockD;
-  for (let k = 0; k < Math.floor(w / 46); k++) { const hh = hash(r.seed, k); circle(x0 + 22 + k * 46 + (hh % 14), r.y1 - 2, 9 + (hh % 7)); ctx.fill(); }
-  for (let k = 0; k < Math.floor(w * h / 9000); k++) { const hh = hash(r.seed + 5, k); ctx.fillStyle = 'rgba(255,255,255,0.12)'; circle(x0 + 14 + (hh % Math.max(1, w - 28)), r.y0 + 16 + ((hh >> 8) % Math.max(1, h - 30)), 4 + (hh % 5)); ctx.fill(); }
+  // strata, cracks, pits and specks
+  ctx.save(); rr(x0, r.y0, w, h, 16); ctx.clip();
+  ctx.strokeStyle = shade(lk.rockD, 0.1); ctx.globalAlpha = 0.28; ctx.lineWidth = 2;
+  for (let yy = r.y0 + 22; yy < r.y1 - 8; yy += 24) { ctx.beginPath(); for (let xx = x0; xx <= x0 + w; xx += 12) ctx.lineTo(xx, yy + Math.sin(xx * 0.06 + r.seed + yy) * 2.5); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  for (let k = 0; k < Math.floor(w * h / 9000); k++) { const hh = hash(r.seed + 5, k); ctx.fillStyle = hh % 3 ? 'rgba(40,30,60,0.14)' : 'rgba(255,255,255,0.14)'; const px = x0 + 14 + (hh % Math.max(1, w - 28)), py = r.y0 + 16 + ((hh >> 8) % Math.max(1, h - 30)); ctx.beginPath(); ctx.ellipse(px, py, 4 + (hh % 5), 3 + (hh % 3), 0, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = shade(lk.rockD, 0.25); ctx.globalAlpha = 0.45; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+  for (let k = 0; k < Math.max(1, Math.floor(w / 140)); k++) { const hh = hash(r.seed + 9, k), cx = x0 + 30 + (hh % Math.max(1, w - 60)), cy = r.y0 + 10; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + 5, cy + 10); ctx.lineTo(cx + 1, cy + 18); ctx.moveTo(cx + 5, cy + 10); ctx.lineTo(cx + 12, cy + 14); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(x0, r.y0, 10, h);
+  ctx.restore();
   ctx.fillStyle = lk.rockL; rr(x0 + 2, r.y0, w - 4, 8, 4); ctx.fill();
-  ctx.strokeStyle = 'rgba(28,26,54,0.35)'; ctx.lineWidth = 2; rr(x0, r.y0, w, h, 16); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; rr(x0 + 10, r.y0 + 1.5, Math.max(4, w * 0.4), 3, 1.5); ctx.fill();
+  ctx.strokeStyle = shade(lk.rockD, 0.35); ctx.lineWidth = 2; rr(x0, r.y0, w, h, 16); ctx.stroke();
   // coral and anemones along the top
   for (let k = 0; k < Math.floor(w / 70); k++) {
     const hh = hash(r.seed, k + 30), x = x0 + 20 + k * 70 + (hh % 30);
@@ -1237,7 +1267,12 @@ function diveropeDrawBoat(st) {
   // the hull
   ctx.fillStyle = '#b5743e'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.moveTo(-90, -18); ctx.lineTo(90, -18); ctx.quadraticCurveTo(84, 12, 56, 14); ctx.lineTo(-56, 14); ctx.quadraticCurveTo(-84, 12, -90, -18); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.save(); ctx.clip();
+  ctx.fillStyle = 'rgba(70,35,10,0.3)'; ctx.beginPath(); ctx.rect(-92, 6, 184, 12); ctx.fill();
+  ctx.strokeStyle = 'rgba(90,50,20,0.45)'; ctx.lineWidth = 1.2; for (const yy of [-2, 6]) { ctx.beginPath(); ctx.moveTo(-92, yy); ctx.lineTo(92, yy); ctx.stroke(); }
+  ctx.restore();
   ctx.fillStyle = '#ffffff'; ctx.fillRect(-86, -12, 172, 5);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(-84, -17, 168, 2);
   ctx.fillStyle = '#8a5530'; for (let i = -2; i <= 2; i++) ctx.fillRect(i * 32 - 1, -4, 2, 14);
   text('PIP & BO', 0, 4, 11, '#ffe7a8', 'center', 'body');
   ctx.restore();
