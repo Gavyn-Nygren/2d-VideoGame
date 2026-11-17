@@ -590,22 +590,83 @@ function diveDrawPoolBack() {
     ctx.stroke();
   }
 }
+// the tower's pillar and ladders, painted once: cast concrete panels with seams, form-tie dots, a lit left face and a
+// shaded right face, water stains low down, and chrome ladders with lit rails and treads
+function divePaintTower(g, top, yW) {
+  const [x0, x1] = DIVE.towerX, w = x1 - x0, h = H - top;
+  const c = '#e6ecf4';
+  g.fillStyle = c; g.fillRect(x0, top, w, h);
+  g.fillStyle = '#f6f9fc'; g.fillRect(x0, top, w * 0.42, h);
+  g.fillStyle = '#d3dce8'; g.fillRect(x0 + w * 0.72, top, w * 0.28, h);
+  g.fillStyle = '#bfcadb'; g.fillRect(x1 - 6, top, 6, h);
+  g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(x0 + 2, top, 2, h);
+  // panel seams and form-tie dots
+  g.strokeStyle = 'rgba(80,100,140,0.22)'; g.lineWidth = 1.5; g.beginPath();
+  for (let y = top + 30; y < H; y += 34) { g.moveTo(x0 + 2, y); g.lineTo(x1 - 2, y); }
+  g.moveTo(x0 + w / 2, top + 4); g.lineTo(x0 + w / 2, H); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1; g.beginPath();
+  for (let y = top + 31.5; y < H; y += 34) { g.moveTo(x0 + 2, y); g.lineTo(x1 - 2, y); } g.stroke();
+  for (let y = top + 13; y < H; y += 34) for (const fx of [x0 + 10, x0 + w / 2 - 8, x0 + w / 2 + 8, x1 - 10]) { g.fillStyle = 'rgba(80,100,140,0.28)'; g.beginPath(); g.arc(fx, y, 1.4, 0, Math.PI * 2); g.fill(); g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(fx - 1.5, y - 1.8, 1.2, 1); }
+  // concrete speckle and a few drip stains
+  for (let k = 0; k < 90; k++) { const hx = hash(k, 401), hy = hash(k, 402); g.fillStyle = k % 3 ? 'rgba(90,110,150,0.16)' : 'rgba(255,255,255,0.5)'; g.fillRect(x0 + 3 + hx % (w - 6), top + 4 + hy % (h - 8), 1.2, 1.2); }
+  for (let k = 0; k < 5; k++) { const sx = x0 + 8 + hash(k, 403) % (w - 16), sy = top + 40 + hash(k, 404) % (yW - top - 80); const gr = g.createLinearGradient(0, sy, 0, sy + 40); gr.addColorStop(0, 'rgba(110,130,160,0.14)'); gr.addColorStop(1, 'rgba(110,130,160,0)'); g.fillStyle = gr; g.fillRect(sx, sy, 3 + k % 3, 40); }
+  // wet and darker near the waterline
+  const wg = g.createLinearGradient(0, yW - 50, 0, yW); wg.addColorStop(0, 'rgba(60,110,170,0)'); wg.addColorStop(1, 'rgba(60,110,170,0.22)'); g.fillStyle = wg; g.fillRect(x0, yW - 50, w, 50);
+  g.fillStyle = 'rgba(40,100,160,0.25)'; g.fillRect(x0, yW, w, H - yW);
+  g.strokeStyle = '#8f9bb0'; g.lineWidth = 2; g.strokeRect(x0, top, w, h);
+  // the ladders up the front: chrome rails with a lit stripe, flat treads with grip lines, wall brackets
+  for (const lx of DIVE.ladderX) {
+    for (let y = top + 30; y < yW + 30; y += 68) { g.fillStyle = '#9aa7bd'; g.fillRect(lx - 10, y - 1.5, 3, 4); g.fillRect(lx + 7, y - 1.5, 3, 4); }
+    for (let y = top + 16; y < yW + 30; y += 11) {
+      g.fillStyle = '#7f8ba3'; g.fillRect(lx - 7, y - 0.5, 14, 3);
+      g.fillStyle = '#c3ccda'; g.fillRect(lx - 7, y - 1.5, 14, 2.2);
+      g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(lx - 6, y - 1.5, 12, 0.8);
+    }
+    for (const rx of [lx - 7, lx + 7]) {
+      g.strokeStyle = '#6f7b93'; g.lineWidth = 3.6; g.beginPath(); g.moveTo(rx, top + 8); g.lineTo(rx, yW + 30); g.stroke();
+      g.strokeStyle = '#c3ccda'; g.lineWidth = 2.2; g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(rx - 0.6, top + 8); g.lineTo(rx - 0.6, yW + 30); g.stroke();
+    }
+    // curled grab-bar tops
+    g.strokeStyle = '#8f9bb0'; g.lineWidth = 2.4; g.beginPath(); g.arc(lx - 7, top + 4, 4, Math.PI * 0.5, Math.PI * 1.5, false); g.stroke(); g.beginPath(); g.arc(lx + 7, top + 4, 4, -Math.PI * 0.5, Math.PI * 0.5, false); g.stroke();
+  }
+}
+// a platform (5, 7.5, 10 m): a concrete slab with a blue non-slip top, a lit nose, a shaded underside, a braced steel
+// strut with bolts, and a railing with posts and lit chrome
+function divePaintPlatform(g, h, id) {
+  const y = 0, tip = diveTipX(h, id), face = id === 0 ? DIVE.towerX[0] : DIVE.towerX[1], s = id === 0 ? -1 : 1;
+  const x0 = Math.min(tip, face) - face, w = Math.abs(face - tip);
+  // strut and brace
+  g.lineCap = 'round';
+  for (const [lw, col] of [[6, '#8f9bb0'], [4, '#c9d2e0']]) { g.strokeStyle = col; g.lineWidth = lw; g.beginPath(); g.moveTo(0, y + 40); g.lineTo(s * w * 0.55, y + 12); g.stroke(); }
+  g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, y + 38.5); g.lineTo(s * w * 0.55, y + 10.5); g.stroke();
+  g.lineCap = 'butt';
+  rkMetal(g, -3, y + 34, 6, 10, 1.5, '#9aa7bd', 3, { rivets: false, lw: 1 });
+  rkRivet(g, 0, y + 39, 1.4, '#c3ccda'); rkRivet(g, s * w * 0.55, y + 13, 1.4, '#c3ccda');
+  // the slab
+  g.fillStyle = 'rgba(20,40,80,0.18)'; g.fillRect(x0 + 2, y + 12, w, 4);
+  g.fillStyle = '#e9eef5'; g.fillRect(x0, y, w, 12);
+  g.fillStyle = '#d1dae6'; g.fillRect(x0, y + 7, w, 5);
+  g.fillStyle = '#9aa7bd'; g.fillRect(x0, y + 10, w, 2);
+  g.fillStyle = 'rgba(80,100,140,0.25)'; for (let x = x0 + 14; x < x0 + w - 4; x += 18) g.fillRect(x, y + 4, 1, 7);
+  // the blue grip mat on top, with a textured weave and a lit edge
+  g.fillStyle = '#2f7cc4'; g.fillRect(x0, y, w, 3.5);
+  g.fillStyle = '#3f8fd6'; g.fillRect(x0, y, w, 2.4);
+  g.fillStyle = 'rgba(255,255,255,0.35)'; for (let x = x0 + 1; x < x0 + w; x += 3) g.fillRect(x, y + 0.4, 1, 1);
+  g.fillStyle = 'rgba(255,255,255,0.75)'; g.fillRect(x0, y, w, 0.8);
+  // the nose (diving end) a bit brighter
+  g.fillStyle = '#ffffff'; g.fillRect(s < 0 ? x0 : x0 + w - 3, y + 2.5, 3, 9);
+  g.strokeStyle = '#8f9bb0'; g.lineWidth = 1; g.strokeRect(x0 + 0.5, y + 0.5, w - 1, 11);
+  // the railing at the back half
+  const rx = s * w * 0.45, mx = s * w * 0.22;
+  for (const [lw, col] of [[3, '#6f7b93'], [1.8, '#c3ccda']]) { g.strokeStyle = col; g.lineWidth = lw; g.beginPath(); g.moveTo(0, y - 20); g.lineTo(rx, y - 20); g.lineTo(rx, y); g.moveTo(mx, y - 20); g.lineTo(mx, y); g.moveTo(0, y - 10); g.lineTo(rx, y - 10); g.stroke(); }
+  g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(0, y - 20.6); g.lineTo(rx, y - 20.6); g.stroke();
+  for (const px of [rx, mx]) { g.fillStyle = '#8f9bb0'; g.fillRect(px - 2.5, y - 2, 5, 2); }
+}
 function diveDrawTower(st) {
   const [x0, x1] = DIVE.towerX, top = diveBoardY(10) - 6, yW = DIVE.waterY, t = G.clock, act = st.dv.h;
-  // the pillar
-  const g = ctx.createLinearGradient(x0, 0, x1, 0);
-  g.addColorStop(0, '#cfd9e6'); g.addColorStop(0.5, '#f4f7fb'); g.addColorStop(1, '#bcc8d8');
-  ctx.fillStyle = g; ctx.fillRect(x0, top, x1 - x0, H - top);
-  ctx.strokeStyle = '#8f9bb0'; ctx.lineWidth = 2; ctx.strokeRect(x0, top, x1 - x0, H - top);
-  ctx.fillStyle = 'rgba(80,100,140,0.12)';
-  for (let y = top + 30; y < yW; y += 34) ctx.fillRect(x0 + 2, y, x1 - x0 - 4, 2);
-  // the ladders up the front
-  for (const lx of DIVE.ladderX) {
-    ctx.strokeStyle = '#8f9bb0'; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(lx - 7, top + 8); ctx.lineTo(lx - 7, yW + 30); ctx.moveTo(lx + 7, top + 8); ctx.lineTo(lx + 7, yW + 30); ctx.stroke();
-    ctx.lineWidth = 2;
-    for (let y = top + 16; y < yW + 30; y += 11) { ctx.beginPath(); ctx.moveTo(lx - 7, y); ctx.lineTo(lx + 7, y); ctx.stroke(); }
-  }
+  // the pillar and ladders (one picture)
+  rkPut('dvTower|' + Math.round(top) + '|' + yW, x0, top, x1 - x0 + 40, H - top + 10, 20, 10, g => { g.translate(-x0, -top); divePaintTower(g, top, yW); });
   // the height signs
   for (const h of DIVE.heights) {
     if (st.phase === 'podium') break;   // (hidden on the podium: the 3 m sign would peek out between Pip and Bo)
@@ -613,14 +674,16 @@ function diveDrawTower(st) {
     const lab = (h === 7.5 ? '7.5' : String(h)) + ' m';
     ctx.font = '700 11px "Atkinson Hyperlegible", system-ui, sans-serif';
     const pw = Math.max(34, ctx.measureText(lab).width + 16);
+    ctx.fillStyle = 'rgba(20,30,60,0.22)'; rr(480 - pw / 2 + 1, y - 6.5, pw, 16, 8); ctx.fill();
     ctx.fillStyle = h === act ? '#ffc53d' : '#2b3f63'; rr(480 - pw / 2, y - 8, pw, 16, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(480 - pw / 2 + 6, y - 7, pw - 12, 1.5);
     text(lab, 480, y + 0.5, 11, h === act ? C.ink : '#ffffff', 'center', 'body');
   }
   // the boards on both sides
   for (const h of DIVE.heights) for (const id of [0, 1]) diveDrawBoard(st, h, id, h === act);
   // the pennant on top: a made-up purple pennant with a yellow star (a shape and colours no real flag uses)
   const fx = 480, fy = top - 4;
-  ctx.fillStyle = '#8f9bb0'; ctx.fillRect(fx - 1.5, fy - 44, 3, 44);
+  ctx.fillStyle = '#8f9bb0'; ctx.fillRect(fx - 1.5, fy - 44, 3, 44); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(fx - 1.5, fy - 44, 1, 44);
   const pen = i => { const u = i / 8; return { x: fx + 1.5 + i * 5.5, y: fy - 34 + Math.sin(t * 5 - i * 0.6) * (i * 0.4), hh: 9.5 * (1 - u) + 0.6 }; };
   ctx.fillStyle = '#8e6cff'; ctx.strokeStyle = '#5a3fc0'; ctx.lineWidth = 1.5; ctx.beginPath();
   for (let i = 0; i <= 8; i++) { const q = pen(i); if (i === 0) ctx.moveTo(q.x, q.y - q.hh); else ctx.lineTo(q.x, q.y - q.hh); }
@@ -634,31 +697,36 @@ function diveDrawBoard(st, h, id, active) {
   const y = diveBoardY(h), tip = diveTipX(h, id), face = id === 0 ? DIVE.towerX[0] : DIVE.towerX[1], s = id === 0 ? -1 : 1;
   ctx.globalAlpha = active ? 1 : 0.82;
   if (h === 3) {
-    // a springboard: a white board on a yellow roller that bends at the tip
+    // a springboard: a white board on a yellow roller (fulcrum) and a steel pedestal, bending at the tip
     const dip = active ? st.flex[id].y : 0;
-    ctx.fillStyle = '#5a6fa8'; ctx.fillRect(face + s * 30 - 5, y + 4, 10, 18);
-    ctx.fillStyle = '#ffc53d'; circle(face + s * 40, y + 5, 5); ctx.fill();
-    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 7; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(face, y + 1); ctx.quadraticCurveTo(face + s * 60, y + 1, tip, y + 1 + dip); ctx.stroke();
-    ctx.strokeStyle = '#3f8fd6'; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(face + s * 6, y - 1.5); ctx.quadraticCurveTo(face + s * 60, y - 1.5, tip - s * 4, y - 1.5 + dip); ctx.stroke();
+    rkPut('dvSpringBase|' + id, face + s * 30, y + 4, 34, 30, 17, 10, g => {
+      rkMetal(g, -5, 0, 10, 18, 1.5, '#5a6fa8', 2, { rivets: false, lw: 1.2 });
+      rkMetal(g, -9, 15, 18, 5, 1.5, '#4a5d92', 3, { rivets: false, lw: 1 });
+      rkRivet(g, -6, 17.5, 1, '#8f9bb0'); rkRivet(g, 6, 17.5, 1, '#8f9bb0');
+      // the roller on its track
+      g.fillStyle = '#3d4f80'; g.fillRect(s * 10 - 7, -1, 14, 3);
+      g.fillStyle = '#c99a1e'; g.beginPath(); g.arc(s * 10, 1, 5.5, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#ffc53d'; g.beginPath(); g.arc(s * 10 - 0.6, 0.4, 4.4, 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.arc(s * 10 - 2, -1, 1.4, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#8a6a10'; g.lineWidth = 1; g.beginPath(); g.arc(s * 10, 1, 5.5, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = '#8a6a10'; g.beginPath(); g.arc(s * 10, 1, 1.4, 0, Math.PI * 2); g.fill();
+    });
+    ctx.lineCap = 'round';
+    const bend = (dy, a, b) => { ctx.beginPath(); ctx.moveTo(face + s * a, y + dy); ctx.quadraticCurveTo(face + s * 60, y + dy, tip - s * b, y + dy + dip); };
+    ctx.strokeStyle = '#8f9bb0'; ctx.lineWidth = 9; bend(1.4, 0, 0); ctx.stroke();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 7; bend(1, 0, 0); ctx.stroke();
+    ctx.strokeStyle = '#d6dee9'; ctx.lineWidth = 2.6; bend(3.2, 2, 2); ctx.stroke();
+    ctx.strokeStyle = '#2f7cc4'; ctx.lineWidth = 3; bend(-1.5, 6, 4); ctx.stroke();
+    ctx.strokeStyle = '#5aa6e8'; ctx.lineWidth = 1.2; bend(-2.2, 7, 5); ctx.stroke();
     ctx.lineCap = 'butt';
+    // the grip texture on the mat (dots)
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    for (let k = 1; k < 9; k++) { const u = k / 9, a = 6 + (Math.abs(tip - face) - 10) * u; const bx = face + s * a, by = y - 1.5 + dip * u * u; ctx.fillRect(bx - 0.5, by - 0.5, 1, 1); }
   } else {
-    const x0 = Math.min(tip, face), w = Math.abs(face - tip);
-    ctx.fillStyle = '#e9eef5'; ctx.fillRect(x0, y, w, 12);
-    ctx.fillStyle = '#3f8fd6'; ctx.fillRect(x0, y, w, 3);
-    ctx.fillStyle = '#9aa7bd'; ctx.fillRect(x0, y + 10, w, 2);
-    // a strut under the platform
-    ctx.strokeStyle = '#b9c4d4'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(face, y + 40); ctx.lineTo(face + s * w * 0.55, y + 12); ctx.stroke();
-    // the railing at the back half
-    ctx.strokeStyle = '#8f9bb0'; ctx.lineWidth = 2;
-    const rx = face + s * w * 0.45;
-    ctx.beginPath(); ctx.moveTo(face, y - 20); ctx.lineTo(rx, y - 20); ctx.moveTo(rx, y - 20); ctx.lineTo(rx, y); ctx.moveTo(face + s * w * 0.22, y - 20); ctx.lineTo(face + s * w * 0.22, y); ctx.stroke();
+    rkPut('dvPlat|' + h + '|' + id, face, diveBoardY(h), 260, 70, 130, 26, g => divePaintPlatform(g, h, id));
   }
   ctx.globalAlpha = 1;
 }
-
 /* ---------- drawing: the divers, the water in front, the judges ---------- */
 function diveDrawFront(st) {
   for (const d of st.d) diveDrawDiverAt(st, d);
@@ -825,9 +893,20 @@ function diveDrawSplash(st) {
 // the judges' desk on the deck at the front: Pip's judge (an owl), the sync judge (a penguin), Bo's judge (a frog)
 function diveDrawJudges(st) {
   const y0 = 500, t = G.clock, c = st.phase === 'judge' ? st.cards : null, up = st.cardUp || [];
-  // the deck
-  ctx.fillStyle = '#e9eef5'; rr(352, y0 - 2, 256, H - y0 + 6, 8); ctx.fill();
-  ctx.fillStyle = '#c9d3e1'; for (let x = 360; x < 608; x += 18) ctx.fillRect(x, y0 + 2, 1, H - y0);
+  // the deck: wet white tiles with grout, a rounded lip, glints and a shadow on the water
+  rkPut('dvDeck|' + y0, 352, y0 - 2, 264, H - y0 + 12, 4, 4, g => {
+    const w = 256, h = H - y0 + 6;
+    g.fillStyle = 'rgba(16,60,120,0.25)'; rkRR(g, -3, 3, w + 6, h, 10); g.fill();
+    g.fillStyle = '#e9eef5'; rkRR(g, 0, 0, w, h, 8); g.fill();
+    g.save(); rkRR(g, 0, 0, w, h, 8); g.clip();
+    for (let x = 8, i = 0; x < w; x += 18, i++) for (let y = 4, j = 0; y < h; y += 18, j++) { g.fillStyle = (hash(i, j + 50) % 4) ? '#eef2f8' : '#e2e8f1'; g.fillRect(x, y, 17, 17); }
+    g.fillStyle = '#c9d3e1'; for (let x = 8; x < w; x += 18) g.fillRect(x - 1, 2, 1, h); for (let y = 4; y < h; y += 18) g.fillRect(0, y - 1, w, 1);
+    g.fillStyle = 'rgba(255,255,255,0.75)'; for (let k = 0; k < 10; k++) g.fillRect(10 + hash(k, 51) % (w - 20), 6 + hash(k, 52) % Math.max(4, h - 12), 3, 1.2);
+    g.fillStyle = 'rgba(80,140,200,0.12)'; for (let k = 0; k < 4; k++) { g.beginPath(); g.ellipse(20 + hash(k, 53) % (w - 40), 10 + hash(k, 54) % Math.max(4, h - 20), 10, 3, 0, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, 3); g.fillStyle = '#b9c4d4'; g.fillRect(0, 3, w, 1);
+    g.restore();
+    g.strokeStyle = '#a9b6c9'; g.lineWidth = 1.5; rkRR(g, 0.75, 0.75, w - 1.5, h, 8); g.stroke();
+  });
   const js = [{ x: 418, kind: 'owl', col: C.pip, card: c && up[0] ? c.D[0] : null }, { x: 480, kind: 'penguin', col: C.gold, card: c && up[2] ? c.S : null, big: true },
     { x: 542, kind: 'frog', col: C.bo, card: c && up[1] ? c.D[1] : null }];
   for (const j of js) {
@@ -840,11 +919,21 @@ function diveDrawJudges(st) {
       text(j.card % 1 ? j.card.toFixed(1) : String(j.card), j.x, cy + 1, j.big ? 18 : 15, C.ink, 'center');
     }
   }
-  // the desk
-  ctx.fillStyle = '#2b3f63'; rr(372, y0 + 6, 216, 12, 4); ctx.fill();
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(380, y0 + 18, 200, H - y0 - 18);
-  const stripes = ['#ff6b4a', '#ffc53d', '#5b95ff'];
-  stripes.forEach((s, k) => { ctx.fillStyle = s; ctx.fillRect(380 + k * 66.7, y0 + 18, 66.7, 5); });
+  // the desk: a navy top with a lit edge and screws, a white skirted front with folds, the three judges' colours and
+  // a little brass plaque
+  rkPut('dvDesk|' + y0, 372, y0 + 6, 224, H - y0, 4, 2, g => {
+    g.fillStyle = 'rgba(20,30,60,0.2)'; g.fillRect(10, 12, 200, H - y0 - 14);
+    g.fillStyle = '#ffffff'; g.fillRect(8, 12, 200, H - y0 - 18);
+    g.save(); g.beginPath(); g.rect(8, 12, 200, H - y0 - 18); g.clip();
+    for (let x = 8; x < 208; x += 16) { const gr = g.createLinearGradient(x, 0, x + 16, 0); gr.addColorStop(0, 'rgba(140,160,200,0.18)'); gr.addColorStop(0.5, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(140,160,200,0.1)'); g.fillStyle = gr; g.fillRect(x, 12, 16, H); }
+    const stripes = ['#ff6b4a', '#ffc53d', '#5b95ff'];
+    stripes.forEach((s, k) => { g.fillStyle = s; g.fillRect(8 + k * 66.7, 12, 66.7, 5); g.fillStyle = shade(s, 0.2); g.fillRect(8 + k * 66.7, 16, 66.7, 1.2); });
+    g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(8, 12, 200, 1);
+    g.restore();
+    g.strokeStyle = '#b9c4d4'; g.lineWidth = 1; g.strokeRect(8.5, 12.5, 199, H - y0);
+    rkMetal(g, 0, 0, 216, 12, 4, '#2b3f63', 7, { rivets: false, lw: 1.5 });
+    for (const sx of [10, 108, 206]) rkRivet(g, sx, 6, 1.4, '#8f9bb0');
+  });
   text('JUDGES', 480, y0 + 31, 11, '#2b3f63', 'center');
   if (c && st.added) {
     ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';

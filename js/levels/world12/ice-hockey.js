@@ -697,67 +697,157 @@ function hockeyDrawCrowd() {
     ctx.fillStyle = ['#f6d2b0', '#e0a97c', '#b97a53', '#8a5636'][(h >> 3) % 4]; circle(x, y - 6 - hop, 6); ctx.fill();
   }
 }
+// the still part of the rink (boards, glass, kick plate and the whole ice sheet with its markings) is painted once
+// per look into a cached picture: g draws in rink coordinates
+function hockeyPaintRink(g, P, boardCol, kickCol) {
+  const R = HOCKEY_RINK, Q = HOCKEY_COLS;
+  const dot = (x, y, r) => { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); };
+  const strX0 = R.x0 + R.cr, strX1 = R.x1 - R.cr, seg = (strX1 - strX0) / 6;
+  // the boards' soft shadow and the boards
+  g.fillStyle = 'rgba(0,0,0,0.25)'; hockeyRinkPath(g, -12); g.save(); g.translate(0, 5); g.fill(); g.restore();
+  // the glass: a faint pane between the cap rail and the boards, with slanted glints
+  g.fillStyle = 'rgba(200,225,255,0.10)'; hockeyRinkPath(g, -18); g.fill();
+  g.save(); hockeyRinkPath(g, -18); g.clip();
+  g.strokeStyle = 'rgba(255,255,255,0.22)'; g.lineWidth = 2; g.beginPath();
+  for (let x = R.x0 - 10; x < R.x1 + 20; x += 47) { g.moveTo(x, R.y0 - 19); g.lineTo(x + 7, R.y0 - 10); g.moveTo(x + 5, R.y0 - 19); g.lineTo(x + 9, R.y0 - 14); g.moveTo(x - 20, R.y1 + 19); g.lineTo(x - 13, R.y1 + 10); }
+  g.stroke(); g.restore();
+  g.fillStyle = boardCol; hockeyRinkPath(g, -10); g.fill();
+  // the board face: shaded lower half, panel seams, little sponsor-colour panels and rivets
+  g.save(); hockeyRinkPath(g, -10); g.clip();
+  g.fillStyle = 'rgba(40,60,100,0.10)'; g.fillRect(0, R.y0 - 7, W, 3); g.fillRect(0, R.y1 + 4, W, 6);
+  g.fillStyle = 'rgba(40,60,100,0.12)'; g.fillRect(R.x0 - 10, 0, 3, H); g.fillRect(R.x1 + 7, 0, 3, H);
+  const ads = ['#4a86e0', '#e2475a', '#3fcf72', '#ffc53d', '#ff8fc7', '#7fc4ff'];
+  for (let i = 0; i < 6; i++) {
+    const x = strX0 + i * seg;
+    for (const y of [R.y0 - 10, R.y1 + 4]) {
+      g.fillStyle = 'rgba(40,60,100,0.25)'; g.fillRect(x - 0.5, y, 1, 6);
+      g.fillStyle = ads[(i + (y > R.cy ? 3 : 0)) % ads.length]; g.globalAlpha = 0.7;
+      const aw = seg * 0.42; rkRR(g, x + seg / 2 - aw / 2, y + 1.4, aw, 3.2, 1.6); g.fill(); g.globalAlpha = 1;
+      g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(x + seg / 2 - aw / 2 + 2, y + 1.8, aw * 0.4, 0.8);
+    }
+  }
+  g.restore();
+  // glass posts: shaded steel, a lit edge and a cap
+  for (let x = strX0; x <= strX1 + 1; x += seg) for (const y of [R.y0 - 19, R.y1 + 10]) {
+    g.fillStyle = '#7f90aa'; g.fillRect(x - 2, y, 4, 9);
+    g.fillStyle = 'rgba(200,215,235,0.9)'; g.fillRect(x - 1.5, y, 2, 9);
+    g.fillStyle = '#ffffff'; g.fillRect(x - 1.5, y, 0.8, 9);
+    g.fillStyle = '#5d6d88'; g.fillRect(x - 2.5, y - 1, 5, 2);
+  }
+  g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 1.2; hockeyRinkPath(g, -18); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = 1; hockeyRinkPath(g, -17); g.stroke();
+  g.fillStyle = kickCol; hockeyRinkPath(g, -4); g.fill();
+  // the kick plate: a darker lower lip and a row of bolts
+  g.save(); hockeyRinkPath(g, -4); g.clip();
+  g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, R.y0 - 1.6, W, 2); g.fillRect(0, R.y1 + 2, W, 2);
+  g.fillStyle = 'rgba(255,255,255,0.55)';
+  for (let x = strX0 + 12; x < strX1; x += 24) { g.fillRect(x - 0.8, R.y0 - 2.8, 1.6, 1.6); g.fillRect(x - 0.8, R.y1 + 1.4, 1.6, 1.6); }
+  g.restore();
+  g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 1.5; hockeyRinkPath(g, -9.5); g.stroke();
+  g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 1.5; hockeyRinkPath(g, -4.5); g.stroke();
+  g.strokeStyle = 'rgba(30,50,90,0.35)'; g.lineWidth = 1; hockeyRinkPath(g, -10.5); g.stroke();
+  // the ice
+  const ig = g.createLinearGradient(0, R.y0, 0, R.y1); ig.addColorStop(0, Q.ice); ig.addColorStop(1, Q.iceDk);
+  g.fillStyle = ig; hockeyRinkPath(g, 0); g.fill();
+  g.save(); hockeyRinkPath(g, 0); g.clip();
+  // skate scratches (fixed), then many fine ones and frost specks
+  g.strokeStyle = Q.iceLine; g.lineWidth = 1;
+  for (let i = 0; i < 26; i++) {
+    const h = hash(i, 41), x = R.x0 + 20 + (h % 840), y = R.y0 + 16 + ((h >> 10) % 370), a = ((h >> 4) % 100) / 100 * Math.PI;
+    g.beginPath(); g.arc(x, y, 30 + (h % 40), a, a + 0.6); g.stroke();
+  }
+  g.strokeStyle = 'rgba(120,170,215,0.18)'; g.lineWidth = 0.8; g.beginPath();
+  for (let i = 0; i < 70; i++) {
+    const h = hash(i, 57), x = R.x0 + 10 + (h % 870), y = R.y0 + 8 + ((h >>> 10) % 390), a = ((h >>> 4) % 100) / 100 * Math.PI * 2, r = 16 + (h % 50);
+    g.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); g.arc(x, y, r, a, a + 0.35 + (h % 7) * 0.05);
+  }
+  g.stroke();
+  g.fillStyle = 'rgba(255,255,255,0.7)';
+  for (let i = 0; i < 160; i++) { const h = hash(i, 63); g.fillRect(R.x0 + 6 + (h % 880), R.y0 + 4 + ((h >>> 10) % 400), 1.2, 1.2); }
+  // snowy shavings piled along the boards
+  g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 7; hockeyRinkPath(g, 2); g.stroke();
+  g.strokeStyle = 'rgba(160,190,225,0.25)'; g.lineWidth = 1.5; hockeyRinkPath(g, 6); g.stroke();
+  // markings: centre red line (with a white checker), blue lines, goal lines, circles
+  g.fillStyle = Q.red; g.fillRect(R.cx - 3, R.y0, 6, R.y1 - R.y0);
+  g.fillStyle = 'rgba(255,255,255,0.75)'; for (let y = R.y0 + 4; y < R.y1; y += 16) g.fillRect(R.cx - 1, y, 2, 6);
+  g.fillStyle = Q.blue; g.fillRect(R.cx - 150 - 4, R.y0, 8, R.y1 - R.y0); g.fillRect(R.cx + 150 - 4, R.y0, 8, R.y1 - R.y0);
+  g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(R.cx - 153, R.y0, 1.5, R.y1 - R.y0); g.fillRect(R.cx + 147, R.y0, 1.5, R.y1 - R.y0);
+  g.fillStyle = 'rgba(20,40,90,0.18)'; g.fillRect(R.cx - 147.5, R.y0, 1.5, R.y1 - R.y0); g.fillRect(R.cx + 152.5, R.y0, 1.5, R.y1 - R.y0);
+  g.fillStyle = Q.red; for (const gl of R.gl) g.fillRect(gl - 1.5, R.y0, 3, R.y1 - R.y0);
+  g.strokeStyle = Q.blue; g.lineWidth = 3; dot(R.cx, R.cy, 62); g.stroke();
+  g.fillStyle = Q.blue; dot(R.cx, R.cy, 5); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.6)'; dot(R.cx - 1.5, R.cy - 1.5, 1.6); g.fill();
+  g.strokeStyle = Q.red; g.lineWidth = 2.5;
+  for (const [x, y] of [[R.gl[0] + 96, R.cy - 110], [R.gl[0] + 96, R.cy + 110], [R.gl[1] - 96, R.cy - 110], [R.gl[1] - 96, R.cy + 110]]) {
+    g.strokeStyle = Q.red; g.lineWidth = 2.5; dot(x, y, 40); g.stroke();
+    // hash marks on the circle and the L marks around the dot
+    g.lineWidth = 2; g.beginPath();
+    for (const s of [-1, 1]) { g.moveTo(x - 6, y + s * 40); g.lineTo(x - 6, y + s * 47); g.moveTo(x + 6, y + s * 40); g.lineTo(x + 6, y + s * 47); }
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) { g.moveTo(x + sx * 4, y + sy * 8); g.lineTo(x + sx * 4, y + sy * 4); g.lineTo(x + sx * 11, y + sy * 4); }
+    g.stroke();
+    g.fillStyle = Q.red; dot(x, y, 4); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.55)'; dot(x - 1.2, y - 1.2, 1.3); g.fill();
+  }
+  // neutral-zone faceoff spots near the blue lines
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+    const x = R.cx + sx * 120, y = R.cy + sy * 110;
+    g.fillStyle = Q.red; dot(x, y, 4.5); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1; dot(x, y, 2.6); g.stroke();
+  }
+  // the centre logo: a snowflake with a soft ring
+  g.save(); g.translate(R.cx, R.cy); g.strokeStyle = 'rgba(74,134,224,0.35)'; g.lineWidth = 3;
+  for (let k = 0; k < 6; k++) { g.rotate(Math.PI / 3); g.beginPath(); g.moveTo(0, 12); g.lineTo(0, 44); g.moveTo(0, 30); g.lineTo(8, 38); g.moveTo(0, 30); g.lineTo(-8, 38); g.stroke(); }
+  g.strokeStyle = 'rgba(74,134,224,0.16)'; g.lineWidth = 1.5; dot(0, 0, 52); g.stroke();
+  g.restore();
+  // creases
+  for (let k = 0; k < 2; k++) {
+    const gl = R.gl[k], dir = k ? -1 : 1, a0 = k ? Math.PI / 2 : -Math.PI / 2;
+    g.fillStyle = Q.crease; g.beginPath(); g.moveTo(gl, R.cy); g.arc(gl, R.cy, P.crease, a0, a0 + Math.PI * dir, dir < 0); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.moveTo(gl, R.cy); g.arc(gl, R.cy, P.crease * 0.6, a0, a0 + Math.PI * dir, dir < 0); g.closePath(); g.fill();
+    g.strokeStyle = Q.red; g.lineWidth = 2; g.beginPath(); g.arc(gl, R.cy, P.crease, a0, a0 + Math.PI * dir, dir < 0); g.stroke();
+    g.beginPath(); g.moveTo(gl + dir * P.crease * 0.55, R.cy - P.crease * 0.83); g.lineTo(gl + dir * P.crease * 0.55, R.cy - P.crease * 0.83 + 6);
+    g.moveTo(gl + dir * P.crease * 0.55, R.cy + P.crease * 0.83); g.lineTo(gl + dir * P.crease * 0.55, R.cy + P.crease * 0.83 - 6); g.stroke();
+    // the robot's track: a groove with a lit lip and end stops
+    const tx = gl + dir * P.botX;
+    g.lineCap = 'round';
+    g.strokeStyle = 'rgba(74,90,130,0.35)'; g.lineWidth = 6; g.beginPath(); g.moveTo(tx, R.cy - P.botRange); g.lineTo(tx, R.cy + P.botRange); g.stroke();
+    g.strokeStyle = 'rgba(40,55,95,0.3)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(tx + 1.5, R.cy - P.botRange); g.lineTo(tx + 1.5, R.cy + P.botRange); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(tx - 2.6, R.cy - P.botRange); g.lineTo(tx - 2.6, R.cy + P.botRange); g.stroke();
+    g.lineCap = 'butt';
+    g.fillStyle = '#8e9bb4'; for (const s of [-1, 1]) { dot(tx, R.cy + s * (P.botRange + 4), 3.2); g.fill(); }
+    g.fillStyle = 'rgba(255,255,255,0.6)'; for (const s of [-1, 1]) { dot(tx - 1, R.cy + s * (P.botRange + 4) - 1, 1.1); g.fill(); }
+  }
+  // the arena lights reflected in the ice
+  g.fillStyle = 'rgba(255,255,255,0.28)';
+  g.beginPath();
+  for (const [x, w] of [[220, 70], [320, 20], [560, 90], [680, 24], [860, 50]]) { g.moveTo(x, R.y0); g.lineTo(x + w, R.y0); g.lineTo(x + w - 110, R.y1); g.lineTo(x - 110, R.y1); g.closePath(); }
+  g.fill();
+  g.restore();
+}
 function hockeyDrawRink() {
   const st = G.mst, R = HOCKEY_RINK, Q = HOCKEY_COLS, P = hockeyP(), v = st.vis || hockeyVisNew();
   // the arena
   ctx.fillStyle = Q.arena; ctx.fillRect(0, 0, W, H);
   const lg = ctx.createLinearGradient(0, 0, 0, 120); lg.addColorStop(0, Q.arenaDk); lg.addColorStop(1, Q.arena);
   ctx.fillStyle = lg; ctx.fillRect(0, 0, W, 120);
-  // banners: little pennants hanging from the roof
+  // roof trusses, then banners: little pennants hanging from the roof on a wire
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = 0; x < W; x += 60) { ctx.moveTo(x, 0); ctx.lineTo(x + 30, 30); ctx.lineTo(x + 60, 0); }
+  ctx.moveTo(0, 30); ctx.lineTo(W, 30); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, 1); ctx.lineTo(W, 1); ctx.stroke();
   for (let i = 0; i < 16; i++) {
     const x = 30 + i * 60, col = i % 2 ? C.pip : C.bo;
     ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x - 9, 0); ctx.lineTo(x + 9, 0); ctx.lineTo(x, 16); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 9, 0); ctx.lineTo(x, 16); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)'; circle(x, 5, 2); ctx.fill();
   }
   hockeyDrawCrowd();
-  // the boards (springy pink in Bouncy Boards)
+  // the boards (springy pink in Bouncy Boards) and the ice: one cached picture per look
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.25)'; hockeyRinkPath(ctx, -12); ctx.save(); ctx.translate(0, 5); ctx.fill(); ctx.restore();
-  ctx.fillStyle = P.bouncy ? (v.boardFlash > 0 ? '#ffd1ea' : Q.spring) : Q.board; hockeyRinkPath(ctx, -10); ctx.fill();
-  // a tall pane of glass on top of the boards, with its posts and a glint
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.2; hockeyRinkPath(ctx, -18); ctx.stroke();
-  ctx.fillStyle = 'rgba(200,215,235,0.6)';
-  for (let x = R.x0 + R.cr; x <= R.x1 - R.cr + 1; x += (R.x1 - R.x0 - 2 * R.cr) / 6) { ctx.fillRect(x - 1.5, R.y0 - 19, 3, 9); ctx.fillRect(x - 1.5, R.y1 + 10, 3, 9); }
-  ctx.fillStyle = P.bouncy ? Q.springDk : Q.kick; hockeyRinkPath(ctx, -4); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1.5; hockeyRinkPath(ctx, -9.5); ctx.stroke();
-  ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1.5; hockeyRinkPath(ctx, -4.5); ctx.stroke();
-  // the ice
-  const ig = ctx.createLinearGradient(0, R.y0, 0, R.y1); ig.addColorStop(0, Q.ice); ig.addColorStop(1, Q.iceDk);
-  ctx.fillStyle = ig; hockeyRinkPath(ctx, 0); ctx.fill();
+  const boardCol = P.bouncy ? (v.boardFlash > 0 ? '#ffd1ea' : Q.spring) : Q.board, kickCol = P.bouncy ? Q.springDk : Q.kick;
+  rkPut('hkRink|' + boardCol + '|' + kickCol + '|' + P.crease + '|' + P.botX + '|' + P.botRange, 10, 84, W - 20, H - 84, 0, 0,
+    g => { g.translate(-10, -84); hockeyPaintRink(g, P, boardCol, kickCol); });
   ctx.save(); hockeyRinkPath(ctx, 0); ctx.clip();
-  // skate scratches (fixed)
-  ctx.strokeStyle = Q.iceLine; ctx.lineWidth = 1;
-  for (let i = 0; i < 26; i++) {
-    const h = hash(i, 41), x = R.x0 + 20 + (h % 840), y = R.y0 + 16 + ((h >> 10) % 370), a = ((h >> 4) % 100) / 100 * Math.PI;
-    ctx.beginPath(); ctx.arc(x, y, 30 + (h % 40), a, a + 0.6); ctx.stroke();
-  }
-  // markings: centre red line, blue lines, goal lines, circles
-  ctx.fillStyle = Q.red; ctx.fillRect(R.cx - 3, R.y0, 6, R.y1 - R.y0);
-  ctx.fillStyle = Q.blue; ctx.fillRect(R.cx - 150 - 4, R.y0, 8, R.y1 - R.y0); ctx.fillRect(R.cx + 150 - 4, R.y0, 8, R.y1 - R.y0);
-  ctx.fillStyle = Q.red; for (const gl of R.gl) ctx.fillRect(gl - 1.5, R.y0, 3, R.y1 - R.y0);
-  ctx.strokeStyle = Q.blue; ctx.lineWidth = 3; circle(R.cx, R.cy, 62); ctx.stroke();
-  ctx.fillStyle = Q.blue; circle(R.cx, R.cy, 5); ctx.fill();
-  ctx.strokeStyle = Q.red; ctx.lineWidth = 2.5;
-  for (const [x, y] of [[R.gl[0] + 96, R.cy - 110], [R.gl[0] + 96, R.cy + 110], [R.gl[1] - 96, R.cy - 110], [R.gl[1] - 96, R.cy + 110]]) {
-    circle(x, y, 40); ctx.stroke(); ctx.fillStyle = Q.red; circle(x, y, 4); ctx.fill();
-  }
-  // the centre logo: a snowflake
-  ctx.save(); ctx.translate(R.cx, R.cy); ctx.strokeStyle = 'rgba(74,134,224,0.35)'; ctx.lineWidth = 3;
-  for (let k = 0; k < 6; k++) { ctx.rotate(Math.PI / 3); ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(0, 44); ctx.moveTo(0, 30); ctx.lineTo(8, 38); ctx.moveTo(0, 30); ctx.lineTo(-8, 38); ctx.stroke(); }
-  ctx.restore();
-  // creases
-  for (let k = 0; k < 2; k++) {
-    const gl = R.gl[k], dir = k ? -1 : 1, a0 = k ? Math.PI / 2 : -Math.PI / 2;
-    ctx.fillStyle = Q.crease; ctx.beginPath(); ctx.moveTo(gl, R.cy); ctx.arc(gl, R.cy, P.crease, a0, a0 + Math.PI * dir, dir < 0); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = Q.red; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(gl, R.cy, P.crease, a0, a0 + Math.PI * dir, dir < 0); ctx.stroke();
-    // the robot's track
-    ctx.strokeStyle = 'rgba(74,90,130,0.35)'; ctx.lineWidth = 6; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(gl + dir * P.botX, R.cy - P.botRange); ctx.lineTo(gl + dir * P.botX, R.cy + P.botRange); ctx.stroke(); ctx.lineCap = 'butt';
-  }
-  // the arena lights reflected in the ice
-  ctx.fillStyle = 'rgba(255,255,255,0.28)';
-  ctx.beginPath();
-  for (const [x, w] of [[220, 70], [320, 20], [560, 90], [680, 24], [860, 50]]) { ctx.moveTo(x, R.y0); ctx.lineTo(x + w, R.y0); ctx.lineTo(x + w - 110, R.y1); ctx.lineTo(x - 110, R.y1); ctx.closePath(); }
-  ctx.fill();
   // overtime: the half the puck is in glows in the colour of the player it would win for (last 8 s)
   const m = G.match;
   if (st.ot && st.pucks && m && m.phase === 'live' && m.timeLeft <= 8 && st.phase === 'play') {
@@ -768,38 +858,69 @@ function hockeyDrawRink() {
     }
   }
   ctx.restore();
-  // bouncy boards: springs drawn along the inside edge
+  // bouncy boards: springs drawn along the inside edge (a shaded coil cap with a glint)
   if (P.bouncy) {
-    ctx.fillStyle = '#ffffff';
-    for (let i = 0; i < 22; i++) { const x = R.x0 + R.cr + i * ((R.x1 - R.x0 - 2 * R.cr) / 21); circle(x, R.y0 - 4, 3); ctx.fill(); circle(x, R.y1 + 4, 3); ctx.fill(); }
+    for (let i = 0; i < 22; i++) {
+      const x = R.x0 + R.cr + i * ((R.x1 - R.x0 - 2 * R.cr) / 21);
+      for (const y of [R.y0 - 4, R.y1 + 4]) {
+        ctx.fillStyle = Q.springDk; circle(x + 0.5, y + 0.6, 3.4); ctx.fill();
+        ctx.fillStyle = '#ffffff'; circle(x, y, 3); ctx.fill();
+        ctx.strokeStyle = 'rgba(194,68,138,0.5)'; ctx.lineWidth = 0.8; circle(x, y, 1.8); ctx.stroke();
+      }
+    }
   }
   // nets (the back part: mesh and frame)
   for (let k = 0; k < 2; k++) hockeyDrawNet(k, v.netShake[k]);
-  // goal lights behind the nets
+  // goal lights behind the nets: a housing, the lamp and a glint
   for (let k = 0; k < 2; k++) {
     const on = st.goalFx && st.goalFx.net === k && st.goalFx.t < 2.2 && Math.floor(st.goalFx.t * 8) % 2 === 0;
     const x = k ? R.x1 + 8 : R.x0 - 8;
+    ctx.fillStyle = '#3a2030'; circle(x, R.cy + 0.8, 9.5); ctx.fill();
     ctx.fillStyle = on ? '#ff3b4e' : '#7a2a3a'; circle(x, R.cy, 8); ctx.fill();
+    ctx.fillStyle = on ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.25)'; circle(x - 2.5, R.cy - 2.5, 2.2); ctx.fill();
     if (on) { ctx.fillStyle = 'rgba(255,80,100,0.35)'; circle(x, R.cy, 22); ctx.fill(); }
   }
   ctx.restore();
 }
-function hockeyDrawNet(k, shake) {
+// the net: a white base pad, mesh with knots and a red frame with shaded posts (cached per size, shaken as one piece)
+function hockeyPaintNet(g, k) {
   const R = HOCKEY_RINK, P = hockeyP(), b = hockeyNetBox(k), Q = HOCKEY_COLS, gl = R.gl[k], dir = k ? -1 : 1;
-  const sx = shake > 0 && !reduceMotion ? Math.sin(shake * 60) * 2 : 0;
-  ctx.save(); ctx.translate(sx, 0);
-  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0);
-  ctx.strokeStyle = Q.mesh; ctx.lineWidth = 1;
-  ctx.save(); ctx.beginPath(); ctx.rect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0); ctx.clip();
-  ctx.strokeStyle = 'rgba(150,170,200,0.7)';
-  for (let i = -100; i < 120; i += 7) { ctx.beginPath(); ctx.moveTo(b.x0 + i, b.y0); ctx.lineTo(b.x0 + i + 100, b.y1); ctx.stroke(); ctx.beginPath(); ctx.moveTo(b.x0 + i + 100, b.y0); ctx.lineTo(b.x0 + i, b.y1); ctx.stroke(); }
-  ctx.restore();
-  // frame: back bar and sides (open toward the ice)
-  ctx.strokeStyle = Q.net; ctx.lineWidth = 4; ctx.lineJoin = 'round';
   const back = gl - dir * P.netD;
-  ctx.beginPath(); ctx.moveTo(gl, R.cy - P.mouth); ctx.lineTo(back, R.cy - P.mouth + 4); ctx.lineTo(back, R.cy + P.mouth - 4); ctx.lineTo(gl, R.cy + P.mouth); ctx.stroke();
-  ctx.fillStyle = Q.net; circle(gl, R.cy - P.mouth, P.post + 1); ctx.fill(); circle(gl, R.cy + P.mouth, P.post + 1); ctx.fill();
-  ctx.restore();
+  g.fillStyle = 'rgba(28,26,54,0.16)'; g.fillRect(b.x0 - dir * 3, b.y0 + 3, b.x1 - b.x0, b.y1 - b.y0);
+  g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0);
+  g.save(); g.beginPath(); g.rect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0); g.clip();
+  g.strokeStyle = 'rgba(150,170,200,0.7)'; g.lineWidth = 1;
+  for (let i = -100; i < 120; i += 7) { g.beginPath(); g.moveTo(b.x0 + i, b.y0); g.lineTo(b.x0 + i + 100, b.y1); g.stroke(); g.beginPath(); g.moveTo(b.x0 + i + 100, b.y0); g.lineTo(b.x0 + i, b.y1); g.stroke(); }
+  // knots where the strings cross, and the mesh's shade toward the back
+  const sl = (b.y1 - b.y0) / 100;
+  g.fillStyle = 'rgba(120,140,175,0.8)';
+  for (let i = -100; i < 120; i += 7) for (let j = -100; j < 120; j += 7) {
+    const t = (j - i + 100) / 200; if (t < 0 || t > 1) continue;
+    const x = b.x0 + i + 100 * t, y = b.y0 + (b.y1 - b.y0) * t;
+    if (x >= b.x0 && x <= b.x1) g.fillRect(x - 0.7, y - 0.7, 1.4, 1.4);
+  }
+  g.fillStyle = 'rgba(60,80,130,0.15)'; g.fillRect(k ? b.x1 - 8 : b.x0, b.y0, 8, b.y1 - b.y0);
+  g.restore();
+  // the white base pad along the frame
+  g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 3; g.lineJoin = 'round';
+  g.beginPath(); g.moveTo(gl - dir * 2, R.cy - P.mouth + 4); g.lineTo(back + dir * 3, R.cy - P.mouth + 7); g.lineTo(back + dir * 3, R.cy + P.mouth - 7); g.lineTo(gl - dir * 2, R.cy + P.mouth - 4); g.stroke();
+  // frame: back bar and sides (open toward the ice): an outline, the red tube and a lit stripe
+  const frame = () => { g.beginPath(); g.moveTo(gl, R.cy - P.mouth); g.lineTo(back, R.cy - P.mouth + 4); g.lineTo(back, R.cy + P.mouth - 4); g.lineTo(gl, R.cy + P.mouth); };
+  g.strokeStyle = shade(Q.net, 0.5); g.lineWidth = 6; frame(); g.stroke();
+  g.strokeStyle = Q.net; g.lineWidth = 4; frame(); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1.2; g.save(); g.translate(-0.8, -0.8); frame(); g.stroke(); g.restore();
+  for (const s of [-1, 1]) {
+    const py = R.cy + s * P.mouth;
+    g.fillStyle = shade(Q.net, 0.5); g.beginPath(); g.arc(gl + 0.5, py + 0.8, P.post + 2, 0, Math.PI * 2); g.fill();
+    g.fillStyle = Q.net; g.beginPath(); g.arc(gl, py, P.post + 1, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.arc(gl - 1.4, py - 1.4, 1.6, 0, Math.PI * 2); g.fill();
+  }
+}
+function hockeyDrawNet(k, shake) {
+  const R = HOCKEY_RINK, P = hockeyP();
+  const sx = shake > 0 && !reduceMotion ? Math.sin(shake * 60) * 2 : 0;
+  const x0 = R.gl[k] - P.netD - 14, y0 = R.cy - P.mouth - 14, w = P.netD * 2 + 28, h = P.mouth * 2 + 30;
+  rkPut('hkNet|' + k + '|' + P.netD + '|' + P.mouth + '|' + P.post, x0 + sx, y0, w, h, 0, 0, g => { g.translate(-x0, -y0); hockeyPaintNet(g, k); });
 }
 function hockeyDrawPuck(pk) {
   const Q = HOCKEY_COLS;
@@ -809,7 +930,12 @@ function hockeyDrawPuck(pk) {
   ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.beginPath(); ctx.ellipse(pk.x, pk.y + 2, pk.r * 1.1 * (1 - pk.drop * 0.4), pk.r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
   const y = pk.y - lift;
   ctx.fillStyle = Q.puck; ctx.beginPath(); ctx.ellipse(pk.x, y + 1.5, pk.r, pk.r * 0.78, 0, 0, Math.PI * 2); ctx.fill();
+  // the knurled edge: little ridges round the side
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 0.8; ctx.beginPath();
+  for (let a = 0.35; a < Math.PI - 0.3; a += 0.42) { const ex = pk.x + Math.cos(a) * pk.r * 0.95, ey = y + 1.5 + Math.sin(a) * pk.r * 0.74; ctx.moveTo(ex, ey - 1.6); ctx.lineTo(ex, ey); }
+  ctx.stroke();
   ctx.fillStyle = Q.puckHi; ctx.beginPath(); ctx.ellipse(pk.x, y - 0.5, pk.r * 0.92, pk.r * 0.66, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(pk.x, y - 0.5, pk.r * 0.5, pk.r * 0.34, 0, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(pk.x - pk.r * 0.3, y - pk.r * 0.25, pk.r * 0.35, pk.r * 0.18, -0.3, 0, Math.PI * 2); ctx.fill();
 }
 // skaters are drawn a bit bigger on small screens (the rules never read this)
@@ -880,17 +1006,32 @@ function hockeyDrawBot(b) {
   const Q = HOCKEY_COLS, P = hockeyP(), st = G.mst, gold = st.gold && st.gold[b.id], dir = b.id ? -1 : 1;
   const x = b.x, y = b.y, happy = b.happy > 0;
   ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.beginPath(); ctx.ellipse(x, y + 2, 17, 7, 0, 0, Math.PI * 2); ctx.fill();
-  // the glove (on the side the puck is on), bigger and gold with the Big Glove
+  // the glove (on the side the puck is on), bigger and gold with the Big Glove: a padded mitt with a cuff and stitching
   const gy = y + (st.pucks && st.pucks[0] && st.pucks[0].y < y ? -1 : 1) * 12, gr = gold ? 11 : 7.5;
-  const tilt = b.clear > 0 ? Math.sin(b.clear * 20) * 6 : 0;
+  const tilt = b.clear > 0 ? Math.sin(b.clear * 20) * 6 : 0, gx = x + dir * (8 + tilt);
   ctx.fillStyle = gold ? C.gold : '#e2475a'; ctx.strokeStyle = gold ? C.goldDark : '#8a1f38'; ctx.lineWidth = 2;
-  circle(x + dir * (8 + tilt), gy - 12, gr); ctx.fill(); ctx.stroke();
-  // body
+  circle(gx, gy - 12, gr); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.arc(gx, gy - 12, gr - 1, 0.2, Math.PI - 0.2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1; ctx.setLineDash([1.5, 2]); circle(gx, gy - 12, gr * 0.6); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(gx - gr * 0.35, gy - 12 - gr * 0.4, gr * 0.22); ctx.fill();
+  // body: a shaded shell with a lit left edge, a chest panel and rivets
   ctx.fillStyle = Q.bot; ctx.strokeStyle = Q.botDk; ctx.lineWidth = 2.5;
-  rr(x - 12, y - 32, 24, 30, 9); ctx.fill(); ctx.stroke();
+  rr(x - 12, y - 32, 24, 30, 9); ctx.fill();
+  ctx.save(); rr(x - 12, y - 32, 24, 30, 9); ctx.clip();
+  ctx.fillStyle = 'rgba(70,85,120,0.22)'; ctx.fillRect(x + 4, y - 32, 8, 30);
+  ctx.fillStyle = 'rgba(70,85,120,0.16)'; ctx.fillRect(x - 12, y - 7, 24, 5);
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(x - 11, y - 30, 2, 24);
+  ctx.restore();
+  rr(x - 12, y - 32, 24, 30, 9); ctx.stroke();
   ctx.fillStyle = PCOL[b.id]; ctx.fillRect(x - 11, y - 12, 22, 5);
-  // visor + LED eyes
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 11, y - 12, 22, 1.2);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x - 11, y - 8, 22, 1);
+  ctx.fillStyle = '#c3cddd'; rr(x - 5, y - 16, 10, 3.4, 1.5); ctx.fill();
+  ctx.fillStyle = happy ? C.gold : '#7fe0ff'; ctx.fillRect(x - 3.5, y - 15.2, 2, 1.8); ctx.fillStyle = '#ff5f6e'; ctx.fillRect(x + 1.5, y - 15.2, 2, 1.8);
+  for (const rx of [-8.5, 8.5]) { ctx.fillStyle = Q.botDk; circle(rx + x + 0.3, y - 4.4, 1.2); ctx.fill(); ctx.fillStyle = '#ffffff'; circle(rx + x - 0.2, y - 4.9, 0.6); ctx.fill(); }
+  // visor + LED eyes, with a glassy glint
   ctx.fillStyle = Q.visor; rr(x - 9, y - 28, 18, 11, 5); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 6, y - 26.5); ctx.lineTo(x + 5, y - 26.5); ctx.stroke();
   ctx.strokeStyle = happy ? C.gold : '#7fe0ff'; ctx.fillStyle = '#7fe0ff'; ctx.lineWidth = 2;
   const look = clamp(b.vy / 120, -1, 1) * 1.5;
   for (const ex of [-4, 4]) {
@@ -898,24 +1039,55 @@ function hockeyDrawBot(b) {
     else if (happy) { ctx.beginPath(); ctx.moveTo(x + ex - 2.5, y - 21); ctx.lineTo(x + ex, y - 24); ctx.lineTo(x + ex + 2.5, y - 21); ctx.stroke(); }
     else { circle(x + ex, y - 22.5 + look, 2); ctx.fill(); }
   }
-  // antenna
+  // antenna: a jointed rod on a little base
+  ctx.fillStyle = Q.botDk; rr(x - 3, y - 34, 6, 3, 1.5); ctx.fill();
   ctx.strokeStyle = Q.botDk; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - 32); ctx.lineTo(x, y - 39); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x - 0.5, y - 33); ctx.lineTo(x - 0.5, y - 38); ctx.stroke();
   ctx.fillStyle = happy || Math.floor(G.clock * 2) % 2 ? '#ff5f6e' : '#ffd1d6'; circle(x, y - 41, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(x - 1, y - 42, 1); ctx.fill();
   if (st.ot && !happy) { const zt = (G.clock * 0.8 + b.id * 0.5) % 1; ctx.globalAlpha = 1 - zt; text('z', x - dir * (8 + zt * 8), y - 46 - zt * 14, 11 + zt * 5, '#bfe8ff', 'center'); ctx.globalAlpha = 1; }
   if (gold && b.r > P.botR) { ctx.strokeStyle = C.gold; ctx.globalAlpha = 0.45; ctx.lineWidth = 2; circle(x, y - 4, b.r + 2); ctx.stroke(); ctx.globalAlpha = 1; }
+}
+// the snowman (still, cached): shaded snowballs, coal with glints, a striped scarf, a carrot and a banded hat
+function hockeyPaintSnowman(g) {
+  const ball = (cy, r) => {
+    g.fillStyle = '#ffffff'; g.beginPath(); g.arc(0, cy, r, 0, Math.PI * 2); g.fill();
+    g.save(); g.beginPath(); g.arc(0, cy, r, 0, Math.PI * 2); g.clip();
+    g.fillStyle = 'rgba(150,180,215,0.35)'; g.beginPath(); g.arc(-r * 0.3, cy - r * 0.3, r * 1.05, 0, Math.PI * 2); g.arc(0, cy, r + 4, 0, Math.PI * 2, true); g.fill();
+    g.fillStyle = 'rgba(185,205,224,0.45)'; for (let i = 0; i < 7; i++) { const h = hash(i, r | 0); g.beginPath(); g.arc(-r * 0.6 + (h % (r | 0)) * 1.1, cy - r * 0.5 + ((h >>> 6) % (r | 0)), 1.1, 0, Math.PI * 2); g.fill(); }
+    g.restore();
+    g.fillStyle = 'rgba(255,255,255,0.95)'; g.beginPath(); g.ellipse(-r * 0.4, cy - r * 0.45, r * 0.25, r * 0.15, -0.6, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#b9cde0'; g.lineWidth = 2; g.beginPath(); g.arc(0, cy, r, 0, Math.PI * 2); g.stroke();
+  };
+  ball(-14, 24); ball(-46, 16);
+  // twig arms
+  g.strokeStyle = '#6b4a2e'; g.lineWidth = 2.2; g.lineCap = 'round'; g.beginPath();
+  g.moveTo(-20, -26); g.lineTo(-33, -38); g.moveTo(-28, -33); g.lineTo(-31, -41); g.moveTo(20, -26); g.lineTo(33, -36); g.moveTo(28, -32); g.lineTo(34, -29); g.stroke();
+  // scarf: a wrap and a hanging end, with stripes and a fringe
+  g.fillStyle = '#e2475a'; rkRR(g, -15, -34, 30, 7, 3); g.fill(); g.fillRect(6, -32, 7, 16);
+  g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(-15, -29, 30, 2); g.fillRect(10.5, -32, 2.5, 16);
+  g.fillStyle = '#ffffff'; for (const sx of [-8, 0, 8]) g.fillRect(sx, -34, 2.4, 7); g.fillRect(6, -24, 7, 2.2);
+  g.fillStyle = '#e2475a'; for (let i = 0; i < 4; i++) g.fillRect(6.4 + i * 1.8, -16, 1, 2.6);
+  g.strokeStyle = '#a32c3e'; g.lineWidth = 1; rkRR(g, -15, -34, 30, 7, 3); g.stroke();
+  // coal eyes and buttons with a glint
+  for (const [cx, cy] of [[-5, -50], [5, -50], [0, -20], [0, -10]]) {
+    g.fillStyle = C.ink; g.beginPath(); g.arc(cx, cy, 2.2, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(cx - 1, cy - 1.2, 0.9, 0.9);
+  }
+  // a carrot nose with ridges
+  g.fillStyle = '#ff9a3d'; g.beginPath(); g.moveTo(0, -46); g.lineTo(10, -44); g.lineTo(0, -42); g.closePath(); g.fill();
+  g.fillStyle = '#d9731f'; g.beginPath(); g.moveTo(0, -44); g.lineTo(10, -44); g.lineTo(0, -42); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(120,60,20,0.6)'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(3, -45.4); g.lineTo(3, -42.8); g.moveTo(6, -44.8); g.lineTo(6, -43.3); g.stroke();
+  // the hat: brim, crown, a red band and a lit edge
+  g.fillStyle = C.ink; g.fillRect(-11, -64, 22, 4); g.fillRect(-7, -76, 14, 13);
+  g.fillStyle = '#e2475a'; g.fillRect(-7, -67, 14, 3);
+  g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(-7, -76, 2, 9); g.fillRect(-11, -64, 22, 1);
 }
 function hockeyDrawSnowman(sn) {
   const x = sn.x, y = sn.y, w = sn.wob > 0 && !reduceMotion ? Math.sin(sn.wob * 30) * 0.12 : 0;
   ctx.fillStyle = 'rgba(28,26,54,0.2)'; ctx.beginPath(); ctx.ellipse(x, y + 4, 28, 10, 0, 0, Math.PI * 2); ctx.fill();
   ctx.save(); ctx.translate(x, y); ctx.rotate(w);
-  ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#b9cde0'; ctx.lineWidth = 2;
-  circle(0, -14, 24); ctx.fill(); ctx.stroke();
-  circle(0, -46, 16); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#e2475a'; rr(-15, -34, 30, 7, 3); ctx.fill(); ctx.fillRect(6, -32, 7, 16);
-  ctx.fillStyle = C.ink; circle(-5, -50, 2.2); ctx.fill(); circle(5, -50, 2.2); ctx.fill();
-  for (const yy of [-20, -10]) { circle(0, yy, 2.2); ctx.fill(); }
-  ctx.fillStyle = '#ff9a3d'; ctx.beginPath(); ctx.moveTo(0, -46); ctx.lineTo(10, -44); ctx.lineTo(0, -42); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = C.ink; ctx.fillRect(-11, -64, 22, 4); ctx.fillRect(-7, -76, 14, 13);
+  rkPut('hkSnowman', 0, 0, 84, 96, 42, 82, hockeyPaintSnowman);
   ctx.restore();
 }
 function hockeyDrawTop() {

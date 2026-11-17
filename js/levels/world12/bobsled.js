@@ -616,6 +616,13 @@
       const inTuck = c.tucks.some(t => zz >= t.z0 && zz < t.z1), inHop = zz >= -K.hopLen && zz < 0 && st.phase !== 'run';
       if (inHop) fc = COL.gold;
       quad(A(-K.floorW, 0), A(K.floorW, 0), B(K.floorW, 0), B(-K.floorW, 0), mix(fc, fog));
+      // near the sled: polished runner grooves in the ice, frost along the foot of each wall and the odd scratch
+      if (j < 34 && !inHop) {
+        for (const g of [-0.42, 0.42]) quad(A(g - 0.05, 0.001), A(g + 0.05, 0.001), B(g + 0.05, 0.001), B(g - 0.05, 0.001), mix([214, 233, 248], fog));
+        for (const g of [-0.36, 0.48]) quad(A(g - 0.015, 0.002), A(g + 0.015, 0.002), B(g + 0.015, 0.002), B(g - 0.015, 0.002), mix([255, 255, 255], fog));
+        for (const sd of [-1, 1]) quad(A(sd * (K.floorW - 0.12), 0.001), A(sd * K.floorW, 0.001), B(sd * K.floorW, 0.001), B(sd * (K.floorW - 0.12), 0.001), mix([196, 216, 236], fog));
+        if (gi % 5 === 2) { const l = ((gi * 37) % 9) / 10 - 0.45; quad(A(l, 0.002), A(l + 0.25, 0.002), P(da + (db - da) * 0.5, xa + (xb - xa) * 0.5 + l + 0.3, ya + 0.002), P(da + (db - da) * 0.5, xa + (xb - xa) * 0.5 + l + 0.27, ya + 0.002), mix([240, 248, 255], fog)); }
+      }
       // floor marks: tuck chevrons, the start line, the finish checkers
       if (inTuck && gi % 3 === 0 && j < 60 && da > 8) {
         ctx.fillStyle = mix(COL.tuck, fog);
@@ -705,8 +712,20 @@
     const w = (b.kind === 'chev' ? 60 : 120) * s, h = (b.kind === 'chev' ? 50 : 66) * s, top = y - h - 22 * s;
     ctx.fillStyle = '#5a4a3a'; ctx.fillRect(x - 3 * s, top + h, 6 * s, 22 * s);
     const col = b.kind === 'brake' ? '#e8434f' : b.kind === 'tuck' ? '#4f8fe0' : b.kind === 'hop' ? '#ff9a3d' : b.hair ? '#e8434f' : '#ffc53d';
+    if (s > 0.08) {
+      // the post: lit left, a snow cap where it meets the board, a soft shadow on the snow
+      ctx.fillStyle = '#7a6650'; ctx.fillRect(x - 3 * s, top + h, 2 * s, 22 * s);
+      ctx.fillStyle = 'rgba(60,90,130,0.18)'; ctx.beginPath(); ctx.ellipse(x + 6 * s, top + h + 22 * s, 16 * s, 3.5 * s, 0, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.fillStyle = col; rr(x - w / 2, top, w, h, 8 * s); ctx.fill();
-    if (s > 0.1) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; rr(x - w / 2 + 5 * s, top + 4 * s, w - 10 * s, 8 * s, 4 * s); ctx.fill(); }
+    if (s > 0.1) {
+      ctx.save(); rr(x - w / 2, top, w, h, 8 * s); ctx.clip();
+      ctx.fillStyle = 'rgba(40,20,40,0.18)'; ctx.fillRect(x - w / 2, top + h * 0.72, w, h); ctx.fillRect(x + w / 2 - 6 * s, top, 6 * s, h);
+      ctx.restore();
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; rr(x - w / 2 + 5 * s, top + 4 * s, w - 10 * s, 8 * s, 4 * s); ctx.fill();
+      for (const bx of [x - w / 2 + 7 * s, x + w / 2 - 7 * s]) { ctx.fillStyle = 'rgba(42,39,64,0.6)'; circle(bx, top + h - 7 * s, 2.4 * s); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(bx - 0.6 * s, top + h - 7.6 * s, 1 * s); ctx.fill(); }
+      ctx.fillStyle = '#ffffff'; rr(x - w / 2 + 6 * s, top - 4 * s, w * 0.55, 7 * s, 3.5 * s); ctx.fill();
+    }
     ctx.strokeStyle = '#2a2740'; ctx.lineWidth = Math.max(1, 4 * s); rr(x - w / 2, top, w, h, 8 * s); ctx.stroke();
     if (b.kind === 'chev' || b.kind === 'call') {
       ctx.fillStyle = '#2a2740';
@@ -754,16 +773,49 @@
     // riders in the sled: the pilot (front), then the brakeman (back)
     for (const k of [st.pilot, st.brake]) { if (out(k)) continue; const h = bobHip(st, k); bobDrawRider(k, h.x, h.y, h.sc, st.r[k]); }
     // the cowling (back view): runners, body, stripe, push handles
-    ctx.fillStyle = '#3a3654'; rr(-38, -12, 10, 12, 3); ctx.fill(); rr(28, -12, 10, 12, 3); ctx.fill();
-    ctx.fillStyle = '#c9d6e3'; ctx.fillRect(-38, -3, 10, 3); ctx.fillRect(28, -3, 10, 3);
-    ctx.fillStyle = '#e8434f'; ctx.strokeStyle = '#8a1f2c'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(-46, -10); ctx.lineTo(46, -10); ctx.quadraticCurveTo(52, -40, 40, -62); ctx.quadraticCurveTo(0, -74, -40, -62); ctx.quadraticCurveTo(-52, -40, -46, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // runner housings with steel blades (lit edge, a glint)
+    for (const rx of [-38, 28]) {
+      ctx.fillStyle = '#3a3654'; rr(rx, -12, 10, 12, 3); ctx.fill();
+      ctx.fillStyle = '#56527a'; ctx.fillRect(rx + 1.5, -11, 2.5, 8);
+      ctx.fillStyle = '#c9d6e3'; ctx.fillRect(rx, -3, 10, 3); ctx.fillStyle = '#ffffff'; ctx.fillRect(rx + 1, -3, 4, 1);
+      ctx.fillStyle = '#8a97ad'; ctx.fillRect(rx, -1, 10, 1);
+    }
+    const body = () => { ctx.beginPath(); ctx.moveTo(-46, -10); ctx.lineTo(46, -10); ctx.quadraticCurveTo(52, -40, 40, -62); ctx.quadraticCurveTo(0, -74, -40, -62); ctx.quadraticCurveTo(-52, -40, -46, -10); ctx.closePath(); };
+    body(); ctx.fillStyle = '#e8434f'; ctx.fill();
+    ctx.save(); body(); ctx.clip();
+    // shading: a darker right flank and lower skirt, a lit left flank; panel seams, a vent grille and rivets
+    ctx.fillStyle = '#c93441'; ctx.beginPath(); ctx.ellipse(40, -30, 22, 50, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#b52c3a'; ctx.fillRect(-60, -18, 120, 10);
+    ctx.fillStyle = '#ff6b72'; ctx.beginPath(); ctx.ellipse(-44, -36, 10, 34, 0.1, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(110,20,35,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    ctx.moveTo(-30, -66); ctx.quadraticCurveTo(-36, -40, -32, -10); ctx.moveTo(30, -66); ctx.quadraticCurveTo(36, -40, 32, -10); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,200,200,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath();
+    ctx.moveTo(-29, -66); ctx.quadraticCurveTo(-35, -40, -31, -10); ctx.moveTo(31, -66); ctx.quadraticCurveTo(37, -40, 33, -10); ctx.stroke();
+    ctx.fillStyle = '#7a1826'; for (let k = 0; k < 4; k++) rr(-20 + k * 11, -19, 7, 4, 2), ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; for (let k = 0; k < 4; k++) ctx.fillRect(-19 + k * 11, -19, 5, 0.8);
+    for (let k = 0; k < 7; k++) { const rx = -36 + k * 12; ctx.fillStyle = '#8a1f2c'; circle(rx + 0.4, -13, 1.3); ctx.fill(); ctx.fillStyle = '#ffd0d4'; circle(rx, -13.4, 0.7); ctx.fill(); }
+    ctx.restore();
+    ctx.strokeStyle = '#8a1f2c'; ctx.lineWidth = 3; body(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,220,220,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-38, -63); ctx.quadraticCurveTo(-8, -71.5, 20, -68); ctx.stroke();
+    // the gold stripe with a lit edge and a shaded edge
     ctx.fillStyle = C.gold; ctx.beginPath(); ctx.moveTo(-48, -32); ctx.lineTo(48, -32); ctx.lineTo(47, -24); ctx.lineTo(-47, -24); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff1b0'; ctx.fillRect(-47, -32, 94, 1.4); ctx.fillStyle = '#c9961e'; ctx.fillRect(-47, -25.5, 94, 1.5);
     ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.beginPath(); ctx.ellipse(-22, -52, 16, 6, -0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.ellipse(-27, -54, 6, 2, -0.2, 0, Math.PI * 2); ctx.fill();
+    // the roundel: a white disc with a grey rim and the star
+    ctx.fillStyle = '#c9d0de'; circle(0, -45.5, 11); ctx.fill();
     ctx.fillStyle = '#ffffff'; circle(0, -46, 10); ctx.fill();
     ctx.fillStyle = '#e8434f'; bobStarPath(0, -46, 7, 3); ctx.fill();
-    if (st.phase === 'ready' || st.phase === 'push') { ctx.fillStyle = '#5a5a78'; ctx.fillRect(-40, -78, 6, 18); ctx.fillRect(34, -78, 6, 18); ctx.fillRect(-40, -80, 18, 5); ctx.fillRect(22, -80, 18, 5); }
-    if (s.brake && st.phase === 'run') { ctx.fillStyle = '#c9d6e3'; ctx.fillRect(-6, -4, 12, 8); }
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; bobStarPath(-0.8, -46.8, 3, 1.3); ctx.fill();
+    if (st.phase === 'ready' || st.phase === 'push') {
+      // chrome push handles with a lit stripe and rubber grips
+      for (const [hx, gx] of [[-40, -40], [34, 22]]) {
+        ctx.fillStyle = '#4a4a66'; ctx.fillRect(hx, -78, 6, 18); ctx.fillRect(gx, -80, 18, 5);
+        ctx.fillStyle = '#9a9ab8'; ctx.fillRect(hx + 1, -78, 1.6, 18); ctx.fillRect(gx, -80, 18, 1.4);
+        ctx.fillStyle = '#26243f'; ctx.fillRect(gx + (gx < 0 ? 1 : 9), -80.5, 8, 6);
+      }
+    }
+    if (s.brake && st.phase === 'run') { ctx.fillStyle = '#c9d6e3'; ctx.fillRect(-6, -4, 12, 8); ctx.fillStyle = '#ffffff'; ctx.fillRect(-6, -4, 12, 1.5); ctx.fillStyle = '#8a97ad'; ctx.fillRect(-6, 2, 12, 2); }
     ctx.restore();
     // the brakeman running behind the sled is nearer: drawn last
     if (out(st.brake)) bobDrawRunner(st, st.brake, runPos(st.brake), seatFeet(st.brake), sp);

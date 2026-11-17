@@ -637,6 +637,20 @@ function tandemPaintBg(g) {
       g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(c.x, c.y); g.stroke();
     }
   }
+  // board by board: some boards a little lighter or darker (a short streak along the lane), nail pairs at the joints
+  for (let lane = 0, r = K.rIn + K.apron + 4; r < K.rOut - 5; r += 4.4, lane++) {
+    const pm = (r + 2.2 - K.rIn - K.apron) / (K.TW - K.apron - K.railPad);
+    for (let s = (lane * 37) % 90; s < K.LAP; s += 90) {
+      const hh = hash(lane, s | 0);
+      if (hh % 3 !== 2) {
+        g.strokeStyle = hh % 3 ? 'rgba(255,236,200,0.22)' : 'rgba(120,70,30,0.12)'; g.lineWidth = 3.2; g.beginPath();
+        for (let u = 4; u <= 86; u += 8) { const q = tandemXY(s + u, pm); u === 4 ? g.moveTo(q.x, q.y) : g.lineTo(q.x, q.y); }
+        g.stroke();
+      }
+      const n0 = tandemXY(s + 2, pm - 0.04), n1 = tandemXY(s + 2, pm + 0.04);
+      g.fillStyle = 'rgba(90,60,40,0.45)'; g.fillRect(n0.x - 0.5, n0.y - 0.5, 1, 1); g.fillRect(n1.x - 0.5, n1.y - 0.5, 1, 1);
+    }
+  }
   // the blue apron, the black measurement line, the red sprinter's line and the blue stayer's line
   g.beginPath(); stadiumOn(g, K.rIn + K.apron); stadiumOn(g, K.rIn); g.fillStyle = '#62b6ea'; g.fill('evenodd');
   g.lineWidth = 2; path(K.rIn + K.apron + 1.5); g.strokeStyle = '#26243f'; g.stroke();
@@ -662,11 +676,24 @@ function tandemPaintBg(g) {
   g.restore();
   path(K.rIn); g.lineWidth = 3; g.strokeStyle = '#4c9a48'; g.stroke();
   // little benches and rollers in the infield bends
-  for (const [x, y] of [[170, 350], [790, 220]]) {
-    g.fillStyle = 'rgba(28,26,54,0.18)'; rr2(x - 22, y - 5, 44, 12, 4); g.fill();
-    g.fillStyle = '#c98b5a'; rr2(x - 22, y - 8, 44, 10, 4); g.fill();
-    g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(x - 19, y - 7, 38, 1.5); g.strokeStyle = '#8a5833'; g.lineWidth = 1; rr2(x - 22, y - 8, 44, 10, 4); g.stroke();
-    g.fillStyle = '#8a5833'; g.fillRect(x - 18, y + 2, 4, 6); g.fillRect(x + 14, y + 2, 4, 6);
+  // (a team bench: three slats with grain and screws on painted steel legs, a towel and a bottle; beside it a training
+  // roller: three drums in a frame)
+  for (const [x, y, k] of [[170, 350, 0], [790, 220, 1]]) {
+    rkShadow(g, x + 2, y + 6, 26, 4, 0.2);
+    for (const lx of [x - 18, x + 14]) { rkMetal(g, lx, y - 2, 4, 10, 1, '#4a5d92', lx, { rivets: false, lw: 0.8 }); g.fillStyle = '#2b3f63'; g.fillRect(lx - 1, y + 7, 6, 1.5); }
+    for (let s = 0; s < 3; s++) rkBoard(g, x - 22, y - 8 + s * 3.4, 44, 3.4, s === 1 ? '#c98b5a' : '#d39662', 500 + s + k * 7, { nails: false, r: 1, lw: 0.8, grain: 1 });
+    for (const sx of [x - 16, x + 16]) for (let s = 0; s < 3; s++) { g.fillStyle = '#8a90a8'; g.fillRect(sx, y - 7 + s * 3.4, 1, 1); }
+    // a folded towel over one end and a water bottle
+    const tc = k ? '#5b95ff' : '#ff6b4a';
+    g.fillStyle = tc; rkRR(g, x + 4, y - 9, 12, 8, 1.5); g.fill(); g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillRect(x + 4, y - 9, 12, 1.2); g.fillStyle = tint(tc, 0.5); g.fillRect(x + 4, y - 5.5, 12, 1);
+    g.strokeStyle = shade(tc, 0.5); g.lineWidth = 0.8; rkRR(g, x + 4, y - 9, 12, 8, 1.5); g.stroke();
+    g.fillStyle = '#e9f6ff'; rkRR(g, x - 14, y - 15, 5, 8, 1.5); g.fill(); g.fillStyle = '#19b3a6'; g.fillRect(x - 14, y - 12, 5, 2.5); g.fillStyle = '#26243f'; g.fillRect(x - 13, y - 16.5, 3, 1.6);
+    g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(x - 13.4, y - 14, 0.8, 5);
+    // the roller
+    const rx = x + (k ? -48 : 40), ry = y - 2;
+    rkShadow(g, rx, ry + 8, 15, 3, 0.18);
+    rkMetal(g, rx - 14, ry - 6, 28, 12, 3, '#9aa7bd', 7 + k, { rivets: false, lw: 1 });
+    for (const dx of [-8, 0, 8]) { g.fillStyle = '#3c4260'; rkRR(g, rx + dx - 2.5, ry - 4, 5, 8, 2); g.fill(); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(rx + dx - 2, ry - 3.5, 1, 7); }
   }
   // banner boards on the wall along the straights (made-up colours, no words but "SUMMER GAMES")
   const boards = ['#ff6b4a', '#19b3a6', '#ffc53d', '#9b6fd6', '#8fd14f', '#5b95ff'];
@@ -679,8 +706,11 @@ function tandemPaintBg(g) {
       g.fillText((i + k0) % 2 ? 'SUMMER GAMES' : '★ TANDEM ★', x + 33, y + 4.4);
     }
   }
-  // the judges' stand by the finish line
+  // the judges' stand by the finish line: a white box with a shaded side, a navy trim and a shadow
+  rkShadow(g, fx + 2, K.CY + K.rOut + 35, 30, 4, 0.25);
   g.fillStyle = '#ffffff'; rr2(fx - 26, K.CY + K.rOut + 16, 52, 18, 4); g.fill();
+  g.fillStyle = '#e1e6ef'; g.fillRect(fx - 26, K.CY + K.rOut + 29, 52, 5); g.fillStyle = '#2b3f63'; g.fillRect(fx - 26, K.CY + K.rOut + 29, 52, 1.2);
+  g.strokeStyle = '#9aa7bd'; g.lineWidth = 1; rr2(fx - 26, K.CY + K.rOut + 16, 52, 18, 4); g.stroke();
   g.fillStyle = '#26243f'; g.font = '700 9px "Atkinson Hyperlegible", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText('FINISH', fx, K.CY + K.rOut + 25.5);
 }

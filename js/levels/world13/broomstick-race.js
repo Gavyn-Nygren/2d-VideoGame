@@ -671,38 +671,85 @@ function broomDrawHouse(h) {
   ctx.fillStyle = 'rgba(20,10,40,0.16)'; for (let yy = y0 + 9; yy < base; yy += 9) ctx.fillRect(x, yy, w, 1.4);
   ctx.fillStyle = 'rgba(255,255,255,0.04)'; for (let yy = y0 + 10.4; yy < base; yy += 9) ctx.fillRect(x, yy, w, 1);
   ctx.fillStyle = 'rgba(20,10,40,0.3)'; ctx.fillRect(x, y0, w, 6);
+  // a little moss and weather streaks under the eaves
+  ctx.fillStyle = 'rgba(20,10,40,0.12)'; for (let k = 0; k < 3; k++) { const sx = x + 10 + broomHash(h.seed, k + 40) * (w - 20); ctx.fillRect(sx, y0 + 6, 2, 10 + broomHash(h.seed, k + 50) * 18); }
   ctx.fillStyle = '#3a2a4a'; ctx.fillRect(x - 2, base - 8, w + 4, 8);
   ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (let bx = x + (h.seed % 9); bx < x + w - 6; bx += 16) ctx.fillRect(bx, base - 7, 10, 2);
+  ctx.fillStyle = 'rgba(10,5,20,0.45)'; for (let bx = x + (h.seed % 9) - 3; bx < x + w; bx += 16) ctx.fillRect(bx, base - 8, 1.2, 8);
+  ctx.fillRect(x - 2, base - 4.4, w + 4, 0.8);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x - 2, base - 8, w + 4, 1);
   ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(x, y0, 6, base - y0);
   ctx.fillStyle = 'rgba(20,10,40,0.25)'; ctx.fillRect(x + w - 8, y0, 8, base - y0);
+  // corner boards with a lit edge and nail heads
+  const wallC = K.wall[h.col];
+  ctx.fillStyle = tint(wallC, 0.12); ctx.fillRect(x, y0 + 4, 4, base - y0 - 12); ctx.fillStyle = shade(wallC, 0.35); ctx.fillRect(x + w - 4, y0 + 4, 4, base - y0 - 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x, y0 + 4, 1, base - y0 - 12);
+  ctx.fillStyle = 'rgba(10,5,20,0.4)'; for (let yy = y0 + 14; yy < base - 10; yy += 18) { ctx.fillRect(x + 1.5, yy, 1, 1); ctx.fillRect(x + w - 2.5, yy, 1, 1); }
   // windows (lit, with a cross frame) and a door
   const nw = Math.max(1, Math.floor((w - 30) / 44));
   for (let i = 0; i < nw; i++) {
     const wx = x + 18 + i * (w - 36) / Math.max(1, nw) + ((w - 36) / Math.max(1, nw) - 20) / 2, wy = y0 + 14, lit = broomHash(h.seed, i) > 0.25;
+    if (w > 70 && broomHash(h.seed, i + 60) > 0.4) {   // shutters
+      const sc = shade(K.wall[h.col], 0.45);
+      for (const sx of [wx - 11, wx + 23]) { ctx.fillStyle = sc; ctx.fillRect(sx, wy - 2, 8, 26); ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(sx, wy - 2, 8, 1); ctx.fillStyle = 'rgba(10,5,20,0.35)'; for (let yy = wy + 2; yy < wy + 22; yy += 4) ctx.fillRect(sx + 1, yy, 6, 1); }
+    }
     ctx.fillStyle = 'rgba(20,10,40,0.45)'; rr(wx - 3, wy - 3, 26, 28, 4); ctx.fill();
     ctx.fillStyle = 'rgba(255,230,200,0.22)'; ctx.fillRect(wx - 4, wy + 23, 28, 3);
     ctx.fillStyle = lit ? K.win : K.winDk; rr(wx, wy, 20, 22, 3); ctx.fill();
     if (lit) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(wx + 2.5, wy + 2.5, 5, 6); }
     if (lit) { ctx.fillStyle = 'rgba(255,215,122,0.18)'; circle(wx + 10, wy + 11, 20); ctx.fill(); }
     ctx.strokeStyle = 'rgba(30,20,50,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(wx + 10, wy); ctx.lineTo(wx + 10, wy + 22); ctx.moveTo(wx, wy + 11); ctx.lineTo(wx + 20, wy + 11); ctx.stroke();
+    ctx.fillStyle = '#3a2a4a'; ctx.fillRect(wx - 5, wy + 23, 30, 3); ctx.fillStyle = 'rgba(255,230,200,0.3)'; ctx.fillRect(wx - 5, wy + 23, 30, 1);
     if (lit && broomHash(h.seed, i + 5) > 0.8) { // a little ghost peeking out of a window
       ctx.fillStyle = '#f6f0ff'; ctx.beginPath(); ctx.arc(wx + 6, wy + 14, 5, Math.PI, 0); ctx.lineTo(wx + 11, wy + 21); ctx.lineTo(wx + 1, wy + 21); ctx.fill();
       ctx.fillStyle = C.ink; circle(wx + 4.5, wy + 14, 1); ctx.fill(); circle(wx + 7.5, wy + 14, 1); ctx.fill();
     }
   }
   if (base - y0 > 60) { ctx.fillStyle = 'rgba(20,10,40,0.4)'; rr(x + w * 0.5 - 12, base - 33, 24, 33, 9); ctx.fill(); ctx.fillStyle = '#2a1c30'; rr(x + w * 0.5 - 9, base - 30, 18, 30, 7); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + w * 0.5, base - 28); ctx.lineTo(x + w * 0.5, base); ctx.stroke(); ctx.fillStyle = C.gold; circle(x + w * 0.5 + 4, base - 15, 1.6); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + w * 0.5, base - 28); ctx.lineTo(x + w * 0.5, base); ctx.stroke();
+    ctx.strokeStyle = 'rgba(10,5,20,0.5)'; ctx.strokeRect(x + w * 0.5 - 6.5, base - 22, 5, 8); ctx.strokeRect(x + w * 0.5 + 1.5, base - 22, 5, 8); ctx.strokeRect(x + w * 0.5 - 6.5, base - 11, 5, 8); ctx.strokeRect(x + w * 0.5 + 1.5, base - 11, 5, 8);
+    ctx.strokeStyle = 'rgba(255,220,180,0.18)'; ctx.beginPath(); ctx.arc(x + w * 0.5, base - 23, 9, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
+    ctx.fillStyle = '#4a3a5a'; ctx.fillRect(x + w * 0.5 - 14, base - 3, 28, 3); ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(x + w * 0.5 - 14, base - 3, 28, 0.8);
+    ctx.fillStyle = '#a8802a'; circle(x + w * 0.5 + 4.4, base - 14.6, 1.9); ctx.fill(); ctx.fillStyle = C.gold; circle(x + w * 0.5 + 4, base - 15, 1.6); ctx.fill(); }
   // roof
   ctx.fillStyle = K.roof[h.roofCol];
-  if (h.flat) { ctx.fillRect(x - 6, y0 - 8, w + 12, 10); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(x - 6, y0 - 8, w + 12, 3); }
+  if (h.flat) {
+    ctx.fillRect(x - 6, y0 - 8, w + 12, 10); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(x - 6, y0 - 8, w + 12, 3);
+    ctx.fillStyle = 'rgba(10,5,20,0.4)'; for (let bx = x - 6 + 14; bx < x + w + 6; bx += 16) ctx.fillRect(bx, y0 - 8, 1.2, 10);
+    ctx.fillRect(x - 6, y0 + 1, w + 12, 1);
+    ctx.fillStyle = 'rgba(255,200,140,0.22)'; ctx.fillRect(x - 6, y0 - 8, w + 12, 1);
+  }
   else {
     ctx.beginPath(); ctx.moveTo(x - 10, y0 + 2); ctx.lineTo(x + w / 2, h.peak); ctx.lineTo(x + w + 10, y0 + 2); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(20,10,40,0.22)'; ctx.beginPath(); ctx.moveTo(x + w / 2, h.peak); ctx.lineTo(x + w + 10, y0 + 2); ctx.lineTo(x + w / 2, y0 + 2); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = 'rgba(20,10,40,0.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 10, y0 + 2); ctx.lineTo(x + w + 10, y0 + 2); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1.5;
-    for (let k = 1; k < 4; k++) { const yy = h.peak + (y0 - h.peak) * k / 4, hw = (w / 2 + 10) * k / 4; ctx.beginPath(); ctx.moveTo(x + w / 2 - hw, yy); ctx.lineTo(x + w / 2 + hw, yy); ctx.stroke(); }
+    ctx.save(); ctx.beginPath(); ctx.moveTo(x - 10, y0 + 2); ctx.lineTo(x + w / 2, h.peak); ctx.lineTo(x + w + 10, y0 + 2); ctx.closePath(); ctx.clip();
+    const rows = Math.max(3, Math.round((y0 - h.peak) / 8)), rh = (y0 + 2 - h.peak) / rows, sw = 9;
+    ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.beginPath();
+    for (let k = 0; k < rows; k++) if (k % 2) { const yy = h.peak + k * rh; ctx.rect(x - 10, yy, w + 20, rh); }
+    ctx.fill();
+    // the scallops: each shingle's round foot, a dark line under it and a lit lip
+    ctx.strokeStyle = 'rgba(10,5,25,0.45)'; ctx.lineWidth = 1.1; ctx.beginPath();
+    for (let k = 1; k <= rows; k++) { const yy = h.peak + k * rh, off = (k % 2) * sw / 2; for (let sx = x - 10 - off; sx < x + w + 10; sx += sw) { ctx.moveTo(sx, yy - 2); ctx.quadraticCurveTo(sx + sw / 2, yy + 1.5, sx + sw, yy - 2); } }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 0.9; ctx.beginPath();
+    for (let k = 1; k <= rows; k++) { const yy = h.peak + k * rh, off = (k % 2) * sw / 2; for (let sx = x - 10 - off; sx < x + w + 10; sx += sw) { ctx.moveTo(sx + 2, yy - rh + 1.5); ctx.lineTo(sx + sw - 2, yy - rh + 1.5); } }
+    ctx.stroke();
+    // a few odd shingles: a darker one, a slipped one
+    ctx.fillStyle = 'rgba(10,5,25,0.25)';
+    for (let k = 0; k < 4; k++) { const rr2 = 1 + Math.floor(broomHash(h.seed, k + 70) * (rows - 1)), yy = h.peak + rr2 * rh, sx = x + broomHash(h.seed, k + 80) * w; ctx.fillRect(sx, yy - rh + 1, sw - 1, rh - 2); }
+    ctx.restore();
+    // fascia board along the eaves and a ridge cap
+    ctx.fillStyle = shade(K.roof[h.roofCol], 0.4); ctx.fillRect(x - 10, y0 + 1, w + 20, 3);
+    ctx.fillStyle = 'rgba(255,200,140,0.18)'; ctx.fillRect(x - 10, y0 + 1, w + 20, 0.8);
+    ctx.fillStyle = shade(K.roof[h.roofCol], 0.3); circle(x + w / 2, h.peak + 1, 2.6); ctx.fill();
     ctx.strokeStyle = 'rgba(255,200,140,0.25)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 10, y0 + 2); ctx.lineTo(x + w / 2, h.peak); ctx.stroke(); // moonlit edge
-    if (h.peak < y0 - 50) { ctx.fillStyle = h.seed % 2 ? K.win : 'rgba(255,215,122,0.75)'; circle(x + w / 2, h.peak + 26, 6); ctx.fill(); } // attic window
+    if (h.peak < y0 - 50) {   // attic window, framed with a cross bar
+      ctx.fillStyle = shade(K.roof[h.roofCol], 0.5); circle(x + w / 2, h.peak + 26, 8.5); ctx.fill();
+      ctx.fillStyle = h.seed % 2 ? K.win : 'rgba(255,215,122,0.75)'; circle(x + w / 2, h.peak + 26, 6); ctx.fill();
+      ctx.strokeStyle = 'rgba(30,20,50,0.7)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(x + w / 2 - 6, h.peak + 26); ctx.lineTo(x + w / 2 + 6, h.peak + 26); ctx.moveTo(x + w / 2, h.peak + 20); ctx.lineTo(x + w / 2, h.peak + 32); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; circle(x + w / 2 - 2.5, h.peak + 23.5, 1.4); ctx.fill();
+    }
   }
   if (h.chim) {
     const c = h.chim;
@@ -712,6 +759,15 @@ function broomDrawHouse(h) {
     ctx.fillStyle = '#5a3444'; ctx.fillRect(c.x - 3, c.top - 2, c.w + 6, 7);
     ctx.strokeStyle = 'rgba(30,10,20,0.35)'; ctx.lineWidth = 1;
     for (let yy = c.top + 12; yy < y0; yy += 9) { ctx.beginPath(); ctx.moveTo(c.x, yy); ctx.lineTo(c.x + c.w, yy); ctx.stroke(); }
+    ctx.beginPath();
+    for (let yy = c.top + 3, k = 0; yy < y0; yy += 9, k++) for (let bx = c.x + (k % 2 ? 4 : 9); bx < c.x + c.w - 1; bx += 10) { ctx.moveTo(bx + 0.5, Math.max(c.top + 5, yy)); ctx.lineTo(bx + 0.5, Math.min(y0, yy + 9)); }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,200,160,0.1)'; for (let yy = c.top + 13; yy < y0; yy += 9) ctx.fillRect(c.x, yy, c.w, 1);
+    ctx.fillStyle = 'rgba(30,10,20,0.18)'; for (let k = 0; k < 3; k++) { const bx = c.x + broomHash(h.seed, k + 90) * (c.w - 8), by = c.top + 14 + broomHash(h.seed, k + 95) * Math.max(1, y0 - c.top - 24); ctx.fillRect(bx, by, 8, 7); }
+    ctx.fillStyle = '#5a3444'; ctx.fillRect(c.x - 3, c.top - 2, c.w + 6, 7);
+    ctx.fillStyle = 'rgba(255,200,160,0.3)'; ctx.fillRect(c.x - 3, c.top - 2, c.w + 6, 1.2);
+    ctx.fillStyle = 'rgba(20,5,15,0.4)'; ctx.fillRect(c.x - 3, c.top + 4, c.w + 6, 1);
+    ctx.fillStyle = '#1a0f1a'; ctx.fillRect(c.x + 2, c.top - 2, c.w - 4, 2);
   }
   if (h.cat) { // a black cat on the roof, tail curling
     const cx = x + w * 0.72, cy = h.peak + (y0 - h.peak) * 0.44 * 2 * 0.5 + 2;
@@ -739,10 +795,17 @@ function broomDrawPumpkin(x, y, r, lit) {
 function broomDrawTree(t) {
   const cols = [['#8a3a2e', '#a84a32'], ['#9a5a24', '#b87030'], ['#5a3a6a', '#704a82']][t.col];
   ctx.fillStyle = '#2e1f2e'; ctx.beginPath(); ctx.moveTo(t.x - 7, BROOM.street + 10); ctx.lineTo(t.x - 4, t.y); ctx.lineTo(t.x + 4, t.y); ctx.lineTo(t.x + 8, BROOM.street + 10); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(t.x - 2, BROOM.street + 6); ctx.lineTo(t.x - 1, t.y + t.r * 0.6); ctx.moveTo(t.x + 3, BROOM.street + 2); ctx.lineTo(t.x + 2, t.y + t.r * 0.7); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,220,200,0.12)'; ctx.fillRect(t.x - 5, t.y + t.r * 0.5, 1.5, BROOM.street - t.y - t.r * 0.5);
   ctx.fillStyle = cols[0]; circle(t.x, t.y, t.r); ctx.fill();
+  // leaf clumps round the edge
+  for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2 + (t.seed || 1) * 0.1, q = broomHash(t.seed || 1, k + 50); ctx.fillStyle = k % 3 ? cols[0] : cols[1]; circle(t.x + Math.cos(a) * t.r * 0.86, t.y + Math.sin(a) * t.r * 0.86, t.r * (0.22 + q * 0.12)); ctx.fill(); }
   ctx.fillStyle = 'rgba(20,10,40,0.25)'; ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0.1, Math.PI - 0.1); ctx.fill();
   ctx.fillStyle = cols[1]; circle(t.x - t.r * 0.3, t.y - t.r * 0.3, t.r * 0.62); ctx.fill(); circle(t.x + t.r * 0.4, t.y - t.r * 0.1, t.r * 0.45); ctx.fill();
   ctx.fillStyle = 'rgba(255,220,180,0.14)'; circle(t.x - t.r * 0.42, t.y - t.r * 0.45, t.r * 0.3); ctx.fill();
+  ctx.strokeStyle = shade(cols[0], 0.4); ctx.lineWidth = 1; ctx.beginPath();
+  for (let k = 0; k < 6; k++) { const q = broomHash(t.seed || 1, k + 60), a = q * Math.PI * 2, rr2 = t.r * (0.3 + broomHash(t.seed || 1, k + 66) * 0.5), lx = t.x + Math.cos(a) * rr2, ly = t.y + Math.sin(a) * rr2; ctx.moveTo(lx - 2.5, ly + 1); ctx.quadraticCurveTo(lx, ly - 2, lx + 2.5, ly + 1); }
+  ctx.stroke();
   ctx.fillStyle = cols[1]; for (let k = 0; k < 4; k++) { const q = broomHash(t.seed || 1, k + 20); circle(t.x - t.r * 0.8 + q * t.r * 1.6, t.y + t.r * 0.2 + broomHash(t.seed || 1, k + 30) * t.r * 0.5, 2.2); ctx.fill(); }
   if (t.owl) { // a cute owl on a branch, blinking
     const ox = t.x + (t.seed % 2 ? 10 : -12), oy = t.y + 4;
@@ -807,7 +870,14 @@ function broomDrawWorld() {
   if (BROOM.startX + 60 > cam.x - 80 && BROOM.startX < cam.x + W) {
     const sx = BROOM.startX + 48, gy = broomGroundY(c, sx);
     ctx.fillStyle = '#6b4630'; ctx.fillRect(sx - 2, gy - 50, 4, 50);
-    ctx.fillStyle = '#c98650'; rr(sx - 30, gy - 66, 60, 22, 6); ctx.fill(); ctx.strokeStyle = '#7a4a2a'; ctx.lineWidth = 2; rr(sx - 30, gy - 66, 60, 22, 6); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(sx - 2, gy - 50, 1, 50);
+    ctx.fillStyle = 'rgba(20,10,30,0.3)'; rr(sx - 28, gy - 64, 60, 22, 6); ctx.fill();
+    ctx.fillStyle = '#c98650'; rr(sx - 30, gy - 66, 60, 22, 6); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,70,30,0.4)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(sx - 26, gy - 60); ctx.quadraticCurveTo(sx, gy - 58, sx + 26, gy - 61); ctx.moveTo(sx - 26, gy - 49); ctx.quadraticCurveTo(sx, gy - 51, sx + 26, gy - 48.5); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,240,210,0.3)'; ctx.fillRect(sx - 26, gy - 65, 52, 1.2);
+    ctx.fillStyle = 'rgba(60,30,10,0.25)'; ctx.fillRect(sx - 26, gy - 47, 52, 2);
+    ctx.strokeStyle = '#7a4a2a'; ctx.lineWidth = 2; rr(sx - 30, gy - 66, 60, 22, 6); ctx.stroke();
+    rkNail(ctx, sx - 25, gy - 55, 1.1); rkNail(ctx, sx + 25, gy - 55, 1.1);
     text('START', sx, gy - 54.5, 13, '#3a2210', 'center');
     ctx.setLineDash([6, 8]); ctx.strokeStyle = 'rgba(255,215,122,0.35)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sx, BROOM.top - 10); ctx.lineTo(sx, gy - 70); ctx.stroke(); ctx.setLineDash([]);
   }

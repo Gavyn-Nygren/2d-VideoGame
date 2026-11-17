@@ -642,26 +642,47 @@ function mansionPaintBack(c, st, L) {
   for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
     if (L.grid[ty][tx] !== '#') continue;
     const x = tx * T, y = ty * T, open = (a, b) => { const ch = tile(a, b); return ch !== '#'; };
-    const edge = tx <= 1 || tx >= COLS - 2 || ty <= 0 || ty >= ROWS - 2;
+    const edge = tx <= 1 || tx >= COLS - 2 || ty <= 0 || ty >= ROWS - 2, g = hash(tx, ty);
     c.fillStyle = edge ? '#1f1630' : '#4a3352'; c.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
-    if (!edge) { c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + 2, y + 4, T - 4, T - 8); c.fillStyle = 'rgba(255,220,180,0.06)'; c.fillRect(x + 3, y + 5, T - 6, 2); }
-    else {
-      c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 1; const off = ty % 2 ? 0 : T / 2;
-      c.beginPath(); c.moveTo(x, y + T / 2); c.lineTo(x + T, y + T / 2); c.moveTo(x + off, y); c.lineTo(x + off, y + T / 2); c.moveTo(x + (off + T / 2) % T, y + T / 2); c.lineTo(x + (off + T / 2) % T, y + T); c.stroke();
-      c.fillStyle = 'rgba(255,255,255,0.035)'; c.fillRect(x + 1, y + 1, T - 2, 1.5); c.fillRect(x + 1, y + T / 2 + 1, T - 2, 1.5);
-    }
-    if (!edge) {   // wood grain on the inner floor blocks
-      c.strokeStyle = 'rgba(30,14,30,0.35)'; c.lineWidth = 1; const g = hash(tx, ty);
+    if (!edge) {
+      // an inner block: two dark-stained boards with grain, a knot, a seam, peg heads, a lit top-left and a shaded foot
+      c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + 2, y + 4, T - 4, T - 8); c.fillStyle = 'rgba(255,220,180,0.06)'; c.fillRect(x + 3, y + 5, T - 6, 2);
+      c.fillStyle = g % 3 === 0 ? 'rgba(255,220,180,0.04)' : 'rgba(10,4,16,0.08)'; c.fillRect(x, y + T / 2, T, T / 2);
+      rkGrain(c, x + 1, y + 1, T - 2, T - 2, '#4a3352', g % 211, false, 5);
+      c.strokeStyle = 'rgba(30,14,30,0.35)'; c.lineWidth = 1;
       c.beginPath(); c.moveTo(x + 2, y + 14 + g % 6); c.lineTo(x + T - 2, y + 15 + (g >> 3) % 6); c.stroke();
       if (g % 4 === 0) { c.beginPath(); c.ellipse(x + 8 + g % 14, y + 20, 3, 1.6, 0, 0, Math.PI * 2); c.stroke(); }
+      c.fillStyle = 'rgba(255,220,180,0.08)'; c.fillRect(x, y, 1.2, T);
+      c.fillStyle = 'rgba(10,4,16,0.22)'; c.fillRect(x + T - 1.2, y, 1.2, T); c.fillRect(x, y + T - 1.5, T, 1.5);
+      if (g % 5 === 2) { rkNail(c, x + 5, y + T - 6, 1, '#7a6a5a'); rkNail(c, x + T - 5, y + T - 6, 1, '#7a6a5a'); }
+    } else {
+      // the frame: old stone blocks with their own tones, lit tops, specks and the odd crack or moss
+      const off = ty % 2 ? 0 : T / 2;
+      for (const [bx, by, bw] of [[x, y, off || T / 2], [x + off, y, T / 2], [x, y + T / 2, (off + T / 2) % T || T / 2], [x + (off + T / 2) % T, y + T / 2, T / 2]]) {
+        const q = hash(bx | 0, by | 0);
+        c.fillStyle = q % 3 === 0 ? 'rgba(255,255,255,0.03)' : q % 3 === 1 ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0)'; c.fillRect(bx, by, Math.min(bw, x + T - bx), T / 2);
+        c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(bx + 2 + q % 10, by + 4 + (q >>> 5) % 8, 1, 1);
+      }
+      c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(x, y + T / 2); c.lineTo(x + T, y + T / 2); c.moveTo(x + off, y); c.lineTo(x + off, y + T / 2); c.moveTo(x + (off + T / 2) % T, y + T / 2); c.lineTo(x + (off + T / 2) % T, y + T); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.035)'; c.fillRect(x + 1, y + 1, T - 2, 1.5); c.fillRect(x + 1, y + T / 2 + 1, T - 2, 1.5);
+      c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + 1, y + T / 2 - 2, T - 2, 1.5); c.fillRect(x + 1, y + T - 2, T - 2, 1.5);
+      if (g % 9 === 4) { c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x + 6 + g % 12, y + 2); c.lineTo(x + 4 + g % 12, y + 8); c.lineTo(x + 8 + g % 12, y + 13); c.stroke(); }
+      if (g % 13 === 6) { c.fillStyle = 'rgba(90,130,80,0.28)'; c.beginPath(); c.ellipse(x + 10 + g % 10, y + T / 2, 6, 2, 0, Math.PI, 0); c.fill(); }
     }
     if (ty > 0 && open(tx, ty - 1)) {
+      // floorboards: a dark lip, the board with grain, staggered seams, nail pairs, a lit edge and scuffs
       c.fillStyle = '#6b4127'; c.fillRect(x, y, T, 9);
       c.fillStyle = '#9b6a40'; c.fillRect(x, y, T, 6);
-      c.fillStyle = 'rgba(60,30,15,0.5)'; c.fillRect(x + (hash(tx, ty) % 18) + 4, y + 1, 2, 5);
+      rkGrain(c, x, y + 0.5, T, 5, '#9b6a40', g % 157, false, 2);
+      c.fillStyle = 'rgba(60,30,15,0.5)'; c.fillRect(x + (g % 18) + 4, y + 1, 2, 5);
       c.fillStyle = 'rgba(255,230,180,0.25)'; c.fillRect(x, y, T, 1.5);
       c.fillStyle = 'rgba(40,20,10,0.55)'; c.fillRect(x + T - 1, y, 1, 6);   // board seams
-      if (hash(tx, ty) % 3 === 0) { c.fillStyle = '#3a2418'; c.fillRect(x + 4, y + 2.5, 1.6, 1.6); c.fillRect(x + T - 6, y + 2.5, 1.6, 1.6); }
+      if (g % 2) { c.fillStyle = 'rgba(40,20,10,0.45)'; c.fillRect(x + 8 + (g >>> 4) % 14, y, 1, 6); }
+      c.fillStyle = 'rgba(30,15,5,0.5)'; c.fillRect(x, y + 5.5, T, 1);
+      if (g % 3 === 0) { c.fillStyle = '#3a2418'; c.fillRect(x + 4, y + 2.5, 1.6, 1.6); c.fillRect(x + T - 6, y + 2.5, 1.6, 1.6); c.fillStyle = 'rgba(255,230,190,0.35)'; c.fillRect(x + 4, y + 2.5, 0.8, 0.8); c.fillRect(x + T - 6, y + 2.5, 0.8, 0.8); }
+      if (g % 7 === 3) { c.fillStyle = 'rgba(255,230,190,0.12)'; c.fillRect(x + 6 + g % 10, y + 3, 8, 1); }
+      c.fillStyle = 'rgba(20,10,5,0.35)'; c.fillRect(x, y + 8, T, 1);
     }
     if (open(tx, ty + 1) && ty < ROWS - 1) { c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x, y + T - 3, T, 3); }
   }
@@ -721,22 +742,68 @@ function mansionPaintDeco(c, d) {
   } else if (d.kind === 'stairs') {   // the old broken staircase (why you need the ghosts!)
     c.strokeStyle = 'rgba(20,12,30,0.6)'; c.lineWidth = 3; c.fillStyle = 'rgba(110,70,50,0.35)';
     const n = d.n || 6, sx = d.dx || 30, sy2 = d.dy || 30;
-    for (let k = 0; k < n; k++) { if ((d.broken || []).includes(k)) continue; c.fillRect(x + k * sx, y - k * sy2, sx, 8); }
+    for (let k = 0; k < n; k++) {
+      if ((d.broken || []).includes(k)) {
+        // a snapped tread: two splintered stubs
+        c.fillStyle = 'rgba(110,70,50,0.3)';
+        c.beginPath(); c.moveTo(x + k * sx, y - k * sy2); c.lineTo(x + k * sx + 7, y - k * sy2); c.lineTo(x + k * sx + 4, y - k * sy2 + 3); c.lineTo(x + k * sx + 8, y - k * sy2 + 8); c.lineTo(x + k * sx, y - k * sy2 + 8); c.closePath(); c.fill();
+        continue;
+      }
+      const tx = x + k * sx, ty = y - k * sy2;
+      c.fillStyle = 'rgba(110,70,50,0.35)'; c.fillRect(tx, ty, sx, 8);
+      c.fillStyle = 'rgba(255,220,180,0.12)'; c.fillRect(tx, ty, sx, 1.2);
+      c.fillStyle = 'rgba(20,10,20,0.3)'; c.fillRect(tx, ty + 6.5, sx, 1.5); c.fillRect(tx + sx - 1, ty, 1, 8);
+      c.strokeStyle = 'rgba(40,20,20,0.3)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(tx + 2, ty + 3.5); c.lineTo(tx + sx - 3, ty + 4); c.stroke();
+      c.fillStyle = 'rgba(30,15,15,0.5)'; c.fillRect(tx + 3, ty + 2.5, 1.2, 1.2); c.fillRect(tx + sx - 5, ty + 2.5, 1.2, 1.2);
+      // a baluster up to the handrail
+      c.fillStyle = 'rgba(110,70,50,0.28)'; c.fillRect(tx + sx / 2 - 1.5, ty - 34, 3, 34);
+    }
+    c.strokeStyle = 'rgba(20,12,30,0.6)'; c.lineWidth = 3;
     c.beginPath(); c.moveTo(x, y + 8); c.lineTo(x + n * sx, y - n * sy2 + 8); c.stroke();
+    c.strokeStyle = 'rgba(110,70,50,0.4)'; c.lineWidth = 3; c.beginPath(); c.moveTo(x + sx / 2, y - 34); c.lineTo(x + (n - 0.5) * sx, y - (n - 1) * sy2 - 34); c.stroke();
+    c.strokeStyle = 'rgba(255,220,180,0.12)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x + sx / 2, y - 35.5); c.lineTo(x + (n - 0.5) * sx, y - (n - 1) * sy2 - 35.5); c.stroke();
   } else if (d.kind === 'trunk') {
-    c.fillStyle = '#6a3e24'; c.fillRect(x, y - 30, 56, 30); c.fillStyle = '#8a5432'; c.fillRect(x, y - 36, 56, 10);
-    c.fillStyle = '#d9b35a'; c.fillRect(x + 25, y - 30, 6, 8); c.fillRect(x + 6, y - 36, 4, 36); c.fillRect(x + 46, y - 36, 4, 36);
+    // an old steamer trunk: planked body with grain, a domed lid, leather straps, brass corners, a lock with a keyhole
+    rkShadow(c, x + 30, y + 1, 32, 3, 0.3);
+    c.fillStyle = '#6a3e24'; c.fillRect(x, y - 30, 56, 30);
+    rkGrain(c, x, y - 30, 56, 30, '#6a3e24', 61, false, 5);
+    c.strokeStyle = 'rgba(30,14,6,0.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y - 20.5); c.lineTo(x + 56, y - 20.5); c.moveTo(x, y - 10.5); c.lineTo(x + 56, y - 10.5); c.stroke();
+    c.fillStyle = '#8a5432'; c.beginPath(); c.moveTo(x, y - 26); c.lineTo(x, y - 33); c.quadraticCurveTo(x + 28, y - 41, x + 56, y - 33); c.lineTo(x + 56, y - 26); c.closePath(); c.fill();
+    rkGrain(c, x, y - 36, 56, 10, '#8a5432', 67, false, 2);
+    c.fillStyle = 'rgba(30,14,6,0.45)'; c.fillRect(x, y - 27, 56, 1.5);
+    c.fillStyle = '#4a2a16'; c.fillRect(x + 5, y - 37, 6, 37); c.fillRect(x + 45, y - 37, 6, 37);
+    c.fillStyle = 'rgba(255,220,180,0.15)'; c.fillRect(x + 5, y - 37, 1.2, 37); c.fillRect(x + 45, y - 37, 1.2, 37);
+    c.fillStyle = '#d9b35a'; c.fillRect(x + 6, y - 24, 4, 3); c.fillRect(x + 46, y - 24, 4, 3);
+    for (const [cx, cy] of [[x, y - 34], [x + 50, y - 34], [x, y - 6], [x + 50, y - 6]]) { c.fillStyle = '#b8902a'; c.fillRect(cx, cy, 6, 6); c.fillStyle = '#f0d488'; c.fillRect(cx, cy, 6, 1.2); rkRivet(c, cx + 3, cy + 3, 1, '#d9b35a'); }
+    c.fillStyle = '#b8902a'; c.fillRect(x + 24, y - 31, 8, 10);
+    c.fillStyle = '#d9b35a'; c.fillRect(x + 25, y - 30, 6, 8);
+    c.fillStyle = '#f0d488'; c.fillRect(x + 25, y - 30, 6, 1);
+    c.fillStyle = '#2a1a10'; c.beginPath(); c.arc(x + 28, y - 27, 1.3, 0, Math.PI * 2); c.fill(); c.fillRect(x + 27.5, y - 27, 1, 3);
     c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x + 40, y - 26, 16, 26); c.fillStyle = 'rgba(255,230,190,0.2)'; c.fillRect(x, y - 36, 56, 1.5);
-    c.strokeStyle = '#3a2214'; c.lineWidth = 1.6; c.strokeRect(x, y - 36, 56, 36);
+    c.strokeStyle = '#3a2214'; c.lineWidth = 1.6; c.strokeRect(x, y - 30, 56, 30);
+    c.beginPath(); c.moveTo(x, y - 30); c.lineTo(x, y - 33); c.quadraticCurveTo(x + 28, y - 41, x + 56, y - 33); c.lineTo(x + 56, y - 30); c.stroke();
   } else if (d.kind === 'boxes') {
-    c.fillStyle = '#7a5a3a'; c.fillRect(x, y - 34, 40, 34); c.fillRect(x + 44, y - 24, 30, 24); c.fillRect(x + 8, y - 60, 30, 26);
-    c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(x + 30, y - 34, 10, 34); c.fillRect(x + 66, y - 24, 8, 24); c.fillRect(x + 30, y - 60, 8, 26);
-    c.fillStyle = 'rgba(255,230,190,0.16)'; c.fillRect(x, y - 34, 40, 2); c.fillRect(x + 44, y - 24, 30, 2); c.fillRect(x + 8, y - 60, 30, 2);
-    c.strokeStyle = 'rgba(40,24,14,0.35)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x + 20, y - 34); c.lineTo(x + 20, y); c.moveTo(x + 23, y - 60); c.lineTo(x + 23, y - 34); c.stroke();
-    c.strokeStyle = 'rgba(40,24,14,0.6)'; c.lineWidth = 2; c.strokeRect(x, y - 34, 40, 34); c.strokeRect(x + 44, y - 24, 30, 24); c.strokeRect(x + 8, y - 60, 30, 26);
-  } else if (d.kind === 'rails') {   // a balcony railing (scenery only)
+    // a stack of framed crates with braces and nails, a dust sheet corner and a cobweb
+    rkShadow(c, x + 38, y + 1, 42, 3, 0.3);
+    rkCrate(c, x, y - 34, 40, 34, '#7a5a3a', 3, {});
+    rkCrate(c, x + 44, y - 24, 30, 24, '#6e5236', 8, {});
+    rkCrate(c, x + 8, y - 60, 30, 26, '#84603e', 5, { brace: false });
+    c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(x + 34, y - 34, 6, 34); c.fillRect(x + 69, y - 24, 5, 24); c.fillRect(x + 33, y - 60, 5, 26);
+    c.fillStyle = 'rgba(220,215,235,0.35)'; c.beginPath(); c.moveTo(x + 8, y - 60); c.lineTo(x + 24, y - 60); c.quadraticCurveTo(x + 16, y - 52, x + 9, y - 42); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(230,225,255,0.25)'; c.lineWidth = 0.8; c.beginPath();
+    for (let k = 0; k < 4; k++) { c.moveTo(x + 38, y - 60); c.lineTo(x + 38 + Math.cos(k * 0.5) * 16, y - 60 + Math.sin(k * 0.5) * 16); }
+    c.moveTo(x + 44, y - 60); c.quadraticCurveTo(x + 46, y - 55, x + 50, y - 52); c.stroke();
+  } else if (d.kind === 'rails') {   // a balcony railing (scenery only): a moulded handrail on turned balusters
+    c.fillStyle = 'rgba(100,66,40,0.75)'; c.fillRect(x, y - 23, d.w, 6);
     c.fillStyle = 'rgba(160,110,70,0.75)'; c.fillRect(x, y - 22, d.w, 4);
-    for (let k = x + 4; k < x + d.w; k += 12) c.fillRect(k, y - 20, 3, 20);
+    c.fillStyle = 'rgba(255,220,180,0.3)'; c.fillRect(x, y - 22, d.w, 1);
+    for (let k = x + 4; k < x + d.w; k += 12) {
+      c.fillStyle = 'rgba(160,110,70,0.75)'; c.fillRect(k, y - 20, 3, 20);
+      c.beginPath(); c.ellipse(k + 1.5, y - 10, 2.6, 4, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(40,20,10,0.35)'; c.fillRect(k + 2, y - 20, 1, 20);
+      c.fillStyle = 'rgba(255,220,180,0.2)'; c.fillRect(k, y - 14, 1, 8);
+    }
+    c.fillStyle = 'rgba(100,66,40,0.75)'; c.fillRect(x, y - 2, d.w, 2);
   } else if (d.kind === 'round') {   // the attic's round window
     c.fillStyle = '#1b1430'; c.beginPath(); c.arc(x, y, 40, 0, Math.PI * 2); c.fill();
     const sky = c.createLinearGradient(0, y - 34, 0, y + 34); sky.addColorStop(0, '#2b2155'); sky.addColorStop(1, '#c06a6a');
@@ -762,8 +829,14 @@ function mansionDrawBack(st) {
 function mansionCandle(cd, t) {
   const x = cd.x, y = cd.y, fl = reduceMotion ? 0 : Math.sin(t * 9 + cd.ph) * 1.2 + Math.sin(t * 23 + cd.ph) * 0.6;
   ctx.fillStyle = '#8a6a2a'; ctx.fillRect(x - 8, y - 4, 16, 4); ctx.fillRect(x - 2, y - 30, 4, 26); ctx.fillRect(x - 10, y - 32, 20, 3);
+  ctx.fillStyle = '#d9b35a'; ctx.fillRect(x - 8, y - 4, 16, 1); ctx.fillRect(x - 2, y - 30, 1.2, 26); ctx.fillRect(x - 10, y - 32, 20, 0.9);
+  ctx.fillStyle = '#5a4214'; ctx.fillRect(x + 1, y - 30, 1, 26); ctx.fillRect(x - 3.5, y - 18, 7, 2.5);
+  for (const dx of [-8, 0, 8]) { ctx.fillStyle = '#6a4e1a'; ctx.fillRect(x + dx - 3, y - 33.5, 6, 2); }
   for (const dx of [-8, 0, 8]) {
     ctx.fillStyle = '#f4ead2'; ctx.fillRect(x + dx - 2, y - 44, 4, 12);
+    ctx.fillStyle = 'rgba(160,140,110,0.45)'; ctx.fillRect(x + dx + 0.8, y - 44, 1.2, 12);
+    ctx.fillStyle = '#fffaf0'; ctx.fillRect(x + dx - 2, y - 44, 4, 1.4); ctx.fillRect(x + dx - 2.6, y - 43, 1, 3 + ((dx + 8) % 5));
+    ctx.fillStyle = '#2a1a10'; ctx.fillRect(x + dx - 0.4, y - 46, 0.8, 2);
     ctx.fillStyle = '#ffb347'; ctx.beginPath(); ctx.ellipse(x + dx, y - 49 + fl * 0.3, 2.6, 5 + fl * 0.4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.ellipse(x + dx, y - 48, 1.2, 2.4, 0, 0, Math.PI * 2); ctx.fill();
   }
@@ -877,12 +950,29 @@ function mansionDrawPortrait(st, pt, t) {
 function mansionDrawDoor(st, t) {
   const d = st.exit; if (!d) return;
   const x = d.x, y = d.y, w = d.w, h = d.h, cx = x + w / 2, open = st.phase === 'won';
+  ctx.fillStyle = 'rgba(8,4,16,0.35)'; ctx.beginPath(); ctx.moveTo(x - 8, y + h); ctx.lineTo(x - 8, y + 18); ctx.arc(cx, y + 18, w / 2 + 8, Math.PI, 0); ctx.lineTo(x + w + 8, y + h); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#2a1a14'; ctx.beginPath(); ctx.moveTo(x - 4, y + h); ctx.lineTo(x - 4, y + 18); ctx.arc(cx, y + 18, w / 2 + 4, Math.PI, 0); ctx.lineTo(x + w + 4, y + h); ctx.closePath(); ctx.fill();
+  // arch stones round the frame
+  ctx.strokeStyle = 'rgba(255,220,180,0.14)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, y + 18, w / 2 + 3.4, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath();
+  for (let k = 1; k < 6; k++) { const a = Math.PI + k * Math.PI / 6; ctx.moveTo(cx + Math.cos(a) * (w / 2), y + 18 + Math.sin(a) * (w / 2)); ctx.lineTo(cx + Math.cos(a) * (w / 2 + 4), y + 18 + Math.sin(a) * (w / 2 + 4)); }
+  for (let yy = y + 30; yy < y + h; yy += 14) { ctx.moveTo(x - 4, yy); ctx.lineTo(x, yy); ctx.moveTo(x + w, yy + 7); ctx.lineTo(x + w + 4, yy + 7); }
+  ctx.stroke();
   if (open) { const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#fff2c4'); g.addColorStop(1, C.glow); ctx.fillStyle = g; }
   else ctx.fillStyle = '#7a4a2a';
   ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y + 18); ctx.arc(cx, y + 18, w / 2, Math.PI, 0); ctx.lineTo(x + w, y + h); ctx.closePath(); ctx.fill();
   if (!open) {
+    ctx.save(); ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y + 18); ctx.arc(cx, y + 18, w / 2, Math.PI, 0); ctx.lineTo(x + w, y + h); ctx.closePath(); ctx.clip();
+    ctx.strokeStyle = 'rgba(60,30,14,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath();
+    for (let k = 0; k < 9; k++) { const gx = x + 3 + k * (w - 6) / 8 + Math.sin(k * 2.3) * 1.5; ctx.moveTo(gx, y + 4); for (let yy = y + 4; yy <= y + h; yy += 8) ctx.lineTo(gx + Math.sin(yy * 0.08 + k) * 0.8, yy); }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,220,180,0.12)'; ctx.fillRect(x, y, 2, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + w - 4, y, 4, h);
+    // iron straps with studs
+    for (const sy of [y + 16, y + h - 16]) { ctx.fillStyle = '#2e2a36'; ctx.fillRect(x, sy - 2.5, w, 5); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x, sy - 2.5, w, 1); for (let k = 0; k < 4; k++) rkRivet(ctx, x + 4 + k * (w - 8) / 3, sy, 1.1, '#6a6280'); }
+    ctx.restore();
     ctx.strokeStyle = 'rgba(40,20,10,0.5)'; ctx.lineWidth = 2; for (const k of [0.33, 0.66]) { ctx.beginPath(); ctx.moveTo(x + w * k, y + 6); ctx.lineTo(x + w * k, y + h); ctx.stroke(); }
+    ctx.fillStyle = '#c98a3a'; circle(cx, y + 30, 7.6); ctx.fill();
     ctx.fillStyle = '#ff8a2a'; circle(cx, y + 30, 7); ctx.fill();   // a jack-o'-lantern knocker
     ctx.fillStyle = '#ffe36a'; ctx.fillRect(cx - 4, y + 28, 2.5, 2.5); ctx.fillRect(cx + 1.5, y + 28, 2.5, 2.5); ctx.fillRect(cx - 3, y + 32, 6, 1.5);
   }
