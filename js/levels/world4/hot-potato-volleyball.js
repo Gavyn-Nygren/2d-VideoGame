@@ -547,9 +547,23 @@ MODES.potato = {
     ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1;
     for (let y = nt - 14; y < fl + 14; y += 8) { ctx.beginPath(); ctx.moveTo(POT.netX - 7, y); ctx.lineTo(POT.netX + 7, y + 14); ctx.moveTo(POT.netX + 7, y); ctx.lineTo(POT.netX - 7, y + 14); ctx.stroke(); }
     ctx.restore();
+    // (rich props pass) the pole: a shadow on the sand, a dark outline, a lit left edge, painted bands, a weighted foot
+    // sunk in the sand; the tape: stitched, with a shaded underside and a brass clip
+    ctx.fillStyle = 'rgba(20,16,40,0.25)'; ctx.beginPath(); ctx.ellipse(POT.netX + 3, fl, 12, 2.5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = C.ink; ctx.fillRect(POT.netX - 2, nt - 3, 4, POT.netH + 3);
+    ctx.fillStyle = '#4a4766'; ctx.fillRect(POT.netX - 1.2, nt - 2, 1.6, POT.netH + 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(POT.netX - 1.2, nt - 2, 0.7, POT.netH + 1);
+    for (let y = nt + 14; y < fl - 10; y += 22) { ctx.fillStyle = '#ff6b4a'; ctx.fillRect(POT.netX - 2, y, 4, 4); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(POT.netX - 2, y, 4, 0.8); }
+    ctx.fillStyle = C.ink; rr(POT.netX - 6, fl - 6, 12, 7, 2); ctx.fill();
+    ctx.fillStyle = '#4a4766'; rr(POT.netX - 5, fl - 5.4, 10, 5, 1.6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(POT.netX - 4, fl - 5, 8, 0.8);
+    ctx.fillStyle = '#e6bf74'; ctx.beginPath(); ctx.ellipse(POT.netX, fl, 8, 1.6, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#5c5674'; rr(POT.netX - 8.6, nt - 4.6, 17.2, 6.4, 2.4); ctx.fill();
     ctx.fillStyle = C.paper; rr(POT.netX - 8, nt - 4, 16, 5, 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(28,26,54,0.5)'; ctx.lineWidth = 1; rr(POT.netX - 8, nt - 4, 16, 5, 2); ctx.stroke();
+    ctx.fillStyle = '#d9cfb8'; ctx.fillRect(POT.netX - 7, nt - 0.6, 14, 1.4);
+    ctx.strokeStyle = 'rgba(28,26,54,0.35)'; ctx.lineWidth = 0.6; ctx.setLineDash([1.4, 1.4]);
+    ctx.beginPath(); ctx.moveTo(POT.netX - 6.5, nt - 1.6); ctx.lineTo(POT.netX + 6.5, nt - 1.6); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.goldDark; ctx.fillRect(POT.netX - 1.2, nt - 4.4, 2.4, 5.6); ctx.fillStyle = C.gold; ctx.fillRect(POT.netX - 0.8, nt - 4.2, 1, 5);
     // shadows on the sand: where each potato will come down
     for (const pt of st.pots) if (pt.alive) {
       const h = clamp((fl - pt.y) / 400, 0, 1);
@@ -665,32 +679,70 @@ function potDrawPop(q, big) {
 // the beach: sandcastles with flags at the walls, a towel and a few shells (decoration only: the potato only meets the box and the net)
 function potDrawBeach() {
   const fl = POT.floorY;
+  // (rich props pass) sandcastles: a soft shadow, walls with a lit left face and a shaded right face, packed-sand
+  // blocks and grains, bucket-moulded towers with ridges, crenellations, an arched door, a window, shells pressed into
+  // the walls and a pennant on a stick
   const castle = (x, k) => {
-    ctx.fillStyle = '#e6bf74'; ctx.strokeStyle = '#b98a43'; ctx.lineWidth = 1.5;
-    rr(x - 22, fl - 18, 44, 18, 3); ctx.fill(); ctx.stroke();
-    rr(x - 9, fl - 34, 18, 18, 2); ctx.fill(); ctx.stroke();
-    for (const cx of [-22, 14]) { rr(x + cx, fl - 26, 8, 9, 1.5); ctx.fill(); ctx.stroke(); }
-    ctx.fillStyle = '#b98a43';
-    for (let i = 0; i < 3; i++) ctx.fillRect(x - 9 + i * 7, fl - 38, 4, 4);
-    ctx.fillStyle = '#7a5530'; rr(x - 3, fl - 9, 6, 9, 3); ctx.fill();
-    ctx.fillStyle = C.ink; ctx.fillRect(x - 0.75, fl - 52, 1.5, 15);
+    const sand = '#e6bf74', lit = '#f3d494', dk = '#c99a52', out = '#a0733a';
+    ctx.fillStyle = 'rgba(80,50,20,0.22)'; ctx.beginPath(); ctx.ellipse(x + 3, fl, 30, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    const block = (bx, by, bw, bh, r) => {
+      ctx.fillStyle = out; rr(bx - 0.8, by - 0.8, bw + 1.6, bh + 1.6, r + 0.5); ctx.fill();
+      ctx.fillStyle = sand; rr(bx, by, bw, bh, r); ctx.fill();
+      ctx.fillStyle = dk; ctx.fillRect(bx + bw * 0.62, by + 1, bw * 0.38 - 1, bh - 1.5);
+      ctx.fillStyle = lit; ctx.fillRect(bx + 1, by + 1, Math.max(1.5, bw * 0.18), bh - 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(bx + 1.5, by + 0.6, bw - 3, 1);
+    };
+    block(x - 22, fl - 18, 44, 18, 3);
+    // packed-sand ridges on the wall
+    ctx.fillStyle = 'rgba(160,115,58,0.35)'; ctx.fillRect(x - 21, fl - 12, 42, 0.9); ctx.fillRect(x - 21, fl - 6, 42, 0.9);
+    block(x - 9, fl - 34, 18, 18, 2);
+    ctx.fillStyle = 'rgba(160,115,58,0.35)'; for (let i = 0; i < 3; i++) ctx.fillRect(x - 8, fl - 30 + i * 5, 16, 0.8);
+    for (const cx of [-22, 14]) {
+      block(x + cx, fl - 26, 8, 9, 1.5);
+      ctx.fillStyle = out; ctx.fillRect(x + cx + 1, fl - 29, 2, 3); ctx.fillRect(x + cx + 5, fl - 29, 2, 3);
+      ctx.fillStyle = sand; ctx.fillRect(x + cx + 1.4, fl - 28.6, 1.2, 2.6); ctx.fillRect(x + cx + 5.4, fl - 28.6, 1.2, 2.6);
+    }
+    for (let i = 0; i < 3; i++) { ctx.fillStyle = out; ctx.fillRect(x - 9.6 + i * 7, fl - 38.6, 5.2, 5.2); ctx.fillStyle = i === 2 ? dk : sand; ctx.fillRect(x - 9 + i * 7, fl - 38, 4, 4); ctx.fillStyle = lit; ctx.fillRect(x - 9 + i * 7, fl - 38, 4, 0.9); }
+    // window and arched door
+    ctx.fillStyle = '#6a4626'; rr(x - 2.2, fl - 29, 4.4, 6, 2.2); ctx.fill();
+    ctx.fillStyle = '#7a5530'; rr(x - 3.5, fl - 10, 7, 10, 3.5); ctx.fill();
+    ctx.fillStyle = '#4f3218'; rr(x - 2.2, fl - 8.6, 4.4, 8.6, 2.2); ctx.fill();
+    ctx.strokeStyle = out; ctx.lineWidth = 1; rr(x - 3.5, fl - 10, 7, 10, 3.5); ctx.stroke();
+    // shells and grains pressed in
+    ctx.fillStyle = '#ffd7c2'; ctx.beginPath(); ctx.ellipse(x - 14, fl - 9, 2.2, 1.5, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(x + 13, fl - 13, 1.6, 1.1, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#b98a43'; for (const [gx, gy] of [[-17, -15], [-6, -4], [8, -7], [17, -4], [-3, -24], [4, -19]]) { circle(x + gx, fl + gy, 0.7); ctx.fill(); }
+    // the pennant
+    ctx.fillStyle = '#6a4626'; ctx.fillRect(x - 0.9, fl - 52, 1.8, 15);
     ctx.fillStyle = PCOL[k];
     const wv = Math.sin(G.clock * 5 + k) * 1.5;
     ctx.beginPath(); ctx.moveTo(x + 0.75, fl - 52); ctx.lineTo(x + (k ? -11 : 11), fl - 48 + wv); ctx.lineTo(x + 0.75, fl - 44); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = PDARK[k]; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = C.gold; circle(x, fl - 52.5, 1.6); ctx.fill();
   };
   castle(62, 0); castle(POT.right - 32, 1);
-  // a striped towel on each side (flat on the sand)
+  // a striped towel on each side (flat on the sand): a shadow, a darker hem, a lit fold and fringe at both ends
   for (const [x, k] of [[150, 0], [POT.right - 190, 1]]) {
+    ctx.fillStyle = 'rgba(80,50,20,0.22)'; ctx.fillRect(x + 1, fl + 0.5, 52, 1.5);
     ctx.save(); ctx.beginPath(); rr(x, fl - 3, 52, 4, 2); ctx.clip();
     for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? '#fff6e6' : PCOL[k]; ctx.fillRect(x + i * 9, fl - 3, 9, 4); }
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x, fl - 3, 52, 0.9);
+    ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.fillRect(x, fl, 52, 1);
     ctx.restore();
+    ctx.strokeStyle = PDARK[k]; ctx.lineWidth = 0.8;
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(x - 0.5, fl - 2.4 + i); ctx.lineTo(x - 2.5, fl - 2.6 + i * 1.1); ctx.moveTo(x + 52.5, fl - 2.4 + i); ctx.lineTo(x + 54.5, fl - 2.6 + i * 1.1); ctx.stroke(); }
   }
-  // shells and a starfish in the sand (the floor tiles' top edge)
-  ctx.fillStyle = '#ffd7c2';
-  for (const x of [118, 330, 400, 600, 655, 840]) { ctx.beginPath(); ctx.ellipse(x, fl + 9, 3, 2, 0, 0, Math.PI * 2); ctx.fill(); }
+  // shells and a starfish in the sand (the floor tiles' top edge), each with a little shadow and ridges
+  for (const x of [118, 330, 400, 600, 655, 840]) {
+    ctx.fillStyle = 'rgba(120,80,40,0.25)'; ctx.beginPath(); ctx.ellipse(x + 0.6, fl + 10, 3.4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd7c2'; ctx.beginPath(); ctx.ellipse(x, fl + 9, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#e0a58c'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(x - 1.2, fl + 7.4); ctx.lineTo(x - 1.2, fl + 10.6); ctx.moveTo(x + 1.2, fl + 7.4); ctx.lineTo(x + 1.2, fl + 10.6); ctx.stroke();
+  }
+  ctx.fillStyle = '#d97a5a'; potStar(260.6, fl + 10.8, 4.5, 2); potStar(770.6, fl + 11.8, 4, 1.8);
   ctx.fillStyle = '#ff9f7a';
   potStar(260, fl + 10, 4.5, 2);
   potStar(770, fl + 11, 4, 1.8);
+  ctx.fillStyle = '#ffe0c8'; for (const [sx, sy] of [[260, fl + 10], [770, fl + 11]]) { circle(sx, sy, 0.8); ctx.fill(); }
 }
 function potStar(x, y, r, ri) {
   ctx.beginPath();

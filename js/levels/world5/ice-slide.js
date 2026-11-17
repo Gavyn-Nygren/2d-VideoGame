@@ -260,6 +260,10 @@
       const left = (tx + (ty % 2)) % 2 === 0;
       g.fillStyle = 'rgba(32,58,120,0.35)'; g.fillRect(x, y, T, 1); if (left) g.fillRect(x, y, 1, T);
       g.fillStyle = 'rgba(225,244,255,0.22)'; g.fillRect(x, y + 1, T, 1); if (left) g.fillRect(x + 1, y + 1, 1, T - 1);
+      // (rich props pass) each block bevelled: a shaded foot and right end, frost speckle and a tiny trapped flake
+      g.fillStyle = 'rgba(32,58,120,0.14)'; g.fillRect(x, y + T - 4, T, 4); if (!left) g.fillRect(x + T - 3, y + 1, 3, T - 1);
+      g.fillStyle = 'rgba(235,248,255,0.3)'; for (let i = 0; i < 3; i++) g.fillRect(x + 3 + (h >>> (i * 5 + 1)) % 24, y + 4 + (h >>> (i * 5 + 3)) % 20, 1, 1);
+      if (h % 9 === 3) { const fx = x + 8 + (h >>> 7) % 14, fy = y + 9 + (h >>> 11) % 12; g.strokeStyle = 'rgba(240,250,255,0.45)'; g.lineWidth = 0.7; g.beginPath(); for (let k = 0; k < 3; k++) { const a = k * Math.PI / 3; g.moveTo(fx - Math.cos(a) * 2.6, fy - Math.sin(a) * 2.6); g.lineTo(fx + Math.cos(a) * 2.6, fy + Math.sin(a) * 2.6); } g.stroke(); }
       // a glassy streak, a frozen bubble or a hairline crack
       if (h % 4 === 0) {
         const sx = x + 6 + (h >> 4) % 10;
@@ -721,10 +725,18 @@
         const ch = L.grid[ty][tx], x = tx * T, y = ty * T, up = tile(tx, ty - 1);
         if (ch === '#' && !'#sw'.includes(up)) {
           if (st.snow.has(ty * COLS + tx)) {
+            ctx.fillStyle = '#b9cde3'; ctx.fillRect(x, y + 1, T, 11);
             ctx.fillStyle = '#dfe9f3'; ctx.fillRect(x, y, T, 10);
+            for (let i = 0; i < 3; i++) { circle(x + 5 + i * 10, y + 7.5, 4.8); ctx.fill(); }
             ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, T, 6);
             for (let i = 0; i < 3; i++) { circle(x + 5 + i * 10, y + 4, 4.5); ctx.fill(); }
+            // (rich props pass) a lit crest on each lump, blue shade in the dips, grains and a sparkle: grippy snow
+            ctx.fillStyle = 'rgba(255,255,255,0.95)'; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(x + 3.6 + i * 10, y + 1.6, 2.4, 1, -0.3, 0, Math.PI * 2); ctx.fill(); }
             ctx.fillStyle = 'rgba(160,190,225,0.5)'; circle(x + 9, y + 8, 1.3); ctx.fill(); circle(x + 21, y + 7, 1.3); ctx.fill();
+            ctx.fillStyle = 'rgba(160,190,225,0.35)'; circle(x + 10, y + 4.6, 1.4); ctx.fill(); circle(x + 20, y + 4.6, 1.4); ctx.fill();
+            const hs = hash(tx + 3, ty);
+            ctx.fillStyle = 'rgba(140,170,210,0.45)'; for (let i = 0; i < 3; i++) { ctx.fillRect(x + 2 + (hs >>> (i * 4)) % 25, y + 2 + (hs >>> (i * 4 + 2)) % 7, 1, 1); }
+            if (hs % 3 === 0) { const sx = x + 4 + (hs >>> 9) % 22; ctx.fillStyle = '#ffffff'; ctx.fillRect(sx - 2, y + 2.6, 4, 0.7); ctx.fillRect(sx - 0.35, y + 0.8, 0.7, 4); }
           } else {
             ctx.fillStyle = '#7cc7ec'; ctx.fillRect(x, y, T, 10);
             ctx.fillStyle = '#c9f0ff'; ctx.fillRect(x, y, T, 6);
@@ -762,8 +774,11 @@
       for (const [fx, fy] of cfg.floes || []) {
         const bob = Math.sin(G.clock * 2 + fx * 0.05) * 1.4;
         ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.beginPath(); ctx.ellipse(fx, fy + 4 + bob, 16, 3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#9ccfee'; rr(fx - 15.6, fy - 3.6 + bob, 31.2, 8.4, 3.4); ctx.fill();
         ctx.fillStyle = '#f4fbff'; rr(fx - 15, fy - 3 + bob, 30, 7, 3); ctx.fill();
         ctx.fillStyle = '#bfe6fb'; ctx.fillRect(fx - 13, fy + 2 + bob, 26, 2);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(fx - 12, fy - 2.4 + bob, 14, 1);
+        ctx.strokeStyle = 'rgba(120,170,215,0.6)'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(fx + 4, fy - 3 + bob); ctx.lineTo(fx + 6, fy + bob); ctx.lineTo(fx + 9, fy + 1 + bob); ctx.stroke();
       }
       const cheer = st.cheerT > 0 ? Math.abs(Math.sin(st.cheerT * 9)) : 0;
       for (const g of st.pengs) {

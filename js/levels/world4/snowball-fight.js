@@ -526,10 +526,15 @@ function snowDrawCatchCall(p) {
 function snowDrawDecor() {
   // a snowy pine in Pip's corner and a little snowman (with a bucket hat, so nobody mistakes it for a player) in Bo's
   const pine = (x, y, s) => {
+    ctx.fillStyle = SNOW_INK + '0.15)'; ctx.beginPath(); ctx.ellipse(x + 2, y, 20 * s, 3, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#6b4a35'; ctx.fillRect(x - 3 * s, y - 12 * s, 6 * s, 12 * s);
+    ctx.fillStyle = '#4e3426'; ctx.fillRect(x + 0.5 * s, y - 12 * s, 2.5 * s, 12 * s); ctx.fillStyle = '#8a6448'; ctx.fillRect(x - 2.4 * s, y - 11 * s, 0.9 * s, 10 * s);
     for (let i = 0; i < 3; i++) {
       const ty = y - 10 * s - i * 15 * s, hw = (22 - i * 5) * s;
+      ctx.fillStyle = '#1f5a4c'; ctx.beginPath(); ctx.moveTo(x - hw - 1, ty + 1); ctx.lineTo(x, ty - 25 * s); ctx.lineTo(x + hw + 1, ty + 1); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#2f7a68'; ctx.beginPath(); ctx.moveTo(x - hw, ty); ctx.lineTo(x, ty - 24 * s); ctx.lineTo(x + hw, ty); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#25695a'; ctx.beginPath(); ctx.moveTo(x, ty - 24 * s); ctx.lineTo(x + hw, ty); ctx.lineTo(x + hw * 0.2, ty); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#3e9480'; ctx.beginPath(); ctx.moveTo(x - hw * 0.15, ty - 21 * s); ctx.lineTo(x - hw * 0.8, ty - 1); ctx.lineTo(x - hw * 0.62, ty - 1); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#f8fcff'; ctx.beginPath(); ctx.moveTo(x - hw * 0.55, ty - 10 * s); ctx.lineTo(x, ty - 24 * s); ctx.lineTo(x + hw * 0.55, ty - 10 * s);
       ctx.quadraticCurveTo(x, ty - 6 * s, x - hw * 0.55, ty - 10 * s); ctx.fill();
     }
@@ -538,22 +543,47 @@ function snowDrawDecor() {
   const x = 908, y = SNOW.floorY;
   ctx.fillStyle = SNOW_INK + '0.15)'; ctx.beginPath(); ctx.ellipse(x, y, 14, 3, 0, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = '#6b4a35'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 7, y - 26); ctx.lineTo(x - 19, y - 33); ctx.moveTo(x + 7, y - 26); ctx.lineTo(x + 18, y - 35); ctx.stroke();
+  ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x - 16, y - 31.4); ctx.lineTo(x - 20, y - 30); ctx.moveTo(x - 15, y - 31.8); ctx.lineTo(x - 16, y - 36); ctx.moveTo(x + 15, y - 33.2); ctx.lineTo(x + 19, y - 32); ctx.moveTo(x + 15, y - 33.4); ctx.lineTo(x + 16, y - 38); ctx.stroke();
+  // (rich props pass) shaded snowballs (a blue shade on the lower right, a lit upper left), coal buttons, a knitted scarf
   for (const [yy, r] of [[-11, 11], [-29, 8]]) {
-    ctx.fillStyle = '#ffffff'; circle(x, y + yy, r); ctx.fill(); ctx.strokeStyle = '#a6bad4'; ctx.lineWidth = 1.5; circle(x, y + yy, r); ctx.stroke();
+    ctx.fillStyle = '#ffffff'; circle(x, y + yy, r); ctx.fill();
+    ctx.fillStyle = '#dbe6f4'; ctx.beginPath(); ctx.arc(x, y + yy, r, -0.4, Math.PI * 0.75); ctx.arc(x - r * 0.25, y + yy - r * 0.25, r * 0.9, Math.PI * 0.75, -0.4, true); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.ellipse(x - r * 0.4, y + yy - r * 0.45, r * 0.3, r * 0.18, -0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#a6bad4'; ctx.lineWidth = 1.5; circle(x, y + yy, r); ctx.stroke();
   }
+  ctx.fillStyle = '#3a3550'; for (const by of [-15, -9]) { circle(x, y + by, 1.3); ctx.fill(); }
+  ctx.fillStyle = '#4fb6a0'; rr(x - 8, y - 23, 16, 4, 2); ctx.fill(); rr(x + 2, y - 22, 4, 9, 1.5); ctx.fill();
+  ctx.fillStyle = '#2f7a68'; for (let k = 0; k < 4; k++) ctx.fillRect(x - 6 + k * 4, y - 23, 1.2, 4); ctx.fillRect(x + 2, y - 15, 4, 1.2);
+  ctx.fillStyle = '#566584'; ctx.beginPath(); ctx.moveTo(x - 9.5, y - 34); ctx.lineTo(x + 9.5, y - 34); ctx.lineTo(x + 8, y - 36.5); ctx.lineTo(x - 8, y - 36.5); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#7f8fb0'; ctx.beginPath(); ctx.moveTo(x - 8, y - 35); ctx.lineTo(x + 8, y - 35); ctx.lineTo(x + 6, y - 46); ctx.lineTo(x - 6, y - 46); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#9fadc9'; ctx.fillRect(x - 5.6, y - 45.5, 2, 9.5); ctx.fillStyle = '#5f6d8c'; ctx.fillRect(x + 3, y - 45.5, 2.4, 9.5); ctx.fillRect(x - 6.6, y - 41, 13.2, 1.4);
   ctx.fillStyle = C.ink; circle(x - 3, y - 30, 1.4); ctx.fill(); circle(x + 3, y - 30, 1.4); ctx.fill();
   ctx.fillStyle = '#ff8a2a'; ctx.beginPath(); ctx.moveTo(x, y - 28); ctx.lineTo(x - 8, y - 26.5); ctx.lineTo(x, y - 25.5); ctx.closePath(); ctx.fill();
+}
+function snowPaintBrick(c, h) {
+  c.fillStyle = '#9fb6d3'; c.fillRect(0, 0, T, T);
+  const blocks = [[0.6, 0.6, 13.6, 13.6], [15, 0.6, 14.4, 13.6], [0.6, 15, 6.2, 14.4], [7.6, 15, 14.4, 14.4], [22.8, 15, 6.6, 14.4]];
+  blocks.forEach(([bx, by, bw, bh], k) => {
+    const hh = h >>> (k * 3);
+    c.fillStyle = '#c9d8eb'; rrOn(c, bx, by, bw, bh, 2.6); c.fill();
+    c.fillStyle = (hh % 3 === 0) ? '#eef5fd' : '#f4f9ff'; rrOn(c, bx, by, bw - 1.6, bh - 2, 2.4); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.9)'; c.fillRect(bx + 1.6, by + 0.8, bw - 4.4, 1);
+    c.fillStyle = 'rgba(160,190,225,0.35)'; c.fillRect(bx + 1, by + bh - 3.6, bw - 2.6, 1.4);
+    // pressed-in grain and a sparkle
+    c.fillStyle = 'rgba(140,170,210,0.4)'; circleOn(c, bx + 3 + hh % Math.max(1, bw - 6), by + 4 + (hh >>> 4) % 6, 0.7); c.fill();
+    if (hh % 2) { c.fillStyle = '#ffffff'; const sx = bx + 2 + (hh >>> 6) % Math.max(1, bw - 5), sy = by + 3 + (hh >>> 9) % 6; c.fillRect(sx - 1.5, sy - 0.3, 3, 0.6); c.fillRect(sx - 0.3, sy - 1.5, 0.6, 3); }
+  });
+  c.strokeStyle = '#8fa8c8'; c.lineWidth = 1.2; c.strokeRect(0.6, 0.6, T - 1.2, T - 1.2);
 }
 function snowDrawForts() {
   const st = G.mst, L = G.level;
   for (const f of st.forts) {
     if (L.grid[f.ty][f.tx] !== 'P') continue;
     const x = f.tx * T, y = f.ty * T, key = f.ty * COLS + f.tx, hp = st.brickHP[key] === undefined ? SNOW.brickHP : st.brickHP[key];
-    ctx.fillStyle = '#f4f9ff'; ctx.fillRect(x, y, T, T);
-    ctx.fillStyle = 'rgba(120,150,190,0.22)'; ctx.fillRect(x + T - 4, y, 4, T); ctx.fillRect(x, y + T - 3, T, 3);
-    ctx.fillStyle = '#c3d3e7'; ctx.fillRect(x, y + 14, T, 2); ctx.fillRect(x + 14, y, 2, 14); ctx.fillRect(x + 6, y + 16, 2, 14); ctx.fillRect(x + 22, y + 16, 2, 14);
-    ctx.strokeStyle = '#9fb6d3'; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.75, y + 0.75, T - 1.5, T - 1.5);
+    // (rich props pass) packed-snow bricks in two courses: each block rounded, lit on top and left, blue in its shaded
+    // foot and right side, with pressed-in grain, a few sparkles and blue mortar; one picture per look
+    const v = hash(f.tx, f.ty) % 4;
+    blitSprite(artSprite('snowbrick' + v, T, T, 0, 0, c => snowPaintBrick(c, hash(v * 5 + 2, 9))), x, y);
     if (hp <= 2) {
       ctx.strokeStyle = '#7f97ba'; ctx.lineWidth = 1.6; ctx.beginPath();
       ctx.moveTo(x + 9, y + 2); ctx.lineTo(x + 13, y + 9); ctx.lineTo(x + 9, y + 14); ctx.lineTo(x + 14, y + 22);
@@ -566,9 +596,14 @@ function snowDrawForts() {
     }
     if (tile(f.tx, f.ty - 1) !== 'P') { // battlements: a snow-capped block at each end of the top brick
       for (const bx of [x, x + T - 10]) {
-        ctx.fillStyle = '#f4f9ff'; ctx.fillRect(bx, y - 8, 10, 9);
-        ctx.strokeStyle = '#9fb6d3'; ctx.lineWidth = 1.5; ctx.strokeRect(bx + 0.75, y - 7.25, 8.5, 8);
-        ctx.fillStyle = '#ffffff'; rr(bx - 1.5, y - 11, 13, 5, 2.5); ctx.fill();
+        ctx.fillStyle = '#9fb6d3'; rr(bx - 0.2, y - 8.6, 10.4, 9.6, 2); ctx.fill();
+        ctx.fillStyle = '#dbe7f5'; rr(bx + 0.8, y - 7.6, 8.4, 7.8, 1.6); ctx.fill();
+        ctx.fillStyle = '#f4f9ff'; rr(bx + 0.8, y - 7.6, 6.6, 6, 1.6); ctx.fill();
+        // a heaped snow cap with a lit top and a drip
+        ctx.fillStyle = '#c3d3e7'; rr(bx - 1.5, y - 10.2, 13, 5, 2.5); ctx.fill();
+        ctx.fillStyle = '#ffffff'; rr(bx - 1.5, y - 11, 13, 4.4, 2.2); ctx.fill();
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(bx + 7, y - 6.4, 1.4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(bx + 1, y - 10.6, 3, 0.8);
       }
     }
     if (st.melt && hp < SNOW.brickHP && tile(f.tx, f.ty + 1) !== 'P') { // drips off the bottom of the wall

@@ -695,7 +695,13 @@ function kothDrawHill(st) {
   const state = st.state, flick = Math.floor(G.clock * 8) % 2;
   const col = state === 0 || state === 1 ? PCOL[state] : state === 2 ? PCOL[flick] : '#e9e4f5';
   // zone band on the grass
-  ctx.save(); ctx.globalAlpha = state === -1 ? 0.45 : 0.7; ctx.fillStyle = col; ctx.fillRect(x0, top, x1 - x0, 5); ctx.restore();
+  ctx.save(); ctx.globalAlpha = state === -1 ? 0.45 : 0.7; ctx.fillStyle = col; ctx.fillRect(x0, top, x1 - x0, 5);
+  // (rich props pass) the band gets a lit top, a darker foot and little chevrons pointing to the middle
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x0, top, x1 - x0, 1);
+  ctx.fillStyle = 'rgba(28,26,54,0.25)'; ctx.fillRect(x0, top + 4, x1 - x0, 1);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  for (let x = x0 + 8; x < x1 - 6; x += 14) { const d = x < hx ? 1 : -1; ctx.beginPath(); ctx.moveTo(x, top + 1.4); ctx.lineTo(x + d * 3, top + 2.5); ctx.lineTo(x, top + 3.6); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
   // the comeback player's zone is wider: the top step next to the summit counts for them (gold = help)
   // (the part of it over the summit is drawn on the summit's grass, only the part past the summit's edge on the step)
   const sx0 = st.zoneX0, sx1 = st.zoneX1;
@@ -722,16 +728,38 @@ function kothDrawHill(st) {
     ctx.restore();
   }
   // posts at the band ends (they slide inward in the Shrinking Hill)
+  // (rich props pass) striped posts: a shadow, an outline, stripes in the scorer's colour, a shaded right side, a brass
+  // foot and a shaded gold knob with a glint
   for (const x of [x0, x1]) {
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(x + 1, top, 5, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#5a4a3e'; rr(x - 2.8, top - 18.5, 5.6, 18.5, 2.6); ctx.fill();
     ctx.fillStyle = '#fff3e0'; rr(x - 2, top - 18, 4, 18, 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(28,26,54,0.35)'; ctx.lineWidth = 1; rr(x - 2, top - 18, 4, 18, 2); ctx.stroke();
-    ctx.fillStyle = C.gold; circle(x, top - 19, 3); ctx.fill();
+    ctx.save(); rr(x - 2, top - 18, 4, 18, 2); ctx.clip();
+    ctx.fillStyle = state === -1 ? '#d9c9b4' : col;
+    for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x - 3, top - 16 + k * 5); ctx.lineTo(x + 3, top - 19 + k * 5); ctx.lineTo(x + 3, top - 16.6 + k * 5); ctx.lineTo(x - 3, top - 13.6 + k * 5); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.fillRect(x + 0.6, top - 18, 1.6, 18);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x - 1.6, top - 17, 0.8, 15);
+    ctx.restore();
+    ctx.fillStyle = C.goldDark; rr(x - 3.4, top - 3, 6.8, 3, 1); ctx.fill();
+    ctx.fillStyle = C.goldDark; circle(x, top - 19, 3.6); ctx.fill();
+    ctx.fillStyle = C.gold; circle(x - 0.4, top - 19.4, 2.9); ctx.fill();
+    ctx.fillStyle = '#fff6d0'; circle(x - 1.2, top - 20.3, 0.9); ctx.fill();
   }
   // the flag
   const poleTop = top - 68;
+  // (rich props pass) an outlined pole with a lit edge, rope cleat and a brass foot plate; a shaded gold ball on top
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(hx + 1, top, 8, 2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#5a4a3e'; ctx.fillRect(hx - 2.3, poleTop, 4.6, 68);
   ctx.fillStyle = '#fff3e0'; ctx.fillRect(hx - 1.5, poleTop, 3, 68);
   ctx.fillStyle = 'rgba(28,26,54,0.25)'; ctx.fillRect(hx + 0.5, poleTop, 1, 68);
-  ctx.fillStyle = C.gold; circle(hx, poleTop - 1, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(hx - 1.2, poleTop + 2, 0.7, 64);
+  ctx.strokeStyle = '#b8a48c'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(hx + 1.5, poleTop + 3); ctx.lineTo(hx + 2.4, top - 16); ctx.stroke();
+  ctx.fillStyle = '#7a6a5c'; rr(hx + 1, top - 18, 3.4, 4, 1); ctx.fill();
+  ctx.fillStyle = C.goldDark; rr(hx - 5, top - 3, 10, 3, 1.2); ctx.fill();
+  ctx.fillStyle = C.gold; ctx.fillRect(hx - 4, top - 2.8, 8, 0.9);
+  ctx.fillStyle = C.goldDark; circle(hx, poleTop - 1, 4.6); ctx.fill();
+  ctx.fillStyle = C.gold; circle(hx - 0.5, poleTop - 1.5, 3.8); ctx.fill();
+  ctx.fillStyle = '#fff6d0'; circle(hx - 1.6, poleTop - 2.6, 1.1); ctx.fill();
   const wv = t => Math.sin(G.clock * 6 + t * 3) * 2.5;
   ctx.beginPath(); ctx.moveTo(hx + 1.5, poleTop + 2);
   for (let i = 1; i <= 6; i++) ctx.lineTo(hx + 1.5 + i * 4, poleTop + 2 + wv(i) * i / 6);
@@ -750,10 +778,25 @@ function kothDrawHill(st) {
 // the scoreboard sign on the hill face (x 330-630 below y 360 is solid hill: nobody can ever stand there)
 function kothDrawBoard(st) {
   const x0 = 344, y0 = 371, w = 272, h = 98, big = typeof hudBig === 'function' && hudBig(), z = big ? 1.2 : 1;
+  // (rich props pass) a drop shadow, a wooden frame with grain, a lit top and a shaded foot, brass corner caps with
+  // screws, and a sunken chalkboard with a lit lower lip
+  ctx.fillStyle = 'rgba(0,0,0,0.22)'; rr(x0 + 3, y0 + 4, w, h, 12); ctx.fill();
+  ctx.fillStyle = shade(C.plankDark, 0.3); rr(x0 - 1, y0 - 1, w + 2, h + 2, 13); ctx.fill();
   ctx.fillStyle = C.plankDark; rr(x0, y0, w, h, 12); ctx.fill();
   ctx.fillStyle = C.plank; rr(x0 + 3, y0 + 3, w - 6, h - 6, 10); ctx.fill();
+  ctx.fillStyle = tint(C.plank, 0.3); rr(x0 + 5, y0 + 3.5, w - 10, 1.6, 0.8); ctx.fill();
+  ctx.fillStyle = shade(C.plank, 0.15); rr(x0 + 5, y0 + h - 6, w - 10, 2.4, 1); ctx.fill();
+  ctx.strokeStyle = shade(C.plank, 0.18); ctx.lineWidth = 0.8;
+  for (const [gx, gy, gl] of [[x0 + 20, y0 + 5.6, 90], [x0 + 140, y0 + 6.2, 110], [x0 + 30, y0 + h - 7.6, 120], [x0 + 170, y0 + h - 7, 70]]) { ctx.beginPath(); ctx.moveTo(gx, gy); ctx.quadraticCurveTo(gx + gl / 2, gy - 1.2, gx + gl, gy + 0.4); ctx.stroke(); }
+  for (const [gx, gy0] of [[x0 + 5.6, y0 + 20], [x0 + w - 5.6, y0 + 24]]) { ctx.beginPath(); ctx.moveTo(gx, gy0); ctx.quadraticCurveTo(gx + 0.8, gy0 + 25, gx, gy0 + 52); ctx.stroke(); }
   ctx.fillStyle = 'rgba(28,26,54,0.92)'; rr(x0 + 9, y0 + 9, w - 18, h - 18, 7); ctx.fill();
-  ctx.fillStyle = C.plankDark; for (const [nx, ny] of [[x0 + 6, y0 + 6], [x0 + w - 6, y0 + 6], [x0 + 6, y0 + h - 6], [x0 + w - 6, y0 + h - 6]]) { circle(nx, ny, 2); ctx.fill(); }
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; rr(x0 + 9, y0 + 9, w - 18, 3, 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x0 + 14, y0 + h - 10.4, w - 28, 1);
+  for (const [nx, ny] of [[x0 + 6, y0 + 6], [x0 + w - 6, y0 + 6], [x0 + 6, y0 + h - 6], [x0 + w - 6, y0 + h - 6]]) {
+    ctx.fillStyle = C.goldDark; circle(nx, ny, 4); ctx.fill();
+    ctx.fillStyle = C.gold; circle(nx - 0.4, ny - 0.4, 3.1); ctx.fill();
+    ctx.fillStyle = C.goldDark; ctx.fillRect(nx - 1.8, ny - 0.4, 3.6, 0.9);
+  }
   const head = st.hot ? 'HOT HILL ×2' : 'First to ' + st.target + ' seconds';
   text(head, W / 2, y0 + 21, 12 * z, st.hot ? C.gold : '#d9d3ef', 'center', 'body');
   for (const k of [0, 1]) {
