@@ -684,7 +684,21 @@
     drawArena(st);
     for (const P of st.pl) drawHalf(st, P);
     // the tyre wall down the middle
-    for (let y = 240; y < SS.ground + 10; y += 22) { ctx.fillStyle = '#1a1a20'; ctx.beginPath(); ctx.ellipse(W / 2, y, 14, 11, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#3a3a44'; ctx.beginPath(); ctx.ellipse(W / 2, y, 6, 4, 0, 0, TAU); ctx.fill(); }
+    // (art pass, 2nd look) stacked tyres: rubber with a lit shoulder, tread blocks round the rim, a sidewall ring and
+    // lettering nicks, a painted steel rim in the middle (one cached tyre, copied down the stack)
+    for (let y = 240; y < SS.ground + 10; y += 22) RICH.pic('w36tyre', 30, 24, c => {
+      const cx = 15, cy = 12;
+      c.fillStyle = '#0e0e12'; c.beginPath(); c.ellipse(cx, cy, 14.5, 11.5, 0, 0, TAU); c.fill();
+      const g = c.createLinearGradient(0, 0, 0, 24); g.addColorStop(0, '#3a3a44'); g.addColorStop(0.5, '#1a1a20'); g.addColorStop(1, '#0e0e12');
+      c.fillStyle = g; c.beginPath(); c.ellipse(cx, cy, 14, 11, 0, 0, TAU); c.fill();
+      c.fillStyle = '#0a0a0e'; for (let q = 0; q < 18; q++) { const a = q * TAU / 18; c.fillRect(cx + Math.cos(a) * 12.4 - 1, cy + Math.sin(a) * 9.6 - 1, 2, 2); }
+      c.strokeStyle = 'rgba(255,255,255,0.28)'; c.lineWidth = 1.2; c.beginPath(); c.ellipse(cx, cy, 13, 10, 0, Math.PI * 1.1, Math.PI * 1.75); c.stroke();
+      c.strokeStyle = 'rgba(120,120,135,0.45)'; c.lineWidth = 0.9; c.beginPath(); c.ellipse(cx, cy, 9.5, 7.2, 0, 0, TAU); c.stroke();
+      c.fillStyle = 'rgba(200,200,210,0.35)'; for (let q = 0; q < 5; q++) { const a = -2.4 + q * 0.25; c.fillRect(cx + Math.cos(a) * 11 - 0.5, cy + Math.sin(a) * 8.4 - 0.5, 1.2, 1.2); }
+      c.fillStyle = '#9aa2ae'; c.beginPath(); c.ellipse(cx, cy, 6, 4, 0, 0, TAU); c.fill();
+      c.fillStyle = '#3a3a44'; c.beginPath(); c.ellipse(cx, cy + 0.6, 4.4, 2.8, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(cx - 4, cy - 3.4, 3, 1);
+    }, W / 2 - 15, y - 12);
     // the camera-flash wave
     if (st.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,' + (st.flash * 0.7).toFixed(2) + ')'; ctx.fillRect(0, 0, W, H); }
     K.drawParts(st, 0);

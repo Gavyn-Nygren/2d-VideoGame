@@ -391,8 +391,37 @@ function wizBeastDraw(st) {
         for (const ry of [K.g - 46, K.g - 26]) RICH.pic('wizbstfrail', 28, 8, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: '#e8dcc0', seed: 4, edge: false }); RICH.nail(c, 6, 4, 1); RICH.nail(c, 22, 4, 1); }, o.x - 14, ry);
         ctx.fillStyle = '#e8dcc0'; ctx.strokeRect(o.x - 14, K.g - 46, 28, 8); ctx.strokeRect(o.x - 14, K.g - 26, 28, 8); break;
       case 'branch': {
-        if (o.run === 1) { ctx.fillStyle = WIZC.stone; ctx.fillRect(o.x - 54, 0, 108, K.g - 62); ctx.strokeRect(o.x - 54, -4, 108, K.g - 58); ctx.fillStyle = WIZC.stoneDk; ctx.fillRect(o.x - 54, K.g - 80, 108, 18); }
-        else { ctx.strokeStyle = '#5a3a22'; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(o.x - 120, 0); ctx.quadraticCurveTo(o.x - 40, K.g - 120, o.x + 54, K.g - 70); ctx.stroke(); ctx.fillStyle = '#4f9a58'; for (let n = 0; n < 5; n++) { circle(o.x - 40 + n * 22, K.g - 76 + (n % 2) * 6, 13); ctx.fill(); } }
+        // (art pass, 2nd look) run 2: a low stone arch of coursed blocks with a carved lintel and a keystone;
+        // run 1: a gnarled branch with bark ridges, knots and shaded leaf clusters (same shapes as before)
+        if (o.run === 1) {
+          RICH.pic('wizbstarch|' + Math.round(K.g - 62), 108, Math.round(K.g - 62), (c, w, h) => {
+            RICH.stone(c, 0, 0, w, h, { col: WIZC.stone, course: 24, len: 36, seed: 31, edge: false });
+            RICH.stone(c, 0, h - 18, w, 18, { col: WIZC.stoneDk, course: 18, len: 27, seed: 32, edge: false, cracks: 0 });
+            c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(0, h - 18, w, 1.5); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, h - 3, w, 3);
+            c.fillStyle = RICH.lit(WIZC.stone, 0.2); c.beginPath(); c.moveTo(w / 2 - 9, h - 24); c.lineTo(w / 2 + 9, h - 24); c.lineTo(w / 2 + 6, h); c.lineTo(w / 2 - 6, h); c.closePath(); c.fill();
+            c.strokeStyle = RICH.dk(WIZC.stone, 0.5); c.lineWidth = 1; c.stroke();
+            c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(w - 8, 0, 8, h); c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(0, 0, 3, h);
+          }, o.x - 54, 0);
+          ctx.strokeRect(o.x - 54, -4, 108, K.g - 58);
+        }
+        else {
+          const br = () => { ctx.beginPath(); ctx.moveTo(o.x - 120, 0); ctx.quadraticCurveTo(o.x - 40, K.g - 120, o.x + 54, K.g - 70); };
+          ctx.strokeStyle = '#2e1c10'; ctx.lineWidth = 19; br(); ctx.stroke();
+          ctx.strokeStyle = '#5a3a22'; ctx.lineWidth = 16; br(); ctx.stroke();
+          ctx.save(); ctx.translate(-2, -3); ctx.strokeStyle = '#7a5434'; ctx.lineWidth = 5; br(); ctx.stroke(); ctx.restore();
+          ctx.save(); ctx.translate(2, 4); ctx.strokeStyle = 'rgba(30,16,6,0.55)'; ctx.lineWidth = 3; br(); ctx.stroke(); ctx.restore();
+          ctx.strokeStyle = 'rgba(30,16,6,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath();
+          for (let n = 1; n < 10; n++) { const u = n / 10, bx = (1 - u) * (1 - u) * (o.x - 120) + 2 * u * (1 - u) * (o.x - 40) + u * u * (o.x + 54), by = 2 * u * (1 - u) * (K.g - 120) + u * u * (K.g - 70); ctx.moveTo(bx - 4, by - 3); ctx.lineTo(bx + 3, by + 4); }
+          ctx.stroke();
+          ctx.fillStyle = '#3a2412'; ctx.beginPath(); ctx.ellipse(o.x - 52, K.g - 112, 4, 2.5, 0.5, 0, Math.PI * 2); ctx.fill();
+          for (let n = 0; n < 5; n++) {
+            const lx = o.x - 40 + n * 22, ly = K.g - 76 + (n % 2) * 6;
+            ctx.fillStyle = '#2e6a38'; circle(lx + 1.5, ly + 2, 13); ctx.fill();
+            ctx.fillStyle = '#4f9a58'; circle(lx, ly, 13); ctx.fill();
+            ctx.fillStyle = '#6ab872'; circle(lx - 4, ly - 4, 6); ctx.fill();
+            ctx.strokeStyle = '#2e6a38'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(lx - 7, ly + 4); ctx.lineTo(lx + 5, ly - 5); ctx.moveTo(lx - 1, ly + 7); ctx.lineTo(lx + 8, ly + 1); ctx.stroke();
+          }
+        }
         break;
       }
       case 'hay': {
@@ -411,7 +440,13 @@ function wizBeastDraw(st) {
         break;
       }
       case 'gate': {
-        ctx.fillStyle = WIZC.stoneDk; ctx.fillRect(o.x - 40, K.g - 230, 18, 230); ctx.fillRect(o.x + 22, K.g - 230, 18, 230);
+        // (art pass, 2nd look) the gate's two stone posts: coursed blocks, a lit side, a capstone with a brass rod
+        for (const px of [o.x - 40, o.x + 22]) {
+          RICH.pic('wizbstgpost', 18, 230, (c, w, h) => { RICH.stone(c, 0, 0, w, h, { col: WIZC.stoneDk, course: 20, len: 18, seed: 41, edge: false }); c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(0, 0, 2, h); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(w - 4, 0, 4, h); }, px, K.g - 230);
+          RICH.pic('wizbstgcap', 26, 12, (c, w, h) => { RICH.stone(c, 0, 0, w, h, { col: WIZC.stone, course: 12, len: 26, seed: 42, edge: false, cracks: 0 }); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, 0, w, 1.5); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, h - 3, w, 3); }, px - 4, K.g - 240);
+          ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(px, K.g - 230, 18, 230); ctx.strokeRect(px - 4, K.g - 240, 26, 12);
+          ctx.fillStyle = '#c9a24a'; ctx.fillRect(px + 7, K.g - 252, 4, 12); ctx.fillStyle = '#ffe14a'; circle(px + 9, K.g - 254, 3); ctx.fill();
+        }
         if (o.gone && (o.goneT || 0) > 0.6) break;
         ctx.save(); if (o.gone) ctx.globalAlpha = 1 - (o.goneT || 0) / 0.6;
         ctx.strokeStyle = '#ffe14a'; ctx.lineWidth = 3;

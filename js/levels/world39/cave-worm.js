@@ -795,7 +795,17 @@
             const len = (p.x1 - p.x0) / 2 + 30;
             ctx.beginPath(); ctx.moveTo(-26, -len * (1 - u) * 0.1); ctx.lineTo(26, 0); ctx.lineTo(0, u ? len * 0.4 : 150); ctx.closePath();
             ctx.restore();
-            if (u > 0) { ctx.fillStyle = '#7ab8c0'; rr(sa - 10, SY(0) - 8 + (1 - u) * -200, sb - sa + 20, 16, 6); ctx.fill(); ctx.strokeStyle = '#3a6a70'; ctx.lineWidth = 2; ctx.stroke(); for (let k = 0; k < 4; k++) K.crystal(sa + 20 + k * (sb - sa - 40) / 3, SY(0) - 6 + (1 - u) * -200, 18, (k - 1.5) * 0.3, { col: K.GLOW.ice, glow: 0.5, seed: k }); }
+            if (u > 0) {
+              // the fallen stalactite lying across: faceted ice with a lit top, a shaded underside and glints (cached)
+              const bw = Math.round(sb - sa + 20);
+              RICH.pic('w39stalbridge|' + bw, bw, 16, (c, w, h) => {
+                c.save(); RICH.rr(c, 0, 0, w, h, 6); c.clip();
+                const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#c8eef2'); g.addColorStop(0.35, '#7ab8c0'); g.addColorStop(1, '#4a8890'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+                for (let k = 0; k * 22 < w; k++) { const fx = k * 22 + RICH.r(w, k) * 8; c.strokeStyle = 'rgba(235,252,255,0.45)'; c.lineWidth = 1; c.beginPath(); c.moveTo(fx, 0); c.lineTo(fx + 6, h); c.stroke(); }
+                c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(0, 1, w, 2);
+                c.restore();
+                c.strokeStyle = '#3a6a70'; c.lineWidth = 2; RICH.rr(c, 1, 1, w - 2, h - 2, 5); c.stroke();
+              }, sa - 10, SY(0) - 8 + (1 - u) * -200); for (let k = 0; k < 4; k++) K.crystal(sa + 20 + k * (sb - sa - 40) / 3, SY(0) - 6 + (1 - u) * -200, 18, (k - 1.5) * 0.3, { col: K.GLOW.ice, glow: 0.5, seed: k }); }
             else { ctx.save(); ctx.translate(mx, SY(S.roof)); K.crystal(0, 0, 150, Math.PI, { col: K.GLOW.ice, w: 52, glow: 0.6, t, seed: 3 }); ctx.restore(); }
           } else { // an old mine timber ramp hung on a rope: cut the rope and it swings down across
             const ax = sb + 10, ay = SY(0);
@@ -829,8 +839,23 @@
     for (const w of L.walls) {
       if (w.broken) continue;
       const sx = scrX(st, w.x); if (sx < -60 || sx > W + 60) continue;
-      ctx.fillStyle = w.flash > 0 ? '#ffffff' : 'rgba(170,236,240,0.85)'; ctx.strokeStyle = '#3a8a90'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(sx - 16, SY(0)); ctx.lineTo(sx - 12, SY(S.roof)); ctx.lineTo(sx + 14, SY(S.roof)); ctx.lineTo(sx + 16, SY(0)); ctx.closePath(); ctx.fill(); ctx.stroke();
+      // (second look) a faceted crystal pillar, cached: a lit left face, a shaded right face, inner veins and glints
+      const wh = Math.round(SY(0) - SY(S.roof));
+      RICH.pic('w39wormwall|' + wh, 36, wh + 4, (c, w, h) => {
+        const ox2 = 18, top = 2, bot = wh + 2;
+        RICH.shadow(c, ox2, bot, 18, 2, 0.25);
+        const face = () => { c.beginPath(); c.moveTo(ox2 - 16, bot); c.lineTo(ox2 - 12, top); c.lineTo(ox2 + 14, top); c.lineTo(ox2 + 16, bot); c.closePath(); };
+        const g = c.createLinearGradient(ox2 - 16, 0, ox2 + 16, 0); g.addColorStop(0, 'rgba(214,248,250,0.92)'); g.addColorStop(0.5, 'rgba(170,236,240,0.85)'); g.addColorStop(0.55, 'rgba(120,196,206,0.88)'); g.addColorStop(1, 'rgba(84,156,168,0.92)');
+        face(); c.fillStyle = g; c.fill();
+        c.save(); face(); c.clip();
+        for (let k = 0, yy = top; yy < bot; k++) { const fh = 22 + RICH.r(wh, k) * 26, sl = (RICH.r(wh + 1, k) - 0.5) * 14; c.strokeStyle = 'rgba(240,255,255,0.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(ox2 - 16, yy); c.lineTo(ox2 + 16, yy + sl); c.stroke(); yy += fh; }
+        c.strokeStyle = 'rgba(60,140,150,0.35)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(ox2 - 4, top + 10); c.lineTo(ox2 + 3, top + wh * 0.4); c.lineTo(ox2 - 2, top + wh * 0.75); c.stroke();
+        c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(ox2 - 13, top, 2.5, wh);
+        c.restore();
+        c.strokeStyle = '#3a8a90'; c.lineWidth = 2; face(); c.stroke();
+        for (let k = 0; k < 4; k++) { const gx = ox2 - 8 + RICH.r(wh + 2, k) * 16, gy = top + 10 + RICH.r(wh + 3, k) * (wh - 20); c.fillStyle = 'rgba(255,255,255,0.85)'; c.beginPath(); c.moveTo(gx, gy - 3.5); c.lineTo(gx + 1.2, gy); c.lineTo(gx, gy + 3.5); c.lineTo(gx - 1.2, gy); c.closePath(); c.fill(); }
+      }, sx - 18, SY(S.roof) - 2);
+      if (w.flash > 0) { ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#3a8a90'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx - 16, SY(0)); ctx.lineTo(sx - 12, SY(S.roof)); ctx.lineTo(sx + 14, SY(S.roof)); ctx.lineTo(sx + 16, SY(0)); ctx.closePath(); ctx.fill(); ctx.stroke(); }
       if (w.hits) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx - 10, SY(-140)); ctx.lineTo(sx + 4, SY(-90)); ctx.lineTo(sx - 6, SY(-50)); ctx.lineTo(sx + 8, SY(-10)); ctx.stroke(); }
       for (let k = 0; k < 3; k++) K.crystal(sx - 8 + k * 8, SY(0), 30 + k * 10, (k - 1) * 0.3, { col: K.GLOW.ice, glow: 0.5, seed: k + w.x });
     }
@@ -838,16 +863,49 @@
   function drawFork(st, f, t, ground) {
     const sa = scrX(st, f.F), sb = scrX(st, f.E);
     // the low tunnel's floor (ramps in and out), the rock band between the two tunnels, the dead-end wall
-    ctx.fillStyle = '#4a4440';
-    ctx.beginPath(); ctx.moveTo(sa, SY(0)); ctx.lineTo(sa + 50, SY(S.lowF)); ctx.lineTo(sb - S.ramp, SY(S.lowF)); ctx.lineTo(sb, SY(0)); ctx.lineTo(sb, H); ctx.lineTo(sa, H); ctx.closePath(); ctx.fill();
+    // (second look) the same rock as the main floor, clipped to the low tunnel's shape, so it no longer reads as a flat fill
+    const ox = Math.round(st.camX), g0 = Math.round(SY(0));
+    const lowPath = () => { ctx.beginPath(); ctx.moveTo(sa, SY(0)); ctx.lineTo(sa + 50, SY(S.lowF)); ctx.lineTo(sb - S.ramp, SY(S.lowF)); ctx.lineTo(sb, SY(0)); ctx.lineTo(sb, H); ctx.lineTo(sa, H); ctx.closePath(); };
+    ctx.save(); lowPath(); ctx.clip(); ctx.translate(-ox, 0);
+    RICH.strip('w39wormlow|' + g0, Math.floor(f.F) - 4, Math.ceil(f.E) + 4, g0, H - g0, 256, (c, gx, w, hh) => {
+      RICH.rock(c, 0, 0, w, hh, { col: '#4a4440', gx, seed: 43 });
+      const g = c.createLinearGradient(0, 0, 0, hh); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(10,8,8,0.45)'); c.fillStyle = g; c.fillRect(0, 0, w, hh);
+    });
+    ctx.restore();
     ctx.fillStyle = '#6a625a'; ctx.beginPath(); ctx.moveTo(sa, SY(0)); ctx.lineTo(sa + 50, SY(S.lowF)); ctx.lineTo(sb - S.ramp, SY(S.lowF)); ctx.lineTo(sb, SY(0)); ctx.lineTo(sb, SY(0) + 8); ctx.lineTo(sb - S.ramp, SY(S.lowF) + 8); ctx.lineTo(sa + 50, SY(S.lowF) + 8); ctx.lineTo(sa, SY(0) + 8); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#4e4844'; rr(sa, SY(S.upF), sb - sa, S.band - S.upF, 8); ctx.fill();
-    ctx.fillStyle = '#7a7068'; ctx.fillRect(sa + 4, SY(S.upF), sb - sa - 8, 7);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.moveTo(sa, SY(0) + 8); ctx.lineTo(sa + 50, SY(S.lowF) + 8); ctx.lineTo(sb - S.ramp, SY(S.lowF) + 8); ctx.lineTo(sb, SY(0) + 8); ctx.lineTo(sb, SY(0) + 10); ctx.lineTo(sb - S.ramp, SY(S.lowF) + 10); ctx.lineTo(sa + 50, SY(S.lowF) + 10); ctx.lineTo(sa, SY(0) + 10); ctx.closePath(); ctx.fill();
+    for (let k = 0; k * 34 < sb - S.ramp - sa - 60; k++) { const wx = f.F + 56 + k * 34 + RICH.r(f.F, k) * 18; RICH.pebble(ctx, scrX(st, wx), SY(S.lowF) + 3 + RICH.r(f.F + 1, k) * 3, 1.6 + RICH.r(f.F + 2, k) * 2.2, RICH.r(f.F + 3, k) < 0.5 ? '#7a726a' : '#8a8278', k); }
+    ctx.strokeStyle = 'rgba(79,232,214,0.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sa, SY(0) + 1); ctx.lineTo(sa + 50, SY(S.lowF) + 1); ctx.lineTo(sb - S.ramp, SY(S.lowF) + 1); ctx.lineTo(sb, SY(0) + 1); ctx.stroke();
+    // the rock band between the two tunnels: strata and facets, a pebbly lit top, a dark underside casting a shadow
+    const by = Math.round(SY(S.upF)), bh = S.band - S.upF;
+    ctx.fillStyle = 'rgba(10,8,12,0.3)'; ctx.fillRect(sa + 6, by + bh, sb - sa - 12, 6); ctx.fillStyle = 'rgba(10,8,12,0.15)'; ctx.fillRect(sa + 10, by + bh + 6, sb - sa - 20, 5);
+    ctx.save(); rr(sa, by, sb - sa, bh, 8); ctx.clip(); ctx.translate(-ox, 0);
+    RICH.strip('w39wormband|' + by, Math.floor(f.F) - 4, Math.ceil(f.E) + 4, by, bh, 256, (c, gx, w, hh) => {
+      RICH.rock(c, 0, 0, w, hh, { col: '#4e4844', gx, seed: 47 });
+      const g = c.createLinearGradient(0, 0, 0, hh); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.6, 'rgba(0,0,0,0.1)'); g.addColorStop(1, 'rgba(10,8,8,0.5)'); c.fillStyle = g; c.fillRect(0, 0, w, hh);
+      c.fillStyle = '#7a7068'; c.fillRect(0, 0, w, 7); c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(0, 0, w, 2); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, 7, w, 2);
+      for (let k = 0; k < w / 26; k++) RICH.pebble(c, 6 + RICH.r(gx + 81, k) * (w - 12), 3 + RICH.r(gx + 82, k) * 2, 1.4 + RICH.r(gx + 83, k) * 1.8, '#8a8278', gx + k);
+    });
+    ctx.restore();
+    ctx.strokeStyle = '#2a2420'; ctx.lineWidth = 2; rr(sa + 1, by + 1, sb - sa - 2, bh - 2, 7); ctx.stroke();
     ctx.fillStyle = 'rgba(79,232,214,0.4)'; ctx.fillRect(sa + 4, SY(S.upF), sb - sa - 8, 2);
-    // the dead end: a blank wall of crystal across the false tunnel
-    const dy0 = f.lane === 'up' ? S.band : S.roof, dy1 = f.lane === 'up' ? S.lowF : S.upF;
-    ctx.fillStyle = 'rgba(150,200,210,0.85)'; ctx.fillRect(sb - 40, SY(dy0), 40, SY(dy1) - SY(dy0));
-    ctx.strokeStyle = '#3a6a70'; ctx.lineWidth = 2; ctx.strokeRect(sb - 40, SY(dy0), 40, SY(dy1) - SY(dy0));
+    // the dead end: a wall of crystal across the false tunnel (cached: faceted ice, lit left, dark right, glints)
+    const dy0 = f.lane === 'up' ? S.band : S.roof, dy1 = f.lane === 'up' ? S.lowF : S.upF, dh = Math.round(SY(dy1) - SY(dy0));
+    RICH.pic('w39deadend|' + dh, 40, dh, (c, w, h) => {
+      const g = c.createLinearGradient(0, 0, w, 0); g.addColorStop(0, 'rgba(200,236,242,0.9)'); g.addColorStop(0.45, 'rgba(150,200,210,0.85)'); g.addColorStop(1, 'rgba(96,150,162,0.9)');
+      c.fillStyle = g; c.fillRect(0, 0, w, h);
+      // facets: slanting planes, alternately lit and shaded
+      for (let k = 0, yy = 0; yy < h; k++) {
+        const fh = 18 + RICH.r(h, k) * 22, sl = (RICH.r(h + 1, k) - 0.5) * 16;
+        c.fillStyle = k % 2 ? 'rgba(255,255,255,0.14)' : 'rgba(30,70,80,0.16)';
+        c.beginPath(); c.moveTo(0, yy); c.lineTo(w, yy + sl); c.lineTo(w, yy + sl + fh); c.lineTo(0, yy + fh); c.closePath(); c.fill();
+        c.strokeStyle = 'rgba(230,250,255,0.45)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, yy); c.lineTo(w, yy + sl); c.stroke();
+        yy += fh;
+      }
+      c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(2, 0, 2, h); c.fillStyle = 'rgba(30,70,80,0.3)'; c.fillRect(w - 5, 0, 4, h);
+      for (let k = 0; k < h / 30; k++) { const gx = 8 + RICH.r(h + 2, k) * (w - 16), gy = 6 + RICH.r(h + 3, k) * (h - 12); c.fillStyle = 'rgba(255,255,255,0.8)'; c.beginPath(); c.moveTo(gx, gy - 3); c.lineTo(gx + 1, gy); c.lineTo(gx, gy + 3); c.lineTo(gx - 1, gy); c.closePath(); c.fill(); }
+      c.strokeStyle = '#3a6a70'; c.lineWidth = 2; c.strokeRect(1, 1, w - 2, h - 2);
+    }, sb - 40, SY(dy0));
     // the echo arrow over the true tunnel's mouth (2 s, or until the fork with gold help)
     const e = st.L.echos.find(e => e.fork === f);
     if (e && e.struck >= 0 && (st.T - e.struck < S.echoT || st.gold) && !f.done) {
@@ -863,9 +921,30 @@
     const on = x => { const s = scrX(st, x); return s > -120 && s < W + 120; };
     for (const r of L.roots) if (on(r.x0)) {
       const sa = scrX(st, r.x0), sb = scrX(st, r.x1);
-      ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 7; ctx.lineCap = 'round';
-      for (let k = 0; k < 4; k++) { const xx = sa + k * (sb - sa) / 3; ctx.beginPath(); ctx.moveTo(xx, SY(S.roof)); ctx.quadraticCurveTo(xx + 10 * Math.sin(t * 2 + k), SY(-100), xx + 4, SY(-22)); ctx.stroke(); }
-      ctx.lineWidth = 3; ctx.strokeStyle = '#86ec7a'; ctx.beginPath(); ctx.moveTo(sa - 4, SY(-24)); ctx.lineTo(sb + 4, SY(-24)); ctx.stroke(); ctx.lineCap = 'butt';
+      // hanging roots: a dark outline, the bark, a shaded right side and a lit left edge, with rootlets and knots
+      ctx.lineCap = 'round';
+      const rootPath = (k, dx) => { const xx = sa + k * (sb - sa) / 3 + dx; ctx.beginPath(); ctx.moveTo(xx, SY(S.roof)); ctx.quadraticCurveTo(xx + 10 * Math.sin(t * 2 + k), SY(-100), xx + 4, SY(-22)); };
+      for (let k = 0; k < 4; k++) {
+        const xx = sa + k * (sb - sa) / 3, sw = 10 * Math.sin(t * 2 + k);
+        rootPath(k, 0); ctx.strokeStyle = '#2e1e10'; ctx.lineWidth = 9.5; ctx.stroke();
+        ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 7; ctx.stroke();
+        rootPath(k, 1.8); ctx.strokeStyle = '#4c3219'; ctx.lineWidth = 2.6; ctx.stroke();
+        rootPath(k, -2); ctx.strokeStyle = '#9a7448'; ctx.lineWidth = 1.6; ctx.stroke();
+        // rootlets and knots along the curve
+        ctx.strokeStyle = '#4c3219'; ctx.lineWidth = 1.6; ctx.beginPath();
+        for (const [u, side] of [[0.35, -1], [0.55, 1], [0.78, -1]]) {
+          const y0 = SY(S.roof), y2 = SY(-22), q = 1 - u;
+          const px = q * q * xx + 2 * q * u * (xx + sw) + u * u * (xx + 4), py = q * q * y0 + 2 * q * u * SY(-100) + u * u * y2;
+          ctx.moveTo(px + side * 3, py); ctx.quadraticCurveTo(px + side * 10, py + 4, px + side * 12 + (k % 2 ? 2 : -2), py + 14);
+        }
+        ctx.stroke();
+        ctx.fillStyle = '#3a2614'; for (const u of [0.22, 0.62]) { const q = 1 - u, py = q * q * SY(S.roof) + 2 * q * u * SY(-100) + u * u * SY(-22), px = q * q * xx + 2 * q * u * (xx + sw) + u * u * (xx + 4); ctx.beginPath(); ctx.ellipse(px, py, 2.2, 1.4, 0, 0, TAU); ctx.fill(); }
+      }
+      // the moss line that marks how low they hang, with glowing beads
+      ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(134,236,122,0.25)'; ctx.beginPath(); ctx.moveTo(sa - 4, SY(-24)); ctx.lineTo(sb + 4, SY(-24)); ctx.stroke();
+      ctx.lineWidth = 3; ctx.strokeStyle = '#86ec7a'; ctx.stroke();
+      ctx.lineWidth = 1; ctx.strokeStyle = '#d8ffcc'; ctx.beginPath(); ctx.moveTo(sa - 2, SY(-25)); ctx.lineTo(sb + 2, SY(-25)); ctx.stroke(); ctx.lineCap = 'butt';
+      ctx.fillStyle = '#c8ffb8'; for (let k = 0; k <= 4; k++) { circle(sa + k * (sb - sa) / 4, SY(-24), 1.8); ctx.fill(); }
     }
     for (const e of L.echos) if (on(e.x)) {
       const sx = scrX(st, e.x);
@@ -892,14 +971,50 @@
     }
     for (const s of L.seams) if (on(s.x)) {
       const sx = scrX(st, s.x), y = SY(-150);
-      if (!s.open) { ctx.strokeStyle = s.fed ? '#ffffff' : 'rgba(255,210,90,' + (0.6 + 0.3 * Math.sin(t * 5)) + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sx - 30, y - 20); ctx.lineTo(sx - 10, y + 6); ctx.lineTo(sx + 6, y - 12); ctx.lineTo(sx + 30, y + 14); ctx.stroke(); K.cluster(sx, y - 6, 0.8, 5, { col: K.GLOW.gold, t, glow: 0.8 }); text('▲', sx, y + 34, 14, C.gold, 'center', 'body'); }
-      else { ctx.fillStyle = '#14100e'; ctx.beginPath(); ctx.ellipse(sx + 20, SY(-60), 50, 60, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = '#ffd25a'; ctx.lineWidth = 2; ctx.stroke(); text('shortcut', sx + 20, SY(-130), 13, '#ffd25a', 'center', 'body'); }
+      if (!s.open) {
+        // the seam: a dark split in the rock wall with chipped edges, lit on its upper lip
+        RICH.pic('w39seamcrack', 76, 50, c => {
+          c.fillStyle = 'rgba(10,8,8,0.55)'; c.beginPath(); c.moveTo(6, 6); c.lineTo(28, 33); c.lineTo(44, 15); c.lineTo(70, 43); c.lineTo(66, 47); c.lineTo(42, 22); c.lineTo(27, 40); c.lineTo(3, 10); c.closePath(); c.fill();
+          c.strokeStyle = 'rgba(160,150,140,0.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(5, 5); c.lineTo(27, 31); c.lineTo(44, 13); c.lineTo(70, 41); c.stroke();
+          for (const [x, y, r] of [[12, 20, 3], [52, 34, 2.5], [36, 8, 2]]) RICH.pebble(c, x, y, r, '#6a625a', x + y);
+        }, sx - 38, y - 26);
+        ctx.strokeStyle = s.fed ? '#ffffff' : 'rgba(255,210,90,' + (0.6 + 0.3 * Math.sin(t * 5)) + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sx - 30, y - 20); ctx.lineTo(sx - 10, y + 6); ctx.lineTo(sx + 6, y - 12); ctx.lineTo(sx + 30, y + 14); ctx.stroke(); K.cluster(sx, y - 6, 0.8, 5, { col: K.GLOW.gold, t, glow: 0.8 }); text('▲', sx, y + 34, 14, C.gold, 'center', 'body'); }
+      else {
+        // the opened shortcut: a tunnel mouth ringed with broken stones, dark and deep, a gold glow at its edge
+        RICH.pic('w39seamhole', 128, 148, c => {
+          const cx = 64, cy = 74;
+          const g = c.createRadialGradient(cx + 6, cy + 10, 6, cx, cy, 60); g.addColorStop(0, '#050404'); g.addColorStop(0.6, '#14100e'); g.addColorStop(1, '#2a221c');
+          c.fillStyle = g; c.beginPath(); c.ellipse(cx, cy, 50, 60, 0, 0, TAU); c.fill();
+          for (let k = 0; k < 16; k++) {
+            const a = k / 16 * TAU, r = 1 + RICH.r(39, k) * 0.2, bx = cx + Math.cos(a) * 54, by = cy + Math.sin(a) * 64, bw = 9 + RICH.r(40, k) * 5, bh = 7 + RICH.r(41, k) * 4;
+            c.save(); c.translate(bx, by); c.rotate(a + Math.PI / 2);
+            const col = RICH.r(42, k) < 0.5 ? '#6a625a' : '#5a534c';
+            c.fillStyle = col; RICH.rr(c, -bw * r, -bh / 2, bw * 2 * r, bh, 3); c.fill();
+            c.fillStyle = RICH.lit(col, 0.2); c.fillRect(-bw * r + 2, -bh / 2 + 1, bw * 2 * r - 4, 1.6);
+            c.strokeStyle = RICH.dk(col, 0.6); c.lineWidth = 1.2; RICH.rr(c, -bw * r, -bh / 2, bw * 2 * r, bh, 3); c.stroke();
+            c.restore();
+          }
+          c.fillStyle = 'rgba(255,210,90,0.10)'; c.beginPath(); c.ellipse(cx, cy + 50, 36, 8, 0, 0, TAU); c.fill();
+        }, sx + 20 - 64, SY(-60) - 74);
+        ctx.beginPath(); ctx.ellipse(sx + 20, SY(-60), 50, 60, 0, 0, TAU); ctx.strokeStyle = '#ffd25a'; ctx.lineWidth = 2; ctx.stroke(); text('shortcut', sx + 20, SY(-130), 13, '#ffd25a', 'center', 'body'); }
     }
     for (const it of L.inhales) if (on(it.x) || it.anchors.some(on)) for (const a of it.anchors) {
       if (!on(a)) continue;
       const sx = scrX(st, a);
-      ctx.strokeStyle = '#7a5a30'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(sx, SY(S.roof)); ctx.quadraticCurveTo(sx + 8, SY(-120), sx, SY(-40)); ctx.stroke();
+      // a hanging vine to grab: outlined, shaded and lit, leaves along it and a glowing bulb at the end
+      ctx.lineCap = 'round';
+      const vine = dx => { ctx.beginPath(); ctx.moveTo(sx + dx, SY(S.roof)); ctx.quadraticCurveTo(sx + 8 + dx, SY(-120), sx + dx, SY(-40)); };
+      vine(0); ctx.strokeStyle = '#3a2814'; ctx.lineWidth = 7; ctx.stroke(); ctx.strokeStyle = '#7a5a30'; ctx.lineWidth = 5; ctx.stroke();
+      vine(-1.5); ctx.strokeStyle = '#a8844e'; ctx.lineWidth = 1.4; ctx.stroke(); ctx.lineCap = 'butt';
+      for (let k = 1; k < 5; k++) {
+        const u = k / 5, q = 1 - u, py = q * q * SY(S.roof) + 2 * q * u * SY(-120) + u * u * SY(-40), px = q * q * sx + 2 * q * u * (sx + 8) + u * u * sx, sd = k % 2 ? 1 : -1;
+        ctx.fillStyle = '#3e8a40'; ctx.beginPath(); ctx.ellipse(px + sd * 6, py, 5, 2.4, sd * 0.5, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#6ac868'; ctx.beginPath(); ctx.ellipse(px + sd * 5.5, py - 0.6, 3, 1.2, sd * 0.5, 0, TAU); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(134,236,122,0.25)'; circle(sx, SY(-40), 9); ctx.fill();
+      ctx.fillStyle = '#2e7a34'; circle(sx, SY(-40), 6); ctx.fill();
       ctx.fillStyle = '#86ec7a'; circle(sx, SY(-40), 5); ctx.fill();
+      ctx.fillStyle = '#e0ffd8'; circle(sx - 1.6, SY(-41.6), 1.6); ctx.fill();
     }
     for (const c of L.cls) if (!c.used && on(c.x)) K.cluster(scrX(st, c.x), SY(0), 1, 11, { col: K.GLOW.teal, t, glow: 1 });
     for (const g of L.gems) if (!g.got && on(g.x)) K.gem(scrX(st, g.x), SY(g.y), 9, t, {});

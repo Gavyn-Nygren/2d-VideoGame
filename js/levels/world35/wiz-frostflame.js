@@ -406,15 +406,27 @@ function wizFFDraw(st) {
   }
   for (const pc of ph.pieces) {
     if (pc.plant) wizFFDrawPlant(pc.plant, t);
-    if (pc.fire) pc.fire.out.forEach((o, k) => { const x = pc.fire.x0 + k * K.tile; ctx.fillStyle = '#5a3a2a'; ctx.fillRect(x + 1, F - 4, K.tile - 2, 6); if (!o) { for (let j = 0; j < 3; j++) { const h = 16 + Math.sin(t * 12 + k * 3 + j) * 6; ctx.fillStyle = j === 1 ? '#ffd23f' : '#ff7a3a'; ctx.beginPath(); ctx.moveTo(x + 6 + j * 12, F - 2); ctx.quadraticCurveTo(x + 10 + j * 12, F - 2 - h, x + 14 + j * 12, F - 2); ctx.fill(); } } });
-    if (pc.lamp) { const l = pc.lamp; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(l.x, F); ctx.lineTo(l.x, l.y + 10); ctx.stroke(); ctx.fillStyle = '#b08a50'; ctx.beginPath(); ctx.ellipse(l.x, l.y + 6, 16, 8, 0, 0, Math.PI); ctx.fill(); ctx.stroke(); if (l.lit) { ctx.fillStyle = '#ffb040'; ctx.beginPath(); ctx.moveTo(l.x - 8, l.y + 4); ctx.quadraticCurveTo(l.x, l.y - 24 - Math.sin(t * 10) * 4, l.x + 8, l.y + 4); ctx.fill(); } }
+    if (pc.fire) pc.fire.out.forEach((o, k) => { const x = pc.fire.x0 + k * K.tile; RICH.pic('wizfflog|' + K.tile, K.tile - 2, 6, c => { RICH.wood(c, 0, 0, K.tile - 2, 6, { col: '#5a3a2a', seed: 3, r: 2, lw: 1 }); c.fillStyle = 'rgba(255,120,40,0.35)'; c.fillRect(2, 0, K.tile - 6, 1.2); c.fillStyle = 'rgba(20,10,5,0.5)'; for (let q = 4; q < K.tile - 4; q += 7) c.fillRect(q, 2, 3, 2); }, x + 1, F - 4); if (!o) { for (let j = 0; j < 3; j++) { const h = 16 + Math.sin(t * 12 + k * 3 + j) * 6; ctx.fillStyle = j === 1 ? '#ffd23f' : '#ff7a3a'; ctx.beginPath(); ctx.moveTo(x + 6 + j * 12, F - 2); ctx.quadraticCurveTo(x + 10 + j * 12, F - 2 - h, x + 14 + j * 12, F - 2); ctx.fill(); } } });
+    if (pc.lamp) { const l = pc.lamp; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(l.x, F); ctx.lineTo(l.x, l.y + 10); ctx.stroke(); ctx.strokeStyle = '#5a5668'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(l.x - 0.6, F - 2); ctx.lineTo(l.x - 0.6, l.y + 12); ctx.stroke(); ctx.fillStyle = '#3a3646'; ctx.fillRect(l.x - 6, F - 5, 12, 5); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; { const bg = ctx.createLinearGradient(l.x - 16, 0, l.x + 16, 0); bg.addColorStop(0, '#e8c888'); bg.addColorStop(0.4, '#b08a50'); bg.addColorStop(1, '#6a4e26'); ctx.fillStyle = bg; } ctx.beginPath(); ctx.ellipse(l.x, l.y + 6, 16, 8, 0, 0, Math.PI); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#6a4e26'; for (const dx of [-9, 0, 9]) { circle(l.x + dx, l.y + 9 + (dx ? 0 : 2), 1.1); ctx.fill(); } ctx.fillStyle = 'rgba(255,240,200,0.6)'; ctx.fillRect(l.x - 14, l.y + 6, 28, 1.2); if (l.lit) { ctx.fillStyle = '#ffb040'; ctx.beginPath(); ctx.moveTo(l.x - 8, l.y + 4); ctx.quadraticCurveTo(l.x, l.y - 24 - Math.sin(t * 10) * 4, l.x + 8, l.y + 4); ctx.fill(); } }
     if (pc.geyser) {
       const g = pc.geyser;
-      if (g.ice > 0) { ctx.fillStyle = WIZFF_C.ice; ctx.strokeStyle = WIZFF_C.iceDk; ctx.lineWidth = 2.5; ctx.fillRect(g.x - 22, g.y, 44, F - g.y); ctx.strokeRect(g.x - 22, g.y, 44, F - g.y); }
+      if (g.ice > 0) {
+        // (art pass, 2nd look) a frozen spout: clear blue ice with frost at the top, trapped bubbles, icicle ribs and a
+        // glint (cached per height)
+        RICH.pic('wizffspout|' + Math.round(F - g.y), 44, Math.round(F - g.y), (c, w, h) => {
+          const gg = c.createLinearGradient(0, 0, w, 0); gg.addColorStop(0, '#f2faff'); gg.addColorStop(0.45, WIZFF_C.ice); gg.addColorStop(1, '#a8d4ee'); c.fillStyle = gg; c.fillRect(0, 0, w, h);
+          c.fillStyle = 'rgba(120,180,220,0.35)'; for (let q = 0; q < 4; q++) c.fillRect(6 + q * 10, 6, 3, h - 10);
+          c.fillStyle = 'rgba(255,255,255,0.9)'; c.fillRect(0, 0, w, 4); for (let q = 2; q < w; q += 5) c.fillRect(q, 4, 2, 2 + RICH.r(q, 1) * 4);
+          c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1; for (let q = 0; q < h / 12; q++) { c.beginPath(); c.arc(8 + RICH.r(q, 2) * (w - 16), 10 + RICH.r(q, 3) * (h - 16), 1.2 + RICH.r(q, 4) * 1.6, 0, Math.PI * 2); c.stroke(); }
+          c.strokeStyle = 'rgba(90,150,200,0.6)'; c.beginPath(); c.moveTo(w * 0.6, 4); c.lineTo(w * 0.5, h * 0.4); c.lineTo(w * 0.66, h * 0.7); c.stroke();
+          c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(4, 6, 3, h - 12);
+        }, g.x - 22, g.y);
+        ctx.strokeStyle = WIZFF_C.iceDk; ctx.lineWidth = 2.5; ctx.strokeRect(g.x - 22, g.y, 44, F - g.y);
+      }
       else { const h = 60 + Math.sin(t * 9) * 16; ctx.fillStyle = 'rgba(170,220,255,0.75)'; ctx.beginPath(); ctx.moveTo(g.x - 12, F); ctx.quadraticCurveTo(g.x, F - h * 2, g.x + 12, F); ctx.fill(); }
-      ctx.fillStyle = '#4e5a70'; ctx.fillRect(g.x - 16, F - 6, 32, 8);
+      RICH.pic('wizffgeybase', 32, 8, c => { RICH.stone(c, 0, 0, 32, 8, { col: '#4e5a70', course: 8, len: 11, seed: 2, cracks: 0, edge: false }); c.fillStyle = '#1a2230'; c.fillRect(10, 0, 12, 2.5); c.fillStyle = 'rgba(160,220,255,0.5)'; c.fillRect(11, 0, 10, 1); }, g.x - 16, F - 6);
     }
-    if (pc.kind === 'door') { ctx.fillStyle = '#5a3a2a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(pc.x - 26, F - 90, 52, 90, 20); ctx.fill(); ctx.stroke(); }
+    if (pc.kind === 'door') { wizDoorArt(pc.x, F, 52, 90); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(pc.x - 26, F - 90, 52, 90, 20); ctx.stroke(); }
     else wizDrawFlag(pc.flag, pc.kind === 'icewall' ? pc.y : F, ph.pieces.indexOf(pc) <= ph.pc);
   }
   // the flame jet

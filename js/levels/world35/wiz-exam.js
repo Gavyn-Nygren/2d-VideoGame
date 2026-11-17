@@ -185,9 +185,26 @@ const WIZEX_FF = {
     const th = g.thorn;
     if (!th.off) {
       const k = clamp(th.burn / K.burn, 0, 1);
-      ctx.fillStyle = k > 0.3 ? '#5a4a2a' : WIZFF_C.thorn; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(th.x0, th.y0, th.x1 - th.x0, th.y1 - th.y0, 6); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = WIZFF_C.thornDk;
-      for (let y = th.y0 + 10; y < th.y1; y += 18) for (const d of [-1, 1]) { const bx = d < 0 ? th.x0 : th.x1; ctx.beginPath(); ctx.moveTo(bx, y); ctx.lineTo(bx + d * 10, y + 5); ctx.lineTo(bx, y + 10); ctx.fill(); }
+      // (art pass, 2nd look) a twisted bramble: three plaited stems with a lit side, leaf buds, sharp lit thorns
+      // (scorched brown while it burns); a cached picture per size and state
+      const tw = Math.round(th.x1 - th.x0), thh = Math.round(th.y1 - th.y0), burnt = k > 0.3;
+      RICH.pic('wizexthorn|' + tw + '|' + thh + '|' + burnt, tw, thh, (c, w, h) => {
+        const base = burnt ? '#5a4a2a' : WIZFF_C.thorn, dkc = burnt ? '#3a2a16' : WIZFF_C.thornDk;
+        RICH.rr(c, 0, 0, w, h, 6); c.fillStyle = dkc; c.fill(); c.save(); RICH.rr(c, 0, 0, w, h, 6); c.clip();
+        for (let q = 0; q < 3; q++) {
+          c.strokeStyle = q === 1 ? RICH.lit(base, 0.12) : base; c.lineWidth = w * 0.42; c.beginPath();
+          for (let y = -10; y <= h + 10; y += 6) { const x = w / 2 + Math.sin(y / 14 + q * 2.1) * w * 0.28; y === -10 ? c.moveTo(x, y) : c.lineTo(x, y); }
+          c.stroke();
+          c.strokeStyle = 'rgba(220,255,190,0.25)'; c.lineWidth = 1.5; c.beginPath();
+          for (let y = -10; y <= h + 10; y += 6) { const x = w / 2 + Math.sin(y / 14 + q * 2.1) * w * 0.28 - w * 0.16; y === -10 ? c.moveTo(x, y) : c.lineTo(x, y); }
+          c.stroke();
+        }
+        if (!burnt) for (let y = 14; y < h - 8; y += 26) { c.fillStyle = '#6aa84e'; c.beginPath(); c.ellipse(w * (0.3 + (y % 52 ? 0.4 : 0)), y, 4, 2.4, 0.6, 0, Math.PI * 2); c.fill(); }
+        c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(w - 5, 0, 5, h);
+        c.restore();
+      }, th.x0, th.y0);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(th.x0, th.y0, th.x1 - th.x0, th.y1 - th.y0, 6); ctx.stroke();
+      for (let y = th.y0 + 10; y < th.y1; y += 18) for (const d of [-1, 1]) { const bx = d < 0 ? th.x0 : th.x1; ctx.fillStyle = WIZFF_C.thornDk; ctx.beginPath(); ctx.moveTo(bx, y); ctx.lineTo(bx + d * 10, y + 5); ctx.lineTo(bx, y + 10); ctx.fill(); ctx.fillStyle = k > 0.3 ? 'rgba(255,200,120,0.4)' : 'rgba(210,250,170,0.55)'; ctx.beginPath(); ctx.moveTo(bx, y + 1); ctx.lineTo(bx + d * 9, y + 5); ctx.lineTo(bx, y + 4); ctx.fill(); }
       if (k > 0) { ctx.save(); ctx.globalAlpha = 0.6; ctx.fillStyle = '#ff9a3c'; for (let n = 0; n < 4; n++) { circle(th.x0 + 12 + Math.sin(t * 9 + n) * 8, th.y1 - 20 - n * 30 - (t * 60 % 30), 6 * k); ctx.fill(); } ctx.restore(); }
     } else { ctx.fillStyle = 'rgba(40,30,20,0.6)'; ctx.beginPath(); ctx.ellipse((th.x0 + th.x1) / 2, F - 3, 26, 5, 0, 0, Math.PI * 2); ctx.fill(); }
     // the flame jet (the flame player is in screen coords here)

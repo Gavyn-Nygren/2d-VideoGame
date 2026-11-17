@@ -339,16 +339,44 @@ function wizShDrawArmor(a, t) {
   if (a.down) { ctx.rotate(a.fall * 0.2); ctx.globalAlpha = 0.85; }
   ctx.scale(s, s); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
   const steel = '#b8c0d0', dk = '#7a8296';
+  // (art pass, 2nd look) polished plate: a steel gradient with a bright sheen, a ridged breastplate, riveted plates,
+  // a fauld, knee cops, a visored helm with breaths, and (when knocked down) a heap of shaded pieces
+  const sg = (x0, x1) => { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, '#e8eef8'); g.addColorStop(0.3, steel); g.addColorStop(0.75, '#8e96aa'); g.addColorStop(1, '#6a7286'); return g; };
+  const glint = (x, y, h) => { ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(x, y, 2, h); };
   if (a.down) {
-    ctx.fillStyle = steel; for (const [x, y, r] of [[-20, -8, 10], [0, -10, 12], [18, -7, 9], [6, -22, 9]]) { circle(x, y, r); ctx.fill(); ctx.stroke(); }
+    for (const [x, y, r] of [[-20, -8, 10], [0, -10, 12], [18, -7, 9], [6, -22, 9]]) {
+      ctx.fillStyle = sg(x - r, x + r); circle(x, y, r); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(70,76,92,0.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(x, y, r * 0.6, Math.PI * 0.9, Math.PI * 1.9); ctx.stroke(); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+      ctx.fillStyle = 'rgba(255,255,255,0.65)'; circle(x - r * 0.35, y - r * 0.4, r * 0.2); ctx.fill();
+    }
+    ctx.fillStyle = C.ink; ctx.fillRect(-4, -12, 8, 2.5);
     ctx.restore(); return;
   }
-  ctx.fillStyle = dk; ctx.fillRect(-16, -30, 10, 30); ctx.fillRect(6, -30, 10, 30); ctx.strokeRect(-16, -30, 10, 30); ctx.strokeRect(6, -30, 10, 30);
-  ctx.fillStyle = steel; rr(-22, -74, 44, 46, 8); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = steel; rr(-14, -98, 28, 26, 10); ctx.fill(); ctx.stroke();
+  for (const lx of [-16, 6]) {
+    ctx.fillStyle = sg(lx, lx + 10); ctx.fillRect(lx, -30, 10, 30); ctx.strokeRect(lx, -30, 10, 30);
+    ctx.fillStyle = dk; ctx.fillRect(lx, -6, 10, 6); ctx.fillStyle = steel; circle(lx + 5, -20, 4); ctx.fill(); ctx.lineWidth = 1.5; ctx.stroke(); ctx.lineWidth = 2.5;
+    glint(lx + 2, -28, 7);
+  }
+  ctx.fillStyle = sg(-22, 22); rr(-22, -74, 44, 46, 8); ctx.fill(); ctx.stroke();
+  ctx.save(); rr(-22, -74, 44, 46, 8); ctx.clip();
+  ctx.fillStyle = 'rgba(60,66,82,0.25)'; ctx.fillRect(-22, -40, 44, 12);
+  ctx.strokeStyle = 'rgba(60,66,82,0.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-22, -40); ctx.quadraticCurveTo(0, -36, 22, -40); ctx.moveTo(-22, -34); ctx.quadraticCurveTo(0, -30, 22, -34); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-1, -72); ctx.quadraticCurveTo(-3, -58, -1, -42); ctx.stroke();
+  ctx.strokeStyle = 'rgba(60,66,82,0.5)'; ctx.beginPath(); ctx.moveTo(1, -72); ctx.quadraticCurveTo(3, -58, 1, -42); ctx.stroke();
+  glint(-16, -70, 22);
+  ctx.restore();
+  ctx.fillStyle = '#5a6276'; for (const [x, y] of [[-18, -70], [18, -70], [-18, -44], [18, -44], [-12, -31], [12, -31]]) { circle(x, y, 1.4); ctx.fill(); }
+  // pauldrons
+  for (const d of [-1, 1]) { ctx.fillStyle = sg(d * 26 - 8, d * 26 + 8); ctx.beginPath(); ctx.ellipse(d * 22, -70, 9, 7, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  ctx.fillStyle = sg(-14, 14); rr(-14, -98, 28, 26, 10); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(60,66,82,0.55)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-13, -82); ctx.lineTo(13, -82); ctx.stroke();
+  ctx.fillStyle = '#5a6276'; for (let q = 0; q < 4; q++) ctx.fillRect(-7 + q * 4, -79, 1.5, 4);
+  glint(-10, -95, 10); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
   ctx.fillStyle = C.ink; ctx.fillRect(-9, -88, 18, 4);
   ctx.fillStyle = a.warn > 0 ? '#ff6a4a' : '#ffd0a0'; circle(-4, -86, 2); ctx.fill(); circle(4, -86, 2); ctx.fill();
   ctx.fillStyle = '#d04a4a'; ctx.beginPath(); ctx.moveTo(0, -98); ctx.quadraticCurveTo(10, -116, 2, -122); ctx.quadraticCurveTo(-4, -110, 0, -98); ctx.fill();
+  ctx.strokeStyle = 'rgba(120,20,30,0.6)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let q = 0; q < 4; q++) { ctx.moveTo(1, -101 - q * 4); ctx.lineTo(5 + q, -104 - q * 4); } ctx.stroke();
+  ctx.fillStyle = 'rgba(255,200,190,0.5)'; ctx.beginPath(); ctx.moveTo(0, -100); ctx.quadraticCurveTo(-2, -110, 1.5, -119); ctx.lineTo(0.5, -110); ctx.closePath(); ctx.fill();
   ctx.restore();
   // the gem (and the captain's shield over it)
   const pulse = 0.7 + 0.3 * Math.sin(t * 6);
@@ -375,7 +403,7 @@ function wizShDraw(st) {
   ctx.fillStyle = '#8a7a9a'; ctx.strokeRect(pl.x0 - 6, pl.y0 - 10, pl.x1 - pl.x0 + 12, 12);
   wizDrawFlag(pl.x0 - 14, F, true);
   // the door
-  ctx.fillStyle = wizShLive(ph).length ? '#4a2a2a' : '#7a5a3a'; rr(ph.door - 26, F - 96, 52, 96, 22); ctx.fill(); ctx.stroke();
+  wizDoorArt(ph.door, F, 52, 96, wizShLive(ph).length ? '#4a2a2a' : '#7a5a3a'); rr(ph.door - 26, F - 96, 52, 96, 22); ctx.stroke();
   for (const a of ph.armors) {
     wizShDrawArmor(a, t);
     // the warning: a line of light to the target, or a shadow where the pot lands

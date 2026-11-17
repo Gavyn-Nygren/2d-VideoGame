@@ -897,13 +897,32 @@
       if (w.kind === 'sand') { ctx.translate(0, -4); ctx.rotate(-0.12); }
     }
     if (c.kind === 'ski') {
-      ctx.fillStyle = '#16181c'; ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(24, 0); ctx.lineTo(16, -10); ctx.lineTo(-22, -10); ctx.fill();
-      ctx.fillStyle = '#a8262e'; ctx.fillRect(-10, -12, 20, 3);
+      { const g = ctx.createLinearGradient(0, -10, 0, 0); g.addColorStop(0, '#3a3e46'); g.addColorStop(1, '#0a0b0d'); ctx.fillStyle = g; }
+      ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(24, 0); ctx.lineTo(16, -10); ctx.lineTo(-22, -10); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#000000'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(-21, -10, 36, 1); ctx.fillStyle = '#a8262e'; ctx.fillRect(-24, -5, 46, 1.6);
+      ctx.fillStyle = '#a8262e'; rr(-10, -13, 20, 4, 2); ctx.fill(); ctx.fillStyle = 'rgba(255,170,160,0.5)'; ctx.fillRect(-8, -13, 16, 1);
+      ctx.strokeStyle = '#b8bec6'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(10, -10); ctx.lineTo(14, -18); ctx.lineTo(8, -18); ctx.stroke();
       if (!w || w.t < 0.6) K.zero(-4, -6, { s: 0.55, face: 1, pose: 'stand' });
     } else {
-      ctx.fillStyle = '#121418'; ctx.beginPath(); ctx.moveTo(-60, 0); ctx.lineTo(56, 0); ctx.lineTo(70, -18); ctx.lineTo(-56, -18); ctx.fill();
-      ctx.fillStyle = '#2a2e34'; ctx.fillRect(-56, -22, 120, 4); ctx.fillStyle = '#f2f2f2'; text('0', 40, -9, 12, '#f2f2f2', 'center', 'body');
-      ctx.fillStyle = 'rgba(160,200,220,0.5)'; ctx.beginPath(); ctx.moveTo(16, -22); ctx.lineTo(30, -36); ctx.lineTo(34, -22); ctx.fill();
+      // (art pass) black lacquer with a lit sheer line, a red stripe, chrome rail, a boot stripe and a framed windscreen
+      const ch = () => { ctx.beginPath(); ctx.moveTo(-60, 0); ctx.lineTo(56, 0); ctx.lineTo(70, -18); ctx.lineTo(-56, -18); ctx.closePath(); };
+      const g = ctx.createLinearGradient(0, -18, 0, 0); g.addColorStop(0, '#3a3e46'); g.addColorStop(0.45, '#16181c'); g.addColorStop(1, '#08090b');
+      ctx.fillStyle = g; ch(); ctx.fill();
+      ctx.save(); ch(); ctx.clip();
+      ctx.fillStyle = '#a8262e'; ctx.fillRect(-62, -14, 134, 2.4); ctx.fillStyle = 'rgba(255,150,140,0.45)'; ctx.fillRect(-62, -14, 134, 0.7);
+      ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(-62, -9, 134, 1);
+      ctx.fillStyle = 'rgba(160,210,230,0.3)'; for (let i = 0; i < 6; i++) ctx.fillRect(-54 + i * 19 + Math.sin(G.clock * 5 + i) * 2, -2.5, 7, 0.9);
+      const sg = ctx.createLinearGradient(-60, 0, 70, 0); sg.addColorStop(0, 'rgba(0,0,0,0.3)'); sg.addColorStop(1, 'rgba(255,255,255,0.12)'); ctx.fillStyle = sg; ctx.fillRect(-62, -20, 134, 22);
+      ctx.restore();
+      ctx.strokeStyle = '#000000'; ctx.lineWidth = 1.2; ch(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(57, -1); ctx.lineTo(69, -17); ctx.stroke();
+      ctx.fillStyle = '#2a2e34'; ctx.fillRect(-56, -22, 120, 4); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(-56, -22, 120, 1);
+      ctx.fillStyle = '#b8bec6'; ctx.fillRect(-57, -18.4, 122, 1.4);
+      ctx.fillStyle = '#f2f2f2'; circle(40, -8.5, 6.5); ctx.fill(); ctx.strokeStyle = '#a8262e'; ctx.lineWidth = 1.2; circle(40, -8.5, 6.5); ctx.stroke();
+      text('0', 40, -8, 10, '#16181c', 'center', 'body');
+      windscreen(16, 34, -36);
+      ctx.fillStyle = '#1e2126'; rr(-66, -24, 10, 13, 3); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(-64, -23, 6, 1); ctx.fillStyle = '#a8262e'; ctx.fillRect(-66, -19, 10, 1.4);
       if (!w || w.t < 0.5) { K.zero(-8, -14, { s: 0.6, face: 1, pose: c.recover > 0 ? 'fist' : 'look', t: G.clock }); if (c.blind > 0) { ctx.fillStyle = 'rgba(206,210,216,0.85)'; circle(-6, -44, 12); ctx.fill(); } }
     }
     ctx.restore();
@@ -915,6 +934,57 @@
     }
   }
   // the speedboat: the steerer at the wheel in front, the gadget agent at the stern facing back, the briefcase between
+  // (art pass) the speedboat's hull, drawn in boat space (bow to the right, the waterline at y 0)
+  function boatHull(col, dark) {
+    const R = RICH, hull = () => { ctx.beginPath(); ctx.moveTo(-64, 0); ctx.lineTo(54, 0); ctx.lineTo(78, -20); ctx.lineTo(-60, -20); ctx.closePath(); };
+    const g = ctx.createLinearGradient(0, -20, 0, 0); g.addColorStop(0, R.lit(col, 0.16)); g.addColorStop(0.5, col); g.addColorStop(1, R.dk(col, 0.4));
+    ctx.fillStyle = g; hull(); ctx.fill();
+    ctx.save(); hull(); ctx.clip();
+    // the stern is in shadow, the bow catches the moon
+    const sg = ctx.createLinearGradient(-64, 0, 78, 0); sg.addColorStop(0, 'rgba(0,0,0,0.28)'); sg.addColorStop(0.35, 'rgba(0,0,0,0)'); sg.addColorStop(0.85, 'rgba(255,255,255,0)'); sg.addColorStop(1, 'rgba(255,255,255,0.18)');
+    ctx.fillStyle = sg; ctx.fillRect(-66, -22, 146, 24);
+    // racing stripe with a gold pinstripe either side
+    ctx.fillStyle = dark ? '#a8262e' : '#f4f2ea'; ctx.fillRect(-64, -16, 140, 3.2);
+    ctx.fillStyle = dark ? 'rgba(255,120,110,0.5)' : COL.brass; ctx.fillRect(-64, -17.4, 140, 0.9); ctx.fillRect(-64, -12.3, 140, 0.9);
+    // the lit chine and the boot stripe over the wet waterline
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(-64, -10.5, 140, 1.2);
+    ctx.fillStyle = '#16181c'; ctx.fillRect(-64, -8, 140, 3); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(-64, -8, 140, 0.8);
+    ctx.fillStyle = R.dk(col, 0.6); ctx.fillRect(-64, -3, 140, 3);
+    ctx.fillStyle = 'rgba(190,230,250,0.35)'; for (let i = 0; i < 7; i++) ctx.fillRect(-58 + i * 17 + Math.sin(G.clock * 5 + i) * 2, -2.5, 7, 0.9);
+    // spray rail rivets
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; for (let x = -56; x < 60; x += 14) ctx.fillRect(x, -9.6, 1.2, 1.2);
+    ctx.restore();
+    // a dark outline in the hull's own colour, and a lit bow edge
+    ctx.strokeStyle = R.dk(col, 0.7); ctx.lineWidth = 1.4; hull(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(56, -1); ctx.lineTo(77, -19); ctx.stroke();
+    // the deck cap: varnished mahogany planks (or black lacquer on a Zero boat) with a chrome rub rail
+    const dc = dark ? '#2a2e34' : '#9a5228';
+    ctx.fillStyle = dc; ctx.fillRect(-60, -22, 136, 4);
+    ctx.fillStyle = R.lit(dc, 0.3); ctx.fillRect(-60, -22, 136, 1.2);
+    if (!dark) { ctx.fillStyle = 'rgba(40,16,6,0.6)'; for (let x = -52; x < 74; x += 15) ctx.fillRect(x, -22, 1, 4); ctx.fillStyle = 'rgba(255,220,170,0.35)'; for (let x = -46; x < 72; x += 30) ctx.fillRect(x, -21, 6, 0.8); }
+    ctx.fillStyle = '#c8ced6'; ctx.fillRect(-61, -18.6, 138, 1.6); ctx.fillStyle = '#ffffff'; ctx.fillRect(-61, -18.6, 138, 0.6);
+    ctx.fillStyle = R.dk(dc, 0.5); ctx.fillRect(75, -22, 2, 4);
+    // the bow cleat and a navigation light
+    ctx.fillStyle = '#d8dde4'; ctx.fillRect(60, -25, 8, 2); ctx.fillRect(63, -24, 2, 2);
+    ctx.fillStyle = 'rgba(93,255,154,0.35)'; circle(72, -24, 4); ctx.fill(); ctx.fillStyle = '#5dff9a'; circle(72, -24, 1.6); ctx.fill();
+  }
+  function windscreen(x0, x1, top) {
+    ctx.fillStyle = 'rgba(140,190,215,0.5)'; ctx.beginPath(); ctx.moveTo(x0, -22); ctx.lineTo(x0 + 14, top); ctx.lineTo(x1, -22); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.moveTo(x0 + 6, -23); ctx.lineTo(x0 + 13, top + 5); ctx.lineTo(x0 + 15, top + 7); ctx.lineTo(x0 + 9, -23); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#d8dde4'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x0, -22); ctx.lineTo(x0 + 14, top); ctx.lineTo(x1, -22); ctx.stroke();
+    ctx.strokeStyle = 'rgba(40,46,52,0.6)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x0 + 1.4, -21); ctx.lineTo(x0 + 14.4, top + 2.2); ctx.stroke();
+  }
+  function outboard(x, y) {
+    // leg and skeg (into the wake), then the cowling
+    ctx.fillStyle = '#1e2126'; ctx.fillRect(x + 2, y + 12, 6, 10); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x + 2, y + 12, 1.2, 10);
+    const g = ctx.createLinearGradient(x - 2, y, x + 12, y + 14); g.addColorStop(0, '#4a5058'); g.addColorStop(1, '#16181c');
+    ctx.fillStyle = g; rr(x - 2, y - 2, 14, 15, 4); ctx.fill();
+    ctx.strokeStyle = '#0c0d10'; ctx.lineWidth = 1.2; rr(x - 2, y - 2, 14, 15, 4); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x, y - 1, 8, 1.2);
+    ctx.fillStyle = '#c8ced6'; ctx.fillRect(x - 2, y + 7, 14, 1.8);
+    ctx.fillStyle = '#d8323a'; ctx.fillRect(x - 1, y + 3, 12, 1.6);
+    ctx.fillStyle = '#0c0d10'; for (let i = 0; i < 3; i++) ctx.fillRect(x + 1 + i * 3, y + 10, 1.4, 2);
+  }
   function drawBoat(st) {
     const b = st.b, s = laneS(b.ly), ay = airY(b), x = S.bx, y = laneY(b.ly) - ay;
     const tilt = b.air > 0 ? -0.18 + 0.36 * (b.airT / S.airT) : (b.v > 400 ? -0.04 : 0) + (b.lurch > 0 ? Math.sin(b.lurch * 30) * 0.06 : 0);
@@ -922,10 +992,11 @@
     if (ay < 10) { const wy = laneY(b.ly); for (let i = 0; i < 3; i++) { ctx.strokeStyle = 'rgba(220,240,255,' + (0.35 - i * 0.1) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 60 * s, wy - 1); ctx.quadraticCurveTo(x - 120 - i * 30, wy + 2 + i * 3 + Math.sin(G.clock * 9 + i) * 1.5, x - 200 - i * 50, wy + 4 + i * 5); ctx.stroke(); } }
     ctx.save(); ctx.translate(x, y); ctx.rotate(tilt); ctx.scale(s, s);
     const lx = b.lurch > 0 ? Math.sin(b.lurch * 40) * 3 : 0;
-    // the hull
-    ctx.fillStyle = st.gold ? '#d8a640' : '#7a1e24'; ctx.beginPath(); ctx.moveTo(-64, 0); ctx.lineTo(54, 0); ctx.lineTo(78, -20); ctx.lineTo(-60, -20); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#f4f2ea'; ctx.fillRect(-60, -22, 136, 4); ctx.fillStyle = '#16181c'; ctx.fillRect(-64, -8, 118, 3);
-    ctx.fillStyle = 'rgba(160,200,220,0.55)'; ctx.beginPath(); ctx.moveTo(26, -22); ctx.lineTo(40, -40); ctx.lineTo(44, -22); ctx.fill();
+    // the hull (art pass): a lacquered runabout: shaded sides, a lit chine, racing stripe and gold pinstripe, a black
+    // boot stripe over a wet waterline, a varnished mahogany deck cap with caulked planks and a chrome rub rail, a
+    // tinted windscreen in a chrome frame, a bow light and cleat (same outline as before)
+    boatHull(st.gold ? '#d8a640' : '#8a222a', false);
+    windscreen(26, 44, -40);
     // the agents (seated: drawn from the waist up)
     ctx.save(); ctx.beginPath(); ctx.rect(-80, -120, 170, 101); ctx.clip();
     hero(st, st.steerId, 16 + lx, -13, 1, b.v);
@@ -938,9 +1009,9 @@
     ctx.strokeStyle = COL.brassDark; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-28 + lx, -34); ctx.lineTo(-36 + lx, -50); ctx.stroke();
     // the briefcase on the seat (gripped by the claw in the grab)
     K.briefcase(-8, -20, 0.8, { gold: 1 });
-    // the motor
-    ctx.fillStyle = '#2a2e34'; ctx.fillRect(-72, -26, 10, 20);
-    if (b.boost > 0) { for (let i = 0; i < 3; i++) { ctx.fillStyle = ['#ffe07a', '#ff9a3a', '#ff4a3a'][i]; ctx.beginPath(); ctx.moveTo(-72, -20 + i * 3); ctx.lineTo(-100 - Math.random() * 30 - i * 10, -16); ctx.lineTo(-72, -12 - i * 2); ctx.fill(); } }
+    // the motor: an outboard with a shaded cowling, a chrome band, a red maker's stripe, the leg and a cooling vent
+    outboard(-72, -26);
+    if (b.boost > 0) { for (let i = 0; i < 3; i++) { const fl = 0.5 + 0.5 * Math.sin(G.clock * 41 + i * 2.3) * Math.sin(G.clock * 17 + i); ctx.fillStyle = ['#ffe07a', '#ff9a3a', '#ff4a3a'][i]; ctx.beginPath(); ctx.moveTo(-72, -20 + i * 3); ctx.lineTo(-100 - fl * 30 - i * 10, -16); ctx.lineTo(-72, -12 - i * 2); ctx.fill(); } }
     ctx.restore();
     if (b.splash > 0) { ctx.fillStyle = 'rgba(220,240,255,' + b.splash + ')'; ctx.beginPath(); ctx.ellipse(x, laneY(b.ly), 80, 14, 0, 0, TAU); ctx.fill(); }
   }

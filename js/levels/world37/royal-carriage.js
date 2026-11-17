@@ -979,7 +979,13 @@
     ctx.fillStyle = '#c88a52'; circ(x, y, r - 3); ctx.fill();
     ctx.fillStyle = 'rgba(90,50,20,0.35)'; ctx.beginPath(); ctx.arc(x, y, r - 3, -0.3, Math.PI * 0.8); ctx.lineTo(x, y); ctx.fill();
     ctx.strokeStyle = '#5e3a1c'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 6; k++) { const b = a + k * Math.PI / 3; ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(b) * (r - 3), y + Math.sin(b) * (r - 3)); } ctx.stroke();
-    ctx.fillStyle = '#ffd23a'; circ(x, y, 3); ctx.fill();
+    // (art pass) the felloe ring inside the iron tyre with its joints, tyre bolts, a lit spoke edge and a capped hub
+    ctx.strokeStyle = '#8a5a30'; ctx.lineWidth = 2.4; circ(x, y, r - 4.5); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,220,170,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(x, y, r - 5.2, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+    ctx.fillStyle = '#9aa0aa'; for (let k = 0; k < 6; k++) { const b = a + k * Math.PI / 3 + Math.PI / 6; circ(x + Math.cos(b) * (r - 1.6), y + Math.sin(b) * (r - 1.6), 0.9); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(30,14,4,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = 0; k < 6; k++) { const b = a + k * Math.PI / 3 + Math.PI / 6; ctx.moveTo(x + Math.cos(b) * (r - 6), y + Math.sin(b) * (r - 6)); ctx.lineTo(x + Math.cos(b) * (r - 3), y + Math.sin(b) * (r - 3)); } ctx.stroke();
+    ctx.fillStyle = '#5e3a1c'; circ(x, y, 4.5); ctx.fill();
+    ctx.fillStyle = '#ffd23a'; circ(x, y, 3); ctx.fill(); ctx.fillStyle = '#9a6a14'; circ(x + 0.6, y + 0.6, 1.2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.75)'; circ(x - 1, y - 1, 0.9); ctx.fill();
   }
   function drawRig(st, t) {
     const c = st.car, lift = c.airH, gy = R.gy - lift, ph = st.d / 140, sp = clamp(st.v / S.fast, 0, 1), gold = st.gold;
@@ -1009,7 +1015,16 @@
     const wa = st.d / 26;
     ctx.fillStyle = 'rgba(40,30,10,' + (0.22 - Math.min(0.12, lift * 0.002)) + ')'; ctx.beginPath(); ctx.ellipse((L + Rr) / 2, R.gy + 1, (Rr - L) * 0.58, 7, 0, 0, TAU); ctx.fill();
     wheel(L + 30, gy - 24, 24, wa); wheel(Rr - 30, gy - 22, 22, wa);
+    // (art pass) the perch: a grained beam with iron straps, and gilded C-springs at both ends
     ctx.fillStyle = '#5e3a1c'; ctx.fillRect(L + 20, gy - 50, Rr - L - 40, 8);
+    ctx.fillStyle = 'rgba(255,220,170,0.3)'; ctx.fillRect(L + 20, gy - 50, Rr - L - 40, 1.5);
+    ctx.fillStyle = 'rgba(30,14,4,0.45)'; ctx.fillRect(L + 20, gy - 44, Rr - L - 40, 2);
+    ctx.strokeStyle = 'rgba(30,14,4,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let q = 0; q < 2; q++) { ctx.moveTo(L + 22, gy - 47.5 + q * 2.5); for (let s = L + 22; s < Rr - 20; s += 10) ctx.lineTo(s, gy - 47.5 + q * 2.5 + Math.sin(s / 9 + q) * 0.7); } ctx.stroke();
+    for (const sx of [L + 46, (L + Rr) / 2, Rr - 46]) { ctx.fillStyle = '#3a3a42'; ctx.fillRect(sx - 3, gy - 51, 6, 10); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(sx - 3, gy - 51, 1.2, 10); ctx.fillStyle = '#9aa0aa'; circ(sx, gy - 46, 1.3); ctx.fill(); }
+    for (const [sx, dir] of [[L + 22, -1], [Rr - 22, 1]]) {
+      ctx.strokeStyle = '#7a5010'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(sx + dir * 2, gy - 56, 8, dir > 0 ? -Math.PI / 2 : Math.PI / 2, dir > 0 ? Math.PI / 2 : Math.PI * 1.5); ctx.stroke();
+      ctx.strokeStyle = gold ? '#fff0a0' : '#ffd23a'; ctx.lineWidth = 2; ctx.stroke();
+    }
     // the body
     const bg = ctx.createLinearGradient(0, top, 0, gy - 44);
     bg.addColorStop(0, gold ? '#fff0a0' : '#ffe07a'); bg.addColorStop(1, gold ? '#e8a82a' : '#c8902a');
@@ -1021,10 +1036,35 @@
     ctx.fillStyle = 'rgba(120,70,10,0.22)'; ctx.fillRect(Rr - 18, top, 30, gy - top);
     ctx.strokeStyle = 'rgba(122,80,16,0.55)'; ctx.lineWidth = 1.5;
     for (const px of [L + 18, Rr - 38]) { rr(px, top + 22, 20, gy - 48 - top - 34, 5); ctx.stroke(); }
+    // (art pass) gilt mouldings with a bead row, carved C-scrolls in the panels, a soft sheen and brass studs
+    { const mb = gy - 60, ph = gy - 48 - top - 34;
+      ctx.fillStyle = 'rgba(122,80,16,0.35)'; ctx.fillRect(L - 6, top + 14, Rr - L + 12, 5); ctx.fillRect(L - 6, mb, Rr - L + 12, 5);
+      ctx.fillStyle = 'rgba(255,250,210,0.55)'; ctx.fillRect(L - 6, top + 14, Rr - L + 12, 1.4); ctx.fillRect(L - 6, mb, Rr - L + 12, 1.4);
+      ctx.fillStyle = 'rgba(255,248,200,0.8)'; for (let bx = L + 4; bx < Rr; bx += 7) { circ(bx, top + 17.5, 1.1); ctx.fill(); circ(bx + 3.5, mb + 3.5, 1.1); ctx.fill(); }
+      ctx.strokeStyle = 'rgba(122,80,16,0.6)'; ctx.lineWidth = 1.6;
+      for (const px of [L + 28, Rr - 28]) {
+        const cy0 = top + 22 + ph * 0.3, cy1 = top + 22 + ph * 0.72;
+        ctx.beginPath(); ctx.arc(px, cy0, 5, Math.PI * 0.2, Math.PI * 1.7); ctx.stroke();
+        ctx.beginPath(); ctx.arc(px, cy1, 5, -Math.PI * 0.7, Math.PI * 0.8); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px, cy0 + 5); ctx.quadraticCurveTo(px + 4, (cy0 + cy1) / 2, px, cy1 - 5); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,250,210,0.7)'; circ(px - 1, cy0 - 1, 1.6); ctx.fill(); circ(px - 1, cy1 - 1, 1.6); ctx.fill();
+      }
+      const sh = ctx.createLinearGradient(L, 0, Rr, 0); sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.18, 'rgba(255,255,255,0.22)'); sh.addColorStop(0.26, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = sh; ctx.fillRect(L - 6, top, Rr - L + 12, gy - top);
+      ctx.fillStyle = 'rgba(120,70,10,0.25)'; ctx.fillRect(L - 6, gy - 58, Rr - L + 12, 10);
+      for (const [sx, sy] of [[L + 10, top + 24], [Rr - 10, top + 24], [L + 12, mb - 6], [Rr - 12, mb - 6]]) { ctx.fillStyle = '#9a6a14'; circ(sx + 0.5, sy + 0.6, 2); ctx.fill(); ctx.fillStyle = '#ffe9a0'; circ(sx, sy, 1.6); ctx.fill(); }
+    }
     ctx.restore();
     ctx.beginPath(); ctx.moveTo(L + 6, top + 12); ctx.lineTo(Rr - 6, top + 12); ctx.quadraticCurveTo(Rr + 6, gy - 70, Rr - 14, gy - 48); ctx.lineTo(L + 14, gy - 48); ctx.quadraticCurveTo(L - 6, gy - 70, L + 6, top + 12); ctx.closePath(); ctx.stroke();
     // the roof rail and luggage
     ctx.fillStyle = '#7a3aa8'; ctx.fillRect(L + 2, top + 4, Rr - L - 4, 9); ctx.fillStyle = '#ffd23a'; ctx.fillRect(L + 2, top + 2, Rr - L - 4, 3);
+    // (art pass) the roof rail: a velvet band with a lit fold, gold fringe and studs, gilt finials at the corners
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(L + 2, top + 5, Rr - L - 4, 1.5);
+    ctx.fillStyle = 'rgba(40,10,60,0.4)'; ctx.fillRect(L + 2, top + 11, Rr - L - 4, 2);
+    ctx.fillStyle = '#fff6c0'; ctx.fillRect(L + 2, top + 2, Rr - L - 4, 1);
+    ctx.fillStyle = gold ? '#fff0a0' : '#ffd23a'; for (let fx = L + 5; fx < Rr - 3; fx += 6) ctx.fillRect(fx, top + 13, 2, 3 + ((fx / 6) % 2));
+    ctx.fillStyle = '#ffe9a0'; for (let fx = L + 14; fx < Rr - 8; fx += 22) { circ(fx, top + 8.5, 1.5); ctx.fill(); }
+    for (const fx of [L + 3, Rr - 3]) { ctx.fillStyle = '#9a6a14'; ctx.fillRect(fx - 1.5, top - 3, 3, 6); ctx.fillStyle = gold ? '#fff0a0' : '#ffd23a'; circ(fx, top - 5, 3); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.7)'; circ(fx - 1, top - 6, 1); ctx.fill(); }
     for (let k = 0; k < st.bags; k++) { const bx = R.bag - 16 + (k % 3) * 12, by = top - 2 - Math.floor(k / 3) * 10; ctx.fillStyle = ['#8a4a2a', '#5a6a8a', '#7a5a3a'][k % 3]; ctx.fillRect(bx - 5, by - 8, 11, 9); ctx.fillStyle = '#ffd23a'; ctx.fillRect(bx - 1, by - 9, 3, 2); }
     // the window and the King
     const wx = R.window, wy = top + 30;

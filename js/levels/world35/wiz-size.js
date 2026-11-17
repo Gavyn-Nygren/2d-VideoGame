@@ -366,32 +366,59 @@ function wizSizeDrawBack(st) {
   for (let x = Math.floor((cx - 40) / 34) * 34; x < cx + W + 40; x += 34) { ctx.moveTo(x, 0); ctx.lineTo(x, F); }
   ctx.stroke();
   // tall shelves of clutter far behind: boxes, jars, a clock and old books, all a little dusty
+  // (art pass, 2nd look) each shelf unit is one cached picture: grained uprights with a lit edge, shelf boards with a
+  // nosing and a shadow, boxes with lids and labels, glass jars with contents and a glint, books with bands, little
+  // clocks with ticks and a brass rim, dust along the boards and the odd cobweb
   for (let x = Math.floor((cx - 100) / 160) * 160; x < cx + W + 160; x += 160) {
-    ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(x + 16, 96, 130, F - 96);
-    ctx.fillStyle = '#4a3a4e'; ctx.fillRect(x + 10, 90, 130, F - 90);
-    ctx.fillStyle = '#3a2c3e'; ctx.fillRect(x + 10, 90, 6, F - 90); ctx.fillRect(x + 134, 90, 6, F - 90);
-    for (let y = 140, row = 0; y < F; y += 70, row++) {
-      const h = hash(x, row);
-      // the things on this shelf
-      const items = [[24, 14, 30], [60, 22, 22], [100, 10, 26]];
-      items.forEach(([dx, w, hh], j) => {
-        const kind = (hash(x * 7 + j * 31, row * 13 + j) >> 4) % 4, ix = x + dx, top = y - hh;
-        if (kind === 0) { // a box with a lid line
-          ctx.fillStyle = '#6a5070'; ctx.fillRect(ix, top, w + 4, hh); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(ix, top, w + 4, 3); ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(ix + w, top, 4, hh);
-        } else if (kind === 1) { // a jar
-          ctx.fillStyle = '#5e6a80'; rr(ix, top + 4, w, hh - 4, 4); ctx.fill(); ctx.fillStyle = '#7a6a5a'; ctx.fillRect(ix + 2, top, w - 4, 5); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(ix + 2, top + 7, 2, hh - 12);
-        } else if (kind === 2) { // a stack of old books
-          for (let b = 0; b < 3; b++) { ctx.fillStyle = ['#6a4048', '#4a5a6a', '#6a6040'][b]; ctx.fillRect(ix - 2 + b, y - 8 - b * 8, w + 8 - b * 2, 8); }
-        } else { // a little clock
-          ctx.fillStyle = '#7a5a40'; rr(ix, top + 2, w + 4, hh - 2, 4); ctx.fill(); ctx.fillStyle = '#d8ccb0'; circle(ix + (w + 4) / 2, top + hh / 2, Math.min(w, hh) / 2 - 2); ctx.fill();
-          ctx.strokeStyle = '#4a3a2a'; ctx.lineWidth = 1.5; ctx.beginPath(); const cxk = ix + (w + 4) / 2, cyk = top + hh / 2; ctx.moveTo(cxk, cyk); ctx.lineTo(cxk, cyk - 5); ctx.moveTo(cxk, cyk); ctx.lineTo(cxk + 4, cyk); ctx.stroke();
-        }
-      });
-      ctx.fillStyle = '#5a4a5e'; ctx.fillRect(x + 10, y, 130, 6); ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + 10, y, 130, 1.5);
-      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + 16, y + 6, 124, 4);
-    }
-    // a cobweb in the top corner of some shelves
-    if (hash(x, 9) % 2) { ctx.strokeStyle = 'rgba(230,230,250,0.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 16, 96); ctx.lineTo(x + 46, 96); ctx.moveTo(x + 16, 96); ctx.lineTo(x + 16, 126); ctx.moveTo(x + 16, 96); ctx.lineTo(x + 38, 118); ctx.moveTo(x + 32, 96); ctx.quadraticCurveTo(x + 26, 104, x + 16, 112); ctx.moveTo(x + 42, 96); ctx.quadraticCurveTo(x + 30, 112, x + 16, 122); ctx.stroke(); }
+    RICH.pic('wizszunit|' + x, 140, F - 90 + 6, c => {
+      const R = RICH, hh = F - 90, ox = -10, oy = -90;
+      c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(6, 6, 130, hh);
+      c.fillStyle = '#4a3a4e'; c.fillRect(0, 0, 130, hh);
+      c.fillStyle = 'rgba(0,0,0,0.12)'; for (let q = 0; q < 6; q++) c.fillRect(8 + q * 20, 0, 1, hh);
+      R.wood(c, 0, 0, 6, hh, { col: '#3e3042', vert: true, bw: 6, seed: x, edge: false, knots: 0 });
+      R.wood(c, 124, 0, 6, hh, { col: '#3e3042', vert: true, bw: 6, seed: x + 1, edge: false, knots: 0 });
+      c.fillStyle = 'rgba(255,240,255,0.12)'; c.fillRect(0, 0, 1.5, hh); c.fillRect(124, 0, 1.5, hh);
+      for (let y = 140, row = 0; y < F; y += 70, row++) {
+        const items = [[24, 14, 30], [60, 22, 22], [100, 10, 26]];
+        items.forEach(([dx, w, h2], j) => {
+          const kind = (hash(x * 7 + j * 31, row * 13 + j) >> 4) % 4, ix = x + dx + ox - x, top = y - h2 + oy, yb = y + oy;
+          if (kind === 0) { // a box with a lid, a label and a string
+            const bc = ['#6a5070', '#5e5a72', '#70566a'][(row + j) % 3];
+            c.fillStyle = bc; c.fillRect(ix, top, w + 4, h2); c.fillStyle = R.lit(bc, 0.14); c.fillRect(ix - 1, top, w + 6, 4);
+            c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(ix - 1, top, w + 6, 1); c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(ix + w, top + 4, 4, h2 - 4);
+            c.fillStyle = '#d8ccb0'; c.fillRect(ix + 3, top + h2 * 0.45, w - 3, 6); c.fillStyle = 'rgba(60,40,40,0.6)'; c.fillRect(ix + 5, top + h2 * 0.45 + 2, w - 8, 1); c.fillRect(ix + 5, top + h2 * 0.45 + 4, (w - 8) * 0.6, 0.8);
+            c.strokeStyle = R.dk(bc, 0.5); c.lineWidth = 1; c.strokeRect(ix + 0.5, top + 0.5, w + 3, h2 - 1);
+          } else if (kind === 1) { // a glass jar with something in it
+            const fill = ['#7aa06a', '#a8706a', '#8a8ac0'][(row + j) % 3];
+            c.fillStyle = 'rgba(150,170,200,0.35)'; R.rr(c, ix, top + 4, w, h2 - 4, 4); c.fill();
+            c.fillStyle = fill; R.rr(c, ix + 1.5, top + 4 + (h2 - 4) * 0.4, w - 3, (h2 - 4) * 0.6 - 1.5, 3); c.fill();
+            c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(ix + 1.5, top + 4 + (h2 - 4) * 0.4, w - 3, 1);
+            c.strokeStyle = 'rgba(200,215,240,0.6)'; c.lineWidth = 1; R.rr(c, ix + 0.5, top + 4.5, w - 1, h2 - 5, 4); c.stroke();
+            c.fillStyle = '#7a6a5a'; c.fillRect(ix + 2, top, w - 4, 5); c.fillStyle = 'rgba(255,240,210,0.35)'; c.fillRect(ix + 2, top, w - 4, 1.2);
+            c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(ix + 2.5, top + 7, 1.5, h2 - 12);
+          } else if (kind === 2) { // a stack of old books with bands
+            for (let q = 0; q < 3; q++) { const bc = ['#6a4048', '#4a5a6a', '#6a6040'][q], bx = ix - 2 + q, by = yb - 8 - q * 8, bw = w + 8 - q * 2;
+              c.fillStyle = bc; c.fillRect(bx, by, bw, 8); c.fillStyle = '#e8d8b8'; c.fillRect(bx + bw - 3, by + 1, 2, 6);
+              c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(bx, by, bw, 1.2); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(bx, by + 6.5, bw, 1.5);
+              c.fillStyle = '#c8a850'; c.fillRect(bx + 3, by + 1, 1.2, 6); c.fillRect(bx + 6, by + 1, 1.2, 6); }
+          } else { // a little clock
+            c.fillStyle = '#7a5a40'; R.rr(c, ix, top + 2, w + 4, h2 - 2, 4); c.fill(); c.fillStyle = 'rgba(255,230,190,0.25)'; c.fillRect(ix + 1, top + 3, 2, h2 - 4);
+            c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(ix + w + 1, top + 3, 3, h2 - 4);
+            const cxk = ix + (w + 4) / 2, cyk = top + h2 / 2, rk = Math.min(w, h2) / 2 - 2;
+            c.fillStyle = '#c8a040'; c.beginPath(); c.arc(cxk, cyk, rk + 1.2, 0, Math.PI * 2); c.fill();
+            c.fillStyle = '#e8dcc0'; c.beginPath(); c.arc(cxk, cyk, rk, 0, Math.PI * 2); c.fill();
+            c.fillStyle = '#4a3a2a'; for (let q = 0; q < 12; q++) { const a = q * Math.PI / 6; c.fillRect(cxk + Math.cos(a) * (rk - 1.5) - 0.5, cyk + Math.sin(a) * (rk - 1.5) - 0.5, 1, 1); }
+            c.strokeStyle = '#4a3a2a'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(cxk, cyk); c.lineTo(cxk, cyk - rk * 0.65); c.moveTo(cxk, cyk); c.lineTo(cxk + rk * 0.5, cyk); c.stroke();
+            c.fillStyle = 'rgba(255,255,255,0.4)'; c.beginPath(); c.ellipse(cxk - rk * 0.35, cyk - rk * 0.4, rk * 0.3, rk * 0.15, -0.6, 0, Math.PI * 2); c.fill();
+          }
+        });
+        // the shelf board: a lit nosing, grain, dust, a shadow beneath
+        R.wood(c, 0, y + oy, 130, 6, { col: '#5a4a5e', seed: x + row, edge: false, knots: 0 });
+        c.fillStyle = 'rgba(255,255,255,0.16)'; c.fillRect(0, y + oy, 130, 1.5); c.fillStyle = 'rgba(220,210,230,0.18)'; c.fillRect(0, y + oy - 1, 130, 1);
+        c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(6, y + oy + 6, 124, 4);
+      }
+      if (hash(x, 9) % 2) { c.strokeStyle = 'rgba(230,230,250,0.28)'; c.lineWidth = 1; c.beginPath(); c.moveTo(6, 6); c.lineTo(36, 6); c.moveTo(6, 6); c.lineTo(6, 36); c.moveTo(6, 6); c.lineTo(28, 28); c.moveTo(22, 6); c.quadraticCurveTo(16, 14, 6, 22); c.moveTo(32, 6); c.quadraticCurveTo(20, 22, 6, 32); c.stroke(); }
+    }, x + 10, 90);
   }
   // moonlight from a high window and dust drifting in it
   ctx.fillStyle = 'rgba(220,210,255,0.05)'; ctx.beginPath(); ctx.moveTo(cx + 560, 0); ctx.lineTo(cx + 680, 0); ctx.lineTo(cx + 520, F); ctx.lineTo(cx + 300, F); ctx.closePath(); ctx.fill();
@@ -450,14 +477,39 @@ function wizSizeDraw(st) {
     else if (r.kind === 'plank') { RICH.pic('wizszplank|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0 + 12, r.y1 - r.y0, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: C2.plank, seam: 0, seed: 5, edge: false }); RICH.nail(c, 6, h / 2, 1.3); RICH.nail(c, w - 6, h / 2, 1.3); }, r.x0 - 6, r.y0); ctx.strokeRect(r.x0 - 6, r.y0, r.x1 - r.x0 + 12, r.y1 - r.y0); }
     else if (r.kind === 'junkbed') {
       ctx.fillStyle = C2.junkDk; ctx.fillRect(r.x0, F - 6, r.x1 - r.x0, r.y1 - F + 6);
-      for (let x = r.x0 + 10; x < r.x1; x += 34) { const k = (x * 7) % 5; ctx.fillStyle = ['#8a7a6a', '#6a8a9a', '#9a6a7a', '#7a7a5a', '#5a6a8a'][k]; circle(x, F + 4 + (k % 3) * 8, 10 + k); ctx.fill(); ctx.stroke(); }
+      for (let x = r.x0 + 10; x < r.x1; x += 34) {
+        // (art pass, 2nd look) attic junk: old pots, a cog, a ball of yarn, a hat box, each shaded with a glint (cached)
+        const k = (x * 7) % 5, col = ['#8a7a6a', '#6a8a9a', '#9a6a7a', '#7a7a5a', '#5a6a8a'][k], rad = 10 + k, yy = F + 4 + (k % 3) * 8;
+        RICH.pic('wizszjunk|' + k, rad * 2 + 4, rad * 2 + 4, c => {
+          const m = rad + 2;
+          const g = c.createRadialGradient(m - rad * 0.35, m - rad * 0.4, 1, m, m, rad); g.addColorStop(0, RICH.lit(col, 0.35)); g.addColorStop(0.7, col); g.addColorStop(1, RICH.dk(col, 0.35));
+          c.fillStyle = g; c.beginPath(); c.arc(m, m, rad, 0, Math.PI * 2); c.fill();
+          c.strokeStyle = RICH.dk(col, 0.5); c.lineWidth = 1.2;
+          if (k === 0) { for (let q = 0; q < 8; q++) { const a = q * Math.PI / 4; c.fillStyle = RICH.dk(col, 0.2); c.fillRect(m + Math.cos(a) * (rad - 2) - 2, m + Math.sin(a) * (rad - 2) - 2, 4, 4); } c.fillStyle = RICH.dk(col, 0.5); c.beginPath(); c.arc(m, m, rad * 0.3, 0, Math.PI * 2); c.fill(); }
+          else if (k === 1) { c.beginPath(); for (let q = 0; q < 4; q++) { c.moveTo(m - rad, m - rad * 0.6 + q * rad * 0.4); c.quadraticCurveTo(m, m - rad + q * rad * 0.5, m + rad, m - rad * 0.4 + q * rad * 0.4); } c.stroke(); }
+          else if (k === 2) { c.fillStyle = RICH.dk(col, 0.3); c.fillRect(m - rad, m - 2, rad * 2, 4); c.fillStyle = '#e8c860'; c.fillRect(m - 2, m - rad, 4, rad * 2); }
+          else if (k === 3) { c.beginPath(); c.ellipse(m, m - rad * 0.55, rad * 0.75, rad * 0.22, 0, 0, Math.PI * 2); c.stroke(); c.fillStyle = RICH.dk(col, 0.4); c.fillRect(m - 3, m - rad - 1, 6, 4); }
+          else { for (let q = 0; q < 3; q++) { c.beginPath(); c.arc(m, m, rad * (0.35 + q * 0.2), 0.3, 2.6); c.stroke(); } }
+          c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.ellipse(m - rad * 0.4, m - rad * 0.45, rad * 0.25, rad * 0.14, -0.6, 0, Math.PI * 2); c.fill();
+        }, x - rad - 2, yy - rad - 2);
+        ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; circle(x, yy, rad); ctx.stroke();
+      }
       ctx.fillStyle = C2.junk; ctx.fillRect(r.x0, F - 2, r.x1 - r.x0, 6);
     }
   }
   for (const pc of ph.pieces) {
-    if (pc.lever) { const lv = pc.lever; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.fillStyle = '#c0b0d0'; ctx.fillRect(lv.x - 6, lv.y - 8, 12, 8); ctx.strokeRect(lv.x - 6, lv.y - 8, 12, 8); ctx.beginPath(); ctx.moveTo(lv.x, lv.y - 6); ctx.lineTo(lv.x + (lv.pulled ? 10 : -10), lv.y - 22); ctx.stroke(); ctx.fillStyle = lv.pulled ? '#9fe07f' : '#ff7a6a'; circle(lv.x + (lv.pulled ? 10 : -10), lv.y - 22, 4); ctx.fill(); ctx.stroke(); }
+    if (pc.lever) {
+      // (art pass, 2nd look) a brass lever box with bolts and a lit lid, a turned wooden handle with a coloured knob
+      const lv = pc.lever, hx = lv.x + (lv.pulled ? 10 : -10);
+      RICH.pic('wizszlever', 14, 10, c => { RICH.metal(c, 0, 0, 14, 10, { col: '#b8a070', r: 2, seed: 3, scratch: false }); RICH.rivet(c, 3, 6.5, 1, '#8a7040'); RICH.rivet(c, 11, 6.5, 1, '#8a7040'); c.fillStyle = '#2a2030'; c.fillRect(5, 1, 4, 2); }, lv.x - 7, lv.y - 9);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.strokeRect(lv.x - 6.5, lv.y - 8.5, 13, 8.5);
+      ctx.strokeStyle = '#4a2e18'; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(lv.x, lv.y - 6); ctx.lineTo(hx, lv.y - 22); ctx.stroke();
+      ctx.strokeStyle = '#a8784a'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(lv.x - 0.5, lv.y - 6.5); ctx.lineTo(hx - 0.5, lv.y - 22.5); ctx.stroke();
+      ctx.fillStyle = lv.pulled ? '#9fe07f' : '#ff7a6a'; circle(hx, lv.y - 22, 4); ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.65)'; circle(hx - 1.3, lv.y - 23.3, 1.3); ctx.fill();
+    }
     if (pc.cat) wizSizeDrawCat(pc, t);
-    if (pc.kind === 'door') { ctx.fillStyle = '#5a3a2a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(pc.x - 26, pc.y - 90, 52, 90, 20); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#ffd23f'; circle(pc.x + 14, pc.y - 44, 4); ctx.fill(); }
+    if (pc.kind === 'door') { wizDoorArt(pc.x, pc.y, 52, 90); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(pc.x - 26, pc.y - 90, 52, 90, 20); ctx.stroke(); }
     // the flag
     const fy = wizSizeFlagY(ph, pc.flag);
     if (pc.kind !== 'door') wizDrawFlag(pc.flag, fy, ph.pieces.indexOf(pc) <= ph.pc);
@@ -474,17 +526,39 @@ function wizSizeDrawCat(pc, t) {
   const c = pc.cat, x = c.x, y = WIZSIZE.floor, open = c.eye > 0;
   ctx.save(); ctx.translate(x, y); ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.lineJoin = 'round';
   const br = open ? 0 : Math.sin(t * 1.6) * 3;
-  ctx.fillStyle = '#e8a050'; ctx.beginPath(); ctx.ellipse(0, -60 - br, 130, 60 + br, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#c87a30'; for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.ellipse(k * 40, -100 - br, 8, 18, 0, 0, Math.PI * 2); ctx.fill(); }
+  // (art pass, 2nd look) ginger fur: a lit back, a cream belly, tapered stripes, tucked paws, pink ears and nose
+  const fur = ctx.createLinearGradient(0, -120 - br, 0, 0); fur.addColorStop(0, '#f6b866'); fur.addColorStop(0.6, '#e8a050'); fur.addColorStop(1, '#c8803a');
+  ctx.fillStyle = '#c8803a'; ctx.beginPath(); ctx.ellipse(0, -60 - br, 130, 60 + br, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = fur; ctx.fill(); ctx.stroke();
+  ctx.save(); ctx.beginPath(); ctx.ellipse(0, -60 - br, 130, 60 + br, 0, Math.PI, 0); ctx.closePath(); ctx.clip();
+  ctx.fillStyle = '#f8e2c0'; ctx.beginPath(); ctx.ellipse(-10, -2, 120, 22, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c87a30'; for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(k * 40 - 9, -122 - br); ctx.quadraticCurveTo(k * 40 + 4, -100 - br, k * 40 - 2, -74 - br); ctx.quadraticCurveTo(k * 40 + 10, -98 - br, k * 40 + 9, -122 - br); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = 'rgba(255,240,210,0.35)'; ctx.beginPath(); ctx.ellipse(-30, -108 - br, 70, 8, -0.05, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(160,90,30,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = 0; k < 14; k++) { const fx = -110 + k * 16, fy = -40 - (k % 3) * 14 - br * 0.5; ctx.moveTo(fx, fy); ctx.lineTo(fx + 4, fy - 6); } ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
+  for (const px of [-70, -36]) { ctx.fillStyle = '#f8e2c0'; ctx.beginPath(); ctx.ellipse(px, -6, 16, 8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(px + 4, -11); ctx.lineTo(px + 4, -3); ctx.moveTo(px + 10, -10); ctx.lineTo(px + 10, -4); ctx.stroke(); ctx.lineWidth = 3; }
   // the head
-  ctx.fillStyle = '#e8a050'; circle(-120, -50, 44); ctx.fill(); ctx.stroke();
+  const hg = ctx.createRadialGradient(-132, -66, 6, -120, -50, 44); hg.addColorStop(0, '#f8c070'); hg.addColorStop(1, '#d88a40');
+  ctx.fillStyle = hg; circle(-120, -50, 44); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#e8a050';
   ctx.beginPath(); ctx.moveTo(-150, -82); ctx.lineTo(-146, -112); ctx.lineTo(-124, -90); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(-104, -88); ctx.lineTo(-90, -114); ctx.lineTo(-86, -82); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#f2a0a8'; ctx.beginPath(); ctx.moveTo(-145, -86); ctx.lineTo(-143, -104); ctx.lineTo(-130, -91); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-100, -88); ctx.lineTo(-92, -106); ctx.lineTo(-90, -86); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#c87a30'; for (const dx of [-10, 0, 10]) { ctx.beginPath(); ctx.moveTo(-120 + dx - 3, -93); ctx.lineTo(-120 + dx * 1.3, -78); ctx.lineTo(-120 + dx + 3, -93); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = '#f8e2c0'; ctx.beginPath(); ctx.ellipse(-118, -34, 18, 12, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e8707a'; ctx.beginPath(); ctx.moveTo(-122, -42); ctx.lineTo(-114, -42); ctx.lineTo(-118, -37); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(60,40,30,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); for (const sd of [-1, 1]) for (let q = 0; q < 3; q++) { ctx.moveTo(-118 + sd * 10, -36 + q * 3); ctx.lineTo(-118 + sd * 34, -40 + q * 6); } ctx.stroke();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
   if (open) { ctx.fillStyle = '#e8f070'; circle(-104, -56, 9); ctx.fill(); ctx.stroke(); ctx.fillStyle = C.ink; ctx.fillRect(-106, -64, 4, 16); text('!', -104, -130, 34, '#ffd23f', 'center', 'title'); }
   else { ctx.beginPath(); ctx.moveTo(-114, -56); ctx.quadraticCurveTo(-104, -50, -94, -56); ctx.stroke(); text('z', -60 + Math.sin(t * 2) * 6, -130 - (t * 20 % 30), 18, 'rgba(255,255,255,0.7)', 'center', 'body'); }
   ctx.beginPath(); ctx.moveTo(-140, -56); ctx.quadraticCurveTo(-130, -50, -122, -56); ctx.stroke();
   // the tail
-  ctx.lineWidth = 12; ctx.strokeStyle = '#e8a050'; ctx.beginPath(); ctx.moveTo(126, -20); ctx.quadraticCurveTo(170, -10 + Math.sin(t * 2) * 8, 160, -50); ctx.stroke();
+  ctx.lineWidth = 15; ctx.strokeStyle = '#a8602a'; ctx.beginPath(); ctx.moveTo(126, -20); ctx.quadraticCurveTo(170, -10 + Math.sin(t * 2) * 8, 160, -50); ctx.stroke();
+  ctx.lineWidth = 12; ctx.strokeStyle = '#e8a050'; ctx.stroke();
+  ctx.lineWidth = 12; ctx.strokeStyle = '#c87a30'; ctx.setLineDash([5, 9]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,230,190,0.5)'; ctx.beginPath(); ctx.moveTo(128, -24); ctx.quadraticCurveTo(166, -14 + Math.sin(t * 2) * 8, 156, -50); ctx.stroke();
   ctx.restore();
 }
 function wizSizeDrawTop(st) {

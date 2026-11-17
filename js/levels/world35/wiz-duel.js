@@ -229,7 +229,18 @@ function wizDuDrawBack(st) {
     c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(2, 2, 6, h - 4); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(w - 8, 2, 6, h - 4);
   }, wx, wy);
   ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.strokeRect(wx, wy, K.wallW, K.wallH);
-  ctx.fillStyle = '#7aa0d8'; rr(K.mid - 30, F - K.wallH - 14, 60, 16, 6); ctx.fill(); ctx.stroke();
+  // (art pass, 2nd look) the fountain basin: a carved stone bowl with a lit lip, a band of carving, water inside
+  // catching the moon, and a spout nozzle
+  RICH.pic('wizdubasin', 60, 16, (c, w, h) => {
+    RICH.rr(c, 0, 0, w, h, 6); c.save(); c.clip();
+    RICH.stone(c, 0, 0, w, h, { col: WIZC.stoneLt, course: 16, len: 20, seed: 51, edge: false, cracks: 0 });
+    c.fillStyle = '#5a8ac8'; RICH.rr(c, 4, 1.5, w - 8, 5, 2.5); c.fill(); c.fillStyle = 'rgba(220,240,255,0.8)'; c.fillRect(10, 2.5, 16, 1); c.fillRect(34, 3, 10, 1);
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, 0, w, 1.5); c.fillStyle = 'rgba(30,20,50,0.35)'; c.fillRect(0, 8, w, 1.2); c.fillRect(0, h - 3, w, 3);
+    c.fillStyle = 'rgba(30,20,50,0.3)'; for (let x = 6; x < w - 4; x += 8) { c.beginPath(); c.arc(x, 11.5, 2, 0, Math.PI); c.fill(); }
+    c.restore();
+  }, K.mid - 30, F - K.wallH - 14);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 3; rr(K.mid - 30, F - K.wallH - 14, 60, 16, 6); ctx.stroke();
+  ctx.fillStyle = '#c9a24a'; ctx.fillRect(K.mid - 3, F - K.wallH - 18, 6, 5); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(K.mid - 3, F - K.wallH - 18, 2, 5);
   if (ph.fount) { const g = ctx.createLinearGradient(0, K.fountain.y0 - 40, 0, F - K.wallH); g.addColorStop(0, 'rgba(200,230,255,0.4)'); g.addColorStop(1, 'rgba(120,170,240,0.85)'); ctx.fillStyle = g; ctx.fillRect(K.mid - 18, K.fountain.y0 - 40 + Math.sin(t * 9) * 4, 36, F - K.wallH - K.fountain.y0 + 40); }
   else if (ph.round === 1) { ctx.fillStyle = 'rgba(160,200,255,0.7)'; circle(K.mid, F - K.wallH - 18 + Math.sin(t * 9) * 3, 8); ctx.fill(); }
 }

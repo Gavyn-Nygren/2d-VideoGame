@@ -590,8 +590,19 @@ function wizLiftDraw(st) {
     if (s.i === 1 && ph.floor < 3 && s.y > st.cam.y + H) continue;
     const r = wizLiftRect(s);
     if (s.lit > 0) { ctx.save(); ctx.globalAlpha = s.lit; ctx.fillStyle = WIZ_SPELLS.lift.glow; rr(r.x0 - 8, r.y0 - 6, r.x1 - r.x0 + 16, r.y1 - r.y0 + 18, 10); ctx.fill(); ctx.restore(); }
-    ctx.fillStyle = C2.slab; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 4); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = C2.slabLt; ctx.fillRect(r.x0 + 4, r.y0 + 3, r.x1 - r.x0 - 8, 3);
+    // (art pass, 2nd look) a floating marble slab: veined stone with a lit top edge, a shaded underside, an inlaid
+    // brass rune line and corner studs (cached per size)
+    RICH.pic('wizliftslab|' + Math.round(r.x1 - r.x0) + '|' + Math.round(r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => {
+      RICH.rr(c, 0, 0, w, h, 4); c.save(); c.clip();
+      const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, RICH.lit(C2.slab, 0.15)); g.addColorStop(1, RICH.dk(C2.slab, 0.25)); c.fillStyle = g; c.fillRect(0, 0, w, h);
+      c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 0.9; c.beginPath(); for (let q = 0; q < 3; q++) { let vx = RICH.r(w, q) * w, vy = 0; c.moveTo(vx, vy); while (vy < h) { vx += (RICH.r(vx | 0, q) - 0.5) * 12; vy += 3; c.lineTo(vx, vy); } } c.stroke();
+      c.fillStyle = C2.slabLt; c.fillRect(4, 3, w - 8, 3); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(4, 3, w - 8, 1);
+      c.fillStyle = 'rgba(20,10,40,0.3)'; c.fillRect(0, h - 4, w, 4);
+      c.fillStyle = C2.brass; c.fillRect(10, h * 0.62, w - 20, 1.6); for (let x = 16; x < w - 12; x += 18) { c.beginPath(); c.moveTo(x, h * 0.62 - 2); c.lineTo(x + 2.5, h * 0.62 + 0.8); c.lineTo(x, h * 0.62 + 3.6); c.lineTo(x - 2.5, h * 0.62 + 0.8); c.closePath(); c.fill(); }
+      c.restore();
+      for (const x of [5, w - 5]) RICH.rivet(c, x, h * 0.62 + 0.8, 1.6, C2.brass);
+    }, r.x0, r.y0);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 4); ctx.stroke();
     // the little brass rails at the ends
     ctx.fillStyle = C2.brass; ctx.lineWidth = 1.5;
     for (const x of [r.x0 + 1, r.x1 - 1]) { rr(x - 3, r.y0 - K.slab.rail, 6, K.slab.rail + 2, 2); ctx.fill(); ctx.stroke(); circle(x, r.y0 - K.slab.rail, 3.5); ctx.fill(); ctx.stroke(); }

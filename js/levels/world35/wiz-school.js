@@ -1255,6 +1255,33 @@ function wizSpellRing(x, y, r, key, t, a = 1) {
 function wizSparks(x, y, key, n = 8) { const s = WIZ_SPELLS[key] || WIZ_SPELLS.zoom; burst(x, y, s.col, n); }
 function wizCastSound(key) { Sfx.play('wizSpell_' + key); }
 // a mid-class safe spot: a little banner on a post (lit: reached); world coords, feet at groundY
+// (art pass, 2nd look) an arched plank door in a dressed-stone frame: vertical boards with grain, two iron straps
+// with nail heads and hinge curls, a ring pull on a back plate, a lit left edge and a shaded right (cached per size and
+// colour; same 52 px wide arch as the old plain door, so it reads as the same door)
+function wizDoorArt(cx, gy, w, h, col = '#5a3a2a', o = {}) {
+  const r = Math.min(w / 2 - 4, 22);
+  RICH.pic('wizdoor|' + w + '|' + h + '|' + col, w + 12, h + 6, (c) => {
+    // the stone surround
+    RICH.rr(c, 0, 0, w + 12, h + 6, r + 6); c.save(); c.clip(); RICH.stone(c, 0, 0, w + 12, h + 6, { col: '#7e7698', mortar: '#4a4462', course: 14, len: 18, seed: w + 11, edge: false, cracks: 0 }); c.restore();
+    c.strokeStyle = '#3a3450'; c.lineWidth = 1.5; RICH.rr(c, 0.75, 0.75, w + 10.5, h + 4.5, r + 6); c.stroke();
+    // the door leaf
+    c.save(); RICH.rr(c, 6, 6, w, h, r); c.clip();
+    RICH.wood(c, 6, 6, w, h, { col, vert: true, bw: w / 4, seed: 23, edge: false, knots: 0.8 });
+    const g = c.createLinearGradient(6, 0, 6 + w, 0); g.addColorStop(0, 'rgba(255,230,190,0.18)'); g.addColorStop(0.3, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(10,0,0,0.3)'); c.fillStyle = g; c.fillRect(6, 6, w, h);
+    for (const sy of [6 + h * 0.28, 6 + h * 0.74]) {
+      c.fillStyle = '#2e2a30'; c.fillRect(6, sy, w, 6); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(6, sy, w, 1);
+      for (let x = 12; x < w; x += 9) RICH.rivet(c, x, sy + 3, 1.3, '#5a5660');
+      c.strokeStyle = '#2e2a30'; c.lineWidth = 2.5; c.beginPath(); c.arc(6 + w - 6, sy + 3, 5, -Math.PI / 2, Math.PI / 2); c.stroke();
+    }
+    c.restore();
+    c.strokeStyle = RICH.dk(col, 0.6); c.lineWidth = 2; RICH.rr(c, 7, 7, w - 2, h - 2, r - 1); c.stroke();
+    // the ring pull
+    const hx = 6 + w * 0.78, hy = 6 + h * 0.52;
+    c.fillStyle = '#2e2a30'; RICH.rr(c, hx - 4, hy - 6, 8, 12, 2); c.fill();
+    c.strokeStyle = o.gold === false ? '#8a8a96' : '#d8a840'; c.lineWidth = 2; c.beginPath(); c.arc(hx, hy + 4, 4.5, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(hx - 3, hy + 0.5, 1.5, 1.5);
+  }, cx - w / 2 - 6, gy - h - 6);
+}
 function wizDrawFlag(x, gy, lit, col = '#ffd23f') {
   ctx.save(); ctx.lineJoin = 'round';
   ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.fillStyle = '#6b4a2a'; ctx.fillRect(x - 2, gy - 56, 4, 56); ctx.strokeRect(x - 2, gy - 56, 4, 56);

@@ -681,10 +681,51 @@
     // the camera truck pacing the car along the bottom edge (low, under the road), Bellow riding on the back with the megaphone
     {
       const g = geom(st), tx = clamp(g.x + 150, 140, W - 140), ty = 476;
-      ctx.fillStyle = '#2a2e38'; rr(tx - 70, ty, 140, 30, 7); ctx.fill();
-      ctx.fillStyle = '#3a404c'; rr(tx + 30, ty - 14, 40, 18, 4); ctx.fill();
-      ctx.fillStyle = '#14161c'; for (const d of [-46, 46]) { circle(tx + d, ty + 32, 10); ctx.fill(); }
-      ctx.fillStyle = '#1a1a22'; rr(tx - 10, ty - 16, 26, 16, 3); ctx.fill(); ctx.fillStyle = '#5a6a8a'; circle(tx - 14, ty - 8, 6); ctx.fill();
+      // the truck (cached: flatbed with a hazard-striped deck edge, riveted panels, a cab with a lit window, a camera
+      // on a tripod head with a lens hood and a red tally light), then the wheels live so their spokes turn with the road
+      RICH.pic('w36camtruck', 164, 62, c => {
+        const ox = 82, oy = 24;   // tx, ty in the picture
+        RICH.shadow(c, ox, oy + 36, 74, 4, 0.22);
+        // flatbed body
+        RICH.metal(c, ox - 70, oy, 140, 30, { col: '#2e3440', r: 7, rivets: 14, seams: 46, seed: 36, lw: 2 });
+        c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(ox - 66, oy + 18, 132, 2);
+        // hazard stripe along the deck edge
+        c.save(); RICH.rr(c, ox - 68, oy + 2, 136, 5, 2); c.clip(); c.fillStyle = '#f2c230'; c.fillRect(ox - 68, oy + 2, 136, 5);
+        c.fillStyle = '#1e2028'; for (let k = -4; k < 140; k += 10) { c.beginPath(); c.moveTo(ox - 68 + k, oy + 7); c.lineTo(ox - 63 + k, oy + 2); c.lineTo(ox - 58 + k, oy + 2); c.lineTo(ox - 63 + k, oy + 7); c.closePath(); c.fill(); }
+        c.restore();
+        // wheel arches
+        c.fillStyle = '#16181e'; for (const d of [-46, 46]) { c.beginPath(); c.arc(ox + d, oy + 30, 13, Math.PI, 0); c.fill(); }
+        // cab
+        RICH.metal(c, ox + 30, oy - 14, 40, 18, { col: '#3e4656', r: 4, rivets: 0, seed: 3, lw: 1.5 });
+        const gw = c.createLinearGradient(ox + 46, oy - 11, ox + 66, oy - 1); gw.addColorStop(0, '#bfe0f0'); gw.addColorStop(1, '#5a7a96');
+        c.fillStyle = gw; RICH.rr(c, ox + 46, oy - 11, 20, 10, 2); c.fill();
+        c.fillStyle = 'rgba(255,255,255,0.55)'; c.beginPath(); c.moveTo(ox + 50, oy - 10); c.lineTo(ox + 54, oy - 10); c.lineTo(ox + 49, oy - 2); c.lineTo(ox + 47, oy - 2); c.closePath(); c.fill();
+        c.strokeStyle = '#1e222c'; c.lineWidth = 1.2; RICH.rr(c, ox + 46, oy - 11, 20, 10, 2); c.stroke();
+        c.fillStyle = '#ffd36a'; RICH.rr(c, ox + 66, oy + 6, 4, 6, 1.5); c.fill();
+        c.fillStyle = '#d23a3a'; RICH.rr(c, ox - 70, oy + 6, 3, 6, 1); c.fill();
+        // camera head: a tripod collar, the body, a film magazine and a lens hood
+        c.fillStyle = '#4a505c'; RICH.rr(c, ox - 4, oy - 4, 14, 5, 1.5); c.fill(); c.strokeStyle = '#1c1f26'; c.lineWidth = 1; c.stroke();
+        RICH.metal(c, ox - 10, oy - 16, 26, 14, { col: '#22252e', r: 3, rivets: 0, seed: 9, lw: 1.5 });
+        c.fillStyle = '#2c303a'; c.beginPath(); c.arc(ox + 2, oy - 19, 5, 0, Math.PI * 2); c.arc(ox + 11, oy - 19, 5, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = '#121418'; c.lineWidth = 1; c.beginPath(); c.arc(ox + 2, oy - 19, 5, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(ox + 11, oy - 19, 5, 0, Math.PI * 2); c.stroke();
+        c.fillStyle = '#6a7080'; for (const mx of [2, 11]) { c.beginPath(); c.arc(ox + mx, oy - 19, 1.4, 0, Math.PI * 2); c.fill(); }
+        c.fillStyle = '#1a1c22'; c.beginPath(); c.moveTo(ox - 10, oy - 13); c.lineTo(ox - 22, oy - 15); c.lineTo(ox - 22, oy - 1); c.lineTo(ox - 10, oy - 4); c.closePath(); c.fill();
+        const gl = c.createRadialGradient(ox - 15, oy - 10, 1, ox - 14, oy - 8, 6); gl.addColorStop(0, '#a8c0e8'); gl.addColorStop(0.5, '#5a6a8a'); gl.addColorStop(1, '#2a3248');
+        c.fillStyle = gl; c.beginPath(); c.arc(ox - 14, oy - 8, 6, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = '#11131a'; c.lineWidth = 1.2; c.stroke();
+        c.fillStyle = 'rgba(255,255,255,0.75)'; c.beginPath(); c.arc(ox - 16, oy - 10, 1.6, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#ff3a3a'; c.beginPath(); c.arc(ox + 12, oy - 13, 1.6, 0, Math.PI * 2); c.fill();
+      }, tx - 82, ty - 24);
+      for (const d of [-46, 46]) {
+        const wx = tx + d, wy = ty + 32, a = (st.dist || 0) / 10;
+        ctx.fillStyle = '#14161c'; circle(wx, wy, 10); ctx.fill();
+        ctx.strokeStyle = '#2a2e36'; ctx.lineWidth = 2; circle(wx, wy, 7.5); ctx.stroke();
+        ctx.fillStyle = '#8a909c'; circle(wx, wy, 5); ctx.fill();
+        ctx.strokeStyle = '#4a505c'; ctx.lineWidth = 1.2; ctx.beginPath();
+        for (let k = 0; k < 5; k++) { const q = a + k * Math.PI * 2 / 5; ctx.moveTo(wx, wy); ctx.lineTo(wx + Math.cos(q) * 5, wy + Math.sin(q) * 5); }
+        ctx.stroke();
+        ctx.fillStyle = '#c8ccd4'; circle(wx, wy, 1.6); ctx.fill();
+      }
       const shout = st.cut || st.intro > 0.6 ? 1 : st.clapAnim > 0 ? 0.6 : 0;
       K.bellow(tx - 44, ty + 2, 0.62, { shout, face: -1 });
     }
@@ -921,7 +962,7 @@
     ctx.fillStyle = '#ffffff'; circle(-40, -38, 8); ctx.fill(); ctx.strokeStyle = '#2a2a34'; ctx.lineWidth = 1.2; circle(-40, -38, 8); ctx.stroke(); ctx.strokeStyle = '#2a2a34'; ctx.lineWidth = 2;
     ctx.fillStyle = '#9fd8ff'; ctx.beginPath(); ctx.moveTo(8, -41); ctx.lineTo(26, -41); ctx.lineTo(36, -31); ctx.lineTo(8, -31); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = '#3a3a44'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-34, -30); ctx.lineTo(-30, -50); ctx.lineTo(-14, -50); ctx.lineTo(-12, -30); ctx.stroke();
-    text('36', -40, -38, 10, '#2a2a34', 'center', 'display');
+    text('36', -40, -37.5, 8.5, '#2a2a34', 'center', 'display');
     // dents: a hanging bumper, a flapping door
     if (c.dents >= 1) { ctx.save(); ctx.translate(60, -12); ctx.rotate(0.5 + Math.sin(t * 12) * 0.1); ctx.fillStyle = '#9a9aa4'; ctx.fillRect(-2, 0, 4, 16); ctx.restore(); }
     if (c.dents >= 3) { ctx.save(); ctx.translate(-4, -30); ctx.rotate(-0.4 + Math.sin(t * 9) * 0.25); ctx.fillStyle = bodyCol; ctx.strokeStyle = '#2a2a34'; ctx.lineWidth = 1.5; ctx.fillRect(-22, 0, 22, 18); ctx.strokeRect(-22, 0, 22, 18); ctx.restore(); }

@@ -553,26 +553,68 @@
     const c = cv.getContext('2d'); c.scale(sc, sc); c.translate(-x0, 0);
     const y = 0;
     c.fillStyle = wallC; c.fillRect(x0, 0, x1 - x0, FL);
-      // painted brick courses and a cornice band
-      c.fillStyle = 'rgba(60,40,80,0.12)';
-      for (let by = y + 14, r = 0; by < y + FL - 8; by += 14, r++) { c.fillRect(x0, by, x1 - x0, 1.2); for (let bx = x0 + (r % 2) * 18; bx < x1; bx += 36) c.fillRect(bx, by - 14, 1.2, 14); }
+      // (art pass) painted bricks: each brick its own tone with a lit top and a shaded foot, soft mortar lines
+      { const R = RICH, rows = Math.ceil(FL / 14);
+        for (let r = 0; r < rows; r++) for (let bx = x0 - (r % 2) * 18, k = 0; bx < x1; bx += 36, k++) {
+          const tn = (R.r(f * 31 + r, k) - 0.5) * 0.1, by = y + r * 14;
+          c.fillStyle = tn > 0 ? R.lit(wallC, tn) : R.dk(wallC, -tn); c.fillRect(bx + 0.6, by + 0.6, 34.8, 12.8);
+          c.fillStyle = 'rgba(255,255,255,0.09)'; c.fillRect(bx + 0.6, by + 0.6, 34.8, 1.2);
+          c.fillStyle = 'rgba(30,20,50,0.1)'; c.fillRect(bx + 0.6, by + 11.6, 34.8, 1.8);
+          if (R.r(f * 7 + r, k + 50) < 0.06) { c.fillStyle = 'rgba(30,20,50,0.14)'; c.fillRect(bx + 4 + R.r(r, k) * 24, by + 4, 3, 2); }
+        }
+        c.fillStyle = 'rgba(60,40,80,0.16)';
+        for (let by = y + 14; by < y + FL; by += 14) c.fillRect(x0, by - 0.6, x1 - x0, 1.2);
+      }
+      // a moulded cornice: lit top, a shadowed soffit and dentils
       c.fillStyle = shade(wallC, 0.12); c.fillRect(x0, y + 22, x1 - x0, 12);
-      c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x0, y + 22, x1 - x0, 2);
-      for (let k = x0 + 6; k < x1; k += 24) { c.fillStyle = shade(wallC, 0.2); c.fillRect(k, y + 34, 10, 5); }
+      c.fillStyle = tint(wallC, 0.25); c.fillRect(x0, y + 20, x1 - x0, 3);
+      c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x0, y + 20, x1 - x0, 1);
+      c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(x0, y + 25, x1 - x0, 1.5);
+      c.fillStyle = 'rgba(20,10,40,0.22)'; c.fillRect(x0, y + 32, x1 - x0, 2);
+      for (let k = x0 + 6; k < x1; k += 24) { c.fillStyle = shade(wallC, 0.22); c.fillRect(k, y + 34, 10, 5); c.fillStyle = 'rgba(255,255,255,0.16)'; c.fillRect(k, y + 34, 10, 1); c.fillStyle = 'rgba(20,10,40,0.2)'; c.fillRect(k + 8.5, y + 34, 1.5, 5); }
+      c.fillStyle = 'rgba(20,10,40,0.12)'; c.fillRect(x0, y + 39, x1 - x0, 3);
       c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(x0, y + FL - 6, x1 - x0, 6);
+      const stoneC = tint(wallC, 0.42);
       for (let col = 0; col < 6; col++) {
-        const wx = x0 + 36 + col * 118, wy = y + 70;
-        // sill, lintel, the glass with a reflection of sky and a blind half down in some
-        c.fillStyle = shade(wallC, 0.25); c.fillRect(wx - 6, wy - 10, 82, 8); c.fillRect(wx - 8, wy + 112, 86, 8);
-        c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(wx - 8, wy + 112, 86, 2);
-        const gg = c.createLinearGradient(0, wy, 0, wy + 110); gg.addColorStop(0, '#5a7aa8'); gg.addColorStop(1, '#2e3a5a');
+        const wx = x0 + 36 + col * 118, wy = y + 70, hv = K.hash(f * 7 + col), hv2 = K.hash(f * 13 + col * 5 + 1);
+        // rain streaks under the sill
+        const sg = c.createLinearGradient(0, wy + 120, 0, wy + 170); sg.addColorStop(0, 'rgba(40,30,60,0.16)'); sg.addColorStop(1, 'rgba(40,30,60,0)');
+        c.fillStyle = sg; c.fillRect(wx + 4, wy + 120, 62, 50);
+        // stone lintel with a keystone, and the sill: lit top, shaded front and a cast shadow
+        c.fillStyle = 'rgba(20,10,40,0.18)'; c.fillRect(wx - 6, wy - 2, 82, 3);
+        c.fillStyle = stoneC; c.fillRect(wx - 6, wy - 12, 82, 10);
+        c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(wx - 6, wy - 12, 82, 1.5);
+        c.fillStyle = 'rgba(40,30,60,0.2)'; c.fillRect(wx - 6, wy - 4, 82, 2);
+        c.fillStyle = tint(wallC, 0.5); c.beginPath(); c.moveTo(wx + 29, wy - 15); c.lineTo(wx + 41, wy - 15); c.lineTo(wx + 39, wy - 2); c.lineTo(wx + 31, wy - 2); c.closePath(); c.fill();
+        c.strokeStyle = shade(stoneC, 0.35); c.lineWidth = 1; c.stroke(); c.strokeRect(wx - 5.5, wy - 11.5, 81, 9);
+        c.fillStyle = 'rgba(20,10,40,0.25)'; c.fillRect(wx - 6, wy + 120, 86, 4);
+        c.fillStyle = stoneC; c.fillRect(wx - 8, wy + 112, 86, 8);
+        c.fillStyle = 'rgba(255,255,255,0.38)'; c.fillRect(wx - 8, wy + 112, 86, 2);
+        c.fillStyle = 'rgba(40,30,60,0.22)'; c.fillRect(wx - 8, wy + 117, 86, 3);
+        c.strokeStyle = shade(stoneC, 0.35); c.lineWidth = 1; c.strokeRect(wx - 7.5, wy + 112.5, 85, 7);
+        // the glass with a reflection of sky, sometimes a warm lamp inside, a blind or curtains
+        const lit = hv2 > 0.78;
+        const gg = c.createLinearGradient(0, wy, 0, wy + 110);
+        if (lit) { gg.addColorStop(0, '#f2d8a0'); gg.addColorStop(1, '#b88a5a'); } else { gg.addColorStop(0, '#6a8ab8'); gg.addColorStop(0.55, '#3e5280'); gg.addColorStop(1, '#2a3454'); }
         c.fillStyle = gg; c.fillRect(wx, wy, 70, 110);
-        if (K.hash(f * 7 + col) > 0.6) { c.fillStyle = '#d8d0b8'; c.fillRect(wx, wy, 70, 30 + K.hash(f + col * 3) * 30); c.fillStyle = 'rgba(0,0,0,0.15)'; for (let q = wy + 6; q < wy + 30; q += 6) c.fillRect(wx, q, 70, 1); }
+        if (lit) { c.fillStyle = 'rgba(90,60,40,0.5)'; c.fillRect(wx + 8, wy + 74, 54, 4); c.fillRect(wx + 14, wy + 78, 3, 32); c.fillRect(wx + 53, wy + 78, 3, 32); c.fillStyle = '#ffe9b0'; c.beginPath(); c.moveTo(wx + 44, wy + 52); c.lineTo(wx + 56, wy + 52); c.lineTo(wx + 52, wy + 42); c.lineTo(wx + 48, wy + 42); c.closePath(); c.fill(); c.fillStyle = 'rgba(90,60,40,0.6)'; c.fillRect(wx + 49, wy + 52, 2, 22); }
+        else { c.fillStyle = 'rgba(255,255,255,0.08)'; for (let q = 0; q < 3; q++) c.fillRect(wx, wy + 60 + q * 14, 70, 1); c.fillStyle = 'rgba(20,30,60,0.35)'; c.fillRect(wx + 8, wy + 80, 20, 30); c.fillRect(wx + 44, wy + 70, 18, 40); }
+        if (hv > 0.6) { const bh = 30 + K.hash(f + col * 3) * 30; c.fillStyle = '#d8d0b8'; c.fillRect(wx, wy, 70, bh); c.fillStyle = 'rgba(0,0,0,0.15)'; for (let q = wy + 6; q < wy + bh; q += 6) c.fillRect(wx, q, 70, 1); c.fillStyle = 'rgba(255,255,255,0.4)'; for (let q = wy + 5; q < wy + bh; q += 6) c.fillRect(wx, q, 70, 0.8); c.fillStyle = '#a89878'; c.fillRect(wx, wy + bh - 3, 70, 3); c.fillStyle = '#6a5a48'; c.fillRect(wx + 34, wy + bh, 2, 6); }
+        else if (hv > 0.3) { const cc = ['#c84a4a', '#4a8a6a', '#d8a848'][Math.floor(hv2 * 3)]; for (const sd of [0, 1]) { const cx = sd ? wx + 70 : wx; c.fillStyle = cc; c.beginPath(); c.moveTo(cx, wy); c.lineTo(cx + (sd ? -16 : 16), wy); c.quadraticCurveTo(cx + (sd ? -6 : 6), wy + 50, cx + (sd ? -12 : 12), wy + 110); c.lineTo(cx, wy + 110); c.closePath(); c.fill(); c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(cx + (sd ? -6 : 3), wy, 2, 110); c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(cx + (sd ? -11 : 8), wy, 1.5, 110); } }
         c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(wx + 6, wy + 6, 16, 98);
         c.fillStyle = 'rgba(255,255,255,0.12)'; c.beginPath(); c.moveTo(wx + 40, wy); c.lineTo(wx + 58, wy); c.lineTo(wx + 26, wy + 110); c.lineTo(wx + 8, wy + 110); c.closePath(); c.fill();
+        // the painted frame: bevelled, with a transom and a shadow line inside
         c.strokeStyle = '#ece4f4'; c.lineWidth = 4; c.strokeRect(wx, wy, 70, 110);
-        c.strokeStyle = '#ece4f4'; c.lineWidth = 2; c.beginPath(); c.moveTo(wx + 35, wy); c.lineTo(wx + 35, wy + 110); c.stroke();
-        c.strokeStyle = 'rgba(40,30,60,0.35)'; c.lineWidth = 1; c.strokeRect(wx - 2.5, wy - 2.5, 75, 115);
+        c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1; c.beginPath(); c.moveTo(wx - 2, wy + 112); c.lineTo(wx - 2, wy - 2); c.lineTo(wx + 72, wy - 2); c.stroke();
+        c.strokeStyle = 'rgba(40,30,60,0.35)'; c.lineWidth = 1; c.strokeRect(wx + 2.5, wy + 2.5, 65, 105);
+        c.strokeStyle = '#ece4f4'; c.lineWidth = 2; c.beginPath(); c.moveTo(wx + 35, wy); c.lineTo(wx + 35, wy + 110); c.moveTo(wx, wy + 36); c.lineTo(wx + 70, wy + 36); c.stroke();
+        c.strokeStyle = 'rgba(40,30,60,0.25)'; c.lineWidth = 1; c.beginPath(); c.moveTo(wx + 36.5, wy + 2); c.lineTo(wx + 36.5, wy + 108); c.moveTo(wx + 2, wy + 37.5); c.lineTo(wx + 68, wy + 37.5); c.stroke();
+        c.strokeStyle = 'rgba(40,30,60,0.45)'; c.lineWidth = 1; c.strokeRect(wx - 2.5, wy - 2.5, 75, 115);
+        // a window box of flowers on some sills
+        if (hv2 < 0.22) {
+          c.fillStyle = '#6a4a2a'; c.fillRect(wx + 2, wy + 102, 66, 12); c.fillStyle = 'rgba(255,220,170,0.3)'; c.fillRect(wx + 2, wy + 102, 66, 1.5); c.fillStyle = 'rgba(30,16,6,0.4)'; c.fillRect(wx + 2, wy + 111, 66, 3);
+          for (let q = 0; q < 9; q++) { const fx = wx + 6 + q * 7.5, fy = wy + 100 - K.hash(f * 3 + col + q) * 6; c.fillStyle = '#3a7a3a'; c.beginPath(); c.ellipse(fx, fy + 3, 4.5, 3.5, 0, 0, TAU); c.fill(); c.fillStyle = ['#e84a5a', '#ffd23a', '#f2f2f2'][q % 3]; circleOn(c, fx + (q % 2) * 2 - 1, fy, 2.2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.5)'; circleOn(c, fx + (q % 2) * 2 - 1.6, fy - 0.6, 0.8); c.fill(); }
+        }
       }
     floorCache.set(key, cv);
     return cv;

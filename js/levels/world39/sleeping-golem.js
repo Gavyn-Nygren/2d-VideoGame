@@ -686,6 +686,29 @@
     ctx.strokeStyle = '#2a303a'; ctx.lineWidth = 3; ctx.stroke();
     return p;
   }
+  // (art pass, 2nd look) a clump of moss to climb: overlapping leafy lobes in three greens with a lit top, a dark rim,
+  // tiny pale spore heads and a hanging strand (four cached looks, copied at whole pixels)
+  function mossClump(x, y, v, a, w, h) {
+    ctx.save(); ctx.globalAlpha = a;
+    RICH.pic('w39moss|' + v + '|' + w, w + 8, h + 8, c => {
+      const cx = (w + 8) / 2, cy = (h + 8) / 2, lobes = [[-0.32, 0.1, 0.42], [0.3, 0.12, 0.4], [0, -0.12, 0.5], [-0.12, 0.25, 0.38], [0.18, 0.28, 0.34]];
+      c.fillStyle = '#2a4a1e'; for (const [dx, dy, r] of lobes) { c.beginPath(); c.ellipse(cx + dx * w, cy + dy * h + 1, r * w * 0.62 + 1.2, r * h * 0.7 + 1.2, 0, 0, TAU); c.fill(); }
+      lobes.forEach(([dx, dy, r], i) => {
+        const col = ['#5a9a3e', '#6eaa4a', '#7ab852', '#5e9e42', '#82c05a'][(i + v) % 5];
+        c.fillStyle = col; c.beginPath(); c.ellipse(cx + dx * w, cy + dy * h, r * w * 0.62, r * h * 0.7, 0, 0, TAU); c.fill();
+        c.fillStyle = 'rgba(30,60,20,0.35)'; c.beginPath(); c.ellipse(cx + dx * w + 1.5, cy + dy * h + r * h * 0.25, r * w * 0.5, r * h * 0.4, 0, 0, Math.PI); c.fill();
+        c.fillStyle = 'rgba(220,255,180,0.4)'; c.beginPath(); c.ellipse(cx + dx * w - r * w * 0.2, cy + dy * h - r * h * 0.3, r * w * 0.25, r * h * 0.18, -0.3, 0, TAU); c.fill();
+      });
+      // leaf tips
+      c.strokeStyle = '#3a6a2a'; c.lineWidth = 1; c.beginPath();
+      for (let k = 0; k < 9; k++) { const ang = RICH.r(v * 31 + 5, k) * TAU, px = cx + Math.cos(ang) * w * 0.3, py = cy + Math.sin(ang) * h * 0.3; c.moveTo(px, py); c.lineTo(px + Math.cos(ang) * 3, py + Math.sin(ang) * 3); }
+      c.stroke();
+      // spore heads and a hanging strand
+      for (let k = 0; k < 4; k++) { const px = cx + (RICH.r(v * 17 + 3, k) - 0.5) * w * 0.7, py = cy - h * 0.25 + RICH.r(v * 17 + 4, k) * h * 0.3; c.strokeStyle = 'rgba(200,230,150,0.7)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(px, py + 3); c.lineTo(px, py); c.stroke(); c.fillStyle = '#e8f2b8'; c.fillRect(px - 0.8, py - 1.2, 1.6, 1.6); }
+      c.strokeStyle = '#4a7a32'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(cx + (v - 1.5) * 3, cy + h * 0.35); c.quadraticCurveTo(cx + (v - 1.5) * 3 + 2, cy + h * 0.5, cx + (v - 1.5) * 3 - 1, cy + h / 2 + 3); c.stroke();
+    }, x - (w + 8) / 2, y - (h + 8) / 2);
+    ctx.restore();
+  }
   function drawLeg(st, k, t, calm, dark) {
     const P = 'leg' + k;
     quad(st, P, -46, 46, -720, -440, { dark });
@@ -693,7 +716,7 @@
     const f = quad(st, P, -60, 82, -120, 0, { dark });
     // a moss strip for the climbs, the knee cap, crystal studs
     const sh = !dark ? 1 : 0.6;
-    for (let y = -690; y < -130; y += 26) { const o = world(st, P, 0, y); ctx.fillStyle = `rgba(110,170,80,${0.85 * sh})`; ctx.beginPath(); ctx.ellipse(SX(o.x) + Math.sin(y) * 5, scrY(st, o.y), 15, 10, 0, 0, TAU); ctx.fill(); }
+    for (let y = -690; y < -130; y += 26) { const o = world(st, P, 0, y); mossClump(SX(o.x) + Math.sin(y) * 5, scrY(st, o.y), Math.abs(y / 26 | 0) % 4, 0.85 * sh, 30, 20); }
     const kc = world(st, P, 0, -440); K.crystal(SX(kc.x) + 30, scrY(st, kc.y) + 20, 26, 0.5, { col: K.GLOW.teal, glow: 0.3 + calm * 0.6, t, seed: k * 7 });
     // the foot's shadow before it lands (the stomp tell)
     const lp = legPose(k, st.gt);
@@ -749,13 +772,25 @@
         const a = world(st, s.part, (s.x0 + s.x1) / 2, s.top), b = world(st, s.part, (s.x0 + s.x1) / 2, s.bot);
         if (s.part !== 'body') continue; // (the legs draw their own moss)
         if (s.look === 'rope') {
-          ctx.strokeStyle = '#d8b878'; ctx.lineWidth = 3;
-          for (const dx of [-12, 12]) { ctx.beginPath(); ctx.moveTo(SX(a.x) + dx, scrY(st, a.y)); ctx.lineTo(SX(b.x) + dx, scrY(st, b.y)); ctx.stroke(); }
-          for (let y = a.y + 14; y < b.y; y += 22) { ctx.beginPath(); ctx.moveTo(SX(a.x) - 12, scrY(st, y)); ctx.lineTo(SX(a.x) + 12, scrY(st, y)); ctx.stroke(); }
+          // (art pass, 2nd look) a rope ladder: twisted rope sides with a shaded lay and wooden rungs lashed on
+          for (const dx of [-12, 12]) {
+            const ax = SX(a.x) + dx, ay = scrY(st, a.y), bx = SX(b.x) + dx, by = scrY(st, b.y);
+            ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+            ctx.strokeStyle = '#e8cc8c'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(ax - 0.6, ay); ctx.lineTo(bx - 0.6, by); ctx.stroke();
+            ctx.strokeStyle = 'rgba(90,60,20,0.75)'; ctx.lineWidth = 1; ctx.beginPath();
+            for (let q = 0; q < (by - ay) / 5; q++) { const u = q * 5 / (by - ay), px = ax + (bx - ax) * u, py = ay + (by - ay) * u; ctx.moveTo(px - 2, py); ctx.lineTo(px + 2, py + 3); }
+            ctx.stroke();
+          }
+          for (let y = a.y + 14; y < b.y; y += 22) {
+            const ry = scrY(st, y), rx = SX(a.x);
+            ctx.fillStyle = '#7a5430'; ctx.fillRect(rx - 13, ry - 2.5, 26, 5); ctx.fillStyle = 'rgba(255,225,170,0.45)'; ctx.fillRect(rx - 13, ry - 2.5, 26, 1.3); ctx.fillStyle = 'rgba(40,22,8,0.45)'; ctx.fillRect(rx - 13, ry + 1.2, 26, 1.3);
+            ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 0.8; ctx.strokeRect(rx - 13, ry - 2.5, 26, 5);
+            ctx.fillStyle = '#d8b878'; for (const dx of [-12, 12]) { ctx.fillRect(rx + dx - 2, ry - 3.5, 4, 1.5); ctx.fillRect(rx + dx - 2, ry + 2, 4, 1.5); }
+          }
         } else if (s.look === 'studs') {
           for (let y = a.y + 12; y < b.y; y += 24) { K.crystal(SX(a.x) + ((y / 24) % 2 ? -7 : 7), scrY(st, y) + 8, 16, 0, { col: K.GLOW.ice, glow: 0.3 + calm * 0.4, t, seed: y }); }
         } else {
-          for (let y = a.y + 10; y < b.y; y += 24) { ctx.fillStyle = 'rgba(110,170,80,0.9)'; ctx.beginPath(); ctx.ellipse(SX(a.x) + Math.sin(y) * 5, scrY(st, y), 16, 11, 0, 0, TAU); ctx.fill(); }
+          for (let y = a.y + 10; y < b.y; y += 24) mossClump(SX(a.x) + Math.sin(y) * 5, scrY(st, y), Math.abs(Math.round(y / 24)) % 4, 0.95, 32, 22);
         }
       }
     }

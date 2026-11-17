@@ -613,15 +613,37 @@
   function drawKnight(st, it, sx, t) {
     // a straw knight on a wheeled wooden horse, pushed by a page
     const y = R.gy, fall = it.down ? clamp((st.d + R.tip - it.d) / 140, 0, 1) : 0;
-    ctx.fillStyle = '#5e3a1c'; circ(sx - 18, y - 8, 8); ctx.fill(); circ(sx + 18, y - 8, 8); ctx.fill();
-    ctx.fillStyle = '#a0683a'; ctx.fillRect(sx - 26, y - 30, 52, 16); ctx.fillRect(sx - 34, y - 46, 14, 20);
-    ctx.fillStyle = '#7a5a32'; ctx.beginPath(); ctx.moveTo(sx - 34, y - 46); ctx.lineTo(sx - 46, y - 40); ctx.lineTo(sx - 34, y - 34); ctx.closePath(); ctx.fill();
+    // (art pass, 2nd look) a painted wooden horse on spoked wheels (grain, a saddle cloth, a rope mane, an eye), a page
+    // in a shaded tunic and cap, a straw body with combed strands and twine, a riveted helm with a visor slit
+    for (const wx of [sx - 18, sx + 18]) {
+      ctx.fillStyle = '#3a2010'; circ(wx, y - 8, 8); ctx.fill(); ctx.fillStyle = '#7a5434'; circ(wx, y - 8, 5.6); ctx.fill();
+      ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 1.4; ctx.beginPath(); for (let q = 0; q < 3; q++) { const a = st.d / 8 + q * Math.PI / 3; ctx.moveTo(wx - Math.cos(a) * 5.6, y - 8 - Math.sin(a) * 5.6); ctx.lineTo(wx + Math.cos(a) * 5.6, y - 8 + Math.sin(a) * 5.6); } ctx.stroke();
+      ctx.fillStyle = '#c8a040'; circ(wx, y - 8, 1.8); ctx.fill();
+    }
+    RICH.pic('w37woodhorse', 62, 26, c => {
+      c.translate(16, 22);
+      RICH.wood(c, -10, -8, 52, 16, { col: '#a0683a', seed: 71, edge: true, lw: 1.2, knots: 0.6 });
+      RICH.wood(c, -18, -24, 14, 20, { col: '#a0683a', vert: true, bw: 7, seed: 72, edge: true, lw: 1.2, knots: 0 });
+      c.fillStyle = '#7a5a32'; c.beginPath(); c.moveTo(-18, -24); c.lineTo(-30, -18); c.lineTo(-18, -12); c.closePath(); c.fill(); c.strokeStyle = '#4a3018'; c.lineWidth = 1; c.stroke();
+      c.fillStyle = '#1a1010'; c.beginPath(); c.arc(-13, -18, 1.6, 0, TAU); c.fill(); c.fillStyle = '#fff'; c.fillRect(-13.6, -18.8, 0.8, 0.8);
+      c.strokeStyle = '#e8d8b0'; c.lineWidth = 1.6; c.beginPath(); for (let q = 0; q < 5; q++) { c.moveTo(-5 - q * 0.4, -24 + q * 4); c.lineTo(-1, -22 + q * 4); } c.stroke();
+      c.fillStyle = '#5a1a6a'; c.fillRect(4, -9, 22, 10); c.fillStyle = '#ffd23a'; c.fillRect(4, -9, 22, 1.5); c.fillRect(4, -0.5, 22, 1.5); c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(4, -7.5, 2, 7);
+    }, sx - 32, y - 52);
     // the page pushing from behind
-    ctx.fillStyle = '#2e8a4a'; rr(sx + 34, y - 26, 12, 22, 5); ctx.fill(); ctx.fillStyle = '#f2c8a0'; circ(sx + 40, y - 32, 6); ctx.fill();
+    { const tg = ctx.createLinearGradient(sx + 34, 0, sx + 46, 0); tg.addColorStop(0, '#3eaa5a'); tg.addColorStop(1, '#1e6a3a'); ctx.fillStyle = tg; }
+    rr(sx + 34, y - 26, 12, 22, 5); ctx.fill(); ctx.strokeStyle = '#14402a'; ctx.lineWidth = 1; ctx.stroke(); ctx.fillStyle = '#8a5a2a'; ctx.fillRect(sx + 34, y - 15, 12, 2);
+    ctx.fillStyle = '#f2c8a0'; circ(sx + 40, y - 32, 6); ctx.fill(); ctx.fillStyle = '#2e8a4a'; ctx.beginPath(); ctx.ellipse(sx + 40, y - 36, 6.5, 3, 0, Math.PI, 0); ctx.fill(); ctx.fillStyle = '#1a1010'; ctx.fillRect(sx + 36, y - 33, 1.4, 1.4);
     ctx.save(); ctx.translate(sx, y - 30); ctx.rotate(fall * 1.4);
     // the straw body up to high
-    ctx.fillStyle = K.COL.hay; rr(-12, HY[2] - y + 10, 24, y - 30 - HY[2] - 10 + 30 - 30, 8); ctx.fill();
-    ctx.fillStyle = '#8a8a96'; circ(0, HY[2] - y + 4 + 30 - 30, 11); ctx.fill();
+    { const bh = y - 30 - HY[2] - 10, top = HY[2] - y + 10;
+      RICH.pic('w37strawbody|' + Math.round(bh), 24, Math.round(bh), c => {
+        c.fillStyle = K.COL.hay; RICH.rr(c, 0, 0, 24, bh, 8); c.fill(); c.save(); RICH.rr(c, 0, 0, 24, bh, 8); c.clip();
+        c.lineWidth = 1; for (let k = 0; k < bh * 0.5; k++) { const px = RICH.r(91, k) * 24, py = RICH.r(92, k) * bh, l = 5 + RICH.r(93, k) * 8; c.strokeStyle = RICH.r(94, k) < 0.5 ? 'rgba(150,100,20,0.55)' : 'rgba(255,245,180,0.7)'; c.beginPath(); c.moveTo(px, py); c.lineTo(px + (RICH.r(95, k) - 0.5) * 3, py + l); c.stroke(); }
+        c.fillStyle = 'rgba(120,80,20,0.3)'; c.fillRect(17, 0, 7, bh); c.fillStyle = 'rgba(255,250,210,0.35)'; c.fillRect(0, 0, 3, bh);
+        for (let ty = 20; ty < bh - 6; ty += 34) { c.fillStyle = '#8a5a2a'; c.fillRect(0, ty, 24, 2.5); c.fillStyle = 'rgba(255,230,180,0.4)'; c.fillRect(0, ty, 24, 0.8); }
+        c.restore();
+      }, -12, top); }
+    { const hy = HY[2] - y + 4, hg = ctx.createRadialGradient(-4, hy - 4, 1, 0, hy, 11); hg.addColorStop(0, '#c8ccd8'); hg.addColorStop(1, '#5a5a66'); ctx.fillStyle = hg; circ(0, hy, 11); ctx.fill(); ctx.strokeStyle = '#2a2a34'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.fillStyle = '#1a1a22'; ctx.fillRect(-8, hy - 1, 16, 2.2); ctx.fillStyle = '#4a4a58'; ctx.fillRect(-0.8, hy - 10, 1.6, 20); ctx.fillStyle = 'rgba(255,255,255,0.6)'; circ(-4, hy - 5, 1.6); ctx.fill(); }
     ctx.restore();
     if (!it.down) {
       // the shield at its height (flashes red just before a switch), the free heights glow green on the guide
@@ -635,16 +657,42 @@
     const y = R.gy, fall = it.down ? clamp((st.d + R.tip - it.d) / 120, 0, 1) : 0;
     if (fall) ctx.globalAlpha = 1 - clamp((st.d + R.tip - it.d - 140) / 120, 0, 1);
     // the rail and a big black-armoured straw knight on a trolley
-    ctx.fillStyle = '#3a2a20'; ctx.fillRect(sx - 40, y - 10, 90, 10);
-    ctx.fillStyle = '#5e3a1c'; circ(sx - 26, y - 12, 9); ctx.fill(); circ(sx + 34, y - 12, 9); ctx.fill();
+    // (art pass, 2nd look) a planked trolley on spoked wheels; a straw body with combed strands and twine bands, a
+    // blackened breastplate with a sheen, rivets and a fauld, a visored helm with a gold brow band and a plume
+    RICH.pic('w37dolly', 90, 10, c => { RICH.wood(c, 0, 0, 90, 10, { col: '#4a3424', seed: 61, seam: 30, edge: true, lw: 1.2 }); }, sx - 40, y - 10);
+    for (const wx of [sx - 26, sx + 34]) {
+      ctx.fillStyle = '#3a2010'; circ(wx, y - 12, 9); ctx.fill(); ctx.fillStyle = '#7a5434'; circ(wx, y - 12, 6.5); ctx.fill();
+      ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 1.6; ctx.beginPath(); for (let q = 0; q < 4; q++) { const a = st.d / 9 + q * Math.PI / 4; ctx.moveTo(wx - Math.cos(a) * 6.5, y - 12 - Math.sin(a) * 6.5); ctx.lineTo(wx + Math.cos(a) * 6.5, y - 12 + Math.sin(a) * 6.5); } ctx.stroke();
+      ctx.fillStyle = '#c8a040'; circ(wx, y - 12, 2); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(wx, y - 12, 8, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+    }
     // (it topples backwards, away from the pair, spilling straw)
     ctx.save(); ctx.translate(sx + 30, y - 20); ctx.rotate(-fall * 0.5); ctx.translate(-24, 0);
-    ctx.fillStyle = K.COL.hay; rr(-16, -150, 32, 130, 10); ctx.fill();
-    ctx.fillStyle = '#2a2a34'; rr(-18, -146, 36, 46, 8); ctx.fill(); ctx.fillRect(-18, -70, 36, 10);
-    ctx.strokeStyle = K.COL.hayDark; ctx.lineWidth = 2; for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.moveTo(-14 + k * 7, -96); ctx.lineTo(-16 + k * 7, -76); ctx.stroke(); }
-    ctx.fillStyle = '#4a4a58'; rr(-16, -186, 32, 36, 8); ctx.fill();
-    ctx.fillStyle = '#ffd23a'; ctx.fillRect(-12, -172, 24, 3);
+    RICH.pic('w37strawman', 40, 190, c => {
+      c.translate(4, 190);
+      c.fillStyle = K.COL.hay; RICH.rr(c, -16, -150, 32, 130, 10); c.fill();
+      c.save(); RICH.rr(c, -16, -150, 32, 130, 10); c.clip();
+      c.lineWidth = 1; for (let k = 0; k < 70; k++) { const px = -16 + RICH.r(81, k) * 32, py = -150 + RICH.r(82, k) * 130, l = 5 + RICH.r(83, k) * 9; c.strokeStyle = RICH.r(84, k) < 0.5 ? 'rgba(150,100,20,0.55)' : 'rgba(255,245,180,0.7)'; c.beginPath(); c.moveTo(px, py); c.lineTo(px + (RICH.r(85, k) - 0.5) * 3, py + l); c.stroke(); }
+      c.fillStyle = 'rgba(120,80,20,0.3)'; c.fillRect(8, -150, 8, 130); c.fillStyle = 'rgba(255,250,210,0.35)'; c.fillRect(-16, -150, 4, 130);
+      c.restore();
+      for (const ty of [-56, -40]) { c.fillStyle = '#8a5a2a'; c.fillRect(-16, ty, 32, 3); c.fillStyle = 'rgba(255,230,180,0.4)'; c.fillRect(-16, ty, 32, 1); }
+      // breastplate
+      const g = c.createLinearGradient(-18, 0, 18, 0); g.addColorStop(0, '#5a5a6a'); g.addColorStop(0.3, '#3a3a46'); g.addColorStop(1, '#1a1a22');
+      c.fillStyle = g; RICH.rr(c, -18, -146, 36, 46, 8); c.fill(); c.fillRect(-18, -70, 36, 10);
+      c.strokeStyle = '#0e0e14'; c.lineWidth = 1.5; RICH.rr(c, -18, -146, 36, 46, 8); c.stroke(); c.strokeRect(-18, -70, 36, 10);
+      c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(-1, -144); c.quadraticCurveTo(-3, -124, -1, -102); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(-13, -142, 2, 18);
+      c.fillStyle = '#8a8a96'; for (const [x, yy] of [[-14, -140], [14, -140], [-14, -106], [14, -106], [-12, -65], [0, -65], [12, -65]]) { c.beginPath(); c.arc(x, yy, 1.4, 0, TAU); c.fill(); }
+      c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-18, -112); c.quadraticCurveTo(0, -108, 18, -112); c.stroke();
+      c.strokeStyle = K.COL.hayDark; c.lineWidth = 2; for (let k = 0; k < 5; k++) { c.beginPath(); c.moveTo(-14 + k * 7, -96); c.lineTo(-16 + k * 7, -76); c.stroke(); }
+      // helm
+      const hg = c.createLinearGradient(-16, 0, 16, 0); hg.addColorStop(0, '#7a7a8a'); hg.addColorStop(0.35, '#4a4a58'); hg.addColorStop(1, '#262630');
+      c.fillStyle = hg; RICH.rr(c, -16, -186, 32, 36, 8); c.fill(); c.strokeStyle = '#0e0e14'; c.lineWidth = 1.5; RICH.rr(c, -16, -186, 32, 36, 8); c.stroke();
+      c.fillStyle = '#ffd23a'; c.fillRect(-12, -172, 24, 3); c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(-12, -172, 24, 0.8);
+      c.fillStyle = '#0e0e14'; c.fillRect(-12, -166, 24, 2.5); for (let q = 0; q < 4; q++) c.fillRect(-8 + q * 5, -160, 1.6, 5);
+      c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(-12, -183, 2, 9);
+    }, -4, -190);
     ctx.fillStyle = '#c8302a'; ctx.beginPath(); ctx.moveTo(0, -186); ctx.quadraticCurveTo(14, -206, 24, -190); ctx.lineTo(4, -184); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,190,180,0.5)'; ctx.beginPath(); ctx.moveTo(2, -187); ctx.quadraticCurveTo(12, -201, 20, -193); ctx.lineTo(4, -188); ctx.closePath(); ctx.fill();
     ctx.restore(); ctx.globalAlpha = 1;
     if (!it.down) {
       // the shield shows the 3-part pattern; this pass's band is lit

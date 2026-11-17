@@ -631,16 +631,41 @@ function wizCaulDrawPot(st) {
   ctx.save(); ctx.lineJoin = 'round'; ctx.strokeStyle = C.ink;
   // the stand and wheels
   ctx.lineWidth = 2.5; ctx.fillStyle = C2.ironLt;
-  for (const dx of [-30, 30]) { ctx.save(); ctx.translate(x + dx, y - 11); ctx.rotate(ph.cx / 11); circle(0, 0, 11); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.moveTo(0, -11); ctx.lineTo(0, 11); ctx.stroke(); ctx.restore(); }
-  ctx.fillStyle = C2.iron; ctx.fillRect(x - 40, y - 28, 80, 7); ctx.strokeRect(x - 40, y - 28, 80, 7);
+  // (art pass, 2nd look) cast-iron wheels: a tyre with a lit arc, six spokes, a riveted hub; a riveted iron stand
+  RICH.shadow(ctx, x, y + 1, 52, 5, 0.22);
+  for (const dx of [-30, 30]) {
+    ctx.save(); ctx.translate(x + dx, y - 11);
+    ctx.fillStyle = C2.iron; circle(0, 0, 11); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, 8.6, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+    ctx.rotate(ph.cx / 11);
+    ctx.strokeStyle = C2.ironLt; ctx.lineWidth = 2.2; ctx.beginPath(); for (let q = 0; q < 6; q++) { const a = q * Math.PI / 3; ctx.moveTo(Math.cos(a) * 3, Math.sin(a) * 3); ctx.lineTo(Math.cos(a) * 8, Math.sin(a) * 8); } ctx.stroke();
+    ctx.fillStyle = C2.ironLt; circle(0, 0, 3.4); ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.restore();
+  }
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+  RICH.pic('wizcaulstand', 80, 7, c => RICH.metal(c, 0, 0, 80, 7, { col: C2.iron, rivets: 10, seed: 4, scratch: false, edge: false }), x - 40, y - 28);
+  ctx.strokeRect(x - 40, y - 28, 80, 7);
   // the brake chain (glows while braking or hot)
   ctx.strokeStyle = ph.braking ? '#ff9a3c' : ph.brakeCool > 0 ? '#ff5f3c' : '#9a9aa8'; ctx.lineWidth = 3; ctx.setLineDash([4, 3]);
   ctx.beginPath(); ctx.moveTo(x - 46, r + 10); ctx.lineTo(x - 48, y - 22); ctx.stroke(); ctx.setLineDash([]);
   if (ph.braking) for (let n = 0; n < 3; n++) burst(x - 34 + n * 30, y - 2, '#ffcf6a', 1);
   // the pot
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillStyle = C2.iron;
-  ctx.beginPath(); ctx.moveTo(x - 50, r); ctx.quadraticCurveTo(x - 56, y - 20, x, y - 24); ctx.quadraticCurveTo(x + 56, y - 20, x + 50, r); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = C2.ironLt; ctx.fillRect(x - 40, r + 14, 12, 26);
+  // (art pass, 2nd look) the pot: round cast iron lit from the upper left, a riveted belly band, hammer dents, soot
+  // round its foot and the potion's glow on the inside of the lip
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
+  const pot = () => { ctx.beginPath(); ctx.moveTo(x - 50, r); ctx.quadraticCurveTo(x - 56, y - 20, x, y - 24); ctx.quadraticCurveTo(x + 56, y - 20, x + 50, r); ctx.closePath(); };
+  { const g = ctx.createRadialGradient(x - 22, r + 10, 4, x, (r + y) / 2, 70); g.addColorStop(0, RICH.lit(C2.iron, 0.35)); g.addColorStop(0.5, C2.iron); g.addColorStop(1, RICH.dk(C2.iron, 0.45)); ctx.fillStyle = g; }
+  pot(); ctx.fill();
+  ctx.save(); pot(); ctx.clip();
+  const by = r + (y - 24 - r) * 0.42;
+  ctx.fillStyle = RICH.dk(C2.iron, 0.25); ctx.fillRect(x - 60, by, 120, 7); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x - 60, by, 120, 1.2);
+  for (let q = -4; q <= 4; q++) RICH.rivet(ctx, x + q * 11, by + 3.5, 1.5, C2.ironLt);
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (const [dx, dy] of [[-24, 26], [14, 34], [30, 16], [-8, 44]]) { ctx.beginPath(); ctx.ellipse(x + dx, r + dy, 5, 3, 0.4, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; for (const [dx, dy] of [[-22, 28], [16, 36], [32, 18], [-6, 46]]) { ctx.beginPath(); ctx.ellipse(x + dx, r + dy, 4, 2, 0.4, 0, Math.PI); ctx.fill(); }
+  { const sg = ctx.createLinearGradient(0, y - 40, 0, y - 22); sg.addColorStop(0, 'rgba(10,8,14,0)'); sg.addColorStop(1, 'rgba(10,8,14,0.55)'); ctx.fillStyle = sg; ctx.fillRect(x - 60, y - 40, 120, 20); }
+  ctx.restore();
+  pot(); ctx.stroke();
+  ctx.fillStyle = C2.ironLt; ctx.fillRect(x - 40, r + 14, 12, 26); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 40, r + 14, 3, 26);
   // the potion and the foam
   const col = ph.silly > 0 || ph.drip > 0 ? C2.silly[ph.sillyC] : C2.potion;
   ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(x, r, 50, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -648,6 +673,8 @@ function wizCaulDrawPot(st) {
   if (fh > 2) { ctx.fillStyle = C2.foam; for (let n = -3; n <= 3; n++) { circle(x + n * 13, r - 2 - fh * (0.6 + 0.4 * Math.sin(t * 6 + n)), 8 + fh * 0.25); ctx.fill(); } }
   // rim
   ctx.fillStyle = C2.ironLt; rr(x - 54, r - 4, 108, 8, 4); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x - 48, r - 3, 70, 1.5);
+  ctx.fillStyle = RICH.rgba(col, 0.35); ctx.fillRect(x - 46, r + 1.5, 92, 2);
   // the geyser
   if (ph.mode === 'boil') {
     const h = Math.min(1, ph.modeT * 4) * (1 - Math.max(0, ph.modeT - 1.2) / 0.6) * 220;
