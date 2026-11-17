@@ -1045,6 +1045,14 @@
     ctx.strokeStyle = lk.grassD; ctx.lineWidth = 3; ctx.beginPath();
     for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, gyAt(st, x) + 7);
     ctx.stroke();
+    // the near grass texture: dense blades, clover, daisies and buttercups (cached lawn tiles, three variants of 240 px,
+    // copied in 24 px slices that each sit just under the road's lower edge, so nothing needs a clip)
+    for (let k = Math.floor(x0 / 24); k * 24 < x1; k++) {
+      let top = 0;
+      for (let x = k * 24; x <= k * 24 + 24; x += 8) top = Math.max(top, gyAt(st, x) + 8);
+      const v = hash(Math.floor(k / 10), 67) % 3, sl = ((k % 10) + 10) % 10;
+      ERICH.put('ttlawn' + st.look + v + '_' + sl, 24, 240, 0, 0, c => { c.translate(-sl * 24, 0); ERICH.grassTile(c, 240, 240, { base: lk.grass, seed: 70 + v * 13, fill: false, flowers: 0.7 }); }, k * 24, Math.floor(top));
+    }
     // mown stripes across the near grass
     ctx.fillStyle = 'rgba(255,255,255,0.06)';
     for (let x = Math.floor(x0 / 120) * 120; x < x1; x += 240) { ctx.beginPath(); ctx.moveTo(x, gyAt(st, x) + 10); ctx.lineTo(x + 120, gyAt(st, x + 120) + 10); ctx.lineTo(x + 60, H + 10); ctx.lineTo(x - 60, H + 10); ctx.closePath(); ctx.fill(); }

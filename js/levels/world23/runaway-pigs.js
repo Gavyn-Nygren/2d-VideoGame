@@ -1091,21 +1091,16 @@ const PIGHERD = {
     // the grass (mown stripes stuck to the world)
     ctx.fillStyle = lk.grass; ctx.fillRect(0, 0, W, H);
     ctx.save(); ctx.translate(-st.camX, 0);
-    ctx.fillStyle = lk.grass2;
-    for (let x = Math.floor(st.camX / 120) * 120 - 120; x < st.camX + W + 120; x += 120) { ctx.beginPath(); ctx.rect(x, PH0.top, 60, PH0.bot - PH0.top); ctx.fill(); }
-    // soft patches of lighter and darker grass, and little clover clumps
-    for (let k = Math.floor(st.camX / 70) - 2; k < Math.floor(st.camX / 70) + 17; k++) {
-      const h = hash(k, 57), x = k * 70 + (h % 50), y = PH0.top + 20 + ((h >> 7) % (PH0.bot - PH0.top - 40));
-      ctx.fillStyle = h % 2 ? 'rgba(255,255,230,0.08)' : 'rgba(30,80,20,0.08)';
-      ctx.beginPath(); ctx.ellipse(x, y, 30 + h % 30, 12 + (h >> 4) % 10, 0, 0, TAU); ctx.fill();
-      if (h % 5 === 0) { ctx.fillStyle = 'rgba(60,130,50,0.45)'; for (let i = 0; i < 3; i++) { const a = i * 2.1; circle(x + 18 + Math.cos(a) * 3.5, y + 6 + Math.sin(a) * 3.5, 3); ctx.fill(); } }
-    }
-    // grass tufts and flowers
-    for (let k = Math.floor(st.camX / 90) - 1; k < Math.floor(st.camX / 90) + 13; k++) {
-      const h = hash(k, 31), x = k * 90 + (h % 70), y = PH0.top + 14 + ((h >> 8) % (PH0.bot - PH0.top - 28));
-      ctx.strokeStyle = 'rgba(60,130,50,0.5)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 3, y - 7); ctx.moveTo(x + 3, y); ctx.lineTo(x + 4, y - 8); ctx.stroke();
-      if (h % 4 === 0) { ctx.fillStyle = ['#fff7a8', '#ffffff', '#ffb3d1'][h % 3]; circle(x + 12, y - 3, 2.6); ctx.fill(); ctx.fillStyle = '#f2b23a'; circle(x + 12, y - 3, 1.1); ctx.fill(); }
+    // mown stripes, soft patches, dense blades, clover, daisies and buttercups: cached 240 px lawn tiles stuck to the
+    // world (three variants picked by hash, so the pattern doesn't repeat)
+    for (let k = Math.floor(st.camX / 240) - 1; k <= Math.floor((st.camX + W) / 240); k++) {
+      const v = hash(k, 61) % 3;
+      ERICH.put('rplawn' + st.look + v, 240, PH0.bot - PH0.top, 0, 0, c => {
+        c.fillStyle = lk.grass; c.fillRect(0, 0, 240, PH0.bot - PH0.top);
+        c.fillStyle = lk.grass2; c.fillRect(0, 0, 60, PH0.bot - PH0.top); c.fillRect(120, 0, 60, PH0.bot - PH0.top);
+        c.fillStyle = 'rgba(255,255,230,0.12)'; c.fillRect(58, 0, 2, PH0.bot - PH0.top); c.fillRect(178, 0, 2, PH0.bot - PH0.top);
+        ERICH.grassTile(c, 240, PH0.bot - PH0.top, { base: lk.grass, seed: 40 + v * 17, fill: false, flowers: 0.8 });
+      }, k * 240, PH0.top);
     }
     // the farm track (a dirt path along the route)
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';

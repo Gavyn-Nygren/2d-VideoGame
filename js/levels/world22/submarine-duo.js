@@ -338,7 +338,118 @@ const ERICH = (() => {
     c.restore();
     c.strokeStyle = dk; c.lineWidth = o.lw || 1.2; rrOn(c, x, y, w, h, Math.min(3, h * 0.25)); c.stroke();
   }
-  return { fr, put, shadow, board, nails, rivets, pebble, stone, metal, cushion, log, grainLine, crate, bale, pumpkin, toyBlock, bookSpine };
+  // a book standing on a shelf, seen spine-on, top-left at (x, y): a rounded cloth spine (lit left, shaded right),
+  // head and tail caps, cloth weave flecks, worn corners and one of four spine styles: 0 gold double bands, 1 raised
+  // leather ribs, 2 a pale title label with lettering and an emblem, 3 a gilt title block; outline in its own dark
+  function standBook(c, x, y, w, h, col, o = {}) {
+    const s = o.seed || 1, st = o.style == null ? s % 4 : o.style, r = Math.min(3, w * 0.15), dk = shade(col, 0.45);
+    rrOn(c, x, y, w, h, r); c.fillStyle = col; c.fill();
+    c.save(); rrOn(c, x, y, w, h, r); c.clip();
+    // the round of the spine
+    c.fillStyle = tint(col, 0.22); c.fillRect(x, y, w * 0.2, h);
+    c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(x + w * 0.24, y, Math.max(1, w * 0.07), h);
+    c.fillStyle = shade(col, 0.14); c.fillRect(x + w * 0.66, y, w * 0.34, h);
+    c.fillStyle = shade(col, 0.26); c.fillRect(x + w * 0.84, y, w * 0.16, h);
+    // cloth weave flecks
+    c.globalAlpha = 0.5;
+    for (let i = 0; i < Math.round(w * h / 40); i++) {
+      const px = x + 1 + fr(s, i + 500) * (w - 2), py = y + 2 + fr(s, i + 700) * (h - 4), lit = fr(s, i + 900) < 0.45;
+      c.fillStyle = lit ? tint(col, 0.35) : shade(col, 0.3); c.fillRect(px, py, lit ? 1.4 : 1, 0.8);
+    }
+    c.globalAlpha = 1;
+    // head and tail caps (the covers' edges)
+    c.fillStyle = shade(col, 0.3); c.fillRect(x, y, w, 2.2); c.fillRect(x, y + h - 2.6, w, 2.6);
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x, y + 2.2, w, 1);
+    const gold = '#e8c35a', goldD = '#a87e22', gl = (yy, hh) => { c.fillStyle = goldD; c.fillRect(x + 1.5, yy + 0.6, w - 3, hh); c.fillStyle = gold; c.fillRect(x + 1.5, yy, w - 3, hh); c.fillStyle = 'rgba(255,250,220,0.7)'; c.fillRect(x + 1.5, yy, w * 0.4, Math.min(0.8, hh)); };
+    if (st === 0) {
+      for (const yy of [y + 8, y + 12, y + h - 15, y + h - 11]) gl(yy, 1.6);
+      if (h > 70) { c.fillStyle = gold; for (let i = 0; i < 3; i++) c.fillRect(x + w * 0.28, y + h * 0.4 + i * 4, w * (0.44 - i * 0.1), 1.2); }
+    } else if (st === 1) {
+      const n = Math.max(3, Math.min(5, Math.round(h / 34)));
+      for (let i = 0; i < n; i++) {
+        const yy = y + 10 + (h - 24) * i / (n - 1);
+        c.fillStyle = shade(col, 0.32); c.fillRect(x, yy + 2, w, 2.2);
+        c.fillStyle = tint(col, 0.3); c.fillRect(x, yy, w, 2);
+        c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x, yy, w * 0.35, 0.8);
+      }
+      gl(y + 10 + (h - 24) * 0.5 - 8, 1.2);
+    } else if (st === 2) {
+      const lh = Math.min(34, h * 0.26), ly = y + h * 0.3, lc = o.label || '#fff6e0';
+      c.fillStyle = 'rgba(0,0,0,0.18)'; rrOn(c, x + 3, ly + 1, w - 5, lh, 1.5); c.fill();
+      c.fillStyle = lc; rrOn(c, x + 2.5, ly, w - 5, lh, 1.5); c.fill();
+      c.strokeStyle = shade(lc, 0.3); c.lineWidth = 0.8; rrOn(c, x + 3.5, ly + 1, w - 7, lh - 2, 1); c.stroke();
+      c.fillStyle = shade(col, 0.2);
+      for (let i = 0; i < 3; i++) c.fillRect(x + 5, ly + 5 + i * 4, (w - 10) * (0.9 - fr(s, i + 30) * 0.4), 1.4);
+      c.beginPath(); c.arc(x + w / 2, ly + lh - 6, Math.min(3, w * 0.12), 0, Math.PI * 2); c.fill();
+      gl(y + 7, 1.4); gl(y + h - 10, 1.4);
+    } else {
+      const by = y + h * 0.18, bh = Math.min(42, h * 0.3);
+      c.fillStyle = shade(col, 0.35); rrOn(c, x + 2, by, w - 4, bh, 1.5); c.fill();
+      c.strokeStyle = gold; c.lineWidth = 1; rrOn(c, x + 3, by + 1.5, w - 6, bh - 3, 1); c.stroke();
+      c.fillStyle = gold; for (let i = 0; i < 4; i++) c.fillRect(x + 5, by + 6 + i * ((bh - 10) / 4), (w - 10) * (0.85 - fr(s, i + 40) * 0.35), 1.3);
+      c.fillStyle = gold; c.beginPath(); c.moveTo(x + w / 2, y + h - 22); c.lineTo(x + w / 2 + 3, y + h - 18); c.lineTo(x + w / 2, y + h - 14); c.lineTo(x + w / 2 - 3, y + h - 18); c.closePath(); c.fill();
+    }
+    // worn corners and a scuff
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x, y, 2.5, 2.5); c.fillRect(x + w - 2.5, y, 2.5, 1.5);
+    if (fr(s, 60) < 0.5) { c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x + w * 0.3, y + h * (0.55 + fr(s, 61) * 0.3), w * 0.35, 1); }
+    c.restore();
+    c.strokeStyle = o.edge || dk; c.lineWidth = o.lw || 1.2; rrOn(c, x, y, w, h, r); c.stroke();
+  }
+  // a still patch of lawn w x h for tiling (nothing crosses the left/right edges, so tiles meet without seams): soft
+  // lighter and darker patches, dense short blades in three greens with lit tips, clover clumps, daisies, buttercups
+  // and the odd pebble. o = { base, seed, flowers (0-1 density), dense }
+  function grassTile(c, w, h, o = {}) {
+    const base = o.base || '#8fd264', s = o.seed || 1, dkG = shade(base, 0.28), ltG = tint(base, 0.3), m = 4;
+    if (o.fill !== false) { c.fillStyle = base; c.fillRect(0, 0, w, h); }
+    for (let i = 0; i < Math.round(w * h / 9000); i++) {
+      const px = m + 30 + fr(s, i + 1) * (w - 2 * m - 60), py = fr(s, i + 2) * h, lit = i % 2;
+      c.fillStyle = lit ? 'rgba(255,255,220,0.1)' : 'rgba(30,80,20,0.1)';
+      c.beginPath(); c.ellipse(px, py, 22 + fr(s, i + 3) * 26, 9 + fr(s, i + 4) * 9, 0, 0, Math.PI * 2); c.fill();
+    }
+    const n = Math.round(w * h / (o.dense || 22));
+    c.lineCap = 'round';
+    for (const [col, lw, k0] of [[dkG, 1.5, 0], [shade(base, 0.12), 1.3, 1], [ltG, 1.1, 2]]) {
+      c.strokeStyle = col; c.lineWidth = lw; c.globalAlpha = k0 === 2 ? 0.8 : 0.55; c.beginPath();
+      for (let i = k0; i < n; i += 3) {
+        const bx = m + fr(s, i * 3 + 11) * (w - 2 * m), by = 6 + fr(s, i * 3 + 12) * (h - 6), len = 3.5 + fr(s, i * 3 + 13) * 5, lean = (fr(s, i + 14) - 0.5) * 4;
+        c.moveTo(bx, by); c.quadraticCurveTo(bx + lean * 0.3, by - len * 0.6, bx + lean, by - len);
+      }
+      c.stroke();
+    }
+    c.globalAlpha = 1;
+    // clover clumps
+    for (let i = 0; i < Math.round(w * h / 7000); i++) {
+      const cx = m + 8 + fr(s, i + 300) * (w - 2 * m - 16), cy = 8 + fr(s, i + 301) * (h - 12);
+      for (let k = 0; k < 3 + (i % 3); k++) {
+        const lx = cx + (fr(s, i * 7 + k + 310) - 0.5) * 14, ly = cy + (fr(s, i * 7 + k + 330) - 0.5) * 8;
+        c.fillStyle = 'rgba(20,50,20,0.18)'; c.beginPath(); c.arc(lx + 0.8, ly + 1, 3.2, 0, Math.PI * 2); c.fill();
+        c.fillStyle = shade(base, 0.2);
+        for (let j = 0; j < 3; j++) { const a = j * 2.09 + k; c.beginPath(); c.arc(lx + Math.cos(a) * 1.7, ly + Math.sin(a) * 1.7, 1.7, 0, Math.PI * 2); c.fill(); }
+        c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(lx - 0.6, ly - 0.8, 0.8, 0, Math.PI * 2); c.fill();
+      }
+    }
+    // flowers: daisies, buttercups and pink clover heads, each with a tiny shadow
+    const nf = Math.round(w * h / 5200 * (o.flowers == null ? 1 : o.flowers));
+    for (let i = 0; i < nf; i++) {
+      const fx = m + 6 + fr(s, i + 500) * (w - 2 * m - 12), fy = 8 + fr(s, i + 501) * (h - 14), k = Math.floor(fr(s, i + 502) * 3);
+      c.fillStyle = 'rgba(20,50,20,0.2)'; c.beginPath(); c.ellipse(fx + 1, fy + 2.4, 3.4, 1.2, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = dkG; c.lineWidth = 1; c.beginPath(); c.moveTo(fx, fy + 2.5); c.lineTo(fx - 0.5, fy); c.stroke();
+      if (k === 0) {
+        c.fillStyle = '#ffffff'; for (let j = 0; j < 6; j++) { const a = j * 1.047 + i; c.beginPath(); c.ellipse(fx + Math.cos(a) * 2, fy + Math.sin(a) * 1.6, 1.5, 0.9, a, 0, Math.PI * 2); c.fill(); }
+        c.fillStyle = '#d8d0c8'; c.beginPath(); c.ellipse(fx + 1.2, fy + 1.4, 1.6, 0.8, 0.4, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#f2b23a'; c.beginPath(); c.arc(fx, fy, 1.2, 0, Math.PI * 2); c.fill();
+      } else if (k === 1) {
+        c.fillStyle = '#f2c21a'; for (let j = 0; j < 5; j++) { const a = j * 1.257 + i; c.beginPath(); c.arc(fx + Math.cos(a) * 1.5, fy + Math.sin(a) * 1.3, 1.3, 0, Math.PI * 2); c.fill(); }
+        c.fillStyle = '#fff6a0'; c.beginPath(); c.arc(fx - 0.5, fy - 0.5, 0.8, 0, Math.PI * 2); c.fill();
+      } else {
+        c.fillStyle = '#e888b8'; c.beginPath(); c.ellipse(fx, fy, 2, 2.4, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#ffc0dc'; for (let j = 0; j < 3; j++) { c.beginPath(); c.arc(fx - 0.8 + j * 0.8, fy - 1 + (j % 2), 0.6, 0, Math.PI * 2); c.fill(); }
+      }
+    }
+    // the odd pebble peeking through
+    for (let i = 0; i < Math.round(w * h / 16000); i++) pebble(c, m + 8 + fr(s, i + 800) * (w - 2 * m - 16), 8 + fr(s, i + 801) * (h - 14), 2.4 + fr(s, i + 802) * 1.6, 1.6 + fr(s, i + 803), ['#b8ab96', '#a89a88', '#c8bca4'][i % 3], s + i);
+  }
+  return { fr, put, shadow, board, nails, rivets, pebble, stone, metal, cushion, log, grainLine, crate, bale, pumpkin, toyBlock, bookSpine, standBook, grassTile };
 })();
 // little still things on a seabed (cached pictures, one per kind and variant), sitting on the sand line at (x, y):
 // 'star' a starfish, 'peb' a cluster of pebbles, 'scallop' a ribbed shell, 'snail' a spiral shell, 'rock' a half-buried

@@ -1051,18 +1051,13 @@ function jackboxDrawDeco(st, d, top, bot) {
   if (k === 'books') {
     let x = d[1], n = 0;
     while (x < d[2] - 10) {
-      const h = hash(Math.round(x), n + 7), bw = 14 + (h % 12), bh = 50 + ((h >> 4) % 34), col = JBOX_TOY[(h >> 8) % 6];
+      const h = hash(Math.round(x), n + 7), bw = 14 + (h % 12), bh = 50 + ((h >>> 4) % 34), col = JBOX_TOY[(h >>> 8) % 6];
       const lean = (h >> 12) % 9 === 0 && x + bw + 20 < d[2];
       ctx.save(); ctx.translate(x, y);
       if (lean) ctx.rotate(0.22);
-      ctx.fillStyle = col; ctx.strokeStyle = 'rgba(28,26,54,0.55)'; ctx.lineWidth = 1.5;
-      rr(0, -bh, bw, bh, 2); ctx.fill();
-      // a rounded spine: shade on the right, a lit strip on the left, a title label
-      ctx.fillStyle = 'rgba(20,10,40,0.2)'; ctx.fillRect(bw - 4, -bh + 1, 3, bh - 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(1.5, -bh + 1, 2.5, bh - 2);
-      if (bh > 60) { ctx.fillStyle = 'rgba(255,255,255,0.7)'; rr(3, -bh * 0.62, bw - 6, 12, 2); ctx.fill(); ctx.fillStyle = 'rgba(28,26,54,0.35)'; ctx.fillRect(5, -bh * 0.62 + 5, bw - 10, 1.5); }
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(2, -bh + 8, bw - 4, 3); ctx.fillRect(2, -14, bw - 4, 3);
+      // a cached standing book: rounded spine, caps, cloth weave, gold bands / ribs / label / gilt block
+      const sty = (h >>> 2) % 4, sd = (h >>> 6) % 37;
+      ERICH.put('jbbk' + bw + '_' + bh + '_' + ((h >>> 8) % 6) + '_' + sty + '_' + sd, bw + 4, bh + 4, 2, bh + 2, c => ERICH.standBook(c, 0, -bh, bw, bh, col, { seed: sd + 3, style: sty, edge: 'rgba(28,26,54,0.6)', lw: 1.5 }), 0, 0);
       ctx.restore();
       x += bw + (lean ? 14 : 1); n++;
     }

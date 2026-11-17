@@ -1061,66 +1061,106 @@ function diveropeDrawRock(st, r) {
     diveropeDrawCoral(x, r.y0 + 2, hh % 3, st.c.look, 0.7 + (hh % 4) * 0.1);
   }
 }
-// one rock block or ledge, in its own coordinates (0,0)-(w,h): a lumpy shaded underside, fractured stone cells with lit
-// lips, strata, pits and specks, barnacles and shells, a lit top lip with moss (or coralline, or glow spots), weed
-// hanging under ledges, and an outline in the rock's own dark
+// one rock block or ledge, in its own coordinates (0,0)-(w,h): a lumpy shaded underside; the face is cobbled from
+// irregular fractured stones (each its own tone, lit on its top-left, shaded on its bottom-right, outlined in the
+// rock's dark) set in dark crevices, with specks, pits, hairline cracks, crusts of coralline/algae (or sand drifts, or
+// glow spots), shaded barnacle clusters and the odd shell; a lit top lip with moss, weed hanging under ledges
 function diveropePaintRock(c, w, h, seed, look, ledge) {
   const lk = DIVEROPE_LOOK[look] || DIVEROPE_LOOK.shelf, F = ERICH.fr, S = seed * 13 + 1;
-  const dk = shade(lk.rockD, 0.3);
-  // lumpy underside (same rock, in shadow)
+  const dk = shade(lk.rockD, 0.3), crev = mixCol(lk.rockD, dk, 0.45);
+  // lumpy underside (same rock, in shadow): each lump lit on top, shaded below, with a pit or a barnacle
   for (let k = 0; k < Math.floor(w / 46); k++) {
     const hh = hash(seed, k), cx = 22 + k * 46 + (hh % 14), cr = 11 + (hh % 7);
     c.fillStyle = mixCol(lk.rock, lk.rockD, 0.55); c.beginPath(); c.arc(cx, h - 4, cr, 0, Math.PI * 2); c.fill();
-    c.fillStyle = 'rgba(20,20,60,0.18)'; c.beginPath(); c.arc(cx + 3, h - 1, cr * 0.8, 0, Math.PI * 2); c.fill();
+    c.save(); c.beginPath(); c.arc(cx, h - 4, cr, 0, Math.PI * 2); c.clip();
+    c.fillStyle = 'rgba(20,20,60,0.28)'; c.beginPath(); c.arc(cx + cr * 0.35, h - 4 + cr * 0.45, cr * 0.95, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.16)'; c.beginPath(); c.ellipse(cx - cr * 0.35, h - 4 - cr * 0.1, cr * 0.4, cr * 0.25, -0.4, 0, Math.PI * 2); c.fill();
+    if (hh % 3 === 0) { c.fillStyle = 'rgba(20,20,50,0.35)'; c.beginPath(); c.ellipse(cx + 2, h + 1, 2.4, 1.6, 0, 0, Math.PI * 2); c.fill(); }
+    c.restore();
     c.strokeStyle = dk; c.lineWidth = 2; c.beginPath(); c.arc(cx, h - 4, cr, 0, Math.PI * 2); c.stroke();
   }
-  c.fillStyle = lk.rock; rrOn(c, 0, 0, w, h, 16); c.fill();
+  c.fillStyle = crev; rrOn(c, 0, 0, w, h, 16); c.fill();
   c.save(); rrOn(c, 0, 0, w, h, 16); c.clip();
-  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(20,20,60,0.3)');
-  c.fillStyle = g; c.fillRect(0, 0, w, h);
-  // fractured stone cells: rows of irregular blocks; each a touch lighter or darker, with a dark seam and a lit lip
-  const rowH = ledge ? 22 : 30;
-  for (let ry = 6, row = 0; ry < h; ry += rowH, row++) {
-    let cx = -F(S, row) * 30;
-    while (cx < w) {
-      const cw = 34 + F(S, row * 97 + cx) * 46, j = (F(S, cx + row) - 0.5) * 4;
-      const tone = F(S, cx * 3 + row);
-      c.fillStyle = tone < 0.35 ? 'rgba(255,255,255,0.07)' : tone > 0.7 ? 'rgba(20,20,60,0.08)' : 'rgba(0,0,0,0)';
-      c.beginPath(); c.moveTo(cx + 2, ry + 2 + j); c.lineTo(cx + cw - 2, ry + 2 - j); c.lineTo(cx + cw - 3, ry + rowH - 2); c.lineTo(cx + 3, ry + rowH - 2 + j); c.closePath(); c.fill();
-      // seams: under the block and at its right end
-      c.strokeStyle = dk; c.globalAlpha = 0.32; c.lineWidth = 1.6; c.lineCap = 'round';
-      c.beginPath(); c.moveTo(cx + cw, ry + 1 - j); c.lineTo(cx + cw + j * 0.5, ry + rowH * 0.55); c.lineTo(cx + cw - 1, ry + rowH); c.stroke();
-      c.beginPath(); c.moveTo(cx, ry + rowH + j * 0.5); c.quadraticCurveTo(cx + cw / 2, ry + rowH + j, cx + cw, ry + rowH - j * 0.5); c.stroke();
-      c.globalAlpha = 0.22; c.strokeStyle = '#ffffff'; c.lineWidth = 1;
-      c.beginPath(); c.moveTo(cx + 3, ry + rowH + 2 + j * 0.5); c.quadraticCurveTo(cx + cw / 2, ry + rowH + 2 + j, cx + cw - 3, ry + rowH + 2 - j * 0.5); c.stroke();
-      c.globalAlpha = 1;
+  // fractured stones: rows of irregular stones with crevices between
+  const rowH = ledge ? 21 : 28;
+  for (let ry = 3, row = 0; ry < h + 4; ry += rowH, row++) {
+    let cx = -F(S, row) * 30 - 6;
+    while (cx < w + 4) {
+      const cw = 30 + F(S, row * 97 + Math.round(cx)) * 46, id = row * 131 + Math.round(cx), tone = F(S, id + 3);
+      const col = tone < 0.4 ? mixCol(lk.rock, lk.rockL, 0.12 + tone * 0.4) : tone > 0.75 ? mixCol(lk.rock, lk.rockD, 0.18 + (tone - 0.75) * 0.6) : lk.rock;
+      const J = k => (F(S, id * 7 + k) - 0.5) * 4.4;
+      const x0 = cx + 1.6, x1 = cx + cw - 1.6, y0 = ry + 1.6, y1 = ry + rowH - 1.6, xm = (x0 + x1) / 2 + J(9) * 2, ym = (y0 + y1) / 2;
+      const pts = [[x0 + 2 + J(0), y0 + J(1) * 0.6], [xm, y0 - 0.6 + J(2) * 0.4], [x1 - 2 + J(3), y0 + J(4) * 0.6], [x1 + J(5) * 0.5, ym + J(6)],
+        [x1 - 2.5 + J(7), y1 + J(8) * 0.5], [xm + J(10), y1 + 0.5 + J(11) * 0.4], [x0 + 2.5 + J(12), y1 + J(13) * 0.5], [x0 + J(14) * 0.5, ym + J(15)]];
+      const path = () => { c.beginPath(); c.moveTo((pts[7][0] + pts[0][0]) / 2, (pts[7][1] + pts[0][1]) / 2); for (let i = 0; i < 8; i++) { const p = pts[i], q = pts[(i + 1) % 8]; c.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2); } c.closePath(); };
+      path(); c.fillStyle = col; c.fill();
+      c.save(); path(); c.clip();
+      // shaded lower-right, lit upper-left
+      c.fillStyle = 'rgba(20,20,60,0.2)'; c.beginPath(); c.ellipse(x1, y1 + 2, cw * 0.75, rowH * 0.62, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.16)'; c.beginPath(); c.ellipse(x0 + cw * 0.28, y0 + 2, cw * 0.36, rowH * 0.28, -0.1, 0, Math.PI * 2); c.fill();
+      // specks and grains
+      for (let i = 0; i < 2 + Math.floor(cw / 14); i++) {
+        const px = x0 + 3 + F(id, i + 20) * (cw - 8), py = y0 + 3 + F(id, i + 40) * (rowH - 7), lit = F(id, i + 60) < 0.4;
+        c.fillStyle = lit ? 'rgba(255,255,255,0.4)' : 'rgba(25,20,55,0.32)'; c.beginPath(); c.arc(px, py, 0.6 + F(id, i + 80) * 0.9, 0, Math.PI * 2); c.fill();
+      }
+      // a pit with a lit lower rim
+      if (F(id, 101) < 0.3) { const px = x0 + 6 + F(id, 102) * (cw - 14), py = y0 + 5 + F(id, 103) * (rowH - 11); c.fillStyle = 'rgba(25,20,55,0.4)'; c.beginPath(); c.ellipse(px, py, 2.6, 1.8, 0, 0, Math.PI * 2); c.fill(); c.strokeStyle = 'rgba(255,255,255,0.4)'; c.lineWidth = 0.9; c.beginPath(); c.ellipse(px, py + 0.3, 2.6, 1.8, 0, 0.3, Math.PI - 0.3); c.stroke(); }
+      // a hairline crack with a lit edge
+      if (F(id, 111) < 0.22 && cw > 40) {
+        const kx = x0 + cw * (0.3 + F(id, 112) * 0.4);
+        c.strokeStyle = shade(col, 0.42); c.lineWidth = 1.1; c.lineCap = 'round'; c.beginPath(); c.moveTo(kx, y0); c.lineTo(kx + 3, y0 + rowH * 0.4); c.lineTo(kx - 1, y0 + rowH * 0.7); c.moveTo(kx + 3, y0 + rowH * 0.4); c.lineTo(kx + 8, y0 + rowH * 0.5); c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(kx + 1, y0); c.lineTo(kx + 4, y0 + rowH * 0.4); c.stroke();
+      }
+      c.restore();
+      // lit top rim and a dark outline in the rock's own shade
+      c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(pts[7][0] + 1, pts[7][1]); c.quadraticCurveTo(pts[0][0] + 1, pts[0][1] + 1, pts[1][0], pts[1][1] + 1); c.quadraticCurveTo(pts[2][0], pts[2][1] + 1, pts[3][0] - 1, pts[3][1]); c.stroke();
+      path(); c.strokeStyle = shade(col, 0.45); c.globalAlpha = 0.7; c.lineWidth = 1.1; c.stroke(); c.globalAlpha = 1;
       cx += cw;
     }
   }
-  // pits (dark hole, lit lower rim) and specks
-  for (let k = 0; k < Math.min(60, Math.floor(w * h / 2200)); k++) {
-    const hh = hash(seed + 5, k), px = 10 + (hh % Math.max(1, w - 20)), py = 12 + ((hh >>> 8) % Math.max(1, h - 22)), rx = 2 + (hh % 4), ry = 1.5 + (hh % 3) * 0.6;
-    if (hh % 4 === 0) { c.fillStyle = 'rgba(30,25,60,0.3)'; c.beginPath(); c.ellipse(px, py, rx + 1, ry + 0.8, 0, 0, Math.PI * 2); c.fill(); c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 0.9; c.beginPath(); c.ellipse(px, py, rx + 1, ry + 0.8, 0, 0.3, Math.PI - 0.3); c.stroke(); }
-    else { c.fillStyle = hh % 3 ? 'rgba(30,25,60,0.22)' : 'rgba(255,255,255,0.28)'; c.beginPath(); c.arc(px, py, 0.8 + (hh % 3) * 0.4, 0, Math.PI * 2); c.fill(); }
-  }
-  // barnacle clusters and a little embedded shell here and there
-  for (let k = 0; k < Math.max(1, Math.floor(w * h / 9000)); k++) {
-    const hh = hash(seed + 21, k), bx = 16 + (hh % Math.max(1, w - 32)), by = 14 + ((hh >>> 7) % Math.max(1, h - 26));
-    for (let i = 0; i < 3 + (hh % 3); i++) {
-      const ax = bx + (F(hh, i) - 0.5) * 14, ay = by + (F(hh, i + 9) - 0.5) * 9, br = 1.8 + F(hh, i + 4) * 2;
-      c.fillStyle = '#ece6d4'; c.beginPath(); c.arc(ax, ay, br, 0, Math.PI * 2); c.fill();
-      c.strokeStyle = '#8a8270'; c.lineWidth = 0.8; c.stroke();
-      c.fillStyle = '#5a5248'; c.beginPath(); c.arc(ax + 0.2, ay + 0.2, br * 0.38, 0, Math.PI * 2); c.fill();
+  // crusts on the face: coralline (coral), algae (kelp), sand caught in the crevices (shelf), glowing lichen (trench)
+  const crustCol = look === 'coral' ? '#ff9ab8' : look === 'kelp' ? '#6aa86a' : look === 'trench' ? '#5ac8d8' : '#f2dca0';
+  for (let k = 0; k < Math.max(1, Math.floor(w * h / 7000)); k++) {
+    const hh = hash(seed + 33, k), bx = 12 + (hh % Math.max(1, w - 24)), by = 10 + ((hh >>> 8) % Math.max(1, h - 18)), n = 4 + (hh % 4);
+    for (let i = 0; i < n; i++) {
+      const ax = bx + (F(hh, i) - 0.5) * 22, ay = by + (F(hh, i + 9) - 0.5) * 10, r = 2.5 + F(hh, i + 4) * 3.5;
+      c.fillStyle = shade(crustCol, 0.2); c.beginPath(); c.ellipse(ax + 0.6, ay + 0.8, r, r * 0.7, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = crustCol; c.beginPath(); c.ellipse(ax, ay, r, r * 0.7, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.arc(ax - r * 0.35, ay - r * 0.25, Math.max(0.7, r * 0.25), 0, Math.PI * 2); c.fill();
+      if (look === 'trench') { c.fillStyle = 'rgba(200,255,255,0.85)'; c.beginPath(); c.arc(ax, ay, 0.9, 0, Math.PI * 2); c.fill(); }
+      else if (look !== 'shelf') { c.fillStyle = shade(crustCol, 0.35); for (let d = 0; d < 3; d++) { c.beginPath(); c.arc(ax + (F(hh, i * 5 + d) - 0.5) * r, ay + (F(hh, i * 5 + d + 2) - 0.5) * r * 0.6, 0.55, 0, Math.PI * 2); c.fill(); } }
     }
   }
-  // the lit left face
-  c.fillStyle = 'rgba(255,255,255,0.1)'; c.fillRect(0, 0, 9, h);
-  c.fillStyle = 'rgba(20,20,60,0.12)'; c.fillRect(w - 9, 0, 9, h);
+  // barnacle clusters (little cones: a lit rim, a dark mouth) and a little embedded shell here and there
+  for (let k = 0; k < Math.max(1, Math.floor(w * h / 8000)); k++) {
+    const hh = hash(seed + 21, k), bx = 16 + (hh % Math.max(1, w - 32)), by = 14 + ((hh >>> 7) % Math.max(1, h - 26));
+    for (let i = 0; i < 3 + (hh % 4); i++) {
+      const ax = bx + (F(hh, i) - 0.5) * 16, ay = by + (F(hh, i + 9) - 0.5) * 10, br = 1.8 + F(hh, i + 4) * 2.2;
+      c.fillStyle = 'rgba(20,20,50,0.25)'; c.beginPath(); c.arc(ax + 0.7, ay + 0.9, br + 0.4, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#e6dfca'; c.beginPath(); c.arc(ax, ay, br, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#c4baa0'; c.beginPath(); c.arc(ax + br * 0.25, ay + br * 0.3, br * 0.75, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = '#7e7662'; c.lineWidth = 0.8; c.beginPath(); c.arc(ax, ay, br, 0, Math.PI * 2); c.stroke();
+      c.fillStyle = '#4a4238'; c.beginPath(); c.ellipse(ax + 0.2, ay + 0.1, br * 0.42, br * 0.3, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.arc(ax - br * 0.45, ay - br * 0.45, br * 0.28, 0, Math.PI * 2); c.fill();
+    }
+    if (hh % 3 === 0) {
+      const sx = bx + 14, sy = by + 3, sc = ['#ffd0dc', '#fff0d8', '#ffc89a'][hh % 3];
+      c.fillStyle = sc; c.beginPath(); c.moveTo(sx, sy + 3); c.arc(sx, sy + 3, 5.5, Math.PI * 1.1, Math.PI * 1.9); c.closePath(); c.fill();
+      c.strokeStyle = shade(sc, 0.4); c.lineWidth = 0.8; c.stroke();
+      c.beginPath(); for (let i = 1; i < 5; i++) { const a = Math.PI * (1.1 + i * 0.16); c.moveTo(sx, sy + 3); c.lineTo(sx + Math.cos(a) * 5, sy + 3 + Math.sin(a) * 5); } c.stroke();
+    }
+  }
+  // the whole block: lit left face, shaded right face and underside
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,255,255,0.06)'); g.addColorStop(0.5, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(20,20,60,0.32)');
+  c.fillStyle = g; c.fillRect(0, 0, w, h);
+  c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(0, 0, 6, h); c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(6, 0, 6, h);
+  c.fillStyle = 'rgba(20,20,60,0.18)'; c.fillRect(w - 10, 0, 10, h);
   c.restore();
   // the lit top lip
-  c.fillStyle = lk.rockL; rrOn(c, 2, 0, w - 4, 8, 4); c.fill();
-  c.fillStyle = 'rgba(255,255,255,0.4)'; rrOn(c, 10, 1.5, Math.max(4, w * 0.4), 2.5, 1.2); c.fill();
-  c.strokeStyle = dk; c.lineWidth = 2.2; rrOn(c, 0, 0, w, h, 16); c.stroke();
+  c.fillStyle = lk.rockL; rrOn(c, 2, 0, w - 4, 7, 3.5); c.fill();
+  c.fillStyle = 'rgba(20,20,60,0.12)'; c.fillRect(4, 5.5, w - 8, 1.5);
+  c.fillStyle = 'rgba(255,255,255,0.45)'; rrOn(c, 10, 1.2, Math.max(4, w * 0.45), 2.2, 1.1); c.fill();
+  c.strokeStyle = dk; c.lineWidth = 2.4; rrOn(c, 0, 0, w, h, 16); c.stroke();
   // what grows on top: moss (kelp), coralline crust (coral), sand and pebbles (shelf), glowing spots (trench)
   if (look === 'kelp' || look === 'coral') {
     const mc = look === 'kelp' ? '#6aa86a' : '#ff9ab8', ml = look === 'kelp' ? '#a6dc8c' : '#ffd0de';
@@ -1131,7 +1171,13 @@ function diveropePaintRock(c, w, h, seed, look, ledge) {
     for (let i = 0; i < Math.floor(w / 9); i++) { if (F(S, i + 600) < 0.35) continue; const mx = 6 + i * 9 + F(S, i + 620) * 6; c.moveTo(mx + 5, 1); c.ellipse(mx - 0.5, 1, 3.2 + F(S, i + 640) * 3, 2 + F(S, i + 660) * 1.2, 0, 0, Math.PI * 2); }
     c.fill();
     c.fillStyle = ml; c.beginPath(); for (let i = 0; i < Math.floor(w / 16); i++) { const mx = 8 + i * 16 + F(S, i + 700) * 8; c.moveTo(mx + 1.3, -0.5); c.arc(mx, -0.5, 1.3, 0, Math.PI * 2); } c.fill();
+    // drips of moss down the face
+    c.fillStyle = shade(mc, 0.1);
+    for (let i = 0; i < Math.floor(w / 40); i++) { if (F(S, i + 760) < 0.45) continue; const mx = 14 + i * 40 + F(S, i + 770) * 20, ml2 = 6 + F(S, i + 780) * 9; c.beginPath(); c.moveTo(mx - 4, 3); c.quadraticCurveTo(mx - 2, 3 + ml2, mx, 3 + ml2); c.quadraticCurveTo(mx + 2, 3 + ml2, mx + 4, 3); c.closePath(); c.fill(); }
   } else if (look === 'shelf') {
+    c.fillStyle = '#f2dca0'; c.beginPath();
+    for (let i = 0; i < Math.floor(w / 30); i++) { if (F(S, i + 790) < 0.5) continue; const mx = 10 + i * 30 + F(S, i + 795) * 12, mw = 8 + F(S, i + 798) * 10; c.moveTo(mx - mw, 1.5); c.quadraticCurveTo(mx, -2.5, mx + mw, 1.5); c.closePath(); }
+    c.fill();
     for (let i = 0; i < Math.floor(w / 26); i++) { const px = 12 + i * 26 + F(S, i + 800) * 12; if (F(S, i + 820) < 0.5) ERICH.pebble(c, px, 0.5, 2.6 + F(S, i + 840) * 1.6, 1.8 + F(S, i + 860), ['#d8c4a0', '#b8a890', '#c8b08a'][i % 3], S + i, true); }
   } else {
     for (let i = 0; i < Math.floor(w * h / 5000); i++) { const px = 10 + F(S, i + 900) * (w - 20), py = 10 + F(S, i + 920) * (h - 20); c.fillStyle = 'rgba(127,240,255,0.25)'; c.beginPath(); c.arc(px, py, 3.2, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(200,255,255,0.8)'; c.beginPath(); c.arc(px, py, 1.2, 0, Math.PI * 2); c.fill(); }

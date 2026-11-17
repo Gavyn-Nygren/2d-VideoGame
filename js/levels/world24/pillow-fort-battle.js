@@ -783,15 +783,7 @@ function pfbPaintShelf(c, night) {
   const bookC = ['#4fb5ff', '#ff8a6a', '#6fd88a', '#ffc43d', '#c39bff', '#ff8fc7'];
   for (let n = 0; n < 3; n++) for (let bk = 0; bk < 8; bk++) {
     const bx = 8 + bk * 17, bh = 52 + ((bk * 13 + n * 7) % 26), by = n * 96 + 88 - bh, col = bookC[(bk + n) % 6];
-    c.globalAlpha = night ? 0.6 : 1;
-    c.fillStyle = col; rrOn(c, bx, by, 14, bh, 2); c.fill();
-    c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(bx + 1, by + 1, 2, bh - 2);
-    c.fillStyle = 'rgba(20,10,40,0.2)'; c.fillRect(bx + 11, by, 3, bh);
-    c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(bx + 2, by + 6, 10, 2); c.fillRect(bx + 2, by + bh - 9, 10, 2);
-    c.fillStyle = 'rgba(255,230,140,0.6)'; c.fillRect(bx + 2, by + 10, 10, 1);
-    if ((bk + n) % 3 === 0) { c.fillStyle = 'rgba(255,255,255,0.7)'; c.fillRect(bx + 3, by + bh * 0.4, 8, 10); }
-    c.strokeStyle = shade(col, 0.4); c.lineWidth = 0.8; rrOn(c, bx, by, 14, bh, 2); c.stroke();
-    c.globalAlpha = 1;
+    ERICH.standBook(c, bx, by, 14, bh, night ? mixCol(col, body, 0.4) : col, { seed: bk * 7 + n * 3 + 1, style: (bk * 3 + n) % 4, lw: 0.8 });
   }
   for (let n = 0; n < 4; n++) {
     const y = n * 96 + 88;

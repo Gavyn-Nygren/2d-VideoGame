@@ -858,7 +858,19 @@ function slkPaintBooks(c, w, h, col, col2) {
     c.fillStyle = 'rgba(255,255,255,0.28)'; c.fillRect(bx, by, bw, hh * 0.25);
     c.fillStyle = shade(bc, 0.18); c.fillRect(bx, by + hh * 0.7, bw, hh * 0.3);
     c.fillStyle = 'rgba(255,255,255,0.1)'; for (let i = 0; i < 6; i++) c.fillRect(bx + 4 + ERICH.fr(i, k + 3) * (bw - 30), by + 3 + ERICH.fr(i, k + 9) * (hh - 6), 10 + ERICH.fr(i, 7) * 20, 0.8);
+    // cloth weave flecks, a rounded spine (lit band, shaded band) and scuffs
+    for (let i = 0; i < Math.round(bw * hh / 22); i++) { const lit = ERICH.fr(i + 50, k) < 0.45; c.fillStyle = lit ? tint(bc, 0.35) : shade(bc, 0.3); c.globalAlpha = 0.45; c.fillRect(bx + 2 + ERICH.fr(i, k + 20) * (bw - 4), by + 2 + ERICH.fr(i, k + 30) * (hh - 4), lit ? 1.5 : 1, 0.8); }
+    c.globalAlpha = 1;
+    c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(bx, by + hh * 0.28, bw, 1.2);
+    c.fillStyle = 'rgba(20,10,40,0.12)'; c.fillRect(bx, by + hh * 0.55, bw, 1);
+    c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(bx + bw * (0.45 + ERICH.fr(k, 71) * 0.2), by + hh * 0.42, 14, 1);
     c.restore();
+    // brass corner guards at the far end
+    for (const [cy, dir] of [[by, 1], [by + hh, -1]]) {
+      c.fillStyle = '#e8c35a'; c.beginPath(); c.moveTo(bx + bw, cy); c.lineTo(bx + bw - 9, cy); c.lineTo(bx + bw, cy + dir * 7); c.closePath(); c.fill();
+      c.strokeStyle = '#a87e22'; c.lineWidth = 0.9; c.stroke();
+      c.fillStyle = 'rgba(255,250,220,0.8)'; c.beginPath(); c.arc(bx + bw - 3, cy + dir * 2, 0.9, 0, Math.PI * 2); c.fill();
+    }
     // gold bands near the spine and a title label
     c.fillStyle = '#ffd36b'; c.fillRect(bx + 5, by + 2, 2, hh - 4); c.fillRect(bx + 10, by + 2, 2, hh - 4);
     c.fillStyle = 'rgba(160,110,20,0.5)'; c.fillRect(bx + 7, by + 2, 0.8, hh - 4); c.fillRect(bx + 12, by + 2, 0.8, hh - 4);
@@ -870,6 +882,12 @@ function slkPaintBooks(c, w, h, col, col2) {
     c.strokeStyle = 'rgba(170,150,120,0.55)'; c.lineWidth = 0.6; c.beginPath(); for (let yy = by + 6; yy < by + hh - 4; yy += 2) { c.moveTo(bx + bw - 14, yy); c.lineTo(bx + bw - 4, yy); } c.stroke();
     c.fillStyle = 'rgba(120,90,60,0.2)'; c.fillRect(bx + bw - 14, by + 4, 1.5, hh - 8);
     c.strokeStyle = C.ink; c.lineWidth = 2.5; rrOn(c, bx, by, bw, hh, 4); c.stroke();
+    // a ribbon bookmark hanging out of the top book over the lower one
+    if (k === 0) {
+      const rx = bx + bw - 22, rc = col === '#e8574a' ? '#4f8ae8' : '#e8574a';
+      c.fillStyle = rc; c.beginPath(); c.moveTo(rx, by + hh - 2); c.lineTo(rx + 5, by + hh - 2); c.lineTo(rx + 6, by + hh + 7); c.lineTo(rx + 3, by + hh + 5); c.lineTo(rx + 1, by + hh + 8); c.closePath(); c.fill();
+      c.strokeStyle = shade(rc, 0.4); c.lineWidth = 0.9; c.stroke();
+    }
   }
 }
 // a big white dice: bevelled faces, shaded lower-right, sunken pips with a glint
@@ -960,9 +978,21 @@ function slkDrawWorld(st) {
     if (gy < bot) { ctx.fillStyle = '#7cc4e8'; ctx.fillRect(0, gy, W, 600); ctx.fillStyle = '#9ad4f0'; for (let i = 0; i < 6; i++) ctx.fillRect(0, gy + 14 + i * 26, W, 7); }
   }
   // the shelf's two tall sides
+  // (grained painted boards in cached 240 px pieces stuck to the world, a lit inner edge, screws)
   for (const x of [0, SLK.wallR + 4]) {
-    ctx.fillStyle = lk.side; ctx.fillRect(x, top, SLK.wallL - 4, bot - top);
-    ctx.fillStyle = lk.sideL; ctx.fillRect(x + (x ? 0 : SLK.wallL - 12), top, 8, bot - top);
+    const inner = x ? 0 : SLK.wallL - 12, sw = SLK.wallL - 4;
+    for (let k = Math.floor(top / 240); k * 240 < bot; k++) {
+      const v = ((k % 3) + 3) % 3;
+      ERICH.put('slkside' + c.look + (x ? 1 : 0) + v, sw, 240, 0, 0, g => {
+        g.save(); g.beginPath(); g.rect(0, 0, sw, 240); g.clip();
+        ERICH.board(g, 0, -14, sw, 268, { col: lk.side, seed: 20 + v * 7 + (x ? 3 : 0), vert: true, r: 0, lw: 1.4, nails: false, knots: v === 1 ? 1 : 0 });
+        g.fillStyle = lk.sideL; g.fillRect(inner, 0, 8, 240);
+        g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(inner + (x ? 0 : 1), 0, 1.4, 240);
+        g.fillStyle = shade(lk.side, 0.3); g.fillRect(x ? sw - 2 : 0, 0, 2, 240);
+        g.restore();
+        ERICH.nails(g, [[inner + 4, 60], [inner + 4, 180]], 2);
+      }, x, k * 240);
+    }
   }
   for (const s of c.signs) if (s.y > top && s.y < bot) slkDrawSign(s);
   // the gold guide: dots where a flop let go now would go
@@ -1065,11 +1095,25 @@ function slkDrawStep(st, s) {
     case 'car': {
       // a toy truck's flat bed on a little track
       ctx.fillStyle = 'rgba(80,50,20,0.25)'; ctx.fillRect(s.x0 - s.ax - 10, y + h + 12, w + s.ax * 2 + 20, 6);
-      ctx.fillStyle = col; rr(x0, y, w, h - 8, 6); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x0 + 8, y + 4, w - 16, 4);
+      // the painted bed (cached): bevelled toy wood, a slatted deck, side rails with screws, wheel arches
+      ERICH.put('slkcar' + Math.round(w) + '_' + Math.round(h) + col, Math.round(w) + 6, Math.round(h) + 2, 2, 2, c => {
+        const ww = Math.round(w), hh = Math.round(h) - 8;
+        ERICH.toyBlock(c, 0, 0, ww, hh, col, { r: 6, lw: 2.5, panel: false, seed: 9 });
+        c.save(); rrOn(c, 0, 0, ww, hh, 6); c.clip();
+        c.fillStyle = shade(col, 0.22); for (let gx = 14; gx < ww - 10; gx += 18) c.fillRect(gx, 3, 1.4, 6);
+        c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(6, 3, ww - 12, 1.6);
+        c.fillStyle = shade(col, 0.3); for (const ax of [24, ww - 24]) { c.beginPath(); c.arc(ax, hh + 2, 14, Math.PI, 0); c.fill(); }
+        c.restore();
+        c.strokeStyle = shade(col, 0.45); c.lineWidth = 1.2; for (const ax of [24, ww - 24]) { c.beginPath(); c.arc(ax, hh + 2, 14, Math.PI, 0); c.stroke(); }
+        ERICH.rivets(c, [[8, hh / 2 + 2], [ww / 2, hh / 2 + 2], [ww - 8, hh / 2 + 2]], 1.8, '#e8e8f0');
+      }, x0, y);
       const spin = s.dx * 0.06;
       for (const wx of [x0 + 24, x0 + w - 24]) {
-        ctx.fillStyle = '#3d3a55'; circle(wx, y + h, 11); ctx.fill(); ctx.fillStyle = '#d9dbe8'; circle(wx, y + h, 5); ctx.fill();
+        ctx.fillStyle = '#3d3a55'; circle(wx, y + h, 11); ctx.fill();
+        ctx.strokeStyle = '#5a5672'; ctx.lineWidth = 1.2; ctx.setLineDash([2.5, 2.5]); circle(wx, y + h, 9.5); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(wx, y + h, 10, Math.PI * 1.1, Math.PI * 1.6); ctx.lineTo(wx, y + h); ctx.fill();
+        ctx.fillStyle = '#d9dbe8'; circle(wx, y + h, 5); ctx.fill(); ctx.fillStyle = '#9a9cb0'; circle(wx + 1, y + h + 1, 3); ctx.fill();
+        ctx.fillStyle = '#ffffff'; circle(wx - 1.6, y + h - 1.6, 1.2); ctx.fill();
         ctx.strokeStyle = '#3d3a55'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(wx, y + h); ctx.lineTo(wx + Math.cos(spin) * 5, y + h + Math.sin(spin) * 5); ctx.stroke();
       }
       ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;

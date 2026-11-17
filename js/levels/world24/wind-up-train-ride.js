@@ -1222,13 +1222,12 @@ function wtrDrawBack(st, lk) {
     const h = hash(k, 31), x = k * 34 - o * 0.9;
     if (h % 9 === 0) continue;
     const bh = 150 + h % 120, bw = 22 + h % 12, col = ['#e8574a', '#5b95ff', '#5cc27f', '#f6c84a', '#b28dff', '#ff9fb5', '#4fb8c0'][h % 7];
-    ctx.fillStyle = col; rr(x, F - bh, bw, bh, 3); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x + 1.5, F - bh + 2, 2.5, bh - 4);
-    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x + 3, F - bh + 14, bw - 6, 4); ctx.fillRect(x + 3, F - 24, bw - 6, 4);
-    ctx.fillStyle = 'rgba(255,230,150,0.5)'; ctx.fillRect(x + 3, F - bh + 20, bw - 6, 1.2); ctx.fillRect(x + 3, F - 18, bw - 6, 1.2);
-    if (h % 3 === 0) { ctx.fillStyle = 'rgba(255,250,235,0.75)'; ctx.fillRect(x + 4, F - bh * 0.62, bw - 8, Math.min(30, bh * 0.2)); ctx.fillStyle = 'rgba(60,40,30,0.35)'; ctx.fillRect(x + 6, F - bh * 0.62 + 5, bw - 12, 1.2); ctx.fillRect(x + 6, F - bh * 0.62 + 9, bw - 14, 1.2); }
-    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x + bw - 4, F - bh, 4, bh);
-    ctx.strokeStyle = 'rgba(40,20,10,0.35)'; ctx.lineWidth = 1; rr(x, F - bh, bw, bh, 3); ctx.stroke();
+    // a cached standing book: rounded spine, caps, weave, bands / ribs / label / gilt block, with a soft shadow beside it
+    const sd = (h >>> 5) % 61, sty = (h >>> 3) % 4;
+    ERICH.put('wtbk' + bw + '_' + bh + '_' + (h % 7) + '_' + sty + '_' + sd, bw + 6, bh + 2, 1, bh, c => {
+      c.fillStyle = 'rgba(40,20,5,0.22)'; c.fillRect(bw - 1, -bh + 4, 4, bh - 4);
+      ERICH.standBook(c, 0, -bh, bw, bh, col, { seed: sd + 1, style: sty, edge: 'rgba(40,20,10,0.6)', lw: 1 });
+    }, x, F);
   }
   ctx.fillStyle = 'rgba(40,20,0,0.18)'; ctx.fillRect(0, 0, W, H);
   // the shelf above
@@ -1327,14 +1326,14 @@ function wtrDrawSupports(st, ys, xa, xb, books) {
     ctx.beginPath(); ctx.moveTo(xa, F); for (let x = xa; x <= xb; x += 8) ctx.lineTo(x, ys(x) + 9); ctx.lineTo(xb, ys(xb) + 9); ctx.lineTo(xb, F); ctx.closePath(); ctx.clip();
     for (let y = F - 16, i = 0; y > F - 300; y -= 16, i++) {
       const sh = (hash(i, 7) % 30) - 15;
-      const col = ['#e8574a', '#5b95ff', '#5cc27f', '#f6c84a', '#b28dff', '#ff9fb5'][i % 6], bx0 = xa - 40 + sh, bw = xb - xa + 80;
-      ctx.fillStyle = col; ctx.fillRect(bx0, y, bw, 15);
-      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(bx0, y, bw, 2);
-      ctx.fillStyle = shade(col, 0.2); ctx.fillRect(bx0, y + 11, bw, 4);
-      ctx.fillStyle = '#fffaf0'; ctx.fillRect(bx0, y + 3, bw, 3);
-      ctx.fillStyle = 'rgba(200,180,150,0.6)'; ctx.fillRect(bx0, y + 5, bw, 0.8);
-      ctx.fillStyle = '#e8c35a'; for (let gx = bx0 + 30 + hash(i, 9) % 60; gx < bx0 + bw; gx += 150 + hash(i, gx) % 60) { ctx.fillRect(gx, y + 7, 1.5, 8); ctx.fillRect(gx + 4, y + 7, 1.5, 8); }
-      ctx.fillStyle = shade(col, 0.45); ctx.fillRect(bx0, y + 14.2, bw, 0.8);
+      // each row is a line of books lying spine-out, end to end (cached 240 px books stuck to the world, rows staggered)
+      for (let k = Math.floor((xa - sh - 8) / 240); k * 240 + sh < xb + 8; k++) {
+        const v = hash(k, i + 40) % 3, ci = (i + hash(k, i + 90) % 5) % 6, col = ['#e8574a', '#5b95ff', '#5cc27f', '#f6c84a', '#b28dff', '#ff9fb5'][ci];
+        ERICH.put('wtflatbk' + ci + v, 242, 16, 1, 0, c => {
+          c.fillStyle = 'rgba(40,20,5,0.4)'; c.fillRect(-1, 0, 242, 16);
+          ERICH.bookSpine(c, 0.5, 0.2, 239, 15.4, col, { seed: ci * 3 + v + 1, lw: 1, label: ['#fffaf0', '#fff0c8', '#e8f4ff'][v] });
+        }, k * 240 + sh, y);
+      }
     }
     ctx.restore();
     return;
