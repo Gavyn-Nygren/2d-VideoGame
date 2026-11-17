@@ -340,13 +340,20 @@ function wizMorphDraw(st) {
   const ph = st.ph, K = WIZMORPH, C2 = WIZMORPH_C, cx = st.cam.x, t = G.clock, F = K.floor;
   ctx.lineJoin = 'round';
   // the walkway and its gates
-  ctx.fillStyle = C2.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillRect(cx - 40, K.walk, W + 80, K.under - K.walk);
-  ctx.fillStyle = C2.stoneDk; for (let x = Math.floor(cx / 40) * 40; x < cx + W + 40; x += 40) ctx.fillRect(x, K.walk + 2, 3, K.under - K.walk - 4);
+  // (art pass) the walkway: a deck of dressed stone blocks pinned to the world with a lit coping and a shadowed foot
+  RICH.strip('wizmowalk|' + (K.under - K.walk), cx - 40, cx + W + 40, K.walk, K.under - K.walk, 256, (c, gx, w, h) => {
+    RICH.flags(c, 0, 0, w, h, { col: C2.stone, mortar: C2.stoneDk, course: h, len: 40, seed: 14, gx });
+    c.fillStyle = 'rgba(255,255,255,0.24)'; c.fillRect(0, 0, w, 2); c.fillStyle = RICH.rgba(RICH.dk(C2.stone, 0.6), 0.4); c.fillRect(0, h - 3, w, 3);
+  });
+  ctx.fillStyle = C2.stoneDk; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.moveTo(cx - 40, K.under); ctx.lineTo(cx + W + 40, K.under); ctx.stroke();
   for (const o of ph.obs) {
     if (o.sx > cx + W + 60 || o.x1 < cx - 60) continue;
     const g = o.gate;
-    if (!g.off) { ctx.fillStyle = C2.wood; ctx.fillRect(g.x0, K.walk - 80, g.x1 - g.x0, 80); ctx.strokeRect(g.x0, K.walk - 80, g.x1 - g.x0, 80); ctx.fillStyle = C2.woodDk; ctx.fillRect(g.x0 + 2, K.walk - 60, g.x1 - g.x0 - 4, 5); ctx.fillRect(g.x0 + 2, K.walk - 30, g.x1 - g.x0 - 4, 5); }
+    if (!g.off) { RICH.pic('wizmogate|' + (g.x1 - g.x0), g.x1 - g.x0, 80, (c, w, h) => {
+        RICH.wood(c, 0, 0, w, h, { col: C2.wood, vert: true, bw: Math.max(6, w / 3), seed: 6, edge: false });
+        for (const y of [20, 50]) { c.fillStyle = '#3e3a48'; c.fillRect(0, y - 2, w, 6); c.fillStyle = 'rgba(255,255,255,0.28)'; c.fillRect(0, y - 2, w, 1); for (let x = 4; x < w - 2; x += 8) RICH.rivet(c, x, y + 1, 1.1, '#5a5868'); }
+      }, g.x0, K.walk - 80); ctx.strokeRect(g.x0, K.walk - 80, g.x1 - g.x0, 80); }
     else { ctx.fillStyle = C2.wood; ctx.save(); ctx.translate(g.x0, K.walk); ctx.rotate(-1.3); ctx.fillRect(0, -6, 80, 10); ctx.restore(); }
     // the plain pad and its rope
     const py = o.pad.y;
@@ -372,9 +379,15 @@ function wizMorphDraw(st) {
       ctx.fillStyle = C2.hedgeDk; for (let y = r.y0 + 14; y < r.y1; y += 24) { circle(r.x0 + 10, y, 6); ctx.fill(); circle(r.x1 - 10, y + 10, 6); ctx.fill(); }
       ctx.fillStyle = 'rgba(200,240,170,0.35)'; for (let y = r.y0 + 10; y < r.y1; y += 24) { circle(r.x0 + 8, y - 2, 2.5); ctx.fill(); }
     }
-    else if (r.kind === 'belfry' || r.kind === 'block') { ctx.fillStyle = C2.stone; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = C2.stoneDk; for (let y = r.y0 + 16; y < r.y1; y += 20) ctx.fillRect(r.x0 + 2, y, r.x1 - r.x0 - 4, 2); }
+    else if (r.kind === 'belfry' || r.kind === 'block') {
+      RICH.pic('wizmoblk|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => { RICH.stone(c, 0, 0, w, h, { col: C2.stone, mortar: C2.stoneDk, course: 20, len: Math.min(46, w), seed: w + 3, edge: false }); c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(w - 6, 0, 6, h); c.fillStyle = 'rgba(230,220,255,0.16)'; c.fillRect(0, 0, 3, h); }, r.x0, r.y0);
+      ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
     else if (r.kind === 'plug') { ctx.fillStyle = 'rgba(20,10,30,0.85)'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
-    else if (r.kind === 'fence' && !r.off) { ctx.fillStyle = C2.wood; for (let y = r.y0 + 4; y < r.y1; y += 18) ctx.fillRect(r.x0 - 3, y, r.x1 - r.x0 + 6, 12); ctx.fillStyle = C2.woodDk; ctx.fillRect(r.x0 + 1, r.y0, 4, r.y1 - r.y0); }
+    else if (r.kind === 'fence' && !r.off) { RICH.pic('wizmofence|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0 + 6, r.y1 - r.y0, (c, w, h) => {
+        for (let y = 4; y < h; y += 18) RICH.wood(c, 0, y, w, Math.min(12, h - y), { col: C2.wood, seed: y, r: 2, lw: 1.2 });
+        RICH.wood(c, 4, 0, 4, h, { col: C2.woodDk, vert: true, bw: 4, seed: 2, edge: false });
+        for (let y = 10; y < h; y += 18) RICH.nail(c, 6, y, 1);
+      }, r.x0 - 3, r.y0); }
     else if (r.kind === 'bank') { wizLawn(r.x0, r.y0, r.x1, r.y1, { top: C2.grass, body: C2.grassDk, noFlowers: true }); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
   }
 }

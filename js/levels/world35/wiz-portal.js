@@ -321,9 +321,21 @@ function wizPoDraw(st) {
   for (const r of ph.solids) if (r.kind === 'ledge' || r.kind === 'floor') { const hh = r.kind === 'floor' ? 300 : 16;
     if (r.kind === 'ledge') { ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(r.x0 + 6, r.y0 + 16, r.x1 - r.x0 - 6, 7);
       ctx.fillStyle = '#4a3622'; for (const bx of [r.x0 + 24, r.x1 - 30]) { ctx.beginPath(); ctx.moveTo(bx, r.y0 + 16); ctx.lineTo(bx + 6, r.y0 + 16); ctx.lineTo(bx + 6, r.y0 + 40); ctx.closePath(); ctx.fill(); } }
-    ctx.fillStyle = '#7a5a3a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, hh);
-    ctx.fillStyle = 'rgba(255,226,170,0.35)'; ctx.fillRect(r.x0 + 2, r.y0 + 2, r.x1 - r.x0 - 4, 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(r.x0 + 2, r.y0 + 11, r.x1 - r.x0 - 4, 3);
+    // (art pass) clock-tower timber: a grained beam with joints, nails and iron straps (the floor is stacked boards
+    // fading into the dark), a worn lit top (cached per size)
+    RICH.pic('wizpoledge|' + (r.x1 - r.x0) + '|' + hh, r.x1 - r.x0, hh, (c, w, h) => {
+      if (h > 20) {
+        RICH.boards(c, 0, 14, w, h - 14, { col: '#6a4c30', bh: 20, len: 140, seed: 9 });
+        const fg = c.createLinearGradient(0, 14, 0, Math.min(h, 160)); fg.addColorStop(0, 'rgba(10,6,20,0)'); fg.addColorStop(1, 'rgba(10,6,20,0.55)'); c.fillStyle = fg; c.fillRect(0, 14, w, h - 14);
+        RICH.wood(c, 0, 0, w, 14, { col: '#7a5a3a', seam: 160, seed: 4, edge: false });
+      } else {
+        RICH.wood(c, 0, 0, w, h, { col: '#7a5a3a', seam: 90, seed: Math.round(w), edge: false });
+        for (let x = 34; x < w - 20; x += 110) { c.fillStyle = '#3e3a48'; c.fillRect(x, 0, 7, h); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(x, 0, 1.5, h); RICH.nail(c, x + 3.5, 4, 1.1); RICH.nail(c, x + 3.5, h - 4, 1.1); }
+      }
+      c.fillStyle = 'rgba(255,226,170,0.35)'; c.fillRect(2, 2, w - 4, 2);
+      c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(2, 11, w - 4, 3);
+    }, r.x0, r.y0);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
     ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, hh); ctx.fillStyle = '#e8c860'; for (let x = r.x0 + 10; x < r.x1 - 10; x += 60) { ctx.beginPath(); ctx.moveTo(x, r.y0); ctx.lineTo(x + 18, r.y0 - 6); ctx.lineTo(x + 36, r.y0); ctx.fill(); } }
   // the clock hand
   if (sp.hand) { ctx.save(); ctx.globalAlpha = 0.35; ctx.strokeStyle = '#c8a040'; ctx.lineWidth = 6; circle(sp.hand.x, sp.hand.y, K.hand.len + 10); ctx.stroke(); ctx.fillStyle = '#c8a040'; for (let i = 0; i < 12; i++) { const q = i * Math.PI / 6; circle(sp.hand.x + Math.cos(q) * (K.hand.len - 8), sp.hand.y + Math.sin(q) * (K.hand.len - 8), i % 3 ? 5 : 9); ctx.fill(); } ctx.restore(); }

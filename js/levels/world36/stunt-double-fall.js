@@ -611,10 +611,24 @@
       const y = f * FL - cy, sec = Math.floor(f / 5);
       const set = K.hash(sec * 3 + st.k) < 0.25 && f % 5 === 4; // every so often the set ends: scaffolding
       if (set) {
-        ctx.fillStyle = '#4a3a2a'; ctx.fillRect(x0, y, x1 - x0, FL);
-        ctx.strokeStyle = K.COL.wood; ctx.lineWidth = 6;
-        for (let x = x0; x < x1; x += 110) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + FL); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 110, y + FL); ctx.stroke(); }
-        ctx.fillStyle = K.COL.woodDark; ctx.fillRect(x0, y + FL - 16, x1 - x0, 16);
+        // the back of the set: dark plywood, timber uprights and braces with lit edges and bolts, a plank walkway
+        { RICH.pic('w36scaff|' + x0 + '|' + x1, x1 - x0, FL, c => {
+            RICH.wood(c, 0, 0, x1 - x0, FL, { col: '#4a3a2a', vert: true, bw: 40, seed: 5, knots: 0.4, edge: false });
+            c.fillStyle = 'rgba(10,6,2,0.35)'; c.fillRect(0, 0, x1 - x0, FL);
+            for (let x = 0; x < x1 - x0; x += 110) {
+              c.save(); c.translate(x, 0); c.rotate(Math.atan2(FL, 110));
+              const L = Math.hypot(110, FL); c.fillStyle = '#8a6438'; c.fillRect(0, -3, L, 6); c.fillStyle = 'rgba(255,225,170,0.35)'; c.fillRect(0, -3, L, 1.5); c.fillStyle = 'rgba(40,24,8,0.4)'; c.fillRect(0, 2, L, 1);
+              c.restore();
+            }
+            for (let x = 0; x <= x1 - x0; x += 110) {
+              c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x + 4, 0, 4, FL);
+              c.fillStyle = '#9a7244'; c.fillRect(x - 4, 0, 8, FL); c.fillStyle = 'rgba(255,225,170,0.4)'; c.fillRect(x - 4, 0, 2, FL); c.fillStyle = 'rgba(40,24,8,0.45)'; c.fillRect(x + 2.5, 0, 1.5, FL);
+              for (let q = 0; q < 3; q++) { c.strokeStyle = 'rgba(60,36,12,0.4)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x - 1 + q * 1.5, 10 + q * 40); c.lineTo(x - 1 + q * 1.5, 40 + q * 40); c.stroke(); }
+              for (const by of [12, FL / 2, FL - 28]) RICH.rivet(c, x, by, 2, '#b8b8c0');
+            }
+            RICH.wood(c, 0, FL - 16, x1 - x0, 16, { col: '#6a4e2c', boards: 1, nails: true, seed: 9, knots: 0.6 });
+            c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, FL - 3, x1 - x0, 3);
+          }, x0, y); }
         K.crew(x0 + 60, y + FL - 16, 3, 'idle', t + f);
         K.light(x1 - 70, y + FL - 16, 0.8, { on: true, beam: 120, dir: -1 });
         text('SET ENDS', (x0 + x1) / 2, y + 40, 16, '#ffe7a8', 'center', 'display');
@@ -626,12 +640,18 @@
         ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(spr, Math.round(m.a * x0 + m.e), Math.round(m.d * y + m.f)); ctx.restore(); }
       // a floor-to-floor seam where two painted flats meet
       ctx.fillStyle = K.COL.wood; ctx.fillRect(x0, y, x1 - x0, 3);
+      ctx.fillStyle = 'rgba(255,230,180,0.45)'; ctx.fillRect(x0, y, x1 - x0, 1);
+      ctx.fillStyle = 'rgba(40,24,8,0.35)'; ctx.fillRect(x0, y + 3, x1 - x0, 1.5);
     }
     // the side edges: you can see it's only a front (struts behind)
     for (const ex of [x0 - 10, x1]) {
       ctx.fillStyle = K.COL.woodDark; ctx.fillRect(ex, 0, 10, H);
       ctx.fillStyle = 'rgba(255,220,170,0.25)'; ctx.fillRect(ex, 0, 2, H);
-      ctx.fillStyle = '#c8c4b8'; for (let y = ((-cy) % 90 + 90) % 90; y < H; y += 90) { circle(ex + 5, y, 1.6); ctx.fill(); }
+      ctx.fillStyle = 'rgba(30,18,6,0.35)'; ctx.fillRect(ex + 8, 0, 2, H);
+      // the plywood's layers show in the cut edge, with grain streaks sliding past as we fall
+      ctx.fillStyle = 'rgba(255,220,170,0.12)'; ctx.fillRect(ex + 3.5, 0, 1, H); ctx.fillRect(ex + 6, 0, 1, H);
+      ctx.fillStyle = 'rgba(30,18,6,0.3)'; for (let y = ((-cy * 1) % 37 + 37) % 37, q = 0; y < H; y += 37, q++) ctx.fillRect(ex + 2 + (q % 3) * 2, y, 1, 14 + (q % 4) * 5);
+      for (let y = ((-cy) % 90 + 90) % 90; y < H; y += 90) RICH.rivet(ctx, ex + 5, y, 1.8, '#c8c4b8');
     }
     // balconies with the crew: at each fan
   }
@@ -649,6 +669,9 @@
       const wob = K.wobble(r.i, t, 2);
       ctx.save(); ctx.translate(0, wob);
       ctx.fillStyle = 'rgba(200,232,255,0.55)'; ctx.fillRect(r.x0, y - 7, r.x1 - r.x0, 14);
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(r.x0, y - 7, r.x1 - r.x0, 1.5);
+      ctx.fillStyle = 'rgba(90,130,170,0.35)'; ctx.fillRect(r.x0, y + 4, r.x1 - r.x0, 3);
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); for (let x = r.x0 + 47; x < r.x1; x += 90) { ctx.moveTo(x, y - 6); ctx.lineTo(x - 8, y + 6); } ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,0.8)'; for (let x = r.x0 + 20; x < r.x1; x += 90) { ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x + 26, y - 6); ctx.lineTo(x + 14, y + 6); ctx.lineTo(x - 12, y + 6); ctx.closePath(); ctx.fill(); }
       // the paper edge (torn) and PROP tags
       ctx.fillStyle = '#f6eedc'; ctx.beginPath(); ctx.moveTo(r.x0, y + 7);
@@ -676,8 +699,22 @@
     if (r.k === 'awning') {
       const x0 = r.x - r.w / 2;
       ctx.save(); ctx.translate(r.x, y); ctx.rotate(-r.dir * 0.12 + K.wobble(r.i, t, 0.02)); ctx.translate(-r.x, -y);
-      for (let k = 0; k < 6; k++) { ctx.fillStyle = k % 2 ? '#ffffff' : '#e8322a'; ctx.fillRect(x0 + k * r.w / 6, y - 8, r.w / 6 + 0.5, 16); }
-      ctx.fillStyle = '#f6eedc'; ctx.fillRect(x0, y + 8, r.w, 4);
+      { const w = r.w; RICH.pic('w36awning|' + w, w + 8, 34, c => {
+          c.translate(4, 10);
+          // the frame bar it hangs from, the canvas with stripes and folds, a scalloped valance
+          c.fillStyle = '#6a6a76'; c.fillRect(-3, -10, w + 6, 4); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(-3, -10, w + 6, 1.2);
+          for (const bx of [4, w - 4]) { c.fillStyle = '#5a5a66'; c.fillRect(bx - 1.5, -8, 3, 6); }
+          c.beginPath(); c.moveTo(0, -6); c.lineTo(w, -6); c.lineTo(w, 10); for (let k = 6; k > 0; k--) { const xa = k * w / 6, xb = (k - 1) * w / 6; c.quadraticCurveTo((xa + xb) / 2, 19, xb, 10); } c.closePath();
+          c.save(); c.clip();
+          for (let k = 0; k < 6; k++) { c.fillStyle = k % 2 ? '#fbf6ec' : '#e8322a'; c.fillRect(k * w / 6, -6, w / 6 + 0.5, 26); }
+          const g = c.createLinearGradient(0, -6, 0, 18); g.addColorStop(0, 'rgba(255,255,255,0.35)'); g.addColorStop(0.3, 'rgba(255,255,255,0)'); g.addColorStop(0.7, 'rgba(60,10,10,0.08)'); g.addColorStop(1, 'rgba(60,10,10,0.3)');
+          c.fillStyle = g; c.fillRect(0, -6, w, 26);
+          c.fillStyle = 'rgba(80,10,10,0.18)'; c.fillRect(0, 7, w, 3);
+          c.strokeStyle = 'rgba(120,20,20,0.25)'; c.lineWidth = 1; c.beginPath(); for (let k = 1; k < 6; k++) { c.moveTo(k * w / 6, -6); c.lineTo(k * w / 6, 16); } c.stroke();
+          c.restore();
+          c.strokeStyle = '#8a1a14'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(0, -6); c.lineTo(0, 10); for (let k = 0; k < 6; k++) { const xa = k * w / 6, xb = (k + 1) * w / 6; c.quadraticCurveTo((xa + xb) / 2, 19, xb, 10); } c.lineTo(w, -6); c.stroke();
+          c.strokeStyle = 'rgba(255,255,255,0.6)'; c.setLineDash([3, 3]); c.beginPath(); c.moveTo(2, 8); c.lineTo(w - 2, 8); c.stroke(); c.setLineDash([]);
+        }, x0 - 4, y - 10); }
       ctx.restore();
       text(r.dir > 0 ? '▶▶' : '◀◀', r.x, y - 20, 14, '#ffffff', 'center', 'display');
       K.propTag(r.x + r.dir * (r.w / 2 - 10), y + 18, 0.7);
@@ -685,10 +722,20 @@
     }
     if (r.k === 'pole') {
       const xw = r.side < 0 ? S.X0 - 24 : S.X1 + 24, xe = r.side < 0 ? S.X0 + r.len : S.X1 - r.len;
-      ctx.strokeStyle = '#d8d8e0'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(xw, y); ctx.lineTo(xe, y); ctx.stroke();
-      ctx.fillStyle = '#ffd86a'; circle(xe, y, 6); ctx.fill();
+      // a chromed flagpole on a wall bracket: a lit top edge, a dark underside, a gold finial ball with a glint
+      const pa = Math.min(xw, xe), pw = Math.abs(xe - xw);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(pa, y + 4, pw, 3);
+      ctx.fillStyle = '#b8bcc8'; ctx.fillRect(pa, y - 3, pw, 6);
+      ctx.fillStyle = '#f4f6fc'; ctx.fillRect(pa, y - 2.5, pw, 1.8);
+      ctx.fillStyle = '#7a7e8c'; ctx.fillRect(pa, y + 1.5, pw, 1.5);
+      ctx.fillStyle = '#5a5e6a'; ctx.fillRect(xw - (r.side < 0 ? 0 : 12), y - 9, 12, 18); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(xw - (r.side < 0 ? 0 : 12), y - 9, 12, 2);
+      for (const by of [-5, 5]) RICH.rivet(ctx, xw + (r.side < 0 ? 6 : -6), y + by, 1.4, '#a8acb8');
+      ctx.fillStyle = '#c8961a'; circle(xe, y, 6.5); ctx.fill(); ctx.fillStyle = '#ffd86a'; circle(xe - 1, y - 1, 5); ctx.fill(); ctx.fillStyle = '#fff6c8'; circle(xe - 2.5, y - 2.5, 1.8); ctx.fill();
       const fl = Math.sin(t * 6 + r.i) * 6;
       ctx.fillStyle = '#2a8ae8'; ctx.beginPath(); ctx.moveTo(xe - r.side * 4, y + 4); ctx.lineTo(xe - r.side * 4 + fl, y + 44); ctx.lineTo(xe - r.side * 50 + fl, y + 40); ctx.lineTo(xe - r.side * 46, y + 4); ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.clip(); ctx.fillStyle = 'rgba(10,40,90,0.3)'; ctx.fillRect(xe - 60, y + 24, 120, 30); ctx.fillStyle = '#ffd86a'; ctx.beginPath(); ctx.arc(xe - r.side * 25 + fl * 0.5, y + 22, 7, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(xe - 60, y + 4, 120, 3); ctx.restore();
+      ctx.strokeStyle = '#1a5aa8'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.fillStyle = '#e8e8f0'; for (const ry of [6, 40]) { circle(xe - r.side * 5 + (ry > 20 ? fl : 0), y + ry, 1.6); ctx.fill(); }
       K.propTag(xe - r.side * 26, y + 24, 0.7);
       return;
     }
@@ -704,24 +751,60 @@
       }
       // the fan on its balcony (crew holding it)
       const fx = r.dir > 0 ? x0 - 4 : r.dir < 0 ? x1 + 4 : (x0 + x1) / 2, fy = r.dir ? y + h / 2 : y + h + 30;
-      ctx.fillStyle = '#3a3a44'; circle(fx, fy, 30); ctx.fill();
-      ctx.fillStyle = '#9aa0b0'; for (let k = 0; k < 4; k++) { ctx.save(); ctx.translate(fx, fy); ctx.rotate(t * 20 + k * TAU / 4); ctx.beginPath(); ctx.ellipse(13, 0, 13, 5, 0, 0, TAU); ctx.fill(); ctx.restore(); }
+      // a big studio wind machine: a steel drum on a stand, blades behind a wire cage, a hub with bolts
+      ctx.fillStyle = '#4a4a56'; ctx.fillRect(fx - 4, fy + 24, 8, 18); ctx.fillRect(fx - 18, fy + 40, 36, 5); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(fx - 18, fy + 40, 36, 1.2);
+      ctx.fillStyle = '#2a2a32'; circle(fx, fy, 32); ctx.fill();
+      { const g = ctx.createRadialGradient(fx - 10, fy - 10, 4, fx, fy, 32); g.addColorStop(0, '#5a5a68'); g.addColorStop(1, '#2a2a34'); ctx.fillStyle = g; circle(fx, fy, 28); ctx.fill(); }
+      ctx.fillStyle = '#b8bcc8'; for (let k = 0; k < 4; k++) { ctx.save(); ctx.translate(fx, fy); ctx.rotate(t * 20 + k * TAU / 4); ctx.beginPath(); ctx.ellipse(13, 0, 13, 5, 0.25, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.ellipse(13, -1.5, 10, 1.6, 0.25, 0, TAU); ctx.fill(); ctx.fillStyle = '#b8bcc8'; ctx.restore(); }
+      ctx.strokeStyle = 'rgba(200,204,216,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); for (const rad of [10, 19, 27]) { ctx.moveTo(fx + rad, fy); ctx.arc(fx, fy, rad, 0, TAU); } for (let k = 0; k < 8; k++) { const a = k * TAU / 8; ctx.moveTo(fx + Math.cos(a) * 5, fy + Math.sin(a) * 5); ctx.lineTo(fx + Math.cos(a) * 28, fy + Math.sin(a) * 28); } ctx.stroke();
+      ctx.fillStyle = '#d8dce6'; circle(fx, fy, 5); ctx.fill(); ctx.fillStyle = '#6a6e7a'; circle(fx, fy, 2); ctx.fill();
+      ctx.strokeStyle = '#8a8e9a'; ctx.lineWidth = 3; circle(fx, fy, 30); ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(fx, fy, 30, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+      for (let k = 0; k < 6; k++) RICH.rivet(ctx, fx + Math.cos(k * TAU / 6) * 30, fy + Math.sin(k * TAU / 6) * 30, 1.4, '#c8ccd6');
       text(r.dir ? (r.dir > 0 ? 'FAN ▶' : '◀ FAN') : 'UP FAN ▲', fx, fy - 42, 13, '#ffffff', 'center', 'display');
       return;
     }
     if (r.k === 'chute') {
-      ctx.fillStyle = K.COL.woodDark; ctx.beginPath(); ctx.moveTo(r.x - 120, y - 30); ctx.lineTo(r.x + 120, y - 30); ctx.lineTo(r.x + 34, y + 20); ctx.lineTo(r.x - 34, y + 20); ctx.closePath(); ctx.fill();
+      // a wooden hopper: planks running down into the throat, a lit rim board with nails, braces, the dark mouth
+      RICH.pic('w36chute', 248, 58, c => {
+        c.translate(124, 34);
+        c.beginPath(); c.moveTo(-120, -30); c.lineTo(120, -30); c.lineTo(34, 20); c.lineTo(-34, 20); c.closePath();
+        c.save(); c.clip();
+        RICH.wood(c, -122, -32, 244, 54, { col: '#7a5634', vert: true, bw: 20, seed: 14, knots: 0.6, edge: false });
+        c.fillStyle = 'rgba(30,18,6,0.35)'; c.beginPath(); c.moveTo(-120, -30); c.lineTo(-34, 20); c.lineTo(-20, 20); c.lineTo(-90, -30); c.closePath(); c.fill();
+        c.beginPath(); c.moveTo(120, -30); c.lineTo(34, 20); c.lineTo(20, 20); c.lineTo(90, -30); c.closePath(); c.fill();
+        c.fillStyle = 'rgba(255,230,180,0.25)'; c.fillRect(-120, -30, 240, 2);
+        c.restore();
+        c.fillStyle = '#5a3e20'; c.fillRect(-122, -34, 244, 7); c.fillStyle = 'rgba(255,225,170,0.45)'; c.fillRect(-122, -34, 244, 1.5);
+        for (let x = -110; x <= 110; x += 44) RICH.nail(c, x, -30.5, 1.3);
+        c.strokeStyle = '#3a2810'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-122, -34); c.lineTo(122, -34); c.lineTo(122, -27); c.lineTo(34, 20); c.lineTo(-34, 20); c.lineTo(-122, -27); c.closePath(); c.stroke();
+      }, r.x - 124, y - 34);
       ctx.fillStyle = r.busy ? '#5a4a3a' : '#1a1410'; ctx.fillRect(r.x - 30, y + 14, 60, 12);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(r.x - 30, y + 14, 60, 1.5);
       text('CHUTE', r.x, y - 12, 14, '#ffe7a8', 'center', 'display');
       // the exit, lower and to one side
       const ey = r.y + r.dy - st.camY;
-      ctx.fillStyle = K.COL.woodDark; ctx.fillRect(r.ox - 34, ey - 40, 68, 22); text('▼', r.ox, ey - 50, 14, '#ffe7a8', 'center', 'display');
+      RICH.pic('w36chuteout', 72, 26, c => { RICH.wood(c, 2, 2, 68, 22, { col: '#6a4a2a', boards: 2, nails: true, seed: 3 }); c.fillStyle = '#1a1410'; c.fillRect(14, 18, 44, 6); }, r.ox - 36, ey - 42);
+      text('▼', r.ox, ey - 50, 14, '#ffe7a8', 'center', 'display');
       return;
     }
     if (r.k === 'bag') {
-      ctx.fillStyle = '#e8d24a'; rr(S.X0 - 20, y - 20, S.X1 - S.X0 + 40, 80, 30); ctx.fill();
-      ctx.strokeStyle = '#a89020'; ctx.lineWidth = 3; ctx.stroke();
-      for (let x = S.X0 + 30; x < S.X1; x += 70) { ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.moveTo(x, y - 14); ctx.lineTo(x, y + 54); ctx.stroke(); }
+      // the stunt airbag: puffy yellow vinyl, each sewn tube shaded round, a lit top, stitched seams, vent flaps, ropes
+      { const bw = S.X1 - S.X0 + 40;
+        RICH.pic('w36airbag|' + bw, bw + 12, 96, c => {
+          c.translate(6, 6);
+          RICH.shadow(c, bw / 2, 86, bw / 2 + 4, 6, 0.25);
+          RICH.rr(c, 0, 0, bw, 80, 30); c.fillStyle = '#e8d24a'; c.fill();
+          c.save(); RICH.rr(c, 0, 0, bw, 80, 30); c.clip();
+          for (let x = -20; x < bw + 70; x += 70) { const g = c.createLinearGradient(x - 35, 0, x + 35, 0); g.addColorStop(0, 'rgba(150,120,10,0.28)'); g.addColorStop(0.35, 'rgba(255,250,200,0.18)'); g.addColorStop(0.6, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(150,120,10,0.28)'); c.fillStyle = g; c.fillRect(x - 35, 0, 70, 80); }
+          const v = c.createLinearGradient(0, 0, 0, 80); v.addColorStop(0, 'rgba(255,255,230,0.5)'); v.addColorStop(0.18, 'rgba(255,255,230,0)'); v.addColorStop(0.65, 'rgba(120,90,0,0)'); v.addColorStop(1, 'rgba(120,90,0,0.4)'); c.fillStyle = v; c.fillRect(0, 0, bw, 80);
+          c.fillStyle = '#d8b830'; c.fillRect(0, 64, bw, 16); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, 64, bw, 1.5);
+          c.restore();
+          c.strokeStyle = 'rgba(140,110,10,0.55)'; c.lineWidth = 1; c.setLineDash([3, 3]); c.beginPath(); for (let x = 50; x < bw; x += 70) { c.moveTo(x, 6); c.lineTo(x, 74); } c.moveTo(20, 66); c.lineTo(bw - 20, 66); c.stroke(); c.setLineDash([]);
+          for (let x = 85; x < bw - 30; x += 210) { c.fillStyle = '#c8a420'; RICH.rr(c, x - 9, 68, 18, 9, 2); c.fill(); c.fillStyle = '#3a3210'; c.fillRect(x - 6, 71, 12, 3); }
+          c.strokeStyle = '#8a7010'; c.lineWidth = 1.5; c.beginPath(); for (let x = 30; x < bw; x += 140) { c.moveTo(x, 2); c.quadraticCurveTo(x + 35, 12, x + 70, 2); } c.stroke();
+          c.strokeStyle = '#a89020'; c.lineWidth = 3; RICH.rr(c, 0, 0, bw, 80, 30); c.stroke();
+        }, S.X0 - 26, y - 26);
+      }
       if (r.bull) for (const [rad, col] of [[300, '#ffffff'], [210, '#e8322a'], [130, '#ffffff'], [60, '#e8322a']]) { ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(S.C, y + 4, rad, 16 * rad / 300 + 4, 0, 0, TAU); ctx.fill(); }
       text('AIRBAG', S.C, y + 40, 18, '#5a4a10', 'center', 'display');
       K.crew(S.X0 - 10, y + 70, 4, st.state === 'end' ? 'cheer' : 'idle', t);

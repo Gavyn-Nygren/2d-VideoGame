@@ -319,15 +319,19 @@ function wizShDrawBack(st) {
   }
   // the wooden floor: planks with joints, a skirting shadow and the long red runner
   ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(cx - 40, F - 6, W + 80, 6);
-  ctx.fillStyle = '#6a4a3a'; ctx.fillRect(cx - 40, F, W + 80, H - F); ctx.fillStyle = '#8a6a4a'; ctx.fillRect(cx - 40, F, W + 80, 8);
-  ctx.fillStyle = 'rgba(255,230,180,0.25)'; ctx.fillRect(cx - 40, F, W + 80, 2);
-  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5; ctx.beginPath();
-  for (const y of [F + 20, F + 56, F + 76]) { ctx.moveTo(cx - 40, y); ctx.lineTo(cx + W + 40, y); }
-  for (let x = Math.floor((cx - 40) / 120) * 120; x < cx + W + 40; x += 120) { ctx.moveTo(x, F + 8); ctx.lineTo(x, F + 20); ctx.moveTo(x + 60, F + 56); ctx.lineTo(x + 60, F + 76); }
-  ctx.stroke();
-  ctx.fillStyle = '#9a3a3a'; ctx.fillRect(cx - 40, F + 30, W + 80, 18);
-  ctx.fillStyle = '#d9a441'; ctx.fillRect(cx - 40, F + 31, W + 80, 2); ctx.fillRect(cx - 40, F + 45, W + 80, 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(cx - 40, F + 48, W + 80, 3);
+  // (art pass) grained floorboards with joints, knots and nails and a woven red runner with a gold border and a
+  // diamond pattern (cached chunks pinned to the world)
+  RICH.strip('wizshfl|' + (H - F), cx - 40, cx + W + 40, F, H - F, 256, (c, gx, w, h) => {
+    RICH.boards(c, 0, 8, w, h - 8, { col: '#6a4a3a', bh: 18, len: 120, seed: 8, gx });
+    RICH.boards(c, 0, 0, w, 8, { col: '#8a6a4a', bh: 8, len: 160, seed: 9, gx, nails: false });
+    c.fillStyle = 'rgba(255,230,180,0.3)'; c.fillRect(0, 0, w, 2); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, 8, w, 2);
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, 48, w, 4);
+    c.fillStyle = '#9a3a3a'; c.fillRect(0, 30, w, 18);
+    c.fillStyle = 'rgba(60,10,20,0.25)'; for (let y = 33; y < 46; y += 2) c.fillRect(0, y, w, 0.8);
+    c.fillStyle = '#d9a441'; c.fillRect(0, 31, w, 2); c.fillRect(0, 45, w, 2);
+    for (let X = Math.floor(gx / 40) * 40 - 40; X < gx + w + 40; X += 40) { const x = X - gx + 20; c.fillStyle = '#c9963e'; c.beginPath(); c.moveTo(x - 7, 39); c.lineTo(x, 35); c.lineTo(x + 7, 39); c.lineTo(x, 43); c.closePath(); c.fill(); c.fillStyle = '#6a2430'; c.fillRect(x - 1.5, 38, 3, 2); }
+    c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(0, 30, w, 1);
+  });
 }
 function wizShDrawArmor(a, t) {
   const g = wizShGem(a), s = a.cap ? 1.25 : 1;
@@ -354,10 +358,21 @@ function wizShDrawArmor(a, t) {
 }
 function wizShDraw(st) {
   const ph = st.ph, K = WIZSH, t = G.clock, F = K.floor, ps = G.players;
-  for (const r of ph.solids) if (r.kind === 'shelf') { ctx.fillStyle = '#7a5a3a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
-  // the pillar (cover and the gallery's flag)
-  const pl = ph.pillar; ctx.fillStyle = '#8a7a9a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillRect(pl.x0, pl.y0, pl.x1 - pl.x0, F - pl.y0); ctx.strokeRect(pl.x0, pl.y0, pl.x1 - pl.x0, F - pl.y0);
-  ctx.fillRect(pl.x0 - 6, pl.y0 - 10, pl.x1 - pl.x0 + 12, 12); ctx.strokeRect(pl.x0 - 6, pl.y0 - 10, pl.x1 - pl.x0 + 12, 12);
+  // (art pass) the armour stands' shelves: planked oak with nails and iron brackets (cached per size)
+  for (const r of ph.solids) if (r.kind === 'shelf') {
+    RICH.pic('wizshshelf|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: '#7a5a3a', boards: Math.max(1, Math.round(h / 12)), seam: 70, seed: 6, edge: false }); c.fillStyle = 'rgba(255,226,170,0.3)'; c.fillRect(0, 0, w, 2); }, r.x0, r.y0);
+    ctx.fillStyle = '#3e3a48'; for (const bx of [r.x0 + 10, r.x1 - 16]) { ctx.beginPath(); ctx.moveTo(bx, r.y1); ctx.lineTo(bx + 6, r.y1); ctx.lineTo(bx + 6, r.y1 + 16); ctx.closePath(); ctx.fill(); }
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
+  // the pillar (cover and the gallery's flag): stone drums with fluting, a carved capital (cached)
+  const pl = ph.pillar; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+  RICH.pic('wizshpil|' + (pl.x1 - pl.x0) + '|' + (F - pl.y0), pl.x1 - pl.x0, F - pl.y0, (c, w, h) => {
+    RICH.stone(c, 0, 0, w, h, { col: '#8a7a9a', course: 30, len: w * 2, seed: 13, edge: false });
+    c.fillStyle = 'rgba(0,0,0,0.16)'; for (let x = 6; x < w - 4; x += 7) c.fillRect(x, 0, 2, h); c.fillStyle = 'rgba(255,255,255,0.1)'; for (let x = 8; x < w - 4; x += 7) c.fillRect(x, 0, 1, h);
+    c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(w - 6, 0, 6, h); c.fillStyle = 'rgba(230,220,255,0.18)'; c.fillRect(0, 0, 3, h);
+  }, pl.x0, pl.y0);
+  ctx.strokeRect(pl.x0, pl.y0, pl.x1 - pl.x0, F - pl.y0);
+  RICH.pic('wizshcap|' + (pl.x1 - pl.x0), pl.x1 - pl.x0 + 12, 12, (c, w, h) => { RICH.stone(c, 0, 0, w, h, { col: '#9a8aaa', course: 12, len: 22, seed: 14, edge: false }); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, 0, w, 1.5); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, h - 3, w, 3); }, pl.x0 - 6, pl.y0 - 10);
+  ctx.fillStyle = '#8a7a9a'; ctx.strokeRect(pl.x0 - 6, pl.y0 - 10, pl.x1 - pl.x0 + 12, 12);
   wizDrawFlag(pl.x0 - 14, F, true);
   // the door
   ctx.fillStyle = wizShLive(ph).length ? '#4a2a2a' : '#7a5a3a'; rr(ph.door - 26, F - 96, 52, 96, 22); ctx.fill(); ctx.stroke();

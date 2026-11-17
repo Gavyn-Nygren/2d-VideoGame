@@ -650,34 +650,56 @@
       const emp = (rr2, cc) => rr2 >= 0 && rr2 < NR && cc >= 0 && cc < NC && st.g[rr2][cc] === E;
       if (k === E) {
         // a dug tunnel: dark, with the shadow of the dirt above it and a faint floor
-        ctx.fillStyle = '#1e140e'; ctx.fillRect(x, y, C_, C_);
+        RICH.pic('w39tunnel' + ((r * 3 + c) % 4), C_, C_, q => { q.fillStyle = '#1e140e'; q.fillRect(0, 0, C_, C_); q.fillStyle = 'rgba(120,80,50,0.12)'; for (let n = 0; n < 8; n++) q.fillRect(RICH.r(611 + (r * 3 + c) % 4, n) * C_, RICH.r(612 + (r * 3 + c) % 4, n) * C_, 1.5, 1.5); q.fillStyle = 'rgba(0,0,0,0.25)'; q.fillRect(0, C_ * 0.6, C_, C_ * 0.4); }, x, y);
         if (!emp(r - 1, c)) { ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y, C_, 5); }
         if (!emp(r + 1, c)) { ctx.fillStyle = 'rgba(120,80,50,0.25)'; ctx.fillRect(x, y + C_ - 3, C_, 3); }
         continue;
       }
       const h = K.hash(r * 97 + c * 13 + st.round * 7);
-      ctx.fillStyle = KCOL[k]; ctx.fillRect(x, y, C_ + 0.5, C_ + 0.5);
+      if (k === SOFT || k === PACK || k === CRUM || k === ROCK || k === DOOR) {
+        // (art pass) each dirt and rock cell is a cached picture (6 looks per kind): grains, strata, pebbles, roots for
+        // dirt; a rounded slab of real rock texture for stone
+        const v = Math.floor(h * 6);
+        RICH.pic('w39cell|' + k + '|' + v, C_ + 1, C_ + 1, q => {
+          q.fillStyle = KCOL[k]; q.fillRect(0, 0, C_ + 1, C_ + 1);
+          if (k === ROCK || k === DOOR) return;
+          q.fillStyle = RICH.rgba(RICH.dk(KCOL[k], 0.45), 0.5); for (let n = 0; n < 22; n++) q.fillRect(RICH.r(620 + k * 7 + v, n) * C_, RICH.r(621 + k * 7 + v, n) * C_, 1.3, 1.3);
+          q.fillStyle = RICH.rgba(RICH.lit(KCOL[k], 0.35), 0.55); for (let n = 0; n < 12; n++) q.fillRect(RICH.r(622 + k * 7 + v, n) * C_, RICH.r(623 + k * 7 + v, n) * C_, 1, 1);
+          q.fillStyle = RICH.rgba(RICH.dk(KCOL[k], 0.3), 0.35); q.beginPath(); q.moveTo(0, C_ * 0.62); for (let n = 0; n <= 4; n++) q.lineTo(n * C_ / 4, C_ * 0.6 + Math.sin(n * 1.7 + v) * 2); q.lineTo(C_, C_ + 1); q.lineTo(0, C_ + 1); q.closePath(); q.fill();
+          if (v % 3 === 0) { q.strokeStyle = RICH.rgba(RICH.dk(KCOL[k], 0.5), 0.6); q.lineWidth = 1; q.beginPath(); q.moveTo(4 + v * 2, 2); q.quadraticCurveTo(8 + v * 2, 10, 5 + v * 2, 16); q.stroke(); }
+          if (v >= 4 && k !== CRUM) RICH.pebble(q, 6 + (v - 4) * 10, 18, 3, '#9a8a7a', v);
+          if (k === CRUM) { q.strokeStyle = 'rgba(60,40,20,0.6)'; q.lineWidth = 1.5; q.beginPath(); q.moveTo(3, 8); q.lineTo(12, 14); q.lineTo(22, 6); q.stroke(); q.fillStyle = 'rgba(255,230,190,0.2)'; q.fillRect(2, 2, C_ - 4, 2); }
+          if (k === PACK) { q.strokeStyle = 'rgba(0,0,0,0.22)'; q.lineWidth = 1; q.beginPath(); q.moveTo(0, 9); q.lineTo(C_, 11); q.moveTo(0, 19); q.lineTo(C_, 18); q.stroke(); q.strokeStyle = 'rgba(255,230,190,0.12)'; q.beginPath(); q.moveTo(0, 10); q.lineTo(C_, 12); q.stroke(); }
+        }, x, y);
+      } else { ctx.fillStyle = KCOL[k]; ctx.fillRect(x, y, C_ + 0.5, C_ + 0.5); }
       if (k === SOFT || k === PACK || k === CRUM) {
         // a lit lip where the dirt faces a tunnel above, a darker underside over a tunnel below, crumbs and a pebble
         if (emp(r - 1, c)) { ctx.fillStyle = 'rgba(255,220,170,0.22)'; ctx.fillRect(x, y, C_, 3); ctx.fillStyle = 'rgba(80,120,40,0.35)'; if (h > 0.6) { ctx.fillRect(x + 4 + h * 8, y - 2, 2, 4); ctx.fillRect(x + 8 + h * 8, y - 3, 2, 5); } }
         if (emp(r + 1, c)) { ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(x, y + C_ - 4, C_, 4); if (h < 0.3) { ctx.strokeStyle = 'rgba(200,170,120,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 6 + h * 20, y + C_); ctx.quadraticCurveTo(x + 9 + h * 20, y + C_ + 5, x + 5 + h * 20, y + C_ + 8); ctx.stroke(); } }
         if (emp(r, c - 1)) { ctx.fillStyle = 'rgba(255,220,170,0.1)'; ctx.fillRect(x, y, 2, C_); }
         if (emp(r, c + 1)) { ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + C_ - 3, y, 3, C_); }
-        if (h > 0.72 && k !== CRUM) { ctx.fillStyle = '#9a8a7a'; ctx.beginPath(); ctx.ellipse(x + 6 + h * 10, y + 18, 3.2, 2.4, 0, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x + 5 + h * 10, y + 16.5, 2, 1); }
-        ctx.fillStyle = k === PACK ? 'rgba(0,0,0,0.18)' : 'rgba(255,230,190,0.1)';
-        ctx.fillRect(x + h * 14, y + 4 + h * 10, 5, 3); ctx.fillRect(x + 4 + (1 - h) * 12, y + 14, 4, 3);
-        if (k === CRUM) { ctx.strokeStyle = 'rgba(60,40,20,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + 3, y + 8); ctx.lineTo(x + 12, y + 14); ctx.lineTo(x + 22, y + 6); ctx.stroke(); }
-        if (k === PACK) { ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 9); ctx.lineTo(x + C_, y + 11); ctx.moveTo(x, y + 19); ctx.lineTo(x + C_, y + 18); ctx.stroke(); }
+
       } else if (k === ROCK || k === DOOR) {
-        ctx.fillStyle = '#4a4e56'; rr(x + 2, y + 3, C_ - 4, C_ - 4, 6); ctx.fill();
-        ctx.fillStyle = '#6e737c'; rr(x + 2, y + 2, C_ - 4, C_ - 6, 6); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(x + 5, y + 5, 8, 3); ctx.fillRect(x + 5, y + 5, 3, 6);
-        ctx.strokeStyle = 'rgba(40,42,48,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + C_ * 0.55, y + 4); ctx.lineTo(x + C_ * 0.45 + h * 4, y + C_ * 0.5); ctx.lineTo(x + C_ * 0.6, y + C_ - 6); ctx.stroke();
+        RICH.pic('w39slab' + Math.floor(h * 4), C_, C_, q => {
+          const v = Math.floor(h * 4);
+          q.fillStyle = '#4a4e56'; RICH.rr(q, 2, 3, C_ - 4, C_ - 4, 6); q.fill();
+          RICH.rr(q, 2, 2, C_ - 4, C_ - 6, 6); q.save(); q.clip(); RICH.rock(q, 0, 0, C_, C_, { col: '#6e737c', seed: 40 + v }); q.restore();
+          q.fillStyle = 'rgba(255,255,255,0.2)'; q.fillRect(5, 5, 8, 2.5); q.fillRect(5, 5, 2.5, 6);
+          q.strokeStyle = 'rgba(40,42,48,0.55)'; q.lineWidth = 1; q.beginPath(); q.moveTo(C_ * 0.55, 4); q.lineTo(C_ * 0.45 + v, C_ * 0.5); q.lineTo(C_ * 0.6, C_ - 6); q.stroke();
+          q.strokeStyle = '#3a3e46'; q.lineWidth = 1; RICH.rr(q, 2.5, 2.5, C_ - 5, C_ - 5, 6); q.stroke();
+        }, x, y);
         if (k === DOOR) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 3, y + 3, C_ - 6, C_ - 6); }
       } else if (k === GAS) { ctx.fillStyle = 'rgba(160,230,110,0.5)'; for (let n = 0; n < 3; n++) { circle(x + 6 + n * 7, y + 9 + (n % 2) * 8, 3 + Math.sin(t * 3 + n) * 0.8); ctx.fill(); } }
       else if (k === WAT) { ctx.fillStyle = 'rgba(150,210,255,0.55)'; for (let n = 0; n < 3; n++) { ctx.beginPath(); ctx.ellipse(x + 6 + n * 7, y + 12 + Math.sin(t * 2 + n) * 2, 3, 4, 0, 0, TAU); ctx.fill(); } }
       else if (k === PIL) { ctx.fillStyle = '#2a1e16'; ctx.fillRect(x, y, C_, C_); K.crystal(x + C_ / 2, y + C_ + 2, C_ + 6, 0, { col: K.GLOW.ice, w: 14, glow: st.flash.some(f => f.r <= r + 1 && f.r >= r - 1 && f.c === c && f.t > 0) ? 1 : 0.5, t, seed: r }); }
-      else if (k === BOUL) { ctx.fillStyle = '#1e140e'; ctx.fillRect(x, y, C_, C_); ctx.fillStyle = '#8a847e'; circle(x + C_ / 2, y + C_ / 2, C_ * 0.48); ctx.fill(); ctx.fillStyle = '#6a645e'; ctx.beginPath(); ctx.arc(x + C_ / 2, y + C_ / 2, C_ * 0.48, -0.2, Math.PI * 0.85); ctx.lineTo(x + C_ / 2, y + C_ / 2); ctx.fill(); ctx.strokeStyle = '#4a4440'; ctx.lineWidth = 2; circle(x + C_ / 2, y + C_ / 2, C_ * 0.48); ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; circle(x + C_ * 0.38, y + C_ * 0.36, 4); ctx.fill(); }
+      else if (k === BOUL) RICH.pic('w39boulder', C_, C_, q => {
+        // a round boulder in its hollow: rock texture, a shaded lower side, a glint, a dark rim
+        q.fillStyle = '#1e140e'; q.fillRect(0, 0, C_, C_);
+        q.beginPath(); q.arc(C_ / 2, C_ / 2, C_ * 0.48, 0, TAU); q.save(); q.clip(); RICH.rock(q, 0, 0, C_, C_, { col: '#8a847e', seed: 77 });
+        q.fillStyle = 'rgba(50,44,40,0.45)'; q.beginPath(); q.arc(C_ / 2, C_ / 2, C_ * 0.48, -0.2, Math.PI * 0.85); q.lineTo(C_ / 2, C_ / 2); q.fill(); q.restore();
+        q.strokeStyle = '#4a4440'; q.lineWidth = 2; q.beginPath(); q.arc(C_ / 2, C_ / 2, C_ * 0.48, 0, TAU); q.stroke();
+        q.fillStyle = 'rgba(255,255,255,0.3)'; q.beginPath(); q.arc(C_ * 0.38, C_ * 0.36, 3.5, 0, TAU); q.fill();
+      }, x, y);
       else if (k === VENT) { ctx.fillStyle = '#3a3e46'; ctx.fillRect(x, y, C_, C_); ctx.fillStyle = st.geyOn ? '#dff6ff' : '#2a8a90'; ctx.fillRect(x + 8, y, 10, 6); }
       else if (k === PLATE) { ctx.fillStyle = st.pl.some(P => P.plate && cellOf(P).c === c) ? '#ffe28a' : '#b8862a'; rr(x + 2, y, C_ - 4, 8, 3); ctx.fill(); }
       // a boulder's shadow line: where it would fall

@@ -767,8 +767,17 @@
     const ground = (a, b, y) => {
       if (b <= a) return;
       const sa = scrX(st, a), sb = scrX(st, b);
-      ctx.fillStyle = '#4a4440'; ctx.fillRect(sa, SY(y), sb - sa, H - SY(y));
-      ctx.fillStyle = '#6a625a'; ctx.fillRect(sa, SY(y), sb - sa, 8);
+      // (art pass) the tunnel floor: real rock (strata, fractures, specks, facets) in a chunked strip that scrolls with
+      // the run, a rubbly lip with pebbles, the crystal glow along the edge
+      const gy = Math.round(SY(y)), ox = Math.round(st.camX);
+      ctx.save(); ctx.beginPath(); ctx.rect(sa, gy, sb - sa, H - gy); ctx.clip(); ctx.translate(-ox, 0);
+      RICH.strip('w39wormfloor|' + gy, Math.floor(a) - 4, Math.ceil(b) + 4, gy, H - gy, 256, (c, gx, w, hh) => {
+        RICH.rock(c, 0, 0, w, hh, { col: '#4a4440', gx, seed: 39 });
+        const g = c.createLinearGradient(0, 0, 0, hh); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(10,8,8,0.45)'); c.fillStyle = g; c.fillRect(0, 0, w, hh);
+        c.fillStyle = '#6a625a'; c.fillRect(0, 0, w, 8); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, 8, w, 2);
+        for (let k = 0; k < w / 22; k++) RICH.pebble(c, 6 + RICH.r(gx + 71, k) * (w - 12), 3 + RICH.r(gx + 72, k) * 4, 1.6 + RICH.r(gx + 73, k) * 2.4, RICH.r(gx + 74, k) < 0.5 ? '#7a726a' : '#8a8278', gx + k);
+      });
+      ctx.restore();
       ctx.fillStyle = 'rgba(79,232,214,0.35)'; ctx.fillRect(sa, SY(y), sb - sa, 2);
     };
     for (const c of cuts) {
@@ -792,8 +801,13 @@
             const ax = sb + 10, ay = SY(0);
             const len = sb - sa + 20, a = K.lerp(-Math.PI / 2 - 0.25, -Math.PI, u);
             ctx.save(); ctx.translate(ax, ay); ctx.rotate(a);
-            ctx.fillStyle = K.COL.timber; ctx.fillRect(0, -8, len, 16); ctx.strokeStyle = K.COL.timberDark; ctx.lineWidth = 2; ctx.strokeRect(0, -8, len, 16);
-            for (let k = 1; k < 5; k++) { ctx.beginPath(); ctx.moveTo(k * len / 5, -8); ctx.lineTo(k * len / 5, 8); ctx.stroke(); }
+            RICH.pic('w39wormramp|' + Math.round(len), Math.round(len), 16, c => {
+              // an old mine-timber ramp: five boards with grain and nails, cleats across, a rope eye at the end
+              const L2 = Math.round(len); RICH.wood(c, 0, 0, L2, 16, { col: K.COL.timber, vert: true, bw: L2 / 5, seed: 7, knots: 0.8, edge: false });
+              c.strokeStyle = K.COL.timberDark; c.lineWidth = 2; c.strokeRect(1, 1, L2 - 2, 14); c.beginPath(); for (let k = 1; k < 5; k++) { c.moveTo(k * L2 / 5, 0); c.lineTo(k * L2 / 5, 16); } c.stroke();
+              for (let k = 0; k < 5; k++) { RICH.nail(c, k * L2 / 5 + 5, 4, 1.1); RICH.nail(c, k * L2 / 5 + 5, 12, 1.1); }
+              c.fillStyle = 'rgba(255,230,190,0.3)'; c.fillRect(0, 1, L2, 1);
+            }, 0, -8);
             ctx.restore();
             if (!p.bridged) { const ex = ax + Math.cos(a) * len, ey = ay + Math.sin(a) * len; ctx.strokeStyle = '#c8b080'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex - 20, SY(S.roof)); ctx.stroke(); }
           }

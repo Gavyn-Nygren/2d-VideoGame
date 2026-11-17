@@ -486,41 +486,51 @@
     ctx.fillStyle = shade(grass, 0.12); ctx.fillRect(0, 410, W, 4);
     ctx.fillStyle = shade(dirt, 0.25); ctx.fillRect(0, R.gy - 11, W, 4);
     ctx.fillStyle = dirt; ctx.fillRect(0, R.gy - 8, W, H - R.gy + 8);
+    // (art pass) the lane's dirt: grains, pebbles, hoof prints, straw and two churned furrows, scrolling with the ride
+    ctx.save(); ctx.beginPath(); ctx.rect(0, R.gy - 8, W, H - R.gy + 8); ctx.clip(); K.ground(st.d, R.gy - 8, H - R.gy + 8, { col: dirt, ruts: [24, 62], key: 'lane' }); ctx.restore();
     ctx.fillStyle = 'rgba(255,240,200,0.3)'; ctx.fillRect(0, R.gy - 8, W, 2);
     // grass tufts on the verge, hoof-churned marks and pebbles on the lane
     ctx.fillStyle = shade(grass, 0.2);
     for (let k = 0; k < 24; k++) { const x = ((k * 47 - st.d * 0.9) % (W + 60) + W + 60) % (W + 60) - 30, y = R.gy - 12; ctx.beginPath(); ctx.moveTo(x - 5, y + 2); ctx.lineTo(x - 2, y - 6); ctx.lineTo(x, y); ctx.lineTo(x + 3, y - 7); ctx.lineTo(x + 5, y + 2); ctx.closePath(); ctx.fill(); }
-    ctx.fillStyle = 'rgba(120,90,50,0.35)';
-    for (let k = 0; k < 14; k++) { const x = ((k * 97 - st.d) % (W + 100) + W + 100) % (W + 100) - 50; ctx.fillRect(x, R.gy + 14 + (k % 3) * 18, 26, 3); }
-    for (let k = 0; k < 16; k++) {
-      const x = ((k * 71 - st.d) % (W + 80) + W + 80) % (W + 80) - 40, y = R.gy + 8 + (k * 29) % 90, r = 2 + (k % 3);
-      ctx.fillStyle = '#9a8a72'; ctx.beginPath(); ctx.ellipse(x, y, r * 1.4, r, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - r * 0.6, y - r * 0.6, r * 0.8, 1);
-    }
+
     // the tilt barrier along the far side of the lane, striped, with posts, a lit top and a shadow on the grass
     const off = st.d % 80;
     ctx.fillStyle = 'rgba(30,40,10,0.18)'; ctx.fillRect(0, 425, W, 6);
-    for (let x = -off - 80; x < W + 80; x += 80) { ctx.fillStyle = '#5e3a1c'; ctx.fillRect(x, 414, 6, 30); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 4, 414, 2, 30); ctx.fillStyle = '#ffd23a'; circ(x + 3, 413, 3); ctx.fill(); }
-    for (let x = -off - 80; x < W + 80; x += 40) { const red = Math.round((x + st.d) / 40) % 2; ctx.fillStyle = red ? '#d8323a' : '#f6ecd0'; ctx.fillRect(x, 416, 40, 9); ctx.fillStyle = red ? '#8a1a22' : '#c8bc9c'; ctx.fillRect(x, 422, 40, 3); }
+    for (let x = -off - 80; x < W + 80; x += 80) K.post(x, 444, 6, 30, { cap: '#ffd23a' });
+    for (let x = -off - 80; x < W + 80; x += 40) { const red = ((Math.round((x + st.d) / 40) % 2) + 2) % 2; tiltBoard(x, 416, 40, 9, red); }
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, 416, W, 1.5);
     ctx.strokeStyle = 'rgba(60,20,10,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(-1, 415.5, W + 2, 10);
+  }
+  // (art pass) one painted board of the tilt barrier: wood grain under the paint, a worn lit edge, a shaded underside
+  function tiltBoard(x, y, w, h, red) {
+    RICH.pic('w37tilt|' + w + '|' + h + '|' + red, w, h, c => {
+      RICH.wood(c, 0, 0, w, h, { col: red ? '#d8323a' : '#f6ecd0', boards: 1, seed: red + w, knots: 0.5, edge: false });
+      c.fillStyle = red ? '#8a1a22' : '#c8bc9c'; c.fillRect(0, h - 3, w, 3);
+      c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, 0, w, 1);
+      c.fillStyle = 'rgba(160,110,60,0.5)'; for (let k = 0; k < 3; k++) c.fillRect(4 + RICH.r(w + red, k) * (w - 10), 1 + RICH.r(h + red, k) * (h - 5), 3 + k, 1);
+      RICH.nail(c, 3, h / 2 - 1, 1); RICH.nail(c, w - 3, h / 2 - 1, 1);
+    }, x, y);
   }
   function drawFlag(st, sx, t) {
     if (sx < -60 || sx > W + 60) return;
     ctx.fillStyle = 'rgba(40,30,10,0.2)'; ctx.beginPath(); ctx.ellipse(sx, R.gy + 1, 10, 3, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#5e3a1c'; ctx.fillRect(sx - 2, R.gy - 150, 4, 150); ctx.fillStyle = '#ffd23a'; circ(sx, R.gy - 152, 3); ctx.fill();
+    K.post(sx - 2, R.gy, 4, 150, { col: '#5e3a1c', cap: '#ffd23a' });
     ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(sx + 2, R.gy - 150); ctx.lineTo(sx + 40 + Math.sin(t * 6) * 4, R.gy - 140); ctx.lineTo(sx + 2, R.gy - 128); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(120,130,150,0.3)'; ctx.beginPath(); ctx.moveTo(sx + 2, R.gy - 139); ctx.lineTo(sx + 40 + Math.sin(t * 6) * 4, R.gy - 140); ctx.lineTo(sx + 2, R.gy - 128); ctx.closePath(); ctx.fill();
     text('½', sx + 16, R.gy - 139, 11, '#3a2010', 'center', 'body');
   }
   function drawPatch(st, it, sx, t) {
     if (it.kind === 'mud') {
+      ctx.fillStyle = '#7a5a36'; ctx.beginPath(); ctx.ellipse(sx + it.len / 2, R.gy + 9, it.len / 2 + 4, 14, 0, 0, TAU); ctx.fill();
       ctx.fillStyle = '#6a4a2a'; ctx.beginPath(); ctx.ellipse(sx + it.len / 2, R.gy + 8, it.len / 2, 12, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(30,18,6,0.35)'; ctx.beginPath(); ctx.ellipse(sx + it.len / 2, R.gy + 5, it.len / 2 - 6, 5, 0, Math.PI, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(40,24,10,0.5)'; ctx.lineWidth = 1.5; for (let k = 0; k < it.len / 30; k++) { const hx = sx + 14 + k * 30, hy = R.gy + 10 + (k % 3) * 3; ctx.beginPath(); ctx.ellipse(hx, hy, 4, 2.5, 0, Math.PI * 0.15, Math.PI * 1.85); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(160,190,210,0.4)'; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.ellipse(sx + it.len * (0.25 + k * 0.25), R.gy + 12 - (k % 2) * 4, 14, 2.5, 0, 0, TAU); ctx.fill(); }
       ctx.fillStyle = 'rgba(40,24,10,0.4)'; for (let k = 0; k < 6; k++) { ctx.beginPath(); ctx.ellipse(sx + 40 + k * it.len / 6, R.gy + 6 + (k % 2) * 4, 18, 4, 0, 0, TAU); ctx.fill(); }
       ctx.fillStyle = 'rgba(255,240,220,0.25)'; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.ellipse(sx + 60 + k * it.len / 4, R.gy + 2 + (k % 2) * 6, 10, 2, 0, 0, TAU); ctx.fill(); }
       if (sx > 0 && sx < W) text('MUD', sx + 40, R.gy + 30, 12, '#3a2010', 'center', 'body');
     } else if (it.kind === 'rough') {
-      ctx.fillStyle = '#8a7a6a'; for (let k = 0; k < it.len / 24; k++) { const x = sx + k * 24 + K.hash(k) * 10; ctx.beginPath(); ctx.ellipse(x, R.gy + 2, 7 + K.hash(k * 3) * 5, 4, 0, Math.PI, TAU); ctx.fill(); }
+      for (let k = 0; k < it.len / 24; k++) { const x = sx + k * 24 + K.hash(k) * 10, r = 6 + K.hash(k * 3) * 5; RICH.pebble(ctx, x, R.gy, r, k % 2 ? '#8a7a6a' : '#9a8c7a', k); if (k % 2) RICH.pebble(ctx, x + r + 2, R.gy + 3, r * 0.45, '#a89a88', k + 9); }
       if (sx > 0 && sx < W) text('ROUGH', sx + 40, R.gy + 30, 12, '#3a2010', 'center', 'body');
     }
   }
@@ -528,26 +538,37 @@
   function drawBack(st, it, sx, t, dusk) {
     if (it.kind === 'ring' && !it.got) {
       const y = HY[it.h];
-      ctx.fillStyle = '#5e3a1c'; ctx.fillRect(sx + 14, y - 30, 5, R.gy - y + 30); ctx.fillRect(sx - 2, y - 30, 20, 4);
+      K.post(sx + 14, R.gy, 5, R.gy - y + 30, { col: '#5e3a1c' }); K.timber(sx - 2, y - 30, 20, 4, { dark: true });
+      ctx.fillStyle = '#8a8a96'; ctx.fillRect(sx + 13, y - 28, 7, 2);
       if (dusk) lantern(sx + 18, y - 40, t);
     } else if (it.kind === 'quintain') {
       // a post with a turning arm: shield on one end, sandbag on the other
       const y = HY[it.h], spin = it.spun ? Math.min(1, (st.d - (it.d0 - R.tip)) / 120) * 5 : it.swing ? Math.min(1, (st.d - (it.d0 - R.tip)) / 80) * 2.2 : it.pat ? 0.4 : Math.sin(t * 2 + it.d0) * 0.06;
-      ctx.fillStyle = '#5e3a1c'; ctx.fillRect(sx - 3, y - 30, 7, R.gy - y + 30);
+      K.post(sx - 3, R.gy, 7, R.gy - y + 30, { col: '#5e3a1c' });
       ctx.save(); ctx.translate(sx, y - 26); ctx.scale(Math.cos(spin), 1);
-      ctx.fillStyle = '#7a5a32'; ctx.fillRect(-46, -3, 92, 6);
+      K.timber(-46, -3, 92, 6, {}); ctx.fillStyle = '#5a5a64'; ctx.fillRect(-5, -4, 10, 8); ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(-5, -4, 10, 1.5);
       ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(40, 0); ctx.lineTo(40, 22); ctx.stroke();
       ctx.fillStyle = '#c8a46a'; ctx.beginPath(); ctx.ellipse(40, 30, 10, 13, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(120,80,30,0.35)'; ctx.beginPath(); ctx.ellipse(43, 33, 7, 10, 0, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,240,200,0.4)'; ctx.beginPath(); ctx.ellipse(37, 25, 3, 5, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(32, 30); ctx.lineTo(48, 30); ctx.moveTo(40, 18); ctx.lineTo(40, 42); ctx.stroke();
       ctx.restore();
       K.heraldShield(sx - 30 * Math.cos(spin), y + 2, 15, { col: '#d8323a', charge: 'chevron', chargeCol: '#ffffff', rot: spin * 0.3 });
       if (dusk) lantern(sx + 4, y - 50, t);
     } else if (it.kind === 'ground') {
-      if (it.what === 'hurdle') { K.timber(sx, R.gy - 34, it.w, 8, {}); K.timber(sx, R.gy - 18, it.w, 8, {}); ctx.fillStyle = '#5e3a1c'; ctx.fillRect(sx, R.gy - 40, 5, 40); ctx.fillRect(sx + it.w - 5, R.gy - 40, 5, 40); }
+      if (it.what === 'hurdle') { K.timber(sx, R.gy - 34, it.w, 8, {}); K.timber(sx, R.gy - 18, it.w, 8, {}); K.post(sx, R.gy, 5, 40, { col: '#5e3a1c' }); K.post(sx + it.w - 5, R.gy, 5, 40, { col: '#5e3a1c' }); }
       else if (it.what === 'hay') K.hay(sx + it.w / 2, R.gy, 1);
-      else if (it.what === 'trough') { ctx.fillStyle = '#7a5a32'; ctx.fillRect(sx, R.gy - 24, it.w, 24); ctx.fillStyle = '#6ab0e0'; ctx.fillRect(sx + 4, R.gy - 22, it.w - 8, 6); ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 2; ctx.strokeRect(sx, R.gy - 24, it.w, 24); }
+      else if (it.what === 'trough') RICH.pic('w37trough|' + Math.round(it.w), Math.round(it.w) + 8, 32, c => {
+        // a water trough: planked sides, iron bands, water with a glint, splashes on the ground
+        c.translate(4, 4); const w = Math.round(it.w);
+        RICH.shadow(c, w / 2, 24, w / 2 + 4, 3, 0.22);
+        RICH.wood(c, 0, 0, w, 24, { col: '#7a5a32', boards: 3, seed: 51, knots: 0.6, edge: false });
+        c.fillStyle = '#6ab0e0'; c.fillRect(4, 2, w - 8, 6); c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(8, 3, w * 0.3, 1.2); c.fillStyle = 'rgba(30,70,120,0.3)'; c.fillRect(4, 6, w - 8, 2);
+        for (const bx of [8, w - 12]) { c.fillStyle = '#4a4a54'; c.fillRect(bx, 0, 4, 24); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(bx, 0, 1, 24); RICH.rivet(c, bx + 2, 12, 1.2, '#8a8a96'); }
+        c.strokeStyle = '#3a2010'; c.lineWidth = 2; c.strokeRect(0, 0, w, 24);
+      }, sx - 4, R.gy - 28);
     } else if (it.kind === 'beam') {
       // posts either side (the beam itself is drawn in front)
-      ctx.fillStyle = '#5e3a1c'; ctx.fillRect(sx - 70, beamY(it) - 6, 7, R.gy - beamY(it) + 6); ctx.fillRect(sx + 63, beamY(it) - 6, 7, R.gy - beamY(it) + 6);
+      K.post(sx - 70, R.gy, 7, R.gy - beamY(it) + 6, { col: '#5e3a1c' }); K.post(sx + 63, R.gy, 7, R.gy - beamY(it) + 6, { col: '#5e3a1c' });
     }
   }
   const beamY = it => R.gy - 112;

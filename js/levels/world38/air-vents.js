@@ -721,17 +721,25 @@
     // the ducts
     for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
       const ch = L.g[r][c], x = c * Z - ox, y = r * Z - oy;
-      if (ch === '#') { if (!L.rooms.some(rm => c >= rm.c0 && c <= rm.c1 && r >= rm.r0 && r <= rm.r1)) { ctx.fillStyle = (c + r) % 2 ? '#2a3036' : '#283036'; ctx.fillRect(x, y, Z, Z); ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(x + 4, y + 4, 2, 2); ctx.fillRect(x + Z - 6, y + Z - 6, 2, 2); } continue; }
-      ctx.fillStyle = '#1a2024'; ctx.fillRect(x, y, Z, Z);
-      // sheet-metal seams and rivets inside the duct
-      ctx.fillStyle = 'rgba(255,255,255,0.04)'; ctx.fillRect(x, y + 3, Z, Z * 0.3);
-      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + Z - 1.5, y, 1.5, Z);
-      ctx.fillStyle = 'rgba(150,165,175,0.25)'; circle(x + Z - 5, y + 6, 1.2); ctx.fill(); circle(x + Z - 5, y + Z - 6, 1.2); ctx.fill();
-      ctx.fillStyle = '#5a646a';
-      if (chAt(st, c, r - 1) === '#') ctx.fillRect(x, y, Z, 3);
-      if (chAt(st, c, r + 1) === '#' && ch !== 'g') ctx.fillRect(x, y + Z - 3, Z, 3);
-      if (chAt(st, c - 1, r) === '#') ctx.fillRect(x, y, 3, Z);
-      if (chAt(st, c + 1, r) === '#') ctx.fillRect(x + Z - 3, y, 3, Z);
+      // (art pass) block walls and galvanised duct, each cell a cached picture (RICH.pic); the flanges where a duct
+      // meets a wall are a picture per side
+      if (ch === '#') { if (!L.rooms.some(rm => c >= rm.c0 && c <= rm.c1 && r >= rm.r0 && r <= rm.r1)) RICH.pic('w38vblock' + ((c * 7 + r * 3) % 4) + '|' + ((c + r) % 2), Z, Z, q => {
+        RICH.stone(q, 0, 0, Z, Z, { col: (c + r) % 2 ? '#2a3036' : '#283036', course: Z / 3, len: Z / 1.5, seed: (c * 7 + r * 3) % 4, mortar: '#1a1e22', edge: false, cracks: 0.4 });
+      }, x, y); continue; }
+      RICH.pic('w38duct' + ((c + r * 2) % 3), Z, Z, q => {
+        // galvanised sheet: a lit upper half, a seam with rivets, spangle flecks, dust in the bottom
+        q.fillStyle = '#1a2024'; q.fillRect(0, 0, Z, Z);
+        q.fillStyle = 'rgba(255,255,255,0.05)'; q.fillRect(0, 3, Z, Z * 0.3);
+        q.fillStyle = 'rgba(200,215,225,0.06)'; for (let k = 0; k < 14; k++) q.fillRect(RICH.r(500 + (c + r * 2) % 3, k) * Z, RICH.r(501 + (c + r * 2) % 3, k) * Z, 2, 1);
+        q.fillStyle = 'rgba(0,0,0,0.3)'; q.fillRect(Z - 1.5, 0, 1.5, Z); q.fillStyle = 'rgba(255,255,255,0.06)'; q.fillRect(Z - 3, 0, 1, Z);
+        RICH.rivet(q, Z - 5, 6, 1.2, '#3a444a'); RICH.rivet(q, Z - 5, Z - 6, 1.2, '#3a444a'); RICH.rivet(q, Z - 5, Z / 2, 1.2, '#3a444a');
+        q.fillStyle = 'rgba(90,80,60,0.18)'; q.fillRect(0, Z - 6, Z, 6);
+      }, x, y);
+      const fl = (key, fx, fy, fw, fh) => RICH.pic('w38flange' + key, fw, fh, q => { q.fillStyle = '#5a646a'; q.fillRect(0, 0, fw, fh); q.fillStyle = 'rgba(255,255,255,0.25)'; if (fw > fh) q.fillRect(0, 0, fw, 1); else q.fillRect(0, 0, 1, fh); q.fillStyle = 'rgba(0,0,0,0.35)'; if (fw > fh) q.fillRect(0, fh - 1, fw, 1); else q.fillRect(fw - 1, 0, 1, fh); q.fillStyle = '#7a868c'; for (let k = 6; k < Math.max(fw, fh); k += 12) { if (fw > fh) q.fillRect(k, 1, 1.5, 1.5); else q.fillRect(1, k, 1.5, 1.5); } }, fx, fy);
+      if (chAt(st, c, r - 1) === '#') fl('h', x, y, Z, 3);
+      if (chAt(st, c, r + 1) === '#' && ch !== 'g') fl('h', x, y + Z - 3, Z, 3);
+      if (chAt(st, c - 1, r) === '#') fl('v', x, y, 3, Z);
+      if (chAt(st, c + 1, r) === '#') fl('v', x + Z - 3, y, 3, Z);
       if (ch === 'g') { ctx.fillStyle = 'rgba(255,214,120,0.5)'; ctx.fillRect(x + 2, y + Z - 5, Z - 4, 5); ctx.fillStyle = '#5a646a'; for (let k = 4; k < Z; k += 6) ctx.fillRect(x + k, y + Z - 5, 2, 5); }
       if (ch === 'm') { ctx.fillStyle = '#4a545a'; ctx.fillRect(x, y + Z - 5, Z, 5); ctx.fillStyle = 'rgba(0,0,0,0.4)'; circle(x + 12, y + Z - 3, 3); ctx.fill(); circle(x + 28, y + Z - 2, 2); ctx.fill(); }
       if (ch === 'v') { ctx.fillStyle = 'rgba(255,255,255,0.05)'; for (let k = 0; k < Z; k += 8) ctx.fillRect(x + 6, y + k, Z - 12, 2); }

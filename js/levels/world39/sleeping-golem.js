@@ -734,9 +734,16 @@
       if (s.kind === 'ledge') {
         if (s.n === 'arm') continue;
         const o = origin(st, s), x0 = SX(o.x + s.x0), x1 = SX(o.x + s.x1), y = scrY(st, o.y);
-        ctx.fillStyle = s.part === 'body' ? '#8e98a6' : '#7e8896'; rr(x0, y, x1 - x0, 12, 5); ctx.fill();
-        ctx.fillStyle = '#b8c2cc'; ctx.fillRect(x0 + 4, y, x1 - x0 - 8, 3);
-        ctx.strokeStyle = '#2a303a'; ctx.lineWidth = 2; rr(x0, y, x1 - x0, 12, 5); ctx.stroke();
+        // (art pass) a stone ledge on the golem: chiselled rock in a rounded slab, a lit worn top, moss in the corner,
+        // a shadow line under it (a picture per width and part)
+        { const lw = Math.round(x1 - x0), col = s.part === 'body' ? '#8e98a6' : '#7e8896';
+          ctx.fillStyle = 'rgba(10,14,20,0.3)'; ctx.fillRect(x0 + 4, y + 12, x1 - x0 - 8, 3);
+          RICH.pic('w39ledge|' + lw + '|' + col, lw, 12, c => {
+            RICH.rr(c, 0, 0, lw, 12, 5); c.save(); c.clip(); RICH.rock(c, 0, 0, lw, 12, { col, seed: lw }); c.fillStyle = 'rgba(20,24,34,0.3)'; c.fillRect(0, 8, lw, 4); c.restore();
+            c.fillStyle = '#b8c2cc'; c.fillRect(4, 0, lw - 8, 3); c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(6, 0, lw - 12, 1);
+            c.fillStyle = 'rgba(110,170,80,0.8)'; c.beginPath(); c.ellipse(6, 10, 6, 3, 0, Math.PI, Math.PI * 2); c.fill(); c.beginPath(); c.ellipse(lw - 8, 10, 4, 2.5, 0, Math.PI, Math.PI * 2); c.fill();
+            c.strokeStyle = '#2a303a'; c.lineWidth = 2; RICH.rr(c, 1, 1, lw - 2, 10, 5); c.stroke();
+          }, x0, y); }
         if (s.hollow) { const h0 = SX(o.x + s.hollow[0]), h1 = SX(o.x + s.hollow[1]); ctx.fillStyle = 'rgba(10,14,20,0.75)'; ctx.beginPath(); ctx.moveTo(h0, y); ctx.lineTo(h0 + 4, y - 50); ctx.quadraticCurveTo((h0 + h1) / 2, y - 66, h1 - 4, y - 50); ctx.lineTo(h1, y); ctx.closePath(); ctx.fill(); ctx.strokeStyle = K.rgba(K.GLOW.teal, 0.35); ctx.lineWidth = 2; ctx.stroke(); }
       } else {
         const a = world(st, s.part, (s.x0 + s.x1) / 2, s.top), b = world(st, s.part, (s.x0 + s.x1) / 2, s.bot);

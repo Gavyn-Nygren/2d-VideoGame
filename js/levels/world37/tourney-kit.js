@@ -51,6 +51,11 @@
      K.herald(x, y, t, o)              the herald with a trumpet and a banner, feet at x, y. o.blow 0..1, face, s.
      K.timber(x, y, w, h, o)           a timber plank or beam (o.dark).
      K.stoneBlock(x, y, w, h, o)       a block of grey stone with a mortar line.
+     K.post(x, y, w, h, o)             a round-shaded wooden post standing on y, x = left edge. o: col, cap (a knob colour).
+     K.ground(cx, y, h, o)             a long dirt band (road, track, the lists) from y down h, scrolling with camera x cx:
+                                       grains, pebbles, hoof prints, straw. o: col, ruts [y offsets in the band]. The
+                                       caller clips it. (These, K.hay, K.timber and K.stoneBlock are cached pictures:
+                                       World 35's RICH.pic.)
      K.dustTrail(st, x, y, n)          a few dust puffs (the road and the lists are dry).
    Sounds (Sfx.play('tourneyFanfare')): tourneyFanfare, tourneyGallop(speed 1..3), tourneyCrack (a lance), tourneyClang
      (a shield), tourneyRoar (the crowd), tourneyGasp, tourneyRattle (a cart), tourneyWhinny, tourneyCreak (a catapult),
@@ -480,17 +485,30 @@ const TOURNEY = (() => {
       ctx.fillStyle = COL.woodDark; ctx.fillRect(x0, top + 12, 4, rows * rh + 14); ctx.fillRect(x1 - 4, top + 12, 4, rows * rh + 14);
     }
   };
+  // (art pass) a hay bale painted once (RICH.pic): shaded round ends, straw strands in two tones, two twine bands
+  // with knots, loose wisps on top and a few on the ground
   K.hay = (x, y, s = 1) => {
     ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
-    ctx.fillStyle = 'rgba(40,30,10,0.2)'; ctx.beginPath(); ctx.ellipse(3, 1, 31, 5, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = COL.hay; ctx.strokeStyle = COL.hayDark; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(-24, -26); ctx.quadraticCurveTo(0, -30, 24, -26); ctx.lineTo(26, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(150,100,20,0.25)'; ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(10, -27); ctx.quadraticCurveTo(20, -27, 24, -26); ctx.lineTo(26, 0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,250,210,0.35)'; ctx.fillRect(-23, -25, 30, 3);
-    ctx.strokeStyle = 'rgba(184,144,46,0.7)'; ctx.lineWidth = 1;
-    for (let k = -18; k <= 18; k += 6) { ctx.beginPath(); ctx.moveTo(k, -2); ctx.lineTo(k + 2, -24); ctx.stroke(); }
-    ctx.strokeStyle = '#8a5a32'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-25, -9); ctx.lineTo(25, -9); ctx.moveTo(-24, -19); ctx.lineTo(24, -19); ctx.stroke();
-    ctx.strokeStyle = COL.hay; ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = 0; k < 6; k++) { ctx.moveTo(-20 + k * 8, -27); ctx.lineTo(-22 + k * 8 + (k % 2) * 4, -33); } ctx.stroke();
+    RICH.pic('w37hay', 66, 42, c => {
+      c.translate(32, 38);
+      RICH.shadow(c, 3, 1, 31, 4.5, 0.2);
+      const body = () => { c.beginPath(); c.moveTo(-26, 0); c.lineTo(-24, -26); c.quadraticCurveTo(0, -30, 24, -26); c.lineTo(26, 0); c.closePath(); };
+      body(); const g = c.createLinearGradient(-26, 0, 26, 0); g.addColorStop(0, '#ffe08a'); g.addColorStop(0.45, COL.hay); g.addColorStop(1, '#d8aa3a'); c.fillStyle = g; c.fill();
+      c.save(); body(); c.clip();
+      c.fillStyle = 'rgba(150,100,20,0.25)'; c.beginPath(); c.moveTo(8, 0); c.lineTo(10, -27); c.quadraticCurveTo(20, -27, 24, -26); c.lineTo(26, 0); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(150,100,20,0.22)'; c.fillRect(-27, -5, 54, 5);
+      c.lineWidth = 0.9;
+      for (let k = 0; k < 60; k++) {
+        const sx = -25 + RICH.r(371, k) * 50, sy = -27 + RICH.r(372, k) * 26, l = 4 + RICH.r(373, k) * 7, a = -1.4 + (RICH.r(374, k) - 0.5) * 0.6;
+        c.strokeStyle = k % 3 ? 'rgba(184,144,46,0.75)' : 'rgba(255,248,200,0.7)'; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + Math.cos(a) * l, sy + Math.sin(a) * l); c.stroke();
+      }
+      c.fillStyle = 'rgba(255,250,210,0.4)'; c.fillRect(-23, -26, 30, 3);
+      c.restore();
+      c.strokeStyle = COL.hayDark; c.lineWidth = 2; body(); c.stroke();
+      for (const by of [-9, -19]) { c.strokeStyle = '#6a4220'; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-25, by); c.lineTo(25, by); c.stroke(); c.strokeStyle = 'rgba(255,220,170,0.45)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(-25, by - 0.8); c.lineTo(25, by - 0.8); c.stroke(); c.fillStyle = '#6a4220'; c.beginPath(); c.arc(-14, by, 2, 0, TAU); c.fill(); }
+      c.strokeStyle = COL.hay; c.lineWidth = 1.2; c.beginPath(); for (let k = 0; k < 9; k++) { c.moveTo(-22 + k * 5.5, -27); c.lineTo(-24 + k * 5.5 + (k % 2) * 5, -33 - (k % 3)); } c.stroke();
+      c.strokeStyle = COL.hayDark; c.lineWidth = 1; c.beginPath(); c.moveTo(-30, 0); c.lineTo(-24, -2); c.moveTo(27, 0); c.lineTo(33, -1); c.moveTo(18, 1); c.lineTo(24, 2); c.stroke();
+    }, -32, -38);
     ctx.restore();
   };
   K.herald = (x, y, t, o = {}) => {
@@ -512,27 +530,73 @@ const TOURNEY = (() => {
     ctx.restore();
     if (blow > 0.5) { for (let k = 0; k < 3; k++) text('♪', x + face * (48 + k * 12) * s, y - (56 + k * 8 + Math.sin(t * 8 + k) * 4) * s, 14 * s, '#ffffff', 'center', 'body'); }
   };
+  // (art pass) a timber plank or beam painted once per size (RICH.pic): boards with grain and knots (RICH.wood), an
+  // adzed end, pegs or nails, a lit top / left edge, an outline in a dark shade of the wood
   K.timber = (x, y, w, h, o = {}) => {
-    ctx.fillStyle = o.dark ? COL.woodDark : COL.wood; ctx.fillRect(x, y, w, h);
-    // grain along the long side, a shaded underside, a lit top
-    ctx.strokeStyle = 'rgba(60,30,10,0.22)'; ctx.lineWidth = 1; ctx.beginPath();
-    if (w >= h) { for (let k = 1; k < 3; k++) { const gy = y + h * k / 3 + (H_(Math.floor(x) + k) - 0.5) * 2; ctx.moveTo(x + 2, gy); ctx.lineTo(x + w - 2, gy); } }
-    else { for (let k = 1; k < 3; k++) { const gx = x + w * k / 3 + (H_(Math.floor(y) + k) - 0.5) * 2; ctx.moveTo(gx, y + 2); ctx.lineTo(gx, y + h - 2); } }
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(40,20,5,0.2)'; if (w >= h) ctx.fillRect(x, y + h - Math.min(3, h / 3), w, Math.min(3, h / 3)); else ctx.fillRect(x + w - Math.min(3, w / 3), y, Math.min(3, w / 3), h);
-    ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(x, y, w, Math.min(3, h / 3));
-    ctx.strokeStyle = 'rgba(60,30,10,0.55)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    const iw = Math.max(2, Math.round(w)), ih = Math.max(2, Math.round(h)), col = o.dark ? COL.woodDark : COL.wood, long = iw >= ih;
+    RICH.pic('w37timber|' + iw + '|' + ih + '|' + (o.dark ? 1 : 0), iw, ih, c => {
+      RICH.wood(c, 0, 0, iw, ih, { col, boards: 1, vert: !long, bw: long ? ih : iw, seed: iw * 3 + ih, knots: 0.9, edge: false });
+      c.fillStyle = 'rgba(255,230,190,0.25)'; if (long) c.fillRect(0, 0, iw, Math.min(1.5, ih * 0.2)); else c.fillRect(0, 0, Math.min(1.5, iw * 0.2), ih);
+      // the end grain at either end of a long piece
+      const e = Math.min(4, (long ? iw : ih) * 0.08);
+      c.fillStyle = RICH.rgba(RICH.dk(col, 0.4), 0.5); if (long) { c.fillRect(0, 0, e, ih); c.fillRect(iw - e, 0, e, ih); } else { c.fillRect(0, 0, iw, e); c.fillRect(0, ih - e, iw, e); }
+      if (Math.min(iw, ih) >= 8) { const L = long ? iw : ih, m = Math.min(iw, ih) / 2; for (const q of [7, L - 7]) RICH.nail(c, long ? q : m, long ? m : q, Math.min(1.6, m * 0.3)); }
+      c.strokeStyle = RICH.dk(col, 0.6); c.lineWidth = 1; c.strokeRect(0.5, 0.5, iw - 1, ih - 1);
+    }, x, y);
   };
+  // (art pass) one dressed stone block painted once per size and colour: a few tones, chisel marks, chips, a lit top /
+  // left bevel and a dark lower / right bevel, a mortar outline
   K.stoneBlock = (x, y, w, h, o = {}) => {
-    const col = o.col || COL.stone;
-    ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = shade(col, 0.12); ctx.fillRect(x, y + h * 0.62, w, h * 0.38);
-    // a few specks, a lit top-left bevel, a dark lower-right bevel
-    ctx.fillStyle = 'rgba(60,58,52,0.25)';
-    for (let k = 0; k < 3; k++) { const q = H_(Math.floor(x * 3 + y) + k * 17); ctx.fillRect(x + 3 + q * (w - 7), y + 3 + H_(Math.floor(y * 5 + x) + k) * (h - 7), 2, 2); }
-    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x + 1, y + 1, w - 2, 2); ctx.fillRect(x + 1, y + 1, 2, h - 2);
-    ctx.fillStyle = 'rgba(30,28,24,0.18)'; ctx.fillRect(x + 1, y + h - 3, w - 2, 2); ctx.fillRect(x + w - 3, y + 1, 2, h - 2);
-    ctx.strokeStyle = 'rgba(60,58,52,0.6)'; ctx.lineWidth = 1.2; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    const col = o.col || COL.stone, iw = Math.max(2, Math.round(w)), ih = Math.max(2, Math.round(h));
+    RICH.pic('w37stone|' + iw + '|' + ih + '|' + col, iw, ih, c => {
+      RICH.stone(c, 0, 0, iw, ih, { col, course: ih, len: iw * 2 + 10, seed: iw + ih * 7, edge: false, mortar: RICH.dk(col, 0.45) });
+      c.fillStyle = RICH.rgba(RICH.dk(col, 0.5), 0.35); for (let k = 0; k < iw * ih / 160; k++) { const sx = 3 + RICH.r(iw * 5 + ih, k) * (iw - 8), sy = 3 + RICH.r(ih * 5 + iw, k) * (ih - 6); c.fillRect(sx, sy, 3, 0.8); }
+      c.strokeStyle = RICH.dk(col, 0.6); c.lineWidth = 1.2; c.strokeRect(0.6, 0.6, iw - 1.2, ih - 1.2);
+    }, x, y);
+  };
+  // (art pass) a turned wooden post standing on y (x = left edge): shaded round, grain, a cap, a foot in the ground
+  K.post = (x, y, w, h, o = {}) => {
+    const iw = Math.max(3, Math.round(w)), ih = Math.max(4, Math.round(h)), col = o.col || COL.woodDark;
+    RICH.pic('w37post|' + iw + '|' + ih + '|' + col + '|' + (o.cap || ''), iw + 6, ih + 6, c => {
+      c.translate(3, 4);
+      RICH.shadow(c, iw / 2 + 1, ih, iw + 2, 2, 0.2);
+      const g = c.createLinearGradient(0, 0, iw, 0); g.addColorStop(0, RICH.lit(col, 0.3)); g.addColorStop(0.4, col); g.addColorStop(1, RICH.dk(col, 0.35));
+      c.fillStyle = g; c.fillRect(0, 0, iw, ih);
+      c.strokeStyle = RICH.rgba(RICH.dk(col, 0.5), 0.5); c.lineWidth = 0.8; c.beginPath(); for (let k = 0; k < ih; k += 17) { const gx = 1 + RICH.r(iw + ih, k) * (iw - 2); c.moveTo(gx, k); c.lineTo(gx, k + 9); } c.stroke();
+      c.fillStyle = 'rgba(255,230,190,0.3)'; c.fillRect(0.5, 0, 1, ih);
+      c.fillStyle = RICH.dk(col, 0.25); c.fillRect(-1, ih - 3, iw + 2, 3);
+      if (o.cap) { c.fillStyle = o.cap; c.beginPath(); c.arc(iw / 2, -1, iw * 0.55 + 0.5, 0, TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,0.55)'; c.beginPath(); c.arc(iw / 2 - 1, -2, iw * 0.2, 0, TAU); c.fill(); }
+      else { c.fillStyle = RICH.lit(col, 0.2); c.fillRect(-0.5, -1.5, iw + 1, 2); }
+      c.strokeStyle = RICH.dk(col, 0.6); c.lineWidth = 1; c.strokeRect(0.5, 0.5, iw - 1, ih - 1);
+    }, x - 3, y - ih - 4);
+  };
+  // (art pass) the dirt of a road, track or the lists as a long chunked strip from world x0 to x1 (screen = world - cx):
+  // grains, strata, pebbles, two wheel ruts or hoof-churned furrows with lit lips, hoof prints and straw. y, h: the band.
+  // o: col, ruts [y offsets], prints (true), key (anything else the look depends on). The caller clips it.
+  K.ground = (cx, y, h, o = {}) => {
+    const col = o.col || COL.dirt, ruts = o.ruts || [], key = 'w37ground|' + col + '|' + ruts.join(',') + '|' + Math.round(h) + '|' + (o.key || '');
+    const ox = Math.round(cx);
+    ctx.save(); ctx.translate(-ox, 0);
+    RICH.strip(key, ox - 8, ox + W + 8, y, h, 256, (c, gx, w, hh) => {
+      RICH.dirt(c, 0, 0, w, hh, { col, gx, seed: 37, roots: false, pebble: o.pebble || RICH.mix(col, '#d8d0c0', 0.45) });
+      for (const ry of ruts) {
+        c.fillStyle = RICH.rgba(RICH.dk(col, 0.4), 0.45); c.beginPath(); c.moveTo(0, ry);
+        for (let s = 0; s <= w; s += 16) c.lineTo(s, ry + Math.sin((gx + s) / 53) * 1.5);
+        for (let s = w; s >= 0; s -= 16) c.lineTo(s, ry + 5 + Math.sin((gx + s) / 53) * 1.5 + Math.sin((gx + s) / 17) * 0.8);
+        c.closePath(); c.fill();
+        c.fillStyle = RICH.rgba(RICH.dk(col, 0.6), 0.35); c.fillRect(0, ry, w, 1.2);
+        c.fillStyle = RICH.rgba(RICH.lit(col, 0.35), 0.7); for (let s = 0; s < w; s += 4) c.fillRect(s, ry + 5.5 + Math.sin((gx + s) / 53) * 1.5, 4, 1.2);
+      }
+      if (o.prints !== false) for (let k = 0; k < w / 26; k++) {
+        const px = 6 + RICH.r(gx + 501, k) * (w - 12), py = 8 + RICH.r(gx + 502, k) * (hh - 16), a = RICH.r(gx + 503, k) * 0.6 - 0.3;
+        c.save(); c.translate(px, py); c.rotate(a);
+        c.strokeStyle = RICH.rgba(RICH.dk(col, 0.5), 0.5); c.lineWidth = 1.6; c.beginPath(); c.ellipse(0, 0, 3.6, 2.4, 0, Math.PI * 0.15, Math.PI * 1.85); c.stroke();
+        c.strokeStyle = RICH.rgba(RICH.lit(col, 0.4), 0.5); c.lineWidth = 0.8; c.beginPath(); c.ellipse(0, 1, 3.6, 2.4, 0, Math.PI * 0.2, Math.PI * 0.8); c.stroke();
+        c.restore();
+      }
+      c.lineWidth = 1; for (let k = 0; k < w / 20; k++) { const sx = RICH.r(gx + 601, k) * w, sy = 4 + RICH.r(gx + 602, k) * (hh - 6), l = 3 + RICH.r(gx + 603, k) * 5, a = RICH.r(gx + 604, k) * 3; c.strokeStyle = k % 2 ? 'rgba(242,207,90,0.75)' : 'rgba(184,144,46,0.65)'; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + Math.cos(a) * l, sy + Math.sin(a) * l); c.stroke(); }
+    });
+    ctx.restore();
   };
   K.dustTrail = (st, x, y, n = 2) => { for (let i = 0; i < n; i++) K.part(st, x + (Math.random() - 0.5) * 16, y - Math.random() * 6, -60 - Math.random() * 80, -20 - Math.random() * 30, 0.6, 'rgba(214,190,150,0.7)', 4 + Math.random() * 3, 40, 'smoke'); };
 

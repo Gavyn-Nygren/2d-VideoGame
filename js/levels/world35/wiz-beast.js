@@ -331,16 +331,32 @@ function wizBeastDrawBack(st) {
     if (k === 2) { ctx.strokeStyle = 'rgba(180,190,230,0.35)'; ctx.lineWidth = 1.5; for (let n = 0; n < 40; n++) { const x = ((n * 97 + t * 60) % (W + 40)) - 20, y = ((n * 53 + t * 520) % (H + 20)) - 10; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 4, y + 14); ctx.stroke(); } }
   });
   // the ground (none over the gaps), the troughs
+  // (art pass) each run's ground is a cached texture pinned to the world, drawn once per stretch of same-run columns
+  // (clipped to it): turf and soil on the paddock, frosted flagstones on the cloud road, wet rock in the storm
+  { let run = null;
+    const gh = Math.ceil(H - K.g), flush = () => {
+      if (!run) return;
+      const { r, a, b } = run; run = null;
+      if (r === 0) { wizLawn(a, K.g, b, H, { top: '#79c47e', body: '#5fae66', noFlowers: true }); return; }
+      ctx.save(); ctx.beginPath(); ctx.rect(a, K.g, b - a, H - K.g); ctx.clip();
+      RICH.strip('wizbst' + r + '|' + gh, a, b, K.g, gh, 256, (c, gx, w, h) => {
+        if (r === 1) { RICH.flags(c, 0, 7, w, h - 7, { col: '#8a8aa0', course: 22, len: 52, seed: 41, gx, fade: 0.35 }); RICH.flags(c, 0, 0, w, 7, { col: '#a8a8bc', course: 7, len: 64, seed: 42, gx }); c.fillStyle = 'rgba(255,255,255,0.55)'; for (let X = Math.ceil(gx / 11) * 11; X < gx + w; X += 11) { c.beginPath(); c.ellipse(X - gx + 5, 1, 4 + RICH.r(X, 5) * 4, 2 + RICH.r(X, 6) * 2, 0, 0, Math.PI * 2); c.fill(); } }
+        else { RICH.rock(c, 0, 0, w, h, { col: '#4a5a5a', gx, seed: 43, wet: true }); c.fillStyle = '#5e7070'; c.fillRect(0, 0, w, 7); c.fillStyle = 'rgba(160,200,220,0.35)'; for (let X = Math.ceil(gx / 60) * 60; X < gx + w; X += 60) { if (RICH.r(X, 7) < 0.5) { c.beginPath(); c.ellipse(X - gx + 20, 4, 12, 2, 0, 0, Math.PI * 2); c.fill(); } } }
+        c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(0, 0, w, 2); c.fillStyle = 'rgba(0,0,0,0.14)'; c.fillRect(0, 7, w, 3);
+      });
+      ctx.restore();
+    };
+    for (let xx = Math.floor((cx - 40) / 20) * 20; xx < cx + W + 40; xx += 20) {
+      if (ph.items.some(o => (o.kind === 'gap' || o.kind === 'leap') && xx + 10 > o.x0 && xx + 10 < o.x1)) { flush(); continue; }
+      const r = wizBeastRunAt(xx);
+      if (run && run.r === r) run.b = xx + 21; else { flush(); run = { r, a: xx, b: xx + 21 }; }
+    }
+    flush(); }
   for (let xx = Math.floor((cx - 40) / 20) * 20; xx < cx + W + 40; xx += 20) {
     if (ph.items.some(o => (o.kind === 'gap' || o.kind === 'leap') && xx + 10 > o.x0 && xx + 10 < o.x1)) continue;
     const r = wizBeastRunAt(xx);
-    ctx.fillStyle = r === 0 ? '#5fae66' : r === 1 ? '#8a8aa0' : '#4a5a5a'; ctx.fillRect(xx, K.g, 21, H - K.g);
-    ctx.fillStyle = r === 0 ? '#79c47e' : r === 1 ? '#a8a8bc' : '#5e7070'; ctx.fillRect(xx, K.g, 21, 7);
-    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(xx, K.g, 21, 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(xx, K.g + 7, 21, 4); ctx.fillRect(xx, K.g + 46, 21, H - K.g - 46);
     const hh = hash(xx, 41);
     ctx.fillStyle = r === 1 ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.14)';
-    if (hh % 3 === 0) { circle(xx + hh % 18, K.g + 20 + (hh >> 5) % 22, 2 + (hh >> 9) % 2); ctx.fill(); }
     if (r === 0 && hh % 4 === 1) { ctx.fillStyle = '#79c47e'; ctx.beginPath(); ctx.moveTo(xx + 6, K.g + 1); ctx.lineTo(xx + 9, K.g - 5); ctx.lineTo(xx + 12, K.g + 1); ctx.fill(); }
     if (r === 1 && hh % 4 === 1) { ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(xx + 10, K.g + 1, 5); ctx.fill(); }
   }
@@ -351,11 +367,16 @@ function wizBeastDrawBack(st) {
   for (let r = 0; r < 2; r++) {
     const tx = wizBeastTroughX(r);
     if (Math.abs(tx - (cx + W / 2)) > W) continue;
-    ctx.fillStyle = WIZC.woodDk; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; rr(tx + 10, K.g - 44, 110, 44, 6); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#6aaee8'; ctx.fillRect(tx + 18, K.g - 38, 94, 10);
+    // (art pass) a planked trough with iron bands and rippled water (cached)
+    RICH.pic('wizbsttrough', 110, 44, (c, w, h) => {
+      RICH.wood(c, 0, 0, w, h, { col: WIZC.woodDk, boards: 3, seam: 0, r: 6, seed: 3, edge: false });
+      for (const x of [16, w - 22]) { c.fillStyle = '#3e3a48'; c.fillRect(x, 0, 6, h); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(x, 0, 1.2, h); RICH.rivet(c, x + 3, 12, 1.1, '#5a5868'); RICH.rivet(c, x + 3, h - 10, 1.1, '#5a5868'); }
+      c.fillStyle = '#6aaee8'; c.fillRect(8, 6, 94, 10); c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(12, 7, 30, 1.5); c.fillRect(56, 9, 20, 1.2); c.fillStyle = 'rgba(30,70,120,0.35)'; c.fillRect(8, 14, 94, 2);
+    }, tx + 10, K.g - 44);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 3; rr(tx + 10, K.g - 44, 110, 44, 6); ctx.stroke();
     text('Swap!', tx + 65, K.g + 36, 16, '#ffe9a8', 'center');
   }
-  for (const q of ph.posts) if (q.x > cx - 40 && q.x < cx + W + 40 && q.x > wizBeastBase(q.run) + 10) { ctx.fillStyle = WIZC.woodDk; ctx.fillRect(q.x - 4, K.g - 70, 8, 70); ctx.fillStyle = q.passed ? '#ffd23f' : '#c8ccd8'; ctx.beginPath(); ctx.moveTo(q.x + 4, K.g - 70); ctx.lineTo(q.x + 30, K.g - 62); ctx.lineTo(q.x + 4, K.g - 54); ctx.fill(); }
+  for (const q of ph.posts) if (q.x > cx - 40 && q.x < cx + W + 40 && q.x > wizBeastBase(q.run) + 10) { RICH.pic('wizbstpost', 8, 70, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: WIZC.woodDk, vert: true, bw: 8, seed: 2, edge: false }); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, h - 10, w, 10); }, q.x - 4, K.g - 70); ctx.fillStyle = q.passed ? '#ffd23f' : '#c8ccd8'; ctx.beginPath(); ctx.moveTo(q.x + 4, K.g - 70); ctx.lineTo(q.x + 30, K.g - 62); ctx.lineTo(q.x + 4, K.g - 54); ctx.fill(); }
   if (ph.end > cx && ph.end < cx + W + 400) { ctx.fillStyle = '#7ac47e'; ctx.fillRect(ph.end - 120, K.g, 2000, 8); text('The exam lawn', ph.end + 40, K.g + 40, 16, '#ffe9a8', 'center'); }
 }
 function wizBeastDraw(st) {
@@ -365,7 +386,10 @@ function wizBeastDraw(st) {
     if (o.x < cx - 200 || o.x > cx + W + 200) continue;
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
     switch (o.kind) {
-      case 'fence': ctx.fillStyle = '#e8dcc0'; for (const dx of [-8, 8]) { ctx.fillRect(o.x + dx - 4, K.g - 54, 8, 54); ctx.strokeRect(o.x + dx - 4, K.g - 54, 8, 54); } ctx.fillRect(o.x - 14, K.g - 46, 28, 8); ctx.strokeRect(o.x - 14, K.g - 46, 28, 8); ctx.fillRect(o.x - 14, K.g - 26, 28, 8); ctx.strokeRect(o.x - 14, K.g - 26, 28, 8); break;
+      case 'fence': // (art pass) whitewashed, grained posts and rails with nails (cached)
+        for (const dx of [-8, 8]) { RICH.pic('wizbstfpost', 8, 54, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: '#e8dcc0', vert: true, bw: 8, seed: 3, edge: false }); c.fillStyle = 'rgba(90,70,40,0.3)'; c.fillRect(0, h - 8, w, 8); }, o.x + dx - 4, K.g - 54); ctx.strokeRect(o.x + dx - 4, K.g - 54, 8, 54); }
+        for (const ry of [K.g - 46, K.g - 26]) RICH.pic('wizbstfrail', 28, 8, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: '#e8dcc0', seed: 4, edge: false }); RICH.nail(c, 6, 4, 1); RICH.nail(c, 22, 4, 1); }, o.x - 14, ry);
+        ctx.fillStyle = '#e8dcc0'; ctx.strokeRect(o.x - 14, K.g - 46, 28, 8); ctx.strokeRect(o.x - 14, K.g - 26, 28, 8); break;
       case 'branch': {
         if (o.run === 1) { ctx.fillStyle = WIZC.stone; ctx.fillRect(o.x - 54, 0, 108, K.g - 62); ctx.strokeRect(o.x - 54, -4, 108, K.g - 58); ctx.fillStyle = WIZC.stoneDk; ctx.fillRect(o.x - 54, K.g - 80, 108, 18); }
         else { ctx.strokeStyle = '#5a3a22'; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(o.x - 120, 0); ctx.quadraticCurveTo(o.x - 40, K.g - 120, o.x + 54, K.g - 70); ctx.stroke(); ctx.fillStyle = '#4f9a58'; for (let n = 0; n < 5; n++) { circle(o.x - 40 + n * 22, K.g - 76 + (n % 2) * 6, 13); ctx.fill(); } }
@@ -373,8 +397,17 @@ function wizBeastDraw(st) {
       }
       case 'hay': {
         if (o.gone) { ctx.fillStyle = '#e8c860'; for (let n = 0; n < 8; n++) { const a = n * 0.8, r = (o.goneT || 0) * 260; ctx.fillRect(o.x + Math.cos(a) * r, K.g - 90 + Math.sin(a) * r + (o.goneT || 0) * (o.goneT || 0) * 600, 14, 8); } break; }
-        ctx.fillStyle = '#e8c860'; ctx.strokeStyle = C.ink; for (let n = 0; n < 4; n++) { rr(o.x - 28, K.g - 48 * (n + 1), 56, 46, 6); ctx.fill(); ctx.stroke(); }
-        ctx.strokeStyle = '#b8902a'; ctx.lineWidth = 2; for (let n = 0; n < 4; n++) { ctx.beginPath(); ctx.moveTo(o.x - 20, K.g - 48 * n - 24); ctx.lineTo(o.x + 20, K.g - 48 * n - 24); ctx.stroke(); }
+        // (art pass) straw bales: combed straw in a shaded block with loose ends and two twine bands (cached)
+        ctx.strokeStyle = C.ink; for (let n = 0; n < 4; n++) {
+          RICH.pic('wizbsthay|' + (n % 2), 56, 46, (c, w, h) => {
+            c.save(); RICH.rr(c, 0, 0, w, h, 6); c.clip();
+            c.fillStyle = '#e8c860'; c.fillRect(0, 0, w, h);
+            c.lineWidth = 1; for (let k = 0; k < 90; k++) { const x = RICH.r(n + 60, k) * w, y = RICH.r(n + 61, k) * h, l = 4 + RICH.r(n + 62, k) * 8; c.strokeStyle = RICH.r(n + 63, k) < 0.5 ? 'rgba(170,120,30,0.55)' : 'rgba(255,240,170,0.7)'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + l, y + (RICH.r(n + 64, k) - 0.5) * 3); c.stroke(); }
+            c.fillStyle = 'rgba(120,80,20,0.25)'; c.fillRect(w - 10, 0, 10, h); c.fillRect(0, h - 7, w, 7); c.fillStyle = 'rgba(255,250,210,0.35)'; c.fillRect(0, 0, w, 3);
+            for (const x of [15, w - 17]) { c.fillStyle = '#8a5a2a'; c.fillRect(x, 0, 3, h); c.fillStyle = 'rgba(255,230,180,0.4)'; c.fillRect(x, 0, 1, h); }
+            c.restore();
+          }, o.x - 28, K.g - 48 * (n + 1));
+          rr(o.x - 28, K.g - 48 * (n + 1), 56, 46, 6); ctx.stroke(); }
         break;
       }
       case 'gate': {

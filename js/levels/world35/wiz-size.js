@@ -406,24 +406,48 @@ function wizSizeDraw(st) {
   for (const r of ph.solids) {
     if (r.x1 < cx - 40 || r.x0 > cx + W + 40 || r.off) continue;
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
-    if (r.kind === 'floor' || r.kind === 'shelf') { ctx.fillStyle = C2.floorDk; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = C2.floor; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 8); ctx.fillStyle = 'rgba(255,240,200,0.25)'; ctx.fillRect(r.x0, r.y0 + 1, r.x1 - r.x0, 2);
-      { const a = Math.max(r.x0, cx - 40), b = Math.min(r.x1, cx + W + 40); ctx.save(); ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath();
-        for (let y = r.y0 + 22; y < r.y1 - 4; y += 16) { ctx.moveTo(a, y); ctx.lineTo(b, y); }
-        for (let x = Math.ceil(a / 90) * 90; x < b; x += 90) { ctx.moveTo(x, r.y0 + 8); ctx.lineTo(x, Math.min(r.y1, r.y0 + 22)); }
-        ctx.stroke(); ctx.restore(); }
+    if (r.kind === 'floor' || r.kind === 'shelf') {
+      // (art pass) storeroom boards: a lit nosing board on top, then grained boards with joints, knots and nails,
+      // darker with depth (cached chunks pinned to the world, clipped to the solid)
+      { const a = Math.max(r.x0, cx - 40), b = Math.min(r.x1, cx + W + 40), hh = Math.min(Math.ceil(r.y1 - r.y0), 240);
+        ctx.save(); ctx.beginPath(); ctx.rect(a, r.y0, b - a, r.y1 - r.y0); ctx.clip();
+        RICH.strip('wizszfl|' + hh, a, b, r.y0, hh, 256, (c, gx, w, h) => {
+          RICH.boards(c, 0, 8, w, h - 8, { col: C2.floorDk, bh: 16, len: 130, seed: 6, gx });
+          const sg = c.createLinearGradient(0, 8, 0, h); sg.addColorStop(0, 'rgba(0,0,0,0)'); sg.addColorStop(1, 'rgba(20,10,5,0.35)'); c.fillStyle = sg; c.fillRect(0, 8, w, h - 8);
+          RICH.boards(c, 0, 0, w, 8, { col: C2.floor, bh: 8, len: 200, seed: 7, gx, nails: false });
+          c.fillStyle = 'rgba(255,240,200,0.3)'; c.fillRect(0, 1, w, 2); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, 8, w, 2);
+        });
+        if (r.y1 - r.y0 > hh) { ctx.fillStyle = RICH.dk(C2.floorDk, 0.35); ctx.fillRect(a, r.y0 + hh, b - a, r.y1 - r.y0 - hh); }
+        ctx.restore(); }
       ctx.beginPath(); ctx.moveTo(r.x0, r.y0); ctx.lineTo(r.x1, r.y0); ctx.stroke(); if (r.kind === 'shelf') { ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); } }
     else if (r.kind === 'ceil') { ctx.fillStyle = C2.wallDk; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
     else if (r.kind === 'mousewall') {
-      ctx.fillStyle = C2.wall; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0 + 12); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0 + 12);
-      ctx.fillStyle = C2.wallDk; for (let y = r.y0 + 20; y < r.y1; y += 30) ctx.fillRect(r.x0 + 2, y, r.x1 - r.x0 - 4, 3);
+      // (art pass) an old brick wall with a skirting board (cached per size)
+      RICH.pic('wizszmw|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0 + 12, (c, w, h) => {
+        RICH.bricks(c, 0, 0, w, h, { col: C2.wall, mortar: '#5a4038', bh: 12, bw: 26, seed: 17, edge: false });
+        c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(w - 6, 0, 6, h); c.fillStyle = 'rgba(255,230,200,0.14)'; c.fillRect(0, 0, 3, h);
+        RICH.wood(c, 0, h - 26, w, 14, { col: C2.wallDk, seed: 2, edge: false });
+      }, r.x0, r.y0);
+      ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0 + 12);
       ctx.fillStyle = '#1a1018'; ctx.beginPath(); ctx.arc((r.x0 + r.x1) / 2, F, 9, Math.PI, 0); ctx.fill();
     } else if (r.kind === 'book') {
-      ctx.fillStyle = C2.book; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
-      const cols = ['#d86a5a', '#5aa8d8', '#e8c050', '#7ac070'];
-      for (let row = 0; row < 3; row++) for (let k = 0; k < 6; k++) { ctx.fillStyle = cols[(k + row) % 4]; ctx.fillRect(r.x0 + 5 + k * 8.5, r.y0 + 4 + row * 22, 6, 18); }
-    } else if (r.kind === 'beam') { ctx.fillStyle = C2.wood || '#8a6a3e'; ctx.fillStyle = '#8a6a3e'; ctx.fillRect(r.x0, r.y1 - 26, r.x1 - r.x0, 26); ctx.strokeRect(r.x0, r.y1 - 26, r.x1 - r.x0, 26); ctx.fillStyle = '#6a4a2e'; ctx.fillRect(r.x0 + 12, r.y0, 16, r.y1 - r.y0 - 26); }
+      // (art pass) a stack of giant books: leather with gilt bands and lit spines (cached per size)
+      RICH.pic('wizszbook|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => {
+        RICH.wood(c, 0, 0, w, h, { col: C2.book, boards: Math.max(1, Math.round(h / 22)), knots: 0, seed: 8, edge: false });
+        const cols = ['#d86a5a', '#5aa8d8', '#e8c050', '#7ac070'];
+        for (let row = 0; row < 3; row++) for (let k = 0; k < 6; k++) {
+          const x = 5 + k * 8.5, y = 4 + row * 22, col = cols[(k + row) % 4];
+          c.fillStyle = col; c.fillRect(x, y, 6, 18); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x, y, 1.5, 18); c.fillStyle = RICH.rgba(RICH.dk(col, 0.6), 0.5); c.fillRect(x + 4.5, y, 1.5, 18);
+          c.fillStyle = '#e8c860'; c.fillRect(x, y + 3, 6, 1.2); c.fillRect(x, y + 14, 6, 1.2); c.fillStyle = RICH.dk(col, 0.4); c.fillRect(x + 1.5, y + 7, 3, 4);
+        }
+      }, r.x0, r.y0);
+      ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
+    } else if (r.kind === 'beam') { // (art pass) a grained beam on a post, both cached
+      RICH.pic('wizszpost|' + (r.y1 - r.y0 - 26), 16, r.y1 - r.y0 - 26, (c, w, h) => RICH.wood(c, 0, 0, w, h, { col: '#6a4a2e', vert: true, bw: 16, seed: 4, edge: false }), r.x0 + 12, r.y0);
+      RICH.pic('wizszbeam|' + (r.x1 - r.x0), r.x1 - r.x0, 26, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: '#8a6a3e', boards: 2, seam: 0, seed: 12, edge: false }); RICH.nail(c, 20, 7, 1.4); RICH.nail(c, 20, 19, 1.4); RICH.nail(c, w - 20, 7, 1.4); RICH.nail(c, w - 20, 19, 1.4); }, r.x0, r.y1 - 26);
+      ctx.strokeRect(r.x0, r.y1 - 26, r.x1 - r.x0, 26); }
     else if (r.kind === 'web') { ctx.strokeStyle = C2.web; ctx.lineWidth = 1.5; for (let x = r.x0; x < r.x1; x += 16) { ctx.beginPath(); ctx.moveTo(x, r.y0); ctx.quadraticCurveTo(x + 8, r.y0 + 8, x + 16, r.y0); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(r.x0, r.y0); ctx.lineTo(r.x1, r.y0); ctx.stroke(); }
-    else if (r.kind === 'plank') { ctx.fillStyle = C2.plank; ctx.fillRect(r.x0 - 6, r.y0, r.x1 - r.x0 + 12, r.y1 - r.y0); ctx.strokeRect(r.x0 - 6, r.y0, r.x1 - r.x0 + 12, r.y1 - r.y0); }
+    else if (r.kind === 'plank') { RICH.pic('wizszplank|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0 + 12, r.y1 - r.y0, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: C2.plank, seam: 0, seed: 5, edge: false }); RICH.nail(c, 6, h / 2, 1.3); RICH.nail(c, w - 6, h / 2, 1.3); }, r.x0 - 6, r.y0); ctx.strokeRect(r.x0 - 6, r.y0, r.x1 - r.x0 + 12, r.y1 - r.y0); }
     else if (r.kind === 'junkbed') {
       ctx.fillStyle = C2.junkDk; ctx.fillRect(r.x0, F - 6, r.x1 - r.x0, r.y1 - F + 6);
       for (let x = r.x0 + 10; x < r.x1; x += 34) { const k = (x * 7) % 5; ctx.fillStyle = ['#8a7a6a', '#6a8a9a', '#9a6a7a', '#7a7a5a', '#5a6a8a'][k]; circle(x, F + 4 + (k % 3) * 8, 10 + k); ctx.fill(); ctx.stroke(); }
