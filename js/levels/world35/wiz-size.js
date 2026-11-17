@@ -381,7 +381,7 @@ function wizSizeDrawBack(st) {
       for (let y = 140, row = 0; y < F; y += 70, row++) {
         const items = [[24, 14, 30], [60, 22, 22], [100, 10, 26]];
         items.forEach(([dx, w, h2], j) => {
-          const kind = (hash(x * 7 + j * 31, row * 13 + j) >> 4) % 4, ix = x + dx + ox - x, top = y - h2 + oy, yb = y + oy;
+          const kind = (hash(x * 7 + j * 31, row * 13 + j) >>> 4) % 4, ix = x + dx + ox - x, top = y - h2 + oy, yb = y + oy;
           if (kind === 0) { // a box with a lid, a label and a string
             const bc = ['#6a5070', '#5e5a72', '#70566a'][(row + j) % 3];
             c.fillStyle = bc; c.fillRect(ix, top, w + 4, h2); c.fillStyle = R.lit(bc, 0.14); c.fillRect(ix - 1, top, w + 6, 4);
