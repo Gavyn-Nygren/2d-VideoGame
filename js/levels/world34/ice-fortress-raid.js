@@ -652,10 +652,8 @@
         const off = (r % 2) * 34;
         for (let bx = x0 - off; bx < x1; bx += 68) {
           const a = Math.max(x0, bx + 2), b = Math.min(x1, bx + 66); if (b - a < 6) continue;
-          const hv = K.hash(r * 7 + bx * 3 + sd);
-          ctx.fillStyle = hv < 0.33 ? '#53575f' : hv < 0.66 ? '#4e525a' : '#575b64'; ctx.fillRect(a, ry + 2, b - a, S.rh - 4);
-          ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(a, ry + 2, b - a, 3);
-          ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(a, ry + S.rh - 6, b - a, 4);
+          const hv = K.hash(r * 7 + bx * 3 + sd), bw = Math.round(b - a), v = Math.floor(hv * 3);
+          K.pic('ifwb|' + bw + '|' + v, bw, S.rh, 0, 0, () => paintWallBlock(bw, v), a, ry);
           if (hv > 0.6) { ctx.fillStyle = '#eef4f8'; rr(a + 2, ry, b - a - 4, 5, 2.5); ctx.fill(); }
         }
       }
@@ -778,6 +776,64 @@
       text('CHOP ' + (3 - hits), gx, y + 30, 12, '#ffffff', 'center', 'body');
     }
   }
+  // a dark rock block in the side walls (origin: its top left; w wide, one row high): chisel marks, grain, a lit top,
+  // a shaded foot, pale lichen and the odd crack
+  function paintWallBlock(w, v) {
+    const R = n => K.hash(n * 1.37 + w * 0.19 + v * 7.1);
+    const g = ctx.createLinearGradient(0, 2, 0, S.rh - 2); g.addColorStop(0, ['#5c6068', '#575b63', '#60646c'][v]); g.addColorStop(1, ['#484c54', '#444850', '#4a4e56'][v]);
+    ctx.fillStyle = g; ctx.fillRect(0, 2, w, S.rh - 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(0, 2, w, 3);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0, S.rh - 6, w, 4); ctx.fillRect(w - 2, 2, 2, S.rh - 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(0, 2, 2, S.rh - 4);
+    ctx.fillStyle = 'rgba(20,22,28,0.35)'; ctx.beginPath(); for (let k = 0; k < w * 0.6; k++) ctx.rect(R(k) * w, 5 + R(k + 200) * (S.rh - 12), 1.3, 1); ctx.fill();
+    ctx.strokeStyle = 'rgba(20,22,28,0.3)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let k = 0; k < w / 10; k++) { const sx = 4 + R(k + 400) * (w - 8), sy = 8 + R(k + 401) * (S.rh - 18); ctx.moveTo(sx, sy); ctx.lineTo(sx + 4, sy + 2); } ctx.stroke();
+    if (R(500) < 0.5) { ctx.strokeStyle = 'rgba(20,22,28,0.6)'; ctx.lineWidth = 1; const cx0 = 8 + R(501) * (w - 16); ctx.beginPath(); ctx.moveTo(cx0, 3); ctx.lineTo(cx0 + 4, S.rh * 0.4); ctx.lineTo(cx0 - 2, S.rh * 0.7); ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.moveTo(cx0 + 1, 3); ctx.lineTo(cx0 + 5, S.rh * 0.4); ctx.stroke(); }
+    for (let k = 0; k < 2; k++) if (R(k + 600) < 0.45) { ctx.fillStyle = k ? 'rgba(170,190,150,0.35)' : 'rgba(200,190,140,0.3)'; ctx.beginPath(); ctx.ellipse(6 + R(k + 601) * (w - 12), 10 + R(k + 602) * (S.rh - 20), 4 + R(k + 603) * 4, 2.5, 0, 0, TAU); ctx.fill(); }
+  }
+  // a frozen boulder in the climbing face (origin: the cell's middle)
+  function paintBoulderCell(v) {
+    const hw = S.cw / 2, hh = S.rh / 2, hv = (v + 0.5) / 4, R = n => K.hash(n * 2.3 + v * 5.7);
+    const g = ctx.createLinearGradient(0, -hh, 0, hh); g.addColorStop(0, '#6a6e76'); g.addColorStop(0.5, '#5a5e66'); g.addColorStop(1, '#43474f');
+    ctx.fillStyle = g; rr(-hw + 1, -hh + 1, S.cw - 2, S.rh - 2, 6); ctx.fill();
+    ctx.save(); rr(-hw + 1, -hh + 1, S.cw - 2, S.rh - 2, 6); ctx.clip();
+    ctx.fillStyle = '#4a4e56'; rr(-hw + 1, 2, S.cw - 2, hh - 1, 6); ctx.fill();
+    ctx.fillStyle = '#727780'; rr(-hw + 4, -hh + 4, S.cw - 14, S.rh / 2 - 4, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(30,32,38,0.3)'; ctx.beginPath(); ctx.moveTo(hw - 10, -hh); ctx.lineTo(hw, -hh); ctx.lineTo(hw, hh); ctx.lineTo(hw - 16, hh); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.14)'; rr(-hw + 6, -hh + 6, S.cw - 22, 4, 2); ctx.fill();
+    ctx.fillStyle = 'rgba(25,27,32,0.45)'; ctx.beginPath(); for (let k = 0; k < 40; k++) ctx.rect(-hw + 4 + R(k) * (S.cw - 8), -hh + 6 + R(k + 50) * (S.rh - 10), 1.3, 1); ctx.fill();
+    ctx.fillStyle = 'rgba(235,240,245,0.45)'; ctx.beginPath(); for (let k = 0; k < 14; k++) ctx.rect(-hw + 4 + R(k + 100) * (S.cw - 8), -hh + 6 + R(k + 150) * (S.rh - 10), 1, 1); ctx.fill();
+    ctx.fillStyle = 'rgba(190,180,120,0.45)'; ctx.beginPath(); ctx.ellipse(-hw + 10 + R(200) * 20, hh - 8, 5, 2.5, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(150,180,140,0.4)'; ctx.beginPath(); ctx.ellipse(hw - 14 - R(201) * 10, 2, 3.5, 2, 0, 0, TAU); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(30,32,38,0.6)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(-8 + hv * 16, -6); ctx.lineTo(-4 + hv * 10, 4); ctx.lineTo(-8 + hv * 14, 14); ctx.moveTo(-4 + hv * 10, 4); ctx.lineTo(4 + hv * 10, 8); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-7 + hv * 16, -6); ctx.lineTo(-3 + hv * 10, 4); ctx.stroke();
+    ctx.strokeStyle = '#33363d'; ctx.lineWidth = 1.5; rr(-hw + 1, -hh + 1, S.cw - 2, S.rh - 2, 6); ctx.stroke();
+    ctx.fillStyle = '#f2f6f8'; ctx.beginPath(); ctx.moveTo(-hw + 2, -hh + 6); ctx.quadraticCurveTo(-hw + 2, -hh, -hw + 8, -hh); ctx.lineTo(hw - 8, -hh); ctx.quadraticCurveTo(hw - 2, -hh, hw - 2, -hh + 6);
+    ctx.lineTo(hw - 10, -hh + 6); ctx.quadraticCurveTo(hw - 14, -hh + 11, hw - 18, -hh + 6); ctx.lineTo(-hw + 2, -hh + 6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(160,190,210,0.6)'; ctx.fillRect(-hw + 6, -hh + 5, S.cw - 16, 1.2);
+    ctx.fillStyle = '#cfeaf8'; ctx.beginPath(); ctx.moveTo(hw - 16, -hh + 9); ctx.lineTo(hw - 14, -hh + 15); ctx.lineTo(hw - 12, -hh + 9); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(-hw + 10, -hh - 0.5, 14, 1);
+  }
+  // a block of clear blue ice (origin: the cell's middle): a deep core, frozen bubbles, fracture planes, a frosted rim
+  function paintBlueIce(v) {
+    const hw = S.cw / 2, hh = S.rh / 2, R = n => K.hash(n * 3.1 + v * 4.3);
+    ctx.fillStyle = 'rgba(60,140,210,0.75)'; rr(-hw + 2, -hh + 2, S.cw - 4, S.rh - 4, 6); ctx.fill();
+    ctx.save(); rr(-hw + 2, -hh + 2, S.cw - 4, S.rh - 4, 6); ctx.clip();
+    ctx.fillStyle = 'rgba(20,70,130,0.35)'; ctx.fillRect(-hw, 4, S.cw, hh);
+    const gc = ctx.createRadialGradient(4, 4, 2, 4, 4, hw); gc.addColorStop(0, 'rgba(20,60,120,0.35)'); gc.addColorStop(1, 'rgba(20,60,120,0)');
+    ctx.fillStyle = gc; ctx.fillRect(-hw, -hh, S.cw, S.rh);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.moveTo(-hw + 5, -hh + 5); ctx.lineTo(-hw + 18, -hh + 5); ctx.lineTo(-hw + 5, -hh + 22); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.moveTo(-hw, hh * 0.2 - v * 3); ctx.lineTo(hw, -hh * 0.3 + v * 2); ctx.lineTo(hw, -hh * 0.1 + v * 2); ctx.lineTo(-hw, hh * 0.4 - v * 3); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-10, -12); ctx.lineTo(6, 10); ctx.moveTo(-2, -2); ctx.lineTo(10, -6); ctx.stroke();
+    ctx.strokeStyle = 'rgba(220,245,255,0.7)'; ctx.lineWidth = 0.8;
+    for (let k = 0; k < 6; k++) { const bx = -hw + 6 + R(k) * (S.cw - 12), by = -hh + 6 + R(k + 20) * (S.rh - 12), br = 0.8 + R(k + 40) * 1.8; circle(bx, by, br); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; for (let k = 0; k < 6; k++) { const bx = -hw + 6 + R(k) * (S.cw - 12), by = -hh + 6 + R(k + 20) * (S.rh - 12); ctx.fillRect(bx - 0.6, by - 0.8, 0.8, 0.8); }
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(230,248,255,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-hw + 6, -hh + 3); ctx.lineTo(hw - 6, -hh + 3); ctx.stroke();
+    ctx.strokeStyle = 'rgba(20,70,130,0.7)'; ctx.lineWidth = 1.5; rr(-hw + 2, -hh + 2, S.cw - 4, S.rh - 4, 6); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)'; for (let k = 0; k < 4; k++) { circle(-hw + 8 + k * (S.cw - 16) / 3, hh - 3, 1.6 + (k % 2)); ctx.fill(); }
+  }
   function drawCell(st, c, r, t) {
     const ch = st.g[r][c], x = cx(c), y = wy(r), hw = S.cw / 2, hh = S.rh / 2;
     const melted = st.melt[r][c] > 0;
@@ -810,19 +866,9 @@
       return;
     }
     if (ch === 'R') {
-      // a frozen boulder: shaded lower half, lit top facet, a crack, specks, an outline and a snow cap with a drip
-      const hv = K.hash(c * 17 + r * 29);
-      ctx.fillStyle = '#5a5e66'; rr(x - hw + 1, y - hh + 1, S.cw - 2, S.rh - 2, 6); ctx.fill();
-      ctx.fillStyle = '#4a4e56'; rr(x - hw + 1, y + 2, S.cw - 2, hh - 1, 6); ctx.fill();
-      ctx.fillStyle = '#6e737a'; rr(x - hw + 4, y - hh + 4, S.cw - 14, S.rh / 2 - 4, 4); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.12)'; rr(x - hw + 6, y - hh + 6, S.cw - 22, 4, 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(30,32,38,0.55)'; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(x - 8 + hv * 16, y - 6); ctx.lineTo(x - 4 + hv * 10, y + 4); ctx.lineTo(x - 8 + hv * 14, y + 14); ctx.stroke();
-      ctx.fillStyle = 'rgba(30,32,38,0.4)'; for (let k = 0; k < 3; k++) { circle(x - hw + 8 + K.hash(c + r * 3 + k) * (S.cw - 16), y + 6 + K.hash(c * 3 + r + k) * 12, 1.3); ctx.fill(); }
-      ctx.strokeStyle = '#33363d'; ctx.lineWidth = 1.5; rr(x - hw + 1, y - hh + 1, S.cw - 2, S.rh - 2, 6); ctx.stroke();
-      ctx.fillStyle = '#f2f6f8'; ctx.beginPath(); ctx.moveTo(x - hw + 2, y - hh + 6); ctx.quadraticCurveTo(x - hw + 2, y - hh, x - hw + 8, y - hh); ctx.lineTo(x + hw - 8, y - hh); ctx.quadraticCurveTo(x + hw - 2, y - hh, x + hw - 2, y - hh + 6);
-      ctx.lineTo(x + hw - 10, y - hh + 6); ctx.quadraticCurveTo(x + hw - 14, y - hh + 11, x + hw - 18, y - hh + 6); ctx.lineTo(x - hw + 2, y - hh + 6); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(160,190,210,0.6)'; ctx.fillRect(x - hw + 6, y - hh + 5, S.cw - 16, 1.2);
+      // a frozen boulder: shaded lower half, lit top facet, cracks, grain, lichen, an outline and a snow cap with a drip
+      const v = Math.floor(K.hash(c * 17 + r * 29) * 4);
+      K.pic('ifR|' + v, S.cw + 4, S.rh + 8, hw + 2, hh + 4, () => paintBoulderCell(v), x, y);
       return;
     }
     if (ch === 'P') {
@@ -831,13 +877,7 @@
       if (!st.ropeFree) { ctx.fillStyle = 'rgba(220,240,255,0.8)'; ctx.fillRect(x - 6, y - hh, 12, S.rh); }
       return;
     }
-    if (ch === 'B') {
-      ctx.fillStyle = 'rgba(60,140,210,0.75)'; rr(x - hw + 2, y - hh + 2, S.cw - 4, S.rh - 4, 6); ctx.fill();
-      ctx.fillStyle = 'rgba(20,70,130,0.35)'; rr(x - hw + 2, y + 4, S.cw - 4, hh - 6, 6); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.moveTo(x - hw + 5, y - hh + 5); ctx.lineTo(x - hw + 18, y - hh + 5); ctx.lineTo(x - hw + 5, y - hh + 22); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 10, y - 12); ctx.lineTo(x + 6, y + 10); ctx.moveTo(x - 2, y - 2); ctx.lineTo(x + 10, y - 6); ctx.stroke();
-      ctx.strokeStyle = 'rgba(20,70,130,0.7)'; ctx.lineWidth = 1.5; rr(x - hw + 2, y - hh + 2, S.cw - 4, S.rh - 4, 6); ctx.stroke();
-    }
+    if (ch === 'B') K.pic('ifB|' + Math.floor(K.hash(c * 13 + r * 7) * 3), S.cw, S.rh, hw, hh, () => paintBlueIce(Math.floor(K.hash(c * 13 + r * 7) * 3)), x, y);
     else if (ch === 'N') { ctx.fillStyle = '#f4f8fb'; ctx.beginPath(); ctx.ellipse(x, y + 4, hw - 3, hh - 6, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#dce8f0'; ctx.beginPath(); ctx.ellipse(x + 4, y + 8, hw - 12, hh - 14, 0, 0, TAU); ctx.fill(); }
     else if (ch === 'U') {
       const pulse = 0.6 + 0.4 * Math.sin(t * 4 + c + r);

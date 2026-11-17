@@ -1072,14 +1072,42 @@ function tthDinoDrawGround(st, burn, t) {
       for (let n = 0; n < 4; n++) { qx += (hash(x, n) % 17) - 8; qy += 10 + hash(n, x) % 9; ctx.lineTo(qx, qy); }
       ctx.stroke();
     }
+    // (art pass) a pebble with a lit top in the earth, hair roots under the turf, and now and then a fossil shell
+    const px = x + 30 + (hs >> 11) % 14, py = gy + 20 + (hs >> 14) % 34, pr = 3 + (hs >> 17) % 4;
+    ctx.fillStyle = tthDinoMix('#c89466', '#4a3a42', burn); ctx.beginPath(); ctx.ellipse(px, py, pr * 1.3, pr, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,26,40,0.45)'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,240,210,0.45)'; ctx.beginPath(); ctx.ellipse(px - pr * 0.3, py - pr * 0.35, pr * 0.6, pr * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(70,40,20,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 8, gy + 6); ctx.quadraticCurveTo(x + 12, gy + 14, x + 6, gy + 22); ctx.moveTo(x + 10, gy + 12); ctx.lineTo(x + 16, gy + 18); ctx.stroke();
+    if (hs % 5 === 1) {
+      const fx = x + 14 + (hs >> 4) % 20, fy = gy + 50 + (hs >> 9) % 30;
+      ctx.strokeStyle = 'rgba(255,236,200,0.4)'; ctx.lineWidth = 1.6; ctx.beginPath();
+      for (let a = 0; a < 12; a += 0.4) { const r = 1 + a * 0.75; const qx = fx + Math.cos(a) * r, qy = fy + Math.sin(a) * r * 0.8; if (a === 0) ctx.moveTo(qx, qy); else ctx.lineTo(qx, qy); }
+      ctx.stroke();
+    }
+  }
+  // soft strata bands that follow the ground's line
+  for (const [dy, th, col] of [[38, 9, 'rgba(255,220,170,0.10)'], [76, 14, 'rgba(60,30,20,0.13)'], [118, 8, 'rgba(255,220,170,0.08)']]) {
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1] + dy); for (const q of pts) ctx.lineTo(q[0], q[1] + dy);
+    for (let i = pts.length - 1; i >= 0; i--) ctx.lineTo(pts[i][0], pts[i][1] + dy + th); ctx.closePath(); ctx.fill();
   }
   ctx.restore();
   // the grass (ash later) along the top, and the ink line
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   ctx.strokeStyle = tthDinoMix('#63bf55', '#6b5a58', burn); ctx.lineWidth = 9;
   ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1] + 4); for (const q of pts) ctx.lineTo(q[0], q[1] + 4); ctx.stroke();
+  ctx.strokeStyle = 'rgba(30,70,30,0.35)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1] + 8); for (const q of pts) ctx.lineTo(q[0], q[1] + 8); ctx.stroke();
   ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (const q of pts) ctx.lineTo(q[0], q[1]); ctx.stroke();
+  // (art pass) blades of grass standing up along the top, lit at the tips
+  if (burn < 0.75) {
+    ctx.lineWidth = 1.8; ctx.strokeStyle = tthDinoMix('#4aa84a', '#6b5a58', burn); ctx.beginPath();
+    for (let x = Math.floor((cam.x - 40) / 9) * 9; x < cam.x + W + 40; x += 9) { const gy = tthDinoG0(ph, x); if (Math.abs(gy - tthDinoG0(ph, x + 6)) > 2) continue; const hb = 4 + hash(x, 71) % 6; ctx.moveTo(x, gy - 1); ctx.lineTo(x + 1.5 - (hash(x, 72) % 3), gy - hb); }
+    ctx.stroke();
+    ctx.strokeStyle = tthDinoMix('#9ae07a', '#6b5a58', burn); ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let x = Math.floor((cam.x - 40) / 9) * 9 + 4; x < cam.x + W + 40; x += 18) { const gy = tthDinoG0(ph, x); if (Math.abs(gy - tthDinoG0(ph, x + 6)) > 2) continue; ctx.moveTo(x, gy - 2); ctx.lineTo(x + 1, gy - 6 - hash(x, 73) % 4); }
+    ctx.stroke();
+  }
   // plants and bones on the ground (a pure function of x), away from the things in the way
   for (let x = Math.floor((cam.x - 40) / 64) * 64; x < cam.x + W + 40; x += 64) {
     const hs = hash(x, 5), kind = hs % 8, dx = x + (hs >> 4) % 34;

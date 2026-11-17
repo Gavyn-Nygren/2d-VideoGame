@@ -842,24 +842,15 @@
     }, 0, S.floor, true);
     // the serving steps
     for (const l of LEDGES) {
-      ctx.fillStyle = COLW.wood; rr(l.x0, l.y, l.x1 - l.x0, 10, 3); ctx.fill();
-      ctx.fillStyle = COLW.woodDark; ctx.fillRect(l.x0 + 6, l.y + 10, 6, (l.k === 0 ? S.floor : S.tables[l.k - 1].ly) - l.y - 10); ctx.fillRect(l.x1 - 12, l.y + 10, 6, (l.k === 0 ? S.floor : S.tables[l.k - 1].ly) - l.y - 10);
-      ctx.fillStyle = COLW.woodHi; ctx.fillRect(l.x0 + 2, l.y + 1, l.x1 - l.x0 - 4, 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(l.x0 + 3, l.y + 10, l.x1 - l.x0 - 6, 3);
-      ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 1.2; rr(l.x0, l.y, l.x1 - l.x0, 10, 3); ctx.stroke();
-      ctx.fillStyle = '#c8ccd6'; ctx.fillRect(l.x0 + 8, l.y + 4, 1.6, 1.6); ctx.fillRect(l.x1 - 10, l.y + 4, 1.6, 1.6);
+      const lw = Math.round(l.x1 - l.x0), lh = Math.round((l.k === 0 ? S.floor : S.tables[l.k - 1].ly) - l.y);
+      K.pic('meadstep|' + lw + '|' + lh, lw + 4, lh + 4, 0, 2, () => paintStep(lw, lh), l.x0, l.y);
     }
     // the tables and their Vikings
     for (let tt = 2; tt >= 0; tt--) {
       const ty = S.tables[tt].y, open = tt < st.nTables;
-      ctx.fillStyle = '#4a2a14'; ctx.fillRect(S.tx0 + 10, ty - 8, S.tx1 - S.tx0 - 20, 6); // the bench behind
+      K.pic('meadbench', S.tx1 - S.tx0, 12, 0, 9, paintBench, S.tx0, ty); // the bench behind
       if (open) for (const s of st.seats) if (s.t === tt) npc(s, s.x, ty, t);
-      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(S.tx0 + 6, ty + 12, S.tx1 - S.tx0 - 12, 5);
-      ctx.fillStyle = open ? COLW.wood : '#5a3a22'; rr(S.tx0, ty, S.tx1 - S.tx0, 12, 3); ctx.fill();
-      ctx.fillStyle = COLW.woodHi; ctx.fillRect(S.tx0 + 4, ty + 1, S.tx1 - S.tx0 - 8, 2);
-      ctx.fillStyle = 'rgba(40,20,8,0.35)'; for (let k = 1; k < 6; k++) ctx.fillRect(S.tx0 + k * (S.tx1 - S.tx0) / 6, ty + 3, 1.5, 8);
-      ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 1.2; rr(S.tx0, ty, S.tx1 - S.tx0, 12, 3); ctx.stroke();
-      ctx.fillStyle = COLW.woodDark; for (const lx of [S.tx0 + 20, S.tx1 - 26]) { ctx.fillRect(lx, ty + 12, 6, 16); ctx.fillStyle = 'rgba(255,200,140,0.18)'; ctx.fillRect(lx, ty + 12, 1.5, 16); ctx.fillStyle = COLW.woodDark; }
+      K.pic('meadtable|' + (open ? 1 : 0) + '|' + tt, S.tx1 - S.tx0 + 8, 34, 4, 2, () => paintTable(open, tt), S.tx0, ty);
       if (open) for (const s of st.seats) if (s.t === tt && s.plate) { ctx.fillStyle = '#e8e0d0'; ctx.beginPath(); ctx.ellipse(s.x, ty - 1, 12, 3, 0, 0, TAU); ctx.fill(); }
       if (!open) text('(not open yet)', (S.tx0 + S.tx1) / 2, ty - 16, 12, 'rgba(255,255,255,0.4)', 'center', 'body');
       // arm-wrestle
@@ -922,6 +913,68 @@
     ctx.restore();
   }
   const COLW = K.COL;
+  // a long feast table (origin: the top left of its top): two oak boards with grain, knots and nail heads, mead rings
+  // and crumbs, a carved lip, and trestle legs with a cross bar. A closed table is darker and bare.
+  function paintTable(open, tt) {
+    const w = S.tx1 - S.tx0, R = n => K.hash(n * 1.91 + tt * 13.7);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(6, 12, w - 12, 5);
+    // trestle legs and the stretcher between them
+    ctx.fillStyle = COLW.woodDark; ctx.fillRect(26, 18, w - 52, 4);
+    for (const lx of [20, w - 26]) {
+      ctx.fillStyle = COLW.woodDark; ctx.fillRect(lx, 12, 6, 16);
+      ctx.fillStyle = 'rgba(255,200,140,0.18)'; ctx.fillRect(lx, 12, 1.5, 16);
+      ctx.fillStyle = '#3a2010'; ctx.fillRect(lx - 3, 26, 12, 3);
+      ctx.fillStyle = '#c8a050'; circle(lx + 3, 20, 1.2); ctx.fill();
+    }
+    const base = open ? COLW.wood : '#5a3a22';
+    const g = ctx.createLinearGradient(0, 0, 0, 12); g.addColorStop(0, mixCol(base, '#ffffff', 0.12)); g.addColorStop(1, mixCol(base, '#2a1408', 0.3));
+    ctx.fillStyle = g; rr(0, 0, w, 12, 3); ctx.fill();
+    // the two boards: a seam along the middle, staggered butt joints, grain and knots
+    ctx.fillStyle = 'rgba(40,20,8,0.4)'; ctx.fillRect(2, 5.5, w - 4, 1);
+    ctx.fillStyle = 'rgba(40,20,8,0.35)'; for (let k = 1; k < 6; k++) { const jx = k * w / 6; ctx.fillRect(jx, k % 2 ? 1 : 6.5, 1.5, 5); }
+    ctx.strokeStyle = 'rgba(40,20,8,0.3)'; ctx.lineWidth = 0.7; ctx.beginPath();
+    for (let k = 0; k < 14; k++) { const gx = R(k) * w, gy = 2 + (k % 2) * 5 + R(k + 30) * 3, gl = 30 + R(k + 60) * 70; ctx.moveTo(gx, gy); ctx.bezierCurveTo(gx + gl * 0.3, gy - 1, gx + gl * 0.7, gy + 1, gx + gl, gy); }
+    ctx.stroke();
+    for (let k = 0; k < 4; k++) { const kx = 30 + R(k + 90) * (w - 60), ky = 3 + (k % 2) * 5; ctx.fillStyle = 'rgba(50,24,8,0.5)'; ctx.beginPath(); ctx.ellipse(kx, ky, 3, 1.4, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(50,24,8,0.3)'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.ellipse(kx, ky, 5, 2.2, 0, 0, TAU); ctx.stroke(); }
+    ctx.fillStyle = '#c8ccd6'; for (let k = 0; k < 7; k++) { const nx = 8 + k * (w - 16) / 6; ctx.fillRect(nx, 2.5, 1.4, 1.4); ctx.fillRect(nx + 3, 8, 1.4, 1.4); }
+    if (open) {
+      // mead rings and crumbs where the cups and plates have been
+      ctx.strokeStyle = 'rgba(120,70,20,0.35)'; ctx.lineWidth = 0.9;
+      for (let k = 0; k < 5; k++) { const rx = 20 + R(k + 120) * (w - 40); ctx.beginPath(); ctx.ellipse(rx, 6, 5, 1.8, 0, 0, TAU); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(230,200,140,0.35)'; for (let k = 0; k < 18; k++) ctx.fillRect(10 + R(k + 150) * (w - 20), 2 + R(k + 170) * 8, 1.2, 1);
+    }
+    ctx.fillStyle = COLW.woodHi; ctx.fillRect(4, 1, w - 8, 2);
+    ctx.fillStyle = 'rgba(255,230,190,0.25)'; ctx.fillRect(6, 1, w - 12, 0.8);
+    // a carved lip of little notches along the front edge
+    ctx.fillStyle = 'rgba(40,20,8,0.4)'; for (let x = 8; x < w - 6; x += 10) { ctx.beginPath(); ctx.moveTo(x, 12); ctx.lineTo(x + 3, 9.5); ctx.lineTo(x + 6, 12); ctx.closePath(); ctx.fill(); }
+    ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 1.2; rr(0, 0, w, 12, 3); ctx.stroke();
+  }
+  // the bench behind a table (origin: the table's top left; the bench sits 8 px above)
+  function paintBench() {
+    const w = S.tx1 - S.tx0 - 20;
+    ctx.translate(10, 0);
+    ctx.fillStyle = '#4a2a14'; ctx.fillRect(0, -8, w, 6);
+    ctx.fillStyle = 'rgba(255,200,140,0.18)'; ctx.fillRect(0, -8, w, 1.2);
+    ctx.fillStyle = '#2e1808'; ctx.fillRect(0, -3, w, 1);
+    ctx.strokeStyle = 'rgba(20,10,4,0.4)'; ctx.lineWidth = 0.6; ctx.beginPath(); for (let k = 0; k < 6; k++) { const gx = K.hash(k + 3) * w; ctx.moveTo(gx, -6); ctx.lineTo(gx + 40, -5.5); } ctx.stroke();
+    ctx.fillStyle = '#c8ccd6'; for (let k = 0; k < 6; k++) ctx.fillRect(6 + k * (w - 12) / 5, -6, 1.2, 1.2);
+  }
+  // a serving step on its two posts (origin: its top left; lh down to whatever it stands on)
+  function paintStep(lw, lh) {
+    for (const px of [6, lw - 12]) {
+      ctx.fillStyle = COLW.woodDark; ctx.fillRect(px, 10, 6, lh - 10);
+      ctx.fillStyle = 'rgba(255,200,140,0.15)'; ctx.fillRect(px, 10, 1.4, lh - 10);
+      ctx.fillStyle = 'rgba(20,10,4,0.4)'; for (let y = 18; y < lh - 4; y += 14) ctx.fillRect(px + 2, y, 1, 6);
+      ctx.fillStyle = '#d8c090'; ctx.fillRect(px - 1, 12, 8, 1.4); ctx.fillRect(px - 1, 15, 8, 1.4);
+    }
+    if (lh > 40) { ctx.strokeStyle = COLW.woodDark; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(9, lh - 6); ctx.lineTo(lw - 9, 16); ctx.stroke(); }
+    const g = ctx.createLinearGradient(0, 0, 0, 10); g.addColorStop(0, COLW.woodHi); g.addColorStop(0.3, COLW.wood); g.addColorStop(1, mixCol(COLW.wood, '#2a1408', 0.3));
+    ctx.fillStyle = g; rr(0, 0, lw, 10, 3); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,20,8,0.35)'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(4, 4); ctx.bezierCurveTo(lw * 0.3, 3, lw * 0.6, 6, lw - 4, 5); ctx.moveTo(6, 7); ctx.bezierCurveTo(lw * 0.4, 8, lw * 0.7, 6, lw - 6, 7.5); ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(3, 10, lw - 6, 3);
+    ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 1.2; rr(0, 0, lw, 10, 3); ctx.stroke();
+    ctx.fillStyle = '#c8ccd6'; ctx.fillRect(8, 4, 1.6, 1.6); ctx.fillRect(lw - 10, 4, 1.6, 1.6);
+  }
   function drawDog(dg, t) {
     const x = dg.x, y = S.floor, run = dg.state === 'run' || dg.state === 'off' || dg.state === 'home', b = run ? Math.abs(Math.sin(t * 16)) * 4 : 0;
     ctx.save(); ctx.translate(x, y - b); ctx.scale(dg.face, 1);

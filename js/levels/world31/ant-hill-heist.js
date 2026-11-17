@@ -341,83 +341,218 @@
   }
 
   /* ---------- drawing ---------- */
+  // the tunnel's still parts (back wall, ceiling lip, floor and the earth under it) are pictures in CW px chunks, one
+  // set per tunnel (painted once each, forgotten when the next tunnel starts)
+  const CW = 400;
+  function tunnelChunk(st, i) {
+    const c = st.c, X0 = i * CW;
+    let lo = Infinity, hi = -Infinity;
+    for (let x = X0 - 40; x <= X0 + CW + 40; x += 10) { const y = c.fl(x); lo = Math.min(lo, y); hi = Math.max(hi, y); }
+    const top = Math.floor(lo - S.tunH - 60), bot = Math.ceil(hi + 170);
+    K.pic('ant|' + st.k + '|' + i, CW + 4, bot - top, 0, 0, () => { ctx.translate(-X0, -top); paintTunnel(c, X0 - 40, X0 + CW + 44, bot); }, X0, top);
+  }
+  function paintTunnel(c, x0, x1, bot) {
+    const ceilY = x => c.fl(x) - S.tunH - 10 + Math.sin(x * 0.013) * 12, H2 = n => K.hash(n * 1.618 + 0.25);
+    const xs = []; for (let x = Math.floor(x0 / 10) * 10; x <= x1 + 10; x += 10) xs.push(x);
+    const floorPath = dy => xs.forEach((x, k) => (k ? ctx.lineTo(x, c.fl(x) + dy) : ctx.moveTo(x, c.fl(x) + dy)));
+    // the earth under the floor: the hill's own colour, layered, with stones and roots, fading into the dark below
+    ctx.fillStyle = '#3a2618'; ctx.beginPath(); floorPath(4); ctx.lineTo(xs[xs.length - 1], bot); ctx.lineTo(xs[0], bot); ctx.closePath(); ctx.fill();
+    ctx.save(); ctx.clip();
+    for (let k = 0; k < 4; k++) {
+      ctx.strokeStyle = k % 2 ? 'rgba(120,80,48,0.3)' : 'rgba(16,8,4,0.35)'; ctx.lineWidth = k % 2 ? 6 : 1.6;
+      ctx.beginPath(); xs.forEach((x, j) => { const y = c.fl(x) + 24 + k * 30 + Math.sin(x * 0.011 + k * 1.7) * 6; if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(16,8,4,0.45)'; ctx.beginPath();
+    for (let i = Math.floor(x0 / 7); i <= x1 / 7; i++) { const x = i * 7 + H2(i) * 7, y = c.fl(x) + 10 + H2(i + 0.5) * 150, r = 0.7 + H2(i + 0.3) * 1.6; ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, TAU); }
+    ctx.fill();
+    ctx.fillStyle = 'rgba(200,160,120,0.22)'; ctx.beginPath();
+    for (let i = Math.floor(x0 / 9); i <= x1 / 9; i++) { const x = i * 9 + H2(i + 7) * 9, y = c.fl(x) + 10 + H2(i + 7.5) * 150, r = 0.6 + H2(i + 7.3) * 1.2; ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, TAU); }
+    ctx.fill();
+    const SC = ['#9a8a78', '#7a6a5a', '#a8806a', '#8a8a86', '#b4a48c', '#6a5a48'];
+    for (let i = Math.floor(x0 / 46); i <= x1 / 46; i++) {
+      const x = i * 46 + H2(i + 20) * 40, y = c.fl(x) + 16 + H2(i + 21) * 120, r = 3 + Math.pow(H2(i + 22), 2) * 11;
+      K.stone(x, y, r, r * (0.55 + H2(i + 23) * 0.25), H2(i + 24) * 3, mixCol(SC[((i % SC.length) + SC.length) % SC.length], '#1a0e06', clamp((y - c.fl(x)) / 200, 0, 0.5)), i);
+    }
+    ctx.lineCap = 'round';
+    for (let i = Math.floor(x0 / 170); i <= x1 / 170; i++) {
+      const x = i * 170 + H2(i + 30) * 90, y = c.fl(x) + 8, dx = (H2(i + 31) - 0.5) * 90, len = 60 + H2(i + 32) * 70;
+      const path = () => { ctx.beginPath(); ctx.moveTo(x, y); ctx.bezierCurveTo(x + dx * 0.2, y + len * 0.4, x + dx * 0.8, y + len * 0.6, x + dx, y + len); };
+      path(); ctx.strokeStyle = 'rgba(14,6,2,0.5)'; ctx.lineWidth = 4; ctx.stroke();
+      path(); ctx.strokeStyle = 'rgba(176,140,100,0.55)'; ctx.lineWidth = 2.2; ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+    const dg = ctx.createLinearGradient(0, bot - 90, 0, bot); dg.addColorStop(0, 'rgba(58,38,24,0)'); dg.addColorStop(1, 'rgba(58,38,24,1)');
+    ctx.fillStyle = dg; ctx.fillRect(x0, bot - 90, x1 - x0, 90);
+    ctx.restore();
+    // the tunnel's back wall
+    const wall = () => { ctx.beginPath(); floorPath(6); for (let k = xs.length - 1; k >= 0; k--) ctx.lineTo(xs[k], ceilY(xs[k])); ctx.closePath(); };
+    ctx.fillStyle = '#7a5434'; wall(); ctx.fill();
+    ctx.save(); wall(); ctx.clip(); ctx.lineJoin = 'round';
+    const ceilLine = () => { ctx.beginPath(); xs.forEach((x, k) => (k ? ctx.lineTo(x, ceilY(x)) : ctx.moveTo(x, ceilY(x)))); };
+    // packed soil courses running along the wall, each with its own tone
+    for (let k = 0; k < 6; k++) {
+      const yAt = x => c.fl(x) - 22 - k * 28 + Math.sin(x * (0.006 + k * 0.002) + k * 2.1) * 8;
+      ctx.fillStyle = ['rgba(255,214,160,0.07)', 'rgba(40,20,8,0.1)', 'rgba(200,140,80,0.1)', 'rgba(40,20,8,0.08)', 'rgba(255,214,160,0.06)', 'rgba(120,60,30,0.1)'][k];
+      ctx.beginPath(); xs.forEach((x, j) => (j ? ctx.lineTo(x, yAt(x)) : ctx.moveTo(x, yAt(x)))); for (let j = xs.length - 1; j >= 0; j--) ctx.lineTo(xs[j], yAt(xs[j]) - 28); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(50,28,14,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath(); xs.forEach((x, j) => (j ? ctx.lineTo(x, yAt(x)) : ctx.moveTo(x, yAt(x)))); ctx.stroke();
+    }
+    ceilLine(); ctx.strokeStyle = 'rgba(30,16,8,0.22)'; ctx.lineWidth = 90; ctx.stroke(); ctx.lineWidth = 44; ctx.stroke();
+    // grains, pockmarks with a lit lower lip, claw scratches where the ants dug, and stones set in the wall
+    ctx.fillStyle = 'rgba(40,22,10,0.4)'; ctx.beginPath();
+    for (let i = Math.floor(x0 / 6); i <= x1 / 6; i++) { const x = i * 6 + H2(i + 40) * 6, y = c.fl(x) - 8 - H2(i + 41) * (S.tunH - 10), r = 0.6 + H2(i + 42) * 1.5; ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, TAU); }
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,170,0.16)'; ctx.beginPath();
+    for (let i = Math.floor(x0 / 8); i <= x1 / 8; i++) { const x = i * 8 + H2(i + 50) * 8, y = c.fl(x) - 8 - H2(i + 51) * (S.tunH - 10), r = 0.5 + H2(i + 52) * 1.2; ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, TAU); }
+    ctx.fill();
+    for (let i = Math.floor(x0 / 90); i <= x1 / 90; i++) {
+      const x = i * 90 + H2(i + 60) * 60, y = c.fl(x) - 40 - H2(i + 61) * (S.tunH - 80), r = 4 + H2(i + 62) * 7;
+      ctx.fillStyle = 'rgba(30,14,6,0.55)'; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.7, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,214,160,0.25)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.7, 0, 0.2, Math.PI - 0.2); ctx.stroke();
+      if (H2(i + 63) < 0.5) {
+        const sx = x + 30 + H2(i + 64) * 20, sy = y + 10;
+        ctx.strokeStyle = 'rgba(40,20,8,0.4)'; ctx.lineWidth = 1.5; ctx.beginPath();
+        for (let j = 0; j < 3; j++) { ctx.moveTo(sx + j * 5, sy); ctx.lineTo(sx + j * 5 + 9, sy + 16); }
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,214,160,0.16)'; ctx.lineWidth = 1; ctx.beginPath();
+        for (let j = 0; j < 3; j++) { ctx.moveTo(sx + j * 5 + 1.5, sy); ctx.lineTo(sx + j * 5 + 10.5, sy + 16); }
+        ctx.stroke();
+      }
+    }
+    for (let i = Math.floor(x0 / 70); i <= x1 / 70; i++) {
+      const x = i * 70 + H2(i + 70) * 50, y = c.fl(x) - 20 - H2(i + 71) * (S.tunH - 50), r = 2.5 + H2(i + 72) * 6;
+      K.stone(x, y, r, r * 0.7, H2(i + 73) * 3, ['#a89480', '#8a7864', '#b8a08a', '#9a8a7a'][((i % 4) + 4) % 4], i + 500);
+    }
+    // the warm floor light (from the glow mushrooms) and the cool dark under the ceiling
+    floorPath(6); ctx.strokeStyle = 'rgba(255,214,150,0.06)'; ctx.lineWidth = 120; ctx.stroke();
+    ctx.restore();
+    // the ceiling lip: a dark rim, clods of earth and hair roots hanging from it
+    ceilLine(); ctx.strokeStyle = 'rgba(30,16,8,0.55)'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = '#4a3020'; ctx.beginPath();
+    for (let i = Math.floor(x0 / 34); i <= x1 / 34; i++) { const x = i * 34 + H2(i + 80) * 24, y = ceilY(x) + 1, r = 3 + H2(i + 81) * 6; ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI); }
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(200,170,130,0.45)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = Math.floor(x0 / 22); i <= x1 / 22; i++) { const x = i * 22 + H2(i + 90) * 18, y = ceilY(x) + 2, l = 6 + H2(i + 91) * 18, d = (H2(i + 92) - 0.5) * 8; ctx.moveTo(x, y); ctx.quadraticCurveTo(x + d, y + l * 0.6, x + d * 0.4, y + l); }
+    ctx.stroke();
+    // the trodden floor: a packed strip with a lit edge, little stones and crumbs lying on it, and ant footprints
+    ctx.strokeStyle = '#5a3a22'; ctx.lineWidth = 6; ctx.beginPath(); floorPath(3); ctx.stroke();
+    ctx.strokeStyle = '#8a6444'; ctx.lineWidth = 2.5; ctx.beginPath(); floorPath(1.5); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,224,176,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); floorPath(0.4); ctx.stroke();
+    // step risers: a clod face with a lit corner
+    for (const sg of c.floor) {
+      if (sg.x0 < x0 - 20 || sg.x0 > x1 + 20) continue;
+      const ya = c.fl(sg.x0 - 1), yb = sg.y;
+      if (ya === yb) continue;
+      const up = yb < ya, y0 = Math.min(ya, yb), y1 = Math.max(ya, yb), fx = sg.x0;
+      ctx.fillStyle = 'rgba(30,16,8,0.35)'; ctx.fillRect(fx + (up ? -2 : -8), y0, 10, y1 - y0 + 6);
+      ctx.fillStyle = 'rgba(255,224,176,0.4)'; ctx.fillRect(fx + (up ? -10 : 0), y0, 10, 1.5);
+      for (let j = 0; j < 3; j++) K.stone(fx + (up ? -6 : 6) + (j - 1) * 6, y0 + 10 + j * 10, 2.5 + j, 2, j, '#8a7864', fx + j);
+    }
+    for (let i = Math.floor(x0 / 38); i <= x1 / 38; i++) {
+      const x = i * 38 + H2(i + 100) * 30, y = c.fl(x), r = 1.6 + H2(i + 101) * 3.4;
+      K.stone(x, y - r * 0.35, r, r * 0.6, H2(i + 102) * 3, ['#b4a28a', '#9a8a78', '#c8b49a', '#8a7a6a'][((i % 4) + 4) % 4], i + 900);
+    }
+    ctx.fillStyle = 'rgba(30,16,8,0.4)'; ctx.beginPath();
+    for (let i = Math.floor(x0 / 26); i <= x1 / 26; i++) { const x = i * 26 + H2(i + 110) * 20, y = c.fl(x) - 1; for (let j = 0; j < 3; j++) { ctx.moveTo(x + j * 7 + 1.2, y - (j % 2)); ctx.arc(x + j * 7, y - (j % 2), 1.2, 0, TAU); } }
+    ctx.fill();
+  }
+  // a glowing mushroom (light for the tunnels): stem, gills, a domed cap with bright spots, breathing gently
+  function glowShroom(mx, my, s, t) {
+    const pulse = 0.85 + 0.15 * Math.sin(t * 2);
+    ctx.fillStyle = 'rgba(20,40,30,0.35)'; ctx.beginPath(); ctx.ellipse(mx, my, 10 * s, 2.5 * s, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#d8ffe8'; rr(mx - 2.5 * s, my - 13 * s, 5 * s, 13 * s, 2 * s); ctx.fill();
+    ctx.fillStyle = 'rgba(80,140,110,0.35)'; ctx.fillRect(mx + 0.5 * s, my - 12 * s, 2 * s, 12 * s);
+    ctx.fillStyle = '#9ad8b8'; ctx.beginPath(); ctx.ellipse(mx, my - 12 * s, 10 * s, 2.6 * s, 0, 0, Math.PI); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,110,80,0.6)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let k = -3; k <= 3; k++) { ctx.moveTo(mx + k * 1.2 * s, my - 12 * s); ctx.lineTo(mx + k * 2.8 * s, my - 10 * s); } ctx.stroke();
+    ctx.fillStyle = '#7affc0'; ctx.beginPath(); ctx.ellipse(mx, my - 12 * s, 10 * s, 7 * s, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = 'rgba(20,120,80,0.3)'; ctx.beginPath(); ctx.moveTo(mx + 3 * s, my - 12 * s); ctx.ellipse(mx, my - 12 * s, 10 * s, 7 * s, 0, Math.PI * 1.62, 0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#2a9a6a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(mx, my - 12 * s, 10 * s, 7 * s, 0, Math.PI, 0); ctx.closePath(); ctx.stroke();
+    ctx.fillStyle = 'rgba(240,255,250,' + 0.9 * pulse + ')'; for (const [dx, dy, r] of [[-4, -15, 1.6], [2, -17, 1.3], [5, -13.5, 1.1]]) { circle(mx + dx * s, my + dy * s, r * s); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(220,255,240,0.7)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(mx, my - 12 * s, 8 * s, 5 * s, 0, Math.PI * 1.15, Math.PI * 1.5); ctx.stroke();
+  }
   function draw(st) {
     const cx = st.cam.x, cy = st.cam.y || 0, t = st.clock, c = st.c;
+    if (st.picK !== st.k) { K.picForget('ant|'); st.picK = st.k; }
     // the hill's inside: packed earth
     ctx.fillStyle = '#3a2618'; ctx.fillRect(0, 0, W, H);
     ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
     const x0 = cx - 40, x1 = cx + W + 40;
-    // earth grain
-    for (let i = Math.floor(x0 / 70); i <= Math.ceil(x1 / 70); i++) for (let j = 0; j < 8; j++) {
-      const gx = i * 70 + K.hash(i * 9 + j) * 60, gy = cy + j * 70 + K.hash(i * 7 + j * 3) * 60;
+    // earth grain, set in the earth (it stays put as the view moves up and down)
+    for (let i = Math.floor(x0 / 70); i <= Math.ceil(x1 / 70); i++) for (let j = Math.floor(cy / 70) - 1; j <= Math.ceil((cy + H) / 70); j++) {
+      const gx = i * 70 + K.hash(i * 9 + j) * 60, gy = j * 70 + K.hash(i * 7 + j * 3) * 60;
       ctx.fillStyle = j % 2 ? '#4a3222' : '#33210f'; ctx.beginPath(); ctx.ellipse(gx, gy, 6 + K.hash(i + j) * 10, 3 + K.hash(i - j) * 5, K.hash(i * j), 0, TAU); ctx.fill();
     }
-    // the tunnel: a lighter band between floor and ceiling, with rounded humps
-    ctx.fillStyle = '#7a5434';
-    ctx.beginPath();
-    let first = true;
-    for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) { const y = c.fl(x) + 6; if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y); }
-    for (let x = Math.ceil(x1 / 20) * 20; x >= x0; x -= 20) ctx.lineTo(x, c.fl(x) - S.tunH - 10 + Math.sin(x * 0.013) * 12);
-    ctx.closePath(); ctx.fill();
-    // shading: dark under the ceiling, warmer near the floor, packed-earth speckles
-    ctx.save(); ctx.lineJoin = 'round';
-    const ceil = () => { ctx.beginPath(); let f = true; for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) { const y = c.fl(x) - S.tunH - 10 + Math.sin(x * 0.013) * 12; if (f) { ctx.moveTo(x, y); f = false; } else ctx.lineTo(x, y); } };
-    const flo = () => { ctx.beginPath(); let f = true; for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) { const y = c.fl(x) + 6; if (f) { ctx.moveTo(x, y); f = false; } else ctx.lineTo(x, y); } };
-    ceil(); ctx.strokeStyle = 'rgba(30,16,8,0.22)'; ctx.lineWidth = 90; ctx.stroke(); ctx.lineWidth = 44; ctx.stroke();
-    // layers of packed soil along the tunnel wall, with grains and tiny embedded stones
-    for (let i = Math.floor(x0 / 110); i <= Math.ceil(x1 / 110); i++) {
-      const lx = i * 110 + K.hash(i + 71) * 40, fy = c.fl(lx);
-      for (let k = 0; k < 3; k++) {
-        const ly = fy - 40 - K.hash(i * 3 + k + 72) * (S.tunH - 80);
-        ctx.strokeStyle = k % 2 ? 'rgba(50,28,14,0.22)' : 'rgba(255,214,160,0.1)'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.quadraticCurveTo(lx + 30, ly - 4, lx + 60 + K.hash(i + k) * 40, ly + 2); ctx.stroke();
-      }
-      ctx.fillStyle = 'rgba(160,140,120,0.5)'; ctx.beginPath(); ctx.ellipse(lx + 50, fy - 30 - K.hash(i + 79) * 60, 4, 3, 0, 0, TAU); ctx.fill();
-    }
-    flo(); ctx.strokeStyle = 'rgba(255,214,150,0.06)'; ctx.lineWidth = 120; ctx.stroke();
-    ctx.restore();
-    for (let i = Math.floor(x0 / 90); i <= Math.ceil(x1 / 90); i++) {
-      const px = i * 90 + K.hash(i + 31) * 70, fy = c.fl(px), py = fy - 30 - K.hash(i + 32) * (S.tunH - 70);
-      ctx.fillStyle = 'rgba(60,34,18,0.35)'; ctx.beginPath(); ctx.ellipse(px, py, 3 + K.hash(i + 33) * 4, 2 + K.hash(i + 34) * 2, 0, 0, TAU); ctx.fill();
-      if (K.hash(i + 35) < 0.35) { ctx.fillStyle = '#9a8a78'; ctx.beginPath(); ctx.ellipse(px + 20, fy + 14 + K.hash(i) * 30, 10, 7, 0.3, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(px + 17, fy + 11 + K.hash(i) * 30, 4, 2, 0.3, 0, TAU); ctx.fill(); }
-    }
-    // the floor edge
-    ctx.strokeStyle = '#5a3a22'; ctx.lineWidth = 6; ctx.beginPath(); first = true;
-    for (let x = Math.floor(x0 / 10) * 10; x <= x1; x += 10) { const y = c.fl(x) + 3; if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y); }
-    ctx.stroke();
+    // the tunnel, its floor and the earth under it (still pictures)
+    for (let i = Math.floor((cx - 10) / CW); i * CW < cx + W + 10; i++) tunnelChunk(st, i);
     // roots hanging from the ceiling, glow mushrooms for light
     for (let i = Math.floor(x0 / 260); i <= Math.ceil(x1 / 260); i++) {
-      const rx = i * 260 + K.hash(i + 5) * 120, ry = c.fl(rx) - S.tunH - 4;
-      ctx.strokeStyle = '#a07850'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(rx, ry - 10); ctx.quadraticCurveTo(rx + 10, ry + 30, rx - 4, ry + 50 + K.hash(i) * 30); ctx.stroke();
+      const rx = i * 260 + K.hash(i + 5) * 120, ry = c.fl(rx) - S.tunH - 4, rl = 50 + K.hash(i) * 30;
+      const root = () => { ctx.beginPath(); ctx.moveTo(rx, ry - 10); ctx.quadraticCurveTo(rx + 10, ry + 30, rx - 4, ry + rl); };
+      ctx.lineCap = 'round';
+      root(); ctx.strokeStyle = '#5a3a20'; ctx.lineWidth = 5; ctx.stroke();
+      root(); ctx.strokeStyle = '#a07850'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,230,190,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(rx - 1, ry - 6); ctx.quadraticCurveTo(rx + 8, ry + 30, rx - 5, ry + rl - 4); ctx.stroke();
+      ctx.strokeStyle = 'rgba(200,160,110,0.7)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let j = 1; j < 4; j++) { const u = j / 4, px = K.lerp(rx, rx - 4, u) + Math.sin(u * 3) * 6, py = ry - 10 + (rl + 10) * u, d = j % 2 ? 1 : -1; ctx.moveTo(px, py); ctx.quadraticCurveTo(px + d * 6, py + 4, px + d * 9, py + 12); }
+      ctx.stroke(); ctx.lineCap = 'butt';
       if (K.hash(i + 9) < 0.5) {
         const mx = rx + 60, my = c.fl(mx) + 2;
         const lg = ctx.createRadialGradient(mx, my - 12, 4, mx, my - 12, 120);
         lg.addColorStop(0, 'rgba(150,255,200,0.28)'); lg.addColorStop(1, 'rgba(150,255,200,0)');
         ctx.fillStyle = lg; ctx.fillRect(mx - 120, my - 132, 240, 140);
-        ctx.fillStyle = '#d8ffe8'; ctx.fillRect(mx - 2, my - 12, 4, 12); ctx.fillStyle = '#7affc0'; ctx.beginPath(); ctx.ellipse(mx, my - 12, 9, 6, 0, Math.PI, 0); ctx.fill();
+        glowShroom(mx, my, 1, t + i);
+        glowShroom(mx + 13, my, 0.6, t + i + 2);
       }
     }
-    // checkpoint flags (a toothpick with a leaf)
+    // checkpoint flags: a toothpick pushed into a little mound, a leaf tied on as the flag
     for (const x of c.cps) {
       if (x < x0 || x > x1) continue;
       const fy = c.fl(x), got = st.cp >= x;
-      ctx.strokeStyle = '#e8d0a0'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, fy); ctx.lineTo(x, fy - 90); ctx.stroke();
-      ctx.fillStyle = got ? '#8fe3b0' : '#c8b890'; ctx.beginPath(); ctx.moveTo(x, fy - 90); ctx.lineTo(x + 30, fy - 80); ctx.lineTo(x, fy - 68); ctx.fill();
-      ctx.strokeStyle = got ? '#4a9a6a' : '#8a7a50'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, fy - 79); ctx.lineTo(x + 26, fy - 80); ctx.stroke();
+      ctx.fillStyle = '#6a4a2c'; ctx.beginPath(); ctx.ellipse(x, fy + 1, 12, 5, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = 'rgba(255,220,170,0.3)'; ctx.beginPath(); ctx.ellipse(x - 2, fy - 1, 7, 2, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#e8d0a0'; ctx.strokeStyle = '#8a7048'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x - 2.2, fy); ctx.lineTo(x - 1.6, fy - 86); ctx.lineTo(x, fy - 93); ctx.lineTo(x + 1.6, fy - 86); ctx.lineTo(x + 2.2, fy); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,240,0.6)'; ctx.beginPath(); ctx.moveTo(x - 1, fy - 2); ctx.lineTo(x - 0.8, fy - 84); ctx.stroke();
+      const sw = Math.sin(t * 2 + x) * 2;
+      const leaf = () => { ctx.beginPath(); ctx.moveTo(x + 1, fy - 88); ctx.quadraticCurveTo(x + 18, fy - 94 + sw, x + 33, fy - 80 + sw); ctx.quadraticCurveTo(x + 16, fy - 66 + sw * 0.5, x + 1, fy - 70); ctx.closePath(); };
+      ctx.fillStyle = got ? '#8fe3b0' : '#c8b890'; leaf(); ctx.fill();
+      ctx.fillStyle = got ? 'rgba(30,90,50,0.25)' : 'rgba(90,70,30,0.25)'; ctx.beginPath(); ctx.moveTo(x + 1, fy - 79); ctx.lineTo(x + 32, fy - 80 + sw); ctx.quadraticCurveTo(x + 16, fy - 66 + sw * 0.5, x + 1, fy - 70); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = got ? '#4a9a6a' : '#8a7a50'; ctx.lineWidth = 1.2; leaf(); ctx.stroke();
+      ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, fy - 79); ctx.lineTo(x + 30, fy - 80 + sw);
+      for (let j = 1; j < 4; j++) { const vx = x + j * 7; ctx.moveTo(vx, fy - 79 + sw * j / 6); ctx.lineTo(vx + 5, fy - 86 + sw * j / 5); ctx.moveTo(vx, fy - 79 + sw * j / 6); ctx.lineTo(vx + 5, fy - 73 + sw * j / 5); }
+      ctx.stroke();
+      ctx.strokeStyle = '#a07850'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x - 3, fy - 86); ctx.lineTo(x + 3, fy - 84); ctx.moveTo(x - 3, fy - 74); ctx.lineTo(x + 3, fy - 72); ctx.stroke();
     }
-    // march shafts: a hole in the ceiling going up
+    // march shafts: a hole in the ceiling going up, with dug footholds down its walls
     for (const sh of c.shafts) {
       if (sh.x < x0 - 80 || sh.x > x1 + 80) continue;
       const ty = c.fl(sh.x) - S.tunH - 10;
       ctx.fillStyle = '#6a4a2c'; ctx.fillRect(sh.x - 44, cy - 20, 88, ty - cy + 30);
+      const sg = ctx.createLinearGradient(sh.x - 44, 0, sh.x + 44, 0);
+      sg.addColorStop(0, 'rgba(20,10,4,0.55)'); sg.addColorStop(0.2, 'rgba(20,10,4,0)'); sg.addColorStop(0.75, 'rgba(20,10,4,0)'); sg.addColorStop(1, 'rgba(20,10,4,0.45)');
+      ctx.fillStyle = sg; ctx.fillRect(sh.x - 44, cy - 20, 88, ty - cy + 30);
+      ctx.fillStyle = 'rgba(30,14,6,0.5)'; ctx.strokeStyle = 'rgba(255,214,160,0.22)'; ctx.lineWidth = 1;
+      for (let yy = ty - 10; yy > cy - 30; yy -= 34) for (const d of [-1, 1]) {
+        const fx = sh.x + d * 30, fyy = yy - (d > 0 ? 17 : 0);
+        ctx.beginPath(); ctx.ellipse(fx, fyy, 7, 3.5, 0, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(fx, fyy, 7, 3.5, 0, 0.2, Math.PI - 0.2); ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(30,16,8,0.6)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sh.x - 44, cy - 20); ctx.lineTo(sh.x - 44, ty + 4); ctx.moveTo(sh.x + 44, cy - 20); ctx.lineTo(sh.x + 44, ty + 4); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,214,160,0.2)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(sh.x + 41, cy - 20); ctx.lineTo(sh.x + 41, ty + 4); ctx.stroke();
       if (sh.zone || shaftWarn(st, sh)) { ctx.fillStyle = sh.zone ? 'rgba(255,90,60,0.16)' : 'rgba(255,200,120,0.12)'; ctx.fillRect(sh.x - S.shaftR * zoneScale(st), ty, 2 * S.shaftR * zoneScale(st), c.fl(sh.x) - ty); }
     }
-    // sleeper chambers (alcoves dug back into the wall)
+    // sleeper chambers: alcoves dug back into the wall, a bed of soft leaf litter, the eggs they guard
     for (const z of c.sleepers) {
       if (z.x < x0 - 100 || z.x > x1 + 100) continue;
-      ctx.fillStyle = '#5a3c24'; ctx.beginPath(); ctx.ellipse(z.x, z.y - 40, 90, 60, 0, Math.PI, 0); ctx.fill();
+      const ag = ctx.createRadialGradient(z.x, z.y - 30, 10, z.x, z.y - 40, 100); ag.addColorStop(0, '#3a2414'); ag.addColorStop(1, '#5a3c24');
+      ctx.fillStyle = ag; ctx.beginPath(); ctx.ellipse(z.x, z.y - 40, 90, 60, 0, Math.PI, 0); ctx.fill();
       ctx.fillStyle = 'rgba(20,10,4,0.3)'; ctx.beginPath(); ctx.ellipse(z.x, z.y - 40, 90, 60, 0, Math.PI, Math.PI * 1.5); ctx.lineTo(z.x, z.y - 40); ctx.fill();
-      ctx.strokeStyle = 'rgba(160,120,80,0.4)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(z.x, z.y - 40, 90, 60, 0, Math.PI, 0); ctx.stroke();
+      ctx.fillStyle = 'rgba(20,10,4,0.4)'; ctx.beginPath(); ctx.ellipse(z.x, z.y - 40, 90, 60, 0, Math.PI, 0); ctx.lineTo(z.x + 90, z.y + 2); ctx.lineTo(z.x - 90, z.y + 2); ctx.closePath(); ctx.globalAlpha = 0.5; ctx.fill(); ctx.globalAlpha = 1;
+      // its rim of piled earth, lit on top
+      ctx.strokeStyle = '#8a6040'; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(z.x, z.y - 40, 92, 62, 0, Math.PI, 0); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,214,160,0.35)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(z.x, z.y - 40, 94, 64, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+      ctx.fillStyle = '#6a4a2c'; ctx.beginPath(); for (let k = 0; k < 9; k++) { const a = Math.PI + (k + 0.5) / 9 * Math.PI, px = z.x + Math.cos(a) * 92, py = z.y - 40 + Math.sin(a) * 62, r = 4 + K.hash(z.x + k) * 3; ctx.moveTo(px + r, py); ctx.arc(px, py, r, 0, TAU); } ctx.fill();
+      // leaf litter bed
+      for (let k = 0; k < 7; k++) { const lx = z.x - 74 + k * 24 + K.hash(z.x + k * 3) * 8, rot = (K.hash(z.x + k) - 0.5) * 0.8; K.leaf(lx, z.y - 2, 26, rot, { col: ['#a8803a', '#8a6a2a', '#b89048'][k % 3], curl: 0.2 }); }
       for (let k = 0; k < 4; k++) { ctx.fillStyle = '#f4ead8'; ctx.beginPath(); ctx.ellipse(z.x - 60 + k * 14, z.y - 8, 6, 9, 0.3, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(160,140,110,0.7)'; ctx.lineWidth = 1; ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(z.x - 62 + k * 14, z.y - 12, 2, 3, 0.3, 0, TAU); ctx.fill(); }
     }
     // the way out

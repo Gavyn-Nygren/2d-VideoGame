@@ -366,14 +366,85 @@
   }
   // the back half of a hiding spot (drawn before the players), and its roof (after)
   function drawCoverBack(q, t) {
-    if (q.kind === 'pot') { ctx.fillStyle = '#7a3a1e'; rr(q.x + 6, GY - 92, q.w - 12, 92, 8); ctx.fill(); }
-    else if (q.kind === 'cup') { ctx.fillStyle = '#c8d8e8'; rr(q.x + 6, GY - 80, q.w - 12, 80, 6); ctx.fill(); }
-    else if (q.kind === 'end') {
-      // the hedge: a dark green wall of leaves
-      ctx.fillStyle = '#2e6a2a'; rr(q.x, GY - 420, q.w + 400, 430, 60); ctx.fill();
-      for (let k = 0; k < 30; k++) { ctx.fillStyle = k % 2 ? '#3a8034' : '#29602a'; ctx.beginPath(); ctx.ellipse(q.x + 30 + K.hash(k) * (q.w + 300), GY - 40 - K.hash(k + 9) * 360, 40, 22, K.hash(k + 4) * 3, 0, TAU); ctx.fill(); }
-      ctx.fillStyle = '#152e14'; ctx.beginPath(); ctx.ellipse(q.x + 140, GY, 110, 120, 0, Math.PI, 0); ctx.fill();
+    if (q.kind === 'pot') {
+      // the inside of the pot: dark clay, shaded deeper at the back, with a crumb of soil on the floor
+      const g = ctx.createLinearGradient(0, GY - 92, 0, GY); g.addColorStop(0, '#6a2e16'); g.addColorStop(1, '#3a1608');
+      ctx.fillStyle = g; rr(q.x + 6, GY - 92, q.w - 12, 92, 8); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,200,160,0.18)'; ctx.lineWidth = 1.5; for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(q.x + 10, GY - k * 22); ctx.lineTo(q.x + q.w - 10, GY - k * 22 + 2); ctx.stroke(); }
+      ctx.fillStyle = '#4a3020'; ctx.beginPath(); ctx.ellipse(q.x + q.w / 2, GY, q.w * 0.36, 6, 0, Math.PI, 0); ctx.fill();
+    } else if (q.kind === 'cup') {
+      const g = ctx.createLinearGradient(q.x, 0, q.x + q.w, 0); g.addColorStop(0, '#a8bccc'); g.addColorStop(1, '#d8e6f2');
+      ctx.fillStyle = g; rr(q.x + 6, GY - 80, q.w - 12, 80, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(120,90,60,0.25)'; ctx.beginPath(); ctx.ellipse(q.x + q.w / 2, GY - 8, q.w * 0.34, 5, 0, 0, TAU); ctx.fill();
+    } else if (q.kind === 'end') K.pic('birdhedge|' + q.w, q.w + 440, 495, 20, 470, () => paintHedge(q.w + 400), q.x, GY);
+  }
+  // the hedge at the end of a stretch: a wall of overlapping leaf clumps lit from above, twigs in the gaps, a few white
+  // flowers, and a dark way in at its foot (origin: its bottom left)
+  function paintHedge(w) {
+    const R = n => K.hash(n * 1.73 + 0.41);
+    ctx.fillStyle = 'rgba(10,30,10,0.3)'; ctx.beginPath(); ctx.ellipse(w / 2, 4, w * 0.52, 12, 0, 0, TAU); ctx.fill();
+    // the dark body, with a bumpy top and a bumpy front edge made of clumps; everything leafy stays inside it
+    const body = () => {
+      ctx.beginPath(); rr(30, -400, w - 30, 410, 60);
+      for (let k = 0; k <= 16; k++) { const x = 30 + k / 16 * (w - 30), y = -396 + R(k) * 14, r = 34 + R(k + 30) * 18; ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, TAU); }
+      for (let k = 0; k <= 6; k++) { const y = -360 + k * 50 + R(k + 60) * 10, x = 34 + R(k + 61) * 10, r = 30 + R(k + 62) * 14; ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, TAU); }
+    };
+    ctx.fillStyle = '#163a16'; body(); ctx.fill();
+    ctx.save(); body(); ctx.clip();
+    // clumps of leaves, back ones darker, each a lit dome
+    for (let k = 0; k < 70; k++) {
+      const cx2 = 20 + R(k + 100) * (w - 40), cy2 = -30 - R(k + 101) * 380, r = 30 + R(k + 102) * 26, up = clamp(1 + cy2 / 420, 0, 1);
+      const g = ctx.createRadialGradient(cx2 - r * 0.35, cy2 - r * 0.4, 3, cx2, cy2, r);
+      g.addColorStop(0, mixCol('#5aa848', '#3a8034', up)); g.addColorStop(0.7, mixCol('#2e6a2a', '#235a22', up)); g.addColorStop(1, 'rgba(20,50,20,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx2, cy2, r, 0, TAU); ctx.fill();
     }
+    // twigs showing in the gaps
+    ctx.strokeStyle = '#4a3420'; ctx.lineCap = 'round';
+    for (let k = 0; k < 14; k++) {
+      const x = 40 + R(k + 200) * (w - 80), y = -40 - R(k + 201) * 320, l = 30 + R(k + 202) * 40, a = -0.6 + R(k + 203) * 1.2;
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke();
+      ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * l * 0.5, y + Math.sin(a) * l * 0.5); ctx.lineTo(x + Math.cos(a - 0.7) * l * 0.8, y + Math.sin(a - 0.7) * l * 0.8); ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+    // hundreds of single leaves, lighter towards the top, each with a midrib
+    const leaf = (x, y, s, a, col) => {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(-s, 0); ctx.quadraticCurveTo(0, -s * 0.55, s, 0); ctx.quadraticCurveTo(0, s * 0.55, -s, 0); ctx.fill();
+      ctx.strokeStyle = 'rgba(20,50,16,0.5)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-s * 0.9, 0); ctx.lineTo(s * 0.9, 0); ctx.stroke();
+      ctx.restore();
+    };
+    for (let k = 0; k < 420; k++) {
+      const x = 10 + R(k + 300) * (w - 20), y = -12 - R(k + 301) * 400, up = clamp(1 + y / 420, 0, 1), s = 6 + R(k + 302) * 5;
+      if (x > 30 && x < 250 && y > -130) continue; // keep the way in clear
+      const base = ['#2e7a2a', '#3a8a34', '#4a9a3a', '#5aaa48', '#6ab854'][Math.floor(R(k + 303) * 5)];
+      leaf(x, y, s, R(k + 304) * 6, mixCol(base, '#1e4a1c', 0.55 - up * 0.5));
+    }
+    // light catching the top leaves
+    ctx.fillStyle = 'rgba(200,255,160,0.5)'; ctx.beginPath();
+    for (let k = 0; k < 60; k++) { const x = 20 + R(k + 500) * (w - 40), y = -360 - R(k + 501) * 40, s = 5 + R(k + 502) * 3; ctx.moveTo(x - s, y); ctx.quadraticCurveTo(x, y - s * 0.5, x + s, y); ctx.quadraticCurveTo(x, y + s * 0.3, x - s, y); }
+    ctx.fill();
+    // white flowers and the odd berry
+    for (let k = 0; k < 12; k++) {
+      const x = 30 + R(k + 600) * (w - 60), y = -60 - R(k + 601) * 320;
+      if (x < 260 && y > -150) continue;
+      ctx.fillStyle = '#ffffff'; for (let j = 0; j < 5; j++) { const a = j / 5 * TAU; circle(x + Math.cos(a) * 3.2, y + Math.sin(a) * 3.2, 2.4); ctx.fill(); }
+      ctx.fillStyle = '#f2c84a'; circle(x, y, 1.6); ctx.fill();
+    }
+    ctx.fillStyle = '#c8303a'; for (let k = 0; k < 8; k++) { const x = 30 + R(k + 700) * (w - 60), y = -80 - R(k + 701) * 300; if (x < 260 && y > -150) continue; circle(x, y, 3); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(x - 1, y - 1, 1); ctx.fill(); ctx.fillStyle = '#c8303a'; }
+    ctx.restore();
+    // a soft lit rim round the top and front
+    ctx.strokeStyle = 'rgba(190,255,150,0.25)'; ctx.lineWidth = 3; ctx.beginPath();
+    for (let k = 0; k <= 16; k++) { const x = 30 + k / 16 * (w - 30), y = -396 + R(k) * 14, r = 34 + R(k + 30) * 18; ctx.moveTo(x + Math.cos(Math.PI * 1.15) * r, y + Math.sin(Math.PI * 1.15) * r); ctx.arc(x, y, r, Math.PI * 1.15, Math.PI * 1.75); }
+    ctx.stroke();
+    // the foot: dark and damp, the stems showing
+    const fg = ctx.createLinearGradient(0, -60, 0, 4); fg.addColorStop(0, 'rgba(10,26,10,0)'); fg.addColorStop(1, 'rgba(10,26,10,0.6)');
+    ctx.fillStyle = fg; ctx.fillRect(24, -60, w - 24, 64);
+    ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = 6; ctx.beginPath(); for (const x of [320, 520, 760, 930]) { if (x > w - 20) continue; ctx.moveTo(x, 4); ctx.lineTo(x + 6, -50); } ctx.stroke();
+    // the way in: a dark leafy tunnel, its rim fringed with leaves
+    const ag = ctx.createRadialGradient(140, -30, 10, 140, -50, 120); ag.addColorStop(0, '#050f05'); ag.addColorStop(1, '#152e14');
+    ctx.fillStyle = ag; ctx.beginPath(); ctx.ellipse(140, 0, 110, 120, 0, Math.PI, 0); ctx.fill();
+    for (let k = 0; k <= 16; k++) { const a = Math.PI + k / 16 * Math.PI, x = 140 + Math.cos(a) * 112, y = Math.sin(a) * 122; leaf(x, y, 8 + R(k + 800) * 3, a + Math.PI / 2 + (R(k + 801) - 0.5) * 0.8, k % 2 ? '#3a8a34' : '#4a9a3a'); }
+    ctx.strokeStyle = 'rgba(180,255,150,0.3)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(140, 0, 106, 116, 0, Math.PI * 1.1, Math.PI * 1.55); ctx.stroke();
   }
   function drawCoverFront(st, q, t) {
     const pk = q.pecked > 0 ? Math.sin(q.pecked * 40) * 3 : 0, x = q.x + pk, w = q.w;

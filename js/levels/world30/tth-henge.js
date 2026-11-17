@@ -1017,7 +1017,19 @@ function tthHengeGround(st, x0, x1, patch) {
   if (!patch) {
     band(30, 'rgba(120,100,60,0.12)', 38);
     for (let x = x0; x <= x1; x += 48) { const h = hash(x, 41), gy = tthHengeG(ph, x); ctx.fillStyle = h % 2 ? 'rgba(160,140,100,0.35)' : 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.ellipse(x + (h % 30), gy + 44 + (h >>> 6) % 44, 3 + h % 4, 2, 0, 0, Math.PI * 2); ctx.fill(); }
+    // (art pass) flint nodules in the chalk (dark, with a white rind and a glint), roots under the turf, a seam of chalk
+    for (let x = x0; x <= x1; x += 72) {
+      const h = hash(x, 43), gy = tthHengeG(ph, x), fx = x + h % 40, fy = gy + 56 + (h >>> 5) % 40, r = 4 + h % 4;
+      ctx.fillStyle = '#fffaf0'; ctx.beginPath(); ctx.ellipse(fx, fy, r * 1.5 + 1.5, r + 1.5, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4a4a58'; ctx.beginPath(); ctx.ellipse(fx, fy, r * 1.5, r, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#7a7a8a'; ctx.beginPath(); ctx.ellipse(fx - r * 0.4, fy - r * 0.3, r * 0.6, r * 0.3, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(70,50,30,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 20, gy + 18); ctx.quadraticCurveTo(x + 24, gy + 26, x + 18, gy + 34); ctx.moveTo(x + 22, gy + 24); ctx.lineTo(x + 28, gy + 30); ctx.stroke();
+    }
   }
+  // blades of grass along the top
+  ctx.strokeStyle = Cc.grassDk; ctx.lineWidth = 1.6; ctx.beginPath();
+  for (let x = x0; x < x1; x += 8) { const y = tthHengeG(ph, x); ctx.moveTo(x, y - 1); ctx.lineTo(x + 1.5 - hash(x, 47) % 3, y - 4 - hash(x, 48) % 5); }
+  ctx.stroke();
   ctx.beginPath();
   for (let x = x0; x <= x1; x += step) { const y = tthHengeG(ph, x) + 3; if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
   ctx.strokeStyle = Cc.grassLt; ctx.lineWidth = 4; ctx.stroke();
