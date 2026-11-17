@@ -898,6 +898,226 @@ const HOTDOG = {
   const WALL = { cream: '#fff3da', soft: '#f9d3c6', red: '#e2493b', redD: '#b8342a', wood: '#c8823c', woodD: '#8f5524', woodL: '#e1a35e', steel: '#d4dde6', steelD: '#8d9aa8', floor: '#c98d52', floorD: '#a96f3a' };
   const T0 = HD.top, F0 = HD.floor;
 
+
+  /* ---------- richer props (cached pictures; drawing only) ---------- */
+  // the kitchen wall: candy-stripe wallpaper with a little dotted pattern, a chair rail, a tiled backsplash by the counter
+  function hotdogPaintWall(c, w, h) {
+    for (let x = 0, k = 0; x < w; x += 30, k++) { c.fillStyle = k % 2 ? WALL.soft : WALL.cream; c.fillRect(x, 0, Math.min(30, w - x), h); }
+    c.fillStyle = 'rgba(226,73,59,0.07)'; for (let x = 0; x < w; x += 30) c.fillRect(x, 0, 1.5, h);
+    c.fillStyle = 'rgba(255,255,255,0.4)';
+    for (let y = 12, r = 0; y < h - 70; y += 24, r++) for (let x = (r % 2) * 15 + 7; x < w; x += 30) { c.beginPath(); c.arc(x + 0.5, y, 1.6, 0, TAU); c.fill(); }
+    c.fillStyle = 'rgba(200,120,90,0.18)';
+    for (let y = 24, r = 0; y < h - 70; y += 24, r++) for (let x = (r % 2) * 15 + 22; x < w; x += 30) { c.beginPath(); c.moveTo(x, y - 2.5); c.lineTo(x + 2, y); c.lineTo(x, y + 2.5); c.lineTo(x - 2, y); c.fill(); }
+    // the tiled backsplash behind the counter: little glazed tiles with grout and a glint each
+    const by = h - 62;
+    c.fillStyle = '#c9d6dc'; c.fillRect(0, by, w, h - by);
+    for (let y = by + 1, r = 0; y < h; y += 15, r++) for (let x = (r % 2) ? -15 : 0, i = 0; x < w; x += 30, i++) {
+      const v = ERICH.fr(r, i);
+      c.fillStyle = v < 0.5 ? '#f4fbff' : v < 0.85 ? '#eaf4f8' : '#dcecf2'; rrOn(c, x + 1, y, 28, 13, 2); c.fill();
+      c.fillStyle = 'rgba(120,150,170,0.25)'; c.fillRect(x + 1, y + 11, 28, 2);
+      c.fillStyle = 'rgba(255,255,255,0.9)'; c.fillRect(x + 3, y + 1.5, 9, 1.2);
+    }
+    // chair rail along the top of the tiles
+    ERICH.board(c, 0, by - 7, w, 7, { col: WALL.wood, seed: 31, r: 1, nails: false, lw: 1, knots: 0 });
+    c.fillStyle = 'rgba(90,40,10,0.18)'; c.fillRect(0, by, w, 3);
+  }
+  // the jar shelf: a grained board on two brackets, glass jars with lids and labels, a blue ribbon pinned up
+  function hotdogPaintShelf(c) {
+    c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(-110, 0, 200, 5);
+    for (const bx of [-96, 76]) { c.fillStyle = WALL.woodD; c.beginPath(); c.moveTo(bx, 0); c.lineTo(bx + 6, 0); c.lineTo(bx + 6, 16); c.closePath(); c.fill(); c.fillRect(bx, 0, 3, 16); }
+    ERICH.board(c, -110, -8, 200, 8, { col: WALL.wood, seed: 33, r: 1.5, nails: true, lw: 1.2, knots: 1 });
+    const jars = [['#ff6b6b', -96], ['#ffd21f', -68], ['#7fd05a', -40], ['#ff9f1c', -12]];
+    for (const [col, jx] of jars) {
+      c.fillStyle = 'rgba(80,40,20,0.15)'; c.beginPath(); c.ellipse(jx + 2, -8, 10, 2, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(235,245,250,0.8)'; rrOn(c, jx - 9, -34, 18, 26, 4); c.fill();
+      c.fillStyle = col; rrOn(c, jx - 7, -26, 14, 16, 3); c.fill();
+      c.fillStyle = shade(col, 0.22); rrOn(c, jx + 1, -26, 6, 16, 3); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.25)'; c.beginPath(); for (let i = 0; i < 4; i++) { c.moveTo(jx - 4 + i * 3, -22 + (i % 2) * 6); c.arc(jx - 4 + i * 3, -22 + (i % 2) * 6, 1.1, 0, TAU); } c.fill();
+      c.fillStyle = '#fffaf0'; c.fillRect(jx - 7, -21, 14, 6); c.fillStyle = shade(col, 0.1); c.fillRect(jx - 5, -19, 10, 1.4);
+      c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillRect(jx - 7, -32, 2, 20);
+      c.strokeStyle = 'rgba(120,140,160,0.6)'; c.lineWidth = 1; rrOn(c, jx - 9, -34, 18, 26, 4); c.stroke();
+      // the lid: a rimmed cap with ridges
+      c.fillStyle = WALL.woodD; rrOn(c, jx - 9.5, -36, 19, 6, 1.5); c.fill();
+      c.fillStyle = WALL.woodL; c.fillRect(jx - 8.5, -35.5, 17, 1.4);
+      c.strokeStyle = 'rgba(60,30,10,0.5)'; c.lineWidth = 0.7; c.beginPath(); for (let i = -7; i <= 7; i += 2.5) { c.moveTo(jx + i, -34); c.lineTo(jx + i, -31); } c.stroke();
+    }
+    // the rosette
+    const rx = 48, ry = -30;
+    c.fillStyle = '#2f5fb8'; c.beginPath(); c.moveTo(rx - 6, ry + 10); c.lineTo(rx - 10, ry + 26); c.lineTo(rx - 2, ry + 20); c.lineTo(rx + 4, ry + 28); c.lineTo(rx + 6, ry + 10); c.fill();
+    c.fillStyle = '#3f7fd8'; for (let k = 0; k < 12; k++) { const a = k / 12 * TAU; c.beginPath(); c.arc(rx + Math.cos(a) * 9, ry + Math.sin(a) * 9, 4.2, 0, TAU); c.fill(); }
+    c.strokeStyle = '#2a5aa8'; c.lineWidth = 0.8; for (let k = 0; k < 12; k++) { const a = k / 12 * TAU; c.beginPath(); c.arc(rx + Math.cos(a) * 9, ry + Math.sin(a) * 9, 4.2, a - 1, a + 1); c.stroke(); }
+    c.fillStyle = '#ffd36b'; c.beginPath(); c.arc(rx, ry, 6, 0, TAU); c.fill();
+    c.strokeStyle = '#c9952a'; c.lineWidth = 1; c.beginPath(); c.arc(rx, ry, 6, 0, TAU); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.arc(rx - 2, ry - 2, 1.6, 0, TAU); c.fill();
+    ERICH.rivets(c, [[rx, ry - 13]], 1.2, '#c8ccd6');
+  }
+  // Biscuit's picture: a bevelled wooden frame with mitred corners, glass glint, a nail and string
+  function hotdogPaintFrame(c) {
+    c.strokeStyle = '#7a5a3a'; c.lineWidth = 1; c.beginPath(); c.moveTo(-18, -24); c.lineTo(0, -32); c.lineTo(18, -24); c.stroke();
+    ERICH.nails(c, [[0, -32]], 1.6);
+    c.fillStyle = 'rgba(80,40,20,0.2)'; rrOn(c, -20, -24, 46, 42, 4); c.fill();
+    c.fillStyle = WALL.woodD; rrOn(c, -22, -26, 44, 40, 4); c.fill();
+    c.fillStyle = WALL.wood; c.beginPath(); c.moveTo(-22, -26); c.lineTo(22, -26); c.lineTo(18, -22); c.lineTo(-18, -22); c.closePath(); c.fill();
+    c.fillStyle = WALL.woodL; c.beginPath(); c.moveTo(-22, -26); c.lineTo(-18, -22); c.lineTo(-18, 10); c.lineTo(-22, 14); c.closePath(); c.fill();
+    c.fillStyle = shade(WALL.woodD, 0.2); c.beginPath(); c.moveTo(22, 14); c.lineTo(18, 10); c.lineTo(-18, 10); c.lineTo(-22, 14); c.closePath(); c.fill();
+    c.fillStyle = '#bfe6ff'; c.fillRect(-18, -22, 36, 32);
+    c.fillStyle = '#9fd870'; c.fillRect(-18, 2, 36, 8);
+    c.fillStyle = '#d99a4a'; c.beginPath(); c.arc(0, -2, 10, 0, TAU); c.fill();
+    c.fillStyle = '#9a5a24'; c.beginPath(); c.ellipse(-9, -4, 4, 8, 0.3, 0, TAU); c.fill(); c.beginPath(); c.ellipse(9, -4, 4, 8, -0.3, 0, TAU); c.fill();
+    c.fillStyle = '#fff3da'; c.beginPath(); c.ellipse(0, 2, 5, 3.5, 0, 0, TAU); c.fill();
+    c.fillStyle = '#1c1a36'; c.beginPath(); c.arc(-3, -4, 1.3, 0, TAU); c.arc(3, -4, 1.3, 0, TAU); c.fill(); c.beginPath(); c.arc(0, 1, 1.8, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.moveTo(-18, -22); c.lineTo(-6, -22); c.lineTo(-18, -8); c.closePath(); c.fill();
+    c.strokeStyle = shade(WALL.woodD, 0.35); c.lineWidth = 1.2; rrOn(c, -22, -26, 44, 40, 4); c.stroke();
+    c.strokeStyle = shade(WALL.woodD, 0.25); c.lineWidth = 0.8; c.strokeRect(-18, -22, 36, 32);
+  }
+  // the stand's posts: red-painted wood with a lit edge, a shaded side and bolts; the left post plain wood
+  function hotdogPaintPosts(c) {
+    const h = F0 - HD.awn;
+    const post = (x, w, hh) => {
+      c.fillStyle = WALL.redD; c.fillRect(x, 0, w, hh);
+      c.fillStyle = WALL.red; c.fillRect(x + 2, 0, w * 0.45, hh);
+      c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x + 2, 0, 1.2, hh);
+      c.fillStyle = 'rgba(60,10,10,0.25)'; c.fillRect(x + w - 2, 0, 2, hh);
+      const pts = []; for (let y = 30; y < hh - 10; y += 70) pts.push([x + w / 2, y]);
+      ERICH.rivets(c, pts, 1.4, '#e8d8c8');
+    };
+    post(946, 14, h); post(606, 12, 300);
+    ERICH.board(c, 0, 0, 8, h, { col: WALL.wood, seed: 41, vert: true, r: 0, nails: false, lw: 1, knots: 0 });
+  }
+  // the floor: staggered wooden boards with grain, knots, nail heads and a shadow under the counters
+  function hotdogPaintFloor(c) {
+    const h = H - F0, cols = ['#c98d52', '#c4874c', '#cf9458'];
+    for (let y = 0, r = 0; y < h; y += 20, r++) {
+      let x = -((r * 67) % 140);
+      for (let i = 0; x < W; i++) {
+        const len = 110 + ERICH.fr(r, i) * 90;
+        ERICH.board(c, x, y, len, 20, { col: cols[(r + i) % 3], seed: r * 31 + i, r: 1.5, lw: 1.2, edge: WALL.floorD, knots: ERICH.fr(r + 9, i) < 0.1 ? 1 : 0, nails: true });
+        x += len;
+      }
+    }
+    const g = c.createLinearGradient(0, 0, 0, 16); g.addColorStop(0, 'rgba(60,30,10,0.35)'); g.addColorStop(1, 'rgba(60,30,10,0)');
+    c.fillStyle = g; c.fillRect(0, 0, W, 16);
+  }
+  // the counters: brushed steel fronts with panels, a red trim and kick plate; a wooden serving counter with striped boards
+  function hotdogPaintCounters(c) {
+    const h = F0 - T0;
+    // kitchen counter top: rolled steel edge
+    const gt = c.createLinearGradient(0, 0, 0, 8); gt.addColorStop(0, '#f2f6fa'); gt.addColorStop(0.5, WALL.steel); gt.addColorStop(1, WALL.steelD);
+    c.fillStyle = gt; c.fillRect(0, 0, 618, 8);
+    c.fillStyle = 'rgba(255,255,255,0.9)'; c.fillRect(0, 0, 618, 1.2);
+    // the front: brushed panels with seams and screws
+    c.fillStyle = '#e6edf3'; c.fillRect(0, 8, 618, h - 8);
+    c.strokeStyle = 'rgba(140,155,170,0.35)'; c.lineWidth = 0.7; c.beginPath();
+    for (let i = 0; i < 70; i++) { const y = 12 + ERICH.fr(5, i) * (h - 14), x = ERICH.fr(6, i) * 600; c.moveTo(x, y); c.lineTo(x + 20 + ERICH.fr(7, i) * 40, y); }
+    c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.5)'; for (let x = 0; x < 600; x += 120) { c.beginPath(); c.moveTo(x + 18, 11); c.lineTo(x + 34, 11); c.lineTo(x + 22, h); c.lineTo(x + 6, h); c.closePath(); c.fill(); }
+    c.fillStyle = 'rgba(60,80,100,0.3)'; for (let x = 60; x < 600; x += 120) c.fillRect(x, 14, 1.5, h - 14);
+    c.fillStyle = 'rgba(255,255,255,0.8)'; for (let x = 61.5; x < 600; x += 120) c.fillRect(x, 14, 0.8, h - 14);
+    const pts = []; for (let x = 60; x < 600; x += 120) pts.push([x - 6, 18], [x + 7, 18]);
+    ERICH.rivets(c, pts, 1.1, '#b8c2cc');
+    c.fillStyle = WALL.red; c.fillRect(0, 8, 618, 3); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, 8, 618, 0.8);
+    c.fillStyle = WALL.redD; c.fillRect(0, h - 3, 618, 3);
+    // serving counter: a wooden top board and a striped front with panel shading
+    for (let x = 618, k = 0; x < 948; x += 22, k++) {
+      const col = k % 2 ? '#fff3da' : WALL.soft;
+      c.fillStyle = col; c.fillRect(x, 8, Math.min(22, 948 - x), h - 8);
+      c.fillStyle = shade(col, 0.06); c.fillRect(x + 14, 8, Math.min(8, 948 - x - 14), h - 8);
+      c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(x + 1, 8, 1, h - 8);
+    }
+    c.fillStyle = WALL.red; c.fillRect(618, 8, 330, 3);
+    c.fillStyle = WALL.redD; c.fillRect(618, h - 3, 330, 3);
+    ERICH.board(c, 618, -2, 330, 10, { col: WALL.wood, seed: 52, r: 1.5, lw: 1.2, edge: WALL.woodD, knots: 1 });
+  }
+  // the awning: stripes with a soft fold in each, a shaded scalloped valance with piping, a shadow cast below
+  function hotdogPaintAwning(c) {
+    const a = HD.awn;
+    c.fillStyle = 'rgba(80,20,10,0.16)'; for (let x = 0; x < W; x += 48) { c.beginPath(); c.arc(x + 24, a - 8, 24, 0, Math.PI); c.fill(); }
+    for (let x = 0, k = 0; x < W; x += 48, k++) {
+      const col = k % 2 ? '#fff6e6' : '#e2493b';
+      const g = c.createLinearGradient(x, 0, x + 48, 0); g.addColorStop(0, tint(col, 0.1)); g.addColorStop(0.45, col); g.addColorStop(1, shade(col, 0.12));
+      c.fillStyle = g; c.fillRect(x, 0, 48, a - 12);
+      c.beginPath(); c.arc(x + 24, a - 12, 24, 0, Math.PI); c.fill();
+      c.fillStyle = 'rgba(80,20,10,0.12)'; c.fillRect(x, a - 26, 48, 14);
+      c.fillStyle = shade(col, 0.16); c.beginPath(); c.arc(x + 24, a - 12, 24, 0.15, Math.PI - 0.15); c.arc(x + 24, a - 14, 20, Math.PI - 0.15, 0.15, true); c.closePath(); c.fill();
+    }
+    // piping along the hem of the valance and the top edge
+    c.strokeStyle = '#ffd36b'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, a - 24); c.lineTo(W, a - 24); c.stroke();
+    c.strokeStyle = 'rgba(150,90,10,0.6)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, a - 22.5); c.lineTo(W, a - 22.5); c.stroke();
+    c.strokeStyle = 'rgba(120,30,20,0.35)'; c.lineWidth = 1.2; c.beginPath(); for (let x = 0; x < W; x += 48) { c.moveTo(x + 48, a - 12); c.arc(x + 24, a - 12, 24, 0, Math.PI); } c.stroke();
+    c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(0, 0, W, 6);
+  }
+  // the sign board: a framed wooden plank with mitred corners, a lit top and nails; the bulbs and words go on top
+  function hotdogPaintSign(c) {
+    c.fillStyle = 'rgba(60,20,10,0.25)'; rrOn(c, -116, -1, 236, 54, 14); c.fill();
+    c.fillStyle = '#8f5524'; rrOn(c, -118, -4, 236, 54, 14); c.fill();
+    c.fillStyle = '#a8662e'; rrOn(c, -118, -4, 236, 27, 14); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(-106, -3, 212, 1.2);
+    c.strokeStyle = '#5e3014'; c.lineWidth = 1.5; rrOn(c, -118, -4, 236, 54, 14); c.stroke();
+    c.save(); rrOn(c, -112, 0, 224, 46, 11); c.clip();
+    c.fillStyle = '#ffd36b'; c.fillRect(-112, 0, 224, 46);
+    c.fillStyle = '#f2c050'; c.fillRect(-112, 30, 224, 16);
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(-112, 0, 224, 8);
+    c.strokeStyle = 'rgba(200,140,40,0.35)'; c.lineWidth = 0.8; c.beginPath(); for (let i = 0; i < 6; i++) ERICH.grainLine(c, -112, 112, 10 + i * 6, 0.8, i * 2, 0.04); c.stroke();
+    c.restore();
+    c.strokeStyle = '#c9952a'; c.lineWidth = 1.2; rrOn(c, -112, 0, 224, 46, 11); c.stroke();
+    ERICH.nails(c, [[-114, 22], [114, 22]], 1.5);
+  }
+  // the grill: a steel body with a lit lip, vents, knobs on the front, little legs, a grease tray
+  function hotdogPaintGrill(c) {
+    c.fillStyle = 'rgba(30,20,20,0.2)'; c.beginPath(); c.ellipse(105, 2, 104, 3, 0, 0, TAU); c.fill();
+    c.fillStyle = '#2a2a34'; c.fillRect(12, -4, 8, 6); c.fillRect(186, -4, 8, 6);
+    const g = c.createLinearGradient(0, -32, 0, 2); g.addColorStop(0, '#5a5a6a'); g.addColorStop(0.3, '#3a3a48'); g.addColorStop(1, '#2a2a36');
+    c.fillStyle = g; rrOn(c, 0, -32, 206, 32, 6); c.fill();
+    c.fillStyle = '#6a6a7a'; rrOn(c, 0, -32, 206, 7, 4); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(4, -31.5, 198, 1.2);
+    c.fillStyle = '#1e1e28'; c.fillRect(8, -22, 190, 16);
+    // the front: vent slots and two knobs
+    c.fillStyle = 'rgba(0,0,0,0.45)'; for (let x = 14; x < 40; x += 6) c.fillRect(x, -5, 3, 4);
+    for (let x = 166; x < 192; x += 6) c.fillRect(x, -5, 3, 4);
+    c.strokeStyle = '#1a1a22'; c.lineWidth = 1.4; rrOn(c, 0, -32, 206, 32, 6); c.stroke();
+    ERICH.rivets(c, [[5, -27], [201, -27]], 1.3, '#9aa2b4');
+  }
+  // the bun basket: a woven wicker tray with a rim, a checked cloth and shaded buns with a split and seeds
+  function hotdogPaintBuns(c) {
+    c.fillStyle = 'rgba(40,20,10,0.2)'; c.beginPath(); c.ellipse(2, 0, 24, 3, 0, 0, TAU); c.fill();
+    // checked cloth peeking out
+    c.fillStyle = '#ff6b6b'; c.beginPath(); c.moveTo(-26, -21); c.lineTo(-20, -30); c.lineTo(20, -30); c.lineTo(26, -21); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.7)'; for (let x = -20; x < 22; x += 8) c.fillRect(x, -29, 4, 8);
+    // buns
+    for (let k = 0; k < 3; k++) {
+      const x = -13 + k * 13, y = -24 - (k % 2) * 3, a = -0.2 + k * 0.2;
+      c.save(); c.translate(x, y); c.rotate(a);
+      c.fillStyle = '#d8964c'; c.beginPath(); c.ellipse(0, 0.8, 9, 6, 0, 0, TAU); c.fill();
+      c.fillStyle = '#f2b866'; c.beginPath(); c.ellipse(-0.3, -0.3, 8.6, 5.4, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,240,200,0.55)'; c.beginPath(); c.ellipse(-2.5, -2.4, 4.5, 1.8, -0.1, 0, TAU); c.fill();
+      c.strokeStyle = '#b8742c'; c.lineWidth = 1; c.beginPath(); c.moveTo(-6, 0.6); c.quadraticCurveTo(0, 2, 6, 0.6); c.stroke();
+      c.fillStyle = '#fff3da'; for (const [sx, sy] of [[-3, -2], [1, -3], [4, -1.5], [-0.5, -0.8]]) { c.beginPath(); c.ellipse(sx, sy, 0.9, 0.5, 0.4, 0, TAU); c.fill(); }
+      c.strokeStyle = '#a8662a'; c.lineWidth = 1.1; c.beginPath(); c.ellipse(0, 0.3, 9, 6, 0, 0, TAU); c.stroke();
+      c.restore();
+    }
+    // the basket body: a tapered tray woven in over-under strands
+    c.save(); c.beginPath(); c.moveTo(-24, -22); c.lineTo(24, -22); c.lineTo(19, 0); c.lineTo(-19, 0); c.closePath(); c.clip();
+    c.fillStyle = '#b8742c'; c.fillRect(-26, -24, 52, 26);
+    for (let r = 0; r < 4; r++) for (let i = -6; i < 6; i++) {
+      const x = i * 4.5 + (r % 2) * 2.25, y = -20 + r * 5.5;
+      c.fillStyle = (i + r) % 2 ? '#d08a3c' : '#a8662a'; c.beginPath(); c.ellipse(x, y, 2.6, 2.2, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,230,180,0.35)'; c.fillRect(x - 1.5, y - 1.6, 2, 0.8);
+    }
+    c.fillStyle = 'rgba(60,30,10,0.25)'; c.fillRect(6, -24, 20, 26);
+    c.restore();
+    c.strokeStyle = '#7a4a1e'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(-24, -22); c.lineTo(24, -22); c.lineTo(19, 0); c.lineTo(-19, 0); c.closePath(); c.stroke();
+    ERICH.board(c, -26, -25, 52, 4.5, { col: '#c8823c', seed: 61, r: 2, nails: false, lw: 1, knots: 0 });
+  }
+  // the pass shelf: two grained boards on side uprights, nailed at the joints
+  function hotdogPaintPass(c) {
+    c.fillStyle = 'rgba(40,20,10,0.2)'; c.fillRect(-34, 4, 72, 3);
+    ERICH.board(c, -36, -34, 4, 36, { col: WALL.wood, seed: 71, vert: true, r: 0, nails: false, lw: 1, knots: 0 });
+    ERICH.board(c, 32, -34, 4, 36, { col: shade(WALL.wood, 0.1), seed: 72, vert: true, r: 0, nails: false, lw: 1, knots: 0 });
+    c.fillStyle = 'rgba(40,20,10,0.18)'; c.fillRect(-32, -29, 64, 3);
+    ERICH.board(c, -36, -34, 72, 5, { col: WALL.woodL, seed: 73, r: 1, nails: false, lw: 1, knots: 0 });
+    ERICH.board(c, -36, -2, 72, 6, { col: WALL.wood, seed: 74, r: 1, nails: false, lw: 1, knots: 0 });
+    ERICH.nails(c, [[-34, -31.5], [34, -31.5], [-34, 1], [34, 1]], 1);
+  }
   function drawWorld(st) {
     const t = G.clock;
     drawOutside(st, t);
@@ -949,6 +1169,7 @@ const HOTDOG = {
     ctx.fillStyle = '#ffd36b'; circle(fx, fy, 7); ctx.fill();
     // a red barn far off and a striped fair tent
     ctx.fillStyle = '#c8483c'; ctx.fillRect(640, 296, 50, 40);
+    ctx.strokeStyle = 'rgba(110,30,20,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); for (let x = 646; x < 690; x += 6) { ctx.moveTo(x, 299); ctx.lineTo(x, 336); } ctx.stroke();
     ctx.fillStyle = 'rgba(80,20,20,0.25)'; ctx.fillRect(676, 296, 14, 40);
     ctx.fillStyle = '#7e2a22'; ctx.beginPath(); ctx.moveTo(634, 298); ctx.lineTo(665, 272); ctx.lineTo(696, 298); ctx.fill();
     ctx.strokeStyle = '#fff3da'; ctx.lineWidth = 2; ctx.strokeRect(655, 312, 20, 24); ctx.beginPath(); ctx.moveTo(655, 312); ctx.lineTo(675, 336); ctx.moveTo(675, 312); ctx.lineTo(655, 336); ctx.stroke();
@@ -957,11 +1178,10 @@ const HOTDOG = {
     // near grass and hay bales
     ctx.fillStyle = '#8cc65a'; ctx.fillRect(x0, 336, x1 - x0, y1 - 336);
     ctx.fillStyle = '#7fd05a'; ctx.fillRect(x0, 336, x1 - x0, 6);
+    ctx.fillStyle = 'rgba(60,120,40,0.35)'; for (let x = x0 + 4; x < x1; x += 11) { ctx.beginPath(); ctx.moveTo(x, 342); ctx.lineTo(x + 2, 336 - (x % 3) * 2); ctx.lineTo(x + 4, 342); ctx.fill(); }
     for (const [hx, hy] of [[700, 352], [930, 350]]) {
       ctx.fillStyle = 'rgba(40,80,20,0.22)'; ctx.beginPath(); ctx.ellipse(hx, hy + 26, 26, 4, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#f2d27a'; rr(hx - 22, hy, 44, 26, 6); ctx.fill();
-      ctx.fillStyle = 'rgba(160,110,30,0.25)'; rr(hx - 22, hy + 16, 44, 10, 5); ctx.fill();
-      ctx.strokeStyle = '#c9a24a'; ctx.lineWidth = 1.5; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(hx - 18, hy + 6 + k * 5); ctx.lineTo(hx + 18, hy + 6 + k * 5); ctx.stroke(); }
+      ERICH.put('hdbale', 54, 36, 27, 18, c => ERICH.bale(c, 44, 26, false, { col: '#f2d27a', seed: 4 }), hx, hy + 13);
     }
     // bunting across the top of the window
     ctx.strokeStyle = '#8a6a2a'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x0, y0 + 8); ctx.quadraticCurveTo((x0 + x1) / 2, y0 + 30, x1, y0 + 8); ctx.stroke();
@@ -1178,31 +1398,33 @@ const HOTDOG = {
   /* the kitchen's back wall: candy stripes, the order board (tickets), the chalkboard, shelves */
   function drawKitchenWall(st, t) {
     const x1 = 614;
-    for (let x = 0, k = 0; x < x1; x += 30, k++) { ctx.fillStyle = k % 2 ? WALL.soft : WALL.cream; ctx.fillRect(x, HD.awn, Math.min(30, x1 - x), T0 - HD.awn); }
+    ERICH.put('hdwall', x1, T0 - HD.awn, 0, 0, c => hotdogPaintWall(c, x1, T0 - HD.awn), 0, HD.awn);
     ctx.fillStyle = 'rgba(120,40,20,0.08)'; ctx.fillRect(0, HD.awn, x1, 10);
     { const gw = ctx.createLinearGradient(0, T0 - 90, 0, T0); gw.addColorStop(0, 'rgba(120,60,30,0)'); gw.addColorStop(1, 'rgba(120,60,30,0.14)'); ctx.fillStyle = gw; ctx.beginPath(); ctx.rect(0, T0 - 90, x1, 90); ctx.fill();
       const ga = ctx.createLinearGradient(0, HD.awn, 0, HD.awn + 40); ga.addColorStop(0, 'rgba(120,40,20,0.16)'); ga.addColorStop(1, 'rgba(120,40,20,0)'); ctx.fillStyle = ga; ctx.beginPath(); ctx.rect(0, HD.awn, x1, 40); ctx.fill(); }
-    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(110, 300, 200, 4);
-    // a shelf with jars and a blue ribbon
-    ctx.fillStyle = WALL.woodD; ctx.fillRect(110, 292, 200, 8);
-    const jars = [['#ff6b6b', 124], ['#ffd21f', 152], ['#7fd05a', 180], ['#ff9f1c', 208]];
-    for (const [col, jx] of jars) { ctx.fillStyle = 'rgba(255,255,255,0.7)'; rr(jx - 9, 266, 18, 26, 4); ctx.fill(); ctx.fillStyle = col; rr(jx - 7, 274, 14, 16, 3); ctx.fill(); ctx.fillStyle = '#8f5524'; ctx.fillRect(jx - 9, 264, 18, 5); }
-    ctx.fillStyle = '#3f7fd8'; circle(268, 270, 12); ctx.fill(); ctx.fillStyle = '#ffd36b'; circle(268, 270, 6); ctx.fill();
-    ctx.fillStyle = '#3f7fd8'; ctx.beginPath(); ctx.moveTo(262, 280); ctx.lineTo(258, 296); ctx.lineTo(266, 290); ctx.lineTo(272, 298); ctx.lineTo(274, 280); ctx.fill();
-    // Biscuit's picture in a frame
-    ctx.fillStyle = WALL.woodD; rr(24, 228, 44, 40, 4); ctx.fill(); ctx.fillStyle = '#bfe6ff'; ctx.fillRect(28, 232, 36, 32);
-    ctx.fillStyle = '#d99a4a'; circle(46, 252, 10); ctx.fill(); ctx.fillStyle = '#9a5a24'; ctx.beginPath(); ctx.ellipse(37, 250, 4, 8, 0.3, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(55, 250, 4, 8, -0.3, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#1c1a36'; circle(43, 250, 1.3); ctx.fill(); circle(49, 250, 1.3); ctx.fill(); circle(46, 255, 1.8); ctx.fill();
+    // a shelf with jars and a blue ribbon, and Biscuit's picture in a frame
+    ERICH.put('hdshelf', 230, 60, 120, 40, hotdogPaintShelf, 220, 300);
+    ERICH.put('hdframe', 58, 62, 30, 36, hotdogPaintFrame, 46, 254);
     // string lights
     ctx.strokeStyle = '#5e3c22'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(0, 212); for (let x = 0; x <= x1; x += 60) ctx.quadraticCurveTo(x + 30, 226, x + 60, 212); ctx.stroke();
     const lc = ['#ffd36b', '#ff7fb0', '#7fd8ff', '#9ff09a'];
-    for (let k = 0; k < 20; k++) { const lx = 15 + k * 30, ly = 212 + (k % 2 ? 7 : 4); ctx.fillStyle = lc[k % 4]; ctx.globalAlpha = 0.75 + 0.25 * Math.sin(t * 3 + k); circle(lx, ly + 3, 3.6); ctx.fill(); } ctx.globalAlpha = 1;
+    for (let k = 0; k < 20; k++) {
+      const lx = 15 + k * 30, ly = 212 + (k % 2 ? 7 : 4);
+      ctx.fillStyle = '#5e5a66'; ctx.fillRect(lx - 1.6, ly - 1.5, 3.2, 2.6);
+      ctx.fillStyle = lc[k % 4]; ctx.globalAlpha = reduceMotion ? 0.9 : 0.75 + 0.25 * Math.sin(t * 3 + k); circle(lx, ly + 3, 3.6); ctx.fill(); ctx.globalAlpha = 1;
+      ctx.fillStyle = shade(lc[k % 4], 0.2); ctx.beginPath(); ctx.arc(lx, ly + 3, 3.6, -0.3, Math.PI * 0.8); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; circle(lx - 1.2, ly + 1.8, 1); ctx.fill();
+    }
     drawChalk(st, t);
     drawBoard(st, t);
     // the topping signs over the bottles: a mini hot dog with just that topping (match it to the ticket!)
     for (const tp of st.room.tops) {
       const sx = HD.tops[tp];
-      ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = TOPS[tp].dark; ctx.lineWidth = 2; rr(sx - 18, 352, 36, 24, 6); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(80,30,20,0.16)'; rr(sx - 16, 355, 36, 24, 6); ctx.fill();
+      ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = TOPS[tp].dark; ctx.lineWidth = 2; rr(sx - 18, 352, 36, 24, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(200,170,140,0.25)'; ctx.fillRect(sx - 17, 368, 34, 7);
+      ctx.stroke();
+      ctx.fillStyle = '#b8b8c4'; circle(sx, 354.5, 1.4); ctx.fill();
       drawDog(sx, 365, 0.82, tp);
     }
   }
@@ -1276,34 +1498,24 @@ const HOTDOG = {
   /* the awning, the counters, the divider, the floor */
   function drawStand(st, t) {
     // the right-hand post and the divider between the kitchen and the counter
-    ctx.fillStyle = WALL.redD; ctx.fillRect(946, HD.awn, 14, F0 - HD.awn);
-    ctx.fillStyle = WALL.red; ctx.fillRect(948, HD.awn, 6, F0 - HD.awn);
-    ctx.fillStyle = WALL.woodD; ctx.fillRect(0, HD.awn, 8, F0 - HD.awn);
-    ctx.fillStyle = WALL.redD; ctx.fillRect(606, HD.awn, 12, 300);
-    ctx.fillStyle = WALL.red; ctx.fillRect(608, HD.awn, 5, 300);
+    ERICH.put('hdposts', W, F0 - HD.awn + 4, 0, 0, hotdogPaintPosts, 0, HD.awn);
     // the floor: wooden boards
-    ctx.fillStyle = WALL.floor; ctx.fillRect(0, F0, W, H - F0);
-    ctx.fillStyle = WALL.floorD; for (let y = F0 + 18; y < H; y += 20) ctx.fillRect(0, y, W, 2);
-    for (let k = 0; k < 20; k++) { ctx.fillRect((k * 97) % W, F0 + 20 * (k % 3), 2, 18); }
-    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(0, F0, W, 4);
+    ERICH.put('hdfloor', W, H - F0, 0, 0, hotdogPaintFloor, 0, F0);
     // the kitchen counter (steel top, red front) and the serving counter (wood top, striped front)
-    ctx.fillStyle = WALL.steelD; ctx.fillRect(0, T0, 618, 8);
-    ctx.fillStyle = WALL.steel; ctx.fillRect(0, T0, 618, 4);
-    ctx.fillStyle = '#e6edf3'; ctx.fillRect(0, T0 + 8, 618, F0 - T0 - 8);
-    ctx.fillStyle = WALL.red; ctx.fillRect(0, T0 + 8, 618, 3);
-    ctx.fillStyle = 'rgba(60,80,100,0.16)'; for (let x = 60; x < 600; x += 120) ctx.fillRect(x, T0 + 14, 2, F0 - T0 - 14);
-    ctx.fillStyle = WALL.woodD; ctx.fillRect(618, T0 - 2, 330, 10);
-    ctx.fillStyle = WALL.woodL; ctx.fillRect(618, T0 - 2, 330, 4);
-    for (let x = 618, k = 0; x < 948; x += 22, k++) { ctx.fillStyle = k % 2 ? '#fff3da' : WALL.soft; ctx.fillRect(x, T0 + 8, Math.min(22, 948 - x), F0 - T0 - 8); }
-    ctx.fillStyle = WALL.red; ctx.fillRect(618, T0 + 8, 330, 3);
+    ERICH.put('hdcounters', W, F0 - T0 + 6, 0, 4, hotdogPaintCounters, 0, T0);
     // the awning across the top: red and white stripes with a scalloped edge
-    for (let x = 0, k = 0; x < W; x += 48, k++) { ctx.fillStyle = k % 2 ? '#fff6e6' : '#e2493b'; ctx.fillRect(x, 0, 48, HD.awn - 12); ctx.beginPath(); ctx.arc(x + 24, HD.awn - 12, 24, 0, Math.PI); ctx.fill(); }
-    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(0, 0, W, 6);
+    ERICH.put('hdawning', W, HD.awn + 16, 0, 0, hotdogPaintAwning, 0, 0);
     // the sign
     const sx = W / 2, sy = 16, bg = big();
-    ctx.fillStyle = '#8f5524'; rr(sx - 118, sy - 4, 236, 54, 14); ctx.fill();
-    ctx.fillStyle = '#ffd36b'; rr(sx - 112, sy, 224, 46, 11); ctx.fill();
-    for (let k = 0; k < 14; k++) { const a = k / 14; ctx.fillStyle = Math.floor(t * 4 + k) % 2 ? '#fff6e6' : '#ff6b4a'; circle(sx - 104 + a * 208, sy + 3, 2.4); ctx.fill(); circle(sx - 104 + a * 208, sy + 43, 2.4); ctx.fill(); }
+    ERICH.put('hdsign', 250, 70, 125, 10, hotdogPaintSign, sx, sy);
+    for (let k = 0; k < 14; k++) {
+      const a = k / 14, on = reduceMotion ? k % 2 : Math.floor(t * 4 + k) % 2;
+      for (const by of [sy + 3, sy + 43]) {
+        ctx.fillStyle = '#7a4a1e'; circle(sx - 104 + a * 208, by, 3); ctx.fill();
+        ctx.fillStyle = on ? '#fff6e6' : '#ff6b4a'; circle(sx - 104 + a * 208, by, 2.4); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.8)'; circle(sx - 104.8 + a * 208, by - 0.8, 0.8); ctx.fill();
+      }
+    }
     text('HOT DOGS', sx + 18, sy + 24, bg ? 28 : 26, '#c8342a', 'center');
     drawDog(sx - 76, sy + 24, 1.3, 'km');
   }
@@ -1312,11 +1524,12 @@ const HOTDOG = {
   function drawStations(st, t) {
     const bg = big();
     // the grill: a flat-top over glowing coals
-    ctx.fillStyle = '#3a3a48'; rr(88, T0 - 30, 206, 32, 6); ctx.fill();
-    ctx.fillStyle = '#5a5a6a'; rr(88, T0 - 30, 206, 7, 4); ctx.fill();
-    const glow = 0.5 + 0.2 * Math.sin(t * 3);
+    ERICH.put('hdgrill', 216, 40, 4, 34, hotdogPaintGrill, 88, T0 + 2);
+    const glow = reduceMotion ? 0.55 : 0.5 + 0.2 * Math.sin(t * 3);
     ctx.fillStyle = 'rgba(255,110,40,' + glow + ')'; ctx.fillRect(96, T0 - 10, 190, 6);
-    ctx.strokeStyle = '#7a7a8a'; ctx.lineWidth = 2; for (let x = 100; x < 290; x += 12) { ctx.beginPath(); ctx.moveTo(x, T0 - 23); ctx.lineTo(x, T0 - 12); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(255,220,120,' + glow * 0.7 + ')'; for (let x = 104; x < 284; x += 18) { ctx.beginPath(); ctx.ellipse(x + (x % 7), T0 - 7, 4, 1.5, 0, 0, TAU); ctx.fill(); }
+    ctx.strokeStyle = '#7a7a8a'; ctx.lineWidth = 2; ctx.beginPath(); for (let x = 100; x < 290; x += 12) { ctx.moveTo(x, T0 - 23); ctx.lineTo(x, T0 - 12); } ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let x = 99.3; x < 290; x += 12) { ctx.moveTo(x, T0 - 23); ctx.lineTo(x, T0 - 12); } ctx.stroke();
     for (let i = 0; i < 4; i++) {
       const s = st.grill[i], gx = HD.grill[i], gy = T0 - 30;
       if (!s) { ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.5; rr(gx - 18, gy - 8, 36, 10, 5); ctx.stroke(); ctx.setLineDash([]); continue; }
@@ -1345,16 +1558,12 @@ const HOTDOG = {
     }
     // the bun basket
     const bx = HD.bun, by = T0;
-    ctx.fillStyle = '#b8742c'; ctx.beginPath(); ctx.moveTo(bx - 24, by - 22); ctx.lineTo(bx + 24, by - 22); ctx.lineTo(bx + 19, by); ctx.lineTo(bx - 19, by); ctx.fill();
-    for (let k = 0; k < 3; k++) { ctx.fillStyle = '#f2b866'; ctx.beginPath(); ctx.ellipse(bx - 13 + k * 13, by - 24 - (k % 2) * 3, 9, 6, -0.2 + k * 0.2, 0, TAU); ctx.fill(); ctx.strokeStyle = '#c8823c'; ctx.lineWidth = 1.2; ctx.stroke(); }
-    ctx.strokeStyle = '#8f5524'; ctx.lineWidth = 1.5; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(bx - 22 + k * 1.6, by - 16 + k * 6); ctx.lineTo(bx + 22 - k * 1.6, by - 16 + k * 6); ctx.stroke(); }
+    ERICH.put('hdbuns', 60, 46, 30, 38, hotdogPaintBuns, bx, by);
     // the topping bottles
     for (const tp of st.room.tops) drawBottle(st, tp, HD.tops[tp], T0, t);
     // the pass shelf in the divider (4 slots, 2 boards)
     const sx = HD.shelf;
-    ctx.fillStyle = WALL.woodD; ctx.fillRect(sx - 36, T0 - 2, 72, 6); ctx.fillRect(sx - 36, T0 - 34, 72, 5);
-    ctx.fillStyle = WALL.woodL; ctx.fillRect(sx - 36, T0 - 34, 72, 2);
-    ctx.fillStyle = WALL.woodD; ctx.fillRect(sx - 36, T0 - 34, 4, 36); ctx.fillRect(sx + 32, T0 - 34, 4, 36);
+    ERICH.put('hdpass', 80, 46, 40, 38, hotdogPaintPass, sx, T0);
     for (let i = 0; i < HD.shelfN; i++) {
       const k = st.shelf[i];
       if (!k) continue;

@@ -419,8 +419,15 @@ function pieeatBarn(x, y, s) {
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
   ctx.strokeRect(-14, -30, 28, 30); ctx.beginPath(); ctx.moveTo(-14, -30); ctx.lineTo(14, 0); ctx.moveTo(14, -30); ctx.lineTo(-14, 0); ctx.stroke();
   ctx.fillStyle = '#fff3c4'; rr(-7, -54, 14, 10, 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(110,30,20,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); for (let x = -34; x < 40; x += 7) { if (x > -16 && x < 16) continue; ctx.moveTo(x, -42); ctx.lineTo(x, -1); } ctx.stroke();
+  ctx.fillStyle = 'rgba(80,20,20,0.2)'; ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(20, -62); ctx.lineTo(24, -64); ctx.lineTo(40, -44); ctx.lineTo(40, 0); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-46, -42); ctx.lineTo(-26, -68); ctx.lineTo(26, -68); ctx.stroke();
   // the silo
-  ctx.fillStyle = '#d9dde6'; ctx.fillRect(44, -74, 22, 74); ctx.fillStyle = '#a9b0c0'; ctx.beginPath(); ctx.arc(55, -74, 11, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#d9dde6'; ctx.fillRect(44, -74, 22, 74); ctx.fillStyle = '#b8bfcc'; ctx.fillRect(58, -74, 8, 74); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(46, -74, 2, 74);
+  ctx.fillStyle = 'rgba(120,130,150,0.45)'; for (let y = -64; y < 0; y += 12) ctx.fillRect(44, y, 22, 1.5);
+  ctx.fillStyle = '#a9b0c0'; ctx.beginPath(); ctx.arc(55, -74, 11, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(53, -76, 5, Math.PI, Math.PI * 1.6); ctx.lineTo(53, -76); ctx.fill();
+  ctx.strokeStyle = '#8a92a4'; ctx.lineWidth = 1; ctx.strokeRect(44.5, -74, 21, 74);
   ctx.restore();
 }
 function pieeatFerris(x, y, r, t) {
@@ -437,6 +444,98 @@ function pieeatFerris(x, y, r, t) {
     ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx, gy + 3); ctx.stroke();
   }
   ctx.fillStyle = '#ffc53d'; circle(x, y, 7); ctx.fill();
+}
+
+/* ---------- richer props (cached pictures; drawing only) ---------- */
+// the stage's back rail: weathered planks in two rows, upright battens with nails, a capping rail with a lit edge
+function pieeatPaintStage(c) {
+  for (let r = 0; r < 2; r++) {
+    let x = -(r * 37) % 120;
+    for (let i = 0; x < W; i++) { const len = 120 + ERICH.fr(r + 3, i) * 80; ERICH.board(c, x, 4 + r * 20, len, 20, { col: ['#a06c44', '#98663f', '#a8744a'][(r + i) % 3], seed: r * 17 + i, r: 1, lw: 1, nails: false, knots: ERICH.fr(r, i) < 0.15 ? 1 : 0 }); x += len; }
+  }
+  c.fillStyle = 'rgba(70,40,20,0.22)'; c.fillRect(0, 26, W, 18);
+  for (let x = 0; x < W; x += 48) { c.fillStyle = 'rgba(40,20,10,0.25)'; c.fillRect(x + 4, 4, 2, 40); ERICH.board(c, x, 4, 5, 40, { col: '#8a5a36', seed: x, vert: true, r: 0, nails: false, lw: 0.9, knots: 0 }); }
+  const pts = []; for (let x = 0; x < W; x += 48) pts.push([x + 2.5, 10], [x + 2.5, 36]);
+  ERICH.nails(c, pts, 1.2);
+  ERICH.board(c, 0, 0, W, 6, { col: '#c08a5a', seed: 91, r: 1, lw: 1, nails: false, knots: 0 });
+}
+// a candy-striped pole: a rounded cylinder (lit left, shaded right), red spiral bands, a gold cap
+function pieeatPaintPole(c) {
+  const g = c.createLinearGradient(-8, 0, 8, 0); g.addColorStop(0, '#ffffff'); g.addColorStop(0.35, '#f6f2ee'); g.addColorStop(1, '#c8c0bc');
+  c.fillStyle = g; c.fillRect(-8, 0, 16, 280);
+  c.save(); c.beginPath(); c.rect(-8, 0, 16, 280); c.clip();
+  const gr = c.createLinearGradient(-8, 0, 8, 0); gr.addColorStop(0, '#ff6a5a'); gr.addColorStop(0.4, '#e2483c'); gr.addColorStop(1, '#a8302a');
+  c.fillStyle = gr;
+  for (let y = 8; y < 290; y += 34) { c.beginPath(); c.moveTo(-8, y); c.lineTo(8, y - 10); c.lineTo(8, y + 6); c.lineTo(-8, y + 16); c.closePath(); c.fill(); }
+  c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(-5, 0, 2, 280);
+  c.restore();
+  c.strokeStyle = '#9a8a84'; c.lineWidth = 1; c.strokeRect(-8, 0, 16, 280);
+  c.fillStyle = '#ffd36b'; rrOn(c, -10, -2, 20, 6, 2); c.fill(); c.strokeStyle = '#b9850f'; c.stroke();
+}
+// the awning: stripes with a soft fold in each, shaded scallops, gold piping, a shadow cast under it
+function pieeatPaintAwning(c) {
+  const aw = 34;
+  c.fillStyle = 'rgba(60,20,10,0.12)'; for (let x = 0; x < W; x += aw) { c.beginPath(); c.arc(x + aw / 2, 25, aw / 2, 0, Math.PI); c.fill(); }
+  for (let x = 0, i = 0; x < W; x += aw, i++) {
+    const col = i % 2 ? '#ffffff' : '#e2483c';
+    const g = c.createLinearGradient(x, 0, x + aw, 0); g.addColorStop(0, tint(col, 0.12)); g.addColorStop(0.45, col); g.addColorStop(1, shade(col, 0.12));
+    c.fillStyle = g; c.fillRect(x, 0, aw, 22); c.beginPath(); c.arc(x + aw / 2, 22, aw / 2, 0, Math.PI); c.fill();
+    c.fillStyle = shade(col, 0.15); c.beginPath(); c.arc(x + aw / 2, 22, aw / 2, 0.15, Math.PI - 0.15); c.arc(x + aw / 2, 20, aw / 2 - 4, Math.PI - 0.15, 0.15, true); c.closePath(); c.fill();
+  }
+  c.strokeStyle = '#ffd36b'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, 21); c.lineTo(W, 21); c.stroke();
+  c.strokeStyle = 'rgba(150,90,10,0.55)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(0, 22.5); c.lineTo(W, 22.5); c.stroke();
+  c.fillStyle = 'rgba(0,0,0,0.1)'; c.fillRect(0, 0, W, 4);
+}
+// the hanging sign: two grained planks in a frame, lit top edge, nails, iron rings for the chains
+function pieeatPaintSign(c) {
+  c.fillStyle = 'rgba(60,30,10,0.22)'; rrOn(c, -147, 3, 300, 40, 10); c.fill();
+  c.fillStyle = '#8a5a36'; rrOn(c, -150, 0, 300, 40, 10); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(-140, 0.5, 280, 1.2);
+  c.save(); rrOn(c, -145, 4, 290, 32, 8); c.clip();
+  ERICH.board(c, -145, 4, 290, 16, { col: '#c99a62', seed: 51, r: 0, lw: 0.6, nails: false, knots: 0 });
+  ERICH.board(c, -145, 20, 290, 16, { col: '#c29258', seed: 52, r: 0, lw: 0.6, nails: false, knots: 0 });
+  c.restore();
+  c.strokeStyle = '#5e3c22'; c.lineWidth = 1.2; rrOn(c, -145, 4, 290, 32, 8); c.stroke(); rrOn(c, -150, 0, 300, 40, 10); c.stroke();
+  ERICH.nails(c, [[-140, 9], [140, 9], [-140, 31], [140, 31]], 1.5);
+  for (const rx of [-116, 116]) { c.strokeStyle = '#6a6a76'; c.lineWidth = 1.6; c.beginPath(); c.arc(rx, 2, 3, 0, Math.PI * 2); c.stroke(); }
+}
+// the table top seen from a little above: a woven checked cloth, checks growing toward the front, a soft crease, a shade at the back
+function pieeatPaintTableTop(c) {
+  const w = W - 80, h = PIEEAT_FRONT - PIEEAT_TABLE;
+  c.fillStyle = '#fff8ef'; c.fillRect(0, 0, w, h);
+  c.fillStyle = 'rgba(226,72,60,0.28)'; for (let x = 0; x < w; x += 28) c.fillRect(x, 0, 14, h);
+  for (let y = 0, hh = 8; y < h; y += hh * 2, hh += 1.5) { c.fillStyle = 'rgba(226,72,60,0.24)'; c.fillRect(0, y, w, Math.min(hh, h - y)); }
+  // the weave: fine threads across and down
+  c.strokeStyle = 'rgba(160,60,50,0.08)'; c.lineWidth = 0.6; c.beginPath();
+  for (let x = 1; x < w; x += 3) { c.moveTo(x, 0); c.lineTo(x, h); }
+  c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, h * 0.55); for (let x = 0; x <= w; x += 30) c.lineTo(x, h * 0.55 + Math.sin(x * 0.02) * 1.5); c.stroke();
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(28,26,54,0.14)'); g.addColorStop(0.3, 'rgba(28,26,54,0)'); g.addColorStop(1, 'rgba(255,255,255,0.12)');
+  c.fillStyle = g; c.fillRect(0, 0, w, h);
+  c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(0, h - 1.5, w, 1.5);
+}
+// the cloth hanging down the front: woven checks, soft drape folds, a shaded scalloped hem with stitching
+function pieeatPaintCloth(c) {
+  const w = W - 80, h = 470 - PIEEAT_FRONT;
+  c.fillStyle = '#ffffff'; c.fillRect(0, 0, w, h);
+  for (let x = 0; x < w; x += 26) { c.fillStyle = 'rgba(226,72,60,0.55)'; c.fillRect(x, 0, 13, h); }
+  for (let y = 0; y < h; y += 26) { c.fillStyle = 'rgba(226,72,60,0.45)'; c.fillRect(0, y, w, 13); }
+  c.strokeStyle = 'rgba(160,50,40,0.08)'; c.lineWidth = 0.6; c.beginPath(); for (let y = 1; y < h; y += 3) { c.moveTo(0, y); c.lineTo(w, y); } c.stroke();
+  // drape folds: wide soft bands of light and shade
+  for (let x = 0, i = 0; x < w; x += 60, i++) {
+    const g = c.createLinearGradient(x, 0, x + 60, 0); g.addColorStop(0, 'rgba(255,255,255,0.14)'); g.addColorStop(0.5, 'rgba(255,255,255,0)'); g.addColorStop(0.8, 'rgba(80,10,10,0.1)'); g.addColorStop(1, 'rgba(80,10,10,0)');
+    c.fillStyle = g; c.fillRect(x, 0, 60, h);
+  }
+  const gv = c.createLinearGradient(0, 0, 0, h); gv.addColorStop(0, 'rgba(0,0,0,0.14)'); gv.addColorStop(0.12, 'rgba(0,0,0,0)'); gv.addColorStop(1, 'rgba(80,10,10,0.1)');
+  c.fillStyle = gv; c.fillRect(0, 0, w, h);
+  // the scalloped hem
+  for (let x = 0; x < w; x += 30) {
+    c.fillStyle = '#e2483c'; c.beginPath(); c.arc(x + 15, h, 15, 0, Math.PI); c.fill();
+    c.fillStyle = '#b8342a'; c.beginPath(); c.arc(x + 15, h, 15, 0.2, Math.PI - 0.2); c.arc(x + 15, h - 2, 12, Math.PI - 0.2, 0.2, true); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.beginPath(); c.arc(x + 11, h + 4, 4, Math.PI * 0.6, Math.PI * 1.1); c.lineTo(x + 11, h + 4); c.fill();
+  }
+  c.fillStyle = '#e2483c'; c.fillRect(0, h - 3, w, 3);
+  c.save(); c.setLineDash([3, 2.5]); c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, h - 1.5); c.lineTo(w, h - 1.5); c.stroke(); c.restore();
 }
 function pieeatDrawBack(st) {
   const t = st.t;
@@ -455,31 +554,20 @@ function pieeatDrawBack(st) {
   pieeatFerris(842, 196, 74, t);
   pieeatBarn(110, 286, 1.05);
   ctx.fillStyle = C.hillNear; ctx.fillRect(0, 286, W, 90);
-  ctx.fillStyle = '#e9cf6a';
-  for (let i = 0; i < 7; i++) { const x = 30 + i * 140 + (i % 2) * 40; rr(x, 300 + (i % 3) * 6, 40, 22, 6); ctx.fill(); }
-  ctx.fillStyle = '#c9a845';
-  for (let i = 0; i < 7; i++) { const x = 30 + i * 140 + (i % 2) * 40; ctx.fillRect(x + 4, 308 + (i % 3) * 6, 32, 2); ctx.fillRect(x + 4, 314 + (i % 3) * 6, 32, 2); }
-  // the bales get a shaded lower half and a shadow on the grass
-  for (let i = 0; i < 7; i++) { const x = 30 + i * 140 + (i % 2) * 40, y = 300 + (i % 3) * 6; ctx.fillStyle = 'rgba(150,110,30,0.22)'; rr(x, y + 13, 40, 9, 5); ctx.fill(); ctx.fillStyle = 'rgba(40,80,20,0.18)'; ctx.beginPath(); ctx.ellipse(x + 22, y + 23, 24, 3.5, 0, 0, Math.PI * 2); ctx.fill(); }
+  // hay bales on the grass, each with a shadow
+  for (let i = 0; i < 7; i++) {
+    const x = 30 + i * 140 + (i % 2) * 40, y = 300 + (i % 3) * 6;
+    ctx.fillStyle = 'rgba(40,80,20,0.18)'; ctx.beginPath(); ctx.ellipse(x + 22, y + 23, 24, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    ERICH.put('pebale' + (i % 2), 50, 32, 25, 16, c => ERICH.bale(c, 40, 22, false, { col: '#e9cf6a', seed: 7 + (i % 2) }), x + 20, y + 11);
+  }
   pieeatTent(250, 312, 120, 92, '#e2483c', '#ffffff');
   pieeatTent(700, 316, 104, 80, '#ffc53d', '#ffffff');
   pieeatTent(470, 300, 84, 64, '#5b95ff', '#ffffff');
   // the stage: a wooden back rail, the posts and the striped awning with bunting
-  ctx.fillStyle = '#a06c44'; ctx.fillRect(0, 330, W, 40);
-  ctx.fillStyle = 'rgba(70,40,20,0.22)'; ctx.fillRect(0, 352, W, 18);
-  ctx.fillStyle = 'rgba(90,55,25,0.35)'; for (let x = 0; x < W; x += 48) { const h = hash(x, 3); ctx.fillRect(x + 8 + h % 10, 338 + h % 6, 18 + h % 14, 1.5); ctx.fillRect(x + 20 + h % 8, 346 + h % 5, 14 + h % 10, 1.5); }
-  ctx.fillStyle = '#8a5a36'; for (let x = 0; x < W; x += 48) ctx.fillRect(x, 330, 3, 40);
-  ctx.fillStyle = '#5e3c22'; ctx.beginPath(); for (let x = 0; x < W; x += 48) for (const ny of [336, 362]) { ctx.moveTo(x + 8.5, ny); ctx.arc(x + 7, ny, 1.5, 0, Math.PI * 2); } ctx.fill();
-  ctx.fillStyle = '#c08a5a'; ctx.fillRect(0, 326, W, 6);
-  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, 326, W, 1.5);
-  for (const px of [22, W - 22]) {
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(px - 8, 92, 16, 280);
-    ctx.fillStyle = '#e2483c'; for (let y = 100; y < 370; y += 34) { ctx.beginPath(); ctx.moveTo(px - 8, y); ctx.lineTo(px + 8, y - 10); ctx.lineTo(px + 8, y + 6); ctx.lineTo(px - 8, y + 16); ctx.closePath(); ctx.fill(); }
-  }
+  ERICH.put('pestage', W, 46, 0, 0, pieeatPaintStage, 0, 326);
+  for (const px of [22, W - 22]) ERICH.put('pepole', 24, 284, 12, 2, pieeatPaintPole, px, 92);
   // the awning (red and white stripes, scalloped)
-  const aw = 34;
-  for (let x = 0, i = 0; x < W; x += aw, i++) { ctx.fillStyle = i % 2 ? '#ffffff' : '#e2483c'; ctx.fillRect(x, 78, aw, 22); ctx.beginPath(); ctx.arc(x + aw / 2, 100, aw / 2, 0, Math.PI); ctx.fill(); }
-  ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.fillRect(0, 78, W, 4);
+  ERICH.put('peawning', W, 46, 0, 0, pieeatPaintAwning, 0, 78);
   // bunting
   const cols = ['#ffc53d', '#5b95ff', '#7fd05a', '#ff6b8a', '#ff9f43'];
   for (const [x0, x1] of [[30, 300], [300, 660], [660, W - 30]]) {
@@ -495,13 +583,9 @@ function pieeatDrawSign(st) {
   const x = W / 2, y = 104;
   ctx.strokeStyle = '#7a5a3a'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(x - 120, 96); ctx.lineTo(x - 116, y + 4); ctx.moveTo(x + 120, 96); ctx.lineTo(x + 116, y + 4); ctx.stroke();
-  ctx.fillStyle = '#8a5a36'; rr(x - 150, y, 300, 40, 10); ctx.fill();
-  ctx.fillStyle = '#c99a62'; rr(x - 145, y + 4, 290, 32, 8); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.22)'; rr(x - 140, y + 6, 280, 4, 2); ctx.fill();
-  ctx.fillStyle = 'rgba(120,70,30,0.25)'; for (const gy of [y + 14, y + 27]) ctx.fillRect(x - 138, gy, 276, 1.2);
-  ctx.fillStyle = '#5e3c22'; circle(x - 140, y + 9, 1.6); ctx.fill(); circle(x + 140, y + 9, 1.6); ctx.fill();
+  ERICH.put('pesign', 310, 52, 155, 4, pieeatPaintSign, x, y);
   text('PIE-EATING CONTEST', x, y + 21, 22, '#7e2a22', 'center');
-  ctx.fillStyle = C.gold; pieeatStar(x - 128, y + 20, 7); pieeatStar(x + 128, y + 20, 7);
+  for (const sx of [x - 128, x + 128]) { ctx.fillStyle = '#b9850f'; pieeatStar(sx + 0.8, y + 21, 7.6); ctx.fillStyle = C.gold; pieeatStar(sx, y + 20, 7); ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(sx - 1.6, y + 17.5, 1.3); ctx.fill(); }
 }
 function pieeatStar(x, y, r) {
   ctx.beginPath();
@@ -593,27 +677,19 @@ function pieeatDrawRibbon(st) {
 /* ---------- drawing: the table, pies, plates, stacks, hiccup jars ---------- */
 function pieeatDrawTableTop() {
   // the table top (seen a little from above) and the checked cloth hanging down the front
-  const y0 = PIEEAT_TABLE, y1 = PIEEAT_FRONT;
-  ctx.fillStyle = '#fff8ef'; ctx.fillRect(40, y0, W - 80, y1 - y0);
-  // checks seen from above: rows get a little taller toward the front
-  ctx.fillStyle = 'rgba(226,72,60,0.28)';
-  for (let x = 40; x < W - 40; x += 28) ctx.fillRect(x, y0, 14, y1 - y0);
-  for (let y = y0, h = 8; y < y1; y += h * 2, h += 1.5) { ctx.fillStyle = 'rgba(226,72,60,0.24)'; ctx.fillRect(40, y, W - 80, Math.min(h, y1 - y)); }
-  ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.fillRect(40, y0, W - 80, 3);
+  ERICH.put('petable', W - 80, PIEEAT_FRONT - PIEEAT_TABLE, 0, 0, pieeatPaintTableTop, 40, PIEEAT_TABLE);
 }
 function pieeatDrawCloth(st) {
   const y0 = PIEEAT_FRONT, y1 = 470;
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(40, y0, W - 80, y1 - y0);
-  for (let x = 40; x < W - 40; x += 26) { ctx.fillStyle = 'rgba(226,72,60,0.55)'; ctx.fillRect(x, y0, 13, y1 - y0); }
-  for (let y = y0; y < y1; y += 26) { ctx.fillStyle = 'rgba(226,72,60,0.45)'; ctx.fillRect(40, y, W - 80, 13); }
-  // the scalloped hem
-  ctx.fillStyle = '#e2483c';
-  for (let x = 40; x < W - 40; x += 30) { ctx.beginPath(); ctx.arc(x + 15, y1, 15, 0, Math.PI); ctx.fill(); }
-  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(40, y0, W - 80, 4);
-  // name cards on the front of the table
+  ERICH.put('pecloth', W - 80, y1 - y0 + 18, 0, 0, pieeatPaintCloth, 40, y0);
+  // name cards on the front of the table, pinned on with a shadow behind
   for (const k of [0, 1]) {
     const x = PIEEAT_X[k], y = y0 + 16;
+    ctx.fillStyle = 'rgba(90,20,20,0.22)'; rr(x - 51, y + 3, 108, 34, 8); ctx.fill();
     ctx.fillStyle = '#fffaf0'; rr(x - 54, y, 108, 34, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(200,170,140,0.22)'; ctx.fillRect(x - 52, y + 24, 104, 8);
+    ctx.fillStyle = PCOL[k]; circle(x - 46, y + 6, 2.2); ctx.fill(); circle(x + 46, y + 6, 2.2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(x - 46.6, y + 5.4, 0.8); ctx.fill(); circle(x + 45.4, y + 5.4, 0.8); ctx.fill();
     ctx.strokeStyle = PCOL[k]; ctx.lineWidth = 3; rr(x - 54, y, 108, 34, 8); ctx.stroke();
     text(NAMES[k], x, y + 18, 22, PCOL[k], 'center');
   }
