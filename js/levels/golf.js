@@ -366,28 +366,60 @@ function drawGolfMap() {
   ctx.restore();
 }
 
+function golfPaintSail(c, hw, L) {
+  c.fillStyle = 'rgba(0,0,0,0.12)'; rrOn(c, 8, -hw + 3, L - 6, hw * 2, hw); c.fill(); // its shadow
+  c.fillStyle = '#7a3b2e'; rrOn(c, 5, -hw - 1, L - 4, hw * 2 + 2, hw + 1); c.fill();
+  c.save(); rrOn(c, 6, -hw, L - 6, hw * 2, hw); c.clip();
+  c.fillStyle = '#f6efdf'; c.fillRect(6, -hw, L, hw * 2);
+  c.fillStyle = '#e3d6bd'; c.fillRect(6, 0.5, L, hw);
+  c.fillStyle = 'rgba(255,107,74,0.88)'; c.fillRect(L * 0.45, -hw, L, hw * 2);
+  c.fillStyle = 'rgba(150,40,25,0.3)'; c.fillRect(L * 0.45, 0.5, L, hw);
+  c.fillStyle = '#fff3e6'; c.fillRect(L * 0.68, -hw, 2.4, hw * 2);
+  // the lattice
+  c.fillStyle = 'rgba(122,59,46,0.28)';
+  for (let x = 12; x < L - 2; x += 8) c.fillRect(x, -hw, 1.1, hw * 2);
+  c.fillRect(6, -hw + 1.2, L, 0.9); c.fillRect(6, hw - 2.1, L, 0.9);
+  c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(10, -hw + 0.4, L * 0.4, 0.9);
+  c.restore();
+  // the spar
+  c.fillStyle = 'rgba(94,42,32,0.75)'; c.fillRect(0, -1.1, L - 2, 2.2);
+  c.fillStyle = '#b07a52'; c.fillRect(0, -0.7, L - 2.6, 1.2);
+  c.fillStyle = '#5e2a20'; circleOn(c, L - 3, 0, 1.6); c.fill(); c.fillStyle = '#c9a07a'; circleOn(c, L - 3.2, -0.3, 0.8); c.fill();
+}
 function drawMill(s) {
   ctx.save(); ctx.translate(s.x, s.y);
+  // (rich props pass) each sail: a shadow, a dark outline, canvas on a lattice frame (crossbars and two rails), the
+  // lower half in shade, the red tip with a stripe, and a wooden spar down the middle with a lit edge and an end cap
+  // one picture per sail size, painted once and turned with the mill
+  const hw = s.hw, L = s.len, sail = artSprite('gsail' + hw + '_' + L, L + 4, hw * 2 + 8, 0, hw + 2, c => golfPaintSail(c, hw, L));
   for (let k = 0; k < s.arms; k++) {
     ctx.save(); ctx.rotate(s.a + k * Math.PI * 2 / s.arms);
-    ctx.fillStyle = '#f6efdf'; ctx.strokeStyle = '#7a3b2e'; ctx.lineWidth = 2;
-    ctx.fillStyle = 'rgba(0,0,0,0.12)'; rr(8, -s.hw + 3, s.len - 6, s.hw * 2, s.hw); ctx.fill(); // its shadow
-    ctx.fillStyle = '#f6efdf'; rr(6, -s.hw, s.len - 6, s.hw * 2, s.hw); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(10, -s.hw + 1.5, s.len * 0.35, 1.5);
-    ctx.fillStyle = 'rgba(255,107,74,0.85)'; rr(s.len * 0.45, -s.hw + 1.5, s.len * 0.5, s.hw * 2 - 3, 2); ctx.fill();
+    blitSprite(sail, 0, 0);
     ctx.restore();
   }
-  ctx.fillStyle = s.t > 0 ? '#ffe3ae' : '#7a3b2e'; circle(0, 0, 8.5); ctx.fill();
-  ctx.strokeStyle = '#4e241b'; ctx.lineWidth = 1.5; circle(0, 0, 8.5); ctx.stroke();
-  ctx.fillStyle = '#c9a07a'; for (let k = 0; k < 4; k++) { const a = s.a + k * Math.PI / 2; circle(Math.cos(a) * 5.5, Math.sin(a) * 5.5, 1); ctx.fill(); }
-  ctx.fillStyle = '#f6efdf'; circle(0, 0, 3); ctx.fill();
+  // the hub: a shadow, a wooden boss with a lit rim and bolts that turn with it, a brass cap with a glint
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; circle(1.5, 2, 9.5); ctx.fill();
+  ctx.fillStyle = '#4e241b'; circle(0, 0, 9.6); ctx.fill();
+  ctx.fillStyle = s.t > 0 ? '#ffe3ae' : '#7a3b2e'; circle(0, 0, 8.4); ctx.fill();
+  ctx.fillStyle = s.t > 0 ? '#fff4d6' : '#9a5442'; ctx.beginPath(); ctx.arc(0, 0, 8.4, Math.PI * 0.95, Math.PI * 1.75); ctx.arc(0, 0, 6.6, Math.PI * 1.75, Math.PI * 0.95, true); ctx.fill();
+  for (let k = 0; k < 6; k++) { const a = s.a + k * Math.PI / 3; ctx.fillStyle = '#c9a07a'; circle(Math.cos(a) * 5.8, Math.sin(a) * 5.8, 1.05); ctx.fill(); ctx.fillStyle = '#4e241b'; circle(Math.cos(a) * 5.8 + 0.3, Math.sin(a) * 5.8 + 0.3, 0.4); ctx.fill(); }
+  ctx.fillStyle = '#b9850f'; circle(0, 0, 3.6); ctx.fill();
+  ctx.fillStyle = '#ffd25e'; circle(-0.4, -0.4, 2.8); ctx.fill();
+  ctx.fillStyle = '#fff6d8'; circle(-1.2, -1.2, 0.9); ctx.fill();
   ctx.restore();
 }
 function drawPortal(p) {
   const col = PORTAL_COL[p.ch], pulse = 1 + Math.sin(G.clock * 5 + p.x) * 0.06 + (p.t > 0 ? 0.25 : 0);
   ctx.save(); ctx.translate(p.x, p.y); ctx.scale(pulse, pulse);
   ctx.fillStyle = 'rgba(28,26,54,0.55)'; ctx.beginPath(); ctx.ellipse(0, 0, 11, 17, 0, 0, Math.PI * 2); ctx.fill();
+  // (rich props pass) a deep glow inside, a dark outline, the coloured rim with a lit upper-left and a shaded lower-right,
+  // and four little rune studs round it
+  ctx.fillStyle = col; ctx.globalAlpha = 0.28; ctx.beginPath(); ctx.ellipse(0, 3, 7, 11, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+  ctx.strokeStyle = shade(col, 0.5); ctx.lineWidth = 6.5; ctx.beginPath(); ctx.ellipse(0, 0, 12, 18, 0, 0, Math.PI * 2); ctx.stroke();
   ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(0, 0, 12, 18, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = tint(col, 0.55); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(0, 0, 12.6, 18.6, 0, Math.PI * 0.95, Math.PI * 1.6); ctx.stroke();
+  ctx.strokeStyle = shade(col, 0.3); ctx.beginPath(); ctx.ellipse(0, 0, 11.4, 17.4, 0, Math.PI * 1.95, Math.PI * 2.6); ctx.stroke();
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4; ctx.fillStyle = shade(col, 0.5); circle(Math.cos(a) * 12, Math.sin(a) * 18, 2.1); ctx.fill(); ctx.fillStyle = tint(col, 0.6); circle(Math.cos(a) * 12 - 0.4, Math.sin(a) * 18 - 0.4, 1.1); ctx.fill(); }
   ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5;
   for (let k = 0; k < 2; k++) { ctx.beginPath(); ctx.ellipse(0, 0, 7, 12, 0, G.clock * 3 + k * Math.PI, G.clock * 3 + k * Math.PI + 1.8); ctx.stroke(); }
   ctx.restore();
@@ -399,6 +431,12 @@ function drawRing(rg) {
   ctx.translate(rg.x, rg.y); ctx.scale(s, s);
   ctx.strokeStyle = C.goldDark; ctx.lineWidth = 6; circle(0, 0, 15); ctx.stroke();
   ctx.strokeStyle = C.gold; ctx.lineWidth = 3.5; circle(0, 0, 15); ctx.stroke();
+  // (rich props pass) a lit upper arc, notches round the band and a twinkle
+  ctx.strokeStyle = '#fff4c8'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(0, 0, 15.6, Math.PI * 1.05, Math.PI * 1.55); ctx.stroke();
+  ctx.strokeStyle = C.goldDark; ctx.lineWidth = 1;
+  for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 13.3, Math.sin(a) * 13.3); ctx.lineTo(Math.cos(a) * 16.7, Math.sin(a) * 16.7); ctx.stroke(); }
+  const tw = (Math.sin(G.clock * 3 + rg.x) + 1) / 2;
+  if (tw > 0.5 && !rg.used) { const a2 = (tw - 0.5) * 2, r2 = 2 + a2 * 3; ctx.fillStyle = 'rgba(255,255,255,' + a2 + ')'; ctx.beginPath(); ctx.moveTo(-10, -11 - r2); ctx.lineTo(-9.4, -11.6); ctx.lineTo(-10 + r2, -11); ctx.lineTo(-9.4, -10.4); ctx.lineTo(-10, -11 + r2); ctx.lineTo(-10.6, -10.4); ctx.lineTo(-10 - r2, -11); ctx.lineTo(-10.6, -11.6); ctx.closePath(); ctx.fill(); }
   ctx.restore();
 }
 // a hole's `cave` (tile rectangles [x0, x1, y0, y1]: Portal Park's rabbit-hole tunnel) gets a dark cave wall behind its
@@ -407,10 +445,39 @@ function drawGolfCaves(camX) {
   const L = G.level, vx0 = Math.floor(camX / T), vx1 = Math.floor((camX + W) / T);
   for (const [x0, x1, y0, y1] of L.def.cave || []) {
     for (let tx = Math.max(x0, vx0); tx <= Math.min(x1, vx1); tx++) for (let ty = y0; ty <= y1; ty++) {
-      if (golfSolid(tx, ty)) continue;
+      // (a bumper's cell gets the cave behind it too: the bumper's rounded corners would show the sky otherwise)
+      const ch = tile(tx, ty);
+      if (ch !== 'X' && golfSolid(tx, ty)) continue;
       const x = tx * T, y = ty * T, h = hash(tx, ty);
-      ctx.fillStyle = '#4d4054'; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
-      if (h % 4 === 0) { ctx.fillStyle = 'rgba(255,255,255,0.06)'; rr(x + 5 + (h % 13), y + 8 + ((h >> 4) % 14), 8, 4, 2); ctx.fill(); }
+      // (rich props pass) one picture per look: packed earth with strata, embedded stones, roots hanging from the roof
+      const up = tile(tx, ty - 1), roof = up !== 'X' && golfSolid(tx, ty - 1), v = h % 8;
+      const sp = artSprite('gcave' + v + (roof ? 1 : 0), T, T, 0, 0, c => paintGolfCave(c, hash(v * 11 + 1, 3), roof));
+      blitSprite(sp, x, y);
+    }
+  }
+}
+function paintGolfCave(c, h, roof) {
+  c.fillStyle = '#4d4054'; c.fillRect(-0.4, -0.4, T + 0.8, T + 0.8);
+  // strata: two soft bands that line up from tile to tile
+  c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(-0.4, 9, T + 0.8, 3); c.fillRect(-0.4, 22, T + 0.8, 2);
+  c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(-0.4, 8, T + 0.8, 1); c.fillRect(-0.4, 21, T + 0.8, 1);
+  // an embedded stone with a lit top and a shadow
+  if (h % 3 !== 0) {
+    const sx = 5 + (h >>> 3) % 16, sy = 5 + (h >>> 7) % 18, w = 4 + (h >>> 11) % 4;
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(sx + 0.8, sy + 1.2, w, w * 0.6, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#6a5d70'; c.beginPath(); c.ellipse(sx, sy, w, w * 0.6, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#857891'; c.beginPath(); c.ellipse(sx - 0.8, sy - 0.8, w * 0.6, w * 0.3, 0, 0, Math.PI * 2); c.fill();
+  }
+  c.fillStyle = 'rgba(255,255,255,0.08)';
+  for (let i = 0; i < 4; i++) { circleOn(c, 2 + (h >>> (i * 4)) % 26, 2 + (h >>> (i * 4 + 2)) % 26, 0.7); c.fill(); }
+  // roots hanging from the roof
+  if (roof) {
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(-0.4, 0, T + 0.8, 3);
+    c.strokeStyle = '#7a5a48'; c.lineWidth = 1.2; c.lineCap = 'round';
+    for (let i = 0; i < 2; i++) {
+      const rx = 6 + i * 13 + (h >>> (i * 5)) % 6, rl = 7 + (h >>> (i * 3 + 9)) % 9;
+      c.beginPath(); c.moveTo(rx, 0); c.quadraticCurveTo(rx + 3, rl * 0.5, rx - 1, rl); c.stroke();
+      c.lineWidth = 0.7; c.beginPath(); c.moveTo(rx + 1.2, rl * 0.45); c.quadraticCurveTo(rx + 4, rl * 0.6, rx + 4.5, rl * 0.85); c.stroke(); c.lineWidth = 1.2;
     }
   }
 }
@@ -423,13 +490,27 @@ function drawGolf() {
   for (const s of L.spinners) drawMill(s);
   // the cup: a dark pocket with the flag standing in it
   ctx.fillStyle = C.doorIn; ctx.fillRect(c.x0 + 1, c.y0, T - 2, T);
+  // (rich props pass) a white cup liner with a shaded inside, a lit back wall and a dark bottom, dirt in the walls
+  ctx.fillStyle = '#d9d6e6'; ctx.fillRect(c.x0 + 1, c.y0, 2.2, T - 4); ctx.fillRect(c.x0 + T - 3.2, c.y0, 2.2, T - 4);
+  ctx.fillStyle = '#9e9ab4'; ctx.fillRect(c.x0 + T - 3.2, c.y0, 1, T - 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(c.x0 + 3.2, c.y0 + 6, T - 6.4, 10);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(c.x0 + 3.2, c.y0 + T - 8, T - 6.4, 8);
+  ctx.fillStyle = '#d9d6e6'; ctx.fillRect(c.x0 + 1, c.y0 + T - 5, T - 2, 1.4);
   ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(c.x0 + 1, c.y0, T - 2, 6);
   ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(c.x0 + 1, c.y0, T - 2, 1.5); // the cup's lit rim
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(c.x0 + 1, c.y0 - 0.5, 3, 1.5); ctx.fillRect(c.x0 + T - 4, c.y0 - 0.5, 3, 1.5);
   const fx = c.x0 + T / 2 + 6, wave = Math.sin(G.clock * 6) * 3;
   // the pin: a white pole with red bands and a ball on top, the flag with a darker edge and a shadow fold
+  // (rich props pass) the pin outlined, lit down its left side and shaded down its right, with a ferrule at the foot
+  ctx.fillStyle = '#5b5876'; ctx.fillRect(fx - 2.3, c.y0 - 70, 4.6, 70 + T - 4);
   ctx.fillStyle = '#e9e4f5'; ctx.fillRect(fx - 1.5, c.y0 - 70, 3, 70 + T - 4);
   ctx.fillStyle = '#e8483a'; for (let k = 0; k < 4; k++) ctx.fillRect(fx - 1.5, c.y0 - 40 + k * 14, 3, 6);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(fx - 1.3, c.y0 - 69, 0.8, 68 + T - 4);
+  ctx.fillStyle = 'rgba(40,30,60,0.25)'; ctx.fillRect(fx + 0.6, c.y0 - 70, 0.9, 70 + T - 4);
+  ctx.fillStyle = '#9095b0'; ctx.fillRect(fx - 2.3, c.y0 + T - 9, 4.6, 5);
+  ctx.fillStyle = '#5b5876'; circle(fx, c.y0 - 71, 3.4); ctx.fill();
   ctx.fillStyle = '#ffffff'; circle(fx, c.y0 - 71, 2.6); ctx.fill();
+  ctx.fillStyle = '#c9cde0'; ctx.beginPath(); ctx.arc(fx, c.y0 - 71, 2.6, 0.2, Math.PI - 0.2); ctx.fill();
   const fc = g.phase === 'sunk' ? C.grass : C.gold;
   ctx.fillStyle = fc; ctx.strokeStyle = shade(fc, 0.35); ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
   ctx.beginPath(); ctx.moveTo(fx + 1.5, c.y0 - 70); ctx.quadraticCurveTo(fx + 18, c.y0 - 66 + wave * 0.6, fx + 34, c.y0 - 58 + wave); ctx.quadraticCurveTo(fx + 18, c.y0 - 50 + wave * 0.4, fx + 1.5, c.y0 - 46); ctx.closePath(); ctx.fill(); ctx.stroke();

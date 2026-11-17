@@ -125,12 +125,30 @@ function scGolfFlag(h, x, y, s, base, hh) {
 function scBunker(h, x, y, s, base) {
   h.fillStyle = shade(base, 0.14); h.beginPath(); h.ellipse(x, y, 19 * s, 5.5 * s, 0, 0, Math.PI * 2); h.fill();
   h.fillStyle = mixCol('#f6e3b0', base, 0.3); h.beginPath(); h.ellipse(x, y + 1.2 * s, 17.5 * s, 4.4 * s, 0, 0, Math.PI * 2); h.fill();
+  // (rich props pass) the far lip in shade, rake lines following the bowl, a lit near edge and a rake left in the sand
+  h.fillStyle = mixCol('#c9ad78', base, 0.35); h.beginPath(); h.ellipse(x, y - 0.6 * s, 16.5 * s, 2.6 * s, 0, Math.PI, 0); h.fill();
+  h.strokeStyle = mixCol('#d8bd86', base, 0.3); h.lineWidth = 0.7 * s;
+  for (let k = 0; k < 3; k++) { h.beginPath(); h.ellipse(x + 1 * s, y + 1.6 * s, (6 + k * 3.4) * s, (1.2 + k * 0.7) * s, 0, 0.15, Math.PI - 0.15); h.stroke(); }
   h.fillStyle = 'rgba(255,255,255,0.25)'; h.beginPath(); h.ellipse(x - 4 * s, y + 2 * s, 8 * s, 1.5 * s, 0, 0, Math.PI * 2); h.fill();
+  h.strokeStyle = mixCol('#8a6a48', base, 0.35); h.lineWidth = 0.9 * s; h.lineCap = 'round';
+  h.beginPath(); h.moveTo(x + 9 * s, y + 2.4 * s); h.lineTo(x + 17 * s, y - 4.5 * s); h.stroke();
+  h.beginPath(); h.moveTo(x + 6.6 * s, y + 1.6 * s); h.lineTo(x + 11.4 * s, y + 3.2 * s); h.stroke();
 }
 function scPond(h, x, y, s, base) {
   h.fillStyle = shade(base, 0.14); h.beginPath(); h.ellipse(x, y, 24 * s, 6 * s, 0, 0, Math.PI * 2); h.fill();
   h.fillStyle = mixCol('#8fd3f0', base, 0.3); h.beginPath(); h.ellipse(x, y + 1 * s, 22.5 * s, 4.8 * s, 0, 0, Math.PI * 2); h.fill();
+  // (rich props pass) the far bank's reflection, glints, two lily pads, a few rim stones and a clump of reeds
+  h.fillStyle = mixCol('#5fa8c8', base, 0.35); h.beginPath(); h.ellipse(x, y - 1 * s, 20 * s, 2.2 * s, 0, Math.PI, 0); h.fill();
   h.fillStyle = 'rgba(255,255,255,0.35)'; h.beginPath(); h.ellipse(x - 6 * s, y, 7 * s, 1 * s, 0, 0, Math.PI * 2); h.fill(); h.beginPath(); h.ellipse(x + 8 * s, y + 2.4 * s, 5 * s, 0.8 * s, 0, 0, Math.PI * 2); h.fill();
+  for (const [dx, dy, r] of [[-10, 2, 2.6], [5, 0.6, 2]]) {
+    h.fillStyle = mixCol('#4f9e5c', base, 0.3); h.beginPath(); h.ellipse(x + dx * s, y + dy * s, r * s, r * 0.45 * s, 0, 0.5, Math.PI * 2 + 0.1); h.lineTo(x + dx * s, y + dy * s); h.fill();
+  }
+  h.fillStyle = mixCol('#ff9fc0', base, 0.3); circleOn(h, x - 10.6 * s, y + 1.4 * s, 0.9 * s); h.fill();
+  h.fillStyle = mixCol('#8a8f9e', base, 0.4);
+  for (const [dx, dy, r] of [[-23, 1.4, 1.6], [-20, 4.2, 1.2], [22, 2.6, 1.5]]) { h.beginPath(); h.ellipse(x + dx * s, y + dy * s, r * 1.3 * s, r * s, 0, 0, Math.PI * 2); h.fill(); }
+  h.strokeStyle = mixCol('#4c8a4a', base, 0.3); h.lineWidth = 0.9 * s; h.lineCap = 'round';
+  for (let k = 0; k < 4; k++) { const rx = x + (16 + k * 1.6) * s; h.beginPath(); h.moveTo(rx, y + 1.5 * s); h.quadraticCurveTo(rx + (k - 1.5) * 0.8 * s, y - 4 * s, rx + (k - 1.5) * 1.6 * s, y - (8 + (k % 2) * 3) * s); h.stroke(); }
+  h.fillStyle = mixCol('#7a5236', base, 0.3); h.beginPath(); h.ellipse(x + 17.8 * s, y - 7.6 * s, 0.9 * s, 2.2 * s, 0, 0, Math.PI * 2); h.fill();
 }
 function scTent(h, x, y, s, base, hh) {
   const a = mixCol(['#ff8f7a', '#8fc5ff', '#ffc978', '#f2a6d4'][hh % 4], base, 0.4), b = mixCol('#fff3dc', base, 0.38), w = 15 * s, ht = 9 * s;

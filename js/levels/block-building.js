@@ -319,16 +319,45 @@ function buildStep(dt) {
 }
 
 function drawBrick(x, y, col, alpha = 1) {
-  ctx.save(); ctx.globalAlpha = alpha;
   col = col || '#cccccc';
-  // a toy block: dark rim, a bevelled face (lit top-left, shaded bottom-right), a raised middle and a glint
-  ctx.fillStyle = shade(col, 0.32); rr(x + 0.5, y + 0.5, T - 1, T - 1, 4); ctx.fill();
-  ctx.fillStyle = shade(col, 0.12); rr(x + 1.5, y + 1.5, T - 3, T - 3, 3.5); ctx.fill();
-  ctx.fillStyle = tint(col, 0.32); rr(x + 1.5, y + 1.5, T - 5, T - 5, 3.5); ctx.fill();
-  ctx.fillStyle = col; rr(x + 4, y + 4, T - 8, T - 8, 3); ctx.fill();
-  ctx.fillStyle = tint(col, 0.14); rr(x + 8, y + 8, T - 16, T - 16, 4); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.5)'; rr(x + 5, y + 5, 7, 2.5, 1.2); ctx.fill(); circle(x + 6, y + 10, 1.2); ctx.fill();
-  ctx.restore();
+  // (rich props pass) a toy block, drawn once per colour into a picture: dark rim, bevelled face (lit top-left, shaded
+  // bottom-right), a raised middle with the piece's embossed sign, four little corner pegs, fine speckle and a glint
+  const sp = artSprite('tb' + col, T, T, 0, 0, c => paintToyBlock(c, col));
+  const a = ctx.globalAlpha; ctx.globalAlpha = a * alpha; blitSprite(sp, x, y); ctx.globalAlpha = a;
+}
+const TOY_SIGN = { '#5fd0e6': 'circle', '#ffd25e': 'star', '#b48cff': 'tri', '#79d98b': 'leaf', '#ff7a8a': 'heart', '#ffa95c': 'square', '#7fa6ff': 'diamond' };
+function paintToySign(c, kind, cx, cy, r) {
+  c.beginPath();
+  if (kind === 'circle') { c.arc(cx, cy, r, 0, Math.PI * 2); }
+  else if (kind === 'star') { for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr2 = k % 2 ? r * 0.45 : r * 1.15; c.lineTo(cx + Math.cos(a) * rr2, cy + Math.sin(a) * rr2); } c.closePath(); }
+  else if (kind === 'tri') { c.moveTo(cx, cy - r * 1.1); c.lineTo(cx + r * 1.05, cy + r * 0.8); c.lineTo(cx - r * 1.05, cy + r * 0.8); c.closePath(); }
+  else if (kind === 'leaf') { c.ellipse(cx, cy, r * 1.15, r * 0.6, -0.7, 0, Math.PI * 2); }
+  else if (kind === 'heart') { c.moveTo(cx, cy + r); c.bezierCurveTo(cx - r * 1.6, cy - r * 0.2, cx - r * 0.6, cy - r * 1.4, cx, cy - r * 0.4); c.bezierCurveTo(cx + r * 0.6, cy - r * 1.4, cx + r * 1.6, cy - r * 0.2, cx, cy + r); c.closePath(); }
+  else if (kind === 'square') { c.rect(cx - r * 0.85, cy - r * 0.85, r * 1.7, r * 1.7); }
+  else { c.moveTo(cx, cy - r * 1.15); c.lineTo(cx + r * 0.9, cy); c.lineTo(cx, cy + r * 1.15); c.lineTo(cx - r * 0.9, cy); c.closePath(); }
+}
+function paintToyBlock(c, col) {
+  c.fillStyle = shade(col, 0.38); rrOn(c, 0.5, 0.5, T - 1, T - 1, 4); c.fill();
+  c.fillStyle = shade(col, 0.14); rrOn(c, 1.6, 1.6, T - 3.2, T - 3.2, 3.5); c.fill();
+  c.fillStyle = tint(col, 0.34); rrOn(c, 1.6, 1.6, T - 5.2, T - 5.2, 3.5); c.fill();
+  c.fillStyle = col; rrOn(c, 4, 4, T - 8, T - 8, 3); c.fill();
+  // the raised middle: a soft shadow on its lower right, a lit rim on its upper left
+  c.fillStyle = shade(col, 0.12); rrOn(c, 8, 8.6, T - 15.4, T - 15.4, 4); c.fill();
+  c.fillStyle = tint(col, 0.22); rrOn(c, 7.4, 7.4, T - 15.4, T - 15.4, 4); c.fill();
+  c.fillStyle = tint(col, 0.1); rrOn(c, 8.2, 8.2, T - 16.4, T - 16.4, 3.5); c.fill();
+  // the piece's sign, pressed in: a shaded copy offset up-left, the sign a little darker than the face
+  const kind = TOY_SIGN[col] || 'circle';
+  c.fillStyle = shade(col, 0.3); paintToySign(c, kind, 14.6, 14.6, 3.6); c.fill();
+  c.fillStyle = tint(col, 0.45); paintToySign(c, kind, 15.4, 15.4, 3.6); c.fill();
+  c.fillStyle = shade(col, 0.08); paintToySign(c, kind, 15, 15, 3.6); c.fill();
+  // corner pegs
+  for (const [px, py] of [[5.6, 5.6], [T - 5.6, 5.6], [5.6, T - 5.6], [T - 5.6, T - 5.6]]) {
+    c.fillStyle = shade(col, 0.25); circleOn(c, px + 0.4, py + 0.4, 1.6); c.fill();
+    c.fillStyle = tint(col, 0.3); circleOn(c, px - 0.1, py - 0.1, 1.3); c.fill();
+  }
+  // a fine speckle in the plastic
+  for (let i = 0; i < 6; i++) { const h = hash(i * 7 + col.length, col.charCodeAt(2) + i); c.fillStyle = i % 2 ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)'; circleOn(c, 5 + h % 20, 5 + (h >>> 5) % 20, 0.55); c.fill(); }
+  c.fillStyle = 'rgba(255,255,255,0.55)'; rrOn(c, 4.5, 3.2, 8, 2, 1); c.fill(); circleOn(c, 3.6, 8.5, 0.9); c.fill();
 }
 function drawMini(type, cx, cy, size) {
   const d = TETRO[type];
@@ -343,10 +372,22 @@ function drawBuild() {
   const B = G.build, L = G.level, pc = B.piece;
   // the finish flag
   const g = L.goal, fx = g.x + 15, base = g.y + T;
-  ctx.fillStyle = C.ink; ctx.fillRect(fx - 2, base - 62, 4, 62);
   const wave = Math.sin(G.clock * 6) * 3;
-  ctx.fillStyle = C.gold; ctx.beginPath(); ctx.moveTo(fx + 2, base - 62); ctx.lineTo(fx + 34, base - 50 + wave); ctx.lineTo(fx + 2, base - 38); ctx.closePath(); ctx.fill();
+  // (rich props pass) a glow, a stand with a shadow, a shaded pole with a gold knob, and a waving pennant with a star
   ctx.fillStyle = 'rgba(255,215,90,0.25)'; circle(fx, base - 50, 26 + Math.sin(G.clock * 4) * 3); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(fx, base, 10, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.ink; rr(fx - 7, base - 5, 14, 5, 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(fx - 5.5, base - 4.4, 11, 1);
+  ctx.fillStyle = C.ink; ctx.fillRect(fx - 2, base - 62, 4, 62);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(fx - 1.4, base - 60, 1.1, 54);
+  ctx.fillStyle = C.goldDark; circle(fx, base - 63.5, 3.6); ctx.fill(); ctx.fillStyle = C.gold; circle(fx - 0.5, base - 64, 2.8); ctx.fill();
+  ctx.fillStyle = '#fff4c8'; circle(fx - 1.3, base - 64.8, 0.9); ctx.fill();
+  ctx.fillStyle = C.gold; ctx.strokeStyle = C.goldDark; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(fx + 2, base - 62); ctx.quadraticCurveTo(fx + 18, base - 58 + wave * 0.6, fx + 34, base - 50 + wave); ctx.quadraticCurveTo(fx + 18, base - 42 + wave * 0.4, fx + 2, base - 38); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.moveTo(fx + 2, base - 50); ctx.lineTo(fx + 34, base - 50 + wave); ctx.lineTo(fx + 2, base - 38); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#fff6d8'; ctx.save(); ctx.translate(fx + 15, base - 50 + wave * 0.5); ctx.beginPath();
+  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 2.4 : 5.2; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+  ctx.closePath(); ctx.fill(); ctx.restore();
   if (!pc || B.phase !== 'play') return;
   const col = TETRO[pc.type].col, owner = PCOL[B.builder];
   // ghost: where it will land
@@ -375,12 +416,20 @@ function drawBuild() {
   ctx.restore();
 }
 function drawCrack(x, y) {
-  ctx.save(); ctx.strokeStyle = 'rgba(28,26,54,0.75)'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
-  ctx.beginPath();
-  ctx.moveTo(x + 15, y + T - 2); ctx.lineTo(x + 12, y + 20); ctx.lineTo(x + 18, y + 13); ctx.lineTo(x + 13, y + 4);
-  ctx.moveTo(x + 12, y + 20); ctx.lineTo(x + 5, y + 17);
-  ctx.moveTo(x + 18, y + 13); ctx.lineTo(x + 26, y + 11);
-  ctx.stroke(); ctx.restore();
+  // (rich props pass) a crack with a lit lip beside it, a chipped-out corner and a few crumbs
+  ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(x + 15, y + T - 2); ctx.lineTo(x + 12, y + 20); ctx.lineTo(x + 18, y + 13); ctx.lineTo(x + 13, y + 4);
+    ctx.moveTo(x + 12, y + 20); ctx.lineTo(x + 5, y + 17); ctx.lineTo(x + 3, y + 19);
+    ctx.moveTo(x + 18, y + 13); ctx.lineTo(x + 26, y + 11); ctx.lineTo(x + 27, y + 7);
+  };
+  ctx.translate(0.9, 0.9); ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.2; path(); ctx.stroke();
+  ctx.translate(-0.9, -0.9); ctx.strokeStyle = 'rgba(28,26,54,0.78)'; ctx.lineWidth = 2; path(); ctx.stroke();
+  ctx.fillStyle = 'rgba(28,26,54,0.55)';
+  ctx.beginPath(); ctx.moveTo(x + 12, y + 2); ctx.lineTo(x + 16, y + 2); ctx.lineTo(x + 13.5, y + 6); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(28,26,54,0.4)'; circle(x + 21, y + 18, 0.9); ctx.fill(); circle(x + 8, y + 9, 0.7); ctx.fill(); circle(x + 23, y + 23, 0.6); ctx.fill();
+  ctx.restore();
 }
 function drawBuildHUD() {
   const B = G.build, bn = NAMES[B.builder], cn = NAMES[B.climber];

@@ -798,12 +798,24 @@ MODES.lava = {
       if (!vis(cp.r)) continue;
       cp.at.forEach(([c, r], k) => {
         const x = c * T + T / 2 + (k ? 10 : -10), y = (r + 1) * T, lit = cp.lit, mine = cp.seen[k];
+        // (rich props pass) an iron post with a foot plate and a lit edge, a crossbar with a hook, and a lantern with a
+        // cap, a ring, a frame round its glass, a flame when lit and a glint
+        ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(x + 1, y, 6, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3e322c'; rr(x - 4.5, y - 3, 9, 3, 1); ctx.fill();
+        ctx.fillStyle = '#3e322c'; ctx.fillRect(x - 2.2, y - 30.5, 4.4, 30.5);
         ctx.fillStyle = '#5b4a40'; ctx.fillRect(x - 1.5, y - 30, 3, 30);
+        ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x - 1.2, y - 29, 0.8, 26);
         ctx.fillStyle = '#5b4a40'; ctx.fillRect(x - 6, y - 31, 12, 3);
+        ctx.fillStyle = '#3e322c'; ctx.fillRect(x - 6, y - 28.6, 12, 0.8);
         if (lit && !reduceMotion) { ctx.fillStyle = 'rgba(255,210,110,0.35)'; circle(x, y - 38, 13 + Math.sin(t * 4 + k) * 1.5); ctx.fill(); }
-        ctx.fillStyle = lit ? C.gold : mine ? PCOL[k] : 'rgba(255,255,255,0.55)';
-        rr(x - 5, y - 44, 10, 12, 3); ctx.fill();
-        ctx.strokeStyle = lit ? C.goldDark : PDARK[k]; ctx.lineWidth = 1.5; rr(x - 5, y - 44, 10, 12, 3); ctx.stroke();
+        const lc = lit ? C.gold : mine ? PCOL[k] : 'rgba(255,255,255,0.55)', fr = lit ? C.goldDark : PDARK[k];
+        ctx.fillStyle = lc; rr(x - 5, y - 44, 10, 12, 3); ctx.fill();
+        if (lit) { const fl = reduceMotion ? 0 : Math.sin(t * 9 + k) * 0.6; ctx.fillStyle = '#fff4c8'; ctx.beginPath(); ctx.ellipse(x, y - 37.5 + fl * 0.3, 2.2, 3.4 + fl, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#ff9a3d'; ctx.beginPath(); ctx.ellipse(x, y - 36.4, 1.2, 1.8, 0, 0, Math.PI * 2); ctx.fill(); }
+        ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(x - 3.6, y - 42.6, 1.2, 8);
+        ctx.strokeStyle = fr; ctx.lineWidth = 1.5; rr(x - 5, y - 44, 10, 12, 3); ctx.stroke();
+        ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(x, y - 44); ctx.lineTo(x, y - 32); ctx.stroke();
+        ctx.fillStyle = fr; rr(x - 6, y - 46.5, 12, 3, 1.4); ctx.fill(); rr(x - 4.5, y - 33, 9, 2, 1); ctx.fill();
+        ctx.strokeStyle = fr; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(x, y - 48, 2, Math.PI, 0); ctx.stroke();
       });
     }
     if (st.door && vis(Math.floor(st.door.y / T))) drawDoor(st.door);
@@ -860,7 +872,11 @@ MODES.lava = {
         if (!b.down) { ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 11 + wig, y + 15, 2, 6); ctx.fillRect(x + 17 + wig, y + 15, 2, 6); }
         continue;
       }
+      // (rich props pass) a bolted housing with a lit top edge
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(x + 15, y + 29.4, 14, 2, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = C.stoneEdge; rr(x + 2, y + 25, 26, 5, 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x + 4, y + 25.4, 22, 0.9);
+      for (const bx of [x + 5, x + 25]) { ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(bx, y + 27.6, 0.9); ctx.fill(); }
       if (b.latched) {
         ctx.fillStyle = own; rr(x + 4 + wig, y + 23, 22, 3, 2); ctx.fill();
         const building = gr && gr.state === 'building';
@@ -872,9 +888,12 @@ MODES.lava = {
       } else {
         const bob = gr && gr.invite && !reduceMotion ? (Math.sin(t * Math.PI * 8) > 0 ? -1 : 0) : 0;
         const cy = y + 15 + bob;
+        ctx.fillStyle = PDARK[b.owner]; rr(x + 3.4 + wig, cy - 0.6, 23.2, 12.2, 4.4); ctx.fill();
         ctx.fillStyle = PDARK[b.owner]; rr(x + 4 + wig, cy + 2, 22, 9, 4); ctx.fill();
         ctx.fillStyle = own; rr(x + 4 + wig, cy, 22, 9, 4); ctx.fill();
         ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x + 7 + wig, cy + 1, 16, 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.8)'; circle(x + 6.6 + wig, cy + 2, 0.9); ctx.fill();
+        ctx.fillStyle = 'rgba(28,26,54,0.2)'; ctx.fillRect(x + 21 + wig, cy + 3, 3, 5);
         ctx.fillStyle = par; rr(x + 9.5 + wig, cy + 2, 11, 6, 1.5); ctx.fill();   // a little block in the partner's colour
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.stroke();
       }
@@ -908,9 +927,14 @@ MODES.lava = {
       if (ic.got || !vis(Math.floor(ic.y / T))) continue;
       const bob = reduceMotion ? 0 : Math.sin((t * 1.5 + ic.ph) * Math.PI * 2) * 2, x = ic.x, y = ic.y + bob;
       ctx.fillStyle = 'rgba(200,240,255,0.35)'; circle(x, y - 2, 14); ctx.fill();
-      ctx.fillStyle = '#c98b5a'; ctx.fillRect(x - 1.5, y + 6, 3, 7);
+      ctx.fillStyle = '#8a5833'; ctx.fillRect(x - 2.1, y + 5.5, 4.2, 8); ctx.fillStyle = '#c98b5a'; ctx.fillRect(x - 1.5, y + 6, 3, 7); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 1.2, y + 6, 0.8, 6);
       ctx.fillStyle = '#9fe8ff'; rr(x - 6, y - 10, 12, 16, 5); ctx.fill();
-      ctx.strokeStyle = '#4fa9cf'; ctx.lineWidth = 1.5; ctx.stroke();
+      // (rich props pass) a shaded right side, frost bands, a bite out of the corner and a drip
+      ctx.fillStyle = '#6ccbef'; rr(x + 1.5, y - 9, 4, 14, 3); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x - 5, y - 4, 10, 1); ctx.fillRect(x - 5, y + 1, 10, 1);
+      ctx.strokeStyle = '#4fa9cf'; ctx.lineWidth = 1.5; rr(x - 6, y - 10, 12, 16, 5); ctx.stroke();
+      ctx.fillStyle = 'rgba(200,240,255,0.95)'; circle(x + 5.4, y - 9.6, 2.2); ctx.fill();
+      ctx.fillStyle = '#9fe8ff'; ctx.beginPath(); ctx.ellipse(x - 4, y + 7, 1.2, 1.8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(x - 3.5, y - 7, 2, 10);
       const sp = ((t + ic.ph) % 0.8) / 0.8;
       if (sp < 0.35) {

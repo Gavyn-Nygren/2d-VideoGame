@@ -788,6 +788,24 @@ function carBuildGround(st) {
     if (!isW(x - 1, y)) g.fillRect(X, Y, 4, T);
     if (!isW(x + 1, y)) g.fillRect(X + T - 4, Y, 4, T);
   }
+  // (rich props pass) ripples and glints on the water, a few lily pads on wide water
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    if (tl(x, y) !== 'w') continue;
+    const h = hash(x + 5, y + 61), X = x * T, Y = y * T;
+    g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 1.2; g.lineCap = 'round';
+    const rx = X + 6 + h % 14, ry = Y + 8 + (h >>> 4) % 14;
+    g.strokeStyle = 'rgba(255,255,255,0.32)';
+    if (h % 2 === 0) { g.beginPath(); g.arc(rx, ry, 4, Math.PI * 1.15, Math.PI * 1.85); g.stroke(); }
+    if (h % 5 === 0) { g.beginPath(); g.arc(rx + 7, ry + 6, 3, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); }
+    g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.arc(X + 4 + (h >>> 8) % 22, Y + 4 + (h >>> 12) % 22, 0.9, 0, Math.PI * 2); g.fill();
+    if (h % 17 === 0 && isW(x - 1, y) && isW(x + 1, y) && isW(x, y - 1) && isW(x, y + 1)) {
+      const lx = X + 15, ly = Y + 15;
+      g.fillStyle = 'rgba(28,26,54,0.15)'; g.beginPath(); g.arc(lx + 1, ly + 1.5, 6, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#4fa36f'; g.beginPath(); g.moveTo(lx, ly); g.arc(lx, ly, 6, 0.3, Math.PI * 2 - 0.3); g.closePath(); g.fill();
+      g.strokeStyle = '#3d8a5c'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx - 4, ly - 2); g.moveTo(lx, ly); g.lineTo(lx - 3, ly + 3.5); g.stroke();
+      if (h % 2) { g.fillStyle = '#ffc0de'; g.beginPath(); g.arc(lx - 2, ly - 1, 1.8, 0, Math.PI * 2); g.fill(); }
+    }
+  }
   // mud
   g.fillStyle = '#a8743f'; g.beginPath();
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (tl(x, y) === 's') g.rect(x * T, y * T, T, T);
@@ -847,12 +865,47 @@ function carBuildGround(st) {
     if (k.dn && k.lf && !road(x - 1, y + 1)) { g.moveTo(X, Y2 - LINE); g.arc(X, Y2, LINE, Math.PI * 1.5, Math.PI * 2); }
   }
   g.stroke();
+  // (rich props pass) asphalt: speckle in two tones, the odd crack, a tar patch or a drain cover
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    if (!road(x, y)) continue;
+    const h = hash(x + 3, y + 11), X = x * T, Y = y * T;
+    for (let i = 0; i < 7; i++) { g.fillStyle = i % 2 ? 'rgba(255,255,255,0.1)' : 'rgba(28,26,54,0.16)'; g.fillRect(X + 3 + ((h >>> (i * 4)) % 24), Y + 3 + ((h >>> (i * 4 + 2)) % 24), 1.2, 1.2); }
+    if (h % 9 === 0) {
+      const cx = X + 6 + (h >>> 5) % 12, cy = Y + 6 + (h >>> 9) % 12;
+      g.strokeStyle = 'rgba(40,36,62,0.5)'; g.lineWidth = 0.9; g.lineJoin = 'round'; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + 4, cy + 3); g.lineTo(cx + 6, cy + 9); g.moveTo(cx + 4, cy + 3); g.lineTo(cx + 9, cy + 2); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.moveTo(cx + 0.8, cy + 1); g.lineTo(cx + 4.8, cy + 4); g.stroke();
+    } else if (h % 13 === 1) {
+      g.fillStyle = 'rgba(40,36,62,0.28)'; g.beginPath(); carShape(g, X + 5 + (h >>> 6) % 8, Y + 6 + (h >>> 10) % 8, 12, 9, [4, 3, 5, 3]); g.fill();
+    } else if (h % 31 === 2) {
+      const cx = X + 15, cy = Y + 15;
+      g.fillStyle = '#4b4866'; g.beginPath(); g.arc(cx, cy, 7, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#7d7a99'; g.beginPath(); g.arc(cx - 0.5, cy - 0.5, 6, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#4b4866'; g.lineWidth = 0.9; g.beginPath(); for (let k = -3; k <= 3; k += 2) { g.moveTo(cx - 5, cy + k); g.lineTo(cx + 5, cy + k); } g.stroke();
+    }
+  }
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    if (tl(x, y) !== 's') continue;
+    const h = hash(x + 9, y + 3), X = x * T, Y = y * T;
+    g.fillStyle = 'rgba(255,240,210,0.35)'; g.beginPath(); g.ellipse(X + 6 + h % 16, Y + 6 + (h >>> 4) % 16, 2.2, 0.9, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(90,56,26,0.35)'; g.lineWidth = 2; g.setLineDash([2, 2]); g.beginPath(); g.moveTo(X, Y + 9); g.lineTo(X + T, Y + 9); g.moveTo(X, Y + 21); g.lineTo(X + T, Y + 21); g.stroke(); g.setLineDash([]);
+  }
   // wooden bridge deck over the creek (road next to a railing)
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
     if (!road(x, y) || !(tl(x, y - 1) === 'r' || tl(x, y + 1) === 'r' || tl(x, y - 2) === 'r' || tl(x, y + 2) === 'r')) continue;
     if (!(isW(x, y - 2) || isW(x, y + 2) || isW(x, y - 1) || isW(x, y + 1))) continue;
     const X = x * T, Y = y * T;
     g.fillStyle = C.plank; g.fillRect(X, Y, T, T);
+    // (rich props pass) three boards: each its own tone, a lit left edge and a shaded right one, grain, a knot now and
+    // then, and a nail at each end; dark gaps between them
+    for (let i = 0; i < 3; i++) {
+      const bh = hash(x * 3 + i, y + 17), bx = X + i * 10 - 0.5;
+      g.fillStyle = bh % 3 === 0 ? tint(C.plank, 0.08) : bh % 3 === 1 ? shade(C.plank, 0.06) : C.plank; g.fillRect(bx, Y, 10, T);
+      g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(bx + 0.5, Y, 1, T);
+      g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(bx + 7.5, Y, 1.5, T);
+      g.strokeStyle = shade(C.plank, 0.2); g.lineWidth = 0.7; g.beginPath(); g.moveTo(bx + 3.5 + bh % 3, Y); g.bezierCurveTo(bx + 5, Y + 10, bx + 3, Y + 20, bx + 4.5, Y + T); g.stroke();
+      if (bh % 5 === 0) { g.fillStyle = shade(C.plank, 0.25); g.beginPath(); g.ellipse(bx + 5, Y + 8 + (bh >>> 4) % 14, 1.2, 2, 0, 0, Math.PI * 2); g.fill(); }
+      g.fillStyle = '#5a5f78'; for (const ny of [Y + 4, Y + T - 4]) { g.beginPath(); g.arc(bx + 5, ny, 1, 0, Math.PI * 2); g.fill(); }
+    }
     g.fillStyle = C.plankDark;
     for (let i = 0; i < 3; i++) g.fillRect(X + i * 10 + 9, Y, 1.5, T);
     g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(X, Y + 2, T, 3);
@@ -863,9 +916,17 @@ function carBuildGround(st) {
     const X = x * T, Y = y * T, onTop = road(x, y + 1);
     const by = onTop ? Y + T - 9 : Y + 1;
     g.fillStyle = 'rgba(28,26,54,0.2)'; g.fillRect(X, by + (onTop ? -4 : 8), T, 4);
+    g.fillStyle = shade(C.plankDark, 0.3); g.fillRect(X, by - 0.8, T, 9.6);
     g.fillStyle = C.plank; g.fillRect(X, by, T, 8);
+    g.fillStyle = tint(C.plank, 0.3); g.fillRect(X, by, T, 1.2);
     g.fillStyle = C.plankDark; g.fillRect(X, by + 6, T, 2);
-    for (const px of [X + 3, X + T - 9]) { g.fillStyle = C.plankDark; g.fillRect(px, by - 1, 6, 10); g.fillStyle = C.plank; g.fillRect(px + 1, by, 4, 3); }
+    g.strokeStyle = shade(C.plank, 0.2); g.lineWidth = 0.7; g.beginPath(); g.moveTo(X, by + 3.4); g.quadraticCurveTo(X + 15, by + 2.4, X + T, by + 3.8); g.stroke();
+    for (const px of [X + 3, X + T - 9]) {
+      g.fillStyle = shade(C.plankDark, 0.3); g.fillRect(px - 0.8, by - 1.8, 7.6, 11.6);
+      g.fillStyle = C.plankDark; g.fillRect(px, by - 1, 6, 10); g.fillStyle = C.plank; g.fillRect(px + 1, by, 4, 3);
+      g.fillStyle = tint(C.plank, 0.35); g.fillRect(px + 1, by, 4, 0.9);
+      g.fillStyle = '#5a5f78'; g.beginPath(); g.arc(px + 3, by + 5.5, 0.9, 0, Math.PI * 2); g.fill();
+    }
   }
   // rails
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
@@ -918,6 +979,19 @@ function carBuildGround(st) {
       g.fillStyle = 'rgba(255,255,255,0.13)'; g.beginPath(); g.arc(bx - r * 0.35, by - r * 0.35, r * 0.4, 0, Math.PI * 2); g.fill();
     }
   }
+  // (rich props pass) leaves: darker clusters low and right, lit flecks high and left, the odd berry or white flower
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    if (!hedge(x, y) || tl(x, y) === 'n' || gset.has(x + ',' + y)) continue;
+    const h = hash(x + 21, y + 13), X = x * T, Y = y * T;
+    for (let i = 0; i < 5; i++) {
+      const lx = X + 3 + ((h >>> (i * 5)) % 24), ly = Y + 3 + ((h >>> (i * 5 + 2)) % 24), a = ((h >>> (i * 3)) % 6) * 0.5;
+      g.fillStyle = i < 3 ? 'rgba(30,90,60,0.35)' : 'rgba(200,255,210,0.22)';
+      g.beginPath(); g.ellipse(lx, ly, 2.6, 1.3, a, 0, Math.PI * 2); g.fill();
+    }
+    if (h % 7 === 0) { g.fillStyle = (h >>> 3) % 2 ? '#e8483a' : '#ffffff'; for (const [bx, by] of [[0, 0], [2.2, 1], [0.6, 2.4]]) { g.beginPath(); g.arc(X + 12 + (h >>> 6) % 8 + bx, Y + 12 + (h >>> 9) % 8 + by, 1.1, 0, Math.PI * 2); g.fill(); } }
+    if (!hedge(x, y + 1)) { g.fillStyle = 'rgba(20,60,40,0.22)'; g.fillRect(X, Y + T - 6, T, 6); }
+    if (!hedge(x, y - 1)) { g.fillStyle = 'rgba(255,255,255,0.1)'; g.fillRect(X, Y, T, 3); }
+  }
   g.strokeStyle = 'rgba(28,26,54,0.15)'; g.lineWidth = 1.5; g.beginPath();
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
     if (!hedge(x, y)) continue;
@@ -933,7 +1007,12 @@ function carBuildGround(st) {
     if (tl(x, y) !== 'n' || tl(x - 1, y) === 'n') continue;
     let w = 1; while (tl(x + w, y) === 'n') w++;
     const X = x * T, Y = y * T, Wd = w * T, down = tl(x, y + 1) === 't' || road(x, y + 1);
+    g.fillStyle = '#5f5a78'; g.beginPath(); carShape(g, X + 1, Y + 1, Wd - 2, T - 2, [7, 7, 7, 7]); g.fill();
     g.fillStyle = '#8f8aa8'; g.beginPath(); carShape(g, X + 2, Y + 2, Wd - 4, T - 4, [6, 6, 6, 6]); g.fill();
+    // (rich props pass) cut stones with lit tops and mortar
+    g.fillStyle = '#7a7594'; for (let bx = X + 2; bx < X + Wd - 2; bx += 9) g.fillRect(bx, Y + 2, 1, T - 4);
+    g.fillRect(X + 2, Y + T / 2 - 0.5, Wd - 4, 1);
+    g.fillStyle = 'rgba(255,255,255,0.25)'; for (let bx = X + 3; bx < X + Wd - 3; bx += 9) { g.fillRect(bx, Y + 2.6, 7, 0.9); g.fillRect(bx, Y + T / 2 + 0.6, 7, 0.9); }
     g.fillStyle = C.ink; g.beginPath();
     if (down) carShape(g, X + 9, Y + 8, Wd - 18, T - 8, [10, 10, 0, 0]); else carShape(g, X + 9, Y, Wd - 18, T - 8, [0, 0, 10, 10]);
     g.fill();
@@ -1107,9 +1186,19 @@ function carDrawCones(st) {
     } else {
       // standing up (toy look)
       ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.beginPath(); ctx.ellipse(2, 7, 9, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+      // (rich props pass) an outlined square foot with a lit edge, a cone with a lit left and shaded right face, two
+      // reflective bands and a glint at the tip
+      ctx.fillStyle = '#9a3f12'; rr(-9.8, 3.2, 19.6, 5.6, 1.6); ctx.fill();
       ctx.fillStyle = '#e06a22'; ctx.fillRect(-9, 4, 18, 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-9, 4, 18, 0.9);
+      ctx.fillStyle = '#9a3f12'; ctx.beginPath(); ctx.moveTo(0, -13); ctx.lineTo(7.9, 5.4); ctx.lineTo(-7.9, 5.4); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#ff8a3d'; ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(7, 5); ctx.lineTo(-7, 5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#e06a22'; ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(7, 5); ctx.lineTo(1.5, 5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffb07a'; ctx.beginPath(); ctx.moveTo(-0.6, -10); ctx.lineTo(-5.4, 3.6); ctx.lineTo(-4, 3.6); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-3.6, -3.5); ctx.lineTo(3.6, -3.5); ctx.lineTo(4.6, -1); ctx.lineTo(-4.6, -1); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#e8e4f2'; ctx.beginPath(); ctx.moveTo(-1.6, -8.4); ctx.lineTo(1.6, -8.4); ctx.lineTo(2.2, -6.8); ctx.lineTo(-2.2, -6.8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.fillRect(1.6, -3.5, 3, 2.5);
+      ctx.fillStyle = '#ffffff'; circle(-0.6, -10.4, 0.8); ctx.fill();
     }
     ctx.restore();
   }
