@@ -385,5 +385,153 @@ const CIRCUS = (() => {
       ctx.strokeStyle = cs[1]; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 7, y); ctx.lineTo(x + sw, y + 14); ctx.lineTo(x + 7, y); ctx.stroke();
     }
   };
+  /* ---------- rich props and ground (Nov 2026 "richer props" pass) ----------
+     Still art is painted once into a picture at the screen's scale (K.pic, keyed) and copied onto whole pixels.
+     Ground strips repeat every `w` px (everything on them is placed with hash() and wrapped round the tile's ends),
+     so a scrolling road is a couple of picture copies a frame (K.strip). */
+  const pics = {};
+  K.scale = () => Math.max(1, Math.min(3, canvas.width / W));
+  K.pic = (key, w, h, paint) => {
+    const sc = K.scale(), k = key + '|' + sc;
+    let p = pics[k];
+    if (!p) { p = document.createElement('canvas'); p.width = Math.ceil(w * sc); p.height = Math.ceil(h * sc); const c = p.getContext('2d'); c.scale(sc, sc); paint(c, w, h); pics[k] = p; }
+    return p;
+  };
+  // copy a repeating strip (picture `pic` painted w x h) scrolled by `off` world px, its top at y, over x0..x1
+  K.strip = (pic, w, h, off, y, x0 = 0, x1 = W) => {
+    const m = ctx.getTransform(), o = ((off % w) + w) % w;
+    if (m.b || m.c) { for (let x = x0 - o; x < x1; x += w) ctx.drawImage(pic, x, y, w, h); return; }
+    const pw = m.a * w, end = m.a * x1 + m.e, dy = Math.round(m.d * y + m.f);
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    for (let dx = m.a * (x0 - o) + m.e; dx < end; dx += pw) ctx.drawImage(pic, Math.round(dx), dy, Math.round(dx + pw) - Math.round(dx), pic.height);
+    ctx.restore();
+  };
+  // draw fn(x) at x and again one tile over when it pokes past either end (so a tile repeats with no seam)
+  const wrapX = (w, x, r, fn) => { fn(x); if (x - r < 0) fn(x + w); if (x + r > w) fn(x - w); };
+  K.wrapX = wrapX;
+  const hx = c => { const m = /^#([0-9a-f]{6})$/i.exec(c); if (!m) return [128, 128, 128]; const n = parseInt(m[1], 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+  // mix two '#rrggbb' colours into '#rrggbb' (so the result can be shaded again)
+  K.mix = (a, b, t) => { const A = hx(a), B = hx(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+  K.dk = (c, t) => K.mix(c, '#2a1424', t);
+  K.lt = (c, t) => K.mix(c, '#ffffff', t);
+  // a little shaded pebble: soft shadow, body, darker lower-right, lit top-left, outline in its own dark shade
+  K.pebble = (c, x, y, r, col, sq = 0.72) => {
+    c.fillStyle = 'rgba(40,20,20,0.22)'; c.beginPath(); c.ellipse(x + r * 0.35, y + r * 0.55, r * 1.05, r * sq * 0.6, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = col; c.beginPath(); c.ellipse(x, y, r, r * sq, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = K.dk(col, 0.25); c.beginPath(); c.ellipse(x, y, r, r * sq, 0, -0.2, Math.PI * 0.85); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.ellipse(x - r * 0.35, y - r * sq * 0.4, r * 0.38, r * sq * 0.26, -0.3, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = K.dk(col, 0.5); c.lineWidth = 0.8; c.beginPath(); c.ellipse(x, y, r, r * sq, 0, 0, Math.PI * 2); c.stroke();
+  };
+  // a popped kernel of popcorn trodden into the dirt
+  K.kernel = (c, x, y, s = 1) => {
+    c.fillStyle = 'rgba(60,30,20,0.18)'; c.beginPath(); c.ellipse(x + 1, y + 2.2 * s, 3.4 * s, 1.3 * s, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#fff6dc'; for (const [dx, dy, r] of [[-1.4, 0, 1.9], [1.3, -0.4, 1.7], [0, -1.6, 1.6], [0.2, 0.9, 1.5]]) { c.beginPath(); c.arc(x + dx * s, y + dy * s, r * s, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#e8c060'; c.beginPath(); c.arc(x + 0.6 * s, y + 0.8 * s, 0.9 * s, 0, Math.PI * 2); c.fill();
+  };
+  // packed sawdust-and-dirt ground for a w-wide tile from y0 to y1: soft raked bands, wheel ruts, pebbles, sawdust
+  // flecks, straw, popcorn, the odd dropped ticket and footprints (all fixed with hash, seeded by `seed`)
+  K.dirtTile = (c, w, y0, y1, o) => {
+    const base = o.base, seed = o.seed || 1, h = y1 - y0;
+    const g = c.createLinearGradient(0, y0, 0, y1);
+    g.addColorStop(0, K.lt(base, 0.08)); g.addColorStop(0.4, base); g.addColorStop(1, K.dk(base, 0.14));
+    c.fillStyle = g; c.fillRect(0, y0, w, h);
+    // soft patches of darker packed earth and paler loose sawdust
+    for (let i = 0; i < Math.round(w * h / 2600); i++) {
+      const hh = hash(i + seed * 97, 41), x = hh % w, y = y0 + 6 + (hh >>> 9) % Math.max(1, h - 10), rx = 14 + (hh >>> 4) % 26;
+      c.fillStyle = hh % 3 ? 'rgba(90,50,20,0.07)' : 'rgba(255,248,220,0.13)';
+      wrapX(w, x, rx, xx => { c.beginPath(); c.ellipse(xx, y, rx, 3 + (hh >>> 13) % 5, 0, 0, Math.PI * 2); c.fill(); });
+    }
+    // wheel ruts / rake lines: long wavy grooves with a lit lower lip
+    for (const ry of (o.ruts || [])) {
+      for (const [col, dy] of [['rgba(80,44,20,0.20)', 0], ['rgba(255,250,225,0.28)', 1.6]]) {
+        c.strokeStyle = col; c.lineWidth = dy ? 1 : 2.2; c.beginPath();
+        for (let x = 0; x <= w; x += 8) { const yy = y0 + ry + dy + Math.sin(x / w * Math.PI * 4 + ry) * 1.2; x ? c.lineTo(x, yy) : c.moveTo(x, yy); }
+        c.stroke();
+      }
+    }
+    // sawdust flecks (tiny pale and dark dashes)
+    for (let i = 0; i < Math.round(w * h / 90); i++) {
+      const hh = hash(i + seed * 131, 43), x = hh % w, y = y0 + 2 + (hh >>> 9) % Math.max(1, h - 4), a = ((hh >>> 3) % 314) / 100;
+      c.strokeStyle = hh % 3 === 0 ? 'rgba(255,246,214,0.55)' : hh % 3 === 1 ? 'rgba(110,64,28,0.35)' : 'rgba(200,150,80,0.6)';
+      c.lineWidth = 1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * 2.4, y + Math.sin(a) * 1.2); c.stroke();
+    }
+    // straw bits
+    for (let i = 0; i < Math.round(w * h / 1600); i++) {
+      const hh = hash(i + seed * 17, 47), x = hh % w, y = y0 + 4 + (hh >>> 9) % Math.max(1, h - 8), a = ((hh >>> 3) % 100) / 100 - 0.5, L = 5 + hh % 6;
+      wrapX(w, x, L, xx => { c.strokeStyle = '#c8962e'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(xx, y); c.lineTo(xx + Math.cos(a) * L, y + Math.sin(a) * L * 0.4); c.stroke(); c.strokeStyle = '#f2d27a'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(xx, y - 0.4); c.lineTo(xx + Math.cos(a) * L, y - 0.4 + Math.sin(a) * L * 0.4); c.stroke(); });
+    }
+    // footprints (little paired ovals) along a trodden line
+    if (o.steps) for (let i = 0; i < Math.round(w / 70); i++) {
+      const hh = hash(i + seed * 7, 53), x = (i * 70 + hh % 20) % w, y = y0 + o.steps + (i % 2) * 7;
+      wrapX(w, x, 6, xx => { c.fillStyle = 'rgba(90,50,24,0.16)'; c.beginPath(); c.ellipse(xx, y, 4.6, 2.2, 0.15, 0, Math.PI * 2); c.fill(); c.beginPath(); c.ellipse(xx + 6.5, y + 0.4, 2.2, 1.9, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,250,230,0.18)'; c.fillRect(xx - 4, y + 2, 8, 0.8); });
+    }
+    // pebbles in a few sizes and colours
+    const pc = o.pebbles || [K.dk(base, 0.3), K.mix(base, '#a8a0a0', 0.55), K.mix(base, '#c8b8a8', 0.5), K.dk(base, 0.45)];
+    for (let i = 0; i < Math.round(w * h / (o.pebbleEvery || 900)); i++) {
+      const hh = hash(i + seed * 59, 61), x = hh % w, y = y0 + 6 + (hh >>> 9) % Math.max(1, h - 10), r = 1.6 + (hh >>> 5) % 3 * 0.9 + (hh % 11 === 0 ? 2 : 0);
+      wrapX(w, x, r + 2, xx => K.pebble(c, xx, y, r, pc[hh % pc.length]));
+    }
+    // popcorn and a dropped ticket now and then
+    if (o.popcorn !== false) for (let i = 0; i < Math.round(w * h / (o.popEvery || 3200)); i++) {
+      const hh = hash(i + seed * 23, 67), x = hh % w, y = y0 + 6 + (hh >>> 9) % Math.max(1, h - 10);
+      wrapX(w, x, 5, xx => K.kernel(c, xx, y, 0.9 + (hh % 3) * 0.15));
+    }
+    if (o.tickets) for (let i = 0; i < Math.round(w / 260); i++) {
+      const hh = hash(i + seed * 29, 71), x = hh % w, y = y0 + 10 + (hh >>> 9) % Math.max(1, h - 20), a = ((hh >>> 4) % 100) / 100 - 0.5, tc = ['#ff6b8a', '#ffc53d', '#5bb8ff'][hh % 3];
+      wrapX(w, x, 10, xx => { c.save(); c.translate(xx, y); c.rotate(a); c.fillStyle = 'rgba(60,30,20,0.18)'; c.fillRect(-6, -2, 13, 7); c.fillStyle = tc; c.fillRect(-7, -4, 13, 7); c.fillStyle = K.dk(tc, 0.3); c.fillRect(2, -4, 0.8, 7); c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(-5, -2, 5, 1); c.fillRect(-5, 0, 4, 1); c.restore(); });
+    }
+  };
+  // a row of painted wooden kerb boards (w-wide tile, top at y, h tall): each board its own shade, grain, a lit top,
+  // a darker underside, nail heads and an outline
+  K.kerbTile = (c, w, y, h, col, seed = 3, bw = 60) => {
+    const cols = Array.isArray(col) ? col : [col];
+    for (let x = 0; x < w; x += bw) {
+      const hh = hash(x + seed, 77), bc = K.mix(cols[Math.round(x / bw) % cols.length], hh % 2 ? '#ffffff' : '#2a1424', (hh % 5) * 0.025);
+      c.fillStyle = bc; c.fillRect(x, y, bw, h);
+      c.fillStyle = K.dk(bc, 0.22); c.fillRect(x, y + h * 0.62, bw, h * 0.38);
+      c.strokeStyle = K.dk(bc, 0.3); c.lineWidth = 0.7;
+      for (let k = 0; k < 2; k++) { const gy = y + 2 + k * (h * 0.3) + (hh >>> (k + 3)) % 2; c.beginPath(); c.moveTo(x + 4, gy); c.bezierCurveTo(x + bw * 0.3, gy + 1, x + bw * 0.6, gy - 1, x + bw - 4, gy + 0.5); c.stroke(); }
+      if (hh % 3 === 0) { const kx = x + 14 + hh % (bw - 28); c.fillStyle = K.dk(bc, 0.35); c.beginPath(); c.ellipse(kx, y + h * 0.45, 2.6, 1.3, 0, 0, Math.PI * 2); c.fill(); }
+      c.fillStyle = 'rgba(255,255,255,0.32)'; c.fillRect(x, y, bw, 1.3);
+      for (const nx of [x + 5, x + bw - 5]) { c.fillStyle = '#5a4a4a'; c.beginPath(); c.arc(nx, y + h * 0.4, 1.3, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(nx - 0.8, y + h * 0.4 - 1, 0.8, 0.8); }
+      c.strokeStyle = K.dk(bc, 0.5); c.lineWidth = 1; c.strokeRect(x + 0.5, y + 0.5, bw - 1, h - 1);
+    }
+  };
+  // a grassy verge tile: layered blade clumps in three greens, clover, little flowers on stems, a lit lip
+  K.vergeTile = (c, w, y0, h, col, seed = 5) => {
+    const g = c.createLinearGradient(0, y0, 0, y0 + h); g.addColorStop(0, K.lt(col, 0.12)); g.addColorStop(1, K.dk(col, 0.18));
+    c.fillStyle = g; c.fillRect(0, y0, w, h);
+    c.fillStyle = K.lt(col, 0.35); c.fillRect(0, y0, w, 2);
+    for (let i = 0; i < Math.round(w / 9); i++) {
+      const hh = hash(i + seed * 13, 81), x = hh % w, y = y0 + 6 + (hh >>> 9) % Math.max(1, h - 6), n = 3 + hh % 3;
+      wrapX(w, x, 8, xx => {
+        for (let k = 0; k < n; k++) {
+          const bx = xx + (k - n / 2) * 2.2, L = 5 + ((hh >>> (k + 2)) % 6), lean = ((hh >>> (k + 5)) % 5 - 2) * 0.9;
+          c.strokeStyle = k % 3 === 0 ? K.dk(col, 0.28) : k % 3 === 1 ? K.dk(col, 0.12) : K.lt(col, 0.2); c.lineWidth = 1.4; c.lineCap = 'round';
+          c.beginPath(); c.moveTo(bx, y); c.quadraticCurveTo(bx + lean * 0.3, y - L * 0.6, bx + lean, y - L); c.stroke();
+        }
+      });
+    }
+    for (let i = 0; i < Math.round(w / 60); i++) {
+      const hh = hash(i + seed * 31, 83), x = hh % w, y = y0 + 8 + (hh >>> 9) % Math.max(1, h - 10);
+      wrapX(w, x, 8, xx => {
+        if (hh % 3 === 0) { c.fillStyle = K.dk(col, 0.22); for (const a of [0, 2.1, 4.2]) { c.beginPath(); c.arc(xx + Math.cos(a) * 2, y + Math.sin(a) * 1.4, 1.8, 0, Math.PI * 2); c.fill(); } return; }
+        const fc = ['#ffffff', '#ffd36b', '#ff9fb5', '#9fd0ff'][hh % 4];
+        c.strokeStyle = K.dk(col, 0.3); c.lineWidth = 1; c.beginPath(); c.moveTo(xx, y + 3); c.lineTo(xx + 0.5, y - 5); c.stroke();
+        c.fillStyle = fc; for (let p = 0; p < 5; p++) { const a = p * 1.256; c.beginPath(); c.arc(xx + 0.5 + Math.cos(a) * 1.8, y - 6 + Math.sin(a) * 1.8, 1.4, 0, Math.PI * 2); c.fill(); }
+        c.fillStyle = '#e8a020'; c.beginPath(); c.arc(xx + 0.5, y - 6, 1, 0, Math.PI * 2); c.fill();
+      });
+    }
+  };
+  // a wooden post or pole (x, top y, width, height) with rounded shading, grain, a lit left edge and an outline
+  K.post = (x, y, w, h, col = '#c9a27a') => {
+    ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = K.dk(col, 0.25); ctx.fillRect(x + w * 0.62, y, w * 0.38, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.32)'; ctx.fillRect(x + w * 0.15, y, Math.max(1, w * 0.18), h);
+    ctx.strokeStyle = K.dk(col, 0.32); ctx.lineWidth = 0.8; ctx.beginPath();
+    for (let k = 0; k < Math.floor(h / 26); k++) { const gy = y + 8 + k * 26 + hash(x | 0, k) % 9; ctx.moveTo(x + w * 0.35, gy); ctx.lineTo(x + w * 0.35, gy + 9); }
+    ctx.stroke();
+    ctx.strokeStyle = K.dk(col, 0.55); ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  };
   return K;
 })();

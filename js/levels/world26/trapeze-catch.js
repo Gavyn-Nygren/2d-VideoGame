@@ -349,39 +349,25 @@
     const t = G.clock, lk = LOOK[st.look] || LOOK.warm;
     K.bigTop(t, { cheer: st.cheer });
     ctx.fillStyle = lk.glow; ctx.fillRect(0, 0, W, H);
-    // the rigging: the king poles (shaded, with gold bands), the high wire, the board with its ladder
-    for (const px of [28, W - 36]) {
-      ctx.fillStyle = 'rgba(20,10,20,0.25)'; ctx.fillRect(px + 8, 30, 3, H);
-      ctx.fillStyle = '#c9b39a'; ctx.fillRect(px, 30, 8, H);
-      ctx.fillStyle = '#9a8470'; ctx.fillRect(px + 5, 30, 3, H);
-      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(px + 1, 30, 1.5, H);
-      for (let y = 60; y < H; y += 120) { ctx.fillStyle = '#d9a03a'; ctx.fillRect(px - 1, y, 10, 5); ctx.fillStyle = '#ffe08a'; ctx.fillRect(px - 1, y, 10, 1.5); }
-      ctx.fillStyle = '#d9a03a'; circle(px + 4, 30, 6); ctx.fill(); ctx.fillStyle = '#ffe08a'; circle(px + 2.5, 28.5, 2); ctx.fill();
-    }
-    ctx.strokeStyle = 'rgba(240,230,210,0.6)'; ctx.lineWidth = 2;
+    // the rigging (one picture per act colour): the king poles (rounded, with a red ribbon wrap, riveted gold bands and
+    // cleats), the ladder and the board; then the high wire and the pivot blocks live
+    K.blit(rigPic(lk.ring, 0), 0, 20, 160, H - 20);
+    K.blit(rigPic(lk.ring, 1), W - 60, 20, 60, H - 20);
+    ctx.strokeStyle = 'rgba(60,40,40,0.35)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(32, S.P1.y + 1.5); ctx.lineTo(W - 32, S.P2.y + 1.5); ctx.stroke();
+    ctx.strokeStyle = 'rgba(240,230,210,0.7)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(32, S.P1.y); ctx.lineTo(W - 32, S.P2.y); ctx.stroke();
-    for (const P of [S.P1, S.P2]) { ctx.fillStyle = '#6a5a4a'; rr(P.x - 16, P.y - 4, 32, 7, 3); ctx.fill(); ctx.fillStyle = '#b8a888'; rr(P.x - 16, P.y - 4, 32, 2.5, 1); ctx.fill(); }
-    // ladder up to the board (shaded rails, rungs with a lit top)
-    for (const lx of [38, 56]) { ctx.fillStyle = '#a89070'; ctx.fillRect(lx - 1.5, S.board.y + 44, 4, S.netY + 30 - S.board.y - 44); ctx.fillStyle = '#e8d8b8'; ctx.fillRect(lx - 1.5, S.board.y + 44, 1.5, S.netY + 30 - S.board.y - 44); }
-    for (let y = S.board.y + 60; y < S.netY + 30; y += 22) { ctx.fillStyle = '#a89070'; ctx.fillRect(38, y - 1, 18, 3.5); ctx.fillStyle = '#e8d8b8'; ctx.fillRect(38, y - 1, 18, 1.2); }
-    // the board: wood with a coloured skirt, a brace and an outline
-    const bw = S.board.x - 16, by = S.board.y + 44;
-    ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(34, by + 30); ctx.lineTo(30 + bw * 0.7, by + 10); ctx.stroke();
-    ctx.fillStyle = '#8a5a3a'; rr(30, by, bw, 10, 3); ctx.fill();
-    ctx.fillStyle = '#6a4228'; ctx.fillRect(32, by + 6, bw - 4, 4);
-    ctx.fillStyle = lk.ring; rr(30, by, bw, 4, 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(32, by, bw - 4, 1.2);
-    for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? '#fff4e6' : lk.ring; ctx.beginPath(); ctx.moveTo(32 + i * (bw - 4) / 6, by + 10); ctx.lineTo(32 + (i + 1) * (bw - 4) / 6, by + 10); ctx.lineTo(32 + (i + 0.5) * (bw - 4) / 6, by + 18); ctx.closePath(); ctx.fill(); }
-    ctx.strokeStyle = '#4a2a18'; ctx.lineWidth = 1.5; rr(30, by, bw, 10, 3); ctx.stroke();
+    for (const P of [S.P1, S.P2]) {
+      ctx.fillStyle = '#4a3a2e'; rr(P.x - 16, P.y - 4, 32, 8, 3); ctx.fill();
+      ctx.fillStyle = '#7a6450'; rr(P.x - 16, P.y - 4, 32, 4.5, 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(P.x - 14, P.y - 4, 28, 1.2);
+      for (const bx of [P.x - 11, P.x + 11]) { ctx.fillStyle = '#d9a03a'; circle(bx, P.y, 2.4); ctx.fill(); ctx.fillStyle = '#ffe08a'; circle(bx - 0.6, P.y - 0.7, 0.9); ctx.fill(); }
+      ctx.strokeStyle = '#2a1e18'; ctx.lineWidth = 1; rr(P.x - 16, P.y - 4, 32, 8, 3); ctx.stroke();
+    }
     // the safety net
     drawNet(st);
-    // the ring below: a sawdust floor with a painted curb (lit top, shaded front)
-    ctx.fillStyle = 'rgba(20,10,20,0.3)'; ctx.beginPath(); ctx.ellipse(W / 2, H - 10, 430, 30, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#d9b47a'; ctx.beginPath(); ctx.ellipse(W / 2, H - 14, 420, 26, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#c9a068'; for (let i = 0; i < 40; i++) { const hx = hash(i, 7), a = (hx % 628) / 100, r = (hx >> 10) % 100 / 100; circle(W / 2 + Math.cos(a) * 400 * r, H - 14 + Math.sin(a) * 22 * r, 1.4); ctx.fill(); }
-    ctx.strokeStyle = shade(lk.ring, 0.3); ctx.lineWidth = 9; ctx.beginPath(); ctx.ellipse(W / 2, H - 12, 420, 26, 0, Math.PI, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = lk.ring; ctx.lineWidth = 6; ctx.beginPath(); ctx.ellipse(W / 2, H - 14, 420, 26, 0, Math.PI, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(W / 2, H - 16, 420, 26, 0, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+    // the ring below: raked sawdust with chips and straw, a painted curb with gold stars (one picture per colour)
+    K.blit(ringPic(lk.ring), W / 2 - 440, H - 54, 880, 54);
     K.crowd(H - 36, st.cheer, t, 0, 150); K.crowd(H - 36, st.cheer, t, W - 150, W);
     // hoops
     for (const h of st.hoops) drawHoop(h, t);
@@ -393,18 +379,140 @@
       for (let i = 0; i < n; i += 6) { circle(path[i], path[i + 1] + 20, 2.5); ctx.fill(); }
     }
   }
+  // a king pole at x (8 wide) from y 30 to H, in picture c
+  function kingPole(c, px) {
+    c.fillStyle = 'rgba(20,10,20,0.25)'; c.fillRect(px + 8, 30, 4, H);
+    const g = c.createLinearGradient(px, 0, px + 8, 0); g.addColorStop(0, '#e8d8c0'); g.addColorStop(0.35, '#d4c0a4'); g.addColorStop(1, '#8a7460');
+    c.fillStyle = g; c.fillRect(px, 30, 8, H);
+    // a red ribbon wound round the pole (front turns bright, back turns hidden)
+    c.save(); c.beginPath(); c.rect(px, 30, 8, H); c.clip();
+    for (let y = 40; y < H; y += 26) { c.fillStyle = '#c8383a'; c.beginPath(); c.moveTo(px, y); c.lineTo(px + 8, y - 7); c.lineTo(px + 8, y - 3); c.lineTo(px, y + 4); c.closePath(); c.fill(); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(px, y, 2, 1.2); }
+    c.fillStyle = 'rgba(60,20,20,0.2)'; c.fillRect(px + 5.5, 30, 2.5, H);
+    c.restore();
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(px + 1.2, 30, 1.2, H);
+    c.strokeStyle = '#6a5040'; c.lineWidth = 0.8; c.strokeRect(px + 0.4, 30, 7.2, H);
+    for (let y = 60; y < H; y += 120) {
+      c.fillStyle = '#a8701a'; c.fillRect(px - 1.5, y - 0.5, 11, 7);
+      c.fillStyle = '#d9a03a'; c.fillRect(px - 1.5, y, 11, 5.5);
+      c.fillStyle = '#ffe08a'; c.fillRect(px - 1.5, y, 11, 1.5);
+      c.fillStyle = '#8a5a10'; for (const rx of [px + 0.5, px + 4, px + 7.5]) { c.beginPath(); c.arc(rx, y + 3.2, 0.8, 0, Math.PI * 2); c.fill(); }
+      // a rope cleat with a few turns of rope
+      c.fillStyle = '#5a5a6a'; c.fillRect(px + 8, y + 20, 4, 10); c.fillStyle = '#e8d8b8'; for (let k = 0; k < 3; k++) c.fillRect(px + 7.5, y + 21 + k * 3, 5, 1.6);
+    }
+    c.fillStyle = '#a8701a'; c.beginPath(); c.arc(px + 4, 30.5, 6.5, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#d9a03a'; c.beginPath(); c.arc(px + 3.6, 30, 5.6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#ffe08a'; c.beginPath(); c.arc(px + 2.4, 28.4, 2, 0, Math.PI * 2); c.fill();
+  }
+  // the left rig (x 0..160, y 20..H): pole, ladder and the flyer's board; side 1: the right pole (x W-60..W)
+  function rigPic(ring, side) {
+    return K.pic('w26rig|' + ring + '|' + side, side ? 60 : 160, H - 20, c => {
+      if (side) { c.translate(-(W - 60), -20); kingPole(c, W - 36); return; }
+      c.translate(0, -20);
+      kingPole(c, 28);
+      const top = S.board.y + 44, bot = S.netY + 30;
+      // ladder: shadow on the canvas, rails with grain and bolts, round rungs (lit top, shaded underside)
+      c.fillStyle = 'rgba(20,10,20,0.22)'; c.fillRect(41, top + 2, 4, bot - top); c.fillRect(59, top + 2, 4, bot - top);
+      for (const lx of [38, 56]) {
+        c.fillStyle = '#a89070'; c.fillRect(lx - 1.5, top, 4.5, bot - top);
+        c.fillStyle = '#7a6448'; c.fillRect(lx + 1.5, top, 1.5, bot - top);
+        c.fillStyle = '#efe0c0'; c.fillRect(lx - 1.5, top, 1.3, bot - top);
+        c.strokeStyle = '#5a4630'; c.lineWidth = 0.7; c.strokeRect(lx - 1.5, top, 4.5, bot - top);
+      }
+      for (let y = top + 16; y < bot; y += 22) {
+        c.fillStyle = 'rgba(20,10,20,0.2)'; c.fillRect(40, y + 3, 18, 2);
+        c.fillStyle = '#b89c78'; c.fillRect(38, y - 1.5, 18, 4);
+        c.fillStyle = '#efe0c0'; c.fillRect(38, y - 1.5, 18, 1.2);
+        c.fillStyle = '#7a6448'; c.fillRect(38, y + 1.5, 18, 1);
+        for (const bx of [38.7, 57.3]) { c.fillStyle = '#4a4a5a'; c.beginPath(); c.arc(bx, y + 0.5, 1.3, 0, Math.PI * 2); c.fill(); }
+      }
+      // the board: a steel bracket with rivets under a plank deck, a striped skirt with tassels, a rosin bag
+      const bw = S.board.x - 16, by = top;
+      c.strokeStyle = '#3a3a4a'; c.lineWidth = 4; c.lineCap = 'round'; c.beginPath(); c.moveTo(34, by + 32); c.lineTo(30 + bw * 0.7, by + 10); c.stroke();
+      c.strokeStyle = '#8a8aa0'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(34, by + 30.5); c.lineTo(30 + bw * 0.7, by + 8.5); c.stroke();
+      for (let k = 0; k < 4; k++) { const u = 0.15 + k * 0.23; c.fillStyle = '#c8c8d8'; c.beginPath(); c.arc(34 + (bw * 0.7 - 4) * u, by + 32 - 22 * u, 1.1, 0, Math.PI * 2); c.fill(); }
+      c.fillStyle = '#3a3a4a'; c.fillRect(30, by + 26, 8, 12); c.fillStyle = '#8a8aa0'; c.fillRect(30, by + 26, 8, 1.2);
+      // the skirt (behind the deck's front edge)
+      for (let i = 0; i < 6; i++) {
+        const x0 = 32 + i * (bw - 4) / 6, x1 = 32 + (i + 1) * (bw - 4) / 6, xm = (x0 + x1) / 2;
+        c.fillStyle = i % 2 ? '#fff4e6' : ring; c.beginPath(); c.moveTo(x0, by + 10); c.lineTo(x1, by + 10); c.lineTo(xm, by + 18); c.closePath(); c.fill();
+        c.fillStyle = 'rgba(40,10,30,0.18)'; c.beginPath(); c.moveTo(xm, by + 10); c.lineTo(x1, by + 10); c.lineTo(xm, by + 18); c.closePath(); c.fill();
+        c.strokeStyle = 'rgba(60,20,30,0.45)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(x0, by + 10); c.lineTo(xm, by + 18); c.lineTo(x1, by + 10); c.stroke();
+        c.strokeStyle = '#d9a03a'; c.lineWidth = 1; c.beginPath(); c.moveTo(xm, by + 18); c.lineTo(xm, by + 21); c.stroke();
+        c.fillStyle = '#d9a03a'; c.beginPath(); c.arc(xm, by + 22, 1.6, 0, Math.PI * 2); c.fill(); c.fillStyle = '#ffe08a'; c.beginPath(); c.arc(xm - 0.5, by + 21.5, 0.6, 0, Math.PI * 2); c.fill();
+      }
+      // the deck: two planks with grain, a painted top band, nail heads, a lit top edge and an outline
+      c.fillStyle = '#8a5a3a'; rrOn(c, 30, by, bw, 10, 3); c.fill();
+      c.fillStyle = '#6a4228'; c.fillRect(32, by + 6, bw - 4, 4);
+      c.strokeStyle = 'rgba(50,24,10,0.45)'; c.lineWidth = 0.7;
+      for (let g = 0; g < 4; g++) { c.beginPath(); c.moveTo(34 + g * 9, by + 5.5); c.bezierCurveTo(50 + g * 10, by + 4.5, 70 + g * 6, by + 6.5, bw + 20 - g * 7, by + 5.2); c.stroke(); }
+      c.strokeStyle = 'rgba(40,20,10,0.6)'; c.beginPath(); c.moveTo(30 + bw * 0.55, by + 4); c.lineTo(30 + bw * 0.55, by + 10); c.stroke();
+      c.fillStyle = ring; rrOn(c, 30, by, bw, 4, 2); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(32, by, bw - 4, 1.2);
+      for (const nx of [36, 30 + bw * 0.55 - 4, 30 + bw * 0.55 + 4, 24 + bw]) { c.fillStyle = '#3a2a2a'; c.beginPath(); c.arc(nx, by + 7.5, 0.9, 0, Math.PI * 2); c.fill(); }
+      c.strokeStyle = '#4a2a18'; c.lineWidth = 1.5; rrOn(c, 30, by, bw, 10, 3); c.stroke();
+      // a rosin bag hanging from the deck's end
+      c.strokeStyle = '#e8d8b8'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(24 + bw, by + 10); c.lineTo(24 + bw, by + 26); c.stroke();
+      c.fillStyle = '#f2ecdc'; c.beginPath(); c.ellipse(24 + bw, by + 30, 4.5, 5.5, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(120,100,80,0.3)'; c.beginPath(); c.ellipse(25.5 + bw, by + 31, 2.8, 4.5, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = '#a89878'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(24 + bw, by + 30, 4.5, 5.5, 0, 0, Math.PI * 2); c.stroke();
+      c.strokeStyle = '#c8383a'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(20 + bw, by + 26); c.lineTo(28 + bw, by + 26); c.stroke();
+    });
+  }
+  // the ring floor (880 x 54 from (W/2 - 440, H - 54)): raked sawdust with chips and straw and a painted curb
+  function ringPic(ring) {
+    return K.pic('w26ring|' + ring, 880, 54, c => {
+      const cx = 440, cy = 40;
+      c.fillStyle = 'rgba(20,10,20,0.3)'; c.beginPath(); c.ellipse(cx, cy + 4, 430, 30, 0, 0, Math.PI * 2); c.fill();
+      c.save(); c.beginPath(); c.ellipse(cx, cy, 420, 26, 0, 0, Math.PI * 2); c.clip();
+      const g = c.createLinearGradient(0, cy - 26, 0, cy + 26); g.addColorStop(0, '#c9a068'); g.addColorStop(0.5, '#e2c088'); g.addColorStop(1, '#d4ae74');
+      c.fillStyle = g; c.fillRect(cx - 420, cy - 26, 840, 52);
+      // rake rings and a lit centre where the spotlights fall
+      for (let k = 1; k < 7; k++) { c.strokeStyle = k % 2 ? 'rgba(150,100,50,0.22)' : 'rgba(255,248,220,0.3)'; c.lineWidth = 1; c.beginPath(); c.ellipse(cx, cy, 420 * k / 7, 26 * k / 7, 0, 0, Math.PI * 2); c.stroke(); }
+      c.fillStyle = 'rgba(255,240,200,0.18)'; c.beginPath(); c.ellipse(cx, cy - 2, 180, 10, 0, 0, Math.PI * 2); c.fill();
+      for (let i = 0; i < 420; i++) {
+        const hh = hash(i, 707), a = (hh % 628) / 100, r = Math.sqrt(((hh >>> 10) % 1000) / 1000), x = cx + Math.cos(a) * 410 * r, y = cy + Math.sin(a) * 24 * r;
+        if (i % 7 === 0) { c.strokeStyle = '#c8962e'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 5, y + ((hh >>> 3) % 3 - 1)); c.stroke(); continue; }
+        if (i % 11 === 0) { K.pebble(c, x, y, 1.6, '#a88458'); continue; }
+        c.fillStyle = hh % 3 === 0 ? 'rgba(255,246,214,0.7)' : hh % 3 === 1 ? 'rgba(140,90,40,0.45)' : 'rgba(200,150,80,0.6)';
+        c.fillRect(x, y, 2, 1);
+      }
+      c.restore();
+      // the curb: a darker base, the painted band with segment joins, gold stars and a lit rim
+      c.strokeStyle = K.dk(ring, 0.3); c.lineWidth = 9; c.beginPath(); c.ellipse(cx, cy + 2, 420, 26, 0, Math.PI, Math.PI * 2); c.stroke();
+      c.strokeStyle = ring; c.lineWidth = 6; c.beginPath(); c.ellipse(cx, cy, 420, 26, 0, Math.PI, Math.PI * 2); c.stroke();
+      for (let k = 1; k < 16; k++) {
+        const a = Math.PI + k / 16 * Math.PI, x = cx + Math.cos(a) * 420, y = cy + Math.sin(a) * 26;
+        c.strokeStyle = K.dk(ring, 0.45); c.lineWidth = 1; c.beginPath(); c.moveTo(x, y - 3); c.lineTo(x, y + 4); c.stroke();
+        if (k % 2) { const a2 = a + Math.PI / 32, sx = cx + Math.cos(a2) * 420, sy = cy + Math.sin(a2) * 26; c.fillStyle = '#ffd36b'; c.beginPath(); for (let q = 0; q < 10; q++) { const b = -Math.PI / 2 + q * Math.PI / 5, rq = q % 2 ? 1.1 : 2.6; c.lineTo(sx + Math.cos(b) * rq, sy + Math.sin(b) * rq); } c.closePath(); c.fill(); }
+      }
+      c.strokeStyle = 'rgba(255,255,255,0.45)'; c.lineWidth = 1.5; c.beginPath(); c.ellipse(cx, cy - 2, 420, 26, 0, Math.PI * 1.08, Math.PI * 1.92); c.stroke();
+    });
+  }
   function drawNet(st) {
     const y = S.netY, fl = st.flyer, dip = fl.state === 'net' ? Math.max(0, (fl.y - (y - 40)) * 0.6) : 0;
-    ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1;
     const sag = x => (dip ? dip * Math.max(0, 1 - Math.abs(x - fl.x) / 160) : 0) + 6 * Math.sin((x - S.netX0) / (S.netX1 - S.netX0) * Math.PI);
-    ctx.beginPath();
-    for (let x = S.netX0; x <= S.netX1; x += 10) { const yy = y + sag(x); if (x === S.netX0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy); }
-    ctx.stroke();
-    for (let x = S.netX0; x <= S.netX1; x += 20) { ctx.beginPath(); ctx.moveTo(x, y + sag(x)); ctx.lineTo(x + 10, y + 14 + sag(x + 10) * 0.6); ctx.lineTo(x + 20, y + sag(x + 20)); ctx.stroke(); }
+    // the side posts: shaded wood with grain, iron feet, gold knobs and guy ropes to pegs
     for (const nx of [S.netX0, S.netX1]) {
-      ctx.fillStyle = '#a89070'; ctx.fillRect(nx - 2.5, y, 5, H - y); ctx.fillStyle = '#f0e2c8'; ctx.fillRect(nx - 2.5, y, 2, H - y);
-      ctx.fillStyle = '#d9a03a'; circle(nx, y, 4.5); ctx.fill(); ctx.fillStyle = '#ffe08a'; circle(nx - 1, y - 1, 1.5); ctx.fill();
+      K.post(nx - 3, y, 6, H - y, '#c0a07a');
+      ctx.strokeStyle = 'rgba(232,216,184,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(nx, y + 2); ctx.lineTo(nx + (nx < W / 2 ? -26 : 26), H - 8); ctx.stroke();
+      ctx.fillStyle = '#d9a03a'; circle(nx, y, 4.8); ctx.fill(); ctx.fillStyle = '#ffe08a'; circle(nx - 1.2, y - 1.2, 1.6); ctx.fill();
+      ctx.strokeStyle = '#8a5a10'; ctx.lineWidth = 0.8; circle(nx, y, 4.8); ctx.stroke();
     }
+    // the mesh: crossed diagonals between the top rope and the lower edge (sags with whoever lands in it)
+    const xs = [], top = [], low = [];
+    for (let x = S.netX0; x <= S.netX1 + 0.1; x += 12) { xs.push(x); top.push(y + sag(x)); low.push(y + 14 + sag(x) * 0.6); }
+    ctx.strokeStyle = 'rgba(255,255,255,0.32)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 0; i < xs.length - 1; i++) { ctx.moveTo(xs[i], top[i]); ctx.lineTo(xs[i + 1], low[i + 1]); ctx.moveTo(xs[i + 1], top[i + 1]); ctx.lineTo(xs[i], low[i]); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath();
+    for (let i = 0; i < xs.length; i++) { const mid = (top[i] + low[i]) / 2; i ? ctx.lineTo(xs[i], mid) : ctx.moveTo(xs[i], mid); }
+    ctx.stroke();
+    // the edge ropes: a thick lit top rope with a shadow under it, a thinner bottom rope, knots at each crossing
+    const rope = (ys, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); for (let i = 0; i < xs.length; i++) i ? ctx.lineTo(xs[i], ys[i]) : ctx.moveTo(xs[i], ys[i]); ctx.stroke(); };
+    ctx.save(); ctx.translate(0, 1.5); rope(top, 3, 'rgba(40,20,30,0.3)'); ctx.restore();
+    rope(top, 2.6, '#e8dcc4'); rope(low, 1.4, 'rgba(232,220,196,0.7)');
+    ctx.strokeStyle = 'rgba(160,130,100,0.6)'; ctx.lineWidth = 1; ctx.setLineDash([2, 3]); rope(top, 1, 'rgba(160,130,100,0.6)'); ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255,250,235,0.85)'; for (let i = 0; i < xs.length; i += 2) { circle(xs[i], top[i], 1.3); ctx.fill(); }
   }
   function drawHoop(h, t) {
     const s = 1 + (h.t > 0 ? h.t * 0.4 : 0);

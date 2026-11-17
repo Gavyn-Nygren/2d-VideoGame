@@ -302,18 +302,15 @@
         const ty = hy(x) + 4; circle(x, ty - 8, 10 + hh % 6); ctx.fill(); ctx.fillRect(x - 1.5, ty - 4, 3, 8); } }
     const far = cx * 0.25;
     for (let i = -1; i < 5; i++) { const n = Math.floor(far / 360) + i, x = n * 360 - far + 100; K.tent(x, S.ground - 30, 200, 150, n % 2 ? ['#5b95ff', '#fff4e6'] : ['#e8443a', '#fff4e6']); }
-    // a grassy verge with a lit lip and tufts, then the dirt track
-    ctx.fillStyle = lk.far; ctx.fillRect(0, S.ground - 34, W, 40);
-    ctx.fillStyle = tint(lk.far, 0.3); ctx.fillRect(0, S.ground - 34, W, 3);
-    ctx.fillStyle = shade(lk.far, 0.15); ctx.fillRect(0, S.ground - 4, W, 6);
-    for (let x = -(cx * 0.9 % 30) - 30; x < W + 30; x += 30) { const n = Math.floor((x + cx * 0.9) / 30 + 0.5), hh = hash(n, 21); ctx.fillStyle = shade(lk.far, 0.2);
-      ctx.beginPath(); ctx.moveTo(x, S.ground - 20 + hh % 10); ctx.lineTo(x + 3, S.ground - 30 + hh % 10); ctx.lineTo(x + 6, S.ground - 20 + hh % 10); ctx.fill();
-      if (hh % 7 === 0) { ctx.fillStyle = ['#ffffff', '#ffd36b', '#ff9fb5'][hh % 3]; circle(x + 3, S.ground - 30 + hh % 10, 2.5); ctx.fill(); } }
-    ctx.fillStyle = lk.ground; ctx.fillRect(0, S.ground, W, H - S.ground);
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, S.ground, W, 2);
-    ctx.fillStyle = lk.groundD; for (let x = -(cx % 80); x < W; x += 80) ctx.fillRect(x, S.ground + 18, 40, 3);
-    ctx.fillStyle = shade(lk.ground, 0.18);
-    for (let x = -(cx % 50) - 50; x < W + 50; x += 50) { const n = Math.floor((x + cx) / 50 + 0.5), hh = hash(n, 13); circle(x + hh % 40, S.ground + 34 + (hh >> 6) % 80, 1.6 + hh % 2); ctx.fill(); }
+    // a grassy verge (blade clumps, clover, flowers on stems) and the dirt track (ruts, pebbles, straw, popcorn,
+    // footprints): one picture each per tour look, repeating every 480 px
+    K.strip(K.pic('w26verge|' + st.look, 480, 40, c => { K.vergeTile(c, 480, 0, 34, lk.far, 7); c.fillStyle = K.dk(lk.far, 0.2); c.fillRect(0, 34, 480, 6); }), 480, 40, cx * 0.9, S.ground - 34);
+    { const gh = H - S.ground;
+      K.strip(K.pic('w26track|' + st.look, 480, gh, c => {
+        K.dirtTile(c, 480, 0, gh, { base: lk.ground, ruts: [16, 26], steps: 50, tickets: true, seed: 4 });
+        const g2 = c.createLinearGradient(0, 0, 0, 6); g2.addColorStop(0, 'rgba(60,40,20,0.3)'); g2.addColorStop(1, 'rgba(60,40,20,0)'); c.fillStyle = g2; c.fillRect(0, 0, 480, 6);
+        c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(0, 0, 480, 1.5);
+      }), 480, gh, cx, S.ground); }
     ctx.save(); ctx.translate(-Math.round(cx * 10) / 10, 0);
     // the end tent
     K.tent(st.c.end + 200, S.ground, 320, 250, ['#ffc53d', '#fff4e6']);
@@ -370,20 +367,44 @@
     for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? '#e8443a' : '#fff4e6'; ctx.fillRect(-12 + i * 14, -17, 7, 34); }
     ctx.fillStyle = 'rgba(20,20,40,0.22)'; ctx.fillRect(-20, 6, S.mouth + 14, 11);
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-18, -14, S.mouth + 10, 3);
+    // riveted iron bands, a stencilled star and a soot ring at the muzzle
+    for (const bx of [-17, S.mouth - 16]) { ctx.fillStyle = '#4a4a66'; ctx.fillRect(bx, -17, 5, 34); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(bx, -17, 1.2, 34); ctx.fillStyle = '#b8b8d0'; for (const ry of [-12, -4, 4, 12]) { circle(bx + 2.5, ry, 1.1); ctx.fill(); } }
+    ctx.fillStyle = 'rgba(255,214,90,0.9)'; K.star(S.mouth * 0.42, -1, 5, 2.2, 0); ctx.fill();
+    ctx.fillStyle = 'rgba(30,20,30,0.35)'; ctx.fillRect(S.mouth - 10, -16, 4, 32);
     ctx.strokeStyle = '#2e2e48'; ctx.lineWidth = 2; rr(-24, -17, S.mouth + 24, 34, 10); ctx.stroke();
     ctx.fillStyle = '#3a3a5a'; rr(S.mouth - 6, -20, 10, 40, 4); ctx.fill();
     ctx.fillStyle = '#7a7a9a'; rr(S.mouth - 6, -20, 3, 40, 2); ctx.fill();
     ctx.fillStyle = C.gold; circle(-24, 0, 6); ctx.fill(); ctx.fillStyle = '#b8801a'; circle(-24, 0, 2.5); ctx.fill();
     ctx.restore();
-    ctx.fillStyle = '#8a5a3a'; ctx.beginPath(); ctx.moveTo(-34, S.ground - S.cannonY); ctx.lineTo(-10, 0); ctx.lineTo(14, 0); ctx.lineTo(30, S.ground - S.cannonY); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#6a4228'; ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(14, 0); ctx.lineTo(30, S.ground - S.cannonY); ctx.lineTo(10, S.ground - S.cannonY); ctx.closePath(); ctx.fill();
+    // the carriage: a wooden trestle of planks (grain, a shaded right face, iron straps with rivets, an outline)
+    { const gy = S.ground - S.cannonY;
+      ctx.save(); ctx.beginPath(); ctx.moveTo(-34, gy); ctx.lineTo(-10, 0); ctx.lineTo(14, 0); ctx.lineTo(30, gy); ctx.closePath(); ctx.clip();
+      for (let k = 0; k < 4; k++) { ctx.fillStyle = ['#9a6a42', '#8a5a3a', '#94643e', '#86563a'][k]; ctx.fillRect(-36 + k * 17, -2, 17, gy + 4); }
+      ctx.strokeStyle = 'rgba(60,30,14,0.4)'; ctx.lineWidth = 0.8;
+      for (let k = 0; k < 4; k++) for (let g = 0; g < 2; g++) { const gx = -30 + k * 17 + g * 7; ctx.beginPath(); ctx.moveTo(gx, 0); ctx.bezierCurveTo(gx + 2, gy * 0.3, gx - 2, gy * 0.7, gx + 1, gy); ctx.stroke(); }
+      ctx.strokeStyle = 'rgba(50,24,10,0.55)'; ctx.lineWidth = 1; for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(-36 + k * 17, 0); ctx.lineTo(-36 + k * 17, gy); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(40,20,10,0.32)'; ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(14, 0); ctx.lineTo(30, gy); ctx.lineTo(10, gy); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,200,0.25)'; ctx.beginPath(); ctx.moveTo(-34, gy); ctx.lineTo(-10, 0); ctx.lineTo(-6, 0); ctx.lineTo(-29, gy); ctx.closePath(); ctx.fill();
+      for (const sy of [8, gy - 12]) { ctx.fillStyle = '#4a4a5e'; ctx.fillRect(-40, sy, 76, 5); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(-40, sy, 76, 1); for (let rx = -28; rx < 30; rx += 11) { ctx.fillStyle = '#9a9ab0'; circle(rx, sy + 2.5, 1.3); ctx.fill(); } }
+      ctx.restore(); }
     ctx.strokeStyle = '#4a2a18'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(-34, S.ground - S.cannonY); ctx.lineTo(-10, 0); ctx.lineTo(14, 0); ctx.lineTo(30, S.ground - S.cannonY); ctx.stroke();
+    // the trunnion the barrel turns on: a gold cap with bolts
+    ctx.fillStyle = '#b8801a'; circle(2, 0, 7.5); ctx.fill(); ctx.fillStyle = C.gold; circle(1.5, -0.5, 6); ctx.fill();
+    ctx.fillStyle = '#8a5a10'; for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.6; circle(1.5 + Math.cos(a) * 3.6, -0.5 + Math.sin(a) * 3.6, 0.9); ctx.fill(); }
+    ctx.fillStyle = '#fff4c0'; circle(-0.5, -2.5, 1.5); ctx.fill();
+    // wooden wheels: iron tyre, felloe, eight shaded spokes, a hub with bolts
     for (const wx of [-14, 18]) {
       const wy = S.ground - S.cannonY - 14;
       ctx.fillStyle = '#3a2a3a'; circle(wx, wy, 16); ctx.fill();
-      ctx.strokeStyle = '#8a6a5a'; ctx.lineWidth = 2; for (let s2 = 0; s2 < 4; s2++) { const aa = s2 * Math.PI / 4; ctx.beginPath(); ctx.moveTo(wx - Math.cos(aa) * 12, wy - Math.sin(aa) * 12); ctx.lineTo(wx + Math.cos(aa) * 12, wy + Math.sin(aa) * 12); ctx.stroke(); }
-      ctx.strokeStyle = '#5a4a4a'; ctx.lineWidth = 3; circle(wx, wy, 13.5); ctx.stroke();
-      ctx.fillStyle = C.gold; circle(wx, wy, 5); ctx.fill();
+      ctx.strokeStyle = '#6a6a7e'; ctx.lineWidth = 1; circle(wx, wy, 15.2); ctx.stroke();
+      ctx.strokeStyle = '#8a5a3a'; ctx.lineWidth = 4; circle(wx, wy, 11.5); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,230,190,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(wx, wy, 12.8, Math.PI * 1.05, Math.PI * 1.65); ctx.stroke();
+      for (let s2 = 0; s2 < 8; s2++) { const aa = s2 * Math.PI / 4 + 0.2; ctx.strokeStyle = s2 % 2 ? '#7a4c30' : '#9a6a42'; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(wx + Math.cos(aa) * 4, wy + Math.sin(aa) * 4); ctx.lineTo(wx + Math.cos(aa) * 10, wy + Math.sin(aa) * 10); ctx.stroke(); }
+      ctx.strokeStyle = '#4a2a18'; ctx.lineWidth = 1; circle(wx, wy, 9.6); ctx.stroke();
+      ctx.fillStyle = '#b8801a'; circle(wx, wy, 5); ctx.fill(); ctx.fillStyle = C.gold; circle(wx - 0.4, wy - 0.4, 4); ctx.fill();
+      ctx.fillStyle = '#7a5210'; for (let k = 0; k < 5; k++) { const a = k * 1.256; circle(wx + Math.cos(a) * 2.4, wy + Math.sin(a) * 2.4, 0.6); ctx.fill(); }
+      ctx.fillStyle = '#fff4c0'; circle(wx - 1.6, wy - 1.8, 1.1); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(wx, wy, 16, Math.PI * 1.1, Math.PI * 1.5); ctx.arc(wx, wy, 14, Math.PI * 1.5, Math.PI * 1.1, true); ctx.fill();
     }
     ctx.restore();
     ctx.font = FONT(15); const bw = Math.max(26, ctx.measureText(String(k + 1)).width + 16);
@@ -418,7 +439,11 @@
     if (tr.beepT > 0) { ctx.fillStyle = '#ffffff'; text('♪', nw / 2 + 64, -58, 18, '#ffffff', 'center', 'body'); }
     for (const wx of [-nw / 2 + 8, nw / 2 - 4, nw / 2 + 36]) {
       ctx.save(); ctx.translate(wx, -14); ctx.rotate(tr.wheel);
-      ctx.fillStyle = '#2a2a3a'; circle(0, 0, 14); ctx.fill(); ctx.strokeStyle = '#4a4a5e'; ctx.lineWidth = 2; circle(0, 0, 10); ctx.stroke(); ctx.fillStyle = '#ffffff'; circle(0, 0, 5); ctx.fill();
+      ctx.fillStyle = '#2a2a3a'; circle(0, 0, 14); ctx.fill();
+      ctx.strokeStyle = '#1a1a26'; ctx.lineWidth = 2; for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 11.5, Math.sin(a) * 11.5); ctx.lineTo(Math.cos(a) * 14, Math.sin(a) * 14); ctx.stroke(); }
+      ctx.strokeStyle = '#4a4a5e'; ctx.lineWidth = 2; circle(0, 0, 10); ctx.stroke();
+      ctx.fillStyle = '#d8d8e8'; circle(0, 0, 6.5); ctx.fill(); ctx.fillStyle = '#ffffff'; circle(-0.6, -0.6, 5); ctx.fill();
+      ctx.fillStyle = '#8a8aa0'; for (let k = 0; k < 5; k++) { const a = k * 1.256; circle(Math.cos(a) * 3.4, Math.sin(a) * 3.4, 0.8); ctx.fill(); }
       ctx.fillStyle = '#ffc53d'; ctx.fillRect(-1.5, -12, 3, 5);
       ctx.restore();
     }
