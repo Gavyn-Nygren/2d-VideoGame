@@ -5,6 +5,8 @@
    One player (the lookout) sits in the lit window and steers a lantern spot; hidden laser beams glow only in its light.
    The other (the runner) walks, jumps and ducks past them to the treasure. Roles swap every room; room 4 ends with an
    alarm escape. Stars per room from the zaps. Names: LASER*, laser*, Sfx.extra.laser*; hooks MODES.laser.test / .debug. */
+// (rich props pass 2) the vault's stone is laid as dressed ashlar under a polished floor slab (render.js STONE_LOOKS)
+Object.assign(LEVELS.find(l => l.mode === 'laser').theme, { stoneLook: 'vault' });
 const LASER = {
   // the lookout's lantern spot
   spotR: 72, spotSpeed: 340, spotAcc: 2800, spotFric: 3600,

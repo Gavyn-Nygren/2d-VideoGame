@@ -1387,14 +1387,70 @@ function buggyDrawPad(st) {
   rr(bx.lo - BUGGY.half, g - 6, bx.hi - bx.lo + BUGGY.half * 2, 12, 4); ctx.stroke(); ctx.setLineDash([]);
   if (!on) text('PARK', pad.box, g + 26, 16, st.wideBox ? C.gold : '#ffffff', 'center');
 }
+// the launch tower beside the rocket (origin = the left upright's foot on the ground; the tower is 30 wide, 330 tall):
+// two riveted steel uprights, X bracing in each bay with a lit edge and a shadow line, gusset plates with rivets at the
+// joints, a ladder up the middle, grated platforms with hazard-striped edges every few bays, a swing arm with an
+// umbilical hose reaching to the rocket, a beacon mount, concrete footings with bolts and a soft ground shadow
+function buggyTowerPaint() {
+  const col = '#8a8fb0', dk = shade(col, 0.5), lit = 'rgba(255,255,255,0.35)', TOP = -330, bay = 30;
+  ctx.fillStyle = 'rgba(10,8,30,0.25)'; ctx.beginPath(); ctx.ellipse(15, 2, 34, 5, 0, 0, Math.PI * 2); ctx.fill();
+  // ladder rungs in the middle (behind the bracing)
+  ctx.strokeStyle = shade(col, 0.3); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(11, TOP + 6); ctx.lineTo(11, 0); ctx.moveTo(19, TOP + 6); ctx.lineTo(19, 0); for (let y = TOP + 10; y < 0; y += 7) { ctx.moveTo(11, y); ctx.lineTo(19, y); } ctx.stroke();
+  // X bracing in each bay: a dark under-stroke, the strut, a lit edge
+  const strut = (x0, y0, x1, y1) => {
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = dk; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.strokeStyle = col; ctx.lineWidth = 2.4; ctx.stroke();
+    ctx.strokeStyle = lit; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x0, y0 - 0.8); ctx.lineTo(x1, y1 - 0.8); ctx.stroke();
+    ctx.lineCap = 'butt';
+  };
+  for (let y = TOP + 10; y < 0; y += bay) { const y1 = Math.min(0, y + bay); strut(4, y, 26, y1); strut(26, y, 4, y1); }
+  // the uprights
+  for (const ux of [-2, 26]) CK.metal(ux, TOP, 6, -TOP, col, { seam: 60, r: 1.5, lw: 1.4, seed: 21 + ux });
+  // gusset plates with rivets at the joints
+  for (let y = TOP + 10; y <= 0; y += bay) for (const ux of [1, 29]) {
+    ctx.fillStyle = shade(col, 0.12); ctx.beginPath(); ctx.moveTo(ux - 4, y - 5); ctx.lineTo(ux + 4, y - 5); ctx.lineTo(ux + 4, y + 5); ctx.lineTo(ux - 4, y + 5); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = dk; ctx.lineWidth = 0.8; ctx.stroke();
+    ctx.fillStyle = '#d0d4e8'; circle(ux, y - 2.5, 1); ctx.fill(); circle(ux, y + 2.5, 1); ctx.fill();
+  }
+  // grated platforms with hazard edges every 3 bays
+  for (let y = TOP + 70; y < -20; y += bay * 3) {
+    ctx.fillStyle = '#5c6188'; ctx.fillRect(-8, y - 4, 46, 6);
+    ctx.strokeStyle = 'rgba(20,18,40,0.45)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let gx = -6; gx < 38; gx += 3) { ctx.moveTo(gx, y - 4); ctx.lineTo(gx, y + 2); } ctx.stroke();
+    ctx.save(); ctx.beginPath(); ctx.rect(-8, y + 2, 46, 3); ctx.clip();
+    ctx.fillStyle = '#ffc53d'; ctx.fillRect(-8, y + 2, 46, 3); ctx.fillStyle = '#2b2850'; for (let gx = -10; gx < 40; gx += 6) { ctx.beginPath(); ctx.moveTo(gx, y + 5); ctx.lineTo(gx + 3, y + 2); ctx.lineTo(gx + 6, y + 2); ctx.lineTo(gx + 3, y + 5); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    ctx.fillStyle = lit; ctx.fillRect(-8, y - 4, 46, 1);
+    ctx.strokeStyle = dk; ctx.lineWidth = 1.2; ctx.strokeRect(-8, y - 4, 46, 9);
+    // a guard rail
+    ctx.strokeStyle = shade(col, 0.2); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-8, y - 4); ctx.lineTo(-8, y - 14); ctx.lineTo(38, y - 14); ctx.lineTo(38, y - 4); ctx.moveTo(-8, y - 9); ctx.lineTo(38, y - 9); ctx.stroke();
+  }
+  // the swing arm to the rocket near the top, with a hose sagging under it
+  const ay = TOP + 34;
+  ctx.fillStyle = '#6a7096'; ctx.beginPath(); ctx.moveTo(-2, ay - 6); ctx.lineTo(-48, ay - 3); ctx.lineTo(-48, ay + 3); ctx.lineTo(-2, ay + 6); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = dk; ctx.lineWidth = 1.4; ctx.stroke();
+  ctx.fillStyle = lit; ctx.beginPath(); ctx.moveTo(-2, ay - 6); ctx.lineTo(-48, ay - 3); ctx.lineTo(-48, ay - 2); ctx.lineTo(-2, ay - 4.5); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(20,18,40,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = 0; k < 5; k++) { const ax = -6 - k * 9; ctx.moveTo(ax, ay - 5 + k * 0.4); ctx.lineTo(ax - 7, ay + 4 - k * 0.3); } ctx.stroke();
+  ctx.strokeStyle = '#3a3a58'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-6, ay + 6); ctx.quadraticCurveTo(-26, ay + 26, -46, ay + 8); ctx.stroke();
+  ctx.strokeStyle = '#ffc53d'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#c9cde0'; ctx.fillRect(-50, ay - 5, 4, 10); ctx.strokeStyle = dk; ctx.lineWidth = 1; ctx.strokeRect(-50, ay - 5, 4, 10);
+  // the beacon mount on top
+  ctx.fillStyle = '#5c6188'; ctx.fillRect(-4, TOP - 3, 38, 5); ctx.strokeStyle = dk; ctx.lineWidth = 1.2; ctx.strokeRect(-4, TOP - 3, 38, 5);
+  ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(15, TOP - 3); ctx.lineTo(15, TOP - 4); ctx.stroke();
+  ctx.fillStyle = '#4f4b74'; ctx.fillRect(11, TOP - 4, 8, 3);
+  // concrete footings with bolts
+  for (const fx of [-6, 22]) { ctx.fillStyle = '#b9b6cc'; ctx.fillRect(fx, -6, 14, 7); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(fx, -6, 14, 1.2); ctx.strokeStyle = shade('#b9b6cc', 0.5); ctx.lineWidth = 1; ctx.strokeRect(fx, -6, 14, 7); ctx.fillStyle = '#5c6188'; circle(fx + 3, -3, 1.2); ctx.fill(); circle(fx + 11, -3, 1.2); ctx.fill(); }
+}
 function buggyDrawRocket(st, back) {
   const pad = st.c.pad, x = pad.rocket, g0 = buggyGround(st, x), rise = st.fin ? st.fin.rise || 0 : 0, g = g0 - rise, t = G.clock;
   if (back) {
     // the launch tower (stays behind)
-    ctx.strokeStyle = '#8a8fb0'; ctx.lineWidth = 4;
-    ctx.strokeRect(x + 78, g0 - 330, 30, 330);
-    for (let y = g0 - 320; y < g0; y += 30) { ctx.beginPath(); ctx.moveTo(x + 78, y); ctx.lineTo(x + 108, y + 30); ctx.stroke(); }
+    // (rich props) a steel lattice tower, cached: see buggyTowerPaint; the beacon on top blinks live
+    CK.pic('bgtower', 130, 372, 52, 356, buggyTowerPaint, x + 78, g0);
+    const bl = 0.5 + 0.5 * Math.sin(t * 4);
+    ctx.fillStyle = 'rgba(255,107,74,' + (0.18 + 0.2 * bl) + ')'; circle(x + 93, g0 - 338, 12 + bl * 3); ctx.fill();
     ctx.fillStyle = '#ff6b4a'; circle(x + 93, g0 - 338, 5 + Math.sin(t * 4)); ctx.fill();
+    ctx.fillStyle = 'rgba(255,230,210,0.85)'; circle(x + 91.5, g0 - 339.5, 1.6); ctx.fill();
     return;
   }
   ctx.save(); ctx.translate(x, g);

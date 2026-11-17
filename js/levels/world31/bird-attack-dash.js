@@ -366,17 +366,9 @@
   }
   // the back half of a hiding spot (drawn before the players), and its roof (after)
   function drawCoverBack(q, t) {
-    if (q.kind === 'pot') {
-      // the inside of the pot: dark clay, shaded deeper at the back, with a crumb of soil on the floor
-      const g = ctx.createLinearGradient(0, GY - 92, 0, GY); g.addColorStop(0, '#6a2e16'); g.addColorStop(1, '#3a1608');
-      ctx.fillStyle = g; rr(q.x + 6, GY - 92, q.w - 12, 92, 8); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,200,160,0.18)'; ctx.lineWidth = 1.5; for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(q.x + 10, GY - k * 22); ctx.lineTo(q.x + q.w - 10, GY - k * 22 + 2); ctx.stroke(); }
-      ctx.fillStyle = '#4a3020'; ctx.beginPath(); ctx.ellipse(q.x + q.w / 2, GY, q.w * 0.36, 6, 0, Math.PI, 0); ctx.fill();
-    } else if (q.kind === 'cup') {
-      const g = ctx.createLinearGradient(q.x, 0, q.x + q.w, 0); g.addColorStop(0, '#a8bccc'); g.addColorStop(1, '#d8e6f2');
-      ctx.fillStyle = g; rr(q.x + 6, GY - 80, q.w - 12, 80, 6); ctx.fill();
-      ctx.fillStyle = 'rgba(120,90,60,0.25)'; ctx.beginPath(); ctx.ellipse(q.x + q.w / 2, GY - 8, q.w * 0.34, 5, 0, 0, TAU); ctx.fill();
-    } else if (q.kind === 'end') K.pic('birdhedge|' + q.w, q.w + 440, 495, 20, 470, () => paintHedge(q.w + 400), q.x, GY);
+    if (q.kind === 'pot') K.pic('bdpotin|' + q.w, q.w, 100, 0, 96, () => paintPotInside(q.w), q.x, GY);
+    else if (q.kind === 'cup') K.pic('bdcupin|' + q.w, q.w, 86, 0, 82, () => paintCupInside(q.w), q.x, GY);
+    else if (q.kind === 'end') K.pic('birdhedge|' + q.w, q.w + 440, 495, 20, 470, () => paintHedge(q.w + 400), q.x, GY);
   }
   // the hedge at the end of a stretch: a wall of overlapping leaf clumps lit from above, twigs in the gaps, a few white
   // flowers, and a dark way in at its foot (origin: its bottom left)
@@ -446,6 +438,174 @@
     for (let k = 0; k <= 16; k++) { const a = Math.PI + k / 16 * Math.PI, x = 140 + Math.cos(a) * 112, y = Math.sin(a) * 122; leaf(x, y, 8 + R(k + 800) * 3, a + Math.PI / 2 + (R(k + 801) - 0.5) * 0.8, k % 2 ? '#3a8a34' : '#4a9a3a'); }
     ctx.strokeStyle = 'rgba(180,255,150,0.3)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(140, 0, 106, 116, 0, Math.PI * 1.1, Math.PI * 1.55); ctx.stroke();
   }
+  /* the flower pot and the milk cup that players hide under: each painted once per width (K.pic) and copied each
+     frame. Origin: the cover's bottom left on the ground line. The outlines are the old ones (the pot's trapezoid
+     with its rim band, the cup's trapezoid), so what you see is still exactly what you can hide under. */
+  // the upturned pot: fired clay with speckle, throwing rings, a salt bloom and moss low down, a crack and chips,
+  // a rolled rim lit on top, a doorway knocked out of the rim (its broken edge shows the clay's thickness), a ladybird
+  function paintPotCover(w) {
+    const R = n => K.hash(n * 1.37 + w * 0.11);
+    ctx.fillStyle = 'rgba(30,20,10,0.22)'; ctx.beginPath(); ctx.ellipse(w / 2 + 4, 4, w * 0.62, 8, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(30,20,10,0.16)'; ctx.beginPath(); ctx.ellipse(w / 2 + 4, 3, w * 0.42, 5, 0, 0, TAU); ctx.fill();
+    const body = () => { ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(12, -100); ctx.lineTo(w - 12, -100); ctx.lineTo(w, 2); ctx.closePath(); };
+    const g = ctx.createLinearGradient(0, 0, w, 0);
+    g.addColorStop(0, '#b45a32'); g.addColorStop(0.2, '#e0845a'); g.addColorStop(0.5, '#c8643a'); g.addColorStop(0.8, '#a84a26'); g.addColorStop(1, '#8a3a1e');
+    ctx.fillStyle = g; body(); ctx.fill();
+    ctx.save(); body(); ctx.clip();
+    // the foot ring of the pot (now its top): a raised band, lit on top
+    ctx.fillStyle = '#d4724a'; ctx.fillRect(0, -100, w, 9);
+    ctx.fillStyle = 'rgba(255,232,206,0.45)'; ctx.fillRect(0, -100, w, 2);
+    ctx.fillStyle = 'rgba(80,26,8,0.35)'; ctx.fillRect(0, -92, w, 2);
+    // throwing rings, fired-clay speckle (dark and light), a darker right side
+    ctx.strokeStyle = 'rgba(120,44,16,0.22)'; ctx.lineWidth = 1.3;
+    for (let k = 0; k < 6; k++) { const yy = -84 + k * 11; ctx.beginPath(); ctx.moveTo(0, yy); ctx.quadraticCurveTo(w / 2, yy + 3, w, yy); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(255,214,184,0.16)'; ctx.lineWidth = 1;
+    for (let k = 0; k < 6; k++) { const yy = -82 + k * 11; ctx.beginPath(); ctx.moveTo(0, yy); ctx.quadraticCurveTo(w / 2, yy + 3, w, yy); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(90,30,10,0.32)'; ctx.beginPath();
+    for (let k = 0; k < 110; k++) { const px = R(k + 3) * w, py = -98 + R(k + 7) * 96, r = 0.6 + R(k + 11) * 1.3; ctx.moveTo(px + r, py); ctx.arc(px, py, r, 0, TAU); } ctx.fill();
+    ctx.fillStyle = 'rgba(255,222,190,0.3)'; ctx.beginPath();
+    for (let k = 0; k < 70; k++) { const px = R(k + 13) * w, py = -98 + R(k + 17) * 96, r = 0.5 + R(k + 19) * 1; ctx.moveTo(px + r, py); ctx.arc(px, py, r, 0, TAU); } ctx.fill();
+    const sh = ctx.createLinearGradient(w * 0.6, 0, w, 0); sh.addColorStop(0, 'rgba(70,20,6,0)'); sh.addColorStop(1, 'rgba(70,20,6,0.3)');
+    ctx.fillStyle = sh; ctx.fillRect(w * 0.6, -100, w * 0.4, 104);
+    // a white salt bloom low down, a damp band just above the rim, moss creeping up the shady side
+    const sb = ctx.createLinearGradient(0, -52, 0, -22); sb.addColorStop(0, 'rgba(244,234,214,0)'); sb.addColorStop(1, 'rgba(244,234,214,0.28)');
+    ctx.fillStyle = sb; ctx.fillRect(0, -52, w, 30);
+    ctx.fillStyle = 'rgba(60,24,10,0.3)'; ctx.fillRect(0, -26, w, 8);
+    ctx.fillStyle = 'rgba(70,120,40,0.75)'; ctx.beginPath();
+    for (let k = 0; k < 16; k++) { const px = w * 0.66 + R(k + 40) * w * 0.34, py = -20 - R(k + 41) * 16 * (1 - (px - w * 0.66) / w), r = 2 + R(k + 42) * 3.5; ctx.moveTo(px + r, py); ctx.arc(px, py, r, 0, TAU); } ctx.fill();
+    ctx.fillStyle = 'rgba(170,220,110,0.75)'; for (let k = 0; k < 12; k++) ctx.fillRect(w * 0.68 + R(k + 50) * w * 0.3, -22 - R(k + 51) * 14, 1.5, 1.5);
+    ctx.restore();
+    // the lit left edge, a crack with a lit lip, a few chips
+    ctx.strokeStyle = 'rgba(255,230,200,0.38)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(15, -90); ctx.lineTo(6, -20); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,240,220,0.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(13, -99); ctx.lineTo(w - 14, -99); ctx.stroke();
+    const cx0 = w * 0.74;
+    ctx.strokeStyle = 'rgba(70,20,6,0.65)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(cx0, -100); ctx.lineTo(cx0 - 5, -82); ctx.lineTo(cx0 + 3, -68); ctx.lineTo(cx0 - 4, -52); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,220,190,0.35)'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(cx0 + 1.5, -100); ctx.lineTo(cx0 - 3.5, -82); ctx.lineTo(cx0 + 4.5, -68); ctx.stroke();
+    for (const [dx, dy, r] of [[0.3, -70, 3.5], [0.55, -48, 3], [0.2, -40, 2.5]]) {
+      ctx.fillStyle = 'rgba(90,30,10,0.45)'; ctx.beginPath(); ctx.ellipse(w * dx, dy, r * 1.4, r, 0.3, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,214,180,0.4)'; ctx.beginPath(); ctx.ellipse(w * dx - 1, dy + r * 0.6, r * 1.1, r * 0.35, 0.3, 0, Math.PI); ctx.fill();
+    }
+    ctx.strokeStyle = '#7a301a'; ctx.lineWidth = 2.5; body(); ctx.stroke();
+    // the rolled rim on the ground: shadow above it, a rounded lip lit on top, speckle, a chip out of its edge
+    ctx.fillStyle = 'rgba(60,20,8,0.35)'; ctx.fillRect(2, -22, w - 4, 4);
+    const rg = ctx.createLinearGradient(0, -18, 0, 2); rg.addColorStop(0, '#f0946a'); rg.addColorStop(0.45, '#e07a4a'); rg.addColorStop(1, '#a8482a');
+    ctx.fillStyle = rg; rr(-4, -18, w + 8, 20, 4); ctx.fill();
+    ctx.save(); rr(-4, -18, w + 8, 20, 4); ctx.clip();
+    ctx.fillStyle = 'rgba(90,30,10,0.3)'; ctx.beginPath();
+    for (let k = 0; k < 40; k++) { const px = -4 + R(k + 60) * (w + 8), py = -16 + R(k + 61) * 17, r = 0.5 + R(k + 62) * 1.1; ctx.moveTo(px + r, py); ctx.arc(px, py, r, 0, TAU); } ctx.fill();
+    ctx.fillStyle = 'rgba(70,24,8,0.3)'; ctx.fillRect(w * 0.7, -18, w * 0.3 + 6, 20);
+    ctx.fillStyle = 'rgba(40,20,10,0.25)'; ctx.fillRect(-4, -3, w + 8, 5);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,236,210,0.5)'; rr(-2, -17, w + 4, 3, 1.5); ctx.fill();
+    ctx.fillStyle = '#b4562e'; ctx.beginPath(); ctx.moveTo(w - 14, -18); ctx.lineTo(w - 8, -12); ctx.lineTo(w - 2, -18); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#7a301a'; ctx.lineWidth = 2; rr(-4, -18, w + 8, 20, 4); ctx.stroke();
+    // the doorway knocked out of the rim: dark inside, a pale broken clay edge on its lit side, crumbs at the foot
+    const ax = w / 2, aw = w * 0.28;
+    const ig = ctx.createRadialGradient(ax, -4, 2, ax, -10, 36); ig.addColorStop(0, '#2a1208'); ig.addColorStop(1, '#140804');
+    ctx.fillStyle = ig; ctx.beginPath(); ctx.moveTo(ax - aw, 2);
+    for (let k = 0; k <= 12; k++) { const a = Math.PI + k / 12 * Math.PI, j = (k % 2 ? 1.5 : -1) * (k && k < 12 ? 1 : 0); ctx.lineTo(ax + Math.cos(a) * (aw + j), -2 + Math.sin(a) * (30 + j)); }
+    ctx.lineTo(ax + aw, 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(80,50,30,0.6)'; ctx.beginPath(); ctx.ellipse(ax, 1, aw * 0.8, 4, 0, Math.PI, 0); ctx.fill();
+    ctx.strokeStyle = '#e8946a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(ax, -2, aw - 1.5, 28.5, 0, Math.PI * 1.55, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,230,200,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(ax, -2, aw - 0.5, 29.5, 0, Math.PI * 1.6, Math.PI * 1.95); ctx.stroke();
+    ctx.strokeStyle = '#5a2210'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.ellipse(ax, -2, aw + 0.5, 30.5, 0, Math.PI, 0); ctx.stroke();
+    for (const [dx, r] of [[-aw - 6, 2.4], [-aw - 1, 1.6], [aw + 4, 2], [aw + 9, 1.4]]) { ctx.fillStyle = '#b4562e'; ctx.beginPath(); ctx.ellipse(ax + dx, 1, r * 1.3, r, 0.4, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,220,190,0.45)'; ctx.fillRect(ax + dx - r, 1 - r, r, 0.8); }
+    // a ladybird out for a walk on the sunny side
+    const lx = w * 0.3, ly = -62;
+    ctx.fillStyle = 'rgba(40,10,4,0.3)'; ctx.beginPath(); ctx.ellipse(lx + 1, ly + 1.5, 5, 4, 0.3, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#d42a1e'; ctx.beginPath(); ctx.ellipse(lx, ly, 5, 4, 0.3, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#1e1414'; ctx.beginPath(); ctx.arc(lx + 4.2, ly + 1.4, 2, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#1e1414'; for (const [dx, dy] of [[-2, -1.5], [-2.5, 1.5], [0.8, -2.2], [0.5, 1.6]]) { ctx.beginPath(); ctx.arc(lx + dx, ly + dy, 0.9, 0, TAU); ctx.fill(); }
+    ctx.strokeStyle = '#1e1414'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(lx - 4.5, ly - 1.4); ctx.lineTo(lx + 3.5, ly + 1.2); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(lx - 2, ly - 2, 1, 0, TAU); ctx.fill();
+  }
+  // the inside of the pot (seen only round the edges): dark clay with rings and speckle, a crumb of soil on the floor
+  function paintPotInside(w) {
+    const g = ctx.createLinearGradient(0, -92, 0, 0); g.addColorStop(0, '#6a2e16'); g.addColorStop(1, '#3a1608');
+    // (inside the pot's own slope, so none of it peeks out past the front)
+    const inner = () => { ctx.beginPath(); ctx.moveTo(4, 0); ctx.lineTo(14, -92); ctx.lineTo(w - 14, -92); ctx.lineTo(w - 4, 0); ctx.closePath(); };
+    ctx.fillStyle = g; inner(); ctx.fill();
+    ctx.save(); inner(); ctx.clip();
+    ctx.strokeStyle = 'rgba(255,200,160,0.18)'; ctx.lineWidth = 1.5; for (let k = 1; k < 8; k++) { ctx.beginPath(); ctx.moveTo(6, -k * 11); ctx.quadraticCurveTo(w / 2, -k * 11 - 3, w - 6, -k * 11 + 1); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(20,6,2,0.35)'; for (let k = 0; k < 40; k++) ctx.fillRect(6 + K.hash(k * 3.1 + w) * (w - 12), -90 + K.hash(k * 5.7 + w) * 86, 1.4, 1.4);
+    const sg = ctx.createLinearGradient(6, 0, w - 6, 0); sg.addColorStop(0, 'rgba(10,4,2,0.4)'); sg.addColorStop(0.3, 'rgba(10,4,2,0)'); sg.addColorStop(0.7, 'rgba(10,4,2,0)'); sg.addColorStop(1, 'rgba(10,4,2,0.4)');
+    ctx.fillStyle = sg; ctx.fillRect(6, -92, w - 12, 92);
+    ctx.restore();
+    ctx.fillStyle = '#4a3020'; ctx.beginPath(); ctx.ellipse(w / 2, 0, w * 0.36, 6, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = 'rgba(160,120,80,0.4)'; for (let k = 0; k < 6; k++) { ctx.beginPath(); ctx.arc(w / 2 - w * 0.3 + K.hash(k + w) * w * 0.6, -2 - K.hash(k * 2 + w) * 3, 1.2, 0, TAU); ctx.fill(); }
+  }
+  // the upturned milk cup: white plastic with moulded flutes, a glossy streak, a printed blue band with a milk splash
+  // and a drop, a recessed base on top, a rolled lip on the ground, scuffs, and a doorway cut out with scissors
+  function paintCupCover(w) {
+    const R = n => K.hash(n * 2.13 + w * 0.07);
+    ctx.fillStyle = 'rgba(30,40,60,0.2)'; ctx.beginPath(); ctx.ellipse(w / 2 + 4, 4, w * 0.6, 8, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(30,40,60,0.14)'; ctx.beginPath(); ctx.ellipse(w / 2 + 4, 3, w * 0.4, 5, 0, 0, TAU); ctx.fill();
+    const body = () => { ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(10, -90); ctx.lineTo(w - 10, -90); ctx.lineTo(w, 2); ctx.closePath(); };
+    const g = ctx.createLinearGradient(0, 0, w, 0);
+    g.addColorStop(0, '#d8e4f0'); g.addColorStop(0.22, '#ffffff'); g.addColorStop(0.5, '#f0f6ff'); g.addColorStop(0.8, '#d6e2ee'); g.addColorStop(1, '#aebfd2');
+    ctx.fillStyle = g; body(); ctx.fill();
+    ctx.save(); body(); ctx.clip();
+    // moulded flutes running up the side, each a soft shade with a lit lip beside it
+    for (let k = 1; k < 10; k++) {
+      const u = k / 10, xb = u * w, xt = 10 + u * (w - 20);
+      ctx.strokeStyle = 'rgba(120,140,170,0.22)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(xt, -82); ctx.lineTo(xb, -6); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(xt - 1.6, -82); ctx.lineTo(xb - 1.6, -6); ctx.stroke();
+    }
+    // the recessed base (now the top): a grey ring, a stacking ridge under it
+    ctx.fillStyle = '#c8d8e8'; ctx.fillRect(0, -90, w, 7);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(0, -90, w, 1.5);
+    ctx.fillStyle = 'rgba(90,110,140,0.35)'; ctx.fillRect(0, -84, w, 1.5);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(0, -78, w, 1.2); ctx.fillStyle = 'rgba(110,130,160,0.3)'; ctx.fillRect(0, -76.8, w, 1.2);
+    // the printed band: blue, darker below, a white milk splash dripping over its top, a drop, a thin stripe under it
+    const bg = ctx.createLinearGradient(0, -66, 0, -44); bg.addColorStop(0, '#6aa2ff'); bg.addColorStop(1, '#3a72d8');
+    ctx.fillStyle = bg; ctx.fillRect(0, -66, w, 22);
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(0, -66);
+    for (let x = 0; x <= w; x += 6) { const d = R(x) < 0.35 ? 4 + R(x + 1) * 6 : 1.5 + Math.sin(x * 0.3) * 1; ctx.quadraticCurveTo(x + 3, -66 + d * 1.4, x + 6, -66 + 1); }
+    ctx.lineTo(w, -68); ctx.lineTo(0, -68); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffffff'; for (let x = 4; x < w; x += 6) if (R(x) < 0.35) { ctx.beginPath(); ctx.arc(x + 3, -66 + (4 + R(x + 1) * 6) * 1.2, 1.6, 0, TAU); ctx.fill(); }
+    const dx = w * 0.42, dy = -53;
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(dx, dy - 8); ctx.bezierCurveTo(dx + 6, dy - 1, dx + 5, dy + 5, dx, dy + 5); ctx.bezierCurveTo(dx - 5, dy + 5, dx - 6, dy - 1, dx, dy - 8); ctx.fill();
+    ctx.fillStyle = 'rgba(90,140,230,0.5)'; ctx.beginPath(); ctx.arc(dx + 1.5, dy + 1.5, 1.6, 0, TAU); ctx.fill();
+    for (const ddx of [-14, 14]) { ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(dx + ddx, dy + 1, 2.2, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = 'rgba(20,50,120,0.35)'; ctx.fillRect(0, -46, w, 2);
+    ctx.fillStyle = '#9cc4ff'; ctx.fillRect(0, -40, w, 3);
+    // a gloss streak and a smaller one, scuffs, a dent with a lit rim, a darker right side, dirt splashed low down
+    const hg = ctx.createLinearGradient(0, -84, 0, -8); hg.addColorStop(0, 'rgba(255,255,255,0.95)'); hg.addColorStop(1, 'rgba(255,255,255,0.15)');
+    ctx.fillStyle = hg; ctx.beginPath(); ctx.moveTo(15, -84); ctx.lineTo(20, -84); ctx.lineTo(14, -8); ctx.lineTo(9, -8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.moveTo(24, -84); ctx.lineTo(26, -84); ctx.lineTo(21, -30); ctx.lineTo(19, -30); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,140,170,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath();
+    for (let k = 0; k < 7; k++) { const sx = w * (0.5 + R(k + 20) * 0.4), sy = -30 - R(k + 21) * 40; ctx.moveTo(sx, sy); ctx.lineTo(sx + 4 + R(k + 22) * 5, sy + 1 + R(k + 23) * 2); } ctx.stroke();
+    ctx.fillStyle = 'rgba(90,110,140,0.2)'; ctx.beginPath(); ctx.ellipse(w * 0.7, -26, 7, 5, -0.4, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(w * 0.7, -26, 7, 5, -0.4, Math.PI * 0.9, Math.PI * 1.6); ctx.stroke();
+    const sh = ctx.createLinearGradient(w * 0.62, 0, w, 0); sh.addColorStop(0, 'rgba(60,80,110,0)'); sh.addColorStop(1, 'rgba(60,80,110,0.22)');
+    ctx.fillStyle = sh; ctx.fillRect(w * 0.62, -90, w * 0.38, 94);
+    ctx.fillStyle = 'rgba(110,80,50,0.35)'; ctx.beginPath();
+    for (let k = 0; k < 18; k++) { const px = R(k + 30) * w, py = -6 - R(k + 31) * 10, r = 0.6 + R(k + 32) * 1.4; ctx.moveTo(px + r, py); ctx.arc(px, py, r, 0, TAU); } ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = '#8a9cb4'; ctx.lineWidth = 2.2; body(); ctx.stroke();
+    // the rolled lip on the ground
+    const lg = ctx.createLinearGradient(0, -8, 0, 2); lg.addColorStop(0, '#ffffff'); lg.addColorStop(0.5, '#e4ecf6'); lg.addColorStop(1, '#a8b8cc');
+    ctx.fillStyle = lg; rr(-3, -8, w + 6, 10, 5); ctx.fill();
+    ctx.fillStyle = 'rgba(110,80,50,0.3)'; ctx.fillRect(-1, -2, w + 2, 3);
+    ctx.strokeStyle = '#8a9cb4'; ctx.lineWidth = 1.6; rr(-3, -8, w + 6, 10, 5); ctx.stroke();
+    // the doorway, cut with scissors: dark inside with the cup's pale wall showing, a thin bright cut edge
+    const ax = w / 2, aw = w * 0.26;
+    const ig = ctx.createRadialGradient(ax, -4, 2, ax, -10, 32); ig.addColorStop(0, '#2a3446'); ig.addColorStop(1, '#141a26');
+    ctx.fillStyle = ig; ctx.beginPath(); ctx.ellipse(ax, -2, aw, 26, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(160,180,210,0.25)'; ctx.beginPath(); ctx.ellipse(ax + aw * 0.3, -2, aw * 0.5, 22, 0, Math.PI * 1.5, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(110,80,50,0.5)'; ctx.beginPath(); ctx.ellipse(ax, 1, aw * 0.8, 3.5, 0, Math.PI, 0); ctx.fill();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(ax, -2, aw - 1, 25, 0, Math.PI * 1.5, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#6a7c96'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(ax, -2, aw + 0.5, 26.5, 0, Math.PI, 0); ctx.stroke();
+    ctx.strokeStyle = 'rgba(106,124,150,0.7)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(ax - aw - 1, -12); ctx.lineTo(ax - aw - 5, -15); ctx.moveTo(ax + aw + 1, -14); ctx.lineTo(ax + aw + 4, -18); ctx.stroke();
+  }
+  function paintCupInside(w) {
+    const g = ctx.createLinearGradient(0, 0, w, 0); g.addColorStop(0, '#a8bccc'); g.addColorStop(0.5, '#c8d8e6'); g.addColorStop(1, '#d8e6f2');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(4, 0); ctx.lineTo(12, -80); ctx.lineTo(w - 12, -80); ctx.lineTo(w - 4, 0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,140,170,0.25)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = 1; k < 8; k++) { const u = k / 8; ctx.moveTo(12 + u * (w - 24), -76); ctx.lineTo(4 + u * (w - 8), -4); } ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(12, -80, w - 24, 2);
+    ctx.fillStyle = 'rgba(240,240,230,0.6)'; ctx.beginPath(); ctx.ellipse(w / 2 + 6, -78, w * 0.2, 2.5, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(120,90,60,0.25)'; ctx.beginPath(); ctx.ellipse(w / 2, -8, w * 0.34, 5, 0, 0, TAU); ctx.fill();
+  }
   function drawCoverFront(st, q, t) {
     const pk = q.pecked > 0 ? Math.sin(q.pecked * 40) * 3 : 0, x = q.x + pk, w = q.w;
     if (q.kind === 'leaf') {
@@ -461,13 +621,7 @@
       ctx.fillStyle = 'rgba(140,80,20,0.4)'; for (let k = 0; k < 5; k++) { circle(x + w * (0.2 + K.hash(k + q.x) * 0.6), GY - 20 - K.hash(k * 3 + q.x) * 50, 2 + K.hash(k) * 2); ctx.fill(); }
       ctx.fillStyle = 'rgba(40,24,8,0.55)'; ctx.beginPath(); ctx.ellipse(x + w / 2, GY - 6, w * 0.34, 28, 0, Math.PI, 0); ctx.fill();
     } else if (q.kind === 'pot') {
-      ctx.fillStyle = '#c8643a'; ctx.beginPath(); ctx.moveTo(x, GY + 2); ctx.lineTo(x + 12, GY - 100); ctx.lineTo(x + w - 12, GY - 100); ctx.lineTo(x + w, GY + 2); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(90,30,10,0.25)'; ctx.beginPath(); ctx.moveTo(x + w * 0.65, GY + 2); ctx.lineTo(x + w * 0.62, GY - 100); ctx.lineTo(x + w - 12, GY - 100); ctx.lineTo(x + w, GY + 2); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,220,180,0.3)'; ctx.fillRect(x + 16, GY - 96, 4, 90);
-      ctx.strokeStyle = '#8a3a1e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, GY + 2); ctx.lineTo(x + 12, GY - 100); ctx.lineTo(x + w - 12, GY - 100); ctx.lineTo(x + w, GY + 2); ctx.stroke();
-      ctx.fillStyle = '#e07a4a'; ctx.fillRect(x - 4, GY - 18, w + 8, 20);
-      ctx.fillStyle = 'rgba(255,230,200,0.35)'; ctx.fillRect(x - 4, GY - 18, w + 8, 3);
-      ctx.fillStyle = 'rgba(40,20,10,0.6)'; ctx.beginPath(); ctx.ellipse(x + w / 2, GY - 2, w * 0.28, 30, 0, Math.PI, 0); ctx.fill();
+      K.pic('bdpot|' + w, w + 48, 130, 24, 114, () => paintPotCover(w), x, GY);
     } else if (q.kind === 'mush') {
       ctx.fillStyle = '#f2e8d0'; rr(x + w / 2 - 12, GY - 60, 24, 62, 8); ctx.fill();
       ctx.fillStyle = 'rgba(120,100,70,0.22)'; rr(x + w / 2 + 1, GY - 60, 11, 62, 6); ctx.fill();
@@ -481,13 +635,7 @@
       ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x + w / 2 - 6, GY - 60, w * 0.42, -2.75, -2.1); ctx.stroke();
       ctx.fillStyle = 'rgba(30,20,10,0.25)'; ctx.fillRect(x, GY - 56, w, 6);
     } else if (q.kind === 'cup') {
-      ctx.fillStyle = '#f0f6ff'; ctx.strokeStyle = '#a8b8c8'; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.moveTo(x, GY + 2); ctx.lineTo(x + 10, GY - 90); ctx.lineTo(x + w - 10, GY - 90); ctx.lineTo(x + w, GY + 2); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(140,160,190,0.25)'; ctx.beginPath(); ctx.moveTo(x + w * 0.66, GY + 2); ctx.lineTo(x + w * 0.64, GY - 90); ctx.lineTo(x + w - 10, GY - 90); ctx.lineTo(x + w, GY + 2); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(x + 14, GY - 84, 4, 76);
-      ctx.fillStyle = '#5b95ff'; ctx.fillRect(x + 6, GY - 60, w - 12, 10);
-      ctx.fillStyle = '#c8d8e8'; ctx.fillRect(x + 8, GY - 92, w - 16, 4);
-      ctx.fillStyle = 'rgba(30,40,60,0.5)'; ctx.beginPath(); ctx.ellipse(x + w / 2, GY - 2, w * 0.26, 26, 0, Math.PI, 0); ctx.fill();
+      K.pic('bdcup|' + w, w + 48, 120, 24, 104, () => paintCupCover(w), x, GY);
     } else if (q.kind === 'clover') {
       for (let k = 0; k < 3; k++) K.clover(x + w * (0.2 + k * 0.3), GY + 4, 1.25, t);
       // a leafy clump: one path of overlapping round leaves (so the see-through green never doubles), shaded low, lit high

@@ -1123,9 +1123,15 @@ function tthDinoDrawGround(st, burn, t) {
       ctx.strokeStyle = C.ink; ctx.lineWidth = 6.5; ctx.beginPath(); ctx.moveTo(dx - 9, gy - 4); ctx.lineTo(dx + 9, gy - 6); ctx.stroke();
       ctx.strokeStyle = TTHDINOC.bone; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(dx - 9, gy - 4); ctx.lineTo(dx + 9, gy - 6); ctx.stroke();
       ctx.fillStyle = TTHDINOC.bone; for (const [bx, by] of [[-10, -6], [-10, -2], [10, -8], [10, -4]]) { circle(dx + bx, gy + by, 3); ctx.fill(); }
-    } else if (kind === 4) {   // pebbles
-      ctx.fillStyle = tthDinoMix('#b8bcc4', '#5a4a52', burn); ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.ellipse(dx, gy - 3, 7, 5, 0, Math.PI, 0); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(dx + 11, gy - 2, 4, 3, 0, Math.PI, 0); ctx.fill(); ctx.stroke();
+    } else if (kind === 4) {   // pebbles: a soft shadow, a lit cap, a darker foot, an outline in their own dark shade
+      const pc = tthDinoMix('#b8bcc4', '#5a4a52', burn), po = tthDinoMix('#5e6270', '#2a1f28', burn);
+      ctx.fillStyle = 'rgba(28,26,54,0.2)'; ctx.beginPath(); ctx.ellipse(dx + 5, gy + 0.5, 15, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+      for (const [px, py, rx, ry] of [[dx, gy - 3, 7, 5], [dx + 11, gy - 2, 4, 3], [dx - 8, gy - 1.2, 2.6, 1.9]]) {
+        ctx.fillStyle = pc; ctx.strokeStyle = po; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.ellipse(px, py, rx, ry, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.beginPath(); ctx.ellipse(px + rx * 0.25, py, rx * 0.75, ry * 0.4, 0, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(px - rx * 0.3, py - ry * 0.6, rx * 0.35, ry * 0.18, -0.2, 0, Math.PI * 2); ctx.fill();
+      }
     } else if (kind === 5 && burn < 0.6) {   // toadstools
       ctx.fillStyle = '#f6efd8'; ctx.fillRect(dx - 2, gy - 9, 4, 9); ctx.fillStyle = '#ff7a6a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(dx, gy - 9, 8, 6, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#ffffff'; circle(dx - 3, gy - 12, 1.4); ctx.fill(); circle(dx + 3, gy - 11, 1.2); ctx.fill();
@@ -1160,27 +1166,21 @@ function tthDinoDrawObs(st, o, t) {
   if (o.gone) return;
   ctx.save(); ctx.translate(mid + sh, o.base);
   ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.beginPath(); ctx.ellipse(0, 0, w * 0.6, 6, 0, 0, Math.PI * 2); ctx.fill();
+  // (rich props pass 2) the boulder, the fallen trunk and the meteor rock are painted once per size into a picture
+  // (TTA.pic) on exactly their old outlines; only the cracks from hits, the glow and the smoke are drawn live
   if (o.kind === 'boulder') {
-    ctx.fillStyle = TTHDINOC.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(-w / 2 - 4, 0); ctx.quadraticCurveTo(-w / 2 - 12, -hgt * 0.5, -w / 2 + 6, -hgt * 0.84); ctx.quadraticCurveTo(-6, -hgt - 10, w / 2 - 8, -hgt * 0.88); ctx.quadraticCurveTo(w / 2 + 14, -hgt * 0.5, w / 2 + 5, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = TTHDINOC.stoneLt; ctx.beginPath(); ctx.ellipse(-w * 0.16, -hgt * 0.72, w * 0.22, hgt * 0.1, -0.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = TTHDINOC.stoneDk; ctx.beginPath(); ctx.ellipse(w * 0.14, -hgt * 0.2, w * 0.3, hgt * 0.07, 0.1, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = TTHDINOC.vine; ctx.beginPath(); ctx.ellipse(-w * 0.2, -hgt * 0.93, 13, 5, -0.3, 0, Math.PI * 2); ctx.fill();   // moss
+    TTA.pic('tdBoulder|' + w + '|' + hgt, w + 44, hgt + 30, w / 2 + 22, hgt + 18, () => tthDinoPaintBoulder(w, hgt), 0, 0);
     tthDinoCracks(0, -hgt * 0.5, w, hgt, o.hits / o.need);
   } else if (o.kind === 'log') {
-    ctx.fillStyle = TTHDINOC.wood; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
-    rr(-w / 2 - 6, -hgt, w + 12, hgt, 22); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = TTHDINOC.woodDk; ctx.lineWidth = 2.5; for (const by of [-hgt * 0.72, -hgt * 0.45, -hgt * 0.2]) { ctx.beginPath(); ctx.moveTo(-w / 2 + 22, by); ctx.lineTo(w / 2 - 6, by + 2); ctx.stroke(); }
-    ctx.fillStyle = TTHDINOC.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(-w / 2 + 6, -hgt / 2, 13, hgt / 2 - 2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = TTHDINOC.woodDk; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(-w / 2 + 6, -hgt / 2, 7, hgt / 4, 0, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#ff7a6a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(w * 0.22, -hgt - 3, 9, 6, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    TTA.pic('tdLog|' + w + '|' + hgt, w + 40, hgt + 30, w / 2 + 20, hgt + 20, () => tthDinoPaintLog(w, hgt), 0, 0);
     tthDinoCracks(6, -hgt * 0.5, w, hgt * 1.6, o.hits / o.need);
   } else {   // a meteor rock: dark, with glowing cracks and smoke
     for (let n = 0; n < 3; n++) { const u = (t * 0.7 + n / 3) % 1; ctx.fillStyle = 'rgba(70,60,70,' + 0.5 * (1 - u) + ')'; circle(Math.sin(u * 5 + n) * 8, -hgt - 6 - u * 50, 6 + u * 9); ctx.fill(); }
     ctx.fillStyle = 'rgba(255,140,50,0.3)'; ctx.beginPath(); ctx.ellipse(0, -hgt / 2, w * 0.66, hgt * 0.7, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = TTHDINOC.hot; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(-w / 2 - 2, 0); ctx.lineTo(-w / 2 - 6, -hgt * 0.55); ctx.lineTo(-w * 0.22, -hgt - 3); ctx.lineTo(w * 0.24, -hgt + 1); ctx.lineTo(w / 2 + 6, -hgt * 0.5); ctx.lineTo(w / 2 + 2, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    TTA.pic('tdMeteor|' + w + '|' + hgt, w + 24, hgt + 16, w / 2 + 12, hgt + 8, () => tthDinoPaintMeteor(w, hgt), 0, 0);
     ctx.strokeStyle = 'rgba(255,' + (170 + Math.round(Math.sin(t * 8) * 40)) + ',70,0.95)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-w * 0.3, -hgt * 0.3); ctx.lineTo(-w * 0.08, -hgt * 0.5); ctx.lineTo(-w * 0.14, -hgt * 0.8); ctx.moveTo(w * 0.1, -hgt * 0.2); ctx.lineTo(w * 0.26, -hgt * 0.55); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,240,170,' + (0.55 + 0.3 * Math.sin(t * 8)) + ')'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(-w * 0.3, -hgt * 0.3); ctx.lineTo(-w * 0.08, -hgt * 0.5); ctx.lineTo(-w * 0.14, -hgt * 0.8); ctx.moveTo(w * 0.1, -hgt * 0.2); ctx.lineTo(w * 0.26, -hgt * 0.55); ctx.stroke();
     tthDinoCracks(0, -hgt * 0.45, w, hgt, o.hits / o.need);
   }
@@ -1190,6 +1190,167 @@ function tthDinoDrawObs(st, o, t) {
     const n = o.need, y = o.top - 16;
     for (let q = 0; q < n; q++) { ctx.fillStyle = q < n - o.hits ? PCOL[cl] : 'rgba(28,26,54,0.35)'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; circle(mid + (q - (n - 1) / 2) * 13, y, 4.5); ctx.fill(); ctx.stroke(); }
   }
+}
+// (rich props pass 2) a mossy boulder, its foot at (0, 0): the old outline, a round shading (lit upper left, dark
+// lower right), flat facets, a pale quartz vein, pits and grit, crusty lichen, a cushion of moss with blades on top,
+// an outline in the stone's own dark shade and tufts of grass at its foot
+function tthDinoPaintBoulder(w, hgt) {
+  const Cc = TTHDINOC, ol = mixHex(Cc.stoneDk, '#1c1a36', 0.45), sd = (w * 7 + hgt) | 0;
+  const path = () => { ctx.beginPath(); ctx.moveTo(-w / 2 - 4, 0); ctx.quadraticCurveTo(-w / 2 - 12, -hgt * 0.5, -w / 2 + 6, -hgt * 0.84); ctx.quadraticCurveTo(-6, -hgt - 10, w / 2 - 8, -hgt * 0.88); ctx.quadraticCurveTo(w / 2 + 14, -hgt * 0.5, w / 2 + 5, 0); ctx.closePath(); };
+  path(); ctx.fillStyle = Cc.stone; ctx.fill();
+  ctx.save(); path(); ctx.clip();
+  const g = ctx.createLinearGradient(-w * 0.45, -hgt, w * 0.4, 0);
+  g.addColorStop(0, 'rgba(255,255,255,0.3)'); g.addColorStop(0.42, 'rgba(255,255,255,0.02)'); g.addColorStop(0.7, 'rgba(28,26,54,0.1)'); g.addColorStop(1, 'rgba(28,26,54,0.36)');
+  ctx.fillStyle = g; ctx.fillRect(-w, -hgt - 14, w * 2, hgt + 20);
+  // facets: a lit plane up top, two darker planes low on the right, a mid plane on the left
+  for (const [pts, col] of [
+    [[[-w * 0.36, -hgt * 0.78], [-w * 0.05, -hgt * 0.98], [w * 0.22, -hgt * 0.86], [w * 0.02, -hgt * 0.66], [-w * 0.3, -hgt * 0.6]], 'rgba(255,255,255,0.16)'],
+    [[[w * 0.12, -hgt * 0.4], [w * 0.5, -hgt * 0.5], [w * 0.56, 0], [w * 0.16, 0]], 'rgba(28,26,54,0.16)'],
+    [[[w * 0.2, -hgt * 0.78], [w * 0.46, -hgt * 0.7], [w * 0.5, -hgt * 0.5], [w * 0.12, -hgt * 0.4], [w * 0.02, -hgt * 0.62]], 'rgba(28,26,54,0.08)'],
+    [[[-w * 0.56, -hgt * 0.42], [-w * 0.3, -hgt * 0.55], [-w * 0.18, -hgt * 0.2], [-w * 0.42, -hgt * 0.06]], 'rgba(255,255,255,0.07)']]) {
+    ctx.fillStyle = col; ctx.beginPath(); pts.forEach((q, k) => (k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.closePath(); ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(28,26,54,0.22)'; ctx.lineWidth = 1.2; ctx.beginPath();
+  ctx.moveTo(-w * 0.3, -hgt * 0.6); ctx.lineTo(w * 0.02, -hgt * 0.66); ctx.lineTo(w * 0.12, -hgt * 0.4); ctx.lineTo(w * 0.16, 0);
+  ctx.moveTo(w * 0.12, -hgt * 0.4); ctx.lineTo(w * 0.5, -hgt * 0.5); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-w * 0.29, -hgt * 0.62); ctx.lineTo(w * 0.01, -hgt * 0.68); ctx.stroke();
+  // a pale quartz vein across the face
+  ctx.strokeStyle = 'rgba(240,236,224,0.55)'; ctx.lineWidth = 2.2; ctx.beginPath();
+  ctx.moveTo(-w * 0.62, -hgt * 0.3); ctx.bezierCurveTo(-w * 0.3, -hgt * 0.22, -w * 0.1, -hgt * 0.36, w * 0.1, -hgt * 0.26); ctx.stroke();
+  ctx.strokeStyle = 'rgba(28,26,54,0.18)'; ctx.lineWidth = 0.8; ctx.beginPath();
+  ctx.moveTo(-w * 0.62, -hgt * 0.3 + 1.6); ctx.bezierCurveTo(-w * 0.3, -hgt * 0.22 + 1.6, -w * 0.1, -hgt * 0.36 + 1.6, w * 0.1, -hgt * 0.26 + 1.6); ctx.stroke();
+  TTA.craters(-w / 2 - 6, -hgt - 4, w + 14, hgt, sd, { n: Math.max(4, Math.round(w * hgt / 900)), r: 1.4, rr: 3.2, dk: 'rgba(40,40,60,0.3)', grit: 90 });
+  // crusty lichen rosettes (pale green and white)
+  for (let k = 0; k < 5; k++) {
+    const lx = -w * 0.45 + TTA.u(sd, k + 40) * w * 0.85, ly = -hgt * (0.12 + TTA.u(sd, k + 50) * 0.6), lr = 2.4 + TTA.u(sd, k + 60) * 3;
+    ctx.fillStyle = k % 2 ? 'rgba(236,240,220,0.75)' : 'rgba(185,204,106,0.8)';
+    ctx.beginPath(); for (let a = 0; a < 7; a++) { const ang = a / 7 * Math.PI * 2, rr2 = lr * (0.75 + 0.35 * TTA.u(sd, k * 9 + a)); ctx.lineTo(lx + Math.cos(ang) * rr2, ly + Math.sin(ang) * rr2 * 0.8); } ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; circle(lx - lr * 0.3, ly - lr * 0.3, lr * 0.3); ctx.fill();
+  }
+  // a dark seat where it meets the ground
+  ctx.fillStyle = 'rgba(28,26,54,0.25)'; ctx.fillRect(-w, -5, w * 2, 6);
+  ctx.restore();
+  path(); ctx.strokeStyle = ol; ctx.lineWidth = 3; ctx.stroke();
+  // the moss cushion on top: a dark underside, the moss, a lit top, fine blades and a few spore stalks
+  // (lumps that follow the top of the outline, a strand hanging down the left side)
+  const top = u => [(1 - u) * (1 - u) * (-w / 2 + 6) + 2 * u * (1 - u) * -6 + u * u * (w / 2 - 8), (1 - u) * (1 - u) * (-hgt * 0.84) + 2 * u * (1 - u) * (-hgt - 10) + u * u * (-hgt * 0.88)];
+  const lumps = [0.06, 0.16, 0.26, 0.36, 0.46, 0.55].map((u, k) => { const [lx, ly] = top(u); return [lx, ly + 2.5, 4.2 + (k % 3) * 1.4 - (k === 5 ? 1.5 : 0)]; });
+  ctx.fillStyle = Cc.vineDk; for (const [lx, ly, r] of lumps) { circle(lx + 0.6, ly + 1.6, r + 1); ctx.fill(); }
+  ctx.beginPath(); ctx.moveTo(lumps[0][0] - 2, lumps[0][1]); ctx.quadraticCurveTo(lumps[0][0] - 6, lumps[0][1] + 12, lumps[0][0] - 4.5, lumps[0][1] + 20); ctx.lineTo(lumps[0][0] - 1.5, lumps[0][1] + 19); ctx.quadraticCurveTo(lumps[0][0] - 2, lumps[0][1] + 10, lumps[0][0] + 2, lumps[0][1] + 2); ctx.fill();
+  ctx.fillStyle = Cc.vine; for (const [lx, ly, r] of lumps) { circle(lx, ly, r); ctx.fill(); }
+  ctx.fillStyle = '#86c463'; for (const [lx, ly, r] of lumps) { ctx.beginPath(); ctx.ellipse(lx - r * 0.25, ly - r * 0.4, r * 0.6, r * 0.32, -0.3, 0, Math.PI * 2); ctx.fill(); }
+  const mx = -w * 0.2, my = -hgt * 0.93;
+  ctx.strokeStyle = Cc.vineDk; ctx.lineWidth = 1; ctx.beginPath();
+  for (let k = 0; k < 6; k++) { const bx = mx - 11 + k * 4.4; ctx.moveTo(bx, my - 1 + (5 - k) * 0.6); ctx.lineTo(bx + 0.8, my - 5 + (5 - k) * 0.6 - (k % 2) * 1.5); } ctx.stroke();
+  ctx.fillStyle = '#c96a4a'; for (let k = 0; k < 3; k++) { circle(mx - 6 + k * 5, my - 5.6 + k * 0.4, 0.9); ctx.fill(); }
+  // tufts of grass at its foot
+  for (const [tx, d] of [[-w / 2 - 2, -1], [w / 2 + 2, 1], [w * 0.1, 1]]) {
+    ctx.strokeStyle = '#3d8a3e'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let k = -1; k <= 1; k++) { ctx.moveTo(tx + k * 3, 1); ctx.quadraticCurveTo(tx + k * 3 + d, -4, tx + k * 4.2 + d * 2, -7 - (k === 0 ? 2 : 0)); }
+    ctx.stroke();
+    ctx.strokeStyle = '#8fd56a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(tx, 0); ctx.quadraticCurveTo(tx + d, -4, tx + d * 2, -8); ctx.stroke();
+  }
+}
+// (rich props pass 2) a fallen tree trunk lying across the path, its foot at (0, 0): the old rounded outline, round
+// shading, ridged bark with plates and knots, moss on top, a broken branch stub, a vine wound round it, a cut end
+// with growth rings and checks, and the little toadstools on top (now three, spotted)
+function tthDinoPaintLog(w, hgt) {
+  const Cc = TTHDINOC, ol = mixHex(Cc.woodDk, '#1c1a36', 0.45), sd = (w * 13 + hgt) | 0, x0 = -w / 2 - 6, x1 = w / 2 + 6;
+  const body = () => rr(x0, -hgt, w + 12, hgt, 22);
+  body(); ctx.fillStyle = Cc.wood; ctx.fill();
+  ctx.save(); body(); ctx.clip();
+  const g = ctx.createLinearGradient(0, -hgt, 0, 0);
+  g.addColorStop(0, 'rgba(255,236,200,0.3)'); g.addColorStop(0.28, 'rgba(255,236,200,0.04)'); g.addColorStop(0.7, 'rgba(50,25,10,0.14)'); g.addColorStop(1, 'rgba(50,25,10,0.45)');
+  ctx.fillStyle = g; ctx.fillRect(x0, -hgt, w + 12, hgt);
+  // bark plates: darker patches between the ridges
+  ctx.fillStyle = 'rgba(60,32,14,0.2)';
+  for (let k = 0; k < Math.round(w / 9); k++) { const bx = x0 + 18 + TTA.u(sd, k) * (w - 20), by = -hgt * (0.15 + TTA.u(sd, k + 30) * 0.75); ctx.beginPath(); ctx.ellipse(bx, by, 7 + TTA.u(sd, k + 60) * 9, 2.2, 0, 0, Math.PI * 2); ctx.fill(); }
+  // ridges: broken lines along the trunk, dark furrows under lit edges
+  const n = Math.max(5, Math.round(hgt / 6));
+  ctx.lineWidth = 1.6; ctx.strokeStyle = Cc.woodDk; ctx.beginPath();
+  for (let k = 0; k < n; k++) {
+    const yy = -hgt + (k + 0.6) * hgt / (n + 0.2);
+    for (let sx = x0 + 18 + (k % 2) * 9; sx < x1 - 4; sx += 22 + (hash(k, sx | 0) % 14)) { const len = 12 + hash(sx | 0, k) % 16; ctx.moveTo(sx, yy); ctx.quadraticCurveTo(sx + len / 2, yy + ((k + sx) % 3 - 1) * 1.2, sx + len, yy + 0.6); }
+  }
+  ctx.stroke();
+  ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,226,180,0.3)'; ctx.beginPath();
+  for (let k = 0; k < n; k++) {
+    const yy = -hgt + (k + 0.6) * hgt / (n + 0.2) - 1.6;
+    for (let sx = x0 + 22 + (k % 2) * 9; sx < x1 - 8; sx += 30 + (hash(sx | 0, k + 9) % 12)) { ctx.moveTo(sx, yy); ctx.lineTo(sx + 9, yy - 0.3); }
+  }
+  ctx.stroke();
+  // knots
+  for (let k = 0; k < 2; k++) {
+    const kx = x0 + w * (0.38 + k * 0.32), ky = -hgt * (0.38 + k * 0.2);
+    ctx.fillStyle = Cc.woodDk; ctx.beginPath(); ctx.ellipse(kx, ky, 5, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(60,32,14,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(kx, ky, 8, 5, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#3a2210'; ctx.beginPath(); ctx.ellipse(kx + 0.5, ky + 0.4, 2.4, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,226,180,0.35)'; ctx.beginPath(); ctx.ellipse(kx - 1.4, ky - 1.8, 2.6, 0.8, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // moss along the top
+  ctx.fillStyle = Cc.vineDk; ctx.beginPath();
+  for (let k = 0; k < Math.round(w / 14); k++) { const mx = x0 + 26 + k * 14 + TTA.u(sd, k + 90) * 6, r = 4 + TTA.u(sd, k + 99) * 4; ctx.moveTo(mx + r, -hgt + 2); ctx.ellipse(mx, -hgt + 2, r, r * 0.7, 0, 0, Math.PI * 2); }
+  ctx.fill();
+  ctx.fillStyle = Cc.vine; ctx.beginPath();
+  for (let k = 0; k < Math.round(w / 14); k++) { const mx = x0 + 26 + k * 14 + TTA.u(sd, k + 90) * 6, r = 3 + TTA.u(sd, k + 99) * 3.4; ctx.moveTo(mx + r, -hgt + 1); ctx.ellipse(mx, -hgt + 1, r, r * 0.55, 0, 0, Math.PI * 2); }
+  ctx.fill();
+  ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.fillRect(x0, -4, w + 12, 4);
+  ctx.restore();
+  body(); ctx.strokeStyle = ol; ctx.lineWidth = 3; ctx.stroke();
+  // a broken branch stub poking up and back
+  const bx = w * 0.06, by = -hgt + 3;
+  ctx.fillStyle = Cc.wood; ctx.strokeStyle = ol; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.moveTo(bx - 6, by + 2); ctx.lineTo(bx - 3, by - 11); ctx.lineTo(bx + 4, by - 9); ctx.lineTo(bx + 6, by + 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = Cc.woodLt; ctx.beginPath(); ctx.ellipse(bx + 0.5, by - 10, 3.6, 1.6, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,226,180,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx - 4, by - 1); ctx.lineTo(bx - 2.4, by - 8); ctx.stroke();
+  // a vine wound round the trunk, with leaves
+  ctx.strokeStyle = Cc.vineDk; ctx.lineWidth = 2.2; ctx.beginPath();
+  const vine = u => [x0 + 34 + u * (w - 52), -hgt * 0.5 + Math.sin(u * Math.PI * 2 + 0.6) * hgt * 0.36];
+  for (let k = 0; k <= 24; k++) { const [vx, vy] = vine(k / 24); if (k) ctx.lineTo(vx, vy); else ctx.moveTo(vx, vy); }
+  ctx.stroke();
+  for (let k = 1; k < 6; k++) {
+    const [vx, vy] = vine(k / 6), a = (k % 2 ? -0.6 : 0.5);
+    ctx.save(); ctx.translate(vx, vy); ctx.rotate(a);
+    ctx.fillStyle = Cc.vine; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(4, -4, 9, 0); ctx.quadraticCurveTo(4, 4, 0, 0); ctx.fill();
+    ctx.strokeStyle = Cc.vineDk; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(1, 0); ctx.lineTo(8, 0); ctx.stroke();
+    ctx.restore();
+  }
+  // the cut end: bark ring, growth rings, checks, the pith and a lit rim
+  const ex = -w / 2 + 6, ey = -hgt / 2, erx = 13, ery = hgt / 2 - 2;
+  ctx.fillStyle = Cc.woodDk; ctx.beginPath(); ctx.ellipse(ex, ey, erx, ery, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = Cc.woodLt; ctx.beginPath(); ctx.ellipse(ex, ey, erx - 2.4, ery - 2.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(122,77,40,0.55)'; ctx.lineWidth = 1;
+  for (const k of [0.28, 0.48, 0.66, 0.82]) { ctx.beginPath(); ctx.ellipse(ex + 0.6, ey + 0.8, (erx - 2.4) * k, (ery - 2.6) * k, 0, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(80,45,20,0.7)'; ctx.lineWidth = 1.1; ctx.beginPath();
+  ctx.moveTo(ex + 0.6, ey + 0.8); ctx.lineTo(ex + 6, ey - ery * 0.62); ctx.moveTo(ex + 0.6, ey + 0.8); ctx.lineTo(ex - 5, ey + ery * 0.7); ctx.stroke();
+  ctx.fillStyle = '#7a4d28'; circle(ex + 0.6, ey + 0.8, 1.6); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,240,210,0.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(ex, ey, erx - 3.2, ery - 3.4, 0, Math.PI * 1.05, Math.PI * 1.55); ctx.stroke();
+  ctx.strokeStyle = ol; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(ex, ey, erx, ery, 0, 0, Math.PI * 2); ctx.stroke();
+  // toadstools on top: the old one, spotted, and two little ones beside it
+  for (const [tx, s2] of [[w * 0.22, 1], [w * 0.22 + 11, 0.62], [w * 0.22 - 9, 0.5]]) {
+    const ty = -hgt - 3 * s2 + (s2 < 1 ? 2.2 : 0);
+    ctx.fillStyle = '#f6efd8'; ctx.strokeStyle = ol; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.rect(tx - 2 * s2, ty, 4 * s2, 4.5 * s2 + 1.5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ff7a6a'; ctx.strokeStyle = mixHex('#ff7a6a', '#1c1a36', 0.55); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(tx, ty, 9 * s2, 6 * s2, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(120,20,20,0.25)'; ctx.beginPath(); ctx.ellipse(tx + 2 * s2, ty - 1 * s2, 6 * s2, 2.4 * s2, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#ffffff'; circle(tx - 3.5 * s2, ty - 3 * s2, 1.3 * s2); ctx.fill(); circle(tx + 2.5 * s2, ty - 4 * s2, 1.1 * s2); ctx.fill(); circle(tx + 5 * s2, ty - 1.5 * s2, 0.9 * s2); ctx.fill();
+  }
+}
+// (rich props pass 2) a fresh meteor rock (its old outline): scorched facets, pits, a crust lit by the glow at its
+// foot, and a dark outline; the glowing cracks and the smoke are drawn live over it
+function tthDinoPaintMeteor(w, hgt) {
+  const Cc = TTHDINOC, ol = mixHex(Cc.hot, '#1c1a36', 0.55), sd = (w * 3 + hgt * 5) | 0;
+  const path = () => { ctx.beginPath(); ctx.moveTo(-w / 2 - 2, 0); ctx.lineTo(-w / 2 - 6, -hgt * 0.55); ctx.lineTo(-w * 0.22, -hgt - 3); ctx.lineTo(w * 0.24, -hgt + 1); ctx.lineTo(w / 2 + 6, -hgt * 0.5); ctx.lineTo(w / 2 + 2, 0); ctx.closePath(); };
+  path(); ctx.fillStyle = Cc.hot; ctx.fill();
+  ctx.save(); path(); ctx.clip();
+  ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.moveTo(-w / 2 - 6, -hgt * 0.55); ctx.lineTo(-w * 0.22, -hgt - 3); ctx.lineTo(w * 0.24, -hgt + 1); ctx.lineTo(w * 0.05, -hgt * 0.6); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(20,10,20,0.3)'; ctx.beginPath(); ctx.moveTo(w * 0.05, -hgt * 0.6); ctx.lineTo(w * 0.24, -hgt + 1); ctx.lineTo(w / 2 + 6, -hgt * 0.5); ctx.lineTo(w / 2 + 2, 0); ctx.lineTo(w * 0.1, 0); ctx.closePath(); ctx.fill();
+  TTA.craters(-w / 2 - 6, -hgt - 3, w + 12, hgt + 3, sd, { n: Math.max(3, Math.round(w * hgt / 700)), r: 1.6, rr: 3, dk: 'rgba(20,10,20,0.4)', lt: 'rgba(255,200,170,0.25)', grit: 60 });
+  const g = ctx.createLinearGradient(0, 0, 0, -hgt * 0.5);
+  g.addColorStop(0, 'rgba(255,140,60,0.4)'); g.addColorStop(1, 'rgba(255,140,60,0)');
+  ctx.fillStyle = g; ctx.fillRect(-w, -hgt * 0.5, w * 2, hgt * 0.5);
+  ctx.restore();
+  path(); ctx.strokeStyle = ol; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.stroke();
 }
 // the napping baby Triceratops (it trots off after the herd once shooed)
 function tthDinoDrawNap(st, o, t) {

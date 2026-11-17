@@ -1439,6 +1439,7 @@ function subduoDrawWorld(st) {
   subduoDrawHollows(st);
   subduoDrawPlopped(st, true);
   subduoDrawGround(st, lk);
+  subduoDrawHoleWalls(st, lk);
   subduoDrawPlopped(st, false);
   subduoDrawSigns(st);
   subduoDrawEndBack(st);
@@ -1709,7 +1710,8 @@ function subduoDrawHollows(st) {
   for (const b of st.c.boulders) {
     const ho = b.hollow;
     if (ho.filled || b.done || ho.x < st.cam.x - 200 || ho.x > st.cam.x + W + 200) continue;
-    ctx.fillStyle = 'rgba(120,80,40,0.18)'; ctx.beginPath(); ctx.ellipse(ho.x, ho.fy + SUBD.hollowD - 40, SUBD.hollowW * 0.38, 34, 0, 0, Math.PI * 2); ctx.fill();
+    // the shade in the bottom of the open hole: a soft pool of darker water (cached)
+    ERICH.put('sdholeshade', 120, 76, 60, 38, c => { const g = c.createRadialGradient(0, 8, 4, 0, 4, 58); g.addColorStop(0, 'rgba(60,50,40,0.24)'); g.addColorStop(1, 'rgba(60,50,40,0)'); c.fillStyle = g; c.beginPath(); c.ellipse(0, 4, 56, 36, 0, 0, Math.PI * 2); c.fill(); }, ho.x, ho.fy + SUBD.hollowD - 40);
     if (Math.abs(st.sub.x - ho.x) < 900) {
       const y = ho.fy - 60 + Math.sin(t * 4) * 6, col = b.gold ? C.gold : '#ffe7a8';
       ctx.fillStyle = col; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
@@ -1729,18 +1731,93 @@ function subduoDrawPlopped(st, under) {
     if (b.plopT < 2.5) { ctx.globalAlpha = clamp(1 - b.plopT / 2.5, 0, 1); ctx.fillStyle = C.gold; for (let i = 0; i < 3; i++) { const a = G.clock * 3 + i * 2.1; subduoStarPath(b.x + Math.cos(a) * 50, b.hollow.fy - 30 + Math.sin(a) * 10, 7, 3, a); ctx.fill(); } ctx.globalAlpha = 1; }
   }
 }
+// the sandy hole's walls (over the ground, while the hole is open): a cached picture of the cut through the sand, a
+// wet darker band along the cut, layered strata that follow the slope, pebbles and a shell bedded in the walls,
+// ripples on the bottom, grass tufts on the lips; then a few live grains trickling down each wall
+const subduoRgba = (c, a) => { const n = parseInt(String(c).slice(1, 7), 16) || 0; return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; };
+function subduoDrawHoleWalls(st, lk) {
+  const t = G.clock, hw = SUBD.hollowW, D = SUBD.hollowD;
+  for (const b of st.c.boulders) {
+    const ho = b.hollow;
+    if (ho.filled || b.done || ho.x1 < st.cam.x - 60 || ho.x0 > st.cam.x + W + 60) continue;
+    const fy = ho.fy, depth = kk => D * Math.pow(clamp(Math.sin(Math.PI * kk / hw) * 1.7, 0, 1), 2);
+    ERICH.put('sdhole' + st.look + hw + '_' + D, hw + 60, D + 70, 30, 12, c => {
+      const fr = ERICH.fr, cur = kk => depth(kk);
+      c.save(); c.beginPath(); c.moveTo(-30, 0); c.lineTo(0, 0); for (let kk = 0; kk <= hw; kk += 4) c.lineTo(kk, cur(kk)); c.lineTo(hw + 30, 0); c.lineTo(hw + 30, D + 58); c.lineTo(-30, D + 58); c.closePath(); c.clip();
+      const along = (off, wob, ph) => { c.beginPath(); for (let kk = -24; kk <= hw + 24; kk += 4) { const k2 = clamp(kk, 0, hw), y = (kk < 0 || kk > hw ? 0 : cur(k2)) + off + Math.sin(kk * 0.09 + ph) * wob; kk === -24 ? c.moveTo(kk, y) : c.lineTo(kk, y); } };
+      // the wet, darker sand right along the cut, fading in
+      c.lineCap = 'round';
+      for (const [lw, a] of [[34, 0.14], [20, 0.2], [9, 0.3]]) { c.strokeStyle = subduoRgba(lk.sandD, a); c.lineWidth = lw; along(0, 0, 0); c.stroke(); }
+      // strata: level layers of darker and paler sand, cut through by the walls (each fades out away from the cut)
+      const wallAt = y => { for (let kk = 0; kk <= hw / 2; kk += 1) if (cur(kk) >= y) return kk; return hw / 2; };
+      for (const [off, dark, lw] of [[14, true, 3], [22, false, 2], [36, true, 2.5], [46, false, 2], [62, true, 3], [72, false, 2], [88, true, 2.5]]) {
+        if (off > D - 4) continue;
+        const wl = wallAt(off), wr = hw - wl, g = c.createLinearGradient(wl - 22, 0, wr + 22, 0);
+        const dk = shade(lk.sandD, 0.08), col = dark ? subduoRgba(dk, 0.32) : 'rgba(255,248,226,0.6)', clr = dark ? subduoRgba(dk, 0) : 'rgba(255,248,226,0)';
+        g.addColorStop(0, clr); g.addColorStop(0.12, col); g.addColorStop(0.88, col); g.addColorStop(1, clr);
+        c.strokeStyle = g; c.lineWidth = lw; c.beginPath(); for (let kk = wl - 22; kk <= wr + 22; kk += 4) { const y = off + Math.sin(kk * 0.11 + off) * 1.4; kk === wl - 22 ? c.moveTo(kk, y) : c.lineTo(kk, y); } c.stroke();
+      }
+      // the far (right) wall faces away from the light: a soft shade down it; the near wall gets a lit sheen
+      { const kr = hw - wallAt(D * 0.5), g2 = c.createLinearGradient(kr - 4, 0, kr + 26, 0); g2.addColorStop(0, subduoRgba(shade(lk.sandD, 0.2), 0.32)); g2.addColorStop(1, subduoRgba(shade(lk.sandD, 0.2), 0)); c.fillStyle = g2; c.fillRect(kr - 30, 0, 60, D - 2);
+        const kl = wallAt(D * 0.5), g3 = c.createLinearGradient(kl + 4, 0, kl - 22, 0); g3.addColorStop(0, 'rgba(255,250,232,0.3)'); g3.addColorStop(1, 'rgba(255,250,232,0)'); c.fillStyle = g3; c.fillRect(kl - 30, 0, 36, D - 2); }
+      // pebbles and a cockle shell bedded in the walls
+      for (let i = 0; i < 9; i++) { const kk = 6 + fr(i, 501) * (hw - 12), y = cur(kk) + 8 + fr(i, 502) * 40; ERICH.pebble(c, kk, y, 2.2 + fr(i, 503) * 2.6, 1.6 + fr(i, 504) * 1.6, ['#b8ab96', '#a89a88', '#c8bca4', '#9a8c7a'][i % 4], 600 + i, true); }
+      { const kk = hw * 0.3, y = cur(kk) + 14; c.fillStyle = '#ffd9c0'; c.beginPath(); c.arc(kk, y, 5, Math.PI, 0); c.closePath(); c.fill(); c.strokeStyle = '#c8907a'; c.lineWidth = 0.8; c.beginPath(); for (let j = -2; j <= 2; j++) { c.moveTo(kk, y); c.lineTo(kk + j * 2.2, y - 4.6 + Math.abs(j) * 0.8); } c.stroke(); c.beginPath(); c.arc(kk, y, 5, Math.PI, 0); c.closePath(); c.stroke(); }
+      // ripples on the bottom of the hole
+      const bx = hw / 2, by = D; c.strokeStyle = subduoRgba(lk.sandD, 0.5); c.lineWidth = 1.2;
+      for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(bx - 14 + i * 14, by + 9, 7, Math.PI * 1.15, Math.PI * 1.85); c.stroke(); }
+      c.strokeStyle = 'rgba(255,250,232,0.5)'; for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(bx - 14 + i * 14, by + 10.5, 7, Math.PI * 1.2, Math.PI * 1.8); c.stroke(); }
+      c.restore();
+      // lit lips where the walls fold over the top, with a small grass tuft on each
+      for (const [kk, d] of [[0, 1], [hw, -1]]) {
+        c.strokeStyle = 'rgba(255,252,236,0.85)'; c.lineWidth = 2; c.beginPath(); c.moveTo(kk - d * 10, 0.5); c.quadraticCurveTo(kk, 0, kk + d * 7, 6); c.stroke();
+        c.strokeStyle = '#4fa86a'; c.lineWidth = 1.6; c.beginPath(); for (let j = 0; j < 4; j++) { const gx = kk - d * (8 + j * 3); c.moveTo(gx, 1); c.quadraticCurveTo(gx - d * 2, -5, gx - d * (1 + j % 2 * 3), -9 - j % 2 * 3); } c.stroke();
+        c.strokeStyle = '#8ad89a'; c.lineWidth = 0.7; c.beginPath(); for (let j = 0; j < 4; j++) { const gx = kk - d * (8 + j * 3); c.moveTo(gx - 0.5, 0); c.quadraticCurveTo(gx - d * 2 - 0.5, -5, gx - d * (1 + j % 2 * 3) - 0.5, -8 - j % 2 * 3); } c.stroke();
+      }
+    }, ho.x0, fy);
+    // live: grains of sand trickling down both walls
+    if (!reduceMotion) {
+      ctx.fillStyle = 'rgba(255,240,205,0.85)';
+      for (let i = 0; i < 8; i++) {
+        const side = i % 2, u = (t * 0.35 + i * 0.27) % 1, kk = side ? hw - 6 - u * hw * 0.32 : 6 + u * hw * 0.32;
+        ctx.fillRect(ho.x0 + kk, fy + depth(kk) - 1.6, 1.6, 1.6);
+      }
+    }
+  }
+}
 function subduoDrawSigns(st) {
   const cam = st.cam;
   for (const s of st.c.signs) {
     if (s.x < cam.x - 400 || s.x > cam.x + W + 400) continue;
     const y = subduoFloor(st, s.x);
     ctx.font = '700 15px "Atkinson Hyperlegible", system-ui, sans-serif';
-    const w = ctx.measureText(s.text).width + 22;
-    ERICH.put('sdpost', 12, 60, 6, 54, c => { ERICH.board(c, -3.5, -52, 7, 54, { col: '#9a6a40', seed: 7, vert: true, nails: false, r: 2 }); c.fillStyle = 'rgba(80,50,20,0.25)'; c.beginPath(); c.ellipse(0, 2, 8, 2.2, 0, 0, Math.PI * 2); c.fill(); }, s.x, y);
-    ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = '#2a7a8c'; ctx.lineWidth = 2.5; rr(s.x - w / 2, y - 80, w, 32, 9); ctx.fill(); ctx.stroke();
+    const w = ctx.measureText(s.text).width + 22, bw = Math.round(w + 12);
+    // (rich props) a driftwood post with a rope lashing and a barnacle or two, then a weathered driftwood board with
+    // grain, knots, barnacled corners and a strand of seaweed, a painted panel for the words and a little starfish
+    ERICH.put('sdpost2', 16, 64, 8, 56, c => {
+      c.fillStyle = 'rgba(80,50,20,0.25)'; c.beginPath(); c.ellipse(0, 2, 10, 2.6, 0, 0, Math.PI * 2); c.fill();
+      ERICH.board(c, -4, -52, 8, 54, { col: '#a8835a', edge: '#5e4228', seed: 7, vert: true, nails: false, r: 2, knots: 1 });
+      c.fillStyle = 'rgba(244,210,154,0.9)'; c.beginPath(); c.ellipse(0, 1, 7, 2.5, 0, Math.PI, 0); c.fill(); // sand heaped at the foot
+      c.strokeStyle = '#d8c08a'; c.lineWidth = 1.6; for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(-4.5, -44 + i * 3); c.lineTo(4.5, -42 + i * 3); c.stroke(); }
+      c.strokeStyle = '#8a7048'; c.lineWidth = 0.6; for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(-4.5, -43 + i * 3); c.lineTo(4.5, -41 + i * 3); c.stroke(); }
+      for (const [bx, by, br] of [[-2, -14, 2.2], [1.5, -9, 1.6]]) { c.fillStyle = '#e8e2d2'; c.beginPath(); c.arc(bx, by, br, 0, Math.PI * 2); c.fill(); c.fillStyle = '#8a8478'; c.beginPath(); c.arc(bx, by, br * 0.4, 0, Math.PI * 2); c.fill(); }
+    }, s.x, y);
+    ERICH.put('sdboard' + bw, bw + 12, 54, 6, 6, c => {
+      c.fillStyle = 'rgba(20,50,70,0.2)'; rrOn(c, 3, 4, bw, 36, 8); c.fill();
+      ERICH.board(c, 0, 0, bw, 36, { col: '#c8a878', edge: '#6a4c2c', seed: bw, r: 8, lw: 2.2, nails: false, knots: 2 });
+      c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(8, 3, bw - 16, 1.5);
+      // barnacles on two corners, a strand of seaweed hanging off the bottom edge
+      for (const [bx, by, br] of [[6, 30, 2.6], [10, 32, 1.8], [bw - 7, 6, 2.4], [bw - 11, 4.5, 1.6]]) { c.fillStyle = '#ece6d6'; c.beginPath(); c.arc(bx, by, br, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#9a9282'; c.lineWidth = 0.7; c.stroke(); c.fillStyle = '#7a7468'; c.beginPath(); c.arc(bx, by, br * 0.35, 0, Math.PI * 2); c.fill(); }
+      const sx = bw * 0.78; c.strokeStyle = '#3f9a5a'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(sx, 34); c.quadraticCurveTo(sx + 5, 40, sx + 1, 46); c.quadraticCurveTo(sx - 3, 50, sx + 2, 52); c.stroke();
+      c.strokeStyle = '#7fd08a'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(sx - 0.6, 35); c.quadraticCurveTo(sx + 4, 40, sx, 46); c.stroke();
+    }, s.x - bw / 2, y - 82);
+    // the painted panel the words sit on (sized from the words)
+    ctx.fillStyle = 'rgba(255,250,236,0.92)'; rr(s.x - w / 2 + 4, y - 78, w - 8, 28, 6); ctx.fill();
+    ctx.strokeStyle = 'rgba(42,122,140,0.7)'; ctx.lineWidth = 1.5; rr(s.x - w / 2 + 4, y - 78, w - 8, 28, 6); ctx.stroke();
     text(s.text, s.x, y - 63.5, 15, C.ink, 'center', 'body');
     // a little starfish on the sign post
     ctx.fillStyle = '#ff8a6a'; subduoStarPath(s.x + 4, y - 26, 7, 3, 0.3); ctx.fill();
+    ctx.fillStyle = '#ffc0a8'; circle(s.x + 3, y - 27, 1.4); ctx.fill();
   }
 }
 function subduoDrawCoral(k) {

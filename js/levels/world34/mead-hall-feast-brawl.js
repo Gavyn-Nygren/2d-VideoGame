@@ -723,6 +723,82 @@
       ctx.globalAlpha = 1;
     }
   }
+  // the kitchen hatch, in screen coordinates (frame 4..142 x 296..400, opening 14..132 x 306..390)
+  function paintHatch() {
+    // the kitchen inside: smoky stone blocks, lighter low down where the fire lights them
+    const ig = ctx.createLinearGradient(0, 306, 0, 390); ig.addColorStop(0, '#1a0e08'); ig.addColorStop(1, '#4a2a16');
+    ctx.fillStyle = ig; ctx.fillRect(14, 306, 118, 84);
+    ctx.strokeStyle = 'rgba(10,4,2,0.55)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let r = 0, y = 312; y < 390; r++, y += 13) { ctx.moveTo(14, y); ctx.lineTo(132, y); for (let x = 14 + (r % 2 ? 11 : 0); x < 132; x += 22) { ctx.moveTo(x, y); ctx.lineTo(x, y + 13); } }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,190,120,0.08)'; for (let r = 0, y = 312; y < 390; r++, y += 13) for (let x = 14 + (r % 2 ? 11 : 0); x < 132; x += 22) ctx.fillRect(x + 1, y + 1, 20, 1);
+    // the oven mouth at the back: a stone arch, embers and a warm glow
+    ctx.fillStyle = '#2a1a12'; ctx.beginPath(); ctx.moveTo(76, 386); ctx.lineTo(76, 366); ctx.arc(96, 366, 20, Math.PI, 0); ctx.lineTo(116, 386); ctx.closePath(); ctx.fill();
+    const og = ctx.createRadialGradient(96, 382, 2, 96, 376, 18); og.addColorStop(0, '#ffd27a'); og.addColorStop(0.5, '#e8702a'); og.addColorStop(1, '#3a160a');
+    ctx.fillStyle = og; ctx.beginPath(); ctx.moveTo(81, 386); ctx.lineTo(81, 368); ctx.arc(96, 368, 15, Math.PI, 0); ctx.lineTo(111, 386); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffe08a'; for (let k = 0; k < 7; k++) { ctx.beginPath(); ctx.arc(85 + k * 3.6, 384 - (k % 2) * 1.5, 1.4, 0, TAU); ctx.fill(); }
+    ctx.strokeStyle = '#5a4a40'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(77, 386); ctx.lineTo(77, 366); ctx.arc(96, 366, 19, Math.PI, 0); ctx.lineTo(115, 386); ctx.stroke();
+    ctx.strokeStyle = 'rgba(30,20,14,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = 0; k < 7; k++) { const a = Math.PI + k / 6 * Math.PI; ctx.moveTo(96 + Math.cos(a) * 17.5, 366 + Math.sin(a) * 17.5); ctx.lineTo(96 + Math.cos(a) * 21, 366 + Math.sin(a) * 21); } ctx.stroke();
+    // a shelf of crocks and a jug on the left wall
+    ctx.fillStyle = '#5a3a20'; ctx.fillRect(16, 344, 46, 3); ctx.fillStyle = 'rgba(255,200,140,0.25)'; ctx.fillRect(16, 344, 46, 1);
+    for (const [cx, w, h, col] of [[24, 9, 11, '#8a6a4a'], [36, 7, 8, '#a8885a'], [48, 10, 13, '#6a5a50'], [57, 5, 7, '#9a7a5a']]) {
+      ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(cx, 344 - h / 2, w / 2, h / 2, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,220,180,0.3)'; ctx.beginPath(); ctx.ellipse(cx - w * 0.2, 344 - h * 0.65, w * 0.15, h * 0.2, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = shade(col, 0.35); ctx.fillRect(cx - w * 0.3, 344 - h - 1, w * 0.6, 2);
+    }
+    // a pot on a hook over a little fire on the left (its steam is live)
+    ctx.strokeStyle = '#3a3a40'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(42, 352); ctx.lineTo(42, 364); ctx.stroke();
+    ctx.fillStyle = '#2a2a30'; ctx.beginPath(); ctx.ellipse(42, 371, 10, 7, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#4a4a54'; ctx.fillRect(32, 364, 20, 2.5); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(38, 369, 3, 2, -0.4, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#ff9a3a'; ctx.beginPath(); ctx.moveTo(34, 386); ctx.quadraticCurveTo(38, 378, 42, 382); ctx.quadraticCurveTo(46, 376, 50, 386); ctx.closePath(); ctx.fill();
+    // the rail across the top with a pan, a ladle and a string of onions hanging from it
+    ctx.fillStyle = '#3a3a40'; ctx.fillRect(16, 330, 114, 2.5); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(16, 330, 114, 0.8);
+    ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(104, 332); ctx.lineTo(104, 338); ctx.stroke();
+    ctx.fillStyle = '#2e2e36'; ctx.beginPath(); ctx.ellipse(104, 344, 7, 6, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = '#5a5a66'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.beginPath(); ctx.arc(102, 342, 2.5, Math.PI, Math.PI * 1.6); ctx.fill();
+    ctx.strokeStyle = '#8a8e96'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(120, 332); ctx.lineTo(120, 348); ctx.stroke(); ctx.fillStyle = '#8a8e96'; ctx.beginPath(); ctx.ellipse(120, 350, 3, 2.2, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(70, 332); ctx.lineTo(70, 352); ctx.stroke();
+    for (let k = 0; k < 5; k++) { const ox = 70 + (k % 2 ? 2.5 : -2.5), oy = 337 + k * 3.6; ctx.fillStyle = '#c89a5a'; ctx.beginPath(); ctx.ellipse(ox, oy, 2.8, 2.4, 0, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,230,180,0.5)'; ctx.fillRect(ox - 1.5, oy - 1.5, 1, 1); }
+    // soot: the top of the opening darkest
+    const sg = ctx.createLinearGradient(0, 306, 0, 330); sg.addColorStop(0, 'rgba(0,0,0,0.5)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = sg; ctx.fillRect(14, 306, 118, 24);
+    // the sill: a thick plank with grain and a lit edge
+    ctx.fillStyle = '#7a4e2a'; ctx.fillRect(10, 386, 126, 8);
+    ctx.strokeStyle = 'rgba(40,20,8,0.45)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (const yy of [389, 391.5]) { ctx.moveTo(10, yy); for (let x = 10; x <= 136; x += 6) ctx.lineTo(x, yy + Math.sin(x * 0.11 + yy) * 0.5); } ctx.stroke();
+    ctx.fillStyle = 'rgba(255,210,150,0.35)'; ctx.fillRect(10, 386, 126, 1.5); ctx.fillStyle = 'rgba(20,10,4,0.4)'; ctx.fillRect(10, 392, 126, 2);
+    // the timber frame: four beams with grain, a lit top/left, dark lower/right, pegged corners, an outline
+    const beam = (x, y, w, h, vert) => {
+      ctx.fillStyle = '#6a4424'; ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = 'rgba(30,14,6,0.45)'; ctx.lineWidth = 0.8; ctx.beginPath();
+      const n = 3, L = vert ? h : w, D = vert ? w : h;
+      for (let i = 1; i <= n; i++) { const o = D * i / (n + 1); for (let u = 0; u <= L; u += 6) { const v = o + Math.sin(u * 0.08 + i * 2) * 0.8; if (vert) { if (!u) ctx.moveTo(x + v, y + u); else ctx.lineTo(x + v, y + u); } else { if (!u) ctx.moveTo(x + u, y + v); else ctx.lineTo(x + u, y + v); } } }
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,200,140,0.22)'; if (vert) ctx.fillRect(x, y, 1.5, h); else ctx.fillRect(x, y, w, 1.5);
+      ctx.fillStyle = 'rgba(20,10,4,0.35)'; if (vert) ctx.fillRect(x + w - 2, y, 2, h); else ctx.fillRect(x, y + h - 2, w, 2);
+    };
+    beam(4, 296, 138, 10, false); beam(4, 390, 138, 10, false); beam(4, 306, 10, 84, true); beam(132, 306, 10, 84, true);
+    ctx.strokeStyle = 'rgba(200,150,90,0.4)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let x = 14; x < 130; x += 12) { ctx.moveTo(x, 301); ctx.quadraticCurveTo(x + 3, 298, x + 6, 301); ctx.quadraticCurveTo(x + 9, 304, x + 12, 301); }
+    ctx.stroke();
+    for (const [px, py] of [[9, 301], [137, 301], [9, 395], [137, 395]]) { ctx.fillStyle = '#4a2c14'; circle(px, py, 2.4); ctx.fill(); ctx.fillStyle = 'rgba(255,210,150,0.4)'; circle(px - 0.7, py - 0.7, 0.9); ctx.fill(); }
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(14, 306, 118, 3); ctx.fillRect(14, 306, 3, 80);
+    ctx.strokeStyle = '#2a180e'; ctx.lineWidth = 2; ctx.strokeRect(5, 297, 136, 102); ctx.lineWidth = 1.5; ctx.strokeRect(14, 306, 118, 84);
+    ctx.strokeStyle = 'rgba(255,200,140,0.25)'; ctx.lineWidth = 1.5; rr(3, 295, 140, 106, 6); ctx.stroke();
+  }
+  // the food rack shelf (screen x 10..134 at y rackY+10..+18), its brackets and its shadow on the wall
+  function paintRack() {
+    ctx.fillStyle = 'rgba(20,10,4,0.3)'; ctx.fillRect(2, 8, 124, 6);
+    for (const bx of [18, 102]) {
+      ctx.fillStyle = '#3a3a40'; ctx.beginPath(); ctx.moveTo(bx, 8); ctx.lineTo(bx + 4, 8); ctx.lineTo(bx + 4, 24); ctx.quadraticCurveTo(bx + 2, 12, bx - 10, 10); ctx.lineTo(bx - 10, 8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(bx, 8, 1, 16);
+      ctx.fillStyle = '#7a7e88'; circle(bx + 2, 20, 1.2); ctx.fill(); circle(bx - 6, 9.5, 1); ctx.fill();
+    }
+    ctx.fillStyle = '#5a3a20'; ctx.fillRect(0, 0, 124, 8);
+    ctx.strokeStyle = 'rgba(30,14,6,0.5)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (const yy of [2.5, 5]) { ctx.moveTo(0, yy); for (let x = 0; x <= 124; x += 6) ctx.lineTo(x, yy + Math.sin(x * 0.1 + yy * 3) * 0.5); } ctx.stroke();
+    ctx.fillStyle = 'rgba(30,14,6,0.6)'; ctx.beginPath(); ctx.ellipse(70, 4, 2.4, 1.2, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,210,150,0.35)'; ctx.fillRect(0, 0, 124, 1.5); ctx.fillStyle = 'rgba(20,10,4,0.45)'; ctx.fillRect(0, 6, 124, 2);
+    ctx.fillStyle = 'rgba(255,200,140,0.2)'; ctx.fillRect(0, 0, 1.5, 8);
+    for (const nx of [4, 120]) { ctx.fillStyle = '#7a7e88'; circle(nx, 4, 1.1); ctx.fill(); }
+    ctx.strokeStyle = '#2a180e'; ctx.lineWidth = 1.2; ctx.strokeRect(0.5, 0.5, 123, 7);
+  }
   function draw(st) {
     const t = G.clock || 0, shake = st.brawl > 0 ? 3 : st.party ? 4 * Math.sin(t * 40) : 0;
     ctx.save(); if (shake) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
@@ -812,15 +888,32 @@
     const fx = 540, fy = S.floor;
     for (let k = 0; k < 5; k++) { const f = Math.sin(t * 9 + k * 1.7) * 6; ctx.fillStyle = k % 2 ? '#ff8a2a' : '#ffc53d'; ctx.beginPath(); ctx.moveTo(fx - 30 + k * 15, fy - 8); ctx.quadraticCurveTo(fx - 34 + k * 15, fy - 40 - f, fx - 24 + k * 15 + f * 0.3, fy - 52 - f); ctx.quadraticCurveTo(fx - 18 + k * 15, fy - 30, fx - 20 + k * 15, fy - 8); ctx.fill(); }
     for (let k = 0; k < 6; k++) { const u = (t * 0.6 + K.hash(k)) % 1; ctx.fillStyle = 'rgba(255,' + (200 - u * 120 | 0) + ',80,' + (1 - u) + ')'; ctx.fillRect(fx - 20 + K.hash(k + 5) * 40 + Math.sin(t * 3 + k) * 10 * u, fy - 50 - u * 120, 2.5, 2.5); }
-    // the kitchen hatch and rack
-    ctx.fillStyle = '#2a180e'; rr(8, 300, 130, 96, 6); ctx.fill();
-    ctx.strokeStyle = '#6a4424'; ctx.lineWidth = 5; rr(6, 298, 134, 100, 7); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,200,140,0.25)'; ctx.lineWidth = 1.5; rr(4, 296, 138, 104, 8); ctx.stroke();
-    ctx.fillStyle = '#ffb060'; ctx.globalAlpha = 0.4 + 0.1 * Math.sin(t * 4); rr(14, 306, 118, 84, 4); ctx.fill(); ctx.globalAlpha = 1;
-    text('KITCHEN', 73, 318, 11, '#ffe7c0', 'center', 'body');
-    // the cook's arms through the hatch
-    ctx.strokeStyle = '#f2c8a6'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(60, 370); ctx.lineTo(60 + Math.sin(t * 3) * 16, 392 + (st.restockT < 0.25 ? 10 : 0)); ctx.stroke(); ctx.lineCap = 'butt';
-    ctx.fillStyle = COLW.woodDark; ctx.fillRect(10, S.rackY + 10, 124, 8);
+    // the kitchen hatch and rack (sweep): the still parts are one picture (a timber frame with grain, pegs and carved
+    // knotwork round a smoky stone kitchen: an oven mouth, a shelf of crocks, pans and onions hanging from a rail, a
+    // plank sill); live on top: the oven's glow breathing, steam off the pot, the name board, the cook's arms
+    K.pic('meadhatch', 156, 136, 0, 0, () => { ctx.translate(-2, -288); paintHatch(); }, 2, 288);
+    { const fl = 0.75 + 0.15 * Math.sin(t * 4) + 0.08 * Math.sin(t * 11.3);
+      const gl = ctx.createRadialGradient(96, 372, 4, 96, 368, 70); gl.addColorStop(0, 'rgba(255,170,80,' + (0.55 * fl).toFixed(3) + ')'); gl.addColorStop(1, 'rgba(255,150,60,0)');
+      ctx.save(); ctx.beginPath(); ctx.rect(14, 306, 118, 80); ctx.clip(); ctx.fillStyle = gl; ctx.fillRect(14, 306, 118, 80);
+      for (let k = 0; k < 3; k++) { const u = (t * 0.35 + k / 3) % 1; ctx.fillStyle = 'rgba(240,230,220,' + (0.28 * Math.sin(u * Math.PI)).toFixed(3) + ')'; circle(40 + Math.sin(t * 1.3 + k * 2) * 4 + u * 6, 366 - u * 50, 5 + u * 7); ctx.fill(); }
+      ctx.restore(); }
+    // the name board on two little chains (sized to the word)
+    { ctx.font = '700 11px "Atkinson Hyperlegible", system-ui, sans-serif'; const tw = ctx.measureText('KITCHEN').width, bw = Math.ceil(tw + 18), bx = 73 - bw / 2;
+      ctx.strokeStyle = '#8a8e96'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx + 8, 306); ctx.lineTo(bx + 8, 311); ctx.moveTo(bx + bw - 8, 306); ctx.lineTo(bx + bw - 8, 311); ctx.stroke();
+      ctx.fillStyle = '#7a4e2a'; rr(bx, 310, bw, 17, 3); ctx.fill();
+      ctx.fillStyle = 'rgba(255,210,150,0.25)'; ctx.fillRect(bx + 2, 311, bw - 4, 1.5);
+      ctx.fillStyle = 'rgba(30,14,6,0.3)'; ctx.fillRect(bx + 2, 323, bw - 4, 3);
+      ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 1.5; rr(bx, 310, bw, 17, 3); ctx.stroke();
+      text('KITCHEN', 73, 318.5, 11, '#ffe7c0', 'center', 'body'); }
+    // the cook's arms through the hatch: a rolled linen sleeve, a forearm, a hand with a ladle
+    { const hx = 60 + Math.sin(t * 3) * 16, hy = 392 + (st.restockT < 0.25 ? 10 : 0);
+      ctx.strokeStyle = '#d8a888'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(60, 370); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.strokeStyle = '#f2c8a6'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(60, 370); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,240,220,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(58.5, 372); ctx.lineTo(hx - 1.5, hy - 1); ctx.stroke(); ctx.lineCap = 'butt';
+      ctx.fillStyle = '#e8dcc0'; ctx.beginPath(); ctx.ellipse(60, 368, 6, 4, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = '#a8987a'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#f2c8a6'; circle(hx, hy, 3.6); ctx.fill(); ctx.strokeStyle = '#b8806a'; ctx.lineWidth = 1; ctx.stroke(); }
+    // the food rack: a grained shelf with a lit edge on two iron brackets
+    K.pic('meadrack', 132, 30, 4, 2, () => paintRack(), 10, S.rackY + 10);
     for (let k = 0; k < 3; k++) if (st.rack[k]) drawFood(st.rack[k].k, S.rack[k], S.rackY + 2, 1.05);
     if (st.barrel) drawFood('barrel', S.barrelX, S.floor - 14, 1.1);
     // the floor never changes: one picture (its own space starts at the floor line)

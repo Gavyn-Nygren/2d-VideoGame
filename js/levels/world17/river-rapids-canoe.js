@@ -1389,6 +1389,55 @@ function canoeDrawFruit(st) {
     if (!f.got) { ctx.strokeStyle = 'rgba(255,255,255,' + (0.3 + 0.2 * Math.sin(G.clock * 4 + f.k)) + ')'; ctx.lineWidth = 2; circle(x, y + 2, 15); ctx.stroke(); }
   }
 }
+// a riverbank bush (centre x 0, y 0 = the old middle): a soft shadow, a few bare twigs, then 3-4 clusters of small
+// pointed leaves laid back to front (a dark back layer, the base colour, lit leaves on the upper left), each cluster
+// with a shaded underside and an outline in a dark shade of its own green; berries or blossoms on some looks
+function canoeBushPaint(v, side, pal) {
+  const TAU = Math.PI * 2, R = (a, b) => hash(a, b) / 4294967296;
+  ctx.fillStyle = 'rgba(20,60,30,0.2)'; ctx.beginPath(); ctx.ellipse(4, 15, 30, 9, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(20,60,30,0.14)'; ctx.beginPath(); ctx.ellipse(4, 15, 18, 5, 0, 0, TAU); ctx.fill();
+  const n = 3 + (v % 2), cl = [];
+  for (let i = 0; i < n; i++) cl.push({ x: (i - (n - 1) / 2) * 12 * side + (R(v, i) - 0.5) * 4, y: (i % 2 ? -8 : 5) + (R(i, v + 9) - 0.5) * 4, r: 15 - i * 1.6 + R(v + 3, i) * 2, col: pal.leaf[(v + i) % 4] });
+  // twigs
+  ctx.strokeStyle = pal.trunk; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath();
+  for (const k of cl) { ctx.moveTo(0, 12); ctx.quadraticCurveTo(k.x * 0.4, 6, k.x, k.y + 4); } ctx.stroke(); ctx.lineCap = 'butt';
+  const leaf = (x, y, l, a, col) => {
+    const ca = Math.cos(a), sa = Math.sin(a), w = l * 0.42;
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x - ca * l / 2, y - sa * l / 2);
+    ctx.quadraticCurveTo(x - sa * w, y + ca * w, x + ca * l / 2, y + sa * l / 2); ctx.quadraticCurveTo(x + sa * w, y - ca * w, x - ca * l / 2, y - sa * l / 2); ctx.fill();
+  };
+  // outlines round each cluster first, so the leaves sit inside a dark rim of their own green
+  // a leafy, lumpy silhouette: a core and a ring of small round lobes
+  const blob = (k, ex) => { ctx.beginPath(); ctx.moveTo(k.x + k.r * 0.78 + ex, k.y); ctx.arc(k.x, k.y, k.r * 0.78 + ex, 0, TAU);
+    for (let j = 0; j < 11; j++) { const a = j / 11 * TAU + v, lr = k.r * (0.27 + R(j, v * 7 + ci0(k)) * 0.08) + ex, cx = k.x + Math.cos(a) * k.r * 0.74, cy = k.y + Math.sin(a) * k.r * 0.7; ctx.moveTo(cx + lr, cy); ctx.arc(cx, cy, lr, 0, TAU); } };
+  const ci0 = k => Math.round(k.r * 10);
+  for (const k of cl) { ctx.fillStyle = shade(k.col, 0.45); blob(k, 1.4); ctx.fill(); }
+  cl.forEach((k, ci) => {
+    // the body of the cluster, darker on its lower right
+    ctx.fillStyle = shade(k.col, 0.12); blob(k, 0); ctx.fill();
+    ctx.save(); blob(k, 0); ctx.clip();
+    ctx.fillStyle = shade(k.col, 0.28); ctx.beginPath(); ctx.ellipse(k.x + k.r * 0.25, k.y + k.r * 0.35, k.r * 0.8, k.r * 0.55, 0, 0, TAU); ctx.fill();
+    // three layers of little pointed leaves
+    for (const [layer, col, nL] of [[0, shade(k.col, 0.3), 12], [1, k.col, 16], [2, tint(k.col, 0.25), 9]]) {
+      for (let j = 0; j < nL; j++) {
+        const a = R(ci * 50 + j, v * 3 + layer) * TAU, rd = Math.sqrt(R(j, ci * 9 + v + layer * 31)) * k.r * (layer === 2 ? 0.7 : 0.92);
+        let lx = k.x + Math.cos(a) * rd, ly = k.y + Math.sin(a) * rd * 0.9;
+        if (layer === 2) { lx -= k.r * 0.22; ly -= k.r * 0.28; }
+        leaf(lx, ly, 6 + R(j, ci + 77 + layer) * 3.5, a + 0.6 + R(ci, j + layer) * 0.8, col);
+      }
+    }
+    // leaf veins on a few front leaves, and a sunny spot
+    ctx.strokeStyle = 'rgba(20,60,30,0.3)'; ctx.lineWidth = 0.7; ctx.beginPath();
+    for (let j = 0; j < 4; j++) { const a = R(j, ci + 200) * TAU, rd = R(ci, j + 210) * k.r * 0.7, lx = k.x + Math.cos(a) * rd, ly = k.y + Math.sin(a) * rd; ctx.moveTo(lx - 2.5, ly + 1); ctx.lineTo(lx + 2.5, ly - 1); }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,220,0.28)'; ctx.beginPath(); ctx.ellipse(k.x - k.r * 0.35, k.y - k.r * 0.4, k.r * 0.32, k.r * 0.22, -0.5, 0, TAU); ctx.fill();
+    ctx.restore();
+  });
+  // berries or blossoms on some looks
+  if (v === 1 || v === 4) for (let j = 0; j < 6; j++) { const k = cl[j % cl.length], a = R(j, v + 300) * TAU, rd = R(v, j + 301) * k.r * 0.75, bx = k.x + Math.cos(a) * rd, by = k.y + Math.sin(a) * rd;
+    if (v === 1) { ctx.fillStyle = '#c8304a'; circle(bx, by, 2); ctx.fill(); ctx.fillStyle = '#ffb0c0'; circle(bx - 0.6, by - 0.6, 0.7); ctx.fill(); }
+    else { ctx.fillStyle = '#ffffff'; for (let p = 0; p < 5; p++) { circle(bx + Math.cos(p * 1.257) * 1.6, by + Math.sin(p * 1.257) * 1.6, 1.2); ctx.fill(); } ctx.fillStyle = '#ffd84d'; circle(bx, by, 0.9); ctx.fill(); } }
+}
 // bushes, trees, flowers and animals on the banks
 function canoeDrawBankLife(st) {
   const pal = st.pal, t = G.clock;
@@ -1397,16 +1446,9 @@ function canoeDrawBankLife(st) {
     const h = hash(k, side + 5), d = k * cell + (h % cell), y = canoeSY(st, d), edge = canoeCX(st, d) + side * canoeHW(st, d);
     const x = edge + side * (26 + (h >> 7) % 40);
     if (x < -40 || x > W + 40) continue;
-    // a bush: a soft shadow, 3 leafy blobs and a sunny highlight
-    ctx.fillStyle = 'rgba(20,60,30,0.18)'; ctx.beginPath(); ctx.ellipse(x + 4, y + 14, 28, 9, 0, 0, Math.PI * 2); ctx.fill();
-    for (let i = 0; i < 3; i++) {
-      const bx = x + (i - 1) * 12 * side, by = y + (i % 2 ? -8 : 6), br = 15 - i * 2, lc = pal.leaf[(h >> (i * 2)) % 4];
-      ctx.fillStyle = lc; circle(bx, by, br); ctx.fill();
-      ctx.fillStyle = 'rgba(20,60,30,0.2)'; ctx.beginPath(); ctx.arc(bx, by, br, -0.2, Math.PI * 0.8); ctx.arc(bx - 3, by - 3, br - 2, Math.PI * 0.8, -0.2, true); ctx.fill();
-      ctx.strokeStyle = 'rgba(20,60,30,0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(bx + 2, by + 1, br * 0.55, 0.3, 1.4); ctx.moveTo(bx - br * 0.4, by + br * 0.3); ctx.lineTo(bx - br * 0.1, by + br * 0.05); ctx.stroke();
-    }
-    ctx.fillStyle = 'rgba(255,255,220,0.22)'; circle(x - 5, y - 10, 6); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,220,0.3)'; circle(x - 7, y - 12, 2.5); ctx.fill();
+    // (rich props) a bush of leaf clusters (cached, 6 looks a side): see canoeBushPaint
+    const bv = h % 6;
+    CK.pic('cnbush' + bv + '|' + side + '|' + pal.leaf.join(''), 84, 66, 42, 40, () => canoeBushPaint(bv, side, pal), x, y);
     // (rich props pass) pebbles on the sand and a clump of reeds at the water's edge
     const ex = edge + side * 7;
     for (let i = 0; i < 3; i++) { const px = ex + side * (i * 3), py = y - 10 + i * 9 + (h >> (i + 3)) % 5; ctx.fillStyle = '#8d8577'; ctx.beginPath(); ctx.ellipse(px, py, 2.6 - (i % 2), 1.8, 0.3, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(px - 1.2, py - 1.2, 1.4, 0.8); }

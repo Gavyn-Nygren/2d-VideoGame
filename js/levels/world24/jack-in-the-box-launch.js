@@ -1147,28 +1147,95 @@ function jackboxDrawStar(x, y, r, a) {
   ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(x - r * 0.25, y - r * 0.3, r * 0.18); ctx.fill();
   ctx.globalAlpha = a ? ctx.globalAlpha / a : 1;
 }
+// the toy car's track: an orange plastic strip with raised rails, a lighter running surface, clip joints, the yellow
+// centre dashes and screw holes, on three moulded pegs into the back panel (painted once per length)
+function jackboxPaintTrack(c, w) {
+  for (const px of [20, Math.round(w / 2), w - 24]) {
+    c.fillStyle = 'rgba(60,30,10,0.18)'; c.fillRect(px + 3, 10, 4, 16);
+    const pg = c.createLinearGradient(px, 0, px + 4, 0); pg.addColorStop(0, '#e08a4a'); pg.addColorStop(1, '#a8562a');
+    c.fillStyle = pg; c.fillRect(px, 8, 4, 16);
+    c.fillStyle = '#c0703a'; rrOn(c, px - 2, 21, 8, 4, 2); c.fill();
+    c.fillStyle = 'rgba(255,230,200,0.5)'; c.fillRect(px - 1, 21, 6, 1);
+    c.strokeStyle = '#8a4220'; c.lineWidth = 0.8; c.strokeRect(px, 8, 4, 13); rrOn(c, px - 2, 21, 8, 4, 2); c.stroke();
+  }
+  c.fillStyle = 'rgba(60,30,10,0.2)'; rrOn(c, 2, 6, w, 5, 2.5); c.fill();
+  const g = c.createLinearGradient(0, 0, 0, 8); g.addColorStop(0, '#ffb070'); g.addColorStop(0.5, '#ff9a4a'); g.addColorStop(1, '#d8702c');
+  c.fillStyle = g; rrOn(c, 0, 0, w, 8, 4); c.fill();
+  c.save(); rrOn(c, 0, 0, w, 8, 4); c.clip();
+  c.fillStyle = '#ffc48a'; c.fillRect(0, 0, w, 1.8);
+  c.fillStyle = 'rgba(140,60,20,0.35)'; c.fillRect(0, 1.8, w, 0.8);
+  c.fillStyle = 'rgba(140,60,20,0.3)'; c.fillRect(0, 6, w, 2);
+  c.fillStyle = '#ffd36b'; for (let x = 8; x < w - 8; x += 24) { c.fillRect(x, 3.2, 12, 1.8); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(x, 3.2, 12, 0.6); c.fillStyle = '#ffd36b'; }
+  for (let x = 96; x < w - 20; x += 96) {
+    c.fillStyle = 'rgba(120,50,15,0.6)'; c.fillRect(x, 0, 1, 8); c.fillStyle = 'rgba(255,220,180,0.5)'; c.fillRect(x + 1, 0, 0.8, 8);
+    c.fillStyle = '#e07a3a'; rrOn(c, x - 4, 5, 9, 3, 1); c.fill();
+  }
+  c.restore();
+  for (const x of [6, w - 6]) { c.fillStyle = '#a8562a'; c.beginPath(); c.arc(x, 4, 1.4, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,240,220,0.6)'; c.beginPath(); c.arc(x - 0.4, 3.6, 0.5, 0, Math.PI * 2); c.fill(); }
+  c.strokeStyle = '#a8562a'; c.lineWidth = 1.5; rrOn(c, 0, 0, w, 8, 4); c.stroke();
+}
 function jackboxDrawTrack(t) {
-  const y = t.y, x0 = t.x0 - 40, x1 = t.x1 + 40;
-  ctx.fillStyle = '#ff9a4a'; rr(x0, y, x1 - x0, 8, 4); ctx.fill();
-  ctx.fillStyle = '#ffd36b'; for (let x = x0 + 8; x < x1 - 8; x += 24) ctx.fillRect(x, y + 3, 12, 2);
-  ctx.strokeStyle = '#a8562a'; ctx.lineWidth = 1.5; rr(x0, y, x1 - x0, 8, 4); ctx.stroke();
-  // little posts hold the track to the back panel
-  ctx.fillStyle = '#c0703a'; for (const x of [x0 + 20, (x0 + x1) / 2, x1 - 24]) ctx.fillRect(x, y + 8, 4, 16);
+  const y = t.y, x0 = t.x0 - 40, x1 = t.x1 + 40, w = Math.round(x1 - x0);
+  ERICH.put('jbtrack' + w, w + 12, 32, 2, 2, c => jackboxPaintTrack(c, w), x0, y);
+}
+// the toy car's body (facing right; origin: the middle of its base, as before): glossy red with a lit top and a darker
+// sill, a white racing stripe, a door line, a tinted window with a glint, chrome bumpers, a headlight and tail light,
+// a white roundel for its number, a wind-up key slot on the boot, wheel arches; outlined in a deep red
+function jackboxPaintCar(c) {
+  const body = () => { c.beginPath(); c.moveTo(-24, -6); c.lineTo(-24, -14); c.quadraticCurveTo(-14, -16, -10, -26); c.lineTo(8, -26); c.quadraticCurveTo(14, -16, 24, -14); c.lineTo(24, -6); c.closePath(); };
+  const g = c.createLinearGradient(0, -26, 0, -6); g.addColorStop(0, '#ff8a92'); g.addColorStop(0.35, '#ff5f6d'); g.addColorStop(1, '#c83a4a');
+  c.fillStyle = g; body(); c.fill();
+  c.save(); body(); c.clip();
+  c.fillStyle = 'rgba(120,20,40,0.3)'; c.fillRect(-24, -9.5, 48, 4);
+  c.fillStyle = '#ffffff'; c.fillRect(-24, -13.5, 48, 2.2); c.fillStyle = 'rgba(120,20,40,0.25)'; c.fillRect(-24, -11.6, 48, 0.6);
+  c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.moveTo(-22, -14.6); c.quadraticCurveTo(-13, -16, -10, -24.5); c.lineTo(-8, -24.5); c.quadraticCurveTo(-11, -16, -20, -13.8); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(110,20,36,0.5)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(-1, -24); c.lineTo(-1, -8); c.moveTo(-1, -8); c.lineTo(10, -8); c.stroke();
+  c.fillStyle = 'rgba(110,20,36,0.55)'; c.fillRect(3, -17, 4, 1);
+  c.restore();
+  // window: tinted glass, a frame, a glint
+  const wg = c.createLinearGradient(0, -23, 0, -14); wg.addColorStop(0, '#d8f4ff'); wg.addColorStop(1, '#8ccaf0');
+  c.fillStyle = wg; rrOn(c, -7, -23, 13, 9, 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.8)'; c.beginPath(); c.moveTo(-5, -15); c.lineTo(-2, -22); c.lineTo(0, -22); c.lineTo(-3, -15); c.closePath(); c.fill();
+  c.strokeStyle = '#a82a3a'; c.lineWidth = 1; rrOn(c, -7, -23, 13, 9, 2); c.stroke();
+  // number roundel, lights, bumpers, the wind-up key's slot
+  c.fillStyle = '#ffffff'; c.beginPath(); c.arc(-16, -12, 5, 0, Math.PI * 2); c.fill(); c.strokeStyle = 'rgba(110,20,36,0.5)'; c.lineWidth = 0.8; c.stroke();
+  c.fillStyle = 'rgba(255,240,150,0.35)'; c.beginPath(); c.arc(24, -10, 6, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#ffe36b'; c.beginPath(); c.arc(22, -10, 3, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.8)'; c.beginPath(); c.arc(21.2, -10.8, 1, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#ffb0b8'; c.fillRect(-24, -12.5, 2, 3); c.fillStyle = '#c81a2a'; c.fillRect(-24, -12.5, 1.2, 3);
+  for (const bx of [-26, 22]) { const bg = c.createLinearGradient(0, -8, 0, -4); bg.addColorStop(0, '#f2f4fa'); bg.addColorStop(1, '#9aa0b4'); c.fillStyle = bg; rrOn(c, bx, -8, 4, 4, 1.5); c.fill(); c.strokeStyle = '#6a7084'; c.lineWidth = 0.7; rrOn(c, bx, -8, 4, 4, 1.5); c.stroke(); }
+  c.fillStyle = '#7a1a2a'; c.fillRect(-19, -17, 4, 1.5);
+  // wheel arches: dark curves where the wheels tuck in
+  c.fillStyle = '#5a1420'; for (const wx of [-14, 14]) { c.beginPath(); c.arc(wx, -5, 7.5, Math.PI, 0); c.closePath(); c.fill(); }
+  c.strokeStyle = '#8a2a34'; c.lineWidth = 2; body(); c.stroke();
 }
 function jackboxDrawCar(t) {
-  const x = t.x, y = t.y, f = t.dir;
-  ctx.save(); ctx.translate(x, y - 3); ctx.scale(f, 1);
-  if (t.beep > 0) { text('BEEP!', 0, -42 - t.beep * 10, 14, '#ffffff', 'center'); }
-  ctx.fillStyle = '#ff5f6d'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(-24, -6); ctx.lineTo(-24, -14); ctx.quadraticCurveTo(-14, -16, -10, -26); ctx.lineTo(8, -26); ctx.quadraticCurveTo(14, -16, 24, -14); ctx.lineTo(24, -6); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#bfeaff'; rr(-7, -23, 13, 9, 2); ctx.fill();
-  ctx.fillStyle = '#ffffff'; text('7', -16, -12, 9, '#ffffff', 'center');
-  ctx.fillStyle = '#ffe36b'; circle(22, -10, 3); ctx.fill();
-  for (const wx of [-14, 14]) { ctx.fillStyle = '#3a3550'; circle(wx, -4, 6); ctx.fill(); ctx.fillStyle = '#d9dbe8'; circle(wx, -4, 2.5); ctx.fill(); }
+  const x = t.x, y = t.y, f = t.dir, sp = G.clock * 14 * f;
+  ctx.save(); ctx.translate(x, y - 3);
+  if (t.beep > 0) text('BEEP!', 0, -42 - t.beep * 10, 14, '#ffffff', 'center');
+  ctx.fillStyle = 'rgba(60,30,10,0.25)'; ctx.beginPath(); ctx.ellipse(0, 3, 26, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.scale(f, 1);
   // speed lines
   ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2;
   for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-30 - i * 4, -18 + i * 5); ctx.lineTo(-42 - i * 6 - Math.sin(G.clock * 20 + i) * 3, -18 + i * 5); ctx.stroke(); }
+  ERICH.put('jbcar', 60, 34, 30, 29, c => jackboxPaintCar(c), 0, 0);
+  // the wind-up key on the boot, turning
+  const kw = Math.cos(G.clock * 6) * 4;
+  ctx.fillStyle = '#9aa0b4'; ctx.fillRect(-18, -22, 2, 5);
+  ctx.fillStyle = '#d9dbe8'; ctx.strokeStyle = '#6a7084'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(-17 - kw * 0.5, -25, Math.abs(kw) + 1, 3, 0, 0, Math.PI * 2); ctx.ellipse(-17 + kw * 0.5, -25, Math.abs(kw) + 1, 3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // wheels: tyres with tread, silver hubs with spokes that turn
+  for (const wx of [-14, 14]) {
+    ctx.fillStyle = '#3a3550'; circle(wx, -4, 6); ctx.fill();
+    ctx.strokeStyle = '#25213a'; ctx.lineWidth = 1; circle(wx, -4, 6); ctx.stroke();
+    ctx.fillStyle = '#d9dbe8'; circle(wx, -4, 3); ctx.fill();
+    ctx.strokeStyle = '#8a8ea4'; ctx.lineWidth = 0.9; ctx.beginPath();
+    for (let k = 0; k < 3; k++) { const a = sp + k * Math.PI * 2 / 3; ctx.moveTo(wx, -4); ctx.lineTo(wx + Math.cos(a) * 3, -4 + Math.sin(a) * 3); }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(wx - 1.6, -6, 1.6); ctx.fill();
+  }
   ctx.restore();
+  // its number, the right way round whichever way it drives
+  text('7', x - 16 * f, y - 3 - 12, 8, '#c83a4a', 'center');
 }
 function jackboxDrawFan(st, t, live) {
   const x = t.x, y = t.y, f = t.dir;

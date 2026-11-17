@@ -783,6 +783,104 @@ function tthVinciDrawSky(st) {
   }
 }
 
+// the Tuscan hills, world x cx0..cx0+cw (a chunk of them, in world coordinates)
+function tthVinciPaintHills(c, cx0, cw, top, hillsEnd) {
+  const Y = x => tthVinciHillY(c, x), x1 = cx0 + cw, B = H + 10;
+  ctx.save(); ctx.beginPath(); ctx.rect(cx0, top, cw, B - top); ctx.clip();
+  const hill = () => { ctx.beginPath(); ctx.moveTo(cx0 - 4, B); for (let x = cx0 - 4; x <= x1 + 4; x += 4) ctx.lineTo(x, Y(x)); ctx.lineTo(x1 + 4, B); ctx.closePath(); };
+  ctx.fillStyle = '#86c25c'; hill(); ctx.fill();
+  ctx.save(); hill(); ctx.clip();
+  // patchwork fields in bands that follow the slope; each band split into fields at fixed world spots
+  const band = (x, j) => Y(x) + [16, 40, 70, 108, 160][j] + Math.sin(x * 0.013 + j * 1.7) * (3 + j * 2);
+  const FIELD = ['#94c862', '#a4cc66', '#cfc56c', '#dab864', '#86ba56', '#b4cc68', '#9ac05e'];
+  for (let j = 0; j < 4; j++) {
+    const segW = 110 + j * 30;
+    for (let s = Math.floor((cx0 - segW) / segW); s * segW < x1 + segW; s++) {
+      const sa = s * segW + (hash(s, 60 + j) % 40), sb = (s + 1) * segW + (hash(s + 1, 60 + j) % 40);
+      if (sb < cx0 - 4 || sa > x1 + 4) continue;
+      const h = hash(s, 70 + j), col = FIELD[h % FIELD.length], kind = (h >>> 4) % 4;
+      const poly = () => { ctx.beginPath(); ctx.moveTo(sa, band(sa, j)); for (let x = sa; x <= sb; x += 6) ctx.lineTo(x, band(x, j)); ctx.lineTo(sb, band(sb, j)); ctx.lineTo(sb, band(sb, j + 1)); for (let x = sb; x >= sa; x -= 6) ctx.lineTo(x, band(x, j + 1)); ctx.lineTo(sa, band(sa, j + 1)); ctx.closePath(); };
+      ctx.fillStyle = col; poly(); ctx.fill();
+      ctx.save(); poly(); ctx.clip();
+      if (kind === 0) {   // ploughed or crop rows following the slope
+        ctx.strokeStyle = shade(col, 0.18); ctx.lineWidth = 1; ctx.beginPath();
+        for (let r = 1; r < 8; r++) { const u = r / 8; for (let x = sa; x <= sb; x += 8) { const y = band(x, j) + (band(x, j + 1) - band(x, j)) * u; if (x === sa) ctx.moveTo(x, y); else ctx.lineTo(x, y); } }
+        ctx.stroke();
+      } else if (kind === 1) {   // an olive grove: rows of round grey-green trees, lit on top
+        for (let r = 0; r < 3; r++) for (let x = sa + 8 + r * 5; x < sb - 4; x += 16) {
+          const y = band(x, j) + (band(x, j + 1) - band(x, j)) * (0.3 + r * 0.25), rr2 = 2.6 + j * 0.6;
+          ctx.fillStyle = 'rgba(40,70,30,0.25)'; ctx.beginPath(); ctx.ellipse(x + 1.5, y + rr2 * 0.8, rr2, rr2 * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#7a9a62'; circle(x, y, rr2); ctx.fill(); ctx.fillStyle = 'rgba(220,240,200,0.45)'; circle(x - rr2 * 0.3, y - rr2 * 0.35, rr2 * 0.45); ctx.fill();
+        }
+      } else if (kind === 2) {   // a golden field with a few round hay bales
+        ctx.fillStyle = 'rgba(255,240,180,0.18)'; for (let k = 0; k < 30; k++) ctx.fillRect(sa + (hash(s * 31 + k, 80 + j) % Math.max(1, Math.round(sb - sa))), band(sa, j) + (hash(s * 37 + k, 81 + j) % 40), 3, 1);
+        for (let k = 0; k < 2; k++) { const x = sa + 20 + (hash(s, 90 + j + k) % Math.max(1, Math.round(sb - sa - 40))), y = band(x, j) + (band(x, j + 1) - band(x, j)) * 0.55, rb = 3 + j; ctx.fillStyle = 'rgba(60,50,20,0.25)'; ctx.beginPath(); ctx.ellipse(x + 2, y + rb * 0.7, rb * 1.1, rb * 0.35, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#e0b860'; circle(x, y, rb); ctx.fill(); ctx.strokeStyle = '#a8803a'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(x, y, rb * 0.55, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = 'rgba(255,250,210,0.5)'; circle(x - rb * 0.35, y - rb * 0.4, rb * 0.35); ctx.fill(); }
+      } else {   // meadow: soft tufts and specks of flowers
+        for (let k = 0; k < 18; k++) { const x = sa + (hash(s * 13 + k, 85 + j) % Math.max(1, Math.round(sb - sa))), y = band(x, j) + (hash(s * 17 + k, 86 + j) % 30); ctx.fillStyle = k % 5 ? 'rgba(70,120,50,0.3)' : (k % 2 ? '#fff6d0' : '#ffd23f'); ctx.fillRect(x, y, k % 5 ? 2 : 1.6, k % 5 ? 1 : 1.6); }
+      }
+      ctx.restore();
+      // the hedgerow on the field's left edge
+      ctx.strokeStyle = '#5a9448'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(sa, band(sa, j)); ctx.lineTo(sa + 3, band(sa, j + 1)); ctx.stroke();
+    }
+    // the hedgerow along the band's top: a dark green line with little bushes, lit on top
+    ctx.strokeStyle = '#4f8a44'; ctx.lineWidth = 1.8; ctx.beginPath(); for (let x = cx0 - 4; x <= x1 + 4; x += 6) { const y = band(x, j); if (x === cx0 - 4) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
+    for (let x = Math.floor((cx0 - 4) / 14) * 14; x <= x1 + 4; x += 14) { if (hash(x, 95 + j) % 3) continue; const y = band(x, j); ctx.fillStyle = '#457a3c'; circle(x, y - 1.5, 2.6 + j * 0.4); ctx.fill(); ctx.fillStyle = 'rgba(200,240,160,0.35)'; circle(x - 0.8, y - 2.6, 1.2); ctx.fill(); }
+  }
+  // the grassy crest: the top band in fresh green with blades along the top, deeper shade low down
+  ctx.fillStyle = '#86c25c'; ctx.beginPath(); ctx.moveTo(cx0 - 4, Y(cx0 - 4)); for (let x = cx0 - 4; x <= x1 + 4; x += 4) ctx.lineTo(x, Y(x)); for (let x = x1 + 4; x >= cx0 - 4; x -= 6) ctx.lineTo(x, band(x, 0)); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,220,0.12)'; ctx.beginPath(); ctx.moveTo(cx0 - 4, Y(cx0 - 4)); for (let x = cx0 - 4; x <= x1 + 4; x += 4) ctx.lineTo(x, Y(x)); for (let x = x1 + 4; x >= cx0 - 4; x -= 6) ctx.lineTo(x, Y(x) + 6); ctx.closePath(); ctx.fill();
+  const fg = ctx.createLinearGradient(0, 420, 0, B); fg.addColorStop(0, 'rgba(40,70,30,0)'); fg.addColorStop(1, 'rgba(40,70,30,0.22)');
+  ctx.fillStyle = fg; ctx.fillRect(cx0 - 4, 420, cw + 8, B - 420);
+  ctx.restore();
+  ctx.strokeStyle = '#5f9f45'; ctx.lineWidth = 1.2; ctx.lineCap = 'round'; ctx.beginPath();
+  for (let x = Math.floor(cx0 / 5) * 5; x <= x1; x += 5) { const y = Y(x), h = hash(x, 12); ctx.moveTo(x, y + 2); ctx.lineTo(x - 1.5 + (h % 4), y - 2 - (h % 4)); }
+  ctx.stroke(); ctx.lineCap = 'butt';
+  ctx.strokeStyle = 'rgba(255,255,225,0.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let x = cx0 - 4; x <= x1 + 4; x += 4) { const y = Y(x) + 2.5; if (x === cx0 - 4) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
+  ctx.strokeStyle = '#2f5a2c'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.beginPath(); for (let x = cx0 - 4; x <= x1 + 4; x += 4) { const y = Y(x); if (x === cx0 - 4) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
+  // the props on the same spots as before (each 120 px stretch has one): cypresses, poppy patches, vine rows
+  for (let i = Math.floor((cx0 - 80) / 120); i * 120 < x1 + 80; i++) {
+    const h = hash(i, 5), x = i * 120 + (h % 90), y = Y(x), kind = h % 4;
+    if (x < 320 || x > hillsEnd - 40) continue;
+    if (kind < 2) {   // a cypress: a tall flame of dark green, lit on the left, with a trunk and a shadow
+      const hh = 26 + (h % 16), wd = 7;
+      ctx.fillStyle = 'rgba(30,60,30,0.25)'; ctx.beginPath(); ctx.ellipse(x + 6, y + 1, 10, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#6a4a2a'; ctx.fillRect(x - 1.5, y - 6, 3, 8); ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(x - 1.5, y - 6, 1, 8);
+      const flame = () => { ctx.beginPath(); ctx.moveTo(x, y - 4 - hh - 3); ctx.bezierCurveTo(x + wd * 0.7, y - 4 - hh * 0.75, x + wd * 1.05, y - 4 - hh * 0.25, x + wd * 0.45, y - 3); ctx.lineTo(x - wd * 0.45, y - 3); ctx.bezierCurveTo(x - wd * 1.05, y - 4 - hh * 0.25, x - wd * 0.7, y - 4 - hh * 0.75, x, y - 4 - hh - 3); ctx.closePath(); };
+      const g = ctx.createLinearGradient(x - wd, 0, x + wd, 0); g.addColorStop(0, '#5a9a52'); g.addColorStop(0.45, '#3f8a4a'); g.addColorStop(1, '#2a6a38');
+      ctx.fillStyle = g; flame(); ctx.fill();
+      ctx.save(); flame(); ctx.clip();
+      ctx.strokeStyle = 'rgba(20,60,30,0.45)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let k = 0; k < 7; k++) { const yy = y - 8 - k * hh / 7, d = (k % 2 ? 1 : -1) * 2; ctx.moveTo(x - wd, yy + 3); ctx.quadraticCurveTo(x + d, yy - 1, x + wd, yy + 3); }
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(200,240,170,0.35)'; ctx.beginPath(); for (let k = 0; k < 6; k++) { const yy = y - 10 - k * hh / 7; ctx.moveTo(x - wd * 0.6, yy); ctx.lineTo(x - wd * 0.1, yy - 2); } ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle = '#1f4a2a'; ctx.lineWidth = 1.8; flame(); ctx.stroke();
+    } else if (kind === 2) {   // a patch of poppies and a few yellow daisies, on stems with leaves
+      for (let n = 0; n < 7; n++) {
+        const fx = x + n * 6 - 18 + (hash(i * 7 + n, 6) % 3), fy = y + 7 + (n % 3) * 4 + (hash(i * 7 + n, 7) % 3), red = n % 3 !== 1;
+        ctx.strokeStyle = '#4f8a42'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(fx, fy + 6); ctx.quadraticCurveTo(fx - 1, fy + 3, fx, fy); ctx.stroke();
+        ctx.fillStyle = '#5f9f45'; ctx.beginPath(); ctx.ellipse(fx + 1.5, fy + 4, 1.6, 0.7, -0.5, 0, Math.PI * 2); ctx.fill();
+        if (red) { ctx.fillStyle = '#e8483a'; circle(fx, fy, 2.8); ctx.fill(); ctx.fillStyle = '#ff7a5a'; circle(fx - 0.8, fy - 0.8, 1.6); ctx.fill(); ctx.fillStyle = '#2a1a1a'; circle(fx, fy, 0.9); ctx.fill(); }
+        else { ctx.fillStyle = '#fff6d0'; for (let p = 0; p < 5; p++) { const a = p * Math.PI * 2 / 5; circle(fx + Math.cos(a) * 1.6, fy + Math.sin(a) * 1.6, 1.1); ctx.fill(); } ctx.fillStyle = '#ffd23f'; circle(fx, fy, 1); ctx.fill(); }
+      }
+    } else {   // rows of vines: stakes with leafy rows and bunches of grapes, following the slope
+      for (let n = 0; n < 3; n++) {
+        const yy = n * 12;
+        ctx.strokeStyle = '#7a5a34'; ctx.lineWidth = 1.2; ctx.beginPath();
+        for (let k = -3; k <= 3; k++) { const vx = x + k * 10, vy = Y(vx) + 14 + yy; ctx.moveTo(vx, vy + 2); ctx.lineTo(vx, vy - 5); }
+        ctx.stroke();
+        ctx.strokeStyle = '#4f8a42'; ctx.lineWidth = 3.4; ctx.lineCap = 'round'; ctx.beginPath();
+        for (let k = -3; k <= 3; k++) { const vx = x + k * 10, vy = Y(vx) + 14 + yy - 4; if (k === -3) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy); }
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(190,235,150,0.5)'; ctx.lineWidth = 1; ctx.beginPath();
+        for (let k = -3; k <= 3; k++) { const vx = x + k * 10, vy = Y(vx) + 14 + yy - 5.5; if (k === -3) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy); }
+        ctx.stroke(); ctx.lineCap = 'butt';
+        ctx.fillStyle = '#6a3a7a'; for (let k = -2; k <= 2; k += 2) { const vx = x + k * 10 + 4, vy = Y(vx) + 14 + yy - 2; circle(vx, vy, 1.3); ctx.fill(); circle(vx + 1.6, vy + 0.4, 1.2); ctx.fill(); circle(vx + 0.8, vy + 1.8, 1.1); ctx.fill(); }
+      }
+    }
+  }
+  ctx.restore();
+}
 /* ---------- drawing: the ground under the machine (world coords) ---------- */
 function tthVinciDrawGround(st) {
   const ph = st.ph, c = ph.c, K = TTHVINCI, CO = TTHVINCI_COL, cam = st.cam.x, x0 = cam - 30, x1 = cam + W + 30, t = G.clock;
@@ -790,26 +888,16 @@ function tthVinciDrawGround(st) {
   ctx.lineJoin = 'round';
   // the Tuscan hills
   if (x0 < hillsEnd) {
-    const b = Math.min(x1, hillsEnd);
-    ctx.fillStyle = CO.grass; ctx.beginPath(); ctx.moveTo(x0, H + 10);
-    for (let x = x0; x < b + 8; x += 8) ctx.lineTo(Math.min(x, b), tthVinciHillY(c, Math.min(x, b)));
-    ctx.lineTo(b, H + 10); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath();
-    for (let x = x0; x < b + 8; x += 8) ctx.lineTo(Math.min(x, b), tthVinciHillY(c, Math.min(x, b)));
-    ctx.stroke();
-    for (let i = Math.floor(x0 / 120); i * 120 < b; i++) {
-      const h = hash(i, 5), x = i * 120 + (h % 90), y = tthVinciHillY(c, x), kind = h % 4;
-      if (x < 320 || x > hillsEnd - 40) continue;
-      if (kind < 2) {   // a cypress
-        const hh = 26 + (h % 16);
-        ctx.fillStyle = '#7a5a34'; ctx.fillRect(x - 1.5, y - 6, 3, 8);
-        ctx.fillStyle = '#3f8a4a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y - 4 - hh / 2, 6.5, hh / 2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      } else if (kind === 2) {   // poppies
-        for (let n = 0; n < 4; n++) { ctx.fillStyle = n % 2 ? '#ff6b5a' : '#ffd23f'; circle(x + n * 9 - 14, y + 9 + (n % 2) * 6, 2.6); ctx.fill(); }
-      } else {   // rows of vines
-        ctx.strokeStyle = CO.grassDk; ctx.lineWidth = 2;
-        for (let n = 0; n < 3; n++) { ctx.beginPath(); ctx.moveTo(x - 30, y + 14 + n * 12); ctx.quadraticCurveTo(x, y + 8 + n * 12, x + 30, y + 14 + n * 12); ctx.stroke(); }
-      }
+    // (sweep) painted once per 240 px chunk (TTA.pic) and copied: a patchwork of fields on the slopes (wheat, meadow,
+    // olive groves, vine rows) split by hedgerows, a grassy crest with blades and a lit rim, a darker foot, outlined in
+    // a deep green; cypresses with shaded flame crowns, poppy patches and vine rows sit on the same spots as before.
+    // The top edge is the same hill line the machine bumps into (tthVinciHillY).
+    for (let i = Math.floor(x0 / 240); i * 240 < Math.min(x1, hillsEnd); i++) {
+      const cx0 = i * 240, cw = Math.min(240, hillsEnd - cx0);
+      if (cw <= 0) continue;
+      let top = 1e9; for (let x = cx0; x <= cx0 + cw; x += 6) top = Math.min(top, tthVinciHillY(c, x));
+      top = Math.floor(top) - 62;
+      TTA.pic('vincihill|' + i + '|' + cw + '|' + top, cw, H + 10 - top, 0, 0, () => { ctx.translate(-cx0, -top); tthVinciPaintHills(c, cx0, cw, top, hillsEnd); }, cx0, top);
     }
   }
   // the rooftops of Florence

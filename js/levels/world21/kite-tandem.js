@@ -1035,6 +1035,193 @@ function kiteGoldGlow(x, y, r) {
   const a = 0.25 + 0.15 * Math.sin(G.clock * 6);
   ctx.fillStyle = 'rgba(255,197,61,' + a.toFixed(3) + ')'; circle(x, y, r); ctx.fill();
 }
+/* ---------- the gaps (cached pictures; drawing only, every gap keeps its old box) ---------- */
+// the alley between two roofs, local x 0..w, y 0 = the roof line, h deep
+function kitePaintAlley(c, w, h) {
+  c.fillStyle = '#6e63a0'; c.fillRect(0, 0, w, h);
+  // the far house's brick wall: staggered courses, each brick its own tone, dark mortar, a lit top edge on each brick
+  for (let r = 0, y = 2; y < h; r++, y += 9) {
+    for (let x = (r % 2 ? -9 : 0), k = 0; x < w; x += 18, k++) {
+      const v = (hash(r, k + 400) % 9) - 4, col = v >= 0 ? dkT('#6e63a0', v * 0.025) : dkS('#6e63a0', -v * 0.03);
+      c.fillStyle = col; c.fillRect(x + 1, y + 1, 16, 7);
+      c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(x + 1, y + 1, 16, 1);
+    }
+  }
+  c.fillStyle = 'rgba(40,32,80,0.35)'; for (let y = 2; y < h; y += 9) c.fillRect(0, y, w, 1);
+  // a small window high up with a warm light, a sill and a pot of red flowers (only if the alley is wide enough)
+  if (w >= 64) {
+    const wx = Math.round(w * 0.22), wy = 16;
+    c.fillStyle = '#4a4078'; c.fillRect(wx - 3, wy - 3, 24, 32);
+    const lg = c.createLinearGradient(0, wy, 0, wy + 26); lg.addColorStop(0, '#ffe7a0'); lg.addColorStop(1, '#f2b860'); c.fillStyle = lg; c.fillRect(wx, wy, 18, 26);
+    c.fillStyle = '#4a4078'; c.fillRect(wx + 8, wy, 2, 26); c.fillRect(wx, wy + 12, 18, 2);
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(wx + 1, wy + 1, 6, 1.5);
+    c.fillStyle = '#d8d0f0'; c.fillRect(wx - 4, wy + 26, 26, 3); c.fillStyle = 'rgba(30,24,60,0.4)'; c.fillRect(wx - 4, wy + 29, 26, 1.5);
+    c.fillStyle = '#c96a5a'; c.fillRect(wx + 1, wy + 21, 16, 5); c.fillStyle = '#5fae4e'; for (const fx of [3, 9, 15]) { c.beginPath(); c.arc(wx + fx, wy + 20, 2.6, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#ff6b6b'; for (const fx of [4, 12]) { c.beginPath(); c.arc(wx + fx, wy + 18, 1.8, 0, Math.PI * 2); c.fill(); }
+  }
+  // the drainpipe down the right side: a lit edge, brackets, a hopper head at the top
+  const px = w - 13;
+  c.fillStyle = '#4e4878'; c.fillRect(px, 6, 6, h);
+  c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(px + 1, 6, 1.5, h);
+  c.fillStyle = 'rgba(20,16,40,0.35)'; c.fillRect(px + 4.5, 6, 1.5, h);
+  c.fillStyle = '#4e4878'; c.beginPath(); c.moveTo(px - 4, 0); c.lineTo(px + 10, 0); c.lineTo(px + 6, 8); c.lineTo(px, 8); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(px - 4, 0, 14, 1.5);
+  for (let y = 30; y < h; y += 44) { c.fillStyle = '#3a3462'; c.fillRect(px - 1.5, y, 9, 3); c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(px - 1.5, y, 9, 1); }
+  // the shop front at street level, under the awning: a warm window with glazing bars and a dark door
+  const sy = 96;
+  c.fillStyle = '#4a4078'; c.fillRect(0, sy - 4, w, 66);
+  if (w >= 60) {
+    const gw = Math.round(w * 0.5), gx = 6;
+    const sg = c.createLinearGradient(0, sy, 0, sy + 44); sg.addColorStop(0, '#ffe9a8'); sg.addColorStop(1, '#f0a860'); c.fillStyle = sg; c.fillRect(gx, sy, gw, 44);
+    c.fillStyle = '#4a4078'; for (let k = 1; k < 3; k++) c.fillRect(gx + Math.round(gw * k / 3) - 1, sy, 2, 44); c.fillRect(gx, sy + 20, gw, 2);
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.moveTo(gx + 3, sy + 40); c.lineTo(gx + 12, sy + 3); c.lineTo(gx + 16, sy + 3); c.lineTo(gx + 7, sy + 40); c.closePath(); c.fill();
+    c.fillStyle = '#d8d0f0'; c.fillRect(gx - 2, sy + 44, gw + 4, 3);
+    const dx = gx + gw + 6, dw = Math.max(10, w - dx - 18);
+    c.fillStyle = '#2e2650'; c.fillRect(dx, sy + 2, dw, 56); c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(dx, sy + 2, 1.5, 56);
+    c.fillStyle = '#ffd36b'; c.beginPath(); c.arc(dx + dw - 4, sy + 32, 1.6, 0, Math.PI * 2); c.fill();
+  }
+  // the street wall below: darker, with a kerb line
+  c.fillStyle = '#3e3664'; c.fillRect(0, sy + 62, w, h);
+  c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(0, sy + 62, w, 2);
+  // depth: light falling in from the top, deepening shade lower down, the left house's shadow across the wall
+  const dg = c.createLinearGradient(0, 0, 0, 180); dg.addColorStop(0, 'rgba(255,240,220,0.12)'); dg.addColorStop(0.2, 'rgba(20,16,50,0)'); dg.addColorStop(1, 'rgba(20,16,50,0.3)');
+  c.fillStyle = dg; c.fillRect(0, 0, w, 180); c.fillStyle = 'rgba(20,16,50,0.3)'; c.fillRect(0, 180, w, h);
+  const sh = c.createLinearGradient(0, 0, w * 0.45, 0); sh.addColorStop(0, 'rgba(20,16,50,0.4)'); sh.addColorStop(1, 'rgba(20,16,50,0)');
+  c.fillStyle = sh; c.fillRect(0, 0, w * 0.45, h);
+  c.fillStyle = 'rgba(20,16,50,0.35)'; c.fillRect(0, 0, w, 6);
+  // ivy trailing down from the left roof edge
+  c.strokeStyle = '#3e7a4a'; c.lineWidth = 1; c.beginPath(); c.moveTo(3, 0); c.quadraticCurveTo(8, 18, 4, 36); c.moveTo(6, 10); c.quadraticCurveTo(14, 20, 12, 28); c.stroke();
+  for (let k = 0; k < 9; k++) { const lx = 3 + (hash(k, 431) % 11), ly = 3 + k * 4 + (hash(k, 432) % 3); c.fillStyle = k % 2 ? '#5fae4e' : '#4a9a40'; c.beginPath(); c.ellipse(lx, ly, 3, 2, (k % 3) - 1, 0, Math.PI * 2); c.fill(); }
+  // the neighbours' walls: a dark edge on each side
+  c.fillStyle = 'rgba(28,26,54,0.45)'; c.fillRect(0, 0, 1.5, h); c.fillRect(w - 1.5, 0, 1.5, h);
+}
+// the shop awning: origin its top left at the gap's left edge; it spans -4..w+4 and hangs 16 px plus its scallops
+function kitePaintAwning(c, w) {
+  const n = 6, sw = (w + 8) / n, R = (w + 8) / 12;
+  c.fillStyle = 'rgba(28,26,54,0.25)'; c.fillRect(-4, 16, w + 8, R + 6);
+  for (let k = 0; k < n; k++) {
+    const x = -4 + k * sw, col = k % 2 ? '#ffffff' : '#ff6b6b';
+    c.fillStyle = col; c.fillRect(x, 0, sw + 0.5, 16);
+    c.beginPath(); c.arc(x + sw / 2, 16, R, 0, Math.PI); c.fill();
+  }
+  // the canvas curves: lit along the top, shaded towards the front edge, a fold shade under each scallop
+  const g = c.createLinearGradient(0, 0, 0, 16 + R); g.addColorStop(0, 'rgba(255,255,255,0.25)'); g.addColorStop(0.3, 'rgba(255,255,255,0)'); g.addColorStop(0.75, 'rgba(90,20,40,0.12)'); g.addColorStop(1, 'rgba(90,20,40,0.28)');
+  c.fillStyle = g; c.beginPath(); c.rect(-4, 0, w + 8, 16); for (let k = 0; k < n; k++) { const cx = -4 + k * sw + sw / 2; c.moveTo(cx + R, 16); c.arc(cx, 16, R, 0, Math.PI); } c.fill();
+  c.strokeStyle = 'rgba(160,40,50,0.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-4, 16); c.lineTo(w + 4, 16); c.stroke();
+  c.strokeStyle = 'rgba(160,40,50,0.25)'; c.beginPath(); for (let k = 1; k < n; k++) { const x = -4 + k * sw; c.moveTo(x, 1); c.lineTo(x, 16); } c.stroke();
+  c.strokeStyle = '#b84a52'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-4, 0); c.lineTo(-4, 16);
+  for (let k = 0; k < n; k++) { const cx = -4 + k * sw + sw / 2; c.arc(cx, 16, R, Math.PI, 0, true); }
+  c.lineTo(w + 4, 0); c.stroke();
+  // the iron roller bar along the top, with a bracket into each wall
+  c.fillStyle = '#4e4878'; c.fillRect(-6, -2, w + 12, 4); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(-6, -2, w + 12, 1);
+  for (const bx of [-7, w + 3]) { c.fillStyle = '#3a3462'; c.fillRect(bx, -4, 4, 8); c.fillStyle = '#9a94c0'; c.beginPath(); c.arc(bx + 2, 0, 1.2, 0, Math.PI * 2); c.fill(); }
+}
+// the pond in a hill gap, local x 0..w, y 0 = the bank top, h deep; the water's surface is at y 50
+function kitePaintPond(c, w, h) {
+  // the far bank: grass shading darker down to the water, tufts and a few reeds
+  const bg = c.createLinearGradient(0, 0, 0, 50); bg.addColorStop(0, '#78b862'); bg.addColorStop(1, '#4e8a44');
+  c.fillStyle = bg; c.fillRect(0, 0, w, 52);
+  c.strokeStyle = 'rgba(60,110,50,0.6)'; c.lineWidth = 1; c.beginPath();
+  for (let k = 0; k < w / 6; k++) { const x = 3 + k * 6 + (hash(k, 77) % 3), y = 14 + (hash(k, 78) % 30); c.moveTo(x, y); c.lineTo(x - 1, y - 4); c.moveTo(x + 1, y); c.lineTo(x + 2, y - 3); }
+  c.stroke();
+  // earth banks sloping down on each side, a grass lip curling over each top corner
+  for (const sd of [0, 1]) {
+    c.save(); if (sd) { c.translate(w, 0); c.scale(-1, 1); }
+    c.fillStyle = '#8a6a44'; c.beginPath(); c.moveTo(0, 0); c.lineTo(12, 0); c.quadraticCurveTo(10, 30, 22, 52); c.lineTo(0, 52); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(40,24,10,0.3)'; c.beginPath(); c.moveTo(0, 20); c.quadraticCurveTo(12, 34, 20, 52); c.lineTo(0, 52); c.closePath(); c.fill();
+    c.fillStyle = '#b08a5a'; for (let k = 0; k < 5; k++) { c.beginPath(); c.ellipse(4 + (hash(k, 90 + sd) % 10), 12 + k * 8, 1.6, 1.1, 0, 0, Math.PI * 2); c.fill(); }
+    c.strokeStyle = '#5a4026'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(12, 0); c.quadraticCurveTo(10, 30, 22, 52); c.stroke();
+    c.fillStyle = '#5fae4e'; c.beginPath(); c.moveTo(0, -1); c.lineTo(14, -1); c.quadraticCurveTo(17, 3, 13, 6); c.quadraticCurveTo(8, 3, 0, 5); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,220,0.4)'; c.fillRect(0, -1, 13, 1.2);
+    // cattails at the water's edge
+    for (let k = 0; k < 3; k++) {
+      const rx = 18 + k * 5, top = 18 + (k % 2) * 8;
+      c.strokeStyle = '#4a8a3c'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(rx, 52); c.quadraticCurveTo(rx + 1, 36, rx - 1 + k, top); c.stroke();
+      c.fillStyle = '#7a4a26'; c.beginPath(); c.ellipse(rx - 1 + k, top + 5, 2, 5, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,220,180,0.4)'; c.fillRect(rx - 2 + k, top + 2, 1, 5);
+      c.strokeStyle = '#5aa04a'; c.lineWidth = 1; c.beginPath(); c.moveTo(rx, 50); c.quadraticCurveTo(rx + 8, 40, rx + 9, 30); c.stroke();
+    }
+    c.restore();
+  }
+  // the water: lighter at the top, deeper below, a lit surface line, the far bank mirrored faintly, glints
+  const wg = c.createLinearGradient(0, 50, 0, 200); wg.addColorStop(0, '#7ad0f0'); wg.addColorStop(0.35, '#4aa6d4'); wg.addColorStop(1, '#2f7aa8');
+  c.fillStyle = wg; c.fillRect(0, 50, w, h - 50);
+  c.fillStyle = 'rgba(78,138,68,0.35)'; c.fillRect(0, 52, w, 8);
+  c.fillStyle = 'rgba(255,255,255,0.7)'; c.fillRect(0, 50, w, 1.5);
+  c.fillStyle = 'rgba(255,255,255,0.35)';
+  for (let k = 0; k < w / 14; k++) { const x = (hash(k, 81) % Math.max(1, w - 14)), y = 64 + (hash(k, 82) % 110); c.fillRect(x, y, 6 + (hash(k, 83) % 10), 1.2); }
+  c.fillStyle = 'rgba(255,255,255,0.18)'; for (let k = 0; k < 6; k++) { c.beginPath(); c.arc(4 + (hash(k, 84) % Math.max(1, w - 8)), 90 + (hash(k, 85) % 80), 1.5 + (k % 2), 0, Math.PI * 2); c.fill(); }
+}
+// the lily pad you bounce on (origin: its centre), with the pink flower on its right side
+function kitePaintLily(c, w) {
+  const rx = w * 0.32;
+  c.fillStyle = 'rgba(20,60,80,0.3)'; c.beginPath(); c.ellipse(2, 4, rx + 2, 8, 0, 0, Math.PI * 2); c.fill();
+  const pad = () => { c.beginPath(); c.moveTo(0, 0); c.ellipse(0, 0, rx, 8, 0, -Math.PI / 2 + 0.28, -Math.PI / 2 + Math.PI * 2 - 0.1); c.closePath(); };
+  c.fillStyle = '#3f9a52'; c.beginPath(); c.ellipse(0, 2, rx, 8, 0, 0, Math.PI * 2); c.fill();
+  const g = c.createLinearGradient(-rx, -8, rx, 8); g.addColorStop(0, '#7ad07e'); g.addColorStop(0.5, '#5fbf6a'); g.addColorStop(1, '#3f9a52');
+  c.fillStyle = g; pad(); c.fill();
+  c.strokeStyle = 'rgba(40,110,50,0.55)'; c.lineWidth = 0.9; c.beginPath();
+  for (let k = 0; k < 9; k++) { const a = -Math.PI / 2 + 0.5 + k * 0.62; c.moveTo(0, 0); c.lineTo(Math.cos(a) * rx * 0.85, Math.sin(a) * 6.8); }
+  c.stroke();
+  c.fillStyle = 'rgba(255,255,230,0.35)'; c.beginPath(); c.ellipse(-rx * 0.3, -3.5, rx * 0.45, 2.2, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#2e7a3e'; c.lineWidth = 1.4; pad(); c.stroke();
+  // the flower: two rings of pink petals, darker at the base, a yellow heart
+  const fx = w * 0.18, fy = -4;
+  for (const [r, col, n, o] of [[5.5, '#ff7ab4', 6, 0], [3.8, '#ffb0d4', 5, 0.5]]) {
+    for (let k = 0; k < n; k++) {
+      const a = -Math.PI / 2 + (k + o) * Math.PI * 2 / n;
+      c.fillStyle = col; c.beginPath(); c.ellipse(fx + Math.cos(a) * r * 0.6, fy + Math.sin(a) * r * 0.45, r * 0.55, r * 0.3, a, 0, Math.PI * 2); c.fill();
+    }
+  }
+  c.strokeStyle = 'rgba(180,40,100,0.5)'; c.lineWidth = 0.6; c.beginPath(); c.ellipse(fx, fy, 5.5, 3.2, 0, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = '#ffd36b'; c.beginPath(); c.arc(fx, fy - 0.5, 1.8, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.arc(fx - 2, fy - 2.5, 0.9, 0, Math.PI * 2); c.fill();
+}
+// the life ring (origin: its centre; 26 x 10 like before): a shaded red ring, four white bands, a rope round the outside
+function kitePaintLifeRing(c) {
+  c.fillStyle = 'rgba(20,60,90,0.3)'; c.beginPath(); c.ellipse(2, 5, 30, 9, 0, 0, Math.PI * 2); c.fill();
+  const ring = () => { c.beginPath(); c.ellipse(0, 0, 26, 10, 0, 0, Math.PI * 2); c.ellipse(0, 0, 12, 4, 0, 0, Math.PI * 2, true); };
+  c.fillStyle = '#c84040'; ring(); c.fill();
+  c.save(); ring(); c.clip();
+  c.fillStyle = '#ff6b6b'; c.beginPath(); c.ellipse(0, -2.2, 24, 8, 0, 0, Math.PI * 2); c.fill();
+  // four white bands: true wedges of the ring, a cooler shade on their lower half
+  for (const a of [0.3, 1.9, 3.5, 5.1]) {
+    c.fillStyle = '#ffffff'; c.beginPath(); c.moveTo(0, 0); c.ellipse(0, 0, 30, 12, 0, a - 0.3, a + 0.3); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(120,140,170,0.3)'; c.beginPath(); c.moveTo(0, 2); c.ellipse(0, 2, 30, 10, 0, a - 0.3, a + 0.3); c.closePath(); c.fill();
+  }
+  c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.ellipse(-8, -6.5, 10, 1.6, -0.08, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(90,20,30,0.25)'; c.beginPath(); c.ellipse(0, 6, 26, 4, 0, 0, Math.PI * 2); c.fill();
+  c.restore();
+  // the hole shows the sea, with the ring's inner wall in shade
+  c.fillStyle = '#5cc0e0'; c.beginPath(); c.ellipse(0, 0, 12, 4, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(120,20,30,0.45)'; c.beginPath(); c.ellipse(0, -1.2, 12, 2.8, 0, Math.PI, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(-5, 1.5, 6, 0.9);
+  c.strokeStyle = '#8a2830'; c.lineWidth = 1.3; c.beginPath(); c.ellipse(0, 0, 26, 10, 0, 0, Math.PI * 2); c.stroke();
+  c.lineWidth = 1; c.beginPath(); c.ellipse(0, 0, 12, 4, 0, 0, Math.PI * 2); c.stroke();
+  // the grab rope: loops hanging between four ties
+  c.strokeStyle = '#e8d8b0'; c.lineWidth = 1.4; c.beginPath();
+  for (let k = 0; k < 4; k++) {
+    const a0 = 0.3 + k * Math.PI / 2 + 0.25, a1 = a0 + Math.PI / 2 - 0.5, am = (a0 + a1) / 2;
+    c.moveTo(Math.cos(a0) * 26, Math.sin(a0) * 10); c.quadraticCurveTo(Math.cos(am) * 31, Math.sin(am) * 13 + 1.5, Math.cos(a1) * 26, Math.sin(a1) * 10);
+  }
+  c.stroke();
+  c.fillStyle = '#c8b888'; for (const a of [0.3, 1.9, 3.5, 5.1]) { c.beginPath(); c.arc(Math.cos(a) * 25.5, Math.sin(a) * 9.8, 1.4, 0, Math.PI * 2); c.fill(); }
+}
+// the gold plank across a gap (origin: the gap's left edge on the ground line; the board spans -12..w+12, y -2..8)
+function kitePaintGoldPlank(c, w) {
+  c.fillStyle = 'rgba(120,80,10,0.3)'; rrOn(c, -10, 6, w + 22, 4, 2); c.fill();
+  const g = c.createLinearGradient(0, -2, 0, 8); g.addColorStop(0, '#ffe08a'); g.addColorStop(0.45, '#ffc53d'); g.addColorStop(1, '#d89a1a');
+  c.fillStyle = g; rrOn(c, -12, -2, w + 24, 10, 4); c.fill();
+  c.save(); rrOn(c, -12, -2, w + 24, 10, 4); c.clip();
+  c.strokeStyle = 'rgba(160,100,10,0.45)'; c.lineWidth = 0.8; c.beginPath();
+  for (const yy of [1.5, 4.5]) { c.moveTo(-12, yy); for (let x = -12; x <= w + 12; x += 6) c.lineTo(x, yy + Math.sin(x * 0.09 + yy) * 0.6); }
+  c.stroke();
+  c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(-10, -1.5, w + 20, 1.6);
+  c.fillStyle = 'rgba(140,90,10,0.35)'; for (let x = 24; x < w; x += 36) c.fillRect(x, -2, 1, 10);
+  c.restore();
+  for (const x of [-6, w + 6]) dkRivet(c, x, 3, 1.5, '#fff0b0');
+  c.strokeStyle = '#b9850f'; c.lineWidth = 2; rrOn(c, -12, -2, w + 24, 10, 4); c.stroke();
+}
 // the ground: roofs, the green hill, the pier, the sky bridge
 function kiteDrawGround(st) {
   const cam = st.cam, x0 = Math.floor((cam.x - 40) / KITE_STEP) * KITE_STEP, x1 = cam.x + W + 40, yB = cam.y + H + 20;
@@ -1050,28 +1237,44 @@ function kiteDrawGround(st) {
   for (const g of st.c.gaps) {
     if (g.x1 < x0 - 100 || g.x0 > x1 + 100) continue;
     const mx = (g.x0 + g.x1) / 2, by = g.y + kiteBounceY(st), w = g.x1 - g.x0, bo = st.oops && st.oops.gap === g && st.oops.t > 0.25 && st.oops.t < 0.55 ? 6 : 0;
+    const wi = Math.round(w);
     if (look === 'roofs') {
-      ctx.fillStyle = '#7a6ea8'; ctx.fillRect(g.x0, g.y, w, yB - g.y);
-      ctx.fillStyle = '#5e548a'; ctx.fillRect(g.x0, g.y + 140, w, yB);
-      for (let k = 0; k < 6; k++) { ctx.fillStyle = k % 2 ? '#ffffff' : '#ff6b6b'; ctx.beginPath(); ctx.moveTo(g.x0 - 4 + k * (w + 8) / 6, by + bo); ctx.lineTo(g.x0 - 4 + (k + 1) * (w + 8) / 6, by + bo); ctx.lineTo(g.x0 - 4 + (k + 1) * (w + 8) / 6, by + 16 + bo); ctx.lineTo(g.x0 - 4 + k * (w + 8) / 6, by + 16 + bo); ctx.fill(); }
-      ctx.fillStyle = '#ff6b6b'; for (let k = 0; k < 6; k++) { ctx.beginPath(); ctx.arc(g.x0 - 4 + (k + 0.5) * (w + 8) / 6, by + 16 + bo, (w + 8) / 12, 0, Math.PI); ctx.fill(); }
+      // the alley between two houses (painted once per width): a brick back wall in shade, a drainpipe, a lit window,
+      // ivy, a shop front at street level; the striped shop awning you bounce on is its own picture (it gives a little)
+      const ah = Math.max(0, Math.ceil(yB - g.y));
+      dkPic('ktAlley|' + wi, wi, 600, 0, 0, c => kitePaintAlley(c, wi, 600), g.x0, g.y);
+      if (ah > 600) { ctx.fillStyle = '#3e3664'; ctx.fillRect(g.x0, g.y + 600, w, ah - 600); }
+      dkPic('ktAwning|' + wi, wi + 16, 40, 8, 4, c => kitePaintAwning(c, wi), g.x0, by + bo);
     } else if (look === 'hill') {
-      ctx.fillStyle = '#6fa85c'; ctx.fillRect(g.x0, g.y, w, yB - g.y);
-      ctx.fillStyle = '#6cc6ea'; ctx.fillRect(g.x0, g.y + 50, w, yB);
-      ctx.fillStyle = '#5fbf6a'; ctx.beginPath(); ctx.ellipse(mx, by + 6 + bo, w * 0.32, 8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ff9ac8'; circle(mx + w * 0.18, by + 2 + bo, 5); ctx.fill();
+      // a little pond in the dip: the far bank with reeds, earth banks, deepening water with ripples and glints, and
+      // the lily pad you bounce on (with its pink flower)
+      const ah = Math.max(0, Math.ceil(yB - g.y));
+      dkPic('ktPond|' + wi, wi, 600, 0, 0, c => kitePaintPond(c, wi, 600), g.x0, g.y);
+      if (ah > 600) { ctx.fillStyle = '#2f7aa8'; ctx.fillRect(g.x0, g.y + 600, w, ah - 600); }
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let k = 0; k < 3; k++) { const u = (G.clock * 0.35 + k / 3) % 1, rx = 8 + u * w * 0.3; ctx.globalAlpha = 1 - u; ctx.ellipse(mx, g.y + 54, rx, rx * 0.16, 0, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); }
+      ctx.globalAlpha = 1;
+      dkPic('ktLily|' + wi, Math.ceil(w * 0.64) + 30, 34, Math.ceil(w * 0.32) + 15, 20, c => kitePaintLily(c, w), mx, by + 6 + bo);
     } else if (look === 'pier') {
-      ctx.fillStyle = '#ff6b6b'; ctx.beginPath(); ctx.ellipse(mx, by + bo, 26, 10, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ffffff'; for (const a of [0.3, 1.9, 3.5, 5.1]) { ctx.beginPath(); ctx.ellipse(mx + Math.cos(a) * 20, by + bo + Math.sin(a) * 7, 6, 4, a, 0, Math.PI * 2); ctx.fill(); }
-      ctx.fillStyle = '#5cc0e0'; ctx.beginPath(); ctx.ellipse(mx, by + bo, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+      // the life ring bobbing in the gap: a ripple round it, then the ring itself (shaded, banded, roped)
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.5;
+      for (let k = 0; k < 2; k++) { const u = (G.clock * 0.6 + k / 2) % 1; ctx.globalAlpha = 1 - u; ctx.beginPath(); ctx.ellipse(mx, by + bo + 3, 28 + u * 22, 10 + u * 6, 0, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+      dkPic('ktRing', 70, 34, 35, 16, c => kitePaintLifeRing(c), mx, by + bo);
     } else {
       kiteCloud(mx - 46, by + 18 + bo, 0.7, '#ffffff');
       ctx.fillStyle = 'rgba(255,214,240,0.6)'; ctx.beginPath(); ctx.ellipse(mx, by + 26 + bo, 40, 6, 0, 0, Math.PI * 2); ctx.fill();
     }
     if (g.gold) {
-      ctx.fillStyle = C.gold; ctx.strokeStyle = C.goldDark; ctx.lineWidth = 2;
-      rr(g.x0 - 12, g.y - 2, w + 24, 10, 4); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(g.x0 - 8, g.y, w + 16, 2);
+      // the gold plank: a grained gilded board with a lit top, rivets, an outline, and a glint that runs along it
+      dkPic('ktGoldPlank|' + wi, wi + 30, 18, 15, 4, c => kitePaintGoldPlank(c, wi), g.x0, g.y);
+      const u = (G.clock * 0.6) % 1.6;
+      if (u < 1) {
+        ctx.save(); rr(g.x0 - 12, g.y - 2, w + 24, 10, 4); ctx.clip();
+        const gx = g.x0 - 20 + u * (w + 40);
+        ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.moveTo(gx, g.y - 2); ctx.lineTo(gx + 8, g.y - 2); ctx.lineTo(gx + 2, g.y + 8); ctx.lineTo(gx - 6, g.y + 8); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
     }
   }
   // solid runs of ground (between gaps)

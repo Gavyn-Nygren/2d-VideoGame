@@ -249,25 +249,33 @@ function drawStonePlain(tx, ty) {
 // scratch cost about 5 ms a frame; copying costs about what the plain tiles did.
 const STONE_VARIANTS = 12, _sprites = new Map();
 let _spriteScale = 0;
-function artSprite(key, w, h, ox, oy, paint) {
-  const sc = Math.max(1, Math.min(3, canvas.width / W));
+// k (optional, above 1) paints the picture k times sharper than the screen, for art that is drawn scaled up or under
+// a zooming camera; such a picture is always copied with a scaled, smoothed drawImage. Without k nothing changes.
+function artSprite(key, w, h, ox, oy, paint, k) {
+  const sc = Math.max(1, Math.min(3, canvas.width / W)), kk = k > 1 ? k : 1, s2 = sc * kk;
   if (sc !== _spriteScale) { _sprites.clear(); _spriteScale = sc; }
+  if (kk !== 1) key += '|x' + kk;
   let sp = _sprites.get(key);
   if (!sp) {
     if (_sprites.size > 3000) _sprites.clear();
     // the picture's origin sits on a whole pixel, so a copy can land exactly on the screen's pixels
-    const px = Math.ceil(ox * sc), py = Math.ceil(oy * sc);
-    sp = document.createElement('canvas'); sp.width = Math.ceil(px + (w - ox) * sc); sp.height = Math.ceil(py + (h - oy) * sc);
-    const c = sp.getContext('2d'); c.translate(px, py); c.scale(sc, sc); paint(c);
-    sp.px = px; sp.py = py;
+    const px = Math.ceil(ox * s2), py = Math.ceil(oy * s2);
+    sp = document.createElement('canvas'); sp.width = Math.ceil(px + (w - ox) * s2); sp.height = Math.ceil(py + (h - oy) * s2);
+    const c = sp.getContext('2d'); c.translate(px, py); c.scale(s2, s2); paint(c);
+    sp.px = px; sp.py = py; sp.k = kk;
     _sprites.set(key, sp);
   }
   return sp;
 }
 // copy a picture made by artSprite with its origin at (x, y): onto whole screen pixels without smoothing when the
 // screen isn't rotated or zoomed (smoothing made each copy several times slower on a computer without a graphics
-// chip, and whole pixels leave no seams between tiles)
+// chip, and whole pixels leave no seams between tiles). A sharper picture (k) is scaled down with smoothing.
 function blitSprite(sp, x, y) {
+  if (sp.k > 1) {
+    const s2 = _spriteScale * sp.k, sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(sp, x - sp.px / s2, y - sp.py / s2, sp.width / s2, sp.height / s2);
+    ctx.imageSmoothingEnabled = sm; return;
+  }
   const m = ctx.getTransform();
   if (m.b === 0 && m.c === 0 && Math.abs(m.a - _spriteScale) < 1e-6 && Math.abs(m.d - _spriteScale) < 1e-6) {
     const X = Math.round(m.a * x + m.e) - sp.px, Y = Math.round(m.d * y + m.f) - sp.py, sm = ctx.imageSmoothingEnabled;
@@ -288,9 +296,11 @@ function drawStone(tx, ty) {
   const L = tile(tx - 1, ty) !== '#', R = tile(tx + 1, ty) !== '#';
   const B = ty + 1 < ROWS && !'#s'.includes(tile(tx, ty + 1)), top = ty > 0 && !'#sw'.includes(tile(tx, ty - 1));
   let d = 0; for (let k = 1; k <= 3 && tile(tx, ty - k) === '#'; k++) d++;
-  const v = hash(tx, ty) % STONE_VARIANTS;
-  const key = 'st' + C.stone + C.stoneLight + C.stoneEdge + C.grass + C.grassDark + (L ? 1 : 0) + (R ? 1 : 0) + (B ? 1 : 0) + (top ? 1 : 0) + d + ':' + v;
-  const sp = artSprite(key, T + 8, T + 16, 4, 8, c => paintStone(c, hash(v * 7 + 3, 911), L, R, B, top, d));
+  // (a masonry look repeats every SL_PX x SL_PY tiles, so its picture is picked by where the tile sits in that repeat)
+  const look = stoneLook(), px = ((tx % SL_PX) + SL_PX) % SL_PX, py = ((ty % SL_PY) + SL_PY) % SL_PY;
+  const v = look ? px + ',' + py : hash(tx, ty) % STONE_VARIANTS;
+  const key = 'st' + look + C.stone + C.stoneLight + C.stoneEdge + C.grass + C.grassDark + (L ? 1 : 0) + (R ? 1 : 0) + (B ? 1 : 0) + (top ? 1 : 0) + d + ':' + v;
+  const sp = artSprite(key, T + 8, T + 16, 4, 8, c => (look ? paintStoneLook(c, look, L, R, B, top, d, px, py) : paintStone(c, hash(v * 7 + 3, 911), L, R, B, top, d)));
   blitSprite(sp, x, y);
 }
 // The level's stone tiles are drawn in chunks of 16 columns into pictures, rebuilt only when a chunk's tiles (or the
@@ -302,7 +312,7 @@ function drawStoneChunks(tx0, tx1) {
   const m = ctx.getTransform(), sc = Math.max(1, Math.min(3, canvas.width / W));
   if (m.b !== 0 || m.c !== 0 || Math.abs(m.a - sc) > 1e-6 || Math.abs(m.d - sc) > 1e-6) return false;
   if (sc !== _spriteScale) { _sprites.clear(); _spriteScale = sc; }
-  const theme = C.stone + C.stoneLight + C.stoneEdge + C.grass + C.grassDark + '|' + sc;
+  const look = stoneLook(), theme = look + C.stone + C.stoneLight + C.stoneEdge + C.grass + C.grassDark + '|' + sc;
   for (let c0 = Math.floor(tx0 / STONE_CHUNK) * STONE_CHUNK; c0 <= tx1; c0 += STONE_CHUNK) {
     // what the chunk's tiles look like depends on its cells and the ones around it
     let sig = 0;
@@ -326,8 +336,10 @@ function drawStoneChunks(tx0, tx1) {
         const L = tile(tx - 1, ty) !== '#', R = tile(tx + 1, ty) !== '#';
         const B = ty + 1 < ROWS && !'#s'.includes(tile(tx, ty + 1)), top = ty > 0 && !'#sw'.includes(tile(tx, ty - 1));
         let d = 0; for (let k = 1; k <= 3 && tile(tx, ty - k) === '#'; k++) d++;
-        const v = hash(tx, ty) % STONE_VARIANTS;
-        c.save(); c.translate((tx - c0) * T, ty * T); paintStone(c, hash(v * 7 + 3, 911), L, R, B, top, d); c.restore();
+        c.save(); c.translate((tx - c0) * T, ty * T);
+        if (look) paintStoneLook(c, look, L, R, B, top, d, ((tx % SL_PX) + SL_PX) % SL_PX, ((ty % SL_PY) + SL_PY) % SL_PY);
+        else { const v = hash(tx, ty) % STONE_VARIANTS; paintStone(c, hash(v * 7 + 3, 911), L, R, B, top, d); }
+        c.restore();
       }
       ch.sig = sig; ch.theme = theme;
       // only the rows that hold stone get copied
@@ -390,41 +402,272 @@ function paintStone(c, h, L, R, B, top, d) {
   }
   if (L) { c.fillStyle = 'rgba(255,255,255,0.1)'; c.fillRect(x + 2.5, y, 1.5, T); }
   if (R) { c.fillStyle = 'rgba(0,0,0,0.1)'; c.fillRect(x + T - 5, y, 2.5, T); }
+  if (top) paintTurf(c, h, L, R);
+}
+// the turf on a stone tile's open top (tile at 0, 0 on canvas c)
+function paintTurf(c, h, L, R) {
+  const x = 0, y = 0;
+  // a shadow the turf throws on the rock, the turf with a scalloped lip, then blades and the odd flower
+  c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(x, y + 8, T, 5);
+  c.fillStyle = C.grassDark; c.fillRect(x, y, T, 9);
+  for (let i = 0; i < 3; i++) { circleOn(c, x + 5 + i * 10, y + 8, 3.6); c.fill(); }
+  c.fillStyle = C.grass; c.fillRect(x, y, T, 6);
+  for (let i = 0; i < 3; i++) { circleOn(c, x + 5 + i * 10, y + 6, 3.1); c.fill(); }
+  c.fillStyle = tint(C.grass, 0.35); c.fillRect(x, y, T, 1.6);
+  c.fillStyle = C.grass;
+  for (let i = 0; i < 3; i++) {
+    if (!((h >>> (i + 2)) & 1)) continue;
+    const bx = x + 3 + i * 10 + ((h >>> (i * 3)) % 5), bh = 3 + ((h >>> (i * 2 + 5)) % 3);
+    c.beginPath(); c.moveTo(bx - 1.6, y + 0.5); c.lineTo(bx + 0.6, y - bh); c.lineTo(bx + 1.6, y + 0.5); c.closePath(); c.fill();
+  }
+  if (h % 4 === 0) {
+    const fx = x + 8 + (h >>> 5) % 14;
+    c.fillStyle = ['#fff4c2', '#ffd1e6', '#ffffff'][(h >>> 3) % 3];
+    for (let a = 0; a < 5; a++) { circleOn(c, fx + Math.cos(a * 1.257) * 1.8, y - 2 + Math.sin(a * 1.257) * 1.8, 1.3); c.fill(); }
+    c.fillStyle = '#ffc53d'; circleOn(c, fx, y - 2, 1.1); c.fill();
+  }
+  // (third pass) a taller tuft or a pebble on the turf here and there
+  if ((h >>> 21) % 6 === 0) {
+    const tx2 = x + 6 + (h >>> 24) % 16;
+    c.fillStyle = C.grassDark; c.beginPath(); c.moveTo(tx2 - 3.4, y + 0.5); c.quadraticCurveTo(tx2 - 3.6, y - 4, tx2 - 4.6, y - 6); c.quadraticCurveTo(tx2 - 1.4, y - 4, tx2 - 0.8, y + 0.5); c.closePath(); c.fill();
+    c.fillStyle = C.grass; c.beginPath(); c.moveTo(tx2 - 1.2, y + 0.5); c.quadraticCurveTo(tx2 - 0.6, y - 5.5, tx2 + 1, y - 7.5); c.quadraticCurveTo(tx2 + 1.6, y - 4, tx2 + 1.6, y + 0.5); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(tx2 + 1.2, y + 0.5); c.quadraticCurveTo(tx2 + 3.2, y - 3, tx2 + 5, y - 4.6); c.quadraticCurveTo(tx2 + 4, y - 1.4, tx2 + 3.6, y + 0.5); c.closePath(); c.fill();
+  } else if ((h >>> 21) % 6 === 1) {
+    const px2 = x + 6 + (h >>> 24) % 17;
+    c.fillStyle = 'rgba(0,0,0,0.14)'; c.beginPath(); c.ellipse(px2 + 0.6, y + 0.6, 3.6, 1.2, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = shade(C.stoneLight, 0.12); c.beginPath(); c.ellipse(px2, y - 1, 3, 2.2, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = tint(C.stoneLight, 0.3); c.beginPath(); c.ellipse(px2 - 0.8, y - 1.7, 1.5, 0.9, 0, 0, Math.PI * 2); c.fill();
+  }
+  // the turf's ends curl down over the side
+  if (L) { c.fillStyle = C.grassDark; rrOn(c, x - 1.5, y, 4, 11, 2); c.fill(); }
+  if (R) { c.fillStyle = C.grassDark; rrOn(c, x + T - 2.5, y, 4, 11, 2); c.fill(); }
+}
+/* ---------- masonry looks for the stone (rich props pass 2, Nov 2026) ----------
+   A world or a level can lay its '#' stone as real masonry instead of the carved slabs: 'brick' (bricks in running
+   bond under a gold casino trim with marquee bulbs: World 8, and 10-1's Jackpot Reels that borrow its look), 'vault'
+   (dressed ashlar blocks with tooled margins under a polished floor slab with dentils: 7-3) or 'cobble' (packed
+   fieldstones under the turf: 10-1 rooms 3 and 4). A level or room picks one with theme: { stoneLook }, otherwise the
+   world's entry in STONE_LOOKS counts; no look keeps the carved slabs. The blocks are laid in world space and run
+   across tile edges; the pattern repeats every SL_PX x SL_PY tiles, so a tile's picture depends only on where it sits
+   in that repeat and on its open sides (drawStone caches one picture per such case, drawStoneChunks paints them). */
+const STONE_LOOKS = { 7: 'brick' };
+function stoneLook() { return C.stoneLook || STONE_LOOKS[THEME_W] || ''; }
+const SL_PX = 8, SL_PY = 4, SL_PW = SL_PX * T, _slCourses = {};
+// the courses of a look over one repeat: [{ y, h, blocks: [[x0, x1, id]] }]; each course's blocks fill
+// [off, off + SL_PW), wrapping round, so a block can sit astride the repeat's edge
+function slCourses(look) {
+  if (_slCourses[look]) return _slCourses[look];
+  // (fieldstone courses vary in height; they add up to the repeat's height)
+  const hs = look === 'brick' ? Array(SL_PY * 3).fill(10) : look === 'vault' ? Array(SL_PY * 2).fill(15) : [14, 17, 13, 16, 12, 18, 15, 15];
+  const min = look === 'brick' ? 0.01 : look === 'vault' ? 22 : 11, out = [];
+  for (let r = 0, y = 0; r < hs.length; y += hs[r], r++) {
+    const off = look === 'brick' ? (r % 2) * 10 : look === 'vault' ? [0, 22.5, 7.5, 30][r % 4] : hash(r * 13 + 7, 389) % 17;
+    const blocks = [];
+    for (let x = off, i = 0; x < off + SL_PW - 0.01; i++) {
+      const q = hash(r * 97 + i, 4211);
+      let len = look === 'brick' ? 20 : look === 'vault' ? [30, 45, 37.5, 52.5, 60][q % 5] : 13 + (q % 12);
+      if (off + SL_PW - x - len < min) len = off + SL_PW - x;   // the last block takes up the rest (never a sliver)
+      blocks.push([x, x + len, r * 64 + i]); x += len;
+    }
+    out.push({ y, h: hs[r], blocks });
+  }
+  return (_slCourses[look] = out);
+}
+// one stone tile in a masonry look at (0, 0) on canvas c; (px, py) is where it sits in the repeat
+function paintStoneLook(c, look, L, R, B, top, d, px, py) {
+  const X0 = px * T, Y0 = py * T, mortar = mixHex(C.stone, C.stoneEdge, look === 'brick' ? 0.55 : look === 'vault' ? 0.7 : 0.62);
+  c.save(); c.beginPath(); c.rect(0, 0, T + 0.6, T + 0.6); c.clip();
+  // the mortar (or packed earth) between the blocks, then the blocks that reach into this tile
+  c.fillStyle = mortar; c.fillRect(0, 0, T + 0.6, T + 0.6);
+  for (const co of slCourses(look)) {
+    const y = co.y - Y0;
+    if (y >= T + 1 || y + co.h <= -1) continue;
+    for (const [a0, b0, id] of co.blocks) for (const sh of [-SL_PW, 0]) {
+      const a = a0 + sh - X0, b = b0 + sh - X0;
+      if (b <= -1 || a >= T + 1) continue;
+      if (look === 'brick') slBrick(c, a, y, b - a, co.h, id, mortar);
+      else if (look === 'vault') slAshlar(c, a, y, b - a, co.h, id, mortar);
+      else slCobble(c, a, y, b - a, co.h, id);
+    }
+  }
+  // depth: a little darker the deeper it sits under a surface (the same ramp as the carved stone)
+  if (d < 4) {
+    const g = c.createLinearGradient(0, 0, 0, T);
+    g.addColorStop(0, 'rgba(10,10,30,' + (0.035 * d) + ')'); g.addColorStop(1, 'rgba(10,10,30,' + (0.035 * Math.min(3, d + 1)) + ')');
+    c.fillStyle = g;
+  } else c.fillStyle = 'rgba(10,10,30,0.105)';
+  c.fillRect(0, 0, T + 0.6, T + 0.6);
+  c.restore();
+  // edges: a dark outline where the wall meets air, a lit bevel inside on the left, a shade inside on the right
+  c.fillStyle = C.stoneEdge;
+  if (L) c.fillRect(0, 0, 2.5, T);
+  if (R) c.fillRect(T - 2.5, 0, 2.5, T);
+  if (B) {
+    c.fillRect(0, T - 3.2, T, 3.2);
+    if (look === 'cobble') {   // stones poking out under an overhang
+      for (let i = 0; i < 2; i++) {
+        const q = hash(px * 5 + i, 977 + py); if (q % 3 === 0) continue;
+        const nx = 6 + i * 13 + (q >>> 3) % 6, nw = 3 + (q >>> 6) % 2;
+        c.beginPath(); c.ellipse(nx, T - 1.2, nw, 2.4 + (q >>> 8) % 2, 0, 0, Math.PI); c.fill();
+      }
+    }
+    c.fillStyle = 'rgba(0,0,0,0.13)'; c.fillRect(0, T - 5.8, T, 2.6);
+  }
+  if (L) { c.fillStyle = 'rgba(255,255,255,0.1)'; c.fillRect(2.5, 0, 1.5, T); }
+  if (R) { c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(T - 5, 0, 2.5, T); }
   if (top) {
-    // a shadow the turf throws on the rock, the turf with a scalloped lip, then blades and the odd flower
-    c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(x, y + 8, T, 5);
-    c.fillStyle = C.grassDark; c.fillRect(x, y, T, 9);
-    for (let i = 0; i < 3; i++) { circleOn(c, x + 5 + i * 10, y + 8, 3.6); c.fill(); }
-    c.fillStyle = C.grass; c.fillRect(x, y, T, 6);
-    for (let i = 0; i < 3; i++) { circleOn(c, x + 5 + i * 10, y + 6, 3.1); c.fill(); }
-    c.fillStyle = tint(C.grass, 0.35); c.fillRect(x, y, T, 1.6);
-    c.fillStyle = C.grass;
-    for (let i = 0; i < 3; i++) {
-      if (!((h >>> (i + 2)) & 1)) continue;
-      const bx = x + 3 + i * 10 + ((h >>> (i * 3)) % 5), bh = 3 + ((h >>> (i * 2 + 5)) % 3);
-      c.beginPath(); c.moveTo(bx - 1.6, y + 0.5); c.lineTo(bx + 0.6, y - bh); c.lineTo(bx + 1.6, y + 0.5); c.closePath(); c.fill();
-    }
-    if (h % 4 === 0) {
-      const fx = x + 8 + (h >>> 5) % 14;
-      c.fillStyle = ['#fff4c2', '#ffd1e6', '#ffffff'][(h >>> 3) % 3];
-      for (let a = 0; a < 5; a++) { circleOn(c, fx + Math.cos(a * 1.257) * 1.8, y - 2 + Math.sin(a * 1.257) * 1.8, 1.3); c.fill(); }
-      c.fillStyle = '#ffc53d'; circleOn(c, fx, y - 2, 1.1); c.fill();
-    }
-    // (third pass) a taller tuft or a pebble on the turf here and there
-    if ((h >>> 21) % 6 === 0) {
-      const tx2 = x + 6 + (h >>> 24) % 16;
-      c.fillStyle = C.grassDark; c.beginPath(); c.moveTo(tx2 - 3.4, y + 0.5); c.quadraticCurveTo(tx2 - 3.6, y - 4, tx2 - 4.6, y - 6); c.quadraticCurveTo(tx2 - 1.4, y - 4, tx2 - 0.8, y + 0.5); c.closePath(); c.fill();
-      c.fillStyle = C.grass; c.beginPath(); c.moveTo(tx2 - 1.2, y + 0.5); c.quadraticCurveTo(tx2 - 0.6, y - 5.5, tx2 + 1, y - 7.5); c.quadraticCurveTo(tx2 + 1.6, y - 4, tx2 + 1.6, y + 0.5); c.closePath(); c.fill();
-      c.beginPath(); c.moveTo(tx2 + 1.2, y + 0.5); c.quadraticCurveTo(tx2 + 3.2, y - 3, tx2 + 5, y - 4.6); c.quadraticCurveTo(tx2 + 4, y - 1.4, tx2 + 3.6, y + 0.5); c.closePath(); c.fill();
-    } else if ((h >>> 21) % 6 === 1) {
-      const px2 = x + 6 + (h >>> 24) % 17;
-      c.fillStyle = 'rgba(0,0,0,0.14)'; c.beginPath(); c.ellipse(px2 + 0.6, y + 0.6, 3.6, 1.2, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = shade(C.stoneLight, 0.12); c.beginPath(); c.ellipse(px2, y - 1, 3, 2.2, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = tint(C.stoneLight, 0.3); c.beginPath(); c.ellipse(px2 - 0.8, y - 1.7, 1.5, 0.9, 0, 0, Math.PI * 2); c.fill();
-    }
-    // the turf's ends curl down over the side
-    if (L) { c.fillStyle = C.grassDark; rrOn(c, x - 1.5, y, 4, 11, 2); c.fill(); }
-    if (R) { c.fillStyle = C.grassDark; rrOn(c, x + T - 2.5, y, 4, 11, 2); c.fill(); }
+    if (look === 'brick') slTrim(c, L, R, px);
+    else if (look === 'vault') slSlab(c, L, R, px);
+    else paintTurf(c, hash(px * 7 + 3, 911 + py * 31), L, R);
+  }
+}
+// a brick in running bond: its own tone (now and then a darker burnt one or a pale glazed one), a shaded foot and
+// right end, a lit top and left edge, pores, and the odd chipped corner or hairline crack
+function slBrick(c, a, y, w, hh, id, mortar) {
+  const q = hash(id, 733), k = q % 11;
+  const face = k === 0 ? mixHex(C.stone, C.stoneEdge, 0.3) : k === 1 ? mixHex(C.stoneLight, '#ffffff', 0.1) : mixHex(C.stone, C.stoneLight, [0.35, 0.55, 0.7, 0.45, 0.6, 0.8, 0.5, 0.4, 0.65][k - 2]);
+  const x0 = a + 0.9, y0 = y + 0.9, bw = w - 1.8, bh = hh - 1.8;
+  c.fillStyle = face; rrOn(c, x0, y0, bw, bh, 1.4); c.fill();
+  c.fillStyle = 'rgba(16,8,36,0.24)'; c.fillRect(x0 + 0.6, y0 + bh - 2, bw - 1.2, 2); c.fillRect(x0 + bw - 1.6, y0 + 0.8, 1.6, bh - 2.6);
+  c.fillStyle = 'rgba(255,255,255,0.26)'; c.fillRect(x0 + 1.2, y0, bw - 2.6, 1.1);
+  c.fillStyle = 'rgba(255,255,255,0.11)'; c.fillRect(x0, y0 + 1.1, 1.1, bh - 3);
+  if (k === 1) { c.fillStyle = 'rgba(255,255,255,0.16)'; c.fillRect(x0 + 2.5, y0 + 2.2, bw * 0.45, 0.9); }
+  c.fillStyle = 'rgba(16,8,36,0.3)';
+  for (let i = 0; i < 3; i++) { circleOn(c, x0 + 2.5 + ((q >>> (i * 5 + 3)) % Math.max(1, (bw - 5) | 0)), y0 + 2.2 + ((q >>> (i * 4 + 17)) % 4), 0.55); c.fill(); }
+  if ((q >>> 11) % 6 === 0) { c.fillStyle = mortar; c.beginPath(); c.moveTo(x0 + bw - 3.8, y0 - 0.2); c.lineTo(x0 + bw + 0.2, y0 - 0.2); c.lineTo(x0 + bw + 0.2, y0 + 3.2); c.closePath(); c.fill(); }
+  if ((q >>> 14) % 14 === 0) {
+    const cx = x0 + 4 + (q >>> 18) % Math.max(1, (bw - 8) | 0);
+    c.strokeStyle = 'rgba(16,8,36,0.38)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(cx, y0 + 0.5); c.lineTo(cx + 1.6, y0 + 3.4); c.lineTo(cx + 0.6, y0 + bh - 0.6); c.stroke();
+  }
+}
+// a dressed ashlar block: a tooled margin round a slightly raised face with fine chisel marks, a lit top and left
+// edge, a shaded foot and right edge, and now and then a chipped corner, a hairline crack or a damp streak
+function slAshlar(c, a, y, w, hh, id, mortar) {
+  const q = hash(id, 557), x0 = a + 0.7, y0 = y + 0.7, bw = w - 1.4, bh = hh - 1.4;
+  const face = mixHex(C.stone, C.stoneLight, [0.15, 0.32, 0.48, 0.25, 0.6, 0.4][q % 6]);
+  c.fillStyle = face; c.fillRect(x0, y0, bw, bh);
+  c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(x0 + 2.4, y0 + 2.2, bw - 4.8, bh - 4.4);
+  c.strokeStyle = 'rgba(16,8,36,0.18)'; c.lineWidth = 0.7; c.strokeRect(x0 + 2.4, y0 + 2.2, bw - 4.8, bh - 4.4);
+  c.strokeStyle = 'rgba(16,8,36,0.09)'; c.beginPath();
+  for (let sx = x0 + 4.5 + (q % 4); sx < x0 + bw - 6; sx += 4.5) { c.moveTo(sx, y0 + bh - 3.4); c.lineTo(sx + 2.2, y0 + 3.4); }
+  c.stroke();
+  c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(x0, y0, bw, 1.2);
+  c.fillStyle = 'rgba(255,255,255,0.1)'; c.fillRect(x0, y0 + 1.2, 1, bh - 1.2);
+  c.fillStyle = 'rgba(12,6,30,0.3)'; c.fillRect(x0, y0 + bh - 1.6, bw, 1.6);
+  c.fillStyle = 'rgba(12,6,30,0.2)'; c.fillRect(x0 + bw - 1.2, y0, 1.2, bh - 1.6);
+  if ((q >>> 5) % 5 === 0) {   // a chipped corner (bottom left or top right)
+    c.fillStyle = mortar; c.beginPath();
+    if ((q >>> 8) & 1) { c.moveTo(x0 - 0.2, y0 + bh - 4); c.lineTo(x0 + 4.5, y0 + bh + 0.2); c.lineTo(x0 - 0.2, y0 + bh + 0.2); }
+    else { c.moveTo(x0 + bw - 5, y0 - 0.2); c.lineTo(x0 + bw + 0.2, y0 - 0.2); c.lineTo(x0 + bw + 0.2, y0 + 3.8); }
+    c.closePath(); c.fill();
+  }
+  if ((q >>> 10) % 7 === 0) {
+    const cx = x0 + 5 + (q >>> 13) % Math.max(1, (bw - 10) | 0);
+    c.lineWidth = 0.8; c.strokeStyle = 'rgba(255,255,255,0.1)'; c.beginPath(); c.moveTo(cx + 0.6, y0 + 0.6); c.lineTo(cx + 3.4, y0 + 5.6); c.lineTo(cx + 1.6, y0 + 9.6); c.lineTo(cx + 3.8, y0 + bh); c.stroke();
+    c.strokeStyle = 'rgba(16,8,36,0.42)'; c.beginPath(); c.moveTo(cx, y0); c.lineTo(cx + 2.8, y0 + 5); c.lineTo(cx + 1, y0 + 9); c.lineTo(cx + 3.2, y0 + bh); c.stroke();
+  }
+  if ((q >>> 16) % 6 === 0) {
+    const sx = x0 + 3 + (q >>> 19) % Math.max(1, (bw - 8) | 0), g = c.createLinearGradient(0, y0, 0, y0 + bh);
+    g.addColorStop(0, 'rgba(12,6,30,0.16)'); g.addColorStop(1, 'rgba(12,6,30,0)');
+    c.fillStyle = g; c.fillRect(sx, y0 + 1, 3.5, bh - 2);
+  }
+}
+// a fieldstone: a rounded stone of its own tone and size, its dark rim fuller on the lower right, a lit cap, speckle,
+// and now and then a crack or a spot of moss
+function slCobble(c, a, y, w, hh, id) {
+  const q = hash(id, 389), face = mixHex(C.stone, C.stoneLight, [0.2, 0.45, 0.65, 0.35, 0.85, 0.55, 0.3][q % 7]);
+  const x0 = a + 0.6 + ((q >>> 7) % 3) * 0.5, x1 = a + w - 0.6 - ((q >>> 9) % 3) * 0.5;
+  const y0 = y + 0.5 + ((q >>> 3) % 3) * 0.6, y1 = y + hh - 0.4 - ((q >>> 5) % 3) * 0.5;
+  // an irregular rounded outline: each corner nudged and rounded by its own amount
+  const blob = (dx0, dy0, dx1, dy1) => {
+    const X0 = x0 + dx0, Y0 = y0 + dy0, X1 = x1 - dx1, Y1 = y1 - dy1, m = Math.min((X1 - X0) / 2, (Y1 - Y0) / 2);
+    const rad = k => Math.max(1, Math.min(m, 3 + ((q >>> (k * 3 + 11)) % 4)));
+    const j = k => (((q >>> (k * 2 + 20)) % 3) - 1) * 0.7;
+    c.beginPath(); c.moveTo(X0 + rad(0), Y0 + j(0));
+    c.arcTo(X1 + j(1), Y0, X1, Y1, rad(1)); c.arcTo(X1, Y1 + j(2), X0, Y1, rad(2));
+    c.arcTo(X0 + j(3), Y1, X0, Y0, rad(3)); c.arcTo(X0, Y0 + j(0), X1, Y0, rad(0)); c.closePath();
+  };
+  c.fillStyle = mixHex(face, C.stoneEdge, 0.6); blob(0, 0, 0, 0); c.fill();
+  c.fillStyle = face; blob(0.8, 0.7, 1.5, 1.6); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.2)'; c.beginPath(); c.ellipse(x0 + (x1 - x0) * 0.42, y0 + 2.6, Math.max(1.5, (x1 - x0) * 0.27), 1.2, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(16,8,36,0.12)'; c.beginPath(); c.ellipse(x0 + (x1 - x0) * 0.6, y1 - 3.2, (x1 - x0) * 0.3, 1.4, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(16,8,36,0.3)';
+  for (let i = 0; i < 2; i++) { circleOn(c, x0 + 3 + ((q >>> (i * 5 + 9)) % Math.max(1, (x1 - x0 - 6) | 0)), y0 + 4.5 + ((q >>> (i * 4 + 19)) % Math.max(1, (y1 - y0 - 8) | 0)), 0.6); c.fill(); }
+  if ((q >>> 12) % 13 === 0) { c.strokeStyle = 'rgba(16,8,36,0.4)'; c.lineWidth = 0.7; const cx = x0 + (x1 - x0) * 0.55; c.beginPath(); c.moveTo(cx, y0 + 1); c.lineTo(cx - 1.4, y0 + 5); c.lineTo(cx + 0.6, y1 - 2); c.stroke(); }
+  if ((q >>> 15) % 9 === 0) { c.fillStyle = mixCol(C.grassDark, face, 0.45); c.beginPath(); c.ellipse(x0 + 4 + (q >>> 18) % 6, y0 + 1.5, 2.8, 1.2, 0, 0, Math.PI * 2); c.fill(); }
+}
+// the casino trim on a brick ledge's top: a gold rail with a groove and a lit top, marquee bulbs in sockets every
+// 15 px (warm white, pink and blue in turn), rivets, gold beads hanging below, and rounded end caps
+function slTrim(c, L, R, px) {
+  const g = C.grass, gd = C.grassDark, out = mixHex(gd, '#2a1400', 0.45), x0 = L ? -1.2 : 0, x1 = R ? T + 1.2 : T + 0.6, w = x1 - x0;
+  c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(0, 9.5, T, 5);
+  for (let i = 0; i < 6; i++) {
+    const bx = 2.5 + i * 5; if ((L && bx < 3) || (R && bx > T - 3)) continue;
+    c.fillStyle = out; circleOn(c, bx, 10.2, 2.4); c.fill();
+    c.fillStyle = gd; circleOn(c, bx, 9.9, 1.7); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.45)'; circleOn(c, bx - 0.6, 9.3, 0.55); c.fill();
+  }
+  const o0 = L ? x0 - 0.6 : 0, o1 = R ? x1 + 0.6 : T + 0.6;
+  c.fillStyle = out; rrOn(c, o0, -0.6, o1 - o0, 10.4, L || R ? 2.2 : 0.1); c.fill();
+  if (!L) c.fillRect(0, -0.6, 3, 10.4);
+  if (!R) c.fillRect(T - 2.4, -0.6, 3, 10.4);
+  c.fillStyle = gd; c.fillRect(x0, 0, w, 9.2);
+  c.fillStyle = g; c.fillRect(x0, 0, w, 6.4);
+  c.fillStyle = tint(g, 0.5); c.fillRect(x0, 0, w, 1.5);
+  c.fillStyle = mixHex(g, gd, 0.65); c.fillRect(x0, 3.2, w, 0.8);
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x0, 4, w, 0.6);
+  c.fillStyle = 'rgba(80,40,0,0.18)'; c.fillRect(x0, 8, w, 1.2);
+  for (const rx of [0, 15]) {
+    if ((L && rx === 0)) continue;
+    c.fillStyle = out; circleOn(c, rx, 6.9, 1.1); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.6)'; circleOn(c, rx - 0.35, 6.5, 0.4); c.fill();
+  }
+  for (let i = 0; i < 2; i++) {
+    const bx = 7.5 + i * 15, col = ['#fff4c2', '#ffd1e6', '#c8f6ff'][(px * 2 + i) % 3];
+    c.fillStyle = 'rgba(255,240,200,0.35)'; circleOn(c, bx, 6.2, 3.4); c.fill();
+    c.fillStyle = out; circleOn(c, bx, 6.4, 2.4); c.fill();
+    c.fillStyle = col; circleOn(c, bx, 6.1, 1.75); c.fill();
+    c.fillStyle = '#ffffff'; circleOn(c, bx - 0.6, 5.5, 0.65); c.fill();
+  }
+  for (const [ex, on] of [[x0, L], [x1, R]]) {
+    if (!on) continue;
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(ex + (ex < 1 ? 0.4 : -1.6), 0.8, 1.2, 7);
+  }
+}
+// the vault floor on a ledge's top: a polished slab (a lit lip, a soft reflection, a brass inlay line, joints that
+// fall mid-tile so the floor reads as slabs, not tiles) over a row of dentils and the shadow it throws on the wall
+function slSlab(c, L, R, px) {
+  const g = C.grass, gd = C.grassDark, out = C.stoneEdge, x0 = L ? -1.5 : 0, x1 = R ? T + 1.5 : T + 0.6, w = x1 - x0;
+  c.fillStyle = 'rgba(0,0,0,0.24)'; c.fillRect(0, 12, T, 4.5);
+  c.fillStyle = out; c.fillRect(L ? 1 : 0, 8, (R ? T - 1 : T + 0.6) - (L ? 1 : 0), 4.8);
+  for (let i = 0; i < 5; i++) {
+    const dx = 1.3 + i * 6; if ((L && dx < 3) || (R && dx > T - 5)) continue;
+    c.fillStyle = gd; c.fillRect(dx, 8.4, 3.6, 3.8);
+    c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(dx, 8.4, 3.6, 0.8);
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(dx + 2.6, 9.2, 1, 3);
+  }
+  const o0 = L ? x0 - 0.6 : 0, o1 = R ? x1 + 0.6 : T + 0.6;
+  c.fillStyle = out; rrOn(c, o0, -0.6, o1 - o0, 9.6, L || R ? 1.8 : 0.1); c.fill();
+  if (!L) c.fillRect(0, -0.6, 3, 9.6);
+  if (!R) c.fillRect(T - 2.4, -0.6, 3, 9.6);
+  const gr = c.createLinearGradient(0, 0, 0, 8.2);
+  gr.addColorStop(0, tint(g, 0.12)); gr.addColorStop(1, gd);
+  c.fillStyle = gr; c.fillRect(x0, 0, w, 8.2);
+  c.fillStyle = tint(g, 0.55); c.fillRect(x0, 0, w, 1.3);
+  c.fillStyle = 'rgba(255,255,255,0.13)';
+  const rx = 4 + (px * 11) % 16;
+  c.beginPath(); c.moveTo(rx, 1.4); c.lineTo(rx + 5, 1.4); c.lineTo(rx + 2.5, 4.4); c.lineTo(rx - 2.5, 4.4); c.closePath(); c.fill();
+  c.fillStyle = mixCol('#e8c36a', g, 0.3); c.fillRect(x0, 5.3, w, 0.9);
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x0, 5.3, w, 0.35);
+  c.fillStyle = out; c.fillRect(14.6, 0.5, 0.9, 7.7);
+  c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(15.5, 1.4, 0.7, 6.6);
+  if (px % 3 === 1) {   // a faint vein in the polished stone
+    c.strokeStyle = 'rgba(255,255,255,0.14)'; c.lineWidth = 0.6;
+    c.beginPath(); c.moveTo(18, 2.2); c.quadraticCurveTo(22, 3.6, 25, 2.6); c.quadraticCurveTo(27, 2, 29.5, 3.4); c.stroke();
+  }
+  for (const [ex, on] of [[x0, L], [x1, R]]) {
+    if (!on) continue;
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(ex + (ex < 1 ? 0.3 : -1.5), 1, 1.2, 6.4);
   }
 }
 function drawSpikes(x, y) {
@@ -484,8 +727,9 @@ function drawPlank(x, y, tx, ty) {
   }
   // (rich props pass) a board with an outline, grain, a knot, nails, a seam between boards, end grain on the ends and
   // a post and brace with a bolt under each end; drawn once per look into a picture and copied
-  const v = hash(tx, ty) % 6;
-  const sp = artSprite('pl' + C.plank + C.plankDark + (lEnd ? 1 : 0) + (rEnd ? 1 : 0) + v, T + 8, 24, 4, 3, c => paintPlank(c, lEnd, rEnd, hash(v * 13 + 5, 77)));
+  const v = hash(tx, ty) % 6, look = plankLook();
+  const sp = artSprite('pl' + look + C.plank + C.plankDark + (look ? C.rope + C.ropeDark : '') + (lEnd ? 1 : 0) + (rEnd ? 1 : 0) + v, T + 8, 24, 4, 3,
+    c => (look === 'casino' ? paintPlankCasino(c, lEnd, rEnd, hash(v * 13 + 5, 77)) : paintPlank(c, lEnd, rEnd, hash(v * 13 + 5, 77))));
   blitSprite(sp, x, y);
 }
 function paintPlank(c, lEnd, rEnd, h) {
@@ -545,6 +789,68 @@ function paintPlank(c, lEnd, rEnd, h) {
     c.fillStyle = 'rgba(120,60,30,0.18)'; circleOn(c, nx + 0.5, 4.8, 2); c.fill();
     c.fillStyle = mixCol('#5a5f78', pd, 0.3); circleOn(c, nx, 4, 1.35); c.fill();
     c.fillStyle = 'rgba(255,255,255,0.55)'; circleOn(c, nx - 0.45, 3.55, 0.5); c.fill();
+  }
+}
+// (rich props pass 2) a world can give its planks a look of its own, like the stone: theme: { plankLook }, else
+// PLANK_LOOKS by world. 'casino' (World 8): a lacquered shelf with a brass edge band, rivets, a diamond inlay, brass
+// end caps and curled brass brackets, on exactly the plain plank's outline
+const PLANK_LOOKS = { 7: 'casino' };
+function plankLook() { return C.plankLook || PLANK_LOOKS[THEME_W] || ''; }
+function paintPlankCasino(c, lEnd, rEnd, h) {
+  const tone = h % 3, pl = mixHex(C.plank, '#8a2e22', 0.22 + tone * 0.05), pd = C.plankDark, out = mixHex(pd, '#140c08', 0.42);
+  const br = mixHex(C.rope || '#ffd75e', '#e8a530', 0.25), brd = mixHex(C.ropeDark || '#8a5a12', '#140c08', 0.15), x0 = lEnd ? 1 : -0.4, x1 = rEnd ? T - 1 : T + 0.4;
+  // curled brass brackets under the ends (behind the board): a post with a ball foot and a scroll brace
+  const bracket = (px, dir) => {
+    c.lineCap = 'round';
+    for (const [col, lw] of [[brd, 3.4], [br, 1.8]]) {
+      c.strokeStyle = col; c.lineWidth = lw;
+      c.beginPath(); c.moveTo(px + 1.5, 9); c.lineTo(px + 1.5, 16.5); c.stroke();
+      c.beginPath(); c.moveTo(px + 1.5, 15.5); c.bezierCurveTo(px + 1.5 + dir * 2, 10.5, px + 1.5 + dir * 7, 13, px + 1.5 + dir * 8.5, 9.5); c.stroke();
+      c.beginPath(); c.arc(px + 1.5 + dir * 4.2, 13.2, 1.6, 0, Math.PI * 2); c.stroke();
+    }
+    c.fillStyle = brd; circleOn(c, px + 1.5, 18, 2.3); c.fill();
+    c.fillStyle = br; circleOn(c, px + 1.5, 17.7, 1.5); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.7)'; circleOn(c, px + 1, 17.2, 0.55); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(px + 0.9, 9.5, 0.7, 6);
+  };
+  if (lEnd) bracket(3, 1);
+  if (rEnd) bracket(T - 6, -1);
+  c.fillStyle = 'rgba(0,0,0,0.15)'; c.fillRect(lEnd ? x0 + 1 : 0, 11.4, (rEnd ? x1 - 1 : T) - (lEnd ? x0 + 1 : 0), 2.6);
+  // outline, the lacquered top board with a deep glossy shine, the brass edge band along the front
+  c.fillStyle = out; rrOn(c, x0 - 0.8, -0.8, x1 - x0 + 1.6, 12.4, lEnd || rEnd ? 2.8 : 0.1); c.fill();
+  if (!lEnd) c.fillRect(-0.4, -0.8, 2, 12.4);
+  if (!rEnd) c.fillRect(T - 1.6, -0.8, 2, 12.4);
+  c.fillStyle = pl; c.fillRect(x0, 0, x1 - x0, 7);
+  c.fillStyle = 'rgba(40,10,10,0.14)'; c.fillRect(x0, 4.6, x1 - x0, 2.4);
+  c.strokeStyle = shade(pl, 0.22); c.lineWidth = 0.6;
+  c.beginPath(); c.moveTo(x0 + 1, 3 + (h % 2) * 0.5); c.bezierCurveTo(9, 2 + (h % 3) * 0.4, 19, 4.2, x1 - 1, 3.2); c.stroke();
+  c.beginPath(); c.moveTo(x0 + 1, 5.2); c.bezierCurveTo(11, 5.8, 21, 4.6, x1 - 1, 5.4); c.stroke();
+  c.fillStyle = 'rgba(255,255,255,0.42)'; c.fillRect(x0, 0, x1 - x0, 1.1);
+  c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(x0 + 2 + (h >>> 4) % 6, 1.7, 9 + (h >>> 7) % 5, 0.8);
+  // a little inlay on the board: a gold diamond (or, now and then, a round chip)
+  const ix = 15 + ((h >>> 9) % 3 - 1) * 2;
+  c.fillStyle = brd;
+  if ((h >>> 11) % 3) { c.beginPath(); c.moveTo(ix, 1.3); c.lineTo(ix + 2.6, 3.6); c.lineTo(ix, 5.9); c.lineTo(ix - 2.6, 3.6); c.closePath(); c.fill(); c.fillStyle = br; c.beginPath(); c.moveTo(ix, 2); c.lineTo(ix + 1.8, 3.6); c.lineTo(ix, 5.2); c.lineTo(ix - 1.8, 3.6); c.closePath(); c.fill(); }
+  else { circleOn(c, ix, 3.6, 2.2); c.fill(); c.fillStyle = br; circleOn(c, ix, 3.6, 1.5); c.fill(); c.fillStyle = brd; circleOn(c, ix, 3.6, 0.6); c.fill(); }
+  c.fillStyle = 'rgba(255,255,255,0.7)'; circleOn(c, ix - 0.6, 2.9, 0.45); c.fill();
+  c.fillStyle = brd; c.fillRect(x0, 7, x1 - x0, 4.3);
+  c.fillStyle = br; c.fillRect(x0, 7.4, x1 - x0, 3);
+  c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(x0, 7.4, x1 - x0, 0.8);
+  c.fillStyle = 'rgba(80,40,0,0.25)'; c.fillRect(x0, 9.6, x1 - x0, 0.8);
+  for (const rx of [5, 15, 25]) {
+    if ((lEnd && rx < 4) || (rEnd && rx > T - 4)) continue;
+    c.fillStyle = brd; circleOn(c, rx, 8.9, 0.95); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.65)'; circleOn(c, rx - 0.3, 8.6, 0.35); c.fill();
+  }
+  // the seam to the next board, and brass caps on the shelf's ends
+  if (!rEnd) { c.fillStyle = out; c.fillRect(T - 0.8, 0, 0.9, 7); c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(T - 1.8, 0.4, 0.9, 5); }
+  for (const [ex, on, d] of [[x0, lEnd, 1], [x1, rEnd, -1]]) {
+    if (!on) continue;
+    const cx = d > 0 ? ex : ex - 3.4;
+    c.fillStyle = brd; rrOn(c, cx - 0.4, -0.4, 3.8, 11.6, 1.4); c.fill();
+    c.fillStyle = br; rrOn(c, cx + 0.2, 0.2, 2.6, 10.4, 1); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(cx + 0.6, 0.8, 0.8, 9);
+    c.fillStyle = brd; circleOn(c, cx + 1.5, 3.6, 0.7); c.fill();
   }
 }
 function drawColorBlockPlain(x, y, id, tx, ty) {

@@ -1566,25 +1566,88 @@ function bonehuntGrave(x, text, tilt) {
   });
   ctx.restore();
 }
+// the seesaw's pivot stone (origin: its foot centre on the floor line)
+function bonehuntPaintSeesawPivot(g) {
+  rkShadow(g, 2, 1, 21, 4, 0.22);
+  const body = () => { g.beginPath(); g.moveTo(-14, 0); g.lineTo(-14, -10); g.arc(0, -10, 14, Math.PI, 0); g.lineTo(14, 0); g.closePath(); };
+  const sg = g.createLinearGradient(-14, 0, 14, 0); sg.addColorStop(0, '#857ca8'); sg.addColorStop(0.45, '#6f6790'); sg.addColorStop(1, '#4e4672');
+  g.fillStyle = sg; body(); g.fill();
+  g.save(); body(); g.clip();
+  g.fillStyle = 'rgba(30,22,56,0.25)'; g.fillRect(-14, -7, 28, 7);
+  for (let k = 0; k < 22; k++) { g.fillStyle = k % 3 ? 'rgba(40,30,70,0.35)' : 'rgba(230,220,255,0.3)'; g.fillRect(-13 + rkF(71, k) * 26, -23 + rkF(72, k) * 22, 1, 1); }
+  g.strokeStyle = 'rgba(30,22,56,0.6)'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(8, -21); g.lineTo(5, -15); g.lineTo(8, -11); g.lineTo(6, -6); g.stroke();
+  g.strokeStyle = 'rgba(220,210,250,0.3)'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(9, -21); g.lineTo(6, -15); g.lineTo(9, -11); g.stroke();
+  // a carved border inset round the face, lit on its lower lip
+  g.strokeStyle = 'rgba(30,22,56,0.45)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-10, -1); g.lineTo(-10, -10); g.arc(0, -10, 10, Math.PI, 0); g.lineTo(10, -1); g.stroke();
+  g.strokeStyle = 'rgba(230,220,255,0.22)'; g.beginPath(); g.moveTo(-9, -1); g.lineTo(-9, -10); g.arc(0, -10, 9, Math.PI, Math.PI * 1.5); g.stroke();
+  // moss creeping up from the foot
+  g.fillStyle = 'rgba(80,130,70,0.8)'; g.beginPath(); for (let k = 0; k < 9; k++) { const mx = -14 + rkF(73, k) * 28, r = 1.5 + rkF(74, k) * 2.2; g.moveTo(mx + r, -1); g.arc(mx, -1 - rkF(75, k) * 3, r, 0, Math.PI * 2); } g.fill();
+  g.restore();
+  g.strokeStyle = 'rgba(240,232,255,0.45)'; g.lineWidth = 1.5; g.beginPath(); g.arc(0, -10, 12.6, Math.PI * 1.05, Math.PI * 1.6); g.stroke();
+  g.beginPath(); g.moveTo(-12.6, -10); g.lineTo(-12.6, -2); g.stroke();
+  g.strokeStyle = '#3f365e'; g.lineWidth = 2; body(); g.stroke();
+  // grass tufts at the foot
+  g.strokeStyle = '#4f8a52'; g.lineWidth = 1.2; g.lineCap = 'round'; g.beginPath();
+  for (const [x, d] of [[-16, -1], [-13, 1], [12, -1], [15, 1], [17, 1]]) { g.moveTo(x, 1); g.lineTo(x + d * 2, -4 - (x & 3)); }
+  g.stroke(); g.lineCap = 'butt';
+  // the iron pin the plank rocks on
+  g.fillStyle = '#2e2a3a'; g.beginPath(); g.arc(0, -22, 3.2, 0, Math.PI * 2); g.fill();
+  rkRivet(g, 0, -22, 2, '#8a8698');
+}
+// the seesaw plank (origin: its middle; it runs -L..L, its top at y -4, its bottom at 4)
+function bonehuntPaintSeesawPlank(g, L, pad) {
+  const col = '#8a6a4a';
+  // the board's underside: a darker edge showing under the lip
+  g.fillStyle = '#4a3324'; rkRR(g, -L + 1, 0, L * 2 - 2, 6, 2); g.fill();
+  rkBoard(g, -L, -4, L * 2, 8, col, 57, { nails: false, grain: 2, r: 1.5, lw: 1.6, lit: 0.32 });
+  g.fillStyle = 'rgba(255,236,206,0.32)'; g.fillRect(-L + 2, -4, L * 2 - 4, 1);
+  // worn pale patches where feet land, a split at the right end, a chip out of the left
+  for (const x of [-L + pad / 2, L - pad / 2]) { g.fillStyle = 'rgba(255,230,190,0.13)'; g.beginPath(); g.ellipse(x, -1.5, pad * 0.36, 2.2, 0, 0, Math.PI * 2); g.fill(); }
+  g.strokeStyle = 'rgba(50,32,20,0.7)'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(L - 1, -1); g.lineTo(L - 9, 0); g.lineTo(L - 14, -0.5); g.stroke();
+  g.fillStyle = '#5a4030'; g.beginPath(); g.moveTo(-L + 12, 4); g.lineTo(-L + 15, 1.5); g.lineTo(-L + 18, 4); g.closePath(); g.fill();
+  // iron straps at the edge of each end pad, nailed down, wrapping under the board
+  for (const x of [-L + pad, L - pad]) {
+    g.fillStyle = '#3a3448'; g.fillRect(x - 2, -4.5, 4, 11);
+    g.fillStyle = 'rgba(200,196,220,0.35)'; g.fillRect(x - 2, -4.5, 1.2, 11);
+    rkNail(g, x, -1.5, 0.9, '#9a96aa'); rkNail(g, x, 2.5, 0.9, '#9a96aa');
+  }
+  // the hinge plate on the pin: a riveted iron bracket dropping under the board
+  const plate = () => { g.beginPath(); g.moveTo(-5, -4.5); g.lineTo(5, -4.5); g.lineTo(3.5, 7); g.lineTo(-3.5, 7); g.closePath(); };
+  g.fillStyle = '#4e4862'; plate(); g.fill();
+  g.fillStyle = 'rgba(210,206,230,0.35)'; g.fillRect(-5, -4.5, 10, 1); g.fillRect(-5, -4.5, 1, 4);
+  g.fillStyle = 'rgba(20,16,30,0.3)'; g.fillRect(1.5, -3.5, 3, 10);
+  g.strokeStyle = '#2a2438'; g.lineWidth = 0.9; plate(); g.stroke();
+  rkRivet(g, -2.5, -1.5, 1, '#9a96aa'); rkRivet(g, 2.5, -1.5, 1, '#9a96aa'); rkRivet(g, 0, 4, 1, '#9a96aa');
+  // the stone ball weighting the left end: a shaded ball with a lit cap, a crack and moss, lashed on with rope
+  const bx = -L + 7, by = -9;
+  rkShadow(g, bx + 1, -4, 6, 1.6, 0.3);
+  const bg = g.createRadialGradient(bx - 2, by - 2.5, 0.5, bx, by, 6.5); bg.addColorStop(0, '#8a82ac'); bg.addColorStop(0.6, '#5c5578'); bg.addColorStop(1, '#3f3860');
+  g.fillStyle = bg; g.beginPath(); g.arc(bx, by, 6, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(30,22,56,0.6)'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(bx + 1, by - 6); g.lineTo(bx + 2.5, by - 2); g.lineTo(bx + 1.5, by + 1); g.stroke();
+  g.fillStyle = 'rgba(90,140,80,0.8)'; g.beginPath(); g.arc(bx - 3, by + 3.5, 2, 0, Math.PI * 2); g.arc(bx - 0.5, by + 4.5, 1.6, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.4)'; g.beginPath(); g.ellipse(bx - 2.2, by - 2.8, 1.8, 1.1, -0.5, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#3f365e'; g.lineWidth = 1.5; g.beginPath(); g.arc(bx, by, 6, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = '#b89a6a'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(bx - 5.5, by + 2); g.quadraticCurveTo(bx, by + 5, bx + 5.5, by + 2); g.moveTo(bx - 2, by + 5); g.lineTo(bx - 2.5, -1); g.moveTo(bx + 2, by + 5); g.lineTo(bx + 2.5, -1); g.stroke();
+  g.strokeStyle = 'rgba(80,56,30,0.6)'; g.lineWidth = 0.6; g.beginPath(); for (let k = 0; k < 4; k++) { g.moveTo(bx - 4 + k * 2.6, by + 3.4 + (k % 2)); g.lineTo(bx - 3 + k * 2.6, by + 4.6 - (k % 2)); } g.stroke();
+}
 // the seesaw: a weathered plank on a little tipped-over tombstone, a stone ball weighting the long (left) end
 function bonehuntDrawSeesaw(st, t) {
   const ss = st.seesaw;
   if (!ss) return;
   const K = BONEHUNT.seesaw, e = bonehuntSeesawEnds(ss), F = ss.feet, wob = Math.sin(t * 40) * ss.wob * 1.5;
   ctx.save();
-  // the pivot: a squat headstone
-  ctx.fillStyle = '#6f6790'; ctx.strokeStyle = '#3f365e'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(ss.x - 14, F); ctx.lineTo(ss.x - 14, F - 10); ctx.arc(ss.x, F - 10, 14, Math.PI, 0); ctx.lineTo(ss.x + 14, F); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#2a2145'; ctx.font = '700 8px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('RIP', ss.x, F - 6);
-  // the plank
+  // the pivot: a squat old headstone (painted once): shaded stone with a lit rim, specks, a crack, moss at the foot,
+  // an iron pin through its top for the plank to rock on; the carved RIP is lettered live (so the font is right)
+  rkPut('bhSeePiv', ss.x, F, 44, 36, 22, 30, g => bonehuntPaintSeesawPivot(g));
+  ctx.font = '700 8px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(220,210,240,0.35)'; ctx.fillText('RIP', ss.x + 0.5, F - 5);
+  ctx.fillStyle = '#2a2145'; ctx.fillText('RIP', ss.x, F - 6);
+  // the plank: a weathered grained board (painted once per length, rocked live) with a shaded underside, iron straps
+  // marking the end pads, an iron hinge plate in the middle, and the stone ball lashed to the long (left) end
   const ang = Math.atan2(e.ry - e.ly, e.r1 - e.l0), cy = (e.ly + e.ry) / 2 - 4 + wob;
   ctx.translate(ss.x, cy); ctx.rotate(ang);
-  const L = Math.hypot(e.r1 - e.l0, e.ry - e.ly) / 2 + 2;
-  ctx.fillStyle = '#8a6a4a'; ctx.strokeStyle = '#3f2e22'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.rect(-L, -4, L * 2, 8); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = 'rgba(63,46,34,0.6)'; ctx.lineWidth = 1;
-  for (const x of [-L + K.pad, L - K.pad]) { ctx.beginPath(); ctx.moveTo(x, -4); ctx.lineTo(x, 4); ctx.stroke(); }
-  ctx.fillStyle = '#5c5578'; ctx.beginPath(); ctx.arc(-L + 7, -9, 6, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#3f365e'; ctx.stroke();
+  const L = Math.round(Math.hypot(e.r1 - e.l0, e.ry - e.ly) / 2 + 2);
+  rkPut('bhSeePlank|' + L, 0, 0, L * 2 + 20, 34, L + 10, 20, g => bonehuntPaintSeesawPlank(g, L, K.pad));
   ctx.restore();
   // the high end's arrow while its bone is still up on the roof
   if (ss.down === -1 && st.mounds.some(m => m.how === 'seesaw' && !m.done)) {

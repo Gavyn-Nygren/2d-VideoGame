@@ -1022,8 +1022,33 @@ function raptorBankPaint(sd, gy, cy, K) {
   const shape = () => { ctx.beginPath(); ctx.moveTo(-sd, 0); ctx.quadraticCurveTo(sd * 40, 30, sd * 70, d); ctx.lineTo(sd * 70, foot); ctx.lineTo(-sd, foot); ctx.closePath(); };
   shape(); ctx.fillStyle = K.dirt; ctx.fill();
   ctx.save(); shape(); ctx.clip();
-  ctx.fillStyle = K.dirtDk; ctx.fillRect(Math.min(-1, sd * 70), d, 72, foot);
-  ctx.fillStyle = 'rgba(30,20,10,0.25)'; ctx.fillRect(Math.min(-1, sd * 70), d, 72, 8);
+  // (rich props) the wet foot under the waterline: darker, glossy mud that deepens downward, a scum line and a
+  // fringe of green algae where the water laps, half-sunk wet pebbles with bright glints, mud lumps with lit tops,
+  // water streaks running down and a trailing root
+  { const fx = Math.min(-1, sd * 70), g = ctx.createLinearGradient(0, d, 0, d + 120);
+    g.addColorStop(0, K.dirtDk); g.addColorStop(0.5, shade(K.dirtDk, 0.22)); g.addColorStop(1, shade(K.dirtDk, 0.4));
+    ctx.fillStyle = g; ctx.fillRect(fx, d, 72, foot);
+    // mud lumps
+    for (let k = 0; k < 7; k++) { const mx = fx + 6 + CK.r(k, 141 + sd) * 60, my = d + 18 + CK.r(142, k) * 90, mr = 5 + CK.r(k, 143) * 7;
+      ctx.fillStyle = 'rgba(30,18,8,0.3)'; ctx.beginPath(); ctx.ellipse(mx + 1, my + 2, mr, mr * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = shade(K.dirtDk, 0.1); ctx.beginPath(); ctx.ellipse(mx, my, mr, mr * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(220,240,245,0.28)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(mx, my, mr * 0.8, mr * 0.4, 0, Math.PI * 1.15, Math.PI * 1.75); ctx.stroke(); }
+    // water streaks running down the wet face, each ending in a bead
+    for (let k = 0; k < 6; k++) { const sx = fx + 5 + CK.r(k, 151 + sd) * 62, l = 16 + CK.r(152, k) * 40;
+      ctx.strokeStyle = 'rgba(207,232,238,0.22)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(sx, d + 8); ctx.quadraticCurveTo(sx + 1.5, d + 8 + l / 2, sx, d + 8 + l); ctx.stroke();
+      ctx.fillStyle = 'rgba(230,245,250,0.5)'; ctx.beginPath(); ctx.arc(sx, d + 9 + l, 1.5, 0, Math.PI * 2); ctx.fill(); }
+    // half-sunk wet pebbles
+    for (let k = 0; k < 5; k++) { const px = fx + 8 + CK.r(k, 161 + sd) * 56, py = d + 30 + CK.r(162, k) * 70;
+      CK.pebble(px, py, 2.4 + CK.r(k, 163) * 2.6, ['#7d6e62', '#8a7a6c', '#6a5c50'][k % 3], k + 70 + sd * 9);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(px - 1.5, py - 2, 1.2, 1.2); }
+    // a trailing root into the water
+    ctx.strokeStyle = 'rgba(50,30,14,0.7)'; ctx.lineCap = 'round'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(fx + 36, d - 2); ctx.quadraticCurveTo(fx + 30 + sd * 6, d + 26, fx + 38, d + 48); ctx.stroke();
+    ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(fx + 33, d + 22); ctx.lineTo(fx + 26, d + 34); ctx.stroke(); ctx.lineCap = 'butt';
+    // the waterline: a dark wet band, a pale scum line and a scalloped fringe of algae
+    ctx.fillStyle = 'rgba(30,20,10,0.3)'; ctx.fillRect(fx, d, 72, 8);
+    ctx.fillStyle = 'rgba(230,236,210,0.45)'; ctx.fillRect(fx, d + 1, 72, 1.6);
+    ctx.fillStyle = '#4f7a34'; ctx.beginPath(); ctx.moveTo(fx, d + 3); for (let x = 0; x <= 72; x += 6) ctx.quadraticCurveTo(fx + x + 3, d + 9 + CK.r(x, 171 + sd) * 4, fx + x + 6, d + 3); ctx.lineTo(fx + 72, d + 2); ctx.lineTo(fx, d + 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(160,220,110,0.6)'; for (let x = 3; x < 72; x += 6) ctx.fillRect(fx + x, d + 3.5, 1.4, 1.4); }
   // wavy layers with lit seams
   for (const [yy, col] of [[30, K.dirtDk], [62, K.dirtDk2]]) {
     ctx.fillStyle = col; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.moveTo(-sd * 4, yy); ctx.quadraticCurveTo(sd * 30, yy - 6, sd * 74, yy + 4); ctx.lineTo(sd * 74, yy + 12); ctx.quadraticCurveTo(sd * 30, yy + 4, -sd * 4, yy + 10); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;

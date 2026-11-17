@@ -78,7 +78,7 @@ const rkF = (s, k) => (hash(s | 0, k | 0) % 1000) / 1000;          // 0..1, stab
 function rkRR(g, x, y, w, h, r) { r = Math.max(0, Math.min(r, w / 2, h / 2)); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 function rkShadow(g, x, y, rx, ry, a) { g.fillStyle = 'rgba(20,18,40,' + (a === undefined ? 0.18 : a) + ')'; g.beginPath(); g.ellipse(x, y, Math.max(1, rx), Math.max(1, ry || rx * 0.25), 0, 0, Math.PI * 2); g.fill(); }
 // a still picture painted once and copied each frame (the shared sprite cache; keys start 'rk|')
-function rkPic(key, w, h, ox, oy, paint) { return artSprite('rk|' + key, w, h, ox, oy, paint); }
+function rkPic(key, w, h, ox, oy, paint, k) { return artSprite('rk|' + key, w, h, ox, oy, paint, k); }
 function rkPut(key, x, y, w, h, ox, oy, paint) { blitSprite(rkPic(key, w, h, ox, oy, paint), x, y); }
 // lit top/left and dark lower/right inside a rounded box (call after filling it)
 function rkBevel(g, x, y, w, h, r, col, o) {
@@ -660,6 +660,7 @@ function gcInit(st) {
   st.fly = []; st.home = null; st.ouchN = 0; st.idleN = 0;
   st.stats = { bonks: [0, 0], oops: [0, 0], tosses: 0, claws: 0, help: [], phaseT: [], pieceAt: {} };
 }
+const GC_STONE_LOOK = { lava: 'cobble', finale: 'cobble' };
 function gcStartPhase(st, L) {
   const def = L.def;
   st.phase = def.phase; st.phaseNo = def.roomIndex || 0; st.ph = {}; st.phT = 0;
@@ -669,7 +670,9 @@ function gcStartPhase(st, L) {
   for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
     if (L.grid[ty][tx] === 'Z') { st.boss.x = tx * T + T / 2; st.boss.y = (ty + 1) * T; L.grid[ty][tx] = '.'; }
   }
-  if (typeof def.look === 'number') applyTheme(def.look, def.theme);
+  // (rich props pass 2) the hot-floor tower and the backyard lay their stone as packed fieldstones; the reels room
+  // borrows World 8's look, which brings its brick and gold trim (render.js STONE_LOOKS)
+  if (typeof def.look === 'number') applyTheme(def.look, Object.assign({ stoneLook: GC_STONE_LOOK[def.phase] }, def.theme));
   if (G.mode === 'play') setLegend(def.legend || null);   // (a room without one gets the default legend back)
   if (!GC_PHASES[def.phase]) console.warn('The Grand Collector: no GC_PHASES.' + def.phase);
   gcCall(gcPh(st), 'setup', st, L);
@@ -1037,18 +1040,38 @@ function gcJunkPaint(g, kind) {
       g.strokeStyle = shade(c, 0.4); g.lineWidth = 0.9; g.beginPath(); g.moveTo(-7, -8.5); g.lineTo(7, -8.5); g.moveTo(-7, 8.5); g.lineTo(7, 8.5); g.stroke(); break;
     }
     case 'powder': {
-      // a powder keg: staves, two iron hoops with rivets, a lit stave, a fuse with a spark
-      const c = '#9a6232';
-      g.fillStyle = c; rkRR(g, -8, -9, 16, 18, 5); g.fill();
-      g.save(); rkRR(g, -8, -9, 16, 18, 5); g.clip();
-      for (let k = 0; k < 4; k++) { g.fillStyle = k % 2 ? 'rgba(255,255,255,0.06)' : 'rgba(40,20,0,0.08)'; g.fillRect(-8 + k * 4, -9, 4, 18); }
-      g.strokeStyle = shade(c, 0.45); g.lineWidth = 0.8; g.beginPath(); for (const sx of [-4, 0, 4]) { g.moveTo(sx + 0.5, -9); g.lineTo(sx + 0.5, 9); } g.stroke();
-      g.fillStyle = shade(c, 0.25); g.fillRect(4, -9, 4, 18);
-      g.fillStyle = 'rgba(255,255,255,0.26)'; g.fillRect(-6, -8, 2, 16);
+      // (rich props pass 2) a bulging powder keg: curved staves with grain and a round shading (lit left, dark right),
+      // two iron hoops that curve round the belly with rivets, the lid's rim and staves, a bung, a fuse with a spark
+      const c = '#9a6232', keg = () => { g.beginPath(); g.moveTo(-6.2, -9); g.quadraticCurveTo(-10, 0, -6.2, 9); g.lineTo(6.2, 9); g.quadraticCurveTo(10, 0, 6.2, -9); g.closePath(); };
+      g.fillStyle = 'rgba(28,20,40,0.22)'; g.beginPath(); g.ellipse(0.8, 9.4, 8.5, 1.8, 0, 0, Math.PI * 2); g.fill();
+      keg(); g.fillStyle = c; g.fill();
+      g.save(); keg(); g.clip();
+      const sg = g.createLinearGradient(-9, 0, 9, 0);
+      sg.addColorStop(0, 'rgba(255,230,190,0.18)'); sg.addColorStop(0.3, 'rgba(255,230,190,0.06)'); sg.addColorStop(0.62, 'rgba(40,20,0,0.04)'); sg.addColorStop(1, 'rgba(40,20,0,0.42)');
+      g.fillStyle = sg; g.fillRect(-10, -10, 20, 20);
+      g.strokeStyle = shade(c, 0.42); g.lineWidth = 0.85; g.beginPath(); for (const sx of [-4.4, -1.4, 1.6, 4.6]) { g.moveTo(sx * 0.9, -9); g.quadraticCurveTo(sx * 1.4, 0, sx * 0.9, 9); } g.stroke();
+      g.strokeStyle = 'rgba(255,225,180,0.26)'; g.lineWidth = 0.6; g.beginPath(); for (const sx of [-3.4, -0.4]) { g.moveTo(sx * 0.9, -8); g.quadraticCurveTo(sx * 1.4, -1, sx * 0.9, 7); } g.stroke();
+      g.strokeStyle = 'rgba(60,30,10,0.35)'; g.lineWidth = 0.5; g.beginPath(); g.moveTo(-2.4, -1); g.quadraticCurveTo(-2.1, 1, -2.6, 3); g.moveTo(3.2, -3); g.quadraticCurveTo(3.6, -1.6, 3.3, 0); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.3)'; g.beginPath(); g.moveTo(-6.4, -8); g.quadraticCurveTo(-8.6, 0, -6.4, 8); g.lineTo(-5.2, 8); g.quadraticCurveTo(-7.2, 0, -5.2, -8); g.closePath(); g.fill();
       g.restore();
-      for (const hy of [-6, 3]) { rkMetal(g, -9, hy, 18, 3.4, 1.2, '#4a4f6e', hy, { rivets: false, lw: 0.9 }); rkRivet(g, -5, hy + 1.7, 0.8, '#8a90a8'); rkRivet(g, 5, hy + 1.7, 0.8, '#8a90a8'); }
-      rkRR(g, -8, -9, 16, 18, 5); ol(c, 1.5);
-      g.strokeStyle = '#d9c9a0'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(0, -9); g.quadraticCurveTo(2, -12, 1, -13); g.stroke();
+      // hoops: iron bands that dip at the middle (they wrap round the curve), a lit top edge, rivets
+      for (const hy of [-6.2, 3.6]) {
+        const band = (y0, th) => { g.beginPath(); g.moveTo(-9.4 + Math.abs(hy) * 0.18, y0); g.quadraticCurveTo(0, y0 + 1.6, 9.4 - Math.abs(hy) * 0.18, y0); g.lineTo(9.4 - Math.abs(hy) * 0.18, y0 + th); g.quadraticCurveTo(0, y0 + th + 1.6, -9.4 + Math.abs(hy) * 0.18, y0 + th); g.closePath(); };
+        band(hy - 0.3, 3.2); g.fillStyle = '#2c3048'; g.fill();
+        band(hy, 2.6); g.fillStyle = '#4a4f6e'; g.fill();
+        g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(-8.6 + Math.abs(hy) * 0.18, hy + 0.4); g.quadraticCurveTo(-3, hy + 1.4, 1, hy + 1.2); g.stroke();
+        rkRivet(g, -4.6, hy + 1.9, 0.75, '#8a90a8'); rkRivet(g, 4.6, hy + 1.9, 0.75, '#8a90a8');
+      }
+      keg(); ol(c, 1.5);
+      // the lid: a rim, its staves and a bung
+      g.fillStyle = shade(c, 0.28); g.beginPath(); g.ellipse(0, -9, 6.2, 1.7, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = shade(c, 0.6); g.lineWidth = 0.9; g.stroke();
+      g.strokeStyle = shade(c, 0.5); g.lineWidth = 0.5; g.beginPath(); g.moveTo(-2, -10.4); g.lineTo(-2, -7.6); g.moveTo(2, -10.4); g.lineTo(2, -7.6); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.3)'; g.beginPath(); g.ellipse(-1.8, -9.6, 3, 0.5, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#5a3418'; g.beginPath(); g.arc(3.4, 1, 1.1, 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.arc(3.1, 0.7, 0.4, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#d9c9a0'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(0, -9.5); g.quadraticCurveTo(2, -12, 1, -13); g.stroke();
+      g.strokeStyle = 'rgba(90,70,40,0.6)'; g.lineWidth = 0.5; g.beginPath(); g.moveTo(0.6, -10.4); g.lineTo(1.4, -10.9); g.moveTo(1.3, -11.6); g.lineTo(2, -12); g.stroke();
       g.fillStyle = 'rgba(255,214,90,0.45)'; g.beginPath(); g.arc(1, -13.5, 3.2, 0, Math.PI * 2); g.fill();
       g.fillStyle = C.gold; g.beginPath(); g.arc(1, -13.5, 1.8, 0, Math.PI * 2); g.fill(); g.fillStyle = '#fff6c2'; g.beginPath(); g.arc(0.6, -14, 0.8, 0, Math.PI * 2); g.fill(); break;
     }
@@ -1083,7 +1106,8 @@ function gcJunkPaint(g, kind) {
   }
 }
 function gcDrawJunk(kind, x, y, s = 1, rot = 0) {
-  const sp = rkPic('gcj|' + kind, 48, 40, 24, 22, g => gcJunkPaint(g, kind));
+  // (drawn bigger than life, e.g. in his belly-jar, it comes from a picture painted twice as sharp: artSprite's k)
+  const sp = rkPic('gcj|' + kind, 48, 40, 24, 22, g => gcJunkPaint(g, kind), s > 1.05 ? 2 : 1);
   ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot); if (s !== 1) ctx.scale(s, s);
   blitSprite(sp, 0, 0);
   ctx.restore();

@@ -695,7 +695,7 @@
         }
         if (k === 0) {
           // timber cribbing and an old lantern now and then
-          K.timber(sd < 0 ? edge - 130 : edge, y, 130, 12, sd);
+          K.timber(sd < 0 ? edge - 130 : edge, y, 130, 12, sd, Math.floor(h * 4));
           if (h > 0.7) { const lx = edge - sd * 26; const lg = ctx.createRadialGradient(lx, y + 26, 2, lx, y + 26, 60); lg.addColorStop(0, 'rgba(255,190,100,0.45)'); lg.addColorStop(1, 'rgba(255,190,100,0)'); ctx.fillStyle = lg; ctx.fillRect(lx - 60, y - 34, 120, 120); lantern(lx, y + 16); }
         } else if (k === 1) {
           if (h > 0.5) { ctx.fillStyle = 'rgba(170,220,255,0.3)'; ctx.fillRect(edge - sd * (8 + h * 30), y, 2, 40 + h * 40); }
@@ -762,15 +762,74 @@
     text('NARROWS: KEEP LEVEL', CX, sy - 30, 13, '#ffd25a', 'center', 'body');
   }
   function drawSpike(st, it, sy, t, wallIn) {
-    const sd = it.side, edge = CX + sd * wallIn, tip = edge - sd * it.r;
+    // (sweep) a big faceted crystal growing out of the shaft wall (the cave kit's crystal look, painted once per size
+    // and colour, flipped for the right wall): a soft glow, a rock socket with small crystals in the wall, three facets
+    // lit from the top, a bright ridge, an inner light, inclusions, a dark outline; the same triangle as before (base
+    // 44 tall on the wall, the tip it.r out). Live on top: a glint running to the tip, and cracks as it is scraped.
+    const sd = it.side, edge = CX + sd * wallIn, tip = edge - sd * it.r, r = Math.round(it.r);
     ctx.save(); ctx.globalAlpha = it.hits >= 3 ? 0.3 : 1;
     const col = K.GLOWS[(Math.round(it.d) >> 3) % K.GLOWS.length];
-    ctx.fillStyle = K.rgba(col, 0.25); ctx.beginPath(); ctx.ellipse((edge + tip) / 2, sy, it.r * 0.7, 30, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = K.shade(col, -0.3); ctx.beginPath(); ctx.moveTo(edge, sy - 22); ctx.lineTo(tip, sy); ctx.lineTo(edge, sy + 22); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = K.shade(col, 0.2); ctx.beginPath(); ctx.moveTo(edge, sy - 22); ctx.lineTo(tip, sy); ctx.lineTo(edge, sy - 4); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = K.shade(col, -0.6); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(edge, sy - 22); ctx.lineTo(tip, sy); ctx.lineTo(edge, sy + 22); ctx.stroke();
-    for (let h = 0; h < it.hits; h++) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(K.lerp(edge, tip, 0.3 + h * 0.15), sy - 10); ctx.lineTo(K.lerp(edge, tip, 0.35 + h * 0.15), sy + 8); ctx.stroke(); }
+    ctx.translate(edge, sy); ctx.scale(-sd, 1);
+    RICH.pic('w39spike|' + r + '|' + col, r + 60, 100, c => { c.translate(30, 50); paintSpike(c, r, col); }, -30, -50);
+    // a glint sliding out along the top ridge to the tip
+    const u = ((t * 0.45 + it.d * 0.013) % 2.2);
+    if (u < 1) { const gx = r * (0.08 + u * 0.86), gy = -6 * (1 - gx / r), a = Math.sin(u * Math.PI); ctx.fillStyle = K.rgba('#ffffff', 0.9 * a); K.star(gx, gy, 5 * a + 0.5, 1.4, t); ctx.fill(); }
+    // cracks from the scrapes: a jagged dark line with a lit lip, one more per hit
+    for (let h = 0; h < it.hits; h++) {
+      const cx0 = r * (0.3 + h * 0.15), yy = (k => [-14, -4, 6, 14][k]);
+      ctx.strokeStyle = K.rgba(K.shade(col, -0.7), 0.9); ctx.lineWidth = 1.6; ctx.beginPath();
+      for (let k = 0; k < 4; k++) { const px = cx0 + (k % 2 ? 4 : -2) + k * 1.5, py = yy(k) * (1 - px / r); if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 0.9; ctx.beginPath();
+      for (let k = 0; k < 4; k++) { const px = cx0 + (k % 2 ? 4 : -2) + k * 1.5 + 1.2, py = yy(k) * (1 - px / r); if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+      ctx.stroke();
+    }
     ctx.restore();
+  }
+  // the crystal spike, pointing +x from the wall face at x 0; base -22..22 on the wall
+  function paintSpike(c, r, col) {
+    const dk = K.shade(col, -0.5), mid = K.shade(col, -0.25), lit = K.shade(col, 0.4), ink = K.shade(col, -0.7);
+    // the glow round it
+    c.save(); c.translate(r * 0.45, 0); c.scale(1, 30 / (r * 0.7));
+    const gg = c.createRadialGradient(0, 0, 4, 0, 0, r * 0.7); gg.addColorStop(0, K.rgba(col, 0.32)); gg.addColorStop(1, K.rgba(col, 0));
+    c.fillStyle = gg; c.beginPath(); c.arc(0, 0, r * 0.7, 0, Math.PI * 2); c.fill(); c.restore();
+    // the rock socket in the wall it grows from, with a couple of small crystals beside it
+    // (chunks of broken rock round its root, each lit on its top-left face, with specks and a dark outline)
+    for (const [cx, cy, rx, ry, rot] of [[-6, -20, 11, 9, -0.4], [-9, 2, 10, 13, 0.1], [-5, 21, 11, 8, 0.5], [2, -27, 6, 4, 0.2], [2, 27, 6, 4, -0.2]]) {
+      const poly = () => { c.beginPath(); for (let k = 0; k < 7; k++) { const a = rot + k / 7 * Math.PI * 2, q = 0.78 + K.hash(cx * 3 + cy + k) * 0.3; const px = cx + Math.cos(a) * rx * q, py = cy + Math.sin(a) * ry * q; if (k) c.lineTo(px, py); else c.moveTo(px, py); } c.closePath(); };
+      const rg = c.createLinearGradient(cx - rx, cy - ry, cx + rx, cy + ry); rg.addColorStop(0, '#5e6c76'); rg.addColorStop(0.5, '#424e58'); rg.addColorStop(1, '#262e36');
+      c.fillStyle = rg; poly(); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.18)'; for (let k = 0; k < 4; k++) c.fillRect(cx - rx * 0.5 + K.hash(cx + k * 7) * rx, cy - ry * 0.5 + K.hash(cy + k * 5) * ry, 1, 1);
+      c.strokeStyle = '#1a2026'; c.lineWidth = 1.2; poly(); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 1; c.beginPath(); c.moveTo(cx - rx * 0.7, cy); c.lineTo(cx - rx * 0.3, cy - ry * 0.7); c.lineTo(cx + rx * 0.3, cy - ry * 0.75); c.stroke();
+    }
+    for (const [x0, y0, a, L] of [[-6, -24, -1.2, 12], [-8, 24, -2.0, 10], [-2, 27, -1.9, 7]]) {
+      c.save(); c.translate(x0, y0); c.rotate(a);
+      c.fillStyle = mid; c.beginPath(); c.moveTo(-2.5, 0); c.lineTo(-2.5, -L * 0.75); c.lineTo(0, -L); c.lineTo(2.5, -L * 0.75); c.lineTo(2.5, 0); c.closePath(); c.fill();
+      c.fillStyle = lit; c.fillRect(-2.5, -L * 0.75, 1.6, L * 0.75);
+      c.strokeStyle = ink; c.lineWidth = 0.9; c.beginPath(); c.moveTo(-2.5, 0); c.lineTo(-2.5, -L * 0.75); c.lineTo(0, -L); c.lineTo(2.5, -L * 0.75); c.lineTo(2.5, 0); c.stroke();
+      c.restore();
+    }
+    // the three facets: lit top face, the body, the shaded underside
+    c.fillStyle = mid; c.beginPath(); c.moveTo(0, -22); c.lineTo(r, 0); c.lineTo(0, 22); c.closePath(); c.fill();
+    const tg = c.createLinearGradient(0, -22, r * 0.6, 0); tg.addColorStop(0, lit); tg.addColorStop(1, col);
+    c.fillStyle = tg; c.beginPath(); c.moveTo(0, -22); c.lineTo(r, 0); c.lineTo(0, -7); c.closePath(); c.fill();
+    const bg = c.createLinearGradient(0, 22, r * 0.6, 0); bg.addColorStop(0, K.shade(col, -0.6)); bg.addColorStop(1, dk);
+    c.fillStyle = bg; c.beginPath(); c.moveTo(0, 9); c.lineTo(r, 0); c.lineTo(0, 22); c.closePath(); c.fill();
+    c.save(); c.beginPath(); c.moveTo(0, -22); c.lineTo(r, 0); c.lineTo(0, 22); c.closePath(); c.clip();
+    // growth lines across the facets, an inner light down the core, a few cloudy inclusions
+    c.strokeStyle = K.rgba(ink, 0.3); c.lineWidth = 0.8; c.beginPath();
+    for (let k = 1; k < 5; k++) { const x = r * k / 5.5, h = 22 * (1 - x / r); c.moveTo(x, -h); c.lineTo(x + 3, -7 * (1 - x / r)); c.lineTo(x + 2, 9 * (1 - x / r)); c.lineTo(x - 1, h); }
+    c.stroke();
+    const ig = c.createLinearGradient(0, 0, r, 0); ig.addColorStop(0, K.rgba(K.shade(col, 0.7), 0.7)); ig.addColorStop(1, K.rgba(K.shade(col, 0.7), 0));
+    c.fillStyle = ig; c.beginPath(); c.moveTo(0, -4); c.lineTo(r * 0.85, 0); c.lineTo(0, 3); c.closePath(); c.fill();
+    for (let k = 0; k < 7; k++) { const x = 6 + K.hash(r + k) * r * 0.6, y = (K.hash(r + k + 20) - 0.5) * 30 * (1 - x / r); c.fillStyle = K.rgba('#ffffff', 0.18 + K.hash(k + 9) * 0.25); c.beginPath(); c.ellipse(x, y, 1.5 + K.hash(k + 3) * 2, 0.8 + K.hash(k + 4), 0.2, 0, Math.PI * 2); c.fill(); }
+    // the lit ridge along the top facet's edge and a lit tip
+    c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(2, -7); c.lineTo(r - 2, -0.5); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(2, -20.5); c.lineTo(r - 4, -1); c.stroke();
+    c.restore();
+    c.fillStyle = 'rgba(255,255,255,0.8)'; c.beginPath(); c.arc(r - 5, -0.8, 1.4, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = ink; c.lineWidth = 2; c.lineJoin = 'round'; c.beginPath(); c.moveTo(0, -22); c.lineTo(r, 0); c.lineTo(0, 22); c.stroke();
   }
   function drawLift(st, t, X) {
     const e = ends(st), m = mid(st), yl = LIFTY + st.y[0] - m, yr = LIFTY + st.y[1] - m, xl = e.xl + X, xr = e.xr + X;

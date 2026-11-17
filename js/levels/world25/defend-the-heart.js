@@ -1015,18 +1015,56 @@ function zfWaveSpec(n) {
     c.strokeStyle = '#8a6440'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(0, -8, 4.5, 1.6, 0, 0, Math.PI * 2); c.moveTo(2, -8); c.ellipse(0, -8, 2, 0.7, 0, 0, Math.PI * 2); c.stroke();
     c.strokeStyle = '#5a3d26'; c.lineWidth = 1.2; c.beginPath(); c.ellipse(0, -8, 7, 2.6, 0, 0, Math.PI * 2); c.stroke();
   }
-  // a dug hole's back wall: tunnels darker, stone holes grey; a soft shadow under a solid cell above
-  function zfPaintHole(c, ty, v, top) {
-    const col = ty === 0 ? '#2a1d17' : ty === 2 ? '#3a3a44' : '#3d2a1f', F = ERICH.fr, s = 1700 + ty * 40 + v * 7;
+  // (rich props) a dug hole: the back wall of the cut, and the cut faces of the cells around it (m: which neighbours
+  // are solid, 1 up, 2 right, 4 down, 8 left). Stone holes are rough-hewn rock with facets and pick marks, dirt holes
+  // show layered earth with pebbles and roots, zombie tunnels are darker with claw scratches. A solid cell above
+  // casts a shadow (with roots or a jagged lip hanging from it), the left wall casts a soft shade, the right wall
+  // catches a lit edge, a solid floor gets crumbs and rubble
+  function zfPaintHole(c, ty, v, m) {
+    const stone = ty === 2, col = ty === 0 ? '#2a1d17' : stone ? '#3a3a44' : '#3d2a1f', F = ERICH.fr, s = 1700 + ty * 40 + v * 7, TAU = Math.PI * 2;
     c.fillStyle = col; c.fillRect(-0.5, -0.5, T + 1, T + 1);
-    c.fillStyle = shade(col, 0.25); c.beginPath();
-    for (let i = 0; i < 3; i++) { const x = 4 + F(s, i) * 22, y = 4 + F(s, i + 5) * 22, r = 2 + F(s, i + 9) * 2.5; c.moveTo(x + r, y); c.ellipse(x, y, r, r * 0.6, 0, 0, Math.PI * 2); }
-    c.fill();
-    c.fillStyle = tint(col, 0.1); c.beginPath();
-    for (let i = 0; i < 4; i++) { const x = 3 + F(s, i + 20) * 24, y = 3 + F(s, i + 30) * 24; c.moveTo(x + 0.9, y); c.arc(x, y, 0.9, 0, Math.PI * 2); }
-    c.fill();
-    if (v === 1 && ty !== 2) { c.strokeStyle = 'rgba(160,120,80,0.3)'; c.lineWidth = 1; c.beginPath(); c.moveTo(3, 6); c.quadraticCurveTo(12, 12, 9, 20); c.stroke(); }
-    if (top) { const g = c.createLinearGradient(0, 0, 0, 9); g.addColorStop(0, 'rgba(0,0,0,0.45)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(-0.5, -0.5, T + 1, 9.5); }
+    if (stone) {
+      // rough-hewn facets, each lit on its upper-left and shaded lower-right
+      for (let i = 0; i < 5; i++) {
+        const fx = F(s, i) * T, fy = F(s, i + 5) * T, fs = 6 + F(s, i + 9) * 8;
+        c.fillStyle = 'rgba(255,255,255,0.07)'; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + fs, fy - fs * 0.25); c.lineTo(fx + fs * 0.7, fy + fs * 0.5); c.closePath(); c.fill();
+        c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.moveTo(fx + fs, fy - fs * 0.25); c.lineTo(fx + fs * 1.1, fy + fs * 0.6); c.lineTo(fx + fs * 0.7, fy + fs * 0.5); c.closePath(); c.fill();
+      }
+      // pick marks: short parallel gouges with a lit lower lip
+      for (let i = 0; i < 3; i++) {
+        const px = 4 + F(s, i + 20) * (T - 12), py = 5 + F(s, i + 30) * (T - 12), a = 0.6 + F(s, i + 40) * 0.5;
+        for (let j = 0; j < 2; j++) { const ox = px + j * 3, oy = py + j * 1.2;
+          c.strokeStyle = 'rgba(10,10,16,0.55)'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(ox, oy); c.lineTo(ox + Math.cos(a) * 5, oy + Math.sin(a) * 5); c.stroke();
+          c.strokeStyle = 'rgba(200,200,220,0.18)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(ox + 0.8, oy + 0.6); c.lineTo(ox + 0.8 + Math.cos(a) * 5, oy + 0.6 + Math.sin(a) * 5); c.stroke(); }
+      }
+      c.fillStyle = 'rgba(190,200,230,0.22)'; for (let i = 0; i < 6; i++) c.fillRect(F(s, i + 50) * T, F(s, i + 60) * T, 1, 1);
+      if (v === 2) { c.strokeStyle = 'rgba(10,10,16,0.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(T * 0.6, 0); c.lineTo(T * 0.5, T * 0.4); c.lineTo(T * 0.62, T * 0.7); c.stroke(); }
+    } else {
+      // layered earth: two wavy darker bands and a pale one
+      for (const [yy, dark] of [[T * 0.3, true], [T * 0.55, false], [T * 0.8, true]]) { c.fillStyle = dark ? 'rgba(0,0,0,0.18)' : 'rgba(255,220,180,0.06)'; c.beginPath(); c.moveTo(0, yy); for (let x = 0; x <= T; x += 5) c.lineTo(x, yy + Math.sin(x * 0.3 + v + yy) * 1.4); c.lineTo(T, yy + 3); for (let x = T; x >= 0; x -= 5) c.lineTo(x, yy + 3 + Math.sin(x * 0.25 + v) * 1); c.closePath(); c.fill(); }
+      for (let i = 0; i < 3; i++) ERICH.pebble(c, 4 + F(s, i) * (T - 8), 4 + F(s, i + 5) * (T - 8), 1.6 + F(s, i + 9) * 1.4, 1.2 + F(s, i + 9), ty === 0 ? '#4a3a30' : '#5e4a3a', s + i, true);
+      c.fillStyle = 'rgba(255,220,180,0.1)'; for (let i = 0; i < 6; i++) c.fillRect(F(s, i + 20) * T, F(s, i + 30) * T, 1, 1);
+      if (ty === 0) {
+        // claw scratches down the tunnel wall
+        const cx = 6 + F(s, 70) * (T - 16), cy = 5 + F(s, 71) * (T - 18);
+        c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 1.2; c.beginPath(); for (let j = 0; j < 3; j++) { c.moveTo(cx + j * 3, cy + j); c.lineTo(cx + j * 3 + 3, cy + j + 10); } c.stroke();
+        c.strokeStyle = 'rgba(160,120,90,0.25)'; c.lineWidth = 0.7; c.beginPath(); for (let j = 0; j < 3; j++) { c.moveTo(cx + j * 3 + 0.9, cy + j); c.lineTo(cx + j * 3 + 3.9, cy + j + 10); } c.stroke();
+      } else if (v === 1 || v === 3) { c.strokeStyle = 'rgba(170,130,90,0.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(3, 6); c.quadraticCurveTo(12, 12, 9, 20); c.lineTo(12, 24); c.stroke(); }
+    }
+    // the left wall casts a soft shade onto the back wall; the right wall's face catches the light
+    if (m & 8) { const g = c.createLinearGradient(0, 0, 8, 0); g.addColorStop(0, 'rgba(0,0,0,0.4)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(-0.5, -0.5, 8.5, T + 1); }
+    if (m & 2) { c.fillStyle = stone ? 'rgba(150,155,175,0.35)' : 'rgba(150,105,70,0.4)'; c.fillRect(T - 2.5, 0, 2.5, T); c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(T - 2.5, 0, 0.8, T); }
+    // a solid floor: a lit floor line, crumbs and a bit of rubble
+    if (m & 4) {
+      c.fillStyle = stone ? 'rgba(160,165,185,0.3)' : 'rgba(150,105,70,0.35)'; c.fillRect(0, T - 2.5, T, 2.5);
+      for (let i = 0; i < 3; i++) ERICH.pebble(c, 4 + F(s, i + 80) * (T - 8), T - 2.5 - F(s, i + 81), 1.3 + F(s, i + 82) * 1.6, 0.9 + F(s, i + 82), stone ? '#7a7a88' : '#6e5440', s + 90 + i, true);
+    }
+    // a solid cell above: a shadow, with roots (earth) or a jagged lip (stone) hanging from it
+    if (m & 1) {
+      const g = c.createLinearGradient(0, 0, 0, 10); g.addColorStop(0, 'rgba(0,0,0,0.5)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(-0.5, -0.5, T + 1, 10.5);
+      if (stone) { c.fillStyle = '#4a4a56'; c.beginPath(); c.moveTo(0, 0); for (let x = 0; x <= T; x += 5) c.lineTo(x, 1.5 + F(s, x + 100) * 3); c.lineTo(T, 0); c.closePath(); c.fill(); c.strokeStyle = 'rgba(200,205,225,0.2)'; c.lineWidth = 0.7; c.stroke(); }
+      else { c.strokeStyle = 'rgba(190,150,105,0.55)'; c.lineWidth = 0.9; c.beginPath(); for (let i = 0; i < 3; i++) { const rx = 4 + F(s, i + 110) * (T - 8), l = 4 + F(s, i + 111) * 7; c.moveTo(rx, 0); c.quadraticCurveTo(rx + 2, l * 0.6, rx - 1, l); } c.stroke(); }
+    }
   }
   // the heart's pedestal (origin = its middle on the ground): a stone plinth with a carved band, a gold trim and two
   // little red gems, a lit slab on top, a soft ground shadow
@@ -1220,8 +1258,10 @@ function zfWaveSpec(n) {
     // dug-out holes under the ground (zombie tunnels are darker)
     for (let y = ZF.ground; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       if (st.cell[idx(x, y)]) continue;
-      const ty = st.tun[idx(x, y)] ? 0 : y >= ZF.stoneRow ? 2 : 1, top = y > 0 && !!st.cell[idx(x, y - 1)], v = hash(x, y + 50) % 4;
-      ERICH.put('zfhole' + ty + v + (top ? 't' : ''), T + 2, T + 2, 1, 1, c => zfPaintHole(c, ty, v, top), x * T, y * T);
+      const ty = st.tun[idx(x, y)] ? 0 : y >= ZF.stoneRow ? 2 : 1, v = hash(x, y + 50) % 4;
+      const sol = (xx, yy) => yy >= ROWS || (xx >= 0 && xx < COLS && yy >= 0 && !!st.cell[idx(xx, yy)]);
+      const m = (y > 0 && sol(x, y - 1) ? 1 : 0) | (sol(x + 1, y) ? 2 : 0) | (sol(x, y + 1) ? 4 : 0) | (sol(x - 1, y) ? 8 : 0);
+      ERICH.put('zfhole2|' + ty + v + '|' + m, T + 2, T + 2, 1, 1, c => zfPaintHole(c, ty, v, m), x * T, y * T);
     }
     for (const t of st.trees) drawTree(st, t);
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) { const c = st.cell[idx(x, y)]; if (c) drawCell(st, x, y, c); }
