@@ -749,8 +749,19 @@ function plankduelParrot(x, y, s, a, b, face, flap) {
 // Captain Polly the parrot, the referee, on her post over the barrel (with a little captain's hat)
 function plankduelPolly(st) {
   const v = st.vis, x = PLANKDUEL.X0, y = 186, flap = v && v.polly > 0 ? 1 : 0, t = v ? v.t : 0;
-  ctx.fillStyle = PLANKDUEL_COL.woodDk; ctx.fillRect(x - 4, y + 2, 8, 120);
-  ctx.fillStyle = PLANKDUEL_COL.wood; ctx.fillRect(x - 22, y, 44, 7);
+  // (cached) her post: a grained upright with a weathered top, rope lashing, a seaweed tuft low down and a perch bar
+  // with end grain and nails
+  dkPic('pdPollyPost', 52, 130, 26, 4, c => {
+    const wd = dkHex(PLANKDUEL_COL.woodDk), wo = dkHex(PLANKDUEL_COL.wood);
+    dkPlank(c, -4, 2, 8, 120, wd, 61, { vert: true, r: 1, lit: 0.22, lw: 1, outline: dkS(wd, 0.45) });
+    c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(-4, 7, 8, 3);
+    for (const ry of [12, 15.5, 19]) { c.fillStyle = '#c99a5a'; rrOn(c, -5.5, ry, 11, 3, 1.5); c.fill(); c.strokeStyle = '#8a6430'; c.lineWidth = 0.7; c.stroke(); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(-4.5, ry + 0.4, 8, 0.8); }
+    c.strokeStyle = '#8a6430'; c.lineWidth = 0.6; c.beginPath(); for (let k = 0; k < 6; k++) { c.moveTo(-4 + k * 1.8, 12); c.lineTo(-3 + k * 1.8, 22); } c.stroke();
+    c.fillStyle = '#4f9a5a'; for (let k = 0; k < 4; k++) { c.beginPath(); c.ellipse(-4 + k * 2.6, 96 + (k % 2) * 4, 1.6, 5, (k - 1.5) * 0.3, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = 'rgba(40,90,60,0.35)'; c.fillRect(-4, 100, 8, 22);
+    dkPlank(c, -22, 0, 44, 7, wo, 62, { r: 2, lit: 0.32, lw: 1, nails: 1, outline: dkS(wo, 0.5) });
+    c.fillStyle = dkS(wo, 0.25); for (const ex of [-22, 20]) { c.beginPath(); c.ellipse(ex + 1, 3.5, 1.2, 3, 0, 0, Math.PI * 2); c.fill(); }
+  }, x, y);
   ctx.save(); ctx.translate(x, y + Math.sin(t * 2.2) * 1.2);
   plankduelParrot(0, 0, 1.25, '#ff4f5f', '#3d8bff', 1, flap);
   // her captain's hat

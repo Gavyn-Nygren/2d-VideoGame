@@ -781,11 +781,36 @@ function vdSurfDrawRiver(st, k, cam, X0, X1) {
   ctx.beginPath(); ctx.moveTo(pts[0][0], bot);
   for (const q of pts) ctx.lineTo(q[0], q[1]);
   ctx.lineTo(pts[pts.length - 1][0], bot); ctx.closePath(); ctx.fill();
-  // cooled crust plates drifting downstream
+  // bright flow ribbons under the skin, following the surface and sliding downstream
+  ctx.lineCap = 'round';
+  for (const [dep, a, sp, lw] of [[13, 0.38, 90, 3], [30, 0.24, 55, 4], [58, 0.16, 35, 6]]) {
+    ctx.strokeStyle = `rgba(255,228,140,${a})`; ctx.lineWidth = lw; ctx.beginPath();
+    for (let n = Math.floor((X0 - t * sp) / 120); n * 120 + t * sp < X1 + 60; n++) {
+      const x = n * 120 + t * sp + (hash(n, 40 + dep) % 50), len = 30 + hash(n, 41 + dep) % 40;
+      ctx.moveTo(x, vdSurfBase(T, x) + dep);
+      ctx.quadraticCurveTo(x + len / 2, vdSurfBase(T, x + len / 2) + dep - 2 - hash(n, 42) % 3, x + len, vdSurfBase(T, x + len) + dep);
+    }
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+  // a darker cooling band deep in the flow, with a ragged top
+  ctx.fillStyle = 'rgba(120,28,14,0.22)'; ctx.beginPath();
+  ctx.moveTo(pts[0][0], bot);
+  for (const q of pts) ctx.lineTo(q[0], vdSurfBase(T, q[0]) + 96 + Math.sin(q[0] * 0.03) * 8 + (hash(Math.floor(q[0] / 12), 47) % 5));
+  ctx.lineTo(pts[pts.length - 1][0], bot); ctx.closePath(); ctx.fill();
+  // cooled crust plates drifting downstream (jagged rafts with glowing cracks)
   for (let n = Math.floor((X0 - t * 60) / 160); n * 160 + t * 60 < X1 + 80; n++) {
     const x = n * 160 + t * 60 + (hash(n, 9) % 70), gy = vdSurfBase(T, x), d = 16 + (hash(n, 4) % 40);
-    ctx.fillStyle = 'rgba(150,40,20,0.45)'; ctx.beginPath(); ctx.ellipse(x, gy + d, 20 + (hash(n, 2) % 16), 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.85; vdCrust(x, gy + d, 40 + (hash(n, 2) % 32), 9 + hash(n, 3) % 4, hash(n, 5)); ctx.globalAlpha = 1;
   }
+  // bubbles swelling and popping just under the skin (a pure function of x and t)
+  const bub = [];
+  for (let n = Math.floor(X0 / 70); n * 70 < X1; n++) {
+    const u = (t * 0.7 + (hash(n, 48) % 100) / 100) % 1; if (u > 0.8) continue;
+    const bx = n * 70 + hash(n, 49) % 40; bub.push([bx, vdSurfBase(T, bx) + 8 + hash(n, 50) % 16 - u * 4, 1.5 + u * 4]);
+  }
+  ctx.fillStyle = 'rgba(255,236,160,0.75)'; ctx.beginPath(); for (const [bx, by, r] of bub) { ctx.moveTo(bx + r, by); ctx.arc(bx, by, r, 0, Math.PI * 2); } ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,235,0.8)'; ctx.beginPath(); for (const [bx, by, r] of bub) { ctx.moveTo(bx - r * 0.35 + r * 0.35, by - r * 0.35); ctx.arc(bx - r * 0.35, by - r * 0.35, r * 0.35, 0, Math.PI * 2); } ctx.fill();
   // glints flowing along the top
   ctx.strokeStyle = 'rgba(255,245,190,0.9)'; ctx.lineWidth = 2;
   for (let n = Math.floor((X0 - t * 140) / 90); n * 90 + t * 140 < X1 + 40; n++) {

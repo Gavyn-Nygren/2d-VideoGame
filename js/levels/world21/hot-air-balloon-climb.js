@@ -1005,51 +1005,231 @@ function balloonDrawMeadow(st) {
   ctx.fillStyle = '#ffffff'; for (let x = st.c.startX - 46; x < st.c.startX + 50; x += 16) ctx.fillRect(x, -4, 8, 10);
 }
 // the windy cliffs: tall rock walls at both sides (with ledges and little pines)
+// the cliff face texture (one tile in the wall's own colour, painted at the canvas scale, world-anchored with
+// dkPatAlign): rock strata with a lit lip under each seam, blocky cut faces, hairline cracks, specks and a few
+// embedded stones
+let balloonCliffPat = null;
+function balloonCliffTex() {
+  if (balloonCliffPat && (typeof balloonCliffPat === 'string' || (balloonCliffPat.sc === canvas.width && balloonCliffPat.col === C.stone))) return dkPatAlign(balloonCliffPat);
+  const S = Math.max(1, Math.min(3, canvas.width / W)), n = 180, cv = document.createElement('canvas'); cv.width = cv.height = Math.round(n * S);
+  const c = cv.getContext('2d'); c.scale(cv.width / n, cv.width / n);
+  c.fillStyle = C.stone; c.fillRect(0, 0, n, n);   // (the wall's own colour is baked in: one fill draws the whole face)
+  const wv = (x, k) => Math.sin(x * Math.PI * 2 / n * 2 + k) * 3 + Math.sin(x * Math.PI * 2 / n * 5 + k * 2) * 1.2;
+  // strata: each band a touch lighter or darker, a dark seam on top and a lit lip just under it
+  for (let k = 0; k < 6; k++) {
+    const y0 = k * 30;
+    c.fillStyle = k % 3 === 0 ? 'rgba(255,255,255,0.07)' : k % 3 === 1 ? 'rgba(30,20,70,0.07)' : 'rgba(30,20,70,0.0)';
+    c.beginPath(); c.moveTo(0, y0 + wv(0, k)); for (let x = 0; x <= n; x += 6) c.lineTo(x, y0 + wv(x, k)); c.lineTo(n, y0 + 30 + wv(n, k + 1)); for (let x = n; x >= 0; x -= 6) c.lineTo(x, y0 + 30 + wv(x, k + 1)); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(30,20,70,0.32)'; c.lineWidth = 1.4; c.beginPath(); for (let x = 0; x <= n; x += 6) { const y = y0 + wv(x, k); if (!x) c.moveTo(x, y); else c.lineTo(x, y); } c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.2)'; c.lineWidth = 1; c.beginPath(); for (let x = 0; x <= n; x += 6) { const y = y0 + 1.6 + wv(x, k); if (!x) c.moveTo(x, y); else c.lineTo(x, y); } c.stroke();
+    // joints across the band (blocks), each block lit on its left and shaded on its right
+    for (let q = 0; q < 4; q++) {
+      const jx = 8 + (hash(k, q + 300) % 160), y1 = y0 + wv(jx, k) + 1, y2 = y0 + 30 + wv(jx, k + 1) - 1;
+      if (jx > n - 8) continue;
+      c.strokeStyle = 'rgba(30,20,70,0.3)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(jx, y1); c.lineTo(jx + 2, (y1 + y2) / 2); c.lineTo(jx + 1, y2); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(jx + 1.5, y1 + 2, 1.2, y2 - y1 - 4);
+      c.fillStyle = 'rgba(30,20,70,0.1)'; c.fillRect(jx - 6, y1 + 2, 6, y2 - y1 - 3);
+    }
+  }
+  // hairline cracks
+  c.strokeStyle = 'rgba(30,20,70,0.3)'; c.lineWidth = 1;
+  for (let i = 0; i < 9; i++) { let x = 10 + hash(i, 310) % 160, y = 10 + hash(i, 311) % 150; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 3; k++) { x += (hash(i, k + 312) % 9) - 4; y += 4 + hash(i, k + 316) % 5; c.lineTo(x, y); } c.stroke(); }
+  // specks
+  for (let i = 0; i < 360; i++) { const h = hash(i, 320); c.fillStyle = h % 3 ? 'rgba(30,20,70,0.22)' : 'rgba(255,255,255,0.3)'; c.fillRect(h % n, (h >>> 9) % n, h % 5 === 0 ? 2 : 1, 1); }
+  // embedded stones, well inside the tile
+  for (let i = 0; i < 6; i++) { const h = hash(i, 330), x = 14 + h % 152, y = 14 + (h >>> 8) % 152, r = 3 + h % 3; c.fillStyle = 'rgba(30,20,70,0.25)'; c.beginPath(); c.ellipse(x + 1, y + 1.5, r * 1.3, r, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.22)'; c.beginPath(); c.ellipse(x, y, r * 1.3, r, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.ellipse(x - r * 0.4, y - r * 0.4, r * 0.5, r * 0.3, 0, 0, Math.PI * 2); c.fill(); c.strokeStyle = 'rgba(30,20,70,0.35)'; c.lineWidth = 0.9; c.beginPath(); c.ellipse(x, y, r * 1.3, r, 0, 0, Math.PI * 2); c.stroke(); }
+  try { balloonCliffPat = ctx.createPattern(cv, 'repeat'); balloonCliffPat.sc = canvas.width; balloonCliffPat.col = C.stone; } catch (e) { balloonCliffPat = C.stone; }
+  return dkPatAlign(balloonCliffPat);
+}
+// a rock ledge on a cliff (cached per side and tree): a wedge of rock with strata and a lit top, a grass cap with
+// blades, and a small two-tone pine on it now and then
+function balloonPaintLedge(c, side, tree) {
+  const rock = C.stoneLight, edge = C.stoneEdge;
+  const shape = () => { c.beginPath(); c.moveTo(0, 0); c.lineTo(40, 0); if (side < 0) { c.quadraticCurveTo(41, 8, 30, 12); c.lineTo(4, 18); c.lineTo(0, 18); } else { c.lineTo(40, 18); c.lineTo(36, 18); c.lineTo(10, 12); c.quadraticCurveTo(-1, 8, 0, 0); } c.closePath(); };
+  c.fillStyle = 'rgba(20,20,60,0.18)'; c.save(); c.translate(side < 0 ? 2 : -2, 3); shape(); c.fill(); c.restore();
+  c.fillStyle = rock; shape(); c.fill();
+  c.save(); shape(); c.clip();
+  const g = c.createLinearGradient(0, 0, 0, 18); g.addColorStop(0, 'rgba(255,255,255,0.18)'); g.addColorStop(1, 'rgba(20,20,60,0.35)'); c.fillStyle = g; c.fillRect(-2, 0, 44, 20);
+  c.strokeStyle = 'rgba(30,20,70,0.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, 8); c.lineTo(40, 7); c.moveTo(0, 13); c.lineTo(40, 12.5); c.moveTo(side < 0 ? 22 : 18, 8); c.lineTo(side < 0 ? 24 : 16, 13); c.stroke();
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(0, 8.8, 40, 0.8);
+  c.restore();
+  c.strokeStyle = edge; c.lineWidth = 1.4; shape(); c.stroke();
+  // the grass cap
+  c.fillStyle = '#4fae46'; rrOn(c, side < 0 ? -1 : 1, -3, 40, 6, 3); c.fill();
+  c.fillStyle = '#7bd36b'; rrOn(c, side < 0 ? -1 : 1, -4, 40, 4.5, 2.5); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(side < 0 ? 2 : 4, -3.6, 33, 1);
+  c.strokeStyle = '#3f9a40'; c.lineWidth = 1; c.beginPath(); for (let x = 4; x < 38; x += 5) { c.moveTo(x, -3); c.lineTo(x - 1, -6 - (x * 7 % 3)); } c.stroke();
+  if (tree) {
+    const px = side < 0 ? 22 : 18;
+    c.fillStyle = 'rgba(30,60,30,0.25)'; c.beginPath(); c.ellipse(px + 1, -3, 9, 2, 0, 0, Math.PI * 2); c.fill();
+    dkPlank(c, px - 1.5, -9, 3, 7, '#8a5a34', 41, { vert: true, r: 0.5, lw: 0.6, outline: '#5e3a1c' });
+    for (let k = 0; k < 3; k++) {
+      const ty = -8 - k * 7, tw = 11 - k * 2.6;
+      c.fillStyle = '#2f7a46'; c.beginPath(); c.moveTo(px - tw, ty); c.lineTo(px, ty - 11); c.lineTo(px + tw, ty); c.closePath(); c.fill();
+      c.fillStyle = '#4aa865'; c.beginPath(); c.moveTo(px - tw, ty); c.lineTo(px, ty - 11); c.lineTo(px + 1, ty - 1); c.closePath(); c.fill();
+      c.strokeStyle = '#25603a'; c.lineWidth = 1; c.beginPath(); c.moveTo(px - tw, ty); c.lineTo(px, ty - 11); c.lineTo(px + tw, ty); c.closePath(); c.stroke();
+    }
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(px - 2, -26, 1.2, 0, Math.PI * 2); c.fill();
+  }
+}
 function balloonDrawCliffs(st) {
   if (st.c.look !== 'cliffs') return;
-  const h0 = st.cam - 40, h1 = st.cam + H + 40, step = 60;
+  const h0 = st.cam - 40, h1 = st.cam + H + 40, step = 60, t = G.clock;
   for (const side of [-1, 1]) {
-    const edge = side < 0 ? st.c.x0 - 54 : st.c.x1 + 54;
-    ctx.fillStyle = C.stone;
-    ctx.beginPath(); ctx.moveTo(side < 0 ? -10 : W + 10, -h0);
-    for (let h = Math.floor(h0 / step) * step; h <= h1 + step; h += step) ctx.lineTo(edge + side * (hash(h / step | 0, side + 9) % 22), -h);
-    ctx.lineTo(side < 0 ? -10 : W + 10, -(h1 + step)); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = C.stoneEdge; ctx.lineWidth = 3; ctx.stroke();
+    const edge = side < 0 ? st.c.x0 - 54 : st.c.x1 + 54, out = side < 0 ? -10 : W + 10;
+    const ex = h => edge + side * (hash(h / step | 0, side + 9) % 22);
+    const wall = () => {
+      ctx.beginPath(); ctx.moveTo(out, -h0);
+      for (let h = Math.floor(h0 / step) * step; h <= h1 + step; h += step) ctx.lineTo(ex(h), -h);
+      ctx.lineTo(out, -(h1 + step)); ctx.closePath();
+    };
+    wall(); dkPatFill(balloonCliffTex());
+    // light from the open sky on the inner face: a lit band on the left wall's face, a shaded band on the right's
+    // (bands following the edge, filled as polygons: much cheaper than wide strokes)
+    const band = (wd, col) => {
+      ctx.fillStyle = col; ctx.beginPath();
+      const hs0 = Math.floor(h0 / step) * step;
+      for (let h = hs0; h <= h1 + step; h += step) ctx.lineTo(ex(h), -h);
+      for (let h = Math.floor((h1 + step - hs0) / step) * step + hs0; h >= hs0; h -= step) ctx.lineTo(ex(h) + side * wd, -h);
+      ctx.closePath(); ctx.fill();
+    };
+    band(30, side < 0 ? 'rgba(255,255,255,0.1)' : 'rgba(30,20,70,0.12)');
+    band(10, side < 0 ? 'rgba(255,255,255,0.18)' : 'rgba(30,20,70,0.16)');
+    ctx.strokeStyle = C.stoneEdge; ctx.lineWidth = 3; wall(); ctx.stroke();
+    // moss tufts and hanging vines along the face (hashed per stretch of wall)
+    for (let h = Math.floor(h0 / step) * step; h <= h1 + step; h += step) {
+      const hs = hash(h / step | 0, side + 70); if (hs % 3) continue;
+      const x = ex(h), y = -h, sw = reduceMotion ? 0 : Math.sin(t * 1.6 + h) * 1.5;
+      ctx.fillStyle = '#5aa84c'; ctx.beginPath(); ctx.ellipse(x - side * 2, y, 6, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#7bd36b'; ctx.beginPath(); ctx.ellipse(x - side * 3, y - 1, 3.5, 2, 0, 0, Math.PI * 2); ctx.fill();
+      const l = 14 + hs % 22;
+      ctx.strokeStyle = '#4f9a48'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - side * 4 + sw, y + l / 2, x - side * 1 + sw, y + l); ctx.stroke();
+      ctx.fillStyle = '#6fbf5a'; for (let k = 1; k < 4; k++) { const d = k % 2 ? 1 : -1; ctx.beginPath(); ctx.ellipse(x - side * 2 + d * 3 + sw * k / 4, y + l * k / 4, 2.8, 1.5, d * 0.6, 0, Math.PI * 2); ctx.fill(); }
+    }
     // ledges with a little pine tree
     for (let k = Math.floor(h0 / 260); k <= Math.floor(h1 / 260); k++) {
-      const hs = hash(k, side + 40), h = k * 260 + hs % 80, x = edge + side * (hs % 22) - side * 4;
-      dkPic('bcLedge', 44, 14, 2, 2, c => { dkPlate(c, 0, 0, 40, 10, C.stoneLight, { rivets: false, r: 4, outline: C.stoneEdge, lw: 1.2 }); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(4, 1, 30, 1.2); }, x - (side < 0 ? 0 : 40), -h);
-      if (hs % 3) { const px = x - side * 18; ctx.fillStyle = '#3f9a63'; ctx.beginPath(); ctx.moveTo(px - 10, -h); ctx.lineTo(px, -h - 26); ctx.lineTo(px + 10, -h); ctx.closePath(); ctx.fill(); }
+      const hs = hash(k, side + 40), h = k * 260 + hs % 80, ha = Math.floor(h / step) * step, u = (h - ha) / step;
+      const wx = ex(ha) * (1 - u) + ex(ha + step) * u, x = wx - side * 7;   // tucked into the wall face
+      dkPic('bcLedge2|' + side + '|' + (hs % 3 ? 1 : 0) + '|' + C.stoneLight, 48, 52, 4, 36, c => balloonPaintLedge(c, side, !!(hs % 3)), x - (side < 0 ? 0 : 40), -h);
     }
   }
 }
-// the Cloud Castle behind the last dock
+// the Cloud Castle behind the last dock: painted once (stone courses, shaded faces, crenels, tiled cone roofs, framed
+// lit windows, a planked gate with gold bands, a puffy shaded cloud bank); only the pennants move
+function balloonCastleBlock(c, x0, y0, w, h, seed) {
+  const stone = '#f7f2ff', mid = '#ebe4fb', lite = '#fdfbff', edge = '#b9a8e8';
+  c.fillStyle = stone; c.fillRect(x0, y0, w, h);
+  c.save(); c.beginPath(); c.rect(x0, y0, w, h); c.clip();
+  for (let r = 0, yy = y0 + 2; yy < y0 + h; r++, yy += 14) {
+    for (let xx = x0 - (r % 2) * 13; xx < x0 + w; xx += 26) {
+      const hh = hash(seed + r, xx | 0);
+      c.fillStyle = hh % 3 === 0 ? mid : hh % 3 === 1 ? lite : stone; c.fillRect(xx + 1, yy + 1, 24, 12);
+      c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillRect(xx + 1, yy + 1, 24, 1.2);
+      if (hh % 13 === 0) { const cx = xx + 4 + hh % 12; c.strokeStyle = 'rgba(150,135,205,0.4)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(cx, yy + 1); c.lineTo(cx + 3, yy + 4); c.lineTo(cx + 8, yy + 5); c.lineTo(cx + 10, yy + 9); c.stroke(); }
+      else if (hh % 11 === 0) { c.fillStyle = 'rgba(150,135,205,0.3)'; c.beginPath(); c.arc(xx + 6 + hh % 14, yy + 4 + hh % 5, 1.1, 0, Math.PI * 2); c.fill(); }
+    }
+  }
+  c.strokeStyle = 'rgba(150,135,205,0.5)'; c.lineWidth = 1; c.beginPath();
+  for (let r = 0, yy = y0 + 2; yy < y0 + h; r++, yy += 14) { c.moveTo(x0, yy + 0.5); c.lineTo(x0 + w, yy + 0.5); for (let xx = x0 - (r % 2) * 13; xx < x0 + w; xx += 26) { c.moveTo(xx + 0.5, yy); c.lineTo(xx + 0.5, yy + 14); } }
+  c.stroke();
+  const sw = Math.min(16, w * 0.28);
+  const gs = c.createLinearGradient(x0 + w - sw, 0, x0 + w, 0); gs.addColorStop(0, 'rgba(120,105,190,0.05)'); gs.addColorStop(1, 'rgba(120,105,190,0.3)');
+  c.fillStyle = gs; c.fillRect(x0 + w - sw, y0, sw, h);
+  const g = c.createLinearGradient(0, y0 + h - 50, 0, y0 + h); g.addColorStop(0, 'rgba(160,150,220,0)'); g.addColorStop(1, 'rgba(160,150,220,0.45)');
+  c.fillStyle = g; c.fillRect(x0, y0 + h - 50, w, 50);
+  c.restore();
+  c.fillStyle = 'rgba(255,255,255,0.95)'; c.fillRect(x0, y0, 2.2, h);
+  c.strokeStyle = edge; c.lineWidth = 2; c.strokeRect(x0, y0, w, h);
+}
+function balloonCastleWindow(c, x, y, w, h, lit) {
+  const edge = '#b9a8e8';
+  c.fillStyle = '#e4ddf7'; rrOn(c, x - 3, y - 3, w + 6, h + 5, (w + 6) / 2); c.fill();
+  c.strokeStyle = edge; c.lineWidth = 1.2; rrOn(c, x - 3, y - 3, w + 6, h + 5, (w + 6) / 2); c.stroke();
+  const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, lit ? '#fff4c8' : '#bfe2f8'); g.addColorStop(1, lit ? '#ffc96b' : '#7ab4e0');
+  c.fillStyle = g; rrOn(c, x, y, w, h, w / 2); c.fill();
+  c.strokeStyle = '#ffffff'; c.lineWidth = 1.3; c.beginPath(); c.moveTo(x + w / 2, y + 1); c.lineTo(x + w / 2, y + h); c.moveTo(x, y + h * 0.5); c.lineTo(x + w, y + h * 0.5); c.stroke();
+  c.fillStyle = 'rgba(255,255,255,0.8)'; c.fillRect(x + 2, y + 3, 1.6, h * 0.3);
+  c.fillStyle = '#e6e2fa'; c.fillRect(x - 4, y + h + 1, w + 8, 3); c.fillStyle = edge; c.fillRect(x - 4, y + h + 4, w + 8, 1);
+}
+function balloonCastleTower(c, x, w, h, roof) {
+  const top = -h;
+  balloonCastleBlock(c, x - w / 2, top, w, h, (x | 0) + 77);
+  c.fillStyle = 'rgba(120,105,190,0.3)'; c.fillRect(x - w / 2, top, w, 5);
+  // the tiled cone roof
+  const ax = x, ay = top - w * 1.1, rp = () => { c.beginPath(); c.moveTo(x - w / 2 - 6, top); c.lineTo(ax, ay); c.lineTo(x + w / 2 + 6, top); c.closePath(); };
+  const rl = dkT(roof, 0.25), rd = dkS(roof, 0.18), ol = dkS(roof, 0.4);
+  c.fillStyle = roof; rp(); c.fill();
+  c.save(); rp(); c.clip();
+  const rows = Math.ceil(w * 1.1 / 7);
+  for (let r = 0; r < rows; r++) {
+    const yy = top - r * 7, half = (w / 2 + 6) * (1 - r * 7 / (w * 1.1));
+    c.fillStyle = r % 2 ? roof : rl;
+    for (let xx = ax - half - 5 + (r % 2) * 4; xx < ax + half + 5; xx += 8) { c.beginPath(); c.arc(xx + 4, yy, 4.2, 0, Math.PI); c.fill(); }
+    c.strokeStyle = 'rgba(40,20,60,0.22)'; c.lineWidth = 1; c.beginPath(); c.moveTo(ax - half - 5, yy); c.lineTo(ax + half + 5, yy); c.stroke();
+  }
+  c.fillStyle = 'rgba(40,20,60,0.2)'; c.beginPath(); c.moveTo(ax, ay); c.lineTo(x + w / 2 + 6, top); c.lineTo(ax + 3, top); c.closePath(); c.fill();
+  c.restore();
+  c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(x - w / 2 - 4, top - 1); c.lineTo(ax - 1, ay + 2); c.stroke();
+  c.strokeStyle = ol; c.lineWidth = 1.8; rp(); c.stroke();
+  c.fillStyle = rd; c.fillRect(x - w / 2 - 6, top - 1, w + 12, 3);
+  c.fillStyle = '#ffd36b'; c.beginPath(); c.arc(ax, ay, 3.2, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#c99a2e'; c.lineWidth = 1; c.stroke();
+  // windows (the old warm window, now framed) and slits lower down
+  balloonCastleWindow(c, x - 7, -h * 0.7 - 2, 14, 20, true);
+  if (h > 220) balloonCastleWindow(c, x - 7, -h * 0.42, 14, 20, false);
+  c.fillStyle = '#7a6aa8'; rrOn(c, x - 2, -h * 0.25, 4, 14, 2); c.fill();
+}
+function balloonPaintCastle(c) {
+  // the cloud bank behind and under it (shaded puffs)
+  const puffs = [];
+  for (let i = -5; i <= 5; i++) puffs.push([i * 80, 10 - (hash(i, 3) % 20)]);
+  const bank = (dy, r) => { c.beginPath(); for (const [px, py] of puffs) { c.moveTo(px + r, py + dy); c.arc(px, py + dy, r, 0, Math.PI * 2); } };
+  c.strokeStyle = '#c9c4ec'; c.lineWidth = 3; bank(0, 54); c.stroke();
+  c.fillStyle = '#e2def8'; bank(0, 54); c.fill();
+  c.fillStyle = '#ffffff'; bank(-6, 50); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.9)'; for (const [px, py] of puffs) { c.beginPath(); c.ellipse(px - 16, py - 34, 16, 7, -0.3, 0, Math.PI * 2); c.fill(); }
+  // towers
+  balloonCastleTower(c, -230, 50, 200, '#ff8fb8'); balloonCastleTower(c, 230, 50, 200, '#7fb2ff');
+  balloonCastleTower(c, -120, 64, 260, '#b28dff'); balloonCastleTower(c, 120, 64, 260, '#ffb86b');
+  balloonCastleTower(c, 0, 90, 320, '#ff8a3d');
+  // the wall with crenels, a string course and slits
+  balloonCastleBlock(c, -220, -120, 440, 120, 5);
+  for (let x = -220; x < 220; x += 40) {
+    c.fillStyle = '#f7f2ff'; c.fillRect(x, -136, 22, 16);
+    c.fillStyle = 'rgba(120,105,190,0.3)'; c.fillRect(x + 16, -136, 6, 16);
+    c.fillStyle = '#ffffff'; c.fillRect(x, -136, 22, 1.8);
+    c.strokeStyle = '#b9a8e8'; c.lineWidth = 1.5; c.strokeRect(x, -136, 22, 16);
+  }
+  c.fillStyle = 'rgba(120,105,190,0.28)'; c.fillRect(-220, -120, 440, 4);
+  c.fillStyle = '#ebe4fb'; c.fillRect(-222, -84, 444, 5); c.fillStyle = '#ffffff'; c.fillRect(-222, -84, 444, 1.5); c.fillStyle = '#b9a8e8'; c.fillRect(-222, -79, 444, 1);
+  for (const sx of [-190, -150, -80, 72, 140, 182]) { c.fillStyle = '#7a6aa8'; rrOn(c, sx, -66, 5, 20, 2.5); c.fill(); c.fillStyle = 'rgba(255,255,255,0.7)'; c.fillRect(sx - 1, -46, 7, 1.5); }
+  // the gate: voussoirs round a planked door with gold bands and rivets
+  c.fillStyle = '#ebe4fb'; rrOn(c, -48, -104, 96, 104, 48); c.fill();
+  c.strokeStyle = '#b9a8e8'; c.lineWidth = 1.2; c.beginPath();
+  for (let k = 0; k <= 10; k++) { const a = Math.PI + k * Math.PI / 10; c.moveTo(Math.cos(a) * 40, -56 + Math.sin(a) * 40); c.lineTo(Math.cos(a) * 48, -56 + Math.sin(a) * 48); }
+  c.stroke();
+  c.strokeStyle = '#b9a8e8'; c.lineWidth = 1.6; rrOn(c, -48, -104, 96, 104, 48); c.stroke();
+  c.fillStyle = '#ffd36b'; c.beginPath(); c.moveTo(-6, -104); c.lineTo(6, -104); c.lineTo(4, -94); c.lineTo(-4, -94); c.closePath(); c.fill();
+  c.save(); rrOn(c, -40, -96, 80, 96, 40); c.clip();
+  for (let k = 0; k < 6; k++) dkPlank(c, -40 + k * 80 / 6, -96, 80 / 6, 96, k % 2 ? '#8a6ad0' : '#9474d8', 90 + k, { vert: true, r: 0, lit: 0.18, lw: 0.8, outline: '#5e4296' });
+  c.fillStyle = 'rgba(40,20,70,0.25)'; c.fillRect(-1, -96, 2, 96);
+  for (const by of [-74, -30]) { dkPlate(c, -40, by, 80, 7, '#e2b44a', { r: 1, step: 13, outline: '#a8801f' }); }
+  c.restore();
+  c.strokeStyle = '#5e4296'; c.lineWidth = 2; rrOn(c, -40, -96, 80, 96, 40); c.stroke();
+  for (let k = 0; k < 5; k++) dkCobble(c, -30 + k * 15, 2, 7, 3, '#e6e2fa', 140 + k);
+}
 function balloonDrawCastle(st) {
   if (st.c.look !== 'castle') return;
   const d = st.c.dock, base = d.h - 30, cx = d.x;
   if (base + 360 < st.cam || base - 100 > st.cam + H) return;
-  // cloud bank
-  ctx.fillStyle = '#ffffff';
-  for (let i = -5; i <= 5; i++) { circle(cx + i * 80, -(base - 10) - (hash(i, 3) % 20), 54); ctx.fill(); }
-  // towers
-  const tower = (x, w, h, roof) => {
-    ctx.fillStyle = '#f3ecff'; ctx.fillRect(x - w / 2, -(base + h), w, h);
-    ctx.strokeStyle = '#b9a8e8'; ctx.lineWidth = 2; ctx.strokeRect(x - w / 2, -(base + h), w, h);
-    ctx.fillStyle = roof; ctx.beginPath(); ctx.moveTo(x - w / 2 - 6, -(base + h)); ctx.lineTo(x, -(base + h + w * 1.1)); ctx.lineTo(x + w / 2 + 6, -(base + h)); ctx.closePath(); ctx.fill();
-    // a pennant
+  dkPic('bcCastle', 940, 510, 470, 440, c => balloonPaintCastle(c), cx, -base);
+  // pennants (live: they wave)
+  for (const [x, w, h] of [[cx - 230, 50, 200], [cx + 230, 50, 200], [cx - 120, 64, 260], [cx + 120, 64, 260], [cx, 90, 320]]) {
     const py = -(base + h + w * 1.1);
-    ctx.strokeStyle = '#8a6a3a'; ctx.beginPath(); ctx.moveTo(x, py); ctx.lineTo(x, py - 18); ctx.stroke();
-    ctx.fillStyle = C.gold; ctx.beginPath(); ctx.moveTo(x, py - 18); ctx.lineTo(x + 16 + Math.sin(G.clock * 5 + x) * 3, py - 13); ctx.lineTo(x, py - 8); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#ffe9a8'; rr(x - 6, -(base + h * 0.7), 12, 16, 6); ctx.fill();
-  };
-  tower(cx - 230, 50, 200, '#ff8fb8'); tower(cx + 230, 50, 200, '#7fb2ff');
-  tower(cx - 120, 64, 260, '#b28dff'); tower(cx + 120, 64, 260, '#ffb86b');
-  tower(cx, 90, 320, '#ff8a3d');
-  // wall and gate
-  ctx.fillStyle = '#f7f2ff'; ctx.fillRect(cx - 220, -(base + 120), 440, 120);
-  ctx.strokeStyle = '#b9a8e8'; ctx.lineWidth = 2; ctx.strokeRect(cx - 220, -(base + 120), 440, 120);
-  for (let x = cx - 220; x < cx + 220; x += 40) { ctx.fillStyle = '#f7f2ff'; ctx.fillRect(x, -(base + 136), 22, 16); ctx.strokeRect(x, -(base + 136), 22, 16); }
-  ctx.fillStyle = '#8a6ad0'; rr(cx - 40, -(base + 96), 80, 96, 40); ctx.fill();
+    ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, py); ctx.lineTo(x, py - 18); ctx.stroke();
+    const f = Math.sin(G.clock * 5 + x) * 3;
+    ctx.fillStyle = C.gold; ctx.beginPath(); ctx.moveTo(x, py - 18); ctx.lineTo(x + 16 + f, py - 13); ctx.lineTo(x, py - 8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = C.goldDark; ctx.beginPath(); ctx.moveTo(x, py - 13); ctx.lineTo(x + 16 + f, py - 13); ctx.lineTo(x, py - 8); ctx.closePath(); ctx.fill();
+  }
   ctx.fillStyle = '#ffd36b'; circle(cx + 22, -(base + 44), 4); ctx.fill();
 }
 function balloonDrawCheck(st, cp) {
@@ -1139,6 +1319,30 @@ function balloonPaintIsle(c, w, hgt, rl, rrd, x0) {
     }
   }
 }
+// a solid cloud island (the launch pad and the docks' islands), same silhouette as the old flat one
+function balloonPaintCloudIsle(c, w, hgt, x0) {
+  const bot = hgt, puffs = [];
+  for (let x = x0 + 26; x < x0 + w - 10; x += 40) puffs.push([x - x0, bot - 12 + (hash(x | 0, 2) % 10)]);
+  const shape = () => { c.beginPath(); rrOn(c, 0, -2, w, Math.max(16, bot - 8), Math.min(20, (bot - 8) / 2)); for (const [px, py] of puffs) { c.moveTo(px + 26, py); c.arc(px, py, 26, 0, Math.PI * 2); } };
+  c.fillStyle = 'rgba(110,110,180,0.14)'; c.beginPath(); c.ellipse(w / 2, bot + 22, w * 0.46, 6, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#b4b8e6'; c.lineWidth = 3; shape(); c.stroke();
+  c.fillStyle = '#d8dcf6'; shape(); c.fill();
+  // the lit body (shifted up so the shade shows under each puff)
+  c.save(); shape(); c.clip();
+  const g = c.createLinearGradient(0, 0, 0, bot + 14); g.addColorStop(0, '#ffffff'); g.addColorStop(0.55, '#ffffff'); g.addColorStop(1, '#e6e9fb');
+  c.fillStyle = g; c.beginPath(); rrOn(c, 0, -2, w, Math.max(16, bot - 12), Math.min(20, (bot - 12) / 2)); for (const [px, py] of puffs) { c.moveTo(px + 23, py - 5); c.arc(px - 2, py - 5, 23, 0, Math.PI * 2); } c.fill();
+  // creases between the bottom puffs and soft lavender shade low down
+  c.strokeStyle = 'rgba(160,165,220,0.55)'; c.lineWidth = 1.5; c.lineCap = 'round'; c.beginPath();
+  for (let k = 1; k < puffs.length; k++) { const mx = (puffs[k - 1][0] + puffs[k][0]) / 2, my = (puffs[k - 1][1] + puffs[k][1]) / 2; c.moveTo(mx - 5, my + 2); c.quadraticCurveTo(mx, my + 10, mx + 4, my + 18); }
+  for (let x = 30; x < w - 30; x += 56) { const hs = hash((x + x0) | 0, 5); c.moveTo(x, bot * 0.45 + hs % 8); c.quadraticCurveTo(x + 9, bot * 0.45 + 7 + hs % 8, x + 18, bot * 0.45 + hs % 8); }
+  c.stroke(); c.lineCap = 'butt';
+  c.restore();
+  // the flat top: a bright cap with puff highlights
+  c.fillStyle = 'rgba(255,255,255,0.95)';
+  for (let x = 14; x < w - 8; x += 26) { const hs = hash((x + x0) | 0, 9); c.beginPath(); c.ellipse(x + hs % 6, 4 + hs % 3, 9, 3.2, 0, 0, Math.PI * 2); c.fill(); }
+  c.fillStyle = 'rgba(200,215,255,0.4)'; for (let x = 40; x < w - 20; x += 70) { c.beginPath(); c.ellipse(x, 12, 10, 2.5, 0, 0, Math.PI * 2); c.fill(); }
+  c.fillStyle = '#ffffff'; c.fillRect(10, -1.5, w - 20, 1.6);
+}
 // a floating island (or the launch pad / dock island): grass on top, lilac rock below, flowers and trees
 function balloonDrawSolid(st, r) {
   if (r.t < st.cam - 30 || r.b - 60 > st.cam + H) return;
@@ -1148,17 +1352,13 @@ function balloonDrawSolid(st, r) {
   const cloud = r.kind === 'dock' || r.kind === 'pad';
   // the underside: rock (islands) or a cloud (docks)
   if (cloud) {
-    ctx.fillStyle = '#ffffff';
-    for (let x = x0 + 26; x < x1 - 10; x += 40) { circle(x, bot - 12 + (hash(x | 0, 2) % 10), 26); ctx.fill(); }
-    rr(x0, top, w, bot - top - 10, 20); ctx.fill();
+    // (cached per size and place) a solid cloud island: puffs outlined in their own lavender, shaded undersides, creases
+    const hgt = bot - top;
+    dkPic('bcCloudIsle|' + Math.round(x0) + '|' + Math.round(w) + '|' + Math.round(hgt), w + 24, hgt + 50, 12, 10, c => balloonPaintCloudIsle(c, w, hgt, x0), x0, top);
   } else {
     // (cached per island size and place)
     const hgt = bot - top;
     dkPic('bcIsle|' + Math.round(x0) + '|' + Math.round(w) + '|' + Math.round(hgt) + '|' + rl + '|' + rrd, w + 64, hgt + 92, 32, 46, c => balloonPaintIsle(c, w, hgt, rl, rrd, x0), x0, top);
-  }
-  if (cloud) {
-    ctx.fillStyle = '#ffffff';
-    rr(x0, top - 2, w, 16, 8); ctx.fill();
   }
   // a gold breeze: the way through glows
   const hz = r.hz;

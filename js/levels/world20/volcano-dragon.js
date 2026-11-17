@@ -934,6 +934,172 @@ function vdVesicles(c, x, y, w, h, n, seed) {
     c.strokeStyle = 'rgba(255,200,190,0.28)'; c.lineWidth = 0.7; c.beginPath(); c.ellipse(px, py + 0.3, r * 1.3, r, 0, 0.3, Math.PI - 0.3); c.stroke();
   }
 }
+// ---------- the rock of the tile-grid rooms (levers, golf): stacked basalt columns instead of the engine's stone ----------
+// The whole room's rock ('#') and ash ('s') is painted once into one picture (keyed by the grid and the canvas scale)
+// and copied each frame onto whole pixels: one mass of basalt columns (prism facets, cross joints, gas holes, specks,
+// embedded stones, a few ember cracks) clipped to the solid cells, so no tile grid shows; exposed faces get a lit left
+// edge, a shaded right side, a knobbly underside and an outline in the rock's own dark shade, and every top that meets
+// air gets a scorched crust with ember moss, dry tufts and cinders. Drawn inside the cells (tufts poke up a few px).
+const vdRockLayers = new Map();
+function vdRockTiles() {
+  const g = G.level.grid, sc = Math.max(1, Math.min(3, canvas.width / W));
+  let sig = 7;
+  for (let ty = 0; ty < ROWS; ty++) { const row = g[ty]; for (let tx = 0; tx < COLS; tx++) { const ch = row[tx]; sig = (Math.imul(sig, 31) + (ch === '#' ? 1 : ch === 's' ? 2 : 0)) | 0; } }
+  const key = sig + '|' + sc + '|' + C.grass + C.grassDark;
+  let ly = vdRockLayers.get(key);
+  if (!ly) {
+    if (vdRockLayers.size >= 3) vdRockLayers.delete(vdRockLayers.keys().next().value);
+    const pad = 8, cv = document.createElement('canvas'); cv.width = Math.ceil((W + pad * 2) * sc); cv.height = Math.ceil((H + pad * 2) * sc);
+    const c = cv.getContext('2d'); c.setTransform(sc, 0, 0, sc, pad * sc, pad * sc);
+    let r0 = ROWS, r1 = -1;
+    for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) if (g[ty][tx] === '#' || g[ty][tx] === 's') { r0 = Math.min(r0, ty); r1 = Math.max(r1, ty); }
+    vdPaintRock(c, g);
+    ly = { cv, p: pad * sc, sy: r1 < 0 ? 0 : Math.max(0, Math.floor((pad + r0 * T - 8) * sc)), sy1: r1 < 0 ? 0 : Math.min(cv.height, Math.ceil((pad + (r1 + 1) * T + 8) * sc)) };
+    vdRockLayers.set(key, ly);
+  }
+  if (ly.sy1 <= ly.sy) return;
+  const m = ctx.getTransform();
+  if (m.b === 0 && m.c === 0 && Math.abs(m.a - sc) < 1e-6 && Math.abs(m.d - sc) < 1e-6) {
+    const X = Math.round(m.e) - ly.p, Y = Math.round(m.f) - ly.p, sm = ctx.imageSmoothingEnabled;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(ly.cv, 0, ly.sy, ly.cv.width, ly.sy1 - ly.sy, X, Y + ly.sy, ly.cv.width, ly.sy1 - ly.sy);
+    ctx.setTransform(m); ctx.imageSmoothingEnabled = sm;
+  } else ctx.drawImage(ly.cv, -ly.p / sc, -ly.p / sc, ly.cv.width / sc, ly.cv.height / sc);
+}
+function vdPaintRock(c, g) {
+  const K = VDCLC, at = (tx, ty) => { if (ty < 0) return '#'; if (ty >= ROWS) return '.'; return g[ty][Math.max(0, Math.min(COLS - 1, tx))]; };
+  const solid = (tx, ty) => { const ch = at(tx, ty); return ch === '#' || ch === 's'; };
+  const cells = [];
+  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) if (g[ty][tx] === '#') cells.push([tx, ty]);
+  const region = () => { c.beginPath(); for (const [tx, ty] of cells) c.rect(tx * T, ty * T, T, T); };
+  // 1. the basalt mass: a base fill, then columns 13-21 px wide, each cut into blocks by cross joints
+  c.save(); region(); c.clip();
+  c.fillStyle = K.rock; c.fillRect(0, 0, W, H);
+  let x = -6;
+  for (let i = 0; x < W + 4; i++) {
+    const cw = 13 + hash(i, 4101) % 9;
+    let y = -(hash(i, 4102) % 30);
+    for (let k = 0; y < H; k++) {
+      const bh = 16 + hash(i * 31 + k, 4103) % 26, v = hash(i * 31 + k, 4104) % 5;
+      const col = [K.rock, '#433847', '#382f3c', '#40353f', '#3a3243'][v];
+      c.fillStyle = col; c.fillRect(x, y, cw, bh);
+      // the prism: a lit left facet and a shaded right facet
+      const f = cw * (0.32 + (hash(i, 4105) % 20) / 100);
+      c.fillStyle = 'rgba(255,215,225,0.07)'; c.fillRect(x, y, f, bh);
+      c.fillStyle = 'rgba(10,5,15,0.2)'; c.fillRect(x + cw * 0.72, y, cw * 0.28, bh);
+      c.fillStyle = 'rgba(10,5,15,0.22)'; c.fillRect(x + f, y, 0.8, bh);
+      // the joints: dark on the bottom and right, a thin lit lip on the top and left
+      c.fillStyle = 'rgba(16,10,20,0.75)'; c.fillRect(x, y + bh - 1.3, cw, 1.3); c.fillRect(x + cw - 1.2, y, 1.2, bh);
+      c.fillStyle = 'rgba(255,205,215,0.16)'; c.fillRect(x + 0.5, y, cw - 1.5, 1); c.fillRect(x, y + 0.5, 1, bh - 2);
+      // a chipped corner now and then
+      if (hash(i * 31 + k, 4106) % 4 === 0) { c.fillStyle = 'rgba(16,10,20,0.55)'; c.beginPath(); c.moveTo(x + cw - 1, y + bh - 6); c.lineTo(x + cw - 1, y + bh - 1); c.lineTo(x + cw - 6, y + bh - 1); c.closePath(); c.fill(); }
+      y += bh;
+    }
+    x += cw;
+  }
+  // depth: lighter (lava-lit) just under each top, darker deeper down
+  for (const [tx, ty] of cells) {
+    let d = 0; for (let k = 1; k <= 4 && at(tx, ty - k) === '#'; k++) d++;
+    if (d >= 2) { c.fillStyle = `rgba(14,8,20,${Math.min(0.3, (d - 1) * 0.08)})`; c.fillRect(tx * T, ty * T, T, T); }
+  }
+  // gas holes, specks and grit
+  vdVesicles(c, 0, 0, W, H, 520, 4110);
+  c.fillStyle = 'rgba(255,210,205,0.14)'; c.beginPath();
+  for (let i = 0; i < 900; i++) { const h = hash(i, 4111), px = h % W, py = (h >>> 10) % H; c.rect(px, py, 1, 1); } c.fill();
+  c.fillStyle = 'rgba(10,5,15,0.3)'; c.beginPath();
+  for (let i = 0; i < 900; i++) { const h = hash(i, 4112), px = h % W, py = (h >>> 10) % H; c.rect(px, py, 1.3, 1); } c.fill();
+  // embedded stones and a few glowing ember cracks, only well inside the rock
+  for (const [tx, ty] of cells) {
+    const h = hash(tx, ty * 7 + 4113);
+    if (!solid(tx, ty - 1) || !solid(tx - 1, ty) || !solid(tx + 1, ty)) continue;
+    if (h % 5 === 0) { const r = 3 + h % 4; dkCobble(c, tx * T + 7 + (h >>> 4) % 16, ty * T + 8 + (h >>> 9) % 14, r * 1.3, r, ['#5a4c5c', '#4a3d4f', '#6a5a6c', '#76606e'][(h >>> 3) % 4], h % 997); }
+    else if (h % 9 === 1) {
+      let cx = tx * T + 4 + (h >>> 5) % 10, cy = ty * T + 4 + (h >>> 8) % 8; const pts = [[cx, cy]];
+      for (let k = 0; k < 4; k++) { cx += 3 + hash(h, k) % 5; cy += 3 + hash(h, k + 9) % 5; pts.push([cx, cy]); }
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      c.strokeStyle = 'rgba(16,8,14,0.85)'; c.lineWidth = 2.6; c.beginPath(); pts.forEach((p, k) => k ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.stroke();
+      c.strokeStyle = 'rgba(255,140,60,0.75)'; c.lineWidth = 1.1; c.stroke();
+      c.strokeStyle = 'rgba(255,225,150,0.6)'; c.lineWidth = 0.5; c.stroke();
+      c.lineCap = 'butt'; c.lineJoin = 'miter';
+    }
+  }
+  c.restore();
+  // 2. exposed faces: lit left side, shaded right side, a knobbly underside, outlines in the rock's own dark shade
+  const OL = '#1e1622';
+  for (const [tx, ty] of cells) {
+    const x0 = tx * T, y0 = ty * T, h = hash(tx, ty + 4120);
+    if (!solid(tx - 1, ty)) {
+      const gl = c.createLinearGradient(x0, 0, x0 + 8, 0); gl.addColorStop(0, 'rgba(255,190,170,0.22)'); gl.addColorStop(1, 'rgba(255,190,170,0)');
+      c.fillStyle = gl; c.fillRect(x0, y0, 8, T);
+      c.fillStyle = 'rgba(255,215,205,0.3)'; c.fillRect(x0 + 1.5, y0, 1.2, T);
+    }
+    if (!solid(tx + 1, ty)) {
+      const gr = c.createLinearGradient(x0 + T - 9, 0, x0 + T, 0); gr.addColorStop(0, 'rgba(12,6,16,0)'); gr.addColorStop(1, 'rgba(12,6,16,0.45)');
+      c.fillStyle = gr; c.fillRect(x0 + T - 9, y0, 9, T);
+    }
+    if (ty + 1 < ROWS && !solid(tx, ty + 1)) {
+      const gb = c.createLinearGradient(0, y0 + T - 10, 0, y0 + T); gb.addColorStop(0, 'rgba(12,6,16,0)'); gb.addColorStop(1, 'rgba(12,6,16,0.5)');
+      c.fillStyle = gb; c.fillRect(x0, y0 + T - 10, T, 10);
+      // knobs of rock hanging under an overhang (a small overhang below the cell)
+      c.fillStyle = K.rockDk; c.strokeStyle = OL; c.lineWidth = 1.4;
+      for (let k = 0; k < 2; k++) { const kx = x0 + 6 + k * 14 + (hash(h, k) % 6), kr = 2.2 + hash(h, k + 3) % 2; c.beginPath(); c.arc(kx, y0 + T - 0.5, kr, 0, Math.PI); c.fill(); c.stroke(); }
+    }
+  }
+  c.strokeStyle = OL; c.lineWidth = 2.2; c.lineCap = 'round'; c.beginPath();
+  for (const [tx, ty] of cells) {
+    const x0 = tx * T, y0 = ty * T;
+    if (!solid(tx - 1, ty)) { c.moveTo(x0 + 1, y0); c.lineTo(x0 + 1, y0 + T); }
+    if (!solid(tx + 1, ty)) { c.moveTo(x0 + T - 1, y0); c.lineTo(x0 + T - 1, y0 + T); }
+    if (ty + 1 < ROWS && !solid(tx, ty + 1)) { c.moveTo(x0, y0 + T - 1); c.lineTo(x0 + T, y0 + T - 1); }
+    if (at(tx, ty - 1) !== '#' && at(tx, ty - 1) !== 's' && at(tx, ty - 1) !== 'w') { c.moveTo(x0, y0 + 1); c.lineTo(x0 + T, y0 + 1); }
+  }
+  c.stroke(); c.lineCap = 'butt';
+  // 3. ash cells ('s', dead-bounce ash): soft grey ash with drifts, cinders and a lit crest
+  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+    if (g[ty][tx] !== 's') continue;
+    const x0 = tx * T, y0 = ty * T, h = hash(tx, ty);
+    c.fillStyle = '#5d5560'; c.fillRect(x0 - 0.5, y0 - 0.5, T + 1, T + 1);
+    c.fillStyle = 'rgba(255,240,245,0.08)'; for (let k = 0; k < 3; k++) { c.beginPath(); c.ellipse(x0 + 6 + hash(h, k) % 20, y0 + 8 + k * 8, 9, 2.2, 0, 0, Math.PI * 2); c.fill(); }
+    for (let k = 0; k < 9; k++) { const hh = hash(h, k + 20); c.fillStyle = k % 3 ? 'rgba(25,15,25,0.35)' : 'rgba(255,235,240,0.3)'; c.fillRect(x0 + hh % 28, y0 + 3 + (hh >>> 6) % 25, 1.4, 1.2); }
+    if (h % 3 === 0) dkPebble(c, x0 + 8 + (h >>> 5) % 14, y0 + 12 + (h >>> 9) % 10, 2.6, 2, '#3d3340', h);
+    if (!solid(tx, ty - 1)) { c.fillStyle = '#8f8592'; c.fillRect(x0, y0, T, 4); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(x0, y0, T, 1.5); }
+  }
+  // 4. every top that meets air: a scorched crust, ember moss in the theme's colours, dry tufts and cinders
+  const ember = dkHex(C.grass), emberDk = dkHex(C.grassDark);
+  for (const [tx, ty] of cells) {
+    const up = at(tx, ty - 1); if (up === '#' || up === 's' || up === 'w') continue;
+    const x0 = tx * T, y0 = ty * T, h = hash(tx, ty + 4130), Lx = !solid(tx - 1, ty), Rx = !solid(tx + 1, ty);
+    // the crust under the moss
+    c.fillStyle = K.crust; c.fillRect(x0, y0 + 4, T, 6);
+    c.fillStyle = 'rgba(12,6,16,0.35)'; c.fillRect(x0, y0 + 9, T, 2);
+    for (let k = 0; k < 4; k++) { c.fillStyle = 'rgba(16,10,20,0.4)'; c.fillRect(x0 + 2 + hash(h, k + 40) % 26, y0 + 6 + hash(h, k + 41) % 3, 2.5, 1.2); }
+    // the moss: a scalloped lip with a darker underside, curling over open ends
+    const a0 = Lx ? x0 - 1.5 : x0, a1 = Rx ? x0 + T + 1.5 : x0 + T;
+    c.fillStyle = emberDk; c.beginPath(); c.moveTo(a0, y0);
+    c.lineTo(a1, y0); c.lineTo(a1, y0 + 5);
+    for (let k = 5; k >= 0; k--) { const sx = x0 + k * T / 5; c.quadraticCurveTo(sx + T / 10, y0 + 9 + hash(h, k) % 2, sx, y0 + 6); }
+    c.lineTo(a0, y0 + 6); c.closePath(); c.fill();
+    c.fillStyle = ember; c.beginPath(); c.moveTo(a0, y0); c.lineTo(a1, y0); c.lineTo(a1, y0 + 3.5);
+    for (let k = 5; k >= 0; k--) { const sx = x0 + k * T / 5; c.quadraticCurveTo(sx + T / 10, y0 + 7 + hash(h, k + 7) % 2, sx, y0 + 4.5); }
+    c.lineTo(a0, y0 + 4.5); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,240,190,0.55)'; c.fillRect(x0, y0, T, 1.3);
+    // dry tufts (a few px above the top) and glowing cinders
+    c.strokeStyle = emberDk; c.lineWidth = 1.1; c.lineCap = 'round'; c.beginPath();
+    for (let k = 0; k < 3; k++) {
+      if (hash(h, k + 50) % 3 === 0) continue;
+      const bx = x0 + 4 + k * 10 + hash(h, k + 51) % 5, bh = 3 + hash(h, k + 52) % 3;
+      c.moveTo(bx, y0 + 1); c.lineTo(bx - 1.6, y0 - bh); c.moveTo(bx + 1, y0 + 1); c.lineTo(bx + 1.4, y0 - bh + 1); c.moveTo(bx + 2, y0 + 1); c.lineTo(bx + 3.6, y0 - bh + 1.6);
+    }
+    c.stroke(); c.lineCap = 'butt';
+    for (let k = 0; k < 2; k++) {
+      const hh = hash(h, k + 60); if (hh % 3) continue;
+      const ex = x0 + 3 + hh % 24, ey = y0 + 2 + (hh >>> 6) % 3;
+      c.fillStyle = 'rgba(255,120,40,0.35)'; c.beginPath(); c.arc(ex, ey, 2.4, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#ffd27a'; c.beginPath(); c.arc(ex, ey, 1, 0, Math.PI * 2); c.fill();
+    }
+    if (h % 4 === 0) dkPebble(c, x0 + 6 + (h >>> 6) % 18, y0 - 1.5, 2.6, 1.8, '#5a4c5c', h);
+  }
+}
 function vdDrawRockSlab(x, y, s, t, local) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
   // (cached) the slab: a shaded underside, a lit top deck with a highlight, gas holes and chips, outlined
@@ -953,6 +1119,27 @@ function vdDrawRockSlab(x, y, s, t, local) {
   ctx.beginPath(); ctx.moveTo(-40, 6); ctx.lineTo(-28, 12); ctx.lineTo(-14, 8); ctx.moveTo(18, 5); ctx.lineTo(30, 11); ctx.lineTo(44, 7); ctx.stroke();
   ctx.restore();
 }
+// a cooled crust plate floating on lava, centred at (x, y), about w x h (8 cached shapes per size): a jagged dark raft
+// with a darker core, a lit upper rim, glowing cracks across it and ember specks
+function vdCrust(x, y, w, h, v) {
+  w = Math.round(w); h = Math.round(h); v = v % 8;
+  dkPic('vdCrust|' + w + '|' + h + '|' + v, w + 8, h + 8, w / 2 + 4, h / 2 + 4, c => {
+    const pts = [];
+    for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2, j = 0.78 + (hash(v * 13 + k, 501) % 30) / 100; pts.push([Math.cos(a) * w / 2 * j, Math.sin(a) * h / 2 * j]); }
+    const path = (s) => { c.beginPath(); pts.forEach((p, k) => k ? c.lineTo(p[0] * s, p[1] * s) : c.moveTo(p[0] * s, p[1] * s)); c.closePath(); };
+    c.fillStyle = 'rgba(255,230,140,0.55)'; c.save(); c.translate(0, -0.8); path(1.08); c.fill(); c.restore();
+    c.fillStyle = '#8a3218'; path(1); c.fill();
+    c.fillStyle = '#5c1d12'; c.save(); c.translate(w * 0.06, h * 0.12); path(0.62); c.fill(); c.restore();
+    c.save(); path(1); c.clip();
+    c.strokeStyle = 'rgba(255,190,80,0.9)'; c.lineWidth = 0.9; c.beginPath();
+    const cx0 = -w * 0.3 + (hash(v, 502) % 10) / 10 * w * 0.2; c.moveTo(cx0, -h / 2); c.lineTo(cx0 + w * 0.08, -h * 0.05); c.lineTo(cx0 - w * 0.02, h / 2);
+    c.moveTo(cx0 + w * 0.08, -h * 0.05); c.lineTo(w * 0.25, h * 0.1); c.lineTo(w / 2, -h * 0.15); c.stroke();
+    c.fillStyle = 'rgba(255,240,200,0.28)'; c.fillRect(-w / 2, -h / 2, w, h * 0.22);
+    c.restore();
+    c.strokeStyle = '#4a160d'; c.lineWidth = 1; path(1); c.stroke();
+    c.fillStyle = '#ffd27a'; for (let k = 0; k < 3; k++) { const hh = hash(v * 7 + k, 503); c.fillRect((hh % 100 / 100 - 0.5) * w * 0.7, ((hh >>> 8) % 100 / 100 - 0.5) * h * 0.5, 1.2, 1.2); }
+  }, x, y);
+}
 // friendly cartoon lava from x0 to x1 with its surface at y (world coords); opts.depth (default down to the screen
 // bottom in world terms: 400 px)
 function vdDrawLava(x0, x1, y, t, o = {}) {
@@ -971,8 +1158,7 @@ function vdDrawLava(x0, x1, y, t, o = {}) {
     const cx = n * 120 + t * 10 + (hash(n, 21) % 50), cy = y + 18 + (hash(n, 22) % Math.max(8, Math.min(d - 20, 70)));
     if (cx < x0 + 14 || cx > x1 - 14) continue;
     const rw = 12 + hash(n, 23) % 14, rh = 3 + hash(n, 24) % 3;
-    ctx.fillStyle = 'rgba(150,40,20,0.55)'; ctx.beginPath(); ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,220,120,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx, cy - 0.5, rw, rh, 0, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+    vdCrust(cx, cy, rw * 2, rh * 2 + 1, hash(n, 25));
   }
   ctx.strokeStyle = 'rgba(255,235,150,0.45)'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
   for (let n = Math.floor((x0 - t * 24) / 90); n * 90 + t * 24 < x1 + 40; n++) {

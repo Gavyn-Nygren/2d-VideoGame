@@ -1259,8 +1259,9 @@ function tidedigDrawStash(st, t) {
     }
     if (!reduceMotion) { const q = (t * 0.6) % 1; ctx.fillStyle = 'rgba(255,255,255,' + (0.95 * Math.sin(q * Math.PI)) + ')'; const sx = x - 14 + q * 28, sy = surf - 14 - Math.sin(q * Math.PI) * 6; ctx.beginPath(); ctx.moveTo(sx, sy - 4); ctx.lineTo(sx + 1.2, sy - 1.2); ctx.lineTo(sx + 4, sy); ctx.lineTo(sx + 1.2, sy + 1.2); ctx.lineTo(sx, sy + 4); ctx.lineTo(sx - 1.2, sy + 1.2); ctx.lineTo(sx - 4, sy); ctx.lineTo(sx - 1.2, sy - 1.2); ctx.closePath(); ctx.fill(); }
   }
-  ctx.strokeStyle = '#7a5228'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x + 36, surf); ctx.lineTo(x + 36, surf - 50); ctx.stroke();
-  ctx.fillStyle = '#2a2a3a'; ctx.fillRect(x + 37, surf - 50, 22, 14);
+  dkPic('tdStashPole', 10, 56, 3, 52, c => { dkPlank(c, -1.5, -50, 3.2, 50, '#8a5e30', 73, { vert: true, r: 1, lit: 0.25, lw: 0.7, outline: '#5a3a18' }); c.fillStyle = '#ffc53d'; c.beginPath(); c.arc(0, -51, 2, 0, Math.PI * 2); c.fill(); c.fillStyle = '#d9b46a'; c.beginPath(); c.ellipse(0, 0.5, 5, 2.2, 0, Math.PI, 0); c.fill(); }, x + 36, surf);
+  ctx.fillStyle = '#2a2a3a'; ctx.beginPath(); ctx.moveTo(x + 37, surf - 50); ctx.lineTo(x + 59, surf - 50 + Math.sin(t * 4) * 1.2); ctx.lineTo(x + 59, surf - 36 + Math.sin(t * 4) * 1.2); ctx.lineTo(x + 37, surf - 36); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x + 37, surf - 50, 22, 2);
   ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x + 48, surf - 44, 4, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#2a2a3a'; ctx.beginPath(); ctx.arc(x + 46.5, surf - 45, 0.9, 0, Math.PI * 2); ctx.arc(x + 49.5, surf - 45, 0.9, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x + 48, surf - 44, 2, 0.3, Math.PI - 0.3); ctx.stroke();
@@ -1325,9 +1326,21 @@ function tidedigDrawPolly(st, t) {
   const pp = st.polly, surf = tidedigSurf();
   // her perch: a little driftwood stand
   const px = pp.perch, py = pp.home.y + 16;
-  ctx.strokeStyle = '#7a5228'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(px, surf); ctx.lineTo(px, py); ctx.moveTo(px - 14, py); ctx.lineTo(px + 14, py); ctx.stroke();
-  ctx.fillStyle = '#9a6a38'; ctx.beginPath(); ctx.ellipse(px, surf, 9, 3, 0, 0, Math.PI * 2); ctx.fill();
+  // (cached) a driftwood stand: a weathered grained post on a little sand heap, a lashed crossbar with knobbly ends
+  const ph = Math.round(surf - py);
+  dkPic('tdPerch|' + ph, 40, ph + 14, 20, 4, c => {
+    c.fillStyle = 'rgba(110,70,20,0.22)'; c.beginPath(); c.ellipse(2, ph + 1, 14, 3, 0, 0, Math.PI * 2); c.fill();
+    dkPlank(c, -2.5, 0, 5, ph, '#8a5e30', 71, { vert: true, r: 1.5, lit: 0.25, lw: 0.9, outline: '#5a3a18' });
+    c.fillStyle = 'rgba(255,240,210,0.18)'; c.fillRect(-1.5, 4, 1, ph - 8);
+    dkPlank(c, -15, -2.5, 30, 5, '#9a6a38', 72, { r: 2.5, lit: 0.3, lw: 0.9, outline: '#5a3a18' });
+    c.fillStyle = '#7a5228'; for (const ex of [-15, 13]) { c.beginPath(); c.ellipse(ex + 1, 0, 2, 3, 0, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#d8b07a'; for (const k of [0, 1]) { c.save(); c.translate(0, -1 + k * 2.6); c.rotate(k ? 0.5 : -0.5); rrOn(c, -4, -1, 8, 2, 1); c.fill(); c.restore(); }
+    c.strokeStyle = '#8a6430'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(-3.5, -2); c.lineTo(3.5, 2.5); c.moveTo(-3.5, 2.5); c.lineTo(3.5, -2); c.stroke();
+    // the sand heaped round its foot
+    c.fillStyle = '#d9b46a'; c.beginPath(); c.ellipse(0, ph + 0.5, 10, 4, 0, Math.PI, 0); c.fill();
+    c.fillStyle = '#ecca80'; c.beginPath(); c.ellipse(-1, ph, 8, 3, 0, Math.PI, 0); c.fill();
+    c.fillStyle = 'rgba(255,240,200,0.7)'; c.fillRect(-5, ph - 2.6, 5, 0.9);
+  }, px, py);
   const flying = st.gold.polly && pp.target || Math.hypot(pp.x - pp.home.x, pp.y - pp.home.y) > 6;
   const x = pp.x, y = pp.y + (flying ? Math.sin(t * 10) * 2 : 0), f = pp.face;
   ctx.save(); ctx.translate(x, y); ctx.scale(f, 1);

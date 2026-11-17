@@ -1077,22 +1077,58 @@ const CLOUDBRIDGE = {
   }
   function drawSpring(x, y, k, t) {
     const sq = k < 0.3 ? Math.sin(k / 0.3 * Math.PI) * 10 : 0;
-    const cols = ['#ff6b6b', '#ffb347', '#ffe066', '#7ddc7d', '#6bb7ff', '#b38bff'];
-    // a rainbow coil
-    for (let i = 0; i < 6; i++) { ctx.fillStyle = cols[i]; rr(x - 15, y - 6 - i * (4 + sq * 0.15), 30, 4, 2); ctx.fill(); }
-    ctx.fillStyle = '#ffffff'; rr(x - 18, y - 32 - sq * 0.9, 36, 7, 3.5); ctx.fill();
-    ctx.strokeStyle = '#ff8fc7'; ctx.lineWidth = 2; rr(x - 18, y - 32 - sq * 0.9, 36, 7, 3.5); ctx.stroke();
+    // a rainbow coil on a riveted foot plate, under a padded cap (cached while still; painted live while it boings)
+    const paint = (c, sq) => {
+      const cols = ['#ff6b6b', '#ffb347', '#ffe066', '#7ddc7d', '#6bb7ff', '#b38bff'];
+      c.fillStyle = 'rgba(90,80,150,0.2)'; c.beginPath(); c.ellipse(1, 0, 22, 3, 0, 0, Math.PI * 2); c.fill();
+      dkPlate(c, -19, -3, 38, 5, '#9a96c8', { r: 2, step: 9, lw: 1 });
+      // the back of the coil: a darker curl showing between the bands
+      c.strokeStyle = 'rgba(90,70,140,0.45)'; c.lineWidth = 1.4; c.beginPath();
+      for (let i = 0; i < 6; i++) { const yy = -6 - i * (4 + sq * 0.15); c.moveTo(-14, yy + 3.6); c.lineTo(14, yy + 0.4); }
+      c.stroke();
+      for (let i = 0; i < 6; i++) {
+        const yy = -6 - i * (4 + sq * 0.15), col = cols[i];
+        c.fillStyle = col; rrOn(c, -15, yy, 30, 4, 2); c.fill();
+        c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(-13, yy + 0.4, 18, 1);
+        c.fillStyle = 'rgba(40,20,60,0.22)'; c.fillRect(-13, yy + 2.8, 26, 1.2);
+        c.strokeStyle = dkS(col, 0.35); c.lineWidth = 0.8; rrOn(c, -15, yy, 30, 4, 2); c.stroke();
+      }
+      const cy = -32 - sq * 0.9;
+      c.fillStyle = '#ffd8ea'; rrOn(c, -18, cy + 1.5, 36, 7, 3.5); c.fill();
+      c.fillStyle = '#ffffff'; rrOn(c, -18, cy, 36, 5.5, 3); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.95)'; c.fillRect(-13, cy + 0.8, 18, 1.2);
+      c.strokeStyle = 'rgba(255,143,199,0.7)'; c.lineWidth = 0.8; c.setLineDash([2, 2]); c.beginPath(); c.moveTo(-15, cy + 4.6); c.lineTo(15, cy + 4.6); c.stroke(); c.setLineDash([]);
+      c.strokeStyle = '#ff8fc7'; c.lineWidth = 2; rrOn(c, -18, cy, 36, 7, 3.5); c.stroke();
+    };
+    if (sq === 0) dkPic('cbSpring', 46, 46, 23, 40, c => paint(c, 0), x, y);
+    else { ctx.save(); ctx.translate(x, y); paint(ctx, sq); ctx.restore(); }
     ctx.fillStyle = 'rgba(255,255,255,' + (0.4 + 0.3 * Math.sin(t * 5)) + ')'; circle(x + 10, y - 40, 2); ctx.fill();
   }
   function drawLift(st, s, lk, t) {
     // a puffy cloud pillar with an island lid
     const x0 = s.x0, x1 = s.x1, w = x1 - x0, y = s.top;
     // (the pillar reaches down into the cloud sea; it looks the same however high the lid is)
-    for (let k = 0; y + 14 + k * 22 < H + 30; k++) {
-      const yy = y + 14 + k * 22, wob = Math.sin(t * 2 + k * 1.1) * 3;
+    // puffs outlined in their own lavender (all outlines first, so they only show round the outside), shaded on the
+    // right, with a lit cap on each
+    const rows = [];
+    for (let k = 0; y + 14 + k * 22 < H + 30; k++) rows.push([y + 14 + k * 22, Math.sin(t * 2 + k * 1.1) * 3]);
+    ctx.strokeStyle = '#c3bdea'; ctx.lineWidth = 2.4; ctx.beginPath();
+    for (const [yy, wob] of rows) {
+      ctx.moveTo(x1 - 14 - wob + 18, yy + 10); ctx.arc(x1 - 14 - wob, yy + 10, 18, 0, Math.PI * 2);
+      ctx.moveTo(x0 + 16 + wob + 18, yy); ctx.arc(x0 + 16 + wob, yy, 18, 0, Math.PI * 2);
+      ctx.moveTo((x0 + x1) / 2 + 21, yy + 4); ctx.arc((x0 + x1) / 2, yy + 4, 21, 0, Math.PI * 2);
+    }
+    ctx.stroke();
+    for (const [yy, wob] of rows) {
       ctx.fillStyle = '#dfe2f8'; circle(x1 - 14 - wob, yy + 10, 18); ctx.fill();
       ctx.fillStyle = '#ffffff'; circle(x0 + 16 + wob, yy, 18); ctx.fill(); circle((x0 + x1) / 2, yy + 4, 21); ctx.fill();
     }
+    ctx.fillStyle = 'rgba(200,195,240,0.4)'; ctx.beginPath();
+    for (const [yy] of rows) { ctx.moveTo((x0 + x1) / 2 + 3, yy + 7); ctx.arc((x0 + x1) / 2 + 3, yy + 7, 17, -0.6, 1.6); ctx.closePath(); }
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.beginPath();
+    for (const [yy, wob] of rows) { ctx.moveTo(x0 + 16 + wob, yy - 8); ctx.ellipse(x0 + 10 + wob, yy - 8, 6, 3, -0.3, 0, Math.PI * 2); }
+    ctx.fill();
     // (cached) the lid: a rock slab of shaded chunks under a grass top with blades
     dkPic('cbLid|' + lk.rock + '|' + Math.round(w), Math.ceil(w) + 16, 34, 8, 12, c => {
       dkPlate(c, -2, 2, w + 4, 16, lk.rock, { rivets: false, r: 6 });
@@ -1296,11 +1332,10 @@ const CLOUDBRIDGE = {
     const x0 = c.x0 + wob, w = c.x1 - c.x0, y = c.top, h = c.h * thin;
     ctx.save();
     ctx.globalAlpha = (c.state === 'forming' ? 0.55 : 1) * (0.4 + 0.6 * born);
-    const body = c.gold ? '#fff1b0' : c.sun ? '#fffaf0' : '#ffffff', shade = c.gold ? '#f0cc5a' : '#d8dcf6';
-    ctx.fillStyle = shade; rr(x0, y + 3, w, h, Math.min(10, h / 2)); ctx.fill();
-    ctx.fillStyle = body; rr(x0, y, w, h - 4 * thin, Math.min(10, h / 2)); ctx.fill();
-    const bumps = Math.max(1, Math.round(w / 22));
-    for (let k = 0; k < bumps; k++) { const bx = x0 + (k + 0.5) * w / bumps; circle(bx, y + 3, Math.min(10, w / bumps / 2 + 1) * (0.8 + 0.2 * thin)); ctx.fill(); }
+    // (cached per size, melt step and kind) a puffy cloud block: an outline in its own lavender shade, a shaded
+    // underside with little lumps, lit puffs on top with creases between them, a glint, a soft shadow below
+    const kind = c.gold ? 1 : c.sun ? 2 : 0, cw = Math.round(w), chh = Math.max(4, Math.round(h)), th = Math.round(thin * 8);
+    dkPic('cbCloud|' + cw + '|' + chh + '|' + th + '|' + kind + '|' + (c.seed % 3), cw + 24, chh + 30, 12, 16, cc => cloudbridgePaintCloud(cc, cw, chh, th / 8, kind, c.seed % 3), x0, y);
     if (c.gold) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x0, y - 4, w, h + 6, 10); ctx.stroke(); if (Math.sin(t * 5 + c.seed) > 0.6) { ctx.fillStyle = '#ffffff'; starPath(x0 + w * 0.7, y - 2, 4, 1.6); ctx.fill(); } }
     // a sleepy little face that worries as it melts
     if (w > 40 && thin > 0.6) {
@@ -1312,6 +1347,34 @@ const CLOUDBRIDGE = {
     // melt drips in the sun
     if (c.sun && !c.gold) { ctx.fillStyle = 'rgba(160,200,255,0.8)'; const dy = (t * 50 + c.seed * 3) % 26; circle(x0 + w * 0.3, y + h + dy, 2); ctx.fill(); }
     ctx.restore();
+  }
+  function cloudbridgePaintCloud(c, w, h, thin, kind, sd) {
+    const body = kind === 1 ? '#fff1b0' : kind === 2 ? '#fffaf0' : '#ffffff', shade = kind === 1 ? '#f0cc5a' : '#d8dcf6';
+    const line = kind === 1 ? '#d9a33a' : '#a9acdc', crease = kind === 1 ? 'rgba(220,160,50,0.5)' : 'rgba(160,165,220,0.55)';
+    const bumps = Math.max(1, Math.round(w / 22)), br = Math.min(10, w / bumps / 2 + 1) * (0.8 + 0.2 * thin), r = Math.min(10, h / 2);
+    const lumps = Math.max(1, Math.round(w / 18)), lr = Math.min(6, w / lumps / 2) * thin;
+    const shape = (dy) => {
+      c.beginPath(); rrOn(c, 0, dy, w, h - (dy ? 0 : 4 * thin), r);
+      for (let k = 0; k < bumps; k++) { const bx = (k + 0.5) * w / bumps; c.moveTo(bx + br, 3 + dy); c.arc(bx, 3 + dy, br, 0, Math.PI * 2); }
+    };
+    const under = () => { c.beginPath(); rrOn(c, 0, 3, w, h, r); for (let k = 0; k < lumps; k++) { const lx = (k + 0.5) * w / lumps; c.moveTo(lx + lr, h + 1); c.arc(lx, h + 1, lr, 0, Math.PI * 2); } };
+    // a soft shadow under it
+    c.fillStyle = kind === 1 ? 'rgba(200,150,40,0.16)' : 'rgba(110,110,180,0.16)'; c.beginPath(); c.ellipse(w / 2, h + 9, w * 0.42, 3.2, 0, 0, Math.PI * 2); c.fill();
+    // the outline: the same shapes stroked a little wider under the fills
+    c.strokeStyle = line; c.lineWidth = 2.6; under(); c.stroke(); shape(0); c.stroke();
+    c.fillStyle = shade; under(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.35)'; for (let k = 0; k < lumps; k++) { const lx = (k + 0.5) * w / lumps; c.beginPath(); c.arc(lx - lr * 0.3, h - 0.5, lr * 0.45, 0, Math.PI * 2); c.fill(); }
+    const g = c.createLinearGradient(0, -8, 0, h); g.addColorStop(0, body); g.addColorStop(0.65, body); g.addColorStop(1, mixCol(body, shade, 0.45));
+    c.fillStyle = g; shape(0); c.fill();
+    // creases between the puffs and a lit cap on each one
+    c.strokeStyle = crease; c.lineWidth = 1.3; c.lineCap = 'round'; c.beginPath();
+    for (let k = 1; k < bumps; k++) { const bx = k * w / bumps; c.moveTo(bx - 3, 4 + br * 0.4); c.quadraticCurveTo(bx, 2 + br * 0.75, bx + 3, 4 + br * 0.4); }
+    if (w > 30) { c.moveTo(w * 0.22, h * 0.62); c.quadraticCurveTo(w * 0.3, h * 0.78, w * 0.4, h * 0.66); c.moveTo(w * 0.62, h * 0.7); c.quadraticCurveTo(w * 0.7, h * 0.84, w * 0.8, h * 0.68); }
+    c.stroke(); c.lineCap = 'butt';
+    c.fillStyle = 'rgba(255,255,255,0.95)';
+    for (let k = 0; k < bumps; k++) { const bx = (k + 0.5) * w / bumps; c.beginPath(); c.ellipse(bx - br * 0.3, 3 - br * 0.45, br * 0.42, br * 0.24, -0.3, 0, Math.PI * 2); c.fill(); }
+    if (kind !== 1) { c.fillStyle = 'rgba(200,215,255,0.35)'; c.beginPath(); c.ellipse(w * (0.25 + sd * 0.2), h * 0.4, 5, 2.2, 0, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(w * 0.18 + sd * 4, 1, 1.2, 0, Math.PI * 2); c.fill();
   }
   function drawMark(st, m, t) {
     const x0 = m.x0, w = m.x1 - m.x0, y = m.top, col = PCOL[m.by];

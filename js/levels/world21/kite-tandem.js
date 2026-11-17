@@ -1206,6 +1206,25 @@ function kiteDrawPierRun(st, r, yB) {
   ctx.beginPath(); r.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y - 30) : ctx.moveTo(x, y - 30))); ctx.stroke();
   for (let x = Math.ceil(xa / 48) * 48; x < xb; x += 48) { const y = kiteBy(st, x); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 30); ctx.stroke(); }
 }
+// (cached) one full arch span under the sky bridge, local x 0 = the span's left end, y 0 = the deck top: the spandrel
+// with its stone courses and lit joints, voussoirs along the arch, a lit soffit edge and a keystone
+function kitePaintSpandrel(c) {
+  const span = () => { c.beginPath(); c.moveTo(0, 14); c.lineTo(180, 14); c.lineTo(180, 40); c.quadraticCurveTo(90, 120, 0, 40); c.closePath(); };
+  c.fillStyle = 'rgba(216,210,242,0.85)'; span(); c.fill();
+  c.save(); span(); c.clip();
+  c.strokeStyle = 'rgba(120,110,180,0.3)'; c.lineWidth = 1; c.beginPath();
+  for (const dy of [24, 34, 44, 54]) { c.moveTo(0, dy); c.lineTo(180, dy); for (let bx = dy % 20 ? 0 : 12; bx < 180; bx += 24) { c.moveTo(bx, dy - 10); c.lineTo(bx, dy); } }
+  c.stroke();
+  c.fillStyle = 'rgba(255,255,255,0.3)'; for (const dy of [14, 24, 34, 44]) c.fillRect(0, dy + 1, 180, 1);
+  c.restore();
+  const ap = u => { const a = (1 - u) * (1 - u), b = 2 * u * (1 - u), c2 = u * u; return [a * 180 + b * 90, a * 40 + b * 120 + c2 * 40]; };
+  c.strokeStyle = 'rgba(120,110,180,0.45)'; c.lineWidth = 1; c.beginPath();
+  for (let k = 1; k < 10; k++) { const [px, py] = ap(k / 10); c.moveTo(px, py); c.lineTo(px + (px - 90) * 0.06, py - 9); }
+  c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,0.75)'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(180, 40); c.quadraticCurveTo(90, 120, 0, 40); c.stroke();
+  c.strokeStyle = 'rgba(150,140,210,0.55)'; c.lineWidth = 1; c.beginPath(); c.moveTo(180, 42); c.quadraticCurveTo(90, 122, 0, 42); c.stroke();
+  c.fillStyle = '#efeafc'; c.strokeStyle = '#b8b0e0'; c.beginPath(); c.moveTo(84, 70); c.lineTo(96, 70); c.lineTo(98, 82); c.lineTo(82, 82); c.closePath(); c.fill(); c.stroke();
+}
 function kiteDrawBridgeRun(st, r, yB) {
   const xa = r.pts[0][0], xb = r.pts[r.pts.length - 1][0] + KITE_STEP;
   // arches under the bridge, fading into the clouds
@@ -1220,8 +1239,12 @@ function kiteDrawBridgeRun(st, r, yB) {
       const g = c.createLinearGradient(0, 70, 0, 150); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,0.7)'); c.fillStyle = g; c.fillRect(0, 70, 26, 80);
     }, x, y + 14);
     else { ctx.fillStyle = '#d8d2f2'; ctx.fillRect(Math.max(x, xa), y + 14, Math.min(26, xb - x), 150); }
-    ctx.fillStyle = 'rgba(216,210,242,0.85)'; ctx.beginPath(); ctx.moveTo(Math.max(x, xa), y + 14); ctx.lineTo(Math.min(x + 180, xb), y + 14); ctx.lineTo(Math.min(x + 180, xb), y + 40);
-    ctx.quadraticCurveTo(x + 90, y + 120, Math.max(x, xa), y + 40); ctx.closePath(); ctx.fill();
+    const sx0 = Math.max(x, xa), sx1 = Math.min(x + 180, xb);
+    if (sx1 <= sx0) continue;
+    const part = sx0 !== x || sx1 !== x + 180;   // (a span cut by a gap shows only its part)
+    if (part) { ctx.save(); ctx.beginPath(); ctx.rect(sx0, y, sx1 - sx0, 130); ctx.clip(); }
+    dkPic('ktArch', 184, 112, 2, -12, kitePaintSpandrel, x, y);
+    if (part) ctx.restore();
   }
   ctx.fillStyle = '#a29fd6';
   ctx.beginPath(); r.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); for (let i = r.pts.length - 1; i >= 0; i--) ctx.lineTo(r.pts[i][0], r.pts[i][1] + 16); ctx.closePath(); ctx.fill();
@@ -1241,6 +1264,29 @@ function kiteDrawBridgeRun(st, r, yB) {
     }, x, y + 8);
   }
   ctx.strokeStyle = '#7c78bc'; ctx.lineWidth = 1.5; ctx.beginPath(); r.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y + 16) : ctx.moveTo(x, y + 16))); ctx.stroke();
+  // a moulded lip with dentils under the deck
+  ctx.fillStyle = '#8f8bc8'; ctx.beginPath(); r.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y + 16) : ctx.moveTo(x, y + 16))); for (let i = r.pts.length - 1; i >= 0; i--) ctx.lineTo(r.pts[i][0] + (i === r.pts.length - 1 ? KITE_STEP : 0), r.pts[i][1] + 18); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#b4b0e2'; ctx.beginPath(); for (let x = Math.ceil(xa / 8) * 8; x < xb - 4; x += 8) ctx.rect(x, kiteBy(st, x) + 18, 4, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(70,60,130,0.35)'; ctx.beginPath(); for (let x = Math.ceil(xa / 8) * 8; x < xb - 4; x += 8) ctx.rect(x + 3, kiteBy(st, x) + 18, 1, 3); ctx.fill();
+  // the balustrade between the posts: little vase spindles under a lit handrail
+  const spindle = c => {
+      c.fillStyle = '#f4f1fd'; c.beginPath(); c.moveTo(-1.6, -18); c.quadraticCurveTo(-4.2, -10, -2.6, -5); c.lineTo(-2.2, 0); c.lineTo(2.2, 0); c.lineTo(2.6, -5); c.quadraticCurveTo(4.2, -10, 1.6, -18); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(150,140,210,0.4)'; c.beginPath(); c.moveTo(0.6, -18); c.quadraticCurveTo(3.4, -10, 1.6, -5); c.lineTo(1.6, 0); c.lineTo(2.2, 0); c.lineTo(2.6, -5); c.quadraticCurveTo(4.2, -10, 1.6, -18); c.closePath(); c.fill();
+      c.strokeStyle = '#c4bce8'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(-1.6, -18); c.quadraticCurveTo(-4.2, -10, -2.6, -5); c.lineTo(-2.2, 0); c.moveTo(2.2, 0); c.lineTo(2.6, -5); c.quadraticCurveTo(4.2, -10, 1.6, -18); c.stroke();
+      c.fillStyle = '#e4dff8'; c.fillRect(-3, -2, 6, 2); c.fillRect(-2.6, -19, 5.2, 1.6);
+  };
+  for (let x = Math.ceil(xa / 12) * 12; x < xb - 4; x += 12) {
+    if (x % 60 === 0) continue;
+    // four spindles between two posts on a level stretch are one cached strip
+    if (x % 60 === 12 && x + 36 < xb - 4) { const y = kiteBy(st, x); if (kiteBy(st, x + 36) === y && kiteBy(st, x + 18) === y) { dkPic('ktSpindles', 46, 22, 5, 20, c => { for (let k = 0; k < 4; k++) { c.save(); c.translate(k * 12, 0); spindle(c); c.restore(); } }, x, y); x += 36; continue; } }
+    dkPic('ktSpindle', 10, 22, 5, 20, spindle, x, kiteBy(st, x));
+  }
+  // (the handrail follows the deck every 8 px: the same line with a quarter of the points)
+  const rp = r.pts.filter((q, i) => i % 4 === 0 || i === r.pts.length - 1);
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#c4bce8'; ctx.lineWidth = 4; ctx.beginPath(); rp.forEach(([x, y], i) => (i ? ctx.lineTo(x, y - 20) : ctx.moveTo(x, y - 20))); ctx.stroke();
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.4; ctx.beginPath(); rp.forEach(([x, y], i) => (i ? ctx.lineTo(x, y - 20.6) : ctx.moveTo(x, y - 20.6))); ctx.stroke();
+  ctx.lineCap = 'butt';
   // balusters: shaded white posts with a moulded foot and a gold knob with a glint
   for (let x = Math.ceil(xa / 60) * 60; x < xb; x += 60) { const y = kiteBy(st, x); dkPic('ktBridgePost', 14, 38, 7, 33, c => {
     c.fillStyle = '#ffffff'; rrOn(c, -4, -26, 8, 26, 3); c.fill();

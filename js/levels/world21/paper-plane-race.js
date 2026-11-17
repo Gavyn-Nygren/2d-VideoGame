@@ -1025,11 +1025,25 @@ function ppPaintTower(c, h, col) {
 }
 // the launch post: a cloud pillar with soft puffs and a grained wooden Y fork with leather wraps
 function ppPaintSling(c, hh) {
-  c.fillStyle = '#ffffff'; rrOn(c, -70, 34, 60, hh - 30, 14); c.fill(); circleOn(c, -40, 36, 24); c.fill();
-  c.fillStyle = '#eef0fc'; circleOn(c, -58, 60, 12); c.fill(); circleOn(c, -24, 80, 13); c.fill();
-  c.fillStyle = 'rgba(178,160,230,0.25)'; c.fillRect(-26, 40, 16, hh - 40);
-  c.fillStyle = 'rgba(255,255,255,0.9)'; circleOn(c, -48, 26, 7); c.fill();
-  c.fillStyle = 'rgba(178,160,230,0.3)'; c.fillRect(-70, hh - 10, 60, 14);
+  // the pillar: a column of puffs outlined in their own lavender, shaded on the right and underneath, with creases
+  const puffs = [[-40, 36, 24]];
+  for (let y = 58, k = 0; y < hh - 6; y += 22, k++) { puffs.push([-67 + (k % 2) * 2, y, 9 + (hash(k, 7) % 3)]); puffs.push([-13 - (k % 2) * 2, y + 11, 9 + (hash(k, 8) % 3)]); }
+  for (const bx of [-60, -40, -20]) puffs.push([bx, hh - 2, 12]);
+  const col = (dx, dy, k) => { c.beginPath(); rrOn(c, -70 + dx, 34 + dy, 60, hh - 30, 14); for (const [px, py, r] of puffs) { c.moveTo(px + dx + r * k, py + dy); c.arc(px + dx, py + dy, r * k, 0, Math.PI * 2); } };
+  c.fillStyle = 'rgba(120,110,190,0.16)'; c.beginPath(); c.ellipse(-38, hh + 9, 40, 4, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#c3bdea'; c.lineWidth = 2.6; col(0, 0, 1); c.stroke();
+  c.fillStyle = '#e4e1f8'; col(0, 0, 1); c.fill();
+  c.fillStyle = '#ffffff'; col(-2, -3, 0.9); c.fill();
+  c.save(); col(0, 0, 1); c.clip();
+  const g = c.createLinearGradient(-70, 0, -8, 0); g.addColorStop(0, 'rgba(178,160,230,0)'); g.addColorStop(0.6, 'rgba(178,160,230,0.08)'); g.addColorStop(1, 'rgba(150,135,215,0.32)');
+  c.fillStyle = g; c.fillRect(-82, 10, 80, hh + 20);
+  c.strokeStyle = 'rgba(165,155,220,0.5)'; c.lineWidth = 1.4; c.lineCap = 'round'; c.beginPath();
+  for (let y = 70, k = 0; y < hh - 16; y += 30, k++) { const cx = -46 + (k % 2) * 12; c.moveTo(cx - 8, y); c.quadraticCurveTo(cx, y + 7, cx + 8, y); }
+  c.stroke(); c.lineCap = 'butt';
+  c.fillStyle = 'rgba(178,160,230,0.3)'; c.fillRect(-80, hh - 10, 80, 20);
+  c.restore();
+  c.fillStyle = 'rgba(255,255,255,0.95)'; circleOn(c, -48, 26, 7); c.fill();
+  for (const [px, py, r] of puffs.slice(1)) { if (py > hh - 8) continue; c.fillStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.ellipse(px - r * 0.3, py - r * 0.4, r * 0.4, r * 0.25, -0.3, 0, Math.PI * 2); c.fill(); }
   c.lineCap = 'round'; c.lineJoin = 'round';
   const fork = () => { c.beginPath(); c.moveTo(-40, 40); c.lineTo(-40, 14); c.lineTo(-26, -12); c.moveTo(-40, 14); c.lineTo(-54, -12); };
   c.strokeStyle = '#6e4524'; c.lineWidth = 9.5; fork(); c.stroke();
@@ -1154,8 +1168,12 @@ function ppDrawFinish(st) {
   cols.forEach((col, i) => { ctx.strokeStyle = col; ctx.beginPath(); ctx.arc(x, PP.groundY + 40, 330 - i * 12, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke(); });
   // the checkered line
   for (let y = 70, k = 0; y < PP.groundY; y += 16, k++) { ctx.fillStyle = k % 2 ? '#ffffff' : '#5a4a8a'; ctx.fillRect(x - 6, y, 6, 16); ctx.fillStyle = k % 2 ? '#5a4a8a' : '#ffffff'; ctx.fillRect(x, y, 6, 16); }
-  ctx.fillStyle = '#ffffff';
-  for (const [dx, dy, r] of [[-30, PP.groundY - 4, 30], [20, PP.groundY - 10, 36], [60, PP.groundY - 2, 26], [-20, 78, 30], [26, 84, 34]]) { circle(x + dx, dy, r); ctx.fill(); }
+  // its cloud feet and crown: outlined puffs with a lavender underside and a lit cap
+  const fp = [[-30, PP.groundY - 4, 30], [20, PP.groundY - 10, 36], [60, PP.groundY - 2, 26], [-20, 78, 30], [26, 84, 34]];
+  ctx.strokeStyle = '#c3bdea'; ctx.lineWidth = 3; ctx.beginPath(); for (const [dx, dy, r] of fp) { ctx.moveTo(x + dx + r, dy); ctx.arc(x + dx, dy, r, 0, Math.PI * 2); } ctx.stroke();
+  ctx.fillStyle = '#e4e1f8'; ctx.beginPath(); for (const [dx, dy, r] of fp) { ctx.moveTo(x + dx + r, dy); ctx.arc(x + dx, dy, r, 0, Math.PI * 2); } ctx.fill();
+  ctx.fillStyle = '#ffffff'; ctx.beginPath(); for (const [dx, dy, r] of fp) { ctx.moveTo(x + dx - 3 + r * 0.9, dy - 4); ctx.arc(x + dx - 3, dy - 4, r * 0.9, 0, Math.PI * 2); } ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.95)'; for (const [dx, dy, r] of fp) { ctx.beginPath(); ctx.ellipse(x + dx - r * 0.35, dy - r * 0.5, r * 0.35, r * 0.18, -0.3, 0, Math.PI * 2); ctx.fill(); }
   ctx.save(); ctx.translate(x + 2, 128);
   ctx.fillStyle = 'rgba(28,26,54,0.86)'; rr(-52, -16, 104, 32, 16); ctx.fill();
   text('FINISH', 0, 1, 20, C.gold, 'center');

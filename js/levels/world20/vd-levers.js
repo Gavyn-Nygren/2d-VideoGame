@@ -584,11 +584,8 @@ function vdlDrawBack(st) {
     ctx.fillStyle = `rgba(255,240,225,${a * 0.9})`; circle(x - r * 0.2, y - r * 0.3, r * 0.35); ctx.fill();
   }
   // the rock (stone tiles and the bridge planks), drawn again over the backdrop
-  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
-    const ch = G.level.grid[ty][tx];
-    if (ch === '#') drawStone(tx, ty);
-    else if (ch === '=') drawPlank(tx * T, ty * T, tx, ty);
-  }
+  vdRockTiles();
+  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) if (G.level.grid[ty][tx] === '=') drawPlank(tx * T, ty * T, tx, ty);
   // the bridge's rope rails and posts
   const by = 5 * T, bx0 = 3 * T, bx1 = 29 * T;
   ctx.strokeStyle = C.ropeDark; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(bx0, by - 26);
