@@ -765,6 +765,14 @@ function spacewalkDrawHull(st, h) {
     ctx.stroke();
     ctx.fillStyle = '#c3cbe2'; for (let x = h.x; x <= h.x + h.w; x += 24) { circle(x, h.y + 3, 2); ctx.fill(); circle(x + 12, h.y + h.h - 3, 2); ctx.fill(); }
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(h.x, h.y + 1.5, h.w, 1);
+    // (rich props pass) gusset plates at the joints, a dark underside rail and a cable tray
+    ctx.fillStyle = '#7f88b0'; ctx.beginPath();
+    for (let x = h.x; x <= h.x + h.w; x += 48) { ctx.moveTo(x - 4, h.y + 1); ctx.lineTo(x + 4, h.y + 1); ctx.lineTo(x, h.y + 8); ctx.closePath(); }
+    ctx.fill();
+    ctx.fillStyle = '#2f3654'; ctx.fillRect(h.x, h.y + h.h - 1.5, h.w, 1.5);
+    ctx.strokeStyle = '#ff9a4a'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(h.x, h.y + h.h / 2 + 1);
+    for (let x = h.x; x < h.x + h.w; x += 36) ctx.quadraticCurveTo(x + 18, h.y + h.h / 2 + 4, x + 36, h.y + h.h / 2 + 1);
+    ctx.stroke();
     return;
   }
   // a white module with blue trim, rivets and a round window
@@ -789,10 +797,31 @@ function spacewalkDrawHull(st, h) {
   ctx.fillStyle = 'rgba(255,255,255,0.35)'; for (let y = h.y + 24; y < h.y + h.h - 10; y += 70) ctx.fillRect(h.x, y, h.w, 1.5);
   ctx.fillStyle = '#9aa6c4';
   for (let y = h.y + 12; y < h.y + h.h; y += 22) { circle(h.x + 7, y, 1.6); ctx.fill(); circle(h.x + h.w - 7, y, 1.6); ctx.fill(); }
+  // (rich props pass) inset panels with screws, a stencilled number, a handrail, a vent and scuffs; painted once
+  CK.pic('swmod' + h.w + '|' + h.h + '|' + Math.round(h.x), h.w + 12, h.h + 4, 6, 2, () => {
+    for (let y = 30, k = 0; y < h.h - 30; y += 70, k++) {
+      const py = y + 6, ph = Math.min(34, h.h - py - 10); if (ph < 12) continue;
+      ctx.fillStyle = 'rgba(80,90,130,0.08)'; rr(8, py, h.w - 16, ph, 3); ctx.fill();
+      ctx.strokeStyle = 'rgba(80,90,130,0.35)'; ctx.lineWidth = 1; rr(8, py, h.w - 16, ph, 3); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.moveTo(9, py + ph + 1); ctx.lineTo(h.w - 8, py + ph + 1); ctx.stroke();
+      ctx.fillStyle = '#9aa6c4'; for (const [sx, sy] of [[11, py + 3], [h.w - 11, py + 3], [11, py + ph - 3], [h.w - 11, py + ph - 3]]) { circle(sx, sy, 1.3); ctx.fill(); }
+      if (k === 0) { ctx.font = '700 9px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(80,90,130,0.55)'; ctx.fillText('S-' + (1 + (Math.round(h.x / 10) % 9)), h.w / 2, py + ph / 2 + 0.5); }
+    }
+    // a handrail standing off the face
+    if (h.h > 120) {
+      ctx.strokeStyle = '#5c6688'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(h.w - 12, 70); ctx.lineTo(h.w - 6, 70); ctx.lineTo(h.w - 6, 110); ctx.lineTo(h.w - 12, 110); ctx.stroke();
+      ctx.strokeStyle = '#ffc53d'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(h.w - 6, 72); ctx.lineTo(h.w - 6, 108); ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(80,90,130,0.25)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let k = 0; k < Math.floor(h.h / 50); k++) { const sx = 10 + CK.r(h.x, k) * (h.w - 26), sy = 12 + CK.r(k, h.x) * (h.h - 24); ctx.moveTo(sx, sy); ctx.lineTo(sx + 6, sy - 1.5); }
+    ctx.stroke();
+  }, h.x, h.y);
   const wx = h.x + h.w / 2, wy = h.y + h.h - 60;
   ctx.fillStyle = '#7f88b0'; circle(wx, wy, 15); ctx.fill();
   ctx.fillStyle = '#1b2a5a'; circle(wx, wy, 11); ctx.fill();
   ctx.fillStyle = 'rgba(160,220,255,0.5)'; ctx.beginPath(); ctx.arc(wx - 3, wy - 3, 6, Math.PI, Math.PI * 1.6); ctx.lineTo(wx - 3, wy - 3); ctx.fill();
+  ctx.fillStyle = '#dfe5f5'; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; circle(wx + Math.cos(a) * 13, wy + Math.sin(a) * 13, 1.1); ctx.fill(); }
+  ctx.strokeStyle = '#4a5374'; ctx.lineWidth = 1.2; circle(wx, wy, 15); ctx.stroke();
 }
 function spacewalkDrawLock(st) {
   const lk = st.lock, x = lk.x, y = lk.y, f = lk.face, open = lk.open ? clamp(lk.openT / 0.8, 0, 1) : 0;
@@ -833,15 +862,41 @@ function spacewalkDrawDock(st) {
   ctx.restore();
 }
 function spacewalkDrawMast(m) {
-  ctx.strokeStyle = '#4a5374'; ctx.lineWidth = 6; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(m.x0, m.y0); ctx.lineTo(m.x1, m.y1); ctx.stroke();
-  ctx.strokeStyle = '#9aa6c4'; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(m.x0, m.y0); ctx.lineTo(m.x1, m.y1); ctx.stroke();
-  // little rungs
-  const len = Math.hypot(m.x1 - m.x0, m.y1 - m.y0), ux = (m.x1 - m.x0) / (len || 1), uy = (m.y1 - m.y0) / (len || 1);
-  ctx.strokeStyle = '#6a7398'; ctx.lineWidth = 2;
-  for (let s = 18; s < len - 6; s += 22) { const x = m.x0 + ux * s, y = m.y0 + uy * s; ctx.beginPath(); ctx.moveTo(x - uy * 5, y + ux * 5); ctx.lineTo(x + uy * 5, y - ux * 5); ctx.stroke(); }
-  ctx.lineCap = 'butt';
+  // (rich props pass, Nov 2026) a lattice girder: two shaded rails, zig-zag bracing, bolted joints, a cable with
+  // clips, a foot plate and a blinking tip light; the girder itself is painted once per length
+  const len = Math.hypot(m.x1 - m.x0, m.y1 - m.y0), ang = Math.atan2(m.y1 - m.y0, m.x1 - m.x0), L = Math.round(len);
+  ctx.save(); ctx.translate(m.x0, m.y0); ctx.rotate(ang);
+  CK.pic('swmast' + L, L + 24, 28, 12, 14, () => {
+    ctx.fillStyle = '#5c6688'; ctx.fillRect(0, -5, L, 10);
+    ctx.fillStyle = '#4a5374'; ctx.fillRect(0, 0, L, 5);
+    ctx.strokeStyle = '#3a4262'; ctx.lineWidth = 1.6; ctx.beginPath();
+    for (let x = 0; x < L - 4; x += 12) { ctx.moveTo(x, -4); ctx.lineTo(x + 6, 4); ctx.lineTo(x + 12, -4); }
+    ctx.stroke();
+    ctx.strokeStyle = '#9aa6c4'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let x = 0; x < L - 4; x += 12) { ctx.moveTo(x + 0.6, -4.6); ctx.lineTo(x + 6.6, 3.4); }
+    ctx.stroke();
+    for (const ry of [-5, 5]) {
+      ctx.fillStyle = '#c3cbe2'; ctx.fillRect(0, ry - 1.6, L, 3.2);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(0, ry - 1.6, L, 1);
+      ctx.strokeStyle = '#3a4262'; ctx.lineWidth = 0.9; ctx.strokeRect(0, ry - 1.6, L, 3.2);
+    }
+    ctx.fillStyle = '#e8ecf8'; ctx.beginPath();
+    for (let x = 0; x <= L; x += 12) { ctx.moveTo(x + 1.4, -5); ctx.arc(x, -5, 1.4, 0, Math.PI * 2); ctx.moveTo(x + 7.4, 5); ctx.arc(x + 6, 5, 1.4, 0, Math.PI * 2); }
+    ctx.fill();
+    // a cable along one side with little clips
+    ctx.strokeStyle = '#ff9a4a'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(4, 7.5);
+    for (let x = 4; x < L - 6; x += 24) ctx.quadraticCurveTo(x + 12, 9.5, x + 24, 7.5);
+    ctx.stroke();
+    ctx.fillStyle = '#7f88b0'; for (let x = 4; x < L - 6; x += 24) ctx.fillRect(x - 1, 6, 2.4, 3);
+    // the foot plate, bolted on
+    ctx.fillStyle = '#7f88b0'; rr(-4, -9, 9, 18, 2); ctx.fill();
+    ctx.strokeStyle = '#3a4262'; ctx.lineWidth = 1.2; rr(-4, -9, 9, 18, 2); ctx.stroke();
+    ctx.fillStyle = '#dfe5f5'; ctx.beginPath(); ctx.arc(0.5, -5.5, 1.3, 0, Math.PI * 2); ctx.arc(0.5, 5.5, 1.3, 0, Math.PI * 2); ctx.fill();
+    // the tip cap
+    ctx.fillStyle = '#9aa6c4'; rr(L - 4, -6.5, 7, 13, 2); ctx.fill(); ctx.strokeStyle = '#3a4262'; ctx.stroke();
+  }, 0, 0);
+  ctx.fillStyle = Math.sin(G.clock * 3 + m.x0 * 0.1) > 0.3 ? '#ff6b6b' : '#7a3a48'; circle(len + 1, 0, 2.4); ctx.fill();
+  ctx.restore();
 }
 function spacewalkDrawBuoy(x, y, id) {
   ctx.fillStyle = '#c3cbe2'; rr(x - 10, y - 6, 20, 12, 5); ctx.fill();
@@ -867,6 +922,12 @@ function spacewalkDrawPanel(st, p) {
   const w = 50, h = 30;
   // the frame and the cells
   ctx.fillStyle = '#c9b06a'; rr(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6, 4); ctx.fill();
+  // (rich props pass) a shaded frame with corner bolts and a junction box with a cable
+  ctx.fillStyle = '#a88e4a'; ctx.fillRect(-w / 2 - 3, h / 2, w + 6, 3); ctx.fillRect(w / 2, -h / 2 - 1, 3, h + 3);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(-w / 2 - 2, -h / 2 - 2.5, w + 4, 1);
+  ctx.strokeStyle = '#7d6a30'; ctx.lineWidth = 1.4; rr(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6, 4); ctx.stroke();
+  ctx.fillStyle = '#7f88b0'; rr(-6, h / 2 + 2, 12, 6, 1.5); ctx.fill(); ctx.strokeStyle = '#3a4262'; ctx.lineWidth = 1; rr(-6, h / 2 + 2, 12, 6, 1.5); ctx.stroke();
+  ctx.fillStyle = '#8fe3b0'; ctx.fillRect(-3.5, h / 2 + 4, 2, 2); ctx.fillStyle = '#ff9a4a'; ctx.fillRect(1.5, h / 2 + 4, 2, 2);
   if (p.fixed) {
     const g = ctx.createLinearGradient(0, -h / 2, 0, h / 2); g.addColorStop(0, '#5fb8ff'); g.addColorStop(1, '#2459c9');
     ctx.fillStyle = g;
@@ -876,6 +937,8 @@ function spacewalkDrawPanel(st, p) {
   ctx.beginPath();
   for (let x = -w / 2 + 10; x < w / 2; x += 10) { ctx.moveTo(x, -h / 2); ctx.lineTo(x, h / 2); }
   ctx.moveTo(-w / 2, 0); ctx.lineTo(w / 2, 0); ctx.stroke();
+  ctx.fillStyle = '#efe4b8'; ctx.beginPath(); for (const [bx, by] of [[-w / 2 - 1, -h / 2 - 1], [w / 2 + 1, -h / 2 - 1], [-w / 2 - 1, h / 2 + 1], [w / 2 + 1, h / 2 + 1]]) { ctx.moveTo(bx + 1.5, by); ctx.arc(bx, by, 1.5, 0, Math.PI * 2); } ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.moveTo(-w / 2, -h / 2); ctx.lineTo(-w / 2 + 16, -h / 2); ctx.lineTo(-w / 2, -h / 2 + 12); ctx.closePath(); ctx.fill();
   if (!p.fixed) {
     // cracks, a dangling cell and a sputtering spark
     ctx.strokeStyle = '#d9dbe8'; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -903,6 +966,12 @@ function spacewalkDrawPanel(st, p) {
 }
 function spacewalkDrawRock(st, r) {
   const x = r.cx, y = r.cy, R = r.r;
+  // (rich props pass) painted once per rock: the lumpy shape below plus craters with lit rims, chiselled facets,
+  // specks, a dark lower-right side and a sunlit rim
+  CK.pic('swrock' + r.seed + '|' + R + (r.solid ? 's' : ''), R * 2 + 12, R * 2 + 12, R + 6, R + 6, () => spacewalkRockPaint(r, R), x, y);
+}
+function spacewalkRockPaint(r, R) {
+  const x = 0, y = 0;
   ctx.save(); ctx.translate(x, y);
   ctx.fillStyle = r.solid ? '#8a7f8f' : '#6f6a80';
   ctx.beginPath();
@@ -910,8 +979,27 @@ function spacewalkDrawRock(st, r) {
   ctx.closePath(); ctx.fill();
   ctx.strokeStyle = '#4e4658'; ctx.lineWidth = 2.5; ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.ellipse(-R * 0.3, -R * 0.35, R * 0.45, R * 0.25, -0.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#6a6070';
-  for (let k = 0; k < 3; k++) { const h = hash(r.seed + 3, k); circle(((h % 100) / 100 - 0.5) * R, (((h >>> 8) % 100) / 100 - 0.4) * R, R * (0.12 + (h % 7) / 50)); ctx.fill(); }
+  const body = () => { ctx.beginPath(); for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, rr2 = R * (0.9 + ((hash(r.seed, k) % 100) / 100) * 0.16); ctx.lineTo(Math.cos(a) * rr2, Math.sin(a) * rr2); } ctx.closePath(); };
+  const col = r.solid ? '#8a7f8f' : '#6f6a80';
+  ctx.save(); body(); ctx.clip();
+  ctx.fillStyle = shade(col, 0.28); ctx.beginPath(); ctx.ellipse(R * 0.45, R * 0.5, R * 1.05, R * 0.85, -0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = tint(col, 0.14); ctx.beginPath(); ctx.ellipse(-R * 0.35, -R * 0.4, R * 0.6, R * 0.4, -0.6, 0, Math.PI * 2); ctx.fill();
+  // facets
+  ctx.strokeStyle = shade(col, 0.4); ctx.lineWidth = 1.3; ctx.beginPath();
+  for (let k = 0; k < 3; k++) { const a = CK.r(r.seed, k) * 6.28, r0 = R * 0.3, r1 = R * 0.95; ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); ctx.lineTo(Math.cos(a + 0.4) * r1 * 0.6, Math.sin(a + 0.4) * r1 * 0.6); ctx.lineTo(Math.cos(a + 0.2) * r1, Math.sin(a + 0.2) * r1); }
+  ctx.stroke();
+  // craters: a dark bowl, a lit lower rim, a shaded upper rim
+  for (let k = 0; k < 4; k++) {
+    const h = hash(r.seed + 3, k), cx = ((h % 100) / 100 - 0.5) * R * 1.1, cy = (((h >>> 8) % 100) / 100 - 0.45) * R * 1.1, cr = R * (0.1 + (h % 7) / 45);
+    ctx.fillStyle = shade(col, 0.32); circle(cx, cy, cr); ctx.fill();
+    ctx.fillStyle = shade(col, 0.48); ctx.beginPath(); ctx.ellipse(cx - cr * 0.15, cy - cr * 0.15, cr * 0.75, cr * 0.65, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(cx, cy, cr, 0.1, Math.PI * 0.9); ctx.stroke();
+  }
+  ctx.fillStyle = shade(col, 0.45); ctx.beginPath(); for (let k = 0; k < 16; k++) ctx.rect((CK.r(r.seed, k + 20) - 0.5) * R * 1.7, (CK.r(k, r.seed) - 0.5) * R * 1.7, 1.4, 1.4); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); for (let k = 0; k < 8; k++) ctx.rect((CK.r(r.seed, k + 40) - 0.7) * R, (CK.r(k + 40, r.seed) - 0.7) * R, 1.2, 1.2); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(220,210,240,0.45)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(0, 0, R * 0.86, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+  ctx.strokeStyle = '#4e4658'; ctx.lineWidth = 2.5; body(); ctx.stroke();
   ctx.restore();
 }
 function spacewalkDrawSat(st, s) {

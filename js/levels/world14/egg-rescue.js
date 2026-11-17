@@ -1,6 +1,526 @@
 /* Pip & Bo - Level 14-1 Egg Rescue (team, World 14 Dino Valley). */
 'use strict';
 
+/* ===== Rich props kit for Worlds 14-17 (art pass "richer props", Nov 2026, batch C) =====
+   Gavyn: "the things on the ground ... I want way more detail". Shared drawing helpers for the props, blocks and ground
+   of Worlds 14-17 (this file loads first of the four worlds, so the others use these too). Drawing only: nothing here
+   touches gameplay or the seeded random numbers (placement comes from hash(), never Math.random()). Every helper draws
+   with the shared ctx, so it also works inside a CK.pic picture.
+   Shading rule for every prop: base colour, a darker lower/right side, a thin lit top/left edge, an outline in a dark
+   shade of its own colour and a soft ground shadow, plus small themed details. */
+const CK = {};
+CK.r = (a, b) => hash(Math.floor(a), Math.floor(b)) / 4294967296;    // a stable 0..1 from two numbers
+CK.shadow = (x, y, rx, ry, a) => { ctx.fillStyle = 'rgba(20,20,40,' + (a === undefined ? 0.18 : a) + ')'; ctx.beginPath(); ctx.ellipse(x, y, Math.max(1, rx), Math.max(1, ry || rx * 0.28), 0, 0, Math.PI * 2); ctx.fill(); };
+CK.lit = a => 'rgba(255,255,255,' + a + ')';
+CK.ink = a => 'rgba(20,20,40,' + a + ')';
+// CK.pic(key, w, h, ox, oy, paint, x, y): a still prop drawn once into a picture at the canvas's own pixel scale and
+// copied each frame (same idea as K.pic in shrunk-kit.js). paint() draws with the usual ctx and helpers, in the
+// picture's own space with its origin (ox, oy) from the top-left; the copy puts that origin at (x, y). The key must
+// change whenever what paint() draws would change.
+(function () {
+  const SKIP = new Set(['constructor', 'canvas']), pics = new Map();
+  let scale = 0, painting = false, onDepth = 0;
+  // CK.on(c, paint): while paint() runs, every call and setting on the screen's ctx goes to the context c instead (so
+  // the CK helpers can paint into a level's own cached picture)
+  CK.on = (c, paint) => {
+    if (c === ctx || onDepth) { paint(); return; }
+    const proto = CanvasRenderingContext2D.prototype, own = [];
+    for (const k of Object.getOwnPropertyNames(proto)) {
+      if (SKIP.has(k)) continue;
+      const d = Object.getOwnPropertyDescriptor(proto, k);
+      if (typeof d.value === 'function') Object.defineProperty(ctx, k, { value: (...a) => c[k](...a), configurable: true, writable: true });
+      else if (d.get) Object.defineProperty(ctx, k, { get: () => c[k], set: v => { c[k] = v; }, configurable: true });
+      else continue;
+      own.push(k);
+    }
+    onDepth++;
+    try { paint(); } finally { onDepth--; for (const k of own) delete ctx[k]; }
+  };
+  CK.pic = (key, w, h, ox, oy, paint, x, y) => {
+    if (painting || onDepth) { ctx.save(); ctx.translate(x, y); paint(); ctx.restore(); return; }
+    const sc = Math.max(1, Math.min(3, canvas.width / W));
+    if (sc !== scale) { pics.clear(); scale = sc; }
+    let sp = pics.get(key);
+    if (sp) { pics.delete(key); pics.set(key, sp); }
+    else {
+      if (pics.size >= 240) pics.delete(pics.keys().next().value);
+      const px = Math.ceil(ox * sc), py = Math.ceil(oy * sc);
+      sp = document.createElement('canvas'); sp.width = Math.max(1, Math.ceil(px + (w - ox) * sc)); sp.height = Math.max(1, Math.ceil(py + (h - oy) * sc));
+      const c = sp.getContext('2d'); c.translate(px, py); c.scale(sc, sc);
+      sp.px = px; sp.py = py;
+      painting = true;
+      try { CK.on(c, paint); } finally { painting = false; }
+      pics.set(key, sp);
+    }
+    const m = ctx.getTransform();
+    if (m.b === 0 && m.c === 0 && Math.abs(m.a - sc) < 1e-6 && Math.abs(m.d - sc) < 1e-6) {
+      const X = Math.round(m.a * x + m.e) - sp.px, Y = Math.round(m.d * y + m.f) - sp.py, sm = ctx.imageSmoothingEnabled;
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(sp, X, Y);
+      ctx.setTransform(m); ctx.imageSmoothingEnabled = sm;
+    } else ctx.drawImage(sp, x - sp.px / sc, y - sp.py / sc, sp.width / sc, sp.height / sc);
+  };
+})();
+// a lumpy closed outline (rocks, boulders, clods): n bumps, jitter j, a flat foot below cy + ry * flat (if given)
+CK.blob = (cx, cy, rx, ry, seed, n, j, flat) => {
+  n = n || 9; j = j === undefined ? 0.16 : j;
+  const P = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2, k = 1 - j + 2 * j * CK.r(seed, i);
+    let y = cy + Math.sin(a) * ry * k; if (flat !== undefined) y = Math.min(y, cy + ry * flat);
+    P.push([cx + Math.cos(a) * rx * k, y]);
+  }
+  ctx.beginPath();
+  for (let i = 0; i <= n; i++) {
+    const p = P[i % n], q = P[(i + 1) % n], mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2;
+    if (i === 0) ctx.moveTo(mx, my); else ctx.quadraticCurveTo(p[0], p[1], mx, my);
+  }
+  ctx.closePath();
+};
+// a shaded rock: lit top-left, dark lower-right, chiselled facets, specks, a crack, outline. o: { moss (a colour),
+// flat (a flat foot), wet (a shine), shadow: false, n, j, lw }
+CK.rock = (cx, cy, rx, ry, col, seed, o) => {
+  o = o || {};
+  const n = o.n || 9, j = o.j === undefined ? 0.15 : o.j;
+  if (o.shadow !== false) CK.shadow(cx + rx * 0.08, cy + ry * (o.flat !== undefined ? o.flat : 0.85), rx * 1.08, Math.max(2, ry * 0.22), 0.2);
+  CK.blob(cx, cy, rx, ry, seed, n, j, o.flat); ctx.fillStyle = col; ctx.fill();
+  ctx.save(); CK.blob(cx, cy, rx, ry, seed, n, j, o.flat); ctx.clip();
+  ctx.fillStyle = shade(col, 0.26); ctx.beginPath(); ctx.ellipse(cx + rx * 0.42, cy + ry * 0.62, rx * 1.05, ry * 0.78, -0.25, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = tint(col, 0.22); ctx.beginPath(); ctx.ellipse(cx - rx * 0.32, cy - ry * 0.42, rx * 0.62, ry * 0.42, -0.35, 0, Math.PI * 2); ctx.fill();
+  // facets: chiselled edges with a lit lip
+  ctx.lineWidth = Math.max(1, Math.min(2, rx * 0.06)); ctx.lineCap = 'round';
+  const nf = rx > 14 ? 3 : 2;
+  for (let f = 0; f < nf; f++) {
+    const a = CK.r(seed, 40 + f) * Math.PI * 2, r0 = 0.15 + CK.r(seed, 50 + f) * 0.3, l = 0.35 + CK.r(seed, 60 + f) * 0.35;
+    const x0 = cx + Math.cos(a) * rx * r0, y0 = cy + Math.sin(a) * ry * r0, x1 = x0 + Math.cos(a + 0.9) * rx * l, y1 = y0 + Math.sin(a + 0.9) * ry * l;
+    ctx.strokeStyle = shade(col, 0.38); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo((x0 + x1) / 2 + ry * 0.06, (y0 + y1) / 2 - rx * 0.05); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.strokeStyle = CK.lit(0.22); ctx.beginPath(); ctx.moveTo(x0 - 1, y0 - 1.2); ctx.lineTo((x0 + x1) / 2 + ry * 0.06 - 1, (y0 + y1) / 2 - rx * 0.05 - 1.2); ctx.stroke();
+  }
+  // a hairline crack
+  if (rx > 10 && CK.r(seed, 70) < 0.75) {
+    const a = 0.5 + CK.r(seed, 71) * 1.6, sx = cx + Math.cos(a + Math.PI) * rx * 0.85, sy = cy - ry * 0.1;
+    ctx.strokeStyle = shade(col, 0.45); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + rx * 0.2, sy + ry * 0.12); ctx.lineTo(sx + rx * 0.3, sy + ry * 0.02); ctx.lineTo(sx + rx * 0.48, sy + ry * 0.2); ctx.stroke();
+  }
+  // specks, dark and light, in one path each
+  const ns = Math.min(14, 3 + Math.floor(rx * ry / 50));
+  ctx.fillStyle = shade(col, 0.42); ctx.beginPath();
+  for (let i = 0; i < ns; i++) { const sx = cx + (CK.r(seed, 100 + i) - 0.5) * rx * 1.5, sy = cy + (CK.r(seed, 130 + i) - 0.5) * ry * 1.4, s = 0.6 + CK.r(seed, 160 + i) * 0.9; ctx.moveTo(sx + s, sy); ctx.arc(sx, sy, s, 0, Math.PI * 2); }
+  ctx.fill();
+  ctx.fillStyle = CK.lit(0.35); ctx.beginPath();
+  for (let i = 0; i < ns >> 1; i++) { const sx = cx + (CK.r(seed, 200 + i) - 0.6) * rx * 1.2, sy = cy + (CK.r(seed, 230 + i) - 0.7) * ry * 1.0, s = 0.5 + CK.r(seed, 260 + i) * 0.6; ctx.moveTo(sx + s, sy); ctx.arc(sx, sy, s, 0, Math.PI * 2); }
+  ctx.fill();
+  if (o.wet) { ctx.fillStyle = CK.lit(0.45); ctx.beginPath(); ctx.ellipse(cx - rx * 0.35, cy - ry * 0.5, rx * 0.18, ry * 0.07, -0.3, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+  ctx.lineCap = 'butt';
+  ctx.strokeStyle = CK.lit(0.32); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.86, ry * 0.84, 0, Math.PI * 1.08, Math.PI * 1.62); ctx.stroke();
+  CK.blob(cx, cy, rx, ry, seed, n, j, o.flat); ctx.strokeStyle = shade(col, 0.55); ctx.lineWidth = o.lw || Math.max(1.4, Math.min(2.4, rx * 0.1)); ctx.stroke();
+  if (o.moss) CK.moss(cx - rx * 0.15, cy - ry * 0.8, rx * 0.62, Math.max(2.5, ry * 0.18), o.moss, seed);
+};
+// a moss cap: a soft green mound along a top edge with lit dots
+CK.moss = (cx, y, w, h, col, seed) => {
+  const n = Math.max(3, Math.round(w / 6));
+  ctx.fillStyle = col; ctx.beginPath();
+  ctx.moveTo(cx - w, y);
+  for (let i = 0; i <= n; i++) { const x = cx - w + (2 * w * i) / n; ctx.lineTo(x, y - h * (0.4 + 0.6 * CK.r(seed, 300 + i)) * Math.sin(Math.PI * (i / n))); }
+  for (let i = n; i >= 0; i--) { const x = cx - w + (2 * w * i) / n; ctx.lineTo(x, y + h * (0.5 + 0.9 * CK.r(seed, 330 + i)) * Math.sin(Math.PI * (i / n))); }
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = shade(col, 0.4); ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = tint(col, 0.35); ctx.beginPath();
+  for (let i = 0; i < n; i++) { const x = cx - w * 0.8 + (1.6 * w * i) / Math.max(1, n - 1), yy = y - h * 0.15 + CK.r(seed, 360 + i) * h * 0.3; ctx.moveTo(x + 1.1, yy); ctx.arc(x, yy, 1.1, 0, Math.PI * 2); }
+  ctx.fill();
+};
+// a pebble: small shaded stone with a lit dot (for soil and banks)
+CK.pebble = (x, y, r, col, seed) => {
+  const ry = r * (0.62 + CK.r(seed, 1) * 0.25), a = (CK.r(seed, 2) - 0.5) * 0.6;
+  ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(x, y, r, ry, a, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = shade(col, 0.28); ctx.beginPath(); ctx.ellipse(x + r * 0.15, y + ry * 0.3, r * 0.85, ry * 0.6, a, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = CK.lit(0.38); ctx.beginPath(); ctx.ellipse(x - r * 0.35, y - ry * 0.35, r * 0.35, ry * 0.25, a, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = shade(col, 0.5); ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y, r, ry, a, 0, Math.PI * 2); ctx.stroke();
+};
+// a log lying on its side, top-left (x, y), length len, thickness d: plated bark with ridges, knots, moss, a stub and a
+// ringed cut end. o: { bark, wood, moss, seed, right (a cut end on the right too), stub: false, shadow: false }
+CK.log = (x, y, len, d, o) => {
+  o = o || {};
+  const bark = o.bark || '#8a5a34', wood = o.wood || '#e2b67c', seed = o.seed || 7, r = d / 2, cx = x + len / 2;
+  if (o.shadow !== false) CK.shadow(cx + 2, y + d + 1, len / 2 + 10, 4.5, 0.22);
+  ctx.fillStyle = bark; rr(x, y, len, d, r); ctx.fill();
+  ctx.save(); rr(x, y, len, d, r); ctx.clip();
+  // round body: a lit upper band, a dark belly
+  ctx.fillStyle = tint(bark, 0.14); ctx.fillRect(x, y, len, d * 0.32);
+  ctx.fillStyle = shade(bark, 0.2); ctx.fillRect(x, y + d * 0.6, len, d * 0.4);
+  ctx.fillStyle = shade(bark, 0.36); ctx.fillRect(x, y + d * 0.84, len, d * 0.2);
+  // bark ridges along the log, broken into plates
+  ctx.lineCap = 'round';
+  const rows = Math.max(3, Math.round(d / 5.5));
+  ctx.strokeStyle = shade(bark, 0.42); ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let k = 0; k < rows; k++) {
+    const yy = y + d * (0.14 + 0.76 * (k + 0.5) / rows);
+    let xx = x + r * 0.5 + CK.r(seed, k) * 8;
+    while (xx < x + len - 4) {
+      const seg = 10 + CK.r(seed + xx, k) * 22, wob = (CK.r(seed + k, xx) - 0.5) * 2.4;
+      ctx.moveTo(xx, yy + wob); ctx.quadraticCurveTo(xx + seg / 2, yy - wob, xx + seg, yy + wob * 0.5);
+      xx += seg + 4 + CK.r(xx, seed + k) * 6;
+    }
+  }
+  ctx.stroke();
+  // plate joints (short cross splits) and lit plate edges
+  ctx.strokeStyle = shade(bark, 0.38); ctx.lineWidth = 1.2; ctx.beginPath();
+  for (let xx = x + r + 6; xx < x + len - 6; xx += 9 + CK.r(xx, seed) * 9) { const yy = y + d * (0.2 + CK.r(seed, xx) * 0.55); ctx.moveTo(xx, yy); ctx.lineTo(xx + 1.5, yy + d * 0.2); }
+  ctx.stroke();
+  ctx.strokeStyle = CK.lit(0.2); ctx.lineWidth = 1; ctx.beginPath();
+  for (let xx = x + r + 3; xx < x + len - 6; xx += 14 + CK.r(seed, xx) * 10) { const yy = y + d * (0.12 + CK.r(xx, seed + 3) * 0.2); ctx.moveTo(xx, yy); ctx.lineTo(xx + 8, yy - 0.5); }
+  ctx.stroke();
+  // knots
+  const nk = Math.max(1, Math.floor(len / 60));
+  for (let i = 0; i < nk; i++) {
+    const kx = x + r + 8 + (len - 2 * r - 16) * (i + 0.3 + CK.r(seed, 500 + i) * 0.4) / nk, ky = y + d * (0.35 + CK.r(seed, 510 + i) * 0.3), kr = Math.max(2.2, d * 0.13);
+    ctx.fillStyle = shade(bark, 0.3); ctx.beginPath(); ctx.ellipse(kx, ky, kr * 1.5, kr, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = shade(bark, 0.55); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(kx, ky, kr * 0.8, kr * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = CK.lit(0.25); ctx.beginPath(); ctx.ellipse(kx, ky, kr * 1.5, kr, 0, Math.PI * 1.1, Math.PI * 1.8); ctx.stroke();
+  }
+  ctx.restore(); ctx.lineCap = 'butt';
+  ctx.strokeStyle = shade(bark, 0.55); ctx.lineWidth = 2; rr(x, y, len, d, r); ctx.stroke();
+  // a broken-off branch stub on top
+  if (o.stub !== false && len > 44) {
+    const sx = x + len * (0.55 + CK.r(seed, 600) * 0.2), sw = Math.max(4, d * 0.22);
+    ctx.fillStyle = bark; ctx.beginPath(); ctx.moveTo(sx - sw, y + 3); ctx.lineTo(sx - sw * 0.2, y - d * 0.32); ctx.lineTo(sx + sw * 0.9, y - d * 0.24); ctx.lineTo(sx + sw, y + 3); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = shade(bark, 0.55); ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = wood; ctx.beginPath(); ctx.ellipse(sx + sw * 0.35, y - d * 0.28, sw * 0.6, sw * 0.22, 0.15, 0, Math.PI * 2); ctx.fill();
+  }
+  // ringed cut ends
+  const end = (ex, flip) => {
+    const erx = Math.max(4, r * 0.5), ery = r - 0.5;
+    ctx.fillStyle = shade(bark, 0.25); ctx.beginPath(); ctx.ellipse(ex, y + r, erx + 2, ery + 0.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = wood; ctx.beginPath(); ctx.ellipse(ex, y + r, erx, ery - 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = shade(wood, 0.12); ctx.beginPath(); ctx.ellipse(ex + erx * 0.2 * flip, y + r + ery * 0.25, erx * 0.8, ery * 0.6, 0, 0, Math.PI); ctx.fill();
+    ctx.strokeStyle = shade(wood, 0.3); ctx.lineWidth = 1;
+    for (let k = 1; k <= 3; k++) { ctx.beginPath(); ctx.ellipse(ex, y + r, erx * k / 4.2, Math.max(1, (ery - 2) * k / 4.2), 0, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.fillStyle = shade(wood, 0.45); ctx.beginPath(); ctx.arc(ex, y + r, 1.3, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = shade(wood, 0.5); ctx.beginPath(); ctx.moveTo(ex, y + r); ctx.lineTo(ex + erx * 0.5 * flip, y + r - ery * 0.75); ctx.stroke();
+    ctx.strokeStyle = CK.lit(0.35); ctx.beginPath(); ctx.ellipse(ex, y + r, erx, Math.max(1, ery - 2), 0, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
+    ctx.strokeStyle = shade(bark, 0.6); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.ellipse(ex, y + r, erx + 2, ery + 0.5, 0, 0, Math.PI * 2); ctx.stroke();
+  };
+  end(x + r * 0.5, 1);
+  if (o.right) end(x + len - r * 0.5, -1);
+  if (o.moss) CK.moss(x + len * 0.4, y + 1.5, Math.min(18, len * 0.2), 3.5, o.moss, seed);
+};
+// a carved stone block / ledge: base, lit bevel, dark foot and right side, brick courses with chips and cracks, specks.
+// o: { course (row height, 0 = no bricks), brick (brick length), moss (a colour), lw, r, seed, hiTop }
+CK.block = (x, y, w, h, col, o) => {
+  o = o || {};
+  const seed = o.seed || 3, rad = o.r === undefined ? 3 : o.r;
+  ctx.fillStyle = col; rr(x, y, w, h, rad); ctx.fill();
+  ctx.save(); rr(x, y, w, h, rad); ctx.clip();
+  ctx.fillStyle = shade(col, 0.24); ctx.fillRect(x, y + h - Math.min(8, h * 0.22), w, h);
+  ctx.fillStyle = shade(col, 0.14); ctx.fillRect(x + w - Math.min(6, w * 0.12), y, w, h);
+  const course = o.course === undefined ? 15 : o.course, bl = o.brick || 30;
+  if (course > 0) {
+    const rows = Math.max(1, Math.round(h / course)), rh = h / rows;
+    // each stone a touch lighter or darker
+    for (let i = 0; i < rows; i++) {
+      const off = (i % 2) * bl * 0.5;
+      for (let bx = x - bl + off, k = 0; bx < x + w; bx += bl, k++) {
+        const t = CK.r(seed + i * 31, k);
+        if (t < 0.3) { ctx.fillStyle = CK.lit(0.06 + t * 0.15); ctx.fillRect(bx, y + i * rh, bl, rh); }
+        else if (t > 0.7) { ctx.fillStyle = CK.ink(0.04 + (t - 0.7) * 0.25); ctx.fillRect(bx, y + i * rh, bl, rh); }
+      }
+    }
+    ctx.strokeStyle = shade(col, 0.38); ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let i = 1; i < rows; i++) { ctx.moveTo(x, y + i * rh); ctx.lineTo(x + w, y + i * rh); }
+    for (let i = 0; i < rows; i++) {
+      const off = (i % 2) * bl * 0.5;
+      for (let bx = x - bl + off; bx < x + w; bx += bl) { if (bx > x + 3 && bx < x + w - 3) { ctx.moveTo(bx, y + i * rh); ctx.lineTo(bx, y + (i + 1) * rh); } }
+    }
+    ctx.stroke();
+    ctx.strokeStyle = CK.lit(0.2); ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 1; i < rows; i++) { ctx.moveTo(x, y + i * rh + 1.4); ctx.lineTo(x + w, y + i * rh + 1.4); }
+    for (let i = 0; i < rows; i++) {
+      const off = (i % 2) * bl * 0.5;
+      for (let bx = x - bl + off; bx < x + w; bx += bl) { if (bx > x + 3 && bx < x + w - 3) { ctx.moveTo(bx + 1.4, y + i * rh + 1); ctx.lineTo(bx + 1.4, y + (i + 1) * rh - 1); } }
+    }
+    ctx.stroke();
+  }
+  // chips and cracks
+  ctx.fillStyle = shade(col, 0.3); ctx.beginPath();
+  const nc = Math.max(1, Math.floor(w * h / 1400));
+  for (let i = 0; i < nc; i++) {
+    const cx = x + 4 + CK.r(seed, 700 + i) * (w - 8), cy = y + 4 + CK.r(seed, 720 + i) * (h - 8), s = 1.5 + CK.r(seed, 740 + i) * 2.5;
+    ctx.moveTo(cx - s, cy); ctx.lineTo(cx, cy - s * 0.7); ctx.lineTo(cx + s, cy + s * 0.2); ctx.lineTo(cx - s * 0.2, cy + s * 0.6); ctx.closePath();
+  }
+  ctx.fill();
+  if (w * h > 900) {
+    const cx = x + w * (0.2 + CK.r(seed, 760) * 0.6);
+    ctx.strokeStyle = shade(col, 0.48); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx, y + 1); ctx.lineTo(cx + 3, y + Math.min(h * 0.3, 9)); ctx.lineTo(cx - 1, y + Math.min(h * 0.45, 14)); ctx.lineTo(cx + 2, y + Math.min(h * 0.6, 20)); ctx.stroke();
+  }
+  ctx.fillStyle = shade(col, 0.4); ctx.beginPath();
+  const ns = Math.min(50, Math.floor(w * h / 110));
+  for (let i = 0; i < ns; i++) { const sx = x + CK.r(seed, 800 + i) * w, sy = y + CK.r(seed, 900 + i) * h; ctx.rect(sx, sy, 1.3, 1.3); }
+  ctx.fill();
+  ctx.fillStyle = CK.lit(o.hiTop || 0.28); ctx.fillRect(x, y, w, 2.2); ctx.fillRect(x, y, 2, h);
+  ctx.restore();
+  ctx.strokeStyle = shade(col, 0.55); ctx.lineWidth = o.lw || 2; rr(x, y, w, h, rad); ctx.stroke();
+  if (o.moss) {
+    ctx.fillStyle = o.moss; ctx.beginPath(); ctx.moveTo(x - 1, y - 1);
+    for (let mx = x; mx <= x + w + 0.1; mx += 6) { const dd = 2 + CK.r(seed, mx) * 4 + (CK.r(mx, seed) < 0.16 ? 6 : 0); ctx.lineTo(mx, y + dd); }
+    ctx.lineTo(x + w + 1, y - 1); ctx.lineTo(x + w + 1, y - 3); ctx.lineTo(x - 1, y - 3); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = shade(o.moss, 0.35); ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = tint(o.moss, 0.35); ctx.fillRect(x, y - 3, w, 1.6);
+  }
+};
+// planks with grain and nails (a deck, a raft, a box); o.vert: the boards run up and down
+CK.planks = (x, y, w, h, col, o) => {
+  o = o || {};
+  const seed = o.seed || 5, bw = o.board || 14, vert = !!o.vert;
+  ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  const n = Math.max(1, Math.round((vert ? w : h) / bw)), s = (vert ? w : h) / n;
+  for (let i = 0; i < n; i++) {
+    const t = CK.r(seed, i);
+    ctx.fillStyle = t < 0.33 ? tint(col, 0.08) : t < 0.66 ? shade(col, 0.07) : col;
+    if (vert) ctx.fillRect(x + i * s, y, s, h); else ctx.fillRect(x, y + i * s, w, s);
+  }
+  ctx.strokeStyle = shade(col, 0.3); ctx.lineWidth = 1; ctx.beginPath();
+  for (let i = 0; i < n; i++) for (let g = 0; g < 2; g++) {
+    const off = s * (0.3 + 0.4 * g) + (CK.r(seed + g, i) - 0.5) * 2;
+    if (vert) { const gx = x + i * s + off; ctx.moveTo(gx, y + 2); ctx.bezierCurveTo(gx + 1.5, y + h * 0.3, gx - 1.5, y + h * 0.6, gx + 0.5, y + h - 2); }
+    else { const gy = y + i * s + off; ctx.moveTo(x + 2, gy); ctx.bezierCurveTo(x + w * 0.3, gy + 1.5, x + w * 0.6, gy - 1.5, x + w - 2, gy + 0.5); }
+  }
+  ctx.stroke();
+  ctx.strokeStyle = shade(col, 0.5); ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let i = 1; i < n; i++) { if (vert) { ctx.moveTo(x + i * s, y); ctx.lineTo(x + i * s, y + h); } else { ctx.moveTo(x, y + i * s); ctx.lineTo(x + w, y + i * s); } }
+  ctx.stroke();
+  ctx.strokeStyle = CK.lit(0.22); ctx.lineWidth = 1; ctx.beginPath();
+  for (let i = 0; i < n; i++) { if (vert) { ctx.moveTo(x + i * s + 1.5, y); ctx.lineTo(x + i * s + 1.5, y + h); } else { ctx.moveTo(x, y + i * s + 1.5); ctx.lineTo(x + w, y + i * s + 1.5); } }
+  ctx.stroke();
+  if (o.nails !== false) {
+    ctx.fillStyle = o.nail || '#5a5560'; ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const m = (i + 0.5) * s;
+      if (vert) { ctx.moveTo(x + m + 1.3, y + 4); ctx.arc(x + m, y + 4, 1.3, 0, Math.PI * 2); ctx.moveTo(x + m + 1.3, y + h - 4); ctx.arc(x + m, y + h - 4, 1.3, 0, Math.PI * 2); }
+      else { ctx.moveTo(x + 5.3, y + m); ctx.arc(x + 4, y + m, 1.3, 0, Math.PI * 2); ctx.moveTo(x + w - 2.7, y + m); ctx.arc(x + w - 4, y + m, 1.3, 0, Math.PI * 2); }
+    }
+    ctx.fill();
+  }
+  ctx.fillStyle = shade(col, 0.2); if (vert) ctx.fillRect(x, y + h - 3, w, 3); else ctx.fillRect(x + w - 3, y, 3, h);
+  ctx.restore();
+  ctx.strokeStyle = shade(col, 0.55); ctx.lineWidth = o.lw || 1.8; ctx.strokeRect(x, y, w, h);
+};
+// a metal panel (space station, factory): bevel, inset seams, rivets, scuffs. o: { seam, rivet: false, hazard ('top' or
+// 'bottom'), vents, r, lw, seed }
+CK.metal = (x, y, w, h, col, o) => {
+  o = o || {};
+  const seed = o.seed || 9, rad = o.r === undefined ? 3 : o.r;
+  ctx.fillStyle = col; rr(x, y, w, h, rad); ctx.fill();
+  ctx.save(); rr(x, y, w, h, rad); ctx.clip();
+  ctx.fillStyle = shade(col, 0.2); ctx.fillRect(x, y + h - Math.min(6, h * 0.25), w, h);
+  ctx.fillStyle = shade(col, 0.1); ctx.fillRect(x + w - Math.min(5, w * 0.15), y, w, h);
+  ctx.fillStyle = CK.lit(0.12); ctx.fillRect(x, y, w, Math.min(h * 0.35, 8));
+  const seam = o.seam || 40;
+  if (seam > 0 && w > seam * 1.2) {
+    ctx.strokeStyle = shade(col, 0.35); ctx.lineWidth = 1.4; ctx.beginPath();
+    for (let sx = x + seam; sx < x + w - 6; sx += seam) { ctx.moveTo(sx, y + 2); ctx.lineTo(sx, y + h - 2); }
+    ctx.stroke();
+    ctx.strokeStyle = CK.lit(0.2); ctx.lineWidth = 1; ctx.beginPath();
+    for (let sx = x + seam; sx < x + w - 6; sx += seam) { ctx.moveTo(sx + 1.3, y + 2); ctx.lineTo(sx + 1.3, y + h - 2); }
+    ctx.stroke();
+  }
+  if (seam > 0 && h > seam * 1.2) {
+    ctx.strokeStyle = shade(col, 0.35); ctx.lineWidth = 1.4; ctx.beginPath();
+    for (let sy = y + seam; sy < y + h - 6; sy += seam) { ctx.moveTo(x + 2, sy); ctx.lineTo(x + w - 2, sy); }
+    ctx.stroke();
+    ctx.strokeStyle = CK.lit(0.2); ctx.lineWidth = 1; ctx.beginPath();
+    for (let sy = y + seam; sy < y + h - 6; sy += seam) { ctx.moveTo(x + 2, sy + 1.3); ctx.lineTo(x + w - 2, sy + 1.3); }
+    ctx.stroke();
+  }
+  if (o.hazard) {
+    const hy = o.hazard === 'top' ? y : y + h - 7;
+    ctx.fillStyle = '#ffcf3a'; ctx.fillRect(x, hy, w, 7);
+    ctx.fillStyle = '#3a3440'; ctx.beginPath();
+    for (let sx = x - 8; sx < x + w; sx += 12) { ctx.moveTo(sx, hy + 7); ctx.lineTo(sx + 6, hy); ctx.lineTo(sx + 11, hy); ctx.lineTo(sx + 5, hy + 7); }
+    ctx.fill();
+  }
+  if (o.vents && w > 40 && h > 16) {
+    const vx = x + w * 0.5 - 12, vy = y + h * 0.5 - 5;
+    ctx.fillStyle = shade(col, 0.45); for (let k = 0; k < 4; k++) ctx.fillRect(vx + k * 7, vy, 4, 10);
+    ctx.fillStyle = CK.lit(0.2); for (let k = 0; k < 4; k++) ctx.fillRect(vx + k * 7, vy + 10, 4, 1);
+  }
+  ctx.strokeStyle = CK.lit(0.14); ctx.lineWidth = 1; ctx.beginPath();
+  const nsc = Math.max(1, Math.floor(w * h / 2400));
+  for (let i = 0; i < nsc; i++) { const sx = x + 6 + CK.r(seed, i) * (w - 12), sy = y + 6 + CK.r(seed, 50 + i) * (h - 12); ctx.moveTo(sx, sy); ctx.lineTo(sx + 5 + CK.r(seed, 90 + i) * 6, sy - 1.5); }
+  ctx.stroke();
+  ctx.restore();
+  if (o.rivet !== false && w > 14 && h > 12) {
+    const pts = [[x + 4.5, y + 4.5], [x + w - 4.5, y + 4.5], [x + 4.5, y + h - 4.5], [x + w - 4.5, y + h - 4.5]];
+    if (w > 90) for (let sx = x + 40; sx < x + w - 30; sx += 40) { pts.push([sx, y + 4.5]); if (h > 20) pts.push([sx, y + h - 4.5]); }
+    if (h > 90) for (let sy = y + 40; sy < y + h - 30; sy += 40) { pts.push([x + 4.5, sy]); if (w > 20) pts.push([x + w - 4.5, sy]); }
+    ctx.fillStyle = shade(col, 0.42); ctx.beginPath(); for (const [px, py] of pts) { ctx.moveTo(px + 1.8, py + 0.4); ctx.arc(px, py + 0.4, 1.8, 0, Math.PI * 2); } ctx.fill();
+    ctx.fillStyle = tint(col, 0.5); ctx.beginPath(); for (const [px, py] of pts) { ctx.moveTo(px + 0.5, py - 0.5); ctx.arc(px - 0.3, py - 0.5, 0.8, 0, Math.PI * 2); } ctx.fill();
+  }
+  ctx.strokeStyle = CK.lit(0.3); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + rad, y + 1); ctx.lineTo(x + w - rad, y + 1); ctx.stroke();
+  ctx.strokeStyle = shade(col, 0.55); ctx.lineWidth = o.lw || 2; rr(x, y, w, h, rad); ctx.stroke();
+};
+// a wooden crate: plank faces, a dark frame, a diagonal brace and nails
+CK.crate = (x, y, w, h, col, o) => {
+  o = o || {};
+  if (o.shadow !== false) CK.shadow(x + w / 2 + 2, y + h, w * 0.55, 3.5, 0.2);
+  CK.planks(x, y, w, h, col, { board: Math.max(8, h / 3.2), seed: o.seed || 4, nails: false, lw: 2 });
+  const f = Math.max(3, Math.min(6, w * 0.12)), fc = shade(col, 0.18);
+  ctx.fillStyle = fc; ctx.fillRect(x, y, w, f); ctx.fillRect(x, y + h - f, w, f); ctx.fillRect(x, y, f, h); ctx.fillRect(x + w - f, y, f, h);
+  ctx.strokeStyle = fc; ctx.lineWidth = f; ctx.beginPath(); ctx.moveTo(x + f, y + h - f); ctx.lineTo(x + w - f, y + f); ctx.stroke();
+  ctx.strokeStyle = CK.lit(0.25); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 1, y + 1.2); ctx.lineTo(x + w - 1, y + 1.2); ctx.moveTo(x + 1.2, y + 1); ctx.lineTo(x + 1.2, y + h - 1); ctx.stroke();
+  ctx.fillStyle = '#5c5864'; ctx.beginPath();
+  for (const [px, py] of [[x + f / 2, y + f / 2], [x + w - f / 2, y + f / 2], [x + f / 2, y + h - f / 2], [x + w - f / 2, y + h - f / 2]]) { ctx.moveTo(px + 1.3, py); ctx.arc(px, py, 1.3, 0, Math.PI * 2); }
+  ctx.fill();
+  ctx.strokeStyle = shade(col, 0.6); ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+};
+// grass blades along a top edge from x0 to x1 (yAt(x) gives the edge), one path
+CK.tufts = (x0, x1, yAt, col, seed, step) => {
+  step = step || 7;
+  ctx.fillStyle = col; ctx.beginPath();
+  for (let x = Math.floor(x0 / step) * step; x < x1; x += step) {
+    const h = CK.r(seed, x); if (h < 0.35) continue;
+    const bx = x + h * step, by = yAt(bx) + 1, t = 4 + h * 7;
+    ctx.moveTo(bx - 2.2, by); ctx.lineTo(bx - 0.6 - h * 2, by - t); ctx.lineTo(bx + 0.4, by); ctx.moveTo(bx + 0.4, by); ctx.lineTo(bx + 2.5 + h, by - t * 0.7); ctx.lineTo(bx + 2.6, by);
+  }
+  ctx.fill();
+};
+// a little fossil (a bone or a curled shell) set in soil
+CK.fossil = (x, y, kind, col) => {
+  col = col || '#efe0c4';
+  ctx.lineCap = 'round';
+  if (kind % 2) {
+    ctx.strokeStyle = shade(col, 0.4); ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(x - 11, y + 1); ctx.lineTo(x + 11, y - 2); ctx.stroke();
+    ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 11, y + 1); ctx.lineTo(x + 11, y - 2); ctx.stroke();
+    ctx.fillStyle = col; ctx.strokeStyle = shade(col, 0.4); ctx.lineWidth = 1;
+    for (const [ex, ey] of [[-12, 1], [12, -2]]) for (const s of [-2.2, 2.2]) { ctx.beginPath(); ctx.arc(x + ex, y + ey + s, 2.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    ctx.strokeStyle = CK.lit(0.5); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 8, y - 0.3); ctx.lineTo(x + 8, y - 2.6); ctx.stroke();
+  } else {
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = shade(col, 0.45); ctx.lineWidth = 1.4; ctx.beginPath();
+    for (let a = 0; a < 12.5; a += 0.3) { const r = 0.8 + a * 0.66; ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+    ctx.stroke();
+    ctx.lineWidth = 1; ctx.beginPath();
+    for (let a = 4; a < 12.5; a += 0.75) { const r1 = 0.8 + a * 0.66, r2 = 0.8 + (a + 6.28) * 0.66 - 4; ctx.moveTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); ctx.lineTo(x + Math.cos(a) * Math.min(9, r2 + 3.5), y + Math.sin(a) * Math.min(9, r2 + 3.5)); }
+    ctx.stroke();
+    ctx.strokeStyle = shade(col, 0.5); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+};
+// soil seen from the side under a surface gy(x), from x0 to x1 (ok(x) false = no ground there): a dark humus band,
+// layer dashes, grit, roots, shaded pebbles, buried rocks and fossils. For a CK.pic painter (it is a lot of paths).
+CK.soil = (x0, x1, gy, ok, soil, seed, o) => {
+  o = o || {};
+  const lk = { soil }, eggStrip = CK.strip;
+  // a dark humus band just under the turf, its lower edge wavy
+  ctx.fillStyle = shade(lk.soil, 0.22); ctx.globalAlpha = 0.55; ctx.beginPath();
+  let on = false;
+  const seg = [];
+  for (let x = x0; x <= x1; x += 6) {
+    if (!ok(x)) { if (on) { eggStrip(seg, gy); seg.length = 0; on = false; } continue; }
+    seg.push(x); on = true;
+  }
+  if (seg.length) eggStrip(seg, gy);
+  ctx.fill(); ctx.globalAlpha = 1;
+  // layer texture: short dark and lit dashes along each band of soil
+  ctx.strokeStyle = shade(lk.soil, 0.3); ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath();
+  for (const d of [30, 62, 84, 126, 168]) for (let x = x0; x < x1; x += 7) {
+    const r = CK.r(x, seed + d); if (r > 0.55 || !ok(x)) continue;
+    const y = gy(x) + d + (CK.r(seed, x + d) - 0.5) * 10, l = 3 + r * 10;
+    ctx.moveTo(x, y); ctx.lineTo(x + l, y + (gy(x + l) - gy(x)));
+  }
+  ctx.stroke();
+  ctx.strokeStyle = tint(lk.soil, 0.18); ctx.lineWidth = 1.2; ctx.beginPath();
+  for (const d of [40, 74, 110, 150]) for (let x = x0; x < x1; x += 9) {
+    const r = CK.r(x, seed + d + 1); if (r > 0.4 || !ok(x)) continue;
+    const y = gy(x) + d + (CK.r(seed + 1, x + d) - 0.5) * 8, l = 3 + r * 12;
+    ctx.moveTo(x, y); ctx.lineTo(x + l, y + (gy(x + l) - gy(x)));
+  }
+  ctx.stroke();
+  // little specks of grit
+  ctx.fillStyle = shade(lk.soil, 0.38); ctx.beginPath();
+  for (let x = x0; x < x1; x += 5) { if (!ok(x)) continue; const y = gy(x) + 14 + CK.r(x, seed + 9) * 200; ctx.rect(x, y, 1.6, 1.6); }
+  ctx.fill();
+  ctx.fillStyle = tint(lk.soil, 0.3); ctx.beginPath();
+  for (let x = x0 + 2; x < x1; x += 8) { if (!ok(x)) continue; const y = gy(x) + 18 + CK.r(x, seed + 10) * 190; ctx.rect(x, y, 1.3, 1.3); }
+  ctx.fill();
+  // roots hanging down from the turf, tapering, with a side root
+  for (let x = x0; x < x1; x += 46) {
+    const r = CK.r(x, seed + 20); if (r > 0.5 || !ok(x)) continue;
+    const rx = x + r * 30, ry = gy(rx) + 6, len = 22 + r * 50, bend = (CK.r(seed, x) - 0.5) * 14;
+    ctx.strokeStyle = shade(lk.soil, 0.45);
+    for (let k = 0; k < 3; k++) {
+      ctx.lineWidth = 3 - k; ctx.beginPath();
+      ctx.moveTo(rx + bend * k / 3, ry + len * k / 3); ctx.quadraticCurveTo(rx + bend * (k + 0.5) / 3 + 3, ry + len * (k + 0.5) / 3, rx + bend * (k + 1) / 3, ry + len * (k + 1) / 3); ctx.stroke();
+    }
+    ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(rx + bend * 0.3, ry + len * 0.35); ctx.quadraticCurveTo(rx + bend * 0.3 + 8, ry + len * 0.45, rx + bend * 0.3 + 12, ry + len * 0.6); ctx.stroke();
+    ctx.strokeStyle = tint(lk.soil, 0.15); ctx.beginPath(); ctx.moveTo(rx - 1, ry + 1); ctx.quadraticCurveTo(rx + bend * 0.15 + 2, ry + len * 0.15, rx + bend * 0.3 - 1, ry + len * 0.3); ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+  // pebbles near the top, in a few stone colours
+  const PEB = ['#9a8a7c', '#b3a08a', '#7d6e62', '#a39a92', '#c2ad8e'];
+  for (let x = x0; x < x1; x += 19) {
+    const r = CK.r(x, seed + 30); if (r > 0.72 || !ok(x)) continue;
+    const px = x + r * 14, py = gy(px) + 18 + CK.r(seed, x + 3) * 60;
+    CK.pebble(px, py, 2.4 + r * 3.6, (o.peb || PEB)[Math.floor(CK.r(x, 77) * (o.peb || PEB).length)], x + seed);
+  }
+  // bigger buried rocks deeper down
+  for (let x = x0; x < x1; x += 110) {
+    const r = CK.r(x, seed + 40); if (r > 0.55 || !ok(x - 20) || !ok(x + 40)) continue;
+    // (kept inside the chunk's picture, which reaches 30 px past x1, so a rock is never cut off at a chunk seam)
+    const bw = 13 + r * 16, bx = Math.min(x + 20 + r * 50, x1 + 28 - bw * 1.25), by = gy(bx) + 72 + CK.r(seed, x) * 40;
+    CK.rock(bx, by, bw, bw * 0.62, (o.peb || PEB)[Math.floor(CK.r(x, 78) * 4)], x + seed, { shadow: false, j: 0.2 });
+  }
+  // fossils: a little bone or a curled shell
+  if (o.fossils !== false)
+  for (let x = x0; x < x1; x += 160) {
+    const r = CK.r(x, seed + 50); if (r > 0.5 || !ok(x)) continue;
+    const fx = Math.min(x + 30 + r * 80, x1 + 12); CK.fossil(fx, gy(fx) + 128 + CK.r(seed, x + 5) * 50, Math.floor(r * 10));
+  }
+};
+// the humus band under the turf for one run of ground (a strip from 3 to about 15 px under the surface)
+CK.strip = (xs, gy) => {
+  ctx.moveTo(xs[0], gy(xs[0]) + 3);
+  for (const x of xs) ctx.lineTo(x, gy(x) + 3);
+  for (let i = xs.length - 1; i >= 0; i--) { const x = xs[i]; ctx.lineTo(x, gy(x) + 13 + Math.sin(x * 0.13) * 2 + CK.r(x, 5) * 3); }
+  ctx.closePath();
+};
+// still ground detail painted in chunks of `size` px of world x, each chunk once into a picture (key + its index) and
+// copied at (world - cam). gy(x): the surface; the picture spans `above` px over the highest point to `below` px under
+// the lowest. paint(x0, x1) draws in world coordinates.
+CK.chunks = (key, xa, xb, size, cam, gy, above, below, paint) => {
+  for (let i = Math.floor(xa / size); i * size < xb; i++) {
+    const x0 = i * size, x1 = x0 + size;
+    let lo = Infinity, hi = -Infinity;
+    for (let x = x0 - 30; x <= x1 + 30; x += 6) { const y = gy(x); if (isFinite(y)) { lo = Math.min(lo, y); hi = Math.max(hi, y); } }
+    if (!isFinite(lo)) continue;
+    const top = Math.floor(lo - above), bottom = Math.ceil(hi + below), left = x0 - 30;
+    CK.pic(key + '|' + i, size + 60, bottom - top, 0, 0, () => { ctx.translate(-left, -top); paint(x0, x1); }, left - cam.x, top - (cam.y || 0));
+  }
+};
+// turf detail along a surface: a lit lip, two-tone blades, clover and tiny flowers (for a CK.chunks painter)
+CK.turf = (x0, x1, gy, ok, grass, grassDark, seed) => {
+  ctx.strokeStyle = tint(grass, 0.4); ctx.lineWidth = 1.6; ctx.beginPath();
+  let on = false;
+  for (let x = x0; x <= x1; x += 4) { if (!ok(x)) { on = false; continue; } const y = gy(x) - 0.8; if (on) ctx.lineTo(x, y); else { ctx.moveTo(x, y); on = true; } }
+  ctx.stroke();
+  CK.tufts(x0, x1, x => (ok(x) ? gy(x) : -1e4), grassDark, seed, 5);
+  CK.tufts(x0, x1, x => (ok(x) ? gy(x) : -1e4), tint(grass, 0.15), seed + 1, 6);
+  for (let x = x0; x < x1; x += 37) {
+    const r = CK.r(x, seed + 3); if (r > 0.35 || !ok(x)) continue;
+    const fx = x + r * 30, fy = gy(fx) - 2;
+    if (r < 0.15) {
+      ctx.fillStyle = shade(grass, 0.1); for (const a of [-2.3, -0.85, -1.57]) { ctx.beginPath(); ctx.arc(fx + Math.cos(a) * 2.6, fy - 3 + Math.sin(a) * 2.6, 2.3, 0, Math.PI * 2); ctx.fill(); }
+      ctx.strokeStyle = shade(grassDark, 0.2); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(fx, fy - 2); ctx.lineTo(fx, fy + 1); ctx.stroke();
+    } else {
+      ctx.strokeStyle = grassDark; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(fx, fy + 1); ctx.lineTo(fx + 0.5, fy - 6); ctx.stroke();
+      ctx.fillStyle = ['#ffffff', '#ffd75e', '#ff9ec8'][Math.floor(r * 20) % 3]; ctx.beginPath(); ctx.arc(fx + 0.5, fy - 7, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffb02e'; ctx.beginPath(); ctx.arc(fx + 0.5, fy - 7, 0.8, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+};
+/* ===== end of the rich props kit ===== */
+
 /* ===== 14-1 Egg Rescue (mode 'eggrescue', World 14 "Dino Valley", team) =====
    Pip and Bo carry Mama Dino's giant wobbly egg home on a leaf stretcher, one at each end (Gavyn's pick). Side-on and
    scrolling: the mode owns the tick, the camera, the whole picture and the HUD (def.ownStep + def.ownHUD); the engine
@@ -1244,41 +1764,12 @@ function eggDrawGround(st) {
     ctx.beginPath(); pts.forEach((x, i) => { const y = yDraw(x) + off - cam.y; if (i) ctx.lineTo(x - cam.x, y); else ctx.moveTo(x - cam.x, y); }); ctx.stroke();
   };
   band(46, 7, lk.soilDark, 0.5); band(98, 4, lk.soilDark, 0.35);
+  // (art director pass) a lit seam on top of each layer and a darker foot under it, so the strata read as layers
+  band(41.5, 1.5, '#ffe6be', 0.22); band(50.5, 1.5, '#2a1608', 0.22); band(95.5, 1.2, '#ffe6be', 0.18); band(100.5, 1.2, '#2a1608', 0.2);
   ctx.globalAlpha = 1;
-  for (let x = Math.floor(xa / 60) * 60; x < xb; x += 60) {
-    if (gapAt(x)) continue;
-    const h = hash(x, 5), gy = eggGY(st, x) - cam.y, px = x - cam.x + (h % 30), py = gy + 22 + (h % 40), r = 3 + (h % 3);
-    // a pebble (its lit top is added below, all in one path)
-    ctx.fillStyle = lk.soilDark; circle(px, py, r); ctx.fill();
-    // a bigger buried rock now and then
-    if (h % 5 === 1) {
-      const bx = x - cam.x + 30, by = gy + 70 + (h % 30), bw = 16 + (h % 12);
-      ctx.fillStyle = '#9a8a7c'; ctx.beginPath(); ctx.ellipse(bx, by, bw, bw * 0.6, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#7d6e62'; ctx.beginPath(); ctx.ellipse(bx + 3, by + 3, bw * 0.85, bw * 0.45, 0, 0, Math.PI); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(bx - bw * 0.3, by - bw * 0.25, bw * 0.35, bw * 0.15, -0.2, 0, Math.PI * 2); ctx.fill();
-    }
-    // a fossil: a little bone or a curled shell
-    if (h % 7 === 3) {
-      const fx = x - cam.x + 10, fy = gy + 120 + (h % 40);
-      ctx.strokeStyle = 'rgba(245,230,205,0.55)'; ctx.fillStyle = 'rgba(245,230,205,0.55)'; ctx.lineWidth = 2.5;
-      if (h % 2) { ctx.beginPath(); ctx.moveTo(fx - 12, fy); ctx.lineTo(fx + 12, fy - 3); ctx.stroke(); for (const [ex, ey] of [[-13, 0], [13, -3]]) { circle(fx + ex, fy + ey - 2, 2.6); ctx.fill(); circle(fx + ex, fy + ey + 2, 2.6); ctx.fill(); } }
-      else { ctx.beginPath(); for (let a = 0; a < 12; a += 0.8) { const rr2 = 1 + a * 0.85; ctx.lineTo(fx + Math.cos(a) * rr2, fy + Math.sin(a) * rr2); } ctx.stroke(); }
-    }
-    // roots poking out under the turf
-    if (h % 8 === 2) {
-      ctx.strokeStyle = 'rgba(60,38,22,0.45)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-      const rx = x - cam.x + (h % 40);
-      ctx.beginPath(); ctx.moveTo(rx, gy + 8); ctx.quadraticCurveTo(rx + 6, gy + 18, rx + 2, gy + 28); ctx.moveTo(rx + 4, gy + 16); ctx.lineTo(rx + 11, gy + 22); ctx.stroke();
-      ctx.lineCap = 'butt';
-    }
-  }
-  ctx.fillStyle = 'rgba(255,240,220,0.22)'; ctx.beginPath();
-  for (let x = Math.floor(xa / 60) * 60; x < xb; x += 60) {
-    if (gapAt(x)) continue;
-    const h = hash(x, 5), px = x - cam.x + (h % 30), py = eggGY(st, x) - cam.y + 22 + (h % 40), r = 3 + (h % 3);
-    ctx.moveTo(px - r * 0.3 + r * 0.45, py - r * 0.35); ctx.arc(px - r * 0.3, py - r * 0.35, r * 0.45, 0, Math.PI * 2);
-  }
-  ctx.fill();
+  // the soil's detail (layers, pebbles, buried rocks, roots, fossils) is still, so it is painted once per 240 px chunk
+  // of the room into a picture and copied (rich props pass, Nov 2026)
+  for (let i = Math.floor(xa / EGG_CHUNK); i * EGG_CHUNK < xb; i++) eggSoilChunk(st, i, false);
   // water in the creeks and rivers (a ravine under the bridge is just deep and shady)
   for (const g of c.gaps) {
     if (g.x1 < xa || g.x0 > xb) continue;
@@ -1295,6 +1786,17 @@ function eggDrawGround(st) {
       ctx.beginPath(); ctx.moveTo(x - cam.x + Math.sin(ph) * 4, wy + 6 + (x % 3) * 4); ctx.lineTo(x - cam.x + 12 + Math.sin(ph) * 4, wy + 6 + (x % 3) * 4); ctx.stroke();
     }
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(g.x0 - cam.x, wy, g.x1 - g.x0, 3);
+    // (rich props pass) the creek bed: pebbles seen through the water, wet dark banks and foam where it meets them
+    if (g.kind === 'creek') {
+      const gx = g.x0 - cam.x, gw = g.x1 - g.x0;
+      ctx.globalAlpha = 0.55;
+      for (let k = 0; k < Math.floor(gw / 9); k++) CK.pebble(gx + 4 + CK.r(g.x0, k) * (gw - 8), wy + 44 + CK.r(k, g.x0) * 24, 2.5 + CK.r(g.x0 + k, 3) * 3, k % 2 ? '#7d8a8c' : '#9a8f84', g.x0 + k);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(40,60,90,0.25)'; ctx.fillRect(gx, wy + 50, gw, 30);
+      ctx.fillStyle = 'rgba(60,35,20,0.5)'; ctx.fillRect(gx - 1, wy - 2, 4, 80); ctx.fillRect(gx + gw - 3, wy - 2, 4, 80);
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      for (const ex of [gx + 4, gx + gw - 4]) { ctx.beginPath(); ctx.ellipse(ex, wy + 2, 4 + Math.sin(G.clock * 3 + ex) * 1, 1.6, 0, 0, Math.PI * 2); ctx.fill(); }
+    }
   }
   // the grass along the top (not over water)
   ctx.strokeStyle = lk.grass; ctx.lineWidth = 7; ctx.lineJoin = 'round';
@@ -1324,13 +1826,108 @@ function eggDrawGround(st) {
     if (h % 3 === 0) { const bx = x - cam.x + (h % 12), by = eggGY(st, x) - cam.y - 1; ctx.moveTo(bx - 3, by); ctx.lineTo(bx - 1, by - 7 - (h % 4)); ctx.lineTo(bx + 1, by); ctx.moveTo(bx + 1, by); ctx.lineTo(bx + 4, by - 5 - (h % 3)); ctx.lineTo(bx + 5, by); }
   }
   ctx.fill();
-  // ledges: a rocky face
+  // the turf's still detail (a lit lip, shadowed scallops, blades, clover, tiny flowers), per chunk
+  for (let i = Math.floor(xa / EGG_CHUNK); i * EGG_CHUNK < xb; i++) eggSoilChunk(st, i, true);
+  // ledges: a face of stacked flat stones
   for (const l of c.ledges) {
     const x = l.x - cam.x;
     if (x < -40 || x > W + 40) continue;
-    ctx.fillStyle = '#8a7a6a'; rr(x - 6, l.yTop - cam.y + 2, 12, l.yBot - l.yTop + 6, 4); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x - 4, l.yTop - cam.y + 6, 3, l.yBot - l.yTop - 4);
+    const hgt = Math.round(l.yBot - l.yTop + 6);
+    CK.pic('eggledge' + hgt + '|' + Math.round(l.x), 16, hgt + 4, 8, 2, () => eggLedgeFace(hgt, Math.round(l.x)), x, l.yTop - cam.y + 2);
   }
+}
+/* ---------- 14-1 rich props (Nov 2026): soil and turf painted once per chunk, logs, stones, nests, ledges ---------- */
+const EGG_CHUNK = 240;
+const eggGapAtX = (c, x, pad) => c.gaps.some(g => x > g.x0 - (pad || 0) && x < g.x1 + (pad || 0));
+function eggSoilChunk(st, i, turf) {
+  const c = st.c, x0 = i * EGG_CHUNK, x1 = x0 + EGG_CHUNK;
+  let lo = Infinity, hi = -Infinity;
+  for (let x = x0 - 30; x <= x1 + 30; x += 6) { const y = eggGY(st, x); if (isFinite(y)) { lo = Math.min(lo, y); hi = Math.max(hi, y); } }
+  if (!isFinite(lo)) return;
+  const top = Math.floor(lo - (turf ? 26 : 4)), bottom = Math.ceil(turf ? hi + 26 : hi + 230), left = x0 - 30;
+  CK.pic('egg' + (turf ? 't' : 's') + st.k + '|' + c.x0 + '|' + i, EGG_CHUNK + 60, bottom - top, 0, 0,
+    () => { ctx.translate(-left, -top); if (turf) eggPaintTurf(st, x0, x1); else eggPaintSoil(st, x0, x1); }, left - st.cam.x, top - st.cam.y);
+}
+function eggPaintSoil(st, x0, x1) {
+  CK.soil(x0, x1, x => eggGY(st, x), x => !eggGapAtX(st.c, x, 14), eggLook(st).soil, 140 + st.k * 7);
+}
+function eggPaintTurf(st, x0, x1) {
+  const c = st.c, lk = eggLook(st), gy = x => eggGY(st, x), seed = 240 + st.k * 5;
+  const ok = x => !eggGapAtX(c, x, 6);
+  // a lit lip along the top and a shadow line under the scallops
+  ctx.strokeStyle = tint(lk.grass, 0.4); ctx.lineWidth = 1.6; ctx.beginPath();
+  let on = false;
+  for (let x = x0; x <= x1; x += 4) { if (!ok(x)) { on = false; continue; } const y = gy(x) - 0.8; if (on) ctx.lineTo(x, y); else { ctx.moveTo(x, y); on = true; } }
+  ctx.stroke();
+  ctx.strokeStyle = shade(lk.grassDark, 0.2); ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let x = Math.floor(x0 / 20) * 20; x < x1; x += 20) {
+    if (!ok(x) || !ok(x + 20)) continue;
+    const y = gy(x + 10) + 5, r = 8 + (hash(x, 41) % 3);
+    ctx.moveTo(x + 10 + r * 0.9, y + r * 0.42); ctx.arc(x + 10, y, r, 0.45, Math.PI - 0.45);
+  }
+  ctx.stroke();
+  // two-tone grass blades, a few clover leaves and tiny flowers on top
+  CK.tufts(x0, x1, x => (ok(x) ? gy(x) : -1e4), lk.grassDark, seed, 5);
+  CK.tufts(x0, x1, x => (ok(x) ? gy(x) : -1e4), tint(lk.grass, 0.15), seed + 1, 6);
+  for (let x = x0; x < x1; x += 37) {
+    const r = CK.r(x, seed + 3); if (r > 0.35 || !ok(x)) continue;
+    const fx = x + r * 30, fy = gy(fx) - 2;
+    if (r < 0.15) {
+      ctx.fillStyle = shade(lk.grass, 0.1); for (const a of [-2.3, -0.85, -1.57]) { ctx.beginPath(); ctx.arc(fx + Math.cos(a) * 2.6, fy - 3 + Math.sin(a) * 2.6, 2.3, 0, Math.PI * 2); ctx.fill(); }
+      ctx.strokeStyle = shade(lk.grassDark, 0.2); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(fx, fy - 2); ctx.lineTo(fx, fy + 1); ctx.stroke();
+    } else {
+      ctx.strokeStyle = lk.grassDark; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(fx, fy + 1); ctx.lineTo(fx + 0.5, fy - 6); ctx.stroke();
+      ctx.fillStyle = ['#ffffff', '#ffd75e', '#ff9ec8'][Math.floor(r * 20) % 3]; ctx.beginPath(); ctx.arc(fx + 0.5, fy - 7, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffb02e'; ctx.beginPath(); ctx.arc(fx + 0.5, fy - 7, 0.8, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
+// a ledge face: stacked flat stones (12 px wide, the same as the old face)
+function eggLedgeFace(hgt, seed) {
+  let y = 0, k = 0;
+  const cols = ['#8a7a6a', '#9a8a78', '#7c6d5f', '#a39280'];
+  while (y < hgt - 2) {
+    const sh = Math.min(hgt - y, 7 + CK.r(seed, k) * 6), off = (CK.r(seed, k + 50) - 0.5) * 2, col = cols[Math.floor(CK.r(seed, k + 90) * 4)];
+    ctx.fillStyle = col; rr(-6 + off, y, 12, sh, 3); ctx.fill();
+    ctx.fillStyle = shade(col, 0.25); ctx.fillRect(-6 + off + 1, y + sh * 0.62, 10, sh * 0.38 - 0.5);
+    ctx.fillStyle = CK.lit(0.3); ctx.fillRect(-5 + off, y + 1, 8, 1.4);
+    ctx.fillStyle = shade(col, 0.4); ctx.fillRect(-2 + off + CK.r(seed, k + 7) * 5, y + sh * 0.4, 1.3, 1.3);
+    ctx.strokeStyle = shade(col, 0.55); ctx.lineWidth = 1.4; rr(-6 + off, y, 12, sh, 3); ctx.stroke();
+    y += sh; k++;
+  }
+}
+// the twig nests: a woven bowl with a dark hollow, criss-cross twigs, straw poking out and a down feather
+function eggNestPaint(w, h, col, dark) {
+  CK.shadow(0, h * 0.75, w * 1.05, h * 0.38, 0.2);
+  // straw ends poking out at the sides
+  ctx.strokeStyle = tint(col, 0.15); ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath();
+  for (let i = 0; i < 6; i++) { const s = i % 2 ? 1 : -1, a = 0.2 + CK.r(w, i) * 0.6; ctx.moveTo(s * w * 0.8, -h * 0.2 + i * 1.5); ctx.lineTo(s * (w + 4 + a * 6), -h * 0.5 + i * 2 - a * 4); }
+  ctx.stroke();
+  ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, 0, w, h, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.ellipse(0, 0, w, h, 0, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = shade(col, 0.22); ctx.beginPath(); ctx.ellipse(w * 0.15, h * 0.9, w * 1.1, h * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+  // woven twigs both ways
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.strokeStyle = pass ? tint(col, 0.22) : dark; ctx.lineWidth = pass ? 1.2 : 1.8; ctx.beginPath();
+    for (let i = 0; i < Math.round(w / 2.6); i++) {
+      const x = -w + (i + CK.r(i, w + pass) * 0.6) * (2 * w) / Math.round(w / 2.6), dir = (i + pass) % 2 ? 1 : -1;
+      ctx.moveTo(x - dir * 6, -h * 0.8); ctx.quadraticCurveTo(x + dir * 2, 0, x + dir * 7, h * 0.9);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.strokeStyle = shade(col, 0.5); ctx.lineWidth = 1.8; ctx.beginPath(); ctx.ellipse(0, 0, w, h, 0, 0, Math.PI * 2); ctx.stroke();
+  // the hollow and its twiggy rim
+  ctx.fillStyle = shade(dark, 0.25); ctx.beginPath(); ctx.ellipse(0, -h * 0.38, w * 0.72, h * 0.38, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = CK.ink(0.25); ctx.beginPath(); ctx.ellipse(0, -h * 0.3, w * 0.6, h * 0.24, 0, 0, Math.PI); ctx.fill();
+  ctx.strokeStyle = tint(col, 0.3); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, -h * 0.38, w * 0.78, h * 0.46, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let i = 0; i < 8; i++) { const a = Math.PI * (1.05 + i * 0.12), bx = Math.cos(a) * w * 0.8, by = -h * 0.38 + Math.sin(a) * h * 0.48; ctx.moveTo(bx - 4, by + 1); ctx.lineTo(bx + 5, by - 1.5); }
+  ctx.stroke();
+  // a fluffy down feather tucked in the rim
+  ctx.fillStyle = '#fff8ec'; ctx.beginPath(); ctx.ellipse(w * 0.55, -h * 0.75, 4, 1.8, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(160,130,100,0.6)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(w * 0.55 - 3.5, -h * 0.75 + 2); ctx.lineTo(w * 0.55 + 3, -h * 0.75 - 1.8); ctx.stroke();
+  ctx.lineCap = 'butt';
 }
 function eggDrawPlants(st) {
   const cam = st.cam, xa = cam.x - 40, xb = cam.x + W + 40, lk = eggLook(st);
@@ -1341,15 +1938,17 @@ function eggDrawPlants(st) {
       ctx.fillStyle = st.k === 2 ? '#b98a4a' : (pl.h % 2 ? '#5fae45' : '#4f9a3a');
       for (let j = 0; j < 3; j++) { const a = -Math.PI / 2 + (j - 1) * 0.6 + Math.sin(G.clock * 1.2 + pl.h) * 0.06; ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * 9 * pl.s, y + Math.sin(a) * 9 * pl.s, 11 * pl.s, 3.2 * pl.s, a, 0, Math.PI * 2); ctx.fill(); }
     } else if (pl.kind === 'flower') eggFlower(x, y - 6, ['#ff8fc7', '#ffd75e', '#ffffff', '#b28dff'][pl.h % 4]);
-    else { ctx.fillStyle = lk.soilDark; ctx.beginPath(); ctx.ellipse(x, y + 1, 5 * pl.s + 2, 3, 0, 0, Math.PI * 2); ctx.fill(); }
+    else {
+      // a little cluster of shaded pebbles half sunk in the turf
+      CK.shadow(x, y + 1.5, 5 * pl.s + 4, 2, 0.16);
+      CK.pebble(x - 2, y, 3 * pl.s + 1.6, '#9a8a7c', pl.h);
+      CK.pebble(x + 3.5 * pl.s + 1, y + 0.5, 2 * pl.s + 1.2, '#b3a08a', pl.h + 1);
+    }
   }
 }
 // twig nests: the checkpoints (flowers bloom on one you've reached)
 function eggNestShape(x, y, w, h, col, dark) {
-  ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(x, y, w, h, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = dark; ctx.lineWidth = 2;
-  for (let i = 0; i < 9; i++) { const a = i * 0.7; ctx.beginPath(); ctx.moveTo(x - w + 4 + i * (2 * w - 8) / 9, y - h * 0.6 + Math.sin(a) * 2); ctx.lineTo(x - w + 14 + i * (2 * w - 8) / 9, y + h * 0.6 - Math.cos(a) * 2); ctx.stroke(); }
-  ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.beginPath(); ctx.ellipse(x, y - h * 0.35, w * 0.7, h * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+  CK.pic('eggnest' + w + '|' + h + col, w * 2 + 24, h * 2 + 16, w + 12, h + 8, () => eggNestPaint(w, h, col, dark), x, y);
 }
 function eggDrawNests(st) {
   const cam = st.cam;
@@ -1373,27 +1972,58 @@ function eggDrawObstacles(st) {
     const x0 = o.x0 - cam.x, x1 = o.x1 - cam.x, gy = eggGY(st, (o.x0 + o.x1) / 2) - cam.y;
     if (x1 < -80 || x0 > W + 80) continue;
     if (o.kind === 'log') {
-      const cx = (x0 + x1) / 2, r = o.h / 2;
-      ctx.fillStyle = 'rgba(30,20,10,0.18)'; ctx.beginPath(); ctx.ellipse(cx, gy + 1, (x1 - x0) / 2 + 12, 5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#8a5a34'; rr(x0 - 4, gy - o.h, x1 - x0 + 8, o.h, r); ctx.fill();
-      ctx.fillStyle = '#6e4428'; rr(x0 - 4, gy - o.h * 0.45, x1 - x0 + 8, o.h * 0.45, Math.min(r, o.h * 0.22)); ctx.fill();
-      ctx.fillStyle = 'rgba(255,230,190,0.25)'; rr(x0 + r * 0.6, gy - o.h + 2, x1 - x0 - r * 0.6, 3, 1.5); ctx.fill();
-      ctx.strokeStyle = 'rgba(70,40,20,0.5)'; ctx.lineWidth = 1.5;
-      for (let bx = x0 + r + 6; bx < x1 - 4; bx += 13) { ctx.beginPath(); ctx.moveTo(bx, gy - o.h + 5); ctx.quadraticCurveTo(bx + 4, gy - r, bx + 1, gy - 5); ctx.stroke(); }
-      ctx.strokeStyle = '#5e3a1e'; ctx.lineWidth = 2; rr(x0 - 4, gy - o.h, x1 - x0 + 8, o.h, r); ctx.stroke();
-      ctx.fillStyle = '#d9a86a'; ctx.beginPath(); ctx.ellipse(x0 + 2, gy - r, r * 0.55, r - 1, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#a8753f'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x0 + 2, gy - r, r * 0.3, r * 0.55, 0, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = '#6fbf4a'; ctx.beginPath(); ctx.ellipse(cx + 4, gy - o.h + 1, 9, 3, 0, Math.PI, 0); ctx.fill();
-      eggMush(cx + 10, gy - o.h + 2);
+      // a fallen log (rich props pass): plated bark, knots, a ringed cut end, moss, a toadstool; painted once per size
+      const lw = x1 - x0 + 8, hh = o.h;
+      CK.pic('egglog' + lw + '|' + hh, lw + 40, hh + 30, 20, hh + 20, () => {
+        CK.log(-4, -hh, lw, hh, { seed: 23, moss: '#6fbf4a', stub: false, right: false });
+        // a second cut end showing on the right is hidden; a few ivy leaves trail down the front
+        ctx.fillStyle = '#5aa83f';
+        for (let k = 0; k < 4; k++) { const lx = lw * 0.25 + k * 6, ly = -hh * 0.5 + k * 3; ctx.beginPath(); ctx.ellipse(lx, ly, 3.4, 1.8, 0.7 + k * 0.3, 0, Math.PI * 2); ctx.fill(); }
+        eggMush(lw / 2 + 6, -hh + 2);
+        ctx.fillStyle = '#ff9a8a'; ctx.beginPath(); ctx.ellipse(lw / 2 - 2, -hh + 2, 4, 2.6, 0, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = '#fff1dc'; ctx.fillRect(lw / 2 - 3, -hh + 2, 2, 2);
+      }, x0, gy);
     } else {
       // a sleeping dino's tail lying across the path (its body naps behind a bush)
       const wag = Math.sin(G.clock * 2 + o.ph) * 3;
-      ctx.fillStyle = '#6cc070';
-      ctx.beginPath(); ctx.moveTo(x0 - 8, gy); ctx.quadraticCurveTo(x0 + 6, gy - o.h - 6, (x0 + x1) / 2, gy - o.h); ctx.quadraticCurveTo(x1 - 4, gy - o.h + 4, x1 + 16, gy - 4 + wag); ctx.lineTo(x1 + 10, gy); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#3f8a4a'; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = '#ffd75e'; for (let k = 0; k < 3; k++) { circle(x0 + 8 + k * 12, gy - o.h + 5 + k * 0.5, 3); ctx.fill(); }
-      // the bush with the sleepy dino and its Zzz
-      ctx.fillStyle = '#3f8f3a'; for (const [dx, dy, r] of [[-22, -10, 16], [-36, -4, 12], [-10, -4, 12]]) { circle(x0 + dx, gy + dy, r); ctx.fill(); }
+      // (rich props pass: a round shaded tail with a pale belly, scales, little back plates and a ground shadow)
+      const tailPath = () => { ctx.beginPath(); ctx.moveTo(x0 - 8, gy); ctx.quadraticCurveTo(x0 + 6, gy - o.h - 6, (x0 + x1) / 2, gy - o.h); ctx.quadraticCurveTo(x1 - 4, gy - o.h + 4, x1 + 16, gy - 4 + wag); ctx.lineTo(x1 + 10, gy); ctx.closePath(); };
+      CK.shadow((x0 + x1) / 2 + 4, gy + 1, (x1 - x0) / 2 + 18, 4, 0.2);
+      // little rounded back plates along the top (only a few px tall)
+      ctx.fillStyle = '#e8a64a'; ctx.strokeStyle = '#b06e2a'; ctx.lineWidth = 1.2;
+      for (let k = 0; k < 4; k++) {
+        const u = 0.18 + k * 0.2, px = x0 - 8 + (x1 + 16 - x0 + 8) * u, py = gy - o.h - 1 + Math.abs(u - 0.45) * 10 + (k === 3 ? wag * 0.5 : 0);
+        ctx.beginPath(); ctx.moveTo(px - 4, py + 3); ctx.quadraticCurveTo(px, py - 4.5 + k * 0.6, px + 4, py + 3); ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+      ctx.fillStyle = '#6cc070'; tailPath(); ctx.fill();
+      ctx.save(); tailPath(); ctx.clip();
+      ctx.fillStyle = '#58a85e'; ctx.fillRect(x0 - 10, gy - o.h * 0.45, x1 - x0 + 30, o.h);
+      ctx.fillStyle = '#cfe9a8'; ctx.beginPath(); ctx.ellipse((x0 + x1) / 2, gy + 1, (x1 - x0) / 2 + 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#a9cf86'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let bx = x0 - 4; bx < x1 + 12; bx += 5) { ctx.moveTo(bx, gy - 4.5); ctx.lineTo(bx, gy); }
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.beginPath(); ctx.ellipse(x0 + 10, gy - o.h + 2, 12, 3, -0.25, 0, Math.PI * 2); ctx.fill();
+      // scales: rows of small arcs
+      ctx.strokeStyle = 'rgba(40,110,60,0.45)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let row = 0; row < 3; row++) for (let bx = x0 - 2 + (row % 2) * 3; bx < x1 + 10; bx += 6) { const by = gy - o.h * (0.75 - row * 0.22); ctx.moveTo(bx + 2.6, by); ctx.arc(bx, by, 2.6, 0, Math.PI); }
+      ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle = '#3f8a4a'; ctx.lineWidth = 2; tailPath(); ctx.stroke();
+      for (let k = 0; k < 3; k++) {
+        const sx = x0 + 8 + k * 12, sy = gy - o.h + 5 + k * 0.5;
+        ctx.fillStyle = '#ffd75e'; circle(sx, sy, 3); ctx.fill();
+        ctx.fillStyle = '#e8a83a'; ctx.beginPath(); ctx.arc(sx + 0.6, sy + 0.6, 2.2, 0, Math.PI); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(sx - 1, sy - 1, 0.9); ctx.fill();
+      }
+      // the bush with the sleepy dino and its Zzz: leafy clumps, shaded, with lit leaf tips
+      for (const [dx, dy, r] of [[-36, -4, 12], [-10, -4, 12], [-22, -10, 16]]) {
+        ctx.fillStyle = '#3f8f3a'; circle(x0 + dx, gy + dy, r); ctx.fill();
+        ctx.fillStyle = '#33782f'; ctx.beginPath(); ctx.arc(x0 + dx + 2, gy + dy + 2, r - 1, 0.1, Math.PI - 0.1); ctx.fill();
+        ctx.strokeStyle = '#2a6227'; ctx.lineWidth = 1.5; circle(x0 + dx, gy + dy, r); ctx.stroke();
+      }
+      ctx.fillStyle = '#5fae4a'; ctx.beginPath();
+      for (let k = 0; k < 9; k++) { const lx = x0 - 44 + k * 5 + (k % 3) * 2, ly = gy - 14 - Math.sin(k * 0.9) * 8 - (k > 2 && k < 7 ? 6 : 0); ctx.moveTo(lx + 3.5, ly); ctx.ellipse(lx, ly, 3.5, 2, -0.5 + k * 0.2, 0, Math.PI * 2); }
+      ctx.fill();
       const z = (G.clock * 0.6 + o.ph) % 1;
       ctx.globalAlpha = 1 - z; text('z', x0 - 22 + z * 14, gy - 34 - z * 26, 12 + z * 8, '#ffffff', 'center'); ctx.globalAlpha = 1;
     }
@@ -1410,9 +2040,26 @@ function eggDrawStones(st) {
       ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2;
       const rp = (G.clock * 0.8 + s.ph) % 1;
       ctx.globalAlpha = 1 - rp; ctx.beginPath(); ctx.ellipse(cx, wy + 2, w * 0.5 + rp * 18, 4 + rp * 3, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
-      ctx.fillStyle = '#8f8a86'; rr(x0, y, w, Math.max(10, wy + 16 - y), 12); ctx.fill();
+      // a river stone (rich props pass): rounded, chiselled, dark and wet below the water line, mossy and lit on top
+      const sh = Math.max(10, wy + 16 - y), sd = Math.round(s.x0);
+      ctx.fillStyle = '#8f8a86'; rr(x0, y, w, sh, 12); ctx.fill();
+      ctx.save(); rr(x0, y, w, sh, 12); ctx.clip();
       ctx.fillStyle = '#a9a39e'; rr(x0 + 2, y, w - 4, 10, 6); ctx.fill();
-      ctx.fillStyle = '#6fbf4a'; ctx.beginPath(); ctx.ellipse(cx - w * 0.18, y + 2, w * 0.22, 3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#77726f'; ctx.fillRect(x0 + w * 0.62, y + 6, w, sh);
+      ctx.fillStyle = '#5f6a6e'; ctx.fillRect(x0, wy - 2, w, sh);
+      ctx.fillStyle = 'rgba(70,120,90,0.55)'; ctx.fillRect(x0, wy - 5, w, 3);
+      ctx.strokeStyle = '#6c6764'; ctx.lineWidth = 1.3; ctx.beginPath();
+      ctx.moveTo(x0 + w * 0.3, y + 9); ctx.lineTo(x0 + w * 0.38, y + 15); ctx.lineTo(x0 + w * 0.33, y + 22);
+      ctx.moveTo(x0 + w * 0.7, y + 5); ctx.lineTo(x0 + w * 0.78, y + 12);
+      ctx.stroke();
+      ctx.fillStyle = '#6c6764'; ctx.beginPath();
+      for (let k = 0; k < 7; k++) ctx.rect(x0 + 4 + CK.r(sd, k) * (w - 8), y + 8 + CK.r(sd, k + 9) * Math.max(4, wy - y - 10), 1.5, 1.5);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x0 + 6, y + 1.5, w - 16, 1.6);
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(x0 + w * 0.7, wy - 8, 3, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = '#5c5856'; ctx.lineWidth = 2; rr(x0, y, w, sh, 12); ctx.stroke();
+      CK.moss(cx - w * 0.18, y + 1.5, w * 0.24, 2.6, '#6fbf4a', sd);
       if (s.n) { ctx.fillStyle = 'rgba(255,255,255,0.6)'; for (const sd of [-1, 1]) { circle(cx + sd * (w * 0.5 + 4), wy + 1, 2.4); ctx.fill(); } }
       if (st.steady) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x0 + 1, y + 1, w - 2, 9, 5); ctx.stroke(); }
     }
@@ -1425,11 +2072,32 @@ function eggDrawBridge(st) {
     const pts = [];
     for (let x = g.x0; x <= g.x1; x += 6) pts.push([x - cam.x, eggBridgeY(g, x) - cam.y]);
     // posts at each end
-    for (const px of [g.x0, g.x1]) { const yy = eggGY(st, px + (px === g.x0 ? -4 : 4)) - cam.y; ctx.fillStyle = '#7d5530'; ctx.fillRect(px - cam.x - 4, yy - 40, 8, 42); }
+    // (rich props pass: round wooden posts with grain, a cut top and rope lashings)
+    for (const px of [g.x0, g.x1]) {
+      const yy = eggGY(st, px + (px === g.x0 ? -4 : 4)) - cam.y, bx = px - cam.x - 4;
+      CK.shadow(bx + 4, yy + 2, 9, 2.5, 0.2);
+      CK.planks(bx, yy - 40, 8, 42, '#7d5530', { vert: true, board: 8, nails: false, seed: px | 0, lw: 1.6 });
+      ctx.fillStyle = '#d9a86a'; ctx.beginPath(); ctx.ellipse(bx + 4, yy - 40, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#a8753f'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(bx + 4, yy - 40, 2, 0.8, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#c9b27a'; ctx.lineWidth = 1.6; ctx.beginPath();
+      for (const ry of [yy - 31, yy - 27, yy - 4]) { ctx.moveTo(bx - 0.5, ry); ctx.lineTo(bx + 8.5, ry - 2); }
+      ctx.stroke();
+      ctx.strokeStyle = '#8a7444'; ctx.lineWidth = 0.8; ctx.beginPath();
+      for (const ry of [yy - 31, yy - 27, yy - 4]) { ctx.moveTo(bx - 0.5, ry + 1.2); ctx.lineTo(bx + 8.5, ry - 0.8); }
+      ctx.stroke();
+    }
     ctx.strokeStyle = '#5a6e2a'; ctx.lineWidth = 3;
     ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y - 28) : ctx.moveTo(x, y - 28))); ctx.stroke();
     for (let i = 0; i < pts.length; i += 3) { const [x, y] = pts[i]; ctx.strokeStyle = 'rgba(90,110,42,0.7)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y - 28); ctx.lineTo(x, y); ctx.stroke(); }
-    for (let i = 0; i < pts.length - 1; i += 2) { const [x, y] = pts[i]; ctx.fillStyle = i % 4 ? '#c9925a' : '#b07a44'; ctx.fillRect(x - 1, y, 11, 6); }
+    // planks: each one shaded, lit on top, grained, with a dark edge
+    for (let i = 0; i < pts.length - 1; i += 2) {
+      const [x, y] = pts[i], col = i % 4 ? '#c9925a' : '#b07a44';
+      ctx.fillStyle = col; ctx.fillRect(x - 1, y, 11, 6);
+      ctx.fillStyle = shade(col, 0.22); ctx.fillRect(x - 1, y + 4, 11, 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - 1, y, 11, 1.2);
+      ctx.fillStyle = shade(col, 0.35); ctx.fillRect(x + 1 + (i % 3) * 2, y + 2.4, 5, 0.9);
+      ctx.strokeStyle = shade(col, 0.55); ctx.lineWidth = 1; ctx.strokeRect(x - 0.5, y + 0.5, 10, 5);
+    }
     ctx.strokeStyle = '#5a6e2a'; ctx.lineWidth = 3;
     ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y + 5) : ctx.moveTo(x, y + 5))); ctx.stroke();
     // leaves on the vines
@@ -1447,7 +2115,33 @@ function eggDrawVents(st, front) {
       ctx.fillStyle = info.state === 'quiet' ? 'rgba(255,200,140,0.25)' : 'rgba(255,150,80,0.4)'; ctx.beginPath(); ctx.ellipse(x, y + 2, r + 4, 6, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#9a7a62'; ctx.beginPath(); ctx.moveTo(x - r - 6, y + 2); ctx.quadraticCurveTo(x - r * 0.5, y - 22, x - 10, y - 18); ctx.lineTo(x + 10, y - 18); ctx.quadraticCurveTo(x + r * 0.5, y - 22, x + r + 6, y + 2); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#b8957a'; ctx.beginPath(); ctx.moveTo(x - r * 0.7, y - 4); ctx.quadraticCurveTo(x - r * 0.4, y - 16, x - 8, y - 15); ctx.lineTo(x - 2, y - 15); ctx.quadraticCurveTo(x - r * 0.3, y - 8, x - r * 0.4, y); ctx.closePath(); ctx.fill();
+      // (rich props pass) the cone's still detail: rock layers, a crust of yellow and white minerals round the mouth,
+      // pebbles at its foot and an outline; painted once per size
+      CK.pic('eggvent' + r, 2 * r + 40, 40, r + 20, 30, () => {
+        const cone = () => { ctx.beginPath(); ctx.moveTo(-r - 6, 2); ctx.quadraticCurveTo(-r * 0.5, -22, -10, -18); ctx.lineTo(10, -18); ctx.quadraticCurveTo(r * 0.5, -22, r + 6, 2); ctx.closePath(); };
+        ctx.save(); cone(); ctx.clip();
+        ctx.fillStyle = 'rgba(70,45,30,0.25)'; ctx.fillRect(r * 0.2, -24, r + 10, 30);
+        ctx.strokeStyle = 'rgba(80,55,40,0.45)'; ctx.lineWidth = 1.4; ctx.beginPath();
+        for (const ly of [-12, -6, -1]) { ctx.moveTo(-r - 6, ly + 2); ctx.quadraticCurveTo(0, ly - 3, r + 6, ly + 2); }
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,240,220,0.25)'; ctx.lineWidth = 1; ctx.beginPath();
+        for (const ly of [-11, -5]) { ctx.moveTo(-r - 6, ly + 3.4); ctx.quadraticCurveTo(-r * 0.3, ly - 0.6, 0, ly - 0.6); }
+        ctx.stroke();
+        ctx.fillStyle = '#6f5646'; ctx.beginPath();
+        for (let k = 0; k < 10; k++) { const sx = -r + CK.r(r, k) * 2 * r, sy = -14 + CK.r(k, r) * 14; ctx.rect(sx, sy, 1.6, 1.6); }
+        ctx.fill();
+        ctx.restore();
+        ctx.strokeStyle = '#6a5040'; ctx.lineWidth = 1.8; cone(); ctx.stroke();
+        ctx.fillStyle = '#f2df8a'; ctx.beginPath();
+        for (let k = 0; k < 9; k++) { const a = Math.PI * (0.95 + k * 0.14), sx = Math.cos(a) * 14, sy = -18 + Math.sin(a) * 6 + 2; ctx.moveTo(sx + 2, sy); ctx.arc(sx, sy, 1.4 + (k % 3) * 0.5, 0, Math.PI * 2); }
+        ctx.fill();
+        ctx.fillStyle = '#fff6e0'; ctx.beginPath();
+        for (let k = 0; k < 5; k++) { const sx = -10 + k * 5, sy = -19.5 + (k % 2); ctx.moveTo(sx + 1.2, sy); ctx.arc(sx, sy, 1.2, 0, Math.PI * 2); }
+        ctx.fill();
+        for (let k = 0; k < 4; k++) CK.pebble((k < 2 ? -1 : 1) * (r + 2 + (k % 2) * 7), 0, 2.4 + (k % 2), k % 2 ? '#a08876' : '#8a7262', r * 10 + k);
+      }, x, y);
       ctx.fillStyle = info.state === 'warn' ? '#ff9a4a' : '#5a3e30'; ctx.beginPath(); ctx.ellipse(x, y - 18, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(40,25,20,0.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(x, y - 18, 10, 4, 0, 0, Math.PI * 2); ctx.stroke();
       if (info.state === 'warn') { ctx.fillStyle = 'rgba(255,160,80,' + (0.25 + 0.2 * Math.sin(G.clock * 18)) + ')'; ctx.beginPath(); ctx.ellipse(x, y - 4, r + 6, 10, 0, 0, Math.PI * 2); ctx.fill(); }
       if (st.sleepy) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y - 12, 12, 5, 0, 0, Math.PI * 2); ctx.stroke(); }
       // a little timer ring on quiet vents: how long it rests
