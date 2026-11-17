@@ -601,26 +601,56 @@ const NINJA = (() => {
   K.ground = (x0, x1, y, kind, bottom) => {
     const b = bottom === undefined ? H + 20 : bottom, w = x1 - x0;
     if (kind === 'tatami') {
-      ctx.fillStyle = '#b9b274'; ctx.fillRect(x0, y, w, b - y);
-      // the woven rush: fine lines, mats alternating in tone, dark cloth borders with a lit edge
-      for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) if (((x / 160) | 0) % 2) { ctx.fillStyle = 'rgba(255,250,200,0.07)'; ctx.fillRect(Math.max(x0, x), y + 5, 160, 39); }
-      ctx.fillStyle = 'rgba(110,100,40,0.18)'; for (let yy = y + 8; yy < Math.min(b, y + 200); yy += 5) ctx.fillRect(x0, yy, w, 1);
-      { const weave = K.pat('tatami', 24, 10, 'repeat', (c) => {
-          c.fillStyle = 'rgba(120,108,40,0.22)'; for (let k = 0; k < 6; k++) c.fillRect(k * 4 + (k % 2), 0, 1, 5), c.fillRect(k * 4 + 2 + (k % 2), 5, 1, 5);
-          c.fillStyle = 'rgba(255,250,210,0.12)'; c.fillRect(0, 2, 24, 1); c.fillRect(0, 7, 24, 1);
-        });
-        if (weave) { ctx.fillStyle = weave; ctx.fillRect(x0, y + 5, w, b - y - 5); }
-        // soft wear in the middle of each mat, and the odd mat a touch greener (newer rush)
-        for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) { const hv = ihash(x / 160 | 0, 44); ctx.fillStyle = hv % 3 ? 'rgba(255,250,210,0.06)' : 'rgba(120,150,60,0.08)'; ctx.fillRect(Math.max(x0, x + 5), y + 5, 155, Math.min(39, b - y - 5)); } }
+      // (art pass 2) rush mats in two rows: each mat its own tone, woven strands that catch the moonlight, binding
+      // threads, a bevelled edge, worn patches and scuffs; dark cloth borders (heri) with a woven gold motif.
+      // Only the dojo hall uses it, and the hall is painted once and copied, so all of this costs nothing per frame.
+      const rows = [[y + 5, y + 44, 3], [y + 48, b, 4]];
+      const tg = ctx.createLinearGradient(0, y, 0, b); tg.addColorStop(0, '#cbc486'); tg.addColorStop(0.45, '#b9b274'); tg.addColorStop(1, '#9a9358');
+      ctx.fillStyle = tg; ctx.fillRect(x0, y, w, b - y);
+      const c0 = Math.floor(x0 / 160);
+      for (let ri = 0; ri < 2; ri++) {
+        const [r0, r1, step] = rows[ri]; if (r1 <= r0) continue;
+        for (let ci = c0; ci * 160 < x1; ci++) {
+          const mx = ci * 160 + 5, mw = 155, hv = ihash(ci, 44 + ri);
+          // the mat's own tone: newer greener rush, sun-faded straw, or an older darker mat
+          const tint = ['rgba(255,250,210,0.07)', 'rgba(120,150,60,0.12)', 'rgba(90,70,20,0.09)', null][hv % 4];
+          if (tint) { ctx.fillStyle = tint; ctx.fillRect(mx, r0, mw, r1 - r0); }
+          // the woven strands: rows of rush, each split in lengths of slightly different shade
+          for (let yy = r0 + 1, k = 0; yy < r1 - 1; yy += step, k++) {
+            ctx.fillStyle = 'rgba(96,86,30,0.24)'; ctx.fillRect(mx, yy + step - 1, mw, 1);
+            for (let sx = 0; sx < mw; sx += 22) {
+              const q = ihash(ci * 31 + sx, k * 7 + ri * 101), sw = Math.min(22, mw - sx);
+              ctx.fillStyle = q % 3 === 0 ? 'rgba(255,252,214,0.12)' : q % 3 === 1 ? 'rgba(80,70,20,0.07)' : 'rgba(255,252,214,0.06)';
+              ctx.fillRect(mx + sx, yy, sw, step - 1);
+            }
+            ctx.fillStyle = 'rgba(255,255,230,0.12)'; ctx.fillRect(mx, yy, mw, 0.8);
+          }
+          // binding threads across the weave
+          ctx.fillStyle = 'rgba(80,72,28,0.16)'; for (let tx = mx + 9; tx < mx + mw - 4; tx += 13) ctx.fillRect(tx, r0, 0.8, r1 - r0);
+          // worn patch where feet land, a scuff or two
+          ctx.fillStyle = 'rgba(255,250,215,0.08)'; ctx.beginPath(); ctx.ellipse(mx + 40 + hv % 70, (r0 + r1) / 2, 34, (r1 - r0) * 0.32, 0, 0, TAU); ctx.fill();
+          if (hv % 3 === 1) { ctx.strokeStyle = 'rgba(70,58,24,0.28)'; ctx.lineWidth = 1; ctx.beginPath(); const sx = mx + 20 + (hv >>> 4) % 110, sy = r0 + 6 + (hv >>> 9) % Math.max(1, r1 - r0 - 12); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(sx + 7, sy - 2, sx + 15, sy + 1); ctx.stroke(); }
+          // a bevel: lit far edge, shaded near edge and right end
+          ctx.fillStyle = 'rgba(255,255,225,0.28)'; ctx.fillRect(mx, r0, mw, 1.2);
+          ctx.fillStyle = 'rgba(60,50,16,0.22)'; ctx.fillRect(mx, r1 - 2, mw, 2); ctx.fillRect(mx + mw - 2, r0, 2, r1 - r0);
+        }
+      }
+      // the far edge against the wall, and the wall's soft shadow on the mats
       ctx.fillStyle = '#d2cb8c'; ctx.fillRect(x0, y, w, 5);
       ctx.fillStyle = 'rgba(255,255,230,0.4)'; ctx.fillRect(x0, y, w, 1.5);
-      ctx.fillStyle = '#4c5a3c';
-      for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) ctx.fillRect(Math.max(x0, x), y, 5, b - y);
-      ctx.fillRect(x0, y + 44, w, 4);
-      ctx.fillStyle = '#6a7a52'; ctx.fillRect(x0, y + 44, w, 1.2);
-      for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) if (x >= x0) ctx.fillRect(x, y, 1.2, b - y);
-      // a little woven motif along the cloth borders
-      ctx.fillStyle = 'rgba(210,220,160,0.35)'; for (let x = Math.floor(x0 / 12) * 12; x < x1; x += 12) ctx.fillRect(x + 4, y + 45.5, 3, 1.2);
+      ctx.fillStyle = 'rgba(90,80,30,0.35)'; ctx.fillRect(x0, y + 4, w, 1);
+      { const sg = ctx.createLinearGradient(0, y + 5, 0, y + 20); sg.addColorStop(0, 'rgba(30,20,40,0.28)'); sg.addColorStop(1, 'rgba(30,20,40,0)'); ctx.fillStyle = sg; ctx.fillRect(x0, y + 5, w, 15); }
+      // the cloth borders: dark green, a lit edge, a woven motif and a shadow line
+      const heri = (hx, hy, hw, hh, across) => {
+        ctx.fillStyle = '#3e4c34'; ctx.fillRect(hx, hy, hw, hh);
+        ctx.fillStyle = 'rgba(255,255,220,0.22)'; if (across) ctx.fillRect(hx, hy, hw, 1); else ctx.fillRect(hx, hy, 1, hh);
+        ctx.fillStyle = 'rgba(14,18,8,0.45)'; if (across) ctx.fillRect(hx, hy + hh - 1, hw, 1); else ctx.fillRect(hx + hw - 1, hy, 1, hh);
+        ctx.fillStyle = 'rgba(214,196,120,0.55)';
+        if (across) { ctx.beginPath(); for (let k = Math.floor(hx / 10) * 10 + 5; k < hx + hw - 2; k += 10) { const cy = hy + hh / 2; ctx.moveTo(k - 2, cy); ctx.lineTo(k, cy - 1.3); ctx.lineTo(k + 2, cy); ctx.lineTo(k, cy + 1.3); ctx.closePath(); } ctx.fill(); }
+        else { ctx.beginPath(); for (let k = hy + 6; k < hy + hh - 2; k += 9) { const cx = hx + hw / 2; ctx.moveTo(cx, k - 2); ctx.lineTo(cx + 1.4, k); ctx.lineTo(cx, k + 2); ctx.lineTo(cx - 1.4, k); ctx.closePath(); } ctx.fill(); }
+      };
+      heri(x0, y + 44, w, 4, true);
+      for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) heri(Math.max(x0, x), y + 5, 5, b - y - 5, false);
       ctx.fillStyle = 'rgba(20,24,10,0.35)'; ctx.fillRect(x0, y + 48, w, 2);
       for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) if (x >= x0) { ctx.fillStyle = 'rgba(20,24,10,0.3)'; ctx.fillRect(x + 5, y + 5, 2, b - y - 5); }
     } else if (kind === 'wood') {
@@ -1015,6 +1045,31 @@ const NINJA = (() => {
       ctx.fillStyle = '#8a2c34'; for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + d * (r + 22), y - r - 24); ctx.quadraticCurveTo(x + d * (r + 30), y - r - 24, x + d * (r + 32), y - r - 30); ctx.lineTo(x + d * (r + 26), y - r - 21); ctx.closePath(); ctx.fill(); }
       ctx.strokeStyle = '#4a141c'; ctx.lineWidth = 1.2; rr(x - r - 26, y - r - 24, r * 2 + 52, 9, 4); ctx.stroke(); ctx.strokeRect(x - r - 16, y - r - 15, 7, gy - (y - r - 15) - 5); ctx.strokeRect(x + r + 9, y - r - 15, 7, gy - (y - r - 15) - 5);
       ctx.fillStyle = '#e2a93b'; for (const px of [x - r - 12.5, x + r + 12.5]) { ctx.fillRect(px - 4.5, y - r - 15, 9, 3); ctx.fillRect(px - 4.5, gy - 12, 9, 3); }
+      // (art pass 2) lacquer streaks and grain on the posts, a lower tie beam with pegs, stone footings, cloud
+      // brackets under the top beam and a padded striker hanging from the right post on a cord
+      { const ph = gy - (y - r - 15) - 5;
+        ctx.strokeStyle = 'rgba(255,190,180,0.22)'; ctx.lineWidth = 0.8; ctx.beginPath();
+        for (const px of [x - r - 16, x + r + 9]) for (const gx of [3, 5]) { ctx.moveTo(px + gx, y - r - 10); ctx.bezierCurveTo(px + gx + 0.8, y - r - 10 + ph * 0.3, px + gx - 0.8, y - r - 10 + ph * 0.6, px + gx, gy - 14); }
+        ctx.stroke();
+        const ty = gy - 22;
+        ctx.fillStyle = '#7a2630'; ctx.fillRect(x - r - 9, ty, r * 2 + 18, 5);
+        ctx.fillStyle = 'rgba(255,210,200,0.3)'; ctx.fillRect(x - r - 9, ty, r * 2 + 18, 1);
+        ctx.fillStyle = 'rgba(40,8,16,0.35)'; ctx.fillRect(x - r - 9, ty + 4, r * 2 + 18, 1);
+        ctx.fillStyle = '#e2a93b'; for (const px of [x - r - 12.5, x + r + 12.5]) { circle(px, ty + 2.5, 1.6); ctx.fill(); }
+        for (const px of [x - r - 12.5, x + r + 12.5]) {
+          ctx.fillStyle = '#5c5878'; rr(px - 8, gy - 4, 16, 5, 1.5); ctx.fill();
+          ctx.fillStyle = 'rgba(220,220,255,0.3)'; ctx.fillRect(px - 7, gy - 4, 14, 1);
+          ctx.fillStyle = 'rgba(14,12,40,0.35)'; ctx.fillRect(px - 8, gy, 16, 1);
+        }
+        ctx.fillStyle = '#8a2c34'; ctx.strokeStyle = '#4a141c'; ctx.lineWidth = 1;
+        for (const d of [-1, 1]) { const bx = x + d * (r + 9); ctx.beginPath(); ctx.moveTo(bx, y - r - 15); ctx.lineTo(bx - d * 10, y - r - 15); ctx.quadraticCurveTo(bx - d * 3, y - r - 13, bx - d * 2, y - r - 6); ctx.quadraticCurveTo(bx, y - r - 8, bx, y - r - 15); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+        const mx = x + r + 22, my = y - r * 0.2, sw = Math.sin(t * 1.3) * 1.5;
+        ctx.strokeStyle = COL.paper; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + r + 16, y - r - 4); ctx.lineTo(mx + sw, my); ctx.stroke();
+        ctx.strokeStyle = '#6a4026'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(mx + sw, my); ctx.lineTo(mx + sw * 1.4, my + 20); ctx.stroke();
+        ctx.fillStyle = '#c8474a'; ctx.strokeStyle = '#5a1f2a'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(mx + sw * 1.5, my + 24, 5, 6, 0, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.35)'; circle(mx + sw * 1.5 - 1.8, my + 21.5, 1.4); ctx.fill();
+        ctx.fillStyle = '#e2a93b'; ctx.fillRect(mx + sw * 1.45 - 2, my + 17, 4, 1.6);
+      }
       ctx.strokeStyle = COL.paper; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - r * 0.5, y - r - 16); ctx.lineTo(x - r * 0.5, y - r * 0.8); ctx.moveTo(x + r * 0.5, y - r - 16); ctx.lineTo(x + r * 0.5, y - r * 0.8); ctx.stroke();
     }
     const dx = Math.sin(t * 46) * 3 * hit;

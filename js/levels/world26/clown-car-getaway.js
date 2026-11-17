@@ -467,7 +467,14 @@
     for (let k = 0; k < 5; k++) for (const ny of [-64, -6]) { c.fillStyle = '#4a3a3a'; circleOn(c, x + k * 24 + 12, y + ny, 1.2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(x + k * 24 + 11.2, y + ny - 1, 0.8, 0.8); }
     c.fillStyle = '#6a4026'; c.fillRect(x + 104, y - 70, 16, 70);
     c.fillStyle = '#5a3a2a'; c.fillRect(x + 10, y - 50, 100, 30);
+    // (art pass 2) inside the hatch: a lit back wall with a painted target, a shelf of little prizes, side shadows
+    { const hg = c.createLinearGradient(0, y - 50, 0, y - 20); hg.addColorStop(0, '#3e2618'); hg.addColorStop(1, '#6a4630'); c.fillStyle = hg; c.fillRect(x + 10, y - 50, 100, 30); }
+    for (const tx of [22, 98]) { c.fillStyle = '#fff4e6'; circleOn(c, x + tx, y - 40, 6); c.fill(); c.fillStyle = cols[0]; circleOn(c, x + tx, y - 40, 4.2); c.fill(); c.fillStyle = '#fff4e6'; circleOn(c, x + tx, y - 40, 2.4); c.fill(); c.fillStyle = cols[0]; circleOn(c, x + tx, y - 40, 0.9); c.fill(); }
+    c.fillStyle = '#7a4c30'; c.fillRect(x + 10, y - 45, 100, 2.5); c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x + 10, y - 45, 100, 0.8);
+    for (let k = 0; k < 7; k++) { const q = hash(k + ci * 7, prize + 3), px = x + 36 + k * 7.5, ph = 4 + q % 4; c.fillStyle = ['#ffd36b', '#9fe8ff', '#ff9fd0', '#8fe3b0'][q % 4]; rrOn(c, px - 2.5, y - 45 - ph, 5, ph, 1.5); c.fill(); c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(px - 1.5, y - 44 - ph, 1, ph - 2); }
+    c.fillStyle = 'rgba(20,8,4,0.35)'; c.fillRect(x + 10, y - 50, 5, 30); c.fillRect(x + 105, y - 50, 5, 30);
     c.fillStyle = '#3e2618'; c.fillRect(x + 10, y - 50, 100, 6);
+    c.fillStyle = 'rgba(255,230,160,0.12)'; c.fillRect(x + 10, y - 44, 100, 3);
     for (const px of [30, 60, 90]) {
       c.fillStyle = pc; circleOn(c, x + px, y - 34, 8); c.fill();
       c.fillStyle = shade(pc, 0.22); c.beginPath(); c.arc(x + px, y - 34, 8, -0.4, Math.PI * 0.7); c.fill();
@@ -475,12 +482,25 @@
     }
     c.fillStyle = '#a8744a'; c.fillRect(x + 4, y - 22, 112, 6);
     c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x + 4, y - 22, 112, 1.5);
+    c.fillStyle = 'rgba(40,20,10,0.35)'; c.fillRect(x + 4, y - 16, 112, 2);
+    // a painted front panel under the counter: a band of the booth's colour with cream stars, a lit lip
+    c.fillStyle = cols[0]; c.fillRect(x + 8, y - 13, 96, 9);
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x + 8, y - 13, 96, 1.2); c.fillStyle = 'rgba(40,10,20,0.25)'; c.fillRect(x + 8, y - 5.5, 96, 1.5);
+    c.fillStyle = '#fff4e6'; for (let k = 0; k < 6; k++) { const sx = x + 16 + k * 16, sy = y - 8.5; c.beginPath(); for (let j = 0; j < 10; j++) { const a = -Math.PI / 2 + j * Math.PI / 5, rr2 = j % 2 ? 1.4 : 3.2; c.lineTo(sx + Math.cos(a) * rr2, sy + Math.sin(a) * rr2); } c.closePath(); c.fill(); }
+    c.strokeStyle = shade(cols[0], 0.45); c.lineWidth = 1; c.strokeRect(x + 8.5, y - 12.5, 95, 8);
+    // corner posts with a lit edge and a shaded side
+    for (const px of [x, x + 115]) { c.fillStyle = '#6a4026'; c.fillRect(px, y - 70, 5, 70); c.fillStyle = 'rgba(255,230,190,0.3)'; c.fillRect(px, y - 70, 1.3, 70); c.fillStyle = 'rgba(30,14,6,0.35)'; c.fillRect(px + 4, y - 70, 1, 70); }
     c.strokeStyle = '#4a2a18'; c.lineWidth = 1.8; c.strokeRect(x, y - 70, 120, 70);
     // striped awning with scallops and a shaded underside
     for (let i = 0; i < 6; i++) { c.fillStyle = cols[i % 2]; c.beginPath(); c.moveTo(x - 6 + i * 22, y - 70); c.lineTo(x + 16 + i * 22, y - 70); c.lineTo(x + 16 + i * 22, y - 92); c.lineTo(x - 6 + i * 22, y - 92); c.fill(); }
     for (let i = 0; i < 6; i++) { c.fillStyle = cols[i % 2]; c.beginPath(); c.arc(x + 5 + i * 22, y - 70, 11, 0, Math.PI); c.fill(); c.fillStyle = 'rgba(30,20,40,0.15)'; c.beginPath(); c.arc(x + 5 + i * 22, y - 70, 11, 0, Math.PI * 0.5); c.lineTo(x + 5 + i * 22, y - 70); c.fill(); }
+    // folds: each stripe lit on its left and shaded on its right, a dark hem along the scallops, a pole on top
+    for (let i = 0; i < 6; i++) { c.fillStyle = 'rgba(30,20,40,0.13)'; c.fillRect(x + 8 + i * 22, y - 92, 8, 22); c.fillStyle = 'rgba(255,255,255,0.16)'; c.fillRect(x - 5 + i * 22, y - 92, 4, 22); }
+    c.strokeStyle = shade(cols[0], 0.45); c.lineWidth = 1.1; c.beginPath(); for (let i = 0; i < 6; i++) { c.moveTo(x + 16 + i * 22, y - 70); c.arc(x + 5 + i * 22, y - 70, 11, 0, Math.PI); } c.stroke();
     c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x - 6, y - 92, 132, 2);
     c.strokeStyle = shade(cols[0], 0.45); c.lineWidth = 1.5; c.strokeRect(x - 6, y - 92, 132, 22);
+    c.fillStyle = '#c9a050'; c.fillRect(x - 8, y - 94, 136, 3); c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(x - 8, y - 94, 136, 0.8);
+    c.fillStyle = '#e2b04a'; for (const ex of [x - 8, x + 128]) { circleOn(c, ex, y - 92, 2); c.fill(); }
     boothPics[key] = cv;
     return cv;
   }

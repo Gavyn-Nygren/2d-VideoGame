@@ -365,24 +365,82 @@ const RUMBLE = {
     }
     for (const q of st.parts) drawPart(q.k, q.x, q.y, q.on === 'floor' && q.life < 2 ? (Math.sin(t * 20) > 0 ? 0.4 : 1) : 1, t);
   }
+  // the lift column (112 x 84 from (mid - 56, AY + 18)), painted once: a round steel housing shaded like a cylinder,
+  // reinforcing rings with bolts, a hydraulic ram, a hose and a warning plate
+  function liftPic() {
+    return rf27Pic('w27lift', 112, 84, c => {
+      c.translate(56, -18); const mx = 0, AY = 0;
+      const cg = c.createLinearGradient(mx - 40, 0, mx + 40, 0);
+      cg.addColorStop(0, '#3a4262'); cg.addColorStop(0.22, '#6a7398'); cg.addColorStop(0.4, '#566088'); cg.addColorStop(0.85, '#343b5a'); cg.addColorStop(1, '#262c48');
+      c.fillStyle = cg; c.fillRect(mx - 40, AY + 20, 80, 80);
+      c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(mx - 26, AY + 34, 2, 66);
+      c.fillStyle = '#9aa4c6'; c.fillRect(mx - 7, AY + 32, 14, 30); c.fillStyle = '#e6ecff'; c.fillRect(mx - 4, AY + 32, 2.5, 30); c.fillStyle = 'rgba(10,10,30,0.35)'; c.fillRect(mx + 3, AY + 32, 4, 30);
+      c.fillStyle = '#2a2f4f'; c.fillRect(mx - 12, AY + 60, 24, 5);
+      for (const ry of [AY + 42, AY + 66]) {
+        const rg = c.createLinearGradient(mx - 43, 0, mx + 43, 0); rg.addColorStop(0, '#4a5274'); rg.addColorStop(0.25, '#8a94b8'); rg.addColorStop(1, '#2a3050');
+        c.fillStyle = rg; c.fillRect(mx - 43, ry, 86, 7);
+        c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(mx - 43, ry, 86, 1.2); c.fillStyle = 'rgba(10,10,30,0.4)'; c.fillRect(mx - 43, ry + 6, 86, 1);
+        c.fillStyle = '#20243c'; for (const dx of [-34, -17, 17, 34]) { circleOn(c, mx + dx, ry + 3.5, 1.6); c.fill(); }
+        c.fillStyle = 'rgba(255,255,255,0.5)'; for (const dx of [-34, -17, 17, 34]) c.fillRect(mx + dx - 1, ry + 2.2, 1, 1);
+      }
+      const hose = () => { c.beginPath(); c.moveTo(mx + 30, AY + 34); c.bezierCurveTo(mx + 54, AY + 40, mx + 50, AY + 70, mx + 34, AY + 80); };
+      c.lineCap = 'round'; c.strokeStyle = '#20243c'; c.lineWidth = 4; hose(); c.stroke();
+      c.strokeStyle = '#ff6b5a'; c.lineWidth = 2.5; hose(); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.4)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(mx + 31, AY + 33); c.bezierCurveTo(mx + 53, AY + 38, mx + 49, AY + 66, mx + 36, AY + 77); c.stroke();
+      c.fillStyle = '#ffc53d'; c.beginPath(); c.moveTo(mx - 30, AY + 62); c.lineTo(mx - 21, AY + 52); c.lineTo(mx - 12, AY + 62); c.closePath(); c.fill();
+      c.strokeStyle = '#2a2a3a'; c.lineWidth = 1.2; c.stroke(); c.fillStyle = '#2a2a3a'; c.fillRect(mx - 21.6, AY + 55.5, 1.4, 3.5); c.fillRect(mx - 21.6, AY + 59.8, 1.4, 1.2);
+      c.strokeStyle = '#20243c'; c.lineWidth = 1.5; c.strokeRect(mx - 39.25, AY + 20, 78.5, 80);
+    });
+  }
+  // a row of bobbing foam cubes, copied onto whole device pixels with one transform for the row
+  function foamRow(back, x0, y0, amp, freq, t) {
+    const pics = back ? [0, 1, 2].map(v => foamPic(1, v)) : [0, 1, 2, 3].map(v => foamPic(0, v)), n = pics.length;
+    const m = ctx.getTransform(), sc = pics[0].width / 40;
+    const fast = !m.b && !m.c && Math.abs(m.a - sc) < 0.02 && Math.abs(m.d - sc) < 0.02;
+    if (fast) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); }
+    for (let x = x0, k = 0; x < W + 37; x += 34, k++) {
+      const xx = x - 20, yy = y0 + Math.sin(t * 2 + (back ? (x - 17) * freq : x)) * amp;
+      if (fast) ctx.drawImage(pics[k % n], Math.round(m.a * xx + m.e), Math.round(m.d * yy + m.f));
+      else ctx.drawImage(pics[k % n], xx, yy, 40, 40);
+    }
+    if (fast) ctx.restore();
+  }
+  // a foam cube for the pit, 40 x 40, centred: back (1) is in shade; v picks the tilt and tone
+  function foamPic(back, v) {
+    return rf27Pic('w27foam|' + back + '|' + v, 40, 40, c => {
+      const base = back ? ['#e07ab8', '#d870b0', '#e486c0'][v % 3] : ['#ffc3e6', '#ffb8e0', '#ffd0ec', '#ffbadf'][v % 4];
+      c.translate(20, 20); c.rotate([-0.12, 0.08, -0.04, 0.14][v % 4]);
+      const r = 15;
+      c.fillStyle = rf27Dk(base, 0.25); rrOn(c, -r, -r + 2, r * 2, r * 2, 7); c.fill();
+      const g = c.createLinearGradient(-r, -r, r, r); g.addColorStop(0, rf27Lt(base, 0.35)); g.addColorStop(0.5, base); g.addColorStop(1, rf27Dk(base, 0.12));
+      c.fillStyle = g; rrOn(c, -r, -r, r * 2, r * 2 - 1, 7); c.fill();
+      c.fillStyle = rf27Dk(base, 0.18); for (let k = 0; k < 9; k++) { const q = hash(k + v * 13, 40 + back); circleOn(c, -10 + q % 21, -9 + (q >>> 6) % 19, 0.9 + (q >>> 12) % 2 * 0.4); c.fill(); }
+      c.fillStyle = 'rgba(255,255,255,' + (back ? 0.25 : 0.6) + ')'; c.beginPath(); c.ellipse(-6, -8, 5, 3, -0.5, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = rf27Dk(base, 0.4); c.lineWidth = 1.2; rrOn(c, -r, -r, r * 2, r * 2 + 1, 7); c.stroke();
+    });
+  }
   function drawArena(st, t) {
-    // the foam pit
-    ctx.fillStyle = '#ff9fd6'; ctx.fillRect(0, R.AY + 80, W, H - R.AY - 80);
-    // foam blocks in the pit: a back row in shade, a front row lit, each with a highlight
-    for (let x = -7; x < W + 20; x += 34) { ctx.fillStyle = '#e07ab8'; circle(x + 17, R.AY + 100 + Math.sin(t * 2 + x * 0.7) * 2, 16); ctx.fill(); }
-    for (let x = 10; x < W; x += 34) { const yy = R.AY + 84 + Math.sin(t * 2 + x) * 3; ctx.fillStyle = '#ffb3dc'; circle(x, yy + 2, 18); ctx.fill(); ctx.fillStyle = '#ffc3e6'; circle(x - 1, yy, 16); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(x - 6, yy - 6, 4); ctx.fill(); }
-    // the platform (with its folding edges)
-    const e0 = st.edge[0], e1 = st.edge[1];
-    ctx.fillStyle = '#4a5270'; ctx.fillRect((e0 + e1) / 2 - 40, R.AY + 20, 80, 80);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect((e0 + e1) / 2 - 40, R.AY + 20, 6, 80);
-    ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect((e0 + e1) / 2 + 28, R.AY + 20, 12, 80);
-    ctx.fillStyle = '#2a2f4f'; for (let y = R.AY + 44; y < R.AY + 96; y += 16) for (const dx of [-32, 32]) { circle((e0 + e1) / 2 + dx, y, 1.6); ctx.fill(); }
-    ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.fillRect((e0 + e1) / 2 - 2, R.AY + 40, 4, 60);
-    rf27Stripes((e0 + e1) / 2 - 40, R.AY + 26, 80, 8);
+    // the foam pit: (art pass 2) soft foam cubes, each a cached picture (rounded, tilted, a lit top-left, a shaded
+    // underside, pores and a glossy spot); a back row in shade, a front row lit that the lift column sinks into
+    { const pg = ctx.createLinearGradient(0, R.AY + 80, 0, H); pg.addColorStop(0, '#f08cc8'); pg.addColorStop(1, '#ffa8da'); ctx.fillStyle = pg; ctx.fillRect(0, R.AY + 80, W, H - R.AY - 80); }
+    foamRow(1, -7 + 17, R.AY + 100 - 20, 2, 0.7, t);
+    const e0 = st.edge[0], e1 = st.edge[1], mx = (e0 + e1) / 2;
+    // the lift column under the platform: a round steel housing (shaded like a cylinder), reinforcing rings with
+    // bolts, a hydraulic ram, hoses and a warning plate
+    rf27Blit(liftPic(), mx - 56, R.AY + 18, 112, 84);
+    rf27Stripes(mx - 40, R.AY + 26, 80, 8);
+    // the platform (with its folding edges), a row of lamps and panel seams on its side face
     rf27Floor(e0, R.AY, e1 - e0, 26, 'test');
+    ctx.fillStyle = 'rgba(10,10,30,0.22)'; for (let x = Math.ceil((e0 + 10) / 62) * 62; x < e1 - 10; x += 62) ctx.fillRect(x, R.AY + 15, 1.5, 10);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; for (let x = Math.ceil((e0 + 10) / 62) * 62; x < e1 - 10; x += 62) ctx.fillRect(x + 1.5, R.AY + 15, 1, 10);
+    for (let x = Math.ceil((e0 + 26) / 31) * 31, k = 0; x < e1 - 20; x += 31, k++) {
+      if (Math.round(x / 31) % 2) { ctx.fillStyle = '#2a2a3a'; circle(x, R.AY + 20, 2.6); ctx.fill(); ctx.fillStyle = (Math.floor(t * 3) + Math.round(x / 62)) % 4 ? '#ffd84d' : '#ff9a3d'; circle(x, R.AY + 20, 1.7); ctx.fill(); }
+      else { ctx.fillStyle = '#3e3038'; circle(x, R.AY + 20, 1.5); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x - 1, R.AY + 18.8, 1, 1); }
+    }
     ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(e0, R.AY + 26, e1 - e0, 6);
     rf27Stripes(e0, R.AY, 10, 26); rf27Stripes(e1 - 10, R.AY, 10, 26);
     ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect((R.AX0 + R.AX1) / 2 - 2, R.AY + 3, 4, 10);
+    foamRow(0, 10, R.AY + 84 - 18, 3, 1, t);
     for (const b of st.bots || []) drawBot(st, b, t);
   }
   function drawBot(st, b, t) {

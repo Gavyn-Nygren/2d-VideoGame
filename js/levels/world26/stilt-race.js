@@ -343,14 +343,34 @@ function strStall(k) {
   const x = 0, col = ['#ff5f6d', '#5b95ff', '#ffc53d', '#8fe3b0'][k];
   c.fillStyle = 'rgba(20,10,30,0.3)'; c.beginPath(); c.ellipse(x + 80, 322, 70, 5, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = '#6a3a3a'; c.fillRect(x + 24, 262, 112, 58);
-  c.fillStyle = 'rgba(255,220,150,0.35)'; c.fillRect(x + 32, 288, 96, 18);
+  // (art pass 2) plank walls with grain, a warm-lit inside with goods on a shelf each side of the sign, corner posts,
+  // a painted counter with a lit lip and nail heads, and an awning with folds, a dark hem and a pole
+  c.fillStyle = 'rgba(30,10,14,0.35)'; for (let px = x + 38; px < x + 124; px += 14) c.fillRect(px, 262, 1.2, 42);
+  c.strokeStyle = 'rgba(30,10,14,0.25)'; c.lineWidth = 0.7; c.beginPath(); for (let px = x + 30; px < x + 124; px += 14) { const q = hash(px, k + 9); c.moveTo(px + q % 4, 264); c.bezierCurveTo(px + 2, 278, px - 1, 290, px + 1 + q % 3, 302); } c.stroke();
+  { const gg = c.createLinearGradient(0, 270, 0, 306); gg.addColorStop(0, 'rgba(255,220,150,0.08)'); gg.addColorStop(1, 'rgba(255,220,150,0.42)'); c.fillStyle = gg; c.fillRect(x + 32, 270, 96, 36); }
+  c.fillStyle = '#4a2424'; c.fillRect(x + 32, 286, 96, 2.5); c.fillStyle = 'rgba(255,230,180,0.3)'; c.fillRect(x + 32, 286, 96, 0.8);
+  for (const gx of [x + 38, x + 46, x + 114, x + 122]) {
+    if (k === 0) { c.fillStyle = '#fff4e6'; c.fillRect(gx - 3, 278, 6, 8); c.fillStyle = '#ff5f6d'; c.fillRect(gx - 1, 278, 2, 8); c.fillStyle = '#fff2b0'; circleOn(c, gx - 1.5, 277, 1.8); c.fill(); circleOn(c, gx + 1.5, 276.5, 1.8); c.fill(); }
+    else if (k === 1) { c.fillStyle = ['#ffd36b', '#9fe8ff', '#ff9fd0'][Math.round(gx) % 3]; circleOn(c, gx, 282.5, 3.5); c.fill(); c.fillStyle = 'rgba(255,255,255,0.6)'; circleOn(c, gx - 1.2, 281.3, 1); c.fill(); }
+    else if (k === 2) { c.fillStyle = '#c88a5a'; circleOn(c, gx, 282, 3.5); c.fill(); circleOn(c, gx - 2.6, 278.6, 1.5); c.fill(); circleOn(c, gx + 2.6, 278.6, 1.5); c.fill(); c.fillStyle = '#3a2048'; c.fillRect(gx - 1.6, 281, 1, 1); c.fillRect(gx + 0.6, 281, 1, 1); }
+    else { c.fillStyle = 'rgba(255,240,150,0.85)'; c.fillRect(gx - 2.5, 278, 5, 8); c.fillStyle = 'rgba(255,255,255,0.7)'; c.fillRect(gx - 2, 278.5, 1, 6); c.fillStyle = '#8fe3b0'; c.fillRect(gx - 2.5, 278, 5, 1.2); }
+  }
   c.fillStyle = '#8a5038'; c.fillRect(x + 22, 304, 116, 16);
+  c.fillStyle = col; c.fillRect(x + 26, 309, 108, 6); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x + 26, 309, 108, 1);
+  c.fillStyle = '#fff4e6'; for (let d = 0; d < 9; d++) { c.beginPath(); c.moveTo(x + 30 + d * 12, 315); c.lineTo(x + 34 + d * 12, 309); c.lineTo(x + 37 + d * 12, 309); c.lineTo(x + 33 + d * 12, 315); c.closePath(); c.fill(); }
   c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(x + 22, 304, 116, 2);
-  c.fillStyle = '#5a2c2c'; c.fillRect(x + 124, 262, 12, 58);
+  c.fillStyle = 'rgba(30,10,14,0.35)'; c.fillRect(x + 22, 318, 116, 2);
+  c.fillStyle = '#3a2a2a'; for (const nx of [x + 25, x + 135]) for (const ny of [307, 317]) { circleOn(c, nx, ny, 0.9); c.fill(); }
+  c.strokeStyle = '#3a1c1c'; c.lineWidth = 1.2; c.strokeRect(x + 22.5, 304.5, 115, 15);
+  c.fillStyle = '#5a2c2c'; c.fillRect(x + 124, 262, 12, 42);
+  for (const px of [x + 22, x + 134]) { c.fillStyle = '#4a2424'; c.fillRect(px, 246, 4, 58); c.fillStyle = 'rgba(255,220,190,0.3)'; c.fillRect(px, 246, 1.1, 58); }
   for (let s = 0; s < 6; s++) { c.fillStyle = s % 2 ? '#fff4e6' : col; c.fillRect(x + 18 + s * 21, 246, 21, 18); c.beginPath(); c.arc(x + 28.5 + s * 21, 264, 10.5, 0, Math.PI); c.fill(); }
+  for (let s = 0; s < 6; s++) { c.fillStyle = 'rgba(20,10,30,0.12)'; c.fillRect(x + 31 + s * 21, 247, 8, 17); c.fillStyle = 'rgba(255,255,255,0.15)'; c.fillRect(x + 19 + s * 21, 247, 4, 17); }
+  c.strokeStyle = shade(col, 0.5); c.lineWidth = 1; c.beginPath(); for (let s = 0; s < 6; s++) { c.moveTo(x + 39 + s * 21, 264); c.arc(x + 28.5 + s * 21, 264, 10.5, 0, Math.PI); } c.stroke();
   c.fillStyle = 'rgba(20,10,30,0.18)'; c.fillRect(x + 81, 246, 63, 18);
   c.strokeStyle = shade(col, 0.45); c.lineWidth = 1.5; c.strokeRect(x + 18, 246, 126, 18);
   c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(x + 18, 246, 126, 1.5);
+  c.fillStyle = '#c9a050'; c.fillRect(x + 15, 243, 132, 3); c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(x + 15, 243, 132, 0.8);
   const lab = ['POPCORN', 'GAMES', 'PRIZES', 'LEMONADE'][k];
   c.font = CIRCUS.FONT(12); const sw = c.measureText(lab).width + 18;
   c.fillStyle = shade(col, 0.4); rrOn(c, x + 80 - sw / 2, 278, sw, 22, 6); c.fill();
