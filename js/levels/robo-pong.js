@@ -237,9 +237,23 @@ function drawPaddleFace(x, y, w, h, who) {
   if (who < 2) {
     const col = PCOL[who], dark = PDARK[who];
     if (who === 1) { ctx.fillStyle = col; ctx.strokeStyle = dark; ctx.lineWidth = 2; for (const ex of [x + 3, x + w - 3]) { circle(ex, y + 1, 5); ctx.fill(); ctx.stroke(); } }
+    // (rich props pass) a soft shadow on the court, the body with a shaded right side and foot, a lit left edge, a
+    // grip band with stitches near the bottom and a glossy top
+    ctx.fillStyle = 'rgba(28,26,54,0.16)'; rr(x + 3, y + 4, w, h, 8); ctx.fill();
     ctx.fillStyle = col; ctx.strokeStyle = dark; ctx.lineWidth = 2.5;
-    rr(x, y, w, h, 8); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'; rr(x + 3, y + 3, 4, h - 6, 2); ctx.fill();
+    rr(x, y, w, h, 8); ctx.fill();
+    ctx.save(); rr(x, y, w, h, 8); ctx.clip();
+    ctx.fillStyle = shade(col, 0.16); ctx.fillRect(x + w * 0.62, y, w, h); ctx.fillRect(x, y + h - 9, w, 9);
+    ctx.fillStyle = tint(col, 0.22); ctx.fillRect(x, y, w, 5);
+    const gy = y + h - 26;
+    ctx.fillStyle = shade(col, 0.3); ctx.fillRect(x, gy, w, 10);
+    ctx.fillStyle = tint(col, 0.15); ctx.fillRect(x, gy, w, 1.4);
+    ctx.strokeStyle = tint(col, 0.5); ctx.lineWidth = 0.9; ctx.setLineDash([2, 2]);
+    ctx.beginPath(); ctx.moveTo(x, gy + 2.8); ctx.lineTo(x + w, gy + 2.8); ctx.moveTo(x, gy + 7.4); ctx.lineTo(x + w, gy + 7.4); ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+    ctx.strokeStyle = dark; ctx.lineWidth = 2.5; rr(x, y, w, h, 8); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; rr(x + 3, y + 3, 3.5, h - 32, 1.8); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; circle(x + 4.8, y + 4.5, 1.2); ctx.fill();
     if (who === 0) {
       ctx.strokeStyle = '#3f8f5c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx + 1, y - 6); ctx.stroke();
       ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(cx + 5, y - 8, 6, 3, -0.5, 0, Math.PI * 2); ctx.fill();
@@ -252,13 +266,27 @@ function drawPaddleFace(x, y, w, h, who) {
   } else {
     // Robo: a metal paddle with a visor and an antenna
     ctx.strokeStyle = '#5d6485'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx, y - 10); ctx.stroke();
+    ctx.fillStyle = '#5d6485'; rr(cx - 4, y - 3, 8, 4, 1.5); ctx.fill(); ctx.fillStyle = '#c6cbe0'; ctx.fillRect(cx - 3, y - 2.4, 6, 0.8);
     ctx.fillStyle = (G.clock % 1) < 0.5 ? '#ff5a6e' : '#ffd25e'; circle(cx, y - 12, 3.2); ctx.fill();
-    ctx.fillStyle = '#c6cbe0'; ctx.strokeStyle = '#5d6485'; ctx.lineWidth = 2.5;
-    rr(x, y, w, h, 6); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.4)'; rr(x + 3, y + 3, 4, h - 6, 2); ctx.fill();
+    // (rich props pass) brushed metal: a shadow, a shaded right side, panel seams, rivets down both edges, a vent grille
+    // and a warning stripe at the foot
+    ctx.fillStyle = 'rgba(28,26,54,0.16)'; rr(x - 3, y + 4, w, h, 6); ctx.fill();
+    ctx.fillStyle = '#c6cbe0'; rr(x, y, w, h, 6); ctx.fill();
+    ctx.save(); rr(x, y, w, h, 6); ctx.clip();
+    ctx.fillStyle = '#a7adc8'; ctx.fillRect(x + w * 0.6, y, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; for (let k = 4; k < h - 4; k += 5) ctx.fillRect(x, y + k, w * 0.6, 0.8);
+    ctx.fillStyle = '#8b92b2'; ctx.fillRect(x, y + h * 0.3, w, 1.2); ctx.fillRect(x, y + h * 0.62, w, 1.2);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x, y + h * 0.3 + 1.2, w, 0.8); ctx.fillRect(x, y + h * 0.62 + 1.2, w, 0.8);
+    for (let k = 0; k < 4; k++) { ctx.fillStyle = k % 2 ? '#2b2f4a' : '#ffd25e'; ctx.beginPath(); ctx.moveTo(x + k * 7 - 4, y + h); ctx.lineTo(x + k * 7 + 3, y + h - 7); ctx.lineTo(x + k * 7 + 10, y + h - 7); ctx.lineTo(x + k * 7 + 3, y + h); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    ctx.strokeStyle = '#5d6485'; ctx.lineWidth = 2.5; rr(x, y, w, h, 6); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; rr(x + 3, y + 3, 3.5, h - 14, 2); ctx.fill();
+    for (let ry = y + 8; ry < y + h - 10; ry += 16) for (const rx of [x + 3.6, x + w - 3.6]) { ctx.fillStyle = '#5d6485'; circle(rx, ry, 1.2); ctx.fill(); ctx.fillStyle = '#ffffff'; circle(rx - 0.4, ry - 0.4, 0.45); ctx.fill(); }
     ctx.fillStyle = '#5d6485';
-    for (let k = 1; k <= 3; k++) ctx.fillRect(x + 4, y + h - 8 * k - 4, w - 8, 2);
+    for (let k = 1; k <= 3; k++) { ctx.fillRect(x + 4, y + h - 8 * k - 6, w - 8, 2); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x + 4, y + h - 8 * k - 4, w - 8, 0.7); ctx.fillStyle = '#5d6485'; }
+    ctx.fillStyle = '#5d6485'; rr(x + 1, ey - 8, w - 2, 16, 4.5); ctx.fill();
     ctx.fillStyle = '#2b2f4a'; rr(x + 2, ey - 7, w - 4, 14, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.moveTo(x + 3, ey - 6); ctx.lineTo(x + w * 0.55, ey - 6); ctx.lineTo(x + 3, ey + 2); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#ff5a6e'; circle(cx + lx * 0.8, ey + ly * 1.2, 3.2); ctx.fill();
     ctx.fillStyle = 'rgba(255,90,110,0.35)'; circle(cx + lx * 0.8, ey + ly * 1.2, 6); ctx.fill();
   }
@@ -280,6 +308,19 @@ function drawPong() {
   ctx.fillStyle = 'rgba(91,149,255,0.10)'; ctx.fillRect(0, PONG.mid, 110, PONG.bot - PONG.mid);
   ctx.setLineDash([12, 12]); ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 4;
   ctx.beginPath(); ctx.moveTo(W / 2, PONG.top + 8); ctx.lineTo(W / 2, PONG.bot); ctx.stroke();
+  ctx.setLineDash([]);
+  // (rich props pass) rail studs along both side lines and a post at each end of the centre line
+  for (let x = 30; x < W; x += 60) for (const yy of [PONG.top + 3, PONG.bot - 3]) {
+    ctx.fillStyle = 'rgba(28,26,54,0.35)'; circle(x + 0.6, yy + 0.8, 2.6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)'; circle(x, yy, 2.2); ctx.fill();
+  }
+  for (const [yy, d] of [[PONG.top + 6, 1], [PONG.bot - 6, -1]]) {
+    ctx.fillStyle = 'rgba(28,26,54,0.25)'; ctx.beginPath(); ctx.ellipse(W / 2 + 1.5, yy + d * 2, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#5d6485'; rr(W / 2 - 6, yy - 4, 12, 8, 3); ctx.fill();
+    ctx.fillStyle = '#c6cbe0'; rr(W / 2 - 4.6, yy - 3, 9.2, 5.4, 2.4); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(W / 2 - 3.6, yy - 2.6, 7.2, 1);
+    ctx.fillStyle = '#ffd25e'; circle(W / 2, yy + 0.4, 1.4); ctx.fill();
+  }
   ctx.setLineDash([6, 6]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(28,26,54,0.35)';
   ctx.beginPath(); ctx.moveTo(0, PONG.mid); ctx.lineTo(110, PONG.mid); ctx.stroke();
   ctx.restore();
@@ -310,7 +351,12 @@ function drawPong() {
   if (P.phase !== 'serve' || (P.t * 4) % 1 < 0.6) {
     b.trail.forEach(([tx, ty], k) => { ctx.fillStyle = 'rgba(255,255,255,' + (0.06 + 0.05 * k) + ')'; circle(tx, ty, PONG.r * (0.5 + k / 16)); ctx.fill(); });
     ctx.fillStyle = 'rgba(28,26,54,0.25)'; circle(b.x + 2, b.y + 3, PONG.r); ctx.fill();
+    // (rich props pass) a shaded ball with a seam and a glint
     ctx.fillStyle = '#fffaf0'; circle(b.x, b.y, PONG.r); ctx.fill();
+    ctx.fillStyle = '#e2dccd'; ctx.beginPath(); ctx.arc(b.x, b.y, PONG.r, -0.3, Math.PI * 0.85); ctx.arc(b.x - 1.5, b.y - 1.5, PONG.r - 1, Math.PI * 0.85, -0.3, true); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,107,74,0.65)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(b.x - PONG.r * 1.3, b.y, PONG.r * 1.05, -0.75, 0.75); ctx.stroke();
+    ctx.strokeStyle = 'rgba(91,149,255,0.65)'; ctx.beginPath(); ctx.arc(b.x + PONG.r * 1.3, b.y, PONG.r * 1.05, Math.PI - 0.75, Math.PI + 0.75); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.beginPath(); ctx.ellipse(b.x - PONG.r * 0.35, b.y - PONG.r * 0.4, PONG.r * 0.3, PONG.r * 0.18, -0.6, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(b.x, b.y, PONG.r); ctx.stroke();
   }
 }

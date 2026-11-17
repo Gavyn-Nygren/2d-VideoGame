@@ -663,56 +663,133 @@ function broomDrawSky(st) {
     for (let j = 0; j < 3; j++) if (broomHash(k, j + 9) > 0.45) ctx.fillRect(x + 10 + j * (w - 26) / 2, 486 - h, 6, 8);
   }
 }
-function broomDrawHouse(h) {
+// a house's still picture (walls, windows, door, roof, chimney) painted on g in world coordinates; the cat (its tail
+// swishes) and the lantern (it flickers) are drawn live over it by broomDrawHouse
+function broomPaintHouse(g, h) {
   const K = BROOM_COLS, x = h.x, w = h.w, y0 = h.wallTop, base = BROOM.street;
   // walls
-  ctx.fillStyle = K.wall[h.col]; ctx.fillRect(x, y0, w, base - y0 + 40);
+  g.fillStyle = K.wall[h.col]; g.fillRect(x, y0, w, base - y0 + 40);
   // clapboard siding, a stone footing and the soft shadow under the eaves
-  ctx.fillStyle = 'rgba(20,10,40,0.16)'; for (let yy = y0 + 9; yy < base; yy += 9) ctx.fillRect(x, yy, w, 1.4);
-  ctx.fillStyle = 'rgba(255,255,255,0.04)'; for (let yy = y0 + 10.4; yy < base; yy += 9) ctx.fillRect(x, yy, w, 1);
-  ctx.fillStyle = 'rgba(20,10,40,0.3)'; ctx.fillRect(x, y0, w, 6);
-  ctx.fillStyle = '#3a2a4a'; ctx.fillRect(x - 2, base - 8, w + 4, 8);
-  ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (let bx = x + (h.seed % 9); bx < x + w - 6; bx += 16) ctx.fillRect(bx, base - 7, 10, 2);
-  ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(x, y0, 6, base - y0);
-  ctx.fillStyle = 'rgba(20,10,40,0.25)'; ctx.fillRect(x + w - 8, y0, 8, base - y0);
+  g.fillStyle = 'rgba(20,10,40,0.16)'; for (let yy = y0 + 9; yy < base; yy += 9) g.fillRect(x, yy, w, 1.4);
+  g.fillStyle = 'rgba(255,255,255,0.04)'; for (let yy = y0 + 10.4; yy < base; yy += 9) g.fillRect(x, yy, w, 1);
+  g.fillStyle = 'rgba(20,10,40,0.3)'; g.fillRect(x, y0, w, 6);
+  // a little moss and weather streaks under the eaves
+  g.fillStyle = 'rgba(20,10,40,0.12)'; for (let k = 0; k < 3; k++) { const sx = x + 10 + broomHash(h.seed, k + 40) * (w - 20); g.fillRect(sx, y0 + 6, 2, 10 + broomHash(h.seed, k + 50) * 18); }
+  g.fillStyle = '#3a2a4a'; g.fillRect(x - 2, base - 8, w + 4, 8);
+  g.fillStyle = 'rgba(255,255,255,0.08)'; for (let bx = x + (h.seed % 9); bx < x + w - 6; bx += 16) g.fillRect(bx, base - 7, 10, 2);
+  g.fillStyle = 'rgba(10,5,20,0.45)'; for (let bx = x + (h.seed % 9) - 3; bx < x + w; bx += 16) g.fillRect(bx, base - 8, 1.2, 8);
+  g.fillRect(x - 2, base - 4.4, w + 4, 0.8);
+  g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(x - 2, base - 8, w + 4, 1);
+  g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(x, y0, 6, base - y0);
+  g.fillStyle = 'rgba(20,10,40,0.25)'; g.fillRect(x + w - 8, y0, 8, base - y0);
+  // corner boards with a lit edge and nail heads
+  const wallC = K.wall[h.col];
+  g.fillStyle = tint(wallC, 0.12); g.fillRect(x, y0 + 4, 4, base - y0 - 12); g.fillStyle = shade(wallC, 0.35); g.fillRect(x + w - 4, y0 + 4, 4, base - y0 - 12);
+  g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(x, y0 + 4, 1, base - y0 - 12);
+  g.fillStyle = 'rgba(10,5,20,0.4)'; for (let yy = y0 + 14; yy < base - 10; yy += 18) { g.fillRect(x + 1.5, yy, 1, 1); g.fillRect(x + w - 2.5, yy, 1, 1); }
   // windows (lit, with a cross frame) and a door
   const nw = Math.max(1, Math.floor((w - 30) / 44));
   for (let i = 0; i < nw; i++) {
     const wx = x + 18 + i * (w - 36) / Math.max(1, nw) + ((w - 36) / Math.max(1, nw) - 20) / 2, wy = y0 + 14, lit = broomHash(h.seed, i) > 0.25;
-    ctx.fillStyle = 'rgba(20,10,40,0.45)'; rr(wx - 3, wy - 3, 26, 28, 4); ctx.fill();
-    ctx.fillStyle = 'rgba(255,230,200,0.22)'; ctx.fillRect(wx - 4, wy + 23, 28, 3);
-    ctx.fillStyle = lit ? K.win : K.winDk; rr(wx, wy, 20, 22, 3); ctx.fill();
-    if (lit) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(wx + 2.5, wy + 2.5, 5, 6); }
-    if (lit) { ctx.fillStyle = 'rgba(255,215,122,0.18)'; circle(wx + 10, wy + 11, 20); ctx.fill(); }
-    ctx.strokeStyle = 'rgba(30,20,50,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(wx + 10, wy); ctx.lineTo(wx + 10, wy + 22); ctx.moveTo(wx, wy + 11); ctx.lineTo(wx + 20, wy + 11); ctx.stroke();
+    if (w > 70 && broomHash(h.seed, i + 60) > 0.4) {   // shutters
+      const sc = shade(K.wall[h.col], 0.45);
+      for (const sx of [wx - 11, wx + 23]) { g.fillStyle = sc; g.fillRect(sx, wy - 2, 8, 26); g.fillStyle = 'rgba(255,255,255,0.1)'; g.fillRect(sx, wy - 2, 8, 1); g.fillStyle = 'rgba(10,5,20,0.35)'; for (let yy = wy + 2; yy < wy + 22; yy += 4) g.fillRect(sx + 1, yy, 6, 1); }
+    }
+    g.fillStyle = 'rgba(20,10,40,0.45)'; rrOn(g, wx - 3, wy - 3, 26, 28, 4); g.fill();
+    g.fillStyle = 'rgba(255,230,200,0.22)'; g.fillRect(wx - 4, wy + 23, 28, 3);
+    g.fillStyle = lit ? K.win : K.winDk; rrOn(g, wx, wy, 20, 22, 3); g.fill();
+    if (lit) { g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(wx + 2.5, wy + 2.5, 5, 6); }
+    if (lit) { g.fillStyle = 'rgba(255,215,122,0.18)'; circleOn(g, wx + 10, wy + 11, 20); g.fill(); }
+    g.strokeStyle = 'rgba(30,20,50,0.7)'; g.lineWidth = 2; g.beginPath(); g.moveTo(wx + 10, wy); g.lineTo(wx + 10, wy + 22); g.moveTo(wx, wy + 11); g.lineTo(wx + 20, wy + 11); g.stroke();
+    g.fillStyle = '#3a2a4a'; g.fillRect(wx - 5, wy + 23, 30, 3); g.fillStyle = 'rgba(255,230,200,0.3)'; g.fillRect(wx - 5, wy + 23, 30, 1);
     if (lit && broomHash(h.seed, i + 5) > 0.8) { // a little ghost peeking out of a window
-      ctx.fillStyle = '#f6f0ff'; ctx.beginPath(); ctx.arc(wx + 6, wy + 14, 5, Math.PI, 0); ctx.lineTo(wx + 11, wy + 21); ctx.lineTo(wx + 1, wy + 21); ctx.fill();
-      ctx.fillStyle = C.ink; circle(wx + 4.5, wy + 14, 1); ctx.fill(); circle(wx + 7.5, wy + 14, 1); ctx.fill();
+      g.fillStyle = '#f6f0ff'; g.beginPath(); g.arc(wx + 6, wy + 14, 5, Math.PI, 0); g.lineTo(wx + 11, wy + 21); g.lineTo(wx + 1, wy + 21); g.fill();
+      g.fillStyle = C.ink; circleOn(g, wx + 4.5, wy + 14, 1); g.fill(); circleOn(g, wx + 7.5, wy + 14, 1); g.fill();
     }
   }
-  if (base - y0 > 60) { ctx.fillStyle = 'rgba(20,10,40,0.4)'; rr(x + w * 0.5 - 12, base - 33, 24, 33, 9); ctx.fill(); ctx.fillStyle = '#2a1c30'; rr(x + w * 0.5 - 9, base - 30, 18, 30, 7); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + w * 0.5, base - 28); ctx.lineTo(x + w * 0.5, base); ctx.stroke(); ctx.fillStyle = C.gold; circle(x + w * 0.5 + 4, base - 15, 1.6); ctx.fill(); }
+  if (base - y0 > 60) { g.fillStyle = 'rgba(20,10,40,0.4)'; rrOn(g, x + w * 0.5 - 12, base - 33, 24, 33, 9); g.fill(); g.fillStyle = '#2a1c30'; rrOn(g, x + w * 0.5 - 9, base - 30, 18, 30, 7); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.08)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + w * 0.5, base - 28); g.lineTo(x + w * 0.5, base); g.stroke();
+    g.strokeStyle = 'rgba(10,5,20,0.5)'; g.strokeRect(x + w * 0.5 - 6.5, base - 22, 5, 8); g.strokeRect(x + w * 0.5 + 1.5, base - 22, 5, 8); g.strokeRect(x + w * 0.5 - 6.5, base - 11, 5, 8); g.strokeRect(x + w * 0.5 + 1.5, base - 11, 5, 8);
+    g.strokeStyle = 'rgba(255,220,180,0.18)'; g.beginPath(); g.arc(x + w * 0.5, base - 23, 9, Math.PI * 1.1, Math.PI * 1.6); g.stroke();
+    g.fillStyle = '#4a3a5a'; g.fillRect(x + w * 0.5 - 14, base - 3, 28, 3); g.fillStyle = 'rgba(255,255,255,0.15)'; g.fillRect(x + w * 0.5 - 14, base - 3, 28, 0.8);
+    g.fillStyle = '#a8802a'; circleOn(g, x + w * 0.5 + 4.4, base - 14.6, 1.9); g.fill(); g.fillStyle = C.gold; circleOn(g, x + w * 0.5 + 4, base - 15, 1.6); g.fill(); }
   // roof
-  ctx.fillStyle = K.roof[h.roofCol];
-  if (h.flat) { ctx.fillRect(x - 6, y0 - 8, w + 12, 10); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(x - 6, y0 - 8, w + 12, 3); }
+  g.fillStyle = K.roof[h.roofCol];
+  if (h.flat) {
+    g.fillRect(x - 6, y0 - 8, w + 12, 10); g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(x - 6, y0 - 8, w + 12, 3);
+    g.fillStyle = 'rgba(10,5,20,0.4)'; for (let bx = x - 6 + 14; bx < x + w + 6; bx += 16) g.fillRect(bx, y0 - 8, 1.2, 10);
+    g.fillRect(x - 6, y0 + 1, w + 12, 1);
+    g.fillStyle = 'rgba(255,200,140,0.22)'; g.fillRect(x - 6, y0 - 8, w + 12, 1);
+  }
   else {
-    ctx.beginPath(); ctx.moveTo(x - 10, y0 + 2); ctx.lineTo(x + w / 2, h.peak); ctx.lineTo(x + w + 10, y0 + 2); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(20,10,40,0.22)'; ctx.beginPath(); ctx.moveTo(x + w / 2, h.peak); ctx.lineTo(x + w + 10, y0 + 2); ctx.lineTo(x + w / 2, y0 + 2); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = 'rgba(20,10,40,0.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 10, y0 + 2); ctx.lineTo(x + w + 10, y0 + 2); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1.5;
-    for (let k = 1; k < 4; k++) { const yy = h.peak + (y0 - h.peak) * k / 4, hw = (w / 2 + 10) * k / 4; ctx.beginPath(); ctx.moveTo(x + w / 2 - hw, yy); ctx.lineTo(x + w / 2 + hw, yy); ctx.stroke(); }
-    ctx.strokeStyle = 'rgba(255,200,140,0.25)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 10, y0 + 2); ctx.lineTo(x + w / 2, h.peak); ctx.stroke(); // moonlit edge
-    if (h.peak < y0 - 50) { ctx.fillStyle = h.seed % 2 ? K.win : 'rgba(255,215,122,0.75)'; circle(x + w / 2, h.peak + 26, 6); ctx.fill(); } // attic window
+    g.beginPath(); g.moveTo(x - 10, y0 + 2); g.lineTo(x + w / 2, h.peak); g.lineTo(x + w + 10, y0 + 2); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(20,10,40,0.22)'; g.beginPath(); g.moveTo(x + w / 2, h.peak); g.lineTo(x + w + 10, y0 + 2); g.lineTo(x + w / 2, y0 + 2); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(20,10,40,0.55)'; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 10, y0 + 2); g.lineTo(x + w + 10, y0 + 2); g.stroke();
+    g.save(); g.beginPath(); g.moveTo(x - 10, y0 + 2); g.lineTo(x + w / 2, h.peak); g.lineTo(x + w + 10, y0 + 2); g.closePath(); g.clip();
+    const rows = Math.max(3, Math.round((y0 - h.peak) / 8)), rh = (y0 + 2 - h.peak) / rows, sw = 9;
+    g.fillStyle = 'rgba(255,255,255,0.05)'; g.beginPath();
+    for (let k = 0; k < rows; k++) if (k % 2) { const yy = h.peak + k * rh; g.rect(x - 10, yy, w + 20, rh); }
+    g.fill();
+    // the scallops: each shingle's round foot, a dark line under it and a lit lip
+    g.strokeStyle = 'rgba(10,5,25,0.45)'; g.lineWidth = 1.1; g.beginPath();
+    for (let k = 1; k <= rows; k++) { const yy = h.peak + k * rh, off = (k % 2) * sw / 2; for (let sx = x - 10 - off; sx < x + w + 10; sx += sw) { g.moveTo(sx, yy - 2); g.quadraticCurveTo(sx + sw / 2, yy + 1.5, sx + sw, yy - 2); } }
+    g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.1)'; g.lineWidth = 0.9; g.beginPath();
+    for (let k = 1; k <= rows; k++) { const yy = h.peak + k * rh, off = (k % 2) * sw / 2; for (let sx = x - 10 - off; sx < x + w + 10; sx += sw) { g.moveTo(sx + 2, yy - rh + 1.5); g.lineTo(sx + sw - 2, yy - rh + 1.5); } }
+    g.stroke();
+    // a few odd shingles: a darker one, a slipped one
+    g.fillStyle = 'rgba(10,5,25,0.25)';
+    for (let k = 0; k < 4; k++) { const rr2 = 1 + Math.floor(broomHash(h.seed, k + 70) * (rows - 1)), yy = h.peak + rr2 * rh, sx = x + broomHash(h.seed, k + 80) * w; g.fillRect(sx, yy - rh + 1, sw - 1, rh - 2); }
+    g.restore();
+    // fascia board along the eaves and a ridge cap
+    g.fillStyle = shade(K.roof[h.roofCol], 0.4); g.fillRect(x - 10, y0 + 1, w + 20, 3);
+    g.fillStyle = 'rgba(255,200,140,0.18)'; g.fillRect(x - 10, y0 + 1, w + 20, 0.8);
+    g.fillStyle = shade(K.roof[h.roofCol], 0.3); circleOn(g, x + w / 2, h.peak + 1, 2.6); g.fill();
+    g.strokeStyle = 'rgba(255,200,140,0.25)'; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 10, y0 + 2); g.lineTo(x + w / 2, h.peak); g.stroke(); // moonlit edge
+    if (h.peak < y0 - 50) {   // attic window, framed with a cross bar
+      g.fillStyle = shade(K.roof[h.roofCol], 0.5); circleOn(g, x + w / 2, h.peak + 26, 8.5); g.fill();
+      g.fillStyle = h.seed % 2 ? K.win : 'rgba(255,215,122,0.75)'; circleOn(g, x + w / 2, h.peak + 26, 6); g.fill();
+      g.strokeStyle = 'rgba(30,20,50,0.7)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x + w / 2 - 6, h.peak + 26); g.lineTo(x + w / 2 + 6, h.peak + 26); g.moveTo(x + w / 2, h.peak + 20); g.lineTo(x + w / 2, h.peak + 32); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.4)'; circleOn(g, x + w / 2 - 2.5, h.peak + 23.5, 1.4); g.fill();
+    }
   }
   if (h.chim) {
     const c = h.chim;
-    ctx.fillStyle = '#7a4a5a'; ctx.fillRect(c.x, c.top, c.w, y0 - c.top);
-    ctx.fillStyle = 'rgba(20,10,30,0.3)'; ctx.fillRect(c.x + c.w - 4, c.top, 4, y0 - c.top);
-    ctx.fillStyle = 'rgba(255,200,160,0.18)'; ctx.fillRect(c.x, c.top, 2, y0 - c.top);
-    ctx.fillStyle = '#5a3444'; ctx.fillRect(c.x - 3, c.top - 2, c.w + 6, 7);
-    ctx.strokeStyle = 'rgba(30,10,20,0.35)'; ctx.lineWidth = 1;
-    for (let yy = c.top + 12; yy < y0; yy += 9) { ctx.beginPath(); ctx.moveTo(c.x, yy); ctx.lineTo(c.x + c.w, yy); ctx.stroke(); }
+    g.fillStyle = '#7a4a5a'; g.fillRect(c.x, c.top, c.w, y0 - c.top);
+    g.fillStyle = 'rgba(20,10,30,0.3)'; g.fillRect(c.x + c.w - 4, c.top, 4, y0 - c.top);
+    g.fillStyle = 'rgba(255,200,160,0.18)'; g.fillRect(c.x, c.top, 2, y0 - c.top);
+    g.fillStyle = '#5a3444'; g.fillRect(c.x - 3, c.top - 2, c.w + 6, 7);
+    g.strokeStyle = 'rgba(30,10,20,0.35)'; g.lineWidth = 1;
+    for (let yy = c.top + 12; yy < y0; yy += 9) { g.beginPath(); g.moveTo(c.x, yy); g.lineTo(c.x + c.w, yy); g.stroke(); }
+    g.beginPath();
+    for (let yy = c.top + 3, k = 0; yy < y0; yy += 9, k++) for (let bx = c.x + (k % 2 ? 4 : 9); bx < c.x + c.w - 1; bx += 10) { g.moveTo(bx + 0.5, Math.max(c.top + 5, yy)); g.lineTo(bx + 0.5, Math.min(y0, yy + 9)); }
+    g.stroke();
+    g.fillStyle = 'rgba(255,200,160,0.1)'; for (let yy = c.top + 13; yy < y0; yy += 9) g.fillRect(c.x, yy, c.w, 1);
+    g.fillStyle = 'rgba(30,10,20,0.18)'; for (let k = 0; k < 3; k++) { const bx = c.x + broomHash(h.seed, k + 90) * (c.w - 8), by = c.top + 14 + broomHash(h.seed, k + 95) * Math.max(1, y0 - c.top - 24); g.fillRect(bx, by, 8, 7); }
+    g.fillStyle = '#5a3444'; g.fillRect(c.x - 3, c.top - 2, c.w + 6, 7);
+    g.fillStyle = 'rgba(255,200,160,0.3)'; g.fillRect(c.x - 3, c.top - 2, c.w + 6, 1.2);
+    g.fillStyle = 'rgba(20,5,15,0.4)'; g.fillRect(c.x - 3, c.top + 4, c.w + 6, 1);
+    g.fillStyle = '#1a0f1a'; g.fillRect(c.x + 2, c.top - 2, c.w - 4, 2);
   }
+}
+// still pictures of houses and tree crowns, made with the rk kit's picture maker (copied on whole pixels without
+// smoothing) and kept only while near the screen: a course has about 60 houses, too many to keep them all
+const BROOM_PICS = new Map();
+function broomPic(key, w, h, ox, oy, paint) {
+  const sc = Math.max(1, Math.min(3, canvas.width / W));
+  let sp = BROOM_PICS.get(key);
+  if (sp && sp.sc === sc) { BROOM_PICS.delete(key); BROOM_PICS.set(key, sp); return sp; }
+  sp = rkPic(key, w, h, ox, oy, paint); _sprites.delete('rk|' + key); sp.sc = sc;
+  BROOM_PICS.delete(key); BROOM_PICS.set(key, sp);
+  while (BROOM_PICS.size > 24) BROOM_PICS.delete(BROOM_PICS.keys().next().value);
+  return sp;
+}
+function broomDrawHouse(h) {
+  const x = h.x, w = h.w, y0 = h.wallTop, base = BROOM.street;
+  // the picture's box: the roof overhangs 10 px each side; the top is the roof peak, flat roof or chimney cap
+  const top = Math.floor(Math.min(h.flat ? y0 - 8 : h.peak, h.chim ? h.chim.top - 2 : 1e9)) - 6, x0 = Math.floor(x) - 16;
+  const key = 'broomHouse|' + [x, w, y0, h.peak, h.flat ? 1 : 0, h.col, h.roofCol, h.seed, h.chim ? h.chim.x + ',' + h.chim.w + ',' + h.chim.top : '-'].join('|');
+  blitSprite(broomPic(key, Math.ceil(x + w) + 16 - x0, base + 46 - top, 0, 0, g => { g.translate(-x0, -top); broomPaintHouse(g, h); }), x0, top);
   if (h.cat) { // a black cat on the roof, tail curling
     const cx = x + w * 0.72, cy = h.peak + (y0 - h.peak) * 0.44 * 2 * 0.5 + 2;
     ctx.fillStyle = '#161026'; ctx.beginPath(); ctx.ellipse(cx, cy - 6, 8, 6, 0, 0, Math.PI * 2); ctx.fill(); circle(cx + 6, cy - 14, 5); ctx.fill();
@@ -736,14 +813,27 @@ function broomDrawPumpkin(x, y, r, lit) {
     ctx.beginPath(); ctx.moveTo(x - r * 0.6, y + r * 0.2); ctx.quadraticCurveTo(x, y + r * 0.8, x + r * 0.6, y + r * 0.2); ctx.quadraticCurveTo(x, y + r * 0.45, x - r * 0.6, y + r * 0.2); ctx.fill();
   }
 }
-function broomDrawTree(t) {
+// a tree's still picture (trunk and crown) painted on g in world coordinates; the owl (it blinks) is drawn live
+function broomPaintTree(g, t) {
   const cols = [['#8a3a2e', '#a84a32'], ['#9a5a24', '#b87030'], ['#5a3a6a', '#704a82']][t.col];
-  ctx.fillStyle = '#2e1f2e'; ctx.beginPath(); ctx.moveTo(t.x - 7, BROOM.street + 10); ctx.lineTo(t.x - 4, t.y); ctx.lineTo(t.x + 4, t.y); ctx.lineTo(t.x + 8, BROOM.street + 10); ctx.fill();
-  ctx.fillStyle = cols[0]; circle(t.x, t.y, t.r); ctx.fill();
-  ctx.fillStyle = 'rgba(20,10,40,0.25)'; ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0.1, Math.PI - 0.1); ctx.fill();
-  ctx.fillStyle = cols[1]; circle(t.x - t.r * 0.3, t.y - t.r * 0.3, t.r * 0.62); ctx.fill(); circle(t.x + t.r * 0.4, t.y - t.r * 0.1, t.r * 0.45); ctx.fill();
-  ctx.fillStyle = 'rgba(255,220,180,0.14)'; circle(t.x - t.r * 0.42, t.y - t.r * 0.45, t.r * 0.3); ctx.fill();
-  ctx.fillStyle = cols[1]; for (let k = 0; k < 4; k++) { const q = broomHash(t.seed || 1, k + 20); circle(t.x - t.r * 0.8 + q * t.r * 1.6, t.y + t.r * 0.2 + broomHash(t.seed || 1, k + 30) * t.r * 0.5, 2.2); ctx.fill(); }
+  g.fillStyle = '#2e1f2e'; g.beginPath(); g.moveTo(t.x - 7, BROOM.street + 10); g.lineTo(t.x - 4, t.y); g.lineTo(t.x + 4, t.y); g.lineTo(t.x + 8, BROOM.street + 10); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(t.x - 2, BROOM.street + 6); g.lineTo(t.x - 1, t.y + t.r * 0.6); g.moveTo(t.x + 3, BROOM.street + 2); g.lineTo(t.x + 2, t.y + t.r * 0.7); g.stroke();
+  g.fillStyle = 'rgba(255,220,200,0.12)'; g.fillRect(t.x - 5, t.y + t.r * 0.5, 1.5, BROOM.street - t.y - t.r * 0.5);
+  g.fillStyle = cols[0]; circleOn(g, t.x, t.y, t.r); g.fill();
+  // leaf clumps round the edge
+  for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2 + (t.seed || 1) * 0.1, q = broomHash(t.seed || 1, k + 50); g.fillStyle = k % 3 ? cols[0] : cols[1]; circleOn(g, t.x + Math.cos(a) * t.r * 0.86, t.y + Math.sin(a) * t.r * 0.86, t.r * (0.22 + q * 0.12)); g.fill(); }
+  g.fillStyle = 'rgba(20,10,40,0.25)'; g.beginPath(); g.arc(t.x, t.y, t.r, 0.1, Math.PI - 0.1); g.fill();
+  g.fillStyle = cols[1]; circleOn(g, t.x - t.r * 0.3, t.y - t.r * 0.3, t.r * 0.62); g.fill(); circleOn(g, t.x + t.r * 0.4, t.y - t.r * 0.1, t.r * 0.45); g.fill();
+  g.fillStyle = 'rgba(255,220,180,0.14)'; circleOn(g, t.x - t.r * 0.42, t.y - t.r * 0.45, t.r * 0.3); g.fill();
+  g.strokeStyle = shade(cols[0], 0.4); g.lineWidth = 1; g.beginPath();
+  for (let k = 0; k < 6; k++) { const q = broomHash(t.seed || 1, k + 60), a = q * Math.PI * 2, rr2 = t.r * (0.3 + broomHash(t.seed || 1, k + 66) * 0.5), lx = t.x + Math.cos(a) * rr2, ly = t.y + Math.sin(a) * rr2; g.moveTo(lx - 2.5, ly + 1); g.quadraticCurveTo(lx, ly - 2, lx + 2.5, ly + 1); }
+  g.stroke();
+  g.fillStyle = cols[1]; for (let k = 0; k < 4; k++) { const q = broomHash(t.seed || 1, k + 20); circleOn(g, t.x - t.r * 0.8 + q * t.r * 1.6, t.y + t.r * 0.2 + broomHash(t.seed || 1, k + 30) * t.r * 0.5, 2.2); g.fill(); }
+}
+function broomDrawTree(t) {
+  const x0 = Math.floor(t.x - t.r * 1.2) - 4, y0 = Math.floor(t.y - t.r * 1.2) - 4;
+  const key = 'broomTree|' + [t.x, t.y, t.r, t.col, t.seed].join('|');
+  blitSprite(broomPic(key, Math.ceil(t.x + t.r * 1.2) + 4 - x0, BROOM.street + 14 - y0, 0, 0, g => { g.translate(-x0, -y0); broomPaintTree(g, t); }), x0, y0);
   if (t.owl) { // a cute owl on a branch, blinking
     const ox = t.x + (t.seed % 2 ? 10 : -12), oy = t.y + 4;
     ctx.strokeStyle = '#2e1f2e'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(t.x, oy + 9); ctx.lineTo(ox + (t.seed % 2 ? 14 : -14), oy + 7); ctx.stroke();
@@ -807,7 +897,14 @@ function broomDrawWorld() {
   if (BROOM.startX + 60 > cam.x - 80 && BROOM.startX < cam.x + W) {
     const sx = BROOM.startX + 48, gy = broomGroundY(c, sx);
     ctx.fillStyle = '#6b4630'; ctx.fillRect(sx - 2, gy - 50, 4, 50);
-    ctx.fillStyle = '#c98650'; rr(sx - 30, gy - 66, 60, 22, 6); ctx.fill(); ctx.strokeStyle = '#7a4a2a'; ctx.lineWidth = 2; rr(sx - 30, gy - 66, 60, 22, 6); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(sx - 2, gy - 50, 1, 50);
+    ctx.fillStyle = 'rgba(20,10,30,0.3)'; rr(sx - 28, gy - 64, 60, 22, 6); ctx.fill();
+    ctx.fillStyle = '#c98650'; rr(sx - 30, gy - 66, 60, 22, 6); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,70,30,0.4)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(sx - 26, gy - 60); ctx.quadraticCurveTo(sx, gy - 58, sx + 26, gy - 61); ctx.moveTo(sx - 26, gy - 49); ctx.quadraticCurveTo(sx, gy - 51, sx + 26, gy - 48.5); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,240,210,0.3)'; ctx.fillRect(sx - 26, gy - 65, 52, 1.2);
+    ctx.fillStyle = 'rgba(60,30,10,0.25)'; ctx.fillRect(sx - 26, gy - 47, 52, 2);
+    ctx.strokeStyle = '#7a4a2a'; ctx.lineWidth = 2; rr(sx - 30, gy - 66, 60, 22, 6); ctx.stroke();
+    rkNail(ctx, sx - 25, gy - 55, 1.1); rkNail(ctx, sx + 25, gy - 55, 1.1);
     text('START', sx, gy - 54.5, 13, '#3a2210', 'center');
     ctx.setLineDash([6, 8]); ctx.strokeStyle = 'rgba(255,215,122,0.35)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sx, BROOM.top - 10); ctx.lineTo(sx, gy - 70); ctx.stroke(); ctx.setLineDash([]);
   }

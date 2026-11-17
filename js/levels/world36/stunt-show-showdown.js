@@ -405,10 +405,20 @@
     ctx.fillStyle = '#ffd86a'; ctx.fillRect(0, 210, W, 2);
     for (let x = 12; x < W; x += 110) { ctx.fillStyle = ['#e8322a', '#2a6ae8', '#ffd23a'][(x / 110 | 0) % 3]; rr(x, 213, 70, 10, 3); ctx.fill(); }
     // floor of the arena: packed dirt, a darker front, tyre marks
-    ctx.fillStyle = '#5a4a3a'; ctx.fillRect(0, SS.ground, W, H - SS.ground);
-    { const fg = ctx.createLinearGradient(0, SS.ground, 0, H); fg.addColorStop(0, 'rgba(255,220,170,0.1)'); fg.addColorStop(1, 'rgba(0,0,0,0.3)'); ctx.fillStyle = fg; ctx.fillRect(0, SS.ground, W, H - SS.ground); }
-    ctx.fillStyle = '#6a5a4a'; for (let x = 0; x < W; x += 40) ctx.fillRect(x, SS.ground, 20, 6);
-    ctx.strokeStyle = 'rgba(30,20,10,0.25)'; ctx.lineWidth = 3; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(k * 260 - 40, SS.ground + 40 + k * 6); ctx.quadraticCurveTo(k * 260 + 80, SS.ground + 26, k * 260 + 220, SS.ground + 48 - k * 3); ctx.stroke(); }
+    // (art pass: one cached picture) packed arena dirt with clods, stones and sawdust, a painted kerb of
+    // timber sleepers along the front edge, tyre tracks with tread marks
+    RICH.pic('w36arenafloor', W, H - SS.ground, c => {
+      RICH.dirt(c, 0, 0, W, H - SS.ground, { col: '#5a4a3a', gx: 0, seed: 36, pebble: '#8a7a68' });
+      const fg = c.createLinearGradient(0, 0, 0, H - SS.ground); fg.addColorStop(0, 'rgba(255,220,170,0.1)'); fg.addColorStop(1, 'rgba(0,0,0,0.3)'); c.fillStyle = fg; c.fillRect(0, 0, W, H - SS.ground);
+      c.fillStyle = 'rgba(240,210,150,0.35)'; for (let k = 0; k < 140; k++) c.fillRect(RICH.r(41, k) * W, 12 + RICH.r(42, k) * (H - SS.ground - 14), 2, 1);
+      for (let x = 0; x < W; x += 40) { c.fillStyle = '#6a5a4a'; c.fillRect(x, 0, 20, 6); c.fillStyle = 'rgba(255,230,190,0.3)'; c.fillRect(x, 0, 20, 1.2); c.fillStyle = 'rgba(20,12,4,0.35)'; c.fillRect(x, 5, 20, 1.5); c.fillRect(x + 19, 0, 1, 6); }
+      for (let k = 0; k < 4; k++) {
+        const pth = () => { c.beginPath(); c.moveTo(k * 260 - 40, 40 + k * 6); c.quadraticCurveTo(k * 260 + 80, 26, k * 260 + 220, 48 - k * 3); };
+        c.strokeStyle = 'rgba(30,20,10,0.25)'; c.lineWidth = 5; pth(); c.stroke();
+        c.strokeStyle = 'rgba(20,12,4,0.3)'; c.lineWidth = 3; c.setLineDash([2, 3]); pth(); c.stroke(); c.setLineDash([]);
+        c.strokeStyle = 'rgba(255,230,190,0.12)'; c.lineWidth = 1; c.save(); c.translate(0, -3); pth(); c.stroke(); c.restore();
+      }
+    }, 0, SS.ground);
     // the big screen (the stunt's name) and the judges
     // (below the round pill at the top)
     ctx.fillStyle = '#101018'; rr(W / 2 - 130, 74, 260, 42, 8); ctx.fill();
@@ -455,16 +465,99 @@
     ctx.fillStyle = id === 0 ? '#e8322a' : '#2a6ae8'; ctx.beginPath(); ctx.moveTo(-18, -2); ctx.lineTo(0, -14); ctx.lineTo(18, -2); ctx.lineTo(6, -2); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
+  // (art pass) props shared by the five stunts, painted once (RICH.pic)
+  function timber(c, x, y, w, h) {
+    const g = c.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, '#9a8268'); g.addColorStop(0.5, '#7a6a5a'); g.addColorStop(1, '#5a4a3a');
+    c.fillStyle = g; c.fillRect(x, y, w, h);
+    c.strokeStyle = 'rgba(40,28,16,0.35)'; c.lineWidth = 0.8; c.beginPath(); for (let k = 0; k < h; k += 23) { c.moveTo(x + 2 + (k % 3), y + k); c.lineTo(x + 2 + (k % 3), y + k + 15); } c.stroke();
+    c.fillStyle = 'rgba(255,230,190,0.35)'; c.fillRect(x, y, 1.5, h);
+    for (let k = 20; k < h; k += 60) RICH.nail(c, x + w / 2, y + k, 1.2);
+    c.strokeStyle = '#3a2a1a'; c.lineWidth = 1; c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  }
+  // a wooden launch kicker from xa (foot) up to its lip at xb, back down at xc (h tall), on the arena floor
+  function kicker(xa, xb, xc, h) {
+    RICH.pic('w36kick|' + h, xc - xa + 8, h + 8, c => {
+      c.translate(4 - xa, 4 - (SS.ground - h));
+      const y0 = SS.ground;
+      RICH.shadow(c, (xa + xc) / 2 + 4, y0, (xc - xa) / 2 + 4, 2.5, 0.25);
+      c.beginPath(); c.moveTo(xa, y0); c.lineTo(xb, y0 - h); c.lineTo(xc, y0); c.closePath();
+      c.save(); c.clip(); RICH.wood(c, xa, y0 - h, xc - xa, h, { col: '#8a7a6a', vert: true, bw: 9, seed: h, knots: 0.5, edge: false });
+      c.fillStyle = 'rgba(30,20,10,0.3)'; c.fillRect(xa, y0 - 4, xc - xa, 4); c.restore();
+      c.strokeStyle = '#5a3e20'; c.lineWidth = 3; c.beginPath(); c.moveTo(xa + 3, y0 - 1); c.lineTo(xb + 1, y0 - h + 2); c.stroke();
+      c.strokeStyle = '#f2c230'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(xa + 2, y0 - 2.5); c.lineTo(xb, y0 - h + 0.5); c.stroke();
+      c.fillStyle = '#9aa4b0'; c.fillRect(xb - 3, y0 - h - 1, 6, 4); c.fillStyle = '#ffffff'; c.fillRect(xb - 3, y0 - h - 1, 6, 1);
+      c.strokeStyle = '#3a2810'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(xa, y0); c.lineTo(xb, y0 - h); c.lineTo(xc, y0); c.stroke();
+    }, xa - 4, SS.ground - h - 4);
+  }
+  // a plank landing deck w wide and h tall on the floor: boards, battens, a chevron edge and a foam mat
+  function deck(x, w, h) {
+    RICH.pic('w36deck|' + w + '|' + h, w + 6, h + 6, c => {
+      c.translate(3, 3);
+      RICH.wood(c, 0, 0, w, h, { col: '#7a6a5a', boards: Math.max(2, Math.round(h / 10)), nails: true, seed: w, knots: 0.5 });
+      for (let bx = 20; bx < w; bx += 60) { c.fillStyle = 'rgba(30,20,10,0.35)'; c.fillRect(bx, 4, 5, h - 4); c.fillStyle = 'rgba(255,230,190,0.2)'; c.fillRect(bx, 4, 1, h - 4); }
+      c.save(); c.beginPath(); c.rect(0, 0, w, 4); c.clip(); c.fillStyle = '#f2c230'; c.fillRect(0, 0, w, 4); c.fillStyle = '#2a2a30'; for (let k = -4; k < w; k += 10) { c.beginPath(); c.moveTo(k, 4); c.lineTo(k + 5, 4); c.lineTo(k + 9, 0); c.lineTo(k + 4, 0); c.closePath(); c.fill(); } c.restore();
+      c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(0, 0, w, 0.8);
+      c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, h - 3, w, 3);
+      c.strokeStyle = '#3a2810'; c.lineWidth = 1.2; c.strokeRect(0.5, 0.5, w - 1, h - 1);
+    }, x - 3, SS.ground - h - 3);
+  }
+  // the dive tower: two shaded steel uprights, ladder rungs with a lit top, cross bracing, feet
+  function diveTower(x, y) {
+    RICH.pic('w36divetower', 44, SS.ground - y + 6, c => {
+      c.translate(4 - x, -y);
+      const hgt = SS.ground - y;
+      c.strokeStyle = 'rgba(90,90,110,0.55)'; c.lineWidth = 1.5; c.beginPath(); for (let yy = y + 10; yy < SS.ground - 30; yy += 48) { c.moveTo(x + 6, yy); c.lineTo(x + 32, yy + 48); c.moveTo(x + 32, yy); c.lineTo(x + 6, yy + 48); } c.stroke();
+      for (const px of [x, x + 30]) { const g = c.createLinearGradient(px, 0, px + 12, 0); g.addColorStop(0, '#a89a8a'); g.addColorStop(0.5, '#7a6a5a'); g.addColorStop(1, '#4a3e32'); c.fillStyle = g; c.fillRect(px, y, px === x ? 12 : 6, hgt); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(px, y, 1.5, hgt); }
+      for (let yy = y + 6; yy < SS.ground; yy += 16) { c.fillStyle = '#9a8a7a'; c.fillRect(x + 12, yy, 22, 3); c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(x + 12, yy, 22, 1); c.fillStyle = 'rgba(30,20,10,0.35)'; c.fillRect(x + 12, yy + 3, 22, 1); }
+      for (let yy = y + 40; yy < SS.ground; yy += 80) RICH.rivet(c, x + 6, yy, 1.5, '#a8a8b4');
+      c.fillStyle = '#3a3a44'; c.fillRect(x - 4, SS.ground - 4, 20, 4); c.fillRect(x + 28, SS.ground - 4, 10, 4);
+    }, x - 4, y);
+  }
+  // the diving board (it rides up the tower): a planked board with a grip strip and a steel end cap
+  function board(x, y, w) {
+    RICH.pic('w36board|' + w, w + 2, 8, c => {
+      RICH.wood(c, 0, 0, w, 6, { col: '#a89a8a', boards: 1, seed: 4, knots: 0.3, edge: false });
+      c.fillStyle = '#4a8ad8'; c.fillRect(w * 0.45, 0, w * 0.5, 1.6);
+      c.fillStyle = '#6a6e7a'; c.fillRect(w - 4, 0, 4, 6); c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(0, 0, w, 1);
+      c.strokeStyle = '#5a4a3a'; c.lineWidth = 1; c.strokeRect(0.5, 0.5, w - 1, 5);
+    }, x, y);
+  }
+  // the dive tank: a glass-sided tank with steel corner posts and rivets; the water's surface moves live
+  function tank(x, w, t) {
+    RICH.pic('w36tank|' + w, w + 8, 68, c => {
+      c.translate(4, 4);
+      RICH.shadow(c, w / 2, 60, w / 2 + 4, 3, 0.25);
+      const g = c.createLinearGradient(0, 0, 0, 60); g.addColorStop(0, '#4a7ab8'); g.addColorStop(1, '#1e3a6a'); c.fillStyle = g; c.fillRect(0, 0, w, 60);
+      c.strokeStyle = 'rgba(160,210,255,0.25)'; c.lineWidth = 1; c.beginPath(); for (let k = 0; k < 6; k++) { const yy = 18 + k * 7; c.moveTo(8, yy); c.quadraticCurveTo(w / 2, yy - 4, w - 8, yy); } c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.moveTo(10, 4); c.lineTo(26, 4); c.lineTo(14, 58); c.lineTo(4, 58); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.75)'; for (let k = 0; k < 7; k++) { c.beginPath(); c.arc(12 + RICH.r(9, k) * (w - 24), 20 + RICH.r(10, k) * 34, 1 + RICH.r(11, k) * 1.5, 0, TAU); c.fill(); }
+      c.strokeStyle = '#d8d8e0'; c.lineWidth = 4; c.strokeRect(0, 0, w, 60);
+      c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-2, -2); c.lineTo(w + 2, -2); c.stroke();
+      c.strokeStyle = '#8a8e9a'; c.lineWidth = 1; c.strokeRect(-2, -2, w + 4, 64);
+      for (const cx of [0, w]) { c.fillStyle = '#b8bcc8'; c.fillRect(cx - 4, -3, 8, 66); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(cx - 4, -3, 1.5, 66); c.fillStyle = '#6a6e7a'; c.fillRect(cx + 2.5, -3, 1.5, 66); for (const ry of [6, 30, 54]) RICH.rivet(c, cx, ry, 1.3, '#a8acb8'); }
+    }, x - 4, SS.ground - 64);
+    ctx.fillStyle = '#6ab0e8'; ctx.fillRect(x + 4, SS.ground - 56, w - 8, 10 + Math.sin(t * 3) * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; for (let k = 0; k < 4; k++) ctx.fillRect(x + 10 + k * (w - 30) / 3 + Math.sin(t * 2 + k) * 4, SS.ground - 56, 12, 1.5);
+  }
   function drawRamp(st, P, t) {
     // runway and launch ramp, the prop buses, the landing deck and foam blocks
-    ctx.fillStyle = '#8a7a6a'; ctx.beginPath(); ctx.moveTo(90, SS.ground); ctx.lineTo(120, SS.ground - 50); ctx.lineTo(126, SS.ground); ctx.closePath(); ctx.fill();
+    kicker(90, 120, 126, 50);
     for (let b = 0; b < 4; b++) {
       const bx = 170 + b * 44, crushed = P.onBus && Math.abs(P.x - bx - 20) < 30;
       ctx.save(); ctx.translate(bx, SS.ground); ctx.rotate(K.wobble(b, t, 0.02));
-      K.flat(0, 0, 40, crushed ? 12 : 30, { paper: true, paint: (x, y, w, h) => { ctx.fillStyle = '#e8b83a'; ctx.fillRect(x, y, w, h); ctx.fillStyle = '#5a7aa8'; for (let q = 0; q < 3; q++) ctx.fillRect(x + 4 + q * 12, y + 4, 8, Math.max(2, h * 0.3)); } });
+      K.flat(0, 0, 40, crushed ? 12 : 30, { paper: true, paint: (x, y, w, h) => {
+        // a painted school-bus flat: a lit roof line, a darker skirt, a black rub strip, glazed windows, wheel arches
+        ctx.fillStyle = '#e8b83a'; ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = '#c8962a'; ctx.fillRect(x, y + h * 0.62, w, h * 0.38); ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x, y, w, 1.5);
+        ctx.fillStyle = '#2a2a30'; ctx.fillRect(x, y + h * 0.55, w, Math.max(1, h * 0.07));
+        for (let q = 0; q < 3; q++) { const wx = x + 4 + q * 12, wh = Math.max(2, h * 0.3); ctx.fillStyle = '#5a7aa8'; ctx.fillRect(wx, y + 4, 8, wh); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(wx + 1, y + 4, 2, wh); ctx.fillStyle = 'rgba(20,30,60,0.35)'; ctx.fillRect(wx, y + 4 + wh - 1, 8, 1); }
+        ctx.fillStyle = '#1a1a22'; for (const ax of [x + 9, x + w - 9]) { ctx.beginPath(); ctx.arc(ax, y + h, Math.min(6, h * 0.35), Math.PI, 0); ctx.fill(); }
+        ctx.fillStyle = '#9a9aa4'; for (const ax of [x + 9, x + w - 9]) { ctx.beginPath(); ctx.arc(ax, y + h, Math.min(2.5, h * 0.15), Math.PI, 0); ctx.fill(); }
+        ctx.fillStyle = '#fff6c8'; ctx.fillRect(x + w - 3, y + h * 0.4, 3, Math.max(1, h * 0.12));
+      } });
       ctx.restore();
     }
-    ctx.fillStyle = '#7a6a5a'; ctx.fillRect(340, SS.ground - 20, 140, 20);
+    deck(340, 140, 20);
     text('PROP BUSES', 258, SS.ground + 18, 11, '#ffe7a8', 'center', 'body');
     for (let m = 10; m <= 35; m += 5) { const mx = 120 + m * 9.4; ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(mx, SS.ground + 2, 2, 8); text(m + 'm', mx, SS.ground + 30, 10, '#d8d0e8', 'center', 'body'); }
     // the rev dial
@@ -487,14 +580,11 @@
   }
   function drawDive(st, P, t) {
     // the tower with its ladder and height marks, the tank
-    ctx.fillStyle = '#7a6a5a'; ctx.fillRect(40, towerY(1) - 6, 12, SS.ground - towerY(1) + 6);
-    ctx.fillStyle = '#9a8a7a'; for (let y = towerY(1); y < SS.ground; y += 16) ctx.fillRect(52, y, 22, 3);
+    diveTower(40, towerY(1) - 6);
     for (const h of [0, 0.5, 1]) text(Math.round(10 + 20 * h) + 'm', 26, towerY(h), 10, '#d8d0e8', 'center', 'body');
     const py = P.ph === 'climb' ? P.y : P.y0 || towerY(P.h);
-    ctx.fillStyle = '#a89a8a'; ctx.fillRect(52, py, 46, 6);
-    ctx.fillStyle = '#3a6aa8'; ctx.fillRect(290, SS.ground - 60, 130, 60);
-    ctx.fillStyle = '#6ab0e8'; ctx.fillRect(294, SS.ground - 56, 122, 10 + Math.sin(t * 3) * 2);
-    ctx.strokeStyle = '#d8d8e0'; ctx.lineWidth = 4; ctx.strokeRect(290, SS.ground - 60, 130, 60);
+    board(52, py, 46);
+    tank(290, 130, t);
     if (P.ph === 'climb') {
       text(Math.max(0, P.clock).toFixed(1) + ' s', 240, 270, 22, P.clock < 1.5 ? '#ffb0a0' : '#ffffff', 'center', 'display');
       hero(P, P.x, P.y, { arms: 'up' });
@@ -514,7 +604,16 @@
       for (let k = 0; k < 3; k++) {
         const y = SS.ground - 120 + k * 40;
         if (w.res === 'smash' && k === w.fake) continue;
-        if (vis === null) { ctx.fillStyle = '#7a7a8a'; ctx.fillRect(x, y, 24, 38); ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(x + 4, y + 4, 16, 30); }
+        if (vis === null) RICH.pic('w36tarpblock', 24, 38, c => {
+          // a block under a grey tarp: folds, a rope tie, a tag: you can't tell what's under it yet
+          c.fillStyle = '#7a7a8a'; c.fillRect(0, 0, 24, 38);
+          const g = c.createLinearGradient(0, 0, 24, 0); g.addColorStop(0, 'rgba(255,255,255,0.22)'); g.addColorStop(0.4, 'rgba(255,255,255,0.05)'); g.addColorStop(1, 'rgba(20,20,40,0.25)'); c.fillStyle = g; c.fillRect(0, 0, 24, 38);
+          c.strokeStyle = 'rgba(40,40,60,0.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(4, 0); c.quadraticCurveTo(8, 18, 5, 38); c.moveTo(16, 0); c.quadraticCurveTo(13, 20, 18, 38); c.stroke();
+          c.strokeStyle = 'rgba(255,255,255,0.25)'; c.beginPath(); c.moveTo(6, 2); c.quadraticCurveTo(10, 18, 7, 36); c.stroke();
+          c.fillStyle = '#c8a870'; c.fillRect(0, 17, 24, 2.5); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, 17, 24, 0.8);
+          c.fillStyle = '#ffffff'; c.font = '700 11px "Atkinson Hyperlegible", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('?', 12, 9);
+          c.strokeStyle = '#4a4a5a'; c.lineWidth = 1.2; c.strokeRect(0.6, 0.6, 22.8, 36.8);
+        }, x, y);
         else if (k === w.fake) { ctx.save(); ctx.translate(x + 12, y + 19); ctx.rotate(K.wobble(k + w.x, t, 0.05)); K.foam(-12, -19, 24, 38, { col: '#e8a0c8' }); ctx.restore(); }
         else K.brick(x, y, 24, 38);
       }
@@ -528,7 +627,17 @@
   }
   function drawHoops(st, P, t) {
     // the trampoline, the hoops of (silk) fire, the centre cross
-    ctx.fillStyle = '#2a2a34'; ctx.fillRect(170, SS.bed, 140, 8); ctx.fillRect(176, SS.bed + 8, 6, SS.ground - SS.bed - 8); ctx.fillRect(298, SS.bed + 8, 6, SS.ground - SS.bed - 8);
+    RICH.pic('w36tramp', 152, SS.ground - SS.bed + 12, c => {
+      // a stunt trampoline: a padded blue frame, springs to a black bed with a sheen, steel legs on feet
+      c.translate(6, 4);
+      RICH.shadow(c, 70, SS.ground - SS.bed, 72, 4, 0.25);
+      for (const lx of [6, 128]) { const g = c.createLinearGradient(lx, 0, lx + 6, 0); g.addColorStop(0, '#8a8e9a'); g.addColorStop(1, '#3a3e4a'); c.fillStyle = g; c.fillRect(lx, 8, 6, SS.ground - SS.bed - 8); c.fillStyle = '#2a2a34'; c.fillRect(lx - 3, SS.ground - SS.bed - 3, 12, 3); }
+      c.strokeStyle = '#5a5e6a'; c.lineWidth = 2; c.beginPath(); c.moveTo(12, 12); c.lineTo(128, SS.ground - SS.bed - 4); c.moveTo(128, 12); c.lineTo(12, SS.ground - SS.bed - 4); c.stroke();
+      c.fillStyle = '#2a6ae8'; RICH.rr(c, 0, 0, 140, 8, 3); c.fill(); c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(2, 0.5, 136, 1.5); c.fillStyle = '#1a4aa8'; c.fillRect(0, 5.5, 140, 2.5);
+      c.fillStyle = '#1a1a22'; c.fillRect(14, 1, 112, 4); c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(20, 1.2, 70, 1);
+      c.strokeStyle = '#c8ccd6'; c.lineWidth = 0.8; c.beginPath(); for (let x = 4; x < 14; x += 2.5) { c.moveTo(x, 2); c.lineTo(x + 1.2, 5); } for (let x = 127; x < 137; x += 2.5) { c.moveTo(x, 2); c.lineTo(x + 1.2, 5); } c.stroke();
+      c.strokeStyle = '#0e2a6a'; c.lineWidth = 1; RICH.rr(c, 0, 0, 140, 8, 3); c.stroke();
+    }, 164, SS.bed - 4);
     ctx.fillStyle = '#ffffff'; ctx.fillRect(236, SS.bed - 2, 8, 4);
     for (let k = 0; k < 5; k++) {
       const h = hoopPos(st, k), y = SS.bed - h.h;
@@ -541,15 +650,15 @@
   }
   function drawFinale(st, P, t) {
     if (P.ph === 'rev' || P.ph === 'go' || P.ph === 'air') {
-      ctx.fillStyle = '#8a7a6a'; ctx.beginPath(); ctx.moveTo(70, SS.ground); ctx.lineTo(90, SS.ground - 30); ctx.lineTo(96, SS.ground); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#7a6a5a'; ctx.fillRect(150, SS.ground - 30, 330, 30);
+      kicker(70, 90, 96, 30);
+      deck(150, 330, 30);
       if (P.ph === 'rev') revDial(st, P, 60, 300);
       bike(P.x, P.y - 10, P.ph === 'air' ? P.rot : 0, P.id);
       hero(P, P.x, P.y - 14, { rot: (P.ph === 'air' ? P.rot : 0) * DEG, arms: 'fwd', s: 0.9 });
     } else if (P.ph === 'walls') drawWalls(st, P, t, 0);
     else {
-      ctx.fillStyle = '#7a6a5a'; ctx.fillRect(290, SS.ground - 230, 10, 230);
-      ctx.fillStyle = '#3a6aa8'; ctx.fillRect(360, SS.ground - 60, 110, 60); ctx.strokeStyle = '#d8d8e0'; ctx.lineWidth = 4; ctx.strokeRect(360, SS.ground - 60, 110, 60);
+      RICH.pic('w36finalepost', 16, 234, c => { c.translate(3, 4); timber(c, 0, 0, 10, 230); }, 287, SS.ground - 234);
+      tank(360, 110, t);
       const hy = SS.ground - 170;
       ctx.strokeStyle = '#ffd86a'; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(350, hy, 10, 30, 0, 0, TAU); ctx.stroke();
       for (let q = 0; q < 5; q++) { ctx.fillStyle = q % 2 ? '#ff9a3a' : '#ffd86a'; circle(350 + Math.sin(t * 10 + q) * 4, hy - 30 + q * 15, 5); ctx.fill(); }
@@ -575,7 +684,21 @@
     drawArena(st);
     for (const P of st.pl) drawHalf(st, P);
     // the tyre wall down the middle
-    for (let y = 240; y < SS.ground + 10; y += 22) { ctx.fillStyle = '#1a1a20'; ctx.beginPath(); ctx.ellipse(W / 2, y, 14, 11, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#3a3a44'; ctx.beginPath(); ctx.ellipse(W / 2, y, 6, 4, 0, 0, TAU); ctx.fill(); }
+    // (art pass, 2nd look) stacked tyres: rubber with a lit shoulder, tread blocks round the rim, a sidewall ring and
+    // lettering nicks, a painted steel rim in the middle (one cached tyre, copied down the stack)
+    for (let y = 240; y < SS.ground + 10; y += 22) RICH.pic('w36tyre', 30, 24, c => {
+      const cx = 15, cy = 12;
+      c.fillStyle = '#0e0e12'; c.beginPath(); c.ellipse(cx, cy, 14.5, 11.5, 0, 0, TAU); c.fill();
+      const g = c.createLinearGradient(0, 0, 0, 24); g.addColorStop(0, '#3a3a44'); g.addColorStop(0.5, '#1a1a20'); g.addColorStop(1, '#0e0e12');
+      c.fillStyle = g; c.beginPath(); c.ellipse(cx, cy, 14, 11, 0, 0, TAU); c.fill();
+      c.fillStyle = '#0a0a0e'; for (let q = 0; q < 18; q++) { const a = q * TAU / 18; c.fillRect(cx + Math.cos(a) * 12.4 - 1, cy + Math.sin(a) * 9.6 - 1, 2, 2); }
+      c.strokeStyle = 'rgba(255,255,255,0.28)'; c.lineWidth = 1.2; c.beginPath(); c.ellipse(cx, cy, 13, 10, 0, Math.PI * 1.1, Math.PI * 1.75); c.stroke();
+      c.strokeStyle = 'rgba(120,120,135,0.45)'; c.lineWidth = 0.9; c.beginPath(); c.ellipse(cx, cy, 9.5, 7.2, 0, 0, TAU); c.stroke();
+      c.fillStyle = 'rgba(200,200,210,0.35)'; for (let q = 0; q < 5; q++) { const a = -2.4 + q * 0.25; c.fillRect(cx + Math.cos(a) * 11 - 0.5, cy + Math.sin(a) * 8.4 - 0.5, 1.2, 1.2); }
+      c.fillStyle = '#9aa2ae'; c.beginPath(); c.ellipse(cx, cy, 6, 4, 0, 0, TAU); c.fill();
+      c.fillStyle = '#3a3a44'; c.beginPath(); c.ellipse(cx, cy + 0.6, 4.4, 2.8, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(cx - 4, cy - 3.4, 3, 1);
+    }, W / 2 - 15, y - 12);
     // the camera-flash wave
     if (st.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,' + (st.flash * 0.7).toFixed(2) + ')'; ctx.fillRect(0, 0, W, H); }
     K.drawParts(st, 0);

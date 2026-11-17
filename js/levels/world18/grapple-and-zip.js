@@ -1099,9 +1099,37 @@ function grappleDrawFrontSea(st) {
 }
 function grappleDrawBeach(st, dock) {
   const S = GRAPPLE.SEA, x1 = dock.x + 20;
-  ctx.fillStyle = GRAPPLE_COL.sand;
-  ctx.beginPath(); ctx.moveTo(x1 - 900, H); ctx.lineTo(x1 - 900, S - 30); ctx.quadraticCurveTo(x1 - 200, S - 40, x1 + 30, S + 14); ctx.lineTo(x1 + 30, H); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#e9c97c'; for (let i = 0; i < 12; i++) { circle(x1 - 60 - i * 37, S - 20 + (i % 3) * 6, 2); ctx.fill(); }
+  // the beach (cached): dry and wet sand, ripples, shells, pebbles, grass tufts and a driftwood log
+  dkPic('gzBeach', 940, H - S + 50, 910, 50, c => {
+    const edge = () => { c.beginPath(); c.moveTo(-900, H - S + 10); c.lineTo(-900, -30); c.quadraticCurveTo(-200, -40, 30, 14); c.lineTo(30, H - S + 10); c.closePath(); };
+    c.fillStyle = '#d9b66a'; c.save(); c.translate(4, 4); edge(); c.fill(); c.restore();
+    c.fillStyle = GRAPPLE_COL.sand; edge(); c.fill();
+    c.save(); edge(); c.clip();
+    c.fillStyle = '#fff0c4'; c.beginPath(); c.ellipse(-420, -26, 360, 10, -0.01, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(160,110,40,0.22)'; c.beginPath(); c.moveTo(-900, 30); c.quadraticCurveTo(-200, 10, 30, 30); c.lineTo(30, 200); c.lineTo(-900, 200); c.fill();
+    c.strokeStyle = 'rgba(180,130,60,0.4)'; c.lineWidth = 1.2; c.beginPath();
+    for (let k = 0; k < 4; k++) for (let x = -880 + k * 17; x < -40; x += 52) { const yy = -18 + k * 7 + (x + 900) * 0.01; c.moveTo(x, yy); c.quadraticCurveTo(x + 10, yy - 3, x + 20, yy); }
+    c.stroke();
+    c.fillStyle = 'rgba(120,80,30,0.25)'; for (let i = 0; i < 220; i++) { c.beginPath(); c.arc(-890 + dkR(31, i) * 900, -30 + dkR(32, i) * 60, 0.9, 0, Math.PI * 2); c.fill(); }
+    c.restore();
+    for (let i = 0; i < 9; i++) dkPebble(c, -60 - i * 92 + dkR(33, i) * 30, -16 + dkR(34, i) * 16, 3 + dkR(35, i) * 2, 2 + dkR(36, i) * 1.4, ['#a89c90', '#b8aa98', '#9a8a7a'][i % 3], i);
+    for (let i = 0; i < 6; i++) {
+      const sx = -100 - i * 130, sy = -10 + (i % 3) * 6, col = ['#fff1e0', '#ffd0c0', '#ffe6a8'][i % 3];
+      c.fillStyle = col; c.beginPath(); c.arc(sx, sy, 3.6, Math.PI, 0); c.closePath(); c.fill();
+      c.strokeStyle = '#c9907a'; c.lineWidth = 0.7; c.beginPath(); for (let k = -2; k <= 2; k++) { c.moveTo(sx, sy); c.lineTo(sx + k * 1.6, sy - 3.2); } c.stroke();
+    }
+    for (let i = 0; i < 8; i++) {
+      const gx = -300 - i * 70 + dkR(37, i) * 30, gy = -30 + (gx + 900) * 0.002;
+      c.strokeStyle = '#6aa84a'; c.lineWidth = 1.6; c.lineCap = 'round'; c.beginPath();
+      for (let k = -2; k <= 2; k++) { c.moveTo(gx + k * 2, gy); c.quadraticCurveTo(gx + k * 3, gy - 8, gx + k * 5, gy - 13 + Math.abs(k) * 2); } c.stroke();
+      c.strokeStyle = '#9ad06a'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(gx, gy); c.quadraticCurveTo(gx - 1, gy - 7, gx - 1, gy - 12); c.stroke(); c.lineCap = 'butt';
+    }
+    c.save(); c.translate(-480, -24); c.rotate(-0.04);
+    dkPlank(c, -40, -7, 80, 9, '#b89a7a', 450, { r: 4.5 });
+    c.fillStyle = '#d8c0a0'; c.beginPath(); c.ellipse(40, -2.5, 3.5, 4.5, 0, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#8a6a4a'; c.lineWidth = 0.8; c.stroke();
+    c.beginPath(); c.ellipse(40, -2.5, 1.8, 2.4, 0, 0, Math.PI * 2); c.stroke();
+    c.restore();
+  }, x1, S);
   grapplePalm(x1 - 150, S - 104, 1.3, G.clock);
   grapplePalm(x1 - 270, S - 96, 1.1, G.clock + 1);
 }
@@ -1111,64 +1139,21 @@ function grappleDrawShip(st, sh) {
   const hop = st.hop, windDir = hop && (hop.wind || hop.gust) ? Math.sign(grappleWind(hop, t) || 1) : 1;
   // the decorative masts and sails first (behind the main sail)
   for (const [mx, mh, sc] of [[sh.mizzen, sh.mizzenH, 0.62], [sh.fore, sh.foreH, 0.75]]) {
-    ctx.fillStyle = GRAPPLE_COL.woodDk; ctx.fillRect(mx - 3, dk - mh, 6, mh);
+    grappleMastPole(mx, dk - mh, 6, mh);
     grappleSail(mx, dk - mh + 10, dk - 34, 70 * sc, pal, t, windDir);
     grapplePennant(mx, dk - mh, 18, pal.flag, t, windDir);
   }
   // the main mast, its sail and the crow's nest (back half)
-  ctx.fillStyle = GRAPPLE_COL.woodDk; ctx.fillRect(sh.mast - 4, nestY - 44, 8, sh.nest + 44);
-  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(sh.mast - 3, nestY - 44, 2, sh.nest + 44);
+  grappleMastPole(sh.mast, nestY - 44, 8, sh.nest + 44);
   const sy0 = nestY + 22, sy1 = dk - sh.ring - 34;
   if (sy1 - sy0 > 30) grappleSail(sh.mast, sy0, sy1, 118, pal, t, windDir, true);
   grapplePennant(sh.mast, nestY - 44, 30, pal.flag, t, windDir, true);
   ctx.fillStyle = '#6e4422'; rr(sh.nestX0 - 2, nestY - 26, sh.nestX1 - sh.nestX0 + 4, 30, 6); ctx.fill();
   // the rope ladder up to the nest
   grappleLadder(sh.ladX, dk - 2, nestY + 2);
-  // the hull
-  ctx.save();
-  const bowY = dk - 12;
-  ctx.beginPath();
-  ctx.moveTo(x - 4, dk - 34);
-  ctx.lineTo(x + 70, dk - 34); ctx.lineTo(x + 74, dk - 2);
-  ctx.lineTo(x + L - 70, dk - 2); ctx.quadraticCurveTo(x + L - 30, dk - 4, x + L + 6, bowY - 10);
-  ctx.quadraticCurveTo(x + L - 6, S + 10, x + L - 46, S + 26);
-  ctx.lineTo(x + 40, S + 26); ctx.quadraticCurveTo(x + 6, S + 18, x - 4, dk - 34);
-  ctx.closePath();
-  ctx.fillStyle = pal.hull; ctx.fill();
-  const hullPath = new Path2D(); hullPath.moveTo(x - 4, dk - 34); hullPath.lineTo(x + 70, dk - 34); hullPath.lineTo(x + 74, dk - 2);
-  hullPath.lineTo(x + L - 70, dk - 2); hullPath.quadraticCurveTo(x + L - 30, dk - 4, x + L + 6, bowY - 10);
-  hullPath.quadraticCurveTo(x + L - 6, S + 10, x + L - 46, S + 26); hullPath.lineTo(x + 40, S + 26); hullPath.quadraticCurveTo(x + 6, S + 18, x - 4, dk - 34); hullPath.closePath();
-  ctx.clip();
-  // planks
-  ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); for (let y = dk + 6; y < S + 30; y += 9) { ctx.moveTo(x - 10, y); ctx.lineTo(x + L + 10, y); } ctx.stroke();
-  // the bright band with round windows (flower boxes, no cannons on these friendly ships)
-  ctx.fillStyle = pal.band; ctx.fillRect(x - 10, dk + 6, L + 20, 15);
-  for (let px = x + 50; px < x + L - 40; px += 40) {
-    ctx.fillStyle = '#5a3a1e'; circle(px, dk + 13.5, 5.5); ctx.fill();
-    ctx.fillStyle = '#ffe9a8'; circle(px, dk + 13.5, 3.8); ctx.fill();
-  }
-  ctx.fillStyle = pal.hullDk; ctx.fillRect(x - 10, S + 2, L + 20, 30);
-  // lit edges on the band, nails along the planks, a shaded stern and a lit bow
-  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - 10, dk + 6, L + 20, 1.5); ctx.fillRect(x - 10, dk - 2, L + 20, 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x - 10, dk + 19, L + 20, 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); for (let px = x + 30; px < x + L - 30; px += 26) { grappleDot(px, dk + 30, 1.1); grappleDot(px + 13, dk + 48, 1.1); } ctx.fill();
-  const hg = ctx.createLinearGradient(x - 4, 0, x + L + 6, 0); hg.addColorStop(0, 'rgba(0,0,0,0.16)'); hg.addColorStop(0.25, 'rgba(0,0,0,0)'); hg.addColorStop(0.85, 'rgba(255,255,255,0)'); hg.addColorStop(1, 'rgba(255,255,255,0.12)');
-  ctx.fillStyle = hg; ctx.fillRect(x - 10, dk - 40, L + 20, S - dk + 80);
-  ctx.restore();
-  ctx.strokeStyle = mixCol(pal.hullDk, '#141428', 0.45); ctx.lineWidth = 2.2; ctx.stroke(hullPath);
-  // stern cabin with windows, the name board
-  ctx.fillStyle = pal.cabin; rr(x + 4, dk - 34, 64, 34, 4); ctx.fill();
-  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x + 56, dk - 33, 11, 32);
-  ctx.strokeStyle = 'rgba(40,24,10,0.45)'; ctx.lineWidth = 1.5; rr(x + 4, dk - 34, 64, 34, 4); ctx.stroke();
-  ctx.fillStyle = pal.trim; ctx.fillRect(x - 4, dk - 38, 80, 5);
-  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 4, dk - 38, 80, 1.5);
-  for (const wx of [x + 18, x + 42]) { ctx.fillStyle = '#5a3a1e'; rr(wx - 1, dk - 27, 14, 14, 3); ctx.fill(); ctx.fillStyle = '#ffe9a8'; rr(wx + 1, dk - 25, 10, 10, 2); ctx.fill(); }
-  // rails along the deck
-  ctx.strokeStyle = pal.trim; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(x + 74, dk - 16); ctx.lineTo(x + L - 46, dk - 16); ctx.stroke();
-  ctx.lineWidth = 2;
-  ctx.beginPath(); for (let px = x + 80; px < x + L - 46; px += 22) { ctx.moveTo(px, dk - 16); ctx.lineTo(px, dk - 2); } ctx.stroke();
+  // the hull: planked, painted bands, brass-rimmed windows, the stern cabin and rails (one cached picture per look)
+  const fr = S - sh.deck0;
+  dkPic('gzHull|' + (sh.spec.pal || 'red') + '|' + L + '|' + fr, L + 36, fr + 82, 12, 46, c => grapplePaintHull(c, L, pal, fr), x, dk);
   // the bowsprit and a smiling dolphin figurehead
   ctx.strokeStyle = GRAPPLE_COL.woodDk; ctx.lineWidth = 5; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(x + L - 20, dk - 12); ctx.lineTo(x + L + 52, dk - 44); ctx.stroke();
@@ -1189,6 +1174,101 @@ function grappleDrawShip(st, sh) {
   // the ring on its spar (or hanging from a swinging boom)
   grappleRingDraw(st, sh);
   if (sh.flagship) grappleChest(st, sh, dk);
+}
+// a friendly ship's hull in ship px (x 0 = the stern, y 0 = the deck, fr = deck to sea): strakes of planks in tones of
+// the ship's colour with grain, seams and treenails, the bright window band with brass-rimmed windows and flower boxes,
+// a darker lower band, round shading, the stern cabin (planked, framed windows with panes and curtains) and the rails
+function grapplePaintHull(c, L, pal, fr) {
+  const S = fr, bowY = -12;
+  const hull = () => {
+    c.beginPath(); c.moveTo(-4, -34); c.lineTo(70, -34); c.lineTo(74, -2); c.lineTo(L - 70, -2); c.quadraticCurveTo(L - 30, -4, L + 6, bowY - 10);
+    c.quadraticCurveTo(L - 6, S + 10, L - 46, S + 26); c.lineTo(40, S + 26); c.quadraticCurveTo(6, S + 18, -4, -34); c.closePath();
+  };
+  const base = dkHex(pal.hull), dark = dkHex(pal.hullDk);
+  c.fillStyle = base; hull(); c.fill();
+  c.save(); hull(); c.clip();
+  for (let k = 0, y = -36; y < S + 30; y += 9, k++) {
+    const tone = k % 3 === 0 ? base : k % 3 === 1 ? dkS(base, 0.06) : dkT(base, 0.05);
+    c.fillStyle = tone; c.fillRect(-12, y, L + 30, 9);
+    const off = (k % 2) * 40;
+    for (let bx = -40 + off; bx < L + 20; bx += 80) {
+      dkGrain(c, bx, y, 80, 9, tone, k * 53 + bx, false);
+      c.fillStyle = dkS(base, 0.45); c.fillRect(bx, y, 1.2, 9);
+      dkNail(c, bx - 3, y + 4.5, 0.8); dkNail(c, bx + 4, y + 4.5, 0.8);
+    }
+    c.fillStyle = dkS(base, 0.4); c.fillRect(-12, y + 8, L + 30, 1.2);
+    c.fillStyle = 'rgba(255,255,255,0.16)'; c.fillRect(-12, y + 9.2, L + 30, 0.8);
+  }
+  // the bright band with round windows (flower boxes, no cannons on these friendly ships)
+  const band = dkHex(pal.band);
+  c.fillStyle = band; c.fillRect(-10, 6, L + 20, 15);
+  c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(-10, 6, L + 20, 1.5); c.fillStyle = dkS(band, 0.25); c.fillRect(-10, 19, L + 20, 2);
+  c.strokeStyle = dkS(band, 0.3); c.lineWidth = 1; c.beginPath();
+  for (let px = 30; px < L - 20; px += 40) { c.moveTo(px - 8, 13.5); c.quadraticCurveTo(px - 4, 10.5, px, 13.5); c.quadraticCurveTo(px + 4, 16.5, px + 8, 13.5); }
+  c.stroke();
+  for (let px = 50; px < L - 40; px += 40) {
+    c.fillStyle = 'rgba(40,20,0,0.3)'; c.beginPath(); c.arc(px + 0.8, 14.3, 6.6, 0, Math.PI * 2); c.fill();
+    const g = c.createLinearGradient(px - 6, 8, px + 6, 20); g.addColorStop(0, '#fff0a8'); g.addColorStop(0.5, '#e8b23a'); g.addColorStop(1, '#9a6a12');
+    c.fillStyle = g; c.beginPath(); c.arc(px, 13.5, 6.3, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#5a3a1e'; c.beginPath(); c.arc(px, 13.5, 4.3, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#ffe9a8'; c.beginPath(); c.arc(px, 13.5, 3.6, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#c99a50'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(px - 3.6, 13.5); c.lineTo(px + 3.6, 13.5); c.moveTo(px, 9.9); c.lineTo(px, 17.1); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.arc(px - 1.4, 12, 1, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#6a4408'; c.lineWidth = 0.9; c.beginPath(); c.arc(px, 13.5, 6.3, 0, Math.PI * 2); c.stroke();
+  }
+  // the lower band: darker planks with a glossy wet line
+  c.fillStyle = dark; c.fillRect(-10, S + 2, L + 20, 30);
+  c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(-10, S + 2, L + 20, 1.5);
+  c.strokeStyle = dkS(dark, 0.35); c.lineWidth = 1; c.beginPath(); for (let y = S + 10; y < S + 30; y += 8) { c.moveTo(-10, y); c.lineTo(L + 10, y); } c.stroke();
+  // lit edges on the band, a shaded stern and a lit bow, a darker belly
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(-10, -2, L + 20, 2);
+  const hg = c.createLinearGradient(-4, 0, L + 6, 0); hg.addColorStop(0, 'rgba(0,0,0,0.2)'); hg.addColorStop(0.22, 'rgba(0,0,0,0)'); hg.addColorStop(0.85, 'rgba(255,255,255,0)'); hg.addColorStop(1, 'rgba(255,255,255,0.16)');
+  c.fillStyle = hg; c.fillRect(-10, -40, L + 20, S + 80);
+  const vg = c.createLinearGradient(0, -2, 0, S + 26); vg.addColorStop(0, 'rgba(255,255,255,0.1)'); vg.addColorStop(0.4, 'rgba(255,255,255,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.22)');
+  c.fillStyle = vg; c.fillRect(-10, -40, L + 20, S + 80);
+  c.restore();
+  c.strokeStyle = dkS(dark, 0.45); c.lineWidth = 2.2; hull(); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(L - 66, 0); c.quadraticCurveTo(L - 28, -2, L + 2, bowY - 7); c.stroke();
+  // stern cabin: upright planks, framed windows with panes and curtains, a trim plank with a lit edge
+  const cab = dkHex(pal.cabin);
+  c.save(); rrOn(c, 4, -34, 64, 34, 4); c.clip();
+  dkBoards(c, 4, -34, 64, 34, cab, 61, { vert: true, bw: 8, r: 0 });
+  c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(56, -33, 12, 33);
+  c.restore();
+  c.strokeStyle = dkS(cab, 0.5); c.lineWidth = 1.5; rrOn(c, 4, -34, 64, 34, 4); c.stroke();
+  for (const wx of [18, 42]) {
+    c.fillStyle = 'rgba(30,15,0,0.3)'; rrOn(c, wx, -26, 15, 15, 3); c.fill();
+    dkPlank(c, wx - 1, -27, 14, 14, '#7a4a28', wx, { r: 3 });
+    c.fillStyle = '#ffe9a8'; rrOn(c, wx + 1.5, -24.5, 9, 9, 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(wx + 2.5, -23.5, 3, 3);
+    c.fillStyle = dkHex(pal.stripe); c.beginPath(); c.moveTo(wx + 1.5, -24.5); c.quadraticCurveTo(wx + 3, -20, wx + 1.5, -15.5); c.lineTo(wx + 1.5, -24.5); c.fill();
+    c.beginPath(); c.moveTo(wx + 10.5, -24.5); c.quadraticCurveTo(wx + 9, -20, wx + 10.5, -15.5); c.lineTo(wx + 10.5, -24.5); c.fill();
+    c.strokeStyle = '#7a4a28'; c.lineWidth = 1; c.beginPath(); c.moveTo(wx + 6, -24.5); c.lineTo(wx + 6, -15.5); c.moveTo(wx + 1.5, -20); c.lineTo(wx + 10.5, -20); c.stroke();
+    // a little flower box under it
+    c.fillStyle = '#8a5a2c'; c.fillRect(wx - 1, -11, 14, 4); c.fillStyle = '#5fb86e'; c.beginPath(); c.arc(wx + 2, -11.5, 2.2, 0, Math.PI * 2); c.arc(wx + 6, -12, 2.4, 0, Math.PI * 2); c.arc(wx + 10, -11.5, 2.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = ['#ff6b8a', '#ffd84a'][wx % 2]; c.beginPath(); c.arc(wx + 3, -13, 1.3, 0, Math.PI * 2); c.arc(wx + 9, -13.4, 1.3, 0, Math.PI * 2); c.fill();
+  }
+  dkPlank(c, -4, -38, 80, 5, dkHex(pal.trim), 62, { r: 2, lit: 0.5 });
+  // rails along the deck: turned posts and a top rail plank
+  const trim = dkHex(pal.trim);
+  for (let px = 80; px < L - 46; px += 22) {
+    c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(px - 0.2, -15, 3, 13);
+    c.fillStyle = trim; c.fillRect(px - 1.2, -15, 2.6, 13); c.fillStyle = dkS(trim, 0.25); c.fillRect(px + 0.6, -15, 0.8, 13);
+    c.fillStyle = trim; c.beginPath(); c.ellipse(px + 0.1, -8.5, 2.3, 1.8, 0, 0, Math.PI * 2); c.fill(); c.strokeStyle = dkS(trim, 0.45); c.lineWidth = 0.7; c.stroke();
+  }
+  dkPlank(c, 74, -18, L - 120, 4, trim, 63, { r: 2, lit: 0.5, outline: dkS(trim, 0.45) });
+}
+// a mast: a round pole with grain (lit left, shaded right) and iron bands, cached per size
+function grappleMastPole(x, y, w, h) {
+  h = Math.round(h);
+  dkPic('gzMast|' + w + '|' + h, w + 6, h + 2, w / 2 + 3, 0, c => {
+    c.fillStyle = GRAPPLE_COL.woodDk; c.fillRect(-w / 2, 0, w, h);
+    dkGrain(c, -w / 2, 0, w, h, '#7a4c26', w * 1000 + h, true);
+    const g = c.createLinearGradient(-w / 2, 0, w / 2, 0); g.addColorStop(0, 'rgba(255,220,170,0.12)'); g.addColorStop(0.3, 'rgba(255,220,170,0.3)'); g.addColorStop(0.55, 'rgba(255,220,170,0)'); g.addColorStop(1, 'rgba(30,10,0,0.35)');
+    c.fillStyle = g; c.fillRect(-w / 2, 0, w, h);
+    for (let by = 18; by < h - 10; by += 56) { c.fillStyle = '#4a4e5c'; c.fillRect(-w / 2 - 1, by, w + 2, 3); c.fillStyle = '#9aa0ae'; c.fillRect(-w / 2 - 1, by, w + 2, 0.9); }
+    c.strokeStyle = '#4a2a10'; c.lineWidth = 1.2; c.strokeRect(-w / 2, 0, w, h);
+  }, x, y);
 }
 function grappleSail(mx, y0, y1, w, pal, t, windDir, big) {
   const bil = (big ? 12 : 7) * windDir + Math.sin(t * 2 + mx) * 2;
@@ -1236,10 +1316,17 @@ function grappleDrawNestFront(st, sh) {
     ctx.beginPath(); ctx.moveTo(x0 - 2, nestY - 16); ctx.lineTo(x1 + 2, nestY - 16); ctx.stroke();
     ctx.beginPath(); for (let px = x0; px <= x1; px += 15) { ctx.moveTo(px, nestY - 16); ctx.lineTo(px, nestY); } ctx.stroke();
   } else {
-    ctx.fillStyle = GRAPPLE_COL.wood; rr(x0 - 4, nestY - 14, x1 - x0 + 8, 20, 5); ctx.fill();
-    ctx.strokeStyle = GRAPPLE_COL.woodDk; ctx.lineWidth = 2;
-    ctx.beginPath(); for (let px = x0 + 6; px < x1; px += 11) { ctx.moveTo(px, nestY - 12); ctx.lineTo(px, nestY + 5); } ctx.stroke();
-    ctx.fillStyle = sh.pal.trim; ctx.fillRect(x0 - 6, nestY - 16, x1 - x0 + 12, 4);
+    dkPic('gzNest|' + sh.pal.trim + '|' + (x1 - x0), x1 - x0 + 20, 28, 10, 20, c => {
+      c.fillStyle = 'rgba(30,15,0,0.25)'; rrOn(c, -2, -12, x1 - x0 + 8, 20, 5); c.fill();
+      c.save(); rrOn(c, -4, -14, x1 - x0 + 8, 20, 5); c.clip();
+      dkBoards(c, -4, -14, x1 - x0 + 8, 20, GRAPPLE_COL.wood, 440, { vert: true, bw: 7, r: 0 });
+      const g = c.createLinearGradient(-4, 0, x1 - x0 + 4, 0); g.addColorStop(0, 'rgba(255,230,190,0.2)'); g.addColorStop(0.3, 'rgba(255,230,190,0)'); g.addColorStop(1, 'rgba(30,10,0,0.35)');
+      c.fillStyle = g; c.fillRect(-4, -14, x1 - x0 + 8, 20);
+      c.fillStyle = '#4a4e5c'; c.fillRect(-4, -2, x1 - x0 + 8, 3); c.fillStyle = '#9aa0ae'; c.fillRect(-4, -2, x1 - x0 + 8, 0.9);
+      c.restore();
+      c.strokeStyle = GRAPPLE_COL.woodDk; c.lineWidth = 1.6; rrOn(c, -4, -14, x1 - x0 + 8, 20, 5); c.stroke();
+      dkPlank(c, -6, -16, x1 - x0 + 12, 4, dkHex(sh.pal.trim), 441, { r: 2, lit: 0.5 });
+    }, x0, nestY);
   }
   // the gold X where the thrower stands (and the zipper grabs the handle)
   const hop = st.hop;
@@ -1278,10 +1365,21 @@ function grappleRingDraw(st, sh) {
 function grappleCapstan(st, sh, dk) {
   const hop = st.hop, active = hop && !hop.done && hop.to === sh.k && (hop.phase === 'haul' || hop.phase === 'arrive');
   const cx = sh.capX, rot = active ? hop.capRot : 0;
-  ctx.fillStyle = GRAPPLE_COL.woodDk; rr(cx - 13, dk - 26, 26, 26, 4); ctx.fill();
-  ctx.fillStyle = active && hop.capGold ? '#ffd75e' : GRAPPLE_COL.wood; rr(cx - 11, dk - 24, 22, 22, 3); ctx.fill();
-  ctx.fillStyle = GRAPPLE_COL.ropeDk; for (let y = dk - 20; y < dk - 4; y += 4) ctx.fillRect(cx - 11, y, 22, 1.6);
-  ctx.fillStyle = GRAPPLE_COL.woodLt; rr(cx - 15, dk - 30, 30, 6, 3); ctx.fill();
+  const gold = active && hop.capGold;
+  dkPic('gzCapstan' + (gold ? 'G' : ''), 36, 36, 18, 33, c => {
+    const wd = gold ? '#ffd75e' : GRAPPLE_COL.wood;
+    c.fillStyle = 'rgba(20,20,40,0.2)'; c.beginPath(); c.ellipse(1, 0, 16, 3.5, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = GRAPPLE_COL.woodDk; rrOn(c, -13, -26, 26, 26, 4); c.fill();
+    c.save(); rrOn(c, -11, -24, 22, 22, 3); c.clip();
+    dkBoards(c, -11, -24, 22, 22, wd, 420, { vert: true, bw: 5.5, r: 0 });
+    for (let y = -20; y < -4; y += 4) { c.fillStyle = GRAPPLE_COL.ropeDk; c.fillRect(-11, y, 22, 1.8); c.fillStyle = '#e8cf98'; c.fillRect(-11, y + 0.3, 22, 0.8); }
+    const g = c.createLinearGradient(-11, 0, 11, 0); g.addColorStop(0, 'rgba(0,0,0,0.16)'); g.addColorStop(0.3, 'rgba(255,240,200,0.3)'); g.addColorStop(0.55, 'rgba(255,240,200,0)'); g.addColorStop(1, 'rgba(0,0,0,0.36)');
+    c.fillStyle = g; c.fillRect(-11, -24, 22, 22);
+    c.restore();
+    c.strokeStyle = '#4a2a10'; c.lineWidth = 1.4; rrOn(c, -13, -26, 26, 26, 4); c.stroke();
+    dkPlank(c, -15, -30, 30, 6, GRAPPLE_COL.woodLt, 421, { r: 3 });
+    for (const bx of [-10, -3.5, 3.5, 10]) dkRivet(c, bx, -27, 0.9, '#c0c4ce');
+  }, cx, dk);
   // the bars, turning
   ctx.strokeStyle = GRAPPLE_COL.woodDk; ctx.lineWidth = 4; ctx.lineCap = 'round';
   for (let i = 0; i < 4; i++) {
@@ -1326,8 +1424,16 @@ function grapplePirate(x, y, skin, band, cheer, face, h) {
 }
 function grappleChest(st, sh, dk) {
   const open = st.fin && st.fin.t > 1.2, x = sh.mast + 70, y = dk;
-  ctx.fillStyle = '#8a5a2c'; rr(x - 22, y - 26, 44, 26, 4); ctx.fill();
-  ctx.fillStyle = GRAPPLE_COL.brass; ctx.fillRect(x - 22, y - 16, 44, 4); ctx.fillRect(x - 3, y - 22, 6, 10);
+  dkPic('gzChest', 56, 36, 28, 31, c => {
+    c.fillStyle = 'rgba(20,20,40,0.2)'; c.beginPath(); c.ellipse(1, 0, 26, 3.5, 0, 0, Math.PI * 2); c.fill();
+    c.save(); rrOn(c, -22, -26, 44, 26, 4); c.clip(); dkBoards(c, -22, -26, 44, 26, '#8a5a2c', 430, { bw: 8.7, r: 0 }); c.restore();
+    c.strokeStyle = '#4a2a10'; c.lineWidth = 1.6; rrOn(c, -22, -26, 44, 26, 4); c.stroke();
+    c.fillStyle = '#4a4e5c'; for (const [kx, ky] of [[-22, -26], [17, -26], [-22, -5], [17, -5]]) c.fillRect(kx, ky, 5, 5);
+    c.fillStyle = GRAPPLE_COL.brass; c.fillRect(-22, -16, 44, 4); c.fillStyle = '#fff0a8'; c.fillRect(-22, -16, 44, 1); c.fillStyle = GRAPPLE_COL.brassDk; c.fillRect(-22, -12.8, 44, 0.8);
+    for (const sx of [-17, -9, 9, 17]) dkRivet(c, sx, -14, 0.8, '#ffe08a');
+    c.fillStyle = GRAPPLE_COL.brass; rrOn(c, -3.5, -22, 7, 11, 1.5); c.fill(); c.strokeStyle = GRAPPLE_COL.brassDk; c.lineWidth = 0.9; c.stroke();
+    c.fillStyle = '#5a3a08'; c.beginPath(); c.arc(0, -17.5, 1.2, 0, Math.PI * 2); c.fill();
+  }, x, y);
   if (open) {
     ctx.fillStyle = '#ffd75e'; ctx.beginPath(); ctx.ellipse(x, y - 26, 20, 8, 0, Math.PI, 0); ctx.fill();
     for (let i = 0; i < 5; i++) { ctx.fillStyle = i % 2 ? '#ffe9a0' : '#ffc53d'; circle(x - 14 + i * 7, y - 30 - (i % 2) * 3, 4); ctx.fill(); }
@@ -1338,31 +1444,10 @@ function grappleChest(st, sh, dk) {
 // the dock: a wooden pier with a lookout tower (the first crow's nest), barrels and a crab
 function grappleDrawDock(st, sh) {
   const t = st.t, dk = grappleDeckY(sh, t), x = sh.x, L = sh.L, S = GRAPPLE.SEA, nestY = dk - sh.nest;
-  // posts into the water
-  ctx.fillStyle = GRAPPLE_COL.woodDk;
-  for (let px = x + 6; px < x + L; px += 46) ctx.fillRect(px, dk, 10, S - dk + 40);
-  // the tower
-  ctx.fillStyle = GRAPPLE_COL.woodDk;
-  ctx.fillRect(sh.nestX0 - 2, nestY, 7, dk - nestY); ctx.fillRect(sh.nestX1 - 5, nestY, 7, dk - nestY);
-  ctx.strokeStyle = GRAPPLE_COL.wood; ctx.lineWidth = 3;
-  for (let y = nestY + 20; y < dk - 10; y += 46) { ctx.beginPath(); ctx.moveTo(sh.nestX0, y); ctx.lineTo(sh.nestX1, y + 40); ctx.moveTo(sh.nestX1, y); ctx.lineTo(sh.nestX0, y + 40); ctx.stroke(); }
-  ctx.fillStyle = GRAPPLE_COL.wood; rr(sh.nestX0 - 8, nestY - 2, sh.nestX1 - sh.nestX0 + 16, 8, 3); ctx.fill();
-  // a striped flag on top
-  ctx.fillStyle = GRAPPLE_COL.woodDk; ctx.fillRect(sh.mast - 2, nestY - 70, 4, 70);
+  // the still dock (piles, the lookout tower, the deck, barrels, a crate, a rope coil, lobster pots) is one cached picture
+  dkPic('gzDock|' + L + '|' + sh.nest + '|' + (S - dk) + '|' + (sh.mast - x), L + 40, sh.nest + S - dk + 130, 20, sh.nest + 80, c => grapplePaintDock(c, sh, S - dk), x, dk);
   grapplePennant(sh.mast, nestY - 70, 30, '#ef6a55', t, 1, true);
   grappleLadder(sh.ladX, dk - 2, nestY + 4);
-  // the planks
-  ctx.fillStyle = GRAPPLE_COL.woodLt; ctx.fillRect(x, dk, L, 12);
-  ctx.strokeStyle = GRAPPLE_COL.woodDk; ctx.lineWidth = 1.5;
-  ctx.beginPath(); for (let px = x; px < x + L; px += 24) { ctx.moveTo(px, dk); ctx.lineTo(px, dk + 12); } ctx.stroke();
-  ctx.fillStyle = GRAPPLE_COL.woodDk; ctx.fillRect(x, dk + 10, L, 3);
-  // barrels, a crate and a coil of rope
-  for (const [bx, s] of [[x + 30, 1], [x + 56, 0.85]]) {
-    ctx.fillStyle = '#9a5f2e'; rr(bx - 11 * s, dk - 28 * s, 22 * s, 28 * s, 6 * s); ctx.fill();
-    ctx.fillStyle = '#5a3a1e'; ctx.fillRect(bx - 11 * s, dk - 22 * s, 22 * s, 3); ctx.fillRect(bx - 11 * s, dk - 9 * s, 22 * s, 3);
-  }
-  ctx.fillStyle = '#c99358'; rr(x + 250, dk - 24, 28, 24, 3); ctx.fill(); ctx.strokeStyle = '#8a5a2c'; ctx.lineWidth = 2; rr(x + 250, dk - 24, 28, 24, 3); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x + 250, dk - 24); ctx.lineTo(x + 278, dk); ctx.stroke();
   // Cove the crab, scuttling about
   const cx = x + 88 + Math.sin(G.clock * 0.8) * 22;
   ctx.fillStyle = '#ff6b4a'; ctx.beginPath(); ctx.ellipse(cx, dk - 6, 10, 6, 0, Math.PI, 0); ctx.fill();
@@ -1370,11 +1455,61 @@ function grappleDrawDock(st, sh) {
   for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + d * 8, dk - 6); ctx.lineTo(cx + d * 14, dk - 13 + Math.sin(G.clock * 8) * 2); ctx.stroke(); circle(cx + d * 15, dk - 14 + Math.sin(G.clock * 8) * 2, 3); ctx.fillStyle = '#ff6b4a'; ctx.fill(); }
   ctx.fillStyle = '#fff'; circle(cx - 3, dk - 13, 2.4); ctx.fill(); circle(cx + 3, dk - 13, 2.4); ctx.fill();
   ctx.fillStyle = C.ink; circle(cx - 3, dk - 13, 1.1); ctx.fill(); circle(cx + 3, dk - 13, 1.1); ctx.fill();
-  // the welcome sign
-  ctx.fillStyle = GRAPPLE_COL.woodDk; ctx.fillRect(x + 150, dk - 48, 5, 48);
-  ctx.fillStyle = '#f4e2b8'; rr(x + 108, dk - 66, 92, 24, 6); ctx.fill();
-  ctx.strokeStyle = GRAPPLE_COL.woodDk; ctx.lineWidth = 2; rr(x + 108, dk - 66, 92, 24, 6); ctx.stroke();
+  // the welcome sign: its own cached picture, in front of the ladder (as before the art pass); the grain is washed
+  // back under the words so they stay easy to read
+  dkPic('gzDockSign', 104, 76, 2, 70, c => {
+    dkPlank(c, 42, -48, 5, 48, '#6e4422', 408, { vert: true, r: 1 });
+    c.fillStyle = 'rgba(30,15,0,0.25)'; rrOn(c, 2, -63, 92, 24, 6); c.fill();
+    c.save(); rrOn(c, 0, -66, 92, 24, 6); c.clip(); dkBoards(c, 0, -66, 92, 24, '#f4e2b8', 409, { bw: 8, r: 0 });
+    c.fillStyle = 'rgba(244,226,184,0.72)'; rrOn(c, 9, -63, 74, 18, 5); c.fill(); c.restore();
+    c.strokeStyle = GRAPPLE_COL.woodDk; c.lineWidth = 2; rrOn(c, 0, -66, 92, 24, 6); c.stroke();
+    dkNail(c, 6, -54, 1.2); dkNail(c, 86, -54, 1.2);
+  }, x + 108, dk);
   text('Pirate Cove', x + 154, dk - 53.5, 13, '#4a2a10', 'center');
+}
+// the dock in dock px (x 0 = its left end, y 0 = the deck top, S = deck to sea)
+function grapplePaintDock(c, sh, S) {
+  const L = sh.L, x0 = sh.nestX0 - sh.x, x1 = sh.nestX1 - sh.x, mx = sh.mast - sh.x, ny = -sh.nest, W0 = GRAPPLE_COL;
+  // piles into the water: round logs with grain, iron bands, weed and barnacles at the sea line
+  for (let px = 6; px < L; px += 46) {
+    dkPlank(c, px, 8, 10, S + 34, '#7a4c26', px, { vert: true, r: 2 });
+    c.fillStyle = 'rgba(20,50,60,0.3)'; c.fillRect(px, S - 4, 10, 40);
+    c.fillStyle = '#3f9a5e'; c.beginPath(); c.moveTo(px - 1, S - 6); c.quadraticCurveTo(px + 3, S + 2, px + 1, S + 8); c.lineTo(px + 5, S - 4); c.quadraticCurveTo(px + 8, S + 4, px + 9, S + 6); c.lineTo(px + 11, S - 6); c.closePath(); c.fill();
+    c.fillStyle = '#d8d2c2'; for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(px + 2 + k * 3, S - 9 - (k % 2) * 3, 1.2, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#4a4e5c'; c.fillRect(px - 1, 14, 12, 3); c.fillStyle = '#9aa0ae'; c.fillRect(px - 1, 14, 12, 1);
+  }
+  // cross beams under the deck
+  c.save(); c.beginPath(); c.rect(0, 10, L, S); c.clip();
+  c.strokeStyle = '#5a3418'; c.lineWidth = 5; c.beginPath(); for (let px = 6; px < L - 46; px += 46) { c.moveTo(px + 8, 14); c.lineTo(px + 52, S - 4); } c.stroke();
+  c.strokeStyle = '#8a5a2c'; c.lineWidth = 2; c.beginPath(); for (let px = 6; px < L - 46; px += 46) { c.moveTo(px + 7, 13); c.lineTo(px + 51, S - 5); } c.stroke();
+  c.restore();
+  // the tower legs with cross braces, and its platform
+  dkPlank(c, x0 - 2, ny, 7, -ny, '#6e4422', 401, { vert: true, r: 1.5 }); dkPlank(c, x1 - 5, ny, 7, -ny, '#6e4422', 402, { vert: true, r: 1.5 });
+  for (let y = ny + 20; y < -10; y += 46) {
+    for (const [ax, ay, bx, by] of [[x0, y, x1, y + 40], [x1, y, x0, y + 40]]) {
+      c.save(); c.translate(ax, ay); c.rotate(Math.atan2(by - ay, bx - ax)); const len = Math.hypot(bx - ax, by - ay);
+      dkPlank(c, 0, -2, len, 4, W0.wood, ax + y, { r: 1 }); c.restore();
+    }
+    dkNail(c, (x0 + x1) / 2, y + 20, 1.3);
+  }
+  dkPlank(c, x0 - 8, ny - 2, x1 - x0 + 16, 8, W0.wood, 403, { nails: true, r: 3 });
+  // the flag pole
+  c.fillStyle = '#5a3418'; c.fillRect(mx - 2, ny - 70, 4, 70); c.fillStyle = '#9a6a3a'; c.fillRect(mx - 2, ny - 70, 1.3, 70);
+  // the deck: planks across with nails, a lit front edge, a dark fascia board and its shadow
+  c.fillStyle = 'rgba(20,40,60,0.25)'; c.fillRect(0, 13, L, 6);
+  c.save(); c.beginPath(); c.rect(0, 0, L, 12); c.clip();
+  for (let px = 0, i = 0; px < L; px += 24, i++) dkPlank(c, px, 0, 24, 12, i % 3 === 1 ? '#bf8a50' : i % 3 === 2 ? '#cf9a60' : W0.woodLt, 410 + i, { vert: true, nails: true, r: 0 });
+  c.restore();
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, 0, L, 1.5);
+  dkPlank(c, 0, 9, L, 5, '#6e4422', 404, { r: 1 });
+  // barrels, a crate, a coil of rope and a lobster pot
+  dkBarrel(c, 19, -28, 22, 28, '#9a5f2e', 405);
+  dkBarrel(c, 46.6, -23.8, 18.7, 23.8, '#a8692f', 406);
+  dkCrate(c, 250, -24, 28, 24, '#c99358', 407, { mark: 'X' });
+  for (let k = 0; k < 3; k++) {
+    c.strokeStyle = '#7a5a2a'; c.lineWidth = 3; c.beginPath(); c.ellipse(222, -3 - k * 2, 11 - k * 2.5, 3.6 - k * 0.6, 0, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = '#e8cf98'; c.lineWidth = 1.8; c.stroke();
+  }
 }
 // the line: a twisted rope from the crow's nest to the ring, the zip handle and the bosun's chair
 function grappleDrawRope(st, hop) {
@@ -1518,8 +1653,17 @@ function grappleDrawObstacles(st, hop, front) {
       const tip = q.y + 30, bx = q.x, by = S + 2 + Math.sin(G.clock * 2 + o.k) * 2;
       // the rowboat with a waving sailor
       grapplePirate(bx + 10, by - 6, '#f2c08a', '#3fc0b4', (st.crewCheer && hop.phase !== 'aim') || o.hitT > 0, -1, 9 + o.k);
-      ctx.fillStyle = '#b4472f'; ctx.beginPath(); ctx.moveTo(bx - 30, by - 8); ctx.lineTo(bx + 30, by - 8); ctx.quadraticCurveTo(bx + 24, by + 8, bx, by + 8); ctx.quadraticCurveTo(bx - 24, by + 8, bx - 30, by - 8); ctx.fill();
-      ctx.fillStyle = '#ffe7a8'; ctx.fillRect(bx - 28, by - 8, 56, 3);
+      dkPic('gzRowboat', 68, 22, 34, 11, c => {
+        const hullP = () => { c.beginPath(); c.moveTo(-30, -8); c.lineTo(30, -8); c.quadraticCurveTo(24, 8, 0, 8); c.quadraticCurveTo(-24, 8, -30, -8); c.closePath(); };
+        c.fillStyle = '#b4472f'; hullP(); c.fill();
+        c.save(); hullP(); c.clip();
+        for (let k = 0; k < 4; k++) { const tone = ['#c4523a', '#b4472f', '#a63f29', '#983824'][k]; c.fillStyle = tone; c.fillRect(-32, -8 + k * 4.2, 64, 4.2); dkGrain(c, -32, -8 + k * 4.2, 64, 4.2, tone, 470 + k, false); c.fillStyle = 'rgba(60,15,5,0.45)'; c.fillRect(-32, -4 + k * 4.2, 64, 0.9); }
+        c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(14, -8, 20, 18);
+        c.restore();
+        c.strokeStyle = '#6a2214'; c.lineWidth = 1.4; hullP(); c.stroke();
+        dkPlank(c, -29, -9.5, 58, 3.5, '#ffe7a8', 471, { r: 1.5, lit: 0.5 });
+        for (const ox of [-18, 0, 18]) dkNail(c, ox, -7.8, 0.8);
+      }, bx, by);
       ctx.strokeStyle = GRAPPLE_COL.woodDk; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(bx - 4, by - 6); ctx.lineTo(bx - 4 + wob * 0.5, tip); ctx.stroke();
       const fx = bx - 4 + wob * 0.5;
       ctx.fillStyle = '#ff7a6b'; ctx.beginPath(); ctx.moveTo(fx, tip + 2); ctx.quadraticCurveTo(fx - 14, tip + 6 + Math.sin(G.clock * 7) * 2, fx - 26, tip + 10); ctx.lineTo(fx, tip + 18); ctx.closePath(); ctx.fill();
@@ -1565,10 +1709,16 @@ function grappleDrawLaundry(st, hop) {
   for (const ln of hop.lines) {
     // two posts on floating barrels
     for (const [px, py] of [[ln.x0, ln.y0], [ln.x1, ln.y1]]) {
-      ctx.fillStyle = GRAPPLE_COL.woodDk; ctx.fillRect(px - 3, py - 4, 6, S - py + 4);
+      const ph = S - py + 4;
+      dkPic('gzPost|' + Math.round(ph), 10, ph + 2, 5, 0, c => { dkPlank(c, -3, 0, 6, ph, '#6e4422', 460 + Math.round(ph), { vert: true, r: 1 }); c.fillStyle = '#4a4e5c'; c.fillRect(-3.5, 6, 7, 2.4); }, px, py - 4);
       const bob = Math.sin(G.clock * 2 + px) * 2;
-      ctx.fillStyle = '#9a5f2e'; rr(px - 13, S - 10 + bob, 26, 20, 7); ctx.fill();
-      ctx.fillStyle = '#5a3a1e'; ctx.fillRect(px - 13, S - 4 + bob, 26, 3);
+      // a barrel floating on its side: staves, hoops, a round lid end
+      dkPic('gzFloatBarrel', 32, 26, 16, 12, c => {
+        c.save(); c.rotate(-Math.PI / 2); dkBarrel(c, -10, -13, 20, 26, '#9a5f2e', 461, { noShadow: true, noLid: true, hoops: [0.2, 0.8] }); c.restore();
+        c.fillStyle = '#7a4a22'; c.beginPath(); c.ellipse(-12, 0, 3, 9, 0, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#4a2a10'; c.lineWidth = 1; c.stroke();
+        c.strokeStyle = 'rgba(255,230,190,0.35)'; c.beginPath(); c.ellipse(-12, 0, 1.6, 5.5, 0, 0, Math.PI * 2); c.stroke();
+        c.fillStyle = 'rgba(20,80,100,0.3)'; c.fillRect(-14, 4, 28, 8);
+      }, px, S + bob);
     }
     const sg = Math.abs(ln.x1 - ln.x0) * 0.06, at = u => ({ x: grappleLerp(ln.x0, ln.x1, u), y: grappleLerp(ln.y0, ln.y1, u) + sg * 4 * u * (1 - u) });
     ctx.strokeStyle = '#f4f0e6'; ctx.lineWidth = 2; ctx.beginPath();

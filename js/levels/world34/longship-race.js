@@ -401,18 +401,7 @@
     K.drawParts(st);
     ctx.restore();
   }
-  function rock(x, y, s) {
-    ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
-    ctx.fillStyle = 'rgba(8,24,40,0.3)'; ctx.beginPath(); ctx.ellipse(0, 6, 36, 6, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#5a5e66'; ctx.beginPath(); ctx.moveTo(-30, 4); ctx.lineTo(-22, -26); ctx.lineTo(-4, -40); ctx.lineTo(16, -30); ctx.lineTo(30, 4); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#464a52'; ctx.beginPath(); ctx.moveTo(-4, -40); ctx.lineTo(16, -30); ctx.lineTo(30, 4); ctx.lineTo(2, 4); ctx.lineTo(0, -20); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#8a8e96'; ctx.beginPath(); ctx.moveTo(-22, -26); ctx.lineTo(-4, -40); ctx.lineTo(0, -20); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(60,110,80,0.6)'; ctx.beginPath(); ctx.ellipse(-12, 0, 14, 3.5, 0, Math.PI, 0); ctx.fill();
-    ctx.strokeStyle = '#2e3138'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(-30, 4); ctx.lineTo(-22, -26); ctx.lineTo(-4, -40); ctx.lineTo(16, -30); ctx.lineTo(30, 4); ctx.stroke();
-    ctx.strokeStyle = 'rgba(232,244,246,0.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-34, 4); ctx.quadraticCurveTo(0, -4, 34, 4); ctx.stroke();
-    ctx.fillStyle = 'rgba(232,244,246,0.7)'; for (const fx of [-36, 34]) { circle(fx, 3, 2.2); ctx.fill(); }
-    ctx.restore();
-  }
+  function rock(x, y, s) { K.seaRock(x, y + 4 * s, s, { tall: 0.72 }); }
   function stack(x, y, s) {
     ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
     ctx.fillStyle = 'rgba(8,24,40,0.3)'; ctx.beginPath(); ctx.ellipse(0, 8, 32, 6, 0, 0, TAU); ctx.fill();
@@ -423,6 +412,12 @@
     ctx.strokeStyle = '#25272c'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(-26, 6); ctx.lineTo(-18, -80); ctx.lineTo(0, -96); ctx.lineTo(18, -78); ctx.lineTo(26, 6); ctx.stroke();
     ctx.fillStyle = '#f4f8fb'; ctx.beginPath(); ctx.moveTo(-18, -80); ctx.lineTo(0, -96); ctx.lineTo(18, -78); ctx.lineTo(0, -84); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = 'rgba(232,244,246,0.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-30, 6); ctx.quadraticCurveTo(0, -2, 30, 6); ctx.stroke();
+    // weed and barnacles at the waterline, a nesting ledge with a gull's droppings, a wet sheen
+    ctx.fillStyle = 'rgba(16,30,40,0.35)'; ctx.fillRect(-25, -8, 50, 12);
+    ctx.fillStyle = '#3e6a4a'; ctx.beginPath(); for (let k = 0; k < 9; k++) { const wx = -22 + k * 5.5; ctx.moveTo(wx - 2, 4); ctx.quadraticCurveTo(wx, -3 - (k % 3) * 2, wx + 1, -5 - (k % 3) * 2); ctx.lineTo(wx + 2, 4); } ctx.fill();
+    ctx.fillStyle = '#c8c4b4'; for (const [bx, by] of [[-16, -10], [-8, -13], [6, -11], [14, -14], [-2, -9]]) { circle(bx, by, 1.6); ctx.fill(); }
+    ctx.fillStyle = 'rgba(30,32,38,0.5)'; ctx.fillRect(-16, -44, 14, 2.5); ctx.fillStyle = 'rgba(240,244,246,0.8)'; for (let k = 0; k < 4; k++) ctx.fillRect(-15 + k * 3.5, -42, 1, 3 + (k % 2) * 3);
+    ctx.fillStyle = 'rgba(200,230,240,0.2)'; ctx.fillRect(-22, -7, 30, 1.2);
     ctx.restore();
   }
   function floe(x, y, w, s) {

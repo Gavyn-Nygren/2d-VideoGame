@@ -853,6 +853,14 @@ function tthWrightDrawBack(st) {
   ctx.fillStyle = CC.sandLow; ctx.beginPath(); ctx.moveTo(x0, H + 4);
   for (let i = 0; i < n; i++) ctx.lineTo(x0 + i * 16, gyA[i] + 30 + (gyA[i] < 420 ? (420 - gyA[i]) * 0.35 : 0));
   ctx.lineTo(x0 + (n - 1) * 16, H + 4); ctx.closePath(); ctx.fill();
+  // (art pass) the beach in layers: damp darker bands, wind ripples, shell grit, pebbles and broken shells, dune grass blades on top
+  {
+    const gyL = x => { const f = (x - x0) / 16, i = clamp(Math.floor(f), 0, n - 2), u = clamp(f - i, 0, 1); return gyA[i] + (gyA[i + 1] - gyA[i]) * u; };
+    TTA.soil(gyL, cx - 20, cx + W + 20, { deep: 120, roots: false, stones: ['#e8d8b8', '#b9ab94', '#fff4e0'], bands: [[16, 5, 'rgba(255,255,240,0.25)'], [34, 9, 'rgba(150,120,80,0.13)'], [62, 5, 'rgba(255,255,240,0.18)'], [88, 18, 'rgba(120,95,60,0.12)']] });
+    ctx.strokeStyle = 'rgba(150,120,80,0.3)'; ctx.lineWidth = 1.3; ctx.beginPath();
+    for (let x = Math.floor(cx / 38) * 38; x < cx + W + 40; x += 38) { const q = hash(x, 23), y = gyL(x) + 10 + q % 70; ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 9, y - 3, x + 18, y); ctx.quadraticCurveTo(x + 27, y + 3, x + 34, y); }
+    ctx.stroke();
+  }
   ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath();
   for (let i = 0; i < n; i++) { if (i) ctx.lineTo(x0 + i * 16, gyA[i]); else ctx.moveTo(x0, gyA[0]); }
   ctx.stroke();
@@ -865,17 +873,34 @@ function tthWrightDrawBack(st) {
   // the camp shed at the first rail
   if (cx < 300) {
     const gy = K.ground;
-    ctx.fillStyle = CC.wood; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(40, gy - 74, 130, 74); ctx.strokeRect(40, gy - 74, 130, 74);
-    ctx.fillStyle = CC.woodDk; ctx.beginPath(); ctx.moveTo(30, gy - 74); ctx.lineTo(105, gy - 104); ctx.lineTo(180, gy - 74); ctx.closePath(); ctx.fill(); ctx.stroke();
+    TTA.shadow(105, gy + 2, 80, 6, 0.18);
+    ctx.fillStyle = CC.wood; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(40, gy - 74, 130, 74);
+    // (art pass) weathered clapboard: each board grained, salt-bleached at the foot; a shingled roof; a plank door ajar
+    for (let q = 0; q < 6; q++) TTA.wood(40 + q * 21.6, gy - 73, 21.6, 73, 900 + q, CC.wood, { vert: true });
+    ctx.fillStyle = 'rgba(255,250,235,0.18)'; ctx.fillRect(40, gy - 14, 130, 14);
+    ctx.strokeRect(40, gy - 74, 130, 74);
+    ctx.fillStyle = CC.woodDk; ctx.beginPath(); ctx.moveTo(30, gy - 74); ctx.lineTo(105, gy - 104); ctx.lineTo(180, gy - 74); ctx.closePath(); ctx.fill();
+    ctx.save(); ctx.clip(); ctx.strokeStyle = 'rgba(30,18,8,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let r = 0; r < 4; r++) { const yy = gy - 80 - r * 7; ctx.moveTo(20, yy); ctx.lineTo(190, yy); for (let xx = 30 + (r % 2) * 6; xx < 182; xx += 12) { ctx.moveTo(xx, yy); ctx.lineTo(xx, yy - 7); } }
+    ctx.stroke(); ctx.fillStyle = 'rgba(255,240,210,0.25)'; ctx.beginPath(); ctx.moveTo(30, gy - 74); ctx.lineTo(105, gy - 104); ctx.lineTo(105, gy - 98); ctx.lineTo(40, gy - 74); ctx.closePath(); ctx.fill(); ctx.restore();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(30, gy - 74); ctx.lineTo(105, gy - 104); ctx.lineTo(180, gy - 74); ctx.closePath(); ctx.stroke();
     ctx.strokeStyle = CC.woodDk; ctx.lineWidth = 1.6; ctx.beginPath(); for (let q = 1; q < 6; q++) { ctx.moveTo(40 + q * 21.6, gy - 72); ctx.lineTo(40 + q * 21.6, gy - 2); } ctx.stroke();
     ctx.fillStyle = '#3a2a1a'; ctx.fillRect(84, gy - 46, 42, 46);
+    ctx.fillStyle = 'rgba(255,220,150,0.18)'; ctx.fillRect(86, gy - 44, 10, 44);
+    ctx.fillStyle = CC.woodDk; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(126, gy - 46); ctx.lineTo(140, gy - 50); ctx.lineTo(140, gy + 2); ctx.lineTo(126, gy); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#6a6a72'; ctx.fillRect(127, gy - 40, 12, 2.5); ctx.fillRect(127, gy - 12, 12, 2.5);
   }
   // launch rails
   for (const r of ph.rails) {
     if (r.x1 < cx - 20 || r.x0 > cx + W + 20) continue;
     const y = K.ground - K.rail.h;
-    ctx.fillStyle = CC.woodDk; for (let x = r.x0 + 10; x < r.x1; x += 44) ctx.fillRect(x - 5, y + 3, 10, K.rail.h - 2);
-    ctx.fillStyle = CC.wood; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.fillRect(r.x0, y - 2, r.x1 - r.x0, 6); ctx.strokeRect(r.x0, y - 2, r.x1 - r.x0, 6);
+    // (art pass) the "Junction Railroad": grained sleepers with a shadow in the sand, a 2x4 track capped with a strip of iron and its screws
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5;
+    for (let x = r.x0 + 10; x < r.x1; x += 44) { TTA.shadow(x, K.ground + 1, 12, 3, 0.18); ctx.fillStyle = CC.woodDk; ctx.fillRect(x - 5, y + 3, 10, K.rail.h - 2); TTA.wood(x - 5, y + 3, 10, K.rail.h - 2, x | 0, CC.woodDk, { knots: false }); ctx.strokeRect(x - 5, y + 3, 10, K.rail.h - 2); }
+    ctx.fillStyle = CC.wood; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.fillRect(r.x0, y - 2, r.x1 - r.x0, 6); TTA.wood(r.x0, y - 2, r.x1 - r.x0, 6, r.x0 | 0, CC.wood, { knots: false });
+    ctx.fillStyle = '#9aa0ae'; ctx.fillRect(r.x0, y - 2, r.x1 - r.x0, 2); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(r.x0, y - 2, r.x1 - r.x0, 0.8);
+    ctx.fillStyle = '#5a5a66'; for (let x = r.x0 + 8; x < r.x1; x += 22) ctx.fillRect(x, y - 1.6, 1.6, 1.2);
+    ctx.strokeRect(r.x0, y - 2, r.x1 - r.x0, 6);
   }
   // checkpoint flags (the metres flown so far)
   for (const f of ph.flags) {

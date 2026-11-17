@@ -590,10 +590,10 @@ function brDraw(st) {
   // floors (top face + body) and pits
   for (const s of c.floors) {
     if (s.x1 < x0 || s.x0 > x1) continue;
-    pyrBlocks(Math.max(s.x0, x0), BR.floor, Math.min(s.x1, x1) - Math.max(s.x0, x0), H - BR.floor, look.wall, 60, 30, 5);
-    ctx.fillStyle = look.wall.lite; ctx.fillRect(Math.max(s.x0, x0), BR.floor, Math.min(s.x1, x1) - Math.max(s.x0, x0), 6);
-    ctx.fillStyle = 'rgba(255,245,215,0.35)'; ctx.fillRect(Math.max(s.x0, x0), BR.floor, Math.min(s.x1, x1) - Math.max(s.x0, x0), 1.5);
-    ctx.fillStyle = 'rgba(50,26,10,0.3)'; ctx.fillRect(Math.max(s.x0, x0), BR.floor + 6, Math.min(s.x1, x1) - Math.max(s.x0, x0), 3);
+    pyrBlocks(Math.max(s.x0, x0), BR.floor, Math.min(s.x1, x1) - Math.max(s.x0, x0), H - BR.floor, { lite: look.wall.mid, mid: look.wall.dark, dark: look.wall.deep }, 60, 30, 5);
+    // the walking surface: a worn paving course with sand drifts, and dark worn ends where it meets a pit
+    pyrFloorTop(Math.max(s.x0, x0), BR.floor, Math.min(s.x1, x1) - Math.max(s.x0, x0), look.wall);
+
   }
   for (const g of c.gaps) {
     if (g.x1 < x0 || g.x0 > x1 || g.crumble) continue;
@@ -608,11 +608,27 @@ function brDraw(st) {
     }
     const jig = s.st === 'shake' ? Math.sin(t * 60 + s.x0) * 2 : 0;
     ctx.save(); ctx.translate(jig, s.st === 'shake' ? s.t * 6 : 0);
-    ctx.fillStyle = look.wall.mid; ctx.fillRect(s.x0 + 1, BR.floor, 58, 40);
-    ctx.fillStyle = look.wall.lite; ctx.fillRect(s.x0 + 1, BR.floor, 58, 6);
-    ctx.strokeStyle = 'rgba(50,26,10,' + (s.st === 'shake' ? 0.9 : 0.5) + ')'; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.moveTo(s.x0 + 8, BR.floor + 2); ctx.lineTo(s.x0 + 22, BR.floor + 16); ctx.lineTo(s.x0 + 16, BR.floor + 34);
-    ctx.moveTo(s.x0 + 40, BR.floor + 2); ctx.lineTo(s.x0 + 34, BR.floor + 18); ctx.lineTo(s.x0 + 50, BR.floor + 30); ctx.stroke();
+    { const x = s.x0 + 1, y = BR.floor, hv = hash(Math.round(s.x0), 77);
+      ctx.fillStyle = look.wall.mid; ctx.fillRect(x, y, 58, 40);
+      ctx.fillStyle = look.wall.dark; ctx.fillRect(x, y + 30, 58, 10); ctx.fillRect(x + 50, y, 8, 40);
+      ctx.fillStyle = look.wall.lite; ctx.fillRect(x, y, 58, 6);
+      ctx.fillStyle = 'rgba(255,245,215,0.45)'; ctx.fillRect(x, y, 58, 1.5); ctx.fillRect(x, y, 1.5, 40);
+      ctx.fillStyle = 'rgba(50,26,10,0.3)'; ctx.fillRect(x, y + 6, 58, 2);
+      // chipped bottom edge and missing corners
+      ctx.fillStyle = '#2a160a'; ctx.beginPath(); ctx.moveTo(x, y + 40); ctx.lineTo(x + 8, y + 36); ctx.lineTo(x + 14, y + 40); ctx.moveTo(x + 30, y + 40); ctx.lineTo(x + 38, y + 35); ctx.lineTo(x + 46, y + 40); ctx.moveTo(x + 58, y + 40); ctx.lineTo(x + 58, y + 30); ctx.lineTo(x + 53, y + 40); ctx.fill();
+      // cracks: a pale lip, then the dark crack, more of them while it shakes
+      const sh = s.st === 'shake';
+      for (const [col, o, lw] of [['rgba(255,236,190,0.35)', 1, 1], ['rgba(50,26,10,' + (sh ? 0.95 : 0.6) + ')', 0, sh ? 2 : 1.6]]) {
+        ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath();
+        ctx.moveTo(x + 7 + o, y + 2 + o); ctx.lineTo(x + 21 + o, y + 16 + o); ctx.lineTo(x + 15 + o, y + 34 + o); ctx.moveTo(x + 21 + o, y + 16 + o); ctx.lineTo(x + 30 + o, y + 20 + o);
+        ctx.moveTo(x + 39 + o, y + 2 + o); ctx.lineTo(x + 33 + o, y + 18 + o); ctx.lineTo(x + 49 + o, y + 30 + o);
+        if (sh) { ctx.moveTo(x + 2 + o, y + 22 + o); ctx.lineTo(x + 12 + o, y + 26 + o); ctx.moveTo(x + 44 + o, y + 10 + o); ctx.lineTo(x + 56 + o, y + 14 + o); }
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(70,40,15,0.3)'; for (let k = 0; k < 6; k++) { const q = hash(k, hv); ctx.fillRect(x + 4 + q % 50, y + 10 + (q >>> 6) % 26, 1.4, 1.2); }
+      ctx.strokeStyle = look.wall.deep; ctx.lineWidth = 1.2; ctx.strokeRect(x + 0.5, y + 0.5, 57, 39);
+      if (sh) { ctx.fillStyle = 'rgba(200,160,100,0.8)'; for (let k = 0; k < 4; k++) { const fy = ((t * 120 + k * 11) % 26); ctx.fillRect(x + 10 + k * 12, y + 40 + fy, 1.6, 2); } }
+    }
     ctx.restore();
     if (s.st === 'ok') { brPit(s.x0, s.x1, t, false, BR.floor + 40); }
   }
@@ -621,7 +637,8 @@ function brDraw(st) {
     if (s.x1 < x0 || s.x0 > x1) continue;
     pyrBlocks(s.x0, s.y0, s.x1 - s.x0, s.y1 - s.y0, { lite: '#b98d58', mid: '#9a6c3e', dark: '#7f5630' }, 45, 25, 9);
     ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(s.x1, s.y0 + 4, 6, s.y1 - s.y0 - 4);
-    ctx.fillStyle = look.wall.lite; ctx.fillRect(s.x0, s.y0, s.x1 - s.x0, 5);
+    pyrFloorTop(s.x0, s.y0, s.x1 - s.x0, look.wall);
+    ctx.fillStyle = 'rgba(255,245,215,0.3)'; ctx.fillRect(s.x0, s.y0, 2, s.y1 - s.y0);
     ctx.strokeStyle = look.wall.deep; ctx.lineWidth = 2; ctx.strokeRect(s.x0, s.y0, s.x1 - s.x0, s.y1 - s.y0);
   }
   // levers and doors
@@ -632,6 +649,9 @@ function brDraw(st) {
     // a rope from the lever up to the door's pulley
     ctx.strokeStyle = 'rgba(120,80,40,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(lv.x, BR.ceil + 6); ctx.lineTo(d.x0 + 17, BR.ceil + 6); ctx.stroke();
     ctx.fillStyle = '#6e4a26'; circle(d.x0 + 17, BR.ceil + 8, 7); ctx.fill();
+    ctx.strokeStyle = '#3a2614'; ctx.lineWidth = 1; circle(d.x0 + 17, BR.ceil + 8, 7); ctx.stroke();
+    ctx.beginPath(); for (let k = 0; k < 3; k++) { const q = k * Math.PI / 3 + d.open * 6; ctx.moveTo(d.x0 + 17 - Math.cos(q) * 5, BR.ceil + 8 - Math.sin(q) * 5); ctx.lineTo(d.x0 + 17 + Math.cos(q) * 5, BR.ceil + 8 + Math.sin(q) * 5); } ctx.stroke();
+    ctx.fillStyle = '#c9a25a'; circle(d.x0 + 17, BR.ceil + 8, 1.8); ctx.fill();
     const up = pyrEase(d.open) * (BR.floor - BR.ceil - 14);
     ctx.save(); ctx.beginPath(); ctx.rect(d.x0 - 4, BR.ceil, d.x1 - d.x0 + 8, BR.floor - BR.ceil); ctx.clip();
     const dy = BR.ceil - up;
@@ -641,6 +661,10 @@ function brDraw(st) {
     ctx.fillStyle = 'rgba(60,34,14,0.25)'; ctx.fillRect(d.x1 - 9, dy + 3, 6, BR.floor - BR.ceil - 6);
     ctx.fillStyle = 'rgba(60,34,14,0.18)'; for (let yy = dy + 40; yy < dy + BR.floor - BR.ceil; yy += 46) ctx.fillRect(d.x0 + 3, yy, d.x1 - d.x0 - 6, 2);
     ctx.strokeStyle = '#4a2c12'; ctx.lineWidth = 2; ctx.strokeRect(d.x0 + 1, dy + 1, d.x1 - d.x0 - 2, BR.floor - BR.ceil - 2);
+    // a sunken carved border and bronze studs down both sides, a worn foot
+    ctx.strokeStyle = 'rgba(60,34,14,0.35)'; ctx.lineWidth = 1.5; ctx.strokeRect(d.x0 + 7, dy + 10, d.x1 - d.x0 - 14, BR.floor - BR.ceil - 20);
+    ctx.strokeStyle = 'rgba(255,240,200,0.25)'; ctx.lineWidth = 1; ctx.strokeRect(d.x0 + 8.5, dy + 11.5, d.x1 - d.x0 - 14, BR.floor - BR.ceil - 20);
+    for (let yy = dy + 24; yy < dy + BR.floor - BR.ceil - 14; yy += 34) for (const sx of [d.x0 + 6, d.x1 - 6]) { ctx.fillStyle = '#7a5a1a'; circle(sx, yy, 2.6); ctx.fill(); ctx.fillStyle = '#e8c070'; circle(sx - 0.7, yy - 0.7, 1.1); ctx.fill(); }
     pyrGlyph('eye', (d.x0 + d.x1) / 2, dy + 90, 0.9, 'rgba(60,34,14,0.6)');
     pyrGlyph('scarab', (d.x0 + d.x1) / 2, dy + 150, 0.8, 'rgba(60,34,14,0.6)');
     ctx.restore();
@@ -687,6 +711,11 @@ function brPit(x0, x1, t, chasm, top) {
   ctx.fillStyle = g; ctx.fillRect(x0, y0, x1 - x0, H - y0);
   if (!top) {
     ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x0, y0, 6, H - y0); ctx.fillRect(x1 - 6, y0, 6, H - y0);
+    // the broken stone walls of the pit: jagged ledges catching a little light near the top
+    ctx.fillStyle = 'rgba(160,110,60,0.35)'; ctx.beginPath();
+    for (const [ex, d] of [[x0, 1], [x1, -1]]) { ctx.moveTo(ex, y0); for (let k = 0; k <= 6; k++) ctx.lineTo(ex + d * (4 + (hash(Math.round(ex), k) % 7)), y0 + 8 + k * 14); ctx.lineTo(ex, y0 + 100); ctx.closePath(); }
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,160,0.12)'; ctx.fillRect(x0, y0, x1 - x0, 2);
     if (chasm) { ctx.fillStyle = 'rgba(255,170,80,0.08)'; ctx.fillRect(x0, H - 40, x1 - x0, 40); }
   }
 }

@@ -103,6 +103,16 @@ const pw33Cow = (v, x, y, s, rot) => {
       c.fillStyle = '#7a9256'; c.fillRect(0, 118, v.W, 64);
       for (let k = 0; k < 6; k++) { const x = ((k * 70 - t * 30) % 420 + 420) % 420 - 50; c.fillStyle = '#8a3a2a'; c.fillRect(x, 102, 20, 12); c.beginPath(); c.moveTo(x - 3, 102); c.lineTo(x + 10, 94); c.lineTo(x + 23, 102); c.fill(); }
       c.fillStyle = '#4a4a52'; c.fillRect(0, 128, v.W, 46);
+      // (art pass) the road: gravel shoulder lines, worn wheel tracks, tar-sealed cracks and patches that scroll with it
+      c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(0, 136, v.W, 6); c.fillRect(0, 160, v.W, 6);
+      c.fillStyle = '#e8e8e0'; c.fillRect(0, 130, v.W, 1.5); c.fillRect(0, 171, v.W, 1.5);
+      c.fillStyle = '#8a8a7a'; c.fillRect(0, 126, v.W, 2.5);
+      for (let k = 0; k < 6; k++) {
+        const x = ((k * 76 - t * 260) % 456 + 456) % 456 - 60, y = 134 + v.rand(k + 30) * 34;
+        c.fillStyle = 'rgba(30,30,36,0.5)'; c.fillRect(x, y, 26 + v.rand(k + 31) * 20, 7);
+        c.strokeStyle = 'rgba(20,20,24,0.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x + 40, y - 4); c.lineTo(x + 46, y + 2); c.lineTo(x + 44, y + 8); c.lineTo(x + 52, y + 12); c.stroke();
+      }
+      c.fillStyle = 'rgba(200,200,190,0.35)'; for (let k = 0; k < 40; k++) c.fillRect(((k * 23 - t * 260) % 920 + 920) % 920 / 2.3, 130 + v.rand(k + 80) * 42, 1.2, 1.2);
       c.fillStyle = '#f2e2a0'; for (let k = 0; k < 9; k++) { const x = ((k * 44 - t * 260) % 396 + 396) % 396 - 40; c.fillRect(x, 150, 22, 2.5); }
       // the tornado behind, on the left
       pw33Funnel(v, 26, 160, 150, 120, t, { foot: 14, lean: 20 });

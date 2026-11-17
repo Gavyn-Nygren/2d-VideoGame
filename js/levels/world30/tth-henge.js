@@ -929,26 +929,75 @@ function tthHengeRope(x0, y0, x1, y1, sag = 0, w = 3, col = TTHHENGEC.rope) {
   ctx.strokeStyle = C.ink; ctx.lineWidth = w + 2.5; ctx.stroke();
   ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke();
 }
-// a log roller seen end-on (the rollers lie across the track); the knot shows it rolling
+// a log roller seen end-on (the rollers lie across the track): (rich props pass 2) a ring of rough bark, a cut face
+// with growth rings, checks, a pith and a knot, painted once into a picture that turns with the log (so it is seen
+// to roll); the light on its rim and the outline are drawn over it, still, so the light stays put
 function tthHengeDrawLog(x, y, rot, gold, r = TTHHENGE.log.r) {
-  const Cc = TTHHENGEC;
-  ctx.fillStyle = gold ? C.goldDark : Cc.woodDk; circle(x, y, r); ctx.fill();
-  ctx.fillStyle = gold ? C.gold : Cc.wood; circle(x, y, r - 2.2); ctx.fill();
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(x, y, r); ctx.stroke();
-  ctx.strokeStyle = gold ? '#fff3c4' : Cc.woodLt; ctx.lineWidth = 1.5; circle(x, y, r * 0.46); ctx.stroke();
-  ctx.fillStyle = gold ? C.goldDark : Cc.woodDk; circle(x + Math.cos(rot) * r * 0.62, y + Math.sin(rot) * r * 0.62, 1.7); ctx.fill();
-}
-// a log carried over the head (seen from the side)
-function tthHengeDrawCarry(x, y, gold, face, tilt) {
-  const Cc = TTHHENGEC;
-  ctx.save(); ctx.translate(x, y); ctx.scale(face, 1); ctx.rotate(tilt);
-  ctx.fillStyle = gold ? C.gold : Cc.wood; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.2;
-  rr(-21, -8, 42, 16, 7); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = gold ? C.goldDark : Cc.woodDk; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(-14, -3); ctx.lineTo(4, -3); ctx.moveTo(-9, 3); ctx.lineTo(8, 3); ctx.stroke();
-  ctx.fillStyle = gold ? '#fff3c4' : Cc.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.ellipse(16, 0, 5, 7.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  const Cc = TTHHENGEC, dk = gold ? C.goldDark : Cc.woodDk, ol = mixHex(gold ? '#a8761c' : Cc.woodDk, '#1c1a36', 0.45);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+  TTA.pic('hgLog|' + (gold ? 1 : 0) + '|' + r, 2 * r + 8, 2 * r + 8, r + 4, r + 4, () => tthHengePaintLogEnd(r, gold), 0, 0);
   ctx.restore();
+  ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(255,240,210,0.55)'; ctx.beginPath(); ctx.arc(x, y, r - 1.3, Math.PI * 1.05, Math.PI * 1.55); ctx.stroke();
+  ctx.strokeStyle = 'rgba(40,20,10,0.3)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r - 1.4, Math.PI * 0.05, Math.PI * 0.6); ctx.stroke();
+  ctx.strokeStyle = ol; ctx.lineWidth = 2; circle(x, y, r); ctx.stroke();
+  if (!gold) return;
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(x - r * 0.45, y - r * 0.45, 1.3); ctx.fill();
+  ctx.strokeStyle = dk; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x + r * 0.5, y - r - 3); ctx.lineTo(x + r * 0.5, y - r - 7); ctx.moveTo(x + r * 0.5 - 2, y - r - 5); ctx.lineTo(x + r * 0.5 + 2, y - r - 5); ctx.stroke();
+}
+function tthHengePaintLogEnd(r, gold) {
+  const Cc = TTHHENGEC, bark = gold ? C.goldDark : Cc.woodDk, face = gold ? C.gold : Cc.wood, lt = gold ? '#fff3c4' : Cc.woodLt;
+  // the bark: a dark ring with rough bumps round its edge
+  ctx.fillStyle = bark; ctx.beginPath();
+  for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2, rr2 = r * (0.97 + 0.05 * (k % 3 === 0 ? 1 : (k % 2 ? 0.4 : -0.2))); ctx.lineTo(Math.cos(a) * rr2, Math.sin(a) * rr2); }
+  ctx.closePath(); ctx.fill();
+  const g = ctx.createRadialGradient(-r * 0.2, -r * 0.2, r * 0.1, 0, 0, r - 2);
+  g.addColorStop(0, lt); g.addColorStop(0.55, face); g.addColorStop(1, mixHex(face, bark, 0.35));
+  ctx.fillStyle = g; circle(0, 0, r - 2.4); ctx.fill();
+  // growth rings, a little off centre
+  ctx.strokeStyle = TTA.rgba(bark, 0.45); ctx.lineWidth = 0.9;
+  for (const k of [0.3, 0.52, 0.72, 0.88]) { ctx.beginPath(); ctx.ellipse(0.8, 0.6, (r - 2.4) * k, (r - 2.4) * k * 0.94, 0.3, 0, Math.PI * 2); ctx.stroke(); }
+  // checks (drying cracks) out from the heart, and the pith
+  ctx.strokeStyle = TTA.rgba(bark, 0.85); ctx.lineWidth = 1.1; ctx.beginPath();
+  ctx.moveTo(0.8, 0.6); ctx.lineTo(r * 0.55, -r * 0.45); ctx.moveTo(0.8, 0.6); ctx.lineTo(-r * 0.2, r * 0.7); ctx.stroke();
+  ctx.fillStyle = bark; circle(0.8, 0.6, 1.4); ctx.fill();
+  // a knot near the rim (the mark that shows it rolling)
+  ctx.fillStyle = bark; ctx.beginPath(); ctx.ellipse(r * 0.62, 0, 2.2, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = TTA.rgba(bark, 0.5); ctx.lineWidth = 0.7; ctx.beginPath(); ctx.ellipse(r * 0.62, 0, 3.4, 2.6, 0, 0, Math.PI * 2); ctx.stroke();
+  // saw marks across the face
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 0.6; ctx.beginPath();
+  for (let k = -2; k <= 2; k++) { ctx.moveTo(-r * 0.6, k * r * 0.22 - 1); ctx.lineTo(r * 0.6, k * r * 0.22 + 1); }
+  ctx.stroke();
+}
+// a log carried over the head (seen from the side): (rich props pass 2) round shading, bark ridges with a knot, a
+// cut end with rings, painted once per colour and turned with the carrier
+function tthHengeDrawCarry(x, y, gold, face, tilt) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(face, 1); ctx.rotate(tilt);
+  TTA.pic('hgCarry|' + (gold ? 1 : 0), 52, 26, 26, 13, () => tthHengePaintCarry(gold), 0, 0);
+  ctx.restore();
+}
+function tthHengePaintCarry(gold) {
+  const Cc = TTHHENGEC, col = gold ? C.gold : Cc.wood, dk = gold ? C.goldDark : Cc.woodDk, lt = gold ? '#fff3c4' : Cc.woodLt, ol = mixHex(gold ? '#a8761c' : Cc.woodDk, '#1c1a36', 0.45);
+  rr(-21, -8, 42, 16, 7); ctx.fillStyle = col; ctx.fill();
+  ctx.save(); rr(-21, -8, 42, 16, 7); ctx.clip();
+  const g = ctx.createLinearGradient(0, -8, 0, 8);
+  g.addColorStop(0, 'rgba(255,240,210,0.4)'); g.addColorStop(0.35, 'rgba(255,240,210,0.04)'); g.addColorStop(1, 'rgba(50,25,10,0.38)');
+  ctx.fillStyle = g; ctx.fillRect(-22, -8, 44, 16);
+  ctx.strokeStyle = dk; ctx.lineWidth = 1.3; ctx.beginPath();
+  for (const [y0, s0, s1] of [[-4.5, -17, -2], [-4.2, 3, 12], [-0.5, -12, 6], [3, -18, -6], [3.4, -2, 10], [5.8, -9, 4]]) { ctx.moveTo(s0, y0); ctx.quadraticCurveTo((s0 + s1) / 2, y0 + 0.8, s1, y0 + 0.2); }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,240,210,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-15, -5.8); ctx.lineTo(-5, -6); ctx.moveTo(4, -5.6); ctx.lineTo(10, -5.8); ctx.stroke();
+  ctx.fillStyle = dk; ctx.beginPath(); ctx.ellipse(-6, 1.5, 2.6, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = TTA.rgba(dk, 0.5); ctx.lineWidth = 0.7; ctx.beginPath(); ctx.ellipse(-6, 1.5, 4.4, 2.8, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+  rr(-21, -8, 42, 16, 7); ctx.strokeStyle = ol; ctx.lineWidth = 2.2; ctx.stroke();
+  // the cut end: bark rim, rings, pith, a lit edge
+  ctx.fillStyle = dk; ctx.beginPath(); ctx.ellipse(16, 0, 5, 7.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = lt; ctx.beginPath(); ctx.ellipse(16, 0, 3.8, 6.1, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = TTA.rgba(dk, 0.55); ctx.lineWidth = 0.7;
+  for (const k of [0.4, 0.75]) { ctx.beginPath(); ctx.ellipse(16.2, 0.3, 3.8 * k, 6.1 * k, 0, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.fillStyle = dk; circle(16.2, 0.3, 0.8); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.ellipse(16, 0, 3.2, 5.4, 0, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
+  ctx.strokeStyle = ol; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(16, 0, 5, 7.5, 0, 0, Math.PI * 2); ctx.stroke();
 }
 function tthHengeStonePath(hw, hh) {
   ctx.beginPath();
@@ -957,26 +1006,61 @@ function tthHengeStonePath(hw, hh) {
   ctx.closePath();
 }
 // a great sarsen stone, centre (cx, cy), half-length hw, half-thickness hh; ang 0 lies flat, PI/2 stands up.
-// far: a paler stone of the circle in the background
+// far: a paler stone of the circle in the background. (rich props pass 2) Painted once per size and pose into a
+// picture on the old outline: light from the upper left whichever way it lies, the long shallow grooves the
+// builders' hammerstones left, pits and grit, two cracks with a lit lip, lichen in three colours (grey-green, white
+// crust, orange spots) and an outline in the stone's own dark shade; a far stone gets a softer version
 function tthHengeDrawStone(cx, cy, ang, hw, hh, far) {
-  const Cc = TTHHENGEC;
-  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang); ctx.lineJoin = 'round';
-  tthHengeStonePath(hw, hh);
-  ctx.fillStyle = far ? '#b4c0c4' : Cc.stone; ctx.fill();
-  ctx.save(); ctx.clip();
-  ctx.fillStyle = far ? '#cdd6d8' : Cc.stoneLt; ctx.fillRect(-hw, -hh, hw * 2, far ? 6 : 9);
-  ctx.fillStyle = far ? '#9eabb0' : Cc.stoneDk; ctx.fillRect(-hw, hh - (far ? 6 : 8), hw * 2, 9);
+  const stand = Math.abs(Math.sin(ang)) > 0.7 ? 1 : 0;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
+  TTA.pic('hgStone|' + hw + '|' + hh + '|' + (far ? 1 : 0) + '|' + stand, 2 * hw + 10, 2 * hh + 10, hw + 5, hh + 5, () => tthHengePaintStone(hw, hh, far, stand), 0, 0);
+  ctx.restore();
+}
+function tthHengePaintStone(hw, hh, far, stand) {
+  const Cc = TTHHENGEC, base = far ? '#b4c0c4' : Cc.stone, sd = (hw * 31 + hh * 7 + (far ? 5 : 0)) | 0;
+  // the light's direction in the stone's own frame: lying, the top is -y and the left -x; standing (turned a
+  // quarter), the top is -x and the left +y
+  const lx = stand ? -1 : -0.55, ly = stand ? 0.55 : -1;
+  ctx.lineJoin = 'round';
+  tthHengeStonePath(hw, hh); ctx.fillStyle = base; ctx.fill();
+  ctx.save(); tthHengeStonePath(hw, hh); ctx.clip();
+  const g = ctx.createLinearGradient(lx * hw * 0.8, ly * hh * (stand ? 1 : 1.2), -lx * hw * 0.8, -ly * hh * (stand ? 1 : 1.2));
+  g.addColorStop(0, far ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.3)'); g.addColorStop(0.45, 'rgba(255,255,255,0.02)'); g.addColorStop(1, far ? 'rgba(60,70,90,0.18)' : 'rgba(40,46,70,0.32)');
+  ctx.fillStyle = g; ctx.fillRect(-hw - 2, -hh - 2, 2 * hw + 4, 2 * hh + 4);
+  // a lit band along the edge that faces up and a shaded band along the one that faces down (as before)
+  const lit = far ? '#cdd6d8' : Cc.stoneLt, dkc = far ? '#9eabb0' : Cc.stoneDk;
+  ctx.globalAlpha = 0.85;
+  if (stand) { ctx.fillStyle = lit; ctx.fillRect(-hw, hh - (far ? 5 : 7), 2 * hw, 8); ctx.fillStyle = dkc; ctx.fillRect(-hw, -hh - 1, 2 * hw, far ? 6 : 8); ctx.fillStyle = lit; ctx.fillRect(-hw - 1, -hh, far ? 5 : 7, 2 * hh); }
+  else { ctx.fillStyle = lit; ctx.fillRect(-hw, -hh, hw * 2, far ? 6 : 9); ctx.fillStyle = dkc; ctx.fillRect(-hw, hh - (far ? 6 : 8), hw * 2, 9); }
+  ctx.globalAlpha = 1;
+  // the hammerstone dressing: long shallow grooves along the stone, each a dark line under a lit one
+  const ng = Math.max(2, Math.round(hh * 2 / 9));
+  for (let k = 0; k < ng; k++) {
+    const gy = -hh + (k + 0.7) * (2 * hh) / (ng + 0.4), x0 = -hw + 8 + TTA.u(sd, k) * hw * 0.5, x1 = hw - 8 - TTA.u(sd, k + 9) * hw * 0.5;
+    ctx.strokeStyle = far ? 'rgba(60,70,90,0.1)' : 'rgba(40,46,70,0.16)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x0, gy + 1); ctx.quadraticCurveTo((x0 + x1) / 2, gy + 2.2, x1, gy + 1.2); ctx.stroke();
+    ctx.strokeStyle = far ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0, gy - 0.5); ctx.quadraticCurveTo((x0 + x1) / 2, gy + 0.7, x1, gy - 0.3); ctx.stroke();
+  }
+  if (!far) TTA.craters(-hw, -hh, 2 * hw, 2 * hh, sd, { n: Math.max(4, Math.round(hw * hh / 260)), r: 1.4, rr: 3, dk: 'rgba(50,56,80,0.28)', grit: 120 });
+  else { ctx.fillStyle = 'rgba(60,70,90,0.16)'; ctx.beginPath(); for (let k = 0; k < Math.round(hw * hh / 40); k++) ctx.rect(-hw + TTA.u(sd, 200 + k) * 2 * hw, -hh + TTA.u(sd, 300 + k) * 2 * hh, 1.6, 1.6); ctx.fill(); }
+  // lichen: grey-green patches (the old spots), white crust and a few orange spots
+  const blob = (bx, by, r, col) => { ctx.fillStyle = col; ctx.beginPath(); for (let a = 0; a < 8; a++) { const an = a / 8 * Math.PI * 2, q = r * (0.7 + 0.45 * TTA.u(sd + (bx | 0), a)); ctx.lineTo(bx + Math.cos(an) * q, by + Math.sin(an) * q * 0.8); } ctx.closePath(); ctx.fill(); };
   if (!far) {
-    ctx.fillStyle = Cc.lichen; circle(-hw * 0.56, -hh * 0.2, 5.5); ctx.fill(); circle(-hw * 0.56 + 8, -hh * 0.05, 3.2); ctx.fill(); circle(hw * 0.42, hh * 0.3, 4.2); ctx.fill(); circle(hw * 0.74, -hh * 0.35, 2.6); ctx.fill();
+    for (const [bx, by, r] of [[-hw * 0.56, -hh * 0.2, 5.5], [-hw * 0.56 + 8, -hh * 0.05, 3.2], [hw * 0.42, hh * 0.3, 4.2], [hw * 0.74, -hh * 0.35, 2.6]]) { blob(bx, by, r + 1.2, 'rgba(120,140,60,0.35)'); blob(bx, by, r, Cc.lichen); ctx.fillStyle = 'rgba(255,255,200,0.4)'; circle(bx - r * 0.3, by - r * 0.3, r * 0.35); ctx.fill(); }
+    for (let k = 0; k < 4; k++) blob(-hw * 0.7 + TTA.u(sd, 40 + k) * hw * 1.4, -hh * 0.6 + TTA.u(sd, 50 + k) * hh * 1.2, 2 + TTA.u(sd, 60 + k) * 2.5, 'rgba(240,242,232,0.7)');
+    ctx.fillStyle = '#e8a03a'; for (let k = 0; k < 5; k++) { circle(-hw * 0.8 + TTA.u(sd, 70 + k) * hw * 1.6, -hh * 0.7 + TTA.u(sd, 80 + k) * hh * 1.4, 1 + TTA.u(sd, 90 + k) * 0.9); ctx.fill(); }
     ctx.fillStyle = Cc.stoneDk; circle(-hw * 0.2, hh * 0.25, 2.2); ctx.fill(); circle(hw * 0.12, -hh * 0.4, 1.8); ctx.fill(); circle(-hw * 0.8, hh * 0.35, 1.8); ctx.fill();
+  } else {
+    for (let k = 0; k < 3; k++) blob(-hw * 0.6 + TTA.u(sd, 40 + k) * hw * 1.2, -hh * 0.5 + TTA.u(sd, 50 + k) * hh, 2.5 + TTA.u(sd, 60 + k) * 2.5, 'rgba(170,190,110,0.45)');
   }
   ctx.restore();
-  if (!far) {
-    ctx.strokeStyle = Cc.stoneDk; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+  if (!far) {   // the two cracks, each with a lit lower lip
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(hw * 0.2 + 1, -hh + 4); ctx.lineTo(hw * 0.26 + 1, -hh * 0.3 + 1); ctx.lineTo(hw * 0.18 + 1, hh * 0.1 + 1); ctx.moveTo(-hw * 0.35 + 1, hh - 2); ctx.lineTo(-hw * 0.3 + 1, hh * 0.35 + 1); ctx.stroke();
+    ctx.strokeStyle = Cc.stoneDk; ctx.lineWidth = 1.8;
     ctx.beginPath(); ctx.moveTo(hw * 0.2, -hh + 3); ctx.lineTo(hw * 0.26, -hh * 0.3); ctx.lineTo(hw * 0.18, hh * 0.1); ctx.moveTo(-hw * 0.35, hh - 3); ctx.lineTo(-hw * 0.3, hh * 0.35); ctx.stroke();
   }
-  ctx.strokeStyle = far ? '#6f7f88' : C.ink; ctx.lineWidth = far ? 2 : 3; tthHengeStonePath(hw, hh); ctx.stroke();
-  ctx.restore();
+  ctx.strokeStyle = far ? '#6f7f88' : mixHex(Cc.stoneDk, '#1c1a36', 0.5); ctx.lineWidth = far ? 2 : 3; tthHengeStonePath(hw, hh); ctx.stroke();
 }
 function tthHengeDrawSheep(s, gy) {
   const t = s.t + s.k * 1.7, flee = s.s === 'flee', graze = s.s === 'graze';
@@ -1017,7 +1101,19 @@ function tthHengeGround(st, x0, x1, patch) {
   if (!patch) {
     band(30, 'rgba(120,100,60,0.12)', 38);
     for (let x = x0; x <= x1; x += 48) { const h = hash(x, 41), gy = tthHengeG(ph, x); ctx.fillStyle = h % 2 ? 'rgba(160,140,100,0.35)' : 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.ellipse(x + (h % 30), gy + 44 + (h >>> 6) % 44, 3 + h % 4, 2, 0, 0, Math.PI * 2); ctx.fill(); }
+    // (art pass) flint nodules in the chalk (dark, with a white rind and a glint), roots under the turf, a seam of chalk
+    for (let x = x0; x <= x1; x += 72) {
+      const h = hash(x, 43), gy = tthHengeG(ph, x), fx = x + h % 40, fy = gy + 56 + (h >>> 5) % 40, r = 4 + h % 4;
+      ctx.fillStyle = '#fffaf0'; ctx.beginPath(); ctx.ellipse(fx, fy, r * 1.5 + 1.5, r + 1.5, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4a4a58'; ctx.beginPath(); ctx.ellipse(fx, fy, r * 1.5, r, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#7a7a8a'; ctx.beginPath(); ctx.ellipse(fx - r * 0.4, fy - r * 0.3, r * 0.6, r * 0.3, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(70,50,30,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 20, gy + 18); ctx.quadraticCurveTo(x + 24, gy + 26, x + 18, gy + 34); ctx.moveTo(x + 22, gy + 24); ctx.lineTo(x + 28, gy + 30); ctx.stroke();
+    }
   }
+  // blades of grass along the top
+  ctx.strokeStyle = Cc.grassDk; ctx.lineWidth = 1.6; ctx.beginPath();
+  for (let x = x0; x < x1; x += 8) { const y = tthHengeG(ph, x); ctx.moveTo(x, y - 1); ctx.lineTo(x + 1.5 - hash(x, 47) % 3, y - 4 - hash(x, 48) % 5); }
+  ctx.stroke();
   ctx.beginPath();
   for (let x = x0; x <= x1; x += step) { const y = tthHengeG(ph, x) + 3; if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
   ctx.strokeStyle = Cc.grassLt; ctx.lineWidth = 4; ctx.stroke();
@@ -1070,15 +1166,68 @@ function tthHengeDrawSky(st) {
   }
 }
 // two timber poles tied at the top (the builders' shear legs); the lintel ropes run over them
+// the builders' A-frame: (rich props pass 2) two tapering timber legs with bark ridges, knots and a lit edge, lashed
+// with turns of rope where they cross, the cross rope, and a little heap of chalk at each foot; painted once into a
+// picture per height (its outline is the old one: two 11 px strokes)
 function tthHengePole(x, gy, top) {
-  const Cc = TTHHENGEC;
-  ctx.lineCap = 'round';
+  const hgt = Math.round(gy - top);
+  TTA.pic('hgPole|' + hgt, 96, hgt + 40, 48, hgt + 22, () => tthHengePaintPole(hgt), x, gy);
+}
+function tthHengePaintPole(hgt) {
+  const Cc = TTHHENGEC, ol = mixHex(Cc.woodDk, '#1c1a36', 0.5), top = -hgt;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   for (const dx of [-30, 30]) {
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 11; ctx.beginPath(); ctx.moveTo(x + dx, gy + 2); ctx.lineTo(x - dx * 0.12, top - 14); ctx.stroke();
-    ctx.strokeStyle = dx < 0 ? Cc.woodDk : Cc.wood; ctx.lineWidth = 7; ctx.stroke();
+    const x0 = dx, y0 = 2, x1 = -dx * 0.12, y1 = top - 14, L = Math.hypot(x1 - x0, y1 - y0), a = Math.atan2(y1 - y0, x1 - x0);
+    ctx.save(); ctx.translate(x0, y0); ctx.rotate(a);
+    // (local frame: the leg runs along +x from its foot, 11 px thick at the foot and 9 at the top)
+    const leg = () => { ctx.beginPath(); ctx.moveTo(0, -5.5); ctx.lineTo(L, -4.5); ctx.arc(L, 0, 4.5, -Math.PI / 2, Math.PI / 2); ctx.lineTo(0, 5.5); ctx.arc(0, 0, 5.5, Math.PI / 2, Math.PI * 1.5); ctx.closePath(); };
+    leg(); ctx.fillStyle = ol; ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(L, -3.2); ctx.lineTo(L, 3.2); ctx.lineTo(0, 4); ctx.closePath(); ctx.clip();
+    const lit = dx < 0 ? 1 : -1;
+    ctx.fillStyle = dx < 0 ? Cc.woodDk : Cc.wood; ctx.fillRect(-2, -5, L + 4, 10);
+    ctx.fillStyle = 'rgba(255,236,200,0.35)'; ctx.fillRect(-2, lit > 0 ? 1.6 : -4.2, L + 4, 2.4);
+    ctx.fillStyle = 'rgba(40,20,10,0.25)'; ctx.fillRect(-2, lit > 0 ? -4.2 : 1.8, L + 4, 2.4);
+    ctx.strokeStyle = TTA.rgba(Cc.woodDk, 0.9); ctx.lineWidth = 0.9; ctx.beginPath();
+    for (let k = 0; k < Math.floor(L / 16); k++) { const sx = 6 + k * 16 + (hash(k, dx + 40) % 7), yy = ((hash(dx + 40, k) % 5) - 2) * 0.9; ctx.moveTo(sx, yy); ctx.lineTo(sx + 9 + hash(k, 3) % 6, yy + 0.4); }
+    ctx.stroke();
+    for (const kx of [L * 0.32, L * 0.7]) { ctx.fillStyle = Cc.woodDk; ctx.beginPath(); ctx.ellipse(kx, 0, 2.6, 1.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,236,200,0.4)'; ctx.beginPath(); ctx.ellipse(kx - 0.8, -0.8, 1.2, 0.5, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+    // the cut top: end grain
+    ctx.fillStyle = Cc.woodLt; ctx.beginPath(); ctx.ellipse(L + 0.5, 0, 2.2, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = TTA.rgba(Cc.woodDk, 0.6); ctx.lineWidth = 0.6; ctx.beginPath(); ctx.ellipse(L + 0.5, 0, 1.2, 2, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    // a heap of chalk round its foot
+    ctx.fillStyle = Cc.chalk; ctx.strokeStyle = mixHex(Cc.chalk, '#6a5a40', 0.5); ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(dx - 13, 3); ctx.quadraticCurveTo(dx - 6, -6, dx, -5); ctx.quadraticCurveTo(dx + 7, -6, dx + 13, 3); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.ellipse(dx - 4, -3.2, 4, 1.2, -0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#9a9a92'; circle(dx + 6, -1, 1.4); ctx.fill();
   }
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(x - 6, top + 2); ctx.lineTo(x + 6, top + 2); ctx.stroke();
+  // the lashing where the legs cross: turns of rope, each with an outline and a lit twist
+  const cy = 2 + (top - 16) * (30 / 33.6);
+  for (let k = -2; k <= 2; k++) {
+    const yy = cy + k * 3.2;
+    ctx.strokeStyle = TTA.rgba(Cc.ropeDk, 1); ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(-7, yy - 2); ctx.lineTo(7, yy + 2); ctx.stroke();
+    ctx.strokeStyle = Cc.rope; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(-4, yy - 1.6); ctx.lineTo(-1, yy - 0.7); ctx.stroke();
+  }
+  // the cross rope between the legs (as before: ink under rope colour)
+  ctx.strokeStyle = ol; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(-6, top + 2); ctx.lineTo(6, top + 2); ctx.stroke();
   ctx.strokeStyle = Cc.rope; ctx.lineWidth = 5; ctx.stroke();
+  ctx.strokeStyle = TTA.rgba(Cc.ropeDk, 0.8); ctx.lineWidth = 0.8; ctx.beginPath();
+  for (let k = -5; k <= 5; k += 2.5) { ctx.moveTo(k - 1, top - 0.4); ctx.lineTo(k + 1, top + 4.4); }
+  ctx.stroke();
+}
+// one timber of the crib that props the lintel (rich props pass 2): grain, a knot, end grain and an outline in the
+// wood's dark shade, painted once per tone into a picture (the same 40 x 12 box as before)
+function tthHengeCribBeam(x, y, n) {
+  TTA.pic('hgCrib|' + (n % 4), 46, 18, 3, 3, () => {
+    const Cc = TTHHENGEC, col = n % 2 ? Cc.wood : Cc.woodLt;
+    rr(0, 0, 40, 12, 4); ctx.fillStyle = col; ctx.fill();
+    ctx.save(); rr(0, 0, 40, 12, 4); ctx.clip(); TTA.wood(0, 0, 40, 12, 31 + n % 4, col, { nails: true }); ctx.restore();
+    ctx.strokeStyle = TTA.rgba(Cc.woodDk, 0.6); ctx.lineWidth = 0.7;
+    for (const ex of [3, 37]) { ctx.beginPath(); ctx.ellipse(ex, 6, 1.6, 3.6, 0, 0, Math.PI * 2); ctx.stroke(); }
+    rr(0, 0, 40, 12, 4); ctx.strokeStyle = mixHex(Cc.woodDk, '#1c1a36', 0.45); ctx.lineWidth = 2; ctx.stroke();
+  }, x, y);
 }
 function tthHengeDrawBack(st) {
   const ph = st.ph, K = TTHHENGE, Cc = TTHHENGEC, cam = st.cam, S = ph.stone, t = G.clock, B = ph.brook, F = ph.fin;
@@ -1097,6 +1246,7 @@ function tthHengeDrawBack(st) {
     ctx.strokeStyle = C.ink; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(250, gy); ctx.lineTo(250, gy - 96); ctx.stroke(); ctx.strokeStyle = Cc.woodDk; ctx.lineWidth = 5; ctx.stroke();
     ctx.fillStyle = Cc.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(214, gy - 124); ctx.lineTo(280, gy - 124); ctx.lineTo(298, gy - 106); ctx.lineTo(280, gy - 88); ctx.lineTo(214, gy - 88); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.clip(); TTA.wood(214, gy - 124, 84, 36, 251, Cc.woodLt, { nails: true }); ctx.restore();
     ctx.fillStyle = Cc.stoneDk; ctx.fillRect(228, gy - 114, 7, 19); ctx.fillRect(246, gy - 114, 7, 19); ctx.fillRect(224, gy - 119, 33, 7);
     ctx.strokeStyle = Cc.woodDk; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(264, gy - 106); ctx.lineTo(284, gy - 106); ctx.moveTo(277, gy - 113); ctx.lineTo(284, gy - 106); ctx.lineTo(277, gy - 99); ctx.stroke();
   }
@@ -1170,6 +1320,12 @@ function tthHengeDrawBack(st) {
     if (!see(x)) continue;
     const gy = tthHengeBase(x), up = ph.leg > i;
     ctx.strokeStyle = C.ink; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(x, gy + 2); ctx.lineTo(x, gy - 112); ctx.stroke(); ctx.strokeStyle = Cc.wood; ctx.lineWidth = 6; ctx.stroke();
+    // (rich props pass 2) a lit side, a shaded side and bark ridges on the post
+    ctx.fillStyle = 'rgba(255,240,210,0.4)'; ctx.fillRect(x - 3, gy - 112, 1.4, 113);
+    ctx.fillStyle = 'rgba(40,20,10,0.28)'; ctx.fillRect(x + 1.4, gy - 112, 1.6, 113);
+    ctx.strokeStyle = TTA.rgba(Cc.woodDk, 0.8); ctx.lineWidth = 0.9; ctx.beginPath();
+    for (let k = 0; k < 7; k++) { const yy = gy - 104 + k * 15 + (hash(k, i + 3) % 6); ctx.moveTo(x - 1 + (k % 2), yy); ctx.lineTo(x - 0.5 + (k % 2), yy + 7); }
+    ctx.stroke();
     ctx.strokeStyle = Cc.rope; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 4, gy - 30); ctx.lineTo(x + 4, gy - 26); ctx.moveTo(x - 4, gy - 22); ctx.lineTo(x + 4, gy - 18); ctx.stroke();
     const fy = up ? gy - 110 : gy - 70, wv = Math.sin(t * 5 + i) * 4;
     ctx.fillStyle = up ? C.gold : '#ffffff'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
@@ -1185,7 +1341,17 @@ function tthHengeDrawBack(st) {
     ctx.save(); ctx.translate(x, gy + 1);
     if (!c.up) ctx.globalAlpha = 0.45; else ctx.scale(1, 0.4 + 0.6 * k + Math.sin(k * Math.PI) * 0.3);
     ctx.fillStyle = gold ? C.gold : Cc.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-26, 0); ctx.lineTo(0, c.up ? -19 : -7); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-26, 0); ctx.lineTo(0, c.up ? -19 : -7); ctx.closePath(); ctx.fill();
+    // (rich props pass 2) grain along the wedge, a lit slope, a shaded back and end grain
+    ctx.save(); ctx.clip();
+    ctx.strokeStyle = TTA.rgba(gold ? C.goldDark : Cc.woodDk, 0.55); ctx.lineWidth = 1; ctx.beginPath();
+    for (const f of [0.25, 0.5, 0.75]) { const hy = (c.up ? -19 : -7) * f; ctx.moveTo(-24 * (1 - f) - 1, hy + 0.5); ctx.quadraticCurveTo(-12 * (1 - f), hy - 0.6, -1, hy + 0.3); }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(40,20,10,0.22)'; ctx.fillRect(-4, -20, 4, 21);
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-22, -1.6); ctx.lineTo(-2, c.up ? -17 : -6); ctx.stroke();
+    ctx.strokeStyle = mixHex(gold ? '#a8761c' : Cc.woodDk, '#1c1a36', 0.45); ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-26, 0); ctx.lineTo(0, c.up ? -19 : -7); ctx.closePath(); ctx.stroke();
     ctx.restore();
   }
   // the hole for the last stone, with its heap of dug-out chalk
@@ -1198,7 +1364,7 @@ function tthHengeDrawBack(st) {
     // the timber crib that props the lintel on its way up
     if (F.notch > 0) {
       const top = gyH - F.notch * (K.fin.upH - 4);
-      for (let y = gyH - 9, n = 0; y > top; y -= 13, n++) { ctx.fillStyle = n % 2 ? Cc.wood : Cc.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(XH + 75 - 22 + (n % 2) * 4, y - 6, 40, 12, 4); ctx.fill(); ctx.stroke(); }
+      for (let y = gyH - 9, n = 0; y > top; y -= 13, n++) tthHengeCribBeam(XH + 75 - 22 + (n % 2) * 4, y - 6, n);
     }
   }
 }
@@ -1251,7 +1417,7 @@ function tthHengeDraw(st) {
   // the lintel on its timber crib, the ropes over the poles and the two gold rings
   if (XH - 300 < cam.x + W && XH + 500 > cam.x) {
     const lb = gyH - 40 - F.lift * (K.fin.upH - 40), lt = lb - K.fin.linH, live = F.stage === 2;
-    if (F.notch <= 0) for (let y = gyH - 9, n = 0; y > gyH - 40; y -= 13, n++) { ctx.fillStyle = n % 2 ? Cc.wood : Cc.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(XH + 75 - 22 + (n % 2) * 4, y - 6, 40, 12, 4); ctx.fill(); ctx.stroke(); }
+    if (F.notch <= 0) for (let y = gyH - 9, n = 0; y > gyH - 40; y -= 13, n++) tthHengeCribBeam(XH + 75 - 22 + (n % 2) * 4, y - 6, n);
     tthHengeDrawStone(XH + 75, lb - K.fin.linH / 2, F.stage === 3 ? Math.sin(Math.min(1, F.t / 0.3) * Math.PI) * 0.012 : 0, K.fin.linW / 2, K.fin.linH / 2, false);
     for (let i = 0; i < 2; i++) {
       const ax = i ? XH + K.fin.gapX + 52 : XH - 52, ay = gyH - 254, rx = ph.rings[i].x, held = ph.P[0].rope === i || ph.P[1].rope === i;

@@ -299,6 +299,49 @@ const VIKING = (() => {
     }
     ctx.restore();
   };
+  // K.seaRock(x, y, s, o): a wet sea rock standing in the water, foot at (x, y), scale s (art pass, Nov 2026). o.tall
+  // (1.4) stretches it upward (the serpent's skerries). Faceted dark stone lit from the upper left, cracks, barnacles,
+  // a green weed line at the water, a wet sheen low down, a snow cap on top and foam round the foot. Cached per size.
+  K.seaRock = (x, y, s, o = {}) => {
+    const tall = o.tall || 1, ks = Math.round(s * 50) / 50;
+    K.pic('vkrock|' + ks + '|' + tall, 96 * ks, (64 * tall + 20) * ks, 48 * ks, (56 * tall + 10) * ks, () => { ctx.scale(ks, ks); paintSeaRock(tall); }, x, y);
+  };
+  function paintSeaRock(tall) {
+    const T = v => v * tall, R = n => H_(n * 1.7 + tall * 3.1);
+    const out = [[-34, 0], [-28, T(-22)], [-24, T(-40)], [-12, T(-50)], [-4, T(-56)], [8, T(-48)], [18, T(-38)], [26, T(-20)], [34, 0]];
+    const body = () => { ctx.beginPath(); ctx.moveTo(out[0][0], out[0][1]); for (const p of out) ctx.lineTo(p[0], p[1]); ctx.closePath(); };
+    ctx.fillStyle = 'rgba(8,24,40,0.3)'; ctx.beginPath(); ctx.ellipse(2, 3, 40, 6, 0, 0, TAU); ctx.fill();
+    const g = ctx.createLinearGradient(-30, T(-56), 30, 0); g.addColorStop(0, '#7a7f88'); g.addColorStop(0.5, '#5a5e66'); g.addColorStop(1, '#3a3e46');
+    ctx.fillStyle = g; body(); ctx.fill();
+    ctx.save(); body(); ctx.clip();
+    // facets: a lit plane up-left, a shadowed plane on the right, a mid ledge
+    ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.beginPath(); ctx.moveTo(-34, 0); ctx.lineTo(-24, T(-40)); ctx.lineTo(-4, T(-56)); ctx.lineTo(-8, T(-30)); ctx.lineTo(-20, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(20,22,28,0.35)'; ctx.beginPath(); ctx.moveTo(-4, T(-56)); ctx.lineTo(18, T(-38)); ctx.lineTo(34, 0); ctx.lineTo(4, 0); ctx.lineTo(-1, T(-30)); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(20,22,28,0.25)'; ctx.beginPath(); ctx.moveTo(-26, T(-24)); ctx.lineTo(-6, T(-20)); ctx.lineTo(-10, T(-17)); ctx.lineTo(-27, T(-20)); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(-26, T(-25), 18, 1.2);
+    // grain and quartz flecks
+    ctx.fillStyle = 'rgba(20,22,28,0.45)'; ctx.beginPath(); for (let k = 0; k < 70; k++) ctx.rect(-32 + R(k) * 64, T(-54) + R(k + 100) * T(54), 1.4, 1); ctx.fill();
+    ctx.fillStyle = 'rgba(230,236,240,0.5)'; ctx.beginPath(); for (let k = 0; k < 24; k++) ctx.rect(-30 + R(k + 300) * 60, T(-50) + R(k + 400) * T(48), 1, 1); ctx.fill();
+    // cracks
+    ctx.strokeStyle = 'rgba(24,26,32,0.65)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    ctx.moveTo(-18, T(-36)); ctx.lineTo(-12, T(-26)); ctx.lineTo(-14, T(-14)); ctx.moveTo(10, T(-34)); ctx.lineTo(16, T(-22)); ctx.lineTo(12, T(-10)); ctx.moveTo(16, T(-22)); ctx.lineTo(24, T(-16)); ctx.stroke();
+    ctx.strokeStyle = 'rgba(220,226,232,0.3)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-19, T(-37)); ctx.lineTo(-13, T(-27)); ctx.stroke();
+    // the wet band near the water: darker, with a sheen, weed and barnacles
+    ctx.fillStyle = 'rgba(16,30,40,0.35)'; ctx.fillRect(-36, -12, 72, 12);
+    ctx.fillStyle = 'rgba(200,230,240,0.22)'; ctx.fillRect(-30, -11, 50, 1.2);
+    ctx.fillStyle = '#3a5a3e'; ctx.beginPath(); ctx.moveTo(-36, 0); for (let k = 0; k <= 18; k++) { const wx = -36 + k * 4, wy = -5 - R(k + 500) * 4; ctx.quadraticCurveTo(wx - 1, wy - 2, wx + 2, wy); } ctx.lineTo(36, 0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,170,110,0.6)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let k = 0; k < 18; k += 2) { const wx = -34 + k * 4, wy = -5 - R(k + 500) * 4; ctx.moveTo(wx, wy); ctx.lineTo(wx + 1, wy + 4); } ctx.stroke();
+    for (let k = 0; k < 9; k++) { const bx = -26 + R(k + 600) * 50, by = -11 - R(k + 601) * 6, br = 0.8 + R(k + 602) * 0.7; ctx.fillStyle = 'rgba(180,176,160,0.8)'; circle(bx, by, br); ctx.fill(); ctx.fillStyle = 'rgba(70,68,60,0.8)'; circle(bx, by, br * 0.45); ctx.fill(); }
+    ctx.restore();
+    ctx.strokeStyle = '#2a2d34'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(out[0][0], out[0][1]); for (const p of out) ctx.lineTo(p[0], p[1]); ctx.stroke();
+    // snow on the top and lodged on the ledge
+    ctx.fillStyle = '#f2f6f8'; ctx.beginPath(); ctx.moveTo(-14, T(-48)); ctx.lineTo(-4, T(-56)); ctx.lineTo(8, T(-48)); ctx.lineTo(12, T(-45)); ctx.quadraticCurveTo(4, T(-47), 0, T(-43)); ctx.quadraticCurveTo(-6, T(-46), -14, T(-48)); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(160,190,210,0.8)'; ctx.fillRect(-8, T(-45), 10, 1);
+    ctx.fillStyle = '#e8f0f4'; ctx.beginPath(); ctx.ellipse(-17, T(-24.5), 8, 1.8, 0.05, Math.PI, 0); ctx.fill();
+    // foam at the foot
+    ctx.fillStyle = 'rgba(232,244,246,0.75)'; ctx.beginPath(); ctx.ellipse(0, 2, 40, 4.5, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; for (const fx of [-36, -22, 14, 34]) { circle(fx, 1 + (fx & 1), 1.5); ctx.fill(); }
+  }
   K.SHIELD_COLS = SHIELD_COLS;
 
   /* ---------- northern scenery ---------- */

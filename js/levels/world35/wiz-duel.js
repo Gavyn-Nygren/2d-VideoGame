@@ -204,13 +204,16 @@ function wizDuDrawBack(st) {
   wizScreen(st, () => wizDusk(t, 0, 0, { skyY: F }));
   // the courtyard: flagstones, the arches, the low wall, the fountain
   // flagstones: a lit coping row, then staggered stones getting darker towards the front
-  const fg = ctx.createLinearGradient(0, F, 0, H); fg.addColorStop(0, '#5a5470'); fg.addColorStop(1, '#3e3a52');
-  ctx.fillStyle = fg; ctx.fillRect(0, F, W, H - F);
-  ctx.fillStyle = '#6e6888'; for (let x = 0; x < W; x += 60) ctx.fillRect(x + 2, F + 4, 56, 10);
-  ctx.fillStyle = 'rgba(255,255,255,0.14)'; for (let x = 0; x < W; x += 60) ctx.fillRect(x + 2, F + 4, 56, 2);
-  ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath();
-  for (let y = F + 18, r = 0; y < H; y += 24 + r * 6, r++) { ctx.moveTo(0, y); ctx.lineTo(W, y); for (let x = (r % 2) * 45; x < W; x += 90 + r * 10) { ctx.moveTo(x, y); ctx.lineTo(x, Math.min(H, y + 24 + r * 6)); } }
-  ctx.stroke();
+  // (art pass) one cached picture: a coping row of dressed stones, then big flags with chips, cracks and specks,
+  // darker towards the front, moss in the joints
+  RICH.pic('wizdufloor|' + F, W, H - F, (c, w, h) => {
+    c.fillStyle = '#2e2a40'; c.fillRect(0, 0, w, h);
+    RICH.flags(c, 0, 2, w, 14, { col: '#6e6888', course: 14, len: 60, seed: 4 });
+    RICH.flags(c, 0, 17, w, h - 17, { col: '#5a5470', course: 27, len: 96, seed: 12, fade: 0.3 });
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, 16, w, 2);
+    c.fillStyle = 'rgba(110,160,110,0.45)'; for (let k = 0; k < 26; k++) { const x = RICH.r(77, k) * w, y = 20 + RICH.r(78, k) * (h - 24); c.beginPath(); c.ellipse(x, y, 3 + RICH.r(79, k) * 3, 1.2, 0, 0, Math.PI * 2); c.fill(); }
+    const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(20,16,40,0)'); g.addColorStop(1, 'rgba(20,16,40,0.35)'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  }, 0, F);
   // the cloister arches, with a lit rim and a dark inside
   for (let x = 40; x < W; x += 180) {
     ctx.fillStyle = '#3e3858'; ctx.beginPath(); ctx.moveTo(x, F); ctx.lineTo(x, F - 170); ctx.arc(x + 50, F - 170, 50, Math.PI, 0); ctx.lineTo(x + 100, F); ctx.closePath(); ctx.fill();
@@ -220,19 +223,36 @@ function wizDuDrawBack(st) {
   // the low wall: stone courses, a coping and a shadow on the flagstones
   const wx = K.mid - K.wallW / 2, wy = F - K.wallH;
   ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(K.mid, F + 4, K.wallW / 2 + 16, 6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = WIZC.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(wx, wy, K.wallW, K.wallH);
-  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(wx + 2, wy + 2, 6, K.wallH - 4); ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(wx + K.wallW - 8, wy + 2, 6, K.wallH - 4);
-  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5; ctx.beginPath();
-  for (let y = wy + 22, r = 0; y < F; y += 22, r++) { ctx.moveTo(wx, y); ctx.lineTo(wx + K.wallW, y); const jx = wx + K.wallW * (r % 2 ? 0.35 : 0.65); ctx.moveTo(jx, y - 22); ctx.lineTo(jx, y); }
-  ctx.stroke();
+  // (art pass) the low wall: dressed stone courses with moss along the top, a lit left and shaded right side (cached)
+  RICH.pic('wizduwall|' + K.wallW + '|' + K.wallH, K.wallW, K.wallH, (c, w, h) => {
+    RICH.stone(c, 0, 0, w, h, { col: WIZC.stone, course: 22, len: 40, seed: 31, edge: false, moss: '#4f7a5a' });
+    c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(2, 2, 6, h - 4); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(w - 8, 2, 6, h - 4);
+  }, wx, wy);
   ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.strokeRect(wx, wy, K.wallW, K.wallH);
-  ctx.fillStyle = '#7aa0d8'; rr(K.mid - 30, F - K.wallH - 14, 60, 16, 6); ctx.fill(); ctx.stroke();
+  // (art pass, 2nd look) the fountain basin: a carved stone bowl with a lit lip, a band of carving, water inside
+  // catching the moon, and a spout nozzle
+  RICH.pic('wizdubasin', 60, 16, (c, w, h) => {
+    RICH.rr(c, 0, 0, w, h, 6); c.save(); c.clip();
+    RICH.stone(c, 0, 0, w, h, { col: WIZC.stoneLt, course: 16, len: 20, seed: 51, edge: false, cracks: 0 });
+    c.fillStyle = '#5a8ac8'; RICH.rr(c, 4, 1.5, w - 8, 5, 2.5); c.fill(); c.fillStyle = 'rgba(220,240,255,0.8)'; c.fillRect(10, 2.5, 16, 1); c.fillRect(34, 3, 10, 1);
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, 0, w, 1.5); c.fillStyle = 'rgba(30,20,50,0.35)'; c.fillRect(0, 8, w, 1.2); c.fillRect(0, h - 3, w, 3);
+    c.fillStyle = 'rgba(30,20,50,0.3)'; for (let x = 6; x < w - 4; x += 8) { c.beginPath(); c.arc(x, 11.5, 2, 0, Math.PI); c.fill(); }
+    c.restore();
+  }, K.mid - 30, F - K.wallH - 14);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 3; rr(K.mid - 30, F - K.wallH - 14, 60, 16, 6); ctx.stroke();
+  ctx.fillStyle = '#c9a24a'; ctx.fillRect(K.mid - 3, F - K.wallH - 18, 6, 5); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(K.mid - 3, F - K.wallH - 18, 2, 5);
   if (ph.fount) { const g = ctx.createLinearGradient(0, K.fountain.y0 - 40, 0, F - K.wallH); g.addColorStop(0, 'rgba(200,230,255,0.4)'); g.addColorStop(1, 'rgba(120,170,240,0.85)'); ctx.fillStyle = g; ctx.fillRect(K.mid - 18, K.fountain.y0 - 40 + Math.sin(t * 9) * 4, 36, F - K.wallH - K.fountain.y0 + 40); }
   else if (ph.round === 1) { ctx.fillStyle = 'rgba(160,200,255,0.7)'; circle(K.mid, F - K.wallH - 18 + Math.sin(t * 9) * 3, 8); ctx.fill(); }
 }
 function wizDuDraw(st) {
   const ph = st.ph, K = WIZDUEL, F = K.floor, t = G.clock;
-  for (const s of ph.stones) { ctx.fillStyle = WIZC.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(s.x0, s.y0, s.x1 - s.x0, 16, 6); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(200,220,255,0.25)'; ctx.beginPath(); ctx.ellipse((s.x0 + s.x1) / 2, s.y0 + 30, (s.x1 - s.x0) / 3, 5, 0, 0, Math.PI * 2); ctx.fill(); }
+  // (art pass) the floating slabs: dressed stone with a glowing rune, roots and moss hanging under (cached per width)
+  for (const s of ph.stones) { RICH.pic('wizduslab|' + (s.x1 - s.x0), s.x1 - s.x0, 16, (c, w, h) => {
+      c.strokeStyle = 'rgba(90,120,80,0.8)'; c.lineWidth = 1.2; c.beginPath(); for (let k = 0; k < w / 14; k++) { const x = 8 + RICH.r(w + 5, k) * (w - 16), l = 3 + RICH.r(w + 6, k) * 7; c.moveTo(x, h - 2); c.quadraticCurveTo(x + 2, h + l * 0.5, x - 1, h + l); } c.stroke();
+      RICH.stone(c, 0, 0, w, h, { col: WIZC.stone, course: 16, len: 34, seed: w, r: 6, edge: false, moss: '#5a8a62' });
+      c.strokeStyle = 'rgba(150,200,255,0.55)'; c.lineWidth = 1.2; const m = w / 2; c.beginPath(); c.moveTo(m - 6, 11); c.lineTo(m - 2, 5); c.lineTo(m + 2, 11); c.lineTo(m + 6, 5); c.stroke();
+    }, s.x0, s.y0, 10);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(s.x0, s.y0, s.x1 - s.x0, 16, 6); ctx.stroke(); ctx.fillStyle = 'rgba(200,220,255,0.25)'; ctx.beginPath(); ctx.ellipse((s.x0 + s.x1) / 2, s.y0 + 30, (s.x1 - s.x0) / 3, 5, 0, 0, Math.PI * 2); ctx.fill(); }
   for (const tk of ph.tokens) { const sp = WIZ_SPELLS[tk.kind === 'size' ? 'size' : tk.kind], bob = Math.sin(t * 4 + tk.x) * 4; ctx.save(); ctx.globalAlpha = tk.life < 2 ? 0.5 + 0.5 * Math.sin(t * 14) : 1; ctx.fillStyle = sp.col; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(tk.x, tk.y + bob, 12); ctx.fill(); ctx.stroke(); text(sp.name[0], tk.x, tk.y + bob + 5, 13, C.ink, 'center'); ctx.restore(); }
   // the thunderpuff in the background (round 3) and its sneeze line
   if (ph.round >= 2) {

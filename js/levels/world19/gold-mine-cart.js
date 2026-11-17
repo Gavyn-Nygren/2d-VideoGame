@@ -749,6 +749,34 @@ function minecartStarPath(x, y, ro, ri, rot) {
   ctx.closePath();
 }
 // the far cavern wall (parallax), with gold veins, crystals or a river glow
+// ---------- rich still art (cached; dkPic and the dk* kit live in world18/runaway-ship.js) ----------
+// a world-anchored grit texture for cave rock (light and dark specks, chips and hairline cracks; tints any rock colour)
+let minecartGritPat = null;
+function minecartGrit() {
+  if (minecartGritPat && (typeof minecartGritPat === 'string' || minecartGritPat.sc === canvas.width)) return dkPatAlign(minecartGritPat);   // (built at the canvas scale; dkPatAlign maps it 1:1 to pixels)
+  const S = Math.max(1, Math.min(3, canvas.width / W)), n = 256, cv = document.createElement('canvas'); cv.width = cv.height = Math.round(n * S);
+  const c = cv.getContext('2d'); c.scale(cv.width / n, cv.width / n);
+  for (let i = 0; i < 1000; i++) { const hh = hash(i, 5151), x = hh % n, y = (hh >>> 8) % n; c.fillStyle = hh % 4 === 0 ? 'rgba(255,220,170,0.16)' : 'rgba(0,0,0,0.22)'; c.fillRect(x, y, hh % 6 === 0 ? 2 : 1, 1); }
+  for (let i = 0; i < 46; i++) {
+    const hh = hash(i, 5152), x = hh % n, y = (hh >>> 8) % n, r = 2 + (hh >>> 4) % 3;
+    c.fillStyle = 'rgba(0,0,0,0.2)'; c.beginPath(); c.moveTo(x - r, y); c.lineTo(x - r * 0.3, y - r * 0.8); c.lineTo(x + r, y - r * 0.4); c.lineTo(x + r * 0.6, y + r * 0.6); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,220,170,0.18)'; c.fillRect(x - r * 0.6, y - r * 0.6, r, 0.9);
+  }
+  c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 0.9; c.beginPath();
+  for (let i = 0; i < 14; i++) { const hh = hash(i, 5153); let x = hh % n, y = (hh >>> 8) % n; c.moveTo(x, y); for (let k = 0; k < 4; k++) { x += (hash(i, k) % 9) - 4; y += 3 + hash(k, i) % 5; c.lineTo(x, y); } }
+  c.stroke();
+  try { minecartGritPat = ctx.createPattern(cv, 'repeat'); minecartGritPat.setTransform(new DOMMatrix().scale(n / cv.width)); minecartGritPat.sc = canvas.width; } catch (e) { minecartGritPat = 'rgba(0,0,0,0)'; }
+  return dkPatAlign(minecartGritPat);
+}
+function minecartStone(x, y, v, col) {
+  const r = 3 + (v % 4);
+  dkPic('mcStone|' + v + '|' + col, r * 2 + 8, r * 2 + 8, r + 3, r + 3, c => dkCobble(c, 0, 0, r * 1.3, r, dkMix(col, v % 2 ? '#ffffff' : '#000000', 0.12 + (v % 3) * 0.05), 700 + v), x, y);
+}
+// a trestle post with iron bands; a diagonal brace
+function minecartPaintPost(c) {
+  dkPlank(c, -4, 0, 8, 260, '#4a2e18', 31, { vert: true, r: 1, lit: 0.18, lw: 0.8 });
+  for (const yy of [6, 70, 150]) { c.fillStyle = '#4a4f5c'; c.fillRect(-5, yy, 10, 3); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(-5, yy, 10, 0.8); dkRivet(c, 0, yy + 1.5, 0.9, '#8a8fa0'); }
+}
 function minecartDrawBack(st) {
   const lk = MINECART_LOOKS[st.look] || MINECART_LOOKS.lantern, cam = st.cam, t = G.clock;
   const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -815,6 +843,7 @@ function minecartDrawCavern(st) {
   ctx.beginPath(); ctx.moveTo(x0, cam.y - 10);
   for (let x = Math.floor(x0 / 20) * 20; x <= xin + 20; x += 20) ctx.lineTo(x, minecartBase(st, x) - 268 + Math.sin(x / 57) * 10 + Math.sin(x / 23) * 4);
   ctx.lineTo(xin + 20, cam.y - 10); ctx.closePath(); ctx.fill();
+  dkPatFill(minecartGrit());
   for (let k = Math.floor(x0 / 140); k <= xin / 140; k++) {
     const x = k * 140 + 40 * minecartHash(k), y = minecartBase(st, x) - 268 + Math.sin(x / 57) * 10;
     const tip = y + 18 + 14 * minecartHash(k + 5);
@@ -832,13 +861,25 @@ function minecartDrawCavern(st) {
   ctx.beginPath(); ctx.moveTo(x0, cam.y + H + 10);
   for (let x = Math.floor(x0 / 16) * 16; x <= xin + 16; x += 16) ctx.lineTo(x, floorY(x));
   ctx.lineTo(xin + 16, cam.y + H + 10); ctx.closePath(); ctx.fill();
+  dkPatFill(minecartGrit());
+  // rock strata under the floor: darker bands with a lit lower lip
+  for (const [dy, th] of [[30, 8], [70, 12]]) {
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath();
+    for (let x = Math.floor(x0 / 16) * 16; x <= xin + 16; x += 16) ctx.lineTo(x, floorY(x) + dy + Math.sin(x / 41) * 3);
+    for (let x = Math.floor((xin + 16) / 16) * 16; x >= Math.floor(x0 / 16) * 16; x -= 16) ctx.lineTo(x, floorY(x) + dy + th + Math.sin(x / 29) * 3);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,215,160,0.14)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let x = Math.floor(x0 / 16) * 16; x <= xin + 16; x += 16) ctx.lineTo(x, floorY(x) + dy + th + 1.5 + Math.sin(x / 29) * 3);
+    ctx.stroke();
+  }
   ctx.strokeStyle = 'rgba(232,194,122,0.55)'; ctx.lineWidth = 3; ctx.beginPath();
   for (let x = Math.floor(x0 / 16) * 16; x <= xin + 16; x += 16) ctx.lineTo(x, floorY(x));
   ctx.stroke();
-  // pebbles and gold flecks in the floor
+  // shaded stones and gold flecks in the floor
   for (let k = Math.floor(x0 / 46); k <= xin / 46; k++) {
-    const h = hash(k, 313), x = k * 46 + (h % 30), y = floorY(x) + 12 + (h >> 5) % 40;
-    ctx.fillStyle = h % 7 === 0 ? 'rgba(255,207,74,0.75)' : 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(x, y, 2 + (h >> 9) % 3, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+    const h = hash(k, 313), x = k * 46 + (h % 30), y = floorY(x) + 12 + (h >>> 5) % 40;
+    if (h % 7 === 0) { ctx.fillStyle = 'rgba(255,207,74,0.85)'; ctx.beginPath(); ctx.ellipse(x, y, 2 + (h >>> 9) % 3, 1.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,250,210,0.9)'; ctx.fillRect(x - 1, y - 1, 1, 1); }
+    else minecartStone(x, y, (h >>> 9) % 8, lk.rock);
   }
   if (st.look === 'river') {
     // the underground river along the floor
@@ -855,9 +896,15 @@ function minecartDrawCavern(st) {
     if (st.look === 'river') continue;
     ctx.save(); ctx.translate(x, y);
     ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(2, 1, 20, 4, 0, 0, Math.PI * 2); ctx.fill();
-    if (r < 0.3) { ctx.fillStyle = '#8a5a30'; rr(-16, -26, 32, 26, 3); ctx.fill(); ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 2; ctx.strokeRect(-16, -26, 32, 26); ctx.beginPath(); ctx.moveTo(-16, -26); ctx.lineTo(16, 0); ctx.moveTo(16, -26); ctx.lineTo(-16, 0); ctx.stroke(); }
-    else if (r < 0.55) { ctx.fillStyle = '#7a4a28'; rr(-13, -30, 26, 30, 7); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(4, -29, 8, 28); ctx.fillStyle = 'rgba(255,220,170,0.25)'; ctx.fillRect(-10, -29, 3, 28); ctx.fillStyle = '#4a2d18'; ctx.fillRect(-13, -24, 26, 3); ctx.fillRect(-13, -8, 26, 3); ctx.strokeStyle = '#3a2210'; ctx.lineWidth = 1.5; rr(-13, -30, 26, 30, 7); ctx.stroke(); }
-    else if (r < 0.75) { ctx.strokeStyle = '#7a5228'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(10, -26); ctx.stroke(); ctx.strokeStyle = '#9aa0ae'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(10, -18, 12, -2.3, -0.6); ctx.stroke(); }
+    if (r < 0.3) dkPic('mcCrate', 40, 34, 20, 30, c => dkCrate(c, -16, -26, 32, 26, '#8a5a30', 12, { noShadow: true }), 0, 0);
+    else if (r < 0.55) dkPic('mcBarrel', 34, 38, 17, 34, c => dkBarrel(c, -13, -30, 26, 30, '#7a4a28', 13, { noShadow: true, hoop: '#4a4f5c' }), 0, 0);
+    else if (r < 0.75) dkPic('mcPick', 44, 40, 20, 34, c => {
+      c.save(); c.translate(-14, 0); c.rotate(Math.atan2(-26, 24)); dkPlank(c, 0, -2, 36, 4, '#7a5228', 3, { r: 2, lit: 0.35, lw: 0.8 }); c.fillStyle = '#4a2e18'; c.fillRect(2, -2.2, 6, 4.4); c.restore();
+      c.lineCap = 'round'; c.strokeStyle = '#5a5e6c'; c.lineWidth = 5.5; c.beginPath(); c.arc(10, -18, 12, -2.3, -0.6); c.stroke();
+      c.strokeStyle = '#9aa0ae'; c.lineWidth = 3.5; c.beginPath(); c.arc(10, -18, 12, -2.3, -0.6); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1; c.beginPath(); c.arc(10, -18.8, 12.5, -2.1, -0.9); c.stroke(); c.lineCap = 'butt';
+      dkRivet(c, 10, -27, 1.6, '#6a6e7c');
+    }, 0, 0);
     else { for (let j = 0; j < 4; j++) { ctx.fillStyle = '#c99a1a'; circle(-10 + j * 7, -4 - (j % 2) * 4, 4.4); ctx.fill(); ctx.fillStyle = '#ffcf4a'; circle(-10.5 + j * 7, -4.5 - (j % 2) * 4, 3.6); ctx.fill(); ctx.fillStyle = '#fff3b0'; circle(-12 + j * 7, -6 - (j % 2) * 4, 1.2); ctx.fill(); } }
     ctx.restore();
   }
@@ -963,17 +1010,19 @@ function minecartDrawTracks(st) {
     for (let x = Math.ceil(a / 90) * 90; x < b; x += 90) {
       if (!exists(L.lane, L.fork, x) || gapAt(L.lane, L.fork, x)) continue;
       const y = minecartRail(st, L.lane, L.fork, x);
-      ctx.fillRect(x - 4, y + 8, 8, 260);
-      ctx.strokeStyle = 'rgba(59,36,20,0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 4, y + 30); ctx.lineTo(x + 86, y + 110); ctx.stroke();
+      ctx.save(); ctx.translate(x - 4, y + 30); ctx.rotate(Math.atan2(80, 90));
+      dkPic('mcBrace', 124, 8, 1, 4, c => dkPlank(c, 0, -1.8, 120, 3.6, '#4a2e18', 32, { r: 1, lit: 0.18, lw: 0.6 }), 0, 0);
+      ctx.restore();
+      dkPic('mcPost', 12, 262, 6, 0, minecartPaintPost, x, y + 8);
     }
     // ties (sleepers) and the rail
     for (let x = Math.ceil(a / 24) * 24; x < b; x += 24) {
       if (!exists(L.lane, L.fork, x) || gapAt(L.lane, L.fork, x)) continue;
       const y = minecartRail(st, L.lane, L.fork, x);
-      ctx.fillStyle = '#7a4a28'; ctx.fillRect(x - 8, y + 1, 16, 8);
+      dkPic('mcTie', 22, 13, 9, 2, c => { c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(-7, 2, 17, 8); dkPlank(c, -8, 0, 16, 8, '#7a4a28', 33, { r: 1, lit: 0.25, lw: 0.8 }); dkNail(c, -4.5, 2, 1); dkNail(c, 4.5, 2, 1); }, x, y + 1);
     }
     ctx.lineCap = 'butt';
-    for (const [col, lw, dy] of [['#4a4f5c', 6, 0], ['#c9ced8', 2, -2]]) {
+    for (const [col, lw, dy] of [['#2a2d36', 3, 2], ['#4a4f5c', 6, 0], ['#c9ced8', 2, -2], ['rgba(255,255,255,0.6)', 0.7, -2.8]]) {
       ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath();
       let on = false;
       for (let x = Math.floor(a / 6) * 6; x <= b; x += 6) {
@@ -991,12 +1040,21 @@ function minecartDrawTracks(st) {
     const y = minecartRail(st, g.lane, g.fork, g.x0), mid = (g.x0 + g.x1) / 2;
     if (g.lane === 'd') {
       // the lower track runs near the floor: a soft sand pile
-      ctx.fillStyle = '#e8c27a'; ctx.beginPath(); ctx.ellipse(mid, y + 110, (g.x1 - g.x0) * 0.55, 22, 0, Math.PI, 0); ctx.fill();
-      ctx.fillStyle = '#d2a85c'; ctx.beginPath(); ctx.ellipse(mid, y + 110, (g.x1 - g.x0) * 0.55, 6, 0, 0, Math.PI); ctx.fill();
+      const pw = Math.round((g.x1 - g.x0) * 0.55);
+      dkPic('mcSand|' + pw, pw * 2 + 8, 34, pw + 4, 26, c => {
+        c.fillStyle = '#d2a85c'; c.beginPath(); c.ellipse(0, 0, pw, 22, 0, Math.PI, 0); c.fill();
+        c.save(); c.beginPath(); c.ellipse(0, 0, pw, 22, 0, Math.PI, 0); c.clip();
+        c.fillStyle = '#e8c27a'; c.beginPath(); c.ellipse(-pw * 0.2, 0, pw * 0.85, 21, 0, Math.PI, 0); c.fill();
+        c.fillStyle = '#f6dc9a'; c.beginPath(); c.ellipse(-pw * 0.25, -14, pw * 0.4, 5, 0, 0, Math.PI * 2); c.fill();
+        for (let i = 0; i < pw * 2; i++) { const hh = hash(i, 911); c.fillStyle = hh % 3 ? 'rgba(150,100,40,0.35)' : 'rgba(255,250,225,0.6)'; c.fillRect(-pw + hh % (pw * 2), -22 + (hh >>> 8) % 22, 1, 1); }
+        c.restore();
+        c.fillStyle = '#b8904c'; c.beginPath(); c.ellipse(0, 0, pw, 6, 0, 0, Math.PI); c.fill();
+        c.strokeStyle = 'rgba(120,80,30,0.5)'; c.lineWidth = 1; c.beginPath(); c.ellipse(0, 0, pw, 22, 0, Math.PI, 0); c.stroke();
+      }, mid, y + 110);
     } else {
       // a springy rope safety net strung between two posts
       const a0 = g.x0 - 40, a1 = g.x1 + 40, ny = y + 96, sag = 14;
-      ctx.fillStyle = '#5a3a1c'; ctx.fillRect(a0 - 4, y + 6, 8, 104); ctx.fillRect(a1 - 4, y + 6, 8, 104);
+      for (const px of [a0, a1]) dkPic('mcNetPost', 12, 106, 6, 0, c => { dkPlank(c, -4, 0, 8, 104, '#5a3a1c', 34, { vert: true, r: 1, nails: 2, lw: 0.8 }); c.fillStyle = '#e9d29a'; c.fillRect(-4.5, 66, 9, 3); c.fillRect(-4.5, 78, 9, 3); }, px, y + 6);
       const netY = u => ny - 22 + (22 + sag) * Math.sin(Math.PI * u);
       ctx.strokeStyle = 'rgba(233,210,154,0.9)'; ctx.lineWidth = 1.5;
       ctx.beginPath(); for (let k = 1; k < 10; k++) { const u = k / 10, xx = minecartLerp(a0, a1, u); ctx.moveTo(xx, netY(u) - 12); ctx.lineTo(xx, netY(u)); } ctx.stroke();
@@ -1022,7 +1080,7 @@ function minecartDrawSwitch(st, fk) {
   const x = fk.x0 - 30, y = minecartBase(st, x), passed = st.cart.fork === fk || st.cart.x > fk.x0;
   const dir = passed ? (fk.taken || minecartLeverLane(st)) : minecartLeverLane(st), up = dir === 'u';
   const glow = st.goldSigns && !passed;
-  ctx.fillStyle = '#5a3a1c'; ctx.fillRect(x - 3, y - 4, 6, 30);
+  dkPic('mcSwitchPost', 10, 32, 5, 5, c => { dkPlank(c, -3, -4, 6, 30, '#5a3a1c', 81, { vert: true, r: 1, lw: 0.7 }); c.fillStyle = '#4a4f5c'; c.fillRect(-4, 20, 8, 3); }, x, y);
   ctx.fillStyle = glow ? C.gold : '#3b3a55'; rr(x - 22, y + 24, 44, 14, 4); ctx.fill();
   // the round arrow disc
   ctx.fillStyle = '#fff3d6'; ctx.strokeStyle = glow ? C.gold : '#704622'; ctx.lineWidth = 3;
@@ -1036,13 +1094,21 @@ function minecartDrawSwitch(st, fk) {
 }
 function minecartDrawBuffer(st, fk) {
   const x = fk.deadEnd, y = minecartRail(st, fk.dead, fk, x);
-  ctx.fillStyle = '#e8c27a'; rr(x - 8, y - 46, 40, 46, 8); ctx.fill();
-  ctx.strokeStyle = '#b98f45'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 4; k++) { ctx.moveTo(x - 6, y - 40 + k * 11); ctx.lineTo(x + 30, y - 38 + k * 11); } ctx.stroke();
-  // the boarded X behind it
-  ctx.fillStyle = '#8a5a30'; ctx.save(); ctx.translate(x + 50, y - 60);
-  ctx.rotate(0.7); ctx.fillRect(-46, -7, 92, 14); ctx.rotate(-1.4); ctx.fillRect(-46, -7, 92, 14);
-  ctx.restore();
-  ctx.fillStyle = '#5a3a1c'; ctx.fillRect(x + 36, y - 130, 8, 130); ctx.fillRect(x + 60, y - 130, 8, 130);
+  // (cached) the boarded-up tunnel: two posts, a nailed X of planks, and a padded straw bale buffer in front
+  dkPic('mcBuffer', 126, 140, 14, 134, c => {
+    dkPlank(c, 36, -130, 8, 130, '#5a3a1c', 41, { vert: true, r: 1, lw: 0.8 }); dkPlank(c, 60, -130, 8, 130, '#5a3a1c', 42, { vert: true, r: 1, lw: 0.8 });
+    for (const a of [0.7, -0.7]) { c.save(); c.translate(50, -60); c.rotate(a); dkPlank(c, -46, -7, 92, 14, '#8a5a30', a > 0 ? 43 : 44, { r: 1, nails: true }); c.restore(); }
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(12, 0, 24, 3, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#e8c27a'; rrOn(c, -8, -46, 40, 46, 8); c.fill();
+    c.save(); rrOn(c, -8, -46, 40, 46, 8); c.clip();
+    c.lineCap = 'round';
+    for (let i = 0; i < 150; i++) { const hh = hash(i, 4242), sx = -8 + hh % 40, sy = -45 + (hh >>> 9) % 45, l = 3 + (hh >>> 5) % 5; c.strokeStyle = hh % 3 === 0 ? 'rgba(170,120,30,0.5)' : 'rgba(255,240,170,0.7)'; c.lineWidth = 1; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + l, sy + (((hh >>> 13) % 5) - 2) * 0.4); c.stroke(); }
+    c.lineCap = 'butt';
+    const g = c.createLinearGradient(-8, 0, 32, 0); g.addColorStop(0, 'rgba(255,240,200,0.2)'); g.addColorStop(1, 'rgba(120,80,20,0.35)'); c.fillStyle = g; c.fillRect(-8, -46, 40, 46);
+    c.restore();
+    for (const ty of [-34, -12]) { c.fillStyle = '#8a5a2a'; c.fillRect(-8, ty, 40, 2.4); c.fillStyle = 'rgba(255,220,160,0.5)'; c.fillRect(-8, ty, 40, 0.8); }
+    c.strokeStyle = '#a8812e'; c.lineWidth = 1.5; rrOn(c, -8, -46, 40, 46, 8); c.stroke();
+  }, x, y);
 }
 // the things along the tracks: signs, beams, rocks, waterfalls, gold, lanterns, flags, the station
 function minecartDrawThings(st) {
@@ -1105,7 +1171,7 @@ function minecartDrawSign(st, s) {
     return;
   }
   if (s.kind === 'slow') {
-    ctx.fillStyle = '#5a3a1c'; ctx.fillRect(x - 3, y - 120, 6, 120);
+    dkPost(x, y - 120, 6, 120, '#5a3a1c');
     ctx.fillStyle = '#ffcf4a'; ctx.strokeStyle = '#704622'; ctx.lineWidth = 3;
     ctx.save(); ctx.translate(x, y - 140); ctx.rotate(Math.PI / 4); rr(-26, -26, 52, 52, 6); ctx.fill(); ctx.stroke(); ctx.restore();
     text('SLOW', x, y - 146, 15, '#3a200c', 'center', 'body');
@@ -1172,11 +1238,17 @@ function minecartSignIcon(st, fk, ln, x, y) {
 function minecartDrawBeam(st, b) {
   const y = minecartRail(st, b.lane, b.fork, b.x), lift = b.hit ? minecartSmooth(clamp((G.time - b.hit) / 0.5, 0, 1)) : 0;
   const by = y - 54 - 16;
-  ctx.fillStyle = '#5a3a1c'; ctx.fillRect(b.x - 44, by - 200, 8, 200); ctx.fillRect(b.x + 36, by - 200, 8, 200);
+  for (const px of [b.x - 44, b.x + 36]) dkPic('mcBeamPost', 12, 202, 2, 202, c => { dkPlank(c, 0, -200, 8, 200, '#5a3a1c', 51, { vert: true, r: 1, lw: 0.8 }); for (const yy of [-190, -40]) { c.fillStyle = '#4a4f5c'; c.fillRect(-1, yy, 10, 3); dkRivet(c, 4, yy + 1.5, 0.9, '#8a8fa0'); } }, px, by);
   ctx.save(); ctx.translate(b.x - 40, by + 8); ctx.rotate(-lift * 1.3);
-  ctx.fillStyle = '#8a5a30'; rr(0, -8, 84, 18, 4); ctx.fill();
-  ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 2; rr(0, -8, 84, 18, 4); ctx.stroke();
-  ctx.fillStyle = '#ffcf4a'; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(10 + k * 20, 10); ctx.lineTo(18 + k * 20, -8); ctx.lineTo(24 + k * 20, -8); ctx.lineTo(16 + k * 20, 10); ctx.closePath(); ctx.fill(); }
+  dkPic('mcBeam', 90, 24, 3, 11, c => {
+    dkPlank(c, 0, -8, 84, 18, '#8a5a30', 52, { r: 4, lit: 0.3, outline: '#5a3a1c', lw: 2 });
+    c.save(); rrOn(c, 0, -8, 84, 18, 4); c.clip();
+    c.fillStyle = '#ffcf4a'; for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(10 + k * 20, 10); c.lineTo(18 + k * 20, -8); c.lineTo(24 + k * 20, -8); c.lineTo(16 + k * 20, 10); c.closePath(); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, -7, 84, 1.5); c.fillStyle = 'rgba(60,30,10,0.3)'; c.fillRect(0, 5, 84, 5);
+    c.restore();
+    for (const nx of [5, 79]) dkRivet(c, nx, 1, 1.6, '#9aa0ae');
+    c.strokeStyle = '#5a3a1c'; c.lineWidth = 2; rrOn(c, 0, -8, 84, 18, 4); c.stroke();
+  }, 0, 0);
   ctx.restore();
 }
 function minecartDrawRock(st, r) {
@@ -1184,9 +1256,21 @@ function minecartDrawRock(st, r) {
   if (r.gone) { const u = clamp((G.time - r.gone) / 0.9, 0, 1); x += u * 140; y += u * u * 160 - Math.sin(u * Math.PI) * 50; a = 1 - u; rot = u * 6; }
   if (a <= 0) return;
   ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y); ctx.rotate(rot);
-  ctx.fillStyle = '#8d7a6a'; ctx.strokeStyle = '#5a4a3e'; ctx.lineWidth = 2;
-  ctx.beginPath(); for (let k = 0; k < 8; k++) { const an = k / 8 * Math.PI * 2, rr2 = 18 * (0.85 + 0.15 * Math.sin(k * 2.7)); ctx.lineTo(Math.cos(an) * rr2, Math.sin(an) * rr2 * 0.9); } ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.2)'; circle(-6, -6, 5); ctx.fill();
+  // (cached) a boulder: lumpy outline, lit top-left facet, shaded underside, cracks, specks and a gold fleck
+  dkPic('mcRock', 46, 44, 23, 22, c => {
+    const pth = () => { c.beginPath(); for (let k = 0; k < 8; k++) { const an = k / 8 * Math.PI * 2, rr2 = 18 * (0.85 + 0.15 * Math.sin(k * 2.7)); c.lineTo(Math.cos(an) * rr2, Math.sin(an) * rr2 * 0.9); } c.closePath(); };
+    c.fillStyle = '#8d7a6a'; pth(); c.fill();
+    c.save(); pth(); c.clip();
+    c.fillStyle = '#6e5e50'; c.beginPath(); c.ellipse(6, 8, 18, 12, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#8d7a6a'; c.beginPath(); c.ellipse(-3, -2, 14, 12, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#a8968a'; c.beginPath(); c.moveTo(-14, -4); c.lineTo(-8, -14); c.lineTo(4, -15); c.lineTo(0, -4); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.beginPath(); c.ellipse(-7, -10, 5, 2.5, -0.4, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#4a3e34'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(0, -4); c.lineTo(4, 3); c.lineTo(2, 10); c.moveTo(4, 3); c.lineTo(11, 5); c.stroke();
+    for (let i = 0; i < 9; i++) { c.fillStyle = i % 3 ? 'rgba(30,20,10,0.35)' : 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(-12 + dkR(77, i) * 24, -10 + dkR(78, i) * 20, 0.8, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#ffcf4a'; c.beginPath(); c.arc(8, -6, 1.6, 0, Math.PI * 2); c.fill();
+    c.restore();
+    c.strokeStyle = '#5a4a3e'; c.lineWidth = 2; pth(); c.stroke();
+  }, 0, 0);
   ctx.restore();
 }
 function minecartDrawCurtain(st, w) {
@@ -1212,10 +1296,15 @@ function minecartDrawLantern(st, l) {
 }
 function minecartDrawStation(st) {
   const x = st.c.station.x, y = minecartBase(st, x);
-  ctx.fillStyle = '#8a5a30'; ctx.fillRect(x - 150, y + 10, 300, 14);
-  ctx.fillStyle = '#5a3a1c'; for (let k = 0; k < 6; k++) ctx.fillRect(x - 145 + k * 58, y + 24, 8, 60);
-  ctx.fillStyle = '#5a3a1c'; ctx.fillRect(x + 196, y - 150, 8, 160);
-  ctx.fillStyle = '#c98e57'; rr(x + 130, y - 196, 140, 48, 8); ctx.fill(); ctx.strokeStyle = '#704622'; ctx.lineWidth = 3; rr(x + 130, y - 196, 140, 48, 8); ctx.stroke();
+  dkPic('mcStation', 430, 290, 154, 200, c => {
+    for (let k = 0; k < 6; k++) dkPlank(c, -145 + k * 58, 24, 8, 60, '#5a3a1c', 60 + k, { vert: true, r: 0, lw: 0.8 });
+    c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(-148, 24, 296, 4);
+    dkPlank(c, -150, 10, 300, 14, '#8a5a30', 66, { r: 2, lit: 0.32 });
+    for (let px = -130; px < 150; px += 30) { c.fillStyle = 'rgba(60,30,10,0.45)'; c.fillRect(px, 11, 1, 12); dkNail(c, px - 3, 17, 0.9); dkNail(c, px + 3, 17, 0.9); }
+    dkPlank(c, 196, -150, 8, 160, '#5a3a1c', 67, { vert: true, r: 1, lw: 0.8 });
+    dkPlank(c, 130, -196, 140, 48, '#c98e57', 68, { r: 8, nails: true, lit: 0.4, outline: '#704622', lw: 3 });
+    c.fillStyle = '#4a4f5c'; c.fillRect(170, -150, 3, 6); c.fillRect(227, -150, 3, 6);
+  }, x, y);
   text('SWAP STOP', x + 200, y - 172, 20, '#3a200c', 'center');
   // Mabel naps by the station
   if (!st.mule) minecartMuleShape(x - 210, y + 10, 1, 'nap', G.clock);
@@ -1290,16 +1379,29 @@ function minecartDrawCart(st) {
   for (const s of [-1, 1]) {
     ctx.save(); ctx.translate(s * M.wheelX, -M.wheelR + 2); ctx.rotate(cart.spin);
     ctx.fillStyle = '#3b3a45'; circle(0, 0, M.wheelR); ctx.fill();
+    ctx.strokeStyle = '#5c6070'; ctx.lineWidth = 1.5; circle(0, 0, M.wheelR - 2); ctx.stroke();
     ctx.strokeStyle = '#8a8fa0'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 8, Math.sin(a) * 8); } ctx.stroke();
-    ctx.fillStyle = '#c9ced8'; circle(0, 0, 3); ctx.fill();
+    ctx.fillStyle = '#c9ced8'; circle(0, 0, 3); ctx.fill(); ctx.fillStyle = '#6a6e7c'; circle(0, 0, 1.2); ctx.fill();
+    ctx.rotate(-cart.spin); ctx.strokeStyle = 'rgba(230,230,240,0.55)'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.arc(0, 0, M.wheelR - 0.6, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
     ctx.restore();
   }
   // the body: a wooden tub, wider at the top, with iron bands and rivets
-  ctx.fillStyle = '#8a5a30'; ctx.strokeStyle = '#4a2d18'; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(-M.half, -40); ctx.lineTo(M.half, -40); ctx.lineTo(M.half - 8, -10); ctx.lineTo(-M.half + 8, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#a06a3a'; for (let k = 0; k < 3; k++) ctx.fillRect(-M.half + 4 + k * 1.5, -36 + k * 9, 2 * M.half - 8 - k * 3, 3);
-  ctx.fillStyle = '#5c6070'; ctx.fillRect(-M.half - 1, -42, 2 * M.half + 2, 5); ctx.fillRect(-M.half + 6, -16, 2 * M.half - 12, 4);
-  ctx.fillStyle = '#c9ced8'; for (let k = -3; k <= 3; k++) { circle(k * 12, -39.5, 1.5); ctx.fill(); }
+  // (cached) planked tub with grain, a shaded lower half, iron corner straps, rim and band with rivets, an axle box
+  dkPic('mcCart', 2 * M.half + 10, 40, M.half + 5, 45, c => {
+    const tub = () => { c.beginPath(); c.moveTo(-M.half, -40); c.lineTo(M.half, -40); c.lineTo(M.half - 8, -10); c.lineTo(-M.half + 8, -10); c.closePath(); };
+    c.fillStyle = '#8a5a30'; tub(); c.fill();
+    c.save(); tub(); c.clip();
+    dkBoards(c, -M.half, -40, 2 * M.half, 30, '#8a5a30', 71, { bw: 7.5, r: 0, outline: '#5a3a1c', lw: 0.8 });
+    const g = c.createLinearGradient(0, -40, 0, -10); g.addColorStop(0, 'rgba(255,230,190,0.15)'); g.addColorStop(1, 'rgba(30,10,0,0.35)'); c.fillStyle = g; c.fillRect(-M.half, -40, 2 * M.half, 30);
+    c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(M.half - 16, -40, 16, 30);
+    c.restore();
+    for (const s of [-1, 1]) { c.fillStyle = '#5c6070'; c.beginPath(); c.moveTo(s * M.half, -40); c.lineTo(s * (M.half - 8), -40); c.lineTo(s * (M.half - 14), -10); c.lineTo(s * (M.half - 8), -10); c.closePath(); c.fill(); dkRivet(c, s * (M.half - 7), -30, 1.2, '#c9ced8'); dkRivet(c, s * (M.half - 10), -18, 1.2, '#c9ced8'); }
+    dkPlate(c, -M.half - 1, -42, 2 * M.half + 2, 5, '#5c6070', { rivets: false, r: 1 });
+    dkPlate(c, -M.half + 6, -16, 2 * M.half - 12, 4, '#5c6070', { rivets: false, r: 1 });
+    for (let k = -3; k <= 3; k++) dkRivet(c, k * 12, -39.5, 1.5, '#c9ced8');
+    for (let k = -3; k <= 3; k++) dkRivet(c, k * 11 + 5, -14, 1, '#a9aeb8');
+    c.strokeStyle = '#4a2d18'; c.lineWidth = 2.5; tub(); c.stroke();
+  }, 0, 0);
   // a stripe in each rider's colour
   ctx.fillStyle = PCOL[st.rider]; ctx.fillRect(4, -28, 30, 5);
   ctx.fillStyle = PCOL[st.sw]; ctx.fillRect(-34, -28, 30, 5);

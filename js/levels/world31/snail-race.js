@@ -255,26 +255,9 @@
       else K.blade(x, y0 + SR.rowY[0] - 2, 90 + K.hash(i + 6) * 50, (K.hash(i + 7) - 0.5) * 40, { w: 14, col: 'rgba(80,160,70,0.8)', dark: false });
     }
     ctx.save(); ctx.translate(-Math.round(cx), y0);
-    // the 3 paths: a wide strip of packed earth with lines between
-    const top = SR.rowY[0] - 14, bot = SR.rowY[2] + 16;
-    ctx.fillStyle = '#9a7650'; ctx.fillRect(cx - 10, top, W + 20, bot - top);
-    ctx.fillStyle = '#6b4a32'; ctx.fillRect(cx - 10, bot, W + 20, (y1 - y0) - bot);
-    // packed earth: speckles and tiny stones, a slime trail shine, a grass fringe along both edges
-    for (let i = Math.floor((cx - 20) / 46); i <= Math.ceil((cx + W + 20) / 46); i++) {
-      const sx = i * 46 + K.hash(i + 61) * 40, sy = top + 6 + K.hash(i + 62) * (bot - top - 12);
-      ctx.fillStyle = K.hash(i + 63) < 0.5 ? 'rgba(70,46,26,0.35)' : 'rgba(255,236,200,0.18)';
-      ctx.beginPath(); ctx.ellipse(sx, sy, 2 + K.hash(i + 64) * 4, 1.5 + K.hash(i + 65) * 2, 0, 0, TAU); ctx.fill();
-      if (K.hash(i + 66) < 0.12) { ctx.fillStyle = '#b4aa9a'; ctx.beginPath(); ctx.ellipse(sx + 10, sy, 5, 3.5, 0, 0, TAU); ctx.fill(); }
-    }
-    ctx.fillStyle = '#5aa848';
-    for (let x = Math.floor((cx - 20) / 9) * 9; x < cx + W + 20; x += 9) {
-      const h1 = 6 + K.hash(x * 0.37) * 8, h2 = 5 + K.hash(x * 0.53) * 7;
-      ctx.beginPath(); ctx.moveTo(x, top + 2); ctx.lineTo(x + 3, top - h1); ctx.lineTo(x + 6, top + 2); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(x, bot + 2); ctx.lineTo(x + 3, bot - h2); ctx.lineTo(x + 6, bot + 2); ctx.fill();
-    }
-    ctx.strokeStyle = 'rgba(255,240,210,0.25)'; ctx.lineWidth = 2; ctx.setLineDash([14, 12]);
-    for (const r of [0.5, 1.5]) { const yy = SR.rowY[0] + r * (SR.rowY[1] - SR.rowY[0]); ctx.beginPath(); ctx.moveTo(cx - 10, yy); ctx.lineTo(cx + W + 10, yy); ctx.stroke(); }
-    ctx.setLineDash([]);
+    // the 3 paths: a wide strip of packed earth with lines between, the bank below (one picture, repeated along)
+    const top = SR.rowY[0] - 14, bot = SR.rowY[2] + 16, lh = y1 - y0;
+    for (let i = Math.floor((cx - 10) / 1024); i * 1024 < cx + W + 10; i++) K.pic('snailpath|' + lh, 1028, lh - top + 24, 0, 24, () => paintPath(bot - top, lh - top), i * 1024, top);
     // hills: a shaded tint and arrows
     for (const [a, b, s] of c.hills) {
       if (b < cx - 20 || a > cx + W + 20) continue;
@@ -294,7 +277,7 @@
         if (q.kind === 'bug' || q.row !== r || q.x > cx + W + 60 || q.x + q.w < cx - 60) continue;
         const yy = SR.rowY[r];
         if (q.kind === 'pebble') K.pebble(q.x + q.w / 2, yy + 3, q.w, 30, { seed: q.x });
-        else if (q.kind === 'puddle') { ctx.fillStyle = 'rgba(140,210,255,0.85)'; ctx.beginPath(); ctx.ellipse(q.x + q.w / 2, yy - 2, q.w / 2, 7, 0, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(q.x + q.w / 2 - 14, yy - 5, 16, 2); }
+        else if (q.kind === 'puddle') puddle(q.x + q.w / 2, yy - 2, q.w / 2, t);
         else if (q.kind === 'leaf') { if (!P.hit[q.i]) { K.leaf(q.x + q.w / 2, yy - 4, q.w + 10, -0.1, { col: '#8fd04a', curl: 0.5 }); } else K.leaf(q.x + q.w / 2, yy - 2, q.w * 0.5, 0, { col: '#8fd04a' }); }
       }
       // the snail on this path draws between the rows
@@ -309,6 +292,79 @@
     ctx.restore();
     // the lane's frame
     ctx.strokeStyle = PCOL[k]; ctx.lineWidth = 3; rr(6, y0, W - 12, y1 - y0, 14); ctx.stroke();
+  }
+  // the path strip (origin: its top left; bh: path height, gh: down to the lane's foot). Repeats every 1024 px, so
+  // everything near an end is drawn again one repeat over.
+  function paintPath(bh, gh) {
+    const P = 1024, R = n => K.hash(n * 1.31 + 0.77), wrap = (x, r, f) => { f(x); if (x - r < 4) f(x + P); if (x + r > P) f(x - P); };
+    // the bank below the path: darker soil with stones and roots
+    const bg = ctx.createLinearGradient(0, bh, 0, gh); bg.addColorStop(0, '#5a3c26'); bg.addColorStop(1, '#3e2818');
+    ctx.fillStyle = bg; ctx.fillRect(0, bh, P + 4, gh - bh);
+    for (let i = 0; i < 40; i++) { const x = R(i) * P, y = bh + 8 + R(i + 50) * (gh - bh - 10), r = 2 + R(i + 100) * 5; if (y + r > gh) continue; wrap(x, r, xx => K.stone(xx, y, r, r * 0.65, R(i + 150) * 3, ['#9a8a78', '#7a6a5a', '#a8806a', '#8a8a86'][i % 4], i)); }
+    ctx.strokeStyle = 'rgba(190,160,120,0.45)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 0; i < 40; i++) { const x0 = R(i + 200) * P, l = 8 + R(i + 201) * 20, d = (R(i + 202) - 0.5) * 10; wrap(x0, 12, x => { ctx.moveTo(x, bh + 4); ctx.quadraticCurveTo(x + d * 0.3, bh + 4 + l * 0.6, x + d, bh + 4 + l); }); }
+    ctx.stroke();
+    // the path: packed earth, lighter where the snails go, darker at its edges
+    const g = ctx.createLinearGradient(0, 0, 0, bh); g.addColorStop(0, '#8a6644'); g.addColorStop(0.15, '#a07a52'); g.addColorStop(0.5, '#a8845a'); g.addColorStop(0.85, '#9a7650'); g.addColorStop(1, '#7a5a3c');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, P + 4, bh);
+    // dried-mud cracks
+    ctx.strokeStyle = 'rgba(70,46,26,0.3)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 0; i < 26; i++) { const x0 = R(i + 300) * P, y = 6 + R(i + 301) * (bh - 12); wrap(x0, 30, x => { ctx.moveTo(x, y); ctx.lineTo(x + 8 + R(i + 302) * 8, y + (R(i + 303) - 0.5) * 8); ctx.lineTo(x + 18 + R(i + 304) * 10, y + (R(i + 305) - 0.5) * 10); ctx.moveTo(x + 8, y); ctx.lineTo(x + 6, y + 7); }); }
+    ctx.stroke();
+    // crumbs and grit in two tones
+    for (const [cs, n, sd] of [['rgba(70,46,26,0.42)', 360, 0], ['rgba(255,236,200,0.28)', 260, 1], ['rgba(120,90,60,0.5)', 140, 2]]) {
+      ctx.fillStyle = cs; ctx.beginPath();
+      for (let i = 0; i < n; i++) { const x0 = R(i * 3 + sd * 997) * P, y = 2 + R(i * 3 + sd * 997 + 1) * (bh - 4), r = 0.6 + R(i + sd * 31) * 1.6; wrap(x0, r, x => { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, TAU); }); }
+      ctx.fill();
+    }
+    // little stones pressed into the path, a twig bit and a dry leaf scrap here and there
+    for (let i = 0; i < 26; i++) { const x0 = R(i + 400) * P, y = 4 + R(i + 401) * (bh - 8), r = 1.6 + R(i + 402) * 3.2; wrap(x0, r, x => K.stone(x, y, r, r * 0.65, R(i + 403) * 3, ['#b4aa9a', '#c8b8a0', '#8a8078', '#a89070'][i % 4], i + 40)); }
+    for (let i = 0; i < 5; i++) {
+      const x0 = R(i + 500) * P, y = 6 + R(i + 501) * (bh - 12), a = (R(i + 502) - 0.5) * 1.2, l = 10 + R(i + 503) * 10;
+      wrap(x0, l, x => { ctx.strokeStyle = '#6a4a2c'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke(); ctx.strokeStyle = 'rgba(255,230,190,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x, y - 0.8); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l - 0.8); ctx.stroke(); ctx.lineCap = 'butt'; });
+    }
+    for (let i = 0; i < 4; i++) { const x0 = R(i + 600) * P, y = 8 + R(i + 601) * (bh - 16); wrap(x0, 10, x => K.leaf(x, y, 14, R(i + 602) * 3, { col: ['#c8a040', '#a8803a'][i % 2], curl: 0.15 })); }
+    // old shiny slime trails along the paths
+    ctx.strokeStyle = 'rgba(230,255,245,0.16)'; ctx.lineWidth = 3; ctx.beginPath();
+    for (let r = 0; r < 3; r++) { const y = SR.rowY[r] - SR.rowY[0] + 14; for (let i = 0; i < 4; i++) { const x0 = R(r * 9 + i + 700) * P, l = 80 + R(r * 9 + i + 701) * 140; wrap(x0, l, x => { ctx.moveTo(x, y); ctx.quadraticCurveTo(x + l / 2, y + (R(i + r) - 0.5) * 6, x + l, y); }); } }
+    ctx.stroke();
+    // the lines between the paths (dash pattern repeats exactly every 1024 px)
+    ctx.strokeStyle = 'rgba(255,240,210,0.28)'; ctx.lineWidth = 2; ctx.setLineDash([14, 11.6]);
+    for (const r of [0.5, 1.5]) { const yy = r * (SR.rowY[1] - SR.rowY[0]) + 14; ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(P + 4, yy); ctx.stroke(); }
+    ctx.setLineDash([]);
+    // the edges: a shadow under the top fringe, a lit lip at the bottom where the bank drops away
+    ctx.fillStyle = 'rgba(40,24,12,0.3)'; ctx.fillRect(0, 0, P + 4, 3);
+    ctx.fillStyle = 'rgba(255,236,200,0.35)'; ctx.fillRect(0, bh - 2, P + 4, 1.5);
+    ctx.fillStyle = 'rgba(30,16,8,0.45)'; ctx.fillRect(0, bh, P + 4, 4);
+    // grass fringes: a dark back row and a bright front row on both edges, lit tips, the odd clover
+    const N = P / 8;
+    for (const [y0, cs, hm, hv, sd] of [[2, '#3c8a36', 7, 9, 0], [2, '#5aa848', 5, 8, 1], [bh + 2, '#3c8a36', 6, 8, 2], [bh + 2, '#5aa848', 4, 7, 3]]) {
+      ctx.fillStyle = cs; ctx.beginPath();
+      for (let j = -2; j <= N + 2; j++) { const jj = ((j % N) + N) % N, x = j * 8 + sd * 2 + (R(jj + sd * 300 + 800) - 0.5) * 3, h = hm + R(jj + sd * 300 + 801) * hv, l = (R(jj + sd * 300 + 802) - 0.5) * 6; ctx.moveTo(x - 2.6, y0); ctx.quadraticCurveTo(x + l * 0.3 - 1, y0 - h * 0.6, x + l, y0 - h); ctx.quadraticCurveTo(x + l * 0.3 + 1, y0 - h * 0.6, x + 2.6, y0); }
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(190,240,150,0.7)'; ctx.lineWidth = 0.9; ctx.beginPath();
+    for (let j = -2; j <= N + 2; j += 2) { const jj = ((j % N) + N) % N, x = j * 8 + 2 + (R(jj + 1100) - 0.5) * 3, h = 5 + R(jj + 1101) * 8; ctx.moveTo(x, 1); ctx.lineTo(x + (R(jj + 1102) - 0.5) * 4, 1 - h); }
+    ctx.stroke();
+    for (let i = 0; i < 5; i++) {
+      const x0 = R(i + 1200) * P, yy = i % 2 ? bh - 6 : -6;
+      wrap(x0, 8, x => { ctx.fillStyle = '#4fa63e'; ctx.strokeStyle = '#2f7428'; ctx.lineWidth = 0.8; for (let j = 0; j < 3; j++) { const a = -Math.PI / 2 + (j - 1) * 2.1; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 3, yy + Math.sin(a) * 3, 2.8, 0, TAU); ctx.fill(); ctx.stroke(); } });
+    }
+  }
+  // a puddle: wet dark rim, water with the sky in it, a slow ripple and glints
+  function puddle(x, y, rx, t) {
+    ctx.fillStyle = 'rgba(60,40,22,0.45)'; ctx.beginPath(); ctx.ellipse(x, y + 1, rx + 5, 10, 0, 0, TAU); ctx.fill();
+    const g = ctx.createLinearGradient(0, y - 7, 0, y + 7); g.addColorStop(0, '#d8f0ff'); g.addColorStop(0.45, '#8cc8ec'); g.addColorStop(1, '#5a98c8');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, rx, 7, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,80,120,0.5)'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.save(); ctx.beginPath(); ctx.ellipse(x, y, rx, 7, 0, 0, TAU); ctx.clip();
+    ctx.fillStyle = 'rgba(80,150,70,0.35)'; for (let k = 0; k < 5; k++) { const bx = x - rx + 8 + k * rx * 0.45; ctx.beginPath(); ctx.moveTo(bx - 3, y - 7); ctx.lineTo(bx, y - 1); ctx.lineTo(bx + 3, y - 7); ctx.fill(); }
+    const u = reduceMotion ? 0.5 : (t * 0.6 + x * 0.01) % 1;
+    ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 * (1 - u)) + ')'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x + rx * 0.2, y + 1, 4 + u * rx * 0.6, 1 + u * 3.5, 0, 0, TAU); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; rr(x - rx * 0.5, y - 4, rx * 0.4, 1.8, 0.9); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; rr(x + rx * 0.15, y - 2.5, rx * 0.18, 1.4, 0.7); ctx.fill();
+    if (Math.sin(t * 2.5 + x) > 0.8) { ctx.fillStyle = '#ffffff'; K.star(x - rx * 0.3, y - 4, 3.5, 1.2, 0); ctx.fill(); }
   }
   function ladybug(x, y, t, f) {
     ctx.save(); ctx.translate(x, y);

@@ -806,6 +806,7 @@ function planethopDrawPlanet(st, q) {
   ctx.beginPath(); ctx.ellipse(x, y, r + wob, r - wob, 0, 0, Math.PI * 2); ctx.fill();
   ctx.save(); ctx.beginPath(); ctx.ellipse(x, y, r + wob, r - wob, 0, 0, Math.PI * 2); ctx.clip();
   if (q.kind === 'jelly') {
+    planethopSurface(q, x, y, r, base, dark, hi);
     // bubbles drifting up inside the jelly, and a shine
     for (let k = 0; k < 6; k++) {
       const bx = x + (planethopHash(q.seed, k) - 0.5) * r * 1.3, ph = ((G.clock * 0.25 + planethopHash(k, q.seed)) % 1), byy = y + r * 0.8 - ph * r * 1.6;
@@ -813,21 +814,9 @@ function planethopDrawPlanet(st, q) {
     }
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(x - r * 0.4, y - r * 0.45, r * 0.28, r * 0.13, -0.6, 0, Math.PI * 2); ctx.fill();
   } else {
-    // craters turn with the planet
-    const nC = q.kind === 'finish' || q.kind === 'start' ? 2 : q.r < 40 ? 3 : 4;
-    for (let k = 0; k < nC; k++) {
-      const a = planethopHash(q.seed, k * 3) * 6.28 + q.rot, dd = r * (0.3 + planethopHash(q.seed, k * 3 + 1) * 0.45), cr = r * (0.09 + planethopHash(q.seed, k * 3 + 2) * 0.1);
-      const cx = x + Math.cos(a) * dd, cy = y + Math.sin(a) * dd;
-      if (q.face && Math.hypot(cx - x, cy - y + r * 0.05) < r * 0.5) continue; // keep the face clear
-      ctx.fillStyle = 'rgba(40,30,80,0.18)'; ctx.beginPath(); ctx.ellipse(cx, cy, cr, cr * 0.8, a, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx - 1, cy - 1, cr, cr * 0.8, a, Math.PI, Math.PI * 1.8); ctx.stroke();
-    }
-    // fine speckles and a few little rocks across the surface (they turn with it)
-    for (let k = 0; k < 10; k++) {
-      const a = planethopHash(q.seed + 7, k) * 6.28 + q.rot, dd = r * (0.15 + planethopHash(k, q.seed + 9) * 0.78);
-      ctx.fillStyle = k % 2 ? 'rgba(255,255,255,0.18)' : 'rgba(40,30,80,0.16)';
-      circle(x + Math.cos(a) * dd, y + Math.sin(a) * dd, 1.2 + (k % 3) * 0.6); ctx.fill();
-    }
+    // (rich props pass, Nov 2026) the surface (lowlands, craters, rilles, rocks, crystals, a rocky crust) is one
+    // cached picture per planet that turns with it
+    planethopSurface(q, x, y, r, base, dark, hi);
     if (q.spin) {
       // swirly stripes that show the spin
       ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = r * 0.12;
@@ -864,6 +853,104 @@ function planethopDrawPlanet(st, q) {
     ctx.lineCap = 'butt';
   }
 }
+function planethopSurface(q, x, y, r, base, dark, hi) {
+  const R = Math.ceil(r) + 2, key = 'phs' + q.kind + '|' + (q.col || 0) + '|' + q.seed + '|' + Math.round(r) + '|' + (q.face ? 1 : 0);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(q.rot || 0);
+  CK.pic(key, 2 * R, 2 * R, R, R, () => planethopSurfPaint(q, r, base, dark, hi), 0, 0);
+  ctx.restore();
+}
+function planethopSurfPaint(q, r, base, dark, hi) {
+  const sd = q.seed | 0, rnd = k => planethopHash(sd + 11, k), clear = q.face || q.kind === 'start' ? r * 0.56 : 0;
+  const ok = (px, py, pr) => !clear || Math.hypot(px, py) > clear + pr;
+  ctx.save(); circle(0, 0, r); ctx.clip();
+  if (q.kind === 'jelly') {
+    // a jelly: a softer inner layer, swirls of sugar, a few sprinkles set in it
+    ctx.fillStyle = tint(base, 0.18); ctx.globalAlpha = 0.55; CK.blob(-r * 0.08, -r * 0.1, r * 0.72, r * 0.68, sd, 10, 0.12); ctx.fill();
+    ctx.globalAlpha = 1; ctx.strokeStyle = tint(base, 0.35); ctx.lineWidth = 1.5;
+    for (let k = 0; k < 3; k++) { const a = rnd(k) * 6.28, d = r * (0.35 + rnd(k + 9) * 0.35); ctx.beginPath(); ctx.arc(Math.cos(a) * d * 0.3, Math.sin(a) * d * 0.3, d, a, a + 0.8); ctx.stroke(); }
+    const spr = ['#fff3b0', '#9fe8ff', '#ffffff', '#b8f5a8'];
+    for (let k = 0; k < 14; k++) {
+      const a = rnd(k + 20) * 6.28, d = r * (0.2 + rnd(k + 40) * 0.7), px = Math.cos(a) * d, py = Math.sin(a) * d;
+      if (!ok(px, py, 4)) continue;
+      ctx.save(); ctx.translate(px, py); ctx.rotate(rnd(k + 60) * 6.28); ctx.fillStyle = spr[k % 4]; ctx.globalAlpha = 0.75; rr(-3, -1, 6, 2, 1); ctx.fill(); ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = shade(base, 0.12); ctx.globalAlpha = 0.45; ctx.lineWidth = 5; circle(0, 0, r - 3); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.restore(); return;
+  }
+  const big = r >= 60, nC = q.kind === 'finish' || q.kind === 'start' ? 4 : r < 40 ? 4 : big ? 7 : 5;
+  // lowland patches and paler highlands
+  ctx.globalAlpha = 0.45;
+  for (let k = 0; k < 3; k++) {
+    const a = rnd(k + 100) * 6.28, d = r * (0.25 + rnd(k + 101) * 0.45), px = Math.cos(a) * d, py = Math.sin(a) * d;
+    ctx.fillStyle = shade(base, 0.12); CK.blob(px, py, r * (0.22 + rnd(k + 102) * 0.18), r * (0.16 + rnd(k + 103) * 0.14), sd + k, 9, 0.28); ctx.fill();
+  }
+  for (let k = 0; k < 2; k++) {
+    const a = rnd(k + 110) * 6.28, d = r * (0.3 + rnd(k + 111) * 0.4);
+    ctx.fillStyle = tint(base, 0.2); CK.blob(Math.cos(a) * d, Math.sin(a) * d, r * 0.2, r * 0.13, sd + k + 50, 8, 0.3); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // a rille or two: wavy cracks with a lit lip
+  for (let k = 0; k < (big ? 2 : 1); k++) {
+    const a = rnd(k + 120) * 6.28, d0 = r * 0.3, len = r * (0.35 + rnd(k + 121) * 0.3);
+    const pts = []; for (let j = 0; j <= 6; j++) { const u = j / 6, dd = d0 + u * len, aa = a + Math.sin(u * 5 + k) * 0.12; pts.push([Math.cos(aa) * dd, Math.sin(aa) * dd]); }
+    if (pts.some(p => !ok(p[0], p[1], 2))) continue;
+    for (const [col, off, lw] of [[tint(base, 0.3), 1, 1], [shade(base, 0.3), 0, 1.6]]) {
+      ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0] + off, p[1] + off) : ctx.moveTo(p[0] + off, p[1] + off)); ctx.stroke();
+    }
+  }
+  // craters: a dark bowl, a deeper inner ring, a pale raised rim, a peak in the big ones, and splashes round them
+  for (let k = 0; k < nC; k++) {
+    const a = rnd(k * 3 + 200) * 6.28, dd = r * (0.18 + rnd(k * 3 + 201) * 0.62), cr = r * (0.06 + rnd(k * 3 + 202) * (big ? 0.1 : 0.13)) + 2;
+    const cx = Math.cos(a) * dd, cy = Math.sin(a) * dd;
+    if (!ok(cx, cy, cr + 3)) continue;
+    ctx.fillStyle = tint(base, 0.12); ctx.globalAlpha = 0.5;
+    for (let j = 0; j < 5; j++) { const b = rnd(k * 7 + j + 300) * 6.28, e = cr * (1.4 + rnd(k * 7 + j + 310) * 0.6); circle(cx + Math.cos(b) * e, cy + Math.sin(b) * e, 0.9 + rnd(k * 5 + j + 320) * 1.1); ctx.fill(); }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = tint(base, 0.28); ctx.beginPath(); ctx.ellipse(cx, cy, cr + 1.8, (cr + 1.8) * 0.85, a, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = shade(base, 0.2); ctx.beginPath(); ctx.ellipse(cx, cy, cr, cr * 0.85, a, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = shade(base, 0.27); ctx.beginPath(); ctx.ellipse(cx, cy, cr * 0.62, cr * 0.56, a, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = shade(dark, 0.15); ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(cx, cy, cr, cr * 0.85, a, 0, Math.PI * 2); ctx.stroke();
+    if (cr > 7) { ctx.fillStyle = tint(base, 0.15); circle(cx, cy, cr * 0.16); ctx.fill(); }
+  }
+  // little rocks and gravel
+  for (let k = 0; k < (big ? 9 : 5); k++) {
+    const a = rnd(k + 400) * 6.28, d = r * (0.2 + rnd(k + 401) * 0.68), px = Math.cos(a) * d, py = Math.sin(a) * d, pr = 1.8 + rnd(k + 402) * (big ? 3 : 2);
+    if (!ok(px, py, pr + 1)) continue;
+    CK.pebble(px, py, pr, shade(base, 0.08), sd * 7 + k);
+  }
+  for (let k = 0; k < 26; k++) {
+    const a = rnd(k + 500) * 6.28, d = r * (0.1 + rnd(k + 501) * 0.86), px = Math.cos(a) * d, py = Math.sin(a) * d;
+    if (!ok(px, py, 1)) continue;
+    ctx.fillStyle = k % 3 ? 'rgba(40,30,80,0.18)' : 'rgba(255,255,255,0.25)'; ctx.fillRect(px, py, 1.3 + (k % 2), 1.3 + (k % 2));
+  }
+  // a little cluster of crystals on some rock planets
+  if ((q.kind === 'rock' || q.kind === 'moon') && rnd(600) < 0.55) {
+    const a = rnd(601) * 6.28, d = r * 0.68, px = Math.cos(a) * d, py = Math.sin(a) * d, gs = big ? 1.2 : 0.85;
+    if (ok(px, py, 10)) {
+      ctx.save(); ctx.translate(px, py); ctx.rotate(a + Math.PI / 2);
+      for (const [dx, h, w, tl] of [[-5, 9, 3.5, -0.35], [0, 13, 4.2, 0], [5, 8, 3.2, 0.4]]) {
+        ctx.save(); ctx.rotate(tl); ctx.scale(gs, gs);
+        ctx.fillStyle = '#8fe8ff'; ctx.strokeStyle = '#3f86b8'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(dx - w, 0); ctx.lineTo(dx - w, -h + w); ctx.lineTo(dx, -h); ctx.lineTo(dx + w, -h + w); ctx.lineTo(dx + w, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(dx - w + 1, -h + w, 1.3, h - w - 1);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+  }
+  // a rocky crust just inside the rim: a darker band and a row of worn stones
+  ctx.strokeStyle = shade(base, 0.16); ctx.globalAlpha = 0.5; ctx.lineWidth = 6; circle(0, 0, r - 3.5); ctx.stroke(); ctx.globalAlpha = 1;
+  const nS = Math.max(10, Math.round(r * 0.45));
+  for (let k = 0; k < nS; k++) {
+    const a = (k + rnd(k + 700) * 0.6) / nS * 6.28, rw = 2 + rnd(k + 701) * (big ? 3.5 : 2.5), d = r - 4 - rnd(k + 702) * 3;
+    const px = Math.cos(a) * d, py = Math.sin(a) * d;
+    ctx.fillStyle = k % 2 ? shade(base, 0.22) : tint(base, 0.12); ctx.globalAlpha = 0.7;
+    ctx.beginPath(); ctx.ellipse(px, py, rw, rw * 0.6, a + Math.PI / 2, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
 // a friendly face: eyes that follow the nearer runner, a blink, a smile (an "o" when someone lands on it)
 function planethopDrawFace(st, q, x, y, r) {
   let tx = x, ty = y + 50, bd = 1e9;
@@ -895,7 +982,9 @@ function planethopDrawRocket(st) {
   if (ce) { const t = ce.t; lift = t < 0.45 ? 0 : Math.pow(t - 0.45, 2) * 320; flame = t > 0.2 ? 1 : t / 0.2; shake = t < 0.45 ? Math.sin(t * 90) * 1.5 : 0; }
   ctx.save(); ctx.translate(rk.fx, rk.fy); ctx.rotate(rk.a + Math.PI / 2);
   // the launch pad stays put
+  ctx.fillStyle = '#4b4f6c'; ctx.fillRect(-20, 0, 4, 6); ctx.fillRect(16, 0, 4, 6);
   ctx.fillStyle = '#6a6f8c'; rr(-24, -5, 48, 8, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(-22, -5, 44, 1.5); ctx.fillStyle = 'rgba(20,20,50,0.3)'; ctx.fillRect(-22, 1, 44, 2);
   ctx.fillStyle = '#ffd77a'; for (let k = -2; k <= 2; k++) { circle(k * 10, -1, 1.6); ctx.fill(); }
   ctx.translate(shake, -lift - 4);
   if (flame > 0) {
@@ -911,6 +1000,9 @@ function planethopDrawRocket(st) {
   ctx.beginPath(); ctx.moveTo(-13, -4); ctx.quadraticCurveTo(-17, -46, 0, -84); ctx.quadraticCurveTo(17, -46, 13, -4); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#ff5f6d'; ctx.beginPath(); ctx.moveTo(-7.5, -70); ctx.quadraticCurveTo(0, -76, 7.5, -70); ctx.quadraticCurveTo(4, -80, 0, -84); ctx.quadraticCurveTo(-4, -80, -7.5, -70); ctx.fill();
   ctx.fillStyle = '#ff5f6d'; ctx.fillRect(-14, -14, 28, 5);
+  ctx.strokeStyle = 'rgba(143,138,176,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-14.5, -26); ctx.lineTo(14.5, -26); ctx.moveTo(-13, -60); ctx.lineTo(13, -60); ctx.stroke();
+  ctx.fillStyle = '#b5b0d6'; for (const yy of [-26, -60]) for (let k = -2; k <= 2; k++) { circle(k * (yy < -50 ? 4.6 : 5.6), yy + 2.2, 0.8); ctx.fill(); }
+  ctx.fillStyle = 'rgba(143,138,176,0.35)'; ctx.fillRect(6, -58, 3.5, 44);
   // the window, with the winner waving inside
   ctx.fillStyle = '#2b3f63'; circle(0, -44, 9.5); ctx.fill(); ctx.strokeStyle = '#ffc53d'; ctx.lineWidth = 3; circle(0, -44, 9.5); ctx.stroke();
   if (ce) { ctx.fillStyle = PCOL[ce.id]; circle(0, -42, 7); ctx.fill(); ctx.fillStyle = '#fff'; circle(-2.5, -44, 1.8); ctx.fill(); circle(2.5, -44, 1.8); ctx.fill(); ctx.fillStyle = C.ink; circle(-2.3, -43.7, 0.9); ctx.fill(); circle(2.7, -43.7, 0.9); ctx.fill(); }
@@ -1014,7 +1106,9 @@ function planethopDrawWorld() {
 }
 function planethopDrawFlag(q, a, col) {
   ctx.save(); ctx.translate(q.cx + Math.cos(a) * q.r, q.cy + Math.sin(a) * q.r); ctx.rotate(a + Math.PI / 2);
-  ctx.fillStyle = '#e6e1f7'; ctx.fillRect(-1.5, -46, 3, 46);
+  ctx.fillStyle = '#6a6f8c'; rr(-6, -3, 12, 5, 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(-5, -3, 10, 1.2);
+  ctx.fillStyle = '#e6e1f7'; ctx.fillRect(-1.5, -46, 3, 46); ctx.fillStyle = '#a9a3cc'; ctx.fillRect(0.5, -46, 1, 46);
+  ctx.fillStyle = '#ffd77a'; circle(0, -47, 2.4); ctx.fill();
   const wv = Math.sin(G.clock * 5) * 3;
   ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(1.5, -46); ctx.quadraticCurveTo(14, -42 + wv, 26, -38); ctx.lineTo(1.5, -28); ctx.closePath(); ctx.fill();
   ctx.restore();

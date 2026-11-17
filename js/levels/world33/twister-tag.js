@@ -350,15 +350,8 @@
     K.sky(0, t, { mood: 'storm', dark: 0.1 + wallM(st) / TT.wallMax * 0.35 });
     K.farm(t * 8, t, { horizon: 128 });
     ctx.save(); ctx.translate(sh, sh * 0.5);
-    // the field: a slanted rectangle of crop rows with a fence round it
-    ctx.fillStyle = '#6e8c46';
-    ctx.beginPath(); ctx.moveTo(TT.X0 - 10, TT.Y0 - 34); ctx.lineTo(TT.X1 + 10, TT.Y0 - 34); ctx.lineTo(W + 30, H); ctx.lineTo(-30, H); ctx.closePath(); ctx.fill();
-    for (let k = 0; k < 15; k++) {
-      const u = k / 14, xTop = K.lerp(TT.X0, TT.X1, u), xBot = K.lerp(-10, W + 10, u);
-      ctx.strokeStyle = k % 2 ? 'rgba(90,120,52,0.6)' : 'rgba(130,160,80,0.5)'; ctx.lineWidth = 6;
-      ctx.beginPath(); ctx.moveTo(xTop, TT.Y0 - 30); ctx.lineTo(xBot, H); ctx.stroke();
-    }
-    for (let y = TT.Y0; y < H; y += 46) { ctx.fillStyle = 'rgba(60,80,36,0.12)'; ctx.fillRect(0, y, W, 3); }
+    // the field (crop rows, furrows, sprouts, stones, the far fence): one still picture
+    K.pic('ttfield', W + 80, H - TT.Y0 + 70, 40, 0, paintField, 0, TT.Y0 - 70);
     // tufts of grass, little clover patches and the odd wildflower, nearer ones bigger (fixed spots, so they never jump)
     for (let k = 0; k < 70; k++) {
       const v = K.hash(k * 3 + 1), y = TT.Y0 + K.hash(k * 3 + 2) * (H - TT.Y0), sc = 0.6 + (y - TT.Y0) / (H - TT.Y0) * 0.8;
@@ -368,13 +361,8 @@
         for (let j = -1; j <= 1; j++) { ctx.moveTo(x + j * 3 * sc, y); ctx.lineTo(x + j * 5 * sc + Math.sin(t * 3 + k) * 1.5, y - 7 * sc); }
         ctx.stroke();
       } else if (v < 0.85) { ctx.fillStyle = 'rgba(80,110,50,0.55)'; ctx.beginPath(); ctx.ellipse(x, y, 10 * sc, 4 * sc, 0, 0, TAU); ctx.fill(); }
-      else { ctx.fillStyle = v < 0.93 ? '#f2e66a' : '#f4f0f8'; circle(x, y - 3 * sc, 2.2 * sc); ctx.fill(); ctx.fillStyle = 'rgba(60,84,36,0.7)'; ctx.fillRect(x - 0.5, y - 2 * sc, 1, 3 * sc); }
+      else { ctx.fillStyle = v < 0.93 ? '#f2e66a' : '#f4f0f8'; for (let j = 0; j < 5; j++) { const a = j / 5 * TAU; circle(x + Math.cos(a) * 1.8 * sc, y - 3 * sc + Math.sin(a) * 1.8 * sc, 1.3 * sc); ctx.fill(); } ctx.fillStyle = v < 0.93 ? '#c87a1a' : '#f2c84a'; circle(x, y - 3 * sc, 0.9 * sc); ctx.fill(); ctx.fillStyle = 'rgba(60,84,36,0.7)'; ctx.fillRect(x - 0.5, y - 2 * sc, 1, 3 * sc); }
     }
-    // the fence on the far side
-    ctx.strokeStyle = '#7a5434'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(TT.X0 - 10, TT.Y0 - 46); ctx.lineTo(TT.X1 + 10, TT.Y0 - 46); ctx.moveTo(TT.X0 - 10, TT.Y0 - 38); ctx.lineTo(TT.X1 + 10, TT.Y0 - 38); ctx.stroke();
-    for (let x = TT.X0 - 10; x <= TT.X1 + 10; x += 40) { ctx.fillStyle = '#5e3e20'; ctx.fillRect(x - 2, TT.Y0 - 54, 4, 22); ctx.fillStyle = 'rgba(255,230,190,0.25)'; ctx.fillRect(x - 2, TT.Y0 - 54, 1.2, 22); }
-    ctx.strokeStyle = 'rgba(255,230,190,0.2)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(TT.X0 - 10, TT.Y0 - 47.5); ctx.lineTo(TT.X1 + 10, TT.Y0 - 47.5); ctx.moveTo(TT.X0 - 10, TT.Y0 - 39.5); ctx.lineTo(TT.X1 + 10, TT.Y0 - 39.5); ctx.stroke();
     drawPond(st, t);
     // the wall cloud: dark churning cloud closing in
     const m = wallM(st);
@@ -392,10 +380,78 @@
     ctx.restore();
     K.flashTop(fl * 0.4);
   }
+  // the still field (origin: x 0, y TT.Y0 - 70): soil, crop rows with ridges, furrows and sprouts, clods, stones and
+  // the fence on the far side with grained rails
+  function paintField() {
+    ctx.translate(0, -(TT.Y0 - 70));
+    const R = n => K.hash(n * 1.53 + 0.37);
+    const fld = () => { ctx.beginPath(); ctx.moveTo(TT.X0 - 10, TT.Y0 - 34); ctx.lineTo(TT.X1 + 10, TT.Y0 - 34); ctx.lineTo(W + 30, H); ctx.lineTo(-30, H); ctx.closePath(); };
+    const g = ctx.createLinearGradient(0, TT.Y0 - 34, 0, H); g.addColorStop(0, '#647e40'); g.addColorStop(1, '#76944a');
+    ctx.fillStyle = g; fld(); ctx.fill();
+    ctx.save(); fld(); ctx.clip();
+    const rowAt = (u, y) => { const f = (y - (TT.Y0 - 30)) / (H - (TT.Y0 - 30)); return K.lerp(K.lerp(TT.X0, -10, f), K.lerp(TT.X1, W + 10, f), u); };
+    // furrows between the rows: dark soil with a lit far edge
+    for (let k = 0; k < 14; k++) {
+      const u = (k + 0.5) / 14;
+      ctx.strokeStyle = 'rgba(70,52,30,0.3)'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(rowAt(u, TT.Y0 - 30), TT.Y0 - 30); ctx.lineTo(rowAt(u, H), H); ctx.stroke();
+      ctx.strokeStyle = 'rgba(40,30,16,0.15)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(rowAt(u, TT.Y0 - 30) + 1, TT.Y0 - 30); ctx.lineTo(rowAt(u, H) + 2, H); ctx.stroke();
+    }
+    // the crop rows: a ridge lit on one side, with sprouts along it
+    for (let k = 0; k < 15; k++) {
+      const u = k / 14, xTop = K.lerp(TT.X0, TT.X1, u), xBot = K.lerp(-10, W + 10, u);
+      ctx.strokeStyle = k % 2 ? 'rgba(90,120,52,0.6)' : 'rgba(130,160,80,0.5)'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(xTop, TT.Y0 - 30); ctx.lineTo(xBot, H); ctx.stroke();
+      ctx.strokeStyle = 'rgba(190,210,130,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(xTop - 1.5, TT.Y0 - 30); ctx.lineTo(xBot - 2.5, H); ctx.stroke();
+      for (let y = TT.Y0 - 24; y < H; y += 9 + (y - TT.Y0) * 0.03) {
+        const f = (y - TT.Y0 + 30) / (H - TT.Y0 + 30), sc = 0.5 + f * 0.9, x = K.lerp(xTop, xBot, (y - TT.Y0 + 30) / (H - TT.Y0 + 30)) + (R(k * 97 + y) - 0.5) * 2;
+        ctx.fillStyle = R(k * 31 + y) < 0.5 ? '#5a8a34' : '#6e9e40';
+        ctx.beginPath(); ctx.ellipse(x - 2 * sc, y - 2 * sc, 2.6 * sc, 1.1 * sc, -0.5, 0, TAU); ctx.ellipse(x + 2 * sc, y - 2 * sc, 2.6 * sc, 1.1 * sc, 0.5, 0, TAU); ctx.fill();
+      }
+    }
+    for (let y = TT.Y0; y < H; y += 46) { ctx.fillStyle = 'rgba(60,80,36,0.12)'; ctx.fillRect(0, y, W, 3); }
+    // clods and stones in the furrows
+    for (let k = 0; k < 80; k++) {
+      const y = TT.Y0 - 20 + R(k + 300) * (H - TT.Y0 + 20), f = (y - TT.Y0 + 30) / (H - TT.Y0 + 30), sc = 0.5 + f * 0.9, x = rowAt((Math.floor(R(k + 301) * 14) + 0.5) / 14, y) + (R(k + 302) - 0.5) * 4, r = (1.2 + R(k + 303) * 2) * sc;
+      const stone = R(k + 304) < 0.3;
+      ctx.fillStyle = stone ? '#8a8478' : '#6a5434'; ctx.beginPath(); ctx.ellipse(x, y, r * 1.3, r, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = stone ? 'rgba(255,255,255,0.4)' : 'rgba(150,120,80,0.5)'; ctx.beginPath(); ctx.ellipse(x - r * 0.3, y - r * 0.35, r * 0.55, r * 0.35, 0, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+    // the fence on the far side: posts with caps and shadows, two grained rails
+    ctx.fillStyle = 'rgba(30,40,20,0.25)'; ctx.fillRect(TT.X0 - 12, TT.Y0 - 34, TT.X1 - TT.X0 + 24, 3);
+    for (const ry of [TT.Y0 - 46, TT.Y0 - 38]) {
+      ctx.fillStyle = '#7a5434'; ctx.fillRect(TT.X0 - 10, ry - 1.5, TT.X1 - TT.X0 + 20, 3);
+      ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(TT.X0 - 10, ry - 1.5, TT.X1 - TT.X0 + 20, 0.9);
+      ctx.fillStyle = 'rgba(40,24,10,0.45)'; for (let x = TT.X0; x < TT.X1; x += 13) ctx.fillRect(x + R(x) * 8, ry - 0.3, 3 + R(x + 1) * 5, 0.7);
+    }
+    for (let x = TT.X0 - 10; x <= TT.X1 + 10; x += 40) {
+      ctx.fillStyle = 'rgba(30,40,20,0.3)'; ctx.beginPath(); ctx.ellipse(x + 2, TT.Y0 - 32, 5, 1.6, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#5e3e20'; ctx.fillRect(x - 2, TT.Y0 - 54, 4, 22);
+      ctx.fillStyle = 'rgba(255,230,190,0.25)'; ctx.fillRect(x - 2, TT.Y0 - 54, 1.2, 22);
+      ctx.fillStyle = '#3e2610'; ctx.fillRect(x + 1, TT.Y0 - 54, 1, 22);
+      ctx.fillStyle = '#4a2e14'; ctx.beginPath(); ctx.moveTo(x - 2.5, TT.Y0 - 54); ctx.lineTo(x, TT.Y0 - 57); ctx.lineTo(x + 2.5, TT.Y0 - 54); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#9aa0a8'; ctx.fillRect(x - 0.5, TT.Y0 - 47, 1, 1); ctx.fillRect(x - 0.5, TT.Y0 - 39, 1, 1);
+      ctx.strokeStyle = '#5a7a34'; ctx.lineWidth = 1; ctx.beginPath(); for (let j = -2; j <= 2; j++) { ctx.moveTo(x + j * 1.5, TT.Y0 - 32); ctx.lineTo(x + j * 2.5, TT.Y0 - 37 - (j & 1) * 2); } ctx.stroke();
+    }
+  }
+  // the pond's bank (origin: the pond's middle): grass, a muddy beach, stones half sunk along the rim
+  function paintBank() {
+    const P = POND;
+    ctx.fillStyle = '#5a7a3a'; ctx.beginPath(); ctx.ellipse(0, 4, P.rx + 10, P.ry + 8, 0, 0, TAU); ctx.fill();
+    const g = ctx.createLinearGradient(0, -P.ry - 4, 0, P.ry + 6); g.addColorStop(0, '#9a8a64'); g.addColorStop(1, '#6e5e40');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 2, P.rx + 4, P.ry + 4, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(60,46,28,0.4)'; for (let k = 0; k < 40; k++) { const a = K.hash(k + 11) * TAU, d = 0.96 + K.hash(k + 12) * 0.06; ctx.fillRect(Math.cos(a) * (P.rx + 2) * d, 2 + Math.sin(a) * (P.ry + 2) * d, 1.5, 1); }
+    for (let k = 0; k < 14; k++) {
+      const a = k / 14 * TAU + K.hash(k + 50) * 0.3, sx = Math.cos(a) * (P.rx + 5), sy = 3 + Math.sin(a) * (P.ry + 5), r = 3 + K.hash(k + 51) * 3.5;
+      ctx.fillStyle = '#7a766c'; ctx.beginPath(); ctx.ellipse(sx, sy, r * 1.3, r * 0.8, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#5a564e'; ctx.beginPath(); ctx.ellipse(sx + r * 0.3, sy + r * 0.2, r * 0.9, r * 0.5, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(sx - r * 0.4, sy - r * 0.35, r * 0.55, r * 0.28, 0, 0, TAU); ctx.fill();
+      if (k % 3 === 0) { ctx.fillStyle = '#5a8a3a'; ctx.beginPath(); ctx.ellipse(sx - r * 0.2, sy - r * 0.6, r * 0.7, r * 0.3, 0, Math.PI, 0); ctx.fill(); }
+    }
+  }
   function drawPond(st, t) {
     const P = POND;
-    ctx.fillStyle = '#5a7a3a'; ctx.beginPath(); ctx.ellipse(P.x, P.y + 4, P.rx + 10, P.ry + 8, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#8a7a5a'; ctx.beginPath(); ctx.ellipse(P.x, P.y + 2, P.rx + 4, P.ry + 4, 0, 0, TAU); ctx.fill();
+    K.pic('ttbank', 2 * P.rx + 40, 2 * P.ry + 40, P.rx + 20, P.ry + 16, paintBank, P.x, P.y);
     const g = ctx.createRadialGradient(P.x - 20, P.y - 10, 4, P.x, P.y, P.rx);
     g.addColorStop(0, '#7ab4d0'); g.addColorStop(1, '#3a6a8a');
     ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(P.x, P.y, P.rx, P.ry, 0, 0, TAU); ctx.fill();
@@ -410,6 +466,11 @@
     // reeds
     ctx.strokeStyle = '#3e5a2a'; ctx.lineWidth = 2;
     for (let k = 0; k < 9; k++) { const a = Math.PI * (0.9 + k * 0.05), x = P.x + Math.cos(a) * P.rx, y = P.y + Math.sin(a) * P.ry; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.sin(t * 2 + k) * 3, y - 18 - (k % 3) * 5); ctx.stroke(); }
+    ctx.fillStyle = '#6a4626';
+    for (let k = 0; k < 9; k += 2) { const a = Math.PI * (0.9 + k * 0.05), x = P.x + Math.cos(a) * P.rx, y = P.y + Math.sin(a) * P.ry, tx = x + Math.sin(t * 2 + k) * 3 * 0.85, ty = y - (18 + (k % 3) * 5) * 0.85; rr(tx - 2, ty - 6, 4, 9, 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,220,180,0.35)'; for (let k = 0; k < 9; k += 2) { const a = Math.PI * (0.9 + k * 0.05), x = P.x + Math.cos(a) * P.rx, y = P.y + Math.sin(a) * P.ry, tx = x + Math.sin(t * 2 + k) * 3 * 0.85, ty = y - (18 + (k % 3) * 5) * 0.85; ctx.fillRect(tx - 1.5, ty - 5, 1, 6); }
+    ctx.fillStyle = '#3e6a2e'; for (let k = 0; k < 3; k++) { const lx = P.x + P.rx * (0.3 + k * 0.18), ly = P.y + P.ry * (0.2 - k * 0.15); ctx.fillRect(lx - 0.5, ly - 3, 1, 3); }
+    ctx.fillStyle = '#f4c8d8'; { const lx = P.x + P.rx * 0.48, ly = P.y + P.ry * 0.05; for (let j = 0; j < 5; j++) { const a = j / 5 * TAU; ctx.beginPath(); ctx.ellipse(lx + Math.cos(a) * 2, ly - 1 + Math.sin(a) * 1, 2.2, 1.1, a, 0, TAU); ctx.fill(); } ctx.fillStyle = '#f2d84a'; circle(lx, ly - 1, 1); ctx.fill(); }
   }
   function drawWall(st, t, m) {
     const B = bounds(st);
@@ -439,8 +500,13 @@
   function pole(x, y) {
     ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(x, y, 10, 4, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = '#6a4a2a'; ctx.fillRect(x - 3, y - 90, 6, 90);
-    ctx.fillRect(x - 18, y - 84, 36, 4);
-    ctx.fillStyle = '#c8ccd4'; for (const dx of [-14, 0, 14]) { ctx.fillRect(x + dx - 2, y - 88, 4, 4); }
+    ctx.fillStyle = '#4a3018'; ctx.fillRect(x + 1, y - 90, 2, 90); ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(x - 3, y - 90, 1.2, 90);
+    ctx.fillStyle = 'rgba(40,24,10,0.5)'; for (let k = 0; k < 6; k++) ctx.fillRect(x - 1 + (k % 2), y - 80 + k * 13, 0.8, 7);
+    ctx.fillStyle = '#2a2a30'; ctx.fillRect(x - 4, y - 50, 3, 1.5); ctx.fillRect(x + 1, y - 38, 3, 1.5);
+    ctx.fillStyle = '#6a4a2a'; ctx.fillRect(x - 18, y - 84, 36, 4);
+    ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(x - 18, y - 84, 36, 1); ctx.fillStyle = '#4a3018'; ctx.fillRect(x - 18, y - 81, 36, 1);
+    ctx.strokeStyle = '#4a3018'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 12, y - 80); ctx.lineTo(x - 2, y - 70); ctx.moveTo(x + 12, y - 80); ctx.lineTo(x + 2, y - 70); ctx.stroke();
+    for (const dx of [-14, 0, 14]) { ctx.fillStyle = '#5aa890'; rr(x + dx - 2.5, y - 89, 5, 5, 1.5); ctx.fill(); ctx.fillStyle = '#c8f0e0'; ctx.fillRect(x + dx - 1.5, y - 88.5, 1, 3); }
   }
   function wire(a, b, t) {
     for (const dx of [-14, 0, 14]) {

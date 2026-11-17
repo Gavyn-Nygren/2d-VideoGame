@@ -857,8 +857,19 @@
       ctx.fillStyle = green[0]; circle(x + sway, gy - 72, 23); ctx.fill();
       ctx.fillStyle = green[1]; circle(x + sway - 7, gy - 80, 12); ctx.fill(); circle(x + sway + 9, gy - 66, 9); ctx.fill();
     } else if (p.kind === 'bench') {
-      ctx.fillStyle = '#3d3a4f'; ctx.fillRect(x - 22, gy - 14, 3, 14); ctx.fillRect(x + 19, gy - 14, 3, 14);
-      ctx.fillStyle = '#b8743e'; ctx.fillRect(x - 25, gy - 16, 50, 4); ctx.fillRect(x - 25, gy - 28, 50, 4); ctx.fillRect(x - 25, gy - 22, 50, 3);
+      // (rich props pass) a park bench: a shadow, curled iron legs with feet, outlined slats with a lit top, grain and bolts
+      ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.beginPath(); ctx.ellipse(x + 2, gy, 28, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3d3a4f'; ctx.fillRect(x - 22, gy - 30, 3, 30); ctx.fillRect(x + 19, gy - 30, 3, 30);
+      ctx.fillRect(x - 25, gy - 2, 8, 2); ctx.fillRect(x + 17, gy - 2, 8, 2);
+      ctx.strokeStyle = '#3d3a4f'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(x - 17, gy - 10, 4, Math.PI * 0.5, Math.PI * 1.5); ctx.arc(x + 17, gy - 10, 4, Math.PI * 1.5, Math.PI * 0.5); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x - 21.6, gy - 29, 0.8, 27); ctx.fillRect(x + 19.4, gy - 29, 0.8, 27);
+      for (const [sy, sh] of [[gy - 16, 4], [gy - 28, 4], [gy - 22, 3]]) {
+        ctx.fillStyle = '#7a4a26'; rr(x - 25.6, sy - 0.6, 51.2, sh + 1.2, 1); ctx.fill();
+        ctx.fillStyle = '#b8743e'; ctx.fillRect(x - 25, sy, 50, sh);
+        ctx.fillStyle = '#d99a62'; ctx.fillRect(x - 25, sy, 50, 1);
+        ctx.fillStyle = 'rgba(122,74,38,0.5)'; ctx.fillRect(x - 12, sy + sh * 0.6, 14, 0.6); ctx.fillRect(x + 6, sy + sh * 0.4, 10, 0.6);
+        ctx.fillStyle = '#3d3a4f'; circle(x - 20.5, sy + sh / 2, 0.8); ctx.fill(); circle(x + 20.5, sy + sh / 2, 0.8); ctx.fill();
+      }
     } else if (p.kind === 'pots') {
       for (let k = 0; k < 3; k++) {
         const px = x - 16 + k * 16, s = 0.8 + (k % 2) * 0.3;
@@ -867,14 +878,38 @@
         ctx.fillStyle = ['#ffd23f', '#ff6b8a', '#ffffff'][k]; circle(px - 2, gy - 21 * s, 2.4); ctx.fill(); circle(px + 3, gy - 17 * s, 2.4); ctx.fill();
       }
     } else if (p.kind === 'hydrant') {
+      // (rich props pass) a hydrant: shadow, outline, shaded right side, lit left edge, bolted base, side caps with nuts
+      ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.beginPath(); ctx.ellipse(x + 2, gy, 11, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8a1f1a'; rr(x - 6.8, gy - 22.8, 13.6, 22.8, 3.5); ctx.fill(); ctx.beginPath(); ctx.arc(x, gy - 22, 6.8, Math.PI, 0); ctx.fill(); ctx.fillRect(x - 10.8, gy - 16.8, 21.6, 6.6);
       ctx.fillStyle = '#d93a2b'; rr(x - 6, gy - 22, 12, 22, 3); ctx.fill(); ctx.beginPath(); ctx.arc(x, gy - 22, 6, Math.PI, 0); ctx.fill();
-      ctx.fillRect(x - 10, gy - 16, 20, 5); ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 6, gy - 8, 12, 2);
+      ctx.fillRect(x - 10, gy - 16, 20, 5);
+      ctx.fillStyle = '#b02e22'; ctx.fillRect(x + 2, gy - 26, 4, 26); ctx.fillRect(x + 6, gy - 16, 4, 5);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x - 4.6, gy - 25, 1.2, 22);
+      ctx.fillStyle = '#8a1f1a'; rr(x - 8, gy - 4, 16, 4, 1); ctx.fill(); rr(x - 2, gy - 30, 4, 3, 1); ctx.fill();
+      ctx.fillStyle = '#c9cde0'; for (const bx of [x - 6, x + 6]) { circle(bx, gy - 2, 0.9); ctx.fill(); } circle(x - 10, gy - 13.5, 1.3); ctx.fill(); circle(x + 10, gy - 13.5, 1.3); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 6, gy - 8, 12, 2);
     } else if (p.kind === 'bin') {
-      ctx.fillStyle = '#4f7f80'; rr(x - 9, gy - 26, 18, 26, 3); ctx.fill(); ctx.fillStyle = '#3c6566'; ctx.fillRect(x - 11, gy - 28, 22, 4);
+      // (rich props pass) a street bin: shadow, outline, ribs, a shaded right side, a domed lid with a handle
+      ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.beginPath(); ctx.ellipse(x + 2, gy, 12, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2c4a4b'; rr(x - 9.8, gy - 26.8, 19.6, 26.8, 3.5); ctx.fill();
+      ctx.fillStyle = '#4f7f80'; rr(x - 9, gy - 26, 18, 26, 3); ctx.fill();
+      ctx.fillStyle = '#3c6566'; ctx.fillRect(x + 3, gy - 26, 6, 26);
+      ctx.fillStyle = 'rgba(28,26,54,0.25)'; for (const rx of [x - 4, x + 1, x + 6]) ctx.fillRect(rx, gy - 22, 1, 18);
       ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x - 6, gy - 22, 2, 18);
+      ctx.fillStyle = '#2c4a4b'; rr(x - 11.8, gy - 28.8, 23.6, 5.6, 2); ctx.fill(); ctx.fillStyle = '#3c6566'; ctx.fillRect(x - 11, gy - 28, 22, 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - 10, gy - 28, 20, 0.9);
+      ctx.fillStyle = '#2c4a4b'; rr(x - 4, gy - 31.5, 8, 3, 1.5); ctx.fill();
     } else if (p.kind === 'mail') {
-      ctx.fillStyle = '#3d3a4f'; ctx.fillRect(x - 2, gy - 22, 4, 22);
-      ctx.fillStyle = '#2f6fd6'; rr(x - 12, gy - 38, 24, 18, 8); ctx.fill(); ctx.fillStyle = '#ffd23f'; ctx.fillRect(x + 8, gy - 44, 3, 10);
+      // (rich props pass) a mailbox: a post with a lit edge, an outlined rounded box with a shaded foot, a door seam,
+      // a slot and a raised flag
+      ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.beginPath(); ctx.ellipse(x + 1, gy, 7, 2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3d3a4f'; ctx.fillRect(x - 2, gy - 22, 4, 22); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x - 1.6, gy - 21, 0.8, 20);
+      ctx.fillStyle = '#1d3f80'; rr(x - 12.8, gy - 38.8, 25.6, 19.6, 8.6); ctx.fill();
+      ctx.fillStyle = '#2f6fd6'; rr(x - 12, gy - 38, 24, 18, 8); ctx.fill();
+      ctx.fillStyle = '#2458b0'; rr(x - 12, gy - 26, 24, 6, 3); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; rr(x - 8, gy - 36.6, 14, 2, 1); ctx.fill();
+      ctx.fillStyle = '#1d3f80'; ctx.fillRect(x - 6, gy - 31, 12, 1.6); ctx.fillRect(x - 11, gy - 38, 1, 17);
+      ctx.fillStyle = '#c99a1f'; ctx.fillRect(x + 7.6, gy - 44.6, 4, 11); ctx.fillStyle = '#ffd23f'; ctx.fillRect(x + 8, gy - 44, 3, 10); ctx.fillRect(x + 8, gy - 44, 6, 3);
     }
   }
 
@@ -931,7 +966,28 @@
       }
     }
     ctx.restore();
-    // slab joints on the pavement
+    // (rich props pass) paving slabs: each slab its own tone, a lit left edge by its joint, a chip or a hairline crack
+    // on some, a gum spot or a pebble now and then; the curb gets a lit lip and a dark joint every few slabs.
+    // Each kind of mark is gathered into one path and filled once (one fill per colour, not per slab).
+    const tones = [null, new Path2D(), new Path2D(), new Path2D()], lit = new Path2D(), cracks = new Path2D(), spots = new Path2D(), lipD = new Path2D(), lipL = new Path2D(), cj = new Path2D();
+    for (let x = Math.floor(x0 / 30) * 30; x < x1; x += 30) {
+      const hs = hash(x, 913), gx = R.g[clamp(x, 0, R.len - 1)], gx2 = R.g[clamp(x + 29, 0, R.len - 1)];
+      if (Math.abs(gx2 - gx) > 2) continue; // a slope or a step: leave the plain pavement
+      const tn = hs % 4;
+      if (tn) tones[tn].rect(x + 1.5, gx + 1.6, 28.5, 5.2);
+      lit.rect(x + 1.5, gx + 1.6, 1, 5.2);
+      if ((hs >>> 3) % 3 === 0) { const cx = x + 6 + (hs >>> 5) % 16; cracks.moveTo(cx, gx + 1.5); cracks.lineTo(cx + 2, gx + 3.5); cracks.lineTo(cx + 1, gx + 5); cracks.lineTo(cx + 4, gx + 6.8); }
+      if ((hs >>> 7) % 5 === 0) { const sx = x + 8 + (hs >>> 9) % 14; spots.moveTo(sx + 1.8, gx + 4.4); spots.ellipse(sx, gx + 4.4, 1.8, 0.9, 0, 0, Math.PI * 2); }
+      lipD.rect(x, gx + 7.2, 30, 0.9); lipL.rect(x, gx + 7.2, 30, 0.6);
+      if (x % 90 === 0) cj.rect(x, gx + 7.2, 1.2, 3.8);
+    }
+    ['', 'rgba(255,250,240,0.35)', 'rgba(120,95,70,0.1)', 'rgba(200,170,130,0.16)'].forEach((col, k) => { if (k) { ctx.fillStyle = col; ctx.fill(tones[k]); } });
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fill(lit);
+    ctx.strokeStyle = 'rgba(90,70,55,0.35)'; ctx.lineWidth = 0.8; ctx.stroke(cracks);
+    ctx.fillStyle = 'rgba(110,90,80,0.45)'; ctx.fill(spots);
+    ctx.fillStyle = 'rgba(80,60,50,0.12)'; ctx.fill(lipD);
+    ctx.fillStyle = 'rgba(255,245,230,0.35)'; ctx.fill(lipL);
+    ctx.fillStyle = 'rgba(80,60,50,0.3)'; ctx.fill(cj);
     ctx.fillStyle = 'rgba(80,60,50,0.22)';
     for (let x = Math.floor(x0 / 30) * 30; x < x1; x += 30) ctx.fillRect(x, R.g[clamp(x, 0, R.len - 1)] + 1, 1.5, 6);
     ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -1158,10 +1214,28 @@
     ctx.save(); ctx.translate(st.X, (g.hl + g.hr) / 2); ctx.rotate(g.a);
     const half = PZ.span / 2 + 12;
     ctx.fillStyle = 'rgba(28,26,54,0.18)'; rr(-half + 2, 1, half * 2, 4, 2); ctx.fill();
-    ctx.fillStyle = '#8a5833'; rr(-half, -PZ.trayTh, half * 2, PZ.trayTh, 3); ctx.fill();
-    ctx.fillStyle = '#c98b5a'; rr(-half, -PZ.trayTh, half * 2, PZ.trayTh - 2.5, 3); ctx.fill();
-    ctx.strokeStyle = 'rgba(138,88,51,0.5)'; ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(-half + 6, -4.5); ctx.lineTo(-20, -4); ctx.moveTo(10, -5); ctx.lineTo(half - 8, -4.6); ctx.stroke();
+    // (rich props pass) the board: outlined in dark wood, a lit top edge, a shaded front, grain, a knot, two board
+    // seams, brass corner caps with screws and end grain at each end
+    const tt = PZ.trayTh;
+    ctx.fillStyle = '#4a2e1b'; rr(-half - 0.8, -tt - 0.8, half * 2 + 1.6, tt + 1.6, 3.6); ctx.fill();
+    ctx.fillStyle = '#8a5833'; rr(-half, -tt, half * 2, tt, 3); ctx.fill();
+    ctx.fillStyle = '#c98b5a'; rr(-half, -tt, half * 2, tt - 2.5, 3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.32)'; ctx.fillRect(-half + 2.5, -tt + 0.3, half * 2 - 5, 1);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(-half + 1, -tt + 3.4, half * 2 - 2, 1.1);
+    ctx.strokeStyle = 'rgba(138,88,51,0.55)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(-half + 6, -4.5); ctx.quadraticCurveTo(-34, -3.6, -20, -4); ctx.moveTo(10, -5); ctx.quadraticCurveTo(30, -4, half - 8, -4.6); ctx.moveTo(-half + 10, -2.4); ctx.lineTo(-24, -2.6); ctx.moveTo(18, -2.8); ctx.lineTo(half - 12, -2.5); ctx.stroke();
+    ctx.strokeStyle = 'rgba(110,65,35,0.6)'; ctx.beginPath(); ctx.ellipse(-30, -4, 2.4, 1.1, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#4a2e1b'; for (const sx of [-half * 0.55, half * 0.55]) ctx.fillRect(sx, -tt, 0.9, tt);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; for (const sx of [-half * 0.55, half * 0.55]) ctx.fillRect(sx + 0.9, -tt + 0.5, 0.7, tt - 3);
+    for (const d of [-1, 1]) {
+      const ex = d * half;
+      ctx.strokeStyle = 'rgba(90,55,30,0.5)'; ctx.lineWidth = 0.6;
+      for (let r = 1.2; r < 3.6; r += 1.2) { ctx.beginPath(); ctx.arc(ex - d * 0.5, -tt / 2, r, d > 0 ? Math.PI / 2 : -Math.PI / 2, d > 0 ? Math.PI * 1.5 : Math.PI / 2); ctx.stroke(); }
+      ctx.fillStyle = '#8f6a1e'; rr(ex - (d > 0 ? 6 : 0), -tt - 0.8, 6, tt + 1.6, 1.5); ctx.fill();
+      ctx.fillStyle = '#e0b04a'; rr(ex - (d > 0 ? 5.4 : -0.6), -tt - 0.2, 4.8, tt - 1.4, 1.2); ctx.fill();
+      ctx.fillStyle = '#5a4012'; circle(ex - d * 3, -tt / 2 - 0.3, 0.9); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(ex - d * 3 - 0.3, -tt / 2 - 0.7, 0.35); ctx.fill();
+    }
     // the level vial
     const off = clamp(-g.a * 70, -9, 9), ok = Math.abs(st.tilt) <= PZ.dead, far = Math.abs(st.tilt) > PZ.dead + 0.12;
     ctx.fillStyle = '#2f3142'; rr(-14, -5.5, 28, 7, 3.5); ctx.fill();

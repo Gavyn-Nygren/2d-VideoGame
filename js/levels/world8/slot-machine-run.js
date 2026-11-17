@@ -434,9 +434,18 @@ let slotsBeamG = null;          // cached canvas gradients (the canvas and its c
 const slotsShadeG = {};
 function slotsTicketShape(x, y, s) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.rotate(-0.15);
-  ctx.fillStyle = '#ff8fc7'; rr(-9, -6, 18, 12, 2); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(-2, -5, 1.5, 10);
-  ctx.fillStyle = C.gold; circle(4, 0, 2.5); ctx.fill();
+  // (cached) a paper stub with a lit top, a shaded foot, notched ends, a perforation, a gold seal and an outline
+  paStamp('slotsticket', -9, -6, 18, 12, 3, g => {
+    g.save(); paRR(g, 0, 0, 18, 12, 2); g.clip();
+    g.fillStyle = '#ff8fc7'; g.fillRect(0, 0, 18, 12);
+    g.fillStyle = '#ffb3d9'; g.fillRect(0, 0, 18, 2.2);
+    g.fillStyle = '#e6639f'; g.fillRect(0, 9, 18, 3);
+    g.restore();
+    g.globalCompositeOperation = 'destination-out'; paCirc(g, 0, 6, 2.2); g.fill(); paCirc(g, 18, 6, 2.2); g.fill(); g.globalCompositeOperation = 'source-over';
+    g.strokeStyle = '#a8326b'; g.lineWidth = 1; paRR(g, 0, 0, 18, 12, 2); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.85)'; for (let py = 1.5; py < 11; py += 2.5) g.fillRect(6.6, py, 1.3, 1.4);
+    paStud(g, 13, 6, 2.5, C.gold, { collar: false });
+  });
   ctx.restore();
 }
 function slotsDrawSym(ch, x, y, w, h, a) {
@@ -483,19 +492,51 @@ function slotsDraw(st) {
     paint: g => {
       if (cab) {
         const { x0, x1, y0 } = cab;
-        g.fillStyle = 'rgba(120,20,60,0.62)'; paRR(g, x0, y0, x1 - x0, SLOTS.trayY - y0, 18); g.fill();
+        const ch = SLOTS.trayY - y0;
+        // a lacquered cabinet: a sheen from the top, a darker foot, a lit rim, an inset panel with gold piping, a bulb rail
+        const cg = g.createLinearGradient(0, y0, 0, SLOTS.trayY);
+        cg.addColorStop(0, 'rgba(150,34,80,0.66)'); cg.addColorStop(0.5, 'rgba(120,20,60,0.62)'); cg.addColorStop(1, 'rgba(84,12,44,0.7)');
+        g.fillStyle = cg; paRR(g, x0, y0, x1 - x0, ch, 18); g.fill();
         g.fillStyle = 'rgba(255,255,255,0.1)'; paRR(g, x0 + 4, y0 + 3, x1 - x0 - 8, 5, 3); g.fill();
-        g.strokeStyle = 'rgba(255,197,61,0.55)'; g.lineWidth = 2; paRR(g, x0, y0, x1 - x0, SLOTS.trayY - y0, 18); g.stroke();
+        g.fillStyle = 'rgba(60,8,30,0.35)'; paRR(g, x0 + 6, y0 + 2, x1 - x0 - 12, 18, 9); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(x0 + 14, y0 + 19, x1 - x0 - 28, 1.2);
+        g.strokeStyle = 'rgba(40,6,24,0.4)'; g.lineWidth = 1.5; paRR(g, x0 + 10, y0 + 28, x1 - x0 - 20, ch - 34, 12); g.stroke();
+        g.strokeStyle = 'rgba(255,197,61,0.35)'; g.lineWidth = 1; paRR(g, x0 + 11.5, y0 + 29.5, x1 - x0 - 23, ch - 37, 11); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(x0 + 2, y0 + 18, 3, ch - 30);
+        g.fillStyle = 'rgba(40,6,24,0.25)'; g.fillRect(x1 - 5, y0 + 18, 3, ch - 30);
+        g.strokeStyle = 'rgba(255,197,61,0.7)'; g.lineWidth = 2; paRR(g, x0, y0, x1 - x0, ch, 18); g.stroke();
+        g.strokeStyle = 'rgba(90,40,10,0.45)'; g.lineWidth = 1; paRR(g, x0 - 1.5, y0 - 1.5, x1 - x0 + 3, ch + 3, 19); g.stroke();
+        // a sunburst of gold rays and diamonds between the reels (behind the frames)
+        for (let k = 0; k < st.reels.length - 1; k++) {
+          const mx = (st.reels[k].x1 + st.reels[k + 1].x0) / 2, my = st.reels[k].wy + 90;
+          g.fillStyle = 'rgba(255,197,61,0.5)'; g.beginPath(); g.moveTo(mx, my - 14); g.lineTo(mx + 6, my); g.lineTo(mx, my + 14); g.lineTo(mx - 6, my); g.closePath(); g.fill();
+          g.strokeStyle = 'rgba(122,74,16,0.6)'; g.lineWidth = 1; g.stroke();
+          paStud(g, mx, my - 40, 2.2, '#ffd75e'); paStud(g, mx, my + 40, 2.2, '#ffd75e');
+        }
+        // bulb sockets for the marquee bulbs drawn live on top
+        for (let x = x0 + 14; x < x1 - 8; x += 24) { g.fillStyle = 'rgba(40,6,24,0.55)'; paCirc(g, x, y0 + 10, 6); g.fill(); g.strokeStyle = 'rgba(255,197,61,0.6)'; g.lineWidth = 1; g.stroke(); }
       }
       for (const r of st.reels) {
         // a gold frame with depth: drop shadow, darker lower half, lit rim, rivets at the corners
         g.fillStyle = 'rgba(40,10,40,0.3)'; paRR(g, r.x0 - 3, r.wy - 2, 102, 192, 10); g.fill();
-        g.fillStyle = '#ffd75e'; paRR(g, r.x0 - 6, r.wy - 6, 102, 192, 10); g.fill();
-        g.fillStyle = '#e0ac2c'; paRR(g, r.x0 - 6, r.wy + 90, 102, 96, 10); g.fill();
-        g.strokeStyle = '#a8740c'; g.lineWidth = 1.5; paRR(g, r.x0 - 6, r.wy - 6, 102, 192, 10); g.stroke();
-        g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillRect(r.x0 + 2, r.wy - 4.5, 86, 1.5);
-        g.fillStyle = '#fff3c4'; for (const [qx, qy] of [[r.x0 - 2, r.wy - 2], [r.x1 + 2, r.wy - 2], [r.x0 - 2, r.wy + 182], [r.x1 + 2, r.wy + 182]]) { paCirc(g, qx, qy, 1.6); g.fill(); }
-        g.fillStyle = '#fffaf0'; paRR(g, r.x0, r.wy, 90, 180, 6); g.fill();
+        // a polished gold frame: lit at the top left, deeper gold at the foot, an engraved line, a dark bevel into the
+        // window, gold screw heads at the corners
+        const fg = g.createLinearGradient(r.x0 - 6, r.wy - 6, r.x0 + 70, r.wy + 186);
+        fg.addColorStop(0, '#fff0a8'); fg.addColorStop(0.25, '#ffd75e'); fg.addColorStop(0.7, '#e8b23a'); fg.addColorStop(1, '#c48a18');
+        g.fillStyle = fg; paRR(g, r.x0 - 6, r.wy - 6, 102, 192, 10); g.fill();
+        g.strokeStyle = 'rgba(150,100,16,0.55)'; g.lineWidth = 0.8; paRR(g, r.x0 - 3, r.wy - 3, 96, 186, 8); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(r.x0 + 2, r.wy - 4.8, 86, 1.6); g.fillRect(r.x0 - 4.8, r.wy + 4, 1.6, 170);
+        g.fillStyle = 'rgba(122,74,16,0.35)'; g.fillRect(r.x0 + 2, r.wy + 183.5, 86, 1.6); g.fillRect(r.x1 + 3.4, r.wy + 4, 1.6, 170);
+        g.strokeStyle = '#8a5a0c'; g.lineWidth = 1.5; paRR(g, r.x0 - 6, r.wy - 6, 102, 192, 10); g.stroke();
+        for (const [qx, qy] of [[r.x0 - 2, r.wy - 2], [r.x1 + 2, r.wy - 2], [r.x0 - 2, r.wy + 182], [r.x1 + 2, r.wy + 182]]) {
+          paStud(g, qx, qy, 1.9, '#ffe9a0', { collar: false });
+          g.strokeStyle = 'rgba(122,74,16,0.7)'; g.lineWidth = 0.6; g.beginPath(); g.moveTo(qx - 1.2, qy + 1.2); g.lineTo(qx + 1.2, qy - 1.2); g.stroke();
+        }
+        g.fillStyle = '#7a4a10'; paRR(g, r.x0 - 1.5, r.wy - 1.5, 93, 183, 7); g.fill();
+        // the drum: a paper strip on a cylinder, darker toward both sides
+        const dg = g.createLinearGradient(r.x0, 0, r.x0 + 90, 0);
+        dg.addColorStop(0, '#e6dcc8'); dg.addColorStop(0.18, '#fffaf0'); dg.addColorStop(0.75, '#fffaf0'); dg.addColorStop(1, '#ddd2bc');
+        g.fillStyle = dg; paRR(g, r.x0, r.wy, 90, 180, 6); g.fill();
       }
     },
   });
@@ -526,6 +567,10 @@ function slotsDraw(st) {
       g.addColorStop(0, 'rgba(60,20,60,0.35)'); g.addColorStop(0.3, 'rgba(60,20,60,0)'); g.addColorStop(0.7, 'rgba(60,20,60,0)'); g.addColorStop(1, 'rgba(60,20,60,0.35)');
     }
     ctx.fillStyle = g; ctx.fillRect(r.x0, r.wy, 90, 180);
+    // the glass: a soft diagonal glare and a thin lit rim at the top
+    ctx.fillStyle = 'rgba(255,255,255,0.13)'; ctx.beginPath(); ctx.moveTo(r.x0 + 10, r.wy); ctx.lineTo(r.x0 + 34, r.wy); ctx.lineTo(r.x0 + 6, r.wy + 180); ctx.lineTo(r.x0 - 18, r.wy + 180); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.moveTo(r.x0 + 42, r.wy); ctx.lineTo(r.x0 + 50, r.wy); ctx.lineTo(r.x0 + 22, r.wy + 180); ctx.lineTo(r.x0 + 14, r.wy + 180); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(60,20,60,0.25)'; ctx.fillRect(r.x0, r.wy, 90, 2);
     ctx.restore();
     // payline
     const pl = slotsPlat(r);
@@ -574,10 +619,25 @@ function slotsDraw(st) {
     const bx = (r.x0 + r.x1) / 2, by = SLOTS.trayY + 22;
     const here = sz === r.i && st.phase === 'play', pulse = here ? 1 + 0.08 * Math.sin(t * 9) : 1;
     // a domed arcade button: its dark skirt under it, then the cap with a glint
-    ctx.fillStyle = '#7a1428'; ctx.beginPath(); ctx.ellipse(bx, by + 3, (big ? 28 : 22) * pulse, (big ? 10.5 : 9) * pulse, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = here ? '#ff6b7c' : '#d83a50'; ctx.strokeStyle = here ? '#fff3c4' : '#7a1428'; ctx.lineWidth = here ? 2.5 : 2;
-    ctx.beginPath(); ctx.ellipse(bx, by, (big ? 28 : 22) * pulse, (big ? 10.5 : 9) * pulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.ellipse(bx - 6, by - 4, 8, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+    // (cached per state and size, scaled with the pulse) a chrome bezel with screws, a dark skirt, a domed cap with a
+    // radial shine, a lit rim and a glint
+    const brx = big ? 28 : 22, bry = big ? 10.5 : 9;
+    const bs = paSprite('slotsbtn|' + (here ? 1 : 0), 2 * brx, 2 * bry, 7, g => {
+      g.fillStyle = 'rgba(40,6,24,0.35)'; g.beginPath(); g.ellipse(brx + 1, bry + 6, brx + 5, bry + 3.5, 0, 0, Math.PI * 2); g.fill();
+      const cg = g.createLinearGradient(0, -4, 0, 2 * bry + 6); cg.addColorStop(0, '#f2f0f8'); cg.addColorStop(0.5, '#b9b6c8'); cg.addColorStop(1, '#6e6a80');
+      g.fillStyle = cg; g.beginPath(); g.ellipse(brx, bry + 3, brx + 4.5, bry + 3.2, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#4c4860'; g.lineWidth = 1; g.stroke();
+      for (const sx of [-1, 1]) paStud(g, brx + sx * (brx + 1.8), bry + 3, 1.1, '#d9d6e6', { collar: false });
+      g.fillStyle = '#7a1428'; g.beginPath(); g.ellipse(brx, bry + 3, brx, bry, 0, 0, Math.PI * 2); g.fill();
+      const base = here ? '#ff6b7c' : '#d83a50', rg = g.createRadialGradient(brx - brx * 0.3, bry - bry * 0.5, 1, brx, bry, brx);
+      rg.addColorStop(0, paLt(base, 0.35)); rg.addColorStop(0.6, base); rg.addColorStop(1, paDk(base, 0.25));
+      g.fillStyle = rg; g.beginPath(); g.ellipse(brx, bry, brx, bry, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = here ? '#fff3c4' : '#7a1428'; g.lineWidth = here ? 2.5 : 2; g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.45)'; g.beginPath(); g.ellipse(brx - 6, bry - 4, 8, 2.2, 0, 0, Math.PI * 2); g.fill();
+    });
+    { const w2 = bs.c.width / bs.sc * pulse, h2 = bs.c.height / bs.sc * pulse; ctx.drawImage(bs.c, bx - w2 / 2, by - h2 / 2, w2, h2); }
+    // a recessed label plate on the cap, under the word
+    { const lw = (big ? 46 : 36) * pulse, lh = (big ? 15 : 12) * pulse; ctx.fillStyle = 'rgba(122,20,40,0.22)'; rr(bx - lw / 2, by - lh / 2 + 0.5, lw, lh, lh / 2); ctx.fill(); }
     text('STOP', bx, by + 0.5, big ? 14 : 10, '#fff', 'center', 'body');
     if (r.need) { ctx.save(); ctx.translate(bx + (big ? 37 : 30), by); ctx.scale(0.22, 0.22); slotsDrawSym(r.need, -45, -30, 90, 60); ctx.restore(); }
   }
@@ -593,11 +653,17 @@ function slotsDraw(st) {
   if (st.lever) {
     const L = st.lever, bx = L.x + 15, by = st.goalTop, a = L.pulled ? Math.min(1, L.t / 0.25) : 0;
     const d = G.level.door, lean = d && bx > d.x && bx < d.x + d.w ? -0.4 : 0;   // in front of the door (Grand Jackpot): lean out of its way
-    ctx.fillStyle = '#b9850f'; rr(bx - 9, by - 18, 18, 18, 4); ctx.fill();
+    // (cached housing) a gold box with a lit lid, bolts and a dark slot; then a chrome shaft and a shiny red knob
+    paStamp('slotslever', bx - 9, by - 18, 18, 18, 4, g => {
+      g.fillStyle = 'rgba(40,10,40,0.3)'; g.beginPath(); g.ellipse(10, 18.5, 12, 2.5, 0, 0, Math.PI * 2); g.fill();
+      paMetal(g, 0, 0, 18, 18, '#d9a32a', { r: 4, rivets: false });
+      for (const [nx, ny] of [[3.5, 3.5], [14.5, 3.5], [3.5, 14.5], [14.5, 14.5]]) paNail(g, nx, ny, '#d9a32a', 1.1);
+      g.fillStyle = '#5a3a08'; paRR(g, 6.5, 4, 5, 10, 2.5); g.fill();
+    });
     ctx.save(); ctx.translate(bx, by - 12); ctx.rotate(lean + a * 1.6);
-    ctx.strokeStyle = '#d9dbe8'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -40); ctx.stroke();
-    ctx.fillStyle = '#e8344e'; circle(0, -44, 9); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.55)'; circle(-3, -47, 3); ctx.fill();
+    paRod(ctx, -2.5, -41, 5, 42, '#d9dbe8');
+    paRod(ctx, -4, -4, 8, 4, '#b9b6c8');
+    paStud(ctx, 0, -44, 9, '#e8344e', { collar: false });
     ctx.restore();
     // the label sits over the lever, or on a little sign on the goal block when "over" would touch the top-right HUD pill (y < 70)
     if (!L.pulled) {
@@ -614,13 +680,25 @@ function slotsDraw(st) {
   if (st.spring && st.spring.on) {
     const s = st.spring, u = Math.min(1, s.t / 0.3), sq = s.boing > 0 ? 1 + 0.4 * Math.sin(s.boing / 0.3 * Math.PI) : 1;
     const hgt = 16 * u * sq, cx = s.x + s.w / 2;
-    ctx.strokeStyle = '#d9dbe8'; ctx.lineWidth = 3; ctx.beginPath();
+    // a steel coil (a dark back stroke, a lit front stroke) on a bolted foot, under a gold plate with a lit top
+    ctx.fillStyle = '#6e6a80'; rr(cx - 18, SLOTS.deckFloor - 3, 36, 4, 2); ctx.fill();
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#5c5870'; ctx.lineWidth = 4.5; ctx.beginPath();
     for (let k = 0; k <= 6; k++) { const y = SLOTS.deckFloor - k * hgt / 6; ctx.lineTo(cx + (k % 2 ? 14 : -14), y); } ctx.stroke();
-    ctx.fillStyle = C.gold; rr(cx - 22, SLOTS.deckFloor - hgt - 6, 44, 7, 3); ctx.fill();
+    ctx.strokeStyle = '#d9dbe8'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let k = 0; k <= 6; k++) { const y = SLOTS.deckFloor - k * hgt / 6 - 0.8; ctx.lineTo(cx + (k % 2 ? 14 : -14), y); } ctx.stroke(); ctx.restore();
+    paMetal(ctx, cx - 22, SLOTS.deckFloor - hgt - 6, 44, 7, C.gold, { r: 3, lw: 1.2, step: 12, ins: 3.5 });
     if (st.phase === 'jackpot') text('▲', cx, SLOTS.deckFloor - hgt - 20 - Math.abs(Math.sin(G.time * 5)) * 6, 16, C.gold, 'center');
   }
   // coin return chute on the runner's checkpoint
-  if (st.chute) { ctx.fillStyle = 'rgba(28,26,54,0.55)'; rr(st.chute.x - 16, st.chute.y - 6, 32, 6, 3); ctx.fill(); }
+  if (st.chute) {
+    paStamp('slotschute', st.chute.x - 16, st.chute.y - 6, 32, 6, 3, g => {
+      paMetal(g, 0, 0, 32, 6, '#b9b6c8', { r: 3, lw: 1, rivets: false });
+      g.fillStyle = 'rgba(28,26,54,0.75)'; paRR(g, 5, 1.5, 22, 3, 1.5); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.4)'; g.fillRect(6, 4.5, 20, 0.8);
+    });
+  }
 }
 function slotsDrawTop(st) {
   const big = hudBig(), fs = big ? 19 : 13;

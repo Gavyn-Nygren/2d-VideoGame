@@ -680,14 +680,13 @@ function dlrDrawSeabed(st) {
         circle(tx, ty, 3.6); ctx.fill();
       }
       ctx.lineCap = 'butt';
-    } else if (h < 0.45) { // a starfish
-      ctx.fillStyle = '#ff8f6a'; ctx.beginPath();
-      for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r0 = k % 2 ? 3 : 8; ctx.lineTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); }
-      ctx.closePath(); ctx.fill();
-    } else if (h < 0.6) { // a shell
-      ctx.fillStyle = '#fff1e6'; ctx.beginPath(); ctx.arc(x, y + 3, 7, Math.PI, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#e8b9a6'; ctx.lineWidth = 1; for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(x, y + 3); ctx.lineTo(x + k * 5, y - 3); ctx.stroke(); }
-    } else if (h < 0.7) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; circle(x, y, 2); ctx.fill(); circle(x + 6, y + 3, 1.5); ctx.fill(); }
+    } else if (h < 0.45) ERICH.seaBit('star', x, y + 4, n);
+    else if (h < 0.6) ERICH.seaBit(dlrHash(n, 15) < 0.5 ? 'scallop' : 'snail', x, y + 4, n);
+    else if (h < 0.75) ERICH.seaBit('peb', x, y + 4, n);
+    else if (h < 0.82) ERICH.seaBit('rock', x, b + 8 + Math.sin((x + cx) / 70) * 4, n);
+    else if (h < 0.9) ERICH.seaBit('grass', x, y + 3, n);
+    // deeper in the sand: pebbles and shells half sunk
+    if (dlrHash(n, 16) < 0.5) { const yy = b + 40 + dlrHash(n, 17) * (H - b - 50); ERICH.seaBit(dlrHash(n, 18) < 0.6 ? 'peb' : 'scallop', x + 30, yy, n + 7); }
   }
 }
 // the bright wavy water surface (drawn twice: behind the dolphins, and a see-through front edge over them)
@@ -807,9 +806,19 @@ function dlrDrawObstacle(st, o) {
       const x = dlrSX(st, o.x) + hit * 8, y = sh.cy, cols = ['#ff6f6f', '#ffb13d', '#ff7fc8'][o.col];
       ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * 2.2 + o.ph) * 0.12 + hit * 0.5);
       ctx.strokeStyle = 'rgba(80,70,110,0.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, 18); ctx.lineTo(0, 46); ctx.stroke();
-      ctx.fillStyle = cols; circle(0, 0, 20); ctx.fill();
-      ctx.fillStyle = '#ffffff'; ctx.save(); circle(0, 0, 20); ctx.clip(); ctx.fillRect(-21, -6, 42, 10); ctx.restore();
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(-7, -10, 5, 3, -0.5, 0, Math.PI * 2); ctx.fill();
+      ERICH.put('dlbuoy' + o.col, 48, 48, 24, 24, c => {
+        c.fillStyle = cols; c.beginPath(); c.arc(0, 0, 20, 0, Math.PI * 2); c.fill();
+        c.save(); c.beginPath(); c.arc(0, 0, 20, 0, Math.PI * 2); c.clip();
+        c.fillStyle = shade(cols, 0.25); c.beginPath(); c.arc(7, 8, 20, 0, Math.PI * 2); c.fill();
+        c.fillStyle = cols; c.beginPath(); c.arc(-2, -2, 16, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#ffffff'; c.fillRect(-21, -6, 42, 10); c.fillStyle = 'rgba(120,120,150,0.35)'; c.fillRect(-21, 1, 42, 3);
+        c.fillStyle = 'rgba(30,20,40,0.18)'; c.fillRect(-21, 4, 42, 2);
+        c.restore();
+        ERICH.rivets(c, [[-14, -1], [-5, -1], [5, -1], [14, -1]], 1.2, '#d8dce8');
+        c.fillStyle = 'rgba(255,255,255,0.55)'; c.beginPath(); c.ellipse(-7, -11, 5, 3, -0.5, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = shade(cols, 0.45); c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 20, 0, Math.PI * 2); c.stroke();
+        c.fillStyle = '#6a6a80'; c.fillRect(-3, -22, 6, 4);
+      }, 0, 0);
       ctx.strokeStyle = '#8a5a30'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(0, -38); ctx.stroke();
       ctx.fillStyle = cols; ctx.beginPath(); ctx.moveTo(0, -38); ctx.lineTo(14 + Math.sin(t * 6 + o.ph) * 2, -33); ctx.lineTo(0, -28); ctx.fill();
       ctx.restore();
@@ -817,15 +826,8 @@ function dlrDrawObstacle(st, o) {
     }
     case 'rock': {
       const x = dlrSX(st, o.x) + hit * 5, cy = b + 34, r = o.r, cols = [['#9c8fc0', '#7d70a6'], ['#a8a0b8', '#857c98'], ['#8fa6b8', '#6f879a']][o.col];
-      ctx.fillStyle = cols[1]; ctx.beginPath(); ctx.arc(x, cy, r, Math.PI, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = cols[0]; ctx.beginPath(); ctx.arc(x - 4, cy, r - 8, Math.PI, Math.PI * 2); ctx.fill();
-      // pits, cracks and barnacles, then an outline in its own dark shade
-      ctx.save(); ctx.beginPath(); ctx.arc(x, cy, r, Math.PI, Math.PI * 2); ctx.clip();
-      for (let k = 0; k < 9; k++) { const hh = hash(o.id + 7, k), px = x - r + 16 + (hh % Math.max(1, r * 2 - 32)), py = cy - 10 - ((hh >> 7) % Math.max(1, Math.round(r * 0.8))); ctx.fillStyle = k % 3 ? 'rgba(40,30,70,0.16)' : 'rgba(255,255,255,0.2)'; ctx.beginPath(); ctx.ellipse(px, py, 4 + hh % 6, 3 + hh % 3, 0, 0, Math.PI * 2); ctx.fill(); }
-      ctx.strokeStyle = 'rgba(40,30,70,0.3)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + r * 0.1, cy - r * 0.9); ctx.lineTo(x + r * 0.2, cy - r * 0.6); ctx.lineTo(x + r * 0.05, cy - r * 0.4); ctx.stroke();
-      ctx.restore();
-      ctx.strokeStyle = shade(cols[1], 0.35); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, cy, r, Math.PI, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.ellipse(x - r * 0.35, cy - r * 0.6, r * 0.22, r * 0.12, -0.5, 0, Math.PI * 2); ctx.fill();
+      const rk = Math.round(r);
+      ERICH.put('dlrock' + o.id + ':' + rk + ':' + o.col, rk * 2 + 12, rk + 12, rk + 6, rk + 6, c => dlrPaintRock(c, rk, cols, o.id), x, cy);
       // coral and sea anemones on top
       for (let k = 0; k < 4; k++) {
         const a = Math.PI * (1.2 + k * 0.2), px = x + Math.cos(a) * (r - 6), py = cy + Math.sin(a) * (r - 6), col = DLR_CORAL[(o.id + k) % DLR_CORAL.length];
@@ -866,15 +868,8 @@ function dlrDrawObstacle(st, o) {
       const x = dlrSX(st, o.x) + hit * 4, bob = Math.sin(t * 1.6 + o.ph) * 2, cols = ['#ff8fa0', '#ffd25a', '#8fe3b0'][o.col];
       ctx.save(); ctx.translate(0, bob);
       // the sail
-      ctx.fillStyle = '#fffaf0'; ctx.beginPath(); ctx.moveTo(x - 6, s - 146); ctx.lineTo(x - 6, s - 34); ctx.lineTo(x - 58, s - 34); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = cols; ctx.beginPath(); ctx.moveTo(x - 6, s - 80); ctx.lineTo(x - 6, s - 34); ctx.lineTo(x - 52, s - 34); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#8a5a30'; ctx.fillRect(x - 3, s - 152, 6, 136);
       ctx.fillStyle = cols; ctx.beginPath(); ctx.moveTo(x + 3, s - 152); ctx.lineTo(x + 24 + Math.sin(t * 5) * 2, s - 146); ctx.lineTo(x + 3, s - 140); ctx.fill();
-      // the hull (half under the water)
-      ctx.fillStyle = '#b77a45'; ctx.beginPath(); ctx.moveTo(x - 66, s - 16); ctx.lineTo(x + 70, s - 16); ctx.lineTo(x + 52, s + 24); ctx.lineTo(x - 50, s + 24); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#8a5a30'; ctx.fillRect(x - 66, s - 18, 136, 6);
-      ctx.fillStyle = cols; ctx.fillRect(x - 60, s - 4, 124, 5);
-      ctx.fillStyle = '#ffffff'; for (const dx of [-30, 0, 30]) { circle(x + dx, s - 7, 3.5); ctx.fill(); }
+      ERICH.put('dlboat' + o.col, 150, 190, 74, 160, c => dlrPaintBoat(c, cols), x, s);
       ctx.restore();
       break;
     }
@@ -891,6 +886,78 @@ function dlrDrawObstacle(st, o) {
       ctx.restore();
       break;
     }
+  }
+}
+// a seabed rock dome (centre of its base at 0,0, radius r): facets, strata, pits with lit rims, cracks, barnacles, algae
+function dlrPaintRock(c, r, cols, id) {
+  const F = ERICH.fr, dome = () => { c.beginPath(); c.arc(0, 0, r, Math.PI, Math.PI * 2); c.closePath(); };
+  dome(); c.fillStyle = cols[1]; c.fill();
+  c.save(); dome(); c.clip();
+  c.fillStyle = cols[0]; c.beginPath(); c.arc(-5, 2, r - 8, Math.PI, Math.PI * 2); c.fill();
+  for (let i = 0; i < 8; i++) {
+    const a = Math.PI * (1.05 + F(id, i) * 0.9), d = r * (0.3 + F(id, i + 10) * 0.55), px = Math.cos(a) * d, py = Math.sin(a) * d, fs = r * (0.18 + F(id, i + 20) * 0.18);
+    c.fillStyle = F(id, i + 30) < 0.5 ? 'rgba(255,255,255,0.12)' : 'rgba(40,30,70,0.12)';
+    c.beginPath(); for (let k = 0; k < 5; k++) { const b2 = k / 5 * Math.PI * 2 + F(id, i * 7 + k) * 0.7; c.lineTo(px + Math.cos(b2) * fs, py + Math.sin(b2) * fs * 0.75); } c.closePath(); c.fill();
+  }
+  c.strokeStyle = 'rgba(40,30,70,0.18)'; c.lineWidth = 2;
+  for (const k of [0.25, 0.5, 0.75]) { c.beginPath(); c.moveTo(-r, -k * r); c.bezierCurveTo(-r * 0.3, -k * r - 6, r * 0.3, -k * r + 5, r, -k * r - 2); c.stroke(); }
+  for (let k = 0; k < 12; k++) {
+    const hh = hash(id + 7, k), px = -r + 16 + (hh % Math.max(1, r * 2 - 32)), py = -10 - ((hh >>> 7) % Math.max(1, Math.round(r * 0.8))), rx = 3 + hh % 5, ry = 2 + hh % 3;
+    c.fillStyle = 'rgba(40,30,70,0.28)'; c.beginPath(); c.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 1; c.beginPath(); c.ellipse(px, py, rx, ry, 0, 0.3, Math.PI - 0.3); c.stroke();
+  }
+  for (let i = 0; i < 30; i++) { c.fillStyle = F(id, i + 50) < 0.4 ? 'rgba(255,255,255,0.3)' : 'rgba(40,30,70,0.3)'; c.beginPath(); c.arc((F(id, i + 60) - 0.5) * 2 * r, -F(id, i + 70) * r, 0.8 + F(id, i + 80), 0, Math.PI * 2); c.fill(); }
+  c.fillStyle = 'rgba(40,30,70,0.25)'; c.beginPath(); c.arc(r * 0.4, 6, r * 0.9, Math.PI, Math.PI * 2); c.fill();
+  c.restore();
+  // cracks with a lit lip
+  c.lineCap = 'round';
+  for (const [ax, ay, bx, by, ex, ey] of [[0.1, -0.95, 0.2, -0.6, 0.05, -0.4], [-0.5, -0.75, -0.42, -0.5, -0.55, -0.3]]) {
+    c.strokeStyle = 'rgba(40,30,70,0.45)'; c.lineWidth = 2; c.beginPath(); c.moveTo(ax * r, ay * r); c.lineTo(bx * r, by * r); c.lineTo(ex * r, ey * r); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 1; c.beginPath(); c.moveTo(ax * r + 1.5, ay * r + 1); c.lineTo(bx * r + 1.5, by * r + 1); c.stroke();
+  }
+  dome(); c.strokeStyle = shade(cols[1], 0.35); c.lineWidth = 2.5; c.stroke();
+  c.fillStyle = 'rgba(255,255,255,0.24)'; c.beginPath(); c.ellipse(-r * 0.35, -r * 0.6, r * 0.22, r * 0.12, -0.5, 0, Math.PI * 2); c.fill();
+  // algae patches and barnacles
+  for (let i = 0; i < 5; i++) {
+    const a = Math.PI * (1.12 + F(id, i + 90) * 0.76), px = Math.cos(a) * (r - 3), py = Math.sin(a) * (r - 3);
+    c.fillStyle = '#4f9a5a'; c.beginPath(); c.ellipse(px, py + 1, 7, 4, a + Math.PI / 2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#7fcf7a'; c.beginPath(); c.ellipse(px - 0.5, py, 5, 2.8, a + Math.PI / 2, 0, Math.PI * 2); c.fill();
+  }
+  for (let i = 0; i < 7; i++) {
+    const a = Math.PI * (1.15 + F(id, i + 120) * 0.7), d = r * (0.5 + F(id, i + 130) * 0.4), bx = Math.cos(a) * d, by = Math.sin(a) * d, br = 2 + F(id, i + 140) * 2.2;
+    c.fillStyle = '#ece6d4'; c.beginPath(); c.arc(bx, by, br, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#8a8270'; c.lineWidth = 0.8; c.stroke();
+    c.fillStyle = '#5a5248'; c.beginPath(); c.arc(bx, by, br * 0.38, 0, Math.PI * 2); c.fill();
+  }
+}
+// the little sailboat (x at the mast, y at the water line): drawn once per colour
+function dlrPaintBoat(c, cols) {
+  // the mast
+  ERICH.board(c, -3, -152, 6, 136, { col: '#8a5a30', seed: 41, vert: true, r: 2, nails: false, lw: 1.2 });
+  // the sail: shaded fold, seams, a coloured panel, a stitched edge
+  const sail = () => { c.beginPath(); c.moveTo(-6, -146); c.lineTo(-6, -34); c.lineTo(-58, -34); c.closePath(); };
+  sail(); c.fillStyle = '#fffaf0'; c.fill();
+  c.save(); sail(); c.clip();
+  c.fillStyle = 'rgba(120,110,150,0.16)'; c.beginPath(); c.moveTo(-6, -146); c.lineTo(-6, -34); c.lineTo(-22, -34); c.closePath(); c.fill();
+  c.fillStyle = cols; c.beginPath(); c.moveTo(-6, -80); c.lineTo(-6, -34); c.lineTo(-52, -34); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(120,110,150,0.35)'; c.lineWidth = 1; for (let k = 1; k < 6; k++) { c.beginPath(); c.moveTo(-6, -146 + k * 20); c.lineTo(-60, -34 + k * 3); c.stroke(); }
+  c.restore();
+  c.save(); c.setLineDash([3, 3]); c.strokeStyle = 'rgba(120,110,150,0.6)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-9, -138); c.lineTo(-52, -37); c.stroke(); c.restore();
+  sail(); c.strokeStyle = '#b8b0c8'; c.lineWidth = 1.5; c.stroke();
+  c.strokeStyle = '#5a4a3a'; c.lineWidth = 1; c.beginPath(); c.moveTo(-58, -34); c.lineTo(-62, -18); c.stroke();
+  // the hull: planks, a rail, a coloured band, brass portholes
+  const hull = () => { c.beginPath(); c.moveTo(-66, -16); c.lineTo(70, -16); c.lineTo(52, 24); c.lineTo(-50, 24); c.closePath(); };
+  hull(); c.fillStyle = '#b77a45'; c.fill();
+  c.save(); hull(); c.clip();
+  for (let i = 0; i < 5; i++) ERICH.board(c, -70, -16 + i * 8, 144, 8, { col: ['#b77a45', '#ad7240', '#bf8250', '#a86e3c', '#b47844'][i], seed: 51 + i, r: 0, nails: false, lw: 0.8, knots: i === 2 ? 1 : 0 });
+  c.fillStyle = 'rgba(40,20,5,0.25)'; c.beginPath(); c.moveTo(30, -16); c.lineTo(70, -16); c.lineTo(52, 24); c.lineTo(20, 24); c.closePath(); c.fill();
+  c.restore();
+  hull(); c.strokeStyle = '#6a4220'; c.lineWidth = 2; c.stroke();
+  ERICH.board(c, -68, -20, 140, 6, { col: '#8a5a30', seed: 60, r: 2, lw: 1.2, nails: true });
+  c.fillStyle = cols; c.fillRect(-60, -4, 124, 5); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(-60, -4, 124, 1.2); c.fillStyle = 'rgba(0,0,0,0.15)'; c.fillRect(-60, 0, 124, 1);
+  for (const dx of [-30, 0, 30]) {
+    c.fillStyle = '#c9a24a'; c.beginPath(); c.arc(dx, -7, 4.6, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#8a6420'; c.lineWidth = 1; c.stroke();
+    c.fillStyle = '#d8f4ff'; c.beginPath(); c.arc(dx, -7, 3, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.arc(dx - 1, -8, 1, 0, Math.PI * 2); c.fill();
   }
 }
 function dlrDrawStart(st) {

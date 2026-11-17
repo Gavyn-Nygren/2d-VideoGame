@@ -615,16 +615,59 @@
     ctx.save(); ctx.translate(g.x, g.y); ctx.globalAlpha = 1 - 0.55 * (g.fade || 0);
     ctx.fillStyle = 'rgba(60,90,130,0.18)'; ctx.beginPath(); ctx.ellipse(0, 4, 20, 7, 0, 0, Math.PI * 2); ctx.fill();
     ctx.rotate(w);
-    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#b8d2ea'; ctx.lineWidth = 2;
-    circle(0, -6, 16); ctx.fill(); ctx.stroke();
-    circle(0, -27, 11.5); ctx.fill(); ctx.stroke();
-    circle(0, -43, 8.5); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = C.ink; circle(-3, -45, 1.4); ctx.fill(); circle(3, -45, 1.4); ctx.fill();
-    for (const by of [-30, -24]) { circle(0, by, 1.5); ctx.fill(); }
-    ctx.fillStyle = '#ff8a3d'; ctx.beginPath(); ctx.moveTo(0, -42.5); ctx.lineTo(9, -41); ctx.lineTo(0, -40); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#d9425a'; ctx.fillRect(-9, -36, 18, 4); ctx.fillRect(4, -34, 4, 9);
-    ctx.fillStyle = '#3a3f66'; ctx.fillRect(-7, -58, 14, 9); ctx.fillRect(-10, -50, 20, 3);
+    // painted once: three snowballs with a blue shaded side, sparkles and a lit rim, twig arms, coal eyes and buttons
+    // with a glint, a carrot with ridges, a knitted scarf and a top hat with a band
+    blitSprite(rkPic('cuSnowman', 60, 80, 30, 66, c => {
+      c.lineCap = 'round';
+      c.strokeStyle = '#6b4a2e'; c.lineWidth = 2; c.beginPath(); c.moveTo(-10, -29); c.lineTo(-24, -38); c.moveTo(-19, -35); c.lineTo(-22, -42); c.moveTo(10, -29); c.lineTo(23, -36); c.moveTo(18, -33); c.lineTo(24, -30); c.stroke();
+      for (const [by, r] of [[-6, 16], [-27, 11.5], [-43, 8.5]]) {
+        c.fillStyle = '#ffffff'; c.beginPath(); c.arc(0, by, r, 0, Math.PI * 2); c.fill();
+        c.save(); c.beginPath(); c.arc(0, by, r, 0, Math.PI * 2); c.clip();
+        c.fillStyle = '#d7e8f7'; c.beginPath(); c.arc(r * 0.35, by + r * 0.35, r, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#ffffff'; c.beginPath(); c.arc(-r * 0.12, by - r * 0.12, r * 0.86, 0, Math.PI * 2); c.fill();
+        c.fillStyle = 'rgba(170,205,235,0.5)'; for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(-r * 0.6 + hash(k, r | 0) % (r * 1.2), by - r * 0.5 + hash(k + 9, r | 0) % (r * 1.1), 0.9, 0, Math.PI * 2); c.fill(); }
+        c.restore();
+        c.strokeStyle = '#a9c8e6'; c.lineWidth = 1.6; c.beginPath(); c.arc(0, by, r, 0, Math.PI * 2); c.stroke();
+        c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 1.2; c.beginPath(); c.arc(0, by, r - 2, Math.PI * 1.05, Math.PI * 1.45); c.stroke();
+      }
+      const coal = (x, y, r) => { c.fillStyle = '#26243f'; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.7)'; c.fillRect(x - r * 0.5, y - r * 0.6, r * 0.6, r * 0.6); };
+      coal(-3, -45, 1.5); coal(3, -45, 1.5); coal(0, -30, 1.6); coal(0, -24, 1.6); coal(0, -10, 1.8);
+      c.fillStyle = '#ff8a3d'; c.beginPath(); c.moveTo(0, -43); c.lineTo(10, -41); c.lineTo(0, -39.5); c.closePath(); c.fill();
+      c.strokeStyle = '#c55a1a'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(4, -42.3); c.lineTo(4, -40.2); c.moveTo(7, -41.6); c.lineTo(7, -40.6); c.stroke();
+      // scarf
+      c.fillStyle = '#d9425a'; c.fillRect(-9, -36, 18, 4); c.fillRect(4, -34, 4, 10);
+      c.fillStyle = '#ffffff'; c.fillRect(-9, -35, 18, 1); c.fillRect(4, -29, 4, 1.2);
+      c.fillStyle = 'rgba(80,10,30,0.35)'; c.fillRect(-9, -33, 18, 1); c.fillRect(7, -34, 1, 10);
+      c.fillStyle = '#d9425a'; for (let k = 0; k < 3; k++) c.fillRect(4.2 + k * 1.4, -24, 0.8, 2);
+      // hat
+      c.fillStyle = '#3a3f66'; c.fillRect(-7, -58, 14, 9); c.fillRect(-10, -50, 20, 3);
+      c.fillStyle = '#5b95ff'; c.fillRect(-7, -52.5, 14, 2.5);
+      c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(-7, -58, 2.5, 9); c.fillRect(-10, -50, 20, 0.8);
+      c.strokeStyle = '#232644'; c.lineWidth = 1; c.strokeRect(-7, -58, 14, 9); c.strokeRect(-10, -50, 20, 3);
+    }), 0, 0);
     ctx.restore();
+  }
+  // a stone's body, painted once per owner: polished granite (specks, a lit rim, a darker lower-right), a coloured cap
+  // ring with its own shading; the handle is drawn live on top (it turns with the spin)
+  function cuPaintStone(c, r, owner) {
+    const col = owner === 0 || owner === 1 ? PCOL[owner] : '#bbbbbb', dk = owner === 0 || owner === 1 ? PDARK[owner] : '#888888';
+    c.fillStyle = '#7d8598'; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
+    c.save(); c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.clip();
+    c.fillStyle = '#9aa1b2'; c.beginPath(); c.arc(-1.5, -1.5, r - 1.5, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#b9c0cf'; c.beginPath(); c.arc(-4, -4, r * 0.55, 0, Math.PI * 2); c.fill();
+    for (let k = 0; k < 40; k++) { const a = hash(k, 31) / 4294967296 * Math.PI * 2, d = (hash(k, 32) % 100) / 100 * r; c.fillStyle = k % 3 ? 'rgba(40,44,66,0.35)' : 'rgba(255,255,255,0.55)'; c.fillRect(Math.cos(a) * d, Math.sin(a) * d, 1, 1); }
+    c.restore();
+    c.strokeStyle = 'rgba(255,255,255,0.65)'; c.lineWidth = 1.2; c.beginPath(); c.arc(0, 0, r - 1.2, Math.PI * 1.0, Math.PI * 1.55); c.stroke();
+    c.strokeStyle = '#535a6e'; c.lineWidth = 1.6; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.stroke();
+    // the cap
+    const cr = r * 0.62;
+    c.fillStyle = col; c.beginPath(); c.arc(0, 0, cr, 0, Math.PI * 2); c.fill();
+    c.save(); c.beginPath(); c.arc(0, 0, cr, 0, Math.PI * 2); c.clip();
+    c.fillStyle = dk; c.globalAlpha = 0.35; c.beginPath(); c.arc(2, 2, cr, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1;
+    c.fillStyle = col; c.beginPath(); c.arc(-0.6, -0.6, cr - 1.6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.ellipse(-2.5, -3, cr * 0.5, cr * 0.25, -0.6, 0, Math.PI * 2); c.fill();
+    c.restore();
+    c.strokeStyle = dk; c.lineWidth = 1.5; c.beginPath(); c.arc(0, 0, cr, 0, Math.PI * 2); c.stroke();
   }
   function cuStone(s, alpha) {
     const fade = s.leaving ? clamp(1 - s.leaving / 1.4, 0, 1) : 1;
@@ -633,15 +676,26 @@
     ctx.scale(pop, pop);
     ctx.fillStyle = 'rgba(40,70,110,0.22)'; circle(1.5, 2.5, s.r + 1); ctx.fill();
     if (s.owner === 'robot') {
-      ctx.fillStyle = '#e04a55'; circle(0, 0, s.r); ctx.fill();
-      ctx.strokeStyle = '#8f2032'; ctx.lineWidth = 2; circle(0, 0, s.r); ctx.stroke();
-      ctx.fillStyle = '#ff7b84'; circle(-3, -4, s.r * 0.45); ctx.fill();
+      // a riveted red shell with a lit dome, a darker lower edge and a seam
+      blitSprite(rkPic('cuRobot|' + s.r, s.r * 2 + 6, s.r * 2 + 6, s.r + 3, s.r + 3, c => {
+        const r = s.r;
+        c.fillStyle = '#c23a48'; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#e04a55'; c.beginPath(); c.arc(-1, -1.2, r - 1.6, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#ff7b84'; c.beginPath(); c.arc(-3, -4, r * 0.45, 0, Math.PI * 2); c.fill();
+        c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.ellipse(-4, -6, r * 0.25, r * 0.12, -0.6, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = 'rgba(120,20,40,0.45)'; c.lineWidth = 0.8; c.beginPath(); c.arc(0, 0, r * 0.82, 0.2, Math.PI - 0.2); c.stroke();
+        for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + 0.2; rkRivet(c, Math.cos(a) * (r - 2.3), Math.sin(a) * (r - 2.3), 0.8, '#d9dbe8'); }
+        c.strokeStyle = '#8f2032'; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.stroke();
+      }), 0, 0);
       // antenna
       ctx.strokeStyle = '#5b5f7a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -s.r + 2); ctx.lineTo(0, -s.r - 6); ctx.stroke();
+      ctx.strokeStyle = '#a9adc4'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-0.5, -s.r + 2); ctx.lineTo(-0.5, -s.r - 5); ctx.stroke();
       ctx.fillStyle = (G.clock * 3) % 1 < 0.5 ? '#ffe066' : '#ff9f43'; circle(0, -s.r - 7, 2.6); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(-0.8, -s.r - 7.8, 0.9); ctx.fill();
       // grumpy face (dizzy after a bump)
       const dizzy = (s.face || 0) > 0.2 || s.leaving;
       ctx.fillStyle = '#fff'; rr(-8, -4, 16, 7, 3); ctx.fill();
+      ctx.strokeStyle = '#8f2032'; ctx.lineWidth = 1; rr(-8, -4, 16, 7, 3); ctx.stroke();
       ctx.fillStyle = C.ink;
       if (dizzy) { ctx.font = '700 8px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('x  x', 0, -0.5); }
       else { circle(-4, 0, 1.6); ctx.fill(); circle(4, 0, 1.6); ctx.fill(); }
@@ -649,20 +703,56 @@
       ctx.beginPath(); ctx.moveTo(-8, -7); ctx.lineTo(-2, -5); ctx.moveTo(8, -7); ctx.lineTo(2, -5); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(-4, 7.5); ctx.quadraticCurveTo(0, dizzy ? 9 : 5, 4, 7.5); ctx.stroke();
     } else {
-      const g = ctx.createRadialGradient(-4, -4, 2, 0, 0, s.r);
-      g.addColorStop(0, '#b9c0cf'); g.addColorStop(1, '#7d8598');
-      ctx.fillStyle = g; circle(0, 0, s.r); ctx.fill();
-      ctx.strokeStyle = '#535a6e'; ctx.lineWidth = 1.6; circle(0, 0, s.r); ctx.stroke();
-      ctx.fillStyle = s.owner === 0 || s.owner === 1 ? PCOL[s.owner] : '#bbb';
-      circle(0, 0, s.r * 0.62); ctx.fill();
-      ctx.strokeStyle = s.owner === 0 || s.owner === 1 ? PDARK[s.owner] : '#888'; ctx.lineWidth = 1.5; circle(0, 0, s.r * 0.62); ctx.stroke();
-      // the handle shows the spin
-      ctx.rotate(s.rot); ctx.fillStyle = '#ffffff'; rr(-2.5, -s.r * 0.75, 5, s.r * 1.1, 2.5); ctx.fill();
-      ctx.fillStyle = 'rgba(28,26,54,0.35)'; circle(0, 0, 2.2); ctx.fill();
+      const ow = s.owner === 0 || s.owner === 1 ? s.owner : 'x';
+      blitSprite(rkPic('cuStone|' + s.r + '|' + ow, s.r * 2 + 4, s.r * 2 + 4, s.r + 2, s.r + 2, c => cuPaintStone(c, s.r, s.owner)), 0, 0);
+      // the handle shows the spin: a white grip with a shaded side, a lit top and a dark pivot
+      ctx.rotate(s.rot);
+      ctx.fillStyle = 'rgba(28,26,54,0.25)'; rr(-1.5, -s.r * 0.75 + 1, 5, s.r * 1.1, 2.5); ctx.fill();
+      ctx.fillStyle = '#ffffff'; rr(-2.5, -s.r * 0.75, 5, s.r * 1.1, 2.5); ctx.fill();
+      ctx.fillStyle = '#d6dbe6'; ctx.fillRect(0.8, -s.r * 0.75 + 2, 1.7, s.r * 1.1 - 4);
+      ctx.strokeStyle = '#8a90a8'; ctx.lineWidth = 0.8; rr(-2.5, -s.r * 0.75, 5, s.r * 1.1, 2.5); ctx.stroke();
+      ctx.fillStyle = 'rgba(28,26,54,0.45)'; circle(0, 0, 2.2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(-0.6, -0.6, 0.7); ctx.fill();
     }
     ctx.restore();
   }
-
+  // the sheet's wooden boards: planks with grain and joints, a lit top and left, a shaded foot and right, nail
+  // heads at the joints; painted once
+  function cuPaintBoards(c) {
+    const S = K.sheet, x0 = S.x0 - 10, y0 = S.y0 - 4, w = S.x1 - S.x0 + 20, h = S.y1 - S.y0 + 10, col = '#c99760';
+    c.fillStyle = col; c.fillRect(x0, y0, w, h);
+    const joints = []; for (let x = S.x0 + 60; x < S.x1; x += 120) joints.push(x - x0);
+    rkBoard(c, x0, y0, w, 6, '#cf9c64', 701, { nails: false, r: 1, lw: 1, joints });
+    rkBoard(c, x0, S.y1, w, 6, '#c3915a', 702, { nails: false, r: 1, lw: 1, joints });
+    rkBoard(c, x0, y0, 10, h, '#c99760', 703, { vert: true, nails: false, r: 1, lw: 1 });
+    rkBoard(c, S.x1, y0, 10, h, '#c08d55', 704, { vert: true, nails: false, r: 1, lw: 1 });
+    for (const jx of joints) for (const ny of [y0 + 3, S.y1 + 3]) { rkNail(c, x0 + jx - 3, ny, 0.9, '#b8bdcc'); rkNail(c, x0 + jx + 3, ny, 0.9, '#b8bdcc'); }
+    for (const ny of [y0 + 30, S.y1 - 30]) { rkNail(c, x0 + 5, ny, 1, '#b8bdcc'); rkNail(c, S.x1 + 5, ny, 1, '#b8bdcc'); }
+    // a navy pad strip on the inside edge (where stones bump)
+    c.fillStyle = '#2f4f7f'; c.fillRect(S.x0 - 2, S.y0 + 2, 2, S.y1 - S.y0 - 2); c.fillRect(S.x1, S.y0 + 2, 2, S.y1 - S.y0 - 2);
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(x0, y0, w, 1); c.fillRect(x0, y0, 1, h);
+    c.strokeStyle = shade(col, 0.6); c.lineWidth = 1.2; c.strokeRect(x0 + 0.6, y0 + 0.6, w - 1.2, h - 1.2);
+  }
+  function cuPaintIce(c, lucky) {
+    const S = K.sheet;
+    const ice = c.createLinearGradient(0, S.y0, 0, S.y1);
+    ice.addColorStop(0, CU_ICE); ice.addColorStop(0.5, '#f6fbff'); ice.addColorStop(1, CU_ICE2);
+    c.fillStyle = ice; c.fillRect(S.x0, S.y0, S.x1 - S.x0, S.y1 - S.y0);
+    // soft reflections of the arena lights, and the ice darkening where it meets the boards
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath();
+    for (const [x, w] of [[180, 44], [250, 14], [560, 60], [640, 16]]) { c.moveTo(x, S.y0); c.lineTo(x + w, S.y0); c.lineTo(x + w - 90, S.y1); c.lineTo(x - 90, S.y1); c.closePath(); }
+    c.fill();
+    c.fillStyle = 'rgba(80,120,170,0.16)'; c.fillRect(S.x0, S.y0, S.x1 - S.x0, 6); c.fillRect(S.x0, S.y0, 5, S.y1 - S.y0);
+    c.fillStyle = 'rgba(80,120,170,0.08)'; c.fillRect(S.x0, S.y0 + 6, S.x1 - S.x0, 6);
+    c.fillStyle = lucky ? 'rgba(255,215,90,0.35)' : 'rgba(150,190,225,0.35)';
+    for (let k = 0; k < 160; k++) { const x = S.x0 + (hash(k, 11) % (S.x1 - S.x0)), y = S.y0 + (hash(k, 13) % (S.y1 - S.y0)); c.beginPath(); c.arc(x, y, lucky ? 1.6 : 1.1, 0, Math.PI * 2); c.fill(); }
+    c.strokeStyle = 'rgba(160,200,230,0.5)'; c.lineWidth = 1;
+    for (let k = 0; k < 18; k++) { const x = S.x0 + (hash(k, 21) % (S.x1 - S.x0 - 60)), y = S.y0 + 10 + (hash(k, 23) % (S.y1 - S.y0 - 20)); c.beginPath(); c.moveTo(x, y); c.lineTo(x + 30 + (k % 3) * 12, y + (k % 2 ? 4 : -3)); c.stroke(); }
+    // fine pebble (thousands of tiny frozen droplets), skate and stone tracks down the middle, a few frost flecks
+    for (let k = 0; k < 900; k++) { const h = hash(k, 17), x = S.x0 + 2 + h % (S.x1 - S.x0 - 4), y = S.y0 + 2 + (h >>> 10) % (S.y1 - S.y0 - 4); c.fillStyle = (h >>> 20) % 3 ? 'rgba(170,200,230,0.28)' : 'rgba(255,255,255,0.8)'; c.fillRect(x, y, 1, 1); }
+    c.strokeStyle = 'rgba(140,180,215,0.22)'; c.lineWidth = 0.8;
+    for (let k = 0; k < 7; k++) { const y = K.lineY - 40 + hash(k, 27) % 80; c.beginPath(); c.moveTo(K.relX + 20 + hash(k, 28) % 60, y); c.bezierCurveTo(400, y + (hash(k, 29) % 30) - 15, 600, y + (hash(k, 30) % 40) - 20, K.button.x - 20 + hash(k, 31) % 40, K.lineY + (hash(k, 32) % 60) - 30); c.stroke(); }
+    c.fillStyle = 'rgba(255,255,255,0.7)'; for (let k = 0; k < 40; k++) { const h = hash(k, 33); c.beginPath(); c.arc(S.x0 + 6 + h % 20, S.y0 + 6 + (h >>> 8) % (S.y1 - S.y0 - 12), 1 + (h >>> 16) % 2, 0, Math.PI * 2); c.fill(); }
+  }
   function cuDrawArena(st) {
     const S = K.sheet, big = hudBig();
     // sky and far mountains
@@ -699,16 +789,41 @@
     ctx.fillStyle = '#ffffff'; ctx.fillText('WINTER  GAMES', bx - 160, 151.5); ctx.fillText('CURLING', bx + 170, 151.5);
     for (let i = 0; i < 5; i++) cuFlake(bx - 50 + i * 25, 151, 7, flakeCols[i], 1.6);
     for (const x of [70, 200, 760, 890]) cuFlake(x, 151, 6, 'rgba(255,255,255,0.75)', 1.4);
-    // snow bank at the bottom
-    ctx.fillStyle = '#f4fbff'; ctx.fillRect(0, S.y1, W, H - S.y1);
-    ctx.fillStyle = '#ddeefa';
-    for (let x = -20; x < W + 40; x += 46) { circle(x, S.y1 + 34 + (hash(x, 9) % 12), 28); ctx.fill(); }
-    ctx.fillStyle = '#ffffff';
-    for (let x = 0; x < W + 40; x += 38) { circle(x, S.y1 + 48 + (hash(x, 4) % 14), 24); ctx.fill(); }
-    ctx.fillStyle = 'rgba(255,255,255,0.9)'; for (let x = 0; x < W + 40; x += 38) { circle(x - 8, S.y1 + 38 + (hash(x, 4) % 14), 8); ctx.fill(); }
-    const sh = ctx.createLinearGradient(0, S.y1, 0, S.y1 + 26); sh.addColorStop(0, 'rgba(90,130,180,0.3)'); sh.addColorStop(1, 'rgba(90,130,180,0)');
-    ctx.fillStyle = sh; ctx.fillRect(0, S.y1, W, 26);
-    ctx.fillStyle = 'rgba(200,225,245,0.9)'; for (let k = 0; k < 40; k++) { const h = hash(k, 61); circle(h % W, S.y1 + 30 + (h >> 10) % 40, 1.2); ctx.fill(); }
+    // snow bank at the bottom: one cached picture (rounded drifts with blue shade on their undersides, a lit crest,
+    // wind ripples, sparkles, a few footprints and pebbles poking through)
+    rkPut('cuBank', 0, S.y1, W, H - S.y1, 0, 0, g => {
+      const by = 0, hh = H - S.y1;
+      g.fillStyle = '#e8f3fc'; g.fillRect(0, by, W, hh);
+      const drift = (x, y, r, col, shadeCol) => {
+        g.fillStyle = shadeCol; g.beginPath(); g.arc(x + r * 0.12, y + r * 0.1, r, 0, Math.PI * 2); g.fill();
+        g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      };
+      for (let x = -20; x < W + 40; x += 46) drift(x, 34 + (hash(x, 9) % 12), 28, '#ddeefa', '#bcd6ee');
+      for (let x = 0; x < W + 40; x += 38) drift(x, 48 + (hash(x, 4) % 14), 24, '#ffffff', '#dfecf8');
+      // blue shade low on each front drift and a lit crest high on it
+      for (let x = 0; x < W + 40; x += 38) {
+        const y = 48 + (hash(x, 4) % 14);
+        g.save(); g.beginPath(); g.arc(x, y, 24, 0, Math.PI * 2); g.clip();
+        g.fillStyle = 'rgba(150,185,225,0.2)'; g.beginPath(); g.ellipse(x + 10, y + 16, 24, 14, 0, 0, Math.PI * 2); g.fill();
+        g.restore();
+        g.fillStyle = 'rgba(255,255,255,0.95)'; g.beginPath(); g.arc(x - 8, y - 10, 8, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = 'rgba(255,255,255,1)'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 22.5, Math.PI * 1.1, Math.PI * 1.55); g.stroke();
+        
+      }
+      // wind ripples in the snow
+      g.strokeStyle = 'rgba(150,185,225,0.35)'; g.lineWidth = 1.1; g.beginPath();
+      for (let k = 0; k < 26; k++) { const h = hash(k, 71), x = h % W, y = 30 + (h >>> 10) % 30, w = 12 + (h >>> 20) % 16; g.moveTo(x, y); g.quadraticCurveTo(x + w / 2, y - 3, x + w, y); }
+      g.stroke();
+      // footprints wandering along, and a pebble or two poking through
+      for (let k = 0; k < 14; k++) { const x = 30 + k * 66 + (hash(k, 72) % 20), y = 24 + (k % 2) * 6 + (hash(k, 73) % 6); g.fillStyle = 'rgba(140,175,215,0.4)'; g.beginPath(); g.ellipse(x, y, 3, 1.6, 0.2, 0, Math.PI * 2); g.fill(); g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(x - 2, y - 1.8, 4, 0.8); }
+      for (const [x, y] of [[330, 36], [612, 30], [905, 40]]) { rkPebble(g, x, y, 3.2, 2.2, '#8a96aa', 0.2); g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(x - 0.5, y - 1.8, 3, 1, 0, Math.PI, 0); g.fill(); }
+      // shadow of the sheet's boards on the bank, then sparkles
+      const sh = g.createLinearGradient(0, 0, 0, 26); sh.addColorStop(0, 'rgba(90,130,180,0.3)'); sh.addColorStop(1, 'rgba(90,130,180,0)');
+      g.fillStyle = sh; g.fillRect(0, 0, W, 26);
+      g.fillStyle = 'rgba(200,225,245,0.9)'; for (let k = 0; k < 40; k++) { const h = hash(k, 61); g.beginPath(); g.arc(h % W, 30 + (h >> 10) % 40, 1.2, 0, Math.PI * 2); g.fill(); }
+      g.fillStyle = '#ffffff';
+      for (let k = 0; k < 18; k++) { const h = hash(k, 62), x = h % W, y = 20 + (h >>> 10) % 60; g.fillRect(x - 2, y - 0.4, 4, 0.8); g.fillRect(x - 0.4, y - 2, 0.8, 4); }
+    });
     // cheering penguins and seals on the snow bank (away from the middle, where touch players look)
     const fans = [[70, 510, 0], [120, 520, 1], [250, 512, 0], [395, 522, 0], [560, 516, 1], [700, 520, 0], [840, 512, 1], [900, 522, 0]];
     fans.forEach(([x, y, k], i) => {
@@ -722,23 +837,8 @@
     }
     // the sheet: boards, ice, lines and the house
     ctx.fillStyle = 'rgba(40,60,100,0.25)'; ctx.fillRect(S.x0 - 6, S.y1 + 6, S.x1 - S.x0 + 16, 6);
-    ctx.fillStyle = '#c99760'; ctx.fillRect(S.x0 - 10, S.y0 - 4, S.x1 - S.x0 + 20, S.y1 - S.y0 + 10);
-    ctx.fillStyle = '#e0b07a'; ctx.fillRect(S.x0 - 10, S.y0 - 4, S.x1 - S.x0 + 20, 2); ctx.fillRect(S.x0 - 10, S.y0 - 4, 2, S.y1 - S.y0 + 10);
-    ctx.fillStyle = '#9c6f40'; ctx.fillRect(S.x0 - 10, S.y1 + 4, S.x1 - S.x0 + 20, 2); ctx.fillRect(S.x1 + 8, S.y0 - 4, 2, S.y1 - S.y0 + 10);
-    ctx.fillStyle = 'rgba(110,70,30,0.35)'; for (let x = S.x0 + 60; x < S.x1; x += 120) { ctx.fillRect(x, S.y0 - 4, 1.5, 4); ctx.fillRect(x, S.y1, 1.5, 6); }
-    const ice = ctx.createLinearGradient(0, S.y0, 0, S.y1);
-    ice.addColorStop(0, CU_ICE); ice.addColorStop(0.5, '#f6fbff'); ice.addColorStop(1, CU_ICE2);
-    ctx.fillStyle = ice; ctx.fillRect(S.x0, S.y0, S.x1 - S.x0, S.y1 - S.y0);
-    // soft reflections of the arena lights, and the ice darkening where it meets the boards
-    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath();
-    for (const [x, w] of [[180, 44], [250, 14], [560, 60], [640, 16]]) { ctx.moveTo(x, S.y0); ctx.lineTo(x + w, S.y0); ctx.lineTo(x + w - 90, S.y1); ctx.lineTo(x - 90, S.y1); ctx.closePath(); }
-    ctx.fill();
-    ctx.fillStyle = 'rgba(80,120,170,0.16)'; ctx.fillRect(S.x0, S.y0, S.x1 - S.x0, 6); ctx.fillRect(S.x0, S.y0, 5, S.y1 - S.y0);
-    ctx.fillStyle = 'rgba(80,120,170,0.08)'; ctx.fillRect(S.x0, S.y0 + 6, S.x1 - S.x0, 6);
-    ctx.fillStyle = st.lucky ? 'rgba(255,215,90,0.35)' : 'rgba(150,190,225,0.35)';
-    for (let k = 0; k < 160; k++) { const x = S.x0 + (hash(k, 11) % (S.x1 - S.x0)), y = S.y0 + (hash(k, 13) % (S.y1 - S.y0)); circle(x, y, st.lucky ? 1.6 : 1.1); ctx.fill(); }
-    ctx.strokeStyle = 'rgba(160,200,230,0.5)'; ctx.lineWidth = 1;
-    for (let k = 0; k < 18; k++) { const x = S.x0 + (hash(k, 21) % (S.x1 - S.x0 - 60)), y = S.y0 + 10 + (hash(k, 23) % (S.y1 - S.y0 - 20)); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 30 + (k % 3) * 12, y + (k % 2 ? 4 : -3)); ctx.stroke(); }
+    // boards and ice (with its pebble, scratches and light reflections) are one picture per look
+    rkPut('cuSheet|' + (st.lucky ? 1 : 0), S.x0 - 12, S.y0 - 6, S.x1 - S.x0 + 26, S.y1 - S.y0 + 20, 0, 0, c => { c.translate(-(S.x0 - 12), -(S.y0 - 6)); cuPaintBoards(c); cuPaintIce(c, st.lucky); });
     // house rings
     const B = K.button;
     ctx.fillStyle = CU_BLUE; circle(B.x, B.y, K.rings[2]); ctx.fill();
@@ -761,7 +861,14 @@
     ctx.beginPath(); ctx.moveTo(K.hog, S.y0); ctx.lineTo(K.hog, S.y1); ctx.stroke();
     ctx.strokeStyle = 'rgba(40,70,110,0.3)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(150, S.y0); ctx.lineTo(150, S.y1); ctx.stroke();
-    ctx.fillStyle = '#2c2a40'; rr(K.hackX - 14, K.lineY - 16, 10, 12, 3); ctx.fill(); rr(K.hackX - 14, K.lineY + 4, 10, 12, 3); ctx.fill();
+    // the hack: two rubber foot blocks with treads, a lit edge and a shadow
+    rkPut('cuHack', K.hackX - 14, K.lineY, 16, 36, 2, 18, c => {
+      for (const y of [-16, 4]) {
+        c.fillStyle = 'rgba(40,60,100,0.25)'; rkRR(c, 1, y + 1.5, 10, 12, 3); c.fill();
+        rkMetal(c, 0, y, 10, 12, 3, '#3a384f', y, { rivets: false, lw: 1.2 });
+        c.fillStyle = '#1c1a2c'; for (let k = 0; k < 4; k++) c.fillRect(2, y + 2.5 + k * 2.4, 6, 1);
+      }
+    });
     // the hog line's label (once per end, at the start)
     if (!big) {
       ctx.font = '700 10px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.fillStyle = 'rgba(200,60,80,0.7)';

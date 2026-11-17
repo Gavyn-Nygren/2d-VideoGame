@@ -316,8 +316,20 @@ const RUMBLE = {
     ctx.fillStyle = '#5a6488'; ctx.beginPath(); ctx.moveTo(mid - 50, 150); ctx.lineTo(mid + 50, 150); ctx.lineTo(mid + 20, 220); ctx.lineTo(mid - 20, 220); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.beginPath(); ctx.moveTo(mid + 10, 150); ctx.lineTo(mid + 50, 150); ctx.lineTo(mid + 20, 220); ctx.lineTo(mid + 5, 220); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = '#3a4260'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(mid - 50, 150); ctx.lineTo(mid - 20, 220); ctx.lineTo(mid + 20, 220); ctx.lineTo(mid + 50, 150); ctx.stroke();
+    // the hopper's panel seams, rivet rows, a little window showing parts inside and a rolled rim
+    ctx.strokeStyle = 'rgba(10,10,30,0.3)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(mid - 17, 150); ctx.lineTo(mid - 7, 220); ctx.moveTo(mid + 17, 150); ctx.lineTo(mid + 7, 220); ctx.stroke();
+    ctx.fillStyle = '#2a2f4f'; for (let k = 0; k < 5; k++) { const u = k / 4, y = 158 + u * 54; for (const sd of [-1, 1]) { circle(mid + sd * (46 - u * 28), y, 1.4); ctx.fill(); } }
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.moveTo(mid - 48, 150); ctx.lineTo(mid - 44, 150); ctx.lineTo(mid - 16, 218); ctx.lineTo(mid - 19, 218); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#1c2038'; rr(mid - 14, 166, 28, 16, 4); ctx.fill();
+    ctx.fillStyle = '#ffc53d'; circle(mid - 6, 176, 3); ctx.fill(); ctx.fillStyle = '#9aa8c8'; ctx.fillRect(mid + 1, 172, 8, 6); ctx.fillStyle = '#ff7ab8'; circle(mid + 3, 180, 2.5); ctx.fill();
+    ctx.fillStyle = 'rgba(190,240,255,0.25)'; ctx.beginPath(); ctx.moveTo(mid - 12, 180); ctx.lineTo(mid - 4, 168); ctx.lineTo(mid, 168); ctx.lineTo(mid - 8, 180); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#3a4260'; ctx.lineWidth = 1.5; rr(mid - 14, 166, 28, 16, 4); ctx.stroke();
     rf27Stripes(mid - 50, 140, 100, 10);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(mid - 50, 140, 100, 1.5); ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(mid - 50, 148, 100, 2);
+    ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 1.5; ctx.strokeRect(mid - 50, 140, 100, 10);
     ctx.fillStyle = '#4a5270'; ctx.fillRect(mid - 6, 220, 12, R.beltY - 220);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(mid - 6, 220, 2.5, R.beltY - 220); ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(mid + 3, 220, 3, R.beltY - 220);
+    ctx.fillStyle = '#3a4262'; for (let y = 240; y < R.beltY - 8; y += 40) { ctx.fillRect(mid - 8, y, 16, 5); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(mid - 8, y, 16, 1); ctx.fillStyle = '#3a4262'; }
     ctx.fillStyle = 'rgba(10,10,30,0.2)'; ctx.beginPath(); ctx.ellipse(mid, R.floorY, (R.beltX1 - R.beltX0) / 2 + 10, 6, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2a2f4f'; rr(R.beltX0 - 10, R.beltY - 2, R.beltX1 - R.beltX0 + 20, 22, 10); ctx.fill();
     ctx.fillStyle = '#6a7296'; for (let x = R.beltX0; x <= R.beltX1; x += 24) { circle(x, R.beltY + 12, 6); ctx.fill(); }
@@ -328,7 +340,15 @@ const RUMBLE = {
     for (let x = mid; x < R.beltX1 + 30; x += 30) { ctx.beginPath(); ctx.moveTo(x + off, R.beltY - 2); ctx.lineTo(x + off + 5, R.beltY + 2); ctx.lineTo(x + off, R.beltY + 6); ctx.stroke(); }
     for (let x = mid; x > R.beltX0 - 30; x -= 30) { ctx.beginPath(); ctx.moveTo(x - off, R.beltY - 2); ctx.lineTo(x - off - 5, R.beltY + 2); ctx.lineTo(x - off, R.beltY + 6); ctx.stroke(); }
     ctx.restore();
-    ctx.fillStyle = '#4a5270'; ctx.fillRect(R.beltX0 + 20, R.beltY + 20, 10, R.floorY - R.beltY - 20); ctx.fillRect(R.beltX1 - 30, R.beltY + 20, 10, R.floorY - R.beltY - 20);
+    // the belt legs: steel posts with a lit edge, a cross brace, bolts and feet
+    for (const lx of [R.beltX0 + 20, R.beltX1 - 30]) {
+      ctx.fillStyle = '#4a5270'; ctx.fillRect(lx, R.beltY + 20, 10, R.floorY - R.beltY - 20);
+      ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(lx, R.beltY + 20, 2.5, R.floorY - R.beltY - 20);
+      ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(lx + 7.5, R.beltY + 20, 2.5, R.floorY - R.beltY - 20);
+      ctx.fillStyle = '#3a4262'; ctx.fillRect(lx - 5, R.floorY - 6, 20, 6); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(lx - 5, R.floorY - 6, 20, 1.2);
+      ctx.fillStyle = '#20243c'; circle(lx - 1.5, R.floorY - 3, 1.2); ctx.fill(); circle(lx + 11.5, R.floorY - 3, 1.2); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(74,82,112,0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(R.beltX0 + 30, R.beltY + 30); ctx.lineTo(R.beltX1 - 30, R.floorY - 14); ctx.moveTo(R.beltX1 - 30, R.beltY + 30); ctx.lineTo(R.beltX0 + 30, R.floorY - 14); ctx.stroke();
     // pads and the robots being built
     for (const k of [0, 1]) {
       const pad = R.pads[k], cx = (pad[0] + pad[1]) / 2;
@@ -336,28 +356,91 @@ const RUMBLE = {
       ctx.fillStyle = PDARK[k]; rr(pad[0], R.floorY - 6, pad[1] - pad[0], 10, 5); ctx.fill();
       ctx.fillStyle = PCOL[k]; rr(pad[0], R.floorY - 8, pad[1] - pad[0], 10, 5); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(pad[0] + 6, R.floorY - 6, pad[1] - pad[0] - 12, 3);
+      // grip bars and bolts on the pad, and lit chevrons pointing in
+      ctx.fillStyle = 'rgba(10,10,30,0.25)'; for (let x = pad[0] + 14; x < pad[1] - 14; x += 10) ctx.fillRect(x, R.floorY - 3, 5, 2.5);
+      ctx.fillStyle = PDARK[k]; circle(pad[0] + 7, R.floorY - 3, 1.6); ctx.fill(); circle(pad[1] - 7, R.floorY - 3, 1.6); ctx.fill();
       drawRobot(cx, R.floorY - 8, st.robots[k].parts, k, 1, t, { ghost: true, face: k ? -1 : 1 });
       if (st.mega && st.mega[k]) { ctx.fillStyle = C.gold; circle(cx + (k ? 40 : -40), R.floorY - 30 + Math.sin(t * 4) * 3, 12); ctx.fill(); text('!', cx + (k ? 40 : -40), R.floorY - 30, 14, '#5a3a00', 'center'); }
       if (st.robots[k].done) text('READY!', cx, R.floorY - 150, 18, C.gold, 'center');
     }
     for (const q of st.parts) drawPart(q.k, q.x, q.y, q.on === 'floor' && q.life < 2 ? (Math.sin(t * 20) > 0 ? 0.4 : 1) : 1, t);
   }
+  // the lift column (112 x 84 from (mid - 56, AY + 18)), painted once: a round steel housing shaded like a cylinder,
+  // reinforcing rings with bolts, a hydraulic ram, a hose and a warning plate
+  function liftPic() {
+    return rf27Pic('w27lift', 112, 84, c => {
+      c.translate(56, -18); const mx = 0, AY = 0;
+      const cg = c.createLinearGradient(mx - 40, 0, mx + 40, 0);
+      cg.addColorStop(0, '#3a4262'); cg.addColorStop(0.22, '#6a7398'); cg.addColorStop(0.4, '#566088'); cg.addColorStop(0.85, '#343b5a'); cg.addColorStop(1, '#262c48');
+      c.fillStyle = cg; c.fillRect(mx - 40, AY + 20, 80, 80);
+      c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(mx - 26, AY + 34, 2, 66);
+      c.fillStyle = '#9aa4c6'; c.fillRect(mx - 7, AY + 32, 14, 30); c.fillStyle = '#e6ecff'; c.fillRect(mx - 4, AY + 32, 2.5, 30); c.fillStyle = 'rgba(10,10,30,0.35)'; c.fillRect(mx + 3, AY + 32, 4, 30);
+      c.fillStyle = '#2a2f4f'; c.fillRect(mx - 12, AY + 60, 24, 5);
+      for (const ry of [AY + 42, AY + 66]) {
+        const rg = c.createLinearGradient(mx - 43, 0, mx + 43, 0); rg.addColorStop(0, '#4a5274'); rg.addColorStop(0.25, '#8a94b8'); rg.addColorStop(1, '#2a3050');
+        c.fillStyle = rg; c.fillRect(mx - 43, ry, 86, 7);
+        c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(mx - 43, ry, 86, 1.2); c.fillStyle = 'rgba(10,10,30,0.4)'; c.fillRect(mx - 43, ry + 6, 86, 1);
+        c.fillStyle = '#20243c'; for (const dx of [-34, -17, 17, 34]) { circleOn(c, mx + dx, ry + 3.5, 1.6); c.fill(); }
+        c.fillStyle = 'rgba(255,255,255,0.5)'; for (const dx of [-34, -17, 17, 34]) c.fillRect(mx + dx - 1, ry + 2.2, 1, 1);
+      }
+      const hose = () => { c.beginPath(); c.moveTo(mx + 30, AY + 34); c.bezierCurveTo(mx + 54, AY + 40, mx + 50, AY + 70, mx + 34, AY + 80); };
+      c.lineCap = 'round'; c.strokeStyle = '#20243c'; c.lineWidth = 4; hose(); c.stroke();
+      c.strokeStyle = '#ff6b5a'; c.lineWidth = 2.5; hose(); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.4)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(mx + 31, AY + 33); c.bezierCurveTo(mx + 53, AY + 38, mx + 49, AY + 66, mx + 36, AY + 77); c.stroke();
+      c.fillStyle = '#ffc53d'; c.beginPath(); c.moveTo(mx - 30, AY + 62); c.lineTo(mx - 21, AY + 52); c.lineTo(mx - 12, AY + 62); c.closePath(); c.fill();
+      c.strokeStyle = '#2a2a3a'; c.lineWidth = 1.2; c.stroke(); c.fillStyle = '#2a2a3a'; c.fillRect(mx - 21.6, AY + 55.5, 1.4, 3.5); c.fillRect(mx - 21.6, AY + 59.8, 1.4, 1.2);
+      c.strokeStyle = '#20243c'; c.lineWidth = 1.5; c.strokeRect(mx - 39.25, AY + 20, 78.5, 80);
+    });
+  }
+  // a row of bobbing foam cubes, copied onto whole device pixels with one transform for the row
+  function foamRow(back, x0, y0, amp, freq, t) {
+    const pics = back ? [0, 1, 2].map(v => foamPic(1, v)) : [0, 1, 2, 3].map(v => foamPic(0, v)), n = pics.length;
+    const m = ctx.getTransform(), sc = pics[0].width / 40;
+    const fast = !m.b && !m.c && Math.abs(m.a - sc) < 0.02 && Math.abs(m.d - sc) < 0.02;
+    if (fast) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); }
+    for (let x = x0, k = 0; x < W + 37; x += 34, k++) {
+      const xx = x - 20, yy = y0 + Math.sin(t * 2 + (back ? (x - 17) * freq : x)) * amp;
+      if (fast) ctx.drawImage(pics[k % n], Math.round(m.a * xx + m.e), Math.round(m.d * yy + m.f));
+      else ctx.drawImage(pics[k % n], xx, yy, 40, 40);
+    }
+    if (fast) ctx.restore();
+  }
+  // a foam cube for the pit, 40 x 40, centred: back (1) is in shade; v picks the tilt and tone
+  function foamPic(back, v) {
+    return rf27Pic('w27foam|' + back + '|' + v, 40, 40, c => {
+      const base = back ? ['#e07ab8', '#d870b0', '#e486c0'][v % 3] : ['#ffc3e6', '#ffb8e0', '#ffd0ec', '#ffbadf'][v % 4];
+      c.translate(20, 20); c.rotate([-0.12, 0.08, -0.04, 0.14][v % 4]);
+      const r = 15;
+      c.fillStyle = rf27Dk(base, 0.25); rrOn(c, -r, -r + 2, r * 2, r * 2, 7); c.fill();
+      const g = c.createLinearGradient(-r, -r, r, r); g.addColorStop(0, rf27Lt(base, 0.35)); g.addColorStop(0.5, base); g.addColorStop(1, rf27Dk(base, 0.12));
+      c.fillStyle = g; rrOn(c, -r, -r, r * 2, r * 2 - 1, 7); c.fill();
+      c.fillStyle = rf27Dk(base, 0.18); for (let k = 0; k < 9; k++) { const q = hash(k + v * 13, 40 + back); circleOn(c, -10 + q % 21, -9 + (q >>> 6) % 19, 0.9 + (q >>> 12) % 2 * 0.4); c.fill(); }
+      c.fillStyle = 'rgba(255,255,255,' + (back ? 0.25 : 0.6) + ')'; c.beginPath(); c.ellipse(-6, -8, 5, 3, -0.5, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = rf27Dk(base, 0.4); c.lineWidth = 1.2; rrOn(c, -r, -r, r * 2, r * 2 + 1, 7); c.stroke();
+    });
+  }
   function drawArena(st, t) {
-    // the foam pit
-    ctx.fillStyle = '#ff9fd6'; ctx.fillRect(0, R.AY + 80, W, H - R.AY - 80);
-    // foam blocks in the pit: a back row in shade, a front row lit, each with a highlight
-    for (let x = -7; x < W + 20; x += 34) { ctx.fillStyle = '#e07ab8'; circle(x + 17, R.AY + 100 + Math.sin(t * 2 + x * 0.7) * 2, 16); ctx.fill(); }
-    for (let x = 10; x < W; x += 34) { const yy = R.AY + 84 + Math.sin(t * 2 + x) * 3; ctx.fillStyle = '#ffb3dc'; circle(x, yy + 2, 18); ctx.fill(); ctx.fillStyle = '#ffc3e6'; circle(x - 1, yy, 16); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(x - 6, yy - 6, 4); ctx.fill(); }
-    // the platform (with its folding edges)
-    const e0 = st.edge[0], e1 = st.edge[1];
-    ctx.fillStyle = '#4a5270'; ctx.fillRect((e0 + e1) / 2 - 40, R.AY + 20, 80, 80);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect((e0 + e1) / 2 - 40, R.AY + 20, 6, 80);
-    ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect((e0 + e1) / 2 + 28, R.AY + 20, 12, 80);
-    rf27Stripes((e0 + e1) / 2 - 40, R.AY + 26, 80, 8);
+    // the foam pit: (art pass 2) soft foam cubes, each a cached picture (rounded, tilted, a lit top-left, a shaded
+    // underside, pores and a glossy spot); a back row in shade, a front row lit that the lift column sinks into
+    { const pg = ctx.createLinearGradient(0, R.AY + 80, 0, H); pg.addColorStop(0, '#f08cc8'); pg.addColorStop(1, '#ffa8da'); ctx.fillStyle = pg; ctx.fillRect(0, R.AY + 80, W, H - R.AY - 80); }
+    foamRow(1, -7 + 17, R.AY + 100 - 20, 2, 0.7, t);
+    const e0 = st.edge[0], e1 = st.edge[1], mx = (e0 + e1) / 2;
+    // the lift column under the platform: a round steel housing (shaded like a cylinder), reinforcing rings with
+    // bolts, a hydraulic ram, hoses and a warning plate
+    rf27Blit(liftPic(), mx - 56, R.AY + 18, 112, 84);
+    rf27Stripes(mx - 40, R.AY + 26, 80, 8);
+    // the platform (with its folding edges), a row of lamps and panel seams on its side face
     rf27Floor(e0, R.AY, e1 - e0, 26, 'test');
+    ctx.fillStyle = 'rgba(10,10,30,0.22)'; for (let x = Math.ceil((e0 + 10) / 62) * 62; x < e1 - 10; x += 62) ctx.fillRect(x, R.AY + 15, 1.5, 10);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; for (let x = Math.ceil((e0 + 10) / 62) * 62; x < e1 - 10; x += 62) ctx.fillRect(x + 1.5, R.AY + 15, 1, 10);
+    for (let x = Math.ceil((e0 + 26) / 31) * 31, k = 0; x < e1 - 20; x += 31, k++) {
+      if (Math.round(x / 31) % 2) { ctx.fillStyle = '#2a2a3a'; circle(x, R.AY + 20, 2.6); ctx.fill(); ctx.fillStyle = (Math.floor(t * 3) + Math.round(x / 62)) % 4 ? '#ffd84d' : '#ff9a3d'; circle(x, R.AY + 20, 1.7); ctx.fill(); }
+      else { ctx.fillStyle = '#3e3038'; circle(x, R.AY + 20, 1.5); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x - 1, R.AY + 18.8, 1, 1); }
+    }
     ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(e0, R.AY + 26, e1 - e0, 6);
     rf27Stripes(e0, R.AY, 10, 26); rf27Stripes(e1 - 10, R.AY, 10, 26);
     ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect((R.AX0 + R.AX1) / 2 - 2, R.AY + 3, 4, 10);
+    foamRow(0, 10, R.AY + 84 - 18, 3, 1, t);
     for (const b of st.bots || []) drawBot(st, b, t);
   }
   function drawBot(st, b, t) {

@@ -489,7 +489,7 @@ const MECH = {
       for (let k = 0; k <= 6; k++) ctx.lineTo(g.x0 + 20 + ((g.x1 - g.x0 - 40) * k) / 6, py + 12 + (k % 2) * 14); ctx.stroke();
       if (g.gold) { ctx.fillStyle = C.gold; ctx.strokeStyle = C.goldDark; ctx.lineWidth = 3; rr(g.x0 - 10, g.top - 4, g.x1 - g.x0 + 20, 16, 4); ctx.fill(); ctx.stroke(); }
     }
-    for (const d of st.debris) { ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.r + d.t * 6); ctx.fillStyle = '#b07a5a'; ctx.fillRect(-10, -7, 20, 14); ctx.restore(); }
+    for (const d of st.debris) { ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.r + d.t * 6); ctx.fillStyle = '#b07a5a'; ctx.fillRect(-10, -7, 20, 14); ctx.fillStyle = 'rgba(255,230,200,0.35)'; ctx.fillRect(-10, -7, 20, 2); ctx.fillStyle = 'rgba(60,24,12,0.35)'; ctx.fillRect(-10, 4, 20, 3); ctx.fillRect(6, -7, 4, 14); ctx.strokeStyle = '#6a3a28'; ctx.lineWidth = 1; ctx.strokeRect(-10, -7, 20, 14); ctx.restore(); }
     for (const f of st.floors) if (f.x1 > vx0 && f.x0 < vx1) {
       rf27Floor(f.x0, f.top, f.x1 - f.x0, 700, st.look);
       if (f.rise) rf27Stripes(f.x0, f.top, 10, Math.min(f.rise, 200));
@@ -517,12 +517,37 @@ const MECH = {
     text(s.s, s.x + w / 2, y + 16.5, 15, C.paper, 'center', 'body');
   }
   function drawBeam(b, t, lk) {
-    const y = b.top - 160;
-    for (const px of [b.x0, b.x1 - 14]) { ctx.fillStyle = '#5a6488'; ctx.fillRect(px, y - 300, 14, 300); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(px, y - 300, 3, 300); ctx.fillStyle = 'rgba(20,18,40,0.25)'; ctx.fillRect(px + 10, y - 300, 4, 300); }
-    rf27Stripes(b.x0, y, b.x1 - b.x0, 40);
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(b.x0, y, b.x1 - b.x0, 3);
-    ctx.fillStyle = 'rgba(20,18,40,0.3)'; ctx.fillRect(b.x0, y + 34, b.x1 - b.x0, 6);
-    ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 3; ctx.strokeRect(b.x0, y, b.x1 - b.x0, 40);
+    const y = b.top - 160, bw = b.x1 - b.x0;
+    // two I-beam hangers: flanges with a lit edge, a shaded web and rivet rows
+    for (const px of [b.x0, b.x1 - 14]) {
+      ctx.fillStyle = '#4a5478'; ctx.fillRect(px, y - 300, 14, 300);
+      ctx.fillStyle = '#6a76a0'; ctx.fillRect(px, y - 300, 3.5, 300); ctx.fillRect(px + 10.5, y - 300, 3.5, 300);
+      ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(px, y - 300, 1.2, 300);
+      ctx.fillStyle = 'rgba(20,18,40,0.3)'; ctx.fillRect(px + 12.5, y - 300, 1.5, 300); ctx.fillRect(px + 3.5, y - 300, 1.5, 300);
+      ctx.fillStyle = '#2a2f4f'; ctx.beginPath(); for (let ry = y - 290; ry < y - 4; ry += 18) { ctx.moveTo(px + 9, ry); ctx.arc(px + 7, ry, 1.6, 0, 7); } ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); for (let ry = y - 290; ry < y - 4; ry += 18) { ctx.moveTo(px + 7, ry - 0.6); ctx.arc(px + 6.4, ry - 0.6, 0.7, 0, 7); } ctx.fill();
+      ctx.fillStyle = '#3a4262'; ctx.fillRect(px - 4, y - 8, 22, 8); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(px - 4, y - 8, 22, 1.5);
+    }
+    // the beam: steel flanges top and bottom, a hazard face plate between them, bolted end caps, an outline
+    ctx.fillStyle = 'rgba(20,18,40,0.25)'; ctx.fillRect(b.x0 + 4, y + 40, bw - 4, 6);
+    rf27Stripes(b.x0, y + 7, bw, 26);
+    ctx.fillStyle = 'rgba(20,18,40,0.18)'; ctx.fillRect(b.x0, y + 26, bw, 7);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(b.x0, y + 7, bw, 3);
+    for (const [fy, lit] of [[y, true], [y + 33, false]]) {
+      ctx.fillStyle = '#5a6488'; ctx.fillRect(b.x0, fy, bw, 7);
+      ctx.fillStyle = lit ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.12)'; ctx.fillRect(b.x0, fy, bw, 1.6);
+      ctx.fillStyle = 'rgba(20,18,40,0.35)'; ctx.fillRect(b.x0, fy + 5.5, bw, 1.5);
+      ctx.fillStyle = '#2a2f4f'; ctx.beginPath(); for (let rx = b.x0 + 26; rx < b.x1 - 20; rx += 24) { ctx.moveTo(rx + 1.4, fy + 3.5); ctx.arc(rx, fy + 3.5, 1.4, 0, 7); } ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); for (let rx = b.x0 + 26; rx < b.x1 - 20; rx += 24) { ctx.moveTo(rx, fy + 3); ctx.arc(rx - 0.5, fy + 3, 0.6, 0, 7); } ctx.fill();
+    }
+    for (const ex of [b.x0, b.x1 - 18]) {
+      ctx.fillStyle = '#6a76a0'; ctx.fillRect(ex, y, 18, 40); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(ex, y, 18, 1.5); ctx.fillRect(ex, y, 1.5, 40);
+      ctx.fillStyle = 'rgba(20,18,40,0.3)'; ctx.fillRect(ex + 16, y, 2, 40);
+      for (const [a, c2] of [[5, 7], [13, 7], [5, 33], [13, 33], [9, 20]]) { ctx.fillStyle = '#2a2f4f'; circle(ex + a, y + c2, 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(ex + a - 0.6, y + c2 - 0.6, 0.8); ctx.fill(); }
+    }
+    ctx.strokeStyle = '#22263e'; ctx.lineWidth = 2.5; ctx.strokeRect(b.x0, y, bw, 40);
+    // a scuff of paint knocked off by mechs that didn't duck
+    ctx.fillStyle = 'rgba(200,205,220,0.5)'; ctx.fillRect(b.x0 + bw * 0.42, y + 30, 14, 2.5); ctx.fillRect(b.x0 + bw * 0.46, y + 28, 6, 2);
     // a little steam puff from the pipe
     for (let k = 0; k < 3; k++) {
       const u = ((t * 0.8 + k / 3) % 1);
@@ -531,12 +556,10 @@ const MECH = {
     void lk;
   }
   function drawWall(st, w, t) {
-    const sx = w.shake > 0 ? (Math.random() - 0.5) * 8 : 0, x = w.x + sx, top = w.top - 230;
-    ctx.fillStyle = '#b07a5a'; ctx.fillRect(x, top, 36, 230);
-    for (let y = top, r = 0; y < w.top; y += 23, r++) { const o = r % 2 ? 18 : 0; ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(x, y + 2, 36, 2.5); ctx.fillStyle = 'rgba(60,30,20,0.18)'; ctx.fillRect(x, y + 17, 36, 5); if (hash(r, Math.round(w.x)) % 3 === 0) { ctx.fillStyle = 'rgba(60,30,20,0.12)'; ctx.fillRect(x + o, y, 18, 23); } }
-    ctx.fillStyle = 'rgba(20,18,40,0.25)'; ctx.fillRect(x + 30, top, 6, 230);
-    ctx.strokeStyle = '#7a4a32'; ctx.lineWidth = 2;
-    for (let y = top; y < w.top; y += 23) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 36, y); ctx.stroke(); const o = ((y - top) / 23) % 2 ? 18 : 0; ctx.beginPath(); ctx.moveTo(x + o, y); ctx.lineTo(x + o, y + 23); ctx.stroke(); }
+    const sx = w.shake > 0 ? Math.sin(G.clock * 97) * 4 : 0, x = w.x + sx, top = w.top - 230;
+    // the brick wall itself is a picture: bricks of a few shades with lit tops, chipped corners and deep mortar,
+    // a steel cap and foot, a shaded right side
+    rf27Blit(wallPic(), x - 2, top - 8, 40, 240);
     // cracks grow as it's punched
     ctx.strokeStyle = '#3a2016'; ctx.lineWidth = 2.5;
     const dmg = w.max - w.hp;
@@ -551,6 +574,31 @@ const MECH = {
     // dots for the punches left
     for (let k = 0; k < w.max; k++) { ctx.fillStyle = k < w.hp ? '#ffffff' : 'rgba(255,255,255,0.25)'; circle(x + 8 + k * 10, top - 12, 4); ctx.fill(); }
     void st;
+  }
+  function wallPic() {
+    return rf27Pic('w27wall', 40, 240, c => {
+      c.translate(2, 8);
+      c.fillStyle = '#6a3a28'; c.fillRect(0, 0, 36, 230);
+      const cols = ['#b07a5a', '#a86e50', '#bc8664', '#9c6648', '#b8805c'];
+      for (let r = 0; r * 23 < 230; r++) {
+        const o = r % 2 ? -18 : 0;
+        for (let bx = o; bx < 36; bx += 36) {
+          const x0 = Math.max(0, bx) + 1, x1 = Math.min(36, bx + 36) - 1, y0 = r * 23 + 1, y1 = Math.min(230, r * 23 + 23) - 1.5, hh = hash(r, bx + 40);
+          if (x1 - x0 < 2) continue;
+          const bc = cols[hh % cols.length];
+          c.fillStyle = bc; c.fillRect(x0, y0, x1 - x0, y1 - y0);
+          c.fillStyle = 'rgba(255,230,200,0.28)'; c.fillRect(x0, y0, x1 - x0, 1.6);
+          c.fillStyle = 'rgba(255,230,200,0.12)'; c.fillRect(x0, y0, 1.4, y1 - y0);
+          c.fillStyle = 'rgba(60,24,12,0.3)'; c.fillRect(x0, y1 - 3, x1 - x0, 3);
+          for (let k = 0; k < 4; k++) { const q = hash(r * 7 + k, bx); c.fillStyle = q % 2 ? 'rgba(60,24,12,0.3)' : 'rgba(255,230,200,0.25)'; c.fillRect(x0 + 2 + q % Math.max(1, x1 - x0 - 4), y0 + 3 + (q >>> 5) % Math.max(1, y1 - y0 - 6), 1.5, 1.2); }
+          if (hh % 4 === 0) { c.fillStyle = '#6a3a28'; c.beginPath(); c.moveTo(x1, y0); c.lineTo(x1 - 4, y0); c.lineTo(x1, y0 + 4); c.closePath(); c.fill(); }
+        }
+      }
+      c.fillStyle = 'rgba(20,18,40,0.28)'; c.fillRect(29, 0, 7, 230);
+      c.fillStyle = '#5a6488'; c.fillRect(-1, 0, 38, 8); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(-1, 0, 38, 1.6); c.fillStyle = 'rgba(20,18,40,0.35)'; c.fillRect(-1, 6, 38, 2);
+      for (const bx of [4, 18, 32]) { c.fillStyle = '#2a2f4f'; c.beginPath(); c.arc(bx, 4, 1.4, 0, 7); c.fill(); }
+      c.strokeStyle = '#5a2e1e'; c.lineWidth = 1.5; c.strokeRect(0.75, 0, 34.5, 230);
+    });
   }
   function drawDoor(st, t) {
     const d = st.door, x = d.x, top = d.top - 230, open = st.state === 'clear' ? Math.min(1, st.clearT * 1.5) : 0;
@@ -580,7 +628,11 @@ const MECH = {
       ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(x + 20, y - 400, 5, 400);
       ctx.fillStyle = 'rgba(20,18,40,0.25)'; ctx.fillRect(x + 70, y - 400, 10, 400);
       ctx.fillStyle = '#3a4260'; for (let yy = y - 380; yy < y; yy += 90) { ctx.fillRect(x + 16, yy, 68, 7); }
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; for (let yy = y - 380; yy < y; yy += 90) ctx.fillRect(x + 16, yy, 68, 1.4);
+      ctx.fillStyle = '#20243c'; ctx.beginPath(); for (let yy = y - 380; yy < y; yy += 90) for (const rx of [x + 22, x + 50, x + 78]) { ctx.moveTo(rx + 1.3, yy + 3.5); ctx.arc(rx, yy + 3.5, 1.3, 0, 7); } ctx.fill();
+      ctx.fillStyle = 'rgba(20,18,40,0.18)'; ctx.fillRect(x + 48, y - 400, 2, 400);
       ctx.fillStyle = '#2a2f4f'; ctx.fillRect(x + 14, y, 72, 22);
+      ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x + 14, y, 72, 2); ctx.fillStyle = '#0e0e1e'; ctx.fillRect(x + 22, y + 8, 56, 10);
       rf27Stripes(x + 14, y + 22, 72, 8);
     }
     if (z.gold) { ctx.fillStyle = 'rgba(255,197,61,0.25)'; ctx.fillRect(z.x0, y + 30, z.x1 - z.x0, 8); }

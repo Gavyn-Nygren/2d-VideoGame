@@ -812,50 +812,155 @@ function zfWaveSpec(n) {
   };
   function zfCol(k) { return COLS_K[k] || COLS_K.dirt; }
   const ZF_SHADE = {}, zfShade = (c, t) => ZF_SHADE[c + t] || (ZF_SHADE[c + t] = shade(c, t));
+  // ---- tile pictures: each kind has a few looks (picked by hash), painted once into a cached picture and copied each
+  // frame; damage cracks, mining cracks, the hit flash and the turning turret barrel stay live on top ----
+  const ZFV = { dirt: 9, stone: 9, wood: 4, metal: 3, turret: 2, bed: 4 };
+  function zfClod(c, x, y, r, col, s) {
+    const F = ERICH.fr;
+    c.fillStyle = shade(col, 0.22); c.beginPath();
+    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2, q = r * (0.75 + F(s, i) * 0.4); c.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q * 0.75); }
+    c.closePath(); c.fill();
+    c.fillStyle = tint(col, 0.18); c.beginPath(); c.ellipse(x - r * 0.25, y - r * 0.3, r * 0.5, r * 0.25, -0.2, 0, Math.PI * 2); c.fill();
+  }
+  function zfPaintDirt(c, v, built, grass) {
+    const k = COLS_K.dirt, F = ERICH.fr, s = 700 + v * 13;
+    if (built) {
+      // a packed, spade-patted dirt block
+      c.fillStyle = k.main; rrOn(c, 0.5, 0.5, T - 1, T - 1, 3); c.fill();
+      c.save(); rrOn(c, 0.5, 0.5, T - 1, T - 1, 3); c.clip();
+      c.fillStyle = tint(k.main, 0.12); c.beginPath(); c.moveTo(0, 0); c.lineTo(T, 0); c.lineTo(T - 4, 4); c.lineTo(4, 4); c.lineTo(4, T - 4); c.lineTo(0, T); c.closePath(); c.fill();
+      c.fillStyle = shade(k.main, 0.16); c.beginPath(); c.moveTo(T, 0); c.lineTo(T, T); c.lineTo(0, T); c.lineTo(4, T - 4); c.lineTo(T - 4, T - 4); c.lineTo(T - 4, 4); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(255,225,190,0.16)'; c.lineWidth = 1.2; c.beginPath();
+      for (let i = 0; i < 3; i++) { const y0 = 8 + i * 7 + F(s, i) * 3; c.moveTo(6, y0); c.quadraticCurveTo(T / 2, y0 - 2.5, T - 6, y0 + 1); }
+      c.stroke();
+      for (let i = 0; i < 3; i++) zfClod(c, 7 + F(s, i + 10) * 16, 7 + F(s, i + 20) * 16, 1.8 + F(s, i + 30) * 1.2, k.main, s + i);
+      if (v % 2) ERICH.pebble(c, 9 + F(s, 40) * 12, 20 + F(s, 41) * 4, 2.6, 1.9, '#9c8f7e', s + 5);
+      c.restore();
+      c.strokeStyle = k.dark; c.lineWidth = 2; rrOn(c, 1, 1, T - 2, T - 2, 3); c.stroke();
+      return;
+    }
+    // natural soil, seamless with its neighbours: a darker band low down, clods, specks, a root or a pebble
+    c.fillStyle = k.main; c.fillRect(-0.5, -0.5, T + 1, T + 1);
+    c.fillStyle = shade(k.main, 0.1); c.beginPath(); c.moveTo(-0.5, 21); c.bezierCurveTo(8, 18 + F(s, 1) * 5, 20, 24 - F(s, 2) * 5, T + 0.5, 21); c.lineTo(T + 0.5, T + 0.5); c.lineTo(-0.5, T + 0.5); c.closePath(); c.fill();
+    c.globalAlpha = 0.55;
+    for (let i = 0; i < 9; i++) { c.fillStyle = F(s, i + 50) < 0.45 ? 'rgba(255,220,180,0.4)' : k.dark; c.beginPath(); c.arc(2 + F(s, i + 60) * 26, 2 + F(s, i + 70) * 26, 0.6 + F(s, i + 80) * 0.9, 0, Math.PI * 2); c.fill(); }
+    c.globalAlpha = 1;
+    for (let i = 0; i < 3; i++) zfClod(c, 5 + F(s, i + 10) * 20, (grass ? 11 : 5) + F(s, i + 20) * (grass ? 14 : 20), 1.6 + F(s, i + 30) * 1.4, k.main, s + i);
+    if (v === 1 || v === 4 || v === 7) ERICH.pebble(c, 8 + F(s, 40) * 14, 16 + F(s, 41) * 8, 3.6, 2.6, v === 4 ? '#9a8a78' : '#8a7d6e', s + 7);
+    if (v === 2) {
+      // a pale root with a little side shoot
+      c.strokeStyle = 'rgba(70,40,20,0.45)'; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); const y0 = 10 + F(s, 3) * 8;
+      c.moveTo(2, y0 + 1); c.quadraticCurveTo(14, y0 + 9, 27, y0 + 5); c.stroke();
+      c.strokeStyle = 'rgba(225,195,150,0.6)'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(2, y0); c.quadraticCurveTo(14, y0 + 8, 27, y0 + 4); c.moveTo(15, y0 + 5.5); c.quadraticCurveTo(17, y0 + 9, 15, y0 + 12); c.stroke();
+    }
+    if (v === 8 && !grass) {
+      // a little pink worm curled in the soil
+      c.strokeStyle = '#a85c5c'; c.lineWidth = 3; c.lineCap = 'round'; c.beginPath(); c.moveTo(8, 18); c.bezierCurveTo(11, 13, 15, 23, 19, 17); c.stroke();
+      c.strokeStyle = '#e09a9a'; c.lineWidth = 1.8; c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.45)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(9, 16.5); c.lineTo(10.5, 15); c.stroke();
+    }
+    if (grass) {
+      // turf: a dark root fringe, the grass band with a lit top, blades poking up, now and then a tiny flower
+      c.fillStyle = shade(C.grassDark, 0.2); c.beginPath(); c.moveTo(-0.5, 6);
+      for (let x = 0; x < T; x += 7.5) c.quadraticCurveTo(x + 3.75, 9.5 + F(s, x + 90) * 3, x + 7.5, 7.5);
+      c.lineTo(T + 0.5, 0); c.lineTo(-0.5, 0); c.closePath(); c.fill();
+      c.fillStyle = C.grassDark; c.fillRect(-0.5, 0, T + 1, 7.5);
+      c.fillStyle = C.grass; c.fillRect(-0.5, 0, T + 1, 5);
+      c.fillStyle = tint(C.grass, 0.3); c.fillRect(-0.5, 0, T + 1, 1.3);
+      c.fillStyle = C.grass; c.beginPath();
+      for (let i = 0; i < 6; i++) { const bx = 1 + i * 5 + F(s, i + 120) * 3, bh = 2.5 + F(s, i + 130) * 3, lean = (F(s, i + 140) - 0.5) * 2.5; c.moveTo(bx - 1.4, 1); c.lineTo(bx + lean, -bh); c.lineTo(bx + 1.4, 1); }
+      c.fill();
+      c.fillStyle = tint(C.grass, 0.35); c.beginPath();
+      for (let i = 0; i < 6; i += 2) { const bx = 1 + i * 5 + F(s, i + 120) * 3, bh = 2.5 + F(s, i + 130) * 3, lean = (F(s, i + 140) - 0.5) * 2.5; c.moveTo(bx - 0.5, 0); c.lineTo(bx + lean, -bh); c.lineTo(bx + 0.4, 0); }
+      c.fill();
+      c.strokeStyle = 'rgba(30,80,30,0.3)'; c.lineWidth = 0.8; c.beginPath(); for (let i = 0; i < 3; i++) { const gx = 4 + i * 9 + F(s, i + 150) * 5; c.moveTo(gx, 6.5); c.lineTo(gx + 1, 3.5 + F(s, i + 155)); } c.stroke();
+      if (v === 0 || v === 5) { const fx = 6 + F(s, 160) * 18; c.fillStyle = v ? '#ffe27a' : '#f4f1ff'; for (let a = 0; a < 5; a++) { c.beginPath(); c.arc(fx + Math.cos(a * 1.26) * 1.4, -2.5 + Math.sin(a * 1.26) * 1.4, 1, 0, Math.PI * 2); c.fill(); } c.fillStyle = '#e0962a'; c.beginPath(); c.arc(fx, -2.5, 0.8, 0, Math.PI * 2); c.fill(); }
+    }
+  }
+  function zfPaintStone(c, v, built) {
+    const k = COLS_K.stone, F = ERICH.fr, s = 900 + v * 17;
+    if (built) {
+      // a laid stone wall block: mortar behind, five carved bricks (two up top, a whole one between two halves below)
+      c.fillStyle = shade(k.dark, 0.1); rrOn(c, 0.5, 0.5, T - 1, T - 1, 2); c.fill();
+      const bricks = [[1.5, 1.5, 13, 12.5], [15.5, 1.5, 13, 12.5], [1.5, 15.5, 5, 13], [8.5, 15.5, 13, 13], [23.5, 15.5, 5, 13]];
+      bricks.forEach(([x, y, w, h], i) => ERICH.stone(c, x, y, w, h, { col: i % 2 ? shade(k.main, 0.04 + F(s, i) * 0.05) : tint(k.main, F(s, i) * 0.08), seed: s + i * 5, r: 1.6, lw: 1, crack: w > 10 && F(s, i + 20) < 0.5 }));
+      c.strokeStyle = k.dark; c.lineWidth = 2; rrOn(c, 1, 1, T - 2, T - 2, 2); c.stroke();
+      return;
+    }
+    // bedrock-side stone, seamless: a strata band, embedded cobbles with lit tops and dark undersides, specks, a crack
+    c.fillStyle = k.main; c.fillRect(-0.5, -0.5, T + 1, T + 1);
+    c.fillStyle = shade(k.main, 0.04); c.fillRect(-0.5, 17, T + 1, 7);
+    const n = 2 + (v % 2);
+    for (let i = 0; i < n; i++) {
+      const rx = 3.5 + F(s, i + 5) * 3.5, ry = rx * (0.6 + F(s, i + 6) * 0.2), cx = rx + 1.5 + F(s, i + 7) * (T - 2 * rx - 3), cy = ry + 1.5 + ((i + 0.5) / n) * (T - 2 * ry - 3);
+      ERICH.pebble(c, cx, cy, rx, ry, i % 2 ? shade(k.main, 0.12) : tint(k.main, 0.12), s + i * 3);
+    }
+    c.globalAlpha = 0.6;
+    for (let i = 0; i < 8; i++) { c.fillStyle = F(s, i + 50) < 0.4 ? 'rgba(255,255,255,0.35)' : k.dark; c.beginPath(); c.arc(2 + F(s, i + 60) * 26, 2 + F(s, i + 70) * 26, 0.5 + F(s, i + 80) * 0.8, 0, Math.PI * 2); c.fill(); }
+    c.globalAlpha = 1;
+    if (v % 3 === 2) { c.strokeStyle = shade(k.main, 0.3); c.lineWidth = 1; c.lineCap = 'round'; c.beginPath(); c.moveTo(3, 21 + F(s, 90) * 5); c.lineTo(11, 23 + F(s, 91) * 4); c.lineTo(17, 28); c.stroke(); c.strokeStyle = 'rgba(255,255,255,0.2)'; c.beginPath(); c.moveTo(3, 20 + F(s, 90) * 5); c.lineTo(11, 22 + F(s, 91) * 4); c.stroke(); }
+    if (v === 4) { c.fillStyle = '#b8e0ff'; c.globalAlpha = 0.7; c.beginPath(); c.moveTo(20, 25); c.lineTo(22, 21); c.lineTo(24, 25); c.lineTo(22, 27); c.closePath(); c.fill(); c.globalAlpha = 1; c.fillStyle = '#ffffff'; c.fillRect(21.3, 22.5, 0.9, 1.6); }
+  }
+  function zfPaintBed(c, v) {
+    const k = COLS_K.bed, F = ERICH.fr, s = 1100 + v * 11;
+    c.fillStyle = k.main; c.fillRect(-0.5, -0.5, T + 1, T + 1);
+    c.fillStyle = k.dark; c.globalAlpha = 0.6; c.beginPath();
+    for (let i = 0; i < 2; i++) { const x = 3 + F(s, i) * 22, y = 3 + F(s, i + 5) * 22, r = 3 + F(s, i + 9) * 3; c.moveTo(x + r, y); c.ellipse(x, y, r, r * 0.6, F(s, i + 12), 0, Math.PI * 2); }
+    c.fill(); c.globalAlpha = 1;
+    c.fillStyle = k.light; rrOn(c, 4 + F(s, 20) * 12, 8 + F(s, 21) * 10, 8, 4, 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.1)'; c.fillRect(4 + F(s, 20) * 12 + 1, 8 + F(s, 21) * 10, 6, 1);
+    c.fillStyle = 'rgba(160,170,210,0.18)'; for (let i = 0; i < 5; i++) { c.beginPath(); c.arc(2 + F(s, i + 30) * 26, 2 + F(s, i + 40) * 26, 0.7, 0, Math.PI * 2); c.fill(); }
+  }
+  function zfPaintMetal(c, v, turret) {
+    const k = COLS_K[turret ? 'turret' : 'metal'], s = 1300 + v * 7 + (turret ? 50 : 0);
+    ERICH.metal(c, 0.5, 0.5, T - 1, T - 1, { col: k.main, seed: s, r: 2.5, lw: 2.2, rivets: false });
+    if (!turret) {
+      // a pressed cross-brace and four rivets
+      c.save(); rrOn(c, 3, 3, T - 6, T - 6, 1.5); c.clip();
+      c.strokeStyle = 'rgba(255,255,255,0.28)'; c.lineWidth = 2; c.beginPath(); if (v % 2) { c.moveTo(4, 4); c.lineTo(T - 4, T - 4); } else { c.moveTo(T - 4, 4); c.lineTo(4, T - 4); } c.stroke();
+      c.strokeStyle = shade(k.main, 0.35); c.lineWidth = 1; c.beginPath(); if (v % 2) { c.moveTo(5, 3); c.lineTo(T - 3, T - 5); } else { c.moveTo(T - 3, 5); c.lineTo(5, T - 3); } c.stroke();
+      c.restore();
+      c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 1; rrOn(c, 3.5, 3.5, T - 7, T - 7, 1.5); c.stroke();
+      ERICH.rivets(c, [[6, 6], [24, 6], [6, 24], [24, 24]], 1.8, k.light);
+      if (v === 2) { c.fillStyle = 'rgba(160,90,40,0.35)'; c.beginPath(); c.ellipse(22, 26, 3, 1.5, 0, 0, Math.PI * 2); c.fill(); }
+    } else {
+      // the turret base: a dark vent with slats and a yellow-and-dark warning band
+      ERICH.rivets(c, [[5, 5], [25, 5]], 1.6, k.light);
+      c.fillStyle = shade(k.dark, 0.25); rrOn(c, 6, 19, 18, 6, 1.5); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.25)'; for (let i = 0; i < 4; i++) c.fillRect(7.5 + i * 4.3, 20, 2.2, 1);
+      c.save(); c.beginPath(); c.rect(2.5, 26, T - 5, 2.5); c.clip(); c.fillStyle = '#e8b830'; c.fillRect(2.5, 26, T - 5, 2.5);
+      c.fillStyle = '#3a3a44'; for (let x = -2; x < T; x += 5) { c.beginPath(); c.moveTo(x, 28.5); c.lineTo(x + 2.5, 26); c.lineTo(x + 4.5, 26); c.lineTo(x + 2, 28.5); c.closePath(); c.fill(); }
+      c.restore();
+    }
+  }
+  function zfPaintDome(c) {
+    // the turret's swivel dome (the barrel turns under it): a shaded steel half-ball with a red eye lens
+    const g = c.createRadialGradient(-2.5, -2.5, 1, 0, 0, 7.5); g.addColorStop(0, '#8a95a8'); g.addColorStop(0.6, '#4c5566'); g.addColorStop(1, '#353c4a');
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, 7, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#1f232b'; c.lineWidth = 1.5; c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 1; c.beginPath(); c.arc(0, 0, 5, Math.PI * 1.05, Math.PI * 1.6); c.stroke();
+    c.fillStyle = '#5a1018'; c.beginPath(); c.arc(0, 0, 2.6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#ff5050'; c.beginPath(); c.arc(0, 0, 1.8, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#ffd0d0'; c.beginPath(); c.arc(-0.6, -0.6, 0.6, 0, Math.PI * 2); c.fill();
+  }
   function drawCell(st, x, y, c) {
-    const px = x * T, py = y * T, k = zfCol(c.k), h = hash(x, y);
-    ctx.fillStyle = k.main; ctx.fillRect(px - 0.5, py - 0.5, T + 1, T + 1);
-    if (c.k === 'dirt') {
-      ctx.fillStyle = zfShade(k.main, 0.12); ctx.beginPath(); ctx.rect(px, py + T - 8, T, 8); ctx.fill();
-      ctx.fillStyle = k.dark; for (let i = 0; i < 3; i++) { circle(px + 5 + ((h >> (i * 3)) % 20), py + 6 + ((h >> (i * 4 + 2)) % 18), 2); ctx.fill(); }
-      if (h % 5 === 0) { ctx.fillStyle = '#8a7d6e'; ctx.beginPath(); ctx.ellipse(px + 8 + ((h >> 6) % 16), py + 12 + ((h >> 9) % 12), 3.5, 2.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#a89a88'; circle(px + 7 + ((h >> 6) % 16), py + 11 + ((h >> 9) % 12), 1.2); ctx.fill(); }
-      if (h % 7 === 1) { ctx.strokeStyle = 'rgba(220,190,150,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 4 + (h % 10), py + 8 + ((h >> 4) % 10)); ctx.quadraticCurveTo(px + 14, py + 18, px + 24, py + 14 + ((h >> 8) % 8)); ctx.stroke(); }
-      if (c.by >= 0) { ctx.strokeStyle = k.dark; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, T - 2, T - 2); }
-      else if (!cellAt(x, y - 1) && y > 0) { ctx.fillStyle = C.grassDark; ctx.fillRect(px, py, T, 7); ctx.fillStyle = C.grass; ctx.fillRect(px, py, T, 5); for (let i = 0; i < 3; i++) { circle(px + 5 + i * 10, py + 5, 2.5); ctx.fill(); } }
-    } else if (c.k === 'bed') {
-      ctx.fillStyle = k.light; rr(px + 4 + (h % 12), py + 8, 8, 4, 2); ctx.fill();
-    } else if (c.k === 'wood') {
-      ctx.fillStyle = k.dark; ctx.fillRect(px, py + 9, T, 2); ctx.fillRect(px, py + 19, T, 2);
-      ctx.fillStyle = k.light; ctx.fillRect(px + 2, py + 2, T - 4, 3);
-      ctx.fillStyle = zfShade(k.main, 0.14); ctx.beginPath(); ctx.rect(px, py + 21, T, T - 21); ctx.fill();
-      ctx.strokeStyle = zfShade(k.main, 0.2); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 3, py + 6 + (h % 3)); ctx.lineTo(px + T - 3, py + 6 + ((h >> 2) % 3)); ctx.moveTo(px + 3, py + 15 + ((h >> 4) % 3)); ctx.lineTo(px + T - 3, py + 15); ctx.stroke();
-      ctx.fillStyle = zfShade(k.main, 0.3); ctx.beginPath(); ctx.ellipse(px + 7 + ((h >> 5) % 18), py + 25, 2.2, 1.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#cfd3da'; ctx.beginPath(); for (const a of [4, T - 4]) for (const b of [10, 20]) { ctx.moveTo(px + a + 1.1, py + b); ctx.arc(px + a, py + b, 1.1, 0, Math.PI * 2); } ctx.fill();
-      ctx.strokeStyle = k.dark; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, T - 2, T - 2);
-    } else if (c.k === 'stone') {
-      if (c.by >= 0) {
-        ctx.fillStyle = k.dark; ctx.fillRect(px, py + 14, T, 2); ctx.fillRect(px + 14, py, 2, 14); ctx.fillRect(px + 6, py + 16, 2, 14); ctx.fillRect(px + 22, py + 16, 2, 14);
-        ctx.fillStyle = zfShade(k.main, 0.12); ctx.beginPath(); ctx.rect(px + 1, py + 10, T - 2, 4); ctx.rect(px + 1, py + 26, T - 2, 5); ctx.fill();
-        ctx.fillStyle = k.light; ctx.fillRect(px + 2, py + 2, 10, 3); ctx.fillRect(px + 17, py + 2, 10, 3); ctx.fillRect(px + 9, py + 18, 11, 2);
-        ctx.strokeStyle = k.dark; ctx.lineWidth = 2; ctx.strokeRect(px + 1, py + 1, T - 2, T - 2);
-      } else {
-        ctx.fillStyle = k.dark; rr(px + 3 + (h % 9), py + 4 + ((h >> 3) % 8), 10, 7, 3); ctx.fill();
-        ctx.fillStyle = k.light; rr(px + 14 + ((h >> 5) % 8), py + 16 + ((h >> 7) % 8), 8, 5, 2); ctx.fill();
-        ctx.fillStyle = zfShade(k.main, 0.22); circle(px + 4 + ((h >> 11) % 22), py + 24 + ((h >> 13) % 5), 1.3); ctx.fill(); circle(px + 20 + ((h >> 15) % 8), py + 5 + ((h >> 17) % 6), 1); ctx.fill();
-        if (h % 6 === 2) { ctx.strokeStyle = zfShade(k.main, 0.3); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 2, py + 20 + (h % 6)); ctx.lineTo(px + 12, py + 22 + ((h >> 3) % 6)); ctx.lineTo(px + 18, py + 28); ctx.stroke(); }
-      }
-    } else if (c.k === 'metal' || c.k === 'turret') {
-      const g = ctx.createLinearGradient(px, py, px, py + T); g.addColorStop(0, k.light); g.addColorStop(1, k.main);
-      ctx.fillStyle = g; ctx.fillRect(px, py, T, T);
-      ctx.strokeStyle = k.dark; ctx.lineWidth = 2.5; ctx.strokeRect(px + 1.5, py + 1.5, T - 3, T - 3);
-      ctx.fillStyle = k.dark; for (const [a, b] of [[6, 6], [24, 6], [6, 24], [24, 24]]) { circle(px + a, py + b, 1.8); ctx.fill(); }
-      if (c.k === 'turret') {
+    const px = x * T, py = y * T, h = hash(x, y), kk = c.k in ZFV ? c.k : 'dirt', v = h % ZFV[kk], built = c.by >= 0;
+    if (kk === 'dirt') {
+      const grass = !built && !cellAt(x, y - 1) && y > 0;
+      ERICH.put('zfdirt' + v + (built ? 'b' : grass ? 'g' + C.grass : ''), T + 2, T + 9, 1, 8, cc => zfPaintDirt(cc, v, built, grass), px, py);
+    } else if (kk === 'stone') ERICH.put('zfstone' + v + (built ? 'b' : ''), T + 2, T + 2, 1, 1, cc => zfPaintStone(cc, v, built), px, py);
+    else if (kk === 'wood') ERICH.put('zfwood' + v, T + 2, T + 2, 1, 1, cc => ERICH.crate(cc, 0.5, 0.5, T - 1, T - 1, { col: v % 2 ? '#a8743f' : '#ae7a44', seed: 40 + v, brace: v < 2, flip: v === 1, edge: COLS_K.wood.dark, lw: 2 }), px, py);
+    else if (kk === 'bed') ERICH.put('zfbed' + v, T + 2, T + 2, 1, 1, cc => zfPaintBed(cc, v), px, py);
+    else {
+      const tur = kk === 'turret';
+      ERICH.put('zfmetal' + v + (tur ? 't' : ''), T + 2, T + 2, 1, 1, cc => zfPaintMetal(cc, v, tur), px, py);
+      if (tur) {
         const a = c.aim != null ? c.aim : (x < COLS / 2 ? Math.PI : 0);
         ctx.save(); ctx.translate(px + T / 2, py + 10); ctx.rotate(a);
-        ctx.fillStyle = '#3a3f4a'; ctx.fillRect(0, -3, 17, 6); ctx.fillStyle = '#1f232b'; ctx.fillRect(14, -3.5, 4, 7);
+        ctx.fillStyle = '#3a3f4a'; ctx.fillRect(0, -3, 17, 6); ctx.fillStyle = '#5c6474'; ctx.fillRect(0, -3, 17, 1.6); ctx.fillStyle = '#262a33'; ctx.fillRect(0, 1.6, 17, 1.4);
+        ctx.fillStyle = '#1f232b'; ctx.fillRect(14, -3.5, 4, 7); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(14, -3.5, 4, 1.2);
         ctx.restore();
-        ctx.fillStyle = '#4c5566'; circle(px + T / 2, py + 10, 7); ctx.fill(); ctx.strokeStyle = '#1f232b'; ctx.lineWidth = 1.5; ctx.stroke();
-        ctx.fillStyle = '#ff5050'; circle(px + T / 2, py + 10, 1.8); ctx.fill();
+        ERICH.put('zfdome', 18, 18, 9, 9, zfPaintDome, px + T / 2, py + 10);
       }
     }
     if (c.k === 'stone' && c.mine > 0) { ctx.strokeStyle = 'rgba(20,20,30,0.7)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(px + 8, py + 6); ctx.lineTo(px + 15, py + 15); ctx.lineTo(px + 11, py + 24); if (c.mine > 1) { ctx.moveTo(px + 15, py + 15); ctx.lineTo(px + 25, py + 12); } ctx.stroke(); }
@@ -869,42 +974,169 @@ function zfWaveSpec(n) {
     }
     if (c.hit > 0) { c.hit -= 1 / 60; ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(px, py, T, T); }
   }
+  // tree canopy (origin = the trunk top): clustered leaf balls with a dark-green outline, shaded undersides, lit
+  // scalloped tops, leaf flecks, and on some trees a few apples
+  function zfPaintCanopy(c, v) {
+    const F = ERICH.fr, s = 1500 + v * 9;
+    const B = [[2, 2, 17, '#163a22'], [-11, -4, 18, '#1f4a2c'], [11, -4, 14, '#2f6b3c'], [0, -14, 16, '#275a34']];
+    if (v % 2) { B[1][0] = -12; B[2][1] = -2; B[3][0] = 2; }
+    c.fillStyle = '#0f2617'; for (const [x, y, r] of B) { c.beginPath(); c.arc(x, y, r + 1.6, 0, Math.PI * 2); c.fill(); }
+    B.forEach(([x, y, r, col], i) => {
+      c.save(); c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = col; c.fill(); c.clip();
+      c.fillStyle = shade(col, 0.25); c.beginPath(); c.ellipse(x + r * 0.35, y + r * 0.75, r * 1.05, r * 0.6, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = tint(col, 0.16); c.beginPath();
+      for (let j = 0; j < 6; j++) { const a = Math.PI * (1.05 + j * 0.16), q = r * 0.78; c.moveTo(x + Math.cos(a) * q + r * 0.26, y + Math.sin(a) * q); c.arc(x + Math.cos(a) * q, y + Math.sin(a) * q, r * 0.26, 0, Math.PI * 2); }
+      c.fill();
+      c.fillStyle = 'rgba(160,220,150,0.25)'; c.beginPath();
+      for (let j = 0; j < 5; j++) { const lx = x + (F(s, i * 10 + j) - 0.5) * r * 1.3, ly = y + (F(s, i * 10 + j + 5) - 0.6) * r * 1.2; c.moveTo(lx + 2, ly); c.ellipse(lx, ly, 2, 1.1, F(s, j + 70) * 3, 0, Math.PI * 2); }
+      c.fill();
+      c.fillStyle = 'rgba(5,20,10,0.3)'; c.beginPath();
+      for (let j = 0; j < 4; j++) { const lx = x + (F(s, i * 10 + j + 40) - 0.3) * r, ly = y + F(s, i * 10 + j + 50) * r * 0.7; c.moveTo(lx + 1.6, ly); c.ellipse(lx, ly, 1.6, 1, 0.6, 0, Math.PI * 2); }
+      c.fill();
+      c.restore();
+    });
+    c.fillStyle = '#367844'; c.beginPath(); c.arc(-8, -12, 7, 0, Math.PI * 2); c.moveTo(10, -20); c.arc(4, -20, 6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(200,240,190,0.28)'; c.beginPath(); c.ellipse(-10, -15, 3.5, 2, -0.4, 0, Math.PI * 2); c.moveTo(4.5, -23); c.ellipse(2, -23, 2.5, 1.4, -0.4, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(180,220,255,0.1)'; c.beginPath(); c.arc(-6, -16, 10, 0, Math.PI * 2); c.fill();
+    if (v % 2 === 0) for (const [ax, ay] of [[-12, 6], [9, 2], [-2, -6]]) {
+      c.fillStyle = '#7a1a1a'; c.beginPath(); c.arc(ax + 0.4, ay + 0.5, 2.6, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#c8402e'; c.beginPath(); c.arc(ax, ay, 2.3, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.55)'; c.beginPath(); c.arc(ax - 0.8, ay - 0.8, 0.7, 0, Math.PI * 2); c.fill();
+    }
+  }
+  // a cut stump (origin = its middle at the ground): bark sides, a pale top with growth rings, a ground shadow
+  function zfPaintStump(c) {
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(0, 0, 11, 2.2, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.moveTo(-9, 0); c.quadraticCurveTo(-7, -2, -7, -8); c.lineTo(7, -8); c.quadraticCurveTo(7, -2, 9, 0); c.closePath();
+    c.fillStyle = '#5a3d26'; c.fill(); c.strokeStyle = '#2e1e12'; c.lineWidth = 1.3; c.stroke();
+    c.fillStyle = '#3e2818'; c.fillRect(3, -8, 4, 7.5);
+    c.strokeStyle = '#3a2618'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(-4, -7); c.lineTo(-4.5, -1); c.moveTo(0, -7); c.lineTo(0.5, -1); c.stroke();
+    c.fillStyle = '#c49a68'; c.beginPath(); c.ellipse(0, -8, 7, 2.6, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#8a6440'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(0, -8, 4.5, 1.6, 0, 0, Math.PI * 2); c.moveTo(2, -8); c.ellipse(0, -8, 2, 0.7, 0, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = '#5a3d26'; c.lineWidth = 1.2; c.beginPath(); c.ellipse(0, -8, 7, 2.6, 0, 0, Math.PI * 2); c.stroke();
+  }
+  // (rich props) a dug hole: the back wall of the cut, and the cut faces of the cells around it (m: which neighbours
+  // are solid, 1 up, 2 right, 4 down, 8 left). Stone holes are rough-hewn rock with facets and pick marks, dirt holes
+  // show layered earth with pebbles and roots, zombie tunnels are darker with claw scratches. A solid cell above
+  // casts a shadow (with roots or a jagged lip hanging from it), the left wall casts a soft shade, the right wall
+  // catches a lit edge, a solid floor gets crumbs and rubble
+  function zfPaintHole(c, ty, v, m) {
+    const stone = ty === 2, col = ty === 0 ? '#2a1d17' : stone ? '#3a3a44' : '#3d2a1f', F = ERICH.fr, s = 1700 + ty * 40 + v * 7, TAU = Math.PI * 2;
+    c.fillStyle = col; c.fillRect(-0.5, -0.5, T + 1, T + 1);
+    if (stone) {
+      // rough-hewn facets, each lit on its upper-left and shaded lower-right
+      for (let i = 0; i < 5; i++) {
+        const fx = F(s, i) * T, fy = F(s, i + 5) * T, fs = 6 + F(s, i + 9) * 8;
+        c.fillStyle = 'rgba(255,255,255,0.07)'; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + fs, fy - fs * 0.25); c.lineTo(fx + fs * 0.7, fy + fs * 0.5); c.closePath(); c.fill();
+        c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.moveTo(fx + fs, fy - fs * 0.25); c.lineTo(fx + fs * 1.1, fy + fs * 0.6); c.lineTo(fx + fs * 0.7, fy + fs * 0.5); c.closePath(); c.fill();
+      }
+      // pick marks: short parallel gouges with a lit lower lip
+      for (let i = 0; i < 3; i++) {
+        const px = 4 + F(s, i + 20) * (T - 12), py = 5 + F(s, i + 30) * (T - 12), a = 0.6 + F(s, i + 40) * 0.5;
+        for (let j = 0; j < 2; j++) { const ox = px + j * 3, oy = py + j * 1.2;
+          c.strokeStyle = 'rgba(10,10,16,0.55)'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(ox, oy); c.lineTo(ox + Math.cos(a) * 5, oy + Math.sin(a) * 5); c.stroke();
+          c.strokeStyle = 'rgba(200,200,220,0.18)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(ox + 0.8, oy + 0.6); c.lineTo(ox + 0.8 + Math.cos(a) * 5, oy + 0.6 + Math.sin(a) * 5); c.stroke(); }
+      }
+      c.fillStyle = 'rgba(190,200,230,0.22)'; for (let i = 0; i < 6; i++) c.fillRect(F(s, i + 50) * T, F(s, i + 60) * T, 1, 1);
+      if (v === 2) { c.strokeStyle = 'rgba(10,10,16,0.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(T * 0.6, 0); c.lineTo(T * 0.5, T * 0.4); c.lineTo(T * 0.62, T * 0.7); c.stroke(); }
+    } else {
+      // layered earth: two wavy darker bands and a pale one
+      for (const [yy, dark] of [[T * 0.3, true], [T * 0.55, false], [T * 0.8, true]]) { c.fillStyle = dark ? 'rgba(0,0,0,0.18)' : 'rgba(255,220,180,0.06)'; c.beginPath(); c.moveTo(0, yy); for (let x = 0; x <= T; x += 5) c.lineTo(x, yy + Math.sin(x * 0.3 + v + yy) * 1.4); c.lineTo(T, yy + 3); for (let x = T; x >= 0; x -= 5) c.lineTo(x, yy + 3 + Math.sin(x * 0.25 + v) * 1); c.closePath(); c.fill(); }
+      for (let i = 0; i < 3; i++) ERICH.pebble(c, 4 + F(s, i) * (T - 8), 4 + F(s, i + 5) * (T - 8), 1.6 + F(s, i + 9) * 1.4, 1.2 + F(s, i + 9), ty === 0 ? '#4a3a30' : '#5e4a3a', s + i, true);
+      c.fillStyle = 'rgba(255,220,180,0.1)'; for (let i = 0; i < 6; i++) c.fillRect(F(s, i + 20) * T, F(s, i + 30) * T, 1, 1);
+      if (ty === 0) {
+        // claw scratches down the tunnel wall
+        const cx = 6 + F(s, 70) * (T - 16), cy = 5 + F(s, 71) * (T - 18);
+        c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 1.2; c.beginPath(); for (let j = 0; j < 3; j++) { c.moveTo(cx + j * 3, cy + j); c.lineTo(cx + j * 3 + 3, cy + j + 10); } c.stroke();
+        c.strokeStyle = 'rgba(160,120,90,0.25)'; c.lineWidth = 0.7; c.beginPath(); for (let j = 0; j < 3; j++) { c.moveTo(cx + j * 3 + 0.9, cy + j); c.lineTo(cx + j * 3 + 3.9, cy + j + 10); } c.stroke();
+      } else if (v === 1 || v === 3) { c.strokeStyle = 'rgba(170,130,90,0.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(3, 6); c.quadraticCurveTo(12, 12, 9, 20); c.lineTo(12, 24); c.stroke(); }
+    }
+    // the left wall casts a soft shade onto the back wall; the right wall's face catches the light
+    if (m & 8) { const g = c.createLinearGradient(0, 0, 8, 0); g.addColorStop(0, 'rgba(0,0,0,0.4)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(-0.5, -0.5, 8.5, T + 1); }
+    if (m & 2) { c.fillStyle = stone ? 'rgba(150,155,175,0.35)' : 'rgba(150,105,70,0.4)'; c.fillRect(T - 2.5, 0, 2.5, T); c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(T - 2.5, 0, 0.8, T); }
+    // a solid floor: a lit floor line, crumbs and a bit of rubble
+    if (m & 4) {
+      c.fillStyle = stone ? 'rgba(160,165,185,0.3)' : 'rgba(150,105,70,0.35)'; c.fillRect(0, T - 2.5, T, 2.5);
+      for (let i = 0; i < 3; i++) ERICH.pebble(c, 4 + F(s, i + 80) * (T - 8), T - 2.5 - F(s, i + 81), 1.3 + F(s, i + 82) * 1.6, 0.9 + F(s, i + 82), stone ? '#7a7a88' : '#6e5440', s + 90 + i, true);
+    }
+    // a solid cell above: a shadow, with roots (earth) or a jagged lip (stone) hanging from it
+    if (m & 1) {
+      const g = c.createLinearGradient(0, 0, 0, 10); g.addColorStop(0, 'rgba(0,0,0,0.5)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(-0.5, -0.5, T + 1, 10.5);
+      if (stone) { c.fillStyle = '#4a4a56'; c.beginPath(); c.moveTo(0, 0); for (let x = 0; x <= T; x += 5) c.lineTo(x, 1.5 + F(s, x + 100) * 3); c.lineTo(T, 0); c.closePath(); c.fill(); c.strokeStyle = 'rgba(200,205,225,0.2)'; c.lineWidth = 0.7; c.stroke(); }
+      else { c.strokeStyle = 'rgba(190,150,105,0.55)'; c.lineWidth = 0.9; c.beginPath(); for (let i = 0; i < 3; i++) { const rx = 4 + F(s, i + 110) * (T - 8), l = 4 + F(s, i + 111) * 7; c.moveTo(rx, 0); c.quadraticCurveTo(rx + 2, l * 0.6, rx - 1, l); } c.stroke(); }
+    }
+  }
+  // the heart's pedestal (origin = its middle on the ground): a stone plinth with a carved band, a gold trim and two
+  // little red gems, a lit slab on top, a soft ground shadow
+  function zfPaintPedestal(c) {
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(0, 0, 32, 3.5, 0, 0, Math.PI * 2); c.fill();
+    ERICH.stone(c, -26, -12, 52, 12, { col: '#3d3a4a', seed: 61, r: 3, lw: 1.4, edge: '#22202c', crack: false });
+    c.fillStyle = '#2c2a37'; c.fillRect(-24, -5, 48, 3.5);
+    c.strokeStyle = '#2c2a37'; c.lineWidth = 1; c.beginPath(); c.moveTo(-9, -11); c.lineTo(-9, -5); c.moveTo(9, -11); c.lineTo(9, -5); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.14)'; c.beginPath(); c.moveTo(-8, -11); c.lineTo(-8, -5); c.moveTo(10, -11); c.lineTo(10, -5); c.stroke();
+    for (const gx of [-17.5, 17.5]) { c.fillStyle = '#5a0a20'; c.beginPath(); c.moveTo(gx, -10.5); c.lineTo(gx + 3, -7.5); c.lineTo(gx, -4.5); c.lineTo(gx - 3, -7.5); c.closePath(); c.fill(); c.fillStyle = '#e0406a'; c.beginPath(); c.moveTo(gx, -9.5); c.lineTo(gx + 2, -7.5); c.lineTo(gx, -5.5); c.lineTo(gx - 2, -7.5); c.closePath(); c.fill(); c.fillStyle = '#ffd0dc'; c.fillRect(gx - 0.8, -8.6, 0.9, 0.9); }
+    c.fillStyle = '#c9931f'; c.fillRect(-26, -12.5, 52, 1.6); c.fillStyle = '#ffd36b'; c.fillRect(-26, -12.5, 52, 0.7);
+    c.fillStyle = '#56526a'; rrOn(c, -22, -16, 44, 6, 2); c.fill();
+    c.fillStyle = shade('#56526a', 0.2); c.fillRect(-21, -12.2, 42, 1.6);
+    c.fillStyle = '#7a7690'; c.fillRect(-20, -16, 40, 1.5);
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(-20, -16, 14, 0.8);
+    c.strokeStyle = '#2c2a37'; c.lineWidth = 1; rrOn(c, -22, -16, 44, 6, 2); c.stroke();
+  }
+  // a buy pad (origin = its middle on the ground): a gold tread plate with a dark-gold rim, diamond tread, screws and a
+  // lit lip, and the steel post that holds the sign (with a clamp)
+  function zfPaintPad(c) {
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(0, 0, 17, 2.5, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#6c7180'; c.fillRect(-1.5, -46, 3, 41); c.fillStyle = '#a3a8b6'; c.fillRect(-1.5, -46, 1.2, 41); c.fillStyle = '#454a56'; c.fillRect(0.9, -46, 0.6, 41);
+    c.fillStyle = '#454a56'; rrOn(c, -3, -46, 6, 4, 1); c.fill(); c.fillStyle = '#8a90a0'; c.fillRect(-2.5, -45.6, 5, 1);
+    c.fillStyle = '#9a6a10'; rrOn(c, -15, -6.5, 30, 6.5, 2); c.fill();
+    c.fillStyle = '#c9931f'; rrOn(c, -14.5, -6, 29, 5.5, 2); c.fill();
+    c.fillStyle = '#ffc53d'; rrOn(c, -14, -6, 28, 3.5, 2); c.fill();
+    c.save(); rrOn(c, -14, -6, 28, 3.5, 2); c.clip();
+    c.strokeStyle = 'rgba(160,100,10,0.5)'; c.lineWidth = 0.8; c.beginPath(); for (let x = -16; x < 16; x += 4) { c.moveTo(x, -2.5); c.lineTo(x + 2, -5.5); c.moveTo(x + 2, -5.5); c.lineTo(x + 4, -2.5); } c.stroke();
+    c.restore();
+    c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(-12, -6, 24, 0.9);
+    for (const sx of [-11, 11]) { c.fillStyle = '#7a5208'; c.beginPath(); c.arc(sx, -2.2, 1.2, 0, Math.PI * 2); c.fill(); c.fillStyle = '#ffe9a8'; c.beginPath(); c.arc(sx - 0.4, -2.6, 0.45, 0, Math.PI * 2); c.fill(); }
+    c.strokeStyle = '#7a5208'; c.lineWidth = 1; rrOn(c, -15, -6.5, 30, 6.5, 2); c.stroke();
+  }
   function drawTree(st, t) {
     const x = t.col * T + T / 2, by = ZF.ground * T, sh = t.shake > 0 ? Math.sin(G.clock * 60) * 2 : 0;
     if (cellAt(t.col, ZF.ground - 1) || !cellAt(t.col, ZF.ground)) return; // built over or dug out
     if (t.wood <= 0) {
       // a stump, and a sapling growing back
-      ctx.fillStyle = '#5a3d26'; rr(x - 7, by - 8, 14, 8, 2); ctx.fill();
-      ctx.fillStyle = '#7a5636'; ctx.beginPath(); ctx.ellipse(x, by - 8, 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      ERICH.put('zfstump', 30, 16, 15, 12, zfPaintStump, x, by);
       const g = 1 - Math.max(0, t.regrowT) / ZF.regrow;
-      if (g > 0.3) { ctx.fillStyle = '#3f7a3a'; circle(x + 4, by - 12 - g * 6, 3 + g * 3); ctx.fill(); }
+      if (g > 0.3) {
+        // a sapling: a thin stem with two leaves and a round top, growing as g goes up
+        const sx = x + 4, top = by - 12 - g * 6, r = 3 + g * 3;
+        ctx.strokeStyle = '#4a6a2a'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(x + 3, by - 9); ctx.quadraticCurveTo(sx - 1, (by - 9 + top) / 2, sx, top); ctx.stroke();
+        ctx.fillStyle = '#2f6b3c'; ctx.strokeStyle = '#1c4226'; ctx.lineWidth = 1; circle(sx, top, r); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#4c9a50'; ctx.beginPath(); ctx.ellipse(sx - r * 0.3, top - r * 0.35, r * 0.5, r * 0.32, -0.4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3f7a3a'; ctx.beginPath(); ctx.ellipse(sx - 4, by - 12, 3, 1.5, 0.5, 0, Math.PI * 2); ctx.fill();
+      }
       return;
     }
     const hgt = t.h * T * (0.4 + 0.6 * t.grow), k = t.wood / ZF.treeWood;
     ctx.save(); ctx.translate(x + sh, by);
     ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(-sh, 0, 16, 3, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#4a3220'; ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(-6, -8); ctx.lineTo(-6, -hgt); ctx.lineTo(6, -hgt); ctx.lineTo(6, -8); ctx.lineTo(9, 0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#5e4129'; ctx.fillRect(-6, -hgt, 4, hgt - 2);
-    ctx.fillStyle = '#3a2618'; ctx.fillRect(3, -hgt, 3, hgt);
-    ctx.strokeStyle = '#33221a'; ctx.lineWidth = 1; ctx.beginPath();
+    // trunk: flared roots, a lit left side and a dark right side, bark furrows, a knot hole, an outline in dark bark
+    ctx.beginPath(); ctx.moveTo(-11, 0); ctx.quadraticCurveTo(-7, -3, -6, -9); ctx.lineTo(-6, -hgt); ctx.lineTo(6, -hgt); ctx.lineTo(6, -9); ctx.quadraticCurveTo(7, -3, 11, 0); ctx.closePath();
+    ctx.fillStyle = '#4a3220'; ctx.fill(); ctx.strokeStyle = '#24170e'; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.fillStyle = '#5e4129'; ctx.fillRect(-5.2, -hgt, 3.6, hgt - 4);
+    ctx.fillStyle = 'rgba(255,230,190,0.16)'; ctx.fillRect(-5.2, -hgt, 1.2, hgt - 5);
+    ctx.fillStyle = '#3a2618'; ctx.fillRect(2.6, -hgt, 3.4, hgt - 2);
+    ctx.strokeStyle = '#2e1e12'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 0; i < 3; i++) { const bx = -3 + i * 2.6 + (hash(t.col, i + 20) % 3) * 0.4; ctx.moveTo(bx, -4); for (let yy = -10; yy > -hgt + 2; yy -= 8) ctx.lineTo(bx + (((hash(t.col, i * 31 + yy) % 5) - 2) * 0.35), yy); }
     for (let i = 0; i < 4; i++) { const yy = -10 - ((hash(t.col, i) % 1000) / 1000) * (hgt - 20); ctx.moveTo(-3, yy); ctx.lineTo(-1, yy - 6); }
     ctx.stroke();
-    if (k < 1) { ctx.fillStyle = '#c49a68'; ctx.beginPath(); ctx.moveTo(-6, -14); ctx.lineTo(-6 + 7 * (1 - k), -10); ctx.lineTo(-6, -6); ctx.fill(); }
-    const cols = ['#1f4a2c', '#275a34', '#2f6b3c'];
-    ctx.fillStyle = '#163a22'; circle(2, -hgt + 2, 17); ctx.fill();
-    for (let i = 0; i < 3; i++) { ctx.fillStyle = cols[i]; circle((i - 1) * 11, -hgt - 4 + (i === 1 ? -10 : 0), 18 - i * 2); ctx.fill(); }
-    ctx.fillStyle = '#367844'; circle(-8, -hgt - 12, 7); ctx.fill(); circle(4, -hgt - 20, 6); ctx.fill();
-    ctx.fillStyle = 'rgba(180,220,255,0.1)'; circle(-6, -hgt - 16, 10); ctx.fill();
+    { const ky = -hgt * (0.45 + (hash(t.col, 9) % 20) / 100); ctx.fillStyle = '#24170e'; ctx.beginPath(); ctx.ellipse(1, ky, 1.8, 2.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#6a4a30'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(1, ky, 2.8, 3.6, 0, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
+    ctx.strokeStyle = '#6a4a30'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-9.5, -1); ctx.quadraticCurveTo(-6.5, -3, -5.5, -8); ctx.stroke();
+    if (k < 1) { ctx.fillStyle = '#c49a68'; ctx.beginPath(); ctx.moveTo(-6, -14); ctx.lineTo(-6 + 7 * (1 - k), -10); ctx.lineTo(-6, -6); ctx.fill(); ctx.strokeStyle = '#8a6440'; ctx.lineWidth = 0.8; ctx.stroke(); }
+    ERICH.put('zfcanopy' + (t.col % 4), 76, 70, 38, 46, c => zfPaintCanopy(c, t.col % 4), 0, -hgt);
     ctx.restore();
   }
   function drawHeart(st) {
     const x = HX, by = HY, t = G.clock, u = st.heart / ZF.heartMax, pulse = 1 + Math.sin(t * (u < 0.4 ? 9 : 3)) * 0.04;
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, by, 32, 3.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#3d3a4a'; rr(x - 26, by - 12, 52, 12, 3); ctx.fill();
-    ctx.fillStyle = '#2c2a37'; ctx.beginPath(); ctx.rect(x - 26, by - 5, 52, 5); ctx.fill();
-    ctx.fillStyle = '#56526a'; rr(x - 22, by - 16, 44, 6, 2); ctx.fill();
-    ctx.fillStyle = '#7a7690'; ctx.beginPath(); ctx.rect(x - 20, by - 16, 40, 1.5); ctx.fill();
-    ctx.strokeStyle = '#2c2a37'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 9, by - 12); ctx.lineTo(x - 9, by - 5); ctx.moveTo(x + 9, by - 12); ctx.lineTo(x + 9, by - 5); ctx.stroke();
+    ERICH.put('zfped', 72, 24, 36, 19, zfPaintPedestal, x, by);
     ctx.save(); ctx.translate(x, by - 36 + Math.sin(t * 1.6) * 2); ctx.scale(pulse, pulse);
     const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, 48);
     glow.addColorStop(0, 'rgba(255,70,110,0.55)'); glow.addColorStop(1, 'rgba(255,70,110,0)');
@@ -920,13 +1152,10 @@ function zfWaveSpec(n) {
   }
   function drawPad(col, label, sub) {
     const x = col * T + T / 2, y = (ZF.pads.row + 1) * T;
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y, 17, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#c9931f'; rr(x - 15, y - 6, 30, 6, 2); ctx.fill();
-    ctx.fillStyle = '#ffc53d'; rr(x - 14, y - 6, 28, 3.5, 2); ctx.fill();
+    ERICH.put('zfpad', 44, 54, 22, 50, zfPaintPad, x, y);
     const fs = big() ? 13 : 11, bh = fs * 2 + 14;
     ctx.font = '700 ' + fs + 'px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const w = Math.max(64, ctx.measureText(sub).width + 16, ctx.measureText(label).width + 16), top = y - 46 - bh;
-    ctx.fillStyle = '#6c7180'; ctx.fillRect(x - 1.5, y - 46, 3, 41); ctx.fillStyle = '#a3a8b6'; ctx.fillRect(x - 1.5, y - 46, 1.2, 41);
     ctx.fillStyle = 'rgba(0,0,0,0.25)'; rr(x - w / 2 + 2, top + 3, w, bh, 7); ctx.fill();
     ctx.fillStyle = 'rgba(20,18,34,0.88)'; rr(x - w / 2, top, w, bh, 7); ctx.fill();
     ctx.strokeStyle = 'rgba(255,211,107,0.35)'; ctx.lineWidth = 1; ctx.stroke();
@@ -1029,7 +1258,10 @@ function zfWaveSpec(n) {
     // dug-out holes under the ground (zombie tunnels are darker)
     for (let y = ZF.ground; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       if (st.cell[idx(x, y)]) continue;
-      ctx.fillStyle = st.tun[idx(x, y)] ? '#2a1d17' : y >= ZF.stoneRow ? '#3a3a44' : '#3d2a1f'; ctx.fillRect(x * T - 0.5, y * T - 0.5, T + 1, T + 1);
+      const ty = st.tun[idx(x, y)] ? 0 : y >= ZF.stoneRow ? 2 : 1, v = hash(x, y + 50) % 4;
+      const sol = (xx, yy) => yy >= ROWS || (xx >= 0 && xx < COLS && yy >= 0 && !!st.cell[idx(xx, yy)]);
+      const m = (y > 0 && sol(x, y - 1) ? 1 : 0) | (sol(x + 1, y) ? 2 : 0) | (sol(x, y + 1) ? 4 : 0) | (sol(x - 1, y) ? 8 : 0);
+      ERICH.put('zfhole2|' + ty + v + '|' + m, T + 2, T + 2, 1, 1, c => zfPaintHole(c, ty, v, m), x * T, y * T);
     }
     for (const t of st.trees) drawTree(st, t);
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) { const c = st.cell[idx(x, y)]; if (c) drawCell(st, x, y, c); }

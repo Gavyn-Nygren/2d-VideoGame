@@ -16,7 +16,15 @@ const pw31Lawn = (v, t, gy, o = {}) => {
   c.fillStyle = 'rgba(214,190,160,0.5)'; for (let x = -20; x < v.W; x += 46) { c.beginPath(); c.moveTo(x, 110); c.lineTo(x, 50); c.lineTo(x + 20, 40); c.lineTo(x + 40, 50); c.lineTo(x + 40, 110); c.fill(); }
   for (let i = 0; i < 18; i++) pw31Blade(v, i * 20 + v.rand(i) * 14 - (o.scroll || 0) % 20, gy + 4, 70 + v.rand(i + 9) * 70, (v.rand(i + 3) - 0.5) * 30 + Math.sin(t * 1.3 + i) * 2, i % 2 ? 'rgba(96,170,80,0.7)' : 'rgba(118,186,96,0.7)');
   c.fillStyle = '#6b4a32'; c.fillRect(0, gy, v.W, v.H - gy); c.fillStyle = '#4a3122'; c.fillRect(0, gy + 10, v.W, v.H - gy);
+  // (art pass) the soil like the level's: a lighter stratum, roots, stones with a lit cap, crumbs, blades on the turf
+  const sc = (o.scroll || 0) % 40;
+  c.fillStyle = 'rgba(255,220,170,0.12)'; c.fillRect(0, gy + 18, v.W, 4); c.fillStyle = 'rgba(20,10,5,0.2)'; c.fillRect(0, gy + 30, v.W, v.H - gy);
+  c.strokeStyle = 'rgba(200,170,130,0.45)'; c.lineWidth = 1; c.beginPath();
+  for (let i = 0; i < 12; i++) { const x = i * 34 + v.rand(i + 40) * 20 - sc; c.moveTo(x, gy + 2); c.quadraticCurveTo(x + 4, gy + 9, x - 2, gy + 16 + v.rand(i + 41) * 8); } c.stroke();
+  for (let i = 0; i < 16; i++) { const x = i * 24 + v.rand(i + 50) * 18 - sc, y = gy + 8 + v.rand(i + 51) * (v.H - gy - 10), r = 1.6 + v.rand(i + 52) * 2.4; c.fillStyle = ['#b8a58a', '#8f8678', '#d1b48c'][i % 3]; c.beginPath(); c.ellipse(x, y, r * 1.3, r, 0, 0, pw31TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.ellipse(x - r * 0.3, y - r * 0.35, r * 0.5, r * 0.28, 0, 0, pw31TAU); c.fill(); }
+  c.fillStyle = 'rgba(30,15,8,0.45)'; for (let i = 0; i < 40; i++) c.fillRect(i * 9 + v.rand(i + 60) * 8 - sc % 9, gy + 4 + v.rand(i + 61) * (v.H - gy - 6), 1.2, 1.2);
   c.fillStyle = '#5fb84a'; c.fillRect(0, gy - 2, v.W, 3);
+  c.strokeStyle = '#3c8a36'; c.lineWidth = 1.2; c.beginPath(); for (let x = -sc % 5; x < v.W; x += 5) { c.moveTo(x, gy); c.lineTo(x + (v.rand(x | 0) - 0.5) * 2, gy - 3 - v.rand((x | 0) + 7) * 3); } c.stroke();
 };
 
 // ----- BEGIN 31-1 Lawnmower Escape -----
@@ -28,6 +36,14 @@ const pw31Lawn = (v, t, gy, o = {}) => {
     const c = v.ctx;
     c.fillStyle = '#9a968c'; c.strokeStyle = '#6c695f'; c.lineWidth = 1.5;
     c.beginPath(); c.moveTo(x - w / 2, y); c.bezierCurveTo(x - w / 2 - 2, y - h * 0.8, x - w / 4, y - h - 1, x, y - h); c.bezierCurveTo(x + w / 3, y - h - 1, x + w / 2 + 2, y - h * 0.6, x + w / 2, y); c.closePath(); c.fill(); c.stroke();
+    // (art pass) the boulder's shaded flank, speckle, a crack, moss at the foot and a ground shadow
+    c.save(); c.clip();
+    c.fillStyle = 'rgba(40,36,30,0.22)'; c.beginPath(); c.ellipse(x + w * 0.3, y - h * 0.2, w * 0.45, h * 0.8, 0, 0, pw31TAU); c.fill();
+    c.fillStyle = 'rgba(60,56,50,0.5)'; for (let i = 0; i < 26; i++) c.fillRect(x - w / 2 + v.rand(i + 70) * w, y - h + v.rand(i + 71) * h, 1.3, 1.3);
+    c.fillStyle = 'rgba(255,255,255,0.45)'; for (let i = 0; i < 10; i++) c.fillRect(x - w / 2 + v.rand(i + 90) * w * 0.6, y - h + v.rand(i + 91) * h * 0.6, 1.2, 1.2);
+    c.strokeStyle = 'rgba(50,46,40,0.6)'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(x + w * 0.05, y - h); c.lineTo(x + w * 0.1, y - h * 0.6); c.lineTo(x + w * 0.02, y - h * 0.3); c.stroke();
+    c.fillStyle = '#6f9a3a'; c.beginPath(); c.ellipse(x - w * 0.25, y - 1, w * 0.18, 3.5, 0, 0, pw31TAU); c.ellipse(x + w * 0.2, y - 1, w * 0.12, 3, 0, 0, pw31TAU); c.fill();
+    c.restore();
     c.fillStyle = '#c8c4b8'; c.beginPath(); c.ellipse(x - w * 0.18, y - h * 0.72, w * 0.15, h * 0.1, -0.3, 0, pw31TAU); c.fill();
   };
   const pw31mwMower = (v, x, gy, t) => {

@@ -90,6 +90,396 @@
      node tools/cpu-test.js 35-1 --who=pair   (the computer plays both; the whole level must clear)
    ====================================================================================================================== */
 
+/* ===== RICH: prop painters shared by Worlds 35-39 (art pass, Nov 2026) ===============================================
+   Gavyn (2026-11-17): "the brown things on the ground ... I want to have way more detail". Everything players stand on,
+   jump over, push, collect or dodge gets a base colour, a darker lower/right side, a thin lit top/left edge, an outline
+   in a dark shade of its own colour, a soft ground shadow and small themed details (grain, knots, nails, mortar,
+   rivets, pebbles, cracks, moss...). Drawing only: every painter fills exactly the box it is given, so the silhouette
+   still matches the hitbox (a lip of grass or moss, or a shadow, may hang over by a few px).
+   This file loads first of Worlds 35-39, so their kits (WIZ, STUDIO, TOURNEY, SPY, CAVE) can all use RICH.
+   Painters take the context to draw on (c) first, so they paint the same into a cached picture or onto the screen:
+     RICH.wood(c, x, y, w, h, o)     boards: o.col, o.boards (rows, 1), o.seam (plank length, 0 = none), o.nails, o.r,
+                                     o.vert (boards run up and down), o.knots (1), o.seed, o.edge (false: no outline)
+     RICH.stone(c, x, y, w, h, o)    coursed blocks: o.col, o.mortar, o.course (block height, 22), o.len (block length,
+                                     46), o.moss, o.cracks (1), o.seed, o.r, o.edge
+     RICH.metal(c, x, y, w, h, o)    a plate: o.col, o.rivets (spacing, 0 = none), o.seams (panel length), o.scratch,
+                                     o.hazard (a diagonal stripe band at the top), o.seed, o.r, o.edge
+     RICH.bricks(c, x, y, w, h, o)   o.col, o.mortar, o.bh (brick height, 12), o.bw (26), o.seed, o.edge
+     RICH.dirt(c, x, y, w, h, o)     layered earth with shaded pebbles and roots: o.col, o.gx (world x of the left edge,
+                                     so strata line up across chunks), o.seed, o.grass (a grass lip colour), o.roots
+     RICH.road(c, x, y, w, h, o)     asphalt or packed sand: o.col, o.gx, o.seed, o.cracks, o.patches
+     RICH.rock(c, x, y, w, h, o)     cave rock with strata, cracks and specks: o.col, o.gx, o.seed, o.wet
+     RICH.pebble(c, x, y, r, col, seed)  one shaded pebble.      RICH.shadow(c, cx, cy, rw, rh, a) a soft ground shadow.
+   Caching (still art is painted once and copied, like SHRUNK.pic):
+     RICH.pic(key, w, h, paint, x, y, pad)   paint(c, w, h) once into a picture w x h (plus pad px all round) and copy
+                                     it with its top-left at x, y. The key must change whenever the picture would.
+     RICH.strip(key, x0, x1, y, h, cw, paint)  a long ground band from world x0 to x1 in chunks cw wide: each chunk
+                                     is a picture painted by paint(c, gx, cw, h) (gx = the chunk's world x), only the
+                                     chunks between x0 and x1 are copied; the caller clips it to the visible span.
+   Colour helpers ('#rrggbb' in, '#rrggbb' out, so they chain): RICH.lit(c, f), RICH.dk(c, f), RICH.mix(a, b, t),
+     RICH.rgba(c, a), RICH.r(seed, k) (0..1 from the shared hash). */
+const RICH = (() => {
+  const R = {}, TAU = Math.PI * 2;
+  const rgb = c => { const n = parseInt(String(c).slice(1, 7), 16) || 0; return [n >> 16, (n >> 8) & 255, n & 255]; };
+  const hex = (r, g, b) => '#' + ((1 << 24) | (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b)).toString(16).slice(1);
+  const memo = new Map();
+  R.mix = (a, b, t) => { const k = a + b + t; let v = memo.get(k); if (v) return v; const A = rgb(a), B = rgb(b); v = hex(A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, A[2] + (B[2] - A[2]) * t); memo.set(k, v); return v; };
+  R.lit = (c, f) => R.mix(c, '#ffffff', f);
+  // darker towards a deep ink of the same hue (not pure black)
+  R.dk = (c, f) => { const A = rgb(c); return R.mix(c, hex(A[0] * 0.18 + 6, A[1] * 0.18 + 6, A[2] * 0.2 + 12), f); };
+  R.rgba = (c, a) => { const A = rgb(c); return 'rgba(' + A[0] + ',' + A[1] + ',' + A[2] + ',' + a + ')'; };
+  R.r = (seed, k) => hash((seed | 0) + 7919, (k | 0) + 104729) / 4294967296;
+  const rnd = R.r;
+
+  /* ---------- the picture cache ---------- */
+  const pics = new Map(); let picScale = 0, picPx = 0;
+  const scaleNow = () => Math.max(1, Math.min(3, (typeof canvas !== 'undefined' ? canvas.width : W) / W));
+  R.pic = (key, w, h, paint, x, y, pad = 0) => {
+    w = Math.max(1, Math.ceil(w)); h = Math.max(1, Math.ceil(h));
+    const sc = scaleNow();
+    if (sc !== picScale) { pics.clear(); picScale = sc; picPx = 0; }
+    const k = key + '|' + w + 'x' + h + '|' + pad;
+    let sp = pics.get(k);
+    if (sp) { pics.delete(k); pics.set(k, sp); }
+    else {
+      sp = document.createElement('canvas');
+      sp.width = Math.ceil((w + pad * 2) * sc); sp.height = Math.ceil((h + pad * 2) * sc);
+      // the art is stretched a hair to fill the whole-pixel picture, so its edges are never half see-through: chunks and
+      // tiles laid side by side then never show a thin seam where the screen scale is not a whole number
+      const c = sp.getContext('2d'); c.scale(sp.width / (w + pad * 2), sp.height / (h + pad * 2)); c.translate(pad, pad); c.lineJoin = 'round'; c.lineCap = 'round';
+      paint(c, w, h);
+      sp.pad = pad; pics.set(k, sp); picPx += sp.width * sp.height;
+      // keep the cache to about 60 megapixels or 600 pictures; the least recently used go first
+      while ((picPx > 6e7 || pics.size > 600) && pics.size > 1) { const [ok, ov] = pics.entries().next().value; pics.delete(ok); picPx -= ov.width * ov.height; }
+    }
+    const m = ctx.getTransform(), X0 = x - sp.pad, Y0 = y - sp.pad;
+    if (m.b === 0 && m.c === 0 && Math.abs(m.a - sc) < 1e-6 && Math.abs(m.d - sc) < 1e-6) {
+      const sm = ctx.imageSmoothingEnabled;
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(sp, Math.round(m.a * X0 + m.e), Math.round(m.d * Y0 + m.f));
+      ctx.setTransform(m); ctx.imageSmoothingEnabled = sm;
+    } else ctx.drawImage(sp, X0, Y0, sp.width / sc, sp.height / sc);
+  };
+  R.strip = (key, x0, x1, y, h, cw, paint, pad = 0) => {
+    const i0 = Math.floor(x0 / cw), i1 = Math.floor((x1 - 0.001) / cw);
+    for (let i = i0; i <= i1; i++) R.pic(key + '#' + i, cw, h, (c, w, hh) => paint(c, i * cw, w, hh), i * cw, y, pad);
+  };
+
+  /* ---------- small parts ---------- */
+  const rrp = (c, x, y, w, h, r) => {
+    r = Math.max(0, Math.min(r || 0, w / 2, h / 2));
+    c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  };
+  R.rr = rrp;
+  R.shadow = (c, cx, cy, rw, rh, a = 0.18) => { c.fillStyle = 'rgba(20,16,30,' + a + ')'; c.beginPath(); c.ellipse(cx, cy, rw, rh, 0, 0, TAU); c.fill(); c.fillStyle = 'rgba(20,16,30,' + a * 0.6 + ')'; c.beginPath(); c.ellipse(cx, cy, rw * 0.62, rh * 0.62, 0, 0, TAU); c.fill(); };
+  R.pebble = (c, x, y, r, col, seed = 0) => {
+    const sq = 0.62 + rnd(seed, 1) * 0.25, rot = (rnd(seed, 2) - 0.5) * 0.8;
+    c.fillStyle = 'rgba(20,14,10,0.28)'; c.beginPath(); c.ellipse(x + r * 0.25, y + r * sq * 0.55, r * 1.05, r * sq * 0.7, rot, 0, TAU); c.fill();
+    c.fillStyle = col; c.beginPath(); c.ellipse(x, y, r, r * sq, rot, 0, TAU); c.fill();
+    c.fillStyle = R.dk(col, 0.28); c.beginPath(); c.ellipse(x + r * 0.18, y + r * sq * 0.22, r * 0.78, r * sq * 0.7, rot, 0, Math.PI); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.beginPath(); c.ellipse(x - r * 0.32, y - r * sq * 0.38, r * 0.34, r * sq * 0.22, rot, 0, TAU); c.fill();
+    if (r > 2.5) { c.strokeStyle = R.dk(col, 0.5); c.lineWidth = 0.9; c.beginPath(); c.ellipse(x, y, r, r * sq, rot, 0, TAU); c.stroke(); }
+  };
+  R.nail = (c, x, y, r = 1.6) => { c.fillStyle = 'rgba(30,24,20,0.55)'; c.beginPath(); c.arc(x + 0.5, y + 0.6, r + 0.4, 0, TAU); c.fill(); c.fillStyle = '#8f949c'; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.arc(x - r * 0.35, y - r * 0.35, r * 0.45, 0, TAU); c.fill(); };
+  R.rivet = (c, x, y, r, col) => { c.fillStyle = R.dk(col, 0.45); c.beginPath(); c.arc(x + 0.6, y + 0.7, r, 0, TAU); c.fill(); c.fillStyle = R.lit(col, 0.18); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,0.65)'; c.beginPath(); c.arc(x - r * 0.35, y - r * 0.35, r * 0.4, 0, TAU); c.fill(); };
+  // the shared finish: lit top / left edge, dark bottom / right, outline in a dark shade of its own colour
+  R.finish = (c, x, y, w, h, col, o = {}) => {
+    const r = o.r || 0;
+    c.save(); rrp(c, x, y, w, h, r); c.clip();
+    c.fillStyle = 'rgba(255,255,255,' + (o.hi != null ? o.hi : 0.28) + ')'; c.fillRect(x, y, w, Math.min(2.5, h * 0.2)); c.fillRect(x, y, Math.min(2, w * 0.2), h);
+    c.fillStyle = R.rgba(R.dk(col, 0.7), o.lo != null ? o.lo : 0.35); c.fillRect(x, y + h - Math.min(4, h * 0.22), w, Math.min(4, h * 0.22)); c.fillRect(x + w - Math.min(3, w * 0.2), y, Math.min(3, w * 0.2), h);
+    c.restore();
+    if (o.edge !== false) { c.strokeStyle = R.dk(col, 0.62); c.lineWidth = o.lw || 2; rrp(c, x + 1, y + 1, w - 2, h - 2, Math.max(0, r - 1)); c.stroke(); }
+  };
+
+  /* ---------- wood ---------- */
+  R.wood = (c, x, y, w, h, o = {}) => {
+    const col = o.col || '#a8743e', seed = o.seed || 0, rows = Math.max(1, o.boards || 1), bh = h / rows, vert = !!o.vert;
+    c.save(); rrp(c, x, y, w, h, o.r || 0); c.clip();
+    c.fillStyle = col; c.fillRect(x, y, w, h);
+    const L = vert ? h : w, B = vert ? w : h, n = vert ? Math.max(1, Math.round(w / (o.bw || 18))) : rows, bb = B / n;
+    for (let i = 0; i < n; i++) {
+      // each board a slightly different tone, its own grain, a darker underside
+      const tone = (rnd(seed, i) - 0.5) * 0.14, bc = tone > 0 ? R.lit(col, tone) : R.dk(col, -tone);
+      const p0 = i * bb;
+      const box = (a, b, len, th) => vert ? c.fillRect(x + b, y + a, th, len) : c.fillRect(x + a, y + b, len, th);
+      c.fillStyle = bc; box(0, p0, L, bb);
+      c.fillStyle = R.rgba(R.dk(col, 0.6), 0.22); box(0, p0 + bb * 0.72, L, bb * 0.28);
+      c.fillStyle = 'rgba(255,255,255,0.14)'; box(0, p0, L, Math.min(2, bb * 0.15));
+      // grain: long wavy lines
+      c.strokeStyle = R.rgba(R.dk(col, 0.55), 0.35); c.lineWidth = 0.9;
+      const lines = Math.max(2, Math.round(bb / 4.5));
+      c.beginPath();
+      for (let g = 1; g < lines; g++) {
+        const q = p0 + bb * g / lines, ph = rnd(seed + i * 13, g) * 40, amp = 0.6 + rnd(seed + i, g + 9) * 1.1;
+        for (let s = 0; s <= L; s += 8) { const v = q + Math.sin((s + ph) / (11 + g * 3)) * amp; if (vert) (s ? c.lineTo(x + v, y + s) : c.moveTo(x + v, y + s)); else (s ? c.lineTo(x + s, y + v) : c.moveTo(x + s, y + v)); }
+      }
+      c.stroke();
+      // knots with rings
+      const kn = Math.round(L / 90 * (o.knots != null ? o.knots : 1));
+      for (let k = 0; k < kn; k++) {
+        if (rnd(seed + i * 7, k + 30) < 0.35) continue;
+        const a = 12 + rnd(seed + i * 5, k) * (L - 24), b = p0 + bb * (0.3 + rnd(seed + i * 3, k + 2) * 0.4), kr = Math.min(bb * 0.28, 2.5 + rnd(seed, k + i) * 3);
+        const kx = vert ? x + b : x + a, ky = vert ? y + a : y + b;
+        c.fillStyle = R.dk(col, 0.42); c.beginPath(); c.ellipse(kx, ky, vert ? kr * 0.7 : kr * 1.5, vert ? kr * 1.5 : kr * 0.7, 0, 0, TAU); c.fill();
+        c.strokeStyle = R.rgba(R.dk(col, 0.5), 0.5); c.lineWidth = 0.8; c.beginPath(); c.ellipse(kx, ky, vert ? kr * 1.2 : kr * 2.4, vert ? kr * 2.4 : kr * 1.2, 0, 0, TAU); c.stroke();
+        c.fillStyle = 'rgba(255,240,210,0.25)'; c.beginPath(); c.arc(kx - 0.6, ky - 0.6, kr * 0.35, 0, TAU); c.fill();
+      }
+      // seams between planks along the board, with nails either side
+      if (o.seam) {
+        const off = (i % 2) * o.seam * 0.5 + rnd(seed, i + 50) * 10;
+        for (let s = off; s < L; s += o.seam) {
+          if (s < 6) continue;
+          c.fillStyle = R.rgba(R.dk(col, 0.75), 0.75); box(s, p0, 1.5, bb);
+          c.fillStyle = 'rgba(255,255,255,0.18)'; box(s + 1.5, p0, 1, bb);
+          if (o.nails !== false && bb > 7) { for (const d of [-4, 5]) { const a = s + d, b = p0 + bb * 0.5; R.nail(c, vert ? x + b : x + a, vert ? y + a : y + b, Math.min(1.6, bb * 0.12)); } }
+        }
+      }
+      if (i > 0) { c.fillStyle = R.rgba(R.dk(col, 0.8), 0.8); box(0, p0 - 0.75, L, 1.5); }
+    }
+    // end-grain nicks and a scuffed top edge
+    c.fillStyle = R.rgba(R.dk(col, 0.6), 0.4);
+    for (let k = 0; k < w / 30; k++) { const nx = x + rnd(seed + 99, k) * w; c.fillRect(nx, y + 1, 2 + rnd(seed, k + 70) * 4, 1); }
+    c.restore();
+    R.finish(c, x, y, w, h, col, o);
+  };
+
+  /* ---------- coursed stone ---------- */
+  R.stone = (c, x, y, w, h, o = {}) => {
+    const col = o.col || '#8a8a96', mortar = o.mortar || R.dk(col, 0.35), seed = o.seed || 0, ch = o.course || 22, bl = o.len || 46;
+    c.save(); rrp(c, x, y, w, h, o.r || 0); c.clip();
+    c.fillStyle = mortar; c.fillRect(x, y, w, h);
+    const rows = Math.max(1, Math.round(h / ch)), rh = h / rows;
+    for (let j = 0; j < rows; j++) {
+      const off = (j % 2) * bl * 0.5 + rnd(seed, j) * 8;
+      for (let s = -off, k = 0; s < w; k++) {
+        const len = bl * (0.7 + rnd(seed + j * 31, k) * 0.6), bx = x + s + 1, by = y + j * rh + 1, bw = Math.min(len - 2, x + w - bx), bh = rh - 2;
+        s += len;
+        if (bw <= 1) continue;
+        const tone = (rnd(seed + j * 17, k + 3) - 0.5) * 0.18, bc = tone > 0 ? R.lit(col, tone) : R.dk(col, -tone);
+        c.fillStyle = bc; rrp(c, bx, by, bw, bh, 2); c.fill();
+        c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(bx + 1, by, bw - 2, 1.5); c.fillRect(bx, by + 1, 1.5, bh - 2);
+        c.fillStyle = R.rgba(R.dk(col, 0.7), 0.4); c.fillRect(bx + 1, by + bh - 2, bw - 2, 2); c.fillRect(bx + bw - 1.5, by + 1, 1.5, bh - 2);
+        // specks and the odd chip
+        c.fillStyle = R.rgba(R.dk(col, 0.5), 0.45);
+        for (let q = 0; q < bw * bh / 140; q++) c.fillRect(bx + 2 + rnd(seed + k * 3 + j, q) * (bw - 4), by + 2 + rnd(seed + j * 5 + k, q + 40) * (bh - 4), 1.2, 1.2);
+        c.fillStyle = 'rgba(255,255,255,0.18)';
+        for (let q = 0; q < bw * bh / 300; q++) c.fillRect(bx + 2 + rnd(seed + k * 7 + j, q + 80) * (bw - 4), by + 2 + rnd(seed + j * 9 + k, q + 90) * (bh - 4), 1, 1);
+        if (rnd(seed + j, k + 200) < 0.18 && bw > 10) { c.fillStyle = mortar; c.beginPath(); const cx0 = bx + bw - 1, cy0 = by + bh - 1; c.moveTo(cx0, cy0 - 5); c.lineTo(cx0 - 5, cy0); c.lineTo(cx0, cy0); c.closePath(); c.fill(); }
+        if ((o.cracks != null ? o.cracks : 1) && rnd(seed + j * 3, k + 300) < 0.22 && bw > 16) {
+          c.strokeStyle = R.rgba(R.dk(col, 0.75), 0.7); c.lineWidth = 1; c.beginPath();
+          let px = bx + bw * (0.2 + rnd(seed, k + j + 400) * 0.5), py = by + 1; c.moveTo(px, py);
+          for (let q = 0; q < 3; q++) { px += (rnd(seed + q, k + 500) - 0.4) * 8; py += bh / 3; c.lineTo(px, Math.min(py, by + bh - 1)); }
+          c.stroke();
+        }
+      }
+    }
+    if (o.moss) {
+      for (let s = 0; s < w; s += 5) {
+        const mh = 2 + rnd(seed + 600, s) * 5 * (0.5 + 0.5 * Math.sin((x + s) / 37));
+        c.fillStyle = o.moss; c.beginPath(); c.ellipse(x + s, y + 1, 4, mh, 0, 0, TAU); c.fill();
+        if (rnd(seed + 700, s) < 0.18) { c.fillStyle = R.dk(o.moss, 0.2); c.beginPath(); c.ellipse(x + s + 1, y + 2 + mh, 1.5, 3 + rnd(seed, s) * 4, 0, 0, TAU); c.fill(); }
+      }
+      c.fillStyle = R.rgba(R.lit(o.moss, 0.4), 0.7); for (let s = 2; s < w; s += 9) c.fillRect(x + s, y, 3, 1.2);
+    }
+    c.restore();
+    R.finish(c, x, y, w, h, col, o);
+  };
+
+  /* ---------- bricks ---------- */
+  R.bricks = (c, x, y, w, h, o = {}) => R.stone(c, x, y, w, h, Object.assign({ course: o.bh || 12, len: o.bw || 26, mortar: o.mortar || '#d8c6ae', cracks: 0.5 }, o));
+
+  /* ---------- metal ---------- */
+  R.metal = (c, x, y, w, h, o = {}) => {
+    const col = o.col || '#7a8490', seed = o.seed || 0;
+    c.save(); rrp(c, x, y, w, h, o.r || 0); c.clip();
+    const g = c.createLinearGradient(x, y, x, y + h); g.addColorStop(0, R.lit(col, 0.22)); g.addColorStop(0.45, col); g.addColorStop(1, R.dk(col, 0.25));
+    c.fillStyle = g; c.fillRect(x, y, w, h);
+    // brushed streaks
+    c.fillStyle = 'rgba(255,255,255,0.07)';
+    for (let k = 0; k < h / 3; k++) c.fillRect(x, y + rnd(seed, k) * h, w * (0.3 + rnd(seed, k + 9) * 0.7), 0.8);
+    // a diagonal sheen
+    c.fillStyle = 'rgba(255,255,255,0.12)'; c.beginPath(); c.moveTo(x + w * 0.15, y); c.lineTo(x + w * 0.15 + h * 0.6 + 10, y); c.lineTo(x + w * 0.15 + 10, y + h); c.lineTo(x + w * 0.15 - h * 0.6, y + h); c.closePath(); c.fill();
+    if (o.hazard) {
+      const hh = Math.min(o.hazard, h);
+      c.save(); c.beginPath(); c.rect(x, y, w, hh); c.clip();
+      c.fillStyle = '#f2c230'; c.fillRect(x, y, w, hh); c.fillStyle = '#2a2a30';
+      for (let s = -hh; s < w; s += 14) { c.beginPath(); c.moveTo(x + s, y + hh); c.lineTo(x + s + 7, y + hh); c.lineTo(x + s + 7 + hh, y); c.lineTo(x + s + hh, y); c.closePath(); c.fill(); }
+      c.restore();
+    }
+    if (o.seams) for (let s = o.seams; s < w - 4; s += o.seams) { c.fillStyle = R.rgba(R.dk(col, 0.7), 0.7); c.fillRect(x + s, y, 1.5, h); c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(x + s + 1.5, y, 1, h); }
+    if (o.scratch !== false) {
+      c.strokeStyle = 'rgba(255,255,255,0.18)'; c.lineWidth = 0.8; c.beginPath();
+      for (let k = 0; k < w * h / 900; k++) { const sx = x + rnd(seed + 3, k) * w, sy = y + rnd(seed + 4, k) * h, l = 4 + rnd(seed + 5, k) * 10; c.moveTo(sx, sy); c.lineTo(sx + l, sy + (rnd(seed + 6, k) - 0.5) * 4); }
+      c.stroke();
+    }
+    if (o.rivets) {
+      const rr0 = Math.min(2.2, h * 0.16);
+      for (let s = o.rivets * 0.5; s < w; s += o.rivets) { R.rivet(c, x + s, y + Math.min(5, h * 0.25), rr0, col); if (h > 16) R.rivet(c, x + s, y + h - Math.min(5, h * 0.25), rr0, col); }
+    }
+    if (o.rust) { c.fillStyle = 'rgba(160,80,30,0.35)'; for (let k = 0; k < w / 18; k++) { c.beginPath(); c.ellipse(x + rnd(seed + 8, k) * w, y + h - 2 - rnd(seed + 9, k) * h * 0.4, 2 + rnd(seed, k) * 4, 1 + rnd(seed, k + 1) * 3, 0, 0, TAU); c.fill(); } }
+    c.restore();
+    R.finish(c, x, y, w, h, col, Object.assign({ hi: 0.35 }, o));
+  };
+
+  /* ---------- ground: dirt, road, rock ---------- */
+  R.dirt = (c, x, y, w, h, o = {}) => {
+    const col = o.col || '#8a6440', gx = o.gx || 0, seed = (o.seed || 0) + Math.round(gx / 7) * 131;
+    c.fillStyle = col; c.fillRect(x, y, w, h);
+    // strata: wavy darker bands lower down (continuous across chunks: they follow the world x)
+    const bands = [[0.32, 0.1], [0.55, 0.18], [0.78, 0.28]];
+    for (const [f, d] of bands) {
+      if (h < 24) break;
+      c.fillStyle = R.dk(col, d); c.beginPath(); c.moveTo(x, y + h);
+      for (let s = 0; s <= w; s += 8) { const X = gx + s; c.lineTo(x + s, y + h * f + Math.sin(X / 41 + f * 9) * 3 + Math.sin(X / 13 + f) * 1.2); }
+      c.lineTo(x + w, y + h); c.closePath(); c.fill();
+    }
+    // speckle grains
+    c.fillStyle = R.rgba(R.dk(col, 0.5), 0.5);
+    for (let k = 0; k < w * h / 60; k++) c.fillRect(x + rnd(seed + 11, k) * w, y + 4 + rnd(seed + 12, k) * (h - 4), 1.3, 1.3);
+    c.fillStyle = R.rgba(R.lit(col, 0.35), 0.6);
+    for (let k = 0; k < w * h / 110; k++) c.fillRect(x + rnd(seed + 13, k) * w, y + 3 + rnd(seed + 14, k) * (h - 3), 1, 1);
+    // roots
+    if (o.roots !== false && h > 30) {
+      c.strokeStyle = R.rgba(R.dk(col, 0.45), 0.65); c.lineWidth = 1.4; c.beginPath();
+      for (let k = 0; k < w / 70; k++) { let rx = x + 8 + rnd(seed + 15, k) * (w - 16), ry = y + 6; c.moveTo(rx, ry); for (let q = 0; q < 4; q++) { rx += (rnd(seed + 16 + q, k) - 0.5) * 10; ry += 4 + rnd(seed + 17, k + q) * 6; c.lineTo(rx, ry); } }
+      c.stroke();
+    }
+    // pebbles, kept inside the chunk so nothing is cut at a chunk edge
+    const pc = o.pebble || R.mix(col, '#c8c0b0', 0.55);
+    for (let k = 0; k < w / 16; k++) {
+      const r = 1.8 + rnd(seed + 18, k) * 3.6, px = x + r + 2 + rnd(seed + 19, k) * (w - r * 2 - 4), py = y + 7 + rnd(seed + 20, k) * Math.max(1, h - 14);
+      R.pebble(c, px, py, r, rnd(seed + 21, k) < 0.5 ? pc : R.mix(pc, col, 0.35), seed + k * 3);
+    }
+    // a lit lip, then grass if asked
+    c.fillStyle = R.rgba(R.lit(col, 0.3), 0.8); c.fillRect(x, y, w, 2);
+    c.fillStyle = R.rgba(R.dk(col, 0.5), 0.35); c.fillRect(x, y + 2, w, 2);
+    if (o.grass) {
+      c.fillStyle = o.grass; c.fillRect(x, y - 1, w, 4);
+      for (let s = 2; s < w - 2; s += 3) { const bh = 2 + rnd(seed + 22, gx + s) * 5; c.fillStyle = rnd(seed + 23, gx + s) < 0.5 ? o.grass : R.lit(o.grass, 0.25); c.beginPath(); c.moveTo(x + s - 1.5, y + 2); c.lineTo(x + s + (rnd(seed, s) - 0.5) * 2, y - bh); c.lineTo(x + s + 1.5, y + 2); c.closePath(); c.fill(); }
+    }
+  };
+  R.road = (c, x, y, w, h, o = {}) => {
+    const col = o.col || '#4a4c56', gx = o.gx || 0, seed = (o.seed || 0) + Math.round(gx / 7) * 131;
+    c.fillStyle = col; c.fillRect(x, y, w, h);
+    // aggregate: dark and light grains
+    c.fillStyle = R.rgba(R.dk(col, 0.45), 0.55);
+    for (let k = 0; k < w * h / 40; k++) c.fillRect(x + rnd(seed + 31, k) * w, y + rnd(seed + 32, k) * h, 1.4, 1.4);
+    c.fillStyle = R.rgba(R.lit(col, 0.4), 0.45);
+    for (let k = 0; k < w * h / 70; k++) c.fillRect(x + rnd(seed + 33, k) * w, y + rnd(seed + 34, k) * h, 1, 1);
+    // tar patches and repaired squares
+    if (o.patches !== false) for (let k = 0; k < w / 140; k++) {
+      if (rnd(seed + 35, k) < 0.4) continue;
+      const pw = 30 + rnd(seed + 36, k) * 60, ph = 12 + rnd(seed + 37, k) * 26, px = x + 4 + rnd(seed + 38, k) * Math.max(1, w - pw - 8), py = y + 6 + rnd(seed + 39, k) * Math.max(1, h - ph - 12);
+      c.fillStyle = R.dk(col, 0.16); rrp(c, px, py, pw, ph, 3); c.fill();
+      c.strokeStyle = R.rgba(R.dk(col, 0.5), 0.6); c.lineWidth = 1.2; c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(px + 2, py + 1, pw - 4, 1.5);
+    }
+    // cracks
+    if (o.cracks !== false) {
+      c.strokeStyle = R.rgba(R.dk(col, 0.65), 0.75); c.lineWidth = 1.1; c.beginPath();
+      for (let k = 0; k < w / 90; k++) {
+        if (rnd(seed + 40, k) < 0.35) continue;
+        let px = x + 6 + rnd(seed + 41, k) * (w - 12), py = y + 4 + rnd(seed + 42, k) * (h - 8); c.moveTo(px, py);
+        for (let q = 0; q < 4; q++) { px = Math.max(x + 2, Math.min(x + w - 2, px + (rnd(seed + 43 + q, k) - 0.5) * 18)); py += (rnd(seed + 44 + q, k) - 0.3) * 8; c.lineTo(px, py); if (q === 1) { c.moveTo(px, py); c.lineTo(px + 6, py + 4); c.moveTo(px, py); } }
+      }
+      c.stroke();
+    }
+    // oil stains
+    for (let k = 0; k < w / 200; k++) { if (rnd(seed + 45, k) < 0.5) continue; c.fillStyle = 'rgba(10,10,20,0.14)'; c.beginPath(); c.ellipse(x + 20 + rnd(seed + 46, k) * (w - 40), y + 10 + rnd(seed + 47, k) * (h - 20), 10 + rnd(seed, k) * 12, 3 + rnd(seed, k + 1) * 3, 0, 0, TAU); c.fill(); }
+  };
+  R.rock = (c, x, y, w, h, o = {}) => {
+    const col = o.col || '#5a6472', gx = o.gx || 0, gy = o.gy || 0, seed = (o.seed || 0) + Math.round(gx / 7) * 131 + Math.round(gy / 7) * 977;
+    c.fillStyle = col; c.fillRect(x, y, w, h);
+    // slanted strata bands
+    for (let b = 0; b < 5; b++) {
+      const f = (b + 1) / 6, d = b % 2 ? 0.1 : -0.06;
+      c.fillStyle = d > 0 ? R.dk(col, d) : R.lit(col, -d);
+      c.beginPath(); c.moveTo(x, y + h);
+      for (let s = 0; s <= w; s += 10) { const X = gx + s; c.lineTo(x + s, y + h * f + Math.sin(X / 57 + b * 2.1) * 5 + (X % 240) * 0.02); }
+      c.lineTo(x + w, y + h); c.closePath(); c.globalAlpha = 0.5; c.fill(); c.globalAlpha = 1;
+    }
+    // fracture lines with a lit lower lip
+    for (let k = 0; k < w * h / 5000; k++) {
+      let px = x + rnd(seed + 51, k) * w, py = y + rnd(seed + 52, k) * h;
+      const pts = [[px, py]];
+      for (let q = 0; q < 4; q++) { px += (rnd(seed + 53 + q, k) - 0.5) * 22; py += 6 + rnd(seed + 54 + q, k) * 10; pts.push([px, py]); }
+      c.lineWidth = 1.3; c.strokeStyle = R.rgba(R.dk(col, 0.7), 0.75); c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.stroke();
+      c.lineWidth = 1; c.strokeStyle = 'rgba(255,255,255,0.12)'; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0] + 1.2, p[1] + 1) : c.moveTo(p[0] + 1.2, p[1] + 1)); c.stroke();
+    }
+    // specks
+    c.fillStyle = R.rgba(R.dk(col, 0.5), 0.5); for (let k = 0; k < w * h / 70; k++) c.fillRect(x + rnd(seed + 55, k) * w, y + rnd(seed + 56, k) * h, 1.4, 1.4);
+    c.fillStyle = R.rgba(R.lit(col, 0.45), 0.5); for (let k = 0; k < w * h / 150; k++) c.fillRect(x + rnd(seed + 57, k) * w, y + rnd(seed + 58, k) * h, 1, 1);
+    // flat lit facets
+    for (let k = 0; k < w * h / 4000; k++) {
+      const fx = x + rnd(seed + 59, k) * w, fy = y + rnd(seed + 60, k) * h, fs = 6 + rnd(seed + 61, k) * 12;
+      c.fillStyle = 'rgba(255,255,255,0.07)'; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + fs, fy - fs * 0.3); c.lineTo(fx + fs * 1.2, fy + fs * 0.5); c.lineTo(fx + fs * 0.2, fy + fs * 0.7); c.closePath(); c.fill();
+    }
+    if (o.wet) { c.fillStyle = 'rgba(170,220,250,0.22)'; for (let k = 0; k < w / 24; k++) c.fillRect(x + rnd(seed + 62, k) * w, y + rnd(seed + 63, k) * h * 0.5, 1.5, 8 + rnd(seed + 64, k) * 20); }
+  };
+  return R;
+})();
+/* (art pass) world-pinned boards and flagstones for long chunked strips (RICH.strip): every plank, joint, knot and block
+   is placed from its world position (o.gx = the world x of x; o.row0 = the world row of the first course), so the
+   chunks join without a seam and nothing repeats from chunk to chunk.
+     RICH.boards(c, x, y, w, h, o)  o.col, o.bh (board height, 16), o.len (plank length, 120), o.seed, o.nails, o.gx
+     RICH.flags(c, x, y, w, h, o)   o.col, o.mortar, o.course (24), o.len (60), o.seed, o.gx, o.row0, o.fade (darker
+                                    with depth, 0..1), o.moss (a moss colour along the top) */
+RICH.boards = (c, x, y, w, h, o = {}) => {
+  const R = RICH, TAU = Math.PI * 2, col = o.col || '#8a6440', gx = o.gx || 0, L = o.len || 120, sd = o.seed || 0;
+  const rows = Math.max(1, Math.round(h / (o.bh || 16))), rh = h / rows, grainC = R.rgba(R.dk(col, 0.55), 0.32), lo = R.rgba(R.dk(col, 0.6), 0.26), kn = R.dk(col, 0.42), knR = R.rgba(R.dk(col, 0.5), 0.5);
+  c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
+  c.fillStyle = R.dk(col, 0.62); c.fillRect(x, y, w, h);
+  for (let j = 0; j < rows; j++) {
+    const by = y + j * rh, off = R.r(sd + 3, j) * L, k0 = Math.floor((gx - off) / L) - 1, k1 = Math.floor((gx + w - off) / L) + 1, lines = Math.max(2, Math.round(rh / 4.5));
+    for (let k = k0; k <= k1; k++) {
+      const a = x + off + k * L - gx, tone = (R.r(sd + j * 31, k) - 0.5) * 0.16;
+      c.fillStyle = tone > 0 ? R.lit(col, tone) : R.dk(col, -tone); c.fillRect(a + 0.75, by + 0.75, L - 1.5, rh - 1.5);
+      c.fillStyle = lo; c.fillRect(a + 0.75, by + rh * 0.7, L - 1.5, rh * 0.3 - 0.75);
+      c.strokeStyle = grainC; c.lineWidth = 0.9; c.beginPath();
+      for (let g = 1; g < lines; g++) { const q = by + rh * g / lines, ph = R.r(sd + j * 7 + k, g) * 40, amp = 0.5 + R.r(sd + k, g + j) * 1.1; for (let s = 0; s <= L; s += 8) { const v = q + Math.sin((s + ph) / (12 + g * 3)) * amp; if (s) c.lineTo(a + s, v); else c.moveTo(a + s, v); } }
+      c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(a + 0.75, by + 0.75, L - 1.5, 1.4); c.fillRect(a + 0.75, by + 0.75, 1, rh - 1.5);
+      if (R.r(sd + j * 5, k + 77) < 0.55) {
+        const kx = a + 14 + R.r(sd + j, k + 5) * (L - 28), ky = by + rh * (0.35 + R.r(sd + k, j + 9) * 0.3), kr = Math.min(rh * 0.26, 2.2 + R.r(sd, k + j) * 2.5);
+        c.fillStyle = kn; c.beginPath(); c.ellipse(kx, ky, kr * 1.5, kr * 0.7, 0, 0, TAU); c.fill();
+        c.strokeStyle = knR; c.lineWidth = 0.8; c.beginPath(); c.ellipse(kx, ky, kr * 2.5, kr * 1.2, 0, 0, TAU); c.stroke();
+      }
+      if (o.nails !== false && rh > 9) { R.nail(c, a + 5, by + rh / 2, 1.2); R.nail(c, a + L - 6, by + rh / 2, 1.2); }
+    }
+  }
+  c.restore();
+};
+RICH.flags = (c, x, y, w, h, o = {}) => {
+  const R = RICH, TAU = Math.PI * 2, col = o.col || '#8a8a96', mortar = o.mortar || R.dk(col, 0.4), gx = o.gx || 0, L = o.len || 60, sd = o.seed || 0, row0 = o.row0 || 0;
+  const rows = Math.max(1, Math.round(h / (o.course || 24))), rh = h / rows;
+  c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
+  c.fillStyle = mortar; c.fillRect(x, y, w, h);
+  for (let j = 0; j < rows; j++) {
+    const J = j + row0, by = y + j * rh + 1, bh = rh - 2, off = (J % 2) * L * 0.5 + R.r(sd + 5, J) * 10, fade = (o.fade || 0) * j / rows;
+    const jt = k => off + k * L + (R.r(sd + J * 13, k) - 0.5) * L * 0.3;
+    const k0 = Math.floor((gx - off) / L) - 1, k1 = Math.floor((gx + w - off) / L) + 1;
+    for (let k = k0; k <= k1; k++) {
+      const bx = x + jt(k) - gx + 1, bw = jt(k + 1) - jt(k) - 2, s = sd + J * 101 + k * 7, tone = (R.r(s, 3) - 0.5) * 0.2 - fade;
+      if (bw < 2) continue;
+      c.fillStyle = tone > 0 ? R.lit(col, tone) : R.dk(col, -tone); R.rr(c, bx, by, bw, bh, 2); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(bx + 1, by, bw - 2, 1.5); c.fillRect(bx, by + 1, 1.5, bh - 2);
+      c.fillStyle = R.rgba(R.dk(col, 0.7), 0.4); c.fillRect(bx + 1, by + bh - 2, bw - 2, 2); c.fillRect(bx + bw - 1.5, by + 1, 1.5, bh - 2);
+      c.fillStyle = R.rgba(R.dk(col, 0.5), 0.45); for (let q = 0; q < bw * bh / 120; q++) c.fillRect(bx + 2 + R.r(s, q + 10) * (bw - 4), by + 2 + R.r(s + 1, q) * (bh - 4), 1.2, 1.2);
+      c.fillStyle = 'rgba(255,255,255,0.16)'; for (let q = 0; q < bw * bh / 260; q++) c.fillRect(bx + 2 + R.r(s + 2, q) * (bw - 4), by + 2 + R.r(s + 3, q) * (bh - 4), 1, 1);
+      if (R.r(s, 4) < 0.2 && bw > 10 && bh > 8) { c.fillStyle = mortar; c.beginPath(); c.moveTo(bx + bw, by + bh - 6); c.lineTo(bx + bw - 6, by + bh); c.lineTo(bx + bw, by + bh); c.closePath(); c.fill(); }
+      if (R.r(s, 5) < 0.22 && bw > 18 && bh > 10) { c.strokeStyle = R.rgba(R.dk(col, 0.75), 0.7); c.lineWidth = 1; c.beginPath(); let px = bx + bw * (0.2 + R.r(s, 6) * 0.5), py = by + 1; c.moveTo(px, py); for (let q = 0; q < 3; q++) { px += (R.r(s, q + 7) - 0.4) * 8; py += bh / 3; c.lineTo(px, Math.min(py, by + bh - 1)); } c.stroke(); }
+    }
+  }
+  if (o.moss) {
+    for (let X = Math.ceil(gx / 5) * 5; X < gx + w; X += 5) {
+      const mh = 1.5 + R.r(sd + 600, X) * 4 * (0.5 + 0.5 * Math.sin(X / 37));
+      c.fillStyle = o.moss; c.beginPath(); c.ellipse(x + X - gx, y + 1, 3.5, mh, 0, 0, TAU); c.fill();
+    }
+  }
+  c.restore();
+};
+
 const WIZ = {
   introHold: 0.6,              // phase.step waits while G.introT is above this (the room card)
   idleAfter: 12,               // s with no input from any person: Thimblewick sips her tea (no hazards, the clock stops)
@@ -865,6 +1255,33 @@ function wizSpellRing(x, y, r, key, t, a = 1) {
 function wizSparks(x, y, key, n = 8) { const s = WIZ_SPELLS[key] || WIZ_SPELLS.zoom; burst(x, y, s.col, n); }
 function wizCastSound(key) { Sfx.play('wizSpell_' + key); }
 // a mid-class safe spot: a little banner on a post (lit: reached); world coords, feet at groundY
+// (art pass, 2nd look) an arched plank door in a dressed-stone frame: vertical boards with grain, two iron straps
+// with nail heads and hinge curls, a ring pull on a back plate, a lit left edge and a shaded right (cached per size and
+// colour; same 52 px wide arch as the old plain door, so it reads as the same door)
+function wizDoorArt(cx, gy, w, h, col = '#5a3a2a', o = {}) {
+  const r = Math.min(w / 2 - 4, 22);
+  RICH.pic('wizdoor|' + w + '|' + h + '|' + col, w + 12, h + 6, (c) => {
+    // the stone surround
+    RICH.rr(c, 0, 0, w + 12, h + 6, r + 6); c.save(); c.clip(); RICH.stone(c, 0, 0, w + 12, h + 6, { col: '#7e7698', mortar: '#4a4462', course: 14, len: 18, seed: w + 11, edge: false, cracks: 0 }); c.restore();
+    c.strokeStyle = '#3a3450'; c.lineWidth = 1.5; RICH.rr(c, 0.75, 0.75, w + 10.5, h + 4.5, r + 6); c.stroke();
+    // the door leaf
+    c.save(); RICH.rr(c, 6, 6, w, h, r); c.clip();
+    RICH.wood(c, 6, 6, w, h, { col, vert: true, bw: w / 4, seed: 23, edge: false, knots: 0.8 });
+    const g = c.createLinearGradient(6, 0, 6 + w, 0); g.addColorStop(0, 'rgba(255,230,190,0.18)'); g.addColorStop(0.3, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(10,0,0,0.3)'); c.fillStyle = g; c.fillRect(6, 6, w, h);
+    for (const sy of [6 + h * 0.28, 6 + h * 0.74]) {
+      c.fillStyle = '#2e2a30'; c.fillRect(6, sy, w, 6); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(6, sy, w, 1);
+      for (let x = 12; x < w; x += 9) RICH.rivet(c, x, sy + 3, 1.3, '#5a5660');
+      c.strokeStyle = '#2e2a30'; c.lineWidth = 2.5; c.beginPath(); c.arc(6 + w - 6, sy + 3, 5, -Math.PI / 2, Math.PI / 2); c.stroke();
+    }
+    c.restore();
+    c.strokeStyle = RICH.dk(col, 0.6); c.lineWidth = 2; RICH.rr(c, 7, 7, w - 2, h - 2, r - 1); c.stroke();
+    // the ring pull
+    const hx = 6 + w * 0.78, hy = 6 + h * 0.52;
+    c.fillStyle = '#2e2a30'; RICH.rr(c, hx - 4, hy - 6, 8, 12, 2); c.fill();
+    c.strokeStyle = o.gold === false ? '#8a8a96' : '#d8a840'; c.lineWidth = 2; c.beginPath(); c.arc(hx, hy + 4, 4.5, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(hx - 3, hy + 0.5, 1.5, 1.5);
+  }, cx - w / 2 - 6, gy - h - 6);
+}
 function wizDrawFlag(x, gy, lit, col = '#ffd23f') {
   ctx.save(); ctx.lineJoin = 'round';
   ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.fillStyle = '#6b4a2a'; ctx.fillRect(x - 2, gy - 56, 4, 56); ctx.strokeRect(x - 2, gy - 56, 4, 56);
@@ -919,32 +1336,87 @@ function wizDusk(t, scrollX = 0, scrollY = 0, o = {}) {
   }
   if (o.skyline !== false) wizSkyline(scrollX * 0.2, (o.skyY != null ? o.skyY : 380) - scrollY * 0.1);
 }
-// the school's leaning towers, far away (screen coords; the line where they stand is y)
-// a lawn strip in world space: a darker soil-shadowed body, a lit top edge, grass tufts and the odd flower
-// (placement from hash, so it never flickers; only the visible part is drawn by the callers)
+// a lawn strip in world space: a cached turf texture (mown stripes, mottled patches, rows of little tufts, clover,
+// daisies and stones, a scalloped lit turf edge, then soil threaded with roots), clipped to the solid; the blades and
+// flowers that poke up over the top edge are drawn live (placement from hash, so nothing flickers)
+function wizTurf(c, gx, w, h, top, body) {
+  const R = RICH, TAU = Math.PI * 2, rn = (a, b) => R.r(a, b), soilY = Math.min(h, 48);
+  const g = c.createLinearGradient(0, 0, 0, soilY); g.addColorStop(0, R.lit(body, 0.05)); g.addColorStop(1, R.dk(body, 0.14));
+  c.fillStyle = g; c.fillRect(0, 0, w, soilY);
+  // mown stripes: every other 56 px band of the world a touch lighter
+  c.fillStyle = 'rgba(255,255,255,0.045)';
+  for (let X = Math.floor(gx / 112) * 112; X < gx + w; X += 112) { const a = Math.max(0, X - gx), b = Math.min(w, X - gx + 56); if (b > a) c.fillRect(a, 10, b - a, soilY - 10); }
+  // mottled patches (kept inside the chunk)
+  for (let k = 0; k < w / 16; k++) {
+    const pr = 4 + rn(gx + 11, k) * 8, px = pr * 1.6 + rn(gx + 12, k) * (w - pr * 3.2), py = 14 + rn(gx + 13, k) * Math.max(1, soilY - 20);
+    c.fillStyle = rn(gx + 14, k) < 0.55 ? R.rgba(R.dk(body, 0.5), 0.13) : R.rgba(R.lit(top, 0.25), 0.1);
+    c.beginPath(); c.ellipse(px, py, pr * 1.6, pr * 0.55, 0, 0, TAU); c.fill();
+  }
+  // rows of little tufts: a dark set and a lit set, each in one path
+  c.lineWidth = 1.1; c.lineCap = 'round';
+  for (const [col, pick] of [[R.rgba(R.dk(body, 0.45), 0.55), 0], [R.rgba(R.lit(top, 0.18), 0.5), 1]]) {
+    c.strokeStyle = col; c.beginPath();
+    for (let y = 14, row = 0; y < soilY - 3; y += 5, row++) for (let x = 3 + (row % 2) * 3; x < w - 3; x += 6) {
+      const v = rn(gx + x * 3 + row * 7, 911); if (v > 0.8 || (v < 0.42 ? 0 : 1) !== pick) continue;
+      const jx = x + (rn(gx + x, row + 40) - 0.5) * 3, jy = y + (rn(gx + x, row + 80) - 0.5) * 2, s = 1.3 + v * 1.5;
+      c.moveTo(jx - s, jy - s * 1.2); c.lineTo(jx, jy); c.lineTo(jx + s * 0.7, jy - s * 1.5);
+    }
+    c.stroke();
+  }
+  // clover clumps, tiny daisies, stones
+  for (let k = 0; k < w / 36; k++) {
+    const x = 8 + rn(gx + 21, k) * (w - 16), y = 18 + rn(gx + 22, k) * Math.max(1, soilY - 26);
+    c.fillStyle = R.dk(body, 0.25); for (const [dx, dy] of [[0, 0], [3, 1], [1.5, -2.2]]) { c.beginPath(); c.arc(x + dx + 0.6, y + dy + 0.7, 2.1, 0, TAU); c.fill(); }
+    c.fillStyle = R.lit(top, 0.12); for (const [dx, dy] of [[0, 0], [3, 1], [1.5, -2.2]]) { c.beginPath(); c.arc(x + dx, y + dy, 2, 0, TAU); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(x - 0.8, y - 0.8, 1, 1);
+  }
+  for (let k = 0; k < w / 64; k++) {
+    const x = 6 + rn(gx + 31, k) * (w - 12), y = 16 + rn(gx + 32, k) * Math.max(1, soilY - 22);
+    c.fillStyle = 'rgba(255,250,235,0.85)'; for (let p = 0; p < 5; p++) { const a = p * TAU / 5; c.beginPath(); c.arc(x + Math.cos(a) * 1.6, y + Math.sin(a) * 1.6, 1.1, 0, TAU); c.fill(); }
+    c.fillStyle = '#ffd86a'; c.beginPath(); c.arc(x, y, 1, 0, TAU); c.fill();
+  }
+  for (let k = 0; k < w / 70; k++) {
+    const r = 1.5 + rn(gx + 41, k) * 1.8, x = r + 4 + rn(gx + 42, k) * (w - r * 2 - 8), y = 18 + rn(gx + 43, k) * Math.max(1, soilY - 24);
+    R.pebble(c, x, y, r, rn(gx + 44, k) < 0.5 ? '#9a94a8' : '#8a8478', gx + k);
+  }
+  // soil under the turf, with roots and stones
+  if (h > soilY + 2) {
+    R.dirt(c, 0, soilY, w, h - soilY, { col: '#4e3a3e', gx, seed: 35, pebble: '#8a7e86' });
+    c.fillStyle = R.dk(body, 0.2);
+    c.beginPath(); c.moveTo(0, soilY - 1); for (let X = Math.floor(gx / 6) * 6; X <= gx + w + 6; X += 6) c.lineTo(X - gx, soilY + 1 + rn(X, 61) * 4); c.lineTo(w, soilY - 1); c.closePath(); c.fill();
+  }
+  // the turf edge: the top colour, a lit lip, scallops hanging over a soft shadow
+  c.fillStyle = 'rgba(0,0,0,0.14)'; c.fillRect(0, 8, w, 5);
+  c.fillStyle = top; c.fillRect(0, 0, w, 8);
+  for (let x = 4; x < w; x += 8) { c.beginPath(); c.ellipse(x, 8, 4.2, 2.6 + rn(gx + x, 51) * 1.4, 0, 0, Math.PI); c.fill(); }
+  c.fillStyle = R.lit(top, 0.3); c.fillRect(0, 0, w, 2);
+  c.fillStyle = R.rgba(R.lit(top, 0.2), 0.6); for (let x = 2; x < w; x += 5) c.fillRect(x + rn(gx + x, 52) * 2, 3 + rn(gx + x, 53) * 3, 1, 2);
+}
 function wizLawn(x0, y0, x1, y1, o = {}) {
   const top = o.top || '#5fb068', body = o.body || '#4f9a58', w = x1 - x0, h = y1 - y0;
   if (w <= 0 || h <= 0) return;
-  ctx.fillStyle = body; ctx.fillRect(x0, y0, w, h);
-  if (h > 60) { ctx.fillStyle = shade(body, 0.2); ctx.fillRect(x0, y0 + 60, w, h - 60); }
-  ctx.fillStyle = top; ctx.fillRect(x0, y0, w, 8);
-  ctx.fillStyle = tint(top, 0.3); ctx.fillRect(x0, y0, w, 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x0, y0 + 8, w, 4);
-  // mown stripes (every other band a touch lighter), then blades, clover and flecks placed by hash
-  if (h > 20) {
-    ctx.fillStyle = 'rgba(255,255,255,0.035)';
-    for (let x = Math.floor(x0 / 112) * 112; x < x1; x += 112) { const a = Math.max(x0, x), b = Math.min(x1, x + 56); if (b > a) ctx.fillRect(a, y0 + 12, b - a, Math.min(h - 12, 48)); }
+  const th = Math.min(Math.ceil(h), 180);
+  ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip();
+  RICH.strip('wizlawn|' + top + body + '|' + th, x0, x1, y0, th, 256, (c, gx, cw, hh) => wizTurf(c, gx, cw, hh, top, body));
+  if (h > th) { ctx.fillStyle = RICH.dk('#4e3a3e', 0.4); ctx.fillRect(x0, y0 + th, w, h - th); }
+  ctx.restore();
+  // blades standing up over the top edge (two batched paths) and the odd night flower
+  const lit = tint(top, 0.28);
+  for (const pick of [0, 1]) {
+    ctx.fillStyle = pick ? lit : top; ctx.beginPath();
+    for (let x = Math.ceil(x0 / 7) * 7; x < x1 - 2; x += 7) {
+      const hh = hash(x, 77);
+      if (hh % 3 !== 0 || (hh % 2 ? 0 : 1) !== pick) continue;
+      ctx.moveTo(x - 2.5, y0 + 1); ctx.lineTo(x + ((hh >> 6) % 3 - 1), y0 - 3 - (hh >> 3) % 5); ctx.lineTo(x + 2.5, y0 + 1);
+    }
+    ctx.fill();
   }
-  const lit = tint(top, 0.28), dk = shade(body, 0.16);
-  for (let x = Math.ceil(x0 / 7) * 7; x < x1 - 2; x += 7) {
+  if (!o.noFlowers) for (let x = Math.ceil(x0 / 7) * 7; x < x1 - 2; x += 7) {
     const hh = hash(x, 77);
-    if (hh % 3 === 0) { ctx.fillStyle = hh % 2 ? top : lit; ctx.beginPath(); ctx.moveTo(x - 2.5, y0 + 1); ctx.lineTo(x + ((hh >> 6) % 3 - 1), y0 - 3 - (hh >> 3) % 5); ctx.lineTo(x + 2.5, y0 + 1); ctx.fill(); }
-    if (h > 30 && hh % 7 === 2) { ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(x + (hh >> 5) % 10, y0 + 18 + (hh >> 9) % Math.max(1, Math.min(60, h - 24)), 6, 2); }
-    if (h > 30 && hh % 9 === 4) { const gx = x + (hh >> 4) % 6, gy = y0 + 16 + (hh >> 8) % Math.max(1, Math.min(50, h - 22)); ctx.fillStyle = dk; ctx.fillRect(gx, gy, 1.5, 4); ctx.fillRect(gx + 3, gy + 1, 1.5, 3); ctx.fillStyle = lit; ctx.fillRect(gx + 1.5, gy - 1, 1.5, 4); }
-    if (h > 30 && hh % 31 === 6) { const gx = x + 2, gy = y0 + 20 + (hh >> 7) % Math.max(1, Math.min(40, h - 26)); ctx.fillStyle = tint(top, 0.12); circle(gx, gy, 2); ctx.fill(); circle(gx + 3, gy + 1, 2); ctx.fill(); circle(gx + 1.5, gy - 2.2, 2); ctx.fill(); }
-    if (!o.noFlowers && hh % 23 === 5) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x - 0.5, y0 - 3, 1, 4); ctx.fillStyle = ['#ffe9a8', '#ffb3d9', '#bfe3ff'][(hh >> 4) % 3]; circle(x, y0 - 4, 2.4); ctx.fill(); ctx.fillStyle = '#fff6d0'; circle(x, y0 - 4, 0.9); ctx.fill(); }
+    if (hh % 23 === 5) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x - 0.5, y0 - 3, 1, 4); ctx.fillStyle = ['#ffe9a8', '#ffb3d9', '#bfe3ff'][(hh >> 4) % 3]; circle(x, y0 - 4, 2.4); ctx.fill(); ctx.fillStyle = '#fff6d0'; circle(x, y0 - 4, 0.9); ctx.fill(); }
   }
 }
+// the school's leaning towers, far away (screen coords; the line where they stand is y)
 function wizSkyline(sx, y) {
   const span = 1400;
   // a hazy far range of hills and smaller towers behind (paler, slower)

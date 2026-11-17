@@ -839,6 +839,11 @@ function bumperPaintStatic(g, near, box = [0, 0, W, H]) {
   const y0 = 16 * T;
   if (hit(0, y0, W, H)) {
     g.fillStyle = K.wood; g.fillRect(0, y0, W, H - y0);
+    // bleacher rows: grained boards with staggered seams and nails, a dark riser under each row
+    for (const [ry, rh] of [[y0 + 8, 22], [y0 + 33, 19], [y0 + 55, H - y0 - 55]]) {
+      if (rh < 3) continue;
+      for (let bx = (ry % 3) * -40, k = 0; bx < W; bx += 160, k++) paPlank(g, Math.max(0, bx) + 0.5, ry + 0.5, Math.min(160, W - Math.max(0, bx), bx + 160) - 1, rh - 1, k % 2 ? paDk(K.wood, 0.05) : K.wood, ry * 3 + k, { r: 1.5, lw: 1, nails: true });
+    }
     g.fillStyle = K.woodDk; g.fillRect(0, y0 + 30, W, 3); g.fillRect(0, y0 + 52, W, 3);
     g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, y0 + 33, W, 3);
   }
@@ -854,9 +859,19 @@ function bumperPaintWalls(g) {
   g.strokeStyle = 'rgba(60,52,90,0.35)'; g.lineWidth = 1;
   for (let x = 15; x < W; x += 30) { g.beginPath(); g.moveTo(x, 14); g.lineTo(x, 26); g.stroke(); }
   for (let y = 45; y < 16 * T; y += 30) { g.beginPath(); g.moveTo(14, y); g.lineTo(26, y); g.moveTo(W - 14, y); g.lineTo(W - 26, y); g.stroke(); }
-  g.fillStyle = K.wallHi;
-  for (let x = 6; x < W; x += 30) { bumperRR(g, x, 2, 18, 9, 2); g.fill(); }
-  for (let y = 36; y < 16 * T; y += 30) { bumperRR(g, 2, y, 9, 18, 2); g.fill(); bumperRR(g, W - 11, y, 9, 18, 2); g.fill(); }
+  // dressed blocks along the wall walks: joints, a lit and a shaded edge per block, speckles
+  g.strokeStyle = 'rgba(60,52,90,0.3)'; g.lineWidth = 1; g.beginPath();
+  for (let x = 0; x < W; x += 15) { g.moveTo(x, 0); g.lineTo(x, 13); }
+  for (let y = 0; y < 16 * T; y += 15) { g.moveTo(0, y); g.lineTo(13, y); g.moveTo(W - 13, y); g.lineTo(W, y); }
+  g.stroke();
+  g.fillStyle = 'rgba(255,255,255,0.14)';
+  for (let x = 0; x < W; x += 15) g.fillRect(x + 1, 1, 13, 1);
+  for (let y = 0; y < 16 * T; y += 15) { g.fillRect(1, y + 1, 1, 13); g.fillRect(W - 13, y + 1, 1, 13); }
+  g.fillStyle = 'rgba(40,34,70,0.25)';
+  for (let i = 0; i < 160; i++) { const h = hash(i, 707), side = h % 3, a = (h >>> 3) % 1000 / 1000; if (side === 0) g.fillRect(a * W, 2 + (h >>> 13) % 26, 1.2, 1); else g.fillRect(side === 1 ? 2 + (h >>> 13) % 26 : W - 28 + (h >>> 13) % 26, a * 16 * T, 1, 1.2); }
+  // merlons: lit tops, shaded sides, outlines
+  for (let x = 6; x < W; x += 30) { g.fillStyle = 'rgba(28,26,54,0.22)'; bumperRR(g, x + 2, 4, 18, 9, 2); g.fill(); g.fillStyle = K.wallHi; bumperRR(g, x, 2, 18, 9, 2); g.fill(); g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(x + 2, 2.5, 14, 1.5); g.strokeStyle = K.wallDk; g.lineWidth = 1; bumperRR(g, x, 2, 18, 9, 2); g.stroke(); }
+  for (let y = 36; y < 16 * T; y += 30) for (const mx of [2, W - 11]) { g.fillStyle = 'rgba(28,26,54,0.22)'; bumperRR(g, mx + 2, y + 2, 9, 18, 2); g.fill(); g.fillStyle = K.wallHi; bumperRR(g, mx, y, 9, 18, 2); g.fill(); g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(mx + 1.5, y + 2, 1.5, 14); g.strokeStyle = K.wallDk; g.lineWidth = 1; bumperRR(g, mx, y, 9, 18, 2); g.stroke(); }
   g.fillStyle = K.wallDk; g.fillRect(T, T - 4, 30 * T, 4); g.fillRect(T - 4, T, 4, 15 * T); g.fillRect(31 * T, T, 4, 15 * T);
   g.fillStyle = 'rgba(28,40,80,0.22)'; g.fillRect(T, T, 30 * T, 7); g.fillRect(T, T, 7, 15 * T); g.fillRect(31 * T - 7, T, 7, 15 * T);
   g.fillStyle = K.wallDk; bumperRR(g, 15 * T - 2, 0, 2 * T + 4, T + 2, 8); g.fill();
@@ -881,6 +896,20 @@ function bumperTile(g, tx, ty, jit, crackK, ice, fl) {
     if (h > 0.55) { g.fillStyle = h > 0.8 ? 'rgba(255,255,255,0.18)' : 'rgba(150,118,70,0.08)'; g.fillRect(x + 1, y + 1, T - 2, T - 2); }
     if (h < 0.3) { g.fillStyle = 'rgba(140,110,70,0.22)'; bumperCirc(g, x + 6 + h * 50, y + 8 + h * 30, 1.4); g.fill(); bumperCirc(g, x + 20 - h * 20, y + 21, 1.1); g.fill(); }
   } else if (h < 0.35) { g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + 6, y + 20); g.lineTo(x + 14, y + 10); g.moveTo(x + 13, y + 23); g.lineTo(x + 17, y + 18); g.stroke(); }
+  // (richer props) grit and pits in the stone, a worn smooth patch, a chipped corner and the odd pale vein;
+  // ice gets frosty specks and a pale sheen instead
+  { const hi = hash(tx * 7 + 3, ty * 13 + 5);
+    g.fillStyle = ice ? 'rgba(255,255,255,0.55)' : 'rgba(120,92,55,0.32)';
+    for (let k = 0; k < 5; k++) { const hk = hash(hi, k); g.fillRect(x + 3 + hk % (T - 6), y + 3 + (hk >>> 8) % (T - 6), 1 + (hk >>> 16) % 2, 1); }
+    g.fillStyle = ice ? 'rgba(120,170,210,0.35)' : 'rgba(255,255,255,0.3)';
+    for (let k = 5; k < 8; k++) { const hk = hash(hi, k); g.fillRect(x + 3 + hk % (T - 6), y + 3 + (hk >>> 8) % (T - 6), 1, 1); }
+    if (!ice && hi % 4 === 0) { g.fillStyle = 'rgba(255,248,230,0.16)'; g.beginPath(); g.ellipse(x + 10 + hi % 10, y + 11 + (hi >>> 5) % 8, 6, 4, 0.4, 0, Math.PI * 2); g.fill(); }
+    if (hi % 5 === 1) { const cx2 = (hi >>> 3) % 2 ? x + T - 1 : x + 1, cy2 = (hi >>> 4) % 2 ? y + T - 1 : y + 1, sx2 = cx2 > x + 2 ? -1 : 1, sy2 = cy2 > y + 2 ? -1 : 1;
+      g.fillStyle = ice ? 'rgba(80,130,180,0.3)' : 'rgba(110,80,40,0.35)'; g.beginPath(); g.moveTo(cx2, cy2); g.lineTo(cx2 + sx2 * 5, cy2); g.lineTo(cx2, cy2 + sy2 * 5); g.closePath(); g.fill(); }
+    // (no random hairline cracks: on this floor a crack means the stone is about to fall; a soft vein instead)
+    if (!ice && hi % 6 === 2) { g.strokeStyle = 'rgba(255,250,235,0.35)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x + 3, y + 8 + hi % 12); g.quadraticCurveTo(x + 14, y + 4 + (hi >>> 6) % 18, x + T - 3, y + 10 + (hi >>> 9) % 12); g.stroke(); }
+    if (ice) { g.fillStyle = 'rgba(255,255,255,0.22)'; g.beginPath(); g.moveTo(x + 4, y + T - 6); g.lineTo(x + T - 8, y + 4); g.lineTo(x + T - 4, y + 4); g.lineTo(x + 8, y + T - 6); g.closePath(); g.fill(); }
+  }
   // (polish) each stone bevelled: lit top-left, shaded bottom-right
   g.fillStyle = 'rgba(255,255,255,0.16)'; g.fillRect(x + 1, y + 1, T - 2, 1.5); g.fillRect(x + 1, y + 1, 1.5, T - 2);
   g.fillStyle = ice ? 'rgba(60,110,160,0.12)' : 'rgba(110,80,40,0.14)'; g.fillRect(x + 1, y + T - 2.5, T - 2, 1.5); g.fillRect(x + T - 2.5, y + 1, 1.5, T - 2);
@@ -895,7 +924,13 @@ function bumperTile(g, tx, ty, jit, crackK, ice, fl) {
     if (crackK > 0.5) { g.moveTo(cx, cy); p = pt(4.4, 16 * (crackK - 0.5)); g.lineTo(p[0], p[1]); }
     g.stroke();
   }
-  if (!fl(tx, ty + 1)) { g.fillStyle = K.floorEdge; g.fillRect(x, y + T - 5, T, 5); g.fillStyle = K.floorFace; g.fillRect(x, y + T - 1.5, T, 1.5); }
+  if (!fl(tx, ty + 1)) {
+    // the island's stone face over the water: block joints, a lit lip, a dark wet foot and a fleck of moss
+    g.fillStyle = K.floorEdge; g.fillRect(x, y + T - 5, T, 5); g.fillStyle = K.floorFace; g.fillRect(x, y + T - 1.5, T, 1.5);
+    g.fillStyle = 'rgba(255,255,255,0.28)'; g.fillRect(x, y + T - 5, T, 1);
+    g.fillStyle = 'rgba(40,30,20,0.35)'; g.fillRect(x + ((tx % 2) ? 9 : 21), y + T - 5, 1, 4);
+    if (hash(tx, ty + 99) % 3 === 0) { g.fillStyle = 'rgba(90,150,80,0.65)'; g.beginPath(); g.ellipse(x + 6 + hash(tx, ty) % 16, y + T - 1, 3.5, 1.4, 0, 0, Math.PI * 2); g.fill(); }
+  }
   if (!fl(tx - 1, ty)) { g.fillStyle = K.floorEdge; g.fillRect(x, y, 3, T); }
   if (!fl(tx + 1, ty)) { g.fillStyle = K.floorEdge; g.fillRect(x + T - 3, y, 3, T); }
   if (!fl(tx, ty - 1)) { g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(x, y, T, 2); }
@@ -908,8 +943,18 @@ function bumperTyres(g, tx, ty, ws) {
     const cx = tx * T + T / 2 + ox * (T / 2 + 5), cy = ty * T + T / 2 + oy * (T / 2 + 5);
     for (const k of [-1, 0, 1]) {
       const x = cx + (oy ? k * 10 : 0), y = cy + (ox ? k * 10 : 0);
-      g.fillStyle = '#26243a'; bumperCirc(g, x, y, 6 * ws); g.fill(); g.strokeStyle = '#3d3a58'; g.lineWidth = 1.5; bumperCirc(g, x, y, 4.2 * ws); g.stroke();
+      // a rubber tyre: a soft shadow, tread notches round the rim, a lit upper-left arc, a sunk inner ring and a hub
+      g.fillStyle = 'rgba(20,20,40,0.18)'; bumperCirc(g, x + 1.2, y + 1.6, 6 * ws); g.fill();
+      g.fillStyle = '#26243a'; bumperCirc(g, x, y, 6 * ws); g.fill();
+      g.strokeStyle = '#3a3754'; g.lineWidth = 1; g.beginPath();
+      for (let a = 0; a < 12; a++) { const an = a * Math.PI / 6 + k; g.moveTo(x + Math.cos(an) * 4.6 * ws, y + Math.sin(an) * 4.6 * ws); g.lineTo(x + Math.cos(an) * 6 * ws, y + Math.sin(an) * 6 * ws); }
+      g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.22)'; g.lineWidth = 1.2; g.beginPath(); g.arc(x, y, 5.2 * ws, Math.PI * 1.05, Math.PI * 1.6); g.stroke();
+      g.strokeStyle = '#3d3a58'; g.lineWidth = 1.5; bumperCirc(g, x, y, 4.2 * ws); g.stroke();
+      g.fillStyle = '#141224'; bumperCirc(g, x, y, 3.4 * ws); g.fill();
       g.fillStyle = '#5a5678'; bumperCirc(g, x, y, 2.2); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.4)'; bumperCirc(g, x - 0.6, y - 0.6, 0.8); g.fill();
+      g.strokeStyle = '#121020'; g.lineWidth = 1; bumperCirc(g, x, y, 6 * ws); g.stroke();
     }
   }
 }
@@ -1037,11 +1082,21 @@ function bumperDrawProps() {
     ctx.fillStyle = 'rgba(28,26,54,0.25)'; circle(wx + 4, wy + 5, R + 2); ctx.fill();
     if (P.towers) bumperDrawBumper(wx, wy, R, st.towerFlash > 0);
     else {
-      ctx.fillStyle = K.wall; circle(wx, wy, R); ctx.fill(); ctx.strokeStyle = K.wallDk; ctx.lineWidth = 3; ctx.stroke();
-      ctx.strokeStyle = K.wallHi; ctx.lineWidth = 2; ctx.beginPath();
-      for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + 0.39; ctx.moveTo(wx + Math.cos(a) * R * 0.66, wy + Math.sin(a) * R * 0.66); ctx.lineTo(wx + Math.cos(a) * (R - 2), wy + Math.sin(a) * (R - 2)); }
-      ctx.stroke();
-      ctx.fillStyle = K.waterDk; circle(wx, wy, R * 0.6); ctx.fill();
+      // a ring of shaped stones (each lit on its outer top-left, shaded toward the bottom right), dark water inside
+      // with a mossy lip (cached)
+      paStamp('bumperwell|' + R + K.wall, wx - R, wy - R, 2 * R, 2 * R, 3, g => {
+        g.fillStyle = K.wall; paCirc(g, R, R, R); g.fill(); g.strokeStyle = K.wallDk; g.lineWidth = 3; g.stroke();
+        for (let i = 0; i < 8; i++) {
+          const a0 = i * Math.PI / 4 + 0.42, a1 = a0 + Math.PI / 4 - 0.06, mid = (a0 + a1) / 2, lit = Math.cos(mid - Math.PI * 1.25);
+          g.fillStyle = lit > 0 ? paMix(K.wallHi, K.wall, 0.4 - 0.4 * lit) : paMix(K.wall, K.wallDk, -0.5 * lit);
+          g.beginPath(); g.arc(R, R, R - 2, a0, a1); g.arc(R, R, R * 0.64, a1, a0, true); g.closePath(); g.fill();
+          g.strokeStyle = K.wallDk; g.lineWidth = 1.2; g.stroke();
+          const hk = hash(i, R); g.fillStyle = 'rgba(40,34,70,0.3)'; g.fillRect(R + Math.cos(mid) * R * 0.8, R + Math.sin(mid) * R * 0.8, 1.4, 1.2);
+          if (hk % 3 === 0) { g.fillStyle = 'rgba(90,150,80,0.6)'; g.beginPath(); g.ellipse(R + Math.cos(mid) * R * 0.66, R + Math.sin(mid) * R * 0.66, 3, 1.5, mid + Math.PI / 2, 0, Math.PI * 2); g.fill(); }
+        }
+        g.fillStyle = K.waterDk; paCirc(g, R, R, R * 0.6); g.fill();
+        g.fillStyle = 'rgba(0,0,20,0.3)'; paCirc(g, R - 2, R - 2, R * 0.5); g.fill();
+      });
       ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(wx, wy, R * 0.35 + Math.sin(G.clock * 3) * 2, 3.6, 5.2); ctx.stroke();
     }
   }
@@ -1054,9 +1109,13 @@ function bumperDrawProps() {
   if (P.balls) {
     for (const k of [0, 1]) for (const y of BUMPER_LANES) {
       const x = k === 0 ? 22 : W - 22, s = k === 0 ? 1 : -1;
+      ctx.fillStyle = 'rgba(28,26,54,0.3)'; rr(x - 12, y - 6, 28, 18, 7); ctx.fill();
       ctx.fillStyle = '#3a3550'; rr(x - 14, y - 9, 28, 18, 7); ctx.fill();
-      ctx.fillStyle = '#26223a'; circle(x + 12 * s, y, 7); ctx.fill();
+      ctx.fillStyle = '#26223a'; circle(x + 12 * s, y, 7); ctx.fill(); ctx.fillStyle = '#0e0c1c'; circle(x + 12 * s, y, 4); ctx.fill();
       ctx.fillStyle = '#4c466a'; rr(x - 12, y - 7, 18, 4, 2); ctx.fill();
+      ctx.fillStyle = C.gold; ctx.fillRect(x - 4, y - 9, 2.5, 18); ctx.fillRect(x + 4, y - 9, 2.5, 18);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x - 4, y - 9, 0.8, 18); ctx.fillRect(x + 4, y - 9, 0.8, 18);
+      ctx.strokeStyle = '#1e1a30'; ctx.lineWidth = 1.2; rr(x - 14, y - 9, 28, 18, 7); ctx.stroke();
     }
     for (const b of st.balls) if (b.state === 'warn') {
       const a = 0.4 + 0.4 * Math.sin(G.clock * 20);

@@ -903,12 +903,27 @@ const SHIPWRECK = {
     ctx.restore();
     // the ceiling beams and the floor
     ctx.fillStyle = lk.woodE; ctx.fillRect(0, 0, W, SW.ceil);
-    ctx.fillStyle = lk.woodD; ctx.fillRect(0, SW.ceil - 22, W, 22);
-    ctx.fillStyle = lk.wood; ctx.fillRect(0, SW.ceil - 22, W, 6);
-    for (let x = -((st.camX) % 140); x < W; x += 140) { ctx.fillStyle = lk.woodE; ctx.fillRect(x, SW.ceil - 22, 3, 22); ctx.fillStyle = '#d9b45a'; circle(x + 12, SW.ceil - 11, 2.2); ctx.fill(); }
-    ctx.fillStyle = lk.floorD; ctx.fillRect(0, SW.floor, W, H - SW.floor);
-    ctx.fillStyle = lk.floor; ctx.fillRect(0, SW.floor, W, 8);
-    for (let x = -(st.camX % 120); x < W; x += 120) { ctx.fillStyle = 'rgba(60,40,20,0.25)'; ctx.fillRect(x, SW.floor + 8, 2, H - SW.floor); }
+    for (let x = -(((st.camX % 140) + 140) % 140); x < W; x += 140) ERICH.put('swbeam' + st.look, 144, 30, 2, 2, c => {
+      ERICH.board(c, 0, 0, 140, 22, { col: lk.woodD, seed: 600, r: 0, nails: false, lw: 1.2, edge: lk.woodE });
+      c.fillStyle = lk.wood; c.fillRect(0, 0, 140, 5); c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(0, 0, 140, 1.5);
+      c.fillStyle = lk.woodE; c.fillRect(0, 0, 3, 22);
+      c.fillStyle = 'rgba(10,6,0,0.3)'; c.fillRect(0, 22, 140, 4);
+      ERICH.rivets(c, [[12, 11], [128, 11]], 2.4, '#d9b45a');
+    }, x, SW.ceil - 22);
+    const fh = H - SW.floor, fx0 = -(((st.camX % 240) + 240) % 240);
+    for (let x = fx0; x < W; x += 240) ERICH.put('swfloor' + st.look, 244, fh + 4, 2, 2, c => {
+      c.fillStyle = lk.floorD; c.fillRect(0, 0, 240, fh);
+      const rows = [[0, 9, lk.floor], [9, 20, mixCol(lk.floor, lk.floorD, 0.45)], [29, 18, lk.floorD], [47, fh - 47, shade(lk.floorD, 0.12)]];
+      rows.forEach(([y, hh, col], i) => {
+        const joint = i % 2 ? 60 : 180;
+        if (i === 0) { ERICH.board(c, -4, y, 248, hh, { col, seed: 500 + i, r: 0, nails: false, lw: 1, edge: lk.woodE, knots: 0 }); return; }
+        ERICH.board(c, -4, y, joint + 4, hh, { col, seed: 510 + i, r: 0, nails: false, lw: 1, edge: lk.woodE, knots: i === 2 ? 1 : 0 });
+        ERICH.board(c, joint, y, 244 - joint, hh, { col: mixCol(col, lk.floorD, 0.1), seed: 520 + i, r: 0, nails: false, lw: 1, edge: lk.woodE, knots: i === 3 ? 1 : 0 });
+        ERICH.nails(c, [[joint + 5, y + Math.min(hh / 2, 9)], [joint - 5, y + Math.min(hh / 2, 9)]], 1.5);
+      });
+      c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(0, 0, 240, 1.5);
+      c.fillStyle = 'rgba(20,10,0,0.25)'; c.fillRect(0, 9, 240, 2);
+    }, x, SW.floor);
     // sand drifts and seaweed tufts on the floor
     for (let k = Math.floor(st.camX / 170) - 1; k < Math.floor(st.camX / 170) + 8; k++) {
       const x = k * 170 - st.camX + (hash(k, 5) % 60), h = hash(k, 9);
@@ -920,45 +935,91 @@ const SHIPWRECK = {
     }
   }
   function drawWall(st, s, lk) {
-    const w = s.x1 - s.x0, h = s.y1 - s.y0;
-    if (s.look === 'crates') {
-      ctx.fillStyle = lk.woodE; ctx.fillRect(s.x0, s.y0, w, h);
-      const n = Math.max(1, Math.round(w / 60)), cw = w / n, rows = Math.max(1, Math.round(h / 60)), ch = h / rows;
-      for (let i = 0; i < n; i++) for (let j = 0; j < rows; j++) {
-        const x = s.x0 + i * cw, y = s.y0 + j * ch;
-        ctx.fillStyle = (i + j) % 2 ? lk.wood : '#ad8152'; rr(x + 2, y + 2, cw - 4, ch - 4, 4); ctx.fill();
-        ctx.strokeStyle = lk.woodD; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 6, y + 6); ctx.lineTo(x + cw - 6, y + ch - 6); ctx.moveTo(x + cw - 6, y + 6); ctx.lineTo(x + 6, y + ch - 6); ctx.stroke();
-        ctx.strokeStyle = lk.woodE; ctx.lineWidth = 2; rr(x + 2, y + 2, cw - 4, ch - 4, 4); ctx.stroke();
-      }
-      return;
-    }
+    const w = Math.round(s.x1 - s.x0), h = Math.round(s.y1 - s.y0);
+    // every wall is drawn once into a picture (all its planks, bands, rivets, barnacles and moss) and copied
     if (s.look === 'table') {
-      ctx.fillStyle = lk.woodD; rr(s.x0, s.y0, w, h, 4); ctx.fill();
-      ctx.fillStyle = lk.wood; rr(s.x0, s.y0, w, Math.min(8, h), 4); ctx.fill();
-      ctx.fillStyle = lk.woodE; ctx.fillRect(s.x0 + 10, s.y1, 10, SW.floor - s.y1); ctx.fillRect(s.x1 - 20, s.y1, 10, SW.floor - s.y1);
+      ERICH.put('swtable' + st.look + w + 'x' + h + ':' + (SW.floor - s.y1), w + 12, SW.floor - s.y0 + 12, 6, 4, c => paintTable(c, w, h, SW.floor - s.y1, lk, s.x0 | 0), s.x0, s.y0);
       return;
     }
-    if (s.look === 'pipe') {
-      ctx.fillStyle = '#7f8fa0'; rr(s.x0, s.y0, w, h, 8); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.18)'; rr(s.x0 + 4, s.y0 + 4, w - 8, 6, 3); ctx.fill();
-      ctx.fillStyle = '#5c6a7c'; for (let x = s.x0 + 20; x < s.x1 - 10; x += 60) ctx.fillRect(x, s.y0, 8, h);
-      return;
+    ERICH.put('swwall' + st.look + s.look + ':' + (s.x0 | 0) + ':' + w + 'x' + h, w + 12, h + 12, 6, 6, c => {
+      if (s.look === 'crates') paintCrates(c, w, h, lk, s.x0 | 0);
+      else if (s.look === 'pipe') paintPipe(c, w, h, s.x0 | 0);
+      else paintTimber(c, w, h, lk, s.x0 | 0);
+    }, s.x0, s.y0);
+  }
+  // timber: planks with grain and knots, iron bands with rivets and rust streaks, barnacles and moss
+  function paintTimber(c, w, h, lk, seed) {
+    const vertical = h > w, F = ERICH.fr;
+    c.fillStyle = lk.woodE; c.fillRect(0, 0, w, h);
+    if (vertical) { const n = Math.max(1, Math.round(w / 12)), bw = w / n; for (let i = 0; i < n; i++) ERICH.board(c, i * bw + 0.5, 0, bw - 1, h, { col: i % 2 ? lk.wood : mixCol(lk.wood, lk.woodD, 0.25), seed: seed + i, vert: true, r: 1, nails: false, lw: 1, edge: lk.woodE }); }
+    else { const n = Math.max(1, Math.round(h / 14)), bh = h / n; for (let i = 0; i < n; i++) ERICH.board(c, 0, i * bh + 0.5, w, bh - 1, { col: i % 2 ? lk.wood : mixCol(lk.wood, lk.woodD, 0.25), seed: seed + i, r: 1, nails: false, lw: 1, edge: lk.woodE }); }
+    // the iron bands
+    const bands = [];
+    if (vertical) for (let y = 30; y < h - 10; y += 90) bands.push(y); else for (let x = 30; x < w - 10; x += 90) bands.push(x);
+    for (const b of bands) {
+      if (vertical) {
+        const rg = c.createLinearGradient(0, b + 8, 0, b + 30); rg.addColorStop(0, 'rgba(150,80,40,0.4)'); rg.addColorStop(1, 'rgba(150,80,40,0)');
+        c.fillStyle = rg; c.fillRect(2, b + 8, w - 4, 22);
+        ERICH.metal(c, -1, b, w + 2, 8, { col: '#6c7684', seed: b, r: 1, rivets: false, lw: 1.2 });
+        ERICH.rivets(c, [[5, b + 4], [w / 2, b + 4], [w - 5, b + 4]], 1.6, '#d9b45a');
+      } else {
+        ERICH.metal(c, b, -1, 8, h + 2, { col: '#6c7684', seed: b, r: 1, rivets: false, lw: 1.2 });
+        ERICH.rivets(c, [[b + 4, 5], [b + 4, h / 2], [b + 4, h - 5]], 1.6, '#d9b45a');
+      }
     }
-    // timber: planks with iron bands and rivets
-    ctx.fillStyle = lk.woodD; ctx.fillRect(s.x0, s.y0, w, h);
-    const vertical = h > w;
-    ctx.fillStyle = lk.wood;
-    if (vertical) for (let x = s.x0 + 2; x < s.x1 - 2; x += 12) ctx.fillRect(x, s.y0, 9, h);
-    else for (let y = s.y0 + 2; y < s.y1 - 2; y += 14) ctx.fillRect(s.x0, y, w, 11);
-    ctx.fillStyle = 'rgba(255,255,255,0.1)';
-    if (vertical) ctx.fillRect(s.x0 + 3, s.y0, 3, h); else ctx.fillRect(s.x0, s.y0 + 2, w, 3);
-    ctx.fillStyle = '#5c6470';
-    if (vertical) for (let y = s.y0 + 30; y < s.y1 - 10; y += 90) { ctx.fillRect(s.x0, y, w, 7); ctx.fillStyle = '#d9b45a'; circle(s.x0 + 6, y + 3.5, 1.8); ctx.fill(); circle(s.x1 - 6, y + 3.5, 1.8); ctx.fill(); ctx.fillStyle = '#5c6470'; }
-    else for (let x = s.x0 + 30; x < s.x1 - 10; x += 90) ctx.fillRect(x, s.y0, 7, h);
-    ctx.strokeStyle = lk.woodE; ctx.lineWidth = 2; ctx.strokeRect(s.x0 + 1, s.y0 + 1, w - 2, h - 2);
-    // barnacles and a bit of moss
-    ctx.fillStyle = 'rgba(120,200,140,0.55)';
-    for (let k = 0; k < Math.floor((w + h) / 80); k++) { const hx = hash(s.x0 | 0, k + 3); circle(s.x0 + 4 + hx % Math.max(1, w - 8), s.y0 + 4 + (hx >> 8) % Math.max(1, h - 8), 3 + hx % 3); ctx.fill(); }
+    // barnacle clusters and moss patches
+    for (let k = 0; k < Math.max(2, Math.floor((w + h) / 60)); k++) {
+      const hx = hash(seed, k + 3), px = 4 + hx % Math.max(1, w - 8), py = 4 + (hx >>> 8) % Math.max(1, h - 8);
+      if (k % 2) {
+        c.fillStyle = '#3f7a52'; c.beginPath(); c.ellipse(px + 1, py + 1.5, 6 + hx % 4, 3.5, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#6cb87a'; c.beginPath(); c.ellipse(px, py, 5 + hx % 4, 2.8, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#b8f0b0'; c.beginPath(); c.arc(px - 2, py - 1, 1.1, 0, Math.PI * 2); c.fill();
+      } else for (let i = 0; i < 3; i++) {
+        const ax = px + (F(hx, i) - 0.5) * 9, ay = py + (F(hx, i + 5) - 0.5) * 7, br = 1.6 + F(hx, i + 9) * 1.4;
+        c.fillStyle = '#e6dfcc'; c.beginPath(); c.arc(ax, ay, br, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = '#7a7262'; c.lineWidth = 0.7; c.stroke();
+        c.fillStyle = '#4a4238'; c.beginPath(); c.arc(ax, ay, br * 0.35, 0, Math.PI * 2); c.fill();
+      }
+    }
+    c.fillStyle = 'rgba(255,255,255,0.08)'; if (vertical) c.fillRect(1, 0, 3, h); else c.fillRect(0, 1, w, 3);
+    c.strokeStyle = shade(lk.woodE, 0.2); c.lineWidth = 2; c.strokeRect(1, 1, w - 2, h - 2);
+  }
+  // a stack of cargo crates: each one framed, braced and nailed, some with a stencilled anchor or arrow
+  function paintCrates(c, w, h, lk, seed) {
+    c.fillStyle = lk.woodE; c.fillRect(0, 0, w, h);
+    const n = Math.max(1, Math.round(w / 60)), cw = w / n, rows = Math.max(1, Math.round(h / 60)), ch = h / rows;
+    for (let i = 0; i < n; i++) for (let j = 0; j < rows; j++) {
+      const x = i * cw, y = j * ch, hs = hash(seed + i, j);
+      ERICH.crate(c, x + 2, y + 2, cw - 4, ch - 4, { col: (i + j) % 2 ? lk.wood : '#ad8152', seed: hs % 997, flip: (i + j) % 2 === 1 });
+      if (hs % 3 === 0) { // a stencilled anchor
+        const sx = x + cw * 0.5, sy = y + ch * 0.5;
+        c.strokeStyle = 'rgba(40,24,10,0.45)'; c.lineWidth = 2; c.lineCap = 'round';
+        c.beginPath(); c.moveTo(sx, sy - 8); c.lineTo(sx, sy + 8); c.moveTo(sx - 5, sy - 4); c.lineTo(sx + 5, sy - 4); c.moveTo(sx - 8, sy + 3); c.quadraticCurveTo(sx, sy + 12, sx + 8, sy + 3); c.stroke();
+        c.beginPath(); c.arc(sx, sy - 10, 2.2, 0, Math.PI * 2); c.stroke();
+      }
+      // a dark gap under each crate
+      c.fillStyle = 'rgba(15,10,5,0.35)'; c.fillRect(x + 4, y + ch - 2, cw - 8, 2);
+    }
+  }
+  // the galley table: a thick top with grain and nails, two legs and a shadow
+  function paintTable(c, w, h, legH, lk, seed) {
+    for (const lx of [10, w - 20]) { c.fillStyle = 'rgba(10,16,30,0.25)'; c.beginPath(); c.ellipse(lx + 5, h + legH, 9, 2.5, 0, 0, Math.PI * 2); c.fill(); ERICH.board(c, lx, h - 1, 10, legH + 1, { col: lk.woodD, seed: seed + lx, vert: true, r: 1, nails: false, lw: 1.2, edge: lk.woodE }); }
+    c.fillStyle = 'rgba(10,16,30,0.3)'; c.fillRect(6, h, w - 12, 5);
+    ERICH.board(c, 0, 0, w, h, { col: lk.wood, seed: seed, r: 4, lw: 2, edge: lk.woodE, knots: 1 });
+    c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(4, 1.5, w - 8, 2);
+  }
+  // a big pipe: a rounded metal tube with a cylinder sheen, flanges with bolts and rust streaks
+  function paintPipe(c, w, h, seed) {
+    const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#a6b4c2'); g.addColorStop(0.3, '#8a9aac'); g.addColorStop(0.75, '#66778a'); g.addColorStop(1, '#4e5c6c');
+    c.fillStyle = g; rrOn(c, 0, 0, w, h, Math.min(8, h / 2)); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.3)'; rrOn(c, 4, h * 0.14, w - 8, Math.max(2, h * 0.1), 2); c.fill();
+    for (let x = 20; x < w - 10; x += 60) {
+      const rg = c.createLinearGradient(0, 0, 0, h); rg.addColorStop(0, 'rgba(160,80,40,0)'); rg.addColorStop(1, 'rgba(160,80,40,0.35)');
+      c.fillStyle = rg; c.fillRect(x + 8, 0, 14 + hash(seed, x) % 10, h);
+      ERICH.metal(c, x - 2, -2, 12, h + 4, { col: '#6c7a8c', seed: x, r: 2, rivets: false, lw: 1.2 });
+      ERICH.rivets(c, [[x + 4, 3], [x + 4, h - 3]], 1.5, '#b8c2d0');
+    }
+    c.strokeStyle = '#3e4a58'; c.lineWidth = 2; rrOn(c, 0, 0, w, h, Math.min(8, h / 2)); c.stroke();
   }
   function drawDoor(st, d, lk, t) {
     const H0 = d.y1 - d.y0, off = H0 * d.open;
@@ -967,14 +1028,23 @@ const SHIPWRECK = {
     // the frame (the dark doorway behind)
     ctx.fillStyle = 'rgba(20,30,50,0.35)'; ctx.fillRect(d.x0, d.y0, d.x1 - d.x0, H0);
     const y0 = d.y0 - off, y1 = d.y1 - off;
-    ctx.fillStyle = '#8c6440'; ctx.fillRect(d.x0, y0, d.x1 - d.x0, y1 - y0);
-    ctx.fillStyle = '#a77a50'; for (let x = d.x0 + 3; x < d.x1 - 3; x += 10) ctx.fillRect(x, y0, 7, y1 - y0);
-    ctx.fillStyle = '#56606c';
-    for (let y = y0 + 20; y < y1 - 10; y += 70) ctx.fillRect(d.x0, y, d.x1 - d.x0, 8);
-    ctx.strokeStyle = '#4a321d'; ctx.lineWidth = 3; ctx.strokeRect(d.x0 + 1.5, y0 + 1.5, d.x1 - d.x0 - 3, y1 - y0 - 3);
-    // a little round window
-    const wy = y0 + Math.min(60, (y1 - y0) * 0.3);
-    ctx.fillStyle = '#d9b45a'; circle((d.x0 + d.x1) / 2, wy, 9); ctx.fill(); ctx.fillStyle = '#5fbfd8'; circle((d.x0 + d.x1) / 2, wy, 6); ctx.fill();
+    // the door panel (drawn once): planks, iron bands with rivets, a brass porthole
+    const dw = Math.round(d.x1 - d.x0), dh = Math.round(y1 - y0);
+    ERICH.put('swdoor' + dw + 'x' + dh, dw + 8, dh + 8, 4, 4, c => {
+      const n = Math.max(1, Math.round((dw - 4) / 10)), bw = (dw - 4) / n;
+      c.fillStyle = '#5a3b20'; c.fillRect(0, 0, dw, dh);
+      for (let i = 0; i < n; i++) ERICH.board(c, 2 + i * bw + 0.5, 0, bw - 1, dh, { col: i % 2 ? '#a77a50' : '#9c7048', seed: 300 + i, vert: true, r: 1, nails: false, lw: 0.9, edge: '#4a321d' });
+      for (let y = 20; y < dh - 10; y += 70) { ERICH.metal(c, -1, y, dw + 2, 8, { col: '#5e6876', seed: y, r: 1, rivets: false, lw: 1.1 }); ERICH.rivets(c, [[5, y + 4], [dw - 5, y + 4]], 1.5, '#d9b45a'); }
+      c.strokeStyle = '#4a321d'; c.lineWidth = 3; c.strokeRect(1.5, 1.5, dw - 3, dh - 3);
+      const wy = Math.min(60, dh * 0.3), cx = dw / 2;
+      c.fillStyle = '#8a6420'; c.beginPath(); c.arc(cx + 0.8, wy + 1, 10, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#d9b45a'; c.beginPath(); c.arc(cx, wy, 9.5, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#f2d58a'; c.beginPath(); c.arc(cx - 2, wy - 2, 6, Math.PI, Math.PI * 1.5); c.lineTo(cx, wy); c.fill();
+      const g = c.createRadialGradient(cx - 2, wy - 2, 1, cx, wy, 6.5); g.addColorStop(0, '#c8f4ff'); g.addColorStop(1, '#3f9fc0');
+      c.fillStyle = g; c.beginPath(); c.arc(cx, wy, 6, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.ellipse(cx - 2.2, wy - 2.2, 2, 1, -0.7, 0, Math.PI * 2); c.fill();
+      for (let a = 0; a < 6; a++) { c.fillStyle = '#7a5418'; c.beginPath(); c.arc(cx + Math.cos(a / 6 * Math.PI * 2) * 8, wy + Math.sin(a / 6 * Math.PI * 2) * 8, 1, 0, Math.PI * 2); c.fill(); }
+    }, d.x0, y0);
     // switch lamps: one per switch it needs (lit gold when that switch is on)
     const n = d.need.length;
     d.need.forEach((id, i) => {
@@ -1011,18 +1081,14 @@ const SHIPWRECK = {
   function drawCrate(c, lk) {
     const x = c.x0, y = c.y0, s = c.w;
     ctx.fillStyle = 'rgba(10,16,30,0.3)'; ctx.beginPath(); ctx.ellipse(x + s / 2, y + s + 2, s * 0.55, 6, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = c.gold ? '#ffd36b' : '#b5864f'; rr(x, y, s, s, 5); ctx.fill();
-    // planks, a shadowed lower face, nails
-    ctx.fillStyle = c.gold ? 'rgba(150,100,10,0.25)' : 'rgba(70,40,15,0.28)'; ctx.beginPath(); ctx.rect(x + 2, y + s * 0.62, s - 4, s * 0.38 - 2); ctx.fill();
-    ctx.strokeStyle = c.gold ? 'rgba(168,120,26,0.5)' : 'rgba(110,74,38,0.55)'; ctx.lineWidth = 1.5;
-    for (let k = 1; k < 3; k++) { ctx.beginPath(); ctx.moveTo(x + 3, y + s * k / 3); ctx.lineTo(x + s - 3, y + s * k / 3); ctx.stroke(); }
-    ctx.fillStyle = '#4a3a2a'; for (const [nx, ny] of [[5, 5], [s - 5, 5], [5, s - 5], [s - 5, s - 5]]) { circle(x + nx, y + ny, 1.6); ctx.fill(); }
-    ctx.strokeStyle = c.gold ? '#a8781a' : '#6e4a26'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(x + 7, y + 7); ctx.lineTo(x + s - 7, y + s - 7); ctx.moveTo(x + s - 7, y + 7); ctx.lineTo(x + 7, y + s - 7); ctx.stroke();
-    ctx.lineWidth = 3; rr(x + 2, y + 2, s - 4, s - 4, 5); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x + 6, y + 5, s - 12, 4);
-    // a shy little starfish stuck on it
-    ctx.fillStyle = '#ff9a7a'; starPath(x + s - 14, y + 16, 7, 3); ctx.fill();
+    // the push crate (drawn once): framed, braced and nailed, a rope handle, a shy starfish stuck on it
+    ERICH.put('swcrate' + s + (c.gold ? 'g' : ''), s + 8, s + 8, 4, 4, q => {
+      ERICH.crate(q, 0, 0, s, s, { col: c.gold ? '#ffd36b' : '#b5864f', seed: c.gold ? 77 : 41 });
+      q.strokeStyle = c.gold ? '#a8781a' : '#d8c08a'; q.lineWidth = 2.2; q.beginPath(); q.arc(s / 2, s * 0.18, s * 0.12, Math.PI * 0.1, Math.PI * 0.9, true); q.stroke();
+      q.fillStyle = '#ff9a7a'; q.strokeStyle = '#c0604a'; q.lineWidth = 1;
+      q.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 3 : 7; q.lineTo(s - 14 + Math.cos(a) * r, 16 + Math.sin(a) * r); } q.closePath(); q.fill(); q.stroke();
+      q.fillStyle = '#ffd8c8'; q.beginPath(); q.arc(s - 14, 16, 1.2, 0, Math.PI * 2); q.fill();
+    }, x, y);
     void lk;
   }
   function starPath(x, y, ro, ri) {
@@ -1185,9 +1251,18 @@ const SHIPWRECK = {
     const x = dc.x, y = dc.y, lit = lightAt(st, x, y) > 0.3;
     switch (dc.kind) {
       case 'barrel': {
-        ctx.fillStyle = '#9a6a3e'; rr(x - 22, y - 56, 44, 56, 12); ctx.fill();
-        ctx.fillStyle = '#5c6470'; ctx.fillRect(x - 22, y - 46, 44, 5); ctx.fillRect(x - 22, y - 15, 44, 5);
-        ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x - 14, y - 54, 5, 52);
+        // a barrel (drawn once): bulging staves with grain, iron hoops with rivets, a bung, a soft shadow
+        ERICH.put('swbarrel', 60, 68, 30, 62, c => {
+          ERICH.shadow(c, 0, 0, 26, 4, 0.25);
+          c.save(); rrOn(c, -22, -56, 44, 56, 12); c.clip();
+          for (let i = 0; i < 6; i++) ERICH.board(c, -22 + i * 44 / 6, -58, 44 / 6, 60, { col: ['#9a6a3e', '#a4744a', '#93633a'][i % 3], seed: 700 + i, vert: true, r: 0, nails: false, lw: 0.8, knots: i === 2 ? 1 : 0 });
+          c.fillStyle = 'rgba(30,15,5,0.3)'; c.beginPath(); c.ellipse(14, -28, 14, 40, 0, 0, Math.PI * 2); c.fill();
+          c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(-15, -54, 5, 52);
+          c.restore();
+          c.strokeStyle = '#5a3b20'; c.lineWidth = 2; rrOn(c, -22, -56, 44, 56, 12); c.stroke();
+          for (const hy of [-48, -17]) { ERICH.metal(c, -23, hy, 46, 5.5, { col: '#6c7684', seed: hy, r: 2, rivets: false, lw: 1 }); ERICH.rivets(c, [[-12, hy + 2.7], [12, hy + 2.7]], 1.1, '#c8ccd6'); }
+          c.fillStyle = '#5a3b20'; c.beginPath(); c.arc(4, -32, 3, 0, Math.PI * 2); c.fill(); c.fillStyle = '#c9a26a'; c.beginPath(); c.arc(3.4, -32.6, 1.8, 0, Math.PI * 2); c.fill();
+        }, x, y);
         break;
       }
       case 'crab': { // a sleeping crab that wakes up and waves in the light
@@ -1221,23 +1296,62 @@ const SHIPWRECK = {
         break;
       }
       case 'stove': {
-        ctx.fillStyle = '#5c6470'; rr(x - 50, y - 70, 100, 70, 6); ctx.fill();
-        ctx.fillStyle = '#3a3f4c'; rr(x - 38, y - 50, 76, 36, 6); ctx.fill();
-        ctx.fillStyle = '#7d8896'; ctx.fillRect(x - 56, y - 76, 112, 8);
-        ctx.fillStyle = '#2a2f3a'; ctx.fillRect(x - 10, y - 200, 20, 124);
+        // a cast-iron stove (drawn once): riveted body, a grated firebox door with a handle, a top plate, a stovepipe
+        ERICH.put('swstove', 124, 212, 62, 204, c => {
+          ERICH.shadow(c, 0, 0, 56, 5, 0.25);
+          const pg = c.createLinearGradient(-10, 0, 10, 0); pg.addColorStop(0, '#3a404c'); pg.addColorStop(0.35, '#4c5462'); pg.addColorStop(1, '#22262e');
+          c.fillStyle = pg; c.fillRect(-10, -200, 20, 124); c.strokeStyle = '#1a1d24'; c.lineWidth = 1.5; c.strokeRect(-10, -200, 20, 124);
+          for (const py of [-170, -120]) { c.fillStyle = '#5c6470'; c.fillRect(-12, py, 24, 6); c.strokeRect(-12, py, 24, 6); }
+          ERICH.metal(c, -50, -70, 100, 70, { col: '#5c6470', seed: 11, r: 6, lw: 2 });
+          ERICH.metal(c, -38, -50, 76, 36, { col: '#3a3f4c', seed: 12, r: 6, rivets: false, lw: 1.6 });
+          c.strokeStyle = '#22262e'; c.lineWidth = 2.5; for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(-28 + i * 11, -44); c.lineTo(-28 + i * 11, -20); c.stroke(); }
+          c.fillStyle = 'rgba(255,160,80,0.25)'; rrOn(c, -32, -42, 64, 20, 4); c.fill();
+          c.fillStyle = '#c8ccd6'; rrOn(c, -10, -58, 20, 5, 2.5); c.fill(); c.strokeStyle = '#4c5260'; c.lineWidth = 1; c.stroke();
+          ERICH.metal(c, -56, -76, 112, 8, { col: '#7d8896', seed: 13, r: 2, rivets: false, lw: 1.4 });
+          for (const lx of [-44, 38]) { c.fillStyle = '#3a3f4c'; c.fillRect(lx, -4, 6, 4); }
+        }, x, y);
         break;
       }
       case 'plates': {
-        ctx.fillStyle = lk.woodD; ctx.fillRect(x - 60, y, 120, 8);
-        for (let k = 0; k < 5; k++) { ctx.fillStyle = ['#ffffff', '#9fd8ff', '#ffd6e0'][k % 3]; circle(x - 48 + k * 24, y - 10, 11); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 2; circle(x - 48 + k * 24, y - 10, 7); ctx.stroke(); }
+        // a plate rack (drawn once): a nailed board with brackets, plates with a rim, a glaze and a painted band
+        ERICH.put('swplates' + st.look, 132, 40, 66, 26, c => {
+          for (const bx of [-50, 44]) { c.fillStyle = lk.woodE; c.beginPath(); c.moveTo(bx, 8); c.lineTo(bx + 6, 8); c.lineTo(bx + 6, 14); c.closePath(); c.fill(); }
+          ERICH.board(c, -60, 0, 120, 8, { col: lk.woodD, seed: 900, r: 1.5, lw: 1.2, edge: lk.woodE });
+          for (let k = 0; k < 5; k++) {
+            const col = ['#ffffff', '#9fd8ff', '#ffd6e0'][k % 3], px = -48 + k * 24;
+            c.fillStyle = 'rgba(20,10,0,0.25)'; c.beginPath(); c.arc(px + 1.5, -9, 11, 0, Math.PI * 2); c.fill();
+            c.fillStyle = col; c.beginPath(); c.arc(px, -10, 11, 0, Math.PI * 2); c.fill();
+            c.strokeStyle = shade(col, 0.3); c.lineWidth = 1.2; c.stroke();
+            c.fillStyle = shade(col, 0.08); c.beginPath(); c.arc(px, -10, 7, 0, Math.PI * 2); c.fill();
+            c.strokeStyle = ['#5a9ae0', '#e0705a', '#6ac08a'][k % 3]; c.lineWidth = 1.2; c.beginPath(); c.arc(px, -10, 9, 0, Math.PI * 2); c.stroke();
+            c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.ellipse(px - 4, -15, 3, 1.5, -0.6, 0, Math.PI * 2); c.fill();
+          }
+        }, x, y);
         break;
       }
       case 'shelf': { // a bookshelf
-        ctx.fillStyle = lk.woodD; ctx.fillRect(x - 60, y - 150, 120, 150);
-        for (let r = 0; r < 3; r++) {
-          ctx.fillStyle = lk.woodE; ctx.fillRect(x - 60, y - 150 + r * 50 + 44, 120, 6);
-          for (let k = 0; k < 7; k++) { ctx.fillStyle = ['#e05a5a', '#5a9ae0', '#e0c05a', '#6ac08a', '#b07ad8'][(k + r) % 5]; ctx.fillRect(x - 54 + k * 15, y - 150 + r * 50 + 12 + (k % 2) * 4, 12, 32 - (k % 2) * 4); }
-        }
+        // a bookshelf (drawn once): a planked case with shelf boards, books with spine bands and labels, a leaning book
+        ERICH.put('swshelf' + st.look, 132, 162, 66, 156, c => {
+          ERICH.shadow(c, 0, 0, 62, 4, 0.25);
+          c.fillStyle = shade(lk.woodD, 0.25); c.fillRect(-60, -150, 120, 150);
+          for (let i = 0; i < 6; i++) ERICH.board(c, -54 + i * 18, -146, 18, 146, { col: shade(lk.woodD, 0.2), seed: 910 + i, vert: true, r: 0, nails: false, lw: 0.6, knots: 0 });
+          for (let r = 0; r < 3; r++) {
+            const sy = -150 + r * 50;
+            for (let k = 0; k < 7; k++) {
+              const col = ['#e05a5a', '#5a9ae0', '#e0c05a', '#6ac08a', '#b07ad8'][(k + r) % 5], bx = -54 + k * 15, by = sy + 12 + (k % 2) * 4, bh = 32 - (k % 2) * 4;
+              if (k === 6 && r === 1) { c.save(); c.translate(bx + 12, sy + 44); c.rotate(-0.35); ERICH.board(c, -12, -30, 12, 30, { col, seed: 950, vert: true, r: 1.5, nails: false, lw: 1, knots: 0 }); c.restore(); continue; }
+              c.fillStyle = col; rrOn(c, bx, by, 12, bh, 1.5); c.fill();
+              c.fillStyle = shade(col, 0.2); c.fillRect(bx + 8, by, 4, bh);
+              c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(bx + 1, by + 1, 2, bh - 2);
+              c.fillStyle = '#f2d58a'; c.fillRect(bx, by + 4, 12, 2); c.fillRect(bx, by + bh - 6, 12, 2);
+              c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(bx + 3, by + 11, 6, 6);
+              c.strokeStyle = shade(col, 0.45); c.lineWidth = 1; rrOn(c, bx, by, 12, bh, 1.5); c.stroke();
+            }
+            ERICH.board(c, -60, sy + 44, 120, 6, { col: lk.woodE, seed: 960 + r, r: 0, lw: 1, edge: shade(lk.woodE, 0.3), knots: 0 });
+          }
+          ERICH.board(c, -62, -152, 124, 7, { col: lk.woodD, seed: 970, r: 2, lw: 1.2, edge: lk.woodE });
+          c.strokeStyle = lk.woodE; c.lineWidth = 2; c.strokeRect(-60, -150, 120, 150);
+        }, x, y);
         break;
       }
       case 'map': { // the captain's treasure map on the wall
@@ -1258,10 +1372,17 @@ const SHIPWRECK = {
         break;
       }
       case 'bed': {
-        ctx.fillStyle = lk.woodD; ctx.fillRect(x - 70, y - 40, 140, 40);
-        ctx.fillStyle = '#e8e0ff'; rr(x - 66, y - 54, 132, 18, 6); ctx.fill();
-        ctx.fillStyle = '#ff9fb5'; rr(x - 20, y - 56, 84, 22, 8); ctx.fill();
-        ctx.fillStyle = '#ffffff'; rr(x - 64, y - 64, 36, 16, 8); ctx.fill();
+        // the captain's bunk (drawn once): a planked frame, a mattress, a stitched quilt with a patch, a plump pillow
+        ERICH.put('swbed' + st.look, 152, 76, 76, 70, c => {
+          ERICH.shadow(c, 0, 0, 72, 4, 0.25);
+          for (let i = 0; i < 3; i++) ERICH.board(c, -70, -40 + i * 13.3, 140, 13.3, { col: [lk.woodD, mixCol(lk.woodD, lk.wood, 0.3), lk.woodD][i], seed: 980 + i, r: 0, lw: 1, edge: lk.woodE, nails: true });
+          ERICH.board(c, -74, -46, 8, 46, { col: lk.wood, seed: 990, vert: true, r: 2, nails: false, lw: 1.2, edge: lk.woodE });
+          ERICH.board(c, 66, -46, 8, 46, { col: lk.wood, seed: 991, vert: true, r: 2, nails: false, lw: 1.2, edge: lk.woodE });
+          ERICH.cushion(c, -66, -54, 132, 18, { col: '#e8e0ff', r: 6, button: false });
+          ERICH.cushion(c, -20, -58, 84, 24, { col: '#ff9fb5', r: 8, button: false });
+          c.fillStyle = '#ffd6e0'; rrOn(c, 18, -52, 16, 12, 2); c.fill(); c.save(); c.setLineDash([2, 2]); c.strokeStyle = '#c8607a'; c.lineWidth = 1; c.stroke(); c.restore();
+          ERICH.cushion(c, -64, -66, 38, 18, { col: '#ffffff', r: 8, button: false, edge: '#b8b0d0' });
+        }, x, y);
         break;
       }
       case 'hat': { // the captain's hat on a hook

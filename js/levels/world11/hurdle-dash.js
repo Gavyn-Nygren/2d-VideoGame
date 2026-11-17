@@ -601,31 +601,78 @@ function hurdlesDrawBoards(st, k, cam) {
   }
 }
 // the two lanes, lines, start, distance marks, water pits, and the kerb
+// the track surface, kerb and infield as one 240 px wide picture that repeats along the lane (painted once): rubber
+// granules in light and dark, a worn line down the middle of each lane, roll seams, lane lines with a shadow, an
+// aluminium kerb in segments with bolts, and mown grass with blades and clover
+const HURDLES_TILE = 240;
+function hurdlesPaintTile(g) {
+  const K = HURDLES, col = HURDLES_COL, w = HURDLES_TILE;
+  g.fillStyle = col.track; g.fillRect(0, K.laneTop, w, K.laneBot - K.laneTop);
+  g.fillStyle = 'rgba(40,10,10,0.1)'; g.fillRect(0, K.laneTop, w, (K.laneMid - K.laneTop) * 0.6);
+  g.fillStyle = 'rgba(255,240,220,0.06)'; g.fillRect(0, K.laneMid + 4, w, K.laneBot - K.laneMid - 8);
+  // worn running lines (a little darker and smoother where the feet land)
+  for (const [y, hh] of [[K.farY - 3, 7], [K.gY - 4, 12]]) { g.fillStyle = 'rgba(90,20,10,0.08)'; g.fillRect(0, y - hh / 2, w, hh); g.fillStyle = 'rgba(90,20,10,0.05)'; g.fillRect(0, y - hh, w, hh * 2); }
+  g.fillStyle = col.trackDk; g.fillRect(0, K.laneTop, w, 6);
+  g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, K.laneTop + 6, w, 1);
+  // rubber granules: light and dark, two sizes
+  for (let i = 0; i < 520; i++) {
+    const h = hash(i, 611), x = h % w, y = K.laneTop + 7 + (h >>> 9) % (K.laneBot - K.laneTop - 9), s = (h >>> 20) % 4 === 0 ? 2 : 1.2;
+    g.fillStyle = (h >>> 13) % 3 === 0 ? 'rgba(255,230,210,0.16)' : (h >>> 13) % 3 === 1 ? 'rgba(80,10,5,0.18)' : 'rgba(255,255,255,0.08)';
+    g.fillRect(x, y, s, s);
+  }
+  // roll seams
+  g.strokeStyle = 'rgba(90,20,10,0.16)'; g.lineWidth = 1; g.beginPath(); g.moveTo(120.5, K.laneTop + 6); g.lineTo(118.5, K.laneBot); g.stroke();
+  g.strokeStyle = 'rgba(255,220,200,0.1)'; g.beginPath(); g.moveTo(121.5, K.laneTop + 6); g.lineTo(119.5, K.laneBot); g.stroke();
+  // lane lines with a soft shadow and a few chalk flecks
+  for (const y of [K.laneTop + 1, K.laneMid, K.laneBot - 2]) {
+    g.fillStyle = 'rgba(60,10,10,0.2)'; g.fillRect(0, y + 1.5, w, 1.5);
+    g.fillStyle = col.line; g.fillRect(0, y - 1, w, 2.5);
+    g.fillStyle = 'rgba(255,255,255,0.6)'; for (let k = 0; k < 8; k++) { const h = hash(k, y | 0); g.fillRect(h % w, y - 2.5 + (h >>> 8) % 6, 1.5, 1); }
+    g.fillStyle = 'rgba(200,80,60,0.35)'; for (let k = 0; k < 5; k++) { const h = hash(k + 20, y | 0); g.fillRect(h % w, y - 0.5, 2 + h % 3, 1.2); }
+  }
+  // the kerb: aluminium in segments, a lit top, bolts, a dark foot
+  const kb = K.laneBot;
+  g.fillStyle = '#f1efe6'; g.fillRect(0, kb, w, 5);
+  g.fillStyle = '#ffffff'; g.fillRect(0, kb, w, 1.2);
+  g.fillStyle = '#c9c4b4'; g.fillRect(0, kb + 3.5, w, 1.5);
+  for (let x = 0; x < w; x += 40) { g.fillStyle = '#a8a394'; g.fillRect(x, kb, 1, 5); rkRivet(g, x + 20, kb + 2.4, 0.9, '#b8b4a6'); }
+  // grass: mown stripes 40 px wide (in step with the 240 px tile), blades, clover and the odd daisy
+  g.fillStyle = col.grass; g.fillRect(0, kb + 5, w, K.stripH - kb - 5);
+  g.fillStyle = col.grassDk; for (let x = 0; x < w; x += 80) g.fillRect(x, kb + 5, 40, K.stripH - kb - 5);
+  g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, kb + 5, w, 2);
+  for (let i = 0; i < 90; i++) {
+    const h = hash(i, 612), x = h % w, y = kb + 9 + (h >>> 8) % Math.max(1, K.stripH - kb - 12);
+    g.strokeStyle = (h >>> 4) % 2 ? 'rgba(255,255,255,0.16)' : 'rgba(30,80,30,0.25)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y + 2); g.lineTo(x + ((h >>> 12) % 3) - 1, y - 2); g.stroke();
+  }
+  for (let i = 0; i < 4; i++) { const h = hash(i, 613), x = 10 + h % (w - 20), y = kb + 10 + (h >>> 8) % Math.max(1, K.stripH - kb - 14); g.fillStyle = '#4f9a44'; for (const [dx, dy] of [[-1.5, 0], [1.5, 0], [0, -1.5]]) { g.beginPath(); g.arc(x + dx, y + dy, 1.5, 0, Math.PI * 2); g.fill(); } }
+  for (let i = 0; i < 2; i++) { const h = hash(i, 614), x = 10 + h % (w - 20), y = kb + 12 + (h >>> 8) % Math.max(1, K.stripH - kb - 16); g.fillStyle = '#ffffff'; for (let p = 0; p < 5; p++) { const a = p * 1.256; g.fillRect(x + Math.cos(a) * 1.6 - 0.6, y + Math.sin(a) * 1.6 - 0.6, 1.3, 1.3); } g.fillStyle = '#ffd23f'; g.fillRect(x - 0.6, y - 0.6, 1.3, 1.3); }
+}
 function hurdlesDrawTrack(st, k, cam) {
   const K = HURDLES, col = HURDLES_COL, sx = x => x - cam;
-  ctx.fillStyle = col.track; ctx.fillRect(0, K.laneTop, W, K.laneBot - K.laneTop);
-  // the far lane sits a little in the boards' shadow; the near lane catches the light
-  ctx.fillStyle = 'rgba(40,10,10,0.1)'; ctx.fillRect(0, K.laneTop, W, (K.laneMid - K.laneTop) * 0.6);
-  ctx.fillStyle = 'rgba(255,240,220,0.06)'; ctx.fillRect(0, K.laneMid + 4, W, K.laneBot - K.laneMid - 8);
-  ctx.fillStyle = col.trackDk; ctx.fillRect(0, K.laneTop, W, 6);
-  // a soft rubbery speckle (moves with the track)
-  ctx.fillStyle = 'rgba(255,255,255,0.08)';
-  const c0 = Math.floor(cam / 23);
-  for (let c = c0; c < c0 + W / 23 + 2; c++) for (let j = 0; j < 4; j++) { const h = hash(c, j); ctx.fillRect(c * 23 - cam + (h % 19), K.laneTop + 8 + ((h >> 4) % 84), 2, 2); }
-  // lane lines
-  ctx.fillStyle = col.line;
-  for (const y of [K.laneTop + 1, K.laneMid, K.laneBot - 2]) ctx.fillRect(0, y - 1, W, 2.5);
-  ctx.fillStyle = 'rgba(60,10,10,0.18)'; for (const y of [K.laneMid, K.laneBot - 2]) ctx.fillRect(0, y + 1.5, W, 1.5);
+  const tile = rkPic('hdTile', HURDLES_TILE, K.stripH, 0, 0, hurdlesPaintTile), off = ((cam % HURDLES_TILE) + HURDLES_TILE) % HURDLES_TILE;
+  for (let x = -off; x < W; x += HURDLES_TILE) blitSprite(tile, x, 0);
   // lane numbers at the start, start line, the blocks
   const x0 = sx(0);
   if (x0 > -200 && x0 < W + 60) {
     ctx.fillStyle = col.line; ctx.beginPath(); ctx.moveTo(x0 - 2, K.laneTop); ctx.lineTo(x0 + 2, K.laneTop); ctx.lineTo(x0 + 5, K.laneBot); ctx.lineTo(x0 + 1, K.laneBot); ctx.closePath(); ctx.fill();
     text(String(2 - k), x0 - 70, (K.laneTop + K.laneMid) / 2 + 1, 22, 'rgba(255,255,255,0.75)', 'center');
     text(String(k + 1), x0 - 80, (K.laneMid + K.laneBot) / 2 + 2, 34, 'rgba(255,255,255,0.8)', 'center');
+    // starting blocks: a steel rail with lit edges and bolts, two angled pedals with rubber pads
     for (const [y, s] of [[K.gY, K.SN], [K.farY, K.SF]]) {
-      ctx.fillStyle = '#5b6578'; ctx.fillRect(x0 - 40 * s, y - 3 * s, 26 * s, 3 * s);
-      ctx.fillStyle = '#9aa3b8'; ctx.beginPath(); ctx.moveTo(x0 - 38 * s, y - 3 * s); ctx.lineTo(x0 - 34 * s, y - 10 * s); ctx.lineTo(x0 - 31 * s, y - 3 * s); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(x0 - 24 * s, y - 3 * s); ctx.lineTo(x0 - 20 * s, y - 9 * s); ctx.lineTo(x0 - 17 * s, y - 3 * s); ctx.fill();
+      ctx.save(); ctx.translate(x0, y); ctx.scale(s, s);
+      blitSprite(rkPic('hdBlocks', 36, 16, 42, 12, g => {
+        rkShadow(g, -27, 0.5, 15, 1.6, 0.25);
+        rkMetal(g, -40, -3, 26, 3, 1, '#5b6578', 1, { rivets: false, lw: 0.8 });
+        for (const [px, hh] of [[-38, 7], [-24, 6]]) {
+          g.beginPath(); g.moveTo(px, -3); g.lineTo(px + 4, -3 - hh); g.lineTo(px + 7, -3); g.closePath();
+          g.fillStyle = '#9aa3b8'; g.fill();
+          g.fillStyle = '#c7ccd9'; g.beginPath(); g.moveTo(px, -3); g.lineTo(px + 4, -3 - hh); g.lineTo(px + 4.8, -3 - hh + 1.4); g.lineTo(px + 1.5, -3); g.closePath(); g.fill();
+          g.strokeStyle = '#2b3f63'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(px + 4, -3 - hh); g.lineTo(px + 7, -3); g.stroke();
+          g.strokeStyle = '#4a4f6e'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(px, -3); g.lineTo(px + 4, -3 - hh); g.lineTo(px + 7, -3); g.stroke();
+        }
+        rkRivet(g, -33, -1.5, 0.7, '#c7ccd9'); rkRivet(g, -19, -1.5, 0.7, '#c7ccd9');
+      }), 0, 0);
+      ctx.restore();
     }
   }
   // distance marks every 10 m
@@ -641,25 +688,23 @@ function hurdlesDrawTrack(st, k, cam) {
     const x = sx(ob.x);
     if (x < -K.pit - 20 || x > W + 20) continue;
     for (const [y0, y1] of [[K.laneTop + 8, K.laneMid - 3], [K.laneMid + 6, K.laneBot - 4]]) {
-      ctx.fillStyle = col.waterDk; rr(x + 2, y0, ob.pit * (y0 > K.laneMid ? 1 : 0.92), y1 - y0, 6); ctx.fill();
-      ctx.fillStyle = col.water; rr(x + 4, y0 + 2, ob.pit * (y0 > K.laneMid ? 1 : 0.92) - 4, y1 - y0 - 3, 5); ctx.fill();
+      const pw = ob.pit * (y0 > K.laneMid ? 1 : 0.92);
+      // a tiled rim, deep water with a lit shallow end, ripples and glints
+      ctx.fillStyle = '#e9eef5'; rr(x, y0 - 2, pw + 4, y1 - y0 + 4, 7); ctx.fill();
+      ctx.fillStyle = '#b9c4d4'; for (let tx = x + 8; tx < x + pw; tx += 10) ctx.fillRect(tx, y0 - 2, 1, 2.5);
+      ctx.fillStyle = col.waterDk; rr(x + 2, y0, pw, y1 - y0, 6); ctx.fill();
+      ctx.fillStyle = col.water; rr(x + 4, y0 + 2, pw - 4, y1 - y0 - 3, 5); ctx.fill();
+      ctx.fillStyle = 'rgba(160,220,255,0.35)'; rr(x + pw * 0.6, y0 + 2, pw * 0.4 - 1, y1 - y0 - 3, 5); ctx.fill();
+      ctx.fillStyle = 'rgba(20,60,120,0.25)'; ctx.fillRect(x + 4, y0 + 2, pw - 4, 2.5);
       ctx.strokeStyle = col.waterHi; ctx.lineWidth = 1.5;
       for (let j = 0; j < 3; j++) {
         const yy = y0 + 5 + j * (y1 - y0 - 8) / 2, ph = G.clock * 3 + j * 1.7 + ob.x;
         ctx.beginPath(); for (let q = 0; q <= 6; q++) ctx.lineTo(x + 10 + q * (ob.pit - 22) / 6, yy + Math.sin(ph + q) * 1.3); ctx.stroke();
       }
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; for (let j = 0; j < 3; j++) { const gx = x + 12 + ((j * 37 + Math.floor(G.clock * 2) * 11) % Math.max(10, pw - 24)); ctx.fillRect(gx, y0 + 4 + j * 4, 3, 1.2); }
+      ctx.strokeStyle = '#8f9bb0'; ctx.lineWidth = 1; rr(x, y0 - 2, pw + 4, y1 - y0 + 4, 7); ctx.stroke();
     }
   }
-  // the kerb and the infield grass
-  ctx.fillStyle = '#f1efe6'; ctx.fillRect(0, K.laneBot, W, 5);
-  ctx.fillStyle = '#c9c4b4'; ctx.fillRect(0, K.laneBot + 3.5, W, 1.5);
-  ctx.fillStyle = col.grass; ctx.fillRect(0, K.laneBot + 5, W, K.stripH - K.laneBot - 5);
-  ctx.fillStyle = col.grassDk;
-  const g0 = Math.floor(cam / 40);
-  for (let c = g0; c < g0 + W / 40 + 2; c++) if (c % 2 === 0) ctx.fillRect(c * 40 - cam, K.laneBot + 5, 40, K.stripH - K.laneBot - 5);
-  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(0, K.laneBot + 5, W, 2);
-  ctx.fillStyle = 'rgba(255,255,255,0.14)';
-  for (let c = Math.floor(cam / 13); c < cam / 13 + W / 13 + 1; c++) { const h = hash(c, 5); ctx.fillRect(c * 13 - cam + h % 9, K.laneBot + 9 + (h >> 5) % Math.max(1, K.stripH - K.laneBot - 14), 1.5, 3); }
 }
 // the gold take-off zone in front of obstacle i (where your feet should be when you jump), from your own speed
 function hurdlesDrawZone(st, k, i, cam) {
@@ -690,13 +735,20 @@ function hurdlesDrawObstacle(st, ob, x, gy, s, tipT, shake, far) {
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   if (ob.pit) {
     // the steeplechase barrier: a thick beam on two stout posts (it never tips; you splash instead)
-    ctx.fillStyle = '#4d5578'; ctx.fillRect(fx - 2, fy - h, 5, h); ctx.fillRect(fx - 6, fy - 2, 13, 3);
+    ctx.fillStyle = 'rgba(20,30,60,0.2)'; ctx.beginPath(); ctx.ellipse(fx * 0.5 - 2, fy * 0.5 + 1, 18, 5, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3d4466'; ctx.fillRect(fx - 2, fy - h, 5, h); ctx.fillRect(fx - 6, fy - 2, 13, 3);
     ctx.fillStyle = '#6a7290'; ctx.fillRect(-3, -h, 6, h); ctx.fillRect(-8, -2, 15, 3);
+    ctx.fillStyle = '#8a92b0'; ctx.fillRect(-3, -h, 2, h); ctx.fillStyle = '#4d5578'; ctx.fillRect(2, -h, 1, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(-8, -2, 15, 1);
+    for (const by of [-h * 0.35, -h * 0.7]) { ctx.fillStyle = '#c7ccd9'; ctx.fillRect(-1, by, 2, 2); }
     const beam = () => { ctx.beginPath(); ctx.moveTo(-4, -h - 6); ctx.lineTo(fx + 4, fy - h - 6); ctx.lineTo(fx + 4, fy - h + 5); ctx.lineTo(-4, -h + 5); ctx.closePath(); };
     ctx.save(); beam(); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.clip();
     ctx.fillStyle = '#1c1a36'; for (let i = 0; i < 4; i++) ctx.fillRect(-4 + i * 6, -h - 30, 3, 40);
+    ctx.strokeStyle = 'rgba(120,120,150,0.35)'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(-4, -h - 2); ctx.lineTo(fx + 4, fy - h - 2); ctx.moveTo(-4, -h + 1); ctx.lineTo(fx + 4, fy - h + 1); ctx.stroke();
+    ctx.fillStyle = 'rgba(28,26,54,0.25)'; ctx.beginPath(); ctx.moveTo(-4, -h + 2.5); ctx.lineTo(fx + 4, fy - h + 2.5); ctx.lineTo(fx + 4, fy - h + 6); ctx.lineTo(-4, -h + 6); ctx.closePath(); ctx.fill();
     ctx.restore();
     beam(); ctx.strokeStyle = '#2b2850'; ctx.lineWidth = 1.3; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-3.5, -h - 5.3); ctx.lineTo(fx + 3.5, fy - h - 5.3); ctx.stroke();
     ctx.restore();
     return;
   }
@@ -705,21 +757,35 @@ function hurdlesDrawObstacle(st, ob, x, gy, s, tipT, shake, far) {
     const u = Math.min(1, tipT / 0.22), a = u < 1 ? u * u * 1.4 : 1.4 - Math.max(0, Math.sin((tipT - 0.22) * 18) * 0.12 * Math.exp(-(tipT - 0.22) * 8));
     ctx.rotate(a);
   }
-  // the far leg and foot, then the near ones (feet point back at the runner)
-  ctx.strokeStyle = '#3d3a5c'; ctx.lineWidth = 2.6;
+  // a soft shadow under it (only while standing)
+  if (!(tipT > 0)) { ctx.fillStyle = 'rgba(60,10,10,0.18)'; ctx.beginPath(); ctx.ellipse(fx * 0.5 - 4, fy * 0.5 + 1, 16, 5, -0.4, 0, Math.PI * 2); ctx.fill(); }
+  // the far leg and foot, then the near ones (feet point back at the runner): steel tubes with a lit stripe, feet
+  // with a weighted end cap, a bolt where leg meets foot
+  ctx.strokeStyle = '#2b2850'; ctx.lineWidth = 3.4;
   ctx.beginPath(); ctx.moveTo(fx - 11, fy); ctx.lineTo(fx, fy); ctx.lineTo(fx, fy - h + 2); ctx.stroke();
-  ctx.strokeStyle = '#d9dbe8'; ctx.lineWidth = 3.4;
+  ctx.strokeStyle = '#4d4a70'; ctx.lineWidth = 2.2; ctx.stroke();
+  ctx.fillStyle = '#2b2850'; ctx.fillRect(fx - 13, fy - 2, 5, 4);
+  ctx.strokeStyle = '#6f7590'; ctx.lineWidth = 4.6;
   ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(0, 0); ctx.lineTo(0, -h + 2); ctx.stroke();
-  ctx.strokeStyle = '#8a90a6'; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(-1.2, -1); ctx.lineTo(-1.2, -h + 3); ctx.stroke();
-  // the bar: a white board with stripes, from the near leg's top across to the far leg's top
-  const bh = 7;
+  ctx.strokeStyle = '#d9dbe8'; ctx.lineWidth = 3.2; ctx.stroke();
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(-0.8, -2); ctx.lineTo(-0.8, -h + 3); ctx.moveTo(-11, -0.9); ctx.lineTo(-2, -0.9); ctx.stroke();
+  ctx.strokeStyle = '#8a90a6'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(1.1, -1); ctx.lineTo(1.1, -h + 3); ctx.stroke();
+  ctx.fillStyle = '#3d3a5c'; rr(-15, -2.6, 6, 5.2, 1.5); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-14.5, -2.2, 5, 1);
+  ctx.fillStyle = '#4a4f6e'; circle(0, -1, 1.6); ctx.fill(); ctx.fillStyle = '#c7ccd9'; circle(-0.4, -1.4, 0.7); ctx.fill();
+  // the bar: a white board with stripes, from the near leg's top across to the far leg's top; a lit top edge, a
+  // shaded underside, bolts at both ends
+  const bh = 7, sc = ob.kind === 'high' ? '#7b5cff' : '#e8443a';
   const bar = () => { ctx.beginPath(); ctx.moveTo(-2, -h - 2); ctx.lineTo(fx + 2, fy - h - 2); ctx.lineTo(fx + 2, fy - h + bh); ctx.lineTo(-2, -h + bh); ctx.closePath(); };
   ctx.save(); bar(); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.clip();
-  ctx.fillStyle = ob.kind === 'high' ? '#7b5cff' : '#e8443a';
+  ctx.fillStyle = sc;
   for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(-2 + i * 5, -h + bh); ctx.lineTo(1 + i * 5, -h + bh); ctx.lineTo(1 + i * 5, fy - h - 4); ctx.lineTo(-2 + i * 5, fy - h - 4); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.beginPath(); ctx.moveTo(-2, -h + bh - 2.2); ctx.lineTo(fx + 2, fy - h + bh - 2.2); ctx.lineTo(fx + 2, fy - h + bh + 1); ctx.lineTo(-2, -h + bh + 1); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.moveTo(-2, -h - 2); ctx.lineTo(fx + 2, fy - h - 2); ctx.lineTo(fx + 2, fy - h - 0.6); ctx.lineTo(-2, -h - 0.6); ctx.closePath(); ctx.fill();
   ctx.restore();
-  bar(); ctx.strokeStyle = 'rgba(28,26,54,0.6)'; ctx.lineWidth = 1.1; ctx.stroke();
+  bar(); ctx.strokeStyle = shade(sc, 0.55); ctx.lineWidth = 1.1; ctx.stroke();
+  for (const [bx, by] of [[0.5, -h + 2.5], [fx - 0.5, fy - h + 2.5]]) { ctx.fillStyle = '#4a4f6e'; circle(bx, by, 1.3); ctx.fill(); ctx.fillStyle = '#e4e6f0'; circle(bx - 0.4, by - 0.4, 0.55); ctx.fill(); }
   ctx.restore();
 }
 // the finish: checkered line across both lanes, the tape, and the gantry with the race clock

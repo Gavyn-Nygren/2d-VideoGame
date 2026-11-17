@@ -893,6 +893,13 @@ function tthMoonDrawRock(o) {
   for (let i = 0; i < n; i++) { const a = i / n * 6.283, r = o.r * o.sh[i]; if (i) ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); else ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
   ctx.closePath();
   ctx.fillStyle = o.flash > 0 && Math.sin(G.clock * 30) > 0 ? '#ff8f8f' : col ? TTHMOONC.boulder : TTHMOONC.rock; ctx.fill();
+  // (art pass) a shaded underside, pocked craters with lit rims, grit and a crack, inside the rock's own outline
+  ctx.save(); ctx.clip();
+  ctx.fillStyle = 'rgba(20,20,40,0.22)'; ctx.beginPath(); ctx.ellipse(o.r * 0.25, o.r * 0.45, o.r * 1.1, o.r * 0.7, 0.3, 0, 6.3); ctx.fill();
+  TTA.craters(-o.r, -o.r, o.r * 2, o.r * 2, (o.sh[0] * 9973) | 0, { n: Math.max(3, Math.round(o.r / 7)), r: o.r * 0.08, rr: o.r * 0.16 });
+  ctx.strokeStyle = 'rgba(20,20,40,0.45)'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(-o.r * 0.1, -o.r); ctx.lineTo(o.r * 0.05, -o.r * 0.5); ctx.lineTo(-o.r * 0.12, -o.r * 0.15); ctx.lineTo(o.r * 0.1, o.r * 0.2); ctx.stroke();
+  ctx.restore();
+  ctx.beginPath(); for (let i = 0; i < n; i++) { const a = i / n * 6.283, r = o.r * o.sh[i]; if (i) ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); else ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.closePath();
   ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.stroke();
   ctx.fillStyle = col ? TTHMOONC.boulderLt : TTHMOONC.rockLt; ctx.beginPath(); ctx.ellipse(-o.r * 0.28, -o.r * 0.34, o.r * 0.34, o.r * 0.2, -0.5, 0, 6.3); ctx.fill();
   ctx.fillStyle = col ? TTHMOONC.boulderDk : TTHMOONC.rockDk;
@@ -931,6 +938,17 @@ function tthMoonDrawWalls(st) {
     for (let i = i0; i <= i1; i += 2) ctx.lineTo(a[i], a[i + 1]);
     ctx.lineTo(out, a[i1 + 1]); ctx.closePath();
     ctx.fillStyle = TTHMOONC.wall; ctx.fill();
+    // (art pass) layered crater rock: bands that follow the face, pocked craters with lit rims, boulders set in the rock, grit (all in world y, so it scrolls with the wall)
+    ctx.save(); ctx.clip();
+    const sd = side ? 1 : -1;
+    ctx.lineJoin = 'round';
+    for (const [off, lw, col] of [[18, 2, 'rgba(255,255,255,0.16)'], [30, 2.5, 'rgba(20,20,40,0.2)'], [52, 1.5, 'rgba(255,255,255,0.12)'], [74, 3, 'rgba(20,20,40,0.16)'], [110, 2, 'rgba(20,20,40,0.14)'], [150, 2, 'rgba(255,255,255,0.1)']]) {
+      ctx.beginPath(); for (let i = i0; i <= i1; i += 2) { const x = a[i] + sd * off, y = a[i + 1]; if (i > i0) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+      ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
+    }
+    const cx0 = side ? W * 0.5 : -40, cx1 = side ? W + 40 : W * 0.5;
+    for (let r = Math.floor(y0 / 110); r * 110 < y1; r++) TTA.craters(cx0, r * 110, cx1 - cx0, 110, r * 2 + side + 7, { n: 9, r: 4, rr: 12, grit: 50 });
+    ctx.restore();
     // a lit rim and the ink line along the rock face
     ctx.lineJoin = 'round';
     ctx.beginPath(); for (let i = i0; i <= i1; i += 2) { const x = a[i] + (side ? 7 : -7), y = a[i + 1]; if (i > i0) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
@@ -1006,6 +1024,10 @@ function tthMoonDrawGround(st) {
   const K = TTHMOON, ph = st.ph, gy = ph.ground, pad = ph.pad, t = G.clock;
   if (gy - st.cam.y > H + 20) return;
   ctx.fillStyle = TTHMOONC.ground; ctx.fillRect(0, gy, W, K.groundH + 40);
+  // (art pass) moon dust: darker layers going down, craters with lit rims, grit, and a few boot prints near the pad
+  ctx.fillStyle = 'rgba(20,20,40,0.1)'; ctx.fillRect(0, gy + 26, W, 14); ctx.fillStyle = 'rgba(20,20,40,0.12)'; ctx.fillRect(0, gy + 52, W, K.groundH);
+  TTA.craters(0, gy + 8, W, K.groundH + 20, 311, { n: 22, r: 3, rr: 14 });
+  ctx.fillStyle = 'rgba(20,20,40,0.28)'; for (let k = 0; k < 8; k++) { const bx = pad.x + 70 + k * 22 + (k % 2) * 4, by = gy + 9 + (k % 2) * 7; rr(bx, by, 9, 4, 2); ctx.fill(); }
   ctx.fillStyle = TTHMOONC.groundDk;
   for (const d of ph.deco) { ctx.beginPath(); if (d.k) ctx.ellipse(d.x, gy + d.y, d.w, d.w * 0.3, 0, 0, 6.3); else circle(d.x, gy + d.y, d.w * 0.22); ctx.fill(); }
   ctx.strokeStyle = C.ink; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();

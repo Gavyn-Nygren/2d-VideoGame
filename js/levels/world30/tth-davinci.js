@@ -783,6 +783,104 @@ function tthVinciDrawSky(st) {
   }
 }
 
+// the Tuscan hills, world x cx0..cx0+cw (a chunk of them, in world coordinates)
+function tthVinciPaintHills(c, cx0, cw, top, hillsEnd) {
+  const Y = x => tthVinciHillY(c, x), x1 = cx0 + cw, B = H + 10;
+  ctx.save(); ctx.beginPath(); ctx.rect(cx0, top, cw, B - top); ctx.clip();
+  const hill = () => { ctx.beginPath(); ctx.moveTo(cx0 - 4, B); for (let x = cx0 - 4; x <= x1 + 4; x += 4) ctx.lineTo(x, Y(x)); ctx.lineTo(x1 + 4, B); ctx.closePath(); };
+  ctx.fillStyle = '#86c25c'; hill(); ctx.fill();
+  ctx.save(); hill(); ctx.clip();
+  // patchwork fields in bands that follow the slope; each band split into fields at fixed world spots
+  const band = (x, j) => Y(x) + [16, 40, 70, 108, 160][j] + Math.sin(x * 0.013 + j * 1.7) * (3 + j * 2);
+  const FIELD = ['#94c862', '#a4cc66', '#cfc56c', '#dab864', '#86ba56', '#b4cc68', '#9ac05e'];
+  for (let j = 0; j < 4; j++) {
+    const segW = 110 + j * 30;
+    for (let s = Math.floor((cx0 - segW) / segW); s * segW < x1 + segW; s++) {
+      const sa = s * segW + (hash(s, 60 + j) % 40), sb = (s + 1) * segW + (hash(s + 1, 60 + j) % 40);
+      if (sb < cx0 - 4 || sa > x1 + 4) continue;
+      const h = hash(s, 70 + j), col = FIELD[h % FIELD.length], kind = (h >>> 4) % 4;
+      const poly = () => { ctx.beginPath(); ctx.moveTo(sa, band(sa, j)); for (let x = sa; x <= sb; x += 6) ctx.lineTo(x, band(x, j)); ctx.lineTo(sb, band(sb, j)); ctx.lineTo(sb, band(sb, j + 1)); for (let x = sb; x >= sa; x -= 6) ctx.lineTo(x, band(x, j + 1)); ctx.lineTo(sa, band(sa, j + 1)); ctx.closePath(); };
+      ctx.fillStyle = col; poly(); ctx.fill();
+      ctx.save(); poly(); ctx.clip();
+      if (kind === 0) {   // ploughed or crop rows following the slope
+        ctx.strokeStyle = shade(col, 0.18); ctx.lineWidth = 1; ctx.beginPath();
+        for (let r = 1; r < 8; r++) { const u = r / 8; for (let x = sa; x <= sb; x += 8) { const y = band(x, j) + (band(x, j + 1) - band(x, j)) * u; if (x === sa) ctx.moveTo(x, y); else ctx.lineTo(x, y); } }
+        ctx.stroke();
+      } else if (kind === 1) {   // an olive grove: rows of round grey-green trees, lit on top
+        for (let r = 0; r < 3; r++) for (let x = sa + 8 + r * 5; x < sb - 4; x += 16) {
+          const y = band(x, j) + (band(x, j + 1) - band(x, j)) * (0.3 + r * 0.25), rr2 = 2.6 + j * 0.6;
+          ctx.fillStyle = 'rgba(40,70,30,0.25)'; ctx.beginPath(); ctx.ellipse(x + 1.5, y + rr2 * 0.8, rr2, rr2 * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#7a9a62'; circle(x, y, rr2); ctx.fill(); ctx.fillStyle = 'rgba(220,240,200,0.45)'; circle(x - rr2 * 0.3, y - rr2 * 0.35, rr2 * 0.45); ctx.fill();
+        }
+      } else if (kind === 2) {   // a golden field with a few round hay bales
+        ctx.fillStyle = 'rgba(255,240,180,0.18)'; for (let k = 0; k < 30; k++) ctx.fillRect(sa + (hash(s * 31 + k, 80 + j) % Math.max(1, Math.round(sb - sa))), band(sa, j) + (hash(s * 37 + k, 81 + j) % 40), 3, 1);
+        for (let k = 0; k < 2; k++) { const x = sa + 20 + (hash(s, 90 + j + k) % Math.max(1, Math.round(sb - sa - 40))), y = band(x, j) + (band(x, j + 1) - band(x, j)) * 0.55, rb = 3 + j; ctx.fillStyle = 'rgba(60,50,20,0.25)'; ctx.beginPath(); ctx.ellipse(x + 2, y + rb * 0.7, rb * 1.1, rb * 0.35, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#e0b860'; circle(x, y, rb); ctx.fill(); ctx.strokeStyle = '#a8803a'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(x, y, rb * 0.55, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = 'rgba(255,250,210,0.5)'; circle(x - rb * 0.35, y - rb * 0.4, rb * 0.35); ctx.fill(); }
+      } else {   // meadow: soft tufts and specks of flowers
+        for (let k = 0; k < 18; k++) { const x = sa + (hash(s * 13 + k, 85 + j) % Math.max(1, Math.round(sb - sa))), y = band(x, j) + (hash(s * 17 + k, 86 + j) % 30); ctx.fillStyle = k % 5 ? 'rgba(70,120,50,0.3)' : (k % 2 ? '#fff6d0' : '#ffd23f'); ctx.fillRect(x, y, k % 5 ? 2 : 1.6, k % 5 ? 1 : 1.6); }
+      }
+      ctx.restore();
+      // the hedgerow on the field's left edge
+      ctx.strokeStyle = '#5a9448'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(sa, band(sa, j)); ctx.lineTo(sa + 3, band(sa, j + 1)); ctx.stroke();
+    }
+    // the hedgerow along the band's top: a dark green line with little bushes, lit on top
+    ctx.strokeStyle = '#4f8a44'; ctx.lineWidth = 1.8; ctx.beginPath(); for (let x = cx0 - 4; x <= x1 + 4; x += 6) { const y = band(x, j); if (x === cx0 - 4) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
+    for (let x = Math.floor((cx0 - 4) / 14) * 14; x <= x1 + 4; x += 14) { if (hash(x, 95 + j) % 3) continue; const y = band(x, j); ctx.fillStyle = '#457a3c'; circle(x, y - 1.5, 2.6 + j * 0.4); ctx.fill(); ctx.fillStyle = 'rgba(200,240,160,0.35)'; circle(x - 0.8, y - 2.6, 1.2); ctx.fill(); }
+  }
+  // the grassy crest: the top band in fresh green with blades along the top, deeper shade low down
+  ctx.fillStyle = '#86c25c'; ctx.beginPath(); ctx.moveTo(cx0 - 4, Y(cx0 - 4)); for (let x = cx0 - 4; x <= x1 + 4; x += 4) ctx.lineTo(x, Y(x)); for (let x = x1 + 4; x >= cx0 - 4; x -= 6) ctx.lineTo(x, band(x, 0)); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,220,0.12)'; ctx.beginPath(); ctx.moveTo(cx0 - 4, Y(cx0 - 4)); for (let x = cx0 - 4; x <= x1 + 4; x += 4) ctx.lineTo(x, Y(x)); for (let x = x1 + 4; x >= cx0 - 4; x -= 6) ctx.lineTo(x, Y(x) + 6); ctx.closePath(); ctx.fill();
+  const fg = ctx.createLinearGradient(0, 420, 0, B); fg.addColorStop(0, 'rgba(40,70,30,0)'); fg.addColorStop(1, 'rgba(40,70,30,0.22)');
+  ctx.fillStyle = fg; ctx.fillRect(cx0 - 4, 420, cw + 8, B - 420);
+  ctx.restore();
+  ctx.strokeStyle = '#5f9f45'; ctx.lineWidth = 1.2; ctx.lineCap = 'round'; ctx.beginPath();
+  for (let x = Math.floor(cx0 / 5) * 5; x <= x1; x += 5) { const y = Y(x), h = hash(x, 12); ctx.moveTo(x, y + 2); ctx.lineTo(x - 1.5 + (h % 4), y - 2 - (h % 4)); }
+  ctx.stroke(); ctx.lineCap = 'butt';
+  ctx.strokeStyle = 'rgba(255,255,225,0.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let x = cx0 - 4; x <= x1 + 4; x += 4) { const y = Y(x) + 2.5; if (x === cx0 - 4) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
+  ctx.strokeStyle = '#2f5a2c'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.beginPath(); for (let x = cx0 - 4; x <= x1 + 4; x += 4) { const y = Y(x); if (x === cx0 - 4) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
+  // the props on the same spots as before (each 120 px stretch has one): cypresses, poppy patches, vine rows
+  for (let i = Math.floor((cx0 - 80) / 120); i * 120 < x1 + 80; i++) {
+    const h = hash(i, 5), x = i * 120 + (h % 90), y = Y(x), kind = h % 4;
+    if (x < 320 || x > hillsEnd - 40) continue;
+    if (kind < 2) {   // a cypress: a tall flame of dark green, lit on the left, with a trunk and a shadow
+      const hh = 26 + (h % 16), wd = 7;
+      ctx.fillStyle = 'rgba(30,60,30,0.25)'; ctx.beginPath(); ctx.ellipse(x + 6, y + 1, 10, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#6a4a2a'; ctx.fillRect(x - 1.5, y - 6, 3, 8); ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(x - 1.5, y - 6, 1, 8);
+      const flame = () => { ctx.beginPath(); ctx.moveTo(x, y - 4 - hh - 3); ctx.bezierCurveTo(x + wd * 0.7, y - 4 - hh * 0.75, x + wd * 1.05, y - 4 - hh * 0.25, x + wd * 0.45, y - 3); ctx.lineTo(x - wd * 0.45, y - 3); ctx.bezierCurveTo(x - wd * 1.05, y - 4 - hh * 0.25, x - wd * 0.7, y - 4 - hh * 0.75, x, y - 4 - hh - 3); ctx.closePath(); };
+      const g = ctx.createLinearGradient(x - wd, 0, x + wd, 0); g.addColorStop(0, '#5a9a52'); g.addColorStop(0.45, '#3f8a4a'); g.addColorStop(1, '#2a6a38');
+      ctx.fillStyle = g; flame(); ctx.fill();
+      ctx.save(); flame(); ctx.clip();
+      ctx.strokeStyle = 'rgba(20,60,30,0.45)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let k = 0; k < 7; k++) { const yy = y - 8 - k * hh / 7, d = (k % 2 ? 1 : -1) * 2; ctx.moveTo(x - wd, yy + 3); ctx.quadraticCurveTo(x + d, yy - 1, x + wd, yy + 3); }
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(200,240,170,0.35)'; ctx.beginPath(); for (let k = 0; k < 6; k++) { const yy = y - 10 - k * hh / 7; ctx.moveTo(x - wd * 0.6, yy); ctx.lineTo(x - wd * 0.1, yy - 2); } ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle = '#1f4a2a'; ctx.lineWidth = 1.8; flame(); ctx.stroke();
+    } else if (kind === 2) {   // a patch of poppies and a few yellow daisies, on stems with leaves
+      for (let n = 0; n < 7; n++) {
+        const fx = x + n * 6 - 18 + (hash(i * 7 + n, 6) % 3), fy = y + 7 + (n % 3) * 4 + (hash(i * 7 + n, 7) % 3), red = n % 3 !== 1;
+        ctx.strokeStyle = '#4f8a42'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(fx, fy + 6); ctx.quadraticCurveTo(fx - 1, fy + 3, fx, fy); ctx.stroke();
+        ctx.fillStyle = '#5f9f45'; ctx.beginPath(); ctx.ellipse(fx + 1.5, fy + 4, 1.6, 0.7, -0.5, 0, Math.PI * 2); ctx.fill();
+        if (red) { ctx.fillStyle = '#e8483a'; circle(fx, fy, 2.8); ctx.fill(); ctx.fillStyle = '#ff7a5a'; circle(fx - 0.8, fy - 0.8, 1.6); ctx.fill(); ctx.fillStyle = '#2a1a1a'; circle(fx, fy, 0.9); ctx.fill(); }
+        else { ctx.fillStyle = '#fff6d0'; for (let p = 0; p < 5; p++) { const a = p * Math.PI * 2 / 5; circle(fx + Math.cos(a) * 1.6, fy + Math.sin(a) * 1.6, 1.1); ctx.fill(); } ctx.fillStyle = '#ffd23f'; circle(fx, fy, 1); ctx.fill(); }
+      }
+    } else {   // rows of vines: stakes with leafy rows and bunches of grapes, following the slope
+      for (let n = 0; n < 3; n++) {
+        const yy = n * 12;
+        ctx.strokeStyle = '#7a5a34'; ctx.lineWidth = 1.2; ctx.beginPath();
+        for (let k = -3; k <= 3; k++) { const vx = x + k * 10, vy = Y(vx) + 14 + yy; ctx.moveTo(vx, vy + 2); ctx.lineTo(vx, vy - 5); }
+        ctx.stroke();
+        ctx.strokeStyle = '#4f8a42'; ctx.lineWidth = 3.4; ctx.lineCap = 'round'; ctx.beginPath();
+        for (let k = -3; k <= 3; k++) { const vx = x + k * 10, vy = Y(vx) + 14 + yy - 4; if (k === -3) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy); }
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(190,235,150,0.5)'; ctx.lineWidth = 1; ctx.beginPath();
+        for (let k = -3; k <= 3; k++) { const vx = x + k * 10, vy = Y(vx) + 14 + yy - 5.5; if (k === -3) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy); }
+        ctx.stroke(); ctx.lineCap = 'butt';
+        ctx.fillStyle = '#6a3a7a'; for (let k = -2; k <= 2; k += 2) { const vx = x + k * 10 + 4, vy = Y(vx) + 14 + yy - 2; circle(vx, vy, 1.3); ctx.fill(); circle(vx + 1.6, vy + 0.4, 1.2); ctx.fill(); circle(vx + 0.8, vy + 1.8, 1.1); ctx.fill(); }
+      }
+    }
+  }
+  ctx.restore();
+}
 /* ---------- drawing: the ground under the machine (world coords) ---------- */
 function tthVinciDrawGround(st) {
   const ph = st.ph, c = ph.c, K = TTHVINCI, CO = TTHVINCI_COL, cam = st.cam.x, x0 = cam - 30, x1 = cam + W + 30, t = G.clock;
@@ -790,26 +888,16 @@ function tthVinciDrawGround(st) {
   ctx.lineJoin = 'round';
   // the Tuscan hills
   if (x0 < hillsEnd) {
-    const b = Math.min(x1, hillsEnd);
-    ctx.fillStyle = CO.grass; ctx.beginPath(); ctx.moveTo(x0, H + 10);
-    for (let x = x0; x < b + 8; x += 8) ctx.lineTo(Math.min(x, b), tthVinciHillY(c, Math.min(x, b)));
-    ctx.lineTo(b, H + 10); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath();
-    for (let x = x0; x < b + 8; x += 8) ctx.lineTo(Math.min(x, b), tthVinciHillY(c, Math.min(x, b)));
-    ctx.stroke();
-    for (let i = Math.floor(x0 / 120); i * 120 < b; i++) {
-      const h = hash(i, 5), x = i * 120 + (h % 90), y = tthVinciHillY(c, x), kind = h % 4;
-      if (x < 320 || x > hillsEnd - 40) continue;
-      if (kind < 2) {   // a cypress
-        const hh = 26 + (h % 16);
-        ctx.fillStyle = '#7a5a34'; ctx.fillRect(x - 1.5, y - 6, 3, 8);
-        ctx.fillStyle = '#3f8a4a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y - 4 - hh / 2, 6.5, hh / 2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      } else if (kind === 2) {   // poppies
-        for (let n = 0; n < 4; n++) { ctx.fillStyle = n % 2 ? '#ff6b5a' : '#ffd23f'; circle(x + n * 9 - 14, y + 9 + (n % 2) * 6, 2.6); ctx.fill(); }
-      } else {   // rows of vines
-        ctx.strokeStyle = CO.grassDk; ctx.lineWidth = 2;
-        for (let n = 0; n < 3; n++) { ctx.beginPath(); ctx.moveTo(x - 30, y + 14 + n * 12); ctx.quadraticCurveTo(x, y + 8 + n * 12, x + 30, y + 14 + n * 12); ctx.stroke(); }
-      }
+    // (sweep) painted once per 240 px chunk (TTA.pic) and copied: a patchwork of fields on the slopes (wheat, meadow,
+    // olive groves, vine rows) split by hedgerows, a grassy crest with blades and a lit rim, a darker foot, outlined in
+    // a deep green; cypresses with shaded flame crowns, poppy patches and vine rows sit on the same spots as before.
+    // The top edge is the same hill line the machine bumps into (tthVinciHillY).
+    for (let i = Math.floor(x0 / 240); i * 240 < Math.min(x1, hillsEnd); i++) {
+      const cx0 = i * 240, cw = Math.min(240, hillsEnd - cx0);
+      if (cw <= 0) continue;
+      let top = 1e9; for (let x = cx0; x <= cx0 + cw; x += 6) top = Math.min(top, tthVinciHillY(c, x));
+      top = Math.floor(top) - 62;
+      TTA.pic('vincihill|' + i + '|' + cw + '|' + top, cw, H + 10 - top, 0, 0, () => { ctx.translate(-cx0, -top); tthVinciPaintHills(c, cx0, cw, top, hillsEnd); }, cx0, top);
     }
   }
   // the rooftops of Florence
@@ -819,14 +907,26 @@ function tthVinciDrawGround(st) {
     for (let i = Math.floor(rf0 / 96); i * 96 < rf1; i++) {
       const x = Math.max(i * 96, lo), xe = Math.min((i + 1) * 96, hi), y = tthVinciRoof(i * 96), h = hash(i, 9), w = xe - x;
       if (w <= 0) continue;
+      // (art pass) a still house front: painted once into a picture (TTA.pic) and copied each frame
+      TTA.pic('vinciroof|' + i + '|' + x + '|' + w + '|' + y, w + 12, H - y + 12, 6, 2, () => {
+      ctx.translate(-x, -y); ctx.lineJoin = 'round';
       ctx.fillStyle = CO.wall[h % 4]; ctx.fillRect(x, y + 10, w, H - y);
+      // (art pass) Tuscan stucco with corner stones and a chipped patch, green shutters with slats and a sill, a pot of geraniums, curved roof tiles
+      TTA.plaster(x + 1, y + 11, w - 2, H - y - 11, i * 7 + 3, CO.wall[h % 4], { brick: '#c27a52', quoins: (h >>> 3) % 2 === 0 });
+      ctx.fillStyle = 'rgba(70,40,30,0.22)'; ctx.fillRect(x, y + 10, w, 7);
       ctx.strokeStyle = 'rgba(28,26,54,0.35)'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y + 10, w, H - y);
-      ctx.fillStyle = '#6f8f5a';
-      for (let n = 0; n < 2; n++) { const wx = x + 18 + n * 40; if (wx + 14 < xe) { ctx.fillRect(wx, y + 26, 14, 18); ctx.fillStyle = '#4a3a2a'; ctx.fillRect(wx + 3, y + 29, 8, 12); ctx.fillStyle = '#6f8f5a'; } }
-      ctx.fillStyle = CO.roof; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x - 2, y, w + 4, 15, 4); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = CO.roofDk; ctx.lineWidth = 1.5; ctx.beginPath();
-      for (let n = 10; n < w; n += 12) { ctx.moveTo(x + n, y + 3); ctx.lineTo(x + n, y + 12); }
-      ctx.stroke();
+      for (let n = 0; n < 2; n++) {
+        const wx = x + 18 + n * 40; if (wx + 14 >= xe) continue;
+        ctx.fillStyle = '#efe4c8'; ctx.fillRect(wx - 3, y + 23, 20, 3); ctx.fillRect(wx - 4, y + 44, 22, 3.5);
+        ctx.fillStyle = '#6f8f5a'; ctx.fillRect(wx, y + 26, 14, 18);
+        ctx.strokeStyle = 'rgba(30,50,30,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); for (let sy = y + 28; sy < y + 43; sy += 3) { ctx.moveTo(wx + 1, sy); ctx.lineTo(wx + 13, sy); } ctx.moveTo(wx + 7, y + 26); ctx.lineTo(wx + 7, y + 44); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(wx, y + 26, 14, 1.5);
+        if ((h >>> (n + 5)) % 3 === 0) { ctx.fillStyle = '#4a3a2a'; ctx.fillRect(wx + 3, y + 29, 8, 12); ctx.fillStyle = '#6f8f5a'; ctx.fillRect(wx - 5, y + 26, 5, 18); ctx.fillRect(wx + 14, y + 26, 5, 18); }
+        if ((h >>> (n + 9)) % 4 === 0) { ctx.fillStyle = '#b5643a'; ctx.fillRect(wx + 1, y + 47, 12, 5); ctx.fillStyle = '#4f8a3a'; circle(wx + 4, y + 46, 3); ctx.fill(); circle(wx + 10, y + 46, 3); ctx.fill(); ctx.fillStyle = '#e8473f'; circle(wx + 3, y + 44, 2); ctx.fill(); circle(wx + 9, y + 45, 2); ctx.fill(); circle(wx + 6.5, y + 43, 1.8); ctx.fill(); }
+      }
+      ctx.fillStyle = CO.roof; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x - 2, y, w + 4, 15, 4); ctx.fill();
+      TTA.tiles(x - 0.5, y + 1.5, w + 1, 12, CO.roof, { seed: i, step: 12 }); rr(x - 2, y, w + 4, 15, 4); ctx.stroke();
+      }, x, y);
     }
   }
   // the river Arno and the old bridge
@@ -837,14 +937,16 @@ function tthVinciDrawGround(st) {
     ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2;
     for (let i = Math.floor(a / 70); i * 70 < b; i++) { const x = i * 70 + ((t * 26) % 70), y = K.water + 12 + (i % 3) * 11; if (x < a + 4 || x > b - 26) continue; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 10, y - 4, x + 22, y); ctx.stroke(); }
     if (x1 > b0 - 20 && x0 < b1 + 20) {
-      ctx.fillStyle = CO.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(b0, K.bridge + 36, b1 - b0, H); ctx.strokeRect(b0, K.bridge + 36, b1 - b0, H);
+      ctx.fillStyle = CO.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(b0, K.bridge + 36, b1 - b0, H);
+      TTA.stones(b0 + 1.5, K.bridge + 37.5, b1 - b0 - 3, H - K.bridge, 4, CO.stone, { bw: 36, bh: 18, wx: b0, wy: K.bridge + 36, moss: true }); ctx.strokeRect(b0, K.bridge + 36, b1 - b0, H);
       ctx.fillStyle = '#3d7f9e';
       for (let n = 0; n < 3; n++) { const ax = b0 + 28 + n * 124; ctx.beginPath(); ctx.moveTo(ax, H + 6); ctx.lineTo(ax, K.water - 4); ctx.quadraticCurveTo(ax + 48, K.water - 52, ax + 96, K.water - 4); ctx.lineTo(ax + 96, H + 6); ctx.closePath(); ctx.fill(); ctx.stroke(); }
       for (let n = 0; n < 5; n++) {   // the little shops on the bridge
         const sx = b0 + n * 80;
-        ctx.fillStyle = CO.wall[(n + 1) % 4]; ctx.fillRect(sx, K.bridge + 10, 80, 28); ctx.strokeRect(sx, K.bridge + 10, 80, 28);
+        ctx.fillStyle = CO.wall[(n + 1) % 4]; ctx.fillRect(sx, K.bridge + 10, 80, 28); TTA.plaster(sx + 1.5, K.bridge + 11.5, 77, 25, n * 13 + 1, CO.wall[(n + 1) % 4], { chip: false, quoins: false }); ctx.strokeRect(sx, K.bridge + 10, 80, 28);
         ctx.fillStyle = '#4a3a2a'; ctx.fillRect(sx + 14, K.bridge + 18, 12, 12); ctx.fillRect(sx + 50, K.bridge + 18, 12, 12);
-        ctx.fillStyle = CO.roof; rr(sx - 2, K.bridge, 84, 13, 4); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#c9a060'; ctx.fillRect(sx + 13, K.bridge + 29, 14, 2.5); ctx.fillRect(sx + 49, K.bridge + 29, 14, 2.5);
+        ctx.fillStyle = CO.roof; rr(sx - 2, K.bridge, 84, 13, 4); ctx.fill(); TTA.tiles(sx - 0.5, K.bridge + 1.5, 81, 10, CO.roof, { seed: n, step: 10 }); rr(sx - 2, K.bridge, 84, 13, 4); ctx.stroke();
       }
     }
   }
@@ -853,9 +955,8 @@ function tthVinciDrawGround(st) {
     const a = Math.max(x0, pz0), cheer = ph.mode === 'won' || (ph.chase && ph.chase.phase === 'dive');
     ctx.fillStyle = '#ead8b0'; ctx.fillRect(a, K.ground, x1 - a, H - K.ground + 10);
     ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(a, K.ground); ctx.lineTo(x1, K.ground); ctx.stroke();
-    ctx.strokeStyle = 'rgba(138,110,70,0.4)'; ctx.lineWidth = 1.5; ctx.beginPath();
-    for (let i = Math.floor(a / 60); i * 60 < x1; i++) { const x = i * 60; if (x > a) { ctx.moveTo(x, K.ground + 4); ctx.lineTo(x - 16, H); } }
-    ctx.moveTo(a, K.ground + 24); ctx.lineTo(x1, K.ground + 24); ctx.stroke();
+    TTA.stones(a, K.ground + 2, x1 - a, H - K.ground, 6, '#ead8b0', { bw: 30, bh: 13, wx: 0, wy: K.ground + 2, lit: 0.35, dk: 0.2, mortar: 'rgba(138,110,70,0.5)' });
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(a, K.ground + 2, x1 - a, 3);
     for (let i = Math.floor(a / 46); i * 46 < x1; i++) {
       const h = hash(i, 21), x = i * 46 + (h % 30);
       if (h % 3 === 0 || x < a + 10) continue;
@@ -869,22 +970,28 @@ function tthVinciDrawGround(st) {
   // Leonardo's workshop (the start) and the two perch towers
   const S = K.start;
   if (x0 < S.x1 + 40) {
-    ctx.fillStyle = '#ecd9b0'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(S.x0 + 8, S.y + 10, S.x1 - S.x0 - 16, H); ctx.strokeRect(S.x0 + 8, S.y + 10, S.x1 - S.x0 - 16, H);
-    ctx.fillStyle = '#8a5a2a'; rr(S.x0 + 70, S.y + 70, 40, 80, 18); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ecd9b0'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(S.x0 + 8, S.y + 10, S.x1 - S.x0 - 16, H);
+    TTA.plaster(S.x0 + 9.5, S.y + 11.5, S.x1 - S.x0 - 19, H - S.y - 12, 41, '#ecd9b0', { brick: '#c27a52' }); ctx.strokeRect(S.x0 + 8, S.y + 10, S.x1 - S.x0 - 16, H);
+    ctx.fillStyle = '#c9c0ae'; rr(S.x0 + 64, S.y + 64, 52, 90, 22); ctx.fill(); ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 3;
+    ctx.fillStyle = '#8a5a2a'; rr(S.x0 + 70, S.y + 70, 40, 80, 18); ctx.fill();
+    ctx.save(); ctx.clip(); TTA.wood(S.x0 + 70, S.y + 70, 40, 80, 43, '#8a5a2a', { vert: true }); ctx.strokeStyle = 'rgba(30,15,5,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (const ox of [10, 20, 30]) { ctx.moveTo(S.x0 + 70 + ox, S.y + 70); ctx.lineTo(S.x0 + 70 + ox, S.y + 150); } ctx.stroke(); ctx.fillStyle = '#4a4a5a'; ctx.fillRect(S.x0 + 70, S.y + 96, 40, 4); ctx.fillRect(S.x0 + 70, S.y + 128, 40, 4); ctx.restore();
+    ctx.strokeStyle = C.ink; rr(S.x0 + 70, S.y + 70, 40, 80, 18); ctx.stroke();
     ctx.fillStyle = '#9fd3e6'; circle(S.x0 + 180, S.y + 62, 16); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(S.x0 + 164, S.y + 62); ctx.lineTo(S.x0 + 196, S.y + 62); ctx.moveTo(S.x0 + 180, S.y + 46); ctx.lineTo(S.x0 + 180, S.y + 78); ctx.stroke();
-    ctx.fillStyle = CO.wood; rr(S.x0, S.y, S.x1 - S.x0, 13, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = CO.wood; rr(S.x0, S.y, S.x1 - S.x0, 13, 4); ctx.fill(); TTA.wood(S.x0 + 1.5, S.y + 1.5, S.x1 - S.x0 - 3, 10, 47, CO.wood, { nails: true }); rr(S.x0, S.y, S.x1 - S.x0, 13, 4); ctx.stroke();
     ctx.strokeStyle = CO.woodDk; ctx.lineWidth = 1.5; ctx.beginPath(); for (let x = S.x0 + 20; x < S.x1; x += 22) { ctx.moveTo(x, S.y + 2); ctx.lineTo(x, S.y + 11); } ctx.stroke();
     tthVinciDrawLeo(S.x0 + 34, S.y, ph);
   }
   for (const P of c.perches) {
     if (P.x + 90 < x0 || P.x - 90 > x1) continue;
     const bell = P.k === 1;
-    ctx.fillStyle = bell ? '#f4efe2' : CO.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(P.x - 50, P.y + 10, 100, H); ctx.strokeRect(P.x - 50, P.y + 10, 100, H);
-    if (bell) { ctx.fillStyle = '#6fa08a'; for (let y = P.y + 40; y < H; y += 44) ctx.fillRect(P.x - 48, y, 96, 8); ctx.fillStyle = '#c96a6a'; for (let y = P.y + 62; y < H; y += 44) ctx.fillRect(P.x - 48, y, 96, 4); }
-    else { ctx.fillStyle = CO.stoneDk; for (let n = 0; n < 8; n++) ctx.fillRect(P.x - 40 + (n % 2) * 44 + ((n >> 1) % 2) * 10, P.y + 34 + n * 22, 22, 7); }
+    ctx.fillStyle = bell ? '#f4efe2' : CO.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(P.x - 50, P.y + 10, 100, H);
+    if (bell) { TTA.stones(P.x - 48.5, P.y + 11.5, 97, H - P.y, 7, '#f4efe2', { bw: 32, bh: 15, wx: P.x - 50, wy: P.y + 10, lit: 0.3, dk: 0.12 }); ctx.fillStyle = '#6fa08a'; for (let y = P.y + 40; y < H; y += 44) { ctx.fillRect(P.x - 48, y, 96, 8); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(P.x - 48, y, 96, 2); ctx.fillStyle = '#6fa08a'; } ctx.fillStyle = '#c96a6a'; for (let y = P.y + 62; y < H; y += 44) ctx.fillRect(P.x - 48, y, 96, 4); }
+    else { TTA.stones(P.x - 48.5, P.y + 11.5, 97, H - P.y, 8, CO.stone, { bw: 26, bh: 14, wx: P.x - 50, wy: P.y + 10, moss: true }); ctx.fillStyle = CO.stoneDk; for (let n = 0; n < 8; n++) ctx.fillRect(P.x - 40 + (n % 2) * 44 + ((n >> 1) % 2) * 10, P.y + 34 + n * 22, 22, 7); }
+    ctx.strokeRect(P.x - 50, P.y + 10, 100, H);
+    ctx.fillStyle = '#e8e0cc'; rr(P.x - 16, P.y + 44, 32, 48, 15); ctx.fill(); ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 3;
     ctx.fillStyle = '#3d3552'; rr(P.x - 12, P.y + 48, 24, 40, 12); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = CO.wood; rr(P.x - 66, P.y, 132, 13, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = CO.wood; rr(P.x - 66, P.y, 132, 13, 4); ctx.fill(); TTA.wood(P.x - 64.5, P.y + 1.5, 129, 10, P.x | 0, CO.wood, { nails: true }); rr(P.x - 66, P.y, 132, 13, 4); ctx.stroke();
     // the gold flag: the checkpoint
     ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(P.x + 58, P.y); ctx.lineTo(P.x + 58, P.y - 66); ctx.stroke();
     const wv = Math.sin(t * 5 + P.x) * 4;
@@ -939,31 +1046,39 @@ function tthVinciDrawObs(st) {
     if (ob.kind === 'tower') {
       const st2 = ob.style;
       if (st2 === 'mill') {
-        ctx.fillStyle = '#f4ead2'; ctx.beginPath(); ctx.moveTo(x + 5, y + 2); ctx.lineTo(x + w - 5, y + 2); ctx.lineTo(x + w + 2, H + 10); ctx.lineTo(x - 2, H + 10); ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = CO.roof; rr(x + 1, y, w - 2, 12, 5); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#f4ead2'; ctx.beginPath(); ctx.moveTo(x + 5, y + 2); ctx.lineTo(x + w - 5, y + 2); ctx.lineTo(x + w + 2, H + 10); ctx.lineTo(x - 2, H + 10); ctx.closePath(); ctx.fill();
+        ctx.save(); ctx.clip(); TTA.plaster(x - 2, y + 2, w + 4, H - y + 8, x | 0, '#f4ead2', { brick: '#c9a26a', quoins: false }); ctx.fillStyle = 'rgba(120,90,60,0.14)'; ctx.fillRect(cx + w * 0.15, y, w, H); ctx.restore();
+        ctx.beginPath(); ctx.moveTo(x + 5, y + 2); ctx.lineTo(x + w - 5, y + 2); ctx.lineTo(x + w + 2, H + 10); ctx.lineTo(x - 2, H + 10); ctx.closePath(); ctx.stroke();
+        ctx.fillStyle = CO.roof; rr(x + 1, y, w - 2, 12, 5); ctx.fill(); TTA.tiles(x + 2.5, y + 1.5, w - 5, 9, CO.roof, { seed: x | 0, step: 9 }); rr(x + 1, y, w - 2, 12, 5); ctx.stroke();
         ctx.fillStyle = '#4a3a2a'; rr(cx - 7, y + 84, 14, 22, 7); ctx.fill();
         ctx.save(); ctx.translate(cx, y + 44); ctx.rotate(t * 1.4);
         for (let n = 0; n < 4; n++) { ctx.rotate(Math.PI / 2); ctx.fillStyle = CO.canvas; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(4, -30); ctx.lineTo(14, -28); ctx.lineTo(6, -2); ctx.closePath(); ctx.fill(); ctx.stroke(); }
         ctx.fillStyle = CO.woodDk; circle(0, 0, 4); ctx.fill(); ctx.restore();
       } else {
         const col = st2 === 'castle' ? CO.stone : st2 === 'bell' ? '#f4efe2' : st2 === 'palace' ? '#d2ab7e' : '#e3b877';
-        ctx.fillStyle = col; ctx.fillRect(x, y + 6, w, H); ctx.strokeRect(x, y + 6, w, H);
+        ctx.fillStyle = col; ctx.fillRect(x, y + 6, w, H);
+        // (art pass) the tower's own surface: cut stone for the castle and palace, stucco and brick for the others
+        if (st2 === 'castle' || st2 === 'palace') TTA.stones(x + 1.5, y + 7.5, w - 3, H - y, x | 0, col, { bw: 28, bh: 15, wx: x, wy: y + 26, moss: st2 === 'castle' });
+        else if (st2 === 'bell') TTA.stones(x + 1.5, y + 7.5, w - 3, H - y, x | 0, col, { bw: 34, bh: 16, wx: x, wy: y + 6, lit: 0.3, dk: 0.12 });
+        else TTA.plaster(x + 1.5, y + 7.5, w - 3, H - y - 7, x | 0, col, { brick: '#b8693f' });
+        ctx.fillStyle = 'rgba(70,40,30,0.15)'; ctx.fillRect(x + w * 0.66, y + 6, w * 0.34, H);
+        ctx.strokeRect(x, y + 6, w, H);
         if (st2 === 'castle' || st2 === 'palace') {
           const n = Math.max(3, Math.round(w / 20)), mw = (w + 8) / (n * 2 - 1);
-          for (let i = 0; i < n; i++) { ctx.fillStyle = col; ctx.fillRect(x - 4 + i * mw * 2, y, mw, 16); ctx.strokeRect(x - 4 + i * mw * 2, y, mw, 16); }
-          ctx.fillRect(x - 5, y + 14, w + 10, 12); ctx.strokeRect(x - 5, y + 14, w + 10, 12);
+          for (let i = 0; i < n; i++) { ctx.fillStyle = col; ctx.fillRect(x - 4 + i * mw * 2, y, mw, 16); TTA.bevel(x - 4 + i * mw * 2, y, mw, 16, { lit: 0.35, dk: 0.14 }); ctx.strokeRect(x - 4 + i * mw * 2, y, mw, 16); }
+          ctx.fillStyle = col; ctx.fillRect(x - 5, y + 14, w + 10, 12); TTA.bevel(x - 5, y + 14, w + 10, 12, { lit: 0.35, dk: 0.2 }); ctx.strokeRect(x - 5, y + 14, w + 10, 12);
           ctx.fillStyle = st2 === 'castle' ? CO.stoneDk : '#b08a5e';
           for (let n2 = 0; n2 < 6; n2++) ctx.fillRect(x + 8 + (n2 % 2) * (w - 34), y + 42 + n2 * 30, 16, 6);
           ctx.fillStyle = '#3d3552'; rr(cx - 4, y + 44, 8, 22, 4); ctx.fill();
           if (st2 === 'palace') { tthClockFace(cx, y + 96, 13, t, { speed: 0.5, ticks: true, lw: 2.5 }); ctx.strokeStyle = C.ink; ctx.lineWidth = 3; }
         } else if (st2 === 'bell') {
           ctx.fillStyle = '#6fa08a'; for (let yy = y + 64; yy < H; yy += 40) ctx.fillRect(x + 2, yy, w - 4, 7);
-          ctx.fillStyle = CO.roof; rr(x - 4, y, w + 8, 12, 4); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = CO.roof; rr(x - 4, y, w + 8, 12, 4); ctx.fill(); TTA.tiles(x - 2.5, y + 1.5, w + 5, 9, CO.roof, { seed: x | 0, step: 9 }); rr(x - 4, y, w + 8, 12, 4); ctx.stroke();
           ctx.fillStyle = '#3d3552'; rr(cx - 12, y + 22, 24, 30, 12); ctx.fill(); ctx.stroke();
           ctx.fillStyle = C.gold; ctx.lineWidth = 2; ctx.save(); ctx.translate(cx, y + 30); ctx.rotate(Math.sin(t * 3) * 0.3); ctx.beginPath(); ctx.moveTo(-6, 14); ctx.quadraticCurveTo(-6, 0, 0, 0); ctx.quadraticCurveTo(6, 0, 6, 14); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
         } else {
-          ctx.fillStyle = CO.roof; rr(x - 5, y, w + 10, 13, 4); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = '#4a3a2a'; for (let yy = y + 30; yy < H - 40; yy += 46) { rr(cx - 7, yy, 14, 20, 7); ctx.fill(); }
+          ctx.fillStyle = CO.roof; rr(x - 5, y, w + 10, 13, 4); ctx.fill(); TTA.tiles(x - 3.5, y + 1.5, w + 7, 10, CO.roof, { seed: x | 0, step: 10 }); rr(x - 5, y, w + 10, 13, 4); ctx.stroke();
+          for (let yy = y + 30; yy < H - 40; yy += 46) { ctx.fillStyle = '#efe4c8'; rr(cx - 10, yy - 3, 20, 26, 9); ctx.fill(); ctx.fillStyle = '#4a3a2a'; rr(cx - 7, yy, 14, 20, 7); ctx.fill(); ctx.fillStyle = '#efe4c8'; ctx.fillRect(cx - 9, yy + 20, 18, 3); }
           ctx.strokeStyle = 'rgba(122,74,30,0.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let yy = y + 22; yy < H; yy += 46) { ctx.moveTo(x + 3, yy); ctx.lineTo(x + w - 3, yy); } ctx.stroke();
         }
       }
@@ -986,7 +1101,12 @@ function tthVinciDrawObs(st) {
     } else if (ob.kind === 'dome') {
       const hw = w / 2, base = ob.base;
       ctx.fillStyle = '#f4efe2'; ctx.fillRect(cx - hw + 14, base - 4, w - 28, H); ctx.strokeRect(cx - hw + 14, base - 4, w - 28, H);
-      ctx.fillStyle = '#d0563a'; ctx.beginPath(); ctx.ellipse(cx, base, hw, base - y, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#d0563a'; ctx.beginPath(); ctx.ellipse(cx, base, hw, base - y, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.strokeStyle = 'rgba(120,40,20,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = 1; k < 9; k++) { const ry = (base - y) * k / 9; ctx.ellipse(cx, base, hw, base - y - ry, 0, Math.PI, 0); } ctx.stroke();
+      ctx.fillStyle = 'rgba(90,20,10,0.25)'; ctx.beginPath(); ctx.ellipse(cx + hw * 0.55, base, hw * 0.7, base - y, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = 'rgba(255,230,200,0.3)'; ctx.beginPath(); ctx.ellipse(cx - hw * 0.4, base - (base - y) * 0.5, hw * 0.22, (base - y) * 0.4, -0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore(); ctx.beginPath(); ctx.ellipse(cx, base, hw, base - y, 0, Math.PI, 0); ctx.closePath(); ctx.stroke();
       ctx.strokeStyle = '#f4efe2'; ctx.lineWidth = 5;
       for (let n = -3; n <= 3; n++) { ctx.beginPath(); ctx.moveTo(cx + n * hw * 0.3, base - (base - y) * Math.sqrt(1 - 0.09 * n * n) + 3); ctx.quadraticCurveTo(cx + n * hw * 0.2, y + (base - y) * 0.2, cx + n * 4, y + 3); ctx.stroke(); }
       ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;

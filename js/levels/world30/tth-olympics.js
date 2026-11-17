@@ -648,11 +648,35 @@ function tthOlyArt() {
     }
     g.strokeStyle = 'rgba(196,158,96,0.35)'; g.lineWidth = 3;
     for (const y of [30, 52, 94, 116, 158, 180]) { g.beginPath(); g.moveTo(0, y); for (let x = 0; x <= 512; x += 64) g.lineTo(x, y + Math.sin(x * 0.0245 + y) * 2.5); g.stroke(); }
+    // (art pass) a lit lip on each rut, hoofprints, scattered pebbles with a lit top, a few dry grass tufts by the wall
+    g.strokeStyle = 'rgba(255,248,224,0.55)'; g.lineWidth = 1.2;
+    for (const y of [30, 52, 94, 116, 158, 180]) { g.beginPath(); g.moveTo(0, y - 2.5); for (let x = 0; x <= 512; x += 64) g.lineTo(x, y - 2.5 + Math.sin(x * 0.0245 + y) * 2.5); g.stroke(); }
+    for (let k = 0; k < 46; k++) {
+      const h = hash(k, 95), x = (h % 500) + 6, y = 14 + ((h >>> 9) % 196), a = ((h >>> 18) % 5) * 0.06 - 0.12;
+      g.save(); g.translate(x, y); g.rotate(a);
+      g.fillStyle = 'rgba(150,110,60,0.38)'; g.beginPath(); g.moveTo(-5, 0); g.arc(0, 0, 5, Math.PI, 0); g.lineTo(3, 0); g.arc(0, 0, 2.6, 0, Math.PI, true); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(255,246,220,0.5)'; g.fillRect(-4, -5.5, 8, 1.2);
+      g.restore();
+    }
+    for (let k = 0; k < 70; k++) {
+      const h = hash(k, 97), x = h % 512, y = (h >>> 9) % 222, r = 1.6 + ((h >>> 18) % 4) * 0.7, c = ['#c9b08a', '#a8957a', '#e3cfa6', '#b9a088'][(h >>> 22) % 4];
+      g.fillStyle = c; g.beginPath(); g.ellipse(x, y, r * 1.25, r, ((h >>> 5) % 6) * 0.5, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = 'rgba(110,80,40,0.45)'; g.lineWidth = 0.8; g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.ellipse(x - r * 0.3, y - r * 0.35, r * 0.5, r * 0.28, 0, 0, Math.PI * 2); g.fill();
+    }
+    g.strokeStyle = 'rgba(160,140,70,0.7)'; g.lineWidth = 1.3; g.lineCap = 'round';
+    for (let k = 0; k < 10; k++) { const h = hash(k, 99), x = h % 512, y = 4 + (h >>> 9) % 8; g.beginPath(); for (const d of [-3, -1, 1, 3]) { g.moveTo(x, y + 4); g.lineTo(x + d * 1.3, y - 2 - Math.abs(3 - Math.abs(d)) * 1.5); } g.stroke(); }
   }
   // the marble wall with a meander band
   {
     const g = A.wall.getContext('2d');
     g.fillStyle = '#f6eedb'; g.fillRect(0, 0, 240, 34);
+    // (art pass) marble: soft grey veins, joints between the slabs, a chipped corner
+    g.strokeStyle = 'rgba(150,140,130,0.35)'; g.lineWidth = 1;
+    for (let k = 0; k < 6; k++) { const h = hash(k, 31); let x = h % 240, y = 4 + (h >>> 8) % 22; g.beginPath(); g.moveTo(x, y); for (let n = 0; n < 5; n++) { x += 6 + (hash(k, n) % 9); y += (hash(n, k) % 7) - 3; g.lineTo(x, y); } g.stroke(); }
+    g.strokeStyle = 'rgba(120,100,80,0.4)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(119.5, 0); g.lineTo(119.5, 34); g.moveTo(239.5, 0); g.lineTo(239.5, 34); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(121, 0, 2, 28);
+    g.fillStyle = '#d8ccb0'; g.beginPath(); g.moveTo(232, 28); g.lineTo(239, 22); g.lineTo(239, 28); g.closePath(); g.fill();
     g.fillStyle = '#e2d6ba'; g.fillRect(0, 28, 240, 6); g.fillStyle = '#fffaf0'; g.fillRect(0, 0, 240, 4);
     g.strokeStyle = '#c8553d'; g.lineWidth = 3; g.lineJoin = 'miter';
     for (let x = 0; x < 240; x += 24) { g.beginPath(); g.moveTo(x, 24); g.lineTo(x, 9); g.lineTo(x + 18, 9); g.lineTo(x + 18, 19); g.lineTo(x + 8, 19); g.lineTo(x + 8, 14); g.moveTo(x, 24); g.lineTo(x + 24, 24); g.stroke(); }
@@ -705,8 +729,11 @@ function tthOlyScenery(st, cam, t) {
     if (x < -30 || x > W + 30) continue;
     ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
     rr(x - 13, 226, 26, 8, 3); ctx.fill(); ctx.stroke();
-    ctx.fillRect(x - 9, 234, 18, 78); ctx.strokeRect(x - 9, 234, 18, 78);
-    ctx.strokeStyle = 'rgba(28,26,54,0.25)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 3, 238); ctx.lineTo(x - 3, 308); ctx.moveTo(x + 3, 238); ctx.lineTo(x + 3, 308); ctx.stroke();
+    ctx.fillRect(x - 9, 234, 18, 78);
+    ctx.fillStyle = 'rgba(150,130,110,0.25)'; ctx.fillRect(x + 3, 234, 6, 78); ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(x - 8, 234, 2.5, 78);
+    ctx.strokeStyle = C.ink; ctx.strokeRect(x - 9, 234, 18, 78);
+    ctx.strokeStyle = 'rgba(28,26,54,0.25)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 3, 238); ctx.lineTo(x - 3, 308); ctx.moveTo(x + 3, 238); ctx.lineTo(x + 3, 308); ctx.moveTo(x - 9, 272); ctx.lineTo(x + 9, 272); ctx.stroke();
+    ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.fillRect(x - 12, 234, 24, 3);
     ctx.fillStyle = '#e8dcc0'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x - 14, 310, 28, 10, 3); ctx.fill(); ctx.stroke();
   }
   // the sand and its lanes
@@ -723,11 +750,21 @@ function tthOlyGround(st) {
     if (o.x < cam - 500 || o.x > cam + W + 500) continue;
     if (o.kind === 'mud') {
       const y = tthOlyLaneY(o.lane) - 2, cx = o.x + o.len / 2;
+      // (art pass) a churned mud wallow: a drier crust round the rim, wet dark middle with the sky in it, ruts, hoofprints, bubbles, splats
+      ctx.fillStyle = '#9a7448'; ctx.beginPath(); ctx.ellipse(cx, y - 2, o.len / 2 + 10, 25, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#6e4a28'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.ellipse(cx, y - 4, o.len / 2, 21, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.save(); ctx.beginPath(); ctx.ellipse(cx, y - 4, o.len / 2 - 1.5, 19.5, 0, 0, Math.PI * 2); ctx.clip();
+      ctx.fillStyle = '#4e321c'; ctx.beginPath(); ctx.ellipse(cx + 8, y - 1, o.len / 2 - 14, 13, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(160,210,240,0.28)'; ctx.beginPath(); ctx.ellipse(cx + 14, y - 3, o.len / 3, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(40,24,12,0.6)'; ctx.lineWidth = 3; ctx.beginPath(); for (const dy of [-9, 5]) { ctx.moveTo(cx - o.len / 2, y + dy); ctx.quadraticCurveTo(cx, y + dy + 3, cx + o.len / 2, y + dy); } ctx.stroke();
+      ctx.strokeStyle = 'rgba(200,160,110,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (const dy of [-11, 3]) { ctx.moveTo(cx - o.len / 2, y + dy); ctx.quadraticCurveTo(cx, y + dy + 3, cx + o.len / 2, y + dy); } ctx.stroke();
+      ctx.fillStyle = 'rgba(30,18,8,0.5)'; for (let k = 0; k < 6; k++) { const hx = cx - o.len / 2 + 18 + k * (o.len - 36) / 5, hy = y - 14 + (k % 2) * 18; ctx.beginPath(); ctx.arc(hx, hy, 3.6, Math.PI, 0); ctx.lineTo(hx + 1.8, hy); ctx.arc(hx, hy, 1.8, 0, Math.PI, true); ctx.closePath(); ctx.fill(); }
+      ctx.restore();
       ctx.fillStyle = '#8a6238'; ctx.beginPath(); ctx.ellipse(cx - 24, y - 9, o.len / 4, 8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(cx - 40, y - 12, 14, 3, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#8a6238'; for (const [dx, r] of [[-o.len / 2 - 8, 6], [o.len / 2 + 10, 5], [10, 4]]) { circle(cx + dx, y + 12 + (r % 2) * 3, r); ctx.fill(); }
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.3; for (const [bx2, br] of [[cx + 30, 2.6], [cx + 42, 1.8], [cx - 6, 2.2]]) { circle(bx2, y + 2, br); ctx.stroke(); }
+      ctx.fillStyle = '#8a6238'; ctx.strokeStyle = 'rgba(60,36,18,0.6)'; ctx.lineWidth = 1.2; for (const [dx, r] of [[-o.len / 2 - 8, 6], [o.len / 2 + 10, 5], [10, 4], [-o.len / 4, 3], [o.len / 3, 3.5]]) { circle(cx + dx, y + 12 + (r % 2) * 3 + (dx === 10 ? 4 : 0), r); ctx.fill(); ctx.stroke(); }
     } else if (o.kind === 'post') {
       const x0 = o.x - K.zone, y0 = K.trackTop + 8, y1 = 518;
       // the "rein in" zone: chevrons pointing back, then the line
@@ -958,7 +995,7 @@ function tthOlyDrawObj(st, o) {
     case 'post': {
       // the turning post: three bronze cones on a stone base, at the wall
       const by = K.trackTop + 6;
-      ctx.fillStyle = '#e8dcc0'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(o.x - 34, by - 22, 68, 24, 5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#e8dcc0'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(o.x - 34, by - 22, 68, 24, 5); ctx.fill(); TTA.stones(o.x - 32.5, by - 20.5, 65, 21, 5, '#e8dcc0', { bw: 22, bh: 11, wx: o.x - 34, wy: by - 22 }); rr(o.x - 34, by - 22, 68, 24, 5); ctx.stroke();
       for (const dx of [-20, 0, 20]) {
         ctx.fillStyle = dx ? '#c98a3a' : '#d9a441'; ctx.beginPath(); ctx.moveTo(o.x + dx - 8, by - 22); ctx.quadraticCurveTo(o.x + dx - 5, by - 70, o.x + dx, by - (dx ? 96 : 112)); ctx.quadraticCurveTo(o.x + dx + 5, by - 70, o.x + dx + 8, by - 22); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.fillStyle = '#f6d37a'; circle(o.x + dx, by - (dx ? 98 : 114), 4); ctx.fill(); ctx.stroke();
@@ -978,8 +1015,13 @@ function tthOlyDrawObj(st, o) {
 // a branch's pole: planted behind its lane, bent over it; bare: the branch was taken
 function tthOlyPoleArt(x, y, bare) {
   const K = TTHOLY;
+  ctx.fillStyle = 'rgba(70,45,20,0.24)'; ctx.beginPath(); ctx.ellipse(x + 27, y - 28, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
   for (const [w, c2] of [[7, C.ink], [3.5, '#b8894a']]) { ctx.strokeStyle = c2; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x + 26, y - 30); ctx.quadraticCurveTo(x + 30, y - K.hookUp - 34, x, y - K.hookUp - 14); ctx.stroke(); }
-  ctx.fillStyle = 'rgba(70,45,20,0.24)'; ctx.beginPath(); ctx.ellipse(x + 26, y - 29, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+  // (art pass) a lit side on the bent pole, bark rings, twine where it is lashed, a little stone cairn at its foot
+  ctx.strokeStyle = 'rgba(255,236,190,0.7)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 25, y - 32); ctx.quadraticCurveTo(x + 28.5, y - K.hookUp - 34, x, y - K.hookUp - 15.5); ctx.stroke();
+  ctx.strokeStyle = 'rgba(90,60,30,0.7)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (const u of [0.2, 0.45, 0.7]) { const px = (1 - u) * (1 - u) * (x + 26) + 2 * u * (1 - u) * (x + 30) + u * u * x, py = (1 - u) * (1 - u) * (y - 30) + 2 * u * (1 - u) * (y - K.hookUp - 34) + u * u * (y - K.hookUp - 14); ctx.moveTo(px - 2, py - 1); ctx.lineTo(px + 2, py + 1); } ctx.stroke();
+  ctx.fillStyle = '#d9c7a0'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1; rr(x + 23, y - 46, 6.5, 6, 1.5); ctx.fill(); ctx.stroke();
+  ctx.lineWidth = 1.6; for (const [sx, sy, sr, sc] of [[x + 20, y - 30, 4.5, '#b9ab94'], [x + 32, y - 30, 4, '#d6c9b0'], [x + 26, y - 34, 3.6, '#c8bba2']]) { ctx.fillStyle = sc; ctx.beginPath(); ctx.ellipse(sx, sy, sr * 1.2, sr * 0.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(sx - 1, sy - 1.4, sr * 0.5, sr * 0.25, 0, 0, Math.PI * 2); ctx.fill(); }
   if (bare) { ctx.strokeStyle = C.ink; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x, y - K.hookUp - 14); ctx.lineTo(x - 3, y - K.hookUp - 6); ctx.stroke(); }
 }
 

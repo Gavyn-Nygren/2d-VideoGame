@@ -881,6 +881,26 @@ function tthVikDrawBerg(ph, h, sx) {
   ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(w * 0.1, -hh * 0.45); ctx.lineTo(w * p1, -hh * k1); ctx.lineTo(w * 0.48, -hh); ctx.lineTo(w * p2, -hh * 0.64); ctx.lineTo(w * 0.87, -hh * 0.4); ctx.lineTo(w + 5, 0); ctx.closePath();
   ctx.fillStyle = CO.ice; ctx.fill();
   ctx.fillStyle = CO.iceDk; ctx.beginPath(); ctx.moveTo(w * 0.48, -hh); ctx.lineTo(w * p2, -hh * 0.64); ctx.lineTo(w * 0.87, -hh * 0.4); ctx.lineTo(w + 5, 0); ctx.lineTo(w * 0.56, 0); ctx.closePath(); ctx.fill();
+  // (art pass) a faceted berg: lit and shadowed faces, blue fracture lines, old snow on the ledges, a turquoise waterline, bubbles and glints
+  ctx.save(); ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(w * 0.1, -hh * 0.45); ctx.lineTo(w * p1, -hh * k1); ctx.lineTo(w * 0.48, -hh); ctx.lineTo(w * p2, -hh * 0.64); ctx.lineTo(w * 0.87, -hh * 0.4); ctx.lineTo(w + 5, 0); ctx.closePath(); ctx.clip();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.moveTo(w * 0.1, -hh * 0.45); ctx.lineTo(w * p1, -hh * k1); ctx.lineTo(w * 0.36, -hh * 0.3); ctx.lineTo(w * 0.14, -hh * 0.2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(110,170,210,0.3)'; ctx.beginPath(); ctx.moveTo(w * p1, -hh * k1); ctx.lineTo(w * 0.48, -hh); ctx.lineTo(w * 0.46, -hh * 0.42); ctx.lineTo(w * 0.36, -hh * 0.3); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(40,100,150,0.22)'; ctx.beginPath(); ctx.moveTo(w * p2, -hh * 0.64); ctx.lineTo(w * 0.87, -hh * 0.4); ctx.lineTo(w * 0.74, -hh * 0.18); ctx.lineTo(w * 0.6, -hh * 0.3); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(40,150,170,0.3)'; ctx.fillRect(-6, -hh * 0.14, w + 12, hh * 0.14);
+  ctx.fillStyle = 'rgba(200,250,255,0.45)'; ctx.fillRect(-6, -hh * 0.14, w + 12, 2);
+  ctx.strokeStyle = 'rgba(60,120,170,0.6)'; ctx.lineWidth = 1.3; ctx.beginPath();
+  ctx.moveTo(w * 0.36, -hh * 0.3); ctx.lineTo(w * 0.46, -hh * 0.42); ctx.lineTo(w * 0.48, -hh * 0.75);
+  ctx.moveTo(w * 0.46, -hh * 0.42); ctx.lineTo(w * 0.6, -hh * 0.3); ctx.lineTo(w * 0.74, -hh * 0.18);
+  ctx.moveTo(w * 0.22, -hh * 0.12); ctx.lineTo(w * 0.28, -hh * 0.26); ctx.lineTo(w * 0.25, -hh * 0.36);
+  ctx.moveTo(w * 0.68, -hh * 0.5); ctx.lineTo(w * 0.72, -hh * 0.36);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.beginPath();
+  ctx.moveTo(w * 0.1 - 1, -hh * 0.45); ctx.lineTo(w * p1, -hh * k1 - 1); ctx.lineTo(w * 0.48, -hh - 1); ctx.lineTo(w * p2, -hh * 0.64 - 1); ctx.lineTo(w * 0.87, -hh * 0.4 - 1);
+  ctx.lineTo(w * 0.85, -hh * 0.34); ctx.lineTo(w * 0.78, -hh * 0.38); ctx.lineTo(w * p2, -hh * 0.56); ctx.lineTo(w * 0.55, -hh * 0.78); ctx.lineTo(w * 0.5, -hh * 0.86); ctx.lineTo(w * 0.47, -hh * 0.8);
+  ctx.lineTo(w * 0.4, -hh * 0.86); ctx.lineTo(w * p1, -hh * k1 + 5); ctx.lineTo(w * 0.2, -hh * 0.5); ctx.lineTo(w * 0.12, -hh * 0.38); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.75)'; for (const [bx, by, br] of [[0.3, 0.22, 2], [0.55, 0.12, 1.6], [0.7, 0.28, 1.3], [0.42, 0.55, 1.4]]) { circle(w * bx, -hh * by, br); ctx.fill(); }
+  ctx.restore();
+  ctx.fillStyle = '#ffffff'; for (const [gx, gy2] of [[0.3, 0.6], [0.52, 0.9]]) { const x2 = w * gx, y2 = -hh * gy2, g = 2.5 + Math.sin(ph.t * 3 + s + gx * 9) * 1.2; ctx.beginPath(); ctx.moveTo(x2 - g, y2); ctx.lineTo(x2, y2 - 0.6); ctx.lineTo(x2 + g, y2); ctx.lineTo(x2, y2 + 0.6); ctx.closePath(); ctx.moveTo(x2, y2 - g); ctx.lineTo(x2 + 0.6, y2); ctx.lineTo(x2, y2 + g); ctx.lineTo(x2 - 0.6, y2); ctx.closePath(); ctx.fill(); }
   ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
   ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(w * 0.1, -hh * 0.45); ctx.lineTo(w * p1, -hh * k1); ctx.lineTo(w * 0.48, -hh); ctx.lineTo(w * p2, -hh * 0.64); ctx.lineTo(w * 0.87, -hh * 0.4); ctx.lineTo(w + 5, 0); ctx.stroke();
   ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(w * 0.2, -hh * 0.4); ctx.lineTo(w * 0.34, -hh * 0.62); ctx.stroke();

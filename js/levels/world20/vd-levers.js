@@ -584,11 +584,8 @@ function vdlDrawBack(st) {
     ctx.fillStyle = `rgba(255,240,225,${a * 0.9})`; circle(x - r * 0.2, y - r * 0.3, r * 0.35); ctx.fill();
   }
   // the rock (stone tiles and the bridge planks), drawn again over the backdrop
-  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
-    const ch = G.level.grid[ty][tx];
-    if (ch === '#') drawStone(tx, ty);
-    else if (ch === '=') drawPlank(tx * T, ty * T, tx, ty);
-  }
+  vdRockTiles();
+  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) if (G.level.grid[ty][tx] === '=') drawPlank(tx * T, ty * T, tx, ty);
   // the bridge's rope rails and posts
   const by = 5 * T, bx0 = 3 * T, bx1 = 29 * T;
   ctx.strokeStyle = C.ropeDark; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(bx0, by - 26);
@@ -621,21 +618,39 @@ function vdlDrawBack(st) {
 function vdlDrawPillar(st, q) {
   const ph = st.ph, t = G.clock, L = VDL, w = 58, x0 = q.x - w / 2, top = q.top, act = vdlActive(ph), goal = vdlNext(ph);
   const bot = L.lavaY + 4;
-  ctx.fillStyle = '#4a404f'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
-  ctx.fillRect(x0, top + 6, w, bot - top - 6); ctx.strokeRect(x0, top + 6, w, bot - top - 6);
-  // column facets
-  ctx.fillStyle = '#5b5062'; ctx.fillRect(x0 + 6, top + 8, 12, bot - top - 8);
-  ctx.fillStyle = '#3a3240'; ctx.fillRect(x0 + w - 14, top + 8, 10, bot - top - 8);
-  ctx.strokeStyle = 'rgba(28,26,54,0.5)'; ctx.lineWidth = 2;
-  ctx.beginPath(); for (let y = top + 30; y < bot; y += 34) { ctx.moveTo(x0 + 2, y); ctx.lineTo(x0 + w - 2, y + 4); } ctx.stroke();
+  // (cached) a basalt column: lit, middle and shaded facets, tilted joints with a lit lip, gas holes, chips, outline
+  // (drawn tall; the lava clip hides what is under the surface)
+  dkPic('vdlCol', w + 4, 420, 2, 0, c => {
+    const hgt = 418;
+    c.fillStyle = '#4a404f'; c.fillRect(0, 0, w, hgt);
+    c.fillStyle = '#5b5062'; c.fillRect(4, 0, 16, hgt);
+    c.fillStyle = '#6a5e72'; c.fillRect(4, 0, 4, hgt);
+    c.fillStyle = '#3a3240'; c.fillRect(w - 16, 0, 12, hgt);
+    c.fillStyle = 'rgba(10,5,15,0.3)'; c.fillRect(w - 6, 0, 6, hgt);
+    for (const fx of [20, w - 16]) { c.fillStyle = 'rgba(10,5,15,0.3)'; c.fillRect(fx, 0, 1.2, hgt); }
+    for (let y = 24, n = 0; y < hgt; y += 34, n++) {
+      c.strokeStyle = 'rgba(28,26,54,0.55)'; c.lineWidth = 2; c.beginPath(); c.moveTo(2, y); c.lineTo(w - 2, y + 4); c.stroke();
+      c.strokeStyle = 'rgba(255,210,200,0.2)'; c.lineWidth = 1; c.beginPath(); c.moveTo(2, y + 2); c.lineTo(w - 2, y + 6); c.stroke();
+      if (n % 2) { c.fillStyle = 'rgba(10,5,15,0.4)'; c.beginPath(); c.moveTo(w - 2, y + 4); c.lineTo(w - 8, y + 9); c.lineTo(w - 2, y + 12); c.closePath(); c.fill(); }
+    }
+    vdVesicles(c, 6, 4, w - 12, hgt - 8, 70, 33);
+    c.strokeStyle = C.ink; c.lineWidth = 3; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, hgt); c.moveTo(w, 0); c.lineTo(w, hgt); c.stroke();
+  }, x0, top + 6);
   // the lava's glow up its foot
   const g = ctx.createLinearGradient(0, bot - 50, 0, bot);
   g.addColorStop(0, 'rgba(255,140,60,0)'); g.addColorStop(1, 'rgba(255,150,60,0.55)');
   ctx.fillStyle = g; ctx.fillRect(x0, bot - 50, w, 50);
   // the cap
-  ctx.fillStyle = '#6a5e72'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
-  rr(x0 - 6, top, w + 12, 12, 5); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = C.grass; ctx.fillRect(x0 - 2, top + 2, w + 4, 3);
+  dkPic('vdlCap', w + 18, 18, w / 2 + 9, 3, c => {
+    c.fillStyle = '#6a5e72'; rrOn(c, -w / 2 - 6, 0, w + 12, 12, 5); c.fill();
+    c.fillStyle = 'rgba(10,5,15,0.3)'; c.fillRect(-w / 2 - 4, 8, w + 8, 4);
+    c.fillStyle = 'rgba(255,220,210,0.25)'; c.fillRect(-w / 2 - 3, 6, w + 6, 1.2);
+    vdVesicles(c, -w / 2, 6, w, 4, 6, 9);
+    c.strokeStyle = C.ink; c.lineWidth = 3; rrOn(c, -w / 2 - 6, 0, w + 12, 12, 5); c.stroke();
+    c.fillStyle = C.grass; c.fillRect(-w / 2 - 2, 2, w + 4, 3);
+    c.fillStyle = 'rgba(255,255,220,0.45)'; c.fillRect(-w / 2 - 2, 2, w + 4, 1);
+    for (let i = 0; i < 7; i++) { const gx = -w / 2 + 2 + i * 9; c.fillStyle = C.grass; c.beginPath(); c.moveTo(gx, 3); c.lineTo(gx + 2, -1 - (i % 3)); c.lineTo(gx + 4, 3); c.closePath(); c.fill(); }
+  }, q.x, top);
   // its gem (lit while he sits on it, or is about to hop to it)
   const [kind, col] = VDL.gems[q.k], glow = q.k === act ? 0.7 + 0.3 * Math.sin(t * 6) : q.k === goal ? 0.5 + 0.5 * Math.sin(t * 12) : 0;
   vdlGem(kind, q.x, top + 34, 9, col, glow);
@@ -659,7 +674,7 @@ function vdlDrawLevers(st) {
     ctx.strokeStyle = '#a0683e'; ctx.lineWidth = 4; ctx.stroke();
     ctx.fillStyle = col; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(hx, hy, 6); ctx.fill(); ctx.stroke();
     // the base, with its gem
-    ctx.fillStyle = '#6a5e72'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x - 15, y - 12, 30, 12, 4); ctx.fill(); ctx.stroke();
+    dkPic('vdlLevBase', 36, 18, 18, 15, c => { dkPlate(c, -15, -12, 30, 12, '#6a5e72', { step: 9, r: 4, outline: C.ink, lw: 2.5 }); }, x, y);
     vdlGem(kind, x, y - 6, 4.5, col, 0);
     // pull progress: a gold ring around the pivot
     if (lv.prog > 0.01) {

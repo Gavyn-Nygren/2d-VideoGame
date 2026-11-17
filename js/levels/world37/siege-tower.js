@@ -635,6 +635,7 @@
     drawVolley(st, t);
     K.drawParts(st, 0);
   }
+  let wallPat = null;
   function drawCastle(st, t) {
     // the baron's wall grows from a far silhouette to the right edge as the tower nears it (the last stretch)
     const prog = st.last ? clamp((st.tx) / st.len, 0, 1) : 0.15 + st.k * 0.1 + clamp(st.tx / st.len, 0, 1) * 0.1;
@@ -645,8 +646,14 @@
     // the wall face: courses of stone, a lit left edge, a darker foot
     {
       const sh = Math.max(14, (base - top) / 9), ink = st.last ? 'rgba(80,78,70,0.55)' : 'rgba(70,68,60,0.35)';
-      ctx.fillStyle = ink;
-      for (let y = top + sh, r = 0; y < base; y += sh, r++) { ctx.fillRect(wx, y, W + 200, st.last ? 2 : 1.2); for (let x = wx + (r % 2) * sh; x < W + 40; x += sh * 2) ctx.fillRect(x, y - sh, st.last ? 2 : 1.2, sh); }
+      if (st.last) {
+        // (art pass) real coursed stone with chips, cracks and moss, from a cached tile (RICH.stone), anchored to the wall
+        if (!wallPat) { const cv = document.createElement('canvas'); cv.width = 192; cv.height = 176; const c = cv.getContext('2d'); RICH.stone(c, 0, 0, 192, 176, { col: K.COL.stone, course: 22, len: 48, seed: 37, edge: false, mortar: '#7a786e' }); wallPat = ctx.createPattern(cv, 'repeat'); }
+        ctx.save(); ctx.translate(Math.round(wx), Math.round(top)); ctx.fillStyle = wallPat; ctx.fillRect(0, 0, W + 200, base - top + 20); ctx.restore();
+      } else {
+        ctx.fillStyle = ink;
+        for (let y = top + sh, r = 0; y < base; y += sh, r++) { ctx.fillRect(wx, y, W + 200, 1.2); for (let x = wx + (r % 2) * sh; x < W + 40; x += sh * 2) ctx.fillRect(x, y - sh, 1.2, sh); }
+      }
       ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(wx, top, 4, base - top + 20);
       const fg = ctx.createLinearGradient(0, base - 60, 0, base + 20); fg.addColorStop(0, 'rgba(40,40,50,0)'); fg.addColorStop(1, 'rgba(40,40,50,0.25)'); ctx.fillStyle = fg; ctx.fillRect(wx, base - 60, W + 200, 80);
       // ivy on the old stones
@@ -654,7 +661,8 @@
       for (let k = 0; k < 4; k++) { const ix = wx + 40 + k * 130; for (let q = 0; q < 6; q++) { circ(ix + Math.sin(q * 1.7 + k) * 8, base - 6 - q * 12, 6 - q * 0.6); ctx.fill(); } }
     }
     ctx.fillStyle = st.last ? K.COL.stoneDark : 'rgba(90,88,80,0.7)';
-    for (let k = 0; k < 14; k++) ctx.fillRect(wx + k * 32, top - 18, 20, 18);
+    if (st.last) for (let k = 0; k < 14; k++) K.stoneBlock(wx + k * 32, top - 18, 20, 18, { col: K.COL.stoneDark });
+    else for (let k = 0; k < 14; k++) ctx.fillRect(wx + k * 32, top - 18, 20, 18);
     ctx.fillStyle = 'rgba(255,255,255,0.18)'; for (let k = 0; k < 14; k++) ctx.fillRect(wx + k * 32, top - 18, 20, 3);
     ctx.fillStyle = 'rgba(40,38,34,0.35)'; ctx.fillRect(wx, top, W + 200, 4);
     // the defenders: helmets and arms over the wall; they stand up for a volley
@@ -689,21 +697,30 @@
     ctx.beginPath(); ctx.moveTo(0, H);
     for (let x = -10; x <= W + 10; x += 20) ctx.lineTo(x, groundY(st, cx + x));
     ctx.lineTo(W + 10, H); ctx.closePath(); ctx.fill();
+    // (art pass) the track's dirt (grains, strata, pebbles, hoof prints, straw) in the ground's shape, scrolling with it
+    { let y0 = H; for (let x = -10; x <= W + 10; x += 40) y0 = Math.min(y0, groundY(st, cx + x)); y0 = Math.floor(y0 / 20) * 20 - 20;
+      ctx.save(); ctx.clip(); K.ground(cx, y0, H - y0, { key: 'siege' + st.k }); ctx.restore(); }
     // a darker band deeper down, wheel ruts, pebbles
     ctx.fillStyle = 'rgba(100,70,30,0.18)';
     ctx.beginPath(); ctx.moveTo(0, H);
     for (let x = -10; x <= W + 10; x += 20) ctx.lineTo(x, groundY(st, cx + x) + 40);
     ctx.lineTo(W + 10, H); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(120,90,50,0.35)';
-    for (let k = 0; k < 14; k++) { const x = ((k * 97 - cx) % (W + 100) + W + 100) % (W + 100) - 50; ctx.fillRect(x, groundY(st, cx + x) + 16 + (k % 3) * 14, 24, 3); }
-    for (let k = 0; k < 16; k++) {
-      const x = ((k * 67 - cx) % (W + 80) + W + 80) % (W + 80) - 40, y = groundY(st, cx + x) + 8 + (k * 31) % 80, r = 2 + (k % 3);
-      ctx.fillStyle = '#9a8a72'; ctx.beginPath(); ctx.ellipse(x, y, r * 1.4, r, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - r * 0.6, y - r * 0.6, r * 0.8, 1);
+    // the tower's wheel ruts, following the slope: a dark groove with a lit lower lip
+    for (const ry of [18, 44]) for (const [dy, col, lw] of [[0, 'rgba(110,80,40,0.35)', 4], [2.6, 'rgba(255,240,200,0.3)', 1.2]]) {
+      ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); for (let x = -10; x <= W + 10; x += 20) { const y = groundY(st, cx + x) + ry + dy; x === -10 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.stroke();
     }
     // the last chock
     const chx = st.chockX + T.wheel[0] - 28 - cx;
-    if (chx > -20 && chx < W) { const y = groundY(st, st.chockX + T.wheel[0] - 28); ctx.fillStyle = '#5e3a1c'; ctx.beginPath(); ctx.moveTo(chx - 10, y); ctx.lineTo(chx + 10, y); ctx.lineTo(chx + 10, y - 14); ctx.closePath(); ctx.fill(); }
+    if (chx > -20 && chx < W) { const y = groundY(st, st.chockX + T.wheel[0] - 28); chock(chx, y); }
+  }
+  // (art pass) small painted props, each painted once (RICH.pic)
+  function chock(x, y) {
+    RICH.pic('w37chock', 24, 18, c => {
+      c.translate(12, 16); RICH.shadow(c, 2, 0, 12, 2, 0.2);
+      c.beginPath(); c.moveTo(-10, 0); c.lineTo(10, 0); c.lineTo(10, -14); c.closePath(); c.save(); c.clip(); RICH.wood(c, -10, -14, 20, 14, { col: '#5e3a1c', vert: true, bw: 7, seed: 4, edge: false }); c.restore();
+      c.strokeStyle = 'rgba(255,220,170,0.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-9, -0.5); c.lineTo(10, -13.5); c.stroke();
+      c.strokeStyle = '#2a1608'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-10, 0); c.lineTo(10, 0); c.lineTo(10, -14); c.closePath(); c.stroke();
+    }, x - 12, y - 16);
   }
   function drawItem(st, it, sx, t) {
     const y = groundY(st, it.x);
@@ -712,14 +729,45 @@
       else {
         // hung on a post of the outer works at the deck's height
         const sy = SCR.gy - T.deck[it.lvl] - 26 - (height(st, it.x) - height(st, st.tx));
-        ctx.fillStyle = '#5e3a1c'; ctx.fillRect(sx + 8, sy - 6, 6, y - sy + 6);
+        K.post(sx + 8, y, 6, y - sy + 6, { col: '#5e3a1c' });
         K.heraldShield(sx, sy, 12, { col: K.BANNER[Math.floor(it.x) % 7], charge: 'star', rot: Math.sin(t * 2 + it.x) * 0.1 });
       }
-    } else if (it.kind === 'rut' && !it.done) { ctx.fillStyle = '#6a4a2a'; ctx.beginPath(); ctx.ellipse(sx, y + 2, 18, 7, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#8a6a40'; ctx.fillRect(sx + 8, y - 8, 12, 8); }
-    else if (it.kind === 'stone' && !it.done) { ctx.fillStyle = '#8a8880'; ctx.beginPath(); ctx.ellipse(sx, y - 6, 11, 8, 0, 0, TAU); ctx.fill(); }
-    else if (it.kind === 'mud') { ctx.fillStyle = '#5a3a1e'; ctx.beginPath(); ctx.ellipse(sx + it.len / 2, y + 6, it.len / 2, 12, 0, 0, TAU); ctx.fill(); if (!it.done) text('MUD: both push', sx + it.len / 2, y + 30, 12, '#ffffff', 'center', 'body'); }
+    } else if (it.kind === 'rut' && !it.done) RICH.pic('w37rut', 44, 22, c => {
+      // a deep rut: a dark trough with wet mud, a broken lip of turf thrown up behind it
+      c.translate(20, 10);
+      c.fillStyle = '#7a5a34'; c.beginPath(); c.ellipse(0, 2, 20, 8, 0, 0, TAU); c.fill();
+      c.fillStyle = '#4a3018'; c.beginPath(); c.ellipse(0, 2.5, 17, 6, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(140,170,200,0.35)'; c.beginPath(); c.ellipse(-2, 4, 9, 2, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,240,200,0.35)'; c.beginPath(); c.ellipse(0, 8, 17, 1.4, 0, 0, Math.PI); c.fill();
+      c.fillStyle = '#8a6a40'; c.beginPath(); c.moveTo(8, 0); c.lineTo(10, -8); c.lineTo(16, -9); c.lineTo(21, -6); c.lineTo(20, 0); c.closePath(); c.fill();
+      c.fillStyle = '#5ea83e'; c.fillRect(10, -10, 9, 2.5); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(10, -8, 2, 6);
+      c.strokeStyle = '#4a3018'; c.lineWidth = 1; c.beginPath(); c.moveTo(8, 0); c.lineTo(10, -8); c.lineTo(16, -9); c.lineTo(21, -6); c.lineTo(20, 0); c.stroke();
+    }, sx - 20, y - 10);
+    else if (it.kind === 'stone' && !it.done) { RICH.pebble(ctx, sx, y - 6, 11, '#8a8880', 77); RICH.pebble(ctx, sx + 11, y - 1, 3, '#a09e96', 78); }
+    else if (it.kind === 'mud') {
+      const mw = Math.round(it.len);
+      RICH.pic('w37mud|' + mw, mw + 10, 32, c => {
+        // a sticky mud wallow: a raised rim, dark wet mud, wheel and boot marks, puddles with a glint
+        c.translate(5, 8);
+        c.fillStyle = '#7a5a34'; c.beginPath(); c.ellipse(mw / 2, 6, mw / 2 + 4, 14, 0, 0, TAU); c.fill();
+        c.fillStyle = '#5a3a1e'; c.beginPath(); c.ellipse(mw / 2, 6, mw / 2, 12, 0, 0, TAU); c.fill();
+        c.fillStyle = 'rgba(30,16,4,0.35)'; c.beginPath(); c.ellipse(mw / 2, 3, mw / 2 - 6, 5, 0, Math.PI, TAU); c.fill();
+        c.strokeStyle = 'rgba(30,16,4,0.45)'; c.lineWidth = 1.4; for (let k = 0; k < mw / 26; k++) { c.beginPath(); c.ellipse(12 + k * 26, 6 + (k % 3) * 3, 4, 2.5, 0, Math.PI * 0.1, Math.PI * 1.9); c.stroke(); }
+        c.fillStyle = 'rgba(160,190,210,0.4)'; for (let k = 0; k < 3; k++) { c.beginPath(); c.ellipse(mw * (0.25 + k * 0.25), 10 - (k % 2) * 4, 12, 2.4, 0, 0, TAU); c.fill(); }
+        c.fillStyle = 'rgba(255,255,255,0.45)'; for (let k = 0; k < 3; k++) c.fillRect(mw * (0.25 + k * 0.25) - 6, 9.5 - (k % 2) * 4, 5, 1);
+      }, sx - 5, y - 8);
+      if (!it.done) text('MUD: both push', sx + it.len / 2, y + 30, 12, '#ffffff', 'center', 'body');
+    }
     else if (it.kind === 'trench') {
-      ctx.fillStyle = '#3a2614'; ctx.fillRect(sx, y - 2, 40, 40);
+      RICH.pic('w37trench', 44, 42, c => {
+        // the trench: dark earth walls with strata and roots, a muddy bottom, crumbled edges
+        c.fillStyle = '#3a2614'; c.fillRect(2, 0, 40, 40);
+        const g = c.createLinearGradient(0, 0, 0, 40); g.addColorStop(0, 'rgba(120,80,40,0.45)'); g.addColorStop(0.5, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(10,5,0,0.4)'); c.fillStyle = g; c.fillRect(2, 0, 40, 40);
+        c.fillStyle = 'rgba(90,60,30,0.6)'; c.fillRect(2, 0, 6, 40); c.fillStyle = 'rgba(20,10,0,0.4)'; c.fillRect(36, 0, 6, 40);
+        c.strokeStyle = 'rgba(140,100,60,0.6)'; c.lineWidth = 1; c.beginPath(); c.moveTo(4, 4); c.lineTo(9, 12); c.lineTo(7, 18); c.moveTo(38, 6); c.lineTo(34, 14); c.stroke();
+        c.fillStyle = '#4a3a2a'; c.fillRect(2, 34, 40, 6); c.fillStyle = 'rgba(140,170,200,0.35)'; c.fillRect(10, 35, 20, 1.5);
+        c.fillStyle = '#8a6a40'; for (const [px, py] of [[1, 0], [6, 1], [36, 0], [40, 1.5]]) { c.beginPath(); c.arc(px, py, 2.5, 0, Math.PI * 2); c.fill(); }
+      }, sx - 2, y - 2);
       for (let k = 0; k < Math.min(2, st.planks) && !it.done; k++) K.timber(sx - 8, y - 6 + k * 3, 56, 6, {});
       if (it.done) K.timber(sx - 8, y - 6, 56, 6, {});
     } else if (it.kind === 'spout') {
@@ -740,11 +788,17 @@
     if (u < 0.35) return;
     const by = K.lerp(-40, y - 22, (u - 0.35) / 0.65);
     const bx = sx + (1 - u) * 160;
-    ctx.fillStyle = '#7a7870'; circ(bx, by, 22); ctx.fill();
-    ctx.fillStyle = '#5e5c56'; ctx.beginPath(); ctx.arc(bx, by, 22, -0.2, Math.PI * 0.9); ctx.lineTo(bx + 4, by + 4); ctx.fill();
-    ctx.fillStyle = '#4a4844'; circ(bx - 6, by + 4, 6); ctx.fill(); circ(bx + 9, by - 6, 3.5); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'; circ(bx - 8, by - 9, 6); ctx.fill();
-    ctx.strokeStyle = '#3e3c38'; ctx.lineWidth = 2; circ(bx, by, 22); ctx.stroke();
+    RICH.pic('w37boulder', 48, 48, c => {
+      // a catapult boulder: a rough-cut stone with facets, cracks, lichen and a hard lit edge
+      c.translate(24, 24);
+      c.beginPath(); for (let k = 0; k < 11; k++) { const a = k / 11 * TAU, r = 22 * (0.9 + RICH.r(5, k) * 0.12); k ? c.lineTo(Math.cos(a) * r, Math.sin(a) * r) : c.moveTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath();
+      c.save(); c.clip(); RICH.rock(c, -24, -24, 48, 48, { col: '#7a7870', seed: 37 });
+      c.fillStyle = 'rgba(40,38,34,0.4)'; c.beginPath(); c.arc(4, 6, 22, -0.3, Math.PI * 0.9); c.lineTo(0, 0); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.3)'; c.beginPath(); c.ellipse(-8, -9, 8, 5, -0.5, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(150,170,90,0.55)'; for (let k = 0; k < 6; k++) { c.beginPath(); c.arc(-12 + RICH.r(6, k) * 10, -14 + RICH.r(7, k) * 12, 1.6 + RICH.r(8, k) * 1.6, 0, TAU); c.fill(); }
+      c.restore();
+      c.strokeStyle = '#3e3c38'; c.lineWidth = 2; c.stroke();
+    }, bx - 24, by - 24);
   }
   function drawBarrel(st, b, t) {
     if (b.split && b.t > 0.2) return;
@@ -752,7 +806,16 @@
     b.y = y;
     ctx.save(); ctx.translate(sx, y); ctx.rotate(b.rot);
     if (b.hay) { ctx.fillStyle = K.COL.hay; circ(0, 0, 18); ctx.fill(); ctx.fillStyle = '#ff7a2a'; for (let k = 0; k < 5; k++) { const a = k * TAU / 5; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 14, Math.sin(a) * 14); ctx.lineTo(Math.cos(a + 0.3) * 26, Math.sin(a + 0.3) * 26); ctx.lineTo(Math.cos(a + 0.6) * 14, Math.sin(a + 0.6) * 14); ctx.fill(); } }
-    else { ctx.fillStyle = '#8a5a32'; circ(0, 0, 16); ctx.fill(); ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 11, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(16, 0); ctx.stroke(); }
+    else RICH.pic('w37barrelend', 34, 34, c => {
+      // the barrel's end as it rolls: staves round a lid, an iron hoop with rivets, a bung, a lit rim
+      c.translate(17, 17);
+      c.fillStyle = '#3a2010'; c.beginPath(); c.arc(0, 0, 16.5, 0, TAU); c.fill();
+      c.fillStyle = '#6a6a74'; c.beginPath(); c.arc(0, 0, 16, 0, TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(0, 0, 16, Math.PI * 1.05, Math.PI * 1.6); c.lineTo(0, 0); c.fill();
+      c.save(); c.beginPath(); c.arc(0, 0, 13, 0, TAU); c.clip(); RICH.wood(c, -13, -13, 26, 26, { col: '#8a5a32', boards: 4, seed: 12, knots: 0.4, edge: false }); c.restore();
+      for (let k = 0; k < 8; k++) RICH.rivet(c, Math.cos(k * TAU / 8) * 14.5, Math.sin(k * TAU / 8) * 14.5, 0.9, '#8a8a96');
+      c.fillStyle = '#3a2010'; c.beginPath(); c.arc(5, 4, 2.4, 0, TAU); c.fill();
+      c.strokeStyle = '#3a2010'; c.lineWidth = 1.5; c.beginPath(); c.arc(0, 0, 13, 0, TAU); c.stroke();
+    }, -17, -17);
     ctx.restore();
   }
   function drawTower(st, t) {
@@ -761,17 +824,23 @@
     const L = x0 - T.half, Rr = x0 + T.half, gold = st.gold;
     ctx.fillStyle = 'rgba(30,20,10,0.22)'; ctx.beginPath(); ctx.ellipse(x0, gy + 2, T.half + 30, 8, 0, 0, TAU); ctx.fill();
     // the frame: four corner posts (grain, a lit side), the decks, cross-braces
-    for (const px of [L, L + 8, Rr - 16, Rr - 8]) {
-      ctx.fillStyle = '#7a4e2a'; ctx.fillRect(px, gy - T.top, 8, T.top - 18);
-      ctx.fillStyle = 'rgba(255,220,170,0.18)'; ctx.fillRect(px, gy - T.top, 2, T.top - 18);
-      ctx.fillStyle = 'rgba(40,20,5,0.28)'; ctx.fillRect(px + 6, gy - T.top, 2, T.top - 18);
-    }
+    for (const px of [L, L + 8, Rr - 16, Rr - 8]) RICH.pic('w37towerpost' + ((px - L) % 16 ? 'b' : 'a'), 8, T.top - 18, c => {
+      // (art pass) a squared timber post: grain and knots, a lit side, a dark side, iron straps with bolts at each deck
+      RICH.wood(c, 0, 0, 8, T.top - 18, { col: '#7a4e2a', vert: true, bw: 8, seed: (px - L) % 16 ? 7 : 3, knots: 1.2, edge: false });
+      c.fillStyle = 'rgba(255,220,170,0.22)'; c.fillRect(0, 0, 2, T.top - 18); c.fillStyle = 'rgba(40,20,5,0.32)'; c.fillRect(6, 0, 2, T.top - 18);
+      for (const dy of [T.top - T.deck[1] - 6, T.top - T.deck[2] - 6, T.top - T.deck[3] - 6]) { c.fillStyle = '#4a4a54'; c.fillRect(0, dy, 8, 10); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, dy, 8, 1); }
+    }, px, gy - T.top);
     ctx.fillStyle = '#3a2a1a'; for (let l = 1; l <= 3; l++) for (const px of [L + 4, L + 12, Rr - 12, Rr - 4]) { circ(px, gy - T.deck[l] + 4, 1.4); ctx.fill(); }
     for (let l = 1; l <= 3; l++) {
       const y = gy - T.deck[l];
       for (const side of [0, 1]) {
         if (st.burned[l + ':' + side]) { ctx.fillStyle = '#2a1a10'; ctx.fillRect(side ? x0 + 4 : L, y, T.half - 4, 4); for (let k = 0; k < 3; k++) { ctx.fillStyle = 'rgba(60,60,70,0.5)'; circ((side ? x0 + 30 : L + 30) + Math.sin(t * 2 + k) * 6, y - 20 - ((t * 20 + k * 12) % 40), 6); ctx.fill(); } }
-        else { ctx.fillStyle = K.COL.woodHi; ctx.fillRect(side ? x0 : L, y, T.half, 8); ctx.fillStyle = K.COL.woodDark; ctx.fillRect(side ? x0 : L, y + 8, T.half, 2); }
+        else RICH.pic('w37deck' + side, T.half, 10, c => {
+          // a deck of planks seen edge-on: board ends, grain, nails, a dark joist under it
+          RICH.wood(c, 0, 0, T.half, 8, { col: K.COL.woodHi, boards: 1, seam: 21, seed: 30 + side, knots: 0.8, edge: false });
+          c.fillStyle = 'rgba(255,240,200,0.35)'; c.fillRect(0, 0, T.half, 1.2);
+          c.fillStyle = K.COL.woodDark; c.fillRect(0, 8, T.half, 2);
+        }, side ? x0 : L, y);
       }
     }
     ctx.strokeStyle = 'rgba(94,58,28,0.8)'; ctx.lineWidth = 4;
@@ -787,10 +856,24 @@
     for (let k = 0; k < S.panels; k++) {
       if (k >= st.panels) continue;
       const py = gy - T.deck[3] + 10 + k * 56;
-      ctx.fillStyle = '#b8945a'; rr(Rr - 6, py, 14, 50, 4); ctx.fill(); ctx.strokeStyle = '#7a5a2a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(Rr - 2, py + 8); ctx.lineTo(Rr + 4, py + 16); ctx.moveTo(Rr - 2, py + 30); ctx.lineTo(Rr + 4, py + 38); ctx.stroke();
+      RICH.pic('w37hide', 16, 52, c => {
+        // a wet ox-hide panel: shaded round, blotches, laced edges, scratches from the last volley
+        c.translate(1, 1);
+        RICH.rr(c, 0, 0, 14, 50, 4); const g = c.createLinearGradient(0, 0, 14, 0); g.addColorStop(0, '#d0aa6a'); g.addColorStop(0.5, '#b8945a'); g.addColorStop(1, '#8a6a3a'); c.fillStyle = g; c.fill();
+        c.save(); RICH.rr(c, 0, 0, 14, 50, 4); c.clip(); c.fillStyle = 'rgba(110,70,30,0.35)'; for (let k = 0; k < 5; k++) { c.beginPath(); c.ellipse(3 + RICH.r(41, k) * 8, 6 + RICH.r(42, k) * 38, 2 + RICH.r(43, k) * 2, 3 + RICH.r(44, k) * 3, 0, 0, TAU); c.fill(); } c.restore();
+        c.strokeStyle = '#7a5a2a'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(4, 8); c.lineTo(10, 16); c.moveTo(4, 30); c.lineTo(10, 38); c.stroke();
+        c.strokeStyle = '#4a3010'; c.lineWidth = 1; c.setLineDash([2, 2.5]); c.beginPath(); c.moveTo(1.5, 4); c.lineTo(1.5, 46); c.stroke(); c.setLineDash([]);
+        c.strokeStyle = '#6a4a1a'; c.lineWidth = 1.2; RICH.rr(c, 0, 0, 14, 50, 4); c.stroke();
+      }, Rr - 7, py - 1);
     }
     // the winch on deck 2 and the chock lever on deck 1
-    ctx.fillStyle = '#5e3a1c'; ctx.fillRect(x0 + T.winch - 10, gy - T.deck[2] - 20, 20, 20); ctx.fillStyle = '#c8a46a'; circ(x0 + T.winch, gy - T.deck[2] - 14, 6); ctx.fill();
+    RICH.pic('w37winch', 24, 24, c => {
+      // the winch: a timber frame, a rope drum with turns of rope, a crank handle
+      c.translate(2, 2);
+      RICH.wood(c, 0, 0, 20, 20, { col: '#5e3a1c', boards: 2, seed: 5, knots: 0.4 });
+      c.fillStyle = '#c8a46a'; c.beginPath(); c.arc(10, 6, 6, 0, TAU); c.fill(); c.strokeStyle = '#8a6a3a'; c.lineWidth = 1; c.beginPath(); for (let k = -4; k <= 4; k += 2) { c.moveTo(10 + k, 1); c.lineTo(10 + k + 1, 11); } c.stroke();
+      c.fillStyle = '#5a5a64'; c.beginPath(); c.arc(10, 6, 2, 0, TAU); c.fill(); c.strokeStyle = '#5a5a64'; c.lineWidth = 2; c.beginPath(); c.moveTo(10, 6); c.lineTo(17, 0); c.stroke(); c.fillStyle = '#3a2010'; c.fillRect(16, -2, 3, 4);
+    }, x0 + T.winch - 12, gy - T.deck[2] - 22);
     if (st.bucketT > 0) { ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x0 + T.winch, gy - T.deck[2] - 14); ctx.lineTo(x0 + T.winch, gy - T.deck[2] + 10 + (1 - st.bucketT / S.winchT) * 80); ctx.stroke(); ctx.fillStyle = '#6a8ab0'; ctx.fillRect(x0 + T.winch - 6, gy - T.deck[2] + 10 + (1 - st.bucketT / S.winchT) * 80, 12, 10); }
     ctx.fillStyle = '#3a2010'; ctx.fillRect(x0 + T.chock - 2, gy - T.deck[1] - 22, 4, 22); ctx.fillStyle = '#d8323a'; circ(x0 + T.chock, gy - T.deck[1] - 24, 4); ctx.fill();
     // the drawbridge folded up at the front of the top deck (or down onto the wall)
@@ -800,23 +883,29 @@
     // the roof panel (raised when held), arrows stuck in it
     const ru = st.roof, ry = gy - T.top;
     ctx.save(); ctx.translate(L - 10, ry + 14); ctx.rotate(-0.06 - ru * 0.3);
-    ctx.fillStyle = gold ? '#e8c060' : '#a8784a'; rr(0, -10, T.half * 2 + 70, 12, 5); ctx.fill();
-    ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 2; for (let k = 1; k < 6; k++) { ctx.beginPath(); ctx.moveTo(k * 30, -10); ctx.lineTo(k * 30, 2); ctx.stroke(); }
+    RICH.pic('w37roof' + (gold ? 'g' : ''), T.half * 2 + 70, 12, c => {
+      RICH.wood(c, 0, 0, T.half * 2 + 70, 12, { col: gold ? '#e8c060' : '#a8784a', boards: 2, r: 5, seed: 8, knots: 0.6 });
+      c.strokeStyle = '#6a4a2a'; c.lineWidth = 2; for (let k = 1; k < 6; k++) { c.beginPath(); c.moveTo(k * 30, 0); c.lineTo(k * 30, 12); c.stroke(); RICH.nail(c, k * 30 - 4, 3, 1); RICH.nail(c, k * 30 - 4, 9, 1); }
+    }, 0, -10);
     for (let k = 0; k < st.roofArrows; k++) { const ax = 16 + (k * 37) % (T.half * 2 + 40); ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ax, -10); ctx.lineTo(ax + 6, -26); ctx.stroke(); ctx.fillStyle = '#f6ecd0'; ctx.fillRect(ax + 4, -30, 4, 6); }
     ctx.restore();
     ctx.fillStyle = '#7a4e2a'; ctx.fillRect(L - 2, ry + 10, 6, 30); ctx.fillRect(Rr - 4, ry + 10, 6, 30);
     // wheels and the push bar
     for (const wx of T.wheel) wheel(x0 + wx, gy - 18, 18, st.wheelA || 0, gold, st.jam && T.wheel[st.jam.w] === wx);
-    ctx.fillStyle = '#5e3a1c'; ctx.fillRect(x0 + T.bar - 4, gy - 52, 6, 40); ctx.fillRect(x0 + T.bar - 4, gy - 52, L - (x0 + T.bar) + 10, 6);
+    K.timber(x0 + T.bar - 4, gy - 52, 6, 40, { dark: true }); K.timber(x0 + T.bar - 4, gy - 52, L - (x0 + T.bar) + 10, 6, { dark: true });
     ctx.fillStyle = '#8a8a96'; rr(x0 + T.bar - 6, gy - 50, 14, 22, 3); ctx.fill();
     ctx.restore();
     // fires on the decks
     for (const f of st.fires) drawFire(st, f, t);
   }
   function wheel(x, y, r, a, gold, jam) {
-    ctx.fillStyle = '#3a2010'; circ(x, y, r); ctx.fill();
+    ctx.fillStyle = '#4a4a54'; circ(x, y, r + 1); ctx.fill();
+    ctx.fillStyle = '#3a2010'; circ(x, y, r - 1); ctx.fill();
+    ctx.strokeStyle = 'rgba(220,220,230,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(x, y, r, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
     ctx.fillStyle = gold ? '#ffd23a' : '#a0683a'; circ(x, y, r - 4); ctx.fill();
+    ctx.fillStyle = gold ? 'rgba(160,110,10,0.35)' : 'rgba(70,40,15,0.35)'; ctx.beginPath(); ctx.arc(x, y, r - 4, -0.3, Math.PI * 0.8); ctx.lineTo(x, y); ctx.fill();
     ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 2.5; ctx.beginPath(); for (let k = 0; k < 4; k++) { const b = a + k * Math.PI / 4; ctx.moveTo(x - Math.cos(b) * (r - 4), y - Math.sin(b) * (r - 4)); ctx.lineTo(x + Math.cos(b) * (r - 4), y + Math.sin(b) * (r - 4)); } ctx.stroke();
+    ctx.fillStyle = '#6a6a74'; circ(x, y, 4); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.5)'; circ(x - 1, y - 1, 1.4); ctx.fill();
     if (jam) { ctx.fillStyle = '#8a8880'; ctx.beginPath(); ctx.ellipse(x + 10, y + 10, 10, 7, 0, 0, TAU); ctx.fill(); text('!', x, y - r - 12, 18, '#ff5a4a', 'center', 'display'); }
   }
   function drawFire(st, f, t) {

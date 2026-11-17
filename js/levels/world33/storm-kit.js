@@ -275,65 +275,148 @@ const STORMCHASE = (() => {
   };
 
   /* ---------- debris ---------- */
+  // (art pass, Nov 2026: each piece keeps its old outline, now with shading, a lit top edge and small true details)
   K.debris = (kind, x, y, rot, s = 1) => {
     ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.scale(s, s);
     ctx.lineWidth = 2;
+    const grain = (x0, y0, w, h, n, col) => { ctx.strokeStyle = col; ctx.lineWidth = 0.7; ctx.beginPath(); for (let k = 1; k <= n; k++) { const gx = x0 + k * w / (n + 1); ctx.moveTo(gx, y0 + 1); ctx.bezierCurveTo(gx - 1, y0 + h * 0.3, gx + 1, y0 + h * 0.7, gx, y0 + h - 1); } ctx.stroke(); };
+    const grainH = (x0, y0, w, h, n, col) => { ctx.strokeStyle = col; ctx.lineWidth = 0.7; ctx.beginPath(); for (let k = 1; k <= n; k++) { const gy = y0 + k * h / (n + 1); ctx.moveTo(x0 + 1, gy); ctx.bezierCurveTo(x0 + w * 0.3, gy - 0.8, x0 + w * 0.7, gy + 0.8, x0 + w - 1, gy); } ctx.stroke(); };
     if (kind === 'hay') {
-      ctx.fillStyle = '#e8c45a'; ctx.strokeStyle = '#a8842a'; rr(-24, -16, 48, 32, 6); ctx.fill(); ctx.stroke();
+      const g = ctx.createLinearGradient(0, -16, 0, 16); g.addColorStop(0, '#f4d872'); g.addColorStop(0.6, '#e8c45a'); g.addColorStop(1, '#c09a38');
+      ctx.fillStyle = g; rr(-24, -16, 48, 32, 6); ctx.fill();
       ctx.strokeStyle = 'rgba(168,132,42,0.7)'; ctx.lineWidth = 1.2;
-      for (let k = -18; k <= 18; k += 6) { ctx.beginPath(); ctx.moveTo(k, -14); ctx.lineTo(k + 3, 14); ctx.stroke(); }
+      ctx.beginPath(); for (let k = -18; k <= 18; k += 6) { ctx.moveTo(k, -14); ctx.lineTo(k + 3, 14); } ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,240,170,0.8)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let k = -21; k <= 18; k += 6) { ctx.moveTo(k + 1, -13); ctx.lineTo(k + 3, -4); ctx.moveTo(k + 3, 2); ctx.lineTo(k + 4.5, 10); } ctx.stroke();
+      ctx.strokeStyle = 'rgba(140,100,30,0.6)'; ctx.beginPath(); for (let k = -20; k <= 20; k += 5) { ctx.moveTo(k, -16); ctx.lineTo(k - 2, -20); ctx.moveTo(k + 2, 16); ctx.lineTo(k + 4, 19); } ctx.stroke();
+      ctx.strokeStyle = '#a8842a'; ctx.lineWidth = 2; rr(-24, -16, 48, 32, 6); ctx.stroke();
       ctx.strokeStyle = '#7a4a2a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-10, -16); ctx.lineTo(-10, 16); ctx.moveTo(10, -16); ctx.lineTo(10, 16); ctx.stroke();
+      ctx.strokeStyle = '#b07a4a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-10.8, -15); ctx.lineTo(-10.8, 15); ctx.moveTo(9.2, -15); ctx.lineTo(9.2, 15); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,250,210,0.35)'; rr(-22, -15, 44, 4, 3); ctx.fill();
     } else if (kind === 'post') {
-      ctx.fillStyle = '#a07a4a'; ctx.strokeStyle = '#5e3e20'; ctx.fillRect(-4, -24, 8, 48); ctx.strokeRect(-4, -24, 8, 48);
+      ctx.fillStyle = '#a07a4a'; ctx.fillRect(-4, -24, 8, 48);
+      ctx.fillStyle = '#7a5630'; ctx.fillRect(1.5, -24, 2.5, 48); ctx.fillStyle = 'rgba(255,230,190,0.35)'; ctx.fillRect(-4, -24, 1.4, 48);
+      grain(-4, -24, 8, 48, 2, 'rgba(70,44,20,0.5)');
+      ctx.strokeStyle = '#5e3e20'; ctx.lineWidth = 2; ctx.strokeRect(-4, -24, 8, 48);
       ctx.fillStyle = '#8a6a3a'; ctx.fillRect(-16, -14, 32, 5); ctx.fillRect(-16, 6, 32, 5);
+      ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(-16, -14, 32, 1.2); ctx.fillRect(-16, 6, 32, 1.2);
+      ctx.fillStyle = '#5e3e20'; ctx.fillRect(-16, -10.2, 32, 1.2); ctx.fillRect(-16, 9.8, 32, 1.2);
+      ctx.fillStyle = '#c8ccd2'; for (const ny of [-11.5, 8.5]) { circle(-1.5, ny, 0.9); ctx.fill(); circle(1.5, ny, 0.9); ctx.fill(); }
+      ctx.fillStyle = '#d8b880'; ctx.beginPath(); ctx.moveTo(-4, 24); ctx.lineTo(-2, 27); ctx.lineTo(0, 24.5); ctx.lineTo(2, 28); ctx.lineTo(4, 24); ctx.closePath(); ctx.fill();
     } else if (kind === 'fence') {
-      ctx.fillStyle = '#c8a878'; ctx.strokeStyle = '#7a5a34';
-      for (const k of [-20, 0, 20]) { ctx.fillRect(k - 3, -16, 6, 32); ctx.strokeRect(k - 3, -16, 6, 32); }
-      ctx.fillRect(-26, -10, 52, 5); ctx.fillRect(-26, 5, 52, 5);
+      for (const k of [-20, 0, 20]) {
+        ctx.fillStyle = '#c8a878'; ctx.fillRect(k - 3, -16, 6, 32);
+        ctx.fillStyle = '#a8885a'; ctx.fillRect(k + 1, -16, 2, 32); ctx.fillStyle = 'rgba(255,245,220,0.4)'; ctx.fillRect(k - 3, -16, 1.2, 32);
+        grain(k - 3, -16, 6, 32, 1, 'rgba(110,80,44,0.5)');
+        ctx.strokeStyle = '#7a5a34'; ctx.lineWidth = 2; ctx.strokeRect(k - 3, -16, 6, 32);
+        ctx.fillStyle = '#7a5a34'; ctx.beginPath(); ctx.moveTo(k - 3, -16); ctx.lineTo(k, -19); ctx.lineTo(k + 3, -16); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = '#c8a878'; ctx.fillRect(-26, -10, 52, 5); ctx.fillRect(-26, 5, 52, 5);
+      ctx.fillStyle = 'rgba(255,245,220,0.4)'; ctx.fillRect(-26, -10, 52, 1.2); ctx.fillRect(-26, 5, 52, 1.2);
+      ctx.fillStyle = '#9a7a4a'; ctx.fillRect(-26, -6, 52, 1); ctx.fillRect(-26, 9, 52, 1);
+      ctx.fillStyle = '#5a5e66'; for (const k of [-20, 0, 20]) { circle(k, -7.5, 0.9); ctx.fill(); circle(k, 7.5, 0.9); ctx.fill(); }
     } else if (kind === 'mailbox') {
-      ctx.fillStyle = '#5a5e6a'; ctx.fillRect(-2, 0, 4, 20);
-      ctx.fillStyle = '#3a6ad0'; ctx.strokeStyle = '#1e3a7a'; ctx.beginPath(); ctx.moveTo(-14, 2); ctx.lineTo(-14, -8); ctx.arc(0, -8, 14, Math.PI, 0); ctx.lineTo(14, 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#7a5a34'; ctx.fillRect(-2.5, 0, 5, 20); ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(-2.5, 0, 1.2, 20);
+      const body = () => { ctx.beginPath(); ctx.moveTo(-14, 2); ctx.lineTo(-14, -8); ctx.arc(0, -8, 14, Math.PI, 0); ctx.lineTo(14, 2); ctx.closePath(); };
+      const g = ctx.createLinearGradient(0, -22, 0, 2); g.addColorStop(0, '#6a9af0'); g.addColorStop(0.5, '#3a6ad0'); g.addColorStop(1, '#244a9a');
+      ctx.fillStyle = g; body(); ctx.fill();
+      ctx.strokeStyle = 'rgba(20,40,100,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-9, -18); ctx.lineTo(-9, 2); ctx.moveTo(9, -18); ctx.lineTo(9, 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, -8, 12, Math.PI * 1.15, Math.PI * 1.55); ctx.stroke();
+      ctx.strokeStyle = '#1e3a7a'; ctx.lineWidth = 2; body(); ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-6, -6, 3, 4); ctx.fillRect(-1, -6, 3, 4); ctx.fillRect(4, -6, 3, 4);
+      ctx.fillStyle = '#c8ccd2'; ctx.fillRect(-15, -4, 2, 3);
       ctx.fillStyle = '#e8322a'; ctx.fillRect(10, -16, 3, 10); ctx.fillRect(10, -16, 7, 4);
+      ctx.fillStyle = '#a81a14'; ctx.fillRect(12, -16, 1, 10); ctx.fillStyle = '#ff8a7a'; ctx.fillRect(10, -16, 7, 1);
     } else if (kind === 'sign') {
-      ctx.fillStyle = '#5a5e6a'; ctx.fillRect(-2, 0, 4, 26);
-      ctx.fillStyle = '#ffd23a'; ctx.strokeStyle = '#1c1a20'; ctx.beginPath(); ctx.moveTo(0, -22); ctx.lineTo(18, -2); ctx.lineTo(0, 18); ctx.lineTo(-18, -2); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#5a5e6a'; ctx.fillRect(-2, 0, 4, 26); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(-2, 0, 1, 26);
+      ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.moveTo(0, -22); ctx.lineTo(18, -2); ctx.lineTo(0, 18); ctx.lineTo(-18, -2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#d8a820'; ctx.beginPath(); ctx.moveTo(18, -2); ctx.lineTo(0, 18); ctx.lineTo(-18, -2); ctx.lineTo(-15, -2); ctx.lineTo(0, 15); ctx.lineTo(15, -2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#1c1a20'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -22); ctx.lineTo(18, -2); ctx.lineTo(0, 18); ctx.lineTo(-18, -2); ctx.closePath(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-15, -2.5); ctx.lineTo(0, -19); ctx.lineTo(9, -9); ctx.stroke();
       ctx.fillStyle = '#1c1a20'; ctx.fillRect(-1.5, -12, 3, 10); circle(0, 4, 2); ctx.fill();
+      ctx.fillStyle = '#8a8e96'; circle(0, -16, 1.2); ctx.fill(); circle(0, 12, 1.2); ctx.fill();
+      ctx.fillStyle = 'rgba(120,80,20,0.35)'; circle(8, 4, 2); ctx.fill(); circle(-9, -5, 1.4); ctx.fill();
     } else if (kind === 'tyre') {
       ctx.fillStyle = '#1e1e24'; circle(0, 0, 18); ctx.fill();
+      ctx.fillStyle = '#2c2c34'; for (let k = 0; k < 14; k++) { const a = k / 14 * TAU; ctx.save(); ctx.rotate(a); ctx.fillRect(15, -2, 3.5, 4); ctx.restore(); }
+      ctx.strokeStyle = '#3a3a44'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 10; k++) { const a = k / 10 * TAU; ctx.moveTo(Math.cos(a) * 13, Math.sin(a) * 13); ctx.lineTo(Math.cos(a) * 17, Math.sin(a) * 17); } ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 12, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
       ctx.fillStyle = '#5a5e6a'; circle(0, 0, 8); ctx.fill();
-      ctx.strokeStyle = '#3a3a44'; ctx.lineWidth = 2; for (let k = 0; k < 10; k++) { const a = k / 10 * TAU; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 13, Math.sin(a) * 13); ctx.lineTo(Math.cos(a) * 17, Math.sin(a) * 17); ctx.stroke(); }
+      ctx.fillStyle = '#7a7e88'; circle(0, 0, 6); ctx.fill();
+      ctx.fillStyle = '#3a3e46'; circle(0, 0, 2.5); ctx.fill(); for (let k = 0; k < 5; k++) { const a = k / 5 * TAU; circle(Math.cos(a) * 4.2, Math.sin(a) * 4.2, 0.9); ctx.fill(); }
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(0, 0, 6, Math.PI * 1.1, Math.PI * 1.6); ctx.lineTo(0, 0); ctx.fill();
     } else if (kind === 'cow') {
-      ctx.fillStyle = '#f4f2ee'; ctx.strokeStyle = '#2a2624'; rr(-26, -14, 46, 26, 10); ctx.fill(); ctx.stroke();
+      const g = ctx.createLinearGradient(0, -14, 0, 12); g.addColorStop(0, '#ffffff'); g.addColorStop(0.6, '#f4f2ee'); g.addColorStop(1, '#d8d2c8');
+      for (const lx of [-20, -10, 6, 14]) { ctx.fillStyle = '#e8e4dc'; ctx.fillRect(lx, 10, 5, 12); ctx.strokeStyle = '#2a2624'; ctx.lineWidth = 2; ctx.strokeRect(lx, 10, 5, 12); ctx.fillStyle = '#2a2624'; ctx.fillRect(lx, 19, 5, 3); }
+      ctx.fillStyle = g; rr(-26, -14, 46, 26, 10); ctx.fill();
+      ctx.fillStyle = '#f2a8b0'; ctx.beginPath(); ctx.ellipse(-2, 12, 6, 3.5, 0, 0, Math.PI); ctx.fill();
       ctx.fillStyle = '#2a2624'; ctx.beginPath(); ctx.ellipse(-10, -4, 8, 6, 0.4, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(8, 4, 6, 5, -0.3, 0, TAU); ctx.fill();
-      for (const lx of [-20, -10, 6, 14]) { ctx.fillStyle = '#f4f2ee'; ctx.fillRect(lx, 10, 5, 12); ctx.strokeRect(lx, 10, 5, 12); ctx.fillStyle = '#2a2624'; ctx.fillRect(lx, 19, 5, 3); }
+      ctx.beginPath(); ctx.ellipse(-20, 4, 3, 4, 0.2, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(10, -10, 3.5, 2, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; rr(-20, -12, 30, 3, 1.5); ctx.fill();
+      ctx.strokeStyle = '#2a2624'; ctx.lineWidth = 2; rr(-26, -14, 46, 26, 10); ctx.stroke();
       ctx.fillStyle = '#f4f2ee'; rr(16, -22, 18, 16, 6); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#2a2624'; ctx.beginPath(); ctx.ellipse(20, -19, 3, 2.5, 0, 0, TAU); ctx.fill();
       ctx.fillStyle = '#f2a8b0'; rr(26, -14, 10, 8, 3); ctx.fill();
+      ctx.fillStyle = '#c87880'; circle(29, -10, 0.9); ctx.fill(); circle(33, -10, 0.9); ctx.fill();
       ctx.fillStyle = '#2a2624'; circle(22, -17, 1.6); ctx.fill(); circle(30, -17, 1.6); ctx.fill();
+      ctx.fillStyle = '#ffffff'; circle(22.5, -17.5, 0.6); ctx.fill(); circle(30.5, -17.5, 0.6); ctx.fill();
       ctx.fillStyle = '#d8c8a0'; ctx.beginPath(); ctx.moveTo(18, -22); ctx.lineTo(15, -28); ctx.lineTo(21, -23); ctx.fill(); ctx.beginPath(); ctx.moveTo(30, -22); ctx.lineTo(33, -28); ctx.lineTo(28, -23); ctx.fill();
+      ctx.fillStyle = '#e8a0a8'; ctx.beginPath(); ctx.ellipse(14, -18, 3, 1.6, -0.5, 0, TAU); ctx.fill();
       ctx.strokeStyle = '#2a2624'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-26, -8); ctx.quadraticCurveTo(-34, -4, -32, 6); ctx.stroke();
+      ctx.fillStyle = '#2a2624'; ctx.beginPath(); ctx.ellipse(-32, 8, 2, 3.5, 0.2, 0, TAU); ctx.fill();
     } else if (kind === 'roof') {
-      ctx.fillStyle = '#8a3a2a'; ctx.strokeStyle = '#4a1a12'; ctx.beginPath(); ctx.moveTo(-40, 10); ctx.lineTo(-30, -12); ctx.lineTo(36, -12); ctx.lineTo(42, 10); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = 'rgba(40,10,6,0.5)'; ctx.lineWidth = 1.5; for (let k = -28; k < 40; k += 9) { ctx.beginPath(); ctx.moveTo(k, -12); ctx.lineTo(k - 3, 10); ctx.stroke(); }
-      ctx.fillStyle = '#c8c0b0'; ctx.fillRect(-40, 8, 82, 4);
+      const g = ctx.createLinearGradient(0, -12, 0, 10); g.addColorStop(0, '#a84a36'); g.addColorStop(1, '#7a3222');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-40, 10); ctx.lineTo(-30, -12); ctx.lineTo(36, -12); ctx.lineTo(42, 10); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(40,10,6,0.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let k = -28; k < 40; k += 9) { ctx.moveTo(k, -12); ctx.lineTo(k - 3, 10); } ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,190,160,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = -26; k < 40; k += 9) { ctx.moveTo(k, -11); ctx.lineTo(k - 3, 9); } ctx.stroke();
+      ctx.strokeStyle = 'rgba(40,10,6,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); for (const yy of [-5, 2]) { ctx.moveTo(-36 + (yy + 12) * 0.2, yy); ctx.lineTo(38 + (yy + 12) * 0.25, yy); } ctx.stroke();
+      ctx.fillStyle = '#c8c0b0'; for (let k = -24; k < 38; k += 18) { circle(k, -9, 0.9); ctx.fill(); }
+      ctx.strokeStyle = '#4a1a12'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-40, 10); ctx.lineTo(-30, -12); ctx.lineTo(36, -12); ctx.lineTo(42, 10); ctx.closePath(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,220,200,0.3)'; ctx.fillRect(-30, -12, 66, 1.5);
+      ctx.fillStyle = '#c8c0b0'; ctx.fillRect(-40, 8, 82, 4); ctx.fillStyle = '#8a8478'; ctx.fillRect(-40, 11, 82, 1);
     } else if (kind === 'scarecrow') {
       ctx.fillStyle = '#7a5a34'; ctx.fillRect(-2, -10, 4, 34); ctx.fillRect(-20, -6, 40, 4);
+      ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(-2, -10, 1, 34); ctx.fillRect(-20, -6, 40, 1);
       ctx.fillStyle = '#4a7ad0'; rr(-10, -8, 20, 20, 3); ctx.fill();
+      ctx.fillStyle = '#3a5aa0'; ctx.fillRect(4, -8, 6, 20); ctx.fillStyle = '#d8584a'; ctx.fillRect(-7, 2, 6, 6);
+      ctx.strokeStyle = '#f0e0b0'; ctx.lineWidth = 0.8; ctx.setLineDash([1.5, 1.5]); ctx.strokeRect(-7, 2, 6, 6); ctx.setLineDash([]);
+      ctx.fillStyle = '#c8b060'; circle(-0.5, -3, 0.9); ctx.fill(); circle(-0.5, 1, 0.9); ctx.fill();
       ctx.fillStyle = '#f0d890'; circle(0, -16, 8); ctx.fill();
+      ctx.fillStyle = 'rgba(160,120,40,0.35)'; ctx.beginPath(); ctx.arc(0, -16, 8, -0.5, 1.6); ctx.lineTo(0, -16); ctx.fill();
       ctx.fillStyle = '#8a5a2a'; ctx.fillRect(-12, -24, 24, 4); rr(-7, -32, 14, 9, 3); ctx.fill();
+      ctx.fillStyle = '#c84a3a'; ctx.fillRect(-7, -26, 14, 2);
       ctx.fillStyle = '#2a2420'; circle(-3, -16, 1.4); ctx.fill(); circle(3, -16, 1.4); ctx.fill();
+      ctx.strokeStyle = '#2a2420'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-3, -12); ctx.lineTo(3, -12); for (let k = -2; k <= 2; k += 2) { ctx.moveTo(k, -13); ctx.lineTo(k, -11); } ctx.stroke();
       ctx.fillStyle = '#e8c45a'; for (const k of [-20, 20]) { ctx.beginPath(); ctx.moveTo(k, -4); ctx.lineTo(k + Math.sign(k) * 6, -8); ctx.lineTo(k + Math.sign(k) * 6, 0); ctx.fill(); }
+      ctx.strokeStyle = '#c8a040'; ctx.lineWidth = 0.8; ctx.beginPath(); for (const k of [-20, 20]) { ctx.moveTo(k, -4); ctx.lineTo(k + Math.sign(k) * 7, -6); ctx.moveTo(k, -4); ctx.lineTo(k + Math.sign(k) * 7, -2); } ctx.moveTo(-4, 12); ctx.lineTo(-6, 16); ctx.moveTo(4, 12); ctx.lineTo(6, 16); ctx.stroke();
     } else if (kind === 'tractor') {
-      ctx.fillStyle = '#d83a2a'; ctx.strokeStyle = '#7a1a12'; rr(-30, -18, 42, 20, 4); ctx.fill(); ctx.stroke();
+      const g = ctx.createLinearGradient(0, -36, 0, 2); g.addColorStop(0, '#f05a48'); g.addColorStop(1, '#b02a1e');
+      ctx.fillStyle = g; ctx.strokeStyle = '#7a1a12'; ctx.lineWidth = 2; rr(-30, -18, 42, 20, 4); ctx.fill(); ctx.stroke();
       rr(-4, -36, 22, 20, 3); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#bfe6ff'; ctx.fillRect(0, -32, 14, 10);
-      ctx.fillStyle = '#3a3a40'; ctx.fillRect(-24, -30, 4, 12);
-      ctx.fillStyle = '#1e1e24'; circle(10, 6, 16); ctx.fill(); circle(-22, 10, 10); ctx.fill();
-      ctx.fillStyle = '#ffd23a'; circle(10, 6, 7); ctx.fill(); circle(-22, 10, 4); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.moveTo(2, -32); ctx.lineTo(6, -32); ctx.lineTo(2, -24); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#2a2a30'; for (let k = 0; k < 4; k++) ctx.fillRect(-28, -15 + k * 4, 6, 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(-28, -17, 38, 1.5);
+      ctx.fillStyle = '#3a3a40'; ctx.fillRect(-24, -30, 4, 12); ctx.fillStyle = '#5a5a62'; ctx.fillRect(-25, -31, 6, 2);
+      ctx.fillStyle = '#ffd23a'; circle(-28, -10, 2); ctx.fill();
+      for (const [wx, wy, r, hr] of [[10, 6, 16, 7], [-22, 10, 10, 4]]) {
+        ctx.fillStyle = '#1e1e24'; circle(wx, wy, r); ctx.fill();
+        ctx.fillStyle = '#34343c'; for (let k = 0; k < 12; k++) { const a = k / 12 * TAU; ctx.save(); ctx.translate(wx, wy); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(r - 4, -2); ctx.lineTo(r, -3); ctx.lineTo(r, 1); ctx.lineTo(r - 4, 2); ctx.closePath(); ctx.fill(); ctx.restore(); }
+        ctx.fillStyle = '#ffd23a'; circle(wx, wy, hr); ctx.fill();
+        ctx.fillStyle = '#c89a10'; circle(wx, wy, hr * 0.45); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.arc(wx, wy, hr, Math.PI * 1.1, Math.PI * 1.6); ctx.lineTo(wx, wy); ctx.fill();
+      }
     } else if (kind === 'shed') {
-      ctx.fillStyle = '#b84a3a'; ctx.strokeStyle = '#6a2418'; ctx.fillRect(-34, -26, 68, 46); ctx.strokeRect(-34, -26, 68, 46);
+      const g = ctx.createLinearGradient(-34, 0, 34, 0); g.addColorStop(0, '#c85a48'); g.addColorStop(1, '#9a3a2c');
+      ctx.fillStyle = g; ctx.fillRect(-34, -26, 68, 46);
+      ctx.strokeStyle = 'rgba(80,24,16,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = -26; k < 34; k += 8) { ctx.moveTo(k, -26); ctx.lineTo(k, 20); } ctx.stroke();
+      ctx.strokeStyle = '#6a2418'; ctx.lineWidth = 2; ctx.strokeRect(-34, -26, 68, 46);
       ctx.fillStyle = '#5a3a2a'; ctx.beginPath(); ctx.moveTo(-40, -24); ctx.lineTo(0, -48); ctx.lineTo(40, -24); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(30,18,10,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = 1; k < 4; k++) { const yy = -48 + k * 6; ctx.moveTo(-k * 10, yy); ctx.lineTo(k * 10, yy); } ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,220,190,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-40, -24); ctx.lineTo(0, -48); ctx.stroke();
       ctx.fillStyle = '#f2e8d8'; ctx.fillRect(-12, -10, 24, 30); ctx.strokeStyle = '#f2e8d8'; ctx.lineWidth = 2; ctx.strokeRect(-30, -22, 60, 40);
       ctx.strokeStyle = '#b84a3a'; ctx.beginPath(); ctx.moveTo(-12, -10); ctx.lineTo(12, 20); ctx.moveTo(12, -10); ctx.lineTo(-12, 20); ctx.stroke();
+      ctx.fillStyle = '#3a3a40'; ctx.fillRect(-12, -6, 4, 2); ctx.fillRect(-12, 14, 4, 2); circle(8, 5, 1.2); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(-34, -26, 68, 3);
     } else { ctx.fillStyle = '#8a8a90'; rr(-12, -12, 24, 24, 4); ctx.fill(); }
     ctx.restore();
   };

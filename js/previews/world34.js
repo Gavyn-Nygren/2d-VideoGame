@@ -121,7 +121,15 @@ const pw34Food = (v, k, x, y, s = 1) => {
       // the ice wall grid
       for (let r = 0; r < 4; r++) for (let k = 0; k < 7; k++) {
         const x = 70 + k * 30, y = 50 + r * 34, hold = (k === 3 && r >= 1) || (k === 4 && r === 3);
-        c.fillStyle = hold ? 'rgba(255,255,255,0.15)' : (v.rand(k + r * 9) > 0.7 ? '#5aa6d8' : 'rgba(234,248,255,0.85)'); v.rr(x, y, 28, 32, 4); c.fill();
+        const blue = v.rand(k + r * 9) > 0.7;
+        c.fillStyle = hold ? 'rgba(255,255,255,0.15)' : (blue ? '#5aa6d8' : 'rgba(234,248,255,0.85)'); v.rr(x, y, 28, 32, 4); c.fill();
+        if (hold) continue;
+        // (art pass) each ice block: a deeper core, a lit top and left edge, a fracture line, trapped bubbles
+        c.fillStyle = blue ? 'rgba(30,80,140,0.3)' : 'rgba(150,200,230,0.35)'; v.rr(x + 5, y + 7, 18, 20, 4); c.fill();
+        c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(x + 3, y + 1.5, 22, 2); c.fillRect(x + 1.5, y + 3, 2, 24);
+        c.fillStyle = blue ? 'rgba(20,60,110,0.35)' : 'rgba(90,150,190,0.35)'; c.fillRect(x + 3, y + 29, 23, 2); c.fillRect(x + 25.5, y + 4, 2, 25);
+        c.strokeStyle = blue ? 'rgba(220,240,255,0.6)' : 'rgba(90,150,190,0.55)'; c.lineWidth = 1; c.beginPath(); const fx = x + 6 + v.rand(k * 3 + r) * 14; c.moveTo(fx, y + 4); c.lineTo(fx + 4, y + 14); c.lineTo(fx + 1, y + 22); c.stroke();
+        c.fillStyle = 'rgba(255,255,255,0.8)'; v.fillCircle(x + 8 + v.rand(k + r * 5) * 12, y + 20 + v.rand(k * 7 + r) * 8, 1.2, 'rgba(255,255,255,0.8)'); v.fillCircle(x + 18, y + 10 + v.rand(r + k * 2) * 6, 0.9, 'rgba(255,255,255,0.8)');
       }
       // the chop: the cell above at (3, 0) cracks 0.6-1.6 and breaks
       const chop = v.seg(t, 0.6, 1.6), up = v.ease.inOut(v.seg(t, 1.7, 2.1));

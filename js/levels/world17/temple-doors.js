@@ -947,6 +947,7 @@ function templePaintBack(c, st) {
       for (let k = 12; k < len; k += 14) { c.beginPath(); c.ellipse(x + 17 + (k % 28 ? 5 : -5), y + T + k, 5, 2.6, k % 28 ? 0.5 : -0.5, 0, Math.PI * 2); c.fill(); }
     }
   }
+  CK.on(c, () => templeBlockDetail(st));
   // doorways: dark lintels and frames with carvings
   for (const d of st.doors) {
     c.fillStyle = 'rgba(20,16,8,0.45)'; c.fillRect(d.x - 3, d.top, T + 6, d.h);
@@ -957,6 +958,71 @@ function templePaintBack(c, st) {
   // water channels
   for (let r = 0; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) if (st.water[templeIx(cc, r)]) { c.fillStyle = '#1f5d6e'; c.fillRect(cc * T, r * T, T, T); }
   templePaintDeco(c, st);
+}
+// (rich props pass, Nov 2026) the temple blocks' extra detail, painted once into the cached back: pitted stone,
+// chisel marks, chipped corners with a lit edge, the odd carved spiral or zigzag band, cracks with moss in them, a
+// moss fringe hanging under ceilings, leafy tufts and tiny flowers along the walkable tops, and a dark outline (a
+// deep shade of the stone, not black) where the stone meets the open room
+function templeBlockDetail(st) {
+  const g = st.base, solid = (cc, r) => cc >= 0 && cc < COLS && r >= 0 && r < ROWS && g[r][cc] === '#';
+  for (let r = 0; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) {
+    if (!solid(cc, r)) continue;
+    const x = cc * T, y = r * T, h = CK.r(cc * 3, r + 11), h2 = CK.r(r * 5, cc + 2);
+    const up = r > 0 && !solid(cc, r - 1), dn = r < ROWS - 1 && !solid(cc, r + 1), lf = cc > 0 && !solid(cc - 1, r), rt = cc < COLS - 1 && !solid(cc + 1, r);
+    // pits: a dark hole with a lit lower lip
+    for (let k = 0; k < 4; k++) {
+      const px = x + 4 + CK.r(cc + k, r) * (T - 8), py = y + (up ? 10 : 4) + CK.r(r + k, cc) * (T - (up ? 14 : 8)), pr = 0.8 + CK.r(k, cc + r) * 1.2;
+      ctx.fillStyle = 'rgba(30,24,8,0.3)'; circle(px, py, pr); ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,200,0.14)'; ctx.fillRect(px - pr, py + pr - 0.4, pr * 2, 0.8);
+    }
+    // chisel marks
+    if (h < 0.5) { ctx.strokeStyle = 'rgba(30,24,8,0.16)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = 0; k < 3; k++) { const mx = x + 6 + k * 4 + h * 8, my = y + 14 + h2 * 8; ctx.moveTo(mx, my); ctx.lineTo(mx + 3, my + 4); } ctx.stroke(); }
+    const inner = !up && !dn && !lf && !rt;
+    if (inner && h > 0.94) {
+      // a carved spiral
+      ctx.strokeStyle = 'rgba(30,24,8,0.28)'; ctx.lineWidth = 1.6; ctx.beginPath();
+      for (let i = 0; i <= 20; i++) { const a = i / 20 * Math.PI * 3.2, rd = 1.5 + i * 0.45; ctx.lineTo(x + T / 2 + Math.cos(a) * rd, y + T / 2 + Math.sin(a) * rd); }
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,240,200,0.14)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let i = 0; i <= 20; i++) { const a = i / 20 * Math.PI * 3.2, rd = 1.5 + i * 0.45; ctx.lineTo(x + T / 2 + Math.cos(a) * rd + 0.6, y + T / 2 + Math.sin(a) * rd + 1); }
+      ctx.stroke();
+    } else if (inner && h > 0.88) {
+      // a carved zigzag band
+      ctx.strokeStyle = 'rgba(30,24,8,0.26)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x + 3, y + T / 2);
+      for (let k = 1; k <= 6; k++) ctx.lineTo(x + 3 + k * (T - 6) / 6, y + T / 2 + (k % 2 ? -4 : 4));
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(30,24,8,0.18)'; ctx.fillRect(x + 2, y + T / 2 - 8, T - 4, 1); ctx.fillRect(x + 2, y + T / 2 + 7, T - 4, 1);
+    }
+    // a crack with moss in it
+    if (h2 > 0.9) {
+      ctx.strokeStyle = 'rgba(30,24,8,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + T * h, y + (up ? 9 : 2)); ctx.lineTo(x + T * h + 4, y + T * 0.45); ctx.lineTo(x + T * h - 1, y + T * 0.7); ctx.lineTo(x + T * h + 3, y + T - 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(110,170,80,0.45)'; circle(x + T * h + 4, y + T * 0.45, 2); ctx.fill(); circle(x + T * h - 1, y + T * 0.7, 1.5); ctx.fill();
+    }
+    // chipped corners on exposed edges, with a lit edge
+    const chip = (cx, cy, sx, sy) => { ctx.fillStyle = 'rgba(30,24,8,0.32)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + sx * 5, cy); ctx.lineTo(cx, cy + sy * 4); ctx.closePath(); ctx.fill(); ctx.strokeStyle = 'rgba(255,240,200,0.2)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx + sx * 5, cy + sy * 0.5); ctx.lineTo(cx + sx * 0.5, cy + sy * 4); ctx.stroke(); };
+    if (dn && lf && h < 0.6) chip(x, y + T, 1, -1);
+    if (dn && rt && h2 < 0.6) chip(x + T, y + T, -1, -1);
+    // the outline where the stone meets the room
+    ctx.fillStyle = 'rgba(40,32,12,0.42)';
+    if (lf) ctx.fillRect(x, y, 1.5, T);
+    if (rt) ctx.fillRect(x + T - 1.5, y, 1.5, T);
+    if (dn) ctx.fillRect(x, y + T - 1.5, T, 1.5);
+    if (lf) { ctx.fillStyle = 'rgba(255,240,200,0.1)'; ctx.fillRect(x + 1.5, y + (up ? 8 : 1), 1.5, T - (up ? 10 : 3)); }
+    // a moss fringe under a ceiling
+    if (dn && h > 0.35) {
+      ctx.fillStyle = 'rgba(96,160,72,0.75)';
+      for (let k = 0; k < 4; k++) { const mx = x + 3 + k * 7 + CK.r(k, cc) * 3, ml = 2 + CK.r(cc, k + r) * 5; ctx.beginPath(); ctx.ellipse(mx, y + T - 0.5, 2.6, ml, 0, 0, Math.PI); ctx.fill(); }
+      ctx.fillStyle = 'rgba(170,220,120,0.5)'; ctx.fillRect(x + 2, y + T - 1.5, T - 4, 1);
+    }
+    // leafy tufts, blades and a tiny flower on a walkable top
+    if (up) {
+      ctx.fillStyle = C.grassDark; for (let k = 0; k < 3; k++) { const bx = x + 4 + k * 10 + CK.r(k, cc) * 4; ctx.beginPath(); ctx.moveTo(bx - 2, y + 1); ctx.lineTo(bx, y - 5 - CK.r(cc, k) * 3); ctx.lineTo(bx + 2, y + 1); ctx.fill(); }
+      ctx.fillStyle = C.grass; for (let k = 0; k < 3; k++) { const bx = x + 8 + k * 9 + CK.r(k + 7, cc) * 3; ctx.beginPath(); ctx.moveTo(bx - 1.5, y + 1); ctx.lineTo(bx + 1, y - 3 - CK.r(cc, k + 4) * 3); ctx.lineTo(bx + 2, y + 1); ctx.fill(); }
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x, y, T, 1);
+      ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.fillRect(x, y + 8, T, 1.5);
+      if (h > 0.82) { const fx = x + 6 + h2 * (T - 12); ctx.fillStyle = ['#ff9ac2', '#ffe066', '#ffffff'][(cc + r) % 3]; for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; circle(fx + Math.cos(a) * 1.8, y - 3 + Math.sin(a) * 1.8, 1.3); ctx.fill(); } ctx.fillStyle = '#ffb02e'; circle(fx, y - 3, 1); ctx.fill(); }
+    }
+  }
 }
 function templePaintDeco(c, st) {
   // leaves around the edges of the screen (the jungle growing in)
@@ -1008,6 +1074,11 @@ function templeDrawDoor(st, d, t) {
     const sy = y1 - d.h;   // the slab slides as a whole; its bottom edge is at y1
     ctx.fillStyle = '#9a8460'; ctx.fillRect(x, sy, w, d.h);
     ctx.fillStyle = '#b39c74'; ctx.fillRect(x + 2, sy + 2, w - 4, 4);
+    ctx.fillStyle = 'rgba(255,240,200,0.2)'; ctx.fillRect(x, sy, 2, d.h); ctx.fillStyle = 'rgba(40,30,10,0.28)'; ctx.fillRect(x + w - 3, sy, 3, d.h);
+    ctx.strokeStyle = 'rgba(40,30,10,0.3)'; ctx.lineWidth = 1.2; ctx.strokeRect(x + 4.5, sy + 9.5, w - 9, d.h - 15);
+    ctx.strokeStyle = 'rgba(255,240,200,0.15)'; ctx.strokeRect(x + 5.5, sy + 10.5, w - 9, d.h - 15);
+    ctx.fillStyle = 'rgba(40,30,10,0.3)'; for (let k = 0; k < 8; k++) ctx.fillRect(x + 3 + CK.r(k, d.x) * (w - 6), sy + 8 + CK.r(d.x, k) * (d.h - 14), 1.3, 1.3);
+    ctx.strokeStyle = '#5e4a2c'; ctx.lineWidth = 1.2; ctx.strokeRect(x + 0.5, sy + 0.5, w - 1, d.h - 1);
     ctx.fillStyle = 'rgba(0,0,0,0.14)'; for (let k = 1; k < d.h / T; k++) ctx.fillRect(x, sy + k * T, w, 2);
     ctx.fillStyle = 'rgba(110,170,80,0.5)'; ctx.beginPath(); ctx.arc(x + 4, sy + d.h - 6, 5, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = 'rgba(40,30,10,0.35)'; ctx.beginPath(); ctx.arc(x + w / 2, sy + d.h / 2, 10, 0, Math.PI * 2); ctx.fill();
@@ -1059,9 +1130,13 @@ function templeDrawPlate(st, pl, t) {
     }
   }
   ctx.fillStyle = '#3a2e1a'; rr(x + 2, base - 5, T - 4, 5, 2); ctx.fill();
+  ctx.fillStyle = '#8a7a52'; circle(x + 5, base - 2.5, 1.2); ctx.fill(); circle(x + T - 5, base - 2.5, 1.2); ctx.fill();
   const top = base - 9 + sink;
   ctx.fillStyle = pl.down ? '#ffe9a0' : '#d6b25e'; rr(x + 4, top, T - 8, base - 4 - top, 3); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x + 7, top + 1, T - 14, 1.5);
+  ctx.fillStyle = 'rgba(110,80,20,0.35)'; ctx.fillRect(x + 6, base - 6, T - 12, 1.2);
+  ctx.strokeStyle = 'rgba(110,80,20,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x + T / 2, top + 3.5, 2, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = '#8a6a2a'; ctx.lineWidth = 1; rr(x + 4, top, T - 8, base - 4 - top, 3); ctx.stroke();
   if (pl.down) { ctx.globalAlpha = 0.25; ctx.fillStyle = '#fff3b0'; ctx.fillRect(x + 2, base - 22, T - 4, 14); ctx.globalAlpha = 1; }
 }
 // the stone monkey idol (sitting, arms on knees, gold eyes that shine on a plate)

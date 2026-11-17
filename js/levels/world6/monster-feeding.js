@@ -98,37 +98,368 @@ function paBehindTiles(layer, cutY, top, bottom, over) {
   for (const b of cc.boxes) ctx.drawImage(cc.cv, b.x0, b.lo, b.x1 - b.x0, b.hi - b.lo, b.x0 / kx, b.lo / ky, (b.x1 - b.x0) / kx, (b.hi - b.lo) / ky);
   ctx.imageSmoothingEnabled = sm;
 }
-// World 6 backyard backdrop: neighbours' houses, round trees and a picket fence, hazed toward the sky (a cached layer,
-// pasted with paBehindTiles)
+/* ---- Rich prop kit (Nov 2026, "richer props" pass for Worlds 6-9; Gavyn: the props players stand on, jump over,
+   push or collect need far more detail than a flat fill with a couple of lines). Drawing only. Every helper takes the
+   context to draw on first (ctx, a cached layer or a cached sprite), and hashed seeds for placement (never
+   Math.random()). ---- */
+// '#rrggbb' mixes that stay hex (mixCol returns rgb(), which cannot be mixed again)
+function paMix(a, b, t) {
+  const A = hexRgb(a), B = hexRgb(b); if (!A || !B) return a;
+  const h = v => ('0' + Math.round(clamp(v, 0, 255)).toString(16)).slice(-2);
+  return '#' + h(A[0] + (B[0] - A[0]) * t) + h(A[1] + (B[1] - A[1]) * t) + h(A[2] + (B[2] - A[2]) * t);
+}
+function paDk(c, t) { return paMix(c, '#141428', t); }
+function paLt(c, t) { return paMix(c, '#ffffff', t); }
+// a small still picture drawn once (per key, size and screen scale) and stamped every frame: a sprite cache for props
+// that move as a whole (blocks, crates, carts) or repeat many times. paint(g) draws in local coords 0..w x 0..h; pad
+// is room for outlines and shadows outside the box
+const _paSprites = new Map();
+function paSprite(key, w, h, pad, paint) {
+  const sc = Math.max(1, canvas.width / W), k = key + '|' + w + '|' + h + '|' + sc;
+  let s = _paSprites.get(k);
+  if (!s) {
+    if (_paSprites.size > 600) _paSprites.clear();
+    const c = document.createElement('canvas'); c.width = Math.ceil((w + 2 * pad) * sc); c.height = Math.ceil((h + 2 * pad) * sc);
+    const g = c.getContext('2d'); g.scale(sc, sc); g.translate(pad, pad); g.lineJoin = 'round'; g.lineCap = 'round';
+    paint(g); s = { c, pad, sc }; _paSprites.set(k, s);
+  }
+  return s;
+}
+// when the context is only scaled to the sprite's own pixel size (no turn, no zoom), the copy lands on whole screen
+// pixels with smoothing off: sharp, no seams, and several times cheaper on a computer that draws the canvas in software
+function paStamp(key, x, y, w, h, pad, paint, c) {
+  c = c || ctx; const s = paSprite(key, w, h, pad, paint), m = c.getTransform();
+  if (m.b === 0 && m.c === 0 && Math.abs(m.a - s.sc) < 1e-6 && Math.abs(m.d - s.sc) < 1e-6) {
+    const X = Math.round(m.a * (x - s.pad) + m.e), Y = Math.round(m.d * (y - s.pad) + m.f), sm = c.imageSmoothingEnabled;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingEnabled = false;
+    c.drawImage(s.c, X, Y);
+    c.setTransform(m); c.imageSmoothingEnabled = sm;
+  } else c.drawImage(s.c, x - s.pad, y - s.pad, s.c.width / s.sc, s.c.height / s.sc);
+}
+// wood grain: wavy lines along a board, with a knot or two (call inside a clip or on a board you just filled)
+function paGrain(g, x, y, w, h, col, seed, vert) {
+  const n = Math.max(2, Math.round((vert ? w : h) / 5)), len = vert ? h : w;
+  g.strokeStyle = paDk(col, 0.3); g.lineWidth = 0.9; g.globalAlpha = 0.55; g.beginPath();
+  for (let i = 0; i < n; i++) {
+    const hh = hash(seed + i * 13, 71), o = (i + 0.5) / n * (vert ? w : h) + ((hh % 5) - 2) * 0.4;
+    const amp = 0.6 + (hh >>> 4) % 3 * 0.4, ph = (hh >>> 8) % 60, s0 = (hh >>> 12) % 9, s1 = len - (hh >>> 16) % 9;
+    for (let s = s0; s <= s1; s += 4) {
+      const d = o + Math.sin((s + ph) * 0.11) * amp;
+      if (s === s0) { if (vert) g.moveTo(x + d, y + s); else g.moveTo(x + s, y + d); } else if (vert) g.lineTo(x + d, y + s); else g.lineTo(x + s, y + d);
+    }
+  }
+  g.stroke(); g.globalAlpha = 1;
+  const kn = 1 + hash(seed, 5) % 2;
+  for (let k = 0; k < kn && len > 22; k++) {
+    const hh = hash(seed + k * 7, 91), s = 8 + hh % Math.max(1, len - 16), d = (0.3 + (hh >>> 8) % 5 / 10) * (vert ? w : h);
+    const kx = vert ? x + d : x + s, ky = vert ? y + s : y + d, r = Math.min(3.2, (vert ? w : h) * 0.18 + 0.8);
+    g.fillStyle = paDk(col, 0.34); g.beginPath(); g.ellipse(kx, ky, vert ? r * 0.7 : r * 1.4, vert ? r * 1.4 : r * 0.7, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = paDk(col, 0.2); g.lineWidth = 0.8; g.beginPath(); g.ellipse(kx, ky, vert ? r * 1.2 : r * 2.2, vert ? r * 2.2 : r * 1.2, 0, 0, Math.PI * 2); g.stroke();
+  }
+}
+// a wooden board: base, grain and knots, lit top edge, darker underside, outline in a dark shade of its own colour,
+// optional nails near the ends (o.nails) and grain running up and down (o.vert)
+function paPlank(g, x, y, w, h, col, seed, o) {
+  o = o || {}; const r = o.r === undefined ? Math.min(2.5, h / 3, w / 3) : o.r;
+  g.fillStyle = col; paRR(g, x, y, w, h, r); g.fill();
+  g.save(); paRR(g, x, y, w, h, r); g.clip();
+  paGrain(g, x, y, w, h, col, seed, o.vert);
+  g.fillStyle = paDk(col, 0.2); if (o.vert) g.fillRect(x + w * 0.72, y, w, h); else g.fillRect(x, y + h * 0.7, w, h);
+  g.fillStyle = 'rgba(255,255,255,0.3)'; if (o.vert) g.fillRect(x, y, Math.max(1.2, w * 0.16), h); else g.fillRect(x, y, w, Math.max(1.2, Math.min(3, h * 0.16)));
+  g.restore();
+  g.strokeStyle = paDk(col, o.edge || 0.5); g.lineWidth = o.lw || 1.6; paRR(g, x, y, w, h, r); g.stroke();
+  if (o.nails) {
+    const pts = o.vert ? [[x + w / 2, y + 3.5], [x + w / 2, y + h - 3.5]] : [[x + 4, y + h / 2], [x + w - 4, y + h / 2]];
+    for (const [nx, ny] of pts) paNail(g, nx, ny, col);
+  }
+}
+// a nail or rivet head
+function paNail(g, x, y, col, r) {
+  r = r || 1.15;
+  g.fillStyle = paDk(col, 0.6); paCirc(g, x, y, r); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.55)'; paCirc(g, x - r * 0.35, y - r * 0.35, r * 0.42); g.fill();
+}
+// a wooden crate: horizontal boards in a frame, a diagonal brace, corner nails, grain
+function paCrate(g, x, y, w, h, col, seed, o) {
+  o = o || {}; const fr = Math.max(2.5, Math.min(5, Math.min(w, h) * 0.15)), dk = paDk(col, 0.5);
+  g.fillStyle = paDk(col, 0.12); paRR(g, x, y, w, h, 2.5); g.fill();
+  const nb = Math.max(2, Math.round((h - 2 * fr) / 7)), bh = (h - 2 * fr) / nb;
+  for (let i = 0; i < nb; i++) {
+    const c = i % 2 ? paDk(col, 0.07) : col;
+    g.fillStyle = c; g.fillRect(x + fr, y + fr + i * bh, w - 2 * fr, bh - 0.8);
+    g.save(); g.beginPath(); g.rect(x + fr, y + fr + i * bh, w - 2 * fr, bh - 0.8); g.clip(); paGrain(g, x + fr, y + fr + i * bh, w - 2 * fr, bh - 0.8, c, seed + i * 5); g.restore();
+    g.fillStyle = paDk(col, 0.38); g.fillRect(x + fr, y + fr + (i + 1) * bh - 0.8, w - 2 * fr, 0.8);
+  }
+  if (!o.noBrace) {   // the diagonal brace
+    g.save(); g.beginPath(); g.rect(x + fr, y + fr, w - 2 * fr, h - 2 * fr); g.clip();
+    g.strokeStyle = paDk(col, 0.45); g.lineWidth = fr + 1.2; g.beginPath(); g.moveTo(x + fr, y + h - fr); g.lineTo(x + w - fr, y + fr); g.stroke();
+    g.strokeStyle = paLt(col, 0.08); g.lineWidth = fr - 0.4; g.beginPath(); g.moveTo(x + fr, y + h - fr); g.lineTo(x + w - fr, y + fr); g.stroke();
+    g.restore();
+  }
+  // frame boards
+  g.fillStyle = paLt(col, 0.07);
+  for (const [fx, fy, fw, fh] of [[x, y, w, fr], [x, y + h - fr, w, fr], [x, y, fr, h], [x + w - fr, y, fr, h]]) g.fillRect(fx, fy, fw, fh);
+  g.fillStyle = 'rgba(255,255,255,0.32)'; g.fillRect(x, y, w, 1.3); g.fillRect(x, y, 1.3, h);
+  g.fillStyle = paDk(col, 0.3); g.fillRect(x, y + h - 1.6, w, 1.6); g.fillRect(x + w - 1.6, y, 1.6, h);
+  g.strokeStyle = paDk(col, 0.34); g.lineWidth = 0.8; g.strokeRect(x + fr, y + fr, w - 2 * fr, h - 2 * fr);
+  for (const [nx, ny] of [[x + fr / 2, y + fr / 2], [x + w - fr / 2, y + fr / 2], [x + fr / 2, y + h - fr / 2], [x + w - fr / 2, y + h - fr / 2]]) paNail(g, nx, ny, col, 1.05);
+  g.strokeStyle = dk; g.lineWidth = o.lw || 1.8; paRR(g, x, y, w, h, 2.5); g.stroke();
+}
+// a carved stone block: bevelled lit top/left, darker bottom/right, speckles, a chipped corner, a hairline crack
+function paStone(g, x, y, w, h, col, seed, o) {
+  o = o || {}; const b = Math.max(2, Math.min(4, Math.min(w, h) * 0.13)), r = o.r === undefined ? 2 : o.r;
+  g.fillStyle = col; paRR(g, x, y, w, h, r); g.fill();
+  g.save(); paRR(g, x, y, w, h, r); g.clip();
+  g.fillStyle = paLt(col, 0.22); g.beginPath(); g.moveTo(x, y); g.lineTo(x + w, y); g.lineTo(x + w - b, y + b); g.lineTo(x + b, y + b); g.lineTo(x + b, y + h - b); g.lineTo(x, y + h); g.closePath(); g.fill();
+  g.fillStyle = paDk(col, 0.22); g.beginPath(); g.moveTo(x + w, y); g.lineTo(x + w, y + h); g.lineTo(x, y + h); g.lineTo(x + b, y + h - b); g.lineTo(x + w - b, y + h - b); g.lineTo(x + w - b, y + b); g.closePath(); g.fill();
+  g.fillStyle = paDk(col, 0.07); g.fillRect(x + b, y + h * 0.55, w - 2 * b, h * 0.45 - b);
+  const n = Math.round(w * h / 80);
+  for (let i = 0; i < n; i++) {
+    const hh = hash(seed + i * 17, 33), sx = x + b + hh % Math.max(1, w - 2 * b), sy = y + b + (hh >>> 9) % Math.max(1, h - 2 * b);
+    g.fillStyle = (hh >>> 20) % 3 ? paDk(col, 0.24) : paLt(col, 0.32); g.fillRect(sx, sy, 1 + (hh >>> 24) % 2, 1);
+  }
+  if (!o.noCrack && hash(seed, 3) % 3 === 0) {
+    const hh = hash(seed, 9), cx = x + b + 3 + hh % Math.max(1, w - 2 * b - 6), top = (hh >>> 10) % 2;
+    g.strokeStyle = paDk(col, 0.45); g.lineWidth = 0.9; g.beginPath();
+    let px = cx, py = top ? y + b : y + h - b; g.moveTo(px, py);
+    for (let k = 0; k < 3; k++) { px += ((hash(seed + k, 21) % 7) - 3); py += (top ? 1 : -1) * Math.min(h * 0.18, 5); g.lineTo(px, py); }
+    g.stroke();
+  }
+  if (!o.noChip && hash(seed, 11) % 2) {
+    const hh = hash(seed, 13), cr = 2.5 + hh % 3, right = (hh >>> 4) % 2, cx = right ? x + w : x, cy = (hh >>> 6) % 2 ? y : y + h;
+    g.fillStyle = paDk(col, 0.36); g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + (right ? -cr : cr), cy); g.lineTo(cx, cy + (cy === y ? cr : -cr)); g.closePath(); g.fill();
+  }
+  g.restore();
+  g.strokeStyle = paDk(col, o.edge || 0.48); g.lineWidth = o.lw || 1.6; paRR(g, x, y, w, h, r); g.stroke();
+}
+// a shaded pebble or rock: base, darker lower right, lit upper left, outline in its own dark
+function paPebble(g, x, y, rx, ry, col, rot) {
+  g.save(); g.translate(x, y); if (rot) g.rotate(rot);
+  g.fillStyle = paDk(col, 0.25); g.beginPath(); g.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = col; g.beginPath(); g.ellipse(-rx * 0.1, -ry * 0.12, rx * 0.84, ry * 0.76, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.38)'; g.beginPath(); g.ellipse(-rx * 0.35, -ry * 0.42, rx * 0.36, ry * 0.24, -0.3, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = paDk(col, 0.52); g.lineWidth = Math.min(1.4, 0.4 + rx * 0.18); g.beginPath(); g.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); g.stroke();
+  g.restore();
+}
+// a band of earth: wavy strata, buried shaded pebbles, root threads, specks, a dark lip under the top edge
+// o: { rootCol, pebbles: colour list, top: false for no lip, roots: false }
+function paDirt(g, x, y, w, h, col, seed, o) {
+  o = o || {};
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
+  g.fillStyle = col; g.fillRect(x, y, w, h);
+  const bands = Math.max(2, Math.round(h / 13));
+  for (let i = 1; i <= bands; i++) {
+    const by = y + h * i / (bands + 1), hh = hash(seed + i, 41);
+    g.fillStyle = i % 2 ? paDk(col, 0.1) : paLt(col, 0.07);
+    g.beginPath(); g.moveTo(x, by);
+    for (let sx = 0; sx <= w + 12; sx += 12) g.lineTo(x + sx, by + Math.sin((sx + (hh % 90)) * 0.045) * 2.2 + Math.sin(sx * 0.13 + i) * 0.8);
+    g.lineTo(x + w + 12, y + h); g.lineTo(x, y + h); g.closePath(); g.fill();
+  }
+  g.fillStyle = paDk(col, 0.16); g.fillRect(x, y + h * 0.84, w, h);
+  const n = Math.round(w * h / 55);
+  for (let i = 0; i < n; i++) {
+    const hh = hash(seed + i * 7, 57); g.fillStyle = (hh >>> 22) % 3 ? paDk(col, 0.36) : paLt(col, 0.26);
+    g.fillRect(x + hh % Math.max(1, w), y + (hh >>> 10) % Math.max(1, h), 1 + (hh >>> 26) % 2, 1);
+  }
+  if (o.roots !== false) {
+    g.strokeStyle = o.rootCol || paDk(col, 0.42); g.lineWidth = 1; g.globalAlpha = 0.6; g.beginPath();
+    for (let i = 0; i < Math.round(w / 50); i++) {
+      const hh = hash(seed + i * 29, 63), rx = x + 10 + hh % Math.max(1, w - 20), len = 5 + (hh >>> 8) % Math.max(4, Math.min(16, h * 0.5));
+      g.moveTo(rx, y + 2); g.quadraticCurveTo(rx + ((hh >>> 14) % 7) - 3, y + len * 0.6, rx + ((hh >>> 18) % 9) - 4, y + len);
+    }
+    g.stroke(); g.globalAlpha = 1;
+  }
+  const cols = o.pebbles || ['#a99e8e', '#8f8273', '#c2b6a1', '#7d7368'];
+  const np = Math.round(w * h / (o.sparse ? 700 : 380));
+  for (let i = 0; i < np; i++) {
+    const hh = hash(seed + i * 31, 77), px = x + 4 + hh % Math.max(1, w - 8), py = y + 6 + (hh >>> 9) % Math.max(1, h - 9);
+    const rx = 1.8 + (hh >>> 18) % 4, ry = rx * (0.55 + ((hh >>> 22) % 4) * 0.1);
+    paPebble(g, px, py, rx, ry, cols[(hh >>> 25) % cols.length], ((hh >>> 12) % 7 - 3) * 0.12);
+  }
+  if (o.top !== false) { g.fillStyle = paDk(col, 0.3); g.fillRect(x, y, w, 2.5); g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(x, y + 2.5, w, 3); }
+  g.restore();
+}
+// a metal plate: base, a soft sheen band, lit top edge, darker foot, rivets along the long edges, outline
+function paMetal(g, x, y, w, h, col, o) {
+  o = o || {}; const r = o.r === undefined ? 2 : o.r;
+  g.fillStyle = col; paRR(g, x, y, w, h, r); g.fill();
+  g.save(); paRR(g, x, y, w, h, r); g.clip();
+  g.fillStyle = paLt(col, 0.18); if (w >= h) g.fillRect(x, y + h * 0.18, w, h * 0.16); else g.fillRect(x + w * 0.18, y, w * 0.16, h);
+  g.fillStyle = 'rgba(255,255,255,0.32)'; g.fillRect(x, y, w, Math.max(1.2, Math.min(2.5, h * 0.12)));
+  g.fillStyle = paDk(col, 0.22); if (w >= h) g.fillRect(x, y + h * 0.72, w, h); else g.fillRect(x + w * 0.7, y, w, h);
+  g.restore();
+  g.strokeStyle = paDk(col, 0.55); g.lineWidth = o.lw || 1.6; paRR(g, x, y, w, h, r); g.stroke();
+  if (o.rivets !== false) {
+    const step = o.step || 12, ins = o.ins || 3;
+    if (w >= h) { for (let rx = x + ins + 1; rx <= x + w - ins; rx += step) { paNail(g, rx, y + ins, col, 1.25); if (h > 10) paNail(g, rx, y + h - ins, col, 1.25); } }
+    else { for (let ry = y + ins + 1; ry <= y + h - ins; ry += step) { paNail(g, x + ins, ry, col, 1.25); if (w > 10) paNail(g, x + w - ins, ry, col, 1.25); } }
+  }
+}
+// a tuft of grass blades (two greens) at x, y on a ground line
+function paTuft(g, x, y, s, light, dark) {
+  g.lineCap = 'round';
+  g.strokeStyle = dark; g.lineWidth = 1.6; g.beginPath();
+  for (const a of [-0.55, -0.15, 0.3]) { g.moveTo(x, y); g.quadraticCurveTo(x + Math.sin(a) * 3 * s, y - 5 * s, x + Math.sin(a) * 6 * s, y - Math.cos(a) * 9 * s); }
+  g.stroke();
+  g.strokeStyle = light; g.lineWidth = 1.3; g.beginPath();
+  for (const a of [-0.3, 0.1, 0.55]) { g.moveTo(x + 1, y); g.quadraticCurveTo(x + 1 + Math.sin(a) * 3 * s, y - 4 * s, x + 1 + Math.sin(a) * 5 * s, y - Math.cos(a) * 7.5 * s); }
+  g.stroke();
+}
+// a round metal stud (brass peg, bolt head, bulb socket): a dark collar, a shaded dome lit from the top left, a
+// glint and an outline in its own dark. o.collar: false for no collar ring
+function paStud(g, x, y, r, col, o) {
+  o = o || {};
+  if (o.collar !== false) { g.fillStyle = paDk(col, 0.5); paCirc(g, x, y, r + 1.3); g.fill(); }
+  const gr = g.createRadialGradient(x - r * 0.4, y - r * 0.45, r * 0.1, x, y, r);
+  gr.addColorStop(0, paLt(col, 0.55)); gr.addColorStop(0.55, col); gr.addColorStop(1, paDk(col, 0.32));
+  g.fillStyle = gr; paCirc(g, x, y, r); g.fill();
+  g.strokeStyle = paDk(col, 0.55); g.lineWidth = Math.min(1.2, 0.35 + r * 0.14); paCirc(g, x, y, r); g.stroke();
+  g.fillStyle = 'rgba(255,255,255,0.85)'; g.beginPath(); g.ellipse(x - r * 0.38, y - r * 0.42, r * 0.3, r * 0.2, -0.6, 0, Math.PI * 2); g.fill();
+}
+// a round metal rod or tube seen side on (horizontal when w >= h): a lit stripe, a dark underside, an outline
+function paRod(g, x, y, w, h, col) {
+  const hz = w >= h, gr = hz ? g.createLinearGradient(0, y, 0, y + h) : g.createLinearGradient(x, 0, x + w, 0);
+  gr.addColorStop(0, paLt(col, 0.2)); gr.addColorStop(0.3, paLt(col, 0.5)); gr.addColorStop(0.5, col); gr.addColorStop(1, paDk(col, 0.38));
+  const r = Math.min(w, h) / 2;
+  g.fillStyle = gr; paRR(g, x, y, w, h, r); g.fill();
+  g.strokeStyle = paDk(col, 0.55); g.lineWidth = 1.1; paRR(g, x, y, w, h, r); g.stroke();
+}
+// World 6 backyard backdrop: neighbours' houses (siding, shingled roofs, brick chimneys, framed windows with shutters
+// and curtains, doors with steps), round trees with lit and shaded leaf clumps, bushes, and a picket fence with shaded
+// pickets, rails, posts and nails, all hazed toward the sky (a cached layer, pasted with paBehindTiles)
 function paBackyard(groundY, seed) {
   const key = 'yard|' + groundY + '|' + seed + '|' + C.skyBot + C.hillFar;
   const layer = paLayer(key, W, H, g => {
-    const haze = (c, t) => mixCol(c, C.skyBot, t);
-    // far trees
+    const sky = /^#[0-9a-f]{6}$/i.test(C.skyBot) ? C.skyBot : '#cfe8f5';
+    const hz = (c, t) => paMix(c, sky, t);
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    // far trees: leaf clumps with a lit top and a shaded underside, trunks with bark
     for (let i = 0; i < 9; i++) {
-      const h = hash(i * 31 + seed, 7), x = i * 118 + (h % 60) - 20, r = 26 + (h >> 6) % 16, y = groundY - 70 - (h >> 10) % 30;
-      g.fillStyle = haze('#5f9e74', 0.62); paCirc(g, x, y, r); g.fill(); paCirc(g, x + r * 0.7, y + 8, r * 0.8); g.fill(); paCirc(g, x - r * 0.7, y + 10, r * 0.7); g.fill();
-      g.fillStyle = haze('#7a5a3e', 0.6); g.fillRect(x - 4, y + r * 0.6, 8, groundY - y);
+      const h = hash(i * 31 + seed, 7), x = i * 118 + (h % 60) - 20, r = 26 + (h >> 6) % 16, y = groundY - 70 - (h >> 10) % 30;   // >> as before the polish: keeps the layout the hints were placed around
+      const leaf = hz('#5f9e74', 0.58), bark = hz('#7a5a3e', 0.56);
+      g.fillStyle = bark; g.fillRect(x - 4, y + r * 0.6, 8, groundY - y);
+      g.fillStyle = hz('#5b4330', 0.56); g.fillRect(x + 1.5, y + r * 0.6, 2.5, groundY - y);
+      g.strokeStyle = hz('#5b4330', 0.56); g.lineWidth = 2; g.beginPath(); g.moveTo(x, y + r * 0.9); g.lineTo(x - r * 0.45, y + r * 0.2); g.moveTo(x, y + r * 1.05); g.lineTo(x + r * 0.5, y + r * 0.35); g.stroke();
+      const blobs = [[0, 0, r], [r * 0.7, 8, r * 0.8], [-r * 0.7, 10, r * 0.7], [r * 0.15, -r * 0.45, r * 0.6]];
+      g.fillStyle = hz('#3f7a58', 0.58); for (const [dx, dy, rr] of blobs) { paCirc(g, x + dx + 2, y + dy + 4, rr); g.fill(); }
+      g.fillStyle = leaf; for (const [dx, dy, rr] of blobs) { paCirc(g, x + dx, y + dy, rr * 0.94); g.fill(); }
+      g.fillStyle = hz('#86c08e', 0.55); for (const [dx, dy, rr] of blobs) { paCirc(g, x + dx - rr * 0.3, y + dy - rr * 0.32, rr * 0.45); g.fill(); }
+      g.fillStyle = hz('#3f7a58', 0.6); for (let k = 0; k < 6; k++) { const hk = hash(i * 7 + k, seed + 3); paCirc(g, x + ((hk % 100) / 100 - 0.5) * r * 1.8, y + ((hk >>> 8) % 100) / 100 * r * 0.9 - r * 0.2, 2); g.fill(); }
     }
     // houses
     const roofs = ['#c8654f', '#5d7fb0', '#7c9a58', '#b9784a'], walls = ['#f2dcc0', '#e9e1cf', '#f5d9b5', '#dfe6ea'];
     for (let i = 0; i < 4; i++) {
       const h = hash(i * 17 + seed, 3), w = 120 + h % 50, x = 40 + i * 240 + (h >> 4) % 70, hh = 70 + (h >> 8) % 30, y = groundY - 40 - hh;
-      const wall = haze(walls[(i + seed) % 4], 0.45), roof = haze(roofs[(i + seed) % 4], 0.5);
-      g.fillStyle = wall; g.fillRect(x, y, w, hh + 40);
-      g.fillStyle = haze(shade(walls[(i + seed) % 4], 0.12), 0.45); g.fillRect(x + w - 14, y, 14, hh + 40);
-      g.fillStyle = roof; g.beginPath(); g.moveTo(x - 12, y + 2); g.lineTo(x + w / 2, y - 42); g.lineTo(x + w + 12, y + 2); g.closePath(); g.fill();
-      g.fillStyle = haze(shade(roofs[(i + seed) % 4], 0.25), 0.5); g.fillRect(x - 12, y, w + 24, 5);
-      g.fillRect(x + w * 0.7, y - 34, 12, 22);   // chimney
-      g.fillStyle = haze('#8fb6cf', 0.42); g.strokeStyle = haze('#ffffff', 0.3); g.lineWidth = 2;
-      for (let k = 0; k < 2; k++) { const wx = x + 18 + k * (w - 56); g.fillRect(wx, y + 18, 20, 22); g.strokeRect(wx, y + 18, 20, 22); g.beginPath(); g.moveTo(wx + 10, y + 18); g.lineTo(wx + 10, y + 40); g.stroke(); }
+      const wc = walls[(i + seed) % 4], rc = roofs[(i + seed) % 4], T1 = 0.45, T2 = 0.5;
+      const wall = hz(wc, T1), roof = hz(rc, T2), wallD = hz(paDk(wc, 0.14), T1), wallE = hz(paDk(wc, 0.45), T1), roofD = hz(paDk(rc, 0.25), T2), roofE = hz(paDk(rc, 0.5), T2);
+      const wh = hh + 40;
+      // chimney (behind the roof): bricks and a cap
+      const chx = x + w * 0.7;
+      g.fillStyle = roofD; g.fillRect(chx, y - 34, 12, 30);
+      g.strokeStyle = hz(paDk(rc, 0.45), T2); g.lineWidth = 0.8; g.beginPath();
+      for (let by = y - 30; by < y - 4; by += 4) { g.moveTo(chx, by); g.lineTo(chx + 12, by); const off = ((by - y) / 4) % 2 ? 3 : 8; g.moveTo(chx + off, by); g.lineTo(chx + off, by + 4); }
+      g.stroke();
+      g.fillStyle = hz(paDk(rc, 0.4), T2); g.fillRect(chx - 2, y - 37, 16, 4);
+      g.strokeStyle = roofE; g.lineWidth = 1.2; g.strokeRect(chx, y - 34, 12, 30);
+      // wall with siding boards and a shaded right side
+      g.fillStyle = wall; g.fillRect(x, y, w, wh);
+      g.strokeStyle = hz(paDk(wc, 0.1), T1); g.lineWidth = 1; g.beginPath();
+      for (let sy = y + 7; sy < y + wh; sy += 7) { g.moveTo(x, sy); g.lineTo(x + w, sy); }
+      g.stroke();
+      g.fillStyle = hz('#ffffff', 0.5); g.globalAlpha = 0.35; for (let sy = y + 1; sy < y + wh; sy += 7) g.fillRect(x, sy, w, 1); g.globalAlpha = 1;
+      g.fillStyle = wallD; g.fillRect(x + w - 14, y, 14, wh);
+      g.fillStyle = hz(paDk(wc, 0.25), T1); g.fillRect(x, y, w, 6);   // eave shadow
+      g.fillStyle = hz(paDk(wc, 0.2), T1); g.fillRect(x - 2, y + wh - 8, w + 4, 8);   // foundation band
+      g.strokeStyle = wallE; g.lineWidth = 1.4; g.strokeRect(x, y, w, wh);
+      // roof: shingle rows on a lit left slope and a shaded right slope, a pale fascia board
+      const peakX = x + w / 2, peakY = y - 42, rl = x - 12, rrx = x + w + 12, ry0 = y + 2;
+      g.save(); g.beginPath(); g.moveTo(rl, ry0); g.lineTo(peakX, peakY); g.lineTo(rrx, ry0); g.closePath(); g.clip();
+      g.fillStyle = roof; g.fillRect(rl, peakY, rrx - rl, ry0 - peakY);
+      g.fillStyle = roofD; g.beginPath(); g.moveTo(peakX, peakY); g.lineTo(rrx, ry0); g.lineTo(peakX, ry0); g.closePath(); g.globalAlpha = 0.45; g.fill(); g.globalAlpha = 1;
+      g.strokeStyle = hz(paDk(rc, 0.32), T2); g.lineWidth = 1; g.beginPath();
+      for (let sy = ry0 - 5, row = 0; sy > peakY; sy -= 6, row++) {
+        g.moveTo(rl, sy); g.lineTo(rrx, sy);
+        for (let sx = rl + (row % 2 ? 4 : 0); sx < rrx; sx += 8) { g.moveTo(sx, sy); g.lineTo(sx, sy + 6); }
+      }
+      g.stroke();
+      g.fillStyle = hz('#ffffff', 0.4); g.globalAlpha = 0.25; g.beginPath(); g.moveTo(rl, ry0); g.lineTo(peakX, peakY); g.lineTo(peakX - 3, peakY + 7); g.lineTo(rl + 7, ry0); g.closePath(); g.fill(); g.globalAlpha = 1;
+      g.restore();
+      g.strokeStyle = roofE; g.lineWidth = 1.6; g.beginPath(); g.moveTo(rl, ry0); g.lineTo(peakX, peakY); g.lineTo(rrx, ry0); g.closePath(); g.stroke();
+      g.fillStyle = hz('#f6f1e6', T1); g.fillRect(rl, ry0 - 1, rrx - rl, 4); g.strokeStyle = hz(paDk(rc, 0.4), T2); g.lineWidth = 1; g.strokeRect(rl, ry0 - 1, rrx - rl, 4);
+      // a round attic window under the peak
+      g.fillStyle = hz('#f6f1e6', T1); paCirc(g, peakX, y - 16, 7); g.fill(); g.fillStyle = hz('#8fb6cf', 0.42); paCirc(g, peakX, y - 16, 5); g.fill();
+      g.strokeStyle = hz(paDk(rc, 0.4), T2); g.lineWidth = 1; paCirc(g, peakX, y - 16, 7); g.stroke(); g.beginPath(); g.moveTo(peakX - 5, y - 16); g.lineTo(peakX + 5, y - 16); g.moveTo(peakX, y - 21); g.lineTo(peakX, y - 11); g.stroke();
+      // windows: trim, panes with a glint, cross bars, a sill, shutters, a curtain
+      const shut = hz(paDk(rc, 0.05), T2), trim = hz('#f8f4ec', 0.4), glass = hz('#8fb6cf', 0.42), glassD = hz('#6a92b0', 0.42);
+      for (let k = 0; k < 2; k++) {
+        const wx = x + 18 + k * (w - 56), wy = y + 18;
+        g.fillStyle = shut; g.fillRect(wx - 8, wy - 1, 7, 24); g.fillRect(wx + 21, wy - 1, 7, 24);
+        g.strokeStyle = hz(paDk(rc, 0.35), T2); g.lineWidth = 0.8; g.beginPath();
+        for (let ly = wy + 3; ly < wy + 22; ly += 3.5) { g.moveTo(wx - 7, ly); g.lineTo(wx - 2, ly); g.moveTo(wx + 22, ly); g.lineTo(wx + 27, ly); }
+        g.stroke();
+        g.fillStyle = trim; g.fillRect(wx - 1.5, wy - 1.5, 23, 25);
+        g.fillStyle = glass; g.fillRect(wx + 1, wy + 1, 18, 20);
+        g.fillStyle = glassD; g.fillRect(wx + 1, wy + 14, 18, 7);
+        g.fillStyle = hz('#f3e3d0', 0.42); g.beginPath(); g.moveTo(wx + 1, wy + 1); g.lineTo(wx + 7, wy + 1); g.quadraticCurveTo(wx + 4, wy + 10, wx + 1, wy + 16); g.closePath(); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.45)'; g.beginPath(); g.moveTo(wx + 10, wy + 2); g.lineTo(wx + 14, wy + 2); g.lineTo(wx + 8, wy + 12); g.lineTo(wx + 5, wy + 12); g.closePath(); g.fill();
+        g.strokeStyle = trim; g.lineWidth = 2; g.beginPath(); g.moveTo(wx + 10, wy + 1); g.lineTo(wx + 10, wy + 21); g.moveTo(wx + 1, wy + 11); g.lineTo(wx + 19, wy + 11); g.stroke();
+        g.strokeStyle = wallE; g.lineWidth = 1; g.strokeRect(wx - 1.5, wy - 1.5, 23, 25);
+        g.fillStyle = trim; g.fillRect(wx - 4, wy + 22, 28, 3.5); g.fillStyle = wallD; g.fillRect(wx - 3, wy + 25.5, 26, 1.5);
+        // a flower box on one window
+        if ((h >> (12 + k)) & 1) {
+          g.fillStyle = hz('#a8683f', 0.45); g.fillRect(wx - 2, wy + 25.5, 24, 5);
+          for (let f = 0; f < 5; f++) { g.fillStyle = hz(['#e86a6a', '#ffd34a', '#f39bc2'][(f + k) % 3], 0.4); paCirc(g, wx + 1 + f * 4.5, wy + 24.5, 2.2); g.fill(); }
+        }
+      }
+      // the door: panels, a knob, a step, a little lamp
+      const dx = x + w / 2 - 9, dy = y + wh - 36;
+      if (w > 130) {
+        g.fillStyle = hz(paDk(rc, 0.12), T2); g.fillRect(dx, dy, 18, 32);
+        g.strokeStyle = hz(paDk(rc, 0.42), T2); g.lineWidth = 1; g.strokeRect(dx, dy, 18, 32); g.strokeRect(dx + 3, dy + 4, 12, 10); g.strokeRect(dx + 3, dy + 17, 12, 11);
+        g.fillStyle = hz('#ffd34a', 0.35); paCirc(g, dx + 14.5, dy + 17, 1.4); g.fill();
+        g.fillStyle = trim; g.fillRect(dx - 3, dy + 32, 24, 4);
+        g.fillStyle = hz('#3c3a52', 0.45); g.fillRect(dx + 21, dy + 4, 3, 6); g.fillStyle = hz('#ffe9a0', 0.3); g.fillRect(dx + 21.5, dy + 6, 2, 3);
+      }
+      // bushes at the foot of the wall
+      for (let b = 0; b < 3; b++) {
+        const hb = hash(i * 5 + b, seed + 11), bx = x + 8 + (hb % Math.max(1, w - 16)), br = 7 + (hb >>> 8) % 5, byy = groundY - 34 - br * 0.3;
+        g.fillStyle = hz('#3f7a58', 0.45); paCirc(g, bx + 1, byy + 1, br); g.fill();
+        g.fillStyle = hz('#5f9e74', 0.45); paCirc(g, bx, byy, br * 0.9); g.fill();
+        g.fillStyle = hz('#86c08e', 0.45); paCirc(g, bx - br * 0.3, byy - br * 0.35, br * 0.4); g.fill();
+      }
     }
-    // picket fence
-    const fy = groundY - 34, wood = haze('#f4ead6', 0.28), woodD = haze('#c9b89a', 0.3);
-    g.fillStyle = woodD; g.fillRect(0, fy + 8, W, 5); g.fillRect(0, fy + 22, W, 5);
-    for (let x = 4; x < W; x += 16) {
-      g.fillStyle = wood; g.beginPath(); g.moveTo(x, groundY); g.lineTo(x, fy); g.lineTo(x + 5, fy - 6); g.lineTo(x + 10, fy); g.lineTo(x + 10, groundY); g.closePath(); g.fill();
-      g.fillStyle = woodD; g.fillRect(x + 8, fy, 2, groundY - fy);
+    // picket fence: two shaded rails behind, then pickets with a lit left edge, a shaded right side, a pointed top and
+    // an outline; a stout post every eighth picket with a cap; nails on the rails; grass and a shadow along the foot
+    const fy = groundY - 34, wood = hz('#f4ead6', 0.26), woodD = hz('#c9b89a', 0.28), woodE = hz('#9a8668', 0.3), woodL = hz('#ffffff', 0.25);
+    for (const ry of [fy + 8, fy + 22]) {
+      g.fillStyle = woodD; g.fillRect(0, ry, W, 5);
+      g.fillStyle = hz('#a8977a', 0.3); g.fillRect(0, ry + 3.5, W, 1.5);
+      g.strokeStyle = woodE; g.lineWidth = 0.8; g.beginPath(); g.moveTo(0, ry); g.lineTo(W, ry); g.moveTo(0, ry + 5); g.lineTo(W, ry + 5); g.stroke();
+    }
+    g.fillStyle = 'rgba(40,60,40,0.16)'; g.fillRect(0, groundY - 6, W, 6);
+    for (let x = 4, n = 0; x < W; x += 16, n++) {
+      const post = n % 8 === 0, pw = post ? 12 : 10, px = post ? x - 1 : x, top = post ? fy - 4 : fy, hh = hash(n, seed + 21);
+      const lean = ((hh % 5) - 2) * 0.25;
+      g.fillStyle = wood; g.beginPath();
+      if (post) { g.moveTo(px, groundY); g.lineTo(px, top); g.lineTo(px + pw, top); g.lineTo(px + pw, groundY); }
+      else { g.moveTo(px, groundY); g.lineTo(px + lean, top); g.lineTo(px + pw / 2 + lean, top - 6); g.lineTo(px + pw + lean, top); g.lineTo(px + pw, groundY); }
+      g.closePath(); g.fill();
+      g.fillStyle = woodD; g.fillRect(px + pw - 2.5, top + 1, 2.5, groundY - top - 1);
+      g.fillStyle = woodL; g.fillRect(px + 0.5, top + 1, 1.5, groundY - top - 1);
+      // grain and a weathered knot
+      g.strokeStyle = hz('#d8c8aa', 0.3); g.lineWidth = 0.7; g.beginPath(); g.moveTo(px + 4, top + 4 + hh % 6); g.lineTo(px + 4.5, groundY - 4); g.stroke();
+      if (hh % 4 === 0) { g.fillStyle = hz('#c2ad8a', 0.3); g.beginPath(); g.ellipse(px + 5, top + 14 + (hh >>> 4) % 10, 1.2, 2.2, 0, 0, Math.PI * 2); g.fill(); }
+      g.strokeStyle = woodE; g.lineWidth = 1; g.beginPath();
+      if (post) { g.moveTo(px, groundY); g.lineTo(px, top); g.lineTo(px + pw, top); g.lineTo(px + pw, groundY); }
+      else { g.moveTo(px, groundY); g.lineTo(px + lean, top); g.lineTo(px + pw / 2 + lean, top - 6); g.lineTo(px + pw + lean, top); g.lineTo(px + pw, groundY); }
+      g.stroke();
+      if (post) { g.fillStyle = woodD; g.fillRect(px - 2, top - 4, pw + 4, 4); g.strokeStyle = woodE; g.strokeRect(px - 2, top - 4, pw + 4, 4); g.fillStyle = woodL; g.fillRect(px - 2, top - 4, pw + 4, 1); }
+      // nails on each rail
+      g.fillStyle = hz('#7c7468', 0.3); for (const ry of [fy + 10.5, fy + 24.5]) { paCirc(g, px + pw / 2, ry, 0.9); g.fill(); }
+    }
+    // grass tufts along the fence foot
+    for (let i = 0; i < 48; i++) {
+      const hh = hash(i, seed + 33); paTuft(g, (i * 20 + hh % 14) % W, groundY, 0.7 + (hh >>> 8) % 4 * 0.12, hz('#8fd59a', 0.25), hz('#4f9a68', 0.25));
     }
   });
   return layer;
@@ -891,12 +1222,37 @@ function monDrawShock(m) {
   else { const R = MONSTER.shockR * k; ctx.beginPath(); ctx.ellipse(m.kind === 'big' ? m.mx : m.ax, m.ay - 2, Math.max(1, R), Math.max(1, R * 0.12), 0, 0, Math.PI * 2); ctx.stroke(); }
   ctx.globalAlpha = 1;
 }
+// a burrow (cached pictures): behind the monster, a mound of dug earth with clods and the dark mouth going down (a
+// lit back wall inside); in front, the near lip of earth with shaded stones, crumbs and grass blades
 function monDrawHole(b, front) {
+  const soil = C.stone, lt = C.stoneLight;
   if (!front) {
-    ctx.fillStyle = '#2b2850'; ctx.beginPath(); ctx.ellipse(b.x, b.y + 1, 26, 6, 0, 0, Math.PI * 2); ctx.fill();
+    paStamp('monhole|' + soil + lt, b.x - 36, b.y - 9, 72, 18, 3, g => {
+      const X = 36, Y = 10;
+      g.fillStyle = 'rgba(20,20,40,0.16)'; g.beginPath(); g.ellipse(X + 1, Y + 2, 35, 8, 0, 0, Math.PI * 2); g.fill();
+      // the back mound of dug earth
+      g.fillStyle = paDk(soil, 0.1); g.beginPath(); g.ellipse(X, Y - 1, 33, 8, 0, Math.PI, 0); g.fill();
+      g.fillStyle = soil; g.beginPath(); g.ellipse(X - 1, Y - 1.5, 30, 6.5, 0, Math.PI, 0); g.fill();
+      g.fillStyle = lt; g.beginPath(); g.ellipse(X - 6, Y - 5, 16, 2.4, -0.05, 0, Math.PI * 2); g.fill();
+      for (let k = 0; k < 6; k++) { const hk = hash(k, 611); paPebble(g, X - 26 + k * 10 + hk % 4, Y - 4 - (hk >>> 4) % 3, 1.8 + (hk >>> 8) % 2, 1.3, k % 2 ? lt : paDk(soil, 0.05), 0); }
+      // the mouth: dark, a lit back wall, deeper dark at the front
+      const gr = g.createLinearGradient(0, Y - 6, 0, Y + 6); gr.addColorStop(0, '#4a3a52'); gr.addColorStop(0.45, '#2b2850'); gr.addColorStop(1, '#141228');
+      g.fillStyle = gr; g.beginPath(); g.ellipse(X, Y + 1, 26, 6, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = 'rgba(255,230,190,0.18)'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(X, Y + 1, 24, 4.6, 0, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+      g.strokeStyle = paDk(soil, 0.5); g.lineWidth = 1.4; g.beginPath(); g.ellipse(X, Y + 1, 26, 6, 0, 0, Math.PI * 2); g.stroke();
+    });
   } else {
-    ctx.strokeStyle = C.stoneLight; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(b.x, b.y + 1, 27, 7, 0, 0.05 * Math.PI, 0.95 * Math.PI); ctx.stroke();
-    ctx.fillStyle = C.stoneLight; circle(b.x - 30, b.y + 1, 3.5); ctx.fill(); circle(b.x + 30, b.y + 1, 3.5); ctx.fill();
+    paStamp('monlip|' + soil + lt + C.grass, b.x - 36, b.y - 4, 72, 14, 3, g => {
+      const X = 36, Y = 5;
+      // the near lip: a crescent of earth with a lit top, shaded stones at the ends, crumbs, and grass blades
+      g.fillStyle = paDk(soil, 0.15); g.beginPath(); g.ellipse(X, Y, 29, 9, 0, 0.02 * Math.PI, 0.98 * Math.PI); g.ellipse(X, Y + 1, 26, 6, 0, 0.96 * Math.PI, 0.04 * Math.PI, true); g.closePath(); g.fill();
+      g.strokeStyle = lt; g.lineWidth = 2.2; g.beginPath(); g.ellipse(X, Y + 1, 27, 7, 0, 0.08 * Math.PI, 0.92 * Math.PI); g.stroke();
+      g.strokeStyle = paDk(soil, 0.5); g.lineWidth = 1.2; g.beginPath(); g.ellipse(X, Y, 29, 9, 0, 0.04 * Math.PI, 0.96 * Math.PI); g.stroke();
+      paPebble(g, X - 30, Y + 1, 4.2, 3.2, lt, -0.2); paPebble(g, X + 30, Y + 1, 4, 3, lt, 0.25);
+      paPebble(g, X - 22, Y + 7, 2.4, 1.7, paLt(soil, 0.1), 0); paPebble(g, X + 18, Y + 8, 2.2, 1.6, paLt(soil, 0.1), 0.3);
+      g.fillStyle = paDk(soil, 0.3); for (let k = 0; k < 7; k++) { const hk = hash(k, 613); g.fillRect(X - 20 + hk % 40, Y + 5 + (hk >>> 6) % 4, 1.4, 1.2); }
+      paTuft(g, X - 35, Y + 4, 0.5, C.grass, C.grassDark); paTuft(g, X + 34, Y + 4, 0.45, C.grass, C.grassDark);
+    });
   }
 }
 function monDrawHead(st, m) {
@@ -994,8 +1350,19 @@ function monDrawKitchen(st) {
     ctx.fillStyle = 'rgba(255,170,80,0.28)'; ctx.fillRect(p.x - 14, p.y - 9, 28, 6);   // firelight on the belly
     ctx.restore();
     ctx.fillStyle = 'rgba(255,255,255,0.22)'; circle(p.x - 5, p.y - 23, 3.5); ctx.fill(); circle(p.x - 8, p.y - 17, 1.6); ctx.fill();
+    // an iron band with rivets round the belly, and ring handles on the sides
+    ctx.save(); circle(p.x, p.y - 19, 13); ctx.clip();
+    ctx.fillStyle = '#2a2940'; ctx.fillRect(p.x - 14, p.y - 25, 28, 4); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(p.x - 14, p.y - 25, 28, 1);
+    ctx.restore();
+    for (const rx of [-8, 0, 8]) paNail(ctx, p.x + rx, p.y - 23, '#5a5878', 1.1);
+    ctx.strokeStyle = '#2a2940'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(p.x - 15, p.y - 22, 3.2, Math.PI * 0.5, Math.PI * 1.5); ctx.moveTo(p.x + 15, p.y - 25.2); ctx.arc(p.x + 15, p.y - 22, 3.2, -Math.PI * 0.5, Math.PI * 0.5); ctx.stroke();
+    ctx.strokeStyle = C.ink;
     ctx.fillStyle = '#9aa0c0'; rr(p.x - 15, p.y - 33, 30, 5, 2.5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(p.x - 13, p.y - 32.5, 24, 1.2);
     ctx.fillStyle = '#7be08a'; ctx.beginPath(); ctx.ellipse(p.x, p.y - 33, 11, 2, 0, 0, Math.PI * 2); ctx.fill();
+    // the brew bubbling: two bubbles that swell and pop in turn, and a lit swirl
+    ctx.fillStyle = '#b6f5bf'; ctx.beginPath(); ctx.ellipse(p.x - 3, p.y - 33.5, 5, 0.9, 0, 0, Math.PI * 2); ctx.fill();
+    for (let k = 0; k < 2; k++) { const ph = ((t * 1.4 + k * 0.5) % 1), br = 0.6 + ph * 2.2; if (ph < 0.9) { ctx.fillStyle = '#5cc56e'; circle(p.x - 5 + k * 9, p.y - 34 - br * 0.4, br); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(p.x - 5.4 + k * 9, p.y - 34.4 - br * 0.6, br * 0.35); ctx.fill(); } }
   }
   // room 2: the crates; the craved one glows, and an arrow bounces over it while the chef holds something else
   for (const b of st.bins) {
@@ -1003,11 +1370,13 @@ function monDrawKitchen(st) {
     const x = b.x + 2, y = b.y + 10;
     if (want) { ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 + 0.4 * Math.sin(8 * t)) + ')'; ctx.lineWidth = 3; rr(x - 3, y - 18, 32, 41, 8); ctx.stroke(); }
     paShadow(x + 13, y + 20, 15, 3);
-    paBox(x, y, 26, 20, 3, C.plank, { foot: 0.8 });
-    ctx.strokeStyle = C.plankDark; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(x + 3, y + 3); ctx.lineTo(x + 23, y + 17); ctx.moveTo(x + 23, y + 3); ctx.lineTo(x + 3, y + 17); ctx.stroke();
-    ctx.strokeStyle = 'rgba(107,70,48,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 2, y + 7); ctx.lineTo(x + 8, y + 7); ctx.moveTo(x + 18, y + 13); ctx.lineTo(x + 24, y + 13); ctx.stroke();
-    ctx.fillStyle = '#6b4630'; for (const [dx, dy] of [[3, 3], [23, 3], [3, 17], [23, 17]]) { circle(x + dx, y + dy, 1.1); ctx.fill(); }
+    // a slatted crate with a painted label of the food it holds (a cached sprite)
+    paStamp('moncrate|' + b.type + '|' + C.plank, x, y, 26, 20, 3, g => {
+      paCrate(g, 0, 0, 26, 20, C.plank, b.tx * 7 + 3, { lw: 1.6 });
+      g.fillStyle = 'rgba(255,248,230,0.85)'; paRR(g, 8, 6, 10, 8, 2); g.fill();
+      g.strokeStyle = paDk(C.plank, 0.45); g.lineWidth = 0.8; paRR(g, 8, 6, 10, 8, 2); g.stroke();
+      g.fillStyle = MONSTER_COL[b.type] || '#e5413a'; paCirc(g, 13, 10, 2.4); g.fill();
+    });
     monDrawFood(b.type, x + 13, y - 4 + bob + pop, 0.9);
     if (want && st.hand !== st.want && !st.done && G.introT <= 0.4) {
       const ay = b.y - 26 + Math.abs(Math.sin(t * 5)) * -6;
@@ -1044,31 +1413,62 @@ function monPaintStatic(g, st) {
   // room 4: the treehouse (trunk and leaves behind, plank boards over the platform)
   if (k.open.length > 1) {
     const ty = k.row + 1, x0 = (k.c0 - 1) * T, x1 = (k.c1 + 2) * T, py = ty * T, cx = (x0 + x1) / 2;
-    g.fillStyle = '#8a5833'; g.fillRect(cx - 20, py + 30, 40, st.fieldY - py - 30);
-    g.strokeStyle = '#6b4630'; g.lineWidth = 2; g.beginPath();
-    for (let y = py + 50; y < st.fieldY - 10; y += 34) { g.moveTo(cx - 12, y); g.quadraticCurveTo(cx - 4, y + 8, cx - 10, y + 18); g.moveTo(cx + 10, y + 14); g.quadraticCurveTo(cx + 4, y + 22, cx + 12, y + 30); }
+    // the trunk: bark ridges with light and shade, knots, a knot hole, roots flaring into the lawn
+    const bark = '#8a5833', ty0 = py + 30, ty1 = st.fieldY;
+    g.fillStyle = bark; g.beginPath(); g.moveTo(cx - 20, ty0); g.lineTo(cx + 20, ty0); g.lineTo(cx + 22, ty1 - 24); g.lineTo(cx - 22, ty1 - 24); g.closePath(); g.fill();
+    g.fillStyle = bark; g.beginPath(); g.moveTo(cx - 36, ty1); g.quadraticCurveTo(cx - 22, ty1 - 6, cx - 21, ty1 - 30); g.lineTo(cx + 21, ty1 - 30); g.quadraticCurveTo(cx + 22, ty1 - 6, cx + 36, ty1); g.closePath(); g.fill();
+    g.save(); g.beginPath(); g.moveTo(cx - 20, ty0); g.lineTo(cx + 20, ty0); g.lineTo(cx + 22, ty1 - 24); g.quadraticCurveTo(cx + 22, ty1 - 6, cx + 36, ty1); g.lineTo(cx - 36, ty1); g.quadraticCurveTo(cx - 22, ty1 - 6, cx - 22, ty1 - 24); g.closePath(); g.clip();
+    g.fillStyle = paDk(bark, 0.25); g.fillRect(cx + 7, ty0, 40, ty1 - ty0);
+    g.fillStyle = paLt(bark, 0.18); g.fillRect(cx - 40, ty0, 22, ty1 - ty0);
+    g.strokeStyle = paDk(bark, 0.4); g.lineWidth = 1.6; g.beginPath();
+    for (let k = 0; k < 7; k++) { const bx = cx - 17 + k * 5.6 + (hash(k, 401) % 3), wob = (hash(k, 403) % 5) - 2; g.moveTo(bx, ty0); for (let y = ty0; y <= ty1; y += 12) g.lineTo(bx + Math.sin(y * 0.09 + k) * 1.4 + wob * (y - ty0) / (ty1 - ty0) * (k < 3 ? -2 : k > 3 ? 2 : 0), y); }
     g.stroke();
-    g.fillStyle = '#8a5833'; g.beginPath(); g.moveTo(cx - 30, st.fieldY); g.lineTo(cx - 20, st.fieldY - 26); g.lineTo(cx + 20, st.fieldY - 26); g.lineTo(cx + 30, st.fieldY); g.closePath(); g.fill();
-    g.globalAlpha = 0.9;
-    for (const [dx, dy, r, c] of [[-1, 0, 30, 0], [-1, 1, 22, 1], [1, 0, 30, 0], [1, 1, 22, 1]]) {
-      const lx = dx < 0 ? x0 - 18 - dy * 22 : x1 + 18 + dy * 22, ly = py - 30 + dy * 22;
-      g.fillStyle = c ? C.grassDark : C.grass; paCirc(g, lx, ly, r); g.fill();
-      g.fillStyle = c ? C.grass : C.grassDark; paCirc(g, lx + dx * 12, ly + 12, r * 0.6); g.fill();
+    g.strokeStyle = paLt(bark, 0.3); g.lineWidth = 0.8; g.beginPath();
+    for (let k = 0; k < 6; k++) { const bx = cx - 14 + k * 5.6; for (let y = ty0 + 6 + (hash(k, 405) % 12); y < ty1 - 10; y += 22) { g.moveTo(bx, y); g.lineTo(bx + 0.5, y + 7); } }
+    g.stroke();
+    g.restore();
+    for (const [kx, ky] of [[cx - 8, py + 70], [cx + 9, st.fieldY - 80]]) {
+      if (ky > st.fieldY - 30 || ky < py + 40) continue;
+      g.fillStyle = paDk(bark, 0.35); g.beginPath(); g.ellipse(kx, ky, 4, 6, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = paLt(bark, 0.15); g.lineWidth = 1.2; g.beginPath(); g.ellipse(kx, ky, 6.5, 8.5, 0, 0, Math.PI * 2); g.stroke();
     }
-    g.globalAlpha = 1;
-    g.fillStyle = C.plank; g.fillRect(x0, py, x1 - x0, T);
-    g.fillStyle = C.plankDark; g.fillRect(x0, py + T - 5, x1 - x0, 5); g.fillRect(x0, py, x1 - x0, 2);
-    g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(x0, py + 2, x1 - x0, 4);
-    for (let x = x0; x <= x1; x += T) { g.fillStyle = C.plankDark; g.fillRect(x - 1, py, 2, T - 4); g.fillStyle = '#6b4630'; paCirc(g, x + 6, py + 9, 1.6); g.fill(); paCirc(g, x + 24, py + 9, 1.6); g.fill(); }
-    g.strokeStyle = C.ink; g.lineWidth = 2; g.strokeRect(x0, py, x1 - x0, T);
+    const hy = (py + 30 + st.fieldY) / 2;
+    g.fillStyle = '#3a2416'; g.beginPath(); g.ellipse(cx + 2, hy, 6, 8, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = paDk(bark, 0.5); g.lineWidth = 2; g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.ellipse(cx + 3.5, hy + 3, 3, 3.5, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = paDk(bark, 0.55); g.lineWidth = 2; g.beginPath(); g.moveTo(cx - 20, ty0); g.lineTo(cx - 22, ty1 - 24); g.quadraticCurveTo(cx - 22, ty1 - 6, cx - 36, ty1); g.moveTo(cx + 20, ty0); g.lineTo(cx + 22, ty1 - 24); g.quadraticCurveTo(cx + 22, ty1 - 6, cx + 36, ty1); g.stroke();
+    // leaf clumps: a shaded underside, the body, lit clumps on top and a few leaf flecks
+    for (const [dx, dy, r, c] of [[-1, 0, 30, 0], [-1, 1, 22, 1], [1, 0, 30, 0], [1, 1, 22, 1]]) {
+      const lx = dx < 0 ? x0 - 18 - dy * 22 : x1 + 18 + dy * 22, ly = py - 30 + dy * 22, base = c ? C.grassDark : C.grass;
+      g.fillStyle = paDk(base, 0.22); paCirc(g, lx + 3, ly + 4, r); g.fill();
+      g.fillStyle = base; paCirc(g, lx, ly, r * 0.95); g.fill();
+      g.fillStyle = paDk(base, 0.12); paCirc(g, lx + dx * 12, ly + 12, r * 0.6); g.fill();
+      g.fillStyle = paLt(base, 0.28); paCirc(g, lx - r * 0.3, ly - r * 0.35, r * 0.42); g.fill(); paCirc(g, lx + r * 0.25, ly - r * 0.5, r * 0.26); g.fill();
+      g.fillStyle = paDk(base, 0.3);
+      for (let k = 0; k < 9; k++) { const hk = hash(k + dy * 9, dx + 7); g.beginPath(); g.ellipse(lx + ((hk % 100) / 100 - 0.5) * r * 1.5, ly + (((hk >>> 8) % 100) / 100 - 0.4) * r * 1.3, 2.4, 1.2, (hk % 6) * 0.5, 0, Math.PI * 2); g.fill(); }
+      g.strokeStyle = paDk(base, 0.45); g.lineWidth = 1.4; paCirc(g, lx, ly, r * 0.95); g.stroke();
+    }
+    // the deck: separate boards with grain and nails, a beam under them, and the joist ends
+    // (three rows of boards with staggered seams, the bottom one a darker beam; nails at every seam)
+    const rows = [[py, 11, C.plank, 0], [py + 11, 10, paMix(C.plank, C.plankDark, 0.25), 1], [py + 21, T - 21, C.plankDark, 2]];
+    for (const [ry, rh, col, ri] of rows) {
+      const seg = 2 * T, off = ri === 1 ? T : ri === 2 ? T / 2 : 0;
+      for (let x = x0 - off, k = 0; x < x1; x += seg, k++) {
+        const bx = Math.max(x0, x), bw = Math.min(x1, x + seg) - bx; if (bw < 3) continue;
+        paPlank(g, bx + 0.4, ry + 0.3, bw - 0.8, rh - 0.6, col, 900 + ri * 31 + k * 3, { r: 1.2, lw: 1.2, nails: ri < 2 });
+      }
+    }
+    for (const bx of [x0 + 6, x1 - 14]) { g.fillStyle = paDk(C.plankDark, 0.2); g.fillRect(bx, py + T, 8, 16); g.strokeStyle = paDk(C.plankDark, 0.5); g.lineWidth = 1.2; g.strokeRect(bx, py + T, 8, 16); g.beginPath(); g.moveTo(bx + 8, py + T + 16); g.lineTo(cx, py + T + 34); g.lineWidth = 3; g.strokeStyle = paDk(C.plankDark, 0.15); g.stroke(); }
   }
-  // fences
+  // fences: two posts with grain and caps, two rails with nails, grass at the feet
   for (const f of st.fences) {
     const x = f.tx * T, y = f.ty * T;
     paShadow(x + 15, y + 30, 15, 3, undefined, g);
-    paBox(x + 4, y + 6, 5, 24, 2, C.plankDark, { lw: 1.5 }, g); paBox(x + 21, y + 6, 5, 24, 2, C.plankDark, { lw: 1.5 }, g);
-    paBox(x + 3, y + 8, 24, 4.5, 2, C.plank, { lw: 1.5, foot: 0.6 }, g); paBox(x + 3, y + 18, 24, 4, 1.5, C.plank, { lw: 1.5, foot: 0.6 }, g);
-    g.fillStyle = '#6b4630'; paCirc(g, x + 6.5, y + 10, 1); g.fill(); paCirc(g, x + 23.5, y + 10, 1); g.fill(); paCirc(g, x + 6.5, y + 20, 1); g.fill(); paCirc(g, x + 23.5, y + 20, 1); g.fill();
+    paPlank(g, x + 3, y + 9, 24, 4.5, C.plank, f.tx * 11 + 1, { lw: 1.3, r: 1.5 }); paPlank(g, x + 3, y + 19, 24, 4, C.plank, f.tx * 11 + 2, { lw: 1.3, r: 1.5 });
+    paPlank(g, x + 4, y + 5, 5.5, 25, C.plankDark, f.tx * 11 + 3, { vert: true, lw: 1.3, r: 1.5 }); paPlank(g, x + 20.5, y + 5, 5.5, 25, C.plankDark, f.tx * 11 + 4, { vert: true, lw: 1.3, r: 1.5 });
+    for (const px of [x + 3, x + 19.5]) { g.fillStyle = paDk(C.plankDark, 0.25); paRR(g, px, y + 3.5, 7.5, 3, 1.2); g.fill(); g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(px + 0.5, y + 3.6, 6.5, 0.9); }
+    for (const [nx, ny] of [[x + 6.75, y + 11.2], [x + 23.25, y + 11.2], [x + 6.75, y + 21], [x + 23.25, y + 21]]) paNail(g, nx, ny, C.plank, 1);
+    paTuft(g, x + 5, y + 30, 0.6, C.grass, C.grassDark); paTuft(g, x + 22, y + 30, 0.55, C.grass, C.grassDark);
   }
 }
 function monDrawWorld(st) {

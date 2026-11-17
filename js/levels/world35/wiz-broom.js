@@ -347,35 +347,83 @@ function wizBroomCoast(st, dt) {
 }
 
 /* ---------- drawing ---------- */
+// (art pass) the rooftop slates, painted into cached world-pinned chunks: rows drawn from the bottom up so each row
+// laps over the one below with a rounded edge and a soft shadow
+function wizBroomRoofTex(c, gx, w, h) {
+  const R = RICH, C2 = WIZBROOM_C, rh = 18, sw = 20, rows = Math.ceil(h / rh) + 1;
+  c.fillStyle = R.dk(C2.roof, 0.45); c.fillRect(0, 0, w, h);
+  for (let j = rows - 1; j >= 0; j--) {
+    const by = j * rh + 2, off = (j % 2) * sw / 2, k0 = Math.floor((gx - off) / sw) - 1, k1 = Math.floor((gx + w - off) / sw) + 1;
+    for (let k = k0; k <= k1; k++) {
+      const s = j * 977 + k * 13, a = off + k * sw - gx, tone = (R.r(s, 1) - 0.5) * 0.22 - j * 0.01, bc = tone > 0 ? R.lit(C2.roof, tone) : R.dk(C2.roof, -tone);
+      c.fillStyle = 'rgba(16,10,34,0.4)'; R.rr(c, a + 1.5, by + 2.5, sw - 1, rh + 1, 5); c.fill();
+      c.fillStyle = bc; R.rr(c, a + 0.5, by, sw - 1, rh + 1, 5); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.13)'; c.fillRect(a + 1.5, by + 2, 1.5, rh - 5); c.fillRect(a + 4, by + rh - 1.5, sw - 9, 1);
+      c.fillStyle = R.rgba(R.dk(C2.roof, 0.6), 0.45); c.fillRect(a + sw - 2.5, by + 2, 1.5, rh - 4);
+      c.fillStyle = R.rgba(R.dk(C2.roof, 0.5), 0.5); for (let q = 0; q < 3; q++) c.fillRect(a + 3 + R.r(s, q + 4) * (sw - 6), by + 4 + R.r(s, q + 8) * (rh - 7), 1.2, 1.2);
+      if (R.r(s, 2) < 0.1) { c.fillStyle = 'rgba(110,160,110,0.7)'; c.beginPath(); c.ellipse(a + 5, by + rh - 1, 4.5, 2.2, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(170,220,150,0.6)'; c.fillRect(a + 3, by + rh - 2.5, 3, 1); }
+      if (R.r(s, 3) < 0.08) { c.strokeStyle = R.rgba(R.dk(C2.roof, 0.8), 0.8); c.lineWidth = 1; c.beginPath(); c.moveTo(a + 8, by + 3); c.lineTo(a + 11, by + 9); c.lineTo(a + 9, by + rh - 1); c.stroke(); }
+    }
+  }
+  c.fillStyle = R.lit(C2.roof, 0.1); c.fillRect(0, 0, w, 4); c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(0, 0, w, 1.5); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, 4, w, 2);
+}
 function wizBroomDrawBack(st) {
   const ph = st.ph, cx = st.cam.x, t = G.clock, K = WIZBROOM, C2 = WIZBROOM_C;
   const k = wizBroomStretchAt(ph.x);
   wizScreen(st, () => wizDusk(t, cx, 0, { skyY: WIZBROOM.grounds[k] + 4 }));
   // the ground of each stretch, the platforms
   const x0 = cx - 40, x1 = cx + W + 40;
+  // (art pass) neighbouring lawn or roof columns at one height are drawn as one run: a cached world-pinned texture
+  // clipped to the run (wizLawn's turf; the slate roof strip), then the lit dormer windows of that run
+  let run = null;
+  const flush = () => {
+    if (!run) return;
+    const { s, g, a, b, win } = run; run = null;
+    if (s === 0) { wizLawn(a, g, b, H); return; }
+    // a slate roof: overlapping rounded slates pinned to the world, each its own tone, the odd mossy or cracked one,
+    // a lit ridge, and a lit dormer window now and then
+    const rh = Math.min(Math.ceil(H - g), 200);
+    ctx.save(); ctx.beginPath(); ctx.rect(a, g, b - a, H - g); ctx.clip();
+    RICH.strip('wizroof|' + rh, a, b, g, rh, 256, wizBroomRoofTex);
+    ctx.restore();
+    for (const xx of win) {
+      ctx.fillStyle = 'rgba(255,200,110,0.16)'; circle(xx + 18, g + 60, 17); ctx.fill();
+      ctx.fillStyle = C2.roofDk; rr(xx + 7, g + 47, 22, 26, 8); ctx.fill();
+      ctx.fillStyle = '#ffd77a'; rr(xx + 10, g + 50, 16, 20, 6); ctx.fill();
+      ctx.fillStyle = '#fff2c0'; ctx.fillRect(xx + 12, g + 53, 4, 6);
+      ctx.fillStyle = C2.roofDk; ctx.fillRect(xx + 17, g + 50, 2, 20); ctx.fillRect(xx + 10, g + 59, 16, 2);
+    }
+  };
   for (let xx = Math.floor(x0 / 40) * 40; xx < x1; xx += 40) {
     const g = wizBroomGround(ph, xx + 20), s = wizBroomStretchAt(xx + 20), pad = g === K.padTop;
-    if (pad) continue;
-    if (s === 0) wizLawn(xx, g, xx + 40.5, H);
-    else if (s === 1) {
-      ctx.fillStyle = C2.roof; ctx.fillRect(xx, g, 41, H - g);
-      ctx.fillStyle = C2.roofDk; for (let ry = g + 14; ry < H; ry += 18) ctx.fillRect(xx, ry, 41, 3);
-      ctx.fillStyle = 'rgba(0,0,0,0.18)'; for (let ry = g + 14, r = 0; ry < H; ry += 18, r++) ctx.fillRect(xx + (r % 2 ? 10 : 30), ry - 15, 2, 15);
-      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(xx, g, 41, 3);
-      ctx.fillStyle = '#ffd77a'; if ((xx / 40) % 5 === 2) rr(xx + 10, g + 50, 16, 20, 6), ctx.fill();
-    } else {
+    if (pad) { flush(); continue; }
+    if (s < 2) {
+      if (run && run.s === s && run.g === g) run.b = xx + (s ? 41 : 40.5); else { flush(); run = { s, g, a: xx, b: xx + (s ? 41 : 40.5), win: [] }; }
+      if (s === 1 && (xx / 40) % 5 === 2) run.win.push(xx);
+      continue;
+    }
+    flush();
+    {
       ctx.fillStyle = C2.water; ctx.fillRect(xx, g, 41, H - g);
       ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(xx, g + 40, 41, H - g - 40);
       ctx.fillStyle = C2.waterLt; ctx.fillRect(xx, g + 4 + Math.sin(t * 2 + xx * 0.05) * 2, 41, 3);
       const hw = hash(xx, 31); if (hw % 3 === 0) { ctx.fillStyle = 'rgba(255,248,220,' + (0.2 + 0.15 * Math.sin(t * 3 + hw)) + ')'; ctx.fillRect(xx + hw % 24, g + 18 + (hw >> 4) % 40, 12, 2); }
     }
   }
+  flush();
   for (let n = 0; n <= 3; n++) {
     const px = wizBroomPadX(n);
     if (Math.abs(px - (cx + W / 2)) > W) continue;
     const g0 = WIZBROOM.grounds[Math.min(2, Math.max(0, n === 0 ? 0 : n - 1))];
-    ctx.fillStyle = WIZC.woodDk; for (const dx of [-K.padW / 2 + 30, 0, K.padW / 2 - 30]) ctx.fillRect(px + dx - 6, K.padTop, 12, Math.max(g0, 480) - K.padTop + 80);
-    ctx.fillStyle = WIZC.wood; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; rr(px - K.padW / 2, K.padTop, K.padW, 16, 4); ctx.fill(); ctx.stroke();
+    // (art pass) the landing pad: a planked deck with joints and nails on grained posts with iron bands (cached)
+    { const ph2 = Math.round(Math.max(g0, 480) - K.padTop + 80);
+      for (const dx of [-K.padW / 2 + 30, 0, K.padW / 2 - 30]) RICH.pic('wizpadpost|' + ph2, 12, ph2, (c, w, h) => {
+        RICH.wood(c, 0, 0, w, h, { col: WIZC.woodDk, vert: true, bw: 12, seed: 5, edge: false });
+        c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(0, 16, w, 5);
+        for (let y = 44; y < h - 12; y += 70) { c.fillStyle = '#4a4658'; c.fillRect(0, y, w, 4); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, y, w, 1); RICH.nail(c, 6, y + 2, 1.1); }
+      }, px + dx - 6, K.padTop);
+      RICH.pic('wizpad|' + K.padW, K.padW, 16, (c, w, h) => RICH.wood(c, 0, 0, w, h, { col: WIZC.wood, seam: 60, r: 4, seed: 11, edge: false }), px - K.padW / 2, K.padTop);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 3; rr(px - K.padW / 2, K.padTop, K.padW, 16, 4); ctx.stroke(); }
     if (n > 0) { ctx.fillStyle = '#ffd23f'; text(n < 3 ? 'Swap!' : 'Finish', px, K.padTop + 40, 16, '#ffe9a8', 'center'); }
   }
 }
@@ -396,8 +444,16 @@ function wizBroomDraw(st) {
       }
       case 'hedge': {
         if (o.stretch === 2) {   // an old bridge pillar standing in the moat
-          ctx.fillStyle = WIZC.stone; rr(o.x - o.w / 2, o.g - o.h, o.w, o.h + 40, 6); ctx.fill(); ctx.stroke();
-          ctx.strokeStyle = WIZC.stoneDk; ctx.lineWidth = 2; for (let y = o.g - o.h + 22; y < o.g; y += 22) { ctx.beginPath(); ctx.moveTo(o.x - o.w / 2, y); ctx.lineTo(o.x + o.w / 2, y); ctx.stroke(); }
+          // (art pass) coursed stone, a shaded right side, a wet dark foot and weed on the lit side (cached)
+          RICH.pic('wizmoatpil|' + o.w + '|' + o.h, o.w, o.h + 40, (c, w, h) => {
+            RICH.stone(c, 0, 0, w, h, { col: WIZC.stone, course: 22, len: 30, seed: o.w + o.h, r: 6, edge: false });
+            c.save(); RICH.rr(c, 0, 0, w, h, 6); c.clip();
+            c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(w - 10, 0, 10, h);
+            const wg = c.createLinearGradient(0, h - 64, 0, h); wg.addColorStop(0, 'rgba(30,60,90,0)'); wg.addColorStop(1, 'rgba(30,60,90,0.6)'); c.fillStyle = wg; c.fillRect(0, h - 64, w, 64);
+            c.fillStyle = 'rgba(110,170,110,0.65)'; for (let y = 26; y < h - 30; y += 37) { c.beginPath(); c.ellipse(2, y, 4, 8, 0, 0, Math.PI * 2); c.fill(); }
+            c.restore();
+          }, o.x - o.w / 2, o.g - o.h);
+          ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(o.x - o.w / 2, o.g - o.h, o.w, o.h + 40, 6); ctx.stroke();
           ctx.fillStyle = '#3f6a5a'; ctx.beginPath(); ctx.ellipse(o.x, o.g - o.h, o.w / 2 + 4, 6, 0, 0, Math.PI * 2); ctx.fill();
         } else {
           // a clipped topiary hedge: a scalloped leafy top, a moonlit left side and a shaded right, leaf clusters and
@@ -451,16 +507,30 @@ function wizBroomDraw(st) {
         break;
       }
       case 'tower': {
+        // (art pass) the tower: coursed stone with a moonlit left edge, a shaded right side, a lintel over the gap and
+        // a mossy sill under it (cached pictures)
+        { const th1 = Math.round(o.gy + 20);
+          RICH.pic('wiztow1|' + o.w + '|' + th1, o.w, th1, (c, w, h) => { RICH.stone(c, 0, 0, w, h, { col: WIZC.stone, course: 20, len: 34, seed: 9, edge: false }); c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(w - 14, 0, 14, h); c.fillStyle = 'rgba(220,200,255,0.14)'; c.fillRect(0, 0, 4, h); c.fillStyle = WIZC.stoneDk; c.fillRect(0, h - 12, w, 12); c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(0, h - 12, w, 1.5); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, h - 3, w, 3); }, o.x - o.w / 2, -20);
+          RICH.pic('wiztow2|' + o.w + '|' + H, o.w, H, (c, w, h) => { RICH.stone(c, 0, 0, w, h, { col: WIZC.stone, course: 20, len: 34, seed: 10, edge: false, moss: '#4f7a5a' }); c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(w - 14, 0, 14, h); c.fillStyle = 'rgba(220,200,255,0.14)'; c.fillRect(0, 0, 4, h); }, o.x - o.w / 2, o.gy + o.gh); }
         ctx.fillStyle = WIZC.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
-        ctx.fillRect(o.x - o.w / 2, -20, o.w, o.gy + 20); ctx.strokeRect(o.x - o.w / 2, -20, o.w, o.gy + 20);
-        ctx.fillRect(o.x - o.w / 2, o.gy + o.gh, o.w, H); ctx.strokeRect(o.x - o.w / 2, o.gy + o.gh, o.w, H);
+        ctx.strokeRect(o.x - o.w / 2, -20, o.w, o.gy + 20);
+        ctx.strokeRect(o.x - o.w / 2, o.gy + o.gh, o.w, H);
         // the bell hanging in the gap's roof
         ctx.fillStyle = '#d9a441'; ctx.beginPath(); ctx.moveTo(o.x - 16, o.gy + 30); ctx.quadraticCurveTo(o.x - 14, o.gy + 4, o.x, o.gy + 2); ctx.quadraticCurveTo(o.x + 14, o.gy + 4, o.x + 16, o.gy + 30); ctx.closePath(); ctx.fill(); ctx.stroke();
         break;
       }
       case 'chimney': {
-        ctx.fillStyle = C2.brick; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillRect(o.x - o.w / 2, o.g - o.h, o.w, o.h + 4); ctx.strokeRect(o.x - o.w / 2, o.g - o.h, o.w, o.h + 4);
-        ctx.fillStyle = C2.brickDk; ctx.fillRect(o.x - o.w / 2 - 4, o.g - o.h - 8, o.w + 8, 10); ctx.strokeRect(o.x - o.w / 2 - 4, o.g - o.h - 8, o.w + 8, 10);
+        // (art pass) a brick stack: soot at the top, a shaded right side, lead flashing where it meets the slates and a
+        // stone cap (cached pictures)
+        RICH.pic('wizchim|' + o.w + '|' + o.h, o.w, o.h + 4, (c, w, h) => {
+          RICH.bricks(c, 0, 0, w, h, { col: C2.brick, mortar: '#5e4048', bh: 10, bw: 22, seed: o.w + o.h, edge: false });
+          const sg = c.createLinearGradient(0, 0, 0, 30); sg.addColorStop(0, 'rgba(20,14,20,0.55)'); sg.addColorStop(1, 'rgba(20,14,20,0)'); c.fillStyle = sg; c.fillRect(0, 0, w, 30);
+          c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(w - 8, 0, 8, h); c.fillStyle = 'rgba(255,220,200,0.14)'; c.fillRect(0, 0, 3, h);
+          c.fillStyle = '#6e6c80'; c.fillRect(0, h - 12, w, 8); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, h - 12, w, 1.5); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, h - 5, w, 1.5);
+        }, o.x - o.w / 2, o.g - o.h);
+        ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.strokeRect(o.x - o.w / 2, o.g - o.h, o.w, o.h + 4);
+        RICH.pic('wizchimcap|' + o.w, o.w + 8, 10, (c, w, h) => { RICH.stone(c, 0, 0, w, h, { col: C2.brickDk, course: 10, len: 18, seed: 3, edge: false }); c.fillStyle = 'rgba(255,255,255,0.28)'; c.fillRect(0, 0, w, 1.5); }, o.x - o.w / 2 - 4, o.g - o.h - 8);
+        ctx.strokeRect(o.x - o.w / 2 - 4, o.g - o.h - 8, o.w + 8, 10);
         if (o.warnK && !o.puff) { ctx.fillStyle = 'rgba(255,160,80,0.6)'; circle(o.x, o.g - o.h - 8, 8 + Math.sin(t * 20) * 2); ctx.fill(); }
         if (o.puff) for (let k = 0; k < 6; k++) { const yy = o.g - o.h - 18 - k * 24, r = 16 + k * 3 + Math.sin(t * 6 + k) * 3; ctx.fillStyle = C2.smoke; circle(o.x + Math.sin(t * 3 + k) * 6, yy, r); ctx.fill(); }
         break;

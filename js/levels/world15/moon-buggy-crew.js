@@ -1030,12 +1030,32 @@ function buggyDrawBack(st) {
   const c = st.c, cam = st.cam, vis = x => x > cam.x - 220 && x < cam.x + W + 220;
   for (const l of c.ledges) if (vis(l.x)) {
     const g = buggyGround(st, l.x);
+    CK.shadow(l.x + 3, g + 4, 32, 4, 0.22);
     ctx.fillStyle = st.dark ? '#2e2c4c' : '#5d5a85';
     ctx.beginPath(); ctx.moveTo(l.x - 26, g + 6); ctx.lineTo(l.x - 18, g - 60); ctx.lineTo(l.x - 22, g - 100); ctx.lineTo(l.x - 14, g - 128); ctx.lineTo(l.x + 16, g - 128); ctx.lineTo(l.x + 22, g - 96); ctx.lineTo(l.x + 18, g - 50); ctx.lineTo(l.x + 28, g + 6); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(l.x - 12, g - 124, 6, 110);
     ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.beginPath(); ctx.moveTo(l.x + 4, g - 128); ctx.lineTo(l.x + 16, g - 128); ctx.lineTo(l.x + 22, g - 96); ctx.lineTo(l.x + 18, g - 50); ctx.lineTo(l.x + 28, g + 6); ctx.lineTo(l.x + 8, g + 6); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(l.x - 4, g - 110); ctx.lineTo(l.x + 2, g - 80); ctx.lineTo(l.x - 3, g - 40); ctx.stroke();
     ctx.fillStyle = st.dark ? '#3a3860' : '#7a77a6'; rr(l.x - 20, g - 132, 40, 10, 5); ctx.fill();
+    // (rich props pass) rock layers, chips, cracks, specks, a lit cap and an outline; painted once
+    CK.pic('bgpill' + (st.dark ? 'd' : ''), 70, 150, 35, 136, () => {
+      const col = st.dark ? '#2e2c4c' : '#5d5a85';
+      const body = () => { ctx.beginPath(); ctx.moveTo(-26, 6); ctx.lineTo(-18, -60); ctx.lineTo(-22, -100); ctx.lineTo(-14, -128); ctx.lineTo(16, -128); ctx.lineTo(22, -96); ctx.lineTo(18, -50); ctx.lineTo(28, 6); ctx.closePath(); };
+      ctx.save(); body(); ctx.clip();
+      ctx.strokeStyle = shade(col, 0.3); ctx.lineWidth = 1.8; ctx.beginPath();
+      for (const y of [-112, -88, -64, -38, -14]) { ctx.moveTo(-30, y + 3); ctx.quadraticCurveTo(0, y - 3, 30, y + 2); }
+      ctx.stroke();
+      ctx.strokeStyle = tint(col, 0.2); ctx.lineWidth = 1; ctx.beginPath();
+      for (const y of [-110, -86, -62, -36, -12]) { ctx.moveTo(-30, y + 3); ctx.quadraticCurveTo(-8, y - 2, 4, y - 1); }
+      ctx.stroke();
+      ctx.fillStyle = shade(col, 0.4); ctx.beginPath(); for (let k = 0; k < 26; k++) ctx.rect(-22 + CK.r(k, 5) * 44, -126 + CK.r(5, k) * 128, 1.5, 1.5); ctx.fill();
+      ctx.fillStyle = shade(col, 0.3); for (const [cx, cy] of [[-10, -96], [8, -70], [-6, -30], [12, -110]]) { ctx.beginPath(); ctx.moveTo(cx - 3, cy); ctx.lineTo(cx, cy - 2.5); ctx.lineTo(cx + 3.5, cy + 0.5); ctx.lineTo(cx, cy + 2.5); ctx.closePath(); ctx.fill(); }
+      ctx.strokeStyle = shade(col, 0.45); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(10, -128); ctx.lineTo(7, -116); ctx.lineTo(11, -104); ctx.moveTo(-16, -50); ctx.lineTo(-10, -40); ctx.lineTo(-13, -28); ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle = shade(col, 0.5); ctx.lineWidth = 2; body(); ctx.stroke();
+      const cap = st.dark ? '#3a3860' : '#7a77a6';
+      CK.block(-20, -132, 40, 10, cap, { course: 0, r: 5, lw: 1.6, seed: 9, hiTop: 0.4 });
+    }, l.x, g);
   }
   for (const pl of c.piles) if (vis(pl.x)) {
     const g = buggyGround(st, pl.x);
@@ -1072,26 +1092,13 @@ function buggyDrawGround(st) {
   ctx.beginPath(); ctx.moveTo(x0, cam.y + H + 10);
   for (let x = x0; x <= x1; x += 4) ctx.lineTo(x, buggyGround(st, x));
   ctx.lineTo(x1, cam.y + H + 10); ctx.closePath(); ctx.fill();
-  // little craters and pebbles in the dust (anchored to the world)
-  for (let k = Math.floor(x0 / 70); k * 70 < x1; k++) {
-    const h = hash(k, 41), x = k * 70 + (h % 50), gy = buggyGround(st, x);
-    if (buggyPitAt(st, x)) continue;
-    // a little crater: a shady bowl with a lit lower lip (light comes from above)
-    const cy = gy + 22 + (h >>> 4) % 40, cw = 10 + (h >>> 8) % 12, chh = 3 + (h >>> 3) % 2;
-    ctx.fillStyle = dark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.14)';
-    ctx.beginPath(); ctx.ellipse(x, cy + 1.5, cw + 2, chh + 1.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = dark ? 'rgba(0,0,0,0.22)' : 'rgba(40,36,80,0.22)';
-    ctx.beginPath(); ctx.ellipse(x, cy, cw, chh, 0, 0, Math.PI * 2); ctx.fill();
-    // a deeper band of rock lower down, and specks of dust
-    if (h % 4 === 1) { ctx.fillStyle = dark ? 'rgba(0,0,0,0.12)' : 'rgba(40,36,80,0.1)'; rr(x - 30, gy + 90 + (h % 30), 60 + (h % 40), 8, 4); ctx.fill(); }
-    ctx.fillStyle = dark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.18)'; circle(x + 34, gy + 12 + (h % 20), 1.4); ctx.fill(); circle(x - 18, gy + 40 + (h % 24), 1.2); ctx.fill();
-    if (h % 3 === 0) {
-      // a pebble on top, with its shadow and a lit cap
-      ctx.fillStyle = 'rgba(20,18,50,0.25)'; ctx.beginPath(); ctx.ellipse(x + 21, gy + 0.5, 5, 1.6, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = dark ? '#5a5880' : '#b3afd6'; circle(x + 20, gy - 2, 3); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.4)'; circle(x + 19, gy - 3, 1.2); ctx.fill();
-    }
-  }
+  // (rich props pass, Nov 2026) the regolith's still detail, painted once per 240 px chunk: layered rock bands, craters
+  // with a shady bowl and a lit lip, buried rocks, dust specks, and pebbles and little rocks lying on top
+  // (art director pass) the chunks follow the course's own ground (not the live one, which changes when a crater is
+  // filled or bridged), so a chunk's picture never shifts after it was painted
+  const gyf = x => buggyBaseGround(st, x), notPit = x => !buggyPitAt(st, x);
+  buggyStrata(x0, x1, gyf, notPit, dark);
+  CK.chunks('bgG' + st.k + (dark ? 'd' : '') + '|' + st.c.len, x0, x1, 240, { x: 0, y: 0 }, gyf, 14, 220, (c0, c1) => buggySoilPaint(st, c0, c1, gyf, notPit, dark));
   // the dusty top edge
   ctx.strokeStyle = dark ? '#6d6a96' : C.grass; ctx.lineWidth = 3; ctx.lineJoin = 'round';
   ctx.beginPath();
@@ -1158,8 +1165,134 @@ function buggyDrawGround(st) {
     }
   }
 }
+function buggyBaseGround(st, x) {
+  const a = st.c.gy, f = (x - st.c.x0) / 2, i = Math.floor(f);
+  return i < 0 ? a[0] : i >= a.length - 1 ? a[a.length - 1] : a[i] + (a[i + 1] - a[i]) * (f - i);
+}
+// (art director pass, Nov 2026) the regolith was a flat lilac fill with a few dashes: now it has continuous rock strata
+// (a shaded band with a lit top seam and a dark foot, wavy, broken at craters), rocks set into the strata, a pale
+// dusty top layer, branching fractures, dark meteorite bits with a metal glint, and chiselled stones down the crater
+// walls (inside the ground, so the hole is the same size)
+// the strata are drawn live (one path per band, cheap) rather than cached, so there is no seam between chunks
+const buggyWave = (x, d) => Math.sin(x * 0.012 + d) * 5 + Math.sin(x * 0.037 + d * 2) * 2;
+function buggyStrata(x0, x1, gy, ok, dark) {
+  const wave = buggyWave, runs = [];
+  let run = null;
+  for (let x = Math.floor(x0 / 4) * 4; x <= x1 + 4; x += 4) { if (ok(x)) { if (!run) runs.push(run = []); run.push(x); } else run = null; }
+  for (const [d, th, al] of [[46, 12, 0.16], [108, 17, 0.2], [176, 24, 0.24]]) {
+    ctx.fillStyle = dark ? 'rgba(0,0,10,' + al * 1.2 + ')' : 'rgba(40,34,90,' + al + ')';
+    ctx.beginPath();
+    for (const r of runs) {
+      r.forEach((x, i) => (i ? ctx.lineTo(x, gy(x) + d + wave(x, d)) : ctx.moveTo(x, gy(x) + d + wave(x, d))));
+      for (let i = r.length - 1; i >= 0; i--) { const x = r[i]; ctx.lineTo(x, gy(x) + d + th + wave(x, d + 1) * 0.7); }
+      ctx.closePath();
+    }
+    ctx.fill();
+    ctx.strokeStyle = dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.26)'; ctx.lineWidth = 1.3; ctx.beginPath();
+    for (const r of runs) r.forEach((x, i) => (i ? ctx.lineTo(x, gy(x) + d + wave(x, d) - 1) : ctx.moveTo(x, gy(x) + d + wave(x, d) - 1)));
+    ctx.stroke();
+    ctx.strokeStyle = dark ? 'rgba(0,0,0,0.22)' : 'rgba(40,34,90,0.24)'; ctx.lineWidth = 1.4; ctx.beginPath();
+    for (const r of runs) r.forEach((x, i) => (i ? ctx.lineTo(x, gy(x) + d + th + wave(x, d + 1) * 0.7) : ctx.moveTo(x, gy(x) + d + th + wave(x, d + 1) * 0.7)));
+    ctx.stroke();
+  }
+}
+function buggySoilPaint(st, x0, x1, gy, ok, dark) {
+  const base = dark ? '#4a4870' : '#8d8ab3', stone = dark ? '#57547e' : '#a6a2c8', wave = buggyWave;
+  // a pale dusty top layer with a soft lower edge
+  ctx.fillStyle = dark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.12)'; ctx.beginPath();
+  for (let x = Math.floor(x0 / 4) * 4; x < x1; x += 4) { if (!ok(x) || !ok(x + 4)) continue; const a = gy(x), b = gy(x + 4); ctx.moveTo(x, a); ctx.lineTo(x + 4, b); ctx.lineTo(x + 4, b + 9 + Math.sin(x * 0.09) * 2); ctx.lineTo(x, a + 9 + Math.sin((x - 4) * 0.09) * 2); ctx.closePath(); }
+  ctx.fill();
+  // flat rocks set into the strata, and fractures branching out of them
+  for (let x = Math.floor(x0 / 64) * 64; x < x1; x += 64) {
+    const r = CK.r(x, 71); if (r > 0.55 || !ok(x - 14) || !ok(x + 30)) continue;
+    const d = [46, 108, 176][Math.floor(CK.r(71, x) * 3)], rx = Math.min(x + 8 + r * 30, x1 + 12), ry = gy(rx) + d + wave(rx, d) + 6, w = 9 + r * 10;
+    CK.rock(rx, ry, w, w * 0.55, stone, x + 5, { shadow: false, j: 0.18, n: 8, lw: 1.4 });
+  }
+  ctx.strokeStyle = dark ? 'rgba(0,0,0,0.3)' : 'rgba(40,34,90,0.32)'; ctx.lineWidth = 1; ctx.beginPath();
+  const lits = [];
+  for (let x = Math.floor(x0 / 90) * 90; x < x1; x += 90) {
+    const r = CK.r(x, 81); if (r > 0.6 || !ok(x) || !ok(x + 24)) continue;
+    let cx = x + r * 40, cy = gy(cx) + 20 + CK.r(81, x) * 120;
+    ctx.moveTo(cx, cy); lits.push([cx - 1, cy - 1]);
+    for (let k = 0; k < 4; k++) { cx += 4 + CK.r(x, k) * 6; cy += (CK.r(k, x) - 0.3) * 8; ctx.lineTo(cx, cy); lits.push([cx - 1, cy - 1]); if (k === 1) { ctx.lineTo(cx + 3, cy + 6); ctx.moveTo(cx, cy); } }
+  }
+  ctx.stroke();
+  ctx.strokeStyle = dark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.2)'; ctx.beginPath();
+  for (let i = 0; i < lits.length; i++) { if (i % 5 === 0) ctx.moveTo(lits[i][0], lits[i][1]); else ctx.lineTo(lits[i][0], lits[i][1]); }
+  ctx.stroke();
+  // dark meteorite bits with a metal glint
+  for (let x = Math.floor(x0 / 150) * 150; x < x1; x += 150) {
+    const r = CK.r(x, 91); if (r > 0.45 || !ok(x) || !ok(x + 20)) continue;
+    const mx = x + r * 60, my = gy(mx) + 30 + CK.r(91, x) * 120;
+    CK.rock(mx, my, 6, 4.5, dark ? '#3a3654' : '#5d587e', x + 9, { shadow: false, n: 7, lw: 1.2 });
+    ctx.fillStyle = '#e8ecff'; ctx.fillRect(mx - 2.5, my - 2, 2, 1); ctx.fillRect(mx - 2, my - 2.5, 1, 2);
+  }
+  // chiselled stones down the crater walls, set into the ground beside the hole
+  for (const p of st.c.pits) {
+    if (p.x1 < x0 - 30 || p.x0 > x1 + 30) continue;
+    for (const side of [-1, 1]) {
+      const wx = side < 0 ? p.x0 : p.x1, top = side < 0 ? p.lipY : p.rim, bot = p.rim + p.depth;
+      if (wx < x0 || wx >= x1) continue;      // each wall belongs to one chunk
+      const tones = [stone, base, dark ? '#4f4c74' : '#9894bd'];
+      for (let y = top + 5, k = 0; y < bot - 5; k++) {
+        const h = 4 + CK.r(wx + k, 4) * 4, w = 5 + CK.r(wx + k, 3) * 6, yc = y + h;
+        const u = clamp((yc - top) / Math.max(1, bot - top), 0, 1), edge = wx - side * 8 * u;
+        const cx = edge + side * (w + 1.5 + (k % 2) * 4 + CK.r(k, wx) * 3);
+        CK.rock(cx, yc, w, h, tones[Math.floor(CK.r(wx, k + 9) * 3)], wx * 7 + k, { shadow: false, n: 8, j: 0.2, lw: 1.2 });
+        if (k % 2) { const w2 = 3 + CK.r(k, wx + 2) * 3; CK.rock(cx + side * (w + w2 + 1), yc + 1, w2, h * 0.7, tones[(k + 1) % 3], wx * 7 + k + 50, { shadow: false, n: 7, lw: 1 }); }
+        y += h * 2 - 1;
+      }
+    }
+  }
+  // rock bands following the surface, with a lit seam
+  ctx.strokeStyle = dark ? 'rgba(0,0,0,0.16)' : 'rgba(40,36,80,0.14)'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath();
+  for (const d of [34, 70, 112, 160]) for (let x = x0; x < x1; x += 8) { const r = CK.r(x, d); if (r > 0.6 || !ok(x)) continue; const y = gy(x) + d + (CK.r(d, x) - 0.5) * 8, l = 6 + r * 18; ctx.moveTo(x, y); ctx.lineTo(x + l, y + (gy(x + l) - gy(x))); }
+  ctx.stroke();
+  ctx.strokeStyle = dark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1.2; ctx.beginPath();
+  for (const d of [38, 76, 118]) for (let x = x0 + 4; x < x1; x += 10) { const r = CK.r(x, d + 1); if (r > 0.4 || !ok(x)) continue; const y = gy(x) + d, l = 5 + r * 14; ctx.moveTo(x, y); ctx.lineTo(x + l, y + (gy(x + l) - gy(x))); }
+  ctx.stroke(); ctx.lineCap = 'butt';
+  // dust specks
+  ctx.fillStyle = dark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.22)'; ctx.beginPath();
+  for (let x = x0; x < x1; x += 5) { if (!ok(x)) continue; ctx.rect(x, gy(x) + 6 + CK.r(x, 3) * 200, 1.4, 1.4); }
+  ctx.fill();
+  ctx.fillStyle = dark ? 'rgba(0,0,0,0.18)' : 'rgba(40,36,80,0.2)'; ctx.beginPath();
+  for (let x = x0 + 2; x < x1; x += 6) { if (!ok(x)) continue; ctx.rect(x, gy(x) + 8 + CK.r(x, 4) * 200, 1.5, 1.5); }
+  ctx.fill();
+  // craters seen side on: a shady bowl, a dark inner wall, a lit lower lip
+  for (let x = x0; x < x1; x += 50) {
+    const r = CK.r(x, 41); if (r > 0.7 || !ok(x)) continue;
+    const cx = x + r * 30, cy = gy(cx) + 20 + CK.r(41, x) * 70, cw = 8 + r * 16, ch = 2.5 + r * 2.5;
+    ctx.fillStyle = dark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.2)'; ctx.beginPath(); ctx.ellipse(cx, cy + 1.6, cw + 2.5, ch + 1.8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = dark ? 'rgba(0,0,0,0.28)' : 'rgba(40,36,80,0.3)'; ctx.beginPath(); ctx.ellipse(cx, cy, cw, ch, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = dark ? 'rgba(0,0,0,0.2)' : 'rgba(40,36,80,0.22)'; ctx.beginPath(); ctx.ellipse(cx - cw * 0.15, cy - ch * 0.2, cw * 0.7, ch * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // buried rocks
+  for (let x = x0; x < x1; x += 120) {
+    const r = CK.r(x, 51); if (r > 0.5 || !ok(x - 20) || !ok(x + 40)) continue;
+    const bx = x + 20 + r * 60, by = gy(bx) + 80 + CK.r(51, x) * 60;
+    CK.rock(bx, by, 14 + r * 14, 9 + r * 6, dark ? '#55527c' : '#a29ec4', x, { shadow: false, j: 0.22 });
+  }
+  // pebbles and little rocks lying on the dust (with soft shadows)
+  for (let x = x0; x < x1; x += 34) {
+    const r = CK.r(x, 61); if (r > 0.5 || !ok(x) || !ok(x + 20)) continue;
+    const px = x + r * 26, py = gy(px);
+    CK.shadow(px + 1, py + 0.5, 5 + r * 6, 1.6, 0.22);
+    if (r < 0.12) CK.rock(px, py - 3.5, 7, 4.5, dark ? '#5a5880' : '#b3afd6', x, { shadow: false, flat: 0.75, n: 7 });
+    else CK.pebble(px, py - 1.8, 2 + r * 4, dark ? '#5a5880' : '#b3afd6', x);
+  }
+}
+// a boulder (rich props pass): chiselled facets, craters, specks, a dark lower-right side and a lit rim; painted once
+// per size and look, then copied (with its spin)
 function buggyDrawBoulderShape(x, y, r, spin, seed, dark) {
+  const R = Math.round(r);
   ctx.save(); ctx.translate(x, y); ctx.rotate(spin || 0);
+  CK.pic('bgboul' + R + '|' + seed + (dark ? 'd' : ''), R * 2 + 10, R * 2 + 10, R + 5, R + 5, () => buggyBoulderPaint(R, seed, dark), 0, 0);
+  ctx.restore();
+}
+function buggyBoulderPaint(r, seed, dark) {
+  ctx.save();
+  const col = dark ? '#57537a' : '#8a7f9e';
+  const body = () => { ctx.beginPath(); for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2, rr2 = r * (0.86 + ((hash(i, seed) % 100) / 100) * 0.18); ctx.lineTo(Math.cos(a) * rr2, Math.sin(a) * rr2); } ctx.closePath(); };
   ctx.fillStyle = dark ? '#57537a' : '#8a7f9e';
   ctx.beginPath();
   for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2, rr2 = r * (0.86 + ((hash(i, seed) % 100) / 100) * 0.18); ctx.lineTo(Math.cos(a) * rr2, Math.sin(a) * rr2); }
@@ -1167,6 +1300,16 @@ function buggyDrawBoulderShape(x, y, r, spin, seed, dark) {
   ctx.strokeStyle = dark ? '#3a3756' : '#5a5170'; ctx.lineWidth = 2.5; ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(-r * 0.3, -r * 0.35, r * 0.35, r * 0.2, -0.5, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = 'rgba(40,30,60,0.25)'; circle(r * 0.3, r * 0.15, r * 0.2); ctx.fill(); circle(-r * 0.2, r * 0.4, r * 0.12); ctx.fill();
+  ctx.save(); body(); ctx.clip();
+  ctx.fillStyle = shade(col, 0.25); ctx.beginPath(); ctx.ellipse(r * 0.45, r * 0.5, r * 1.05, r * 0.8, -0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = shade(col, 0.4); ctx.lineWidth = 1.3; ctx.beginPath();
+  for (let k = 0; k < 3; k++) { const a = CK.r(seed, k) * 6.28; ctx.moveTo(Math.cos(a) * r * 0.2, Math.sin(a) * r * 0.2); ctx.lineTo(Math.cos(a + 0.5) * r * 0.6, Math.sin(a + 0.5) * r * 0.6); ctx.lineTo(Math.cos(a + 0.3) * r, Math.sin(a + 0.3) * r); }
+  ctx.stroke();
+  for (const [cx, cy, cr] of [[r * 0.3, r * 0.15, r * 0.2], [-r * 0.2, r * 0.4, r * 0.12], [-r * 0.45, -r * 0.05, r * 0.1]]) { ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, cr, 0.1, Math.PI - 0.1); ctx.stroke(); }
+  ctx.fillStyle = shade(col, 0.45); ctx.beginPath(); for (let k = 0; k < 10; k++) ctx.rect((CK.r(seed, k + 9) - 0.5) * r * 1.6, (CK.r(k + 9, seed) - 0.5) * r * 1.6, 1.3, 1.3); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(0, 0, r * 0.8, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+  ctx.strokeStyle = dark ? '#3a3756' : '#5a5170'; ctx.lineWidth = 2.5; body(); ctx.stroke();
   ctx.restore();
 }
 function buggyDrawRock(x, y, s, glow, t) {
@@ -1222,32 +1365,92 @@ function buggyDrawThings(st) {
 function buggyDrawGate(st, front) {
   const gx = st.c.gate.x, g = buggyGround(st, gx), t = G.clock;
   if (!front) {
-    ctx.fillStyle = '#5c6688'; rr(gx - 70, g - 150, 12, 150, 4); ctx.fill();
+    CK.pic('bgpost' + '#5c6688', 20, 156, 10, 152, () => { CK.metal(-6, -150, 12, 150, '#5c6688', { seam: 30, r: 4, lw: 1.6, seed: 3 }); ctx.fillStyle = '#ffc53d'; ctx.fillRect(-6, -14, 12, 4); ctx.fillStyle = '#2b2850'; ctx.fillRect(-6, -10, 12, 2); }, gx - 64, g);
     // the banner across the top
     ctx.fillStyle = 'rgba(28,26,54,0.9)'; rr(gx - 76, g - 176, 152, 34, 12); ctx.fill();
     ctx.strokeStyle = C.gold; ctx.lineWidth = 2.5; rr(gx - 76, g - 176, 152, 34, 12); ctx.stroke();
     text('SWAP SEATS!', gx, g - 158.5, 18, C.gold, 'center');
     for (let i = 0; i < 7; i++) { ctx.fillStyle = (Math.floor(t * 4) + i) % 2 ? C.gold : '#fff6c8'; circle(gx - 66 + i * 22, g - 180, 3.5); ctx.fill(); }
-  } else { ctx.fillStyle = '#7f88aa'; rr(gx + 58, g - 150, 12, 150, 4); ctx.fill(); }
+  } else CK.pic('bgpost' + '#7f88aa', 20, 156, 10, 152, () => { CK.metal(-6, -150, 12, 150, '#7f88aa', { seam: 30, r: 4, lw: 1.6, seed: 4 }); ctx.fillStyle = '#ffc53d'; ctx.fillRect(-6, -14, 12, 4); ctx.fillStyle = '#2b2850'; ctx.fillRect(-6, -10, 12, 2); }, gx + 64, g);
 }
 function buggyDrawPad(st) {
   const pad = st.c.pad, g = buggyGround(st, pad.box), bx = buggyBox(st);
   ctx.fillStyle = '#4f4b74'; ctx.fillRect(pad.x0 + 200, g, pad.x1 - pad.x0 - 200, 10);
   ctx.fillStyle = '#ffc53d'; for (let x = pad.x0 + 204; x < pad.x1; x += 30) ctx.fillRect(x, g + 2, 14, 4);
+  // (rich props pass) a lit deck edge, bolts between the stripes and a dark outline
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(pad.x0 + 200, g, pad.x1 - pad.x0 - 200, 1.2);
+  ctx.fillStyle = '#9aa6c4'; for (let x = pad.x0 + 223; x < pad.x1; x += 30) { circle(x, g + 4, 1.3); ctx.fill(); }
+  ctx.fillStyle = 'rgba(10,8,30,0.4)'; ctx.fillRect(pad.x0 + 200, g + 8.5, pad.x1 - pad.x0 - 200, 1.5);
   // the parking box under the hatch
   const on = st.parked;
   ctx.strokeStyle = on ? '#8fe3b0' : st.wideBox ? C.gold : '#ffffff'; ctx.lineWidth = 3; ctx.setLineDash([10, 7]);
   rr(bx.lo - BUGGY.half, g - 6, bx.hi - bx.lo + BUGGY.half * 2, 12, 4); ctx.stroke(); ctx.setLineDash([]);
   if (!on) text('PARK', pad.box, g + 26, 16, st.wideBox ? C.gold : '#ffffff', 'center');
 }
+// the launch tower beside the rocket (origin = the left upright's foot on the ground; the tower is 30 wide, 330 tall):
+// two riveted steel uprights, X bracing in each bay with a lit edge and a shadow line, gusset plates with rivets at the
+// joints, a ladder up the middle, grated platforms with hazard-striped edges every few bays, a swing arm with an
+// umbilical hose reaching to the rocket, a beacon mount, concrete footings with bolts and a soft ground shadow
+function buggyTowerPaint() {
+  const col = '#8a8fb0', dk = shade(col, 0.5), lit = 'rgba(255,255,255,0.35)', TOP = -330, bay = 30;
+  ctx.fillStyle = 'rgba(10,8,30,0.25)'; ctx.beginPath(); ctx.ellipse(15, 2, 34, 5, 0, 0, Math.PI * 2); ctx.fill();
+  // ladder rungs in the middle (behind the bracing)
+  ctx.strokeStyle = shade(col, 0.3); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(11, TOP + 6); ctx.lineTo(11, 0); ctx.moveTo(19, TOP + 6); ctx.lineTo(19, 0); for (let y = TOP + 10; y < 0; y += 7) { ctx.moveTo(11, y); ctx.lineTo(19, y); } ctx.stroke();
+  // X bracing in each bay: a dark under-stroke, the strut, a lit edge
+  const strut = (x0, y0, x1, y1) => {
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = dk; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.strokeStyle = col; ctx.lineWidth = 2.4; ctx.stroke();
+    ctx.strokeStyle = lit; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x0, y0 - 0.8); ctx.lineTo(x1, y1 - 0.8); ctx.stroke();
+    ctx.lineCap = 'butt';
+  };
+  for (let y = TOP + 10; y < 0; y += bay) { const y1 = Math.min(0, y + bay); strut(4, y, 26, y1); strut(26, y, 4, y1); }
+  // the uprights
+  for (const ux of [-2, 26]) CK.metal(ux, TOP, 6, -TOP, col, { seam: 60, r: 1.5, lw: 1.4, seed: 21 + ux });
+  // gusset plates with rivets at the joints
+  for (let y = TOP + 10; y <= 0; y += bay) for (const ux of [1, 29]) {
+    ctx.fillStyle = shade(col, 0.12); ctx.beginPath(); ctx.moveTo(ux - 4, y - 5); ctx.lineTo(ux + 4, y - 5); ctx.lineTo(ux + 4, y + 5); ctx.lineTo(ux - 4, y + 5); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = dk; ctx.lineWidth = 0.8; ctx.stroke();
+    ctx.fillStyle = '#d0d4e8'; circle(ux, y - 2.5, 1); ctx.fill(); circle(ux, y + 2.5, 1); ctx.fill();
+  }
+  // grated platforms with hazard edges every 3 bays
+  for (let y = TOP + 70; y < -20; y += bay * 3) {
+    ctx.fillStyle = '#5c6188'; ctx.fillRect(-8, y - 4, 46, 6);
+    ctx.strokeStyle = 'rgba(20,18,40,0.45)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let gx = -6; gx < 38; gx += 3) { ctx.moveTo(gx, y - 4); ctx.lineTo(gx, y + 2); } ctx.stroke();
+    ctx.save(); ctx.beginPath(); ctx.rect(-8, y + 2, 46, 3); ctx.clip();
+    ctx.fillStyle = '#ffc53d'; ctx.fillRect(-8, y + 2, 46, 3); ctx.fillStyle = '#2b2850'; for (let gx = -10; gx < 40; gx += 6) { ctx.beginPath(); ctx.moveTo(gx, y + 5); ctx.lineTo(gx + 3, y + 2); ctx.lineTo(gx + 6, y + 2); ctx.lineTo(gx + 3, y + 5); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    ctx.fillStyle = lit; ctx.fillRect(-8, y - 4, 46, 1);
+    ctx.strokeStyle = dk; ctx.lineWidth = 1.2; ctx.strokeRect(-8, y - 4, 46, 9);
+    // a guard rail
+    ctx.strokeStyle = shade(col, 0.2); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-8, y - 4); ctx.lineTo(-8, y - 14); ctx.lineTo(38, y - 14); ctx.lineTo(38, y - 4); ctx.moveTo(-8, y - 9); ctx.lineTo(38, y - 9); ctx.stroke();
+  }
+  // the swing arm to the rocket near the top, with a hose sagging under it
+  const ay = TOP + 34;
+  ctx.fillStyle = '#6a7096'; ctx.beginPath(); ctx.moveTo(-2, ay - 6); ctx.lineTo(-48, ay - 3); ctx.lineTo(-48, ay + 3); ctx.lineTo(-2, ay + 6); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = dk; ctx.lineWidth = 1.4; ctx.stroke();
+  ctx.fillStyle = lit; ctx.beginPath(); ctx.moveTo(-2, ay - 6); ctx.lineTo(-48, ay - 3); ctx.lineTo(-48, ay - 2); ctx.lineTo(-2, ay - 4.5); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(20,18,40,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = 0; k < 5; k++) { const ax = -6 - k * 9; ctx.moveTo(ax, ay - 5 + k * 0.4); ctx.lineTo(ax - 7, ay + 4 - k * 0.3); } ctx.stroke();
+  ctx.strokeStyle = '#3a3a58'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-6, ay + 6); ctx.quadraticCurveTo(-26, ay + 26, -46, ay + 8); ctx.stroke();
+  ctx.strokeStyle = '#ffc53d'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#c9cde0'; ctx.fillRect(-50, ay - 5, 4, 10); ctx.strokeStyle = dk; ctx.lineWidth = 1; ctx.strokeRect(-50, ay - 5, 4, 10);
+  // the beacon mount on top
+  ctx.fillStyle = '#5c6188'; ctx.fillRect(-4, TOP - 3, 38, 5); ctx.strokeStyle = dk; ctx.lineWidth = 1.2; ctx.strokeRect(-4, TOP - 3, 38, 5);
+  ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(15, TOP - 3); ctx.lineTo(15, TOP - 4); ctx.stroke();
+  ctx.fillStyle = '#4f4b74'; ctx.fillRect(11, TOP - 4, 8, 3);
+  // concrete footings with bolts
+  for (const fx of [-6, 22]) { ctx.fillStyle = '#b9b6cc'; ctx.fillRect(fx, -6, 14, 7); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(fx, -6, 14, 1.2); ctx.strokeStyle = shade('#b9b6cc', 0.5); ctx.lineWidth = 1; ctx.strokeRect(fx, -6, 14, 7); ctx.fillStyle = '#5c6188'; circle(fx + 3, -3, 1.2); ctx.fill(); circle(fx + 11, -3, 1.2); ctx.fill(); }
+}
 function buggyDrawRocket(st, back) {
   const pad = st.c.pad, x = pad.rocket, g0 = buggyGround(st, x), rise = st.fin ? st.fin.rise || 0 : 0, g = g0 - rise, t = G.clock;
   if (back) {
     // the launch tower (stays behind)
-    ctx.strokeStyle = '#8a8fb0'; ctx.lineWidth = 4;
-    ctx.strokeRect(x + 78, g0 - 330, 30, 330);
-    for (let y = g0 - 320; y < g0; y += 30) { ctx.beginPath(); ctx.moveTo(x + 78, y); ctx.lineTo(x + 108, y + 30); ctx.stroke(); }
+    // (rich props) a steel lattice tower, cached: see buggyTowerPaint; the beacon on top blinks live
+    CK.pic('bgtower', 130, 372, 52, 356, buggyTowerPaint, x + 78, g0);
+    const bl = 0.5 + 0.5 * Math.sin(t * 4);
+    ctx.fillStyle = 'rgba(255,107,74,' + (0.18 + 0.2 * bl) + ')'; circle(x + 93, g0 - 338, 12 + bl * 3); ctx.fill();
     ctx.fillStyle = '#ff6b4a'; circle(x + 93, g0 - 338, 5 + Math.sin(t * 4)); ctx.fill();
+    ctx.fillStyle = 'rgba(255,230,210,0.85)'; circle(x + 91.5, g0 - 339.5, 1.6); ctx.fill();
     return;
   }
   ctx.save(); ctx.translate(x, g);

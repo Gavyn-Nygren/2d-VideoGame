@@ -209,21 +209,88 @@ const CAVE = (() => {
       K.crystal(x + u * 7 * s, y, h, a, { col, t: o.t, glow: o.glow, seed: seed + k });
     }
   };
+  // (art pass) cave rock painted once per size, colour and seed (RICH.pic): the lumpy top, real rock texture inside it
+  // (strata, fractures with lit lips, specks, facets: World 35's RICH.rock), a darker foot, a lit rim, drips if wet
   K.rock = (x, y, w, h, o = {}) => {
-    const col = o.col || COL.rock, dark = o.dark || COL.rockDark, seed = o.seed || 0;
-    ctx.fillStyle = col; ctx.beginPath();
-    const n = Math.max(4, Math.round(w / 26));
-    ctx.moveTo(x, y + h);
-    for (let k = 0; k <= n; k++) ctx.lineTo(x + (k / n) * w, y + (H_(seed + k) * 0.35) * Math.min(18, h * 0.3));
-    ctx.lineTo(x + w, y + h); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = dark; ctx.fillRect(x, y + h * 0.72, w, h * 0.28);
-    ctx.save(); ctx.beginPath(); ctx.moveTo(x, y + h); for (let k = 0; k <= n; k++) ctx.lineTo(x + (k / n) * w, y + (H_(seed + k) * 0.35) * Math.min(18, h * 0.3)); ctx.lineTo(x + w, y + h); ctx.closePath(); ctx.clip();
-    ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let k = 0; k < n; k++) { const cx0 = x + (k + 0.5) * w / n; ctx.beginPath(); ctx.moveTo(cx0, y + h * 0.15); ctx.lineTo(cx0 + 6, y + h * 0.4); ctx.lineTo(cx0 + 2, y + h * 0.6); ctx.lineTo(cx0 - 2, y + h * 0.6); ctx.lineTo(cx0 + 2, y + h * 0.4); ctx.closePath(); ctx.fill(); }
-    ctx.restore();
-    ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k <= n; k++) { const yy = y + (H_(seed + k) * 0.35) * Math.min(18, h * 0.3) + 1.5; k ? ctx.lineTo(x + (k / n) * w, yy) : ctx.moveTo(x, yy); } ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    for (let k = 0; k < n; k++) { ctx.fillRect(x + (k + 0.2) * w / n, y + 6 + H_(seed + k * 5) * h * 0.4, w / n * 0.5, 2); }
-    if (o.wet) { ctx.fillStyle = 'rgba(160,210,240,0.25)'; for (let k = 0; k < n; k++) ctx.fillRect(x + (k + 0.5) * w / n, y + 4, 2, h * (0.3 + H_(seed + k * 9) * 0.5)); }
+    const col = o.col || COL.rock, dark = o.dark || COL.rockDark, seed = o.seed || 0, iw = Math.max(4, Math.round(w)), ih = Math.max(4, Math.round(h));
+    RICH.pic('w39rock|' + iw + '|' + ih + '|' + col + '|' + dark + '|' + Math.round(seed * 1000) + '|' + (o.wet ? 1 : 0), iw, ih, c => {
+      const n = Math.max(4, Math.round(iw / 26)), topY = k => (H_(seed + k) * 0.35) * Math.min(18, ih * 0.3);
+      const shape = () => { c.beginPath(); c.moveTo(0, ih); for (let k = 0; k <= n; k++) c.lineTo((k / n) * iw, topY(k)); c.lineTo(iw, ih); c.closePath(); };
+      shape(); c.save(); c.clip();
+      RICH.rock(c, 0, 0, iw, ih, { col, seed: Math.round(seed * 977) % 100000, gx: 0 });
+      const g = c.createLinearGradient(0, ih * 0.55, 0, ih); g.addColorStop(0, RICH.rgba(dark, 0)); g.addColorStop(0.35, RICH.rgba(dark, 0.85)); g.addColorStop(1, dark); c.fillStyle = g; c.fillRect(0, ih * 0.55, iw, ih * 0.45);
+      c.fillStyle = 'rgba(0,0,0,0.12)'; for (let k = 0; k < n; k++) { const cx0 = (k + 0.5) * iw / n; c.beginPath(); c.moveTo(cx0, ih * 0.15); c.lineTo(cx0 + 6, ih * 0.4); c.lineTo(cx0 + 2, ih * 0.6); c.lineTo(cx0 - 2, ih * 0.6); c.lineTo(cx0 + 2, ih * 0.4); c.closePath(); c.fill(); }
+      if (o.wet) { c.fillStyle = 'rgba(160,210,240,0.25)'; for (let k = 0; k < n; k++) c.fillRect((k + 0.5) * iw / n, 4, 2, ih * (0.3 + H_(seed + k * 9) * 0.5)); c.fillStyle = 'rgba(200,235,255,0.18)'; c.fillRect(0, 0, iw, ih * 0.25); }
+      c.restore();
+      c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 2; c.beginPath(); for (let k = 0; k <= n; k++) { const yy = topY(k) + 1.5; k ? c.lineTo((k / n) * iw, yy) : c.moveTo(0, yy); } c.stroke();
+      c.strokeStyle = RICH.dk(dark, 0.4); c.lineWidth = 1.2; c.beginPath(); for (let k = 0; k <= n; k++) { const yy = topY(k); k ? c.lineTo((k / n) * iw, yy) : c.moveTo(0, yy); } c.stroke();
+    }, x, y);
+  };
+  // (art pass, rich props) a squared mine timber bedded in the wall, x, y the top-left, w x h the beam (sd: the side
+  // of the shaft it sits on, so the sawn end with its growth rings faces the shaft; v: one of four looks). Grain and
+  // knots, adze facets along the top, a seasoning split, a darker underside, a soft shadow on the rock below, a rocky
+  // socket where it goes into the wall, an iron strap with bolts, a wedge, dust on top; cached per size and look
+  K.timber = (x, y, w, h, sd, v) => {
+    const iw = Math.max(2, Math.round(w)), ih = Math.max(2, Math.round(h)), vv = (v | 0) & 3, sh = Math.max(3, Math.round(ih * 0.5));
+    RICH.pic('w39timber3|' + iw + '|' + ih + '|' + (sd || 0) + '|' + vv, iw, ih + sh, c => {
+      const col = RICH.mix(COL.timber, ['#8a5e36', '#7e5a3a', '#94643a', '#80562e'][vv], 0.6), seed = iw + ih * 3 + (sd > 0 ? 5 : 0) + vv * 17;
+      const out = sd > 0 ? 0 : iw, inn = sd > 0 ? iw : 0, dir = sd > 0 ? -1 : 1; // out: the sawn end in the shaft
+      // the shadow it casts on the rock below, deepest by the wall
+      const sg = c.createLinearGradient(0, ih, 0, ih + sh); sg.addColorStop(0, 'rgba(20,12,4,0.45)'); sg.addColorStop(1, 'rgba(20,12,4,0)');
+      c.fillStyle = sg; c.beginPath(); c.moveTo(0, ih - 1); c.lineTo(iw, ih - 1); c.lineTo(iw - (sd > 0 ? 6 : 0), ih + sh); c.lineTo(sd > 0 ? 0 : 6, ih + sh); c.closePath(); c.fill();
+      // the beam
+      RICH.wood(c, 0, 0, iw, ih, { col, boards: 1, seed, knots: 1.2, edge: false });
+      c.save(); c.beginPath(); c.rect(0, 0, iw, ih); c.clip();
+      // adze facets: long shallow scoops along the top face, lit on one side
+      for (let k = 0, fx = 6 + RICH.r(seed, 1) * 10; fx < iw - 14; k++) {
+        const fl = 14 + RICH.r(seed, k + 3) * 16;
+        c.fillStyle = 'rgba(255,225,180,0.16)'; c.beginPath(); c.moveTo(fx, 1); c.quadraticCurveTo(fx + fl / 2, ih * 0.42, fx + fl, 1); c.closePath(); c.fill();
+        c.strokeStyle = RICH.rgba(RICH.dk(col, 0.5), 0.45); c.lineWidth = 0.7; c.beginPath(); c.moveTo(fx + fl, 1); c.quadraticCurveTo(fx + fl * 0.75, ih * 0.3, fx + fl / 2, ih * 0.32); c.stroke();
+        fx += fl + 3 + RICH.r(seed, k + 9) * 8;
+      }
+      // a seasoning split along the grain with a lit lower lip
+      const s0 = iw * (0.25 + RICH.r(seed, 21) * 0.2), s1 = s0 + iw * (0.22 + RICH.r(seed, 22) * 0.18), sy = ih * (0.45 + RICH.r(seed, 23) * 0.15);
+      c.strokeStyle = RICH.rgba(RICH.dk(col, 0.75), 0.8); c.lineWidth = 1.1; c.beginPath(); c.moveTo(s0, sy); for (let x = s0; x <= s1; x += 5) c.lineTo(x, sy + Math.sin(x * 0.3 + seed) * 0.8); c.stroke();
+      c.strokeStyle = 'rgba(255,220,170,0.25)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(s0 + 2, sy + 1.2); c.lineTo(s1 - 3, sy + 1.2); c.stroke();
+      // lit top edge, darker underside bevel
+      c.fillStyle = 'rgba(255,230,190,0.32)'; c.fillRect(0, 0, iw, 1.5);
+      c.fillStyle = RICH.rgba(RICH.dk(col, 0.6), 0.55); c.fillRect(0, ih - 3, iw, 3);
+      c.fillStyle = 'rgba(255,230,190,0.12)'; c.fillRect(0, ih - 3.6, iw, 0.6);
+      // dust and grit along the top
+      c.fillStyle = 'rgba(205,180,140,0.55)'; for (let k = 0; k < iw / 7; k++) c.fillRect(RICH.r(seed, 40 + k) * iw, 0.4 + RICH.r(seed, 80 + k) * 1.2, 1 + RICH.r(seed, 120 + k), 0.9);
+      // the socket in the rock: the beam darkens and the rock closes round it
+      const gg = c.createLinearGradient(inn, 0, inn + dir * 26, 0); gg.addColorStop(0, 'rgba(18,10,4,0.75)'); gg.addColorStop(1, 'rgba(18,10,4,0)');
+      c.fillStyle = gg; c.fillRect(Math.min(inn, inn + dir * 26), 0, 26, ih);
+      for (const [px, py, pr] of [[3, 2.5, 2.6], [5.5, ih - 2, 2.2], [1.5, ih * 0.55, 1.8]]) RICH.pebble(c, inn + dir * px, py, pr, '#6a5a4c', seed + px);
+      // the sawn end facing the shaft: end grain with growth rings, a radial check and saw marks
+      const ew = Math.min(7, iw * 0.08), ex = sd > 0 ? 0 : iw - ew;
+      c.fillStyle = RICH.lit(col, 0.18); c.fillRect(ex, 0, ew, ih);
+      c.strokeStyle = RICH.rgba(RICH.dk(col, 0.45), 0.7); c.lineWidth = 0.6;
+      const rcx = ex + ew * (sd > 0 ? 0.65 : 0.35), rcy = ih * 0.55;
+      for (let k = 1; k <= 3; k++) { c.beginPath(); c.ellipse(rcx, rcy, ew * 0.22 * k, ih * 0.14 * k, 0, 0, Math.PI * 2); c.stroke(); }
+      c.strokeStyle = RICH.rgba(RICH.dk(col, 0.7), 0.8); c.lineWidth = 0.8; c.beginPath(); c.moveTo(rcx, rcy); c.lineTo(rcx + (sd > 0 ? -1 : 1) * ew * 0.4, 0.5); c.stroke();
+      c.fillStyle = 'rgba(255,240,210,0.3)'; c.fillRect(ex, 0, ew, 1);
+      c.strokeStyle = RICH.rgba(RICH.dk(col, 0.6), 0.8); c.lineWidth = 0.9; c.beginPath(); c.moveTo(sd > 0 ? ew : iw - ew, 0); c.lineTo(sd > 0 ? ew : iw - ew, ih); c.stroke();
+      c.restore();
+      // an iron strap round the beam, with two bolt heads, a rust streak below
+      const bx = Math.round(iw * (0.42 + vv * 0.07));
+      c.fillStyle = 'rgba(150,80,40,0.35)'; c.fillRect(bx + 1, ih, 3, Math.min(sh, 4 + vv));
+      c.fillStyle = '#4a4440'; c.fillRect(bx - 0.5, -0.5, 6, ih + 1);
+      c.fillStyle = '#6a625c'; c.fillRect(bx, 0, 5, ih);
+      c.fillStyle = 'rgba(255,255,255,0.28)'; c.fillRect(bx, 0, 1.2, ih);
+      c.fillStyle = 'rgba(150,80,40,0.45)'; c.fillRect(bx + 2, ih * 0.6, 3, ih * 0.4);
+      RICH.rivet(c, bx + 2.5, ih * 0.3, 1.3, '#8a827a'); RICH.rivet(c, bx + 2.5, ih * 0.72, 1.3, '#8a827a');
+      // an iron dog (staple) near the sawn end and a wooden wedge driven in under the beam by the wall
+      const dx = sd > 0 ? iw * 0.16 : iw * 0.8;
+      c.strokeStyle = '#3e3834'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(dx, ih + 1.5); c.lineTo(dx, 1.2); c.lineTo(dx + 7, 1.2); c.lineTo(dx + 7, ih + 1.5); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(dx, 0.6); c.lineTo(dx + 7, 0.6); c.stroke();
+      const wx = inn + dir * 14;
+      c.fillStyle = RICH.lit(col, 0.1); c.beginPath(); c.moveTo(wx - dir * 1, ih - 0.5); c.lineTo(wx + dir * 14, ih - 0.5); c.lineTo(wx - dir * 1, ih + 3.5); c.closePath(); c.fill();
+      c.strokeStyle = COL.timberDark; c.lineWidth = 0.8; c.stroke();
+      // the outline, in the timber's own dark (open on the wall side, where it goes into the rock)
+      c.strokeStyle = COL.timberDark; c.lineWidth = 1.2; c.beginPath();
+      c.moveTo(inn, 0.6); c.lineTo(out + (sd > 0 ? 0.6 : -0.6), 0.6); c.lineTo(out + (sd > 0 ? 0.6 : -0.6), ih - 0.6); c.lineTo(inn, ih - 0.6); c.stroke();
+    }, x, y);
   };
   K.stalactites = (x0, x1, y, o = {}) => {
     const seed = o.seed || 0, len = o.len || 40, col = o.col || COL.rock, t = o.t || 0;
@@ -259,6 +326,31 @@ const CAVE = (() => {
     chamber: { top: '#3a2a1e', bot: '#5a4028', far: '#4a3624', near: '#3a2a1c', glows: [GLOW.gold, GLOW.teal, GLOW.rose] },
   };
   K.ZONES = ZONES;
+  // (rich props) a far cross-beam across the cave for a lantern: a squared timber with grain, adze marks, a lit top,
+  // a darker underside, sawn ends with rings, rough props under both ends and an iron hook; hazed toward the far rock
+  // colour so it stays in the distance. Cached per width and colour.
+  function farBeam(x, y, w, col, br) {
+    const iw = Math.max(10, Math.round(w)), bh = 8;
+    RICH.pic('w39farbeam|' + iw + '|' + col + '|' + Math.round(br * 10), iw, 30, c => {
+      const wood = RICH.mix('#6a4a2c', col, 0.55), dk = RICH.dk(wood, 0.55);
+      // props under each end, slanting into the rock
+      for (const [px, d] of [[4, 1], [iw - 4, -1]]) {
+        c.fillStyle = RICH.dk(wood, 0.15); c.beginPath(); c.moveTo(px, bh - 1); c.lineTo(px + d * 5, bh - 1); c.lineTo(px + d * 1, 30); c.lineTo(px - d * 4, 30); c.closePath(); c.fill();
+        c.strokeStyle = RICH.rgba(dk, 0.8); c.lineWidth = 1; c.stroke();
+        c.fillStyle = 'rgba(255,220,170,0.08)'; c.fillRect(Math.min(px, px - d * 4), bh, 1, 22);
+      }
+      RICH.wood(c, 0, 0, iw, bh, { col: wood, boards: 1, seed: iw, knots: 0.6, edge: false });
+      c.fillStyle = RICH.rgba(RICH.mix(col, '#000000', 0.2), 0.3); c.fillRect(0, 0, iw, bh); // haze
+      c.fillStyle = 'rgba(255,214,160,' + (0.22 * br) + ')'; c.fillRect(0, 0, iw, 1.3);
+      c.fillStyle = RICH.rgba(dk, 0.6); c.fillRect(0, bh - 2.2, iw, 2.2);
+      for (let k = 0, fx = 5; fx < iw - 10; k++) { const fl = 10 + RICH.r(iw, k) * 12; c.strokeStyle = RICH.rgba(dk, 0.5); c.lineWidth = 0.6; c.beginPath(); c.moveTo(fx + fl, 1); c.quadraticCurveTo(fx + fl * 0.6, bh * 0.4, fx + fl * 0.3, bh * 0.35); c.stroke(); fx += fl + 4; }
+      for (const ex of [0, iw - 4]) { c.fillStyle = RICH.lit(wood, 0.08); c.fillRect(ex, 0, 4, bh); c.strokeStyle = RICH.rgba(dk, 0.7); c.lineWidth = 0.5; c.beginPath(); c.ellipse(ex + 2, bh * 0.55, 1.2, 2, 0, 0, Math.PI * 2); c.stroke(); }
+      c.strokeStyle = dk; c.lineWidth = 1; c.strokeRect(0.5, 0.5, iw - 1, bh - 1);
+      // the iron hook the lantern hangs from
+      c.strokeStyle = '#3a3430'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(iw / 2, bh - 1); c.lineTo(iw / 2, bh + 4); c.arc(iw / 2 + 2, bh + 4, 2, Math.PI, Math.PI * 0.2, true); c.stroke();
+      c.fillStyle = '#5a524c'; c.fillRect(iw / 2 - 2.5, bh - 2, 5, 2.5);
+    }, x, y);
+  }
   K.back = (camX, camY, t, o = {}) => {
     const Z = ZONES[o.zone || 'cavern'], par = o.par === undefined ? 0.25 : o.par, br = o.bright === undefined ? 1 : o.bright;
     const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -295,10 +387,19 @@ const CAVE = (() => {
         if (Z.lamp && H_(i * 9 + k0) > 0.6) {
           // an old mine lantern on a beam
           const ly = ((H_(i * 11) * H - oy) % H + H) % H;
-          ctx.fillStyle = Z.near; ctx.fillRect(x - 10, ly - 3, w + 20, 6);
+          farBeam(x - 10, ly - 4, w + 20, Z.near, br);
           const lg = ctx.createRadialGradient(x + w / 2, ly + 10, 1, x + w / 2, ly + 10, 40); lg.addColorStop(0, 'rgba(255,190,90,' + 0.4 * br + ')'); lg.addColorStop(1, 'rgba(255,190,90,0)');
           ctx.fillStyle = lg; ctx.fillRect(x + w / 2 - 40, ly - 30, 80, 80);
-          ctx.fillStyle = '#ffcf6a'; rr(x + w / 2 - 3, ly + 4, 6, 9, 2); ctx.fill(); ctx.fillStyle = col;
+          // a small far lantern on the hook: a dark cap, a glowing glass with a flame, cage wires, a base
+          RICH.pic('w39farlamp|' + Math.round(br * 10), 10, 15, c => {
+            c.fillStyle = '#3a2a18'; RICH.rr(c, 1.5, 0, 7, 2.5, 1); c.fill();
+            const lg2 = c.createRadialGradient(5, 7.5, 0.5, 5, 7.5, 5); lg2.addColorStop(0, '#fff6c8'); lg2.addColorStop(0.6, '#ffcf6a'); lg2.addColorStop(1, '#c8802a');
+            c.fillStyle = lg2; RICH.rr(c, 2, 2.5, 6, 9, 2); c.fill();
+            c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(5, 7.5, 1, 2, 0, 0, Math.PI * 2); c.fill();
+            c.strokeStyle = 'rgba(60,36,14,0.8)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(4, 2.5); c.lineTo(4, 11.5); c.moveTo(6, 2.5); c.lineTo(6, 11.5); c.moveTo(2, 7); c.lineTo(8, 7); c.stroke();
+            c.strokeStyle = '#4a2c10'; c.lineWidth = 0.9; RICH.rr(c, 2, 2.5, 6, 9, 2); c.stroke();
+            c.fillStyle = '#3a2a18'; RICH.rr(c, 1.5, 11.5, 7, 2.5, 1); c.fill();
+          }, x + w / 2 - 5, ly + 5); ctx.fillStyle = col;
         }
       }
     }
@@ -392,6 +493,16 @@ const CAVE = (() => {
     ctx.fillStyle = g;
     const c = Math.min(w, h) * 0.18;
     ctx.beginPath(); ctx.moveTo(x + c, y); ctx.lineTo(x + w - c, y); ctx.lineTo(x + w, y + c); ctx.lineTo(x + w, y + h - c); ctx.lineTo(x + w - c, y + h); ctx.lineTo(x + c, y + h); ctx.lineTo(x, y + h - c); ctx.lineTo(x, y + c); ctx.closePath(); ctx.fill();
+    // (art pass) chiselled stone in the block: fractures, specks and facets (cached per size and seed), a dark lower bevel
+    { const iw = Math.max(4, Math.round(w)), ih = Math.max(4, Math.round(h)), cc = c;
+      ctx.save(); ctx.clip();
+      RICH.pic('w39golemblk|' + iw + '|' + ih + '|' + (seed % 7), iw, ih, q => {
+        RICH.rock(q, 0, 0, iw, ih, { col: '#6a7484', seed: seed % 7 });
+        const g2 = q.createLinearGradient(0, 0, iw, ih); g2.addColorStop(0, 'rgba(255,255,255,0.12)'); g2.addColorStop(0.5, 'rgba(0,0,0,0)'); g2.addColorStop(1, 'rgba(10,14,24,0.35)'); q.fillStyle = g2; q.fillRect(0, 0, iw, ih);
+        q.fillStyle = 'rgba(0,0,0,0.25)'; q.fillRect(cc, ih - 5, iw - cc * 2, 5); q.fillRect(iw - 5, cc, 5, ih - cc * 2);
+        q.strokeStyle = 'rgba(30,34,44,0.5)'; q.lineWidth = 1; q.strokeRect(cc * 0.6, cc * 0.6, iw - cc * 1.2, ih - cc * 1.2);
+      }, x, y);
+      ctx.restore(); }
     ctx.strokeStyle = '#2a303a'; ctx.lineWidth = 3; ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + c, y + 3, w - c * 2, Math.min(8, h * 0.12));
     // little crystal studs

@@ -947,6 +947,7 @@ function canoeDrawRiver(st) {
     const h = hash(k, j + 31), y = canoeSY(st, k * 90 + (h % 90)), x = (h >> 8) % W;
     ctx.beginPath(); ctx.ellipse(x, y, 30 + (h >> 4) % 30, 14 + (h >> 6) % 10, 0, 0, Math.PI * 2); ctx.fill();
   }
+  canoeDrawGrass(st, d0, d1);
   const L = [], R = [];
   for (let y = -16; y <= H + 16; y += step) { const d = canoeSD(st, y), cx = canoeCX(st, d), hw = canoeHW(st, d); L.push([cx - hw, y]); R.push([cx + hw, y]); }
   // sand and mud edges
@@ -999,6 +1000,90 @@ function canoeDrawRiver(st) {
     canoeLily(x, y, 9 + (h >> 13) % 5, (h >> 3) % 6, (h & 128) !== 0);
   }
   ctx.restore();
+}
+// (art director pass, Nov 2026) the grassy banks were one flat green with a few dark ovals: now each dapple has a
+// sunny rim, and the grass between has tufts of two-tone blades, clover, tiny flowers and the odd pebble, placed by
+// hash() on a grid that scrolls with the river. The grass is still, so it is painted once per band of 136 px of river
+// (at the canvas's pixel scale) into a small cache of pictures and copied on whole pixels; the water covers the middle.
+const CANOE_GBAND = 136, CANOE_GPAD = 14, canoeGrassPics = new Map();
+let canoeGrassSc = 0;
+function canoeDrawGrass(st, d0, d1) {
+  const pal = st.pal;
+  // dapple rims (live: they follow the dapples drawn just before)
+  for (let k = Math.floor(d0 / 90); k <= Math.ceil(d1 / 90); k++) for (let j = 0; j < 3; j++) {
+    const h = hash(k, j + 31), y = canoeSY(st, k * 90 + (h % 90)), x = (h >> 8) % W, rx = 30 + (h >> 4) % 30, ry = 14 + (h >> 6) % 10;
+    ctx.strokeStyle = 'rgba(255,255,220,0.16)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, Math.PI * 1.05, Math.PI * 1.7); ctx.stroke();
+    ctx.fillStyle = 'rgba(20,60,30,0.14)'; ctx.beginPath(); ctx.ellipse(x + rx * 0.12, y + ry * 0.15, rx * 0.62, ry * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  const sc = Math.max(1, Math.min(3, canvas.width / W));
+  if (sc !== canoeGrassSc) { canoeGrassPics.clear(); canoeGrassSc = sc; }
+  const m = ctx.getTransform(), plain = m.b === 0 && m.c === 0 && Math.abs(m.a - sc) < 1e-6 && Math.abs(m.d - sc) < 1e-6;
+  for (let b = Math.floor((d0 - CANOE_GPAD) / CANOE_GBAND); b <= Math.floor((d1 + CANOE_GPAD) / CANOE_GBAND); b++) {
+    const key = pal.bank + '|' + b;
+    let pic = canoeGrassPics.get(key);
+    if (pic) { canoeGrassPics.delete(key); canoeGrassPics.set(key, pic); }
+    else {
+      if (canoeGrassPics.size >= 12) canoeGrassPics.delete(canoeGrassPics.keys().next().value);
+      pic = document.createElement('canvas'); pic.width = Math.ceil(W * sc); pic.height = Math.ceil((CANOE_GBAND + 2 * CANOE_GPAD) * sc);
+      const c = pic.getContext('2d'); c.scale(sc, sc);
+      const top = (b + 1) * CANOE_GBAND + CANOE_GPAD;
+      CK.on(c, () => canoeGrassPaint(pal, b, d => top - d));
+      canoeGrassPics.set(key, pic);
+    }
+    const yTop = canoeSY(st, (b + 1) * CANOE_GBAND + CANOE_GPAD);
+    if (plain) {
+      const sm = ctx.imageSmoothingEnabled;
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(pic, Math.round(m.e), Math.round(m.d * yTop + m.f));
+      ctx.setTransform(m); ctx.imageSmoothingEnabled = sm;
+    } else ctx.drawImage(pic, 0, yTop, W, CANOE_GBAND + 2 * CANOE_GPAD);
+  }
+}
+// the grass detail of one band of river (cells of 34 px; 4 cells to a band), at y = yOf(d)
+function canoeGrassPaint(pal, b, yOf) {
+  const cell = 34, lit = tint(pal.bank, 0.22), dk = shade(pal.bankDark, 0.12), mid = shade(pal.bank, 0.1), nx = Math.ceil(W / cell);
+  const tufts = [], lits = [], clovers = [], flowers = [], pebs = [];
+  for (let k = b * 4; k < b * 4 + 4; k++) for (let j = 0; j <= nx; j++) {
+    const h = hash(k * 131 + j, 913), r = h % 100;
+    const x = j * cell + ((h >> 7) % cell), y = yOf(k * cell + ((h >> 13) % cell));
+    if (r < 58) tufts.push(x, y, h); else if (r < 70) clovers.push(x, y, h); else if (r < 74) flowers.push(x, y, h); else if (r < 78) pebs.push(x, y, h);
+    if (r % 3 === 0) lits.push(x + 9, y + 7, h);
+  }
+  ctx.lineCap = 'round';
+  // tufts: three dark blades fanning up, then lit blades on their sunny side
+  ctx.strokeStyle = dk; ctx.lineWidth = 1.6; ctx.beginPath();
+  for (let i = 0; i < tufts.length; i += 3) {
+    const x = tufts[i], y = tufts[i + 1], h = tufts[i + 2], s = 0.8 + ((h >> 17) % 5) * 0.1;
+    ctx.moveTo(x - 3 * s, y); ctx.lineTo(x - 5 * s, y - 6 * s); ctx.moveTo(x, y); ctx.lineTo(x + 0.5, y - 8 * s); ctx.moveTo(x + 3 * s, y); ctx.lineTo(x + 6 * s, y - 5 * s);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = lit; ctx.lineWidth = 1.2; ctx.beginPath();
+  for (let i = 0; i < tufts.length; i += 3) { const x = tufts[i], y = tufts[i + 1]; ctx.moveTo(x - 1.5, y); ctx.lineTo(x - 2.5, y - 6); }
+  for (let i = 0; i < lits.length; i += 3) { const x = lits[i], y = lits[i + 1]; ctx.moveTo(x, y); ctx.lineTo(x + 1.5, y - 5); ctx.moveTo(x + 2.5, y); ctx.lineTo(x + 4.5, y - 3.5); }
+  ctx.stroke();
+  // clover: three round leaves and a lit dot
+  ctx.fillStyle = mid; ctx.beginPath();
+  for (let i = 0; i < clovers.length; i += 3) { const x = clovers[i], y = clovers[i + 1]; for (const a of [-2.3, -0.85, 1.57]) { const cx = x + Math.cos(a) * 2.6, cy = y + Math.sin(a) * 2.6; ctx.moveTo(cx + 2.4, cy); ctx.arc(cx, cy, 2.4, 0, Math.PI * 2); } }
+  ctx.fill();
+  ctx.fillStyle = lit; ctx.beginPath();
+  for (let i = 0; i < clovers.length; i += 3) { const x = clovers[i] - 2, y = clovers[i + 1] - 3; ctx.moveTo(x + 0.9, y); ctx.arc(x, y, 0.9, 0, Math.PI * 2); }
+  ctx.fill();
+  // tiny flowers: four petals round a yellow eye
+  for (let i = 0; i < flowers.length; i += 3) {
+    const x = flowers[i], y = flowers[i + 1], h = flowers[i + 2];
+    ctx.fillStyle = (h >> 9) % 3 ? '#ffffff' : pal.flower[(h >> 4) % 3];
+    ctx.beginPath(); for (let p = 0; p < 4; p++) { const a = p * 1.57 + 0.4, cx = x + Math.cos(a) * 2, cy = y + Math.sin(a) * 2; ctx.moveTo(cx + 1.6, cy); ctx.arc(cx, cy, 1.6, 0, Math.PI * 2); } ctx.fill();
+    ctx.fillStyle = '#ffc93d'; circle(x, y, 1); ctx.fill();
+  }
+  // pebbles in the grass: a soft shadow, a shaded stone and a lit dot
+  for (let i = 0; i < pebs.length; i += 3) {
+    const x = pebs[i], y = pebs[i + 1], r = 2.2 + ((pebs[i + 2] >> 5) % 3) * 0.6;
+    ctx.fillStyle = 'rgba(20,60,30,0.22)'; ctx.beginPath(); ctx.ellipse(x + 1, y + r * 0.7, r * 1.2, r * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#9b958a'; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.72, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6f6a62'; ctx.beginPath(); ctx.ellipse(x + r * 0.2, y + r * 0.25, r * 0.8, r * 0.45, 0, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x - r * 0.5, y - r * 0.45, r * 0.6, 0.9);
+  }
+  ctx.lineCap = 'butt';
 }
 function canoeLily(x, y, r, rot, flower) {
   ctx.fillStyle = '#5fbf4a'; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r, rot + 0.35, rot + Math.PI * 2 - 0.35); ctx.closePath(); ctx.fill();
@@ -1108,14 +1193,25 @@ function canoeDrawIslands(st) {
     if (y < -is.rl - 40 || y > H + is.rl + 40) continue;
     ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(is.x, y, is.rw + 8, is.rl + 8, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = pal.sand; ctx.beginPath(); ctx.ellipse(is.x, y, is.rw, is.rl, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = shade(pal.sand, 0.12); ctx.beginPath(); ctx.ellipse(is.x + 2, y + 3, is.rw - 2, is.rl - 2, 0, 0.2, Math.PI - 0.2); ctx.fill();
+    ctx.fillStyle = pal.sand; ctx.beginPath(); ctx.ellipse(is.x - 1, y - 1, is.rw - 3, is.rl - 3, 0, 0, Math.PI * 2); ctx.fill();
+    for (let k = 0; k < 8; k++) { const a = k * 0.8 + is.d * 0.01, px = is.x + Math.cos(a) * is.rw * 0.8, py = y + Math.sin(a) * is.rl * 0.8; if (k % 3 === 0) { ctx.fillStyle = '#fff1e0'; ctx.beginPath(); ctx.arc(px, py, 2.4, Math.PI, 0); ctx.fill(); ctx.strokeStyle = '#d9a88a'; ctx.lineWidth = 0.7; ctx.stroke(); } else { ctx.fillStyle = shade(pal.sand, 0.3); circle(px, py, 1.4); ctx.fill(); } }
+    ctx.fillStyle = shade(pal.bank, 0.15); ctx.beginPath(); ctx.ellipse(is.x + 1, y + 8, is.rw * 0.62, is.rl * 0.62, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = pal.bank; ctx.beginPath(); ctx.ellipse(is.x, y + 6, is.rw * 0.62, is.rl * 0.62, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = pal.bankDark; for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, px = is.x + Math.cos(a) * is.rw * 0.62, py = y + 6 + Math.sin(a) * is.rl * 0.62; ctx.beginPath(); ctx.moveTo(px - 2, py); ctx.lineTo(px + Math.cos(a) * 5, py + Math.sin(a) * 5); ctx.lineTo(px + 2, py); ctx.fill(); }
     // a palm tree seen from above
     const px = is.x + is.rw * 0.2, py = y - is.rl * 0.35;
     for (let i = 0; i < 6; i++) {
       const a = i * 1.047 + 0.3 + Math.sin(t * 1.2 + i) * 0.05;
       ctx.fillStyle = pal.leaf[i % 4]; ctx.beginPath(); ctx.ellipse(px + Math.cos(a) * 18, py + Math.sin(a) * 18, 20, 7, a, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = shade(pal.leaf[i % 4], 0.3); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(px + Math.cos(a) * 3, py + Math.sin(a) * 3); ctx.lineTo(px + Math.cos(a) * 36, py + Math.sin(a) * 36); ctx.stroke();
+      ctx.strokeStyle = shade(pal.leaf[i % 4], 0.18); ctx.lineWidth = 0.8; ctx.beginPath();
+      for (let q = 10; q < 34; q += 6) { const bx = px + Math.cos(a) * q, by = py + Math.sin(a) * q; ctx.moveTo(bx, by); ctx.lineTo(bx + Math.cos(a + 1.1) * 5, by + Math.sin(a + 1.1) * 5); ctx.moveTo(bx, by); ctx.lineTo(bx + Math.cos(a - 1.1) * 5, by + Math.sin(a - 1.1) * 5); }
+      ctx.stroke();
     }
     ctx.fillStyle = pal.trunk; circle(px, py, 5); ctx.fill();
+    ctx.strokeStyle = shade(pal.trunk, 0.3); ctx.lineWidth = 0.8; circle(px, py, 3); ctx.stroke();
+    ctx.fillStyle = '#6b4a20'; circle(px + 4, py + 4, 2.4); ctx.fill(); circle(px - 3, py + 5, 2.2); ctx.fill();
     if (is.animal) canoeAnimal(is.animal, is.x - is.rw * 0.15, y + is.rl * 0.3, 1, t, false);
   }
 }
@@ -1123,7 +1219,10 @@ function canoeDrawFlags(st) {
   for (const fl of st.c.flags) {
     const y = canoeSY(st, fl.d); if (y < -60 || y > H + 40) continue;
     const x = canoeCX(st, fl.d) + canoeHW(st, fl.d) + 10;
+    ctx.fillStyle = 'rgba(20,60,30,0.2)'; ctx.beginPath(); ctx.ellipse(x + 3, y + 4, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#7a5228'; ctx.fillRect(x - 3, y - 40, 6, 44);
+    ctx.fillStyle = 'rgba(255,225,180,0.35)'; ctx.fillRect(x - 3, y - 40, 1.5, 44); ctx.fillStyle = '#5a3a18'; ctx.fillRect(x + 1.5, y - 40, 1.5, 44);
+    ctx.strokeStyle = '#d9b27a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 3, y - 18); ctx.lineTo(x + 3, y - 15); ctx.moveTo(x - 3, y - 15); ctx.lineTo(x + 3, y - 12); ctx.stroke();
     ctx.fillStyle = fl.on ? C.gold : '#ff6b4a'; ctx.beginPath(); ctx.moveTo(x - 3, y - 40); ctx.lineTo(x - 34, y - 31); ctx.lineTo(x - 3, y - 22); ctx.closePath(); ctx.fill();
     canoeAnimal('parrot', x + 2, y - 44, -1, G.clock, fl.on);
   }
@@ -1138,12 +1237,15 @@ function canoeDrawGaps(st) {
     ctx.fillStyle = C.gold; ctx.beginPath(); ctx.moveTo(gp.x, y - 48); ctx.lineTo(gp.x - 12, y - 32); ctx.lineTo(gp.x + 12, y - 32); ctx.closePath(); ctx.fill();
   }
 }
-function canoeRock(x, y, r, wob, rot) {
+function canoeRock(x, y, r, wob, rot, seed) {
+  // (rich props pass, Nov 2026) a foam ring and a wet dark line at the water, then a cached chiselled rock with moss,
+  // a wet lower half and pebbles stuck at its foot
   ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(x, y + 3, r + 6, r * 0.9 + 5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = wob ? '#a59a8a' : '#8d8577'; ctx.beginPath(); ctx.ellipse(x, y, r * 1.05, r * 0.92, rot || 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.beginPath(); ctx.ellipse(x - r * 0.3, y - r * 0.3, r * 0.45, r * 0.3, -0.4, 0, Math.PI * 2); ctx.fill();
-  // moss on top
-  ctx.fillStyle = 'rgba(110,180,80,0.75)'; ctx.beginPath(); ctx.ellipse(x + r * 0.2, y - r * 0.15, r * 0.5, r * 0.35, 0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(20,60,70,0.25)'; ctx.beginPath(); ctx.ellipse(x + 1.5, y + 2.5, r * 1.08, r * 0.95, 0, 0, Math.PI * 2); ctx.fill();
+  const R0 = Math.round(r), sd = (seed | 0) % 6;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0);
+  CK.pic('cnrock' + R0 + '|' + (wob ? 1 : 0) + '|' + sd, R0 * 2.4 + 8, R0 * 2.2 + 8, R0 * 1.2 + 4, R0 * 1.1 + 4, () => canoeRockPaint(R0, wob, sd), 0, 0);
+  ctx.restore();
   if (wob) {
     // a wobbly rock has a sleepy smiley face (and rocks a little)
     ctx.strokeStyle = 'rgba(40,30,30,0.7)'; ctx.lineWidth = 1.5;
@@ -1151,22 +1253,54 @@ function canoeRock(x, y, r, wob, rot) {
     ctx.beginPath(); ctx.arc(x, y + 5, 3, 0.2, Math.PI - 0.2); ctx.stroke();
   }
 }
+function canoeRockPaint(r, wob, sd) {
+  const col = wob ? '#a59a8a' : '#8d8577';
+  CK.rock(0, 0, r * 1.05, r * 0.92, col, 400 + sd * 13 + r, { shadow: false, n: 10, j: 0.1, moss: wob ? undefined : '#6eb450' });
+  ctx.save(); CK.blob(0, 0, r * 1.05, r * 0.92, 400 + sd * 13 + r, 10, 0.1); ctx.clip();
+  ctx.fillStyle = 'rgba(30,60,70,0.22)'; ctx.fillRect(-r * 1.2, r * 0.35, r * 2.4, r);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(-r * 1.2, r * 0.35, r * 2.4, 1);
+  if (wob) { ctx.fillStyle = 'rgba(110,180,80,0.7)'; ctx.beginPath(); ctx.ellipse(r * 0.3, -r * 0.55, r * 0.4, r * 0.18, 0.3, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+  for (let k = 0; k < 3; k++) { const a = 0.6 + k * 0.9 + sd * 0.3; CK.pebble(Math.cos(a) * r * 1.02, Math.sin(a) * r * 0.9, 1.6 + (k % 2), '#9c9486', sd * 5 + k); }
+}
 function canoeDrawRocks(st) {
   for (const r of st.c.rocks) {
     const y = canoeSY(st, r.d); if (y < -40 || y > H + 40) continue;
     const wob = r.kind === 'wobble';
-    canoeRock(r.x, y, r.r, wob, wob ? (r.rot || 0) + Math.sin(G.clock * 3 + r.k) * (r.gone ? 0 : 0.12) : 0);
+    canoeRock(r.x, y, r.r, wob, wob ? (r.rot || 0) + Math.sin(G.clock * 3 + r.k) * (r.gone ? 0 : 0.12) : 0, r.k);
   }
 }
 function canoeLogShape(x, y, len, a, out, k) {
   ctx.save(); ctx.translate(x, y); ctx.rotate(-a);   // (a is measured from down the river, which is up the screen)
   ctx.fillStyle = 'rgba(255,255,255,0.3)'; rr(-12, -len / 2 - 4, 24, len + 8, 12); ctx.fill();
-  ctx.fillStyle = '#9a6a3c'; rr(-9, -len / 2, 18, len, 9); ctx.fill();
-  ctx.strokeStyle = '#6a4424'; ctx.lineWidth = 1.5;
-  for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-5 + i * 5, -len / 2 + 8); ctx.lineTo(-5 + i * 5, len / 2 - 8); ctx.stroke(); }
-  ctx.fillStyle = '#d9a86a'; ctx.beginPath(); ctx.ellipse(0, -len / 2 + 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#6fbf4a'; ctx.beginPath(); ctx.ellipse(4, (k % 2 ? 1 : -1) * len * 0.2, 6, 4, 0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(20,60,70,0.22)'; rr(-8, -len / 2 + 3, 20, len, 9); ctx.fill();
+  const L0 = Math.round(len);
+  CK.pic('cnlog' + L0 + '|' + (k % 2), 22, L0 + 4, 11, L0 / 2 + 2, () => canoeLogPaint(L0, k % 2), 0, 0);
   ctx.restore();
+}
+// (rich props pass, Nov 2026) a floating log seen from above: plated bark with grooves, knots, a lit left edge and a
+// shaded right edge, a ringed cut end, moss and a dark outline in its own colour
+function canoeLogPaint(len, side) {
+  const y0 = -len / 2;
+  ctx.fillStyle = '#9a6a3c'; rr(-9, y0, 18, len, 9); ctx.fill();
+  ctx.save(); rr(-9, y0, 18, len, 9); ctx.clip();
+  ctx.fillStyle = '#7a5030'; ctx.fillRect(3, y0, 6, len);
+  ctx.fillStyle = 'rgba(255,225,180,0.3)'; ctx.fillRect(-8, y0, 3, len);
+  ctx.strokeStyle = '#6a4424'; ctx.lineWidth = 1.3; ctx.lineCap = 'round';
+  for (let i = 0; i < 4; i++) { const gx = -6 + i * 4; ctx.beginPath(); ctx.moveTo(gx, y0 + 8); for (let yy = y0 + 8; yy < len / 2 - 6; yy += 12) ctx.lineTo(gx + (CK.r(i, yy) - 0.5) * 2, yy + 12); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(255,225,180,0.25)'; ctx.lineWidth = 1; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-4.5 + i * 4, y0 + 10); ctx.lineTo(-4.5 + i * 4, len / 2 - 10); ctx.stroke(); }
+  for (const ky of [-0.15, 0.25]) { ctx.fillStyle = '#5a3a1e'; ctx.beginPath(); ctx.ellipse(-1, ky * len, 3, 4.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#b8875a'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(-1, ky * len, 4, 5.5, 0, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.restore();
+  // the cut end: rings
+  ctx.fillStyle = '#d9a86a'; ctx.beginPath(); ctx.ellipse(0, y0 + 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#b07a44'; ctx.lineWidth = 0.8; for (const rr0 of [2, 4, 6]) { ctx.beginPath(); ctx.ellipse(0, y0 + 2, rr0, rr0 * 0.5, 0, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.fillStyle = '#8a5a2c'; circle(0, y0 + 2, 1); ctx.fill();
+  // moss
+  const my = (side ? 1 : -1) * len * 0.2;
+  ctx.fillStyle = '#4f9e3e'; ctx.beginPath(); ctx.ellipse(4, my + 1, 6.5, 4.5, 0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#6fbf4a'; ctx.beginPath(); ctx.ellipse(3.5, my, 5.5, 3.5, 0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(200,255,160,0.6)'; circle(2, my - 1, 1.2); ctx.fill(); circle(5, my + 1, 0.9); ctx.fill();
+  ctx.strokeStyle = '#4a2e14'; ctx.lineWidth = 1.4; rr(-9, y0, 18, len, 9); ctx.stroke();
 }
 function canoeDrawLogs(st) {
   for (const lg of st.c.logs) {
@@ -1187,15 +1321,25 @@ function canoeDrawJams(st) {
         // a big log (two pokes): a crack shows after the first
         ctx.fillStyle = 'rgba(255,255,255,0.3)'; rr(-w / 2 - 3, -14, w + 6, 28, 14); ctx.fill();
         ctx.fillStyle = '#8f5f34'; rr(-w / 2, -11, w, 22, 11); ctx.fill();
-        ctx.strokeStyle = '#5e3a1e'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-w / 2 + 8, -3); ctx.lineTo(w / 2 - 8, -3); ctx.moveTo(-w / 2 + 12, 4); ctx.lineTo(w / 2 - 12, 4); ctx.stroke();
+        ctx.fillStyle = '#6e4626'; ctx.fillRect(-w / 2 + 8, 4, w - 16, 6); ctx.fillStyle = 'rgba(255,225,180,0.28)'; ctx.fillRect(-w / 2 + 8, -10, w - 16, 3);
+        ctx.strokeStyle = '#5e3a1e'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-w / 2 + 8, -3); ctx.lineTo(w / 2 - 8, -3); ctx.moveTo(-w / 2 + 12, 4); ctx.lineTo(w / 2 - 12, 4); ctx.moveTo(-w / 2 + 16, -7); ctx.lineTo(-w / 2 + w * 0.45, -7); ctx.stroke();
+        ctx.fillStyle = '#5a3a1e'; ctx.beginPath(); ctx.ellipse(-w * 0.15, 0, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#4a2e14'; ctx.lineWidth = 1.4; rr(-w / 2, -11, w, 22, 11); ctx.stroke();
         ctx.fillStyle = '#d9a86a'; ctx.beginPath(); ctx.ellipse(w / 2 - 3, 0, 4, 10, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#b07a44'; ctx.lineWidth = 0.8; for (const q of [1.5, 3]) { ctx.beginPath(); ctx.ellipse(w / 2 - 3, 0, q, q * 2.5, 0, 0, Math.PI * 2); ctx.stroke(); }
         if (pc.hp < jm.hp && !pc.gone) { ctx.strokeStyle = '#2a1a0a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-6, -11); ctx.lineTo(2, -2); ctx.lineTo(-3, 4); ctx.lineTo(5, 11); ctx.stroke(); }
       } else {
         // a leafy branch
         ctx.strokeStyle = '#7a5232'; ctx.lineWidth = 6; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(-w / 2 + 4, 2); ctx.quadraticCurveTo(0, -6, w / 2 - 4, 2); ctx.stroke();
         ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-w / 6, -2); ctx.lineTo(-w / 4, -12); ctx.moveTo(w / 6, -2); ctx.lineTo(w / 4, 10); ctx.stroke();
-        for (let i = 0; i < 5; i++) { ctx.fillStyle = st.pal.leaf[(i + pc.k) % 4]; ctx.beginPath(); ctx.ellipse(-w / 2 + 10 + i * (w - 20) / 4, (i % 2 ? -8 : 7), 9, 5, i, 0, Math.PI * 2); ctx.fill(); }
+        ctx.strokeStyle = 'rgba(255,225,180,0.35)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-w / 2 + 6, 0); ctx.quadraticCurveTo(0, -8, w / 2 - 6, 0); ctx.stroke();
+        for (let i = 0; i < 5; i++) {
+          const lx = -w / 2 + 10 + i * (w - 20) / 4, ly = (i % 2 ? -8 : 7), lc = st.pal.leaf[(i + pc.k) % 4];
+          ctx.fillStyle = shade(lc, 0.2); ctx.beginPath(); ctx.ellipse(lx + 1, ly + 1, 9, 5, i, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = lc; ctx.beginPath(); ctx.ellipse(lx, ly, 9, 5, i, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = tint(lc, 0.4); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(lx - Math.cos(i) * 7, ly - Math.sin(i) * 7); ctx.lineTo(lx + Math.cos(i) * 7, ly + Math.sin(i) * 7); ctx.stroke();
+        }
         ctx.lineCap = 'butt';
       }
       ctx.restore();
@@ -1245,6 +1389,55 @@ function canoeDrawFruit(st) {
     if (!f.got) { ctx.strokeStyle = 'rgba(255,255,255,' + (0.3 + 0.2 * Math.sin(G.clock * 4 + f.k)) + ')'; ctx.lineWidth = 2; circle(x, y + 2, 15); ctx.stroke(); }
   }
 }
+// a riverbank bush (centre x 0, y 0 = the old middle): a soft shadow, a few bare twigs, then 3-4 clusters of small
+// pointed leaves laid back to front (a dark back layer, the base colour, lit leaves on the upper left), each cluster
+// with a shaded underside and an outline in a dark shade of its own green; berries or blossoms on some looks
+function canoeBushPaint(v, side, pal) {
+  const TAU = Math.PI * 2, R = (a, b) => hash(a, b) / 4294967296;
+  ctx.fillStyle = 'rgba(20,60,30,0.2)'; ctx.beginPath(); ctx.ellipse(4, 15, 30, 9, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(20,60,30,0.14)'; ctx.beginPath(); ctx.ellipse(4, 15, 18, 5, 0, 0, TAU); ctx.fill();
+  const n = 3 + (v % 2), cl = [];
+  for (let i = 0; i < n; i++) cl.push({ x: (i - (n - 1) / 2) * 12 * side + (R(v, i) - 0.5) * 4, y: (i % 2 ? -8 : 5) + (R(i, v + 9) - 0.5) * 4, r: 15 - i * 1.6 + R(v + 3, i) * 2, col: pal.leaf[(v + i) % 4] });
+  // twigs
+  ctx.strokeStyle = pal.trunk; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath();
+  for (const k of cl) { ctx.moveTo(0, 12); ctx.quadraticCurveTo(k.x * 0.4, 6, k.x, k.y + 4); } ctx.stroke(); ctx.lineCap = 'butt';
+  const leaf = (x, y, l, a, col) => {
+    const ca = Math.cos(a), sa = Math.sin(a), w = l * 0.42;
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x - ca * l / 2, y - sa * l / 2);
+    ctx.quadraticCurveTo(x - sa * w, y + ca * w, x + ca * l / 2, y + sa * l / 2); ctx.quadraticCurveTo(x + sa * w, y - ca * w, x - ca * l / 2, y - sa * l / 2); ctx.fill();
+  };
+  // outlines round each cluster first, so the leaves sit inside a dark rim of their own green
+  // a leafy, lumpy silhouette: a core and a ring of small round lobes
+  const blob = (k, ex) => { ctx.beginPath(); ctx.moveTo(k.x + k.r * 0.78 + ex, k.y); ctx.arc(k.x, k.y, k.r * 0.78 + ex, 0, TAU);
+    for (let j = 0; j < 11; j++) { const a = j / 11 * TAU + v, lr = k.r * (0.27 + R(j, v * 7 + ci0(k)) * 0.08) + ex, cx = k.x + Math.cos(a) * k.r * 0.74, cy = k.y + Math.sin(a) * k.r * 0.7; ctx.moveTo(cx + lr, cy); ctx.arc(cx, cy, lr, 0, TAU); } };
+  const ci0 = k => Math.round(k.r * 10);
+  for (const k of cl) { ctx.fillStyle = shade(k.col, 0.45); blob(k, 1.4); ctx.fill(); }
+  cl.forEach((k, ci) => {
+    // the body of the cluster, darker on its lower right
+    ctx.fillStyle = shade(k.col, 0.12); blob(k, 0); ctx.fill();
+    ctx.save(); blob(k, 0); ctx.clip();
+    ctx.fillStyle = shade(k.col, 0.28); ctx.beginPath(); ctx.ellipse(k.x + k.r * 0.25, k.y + k.r * 0.35, k.r * 0.8, k.r * 0.55, 0, 0, TAU); ctx.fill();
+    // three layers of little pointed leaves
+    for (const [layer, col, nL] of [[0, shade(k.col, 0.3), 12], [1, k.col, 16], [2, tint(k.col, 0.25), 9]]) {
+      for (let j = 0; j < nL; j++) {
+        const a = R(ci * 50 + j, v * 3 + layer) * TAU, rd = Math.sqrt(R(j, ci * 9 + v + layer * 31)) * k.r * (layer === 2 ? 0.7 : 0.92);
+        let lx = k.x + Math.cos(a) * rd, ly = k.y + Math.sin(a) * rd * 0.9;
+        if (layer === 2) { lx -= k.r * 0.22; ly -= k.r * 0.28; }
+        leaf(lx, ly, 6 + R(j, ci + 77 + layer) * 3.5, a + 0.6 + R(ci, j + layer) * 0.8, col);
+      }
+    }
+    // leaf veins on a few front leaves, and a sunny spot
+    ctx.strokeStyle = 'rgba(20,60,30,0.3)'; ctx.lineWidth = 0.7; ctx.beginPath();
+    for (let j = 0; j < 4; j++) { const a = R(j, ci + 200) * TAU, rd = R(ci, j + 210) * k.r * 0.7, lx = k.x + Math.cos(a) * rd, ly = k.y + Math.sin(a) * rd; ctx.moveTo(lx - 2.5, ly + 1); ctx.lineTo(lx + 2.5, ly - 1); }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,220,0.28)'; ctx.beginPath(); ctx.ellipse(k.x - k.r * 0.35, k.y - k.r * 0.4, k.r * 0.32, k.r * 0.22, -0.5, 0, TAU); ctx.fill();
+    ctx.restore();
+  });
+  // berries or blossoms on some looks
+  if (v === 1 || v === 4) for (let j = 0; j < 6; j++) { const k = cl[j % cl.length], a = R(j, v + 300) * TAU, rd = R(v, j + 301) * k.r * 0.75, bx = k.x + Math.cos(a) * rd, by = k.y + Math.sin(a) * rd;
+    if (v === 1) { ctx.fillStyle = '#c8304a'; circle(bx, by, 2); ctx.fill(); ctx.fillStyle = '#ffb0c0'; circle(bx - 0.6, by - 0.6, 0.7); ctx.fill(); }
+    else { ctx.fillStyle = '#ffffff'; for (let p = 0; p < 5; p++) { circle(bx + Math.cos(p * 1.257) * 1.6, by + Math.sin(p * 1.257) * 1.6, 1.2); ctx.fill(); } ctx.fillStyle = '#ffd84d'; circle(bx, by, 0.9); ctx.fill(); } }
+}
 // bushes, trees, flowers and animals on the banks
 function canoeDrawBankLife(st) {
   const pal = st.pal, t = G.clock;
@@ -1253,10 +1446,19 @@ function canoeDrawBankLife(st) {
     const h = hash(k, side + 5), d = k * cell + (h % cell), y = canoeSY(st, d), edge = canoeCX(st, d) + side * canoeHW(st, d);
     const x = edge + side * (26 + (h >> 7) % 40);
     if (x < -40 || x > W + 40) continue;
-    // a bush: a soft shadow, 3 leafy blobs and a sunny highlight
-    ctx.fillStyle = 'rgba(20,60,30,0.18)'; ctx.beginPath(); ctx.ellipse(x + 4, y + 14, 28, 9, 0, 0, Math.PI * 2); ctx.fill();
-    for (let i = 0; i < 3; i++) { ctx.fillStyle = pal.leaf[(h >> (i * 2)) % 4]; circle(x + (i - 1) * 12 * side, y + (i % 2 ? -8 : 6), 15 - i * 2); ctx.fill(); }
-    ctx.fillStyle = 'rgba(255,255,220,0.22)'; circle(x - 5, y - 10, 6); ctx.fill();
+    // (rich props) a bush of leaf clusters (cached, 6 looks a side): see canoeBushPaint
+    const bv = h % 6;
+    CK.pic('cnbush' + bv + '|' + side + '|' + pal.leaf.join(''), 84, 66, 42, 40, () => canoeBushPaint(bv, side, pal), x, y);
+    // (rich props pass) pebbles on the sand and a clump of reeds at the water's edge
+    const ex = edge + side * 7;
+    for (let i = 0; i < 3; i++) { const px = ex + side * (i * 3), py = y - 10 + i * 9 + (h >> (i + 3)) % 5; ctx.fillStyle = '#8d8577'; ctx.beginPath(); ctx.ellipse(px, py, 2.6 - (i % 2), 1.8, 0.3, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(px - 1.2, py - 1.2, 1.4, 0.8); }
+    if (h % 3 === 0) {
+      const rx = edge + side * 16, ry = y + 18;
+      ctx.strokeStyle = pal.leaf[2]; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath();
+      for (let i = -2; i <= 2; i++) { ctx.moveTo(rx + i * 2, ry); ctx.lineTo(rx + i * 4.5, ry - 14 - (i % 2) * 4); }
+      ctx.stroke(); ctx.lineCap = 'butt';
+      ctx.fillStyle = '#7a5232'; ctx.beginPath(); ctx.ellipse(rx + 4.5, ry - 18, 1.8, 4, 0.2, 0, Math.PI * 2); ctx.fill();
+    }
     if (h % 5 === 0) { ctx.fillStyle = pal.flower[(h >> 3) % 3]; for (let i = 0; i < 4; i++) { circle(x + Math.cos(i * 1.57) * 4, y - 2 + Math.sin(i * 1.57) * 4, 3); ctx.fill(); } ctx.fillStyle = '#fff6c0'; circle(x, y - 2, 2.2); ctx.fill(); }
   }
   for (const dc of st.c.deco) {

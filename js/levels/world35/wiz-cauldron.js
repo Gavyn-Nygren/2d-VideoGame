@@ -503,17 +503,28 @@ function wizCaulDrawBack(st) {
   });
   // the floor: one slope line
   const x0 = cx - 40, x1 = cx + W + 40;
-  ctx.fillStyle = C2.floor; ctx.beginPath(); ctx.moveTo(x0, cy + H + 20);
+  ctx.fillStyle = RICH.dk(C2.floor, 0.4); ctx.beginPath(); ctx.moveTo(x0, cy + H + 20);
   for (let x = x0; x <= x1; x += 20) ctx.lineTo(x, wizCaulFloor(x));
   ctx.lineTo(x1, cy + H + 20); ctx.closePath(); ctx.fill();
-  // flagstones under the slope: two courses that follow it, with staggered joints and a darker depth
-  ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 2;
-  for (const [d, sp, sh] of [[26, 70, 0], [62, 90, 35]]) {
-    ctx.beginPath();
-    for (let x = x0; x <= x1; x += 20) { if (x === x0) ctx.moveTo(x, wizCaulFloor(x) + d); else ctx.lineTo(x, wizCaulFloor(x) + d); }
-    for (let x = Math.floor((x0 - sh) / sp) * sp + sh; x <= x1; x += sp) { const y = wizCaulFloor(x); ctx.moveTo(x, y + d - (d === 26 ? 24 : 34)); ctx.lineTo(x, y + d); }
-    ctx.stroke();
-  }
+  // (art pass) flagstones under the slope: three courses that follow it, every stone its own tone with a lit top edge, a
+  // shaded foot, specks and the odd crack, mortar between (placed by hash, so nothing flickers; batched paths)
+  { const lit = new Path2D(), low = new Path2D(), spk = new Path2D(), crk = new Path2D();
+    for (const [d0, d1, sp, sh, q] of [[0, 26, 70, 0, 1], [26, 62, 90, 35, 2], [62, 104, 110, 15, 3]]) {
+      for (let xa = Math.floor((x0 - sh) / sp) * sp + sh; xa <= x1; xa += sp) {
+        const xb = xa + sp, ya = wizCaulFloor(xa), yb = wizCaulFloor(xb), hv = hash(xa, 40 + q), tone = ((hv % 100) / 100 - 0.5) * 0.2;
+        const ty = x => ya + (yb - ya) * (x - xa) / sp, a = xa + 1.5, b = xb - 1.5;
+        ctx.fillStyle = tone > 0 ? RICH.lit(C2.floor, tone) : RICH.dk(C2.floor, -tone);
+        ctx.beginPath(); ctx.moveTo(a, ty(a) + d0 + 1.5); ctx.lineTo(b, ty(b) + d0 + 1.5); ctx.lineTo(b, ty(b) + d1 - 1.5); ctx.lineTo(a, ty(a) + d1 - 1.5); ctx.closePath(); ctx.fill();
+        lit.moveTo(a + 1, ty(a + 1) + d0 + 2.2); lit.lineTo(b - 1, ty(b - 1) + d0 + 2.2); lit.moveTo(a + 0.8, ty(a) + d0 + 3); lit.lineTo(a + 0.8, ty(a) + d1 - 3);
+        low.moveTo(a + 1, ty(a + 1) + d1 - 2.5); low.lineTo(b - 1, ty(b - 1) + d1 - 2.5); low.moveTo(b - 0.8, ty(b) + d0 + 3); low.lineTo(b - 0.8, ty(b) + d1 - 3);
+        for (let k = 0; k < 7; k++) { const hk = hash(xa + k, 50 + q), sx = a + 3 + (hk % 1000) / 1000 * (sp - 9), sy = ty(sx) + d0 + 4 + ((hk >> 10) % 100) / 100 * (d1 - d0 - 8); spk.rect(sx, sy, 1.4, 1.4); }
+        if (hv % 5 === 0) { const cx0 = a + 10 + (hv >> 8) % Math.max(1, sp - 24); crk.moveTo(cx0, ty(cx0) + d0 + 2); crk.lineTo(cx0 + 4, ty(cx0) + d0 + (d1 - d0) * 0.45); crk.lineTo(cx0 + 1, ty(cx0) + d1 - 2); }
+      }
+    }
+    ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.stroke(lit);
+    ctx.strokeStyle = RICH.rgba(RICH.dk(C2.floor, 0.7), 0.45); ctx.stroke(low);
+    ctx.fillStyle = RICH.rgba(RICH.dk(C2.floor, 0.55), 0.55); ctx.fill(spk);
+    ctx.lineWidth = 1; ctx.strokeStyle = RICH.rgba(RICH.dk(C2.floor, 0.8), 0.7); ctx.stroke(crk); }
   ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.moveTo(x0, cy + H + 20);
   for (let x = x0; x <= x1; x += 20) ctx.lineTo(x, wizCaulFloor(x) + 62);
   ctx.lineTo(x1, cy + H + 20); ctx.closePath(); ctx.fill();
@@ -559,9 +570,36 @@ function wizCaulDraw(st) {
   for (const r of ph.solids) {
     if (r.x1 < cx - 40 || r.x0 > cx + W + 40) continue;
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2.2;
-    if (r.kind === 'shelf') { ctx.fillStyle = C2.wood; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 3); ctx.fill(); ctx.stroke(); ctx.fillStyle = C2.woodDk; ctx.fillRect(r.x0 + 6, r.y1, 5, 14); ctx.fillRect(r.x1 - 11, r.y1, 5, 14); }
-    else if (r.kind === 'crate') { ctx.fillStyle = '#b07a42'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.beginPath(); ctx.moveTo(r.x0, r.y0); ctx.lineTo(r.x1, r.y1); ctx.moveTo(r.x1, r.y0); ctx.lineTo(r.x0, r.y1); ctx.stroke(); }
-    else if (r.kind === 'barrel') { ctx.fillStyle = '#7a4a2a'; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 10); ctx.fill(); ctx.stroke(); ctx.strokeStyle = '#2c2a36'; ctx.lineWidth = 3; for (const yy of [r.y0 + 9, r.y1 - 11]) { ctx.beginPath(); ctx.moveTo(r.x0 + 2, yy); ctx.lineTo(r.x1 - 2, yy); ctx.stroke(); } }
+    // (art pass) shelves, crates and barrels are cached pictures per size: grained planks with nails and iron brackets;
+    // a framed crate with a brace and corner nails; a barrel of staves with a bulge, iron hoops and rivets
+    const rw = r.x1 - r.x0, rh = r.y1 - r.y0;
+    if (r.kind === 'shelf') {
+      RICH.pic('wizcashelf|' + rw + '|' + rh, rw, rh, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: C2.wood, r: 3, seam: 64, seed: 3, edge: false }); c.fillStyle = 'rgba(255,226,170,0.35)'; c.fillRect(3, 1, w - 6, 1.5); }, r.x0, r.y0);
+      rr(r.x0, r.y0, rw, rh, 3); ctx.stroke();
+      ctx.fillStyle = C2.iron; for (const bx of [r.x0 + 6, r.x1 - 11]) { ctx.beginPath(); ctx.moveTo(bx, r.y1); ctx.lineTo(bx + 5, r.y1); ctx.lineTo(bx + 5, r.y1 + 14); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(bx, r.y1, 1, 3); ctx.fillStyle = C2.iron; }
+    }
+    else if (r.kind === 'crate') {
+      RICH.pic('wizcacrate|' + rw + '|' + rh, rw, rh, (c, w, h) => {
+        RICH.wood(c, 0, 0, w, h, { col: '#b07a42', boards: Math.max(2, Math.round(h / 14)), seed: w * 3 + h, edge: false });
+        const fw = Math.max(4, Math.min(7, w * 0.16)), fc = '#8a5a2e';
+        c.save(); c.beginPath(); c.rect(fw, fw, w - 2 * fw, h - 2 * fw); c.clip(); c.strokeStyle = 'rgba(0,0,0,0.3)'; c.lineWidth = fw + 2; c.beginPath(); c.moveTo(fw, h - fw); c.lineTo(w - fw, fw); c.stroke(); c.strokeStyle = fc; c.lineWidth = fw; c.stroke(); c.restore();
+        c.fillStyle = fc; c.fillRect(0, 0, w, fw); c.fillRect(0, h - fw, w, fw); c.fillRect(0, 0, fw, h); c.fillRect(w - fw, 0, fw, h);
+        c.fillStyle = 'rgba(255,240,210,0.28)'; c.fillRect(0, 0, w, 1.5); c.fillRect(0, 0, 1.5, h); c.fillRect(fw, fw, w - 2 * fw, 1);
+        c.fillStyle = 'rgba(30,16,8,0.35)'; c.fillRect(0, h - 2, w, 2); c.fillRect(w - 2, 0, 2, h);
+        for (const [nx, ny] of [[fw / 2, fw / 2], [w - fw / 2, fw / 2], [fw / 2, h - fw / 2], [w - fw / 2, h - fw / 2]]) RICH.nail(c, nx, ny, 1.2);
+      }, r.x0, r.y0);
+      ctx.strokeRect(r.x0, r.y0, rw, rh);
+    }
+    else if (r.kind === 'barrel') {
+      RICH.pic('wizcabarrel|' + rw + '|' + rh, rw, rh, (c, w, h) => {
+        RICH.wood(c, 0, 0, w, h, { col: '#7a4a2a', vert: true, bw: Math.max(6, w / 5), r: 10, knots: 0.3, seed: w + h, edge: false });
+        c.save(); RICH.rr(c, 0, 0, w, h, 10); c.clip();
+        const g = c.createLinearGradient(0, 0, w, 0); g.addColorStop(0, 'rgba(255,230,190,0.2)'); g.addColorStop(0.35, 'rgba(255,230,190,0)'); g.addColorStop(0.65, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.38)'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+        for (const y of [9, h - 11]) { c.fillStyle = '#2c2a36'; c.fillRect(0, y - 2.5, w, 5); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, y - 2.5, w, 1); for (let x = 6; x < w - 3; x += 12) RICH.rivet(c, x, y, 1.1, '#5a5868'); }
+        c.restore();
+      }, r.x0, r.y0);
+      rr(r.x0, r.y0, rw, rh, 10); ctx.stroke();
+    }
   }
   // vents
   for (const v of ph.vents) {
@@ -593,16 +631,41 @@ function wizCaulDrawPot(st) {
   ctx.save(); ctx.lineJoin = 'round'; ctx.strokeStyle = C.ink;
   // the stand and wheels
   ctx.lineWidth = 2.5; ctx.fillStyle = C2.ironLt;
-  for (const dx of [-30, 30]) { ctx.save(); ctx.translate(x + dx, y - 11); ctx.rotate(ph.cx / 11); circle(0, 0, 11); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.moveTo(0, -11); ctx.lineTo(0, 11); ctx.stroke(); ctx.restore(); }
-  ctx.fillStyle = C2.iron; ctx.fillRect(x - 40, y - 28, 80, 7); ctx.strokeRect(x - 40, y - 28, 80, 7);
+  // (art pass, 2nd look) cast-iron wheels: a tyre with a lit arc, six spokes, a riveted hub; a riveted iron stand
+  RICH.shadow(ctx, x, y + 1, 52, 5, 0.22);
+  for (const dx of [-30, 30]) {
+    ctx.save(); ctx.translate(x + dx, y - 11);
+    ctx.fillStyle = C2.iron; circle(0, 0, 11); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, 8.6, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+    ctx.rotate(ph.cx / 11);
+    ctx.strokeStyle = C2.ironLt; ctx.lineWidth = 2.2; ctx.beginPath(); for (let q = 0; q < 6; q++) { const a = q * Math.PI / 3; ctx.moveTo(Math.cos(a) * 3, Math.sin(a) * 3); ctx.lineTo(Math.cos(a) * 8, Math.sin(a) * 8); } ctx.stroke();
+    ctx.fillStyle = C2.ironLt; circle(0, 0, 3.4); ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.restore();
+  }
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+  RICH.pic('wizcaulstand', 80, 7, c => RICH.metal(c, 0, 0, 80, 7, { col: C2.iron, rivets: 10, seed: 4, scratch: false, edge: false }), x - 40, y - 28);
+  ctx.strokeRect(x - 40, y - 28, 80, 7);
   // the brake chain (glows while braking or hot)
   ctx.strokeStyle = ph.braking ? '#ff9a3c' : ph.brakeCool > 0 ? '#ff5f3c' : '#9a9aa8'; ctx.lineWidth = 3; ctx.setLineDash([4, 3]);
   ctx.beginPath(); ctx.moveTo(x - 46, r + 10); ctx.lineTo(x - 48, y - 22); ctx.stroke(); ctx.setLineDash([]);
   if (ph.braking) for (let n = 0; n < 3; n++) burst(x - 34 + n * 30, y - 2, '#ffcf6a', 1);
   // the pot
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillStyle = C2.iron;
-  ctx.beginPath(); ctx.moveTo(x - 50, r); ctx.quadraticCurveTo(x - 56, y - 20, x, y - 24); ctx.quadraticCurveTo(x + 56, y - 20, x + 50, r); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = C2.ironLt; ctx.fillRect(x - 40, r + 14, 12, 26);
+  // (art pass, 2nd look) the pot: round cast iron lit from the upper left, a riveted belly band, hammer dents, soot
+  // round its foot and the potion's glow on the inside of the lip
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
+  const pot = () => { ctx.beginPath(); ctx.moveTo(x - 50, r); ctx.quadraticCurveTo(x - 56, y - 20, x, y - 24); ctx.quadraticCurveTo(x + 56, y - 20, x + 50, r); ctx.closePath(); };
+  { const g = ctx.createRadialGradient(x - 22, r + 10, 4, x, (r + y) / 2, 70); g.addColorStop(0, RICH.lit(C2.iron, 0.35)); g.addColorStop(0.5, C2.iron); g.addColorStop(1, RICH.dk(C2.iron, 0.45)); ctx.fillStyle = g; }
+  pot(); ctx.fill();
+  ctx.save(); pot(); ctx.clip();
+  const by = r + (y - 24 - r) * 0.42;
+  ctx.fillStyle = RICH.dk(C2.iron, 0.25); ctx.fillRect(x - 60, by, 120, 7); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x - 60, by, 120, 1.2);
+  for (let q = -4; q <= 4; q++) RICH.rivet(ctx, x + q * 11, by + 3.5, 1.5, C2.ironLt);
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (const [dx, dy] of [[-24, 26], [14, 34], [30, 16], [-8, 44]]) { ctx.beginPath(); ctx.ellipse(x + dx, r + dy, 5, 3, 0.4, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; for (const [dx, dy] of [[-22, 28], [16, 36], [32, 18], [-6, 46]]) { ctx.beginPath(); ctx.ellipse(x + dx, r + dy, 4, 2, 0.4, 0, Math.PI); ctx.fill(); }
+  { const sg = ctx.createLinearGradient(0, y - 40, 0, y - 22); sg.addColorStop(0, 'rgba(10,8,14,0)'); sg.addColorStop(1, 'rgba(10,8,14,0.55)'); ctx.fillStyle = sg; ctx.fillRect(x - 60, y - 40, 120, 20); }
+  ctx.restore();
+  pot(); ctx.stroke();
+  ctx.fillStyle = C2.ironLt; ctx.fillRect(x - 40, r + 14, 12, 26); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 40, r + 14, 3, 26);
   // the potion and the foam
   const col = ph.silly > 0 || ph.drip > 0 ? C2.silly[ph.sillyC] : C2.potion;
   ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(x, r, 50, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -610,6 +673,8 @@ function wizCaulDrawPot(st) {
   if (fh > 2) { ctx.fillStyle = C2.foam; for (let n = -3; n <= 3; n++) { circle(x + n * 13, r - 2 - fh * (0.6 + 0.4 * Math.sin(t * 6 + n)), 8 + fh * 0.25); ctx.fill(); } }
   // rim
   ctx.fillStyle = C2.ironLt; rr(x - 54, r - 4, 108, 8, 4); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x - 48, r - 3, 70, 1.5);
+  ctx.fillStyle = RICH.rgba(col, 0.35); ctx.fillRect(x - 46, r + 1.5, 92, 2);
   // the geyser
   if (ph.mode === 'boil') {
     const h = Math.min(1, ph.modeT * 4) * (1 - Math.max(0, ph.modeT - 1.2) / 0.6) * 220;

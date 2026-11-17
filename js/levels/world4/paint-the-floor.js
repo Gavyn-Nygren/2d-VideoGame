@@ -696,6 +696,31 @@ function paintDrawCells(st, now) {
   ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath();
   for (let r = 0; r < R; r += 2) { const a = runs[r]; if (thick[a]) continue; const c = cells[a]; ctx.rect(c.x0, c.top + 1, cells[runs[r + 1] - 1].x0 + CW - c.x0, 1.5); }
   ctx.fill();
+  // (rich props pass) brush texture on normal paint: lighter bristle streaks and darker flecks per cell (stable by
+  // cell, one batched path per colour and tone), plus rounded blobs where a run of paint starts and ends
+  for (let o = 0; o < 2; o++) {
+    const tones = [[tint(PCOL[o], 0.3), 0], [PDARK[o], 1]];
+    for (const [col, kind] of tones) {
+      ctx.fillStyle = col; ctx.beginPath();
+      for (let r = 0; r < R; r += 2) {
+        const a = runs[r]; if (own[a] !== o || thick[a]) continue;
+        for (let q = a; q < runs[r + 1]; q++) {
+          const c = cells[q], h = hash(c.tx * 3 + c.i, c.ty || 0);
+          if (kind === 0) { if (h % 3 !== 2) ctx.rect(c.x0 + 1 + h % 3, c.top + 2.6 + ((h >>> 3) % 2), 4 + (h >>> 5) % 4, 0.9); }
+          else if (h % 4 === 0) ctx.rect(c.x0 + 2 + (h >>> 7) % 6, c.top + 3 + (h >>> 9) % 2, 1.2, 1.1);
+        }
+      }
+      ctx.fill();
+    }
+    ctx.fillStyle = PCOL[o]; ctx.beginPath();
+    for (let r = 0; r < R; r += 2) {
+      const a = runs[r]; if (own[a] !== o || thick[a]) continue;
+      const c = cells[a], e = cells[runs[r + 1] - 1], hgt = c.plank ? 5 : 7;
+      ctx.moveTo(c.x0, c.top); ctx.arc(c.x0, c.top + hgt / 2, hgt / 2, -Math.PI / 2, Math.PI / 2, true); ctx.closePath();
+      ctx.moveTo(e.x0 + CW, c.top); ctx.arc(e.x0 + CW, c.top + hgt / 2, hgt / 2, -Math.PI / 2, Math.PI / 2); ctx.closePath();
+    }
+    ctx.fill();
+  }
   // Super Paint: a raised, outlined slab with a gloss line, white stripes and sparkles, so it reads without colour.
   // Only the rim has cut corners; everything inside it is plain rectangles (cheap to fill, also on phones)
   if (sup) {
@@ -812,12 +837,29 @@ function paintDrawRoller(x, y, s, k, face) {
   if (k == null) { ctx.moveTo(0, -10); ctx.lineTo(0, -16); ctx.lineTo(-7, -16); ctx.lineTo(-7, -27); }
   else { ctx.moveTo(0, -8); ctx.lineTo(-face * 5, -12); ctx.lineTo(-face * 15, -15); }
   ctx.stroke();
-  if (k == null) { ctx.fillStyle = '#d9925c'; rr(-10, -33, 6, 9, 3); ctx.fill(); }
-  // the roller: a soaked sleeve with a gloss line
-  ctx.fillStyle = k == null ? '#ffffff' : PCOL[k]; ctx.strokeStyle = 'rgba(28,26,54,0.75)'; ctx.lineWidth = 1.5;
-  rr(-11, -11, 22, 10, 5); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#8f8cad'; ctx.lineWidth = 0.8; ctx.beginPath();
+  if (k == null) { ctx.moveTo(-0.6, -10); ctx.lineTo(-0.6, -15.4); } else { ctx.moveTo(-face * 0.6, -8.6); ctx.lineTo(-face * 5, -12.6); }
+  ctx.stroke();
+  if (k == null) {
+    // (rich props pass) a wooden grip with a lit side, a ferrule and a hanging hole
+    ctx.fillStyle = '#9a5a30'; rr(-10.6, -33.6, 7.2, 10.2, 3.4); ctx.fill();
+    ctx.fillStyle = '#d9925c'; rr(-10, -33, 6, 9, 3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-9.2, -31.5, 1.2, 6);
+    ctx.fillStyle = '#4a4766'; circle(-7, -30.6, 0.9); ctx.fill();
+    ctx.fillStyle = '#c9cde0'; ctx.fillRect(-9.6, -24.8, 5.2, 1.6);
+  }
+  // the roller: an outlined sleeve with nap ridges, a shaded foot, a gloss line and the end caps of its frame
+  const sleeve = k == null ? '#ffffff' : PCOL[k];
+  ctx.fillStyle = sleeve; ctx.strokeStyle = 'rgba(28,26,54,0.75)'; ctx.lineWidth = 1.5;
+  rr(-11, -11, 22, 10, 5); ctx.fill();
+  ctx.fillStyle = k == null ? '#dcdcea' : PDARK[k]; ctx.globalAlpha = k == null ? 1 : 0.55; ctx.fillRect(-9, -5, 18, 3.4); ctx.globalAlpha = 1;
+  ctx.strokeStyle = k == null ? 'rgba(28,26,54,0.12)' : 'rgba(255,255,255,0.25)'; ctx.lineWidth = 0.7; ctx.beginPath();
+  for (let i = -6; i <= 6; i += 3) { ctx.moveTo(i, -10); ctx.lineTo(i + 1, -2); }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(28,26,54,0.75)'; ctx.lineWidth = 1.5; rr(-11, -11, 22, 10, 5); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(-8, -9.5, 16, 2);
-  if (k != null) { ctx.fillStyle = PDARK[k]; ctx.fillRect(-8, -4, 16, 1.5); }
+  if (k != null) { ctx.fillStyle = PDARK[k]; ctx.fillRect(-8, -4, 16, 1.5); circle(-3, 0.6, 1.2); ctx.fill(); circle(4, 1.2, 0.9); ctx.fill(); }
+  ctx.fillStyle = '#4a4766'; for (const ex of [-11.2, 11.2]) { rr(ex - 1.4, -8, 2.8, 4, 1); ctx.fill(); }
   ctx.restore();
 }
 // the splat cooldown: a paint drop over the head, filled from the bottom by f (0..1)

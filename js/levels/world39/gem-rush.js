@@ -636,6 +636,90 @@
 
   /* ---------- drawing ---------- */
   const KCOL = { [SOFT]: '#8a6040', [PACK]: '#6a4a30', [ROCK]: '#5a5e66', [CRUM]: '#b08a62', [GAS]: '#6a8a4a', [WAT]: '#4a6a8a', [PIL]: '#bfeef2', [BOUL]: '#7a7470', [VENT]: '#4a4e56', [PLATE]: '#d8a84a', [DOOR]: '#6a6e76' };
+  // one dirt cell of a seamless 7 x 5 cell block of earth (rm, cm: the cell's place in the block)
+  const DIRT_PEB = ['#9a8a7a', '#a89480', '#7e7468', '#b0a090', '#8a6a50', '#6e6660'];
+  function dirtBits(k, R, Cc) {
+    // what sits in one cell of the block: placement from the shared hash, never Math.random
+    const s = 900 + (k === PACK ? 50 : 0) + R * 7 + Cc * 53, out = [];
+    const np = RICH.r(s, 1) < 0.55 ? 1 + (RICH.r(s, 2) < 0.3 ? 1 : 0) : 0;
+    for (let i = 0; i < np; i++) out.push({ kind: 'peb', x: RICH.r(s, 10 + i) * C_, y: RICH.r(s, 20 + i) * C_, r: 1.8 + RICH.r(s, 30 + i) * 2.2, col: DIRT_PEB[Math.floor(RICH.r(s, 40 + i) * 6)], seed: s + i });
+    if (RICH.r(s, 3) < 0.12) out.push({ kind: 'root', x: RICH.r(s, 50) * C_, y: RICH.r(s, 51) * C_ * 0.6, a: RICH.r(s, 52) * 2 - 1, l: 16 + RICH.r(s, 53) * 16, seed: s });
+    if (RICH.r(s, 4) < 0.12) out.push({ kind: 'hole', x: 5 + RICH.r(s, 60) * (C_ - 10), y: 5 + RICH.r(s, 61) * (C_ - 10) });
+    return out;
+  }
+  function paintDirtCell(q, k, rm, cm) {
+    const col = KCOL[k], X0 = cm * C_, Y0 = rm * C_, BW = 7 * C_, BH = 5 * C_, TAU2 = Math.PI * 2;
+    q.fillStyle = col; q.fillRect(0, 0, C_ + 1, C_ + 1);
+    // strata: two wavy bands through the block, darker and lighter, seamless across cells and blocks
+    const wave = (X, ph) => Math.sin(X / BW * TAU2 * 2 + ph) * 3 + Math.sin(X / BW * TAU2 * 3 + ph * 2) * 1.6;
+    for (const [by, th, dark] of [[BH * 0.28, 6, true], [BH * 0.72, 4, false], [BH * 0.5, 2, true]]) {
+      for (const wrap of [-BH, 0, BH]) {
+        const yc = by + wrap - Y0; if (yc < -14 || yc > C_ + 14) continue;
+        q.fillStyle = dark ? RICH.rgba(RICH.dk(col, 0.35), 0.35) : RICH.rgba(RICH.lit(col, 0.2), 0.3);
+        q.beginPath(); for (let x = 0; x <= C_ + 1; x += 3) q.lineTo(x, yc + wave(X0 + x, by) - th / 2); for (let x = C_ + 1; x >= 0; x -= 3) q.lineTo(x, yc + wave(X0 + x, by + 1) * 0.7 + th / 2); q.closePath(); q.fill();
+      }
+    }
+    if (k === PACK) {
+      // packed earth: fine pressed layers all the way across
+      q.strokeStyle = 'rgba(0,0,0,0.2)'; q.lineWidth = 0.9;
+      for (let L = 0; L < 10; L++) { const yc = (L + 0.5) * BH / 10 - Y0; if (yc < -4 || yc > C_ + 4) continue; q.beginPath(); for (let x = 0; x <= C_ + 1; x += 3) q.lineTo(x, yc + wave(X0 + x, L * 1.7) * 0.4); q.stroke(); }
+      q.strokeStyle = 'rgba(255,230,190,0.1)'; for (let L = 0; L < 10; L++) { const yc = (L + 0.5) * BH / 10 - Y0 + 1.2; if (yc < -4 || yc > C_ + 4) continue; q.beginPath(); for (let x = 0; x <= C_ + 1; x += 3) q.lineTo(x, yc + wave(X0 + x, L * 1.7) * 0.4); q.stroke(); }
+    }
+    // grains: own to the cell, seeded by its place in the block
+    const gs = 700 + k * 31 + rm * 7 + cm * 13;
+    q.fillStyle = RICH.rgba(RICH.dk(col, 0.45), 0.5); for (let n = 0; n < 24; n++) q.fillRect(RICH.r(gs, n) * C_, RICH.r(gs + 1, n) * C_, 1.3, 1.3);
+    q.fillStyle = RICH.rgba(RICH.lit(col, 0.35), 0.55); for (let n = 0; n < 12; n++) q.fillRect(RICH.r(gs + 2, n) * C_, RICH.r(gs + 3, n) * C_, 1, 1);
+    // things that may reach in from the neighbouring cells too
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      const bits = dirtBits(k, (rm + dr + 5) % 5, (cm + dc + 7) % 7), ox = dc * C_, oy = dr * C_;
+      for (const b of bits) {
+        const bx = b.x + ox, by = b.y + oy;
+        if (b.kind === 'peb') { if (bx > -b.r - 2 && bx < C_ + b.r + 2 && by > -b.r - 2 && by < C_ + b.r + 2) RICH.pebble(q, bx, by, b.r, k === CRUM ? RICH.lit(b.col, 0.15) : b.col, b.seed); }
+        else if (b.kind === 'root') {
+          if (bx < -b.l || bx > C_ + b.l || by < -b.l || by > C_ + b.l) continue;
+          const ex = bx + Math.cos(b.a) * b.l, ey = by + Math.abs(Math.sin(b.a)) * b.l * 0.6 + b.l * 0.5;
+          q.strokeStyle = 'rgba(40,24,12,0.35)'; q.lineWidth = 1.8; q.beginPath(); q.moveTo(bx, by + 0.8); q.quadraticCurveTo((bx + ex) / 2 + 4, (by + ey) / 2 + 0.8, ex, ey + 0.8); q.stroke();
+          q.strokeStyle = 'rgba(214,184,136,0.7)'; q.lineWidth = 1.1; q.beginPath(); q.moveTo(bx, by); q.quadraticCurveTo((bx + ex) / 2 + 4, (by + ey) / 2, ex, ey); q.stroke();
+          q.lineWidth = 0.7; q.beginPath(); const mx = (bx + ex) / 2 + 2, my = (by + ey) / 2; q.moveTo(mx, my); q.lineTo(mx + 5, my + 4); q.moveTo(ex, ey); q.lineTo(ex - 2, ey + 4); q.stroke();
+        } else if (b.kind === 'hole' && dr === 0 && dc === 0) {
+          q.fillStyle = RICH.dk(col, 0.6); q.beginPath(); q.ellipse(bx, by, 2.6, 1.8, 0, 0, TAU2); q.fill();
+          q.strokeStyle = RICH.rgba(RICH.lit(col, 0.3), 0.6); q.lineWidth = 0.8; q.beginPath(); q.ellipse(bx, by, 2.6, 1.8, 0, 0.2, Math.PI - 0.2); q.stroke();
+        }
+      }
+    }
+    if (k === CRUM) {
+      // crumbly dirt: a net of cracks with lit lips, different in every cell of the block, and a light dusty top
+      const cs = 800 + rm * 11 + cm * 17;
+      let px = 2 + RICH.r(cs, 1) * 6, py = 4 + RICH.r(cs, 2) * (C_ - 8);
+      const pts = [[px, py]]; while (px < C_ - 2) { px += 4 + RICH.r(cs, pts.length + 3) * 6; py = Math.max(2, Math.min(C_ - 2, py + (RICH.r(cs, pts.length + 9) - 0.5) * 10)); pts.push([px, py]); }
+      q.strokeStyle = 'rgba(60,40,20,0.6)'; q.lineWidth = 1.4; q.beginPath(); pts.forEach((p, i) => (i ? q.lineTo(p[0], p[1]) : q.moveTo(p[0], p[1]))); q.stroke();
+      q.strokeStyle = 'rgba(255,235,200,0.28)'; q.lineWidth = 0.8; q.beginPath(); pts.forEach((p, i) => (i ? q.lineTo(p[0], p[1] + 1.2) : q.moveTo(p[0], p[1] + 1.2))); q.stroke();
+      const j = pts[1 + Math.floor(RICH.r(cs, 40) * (pts.length - 2))] || pts[0]; q.strokeStyle = 'rgba(60,40,20,0.5)'; q.lineWidth = 1; q.beginPath(); q.moveTo(j[0], j[1]); q.lineTo(j[0] + 3, j[1] + (RICH.r(cs, 41) < 0.5 ? -7 : 7)); q.stroke();
+      q.fillStyle = 'rgba(255,230,190,0.2)'; q.fillRect(2, 2, C_ - 4, 2);
+    }
+  }
+  // a rare find in the dirt: 0 a fossil shell, 1 a little bone, 2 an old coin, 3 a root ball
+  function paintFind(q, n) {
+    const TAU2 = Math.PI * 2;
+    if (n === 0) {
+      q.fillStyle = '#d8c8a8'; q.beginPath(); q.arc(7, 6, 5, 0, TAU2); q.fill();
+      q.strokeStyle = '#8a7656'; q.lineWidth = 0.9; q.beginPath(); for (let a = 0; a < 12; a += 0.4) { const rr2 = 0.4 * a; q.lineTo(7 + Math.cos(a) * rr2, 6 + Math.sin(a) * rr2); } q.stroke();
+      q.beginPath(); q.arc(7, 6, 5, 0, TAU2); q.stroke(); q.fillStyle = 'rgba(255,255,255,0.4)'; q.fillRect(4, 3, 2, 1);
+    } else if (n === 1) {
+      q.save(); q.translate(7, 6); q.rotate(-0.4); q.fillStyle = '#e8dcc4';
+      q.fillRect(-4, -1.2, 8, 2.4); for (const ex of [-4.5, 4.5]) { q.beginPath(); q.arc(ex, -1.3, 1.7, 0, TAU2); q.arc(ex, 1.3, 1.7, 0, TAU2); q.fill(); }
+      q.strokeStyle = '#9a8a6a'; q.lineWidth = 0.6; q.beginPath(); q.moveTo(-3, 1.2); q.lineTo(3, 1.2); q.stroke(); q.restore();
+    } else if (n === 2) {
+      q.fillStyle = '#8a6a2a'; q.beginPath(); q.ellipse(7.5, 6.5, 4.5, 3.6, 0.2, 0, TAU2); q.fill();
+      q.fillStyle = '#c8a040'; q.beginPath(); q.ellipse(7, 6, 4.2, 3.3, 0.2, 0, TAU2); q.fill();
+      q.strokeStyle = '#7a5a1a'; q.lineWidth = 0.7; q.beginPath(); q.ellipse(7, 6, 2.6, 2, 0.2, 0, TAU2); q.stroke();
+      q.fillStyle = 'rgba(80,140,100,0.5)'; q.fillRect(8, 7, 2, 1.2); q.fillStyle = 'rgba(255,240,180,0.7)'; q.fillRect(5, 4, 1.6, 0.9);
+    } else {
+      q.strokeStyle = 'rgba(214,184,136,0.8)'; q.lineWidth = 0.8; q.beginPath();
+      for (let i = 0; i < 7; i++) { const a = i * 0.9; q.moveTo(7, 5); q.quadraticCurveTo(7 + Math.cos(a) * 3, 5 + Math.sin(a) * 3 + 2, 7 + Math.cos(a) * 6, 5 + Math.abs(Math.sin(a)) * 5 + 1); } q.stroke();
+      q.fillStyle = '#a07a52'; q.beginPath(); q.ellipse(7, 5, 2.4, 2, 0, 0, TAU2); q.fill();
+    }
+  }
   function draw(st) {
     const t = st.clock, cam = st.cam;
     K.back(0, cam * 0.5, t, { zone: 'chamber', par: 0.3, bright: st.k === 3 ? 0.4 : 0.9 });
@@ -650,36 +734,111 @@
       const emp = (rr2, cc) => rr2 >= 0 && rr2 < NR && cc >= 0 && cc < NC && st.g[rr2][cc] === E;
       if (k === E) {
         // a dug tunnel: dark, with the shadow of the dirt above it and a faint floor
-        ctx.fillStyle = '#1e140e'; ctx.fillRect(x, y, C_, C_);
+        RICH.pic('w39tunnel' + ((r * 3 + c) % 4), C_, C_, q => { q.fillStyle = '#1e140e'; q.fillRect(0, 0, C_, C_); q.fillStyle = 'rgba(120,80,50,0.12)'; for (let n = 0; n < 8; n++) q.fillRect(RICH.r(611 + (r * 3 + c) % 4, n) * C_, RICH.r(612 + (r * 3 + c) % 4, n) * C_, 1.5, 1.5); q.fillStyle = 'rgba(0,0,0,0.25)'; q.fillRect(0, C_ * 0.6, C_, C_ * 0.4); }, x, y);
         if (!emp(r - 1, c)) { ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y, C_, 5); }
         if (!emp(r + 1, c)) { ctx.fillStyle = 'rgba(120,80,50,0.25)'; ctx.fillRect(x, y + C_ - 3, C_, 3); }
         continue;
       }
       const h = K.hash(r * 97 + c * 13 + st.round * 7);
-      ctx.fillStyle = KCOL[k]; ctx.fillRect(x, y, C_ + 0.5, C_ + 0.5);
+      if (k === SOFT || k === PACK || k === CRUM || k === ROCK || k === DOOR) {
+        // (art pass) each dirt and rock cell is a cached picture (6 looks per kind): grains, strata, pebbles, roots for
+        // dirt; a rounded slab of real rock texture for stone
+        // (rich props) dirt cells tile a 7 x 5 cell block of earth painted in world coordinates, so the strata run on
+        // from cell to cell and pebbles, roots and worm holes sit at their own place in every cell (and may cross into
+        // the next one); a rare find (a shell, a bone, an old coin, a root ball) is placed by the real cell's hash
+        if (k === ROCK || k === DOOR) RICH.pic('w39cell|' + k, C_ + 1, C_ + 1, q => { q.fillStyle = KCOL[k]; q.fillRect(0, 0, C_ + 1, C_ + 1); }, x, y);
+        else {
+          const rm = ((r + st.round * 2) % 5 + 5) % 5, cm = (c + st.round * 3) % 7;
+          RICH.pic('w39dirt|' + k + '|' + rm + '|' + cm, C_ + 1, C_ + 1, q => paintDirtCell(q, k, rm, cm), x, y);
+          const h2 = K.hash(r * 211 + c * 37 + st.round * 13 + 5);
+          if (h2 < 0.04 && k !== CRUM) { const n = Math.floor(h2 / 0.01); RICH.pic('w39find|' + n, 14, 12, q => paintFind(q, n), x + 3 + K.hash(r * 7 + c) * (C_ - 18), y + 4 + K.hash(r + c * 5) * (C_ - 16)); }
+        }
+      } else { ctx.fillStyle = KCOL[k]; ctx.fillRect(x, y, C_ + 0.5, C_ + 0.5); }
       if (k === SOFT || k === PACK || k === CRUM) {
         // a lit lip where the dirt faces a tunnel above, a darker underside over a tunnel below, crumbs and a pebble
         if (emp(r - 1, c)) { ctx.fillStyle = 'rgba(255,220,170,0.22)'; ctx.fillRect(x, y, C_, 3); ctx.fillStyle = 'rgba(80,120,40,0.35)'; if (h > 0.6) { ctx.fillRect(x + 4 + h * 8, y - 2, 2, 4); ctx.fillRect(x + 8 + h * 8, y - 3, 2, 5); } }
         if (emp(r + 1, c)) { ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(x, y + C_ - 4, C_, 4); if (h < 0.3) { ctx.strokeStyle = 'rgba(200,170,120,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 6 + h * 20, y + C_); ctx.quadraticCurveTo(x + 9 + h * 20, y + C_ + 5, x + 5 + h * 20, y + C_ + 8); ctx.stroke(); } }
         if (emp(r, c - 1)) { ctx.fillStyle = 'rgba(255,220,170,0.1)'; ctx.fillRect(x, y, 2, C_); }
         if (emp(r, c + 1)) { ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + C_ - 3, y, 3, C_); }
-        if (h > 0.72 && k !== CRUM) { ctx.fillStyle = '#9a8a7a'; ctx.beginPath(); ctx.ellipse(x + 6 + h * 10, y + 18, 3.2, 2.4, 0, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x + 5 + h * 10, y + 16.5, 2, 1); }
-        ctx.fillStyle = k === PACK ? 'rgba(0,0,0,0.18)' : 'rgba(255,230,190,0.1)';
-        ctx.fillRect(x + h * 14, y + 4 + h * 10, 5, 3); ctx.fillRect(x + 4 + (1 - h) * 12, y + 14, 4, 3);
-        if (k === CRUM) { ctx.strokeStyle = 'rgba(60,40,20,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + 3, y + 8); ctx.lineTo(x + 12, y + 14); ctx.lineTo(x + 22, y + 6); ctx.stroke(); }
-        if (k === PACK) { ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 9); ctx.lineTo(x + C_, y + 11); ctx.moveTo(x, y + 19); ctx.lineTo(x + C_, y + 18); ctx.stroke(); }
+
       } else if (k === ROCK || k === DOOR) {
-        ctx.fillStyle = '#4a4e56'; rr(x + 2, y + 3, C_ - 4, C_ - 4, 6); ctx.fill();
-        ctx.fillStyle = '#6e737c'; rr(x + 2, y + 2, C_ - 4, C_ - 6, 6); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(x + 5, y + 5, 8, 3); ctx.fillRect(x + 5, y + 5, 3, 6);
-        ctx.strokeStyle = 'rgba(40,42,48,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + C_ * 0.55, y + 4); ctx.lineTo(x + C_ * 0.45 + h * 4, y + C_ * 0.5); ctx.lineTo(x + C_ * 0.6, y + C_ - 6); ctx.stroke();
+        RICH.pic('w39slab2|' + Math.floor(h * 4), C_, C_, q => {
+          // (art pass, 2nd look) a chunky dressed stone: a dark rim, bevelled faces (lit top and left, shaded right and
+          // foot) round a face of real rock texture, chips on the corners, specks, a crack and the odd lichen spot
+          const v = Math.floor(h * 4), b = 5, m = 1.5, e = C_ - m;
+          q.fillStyle = '#2e3138'; RICH.rr(q, m, m, C_ - m * 2, C_ - m * 2, 5); q.fill();
+          const face = (pts, col) => { q.fillStyle = col; q.beginPath(); pts.forEach((p, i) => i ? q.lineTo(p[0], p[1]) : q.moveTo(p[0], p[1])); q.closePath(); q.fill(); };
+          face([[m + 1, m + 1], [e - 1, m + 1], [e - b, m + b], [m + b, m + b]], '#9aa0aa');
+          face([[m + 1, m + 1], [m + b, m + b], [m + b, e - b], [m + 1, e - 1]], '#7e848e');
+          face([[e - 1, m + 1], [e - 1, e - 1], [e - b, e - b], [e - b, m + b]], '#4a4e57');
+          face([[m + 1, e - 1], [e - 1, e - 1], [e - b, e - b], [m + b, e - b]], '#3e424a');
+          q.save(); q.beginPath(); q.rect(m + b, m + b, C_ - (m + b) * 2, C_ - (m + b) * 2); q.clip();
+          RICH.rock(q, 0, 0, C_, C_, { col: '#666b74', seed: 40 + v });
+          q.fillStyle = 'rgba(255,255,255,0.12)'; q.fillRect(m + b, m + b, C_ - (m + b) * 2, 2);
+          q.restore();
+          q.strokeStyle = 'rgba(255,255,255,0.35)'; q.lineWidth = 1; q.beginPath(); q.moveTo(m + 2, e - 3); q.lineTo(m + 2, m + 2); q.lineTo(e - 3, m + 2); q.stroke();
+          q.strokeStyle = 'rgba(20,22,26,0.5)'; q.lineWidth = 0.8; q.beginPath(); q.moveTo(m + 1, m + 1); q.lineTo(m + b, m + b); q.moveTo(e - 1, m + 1); q.lineTo(e - b, m + b); q.moveTo(m + 1, e - 1); q.lineTo(m + b, e - b); q.moveTo(e - 1, e - 1); q.lineTo(e - b, e - b); q.stroke();
+          // chips knocked out of two corners
+          q.fillStyle = '#2e3138'; if (v % 2) { q.beginPath(); q.moveTo(e, m + 6); q.lineTo(e - 5, m + 1); q.lineTo(e, m); q.closePath(); q.fill(); } else { q.beginPath(); q.moveTo(m, e - 6); q.lineTo(m + 5, e); q.lineTo(m, e); q.closePath(); q.fill(); }
+          q.strokeStyle = 'rgba(30,32,38,0.75)'; q.lineWidth = 1.1; q.beginPath(); q.moveTo(C_ * 0.55, m + b); q.lineTo(C_ * 0.45 + v, C_ * 0.5); q.lineTo(C_ * 0.6, e - b); if (v > 1) { q.moveTo(C_ * 0.45 + v, C_ * 0.5); q.lineTo(C_ * 0.3, C_ * 0.62); } q.stroke();
+          q.strokeStyle = 'rgba(255,255,255,0.18)'; q.lineWidth = 0.8; q.beginPath(); q.moveTo(C_ * 0.55 + 1, m + b + 1); q.lineTo(C_ * 0.45 + v + 1, C_ * 0.5 + 1); q.stroke();
+          if (v === 3) { q.fillStyle = 'rgba(150,190,120,0.55)'; q.beginPath(); q.ellipse(m + b + 4, e - b - 3, 3, 2, 0, 0, TAU); q.fill(); q.fillStyle = 'rgba(200,230,170,0.5)'; q.fillRect(m + b + 2, e - b - 4, 1.2, 1.2); }
+        }, x, y);
         if (k === DOOR) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.strokeRect(x + 3, y + 3, C_ - 6, C_ - 6); }
-      } else if (k === GAS) { ctx.fillStyle = 'rgba(160,230,110,0.5)'; for (let n = 0; n < 3; n++) { circle(x + 6 + n * 7, y + 9 + (n % 2) * 8, 3 + Math.sin(t * 3 + n) * 0.8); ctx.fill(); } }
-      else if (k === WAT) { ctx.fillStyle = 'rgba(150,210,255,0.55)'; for (let n = 0; n < 3; n++) { ctx.beginPath(); ctx.ellipse(x + 6 + n * 7, y + 12 + Math.sin(t * 2 + n) * 2, 3, 4, 0, 0, TAU); ctx.fill(); } }
+      } else if (k === GAS || k === WAT) {
+        // (art pass, 2nd look) a pocket in the dirt: a cached cell of earth with a rounded hollow full of swamp gas
+        // (green, with a glow) or seep water (a lit surface line, a deeper bottom, glints), then the live bubbles
+        const gas = k === GAS, v = Math.floor(h * 3);
+        RICH.pic('w39pocket|' + k + '|' + v, C_ + 1, C_ + 1, q => {
+          q.fillStyle = KCOL[PACK]; q.fillRect(0, 0, C_ + 1, C_ + 1);
+          q.fillStyle = RICH.rgba(RICH.dk(KCOL[PACK], 0.45), 0.5); for (let n = 0; n < 16; n++) q.fillRect(RICH.r(640 + k + v, n) * C_, RICH.r(641 + k + v, n) * C_, 1.3, 1.3);
+          const cx = C_ / 2, cy = C_ / 2 + 1, rx = C_ * 0.42, ry = C_ * 0.38;
+          q.fillStyle = RICH.dk(KCOL[PACK], 0.5); q.beginPath(); q.ellipse(cx, cy, rx + 1.5, ry + 1.5, 0, 0, TAU); q.fill();
+          const g = q.createRadialGradient(cx - 2, cy - 3, 1, cx, cy, rx);
+          if (gas) { g.addColorStop(0, '#b8f08a'); g.addColorStop(0.6, '#6a9a4a'); g.addColorStop(1, '#3a5a2a'); }
+          else { g.addColorStop(0, '#8ac8f2'); g.addColorStop(0.6, '#4a7aa8'); g.addColorStop(1, '#2a4a6a'); }
+          q.fillStyle = g; q.beginPath(); q.ellipse(cx, cy, rx, ry, 0, 0, TAU); q.fill();
+          if (!gas) { q.fillStyle = 'rgba(220,240,255,0.55)'; q.fillRect(cx - rx * 0.7, cy - ry * 0.45, rx * 1.4, 1.4); q.fillStyle = 'rgba(20,40,70,0.35)'; q.beginPath(); q.ellipse(cx, cy + ry * 0.45, rx * 0.8, ry * 0.4, 0, 0, TAU); q.fill(); }
+          else { q.fillStyle = 'rgba(40,70,20,0.35)'; for (let n = 0; n < 5; n++) q.fillRect(cx - rx * 0.6 + n * rx * 0.3, cy + ry * 0.2 + (n % 2) * 2, 2, 2); }
+          q.strokeStyle = 'rgba(255,230,190,0.3)'; q.lineWidth = 1; q.beginPath(); q.ellipse(cx, cy, rx + 1.5, ry + 1.5, 0, Math.PI * 0.15, Math.PI * 0.85); q.stroke();
+          q.strokeStyle = 'rgba(0,0,0,0.35)'; q.beginPath(); q.ellipse(cx, cy, rx + 1.5, ry + 1.5, 0, Math.PI * 1.1, Math.PI * 1.9); q.stroke();
+        }, x, y);
+        for (let n = 0; n < 3; n++) {
+          const bx = x + 7 + n * 7, by = gas ? y + 9 + (n % 2) * 8 : y + 12 + Math.sin(t * 2 + n) * 2, br = gas ? 3 + Math.sin(t * 3 + n) * 0.8 : 3;
+          ctx.fillStyle = gas ? 'rgba(190,250,140,0.55)' : 'rgba(170,220,255,0.55)'; ctx.beginPath(); ctx.ellipse(bx, by, br, gas ? br : 4, 0, 0, TAU); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(bx - br * 0.35, by - br * 0.4, br * 0.3); ctx.fill();
+        }
+      }
       else if (k === PIL) { ctx.fillStyle = '#2a1e16'; ctx.fillRect(x, y, C_, C_); K.crystal(x + C_ / 2, y + C_ + 2, C_ + 6, 0, { col: K.GLOW.ice, w: 14, glow: st.flash.some(f => f.r <= r + 1 && f.r >= r - 1 && f.c === c && f.t > 0) ? 1 : 0.5, t, seed: r }); }
-      else if (k === BOUL) { ctx.fillStyle = '#1e140e'; ctx.fillRect(x, y, C_, C_); ctx.fillStyle = '#8a847e'; circle(x + C_ / 2, y + C_ / 2, C_ * 0.48); ctx.fill(); ctx.fillStyle = '#6a645e'; ctx.beginPath(); ctx.arc(x + C_ / 2, y + C_ / 2, C_ * 0.48, -0.2, Math.PI * 0.85); ctx.lineTo(x + C_ / 2, y + C_ / 2); ctx.fill(); ctx.strokeStyle = '#4a4440'; ctx.lineWidth = 2; circle(x + C_ / 2, y + C_ / 2, C_ * 0.48); ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; circle(x + C_ * 0.38, y + C_ * 0.36, 4); ctx.fill(); }
-      else if (k === VENT) { ctx.fillStyle = '#3a3e46'; ctx.fillRect(x, y, C_, C_); ctx.fillStyle = st.geyOn ? '#dff6ff' : '#2a8a90'; ctx.fillRect(x + 8, y, 10, 6); }
-      else if (k === PLATE) { ctx.fillStyle = st.pl.some(P => P.plate && cellOf(P).c === c) ? '#ffe28a' : '#b8862a'; rr(x + 2, y, C_ - 4, 8, 3); ctx.fill(); }
+      else if (k === BOUL) RICH.pic('w39boulder', C_, C_, q => {
+        // a round boulder in its hollow: rock texture, a shaded lower side, a glint, a dark rim
+        q.fillStyle = '#1e140e'; q.fillRect(0, 0, C_, C_);
+        q.beginPath(); q.arc(C_ / 2, C_ / 2, C_ * 0.48, 0, TAU); q.save(); q.clip(); RICH.rock(q, 0, 0, C_, C_, { col: '#8a847e', seed: 77 });
+        q.fillStyle = 'rgba(50,44,40,0.45)'; q.beginPath(); q.arc(C_ / 2, C_ / 2, C_ * 0.48, -0.2, Math.PI * 0.85); q.lineTo(C_ / 2, C_ / 2); q.fill(); q.restore();
+        q.strokeStyle = '#4a4440'; q.lineWidth = 2; q.beginPath(); q.arc(C_ / 2, C_ / 2, C_ * 0.48, 0, TAU); q.stroke();
+        q.fillStyle = 'rgba(255,255,255,0.3)'; q.beginPath(); q.arc(C_ * 0.38, C_ * 0.36, 3.5, 0, TAU); q.fill();
+      }, x, y);
+      else if (k === VENT) {
+        // (art pass, 2nd look) a steaming vent: a cracked rock cell with a crusted, mineral-stained mouth
+        RICH.pic('w39vent', C_ + 1, C_ + 1, q => {
+          RICH.rock(q, 0, 0, C_ + 1, C_ + 1, { col: '#4a4e56', seed: 91 });
+          q.fillStyle = 'rgba(255,255,255,0.14)'; q.fillRect(0, 0, C_ + 1, 1.5); q.fillStyle = 'rgba(0,0,0,0.3)'; q.fillRect(0, C_ - 2, C_ + 1, 3);
+          q.fillStyle = 'rgba(220,200,120,0.4)'; q.beginPath(); q.ellipse(13, 3, 9, 4, 0, 0, Math.PI); q.fill();
+          q.fillStyle = '#1a1c20'; q.beginPath(); q.moveTo(7, 0); q.lineTo(19, 0); q.lineTo(16, 7); q.lineTo(14, 13); q.lineTo(11, 7); q.closePath(); q.fill();
+          q.strokeStyle = 'rgba(160,230,230,0.35)'; q.lineWidth = 1; q.beginPath(); q.moveTo(7, 0); q.lineTo(11, 7); q.lineTo(14, 13); q.stroke();
+        }, x, y);
+        ctx.fillStyle = st.geyOn ? '#dff6ff' : '#2a8a90'; ctx.fillRect(x + 8, y, 10, 6); ctx.fillStyle = st.geyOn ? 'rgba(255,255,255,0.8)' : 'rgba(150,240,240,0.5)'; ctx.fillRect(x + 9, y, 3, 1.5);
+      }
+      else if (k === PLATE) {
+        // (art pass, 2nd look) a brass pressure plate on a stone footing: lit rim, bolts, a darker pressed face
+        const on = st.pl.some(P => P.plate && cellOf(P).c === c);
+        ctx.fillStyle = '#3a3e46'; ctx.fillRect(x + 1, y + 6, C_ - 2, 4); ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(x + 1, y + 6, C_ - 2, 1);
+        ctx.fillStyle = on ? '#ffe28a' : '#b8862a'; rr(x + 2, y, C_ - 4, 8, 3); ctx.fill();
+        ctx.fillStyle = on ? 'rgba(255,255,255,0.6)' : 'rgba(255,240,190,0.5)'; ctx.fillRect(x + 4, y + 1, C_ - 8, 1.5);
+        ctx.fillStyle = on ? 'rgba(150,100,20,0.3)' : 'rgba(90,60,10,0.4)'; ctx.fillRect(x + 4, y + 5, C_ - 8, 2);
+        ctx.strokeStyle = '#6a4a10'; ctx.lineWidth = 1; rr(x + 2.5, y + 0.5, C_ - 5, 7, 3); ctx.stroke();
+        ctx.fillStyle = '#6a4a10'; circle(x + 6, y + 4, 1); ctx.fill(); circle(x + C_ - 6, y + 4, 1); ctx.fill();
+      }
       // a boulder's shadow line: where it would fall
       if (k === BOUL && (st.k !== 3 || near(st, r, c, 3))) { ctx.strokeStyle = 'rgba(255,220,180,0.25)'; ctx.setLineDash([3, 4]); ctx.lineWidth = 2; let y2 = r + 1; while (y2 < NR - 1 && st.g[y2][c] === E) y2++; if (y2 > r + 1) { ctx.beginPath(); ctx.moveTo(x + C_ / 2, y + C_); ctx.lineTo(x + C_ / 2, scrY(st, y2 * C_)); ctx.stroke(); } ctx.setLineDash([]); }
     }
@@ -688,7 +847,16 @@
     // floods, clouds, falling boulders, geyser jets
     for (const f of st.floods) { const a = 1 - f.t / GR.floodT; ctx.fillStyle = 'rgba(80,170,255,' + 0.5 * a + ')'; ctx.fillRect(scrX(st, f.c * C_) + 4, scrY(st, f.r0 * C_), C_ - 8, (f.r1 - f.r0 + 1) * C_); }
     for (const q of st.clouds) { const a = 1 - q.t / 2.6; ctx.fillStyle = 'rgba(150,230,100,' + 0.4 * a + ')'; for (let n = 0; n < 4; n++) { circle(scrX(st, q.x) + Math.cos(n * 1.6 + t) * 12, scrY(st, q.y) + Math.sin(n * 2.1 + t) * 8, 12 + n * 2); ctx.fill(); } }
-    for (const f of st.falling) { const x = scrX(st, (f.c + 0.5) * C_) + (f.wob > 0 ? Math.sin(t * 60) * 2 : 0), y = scrY(st, f.y + C_ / 2); ctx.fillStyle = '#8a847e'; circle(x, y, C_ * 0.48); ctx.fill(); ctx.strokeStyle = '#4a4440'; ctx.lineWidth = 2; ctx.stroke(); }
+    for (const f of st.falling) {
+      // (art pass, 2nd look) a falling boulder looks like the resting one: rock texture, a shaded side, a glint
+      const x = scrX(st, (f.c + 0.5) * C_) + (f.wob > 0 ? Math.sin(t * 60) * 2 : 0), y = scrY(st, f.y + C_ / 2);
+      RICH.pic('w39boulderF', C_, C_, q => {
+        q.beginPath(); q.arc(C_ / 2, C_ / 2, C_ * 0.48, 0, TAU); q.save(); q.clip(); RICH.rock(q, 0, 0, C_, C_, { col: '#8a847e', seed: 77 });
+        q.fillStyle = 'rgba(50,44,40,0.45)'; q.beginPath(); q.arc(C_ / 2, C_ / 2, C_ * 0.48, -0.2, Math.PI * 0.85); q.lineTo(C_ / 2, C_ / 2); q.fill(); q.restore();
+        q.strokeStyle = '#4a4440'; q.lineWidth = 2; q.beginPath(); q.arc(C_ / 2, C_ / 2, C_ * 0.48, 0, TAU); q.stroke();
+        q.fillStyle = 'rgba(255,255,255,0.3)'; q.beginPath(); q.arc(C_ * 0.38, C_ * 0.36, 3.5, 0, TAU); q.fill();
+      }, x - C_ / 2, y - C_ / 2);
+    }
     if (st.geyOn) for (let r = r0; r <= r1; r++) for (let c = 0; c < NC; c++) if (st.g[r][c] === VENT) { const x = scrX(st, (c + 0.5) * C_), y = scrY(st, r * C_); const g2 = ctx.createLinearGradient(0, y - 150, 0, y); g2.addColorStop(0, 'rgba(223,246,255,0)'); g2.addColorStop(1, 'rgba(223,246,255,0.7)'); ctx.fillStyle = g2; ctx.fillRect(x - 7, y - 150, 14, 150); }
     // the diggers
     drawDiggers(st, t);

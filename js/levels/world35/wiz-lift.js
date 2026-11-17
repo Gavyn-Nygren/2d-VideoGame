@@ -544,24 +544,33 @@ function wizLiftDraw(st) {
     if (r.y1 < st.cam.y - 40 || r.y0 > st.cam.y + H + 40) continue;
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
     if (r.kind === 'ground') {
-      ctx.fillStyle = '#5a4630'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = '#7a5a3a'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 6);
-      ctx.fillStyle = 'rgba(255,226,170,0.3)'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 2);
-      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5; ctx.beginPath();
-      for (let x = r.x0 + 40; x < r.x1; x += 80) { ctx.moveTo(x + (hash(x, 3) % 20), r.y0 + 6); ctx.lineTo(x + (hash(x, 3) % 20), r.y0 + 40); }
-      ctx.moveTo(r.x0, r.y0 + 22); ctx.lineTo(r.x1, r.y0 + 22); ctx.stroke(); continue;
+      // (art pass) the library floor: an oak nosing board over grained boards with joints, knots and nails (cached)
+      RICH.pic('wizliftgnd|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => {
+        RICH.boards(c, 0, 6, w, h - 6, { col: '#5a4630', bh: 17, len: 110, seed: 15 });
+        const g = c.createLinearGradient(0, 6, 0, Math.min(h, 140)); g.addColorStop(0, 'rgba(10,6,20,0)'); g.addColorStop(1, 'rgba(10,6,20,0.45)'); c.fillStyle = g; c.fillRect(0, 6, w, h - 6);
+        RICH.boards(c, 0, 0, w, 6, { col: '#7a5a3a', bh: 6, len: 200, seed: 16, nails: false });
+        c.fillStyle = 'rgba(255,226,170,0.3)'; c.fillRect(0, 0, w, 2); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, 6, w, 2);
+      }, r.x0, r.y0); continue;
     }
     if (r.kind === 'step') {
       if (r.off) { ctx.globalAlpha = 0.25; ctx.fillStyle = C2.shelf; ctx.fillRect(r.x0 + 30, r.y0, 24, r.y1 - r.y0); ctx.globalAlpha = 1; continue; }
-      ctx.fillStyle = C2.shelf; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 3); ctx.fill(); ctx.stroke(); continue;
+      RICH.pic('wizliftstep|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: C2.shelf, r: 3, seam: 0, seed: 21, edge: false }); c.fillStyle = '#b08a3a'; c.fillRect(0, 0, 4, h); c.fillRect(w - 4, 0, 4, h); c.fillStyle = 'rgba(255,240,190,0.4)'; c.fillRect(0, 0, 1, h); }, r.x0, r.y0);
+      rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 3); ctx.stroke(); continue;
     }
     if (r.kind === 'roof') {
       if (r.off) { ctx.fillStyle = '#3a3552'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 20); ctx.fillStyle = C2.brass; ctx.fillRect(420, r.y0 + 4, 120, 10); continue; }
       ctx.fillStyle = '#4f8a58'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 20); ctx.fillStyle = '#7fd38a'; for (let x = 10; x < W; x += 50) { circle(x, r.y0, 8); ctx.fill(); } continue;
     }
-    if (r.kind === 'arch') { ctx.fillStyle = C2.shelf; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); continue; }
+    if (r.kind === 'arch') { RICH.pic('wizliftarch|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => RICH.wood(c, 0, 0, w, h, { col: C2.shelf, boards: Math.max(1, Math.round(h / 14)), seam: 80, seed: 22, edge: false }), r.x0, r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); continue; }
     if (r.kind === 'railing') { ctx.fillStyle = C2.brass; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 2); ctx.fill(); ctx.stroke(); circle((r.x0 + r.x1) / 2, r.y0, 5); ctx.fill(); ctx.stroke(); continue; }
     ctx.fillStyle = 'rgba(0,0,0,0.3)'; rr(r.x0 + 4, r.y1 - 2, r.x1 - r.x0 - 4, 8, 4); ctx.fill();
-    ctx.fillStyle = r.kind === 'balcony' ? '#8a6640' : '#7e5632'; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 4); ctx.fill(); ctx.stroke();
+    // (art pass) a library ledge: grained planks with joints and nails, brass-capped ends (cached per size)
+    { const lc = r.kind === 'balcony' ? '#8a6640' : '#7e5632';
+      RICH.pic('wizliftledge|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0) + lc, r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => {
+        RICH.wood(c, 0, 0, w, h, { col: lc, r: 4, seam: 72, seed: Math.round(w), boards: h > 22 ? 2 : 1, edge: false });
+        c.save(); RICH.rr(c, 0, 0, w, h, 4); c.clip(); c.fillStyle = '#b08a3a'; c.fillRect(0, 0, 5, h); c.fillRect(w - 5, 0, 5, h); c.fillStyle = 'rgba(255,240,190,0.45)'; c.fillRect(0, 0, 1.2, h); c.fillRect(w - 5, 0, 1.2, h); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(4, 0, 1, h); c.restore();
+      }, r.x0, r.y0);
+      rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 4); ctx.stroke(); }
     ctx.fillStyle = 'rgba(255,226,170,0.45)'; ctx.fillRect(r.x0 + 4, r.y0 + 2, r.x1 - r.x0 - 8, 2.5);
     if (r.kind === 'balcony') { ctx.strokeStyle = C2.shelfDk; ctx.lineWidth = 2; for (let x = r.x0 + 10; x < r.x1; x += 16) { ctx.beginPath(); ctx.moveTo(x, r.y0); ctx.lineTo(x, r.y0 - 18); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(r.x0, r.y0 - 18); ctx.lineTo(r.x1, r.y0 - 18); ctx.stroke(); }
   }
@@ -581,8 +590,19 @@ function wizLiftDraw(st) {
     if (s.i === 1 && ph.floor < 3 && s.y > st.cam.y + H) continue;
     const r = wizLiftRect(s);
     if (s.lit > 0) { ctx.save(); ctx.globalAlpha = s.lit; ctx.fillStyle = WIZ_SPELLS.lift.glow; rr(r.x0 - 8, r.y0 - 6, r.x1 - r.x0 + 16, r.y1 - r.y0 + 18, 10); ctx.fill(); ctx.restore(); }
-    ctx.fillStyle = C2.slab; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 4); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = C2.slabLt; ctx.fillRect(r.x0 + 4, r.y0 + 3, r.x1 - r.x0 - 8, 3);
+    // (art pass, 2nd look) a floating marble slab: veined stone with a lit top edge, a shaded underside, an inlaid
+    // brass rune line and corner studs (cached per size)
+    RICH.pic('wizliftslab|' + Math.round(r.x1 - r.x0) + '|' + Math.round(r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => {
+      RICH.rr(c, 0, 0, w, h, 4); c.save(); c.clip();
+      const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, RICH.lit(C2.slab, 0.15)); g.addColorStop(1, RICH.dk(C2.slab, 0.25)); c.fillStyle = g; c.fillRect(0, 0, w, h);
+      c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 0.9; c.beginPath(); for (let q = 0; q < 3; q++) { let vx = RICH.r(w, q) * w, vy = 0; c.moveTo(vx, vy); while (vy < h) { vx += (RICH.r(vx | 0, q) - 0.5) * 12; vy += 3; c.lineTo(vx, vy); } } c.stroke();
+      c.fillStyle = C2.slabLt; c.fillRect(4, 3, w - 8, 3); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(4, 3, w - 8, 1);
+      c.fillStyle = 'rgba(20,10,40,0.3)'; c.fillRect(0, h - 4, w, 4);
+      c.fillStyle = C2.brass; c.fillRect(10, h * 0.62, w - 20, 1.6); for (let x = 16; x < w - 12; x += 18) { c.beginPath(); c.moveTo(x, h * 0.62 - 2); c.lineTo(x + 2.5, h * 0.62 + 0.8); c.lineTo(x, h * 0.62 + 3.6); c.lineTo(x - 2.5, h * 0.62 + 0.8); c.closePath(); c.fill(); }
+      c.restore();
+      for (const x of [5, w - 5]) RICH.rivet(c, x, h * 0.62 + 0.8, 1.6, C2.brass);
+    }, r.x0, r.y0);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 4); ctx.stroke();
     // the little brass rails at the ends
     ctx.fillStyle = C2.brass; ctx.lineWidth = 1.5;
     for (const x of [r.x0 + 1, r.x1 - 1]) { rr(x - 3, r.y0 - K.slab.rail, 6, K.slab.rail + 2, 2); ctx.fill(); ctx.stroke(); circle(x, r.y0 - K.slab.rail, 3.5); ctx.fill(); ctx.stroke(); }

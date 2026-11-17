@@ -694,6 +694,9 @@ function vineDrawGround(st, v) {
   }
   ctx.fillStyle = 'rgba(40,90,30,0.18)'; ctx.fillRect(x0, VINE_LANE[0] + 2, x1 - x0, 3); // the line between the two strips
   ctx.fillStyle = VINE_COL.grassDk; ctx.fillRect(x0, 6, x1 - x0, 4);
+  // (rich props pass, Nov 2026) still ground detail, cached in 240 px chunks: soil strata, grit, roots, pebbles,
+  // buried rocks and the odd fossil; blades along the grass edge; clover and tiny flowers in the grass
+  CK.chunks('vnG', x0, x1, 240, { x: 0, y: 0 }, () => 10, 66, 240, (a, b) => vineGroundPaint(a, b));
   // grass tufts
   ctx.strokeStyle = VINE_COL.grassDk; ctx.lineWidth = 2;
   for (let x = Math.floor(x0 / 37) * 37; x < x1; x += 37) {
@@ -706,11 +709,53 @@ function vineDrawGround(st, v) {
   // the start line under the deck edge
   ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(-3, top, 6, 8 - top);
 }
+function vineGroundPaint(x0, x1) {
+  const gy = () => 10, ok = () => true;
+  CK.soil(x0, x1, gy, ok, VINE_COL.soil, 23);
+  // (art director pass) the landing strips were flat green stripes: now a lawn of short two-tone blades in rows, soft
+  // darker mottles, a shady foot where the grass meets the soil and a lit lip along the back edge
+  const top = VINE_LANE[0] - 14;
+  ctx.fillStyle = 'rgba(40,90,30,0.1)'; ctx.beginPath();
+  for (let x = Math.floor(x0 / 70) * 70; x < x1; x += 70) { const r = CK.r(x, 95); if (r > 0.6) continue; const mx = x + r * 50, my = top + 8 + CK.r(95, x) * 30; ctx.moveTo(mx + 16 + r * 10, my); ctx.ellipse(mx, my, 16 + r * 10, 4 + r * 2, 0, 0, Math.PI * 2); }
+  ctx.fill();
+  ctx.fillStyle = 'rgba(40,90,30,0.16)'; ctx.fillRect(x0, 1, x1 - x0, 5);
+  ctx.fillStyle = 'rgba(40,90,30,0.1)'; ctx.fillRect(x0, VINE_LANE[0] - 2, x1 - x0, 4);
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(52,110,40,0.42)'; ctx.lineWidth = 1.2; ctx.beginPath();
+  for (let row = 0, y = top + 6; y < 6; y += 5, row++) for (let x = Math.floor(x0 / 6) * 6 + (row % 2) * 3; x < x1; x += 6) {
+    const r = CK.r(x * 7 + row, 97); if (r > 0.62) continue;
+    const bx = x + r * 4, by = y + CK.r(row, x) * 3, t = 2.5 + r * 3;
+    ctx.moveTo(bx, by); ctx.lineTo(bx - 1 + r * 2, by - t);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(235,255,200,0.32)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let row = 0, y = top + 7; y < 5; y += 5, row++) for (let x = Math.floor(x0 / 9) * 9 + (row % 3) * 3; x < x1; x += 9) {
+    const r = CK.r(x * 5 + row, 98); if (r > 0.5) continue;
+    const bx = x + r * 6, by = y + CK.r(x, row + 40) * 3;
+    ctx.moveTo(bx, by); ctx.lineTo(bx + 0.5 + r, by - 2.5 - r * 3);
+  }
+  ctx.stroke(); ctx.lineCap = 'butt';
+  ctx.fillStyle = 'rgba(255,255,220,0.25)'; ctx.fillRect(x0, top, x1 - x0, 1.5);
+  CK.tufts(x0, x1, () => top + 1, VINE_COL.grassA, 33, 8);
+  CK.tufts(x0, x1, () => 9, VINE_COL.grassDk, 31, 6);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x0, VINE_LANE[0] - 14, x1 - x0, 1.5);
+  for (let x = Math.floor(x0 / 23) * 23; x < x1; x += 23) {
+    const r = CK.r(x, 91), y = VINE_LANE[0] - 10 + CK.r(x, 92) * 14;
+    if (r < 0.22) { ctx.fillStyle = VINE_COL.grassDk; for (let k = 0; k < 3; k++) { const a = k * 2.09 - 1.57; circle(x + Math.cos(a) * 2.2, y + Math.sin(a) * 1.6, 2); ctx.fill(); } ctx.fillStyle = 'rgba(255,255,255,0.3)'; circle(x - 0.5, y - 1.5, 0.8); ctx.fill(); }
+    else if (r > 0.9) { ctx.fillStyle = ['#ffffff', '#ffd36b', '#ff8fc7'][Math.floor(r * 300) % 3]; for (let k = 0; k < 4; k++) { const a = k * 1.57; circle(x + Math.cos(a) * 1.6, y + Math.sin(a) * 1.2, 1.2); ctx.fill(); } ctx.fillStyle = '#ffb02e'; circle(x, y, 0.8); ctx.fill(); }
+    else if (r < 0.45) { ctx.strokeStyle = 'rgba(40,90,30,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x - 2, y - 3); ctx.moveTo(x + 2, y + 2); ctx.lineTo(x + 3, y - 2); ctx.stroke(); }
+  }
+}
 function vineDrawMud(q) {
   const cx = (q.x0 + q.x1) / 2, hw = (q.x1 - q.x0) / 2;
   for (const ly of VINE_LANE) {
+    ctx.fillStyle = '#6a4224'; ctx.beginPath(); ctx.ellipse(cx, ly + 1.5, hw + 2, 8, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = VINE_COL.mud; ctx.beginPath(); ctx.ellipse(cx, ly + 1, hw, 7, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(60,30,10,0.3)'; ctx.beginPath(); ctx.ellipse(cx + hw * 0.15, ly + 3, hw * 0.7, 3.5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = VINE_COL.mudHi; ctx.beginPath(); ctx.ellipse(cx - hw * 0.3, ly - 1, hw * 0.35, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,240,210,0.45)'; ctx.fillRect(cx - hw * 0.45, ly - 2, hw * 0.18, 1); ctx.fillRect(cx + hw * 0.1, ly + 1, hw * 0.12, 0.8);
+    ctx.fillStyle = 'rgba(60,30,10,0.4)'; for (const dx of [-0.55, 0.45]) { ctx.beginPath(); ctx.ellipse(cx + hw * dx, ly + 1, 2.6, 1.6, 0, 0, Math.PI * 2); ctx.fill(); }
+    for (const dx of [-0.85, 0.82]) { ctx.fillStyle = '#9a8a7c'; ctx.beginPath(); ctx.ellipse(cx + hw * dx, ly + 3, 2.4, 1.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(cx + hw * dx - 1.2, ly + 1.8, 1.6, 0.7); }
     const b = (G.clock * 0.7 + cx * 0.01) % 1;
     ctx.strokeStyle = 'rgba(255,230,190,' + (0.6 * (1 - b)) + ')'; ctx.lineWidth = 1.5; circle(cx + hw * 0.3, ly + 1 - b * 3, 2 + b * 4); ctx.stroke();
   }
@@ -719,14 +764,12 @@ function vineDrawLog(q) {
   const w = q.x1 - q.x0, h = VINE.logH;
   for (const ly of VINE_LANE) {
     ctx.fillStyle = 'rgba(30,40,10,0.22)'; ctx.beginPath(); ctx.ellipse(q.x0 + w / 2, ly + 2, w / 2 + 8, 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = VINE_COL.log; rr(q.x0, ly - h, w, h + 2, 7); ctx.fill();
-    ctx.fillStyle = 'rgba(40,20,5,0.22)'; rr(q.x0, ly - h * 0.4, w, h * 0.4 + 2, 5); ctx.fill();
-    ctx.fillStyle = 'rgba(255,230,190,0.22)'; rr(q.x0 + 6, ly - h + 2, w - 18, 2.5, 1.2); ctx.fill();
-    ctx.strokeStyle = '#5e3e1e'; ctx.lineWidth = 2; rr(q.x0, ly - h, w, h + 2, 7); ctx.stroke();
-    ctx.fillStyle = '#c99a62'; ctx.beginPath(); ctx.ellipse(q.x1 - 4, ly - h / 2 + 1, 5, h / 2, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#8f6338'; ctx.lineWidth = 1; circle(q.x1 - 4, ly - h / 2 + 1, 2.5); ctx.stroke();
-    ctx.fillStyle = VINE_COL.moss;
-    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(q.x0 + 8 + i * (w - 20) / 3, ly - h + 1, 9, 4, 0, 0, Math.PI * 2); ctx.fill(); }
+    // (rich props pass) plated bark, knots, ringed cut ends and moss: one cached picture per length
+    CK.pic('vnlog' + Math.round(w) + '|' + h, w + 8, h + 16, 4, 10, () => {
+      CK.log(0, 0, w, h + 2, { bark: VINE_COL.log, wood: '#d9aa70', moss: VINE_COL.moss, seed: Math.round(w), right: true, stub: false, shadow: false });
+      ctx.fillStyle = VINE_COL.moss; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(10 + i * (w - 24) / 2, 1, 8, 3.5, 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = '#9ce07a'; for (let i = 0; i < 3; i++) { circle(8 + i * (w - 24) / 2, -0.5, 1.4); ctx.fill(); }
+    }, q.x0, ly - h);
   }
 }
 function vineDrawRiver(st) {
@@ -845,7 +888,10 @@ function vineDrawPosts(st, v) {
   const step = 5 * VINE.M;
   for (let x = Math.max(step, Math.floor(v.x0 / step) * step); x < v.x1; x += step) {
     const m = Math.round(x / VINE.M), big = m % 10 === 0;
+    ctx.fillStyle = 'rgba(30,40,10,0.2)'; ctx.beginPath(); ctx.ellipse(x + 1.5, 8, 6, 2, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#c9b06a'; ctx.fillRect(x - 2.5, -22, 5, 30);
+    ctx.fillStyle = '#c9b06a'; ctx.beginPath(); ctx.moveTo(x - 2.5, -22); ctx.lineTo(x, -26); ctx.lineTo(x + 2.5, -22); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,230,0.45)'; ctx.fillRect(x - 2.5, -22, 1.2, 30); ctx.fillStyle = '#9a7f3c'; ctx.fillRect(x + 1.3, -22, 1.2, 30);
     ctx.fillStyle = '#a88f4a'; ctx.fillRect(x - 3, -14, 6, 2); ctx.fillRect(x - 3, -4, 6, 2);
     if (big) {
       // the board is as wide as its words plus 8 px of air each side
@@ -880,9 +926,30 @@ function vineDrawTree(st, v) {
   ctx.beginPath(); ctx.moveTo(-270, 10); ctx.quadraticCurveTo(-250, -300, -235, -640); ctx.lineTo(-160, -640); ctx.quadraticCurveTo(-170, -300, -140, 10); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = VINE_COL.trunkDk; ctx.lineWidth = 3;
   for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(-232 + i * 16, -40 - i * 60); ctx.quadraticCurveTo(-220 + i * 12, -140 - i * 70, -214 + i * 10, -220 - i * 80); ctx.stroke(); }
+  // (rich props pass) bark: lit ridges beside the grooves, plates, two knots and moss creeping up the shady side
+  ctx.strokeStyle = 'rgba(255,225,180,0.16)'; ctx.lineWidth = 1.5;
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(-229 + i * 16, -40 - i * 60); ctx.quadraticCurveTo(-217 + i * 12, -140 - i * 70, -211 + i * 10, -220 - i * 80); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(40,24,10,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath();
+  for (let k = 0; k < 26; k++) { const yy = -20 - k * 23, xx = -250 + CK.r(k, 3) * 70 + k * 0.6, l = 8 + CK.r(k, 4) * 10; ctx.moveTo(xx, yy); ctx.lineTo(xx + 2, yy - l); }
+  ctx.stroke();
+  for (const [kx, ky] of [[-212, -180], [-198, -430]]) {
+    ctx.fillStyle = VINE_COL.trunkDk; ctx.beginPath(); ctx.ellipse(kx, ky, 7, 10, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#9a7448'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(kx, ky, 9, 12, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#2e1e0e'; ctx.beginPath(); ctx.ellipse(kx, ky + 1, 3.5, 5, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(111,194,79,0.6)'; for (let k = 0; k < 9; k++) { ctx.beginPath(); ctx.ellipse(-150 - k * 1.5 + CK.r(k, 9) * 6, -10 - k * 34, 6, 10, 0.2, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = 'rgba(20,10,0,0.15)'; ctx.beginPath(); ctx.moveTo(-180, 10); ctx.quadraticCurveTo(-190, -300, -175, -640); ctx.lineTo(-160, -640); ctx.quadraticCurveTo(-170, -300, -140, 10); ctx.closePath(); ctx.fill();
   // roots
   ctx.fillStyle = VINE_COL.trunk;
-  for (const [x, w] of [[-300, 40], [-130, 36]]) { ctx.beginPath(); ctx.moveTo(x, 10); ctx.quadraticCurveTo(x + w * 0.5, -30, x + (x < -200 ? w + 30 : -10), -30); ctx.lineTo(x + (x < -200 ? w + 30 : 10), 10); ctx.fill(); }
+  // (art director pass) the right root used to cross itself into a bow tie: both roots are now flares from the trunk,
+  // with a shady underside, a lit ridge and a dark outline
+  for (const sd of [-1, 1]) {
+    const tx = sd < 0 ? -232 : -158, tip = sd < 0 ? -300 : -96;
+    ctx.fillStyle = VINE_COL.trunk; ctx.beginPath(); ctx.moveTo(tip, 10); ctx.quadraticCurveTo(tx + sd * 22, -2, tx, -34); ctx.lineTo(tx - sd * 12, 10); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(40,20,5,0.22)'; ctx.beginPath(); ctx.moveTo(tip, 10); ctx.quadraticCurveTo(tx + sd * 20, 4, tx - sd * 2, -10); ctx.lineTo(tx - sd * 12, 10); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,225,180,0.2)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(tip + sd * -6, 7); ctx.quadraticCurveTo(tx + sd * 18, -6, tx + sd * 1, -30); ctx.stroke();
+    ctx.strokeStyle = VINE_COL.trunkDk; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(tip, 10); ctx.quadraticCurveTo(tx + sd * 22, -2, tx, -34); ctx.stroke();
+  }
   // the long branch (back one for Pip a little higher, the front one for Bo)
   for (const k of [0, 1]) {
     const dy = VINE_LANE[k];
@@ -900,17 +967,26 @@ function vineDrawTree(st, v) {
   // the treehouse: deck with planks, a railing at the back, a little leaf roof hut
   const dY = P.deckY;
   ctx.fillStyle = '#9b6b3a'; ctx.fillRect(P.deckX0 + 30, dY + 14, 10, 300); ctx.fillRect(-60, dY + 14, 10, 300);
-  ctx.fillStyle = '#b07a48'; rr(P.deckX0 + 60, dY - 110, 140, 112, 6); ctx.fill();
-  ctx.fillStyle = '#7a4f28'; rr(P.deckX0 + 110, dY - 64, 40, 64, 6); ctx.fill();
-  ctx.fillStyle = '#ffe6a8'; rr(P.deckX0 + 76, dY - 92, 26, 22, 4); ctx.fill();
-  ctx.fillStyle = night ? '#2b5e45' : '#4fae45';
-  ctx.beginPath(); ctx.moveTo(P.deckX0 + 40, dY - 104); ctx.lineTo(P.deckX0 + 130, dY - 160); ctx.lineTo(P.deckX0 + 220, dY - 104); ctx.closePath(); ctx.fill();
-  for (let i = 0; i < 6; i++) vineLeafShape(P.deckX0 + 50 + i * 30, dY - 104, 22, 7, 1.2, VINE_COL.leafDk);
+  for (const lx of [P.deckX0 + 30, -60]) {
+    ctx.fillStyle = 'rgba(255,225,180,0.3)'; ctx.fillRect(lx, dY + 14, 2, 300); ctx.fillStyle = 'rgba(40,20,5,0.3)'; ctx.fillRect(lx + 7, dY + 14, 3, 300);
+    ctx.strokeStyle = '#d9b77a'; ctx.lineWidth = 2; for (const ry of [dY + 40, dY + 160]) { ctx.beginPath(); ctx.moveTo(lx - 1, ry); ctx.lineTo(lx + 11, ry + 4); ctx.moveTo(lx - 1, ry + 4); ctx.lineTo(lx + 11, ry + 8); ctx.stroke(); }
+  }
+  // the hut (walls, door, window, thatch) is still, so it is painted once into a picture and copied
+  CK.pic('vnhut' + (night ? 'n' : ''), 236, 176, 0, 168, () => { ctx.translate(-P.deckX0, -dY); vineHutPaint(P, dY, night); }, P.deckX0, dY);
   // deck (with depth: the back strip is Pip's, the front Bo's)
   ctx.fillStyle = VINE_COL.deckDk; ctx.fillRect(P.deckX0, dY + VINE_LANE[0] - 6, -P.deckX0, 26 - VINE_LANE[0]);
   for (let x = P.deckX0; x < 0; x += 22) { ctx.fillStyle = (x / 22) % 2 ? VINE_COL.deck : '#d6a06a'; ctx.fillRect(x, dY + VINE_LANE[0] - 6, 21, -VINE_LANE[0] + 6); }
+  for (let x = P.deckX0; x < 0; x += 22) {
+    ctx.fillStyle = 'rgba(60,30,10,0.35)'; ctx.fillRect(x + 20.5, dY + VINE_LANE[0] - 6, 1, -VINE_LANE[0] + 6);
+    ctx.fillStyle = 'rgba(255,240,210,0.3)'; ctx.fillRect(x + 1, dY + VINE_LANE[0] - 6, 1, -VINE_LANE[0] + 6);
+    ctx.fillStyle = '#7a5228'; circle(x + 5, dY + VINE_LANE[0] - 2, 0.9); ctx.fill(); circle(x + 16, dY - 5, 0.9); ctx.fill();
+    if (CK.r(x, 5) < 0.4) { ctx.strokeStyle = 'rgba(90,50,20,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x + 4, dY - 12); ctx.quadraticCurveTo(x + 10, dY - 14, x + 17, dY - 11); ctx.stroke(); }
+  }
   ctx.fillStyle = '#e2b27a'; ctx.fillRect(P.deckX0, dY - 2, -P.deckX0, 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(P.deckX0, dY - 2, -P.deckX0, 1);
   ctx.fillStyle = VINE_COL.deckDk; ctx.fillRect(P.deckX0, dY + 2, -P.deckX0, 12);
+  ctx.fillStyle = 'rgba(40,20,5,0.3)'; ctx.fillRect(P.deckX0, dY + 11, -P.deckX0, 3);
+  ctx.fillStyle = '#c99358'; for (let x = P.deckX0 + 12; x < 0; x += 44) { circle(x, dY + 8, 1.4); ctx.fill(); }
   // railing at the left part only (the edge is open)
   ctx.strokeStyle = '#8a5a2c'; ctx.lineWidth = 4;
   ctx.beginPath(); ctx.moveTo(P.deckX0 + 4, dY - 40 + VINE_LANE[0]); ctx.lineTo(-120, dY - 40 + VINE_LANE[0]); ctx.stroke();
@@ -923,6 +999,56 @@ function vineDrawTree(st, v) {
   vineDrawMonkey(-180, dY - 40 + VINE_LANE[0] - 2, st.cheer || 0);
   vineDrawParrot(-40, P.py - 36 + VINE_LANE[0], '#ff5f5f', '#5b95ff', 0);
   vineDrawParrot(60, P.py - 30 + VINE_LANE[0], '#5bd47a', '#ffd34d', 1.7);
+}
+function vineHutPaint(P, dY, night) {
+  ctx.fillStyle = '#b07a48'; rr(P.deckX0 + 60, dY - 110, 140, 112, 6); ctx.fill();
+  // (art director pass) the hut wall: single planks in two tones with butt joints, grain, nail heads and a shady
+  // bottom edge on each, then the lit left and shady right sides and an outline in a deep brown
+  ctx.save(); rr(P.deckX0 + 60, dY - 110, 140, 112, 6); ctx.clip();
+  for (let row = 0, yy = dY - 110; yy < dY; yy += 14, row++) {
+    const jx = P.deckX0 + 80 + CK.r(row, 61) * 100;
+    for (const [a, b] of [[P.deckX0 + 60, jx], [jx, P.deckX0 + 200]]) {
+      const col = CK.r(row, a) < 0.5 ? '#b07a48' : '#a8703f';
+      ctx.fillStyle = col; ctx.fillRect(a, yy, b - a, 14);
+      ctx.fillStyle = 'rgba(255,230,190,0.22)'; ctx.fillRect(a + 1, yy + 1, b - a - 2, 1.2);
+      ctx.fillStyle = 'rgba(60,30,10,0.22)'; ctx.fillRect(a, yy + 11, b - a, 3);
+      ctx.strokeStyle = 'rgba(90,55,25,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath();
+      const gy0 = yy + 4 + CK.r(a, row) * 5; ctx.moveTo(a + 4, gy0); ctx.quadraticCurveTo((a + b) / 2, gy0 + 2 - CK.r(row, b) * 4, b - 4, gy0 + 1); ctx.stroke();
+      ctx.fillStyle = '#5a3818'; ctx.beginPath(); ctx.arc(a + 4, yy + 7, 1.1, 0, Math.PI * 2); ctx.arc(b - 4, yy + 7, 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(80,45,15,0.6)'; ctx.fillRect(b - 0.5, yy, 1, 14);
+    }
+  }
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255,225,180,0.25)'; ctx.fillRect(P.deckX0 + 62, dY - 108, 3, 108); ctx.fillStyle = 'rgba(40,20,5,0.2)'; ctx.fillRect(P.deckX0 + 192, dY - 108, 6, 108);
+  ctx.strokeStyle = '#6a4220'; ctx.lineWidth = 2; rr(P.deckX0 + 60, dY - 110, 140, 112, 6); ctx.stroke();
+  ctx.fillStyle = '#7a4f28'; rr(P.deckX0 + 110, dY - 64, 40, 64, 6); ctx.fill();
+  ctx.strokeStyle = '#5a3818'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(P.deckX0 + 130, dY - 62); ctx.lineTo(P.deckX0 + 130, dY); ctx.stroke();
+  ctx.fillStyle = '#ffd36b'; circle(P.deckX0 + 142, dY - 32, 2); ctx.fill();
+  ctx.fillStyle = '#ffe6a8'; rr(P.deckX0 + 76, dY - 92, 26, 22, 4); ctx.fill();
+  ctx.strokeStyle = '#7a4f28'; ctx.lineWidth = 2; rr(P.deckX0 + 76, dY - 92, 26, 22, 4); ctx.stroke(); ctx.beginPath(); ctx.moveTo(P.deckX0 + 89, dY - 92); ctx.lineTo(P.deckX0 + 89, dY - 70); ctx.moveTo(P.deckX0 + 76, dY - 81); ctx.lineTo(P.deckX0 + 102, dY - 81); ctx.stroke();
+  ctx.fillStyle = night ? '#2b5e45' : '#4fae45';
+  ctx.beginPath(); ctx.moveTo(P.deckX0 + 40, dY - 104); ctx.lineTo(P.deckX0 + 130, dY - 160); ctx.lineTo(P.deckX0 + 220, dY - 104); ctx.closePath(); ctx.fill();
+  // (art director pass) a thatch of big leaves: rows of overlapping leaf tips (alternating tones, each with a dark
+  // midrib), a shady right half, a lit ridge on the sunny slope and a deep green outline
+  {
+    const rx0 = P.deckX0 + 40, rx1 = P.deckX0 + 220, ax = P.deckX0 + 130, ay = dY - 160, by = dY - 104;
+    ctx.save(); ctx.beginPath(); ctx.moveTo(rx0, by); ctx.lineTo(ax, ay); ctx.lineTo(rx1, by); ctx.closePath(); ctx.clip();
+    const tones = night ? ['#2b5e45', '#24503b', '#33694e'] : ['#4fae45', '#43993b', '#5cbb50'];
+    for (let row = 0; row < 5; row++) {
+      const yy = ay + 12 + row * 11;
+      for (let x = rx0 - 10 + (row % 2) * 9; x < rx1 + 10; x += 18) {
+        ctx.fillStyle = tones[(row + Math.round(x / 18)) % 3];
+        ctx.beginPath(); ctx.moveTo(x - 10, yy - 8); ctx.quadraticCurveTo(x - 10, yy + 4, x, yy + 8); ctx.quadraticCurveTo(x + 10, yy + 4, x + 10, yy - 8); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(20,60,20,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, yy - 6); ctx.lineTo(x, yy + 6); ctx.stroke();
+        ctx.strokeStyle = 'rgba(20,60,20,0.25)'; ctx.beginPath(); ctx.moveTo(x - 10, yy - 8); ctx.quadraticCurveTo(x - 10, yy + 4, x, yy + 8); ctx.quadraticCurveTo(x + 10, yy + 4, x + 10, yy - 8); ctx.stroke();
+      }
+    }
+    ctx.fillStyle = 'rgba(10,40,20,0.18)'; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(rx1, by); ctx.lineTo(ax + 6, by); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,255,220,0.4)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(rx0 + 6, by - 4); ctx.lineTo(ax, ay + 2); ctx.stroke();
+    ctx.strokeStyle = night ? '#173826' : '#2f6e2b'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(rx0, by); ctx.lineTo(ax, ay); ctx.lineTo(rx1, by); ctx.closePath(); ctx.stroke();
+  }
+  for (let i = 0; i < 6; i++) vineLeafShape(P.deckX0 + 50 + i * 30, dY - 104, 22, 7, 1.2, VINE_COL.leafDk);
 }
 function vineDrawMonkey(x, y, cheer) {
   const bob = reduceMotion ? 0 : cheer > 0 ? Math.abs(Math.sin(G.clock * 12)) * 8 : Math.sin(G.clock * 2) * 1.5;

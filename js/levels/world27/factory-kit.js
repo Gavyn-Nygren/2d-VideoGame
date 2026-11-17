@@ -257,20 +257,14 @@ function rf27BackdropNear(camX, camY, look, L, t) {
     ctx.setLineDash([]); ctx.globalAlpha = 1;
   }
   // a hazy row of machines along the bottom of the hall: tanks, a chimney, control cabinets with blinking lights
+  // (the machines are one picture per look with seams, bands, rivets, pipes, gauges and vents; the lights are live)
   {
-    const mx0 = -((camX * 0.45) % 640) - 640, base = H + 20 - camY * 0.45, mc = mixCol(L.far, L.bot, 0.35), mlit = mixCol(L.far, L.bot, 0.55);
+    const mx0 = -((camX * 0.45) % 640) - 640, base = H + 20 - camY * 0.45;
+    const pic = rf27Pic('w27mach|' + look, 640, 280, c => rf27MachineArt(c, L));
     for (let x = mx0; x < W + 640; x += 640) {
       if (x + 600 < 0 || x + 30 > W) continue;
-      ctx.fillStyle = mc;
-      rr(x + 30, base - 170, 90, 170, 30); ctx.fill();
-      ctx.fillRect(x + 150, base - 260, 34, 260);
-      rr(x + 220, base - 120, 120, 120, 6); ctx.fill();
-      rr(x + 380, base - 200, 70, 200, 35); ctx.fill(); ctx.fillRect(x + 360, base - 90, 110, 90);
-      ctx.fillRect(x + 500, base - 140, 100, 140);
-      ctx.fillStyle = mlit; ctx.fillRect(x + 40, base - 150, 6, 130); ctx.fillRect(x + 390, base - 180, 6, 160); ctx.fillRect(x + 150, base - 260, 34, 6);
-      ctx.fillRect(x + 30, base - 120, 90, 4); ctx.fillRect(x + 30, base - 70, 90, 4);
+      rf27Blit(pic, x, base - 280, 640, 280);
       for (let k = 0; k < 4; k++) { const on = Math.sin(t * 3 + k * 1.7 + x * 0.01) > 0; ctx.fillStyle = on ? L.light : 'rgba(0,0,0,0.2)'; ctx.globalAlpha = on ? 0.55 : 1; circle(x + 240 + k * 22, base - 96, 4); ctx.fill(); ctx.globalAlpha = 1; }
-      ctx.fillStyle = 'rgba(0,0,20,0.12)'; ctx.fillRect(x + 236, base - 80, 88, 50); ctx.fillRect(x + 512, base - 126, 76, 30);
     }
   }
   // pipes along the ceiling, with warning lights
@@ -293,6 +287,108 @@ function rf27BackdropNear(camX, camY, look, L, t) {
     if (on) { ctx.fillStyle = 'rgba(255,255,255,0.12)'; circle(x + 200, 56 - camY * 0.6, 16); ctx.fill(); ctx.globalAlpha = 0.07; ctx.fillStyle = L.light; ctx.beginPath(); ctx.moveTo(x + 194, 60 - camY * 0.6); ctx.lineTo(x + 206, 60 - camY * 0.6); ctx.lineTo(x + 250, 220 - camY * 0.6); ctx.lineTo(x + 150, 220 - camY * 0.6); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1; }
   }
 }
+// still art painted once into a picture at the screen's scale (keyed) and copied onto whole device pixels
+// (Nov 2026 "richer props" pass: floors, crates, walls and machine parts got real detail; caching keeps it cheap)
+const rf27Pics = {};
+function rf27Scale() { return Math.max(1, Math.min(3, canvas.width / W)); }
+function rf27Pic(key, w, h, paint) {
+  const sc = rf27Scale(), k = key + '|' + sc;
+  let p = rf27Pics[k];
+  if (!p) { p = document.createElement('canvas'); p.width = Math.ceil(w * sc); p.height = Math.ceil(h * sc); const c = p.getContext('2d'); c.scale(sc, sc); paint(c, w, h); rf27Pics[k] = p; }
+  return p;
+}
+function rf27Blit(pic, x, y, w, h) {
+  const m = ctx.getTransform();
+  if (m.b || m.c || Math.abs(m.a * w - pic.width) > 2 || Math.abs(m.d * h - pic.height) > 2) { ctx.drawImage(pic, x, y, w, h); return; }
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(pic, Math.round(m.a * x + m.e), Math.round(m.d * y + m.f)); ctx.restore();
+}
+// '#rrggbb' mixes that stay '#rrggbb' (so they can be shaded again)
+function rf27Mix(a, b, t) {
+  const p = c => { const n = parseInt(String(c).slice(1, 7), 16) || 0; return [n >> 16, (n >> 8) & 255, n & 255]; };
+  const A = p(a), B = p(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+const rf27Dk = (c, t) => rf27Mix(c, '#14142a', t), rf27Lt = (c, t) => rf27Mix(c, '#ffffff', t);
+// a riveted steel panel painted into c: brushed fill, inset bevel, corner rivets, the odd scratch; v picks a variant
+// (0 plain, 1 vent grille, 2 stencil plate, 3 embossed cross brace)
+function rf27PanelArt(c, x, y, w, h, col, v, seed) {
+  c.fillStyle = col; c.fillRect(x, y, w, h);
+  const g = c.createLinearGradient(x, y, x + w, y + h); g.addColorStop(0, 'rgba(255,255,255,0.10)'); g.addColorStop(0.5, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(20,18,40,0.14)');
+  c.fillStyle = g; c.fillRect(x, y, w, h);
+  c.strokeStyle = 'rgba(255,255,255,0.05)'; c.lineWidth = 1; c.beginPath();
+  for (let k = 3; k < h; k += 3) { c.moveTo(x + 2, y + k); c.lineTo(x + w - 2, y + k); }
+  c.stroke();
+  // inset bevel
+  c.fillStyle = 'rgba(255,255,255,0.16)'; c.fillRect(x + 4, y + 4, w - 8, 1.5); c.fillRect(x + 4, y + 4, 1.5, h - 8);
+  c.fillStyle = 'rgba(20,18,40,0.26)'; c.fillRect(x + 4, y + h - 5.5, w - 8, 1.5); c.fillRect(x + w - 5.5, y + 4, 1.5, h - 8);
+  if (v === 1) {
+    const vy = y + h * 0.3;
+    c.fillStyle = rf27Dk(col, 0.35); c.fillRect(x + w * 0.25 - 2, vy - 2, w * 0.5 + 4, 26);
+    for (let k = 0; k < 5; k++) { c.fillStyle = '#1c1a30'; c.fillRect(x + w * 0.25, vy + k * 5, w * 0.5, 2.6); c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(x + w * 0.25, vy + k * 5 + 2.6, w * 0.5, 0.8); }
+  } else if (v === 2) {
+    const py = y + h * 0.35, pw = Math.min(30, w - 16);
+    c.fillStyle = rf27Lt(col, 0.25); c.fillRect(x + w / 2 - pw / 2, py, pw, 14);
+    c.fillStyle = 'rgba(20,18,40,0.3)'; c.fillRect(x + w / 2 - pw / 2, py + 12.5, pw, 1.5);
+    c.fillStyle = 'rgba(20,18,40,0.55)'; c.font = '700 9px ' + RF27.FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(['B-27', 'R-12', 'BAY 3', 'K-9'][seed % 4], x + w / 2, py + 7.5);
+    for (const sx of [x + w / 2 - pw / 2 + 2.5, x + w / 2 + pw / 2 - 2.5]) { c.fillStyle = 'rgba(20,18,40,0.5)'; c.beginPath(); c.arc(sx, py + 7, 1, 0, 7); c.fill(); }
+  } else if (v === 3) {
+    c.strokeStyle = 'rgba(20,18,40,0.22)'; c.lineWidth = 3; c.beginPath(); c.moveTo(x + 8, y + 8); c.lineTo(x + w - 8, y + h - 8); c.moveTo(x + w - 8, y + 8); c.lineTo(x + 8, y + h - 8); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.12)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x + 8, y + 7); c.lineTo(x + w - 8, y + h - 9); c.moveTo(x + w - 9, y + 8); c.lineTo(x + 7, y + h - 8); c.stroke();
+  }
+  // scratches and an oil spot now and then
+  const hh = hash(seed, 271);
+  if (hh % 3 === 0) { c.strokeStyle = 'rgba(255,255,255,0.18)'; c.lineWidth = 0.8; c.beginPath(); const sx = x + 8 + hh % Math.max(1, w - 24), sy = y + 10 + (hh >>> 6) % Math.max(1, h - 20); c.moveTo(sx, sy); c.lineTo(sx + 10, sy + 3); c.moveTo(sx + 3, sy + 3); c.lineTo(sx + 9, sy + 5); c.stroke(); }
+  if (hh % 5 === 1) { c.fillStyle = 'rgba(20,18,40,0.12)'; c.beginPath(); c.ellipse(x + w * 0.6, y + h - 10, 9, 3, 0, 0, 7); c.fill(); }
+  // rivets with a lit side
+  for (const [a, b] of [[7, 7], [w - 7, 7], [7, h - 7], [w - 7, h - 7]]) {
+    c.fillStyle = rf27Dk(col, 0.45); c.beginPath(); c.arc(x + a, y + b, 2.2, 0, 7); c.fill();
+    c.fillStyle = rf27Lt(col, 0.45); c.beginPath(); c.arc(x + a - 0.6, y + b - 0.6, 1, 0, 7); c.fill();
+  }
+  c.strokeStyle = rf27Dk(col, 0.4); c.lineWidth = 1; c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+}
+// the background machines (640 x 280, base line at y 280): same places and sizes as before, now with detail
+function rf27MachineArt(c, L) {
+  const mc = rf27Mix(L.far, L.bot, 0.35), mlit = rf27Mix(L.far, L.bot, 0.55), mdk = rf27Mix(L.far, L.bot, 0.2), b = 280;
+  const seam = 'rgba(20,18,40,0.14)', hi = 'rgba(255,255,255,0.10)';
+  const rivRow = (x0, x1, y, step = 12) => { c.fillStyle = mdk; for (let x = x0; x <= x1; x += step) { c.beginPath(); c.arc(x, y, 1.5, 0, 7); c.fill(); } c.fillStyle = hi; for (let x = x0; x <= x1; x += step) { c.beginPath(); c.arc(x - 0.5, y - 0.5, 0.7, 0, 7); c.fill(); } };
+  // tank (rounded) with bands, a gauge and a pipe
+  c.fillStyle = mc; rrOn(c, 30, b - 170, 90, 170, 30); c.fill();
+  c.fillStyle = mdk; c.fillRect(92, b - 160, 28, 160);
+  c.fillStyle = mlit; c.fillRect(40, b - 150, 6, 130);
+  for (const by of [b - 120, b - 70]) { c.fillStyle = mlit; c.fillRect(30, by, 90, 4); c.fillStyle = seam; c.fillRect(30, by + 4, 90, 2); rivRow(36, 114, by + 2, 10); }
+  c.fillStyle = mdk; c.beginPath(); c.arc(75, b - 145, 11, 0, 7); c.fill(); c.fillStyle = mlit; c.beginPath(); c.arc(75, b - 145, 8, 0, 7); c.fill();
+  c.strokeStyle = mdk; c.lineWidth = 1.5; c.beginPath(); c.moveTo(75, b - 145); c.lineTo(80, b - 150); c.stroke();
+  c.fillStyle = mc; c.fillRect(120, b - 40, 30, 10); c.fillStyle = mlit; c.fillRect(120, b - 40, 30, 2);
+  // chimney with bands and ladder rungs
+  c.fillStyle = mc; c.fillRect(150, b - 260, 34, 260);
+  c.fillStyle = mdk; c.fillRect(174, b - 260, 10, 260); c.fillStyle = mlit; c.fillRect(150, b - 260, 34, 6); c.fillRect(153, b - 254, 3, 254);
+  for (let y = b - 230; y < b; y += 46) { c.fillStyle = mdk; c.fillRect(148, y, 38, 5); c.fillStyle = hi; c.fillRect(148, y, 38, 1.2); }
+  c.strokeStyle = mdk; c.lineWidth = 1.5; for (let y = b - 240; y < b - 10; y += 12) { c.beginPath(); c.moveTo(186, y); c.lineTo(194, y); c.stroke(); }
+  c.beginPath(); c.moveTo(186, b - 245); c.lineTo(186, b); c.moveTo(194, b - 245); c.lineTo(194, b); c.stroke();
+  // control cabinet with a door, vents and a dial (the light row is live)
+  c.fillStyle = mc; rrOn(c, 220, b - 120, 120, 120, 6); c.fill();
+  c.fillStyle = 'rgba(0,0,20,0.12)'; c.fillRect(236, b - 80, 88, 50);
+  c.strokeStyle = seam; c.lineWidth = 1.5; c.strokeRect(232, b - 110, 96, 104);
+  c.fillStyle = hi; c.fillRect(232, b - 110, 96, 1.5);
+  for (let k = 0; k < 5; k++) { c.fillStyle = mdk; c.fillRect(244, b - 72 + k * 8, 72, 3); c.fillStyle = hi; c.fillRect(244, b - 69 + k * 8, 72, 1); }
+  c.fillStyle = mdk; c.fillRect(320, b - 60, 4, 14);
+  c.fillStyle = mlit; c.fillRect(220, b - 120, 120, 3);
+  rivRow(228, 334, b - 114, 106);
+  // tall dome tank with its base box, hoops and a pipe elbow
+  c.fillStyle = mc; rrOn(c, 380, b - 200, 70, 200, 35); c.fill(); c.fillRect(360, b - 90, 110, 90);
+  c.fillStyle = mdk; c.fillRect(432, b - 180, 18, 90); c.fillStyle = mlit; c.fillRect(390, b - 180, 6, 160);
+  for (const by of [b - 150, b - 115]) { c.fillStyle = mlit; c.fillRect(380, by, 70, 3); c.fillStyle = seam; c.fillRect(380, by + 3, 70, 2); }
+  c.strokeStyle = seam; c.lineWidth = 1.5; c.strokeRect(366, b - 84, 98, 78); rivRow(372, 458, b - 78, 14);
+  c.strokeStyle = mc; c.lineWidth = 10; c.beginPath(); c.moveTo(450, b - 160); c.lineTo(480, b - 160); c.lineTo(480, b - 140); c.stroke();
+  c.strokeStyle = mlit; c.lineWidth = 2; c.beginPath(); c.moveTo(450, b - 164); c.lineTo(484, b - 164); c.stroke();
+  // a press machine box with a window and stacked crates in silhouette
+  c.fillStyle = mc; c.fillRect(500, b - 140, 100, 140);
+  c.fillStyle = 'rgba(0,0,20,0.12)'; c.fillRect(512, b - 126, 76, 30);
+  c.fillStyle = hi; c.fillRect(514, b - 124, 30, 3);
+  c.fillStyle = mlit; c.fillRect(500, b - 140, 100, 3); c.fillStyle = mdk; c.fillRect(588, b - 137, 12, 137);
+  c.strokeStyle = seam; c.lineWidth = 1.5; for (let y = b - 86; y < b; y += 28) { c.beginPath(); c.moveTo(500, y); c.lineTo(600, y); c.stroke(); }
+  rivRow(506, 594, b - 132, 11);
+  c.fillStyle = mdk; c.fillRect(604, b - 40, 30, 40); c.fillRect(608, b - 64, 22, 24); c.fillStyle = hi; c.fillRect(604, b - 40, 30, 1.5); c.fillRect(608, b - 64, 22, 1.5);
+}
 function rf27Floor(x, y, w, h, look) {
   const L = RF27.LOOKS[look] || RF27.LOOKS.bolts;
   ctx.fillStyle = L.side; ctx.fillRect(x, y, w, h);
@@ -300,53 +396,124 @@ function rf27Floor(x, y, w, h, look) {
   // the marks are only laid where the screen can see them (a floor can run far off-screen, and deep below it)
   const m = ctx.getTransform(), sx = m.a || 1, sy = m.d || 1;
   const vx0 = Math.max(x, (-m.e) / sx - 60), vx1 = Math.min(x + w, (canvas.width - m.e) / sx + 60), vy1 = Math.min(y + h, (canvas.height - m.f) / sy + 40);
-  const k0 = x + Math.max(0, Math.floor((vx0 - x) / 60) * 60);
-  ctx.fillStyle = L.floor; ctx.fillRect(x, y, w, th);
-  // tread plate on the top strip
-  if (th >= 12) {
-    // short slanted ridges, all in one path
-    ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.beginPath();
-    for (let k = x + 6 + Math.max(0, Math.floor((vx0 - x) / 12) * 12); k < Math.min(x + w - 6, vx1); k += 12) { const cy = y + 7 + ((k - x) / 12 % 2 ? 2 : -1); ctx.moveTo(k - 2.3, cy - 2.9); ctx.lineTo(k + 3.5, cy + 1.2); ctx.lineTo(k + 2.3, cy + 2.9); ctx.lineTo(k - 3.5, cy - 1.2); ctx.closePath(); }
-    ctx.fill();
-  }
-  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(x, y, w, 2.5);
-  ctx.fillStyle = 'rgba(28,26,54,0.3)'; ctx.fillRect(x, y + th - 2, w, 2);
-  if (h > th) { ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.fillRect(x, y + th, w, 5); }
-  ctx.fillStyle = 'rgba(28,26,54,0.35)';
-  ctx.beginPath(); for (let k = x + 10 + Math.max(0, Math.floor((vx0 - x) / 30) * 30); k < Math.min(x + w - 4, vx1); k += 30) { ctx.moveTo(k + 2, y + 8); ctx.arc(k, y + 8, 2, 0, 7); } ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.beginPath(); for (let k = x + 10 + Math.max(0, Math.floor((vx0 - x) / 30) * 30); k < Math.min(x + w - 4, vx1); k += 30) { ctx.moveTo(k + 0.2, y + 7.4); ctx.arc(k - 0.6, y + 7.4, 0.8, 0, 7); } ctx.fill();
+  // riveted side panels (pictures: inset bevel, rivets, vents, stencil plates, braces, scratches), clipped to the floor
   if (h > 30) {
-    // riveted side panels with seams, lit on the left edge
-    ctx.fillStyle = 'rgba(28,26,54,0.22)'; for (let k = k0; k < vx1; k += 60) ctx.fillRect(k + 57, y + 18, 3, h - 18);
-    ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (let k = k0; k < vx1; k += 60) ctx.fillRect(k + 1, y + 18, 2, h - 18);
-    ctx.fillStyle = 'rgba(28,26,54,0.3)'; ctx.beginPath();
-    for (let k = k0; k < vx1; k += 60) for (let yy = y + 26; yy < Math.min(y + h - 4, vy1); yy += 40) { ctx.moveTo(k + 9.8, yy); ctx.arc(k + 8, yy, 1.8, 0, 7); ctx.moveTo(k + 51.8, yy); ctx.arc(k + 50, yy, 1.8, 0, 7); }
-    ctx.fill();
+    const pw = w <= 120 ? w : 60, ph = 80, k0 = x + Math.max(0, Math.floor((vx0 - x) / pw) * pw);
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y + th, w, h - th); ctx.clip();
+    for (let k = k0; k < vx1; k += pw) {
+      const col = Math.round((k - x) / pw);
+      for (let yy = y + th + 4, row = 0; yy < vy1; yy += ph, row++) {
+        const hh = hash(col + Math.round(x / 7), row * 13 + 5), v = row > 1 ? 0 : hh % 6 < 3 ? 0 : hh % 6 - 2;
+        rf27Blit(rf27Pic('w27panel|' + look + '|' + pw + '|' + Math.min(v, 3) + '|' + (hh % 3), pw, ph, c => rf27PanelArt(c, 0, 0, pw, ph, L.side, Math.min(v, 3), hh % 3 + v * 3)), k, yy, pw, ph);
+      }
+    }
+    // a soft shadow under the tread strip
+    const g = ctx.createLinearGradient(0, y + th, 0, y + th + 12); g.addColorStop(0, 'rgba(20,18,40,0.35)'); g.addColorStop(1, 'rgba(20,18,40,0)');
+    ctx.fillStyle = g; ctx.fillRect(x, y + th, w, 12);
+    ctx.restore();
+  } else if (h > th) { ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.fillRect(x, y + th, w, 5); }
+  // the top: diamond tread plate (raised lozenges in two directions, each with a dark side and a lit side)
+  ctx.fillStyle = L.floor; ctx.fillRect(x, y, w, th);
+  if (th >= 12) {
+    const a0 = x + 6 + Math.max(0, Math.floor((vx0 - x) / 12) * 12), a1 = Math.min(x + w - 6, vx1);
+    for (const [col, ox, oy] of [['rgba(28,26,54,0.22)', 0.7, 0.7], ['rgba(255,255,255,0.22)', -0.5, -0.5]]) {
+      ctx.fillStyle = col; ctx.beginPath();
+      for (let k = a0; k < a1; k += 12) {
+        const odd = ((k - x - 6) / 12) % 2, cy = y + 7.5 + ox * 0 + oy, cx = k + ox;
+        if (odd) { ctx.moveTo(cx - 3.5, cy + 1.6); ctx.lineTo(cx + 2.3, cy - 2.9); ctx.lineTo(cx + 3.5, cy - 1.6); ctx.lineTo(cx - 2.3, cy + 2.9); }
+        else { ctx.moveTo(cx - 2.3, cy - 2.9); ctx.lineTo(cx + 3.5, cy + 1.6); ctx.lineTo(cx + 2.3, cy + 2.9); ctx.lineTo(cx - 3.5, cy - 1.6); }
+        ctx.closePath();
+      }
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(28,26,54,0.08)'; ctx.fillRect(x, y + th * 0.55, w, th * 0.45);
   }
-  ctx.strokeStyle = shade(L.side, 0.35); ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.75, y + 0.75, w - 1.5, h - 1.5);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x, y, w, 2.5);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, y + 2.5, w, 1);
+  ctx.fillStyle = 'rgba(28,26,54,0.35)'; ctx.fillRect(x, y + th - 2, w, 2);
+  // countersunk bolts along the strip, every 60 px, with a lit rim
+  ctx.fillStyle = 'rgba(28,26,54,0.4)';
+  ctx.beginPath(); for (let k = x + 10 + Math.max(0, Math.floor((vx0 - x) / 60) * 60); k < Math.min(x + w - 4, vx1); k += 60) { ctx.moveTo(k + 2.4, y + 7.5); ctx.arc(k, y + 7.5, 2.4, 0, 7); } ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath(); for (let k = x + 10 + Math.max(0, Math.floor((vx0 - x) / 60) * 60); k < Math.min(x + w - 4, vx1); k += 60) { ctx.moveTo(k + 0.4, y + 6.8); ctx.arc(k - 0.6, y + 6.8, 0.9, 0, 7); } ctx.fill();
+  // lit top-left corner and a dark outline in the floor's own shade
+  ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(x, y, 2, Math.min(h, 60));
+  ctx.strokeStyle = shade(L.side, 0.4); ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.75, y + 0.75, w - 1.5, h - 1.5);
 }
-// kind: 'metal' (magnetic, grey-blue), 'wood', 'gold', 'spring'
+// kind: 'metal' (magnetic, grey-blue), 'wood', 'gold', 'spring' (a picture per size and kind)
 function rf27Crate(x, y, w, h, kind = 'metal', t = 0) {
-  const pal = { metal: ['#9aa8c8', '#5d6a8e', '#c4cee6'], wood: ['#d39a5c', '#8e5a2e', '#e8b882'], gold: ['#ffd36b', '#b9850f', '#fff0b0'], spring: ['#8fd8b0', '#3f8a66', '#c8f2da'] }[kind] || ['#9aa8c8', '#5d6a8e', '#c4cee6'];
-  ctx.fillStyle = pal[0]; ctx.strokeStyle = pal[1]; ctx.lineWidth = 3;
-  rr(x + 1.5, y + 1.5, w - 3, h - 3, 5); ctx.fill();
-  ctx.fillStyle = 'rgba(28,26,54,0.16)'; ctx.fillRect(x + 4, y + h - 10, w - 8, 6); ctx.fillRect(x + w - 10, y + 6, 6, h - 12);
-  ctx.stroke();
-  ctx.fillStyle = pal[2]; ctx.fillRect(x + 6, y + 5, w - 12, 4);
-  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x + 4, y + 6, 3, h - 14);
+  rf27Blit(rf27Pic('w27crate|' + kind + '|' + w + '|' + h + '|' + (!document.fonts || document.fonts.status === 'loaded'), w, h, c => rf27CrateArt(c, w, h, kind)), x, y, w, h);
+  void t;
+}
+function rf27CrateArt(c, w, h, kind) {
+  const pal = { metal: ['#9aa8c8', '#4d5a7e', '#c4cee6'], wood: ['#d39a5c', '#7e4a22', '#e8b882'], gold: ['#ffd36b', '#a9750a', '#fff0b0'], spring: ['#8fd8b0', '#2f7a56', '#c8f2da'] }[kind] || ['#9aa8c8', '#4d5a7e', '#c4cee6'];
+  const [base, dark, lit] = pal, m = Math.max(5, Math.round(Math.min(w, h) * 0.12));
   if (kind === 'wood') {
-    ctx.strokeStyle = pal[1]; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + 6, y + 6); ctx.lineTo(x + w - 6, y + h - 6); ctx.moveTo(x + w - 6, y + 6); ctx.lineTo(x + 6, y + h - 6); ctx.stroke();
-  } else {
-    ctx.fillStyle = pal[1];
-    const riv = [[8, 8], [w - 8, 8], [8, h - 8], [w - 8, h - 8]];
-    ctx.fillStyle = pal[1]; ctx.beginPath(); for (const [a, b] of riv) { ctx.moveTo(x + a + 2.5, y + b); ctx.arc(x + a, y + b, 2.5, 0, 7); } ctx.fill();
-    ctx.fillStyle = pal[2]; ctx.beginPath(); for (const [a, b] of riv) { ctx.moveTo(x + a + 0.2, y + b - 0.7); ctx.arc(x + a - 0.7, y + b - 0.7, 0.9, 0, 7); } ctx.fill();
-    ctx.fillStyle = pal[1];
-    if (kind === 'spring') { ctx.strokeStyle = pal[1]; ctx.lineWidth = 2.5; ctx.beginPath(); for (let k = 0; k <= 6; k++) ctx.lineTo(x + w * 0.25 + (k % 2) * w * 0.5, y + h * 0.25 + k * h * 0.5 / 6); ctx.stroke(); }
-    else if (kind === 'gold') { ctx.fillStyle = '#fff6c8'; circle(x + w / 2, y + h / 2, Math.min(w, h) * 0.16); ctx.fill(); }
-    else { ctx.fillStyle = 'rgba(28,26,54,0.25)'; ctx.font = Math.round(Math.min(w, h) * 0.34) + 'px ' + RF27.DISPLAY; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Fe', x + w / 2, y + h / 2 + 2); }
+    // planks with grain and knots, a nailed frame and a diagonal brace
+    c.save(); rrOn(c, 1.5, 1.5, w - 3, h - 3, 4); c.clip();
+    const n = Math.max(3, Math.round(h / 14)), bh = h / n;
+    for (let k = 0; k < n; k++) {
+      const pc = rf27Mix(base, k % 2 ? '#ffffff' : '#3a1a08', 0.06 + (hash(k, w) % 3) * 0.03);
+      c.fillStyle = pc; c.fillRect(0, k * bh, w, bh);
+      c.strokeStyle = rf27Dk(base, 0.3); c.lineWidth = 0.7;
+      for (let g = 0; g < 2; g++) { const gy = k * bh + bh * (0.3 + g * 0.35); c.beginPath(); c.moveTo(2, gy); c.bezierCurveTo(w * 0.3, gy + 1.5, w * 0.6, gy - 1.5, w - 2, gy + 0.5); c.stroke(); }
+      c.fillStyle = 'rgba(60,30,10,0.35)'; c.fillRect(0, (k + 1) * bh - 1.2, w, 1.2);
+      c.fillStyle = 'rgba(255,240,210,0.25)'; c.fillRect(0, k * bh, w, 1);
+      if (hash(k, h) % 3 === 0) { c.fillStyle = rf27Dk(base, 0.35); c.beginPath(); c.ellipse(w * (0.25 + (hash(k, 3) % 50) / 100), k * bh + bh / 2, 2.6, 1.4, 0, 0, 7); c.fill(); }
+    }
+    c.restore();
+    // frame and brace
+    c.fillStyle = rf27Dk(base, 0.12);
+    c.fillRect(1.5, 1.5, w - 3, m); c.fillRect(1.5, h - 1.5 - m, w - 3, m); c.fillRect(1.5, 1.5, m, h - 3); c.fillRect(w - 1.5 - m, 1.5, m, h - 3);
+    c.save(); c.beginPath(); c.rect(m, m, w - 2 * m, h - 2 * m); c.clip();
+    c.strokeStyle = rf27Dk(base, 0.12); c.lineWidth = m * 0.9; c.beginPath(); c.moveTo(m, h - m); c.lineTo(w - m, m); c.stroke();
+    c.strokeStyle = 'rgba(255,240,210,0.3)'; c.lineWidth = 1; c.beginPath(); c.moveTo(m, h - m - m * 0.45); c.lineTo(w - m - m * 0.45, m); c.stroke();
+    c.restore();
+    c.fillStyle = 'rgba(255,240,210,0.35)'; c.fillRect(2, 2, w - 4, 1.2); c.fillRect(2, 2, 1.2, h - 4);
+    c.fillStyle = 'rgba(40,20,5,0.3)'; c.fillRect(2, h - m - 1.5, w - 4, m); c.fillRect(w - m - 1.5, 2, m, h - 4);
+    for (const [a, b] of [[m / 2 + 1.5, m / 2 + 1.5], [w - m / 2 - 1.5, m / 2 + 1.5], [m / 2 + 1.5, h - m / 2 - 1.5], [w - m / 2 - 1.5, h - m / 2 - 1.5]]) { c.fillStyle = '#4a4a5a'; c.beginPath(); c.arc(a, b, 1.4, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(a - 0.9, b - 1, 0.8, 0.8); }
+    c.strokeStyle = dark; c.lineWidth = 2.5; rrOn(c, 1.5, 1.5, w - 3, h - 3, 4); c.stroke();
+    return;
   }
+  // steel (and gold and spring) crates: a framed box with a recessed face, corner brackets, rivets, a label
+  const g = c.createLinearGradient(0, 0, w, h); g.addColorStop(0, rf27Lt(base, 0.12)); g.addColorStop(0.55, base); g.addColorStop(1, rf27Dk(base, 0.18));
+  c.fillStyle = g; rrOn(c, 1.5, 1.5, w - 3, h - 3, 5); c.fill();
+  // the recessed face (dark top-left inner edge, lit bottom-right: it sits back)
+  c.fillStyle = rf27Dk(base, 0.08); c.fillRect(m, m, w - 2 * m, h - 2 * m);
+  c.fillStyle = 'rgba(20,18,40,0.28)'; c.fillRect(m, m, w - 2 * m, 2); c.fillRect(m, m, 2, h - 2 * m);
+  c.fillStyle = 'rgba(255,255,255,0.28)'; c.fillRect(m, h - m - 1.5, w - 2 * m, 1.5); c.fillRect(w - m - 1.5, m, 1.5, h - 2 * m);
+  // brushed lines on the face
+  c.strokeStyle = 'rgba(255,255,255,0.07)'; c.lineWidth = 1; c.beginPath(); for (let k = m + 4; k < h - m; k += 3) { c.moveTo(m + 2, k); c.lineTo(w - m - 2, k); } c.stroke();
+  // corner brackets
+  c.fillStyle = rf27Dk(base, 0.22);
+  for (const [a, b, sxx, syy] of [[1.5, 1.5, 1, 1], [w - 1.5, 1.5, -1, 1], [1.5, h - 1.5, 1, -1], [w - 1.5, h - 1.5, -1, -1]]) {
+    c.beginPath(); c.moveTo(a, b); c.lineTo(a + sxx * m * 2.2, b); c.lineTo(a + sxx * m * 2.2, b + syy * m); c.lineTo(a + sxx * m, b + syy * m); c.lineTo(a + sxx * m, b + syy * m * 2.2); c.lineTo(a, b + syy * m * 2.2); c.closePath(); c.fill();
+  }
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(2.5, 2.5, w - 5, 1.5); c.fillRect(2.5, 2.5, 1.5, h - 5);
+  c.fillStyle = 'rgba(20,18,40,0.22)'; c.fillRect(2.5, h - 4.5, w - 5, 2); c.fillRect(w - 4.5, 2.5, 2, h - 5);
+  for (const [a, b] of [[m * 0.55 + 1.5, m * 0.55 + 1.5], [w - m * 0.55 - 1.5, m * 0.55 + 1.5], [m * 0.55 + 1.5, h - m * 0.55 - 1.5], [w - m * 0.55 - 1.5, h - m * 0.55 - 1.5], [w / 2, m * 0.55 + 1.5], [w / 2, h - m * 0.55 - 1.5]]) {
+    c.fillStyle = dark; c.beginPath(); c.arc(a, b, 2.2, 0, 7); c.fill();
+    c.fillStyle = lit; c.beginPath(); c.arc(a - 0.6, b - 0.6, 1, 0, 7); c.fill();
+  }
+  if (kind === 'spring') {
+    c.strokeStyle = dark; c.lineWidth = 2.5; c.beginPath(); for (let k = 0; k <= 6; k++) c.lineTo(w * 0.28 + (k % 2) * w * 0.44, h * 0.28 + k * h * 0.44 / 6); c.stroke();
+    c.strokeStyle = lit; c.lineWidth = 1; c.beginPath(); for (let k = 0; k <= 6; k++) c.lineTo(w * 0.28 + (k % 2) * w * 0.44 - 0.8, h * 0.28 + k * h * 0.44 / 6 - 0.8); c.stroke();
+  } else if (kind === 'gold') {
+    c.fillStyle = '#fff6c8'; c.beginPath(); c.arc(w / 2, h / 2, Math.min(w, h) * 0.16, 0, 7); c.fill();
+    c.strokeStyle = dark; c.lineWidth = 1.5; c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.moveTo(m + 4, h - m - 4); c.lineTo(m + 12, h - m - 4); c.lineTo(w - m - 4, m + 12); c.lineTo(w - m - 4, m + 4); c.closePath(); c.fill();
+  } else {
+    // a stencilled Fe, a hazard corner and a paper tag with a barcode
+    c.fillStyle = 'rgba(28,26,54,0.3)'; c.font = Math.round(Math.min(w, h) * 0.32) + 'px ' + RF27.DISPLAY; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Fe', w / 2, h / 2 + 1);
+    c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillText('Fe', w / 2 - 0.8, h / 2);
+    c.save(); c.beginPath(); c.moveTo(w - m, h - m - 12); c.lineTo(w - m, h - m); c.lineTo(w - m - 12, h - m); c.closePath(); c.clip();
+    c.fillStyle = '#ffc53d'; c.fillRect(w - m - 12, h - m - 12, 12, 12); c.fillStyle = '#2a2a3a'; for (let k = -12; k < 12; k += 5) { c.beginPath(); c.moveTo(w - m - 12 + k, h - m); c.lineTo(w - m - 9.5 + k, h - m); c.lineTo(w - m + 2.5 + k, h - m - 12); c.lineTo(w - m + k, h - m - 12); c.closePath(); c.fill(); }
+    c.restore();
+    const tw = Math.min(18, w * 0.26); c.fillStyle = '#f2ecd8'; c.fillRect(m + 3, m + 3, tw, 10); c.fillStyle = 'rgba(20,18,40,0.6)'; for (let k = 0; k < tw - 4; k += 2) c.fillRect(m + 5 + k, m + 5, (hash(k, w) % 2) + 0.6, 6);
+  }
+  // scuffs
+  c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(w * 0.3, h * 0.72); c.lineTo(w * 0.42, h * 0.76); c.moveTo(w * 0.62, h * 0.3); c.lineTo(w * 0.7, h * 0.27); c.stroke();
+  c.strokeStyle = dark; c.lineWidth = 2.5; rrOn(c, 1.5, 1.5, w - 3, h - 3, 5); c.stroke();
 }
 // a small rounded key chip ("F", "▲") at x, y (centre)
 function rf27Chip(x, y, label, col = C.gold, size = 13) {
