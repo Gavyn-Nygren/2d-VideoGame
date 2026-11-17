@@ -947,6 +947,7 @@ function canoeDrawRiver(st) {
     const h = hash(k, j + 31), y = canoeSY(st, k * 90 + (h % 90)), x = (h >> 8) % W;
     ctx.beginPath(); ctx.ellipse(x, y, 30 + (h >> 4) % 30, 14 + (h >> 6) % 10, 0, 0, Math.PI * 2); ctx.fill();
   }
+  canoeDrawGrass(st, d0, d1);
   const L = [], R = [];
   for (let y = -16; y <= H + 16; y += step) { const d = canoeSD(st, y), cx = canoeCX(st, d), hw = canoeHW(st, d); L.push([cx - hw, y]); R.push([cx + hw, y]); }
   // sand and mud edges
@@ -999,6 +1000,90 @@ function canoeDrawRiver(st) {
     canoeLily(x, y, 9 + (h >> 13) % 5, (h >> 3) % 6, (h & 128) !== 0);
   }
   ctx.restore();
+}
+// (art director pass, Nov 2026) the grassy banks were one flat green with a few dark ovals: now each dapple has a
+// sunny rim, and the grass between has tufts of two-tone blades, clover, tiny flowers and the odd pebble, placed by
+// hash() on a grid that scrolls with the river. The grass is still, so it is painted once per band of 136 px of river
+// (at the canvas's pixel scale) into a small cache of pictures and copied on whole pixels; the water covers the middle.
+const CANOE_GBAND = 136, CANOE_GPAD = 14, canoeGrassPics = new Map();
+let canoeGrassSc = 0;
+function canoeDrawGrass(st, d0, d1) {
+  const pal = st.pal;
+  // dapple rims (live: they follow the dapples drawn just before)
+  for (let k = Math.floor(d0 / 90); k <= Math.ceil(d1 / 90); k++) for (let j = 0; j < 3; j++) {
+    const h = hash(k, j + 31), y = canoeSY(st, k * 90 + (h % 90)), x = (h >> 8) % W, rx = 30 + (h >> 4) % 30, ry = 14 + (h >> 6) % 10;
+    ctx.strokeStyle = 'rgba(255,255,220,0.16)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, Math.PI * 1.05, Math.PI * 1.7); ctx.stroke();
+    ctx.fillStyle = 'rgba(20,60,30,0.14)'; ctx.beginPath(); ctx.ellipse(x + rx * 0.12, y + ry * 0.15, rx * 0.62, ry * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  const sc = Math.max(1, Math.min(3, canvas.width / W));
+  if (sc !== canoeGrassSc) { canoeGrassPics.clear(); canoeGrassSc = sc; }
+  const m = ctx.getTransform(), plain = m.b === 0 && m.c === 0 && Math.abs(m.a - sc) < 1e-6 && Math.abs(m.d - sc) < 1e-6;
+  for (let b = Math.floor((d0 - CANOE_GPAD) / CANOE_GBAND); b <= Math.floor((d1 + CANOE_GPAD) / CANOE_GBAND); b++) {
+    const key = pal.bank + '|' + b;
+    let pic = canoeGrassPics.get(key);
+    if (pic) { canoeGrassPics.delete(key); canoeGrassPics.set(key, pic); }
+    else {
+      if (canoeGrassPics.size >= 12) canoeGrassPics.delete(canoeGrassPics.keys().next().value);
+      pic = document.createElement('canvas'); pic.width = Math.ceil(W * sc); pic.height = Math.ceil((CANOE_GBAND + 2 * CANOE_GPAD) * sc);
+      const c = pic.getContext('2d'); c.scale(sc, sc);
+      const top = (b + 1) * CANOE_GBAND + CANOE_GPAD;
+      CK.on(c, () => canoeGrassPaint(pal, b, d => top - d));
+      canoeGrassPics.set(key, pic);
+    }
+    const yTop = canoeSY(st, (b + 1) * CANOE_GBAND + CANOE_GPAD);
+    if (plain) {
+      const sm = ctx.imageSmoothingEnabled;
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(pic, Math.round(m.e), Math.round(m.d * yTop + m.f));
+      ctx.setTransform(m); ctx.imageSmoothingEnabled = sm;
+    } else ctx.drawImage(pic, 0, yTop, W, CANOE_GBAND + 2 * CANOE_GPAD);
+  }
+}
+// the grass detail of one band of river (cells of 34 px; 4 cells to a band), at y = yOf(d)
+function canoeGrassPaint(pal, b, yOf) {
+  const cell = 34, lit = tint(pal.bank, 0.22), dk = shade(pal.bankDark, 0.12), mid = shade(pal.bank, 0.1), nx = Math.ceil(W / cell);
+  const tufts = [], lits = [], clovers = [], flowers = [], pebs = [];
+  for (let k = b * 4; k < b * 4 + 4; k++) for (let j = 0; j <= nx; j++) {
+    const h = hash(k * 131 + j, 913), r = h % 100;
+    const x = j * cell + ((h >> 7) % cell), y = yOf(k * cell + ((h >> 13) % cell));
+    if (r < 58) tufts.push(x, y, h); else if (r < 70) clovers.push(x, y, h); else if (r < 74) flowers.push(x, y, h); else if (r < 78) pebs.push(x, y, h);
+    if (r % 3 === 0) lits.push(x + 9, y + 7, h);
+  }
+  ctx.lineCap = 'round';
+  // tufts: three dark blades fanning up, then lit blades on their sunny side
+  ctx.strokeStyle = dk; ctx.lineWidth = 1.6; ctx.beginPath();
+  for (let i = 0; i < tufts.length; i += 3) {
+    const x = tufts[i], y = tufts[i + 1], h = tufts[i + 2], s = 0.8 + ((h >> 17) % 5) * 0.1;
+    ctx.moveTo(x - 3 * s, y); ctx.lineTo(x - 5 * s, y - 6 * s); ctx.moveTo(x, y); ctx.lineTo(x + 0.5, y - 8 * s); ctx.moveTo(x + 3 * s, y); ctx.lineTo(x + 6 * s, y - 5 * s);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = lit; ctx.lineWidth = 1.2; ctx.beginPath();
+  for (let i = 0; i < tufts.length; i += 3) { const x = tufts[i], y = tufts[i + 1]; ctx.moveTo(x - 1.5, y); ctx.lineTo(x - 2.5, y - 6); }
+  for (let i = 0; i < lits.length; i += 3) { const x = lits[i], y = lits[i + 1]; ctx.moveTo(x, y); ctx.lineTo(x + 1.5, y - 5); ctx.moveTo(x + 2.5, y); ctx.lineTo(x + 4.5, y - 3.5); }
+  ctx.stroke();
+  // clover: three round leaves and a lit dot
+  ctx.fillStyle = mid; ctx.beginPath();
+  for (let i = 0; i < clovers.length; i += 3) { const x = clovers[i], y = clovers[i + 1]; for (const a of [-2.3, -0.85, 1.57]) { const cx = x + Math.cos(a) * 2.6, cy = y + Math.sin(a) * 2.6; ctx.moveTo(cx + 2.4, cy); ctx.arc(cx, cy, 2.4, 0, Math.PI * 2); } }
+  ctx.fill();
+  ctx.fillStyle = lit; ctx.beginPath();
+  for (let i = 0; i < clovers.length; i += 3) { const x = clovers[i] - 2, y = clovers[i + 1] - 3; ctx.moveTo(x + 0.9, y); ctx.arc(x, y, 0.9, 0, Math.PI * 2); }
+  ctx.fill();
+  // tiny flowers: four petals round a yellow eye
+  for (let i = 0; i < flowers.length; i += 3) {
+    const x = flowers[i], y = flowers[i + 1], h = flowers[i + 2];
+    ctx.fillStyle = (h >> 9) % 3 ? '#ffffff' : pal.flower[(h >> 4) % 3];
+    ctx.beginPath(); for (let p = 0; p < 4; p++) { const a = p * 1.57 + 0.4, cx = x + Math.cos(a) * 2, cy = y + Math.sin(a) * 2; ctx.moveTo(cx + 1.6, cy); ctx.arc(cx, cy, 1.6, 0, Math.PI * 2); } ctx.fill();
+    ctx.fillStyle = '#ffc93d'; circle(x, y, 1); ctx.fill();
+  }
+  // pebbles in the grass: a soft shadow, a shaded stone and a lit dot
+  for (let i = 0; i < pebs.length; i += 3) {
+    const x = pebs[i], y = pebs[i + 1], r = 2.2 + ((pebs[i + 2] >> 5) % 3) * 0.6;
+    ctx.fillStyle = 'rgba(20,60,30,0.22)'; ctx.beginPath(); ctx.ellipse(x + 1, y + r * 0.7, r * 1.2, r * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#9b958a'; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.72, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6f6a62'; ctx.beginPath(); ctx.ellipse(x + r * 0.2, y + r * 0.25, r * 0.8, r * 0.45, 0, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x - r * 0.5, y - r * 0.45, r * 0.6, 0.9);
+  }
+  ctx.lineCap = 'butt';
 }
 function canoeLily(x, y, r, rot, flower) {
   ctx.fillStyle = '#5fbf4a'; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r, rot + 0.35, rot + Math.PI * 2 - 0.35); ctx.closePath(); ctx.fill();

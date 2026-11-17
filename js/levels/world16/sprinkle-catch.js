@@ -839,6 +839,9 @@ function sprinkleDrawFloor(st) {
       ctx.lineTo(x, y + d);
     }
     ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+    // (art director pass) the jelly's inside: a deeper glow toward the bottom, gummy bits and sprinkles set in it (each
+    // with a lit side and a dark rim) and a long glossy sheen under the surface
+    CK.pic('spjelly' + y, W, H - y, 0, 0, () => sprinkleJellyPaint(H - y), 0, y);
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     for (let i = 0; i < 9; i++) { const bx = (i * 113 + 30) % W, by = y + 46 - ((G.clock * 12 + i * 9) % 36); circle(bx, by, 3 + (i % 3)); ctx.fill(); }
     ctx.strokeStyle = 'rgba(255,225,240,0.9)'; ctx.lineWidth = 3; ctx.beginPath();
@@ -848,18 +851,36 @@ function sprinkleDrawFloor(st) {
   }
   if (tw === 'belt') {
     // a conveyor belt: rollers, a moving striped belt, arrows (flashing gold before a flip)
-    ctx.fillStyle = '#6a4a6e'; ctx.fillRect(0, y, W, H - y);
+    // (art director pass) the machine body is one cached picture: bolted side plates, a lit top rail, a dark foot and
+    // roller housings; the belt, the turning rollers and the arrows move on top of it
+    CK.pic('spbelt' + y, W, H - y, 0, 0, () => sprinkleBeltPaint(H - y), 0, y);
     ctx.fillStyle = '#f7e9f5'; ctx.fillRect(0, y, W, 14);
     const ph = ((st.belt.phase % 40) + 40) % 40;
     ctx.fillStyle = '#ffb3d4';
     for (let x = -40 + ph; x < W + 40; x += 40) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 14, y); ctx.lineTo(x + 6, y + 14); ctx.lineTo(x - 8, y + 14); ctx.closePath(); ctx.fill(); }
+    // belt treads (grooves that ride along with the stripes), a lit top edge and a shady underside
+    ctx.fillStyle = 'rgba(120,60,100,0.22)'; ctx.beginPath();
+    for (let x = -20 + (ph % 20); x < W + 20; x += 20) { ctx.moveTo(x, y + 3); ctx.lineTo(x + 2, y + 3); ctx.lineTo(x + 0.5, y + 12); ctx.lineTo(x - 1.5, y + 12); ctx.closePath(); }
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(0, y, W, 1.5);
+    ctx.fillStyle = 'rgba(90,40,80,0.35)'; ctx.fillRect(0, y + 12, W, 2);
+    // rollers: a dark rim, a shaded drum, spokes that turn with the belt and a lit hub
+    const rot = st.belt.phase / 9;
     ctx.fillStyle = '#4a3350'; for (let x = 15; x < W; x += 38) { circle(x, y + 30, 9); ctx.fill(); }
+    ctx.fillStyle = '#5e4466'; for (let x = 15; x < W; x += 38) { circle(x - 0.8, y + 29.2, 7); ctx.fill(); }
+    ctx.strokeStyle = '#2e1f33'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let x = 15; x < W; x += 38) for (let k = 0; k < 3; k++) { const a = rot + k * 2.094; ctx.moveTo(x, y + 30); ctx.lineTo(x + Math.cos(a) * 7, y + 30 + Math.sin(a) * 7); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let x = 15; x < W; x += 38) { ctx.moveTo(x + Math.cos(3.6) * 8, y + 30 + Math.sin(3.6) * 8); ctx.arc(x, y + 30, 8, 3.6, 4.9); }
+    ctx.stroke();
     ctx.fillStyle = '#c7b3cf'; for (let x = 15; x < W; x += 38) { circle(x, y + 30, 3.5); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; for (let x = 15; x < W; x += 38) { circle(x - 1, y + 29, 1.2); ctx.fill(); }
     const b = st.belt, warn = b.flipIn < 1.3 && G.match && G.match.phase === 'live', dir = Math.sign(b.v);
     if (!warn || Math.floor(G.clock * 6) % 2 === 0) for (let x = 230; x < W; x += 250) {
       ctx.fillStyle = warn ? C.gold : 'rgba(255,255,255,0.8)';
-      ctx.beginPath(); ctx.moveTo(x + dir * 20, y + 46); ctx.lineTo(x - dir * 2, y + 35); ctx.lineTo(x - dir * 2, y + 57); ctx.closePath(); ctx.fill();
-      ctx.fillRect(Math.min(x - dir * 2, x - dir * 18), y + 43, 16, 6);
+      ctx.beginPath(); ctx.moveTo(x + dir * 20, y + 46); ctx.lineTo(x - dir * 2, y + 35); ctx.lineTo(x - dir * 2, y + 43); ctx.lineTo(x - dir * 18, y + 43); ctx.lineTo(x - dir * 18, y + 49); ctx.lineTo(x - dir * 2, y + 49); ctx.lineTo(x - dir * 2, y + 57); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(46,31,51,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
     }
     return;
   }
@@ -868,6 +889,43 @@ function sprinkleDrawFloor(st) {
 }
 // (rich props pass, Nov 2026) the cake floor: sponge with air holes and crumbs, two cream fillings, a ganache layer,
 // a frosting top with piped beads, drips and lots of sprinkles
+// the conveyor's body (art director pass): plum side plates with a lit top lip, a dark seam and four bolts each, a
+// recessed roller channel, a shady foot, and a hazard stripe along the bottom
+function sprinkleBeltPaint(h) {
+  const col = '#6a4a6e';
+  ctx.fillStyle = col; ctx.fillRect(0, 0, W, h);
+  ctx.fillStyle = shade(col, 0.3); ctx.fillRect(0, 16, W, 30);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0, 16, W, 3);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(0, 44, W, 1.5);
+  for (let x = 15; x < W; x += 38) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x + 1.5, 32, 11, 11, 0, 0, Math.PI * 2); ctx.fill(); }
+  for (let x = 0; x < W; x += 120) {
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(x + 2, 48, 116, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(x + 118, 46, 2, h - 46);
+    for (const [bx, by] of [[x + 8, 54], [x + 112, 54], [x + 8, h - 12], [x + 112, h - 12]]) {
+      if (by > h - 6) continue;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.arc(bx + 0.5, by + 0.6, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = tint(col, 0.35); ctx.beginPath(); ctx.arc(bx, by, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.fillStyle = shade(col, 0.45); ctx.fillRect(0, h - 4, W, 4);
+}
+// the jelly floor's inside (art director pass)
+function sprinkleJellyPaint(h) {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(120,10,60,0.35)');
+  ctx.fillStyle = g; ctx.fillRect(0, 12, W, h - 12);
+  const cols = ['#ffd84d', '#7fe0ff', '#9cf08a', '#ffffff', '#ff8a5c'];
+  for (let i = 0; i < 72; i++) {
+    const x = CK.r(i, 61) * W, yy = 18 + CK.r(61, i) * (h - 26), col = cols[i % 5], a = CK.r(i, 62) * Math.PI;
+    ctx.save(); ctx.translate(x, yy); ctx.rotate(a); ctx.globalAlpha = 0.75;
+    if (i % 4 === 0) { ctx.fillStyle = col; rr(-4, -3, 8, 6, 3); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(-2.5, -2, 3, 1.2); ctx.strokeStyle = shade(col, 0.4); ctx.lineWidth = 0.8; rr(-4, -3, 8, 6, 3); ctx.stroke(); }
+    else { ctx.fillStyle = col; rr(-3, -1, 6, 2.2, 1.1); ctx.fill(); }
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(0, 10, W, 3);
+  ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); for (let x = 40; x < W; x += 160) { ctx.moveTo(x + 70, 20); ctx.ellipse(x + 35, 20, 35, 2.2, 0, 0, Math.PI * 2); } ctx.fill();
+}
 function sprinkleFloorPaint(y) {
   ctx.fillStyle = '#7a4a32'; ctx.fillRect(0, y, W, H - y);
   // sponge layers: a darker crumb band, a cream filling with a lit edge, crumbs

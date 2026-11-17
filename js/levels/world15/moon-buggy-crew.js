@@ -1094,7 +1094,10 @@ function buggyDrawGround(st) {
   ctx.lineTo(x1, cam.y + H + 10); ctx.closePath(); ctx.fill();
   // (rich props pass, Nov 2026) the regolith's still detail, painted once per 240 px chunk: layered rock bands, craters
   // with a shady bowl and a lit lip, buried rocks, dust specks, and pebbles and little rocks lying on top
-  const gyf = x => buggyGround(st, x), notPit = x => !buggyPitAt(st, x);
+  // (art director pass) the chunks follow the course's own ground (not the live one, which changes when a crater is
+  // filled or bridged), so a chunk's picture never shifts after it was painted
+  const gyf = x => buggyBaseGround(st, x), notPit = x => !buggyPitAt(st, x);
+  buggyStrata(x0, x1, gyf, notPit, dark);
   CK.chunks('bgG' + st.k + (dark ? 'd' : '') + '|' + st.c.len, x0, x1, 240, { x: 0, y: 0 }, gyf, 14, 220, (c0, c1) => buggySoilPaint(st, c0, c1, gyf, notPit, dark));
   // the dusty top edge
   ctx.strokeStyle = dark ? '#6d6a96' : C.grass; ctx.lineWidth = 3; ctx.lineJoin = 'round';
@@ -1162,8 +1165,85 @@ function buggyDrawGround(st) {
     }
   }
 }
+function buggyBaseGround(st, x) {
+  const a = st.c.gy, f = (x - st.c.x0) / 2, i = Math.floor(f);
+  return i < 0 ? a[0] : i >= a.length - 1 ? a[a.length - 1] : a[i] + (a[i + 1] - a[i]) * (f - i);
+}
+// (art director pass, Nov 2026) the regolith was a flat lilac fill with a few dashes: now it has continuous rock strata
+// (a shaded band with a lit top seam and a dark foot, wavy, broken at craters), rocks set into the strata, a pale
+// dusty top layer, branching fractures, dark meteorite bits with a metal glint, and chiselled stones down the crater
+// walls (inside the ground, so the hole is the same size)
+// the strata are drawn live (one path per band, cheap) rather than cached, so there is no seam between chunks
+const buggyWave = (x, d) => Math.sin(x * 0.012 + d) * 5 + Math.sin(x * 0.037 + d * 2) * 2;
+function buggyStrata(x0, x1, gy, ok, dark) {
+  const wave = buggyWave, runs = [];
+  let run = null;
+  for (let x = Math.floor(x0 / 4) * 4; x <= x1 + 4; x += 4) { if (ok(x)) { if (!run) runs.push(run = []); run.push(x); } else run = null; }
+  for (const [d, th, al] of [[46, 12, 0.16], [108, 17, 0.2], [176, 24, 0.24]]) {
+    ctx.fillStyle = dark ? 'rgba(0,0,10,' + al * 1.2 + ')' : 'rgba(40,34,90,' + al + ')';
+    ctx.beginPath();
+    for (const r of runs) {
+      r.forEach((x, i) => (i ? ctx.lineTo(x, gy(x) + d + wave(x, d)) : ctx.moveTo(x, gy(x) + d + wave(x, d))));
+      for (let i = r.length - 1; i >= 0; i--) { const x = r[i]; ctx.lineTo(x, gy(x) + d + th + wave(x, d + 1) * 0.7); }
+      ctx.closePath();
+    }
+    ctx.fill();
+    ctx.strokeStyle = dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.26)'; ctx.lineWidth = 1.3; ctx.beginPath();
+    for (const r of runs) r.forEach((x, i) => (i ? ctx.lineTo(x, gy(x) + d + wave(x, d) - 1) : ctx.moveTo(x, gy(x) + d + wave(x, d) - 1)));
+    ctx.stroke();
+    ctx.strokeStyle = dark ? 'rgba(0,0,0,0.22)' : 'rgba(40,34,90,0.24)'; ctx.lineWidth = 1.4; ctx.beginPath();
+    for (const r of runs) r.forEach((x, i) => (i ? ctx.lineTo(x, gy(x) + d + th + wave(x, d + 1) * 0.7) : ctx.moveTo(x, gy(x) + d + th + wave(x, d + 1) * 0.7)));
+    ctx.stroke();
+  }
+}
 function buggySoilPaint(st, x0, x1, gy, ok, dark) {
-  const base = dark ? '#4a4870' : '#8d8ab3';
+  const base = dark ? '#4a4870' : '#8d8ab3', stone = dark ? '#57547e' : '#a6a2c8', wave = buggyWave;
+  // a pale dusty top layer with a soft lower edge
+  ctx.fillStyle = dark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.12)'; ctx.beginPath();
+  for (let x = Math.floor(x0 / 4) * 4; x < x1; x += 4) { if (!ok(x) || !ok(x + 4)) continue; const a = gy(x), b = gy(x + 4); ctx.moveTo(x, a); ctx.lineTo(x + 4, b); ctx.lineTo(x + 4, b + 9 + Math.sin(x * 0.09) * 2); ctx.lineTo(x, a + 9 + Math.sin((x - 4) * 0.09) * 2); ctx.closePath(); }
+  ctx.fill();
+  // flat rocks set into the strata, and fractures branching out of them
+  for (let x = Math.floor(x0 / 64) * 64; x < x1; x += 64) {
+    const r = CK.r(x, 71); if (r > 0.55 || !ok(x - 14) || !ok(x + 30)) continue;
+    const d = [46, 108, 176][Math.floor(CK.r(71, x) * 3)], rx = Math.min(x + 8 + r * 30, x1 + 12), ry = gy(rx) + d + wave(rx, d) + 6, w = 9 + r * 10;
+    CK.rock(rx, ry, w, w * 0.55, stone, x + 5, { shadow: false, j: 0.18, n: 8, lw: 1.4 });
+  }
+  ctx.strokeStyle = dark ? 'rgba(0,0,0,0.3)' : 'rgba(40,34,90,0.32)'; ctx.lineWidth = 1; ctx.beginPath();
+  const lits = [];
+  for (let x = Math.floor(x0 / 90) * 90; x < x1; x += 90) {
+    const r = CK.r(x, 81); if (r > 0.6 || !ok(x) || !ok(x + 24)) continue;
+    let cx = x + r * 40, cy = gy(cx) + 20 + CK.r(81, x) * 120;
+    ctx.moveTo(cx, cy); lits.push([cx - 1, cy - 1]);
+    for (let k = 0; k < 4; k++) { cx += 4 + CK.r(x, k) * 6; cy += (CK.r(k, x) - 0.3) * 8; ctx.lineTo(cx, cy); lits.push([cx - 1, cy - 1]); if (k === 1) { ctx.lineTo(cx + 3, cy + 6); ctx.moveTo(cx, cy); } }
+  }
+  ctx.stroke();
+  ctx.strokeStyle = dark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.2)'; ctx.beginPath();
+  for (let i = 0; i < lits.length; i++) { if (i % 5 === 0) ctx.moveTo(lits[i][0], lits[i][1]); else ctx.lineTo(lits[i][0], lits[i][1]); }
+  ctx.stroke();
+  // dark meteorite bits with a metal glint
+  for (let x = Math.floor(x0 / 150) * 150; x < x1; x += 150) {
+    const r = CK.r(x, 91); if (r > 0.45 || !ok(x) || !ok(x + 20)) continue;
+    const mx = x + r * 60, my = gy(mx) + 30 + CK.r(91, x) * 120;
+    CK.rock(mx, my, 6, 4.5, dark ? '#3a3654' : '#5d587e', x + 9, { shadow: false, n: 7, lw: 1.2 });
+    ctx.fillStyle = '#e8ecff'; ctx.fillRect(mx - 2.5, my - 2, 2, 1); ctx.fillRect(mx - 2, my - 2.5, 1, 2);
+  }
+  // chiselled stones down the crater walls, set into the ground beside the hole
+  for (const p of st.c.pits) {
+    if (p.x1 < x0 - 30 || p.x0 > x1 + 30) continue;
+    for (const side of [-1, 1]) {
+      const wx = side < 0 ? p.x0 : p.x1, top = side < 0 ? p.lipY : p.rim, bot = p.rim + p.depth;
+      if (wx < x0 || wx >= x1) continue;      // each wall belongs to one chunk
+      const tones = [stone, base, dark ? '#4f4c74' : '#9894bd'];
+      for (let y = top + 5, k = 0; y < bot - 5; k++) {
+        const h = 4 + CK.r(wx + k, 4) * 4, w = 5 + CK.r(wx + k, 3) * 6, yc = y + h;
+        const u = clamp((yc - top) / Math.max(1, bot - top), 0, 1), edge = wx - side * 8 * u;
+        const cx = edge + side * (w + 1.5 + (k % 2) * 4 + CK.r(k, wx) * 3);
+        CK.rock(cx, yc, w, h, tones[Math.floor(CK.r(wx, k + 9) * 3)], wx * 7 + k, { shadow: false, n: 8, j: 0.2, lw: 1.2 });
+        if (k % 2) { const w2 = 3 + CK.r(k, wx + 2) * 3; CK.rock(cx + side * (w + w2 + 1), yc + 1, w2, h * 0.7, tones[(k + 1) % 3], wx * 7 + k + 50, { shadow: false, n: 7, lw: 1 }); }
+        y += h * 2 - 1;
+      }
+    }
+  }
   // rock bands following the surface, with a lit seam
   ctx.strokeStyle = dark ? 'rgba(0,0,0,0.16)' : 'rgba(40,36,80,0.14)'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath();
   for (const d of [34, 70, 112, 160]) for (let x = x0; x < x1; x += 8) { const r = CK.r(x, d); if (r > 0.6 || !ok(x)) continue; const y = gy(x) + d + (CK.r(d, x) - 0.5) * 8, l = 6 + r * 18; ctx.moveTo(x, y); ctx.lineTo(x + l, y + (gy(x + l) - gy(x))); }

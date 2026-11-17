@@ -879,6 +879,19 @@ function wfallRockRich(st, ch, c, r, x, y) {
     ctx.fillStyle = 'rgba(20,30,40,0.25)'; ctx.fillRect(x + 1, y + T - 2.5, T - 2, 1.5); ctx.fillRect(x + T - 2.5, y + 1, 1.5, T - 2);
     ctx.fillStyle = 'rgba(190,235,255,0.25)'; for (let k = 0; k < 3; k++) ctx.fillRect(x + 5 + k * 9 + h * 3, y + 10, 1.5, 8 + (k * 5 + h * 10) % 10);
     ctx.fillStyle = 'rgba(30,40,50,0.3)'; for (let k = 0; k < 3; k++) { circle(x + 6 + CK.r(k, c) * 18, y + 12 + CK.r(r, k) * 12, 1); ctx.fill(); }
+    // (art director pass) chisel marks, a darker wet lower half with a dark algae stain at the foot, glossy glints, a
+    // hairline crack and a chipped corner, so each block reads as a cut, soaked stone
+    ctx.fillStyle = 'rgba(20,40,60,0.16)'; ctx.fillRect(x + 2, y + T * 0.55, T - 4, T * 0.45 - 2.5);
+    ctx.fillStyle = 'rgba(30,70,60,0.28)'; ctx.beginPath(); ctx.moveTo(x + 2, y + T - 2.5);
+    for (let k = 0; k <= 6; k++) ctx.lineTo(x + 2 + k * (T - 4) / 6, y + T - 5 - CK.r(c + k, r) * 4);
+    ctx.lineTo(x + T - 2, y + T - 2.5); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(30,45,55,0.28)'; ctx.lineWidth = 0.9; ctx.beginPath();
+    for (let k = 0; k < 4; k++) { const cy = y + 7 + k * 5 + CK.r(k + c, r) * 2, cx = x + 4 + CK.r(r, k + c) * (T - 14); ctx.moveTo(cx, cy); ctx.lineTo(cx + 4 + CK.r(k, c) * 4, cy - 0.6); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(x + T * 0.3, y + T * 0.42, 4, Math.PI * 1.1, Math.PI * 1.55); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(x + T * 0.68, y + T * 0.32, 0.9); ctx.fill(); ctx.lineCap = 'butt';
+    if (h < 0.5) { ctx.strokeStyle = 'rgba(25,35,45,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + T - 2, y + 9 + h * 10); ctx.lineTo(x + T - 7, y + 13 + h * 10); ctx.lineTo(x + T - 9, y + 19 + h * 8); ctx.stroke(); }
+    if (h2 < 0.45) { const cx = h2 < 0.22 ? x + 1 : x + T - 1, sd = h2 < 0.22 ? 1 : -1; ctx.fillStyle = '#4a5860'; ctx.beginPath(); ctx.moveTo(cx, y + 1); ctx.lineTo(cx + sd * 5, y + 1); ctx.lineTo(cx, y + 5); ctx.closePath(); ctx.fill(); }
     ctx.strokeStyle = '#4a5860'; ctx.lineWidth = 1.2; ctx.strokeRect(x + 0.6, y + 0.6, T - 1.2, T - 1.2);
     return;
   }

@@ -580,9 +580,12 @@ function gravflipHullDetail(st, L) {
   for (let r = 0; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) {
     if (!solid(cc, r)) continue;
     const x = cc * T, y = r * T, h = CK.r(cc, r + 3);
-    // a bevelled plate: lit top-left lip, dark bottom-right lip
-    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + 1, y + 1, T - 2, 1.5); ctx.fillRect(x + 1, y + 1, 1.5, T - 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + 1, y + T - 2.5, T - 2, 1.5); ctx.fillRect(x + T - 2.5, y + 1, 1.5, T - 2);
+    // a bevelled plate: a sheen on the upper-left half, lit top-left lip, dark bottom-right lip, a dark seam all round
+    ctx.fillStyle = 'rgba(255,255,255,0.045)'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + T, y); ctx.lineTo(x, y + T); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.07)'; ctx.fillRect(x + 3, y + T * 0.55, T - 6, T * 0.45 - 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(x + 1, y + 1, T - 2, 1.5); ctx.fillRect(x + 1, y + 1, 1.5, T - 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.26)'; ctx.fillRect(x + 1, y + T - 2.5, T - 2, 1.5); ctx.fillRect(x + T - 2.5, y + 1, 1.5, T - 2);
+    ctx.strokeStyle = 'rgba(10,8,30,0.3)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
     // screws with a slot
     if ((cc + r) % 2 === 1) for (const [dx, dy] of [[5, 6], [T - 5, 6], [5, T - 6], [T - 5, T - 6]]) {
       ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.arc(x + dx + 0.4, y + dy + 0.5, 1.8, 0, Math.PI * 2); ctx.fill();
@@ -599,6 +602,17 @@ function gravflipHullDetail(st, L) {
     } else if (h > 0.975 && inner) {   // a hazard label
       ctx.fillStyle = 'rgba(255,210,63,0.55)'; ctx.fillRect(x + 8, y + 11, 14, 8);
       ctx.fillStyle = 'rgba(42,36,64,0.7)'; ctx.beginPath(); ctx.moveTo(x + 15, y + 12); ctx.lineTo(x + 19, y + 18); ctx.lineTo(x + 11, y + 18); ctx.closePath(); ctx.fill();
+    }
+    else if (inner && h < 0.3) {   // a riveted strap across the plate
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + 1, y + T / 2 - 4, T - 2, 9);
+      ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + 1, y + T / 2 - 4, T - 2, 7); ctx.fillRect(x + 1, y + T / 2 - 4, T - 2, 1);
+      for (const dx of [5, T / 2, T - 5]) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.arc(x + dx + 0.4, y + T / 2 + 0.4, 1.5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.arc(x + dx, y + T / 2 - 0.5, 1.1, 0, Math.PI * 2); ctx.fill(); }
+    } else if (inner && h < 0.36) {   // a stencilled panel number
+      ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.font = '700 7px "Atkinson Hyperlegible", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String.fromCharCode(65 + (cc % 6)) + (r % 9 + 1), x + T / 2, y + T / 2);
+    } else if (h > 0.42 && h < 0.48) {   // an oil streak running down from a seam
+      ctx.fillStyle = 'rgba(10,8,30,0.16)'; ctx.beginPath(); ctx.ellipse(x + 8 + h * 20, y + 6, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(x + 7 + h * 20, y + 6, 2, 9 + h * 10);
     }
     // scuffs
     if (h > 0.5 && h < 0.7) { ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 6 + h * 10, y + 15); ctx.lineTo(x + 14 + h * 10, y + 13); ctx.moveTo(x + 8, y + 22); ctx.lineTo(x + 13, y + 21); ctx.stroke(); }
@@ -641,6 +655,24 @@ function gravflipBigWindow(c, x, y) {
   c.restore();
   c.strokeStyle = '#8f95bf'; c.lineWidth = 3; c.beginPath(); c.moveTo(x, y - h / 2); c.lineTo(x, y + h / 2); c.stroke();
 }
+// a terracotta pot (art director pass): a tapered body with a lit left side and shady right, a rolled rim with a lit
+// lip, a band of soil, a painted stripe and a deep-brown outline. top: the rim's top; dir 1 = stands up, -1 = hangs
+function gravflipPot(x, top, w, h, dir) {
+  const col = '#c47a4a', hw = w / 2, bw = hw * 0.72;
+  ctx.beginPath(); ctx.moveTo(x - hw + 2, top + 4); ctx.lineTo(x + hw - 2, top + 4); ctx.lineTo(x + bw, top + h); ctx.lineTo(x - bw, top + h); ctx.closePath();
+  ctx.fillStyle = col; ctx.fill();
+  ctx.save(); ctx.clip();
+  ctx.fillStyle = shade(col, 0.22); ctx.fillRect(x + hw * 0.25, top, hw, h);
+  ctx.fillStyle = CK.lit(0.22); ctx.fillRect(x - hw, top, hw * 0.35, h);
+  ctx.fillStyle = shade(col, 0.32); ctx.fillRect(x - hw, top + h * 0.55, w, 2);
+  ctx.fillStyle = tint(col, 0.3); ctx.fillRect(x - hw, top + h * 0.55 + 2, w, 1);
+  ctx.restore();
+  ctx.strokeStyle = shade(col, 0.5); ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.fillStyle = '#5a3a26'; ctx.fillRect(x - hw + 2, top + 1, w - 4, 3);
+  ctx.fillStyle = tint(col, 0.08); rr(x - hw, top, w, 5, 2); ctx.fill();
+  ctx.fillStyle = CK.lit(0.35); ctx.fillRect(x - hw + 1, top + 0.8, w - 2, 1.2);
+  ctx.strokeStyle = shade(col, 0.5); ctx.lineWidth = 1.2; rr(x - hw, top, w, 5, 2); ctx.stroke();
+}
 function gravflipDeco(c, st) {
   if (st.style === 'dock') {
     // cargo crates and a parked shuttle silhouette
@@ -663,13 +695,22 @@ function gravflipDeco(c, st) {
     // hanging planters (they hang from the ceiling, of course) and floor pots
     for (const x of [140, 300, 440]) {
       c.strokeStyle = 'rgba(200,255,220,0.35)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, 90); c.lineTo(x, 124); c.stroke();
-      c.fillStyle = '#c47a4a'; c.beginPath(); c.moveTo(x - 14, 124); c.lineTo(x + 14, 124); c.lineTo(x + 10, 142); c.lineTo(x - 10, 142); c.closePath(); c.fill();
-      c.fillStyle = '#5fd18a'; for (let k = -2; k <= 2; k++) { c.beginPath(); c.ellipse(x + k * 6, 148 + Math.abs(k) * 4, 4, 10, k * 0.3, 0, Math.PI * 2); c.fill(); }
+      // (art director pass) shaded terracotta planters on three wires, a rolled rim, leaves with a midrib
+      c.strokeStyle = 'rgba(200,255,220,0.25)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, 104); c.lineTo(x - 12, 124); c.moveTo(x, 104); c.lineTo(x + 12, 124); c.stroke();
+      c.fillStyle = '#8f95bf'; c.beginPath(); c.arc(x, 104, 2.2, 0, Math.PI * 2); c.fill();
+      CK.on(c, () => {
+        for (let k = -2; k <= 2; k++) { ctx.fillStyle = k % 2 ? '#4fc47c' : '#5fd18a'; ctx.beginPath(); ctx.ellipse(x + k * 6, 148 + Math.abs(k) * 4, 4, 10, k * 0.3, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(20,90,50,0.5)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x + k * 6 - Math.sin(k * 0.3) * 8, 148 + Math.abs(k) * 4 - 8); ctx.lineTo(x + k * 6 + Math.sin(k * 0.3) * 8, 148 + Math.abs(k) * 4 + 8); ctx.stroke(); }
+        gravflipPot(x, 124, 28, 18, -1);
+      });
     }
     for (const x of [90, 220]) {
-      c.fillStyle = '#b8693e'; c.fillRect(x - 12, 462, 24, 18);
-      c.fillStyle = '#4fc47c'; for (let k = -2; k <= 2; k++) { c.beginPath(); c.ellipse(x + k * 5, 452 - Math.abs(k) * 3, 4, 11, k * 0.3, 0, Math.PI * 2); c.fill(); }
-      c.fillStyle = '#ff8fc7'; c.beginPath(); c.arc(x, 440, 4, 0, Math.PI * 2); c.fill();
+      CK.on(c, () => {
+        CK.shadow(x + 2, 480, 16, 3, 0.3);
+        for (let k = -2; k <= 2; k++) { ctx.fillStyle = k % 2 ? '#3fae6a' : '#4fc47c'; ctx.beginPath(); ctx.ellipse(x + k * 5, 452 - Math.abs(k) * 3, 4, 11, k * 0.3, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(20,90,50,0.5)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x + k * 5 + Math.sin(k * 0.3) * 9, 452 - Math.abs(k) * 3 - 9); ctx.lineTo(x + k * 5 - Math.sin(k * 0.3) * 9, 452 - Math.abs(k) * 3 + 9); ctx.stroke(); }
+        ctx.fillStyle = '#ff8fc7'; ctx.beginPath(); for (let p = 0; p < 5; p++) { const a = p * 1.257; ctx.moveTo(x + Math.cos(a) * 3 + 2.6, 440 + Math.sin(a) * 3); ctx.arc(x + Math.cos(a) * 3, 440 + Math.sin(a) * 3, 2.6, 0, Math.PI * 2); } ctx.fill();
+        ctx.fillStyle = '#ffe14d'; ctx.beginPath(); ctx.arc(x, 440, 1.8, 0, Math.PI * 2); ctx.fill();
+        gravflipPot(x, 462, 24, 18, 1);
+      });
     }
   } else if (st.style === 'lab') {
     // screens with wiggly graphs and bubbling tubes

@@ -467,14 +467,15 @@ CK.soil = (x0, x1, gy, ok, soil, seed, o) => {
   // bigger buried rocks deeper down
   for (let x = x0; x < x1; x += 110) {
     const r = CK.r(x, seed + 40); if (r > 0.55 || !ok(x - 20) || !ok(x + 40)) continue;
-    const bx = x + 20 + r * 50, by = gy(bx) + 72 + CK.r(seed, x) * 40, bw = 13 + r * 16;
+    // (kept inside the chunk's picture, which reaches 30 px past x1, so a rock is never cut off at a chunk seam)
+    const bw = 13 + r * 16, bx = Math.min(x + 20 + r * 50, x1 + 28 - bw * 1.25), by = gy(bx) + 72 + CK.r(seed, x) * 40;
     CK.rock(bx, by, bw, bw * 0.62, (o.peb || PEB)[Math.floor(CK.r(x, 78) * 4)], x + seed, { shadow: false, j: 0.2 });
   }
   // fossils: a little bone or a curled shell
   if (o.fossils !== false)
   for (let x = x0; x < x1; x += 160) {
     const r = CK.r(x, seed + 50); if (r > 0.5 || !ok(x)) continue;
-    const fx = x + 30 + r * 80; CK.fossil(fx, gy(fx) + 128 + CK.r(seed, x + 5) * 50, Math.floor(r * 10));
+    const fx = Math.min(x + 30 + r * 80, x1 + 12); CK.fossil(fx, gy(fx) + 128 + CK.r(seed, x + 5) * 50, Math.floor(r * 10));
   }
 };
 // the humus band under the turf for one run of ground (a strip from 3 to about 15 px under the surface)
@@ -1763,6 +1764,8 @@ function eggDrawGround(st) {
     ctx.beginPath(); pts.forEach((x, i) => { const y = yDraw(x) + off - cam.y; if (i) ctx.lineTo(x - cam.x, y); else ctx.moveTo(x - cam.x, y); }); ctx.stroke();
   };
   band(46, 7, lk.soilDark, 0.5); band(98, 4, lk.soilDark, 0.35);
+  // (art director pass) a lit seam on top of each layer and a darker foot under it, so the strata read as layers
+  band(41.5, 1.5, '#ffe6be', 0.22); band(50.5, 1.5, '#2a1608', 0.22); band(95.5, 1.2, '#ffe6be', 0.18); band(100.5, 1.2, '#2a1608', 0.2);
   ctx.globalAlpha = 1;
   // the soil's detail (layers, pebbles, buried rocks, roots, fossils) is still, so it is painted once per 240 px chunk
   // of the room into a picture and copied (rich props pass, Nov 2026)

@@ -892,13 +892,9 @@ function raptorDrawForkBack(st, f) {
   const a = Math.max(f.x0, cam.x - 40), b = Math.min(f.x1, cam.x + W + 40);
   // the gully: a shady back wall with hanging roots, the creek bed
   ctx.fillStyle = K.wall; ctx.fillRect(a, gy, b - a, cy - gy);
-  // rocky layers and cracks in the gully wall
-  for (let k = Math.floor(a / 90); k <= Math.ceil(b / 90); k++) {
-    const rx = k * 90, h0 = raptorHash(k, 41);
-    ctx.fillStyle = 'rgba(40,24,12,0.16)'; rr(rx + 4, gy + 30 + h0 * 20, 60 + h0 * 24, 10, 5); ctx.fill();
-    ctx.fillStyle = 'rgba(255,230,190,0.08)'; rr(rx + 6, gy + 28 + h0 * 20, 56 + h0 * 24, 3, 1.5); ctx.fill();
-    ctx.strokeStyle = 'rgba(40,24,12,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(rx + 70, gy + 50); ctx.lineTo(rx + 64, gy + 62 + h0 * 10); ctx.lineTo(rx + 72, cy - 10); ctx.stroke();
-  }
+  // (art director pass) the gully wall: rock ledges jutting out of the earth (each shaded, with a lit top), smaller
+  // stones set in the wall, cracks with a lit edge, moss and a dark wet band above the water; painted once per chunk
+  CK.chunks('rpgully' + Math.round(f.x0), a, b, 240, { x: 0, y: 0 }, () => gy, 0, cy - gy, (c0, c1) => raptorGullyPaint(c0, c1, f, gy, cy, K));
   ctx.fillStyle = K.wallDk; ctx.fillRect(a, gy, b - a, 22);
   for (let k = Math.floor(a / 48); k <= Math.ceil(b / 48); k++) {
     const rx = k * 48 + raptorHash(k, 21) * 30; if (rx < f.x0 + 20 || rx > f.x1 - 20) continue;
@@ -916,10 +912,13 @@ function raptorDrawForkBack(st, f) {
     ctx.beginPath(); ctx.moveTo(wx, wy); ctx.quadraticCurveTo(wx + 8, wy - 3, wx + 16, wy); ctx.stroke();
   }
   // banks: a slide down into the creek at the start, a ramp up out of it at the end
-  ctx.fillStyle = K.dirt;
-  ctx.beginPath(); ctx.moveTo(f.x0 - 1, gy); ctx.quadraticCurveTo(f.x0 + 40, gy + 30, f.x0 + 70, cy - 4); ctx.lineTo(f.x0 - 1, cy - 4); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(f.x1 + 1, gy); ctx.quadraticCurveTo(f.x1 - 40, gy + 30, f.x1 - 70, cy - 4); ctx.lineTo(f.x1 + 1, cy - 4); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = K.dirtDk; ctx.fillRect(f.x0 - 1, cy - 4, 70, H); ctx.fillRect(f.x1 - 69, cy - 4, 70, H);
+  // (art director pass) the banks were two flat brown wedges: now each is a cached picture of layered earth with a
+  // lit, grassy lip along the slope, roots, pebbles and a rock or two, a wet dark foot and an outline (same shape)
+  for (const sd of [1, -1]) {
+    const ex = sd > 0 ? f.x0 : f.x1;
+    if (ex + 80 < cam.x - 20 || ex - 80 > cam.x + W + 20) continue;
+    CK.pic('rpbank' + sd + '|' + gy + '|' + cy, 90, H - gy + 24, sd > 0 ? 10 : 80, 14, () => raptorBankPaint(sd, gy, cy, K), ex, gy);
+  }
   // the big trees at each end, with leafy tops
   for (const tx of [f.x0 - 34, f.x1 + 34]) {
     if (tx < cam.x - 140 || tx > cam.x + W + 140) continue;
@@ -940,8 +939,22 @@ function raptorDrawForkBack(st, f) {
     ctx.fillStyle = K.leafDk; circle(tx, 46, 64); ctx.fill();
     ctx.fillStyle = K.leaf; circle(tx - 40, 56, 44); ctx.fill(); circle(tx + 42, 50, 40); ctx.fill(); circle(tx, 20, 46); ctx.fill();
     ctx.fillStyle = K.leafHi; circle(tx - 20, 20, 18); ctx.fill(); circle(tx + 30, 34, 14); ctx.fill();
-    // roots at the foot
-    ctx.fillStyle = K.bark; ctx.beginPath(); ctx.moveTo(tx - 50, gy + 2); ctx.quadraticCurveTo(tx - 30, gy - 24, tx - 20, gy - 40); ctx.lineTo(tx + 20, gy - 40); ctx.quadraticCurveTo(tx + 30, gy - 24, tx + 50, gy + 2); ctx.closePath(); ctx.fill();
+    // roots at the foot (art director pass: shaded flares with bark ridges, a lit left edge and an outline)
+    CK.pic('rproots' + gy, 110, 50, 55, 44, () => {
+      ctx.fillStyle = K.bark; ctx.beginPath(); ctx.moveTo(-50, 2); ctx.quadraticCurveTo(-30, -24, -20, -40); ctx.lineTo(20, -40); ctx.quadraticCurveTo(30, -24, 50, 2); ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.fillStyle = 'rgba(40,20,8,0.25)'; ctx.beginPath(); ctx.moveTo(6, -40); ctx.lineTo(20, -40); ctx.quadraticCurveTo(30, -24, 50, 2); ctx.lineTo(8, 2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(50,28,12,0.5)'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath();
+      for (const [x0, x1] of [[-12, -38], [-4, -16], [4, 10], [12, 36]]) { ctx.moveTo(x0, -34); ctx.quadraticCurveTo((x0 + x1) / 2 - 2, -14, x1, 2); }
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,230,190,0.2)'; ctx.lineWidth = 1.2; ctx.beginPath();
+      for (const [x0, x1] of [[-10, -35], [-2, -13], [6, 13]]) { ctx.moveTo(x0, -34); ctx.quadraticCurveTo((x0 + x1) / 2, -14, x1 + 2, 1); }
+      ctx.stroke(); ctx.lineCap = 'butt';
+      ctx.fillStyle = 'rgba(40,20,8,0.3)'; ctx.fillRect(-60, -4, 120, 8);
+      ctx.restore();
+      ctx.strokeStyle = shade(K.bark, 0.5); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-50, 2); ctx.quadraticCurveTo(-30, -24, -20, -40); ctx.moveTo(20, -40); ctx.quadraticCurveTo(30, -24, 50, 2); ctx.stroke();
+      CK.moss(-34, -6, 9, 2.5, K.leafHi, 7);
+    }, tx, gy + 2);
   }
   // lianas from the canopy holding up the branch walk
   ctx.strokeStyle = '#5a8a3a'; ctx.lineWidth = 3;
@@ -964,6 +977,69 @@ function raptorDrawForkBack(st, f) {
     for (let xx = s0 + 10; xx < s1 - 6; xx += 64) { ctx.fillStyle = K.leafHi; ctx.beginPath(); ctx.ellipse(xx + 8, hy - 4, 9, 4, -0.4, 0, Math.PI * 2); ctx.fill(); }
     for (const ex of [s0, s1]) { ctx.fillStyle = K.leaf; circle(ex, hy + 8, 10); ctx.fill(); ctx.fillStyle = K.leafHi; circle(ex + 3, hy + 4, 6); ctx.fill(); }
   }
+}
+function raptorGullyPaint(x0, x1, f, gy, cy, K) {
+  const ok = x => x > f.x0 + 76 && x < f.x1 - 76;
+  // ledges: long flat rocks with a lit top lip and a shadow under them
+  for (let x = Math.floor(x0 / 90) * 90; x < x1; x += 90) {
+    const h0 = CK.r(x, 41), lx = x + 6, lw = 54 + h0 * 26, ly = gy + 32 + h0 * 22;
+    if (!ok(lx) || !ok(lx + lw)) continue;
+    ctx.fillStyle = 'rgba(30,16,6,0.28)'; ctx.beginPath(); ctx.ellipse(lx + lw / 2 + 3, ly + 11, lw / 2, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    CK.blob(lx + lw / 2, ly + 4, lw / 2, 6, x + 3, 12, 0.08, 0.7); ctx.fillStyle = tint(K.wall, 0.1); ctx.fill();
+    ctx.save(); CK.blob(lx + lw / 2, ly + 4, lw / 2, 6, x + 3, 12, 0.08, 0.7); ctx.clip();
+    ctx.fillStyle = shade(K.wall, 0.12); ctx.fillRect(lx - 4, ly + 5, lw + 8, 8);
+    ctx.fillStyle = 'rgba(255,230,190,0.28)'; ctx.fillRect(lx - 4, ly - 3, lw + 8, 3);
+    ctx.restore();
+    CK.blob(lx + lw / 2, ly + 4, lw / 2, 6, x + 3, 12, 0.08, 0.7); ctx.strokeStyle = shade(K.wall, 0.45); ctx.lineWidth = 1.4; ctx.stroke();
+  }
+  // stones set in the wall
+  for (let x = Math.floor(x0 / 34) * 34; x < x1; x += 34) {
+    const r = CK.r(x, 43); if (r > 0.5) continue;
+    const sx = x + r * 20, sy = gy + 30 + CK.r(43, x) * (cy - gy - 50), w = 5 + r * 8;
+    if (!ok(sx - w) || !ok(sx + w)) continue;
+    CK.rock(sx, sy, w, w * 0.62, ['#8a6a4a', '#7a5a3c', '#94785c'][Math.floor(r * 6) % 3], x + 1, { shadow: false, n: 8, lw: 1.2 });
+  }
+  // cracks with a lit edge
+  for (let x = Math.floor(x0 / 90) * 90; x < x1; x += 90) {
+    const h0 = CK.r(x, 45), rx = x + 66; if (!ok(rx)) continue;
+    const pts = [[rx + 4, gy + 48], [rx - 2, gy + 62 + h0 * 10], [rx + 5, gy + 80 + h0 * 8], [rx + 2, cy - 12]];
+    ctx.strokeStyle = 'rgba(40,24,12,0.45)'; ctx.lineWidth = 1.5; ctx.beginPath(); pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py))); ctx.moveTo(pts[1][0], pts[1][1]); ctx.lineTo(pts[1][0] - 8, pts[1][1] + 9); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,230,190,0.14)'; ctx.lineWidth = 1; ctx.beginPath(); pts.forEach(([px, py], i) => (i ? ctx.lineTo(px + 1.5, py) : ctx.moveTo(px + 1.5, py))); ctx.stroke();
+    if (h0 < 0.5) CK.moss(rx - 20, gy + 70 + h0 * 20, 9, 2.5, K.leaf, x);
+  }
+  // a dark wet band just above the water, with drips
+  const wa = Math.max(x0, f.x0 + 70), wb = Math.min(x1, f.x1 - 70);
+  if (wb <= wa) return;
+  ctx.fillStyle = 'rgba(30,20,10,0.22)'; ctx.fillRect(wa, cy - 16, wb - wa, 10);
+  ctx.fillStyle = 'rgba(30,20,10,0.18)'; ctx.beginPath();
+  for (let x = Math.ceil(wa / 14) * 14; x < wb - 3; x += 14) { const l = 3 + CK.r(x, 47) * 7; ctx.moveTo(x, cy - 16); ctx.lineTo(x + 3, cy - 16); ctx.lineTo(x + 1.5, cy - 16 - l); ctx.closePath(); }
+  ctx.fill();
+}
+// a creek bank (art director pass): the same wedge as before, from the trail edge (0, 0) sloping down to the water at
+// (sd * 70, cy - gy - 4), with the dark wet foot under it; sd 1 = the start of the gully, -1 = the end
+function raptorBankPaint(sd, gy, cy, K) {
+  const d = cy - gy - 4, foot = H - gy;
+  const shape = () => { ctx.beginPath(); ctx.moveTo(-sd, 0); ctx.quadraticCurveTo(sd * 40, 30, sd * 70, d); ctx.lineTo(sd * 70, foot); ctx.lineTo(-sd, foot); ctx.closePath(); };
+  shape(); ctx.fillStyle = K.dirt; ctx.fill();
+  ctx.save(); shape(); ctx.clip();
+  ctx.fillStyle = K.dirtDk; ctx.fillRect(Math.min(-1, sd * 70), d, 72, foot);
+  ctx.fillStyle = 'rgba(30,20,10,0.25)'; ctx.fillRect(Math.min(-1, sd * 70), d, 72, 8);
+  // wavy layers with lit seams
+  for (const [yy, col] of [[30, K.dirtDk], [62, K.dirtDk2]]) {
+    ctx.fillStyle = col; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.moveTo(-sd * 4, yy); ctx.quadraticCurveTo(sd * 30, yy - 6, sd * 74, yy + 4); ctx.lineTo(sd * 74, yy + 12); ctx.quadraticCurveTo(sd * 30, yy + 4, -sd * 4, yy + 10); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255,230,190,0.18)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-sd * 4, yy - 1); ctx.quadraticCurveTo(sd * 30, yy - 7, sd * 74, yy + 3); ctx.stroke();
+  }
+  // roots poking out of the slope, pebbles and a stone
+  ctx.strokeStyle = 'rgba(60,34,16,0.6)'; ctx.lineCap = 'round';
+  for (const [x, y, l] of [[18, 10, 22], [40, 30, 16]]) { ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(sd * x, y); ctx.quadraticCurveTo(sd * (x - 6), y + l * 0.6, sd * (x - 2), y + l); ctx.stroke(); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(sd * (x - 4), y + l * 0.5); ctx.lineTo(sd * (x - 10), y + l * 0.8); ctx.stroke(); }
+  ctx.lineCap = 'butt';
+  for (let k = 0; k < 9; k++) CK.pebble(sd * (6 + CK.r(k, 31 + sd) * 50), 18 + CK.r(31, k) * (d - 14), 2 + CK.r(k, 32) * 2.4, ['#9a8a7c', '#b3a08a', '#7d6e62'][k % 3], k + 40 * sd);
+  CK.rock(sd * 22, d - 18, 10, 6.5, '#9a8a7c', 61 + sd, { shadow: false, j: 0.2 });
+  ctx.restore();
+  // a lit grassy lip along the slope and an outline in deep brown
+  ctx.strokeStyle = shade(K.dirt, 0.45); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-sd, 0); ctx.quadraticCurveTo(sd * 40, 30, sd * 70, d); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,235,200,0.35)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(sd * 2, 2); ctx.quadraticCurveTo(sd * 40, 31, sd * 66, d - 2); ctx.stroke();
+  CK.tufts(sd > 0 ? 0 : -40, sd > 0 ? 40 : 0, x => { const t = (80 - Math.sqrt(Math.max(0, 6400 - 40 * Math.abs(x)))) / 20; return 60 * t * (1 - t) + d * t * t + 1; }, K.grassDk, 77 + sd, 6);
 }
 // the Treetops branch walk (rich props pass): a long bough with plated bark, knots, moss and splintered broken ends
 function raptorBranchPaint(len, d, K) {

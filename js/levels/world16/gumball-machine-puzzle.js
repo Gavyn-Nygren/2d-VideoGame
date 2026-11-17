@@ -1305,20 +1305,39 @@ function gumballDrawJackpot(st, t) {
   ctx.restore();
   bigText('JACKPOT', c.x, y - 46, 18, C.gold);
 }
+function gumballLeverBox() {
+  CK.shadow(1, 0, 15, 2.2, 0.25);
+  const base = '#4a2a3a', box = '#ffe4f1';
+  ctx.fillStyle = base; rr(-12, -6, 24, 6, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(-10, -6, 20, 1.2);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(-11, -2, 22, 1.5);
+  for (const bx of [-9, 9]) { ctx.fillStyle = '#2a1520'; ctx.beginPath(); ctx.arc(bx + 0.4, -2.6, 1.5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#c995b3'; ctx.beginPath(); ctx.arc(bx, -3, 1.1, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = shade(base, 0.4); ctx.lineWidth = 1; rr(-12, -6, 24, 6, 3); ctx.stroke();
+  ctx.fillStyle = box; rr(-9, -18, 18, 13, 4); ctx.fill();
+  ctx.save(); rr(-9, -18, 18, 13, 4); ctx.clip();
+  ctx.fillStyle = 'rgba(200,120,160,0.3)'; ctx.fillRect(3, -18, 6, 13);
+  ctx.fillStyle = 'rgba(200,120,160,0.35)'; ctx.fillRect(-9, -9, 18, 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(-7, -17, 12, 1.4); ctx.fillRect(-8, -16, 1.3, 7);
+  ctx.restore();
+  ctx.fillStyle = '#5a2a44'; rr(-3, -16, 6, 4, 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-2.5, -12.6, 5, 0.8);
+  for (const sx of [-6, 6]) { ctx.fillStyle = '#c995b3'; ctx.beginPath(); ctx.arc(sx, -8, 1.1, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#8a4a6a'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(sx - 0.7, -8.4); ctx.lineTo(sx + 0.7, -7.6); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(110,40,75,0.75)'; ctx.lineWidth = 1.4; rr(-9, -18, 18, 13, 4); ctx.stroke();
+}
 function gumballDrawLever(st, lv, t) {
   const x = lv.x, y = lv.feet, kp = G.players[st.keep];
-  ctx.fillStyle = '#4a2a3a'; rr(x - 12, y - 6, 24, 6, 3); ctx.fill();
-  // a candy-cane lever on a little box
-  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x - 10, y - 6, 20, 1.2);
-  ctx.fillStyle = '#ffe4f1'; rr(x - 9, y - 18, 18, 13, 4); ctx.fill(); ctx.strokeStyle = 'rgba(90,30,60,0.5)'; ctx.lineWidth = 1.5; rr(x - 9, y - 18, 18, 13, 4); ctx.stroke();
-  ctx.fillStyle = 'rgba(200,120,160,0.35)'; ctx.fillRect(x - 7, y - 9, 14, 2.5);
-  ctx.fillStyle = '#c995b3'; circle(x - 6, y - 14.5, 1.1); ctx.fill(); circle(x + 6, y - 14.5, 1.1); ctx.fill();
+  // a candy-cane lever on a little box (art director pass: a chocolate base plate with bolts and a soft shadow, a
+  // bevelled sugar-pink box with a lit top and shady right side, a slot for the lever, screws and an outline; cached)
+  CK.pic('gblever', 34, 26, 17, 22, gumballLeverBox, x, y);
   const a = (-1 + 2 * lv.tilt) * 0.6;
   ctx.save(); ctx.translate(x, y - 14); ctx.rotate(a);
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -22); ctx.stroke();
   ctx.strokeStyle = '#ff3d5e'; ctx.lineWidth = 5; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -22); ctx.stroke(); ctx.setLineDash([]);
   ctx.fillStyle = '#ff3d5e'; circle(0, -24, 5); ctx.fill(); ctx.lineCap = 'butt';
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(-1.6, -25.6, 1.6); ctx.fill();
+  ctx.strokeStyle = '#a8213c'; ctx.lineWidth = 1; circle(0, -24, 5); ctx.stroke();
   ctx.restore();
+  ctx.fillStyle = '#8f95a8'; circle(x, y - 14, 2.6); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(x - 0.8, y - 14.8, 0.9); ctx.fill();
   const ring = lv.near > 0.05 || lv.flash > 0 ? C.gold : null;
   gumballIcon(x, y - 52, 11, lv.icon, ring);
   if (lv.flash > 0) { ctx.globalAlpha = lv.flash; ctx.strokeStyle = PCOL[st.keep]; ctx.lineWidth = 3; circle(x, y - 52, 14 + (1 - lv.flash) * 14); ctx.stroke(); ctx.globalAlpha = 1; }
