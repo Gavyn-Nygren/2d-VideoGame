@@ -85,6 +85,7 @@ Design notes for anyone building new levels are in [GAME_NOTES.md](GAME_NOTES.md
 | `js/controls.js` | Which device each player uses, matching button prompts, the ready card before a level |
 | `js/ui.js` | Result cards, pause screen, controls legend, notices |
 | `js/render.js` | Shared drawing: background, tiles, players, HUD, particles |
+| `js/scenery.js` | Backdrop scenery per world, drifting motes and wildlife, the soft light finish |
 | `js/previews/` | The little animated scene of each level on the world pages: `preview-core.js` (the drawing kit) and one file per world |
 | `js/home.js` | The title screen, the world map and each world's page |
 | `js/main.js` | The main loop: game state, loading levels, each game tick, finishing levels, screen sizing, startup |

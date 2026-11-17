@@ -28,7 +28,9 @@ const NAMES = ['Pip', 'Bo'];
 const PCOL = [C.pip, C.bo], PDARK = [C.pipDark, C.boDark];
 const BASE_C = { ...C };
 // a level (or room) can override its world's colours with def.theme = { skyTop: ..., grass: ... } (same keys as WORLDS[].theme)
-function applyTheme(w, extra) { Object.assign(C, BASE_C, (WORLDS[w] || WORLDS[0]).theme, extra || {}); }
+// THEME_W: the world whose colours are showing now (js/scenery.js picks the backdrop's scenery by it)
+let THEME_W = 0;
+function applyTheme(w, extra) { THEME_W = WORLDS[w] ? w : 0; for (const k in C) if (!(k in BASE_C)) delete C[k]; Object.assign(C, BASE_C, (WORLDS[w] || WORLDS[0]).theme, extra || {}); }
 const reduceMotion = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
 
 /* ---------- small helpers ---------- */

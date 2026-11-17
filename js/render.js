@@ -103,7 +103,8 @@ let _bg = { key: '' };
 function bgLayers() {
   const L = G.level, sc = Math.max(1, Math.min(3, canvas.width / W));
   const levelW = L ? (L.cols || COLS) * T : W, maxCam = Math.max(0, levelW - W);
-  const key = [C.skyTop, C.skyBot, C.sun, C.sunGlow, C.hillFar, C.hillNear, maxCam, sc].join('|');
+  const kit = sceneKit();
+  const key = [C.skyTop, C.skyBot, C.sun, C.sunGlow, C.hillFar, C.hillNear, maxCam, sc, kit].join('|');
   if (_bg.key === key) return _bg;
   const mk = (w, h) => { const cv = document.createElement('canvas'); cv.width = Math.ceil(w * sc); cv.height = Math.ceil(h * sc); const c = cv.getContext('2d'); c.scale(sc, sc); return [cv, c]; };
   // the sky and the sun
@@ -115,14 +116,15 @@ function bgLayers() {
   if (sunOn) {
     c.fillStyle = C.sunGlow; circleOn(c, 810, 105, 92); c.fill(); circleOn(c, 810, 105, 66); c.fill();
   }
+  paintSkyExtras(c, sunOn);
   // the hills, each as a strip as wide as the screen plus how far that layer slides
-  const top = 250, strips = [];
+  const top = 200, strips = [];
   for (let k = 0; k < 3; k++) {
     const sw = Math.min(W + Math.ceil(maxCam * HILLS[k].par) + 16, 4096 / sc);
     const [cv, h] = mk(sw, H - top); h.translate(0, -top);
     const path = () => { h.beginPath(); h.moveTo(-2, H); for (let X = -2; X <= sw + 12; X += 12) h.lineTo(X, hillY(k, X)); h.lineTo(sw + 12, H); h.closePath(); };
     const rim = (dy) => { h.beginPath(); for (let X = -2; X <= sw + 12; X += 12) { const y = hillY(k, X) + dy; X === -2 ? h.moveTo(X, y) : h.lineTo(X, y); } };
-    if (k === 0) { h.fillStyle = mixCol(C.hillFar, C.skyBot, 0.45); path(); h.fill(); }
+    if (k === 0) { paintFarPeaks(h, sw, kit); h.fillStyle = mixCol(C.hillFar, C.skyBot, 0.45); path(); h.fill(); }
     if (k === 1) {
       h.fillStyle = C.hillFar; path(); h.fill();
       h.strokeStyle = tint(C.hillFar, 0.28); h.lineWidth = 2.5; rim(1.5); h.stroke();
@@ -144,6 +146,7 @@ function bgLayers() {
         h.fillStyle = tint(C.hillNear, 0.18); circleOn(h, x - r * 0.3, y + r * 0.1, r * 0.35); h.fill();
       }
     }
+    paintStripExtras(h, k, sw, kit);
     strips.push({ cv, sw });
   }
   _bg = { key, sky, strips, sunOn, sc, top };
@@ -172,6 +175,7 @@ function drawBackground() {
     const y = 50 + ((i * 71) % 130);
     drawCloud(x, y, 0.7 + (i % 2) * 0.4);
   }
+  drawBirds();
   const cam = G.camX || 0;
   // a level that doesn't scroll copies its hills as one picture (the three strips flattened once); copying the three
   // see-through strips each frame cost a slow CPU a few ms
@@ -280,7 +284,7 @@ function drawStone(tx, ty) {
   let d = 0; for (let k = 1; k <= 3 && tile(tx, ty - k) === '#'; k++) d++;
   const v = hash(tx, ty) % STONE_VARIANTS;
   const key = 'st' + C.stone + C.stoneLight + C.stoneEdge + C.grass + C.grassDark + (L ? 1 : 0) + (R ? 1 : 0) + (B ? 1 : 0) + (top ? 1 : 0) + d + ':' + v;
-  const sp = artSprite(key, T + 8, T + 10, 4, 8, c => paintStone(c, hash(v * 7 + 3, 911), L, R, B, top, d));
+  const sp = artSprite(key, T + 8, T + 16, 4, 8, c => paintStone(c, hash(v * 7 + 3, 911), L, R, B, top, d));
   blitSprite(sp, x, y);
 }
 // The level's stone tiles are drawn in chunks of 16 columns into pictures, rebuilt only when a chunk's tiles (or the
@@ -303,7 +307,7 @@ function drawStoneChunks(tx0, tx1) {
       if (!ch) {
         if (_chunks.size >= 5) _chunks.delete(_chunks.keys().next().value); // the oldest
         const px = Math.ceil(4 * sc), py = Math.ceil(8 * sc);
-        const cv = document.createElement('canvas'); cv.width = Math.ceil(px + (STONE_CHUNK * T + 4) * sc); cv.height = Math.ceil(py + (ROWS * T + 2) * sc);
+        const cv = document.createElement('canvas'); cv.width = Math.ceil(px + (STONE_CHUNK * T + 4) * sc); cv.height = Math.ceil(py + (ROWS * T + 8) * sc);
         ch = { cv, px, py };
       }
       const c = ch.cv.getContext('2d');
@@ -321,7 +325,7 @@ function drawStoneChunks(tx0, tx1) {
       }
       ch.sig = sig; ch.theme = theme;
       // only the rows that hold stone get copied
-      ch.sy = r1 < 0 ? 0 : Math.max(0, Math.floor(ch.py + (r0 * T - 8) * sc)); ch.sh = r1 < 0 ? 0 : Math.min(ch.cv.height, Math.ceil(ch.py + ((r1 + 1) * T + 2) * sc)) - ch.sy;
+      ch.sy = r1 < 0 ? 0 : Math.max(0, Math.floor(ch.py + (r0 * T - 8) * sc)); ch.sh = r1 < 0 ? 0 : Math.min(ch.cv.height, Math.ceil(ch.py + ((r1 + 1) * T + 8) * sc)) - ch.sy;
       _chunks.delete(id); _chunks.set(id, ch);
     }
     const X = Math.round(m.a * c0 * T + m.e) - ch.px, Y = Math.round(m.f) - ch.py, sm = ctx.imageSmoothingEnabled;
@@ -357,11 +361,27 @@ function paintStone(c, h, L, R, B, top, d) {
   c.fillStyle = sl;
   if (h & 64) { circleOn(c, x + 6 + (h >>> 9) % 18, y + 18 + (h >>> 13) % 9, 1.2); c.fill(); }
   if (h & 128) { circleOn(c, x + 4 + (h >>> 11) % 22, y + 9 + (h >>> 15) % 12, 0.9); c.fill(); }
+  // (third pass) now and then a hairline crack with a lit lower lip
+  if ((h >>> 17) % 5 === 0 && !top) {
+    const cx = x + 7 + (h >>> 20) % 12, cy = y + 6 + (h >>> 23) % 10;
+    c.strokeStyle = 'rgba(255,255,255,0.09)'; c.lineWidth = 1; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(cx, cy + 1); c.lineTo(cx + 3, cy + 5); c.lineTo(cx + 1.5, cy + 9); c.lineTo(cx + 5, cy + 13); c.stroke();
+    c.strokeStyle = sl; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + 3, cy + 4); c.lineTo(cx + 1.5, cy + 8); c.lineTo(cx + 5, cy + 12); c.stroke();
+  }
   // edges: dark outline where the rock meets air, a thin lit bevel inside on the left
   c.fillStyle = C.stoneEdge;
   if (L) c.fillRect(x, y, 2.5, T);
   if (R) c.fillRect(x + T - 2.5, y, 2.5, T);
-  if (B) { c.fillRect(x, y + T - 3.5, T, 3.5); c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(x, y + T - 6, T, 2.5); }
+  if (B) {
+    c.fillRect(x, y + T - 3.5, T, 3.5);
+    // (third pass) little knobs of rock hanging under an overhang
+    for (let i = 0; i < 2; i++) {
+      if (!((h >>> (i + 9)) & 1)) continue;
+      const nx = x + 5 + i * 13 + ((h >>> (i * 4 + 11)) % 7), nl = 2.5 + ((h >>> (i * 3 + 14)) % 4), nw = 2.2 + ((h >>> (i * 2 + 19)) % 2);
+      c.beginPath(); c.moveTo(nx - nw, y + T - 0.5); c.quadraticCurveTo(nx - nw * 0.6, y + T + nl, nx, y + T + nl); c.quadraticCurveTo(nx + nw * 0.6, y + T + nl, nx + nw, y + T - 0.5); c.closePath(); c.fill();
+    }
+    c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(x, y + T - 6, T, 2.5);
+  }
   if (L) { c.fillStyle = 'rgba(255,255,255,0.1)'; c.fillRect(x + 2.5, y, 1.5, T); }
   if (R) { c.fillStyle = 'rgba(0,0,0,0.1)'; c.fillRect(x + T - 5, y, 2.5, T); }
   if (top) {
@@ -383,6 +403,18 @@ function paintStone(c, h, L, R, B, top, d) {
       c.fillStyle = ['#fff4c2', '#ffd1e6', '#ffffff'][(h >>> 3) % 3];
       for (let a = 0; a < 5; a++) { circleOn(c, fx + Math.cos(a * 1.257) * 1.8, y - 2 + Math.sin(a * 1.257) * 1.8, 1.3); c.fill(); }
       c.fillStyle = '#ffc53d'; circleOn(c, fx, y - 2, 1.1); c.fill();
+    }
+    // (third pass) a taller tuft or a pebble on the turf here and there
+    if ((h >>> 21) % 6 === 0) {
+      const tx2 = x + 6 + (h >>> 24) % 16;
+      c.fillStyle = C.grassDark; c.beginPath(); c.moveTo(tx2 - 3.4, y + 0.5); c.quadraticCurveTo(tx2 - 3.6, y - 4, tx2 - 4.6, y - 6); c.quadraticCurveTo(tx2 - 1.4, y - 4, tx2 - 0.8, y + 0.5); c.closePath(); c.fill();
+      c.fillStyle = C.grass; c.beginPath(); c.moveTo(tx2 - 1.2, y + 0.5); c.quadraticCurveTo(tx2 - 0.6, y - 5.5, tx2 + 1, y - 7.5); c.quadraticCurveTo(tx2 + 1.6, y - 4, tx2 + 1.6, y + 0.5); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(tx2 + 1.2, y + 0.5); c.quadraticCurveTo(tx2 + 3.2, y - 3, tx2 + 5, y - 4.6); c.quadraticCurveTo(tx2 + 4, y - 1.4, tx2 + 3.6, y + 0.5); c.closePath(); c.fill();
+    } else if ((h >>> 21) % 6 === 1) {
+      const px2 = x + 6 + (h >>> 24) % 17;
+      c.fillStyle = 'rgba(0,0,0,0.14)'; c.beginPath(); c.ellipse(px2 + 0.6, y + 0.6, 3.6, 1.2, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = shade(C.stoneLight, 0.12); c.beginPath(); c.ellipse(px2, y - 1, 3, 2.2, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = tint(C.stoneLight, 0.3); c.beginPath(); c.ellipse(px2 - 0.8, y - 1.7, 1.5, 0.9, 0, 0, Math.PI * 2); c.fill();
     }
     // the turf's ends curl down over the side
     if (L) { c.fillStyle = C.grassDark; rrOn(c, x - 1.5, y, 4, 11, 2); c.fill(); }
@@ -658,6 +690,8 @@ function drawPlayer(p) {
   const cx = p.x + p.w / 2, by = p.y + p.h;
   const of = outfitNow(), look0 = of && of.looks[p.id], oo = look0 && { face: p.face, t: G.clock, vx: p.vx };
   ctx.save(); ctx.translate(cx, by);
+  const fine = !artPlain();   // (third pass) softer shadow, a shaded underside and a glint in the eyes
+  if (fine) { ctx.fillStyle = 'rgba(28,26,54,0.08)'; ctx.beginPath(); ctx.ellipse(0, 0.5, w * 0.78, 4.4, 0, 0, Math.PI * 2); ctx.fill(); }
   ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.beginPath(); ctx.ellipse(0, 0, w * 0.55, 3, 0, 0, Math.PI * 2); ctx.fill();
   if (look0) outfitLayer(ctx, look0, 'back', p.id, 0, 0, w, h, oo);
   // ears / sprout (js/outfits.js: an outfit's hat can lift the sprout, or put the ears over the hat)
@@ -666,6 +700,10 @@ function drawPlayer(p) {
   ctx.fillStyle = col; ctx.strokeStyle = dark; ctx.lineWidth = 2.5;
   rr(-w / 2, -h, w, h, 8); ctx.fill(); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.22)'; rr(-w / 2 + 3, -h + 3, w * 0.35, h * 0.4, 5); ctx.fill();
+  if (fine) {
+    ctx.fillStyle = 'rgba(40,20,60,0.1)'; rr(-w / 2 + 1.4, -h * 0.3, w - 2.8, h * 0.3 - 1.4, 6.5); ctx.fill();
+    ctx.fillStyle = 'rgba(40,20,60,0.07)'; rr(w * 0.2, -h + 2.5, w * 0.3 - 1.4, h - 4, 5); ctx.fill();
+  }
   if (look0) outfitLayer(ctx, look0, 'body', p.id, 0, 0, w, h, oo);
   // face
   const look = p.face * 2.5, ey = -h * 0.6 + clamp(p.vy / 300, -1.5, 1.5);
@@ -679,6 +717,7 @@ function drawPlayer(p) {
     for (const ex of [-5, 5]) {
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(ex + look, ey, 3.6, 4.4, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = C.ink; circle(ex + look + p.face * 1.2, ey + 0.8, 2); ctx.fill();
+      if (fine) { ctx.fillStyle = 'rgba(255,255,255,0.9)'; circle(ex + look + p.face * 1.2 - 0.8, ey - 0.1, 0.75); ctx.fill(); }
     }
   }
   ctx.fillStyle = 'rgba(255,120,140,0.45)'; circle(-8 + look * 0.5, ey + 6, 2.4); ctx.fill(); circle(8 + look * 0.5, ey + 6, 2.4); ctx.fill();
@@ -1148,6 +1187,8 @@ function render(dt) {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
+  // drifting motes and the soft light finish over the scene, under the HUD (js/scenery.js)
+  drawMotes(); drawFinish();
   // a level's own printPage() over the whole scene, under the HUD (World 32's printed comic page; not 'finish', which 11-3 already uses)
   if (G.mode !== 'title') drawHook('printPage');
   if (G.mode !== 'title') { drawHUD(); drawMatchOverlay(); drawIntro(); }
