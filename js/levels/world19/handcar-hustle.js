@@ -872,7 +872,8 @@ function handcarDrawBack(st) {
   for (let k = p0; k <= p1; k++) {
     const x = k * 360 + 120, y = handcarTerrain(st, x) - 8;
     if (st.c.spans.some(s => x > s.x0 - 60 && x < s.x1 + 60)) continue;
-    ctx.fillStyle = '#7a5032'; ctx.fillRect(x - 3, y - 120, 6, 120); ctx.fillRect(x - 16, y - 112, 32, 5);
+    dkPost(x, y - 120, 6, 120, '#7a5032');
+    dkPic('hcPoleArm', 36, 9, 18, 2, c => dkPlank(c, -16, 0, 32, 5, '#7a5032', 3, { r: 1, lw: 0.6, outline: '#4a2e18' }), x, y - 112);
     ctx.fillStyle = '#b9e0ff'; ctx.fillRect(x - 14, y - 116, 3, 4); ctx.fillRect(x + 11, y - 116, 3, 4);
     const nx = x + 360, ny = handcarTerrain(st, nx) - 8;
     if (!st.c.spans.some(s => nx > s.x0 - 60 && nx < s.x1 + 60)) {
@@ -987,6 +988,32 @@ function handcarDrawTown(st, z) {
   }
 }
 // the ground: sandy top, red rock below; creeks and canyons under the bridges
+// ---------- rich still art (cached; dkPic and the dk* kit live in world18/runaway-ship.js) ----------
+// a world-anchored grain texture for the canyon dirt: specks, tiny stones and hairline cracks (a repeating pattern)
+let handcarGrainPat = null;
+function handcarGrain() {
+  if (handcarGrainPat && (typeof handcarGrainPat === 'string' || handcarGrainPat.sc === canvas.width)) return dkPatAlign(handcarGrainPat);   // (built at the canvas scale; dkPatAlign maps it 1:1 to pixels)
+  const S = Math.max(1, Math.min(3, canvas.width / W)), n = 256, cv = document.createElement('canvas'); cv.width = cv.height = Math.round(n * S);
+  const c = cv.getContext('2d'); c.scale(cv.width / n, cv.width / n);
+  for (let i = 0; i < 900; i++) { const hh = hash(i, 3131), x = hh % n, y = (hh >>> 8) % n; c.fillStyle = hh % 5 === 0 ? 'rgba(255,225,190,0.32)' : hh % 5 === 1 ? 'rgba(90,30,15,0.3)' : 'rgba(140,60,35,0.22)'; c.fillRect(x, y, hh % 7 === 0 ? 2 : 1, 1); }
+  for (let i = 0; i < 40; i++) { const hh = hash(i, 3132), x = hh % n, y = (hh >>> 8) % n, r = 1 + (hh >>> 4) % 2; c.fillStyle = 'rgba(110,45,25,0.35)'; c.beginPath(); c.ellipse(x, y, r * 1.4, r, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,220,180,0.3)'; c.fillRect(x - r * 0.7, y - r * 0.7, r * 0.8, 0.8); }
+  c.strokeStyle = 'rgba(90,30,15,0.22)'; c.lineWidth = 0.8; c.beginPath();
+  for (let i = 0; i < 10; i++) { const hh = hash(i, 3133); let x = hh % n, y = (hh >>> 8) % n; c.moveTo(x, y); for (let k = 0; k < 3; k++) { x += 4 + (hash(i, k) % 6); y += (hash(k, i) % 7) - 3; c.lineTo(x, y); } }
+  c.stroke();
+  try { handcarGrainPat = ctx.createPattern(cv, 'repeat'); handcarGrainPat.setTransform(new DOMMatrix().scale(n / cv.width)); handcarGrainPat.sc = canvas.width; } catch (e) { handcarGrainPat = 'rgba(0,0,0,0)'; }
+  return dkPatAlign(handcarGrainPat);
+}
+// embedded stones (a few cached shapes, blitted where the hash says)
+function handcarStone(x, y, v) {
+  const cols = ['#a0583a', '#8a4a30', '#b8705a', '#9a8a7a'], r = 3 + (v % 3);
+  dkPic('hcStone|' + v, r * 2 + 8, r * 2 + 8, r + 3, r + 3, c => dkCobble(c, 0, 0, r * 1.25, r, cols[v % 4], 600 + v), x, y);
+}
+// a railway tie: grained timber with two spikes and a soft shadow
+function handcarTie(c) {
+  c.fillStyle = 'rgba(60,20,5,0.3)'; c.fillRect(-7, 2, 17, 7);
+  dkPlank(c, -8, 0, 16, 7, '#6b4426', 5, { r: 1, lit: 0.25, lw: 0.8 });
+  dkNail(c, -4.5, 1.5, 1); dkNail(c, 4.5, 1.5, 1);
+}
 function handcarDrawGround(st) {
   const cam = st.cam, x0 = Math.floor((cam.x - 20) / 6) * 6, x1 = cam.x + W + 20, yB = cam.y + H + 20;
   // canyons first (far walls and a river far below)
@@ -995,8 +1022,16 @@ function handcarDrawGround(st) {
     if (s.kind === 'canyon') {
       const gy = handcarY(st, s.x0);
       ctx.fillStyle = '#b8643f'; ctx.fillRect(s.x0 - 70, gy + 40, s.x1 - s.x0 + 140, yB - gy);
-      ctx.fillStyle = '#9c4f33';
-      for (let k = 0; k < 6; k++) { const yy = gy + 80 + k * 46; ctx.fillRect(s.x0 - 70, yy, s.x1 - s.x0 + 140, 10); }
+      dkPatFill(handcarGrain(), s.x0 - 70, gy + 40, s.x1 - s.x0 + 140, yB - gy);
+      for (let k = 0; k < 6; k++) {
+        const yy = gy + 80 + k * 46;
+        ctx.fillStyle = '#9c4f33'; ctx.beginPath(); ctx.moveTo(s.x0 - 70, yy);
+        for (let x = s.x0 - 70; x <= s.x1 + 70; x += 20) ctx.lineTo(x, yy + Math.sin(x / 37 + k) * 2.5);
+        for (let x = s.x1 + 70; x >= s.x0 - 70; x -= 20) ctx.lineTo(x, yy + 10 + Math.sin(x / 29 + k) * 3);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,215,170,0.28)'; ctx.fillRect(s.x0 - 70, yy + 11, s.x1 - s.x0 + 140, 1.5);
+      }
+      ctx.fillStyle = 'rgba(60,20,10,0.25)'; ctx.fillRect(s.x0 - 70, gy + 40, 22, yB - gy); ctx.fillRect(s.x1 + 48, gy + 40, 22, yB - gy);
       ctx.fillStyle = '#6fb7d8'; ctx.fillRect(s.x0 - 70, gy + 330, s.x1 - s.x0 + 140, 40);
       ctx.fillStyle = 'rgba(255,255,255,0.5)';
       for (let k = 0; k < 10; k++) { const xx = s.x0 + ((k * 137 + G.clock * 30) % (s.x1 - s.x0)); ctx.fillRect(xx, gy + 340 + (k % 3) * 8, 24, 2); }
@@ -1006,14 +1041,21 @@ function handcarDrawGround(st) {
   const topY = [];
   for (let x = x0; x <= x1; x += 6) { const y = handcarTerrain(st, x); topY.push(y); ctx.lineTo(x, y); }
   ctx.lineTo(x1, yB); ctx.closePath();
-  ctx.fillStyle = '#c06a48'; ctx.fill();
-  // darker deeper down (the same outline filled again, no clip mask)
-  const gg = ctx.createLinearGradient(0, cam.y + 300, 0, cam.y + H); gg.addColorStop(0, 'rgba(90,30,15,0)'); gg.addColorStop(1, 'rgba(90,30,15,0.22)');
+  // the dirt, darker deeper down (one opaque gradient), then fine grain anchored to the world (a pattern, so it slides
+  // with the ground)
+  const gg = ctx.createLinearGradient(0, cam.y + 300, 0, cam.y + H); gg.addColorStop(0, '#c06a48'); gg.addColorStop(1, '#aa593c');
   ctx.fillStyle = gg; ctx.fill();
-  // rock bands following the ground
-  ctx.strokeStyle = 'rgba(122,58,38,0.35)'; ctx.lineWidth = 6;
-  for (const dy of [44, 96]) {
-    ctx.beginPath();
+  dkPatFill(handcarGrain());
+  // rock strata following the ground: a darker band with a wavy lower edge, a lit lip under it and a dark seam
+  for (const [dy, th, col] of [[44, 9, 'rgba(122,58,38,0.42)'], [96, 12, 'rgba(110,48,30,0.4)'], [150, 8, 'rgba(160,80,50,0.35)']]) {
+    ctx.fillStyle = col; ctx.beginPath();
+    for (let x = x0; x <= x1; x += 12) { const y = handcarTerrain(st, x) + dy + Math.sin(x / 70) * 4; if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+    for (let x = Math.floor(x1 / 12) * 12; x >= x0; x -= 12) ctx.lineTo(x, handcarTerrain(st, x) + dy + th + Math.sin(x / 70) * 4 + Math.sin(x / 23) * 2);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,215,170,0.3)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let x = x0; x <= x1; x += 12) { const y = handcarTerrain(st, x) + dy + th + 1.5 + Math.sin(x / 70) * 4 + Math.sin(x / 23) * 2; if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(80,25,10,0.3)'; ctx.lineWidth = 1; ctx.beginPath();
     for (let x = x0; x <= x1; x += 12) { const y = handcarTerrain(st, x) + dy + Math.sin(x / 70) * 4; if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
     ctx.stroke();
   }
@@ -1023,13 +1065,20 @@ function handcarDrawGround(st) {
   for (let x = x0; x <= x1; x += 6) { const y = handcarTerrain(st, x) + 6; if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
   ctx.stroke();
   // pebbles
-  ctx.fillStyle = 'rgba(122,58,38,0.45)';
-  const peb = []; ctx.beginPath();
-  for (let k = Math.floor(x0 / 37); k < x1 / 37; k++) { const h = hash(k, 5), x = k * 37 + h % 20, y = handcarTerrain(st, x) + 24 + (h >> 4) % 40, r = 2 + (h >> 9) % 3; peb.push(x, y); ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }
+  // shaded embedded stones (cached shapes) scattered through the dirt
+  for (let k = Math.floor(x0 / 37); k < x1 / 37; k++) { const h = hash(k, 5), x = k * 37 + h % 20, y = handcarTerrain(st, x) + 24 + (h >>> 4) % 40; handcarStone(x, y, (h >>> 9) % 6); }
+  for (let k = Math.floor(x0 / 61); k < x1 / 61; k++) { const h = hash(k, 15), x = k * 61 + h % 30, y = handcarTerrain(st, x) + 70 + (h >>> 4) % 90; handcarStone(x, y, 6 + (h >>> 9) % 4); }
+  // the gravel shoulder along the sandy top
+  ctx.fillStyle = 'rgba(150,90,50,0.5)'; ctx.beginPath();
+  for (let k = Math.floor(x0 / 9); k < x1 / 9; k++) { const h = hash(k, 25), x = k * 9 + h % 6, y = handcarTerrain(st, x) + 9 + (h >>> 5) % 5, r = 1 + (h >>> 8) % 2; ctx.moveTo(x + r, y); ctx.ellipse(x, y, r * 1.3, r, 0, 0, Math.PI * 2); }
   ctx.fill();
-  ctx.fillStyle = 'rgba(255,220,180,0.35)'; ctx.beginPath();
-  for (let i = 0; i < peb.length; i += 2) { ctx.moveTo(peb[i] + 0.1, peb[i + 1] - 1); ctx.arc(peb[i] - 0.8, peb[i + 1] - 1, 0.9, 0, Math.PI * 2); }
+  ctx.fillStyle = 'rgba(255,240,210,0.5)'; ctx.beginPath();
+  for (let k = Math.floor(x0 / 9); k < x1 / 9; k++) { const h = hash(k, 25), x = k * 9 + h % 6, y = handcarTerrain(st, x) + 9 + (h >>> 5) % 5; ctx.rect(x - 1, y - 1, 1, 0.8); }
   ctx.fill();
+  // dry grass tufts on the lip
+  ctx.strokeStyle = '#b89a50'; ctx.lineWidth = 1.2; ctx.lineCap = 'round'; ctx.beginPath();
+  for (let k = Math.floor(x0 / 83); k < x1 / 83; k++) { const h = hash(k, 35); if (h % 3) continue; const x = k * 83 + h % 40, y = handcarTerrain(st, x) + 13; for (let j = -2; j <= 2; j++) { ctx.moveTo(x + j, y); ctx.quadraticCurveTo(x + j * 2, y - 4, x + j * 3.5, y - 7 + Math.abs(j)); } }
+  ctx.stroke(); ctx.lineCap = 'butt';
   // a sunlit lip on the sandy top and the odd dry tuft
   ctx.strokeStyle = 'rgba(255,240,200,0.6)'; ctx.lineWidth = 2; ctx.beginPath();
   for (let i = 0, x = x0; i < topY.length; i++, x += 6) { if (i) ctx.lineTo(x, topY[i] - 0.5); else ctx.moveTo(x, topY[i] - 0.5); }
@@ -1051,21 +1100,40 @@ function handcarDrawTrack(st) {
     const ty = handcarY(st, s.x0);
     if (s.kind === 'creek') {
       // a plank bridge on posts
-      ctx.fillStyle = '#8a5228';
-      for (let x = s.x0 - 30; x <= s.x1 + 30; x += 70) { const g = handcarTerrain(st, x); ctx.fillRect(x - 4, ty + 6, 8, g - ty); }
-      ctx.strokeStyle = '#8a5228'; ctx.lineWidth = 3;
-      for (let x = s.x0 - 30; x < s.x1 + 30; x += 70) { ctx.beginPath(); ctx.moveTo(x, ty + 14); ctx.lineTo(x + 70, ty + 50); ctx.moveTo(x + 70, ty + 14); ctx.lineTo(x, ty + 50); ctx.stroke(); }
-      ctx.fillStyle = '#b77a45'; ctx.fillRect(s.x0 - 40, ty + 2, s.x1 - s.x0 + 80, 12);
+      for (let x = s.x0 - 30; x < s.x1 + 30; x += 70) {
+        for (const [ax, ay, bx, by] of [[x, ty + 14, x + 70, ty + 50], [x + 70, ty + 14, x, ty + 50]]) {
+          ctx.save(); ctx.translate(ax, ay); ctx.rotate(Math.atan2(by - ay, bx - ax));
+          dkPic('hcBrace', 82, 8, 1, 4, c => dkPlank(c, 0, -2, 80, 4, '#7a4a26', 21, { r: 1, lw: 0.7 }), 0, 0);
+          ctx.restore();
+        }
+      }
+      for (let x = s.x0 - 30; x <= s.x1 + 30; x += 70) { const g = Math.round(handcarTerrain(st, x) - ty); dkPic('hcPost|' + g, 12, g + 2, 6, 0, c => { dkPlank(c, -4, 0, 8, g, '#8a5228', g, { vert: true, r: 1, nails: true, lw: 0.8 }); c.fillStyle = 'rgba(40,80,90,0.35)'; c.fillRect(-4, g - 26, 8, 26); }, x, ty + 6); }
+      const bl = Math.round(s.x1 - s.x0 + 80);
+      dkPic('hcDeckB|' + bl, bl + 4, 16, 2, 2, c => { c.fillStyle = 'rgba(40,20,5,0.3)'; c.fillRect(0, 12, bl, 3); dkPlank(c, 0, 0, bl, 12, '#b77a45', bl, { r: 2, lit: 0.35 }); for (let px = 10; px < bl; px += 22) { c.fillStyle = 'rgba(90,50,20,0.45)'; c.fillRect(px, 1, 1, 10); dkNail(c, px - 3, 6, 1); dkNail(c, px + 4, 6, 1); } }, s.x0 - 40, ty + 2);
     } else {
       // the tall canyon trestle: a timber lattice to the bottom of the screen
-      ctx.strokeStyle = '#7a4a26'; ctx.lineWidth = 5;
-      ctx.beginPath(); for (let x = s.x0 - 60; x <= s.x1 + 60; x += 80) { ctx.moveTo(x, ty + 6); ctx.lineTo(x - 10, yB); } ctx.stroke();
-      ctx.lineWidth = 3; ctx.strokeStyle = '#8f5a30';
-      for (let y = ty + 40; y < yB; y += 70) {
-        for (let x = s.x0 - 60; x < s.x1 + 60; x += 80) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 80, y + 70); ctx.moveTo(x + 80, y); ctx.lineTo(x, y + 70); ctx.stroke(); }
-        ctx.beginPath(); ctx.moveTo(s.x0 - 60, y); ctx.lineTo(s.x1 + 60, y); ctx.stroke();
-      }
-      ctx.fillStyle = '#9c6236'; ctx.fillRect(s.x0 - 70, ty + 2, s.x1 - s.x0 + 140, 14);
+      // (each timber drawn three times: a dark outline, the wood, a thin lit edge on its upper left)
+      const beams = () => {
+        ctx.beginPath(); for (let x = s.x0 - 60; x <= s.x1 + 60; x += 80) { ctx.moveTo(x, ty + 6); ctx.lineTo(x - 10, yB); } ctx.stroke();
+      };
+      const lattice = () => {
+        ctx.beginPath();
+        for (let y = ty + 40; y < yB; y += 70) {
+          for (let x = s.x0 - 60; x < s.x1 + 60; x += 80) { ctx.moveTo(x, y); ctx.lineTo(x + 80, y + 70); ctx.moveTo(x + 80, y); ctx.lineTo(x, y + 70); }
+          ctx.moveTo(s.x0 - 60, y); ctx.lineTo(s.x1 + 60, y);
+        }
+        ctx.stroke();
+      };
+      ctx.lineCap = 'butt';
+      ctx.strokeStyle = '#5a3418'; ctx.lineWidth = 5.5; lattice(); ctx.strokeStyle = '#8f5a30'; ctx.lineWidth = 3.5; lattice();
+      ctx.save(); ctx.translate(-0.8, -0.8); ctx.strokeStyle = 'rgba(255,215,170,0.35)'; ctx.lineWidth = 1; lattice(); ctx.restore();
+      ctx.strokeStyle = '#4e2c14'; ctx.lineWidth = 8; beams(); ctx.strokeStyle = '#7a4a26'; ctx.lineWidth = 6; beams();
+      ctx.save(); ctx.translate(-1.6, 0); ctx.strokeStyle = 'rgba(255,215,170,0.35)'; ctx.lineWidth = 1.2; beams(); ctx.restore();
+      ctx.fillStyle = '#c9c5d6'; ctx.beginPath();
+      for (let y = ty + 40; y < yB; y += 70) for (let x = s.x0 - 60; x <= s.x1 + 60; x += 80) { const bx = x - 10 * (y - ty - 6) / (yB - ty - 6); ctx.moveTo(bx + 1.6, y); ctx.arc(bx, y, 1.6, 0, Math.PI * 2); }
+      ctx.fill();
+      const tl = Math.round(s.x1 - s.x0 + 140);
+      dkPic('hcDeckT|' + tl, tl + 4, 20, 2, 2, c => { c.fillStyle = 'rgba(40,20,5,0.3)'; c.fillRect(0, 14, tl, 3); dkPlank(c, 0, 0, tl, 14, '#9c6236', tl, { r: 2, lit: 0.32 }); for (let px = 16; px < tl; px += 40) { dkRivet(c, px, 7, 1.6, '#8c8494'); } }, s.x0 - 70, ty + 2);
     }
   }
   // ties
@@ -1073,8 +1141,7 @@ function handcarDrawTrack(st) {
   const gaps = st.c.hz.filter(h => h.kind === 'fix' && h.state !== 'fixed');
   for (let k = k0; k <= k1; k++) {
     const x = k * 26, y = handcarY(st, x);
-    ctx.fillStyle = (k & 1) ? '#6b4426' : '#7a5032';
-    ctx.fillRect(x - 8, y + 1, 16, 7);
+    dkPic('hcTie|' + (k & 1), 22, 12, 9, 2, c => { handcarTie(c); if (k & 1) { c.fillStyle = 'rgba(255,230,190,0.08)'; c.fillRect(-8, 0, 16, 7); } }, x, y + 1);
   }
   // the rails (with a gap at broken track)
   const railPath = (dy, col, lw) => {
@@ -1088,8 +1155,10 @@ function handcarDrawTrack(st) {
     }
     ctx.stroke();
   };
+  railPath(0.5, '#3a3448', 3);
   railPath(-1, '#5a5468', 5);
   railPath(-2.5, '#c9c5d6', 1.5);
+  railPath(-3.2, 'rgba(255,255,255,0.55)', 0.6);
 }
 // the hazard sets, stations, signs, flags, the arch (front: the bits in front of the handcar)
 function handcarDrawThings(st, front) {
@@ -1128,7 +1197,7 @@ function handcarBoard(x, y, str, bg, ink) {
 function handcarWarnSign(st, hz, x) {
   const y = handcarY(st, x) - 8, t = G.clock, gold = hz.gold, flash = gold && Math.sin(t * 9) > 0;
   const word = { fix: 'BROKEN TRACK', curve: 'SHARP CURVE', cows: 'COW CROSSING', mail: 'MAIL STOP' }[hz.kind];
-  ctx.fillStyle = '#5a3a22'; ctx.fillRect(x - 3, y - 98, 6, 98);
+  dkPost(x, y - 98, 6, 98, '#5a3a22');
   ctx.save(); ctx.translate(x, y - 104); ctx.rotate(Math.PI / 4);
   ctx.fillStyle = flash ? '#fff2a0' : gold ? C.gold : hz.kind === 'mail' ? '#cfe8ff' : '#ffd54a'; ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = 3;
   rr(-24, -24, 48, 48, 5); ctx.fill(); ctx.stroke();
@@ -1195,9 +1264,17 @@ function handcarDrawFix(st, hz, front) {
     // the buffer stop (red and white)
     const bx = hz.buffer + 8, by = handcarY(st, bx);
     if (hz.state !== 'fixed') {
-      ctx.fillStyle = '#6b4426'; ctx.fillRect(bx - 4, by - 30, 12, 30);
-      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = 2; rr(bx - 10, by - 34, 24, 14, 3); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#e0533d'; for (let k = 0; k < 3; k++) ctx.fillRect(bx - 8 + k * 8, by - 32, 4, 10);
+      dkPic('hcBuffer', 34, 42, 14, 38, c => {
+        c.fillStyle = 'rgba(40,15,5,0.3)'; c.beginPath(); c.ellipse(3, 0, 12, 2.5, 0, 0, Math.PI * 2); c.fill();
+        dkPlank(c, -4, -30, 12, 30, '#6b4426', 8, { vert: true, r: 1, nails: 2, lw: 0.8 });
+        c.save(); rrOn(c, -10, -34, 24, 14, 3); c.clip();
+        c.fillStyle = '#ffffff'; c.fillRect(-10, -34, 24, 14);
+        c.fillStyle = '#e0533d'; for (let k = -1; k < 4; k++) { c.beginPath(); c.moveTo(-10 + k * 8, -20); c.lineTo(-6 + k * 8, -20); c.lineTo(2 + k * 8, -34); c.lineTo(-2 + k * 8, -34); c.closePath(); c.fill(); }
+        c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(-10, -34, 24, 1.5); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(-10, -23, 24, 3);
+        c.restore();
+        c.strokeStyle = '#3a2a18'; c.lineWidth = 2; rrOn(c, -10, -34, 24, 14, 3); c.stroke();
+        dkRivet(c, -6, -27, 1.3, '#c9c5d6'); dkRivet(c, 10, -27, 1.3, '#c9c5d6');
+      }, bx, by);
     }
     // the crew at the gap: hammering while fixing, then waving
     const fixing = hz.state === 'fixing', done = hz.state === 'fixed';
@@ -1211,10 +1288,12 @@ function handcarDrawFix(st, hz, front) {
     const u = fixing ? clamp(hz.t / (HANDCAR.fixT * 0.6), 0, 1) : done ? 1 : 0;
     if (u < 1) {
       const px = handcarLerp(cx + 25, hz.gap, handcarSmooth(u)), py = handcarLerp(cy - 44, gy - 4, handcarSmooth(u));
-      ctx.fillStyle = '#c98e57'; ctx.strokeStyle = '#7d5030'; ctx.lineWidth = 2; ctx.save(); ctx.translate(px, py); ctx.rotate((1 - u) * -0.3); rr(-38, -4, 76, 8, 2); ctx.fill(); ctx.stroke(); ctx.restore();
+      ctx.save(); ctx.translate(px, py); ctx.rotate((1 - u) * -0.3);
+      dkPic('hcFixPlank', 80, 12, 40, 6, c => dkPlank(c, -38, -4, 76, 8, '#c98e57', 14, { r: 2, nails: true, outline: '#7d5030', lw: 1.5 }), 0, 0);
+      ctx.restore();
     } else {
-      ctx.fillStyle = '#5a5468'; ctx.fillRect(hz.gap - 36, gy - 4, 72, 4);
-      ctx.fillStyle = '#c98e57'; ctx.fillRect(hz.gap - 38, gy + 1, 76, 6);
+      ctx.fillStyle = '#5a5468'; ctx.fillRect(hz.gap - 36, gy - 4, 72, 4); ctx.fillStyle = '#c9c5d6'; ctx.fillRect(hz.gap - 36, gy - 4, 72, 1.2);
+      dkPic('hcFixLaid', 80, 10, 40, 1, c => dkPlank(c, -38, 0, 76, 6, '#c98e57', 15, { r: 1, nails: true, outline: '#7d5030', lw: 1 }), hz.gap, gy + 1);
     }
     // the broken rail ends sticking up a little
     if (!done) {
@@ -1239,9 +1318,28 @@ function handcarDrawCurve(st, hz) {
   const t = G.clock;
   // the bend itself: the far rail curves away behind a rocky bluff
   const mx = (hz.x0 + hz.x1) / 2, my = handcarY(st, mx);
-  ctx.fillStyle = '#b8643f'; ctx.strokeStyle = '#7a3a26'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(mx - 200, my - 4); ctx.quadraticCurveTo(mx - 160, my - 120, mx - 40, my - 130); ctx.quadraticCurveTo(mx + 80, my - 140, mx + 170, my - 70); ctx.lineTo(mx + 210, my - 4); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#e8c27a'; ctx.beginPath(); ctx.ellipse(mx - 30, my - 128, 70, 8, 0.04, 0, Math.PI * 2); ctx.fill();
+  // (cached) a sandstone bluff: strata bands, a lit left face and a shaded right one, cracks, ledges, scrub and a sandy cap
+  dkPic('hcBluff', 430, 156, 210, 148, c => {
+    const bp = () => { c.beginPath(); c.moveTo(-200, -4); c.quadraticCurveTo(-160, -120, -40, -130); c.quadraticCurveTo(80, -140, 170, -70); c.lineTo(210, -4); c.closePath(); };
+    c.fillStyle = '#b8643f'; bp(); c.fill();
+    c.save(); bp(); c.clip();
+    for (let k = 0; k < 7; k++) { const yy = -122 + k * 17; c.fillStyle = k % 2 ? 'rgba(150,70,40,0.35)' : 'rgba(220,140,90,0.25)'; c.beginPath(); c.moveTo(-210, yy); for (let x = -210; x <= 215; x += 15) c.lineTo(x, yy + Math.sin(x / 40 + k) * 3); for (let x = 215; x >= -210; x -= 15) c.lineTo(x, yy + 8 + Math.sin(x / 33 + k * 2) * 3); c.closePath(); c.fill(); c.fillStyle = 'rgba(255,220,180,0.3)'; c.fillRect(-210, yy + 8, 425, 1); }
+    c.fillStyle = 'rgba(255,220,180,0.22)'; c.beginPath(); c.moveTo(-200, -4); c.quadraticCurveTo(-160, -120, -40, -130); c.lineTo(-70, -60); c.lineTo(-120, -4); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(80,25,10,0.3)'; c.beginPath(); c.moveTo(60, -128); c.quadraticCurveTo(120, -110, 170, -70); c.lineTo(210, -4); c.lineTo(80, -4); c.lineTo(100, -70); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(80,25,10,0.45)'; c.lineWidth = 1.3; c.beginPath();
+    for (const [x, y] of [[-110, -100], [-20, -118], [70, -96], [130, -60], [-60, -50]]) { c.moveTo(x, y); c.lineTo(x + 4, y + 16); c.lineTo(x - 2, y + 30); c.lineTo(x + 3, y + 44); }
+    c.stroke();
+    for (let i = 0; i < 160; i++) { const hh = hash(i, 4141); c.fillStyle = hh % 3 ? 'rgba(110,40,20,0.3)' : 'rgba(255,225,190,0.4)'; c.fillRect(-200 + hh % 410, -130 + (hh >>> 9) % 126, 1.2, 1.2); }
+    c.fillStyle = 'rgba(60,20,10,0.25)'; c.fillRect(-210, -14, 425, 10);
+    c.restore();
+    for (const [x, y, w] of [[-130, -78, 40], [40, -96, 46], [-60, -40, 34]]) { c.fillStyle = 'rgba(80,25,10,0.35)'; c.fillRect(x, y + 3, w, 3); c.fillStyle = 'rgba(255,215,170,0.45)'; c.fillRect(x, y, w, 2); }
+    c.fillStyle = '#e8c27a'; c.beginPath(); c.ellipse(-30, -128, 70, 8, 0.04, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,245,210,0.6)'; c.beginPath(); c.ellipse(-40, -131, 44, 3, 0.04, 0, Math.PI * 2); c.fill();
+    for (const [x, y] of [[-150, -84], [20, -134], [110, -100], [150, -60]]) {
+      c.fillStyle = '#7a8a3a'; c.beginPath(); c.ellipse(x, y, 9, 5, 0, Math.PI, 0); c.fill(); c.fillStyle = '#9aaa4a'; c.beginPath(); c.ellipse(x - 2, y - 2, 5, 3, 0, Math.PI, 0); c.fill();
+    }
+    c.strokeStyle = '#7a3a26'; c.lineWidth = 3; bp(); c.stroke();
+  }, mx, my);
   ctx.strokeStyle = 'rgba(90,84,104,0.7)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(hz.x0, my - 6); ctx.quadraticCurveTo(mx, my - 40, hz.x1, my - 6); ctx.stroke();
   // chevron boards along the bend (in front of the bluff)
   for (let x = hz.x0 + 30; x < hz.x1; x += 90) {
@@ -1296,20 +1394,45 @@ function handcarDrawStation(st, hz, front) {
   if (!front) {
     // the depot behind the track
     const dx = bx + 40, dw = end ? 240 : 150, dh = end ? 120 : 90;
-    ctx.fillStyle = end ? '#c94f3a' : '#d9a066'; ctx.strokeStyle = '#704622'; ctx.lineWidth = 3;
-    ctx.fillRect(dx - dw / 2, by - 40 - dh, dw, dh); ctx.strokeRect(dx - dw / 2, by - 40 - dh, dw, dh);
-    ctx.fillStyle = '#704622'; ctx.beginPath(); ctx.moveTo(dx - dw / 2 - 16, by - 40 - dh); ctx.lineTo(dx, by - 40 - dh - 34); ctx.lineTo(dx + dw / 2 + 16, by - 40 - dh); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#fff3d6'; rr(dx - 56, by - 40 - dh + 12, 112, 24, 4); ctx.fill();
+    // (cached) board-and-batten walls, a shingled roof with a lit eave, a planked door, framed windows with sills
+    const wc = end ? '#c94f3a' : '#d9a066';
+    dkPic('hcDepot|' + (end ? 1 : 0), dw + 40, dh + 40, dw / 2 + 20, dh + 38, c => {
+      const y0 = -dh;
+      c.save(); c.beginPath(); c.rect(-dw / 2, y0, dw, dh); c.clip();
+      dkBoards(c, -dw / 2, y0, dw, dh, wc, end ? 5 : 6, { vert: true, bw: 15, r: 0, outline: dkS(wc, 0.4), lw: 0.8 });
+      const g = c.createLinearGradient(0, y0, 0, 0); g.addColorStop(0, 'rgba(60,20,0,0.3)'); g.addColorStop(0.2, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(60,20,0,0.2)'); c.fillStyle = g; c.fillRect(-dw / 2, y0, dw, dh);
+      c.restore();
+      c.strokeStyle = '#704622'; c.lineWidth = 3; c.strokeRect(-dw / 2, y0, dw, dh);
+      c.save(); c.beginPath(); c.moveTo(-dw / 2 - 16, y0); c.lineTo(0, y0 - 34); c.lineTo(dw / 2 + 16, y0); c.closePath(); c.clip();
+      c.fillStyle = '#704622'; c.fillRect(-dw / 2 - 16, y0 - 36, dw + 32, 38);
+      for (let r = 0; r < 5; r++) { const yy = y0 - 32 + r * 7; for (let sx = -dw / 2 - 16 + (r % 2) * 5; sx < dw / 2 + 16; sx += 10) { c.fillStyle = (hash(sx | 0, r) % 3) ? '#7e5230' : '#5e3a1c'; c.beginPath(); c.moveTo(sx, yy); c.lineTo(sx + 10, yy); c.lineTo(sx + 10, yy + 6); c.quadraticCurveTo(sx + 5, yy + 8, sx, yy + 6); c.closePath(); c.fill(); } }
+      c.restore();
+      c.strokeStyle = 'rgba(255,220,180,0.5)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-dw / 2 - 14, y0 - 1); c.lineTo(0, y0 - 33); c.stroke();
+      c.strokeStyle = '#4a2a10'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-dw / 2 - 16, y0); c.lineTo(0, y0 - 34); c.lineTo(dw / 2 + 16, y0); c.closePath(); c.stroke();
+      dkPlank(c, -56, y0 + 12, 112, 24, '#fff3d6', 9, { r: 4, nails: true, lit: 0.5, outline: '#b89a6a', lw: 1.2 });
+      c.fillStyle = '#4a2e18'; rrOn(c, -16, -44, 32, 44, 3); c.fill();
+      dkBoards(c, -14, -42, 28, 42, '#7a5a3a', 3, { vert: true, bw: 7, r: 0, lw: 0.7 });
+      dkPlank(c, -14, -30, 28, 4, '#6a4a2a', 4, { r: 0, nails: true, lw: 0.6 }); dkRivet(c, 9, -20, 1.5, '#c9a24a');
+      for (const wx of [-dw / 2 + 12, dw / 2 - 38]) {
+        c.fillStyle = '#704622'; c.fillRect(wx - 3, y0 + 43, 32, 26);
+        c.fillStyle = '#ffe9a8'; c.fillRect(wx, y0 + 46, 26, 20); c.fillStyle = 'rgba(255,190,110,0.35)'; c.fillRect(wx, y0 + 56, 26, 10);
+        c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(wx + 3, y0 + 48, 4, 15); c.fillStyle = '#704622'; c.fillRect(wx + 12, y0 + 46, 2, 20); c.fillRect(wx, y0 + 55, 26, 2);
+        dkPlank(c, wx - 5, y0 + 68, 36, 4, '#9a6a3a', wx | 0, { r: 1, lw: 0.6 });
+      }
+    }, dx, by - 40);
     text(end ? 'TUMBLEWEED' : 'MAIL', dx, by - 40 - dh + 25, end ? 15 : 17, '#704622', 'center');
-    ctx.fillStyle = '#7a5a3a'; rr(dx - 14, by - 82, 28, 42, 3); ctx.fill();
-    ctx.fillStyle = '#ffe9a8'; ctx.fillRect(dx - dw / 2 + 12, by - 40 - dh + 46, 26, 20); ctx.fillRect(dx + dw / 2 - 38, by - 40 - dh + 46, 26, 20);
-    // the platform
-    ctx.fillStyle = '#b77a45'; ctx.fillRect(bx - 160, by - 40, 320 + (end ? 120 : 0), 12);
-    ctx.fillStyle = '#8a5228'; for (let x = bx - 150; x < bx + 160 + (end ? 120 : 0); x += 40) ctx.fillRect(x, by - 28, 6, 26);
+    // the platform: grained boards on posts
+    const pl = 320 + (end ? 120 : 0);
+    dkPic('hcPlat|' + pl, pl + 6, 42, 3, 2, c => {
+      for (let x = 10; x < pl; x += 40) { dkPlank(c, x, 12, 6, 26, '#8a5228', x, { vert: true, r: 0, lw: 0.7 }); c.fillStyle = 'rgba(30,10,0,0.3)'; c.fillRect(x, 12, 6, 3); }
+      dkPlank(c, 0, 0, pl, 12, '#b77a45', pl, { r: 2, lit: 0.35 });
+      for (let x = 30; x < pl; x += 30) { c.fillStyle = 'rgba(90,50,20,0.4)'; c.fillRect(x, 1, 1, 10); dkNail(c, x - 3, 6, 0.9); dkNail(c, x + 3, 6, 0.9); }
+    }, bx - 160, by - 40);
     if (end) {
       // the station bell on a post, and the station master
       const bellX = bx + 150, bellY = by - 130, ring = st.fin ? Math.sin(st.fin.t * 18) * 0.5 * clamp(2 - st.fin.t, 0, 1) : 0;
-      ctx.fillStyle = '#6b4426'; ctx.fillRect(bellX - 3, bellY, 6, 92); ctx.fillRect(bellX - 20, bellY - 4, 40, 6);
+      dkPost(bellX, bellY, 6, 92, '#6b4426');
+      dkPic('hcBellArm', 44, 10, 22, 2, c => dkPlank(c, -20, 0, 40, 6, '#6b4426', 4, { r: 1, lw: 0.6, outline: '#40281a' }), bellX, bellY - 4);
       ctx.save(); ctx.translate(bellX, bellY + 2); ctx.rotate(ring);
       ctx.fillStyle = C.gold; ctx.strokeStyle = '#8a5a12'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(-12, 22); ctx.quadraticCurveTo(-12, 2, 0, 2); ctx.quadraticCurveTo(12, 2, 12, 22); ctx.closePath(); ctx.fill(); ctx.stroke();
@@ -1371,9 +1494,12 @@ function handcarDrawCar(st) {
   for (const s of [-1, 1]) {
     ctx.save(); ctx.translate(s * H.wb, -H.wr); ctx.rotate(spin);
     ctx.fillStyle = '#3a3448'; circle(0, 0, H.wr + 1); ctx.fill();
+    ctx.strokeStyle = '#6a6478'; ctx.lineWidth = 1.5; circle(0, 0, H.wr - 2); ctx.stroke();
     ctx.strokeStyle = '#8a8498'; ctx.lineWidth = 2;
     ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * (H.wr - 2), Math.sin(a) * (H.wr - 2)); } ctx.stroke();
     ctx.fillStyle = '#c9c5d6'; circle(0, 0, 3.5); ctx.fill();
+    ctx.fillStyle = '#7a7488'; circle(0, 0, 1.4); ctx.fill();
+    ctx.rotate(-spin); ctx.strokeStyle = 'rgba(230,225,240,0.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, H.wr, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
     ctx.restore();
   }
   // the gear box and the rod from the handle down to the front axle
@@ -1385,21 +1511,37 @@ function handcarDrawCar(st) {
   ctx.fillStyle = '#9a94a8'; circle(0, 0, 8); ctx.fill();
   ctx.restore();
   // the deck
-  ctx.fillStyle = '#704622'; rr(-H.half, H.deckY, H.half * 2, 10, 3); ctx.fill();
-  ctx.fillStyle = '#b77a45'; rr(-H.half, H.deckY - 2, H.half * 2, 8, 3); ctx.fill();
-  ctx.strokeStyle = 'rgba(112,70,34,0.7)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); for (let x = -H.half + 18; x < H.half; x += 18) { ctx.moveTo(x, H.deckY - 2); ctx.lineTo(x, H.deckY + 6); } ctx.stroke();
-  ctx.fillStyle = '#5a3a22'; ctx.fillRect(-H.half + 4, H.deckY + 8, H.half * 2 - 8, 4);
+  // the deck (cached): a riveted iron frame, short grained deck boards with nail pairs, a lit front edge, the lantern bracket
+  dkPic('hcDeck', H.half * 2 + 8, 34, H.half + 4, 18 - H.deckY, c => {
+    dkPlate(c, -H.half, H.deckY, H.half * 2, 10, '#704622', { step: 14, r: 3 });
+    for (let i = 0, x = -H.half; x < H.half - 0.5; i++, x += 18) {
+      const w2 = Math.min(18, H.half - x);
+      dkPlank(c, x, H.deckY - 2, w2, 8, i % 2 ? '#b07440' : '#bc824c', 40 + i, { r: i === 0 || x + w2 >= H.half ? 3 : 0.5, lit: 0.35, lw: 0.8 });
+      dkNail(c, x + 4, H.deckY + 2, 0.9); dkNail(c, x + w2 - 4, H.deckY + 2, 0.9);
+    }
+    dkPlate(c, -H.half + 4, H.deckY + 8, H.half * 2 - 8, 4, '#5a3a22', { rivets: false, r: 1 });
+    c.fillStyle = '#3a3448'; c.fillRect(H.half - 6, H.deckY - 16, 6, 14); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(H.half - 6, H.deckY - 16, 1.2, 14);
+    c.fillStyle = '#c9a24a'; c.fillRect(H.half - 7, H.deckY - 17, 8, 2); c.fillRect(H.half - 7, H.deckY - 5, 8, 2);
+  }, 0, 0);
   // a lantern on the front, a little flag on the back
-  ctx.fillStyle = '#3a3448'; ctx.fillRect(H.half - 6, H.deckY - 16, 6, 14);
   ctx.fillStyle = '#ffd36b'; circle(H.half - 3, H.deckY - 10, 3.5); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(H.half - 4, H.deckY - 11, 1.2); ctx.fill();
   ctx.fillStyle = 'rgba(255,211,107,0.3)'; circle(H.half - 3, H.deckY - 10, 8); ctx.fill();
   // mail sacks on board
   const n = Math.min(8, st.sacks);
   for (let i = 0; i < n; i++) handcarSack(-26 + (i % 4) * 13 - 12 + (i % 2), H.deckY - 12 - Math.floor(i / 4) * 12, 0.8);
   // the A-frame post
-  ctx.fillStyle = '#8a5228'; ctx.strokeStyle = '#5a3a22'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(-14, H.deckY - 1); ctx.lineTo(-4, H.pivotY + 2); ctx.lineTo(4, H.pivotY + 2); ctx.lineTo(14, H.deckY - 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+  dkPic('hcFrame', 34, H.deckY - H.pivotY + 8, 17, -H.pivotY + 4, c => {
+    const tri = () => { c.beginPath(); c.moveTo(-14, H.deckY - 1); c.lineTo(-4, H.pivotY + 2); c.lineTo(4, H.pivotY + 2); c.lineTo(14, H.deckY - 1); c.closePath(); };
+    c.fillStyle = '#8a5228'; tri(); c.fill();
+    c.save(); tri(); c.clip();
+    dkBoards(c, -14, H.pivotY, 28, H.deckY - H.pivotY, '#8a5228', 17, { vert: true, bw: 7, r: 0, outline: '#6a3e1c', lw: 0.7 });
+    c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(4, H.pivotY, 12, H.deckY - H.pivotY);
+    dkPlank(c, -14, H.deckY - 22, 28, 5, '#7a4820', 18, { r: 0, nails: true, lw: 0.7 });
+    c.restore();
+    c.strokeStyle = 'rgba(255,220,180,0.45)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-13, H.deckY - 2); c.lineTo(-3.5, H.pivotY + 3); c.stroke();
+    c.strokeStyle = '#5a3a22'; c.lineWidth = 2; tri(); c.stroke();
+  }, 0, 0);
   ctx.restore();
   // Pip and Bo (behind the handle beam, in front of the post)
   for (const p of G.players) handcarDrawRider(st, p, P);

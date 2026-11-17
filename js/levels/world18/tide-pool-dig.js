@@ -788,16 +788,10 @@ function tidedigPalm(c, x, y, h, lean, t) {
   c.fillStyle = '#6b4a28'; for (const [dx, dy] of [[-5, 6], [5, 7], [0, 11]]) { c.beginPath(); c.arc(tx + dx, ty + dy, 5, 0, Math.PI * 2); c.fill(); }
 }
 function tidedigRockBlob(c, x, y, w, h, col, dark) {
-  c.fillStyle = 'rgba(110,70,20,0.2)'; c.beginPath(); c.ellipse(x + 4, y + 2, w / 2 + 6, 5, 0, 0, Math.PI * 2); c.fill();
-  c.fillStyle = dark; c.beginPath(); c.ellipse(x, y + 3, w / 2, h / 2, 0, Math.PI, 0); c.fill();
-  c.fillStyle = col; c.beginPath(); c.ellipse(x, y, w / 2, h / 2, 0, Math.PI, 0); c.fill();
-  // a shaded right flank, specks and a dark outline
-  c.save(); c.beginPath(); c.ellipse(x, y, w / 2, h / 2, 0, Math.PI, 0); c.clip();
-  c.fillStyle = 'rgba(30,20,10,0.16)'; c.beginPath(); c.ellipse(x + w * 0.32, y, w * 0.3, h / 2, 0, 0, Math.PI * 2); c.fill();
-  c.fillStyle = 'rgba(40,30,20,0.25)'; for (let i = 0; i < 5; i++) { const hh = hash(Math.round(x) + i, Math.round(w)); c.beginPath(); c.arc(x - w * 0.35 + (hh % Math.max(1, Math.round(w * 0.7))), y - 3 - (hh >>> 6) % Math.max(1, Math.round(h * 0.35)), 1.3, 0, Math.PI * 2); c.fill(); }
-  c.restore();
-  c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.ellipse(x - w * 0.15, y - h * 0.28, w * 0.18, h * 0.1, -0.3, 0, Math.PI * 2); c.fill();
-  c.strokeStyle = mixCol(dark, '#141428', 0.3); c.lineWidth = 1.8; c.beginPath(); c.ellipse(x, y, w / 2, h / 2, 0, Math.PI, 0); c.stroke();
+  // a faceted grey rock: lit top-left planes, a shaded right flank, cracks, specks, a cap of moss on the bigger ones
+  void dark;
+  dkRock(c, x, y, w, h / 2, col, Math.round(x * 7 + w), { moss: w > 40 ? '#5fae5a' : null, lw: 1.8 });
+  c.fillStyle = 'rgba(160,110,40,0.35)'; c.fillRect(x - w / 2 - 2, y - 1, w + 4, 3);
 }
 function tidedigPaintBack(c, st) {
   const g = G.level.grid, S = TIDEDIG.S, surf = tidedigSurf();
@@ -839,56 +833,81 @@ function tidedigPaintBack(c, st) {
   c.strokeStyle = '#2a2a3a'; c.lineWidth = 1; c.beginPath(); c.arc(sx + 7, sy - 66.5, 1.4, 0.2, Math.PI - 0.2); c.stroke();
   // room scenery behind the beach
   tidedigPaintDeco(c, st);
-  // the sand, cut away: layers get darker deeper down, with shells and pebbles
-  for (let r = 0; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) {
-    if (g[r][cc] !== '#' && !(r >= S && st.holes.some(h => h.c === cc))) continue;
-    const x = cc * T, y = r * T, hh = hash(cc, r);
-    if (tidedigIsRock(st, cc, r)) {
-      if (r < S) continue;   // (rocks above the beach are drawn as one big rock in tidedigPaintDeco)
-      c.fillStyle = r >= 16 ? '#8a6a4c' : '#9a8a7a'; c.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
-      c.fillStyle = r >= 16 ? '#6e5238' : '#7a6c60';
-      c.beginPath(); c.ellipse(x + 8 + hh % 14, y + 9 + (hh >> 3) % 12, 7, 4, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(x + 3, y + 3, T - 8, 2);
-      c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.arc(x + 4 + (hh >> 5) % 20, y + 6 + (hh >> 9) % 16, 1.2, 0, Math.PI * 2); c.fill();
-      if (hh % 5 === 1) { c.strokeStyle = 'rgba(40,28,18,0.35)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x + 6, y + 4); c.lineTo(x + 12, y + 14); c.lineTo(x + 9, y + 22); c.stroke(); }
-      continue;
-    }
-    const k = clamp(r - S, 0, TIDEDIG_SAND.length - 1);
-    c.fillStyle = TIDEDIG_SAND[k]; c.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
-    c.fillStyle = 'rgba(150,100,40,0.22)';
-    for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(x + 3 + ((hh >> (i * 3)) % 24), y + 4 + ((hh >> (i * 4 + 2)) % 22), 1.3, 0, Math.PI * 2); c.fill(); }
-    if (hh % 11 === 0 && r > S) { c.fillStyle = '#fff1e0'; c.beginPath(); c.arc(x + 15, y + 15, 4, Math.PI, 0); c.fill(); c.fillStyle = '#f2b8a0'; c.fillRect(x + 11, y + 15, 8, 1.5); }
-    if (hh % 13 === 3 && r > S + 1) { c.fillStyle = '#a89c90'; c.beginPath(); c.ellipse(x + 10, y + 20, 4, 3, 0.3, 0, Math.PI * 2); c.fill(); c.strokeStyle = 'rgba(70,60,50,0.5)'; c.lineWidth = 1; c.stroke(); c.fillStyle = 'rgba(255,255,255,0.4)'; c.beginPath(); c.arc(x + 9, y + 19, 1, 0, Math.PI * 2); c.fill(); }
-    if (hh % 23 === 7 && r > S + 3) { c.strokeStyle = 'rgba(110,70,30,0.35)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x + 4, y + 6); c.quadraticCurveTo(x + 12, y + 14, x + 8, y + 24); c.moveTo(x + 10, y + 14); c.lineTo(x + 18, y + 18); c.stroke(); }
-    if (hh % 17 === 5 && r > S + 2) {
-      // a little starfish fossil
-      c.fillStyle = 'rgba(255,170,110,0.5)'; c.beginPath();
-      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr2 = i % 2 ? 2.4 : 6; c.lineTo(x + 18 + Math.cos(a) * rr2, y + 12 + Math.sin(a) * rr2); }
-      c.closePath(); c.fill();
-    }
-  }
-  // strata lines across the cut face
-  c.lineWidth = 2;
-  for (let r = S + 1; r < 16; r++) {
-    c.strokeStyle = 'rgba(140,90,30,0.2)'; c.beginPath(); for (let x = 0; x <= st.seaX; x += 20) c.lineTo(x, r * T + Math.sin(x * 0.03 + r) * 3); c.stroke();
-    c.strokeStyle = 'rgba(255,240,200,0.18)'; c.beginPath(); for (let x = 0; x <= st.seaX; x += 20) c.lineTo(x, r * T + 2.5 + Math.sin(x * 0.03 + r) * 3); c.stroke();
-  }
-  // a soft lighter or darker patch now and then, so the layers are not flat (after the tiles, so none cuts them off)
+  // the sand, cut away: wavy layers that get darker deeper down (each with a lit lip and a dark seam), fine grains,
+  // embedded shaded pebbles, hairline cracks, shells, fossils and worm trails, all clipped to the sand cells
+  const sandCell = (r, cc) => r >= S && (g[r][cc] === '#' || st.holes.some(h => h.c === cc)) && !tidedigIsRock(st, cc, r);
+  c.save(); c.beginPath();
+  for (let r = 0; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) if (sandCell(r, cc)) c.rect(cc * T - 0.5, r * T - 0.5, T + 1, T + 1);
+  c.clip();
+  dkSoil(c, 0, surf, W, H - surf, TIDEDIG_SAND, 181, { depth: T, speck: 55, stone: 4200, big: 3.5, pebbles: ['#a89c90', '#b8aa98', '#9a8a7a', '#c4b4a0', '#8f8378'], speckDk: 'rgba(150,100,40,0.3)', crack: 'rgba(120,80,30,0.22)' });
+  // soft lighter or darker patches so the layers are not flat
   for (let r = S + 1; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) {
     const hh = hash(cc, r);
-    if (hh % 5 !== 2 || g[r][cc] !== '#' || tidedigIsRock(st, cc, r) || st.holes.some(h => h.c === cc)) continue;
-    c.fillStyle = hh % 2 ? 'rgba(255,240,200,0.12)' : 'rgba(120,80,30,0.08)'; c.beginPath(); c.ellipse(cc * T + 16, r * T + 16, 22, 7, 0, 0, Math.PI * 2); c.fill();
+    if (hh % 4 !== 2) continue;
+    c.fillStyle = hh % 2 ? 'rgba(255,240,200,0.13)' : 'rgba(120,80,30,0.09)'; c.beginPath(); c.ellipse(cc * T + 16, r * T + 16, 22, 7, 0, 0, Math.PI * 2); c.fill();
   }
-  // the deeper sand is a little darker, and the rows of the bedrock get a rounded lit top
+  // shells (ridged, shaded), little starfish fossils, worm trails and buried twigs
+  for (let r = S + 1; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) {
+    if (!sandCell(r, cc)) continue;
+    const x = cc * T, y = r * T, hh = hash(cc, r);
+    if (hh % 9 === 0) {
+      const sx = x + 10 + hh % 10, sy = y + 14 + (hh >>> 4) % 8, col = ['#fff1e0', '#ffd8c8', '#ffe6b0'][(hh >>> 7) % 3];
+      c.fillStyle = 'rgba(90,60,20,0.25)'; c.beginPath(); c.ellipse(sx + 1, sy + 1.5, 5, 1.6, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = col; c.beginPath(); c.arc(sx, sy, 4.6, Math.PI, 0); c.closePath(); c.fill();
+      c.fillStyle = dkS(col, 0.12); c.beginPath(); c.arc(sx, sy, 4.6, Math.PI * 1.5, 0); c.lineTo(sx, sy); c.closePath(); c.fill();
+      c.strokeStyle = '#c9907a'; c.lineWidth = 0.7; c.beginPath(); for (let k = -2; k <= 2; k++) { c.moveTo(sx, sy); c.lineTo(sx + k * 2, sy - 4.2 + Math.abs(k) * 0.5); } c.stroke();
+      c.beginPath(); c.arc(sx, sy, 4.6, Math.PI, 0); c.stroke();
+      c.fillStyle = col; c.fillRect(sx - 1.5, sy, 3, 1.5);
+    }
+    if (hh % 17 === 5 && r > S + 2) {
+      const fx = x + 18, fy = y + 12;
+      c.fillStyle = 'rgba(255,170,110,0.55)'; c.beginPath();
+      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r2 = i % 2 ? 2.4 : 6; c.lineTo(fx + Math.cos(a) * r2, fy + Math.sin(a) * r2); }
+      c.closePath(); c.fill(); c.strokeStyle = 'rgba(170,90,50,0.5)'; c.lineWidth = 0.8; c.stroke();
+      c.fillStyle = 'rgba(255,230,200,0.6)'; for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 0.4; c.beginPath(); c.arc(fx + Math.cos(a) * 3.4, fy + Math.sin(a) * 3.4, 0.7, 0, Math.PI * 2); c.fill(); }
+    }
+    if (hh % 23 === 7 && r > S + 2) {
+      c.strokeStyle = 'rgba(110,70,30,0.4)'; c.lineWidth = 1.4; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(x + 4, y + 6); c.quadraticCurveTo(x + 12, y + 14, x + 8, y + 24); c.moveTo(x + 10, y + 14); c.lineTo(x + 18, y + 18); c.stroke();
+      c.strokeStyle = 'rgba(255,240,200,0.3)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x + 3.5, y + 5); c.quadraticCurveTo(x + 11, y + 13, x + 7, y + 23); c.stroke(); c.lineCap = 'butt';
+    }
+    if (hh % 13 === 4) {
+      c.strokeStyle = 'rgba(140,95,40,0.35)'; c.lineWidth = 1.6; c.lineCap = 'round'; c.beginPath();
+      c.moveTo(x + 4, y + 20); c.bezierCurveTo(x + 10, y + 12, x + 16, y + 26, x + 24, y + 16); c.stroke(); c.lineCap = 'butt';
+      c.fillStyle = 'rgba(90,55,20,0.4)'; c.beginPath(); c.arc(x + 24, y + 16, 1.6, 0, Math.PI * 2); c.fill();
+    }
+  }
+  // the deeper sand is a little darker
   const dg = c.createLinearGradient(0, surf, 0, H); dg.addColorStop(0, 'rgba(90,50,10,0)'); dg.addColorStop(1, 'rgba(90,50,10,0.16)');
-  c.fillStyle = dg; c.fillRect(0, surf + 6, st.seaX, H - surf);
-  // the bright dry top of the beach
+  c.fillStyle = dg; c.fillRect(0, surf + 6, W, H - surf);
+  c.restore();
+  // rock cells: packed cobbles (grey under the beach, brown in the bedrock) in a darker grit
+  for (let r = S; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) {
+    if (g[r][cc] !== '#' || !tidedigIsRock(st, cc, r)) continue;
+    const x = cc * T, y = r * T;
+    c.fillStyle = r >= 16 ? '#4e3a28' : '#5e544c'; c.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
+  }
+  for (let r = S; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) {
+    if (g[r][cc] !== '#' || !tidedigIsRock(st, cc, r)) continue;
+    const x = cc * T, y = r * T, deep = r >= 16, base = deep ? '#9a7656' : '#9a8a7a';
+    // three or four irregular cobbles per cell, staggered row to row, with grit between
+    const off = (r % 2) * 8;
+    for (let k = 0; k < 3; k++) {
+      const hh = hash(cc * 5 + k, r * 11), bx = x + off + k * 11 - 2 + (hh % 4), by = y + 8 + (k % 2) * 13 + ((hh >>> 3) % 4);
+      const col = dkMix(base, hh % 2 ? '#ffffff' : '#000000', 0.04 + (hh % 3) * 0.05);
+      dkCobble(c, bx, by, 7 + (hh >>> 6) % 3, 5.5 + (hh >>> 8) % 2, col, hh);
+    }
+    const hq = hash(cc, r * 3);
+    c.fillStyle = 'rgba(255,230,200,0.18)'; for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(x + (hq >>> (k * 4)) % 28, y + (hq >>> (k * 5 + 2)) % 28, 0.9, 0, Math.PI * 2); c.fill(); }
+  }
+  // the bright dry top of the beach: a pale lip with tiny ripples and grains, and a soft shadow line under it
   for (let cc = 0; cc < COLS; cc++) {
     if (g[S][cc] !== '#' || tidedigIsRock(st, cc, S)) continue;
     c.fillStyle = '#fff0c0'; c.fillRect(cc * T, surf, T, 4);
+    c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(cc * T, surf, T, 1.2);
+    c.strokeStyle = 'rgba(200,150,70,0.4)'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(cc * T + 4, surf + 2.5); c.quadraticCurveTo(cc * T + 9, surf + 1, cc * T + 14, surf + 2.5); c.moveTo(cc * T + 17, surf + 3); c.quadraticCurveTo(cc * T + 22, surf + 1.5, cc * T + 27, surf + 3); c.stroke();
   }
-  // the cut face edge under the beach (a soft shadow line, so it reads as a cross-section)
-  c.fillStyle = 'rgba(90,60,20,0.18)'; c.fillRect(0, surf + 4, st.seaX, 3);
+  c.fillStyle = 'rgba(90,60,20,0.2)'; c.fillRect(0, surf + 4, st.seaX, 3);
   // rock pools
   for (const d of st.dumps) {
     if (d.kind !== 'pool') continue;
@@ -923,22 +942,56 @@ function tidedigPaintDeco(c, st) {
   if (st.style === 'wreck') {
     tidedigPalm(c, 60, surf + 2, 160, 30, 0);
     // an old friendly shipwreck half in the sand: ribs, a broken mast with a patched flag
-    c.strokeStyle = '#7a4a28'; c.lineWidth = 10; c.lineCap = 'round';
-    for (let i = 0; i < 6; i++) {
-      const x = 380 + i * 36, h2 = 60 + Math.sin(i * 1.3) * 16 + (i === 2 || i === 3 ? 26 : 0);
-      c.beginPath(); c.moveTo(x, surf + 4); c.quadraticCurveTo(x + (i < 3 ? -18 : 18), surf - h2 * 0.6, x + (i < 3 ? -8 : 8), surf - h2); c.stroke();
-    }
-    c.strokeStyle = '#9a6238'; c.lineWidth = 6; c.beginPath(); c.moveTo(366, surf - 40); c.lineTo(574, surf - 46); c.stroke();
-    c.strokeStyle = '#6b4024'; c.lineWidth = 8; c.beginPath(); c.moveTo(600, surf + 4); c.lineTo(640, surf - 150); c.stroke();
-    c.fillStyle = '#fff6e0'; c.beginPath(); c.moveTo(636, surf - 140); c.lineTo(690, surf - 128); c.lineTo(632, surf - 100); c.closePath(); c.fill();
+    // ribs: old weathered timbers (a dark edge, the wood, a sun-bleached lit edge, grain, treenails, a broken tip)
+    c.lineCap = 'round';
+    const rib = (x, i, h2) => {
+      const path = () => { c.beginPath(); c.moveTo(x, surf + 4); c.quadraticCurveTo(x + (i < 3 ? -18 : 18), surf - h2 * 0.6, x + (i < 3 ? -8 : 8), surf - h2); };
+      c.strokeStyle = 'rgba(80,50,20,0.22)'; c.lineWidth = 12; c.save(); c.translate(4, 3); path(); c.stroke(); c.restore();
+      c.strokeStyle = '#4e2e16'; c.lineWidth = 11; path(); c.stroke();
+      c.strokeStyle = '#7a4a28'; c.lineWidth = 8; path(); c.stroke();
+      c.strokeStyle = '#a8784a'; c.lineWidth = 2.4; c.save(); c.translate(i < 3 ? -2.5 : -2, -1); path(); c.stroke(); c.restore();
+      c.strokeStyle = 'rgba(60,30,10,0.5)'; c.lineWidth = 0.9; c.save(); c.translate(1.5, 0); path(); c.stroke(); c.restore();
+      for (let u = 0.25; u < 0.95; u += 0.3) { const qx = (1 - u) * (1 - u) * x + 2 * (1 - u) * u * (x + (i < 3 ? -18 : 18)) + u * u * (x + (i < 3 ? -8 : 8)), qy = (1 - u) * (1 - u) * (surf + 4) + 2 * (1 - u) * u * (surf - h2 * 0.6) + u * u * (surf - h2); dkNail(c, qx, qy, 1.2); }
+      // a splintered top
+      const tx = x + (i < 3 ? -8 : 8), ty = surf - h2;
+      c.fillStyle = '#a8784a'; c.beginPath(); c.moveTo(tx - 4, ty + 2); c.lineTo(tx - 2, ty - 4); c.lineTo(tx, ty); c.lineTo(tx + 2, ty - 5); c.lineTo(tx + 4, ty + 2); c.closePath(); c.fill();
+    };
+    for (let i = 0; i < 6; i++) rib(380 + i * 36, i, 60 + Math.sin(i * 1.3) * 16 + (i === 2 || i === 3 ? 26 : 0));
+    c.lineCap = 'butt';
+    // the gunwale beam across the ribs, with a barnacled end and seaweed draped over it
+    c.save(); c.translate(366, surf - 40); c.rotate(Math.atan2(-6, 208)); dkPlank(c, 0, -3.5, 210, 7, '#9a6238', 501, { nails: true, r: 3 }); c.restore();
+    c.fillStyle = '#3f9a5e'; for (const sx of [420, 500]) { c.beginPath(); c.moveTo(sx, surf - 42); c.quadraticCurveTo(sx + 6, surf - 30, sx + 2, surf - 22); c.lineTo(sx + 6, surf - 24); c.quadraticCurveTo(sx + 10, surf - 34, sx + 10, surf - 43); c.closePath(); c.fill(); }
+    // a half-buried barrel and a plank in the sand
+    dkBarrel(c, 556, surf - 20, 22, 24, '#8a5a2c', 502, { noShadow: true });
+    c.save(); c.translate(320, surf - 6); c.rotate(-0.2); dkPlank(c, 0, -4, 44, 8, '#8a6a4a', 503, { r: 2 }); c.restore();
+    // the broken mast (grain, bands) and its patched flag
+    c.save(); c.translate(600, surf + 4); c.rotate(Math.atan2(40, -154) + Math.PI / 2);
+    dkPlank(c, -5, -158, 10, 158, '#6b4024', 504, { vert: true, r: 2 });
+    c.fillStyle = '#4a4e5c'; c.fillRect(-6, -120, 12, 3); c.fillRect(-6, -60, 12, 3);
+    c.restore();
+    c.fillStyle = '#fff6e0'; c.beginPath(); c.moveTo(636, surf - 140); c.lineTo(690, surf - 128); c.lineTo(676, surf - 120); c.lineTo(686, surf - 112); c.lineTo(632, surf - 100); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(160,130,90,0.3)'; c.beginPath(); c.moveTo(634, surf - 112); c.lineTo(686, surf - 112); c.lineTo(632, surf - 100); c.closePath(); c.fill();
+    c.strokeStyle = '#b8a888'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(636, surf - 140); c.lineTo(690, surf - 128); c.lineTo(676, surf - 120); c.lineTo(686, surf - 112); c.lineTo(632, surf - 100); c.stroke();
     c.fillStyle = '#ffb36b'; c.fillRect(650, surf - 128, 12, 10);
+    c.strokeStyle = '#c4784a'; c.lineWidth = 0.8; c.setLineDash([2, 2]); c.strokeRect(650, surf - 128, 12, 10); c.setLineDash([]);
   }
   if (st.style === 'skull') {
     tidedigPalm(c, 700, surf + 2, 120, -20, 1);
     // Skull Rock: a big round friendly rock with a smiley face (and a bandana)
     const x = 70, y = surf - 88;
+    c.fillStyle = 'rgba(110,70,20,0.25)'; c.beginPath(); c.ellipse(x + 14, surf + 2, 100, 8, 0, 0, Math.PI * 2); c.fill();
     c.fillStyle = '#b8b0a4'; c.beginPath(); c.ellipse(x, y, 92, 104, 0, 0, Math.PI * 2); c.fill();
-    c.fillStyle = '#9a9286'; c.beginPath(); c.ellipse(x + 20, y + 30, 70, 70, 0, 0, Math.PI); c.fill();
+    c.save(); c.beginPath(); c.ellipse(x, y, 92, 104, 0, 0, Math.PI * 2); c.clip();
+    c.fillStyle = '#cdc6ba'; c.beginPath(); c.ellipse(x - 30, y - 40, 60, 50, -0.4, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#9a9286'; c.beginPath(); c.ellipse(x + 50, y + 30, 70, 100, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#8a8276'; c.beginPath(); c.ellipse(x + 20, y + 110, 120, 40, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(70,64,56,0.5)'; c.lineWidth = 2; c.beginPath(); c.moveTo(x + 60, y - 70); c.lineTo(x + 52, y - 50); c.lineTo(x + 62, y - 30); c.moveTo(x - 70, y + 30); c.lineTo(x - 60, y + 50); c.lineTo(x - 66, y + 70); c.moveTo(x + 10, y + 60); c.lineTo(x + 24, y + 74); c.stroke();
+    c.fillStyle = 'rgba(70,64,56,0.3)'; for (let i = 0; i < 40; i++) { c.beginPath(); c.arc(x - 80 + dkR(611, i) * 160, y - 90 + dkR(612, i) * 190, 1 + dkR(613, i) * 1.5, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,0.3)'; for (let i = 0; i < 20; i++) { c.beginPath(); c.arc(x - 80 + dkR(614, i) * 100, y - 90 + dkR(615, i) * 120, 1, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#5fae5a'; c.beginPath(); c.ellipse(x - 70, y + 92, 30, 12, 0.3, 0, Math.PI * 2); c.ellipse(x + 70, y + 88, 26, 10, -0.3, 0, Math.PI * 2); c.fill();
+    c.restore();
+    c.strokeStyle = 'rgba(255,255,255,0.4)'; c.lineWidth = 3; c.beginPath(); c.ellipse(x, y, 88, 100, 0, Math.PI * 1.05, Math.PI * 1.45); c.stroke();
+    c.strokeStyle = '#6e665a'; c.lineWidth = 2.5; c.beginPath(); c.ellipse(x, y, 92, 104, 0, 0, Math.PI * 2); c.stroke();
     c.fillStyle = '#e8473a'; c.beginPath(); c.ellipse(x, y - 70, 80, 26, 0, Math.PI, 0); c.fill();
     c.fillStyle = '#fff'; for (let i = 0; i < 5; i++) { c.beginPath(); c.arc(x - 50 + i * 25, y - 78, 3, 0, Math.PI * 2); c.fill(); }
     c.fillStyle = '#4a4440';
@@ -1028,13 +1081,21 @@ function tidedigDrawChest(x, y, open, big, alpha, lift) {
     ctx.fillStyle = C.gold; ctx.fillRect(-w / 2 + 4, -lh, 4, lh); ctx.fillRect(w / 2 - 8, -lh, 4, lh);
     ctx.restore();
   }
-  ctx.fillStyle = '#5f3418'; rr(-w / 2 - 1, -h - 1, w + 2, h + 2, 4); ctx.fill();
-  ctx.fillStyle = '#9a5a2e'; rr(-w / 2, -h, w, h, 3); ctx.fill();
-  ctx.fillStyle = '#b06c38'; ctx.fillRect(-w / 2 + 2, -h + 3, w - 4, 3);
-  ctx.fillStyle = 'rgba(40,20,5,0.22)'; ctx.fillRect(w / 2 - 6, -h, 5, h);
-  ctx.strokeStyle = 'rgba(60,30,10,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-w / 2 + 1, -h / 2); ctx.lineTo(w / 2 - 1, -h / 2); ctx.stroke();
-  ctx.fillStyle = C.gold; ctx.fillRect(-w / 2 + 4, -h, 4, h); ctx.fillRect(w / 2 - 8, -h, 4, h);
-  ctx.fillStyle = '#fff1a8'; ctx.fillRect(-w / 2 + 4, -h, 1.2, h); ctx.fillRect(w / 2 - 8, -h, 1.2, h);
+  // the box (cached per size): planks with grain and knots, iron corners, brass straps with rivets, a lit top edge
+  dkPic('tdChest' + w, w + 6, h + 6, w / 2 + 3, h + 3, c => {
+    c.fillStyle = '#5f3418'; rrOn(c, -w / 2 - 1, -h - 1, w + 2, h + 2, 4); c.fill();
+    c.save(); rrOn(c, -w / 2, -h, w, h, 3); c.clip();
+    dkBoards(c, -w / 2, -h, w, h, '#9a5a2e', w * 3, { bw: h / 3, r: 0 });
+    c.fillStyle = 'rgba(40,20,5,0.25)'; c.fillRect(w / 2 - 6, -h, 6, h);
+    c.fillStyle = 'rgba(255,230,190,0.3)'; c.fillRect(-w / 2, -h, w, 1.5);
+    c.restore();
+    for (const sx of [-w / 2 + 4, w / 2 - 8]) {
+      c.fillStyle = C.gold; c.fillRect(sx, -h, 4, h); c.fillStyle = '#fff1a8'; c.fillRect(sx, -h, 1.2, h); c.fillStyle = '#a8740f'; c.fillRect(sx + 3.2, -h, 0.8, h);
+      dkRivet(c, sx + 2, -h + 3, 0.8, '#ffe08a'); dkRivet(c, sx + 2, -3, 0.8, '#ffe08a');
+    }
+    c.fillStyle = '#4a4e5c'; c.fillRect(-w / 2, -h, 3, 3); c.fillRect(w / 2 - 3, -h, 3, 3); c.fillRect(-w / 2, -3, 3, 3); c.fillRect(w / 2 - 3, -3, 3, 3);
+    c.strokeStyle = '#4a2410'; c.lineWidth = 1; rrOn(c, -w / 2, -h, w, h, 3); c.stroke();
+  }, 0, 0);
   if (open > 0) {
     // gold heaped inside and the lid tipped back
     ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.ellipse(0, -h, w / 2 - 2, 6 + open * 3, 0, Math.PI, 0); ctx.fill();
@@ -1053,13 +1114,13 @@ function tidedigDrawHoles(st, t) {
     const x = h.c * T, ch = h.chest, bot = tidedigBottom(h);
     // the hole: dug tiles are shady sand with scooped walls
     if (h.depth > 0) {
-      const gr = ctx.createLinearGradient(0, surf, 0, bot); gr.addColorStop(0, '#c99a58'); gr.addColorStop(1, '#8f6532');
-      ctx.fillStyle = gr; ctx.fillRect(x, surf, T, bot - surf);
-      ctx.fillStyle = 'rgba(70,40,10,0.25)'; ctx.fillRect(x, surf, 4, bot - surf); ctx.fillRect(x + T - 4, surf, 4, bot - surf);
-      ctx.strokeStyle = 'rgba(90,55,20,0.22)'; ctx.lineWidth = 1.5;
-      for (let y = surf + 10; y < bot - 4; y += 12) { ctx.beginPath(); ctx.arc(x + 15 + Math.sin(y) * 5, y, 6, 0.2, Math.PI - 0.2); ctx.stroke(); }
-      // shovel marks around the mouth
+      ctx.save(); ctx.beginPath(); ctx.rect(x, surf, T, bot - surf); ctx.clip();
+      dkPic('tdHole' + (h.c % 3), T, H - surf + 2, 0, 0, c => tidedigPaintHoleCol(c, H - surf, h.c % 3), x, surf);
+      ctx.restore();
+      // the floor of the hole: a damp darker scoop
+      ctx.fillStyle = 'rgba(80,45,10,0.35)'; ctx.beginPath(); ctx.ellipse(x + T / 2, bot - 1, T / 2 - 1, 3, 0, Math.PI, 0); ctx.fill();
       ctx.fillStyle = '#e0b96c'; ctx.fillRect(x - 3, surf, 3, 6); ctx.fillRect(x + T, surf, 3, 6);
+      ctx.fillStyle = '#fff0c0'; ctx.fillRect(x - 3, surf, 3, 1.5); ctx.fillRect(x + T, surf, 3, 1.5);
     }
     // the next tile, scooped part way
     if (!ch.opened && h.depth < ch.depth && h.prog > 0) {
@@ -1104,8 +1165,18 @@ function tidedigDrawHoles(st, t) {
     // the sand pile beside the hole (on the land side)
     if (h.pile > 0) {
       const side = st.seaX > h.cx ? -1 : 1, px = h.cx + side * 34, ph = 6 + h.pile * 4, pw = 16 + h.pile * 4;
-      ctx.fillStyle = '#e8c57a'; ctx.beginPath(); ctx.ellipse(px, surf + 1, pw, ph, 0, Math.PI, 0); ctx.fill();
-      ctx.fillStyle = '#f6dc9a'; ctx.beginPath(); ctx.ellipse(px - 3, surf - ph * 0.45, pw * 0.4, ph * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+      // a shaded heap of dug sand: shadow, darker damp side, lit crest, scattered grains and a lump or two
+      dkPic('tdPile' + h.pile, pw * 2 + 8, ph + 8, pw + 4, ph + 4, c => {
+        c.fillStyle = 'rgba(90,60,20,0.2)'; c.beginPath(); c.ellipse(3, 1.5, pw + 2, 3, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#d2a860'; c.beginPath(); c.ellipse(0, 1, pw, ph, 0, Math.PI, 0); c.fill();
+        c.save(); c.beginPath(); c.ellipse(0, 1, pw, ph, 0, Math.PI, 0); c.clip();
+        c.fillStyle = '#e8c57a'; c.beginPath(); c.ellipse(-pw * 0.25, 1, pw * 0.85, ph * 0.95, 0, Math.PI, 0); c.fill();
+        c.fillStyle = '#f6dc9a'; c.beginPath(); c.ellipse(-3, -ph * 0.45, pw * 0.42, ph * 0.32, 0, 0, Math.PI * 2); c.fill();
+        for (let i = 0; i < pw * 1.5; i++) { const hh = hash(i, 77 + h.pile); c.fillStyle = hh % 3 ? 'rgba(150,100,40,0.35)' : 'rgba(255,250,225,0.6)'; c.fillRect(-pw + (hh % (pw * 2)), -ph + 1 + ((hh >>> 8) % (ph + 1)), 1, 1); }
+        c.restore();
+        dkPebble(c, pw * 0.4, -1, 2.6, 1.8, '#c4a070', 5); dkPebble(c, -pw * 0.55, 0, 2, 1.5, '#b8a088', 9);
+        c.strokeStyle = 'rgba(150,100,40,0.55)'; c.lineWidth = 1; c.beginPath(); c.ellipse(0, 1, pw, ph, 0, Math.PI, 0); c.stroke();
+      }, px, surf);
     }
   }
   // the haul ropes
@@ -1117,6 +1188,21 @@ function tidedigDrawHoles(st, t) {
       ctx.beginPath(); ctx.moveTo(px, surf - 34); ctx.quadraticCurveTo((px + h.cx) / 2, surf - 46, h.cx, Math.max(surf - 40, cy)); ctx.lineTo(h.cx, cy); ctx.stroke();
     }
   }
+}
+// the inside of a dug hole (cached per look): a darker damp sand gradient with the layers showing faintly, scoop marks
+// from the shovel, shaded pebbles stuck in the walls, little roots and dark shaded side walls
+function tidedigPaintHoleCol(c, h, v) {
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#c99a58'); g.addColorStop(0.5, '#a87a40'); g.addColorStop(1, '#8a6030');
+  c.fillStyle = g; c.fillRect(0, 0, T, h);
+  for (let y = T; y < h; y += T) { c.fillStyle = 'rgba(90,55,20,0.25)'; c.fillRect(0, y - 1, T, 1.2); c.fillStyle = 'rgba(255,230,180,0.14)'; c.fillRect(0, y + 0.5, T, 1); }
+  c.strokeStyle = 'rgba(90,55,20,0.3)'; c.lineWidth = 1.5;
+  for (let y = 10; y < h - 4; y += 12) { const ox = Math.sin(y + v) * 5; c.beginPath(); c.arc(15 + ox, y, 6, 0.2, Math.PI - 0.2); c.stroke(); c.strokeStyle = 'rgba(255,230,180,0.18)'; c.beginPath(); c.arc(15 + ox, y + 1.5, 6, 0.4, Math.PI - 0.4); c.stroke(); c.strokeStyle = 'rgba(90,55,20,0.3)'; }
+  for (let i = 0; i < h / 22; i++) dkPebble(c, 4 + dkR(620 + v, i) * 22, 8 + dkR(630 + v, i) * (h - 12), 2.2 + dkR(640 + v, i) * 1.6, 1.6 + dkR(650 + v, i), ['#9a8a7a', '#b8aa98', '#8f8378'][i % 3], i + v * 50);
+  c.strokeStyle = 'rgba(110,70,30,0.5)'; c.lineWidth = 1; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(0, 6); c.quadraticCurveTo(5, 10, 4, 18); c.moveTo(T, 12 + v * 3); c.quadraticCurveTo(T - 6, 16, T - 5, 26); c.stroke(); c.lineCap = 'butt';
+  const sg = c.createLinearGradient(0, 0, T, 0); sg.addColorStop(0, 'rgba(60,30,5,0.4)'); sg.addColorStop(0.2, 'rgba(60,30,5,0.08)'); sg.addColorStop(0.75, 'rgba(60,30,5,0.08)'); sg.addColorStop(1, 'rgba(60,30,5,0.32)');
+  c.fillStyle = sg; c.fillRect(0, 0, T, h);
+  c.fillStyle = 'rgba(60,30,5,0.3)'; c.fillRect(0, 0, T, 5);
 }
 function tidedigDrawWall(st, t) {
   const wl = st.wall;
@@ -1130,8 +1216,13 @@ function tidedigDrawWall(st, t) {
   const lv = wl.lv + wl.prog * 0.9;
   if (lv > 0.02) {
     const hh = 6 + lv * 9, wob = wl.anim > 0 ? Math.sin(t * 40) * wl.anim * 2 : 0;
-    ctx.fillStyle = '#d9b46a'; ctx.beginPath(); ctx.ellipse(x + wob, surf + 2, 26, hh + 2, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = 'rgba(110,70,20,0.2)'; ctx.beginPath(); ctx.ellipse(x + wob + 4, surf + 2, 30, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c99a58'; ctx.beginPath(); ctx.ellipse(x + wob, surf + 2, 26, hh + 2, 0, Math.PI, 0); ctx.fill();
     ctx.fillStyle = '#ecca80'; ctx.beginPath(); ctx.ellipse(x + wob, surf + 1, 24, hh, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#d9b46a'; ctx.beginPath(); ctx.ellipse(x + wob + 8, surf + 1, 16, hh * 0.8, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#fff0c0'; ctx.beginPath(); ctx.ellipse(x + wob - 6, surf + 1 - hh * 0.6, 11, hh * 0.25, -0.15, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(140,95,40,0.4)'; for (let i = 0; i < 12; i++) { const a = Math.PI + (i + 0.5) / 12 * Math.PI, rr2 = 0.4 + (i % 3) * 0.2; ctx.beginPath(); ctx.arc(x + wob + Math.cos(a) * 22 * rr2, surf + 1 + Math.sin(a) * hh * rr2, 0.9, 0, Math.PI * 2); ctx.fill(); }
+    ctx.strokeStyle = '#a87a40'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(x + wob, surf + 1, 24, hh, 0, Math.PI, 0); ctx.stroke();
     // pat marks and a tiny castle tower on a full wall
     ctx.fillStyle = 'rgba(160,110,50,0.3)'; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(x - 10 + i * 10 + wob, surf - hh * 0.5, 3, 0, Math.PI * 2); ctx.fill(); }
     if (wl.lv >= 2) { ctx.fillStyle = '#e0b96c'; ctx.fillRect(x - 6 + wob, surf - hh - 12, 12, 13); ctx.fillRect(x - 8 + wob, surf - hh - 15, 4, 4); ctx.fillRect(x - 2 + wob, surf - hh - 15, 4, 4); ctx.fillRect(x + 4 + wob, surf - hh - 15, 4, 4); }
@@ -1140,8 +1231,19 @@ function tidedigDrawWall(st, t) {
 function tidedigDrawStash(st, t) {
   const surf = tidedigSurf(), x = st.stashX, n = st.stats.stash;
   // the treasure blanket (red and white checks) with a heap of coins and a little flag
-  ctx.fillStyle = '#e8473a'; ctx.beginPath(); ctx.moveTo(x - 40, surf); ctx.lineTo(x + 40, surf); ctx.lineTo(x + 34, surf - 6); ctx.lineTo(x - 34, surf - 6); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#fff'; for (let i = 0; i < 6; i++) ctx.fillRect(x - 34 + i * 12, surf - 6, 6, 3), ctx.fillRect(x - 28 + i * 12, surf - 3, 6, 3);
+  dkPic('tdBlanket', 96, 16, 48, 10, c => {
+    c.fillStyle = 'rgba(110,70,20,0.25)'; c.beginPath(); c.ellipse(2, 1, 44, 3, 0, 0, Math.PI * 2); c.fill();
+    const cloth = () => { c.beginPath(); c.moveTo(-40, 0); c.lineTo(40, 0); c.lineTo(34, -6); c.lineTo(-34, -6); c.closePath(); };
+    c.fillStyle = '#e8473a'; cloth(); c.fill();
+    c.save(); cloth(); c.clip();
+    c.fillStyle = '#fff'; for (let i = 0; i < 7; i++) { c.fillRect(-40 + i * 12, -6, 6, 3); c.fillRect(-34 + i * 12, -3, 6, 3); }
+    c.fillStyle = 'rgba(200,40,30,0.35)'; for (let i = 0; i < 14; i++) c.fillRect(-40 + i * 6, -6, 1, 6);
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(-40, -6, 80, 1);
+    c.fillStyle = 'rgba(80,0,0,0.2)'; c.fillRect(-40, -1.2, 80, 1.2);
+    c.restore();
+    c.strokeStyle = '#9a2a20'; c.lineWidth = 1; cloth(); c.stroke();
+    c.strokeStyle = '#fff'; c.lineWidth = 0.8; c.beginPath(); for (let fx = -39; fx <= 39; fx += 3) { c.moveTo(fx, 0); c.lineTo(fx + 0.5, 2.5); } c.stroke();
+  }, x, surf);
   if (n > 0) {
     // a heap of coins: rows of little coins, narrower toward the top (one coin per 3 saved, up to 30)
     const k = Math.min(30, Math.ceil(n / 3));
@@ -1260,9 +1362,21 @@ function tidedigDrawPolly(st, t) {
 function tidedigDrawPosts(st, t) {
   const surf = tidedigSurf();
   for (const x of st.posts) {
-    ctx.fillStyle = '#7a5228'; rr(x - 5, surf - 38, 10, 40, 3); ctx.fill();
-    ctx.fillStyle = '#9a6a38'; rr(x - 7, surf - 42, 14, 7, 3); ctx.fill();
-    ctx.strokeStyle = C.rope; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 3; k++) { ctx.moveTo(x - 5, surf - 28 + k * 4); ctx.lineTo(x + 5, surf - 26 + k * 4); } ctx.stroke();
+    // a weathered timber post (cached): grain, a split, a rounded cap, rope lashing with lit strands, sand heaped at its foot
+    dkPic('tdPost', 22, 50, 11, 44, c => {
+      c.fillStyle = 'rgba(80,50,10,0.22)'; c.beginPath(); c.ellipse(1, 2, 10, 3, 0, 0, Math.PI * 2); c.fill();
+      dkPlank(c, -5, -38, 10, 40, '#7a5228', 61, { vert: true, r: 2 });
+      c.strokeStyle = 'rgba(40,20,5,0.5)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(-1, -36); c.lineTo(0, -30); c.lineTo(-1.5, -24); c.stroke();
+      dkPlank(c, -7, -42, 14, 7, '#9a6a38', 62, { r: 3 });
+      c.fillStyle = '#5a3a1a'; c.beginPath(); c.ellipse(0, -41.5, 4, 1.2, 0, 0, Math.PI * 2); c.fill();
+      for (let k = 0; k < 4; k++) {
+        const yy = -30 + k * 3.6;
+        c.strokeStyle = '#8a6a3a'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(-5.5, yy); c.lineTo(5.5, yy + 2); c.stroke();
+        c.strokeStyle = '#e0c48a'; c.lineWidth = 1; c.beginPath(); c.moveTo(-5, yy - 0.6); c.lineTo(5, yy + 1.2); c.stroke();
+      }
+      c.fillStyle = '#e8c57a'; c.beginPath(); c.ellipse(0, 1.5, 9, 3.5, 0, Math.PI, 0); c.fill();
+      c.fillStyle = 'rgba(255,245,210,0.5)'; c.fillRect(-5, -1.2, 6, 1);
+    }, x, surf);
   }
   void t;
 }

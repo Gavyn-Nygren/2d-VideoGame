@@ -645,8 +645,10 @@ function plankduelShip(st, k) {
   const side = k ? 1 : -1, cx = k ? 868 : 92, bob = Math.sin(t * 1.3 + k * 2) * 2.5, y = 318 + bob;
   ctx.save(); ctx.translate(cx, y); ctx.scale(-side, 1);
   // mast, sail and flag
-  ctx.fillStyle = K.woodDk; ctx.fillRect(8, -196, 7, 170);
-  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(9, -196, 2, 170);
+  dkPic('pdMast', 13, 174, -5, 198, c => {
+    dkPlank(c, 8, -196, 7, 170, K.woodDk, 51, { vert: true, r: 1.5, lit: 0.28 });
+    for (const yy of [-180, -120, -60]) { c.fillStyle = '#5a5a6a'; c.fillRect(7, yy, 9, 3); c.fillStyle = '#9a9aac'; c.fillRect(7, yy, 9, 1); }
+  }, 0, 0);
   ctx.fillStyle = '#fbf3e0'; ctx.strokeStyle = '#d8c8a8'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(-58, -176); ctx.quadraticCurveTo(-10, -150, -60, -74); ctx.lineTo(4, -78); ctx.lineTo(4, -178); ctx.closePath(); ctx.fill();
   // a soft shade in the sail's belly and seams, kept inside the canvas (no clip mask)
@@ -659,16 +661,40 @@ function plankduelShip(st, k) {
   const wv = Math.sin(t * 6 + k) * 3;
   ctx.fillStyle = PCOL[k]; ctx.beginPath(); ctx.moveTo(15, -196); ctx.quadraticCurveTo(32, -192 + wv, 48, -186); ctx.lineTo(15, -176); ctx.closePath(); ctx.fill();
   // the hull
-  ctx.fillStyle = K.hull; ctx.strokeStyle = K.hullDk; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(-110, -30); ctx.lineTo(96, -38); ctx.quadraticCurveTo(84, 10, 60, 26); ctx.lineTo(-84, 26); ctx.quadraticCurveTo(-104, 6, -110, -30); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(-100, -24, 190, 6);
-  ctx.strokeStyle = K.hullDk; ctx.lineWidth = 1.5;
-  ctx.beginPath(); for (let i = 0; i < 3; i++) { ctx.moveTo(-100, -8 + i * 11); ctx.lineTo(84, -12 + i * 11); } ctx.stroke();
-  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.moveTo(-84, 26); ctx.lineTo(60, 26); ctx.quadraticCurveTo(70, 18, 76, 10); ctx.lineTo(-100, 10); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = PCOL[k]; ctx.fillRect(-104, -36, 196, 6);
-  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-104, -36, 196, 1.5);
-  // portholes
-  for (let i = 0; i < 3; i++) { ctx.fillStyle = '#ffe9a8'; circle(-60 + i * 48, 2, 6); ctx.fill(); ctx.strokeStyle = '#4a2d14'; ctx.lineWidth = 2; circle(-60 + i * 48, 2, 6); ctx.stroke(); }
+  // the hull (cached per side): planked strakes with grain and treenails, a rubbing wale, copper below the
+  // waterline, shading underneath, a painted rail in the team colour with a lit edge, brass portholes
+  dkPic('pdHull|' + k, 220, 72, 114, 42, c => {
+    const hp = () => { c.beginPath(); c.moveTo(-110, -30); c.lineTo(96, -38); c.quadraticCurveTo(84, 10, 60, 26); c.lineTo(-84, 26); c.quadraticCurveTo(-104, 6, -110, -30); c.closePath(); };
+    c.fillStyle = K.hull; hp(); c.fill();
+    c.save(); hp(); c.clip();
+    for (let i = 0; i < 7; i++) {
+      const yy = -38 + i * 9.5, cc = i % 2 ? dkS(K.hull, 0.05) : dkT(K.hull, 0.04);
+      dkPlank(c, -112, yy, 212, 9.5, cc, 700 + i + k * 10, { r: 0, lit: 0.18, outline: dkS(K.hull, 0.4), lw: 0.8 });
+      for (let x = -96 + (i % 2) * 34; x < 92; x += 68) { c.fillStyle = dkS(K.hull, 0.45); c.fillRect(x, yy + 1, 1, 8.5); dkNail(c, x - 3, yy + 4.7, 0.9); dkNail(c, x + 3, yy + 4.7, 0.9); }
+    }
+    c.fillStyle = '#b06a3a'; c.fillRect(-112, 14, 212, 14);
+    for (let x = -110; x < 100; x += 12) for (let r = 0; r < 2; r++) { c.strokeStyle = 'rgba(80,40,10,0.28)'; c.lineWidth = 0.6; c.strokeRect(x + (r ? 6 : 0), 14 + r * 7, 12, 7); dkRivet(c, x + (r ? 6 : 0) + 2, 15.5 + r * 7, 0.6, '#e0a070'); }
+    c.fillStyle = 'rgba(80,200,170,0.25)'; for (let i = 0; i < 6; i++) c.fillRect(-90 + i * 31, 22 + (i % 2) * 2, 9, 2);
+    const g = c.createLinearGradient(0, -38, 0, 28); g.addColorStop(0, 'rgba(255,255,255,0.12)'); g.addColorStop(0.45, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.32)');
+    c.fillStyle = g; c.fillRect(-112, -40, 212, 70);
+    c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(70, -40, 30, 70);
+    c.restore();
+    dkPlank(c, -105, -18, 192, 5, dkS(K.hull, 0.3), 750, { r: 2, lit: 0.3 });
+    c.fillStyle = PCOL[k]; c.fillRect(-104, -36, 196, 6);
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(-104, -36, 196, 1.5); c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(-104, -31.5, 196, 1.5);
+    for (let x = -96; x < 90; x += 24) dkRivet(c, x, -33, 0.9, '#ffe08a');
+    for (let i = 0; i < 3; i++) {
+      const px = -60 + i * 48;
+      c.fillStyle = '#c8962a'; c.beginPath(); c.arc(px, 2, 8, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#ffe08a'; c.beginPath(); c.arc(px - 1, 1, 7, Math.PI * 0.9, Math.PI * 1.7); c.lineTo(px - 1, 1); c.fill();
+      c.fillStyle = '#ffe9a8'; c.beginPath(); c.arc(px, 2, 5.5, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,190,90,0.6)'; c.beginPath(); c.arc(px + 1, 3, 4, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.8)'; c.fillRect(px - 3, -1, 2, 1.5);
+      c.strokeStyle = '#7a5410'; c.lineWidth = 1; c.beginPath(); c.arc(px, 2, 8, 0, Math.PI * 2); c.stroke();
+      for (let a = 0; a < 6; a++) dkRivet(c, px + Math.cos(a) * 6.8, 2 + Math.sin(a) * 6.8, 0.5, '#fff1a8');
+    }
+    c.strokeStyle = K.hullDk; c.lineWidth = 3; hp(); c.stroke();
+  }, 0, 0);
   ctx.restore();
   // the crew on the rail (drawn unflipped so faces read): a parrot, a crab and a seagull, hopping when they cheer
   const hop = i => (cheer > 0 ? Math.abs(Math.sin((t * 9) + i * 1.4)) * 10 * Math.min(1, cheer) : Math.abs(Math.sin(t * 1.6 + i)) * 1.5);
@@ -744,45 +770,71 @@ function plankduelPolly(st) {
 function plankduelPlank(st) {
   const P = PLANKDUEL, K = PLANKDUEL_COL, E = st.E || 300, x0 = P.X0 - E - 14, x1 = P.X0 + E + 14, th = 14;
   // the rock and the barrel under the middle
-  ctx.fillStyle = K.rockDk; ctx.beginPath(); ctx.ellipse(P.X0, P.SEA + 6, 92, 26, 0, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = K.rock; ctx.beginPath(); ctx.ellipse(P.X0 - 8, P.SEA + 2, 74, 22, 0, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(P.X0 - 26, P.SEA - 10, 26, 7, -0.2, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = mixCol(K.rockDk, '#141428', 0.35); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(P.X0, P.SEA + 6, 92, 26, 0, Math.PI, 0); ctx.stroke();
-  ctx.fillStyle = 'rgba(30,30,50,0.25)'; ctx.beginPath(); for (const [sx, sy] of [[-40, -6], [-10, -14], [22, -4], [50, -2], [-60, 0]]) { plankDot(P.X0 + sx, P.SEA + sy, 1.6); } ctx.fill();
-  ctx.fillStyle = '#5fbf6a'; ctx.beginPath(); ctx.ellipse(P.X0 + 30, P.SEA - 12, 16, 5, 0.3, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#3f9a52'; ctx.beginPath(); ctx.ellipse(P.X0 - 48, P.SEA - 4, 12, 4, -0.3, 0, Math.PI * 2); ctx.fill();
   const by = P.PY + th, bh = P.SEA - 12 - by;
-  ctx.fillStyle = K.woodDk; rr(P.X0 - 26, by, 52, bh, 10); ctx.fill();
-  ctx.fillStyle = K.wood; rr(P.X0 - 22, by + 2, 44, bh - 4, 9); ctx.fill();
-  ctx.fillStyle = 'rgba(0,0,0,0.16)'; rr(P.X0 + 8, by + 2, 14, bh - 4, 8); ctx.fill();
-  ctx.fillStyle = 'rgba(255,240,210,0.25)'; ctx.fillRect(P.X0 - 18, by + 8, 4, bh - 16);
-  ctx.strokeStyle = 'rgba(70,40,20,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (const sx of [-8, 4]) { ctx.moveTo(P.X0 + sx, by + 2); ctx.lineTo(P.X0 + sx, by + bh - 2); } ctx.stroke();
-  ctx.fillStyle = '#5a5a6a'; ctx.fillRect(P.X0 - 24, by + 8, 48, 4); ctx.fillRect(P.X0 - 24, by + bh - 12, 48, 4);
-  ctx.fillStyle = '#9a9aac'; ctx.fillRect(P.X0 - 24, by + 8, 48, 1.3); ctx.fillRect(P.X0 - 24, by + bh - 12, 48, 1.3);
-  // posts out in the water (not under the rocking plank)
+  // the rock (cached): faceted, with a wet dark band at the waterline, barnacles, limpets and weed tufts
+  dkPic('pdRock', 200, 56, 100, 44, c => {
+    dkRock(c, 0, 10, 184, 36, K.rock, 418, { noShadow: true, moss: '#5fa868' });
+    c.save(); dkRockPath(c, 0, 10, 184, 36, 418); c.clip();
+    c.fillStyle = 'rgba(30,40,70,0.3)'; c.fillRect(-92, -4, 184, 14);
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(-92, -5, 184, 1);
+    c.restore();
+    for (let i = 0; i < 14; i++) {
+      const bx = -70 + (hash(i, 418) % 140), byy = -3 - ((hash(i, 419) >>> 4) % 10);
+      c.fillStyle = '#d8d4c4'; c.beginPath(); c.moveTo(bx - 2.4, byy + 1.5); c.lineTo(bx - 1, byy - 2); c.lineTo(bx + 1, byy - 2); c.lineTo(bx + 2.4, byy + 1.5); c.closePath(); c.fill();
+      c.fillStyle = '#7a7466'; c.fillRect(bx - 0.8, byy - 2, 1.6, 1); c.strokeStyle = '#8a8476'; c.lineWidth = 0.6; c.stroke();
+    }
+    for (const [lx, ly, cc] of [[-30, -16, '#3f9a52'], [34, -12, '#5fbf6a'], [-60, -6, '#2f8a48'], [62, -5, '#3f9a52']]) {
+      c.strokeStyle = cc; c.lineWidth = 2.2; c.lineCap = 'round'; c.beginPath();
+      for (let j = -2; j <= 2; j++) { c.moveTo(lx + j * 2, ly + 3); c.quadraticCurveTo(lx + j * 3, ly - 3, lx + j * 4.5, ly - 5 - Math.abs(j)); }
+      c.stroke(); c.lineCap = 'butt';
+    }
+  }, P.X0, P.SEA - 4);
+  // the barrel under the middle, lying on its side (cached): bowed staves, iron hoops with rivets, the lid at one end
+  dkPic('pdBarrel', 64, 44, 32, 22, c => {
+    c.fillStyle = 'rgba(20,20,40,0.22)'; c.beginPath(); c.ellipse(2, bh / 2, 26, 3, 0, 0, Math.PI * 2); c.fill();
+    c.save(); c.rotate(Math.PI / 2); dkBarrel(c, -bh / 2, -26, bh, 52, K.wood, 77, { noShadow: true, noLid: true, hoops: [0.2, 0.8], hoop: '#5a5a6a' }); c.restore();
+    c.fillStyle = dkS(K.wood, 0.15); c.beginPath(); c.ellipse(23, 0, 4, bh * 0.42, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = dkS(K.wood, 0.5); c.lineWidth = 1; c.beginPath(); c.ellipse(23, 0, 4, bh * 0.42, 0, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = '#3a2410'; c.beginPath(); c.arc(23.5, 3, 1.6, 0, Math.PI * 2); c.fill();
+  }, P.X0, by + bh / 2);
+  // posts out in the water (not under the rocking plank): grained timber, a rope lashing, a weedy wet band and barnacles
   if (st.twist !== 'rock') for (const s of [-1, 1]) {
-    const px = P.X0 + s * Math.min(E - 70, 150);
-    ctx.fillStyle = K.woodDk; ctx.fillRect(px - 7, P.PY + th, 14, P.SEA - P.PY);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(px - 5, P.PY + th, 3, P.SEA - P.PY);
-    ctx.fillStyle = '#6a9a7a'; ctx.fillRect(px - 7, P.SEA - 10, 14, 6);
+    const px = P.X0 + s * Math.min(E - 70, 150), ph = P.SEA - P.PY;
+    dkPic('pdPost|' + ph, 18, ph + 2, 9, 0, c => {
+      dkPlank(c, -7, 0, 14, ph, K.woodDk, 33, { vert: true, r: 1.5, lit: 0.2 });
+      c.fillStyle = 'rgba(20,30,40,0.35)'; c.fillRect(-7, ph - 16, 14, 16);
+      c.fillStyle = '#6a9a7a'; c.fillRect(-7, ph - 12, 14, 6); c.fillStyle = '#4f7f5f'; for (let i = 0; i < 5; i++) c.fillRect(-6 + i * 3, ph - 7, 1.6, 3 + (i % 2) * 3);
+      for (const [bx, byy] of [[-3, ph - 15], [3, ph - 17], [0, ph - 20]]) { c.fillStyle = '#d8d4c4'; c.beginPath(); c.moveTo(bx - 2, byy + 1.5); c.lineTo(bx, byy - 2); c.lineTo(bx + 2, byy + 1.5); c.closePath(); c.fill(); }
+      for (let k = 0; k < 3; k++) { c.strokeStyle = '#8a6a3a'; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-7.5, 6 + k * 3.4); c.lineTo(7.5, 8 + k * 3.4); c.stroke(); c.strokeStyle = '#e0c48a'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(-7, 5.4 + k * 3.4); c.lineTo(7, 7.4 + k * 3.4); c.stroke(); }
+    }, px, P.PY + th);
   }
   // the plank itself (tilted round the barrel on the rocking plank)
   ctx.save(); ctx.translate(P.X0, P.PY); ctx.rotate(st.tilt || 0);
   const wet = st.twist === 'wet';
-  ctx.fillStyle = 'rgba(28,26,54,0.18)'; rr(x0 - P.X0 + 4, 4, x1 - x0, th, 5); ctx.fill();
-  ctx.fillStyle = K.woodDk; rr(x0 - P.X0, 0, x1 - x0, th, 5); ctx.fill();
-  ctx.fillStyle = wet ? '#c99c74' : K.wood; rr(x0 - P.X0 + 1, 0, x1 - x0 - 2, th - 4, 4); ctx.fill();
-  ctx.fillStyle = wet ? 'rgba(220,245,255,0.55)' : 'rgba(255,240,210,0.35)'; ctx.fillRect(x0 - P.X0 + 6, 2, x1 - x0 - 12, 2);
-  // board joints and nails, and a step mark every 30 px
-  ctx.fillStyle = K.woodDk;
-  for (let x = Math.ceil((x0 - P.X0 + 20) / 90) * 90; x < x1 - P.X0 - 20; x += 90) { ctx.fillRect(x - 1, 0, 2, th - 4); ctx.fillStyle = '#e8d9b0'; circle(x - 5, 5, 1.4); ctx.fill(); circle(x + 5, 5, 1.4); ctx.fill(); ctx.fillStyle = K.woodDk; }
-  // the ends: painted stripes so you can see how close the edge is
-  for (const s of [-1, 1]) {
-    const ex = s * (E + 14);
-    ctx.fillStyle = '#fbf3e0';
-    for (let i = 0; i < 3; i++) ctx.fillRect(ex - s * (6 + i * 9) - 2, 0, 4, th - 4);
-    ctx.fillStyle = PCOL[s < 0 ? 0 : 1]; ctx.fillRect(ex - s * 34 - 2, 0, 4, th - 4);
-  }
+  // cached per length and wetness: boards with grain and knots butted every 90 px, nail pairs at the joints, a dark
+  // side face under the walking top, end grain at the tips, painted edge stripes, an outline in the wood's own dark
+  const L = x1 - x0, xl = x0 - P.X0;
+  dkPic('pdPlank|' + L + '|' + (wet ? 1 : 0), L + 8, th + 8, -xl, 1, c => {
+    c.fillStyle = 'rgba(28,26,54,0.18)'; rrOn(c, xl + 4, 4, L, th, 5); c.fill();
+    c.fillStyle = K.woodDk; rrOn(c, xl, 0, L, th, 5); c.fill();
+    c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(xl + 3, th - 4, L - 6, 4);
+    const top = wet ? '#c99c74' : K.wood, cuts = [xl];
+    for (let x = Math.ceil((xl + 20) / 90) * 90; x < x1 - P.X0 - 20; x += 90) cuts.push(x);
+    cuts.push(xl + L);
+    for (let i = 0; i + 1 < cuts.length; i++) {
+      const a = cuts[i] + (i ? 1 : 1), b = cuts[i + 1] - (i + 2 < cuts.length ? 1 : 1), cc = i % 2 ? dkS(top, 0.04) : dkT(top, 0.03);
+      dkPlank(c, a, 0, b - a, th - 4, cc, 900 + i, { r: i === 0 || i + 2 === cuts.length ? 4 : 1, lit: wet ? 0.5 : 0.35, outline: dkS(top, 0.45), lw: 0.8 });
+      c.fillStyle = 'rgba(70,40,20,0.35)'; c.fillRect(a + 2, th - 4, b - a - 4, 1);
+    }
+    for (let i = 1; i + 1 < cuts.length; i++) { dkNail(c, cuts[i] - 5, 5, 1.4); dkNail(c, cuts[i] + 5, 5, 1.4); }
+    for (const s of [-1, 1]) {
+      const ex = s * (E + 14);
+      for (let i = 0; i < 3; i++) { c.fillStyle = '#fbf3e0'; c.fillRect(ex - s * (6 + i * 9) - 2, 0.5, 4, th - 5); c.fillStyle = 'rgba(120,90,60,0.35)'; c.fillRect(ex - s * (6 + i * 9) + 1, 0.5, 1, th - 5); }
+      c.fillStyle = PCOL[s < 0 ? 0 : 1]; c.fillRect(ex - s * 34 - 2, 0.5, 4, th - 5);
+      c.strokeStyle = 'rgba(70,40,20,0.5)'; c.lineWidth = 0.8; c.beginPath(); c.arc(ex - s * 1, th / 2 - 1, 2.5, 0, Math.PI * 2); c.stroke();
+    }
+    c.strokeStyle = dkS(K.woodDk, 0.35); c.lineWidth = 1.4; rrOn(c, xl, 0, L, th, 5); c.stroke();
+  }, 0, 0);
   if (wet) for (let i = 0; i < 9; i++) { const x = -E + (i + 0.5) * (2 * E / 9); ctx.fillStyle = 'rgba(200,240,255,0.65)'; ctx.beginPath(); ctx.ellipse(x, 4, 10, 2, 0, 0, Math.PI * 2); ctx.fill(); }
   ctx.restore();
   // breeze flags on the barrel post: they fly the way the next gust will blow
@@ -808,13 +860,37 @@ function plankduelLagoon(st) {
   ctx.fillStyle = 'rgba(255,255,255,0.06)';
   for (let i = 0; i < 6; i++) { const x = i * 180 + Math.sin(t * 0.4 + i) * 30; ctx.beginPath(); ctx.moveTo(x, P.SEA); ctx.lineTo(x + 60, P.SEA); ctx.lineTo(x + 20, H); ctx.lineTo(x - 50, H); ctx.closePath(); ctx.fill(); }
   // the sandy bottom with shells, starfish and seaweed
-  ctx.fillStyle = '#e8c97f'; ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, 518);
-  for (let x = 0; x <= W; x += 40) ctx.lineTo(x, 516 + Math.sin(x * 0.02) * 6);
-  ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  // (cached) a rippled sandy bottom: a dark damp edge, ripple bands, grains, pebbles, shells and a sunk rock or two
+  dkPic('pdFloor', W, 40, 0, 0, c => {
+    const top = x => 516 + Math.sin(x * 0.02) * 6 - 500;
+    const pth = () => { c.beginPath(); c.moveTo(0, 40); c.lineTo(0, top(0)); for (let x = 0; x <= W; x += 20) c.lineTo(x, top(x)); c.lineTo(W, 40); c.closePath(); };
+    c.fillStyle = '#e8c97f'; pth(); c.fill();
+    c.save(); pth(); c.clip();
+    c.fillStyle = '#d4b06a'; for (let x = 0; x < W; x += 6) c.fillRect(x, top(x) + 22, 6, 20);
+    c.strokeStyle = 'rgba(170,130,60,0.45)'; c.lineWidth = 1.2; c.beginPath();
+    for (let r = 0; r < 3; r++) for (let x = 0; x < W; x += 34) { const yy = top(x) + 6 + r * 6 + (hash(x, r) % 3); c.moveTo(x, yy); c.quadraticCurveTo(x + 9, yy - 3, x + 18, yy); c.quadraticCurveTo(x + 24, yy + 2, x + 30, yy); }
+    c.stroke();
+    for (let i = 0; i < 420; i++) { const hh = hash(i, 5150), x = hh % W; c.fillStyle = hh % 4 ? 'rgba(150,110,50,0.4)' : 'rgba(255,250,220,0.6)'; c.fillRect(x, top(x) + 2 + ((hh >>> 12) % 34), 1, 1); }
+    c.restore();
+    c.fillStyle = 'rgba(255,245,210,0.55)'; c.beginPath(); for (let x = 0; x <= W; x += 20) c.lineTo(x, top(x)); c.lineTo(W, top(W) + 1.5); for (let x = W; x >= 0; x -= 20) c.lineTo(x, top(x) + 1.5); c.closePath(); c.fill();
+    for (let i = 0; i < 18; i++) { const hh = hash(i, 5151), x = 20 + hh % (W - 40); dkPebble(c, x, top(x) + 8 + (hh >>> 9) % 12, 2.5 + (hh >>> 4) % 3, 1.8 + (hh >>> 6) % 2, ['#a89c90', '#c4b4a0', '#8f8378'][(hh >>> 11) % 3], hh); }
+    for (const [sx, sy, cc] of [[150, 12, '#ffd8c0'], [560, 16, '#fff0dc'], [860, 10, '#ffc8b0']]) {
+      c.fillStyle = cc; c.beginPath(); c.moveTo(sx, sy + 3); c.arc(sx, sy + 3, 5, Math.PI, 0); c.closePath(); c.fill();
+      c.strokeStyle = dkS(cc, 0.35); c.lineWidth = 0.8; c.beginPath(); for (let a = 0; a < 5; a++) { c.moveTo(sx, sy + 3); c.lineTo(sx + Math.cos(Math.PI + a * Math.PI / 4) * 5, sy + 3 + Math.sin(Math.PI + a * Math.PI / 4) * 5); } c.stroke();
+    }
+    dkRock(c, 250, top(250) + 14, 34, 14, '#8a8f9e', 3, { moss: '#4f9a5a' }); dkRock(c, 820, top(820) + 16, 26, 11, '#7a7f8e', 4);
+  }, 0, 500);
   for (let i = 0; i < 7; i++) {
     const x = 70 + i * 140, y = 512, sw = Math.sin(t * 1.6 + i) * 6;
     ctx.strokeStyle = i % 2 ? '#3fae6a' : '#2f8f5a'; ctx.lineWidth = 5; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.quadraticCurveTo(x + sw, y - 16, x - sw * 0.5, y - 34); ctx.stroke();
+    // little leaf blades along the stalk with a lit midrib
+    for (let j = 1; j < 4; j++) {
+      const u = j / 4, lx = (1 - u) * (1 - u) * x + 2 * u * (1 - u) * (x + sw) + u * u * (x - sw * 0.5), ly = (1 - u) * (1 - u) * (y + 6) + 2 * u * (1 - u) * (y - 16) + u * u * (y - 34), d = j % 2 ? 1 : -1;
+      ctx.fillStyle = i % 2 ? '#4fc07a' : '#3fa068'; ctx.beginPath(); ctx.ellipse(lx + d * 5, ly - 1, 6, 2.2, d * -0.6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(200,255,220,0.45)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + d * 9, ly - 4); ctx.stroke();
+    }
+    ctx.lineWidth = 5;
   }
   ctx.lineCap = 'butt';
   ctx.fillStyle = '#ff8a6a'; ctx.save(); ctx.translate(380, 524); ctx.rotate(0.3); plankduelStar(0, 0, 9); ctx.restore();

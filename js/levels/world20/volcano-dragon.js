@@ -899,11 +899,56 @@ function vdStar(x, y, r, col) {
   ctx.closePath(); ctx.fill(); ctx.stroke();
 }
 // a cooled lava-rock slab, centred on x with its top at y (units scaled by s); glowing cracks
+// ---------- rich still art for Dragon Peak (cached; dkPic and the dk* kit live in world18/runaway-ship.js) ----------
+// a world-anchored basalt texture: specks, gas holes with a lit lower lip, faint column joints (a repeating pattern)
+let vdBasaltPat = null;
+function vdBasalt() {
+  if (vdBasaltPat && (typeof vdBasaltPat === 'string' || vdBasaltPat.sc === canvas.width)) return dkPatAlign(vdBasaltPat);   // (built at the canvas scale; dkPatAlign maps it 1:1 to pixels)
+  const S = Math.max(1, Math.min(3, canvas.width / W)), n = 240, cv = document.createElement('canvas'); cv.width = cv.height = Math.round(n * S);
+  const c = cv.getContext('2d'); c.scale(cv.width / n, cv.width / n);
+  c.strokeStyle = 'rgba(15,8,20,0.28)'; c.lineWidth = 1.2; c.beginPath();
+  for (let i = 0; i < 6; i++) { let x = i * 40 + (hash(i, 1) % 12), y = 0; c.moveTo(x, y); while (y < n) { y += 18 + hash(i, y) % 16; x += (hash(y, i) % 7) - 3; c.lineTo(x, y); c.lineTo(x + 20 + hash(x, y) % 10, y + 2); c.moveTo(x, y); } }
+  c.stroke();
+  c.strokeStyle = 'rgba(255,200,180,0.08)'; c.lineWidth = 1; c.beginPath();
+  for (let i = 0; i < 6; i++) { let x = i * 40 + (hash(i, 1) % 12) + 1.5, y = 0; c.moveTo(x, y); while (y < n) { y += 18 + hash(i, y) % 16; x += (hash(y, i) % 7) - 3; c.lineTo(x, y); c.moveTo(x, y); } }
+  c.stroke();
+  for (let i = 0; i < 700; i++) { const hh = hash(i, 2020), x = hh % n, y = (hh >>> 8) % n; c.fillStyle = hh % 4 === 0 ? 'rgba(255,210,200,0.14)' : 'rgba(10,5,15,0.25)'; c.fillRect(x, y, hh % 7 === 0 ? 2 : 1, 1); }
+  for (let i = 0; i < 60; i++) {
+    const hh = hash(i, 2021), x = hh % n, y = (hh >>> 8) % n, r = 1 + (hh >>> 4) % 3 * 0.7;
+    c.fillStyle = 'rgba(10,5,15,0.45)'; c.beginPath(); c.ellipse(x, y, r * 1.3, r, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(255,190,170,0.22)'; c.lineWidth = 0.7; c.beginPath(); c.ellipse(x, y + 0.3, r * 1.3, r, 0, 0.2, Math.PI - 0.2); c.stroke();
+  }
+  try { vdBasaltPat = ctx.createPattern(cv, 'repeat'); vdBasaltPat.setTransform(new DOMMatrix().scale(n / cv.width)); vdBasaltPat.sc = canvas.width; } catch (e) { vdBasaltPat = 'rgba(0,0,0,0)'; }
+  return dkPatAlign(vdBasaltPat);
+}
+// a small embedded basalt stone (a few cached shapes)
+function vdStone(x, y, v) {
+  const r = 3 + (v % 4), cols = ['#5a4c5c', '#4a3d4f', '#6a5a6c', '#3d3340'];
+  dkPic('vdStone|' + v, r * 2 + 8, r * 2 + 8, r + 3, r + 3, c => dkCobble(c, 0, 0, r * 1.3, r, cols[v % 4], 900 + v), x, y);
+}
+// gas holes (vesicles) scattered on a basalt shape: a dark pit with a lit lower lip
+function vdVesicles(c, x, y, w, h, n, seed) {
+  for (let i = 0; i < n; i++) {
+    const hh = hash(seed + i, 77), px = x + hh % Math.max(1, w | 0), py = y + (hh >>> 9) % Math.max(1, h | 0), r = 0.9 + (hh >>> 5) % 3 * 0.5;
+    c.fillStyle = 'rgba(15,8,20,0.5)'; c.beginPath(); c.ellipse(px, py, r * 1.3, r, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(255,200,190,0.28)'; c.lineWidth = 0.7; c.beginPath(); c.ellipse(px, py + 0.3, r * 1.3, r, 0, 0.3, Math.PI - 0.3); c.stroke();
+  }
+}
 function vdDrawRockSlab(x, y, s, t, local) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
-  ctx.fillStyle = VDC.slab; ctx.strokeStyle = local ? VDC.ink : C.ink; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(-72, 0); ctx.quadraticCurveTo(-82, 8, -66, 16); ctx.lineTo(62, 16); ctx.quadraticCurveTo(86, 10, 76, -2); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = VDC.slabLt; ctx.fillRect(-60, 1, 120, 3);
+  // (cached) the slab: a shaded underside, a lit top deck with a highlight, gas holes and chips, outlined
+  dkPic('vdSlab|' + (local ? 1 : 0), 172, 28, 86, 6, c => {
+    const sp = () => { c.beginPath(); c.moveTo(-72, 0); c.quadraticCurveTo(-82, 8, -66, 16); c.lineTo(62, 16); c.quadraticCurveTo(86, 10, 76, -2); c.closePath(); };
+    c.fillStyle = VDC.slab; sp(); c.fill();
+    c.save(); sp(); c.clip();
+    c.fillStyle = 'rgba(10,5,15,0.35)'; c.fillRect(-90, 9, 180, 10);
+    c.fillStyle = VDC.slabLt; c.beginPath(); c.moveTo(-74, -1); c.lineTo(78, -3); c.lineTo(74, 5); c.lineTo(-70, 6); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,220,210,0.3)'; c.fillRect(-60, 0, 120, 1.5);
+    vdVesicles(c, -66, 6, 128, 8, 14, 5);
+    for (const sx of [-50, -6, 34]) { c.strokeStyle = 'rgba(10,5,15,0.4)'; c.lineWidth = 1; c.beginPath(); c.moveTo(sx, 5); c.lineTo(sx + 3, 16); c.stroke(); }
+    c.restore();
+    c.strokeStyle = local ? VDC.ink : C.ink; c.lineWidth = 3; sp(); c.stroke();
+  }, 0, 0);
   ctx.strokeStyle = `rgba(255,${150 + Math.round(Math.sin(t * 5) * 40)},60,0.9)`; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(-40, 6); ctx.lineTo(-28, 12); ctx.lineTo(-14, 8); ctx.moveTo(18, 5); ctx.lineTo(30, 11); ctx.lineTo(44, 7); ctx.stroke();
   ctx.restore();
@@ -921,6 +966,21 @@ function vdDrawLava(x0, x1, y, t, o = {}) {
   ctx.strokeStyle = 'rgba(255,240,170,0.85)'; ctx.lineWidth = 2.5; ctx.beginPath();
   for (let x = x0; x <= x1 + 12; x += 12) ctx.lineTo(Math.min(x, x1), y + Math.sin(x * 0.05 + t * 2.4) * 3 + Math.sin(x * 0.13 - t * 1.7) * 1.5);
   ctx.stroke();
+  // cooled crust plates drifting slowly, each with a glowing rim, and bright flow lines (pure functions of x and t)
+  for (let n = Math.floor((x0 - t * 10) / 120); n * 120 + t * 10 < x1 + 40; n++) {
+    const cx = n * 120 + t * 10 + (hash(n, 21) % 50), cy = y + 18 + (hash(n, 22) % Math.max(8, Math.min(d - 20, 70)));
+    if (cx < x0 + 14 || cx > x1 - 14) continue;
+    const rw = 12 + hash(n, 23) % 14, rh = 3 + hash(n, 24) % 3;
+    ctx.fillStyle = 'rgba(150,40,20,0.55)'; ctx.beginPath(); ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,220,120,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx, cy - 0.5, rw, rh, 0, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(255,235,150,0.45)'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+  for (let n = Math.floor((x0 - t * 24) / 90); n * 90 + t * 24 < x1 + 40; n++) {
+    const fx = n * 90 + t * 24 + (hash(n, 31) % 40), fy = y + 10 + (hash(n, 32) % 24);
+    if (fx < x0 + 10 || fx > x1 - 30) continue;
+    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.quadraticCurveTo(fx + 10, fy - 3, fx + 22, fy); ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
   // bubbles (a pure function of x and t)
   for (let x = Math.ceil(x0 / 70) * 70; x < x1; x += 70) {
     const u = ((t * 0.6 + hash(x, 7) % 100 / 100) % 1), bx = x + (hash(x, 3) % 30);

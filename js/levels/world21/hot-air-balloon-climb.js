@@ -1018,7 +1018,7 @@ function balloonDrawCliffs(st) {
     // ledges with a little pine tree
     for (let k = Math.floor(h0 / 260); k <= Math.floor(h1 / 260); k++) {
       const hs = hash(k, side + 40), h = k * 260 + hs % 80, x = edge + side * (hs % 22) - side * 4;
-      ctx.fillStyle = C.stoneLight; rr(x - (side < 0 ? 0 : 40), -h, 40, 10, 4); ctx.fill();
+      dkPic('bcLedge', 44, 14, 2, 2, c => { dkPlate(c, 0, 0, 40, 10, C.stoneLight, { rivets: false, r: 4, outline: C.stoneEdge, lw: 1.2 }); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(4, 1, 30, 1.2); }, x - (side < 0 ? 0 : 40), -h);
       if (hs % 3) { const px = x - side * 18; ctx.fillStyle = '#3f9a63'; ctx.beginPath(); ctx.moveTo(px - 10, -h); ctx.lineTo(px, -h - 26); ctx.lineTo(px + 10, -h); ctx.closePath(); ctx.fill(); }
     }
   }
@@ -1072,6 +1072,73 @@ function balloonDrawSign(st, sg) {
   ctx.strokeStyle = '#946232'; ctx.lineWidth = 2.5; rr(x - w / 2, y - 15, w, 30, 8); ctx.stroke();
   text(sg.text, x, y + 0.5, 15, '#4a2f14', 'center', 'body');
 }
+// ---------- rich still art (cached; dkPic and the dk* kit live in world18/runaway-ship.js) ----------
+// a floating island, painted once per size: a dry-stone underside of shaded cobbles with strata and cracks, shading
+// toward the bottom, roots and leafy vines hanging off it, then the grass top with blades, flowers and little trees
+// (local x 0..w from the island's left, y 0 = its top, hgt = its depth; x0 keeps the hashes where they always were)
+function balloonPaintIsle(c, w, hgt, rl, rrd, x0) {
+  const bot = hgt, top = 0;
+  const shape = () => {
+    c.beginPath(); c.moveTo(0, top + 10); c.lineTo(w, top + 10);
+    c.lineTo(w, bot - rrd); c.quadraticCurveTo(w, bot, w - rrd, bot);
+    for (let x = w - rrd; x > rl; x -= 30) c.lineTo(x - 15, bot + 6 + (hash((x + x0) | 0, 7) % 8));
+    c.lineTo(rl, bot); c.quadraticCurveTo(0, bot, 0, bot - rl); c.closePath();
+  };
+  c.fillStyle = C.stoneEdge; shape(); c.fill();
+  c.save(); shape(); c.clip();
+  // cobbles in staggered courses
+  for (let r = 0, yy = top + 18; yy < bot + 10; r++, yy += 12) {
+    for (let x = (r % 2) * 11 - 6; x < w + 12; x += 22) {
+      const hh = hash((x + x0) | 0, r * 31 + 5), col = dkMix(C.stone, hh % 3 === 0 ? C.stoneLight : hh % 3 === 1 ? C.stoneEdge : C.stone, 0.45);
+      dkCobble(c, x + (hh % 5) - 2, yy + ((hh >>> 4) % 3) - 1, 10.5 + (hh >>> 6) % 3, 6 + (hh >>> 8) % 2, col, hh);
+    }
+  }
+  const sg = c.createLinearGradient(0, top, 0, bot + 10); sg.addColorStop(0, 'rgba(255,255,255,0.06)'); sg.addColorStop(0.4, 'rgba(20,20,40,0)'); sg.addColorStop(1, 'rgba(20,20,40,0.38)');
+  c.fillStyle = sg; c.fillRect(-4, top, w + 8, bot - top + 14);
+  c.fillStyle = 'rgba(20,20,50,0.18)'; c.fillRect(w - 10, top, 10, bot - top + 10);
+  c.fillStyle = 'rgba(20,20,50,0.25)'; c.fillRect(0, top + 12, w, 6);
+  c.strokeStyle = 'rgba(20,20,50,0.4)'; c.lineWidth = 1; c.beginPath();
+  for (let x = 40; x < w - 20; x += 110) { const hs = hash((x + x0) | 0, 61); c.moveTo(x + hs % 30, top + 20); c.lineTo(x + hs % 30 + 4, top + 32); c.lineTo(x + hs % 30 - 1, top + 44); }
+  c.stroke();
+  c.restore();
+  c.strokeStyle = C.stoneEdge; c.lineWidth = 2.5; shape(); c.stroke();
+  // roots and leafy vines hanging down
+  for (let x = 40; x < w - 30; x += 90) {
+    const l = 10 + hash((x + x0) | 0, 4) % 14;
+    c.strokeStyle = '#5d8f4a'; c.lineWidth = 2; c.beginPath(); c.moveTo(x, bot + 2); c.quadraticCurveTo(x + 5, bot + l / 2, x, bot + l); c.stroke();
+    c.strokeStyle = '#8a6a44'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x + 14, bot + 3); c.quadraticCurveTo(x + 10, bot + 9, x + 15, bot + 14); c.stroke();
+    for (let k = 1; k < 4; k++) { const ly = bot + l * k / 4, d = k % 2 ? 1 : -1; c.fillStyle = k % 2 ? '#6fbf5a' : '#5aa84c'; c.beginPath(); c.ellipse(x + d * 3, ly, 3, 1.6, d * 0.6, 0, Math.PI * 2); c.fill(); }
+  }
+  for (let x = 10; x < w - 10; x += 140) { if (rl === 0 && x < 30) continue; const hs = hash((x + x0) | 0, 63), vx = x + hs % 40; c.strokeStyle = '#4f9a48'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(vx, top + 12); c.quadraticCurveTo(vx - 4, top + 28, vx + 1, top + 40 + hs % 12); c.stroke(); c.fillStyle = '#6fbf5a'; for (let k = 0; k < 4; k++) { c.beginPath(); c.ellipse(vx - 1 + (k % 2 ? 3 : -3), top + 18 + k * 7, 2.6, 1.5, 0, 0, Math.PI * 2); c.fill(); } }
+  // the grass top
+  c.fillStyle = '#7bd36b'; rrOn(c, 0, top - 2, w, 16, 8); c.fill();
+  c.fillStyle = '#5fbf55'; c.fillRect(6, top + 10, w - 12, 4);
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(8, top - 1, w - 16, 2);
+  c.fillStyle = '#5fbf55'; for (let x = 10; x < w - 8; x += 12) { c.beginPath(); c.arc(x, top + 13, 4, 0, Math.PI); c.fill(); }
+  c.fillStyle = 'rgba(40,110,50,0.35)'; for (let x = 4; x < w - 4; x += 5) { const hs = hash((x + x0) | 0, 29); c.fillRect(x, top + 3 + hs % 7, 1, 2); }
+  c.strokeStyle = '#4fae46'; c.lineWidth = 1.5; c.beginPath();
+  for (let x = 9; x < w - 8; x += 9) { const hs = hash((x + x0) | 0, 23); if (hs % 3) continue; c.moveTo(x, top); c.lineTo(x - 1.5, top - 5 - hs % 4); c.moveTo(x + 2, top); c.lineTo(x + 3.5, top - 4 - hs % 3); }
+  c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 1; c.beginPath(); for (let x = 9; x < w - 8; x += 9) { const hs = hash((x + x0) | 0, 23); if (hs % 3) continue; c.moveTo(x - 0.5, top - 1); c.lineTo(x - 1.5, top - 4 - hs % 4); } c.stroke();
+  for (let x = 14; x < w - 10; x += 34) {
+    const hs = hash((x + x0) | 0, 11);
+    if (hs % 5 === 0) {
+      c.fillStyle = 'rgba(30,60,30,0.2)'; c.beginPath(); c.ellipse(x + 2, top, 14, 3, 0, 0, Math.PI * 2); c.fill();
+      dkPlank(c, x - 3, top - 22, 6, 22, '#8a5a34', hs, { vert: true, r: 1, lit: 0.2, outline: '#5e3a1c', lw: 0.8 });
+      c.fillStyle = '#2f7a3c'; c.beginPath(); c.arc(x + 4, top - 26, 14, 0, Math.PI * 2); c.arc(x - 6, top - 19, 9, 0, Math.PI * 2); c.arc(x + 12, top - 20, 9, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#3f9a4a'; c.beginPath(); c.arc(x + 2, top - 28, 14, 0, Math.PI * 2); c.arc(x - 7, top - 20, 9, 0, Math.PI * 2); c.arc(x + 11, top - 21, 9, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#4fb05a'; c.beginPath(); c.arc(x, top - 30, 12, 0, Math.PI * 2); c.arc(x - 9, top - 22, 7.5, 0, Math.PI * 2); c.arc(x + 8, top - 24, 7.5, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.25)'; c.beginPath(); c.arc(x - 4, top - 35, 5, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#ff6b6b'; for (const [ax, ay] of [[-4, -24], [6, -31], [9, -19]]) { c.beginPath(); c.arc(x + ax, top + ay, 1.8, 0, Math.PI * 2); c.fill(); }
+      c.strokeStyle = '#2a6a34'; c.lineWidth = 1; c.beginPath(); c.arc(x + 2, top - 28, 14, Math.PI * 1.6, Math.PI * 0.4); c.stroke();
+    } else if (hs % 3 === 0) {
+      const fc = ['#ffe36b', '#ff9ec0', '#ffffff'][hs % 3];
+      c.strokeStyle = '#4fae46'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, top + 1); c.lineTo(x, top - 3); c.stroke();
+      c.fillStyle = fc; for (let p = 0; p < 5; p++) { c.beginPath(); c.arc(x + Math.cos(p * 1.257) * 2.2, top - 4 + Math.sin(p * 1.257) * 2.2, 1.6, 0, Math.PI * 2); c.fill(); }
+      c.fillStyle = '#ffb83a'; c.beginPath(); c.arc(x, top - 4, 1.2, 0, Math.PI * 2); c.fill();
+    }
+  }
+}
 // a floating island (or the launch pad / dock island): grass on top, lilac rock below, flowers and trees
 function balloonDrawSolid(st, r) {
   if (r.t < st.cam - 30 || r.b - 60 > st.cam + H) return;
@@ -1085,54 +1152,13 @@ function balloonDrawSolid(st, r) {
     for (let x = x0 + 26; x < x1 - 10; x += 40) { circle(x, bot - 12 + (hash(x | 0, 2) % 10), 26); ctx.fill(); }
     rr(x0, top, w, bot - top - 10, 20); ctx.fill();
   } else {
-    ctx.fillStyle = C.stone;
-    ctx.beginPath();
-    ctx.moveTo(x0, top + 10);
-    ctx.lineTo(x1, top + 10);
-    ctx.lineTo(x1, bot - rrd); ctx.quadraticCurveTo(x1, bot, x1 - rrd, bot);
-    // a jaggy bottom edge
-    for (let x = x1 - rrd; x > x0 + rl; x -= 30) ctx.lineTo(x - 15, bot + 6 + (hash(x | 0, 7) % 8));
-    ctx.lineTo(x0 + rl, bot); ctx.quadraticCurveTo(x0, bot, x0, bot - rl);
-    ctx.closePath(); ctx.fill();
-    // shade toward the bottom (the same outline filled again, no clip mask), the edge, then rock layers and specks kept inside
-    const sg = ctx.createLinearGradient(0, top, 0, bot + 10); sg.addColorStop(0, 'rgba(20,20,40,0)'); sg.addColorStop(1, 'rgba(20,20,40,0.28)');
-    ctx.fillStyle = sg; ctx.fill();
-    ctx.strokeStyle = C.stoneEdge; ctx.lineWidth = 2.5; ctx.stroke();
-    ctx.strokeStyle = 'rgba(40,30,80,0.18)'; ctx.lineWidth = 2; ctx.beginPath();
-    for (let yy = top + 34; yy < bot - 16; yy += 22) { ctx.moveTo(x0 + 4, yy); for (let x = x0 + 4; x <= x1 - 4; x += 30) ctx.lineTo(x, yy + Math.sin(x * 0.03 + yy) * 3); }
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); for (let x = x0 + 12; x < x1 - 4; x += 23) { const hs = hash(x | 0, 17); balloonDot(x, top + 18 + hs % Math.max(1, (bot - top - 34) | 0), 1.4); } ctx.fill();
-    ctx.fillStyle = 'rgba(30,20,60,0.2)'; ctx.beginPath(); for (let x = x0 + 20; x < x1 - 4; x += 31) { const hs = hash(x | 0, 19); balloonDot(x, top + 24 + hs % Math.max(1, (bot - top - 38) | 0), 1.8); } ctx.fill();
-    ctx.fillStyle = C.stoneLight;
-    for (let x = x0 + 30; x < x1 - 20; x += 70) { rr(x, top + 22 + (hash(x | 0, 3) % 10), 26, 8, 4); ctx.fill(); }
-    // the grass casts a soft shadow on the rock
-    ctx.fillStyle = 'rgba(20,20,50,0.18)'; ctx.fillRect(x0 + 4, top + 14, w - 8, 5);
-    // little roots hanging down
-    ctx.strokeStyle = '#5d8f4a'; ctx.lineWidth = 2;
-    for (let x = x0 + 40; x < x1 - 30; x += 90) { const l = 10 + hash(x | 0, 4) % 14; ctx.beginPath(); ctx.moveTo(x, bot + 2); ctx.quadraticCurveTo(x + 5, bot + l / 2, x, bot + l); ctx.stroke(); }
+    // (cached per island size and place)
+    const hgt = bot - top;
+    dkPic('bcIsle|' + Math.round(x0) + '|' + Math.round(w) + '|' + Math.round(hgt) + '|' + rl + '|' + rrd, w + 64, hgt + 92, 32, 46, c => balloonPaintIsle(c, w, hgt, rl, rrd, x0), x0, top);
   }
-  // the grass top
-  ctx.fillStyle = cloud ? '#ffffff' : '#7bd36b';
-  rr(x0, top - 2, w, 16, 8); ctx.fill();
-  if (!cloud) {
-    ctx.fillStyle = '#5fbf55'; ctx.fillRect(x0 + 6, top + 10, w - 12, 4);
-    // a lit lip, a scalloped edge and blades of grass
-    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x0 + 8, top - 1, w - 16, 2);
-    ctx.fillStyle = '#5fbf55'; for (let x = x0 + 10; x < x1 - 8; x += 12) { ctx.beginPath(); ctx.arc(x, top + 13, 4, 0, Math.PI); ctx.fill(); }
-    ctx.strokeStyle = '#4fae46'; ctx.lineWidth = 1.5; ctx.beginPath();
-    for (let x = x0 + 9; x < x1 - 8; x += 9) { const hs = hash(x | 0, 23); if (hs % 3) continue; ctx.moveTo(x, top); ctx.lineTo(x - 1.5, top - 5 - hs % 4); ctx.moveTo(x + 2, top); ctx.lineTo(x + 3.5, top - 4 - hs % 3); }
-    ctx.stroke();
-    for (let x = x0 + 14; x < x1 - 10; x += 34) {
-      const hs = hash(x | 0, 11);
-      if (hs % 5 === 0) {
-        ctx.fillStyle = 'rgba(30,60,30,0.2)'; ctx.beginPath(); ctx.ellipse(x + 2, top, 14, 3, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#8a5a34'; ctx.fillRect(x - 3, top - 22, 6, 22); ctx.fillStyle = '#6a4224'; ctx.fillRect(x + 1, top - 22, 2, 22);
-        ctx.fillStyle = '#3f9a4a'; circle(x + 2, top - 28, 14); ctx.fill(); circle(x - 7, top - 20, 9); ctx.fill(); circle(x + 11, top - 21, 9); ctx.fill();
-        ctx.fillStyle = '#4fb05a'; circle(x, top - 30, 13); ctx.fill(); circle(x - 9, top - 22, 8); ctx.fill(); circle(x + 9, top - 23, 8); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.25)'; circle(x - 4, top - 35, 5); ctx.fill();
-      }
-      else if (hs % 3 === 0) { ctx.fillStyle = ['#ffe36b', '#ff9ec0', '#ffffff'][hs % 3]; circle(x, top - 4, 3.4); ctx.fill(); }
-    }
+  if (cloud) {
+    ctx.fillStyle = '#ffffff';
+    rr(x0, top - 2, w, 16, 8); ctx.fill();
   }
   // a gold breeze: the way through glows
   const hz = r.hz;
@@ -1153,9 +1179,10 @@ function balloonDrawDock(st) {
   const d = st.c.dock;
   if (d.h < st.cam - 30 || d.h - 80 > st.cam + H) return;
   const y = -d.h;
-  ctx.fillStyle = C.plankDark; ctx.fillRect(d.x0 + 6, y - 2, d.w - 12, 10);
-  ctx.fillStyle = C.plank;
-  for (let x = d.x0 + 8; x < d.x1 - 8; x += 22) { rr(x, y - 6, 20, 8, 2); ctx.fill(); }
+  dkPic('bcDock|' + d.w, d.w + 4, 20, 2, 8, c => {
+    dkPlate(c, 6, -2, d.w - 12, 10, C.plankDark, { rivets: false, r: 1 });
+    for (let x = 8, i = 0; x < d.w - 8; x += 22, i++) { dkPlank(c, x, -6, 20, 8, i % 2 ? '#c4864f' : C.plank, 300 + i, { r: 2, lit: 0.35, lw: 0.8 }); dkNail(c, x + 4, -2, 0.9); dkNail(c, x + 16, -2, 0.9); }
+  }, d.x0, y);
   // the target ring
   ctx.strokeStyle = d.gold ? C.gold : '#e85a4a'; ctx.lineWidth = 4;
   ctx.beginPath(); ctx.ellipse(d.x, y - 3, 34, 5, 0, 0, Math.PI * 2); ctx.stroke();
@@ -1165,7 +1192,7 @@ function balloonDrawDock(st) {
     ctx.strokeStyle = '#b9850f'; ctx.lineWidth = 2; rr(d.x0 + 10, y - 16, d.w - 20, 14, 7); ctx.stroke();
   }
   // posts with a windsock
-  for (const px of [d.x0 + 10, d.x1 - 10]) { ctx.fillStyle = C.plankDark; ctx.fillRect(px - 3, y - 30, 6, 30); }
+  for (const px of [d.x0 + 10, d.x1 - 10]) dkPic('bcDockPost', 10, 32, 5, 31, c => { dkPlank(c, -3, -30, 6, 30, C.plankDark, 7, { vert: true, r: 1, lw: 0.8 }); c.fillStyle = '#e0c48a'; c.fillRect(-3.5, -24, 7, 2); c.fillRect(-3.5, -20, 7, 2); }, px, y);
   const px = d.x1 - 10;
   ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(px, y - 30); ctx.lineTo(px, y - 66); ctx.stroke();
   const sw = Math.sin(G.clock * 3) * 0.15;

@@ -664,8 +664,17 @@ function ppDrawGround(st) {
   const key = st.course.key, cx = st.cam.x, gy = PP.groundY;
   if (key === 'meadow') {
     ctx.fillStyle = '#7fd35f'; ctx.fillRect(0, gy, W, H - gy);
+    // mown stripes, a scalloped dark edge under the lip, tufts and clover (a pure function of world x)
+    ctx.fillStyle = 'rgba(70,150,60,0.18)';
+    for (let i = -1; i < W / 60 + 2; i++) { const n = Math.floor(cx / 60) + i; if (n % 2) ctx.fillRect(n * 60 - cx, gy + 8, 60, H - gy - 8); }
     ctx.fillStyle = '#5aae4c'; ctx.fillRect(0, gy, W, 4);
+    ctx.beginPath(); for (let i = -1; i < W / 10 + 2; i++) { const x = Math.floor(cx / 10) * 10 + i * 10 - cx; ctx.moveTo(x + 5, gy + 4); ctx.arc(x, gy + 4, 5, 0, Math.PI); } ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, gy, W, 1.5);
+    ctx.fillStyle = 'rgba(40,110,40,0.4)';
+    for (let i = -1; i < W / 9 + 2; i++) { const n = Math.floor(cx / 9) + i, x = n * 9 - cx, h = ppHash(n, 23); if (h > 0.55) continue; ctx.fillRect(x, gy + 12 + h * 36, 1.2, 3); ctx.fillRect(x + 2, gy + 13 + h * 36, 1.2, 2.5); }
+    ctx.fillStyle = '#9ae07c'; ctx.beginPath();
+    for (let i = -1; i < W / 23 + 2; i++) { const n = Math.floor(cx / 23) + i, x = n * 23 - cx, h = ppHash(n, 29); if (h < 0.6) continue; const y = gy + 18 + h * 26; for (const [a, b] of [[0, -2], [-2, 1], [2, 1]]) { ctx.moveTo(x + a + 1.8, y + b); ctx.arc(x + a, y + b, 1.8, 0, Math.PI * 2); } }
+    ctx.fill();
     ctx.strokeStyle = '#5aae4c'; ctx.lineWidth = 1.5; ctx.beginPath();
     for (let i = -1; i < W / 14 + 2; i++) { const n = Math.floor(cx / 14) + i, x = n * 14 - cx, h = ppHash(n, 17); if (h < 0.5) continue; ctx.moveTo(x, gy); ctx.lineTo(x - 2, gy - 4 - h * 4); ctx.moveTo(x + 3, gy); ctx.lineTo(x + 4, gy - 3 - h * 3); }
     ctx.stroke();
@@ -676,24 +685,55 @@ function ppDrawGround(st) {
       ctx.fillStyle = '#ffe7a0'; circle(x + 10, gy + 14 + h * 20, 1.2); ctx.fill();
     }
   } else if (key === 'city') {
+    // the pavement (slabs with joints and a lit kerb), the kerb face, then the road with its grit and dashes
     ctx.fillStyle = '#d9d4ea'; ctx.fillRect(0, gy, W, 10);
-    ctx.fillStyle = '#8f8aa8'; ctx.fillRect(0, gy + 10, W, H - gy - 10);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(0, gy, W, 1.5);
+    ctx.fillStyle = 'rgba(110,100,150,0.35)';
+    for (let i = -1; i < W / 32 + 2; i++) { const x = Math.floor(cx / 32) * 32 + i * 32 - cx; ctx.fillRect(x, gy + 1, 1, 8); }
+    ctx.fillStyle = '#b9b3d2'; ctx.fillRect(0, gy + 8, W, 3);
+    ctx.fillStyle = '#8f8aa8'; ctx.fillRect(0, gy + 11, W, H - gy - 11);
+    ctx.fillStyle = 'rgba(60,55,90,0.35)'; ctx.fillRect(0, gy + 11, W, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    for (let i = -1; i < W / 7 + 2; i++) { const n = Math.floor(cx / 7) + i, x = n * 7 - cx, h = ppHash(n, 31); ctx.fillRect(x, gy + 16 + h * 30, 1.5, 1.5); }
     ctx.fillStyle = '#fff3c4';
     for (let i = -1; i < W / 80 + 2; i++) { const x = Math.floor(cx / 80) * 80 + i * 80 - cx; ctx.fillRect(x, gy + 28, 36, 4); }
+    ctx.fillStyle = 'rgba(160,140,80,0.5)';
+    for (let i = -1; i < W / 80 + 2; i++) { const x = Math.floor(cx / 80) * 80 + i * 80 - cx; ctx.fillRect(x, gy + 31, 36, 1); }
   } else if (key === 'seaside') {
     const sandEnd = st.course.len * 0.35 - cx;
     ctx.fillStyle = '#4bbad8'; ctx.fillRect(0, gy, W, H - gy);
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
     for (let i = -1; i < W / 60 + 2; i++) { const x = Math.floor(cx / 60) * 60 + i * 60 - cx; ctx.fillRect(x + Math.sin(st.t * 2 + i) * 6, gy + 8 + (i % 3) * 12, 26, 3); }
     if (sandEnd > 0) {
-      ctx.fillStyle = '#f4dc9a'; ctx.fillRect(0, gy, Math.min(W, sandEnd), H - gy);
-      ctx.fillStyle = '#e6c67a'; ctx.fillRect(0, gy, Math.min(W, sandEnd), 4);
+      const sw = Math.min(W, sandEnd);
+      ctx.fillStyle = '#f4dc9a'; ctx.fillRect(0, gy, sw, H - gy);
+      ctx.fillStyle = '#e6c67a'; ctx.fillRect(0, gy, sw, 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(0, gy, sw, 1.2);
+      // grains, ripples, shells and the wet edge where the sand meets the sea
+      ctx.fillStyle = 'rgba(170,130,60,0.45)';
+      for (let i = -1; i < W / 6 + 2; i++) { const n = Math.floor(cx / 6) + i, x = n * 6 - cx, h = ppHash(n, 41); if (x > sw - 2) break; ctx.fillRect(x, gy + 7 + h * 40, 1.3, 1.3); }
+      ctx.strokeStyle = 'rgba(200,160,80,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let i = -1; i < W / 40 + 2; i++) { const n = Math.floor(cx / 40) + i, x = n * 40 - cx; if (x > sw - 30) break; ctx.moveTo(x, gy + 14 + (n % 3) * 9); ctx.quadraticCurveTo(x + 10, gy + 11 + (n % 3) * 9, x + 20, gy + 14 + (n % 3) * 9); }
+      ctx.stroke();
+      for (let i = -1; i < W / 70 + 2; i++) { const n = Math.floor(cx / 70) + i, x = n * 70 - cx + 30, h = ppHash(n, 43); if (x > sw - 12 || h < 0.5) continue; const y = gy + 16 + h * 20;
+        ctx.fillStyle = h > 0.75 ? '#ffb3c6' : '#fff4e0'; ctx.beginPath(); ctx.moveTo(x - 5, y + 2); ctx.quadraticCurveTo(x, y - 6, x + 5, y + 2); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(160,110,80,0.6)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x, y - 3); ctx.moveTo(x - 2.5, y + 2); ctx.lineTo(x - 1.5, y - 2); ctx.moveTo(x + 2.5, y + 2); ctx.lineTo(x + 1.5, y - 2); ctx.stroke(); }
+      if (sandEnd < W) { ctx.fillStyle = 'rgba(200,170,110,0.6)'; ctx.fillRect(sandEnd - 6, gy, 6, H - gy); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(sandEnd, gy, 3, H - gy); }
       // beach umbrellas
       for (let i = -1; i < W / 260 + 2; i++) {
         const n = Math.floor(cx / 260) + i, x = n * 260 - cx + 90;
         if (x > sandEnd - 30) continue;
-        ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, gy + 26); ctx.lineTo(x, gy - 10); ctx.stroke();
-        ctx.fillStyle = n % 2 ? '#ff8fc7' : '#8fe3b0'; ctx.beginPath(); ctx.arc(x, gy - 8, 20, Math.PI, Math.PI * 2); ctx.fill();
+        const uc = n % 2 ? '#ff8fc7' : '#8fe3b0';
+        dkPic('ppBrolly|' + uc, 48, 64, 24, 32, c => {
+          c.fillStyle = 'rgba(170,130,60,0.3)'; c.beginPath(); c.ellipse(4, 28, 18, 3, 0, 0, Math.PI * 2); c.fill();
+          dkPlank(c, -1.2, -10, 2.4, 38, '#8a6a3a', 5, { vert: true, r: 1, lw: 0.6, outline: '#5e4424' });
+          c.fillStyle = uc; c.beginPath(); c.arc(0, -8, 20, Math.PI, Math.PI * 2); c.fill();
+          c.fillStyle = '#ffffff'; for (const [a0, a1] of [[1.2, 1.4], [1.6, 1.8]]) { c.beginPath(); c.moveTo(0, -8); c.arc(0, -8, 20, Math.PI * a0, Math.PI * a1); c.closePath(); c.fill(); }
+          c.fillStyle = 'rgba(80,50,90,0.15)'; c.beginPath(); c.moveTo(0, -8); c.arc(0, -8, 20, Math.PI * 1.5, Math.PI * 2); c.closePath(); c.fill();
+          c.strokeStyle = dkMix(uc, '#3a2a5a', 0.35); c.lineWidth = 1.2; c.beginPath(); c.arc(0, -8, 20, Math.PI, Math.PI * 2); c.closePath(); c.stroke();
+          c.fillStyle = uc; for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(-16 + k * 8, -8, 4, 0, Math.PI); c.fill(); }
+          c.fillStyle = '#ffd36b'; c.beginPath(); c.arc(0, -29, 2, 0, Math.PI * 2); c.fill();
+        }, x, gy);
       }
     }
   } else {
@@ -786,6 +826,230 @@ function ppDrawBird(st, o, s) {
   ctx.fillStyle = 'rgba(255,120,140,0.5)'; circle(-6, 3, 2.2); ctx.fill();
   ctx.restore();
 }
+// ---------- rich still art (cached; dkPic and the dk* kit live in world18/runaway-ship.js) ----------
+// local x 0 = the object's x, y 0 = the ground line (h = how tall it stands), unless a painter says otherwise
+// a round apple tree: a barked trunk with root flares, three shaded leaf layers with leaf clumps, apples, an outline
+function ppPaintTree(c, h) {
+  c.fillStyle = 'rgba(40,80,40,0.25)'; c.beginPath(); c.ellipse(4, 2, 36, 5, 0, 0, Math.PI * 2); c.fill();
+  dkPlank(c, -9, -h, 18, h + 4, '#9a6a3e', 61 + h, { vert: true, r: 4, lit: 0.25, outline: '#6a4524', lw: 1.2 });
+  c.fillStyle = '#9a6a3e'; c.beginPath(); c.moveTo(-9, -12); c.quadraticCurveTo(-10, 0, -16, 4); c.lineTo(-5, 4); c.closePath(); c.moveTo(9, -12); c.quadraticCurveTo(10, 0, 16, 4); c.lineTo(5, 4); c.closePath(); c.fill();
+  c.strokeStyle = '#6a4524'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(-9, -12); c.quadraticCurveTo(-10, 0, -16, 4); c.moveTo(9, -12); c.quadraticCurveTo(10, 0, 16, 4); c.stroke();
+  c.strokeStyle = 'rgba(70,40,20,0.45)'; c.lineWidth = 1.2; c.beginPath();
+  for (let y = -h + 30; y < -8; y += 22) { const hs = hash(h, y); c.moveTo(-4 + hs % 6, y); c.quadraticCurveTo(-2 + hs % 6, y + 6, -4 + hs % 6, y + 12); }
+  c.stroke();
+  c.fillStyle = '#5a3a1e'; c.beginPath(); c.ellipse(2, -h * 0.45, 2.6, 3.6, 0, 0, Math.PI * 2); c.fill();
+  // leaves: back, side clumps, the main crown
+  c.fillStyle = '#3f9440'; c.beginPath(); c.arc(-26, -h + 12, 30, 0, Math.PI * 2); c.arc(26, -h + 12, 30, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#4fae4a'; c.beginPath(); c.arc(-27, -h + 9, 27, 0, Math.PI * 2); c.arc(25, -h + 9, 27, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#4aa445'; c.beginPath(); c.arc(1, -h - 4, 42, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#5fc25a'; c.beginPath(); c.arc(-2, -h - 8, 39, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#6fd068'; c.beginPath(); c.arc(-8, -h - 14, 28, 0, Math.PI * 2); c.fill();
+  // leaf clumps: little scallops with a dark underside
+  for (let k = 0; k < 14; k++) {
+    const hs = hash(k + 3, h + 71), a = (hs % 628) / 100, rr = 10 + (hs >>> 10) % 26, lx = Math.cos(a) * rr, ly = -h - 6 + Math.sin(a) * rr * 0.9;
+    c.fillStyle = 'rgba(40,110,40,0.45)'; c.beginPath(); c.arc(lx + 1, ly + 2, 6, 0, Math.PI); c.fill();
+    c.fillStyle = k % 3 ? '#6fd068' : '#82dc77'; c.beginPath(); c.arc(lx, ly, 5.5, Math.PI, 0); c.fill();
+  }
+  c.fillStyle = 'rgba(255,255,255,0.22)'; c.beginPath(); c.arc(-12, -h - 20, 14, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(-15, -h - 24, 6, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#2f7a34'; c.lineWidth = 1.6; c.beginPath(); c.arc(1, -h - 4, 42, -0.3, 1.5); c.stroke();
+  c.beginPath(); c.arc(26, -h + 12, 30, -0.4, 1.7); c.stroke(); c.beginPath(); c.arc(-26, -h + 12, 30, 1.2, 2.9); c.stroke();
+  // apples
+  for (let k = 0; k < 4; k++) {
+    const ax = -22 + k * 15, ay = -h + 4 + (k % 2) * 12;
+    c.fillStyle = '#d84a5a'; c.beginPath(); c.arc(ax, ay, 4.3, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#ff6f7f'; c.beginPath(); c.arc(ax - 0.6, ay - 0.6, 3.4, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.75)'; c.beginPath(); c.arc(ax - 1.6, ay - 1.6, 1.1, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#6a4524'; c.lineWidth = 1; c.beginPath(); c.moveTo(ax, ay - 4); c.lineTo(ax + 1, ay - 6.5); c.stroke();
+  }
+}
+// a city building: brick courses, a shaded right side, framed windows with sills (some lit, by its id), a cornice
+// with dentils, a plinth, and a brick chimney
+function ppPaintBldg(c, w, h, cs, id, chim) {
+  c.fillStyle = cs[0]; c.fillRect(0, -h, w, h);
+  c.strokeStyle = 'rgba(60,40,70,0.12)'; c.lineWidth = 1; c.beginPath();
+  for (let y = -h + 6, r = 0; y < 0; y += 7, r++) { c.moveTo(0, y + 0.5); c.lineTo(w, y + 0.5); for (let x = (r % 2) * 9; x < w; x += 18) { c.moveTo(x + 0.5, y); c.lineTo(x + 0.5, y + 7); } }
+  c.stroke();
+  for (let k = 0; k < w * h / 900; k++) { const hs = hash(id * 31 + k, 5); c.fillStyle = hs % 2 ? 'rgba(255,255,255,0.18)' : 'rgba(60,40,70,0.08)'; c.fillRect(hs % w | 0, -h + (hs >>> 8) % h, 8, 5); }
+  c.fillStyle = 'rgba(60,40,90,0.16)'; c.fillRect(w - 10, -h, 10, h);
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, -h, 2, h);
+  // floor bands
+  for (let wy = -h + 18 + 28; wy < -6; wy += 34) { c.fillStyle = cs[1]; c.globalAlpha = 0.5; c.fillRect(0, wy, w, 3); c.globalAlpha = 1; c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, wy, w, 1); }
+  // windows
+  for (let wy = -h + 18, r = 0; wy < -22; wy += 34, r++) for (let wx = 14, cI = 0; wx < w - 20; wx += 30, cI++) {
+    const lit = ppHash(id * 7 + r, cI) < 0.35;
+    c.fillStyle = cs[1]; rrOn(c, wx - 2, wy - 2, 20, 24, 4); c.fill();
+    c.fillStyle = lit ? '#ffe9a8' : '#6c78b4'; rrOn(c, wx, wy, 16, 20, 3); c.fill();
+    if (lit) { c.fillStyle = 'rgba(255,190,90,0.55)'; c.fillRect(wx, wy + 10, 16, 10); c.fillStyle = '#ff9fb0'; c.fillRect(wx, wy, 4, 20); c.fillRect(wx + 12, wy, 4, 20); }
+    else { c.fillStyle = 'rgba(40,40,90,0.35)'; c.fillRect(wx + 8, wy, 8, 20); }
+    c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(wx + 8, wy); c.lineTo(wx + 8, wy + 20); c.moveTo(wx, wy + 10); c.lineTo(wx + 16, wy + 10); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.55)'; c.beginPath(); c.moveTo(wx + 2, wy + 8); c.lineTo(wx + 6, wy + 2); c.lineTo(wx + 7.5, wy + 2); c.lineTo(wx + 3.5, wy + 8); c.closePath(); c.fill();
+    c.fillStyle = dkMix(cs[1], '#ffffff', 0.35); c.fillRect(wx - 3, wy + 20, 22, 3); c.fillStyle = 'rgba(60,40,70,0.3)'; c.fillRect(wx - 3, wy + 23, 22, 1.5);
+  }
+  // plinth
+  c.fillStyle = cs[1]; c.fillRect(0, -8, w, 8); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, -8, w, 1.2);
+  c.strokeStyle = dkMix(cs[1], '#2a2040', 0.35); c.lineWidth = 1.5; c.strokeRect(0.75, -h, w - 1.5, h);
+  // cornice with dentils
+  c.fillStyle = cs[1]; c.fillRect(-4, -h - 6, w + 8, 8);
+  c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(-4, -h - 6, w + 8, 1.5);
+  c.fillStyle = 'rgba(60,40,70,0.3)'; c.fillRect(-4, -h, w + 8, 2);
+  c.fillStyle = dkMix(cs[1], '#2a2040', 0.2); for (let x = 2; x < w - 2; x += 8) c.fillRect(x, -h + 2, 4, 3);
+  c.strokeStyle = dkMix(cs[1], '#2a2040', 0.35); c.lineWidth = 1; c.strokeRect(-3.5, -h - 5.5, w + 7, 7);
+  if (chim) {
+    const chx = w * 0.7;
+    c.fillStyle = '#c9785a'; c.fillRect(chx - 11, -h - 30, 22, 30);
+    c.strokeStyle = 'rgba(90,40,30,0.4)'; c.lineWidth = 1; c.beginPath();
+    for (let y = -h - 26, r = 0; y < -h; y += 5, r++) { c.moveTo(chx - 11, y + 0.5); c.lineTo(chx + 11, y + 0.5); for (let x = chx - 11 + (r % 2) * 4; x < chx + 11; x += 8) { c.moveTo(x + 0.5, y); c.lineTo(x + 0.5, y + 5); } }
+    c.stroke();
+    c.fillStyle = 'rgba(80,30,20,0.25)'; c.fillRect(chx + 5, -h - 30, 6, 30);
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(chx - 11, -h - 30, 1.5, 30);
+    c.strokeStyle = '#8a4a34'; c.lineWidth = 1.2; c.strokeRect(chx - 11, -h - 30, 22, 30);
+    c.fillStyle = '#9a5a40'; c.fillRect(chx - 13, -h - 34, 26, 6); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(chx - 13, -h - 34, 26, 1.2);
+    c.fillStyle = '#3a2a2a'; c.fillRect(chx - 8, -h - 34, 16, 2);
+  }
+}
+// the fair blimp (local 0,0 = its middle): gores, shading, outlined fins with a stripe, a gondola with windows
+function ppPaintBlimp(c) {
+  const fin = (s) => { c.beginPath(); c.moveTo(60, -6 * s); c.lineTo(92, -28 * s); c.lineTo(86, 0); c.closePath(); };
+  for (const s of [1, -1]) { c.fillStyle = '#a796e0'; fin(s); c.fill(); c.fillStyle = '#ff8fc7'; c.beginPath(); c.moveTo(80, -20 * s); c.lineTo(88, -26 * s); c.lineTo(87, -14 * s); c.closePath(); c.fill(); c.strokeStyle = '#7a6ac0'; c.lineWidth = 1.5; fin(s); c.stroke(); }
+  c.fillStyle = '#c3b6f2'; c.beginPath(); c.ellipse(0, 0, 78, 28, 0, 0, Math.PI * 2); c.fill();
+  c.save(); c.beginPath(); c.ellipse(0, 0, 78, 28, 0, 0, Math.PI * 2); c.clip();
+  const g = c.createLinearGradient(0, -28, 0, 28); g.addColorStop(0, 'rgba(255,255,255,0.25)'); g.addColorStop(0.5, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(70,50,140,0.3)');
+  c.fillStyle = g; c.fillRect(-80, -30, 160, 60);
+  c.strokeStyle = 'rgba(110,90,190,0.3)'; c.lineWidth = 1.2;
+  for (let k = 1; k < 4; k++) { c.beginPath(); c.ellipse(0, 0, 78 * k / 4, 28, 0, 0, Math.PI * 2); c.stroke(); }
+  c.beginPath(); c.moveTo(-80, 0); c.lineTo(80, 0); c.stroke();
+  c.fillStyle = 'rgba(255,143,199,0.55)'; c.fillRect(-80, 12, 160, 4);
+  c.restore();
+  c.fillStyle = 'rgba(255,255,255,0.4)'; c.beginPath(); c.ellipse(-14, -14, 44, 6, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#a796e0'; c.beginPath(); c.ellipse(-74, 0, 5, 9, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#8f7fd0'; c.lineWidth = 2; c.beginPath(); c.ellipse(0, 0, 78, 28, 0, 0, Math.PI * 2); c.stroke();
+  // gondola on struts
+  c.strokeStyle = '#7a6ac0'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-14, 24); c.lineTo(-10, 27); c.moveTo(14, 24); c.lineTo(10, 27); c.stroke();
+  c.fillStyle = '#8f7fd0'; rrOn(c, -20, 24, 40, 12, 5); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(-16, 25, 32, 1.2);
+  c.fillStyle = '#fff3c4'; for (let k = 0; k < 4; k++) { rrOn(c, -15 + k * 8, 27.5, 5, 5, 1.5); c.fill(); }
+  c.strokeStyle = '#6a5aac'; c.lineWidth = 1.2; rrOn(c, -20, 24, 40, 12, 5); c.stroke();
+}
+// a sailing boat (local x 0 = the mast): a seamed two-tone sail, a grained mast with its pennant, a planked hull
+function ppPaintMast(c, h, col) {
+  const cols = ['#ff8fc7', '#ffd94a', '#8fe3b0'], sail = () => { c.beginPath(); c.moveTo(-4, -h + 10); c.lineTo(-4, -28); c.lineTo(-52, -28); c.closePath(); };
+  c.fillStyle = '#ffffff'; sail(); c.fill();
+  c.save(); sail(); c.clip();
+  c.fillStyle = cols[col]; c.beginPath(); c.moveTo(-4, -80); c.lineTo(-4, -28); c.lineTo(-52, -28); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(120,130,170,0.3)'; c.lineWidth = 1; c.beginPath(); for (let y = -h + 30; y < -28; y += 18) { c.moveTo(-60, y); c.lineTo(0, y); } c.stroke();
+  const g = c.createLinearGradient(-52, 0, -4, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(90,100,150,0.22)');
+  c.fillStyle = g; c.fillRect(-60, -h, 60, h);
+  c.restore();
+  c.strokeStyle = 'rgba(110,120,160,0.7)'; c.lineWidth = 1.4; sail(); c.stroke();
+  dkPlank(c, -3, -h, 6, h - 16, '#8a5a30', 81 + h, { vert: true, r: 1.5, lit: 0.25, outline: '#5e3a1c', lw: 0.8 });
+  c.fillStyle = cols[(col + 1) % 3]; c.beginPath(); c.moveTo(3, -h); c.lineTo(24, -h + 6); c.lineTo(3, -h + 12); c.fill();
+  c.strokeStyle = 'rgba(80,60,90,0.4)'; c.lineWidth = 1; c.beginPath(); c.moveTo(3, -h); c.lineTo(24, -h + 6); c.lineTo(3, -h + 12); c.stroke();
+  c.fillStyle = '#ffd36b'; c.beginPath(); c.arc(0, -h - 1, 3, 0, Math.PI * 2); c.fill();
+  // the hull: planks, a lit rail, a coloured stripe, portholes, a shaded keel side
+  const hull = () => { c.beginPath(); c.moveTo(-62, -24); c.lineTo(40, -24); c.lineTo(26, -2); c.lineTo(-52, -2); c.closePath(); };
+  c.fillStyle = '#e8eef8'; hull(); c.fill();
+  c.save(); hull(); c.clip();
+  c.strokeStyle = 'rgba(110,120,160,0.3)'; c.lineWidth = 1; c.beginPath(); for (const y of [-19, -9, -5]) { c.moveTo(-64, y); c.lineTo(42, y); } c.stroke();
+  c.fillStyle = 'rgba(70,80,130,0.22)'; c.fillRect(-64, -8, 110, 8);
+  c.fillStyle = cols[col]; c.fillRect(-58, -14, 92, 4);
+  c.restore();
+  c.fillStyle = '#ffffff'; c.fillRect(-62, -25, 102, 2.5);
+  for (const px of [-36, -16, 4]) { c.fillStyle = '#b8a070'; c.beginPath(); c.arc(px, -18, 3.2, 0, Math.PI * 2); c.fill(); c.fillStyle = '#7ab4e0'; c.beginPath(); c.arc(px, -18, 2.1, 0, Math.PI * 2); c.fill(); }
+  c.strokeStyle = '#8a92b8'; c.lineWidth = 1.5; hull(); c.stroke();
+}
+// the lighthouse body (stone base, banded tower with courses, door and windows, gallery and lamp room) and its cap
+function ppPaintLight(c, h) {
+  const base = () => { c.beginPath(); c.moveTo(-40, 4); c.lineTo(40, 4); c.lineTo(30, -16); c.lineTo(-30, -16); c.closePath(); };
+  c.fillStyle = '#d6cfc0'; base(); c.fill();
+  c.save(); base(); c.clip();
+  for (let r = 0; r < 3; r++) for (let x = -44 + (r % 2) * 9; x < 44; x += 18) dkCobble(c, x + 9, -12 + r * 7, 8, 3.2, dkMix('#d6cfc0', r % 2 ? '#a89e88' : '#ffffff', 0.25), r * 9 + x);
+  c.fillStyle = 'rgba(80,70,50,0.2)'; c.fillRect(-44, -4, 88, 8);
+  c.restore();
+  c.strokeStyle = '#9a907a'; c.lineWidth = 1.5; base(); c.stroke();
+  const th = h - 10;
+  c.fillStyle = '#ffffff'; c.fillRect(-24, -h, 48, th);
+  c.fillStyle = '#ff7a8a'; for (let y = -h + 20; y < -20; y += 56) c.fillRect(-24, y, 48, 26);
+  c.strokeStyle = 'rgba(120,110,140,0.22)'; c.lineWidth = 1; c.beginPath();
+  for (let y = -h + 8, r = 0; y < -10; y += 9, r++) { c.moveTo(-24, y + 0.5); c.lineTo(24, y + 0.5); for (let x = -24 + (r % 2) * 8; x < 24; x += 16) { c.moveTo(x + 0.5, y); c.lineTo(x + 0.5, y + 9); } }
+  c.stroke();
+  c.fillStyle = 'rgba(80,60,120,0.18)'; c.fillRect(10, -h, 14, th);
+  c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(-24, -h, 2.5, th);
+  // little windows down the tower, a door at the foot
+  for (let y = -h + 46; y < -60; y += 56) { c.fillStyle = '#5a4a8a'; rrOn(c, -5, y, 10, 14, 5); c.fill(); c.fillStyle = '#fff3a0'; rrOn(c, -3.5, y + 1.5, 7, 11, 3.5); c.fill(); c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(-6, y + 14, 12, 2); }
+  c.fillStyle = '#8a5a30'; rrOn(c, -8, -38, 16, 28, 8); c.fill(); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(-6, -32, 1.2, 22); c.fillStyle = '#ffd36b'; c.beginPath(); c.arc(4, -22, 1.4, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#5e3a1c'; c.lineWidth = 1.2; rrOn(c, -8, -38, 16, 28, 8); c.stroke();
+  c.strokeStyle = '#b8b0c8'; c.lineWidth = 1.5; c.strokeRect(-24, -h, 48, th);
+  // the gallery with its railing, then the lamp room
+  c.fillStyle = '#5a4a8a'; c.fillRect(-28, -h - 6, 56, 8); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(-28, -h - 6, 56, 1.5);
+  c.strokeStyle = '#5a4a8a'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-28, -h - 14); c.lineTo(28, -h - 14); for (let x = -26; x <= 26; x += 7.4) { c.moveTo(x, -h - 14); c.lineTo(x, -h - 6); } c.stroke();
+  c.fillStyle = '#fff3a0'; rrOn(c, -16, -h - 30, 32, 24, 6); c.fill();
+  c.fillStyle = 'rgba(255,220,90,0.5)'; c.beginPath(); c.arc(0, -h - 18, 8, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#5a4a8a'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-6, -h - 30); c.lineTo(-6, -h - 6); c.moveTo(6, -h - 30); c.lineTo(6, -h - 6); c.stroke();
+  rrOn(c, -16, -h - 30, 32, 24, 6); c.stroke();
+}
+function ppPaintLightCap(c) {
+  c.fillStyle = '#ff7a8a'; c.beginPath(); c.moveTo(-22, -30); c.lineTo(0, -50); c.lineTo(22, -30); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(150,40,60,0.3)'; c.beginPath(); c.moveTo(0, -50); c.lineTo(22, -30); c.lineTo(2, -30); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1.3; c.beginPath(); c.moveTo(-20, -31); c.lineTo(-1, -48); c.stroke();
+  c.strokeStyle = '#c4505e'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(-22, -30); c.lineTo(0, -50); c.lineTo(22, -30); c.closePath(); c.stroke();
+  c.fillStyle = '#5a4a8a'; c.beginPath(); c.arc(0, -52, 3, 0, Math.PI * 2); c.fill();
+}
+// a sky-fair tower: stone courses, shading, an arched framed window, a tiled cone roof with its pole
+function ppPaintTower(c, h, col) {
+  const cols = [['#c9bdf0', '#a99be0'], ['#f2c9e4', '#d9a3c8'], ['#cfe6fb', '#a9c8ea']][col];
+  c.fillStyle = cols[0]; c.fillRect(-34, -h, 68, h + 8);
+  for (let y = -h + 4, r = 0; y < 8; y += 11, r++) for (let x = -34 - (r % 2) * 11; x < 34; x += 22) {
+    const hs = hash(r * 7 + col, x + 40); c.fillStyle = hs % 3 === 0 ? dkMix(cols[0], '#ffffff', 0.25) : hs % 3 === 1 ? dkMix(cols[0], cols[1], 0.35) : cols[0];
+    c.fillRect(Math.max(-34, x + 1), y + 1, Math.min(34, x + 21) - Math.max(-34, x + 1), 9);
+  }
+  c.fillStyle = 'rgba(255,255,255,0.35)'; for (let y = -h + 5; y < 8; y += 11) c.fillRect(-34, y, 68, 1);
+  c.fillStyle = 'rgba(70,50,120,0.18)'; c.fillRect(20, -h, 14, h + 8);
+  c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(-34, -h, 2.5, h + 8);
+  c.strokeStyle = dkMix(cols[1], '#3a2a6a', 0.3); c.lineWidth = 1.5; c.strokeRect(-34, -h, 68, h + 8);
+  c.fillStyle = cols[1]; rrOn(c, -11, -h + 17, 22, 28, 11); c.fill();
+  c.fillStyle = '#5a4a8a'; rrOn(c, -8, -h + 20, 16, 22, 8); c.fill();
+  c.fillStyle = '#7a6ab0'; c.fillRect(0, -h + 22, 8, 20);
+  c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(0, -h + 20); c.lineTo(0, -h + 42); c.stroke();
+  c.fillStyle = dkMix(cols[1], '#ffffff', 0.3); c.fillRect(-12, -h + 42, 24, 3);
+  // the cone roof: tile rows, a shaded right half, a lit left edge
+  const rp = () => { c.beginPath(); c.moveTo(-40, -h + 2); c.lineTo(0, -h - 44); c.lineTo(40, -h + 2); c.closePath(); };
+  c.fillStyle = '#ff8fc7'; rp(); c.fill();
+  c.save(); rp(); c.clip();
+  for (let r = 0; r < 7; r++) { const yy = -h + 2 - r * 7; c.fillStyle = r % 2 ? '#ff7fbc' : '#ffa6d4'; for (let x = -44 + (r % 2) * 4; x < 44; x += 8) { c.beginPath(); c.arc(x + 4, yy, 4.2, 0, Math.PI); c.fill(); } }
+  c.fillStyle = 'rgba(150,40,100,0.22)'; c.beginPath(); c.moveTo(0, -h - 44); c.lineTo(40, -h + 2); c.lineTo(2, -h + 2); c.closePath(); c.fill();
+  c.restore();
+  c.strokeStyle = 'rgba(255,255,255,0.65)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-38, -h + 1); c.lineTo(-1, -h - 41); c.stroke();
+  c.strokeStyle = '#c95a96'; c.lineWidth = 1.5; rp(); c.stroke();
+  dkPlank(c, -1.5, -h - 62, 3, 19, '#8a5a30', 9, { vert: true, r: 1, lw: 0.6, outline: '#5e3a1c' });
+}
+// the launch post: a cloud pillar with soft puffs and a grained wooden Y fork with leather wraps
+function ppPaintSling(c, hh) {
+  c.fillStyle = '#ffffff'; rrOn(c, -70, 34, 60, hh - 30, 14); c.fill(); circleOn(c, -40, 36, 24); c.fill();
+  c.fillStyle = '#eef0fc'; circleOn(c, -58, 60, 12); c.fill(); circleOn(c, -24, 80, 13); c.fill();
+  c.fillStyle = 'rgba(178,160,230,0.25)'; c.fillRect(-26, 40, 16, hh - 40);
+  c.fillStyle = 'rgba(255,255,255,0.9)'; circleOn(c, -48, 26, 7); c.fill();
+  c.fillStyle = 'rgba(178,160,230,0.3)'; c.fillRect(-70, hh - 10, 60, 14);
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  const fork = () => { c.beginPath(); c.moveTo(-40, 40); c.lineTo(-40, 14); c.lineTo(-26, -12); c.moveTo(-40, 14); c.lineTo(-54, -12); };
+  c.strokeStyle = '#6e4524'; c.lineWidth = 9.5; fork(); c.stroke();
+  c.strokeStyle = '#a06a3a'; c.lineWidth = 7; fork(); c.stroke();
+  c.strokeStyle = '#c98d55'; c.lineWidth = 2; c.beginPath(); c.moveTo(-42, 38); c.lineTo(-42, 15); c.lineTo(-55, -10); c.moveTo(-41, 12); c.lineTo(-28, -10); c.stroke();
+  c.strokeStyle = 'rgba(70,40,20,0.4)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-39, 34); c.lineTo(-38.5, 24); c.stroke();
+  c.lineCap = 'butt'; c.lineJoin = 'miter';
+  for (const [wx, wy, a] of [[-27, -6, 0.5], [-53, -6, -0.5], [-40, 18, 0]]) { c.save(); c.translate(wx, wy); c.rotate(a); c.fillStyle = '#7a3e5a'; c.fillRect(-5, -3, 10, 6); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(-5, -3, 10, 1.2); c.strokeStyle = 'rgba(40,20,30,0.4)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(-5, 0); c.lineTo(5, 0); c.stroke(); c.restore(); }
+}
+// a rubber balloon: shaded body, a rim in its own dark shade, a big and a small glint, the tied knot
+function ppPaintBalloon(c, col) {
+  c.fillStyle = col; c.beginPath(); c.ellipse(0, 0, 18, 21, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.moveTo(-4, 22); c.lineTo(4, 22); c.lineTo(0, 18); c.fill();
+  const g = c.createRadialGradient(-6, -8, 2, 0, 0, 22); g.addColorStop(0, 'rgba(255,255,255,0.2)'); g.addColorStop(0.6, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(60,40,90,0.3)');
+  c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, 18, 21, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = dkMix(col, '#3a2a5a', 0.35); c.lineWidth = 1.3; c.beginPath(); c.ellipse(0, 0, 18, 21, 0, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = dkMix(col, '#3a2a5a', 0.25); c.beginPath(); c.moveTo(-4, 23); c.lineTo(4, 23); c.lineTo(0, 19); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.ellipse(-6, -8, 4, 7, -0.4, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.8)'; c.beginPath(); c.arc(-1, -14, 1.6, 0, Math.PI * 2); c.fill();
+}
 function ppDrawObstacle(st, o) {
   const s = ppShapes(o, st.rt), sp = ppSpan(o), gy = PP.groundY;
   if (ppSX(st, sp[1]) < -60 || ppSX(st, sp[0]) > W + 60) { if (o.k !== 'kite' && o.k !== 'bird') return; }
@@ -796,9 +1060,7 @@ function ppDrawObstacle(st, o) {
       const x = ppSX(st, o.x) + hit * 10, y = s.cy;
       ctx.strokeStyle = 'rgba(80,70,110,0.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x, y + 20);
       for (let k = 1; k <= 6; k++) ctx.lineTo(x + Math.sin(t * 2 + k + o.ph) * 3, y + 20 + k * 11); ctx.stroke();
-      ctx.fillStyle = PP_BCOL[o.col]; ctx.beginPath(); ctx.ellipse(x, y, 18, 21, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(x - 4, y + 22); ctx.lineTo(x + 4, y + 22); ctx.lineTo(x, y + 18); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.ellipse(x - 6, y - 8, 4, 7, -0.4, 0, Math.PI * 2); ctx.fill();
+      const bc = PP_BCOL[o.col]; dkPic('ppBalloon|' + bc, 42, 50, 21, 23, c => ppPaintBalloon(c, bc), x, y);
       break;
     }
     case 'kite': {
@@ -808,6 +1070,9 @@ function ppDrawObstacle(st, o) {
       ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * 1.3 + o.ph) * 0.15 + hit);
       ctx.fillStyle = cols[0]; ctx.beginPath(); ctx.moveTo(0, -26); ctx.lineTo(18, 0); ctx.lineTo(0, 24); ctx.lineTo(-18, 0); ctx.closePath(); ctx.fill();
       ctx.fillStyle = cols[1]; ctx.beginPath(); ctx.moveTo(0, -26); ctx.lineTo(18, 0); ctx.lineTo(0, 0); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 24); ctx.lineTo(-18, 0); ctx.lineTo(0, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(120,80,40,0.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(0, 22); ctx.moveTo(-16, 0); ctx.lineTo(16, 0); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.moveTo(0, -26); ctx.lineTo(-18, 0); ctx.lineTo(-9, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(70,50,90,0.55)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(0, -26); ctx.lineTo(18, 0); ctx.lineTo(0, 24); ctx.lineTo(-18, 0); ctx.closePath(); ctx.stroke();
       ctx.fillStyle = C.ink; circle(-5, -4, 1.8); ctx.fill(); circle(5, -4, 1.8); ctx.fill();
       ctx.strokeStyle = C.ink; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(0, 1, 4, 0.2, Math.PI - 0.2); ctx.stroke();
       ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(0, 24);
@@ -818,62 +1083,41 @@ function ppDrawObstacle(st, o) {
     }
     case 'tree': {
       const x = ppSX(st, o.x) + hit * 6, y = o.cy;
-      ctx.fillStyle = '#9a6a3e'; rr(x - 9, y, 18, gy - y + 4, 4); ctx.fill();
-      ctx.fillStyle = '#4fae4a'; circle(x - 26, y + 10, 30); ctx.fill(); circle(x + 26, y + 10, 30); ctx.fill();
-      ctx.fillStyle = '#5fc25a'; circle(x, y - 6, 42); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.2)'; circle(x - 12, y - 20, 14); ctx.fill();
-      ctx.fillStyle = '#ff6f7f'; for (let k = 0; k < 4; k++) { circle(x - 22 + k * 15, y + 4 + (k % 2) * 12, 4); ctx.fill(); }
+      const th = Math.round(gy - y);
+      dkPic('ppTree|' + th, 128, th + 64, 64, th + 54, c => ppPaintTree(c, th), x, gy);
       break;
     }
     case 'bldg': {
       const x = ppSX(st, o.x), cs = PP_BLDG[o.col];
-      ctx.fillStyle = cs[0]; ctx.fillRect(x, o.top, o.w, gy - o.top);
-      ctx.fillStyle = cs[1]; ctx.fillRect(x - 4, o.top - 6, o.w + 8, 8);
-      ctx.fillStyle = 'rgba(80,90,150,0.55)';
-      for (let wy = o.top + 18; wy < gy - 22; wy += 34) for (let wx = x + 14; wx < x + o.w - 20; wx += 30) { rr(wx, wy, 16, 20, 3); ctx.fill(); }
-      ctx.fillStyle = 'rgba(255,240,180,0.7)';
-      for (let wy = o.top + 18, r = 0; wy < gy - 22; wy += 34, r++) for (let wx = x + 14, c = 0; wx < x + o.w - 20; wx += 30, c++) if (ppHash(o.id * 7 + r, c) < 0.35) { rr(wx, wy, 16, 20, 3); ctx.fill(); }
-      if (o.chim) { const chx = x + o.w * 0.7; ctx.fillStyle = '#c9785a'; ctx.fillRect(chx - 11, o.top - 30, 22, 30); ctx.fillStyle = '#9a5a40'; ctx.fillRect(chx - 13, o.top - 34, 26, 6); }
+      // (cached per size, colour and id; the building is drawn from its top to the ground line, as its hitbox)
+      const bw = o.w, bh = gy - o.top;
+      dkPic('ppBldg|' + bw + '|' + bh + '|' + o.col + '|' + o.id + '|' + (o.chim ? 1 : 0), Math.ceil(bw) + 12, Math.ceil(bh) + 42, 6, Math.ceil(bh) + 38, c => ppPaintBldg(c, bw, bh, cs, o.id, o.chim), x, gy);
       break;
     }
     case 'blimp': {
       const x = ppSX(st, o.x) + hit * 8, y = o.y + Math.sin(t * 0.8 + o.ph) * 3;
-      ctx.fillStyle = '#c3b6f2'; ctx.beginPath(); ctx.ellipse(x, y, 78, 28, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#a796e0'; ctx.beginPath(); ctx.moveTo(x + 60, y - 6); ctx.lineTo(x + 92, y - 28); ctx.lineTo(x + 86, y); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(x + 60, y + 6); ctx.lineTo(x + 92, y + 28); ctx.lineTo(x + 86, y); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(x - 14, y - 12, 44, 7, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#8f7fd0'; rr(x - 20, y + 24, 40, 12, 5); ctx.fill();
+      dkPic('ppBlimp', 186, 74, 84, 34, c => ppPaintBlimp(c), x, y);
       ctx.fillStyle = '#fff'; ctx.font = '15px "Lilita One", "Arial Rounded MT Bold", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('SKY ★ FAIR', x - 6, y + 1);
       break;
     }
     case 'mast': {
       const x = ppSX(st, o.x) + hit * 4, cols = ['#ff8fc7', '#ffd94a', '#8fe3b0'];
-      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(x - 4, o.top + 10); ctx.lineTo(x - 4, gy - 28); ctx.lineTo(x - 52, gy - 28); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = cols[o.col]; ctx.beginPath(); ctx.moveTo(x - 4, gy - 80); ctx.lineTo(x - 4, gy - 28); ctx.lineTo(x - 52, gy - 28); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#8a5a30'; ctx.fillRect(x - 3, o.top, 6, gy - o.top - 16);
-      ctx.fillStyle = cols[(o.col + 1) % 3]; ctx.beginPath(); ctx.moveTo(x + 3, o.top); ctx.lineTo(x + 24, o.top + 6); ctx.lineTo(x + 3, o.top + 12); ctx.fill();
-      ctx.fillStyle = '#e8eef8'; ctx.beginPath(); ctx.moveTo(x - 62, gy - 24); ctx.lineTo(x + 40, gy - 24); ctx.lineTo(x + 26, gy - 2); ctx.lineTo(x - 52, gy - 2); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = cols[o.col]; ctx.fillRect(x - 58, gy - 14, 92, 4);
+      const mh = Math.round(gy - o.top); void cols;
+      dkPic('ppMast|' + o.col + '|' + mh, 112, mh + 10, 66, mh + 5, c => ppPaintMast(c, mh, o.col), x, gy);
       break;
     }
     case 'light': {
       const x = ppSX(st, o.x);
-      ctx.fillStyle = '#d6cfc0'; ctx.beginPath(); ctx.moveTo(x - 40, gy + 4); ctx.lineTo(x + 40, gy + 4); ctx.lineTo(x + 30, gy - 16); ctx.lineTo(x - 30, gy - 16); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 24, o.top, 48, gy - o.top - 10);
-      ctx.fillStyle = '#ff7a8a'; for (let y = o.top + 20; y < gy - 20; y += 56) ctx.fillRect(x - 24, y, 48, 26);
-      ctx.fillStyle = '#5a4a8a'; ctx.fillRect(x - 28, o.top - 6, 56, 8);
-      ctx.fillStyle = '#fff3a0'; rr(x - 16, o.top - 30, 32, 24, 6); ctx.fill();
+      const lh = Math.round(gy - o.top);
+      dkPic('ppLight|' + lh, 92, lh + 42, 46, lh + 34, c => ppPaintLight(c, lh), x, gy);
       ctx.fillStyle = 'rgba(255,240,160,' + (0.25 + 0.15 * Math.sin(t * 3)).toFixed(2) + ')'; ctx.beginPath(); ctx.moveTo(x, o.top - 18); ctx.lineTo(x - 160, o.top - 50); ctx.lineTo(x - 160, o.top + 14); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#ff7a8a'; ctx.beginPath(); ctx.moveTo(x - 22, o.top - 30); ctx.lineTo(x, o.top - 50); ctx.lineTo(x + 22, o.top - 30); ctx.closePath(); ctx.fill();
+      dkPic('ppLightCap', 50, 30, 25, 57, c => ppPaintLightCap(c), x, o.top);
       break;
     }
     case 'tower': {
       const x = ppSX(st, o.x), cols = [['#c9bdf0', '#a99be0'], ['#f2c9e4', '#d9a3c8'], ['#cfe6fb', '#a9c8ea']][o.col];
-      ctx.fillStyle = cols[0]; ctx.fillRect(x - 34, o.top, 68, gy - o.top + 8);
-      ctx.fillStyle = cols[1]; for (let y = o.top + 14; y < gy; y += 22) for (let k = 0; k < 3; k++) ctx.fillRect(x - 30 + k * 22 + ((y / 22) % 2) * 8, y, 14, 3);
-      ctx.fillStyle = '#5a4a8a'; rr(x - 8, o.top + 20, 16, 22, 8); ctx.fill();
-      ctx.fillStyle = '#ff8fc7'; ctx.beginPath(); ctx.moveTo(x - 40, o.top + 2); ctx.lineTo(x, o.top - 44); ctx.lineTo(x + 40, o.top + 2); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#8a5a30'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, o.top - 44); ctx.lineTo(x, o.top - 62); ctx.stroke();
+      const twh = Math.round(gy - o.top); void cols;
+      dkPic('ppTower|' + o.col + '|' + twh, 92, twh + 78, 46, twh + 66, c => ppPaintTower(c, twh, o.col), x, gy);
       ctx.fillStyle = C.gold; ctx.beginPath(); ctx.moveTo(x, o.top - 62); ctx.lineTo(x + 18 + Math.sin(t * 6 + o.ph) * 3, o.top - 57); ctx.lineTo(x, o.top - 52); ctx.fill();
       break;
     }
@@ -897,13 +1141,9 @@ function ppDrawObstacle(st, o) {
 function ppDrawSlingshot(st, slot) {
   const x = ppSX(st, PP.startX), y = PP.startY[slot], gy = PP.groundY;
   if (x < -80) return;
-  // a cloud pillar with a wooden Y fork on top
-  ctx.fillStyle = '#ffffff'; rr(x - 70, y + 34, 60, gy - y - 30, 14); ctx.fill();
-  circle(x - 40, y + 36, 24); ctx.fill();
-  ctx.fillStyle = 'rgba(178,160,230,0.3)'; ctx.fillRect(x - 70, gy - 10, 60, 14);
-  ctx.strokeStyle = '#a06a3a'; ctx.lineWidth = 7; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(x - 40, y + 40); ctx.lineTo(x - 40, y + 14); ctx.lineTo(x - 26, y - 12); ctx.moveTo(x - 40, y + 14); ctx.lineTo(x - 54, y - 12); ctx.stroke();
-  ctx.lineCap = 'butt';
+  // a cloud pillar with a wooden Y fork on top (cached per height)
+  const hh = Math.round(gy - y);
+  dkPic('ppSling|' + hh, 80, hh + 26, 76, 20, c => ppPaintSling(c, hh), x, y);
 }
 function ppDrawFinish(st) {
   const c = st.course, x = ppSX(st, c.len);
