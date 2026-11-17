@@ -844,6 +844,49 @@ const SLK_LOOK = {
   pillows: { wall: ['#f3d6ea', '#fbeaf3'], grain: 'rgba(200,110,170,0.10)', side: '#a77bd6', sideL: '#c6a4ee', board: '#ffffff', boardD: '#d9b7d6' },
   rug: { wall: ['#d8ecd2', '#fff0d8'], grain: 'rgba(90,150,90,0.10)', side: '#c98a52', sideL: '#dca06a', board: '#c98a52', boardD: '#8e5a2e' },
 };
+
+/* ---------- richer props (cached pictures; drawing only) ---------- */
+// a stack of two books lying flat: shaded cloth covers, gold bands, a label, page edges with fine lines at the open end
+function slkPaintBooks(c, w, h, col, col2) {
+  const hh = h / 2;
+  for (let k = 1; k >= 0; k--) {
+    const by = k * hh, bx = k ? 6 : 0, bw = w - (k ? 12 : 0), bc = k ? col2 : col;
+    // the page block behind the covers
+    c.fillStyle = '#fffaf0'; rrOn(c, bx + 3, by + 3, bw - 6, hh - 4, 3); c.fill();
+    c.fillStyle = bc; rrOn(c, bx, by, bw, hh, 4); c.fill();
+    c.save(); rrOn(c, bx, by, bw, hh, 4); c.clip();
+    c.fillStyle = 'rgba(255,255,255,0.28)'; c.fillRect(bx, by, bw, hh * 0.25);
+    c.fillStyle = shade(bc, 0.18); c.fillRect(bx, by + hh * 0.7, bw, hh * 0.3);
+    c.fillStyle = 'rgba(255,255,255,0.1)'; for (let i = 0; i < 6; i++) c.fillRect(bx + 4 + ERICH.fr(i, k + 3) * (bw - 30), by + 3 + ERICH.fr(i, k + 9) * (hh - 6), 10 + ERICH.fr(i, 7) * 20, 0.8);
+    c.restore();
+    // gold bands near the spine and a title label
+    c.fillStyle = '#ffd36b'; c.fillRect(bx + 5, by + 2, 2, hh - 4); c.fillRect(bx + 10, by + 2, 2, hh - 4);
+    c.fillStyle = 'rgba(160,110,20,0.5)'; c.fillRect(bx + 7, by + 2, 0.8, hh - 4); c.fillRect(bx + 12, by + 2, 0.8, hh - 4);
+    const lw = Math.min(50, bw * 0.3);
+    c.fillStyle = 'rgba(255,255,255,0.75)'; rrOn(c, bx + 18, by + hh / 2 - 4, lw, 8, 2); c.fill();
+    c.fillStyle = shade(bc, 0.3); c.fillRect(bx + 21, by + hh / 2 - 1, lw - 6, 1.2); c.fillRect(bx + 21, by + hh / 2 + 1.5, lw * 0.6, 1);
+    // page edges at the open end with fine lines
+    c.fillStyle = '#fffaf0'; c.fillRect(bx + bw - 14, by + 4, 10, hh - 8);
+    c.strokeStyle = 'rgba(170,150,120,0.55)'; c.lineWidth = 0.6; c.beginPath(); for (let yy = by + 6; yy < by + hh - 4; yy += 2) { c.moveTo(bx + bw - 14, yy); c.lineTo(bx + bw - 4, yy); } c.stroke();
+    c.fillStyle = 'rgba(120,90,60,0.2)'; c.fillRect(bx + bw - 14, by + 4, 1.5, hh - 8);
+    c.strokeStyle = C.ink; c.lineWidth = 2.5; rrOn(c, bx, by, bw, hh, 4); c.stroke();
+  }
+}
+// a big white dice: bevelled faces, shaded lower-right, sunken pips with a glint
+function slkPaintDice(c, w, h) {
+  c.fillStyle = '#ffffff'; rrOn(c, 0, 0, w, h, 8); c.fill();
+  c.save(); rrOn(c, 0, 0, w, h, 8); c.clip();
+  c.fillStyle = '#e4e6f0'; c.beginPath(); c.moveTo(w, 0); c.lineTo(w, h); c.lineTo(0, h); c.lineTo(5, h - 5); c.lineTo(w - 5, h - 5); c.lineTo(w - 5, 5); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,1)'; c.fillRect(0, 0, w, 3);
+  c.restore();
+  for (const [dx, dy] of [[-12, -10], [12, 10], [0, 0], [12, -10], [-12, 10]]) {
+    const px = w / 2 + dx, py = h / 2 + dy;
+    c.fillStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.arc(px + 0.8, py + 0.9, 3.8, 0, Math.PI * 2); c.fill();
+    c.fillStyle = C.ink; c.beginPath(); c.arc(px, py, 3.6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(px - 1, py - 1, 1, 0, Math.PI * 2); c.fill();
+  }
+  c.strokeStyle = C.ink; c.lineWidth = 2.5; rrOn(c, 0, 0, w, h, 8); c.stroke();
+}
 function slkDrawWorld(st) {
   const cam = st.cam, c = st.c, lk = SLK_LOOK[c.look] || SLK_LOOK.books;
   // the wall behind (fixed) with a soft pattern that scrolls slower (far away)
@@ -973,49 +1016,47 @@ function slkDrawStep(st, s) {
   switch (s.kind) {
     case 'start': case 'book': {
       // a stack of two books lying flat
-      const hh = h / 2;
-      for (let k = 0; k < 2; k++) {
-        const by = y + k * hh, bx = x0 + (k ? 6 : 0), bw = w - (k ? 12 : 0), bc = k ? col2 : col;
-        ctx.fillStyle = '#fffaf0'; rr(bx + 3, by + 3, bw - 6, hh - 4, 3); ctx.fill();
-        ctx.fillStyle = bc; rr(bx, by, bw, hh, 4); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#fffaf0'; ctx.fillRect(bx + bw - 14, by + 4, 10, hh - 8);
-        ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(bx + 10, by + hh / 2 - 1.5, Math.min(50, bw * 0.3), 3);
-      }
+      ERICH.put('slkbook' + Math.round(w) + '_' + Math.round(h) + '_' + (s.col % 6), Math.round(w) + 8, Math.round(h) + 8, 2, 2, c => slkPaintBooks(c, Math.round(w), Math.round(h), col, col2), x0, y);
       break;
     }
     case 'block': {
       const n = Math.max(1, Math.round(w / 70)), bw = w / n;
       for (let k = 0; k < n; k++) {
         const bx = x0 + k * bw, bc = SLK_TOYS[(s.col + k) % 6];
-        ctx.fillStyle = bc; rr(bx, y, bw, h, 5); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = 'rgba(255,255,255,0.85)'; rr(bx + 6, y + 6, bw - 12, h - 12, 4); ctx.fill();
+        ERICH.put('slkblk' + Math.round(bw) + '_' + Math.round(h) + bc, Math.round(bw) + 6, Math.round(h) + 6, 2, 2, c => ERICH.toyBlock(c, 0, 0, Math.round(bw), Math.round(h), bc, { r: 5, lw: 2.5, seed: (s.col + k) % 6 }), bx, y);
+        text('ABCDEF'[(s.i + k) % 6], bx + bw / 2 + 1, y + h / 2 + 2, h * 0.55, shade(bc, 0.35), 'center');
         text('ABCDEF'[(s.i + k) % 6], bx + bw / 2, y + h / 2 + 1, h * 0.55, bc, 'center');
       }
       break;
     }
     case 'tiny': {
       // a dice
-      ctx.fillStyle = '#ffffff'; rr(x0, y, w, h, 8); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = C.ink; for (const [dx, dy] of [[-12, -10], [12, 10], [0, 0], [12, -10], [-12, 10]]) { circle(x0 + w / 2 + dx, y + h / 2 + dy, 3.6); ctx.fill(); }
+      ERICH.put('slkdice' + Math.round(w) + '_' + Math.round(h), Math.round(w) + 6, Math.round(h) + 6, 2, 2, c => slkPaintDice(c, Math.round(w), Math.round(h)), x0, y);
       break;
     }
     case 'spring': {
       // a spring pad: a red base, a coil, a bouncy top
       const S = st.s, sq = S.on === s.i && S.state === 'rest' && S.hold ? S.m * 0.4 : S.on === s.i ? S.squash * 0.3 : 0;
-      ctx.fillStyle = '#e8574a'; rr(x0 + 6, y + h - 12, w - 12, 12, 4); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = '#c9ced8'; ctx.lineWidth = 4; ctx.beginPath();
-      const top = y + 8 + sq * 10;
-      for (let k = 0; k <= 6; k++) ctx.lineTo(x0 + w / 2 + (k % 2 ? -w * 0.28 : w * 0.28), slkLerp(y + h - 12, top, k / 6));
-      ctx.stroke();
+      ERICH.put('slkspbase' + Math.round(w), Math.round(w) + 6, 18, 2, 14, c => { ERICH.toyBlock(c, 6, -12, Math.round(w) - 12, 12, '#e8574a', { r: 4, lw: 2.2, panel: false }); ERICH.rivets(c, [[14, -6], [Math.round(w) - 14, -6]], 1.6, '#e8e8f0'); }, x0, y + h);
+      const top = y + 8 + sq * 10, coil = k => [x0 + w / 2 + (k % 2 ? -w * 0.28 : w * 0.28), slkLerp(y + h - 12, top, k / 6)];
+      ctx.strokeStyle = '#7d8496'; ctx.lineWidth = 5.5; ctx.beginPath(); for (let k = 0; k <= 6; k++) ctx.lineTo(...coil(k)); ctx.stroke();
+      ctx.strokeStyle = '#c9ced8'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = 0; k <= 6; k++) { const [px, py] = coil(k); ctx.lineTo(px - 0.8, py - 1.2); } ctx.stroke();
       ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
-      ctx.fillStyle = '#ffd23f'; rr(x0, y + sq * 10 - 2, w, 10, 5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffd23f'; rr(x0, y + sq * 10 - 2, w, 10, 5); ctx.fill();
+      ctx.fillStyle = '#e0a820'; ctx.fillRect(x0 + 4, y + sq * 10 + 4, w - 8, 3);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(x0 + 6, y + sq * 10 - 1, w - 12, 1.6);
+      ctx.strokeStyle = '#a07418'; rr(x0, y + sq * 10 - 2, w, 10, 5); ctx.stroke(); ctx.strokeStyle = C.ink;
       break;
     }
     case 'slip': {
       // a shiny tin lid
       const g = ctx.createLinearGradient(x0, 0, x0 + w, 0);
       g.addColorStop(0, '#bcd6ee'); g.addColorStop(0.5, '#f4fbff'); g.addColorStop(1, '#9fbad6');
-      ctx.fillStyle = g; rr(x0, y, w, h, h / 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = g; rr(x0, y, w, h, h / 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(90,120,150,0.5)'; ctx.lineWidth = 1.2; rr(x0 + 5, y + 4, w - 10, h - 8, (h - 8) / 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(70,100,140,0.25)'; ctx.fillRect(x0 + h / 2, y + h - 6, w - h, 3);
+      ctx.strokeStyle = '#5a7a9a'; ctx.lineWidth = 2.5; rr(x0, y, w, h, h / 2); ctx.stroke(); ctx.strokeStyle = C.ink;
       ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 3;
       for (let k = 0; k < 3; k++) { const sx = x0 + 24 + ((t * 60 + k * w / 3) % (w - 40)); ctx.beginPath(); ctx.moveTo(sx, y + h - 6); ctx.lineTo(sx + 10, y + 5); ctx.stroke(); }
       if (Math.sin(t * 4 + s.i) > 0.6) { ctx.fillStyle = '#ffffff'; slkStarPath(x0 + w * 0.7, y + 4, 6, 2, 0); ctx.fill(); }
@@ -1040,15 +1081,21 @@ function slkDrawStep(st, s) {
       ctx.beginPath(); ctx.moveTo(x0 + 10, y); ctx.lineTo(x0 + w / 2, y - 200); ctx.lineTo(x0 + w - 10, y); ctx.stroke();
       ctx.fillStyle = '#d9dbe8'; circle(x0 + w / 2, s.y - s.ay - 210, 10); ctx.fill();
       ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
-      ctx.fillStyle = '#c98a52'; rr(x0, y, w, h, 5); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#dca06a'; ctx.fillRect(x0 + 4, y + 3, w - 8, 4);
-      ctx.fillStyle = '#ffd23f'; circle(x0 + 10, y + h / 2, 3); ctx.fill(); circle(x0 + w - 10, y + h / 2, 3); ctx.fill();
+      ctx.fillStyle = '#c0c4d0'; circle(x0 + w / 2, s.y - s.ay - 210, 4); ctx.fill();
+      ERICH.put('slklift' + Math.round(w) + '_' + Math.round(h), Math.round(w) + 6, Math.round(h) + 6, 2, 2, c => {
+        ERICH.board(c, 0, 0, Math.round(w), Math.round(h), { col: '#c98a52', edge: '#7a4a24', seed: 61, r: 5, lw: 2.5, nails: false, knots: 0 });
+        c.fillStyle = '#dca06a'; c.fillRect(4, 3, Math.round(w) - 8, 4);
+        ERICH.rivets(c, [[10, Math.round(h) / 2], [Math.round(w) - 10, Math.round(h) / 2]], 3, '#ffd23f');
+      }, x0, y);
       break;
     }
     case 'marble': {
-      ctx.fillStyle = col; rr(x0, y, w, h, 6); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x0 + 8, y + 3, w - 16, 5);
-      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(x0 + 10, y + 16, w - 20, 4);
+      ERICH.put('slkmtrack' + Math.round(w) + '_' + Math.round(h) + col, Math.round(w) + 6, Math.round(h) + 6, 2, 2, c => {
+        ERICH.toyBlock(c, 0, 0, Math.round(w), Math.round(h), col, { r: 6, lw: 2.5, panel: false, seed: 4 });
+        c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(8, 3, Math.round(w) - 16, 5); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(8, 8, Math.round(w) - 16, 1);
+        c.fillStyle = 'rgba(255,255,255,0.8)'; c.fillRect(10, 16, Math.round(w) - 20, 4);
+        ERICH.rivets(c, [[6, Math.round(h) - 6], [Math.round(w) - 6, Math.round(h) - 6]], 1.6, '#e8e8f0');
+      }, x0, y);
       // the marble
       const mx = s.mx, my = y - SLK.marbleR, r = SLK.marbleR, rot = mx * 0.09;
       const gm = ctx.createRadialGradient(mx - 3, my - 4, 1, mx, my, r);
@@ -1062,7 +1109,7 @@ function slkDrawStep(st, s) {
     case 'pillow': {
       // a plump pillow: puffy sides, corner tufts, a seam (it squashes flatter as it sinks)
       const sq = s.sink, ph = h + 6 - sq * 12, py = y - 2;
-      ctx.fillStyle = col; ctx.beginPath();
+      const pp = () => { ctx.beginPath();
       ctx.moveTo(x0 + 10, py + 4); ctx.quadraticCurveTo(x0 + w / 2, py - 8 + sq * 8, x0 + w - 10, py + 4);
       ctx.quadraticCurveTo(x0 + w + 4, py + 2, x0 + w, py + 12);
       ctx.quadraticCurveTo(x0 + w - 8, py + ph / 2, x0 + w, py + ph - 10);
@@ -1071,7 +1118,15 @@ function slkDrawStep(st, s) {
       ctx.quadraticCurveTo(x0 - 4, py + ph, x0, py + ph - 10);
       ctx.quadraticCurveTo(x0 + 8, py + ph / 2, x0, py + 12);
       ctx.quadraticCurveTo(x0 - 4, py + 2, x0 + 10, py + 4);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.closePath(); };
+      ctx.fillStyle = col; pp(); ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.fillStyle = shade(col, 0.16); ctx.beginPath(); ctx.ellipse(x0 + w * 0.62, py + ph * 1.05, w * 0.7, ph * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = shade(col, 0.12); ctx.lineWidth = 1.2; ctx.beginPath();
+      for (const [cx, cy] of [[x0 + 8, py + 8], [x0 + w - 8, py + 8], [x0 + 8, py + ph - 8], [x0 + w - 8, py + ph - 8]]) { const dx = cx < x0 + w / 2 ? 1 : -1, dy = cy < py + ph / 2 ? 1 : -1; ctx.moveTo(cx, cy); ctx.quadraticCurveTo(cx + dx * 10, cy + dy * 2, cx + dx * 18, cy + dy * 6); }
+      ctx.stroke();
+      ctx.restore();
+      pp(); ctx.stroke();
       ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
       ctx.beginPath(); ctx.moveTo(x0 + 16, py + 10); ctx.quadraticCurveTo(x0 + w / 2, py + 2 + sq * 6, x0 + w - 16, py + 10); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(x0 + w * 0.32, py + ph * 0.45, w * 0.18, ph * 0.18, -0.1, 0, Math.PI * 2); ctx.fill();

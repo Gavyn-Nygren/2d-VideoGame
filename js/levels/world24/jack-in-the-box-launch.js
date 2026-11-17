@@ -854,6 +854,41 @@ const JBOX_LOOK = {
   night: { wall: ['#3a3f86', '#5a5aa6'], back: '#a98e78', grain: 'rgba(40,30,60,0.18)', dark: 0.32 },
   top: { wall: ['#ffc9a0', '#ffe9c2'], back: '#e7c391', grain: 'rgba(160,110,60,0.13)', dark: 0 },
 };
+
+/* ---------- richer props (cached pictures; drawing only) ---------- */
+// a bookshelf plank: grained board, a lit front lip, end grain on the cut ends, a shadow on the back panel, brackets with screws
+function jackboxPaintShelf(c, w, top, s) {
+  const col = top ? '#9a5f30' : '#c98a52';
+  c.fillStyle = 'rgba(60,30,10,0.18)'; c.fillRect(6, 18, w - 4, 10);
+  for (const bx of [26, w - 34]) {
+    c.fillStyle = '#8e5a2e'; c.beginPath(); c.moveTo(bx, 18); c.lineTo(bx + 8, 18); c.lineTo(bx + 8, 44); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.2)'; c.beginPath(); c.moveTo(bx, 18); c.lineTo(bx + 2, 18); c.lineTo(bx + 8, 42); c.lineTo(bx + 8, 44); c.closePath(); c.fill();
+    c.strokeStyle = '#6a4020'; c.lineWidth = 1; c.beginPath(); c.moveTo(bx, 18); c.lineTo(bx + 8, 18); c.lineTo(bx + 8, 44); c.closePath(); c.stroke();
+    ERICH.rivets(c, [[bx + 5.5, 30]], 1.2, '#c8c0b0');
+  }
+  ERICH.board(c, 0, 0, w, 18, { col, seed: s + 5, r: 3, lw: 2, edge: '#8e5a2e', nails: false, knots: w > 300 ? 1 : 0 });
+  c.fillStyle = top ? '#b4743e' : '#dca06a'; c.fillRect(2, 0, w - 4, 5);
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(3, 0.5, w - 6, 1.2);
+  c.fillStyle = 'rgba(60,30,10,0.18)'; c.fillRect(2, 13, w - 4, 5);
+  for (const ex of [3, w - 3]) { c.strokeStyle = 'rgba(90,50,20,0.45)'; c.lineWidth = 0.8; for (let k = 1; k <= 2; k++) { c.beginPath(); c.ellipse(ex, 10, 1.4 * k, 3 * k, 0, 0, Math.PI * 2); c.stroke(); } }
+  c.strokeStyle = '#8e5a2e'; c.lineWidth = 2; rrOn(c, 0, 0, w, 18, 3); c.stroke();
+}
+// the toy box on the carpet: painted planks, a white name panel with an inner shadow, corner guards
+function jackboxPaintToyBox(c, tw, th) {
+  c.fillStyle = 'rgba(28,26,54,0.2)'; rrOn(c, 4, -th + 4, tw, th, 8); c.fill();
+  c.save(); rrOn(c, 0, -th, tw, th, 8); c.clip();
+  for (let x = 0, i = 0; x < tw; x += 34, i++) ERICH.board(c, x, -th, 34, th, { col: i % 2 ? '#4fb5ff' : '#46aaf4', seed: i + 20, vert: true, r: 0, lw: 0.8, edge: '#2f80c8', nails: false, knots: 0 });
+  c.fillStyle = 'rgba(20,40,90,0.18)'; c.fillRect(tw - 30, -th, 30, th);
+  c.restore();
+  c.fillStyle = 'rgba(28,26,54,0.18)'; rrOn(c, 11, -th + 13, tw - 20, th - 24, 6); c.fill();
+  c.fillStyle = '#ffffff'; rrOn(c, 10, -th + 12, tw - 20, th - 24, 6); c.fill();
+  c.strokeStyle = 'rgba(40,80,140,0.3)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(12, -13); c.lineTo(12, -th + 14); c.lineTo(tw - 12, -th + 14); c.stroke();
+  for (const [x, yy, sx, sy] of [[0, -th, 1, 1], [tw, -th, -1, 1], [0, 0, 1, -1], [tw, 0, -1, -1]]) {
+    c.fillStyle = '#ffc43d'; c.beginPath(); c.moveTo(x, yy); c.lineTo(x + 14 * sx, yy); c.lineTo(x, yy + 14 * sy); c.closePath(); c.fill();
+    ERICH.rivets(c, [[x + 4 * sx, yy + 4 * sy]], 1.1, '#fff0b0');
+  }
+  c.strokeStyle = '#2a5a90'; c.lineWidth = 2.5; rrOn(c, 0, -th, tw, th, 8); c.stroke();
+}
 function jackboxDrawWorld(st) {
   const cam = st.cam, lk = JBOX_LOOK[st.c.look] || JBOX_LOOK.books;
   // the bookshelf's back panel, warm wood with a grain
@@ -931,33 +966,43 @@ function jackboxDrawWorld(st) {
   }
   // the bookshelf's side posts (in front of everything at the edges)
   for (const x of [0, W - 22]) {
-    ctx.fillStyle = '#b4743e'; ctx.fillRect(x, 0, 22, H);
-    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x + 3, 0, 4, H);
-    ctx.fillStyle = 'rgba(60,30,10,0.25)'; ctx.fillRect(x + 18, 0, 4, H);
+    ERICH.put('jbpost' + (x ? 'r' : 'l'), 22, H, 0, 0, c => {
+      ERICH.board(c, 0, 0, 22, H, { col: '#b4743e', seed: x ? 7 : 3, vert: true, r: 0, lw: 1.2, nails: false, knots: 1 });
+      c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(3, 0, 4, H);
+      c.fillStyle = 'rgba(60,30,10,0.25)'; c.fillRect(18, 0, 4, H);
+    }, x, 0);
+    // screw heads where the shelves would be fixed, scrolling with the shelf
+    const off = ((st.cam % 180) + 180) % 180;
+    for (let y = -off + 40; y < H + 20; y += 180) ERICH.put('jbscrew', 8, 8, 4, 4, c => ERICH.rivets(c, [[0, 0]], 2, '#c8c0b0'), x + 11, y);
   }
 }
 function jackboxDrawCarpet(st) {
   const y = 0, cam = st.cam;
   // the wall below the bookshelf's bottom shelf: a skirting board
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, y - 26, W, 26);
+  ctx.fillStyle = 'rgba(28,26,54,0.08)'; ctx.fillRect(0, y - 22, W, 3); ctx.fillRect(0, y - 14, W, 1.5);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(0, y - 26, W, 1.5); ctx.fillRect(0, y - 19, W, 1);
   ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.fillRect(0, y - 6, W, 6);
   // the rug: soft stripes
   const h = Math.max(0, cam + H - y + 20);
   ctx.fillStyle = '#7cc4e8'; ctx.fillRect(-10, y, W + 20, h);
   ctx.fillStyle = '#9ad4f0'; for (let k = 0; k < 6; k++) ctx.fillRect(-10, y + 14 + k * 26, W + 20, 9);
-  ctx.fillStyle = '#ffd36b'; for (let x = 10; x < W; x += 34) { circle(x, y + 5, 3); ctx.fill(); }
+  ERICH.put('jbpile', W, 170, 0, 0, c => {
+    for (let i = 0; i < 700; i++) { const v = ERICH.fr(i, 5); c.fillStyle = v < 0.5 ? 'rgba(255,255,255,0.16)' : 'rgba(30,70,110,0.1)'; c.fillRect(ERICH.fr(i, 6) * W, 2 + ERICH.fr(i, 7) * 166, 1.5 + v * 3, 1.3); }
+    for (let k = 0; k < 6; k++) { c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(0, 14 + k * 26, W, 1); c.fillStyle = 'rgba(30,70,110,0.12)'; c.fillRect(0, 22 + k * 26, W, 1); }
+  }, 0, y);
+  for (let x = 10; x < W; x += 34) { ctx.fillStyle = '#c99a2a'; circle(x + 0.6, y + 5.6, 3); ctx.fill(); ctx.fillStyle = '#ffd36b'; circle(x, y + 5, 3); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(x - 0.8, y + 4.2, 0.9); ctx.fill(); }
   // the big toy box on the left, lid up, toys peeking out
   const tx = 40, tw = 170, th = 96;
   ctx.fillStyle = '#ff6b5e'; ctx.fillRect(tx + 6, y - th - 70, 14, 74); // (a toy rocket's fin, behind)
   ctx.save(); ctx.translate(tx, y - th); ctx.rotate(-0.5);
-  ctx.fillStyle = '#4f9fe0'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(0, -16, tw, 16, 5); ctx.fill(); ctx.stroke();
+  ERICH.put('jblid', tw + 6, 22, 3, 19, c => { ERICH.board(c, 0, -16, tw, 16, { col: '#4f9fe0', edge: '#2a5a90', seed: 11, r: 5, lw: 2, nails: false, knots: 0 }); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(6, -15, tw - 12, 2); c.fillStyle = '#ffc43d'; c.fillRect(tw / 2 - 8, -16, 16, 16); c.strokeStyle = '#a07418'; c.lineWidth = 1; c.strokeRect(tw / 2 - 8, -16, 16, 16); }, 0, 0);
   ctx.restore();
   ctx.fillStyle = '#ffc43d'; circle(tx + 60, y - th - 6, 20); ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(tx + 60, y - th - 6, 20); ctx.stroke();
   ctx.fillStyle = '#6fd88a'; rr(tx + 92, y - th - 30, 26, 34, 5); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#c8905a'; circle(tx + 140, y - th - 12, 16); ctx.fill(); ctx.stroke(); circle(tx + 130, y - th - 26, 6); ctx.fill(); ctx.stroke(); circle(tx + 150, y - th - 26, 6); ctx.fill(); ctx.stroke();
   ctx.fillStyle = C.ink; circle(tx + 135, y - th - 14, 1.8); ctx.fill(); circle(tx + 145, y - th - 14, 1.8); ctx.fill();
-  ctx.fillStyle = '#4fb5ff'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(tx, y - th, tw, th, 8); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#ffffff'; rr(tx + 10, y - th + 12, tw - 20, th - 24, 6); ctx.fill();
+  ERICH.put('jbtoybox', tw + 12, th + 10, 4, th + 2, c => jackboxPaintToyBox(c, tw, th), tx, y);
   text('TOYS', tx + tw / 2, y - th / 2, 30, '#ff6b5e', 'center');
   // a toy block and a ball on the rug
   jackboxBlock(820, y + 2, 34, '#4fb5ff', 'A');
@@ -983,24 +1028,15 @@ function jackboxDrawCeiling(st, topY) {
   ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(30, y - 40); ctx.lineTo(W - 30, y - 40); ctx.stroke();
 }
 function jackboxBlock(x, y, s, col, letter) {
-  ctx.fillStyle = col; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
-  rr(x - s / 2, y - s, s, s, 5); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.85)'; rr(x - s / 2 + 5, y - s + 5, s - 10, s - 10, 4); ctx.fill();
+  ERICH.put('jbblk' + col + s, s + 8, s + 6, s / 2 + 2, s + 2, c => { ERICH.shadow(c, 2, 1, s / 2 + 2, 2.5, 0.16); ERICH.toyBlock(c, -s / 2, -s, s, s, col, { r: 5, lw: 2, seed: s }); }, x, y);
+  text(letter, x + 0.8, y - s / 2 + 1.8, s * 0.55, shade(col, 0.35), 'center');
   text(letter, x, y - s / 2 + 1, s * 0.55, col, 'center');
 }
 function jackboxDrawShelf(st, l, i) {
   const target = st.state === 'play' && i === st.L.to && st.phase !== 'swap' && st.phase !== 'haul' && st.phase !== 'hook';
   const y = l.y, x0 = l.x0, w = l.x1 - l.x0, top = l.kind === 'top';
   // the plank's shadow on the back panel, the plank, its front edge
-  ctx.fillStyle = 'rgba(60,30,10,0.18)'; ctx.fillRect(x0 + 6, y + 18, w - 4, 10);
-  ctx.fillStyle = top ? '#9a5f30' : '#c98a52'; rr(x0, y, w, 18, 3); ctx.fill();
-  ctx.fillStyle = top ? '#b4743e' : '#dca06a'; ctx.fillRect(x0 + 2, y, w - 4, 5);
-  ctx.fillStyle = 'rgba(110,60,25,0.3)'; for (let gx = x0 + 18; gx < x0 + w - 40; gx += 70 + (hash(gx | 0, i) % 40)) ctx.fillRect(gx, y + 10, 30 + (hash(gx | 0, 3) % 30), 1.5);
-  ctx.fillStyle = 'rgba(60,30,10,0.18)'; ctx.fillRect(x0 + 2, y + 13, w - 4, 5);
-  ctx.strokeStyle = '#8e5a2e'; ctx.lineWidth = 2; rr(x0, y, w, 18, 3); ctx.stroke();
-  // brackets under the shelf
-  ctx.fillStyle = '#8e5a2e';
-  for (const bx of [x0 + 26, x0 + w - 34]) { ctx.beginPath(); ctx.moveTo(bx, y + 18); ctx.lineTo(bx + 8, y + 18); ctx.lineTo(bx + 8, y + 44); ctx.closePath(); ctx.fill(); }
+  ERICH.put('jbshelf' + Math.round(w) + (top ? 't' : ''), Math.round(w) + 12, 52, 2, 4, c => jackboxPaintShelf(c, Math.round(w), top, Math.round(x0) % 97), x0, y);
   if (target) {
     ctx.strokeStyle = 'rgba(255,211,74,' + (0.55 + 0.35 * Math.sin(G.clock * 5)) + ')'; ctx.lineWidth = 4;
     rr(x0 - 3, y - 3, w + 6, 24, 5); ctx.stroke();
@@ -1043,9 +1079,21 @@ function jackboxDrawDeco(st, d, top, bot) {
     ctx.fillStyle = '#ff5f6d'; ctx.beginPath(); ctx.moveTo(x - 9, y - 35); ctx.lineTo(x + 9, y - 35); ctx.lineTo(x, y - 30); ctx.closePath(); ctx.fill();
   } else if (k === 'plant') {
     const x = d[1];
-    ctx.fillStyle = '#ff9a4a'; ctx.beginPath(); ctx.moveTo(x - 16, y - 30); ctx.lineTo(x + 16, y - 30); ctx.lineTo(x + 11, y); ctx.lineTo(x - 11, y); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#5cc27a';
-    for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.ellipse(x + i * 7, y - 44 - (2 - Math.abs(i)) * 6, 6, 14, i * 0.35, 0, Math.PI * 2); ctx.fill(); }
+    ERICH.put('jbplant', 44, 80, 22, 74, c => {
+      ERICH.shadow(c, 2, 0, 16, 2.5, 0.2);
+      for (let i = -2; i <= 2; i++) {
+        const lx = i * 7, ly = -44 - (2 - Math.abs(i)) * 6;
+        c.fillStyle = i % 2 ? '#4fae6a' : '#5cc27a'; c.beginPath(); c.ellipse(lx, ly, 6, 14, i * 0.35, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = '#3a8a52'; c.lineWidth = 1; c.stroke();
+        c.strokeStyle = 'rgba(220,255,200,0.6)'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(lx - Math.sin(i * 0.35) * 11, ly + Math.cos(i * 0.35) * 11); c.lineTo(lx + Math.sin(i * 0.35) * 10, ly - Math.cos(i * 0.35) * 10); c.stroke();
+      }
+      c.fillStyle = '#ff9a4a'; c.beginPath(); c.moveTo(-16, -30); c.lineTo(16, -30); c.lineTo(11, 0); c.lineTo(-11, 0); c.closePath(); c.fill();
+      c.fillStyle = '#d87830'; c.beginPath(); c.moveTo(5, -30); c.lineTo(16, -30); c.lineTo(11, 0); c.lineTo(3, 0); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(-12, -24, 2.5, 20);
+      c.strokeStyle = '#a8561e'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-16, -30); c.lineTo(16, -30); c.lineTo(11, 0); c.lineTo(-11, 0); c.closePath(); c.stroke();
+      c.fillStyle = '#ffae66'; rrOn(c, -18, -34, 36, 7, 2); c.fill(); c.strokeStyle = '#a8561e'; c.stroke();
+      c.fillStyle = '#6a4424'; c.fillRect(-14, -27.5, 28, 2);
+    }, x, y);
   } else if (k === 'nightlight') {
     const x = d[1], gl = 0.6 + 0.2 * Math.sin(G.clock * 1.5);
     ctx.fillStyle = 'rgba(255,220,150,' + gl * 0.5 + ')'; circle(x, y - 34, 44); ctx.fill();
@@ -1067,8 +1115,14 @@ function jackboxDrawDeco(st, d, top, bot) {
   }
 }
 function jackboxDrawWallShelf(x0, x1, y) {
-  ctx.fillStyle = 'rgba(60,30,10,0.18)'; ctx.fillRect(x0 + 6, y + 14, x1 - x0 - 4, 8);
-  ctx.fillStyle = '#e8a0c0'; rr(x0, y, x1 - x0, 14, 3); ctx.fill(); ctx.strokeStyle = '#a8607e'; ctx.lineWidth = 2; rr(x0, y, x1 - x0, 14, 3); ctx.stroke();
+  const w = Math.round(x1 - x0);
+  ERICH.put('jbwshelf' + w, w + 12, 40, 2, 4, c => {
+    c.fillStyle = 'rgba(60,30,10,0.18)'; c.fillRect(6, 14, w - 4, 8);
+    for (const bx of [Math.min(16, w * 0.2), w - Math.min(22, w * 0.25)]) { c.fillStyle = '#c8789a'; c.beginPath(); c.moveTo(bx, 14); c.lineTo(bx + 6, 14); c.lineTo(bx + 6, 30); c.closePath(); c.fill(); c.strokeStyle = '#a8607e'; c.lineWidth = 1; c.stroke(); }
+    ERICH.board(c, 0, 0, w, 14, { col: '#e8a0c0', edge: '#a8607e', seed: w, r: 3, lw: 2, nails: false, knots: 0 });
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(3, 1, w - 6, 2);
+    for (let px = 12; px < w - 8; px += 26) { c.fillStyle = 'rgba(255,255,255,0.55)'; c.beginPath(); c.arc(px, 8, 1.6, 0, Math.PI * 2); c.fill(); }
+  }, x0, y);
 }
 function jackboxDrawHook(st) {
   const L = st.L, T = jackboxTarget(st), x = st.hookX, y = T.y, t = G.clock;

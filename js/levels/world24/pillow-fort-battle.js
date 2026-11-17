@@ -698,6 +698,110 @@ MODES.pillowfort = {
 };
 
 /* ---------- drawing: the bedroom ---------- */
+
+/* ---------- richer props (cached pictures; drawing only) ---------- */
+function pfbPillowOn(c, x, y, w, h) {
+  c.beginPath(); c.moveTo(x + 2, y + 1);
+  c.quadraticCurveTo(x + w / 2, y + 5, x + w - 2, y + 1); c.quadraticCurveTo(x + w - 5, y + h / 2, x + w - 2, y + h - 1);
+  c.quadraticCurveTo(x + w / 2, y + h - 5, x + 2, y + h - 1); c.quadraticCurveTo(x + 5, y + h / 2, x + 2, y + 1); c.closePath();
+}
+// one fort block (30 px): a folded striped blanket, a gold pillow, a puffy pillow or a tufted cushion, each shaded with seams
+function pfbPaintBlock(c, kind, col, k) {
+  if (kind === 'b') {
+    const base = k ? '#6f8fd8' : '#e8846a', stripe = k ? '#a7c4ff' : '#ffc29a', dk = k ? '#45609e' : '#a8503a';
+    c.fillStyle = base; rrOn(c, 0.5, 2, T - 1, T - 2, 6); c.fill();
+    c.save(); rrOn(c, 0.5, 2, T - 1, T - 2, 6); c.clip();
+    // three folded layers, each with a lit top and a shaded underside
+    for (const y of [2, 11.5, 21]) { c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(0, y, T, 1.5); c.fillStyle = shade(base, 0.18); c.fillRect(0, y + 7.5, T, 2); }
+    c.fillStyle = stripe; c.fillRect(1, 9, T - 2, 4); c.fillRect(1, 19, T - 2, 4);
+    c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(1, 15, T - 2, 1.5);
+    c.fillStyle = shade(base, 0.12); c.fillRect(T - 7, 2, 7, T);
+    c.restore();
+    // fringe on the open end
+    c.strokeStyle = stripe; c.lineWidth = 1; c.beginPath(); for (let y = 5; y < T; y += 3) { c.moveTo(T - 1, y); c.lineTo(T + 1.5, y + 1); } c.stroke();
+    c.strokeStyle = dk; c.lineWidth = 1.5; rrOn(c, 0.5, 2, T - 1, T - 2, 6); c.stroke();
+    return;
+  }
+  if (kind === 'g') {
+    const gg = c.createLinearGradient(0, 0, 0, T); gg.addColorStop(0, '#ffe58a'); gg.addColorStop(1, '#f2b52e');
+    c.fillStyle = gg; pfbPillowOn(c, 0, 2, T, T - 2); c.fill();
+    c.save(); c.clip(); c.fillStyle = 'rgba(180,120,10,0.25)'; c.beginPath(); c.ellipse(T * 0.65, T, T * 0.6, T * 0.35, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.ellipse(10, 9, 7, 3, -0.3, 0, Math.PI * 2); c.fill(); c.restore();
+    c.save(); c.setLineDash([2, 2]); c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1; pfbPillowOn(c, 4, 6, T - 8, T - 10); c.stroke(); c.restore();
+    c.strokeStyle = '#b9850f'; c.lineWidth = 1.8; pfbPillowOn(c, 0, 2, T, T - 2); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.85)'; c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r0 = i % 2 ? 2.25 : 5; c.lineTo(T / 2 + Math.cos(a) * r0, T / 2 + 1 + Math.sin(a) * r0); } c.closePath(); c.fill();
+    return;
+  }
+  if (kind === 'p') {
+    c.fillStyle = col; pfbPillowOn(c, 0, 3, T, T - 3); c.fill();
+    c.save(); c.clip();
+    c.fillStyle = shade(col, 0.14); c.beginPath(); c.ellipse(T * 0.62, T + 1, T * 0.62, T * 0.38, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.beginPath(); c.ellipse(10, 11, 6, 3, -0.3, 0, Math.PI * 2); c.fill();
+    // creases running in from the pinched corners
+    c.strokeStyle = shade(col, 0.16); c.lineWidth = 0.9; c.beginPath();
+    for (const [x, y, dx, dy] of [[3, 5, 1, 1], [T - 3, 5, -1, 1], [3, T - 2, 1, -1], [T - 3, T - 2, -1, -1]]) { c.moveTo(x, y); c.quadraticCurveTo(x + dx * 5, y + dy * 2, x + dx * 8, y + dy * 5); }
+    c.stroke();
+    c.restore();
+    c.save(); c.setLineDash([2, 2]); c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = 1; pfbPillowOn(c, 4, 7, T - 8, T - 11); c.stroke(); c.restore();
+    c.strokeStyle = shade(col, 0.42); c.lineWidth = 1.4; pfbPillowOn(c, 0, 3, T, T - 3); c.stroke();
+    return;
+  }
+  ERICH.cushion(c, 1, 2, T - 2, T - 2, { col, r: 8, lw: 1.4 });
+}
+// the end of the bed: a shaped wooden headboard and posts, a tufted mattress, a patchwork quilt with stitching, a pillow
+function pfbPaintBed(c, night) {
+  const fh = PFB.floorY - 150, wood = night ? '#4a3d68' : '#c98a52', woodT = night ? '#5b4a7a' : '#d9a06b';
+  for (const px of [14, 128]) { ERICH.board(c, px, 10, 16, fh - 10, { col: wood, seed: px, vert: true, r: 2, lw: 1.2, nails: false, knots: 0 }); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(px + 4, 10, 4, fh - 10); c.fillStyle = 'rgba(0,0,0,0.15)'; c.fillRect(px + 12, 10, 4, fh - 10); }
+  ERICH.board(c, 4, 0, 150, 18, { col: woodT, seed: 9, r: 8, lw: 1.4, nails: false, knots: 0 });
+  for (const px of [6, 138]) { c.fillStyle = woodT; c.beginPath(); c.arc(px + 7, 0, 8, 0, Math.PI * 2); c.fill(); c.strokeStyle = shade(woodT, 0.4); c.lineWidth = 1.2; c.stroke(); c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(px + 5, -2, 2.5, 0, Math.PI * 2); c.fill(); }
+  // the pillow
+  ERICH.cushion(c, 30, 56, 70, 30, { col: night ? '#8f86c8' : '#ffffff', r: 12, button: false, lw: 1.4, edge: night ? '#6a60a0' : '#c8c0d0' });
+  // mattress and quilt
+  const q = night ? '#6d5fa0' : '#ffd0a8', qd = night ? '#7f74b8' : '#ffb38a';
+  c.fillStyle = 'rgba(60,30,40,0.18)'; rrOn(c, 16, 84, 200, 70, 18); c.fill();
+  c.fillStyle = q; rrOn(c, 14, 78, 200, 70, 18); c.fill();
+  c.save(); rrOn(c, 14, 78, 200, 70, 18); c.clip();
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(14, 78, 200, 8);
+  for (let n = 0; n < 5; n++) {
+    c.fillStyle = n % 2 ? qd : shade(qd, 0.06); rrOn(c, 20 + n * 38, 90, 32, 28, 6); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(22 + n * 38, 91, 28, 3);
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(36 + n * 38, 104, 2, 0, Math.PI * 2); c.fill();
+  }
+  c.fillStyle = 'rgba(60,30,40,0.14)'; rrOn(c, 14, 126, 200, 22, 12); c.fill();
+  c.restore();
+  c.save(); c.strokeStyle = night ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.6)'; c.lineWidth = 1.2; c.setLineDash([3, 3]);
+  for (let n = 0; n < 5; n++) { rrOn(c, 23 + n * 38, 93, 26, 22, 4); c.stroke(); }
+  c.restore();
+  c.strokeStyle = shade(q, 0.3); c.lineWidth = 1.5; rrOn(c, 14, 78, 200, 70, 18); c.stroke();
+  // the quilt's scalloped hem hanging over the side
+  for (let x = 20; x < 210; x += 16) { c.fillStyle = qd; c.beginPath(); c.arc(x + 8, 147, 7, 0, Math.PI); c.fill(); c.strokeStyle = shade(qd, 0.25); c.lineWidth = 1; c.stroke(); }
+}
+// the tall bookshelf: a grained carcass, shelves with lit lips, books with bands and labels, a small plant and a box on top
+function pfbPaintShelf(c, night) {
+  const fh = PFB.floorY - 70, body = night ? '#4b3c62' : '#b9773f', dk = night ? '#3a2e4f' : '#8d5a2b';
+  ERICH.board(c, 0, 0, 150, fh, { col: body, seed: 3, vert: true, r: 0, lw: 1.2, nails: false, knots: 0 });
+  c.fillStyle = 'rgba(30,15,5,0.25)'; c.fillRect(8, 0, 142, fh);
+  const bookC = ['#4fb5ff', '#ff8a6a', '#6fd88a', '#ffc43d', '#c39bff', '#ff8fc7'];
+  for (let n = 0; n < 3; n++) for (let bk = 0; bk < 8; bk++) {
+    const bx = 8 + bk * 17, bh = 52 + ((bk * 13 + n * 7) % 26), by = n * 96 + 88 - bh, col = bookC[(bk + n) % 6];
+    c.globalAlpha = night ? 0.6 : 1;
+    c.fillStyle = col; rrOn(c, bx, by, 14, bh, 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(bx + 1, by + 1, 2, bh - 2);
+    c.fillStyle = 'rgba(20,10,40,0.2)'; c.fillRect(bx + 11, by, 3, bh);
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(bx + 2, by + 6, 10, 2); c.fillRect(bx + 2, by + bh - 9, 10, 2);
+    c.fillStyle = 'rgba(255,230,140,0.6)'; c.fillRect(bx + 2, by + 10, 10, 1);
+    if ((bk + n) % 3 === 0) { c.fillStyle = 'rgba(255,255,255,0.7)'; c.fillRect(bx + 3, by + bh * 0.4, 8, 10); }
+    c.strokeStyle = shade(col, 0.4); c.lineWidth = 0.8; rrOn(c, bx, by, 14, bh, 2); c.stroke();
+    c.globalAlpha = 1;
+  }
+  for (let n = 0; n < 4; n++) {
+    const y = n * 96 + 88;
+    ERICH.board(c, 0, y, 150, 8, { col: dk, seed: 10 + n, r: 1, lw: 1, nails: false, knots: 0 });
+    c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(0, y, 150, 1.2);
+    c.fillStyle = 'rgba(30,15,5,0.16)'; c.fillRect(0, y + 8, 150, 6);
+  }
+  ERICH.board(c, 0, 0, 8, fh, { col: dk, seed: 21, vert: true, r: 0, lw: 1, nails: false, knots: 0 });
+  c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(8, 0, 2, fh);
+}
 function pfbDrawRoom(st) {
   const night = !!st.lay.night, t = st.vt;
   // wallpaper: soft stripes and little stars
@@ -734,42 +838,22 @@ function pfbDrawRoom(st) {
   }
   ctx.fillStyle = '#c98a52'; rr(wx - 44, wy - 22, ww + 88, 8, 4); ctx.fill();
   // Pip's side: the end of the bed with a quilt; Bo's side: the tall bookshelf
-  ctx.fillStyle = night ? '#5b4a7a' : '#d9a06b'; rr(4, 150, 150, 18, 8); ctx.fill();             // headboard top
-  ctx.fillStyle = night ? '#4a3d68' : '#c98a52'; ctx.fillRect(14, 160, 16, PFB.floorY - 160); ctx.fillRect(128, 160, 16, PFB.floorY - 160);
-  ctx.fillStyle = night ? '#6d5fa0' : '#ffd0a8'; rr(14, 228, 200, 70, 18); ctx.fill();          // mattress and quilt
-  ctx.fillStyle = night ? '#7f74b8' : '#ffb38a';
-  for (let n = 0; n < 5; n++) { rr(20 + n * 38, 240, 32, 28, 6); ctx.fill(); }
-  ctx.strokeStyle = night ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.2; ctx.setLineDash([3, 3]);
-  for (let n = 0; n < 5; n++) { rr(23 + n * 38, 243, 26, 22, 4); ctx.stroke(); }
-  ctx.setLineDash([]);
-  ctx.fillStyle = 'rgba(60,30,40,0.14)'; rr(14, 276, 200, 22, 12); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(14 + 4, 160, 4, PFB.floorY - 160); ctx.fillRect(128 + 4, 160, 4, PFB.floorY - 160);
-  ctx.fillStyle = night ? '#8f86c8' : '#ffffff'; rr(30, 206, 70, 30, 12); ctx.fill();           // a pillow on the bed
-  ctx.fillStyle = 'rgba(80,60,120,0.14)'; rr(30, 222, 70, 14, 7); ctx.fill();
-  // the bookshelf
-  ctx.fillStyle = night ? '#4b3c62' : '#b9773f'; ctx.fillRect(806, 70, 150, PFB.floorY - 70);
-  ctx.fillStyle = night ? '#3a2e4f' : '#8d5a2b';
-  for (let n = 0; n < 4; n++) ctx.fillRect(806, 70 + n * 96 + 88, 150, 8);
-  const bookC = ['#4fb5ff', '#ff8a6a', '#6fd88a', '#ffc43d', '#c39bff', '#ff8fc7'];
-  for (let n = 0; n < 3; n++) for (let bk = 0; bk < 8; bk++) {
-    const bx = 814 + bk * 17, bh = 52 + ((bk * 13 + n * 7) % 26), by = 70 + n * 96 + 88 - bh;
-    ctx.fillStyle = bookC[(bk + n) % 6]; ctx.globalAlpha = night ? 0.6 : 1; ctx.fillRect(bx, by, 14, bh);
-    ctx.fillStyle = 'rgba(20,10,40,0.2)'; ctx.fillRect(bx + 11, by, 3, bh);
-    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(bx + 2, by + 6, 10, 2); ctx.fillRect(bx + 2, by + bh - 9, 10, 2);
-    ctx.globalAlpha = 1;
-  }
-  ctx.fillStyle = 'rgba(30,15,5,0.16)'; for (let n = 0; n < 4; n++) ctx.fillRect(806, 70 + n * 96 + 96, 150, 6);
-  ctx.fillStyle = night ? '#3a2e4f' : '#8d5a2b'; ctx.fillRect(806, 70, 8, PFB.floorY - 70);
-  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(814, 70, 2, PFB.floorY - 70);
+  ERICH.put('pfbbed' + (night ? 'n' : 'd'), 224, PFB.floorY - 138, 0, 10, c => pfbPaintBed(c, night), 0, 150);
+  ERICH.put('pfbshelf' + (night ? 'n' : 'd'), 152, PFB.floorY - 70, 0, 0, c => pfbPaintShelf(c, night), 806, 70);
   // the night light by the bookshelf (glowing at bedtime)
   const nx = 740, ny = 300;
   if (night) { const ng = ctx.createRadialGradient(nx, ny, 4, nx, ny, 160); ng.addColorStop(0, 'rgba(255,230,150,0.45)'); ng.addColorStop(1, 'rgba(255,230,150,0)'); ctx.fillStyle = ng; circle(nx, ny, 160); ctx.fill(); }
   ctx.fillStyle = '#f2f2f2'; rr(nx - 10, ny + 6, 20, 26, 4); ctx.fill();
+  ctx.fillStyle = '#d8d8e0'; ctx.fillRect(nx + 3, ny + 8, 6, 22); ctx.fillStyle = '#ffffff'; ctx.fillRect(nx - 8, ny + 8, 2, 22);
+  ctx.strokeStyle = '#b8b8c4'; ctx.lineWidth = 1; rr(nx - 10, ny + 6, 20, 26, 4); ctx.stroke();
+  ctx.fillStyle = '#c8c8d4'; ctx.fillRect(nx - 4, ny + 14, 8, 2); ctx.fillRect(nx - 4, ny + 20, 8, 2);
   ctx.fillStyle = night ? '#ffe68a' : '#fff4c8'; ctx.beginPath(); ctx.arc(nx, ny + 4, 14, Math.PI, 0); ctx.fill();
   ctx.fillStyle = night ? '#ffd24d' : '#ffe68a'; pfbStarShape(nx, ny - 2, 6);
   // a skirting board and a soft shade where the wall meets it
   { const gw = ctx.createLinearGradient(0, PFB.floorY - 90, 0, PFB.floorY); gw.addColorStop(0, 'rgba(40,30,70,0)'); gw.addColorStop(1, night ? 'rgba(10,10,30,0.25)' : 'rgba(80,50,60,0.12)'); ctx.fillStyle = gw; ctx.fillRect(0, PFB.floorY - 90, W, 90); }
   ctx.fillStyle = night ? '#5a5a8a' : '#fff6ea'; ctx.fillRect(0, PFB.floorY - 12, W, 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(0, PFB.floorY - 12, W, 1.5);
+  ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fillRect(0, PFB.floorY - 9, W, 2);
   ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(0, PFB.floorY - 3, W, 3);
   // the carpet: Pip's peach rug and Bo's blue rug meet at a stitched line
   for (const k of [0, 1]) {
@@ -782,6 +866,11 @@ function pfbDrawRoom(st) {
     ctx.fillRect(x0, PFB.floorY, x1 - x0, 5);
   }
   ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (let y = PFB.floorY + 8; y < H; y += 6) ctx.fillRect(0, y, W, 1.5);
+  ERICH.put('pfbpile' + (night ? 'n' : 'd'), W, H - PFB.floorY, 0, 0, c => {
+    for (let i = 0; i < 520; i++) { const v = ERICH.fr(i, 21); c.fillStyle = v < 0.5 ? (night ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.2)') : 'rgba(40,20,60,0.08)'; c.fillRect(ERICH.fr(i, 22) * W, 6 + ERICH.fr(i, 23) * (H - PFB.floorY - 8), 1.5 + v * 3, 1.3); }
+    // a little fringe of tufts along the back edge of each rug
+    c.fillStyle = 'rgba(40,20,60,0.12)'; for (let x = 4; x < W; x += 9) c.fillRect(x, 5, 2, 3);
+  }, 0, PFB.floorY);
   { const gf = ctx.createLinearGradient(0, PFB.floorY, 0, H); gf.addColorStop(0, 'rgba(30,20,50,0)'); gf.addColorStop(1, 'rgba(30,20,50,0.14)'); ctx.fillStyle = gf; ctx.fillRect(0, PFB.floorY, W, H - PFB.floorY); }
   // the stitched line down the middle
   ctx.strokeStyle = night ? 'rgba(255,240,200,0.7)' : 'rgba(255,255,255,0.95)'; ctx.lineWidth = 3; ctx.setLineDash([7, 6]);
@@ -799,9 +888,12 @@ function pfbDrawToyBox(st, front) {
   if (!front) {
     // the lid, open and leaning back against the hinge (it jumps a little on every pop)
     ctx.save(); ctx.translate(x, y - h + 2); ctx.rotate(-0.1 - pop * 0.12);
-    ctx.fillStyle = '#c9433a'; ctx.strokeStyle = '#a33328'; ctx.lineWidth = 2; rr(-w / 2 + 3, -34, w - 6, 34, 6); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#ffd36b'; ctx.fillRect(-w / 2 + 4, -12, w - 8, 5);
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'; rr(-w / 2 + 8, -30, w - 16, 6, 3); ctx.fill();
+    ERICH.put('pfblid', w + 4, 40, w / 2 + 2, 37, c => {
+      ERICH.board(c, -w / 2 + 3, -34, w - 6, 34, { col: '#c9433a', edge: '#a33328', seed: 31, r: 6, lw: 2, nails: false, knots: 0 });
+      c.fillStyle = '#ffd36b'; c.fillRect(-w / 2 + 4, -12, w - 8, 5); c.fillStyle = 'rgba(160,100,10,0.5)'; c.fillRect(-w / 2 + 4, -8, w - 8, 1);
+      c.fillStyle = 'rgba(255,255,255,0.25)'; rrOn(c, -w / 2 + 8, -30, w - 16, 6, 3); c.fill();
+      ERICH.rivets(c, [[-w / 2 + 10, -9.5], [w / 2 - 10, -9.5]], 1.4, '#fff0b0');
+    }, 0, 0);
     ctx.restore();
     ctx.fillStyle = '#7a3a2a'; rr(x - w / 2 + 4, y - h - 4, w - 8, 12, 4); ctx.fill();   // the dark inside
     // toys peeking out
@@ -812,10 +904,17 @@ function pfbDrawToyBox(st, front) {
   }
   ctx.save(); ctx.translate(x, y); ctx.scale(1 + pop * 0.06, 1 - pop * 0.05);
   ctx.fillStyle = PFB_INK + '0.18)'; ctx.beginPath(); ctx.ellipse(0, 2, w / 2 + 6, 6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#e8574a'; ctx.strokeStyle = '#a33328'; ctx.lineWidth = 2.5; rr(-w / 2, -h, w, h, 6); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#ffd36b'; ctx.fillRect(-w / 2, -h + 6, w, 6); ctx.fillRect(-w / 2, -14, w, 6);
+  ERICH.put('pfbbox', w + 6, h + 6, w / 2 + 3, h + 3, c => {
+    c.save(); rrOn(c, -w / 2, -h, w, h, 6); c.clip();
+    for (let i = 0; i < 4; i++) ERICH.board(c, -w / 2 + i * (w / 4), -h, w / 4, h, { col: i % 2 ? '#e05048' : '#e8574a', edge: '#b83a30', seed: 40 + i, vert: true, r: 0, lw: 0.8, nails: false, knots: 0 });
+    c.fillStyle = 'rgba(100,20,10,0.15)'; c.fillRect(w / 2 - 14, -h, 14, h);
+    c.restore();
+    for (const yy of [-h + 6, -14]) { c.fillStyle = '#ffd36b'; c.fillRect(-w / 2, yy, w, 6); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(-w / 2, yy, w, 1.2); c.fillStyle = 'rgba(160,100,10,0.45)'; c.fillRect(-w / 2, yy + 5, w, 1); }
+    c.strokeStyle = '#a33328'; c.lineWidth = 2.5; rrOn(c, -w / 2, -h, w, h, 6); c.stroke();
+    for (let n = 0; n < 3; n++) { c.fillStyle = 'rgba(80,20,10,0.25)'; rrOn(c, -35 + n * 25, -37, 22, 20, 4); c.fill(); ERICH.toyBlock(c, -36 + n * 25, -38, 22, 20, '#fff6ea', { r: 4, lw: 1, panel: false, seed: n }); }
+  }, 0, 0);
   const letters = ['A', 'B', 'C'], lc = ['#4fb5ff', '#6fd88a', '#c39bff'];
-  for (let n = 0; n < 3; n++) { ctx.fillStyle = '#fff6ea'; rr(-36 + n * 25, -38, 22, 20, 4); ctx.fill(); text(letters[n], -25 + n * 25, -27.5, 15, lc[n], 'center'); }
+  for (let n = 0; n < 3; n++) text(letters[n], -25 + n * 25, -27.5, 15, lc[n], 'center');
   ctx.restore();
 }
 
@@ -826,26 +925,7 @@ function pfbDrawBlock(b, x, y, k, alpha) {
   ctx.save(); ctx.translate(x + T / 2 + wob, y + T); ctx.scale(1 + 0.12 * sq, 1 - 0.14 * sq); ctx.translate(-T / 2, -T);
   if (alpha !== undefined) ctx.globalAlpha = alpha;
   const dam = b.hp < b.max;
-  if (b.kind === 'b') { // a folded blanket: stripes
-    ctx.fillStyle = k ? '#6f8fd8' : '#e8846a'; rr(0.5, 2, T - 1, T - 2, 6); ctx.fill();
-    ctx.fillStyle = k ? '#a7c4ff' : '#ffc29a'; ctx.fillRect(1, 9, T - 2, 4); ctx.fillRect(1, 19, T - 2, 4);
-    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(1, 15, T - 2, 1.5);
-    ctx.strokeStyle = k ? '#45609e' : '#a8503a'; ctx.lineWidth = 1.5; rr(0.5, 2, T - 1, T - 2, 6); ctx.stroke();
-  } else if (b.kind === 'g') { // a gold pillow
-    const gg = ctx.createLinearGradient(0, 0, 0, T); gg.addColorStop(0, '#ffe58a'); gg.addColorStop(1, '#f2b52e');
-    ctx.fillStyle = gg; pfbPillowPath(0, 2, T, T - 2); ctx.fill();
-    ctx.strokeStyle = '#b9850f'; ctx.lineWidth = 1.8; ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.8)'; pfbStarShape(T / 2, T / 2 + 1, 5);
-  } else if (b.kind === 'p') { // a puffy pillow with pinched corners
-    ctx.fillStyle = b.col; pfbPillowPath(0, 3, T, T - 3); ctx.fill();
-    ctx.strokeStyle = PFB_INK + '0.35)'; ctx.lineWidth = 1.4; ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.ellipse(10, 11, 6, 3, -0.3, 0, Math.PI * 2); ctx.fill();
-  } else { // a square cushion with a button in the middle
-    ctx.fillStyle = b.col; rr(1, 2, T - 2, T - 2, 8); ctx.fill();
-    ctx.strokeStyle = PFB_INK + '0.35)'; ctx.lineWidth = 1.4; rr(1, 2, T - 2, T - 2, 8); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.setLineDash([2.5, 2.5]); rr(4.5, 5.5, T - 9, T - 9, 5); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = PFB_INK + '0.3)'; circle(T / 2, T / 2 + 1, 2.2); ctx.fill();
-  }
+  ERICH.put('pfb' + b.kind + (b.kind === 'p' || b.kind === 'c' ? b.col : k), T + 6, T + 6, 2, 2, c => pfbPaintBlock(c, b.kind, b.col, k), 0, 0);
   if (dam) { ctx.strokeStyle = PFB_INK + '0.4)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(7, 8); ctx.quadraticCurveTo(12, 14, 9, 21); ctx.moveTo(21, 9); ctx.quadraticCurveTo(18, 15, 22, 22); ctx.stroke(); }
   ctx.restore();
 }

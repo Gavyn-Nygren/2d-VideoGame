@@ -1109,15 +1109,17 @@ const PIGHERD = {
     }
     // the farm track (a dirt path along the route)
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.strokeStyle = lk.trackE; ctx.lineWidth = 104; drawRoute(st);
+    ctx.strokeStyle = 'rgba(40,70,30,0.16)'; ctx.lineWidth = 112; ctx.save(); ctx.translate(2, 4); drawRoute(st); ctx.restore();
+    ctx.strokeStyle = shade(lk.trackE, 0.12); ctx.lineWidth = 104; drawRoute(st);
+    ctx.strokeStyle = lk.trackE; ctx.lineWidth = 100; drawRoute(st);
     ctx.strokeStyle = lk.track; ctx.lineWidth = 92; drawRoute(st);
+    // two wheel ruts worn into the dirt, each with a lit lip on its inner side, and a pale crown between them
+    ctx.strokeStyle = shade(lk.track, 0.13); ctx.lineWidth = 72; drawRoute(st);
+    ctx.strokeStyle = 'rgba(255,250,230,0.5)'; ctx.lineWidth = 58; drawRoute(st);
+    ctx.strokeStyle = lk.track; ctx.lineWidth = 55; drawRoute(st);
+    ctx.strokeStyle = tint(lk.track, 0.16); ctx.lineWidth = 30; drawRoute(st);
     ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 3; ctx.setLineDash([10, 22]); drawRoute(st); ctx.setLineDash([]);
-    // pebbles on the track
-    for (let k = Math.floor(st.camX / 60) - 1; k < Math.floor(st.camX / 60) + 18; k++) {
-      const h = hash(k, 77), s = (k * 60 + (h % 40)), pt = routeAtX(st, s);
-      if (!pt) continue;
-      ctx.fillStyle = 'rgba(150,120,70,0.35)'; circle(pt.x + ((h >> 6) % 30) - 15, pt.y + ((h >> 10) % 60) - 30, 2 + h % 2); ctx.fill();
-    }
+    pigherdTrackBits(st, lk);
     for (const z of st.zones) if (z.x1 > st.camX - 40 && z.x0 < st.camX + W + 40) drawZone(st, z, t);
     for (const m of st.muds) if (onScreen(st, m.x)) drawMud(m, t);
     if (st.pen) drawPenFloor(st, st.pen, t);
@@ -1138,6 +1140,338 @@ const PIGHERD = {
     drawEdges(st, lk, t);
   }
   // the dirt track
+
+  /* ---------- richer props (cached pictures; drawing only) ---------- */
+  // the bits along the dirt track: grass fringe on both edges, cached pebbles, clods and trotter prints
+  function pigherdTrackBits(st, lk) {
+    const X0 = st.camX - 60, X1 = st.camX + W + 60, F = ERICH.fr;
+    const fr = new Path2D(), fr2 = new Path2D();
+    for (const g of st.segs) {
+      const L = Math.hypot(g.bx - g.ax, g.by - g.ay); if (L < 1) continue;
+      if (Math.max(g.ax, g.bx) < X0 || Math.min(g.ax, g.bx) > X1) continue;
+      const ux = (g.bx - g.ax) / L, uy = (g.by - g.ay) / L, nx = -uy, ny = ux;
+      for (let d = 8; d < L; d += 13) {
+        const px = g.ax + ux * d, py = g.ay + uy * d; if (px < X0 || px > X1) continue;
+        const k = Math.round(px * 0.31 + py * 0.17);
+        for (const sd of [-1, 1]) {
+          const e = 50 + F(k, sd + 3) * 4, bx = px + nx * e * sd, by = py + ny * e * sd, p = F(k, sd + 9) < 0.5 ? fr : fr2;
+          const ix = -nx * sd, iy = -ny * sd; // pointing into the track
+          p.moveTo(bx, by); p.lineTo(bx + ix * (5 + F(k, sd + 5) * 4) + ux * 2, by + iy * (5 + F(k, sd + 5) * 4) + uy * 2);
+          p.moveTo(bx + ux * 4, by + uy * 4); p.lineTo(bx + ux * 5 + ix * (3 + F(k, sd + 7) * 4), by + uy * 5 + iy * (3 + F(k, sd + 7) * 4));
+        }
+      }
+    }
+    ctx.lineCap = 'round'; ctx.lineWidth = 2;
+    ctx.strokeStyle = '#5ea844'; ctx.stroke(fr); ctx.strokeStyle = '#78bf55'; ctx.stroke(fr2);
+    // pebbles, clods and trotter prints scattered along the route
+    for (let k = Math.floor(st.camX / 46) - 1; k < Math.floor(st.camX / 46) + 23; k++) {
+      const h = hash(k, 77), s = k * 46 + (h % 30), pt = routeAtX(st, s);
+      if (!pt) continue;
+      const ox = ((h >>> 6) % 30) - 15, oy = ((h >>> 10) % 76) - 38, v = (h >>> 3) % 7;
+      if (v < 4) ERICH.put('rppeb' + v, 16, 12, 8, 7, c => ERICH.pebble(c, 0, 0, 2.4 + v * 0.7, 1.8 + v * 0.4, ['#b8ab96', '#9a8f80', '#c8bca4', '#a89a88'][v], 31 + v), pt.x + ox, pt.y + oy);
+      else if (v < 6) ERICH.put('rpclod' + st.look + v, 16, 12, 8, 7, c => ERICH.pebble(c, 0, 0, 3.4 + (v - 4), 2.4, shade(lk.track, 0.2), 41 + v), pt.x + ox, pt.y + oy);
+      else ERICH.put('rpprint' + st.look, 26, 14, 13, 7, c => pigherdPaintPrints(c, lk.track), pt.x + ox, pt.y + oy);
+    }
+  }
+  function pigherdPaintPrints(c, col) {
+    c.fillStyle = shade(col, 0.22);
+    for (const [x, y] of [[-8, -2], [1, 2], [9, -2]]) { c.beginPath(); c.ellipse(x - 1.3, y, 1.1, 2, 0.2, 0, TAU); c.ellipse(x + 1.3, y, 1.1, 2, -0.2, 0, TAU); c.fill(); }
+    c.fillStyle = 'rgba(255,250,230,0.45)';
+    for (const [x, y] of [[-8, -2], [1, 2], [9, -2]]) { c.fillRect(x - 2.4, y + 2, 4.8, 0.8); }
+  }
+  // fence rails: a shaded round rail with a lit top, a dark underside and grain flecks
+  function pigherdRails(x0, y0, w, h, vert) {
+    const rail = (x, y, ww, hh) => {
+      ctx.fillStyle = '#a8743f'; ctx.fillRect(x, y, ww, hh);
+      if (vert) { ctx.fillStyle = '#d9a670'; ctx.fillRect(x, y, 1.2, hh); ctx.fillStyle = '#6e4824'; ctx.fillRect(x + ww - 1, y, 1, hh); }
+      else { ctx.fillStyle = '#d9a670'; ctx.fillRect(x, y, ww, 1.2); ctx.fillStyle = '#6e4824'; ctx.fillRect(x, y + hh - 1, ww, 1); }
+    };
+    if (vert) { rail(x0 + 1.5, y0, 4, h); rail(x0 + w - 5.5, y0, 4, h); } else { rail(x0, y0 + 1.5, w, 4); rail(x0, y0 + h - 5.5, w, 4); }
+    ctx.strokeStyle = 'rgba(110,72,36,0.55)'; ctx.lineWidth = 0.8; ctx.beginPath();
+    const n = Math.floor((vert ? h : w) / 9);
+    for (let i = 0; i < n; i++) {
+      const hh = hash(Math.round(x0) + i, Math.round(y0)), d = i * 9 + (hh % 5), l = 3 + (hh >>> 4) % 4, side = (hh >>> 8) % 2;
+      if (vert) { const xx = side ? x0 + 3.5 : x0 + w - 3.5; ctx.moveTo(xx, y0 + d); ctx.lineTo(xx, y0 + d + l); }
+      else { const yy = side ? y0 + 3.5 : y0 + h - 3.5; ctx.moveTo(x0 + d, yy); ctx.lineTo(x0 + d + l, yy); }
+    }
+    ctx.stroke();
+  }
+  function pigherdPost(x, y, v, vert) { ERICH.put('rppost' + v + (vert ? 'v' : ''), 22, 22, 9, 9, c => pigherdPaintPost(c, 6, '#9c6a3a', v, false, vert), x, y); }
+  // a fence post seen from above: shaded block, end-grain rings, a split, nails holding the rails
+  function pigherdPaintPost(c, r, top, v, latch, vert) {
+    c.fillStyle = 'rgba(40,70,30,0.25)'; rrOn(c, -r + 3, -r + 4, r * 2, r * 2, 3); c.fill();
+    c.fillStyle = '#6a4220'; rrOn(c, -r - 1, -r - 1, r * 2 + 2, r * 2 + 2, 3.5); c.fill();
+    c.fillStyle = '#7e5028'; rrOn(c, -r, -r, r * 2, r * 2, 3); c.fill();
+    c.fillStyle = top; rrOn(c, -r + 1.5, -r + 1.5, r * 2 - 3.5, r * 2 - 3.5, 2.2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(-r + 1.5, -r + 1.5, r * 2 - 3.5, 1.2);
+    if (latch) {
+      c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(-1.5, -1.5, r * 0.45, 0, TAU); c.fill();
+      c.strokeStyle = shade(top, 0.35); c.lineWidth = 1; c.beginPath(); c.arc(0, 0, r * 0.5, 0, TAU); c.stroke();
+      ERICH.rivets(c, [[0, 0]], 1.4, '#c8ccd6');
+    } else {
+      c.strokeStyle = shade(top, 0.28); c.lineWidth = 0.8;
+      for (let k = 1; k <= 2; k++) { c.beginPath(); c.arc(0.5, 0.5, k * r * 0.28, 0, TAU); c.stroke(); }
+      c.fillStyle = shade(top, 0.4); c.beginPath(); c.arc(0.5, 0.5, 0.9, 0, TAU); c.fill();
+      c.strokeStyle = shade(top, 0.45); c.lineWidth = 0.9; c.beginPath(); const a = v * 1.4 + 0.5; c.moveTo(Math.cos(a) * 1.5, Math.sin(a) * 1.5); c.lineTo(Math.cos(a) * (r - 1.5), Math.sin(a) * (r - 1.5)); c.stroke();
+      if (v % 2) ERICH.nails(c, vert ? [[-r + 2.5, 0], [r - 3, 0]] : [[0, -r + 2.5], [0, r - 3]], 0.9);
+    }
+    c.strokeStyle = '#4a2c12'; c.lineWidth = 1; rrOn(c, -r - 1, -r - 1, r * 2 + 2, r * 2 + 2, 3.5); c.stroke();
+  }
+  // a round haystack from above: a shadow, a domed straw body lit from the top left, straws swirling to a tied top
+  function pigherdPaintStack(c, w, h, s) {
+    const rx = w / 2, ry = h / 2, F = ERICH.fr;
+    ERICH.shadow(c, 5, 8, rx + 1, ry, 0.22);
+    const g = c.createRadialGradient(-rx * 0.3, -ry * 0.35, 2, 0, 0, Math.max(rx, ry) * 1.1);
+    g.addColorStop(0, '#fbe08a'); g.addColorStop(0.55, '#e8b84a'); g.addColorStop(1, '#c48e2c');
+    c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, TAU); c.fill();
+    c.save(); c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, TAU); c.clip();
+    c.lineCap = 'round';
+    const n = Math.round(w * h / 22);
+    for (const [col, lw, off] of [['rgba(150,100,24,0.55)', 1.1, 0], ['rgba(255,240,170,0.6)', 0.9, 500]]) {
+      c.strokeStyle = col; c.lineWidth = lw; c.beginPath();
+      for (let i = 0; i < n; i++) {
+        const a = F(s, i + off) * TAU, d = 0.25 + F(s, i + off + 200) * 0.75, px = Math.cos(a) * rx * d, py = Math.sin(a) * ry * d, l = 4 + F(s, i + off + 300) * 5, b = a + 0.35;
+        c.moveTo(px, py); c.lineTo(px + Math.cos(b) * l, py + Math.sin(b) * l * (ry / rx));
+      }
+      c.stroke();
+    }
+    c.restore();
+    // stray straws poking out round the bottom
+    c.strokeStyle = '#d8a440'; c.lineWidth = 1; c.beginPath();
+    for (let i = 0; i < 10; i++) { const a = F(s, i + 900) * TAU, px = Math.cos(a) * rx, py = Math.sin(a) * ry; c.moveTo(px * 0.95, py * 0.95); c.lineTo(px * 1.09 + (F(s, i + 920) - 0.5) * 3, py * 1.09); }
+    c.stroke();
+    c.strokeStyle = '#a8741f'; c.lineWidth = 1.6; c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, TAU); c.stroke();
+    // the tied top knot
+    c.fillStyle = '#c89034'; c.beginPath(); c.ellipse(-rx * 0.12 + 1, -ry * 0.12 + 1, 6, 4.5, 0, 0, TAU); c.fill();
+    c.fillStyle = '#f6d36a'; c.beginPath(); c.ellipse(-rx * 0.12, -ry * 0.12, 5.5, 4, 0, 0, TAU); c.fill();
+    c.strokeStyle = '#a0522d'; c.lineWidth = 1.6; c.beginPath(); c.ellipse(-rx * 0.12, -ry * 0.12, 6.5, 5, 0, 0, TAU); c.stroke();
+  }
+  // a barn roof from above: shingle rows on two slopes (the far one lit), a ridge cap, a vented cupola, white trim, gutters
+  function pigherdPaintBarn(c, w, h) {
+    const F = ERICH.fr, m = h / 2;
+    c.fillStyle = 'rgba(40,60,30,0.25)'; c.fillRect(6, 8, w, h);
+    c.fillStyle = '#b8382e'; c.fillRect(0, 0, w, h);
+    // corrugated tin on two slopes (the far one lit): a lit crest and a dark trough in every rib, panel seams with screws
+    const slope = (y0, y1, col, s) => {
+      c.fillStyle = col; c.fillRect(0, y0, w, y1 - y0);
+      c.fillStyle = shade(col, 0.2); for (let x = 6; x < w; x += 9) c.fillRect(x, y0, 3, y1 - y0);
+      c.fillStyle = tint(col, 0.2); for (let x = 1; x < w; x += 9) c.fillRect(x, y0, 1.6, y1 - y0);
+      for (let x = 0, j = 0; x < w; x += 54, j++) {
+        const pv = F(s, j);
+        if (pv < 0.35) { c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(x, y0, 54, y1 - y0); }
+        else if (pv > 0.75) { c.fillStyle = 'rgba(60,10,0,0.08)'; c.fillRect(x, y0, 54, y1 - y0); }
+        c.fillStyle = shade(col, 0.35); c.fillRect(x, y0, 1.2, y1 - y0);
+      }
+      const seam = (y1 - y0) / 2 + y0;
+      c.fillStyle = shade(col, 0.3); c.fillRect(0, seam, w, 1.4); c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(0, seam - 1, w, 1);
+      const pts = []; for (let x = 4.5; x < w; x += 18) { pts.push([x, seam + 0.6], [x, y0 + 5], [x, y1 - 5]); }
+      ERICH.rivets(c, pts, 0.9, '#d8d8de');
+      // rust streaks running down from a few screws
+      c.fillStyle = 'rgba(120,50,10,0.3)'; for (let i = 0; i < Math.round(w / 40); i++) { const x = 4.5 + Math.floor(F(s + 5, i) * w / 18) * 18; c.fillRect(x - 1, seam + 1.5, 2, 4 + F(s + 6, i) * 8); }
+    };
+    slope(0, m, '#d65040', 1); slope(m, h, '#a8342a', 40);
+    // a few lichen spots
+    c.fillStyle = 'rgba(210,214,160,0.35)'; for (let i = 0; i < Math.round(w / 60); i++) { c.beginPath(); c.ellipse(F(3, i) * w, F(5, i) * h, 4 + F(7, i) * 4, 2.5, 0, 0, TAU); c.fill(); }
+    // the ridge cap
+    c.fillStyle = '#7a2620'; c.fillRect(0, m - 4, w, 8);
+    c.fillStyle = '#9a2e26'; c.fillRect(0, m - 4, w, 4);
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, m - 4, w, 1.2);
+    c.fillStyle = '#5a1a14'; for (let x = 12; x < w; x += 24) c.fillRect(x, m - 4, 1.2, 8);
+    // a little vented cupola on the ridge
+    const cx = w / 2;
+    c.fillStyle = 'rgba(40,10,10,0.3)'; c.fillRect(cx - 12, m - 9, 28, 24);
+    c.fillStyle = '#f2ede2'; rrOn(c, cx - 14, m - 12, 28, 24, 3); c.fill();
+    c.fillStyle = '#c8bca8'; c.fillRect(cx, m - 12, 14, 24);
+    c.strokeStyle = '#8a7e6a'; c.lineWidth = 1; c.beginPath(); for (let y = m - 8; y < m + 10; y += 4) { c.moveTo(cx - 11, y); c.lineTo(cx + 11, y); } c.stroke();
+    c.strokeStyle = '#7a6e5a'; c.lineWidth = 1.2; rrOn(c, cx - 14, m - 12, 28, 24, 3); c.stroke();
+    // white trim, with a shaded inner edge, and gutters at the eaves
+    c.strokeStyle = '#d8d0c4'; c.lineWidth = 5; c.strokeRect(2.5, 2.5, w - 5, h - 5);
+    c.strokeStyle = '#ffffff'; c.lineWidth = 3; c.strokeRect(2, 2, w - 4, h - 4);
+    c.fillStyle = '#9aa2b0'; c.fillRect(0, h - 2.5, w, 2.5); c.fillStyle = '#c8ced8'; c.fillRect(0, h - 2.5, w, 1);
+    for (const gx of [3, w - 7]) { c.fillStyle = '#8a92a0'; rrOn(c, gx, h - 4, 4, 7, 1.5); c.fill(); }
+    c.strokeStyle = '#6a1c16'; c.lineWidth = 1.4; c.strokeRect(0.7, 0.7, w - 1.4, h - 1.4);
+  }
+  // a striped canvas tent or stall from above: folds in each stripe, a ridge, a shaded far half, scallops, guy ropes and pegs
+  function pigherdPaintTent(c, w, h, col) {
+    const dk = shade(col, 0.32);
+    c.fillStyle = 'rgba(40,60,30,0.25)'; c.fillRect(6, 8, w, h + 6);
+    // guy ropes and pegs at the corners
+    c.strokeStyle = '#d8c8a0'; c.lineWidth = 1;
+    for (const [x0, y0, x1, y1] of [[2, 2, -6, -4], [w - 2, 2, w + 7, -4], [2, h - 2, -6, h + 10], [w - 2, h - 2, w + 7, h + 10]]) { c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); c.fillStyle = '#8a5a36'; c.fillRect(x1 - 1.5, y1 - 1.5, 3, 3); }
+    const stripes = Math.max(3, Math.round(w / 22));
+    for (let i = 0; i < stripes; i++) {
+      const x = (w * i) / stripes, sw = w / stripes, base = i % 2 ? '#ffffff' : col;
+      const g = c.createLinearGradient(x, 0, x + sw, 0); g.addColorStop(0, tint(base, 0.12)); g.addColorStop(0.55, base); g.addColorStop(1, shade(base, 0.1));
+      c.fillStyle = g; c.fillRect(x, 0, sw + 0.5, h);
+      c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(x + sw - 1, 0, 1, h);
+    }
+    // the ridge along the middle: the far half lit, the near half in shade
+    c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(0, 0, w, h / 2);
+    c.fillStyle = 'rgba(40,10,20,0.1)'; c.fillRect(0, h / 2, w, h / 2);
+    c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(0, h / 2 - 1, w, 2);
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(0, h / 2 - 2.5, w, 1.2);
+    c.strokeStyle = dk; c.lineWidth = 2; c.strokeRect(1, 1, w - 2, h - 2);
+    // scalloped valance on the near edge, with white trim
+    for (let x = 0; x < w - 4; x += 16) {
+      c.fillStyle = dk; c.beginPath(); c.arc(x + 8, h + 1, 8, 0, Math.PI); c.fill();
+      c.fillStyle = col; c.beginPath(); c.arc(x + 8, h, 7.5, 0, Math.PI); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.3)'; c.beginPath(); c.arc(x + 6.5, h + 1.5, 3, Math.PI * 0.5, Math.PI); c.fill();
+      c.strokeStyle = '#ffffff'; c.lineWidth = 1; c.beginPath(); c.arc(x + 8, h, 5.5, 0.2, Math.PI - 0.2); c.stroke();
+    }
+    c.fillStyle = shade(col, 0.15); c.fillRect(0, h - 2, w, 2);
+  }
+  // a vegetable bed: ridged soil rows with clods and a lit crest on each ridge
+  function pigherdPaintVegBed(c, w, h) {
+    const F = ERICH.fr;
+    c.fillStyle = '#9a6a3e'; c.fillRect(0, 0, w, h);
+    c.fillStyle = 'rgba(70,40,15,0.18)'; for (let i = 0; i < Math.round(w * h / 300); i++) { c.beginPath(); c.arc(F(11, i) * w, F(12, i) * h, 0.8 + F(13, i) * 1.4, 0, TAU); c.fill(); }
+    for (let y = 14; y < h - 6; y += 26) {
+      c.fillStyle = '#7e5430'; c.fillRect(6, y + 6, w - 12, 6);
+      c.fillStyle = '#6a4424'; c.fillRect(6, y + 10, w - 12, 2);
+      c.fillStyle = 'rgba(255,225,170,0.35)'; c.fillRect(6, y + 3, w - 12, 1.2);
+      for (let x = 10; x < w - 10; x += 9) { const v = F(y, x); if (v < 0.55) continue; ERICH.pebble(c, x, y + 4 + F(x, y) * 3, 2 + v * 1.5, 1.4 + v, '#8a5a32', x + y, true); }
+    }
+    c.strokeStyle = '#6a4424'; c.lineWidth = 2; c.strokeRect(1, 1, w - 2, h - 2);
+  }
+  // a mud wallow: a wet rim of clods, a darker sunken middle with a sheen, trotter dents round it
+  function pigherdPaintMud(c, r, s) {
+    const F = ERICH.fr, ry = r * 0.6;
+    c.fillStyle = 'rgba(60,40,20,0.2)'; c.beginPath(); c.ellipse(3, 5, r + 8, ry + 6, 0, 0, TAU); c.fill();
+    c.fillStyle = '#7a5232'; c.beginPath(); c.ellipse(0, 0, r + 6, ry + 4, 0, 0, TAU); c.fill();
+    for (let i = 0; i < 14; i++) { const a = i / 14 * TAU + F(s, i) * 0.3, px = Math.cos(a) * (r + 5), py = Math.sin(a) * (ry + 3.5); ERICH.pebble(c, px, py, 3 + F(s, i + 20) * 2.5, 2 + F(s, i + 40) * 1.5, '#8a5e38', s * 7 + i, true); }
+    const g = c.createRadialGradient(r * 0.15, ry * 0.2, 2, 0, 0, r);
+    g.addColorStop(0, '#6a4426'); g.addColorStop(0.7, '#865a38'); g.addColorStop(1, '#9a6a44');
+    c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, r, ry, 0, 0, TAU); c.fill();
+    c.strokeStyle = '#5a3a1e'; c.lineWidth = 1.4; c.beginPath(); c.ellipse(0, 0, r, ry, 0, 0, TAU); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.24)'; c.beginPath(); c.ellipse(-r * 0.35, -r * 0.2, r * 0.3, r * 0.1, -0.2, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.14)'; c.beginPath(); c.ellipse(r * 0.25, ry * 0.25, r * 0.18, r * 0.06, -0.1, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(70,40,18,0.45)';
+    for (let i = 0; i < 6; i++) { const a = F(s, i + 60) * TAU, px = Math.cos(a) * (r + 13), py = Math.sin(a) * (ry + 9); c.beginPath(); c.ellipse(px - 1.2, py, 1, 1.8, 0.2, 0, TAU); c.ellipse(px + 1.2, py, 1, 1.8, -0.2, 0, TAU); c.fill(); }
+  }
+  // the pen's straw bed: mottled straw in three tones, scuffed darker edges by the fence, a few kernels
+  function pigherdPaintStraw(c, w, h) {
+    const F = ERICH.fr;
+    c.fillStyle = '#e8c86a'; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < Math.round(w * h / 3000); i++) { c.fillStyle = F(1, i) < 0.5 ? 'rgba(255,240,180,0.3)' : 'rgba(180,130,50,0.16)'; c.beginPath(); c.ellipse(F(2, i) * w, F(3, i) * h, 20 + F(4, i) * 30, 10 + F(5, i) * 14, F(6, i) * 3, 0, TAU); c.fill(); }
+    const eg = 14;
+    c.fillStyle = 'rgba(150,100,40,0.18)'; c.fillRect(0, 0, w, eg); c.fillRect(0, h - eg, w, eg); c.fillRect(0, 0, eg, h); c.fillRect(w - eg, 0, eg, h);
+    c.lineCap = 'round';
+    const n = Math.round(w * h / 90);
+    for (const [col, lw, off] of [['rgba(176,124,40,0.6)', 1.4, 0], ['rgba(210,160,70,0.6)', 1.2, 3000], ['rgba(255,244,190,0.75)', 1, 6000]]) {
+      c.strokeStyle = col; c.lineWidth = lw; c.beginPath();
+      for (let i = 0; i < n; i++) { const x = F(51, i + off) * w, y = F(52, i + off) * h, a = F(53, i + off) * Math.PI, l = 5 + F(54, i + off) * 7; c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); }
+      c.stroke();
+    }
+    c.fillStyle = '#ffd84a'; for (let i = 0; i < Math.round(w * h / 2500); i++) { c.beginPath(); c.ellipse(F(61, i) * w, F(62, i) * h, 1.6, 1.2, F(63, i) * 3, 0, TAU); c.fill(); }
+    c.fillStyle = 'rgba(120,80,30,0.25)'; c.fillRect(0, 0, w, 3); c.fillRect(0, 0, 3, h);
+  }
+  // the feeding trough: planked sides on a shadow, iron bands with rivets, a bed of feed with carrots, apples and corn
+  function pigherdPaintTrough(c) {
+    c.fillStyle = 'rgba(80,60,20,0.25)'; rrOn(c, -11, -60, 28, 128, 8); c.fill();
+    c.fillStyle = '#6a4424'; rrOn(c, -14, -64, 28, 128, 8); c.fill();
+    ERICH.board(c, -14, -64, 6, 128, { col: '#9a6a3a', seed: 81, vert: true, r: 3, nails: false, lw: 1 });
+    ERICH.board(c, 8, -64, 6, 128, { col: '#8a5a32', seed: 82, vert: true, r: 3, nails: false, lw: 1 });
+    ERICH.board(c, -12, -64, 24, 6, { col: '#a8743f', seed: 83, r: 2, nails: false, lw: 1, knots: 0 });
+    ERICH.board(c, -12, 58, 24, 6, { col: '#8a5a32', seed: 84, r: 2, nails: false, lw: 1, knots: 0 });
+    c.fillStyle = '#b08a40'; rrOn(c, -8, -58, 16, 116, 4); c.fill();
+    c.fillStyle = 'rgba(80,50,10,0.3)'; c.fillRect(-8, -58, 16, 3); c.fillRect(-8, -58, 2.5, 116);
+    const F = ERICH.fr;
+    c.fillStyle = '#d8b460'; for (let i = 0; i < 90; i++) { c.beginPath(); c.arc(-6 + F(91, i) * 12, -55 + F(92, i) * 110, 0.9 + F(93, i) * 0.8, 0, TAU); c.fill(); }
+    for (let k = 0; k < 6; k++) { // carrots
+      const x = -3 + (k % 2) * 6, y = -48 + k * 18;
+      c.save(); c.translate(x, y); c.rotate(k % 2 ? 0.7 : -0.6);
+      c.fillStyle = '#ff8a3a'; c.beginPath(); c.moveTo(-2.4, -4); c.lineTo(2.4, -4); c.lineTo(0, 5); c.closePath(); c.fill();
+      c.fillStyle = '#d0601a'; c.beginPath(); c.moveTo(0.6, -4); c.lineTo(2.4, -4); c.lineTo(0, 5); c.closePath(); c.fill();
+      c.strokeStyle = '#a84a10'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(-1.4, -1); c.lineTo(0.8, -1); c.moveTo(-0.8, 1.5); c.lineTo(0.6, 1.5); c.stroke();
+      c.fillStyle = '#4caa3a'; c.fillRect(-1.5, -7, 1.2, 3.2); c.fillRect(0.4, -7.5, 1.2, 3.7);
+      c.restore();
+    }
+    for (let k = 0; k < 5; k++) { // apples and corn cobs
+      const x = 3 - (k % 2) * 6, y = -40 + k * 18;
+      if (k % 2) { c.fillStyle = '#e8484a'; c.beginPath(); c.arc(x, y, 3.2, 0, TAU); c.fill(); c.fillStyle = '#b02a2c'; c.beginPath(); c.arc(x + 0.8, y + 0.8, 2.2, 0, Math.PI); c.fill(); c.fillStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.arc(x - 1.2, y - 1.2, 0.9, 0, TAU); c.fill(); c.fillStyle = '#5a3a1a'; c.fillRect(x - 0.3, y - 4.5, 0.8, 2); }
+      else { c.fillStyle = '#ffe07a'; c.beginPath(); c.ellipse(x, y, 2.6, 4.5, 0.2, 0, TAU); c.fill(); c.fillStyle = '#e0b030'; for (let j = -3; j <= 3; j += 1.5) { c.beginPath(); c.arc(x + 0.8, y + j, 0.55, 0, TAU); c.fill(); } c.strokeStyle = '#b88a1a'; c.lineWidth = 0.7; c.beginPath(); c.ellipse(x, y, 2.6, 4.5, 0.2, 0, TAU); c.stroke(); }
+    }
+    for (const y of [-34, 34]) { ERICH.metal(c, -14, y - 2.5, 28, 5, { col: '#7d8896', r: 1, lw: 0.9, rivets: false, seed: y }); ERICH.rivets(c, [[-11, y], [11, y]], 1.1, '#b8c0cc'); }
+    c.strokeStyle = '#4a2c12'; c.lineWidth = 1.4; rrOn(c, -14, -64, 28, 128, 8); c.stroke();
+  }
+  function pigherdPaintPenSign(c, col) {
+    ERICH.board(c, -2.5, 6, 5, 16, { col: '#8a5a36', seed: 5, vert: true, r: 1, nails: false, lw: 1 });
+    c.fillStyle = 'rgba(40,70,30,0.22)'; rrOn(c, -43, -11, 92, 24, 6); c.fill();
+    c.save(); rrOn(c, -46, -14, 92, 24, 6); c.clip();
+    ERICH.board(c, -46, -14, 92, 12, { col, seed: 11, r: 0, nails: false, lw: 0.6, knots: 0 });
+    ERICH.board(c, -46, -2, 92, 12, { col: shade(col, 0.06), seed: 12, r: 0, nails: false, lw: 0.6, knots: 0 });
+    c.restore();
+    c.strokeStyle = shade(col, 0.45); c.lineWidth = 3.5; rrOn(c, -46, -14, 92, 24, 6); c.stroke();
+    c.strokeStyle = '#fff'; c.lineWidth = 2; rrOn(c, -46, -14, 92, 24, 6); c.stroke();
+    ERICH.nails(c, [[-41, -9], [41, -9], [-41, 5], [41, 5]], 1.1);
+  }
+  // a cream sign board: two planks with grain, a brown outline, nails at the corners
+  function pigherdPaintSign(c, w, h) {
+    c.fillStyle = 'rgba(40,70,30,0.2)'; rrOn(c, -w / 2 + 3, -h / 2 + 4, w, h, 8); c.fill();
+    c.save(); rrOn(c, -w / 2, -h / 2, w, h, 8); c.clip();
+    ERICH.board(c, -w / 2, -h / 2, w, h / 2, { col: '#f6e7c4', seed: 21, r: 0, nails: false, lw: 0.6, knots: 0 });
+    ERICH.board(c, -w / 2, 0, w, h / 2, { col: '#efdcb2', seed: 22, r: 0, nails: false, lw: 0.6, knots: 0 });
+    c.restore();
+    c.strokeStyle = '#a8743f'; c.lineWidth = 2.5; rrOn(c, -w / 2, -h / 2, w, h, 8); c.stroke();
+    ERICH.nails(c, [[-w / 2 + 6, -h / 2 + 6], [w / 2 - 6, -h / 2 + 6], [-w / 2 + 6, h / 2 - 6], [w / 2 - 6, h / 2 - 6]], 1.2);
+  }
+  // far-away barn: planked red walls with a white X door and a hayloft, a two-tone roof with a lit edge
+  function pigherdPaintFarBarn(c) {
+    c.fillStyle = 'rgba(40,80,30,0.2)'; c.fillRect(2, -26, 58, 6);
+    c.fillStyle = '#c8483c'; c.fillRect(0, -64, 54, 40);
+    c.fillStyle = '#b23e34'; c.fillRect(30, -64, 24, 40);
+    c.strokeStyle = 'rgba(110,30,20,0.45)'; c.lineWidth = 1; c.beginPath(); for (let x = 6; x < 54; x += 6) { c.moveTo(x, -62); c.lineTo(x, -24); } c.stroke();
+    c.fillStyle = '#7e2a22'; c.beginPath(); c.moveTo(-6, -64); c.lineTo(27, -86); c.lineTo(60, -64); c.closePath(); c.fill();
+    c.fillStyle = '#9a3a2e'; c.beginPath(); c.moveTo(-6, -64); c.lineTo(27, -86); c.lineTo(27, -64); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-6, -64); c.lineTo(27, -86); c.stroke();
+    c.strokeStyle = '#5a1a14'; c.lineWidth = 1; c.beginPath(); c.moveTo(-6, -64); c.lineTo(27, -86); c.lineTo(60, -64); c.closePath(); c.stroke();
+    c.fillStyle = '#f2e8d8'; c.fillRect(22, -76, 10, 8); c.fillStyle = '#6a2a1a'; c.fillRect(24, -74, 6, 6);
+    c.fillStyle = '#8a2a22'; c.fillRect(18, -50, 18, 26);
+    c.strokeStyle = '#fff'; c.lineWidth = 2; c.strokeRect(18, -50, 18, 26); c.beginPath(); c.moveTo(18, -50); c.lineTo(36, -24); c.moveTo(36, -50); c.lineTo(18, -24); c.stroke();
+    c.strokeStyle = '#7a2a20'; c.lineWidth = 1; c.strokeRect(0.5, -63.5, 53, 39);
+  }
+  // far-away tree: a shaded trunk, a canopy of lobes darker underneath with lit clusters, apples
+  function pigherdPaintFarTree(c, col, apples) {
+    c.fillStyle = 'rgba(40,80,30,0.2)'; c.beginPath(); c.ellipse(26, -20, 22, 4, 0, 0, TAU); c.fill();
+    c.fillStyle = '#7a5530'; c.fillRect(22, -40, 8, 20); c.fillStyle = '#5a3a1e'; c.fillRect(27, -40, 3, 20);
+    c.fillStyle = shade(col, 0.2); c.beginPath(); c.arc(26, -48, 24, 0, TAU); c.arc(10, -38, 15, 0, TAU); c.arc(42, -38, 15, 0, TAU); c.fill();
+    c.fillStyle = col; c.beginPath(); c.arc(25, -51, 22, 0, TAU); c.arc(10, -41, 13, 0, TAU); c.arc(41, -41, 13, 0, TAU); c.fill();
+    c.fillStyle = tint(col, 0.22); c.beginPath(); c.arc(18, -60, 9, 0, TAU); c.arc(8, -45, 6, 0, TAU); c.arc(32, -58, 6, 0, TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.25)'; c.beginPath(); c.arc(16, -63, 3.5, 0, TAU); c.fill();
+    c.strokeStyle = shade(col, 0.4); c.lineWidth = 1.2; c.beginPath(); c.arc(26, -48, 24, 0.2, Math.PI - 0.2); c.stroke();
+    if (apples) for (const [x, y] of [[18, -52], [34, -44], [12, -38]]) { c.fillStyle = '#ff5a4a'; c.beginPath(); c.arc(x, y, 3, 0, TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.arc(x - 1, y - 1, 1, 0, TAU); c.fill(); }
+  }
+  // one lobe of the hedge: dark gaps, a shaded underside, leaf flecks and lit leaves on top
+  function pigherdPaintHedge(c, col, dk) {
+    c.fillStyle = shade(col, 0.15); c.beginPath(); c.arc(18, -16, 16, 0, TAU); c.fill();
+    c.fillStyle = col; c.beginPath(); c.arc(18, -19, 15, 0, TAU); c.fill();
+    c.fillStyle = tint(col, 0.15); c.beginPath(); c.arc(14, -24, 8, 0, TAU); c.fill();
+    const F = ERICH.fr;
+    for (let i = 0; i < 26; i++) {
+      const a = F(71, i) * TAU, d = Math.sqrt(F(72, i)) * 13, x = 18 + Math.cos(a) * d, y = -19 + Math.sin(a) * d, up = y < -21;
+      c.fillStyle = up ? tint(col, 0.28) : shade(col, 0.22 + F(74, i) * 0.12); c.beginPath(); c.ellipse(x, y, 2.4, 1.3, F(73, i) * 1.2 - 0.6, 0, TAU); c.fill();
+      if (up && i % 3 === 0) { c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(x - 0.6, y - 0.5, 0.7, 0, TAU); c.fill(); }
+    }
+    c.strokeStyle = dk; c.lineWidth = 1.2; c.beginPath(); c.arc(18, -18, 16, 0.3, Math.PI - 0.3); c.stroke();
+  }
+  // a white picket: pointed top, shaded right side, lit left edge, a soft shadow on the grass
+  function pigherdPaintPicket(c) {
+    c.fillStyle = 'rgba(40,90,30,0.22)'; c.fillRect(3, 18, 8, 4);
+    c.beginPath(); c.moveTo(0, -2); c.lineTo(4, -8); c.lineTo(8, -2); c.lineTo(8, 20); c.lineTo(0, 20); c.closePath();
+    c.fillStyle = '#f6f1e2'; c.fill();
+    c.fillStyle = '#d8d0b8'; c.fillRect(5.5, -4, 2.5, 24);
+    c.fillStyle = 'rgba(255,255,255,0.9)'; c.fillRect(0, -2, 1.2, 22);
+    c.strokeStyle = '#b8ae96'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(0, -2); c.lineTo(4, -8); c.lineTo(8, -2); c.lineTo(8, 20); c.lineTo(0, 20); c.closePath(); c.stroke();
+    ERICH.nails(c, [[4, 5], [4, 14]], 0.8);
+  }
+  function pigherdPaintFlowers(c, col) {
+    for (const [x, y, r] of [[0, 0, 4], [8, 8, 3.5]]) {
+      c.strokeStyle = '#4f9a3a'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y + r); c.lineTo(x - 1, y + r + 6); c.stroke();
+      c.fillStyle = shade(col, 0.15); for (let a = 0; a < 5; a++) { c.beginPath(); c.arc(x + Math.cos(a * 1.26) * r * 0.8 + 0.4, y + Math.sin(a * 1.26) * r * 0.8 + 0.5, r * 0.55, 0, TAU); c.fill(); }
+      c.fillStyle = col; for (let a = 0; a < 5; a++) { c.beginPath(); c.arc(x + Math.cos(a * 1.26) * r * 0.8, y + Math.sin(a * 1.26) * r * 0.8, r * 0.5, 0, TAU); c.fill(); }
+      c.fillStyle = '#f2b23a'; c.beginPath(); c.arc(x, y, r * 0.38, 0, TAU); c.fill();
+    }
+  }
   function drawRoute(st) { ctx.beginPath(); st.route.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); }
   function routeAtX(st, x) {
     for (const g of st.segs) {
@@ -1163,26 +1497,24 @@ const PIGHERD = {
     if (st.look === 'fair' || st.k === 3) drawFerris(W * 0.72 - st.camX * 0.04, top - 30, t);
     for (let k = Math.floor(px / 150) - 1; k < Math.floor(px / 150) + 9; k++) {
       const h = hash(k, 3), x = k * 150 - px + (h % 60);
-      if (h % 5 === 0) { // a little red barn far away
-        ctx.fillStyle = '#c8483c'; ctx.fillRect(x, top - 64, 54, 40); ctx.fillStyle = '#7e2a22'; ctx.beginPath(); ctx.moveTo(x - 6, top - 64); ctx.lineTo(x + 27, top - 86); ctx.lineTo(x + 60, top - 64); ctx.fill();
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x + 18, top - 50, 18, 26); ctx.beginPath(); ctx.moveTo(x + 18, top - 50); ctx.lineTo(x + 36, top - 24); ctx.moveTo(x + 36, top - 50); ctx.lineTo(x + 18, top - 24); ctx.stroke();
-      } else { // a round tree
-        ctx.fillStyle = '#7a5530'; ctx.fillRect(x + 22, top - 40, 8, 20);
-        ctx.fillStyle = h % 2 ? '#4fa04a' : '#5cb055'; circle(x + 26, top - 50, 24); ctx.fill(); circle(x + 10, top - 40, 15); ctx.fill(); circle(x + 42, top - 40, 15); ctx.fill();
-        if (h % 3 === 0) { ctx.fillStyle = '#ff5a4a'; circle(x + 18, top - 52, 3); ctx.fill(); circle(x + 34, top - 44, 3); ctx.fill(); }
-      }
+      if (h % 5 === 0) ERICH.put('rpfarbarn', 74, 70, 8, 88, pigherdPaintFarBarn, x, top); // a little red barn far away
+      else ERICH.put('rpfartree' + (h % 2) + (h % 3 === 0 ? 'a' : ''), 70, 80, 9, 76, c => pigherdPaintFarTree(c, h % 2 ? '#4fa04a' : '#5cb055', h % 3 === 0), x, top); // a round tree
     }
-    // the hedge
+    // the hedge: leafy lobes, shaded underneath, with lit leaves on top
     ctx.fillStyle = lk.hedgeD; ctx.fillRect(0, top - 22, W, 22);
-    for (let x = -((st.camX) % 36) - 36; x < W + 36; x += 36) { ctx.fillStyle = lk.hedge; circle(x + 18, top - 18, 16); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.12)'; circle(x + 13, top - 24, 6); ctx.fill(); }
-    // the bottom: a white fence with flowers below
+    { const sp = artSprite('E:rphedge' + st.look, 36, 40, 0, 36, c => pigherdPaintHedge(c, lk.hedge, lk.hedgeD)); for (let x = -Math.round(st.camX % 36) - 36; x < W + 36; x += 36) blitSprite(sp, x, top); }
+    // the bottom: a white picket fence with flowers below
     ctx.fillStyle = '#7fcf5a'; ctx.fillRect(0, bot, W, H - bot);
-    for (let x = -(st.camX % 48) - 48; x < W + 48; x += 48) {
-      ctx.fillStyle = '#f6f1e2'; ctx.fillRect(x, bot - 6, 8, 26); ctx.fillStyle = '#d8d0b8'; ctx.fillRect(x + 6, bot - 6, 2, 26);
+    ctx.fillStyle = 'rgba(40,90,30,0.22)'; ctx.fillRect(0, bot + 19, W, 4);
+    ctx.fillStyle = '#d8d0b8'; ctx.fillRect(0, bot + 4, W, 5); ctx.fillRect(0, bot + 14, W, 4);
+    for (let x = -Math.round(st.camX % 48) - 48; x < W + 48; x += 48) {
+      ERICH.put('rppicket', 14, 34, 2, 10, pigherdPaintPicket, x, bot);
       const h = hash(Math.round((x + st.camX) / 48), 9);
-      ctx.fillStyle = ['#ff7aa8', '#ffd84a', '#ffffff', '#b98cff'][h % 4]; circle(x + 26, bot + 30, 4); ctx.fill(); circle(x + 34, bot + 38, 3.5); ctx.fill();
+      ERICH.put('rpflw' + (h % 4), 24, 28, 8, 8, c => pigherdPaintFlowers(c, ['#ff7aa8', '#ffd84a', '#ffffff', '#ff9a5a'][h % 4]), x + 26, bot + 30);
     }
     ctx.fillStyle = '#f6f1e2'; ctx.fillRect(0, bot + 2, W, 6); ctx.fillRect(0, bot + 12, W, 5);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(0, bot + 2, W, 1.2); ctx.fillRect(0, bot + 12, W, 1.2);
+    ctx.fillStyle = '#c8bea4'; ctx.fillRect(0, bot + 7, W, 1); ctx.fillRect(0, bot + 16, W, 1);
   }
   function drawFerris(x, y, t) {
     ctx.save();
@@ -1197,56 +1529,42 @@ const PIGHERD = {
     const w = s.x1 - s.x0, h = s.y1 - s.y0;
     if (s.look === 'fence') {
       const vert = s.vert || h > w;
-      ctx.fillStyle = '#a8743f';
-      if (vert) { ctx.fillRect(s.x0 + 2, s.y0, 3, h); ctx.fillRect(s.x1 - 5, s.y0, 3, h); }
-      else { ctx.fillRect(s.x0, s.y0 + 2, w, 3); ctx.fillRect(s.x0, s.y1 - 5, w, 3); }
-      ctx.fillStyle = '#c99260';
-      if (vert) { ctx.fillRect(s.x0 + 2, s.y0, 1.5, h); ctx.fillRect(s.x1 - 5, s.y0, 1.5, h); } else { ctx.fillRect(s.x0, s.y0 + 2, w, 1.5); ctx.fillRect(s.x0, s.y1 - 5, w, 1.5); }
+      pigherdRails(s.x0, s.y0, w, h, vert);
       // posts
       const n = Math.max(1, Math.round((vert ? h : w) / 40));
       for (let i = 0; i <= n; i++) {
         const px = vert ? s.x0 + w / 2 : s.x0 + (w * i) / n, py = vert ? s.y0 + (h * i) / n : s.y0 + h / 2;
-        ctx.fillStyle = '#7a4e26'; rr(px - 6, py - 6, 12, 12, 3); ctx.fill();
-        ctx.fillStyle = '#9c6a3a'; rr(px - 4.5, py - 4.5, 9, 9, 2); ctx.fill();
+        pigherdPost(px, py, Math.round(px * 3 + py) % 4, vert);
       }
       return;
     }
     if (s.look === 'haystack') {
-      const cx = s.x0 + w / 2, cy = s.y0 + h / 2;
-      ctx.fillStyle = 'rgba(60,80,30,0.25)'; ctx.beginPath(); ctx.ellipse(cx + 4, cy + 8, w / 2, h / 2, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#e8b84a'; ctx.beginPath(); ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#f6d36a'; ctx.beginPath(); ctx.ellipse(cx - 4, cy - 4, w / 2 - 8, h / 2 - 8, 0, 0, TAU); ctx.fill();
-      ctx.strokeStyle = '#c99430'; ctx.lineWidth = 1.5;
-      for (let k = 0; k < 9; k++) { const a = k / 9 * TAU, r1 = 0.3, r2 = 0.85; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * w / 2 * r1, cy + Math.sin(a) * h / 2 * r1); ctx.lineTo(cx + Math.cos(a + 0.2) * w / 2 * r2, cy + Math.sin(a + 0.2) * h / 2 * r2); ctx.stroke(); }
+      ERICH.put('rpstack' + w + 'x' + h, w + 20, h + 22, w / 2 + 8, h / 2 + 8, c => pigherdPaintStack(c, w, h, s.seed || 1), s.x0 + w / 2, s.y0 + h / 2);
       return;
     }
     if (s.look === 'barn') {
-      ctx.fillStyle = 'rgba(40,60,30,0.25)'; ctx.fillRect(s.x0 + 6, s.y0 + 8, w, h);
-      ctx.fillStyle = '#b8382e'; ctx.fillRect(s.x0, s.y0, w, h);
-      // the roof seen from above: two slopes and a ridge
-      ctx.fillStyle = '#d24a3e'; ctx.fillRect(s.x0, s.y0, w, h / 2);
-      ctx.fillStyle = '#9a2e26'; ctx.fillRect(s.x0, s.y0 + h / 2 - 3, w, 6);
-      ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 2;
-      for (let x = s.x0 + 18; x < s.x1; x += 18) { ctx.beginPath(); ctx.moveTo(x, s.y0); ctx.lineTo(x, s.y1); ctx.stroke(); }
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; ctx.strokeRect(s.x0 + 2, s.y0 + 2, w - 4, h - 4);
+      ERICH.put('rpbarn' + w + 'x' + h, w + 14, h + 16, 4, 4, c => pigherdPaintBarn(c, w, h), s.x0, s.y0);
       // a weathervane rooster on top
       const cx = s.x0 + w / 2, cy = s.y0 + h / 2;
       ctx.fillStyle = '#3a3a4a'; ctx.fillRect(cx - 1, cy - 14, 2, 14);
-      ctx.fillStyle = '#ffd36b'; ctx.beginPath(); ctx.ellipse(cx, cy - 16, 8, 5, Math.sin(t * 0.7) * 0.4, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(cx - 1, cy - 14, 0.8, 14);
+      const va = reduceMotion ? 0 : Math.sin(t * 0.7) * 0.4;
+      ctx.fillStyle = '#c9952a'; ctx.beginPath(); ctx.ellipse(cx + 0.6, cy - 15.4, 8, 5, va, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#ffd36b'; ctx.beginPath(); ctx.ellipse(cx, cy - 16, 8, 5, va, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(cx - 2.5, cy - 17.5, 3, 1.5, va, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#9a6a14'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx, cy - 16, 8, 5, va, 0, TAU); ctx.stroke();
       return;
     }
     if (s.look === 'tent' || s.look === 'stall') {
-      ctx.fillStyle = 'rgba(40,60,30,0.25)'; ctx.fillRect(s.x0 + 6, s.y0 + 8, w, h);
-      const stripes = Math.max(3, Math.round(w / 22));
-      for (let i = 0; i < stripes; i++) { ctx.fillStyle = i % 2 ? '#ffffff' : (s.look === 'tent' ? '#ff5a6a' : '#5aa8ff'); ctx.fillRect(s.x0 + (w * i) / stripes, s.y0, w / stripes + 0.5, h); }
-      ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.fillRect(s.x0, s.y0 + h / 2, w, h / 2);
-      ctx.strokeStyle = '#c03a4a'; ctx.lineWidth = 2; ctx.strokeRect(s.x0 + 1, s.y0 + 1, w - 2, h - 2);
-      // scalloped edge and a flag
-      ctx.fillStyle = s.look === 'tent' ? '#ff5a6a' : '#5aa8ff';
-      for (let x = s.x0; x < s.x1 - 4; x += 16) { ctx.beginPath(); ctx.arc(x + 8, s.y1, 8, 0, Math.PI); ctx.fill(); }
+      ERICH.put('rp' + s.look + w + 'x' + h, w + 22, h + 22, 8, 6, c => pigherdPaintTent(c, w, h, s.look === 'tent' ? '#ff5a6a' : '#5aa8ff'), s.x0, s.y0);
       const fx = s.x0 + w / 2;
       ctx.fillStyle = '#5a4a3a'; ctx.fillRect(fx - 1, s.y0 - 18, 2, 18);
-      ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.moveTo(fx + 1, s.y0 - 18); ctx.lineTo(fx + 14 + Math.sin(t * 5) * 2, s.y0 - 13); ctx.lineTo(fx + 1, s.y0 - 8); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(fx - 1, s.y0 - 18, 0.8, 18);
+      const fw = reduceMotion ? 0 : Math.sin(t * 5) * 2;
+      ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.moveTo(fx + 1, s.y0 - 18); ctx.lineTo(fx + 14 + fw, s.y0 - 13); ctx.lineTo(fx + 1, s.y0 - 8); ctx.fill();
+      ctx.fillStyle = '#e0a82a'; ctx.beginPath(); ctx.moveTo(fx + 1, s.y0 - 13); ctx.lineTo(fx + 14 + fw, s.y0 - 13); ctx.lineTo(fx + 1, s.y0 - 8); ctx.fill();
+      ctx.strokeStyle = '#b9850f'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(fx + 1, s.y0 - 18); ctx.lineTo(fx + 14 + fw, s.y0 - 13); ctx.lineTo(fx + 1, s.y0 - 8); ctx.stroke();
+      ctx.fillStyle = '#ffd84a'; circle(fx, s.y0 - 19, 2); ctx.fill();
       return;
     }
     if (s.look === 'corn') { drawCornBlock(s.x0, s.y0, w, h, t, s.seed || 1, false); return; }
@@ -1275,18 +1593,30 @@ const PIGHERD = {
     ctx.fillStyle = '#8a6a4a'; ctx.fillRect(s.x0, s.y0, w, h);
   }
   function drawCornBlock(x0, y0, w, h, t, seed, wiggleAt) {
-    ctx.fillStyle = '#5f9a34'; ctx.fillRect(x0, y0, w, h);
+    ctx.fillStyle = 'rgba(30,60,20,0.25)'; ctx.fillRect(x0 + 4, y0 + 6, w, h);
+    ctx.fillStyle = '#4c8a2c'; ctx.fillRect(x0, y0, w, h);
     ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip();
+    // dark soil furrows between the rows, with stalk bases
+    ctx.fillStyle = '#6a4a2a'; for (let y = y0 + 15; y < y0 + h; y += 16) ctx.fillRect(x0, y, w, 3);
+    ctx.fillStyle = 'rgba(255,230,180,0.18)'; for (let y = y0 + 15; y < y0 + h; y += 16) ctx.fillRect(x0, y, w, 0.8);
+    const A = new Path2D(), B = new Path2D(), R = new Path2D(), E = new Path2D(), sway = reduceMotion ? 0 : 1;
+    const leaf = (p, x, y, rx, ry, a) => { p.moveTo(x + Math.cos(a) * rx, y + Math.sin(a) * rx); p.ellipse(x, y, rx, ry, a, 0, TAU); };
     for (let y = y0 + 8; y < y0 + h + 10; y += 16) for (let x = x0 + ((y / 16) % 2) * 9; x < x0 + w + 10; x += 18) {
       const hh = hash(Math.round(x), Math.round(y) + seed);
-      let sw = Math.sin(t * 1.4 + x * 0.05 + y * 0.03) * 1.5;
+      let sw = Math.sin(t * 1.4 + x * 0.05 + y * 0.03) * 1.5 * sway;
       if (wiggleAt && Math.hypot(x - wiggleAt.x, y - wiggleAt.y) < 40) sw += Math.sin(t * 22 + x) * 4;
-      ctx.fillStyle = hh % 3 ? '#79b83e' : '#8cc94a';
-      ctx.beginPath(); ctx.ellipse(x + sw, y, 8, 5, 0.6, 0, TAU); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(x + sw + 3, y + 2, 7, 4, -0.7, 0, TAU); ctx.fill();
-      if (hh % 5 === 0) { ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.ellipse(x + sw + 1, y - 1, 2.5, 4.5, 0.3, 0, TAU); ctx.fill(); }
+      const p = hh % 3 ? A : B;
+      leaf(p, x + sw, y, 8, 5, 0.6); leaf(p, x + sw + 3, y + 2, 7, 4, -0.7);
+      R.moveTo(x + sw - 5, y - 3.5); R.lineTo(x + sw + 5, y + 3.5); R.moveTo(x + sw - 1.5, y + 6); R.lineTo(x + sw + 7.5, y - 1.5);
+      if (hh % 5 === 0) E.moveTo(x + sw + 1, y - 1), E.ellipse(x + sw + 1, y - 1, 2.5, 4.5, 0.3, 0, TAU);
     }
+    ctx.lineWidth = 1; ctx.strokeStyle = '#3f7424';
+    ctx.fillStyle = '#79b83e'; ctx.fill(A); ctx.stroke(A);
+    ctx.fillStyle = '#8cc94a'; ctx.fill(B); ctx.stroke(B);
+    ctx.strokeStyle = 'rgba(220,255,170,0.55)'; ctx.lineWidth = 0.9; ctx.stroke(R);
+    ctx.fillStyle = '#ffd84a'; ctx.fill(E); ctx.strokeStyle = '#c99a1a'; ctx.lineWidth = 0.8; ctx.stroke(E);
     ctx.restore();
+    ctx.strokeStyle = '#3a6a20'; ctx.lineWidth = 1.5; ctx.strokeRect(x0 + 0.75, y0 + 0.75, w - 1.5, h - 1.5);
   }
   function drawZone(st, z, t) {
     const w = z.x1 - z.x0, h = z.y1 - z.y0;
@@ -1311,9 +1641,8 @@ const PIGHERD = {
         drawDuck(dx, dy, Math.cos(t * 0.2 + k) > -2 ? 1 : -1, t + k);
       }
     } else if (z.kind === 'veg') {
-      ctx.fillStyle = '#9a6a3e'; ctx.fillRect(z.x0, z.y0, w, h);
+      ERICH.put('rpveg' + w + 'x' + h, w, h, 0, 0, c => pigherdPaintVegBed(c, w, h), z.x0, z.y0);
       for (let y = z.y0 + 14; y < z.y1 - 6; y += 26) {
-        ctx.fillStyle = '#7e5430'; ctx.fillRect(z.x0 + 6, y + 6, w - 12, 6);
         for (let x = z.x0 + 20; x < z.x1 - 14; x += 32) {
           const hh = hash(Math.round(x), Math.round(y));
           if (hh % 3 === 0) { ctx.fillStyle = '#5cbf4a'; circle(x, y + 4, 9); ctx.fill(); ctx.fillStyle = '#86d86a'; circle(x - 2, y + 2, 5); ctx.fill(); }
@@ -1347,25 +1676,18 @@ const PIGHERD = {
     ctx.restore();
   }
   function drawMud(m, t) {
-    ctx.fillStyle = '#7a5232'; ctx.beginPath(); ctx.ellipse(m.x, m.y, m.r + 6, m.r * 0.6 + 4, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#946240'; ctx.beginPath(); ctx.ellipse(m.x, m.y, m.r, m.r * 0.6, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.ellipse(m.x - m.r * 0.35, m.y - m.r * 0.2, m.r * 0.3, m.r * 0.1, -0.2, 0, TAU); ctx.fill();
+    ERICH.put('rpmud' + m.r + '_' + m.seed, m.r * 2 + 40, m.r * 1.2 + 34, m.r + 20, m.r * 0.6 + 16, c => pigherdPaintMud(c, m.r, m.seed), m.x, m.y);
+    if (reduceMotion) return;
     for (let k = 0; k < 3; k++) { const ph = (t * 0.7 + k * 0.33 + m.seed * 0.1) % 1; ctx.strokeStyle = 'rgba(70,40,20,' + (0.5 * (1 - ph)) + ')'; ctx.lineWidth = 1.5; circle(m.x + Math.cos(k * 2.1) * m.r * 0.4, m.y + Math.sin(k * 2.1) * m.r * 0.2, 2 + ph * 6); ctx.stroke(); }
   }
   function drawPenFloor(st, P, t) {
-    ctx.fillStyle = '#e8c86a'; ctx.fillRect(P.x0, P.y0, P.x1 - P.x0, P.y1 - P.y0);
-    ctx.strokeStyle = 'rgba(190,140,50,0.55)'; ctx.lineWidth = 1.6;
-    for (let k = 0; k < 40; k++) { const h = hash(k, 51), x = P.x0 + 10 + (h % Math.max(1, P.x1 - P.x0 - 20)), y = P.y0 + 10 + ((h >> 8) % Math.max(1, P.y1 - P.y0 - 20)), a = (h % 7) * 0.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * 9, y + Math.sin(a) * 9); ctx.stroke(); }
+    const pw = P.x1 - P.x0, ph = P.y1 - P.y0;
+    ERICH.put('rppen' + pw + 'x' + ph, pw, ph, 0, 0, c => pigherdPaintStraw(c, pw, ph), P.x0, P.y0);
     // the trough
-    ctx.fillStyle = '#7a5530'; rr(P.tx - 14, P.ty - 64, 28, 128, 8); ctx.fill();
-    ctx.fillStyle = '#c9a050'; rr(P.tx - 9, P.ty - 58, 18, 116, 5); ctx.fill();
-    ctx.fillStyle = '#ff8a3a'; for (let k = 0; k < 6; k++) { circle(P.tx - 3 + (k % 2) * 6, P.ty - 48 + k * 18, 3.5); ctx.fill(); }
-    ctx.fillStyle = '#ffe9a8'; for (let k = 0; k < 5; k++) { circle(P.tx + 3 - (k % 2) * 6, P.ty - 40 + k * 18, 3); ctx.fill(); }
+    ERICH.put('rptrough', 40, 142, 18, 68, pigherdPaintTrough, P.tx, P.ty);
     // the sign
     const sx = (P.x0 + P.x1) / 2, sy = P.y0 - 22;
-    ctx.fillStyle = '#7a5530'; ctx.fillRect(sx - 2, sy, 4, 16);
-    ctx.fillStyle = P.final ? '#5a8aff' : '#c8483c'; rr(sx - 46, sy - 14, 92, 24, 6); ctx.fill();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; rr(sx - 46, sy - 14, 92, 24, 6); ctx.stroke();
+    ERICH.put('rppensign' + (P.final ? 'b' : 'r'), 104, 50, 52, 20, c => pigherdPaintPenSign(c, P.final ? '#5a8aff' : '#c8483c'), sx, sy);
     text(P.final ? 'BEST PIGS' : 'PIG PEN', sx, sy - 1, 14, '#ffffff', 'center');
     if (P.final) drawRosette(P.x1 - 40, P.y0 + 30, 1, t);
   }
@@ -1390,6 +1712,11 @@ const PIGHERD = {
       ctx.fillStyle = '#5a2a1a'; ctx.fillRect(x - 2, y0, g.x1 - g.x0 + 4, y1 - y0);
       ctx.save(); ctx.beginPath(); ctx.rect(x - 10, y0 - 2, g.x1 - g.x0 + 20, y1 - y0 + 4); ctx.clip();
       ctx.fillStyle = '#d24a3e'; ctx.fillRect(x - 4, y0 - off, g.x1 - g.x0 + 8, y1 - y0);
+      ctx.fillStyle = '#b23a30'; ctx.fillRect(x + (g.x1 - g.x0) / 2 + 1, y0 - off, (g.x1 - g.x0) / 2 + 3, y1 - y0);
+      ctx.strokeStyle = 'rgba(90,20,14,0.45)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let yy = y0 - off + 9; yy < y1 - off; yy += 9) { ctx.moveTo(x - 4, yy); ctx.lineTo(x + g.x1 - g.x0 + 4, yy); }
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x - 4, y0 - off, 1.5, y1 - y0);
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5; ctx.strokeRect(x - 3, y0 - off + 1, g.x1 - g.x0 + 6, y1 - y0 - 2);
       ctx.beginPath(); ctx.moveTo(x - 3, y0 - off + 1); ctx.lineTo(x + g.x1 - g.x0 + 3, y1 - off - 1); ctx.moveTo(x + g.x1 - g.x0 + 3, y0 - off + 1); ctx.lineTo(x - 3, y1 - off - 1); ctx.stroke();
       ctx.restore();
@@ -1411,12 +1738,18 @@ const PIGHERD = {
     ctx.lineCap = 'round';
     ctx.strokeStyle = edge; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(g.hx, g.hy); ctx.lineTo(ex, ey); ctx.stroke();
     ctx.strokeStyle = col; ctx.lineWidth = 5.5; ctx.beginPath(); ctx.moveTo(g.hx, g.hy); ctx.lineTo(ex, ey); ctx.stroke();
+    { const nx = -Math.sin(ang), ny = Math.cos(ang);
+      ctx.strokeStyle = 'rgba(0,0,0,0.13)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(g.hx + nx * 1.6, g.hy + ny * 1.6); ctx.lineTo(ex + nx * 1.6, ey + ny * 1.6); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(g.hx - nx * 1.6, g.hy - ny * 1.6); ctx.lineTo(ex - nx * 1.6, ey - ny * 1.6); ctx.stroke();
+      // iron straps by the hinge with a bolt each
+      for (const u of [10, 18]) { const bx = g.hx + Math.cos(ang) * u, by = g.hy + Math.sin(ang) * u; ctx.strokeStyle = '#4a4a56'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(bx - nx * 4, by - ny * 4); ctx.lineTo(bx + nx * 4, by + ny * 4); ctx.stroke(); ctx.fillStyle = '#c8ccd6'; circle(bx - nx * 0.6, by - ny * 0.6, 0.9); ctx.fill(); }
+    }
     // cross bars
     ctx.strokeStyle = edge; ctx.lineWidth = 1.5;
     const n = Math.max(2, Math.round(L / 22));
     for (let i = 1; i < n; i++) { const u = i / n, x = g.hx + (ex - g.hx) * u, y = g.hy + (ey - g.hy) * u, nx = -Math.sin(ang) * 3.2, ny = Math.cos(ang) * 3.2; ctx.beginPath(); ctx.moveTo(x - nx, y - ny); ctx.lineTo(x + nx, y + ny); ctx.stroke(); }
     // posts: the hinge post and the latch post
-    const post = (x, y, latch) => { ctx.fillStyle = '#6a4220'; rr(x - 7, y - 7, 14, 14, 3); ctx.fill(); ctx.fillStyle = latch ? (gold ? '#ffd36b' : '#c9a050') : '#9c6a3a'; rr(x - 5, y - 5, 10, 10, 2); ctx.fill(); };
+    const post = (x, y, latch) => ERICH.put('rpgpost' + (latch ? (gold ? 'g' : 'l') : 'h'), 22, 22, 9, 9, c => pigherdPaintPost(c, 7, latch ? (gold ? '#ffd36b' : '#c9a050') : '#9c6a3a', latch ? 2 : 1, latch), x, y);
     post(g.hx, g.hy, false); post(g.ex, g.ey, true);
     // side gates that are open glow a warning, fork gates show a little arrow on the right way
     if (kind === 'side' && g.open) {
@@ -1430,24 +1763,32 @@ const PIGHERD = {
     const x = lv.x, y = lv.y;
     ctx.fillStyle = 'rgba(40,70,30,0.25)'; ctx.beginPath(); ctx.ellipse(x + 3, y + 12, 18, 6, 0, 0, TAU); ctx.fill();
     if (lv.gold) { ctx.fillStyle = 'rgba(255,211,107,' + (0.35 + 0.15 * Math.sin(t * 5)) + ')'; circle(x, y + 2, 30); ctx.fill(); }
-    ctx.fillStyle = lv.gold ? '#b9850f' : '#5c6470'; rr(x - 16, y - 2, 32, 16, 5); ctx.fill();
-    ctx.fillStyle = '#7d8896'; rr(x - 13, y + 1, 26, 10, 4); ctx.fill();
+    ERICH.put('rplever' + (lv.gold ? 'g' : ''), 40, 26, 20, 6, c => {
+      ERICH.metal(c, -16, -2, 32, 16, { col: lv.gold ? '#d8a83a' : '#7d8896', r: 5, seed: 7 });
+      c.fillStyle = '#2e3440'; rrOn(c, -9, 3.5, 18, 5, 2.5); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(-8, 8, 16, 0.8);
+    }, x, y);
     ctx.save(); ctx.translate(x, y + 6); ctx.rotate(right ? 0.75 : -0.75);
     ctx.fillStyle = '#d9b45a'; ctx.fillRect(-2.5, -30, 5, 30);
-    ctx.fillStyle = right ? '#4caf50' : '#ff6b6b'; circle(0, -32, 8); ctx.fill();
+    ctx.fillStyle = '#b08a3a'; ctx.fillRect(0.8, -30, 1.7, 30);
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(-2.5, -30, 1, 30);
+    ctx.strokeStyle = '#8a6420'; ctx.lineWidth = 0.9; ctx.strokeRect(-2.5, -30, 5, 30);
+    const kc = right ? '#4caf50' : '#ff6b6b';
+    ctx.fillStyle = kc; circle(0, -32, 8); ctx.fill();
+    ctx.fillStyle = shade(kc, 0.22); ctx.beginPath(); ctx.arc(0, -32, 8, -0.2, Math.PI * 0.9); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(-2, -34, 2.5); ctx.fill();
+    ctx.strokeStyle = shade(kc, 0.45); ctx.lineWidth = 1.2; circle(0, -32, 8); ctx.stroke();
     ctx.restore();
     void a; void t;
   }
   function drawHay(h, t) {
     const x = h.x0, y = h.y0, w = h.w, hh = h.h;
     ctx.fillStyle = 'rgba(40,70,30,0.25)'; rr(x + 4, y + 6, w, hh, 8); ctx.fill();
-    ctx.fillStyle = h.gold ? '#ffd36b' : '#e8b84a'; rr(x, y, w, hh, 8); ctx.fill();
-    ctx.fillStyle = h.gold ? '#fff0a8' : '#f6d36a'; rr(x + 3, y + 3, w - 6, hh * 0.5, 6); ctx.fill();
-    ctx.strokeStyle = '#c99430'; ctx.lineWidth = 1.3;
+    ERICH.put('rpbale' + (h.gold ? 'g' : '') + w + 'x' + hh, w + 10, hh + 10, w / 2 + 5, hh / 2 + 5, c => ERICH.bale(c, w, hh, h.gold, { seed: 9 }), x + w / 2, y + hh / 2);
+    ctx.strokeStyle = h.gold ? 'rgba(160,110,20,0.45)' : 'rgba(150,100,30,0.4)'; ctx.lineWidth = 1.2; ctx.beginPath();
     const roll = h.roll || 0;
-    for (let k = 0; k < 7; k++) { const sx = x + 6 + ((k * 9 + roll * 0.6) % (w - 12)); ctx.beginPath(); ctx.moveTo(sx, y + 4); ctx.lineTo(sx + 3, y + hh - 4); ctx.stroke(); }
-    ctx.strokeStyle = '#a0522d'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x + w * 0.3, y); ctx.lineTo(x + w * 0.3, y + hh); ctx.moveTo(x + w * 0.7, y); ctx.lineTo(x + w * 0.7, y + hh); ctx.stroke();
+    for (let k = 0; k < 4; k++) { const sx = x + 6 + ((k * 15 + roll * 0.6) % (w - 12)); ctx.moveTo(sx, y + 5); ctx.lineTo(sx + 3, y + hh - 5); }
+    ctx.stroke();
     void t;
   }
   function drawSigns(st) {
@@ -1462,11 +1803,9 @@ const PIGHERD = {
       const w = ctx.measureText(str).width + 26, x = Math.max(sg.x, w / 2 + 12); // never hangs off the start of the farm
       // a little wooden sign on a post, with a shadow on the grass
       ctx.fillStyle = 'rgba(40,70,30,0.22)'; ctx.beginPath(); ctx.ellipse(sg.x + 3, sg.y + fs * 0.8 + 15, 9, 3, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(40,70,30,0.2)'; rr(x - w / 2 + 3, sg.y - fs * 0.9 + 4, w, fs * 1.8, 8); ctx.fill();
-      ctx.fillStyle = '#7a5530'; ctx.fillRect(sg.x - 2, sg.y + fs * 0.8, 4, 14);
-      ctx.fillStyle = '#f6e7c4'; rr(x - w / 2, sg.y - fs * 0.9, w, fs * 1.8, 8); ctx.fill();
-      ctx.fillStyle = 'rgba(168,116,63,0.16)'; ctx.beginPath(); ctx.rect(x - w / 2 + 3, sg.y + fs * 0.45, w - 6, fs * 0.35); ctx.fill();
-      ctx.strokeStyle = '#a8743f'; ctx.lineWidth = 2.5; rr(x - w / 2, sg.y - fs * 0.9, w, fs * 1.8, 8); ctx.stroke();
+      ERICH.put('rpsignpost' + fs, 8, 16, 4, 0, c => ERICH.board(c, -2.5, 0, 5, 15, { col: '#8a5a36', seed: 7, vert: true, r: 1, nails: false, lw: 1 }), sg.x, sg.y + fs * 0.8);
+      const bw = Math.ceil(w);
+      ERICH.put('rpsign' + bw + '_' + fs, bw + 10, Math.ceil(fs * 1.8) + 10, bw / 2 + 2, fs * 0.9 + 2, c => pigherdPaintSign(c, bw, fs * 1.8), x, sg.y);
       text(str, x, sg.y + 1, fs, '#6a3a1a', 'center');
     }
   }
