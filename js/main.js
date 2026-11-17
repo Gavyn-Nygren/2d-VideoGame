@@ -465,6 +465,7 @@ function fit() {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const cw = Math.round(w * dpr), ch = Math.round(h * dpr);
   if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+  K3D.fit(); // canvas#game3d follows (only once a 3D level has loaded the kit)
   fitMatchCard();
 }
 window.addEventListener('resize', fit);
@@ -487,4 +488,5 @@ window.__pipboMedals = { medalSpec, medalGoalText, medalResult, medalBest };
 fit();
 cpuLoadCfg();
 showTitle();
+if (/[?&]k3dproof\b/.test(location.search)) K3D.startProof(); // the 3D look proof (World 41), never reached from a menu
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });

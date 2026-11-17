@@ -67,6 +67,9 @@ kbd {
 .stage::after { content: ""; position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .stage.dim::after { opacity: 1; }
 canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+/* 3D levels (js/3d/): canvas#game3d sits right under canvas#game, which stays on top for the HUD and cards */
+#game { position: relative; z-index: 1; }
+#game3d { position: absolute; inset: 0; }
 
 .overlay { position: absolute; inset: 0; z-index: 5; display: flex; padding: 16px; overflow: auto; overscroll-behavior: contain; }
 .overlay[hidden] { display: none; }

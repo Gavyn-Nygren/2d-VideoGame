@@ -1963,6 +1963,7 @@ function drawIntroJobs(a, def) {
 }
 
 function render(dt) {
+  if (K3D.proofOn) { K3D.proofFrame(dt); return; } // the 3D look-proof page (?k3dproof)
   const L = G.level;
   ctx.save();
   const s = canvas.width / W;
