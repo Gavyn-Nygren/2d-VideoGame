@@ -60,6 +60,12 @@ function mixCol(a, b, t) {
   return (_mixCache[k] = 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',') + ')');
 }
 const shade = (c, t) => mixCol(c, '#141428', t), tint = (c, t) => mixCol(c, '#ffffff', t);
+// the same mix as a '#rrggbb' string, for a colour that is mixed again later (mixCol only reads hex)
+function mixHex(a, b, t) {
+  const A = hexRgb(a), B = hexRgb(b);
+  if (!A || !B) return a;
+  return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
 
 function drawBackgroundPlain() {
   const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -458,7 +464,7 @@ function paintSpikes(c) {
     c.fillStyle = out; c.fillRect(sx + 1.6, T - 6.4, 6.8, 1.6);
     c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(sx + 1.8, T - 6.4, 3, 0.7);
     c.fillStyle = C.spikeHi; circleOn(c, sx + 5, 13.2, 1.05); c.fill();
-    c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(sx + 4.6, 9.8, 0.8, 2.2);
+    c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(sx + 3.9, 15, 0.8, 3.2);
   }
   // rivets between the spikes
   for (const rx of [10, 20]) {
@@ -483,7 +489,8 @@ function drawPlank(x, y, tx, ty) {
   blitSprite(sp, x, y);
 }
 function paintPlank(c, lEnd, rEnd, h) {
-  const pl = C.plank, pd = C.plankDark, out = mixCol(pd, '#140c08', 0.42), x0 = lEnd ? 1 : -0.4, x1 = rEnd ? T - 1 : T + 0.4;
+  // each board has its own tone (a little lighter, darker or warmer), so a ledge reads as boards laid side by side
+  const tone = h % 4, pl = tone === 1 ? mixHex(C.plank, '#ffffff', 0.11) : tone === 2 ? mixHex(C.plank, '#141428', 0.09) : tone === 3 ? mixHex(C.plank, '#c8803a', 0.22) : C.plank, pd = C.plankDark, out = mixCol(pd, '#140c08', 0.42), x0 = lEnd ? 1 : -0.4, x1 = rEnd ? T - 1 : T + 0.4;
   // the posts and braces under the ends (behind the board)
   const bracket = (px, dir) => {
     c.fillStyle = out; c.fillRect(px - 0.8, 8, 4.6, 11.5);
@@ -498,7 +505,8 @@ function paintPlank(c, lEnd, rEnd, h) {
   if (lEnd) bracket(3, 1);
   if (rEnd) bracket(T - 6, -1);
   // a soft shadow under the board
-  c.fillStyle = 'rgba(0,0,0,0.13)'; c.fillRect(x0 + 1, 11, x1 - x0 - 2, 2.6);
+  // (mid boards butt their shadows edge to edge, so a long ledge throws one unbroken shadow)
+  c.fillStyle = 'rgba(0,0,0,0.13)'; c.fillRect(lEnd ? x0 + 1 : 0, 11, (rEnd ? x1 - 1 : T) - (lEnd ? x0 + 1 : 0), 2.6);
   // outline, the shaded front edge, the face and its lit top
   c.fillStyle = out; rrOn(c, x0 - 0.8, -0.8, x1 - x0 + 1.6, 12.4, lEnd || rEnd ? 2.8 : 0.1); c.fill();
   if (!lEnd) c.fillRect(-0.4, -0.8, 2, 12.4);
@@ -634,7 +642,28 @@ function drawSwitchTile(ch, x, y) {
       ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x + 2, y + 2, T - 4, 3);
       ctx.restore();
     }
-    if (a < 0.98) {
+    if (a < 0.98 && !artPlain()) {
+      // (rich props pass) the bridge still to come: a faint print of its bricks, dashed only round the outside of the
+      // whole span (not tile by tile) with a corner tick at each end, so it reads as one bridge waiting to be built
+      const tx = Math.round(x / T), ty = Math.round(y / T), v = hash(tx, ty) % 4;
+      const top = tile(tx, ty - 1) !== ch, bot = tile(tx, ty + 1) !== ch, lf = tile(tx - 1, ty) !== ch, rt = tile(tx + 1, ty) !== ch;
+      const sp = artSprite('br' + col + v + (top ? 1 : 0) + (bot ? 1 : 0) + (tx & 1), T, T, 0, 0, c => paintBridge(c, col, hash(v * 31 + 7, 5 + (tx & 1)), top, bot, tx & 1));
+      ctx.save(); const ga = ctx.globalAlpha * (1 - a);
+      ctx.globalAlpha = ga * 0.2; blitSprite(sp, x, y);
+      ctx.globalAlpha = ga * 0.9; ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      if (top) { ctx.moveTo(x, y + 1.5); ctx.lineTo(x + T, y + 1.5); }
+      if (bot) { ctx.moveTo(x, y + T - 1.5); ctx.lineTo(x + T, y + T - 1.5); }
+      if (lf) { ctx.moveTo(x + 1.5, y); ctx.lineTo(x + 1.5, y + T); }
+      if (rt) { ctx.moveTo(x + T - 1.5, y); ctx.lineTo(x + T - 1.5, y + T); }
+      ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = shade(col, 0.3); ctx.lineWidth = 2.6; ctx.beginPath();
+      if (lf && top) { ctx.moveTo(x + 1.5, y + 7); ctx.lineTo(x + 1.5, y + 1.5); ctx.lineTo(x + 7, y + 1.5); }
+      if (rt && top) { ctx.moveTo(x + T - 7, y + 1.5); ctx.lineTo(x + T - 1.5, y + 1.5); ctx.lineTo(x + T - 1.5, y + 7); }
+      if (lf && bot) { ctx.moveTo(x + 1.5, y + T - 7); ctx.lineTo(x + 1.5, y + T - 1.5); ctx.lineTo(x + 7, y + T - 1.5); }
+      if (rt && bot) { ctx.moveTo(x + T - 7, y + T - 1.5); ctx.lineTo(x + T - 1.5, y + T - 1.5); ctx.lineTo(x + T - 1.5, y + T - 7); }
+      ctx.stroke(); ctx.restore();
+    } else if (a < 0.98) {
       ctx.save(); ctx.globalAlpha = 0.9 * (1 - a);
       ctx.fillStyle = 'rgba(255,143,199,0.18)'; ctx.fillRect(x + 1, y + 1, T - 2, T - 2);
       ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.setLineDash([5, 4]);
@@ -744,6 +773,7 @@ function drawPlate(pl) {
   if (!plain && !pl.down) { ctx.fillStyle = 'rgba(255,255,255,' + (0.18 + 0.12 * Math.sin(G.clock * 3 + x)) + ')'; ctx.beginPath(); ctx.ellipse(x + T / 2, top - 1, 9, 3, 0, 0, Math.PI * 2); ctx.fill(); }
 }
 function drawDoor(d) {
+  if (!artPlain()) return drawDoorRich(d);
   const L = G.level, locked = L.key && !L.key.got;
   const { x, y, w, h } = d;
   if (!artPlain()) { ctx.fillStyle = 'rgba(255,215,90,' + (0.16 + 0.06 * Math.sin(G.clock * 2.5)) + ')'; rr(x - 9, y - 12, w + 18, h + 12, 20); ctx.fill(); }
@@ -768,6 +798,87 @@ function drawDoor(d) {
     if (G.doorIn[i]) { ctx.fillStyle = PCOL[i]; ctx.fill(); }
     else { ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill(); ctx.strokeStyle = PCOL[i]; ctx.lineWidth = 2; ctx.stroke(); }
   }
+}
+// (rich props pass) the goal door: a ground shadow, a brass frame outlined in its own dark shade, lit on the top and
+// left and shaded down the right, with riveted hinge straps, a keystone gem, an inner bevel round the glowing doorway
+// (soft light rays inside; planks and a padlock while locked) and a brass threshold. The still parts are one picture
+// per size and state; the glow, the twinkle and the two arrival rings are drawn live.
+function drawDoorRich(d) {
+  const L = G.level, locked = !!(L.key && !L.key.got), { x, y, w, h } = d;
+  ctx.fillStyle = 'rgba(255,215,90,' + (0.16 + 0.06 * Math.sin(G.clock * 2.5)) + ')'; rr(x - 9, y - 12, w + 18, h + 12, 20); ctx.fill();
+  const sp = artSprite('door' + w + 'x' + h + (locked ? 'L' : 'O') + C.gold + C.goldDark + C.doorIn + C.glow, w + 20, h + 16, 10, 12, c => paintDoor(c, w, h, locked));
+  blitSprite(sp, x, y);
+  if (!locked) {
+    const tw = reduceMotion ? 0.5 : (Math.sin(G.clock * 2.6) + 1) / 2, sx = x + w * 0.68, sy = y + h * 0.32, r2 = 1.5 + tw * 2.5;
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.35 + 0.5 * tw) + ')';
+    ctx.beginPath(); ctx.moveTo(sx, sy - r2); ctx.lineTo(sx + 0.7, sy - 0.7); ctx.lineTo(sx + r2, sy); ctx.lineTo(sx + 0.7, sy + 0.7); ctx.lineTo(sx, sy + r2); ctx.lineTo(sx - 0.7, sy + 0.7); ctx.lineTo(sx - r2, sy); ctx.lineTo(sx - 0.7, sy - 0.7); ctx.closePath(); ctx.fill();
+  }
+  for (let i = 0; i < 2; i++) {
+    const cx = x + w / 2 + (i === 0 ? -9 : 9), cy = y - 16;
+    circle(cx, cy, 6);
+    if (G.doorIn[i]) { ctx.fillStyle = PCOL[i]; ctx.fill(); }
+    else { ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill(); ctx.strokeStyle = PCOL[i]; ctx.lineWidth = 2; ctx.stroke(); }
+  }
+}
+function paintDoor(c, w, h, locked) {
+  const gd = C.goldDark, gl = C.gold, out = shade(gd, 0.42), x = 0, y = 0;
+  c.fillStyle = 'rgba(0,0,0,0.2)'; c.beginPath(); c.ellipse(x + w / 2, y + h, w / 2 + 9, 3.2, 0, 0, Math.PI * 2); c.fill();
+  // the frame
+  c.fillStyle = out; rrOn(c, x - 4.2, y - 7.2, w + 8.4, h + 7.2, 15); c.fill();
+  c.fillStyle = gd; rrOn(c, x - 3, y - 6, w + 6, h + 6, 14); c.fill();
+  c.fillStyle = gl; rrOn(c, x - 1.6, y - 4.6, w + 2.2, h + 4.6, 12.5); c.fill();
+  c.save(); rrOn(c, x - 3, y - 6, w + 6, h + 6, 14); c.clip();
+  c.fillStyle = 'rgba(120,70,0,0.28)'; c.fillRect(x + w - 3, y - 6, 7, h + 6);
+  c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(x - 3, y - 6, w + 6, 2.4); c.fillRect(x - 3, y - 6, 2.2, h + 6);
+  c.restore();
+  // hinge straps with rivets on both posts
+  for (const sx of [x - 1.4, x + w - 3.2]) for (let k = 0; k < 3; k++) {
+    const sy = y + 6 + k * ((h - 14) / 2);
+    c.fillStyle = shade(gd, 0.15); rrOn(c, sx, sy, 4.6, 5.4, 1.2); c.fill();
+    c.fillStyle = out; circleOn(c, sx + 2.3, sy + 2.7, 1.2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.65)'; circleOn(c, sx + 1.9, sy + 2.3, 0.45); c.fill();
+  }
+  // the inner bevel and the doorway
+  c.fillStyle = out; rrOn(c, x + 2.6, y + 0.6, w - 5.2, h - 0.6, 10.5); c.fill();
+  c.fillStyle = shade(gd, 0.1); rrOn(c, x + 3.4, y + 1.4, w - 6.8, h - 1.4, 10); c.fill();
+  if (locked) c.fillStyle = C.doorIn;
+  else { const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#fff2c4'); g.addColorStop(1, C.glow); c.fillStyle = g; }
+  rrOn(c, x + 4.4, y + 2.4, w - 8.8, h - 2.4, 9); c.fill();
+  c.save(); rrOn(c, x + 4.4, y + 2.4, w - 8.8, h - 2.4, 9); c.clip();
+  if (locked) {
+    // boarded up: three planks with dark joints and a shadow along the top
+    c.fillStyle = 'rgba(255,255,255,0.05)'; for (let k = 0; k < 3; k++) c.fillRect(x + 6 + k * ((w - 12) / 3), y + 2, (w - 12) / 3 - 1.4, h);
+    c.fillStyle = 'rgba(0,0,0,0.25)'; for (let k = 1; k < 3; k++) c.fillRect(x + 4.6 + k * ((w - 12) / 3), y + 2, 1.4, h);
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x + 4, y + 2, w - 8, 4);
+  } else {
+    // soft light rays slanting down, a lit rim along the top and a warmer floor
+    c.fillStyle = 'rgba(255,255,255,0.28)';
+    for (const [o, wd] of [[8, 7], [22, 4], [33, 9]]) { c.beginPath(); c.moveTo(x + o, y); c.lineTo(x + o + wd, y); c.lineTo(x + o + wd - 14, y + h); c.lineTo(x + o - 14, y + h); c.closePath(); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(x + 8, y + 3, w - 16, 1.4);
+    c.fillStyle = 'rgba(200,140,20,0.25)'; c.fillRect(x + 4, y + h - 8, w - 8, 8);
+  }
+  c.restore();
+  if (locked) {
+    const cx = x + w / 2, cy = y + h / 2 + 4;
+    c.lineCap = 'butt';
+    c.strokeStyle = out; c.lineWidth = 4.4; c.beginPath(); c.arc(cx, cy - 6, 6, Math.PI, 0); c.stroke();
+    c.strokeStyle = gl; c.lineWidth = 2.6; c.beginPath(); c.arc(cx, cy - 6, 6, Math.PI, 0); c.stroke();
+    c.fillStyle = out; rrOn(c, cx - 10, cy - 7, 20, 16, 3.5); c.fill();
+    c.fillStyle = gl; rrOn(c, cx - 9, cy - 6, 18, 14, 3); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(cx - 7.5, cy - 5, 15, 1.2);
+    c.fillStyle = 'rgba(120,70,0,0.3)'; c.fillRect(cx - 9, cy + 4, 18, 4);
+    c.fillStyle = C.doorIn; circleOn(c, cx, cy, 2.5); c.fill(); c.fillRect(cx - 0.9, cy, 1.8, 4);
+  }
+  // the keystone gem on top of the frame
+  const kx = x + w / 2, ky = y - 3.6;
+  c.fillStyle = out; c.beginPath(); c.moveTo(kx - 5.4, ky - 3); c.lineTo(kx + 5.4, ky - 3); c.lineTo(kx + 3.6, ky + 3.4); c.lineTo(kx - 3.6, ky + 3.4); c.closePath(); c.fill();
+  c.fillStyle = gl; c.beginPath(); c.moveTo(kx - 4.3, ky - 2.2); c.lineTo(kx + 4.3, ky - 2.2); c.lineTo(kx + 2.9, ky + 2.6); c.lineTo(kx - 2.9, ky + 2.6); c.closePath(); c.fill();
+  c.fillStyle = '#e8483a'; circleOn(c, kx, ky + 0.2, 1.7); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.8)'; circleOn(c, kx - 0.5, ky - 0.3, 0.6); c.fill();
+  // the brass threshold
+  c.fillStyle = out; rrOn(c, x - 4.2, y + h - 4.2, w + 8.4, 4.2, 1.6); c.fill();
+  c.fillStyle = gd; rrOn(c, x - 3.4, y + h - 3.6, w + 6.8, 3, 1.2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(x - 2.4, y + h - 3.4, w + 4.8, 0.8);
 }
 function drawKey(k) {
   if (k.got) return;
@@ -807,6 +918,7 @@ function drawKey(k) {
   ctx.restore();
 }
 function drawFlag(f) {
+  if (!artPlain()) return drawFlagRich(f);
   const x = f.x + 15, base = f.y + T;
   const plain = artPlain();
   if (!plain) { ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.ellipse(x, base, 7, 2.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = C.ink; rr(x - 5, base - 4, 10, 4, 1.5); ctx.fill(); }
@@ -821,6 +933,55 @@ function drawFlag(f) {
     ctx.strokeStyle = shade(fc, 0.3); ctx.lineWidth = 1.2; ctx.lineJoin = 'round'; ctx.stroke();
     ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.moveTo(x + 1.5, top + 8); ctx.lineTo(x + 22, top + 8 + wave); ctx.lineTo(x + 1.5, top + 16); ctx.closePath(); ctx.fill();
   }
+}
+// (rich props pass) a checkpoint flag: a bolted foot plate, a round metal pole (outlined, lit on the left, shaded on the
+// right) with two collars and a brass ball on top, and a cloth pennant with an outline, a sewn sleeve round the pole,
+// a shaded lower half, a lit top hem, stitching and a star (a dot while it is still down)
+// a five-point star path centred on (x, y)
+function flagStarPath(x, y, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, q = i % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); }
+  ctx.closePath();
+}
+function drawFlagRich(f) {
+  const x = f.x + 15, base = f.y + T, ink = C.ink, metal = mixCol(ink, '#9aa0c0', 0.38);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(x, base, 9, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+  // the foot plate and its bolts
+  ctx.fillStyle = ink; rr(x - 7, base - 5.4, 14, 5.4, 2); ctx.fill();
+  ctx.fillStyle = metal; rr(x - 6.2, base - 4.7, 12.4, 3.9, 1.5); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - 5.5, base - 4.4, 11, 0.8);
+  for (const bx of [x - 4, x + 4]) { ctx.fillStyle = ink; circle(bx, base - 2.6, 1); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.55)'; circle(bx - 0.3, base - 2.9, 0.4); ctx.fill(); }
+  // the pole
+  ctx.fillStyle = ink; ctx.fillRect(x - 2.3, base - 52, 4.6, 47);
+  ctx.fillStyle = metal; ctx.fillRect(x - 1.5, base - 52, 3, 47);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x - 1.2, base - 51, 0.9, 45);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 0.6, base - 52, 0.9, 47);
+  for (const cy of [base - 12, base - 33]) { ctx.fillStyle = ink; rr(x - 2.8, cy - 1.6, 5.6, 3.2, 1); ctx.fill(); ctx.fillStyle = metal; ctx.fillRect(x - 2.1, cy - 1, 4.2, 1.2); }
+  // the brass ball on top
+  ctx.fillStyle = C.goldDark; circle(x, base - 53.5, 3.4); ctx.fill();
+  ctx.fillStyle = C.gold; circle(x - 0.3, base - 53.8, 2.6); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.8)'; circle(x - 1.1, base - 54.7, 0.9); ctx.fill();
+  // the pennant
+  const fc = f.on ? C.grass : '#c4c0b8', dk = shade(fc, 0.38);
+  const wave = reduceMotion ? 0 : Math.sin(G.clock * 6) * 2;
+  const top = f.on ? base - 49 : base - 28, tipX = x + 23, tipY = top + 8 + wave;
+  const shape = () => { ctx.beginPath(); ctx.moveTo(x + 1.5, top); ctx.quadraticCurveTo(x + 12, top + 2 + wave * 0.5, tipX, tipY); ctx.quadraticCurveTo(x + 12, top + 14 + wave * 0.5, x + 1.5, top + 16); ctx.closePath(); };
+  ctx.fillStyle = dk; ctx.lineJoin = 'round'; ctx.strokeStyle = dk; ctx.lineWidth = 2.2; shape(); ctx.stroke();
+  ctx.fillStyle = fc; shape(); ctx.fill();
+  ctx.save(); shape(); ctx.clip();
+  ctx.fillStyle = 'rgba(0,0,0,0.13)'; ctx.fillRect(x, top + 8 + wave * 0.6, 26, 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.moveTo(x + 1.5, top + 0.6); ctx.quadraticCurveTo(x + 12, top + 2.6 + wave * 0.5, tipX, tipY); ctx.lineTo(tipX - 3, tipY - 0.2); ctx.quadraticCurveTo(x + 12, top + 4.2 + wave * 0.5, x + 1.5, top + 2.6); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // the sewn sleeve round the pole, with stitches
+  ctx.fillStyle = dk; rr(x - 0.6, top - 0.6, 5.4, 17.2, 1.5); ctx.fill();
+  ctx.fillStyle = shade(fc, 0.12); rr(x + 0.2, top + 0.2, 3.8, 15.6, 1.2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; for (let k = 0; k < 4; k++) ctx.fillRect(x + 5.3, top + 2 + k * 3.6, 0.8, 1.8);
+  // the emblem
+  const ex = x + 11, ey = top + 8 + wave * 0.45;
+  if (f.on) {
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; flagStarPath(ex + 0.6, ey + 0.6, 3.6); ctx.fill();
+    ctx.fillStyle = '#ffffff'; flagStarPath(ex, ey, 3.6); ctx.fill();
+  } else { ctx.fillStyle = shade(fc, 0.22); circle(ex, ey, 2.2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.45)'; circle(ex - 0.6, ey - 0.6, 0.8); ctx.fill(); }
 }
 function drawCrownShape(x, y, s) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
@@ -1132,22 +1293,62 @@ function paintSand(c, h, top, bot, v) {
 }
 function drawWater(x, y, tx, ty) {
   if (artPlain()) return drawWaterPlain(x, y, tx, ty);
-  const top = tile(tx, ty - 1) !== 'w', deep = tile(tx, ty - 1) === 'w' && tile(tx, ty - 2) === 'w';
-  ctx.fillStyle = deep ? 'rgba(40,110,190,0.84)' : 'rgba(70,150,220,0.8)'; ctx.fillRect(x, y + (top ? 6 : 0), T, T - (top ? 6 : 0));
+  const top = tile(tx, ty - 1) !== 'w', deep = tile(tx, ty - 1) === 'w' && tile(tx, ty - 2) === 'w', floor = tile(tx, ty + 1) !== 'w';
+  // (rich props pass) the still body of the water, one picture per look copied on whole pixels (no seams between
+  // tiles): depth shading, a faint web of light on the bottom, drifting specks and, on the floor, sand and pebbles
+  const v = hash(tx, ty) % 4;
+  blitSprite(artSprite('wat' + (top ? 1 : 0) + (deep ? 1 : 0) + (floor ? 1 : 0) + v, T, T, 0, 0, c => paintWater(c, top, deep, floor, hash(v * 17 + 3, 41))), x, y);
   // light ripples drifting through the water
   const ph = G.clock * 1.6 + tx * 2.3 + ty * 1.1;
-  ctx.strokeStyle = 'rgba(200,235,255,0.28)'; ctx.lineWidth = 1.2;
+  ctx.strokeStyle = 'rgba(200,235,255,0.3)'; ctx.lineWidth = 1.2; ctx.lineCap = 'round';
   const ry = y + (top ? 16 : 10) + Math.sin(ph) * 3;
   ctx.beginPath(); ctx.moveTo(x + 4, ry); ctx.quadraticCurveTo(x + 10, ry - 2, x + 16, ry); ctx.stroke();
+  if (!top) { const r2 = y + 22 + Math.sin(ph * 0.8 + 2) * 2.5; ctx.strokeStyle = 'rgba(200,235,255,0.18)'; ctx.beginPath(); ctx.moveTo(x + 14, r2); ctx.quadraticCurveTo(x + 20, r2 - 1.6, x + 26, r2); ctx.stroke(); }
   if (top) {
+    // the surface: a darker line where the light stops, the bright wavy band and a foam edge on top
+    // (the wave's phase follows the world x, so it runs on unbroken from one tile into the next)
+    const p2 = G.clock * 3, wy = i => y + 6 + Math.sin(p2 + (x + i * 5) * 0.18) * 1.6;
+    ctx.fillStyle = 'rgba(40,110,190,0.35)'; ctx.fillRect(x, y + 10, T, 1.6);
     ctx.fillStyle = 'rgba(190,230,255,0.92)';
-    const p2 = G.clock * 3 + tx * 1.7;
-    ctx.beginPath(); ctx.moveTo(x, y + 8);
-    for (let i = 0; i <= 6; i++) ctx.lineTo(x + i * 5, y + 6 + Math.sin(p2 + i * 0.9) * 1.6);
-    ctx.lineTo(x + T, y + 10); ctx.lineTo(x, y + 10); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x, wy(0));
+    for (let i = 1; i <= 6; i++) ctx.lineTo(x + i * 5, wy(i));
+    ctx.lineTo(x + T, y + 10.4); ctx.lineTo(x, y + 10.4); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 0; i <= 6; i++) i ? ctx.lineTo(x + i * 5, wy(i)) : ctx.moveTo(x, wy(0));
+    ctx.stroke();
     // a glint now and then
     const g = (Math.sin(G.clock * 2.1 + tx * 3.7) + 1) / 2;
     if (g > 0.8) { ctx.fillStyle = 'rgba(255,255,255,' + ((g - 0.8) * 4) + ')'; circle(x + 8 + (tx * 7) % 14, y + 6.5, 1.6); ctx.fill(); }
+  }
+}
+function paintWater(c, top, deep, floor, h) {
+  const y0 = top ? 6 : 0;
+  c.fillStyle = deep ? 'rgba(40,110,190,0.84)' : 'rgba(70,150,220,0.8)'; c.fillRect(0, y0, T, T - y0);
+  // deeper down is darker
+  c.fillStyle = 'rgba(20,60,130,0.14)'; c.fillRect(0, T - 12, T, 12);
+  c.fillStyle = 'rgba(20,60,130,0.1)'; c.fillRect(0, T - 5, T, 5);
+  // a faint web of light (it lines up from tile to tile: every strand starts and ends on a tile edge at the same height)
+  c.strokeStyle = 'rgba(210,240,255,0.13)'; c.lineWidth = 0.9;
+  c.beginPath(); c.moveTo(0, y0 + 9); c.bezierCurveTo(8, y0 + 5 + (h % 4), 18, y0 + 14 - (h >>> 3) % 4, T, y0 + 9); c.stroke();
+  c.beginPath(); c.moveTo(0, 24); c.bezierCurveTo(9, 20 + (h >>> 5) % 3, 20, 28 - (h >>> 7) % 3, T, 24); c.stroke();
+  c.beginPath(); c.moveTo(6 + (h >>> 9) % 6, y0 + 10); c.quadraticCurveTo(12, 18, 9 + (h >>> 11) % 8, 25); c.stroke();
+  // little specks drifting in the water
+  c.fillStyle = 'rgba(230,248,255,0.35)';
+  for (let i = 0; i < 3; i++) { circleOn(c, 3 + (h >>> (i * 5)) % 24, y0 + 4 + (h >>> (i * 5 + 3)) % (T - y0 - 8), 0.6 + (i % 2) * 0.3); c.fill(); }
+  if (floor) {
+    // the bottom: a strip of sunk sand with a few pebbles and a weed
+    c.fillStyle = 'rgba(150,140,100,0.45)'; c.beginPath(); c.moveTo(0, T - 3); c.quadraticCurveTo(T / 2, T - 5 - (h % 2), T, T - 3); c.lineTo(T, T); c.lineTo(0, T); c.closePath(); c.fill();
+    for (let i = 0; i < (h >>> 15) % 3; i++) {
+      const px = 5 + (h >>> (i * 6 + 1)) % 20, pr = 1.4 + (h >>> (i * 4 + 2)) % 2;
+      c.fillStyle = 'rgba(60,70,90,0.45)'; c.beginPath(); c.ellipse(px, T - 2, pr * 1.3, pr, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(200,220,240,0.3)'; circleOn(c, px - 0.5, T - 2.6, pr * 0.45); c.fill();
+    }
+    if (h % 3 === 0) {
+      const wx = 8 + (h >>> 13) % 14;
+      c.strokeStyle = 'rgba(60,140,100,0.55)'; c.lineWidth = 1.2; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(wx, T - 2); c.quadraticCurveTo(wx - 2.5, T - 7, wx + 0.5, T - 11); c.stroke();
+      c.beginPath(); c.moveTo(wx + 1.5, T - 2); c.quadraticCurveTo(wx + 4, T - 6, wx + 2.5, T - 9); c.stroke();
+    }
   }
 }
 function drawHUD() {

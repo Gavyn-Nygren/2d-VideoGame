@@ -445,10 +445,12 @@ function drawGolfCaves(camX) {
   const L = G.level, vx0 = Math.floor(camX / T), vx1 = Math.floor((camX + W) / T);
   for (const [x0, x1, y0, y1] of L.def.cave || []) {
     for (let tx = Math.max(x0, vx0); tx <= Math.min(x1, vx1); tx++) for (let ty = y0; ty <= y1; ty++) {
-      if (golfSolid(tx, ty)) continue;
+      // (a bumper's cell gets the cave behind it too: the bumper's rounded corners would show the sky otherwise)
+      const ch = tile(tx, ty);
+      if (ch !== 'X' && golfSolid(tx, ty)) continue;
       const x = tx * T, y = ty * T, h = hash(tx, ty);
       // (rich props pass) one picture per look: packed earth with strata, embedded stones, roots hanging from the roof
-      const roof = golfSolid(tx, ty - 1), v = h % 8;
+      const up = tile(tx, ty - 1), roof = up !== 'X' && golfSolid(tx, ty - 1), v = h % 8;
       const sp = artSprite('gcave' + v + (roof ? 1 : 0), T, T, 0, 0, c => paintGolfCave(c, hash(v * 11 + 1, 3), roof));
       blitSprite(sp, x, y);
     }
@@ -499,9 +501,16 @@ function drawGolf() {
   ctx.fillStyle = '#ffffff'; ctx.fillRect(c.x0 + 1, c.y0 - 0.5, 3, 1.5); ctx.fillRect(c.x0 + T - 4, c.y0 - 0.5, 3, 1.5);
   const fx = c.x0 + T / 2 + 6, wave = Math.sin(G.clock * 6) * 3;
   // the pin: a white pole with red bands and a ball on top, the flag with a darker edge and a shadow fold
+  // (rich props pass) the pin outlined, lit down its left side and shaded down its right, with a ferrule at the foot
+  ctx.fillStyle = '#5b5876'; ctx.fillRect(fx - 2.3, c.y0 - 70, 4.6, 70 + T - 4);
   ctx.fillStyle = '#e9e4f5'; ctx.fillRect(fx - 1.5, c.y0 - 70, 3, 70 + T - 4);
   ctx.fillStyle = '#e8483a'; for (let k = 0; k < 4; k++) ctx.fillRect(fx - 1.5, c.y0 - 40 + k * 14, 3, 6);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(fx - 1.3, c.y0 - 69, 0.8, 68 + T - 4);
+  ctx.fillStyle = 'rgba(40,30,60,0.25)'; ctx.fillRect(fx + 0.6, c.y0 - 70, 0.9, 70 + T - 4);
+  ctx.fillStyle = '#9095b0'; ctx.fillRect(fx - 2.3, c.y0 + T - 9, 4.6, 5);
+  ctx.fillStyle = '#5b5876'; circle(fx, c.y0 - 71, 3.4); ctx.fill();
   ctx.fillStyle = '#ffffff'; circle(fx, c.y0 - 71, 2.6); ctx.fill();
+  ctx.fillStyle = '#c9cde0'; ctx.beginPath(); ctx.arc(fx, c.y0 - 71, 2.6, 0.2, Math.PI - 0.2); ctx.fill();
   const fc = g.phase === 'sunk' ? C.grass : C.gold;
   ctx.fillStyle = fc; ctx.strokeStyle = shade(fc, 0.35); ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
   ctx.beginPath(); ctx.moveTo(fx + 1.5, c.y0 - 70); ctx.quadraticCurveTo(fx + 18, c.y0 - 66 + wave * 0.6, fx + 34, c.y0 - 58 + wave); ctx.quadraticCurveTo(fx + 18, c.y0 - 50 + wave * 0.4, fx + 1.5, c.y0 - 46); ctx.closePath(); ctx.fill(); ctx.stroke();

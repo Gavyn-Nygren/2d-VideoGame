@@ -966,7 +966,28 @@
       }
     }
     ctx.restore();
-    // slab joints on the pavement
+    // (rich props pass) paving slabs: each slab its own tone, a lit left edge by its joint, a chip or a hairline crack
+    // on some, a gum spot or a pebble now and then; the curb gets a lit lip and a dark joint every few slabs.
+    // Each kind of mark is gathered into one path and filled once (one fill per colour, not per slab).
+    const tones = [null, new Path2D(), new Path2D(), new Path2D()], lit = new Path2D(), cracks = new Path2D(), spots = new Path2D(), lipD = new Path2D(), lipL = new Path2D(), cj = new Path2D();
+    for (let x = Math.floor(x0 / 30) * 30; x < x1; x += 30) {
+      const hs = hash(x, 913), gx = R.g[clamp(x, 0, R.len - 1)], gx2 = R.g[clamp(x + 29, 0, R.len - 1)];
+      if (Math.abs(gx2 - gx) > 2) continue; // a slope or a step: leave the plain pavement
+      const tn = hs % 4;
+      if (tn) tones[tn].rect(x + 1.5, gx + 1.6, 28.5, 5.2);
+      lit.rect(x + 1.5, gx + 1.6, 1, 5.2);
+      if ((hs >>> 3) % 3 === 0) { const cx = x + 6 + (hs >>> 5) % 16; cracks.moveTo(cx, gx + 1.5); cracks.lineTo(cx + 2, gx + 3.5); cracks.lineTo(cx + 1, gx + 5); cracks.lineTo(cx + 4, gx + 6.8); }
+      if ((hs >>> 7) % 5 === 0) { const sx = x + 8 + (hs >>> 9) % 14; spots.moveTo(sx + 1.8, gx + 4.4); spots.ellipse(sx, gx + 4.4, 1.8, 0.9, 0, 0, Math.PI * 2); }
+      lipD.rect(x, gx + 7.2, 30, 0.9); lipL.rect(x, gx + 7.2, 30, 0.6);
+      if (x % 90 === 0) cj.rect(x, gx + 7.2, 1.2, 3.8);
+    }
+    ['', 'rgba(255,250,240,0.35)', 'rgba(120,95,70,0.1)', 'rgba(200,170,130,0.16)'].forEach((col, k) => { if (k) { ctx.fillStyle = col; ctx.fill(tones[k]); } });
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fill(lit);
+    ctx.strokeStyle = 'rgba(90,70,55,0.35)'; ctx.lineWidth = 0.8; ctx.stroke(cracks);
+    ctx.fillStyle = 'rgba(110,90,80,0.45)'; ctx.fill(spots);
+    ctx.fillStyle = 'rgba(80,60,50,0.12)'; ctx.fill(lipD);
+    ctx.fillStyle = 'rgba(255,245,230,0.35)'; ctx.fill(lipL);
+    ctx.fillStyle = 'rgba(80,60,50,0.3)'; ctx.fill(cj);
     ctx.fillStyle = 'rgba(80,60,50,0.22)';
     for (let x = Math.floor(x0 / 30) * 30; x < x1; x += 30) ctx.fillRect(x, R.g[clamp(x, 0, R.len - 1)] + 1, 1.5, 6);
     ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -1193,10 +1214,28 @@
     ctx.save(); ctx.translate(st.X, (g.hl + g.hr) / 2); ctx.rotate(g.a);
     const half = PZ.span / 2 + 12;
     ctx.fillStyle = 'rgba(28,26,54,0.18)'; rr(-half + 2, 1, half * 2, 4, 2); ctx.fill();
-    ctx.fillStyle = '#8a5833'; rr(-half, -PZ.trayTh, half * 2, PZ.trayTh, 3); ctx.fill();
-    ctx.fillStyle = '#c98b5a'; rr(-half, -PZ.trayTh, half * 2, PZ.trayTh - 2.5, 3); ctx.fill();
-    ctx.strokeStyle = 'rgba(138,88,51,0.5)'; ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(-half + 6, -4.5); ctx.lineTo(-20, -4); ctx.moveTo(10, -5); ctx.lineTo(half - 8, -4.6); ctx.stroke();
+    // (rich props pass) the board: outlined in dark wood, a lit top edge, a shaded front, grain, a knot, two board
+    // seams, brass corner caps with screws and end grain at each end
+    const tt = PZ.trayTh;
+    ctx.fillStyle = '#4a2e1b'; rr(-half - 0.8, -tt - 0.8, half * 2 + 1.6, tt + 1.6, 3.6); ctx.fill();
+    ctx.fillStyle = '#8a5833'; rr(-half, -tt, half * 2, tt, 3); ctx.fill();
+    ctx.fillStyle = '#c98b5a'; rr(-half, -tt, half * 2, tt - 2.5, 3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.32)'; ctx.fillRect(-half + 2.5, -tt + 0.3, half * 2 - 5, 1);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(-half + 1, -tt + 3.4, half * 2 - 2, 1.1);
+    ctx.strokeStyle = 'rgba(138,88,51,0.55)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(-half + 6, -4.5); ctx.quadraticCurveTo(-34, -3.6, -20, -4); ctx.moveTo(10, -5); ctx.quadraticCurveTo(30, -4, half - 8, -4.6); ctx.moveTo(-half + 10, -2.4); ctx.lineTo(-24, -2.6); ctx.moveTo(18, -2.8); ctx.lineTo(half - 12, -2.5); ctx.stroke();
+    ctx.strokeStyle = 'rgba(110,65,35,0.6)'; ctx.beginPath(); ctx.ellipse(-30, -4, 2.4, 1.1, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#4a2e1b'; for (const sx of [-half * 0.55, half * 0.55]) ctx.fillRect(sx, -tt, 0.9, tt);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; for (const sx of [-half * 0.55, half * 0.55]) ctx.fillRect(sx + 0.9, -tt + 0.5, 0.7, tt - 3);
+    for (const d of [-1, 1]) {
+      const ex = d * half;
+      ctx.strokeStyle = 'rgba(90,55,30,0.5)'; ctx.lineWidth = 0.6;
+      for (let r = 1.2; r < 3.6; r += 1.2) { ctx.beginPath(); ctx.arc(ex - d * 0.5, -tt / 2, r, d > 0 ? Math.PI / 2 : -Math.PI / 2, d > 0 ? Math.PI * 1.5 : Math.PI / 2); ctx.stroke(); }
+      ctx.fillStyle = '#8f6a1e'; rr(ex - (d > 0 ? 6 : 0), -tt - 0.8, 6, tt + 1.6, 1.5); ctx.fill();
+      ctx.fillStyle = '#e0b04a'; rr(ex - (d > 0 ? 5.4 : -0.6), -tt - 0.2, 4.8, tt - 1.4, 1.2); ctx.fill();
+      ctx.fillStyle = '#5a4012'; circle(ex - d * 3, -tt / 2 - 0.3, 0.9); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(ex - d * 3 - 0.3, -tt / 2 - 0.7, 0.35); ctx.fill();
+    }
     // the level vial
     const off = clamp(-g.a * 70, -9, 9), ok = Math.abs(st.tilt) <= PZ.dead, far = Math.abs(st.tilt) > PZ.dead + 0.12;
     ctx.fillStyle = '#2f3142'; rr(-14, -5.5, 28, 7, 3.5); ctx.fill();

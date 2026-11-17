@@ -619,19 +619,37 @@ function snowDrawForts() {
     if (fl && L.grid[fl.ty][fl.tx] === 'P' && tile(fl.tx, fl.ty - 1) !== 'P') {
       const px = fl.tx * T + (k === 0 ? 5 : T - 5), py = fl.ty * T - 10, top = py - 34, d = k === 0 ? 1 : -1;
       const wave = reduceMotion ? 0 : Math.sin(st.vt * 5 + k) * 2.5;
-      ctx.strokeStyle = '#6b4a35'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, top); ctx.stroke();
+      // (rich props pass) a wooden pole: outlined, lit on one side, with a snow cuff at its foot and a rope tie
+      ctx.fillStyle = '#3e2a1e'; ctx.fillRect(px - 2.1, top, 4.2, py - top);
+      ctx.fillStyle = '#7a5440'; ctx.fillRect(px - 1.3, top, 2.6, py - top);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(px - 1.1, top + 1, 0.8, py - top - 2);
+      ctx.fillStyle = 'rgba(62,42,30,0.6)'; for (let g = top + 20; g < py - 2; g += 6) ctx.fillRect(px - 0.2, g, 0.8, 2.4);
+      ctx.fillStyle = '#f2ead8'; ctx.fillRect(px - 2.4, top + 16, 4.8, 1.2); ctx.fillRect(px - 2.4, top + 18.4, 4.8, 1.2);
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(px, py - 0.5, 4.2, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(150,180,215,0.6)'; ctx.fillRect(px - 3.6, py, 7.2, 0.9);
       ctx.fillStyle = PCOL[k]; ctx.strokeStyle = PDARK[k]; ctx.lineWidth = 1.5; ctx.beginPath();
       ctx.moveTo(px, top + 1); ctx.quadraticCurveTo(px + d * 12, top + 1 + wave, px + d * 24, top + 7 + wave * 0.6);
       ctx.quadraticCurveTo(px + d * 12, top + 13 + wave, px, top + 15); ctx.closePath(); ctx.fill(); ctx.stroke();
       text(NAMES[k][0], px + d * 9, top + 8.5, 10, '#ffffff', 'center');
-      ctx.fillStyle = '#ffffff'; circle(px, top - 1, 2.6); ctx.fill();
+      ctx.fillStyle = '#b9850f'; circle(px, top - 1, 3.2); ctx.fill();
+      ctx.fillStyle = '#ffd25e'; circle(px - 0.3, top - 1.3, 2.4); ctx.fill();
+      ctx.fillStyle = '#ffffff'; circle(px - 0.6, top - 2.6, 1.6); ctx.fill(); // a dab of snow on the knob
     }
     const pl = st.piles[k];
     if (pl) {
       const near = G.players[k].alive && Math.abs(G.players[k].x + G.players[k].w / 2 - pl.x) < SNOW.pileR;
       if (near && st.pl && st.pl[k].hand <= 0 && !st.pl[k].mega) { ctx.fillStyle = 'rgba(255,215,90,0.35)'; ctx.beginPath(); ctx.ellipse(pl.x, pl.y - 6, 22, 12, 0, 0, Math.PI * 2); ctx.fill(); }
-      ctx.fillStyle = SNOW_INK + '0.16)'; ctx.beginPath(); ctx.ellipse(pl.x, pl.y, 20, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = SNOW_INK + '0.16)'; ctx.beginPath(); ctx.ellipse(pl.x, pl.y, 22, 3.8, 0, 0, Math.PI * 2); ctx.fill();
+      // (rich props pass) a heaped drift of loose snow under the pile, shaded blue on its far side, with crumbs round it
+      ctx.fillStyle = '#b9cce4'; ctx.beginPath(); ctx.ellipse(pl.x + 1, pl.y - 1.2, 21, 4.6, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#f4f9ff'; ctx.beginPath(); ctx.ellipse(pl.x - 1, pl.y - 1.4, 19, 4, 0, Math.PI, 0); ctx.fill();
+      for (const [dx, r] of [[-22, 1.6], [-18, 1.1], [19, 1.4], [23, 1]]) { ctx.fillStyle = '#d6e4f2'; circle(pl.x + dx, pl.y - 0.8, r); ctx.fill(); ctx.fillStyle = '#ffffff'; circle(pl.x + dx - 0.3, pl.y - 1.1, r * 0.6); ctx.fill(); }
       for (const [dx, dy] of [[-12, -5], [0, -5], [12, -5], [-6, -14], [6, -14], [0, -23]]) snowBallShape(pl.x + dx, pl.y + dy, 5.5, '#97adca');
+      // packed-snow grain and a sparkle on the balls
+      ctx.fillStyle = 'rgba(150,180,215,0.55)';
+      for (const [dx, dy] of [[-10, -3], [2, -2], [13, -6], [-5, -12], [7, -11], [1, -21]]) { circle(pl.x + dx, pl.y + dy, 0.6); ctx.fill(); }
+      const sp = reduceMotion ? 0.6 : (Math.sin(st.vt * 2.4 + k * 2) + 1) / 2;
+      if (sp > 0.45) { const r2 = 1 + (sp - 0.45) * 5, sx = pl.x - 2, sy = pl.y - 26; ctx.fillStyle = 'rgba(255,255,255,' + Math.min(1, sp + 0.2) + ')'; ctx.fillRect(sx - r2, sy - 0.4, r2 * 2, 0.8); ctx.fillRect(sx - 0.4, sy - r2, 0.8, r2 * 2); }
     }
   }
 }
