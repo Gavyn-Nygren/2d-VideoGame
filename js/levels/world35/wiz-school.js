@@ -144,7 +144,9 @@ const RICH = (() => {
     else {
       sp = document.createElement('canvas');
       sp.width = Math.ceil((w + pad * 2) * sc); sp.height = Math.ceil((h + pad * 2) * sc);
-      const c = sp.getContext('2d'); c.scale(sc, sc); c.translate(pad, pad); c.lineJoin = 'round'; c.lineCap = 'round';
+      // the art is stretched a hair to fill the whole-pixel picture, so its edges are never half see-through: chunks and
+      // tiles laid side by side then never show a thin seam where the screen scale is not a whole number
+      const c = sp.getContext('2d'); c.scale(sp.width / (w + pad * 2), sp.height / (h + pad * 2)); c.translate(pad, pad); c.lineJoin = 'round'; c.lineCap = 'round';
       paint(c, w, h);
       sp.pad = pad; pics.set(k, sp); picPx += sp.width * sp.height;
       // keep the cache to about 60 megapixels or 600 pictures; the least recently used go first
