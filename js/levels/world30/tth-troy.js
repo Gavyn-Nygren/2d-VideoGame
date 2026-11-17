@@ -824,7 +824,7 @@ function tthTroyScenery(c) {
 }
 function tthTroySign(ph, s) {
   const y = tthTroyGy(ph, s.x);
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillStyle = TTHTROYC.woodDk; ctx.fillRect(s.x - 3, y - 64, 6, 64); ctx.strokeRect(s.x - 3, y - 64, 6, 64);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillStyle = TTHTROYC.woodDk; ctx.fillRect(s.x - 3, y - 64, 6, 64); ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(s.x - 3, y - 64, 2, 64); ctx.strokeRect(s.x - 3, y - 64, 6, 64);
   ctx.fillStyle = s.kind === 'ramp' ? '#9fe07f' : '#ffd23f'; rr(s.x - 24, y - 104, 48, 44, 8); ctx.fill(); ctx.stroke();
   ctx.fillStyle = C.ink; ctx.lineWidth = 3;
   if (s.kind === 'ramp') { ctx.beginPath(); ctx.moveTo(s.x - 14, y - 70); ctx.lineTo(s.x + 14, y - 86); ctx.lineTo(s.x + 14, y - 70); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(s.x - 6, y - 90); ctx.lineTo(s.x + 6, y - 97); ctx.moveTo(s.x + 1, y - 98); ctx.lineTo(s.x + 6, y - 97); ctx.lineTo(s.x + 3, y - 92); ctx.stroke(); }
@@ -876,19 +876,20 @@ function tthTroyDrawGuard(x, y, o) {
   else if (o.mark === 'z') { for (let k = 0; k < 3; k++) { const u = (t * 0.5 + k / 3) % 1; ctx.globalAlpha *= 1 - u; text('z', x + 10 + u * 16 + k * 2, y - 58 - u * 26, 11 + u * 8, '#ffffff', 'center'); ctx.globalAlpha /= 1 - u; } }
 }
 // the road from xa to xb (world): a filled strip that follows the ramps
-function tthTroyDrawRoad(ph, xa, xb, top, body, edge) {
-  const cam = G.mst.cam, a = Math.max(xa, cam.x - 30), b = Math.min(xb, cam.x + W + 30);
+function tthTroyDrawRoad(ph, xa, xb, top, body, edge, lo, hi) {
+  const cam = G.mst.cam, a = Math.max(xa, lo != null ? lo : cam.x - 30), b = Math.min(xb, hi != null ? hi : cam.x + W + 30);
   if (b <= a) return;
-  ctx.beginPath(); ctx.moveTo(a, H + 12);
-  for (let x = a; x < b; x += 24) ctx.lineTo(x, tthTroyGy(ph, x));
+  const a24 = Math.ceil(a / 24) * 24;   // (sampled on a fixed 24 px grid, so the line doesn't shimmer as the camera moves)
+  ctx.beginPath(); ctx.moveTo(a, H + 12); ctx.lineTo(a, tthTroyGy(ph, a));
+  for (let x = a24; x < b; x += 24) ctx.lineTo(x, tthTroyGy(ph, x));
   ctx.lineTo(b, tthTroyGy(ph, b)); ctx.lineTo(b, H + 12); ctx.closePath();
   ctx.fillStyle = body; ctx.fill();
-  ctx.beginPath();
-  for (let x = a; x < b; x += 24) ctx.lineTo(x, tthTroyGy(ph, x) + 6);
+  ctx.beginPath(); ctx.moveTo(a, tthTroyGy(ph, a) + 6);
+  for (let x = a24; x < b; x += 24) ctx.lineTo(x, tthTroyGy(ph, x) + 6);
   ctx.lineTo(b, tthTroyGy(ph, b) + 6);
   ctx.strokeStyle = top; ctx.lineWidth = 12; ctx.lineCap = 'butt'; ctx.stroke();
-  ctx.beginPath();
-  for (let x = a; x < b; x += 24) ctx.lineTo(x, tthTroyGy(ph, x));
+  ctx.beginPath(); ctx.moveTo(a, tthTroyGy(ph, a));
+  for (let x = a24; x < b; x += 24) ctx.lineTo(x, tthTroyGy(ph, x));
   ctx.lineTo(b, tthTroyGy(ph, b));
   ctx.strokeStyle = edge || C.ink; ctx.lineWidth = 3; ctx.stroke();
 }
@@ -943,31 +944,59 @@ function tthTroyDrawBack(st) {
     const gy = tthTroyGy(ph, tr.x), s = tr.s;
     if (tr.bush) { ctx.fillStyle = '#5f7a3a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(tr.x - 14 * s, gy - 8, 14 * s, Math.PI, 0); ctx.arc(tr.x + 6 * s, gy - 12, 18 * s, Math.PI, 0); ctx.arc(tr.x + 26 * s, gy - 6, 12 * s, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); continue; }
     ctx.lineWidth = 3; ctx.fillStyle = '#7a5636'; ctx.beginPath(); ctx.moveTo(tr.x - 7 * s, gy + 4); ctx.quadraticCurveTo(tr.x - 2 * s, gy - 30 * s, tr.x - 10 * s, gy - 58 * s); ctx.lineTo(tr.x + 6 * s, gy - 58 * s); ctx.quadraticCurveTo(tr.x + 4 * s, gy - 30 * s, tr.x + 9 * s, gy + 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // (art pass) a twisted olive trunk: bark furrows, a lit side, a knot hole
+    ctx.strokeStyle = 'rgba(60,36,20,0.55)'; ctx.lineWidth = 1.4; ctx.beginPath();
+    for (const dx of [-3, 1, 4]) { ctx.moveTo(tr.x + dx * s, gy - 2); ctx.quadraticCurveTo(tr.x + (dx + 3) * s, gy - 30 * s, tr.x + (dx - 4) * s, gy - 56 * s); }
+    ctx.stroke(); ctx.strokeStyle = 'rgba(255,230,190,0.3)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(tr.x - 5 * s, gy - 2); ctx.quadraticCurveTo(tr.x - 1 * s, gy - 30 * s, tr.x - 8 * s, gy - 56 * s); ctx.stroke();
+    ctx.fillStyle = '#3e2a1a'; ctx.beginPath(); ctx.ellipse(tr.x + 1 * s, gy - 28 * s, 2.2 * s, 3.4 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
     ctx.fillStyle = '#6f8a48'; ctx.beginPath(); ctx.ellipse(tr.x - 2 * s, gy - 78 * s, 40 * s, 28 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#8aa65a'; ctx.beginPath(); ctx.ellipse(tr.x - 12 * s, gy - 86 * s, 18 * s, 11 * s, -0.3, 0, Math.PI * 2); ctx.fill();
+    // (art pass) the crown in clumps of silvery olive leaves: a shaded underside, lit clumps on top, little leaves and olives
+    ctx.save(); ctx.beginPath(); ctx.ellipse(tr.x - 2 * s, gy - 78 * s, 38.5 * s, 26.5 * s, 0, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = 'rgba(40,60,30,0.3)'; ctx.beginPath(); ctx.ellipse(tr.x + 4 * s, gy - 62 * s, 40 * s, 16 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7f9a55'; ctx.beginPath();
+    for (let k = 0; k < 7; k++) { const a = k / 7 * Math.PI * 2 + tr.x, rx = tr.x - 2 * s + Math.cos(a) * 22 * s, ry = gy - 82 * s + Math.sin(a) * 12 * s; ctx.moveTo(rx + 11 * s, ry); ctx.ellipse(rx, ry, 11 * s, 7 * s, 0, 0, Math.PI * 2); }
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(214,226,180,0.75)'; ctx.lineWidth = 1.6; ctx.beginPath();
+    for (let k = 0; k < 16; k++) { const h2 = hash(tr.x + k, 61), lx = tr.x - 2 * s + ((h2 % 70) - 35) * s, ly = gy - 78 * s + (((h2 >>> 7) % 44) - 22) * s, a = ((h2 >>> 13) % 7) / 7 * Math.PI; ctx.moveTo(lx, ly); ctx.lineTo(lx + Math.cos(a) * 4 * s, ly + Math.sin(a) * 2 * s); }
+    ctx.stroke();
+    ctx.fillStyle = '#3b3550'; for (let k = 0; k < 5; k++) { const h2 = hash(tr.x + k, 67); circle(tr.x - 2 * s + ((h2 % 56) - 28) * s, gy - 70 * s + ((h2 >>> 6) % 16) * s, 1.8 * s); ctx.fill(); }
+    ctx.restore();
   }
   // --- the square: a temple front, steps, the wall the horse stops at ---
   if (c.goal + 700 > L && c.goal - 260 < R) {
     const gx = c.goal, gy = tthTroyGy(ph, gx), bx = gx + 196;
     ctx.lineWidth = 3; ctx.strokeStyle = C.ink;
     ctx.fillStyle = '#e4d8bf'; ctx.fillRect(bx + 60, 250, 330, gy - 250); ctx.strokeRect(bx + 60, 250, 330, gy - 250);
-    ctx.fillStyle = '#f2e9d6'; for (let k = 0; k < 5; k++) { const cx2 = bx + 82 + k * 70; ctx.fillRect(cx2, 262, 22, gy - 262); ctx.strokeRect(cx2, 262, 22, gy - 262); }
+    TTA.stones(bx + 61.5, 251.5, 327, gy - 253, 9, '#e4d8bf', { bw: 48, bh: 20, lit: 0.22, dk: 0.16 });
+    ctx.fillStyle = 'rgba(40,30,50,0.25)'; ctx.fillRect(bx + 61.5, 251.5, 327, 14);
+    ctx.fillStyle = '#f2e9d6'; for (let k = 0; k < 5; k++) { const cx2 = bx + 82 + k * 70; ctx.fillRect(cx2, 262, 22, gy - 262); ctx.fillStyle = 'rgba(120,100,80,0.2)'; ctx.fillRect(cx2 + 14, 262, 8, gy - 262); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(cx2 + 2, 262, 2.5, gy - 262); ctx.strokeStyle = 'rgba(120,100,80,0.4)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (const fx of [7, 11, 15]) { ctx.moveTo(cx2 + fx, 266); ctx.lineTo(cx2 + fx, gy - 4); } ctx.stroke(); ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.strokeRect(cx2, 262, 22, gy - 262); ctx.fillStyle = '#f2e9d6'; }
     ctx.fillStyle = Q.roof; ctx.beginPath(); ctx.moveTo(bx + 40, 252); ctx.lineTo(bx + 225, 186); ctx.lineTo(bx + 410, 252); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#ffd23f'; circle(bx + 225, 228, 11); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#d6c9b0'; for (let k = 0; k < 3; k++) { ctx.fillRect(bx + k * 16, gy - 14 - k * 14, 460, 15 + k * 14); ctx.strokeRect(bx + k * 16, gy - 14 - k * 14, 460, 15 + k * 14); }
+    ctx.fillStyle = '#d6c9b0'; for (let k = 0; k < 3; k++) { ctx.fillRect(bx + k * 16, gy - 14 - k * 14, 460, 15 + k * 14); TTA.stones(bx + k * 16 + 1.5, gy - 14 - k * 14 + 1.5, 457, 12, 20 + k, '#d6c9b0', { bw: 58, bh: 14, wx: bx + k * 30, wy: gy - 14 - k * 14 }); ctx.strokeRect(bx + k * 16, gy - 14 - k * 14, 460, 15 + k * 14); }
   }
   for (const g of c.guards) {
     if (g.x < L - 90 || g.x > R + 90) continue;
     const gy = tthTroyGy(ph, g.x);
     if (g.perch === 'tower') {
       ctx.lineWidth = 3; ctx.fillStyle = Q.woodDk;
-      for (const dx of [-30, 24]) { ctx.fillRect(g.x + dx, g.py, 7, gy - g.py + 6); ctx.strokeRect(g.x + dx, g.py, 7, gy - g.py + 6); }
+      for (const dx of [-30, 24]) { ctx.fillRect(g.x + dx, g.py, 7, gy - g.py + 6); TTA.wood(g.x + dx, g.py, 7, gy - g.py + 6, g.x + dx, Q.woodDk, { knots: false }); ctx.strokeRect(g.x + dx, g.py, 7, gy - g.py + 6); }
       ctx.lineWidth = 5; ctx.strokeStyle = Q.woodDk; ctx.beginPath(); ctx.moveTo(g.x - 26, gy - 20); ctx.lineTo(g.x + 27, g.py + 60); ctx.moveTo(g.x + 27, gy - 20); ctx.lineTo(g.x - 26, g.py + 60); ctx.stroke();
-      ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillStyle = Q.wood; rr(g.x - 44, g.py, 88, 11, 4); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = Q.woodDk; for (const dx of [-38, 33]) { ctx.fillRect(g.x + dx, g.py - 100, 5, 100); }
-      ctx.fillStyle = '#d9b86a'; ctx.beginPath(); ctx.moveTo(g.x - 54, g.py - 98); ctx.lineTo(g.x, g.py - 126); ctx.lineTo(g.x + 54, g.py - 98); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillStyle = Q.wood; rr(g.x - 44, g.py, 88, 11, 4); ctx.fill(); TTA.wood(g.x - 43, g.py + 1, 86, 9, g.x, Q.wood, { nails: true }); rr(g.x - 44, g.py, 88, 11, 4); ctx.stroke();
+      ctx.fillStyle = Q.woodDk; for (const dx of [-38, 33]) { ctx.fillRect(g.x + dx, g.py - 100, 5, 100); ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(g.x + dx, g.py - 100, 1.5, 100); ctx.fillStyle = Q.woodDk; }
+      ctx.fillStyle = '#d9b86a'; ctx.beginPath(); ctx.moveTo(g.x - 54, g.py - 98); ctx.lineTo(g.x, g.py - 126); ctx.lineTo(g.x + 54, g.py - 98); ctx.closePath(); ctx.fill();
+      // (art pass) reed thatch: bundles fanning from the peak, a shaded eave, a tied ridge
+      ctx.save(); ctx.clip(); ctx.strokeStyle = 'rgba(140,100,40,0.6)'; ctx.lineWidth = 1.3; ctx.beginPath();
+      for (let k = -10; k <= 10; k++) { ctx.moveTo(g.x + k * 0.6, g.py - 124); ctx.lineTo(g.x + k * 5.4, g.py - 98); }
+      ctx.stroke(); ctx.fillStyle = 'rgba(90,60,20,0.3)'; ctx.fillRect(g.x - 56, g.py - 104, 112, 8);
+      ctx.strokeStyle = 'rgba(255,245,200,0.5)'; ctx.beginPath(); for (let k = -9; k <= 9; k += 3) { ctx.moveTo(g.x + k * 0.6 - 1, g.py - 122); ctx.lineTo(g.x + k * 5.4 - 2, g.py - 100); } ctx.stroke();
+      ctx.restore(); ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(g.x - 54, g.py - 98); ctx.lineTo(g.x, g.py - 126); ctx.lineTo(g.x + 54, g.py - 98); ctx.closePath(); ctx.stroke();
+      ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(g.x - 7, g.py - 120); ctx.lineTo(g.x + 7, g.py - 120); ctx.stroke(); ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
     } else if (g.perch === 'col') {
-      ctx.lineWidth = 3; ctx.fillStyle = '#efe6d2'; ctx.fillRect(g.x - 13, g.py + 10, 26, gy - g.py); ctx.strokeRect(g.x - 13, g.py + 10, 26, gy - g.py);
+      ctx.lineWidth = 3; ctx.fillStyle = '#efe6d2'; ctx.fillRect(g.x - 13, g.py + 10, 26, gy - g.py);
+      ctx.fillStyle = 'rgba(120,100,80,0.18)'; ctx.fillRect(g.x + 4, g.py + 10, 9, gy - g.py); ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(g.x - 11, g.py + 10, 3, gy - g.py);
+      ctx.strokeStyle = 'rgba(150,130,110,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); for (let y2 = g.py + 26; y2 < gy - 6; y2 += 34) { ctx.moveTo(g.x - 13, y2); ctx.lineTo(g.x + 13, y2); } ctx.moveTo(g.x - 9, g.py + 40); ctx.lineTo(g.x - 4, g.py + 52); ctx.lineTo(g.x - 6, g.py + 62); ctx.stroke();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.strokeRect(g.x - 13, g.py + 10, 26, gy - g.py);
       ctx.strokeStyle = 'rgba(28,26,54,0.25)'; ctx.lineWidth = 2; ctx.beginPath(); for (const dx of [-5, 3]) { ctx.moveTo(g.x + dx, g.py + 16); ctx.lineTo(g.x + dx, gy - 6); } ctx.stroke();
       ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillStyle = '#f6efdf'; rr(g.x - 22, g.py, 44, 12, 4); ctx.fill(); ctx.stroke(); rr(g.x - 19, gy - 10, 38, 12, 3); ctx.fill(); ctx.stroke();
     }
@@ -976,30 +1005,61 @@ function tthTroyDrawBack(st) {
   if (c.gateX + 150 > L && c.wallX0 < R) {
     const wa = Math.max(c.wallX0, L), wb = Math.min(c.gateX + 130, R), top = K.perchY;
     ctx.fillStyle = Q.stone; ctx.lineWidth = 3; ctx.fillRect(wa, top, wb - wa, 260);
+    // (art pass) dressed blocks of the wall: each its own tone, lit tops, chipped corners, speckle, moss along the foot
+    TTA.stones(wa, top + 9, wb - wa, 251, 3, Q.stone, { bw: 66, bh: 36, wx: 0, wy: top + 30, moss: false, mortar: 'rgba(28,26,54,0.3)' });
     ctx.fillStyle = Q.stoneLt; ctx.fillRect(wa, top, wb - wa, 9);
-    ctx.strokeStyle = 'rgba(28,26,54,0.22)'; ctx.lineWidth = 2; ctx.beginPath();
-    for (let row = 0; row < 6; row++) { const y = top + 30 + row * 36; ctx.moveTo(wa, y); ctx.lineTo(wb, y); for (let x = Math.floor(wa / 66) * 66 + (row % 2) * 33; x < wb; x += 66) if (x > wa) { ctx.moveTo(x, y); ctx.lineTo(x, y + 36); } }
-    ctx.stroke();
+    ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.fillRect(wa, top + 9, wb - wa, 4);
     ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillStyle = Q.stone;
-    for (let x = Math.floor(wa / 46) * 46; x < Math.min(wb, c.gateX - 20); x += 46) if (x >= c.wallX0) { ctx.fillRect(x + 4, top - 20, 24, 20); ctx.strokeRect(x + 4, top - 20, 24, 20); }
+    for (let x = Math.floor(wa / 46) * 46; x < Math.min(wb, c.gateX - 20); x += 46) if (x >= c.wallX0) { ctx.fillRect(x + 4, top - 20, 24, 20); TTA.bevel(x + 4, top - 20, 24, 20, { lit: 0.35, dk: 0.14 }); ctx.strokeRect(x + 4, top - 20, 24, 20); }
     ctx.beginPath(); ctx.moveTo(wa, top); ctx.lineTo(wb, top); ctx.stroke();
     if (c.wallX0 > L) { ctx.fillStyle = Q.stoneDk; ctx.fillRect(c.wallX0 - 16, top - 30, 34, 300); ctx.strokeRect(c.wallX0 - 16, top - 30, 34, 300); }
   }
   // --- the streets: houses with flat roofs ---
-  for (const hs of c.houses) {
+  for (let hi = 0; hi < c.houses.length; hi++) {
+    const hs = c.houses[hi];
     if (hs.x0 + hs.w < L || hs.x0 > R) continue;
     const gy = tthTroyGy(ph, hs.x0 + hs.w / 2) + 30;
+    // (art pass) each house is still, so it is painted once into a picture (TTA.pic) and copied each frame
+    TTA.pic('troyhouse|' + hi + '|' + hs.x0 + '|' + hs.top + '|' + hs.w + '|' + gy, hs.w + 80, gy - hs.top + 34, 40, 22, () => {
+    ctx.translate(-hs.x0, -hs.top); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     ctx.lineWidth = 3; ctx.strokeStyle = C.ink; ctx.fillStyle = hs.col; ctx.fillRect(hs.x0, hs.top, hs.w, gy - hs.top); ctx.strokeRect(hs.x0, hs.top, hs.w, gy - hs.top);
     ctx.fillStyle = 'rgba(90,50,110,0.14)'; ctx.fillRect(hs.x0 + hs.w * 0.62, hs.top, hs.w * 0.38, gy - hs.top);
-    ctx.fillStyle = Q.roof; rr(hs.x0 - 7, hs.top - 9, hs.w + 14, 13, 4); ctx.fill(); ctx.stroke();
+    // (art pass) limewashed mud brick: mottling, a chipped patch, cracks, corner stones, a stone plinth, grime at the foot
+    const hseed = hs.x0 | 0, base0 = tthTroyGy(ph, hs.x0 + hs.w / 2);
+    TTA.plaster(hs.x0 + 1.5, hs.top + 1.5, hs.w - 3, base0 - hs.top - 1.5, hseed, hs.col, { brick: '#b07a52' });
+    TTA.stones(hs.x0 + 1.5, base0 - 16, hs.w - 3, gy - base0 + 14, hseed, Q.stone, { bw: 30, bh: 12, wx: hs.x0, wy: base0 - 16, lit: 0.3 });
+    ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.fillRect(hs.x0 + 1.5, hs.top + 1.5, hs.w - 3, 6);
+    ctx.lineWidth = 3; ctx.strokeStyle = C.ink;
+    ctx.fillStyle = Q.roof; rr(hs.x0 - 7, hs.top - 9, hs.w + 14, 13, 4); ctx.fill(); TTA.tiles(hs.x0 - 5.5, hs.top - 7.5, hs.w + 11, 10, Q.roof, { seed: hseed, step: 10 }); rr(hs.x0 - 7, hs.top - 9, hs.w + 14, 13, 4); ctx.stroke();
+    // roof beam ends poking out under the eave
+    ctx.fillStyle = Q.woodDk; ctx.lineWidth = 1.5; for (let bx = hs.x0 + 10; bx < hs.x0 + hs.w - 8; bx += 22) { ctx.fillRect(bx, hs.top + 4, 6, 6); ctx.strokeRect(bx, hs.top + 4, 6, 6); }
+    ctx.lineWidth = 3;
     const dx = hs.x0 + hs.w * hs.door, base = tthTroyGy(ph, hs.x0 + hs.w / 2);
-    ctx.fillStyle = '#5a3b22'; ctx.beginPath(); ctx.moveTo(dx - 13, base + 4); ctx.lineTo(dx - 13, base - 40); ctx.quadraticCurveTo(dx, base - 56, dx + 13, base - 40); ctx.lineTo(dx + 13, base + 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // a stone door frame, then the plank door: boards, iron studs, a ring pull, a lit step
+    ctx.fillStyle = Q.stoneLt; ctx.beginPath(); ctx.moveTo(dx - 18, base + 4); ctx.lineTo(dx - 18, base - 42); ctx.quadraticCurveTo(dx, base - 63, dx + 18, base - 42); ctx.lineTo(dx + 18, base + 4); ctx.closePath(); ctx.fill(); ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 3;
+    ctx.fillStyle = '#5a3b22'; ctx.beginPath(); ctx.moveTo(dx - 13, base + 4); ctx.lineTo(dx - 13, base - 40); ctx.quadraticCurveTo(dx, base - 56, dx + 13, base - 40); ctx.lineTo(dx + 13, base + 4); ctx.closePath(); ctx.fill();
+    ctx.save(); ctx.clip();
+    ctx.strokeStyle = 'rgba(20,10,5,0.55)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (const ox of [-6.5, 0, 6.5]) { ctx.moveTo(dx + ox, base - 56); ctx.lineTo(dx + ox, base + 4); } ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,220,170,0.18)'; ctx.beginPath(); for (const ox of [-10, -3.5, 3, 9.5]) { ctx.moveTo(dx + ox, base - 50); ctx.lineTo(dx + ox, base); } ctx.stroke();
+    ctx.fillStyle = 'rgba(30,18,10,0.45)'; ctx.fillRect(dx - 13, base - 30, 26, 4); ctx.fillRect(dx - 13, base - 10, 26, 4);
+    ctx.fillStyle = '#d9a441'; for (const ox of [-9, 0, 9]) for (const oy of [-28, -8]) { circle(dx + ox, base + oy, 1.3); ctx.fill(); }
+    ctx.restore();
+    ctx.strokeStyle = C.ink; ctx.beginPath(); ctx.moveTo(dx - 13, base + 4); ctx.lineTo(dx - 13, base - 40); ctx.quadraticCurveTo(dx, base - 56, dx + 13, base - 40); ctx.lineTo(dx + 13, base + 4); ctx.closePath(); ctx.stroke();
+    ctx.strokeStyle = Q.bronzeDk; ctx.lineWidth = 1.8; circle(dx + 7, base - 18, 3); ctx.stroke(); ctx.lineWidth = 3; ctx.strokeStyle = C.ink;
     for (let k = 0; k < hs.win; k++) {
       const wx = hs.x0 + hs.w * (hs.door < 0.5 ? 0.62 + k * 0.2 : 0.14 + k * 0.2), wy = Math.max(hs.top + 22, base - 120);
-      ctx.fillStyle = hs.lit && k === 0 ? '#ffd98a' : '#5b4a78'; rr(wx, wy, 18, 24, 5); ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke();
+      // a deep window: the stone lintel and sill, the opening, a lattice (or the lamplight), shutters
+      ctx.fillStyle = Q.stoneLt; ctx.lineWidth = 2; ctx.fillRect(wx - 3, wy - 4, 24, 4); ctx.strokeRect(wx - 3, wy - 4, 24, 4); ctx.fillRect(wx - 4, wy + 24, 26, 4); ctx.strokeRect(wx - 4, wy + 24, 26, 4);
+      ctx.fillStyle = hs.lit && k === 0 ? '#ffd98a' : '#5b4a78'; rr(wx, wy, 18, 24, 5); ctx.fill();
+      ctx.fillStyle = hs.lit && k === 0 ? 'rgba(200,110,40,0.4)' : 'rgba(20,14,40,0.35)'; ctx.fillRect(wx + 1, wy + 1, 17, 6);
+      ctx.strokeStyle = hs.lit && k === 0 ? 'rgba(120,70,30,0.7)' : 'rgba(30,20,50,0.6)'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(wx + 9, wy + 2); ctx.lineTo(wx + 9, wy + 23); ctx.moveTo(wx + 1, wy + 12); ctx.lineTo(wx + 17, wy + 12); ctx.stroke();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(wx, wy, 18, 24, 5); ctx.stroke();
+      if ((hseed + k) % 2) { ctx.fillStyle = '#4f7a6a'; ctx.lineWidth = 1.5; for (const sx of [wx - 8, wx + 19]) { ctx.fillRect(sx, wy, 7, 24); ctx.strokeRect(sx, wy, 7, 24); } ctx.strokeStyle = 'rgba(20,40,30,0.5)'; ctx.beginPath(); for (const sx of [wx - 8, wx + 19]) for (let yy = wy + 5; yy < wy + 23; yy += 4) { ctx.moveTo(sx + 1, yy); ctx.lineTo(sx + 6, yy); } ctx.stroke(); ctx.strokeStyle = C.ink; }
     }
+    ctx.lineWidth = 3;
     if (hs.awn) { ctx.lineWidth = 2.5; ctx.fillStyle = '#d9483b'; ctx.beginPath(); ctx.moveTo(dx - 22, base - 62); ctx.lineTo(dx + 22, base - 62); ctx.lineTo(dx + 28, base - 46); ctx.lineTo(dx - 28, base - 46); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#f6efdf'; ctx.fillRect(dx - 9, base - 61, 6, 14); ctx.fillRect(dx + 5, base - 61, 6, 14); }
     if (hs.pot) { const px = hs.x0 + hs.w - 18; ctx.lineWidth = 2.5; ctx.fillStyle = '#c9783f'; ctx.beginPath(); ctx.moveTo(px - 5, base - 26); ctx.quadraticCurveTo(px - 13, base - 12, px - 6, base + 2); ctx.lineTo(px + 6, base + 2); ctx.quadraticCurveTo(px + 13, base - 12, px + 5, base - 26); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    }, hs.x0, hs.top);
   }
   // --- the back of the narrow gates: a dark passage (their stone tops are drawn over the horse, in drawTop) ---
   for (const g of c.gates) {
@@ -1013,9 +1073,46 @@ function tthTroyDrawBack(st) {
   tthScreen(st, () => { ctx.fillStyle = 'rgba(52,30,92,0.18)'; ctx.fillRect(0, 0, W, H); });
   // --- the road: the plain, the paved streets, the square ---
   const sq = c.goal - 330;
-  tthTroyDrawRoad(ph, -200, c.gateX - 30, '#8fa050', '#a57c4c');
-  tthTroyDrawRoad(ph, c.gateX - 30, sq, '#e0cca2', '#b59a72');
-  tthTroyDrawRoad(ph, sq, c.xMax + 200, '#f2e8d2', '#cdbb9a');
+  // (art pass) the road and the ground under it are still, so they are painted in 256 px chunks into pictures (TTA.pic)
+  // and copied each frame: the dusty track with stones and roots on the plain, worn paving slabs in town
+  const roadPaint = (L, R) => {
+    tthTroyDrawRoad(ph, -200, c.gateX - 30, '#8fa050', '#a57c4c', null, L, R);
+    tthTroyDrawRoad(ph, c.gateX - 30, sq, '#e0cca2', '#b59a72', null, L, R);
+    tthTroyDrawRoad(ph, sq, c.xMax + 200, '#f2e8d2', '#cdbb9a', null, L, R);
+  // (art pass) the road's own ground: a dusty track with stones and roots on the plain, worn paving in town
+  {
+    const gyF = x => tthTroyGy(ph, x), ga = Math.max(L, -200), gb = Math.min(R, c.gateX - 30);
+    if (gb > ga) TTA.soil(gyF, ga, gb, { deep: 130, grass: '#6f8a3a', grassLt: '#b5c76a', stones: ['#c9b08a', '#9a8a72', '#e0caa0'] });
+    const pa = Math.max(L, c.gateX - 30), pb = Math.min(R, c.xMax + 200);
+    if (pb > pa) {
+      TTA.soil(gyF, pa, pb, { deep: 120, roots: false, stones: ['#cdbb9a', '#a8957a', '#e8dcc0'], bands: [[30, 10, 'rgba(255,240,210,0.12)'], [70, 16, 'rgba(60,40,20,0.10)'], [118, 30, 'rgba(40,24,14,0.12)']] });
+      // a kerb of dressed paving slabs along the top of the road, each with a lit edge and a worn dip
+      const sl = new Path2D(), lt = new Path2D(), dk = new Path2D();
+      for (let x = Math.floor(pa / 34) * 34; x < pb; x += 34) {
+        const y0 = gyF(x), y1 = gyF(x + 34), q = hash(x, 91);
+        sl.moveTo(x + 1, y0 + 2); sl.lineTo(x + 33, y1 + 2); sl.lineTo(x + 33, y1 + 15); sl.lineTo(x + 1, y0 + 15); sl.closePath();
+        lt.moveTo(x + 2, y0 + 3); lt.lineTo(x + 32, y1 + 3); lt.lineTo(x + 32, y1 + 5); lt.lineTo(x + 2, y0 + 5); lt.closePath();
+        dk.moveTo(x + 2, y0 + 12); dk.lineTo(x + 32, y1 + 12); dk.lineTo(x + 32, y1 + 15); dk.lineTo(x + 2, y0 + 15); dk.closePath();
+        if (q % 4 === 0) { dk.moveTo(x + 10, y0 + 7); dk.lineTo(x + 16, y0 + 9); dk.lineTo(x + 21, y0 + 7.5); dk.lineTo(x + 16, y0 + 10); dk.closePath(); }
+      }
+      ctx.fillStyle = 'rgba(255,248,230,0.25)'; ctx.fill(sl); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fill(lt); ctx.fillStyle = 'rgba(60,40,30,0.22)'; ctx.fill(dk);
+      ctx.strokeStyle = 'rgba(60,40,30,0.4)'; ctx.lineWidth = 1.2; ctx.stroke(sl);
+      // weeds in the cracks
+      ctx.strokeStyle = '#7f9a4a'; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let x = Math.floor(pa / 34) * 34; x < pb; x += 34) { if (hash(x, 93) % 3) continue; const y = gyF(x); for (const d of [-3, 0, 3]) { ctx.moveTo(x + 1, y + 1); ctx.lineTo(x + 1 + d, y - 4 - Math.abs(d)); } }
+      ctx.stroke();
+    }
+  }
+  };
+  if (!c.roadSig) c.roadSig = c.ramps.map(r => r.x0 + ':' + r.rise + ':' + r.len).join(',') + '|' + c.gateX + '|' + c.goal + '|' + c.xMax;
+  for (let i = Math.floor(L / 256); i * 256 < R; i++) {
+    const x0c = i * 256; let top = 1e9; for (let x = x0c - 24; x <= x0c + 280; x += 8) top = Math.min(top, tthTroyGy(ph, x)); top = Math.floor(top) - 14;
+    // (each chunk paints past its own picture edges, so it has no soft edge, neighbours overlap and no seam shows)
+    TTA.pic('troyroad|' + c.roadSig + '|' + i + '|' + top, 260, H + 14 - top, 2, 0, () => {
+      ctx.translate(-x0c, -top); ctx.beginPath(); ctx.rect(x0c - 4, top, 264, H + 14 - top); ctx.clip(); ctx.lineJoin = 'round';
+      roadPaint(x0c - 40, x0c + 296);
+    }, x0c, top);
+  }
   // paving joints, grass tufts
   ctx.strokeStyle = 'rgba(28,26,54,0.2)'; ctx.lineWidth = 2; ctx.beginPath();
   for (let x = Math.floor(L / 52) * 52; x < R; x += 52) {
@@ -1046,7 +1143,7 @@ function tthTroyDrawBack(st) {
     if (b.x < L - 40 || b.x > R + 40) continue;
     const gy = tthTroyGy(ph, b.x), wob = b.t < 0.5 ? Math.sin(b.t * 40) * (0.5 - b.t) * 0.5 : 0;
     ctx.save(); ctx.translate(b.x, gy); ctx.rotate(-0.1 + wob);
-    ctx.fillStyle = Q.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(-26, -6, 52, 9, 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = Q.woodLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(-26, -6, 52, 9, 2); ctx.fill(); TTA.wood(-25, -5, 50, 7, b.x | 0, Q.woodLt); rr(-26, -6, 52, 9, 2); ctx.stroke();
     ctx.fillStyle = C.ink; circle(-19, -1.5, 1.6); ctx.fill(); circle(19, -1.5, 1.6); ctx.fill();
     ctx.restore();
   }
@@ -1062,8 +1159,8 @@ function tthTroyDrawBack(st) {
     if (b.at < L - 60 || b.at > R + 60) continue;
     const gy = tthTroyGy(ph, b.at), sw = Math.sin(t * 13) * b.swing * 0.5;
     ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillStyle = Q.woodDk;
-    for (const dx of [-30, 24]) { ctx.fillRect(b.at + dx, 150, 7, gy - 150 + 4); ctx.strokeRect(b.at + dx, 150, 7, gy - 150 + 4); }
-    rr(b.at - 40, 142, 80, 11, 4); ctx.fill(); ctx.stroke();
+    for (const dx of [-30, 24]) { ctx.fillRect(b.at + dx, 150, 7, gy - 150 + 4); TTA.wood(b.at + dx, 150, 7, gy - 150 + 4, b.at + dx, Q.woodDk, { knots: false }); ctx.strokeRect(b.at + dx, 150, 7, gy - 150 + 4); }
+    ctx.fillStyle = Q.woodDk; rr(b.at - 40, 142, 80, 11, 4); ctx.fill(); TTA.wood(b.at - 39, 143, 78, 9, b.at | 0, Q.woodDk, { nails: true }); rr(b.at - 40, 142, 80, 11, 4); ctx.stroke();
     ctx.save(); ctx.translate(b.at, 153); ctx.rotate(sw);
     ctx.fillStyle = Q.bronze; ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(-8, 22, -19, 32); ctx.lineTo(19, 32); ctx.quadraticCurveTo(8, 22, 6, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.fillStyle = Q.bronzeDk; circle(-sw * 20, 35, 4.5); ctx.fill(); ctx.stroke();
@@ -1093,8 +1190,8 @@ function tthTroyDrawHorse(st) {
   ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-126 + sw, -112); ctx.lineTo(-136 + sw, -100); ctx.moveTo(-130 + sw, -108); ctx.lineTo(-130 + sw, -96); ctx.moveTo(-133 + sw, -110); ctx.lineTo(-124 + sw, -98); ctx.stroke();
   // legs (the far pair darker), the cart and its wheels
   ctx.lineWidth = 3;
-  for (const [lx, col] of [[-78, Q.woodDk], [62, Q.woodDk], [-98, Q.wood], [40, Q.wood]]) { ctx.fillStyle = col; rr(lx, -100, 22, 70, 6); ctx.fill(); ctx.stroke(); ctx.fillStyle = Q.woodDk; ctx.fillRect(lx + 1.5, -46, 19, 7); }
-  ctx.fillStyle = Q.woodDk; rr(-122, -38, 248, 15, 6); ctx.fill(); ctx.stroke();
+  for (const [lx, col] of [[-78, Q.woodDk], [62, Q.woodDk], [-98, Q.wood], [40, Q.wood]]) { ctx.fillStyle = col; rr(lx, -100, 22, 70, 6); ctx.fill(); TTA.wood(lx + 1.5, -98, 19, 66, lx + 300, col, { vert: true }); rr(lx, -100, 22, 70, 6); ctx.stroke(); ctx.fillStyle = Q.woodDk; ctx.fillRect(lx + 1.5, -46, 19, 7); ctx.fillStyle = Q.bronze; circle(lx + 5, -42.5, 1.6); ctx.fill(); circle(lx + 17, -42.5, 1.6); ctx.fill(); }
+  ctx.fillStyle = Q.woodDk; rr(-122, -38, 248, 15, 6); ctx.fill(); TTA.wood(-120, -36.5, 244, 12, 777, Q.woodDk, { nails: true }); rr(-122, -38, 248, 15, 6); ctx.stroke();
   ctx.strokeStyle = Q.woodLt; ctx.lineWidth = 2.5; ctx.beginPath(); for (let x = -108; x < 116; x += 20) { ctx.moveTo(x, -27); ctx.lineTo(x + 7, -34); ctx.lineTo(x + 14, -27); } ctx.stroke();
   for (const wx of [-80, 80]) {
     ctx.save(); ctx.translate(wx, -20); ctx.rotate(h.rot);

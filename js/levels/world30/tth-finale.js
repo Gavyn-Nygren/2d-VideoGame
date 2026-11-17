@@ -980,12 +980,47 @@ function tthFinCog(x, y, r, a, n, fill, stroke, lw) {
     ctx.lineTo(x + Math.cos(a0 + st * 0.66) * r0, y + Math.sin(a0 + st * 0.66) * r0);
   }
   ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
-  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 2.5; ctx.stroke(); }
+  if (stroke) {
+    // (art pass) a solid cog gets a machined face: a lit upper rim on the teeth, a shaded lower half, a turned groove ring
+    ctx.save(); ctx.clip();
+    ctx.fillStyle = 'rgba(20,10,40,0.22)'; ctx.beginPath(); ctx.arc(x, y, r + 2, 0.15 * Math.PI, 1.15 * Math.PI); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,248,220,0.55)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, r0 - 1.5, 1.1 * Math.PI, 1.75 * Math.PI); ctx.stroke();
+    ctx.strokeStyle = 'rgba(60,40,10,0.45)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r0 * 0.72, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,248,220,0.3)'; ctx.beginPath(); ctx.arc(x, y, r0 * 0.72 - 1.5, 1.1 * Math.PI, 1.8 * Math.PI); ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle = stroke; ctx.lineWidth = lw || 2.5; ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const a0 = a + i * st;
+      ctx.lineTo(x + Math.cos(a0) * r0, y + Math.sin(a0) * r0);
+      ctx.lineTo(x + Math.cos(a0 + st * 0.16) * r, y + Math.sin(a0 + st * 0.16) * r);
+      ctx.lineTo(x + Math.cos(a0 + st * 0.5) * r, y + Math.sin(a0 + st * 0.5) * r);
+      ctx.lineTo(x + Math.cos(a0 + st * 0.66) * r0, y + Math.sin(a0 + st * 0.66) * r0);
+    }
+    ctx.closePath(); ctx.stroke();
+  }
 }
 function tthFinLine(x0, y0, x1, y1) { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); }
 // a brass plank with an ink outline (the top is the standing line)
+// (art pass) a plank looks the same wherever it is, so it is painted once per size and colour (TTA.pic) and copied
 function tthFinPlank(x, y, w, h, fill, lite) {
-  ctx.fillStyle = fill; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x, y, w, h, Math.min(5, h / 2)); ctx.fill(); ctx.stroke();
+  TTA.pic('finplank|' + w + '|' + h + '|' + fill + '|' + lite, w + 6, h + 6, 3, 3, () => tthFinPlankArt(0, 0, w, h, fill, lite), x, y);
+}
+function tthFinPlankArt(x, y, w, h, fill, lite) {
+  ctx.fillStyle = fill; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x, y, w, h, Math.min(5, h / 2)); ctx.fill();
+  // (art pass) machined plate: brushed streaks, a shaded lower lip, an engraved groove, domed rivets near the ends
+  ctx.save(); ctx.clip();
+  ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let k = 0; k < Math.floor(h / 3); k++) { const yy = y + 2 + k * 3 + 0.5, s0 = TTA.u(w | 0, k) * w * 0.5; ctx.moveTo(x + s0, yy); ctx.lineTo(x + s0 + w * 0.35, yy); }
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(40,20,10,0.24)'; ctx.fillRect(x, y + h * 0.66, w, h * 0.34);
+  if (h >= 11 && w > 40) { ctx.strokeStyle = 'rgba(60,40,10,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 12, y + h * 0.55); ctx.lineTo(x + w - 12, y + h * 0.55); ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.moveTo(x + 12, y + h * 0.55 + 1); ctx.lineTo(x + w - 12, y + h * 0.55 + 1); ctx.stroke(); }
+  if (w > 28) {
+    const ry = y + h * 0.55;
+    ctx.fillStyle = 'rgba(60,40,10,0.65)'; for (const rx of [x + 6, x + w - 6]) { circle(rx, ry, 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; for (const rx of [x + 6, x + w - 6]) { circle(rx - 0.6, ry - 0.7, 0.8); ctx.fill(); }
+  }
+  ctx.restore();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x, y, w, h, Math.min(5, h / 2)); ctx.stroke();
   if (lite) { ctx.fillStyle = lite; ctx.fillRect(x + 4, y + 2, w - 8, 2.5); }
 }
 function tthFinDrawSky(st) {
@@ -1043,9 +1078,23 @@ function tthFinDrawClock(st) {
 }
 function tthFinDrawDeck(st, d) {
   const ph = st.ph, K = TTHFIN, w = d.x1 - d.x0;
-  ctx.fillStyle = TTHFINC.brass; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(d.x0, d.y, w, K.deckH, 4); ctx.fill(); ctx.stroke();
+  // (art pass) the girder is still: painted once into a picture (TTA.pic) and copied each frame
+  TTA.pic('findeck|' + d.x0 + '|' + w + '|' + d.y, w + 8, K.deckH + 8, 4, 4, () => {
+  ctx.translate(-d.x0, -d.y);
+  ctx.fillStyle = TTHFINC.brass; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(d.x0, d.y, w, K.deckH, 4); ctx.fill();
+  // (art pass) a riveted brass girder: brushed face, a shaded lower flange, an engraved scroll band, seams between plates
+  TTA.metal(d.x0 + 1, d.y + 1, w - 2, K.deckH - 2, d.y | 0, { rivets: false });
+  ctx.save(); TTA.clipRect(d.x0, d.y, w, K.deckH);
+  ctx.strokeStyle = 'rgba(120,80,20,0.5)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = d.x0 + 30; x < d.x1 - 20; x += 46) { ctx.moveTo(x - 8, d.y + K.deckH * 0.55); ctx.quadraticCurveTo(x, d.y + 3, x + 8, d.y + K.deckH * 0.55); ctx.quadraticCurveTo(x + 16, d.y + K.deckH - 3, x + 24, d.y + K.deckH * 0.55); }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(60,40,10,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let x = d.x0 + 92; x < d.x1 - 20; x += 92) { ctx.moveTo(x, d.y); ctx.lineTo(x, d.y + K.deckH); } ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(d.x0, d.y, w, K.deckH, 4); ctx.stroke();
   ctx.fillStyle = TTHFINC.brassLt; ctx.fillRect(d.x0 + 4, d.y + 2, w - 8, 3);
-  ctx.fillStyle = TTHFINC.brassDk; for (let x = d.x0 + 16; x < d.x1 - 8; x += 46) { circle(x, d.y + 9.5, 1.8); ctx.fill(); }
+  ctx.fillStyle = TTHFINC.brassDk; for (let x = d.x0 + 16; x < d.x1 - 8; x += 46) { circle(x, d.y + 9.5, 2.2); ctx.fill(); }
+  ctx.fillStyle = 'rgba(255,255,255,0.75)'; for (let x = d.x0 + 16; x < d.x1 - 8; x += 46) { circle(x - 0.7, d.y + 8.8, 0.9); ctx.fill(); }
+  }, d.x0, d.y);
   if (!d.hatch) return;
   // the hatch: a striped trapdoor (jump up through it, stand on it)
   const h0 = d.hatch[0], h1 = d.hatch[1], now = ph.stage === 'climb' && ph.sec.upper === d;
@@ -1140,7 +1189,7 @@ function tthFinDrawJobs(st, sec) {
   const hc = cur ? PCOL[ph.holder] : '#8a84a8', cc = cur ? PCOL[1 - ph.holder] : '#8a84a8', k = cur ? ph.leverK : 0;
   ctx.lineCap = 'round';
   // lever
-  ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(lv.x - 20, lv.y - 14, 40, 14, 4); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(lv.x - 20, lv.y - 14, 40, 14, 4); ctx.fill(); TTA.metal(lv.x - 19, lv.y - 13, 38, 12, 5, { rstep: 30, rcol: 'rgba(20,16,40,0.7)' }); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(lv.x - 20, lv.y - 14, 40, 14, 4); ctx.stroke();
   const kick = cur && ph.kick ? ph.kick : null, kfx = cur ? ph.kickFx : 0;
   const a = 0.55 - k * 1.1 + (kick && !reduceMotion ? Math.sin(G.clock * 55) * 0.09 : 0) + kfx * 0.7, tx = lv.x + Math.sin(a) * 46, ty = lv.y - 12 - Math.cos(a) * 46;
   ctx.strokeStyle = C.ink; ctx.lineWidth = 9; tthFinLine(lv.x, lv.y - 10, tx, ty);
@@ -1163,7 +1212,7 @@ function tthFinDrawJobs(st, sec) {
     if (ph.gold.grip) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(x - 6, y - 6, w + 12, h + 12, (h + 12) / 2); ctx.stroke(); }
   }
   // button
-  ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(bt.x - 19, bt.y - 9, 38, 9, 3); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = F.iron; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(bt.x - 19, bt.y - 9, 38, 9, 3); ctx.fill(); TTA.metal(bt.x - 18, bt.y - 8, 36, 7, 6, { rstep: 28, rcol: 'rgba(20,16,40,0.7)' }); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(bt.x - 19, bt.y - 9, 38, 9, 3); ctx.stroke();
   const dn = bt.down ? 4 : 13;
   ctx.fillStyle = bt.down ? F.green : cc; ctx.beginPath(); ctx.moveTo(bt.x - 14, bt.y - 9); ctx.quadraticCurveTo(bt.x - 14, bt.y - 9 - dn * 1.5, bt.x, bt.y - 9 - dn); ctx.quadraticCurveTo(bt.x + 14, bt.y - 9 - dn * 1.5, bt.x + 14, bt.y - 9); ctx.closePath(); ctx.fill(); ctx.stroke();
   if (cur && !bt.down) { const g = 0.5 + 0.5 * Math.sin(G.clock * 6); ctx.strokeStyle = `rgba(255,255,255,${0.25 + 0.4 * g})`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(bt.x, bt.y - 14, 22 + g * 5, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke(); }
@@ -1199,7 +1248,10 @@ function tthFinDrawBack(st) {
     ctx.fillStyle = F.brassDk; ctx.fillRect(rx, y0, 12, H);
     ctx.fillStyle = F.brass; ctx.fillRect(rx + 2, y0, 5, H);
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; tthFinLine(rx, y0, rx, y1); tthFinLine(rx + 12, y0, rx + 12, y1);
-    ctx.fillStyle = C.ink; for (let y = Math.floor(y0 / 76) * 76; y < y1; y += 76) { circle(rx + 6, y + 20, 2.2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(rx + 2, y0, 1.5, H);
+    ctx.strokeStyle = 'rgba(80,50,10,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); for (let y = Math.floor(y0 / 38) * 38; y < y1; y += 38) { ctx.moveTo(rx + 1, y); ctx.lineTo(rx + 11, y + 4); } ctx.stroke();
+    ctx.fillStyle = C.ink; for (let y = Math.floor(y0 / 76) * 76; y < y1; y += 76) { circle(rx + 6, y + 20, 2.6); ctx.fill(); }
+    ctx.fillStyle = F.brassLt; for (let y = Math.floor(y0 / 76) * 76; y < y1; y += 76) { circle(rx + 5.3, y + 19.3, 1); ctx.fill(); }
   }
   // lifts, decks, clockwork (only what is on screen)
   for (const s of ph.c.secs) if (s.lift.yTop < y1 + 20 && s.lift.yBot > y0 - 20) tthFinDrawLift(st, s);

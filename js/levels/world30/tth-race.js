@@ -893,24 +893,43 @@ function tthRaceDrawBackdrop(lap, cam, sx0, sx1, t) {
 /* ---------- drawing: the ground, the things on it, the rings (world coords across, lane coords down) ---------- */
 function tthRaceDrawGround(T, X0, X1, t) {
   const n = T.laps.length;
-  for (const lap of T.laps) {
-    const a = Math.max(X0, lap.i === 0 ? -1e9 : lap.x0), b = Math.min(X1, lap.i === n - 1 ? 1e9 : lap.x1);
-    if (b <= a) continue;
-    let x = a;
-    for (const o of lap.gaps) {
-      if (o.x1 <= a || o.x0 >= b) continue;
-      if (o.x0 > x) tthRaceDrawRun(lap.th, x, o.x0, t);
-      tthRaceDrawGap(lap.th, o, t);
-      x = o.x1;
+  // (art pass) a run of ground is still (except the brass tunnel's glow), so it is painted in 256 px chunks into
+  // pictures (TTA.pic) keyed by the run's own ends, and copied each frame
+  const run = (th, r0, r1) => {
+    const v0 = Math.max(r0, X0), v1 = Math.min(r1, X1);
+    if (v1 <= v0) return;
+    if (th.deco === 'brass') { tthRaceDrawRun(th, r0, r1, t, v0, v1); return; }
+    const gy = TTHRACE.gy, LH = TTHRACE.laneH, CH = 256;
+    for (let i = Math.floor(v0 / CH); i * CH < v1; i++) {
+      const c0 = Math.max(r0, i * CH - 6), c1 = Math.min(r1, (i + 1) * CH + 6);   // (paints past the picture's own edges, so a chunk has no soft edge and neighbours overlap: no seams)
+      TTA.pic('raceg|' + th.deco + '|' + th.ground.join() + '|' + r0 + '|' + r1 + '|' + i, CH + 8, LH - gy + 24, 4, 16, () => {
+        ctx.translate(-i * CH, -gy); ctx.beginPath(); ctx.rect(c0, gy - 16, c1 - c0, LH - gy + 20); ctx.clip();
+        tthRaceDrawRun(th, r0, r1, t, c0 - 40, c1 + 40);
+      }, i * CH, gy);
     }
-    if (x < b) tthRaceDrawRun(lap.th, x, b, t);
+  };
+  for (const lap of T.laps) {
+    const la = lap.i === 0 ? -1e9 : lap.x0, lb = lap.i === n - 1 ? 1e9 : lap.x1;
+    if (Math.min(X1, lb) <= Math.max(X0, la)) continue;
+    let x = la;
+    for (const o of lap.gaps) {
+      if (o.x0 > x) run(lap.th, x, o.x0);
+      if (o.x1 > X0 && o.x0 < X1) tthRaceDrawGap(lap.th, o, t);
+      x = Math.max(x, o.x1);
+    }
+    if (x < lb) run(lap.th, x, lb);
   }
 }
 // a run of ground from x0 to x1 in a lap's own look
-function tthRaceDrawRun(th, x0, x1, t) {
-  const gy = TTHRACE.gy, LH = TTHRACE.laneH, w = x1 - x0, G3 = th.ground;
+// (lo, hi: the part to paint; the run's own ends x0, x1 keep the decoration where it was)
+function tthRaceDrawRun(th, x0, x1, t, lo = x0, hi = x1) {
+  const gy = TTHRACE.gy, LH = TTHRACE.laneH, R0 = x0, R1 = x1;
+  x0 = Math.max(R0, lo); x1 = Math.min(R1, hi);
+  const w = x1 - x0, G3 = th.ground;
   ctx.fillStyle = G3[1]; ctx.fillRect(x0, gy, w, LH - gy);
-  const each = (sp, fn) => { for (let n = Math.ceil((x0 + 6) / sp); n * sp < x1 - 6; n++) fn(n * sp, n); };
+  // (art pass) the ground under each era's track: layers, grit, set stones with a lit cap (roots only under turf)
+  if (th.deco !== 'brass') { ctx.save(); TTA.clipRect(x0, gy, w, LH - gy); TTA.soil(() => gy, x0, x1, { deep: Math.max(24, LH - gy - 4), roots: th.deco === 'grass', stones: [G3[0], G3[2], th.deco === 'moon' || th.deco === 'ice' ? '#e6ecf4' : '#e8dcc0'], bands: [[14, 4, 'rgba(255,255,255,0.12)'], [26, 8, 'rgba(30,20,30,0.12)'], [44, 30, 'rgba(30,20,30,0.1)']] }); ctx.restore(); }
+  const each = (sp, fn) => { for (let n = Math.ceil(Math.max(R0 + 6, lo) / sp); n * sp < Math.min(R1 - 6, hi); n++) fn(n * sp, n); };
   switch (th.deco) {
     case 'grass':
       ctx.fillStyle = G3[2]; each(64, (x, n) => { ctx.beginPath(); ctx.ellipse(x, gy + 20 + (hash(n, 1) % 12), 14, 3, 0, 0, Math.PI * 2); ctx.fill(); });
@@ -937,7 +956,7 @@ function tthRaceDrawRun(th, x0, x1, t) {
       ctx.fillStyle = G3[0]; ctx.fillRect(x0, gy, w, 13);
       ctx.strokeStyle = G3[2]; ctx.lineWidth = 2; ctx.beginPath(); each(16, x => { ctx.moveTo(x - 8, gy + 3); ctx.quadraticCurveTo(x, gy + 13, x + 8, gy + 3); }); ctx.stroke();
       ctx.fillStyle = G3[2]; ctx.fillRect(x0, gy + 13, w, 3);
-      ctx.fillStyle = '#7a5a48'; each(90, x => { if (x - 7 > x0 && x + 7 < x1) { rr(x - 6, gy + 22, 12, 16, 5); ctx.fill(); } });
+      ctx.fillStyle = '#7a5a48'; each(90, x => { if (x - 7 > R0 && x + 7 < R1) { rr(x - 6, gy + 22, 12, 16, 5); ctx.fill(); } });
       break;
     case 'sand':
       ctx.fillStyle = G3[0]; ctx.fillRect(x0, gy, w, 9);
@@ -985,8 +1004,12 @@ function tthRaceDrawHop(o, k, t) {
   ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
   switch (o.look) {
     case 'log':
-      ctx.fillStyle = '#9a6a3a'; rr(-w / 2, -h, w, h, 11); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#e0b87a'; circle(0, -h / 2, 8); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#7a4a22'; ctx.stroke(); circle(0, -h / 2, 4); ctx.stroke();
+      ctx.fillStyle = '#9a6a3a'; rr(-w / 2, -h, w, h, 11); ctx.fill();
+      // (art pass) bark furrows, a lit top, a shaded foot, moss, a ringed cut end
+      ctx.save(); ctx.clip(); ctx.strokeStyle = 'rgba(60,34,14,0.55)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = 0; k < 4; k++) { const yy = -h + 4 + k * (h - 6) / 3; ctx.moveTo(-w / 2, yy); ctx.quadraticCurveTo(0, yy + (k % 2 ? 2 : -2), w / 2, yy); } ctx.stroke();
+      ctx.fillStyle = 'rgba(255,230,190,0.3)'; ctx.fillRect(-w / 2, -h, w, 3); ctx.fillStyle = 'rgba(40,20,10,0.25)'; ctx.fillRect(-w / 2, -h * 0.3, w, h * 0.3); ctx.restore();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(-w / 2, -h, w, h, 11); ctx.stroke();
+      ctx.fillStyle = '#e0b87a'; circle(0, -h / 2, 8); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#7a4a22'; ctx.stroke(); circle(0, -h / 2, 4); ctx.stroke(); circle(0, -h / 2, 6); ctx.globalAlpha *= 0.5; ctx.stroke(); ctx.globalAlpha /= 0.5;
       ctx.fillStyle = '#5cc27f'; ctx.beginPath(); ctx.ellipse(-9, -h - 2, 6, 3, -0.5, 0, Math.PI * 2); ctx.fill();
       break;
     case 'hurdle':
@@ -995,21 +1018,23 @@ function tthRaceDrawHop(o, k, t) {
       ctx.fillStyle = '#d9483a'; ctx.fillRect(-6, -h - 2, 4, 6); ctx.fillRect(2, -h - 2, 4, 6);
       break;
     case 'merlon':
-      ctx.fillStyle = '#e6d2a8'; ctx.fillRect(-w / 2, -h, w, h); ctx.strokeRect(-w / 2, -h, w, h);
-      ctx.strokeStyle = '#9a8258'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-w / 2 + 2, -h / 2); ctx.lineTo(w / 2 - 2, -h / 2); ctx.moveTo(0, -h + 2); ctx.lineTo(0, -h / 2); ctx.stroke();
+      ctx.fillStyle = '#e6d2a8'; ctx.fillRect(-w / 2, -h, w, h); TTA.stones(-w / 2 + 1, -h + 1, w - 2, h - 2, 3, '#e6d2a8', { bw: w / 2, bh: h / 2, wx: -w / 2, wy: -h, mortar: 'rgba(154,130,88,0.8)' }); ctx.strokeRect(-w / 2, -h, w, h);
       break;
     case 'ice':
       ctx.fillStyle = '#bfe9ff'; ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(-w / 2 + 3, -h + 6); ctx.lineTo(-3, -h); ctx.lineTo(w / 2 - 2, -h + 8); ctx.lineTo(w / 2, 0); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#3f7fa8'; ctx.stroke();
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-6, -h + 6); ctx.lineTo(-9, -8); ctx.stroke();
       break;
     case 'pot':
-      ctx.fillStyle = '#c9603a'; ctx.fillRect(-w / 2 + 3, -h + 6, w - 6, h - 6); ctx.strokeRect(-w / 2 + 3, -h + 6, w - 6, h - 6);
-      ctx.fillStyle = '#a8482a'; rr(-w / 2, -h, w, 8, 3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#c9603a'; ctx.fillRect(-w / 2 + 3, -h + 6, w - 6, h - 6);
+      ctx.fillStyle = '#2a2233'; ctx.fillRect(-w / 2 + 3, -h * 0.55, w - 6, 4); ctx.fillStyle = '#f2b36a'; ctx.fillRect(-w / 2 + 3, -h * 0.55 + 1.5, w - 6, 1);
+      TTA.bevel(-w / 2 + 3, -h + 6, w - 6, h - 6, { lit: 0.25, dk: 0.2 }); ctx.strokeRect(-w / 2 + 3, -h + 6, w - 6, h - 6);
+      ctx.fillStyle = '#a8482a'; rr(-w / 2, -h, w, 8, 3); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(-w / 2 + 2, -h + 1, w - 4, 2); ctx.stroke();
       for (let n = 0; n < 2; n++) { const u = (t * 0.7 + n / 2) % 1; ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - u)})`; circle(Math.sin(u * 5 + n) * 4, -h - 6 - u * 22, 4 + u * 5); ctx.fill(); }
       break;
     case 'fence':
-      ctx.fillStyle = '#c9a06a'; for (const dx of [-7, 3]) { ctx.beginPath(); ctx.moveTo(dx, 0); ctx.lineTo(dx, -h + 4); ctx.lineTo(dx + 2.5, -h); ctx.lineTo(dx + 5, -h + 4); ctx.lineTo(dx + 5, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-      ctx.fillStyle = '#b08850'; ctx.fillRect(-11, -h + 9, 23, 4); ctx.strokeRect(-11, -h + 9, 23, 4);
+      ctx.fillStyle = '#c9a06a'; for (const dx of [-7, 3]) { ctx.beginPath(); ctx.moveTo(dx, 0); ctx.lineTo(dx, -h + 4); ctx.lineTo(dx + 2.5, -h); ctx.lineTo(dx + 5, -h + 4); ctx.lineTo(dx + 5, 0); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(255,240,210,0.4)'; ctx.fillRect(dx + 0.5, -h + 4, 1.2, h - 5); ctx.fillStyle = 'rgba(90,60,30,0.4)'; ctx.fillRect(dx + 3.5, -h + 4, 1.2, h - 5); ctx.fillStyle = '#c9a06a'; ctx.stroke(); }
+      ctx.fillStyle = '#b08850'; ctx.fillRect(-11, -h + 9, 23, 4); ctx.fillStyle = 'rgba(255,240,210,0.4)'; ctx.fillRect(-11, -h + 9, 23, 1.2); ctx.strokeRect(-11, -h + 9, 23, 4);
+      ctx.fillStyle = '#4a3a3a'; circle(-4.5, -h + 11, 0.9); ctx.fill(); circle(5.5, -h + 11, 0.9); ctx.fill();
       break;
     case 'gear': {
       ctx.fillStyle = '#d9a441'; ctx.save(); ctx.translate(0, -h / 2); ctx.rotate(t * 1.5 + x);
@@ -1025,8 +1050,16 @@ function tthRaceDrawHop(o, k, t) {
     default:   // 'stone' (a fallen sarsen), 'rock' (a Moon rock)
       ctx.fillStyle = o.look === 'rock' ? '#8a8da0' : '#a3adb8';
       ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.quadraticCurveTo(-w / 2 - 2, -h * 0.7, -w * 0.15, -h); ctx.quadraticCurveTo(w * 0.3, -h - 2, w / 2, -h * 0.45); ctx.lineTo(w / 2 + 1, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      // (art pass) a shaded flank, speckle or craters, a crack, lichen on the sarsen
+      ctx.save(); ctx.clip();
+      ctx.fillStyle = 'rgba(30,30,50,0.22)'; ctx.beginPath(); ctx.ellipse(w * 0.3, -h * 0.2, w * 0.45, h * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+      TTA.craters(-w / 2, -h, w, h, (x | 0) + 7, { n: o.look === 'rock' ? 3 : 1, r: 1.5, rr: 3, grit: 30 });
+      ctx.strokeStyle = 'rgba(30,30,50,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-w * 0.05, -h); ctx.lineTo(0, -h * 0.6); ctx.lineTo(-w * 0.1, -h * 0.3); ctx.stroke();
+      ctx.restore();
+      ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.quadraticCurveTo(-w / 2 - 2, -h * 0.7, -w * 0.15, -h); ctx.quadraticCurveTo(w * 0.3, -h - 2, w / 2, -h * 0.45); ctx.lineTo(w / 2 + 1, 0); ctx.closePath();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(-w * 0.16, -h * 0.7, w * 0.17, h * 0.13, -0.4, 0, Math.PI * 2); ctx.fill();
-      if (o.look === 'stone') { ctx.fillStyle = '#7fae6a'; circle(6, -6, 3); ctx.fill(); }
+      if (o.look === 'stone') { ctx.fillStyle = '#7fae6a'; circle(6, -6, 3); ctx.fill(); circle(9, -4, 2); ctx.fill(); ctx.fillStyle = '#d9d27a'; circle(-w * 0.25, -h * 0.4, 1.8); ctx.fill(); circle(-w * 0.18, -h * 0.35, 1.2); ctx.fill(); }
   }
   ctx.restore();
 }
@@ -1047,8 +1080,12 @@ function tthRaceDrawDuck(o, k, t) {
     const ice = o.look === 'arch', col = ice ? '#cfefff' : '#a3adb8', dark = ice ? '#8fc7e6' : '#7f8a96', sh = ice ? 20 : 24;
     // two uprights (behind the runner) and the slab across them
     ctx.fillStyle = dark;
-    for (const px of [x0 + 2, o.x1 - 18]) { ctx.fillRect(px, gy - c, 16, c); ctx.strokeRect(px, gy - c, 16, c); }
-    ctx.fillStyle = col; rr(x0 - 5, gy - c - sh, w + 10, sh, 6); ctx.fill(); ctx.stroke();
+    for (const px of [x0 + 2, o.x1 - 18]) { ctx.fillRect(px, gy - c, 16, c); if (!ice) TTA.stones(px + 1, gy - c + 1, 14, c - 2, (px | 0) % 97, dark, { bw: 16, bh: 12, wx: px, wy: gy - c, lit: 0.22 }); else TTA.bevel(px + 1, gy - c + 1, 14, c - 2, { lit: 0.4, dk: 0.12 }); ctx.fillStyle = dark; ctx.strokeRect(px, gy - c, 16, c); }
+    ctx.fillStyle = col; rr(x0 - 5, gy - c - sh, w + 10, sh, 6); ctx.fill();
+    ctx.save(); ctx.clip(); ctx.fillStyle = 'rgba(30,30,60,0.18)'; ctx.fillRect(x0 - 5, gy - c - sh * 0.4, w + 10, sh * 0.4);
+    if (!ice) { TTA.craters(x0, gy - c - sh, w, sh, (x0 | 0) % 89, { n: 0, grit: 40 }); ctx.strokeStyle = 'rgba(60,60,80,0.4)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x0 + w * 0.4, gy - c - sh); ctx.lineTo(x0 + w * 0.43, gy - c - sh * 0.5); ctx.lineTo(x0 + w * 0.38, gy - c); ctx.stroke(); }
+    else { ctx.strokeStyle = 'rgba(80,150,200,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x0 + w * 0.3, gy - c - sh); ctx.lineTo(x0 + w * 0.36, gy - c); ctx.moveTo(x0 + w * 0.7, gy - c - sh); ctx.lineTo(x0 + w * 0.62, gy - c - sh * 0.4); ctx.stroke(); }
+    ctx.restore(); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x0 - 5, gy - c - sh, w + 10, sh, 6); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.4)'; rr(x0 + 2, gy - c - sh + 4, w * 0.5, 4, 2); ctx.fill();
     if (ice) { ctx.fillStyle = '#eaf8ff'; for (let ix = x0 + 26; ix < o.x1 - 24; ix += 22) { ctx.beginPath(); ctx.moveTo(ix - 4, gy - c - 1); ctx.lineTo(ix, gy - c + 5 + (hash(ix | 0, 3) % 3)); ctx.lineTo(ix + 4, gy - c - 1); ctx.closePath(); ctx.fill(); } }
     else { ctx.fillStyle = '#7fae6a'; circle(x0 + w * 0.7, gy - c - sh + 5, 3.5); ctx.fill(); circle(x0 + w * 0.2, gy - c - 6, 2.5); ctx.fill(); }

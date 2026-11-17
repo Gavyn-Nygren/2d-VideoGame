@@ -819,14 +819,26 @@ function tthVinciDrawGround(st) {
     for (let i = Math.floor(rf0 / 96); i * 96 < rf1; i++) {
       const x = Math.max(i * 96, lo), xe = Math.min((i + 1) * 96, hi), y = tthVinciRoof(i * 96), h = hash(i, 9), w = xe - x;
       if (w <= 0) continue;
+      // (art pass) a still house front: painted once into a picture (TTA.pic) and copied each frame
+      TTA.pic('vinciroof|' + i + '|' + x + '|' + w + '|' + y, w + 12, H - y + 12, 6, 2, () => {
+      ctx.translate(-x, -y); ctx.lineJoin = 'round';
       ctx.fillStyle = CO.wall[h % 4]; ctx.fillRect(x, y + 10, w, H - y);
+      // (art pass) Tuscan stucco with corner stones and a chipped patch, green shutters with slats and a sill, a pot of geraniums, curved roof tiles
+      TTA.plaster(x + 1, y + 11, w - 2, H - y - 11, i * 7 + 3, CO.wall[h % 4], { brick: '#c27a52', quoins: (h >>> 3) % 2 === 0 });
+      ctx.fillStyle = 'rgba(70,40,30,0.22)'; ctx.fillRect(x, y + 10, w, 7);
       ctx.strokeStyle = 'rgba(28,26,54,0.35)'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y + 10, w, H - y);
-      ctx.fillStyle = '#6f8f5a';
-      for (let n = 0; n < 2; n++) { const wx = x + 18 + n * 40; if (wx + 14 < xe) { ctx.fillRect(wx, y + 26, 14, 18); ctx.fillStyle = '#4a3a2a'; ctx.fillRect(wx + 3, y + 29, 8, 12); ctx.fillStyle = '#6f8f5a'; } }
-      ctx.fillStyle = CO.roof; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x - 2, y, w + 4, 15, 4); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = CO.roofDk; ctx.lineWidth = 1.5; ctx.beginPath();
-      for (let n = 10; n < w; n += 12) { ctx.moveTo(x + n, y + 3); ctx.lineTo(x + n, y + 12); }
-      ctx.stroke();
+      for (let n = 0; n < 2; n++) {
+        const wx = x + 18 + n * 40; if (wx + 14 >= xe) continue;
+        ctx.fillStyle = '#efe4c8'; ctx.fillRect(wx - 3, y + 23, 20, 3); ctx.fillRect(wx - 4, y + 44, 22, 3.5);
+        ctx.fillStyle = '#6f8f5a'; ctx.fillRect(wx, y + 26, 14, 18);
+        ctx.strokeStyle = 'rgba(30,50,30,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); for (let sy = y + 28; sy < y + 43; sy += 3) { ctx.moveTo(wx + 1, sy); ctx.lineTo(wx + 13, sy); } ctx.moveTo(wx + 7, y + 26); ctx.lineTo(wx + 7, y + 44); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(wx, y + 26, 14, 1.5);
+        if ((h >>> (n + 5)) % 3 === 0) { ctx.fillStyle = '#4a3a2a'; ctx.fillRect(wx + 3, y + 29, 8, 12); ctx.fillStyle = '#6f8f5a'; ctx.fillRect(wx - 5, y + 26, 5, 18); ctx.fillRect(wx + 14, y + 26, 5, 18); }
+        if ((h >>> (n + 9)) % 4 === 0) { ctx.fillStyle = '#b5643a'; ctx.fillRect(wx + 1, y + 47, 12, 5); ctx.fillStyle = '#4f8a3a'; circle(wx + 4, y + 46, 3); ctx.fill(); circle(wx + 10, y + 46, 3); ctx.fill(); ctx.fillStyle = '#e8473f'; circle(wx + 3, y + 44, 2); ctx.fill(); circle(wx + 9, y + 45, 2); ctx.fill(); circle(wx + 6.5, y + 43, 1.8); ctx.fill(); }
+      }
+      ctx.fillStyle = CO.roof; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(x - 2, y, w + 4, 15, 4); ctx.fill();
+      TTA.tiles(x - 0.5, y + 1.5, w + 1, 12, CO.roof, { seed: i, step: 12 }); rr(x - 2, y, w + 4, 15, 4); ctx.stroke();
+      }, x, y);
     }
   }
   // the river Arno and the old bridge
@@ -837,14 +849,16 @@ function tthVinciDrawGround(st) {
     ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2;
     for (let i = Math.floor(a / 70); i * 70 < b; i++) { const x = i * 70 + ((t * 26) % 70), y = K.water + 12 + (i % 3) * 11; if (x < a + 4 || x > b - 26) continue; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 10, y - 4, x + 22, y); ctx.stroke(); }
     if (x1 > b0 - 20 && x0 < b1 + 20) {
-      ctx.fillStyle = CO.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(b0, K.bridge + 36, b1 - b0, H); ctx.strokeRect(b0, K.bridge + 36, b1 - b0, H);
+      ctx.fillStyle = CO.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(b0, K.bridge + 36, b1 - b0, H);
+      TTA.stones(b0 + 1.5, K.bridge + 37.5, b1 - b0 - 3, H - K.bridge, 4, CO.stone, { bw: 36, bh: 18, wx: b0, wy: K.bridge + 36, moss: true }); ctx.strokeRect(b0, K.bridge + 36, b1 - b0, H);
       ctx.fillStyle = '#3d7f9e';
       for (let n = 0; n < 3; n++) { const ax = b0 + 28 + n * 124; ctx.beginPath(); ctx.moveTo(ax, H + 6); ctx.lineTo(ax, K.water - 4); ctx.quadraticCurveTo(ax + 48, K.water - 52, ax + 96, K.water - 4); ctx.lineTo(ax + 96, H + 6); ctx.closePath(); ctx.fill(); ctx.stroke(); }
       for (let n = 0; n < 5; n++) {   // the little shops on the bridge
         const sx = b0 + n * 80;
-        ctx.fillStyle = CO.wall[(n + 1) % 4]; ctx.fillRect(sx, K.bridge + 10, 80, 28); ctx.strokeRect(sx, K.bridge + 10, 80, 28);
+        ctx.fillStyle = CO.wall[(n + 1) % 4]; ctx.fillRect(sx, K.bridge + 10, 80, 28); TTA.plaster(sx + 1.5, K.bridge + 11.5, 77, 25, n * 13 + 1, CO.wall[(n + 1) % 4], { chip: false, quoins: false }); ctx.strokeRect(sx, K.bridge + 10, 80, 28);
         ctx.fillStyle = '#4a3a2a'; ctx.fillRect(sx + 14, K.bridge + 18, 12, 12); ctx.fillRect(sx + 50, K.bridge + 18, 12, 12);
-        ctx.fillStyle = CO.roof; rr(sx - 2, K.bridge, 84, 13, 4); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#c9a060'; ctx.fillRect(sx + 13, K.bridge + 29, 14, 2.5); ctx.fillRect(sx + 49, K.bridge + 29, 14, 2.5);
+        ctx.fillStyle = CO.roof; rr(sx - 2, K.bridge, 84, 13, 4); ctx.fill(); TTA.tiles(sx - 0.5, K.bridge + 1.5, 81, 10, CO.roof, { seed: n, step: 10 }); rr(sx - 2, K.bridge, 84, 13, 4); ctx.stroke();
       }
     }
   }
@@ -853,9 +867,8 @@ function tthVinciDrawGround(st) {
     const a = Math.max(x0, pz0), cheer = ph.mode === 'won' || (ph.chase && ph.chase.phase === 'dive');
     ctx.fillStyle = '#ead8b0'; ctx.fillRect(a, K.ground, x1 - a, H - K.ground + 10);
     ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(a, K.ground); ctx.lineTo(x1, K.ground); ctx.stroke();
-    ctx.strokeStyle = 'rgba(138,110,70,0.4)'; ctx.lineWidth = 1.5; ctx.beginPath();
-    for (let i = Math.floor(a / 60); i * 60 < x1; i++) { const x = i * 60; if (x > a) { ctx.moveTo(x, K.ground + 4); ctx.lineTo(x - 16, H); } }
-    ctx.moveTo(a, K.ground + 24); ctx.lineTo(x1, K.ground + 24); ctx.stroke();
+    TTA.stones(a, K.ground + 2, x1 - a, H - K.ground, 6, '#ead8b0', { bw: 30, bh: 13, wx: 0, wy: K.ground + 2, lit: 0.35, dk: 0.2, mortar: 'rgba(138,110,70,0.5)' });
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(a, K.ground + 2, x1 - a, 3);
     for (let i = Math.floor(a / 46); i * 46 < x1; i++) {
       const h = hash(i, 21), x = i * 46 + (h % 30);
       if (h % 3 === 0 || x < a + 10) continue;
@@ -869,22 +882,28 @@ function tthVinciDrawGround(st) {
   // Leonardo's workshop (the start) and the two perch towers
   const S = K.start;
   if (x0 < S.x1 + 40) {
-    ctx.fillStyle = '#ecd9b0'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(S.x0 + 8, S.y + 10, S.x1 - S.x0 - 16, H); ctx.strokeRect(S.x0 + 8, S.y + 10, S.x1 - S.x0 - 16, H);
-    ctx.fillStyle = '#8a5a2a'; rr(S.x0 + 70, S.y + 70, 40, 80, 18); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ecd9b0'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(S.x0 + 8, S.y + 10, S.x1 - S.x0 - 16, H);
+    TTA.plaster(S.x0 + 9.5, S.y + 11.5, S.x1 - S.x0 - 19, H - S.y - 12, 41, '#ecd9b0', { brick: '#c27a52' }); ctx.strokeRect(S.x0 + 8, S.y + 10, S.x1 - S.x0 - 16, H);
+    ctx.fillStyle = '#c9c0ae'; rr(S.x0 + 64, S.y + 64, 52, 90, 22); ctx.fill(); ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 3;
+    ctx.fillStyle = '#8a5a2a'; rr(S.x0 + 70, S.y + 70, 40, 80, 18); ctx.fill();
+    ctx.save(); ctx.clip(); TTA.wood(S.x0 + 70, S.y + 70, 40, 80, 43, '#8a5a2a', { vert: true }); ctx.strokeStyle = 'rgba(30,15,5,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (const ox of [10, 20, 30]) { ctx.moveTo(S.x0 + 70 + ox, S.y + 70); ctx.lineTo(S.x0 + 70 + ox, S.y + 150); } ctx.stroke(); ctx.fillStyle = '#4a4a5a'; ctx.fillRect(S.x0 + 70, S.y + 96, 40, 4); ctx.fillRect(S.x0 + 70, S.y + 128, 40, 4); ctx.restore();
+    ctx.strokeStyle = C.ink; rr(S.x0 + 70, S.y + 70, 40, 80, 18); ctx.stroke();
     ctx.fillStyle = '#9fd3e6'; circle(S.x0 + 180, S.y + 62, 16); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(S.x0 + 164, S.y + 62); ctx.lineTo(S.x0 + 196, S.y + 62); ctx.moveTo(S.x0 + 180, S.y + 46); ctx.lineTo(S.x0 + 180, S.y + 78); ctx.stroke();
-    ctx.fillStyle = CO.wood; rr(S.x0, S.y, S.x1 - S.x0, 13, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = CO.wood; rr(S.x0, S.y, S.x1 - S.x0, 13, 4); ctx.fill(); TTA.wood(S.x0 + 1.5, S.y + 1.5, S.x1 - S.x0 - 3, 10, 47, CO.wood, { nails: true }); rr(S.x0, S.y, S.x1 - S.x0, 13, 4); ctx.stroke();
     ctx.strokeStyle = CO.woodDk; ctx.lineWidth = 1.5; ctx.beginPath(); for (let x = S.x0 + 20; x < S.x1; x += 22) { ctx.moveTo(x, S.y + 2); ctx.lineTo(x, S.y + 11); } ctx.stroke();
     tthVinciDrawLeo(S.x0 + 34, S.y, ph);
   }
   for (const P of c.perches) {
     if (P.x + 90 < x0 || P.x - 90 > x1) continue;
     const bell = P.k === 1;
-    ctx.fillStyle = bell ? '#f4efe2' : CO.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(P.x - 50, P.y + 10, 100, H); ctx.strokeRect(P.x - 50, P.y + 10, 100, H);
-    if (bell) { ctx.fillStyle = '#6fa08a'; for (let y = P.y + 40; y < H; y += 44) ctx.fillRect(P.x - 48, y, 96, 8); ctx.fillStyle = '#c96a6a'; for (let y = P.y + 62; y < H; y += 44) ctx.fillRect(P.x - 48, y, 96, 4); }
-    else { ctx.fillStyle = CO.stoneDk; for (let n = 0; n < 8; n++) ctx.fillRect(P.x - 40 + (n % 2) * 44 + ((n >> 1) % 2) * 10, P.y + 34 + n * 22, 22, 7); }
+    ctx.fillStyle = bell ? '#f4efe2' : CO.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.fillRect(P.x - 50, P.y + 10, 100, H);
+    if (bell) { TTA.stones(P.x - 48.5, P.y + 11.5, 97, H - P.y, 7, '#f4efe2', { bw: 32, bh: 15, wx: P.x - 50, wy: P.y + 10, lit: 0.3, dk: 0.12 }); ctx.fillStyle = '#6fa08a'; for (let y = P.y + 40; y < H; y += 44) { ctx.fillRect(P.x - 48, y, 96, 8); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(P.x - 48, y, 96, 2); ctx.fillStyle = '#6fa08a'; } ctx.fillStyle = '#c96a6a'; for (let y = P.y + 62; y < H; y += 44) ctx.fillRect(P.x - 48, y, 96, 4); }
+    else { TTA.stones(P.x - 48.5, P.y + 11.5, 97, H - P.y, 8, CO.stone, { bw: 26, bh: 14, wx: P.x - 50, wy: P.y + 10, moss: true }); ctx.fillStyle = CO.stoneDk; for (let n = 0; n < 8; n++) ctx.fillRect(P.x - 40 + (n % 2) * 44 + ((n >> 1) % 2) * 10, P.y + 34 + n * 22, 22, 7); }
+    ctx.strokeRect(P.x - 50, P.y + 10, 100, H);
+    ctx.fillStyle = '#e8e0cc'; rr(P.x - 16, P.y + 44, 32, 48, 15); ctx.fill(); ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 3;
     ctx.fillStyle = '#3d3552'; rr(P.x - 12, P.y + 48, 24, 40, 12); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = CO.wood; rr(P.x - 66, P.y, 132, 13, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = CO.wood; rr(P.x - 66, P.y, 132, 13, 4); ctx.fill(); TTA.wood(P.x - 64.5, P.y + 1.5, 129, 10, P.x | 0, CO.wood, { nails: true }); rr(P.x - 66, P.y, 132, 13, 4); ctx.stroke();
     // the gold flag: the checkpoint
     ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(P.x + 58, P.y); ctx.lineTo(P.x + 58, P.y - 66); ctx.stroke();
     const wv = Math.sin(t * 5 + P.x) * 4;
@@ -939,31 +958,39 @@ function tthVinciDrawObs(st) {
     if (ob.kind === 'tower') {
       const st2 = ob.style;
       if (st2 === 'mill') {
-        ctx.fillStyle = '#f4ead2'; ctx.beginPath(); ctx.moveTo(x + 5, y + 2); ctx.lineTo(x + w - 5, y + 2); ctx.lineTo(x + w + 2, H + 10); ctx.lineTo(x - 2, H + 10); ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = CO.roof; rr(x + 1, y, w - 2, 12, 5); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#f4ead2'; ctx.beginPath(); ctx.moveTo(x + 5, y + 2); ctx.lineTo(x + w - 5, y + 2); ctx.lineTo(x + w + 2, H + 10); ctx.lineTo(x - 2, H + 10); ctx.closePath(); ctx.fill();
+        ctx.save(); ctx.clip(); TTA.plaster(x - 2, y + 2, w + 4, H - y + 8, x | 0, '#f4ead2', { brick: '#c9a26a', quoins: false }); ctx.fillStyle = 'rgba(120,90,60,0.14)'; ctx.fillRect(cx + w * 0.15, y, w, H); ctx.restore();
+        ctx.beginPath(); ctx.moveTo(x + 5, y + 2); ctx.lineTo(x + w - 5, y + 2); ctx.lineTo(x + w + 2, H + 10); ctx.lineTo(x - 2, H + 10); ctx.closePath(); ctx.stroke();
+        ctx.fillStyle = CO.roof; rr(x + 1, y, w - 2, 12, 5); ctx.fill(); TTA.tiles(x + 2.5, y + 1.5, w - 5, 9, CO.roof, { seed: x | 0, step: 9 }); rr(x + 1, y, w - 2, 12, 5); ctx.stroke();
         ctx.fillStyle = '#4a3a2a'; rr(cx - 7, y + 84, 14, 22, 7); ctx.fill();
         ctx.save(); ctx.translate(cx, y + 44); ctx.rotate(t * 1.4);
         for (let n = 0; n < 4; n++) { ctx.rotate(Math.PI / 2); ctx.fillStyle = CO.canvas; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(4, -30); ctx.lineTo(14, -28); ctx.lineTo(6, -2); ctx.closePath(); ctx.fill(); ctx.stroke(); }
         ctx.fillStyle = CO.woodDk; circle(0, 0, 4); ctx.fill(); ctx.restore();
       } else {
         const col = st2 === 'castle' ? CO.stone : st2 === 'bell' ? '#f4efe2' : st2 === 'palace' ? '#d2ab7e' : '#e3b877';
-        ctx.fillStyle = col; ctx.fillRect(x, y + 6, w, H); ctx.strokeRect(x, y + 6, w, H);
+        ctx.fillStyle = col; ctx.fillRect(x, y + 6, w, H);
+        // (art pass) the tower's own surface: cut stone for the castle and palace, stucco and brick for the others
+        if (st2 === 'castle' || st2 === 'palace') TTA.stones(x + 1.5, y + 7.5, w - 3, H - y, x | 0, col, { bw: 28, bh: 15, wx: x, wy: y + 26, moss: st2 === 'castle' });
+        else if (st2 === 'bell') TTA.stones(x + 1.5, y + 7.5, w - 3, H - y, x | 0, col, { bw: 34, bh: 16, wx: x, wy: y + 6, lit: 0.3, dk: 0.12 });
+        else TTA.plaster(x + 1.5, y + 7.5, w - 3, H - y - 7, x | 0, col, { brick: '#b8693f' });
+        ctx.fillStyle = 'rgba(70,40,30,0.15)'; ctx.fillRect(x + w * 0.66, y + 6, w * 0.34, H);
+        ctx.strokeRect(x, y + 6, w, H);
         if (st2 === 'castle' || st2 === 'palace') {
           const n = Math.max(3, Math.round(w / 20)), mw = (w + 8) / (n * 2 - 1);
-          for (let i = 0; i < n; i++) { ctx.fillStyle = col; ctx.fillRect(x - 4 + i * mw * 2, y, mw, 16); ctx.strokeRect(x - 4 + i * mw * 2, y, mw, 16); }
-          ctx.fillRect(x - 5, y + 14, w + 10, 12); ctx.strokeRect(x - 5, y + 14, w + 10, 12);
+          for (let i = 0; i < n; i++) { ctx.fillStyle = col; ctx.fillRect(x - 4 + i * mw * 2, y, mw, 16); TTA.bevel(x - 4 + i * mw * 2, y, mw, 16, { lit: 0.35, dk: 0.14 }); ctx.strokeRect(x - 4 + i * mw * 2, y, mw, 16); }
+          ctx.fillStyle = col; ctx.fillRect(x - 5, y + 14, w + 10, 12); TTA.bevel(x - 5, y + 14, w + 10, 12, { lit: 0.35, dk: 0.2 }); ctx.strokeRect(x - 5, y + 14, w + 10, 12);
           ctx.fillStyle = st2 === 'castle' ? CO.stoneDk : '#b08a5e';
           for (let n2 = 0; n2 < 6; n2++) ctx.fillRect(x + 8 + (n2 % 2) * (w - 34), y + 42 + n2 * 30, 16, 6);
           ctx.fillStyle = '#3d3552'; rr(cx - 4, y + 44, 8, 22, 4); ctx.fill();
           if (st2 === 'palace') { tthClockFace(cx, y + 96, 13, t, { speed: 0.5, ticks: true, lw: 2.5 }); ctx.strokeStyle = C.ink; ctx.lineWidth = 3; }
         } else if (st2 === 'bell') {
           ctx.fillStyle = '#6fa08a'; for (let yy = y + 64; yy < H; yy += 40) ctx.fillRect(x + 2, yy, w - 4, 7);
-          ctx.fillStyle = CO.roof; rr(x - 4, y, w + 8, 12, 4); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = CO.roof; rr(x - 4, y, w + 8, 12, 4); ctx.fill(); TTA.tiles(x - 2.5, y + 1.5, w + 5, 9, CO.roof, { seed: x | 0, step: 9 }); rr(x - 4, y, w + 8, 12, 4); ctx.stroke();
           ctx.fillStyle = '#3d3552'; rr(cx - 12, y + 22, 24, 30, 12); ctx.fill(); ctx.stroke();
           ctx.fillStyle = C.gold; ctx.lineWidth = 2; ctx.save(); ctx.translate(cx, y + 30); ctx.rotate(Math.sin(t * 3) * 0.3); ctx.beginPath(); ctx.moveTo(-6, 14); ctx.quadraticCurveTo(-6, 0, 0, 0); ctx.quadraticCurveTo(6, 0, 6, 14); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
         } else {
-          ctx.fillStyle = CO.roof; rr(x - 5, y, w + 10, 13, 4); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = '#4a3a2a'; for (let yy = y + 30; yy < H - 40; yy += 46) { rr(cx - 7, yy, 14, 20, 7); ctx.fill(); }
+          ctx.fillStyle = CO.roof; rr(x - 5, y, w + 10, 13, 4); ctx.fill(); TTA.tiles(x - 3.5, y + 1.5, w + 7, 10, CO.roof, { seed: x | 0, step: 10 }); rr(x - 5, y, w + 10, 13, 4); ctx.stroke();
+          for (let yy = y + 30; yy < H - 40; yy += 46) { ctx.fillStyle = '#efe4c8'; rr(cx - 10, yy - 3, 20, 26, 9); ctx.fill(); ctx.fillStyle = '#4a3a2a'; rr(cx - 7, yy, 14, 20, 7); ctx.fill(); ctx.fillStyle = '#efe4c8'; ctx.fillRect(cx - 9, yy + 20, 18, 3); }
           ctx.strokeStyle = 'rgba(122,74,30,0.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let yy = y + 22; yy < H; yy += 46) { ctx.moveTo(x + 3, yy); ctx.lineTo(x + w - 3, yy); } ctx.stroke();
         }
       }
@@ -986,7 +1013,12 @@ function tthVinciDrawObs(st) {
     } else if (ob.kind === 'dome') {
       const hw = w / 2, base = ob.base;
       ctx.fillStyle = '#f4efe2'; ctx.fillRect(cx - hw + 14, base - 4, w - 28, H); ctx.strokeRect(cx - hw + 14, base - 4, w - 28, H);
-      ctx.fillStyle = '#d0563a'; ctx.beginPath(); ctx.ellipse(cx, base, hw, base - y, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#d0563a'; ctx.beginPath(); ctx.ellipse(cx, base, hw, base - y, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.strokeStyle = 'rgba(120,40,20,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = 1; k < 9; k++) { const ry = (base - y) * k / 9; ctx.ellipse(cx, base, hw, base - y - ry, 0, Math.PI, 0); } ctx.stroke();
+      ctx.fillStyle = 'rgba(90,20,10,0.25)'; ctx.beginPath(); ctx.ellipse(cx + hw * 0.55, base, hw * 0.7, base - y, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = 'rgba(255,230,200,0.3)'; ctx.beginPath(); ctx.ellipse(cx - hw * 0.4, base - (base - y) * 0.5, hw * 0.22, (base - y) * 0.4, -0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore(); ctx.beginPath(); ctx.ellipse(cx, base, hw, base - y, 0, Math.PI, 0); ctx.closePath(); ctx.stroke();
       ctx.strokeStyle = '#f4efe2'; ctx.lineWidth = 5;
       for (let n = -3; n <= 3; n++) { ctx.beginPath(); ctx.moveTo(cx + n * hw * 0.3, base - (base - y) * Math.sqrt(1 - 0.09 * n * n) + 3); ctx.quadraticCurveTo(cx + n * hw * 0.2, y + (base - y) * 0.2, cx + n * 4, y + 3); ctx.stroke(); }
       ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
