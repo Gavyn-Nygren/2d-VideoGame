@@ -547,10 +547,42 @@ function qdCactus(x, y, s) {
   ctx.restore();
 }
 function qdBoards(x, y, w, h, col, dk, vertical) {
-  ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = dk; ctx.lineWidth = 1.5;
-  if (vertical) { ctx.beginPath(); for (let bx = x + 14; bx < x + w; bx += 14) { ctx.moveTo(bx, y); ctx.lineTo(bx, y + h); } ctx.stroke(); }
-  else { ctx.beginPath(); for (let by = y + 10; by < y + h; by += 10) { ctx.moveTo(x, by); ctx.lineTo(x + w, by); } ctx.stroke(); }
+  // (cached) grained boards with knots and nail pairs, weather streaks, darker at the foot, outlined in the wall's dark
+  dkPicHi('qdB|' + [x, y, w, h, col, vertical ? 1 : 0].join(','), w + 2, h + 2, 1, 1, c => {
+    c.save(); c.beginPath(); c.rect(0, 0, w, h); c.clip();
+    dkBoards(c, 0, 0, w, h, col, (x * 7 + y * 3) | 0, { vert: !!vertical, bw: vertical ? 14 : 10, r: 0, outline: dk, lw: 1.2 });
+    for (let i = 0; i < w / 40; i++) { const hh = hash(i, (x * 3 + y) | 0); c.fillStyle = 'rgba(60,30,10,0.12)'; c.fillRect(hh % w, 0, 2 + hh % 4, h * (0.3 + (hh >>> 8) % 50 / 100)); }
+    const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,240,210,0.08)'); g.addColorStop(0.7, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(60,30,10,0.22)');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    c.restore();
+  }, x, y);
+}
+// a shop door (cached): a frame, planks with two inset panels, a brass knob and kick plate
+function qdDoor(x, y, col, knob) {
+  dkPicHi('qdDoor|' + col, 60, 118, 1, 1, c => {
+    c.fillStyle = QD_COL.woodDk; c.fillRect(0, 0, 58, 116);
+    c.fillStyle = 'rgba(255,230,190,0.25)'; c.fillRect(0, 0, 58, 1.5);
+    c.save(); c.beginPath(); c.rect(5, 5, 48, 111); c.clip();
+    dkBoards(c, 5, 5, 48, 111, col, 7, { vert: true, bw: 12, r: 0, outline: dkS(col, 0.4), lw: 0.8 });
+    c.restore();
+    for (const [py, ph] of [[14, 38], [62, 40]]) { c.strokeStyle = 'rgba(40,20,5,0.4)'; c.lineWidth = 1.5; c.strokeRect(11, py, 36, ph); c.strokeStyle = 'rgba(255,230,190,0.3)'; c.lineWidth = 1; c.strokeRect(12.5, py + 1.5, 36, ph); }
+    c.fillStyle = '#b8902a'; c.fillRect(7, 104, 44, 6); c.fillStyle = '#f2d68a'; c.fillRect(7, 104, 44, 1.2);
+    const kx = knob ? 44 : 14; c.fillStyle = '#ffd36b'; c.beginPath(); c.arc(kx, 62, 3, 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff4c0'; c.beginPath(); c.arc(kx - 1, 61, 1.1, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#8a6a1a'; c.lineWidth = 0.8; c.beginPath(); c.arc(kx, 62, 3, 0, Math.PI * 2); c.stroke();
+  }, x, y);
+}
+// a porch roof beam on turned posts with capitals, bases and corner brackets (cached per side)
+function qdPorch(x0, posts, porchY) {
+  dkPicHi('qdPorch|' + x0, 316, porchY - 240, -x0 + 2, -240, c => {
+    dkPlank(c, x0, 244, 312, 8, QD_COL.woodDk, x0 + 1, { r: 1, lit: 0.3, nails: true, lw: 0.8 });
+    c.fillStyle = 'rgba(255,230,190,0.35)'; c.fillRect(x0, 251, 312, 1);
+    for (const px of posts) {
+      dkPlank(c, px, 252, 8, porchY - 252, QD_COL.wood, px, { vert: true, r: 0.5, lw: 0.8 });
+      dkPlank(c, px - 2, 252, 12, 5, QD_COL.woodDk, px + 1, { r: 1, lw: 0.6 }); dkPlank(c, px - 2, porchY - 6, 12, 6, QD_COL.woodDk, px + 2, { r: 1, lw: 0.6 });
+      c.fillStyle = 'rgba(40,20,5,0.3)'; c.fillRect(px + 1, 270, 6, 1.5); c.fillRect(px + 1, porchY - 22, 6, 1.5);
+      for (const s of [-1, 1]) { c.fillStyle = QD_COL.woodDk; c.beginPath(); c.moveTo(px + 4 + s * 4, 257); c.lineTo(px + 4 + s * 16, 257); c.quadraticCurveTo(px + 4 + s * 7, 259, px + 4 + s * 4, 270); c.closePath(); c.fill(); }
+    }
+  }, 0, 0);
 }
 function qdSign(str, x, y, w, h, bg, fg, fs) {
   ctx.fillStyle = 'rgba(60,30,10,0.35)'; rr(x - w / 2 + 3, y - h / 2 + 3, w, h, 4); ctx.fill();
@@ -572,11 +604,9 @@ function qdDrawBuildings(st) {
   ctx.fillStyle = QD_COL.storeDk; ctx.fillRect(-10, 166, 304, 6);
   qdSign('GENERAL STORE', 142, 214, 220, 30, '#f3e2b8', '#7a3a26', 19);
   qdWindow(28, 262, 60, 54); qdWindow(196, 262, 60, 54);
-  ctx.fillStyle = QD_COL.woodDk; ctx.fillRect(112, 256, 58, 116); ctx.fillStyle = '#a86a3a'; ctx.fillRect(117, 261, 48, 111);
-  ctx.fillStyle = '#ffd36b'; circle(156, 318, 3); ctx.fill();
+  qdDoor(112, 256, '#a86a3a', 1);
   // the porch roof and posts
-  ctx.fillStyle = QD_COL.woodDk; ctx.fillRect(-10, 244, 312, 8);
-  for (const px of [6, 100, 182, 284]) { ctx.fillStyle = QD_COL.wood; ctx.fillRect(px, 252, 8, porchY - 252); }
+  qdPorch(-10, [6, 100, 182, 284], porchY);
   // ---- Root Beer Saloon (middle) with the balcony
   qdBoards(318, 150, 324, porchY - 150, QD_COL.saloon, QD_COL.saloonDk, true);
   ctx.fillStyle = QD_COL.saloon; ctx.beginPath(); ctx.moveTo(318, 150); ctx.lineTo(318, 128); ctx.lineTo(400, 128); ctx.lineTo(420, 108); ctx.lineTo(540, 108); ctx.lineTo(560, 128); ctx.lineTo(642, 128); ctx.lineTo(642, 150); ctx.fill();
@@ -586,11 +616,20 @@ function qdDrawBuildings(st) {
   ctx.fillStyle = '#7a3a1a'; rr(588, 120, 16, 20, 3); ctx.fill(); ctx.fillStyle = '#fff6e0'; rr(586, 116, 20, 7, 3.5); ctx.fill();
   qdWindow(344, 168, 44, 40); qdWindow(572, 168, 44, 40);
   // the balcony (Mayor Mosey stands on it)
-  ctx.fillStyle = QD_COL.woodDk; ctx.fillRect(330, QD.refY, 300, 10);
-  ctx.strokeStyle = QD_COL.woodDk; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(330, QD.refY - 26); ctx.lineTo(630, QD.refY - 26); ctx.stroke();
-  ctx.lineWidth = 2; ctx.beginPath(); for (let x = 340; x <= 620; x += 16) { ctx.moveTo(x, QD.refY - 26); ctx.lineTo(x, QD.refY); } ctx.stroke();
-  // the bell frame on the balcony
-  ctx.fillStyle = QD_COL.woodDk; ctx.fillRect(QD.bellX - 22, QD.bellY - 30, 44, 5); ctx.fillRect(QD.bellX - 22, QD.bellY - 30, 5, QD.refY - QD.bellY + 30); ctx.fillRect(QD.bellX + 17, QD.bellY - 30, 5, QD.refY - QD.bellY + 30);
+  // (cached) the balcony: a planked floor with a lit edge and brackets, turned balusters, a capped hand rail, the bell frame
+  dkPicHi('qdBalcony', 316, 112, -322, -(QD.bellY - 34), c => {
+    const R0 = QD.refY;
+    for (const bx of [QD.bellX - 22, QD.bellX + 17]) dkPlank(c, bx, QD.bellY - 30, 5, R0 - QD.bellY + 30, QD_COL.woodDk, bx, { vert: true, r: 0.5, lit: 0.25, lw: 0.7 });
+    dkPlank(c, QD.bellX - 24, QD.bellY - 32, 48, 6, QD_COL.woodDk, 3, { r: 1.5, lit: 0.3, nails: true, lw: 0.8 });
+    for (let x = 340; x <= 620; x += 16) {
+      c.fillStyle = QD_COL.woodDk; c.fillRect(x - 1.5, R0 - 26, 3, 26);
+      c.fillStyle = QD_COL.wood; c.beginPath(); c.ellipse(x, R0 - 13, 2.6, 4, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,230,190,0.45)'; c.fillRect(x - 1.5, R0 - 25, 0.9, 24);
+    }
+    dkPlank(c, 328, R0 - 29, 304, 5, QD_COL.wood, 4, { r: 2, lit: 0.35, outline: QD_COL.woodDk, lw: 1 });
+    dkPlank(c, 330, R0, 300, 10, QD_COL.woodDk, 5, { r: 1, lit: 0.25, nails: true, lw: 1 });
+    for (const bx of [350, 480, 610]) { c.fillStyle = QD_COL.woodDk; c.beginPath(); c.moveTo(bx - 6, R0 + 10); c.lineTo(bx + 6, R0 + 10); c.lineTo(bx, R0 + 22); c.closePath(); c.fill(); }
+  }, 0, 0);
   // downstairs: windows and the swinging doors
   qdWindow(344, 296, 52, 44); qdWindow(564, 296, 52, 44);
   ctx.fillStyle = '#3a2232'; ctx.fillRect(446, 286, 68, porchY - 286);
@@ -613,9 +652,8 @@ function qdDrawBuildings(st) {
   qdWindow(686, 262, 64, 54); qdWindow(872, 262, 64, 54);
   // hats in the window
   for (const [x, c] of [[700, '#d08a4a'], [722, '#5a6ab8'], [886, '#a0522d'], [910, '#e0b85a']]) { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x + 8, 300, 10, 3, 0, 0, Math.PI * 2); ctx.fill(); rr(x + 2, 290, 12, 10, 4); ctx.fill(); }
-  ctx.fillStyle = QD_COL.woodDk; ctx.fillRect(780, 256, 58, 116); ctx.fillStyle = '#8a5a30'; ctx.fillRect(785, 261, 48, 111);
-  ctx.fillStyle = QD_COL.woodDk; ctx.fillRect(658, 244, 312, 8);
-  for (const px of [664, 756, 856, 952]) { ctx.fillStyle = QD_COL.wood; ctx.fillRect(px, 252, 8, porchY - 252); }
+  qdDoor(780, 256, '#8a5a30', 0);
+  qdPorch(658, [664, 756, 856, 952], porchY);
   // the cowbell on the porch post
   const cb = v.cowbellT >= 0 && v.cowbellT < 1.4 ? Math.sin(v.cowbellT * 18) * Math.exp(-v.cowbellT * 2.5) * 0.7 : 0;
   ctx.save(); ctx.translate(QD.cowbellX, QD.cowbellY - 22); ctx.rotate(cb);
@@ -628,7 +666,11 @@ function qdDrawBuildings(st) {
   ctx.fillStyle = 'rgba(60,30,10,0.14)'; ctx.fillRect(-10, 252, 312, 14); ctx.fillRect(658, 252, 312, 14); ctx.fillRect(318, QD.refY + 10, 324, 10);
   // the boardwalk in front of every shop
   qdBoards(-10, porchY, W + 20, 18, QD_COL.board, QD_COL.boardDk, true);
-  ctx.fillStyle = QD_COL.boardDk; ctx.fillRect(-10, porchY + 18, W + 20, 6);
+  dkPicHi('qdWalkEdge', W + 22, 10, 11, 0, c => {
+    c.fillStyle = 'rgba(255,240,210,0.45)'; c.fillRect(-10, 0, W + 20, 1.5);
+    dkPlank(c, -10, 18, W + 20, 6, QD_COL.boardDk, 9, { r: 0, lit: 0.2, lw: 0.8 });
+    for (let x = 4; x < W; x += 56) dkNail(c, x, 21, 1);
+  }, 0, porchY);
 }
 // the crow on the Hats & Boots sign (it caws in fakeouts and just blinks the rest of the time)
 function qdDrawCrow(st) {
@@ -712,36 +754,61 @@ function qdDrawBell(st) {
   }
 }
 function qdDrawStreet(st) {
-  const g = ctx.createLinearGradient(0, 390, 0, 560);
-  g.addColorStop(0, QD_COL.streetDk); g.addColorStop(0.35, QD_COL.street); g.addColorStop(1, QD_COL.streetLt);
-  ctx.fillStyle = g; ctx.fillRect(-20, 396, W + 40, 170);
-  // wagon ruts and little stones
-  ctx.strokeStyle = 'rgba(160,110,60,0.25)'; ctx.lineWidth = 3;
-  for (const y of [446, 452, 508, 514]) { ctx.beginPath(); ctx.moveTo(-20, y); for (let x = 0; x <= W + 20; x += 40) ctx.lineTo(x, y + Math.sin(x * 0.02 + y) * 1.5); ctx.stroke(); }
-  for (let i = 0; i < 26; i++) {
-    const x = (i * 137) % W, y = 404 + ((i * 59) % 130), r = 1.5 + (i % 3);
-    ctx.fillStyle = i % 2 ? 'rgba(170,120,70,0.45)' : 'rgba(255,240,210,0.5)'; ctx.beginPath(); ctx.ellipse(x, y, r * 1.6, r, 0, 0, Math.PI * 2); ctx.fill();
-  }
-  // hoof prints
-  ctx.fillStyle = 'rgba(150,100,55,0.28)';
-  for (let i = 0; i < 9; i++) { const x = 60 + i * 104, y = 488 + (i % 2) * 12; ctx.beginPath(); ctx.arc(x, y, 4, Math.PI * 0.1, Math.PI * 1.9); ctx.fill(); }
+  // (cached) packed dirt: a shaded strip under the boardwalk, grains, ruts with lit and shaded banks, shaded stones,
+  // hoof prints, boot prints, a few dry tufts
+  dkPicHi('qdStreet', W + 40, 170, 20, -396, c => {
+    const g = c.createLinearGradient(0, 390, 0, 560);
+    g.addColorStop(0, QD_COL.streetDk); g.addColorStop(0.35, QD_COL.street); g.addColorStop(1, QD_COL.streetLt);
+    c.fillStyle = g; c.fillRect(-20, 396, W + 40, 170);
+    c.fillStyle = 'rgba(110,70,30,0.22)'; c.fillRect(-20, 396, W + 40, 6);
+    for (let i = 0; i < 1500; i++) { const hh = hash(i, 1919), x = -20 + hh % (W + 40), y = 398 + (hh >>> 11) % 166; c.fillStyle = hh % 3 ? 'rgba(160,110,60,0.28)' : 'rgba(255,248,225,0.5)'; c.fillRect(x, y, 1, 1); }
+    for (const y of [446, 452, 508, 514]) {
+      const path = dy => { c.beginPath(); c.moveTo(-20, y + dy); for (let x = 0; x <= W + 20; x += 20) c.lineTo(x, y + dy + Math.sin(x * 0.02 + y) * 1.5); };
+      c.strokeStyle = 'rgba(160,110,60,0.3)'; c.lineWidth = 3; path(0); c.stroke();
+      c.strokeStyle = 'rgba(120,80,40,0.25)'; c.lineWidth = 1; path(-1.6); c.stroke();
+      c.strokeStyle = 'rgba(255,245,215,0.5)'; c.lineWidth = 1; path(1.8); c.stroke();
+    }
+    for (let i = 0; i < 26; i++) { const x = (i * 137) % W, y = 404 + ((i * 59) % 130), r = 1.5 + (i % 3); dkPebble(c, x, y, r * 1.6, r, ['#c9a070', '#b89878', '#d8b88a', '#a89c90'][i % 4], i * 31); }
+    for (let i = 0; i < 9; i++) {
+      const x = 60 + i * 104, y = 488 + (i % 2) * 12;
+      c.fillStyle = 'rgba(150,100,55,0.3)'; c.beginPath(); c.arc(x, y, 4, Math.PI * 0.1, Math.PI * 1.9); c.fill();
+      c.fillStyle = 'rgba(255,245,215,0.45)'; c.beginPath(); c.arc(x, y + 0.8, 4.2, Math.PI * 0.25, Math.PI * 0.75); c.lineTo(x, y); c.fill();
+    }
+    for (let i = 0; i < 6; i++) { const x = 210 + i * 26, y = 470 + (i % 2) * 9; c.fillStyle = 'rgba(150,100,55,0.18)'; c.beginPath(); c.ellipse(x, y, 4.5, 2.2, 0.2, 0, Math.PI * 2); c.fill(); c.beginPath(); c.ellipse(x + 6, y + 0.5, 2, 1.8, 0, 0, Math.PI * 2); c.fill(); }
+    for (const [x, y] of [[120, 412], [420, 538], [700, 416], [880, 470]]) {
+      c.strokeStyle = '#b89a50'; c.lineWidth = 1.2; c.lineCap = 'round'; c.beginPath();
+      for (let j = -2; j <= 2; j++) { c.moveTo(x + j, y); c.quadraticCurveTo(x + j * 2, y - 4, x + j * 3.5, y - 8 + Math.abs(j)); }
+      c.stroke(); c.lineCap = 'butt';
+    }
+  }, 0, 0);
 }
 function qdDrawProps(st) {
   // the water trough (left, by the store) and a hitching post
-  ctx.fillStyle = QD_COL.woodDk; ctx.fillRect(40, 404, 8, 22); ctx.fillRect(148, 404, 8, 22);
-  ctx.fillStyle = QD_COL.wood; rr(30, 382, 136, 28, 4); ctx.fill();
-  ctx.fillStyle = '#6fc6e0'; ctx.fillRect(36, 384, 124, 7);
+  // (cached) the trough: two grained side planks with iron corner straps, end boards, legs, a shadow, then live ripples
+  dkPicHi('qdTrough', 150, 52, -24, -378, c => {
+    c.fillStyle = 'rgba(120,70,30,0.25)'; c.beginPath(); c.ellipse(100, 427, 74, 5, 0, 0, Math.PI * 2); c.fill();
+    for (const lx of [40, 148]) dkPlank(c, lx, 404, 8, 22, QD_COL.woodDk, lx, { vert: true, r: 1, lw: 0.8 });
+    c.fillStyle = '#4a7a8a'; c.fillRect(34, 383, 128, 9);
+    c.fillStyle = '#6fc6e0'; c.fillRect(36, 384, 124, 7);
+    c.fillStyle = 'rgba(30,80,110,0.35)'; c.fillRect(36, 389, 124, 2);
+    dkPlank(c, 30, 382, 136, 14, QD_COL.wood, 21, { r: 3, lit: 0.0, outline: QD_COL.woodDk, lw: 1.5 });
+    c.fillStyle = '#6fc6e0'; c.fillRect(36, 384, 124, 7); c.fillStyle = 'rgba(30,80,110,0.3)'; c.fillRect(36, 389, 124, 2);
+    c.fillStyle = 'rgba(255,240,210,0.5)'; c.fillRect(31, 382, 134, 1.5);
+    dkPlank(c, 30, 396, 136, 14, dkS(QD_COL.wood, 0.06), 22, { r: 3, outline: QD_COL.woodDk, lw: 1.5 });
+    for (const sx of [30, 158]) { c.fillStyle = '#5a5560'; c.fillRect(sx, 382, 8, 28); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(sx, 382, 1.2, 28); dkRivet(c, sx + 4, 388, 1, '#9a94a4'); dkRivet(c, sx + 4, 404, 1, '#9a94a4'); }
+    c.strokeStyle = QD_COL.woodDk; c.lineWidth = 2; rrOn(c, 30, 382, 136, 28, 4); c.stroke();
+  }, 0, 0);
   ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(56 + Math.sin(G.clock * 2) * 6, 386, 18, 2); ctx.fillRect(110 + Math.sin(G.clock * 2 + 1) * 6, 386, 12, 2);
-  ctx.strokeStyle = QD_COL.woodDk; ctx.lineWidth = 2; rr(30, 382, 136, 28, 4); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(30, 396); ctx.lineTo(166, 396); ctx.stroke();
   // barrels (right)
   for (const [x, y] of [[858, 398], [892, 404]]) {
-    ctx.fillStyle = 'rgba(120,70,30,0.25)'; ctx.beginPath(); ctx.ellipse(x + 3, y + 2, 19, 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#a0622e'; rr(x - 15, y - 34, 30, 36, 8); ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x + 5, y - 32, 9, 32); ctx.fillStyle = 'rgba(255,230,190,0.25)'; ctx.fillRect(x - 12, y - 32, 3, 32);
-    ctx.strokeStyle = '#5a3418'; ctx.lineWidth = 1.5; rr(x - 15, y - 34, 30, 36, 8); ctx.stroke();
-    ctx.fillStyle = '#6a4020'; ctx.fillRect(x - 15, y - 26, 30, 4); ctx.fillRect(x - 15, y - 10, 30, 4);
-    ctx.fillStyle = '#c47a3a'; ctx.beginPath(); ctx.ellipse(x, y - 34, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
+    dkPicHi('qdBarrel|' + (x & 1), 44, 48, 20, 42, c => {
+      c.fillStyle = 'rgba(120,70,30,0.25)'; c.beginPath(); c.ellipse(3, 2, 19, 4, 0, 0, Math.PI * 2); c.fill();
+      dkBarrel(c, -15, -34, 30, 36, '#a0622e', 61 + (x & 1), { noShadow: true, noLid: true, hoop: '#5a5560', outline: '#5a3418', lw: 1.5 });
+      c.fillStyle = '#c47a3a'; c.beginPath(); c.ellipse(0, -34, 13.5, 4, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(90,50,20,0.5)'; c.lineWidth = 0.8; c.beginPath(); for (const dx of [-6, 0, 6]) { c.moveTo(dx, -37.5); c.lineTo(dx, -30.5); } c.stroke();
+      c.fillStyle = 'rgba(255,240,210,0.4)'; c.beginPath(); c.ellipse(-3, -35, 7, 1.6, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = '#5a3418'; c.lineWidth = 1.2; c.beginPath(); c.ellipse(0, -34, 14, 4, 0, 0, Math.PI * 2); c.stroke();
+    }, x, y);
   }
   // cactus pots and a desert cactus at the street ends
   qdCactus(296, 386, 0.62); qdCactus(664, 386, 0.62);

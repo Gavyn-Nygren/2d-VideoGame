@@ -781,11 +781,36 @@ function vdSurfDrawRiver(st, k, cam, X0, X1) {
   ctx.beginPath(); ctx.moveTo(pts[0][0], bot);
   for (const q of pts) ctx.lineTo(q[0], q[1]);
   ctx.lineTo(pts[pts.length - 1][0], bot); ctx.closePath(); ctx.fill();
-  // cooled crust plates drifting downstream
+  // bright flow ribbons under the skin, following the surface and sliding downstream
+  ctx.lineCap = 'round';
+  for (const [dep, a, sp, lw] of [[13, 0.38, 90, 3], [30, 0.24, 55, 4], [58, 0.16, 35, 6]]) {
+    ctx.strokeStyle = `rgba(255,228,140,${a})`; ctx.lineWidth = lw; ctx.beginPath();
+    for (let n = Math.floor((X0 - t * sp) / 120); n * 120 + t * sp < X1 + 60; n++) {
+      const x = n * 120 + t * sp + (hash(n, 40 + dep) % 50), len = 30 + hash(n, 41 + dep) % 40;
+      ctx.moveTo(x, vdSurfBase(T, x) + dep);
+      ctx.quadraticCurveTo(x + len / 2, vdSurfBase(T, x + len / 2) + dep - 2 - hash(n, 42) % 3, x + len, vdSurfBase(T, x + len) + dep);
+    }
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+  // a darker cooling band deep in the flow, with a ragged top
+  ctx.fillStyle = 'rgba(120,28,14,0.22)'; ctx.beginPath();
+  ctx.moveTo(pts[0][0], bot);
+  for (const q of pts) ctx.lineTo(q[0], vdSurfBase(T, q[0]) + 96 + Math.sin(q[0] * 0.03) * 8 + (hash(Math.floor(q[0] / 12), 47) % 5));
+  ctx.lineTo(pts[pts.length - 1][0], bot); ctx.closePath(); ctx.fill();
+  // cooled crust plates drifting downstream (jagged rafts with glowing cracks)
   for (let n = Math.floor((X0 - t * 60) / 160); n * 160 + t * 60 < X1 + 80; n++) {
     const x = n * 160 + t * 60 + (hash(n, 9) % 70), gy = vdSurfBase(T, x), d = 16 + (hash(n, 4) % 40);
-    ctx.fillStyle = 'rgba(150,40,20,0.45)'; ctx.beginPath(); ctx.ellipse(x, gy + d, 20 + (hash(n, 2) % 16), 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.85; vdCrust(x, gy + d, 40 + (hash(n, 2) % 32), 9 + hash(n, 3) % 4, hash(n, 5)); ctx.globalAlpha = 1;
   }
+  // bubbles swelling and popping just under the skin (a pure function of x and t)
+  const bub = [];
+  for (let n = Math.floor(X0 / 70); n * 70 < X1; n++) {
+    const u = (t * 0.7 + (hash(n, 48) % 100) / 100) % 1; if (u > 0.8) continue;
+    const bx = n * 70 + hash(n, 49) % 40; bub.push([bx, vdSurfBase(T, bx) + 8 + hash(n, 50) % 16 - u * 4, 1.5 + u * 4]);
+  }
+  ctx.fillStyle = 'rgba(255,236,160,0.75)'; ctx.beginPath(); for (const [bx, by, r] of bub) { ctx.moveTo(bx + r, by); ctx.arc(bx, by, r, 0, Math.PI * 2); } ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,235,0.8)'; ctx.beginPath(); for (const [bx, by, r] of bub) { ctx.moveTo(bx - r * 0.35 + r * 0.35, by - r * 0.35); ctx.arc(bx - r * 0.35, by - r * 0.35, r * 0.35, 0, Math.PI * 2); } ctx.fill();
   // glints flowing along the top
   ctx.strokeStyle = 'rgba(255,245,190,0.9)'; ctx.lineWidth = 2;
   for (let n = Math.floor((X0 - t * 140) / 90); n * 90 + t * 140 < X1 + 40; n++) {
@@ -856,13 +881,21 @@ function vdSurfDrawKick(st, q, k) {
 }
 function vdSurfDrawRock(T, rk) {
   const gy = vdSurfBase(T, rk.x), w = rk.w + 6, h = rk.h + 6, t = G.clock;
-  ctx.fillStyle = VDC.slab; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.moveTo(rk.x - w / 2, gy + 6);
-  ctx.quadraticCurveTo(rk.x - w / 2 - 2, gy - h * 0.7, rk.x - w * 0.15, gy - h);
-  ctx.quadraticCurveTo(rk.x + w * 0.3, gy - h - 3, rk.x + w / 2, gy - h * 0.45);
-  ctx.lineTo(rk.x + w / 2 + 2, gy + 6); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = VDC.slabLt; ctx.beginPath(); ctx.ellipse(rk.x - w * 0.18, gy - h * 0.72, w * 0.18, h * 0.12, -0.4, 0, Math.PI * 2); ctx.fill();
+  // (cached per size) a basalt boulder: a lit left face, a shaded right one, a ridge line, gas holes, a scorched foot
+  dkPic('vdsRock|' + Math.round(w) + '|' + Math.round(h), w + 12, h + 14, w / 2 + 6, h + 5, c => {
+    const bp = () => { c.beginPath(); c.moveTo(-w / 2, 6); c.quadraticCurveTo(-w / 2 - 2, -h * 0.7, -w * 0.15, -h); c.quadraticCurveTo(w * 0.3, -h - 3, w / 2, -h * 0.45); c.lineTo(w / 2 + 2, 6); c.closePath(); };
+    c.fillStyle = VDC.slab; bp(); c.fill();
+    c.save(); bp(); c.clip();
+    c.fillStyle = '#4c4552'; c.beginPath(); c.moveTo(-w / 2 - 4, 8); c.lineTo(-w / 2 - 4, -h); c.lineTo(-w * 0.12, -h - 4); c.lineTo(-w * 0.02, -h * 0.4); c.lineTo(-w * 0.1, 8); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(10,5,15,0.35)'; c.beginPath(); c.moveTo(w * 0.12, 8); c.lineTo(w * 0.2, -h * 0.6); c.lineTo(w / 2 + 4, -h * 0.5); c.lineTo(w / 2 + 4, 8); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(120,30,10,0.4)'; c.fillRect(-w / 2 - 4, -2, w + 8, 10);
+    vdVesicles(c, -w / 2 + 3, -h + 4, w - 6, h - 4, Math.round(w * h / 90), Math.round(w));
+    c.restore();
+    c.strokeStyle = 'rgba(10,5,15,0.4)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-w * 0.12, -h + 1); c.lineTo(-w * 0.02, -h * 0.4); c.lineTo(-w * 0.1, 4); c.stroke();
+    c.fillStyle = VDC.slabLt; c.beginPath(); c.ellipse(-w * 0.18, -h * 0.72, w * 0.18, h * 0.12, -0.4, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,230,220,0.35)'; c.beginPath(); c.ellipse(-w * 0.22, -h * 0.78, w * 0.08, h * 0.05, -0.4, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = C.ink; c.lineWidth = 2.5; bp(); c.stroke();
+  }, rk.x, gy);
   ctx.strokeStyle = `rgba(255,${150 + Math.round(Math.sin(t * 5 + rk.x) * 40)},60,0.9)`; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(rk.x - 4, gy - h * 0.5); ctx.lineTo(rk.x + 4, gy - h * 0.3); ctx.lineTo(rk.x + 1, gy - 4); ctx.stroke();
   // lava lapping at its foot

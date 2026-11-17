@@ -691,26 +691,19 @@ function vdgDrawBack(st) {
       if (!lava && x0 >= 0) { vdDrawLava(x0 * T, tx * T, ty * T + 4, t, { depth: (ROWS - ty) * T }); x0 = -1; }
     }
   }
-  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
-    const ch = L.grid[ty][tx];
-    if (ch === '#') drawStone(tx, ty);
-    else if (ch === 's') vdgDrawAsh(tx, ty);
-  }
-  // glowing seams on the rock faces near the lava
-  ctx.strokeStyle = `rgba(255,150,70,${0.5 + 0.2 * Math.sin(t * 1.9)})`; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  vdRockTiles();   // the rock and the ash (volcano-dragon.js), one cached picture
+  // glowing seams on the rock faces near the lava: a dark split with a pulsing ember line inside (one path)
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath();
   for (let ty = 11; ty < ROWS - 1; ty++) for (let tx = 0; tx < COLS; tx++) {
     if (L.grid[ty][tx] !== '#' || hash(tx, ty + 40) % 5) continue;
-    const x = tx * T + 6 + hash(tx, ty) % 14, y = ty * T + 6;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 5, y + 8); ctx.lineTo(x + 1, y + 15); ctx.stroke();
+    const x = tx * T + 6 + hash(tx, ty) % 14, y = ty * T + 6, j = hash(tx, ty + 41);
+    ctx.moveTo(x, y); ctx.lineTo(x + 3 + j % 3, y + 5); ctx.lineTo(x + 1, y + 10); ctx.lineTo(x + 4 + (j >> 3) % 3, y + 14); ctx.lineTo(x + 2, y + 19);
+    ctx.moveTo(x + 1, y + 10); ctx.lineTo(x - 3, y + 13);
   }
-}
-function vdgDrawAsh(tx, ty) {
-  const x = tx * T, y = ty * T, h = hash(tx, ty);
-  ctx.fillStyle = VDGC.ash; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
-  ctx.fillStyle = VDGC.ashLt;
-  for (let i = 0; i < 5; i++) { circle(x + 4 + ((h >> (i * 3)) % 23), y + 6 + ((h >> (i * 4 + 2)) % 20), 1.5); ctx.fill(); }
-  if (h % 4 === 0) { ctx.fillStyle = 'rgba(30,20,35,0.25)'; ctx.beginPath(); ctx.ellipse(x + 8 + (h >> 7) % 16, y + 14 + (h >> 11) % 10, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill(); }
-  if (vdgTile(tx, ty - 1) !== 's' && vdgTile(tx, ty - 1) !== '#') { ctx.fillStyle = '#8f8592'; ctx.fillRect(x, y, T, 4); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x, y, T, 1.5); }
+  ctx.strokeStyle = 'rgba(16,8,14,0.8)'; ctx.lineWidth = 3.4; ctx.stroke();
+  ctx.strokeStyle = `rgba(255,150,70,${0.6 + 0.25 * Math.sin(t * 1.9)})`; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.strokeStyle = `rgba(255,230,160,${0.35 + 0.2 * Math.sin(t * 1.9)})`; ctx.lineWidth = 0.6; ctx.stroke();
+  ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
 }
 function vdgDrawGong(st) {
   const ph = st.ph, g = ph.gong, R = vdgGongR(ph), t = G.clock, top = g.top;

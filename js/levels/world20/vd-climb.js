@@ -638,12 +638,21 @@ function vdClimbDrawGround(st) {
   const g = ctx.createLinearGradient(0, cam.y, 0, cam.y + H);
   g.addColorStop(0, '#4b3c4f'); g.addColorStop(1, '#2a2130');
   ctx.fillStyle = g; path(); ctx.fill();
+  // basalt: a world-anchored texture of specks, gas holes and column joints (the same path, no clip), then layered
+  // bands under the crust
+  dkPatFill(vdBasalt());
   ctx.save(); path(); ctx.clip();
-  // speckles and glowing cracks under the surface (a pure function of x)
+  for (const [dy, th, col] of [[18, 10, 'rgba(118,96,110,0.35)'], [64, 14, 'rgba(15,8,20,0.28)'], [130, 10, 'rgba(118,96,110,0.2)']]) {
+    ctx.fillStyle = col; ctx.beginPath();
+    for (const q of pts) ctx.lineTo(q[0], q[1] + dy + Math.sin(q[0] / 47) * 4);
+    for (let i = pts.length - 1; i >= 0; i--) ctx.lineTo(pts[i][0], pts[i][1] + dy + th + Math.sin(pts[i][0] / 31) * 3);
+    ctx.closePath(); ctx.fill();
+  }
+  // embedded stones and glowing cracks under the surface (a pure function of x)
   for (let x = Math.floor((cam.x - 40) / 46) * 46; x < cam.x + W + 40; x += 46) {
     const hs = hash(x, 11), gy = vdClimbG(ph, x);
-    ctx.fillStyle = VDCLC.rockLt; ctx.beginPath(); ctx.ellipse(x + (hs % 20), gy + 22 + (hs >> 5) % 50, 7 + hs % 6, 3.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = VDCLC.rockDk; ctx.beginPath(); ctx.ellipse(x + 20 + (hs >> 3) % 14, gy + 60 + (hs >> 8) % 60, 9, 4, 0.3, 0, Math.PI * 2); ctx.fill();
+    vdStone(x + (hs % 20), gy + 22 + (hs >>> 5) % 50, hs % 8);
+    vdStone(x + 20 + (hs >>> 3) % 14, gy + 60 + (hs >>> 8) % 60, 3 + (hs >>> 2) % 5);
     if (hs % 3 === 0) {
       const a = 0.55 + 0.35 * Math.sin(t * 2 + x * 0.05);
       ctx.strokeStyle = `rgba(255,140,50,${a})`; ctx.lineWidth = 2.5; ctx.beginPath();
@@ -656,8 +665,14 @@ function vdClimbDrawGround(st) {
   // the crust along the top
   ctx.strokeStyle = VDCLC.crust; ctx.lineWidth = 5; ctx.lineJoin = 'round';
   ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1] + 2); for (const q of pts) ctx.lineTo(q[0], q[1] + 2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,200,180,0.35)'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1] + 4.5); for (const q of pts) ctx.lineTo(q[0], q[1] + 4.5); ctx.stroke();
   ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (const q of pts) ctx.lineTo(q[0], q[1]); ctx.stroke();
+  // loose scoria grit on the crust
+  ctx.fillStyle = '#8a7480'; ctx.beginPath();
+  for (let x = Math.floor((cam.x - 40) / 11) * 11; x < cam.x + W + 40; x += 11) { const hs = hash(x, 19); if (hs % 3) continue; const gx = x + hs % 8, gy = vdClimbG(ph, gx); ctx.moveTo(gx + 1.6, gy - 1); ctx.ellipse(gx, gy - 1, 1.6 + hs % 2, 1.1, 0, 0, Math.PI * 2); }
+  ctx.fill();
   // rock steps: a block outline on the face
   for (const s of ph.c.steps) {
     if (s.x < cam.x - 60 || s.x > cam.x + W + 60) continue;
@@ -669,7 +684,7 @@ function vdClimbDrawGround(st) {
     const hs = hash(x, 5), kind = hs % 7, dx = x + (hs >> 4) % 30;
     if (ph.c.walls.some(w => Math.abs(w.face - dx) < 40) || ph.c.steps.some(s => Math.abs(s.x - dx) < 24)) continue;
     const gy = vdClimbG(ph, dx);
-    if (kind === 0 || kind === 1) { ctx.fillStyle = VDCLC.rockLt; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(dx, gy - 3, 7, 5, 0, Math.PI, 0); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(dx + 9, gy - 2, 4, 3, 0, Math.PI, 0); ctx.fill(); ctx.stroke(); }
+    if (kind === 0 || kind === 1) dkPic('vdPebbles|' + kind, 30, 14, 9, 11, c => { dkRock(c, 0, 0, 15, 8, VDCLC.rockLt, 40 + kind, { outline: C.ink, lw: 1.5 }); dkRock(c, 9.5, 1, 9, 5, VDCLC.rockLt, 50 + kind, { noShadow: true, outline: C.ink, lw: 1.2 }); }, dx, gy);
     else if (kind === 2) {
       const a = 0.7 + 0.3 * Math.sin(t * 3 + x);
       ctx.fillStyle = `rgba(255,120,60,${a})`; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5;
@@ -688,9 +703,16 @@ function vdClimbDrawGround(st) {
 function vdClimbDrawWall(st, w) {
   const ph = st.ph, t = G.clock, x = w.face, hgt = w.base - w.top, cl = 1 - ph.sh;
   // the face: stacked stone blocks
+  // stacked basalt blocks: each with a lit top edge, a shaded right end and a dark joint under it
+  for (let y = w.top + 4, n = 0; y < w.base - 2; y += 28, n++) {
+    const bh = Math.min(28, w.base - y), bw = 40 + (n % 2) * 14;
+    ctx.fillStyle = n % 2 ? '#56485e' : VDCLC.wall; ctx.fillRect(x, y, bw, bh - 2);
+    ctx.fillStyle = 'rgba(255,215,205,0.16)'; ctx.fillRect(x, y, bw, 2);
+    ctx.fillStyle = 'rgba(10,5,15,0.3)'; ctx.fillRect(x + bw - 4, y, 4, bh - 2); ctx.fillRect(x, y + bh - 3, bw, 3);
+    ctx.fillStyle = 'rgba(10,5,15,0.4)'; ctx.beginPath(); for (let i = 0; i < 3; i++) { const hh = hash(n * 3 + i, x | 0); ctx.moveTo(x + 10 + hh % (bw - 16) + 1.4, y + 6 + (hh >>> 8) % 14); ctx.ellipse(x + 10 + hh % (bw - 16), y + 6 + (hh >>> 8) % 14, 1.4, 1, 0, 0, Math.PI * 2); } ctx.fill();
+  }
   ctx.fillStyle = VDCLC.wallLt; ctx.fillRect(x, w.top, 9, hgt);
-  ctx.strokeStyle = 'rgba(28,26,54,0.45)'; ctx.lineWidth = 2;
-  ctx.beginPath(); for (let y = w.top + 28, n = 0; y < w.base - 6; y += 28, n++) { ctx.moveTo(x, y); ctx.lineTo(x + 40 + (n % 2) * 14, y + 2); } ctx.stroke();
+  ctx.fillStyle = 'rgba(255,215,205,0.3)'; ctx.fillRect(x, w.top, 2, hgt);
   // grips (in the climber's colour while the ladder is still rolled up)
   const gc = w.down ? '#a08a7a' : PCOL[cl];
   for (let y = w.base - 18, n = 0; y > w.top + 8; y -= 22, n++) {
@@ -706,8 +728,7 @@ function vdClimbDrawWall(st, w) {
     ctx.strokeStyle = 'rgba(28,26,54,0.6)'; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(hx, hy - 18, 30, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = C.gold; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(hx, hy - 18, 30, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clamp(w.hold / VDCL.holdT, 0, 1)); ctx.stroke();
   }
-  ctx.fillStyle = VDCLC.post; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
-  rr(hx - 4, hy - 34, 8, 34, 2); ctx.fill(); ctx.stroke();
+  dkPic('vdHookPost', 14, 40, 7, 36, c => { dkPlank(c, -4, -34, 8, 34, VDCLC.post, 12, { vert: true, r: 2, outline: C.ink, lw: 2 }); c.fillStyle = '#5a5560'; c.fillRect(-5, -12, 10, 3); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(-5, -12, 10, 1); }, hx, hy);
   ctx.fillStyle = C.gold; circle(hx, hy - 34, 5); ctx.fill(); ctx.stroke();
   ctx.strokeStyle = C.gold; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(hx - 6, hy - 26, 5, -0.4, Math.PI * 0.9); ctx.stroke();
   if (!w.down) {   // the rolled-up ladder next to the post

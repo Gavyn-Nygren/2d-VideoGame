@@ -933,15 +933,15 @@ function heistCactus(x, y, s, col) {
 function heistDrawTrack(st) {
   const R = HEIST.railY, x0 = st.camX - 20, x1 = st.camX + W + 20;
   // ballast and sleepers stream past at train speed (train coords: they move left with the ground)
-  ctx.fillStyle = '#b88a5c'; ctx.fillRect(x0, R + 2, x1 - x0, 20);
-  const off = st.scroll % 34;
-  ctx.fillStyle = '#6e4a2e';
-  for (let x = Math.floor(x0 / 34) * 34 - off; x < x1 + 34; x += 34) ctx.fillRect(x, R + 4, 20, 7);
+  // (cached 136 px tiles: ballast stones, grained sleepers with tie plates and spikes; same sleeper spacing and speed)
+  const off = st.scroll % 136;
+  for (let x = Math.floor(x0 / 136) * 136 - off; x < x1 + 136; x += 136) dkPic('thTrack', 136, 24, 0, 0, heistPaintTrack, x, R);
   ctx.fillStyle = '#7d7a86'; ctx.fillRect(x0, R, x1 - x0, 4);
   ctx.fillStyle = '#c9c6d2'; ctx.fillRect(x0, R, x1 - x0, 1.5);
-  // the sandy ground in front, with pebbles rushing by
-  ctx.fillStyle = '#e9bd7c'; ctx.fillRect(x0, R + 22, x1 - x0, H - R);
-  const o5 = st.scroll * 1.2;
+  ctx.fillStyle = 'rgba(30,20,30,0.45)'; ctx.fillRect(x0, R + 3.5, x1 - x0, 1);
+  // the sandy ground in front (cached 280 px tiles), with pebbles rushing by
+  const o5 = st.scroll * 1.2, sh = H - R - 22;
+  for (let x = Math.floor((x0 + o5) / 280) * 280 - o5; x < x1 + 280; x += 280) dkPic('thSand|' + sh, 280, sh, 0, 0, c => heistPaintSand(c, sh), x, R + 22);
   ctx.fillStyle = '#c99a5f';
   for (let i = Math.floor((x0 + o5) / 70) - 1; i < Math.floor((x1 + o5) / 70) + 1; i++) {
     const hv = hash(i, 77), x = i * 70 - o5 + (hv % 40);
@@ -957,8 +957,12 @@ function heistDrawTrack(st) {
 }
 function heistDrawCoupler(st, g) {
   const y = HEIST.roof + HEIST.body - 16;
-  ctx.fillStyle = '#3a2e2a'; ctx.fillRect(g.x0 - 4, y, g.x1 - g.x0 + 8, 7);
-  ctx.fillStyle = '#5a4a40'; rr(g.x0 + (g.x1 - g.x0) / 2 - 7, y - 3, 14, 13, 3); ctx.fill();
+  const L = Math.round(g.x1 - g.x0);
+  dkPic('thCoupler|' + L, L + 12, 16, 6, 4, c => {
+    dkPlate(c, -4, 0, L + 8, 7, '#3a2e2a', { step: 9, r: 1 });
+    dkPlate(c, L / 2 - 7, -3, 14, 13, '#5a4a40', { rivets: false, r: 3 });
+    c.fillStyle = '#2a201c'; c.fillRect(L / 2 - 1, -2, 2, 11); dkRivet(c, L / 2 - 3.5, 3.5, 1.2, '#8a7a70'); dkRivet(c, L / 2 + 3.5, 3.5, 1.2, '#8a7a70');
+  }, g.x0, y);
 }
 // cars beyond the flag car (they are the next stretch; a gate rail stops you)
 function heistDrawAhead(st) {
@@ -966,6 +970,283 @@ function heistDrawAhead(st) {
   const R = HEIST.roof, x = st.len + HEIST.narrow;
   heistDrawCar(st, { kind: 'box', x0: x, x1: x + 320, seed: 5, ahead: true }, G.clock);
   ctx.fillStyle = '#6b4226'; ctx.fillRect(st.len - 6, R - 34, 6, 34); ctx.fillRect(st.len - 6, R - 34, 22, 5);
+}
+// ---------- rich still art for the train (painted once into cached pictures; see dkPic in world18/runaway-ship.js) ----------
+// a truck under a car: a riveted side frame, a leaf spring, axle boxes over the wheel hubs (local y: 0 = roof line)
+function heistPaintTruck(c, bx, B) {
+  dkPlate(c, bx - 34, B - 4, 68, 12, '#3a3238', { step: 11, r: 2 });
+  for (let i = 0; i < 3; i++) { c.fillStyle = i % 2 ? '#2e282e' : '#5a5260'; c.fillRect(bx - 11 + i * 2.5, B + 1 + i * 2, 22 - i * 5, 2); }
+  for (const s of [-18, 18]) { dkPlate(c, bx + s - 5, B + 4, 10, 9, '#4a4248', { rivets: false, r: 1.5 }); dkRivet(c, bx + s, B + 8.5, 1.2, '#8c8494'); }
+}
+// the roof: a dark eave, boards running along it butted with nail pairs, a lit top edge, a soft shadow on the wall
+function heistPaintRoof(c, x, w, col, dark, y) {
+  c.fillStyle = 'rgba(30,15,5,0.22)'; c.fillRect(x, y + 6, w, 4);
+  c.fillStyle = dark; rrOn(c, x - 3, y - 3, w + 6, 10, 3); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(x - 1, y + 3.5, w + 2, 1);
+  for (let p = 0, i = 0; p < w + 5.5; i++) {
+    const s = Math.min(54 + hash(i, w | 0) % 16, w + 6 - p);
+    dkPlank(c, x - 3 + p, y - 4, s, 7, i % 2 ? dkS(col, 0.05) : dkT(col, 0.04), (w | 0) + i * 7, { r: 2, lit: 0.32, nails: s > 12, nailR: 0.9, outline: dkS(col, 0.45), lw: 0.8 });
+    p += s;
+  }
+  c.strokeStyle = dkS(dark, 0.35); c.lineWidth = 1; rrOn(c, x - 3, y - 4, w + 6, 11, 3); c.stroke();
+}
+// a hay bale: straw strands, darker cut ends, twine bands with a lit strand, an outline in a dark straw shade
+function heistPaintBale(c, x, y, w, h, seed) {
+  c.fillStyle = '#e8c35a'; rrOn(c, x, y, w, h, 4); c.fill();
+  c.save(); rrOn(c, x, y, w, h, 4); c.clip();
+  const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, 'rgba(255,250,200,0.3)'); g.addColorStop(0.5, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(120,80,20,0.3)');
+  c.fillStyle = g; c.fillRect(x, y, w, h);
+  c.lineWidth = 1; c.lineCap = 'round';
+  for (let i = 0; i < w * h / 14; i++) {
+    const hh = hash(seed + i, 919), sx = x + hh % w, sy = y + 1 + (hh >>> 9) % Math.max(1, h - 2), l = 3 + (hh >>> 5) % 6, a = (((hh >>> 13) % 9) - 4) * 0.06;
+    c.strokeStyle = hh % 3 === 0 ? 'rgba(170,120,30,0.55)' : hh % 3 === 1 ? 'rgba(255,240,170,0.75)' : 'rgba(210,160,60,0.5)';
+    c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + l, sy + a * l); c.stroke();
+  }
+  c.fillStyle = 'rgba(150,100,30,0.25)'; c.fillRect(x + w - 4, y, 4, h); c.fillRect(x, y, 2, h);
+  c.restore(); c.lineCap = 'butt';
+  for (const f of [0.3, 0.7]) { const tx = x + w * f; c.fillStyle = '#8a5a2a'; c.fillRect(tx - 1, y, 2.2, h); c.fillStyle = 'rgba(255,220,160,0.6)'; c.fillRect(tx - 1, y, 0.8, h); }
+  c.fillStyle = 'rgba(255,240,170,0.8)'; for (let i = 0; i < 4; i++) { const hh = hash(seed, 50 + i); c.fillRect(x + 2 + hh % (w - 4), y - 1.5, 1, 2.5); }
+  c.strokeStyle = '#a8812e'; c.lineWidth = 1.2; rrOn(c, x, y, w, h, 4); c.stroke();
+}
+// a whole car without its wheels (they spin) or its words (drawn live): local x 0..w, y 0 = the roof line
+function heistPaintCar(c, kind, w, col, dark, seed, cupX) {
+  const B = HEIST.body;
+  for (const f of [0.17, 0.83]) heistPaintTruck(c, w * f, B);
+  dkPlate(c, 4, B - 8, w - 8, 9, '#3a3238', { step: 16, r: 1 });
+  if (kind === 'tank') {
+    dkPlate(c, 0, B - 16, w, 10, '#4a4048', { step: 14, r: 1 });
+    for (const f of [0.15, 0.85]) { c.fillStyle = '#4a4048'; c.fillRect(w * f - 3, B - 30, 6, 15); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(w * f - 3, B - 30, 1.2, 15); }
+    const tp = () => rrOn(c, 6, 12, w - 12, B - 30, 34);
+    c.fillStyle = col; tp(); c.fill();
+    c.save(); tp(); c.clip();
+    const g = c.createLinearGradient(0, 12, 0, B - 18);
+    g.addColorStop(0, 'rgba(255,255,255,0.35)'); g.addColorStop(0.28, 'rgba(255,255,255,0.06)'); g.addColorStop(0.6, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(50,40,20,0.38)');
+    c.fillStyle = g; c.fillRect(0, 10, w, B);
+    c.fillStyle = 'rgba(60,50,30,0.16)'; c.fillRect(6, 12, 22, B - 30); c.fillRect(w - 28, 12, 22, B - 30);
+    for (const f of [0.3, 0.7]) { c.fillStyle = dkS(col, 0.28); c.fillRect(w * f - 1, 12, 2, B - 30); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(w * f + 1, 12, 1, B - 30); for (let yy = 17; yy < B - 20; yy += 6) dkRivet(c, w * f + 4, yy, 0.9, dkT(col, 0.2)); }
+    for (let xx = 30; xx < w - 30; xx += 9) { dkRivet(c, xx, 17, 0.8, dkT(col, 0.2)); dkRivet(c, xx, B - 23, 0.8, dkS(col, 0.1)); }
+    for (let i = 0; i < 5; i++) { const hh = hash(seed + i, 31), sx = 40 + hh % (w - 80); c.fillStyle = 'rgba(150,90,40,0.18)'; c.fillRect(sx, 30 + (hh >>> 8) % 10, 2, 14 + (hh >>> 4) % 14); }
+    c.restore();
+    c.fillStyle = 'rgba(255,255,255,0.3)'; rrOn(c, 20, 20, w - 40, 8, 4); c.fill();
+    c.strokeStyle = dkS(col, 0.5); c.lineWidth = 1.6; tp(); c.stroke();
+    c.fillStyle = '#ece6d2'; rrOn(c, w / 2 - 36, 42, 72, 20, 4); c.fill(); c.strokeStyle = dkS(col, 0.45); c.lineWidth = 1.2; c.stroke();
+    c.strokeStyle = '#4a4048'; c.lineWidth = 1.5; c.beginPath(); for (const lx of [w - 36, w - 28]) { c.moveTo(lx, 12); c.lineTo(lx, B - 16); } for (let yy = 18; yy < B - 18; yy += 8) { c.moveTo(w - 36, yy); c.lineTo(w - 28, yy); } c.stroke();
+    dkPlate(c, w / 2 - 14, 4, 28, 10, dark, { rivets: false, r: 3 });
+    dkPlate(c, w / 2 - 9, 1, 18, 4, dkS(dark, 0.2), { rivets: false, r: 1.5 });
+    heistPaintRoof(c, 0, w, '#8a6a46', '#5e452c', 0);
+    for (let k = 0; k <= 6; k++) { const px = 6 + k * (w - 16) / 6; c.fillStyle = '#5e452c'; c.fillRect(px, -14, 3, 14); c.fillStyle = 'rgba(255,230,190,0.35)'; c.fillRect(px, -14, 1, 14); }
+    dkPlank(c, 6, -15, w - 10, 3, '#6e5236', 404, { r: 1, lit: 0.3, lw: 0.7 });
+    return;
+  }
+  if (kind === 'hay') {
+    dkBoards(c, 0, 70, w, B - 74, col, seed, { bw: 9, r: 1, outline: dkS(col, 0.5), lw: 0.8 });
+    dkPlate(c, 0, B - 12, w, 8, dark, { step: 18, r: 1 });
+    for (let sx = 14; sx < w - 8; sx += 44) { c.fillStyle = dark; c.fillRect(sx, 68, 5, B - 78); c.fillStyle = 'rgba(255,230,190,0.3)'; c.fillRect(sx, 68, 1.2, B - 78); dkRivet(c, sx + 2.5, 74, 0.9, '#8c8494'); }
+    const n = Math.floor(w / 48);
+    for (let r = 0; r < 3; r++) for (let k = 0; k < n; k++) {
+      const bx = 4 + k * ((w - 8) / n) + (r % 2) * 6, bw = (w - 8) / n - 4, by = r * 24;
+      heistPaintBale(c, bx, by, bw - (r % 2) * 6, 23, seed + r * 13 + k);
+    }
+    c.fillStyle = 'rgba(80,50,10,0.2)'; c.fillRect(2, 70, w - 4, 3);
+    c.fillStyle = '#f6d878'; c.fillRect(2, -1, w - 4, 2); c.fillStyle = 'rgba(255,255,230,0.6)'; c.fillRect(2, -1, w - 4, 0.8);
+    return;
+  }
+  // the body: wooden siding (or riveted plates on the tender), shading, a frame with rivets
+  const lit = kind === 'pass' || kind === 'check' || kind === 'caboose';
+  c.save(); c.beginPath(); c.rect(0, 4, w, B - 10); c.clip();
+  if (kind === 'tender') {
+    c.fillStyle = col; c.fillRect(0, 4, w, B - 10);
+    for (let px = 0; px < w; px += 46) dkPlate(c, px + 1, 6, Math.min(44, w - px - 2), B - 14, dkT(col, (hash(px, 3) % 3) * 0.03), { step: 10, r: 1, outline: dkS(col, 0.5) });
+  } else dkBoards(c, 0, 4, w, B - 10, col, seed, { vert: true, bw: lit ? 9 : 16, r: 0, outline: dkS(col, 0.45), lw: 0.8 });
+  const g = c.createLinearGradient(0, 4, 0, B - 6); g.addColorStop(0, 'rgba(255,240,210,0.16)'); g.addColorStop(0.35, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(30,10,0,0.28)');
+  c.fillStyle = g; c.fillRect(0, 4, w, B - 10);
+  for (let i = 0; i < 4; i++) { const hh = hash(seed + i, 71); c.fillStyle = 'rgba(60,30,10,0.12)'; c.beginPath(); c.ellipse(20 + hh % (w - 40), 30 + (hh >>> 8) % 40, 8 + hh % 10, 3, 0, 0, Math.PI * 2); c.fill(); }
+  c.restore();
+  dkPlate(c, 0, B - 12, w, 6, dark, { step: 22, r: 0, outline: dkS(dark, 0.4) });
+  for (const px of [0, w - 5]) { c.fillStyle = dark; c.fillRect(px, 4, 5, B - 10); c.fillStyle = 'rgba(255,230,190,0.25)'; c.fillRect(px, 4, 1.2, B - 10); for (let yy = 10; yy < B - 12; yy += 12) dkRivet(c, px + 2.5, yy, 0.9, dkT(dark, 0.3)); }
+  c.fillStyle = 'rgba(255,240,210,0.22)'; c.fillRect(5, 4, w - 10, 2);
+  c.strokeStyle = dkS(dark, 0.35); c.lineWidth = 1.5; c.strokeRect(0.75, 4.75, w - 1.5, B - 11.5);
+  if (kind === 'box') {
+    const dx = w / 2 - 36, dw = 72, dh = B - 30, dc = dkMix(col, dark, 0.55);
+    dkPlate(c, dx - 12, 10, dw + 24, 4, '#4a4248', { rivets: false, r: 1 });
+    for (const rx of [dx + 8, dx + dw - 8]) dkRivet(c, rx, 12, 2, '#6a6270');
+    c.fillStyle = 'rgba(20,10,0,0.3)'; c.fillRect(dx + 2, 16, dw, dh);
+    dkBoards(c, dx, 14, dw, dh, dc, seed + 9, { vert: true, bw: 12, r: 0, outline: dkS(dc, 0.45), lw: 0.8 });
+    for (const [a, b] of [[[dx + 4, 18], [dx + dw - 4, 14 + dh - 4]], [[dx + dw - 4, 18], [dx + 4, 14 + dh - 4]]]) {
+      const ang = Math.atan2(b[1] - a[1], b[0] - a[0]), len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      c.save(); c.translate(a[0], a[1]); c.rotate(ang); dkPlank(c, 0, -3, len, 6, col, seed + 3, { r: 1, lit: 0.3, lw: 0.8 }); c.restore();
+    }
+    dkPlank(c, dx, 14, dw, 6, col, seed + 4, { r: 1, nails: true, lw: 0.8 }); dkPlank(c, dx, 14 + dh - 6, dw, 6, col, seed + 5, { r: 1, nails: true, lw: 0.8 });
+    c.fillStyle = '#4a4248'; c.fillRect(dx + dw - 10, 38, 4, 18); c.fillStyle = '#9a92a4'; c.fillRect(dx + dw - 10, 38, 1.2, 18);
+    c.strokeStyle = dkS(dc, 0.5); c.lineWidth = 1.2; c.strokeRect(dx, 14, dw, dh);
+  } else if (kind === 'stock') {
+    for (let r = 0; r < 4; r++) {
+      const yy = 16 + r * 18;
+      c.fillStyle = '#2e2014'; c.fillRect(10, yy, w - 20, 7);
+      c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(10, yy, w - 20, 2);
+      c.fillStyle = 'rgba(255,240,200,0.35)'; c.fillRect(10, yy + 7, w - 20, 1);
+      c.fillStyle = 'rgba(200,160,60,0.5)'; for (let i = 0; i < w / 30; i++) { const hh = hash(i + r * 50, seed); c.fillRect(12 + hh % (w - 24), yy + 4 + (hh >>> 6) % 3, 4, 1); }
+    }
+    for (let px = 34; px < w - 20; px += 56) { dkPlank(c, px, 8, 7, B - 22, dark, px, { vert: true, r: 0, nails: 2, lw: 0.8 }); }
+  } else if (lit) {
+    const band = kind === 'caboose' ? '#f3d9a4' : '#f6e7c4', belt = kind === 'caboose' ? '#8f2c1e' : '#c9a24a';
+    c.fillStyle = band; c.fillRect(6, 20, w - 12, 34);
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(6, 20, w - 12, 1.5); c.fillStyle = 'rgba(120,80,30,0.25)'; c.fillRect(6, 51, w - 12, 3);
+    c.strokeStyle = dkS(band, 0.4); c.lineWidth = 1; c.strokeRect(6.5, 20.5, w - 13, 33);
+    dkPlate(c, 4, 58, w - 8, 4, belt, { rivets: false, r: 1 });
+    const n = Math.max(2, Math.floor((w - 30) / 46));
+    for (let k = 0; k < n; k++) {
+      const wx = 18 + k * ((w - 36) / n), ww = (w - 36) / n - 12;
+      c.fillStyle = dkS(col, 0.25); rrOn(c, wx - 2, 22, ww + 4, 30, 5); c.fill();
+      c.fillStyle = '#ffe9b0'; rrOn(c, wx, 24, ww, 26, 4); c.fill();
+      const gg = c.createLinearGradient(0, 24, 0, 50); gg.addColorStop(0, 'rgba(255,200,120,0.4)'); gg.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gg; rrOn(c, wx, 24, ww, 26, 4); c.fill();
+      c.fillStyle = kind === 'caboose' ? '#c84a3a' : '#3d8a5c'; c.beginPath(); c.moveTo(wx, 24); for (let s = 0; s <= 4; s++) c.quadraticCurveTo(wx + (s - 0.5) * ww / 4, 31, wx + s * ww / 4, 24 + (s < 4 ? 0 : 0)); c.lineTo(wx + ww, 24); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(wx + 3, 30, ww * 0.25, 18);
+      c.fillStyle = dkS(col, 0.3); c.fillRect(wx, 37, ww, 2); c.fillRect(wx + ww / 2 - 1, 24, 2, 26);
+      c.strokeStyle = dkS(col, 0.5); c.lineWidth = 1; rrOn(c, wx, 24, ww, 26, 4); c.stroke();
+      c.fillStyle = dkS(col, 0.1); c.fillRect(wx - 3, 51, ww + 6, 3); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(wx - 3, 51, ww + 6, 1);
+    }
+    for (let k = 0; k < Math.floor((w - 16) / 40); k++) { const px = 10 + k * 40; c.strokeStyle = 'rgba(255,240,210,0.25)'; c.lineWidth = 1; c.strokeRect(px + 0.5, 66.5, 34, 20); c.strokeStyle = 'rgba(30,10,0,0.25)'; c.strokeRect(px + 1.5, 67.5, 34, 20); }
+    if (kind === 'caboose') {
+      dkPlank(c, -22, B - 18, 22, 6, '#5a3a22', 61, { r: 1, nails: true, lw: 0.8 });
+      c.fillStyle = '#3a2e2a'; c.fillRect(-18, B - 12, 3, 10); c.fillRect(-8, B - 12, 3, 10); dkPlank(c, -20, B - 6, 16, 3, '#5a3a22', 62, { r: 0.5, lw: 0.6 });
+      for (let k = 0; k < 4; k++) { const px = -20 + k * 6.7; c.fillStyle = '#3a2e2a'; c.fillRect(px - 1, 30, 2.2, B - 48); c.fillStyle = 'rgba(255,230,190,0.3)'; c.fillRect(px - 1, 30, 0.8, B - 48); }
+      dkPlank(c, -22, 28, 23, 4, '#4a3426', 63, { r: 1.5, lw: 0.8 });
+      c.fillStyle = '#3a2e2a'; c.fillRect(-21, 17, 2, 12);
+    }
+  } else if (kind === 'tender') {
+    dkPlate(c, 4, 30, w - 8, 3, '#c9a24a', { rivets: false, r: 0.5, lw: 0.6 }); dkPlate(c, 4, 70, w - 8, 3, '#c9a24a', { rivets: false, r: 0.5, lw: 0.6 });
+  }
+  heistPaintRoof(c, 0, w, kind === 'tender' ? '#3a3440' : '#9b6b42', kind === 'tender' ? '#211d26' : '#6a4426', 0);
+  if (kind === 'tender') {
+    for (let k = 0; k < w - 10; k += 14) {
+      const lx = 8 + k, ly = -2 + (hash(k, 3) % 4), r = 7 + (hash(k, 5) % 4);
+      c.fillStyle = '#1e1a22'; c.beginPath(); c.arc(lx, ly, r, 0, Math.PI * 2); c.fill();
+    }
+    for (let i = 0; i < w / 4; i++) { const hh = hash(i, 808), lx = 4 + hh % (w - 8), ly = -9 + (hh >>> 8) % 9; c.fillStyle = hh % 3 ? 'rgba(160,160,190,0.4)' : '#0e0c12'; c.beginPath(); c.moveTo(lx, ly - 2); c.lineTo(lx + 2.5, ly); c.lineTo(lx, ly + 2); c.lineTo(lx - 2, ly); c.closePath(); c.fill(); }
+  }
+  if (cupX != null) {
+    c.save(); c.beginPath(); c.rect(cupX, -24, 72, 26); c.clip();
+    dkBoards(c, cupX, -24, 72, 26, col, seed + 2, { vert: true, bw: 9, r: 0, outline: dkS(col, 0.45), lw: 0.8 });
+    c.restore();
+    for (const ox of [8, 42]) {
+      c.fillStyle = dkS(col, 0.3); rrOn(c, cupX + ox - 2, -21, 26, 17, 4); c.fill();
+      c.fillStyle = '#ffe9b0'; rrOn(c, cupX + ox, -19, 22, 13, 3); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(cupX + ox + 2, -17, 5, 9); c.fillStyle = dkS(col, 0.3); c.fillRect(cupX + ox + 10, -19, 2, 13);
+    }
+    c.strokeStyle = dkS(col, 0.5); c.lineWidth = 1.2; c.strokeRect(cupX + 0.5, -23.5, 71, 25);
+    heistPaintRoof(c, cupX - 4, 80, '#9b6b42', '#6a4426', -24);
+  }
+}
+// the engine without its wheels, rods, lamp glow, brake lever and words
+function heistPaintEngine(c, w, cw) {
+  const B = HEIST.body, rb = HEIST.railY - 2 - HEIST.roof;
+  dkPlate(c, 0, B - 14, w, 12, '#3a3440', { step: 14, r: 1 });
+  c.fillStyle = '#c8452f'; c.beginPath(); c.moveTo(w - 8, B - 14); c.lineTo(w + 34, rb); c.lineTo(w - 8, rb); c.closePath(); c.fill();
+  c.save(); c.beginPath(); c.moveTo(w - 8, B - 14); c.lineTo(w + 34, rb); c.lineTo(w - 8, rb); c.closePath(); c.clip();
+  for (let k = 0; k < 6; k++) { c.fillStyle = k % 2 ? '#a8382a' : '#d85a3f'; c.save(); c.translate(w - 8 + k * 7, B - 14); c.rotate(0.9); c.fillRect(0, -2, 60, 3); c.restore(); }
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(w - 8, rb - 5, 50, 5);
+  c.restore();
+  c.strokeStyle = '#8f2c1e'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(w - 8, B - 14); c.lineTo(w + 34, rb); c.lineTo(w - 8, rb); c.closePath(); c.stroke();
+  c.strokeStyle = 'rgba(255,220,190,0.6)'; c.lineWidth = 1; c.beginPath(); c.moveTo(w - 7, B - 13); c.lineTo(w + 31, rb - 1); c.stroke();
+  // the boiler: a round shaded drum with brass bands, rivet seams and a hand rail
+  const bp = () => rrOn(c, 126, 18, w - 130, 66, 30);
+  c.fillStyle = '#2d2a36'; bp(); c.fill();
+  c.save(); bp(); c.clip();
+  const g = c.createLinearGradient(0, 18, 0, 84); g.addColorStop(0, '#4c4858'); g.addColorStop(0.3, '#3a3646'); g.addColorStop(0.65, '#2a2734'); g.addColorStop(1, '#14121a');
+  c.fillStyle = g; c.fillRect(120, 16, w, 70);
+  c.fillStyle = 'rgba(255,255,255,0.16)'; rrOn(c, 140, 25, w - 170, 8, 4); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(150, 27, w - 200, 1.5);
+  for (let sx = 150; sx < w - 40; sx += 40) { c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(sx, 18, 1.2, 66); for (let yy = 26; yy < 80; yy += 7) dkRivet(c, sx + 3, yy, 0.8, '#6a6678'); }
+  c.restore();
+  for (const f of [0.45, 0.65, 0.85]) {
+    const bx = w * f; c.fillStyle = '#c9a24a'; c.fillRect(bx, 18, 5, 66); c.fillStyle = '#f2d68a'; c.fillRect(bx, 18, 1.5, 66); c.fillStyle = '#8a6a20'; c.fillRect(bx + 4, 18, 1, 66);
+    dkRivet(c, bx + 2.5, 24, 1, '#ffe9a8'); dkRivet(c, bx + 2.5, 78, 1, '#ffe9a8');
+  }
+  c.strokeStyle = '#c9c6d2'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(140, 34); c.lineTo(w - 36, 34); c.stroke();
+  c.fillStyle = '#8c8494'; for (let sx = 150; sx < w - 40; sx += 34) c.fillRect(sx, 34, 1.5, 4);
+  c.strokeStyle = '#0e0c12'; c.lineWidth = 1.5; bp(); c.stroke();
+  // the smokebox front with a rivet ring, hinge straps and a brass number plate
+  c.fillStyle = '#17151d'; c.beginPath(); c.arc(w - 6, 51, 30, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#26232e'; c.beginPath(); c.arc(w - 8, 49, 24, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.18)'; c.lineWidth = 1.5; c.beginPath(); c.arc(w - 6, 51, 28, Math.PI * 0.95, Math.PI * 1.6); c.stroke();
+  for (let a = 0; a < 16; a++) dkRivet(c, w - 6 + Math.cos(a / 16 * Math.PI * 2) * 27, 51 + Math.sin(a / 16 * Math.PI * 2) * 27, 0.9, '#5a5668');
+  c.fillStyle = '#4a4656'; c.fillRect(w - 30, 44, 20, 3); c.fillRect(w - 30, 58, 20, 3);
+  c.fillStyle = '#c9a24a'; c.beginPath(); c.arc(w - 10, 50, 7, 0, Math.PI * 2); c.fill(); c.fillStyle = '#f2d68a'; c.beginPath(); c.arc(w - 11, 49, 4, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#8a6a20'; c.lineWidth = 1; c.beginPath(); c.arc(w - 10, 50, 7, 0, Math.PI * 2); c.stroke();
+  // the headlamp in a brass case
+  dkPlate(c, w - 32, -4, 30, 24, '#c9a24a', { rivets: false, r: 5, outline: '#8a6a20' });
+  c.fillStyle = '#ffe9a0'; rrOn(c, w - 28, 0, 22, 16, 4); c.fill(); c.fillStyle = 'rgba(255,255,255,0.7)'; c.fillRect(w - 25, 2, 6, 4);
+  c.fillStyle = '#2d2a36'; c.fillRect(w - 24, -8, 14, 4);
+  // the smokestack: a tapered pipe, shaded round, with a flared lit rim and a band
+  c.save(); c.beginPath(); c.moveTo(w - 96, -30); c.lineTo(w - 66, -30); c.lineTo(w - 72, 20); c.lineTo(w - 90, 20); c.closePath(); c.clip();
+  const sg = c.createLinearGradient(w - 96, 0, w - 66, 0); sg.addColorStop(0, '#1e1c26'); sg.addColorStop(0.3, '#4c4858'); sg.addColorStop(0.55, '#2d2a36'); sg.addColorStop(1, '#14121a');
+  c.fillStyle = sg; c.fillRect(w - 98, -32, 34, 54); c.fillStyle = '#c9a24a'; c.fillRect(w - 98, 4, 34, 4); c.fillStyle = '#f2d68a'; c.fillRect(w - 98, 4, 34, 1);
+  c.restore();
+  c.strokeStyle = '#0e0c12'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(w - 96, -30); c.lineTo(w - 90, 20); c.moveTo(w - 66, -30); c.lineTo(w - 72, 20); c.stroke();
+  dkPlate(c, w - 100, -38, 38, 10, '#17151d', { rivets: false, r: 3, outline: '#0a090e' });
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(w - 98, -37, 34, 1.5);
+  // the steam dome (brass) and the bell on its yoke
+  const dg = c.createLinearGradient(w - 184, 0, w - 144, 0); dg.addColorStop(0, '#a8822a'); dg.addColorStop(0.35, '#f2d68a'); dg.addColorStop(0.6, '#c9a24a'); dg.addColorStop(1, '#8a6a20');
+  c.fillStyle = dg; rrOn(c, w - 184, 2, 40, 20, 10); c.fill(); c.strokeStyle = '#7a5a18'; c.lineWidth = 1.2; c.stroke();
+  c.fillStyle = '#8a6a20'; c.fillRect(w - 170, -1, 12, 4);
+  c.fillStyle = '#5a5560'; c.fillRect(w - 226, 2, 3, 16); c.fillRect(w - 225, 0, 12, 2); c.fillRect(w - 215, 2, 3, 16);
+  c.fillStyle = C.gold; c.beginPath(); c.moveTo(w - 230, 18); c.quadraticCurveTo(w - 224, -2, w - 218, 18); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(w - 227, 8, 1.5, 8); c.strokeStyle = '#a8740f'; c.lineWidth = 1; c.stroke();
+  // the cab: planked walls, framed windows, a riveted top band, posts and a canopy roof
+  c.save(); c.beginPath(); c.rect(0, 6, cw, B - 20); c.clip();
+  dkBoards(c, 0, 6, cw, B - 20, '#b8302a', 909, { vert: true, bw: 13, r: 0, outline: '#7e1f17', lw: 0.8 });
+  c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(0, B - 34, cw, 20);
+  c.restore();
+  c.strokeStyle = '#6e1e16'; c.lineWidth = 1.5; c.strokeRect(0.75, 6.75, cw - 1.5, B - 21.5);
+  for (const wx of [20, 76]) {
+    c.fillStyle = '#7e1f17'; rrOn(c, wx - 3, 19, 42, 32, 5); c.fill();
+    c.fillStyle = '#ffe9b0'; rrOn(c, wx, 22, 36, 26, 4); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(wx + 3, 25, 8, 20);
+    c.fillStyle = '#6e1e16'; c.fillRect(wx, 33.5, 36, 2); c.fillRect(wx + 17, 22, 2, 26);
+    c.strokeStyle = '#6e1e16'; c.lineWidth = 2; rrOn(c, wx, 22, 36, 26, 4); c.stroke();
+    c.fillStyle = '#d8584a'; c.fillRect(wx - 3, 50, 42, 3);
+  }
+  dkPlate(c, 0, 6, cw, 6, '#8f2c1e', { step: 10, r: 0, outline: '#5e1a12' });
+  for (const px of [2, 122]) dkPlank(c, px, -96, 6, 96, '#5a3a22', px, { vert: true, r: 1, lw: 0.8 });
+  dkPlate(c, -10, -108, 150, 14, '#8f2c1e', { step: 15, r: 5, outline: '#5e1a12' });
+  c.fillStyle = '#b8302a'; rrOn(c, -10, -110, 150, 8, 4); c.fill(); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(-6, -109, 142, 1.5);
+  c.strokeStyle = '#5e1a12'; c.lineWidth = 1.2; rrOn(c, -10, -110, 150, 16, 5); c.stroke();
+  heistPaintRoof(c, 0, 130, '#7d5a3a', '#4e3622', 0);
+}
+// the track bed, one 136 px tile (four sleepers): ballast stones, grained sleepers, tie plates with spikes
+function heistPaintTrack(c) {
+  c.fillStyle = '#b88a5c'; c.fillRect(0, 2, 136, 20);
+  const g = c.createLinearGradient(0, 2, 0, 22); g.addColorStop(0, 'rgba(60,30,10,0.25)'); g.addColorStop(0.4, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(60,30,10,0.2)');
+  c.fillStyle = g; c.fillRect(0, 2, 136, 20);
+  for (let i = 0; i < 110; i++) {
+    const hh = hash(i, 4821), sx = hh % 136, sy = 4 + (hh >>> 8) % 17, r = 1.3 + ((hh >>> 4) % 3) * 0.5;
+    c.fillStyle = ['#a07a50', '#c89a6a', '#8a6a48', '#d4a878', '#9a8a7a'][(hh >>> 12) % 5]; c.beginPath(); c.ellipse(sx, sy, r * 1.3, r, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,240,210,0.45)'; c.fillRect(sx - r * 0.6, sy - r * 0.7, r * 0.8, 0.8);
+  }
+  for (let k = 0; k < 4; k++) {
+    const sx = k * 34;
+    c.fillStyle = 'rgba(40,20,5,0.3)'; c.fillRect(sx + 1, 6, 21, 7);
+    dkPlank(c, sx, 4, 20, 7, '#6e4a2e', 300 + k, { r: 1, lit: 0.22, lw: 0.8 });
+    dkPlate(c, sx + 3, 3, 14, 2.5, '#5a5660', { rivets: false, r: 0.5, lw: 0.6 });
+    dkNail(c, sx + 5, 4.5, 1); dkNail(c, sx + 15, 4.5, 1);
+  }
+}
+// the sand in front of the track, one 280 px tile: a damp shadow under the ballast, grains, ripples, pebbles, dry tufts
+function heistPaintSand(c, h) {
+  c.fillStyle = '#e9bd7c'; c.fillRect(0, 0, 280, h);
+  const g = c.createLinearGradient(0, 0, 0, 10); g.addColorStop(0, 'rgba(150,90,40,0.35)'); g.addColorStop(1, 'rgba(150,90,40,0)'); c.fillStyle = g; c.fillRect(0, 0, 280, 10);
+  for (let i = 0; i < 260; i++) { const hh = hash(i, 6262); c.fillStyle = hh % 3 ? 'rgba(170,110,50,0.35)' : 'rgba(255,245,215,0.55)'; c.fillRect(hh % 280, 2 + (hh >>> 9) % (h - 2), 1, 1); }
+  c.strokeStyle = 'rgba(190,130,70,0.35)'; c.lineWidth = 1.1; c.beginPath();
+  for (let i = 0; i < 9; i++) { const hh = hash(i, 6263), x = (i * 31 + hh % 20) % 280, y = 10 + (hh >>> 6) % (h - 14); c.moveTo(x, y); c.quadraticCurveTo(x + 8, y - 2.5, x + 16, y); c.quadraticCurveTo(x + 22, y + 1.5, x + 28, y); }
+  c.stroke();
+  for (let i = 0; i < 7; i++) { const hh = hash(i, 6264), x = 10 + hh % 260; dkPebble(c, x, 8 + (hh >>> 7) % (h - 12), 2.2 + (hh >>> 3) % 3, 1.5 + (hh >>> 5) % 2, ['#c99a5f', '#b88a5c', '#d4b090', '#a89c90'][(hh >>> 11) % 4], hh); }
+  for (let i = 0; i < 3; i++) {
+    const hh = hash(i, 6265), x = 30 + hh % 220, y = 14 + (hh >>> 6) % (h - 18);
+    c.strokeStyle = i % 2 ? '#b89a50' : '#a8904a'; c.lineWidth = 1.2; c.lineCap = 'round'; c.beginPath();
+    for (let j = -2; j <= 2; j++) { c.moveTo(x + j, y); c.quadraticCurveTo(x + j * 2, y - 4, x + j * 3.5, y - 7 + Math.abs(j)); }
+    c.stroke(); c.lineCap = 'butt';
+  }
 }
 const HEIST_CAR = {
   caboose: ['#c8452f', '#8f2c1e'], box: ['#a35a32', '#6e3a1e'], pass: ['#3d7a5c', '#25503b'], stock: ['#d4a24c', '#93692a'],
@@ -976,57 +1257,24 @@ function heistDrawCar(st, c, t) {
   const wheelA = st.scroll / 11;
   // trucks and wheels
   const wheel = (wx, r) => {
-    ctx.fillStyle = '#2b2530'; circle(wx, HEIST.wheelY + 12 - r, r); ctx.fill();
-    ctx.strokeStyle = '#8c8494'; ctx.lineWidth = 2; circle(wx, HEIST.wheelY + 12 - r, r - 3); ctx.stroke();
-    ctx.beginPath(); for (let k = 0; k < 3; k++) { const a = wheelA + k * Math.PI / 3; ctx.moveTo(wx - Math.cos(a) * (r - 3), HEIST.wheelY + 12 - r - Math.sin(a) * (r - 3)); ctx.lineTo(wx + Math.cos(a) * (r - 3), HEIST.wheelY + 12 - r + Math.sin(a) * (r - 3)); } ctx.stroke();
+    // a cast wheel: dark tyre, a lit flange arc, spokes, a brass hub (the spokes turn)
+    const wy = HEIST.wheelY + 12 - r;
+    ctx.fillStyle = '#2b2530'; circle(wx, wy, r); ctx.fill();
+    ctx.strokeStyle = '#8c8494'; ctx.lineWidth = 2; circle(wx, wy, r - 3); ctx.stroke();
+    ctx.beginPath(); for (let k = 0; k < 3; k++) { const a = wheelA + k * Math.PI / 3; ctx.moveTo(wx - Math.cos(a) * (r - 3), wy - Math.sin(a) * (r - 3)); ctx.lineTo(wx + Math.cos(a) * (r - 3), wy + Math.sin(a) * (r - 3)); } ctx.stroke();
+    ctx.strokeStyle = 'rgba(230,225,240,0.55)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(wx, wy, r - 0.8, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+    ctx.fillStyle = '#c9a24a'; circle(wx, wy, 2.6); ctx.fill(); ctx.fillStyle = '#f2d68a'; circle(wx - 0.7, wy - 0.7, 1.1); ctx.fill();
   };
   if (c.kind === 'engine') { heistDrawEngine(st, c, t, wheel); return; }
-  for (const f of [0.17, 0.83]) { const bx = x + w * f; ctx.fillStyle = '#3a3238'; ctx.fillRect(bx - 34, R + B - 4, 68, 12); wheel(bx - 18, 12); wheel(bx + 18, 12); }
-  ctx.fillStyle = '#2a2228'; ctx.fillRect(x + 4, R + B - 8, w - 8, 9);
-  if (c.kind === 'tank') {
-    ctx.fillStyle = '#4a4048'; ctx.fillRect(x, R + B - 16, w, 10);
-    ctx.fillStyle = col; rr(x + 6, R + 12, w - 12, B - 30, 34); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'; rr(x + 20, R + 20, w - 40, 10, 5); ctx.fill();
-    ctx.strokeStyle = dark; ctx.lineWidth = 2; ctx.beginPath(); for (const f of [0.3, 0.7]) { ctx.moveTo(x + w * f, R + 12); ctx.lineTo(x + w * f, R + B - 18); } ctx.stroke();
-    ctx.fillStyle = dark; ctx.fillRect(x + w / 2 - 14, R + 4, 28, 10);
-    text('WATER', x + w / 2, R + 52, 15, '#6b6658', 'center');
-    heistDrawRoof(x, w, '#8a6a46', '#5e452c');
-    for (let k = 0; k <= 6; k++) { ctx.fillStyle = '#5e452c'; ctx.fillRect(x + 6 + k * (w - 16) / 6, R - 14, 3, 14); }
-    ctx.fillRect(x + 6, R - 15, w - 10, 3);
-    return;
-  }
-  if (c.kind === 'hay') {
-    ctx.fillStyle = col; ctx.fillRect(x, R + 70, w, B - 74);
-    ctx.fillStyle = dark; ctx.fillRect(x, R + B - 12, w, 8);
-    for (let r = 0; r < 3; r++) for (let k = 0; k < Math.floor(w / 48); k++) {
-      const bx = x + 4 + k * ((w - 8) / Math.floor(w / 48)) + (r % 2) * 6, bw = (w - 8) / Math.floor(w / 48) - 4, by = R + r * 24;
-      ctx.fillStyle = '#e8c35a'; rr(bx, by, bw - (r % 2) * 6, 23, 4); ctx.fill();
-      ctx.strokeStyle = '#b8913a'; ctx.lineWidth = 1.2;
-      ctx.beginPath(); for (let s = 0; s < 4; s++) { ctx.moveTo(bx + 4, by + 5 + s * 4.5); ctx.lineTo(bx + bw - 10, by + 4 + s * 4.5); } ctx.stroke();
-      ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx + bw * 0.3, by); ctx.lineTo(bx + bw * 0.3, by + 23); ctx.moveTo(bx + bw * 0.7, by); ctx.lineTo(bx + bw * 0.7, by + 23); ctx.stroke();
-    }
-    ctx.fillStyle = '#f6d878'; ctx.fillRect(x + 2, R - 1, w - 4, 3);
-    return;
-  }
-  // the box body
-  ctx.fillStyle = col; ctx.fillRect(x, R + 4, w, B - 10);
-  ctx.fillStyle = dark; ctx.fillRect(x, R + B - 12, w, 6); ctx.fillRect(x, R + 4, 4, B - 10); ctx.fillRect(x + w - 4, R + 4, 4, B - 10);
-  ctx.fillStyle = 'rgba(255,240,210,0.18)'; ctx.fillRect(x + 4, R + 4, w - 8, 3);
-  ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(x + 4, R + B - 26, w - 8, 14);
-  ctx.fillStyle = 'rgba(255,230,190,0.45)'; ctx.beginPath(); for (let k = 10; k < w - 6; k += 22) { heistDot(x + k, R + B - 9, 1.3); } ctx.fill();
-  ctx.strokeStyle = mixCol(dark, '#141428', 0.4); ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.75, R + 4.75, w - 1.5, B - 11.5);
-  if (c.kind === 'box' || c.kind === 'stock') {
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
-    for (let k = 14; k < w - 6; k += 16) ctx.fillRect(x + k, R + 6, 2, B - 18);
-  }
+  for (const f of [0.17, 0.83]) { const bx = x + w * f; wheel(bx - 18, 12); wheel(bx + 18, 12); }
+  // the car itself (cached per kind, length and cupola): planked or plated body, frame and trucks, the roof
+  const cupX = c.cupola ? c.cupola.x0 - x : null;
+  dkPic('thCar|' + c.kind + '|' + Math.round(w) + '|' + (cupX == null ? '' : Math.round(cupX)), w + 36, B + 50, 28, 32, cc => heistPaintCar(cc, c.kind, w, col, dark, 7 + (c.kind.length * 13) % 11, cupX), x, R);
+  if (c.kind === 'tank') { text('WATER', x + w / 2, R + 52, 15, '#6b6658', 'center'); return; }
+  if (c.kind === 'hay') return;
   if (c.kind === 'box') {
-    const dx = x + w / 2 - 36;
-    ctx.fillStyle = dark; ctx.fillRect(dx, R + 14, 72, B - 30);
-    ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(dx + 4, R + 18); ctx.lineTo(dx + 68, R + B - 20); ctx.moveTo(dx + 68, R + 18); ctx.lineTo(dx + 4, R + B - 20); ctx.stroke();
     if (!c.ahead) { text('GULCH LINE', x + w * 0.2, R + 40, 13, 'rgba(255,236,200,0.75)', 'center'); text('No. ' + (100 + (c.seed % 800)), x + w * 0.8, R + 40, 12, 'rgba(255,236,200,0.6)', 'center', 'body'); }
   } else if (c.kind === 'stock') {
-    ctx.fillStyle = '#4a3420';
-    for (let r = 0; r < 4; r++) ctx.fillRect(x + 10, R + 16 + r * 18, w - 20, 7);
     // a friendly cow peeks out
     const cx = x + w * 0.62, cy = R + 44 + Math.sin(t * 2) * 2;
     ctx.fillStyle = '#fbf6ee'; rr(cx - 16, cy - 12, 32, 26, 10); ctx.fill();
@@ -1036,38 +1284,15 @@ function heistDrawCar(st, c, t) {
     ctx.fillStyle = '#e8d6a8'; ctx.beginPath(); ctx.moveTo(cx - 14, cy - 10); ctx.lineTo(cx - 22, cy - 18); ctx.lineTo(cx - 12, cy - 13); ctx.fill();
     ctx.beginPath(); ctx.moveTo(cx + 14, cy - 10); ctx.lineTo(cx + 22, cy - 18); ctx.lineTo(cx + 12, cy - 13); ctx.fill();
   } else if (c.kind === 'pass' || c.kind === 'check' || c.kind === 'caboose') {
-    ctx.fillStyle = c.kind === 'caboose' ? '#f3d9a4' : '#f6e7c4'; ctx.fillRect(x + 6, R + 20, w - 12, 34);
-    ctx.fillStyle = c.kind === 'caboose' ? '#8f2c1e' : '#c9a24a'; ctx.fillRect(x + 4, R + 58, w - 8, 4);
-    const n = Math.max(2, Math.floor((w - 30) / 46));
-    for (let k = 0; k < n; k++) {
-      const wx = x + 18 + k * ((w - 36) / n), ww = (w - 36) / n - 12;
-      ctx.fillStyle = '#ffe9b0'; rr(wx, R + 24, ww, 26, 4); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(wx + 3, R + 27, ww * 0.3, 20);
-    }
     if (c.kind === 'pass') text('TUMBLEWEED EXPRESS', x + w / 2, R + 78, 13, 'rgba(255,236,200,0.8)', 'center');
     if (c.kind === 'check') text('GULCH MAIL', x + w / 2, R + 78, 14, 'rgba(255,236,200,0.85)', 'center');
     if (c.kind === 'caboose') {
-      // the back porch with its railing and a red lantern
-      ctx.fillStyle = '#5a3a22'; ctx.fillRect(x - 22, R + B - 18, 22, 6);
-      ctx.strokeStyle = '#3a2e2a'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(x - 20, R + B - 18); ctx.lineTo(x - 20, R + 30); ctx.lineTo(x, R + 30); for (let k = 0; k < 3; k++) { ctx.moveTo(x - 20 + k * 7, R + 30); ctx.lineTo(x - 20 + k * 7, R + B - 18); } ctx.stroke();
+      // the red lantern on the back porch
+      ctx.fillStyle = '#3a2e2a'; rr(x - 26, R + 15, 12, 14, 3); ctx.fill();
       ctx.fillStyle = '#ff5a3a'; circle(x - 20, R + 22, 5 + Math.sin(t * 6) * 0.6); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(x - 22, R + 20, 1.5); ctx.fill();
       ctx.fillStyle = 'rgba(255,120,80,0.25)'; circle(x - 20, R + 22, 12); ctx.fill();
     }
-  } else if (c.kind === 'tender') {
-    ctx.fillStyle = '#c9a24a'; ctx.fillRect(x + 4, R + 30, w - 8, 3); ctx.fillRect(x + 4, R + 70, w - 8, 3);
-  }
-  // the roof boards
-  heistDrawRoof(x, w, c.kind === 'tender' ? '#3a3440' : '#9b6b42', c.kind === 'tender' ? '#211d26' : '#6a4426');
-  if (c.kind === 'tender') {
-    ctx.fillStyle = '#1e1a22';
-    for (let k = 0; k < w - 10; k += 14) { circle(x + 8 + k, R - 2 + (hash(k, 3) % 4), 7 + (hash(k, 5) % 4)); ctx.fill(); }
-  }
-  if (c.cupola) {
-    const cx0 = c.cupola.x0;
-    ctx.fillStyle = col; ctx.fillRect(cx0, R - 24, 72, 26);
-    ctx.fillStyle = '#ffe9b0'; rr(cx0 + 8, R - 19, 22, 13, 3); ctx.fill(); rr(cx0 + 42, R - 19, 22, 13, 3); ctx.fill();
-    heistDrawRoof(cx0 - 4, 80, '#9b6b42', '#6a4426', R - 24);
   }
   if (c.kind === 'check' && !c.ahead) {
     // the checkpoint flag
@@ -1079,10 +1304,7 @@ function heistDrawCar(st, c, t) {
   }
 }
 function heistDrawRoof(x, w, col, dark, y = HEIST.roof) {
-  ctx.fillStyle = dark; rr(x - 3, y - 3, w + 6, 10, 3); ctx.fill();
-  ctx.fillStyle = col; rr(x - 3, y - 4, w + 6, 7, 3); ctx.fill();
-  ctx.fillStyle = 'rgba(0,0,0,0.18)'; for (let k = 26; k < w; k += 30) ctx.fillRect(x + k, y - 4, 2, 7);
-  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x, y - 4, w, 1.5);
+  dkPic('thRoof|' + Math.round(w) + '|' + col + '|' + dark, w + 10, 16, 5, 5, c => heistPaintRoof(c, 0, w, col, dark, 0), x, y);
 }
 function heistStar(x, y, r) {
   ctx.beginPath();
@@ -1103,38 +1325,11 @@ function heistDrawEngine(st, c, t, wheel) {
   ctx.strokeStyle = '#c9c6d2'; ctx.lineWidth = 5; ctx.beginPath();
   ctx.moveTo(x + w * 0.42 + Math.cos(rodA) * 12, HEIST.wheelY - 10 + Math.sin(rodA) * 12); ctx.lineTo(x + w * 0.82 + Math.cos(rodA) * 12, HEIST.wheelY - 10 + Math.sin(rodA) * 12); ctx.stroke();
   wheel(x + 30, 12); wheel(x + 80, 12);
-  ctx.fillStyle = '#2a2228'; ctx.fillRect(x, R + B - 14, w, 12);
-  // the cowcatcher
-  ctx.fillStyle = '#c8452f'; ctx.beginPath(); ctx.moveTo(x + w - 8, R + B - 14); ctx.lineTo(x + w + 34, HEIST.railY - 2); ctx.lineTo(x + w - 8, HEIST.railY - 2); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#8f2c1e'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 1; k < 4; k++) { ctx.moveTo(x + w - 8, R + B - 14 + k * 4); ctx.lineTo(x + w - 8 + k * 9, HEIST.railY - 2); } ctx.stroke();
-  // the boiler
-  ctx.fillStyle = '#2d2a36'; rr(x + 126, R + 18, w - 130, 66, 30); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.12)'; rr(x + 140, R + 26, w - 170, 10, 5); ctx.fill();
-  ctx.fillStyle = 'rgba(0,0,0,0.25)'; rr(x + 130, R + 64, w - 138, 18, 9); ctx.fill();
-  ctx.fillStyle = '#c9a24a'; for (const f of [0.45, 0.65, 0.85]) ctx.fillRect(x + w * f, R + 18, 5, 66);
-  ctx.fillStyle = '#f2d68a'; ctx.beginPath(); for (const f of [0.45, 0.65, 0.85]) ctx.rect(x + w * f, R + 18, 1.5, 66); ctx.fill();
-  ctx.fillStyle = 'rgba(200,200,220,0.35)'; ctx.beginPath(); for (let k = x + 150; k < x + w - 40; k += 18) { heistDot(k, R + 80, 1.3); } ctx.fill();
-  // the front: smokebox door and lamp
-  ctx.fillStyle = '#17151d'; circle(x + w - 6, R + 51, 30); ctx.fill();
-  ctx.fillStyle = '#ffe9a0'; rr(x + w - 30, R - 2, 26, 20, 5); ctx.fill(); ctx.fillStyle = 'rgba(255,240,170,0.35)'; circle(x + w - 4, R + 8, 22); ctx.fill();
-  // the smokestack (solid) and the steam dome with the bell
-  ctx.fillStyle = '#2d2a36'; ctx.beginPath(); ctx.moveTo(x + w - 96, R - 30); ctx.lineTo(x + w - 66, R - 30); ctx.lineTo(x + w - 72, R + 20); ctx.lineTo(x + w - 90, R + 20); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#17151d'; rr(x + w - 100, R - 38, 38, 10, 3); ctx.fill();
-  ctx.fillStyle = '#c9a24a'; rr(x + w - 184, R + 2, 40, 20, 10); ctx.fill();
-  ctx.fillStyle = C.gold; ctx.beginPath(); ctx.moveTo(x + w - 230, R + 18); ctx.quadraticCurveTo(x + w - 224, R - 2, x + w - 218, R + 18); ctx.closePath(); ctx.fill();
-  // the cab: walls with a window, the canopy roof on posts, the floor
-  ctx.fillStyle = '#b8302a'; ctx.fillRect(x, R + 6, cab.x1 - cab.x0, B - 20);
-  ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.fillRect(x, R + B - 34, cab.x1 - cab.x0, 20);
-  ctx.strokeStyle = '#6e1e16'; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.75, R + 6.75, cab.x1 - cab.x0 - 1.5, B - 21.5);
-  ctx.fillStyle = '#ffe9b0'; rr(x + 20, R + 22, 36, 26, 4); ctx.fill(); rr(x + 76, R + 22, 36, 26, 4); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(x + 23, R + 25, 8, 20); ctx.fillRect(x + 79, R + 25, 8, 20);
-  ctx.strokeStyle = '#6e1e16'; ctx.lineWidth = 2; rr(x + 20, R + 22, 36, 26, 4); ctx.stroke(); rr(x + 76, R + 22, 36, 26, 4); ctx.stroke();
-  ctx.fillStyle = '#8f2c1e'; ctx.fillRect(x, R + 6, cab.x1 - cab.x0, 5);
+  // everything that stands still (cached): frame, cowcatcher, boiler, smokebox, lamp, stack, dome, bell, cab, canopy
+  const cw = cab.x1 - cab.x0;
+  dkPic('thEngine|' + Math.round(w) + '|' + Math.round(cw), w + 56, 252, 14, 116, cc => heistPaintEngine(cc, w, cw), x, R);
+  ctx.fillStyle = 'rgba(255,240,170,0.35)'; circle(x + w - 4, R + 8, 22); ctx.fill();
   text('GULCH No. 9', x + 65, R + 68, 13, '#ffd27a', 'center');
-  ctx.fillStyle = '#5a3a22'; ctx.fillRect(x + 2, R - 96, 6, 96); ctx.fillRect(x + 122, R - 96, 6, 96);
-  ctx.fillStyle = '#8f2c1e'; rr(x - 10, R - 108, 150, 14, 5); ctx.fill();
-  ctx.fillStyle = '#b8302a'; rr(x - 10, R - 110, 150, 8, 4); ctx.fill();
-  heistDrawRoof(x, 130, '#7d5a3a', '#4e3622');
   // the big brake lever (gold knob), shaking when only one pulls
   const lx = cab.lever, sh = st.leverShake > 0 ? Math.sin(t * 60) * 0.06 : 0, a = -0.55 + st.brakeK * 0.95 + sh + (st.state === 'stop' ? 0.95 : 0);
   ctx.save(); ctx.translate(lx, R - 2); ctx.rotate(a);
@@ -1146,22 +1341,19 @@ function heistDrawEngine(st, c, t, wheel) {
 }
 function heistDrawCrate(k) {
   const R = HEIST.roof, w = k.x1 - k.x0, h = R - k.y0;
-  if (k.kind === 'hay') {
-    ctx.fillStyle = '#e8c35a'; rr(k.x0, k.y0, w, h, 5); ctx.fill();
-    ctx.strokeStyle = '#b8913a'; ctx.lineWidth = 1.2;
-    ctx.beginPath(); for (let s = 0; s < 4; s++) { ctx.moveTo(k.x0 + 4, k.y0 + 5 + s * 4.5); ctx.lineTo(k.x1 - 4, k.y0 + 4 + s * 4.5); } ctx.stroke();
-    ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(k.x0 + w * 0.3, k.y0); ctx.lineTo(k.x0 + w * 0.3, R); ctx.moveTo(k.x0 + w * 0.7, k.y0); ctx.lineTo(k.x0 + w * 0.7, R); ctx.stroke();
-    return;
-  }
-  ctx.fillStyle = '#c08a4e'; ctx.fillRect(k.x0, k.y0, w, h);
-  ctx.strokeStyle = '#7a5228'; ctx.lineWidth = 3; ctx.strokeRect(k.x0 + 1.5, k.y0 + 1.5, w - 3, h - 3);
-  ctx.beginPath(); ctx.moveTo(k.x0 + 3, k.y0 + 3); ctx.lineTo(k.x1 - 3, R - 3); ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(k.x0 + 3, k.y0 + 3, w - 6, 3);
+  // (cached) a straw bale, or a crate with boards, a brace, a nailed frame and a stencil
+  if (k.kind === 'hay') { dkPic('thBale|' + w + '|' + h + '|' + (k.seed % 3), w + 8, h + 8, 4, 4, c => { c.fillStyle = 'rgba(40,20,0,0.2)'; c.beginPath(); c.ellipse(w / 2 + 2, h, w * 0.55, 2.5, 0, 0, Math.PI * 2); c.fill(); heistPaintBale(c, 0, 0, w, h, k.seed % 3 * 17); }, k.x0, k.y0); return; }
+  dkPic('thCrate|' + w + '|' + h + '|' + (k.seed % 3), w + 8, h + 8, 4, 4, c => dkCrate(c, 0, 0, w, h, '#c08a4e', 40 + k.seed % 3, { mark: k.seed % 3 === 1 ? 'GL' : '', flip: k.seed % 2 === 1 }), k.x0, k.y0);
 }
 function heistDrawPlank(st, g, t) {
   const R = HEIST.roof;
-  ctx.fillStyle = g.gold ? C.gold : '#7a5a3a'; rr(g.x0 - 6, R - 3, g.x1 - g.x0 + 12, 9, 3); ctx.fill();
-  ctx.fillStyle = g.gold ? C.goldDark : '#4e3622'; ctx.fillRect(g.x0 - 4, R + 4, g.x1 - g.x0 + 8, 2);
+  // (cached) a grained board with nails at both ends and a dark underside
+  const L = Math.round(g.x1 - g.x0 + 12);
+  dkPic('thGapPlank|' + L + '|' + (g.gold ? 1 : 0), L + 4, 14, 2, 4, c => {
+    c.fillStyle = g.gold ? C.goldDark : '#4e3622'; c.fillRect(2, 7, L - 4, 2);
+    c.fillStyle = 'rgba(30,15,5,0.25)'; c.fillRect(3, 9, L - 6, 2);
+    dkPlank(c, 0, -3, L, 9, g.gold ? dkHex(C.gold) : '#7a5a3a', L, { r: 3, nails: true, lit: g.gold ? 0.5 : 0.3 });
+  }, g.x0 - 6, R);
   if (g.gold) { ctx.save(); ctx.globalAlpha = 0.35 + 0.25 * Math.sin(t * 5); ctx.strokeStyle = '#fff6c8'; ctx.lineWidth = 2; rr(g.x0 - 8, R - 5, g.x1 - g.x0 + 16, 13, 4); ctx.stroke(); ctx.restore(); }
 }
 function heistDrawWeed(h) {
@@ -1176,25 +1368,63 @@ function heistDrawWeed(h) {
 function heistDrawTowerBack(st, h) {
   // the water tower beside the track (behind the train): legs and the tank
   const x = h.x + 70, R = HEIST.roof;
-  ctx.strokeStyle = '#7a5a40'; ctx.lineWidth = 6;
-  ctx.beginPath(); ctx.moveTo(x - 30, 250); ctx.lineTo(x - 44, R + 40); ctx.moveTo(x + 50, 250); ctx.lineTo(x + 64, R + 40); ctx.stroke();
-  ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 36, 270); ctx.lineTo(x + 58, 330); ctx.moveTo(x + 56, 270); ctx.lineTo(x - 40, 330); ctx.stroke();
-  ctx.fillStyle = '#9b6b42'; rr(x - 50, 150, 120, 104, 14); ctx.fill();
-  ctx.fillStyle = '#6a4426'; for (let k = 0; k < 4; k++) ctx.fillRect(x - 50, 164 + k * 24, 120, 4);
-  ctx.fillStyle = '#7a3a26'; ctx.beginPath(); ctx.moveTo(x - 58, 152); ctx.lineTo(x + 10, 118); ctx.lineTo(x + 78, 152); ctx.closePath(); ctx.fill();
+  dkPic('thTower', 160, 280, 80, -110, c => {
+    const leg = (ax, ay, bx, by, wd) => { const a = Math.atan2(by - ay, bx - ax), l = Math.hypot(bx - ax, by - ay); c.save(); c.translate(ax, ay); c.rotate(a); dkPlank(c, 0, -wd / 2, l, wd, '#7a5a40', ax | 0, { r: 1, lw: 0.8 }); c.restore(); };
+    leg(-36, 270, 58, 330, 3.5); leg(56, 270, -40, 330, 3.5);
+    leg(-30, 250, -44, R + 40, 7); leg(50, 250, 64, R + 40, 7);
+    dkPlank(c, -42, 286, 104, 4, '#6a4a30', 77, { r: 1, lw: 0.7 });
+    c.save(); rrOn(c, -50, 150, 120, 104, 14); c.clip();
+    dkBoards(c, -50, 150, 120, 104, '#9b6b42', 91, { vert: true, bw: 12, r: 0, outline: dkS('#9b6b42', 0.45), lw: 0.8 });
+    const g = c.createLinearGradient(-50, 0, 70, 0); g.addColorStop(0, 'rgba(0,0,0,0.12)'); g.addColorStop(0.3, 'rgba(255,240,210,0.18)'); g.addColorStop(0.6, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(40,20,0,0.35)');
+    c.fillStyle = g; c.fillRect(-50, 150, 120, 104);
+    c.fillStyle = 'rgba(255,240,200,0.55)'; rrOn(c, -32, 192, 84, 24, 6); c.fill();
+    c.restore();
+    for (let k = 0; k < 4; k++) dkPlate(c, -51, 163 + k * 24, 122, 5, '#5a5560', { step: 20, r: 1 });
+    c.strokeStyle = dkS('#9b6b42', 0.55); c.lineWidth = 1.5; rrOn(c, -50, 150, 120, 104, 14); c.stroke();
+    // the spout, folded up
+    c.fillStyle = '#5a5560'; c.fillRect(64, 220, 14, 5); c.fillRect(74, 200, 4, 22);
+    // the cone roof with rows of shingles and a lit edge
+    c.save(); c.beginPath(); c.moveTo(-58, 152); c.lineTo(10, 118); c.lineTo(78, 152); c.closePath(); c.clip();
+    c.fillStyle = '#7a3a26'; c.fillRect(-60, 116, 140, 40);
+    for (let r = 0; r < 5; r++) { const yy = 122 + r * 7; for (let sx = -60 + (r % 2) * 5; sx < 80; sx += 10) { c.fillStyle = (hash(sx, r) % 3) ? '#8a4630' : '#6e3220'; c.beginPath(); c.moveTo(sx, yy); c.lineTo(sx + 10, yy); c.lineTo(sx + 10, yy + 6); c.quadraticCurveTo(sx + 5, yy + 8, sx, yy + 6); c.closePath(); c.fill(); } c.fillStyle = 'rgba(30,10,0,0.3)'; c.fillRect(-60, yy + 6, 140, 1); }
+    c.fillStyle = 'rgba(0,0,0,0.2)'; c.beginPath(); c.moveTo(10, 118); c.lineTo(78, 152); c.lineTo(10, 152); c.closePath(); c.fill();
+    c.restore();
+    c.strokeStyle = 'rgba(255,220,180,0.55)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-56, 151); c.lineTo(10, 119); c.stroke();
+    c.strokeStyle = '#4e1e12'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-58, 152); c.lineTo(10, 118); c.lineTo(78, 152); c.closePath(); c.stroke();
+    c.fillStyle = '#5a5560'; c.fillRect(8, 110, 4, 9); c.beginPath(); c.arc(10, 109, 3, 0, Math.PI * 2); c.fill();
+  }, x, 0);
   text('WATER', x + 10, 206, 16, '#ffe9c4', 'center');
 }
 function heistDrawStation(st, t) {
   const R = HEIST.roof, x = st.station.x;
   // the station house and the platform (behind the train and in front of the engine's nose)
-  ctx.fillStyle = '#c98b5a'; ctx.fillRect(x - 80, 220, 330, 140);
-  ctx.fillStyle = '#8a5833'; for (let k = 0; k < 330; k += 22) ctx.fillRect(x - 80 + k, 220, 3, 140);
-  ctx.fillStyle = '#7a3a26'; ctx.beginPath(); ctx.moveTo(x - 100, 224); ctx.lineTo(x + 85, 168); ctx.lineTo(x + 270, 224); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#f6e2a8'; rr(x - 20, 186, 210, 30, 8); ctx.fill();
+  dkPic('thStation', 380, 324, 104, -164, c => {
+    c.save(); c.beginPath(); c.rect(-80, 220, 330, 140); c.clip();
+    dkBoards(c, -80, 220, 330, 140, '#c98b5a', 55, { vert: true, bw: 22, r: 0, outline: '#8a5833', lw: 1.2 });
+    const g = c.createLinearGradient(0, 220, 0, 360); g.addColorStop(0, 'rgba(60,20,0,0.3)'); g.addColorStop(0.15, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(60,20,0,0.25)'); c.fillStyle = g; c.fillRect(-80, 220, 330, 140);
+    c.restore();
+    c.save(); c.beginPath(); c.moveTo(-100, 224); c.lineTo(85, 168); c.lineTo(270, 224); c.closePath(); c.clip();
+    c.fillStyle = '#7a3a26'; c.fillRect(-100, 166, 372, 60);
+    for (let r = 0; r < 8; r++) { const yy = 170 + r * 7; for (let sx = -100 + (r % 2) * 6; sx < 272; sx += 12) { c.fillStyle = (hash(sx, r + 9) % 3) ? '#8a4630' : '#6e3220'; c.beginPath(); c.moveTo(sx, yy); c.lineTo(sx + 12, yy); c.lineTo(sx + 12, yy + 6); c.quadraticCurveTo(sx + 6, yy + 8.5, sx, yy + 6); c.closePath(); c.fill(); } c.fillStyle = 'rgba(30,10,0,0.3)'; c.fillRect(-100, yy + 6, 372, 1); }
+    c.restore();
+    c.strokeStyle = 'rgba(255,220,180,0.55)'; c.lineWidth = 2; c.beginPath(); c.moveTo(-98, 223); c.lineTo(85, 169); c.stroke();
+    c.strokeStyle = '#4e1e12'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-100, 224); c.lineTo(85, 168); c.lineTo(270, 224); c.closePath(); c.stroke();
+    dkPlank(c, -20, 186, 210, 30, '#f6e2a8', 12, { r: 8, nails: true, lit: 0.5, outline: '#b88a4a', lw: 1.5 });
+    for (const wx of [10, 130]) {
+      c.fillStyle = '#6a4426'; rrOn(c, wx - 4, 246, 48, 48, 6); c.fill();
+      c.fillStyle = '#ffe9b0'; rrOn(c, wx, 250, 40, 40, 5); c.fill();
+      c.fillStyle = 'rgba(255,200,120,0.35)'; c.fillRect(wx, 270, 40, 20);
+      c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(wx + 4, 254, 8, 32);
+      c.fillStyle = '#6a4426'; c.fillRect(wx + 19, 250, 2.5, 40); c.fillRect(wx, 269, 40, 2.5);
+      dkPlank(c, wx - 7, 293, 54, 5, '#9b6b42', wx, { r: 1, lw: 0.8 });
+      for (const sx of [wx - 16, wx + 44]) { c.save(); c.beginPath(); c.rect(sx, 248, 12, 44); c.clip(); dkBoards(c, sx, 248, 12, 44, '#3d7a5c', sx, { bw: 7, r: 0, lw: 0.6 }); c.restore(); c.strokeStyle = '#25503b'; c.lineWidth = 1; c.strokeRect(sx, 248, 12, 44); }
+    }
+    dkPlank(c, -20, R + 56, 300, 14, '#9b6b42', 13, { r: 2, nails: true, lit: 0.35 });
+    c.fillStyle = '#4a2e18'; c.fillRect(-20, R + 70, 300, 60);
+    for (let px = -14; px < 280; px += 48) dkPlank(c, px, R + 70, 10, 60, '#6a4426', px + 300, { vert: true, r: 0, lw: 0.8 });
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(-20, R + 70, 300, 5);
+  }, x, 0);
   text('TUMBLEWEED GULCH', x + 85, 202, 18, '#7a3a26', 'center');
-  ctx.fillStyle = '#ffe9b0'; rr(x + 10, 250, 40, 40, 5); ctx.fill(); rr(x + 130, 250, 40, 40, 5); ctx.fill();
-  ctx.fillStyle = '#9b6b42'; ctx.fillRect(x - 20, R + 56, 300, 14);
-  ctx.fillStyle = '#6a4426'; ctx.fillRect(x - 20, R + 70, 300, 60);
 }
 function heistDrawSheriff(st, t) {
   const R = HEIST.roof, x = st.station.x + 90, feet = R + 56;
