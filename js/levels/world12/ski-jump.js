@@ -612,12 +612,27 @@
     // the snow pit (Fan Cart Cliff)
     if (h.gap) {
       const x0 = E.x + h.gap[0], x1 = E.x + h.gap[1];
-      ctx.fillStyle = night ? '#2c3a62' : '#7fa4c8';
-      ctx.beginPath(); ctx.moveTo(x0, sjHillY(h, x0));
-      ctx.lineTo(x0 + 6, sjHillY(h, x0 + 6) + 46); ctx.lineTo(x1 - 6, sjHillY(h, x1 - 6) + 46); ctx.lineTo(x1, sjHillY(h, x1)); ctx.closePath(); ctx.fill();
-      // fluffy snow at the bottom
+      const pit = night ? '#2c3a62' : '#7fa4c8';
+      const pitPath = () => { ctx.beginPath(); ctx.moveTo(x0, sjHillY(h, x0)); ctx.lineTo(x0 + 6, sjHillY(h, x0 + 6) + 46); ctx.lineTo(x1 - 6, sjHillY(h, x1 - 6) + 46); ctx.lineTo(x1, sjHillY(h, x1)); ctx.closePath(); };
+      ctx.fillStyle = pit; pitPath(); ctx.fill();
+      ctx.save(); pitPath(); ctx.clip();
+      // a deep shadow under the near wall, a lit far wall and packed-snow layers
+      ctx.fillStyle = shade(pit, 0.3); ctx.fillRect(x0, sjHillY(h, x0) - 2, 16, 60);
+      ctx.fillStyle = tint(pit, 0.25); ctx.fillRect(x1 - 12, sjHillY(h, x1) - 2, 12, 60);
+      ctx.strokeStyle = night ? 'rgba(120,150,210,0.35)' : 'rgba(220,235,250,0.45)'; ctx.lineWidth = 1;
+      for (let k = 1; k <= 3; k++) { ctx.beginPath(); for (let x = x0; x <= x1; x += 6) ctx.lineTo(x, sjHillY(h, x) + k * 10 + Math.sin(x * 0.09 + k) * 1.5); ctx.stroke(); }
+      ctx.restore();
+      ctx.strokeStyle = shade(pit, 0.45); ctx.lineWidth = 1.5; pitPath(); ctx.stroke();
+      // fluffy snow at the bottom: a shaded puff, the puff, then a lit cap
+      for (let x = x0 + 9; x < x1 - 4; x += 11) { ctx.fillStyle = snowB; circle(x + 1.5, sjHillY(h, x) + 42 + Math.sin(x) * 2, 8); ctx.fill(); }
       ctx.fillStyle = snowA;
       for (let x = x0 + 9; x < x1 - 4; x += 11) { circle(x, sjHillY(h, x) + 40 + Math.sin(x) * 2, 8); ctx.fill(); }
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      for (let x = x0 + 9; x < x1 - 4; x += 11) { circle(x - 2.5, sjHillY(h, x) + 36.5 + Math.sin(x) * 2, 2.6); ctx.fill(); }
+      // overhanging snow lips on both edges
+      ctx.fillStyle = snowA;
+      ctx.beginPath(); ctx.ellipse(x0 + 2, sjHillY(h, x0) + 1.5, 6, 3, 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x1 - 2, sjHillY(h, x1) + 1.5, 6, 3, -0.3, 0, Math.PI * 2); ctx.fill();
       const mx = (x0 + x1) / 2;
       text('snow pit', mx, sjHillY(h, mx) + 22, 12, '#ffffff', 'center', 'body');
     }
@@ -635,63 +650,165 @@
       const u = sjUofDist(h, m), x = E.x + u; if (u >= h.n || sjInGap(h, x)) continue;
       const y = sjHillY(h, x); ctx.beginPath(); ctx.moveTo(x, y + 1); ctx.lineTo(x, y + 9); ctx.stroke();
     }
-    // the line boards
+    // the line boards: a post with a lit side, a bevelled board with a snow cap
     const board = (u, label, col) => {
       const x = E.x + u, y = sjHillY(h, x);
+      rkShadow(ctx, x + 2, y + 2, 7, 2, 0.18);
+      ctx.fillStyle = shade(col, 0.5); ctx.fillRect(x - 2.2, y - 30, 4.4, 30);
       ctx.fillStyle = col; ctx.fillRect(x - 1.5, y - 30, 3, 30);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x - 1.5, y - 30, 1, 30);
       ctx.font = '13px "Lilita One", "Arial Rounded MT Bold", sans-serif';
       const w = ctx.measureText(label).width + 12;
-      rr(x - w / 2, y - 48, w, 19, 6); ctx.fill();
+      ctx.fillStyle = shade(col, 0.55); rr(x - w / 2 + 1, y - 47, w, 19, 6); ctx.fill();
+      ctx.fillStyle = col; rr(x - w / 2, y - 48, w, 19, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.12)'; rr(x - w / 2, y - 37, w, 8, 4); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - w / 2 + 5, y - 47); ctx.lineTo(x + w / 2 - 5, y - 47); ctx.stroke();
+      ctx.strokeStyle = shade(col, 0.5); ctx.lineWidth = 1.2; rr(x - w / 2, y - 48, w, 19, 6); ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(x - w / 4, y - 48, w / 4, 2, 0, Math.PI, 0); ctx.fill();
       text(label, x, y - 38, 13, '#1c1a36', 'center');
       ctx.strokeStyle = col; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x - 4, y + 1); ctx.lineTo(x + 4, y + 1 + Math.tan(sjSlope(h, x)) * 8); ctx.stroke();
     };
     board(h.greenU, h.green + ' m', SJ_GREEN);
     board(h.kLineU, 'K ' + h.K, SJ_GOLD);
-    // little flags along the outrun
+    // little flags along the outrun: poles with a gold knob, cloth with a shaded fold, a snow heap at the foot
     for (let i = 0; i < 6; i++) {
       const x = E.x + h.k3 - 30 + i * 30; if (x > W - 135) break;
-      const y = sjHillY(h, x);
-      ctx.fillStyle = '#6b6f8a'; ctx.fillRect(x, y - 30, 2, 30);
-      ctx.fillStyle = [C.pip, C.bo, SJ_GOLD, SJ_GREEN][i % 4];
-      ctx.beginPath(); ctx.moveTo(x + 2, y - 30); ctx.lineTo(x + 16 + Math.sin(G.clock * 4 + i) * 2, y - 25); ctx.lineTo(x + 2, y - 20); ctx.closePath(); ctx.fill();
+      const y = sjHillY(h, x), fc = [C.pip, C.bo, SJ_GOLD, SJ_GREEN][i % 4], tip = x + 16 + Math.sin(G.clock * 4 + i) * 2;
+      ctx.fillStyle = '#44485f'; ctx.fillRect(x - 0.5, y - 30, 3, 30);
+      ctx.fillStyle = '#8a8fa8'; ctx.fillRect(x, y - 30, 1, 30);
+      ctx.fillStyle = fc;
+      ctx.beginPath(); ctx.moveTo(x + 2, y - 30); ctx.lineTo(tip, y - 25); ctx.lineTo(x + 2, y - 20); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.moveTo(x + 2, y - 25); ctx.lineTo(tip, y - 25); ctx.lineTo(x + 2, y - 20); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = shade(fc, 0.5); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 2, y - 30); ctx.lineTo(tip, y - 25); ctx.lineTo(x + 2, y - 20); ctx.stroke();
+      ctx.fillStyle = SJ_GOLD; circle(x + 1, y - 31, 1.8); ctx.fill();
+      ctx.fillStyle = snowA; ctx.beginPath(); ctx.ellipse(x + 1, y + 0.5, 5, 2.5, 0, Math.PI, 0); ctx.fill();
     }
   }
+  // a little wooden hut with a snowy roof (start hut and crew hut): body w x bh from (0,0), roof apex 12 px above
+  function sjPaintHut(g, w, bh, night) {
+    const body = night ? '#6a3f4a' : '#c0584a', dk = shade(body, 0.5);
+    rkShadow(g, w / 2, bh + 1, w * 0.62, 3, 0.2);
+    g.fillStyle = body; rkRR(g, 0, 0, w, bh, 4); g.fill();
+    g.save(); rkRR(g, 0, 0, w, bh, 4); g.clip();
+    // upright boards with grain and a darker skirting board
+    rkGrain(g, 0, 0, w, bh, body, 37 + w, true, 6);
+    g.strokeStyle = shade(body, 0.28); g.lineWidth = 1;
+    for (let x = 5; x < w - 1; x += 5) { g.beginPath(); g.moveTo(x + 0.5, 1); g.lineTo(x + 0.5, bh); g.stroke(); }
+    g.fillStyle = shade(body, 0.3); g.fillRect(0, bh - 4, w, 4);
+    g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(0, bh - 4, w, 1);
+    g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(w - 8, 0, 8, bh);
+    g.fillStyle = 'rgba(255,255,255,0.28)'; g.fillRect(0, 0, 1.6, bh);
+    g.restore();
+    g.strokeStyle = dk; g.lineWidth = 1.5; rkRR(g, 0, 0, w, bh, 4); g.stroke();
+    // a framed window with a cross bar, a warm light inside and snow on the sill
+    const wx = 6, wy = 7, ww = w > 29 ? 8 : 10, wh = w > 29 ? 7 : 8;
+    g.fillStyle = night ? '#e6d9b0' : '#f4efe6'; g.fillRect(wx - 1.5, wy - 1.5, ww + 3, wh + 3);
+    g.fillStyle = night ? '#d9c98a' : '#ffe8a6'; g.fillRect(wx, wy, ww, wh);
+    g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillRect(wx + 1, wy + 1, 2, wh - 2);
+    g.fillStyle = shade(body, 0.4); g.fillRect(wx + ww / 2 - 0.5, wy, 1, wh); g.fillRect(wx, wy + wh / 2 - 0.5, ww, 1);
+    g.fillStyle = shade(body, 0.55); g.fillRect(wx - 2.5, wy + wh + 1.5, ww + 5, 1.5);
+    g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(wx + ww / 2, wy + wh + 1.2, ww / 2 + 2, 1.6, 0, Math.PI, 0); g.fill();
+    // the lamp plate (the start light glows on it)
+    g.fillStyle = shade('#3a3f5c', 0.7); g.beginPath(); g.arc(w - 7, 11, 5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#5a6188'; g.beginPath(); g.arc(w - 7.4, 10.6, 4.2, 0, Math.PI * 2); g.fill();
+    // the roof: a wooden eave board, then thick snow with a shaded right side, lumpy edge and icicles
+    g.fillStyle = shade(body, 0.45); g.beginPath(); g.moveTo(-4, 2); g.lineTo(w / 2, -12); g.lineTo(w + 4, 2); g.lineTo(w + 4, 4); g.lineTo(-4, 4); g.closePath(); g.fill();
+    g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(-4, 2); g.lineTo(w / 2, -12); g.lineTo(w + 4, 2); g.closePath(); g.fill();
+    g.fillStyle = night ? '#b9c6e6' : '#dceaf8'; g.beginPath(); g.moveTo(w / 2, -12); g.lineTo(w + 4, 2); g.lineTo(w / 2 + 2, 2); g.closePath(); g.fill();
+    g.fillStyle = '#ffffff';
+    for (let x = -3; x <= w + 3; x += 4.5) { g.beginPath(); g.arc(x, 2.2, 1.9 + (rkH(x + 9, w) % 3) * 0.3, 0, Math.PI * 2); g.fill(); }
+    g.strokeStyle = night ? 'rgba(120,140,190,0.6)' : 'rgba(150,180,215,0.7)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(-4, 3.6); g.lineTo(w + 4, 3.6); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(-3, 1.2); g.lineTo(w / 2, -11.4); g.stroke();
+    g.fillStyle = night ? 'rgba(210,225,255,0.9)' : 'rgba(205,230,250,0.95)';
+    for (let i = 0; i < 4; i++) {
+      const x = 3 + i * (w - 4) / 4 + (rkH(i, w) % 3), l = 3 + rkH(i, w + 5) % 4;
+      g.beginPath(); g.moveTo(x - 1.2, 4); g.lineTo(x + 1.2, 4); g.lineTo(x, 4 + l); g.closePath(); g.fill();
+    }
+  }
+  const sjHut = (x, y, w, bh, night) => rkPut('sjHut|' + w + '|' + (night ? 1 : 0), x, y, w + 16, bh + 22, 8, 16, g => sjPaintHut(g, w, bh, night));
   function sjDrawInrun(st) {
     const h = st.hill, pts = h.inPts, E = h.E, night = st.night;
-    // tower legs
-    ctx.strokeStyle = night ? '#43507a' : '#8a97b8'; ctx.lineWidth = 4;
-    for (let s = 20; s < h.inTotal - 10; s += 46) {
-      const p = pts[s], gy = sjTowerGround(h, p.x);
-      ctx.beginPath(); ctx.moveTo(p.x, p.y + 8); ctx.lineTo(p.x, gy); ctx.stroke();
-      const q = pts[Math.min(h.inTotal, s + 46)];
-      ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x, gy - 4); ctx.lineTo(q.x, q.y + 10); ctx.stroke(); ctx.lineWidth = 4;
+    // tower legs: steel I-beams on concrete footings, with cross braces and bolt plates
+    const steel = night ? '#43507a' : '#8a97b8', steelDk = shade(steel, 0.45), steelLt = tint(steel, 0.35);
+    const legs = [];
+    for (let s = 20; s < h.inTotal - 10; s += 46) legs.push(s);
+    const beam = (ax, ay, bx, by, lw) => {
+      ctx.strokeStyle = steelDk; ctx.lineWidth = lw + 2; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      ctx.strokeStyle = steel; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    };
+    ctx.lineCap = 'butt';
+    for (const s of legs) {
+      const p = pts[s], gy = sjTowerGround(h, p.x), q = pts[Math.min(h.inTotal, s + 46)];
+      const qg = q.x < E.x ? sjTowerGround(h, q.x) : gy;
+      beam(p.x, gy - 4, q.x, q.y + 10, 2);
+      if (q.x < E.x - 6 && qg - q.y > 24) beam(p.x, p.y + 14, q.x, qg - 6, 1.6);
     }
-    // the track: a deck with an icy groove and a rail
+    for (const s of legs) {
+      const p = pts[s], gy = sjTowerGround(h, p.x);
+      // concrete footing with a lit top and a soft shadow
+      rkShadow(ctx, p.x, gy + 1, 11, 2.6, 0.2);
+      ctx.fillStyle = night ? '#6d7690' : '#b9bfcc'; ctx.fillRect(p.x - 7, gy - 5, 14, 7);
+      ctx.fillStyle = night ? '#4c5470' : '#8f97a8'; ctx.fillRect(p.x + 2, gy - 5, 5, 7);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(p.x - 7, gy - 5, 14, 1.2);
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(p.x - 2, gy - 5, 6, 1.8, 0, Math.PI, 0); ctx.fill();
+      // the leg itself
+      ctx.fillStyle = steelDk; ctx.fillRect(p.x - 3, p.y + 8, 6, gy - 5 - p.y - 8);
+      ctx.fillStyle = steel; ctx.fillRect(p.x - 2, p.y + 8, 4, gy - 5 - p.y - 8);
+      ctx.fillStyle = steelLt; ctx.fillRect(p.x - 2, p.y + 8, 1.2, gy - 5 - p.y - 8);
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(p.x + 0.8, p.y + 8, 1.2, gy - 5 - p.y - 8);
+      // bolt plates at the top and where the brace meets the leg
+      for (const by of [p.y + 12, gy - 9]) {
+        ctx.fillStyle = steelDk; ctx.fillRect(p.x - 4, by - 3, 8, 6);
+        ctx.fillStyle = tint(steel, 0.15); ctx.fillRect(p.x - 3.5, by - 2.5, 7, 5);
+        rkRivet(ctx, p.x - 1.8, by, 0.9, steel); rkRivet(ctx, p.x + 1.8, by, 0.9, steel);
+      }
+    }
+    // the track: a steel girder under a deck with an icy groove and a rail
     const line = (off, col, lw) => {
       ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath();
       for (let s = 0; s <= h.inTotal; s += 3) { const p = pts[s]; ctx.lineTo(p.x - Math.sin(p.a) * off, p.y + Math.cos(p.a) * off); }
       ctx.lineTo(E.x, E.y + off); ctx.stroke();
     };
-    line(7, night ? '#4b5a88' : '#6d7fa8', 10);
+    const deck = night ? '#4b5a88' : '#6d7fa8';
+    line(8, shade(deck, 0.55), 12);
+    line(7, deck, 10);
+    // truss ticks and bolts along the girder side
+    ctx.strokeStyle = shade(deck, 0.7); ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let s = 6; s <= h.inTotal - 4; s += 12) {
+      const p = pts[s], nx = -Math.sin(p.a), ny = Math.cos(p.a), tx = Math.cos(p.a) * 5, ty = Math.sin(p.a) * 5;
+      ctx.moveTo(p.x + nx * 5 - tx, p.y + ny * 5 - ty); ctx.lineTo(p.x + nx * 11 + tx, p.y + ny * 11 + ty);
+    }
+    ctx.stroke();
+    ctx.fillStyle = tint(deck, 0.45);
+    for (let s = 12; s <= h.inTotal - 4; s += 12) { const p = pts[s]; ctx.fillRect(p.x - Math.sin(p.a) * 8 - 0.8, p.y + Math.cos(p.a) * 8 - 0.8, 1.6, 1.6); }
+    line(11.5, 'rgba(10,14,40,0.28)', 1.5);
     line(2, night ? '#b8c8ec' : '#f4fbff', 5);
     line(1, night ? 'rgba(130,160,220,0.9)' : 'rgba(120,170,220,0.8)', 1.5);
+    line(-0.6, 'rgba(255,255,255,0.55)', 1);
     // the take-off zone on the table: gold stripes
     for (let s = h.inTotal - 40; s < h.inTotal; s += 8) {
       const p = pts[s]; ctx.fillStyle = (s / 8) % 2 < 1 ? SJ_GOLD : '#ffffff';
-      ctx.save(); ctx.translate(p.x, p.y + 6); ctx.rotate(p.a); ctx.fillRect(0, -2, 8, 5); ctx.restore();
+      ctx.save(); ctx.translate(p.x, p.y + 6); ctx.rotate(p.a); ctx.fillRect(0, -2, 8, 5); ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(0, 2, 8, 1); ctx.restore();
     }
-    // the table lip
-    ctx.fillStyle = night ? '#4b5a88' : '#6d7fa8'; ctx.fillRect(E.x - 3, E.y + 2, 4, h.drop + 2);
+    // the table lip: a riveted steel post
+    ctx.fillStyle = shade(deck, 0.55); ctx.fillRect(E.x - 4, E.y + 2, 6, h.drop + 2);
+    ctx.fillStyle = deck; ctx.fillRect(E.x - 3, E.y + 2, 4, h.drop + 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(E.x - 3, E.y + 2, 1, h.drop + 2);
+    for (let y = E.y + 8; y < E.y + h.drop; y += 12) rkRivet(ctx, E.x - 1, y, 0.9, deck);
     // the start hut and bar
     const g0 = pts[0];
-    ctx.fillStyle = night ? '#6a3f4a' : '#c0584a'; rr(g0.x - 36, g0.y - 30, 28, 28, 4); ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(g0.x - 16, g0.y - 28, 8, 26);
-    ctx.strokeStyle = night ? '#3c2230' : '#8a3a30'; ctx.lineWidth = 1.5; rr(g0.x - 36, g0.y - 30, 28, 28, 4); ctx.stroke();
-    ctx.fillStyle = night ? '#d9c98a' : '#ffe8a6'; ctx.fillRect(g0.x - 30, g0.y - 23, 10, 8);
-    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(g0.x - 40, g0.y - 28); ctx.lineTo(g0.x - 22, g0.y - 42); ctx.lineTo(g0.x - 4, g0.y - 28); ctx.closePath(); ctx.fill();
+    sjHut(g0.x - 36, g0.y - 30, 28, 28, night);
     const lit = st.phase === 'gate' ? (G.introT > K.introLock ? '#ff5f6d' : SJ_GREEN) : '#ffffff55';
     ctx.fillStyle = lit; circle(g0.x - 15, g0.y - 19, 3.5); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(g0.x - 16, g0.y - 20.2, 1.1); ctx.fill();
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#1f2236'; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(g0.x - 6, g0.y - 2); ctx.lineTo(g0.x + 14, g0.y + 12); ctx.stroke();
     ctx.strokeStyle = '#3a3f5c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(g0.x - 6, g0.y - 2); ctx.lineTo(g0.x + 14, g0.y + 12); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(g0.x - 6, g0.y - 3); ctx.lineTo(g0.x + 13, g0.y + 10.5); ctx.stroke();
+    ctx.strokeStyle = '#ff5f6d'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(g0.x + 2, g0.y + 3.6); ctx.lineTo(g0.x + 6, g0.y + 6.4); ctx.stroke();
+    ctx.fillStyle = '#5a6188'; circle(g0.x - 6, g0.y - 2, 2.6); ctx.fill();
+    rkRivet(ctx, g0.x - 6, g0.y - 2, 1.2, '#8a92b8');
   }
   // the mountain line under the in-run: a curve from the left edge to the foot of the take-off table
   const sjMountain = h => ({ y0: h.gate[1] + 110, cx: h.E.x * 0.55, cy: h.E.y + h.drop - 4, y1: h.E.y + h.drop });
@@ -708,8 +825,18 @@
       const x = h.E.x + u + 30, by = sjHillY(h, h.E.x + u) - 4, top = by - 150;
       ctx.fillStyle = 'rgba(255,248,210,0.10)';
       ctx.beginPath(); ctx.moveTo(x - 8, top); ctx.lineTo(x - 110, sjHillY(h, x - 110) + 2); ctx.lineTo(x + 90, sjHillY(h, x + 90) + 2); ctx.lineTo(x + 8, top); ctx.closePath(); ctx.fill();
+      // a lattice mast on a footing, a lamp head with three bulbs
+      ctx.fillStyle = '#1c2340'; ctx.fillRect(x - 3, top, 6, by - top);
       ctx.fillStyle = '#2b3556'; ctx.fillRect(x - 2, top, 4, by - top);
+      ctx.fillStyle = '#4a5682'; ctx.fillRect(x - 2, top, 1, by - top);
+      ctx.strokeStyle = '#1c2340'; ctx.lineWidth = 0.8; ctx.beginPath();
+      for (let y = top + 6; y < by - 4; y += 10) { ctx.moveTo(x - 2, y); ctx.lineTo(x + 2, y + 5); ctx.moveTo(x + 2, y + 5); ctx.lineTo(x - 2, y + 10); }
+      ctx.stroke();
+      ctx.fillStyle = '#5a6188'; ctx.fillRect(x - 6, by - 3, 12, 4); ctx.fillStyle = '#c9d6f0'; ctx.beginPath(); ctx.ellipse(x - 1, by - 3, 6, 1.6, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#1c2340'; rr(x - 13, top - 9, 26, 12, 3); ctx.fill();
       ctx.fillStyle = '#fff6c8'; rr(x - 12, top - 8, 24, 10, 3); ctx.fill();
+      ctx.fillStyle = '#ffffff'; for (let k = -1; k <= 1; k++) { circle(x + k * 7.5, top - 3, 2.6); ctx.fill(); }
+      ctx.fillStyle = 'rgba(28,35,64,0.5)'; ctx.fillRect(x - 4.3, top - 8, 1, 10); ctx.fillRect(x + 3.3, top - 8, 1, 10);
     }
   }
   function sjDrawCatwalk(st) {
@@ -717,51 +844,114 @@
     const x0 = h.cat0, x1 = h.cat1;
     // the crew hut at the left end, where the fan crew starts each jump
     const hy = sjCatY(h, x0);
-    ctx.fillStyle = night ? '#6a3f4a' : '#c0584a'; rr(x0 - 6, hy - 30, 30, 30, 4); ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x0 + 15, hy - 28, 8, 28);
-    ctx.strokeStyle = night ? '#3c2230' : '#8a3a30'; ctx.lineWidth = 1.5; rr(x0 - 6, hy - 30, 30, 30, 4); ctx.stroke();
-    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(x0 - 10, hy - 28); ctx.lineTo(x0 + 9, hy - 42); ctx.lineTo(x0 + 28, hy - 28); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = night ? '#d9c98a' : '#ffe8a6'; ctx.fillRect(x0, hy - 22, 8, 7);
-    // posts
-    ctx.fillStyle = night ? '#5a4a3c' : C.plankDark;
-    for (let x = x0 + 6; x < x1; x += 34) ctx.fillRect(x - 2, sjCatY(h, x), 4, 18);
-    // deck and rail
-    ctx.strokeStyle = night ? '#7a6248' : C.plankDark; ctx.lineWidth = 7; ctx.beginPath();
-    for (let x = x0; x <= x1; x += 5) ctx.lineTo(x, sjCatY(h, x) + 2);
-    ctx.stroke();
-    ctx.strokeStyle = night ? '#a88a62' : C.plank; ctx.lineWidth = 4; ctx.beginPath();
-    for (let x = x0; x <= x1; x += 5) ctx.lineTo(x, sjCatY(h, x));
-    ctx.stroke();
-    if (st.cart) {
-      ctx.strokeStyle = '#6d7fa8'; ctx.lineWidth = 2; ctx.beginPath();
-      for (let x = x0; x <= x1; x += 5) ctx.lineTo(x, sjCatY(h, x) - 3);
-      ctx.stroke();
+    sjHut(x0 - 6, hy - 30, 30, 30, night);
+    // posts: wooden stakes with grain, a lit side, a cap and a snow lump at the foot
+    const wood = night ? '#5a4a3c' : C.plankDark, woodDk = shade(wood, 0.5), woodLt = tint(wood, 0.3);
+    for (let x = x0 + 6; x < x1; x += 34) {
+      const y = sjCatY(h, x);
+      ctx.fillStyle = woodDk; ctx.fillRect(x - 2.6, y, 5.2, 18);
+      ctx.fillStyle = wood; ctx.fillRect(x - 2, y, 4, 18);
+      ctx.fillStyle = woodLt; ctx.fillRect(x - 2, y, 1, 18);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x + 0.8, y, 1.2, 18); ctx.fillRect(x - 1, y + 5 + hash(x | 0, 3) % 7, 2, 0.8);
+      ctx.fillStyle = night ? '#c9d6f0' : '#ffffff'; ctx.beginPath(); ctx.ellipse(x, y + 18, 5, 2.4, 0, Math.PI, 0); ctx.fill();
     }
+    const path = (off) => { ctx.beginPath(); for (let x = x0; x <= x1; x += 5) ctx.lineTo(x, sjCatY(h, x) + off); ctx.lineTo(x1, sjCatY(h, x1) + off); };
+    // deck: a dark under-beam, the planks, a lit top edge, plank joints with nail heads
+    ctx.strokeStyle = shade(night ? '#7a6248' : C.plankDark, 0.55); ctx.lineWidth = 9; path(2.5); ctx.stroke();
+    ctx.strokeStyle = night ? '#7a6248' : C.plankDark; ctx.lineWidth = 7; path(2); ctx.stroke();
+    ctx.strokeStyle = night ? '#a88a62' : C.plank; ctx.lineWidth = 4; path(0); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; path(-1.6); ctx.stroke();
+    ctx.strokeStyle = 'rgba(40,20,10,0.35)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let x = x0 + 9; x < x1; x += 13) { const y = sjCatY(h, x); ctx.moveTo(x, y - 2); ctx.lineTo(x, y + 5); }
+    ctx.stroke();
+    ctx.fillStyle = night ? '#9aa3bd' : '#c7ccd9';
+    for (let x = x0 + 12; x < x1; x += 13) { const y = sjCatY(h, x); ctx.fillRect(x - 0.7, y + 3.4, 1.4, 1.4); }
+    // a few soft snow lumps resting on the deck edge
+    ctx.fillStyle = night ? 'rgba(220,232,255,0.85)' : 'rgba(255,255,255,0.95)';
+    for (let x = x0 + 20; x < x1 - 10; x += 48) { const xx = x + hash(x | 0, 17) % 16, y = sjCatY(h, xx); ctx.beginPath(); ctx.ellipse(xx, y - 1.4, 4 + hash(xx | 0, 5) % 3, 1.5, 0, Math.PI, 0); ctx.fill(); }
+    if (st.cart) {
+      // the cart rail: a steel rail with a lit top on little sleepers
+      ctx.fillStyle = '#3d4566';
+      for (let x = x0 + 4; x < x1; x += 14) { const y = sjCatY(h, x); ctx.fillRect(x - 2, y - 4, 4, 3); }
+      ctx.strokeStyle = '#3d4566'; ctx.lineWidth = 3; path(-3); ctx.stroke();
+      ctx.strokeStyle = '#6d7fa8'; ctx.lineWidth = 2; path(-3); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 0.8; path(-3.8); ctx.stroke();
+    }
+  }
+  // the fan's stand (base plate, column, collar) and the rail cart body: still parts, cached
+  function sjPaintStand(g) {
+    const st = '#4a5578', dk = shade(st, 0.5);
+    rkShadow(g, 0, 0.5, 13, 2.2, 0.22);
+    g.fillStyle = dk; rkRR(g, -10.5, -4.5, 21, 5, 1.5); g.fill();
+    g.fillStyle = st; rkRR(g, -10, -4, 20, 4, 1.5); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(-9, -4, 18, 1);
+    rkRivet(g, -7, -2, 1, '#7a86ad'); rkRivet(g, 7, -2, 1, '#7a86ad');
+    g.fillStyle = dk; g.fillRect(-3.5, -16, 7, 12);
+    g.fillStyle = st; g.fillRect(-3, -16, 6, 12);
+    g.fillStyle = tint(st, 0.35); g.fillRect(-3, -16, 1.3, 12);
+    g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(1.5, -16, 1.5, 12);
+    g.fillStyle = shade(st, 0.7); g.fillRect(-4.5, -17, 9, 3);
+    g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(-4.5, -17, 9, 0.8);
+    g.fillStyle = '#ffc53d'; g.fillRect(-3, -9, 6, 1.4);
+  }
+  function sjPaintCart(g) {
+    const body = '#c0584a', dk = shade(body, 0.5);
+    rkShadow(g, 0, 4, 22, 2.4, 0.2);
+    g.fillStyle = body; rkRR(g, -22, -16, 44, 14, 4); g.fill();
+    g.save(); rkRR(g, -22, -16, 44, 14, 4); g.clip();
+    g.fillStyle = shade(body, 0.25); g.fillRect(-22, -7, 44, 5);
+    g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(-22, -16, 44, 1.5);
+    for (let x = -18; x < 22; x += 8) { g.fillStyle = '#ffc53d'; g.beginPath(); g.moveTo(x, -2); g.lineTo(x + 4, -2); g.lineTo(x + 7, -6); g.lineTo(x + 3, -6); g.closePath(); g.fill(); }
+    g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(-22, -6.5, 44, 0.8);
+    g.restore();
+    g.strokeStyle = shade(body, 0.4); g.lineWidth = 1; g.strokeRect(-16.5, -13.5, 33, 5);
+    g.strokeStyle = dk; g.lineWidth = 1.5; rkRR(g, -22, -16, 44, 14, 4); g.stroke();
+    for (const x of [-18, -6, 6, 18]) rkRivet(g, x, -12, 0.9, '#d98a7a');
+    g.fillStyle = '#2b2f45'; rkRR(g, -24, -12, 3, 7, 1.2); g.fill(); rkRR(g, 21, -12, 3, 7, 1.2); g.fill();
   }
   function sjDrawFan(st, fan, i) {
     const lucky = st.help > 0, h = st.hill;
     const gustFan = st.gust && st.gust.fan === i;
     const x = fan.x, base = fan.cart ? fan.y - 14 : fan.y;
     if (fan.cart) {
-      // the rail cart
-      ctx.fillStyle = '#c0584a'; rr(x - 22, fan.y - 16, 44, 14, 4); ctx.fill();
-      ctx.fillStyle = '#2b3556'; circle(x - 13, fan.y - 1, 5); ctx.fill(); circle(x + 13, fan.y - 1, 5); ctx.fill();
+      // the rail cart, with spoked wheels that turn as it rolls
+      rkPut('sjCart', x, fan.y, 52, 26, 26, 20, sjPaintCart);
+      for (const wx of [x - 13, x + 13]) {
+        ctx.fillStyle = '#1b1f33'; circle(wx, fan.y - 1, 5); ctx.fill();
+        ctx.fillStyle = '#2b3556'; circle(wx, fan.y - 1, 4); ctx.fill();
+        ctx.strokeStyle = '#8a97b8'; ctx.lineWidth = 1; ctx.beginPath();
+        for (let k = 0; k < 3; k++) { const a = wx * 0.18 + k * 2.094; ctx.moveTo(wx - Math.cos(a) * 3.4, fan.y - 1 - Math.sin(a) * 3.4); ctx.lineTo(wx + Math.cos(a) * 3.4, fan.y - 1 + Math.sin(a) * 3.4); }
+        ctx.stroke();
+        ctx.fillStyle = '#c7ccd9'; circle(wx, fan.y - 1, 1.3); ctx.fill();
+      }
     }
     // the stand
-    ctx.fillStyle = '#4a5578'; ctx.fillRect(x - 3, base - 16, 6, 16);
-    ctx.fillRect(x - 10, base - 4, 20, 4);
+    rkPut('sjStand', x, base, 28, 24, 14, 20, sjPaintStand);
     // the head, facing up the hill to blow at the jumper
     const fy = base - 27;
     ctx.save(); ctx.translate(x, fy); ctx.scale(1, 0.62);
     const rim = lucky ? SJ_GOLD : fan.out > 0 ? '#9aa3bd' : gustFan ? '#ff7a6b' : '#e9eef9';
+    ctx.fillStyle = '#1c2440'; circle(0, 1.5, 19.5); ctx.fill();
     ctx.fillStyle = '#2e3a5e'; circle(0, 0, 18); ctx.fill();
-    ctx.strokeStyle = rim; ctx.lineWidth = 4; circle(0, 0, 18); ctx.stroke();
-    ctx.fillStyle = fan.pow > 0.2 ? '#cfe8ff' : '#9fb3d6';
+    ctx.fillStyle = '#232c4a'; circle(0, 1, 14.5); ctx.fill();
+    const bl = fan.pow > 0.2 ? '#cfe8ff' : '#9fb3d6';
     for (let b = 0; b < 3; b++) {
-      const a = fan.spin + b * 2.094;
-      ctx.beginPath(); ctx.ellipse(Math.cos(a) * 7.5, Math.sin(a) * 7.5, 7.5, 3.8, a, 0, Math.PI * 2); ctx.fill();
+      const a = fan.spin + b * 2.094, bx = Math.cos(a) * 7.5, by = Math.sin(a) * 7.5;
+      ctx.fillStyle = bl; ctx.beginPath(); ctx.ellipse(bx, by, 7.5, 3.8, a, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(30,45,90,0.35)'; ctx.beginPath(); ctx.ellipse(bx, by, 7.5, 3.8, a, 0, Math.PI); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(bx, by, 6, 2.4, a, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
     }
+    // the guard grille over the blades
+    ctx.strokeStyle = 'rgba(220,230,255,0.35)'; ctx.lineWidth = 1; ctx.beginPath();
+    ctx.arc(0, 0, 10.5, 0, Math.PI * 2); ctx.moveTo(15, 0); ctx.arc(0, 0, 15, 0, Math.PI * 2);
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; ctx.moveTo(Math.cos(a) * 4.5, Math.sin(a) * 4.5); ctx.lineTo(Math.cos(a) * 17, Math.sin(a) * 17); }
+    ctx.stroke();
+    ctx.strokeStyle = rim; ctx.lineWidth = 4; circle(0, 0, 18); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(0, 0, 18.6, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+    ctx.strokeStyle = 'rgba(10,14,40,0.45)'; ctx.lineWidth = 1; circle(0, 0, 20.2); ctx.stroke();
     ctx.fillStyle = rim; circle(0, 0, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(10,14,40,0.45)'; circle(0.6, 0.8, 1.6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(-1.4, -1.5, 1.1); ctx.fill();
     ctx.restore();
     // the near-fan ring: the crew can switch this one on now
     if (st.phase !== 'tally' && !fan.cart && sjNearFan(st) === fan) {
@@ -769,17 +959,21 @@
       ctx.beginPath(); ctx.ellipse(x, fy, 24, 17, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
     }
     // air meter
-    const air = fan.air;
-    ctx.fillStyle = 'rgba(28,26,54,0.6)'; rr(x - 16, base + 6 + (fan.cart ? 12 : 0), 32, 6, 3); ctx.fill();
+    const air = fan.air, my = base + 6 + (fan.cart ? 12 : 0);
+    ctx.fillStyle = 'rgba(28,26,54,0.6)'; rr(x - 16, my, 32, 6, 3); ctx.fill();
     ctx.fillStyle = fan.out > 0 ? '#ff8a7a' : lucky ? SJ_GOLD : '#7fd6ff';
-    if (air > 0.02) { rr(x - 16, base + 6 + (fan.cart ? 12 : 0), 32 * air, 6, 3); ctx.fill(); }
+    if (air > 0.02) { rr(x - 16, my, 32 * air, 6, 3); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 14, my + 1, Math.max(0, 32 * air - 4), 1.2); }
     if (gustFan && !fan.cart) {
       // a windsock marks the gust zone's fan
+      ctx.fillStyle = '#2f3756'; ctx.fillRect(x - 28.6, base - 30, 3.2, 30);
       ctx.fillStyle = '#4a5578'; ctx.fillRect(x - 28, base - 30, 2, 30);
+      ctx.fillStyle = '#ffc53d'; circle(x - 27, base - 31, 1.8); ctx.fill();
       const fl = st.gust.state === 'blow' ? -1 : 1, wv = Math.sin(G.clock * 6) * 2;
       for (let s = 0; s < 4; s++) {
+        const sx = x - 26 + (fl < 0 ? -9 * (s + 1) - 2 : 9 * s), sy = base - 30 + s * 0.8 + wv * (s / 4), sh = 8 - s * 1.1;
         ctx.fillStyle = s % 2 ? '#ffffff' : '#ff5f6d';
-        ctx.fillRect(x - 26 + (fl < 0 ? -9 * (s + 1) - 2 : 9 * s), base - 30 + s * 0.8 + wv * (s / 4), 9, 8 - s * 1.1);
+        ctx.fillRect(sx, sy, 9, sh);
+        ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.fillRect(sx, sy + sh * 0.6, 9, sh * 0.4);
       }
     }
   }

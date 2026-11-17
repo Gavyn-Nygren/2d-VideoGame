@@ -464,14 +464,26 @@ function javFlag(x, y, pole, cols, wind, ph, sc = 1) {
 }
 // the big windsock by the runways: it fills out and points where the wind blows
 function javWindsock(x, y, wind) {
-  ctx.strokeStyle = '#d9dde8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 46); ctx.stroke();
+  // a steel pole on a weighted base, with a lit stripe, a band and a shadow
+  ctx.fillStyle = 'rgba(20,60,20,0.25)'; ctx.beginPath(); ctx.ellipse(x + 3, y + 1, 10, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#8f97ab'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 46); ctx.stroke();
+  ctx.strokeStyle = '#e4e7ef'; ctx.lineWidth = 2.2; ctx.stroke();
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x - 0.7, y - 1); ctx.lineTo(x - 0.7, y - 45); ctx.stroke();
+  ctx.fillStyle = '#ff8a3d'; ctx.fillRect(x - 2, y - 24, 4, 3);
+  ctx.fillStyle = '#4d5470'; rr(x - 6, y - 3, 12, 4, 1.5); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 5, y - 3, 10, 1);
   const d = wind >= 0 ? 1 : -1, str = clamp(Math.abs(wind) / 6, 0, 1), droop = (1 - str) * 1.1 + 0.05, L = 30, t = G.clock * (6 + 8 * str);
   ctx.save(); ctx.translate(x, y - 44); ctx.scale(d, 1); ctx.rotate(droop);
   for (let i = 0; i < 4; i++) {
     const u0 = i / 4, u1 = (i + 1) / 4, r0 = 7 - 3.5 * u0 * (1 - str * 0.4), r1 = 7 - 3.5 * u1 * (1 - str * 0.4), wv = Math.sin(t - i) * 1.2 * str;
     ctx.fillStyle = i % 2 ? '#ffffff' : '#ff8a3d';
     ctx.beginPath(); ctx.moveTo(u0 * L, -r0 + wv * u0); ctx.lineTo(u1 * L, -r1 + wv * u1); ctx.lineTo(u1 * L, r1 + wv * u1); ctx.lineTo(u0 * L, r0 + wv * u0); ctx.closePath(); ctx.fill();
+    // the cloth's shaded underside and a lit top fold
+    ctx.fillStyle = i % 2 ? 'rgba(120,130,160,0.3)' : 'rgba(150,50,10,0.3)';
+    ctx.beginPath(); ctx.moveTo(u0 * L, r0 * 0.35 + wv * u0); ctx.lineTo(u1 * L, r1 * 0.35 + wv * u1); ctx.lineTo(u1 * L, r1 + wv * u1); ctx.lineTo(u0 * L, r0 + wv * u0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath(); ctx.moveTo(u0 * L, -r0 + wv * u0); ctx.lineTo(u1 * L, -r1 + wv * u1); ctx.lineTo(u1 * L, -r1 * 0.7 + wv * u1); ctx.lineTo(u0 * L, -r0 * 0.7 + wv * u0); ctx.closePath(); ctx.fill();
   }
+  ctx.strokeStyle = 'rgba(120,60,20,0.5)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(L, -3.5 * (1 + 0.4 * str) + Math.sin(t - 3) * 1.2 * str); ctx.moveTo(0, 7); ctx.lineTo(L, 3.5 * (1 + 0.4 * str) + Math.sin(t - 3) * 1.2 * str); ctx.stroke();
   ctx.fillStyle = '#9aa3b5'; ctx.fillRect(-2, -8, 4, 16);
   ctx.restore();
 }
@@ -516,23 +528,55 @@ function javDrawWorld() {
   ctx.fillStyle = 'rgba(20,60,20,0.18)'; ctx.fillRect(0, 300, W, 8);   // the stands' shadow on the grass
   const c = st.cam, xL = c.x0, xR = c.x0 + W / c.s;
   // mowing stripes every 5 m
+  // (dark and light bands like a mown pitch, each with a faint mower seam along its edge)
   for (let m = Math.floor(xL / 5) * 5; m < xR; m += 5) {
-    if (((m / 5) | 0) % 2 === 0) continue;
-    ctx.fillStyle = 'rgba(40,110,40,0.10)'; ctx.fillRect(javSX(m), 300, 5 * c.s + 0.5, H - 300);
+    const odd = ((m / 5) | 0) % 2 !== 0, sx = javSX(m);
+    ctx.fillStyle = odd ? 'rgba(40,110,40,0.15)' : 'rgba(255,255,230,0.07)'; ctx.fillRect(sx, 300, 5 * c.s + 0.5, H - 300);
+    ctx.fillStyle = odd ? 'rgba(30,90,30,0.14)' : 'rgba(255,255,230,0.12)'; ctx.fillRect(sx, 300, 1.2, H - 300);
+  }
+  // a dense layer of small blade pairs in two tones (one path each), moving with the field
+  for (const [tone, sk] of [['rgba(40,110,40,0.42)', 0], ['rgba(210,255,180,0.3)', 1]]) {
+    ctx.strokeStyle = tone; ctx.lineWidth = 1.1; ctx.beginPath();
+    for (let m = Math.floor(xL); m < xR; m++) for (let j = 0; j < 3; j++) {
+      const hh = hash(m * 3 + j + 5000, 11 + sk); if (hh % 2) continue;
+      const x = javSX(m) + (hh >>> 3) % 12, y = 316 + (hh >>> 8) % (H - 322);
+      if (y > JAV_GY[0] - 16 && y < JAV_GY[0] + 14 && m < 1) continue;
+      if (y > JAV_GY[1] - 16 && y < JAV_GY[1] + 14 && m < 1) continue;
+      ctx.moveTo(x, y + 3); ctx.lineTo(x - 1.5, y - 1); ctx.moveTo(x + 1, y + 3); ctx.lineTo(x + 2.5, y - 0.5);
+    }
+    ctx.stroke();
   }
   // little tufts and clover in the grass (they move with the field)
   for (let m = Math.floor(xL / 2) * 2; m < xR; m += 2) {
     const hh = hash(m + 1000, 3); if (hh % 3) continue;
     const x = javSX(m) + (hh >> 4) % 10, y = 318 + (hh >> 9) % (H - 330);
     ctx.fillStyle = hh % 2 ? 'rgba(40,110,40,0.28)' : 'rgba(255,255,255,0.18)'; ctx.fillRect(x, y, 1.5, 3); ctx.fillRect(x + 2.5, y + 1, 1.5, 2);
+    // two-tone blade tufts, clover and the odd daisy or divot
+    const kk = (hh >>> 13) % 7;
+    if (kk === 0) { ctx.strokeStyle = 'rgba(40,110,40,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 6, y + 6); ctx.lineTo(x + 4, y); ctx.moveTo(x + 7, y + 6); ctx.lineTo(x + 8, y - 1); ctx.moveTo(x + 8, y + 6); ctx.lineTo(x + 11, y + 1); ctx.stroke(); ctx.strokeStyle = 'rgba(200,255,170,0.35)'; ctx.beginPath(); ctx.moveTo(x + 7, y + 6); ctx.lineTo(x + 6, y + 1); ctx.stroke(); }
+    else if (kk === 1) { ctx.fillStyle = 'rgba(60,140,60,0.55)'; for (const [dx, dy] of [[-1.6, 0], [1.6, 0], [0, -1.6]]) { circle(x + 8 + dx, y + 4 + dy, 1.7); ctx.fill(); } }
+    else if (kk === 2 && (hh >>> 17) % 3 === 0) { ctx.fillStyle = '#ffffff'; for (let p = 0; p < 5; p++) { const a = p * 1.256; ctx.fillRect(x + 8 + Math.cos(a) * 1.8 - 0.7, y + 4 + Math.sin(a) * 1.8 - 0.7, 1.4, 1.4); } ctx.fillStyle = '#ffd23f'; ctx.fillRect(x + 7.3, y + 3.3, 1.4, 1.4); }
+    else if (kk === 3 && (hh >>> 17) % 4 === 0) { ctx.fillStyle = 'rgba(120,90,50,0.3)'; ctx.beginPath(); ctx.ellipse(x + 8, y + 5, 4, 1.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x + 5, y + 3, 4, 1); }
   }
   // runways
   for (const k of [0, 1]) {
     const gy = JAV_GY[k], x0 = javSX(-28), x1 = javSX(0);
+    ctx.fillStyle = 'rgba(20,60,20,0.2)'; ctx.fillRect(x0, gy + 9, x1 - x0, 3);
     ctx.fillStyle = JAV_COL.trackDk; ctx.fillRect(x0, gy - 9, x1 - x0, 20);
     ctx.fillStyle = JAV_COL.track; ctx.fillRect(x0, gy - 11, x1 - x0, 18);
     ctx.fillStyle = JAV_COL.trackHi; ctx.fillRect(x0, gy - 11, x1 - x0, 3);
+    // a worn run-up line down the middle, rubber granules, roll seams every 7 m
+    ctx.fillStyle = 'rgba(90,20,10,0.1)'; ctx.fillRect(x0, gy - 4, x1 - x0, 6);
+    for (let m = -28; m < 0; m += 0.5) {
+      const hh = hash((m * 2) | 0, 77 + k), x = javSX(m) + (hh % 5);
+      ctx.fillStyle = hh % 3 === 0 ? 'rgba(255,230,210,0.22)' : hh % 3 === 1 ? 'rgba(80,10,5,0.22)' : 'rgba(255,255,255,0.1)';
+      ctx.fillRect(x, gy - 8 + (hh >>> 5) % 14, 1.4, 1.4); ctx.fillRect(x + 2 + (hh >>> 9) % 4, gy - 8 + (hh >>> 12) % 14, 1.2, 1.2);
+    }
+    ctx.fillStyle = 'rgba(90,20,10,0.22)'; for (let m = -21; m < 0; m += 7) ctx.fillRect(javSX(m), gy - 9, 1, 16);
+    ctx.fillStyle = 'rgba(60,10,10,0.25)'; ctx.fillRect(x0, gy - 10, x1 - x0, 1.2); ctx.fillRect(x0, gy + 9, x1 - x0, 1.2);
     ctx.fillStyle = '#ffffff'; ctx.fillRect(x0, gy - 12, x1 - x0, 2); ctx.fillRect(x0, gy + 7, x1 - x0, 2);
+    // metre ticks along the edge
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; for (let m = -26; m < 0; m += 2) ctx.fillRect(javSX(m), gy + 4, 1, 3);
     // start mark
     ctx.fillRect(javSX(JAV.x0) - 1, gy - 10, 3, 17);
     // lane colour chevrons
@@ -544,6 +588,7 @@ function javDrawWorld() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (let m = 10; m < xR + 10; m += 10) {
     const x = javSX(m); if (x < -20 || x > W + 20) continue;
+    ctx.fillStyle = 'rgba(20,60,20,0.16)'; ctx.fillRect(x + 1, 312, 1.2, H - 312);
     ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(x - 1, 312, 2, H - 312);
     ctx.font = '700 ' + (big ? 15 : 11) + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
     const bw2 = Math.max(big ? 42 : 30, ctx.measureText(m + ' m').width + (big ? 14 : 12)), bh2 = big ? 20 : 15;
@@ -555,8 +600,16 @@ function javDrawWorld() {
   }
   // the foul line, across both lanes
   const fx = javSX(0);
+  // (a painted board: a soft shadow on the grass, chalky white with a lit left edge and a shaded right edge)
+  ctx.fillStyle = 'rgba(20,60,20,0.22)'; ctx.fillRect(fx + 3, 312, 2, H - 312);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(fx - 2, 312, 5, H - 312);
+  ctx.fillStyle = 'rgba(150,170,150,0.5)'; ctx.fillRect(fx + 2, 312, 1, H - 312);
   ctx.fillStyle = '#ff5a5a'; ctx.fillRect(fx - 2, JAV_GY[0] - 12, 5, 21); ctx.fillRect(fx - 2, JAV_GY[1] - 12, 5, 21);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(fx - 2, JAV_GY[0] - 12, 1.2, 21); ctx.fillRect(fx - 2, JAV_GY[1] - 12, 1.2, 21);
+  ctx.fillStyle = '#b8343a'; ctx.fillRect(fx + 2, JAV_GY[0] - 12, 1, 21); ctx.fillRect(fx + 2, JAV_GY[1] - 12, 1, 21);
+  // chalk dust scuffed along the line
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  for (let i = 0; i < 26; i++) { const hh = hash(i, 515), y = 316 + (hh % (H - 320)); ctx.fillRect(fx - 4 + (hh >>> 9) % 10, y, 1.3, 1.3); }
   // the line glows red in a lane whose athlete is close to it and still has the javelin
   for (const a of st.ath) {
     if (!(a.phase === 'run' || a.phase === 'aim') || a.x < -4) continue;

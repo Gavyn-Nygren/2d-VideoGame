@@ -1008,9 +1008,27 @@ function pumpkinDrawGround(st) {
         if (k === 1) { ctx.fillStyle = '#ffb3d1'; circle(lx + 3, ly - 2, 3); ctx.fill(); }
       }
     } else {
-      ctx.fillStyle = '#6b4226'; ctx.fillRect(b.x0 - cam.x, wy, b.x1 - b.x0, 80);
-      ctx.fillStyle = '#7d5030';
-      for (let k = 0; k < 5; k++) { const bx = b.x0 + (b.x1 - b.x0) * ((k * 0.23 + G.clock * 0.05) % 1) - cam.x; const r = 2 + ((G.clock * 1.3 + k * 0.4) % 1) * 4; circle(bx, wy + 6, r); ctx.fill(); }
+      // mud: a glossy dark surface, a lighter scum band, sticks and leaves stuck in it, popping bubbles with rings
+      const mx0 = b.x0 - cam.x, mw = b.x1 - b.x0;
+      ctx.fillStyle = '#6b4226'; ctx.fillRect(mx0, wy, mw, 80);
+      ctx.fillStyle = '#5a361f'; ctx.fillRect(mx0, wy + 10, mw, 70);
+      ctx.fillStyle = 'rgba(30,14,8,0.3)'; ctx.fillRect(mx0, wy + 26, mw, 54);
+      ctx.fillStyle = '#86593a'; ctx.fillRect(mx0, wy, mw, 3);
+      ctx.fillStyle = 'rgba(255,220,170,0.22)';
+      for (let k = 0; k < 6; k++) { const h = hash(b.x0 | 0, k + 3); ctx.beginPath(); ctx.ellipse(mx0 + 8 + (h % Math.max(1, mw - 16)), wy + 5 + (h >>> 7) % 14, 6 + (h >>> 3) % 8, 1.2, 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.strokeStyle = '#4a2e1a'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath();
+      for (let k = 0; k < 2; k++) { const h = hash(b.x0 | 0, k + 11), sx = mx0 + 14 + (h % Math.max(1, mw - 40)); ctx.moveTo(sx, wy + 2); ctx.lineTo(sx + 16, wy - 3 - (h >>> 6) % 4); }
+      ctx.stroke();
+      ctx.strokeStyle = '#8a6040'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let k = 0; k < 2; k++) { const h = hash(b.x0 | 0, k + 11), sx = mx0 + 14 + (h % Math.max(1, mw - 40)); ctx.moveTo(sx, wy + 1.4); ctx.lineTo(sx + 16, wy - 3.6 - (h >>> 6) % 4); }
+      ctx.stroke(); ctx.lineCap = 'butt';
+      for (let k = 0; k < 5; k++) {
+        const bx = b.x0 + (b.x1 - b.x0) * ((k * 0.23 + G.clock * 0.05) % 1) - cam.x; const r = 2 + ((G.clock * 1.3 + k * 0.4) % 1) * 4;
+        ctx.fillStyle = '#7d5030'; circle(bx, wy + 6, r); ctx.fill();
+        ctx.strokeStyle = '#4a2e1a'; ctx.lineWidth = 0.8; circle(bx, wy + 6, r); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,230,190,0.45)'; circle(bx - r * 0.35, wy + 6 - r * 0.4, r * 0.3); ctx.fill();
+        ctx.strokeStyle = 'rgba(140,95,60,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(bx, wy + 6 + r * 0.6, r * 1.8, r * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
+      }
     }
   }
   const pts = [];
@@ -1031,12 +1049,44 @@ function pumpkinDrawGround(st) {
     ctx.beginPath(); ctx.moveTo(sx, y); ctx.quadraticCurveTo(sx - 6, y + 10, sx + 2, y + 20); ctx.moveTo(sx - 2, y + 9); ctx.lineTo(sx - 9, y + 14); ctx.stroke();
   }
   ctx.lineCap = 'butt';
+  // wavy darker strata and lighter seams, following the hill
+  const wave = (dy, amp, k, lw, col) => { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); let on = false; for (const x of pts) { if (basin(x) > 0) { on = false; continue; } const y = pumpkinGY(st, x) + dy + Math.sin(x * 0.021 + k) * amp + Math.sin(x * 0.057 + k * 2) * amp * 0.5 - cam.y; if (on) ctx.lineTo(x - cam.x, y); else { ctx.moveTo(x - cam.x, y); on = true; } } ctx.stroke(); };
+  wave(30, 4, 1, 5, 'rgba(24,12,22,0.16)'); wave(62, 5, 2, 7, 'rgba(24,12,22,0.18)'); wave(96, 6, 3, 9, 'rgba(24,12,22,0.16)');
+  wave(27, 4, 1, 1, 'rgba(255,220,190,0.10)'); wave(58, 5, 2, 1, 'rgba(255,220,190,0.08)');
+  // soil grains: dark and light specks in two batched paths
+  const grains = (seed, col, n) => {
+    ctx.fillStyle = col; ctx.beginPath();
+    for (let x = Math.floor(xa / n) * n; x < xb; x += n) {
+      const h = hash(x, seed); if (basin(x) > 0) continue;
+      const px = x - cam.x + (h % n), py = pumpkinGY(st, x) + 12 + ((h >>> 6) % 120) - cam.y, s = 0.9 + ((h >>> 3) % 3) * 0.5;
+      ctx.rect(px, py, s, s * 0.8);
+    }
+    ctx.fill();
+  };
+  grains(23, 'rgba(20,8,14,0.4)', 5); grains(29, 'rgba(255,215,180,0.16)', 7); grains(31, 'rgba(150,100,80,0.35)', 9);
+  // worm holes
+  ctx.fillStyle = 'rgba(16,6,12,0.5)';
+  for (let x = Math.floor(xa / 71) * 71; x < xb; x += 71) {
+    const h = hash(x, 37); if (basin(x) > 0 || h % 2) continue;
+    const px = x - cam.x + (h % 30), py = pumpkinGY(st, x) + 30 + ((h >>> 5) % 70) - cam.y;
+    ctx.beginPath(); ctx.ellipse(px, py, 1.7, 1.1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(200,150,120,0.3)'; ctx.fillRect(px - 1.6, py + 1.2, 3.2, 0.8); ctx.fillStyle = 'rgba(16,6,12,0.5)';
+  }
+  // pebbles and stones: shaded, outlined, half-buried; bigger ones deeper down
+  const stones = ['#8e8399', '#9a8b7e', '#7d7590', '#a8968a'];
   for (let x = Math.floor(xa / 37) * 37; x < xb; x += 37) {
     const h = hash(x, 7); if (basin(x) > 0) continue;
     const px = x - cam.x + (h % 20), py = pumpkinGY(st, x) + 20 + (h % 60) - cam.y, r = 2 + (h % 3);
-    ctx.fillStyle = 'rgba(120,80,60,0.5)'; circle(px, py, r); ctx.fill();
-    ctx.fillStyle = 'rgba(255,220,190,0.18)'; circle(px - r * 0.3, py - r * 0.35, r * 0.45); ctx.fill();
+    rkPebble(ctx, px, py, r * 1.25, r * 0.85, stones[(h >>> 4) % 4], ((h >>> 7) % 10) / 10 - 0.5);
   }
+  for (let x = Math.floor(xa / 97) * 97; x < xb; x += 97) {
+    const h = hash(x, 43); if (basin(x) > 0 || h % 3 === 0) continue;
+    const px = x - cam.x + (h % 40), py = pumpkinGY(st, x) + 70 + ((h >>> 6) % 60) - cam.y, r = 5 + (h % 4);
+    rkPebble(ctx, px, py, r * 1.3, r * 0.8, stones[(h >>> 3) % 4], ((h >>> 8) % 10) / 20 - 0.25);
+    ctx.strokeStyle = 'rgba(40,20,30,0.45)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(px - r * 0.2, py - r * 0.7); ctx.lineTo(px + r * 0.1, py - r * 0.1); ctx.lineTo(px - r * 0.1, py + r * 0.4); ctx.stroke();
+  }
+  // a dark lip of turf just under the grass
+  band(9, 3, 'rgba(24,12,22,0.28)');
   // the grass (not over the water)
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   const grass = (lw, col, dy) => {
@@ -1059,8 +1109,66 @@ function pumpkinDrawGround(st) {
     if (h % 3) continue;
     ctx.beginPath(); ctx.moveTo(sx - 3, y); ctx.lineTo(sx - 5, y - 7); ctx.moveTo(sx, y); ctx.lineTo(sx + 1, y - 9); ctx.moveTo(sx + 3, y); ctx.lineTo(sx + 6, y - 6); ctx.stroke();
   }
+  // dense blades along the top edge in two greens, then fallen autumn leaves and a few clover heads
+  for (const [seed, col, step] of [[47, '#3f7a3c', 3], [53, '#8cc96a', 5]]) {
+    ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.beginPath();
+    for (let x = Math.floor(xa / step) * step; x < xb; x += step) {
+      if (basin(x) > 0) continue;
+      const h = hash(x, seed), y = pumpkinGY(st, x) - cam.y + 1, sx = x - cam.x + (h % step), l = 3 + (h >>> 4) % 5, lean = ((h >>> 8) % 7) - 3;
+      ctx.moveTo(sx, y); ctx.quadraticCurveTo(sx + lean * 0.3, y - l * 0.6, sx + lean * 0.8, y - l);
+    }
+    ctx.stroke();
+  }
+  const leafCols = ['#e8762a', '#c94a2a', '#f0b23a', '#a8552a'];
+  for (let x = Math.floor(xa / 41) * 41; x < xb; x += 41) {
+    const h = hash(x, 61); if (basin(x) > 0 || h % 3 === 0) continue;
+    const sx = x - cam.x + (h % 24), y = pumpkinGY(st, x + (h % 24)) - cam.y + 2 + (h >>> 5) % 4, a = ((h >>> 7) % 20) / 10 - 1, col = leafCols[(h >>> 3) % 4];
+    ctx.save(); ctx.translate(sx, y); ctx.rotate(a);
+    ctx.fillStyle = shade(col, 0.4); ctx.beginPath(); ctx.ellipse(0.6, 0.8, 4.4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, 0, 4.4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = shade(col, 0.45); ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(-4.8, 0); ctx.lineTo(4, 0); ctx.stroke();
+    ctx.restore();
+  }
+  for (let x = Math.floor(xa / 67) * 67; x < xb; x += 67) {
+    const h = hash(x, 71); if (basin(x) > 0 || h % 2) continue;
+    const sx = x - cam.x + (h % 30), y = pumpkinGY(st, x + (h % 30)) - cam.y - 3;
+    ctx.fillStyle = '#2f6a2e'; for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2.2]]) { circle(sx + dx, y + dy, 2); ctx.fill(); }
+    ctx.fillStyle = '#7fbf5c'; for (const [dx, dy] of [[-2.3, -0.3], [1.7, -0.3], [-0.3, -2.5]]) { circle(sx + dx, y + dy, 1.2); ctx.fill(); }
+  }
   // bridges
   for (const b of c.bridges) if (!(b.x1 < xa || b.x0 > xb)) pumpkinDrawBridge(st, b);
+}
+// bridge parts (still, cached): a post with grain, a rope lashing and a round cap; a plank with grain and a peg
+function pumpkinPaintPost(g, gold) {
+  const col = gold ? '#c9952a' : '#6b4630';
+  rkShadow(g, 2, 34, 8, 2, 0.2);
+  rkBoard(g, -4, -30, 8, 64, col, gold ? 5 : 4, { vert: true, nails: false, r: 1.5, lw: 1.2, grain: 2 });
+  g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(-4, -30, 2, 64);
+  // rope lashing under the cap
+  g.strokeStyle = gold ? '#a77b15' : '#a8865a'; g.lineWidth = 2; g.beginPath();
+  for (let k = 0; k < 3; k++) { g.moveTo(-4.5, -23 + k * 3); g.lineTo(4.5, -21 + k * 3); }
+  g.stroke();
+  g.strokeStyle = gold ? '#ffe9a0' : '#e0c79a'; g.lineWidth = 0.8; g.beginPath();
+  for (let k = 0; k < 3; k++) { g.moveTo(-4, -23.6 + k * 3); g.lineTo(3, -22 + k * 3); }
+  g.stroke();
+  const cap = gold ? C.gold : '#8a5c3a';
+  g.fillStyle = shade(cap, 0.45); g.beginPath(); g.arc(0.6, -30.4, 5.3, 0, Math.PI * 2); g.fill();
+  g.fillStyle = cap; g.beginPath(); g.arc(0, -31, 5, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.arc(-1.6, -32.6, 1.8, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(0,0,0,0.15)'; g.beginPath(); g.arc(0, -31, 5, 0.1, Math.PI - 0.1); g.fill();
+}
+function pumpkinPaintPlank(g, w, col, gold, seed) {
+  // a soft shadow on the rope stringers below, the plank with grain, a split at one end and a nail at each end
+  g.fillStyle = 'rgba(20,10,0,0.22)'; rkRR(g, 1, 3, w, 8, 2); g.fill();
+  rkBoard(g, 0, 0, w, 9, col, seed, { vert: false, nails: false, r: 2, lw: 1.1, grain: 3 });
+  g.fillStyle = 'rgba(255,240,210,0.16)'; g.fillRect(2, 2, w - 4, 1.2);
+  g.strokeStyle = shade(col, 0.45); g.lineWidth = 0.7; g.beginPath();
+  const sx = seed % 2 ? w - 2 : 2, sd = seed % 2 ? -1 : 1; g.moveTo(sx, 4); g.lineTo(sx + sd * (3 + seed % 4), 4.6); g.stroke();
+  for (const nx of [3.2, w - 3.2]) rkNail(g, nx, 4.4, 1, gold ? '#e8c36a' : '#9a8a7a');
+  // the rope lashing that ties it to the stringer, wrapped round the middle
+  g.strokeStyle = gold ? '#a77b15' : '#7a5c38'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(w / 2 - 2.2, -0.5); g.lineTo(w / 2 - 0.8, 9.5); g.moveTo(w / 2 + 0.8, -0.5); g.lineTo(w / 2 + 2.2, 9.5); g.stroke();
+  g.strokeStyle = gold ? '#ffe9a0' : '#d9bc8a'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(w / 2 - 2.4, 0); g.lineTo(w / 2 - 1.4, 7); g.moveTo(w / 2 + 0.6, 0); g.lineTo(w / 2 + 1.6, 7); g.stroke();
+  g.fillStyle = 'rgba(20,10,0,0.25)'; g.fillRect(1, 8, w - 2, 1);
 }
 function pumpkinDrawBridge(st, b) {
   const cam = st.cam, t = G.clock, gold = b.gold, n = Math.max(4, Math.round((b.x1 - b.x0) / 18));
@@ -1068,45 +1176,75 @@ function pumpkinDrawBridge(st, b) {
   // posts and rope rails
   for (const x of [b.x0, b.x1]) {
     const y = pumpkinGY(st, x) - cam.y;
-    ctx.fillStyle = gold ? '#c9952a' : '#6b4630'; ctx.fillRect(x - cam.x - 4, y - 30, 8, 64);
-    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x - cam.x - 4, y - 30, 2, 64);
-    ctx.fillStyle = 'rgba(20,10,20,0.3)'; ctx.fillRect(x - cam.x + 2, y - 30, 2, 64);
-    ctx.fillStyle = gold ? C.gold : '#8a5c3a'; circle(x - cam.x, y - 31, 5); ctx.fill();
+    rkPut('ppPost|' + (gold ? 1 : 0), x - cam.x, y, 20, 76, 10, 38, g => pumpkinPaintPost(g, gold));
   }
-  ctx.strokeStyle = gold ? C.gold : '#d7b07a'; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(b.x0 - cam.x, pumpkinGY(st, b.x0) - 28 - cam.y); ctx.quadraticCurveTo((b.x0 + b.x1) / 2 - cam.x, pumpkinGY(st, b.x0) - 12 - cam.y, b.x1 - cam.x, pumpkinGY(st, b.x1) - 28 - cam.y); ctx.stroke();
+  const rope = (lw, col, dash) => {
+    ctx.strokeStyle = col; ctx.lineWidth = lw; if (dash) ctx.setLineDash(dash);
+    ctx.beginPath(); ctx.moveTo(b.x0 - cam.x, pumpkinGY(st, b.x0) - 28 - cam.y); ctx.quadraticCurveTo((b.x0 + b.x1) / 2 - cam.x, pumpkinGY(st, b.x0) - 12 - cam.y, b.x1 - cam.x, pumpkinGY(st, b.x1) - 28 - cam.y); ctx.stroke();
+    if (dash) ctx.setLineDash([]);
+  };
+  rope(3.5, gold ? '#a77b15' : '#8a6a42');
+  rope(2.5, gold ? C.gold : '#d7b07a');
+  rope(1.2, gold ? '#a77b15' : '#a8865a', [2, 3]);
   if (b.broke) {   // snapped planks dangling
     for (const s of [-1, 1]) {
       const x = s < 0 ? b.x0 : b.x1, y = pumpkinGY(st, x) - cam.y;
       ctx.save(); ctx.translate(x - cam.x, y); ctx.rotate(s * 1.1);
-      ctx.fillStyle = '#c98b5a'; ctx.fillRect(0, -3, -s * 26, 7); ctx.restore();
+      ctx.fillStyle = '#c98b5a'; ctx.fillRect(0, -3, -s * 26, 7);
+      ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(0, -3, -s * 26, 1.2);
+      ctx.fillStyle = '#8a5833'; ctx.fillRect(0, 2.6, -s * 26, 1.4);
+      ctx.strokeStyle = '#8a5833'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-s * 4, 0); ctx.lineTo(-s * 22, 0.6); ctx.stroke();
+      // a splintered end
+      ctx.fillStyle = '#c98b5a'; ctx.beginPath(); ctx.moveTo(-s * 26, -3); ctx.lineTo(-s * 30, -1); ctx.lineTo(-s * 27, 0.5); ctx.lineTo(-s * 31, 2.5); ctx.lineTo(-s * 26, 4); ctx.closePath(); ctx.fill();
+      ctx.restore();
     }
     return;
   }
+  const pw = Math.max(4, Math.round((b.x1 - b.x0) / n - 2));
   for (let k = 0; k < n; k++) {
     const x = b.x0 + (k + 0.5) * (b.x1 - b.x0) / n, y = pumpkinGY(st, x) + sag(x) - cam.y;
-    ctx.fillStyle = gold ? (k % 2 ? '#ffd76a' : '#f5c242') : (k % 2 ? '#c98b5a' : '#b87b4c');
-    rr(x - cam.x - (b.x1 - b.x0) / n / 2 + 1, y - 2, (b.x1 - b.x0) / n - 2, 9, 2); ctx.fill();
-    ctx.fillStyle = gold ? '#a77b15' : '#7a4c2c'; ctx.fillRect(x - cam.x - 1, y + 1, 2, 2);
+    const col = gold ? (k % 2 ? '#ffd76a' : '#f5c242') : (k % 2 ? '#c98b5a' : '#b87b4c'), v = k % 3;
+    rkPut('ppPlank|' + pw + '|' + col + '|' + v, x - cam.x - pw / 2, y - 2, pw + 2, 11, 0, 0, g => pumpkinPaintPlank(g, pw, col, gold, 13 + v * 7));
   }
   if (gold === 3) {   // Mister Straw's hay piled along it
     for (let k = 0; k < n; k += 2) {
       const x = b.x0 + (k + 1) * (b.x1 - b.x0) / n, y = pumpkinGY(st, x) + sag(x) - cam.y;
       ctx.fillStyle = '#e8bd55'; rr(x - cam.x - 15, y - 9, 30, 9, 4); ctx.fill();
+      ctx.fillStyle = '#c99a3a'; rr(x - cam.x + 5, y - 9, 10, 9, 4); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - cam.x - 12, y - 9, 22, 1.4);
       ctx.strokeStyle = '#b8862a'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x - cam.x - 8, y - 8); ctx.lineTo(x - cam.x - 6, y - 1); ctx.moveTo(x - cam.x + 5, y - 8); ctx.lineTo(x - cam.x + 7, y - 1); ctx.stroke();
+      ctx.strokeStyle = '#f5d98a'; ctx.lineWidth = 0.8; ctx.beginPath();
+      for (let j = 0; j < 4; j++) { const hx = x - cam.x - 12 + j * 7; ctx.moveTo(hx, y - 9); ctx.lineTo(hx - 2 + (j % 2) * 4, y - 12); }
+      ctx.stroke();
     }
   }
   // the SLOW turtle sign before it
   const sx = b.x0 - 150, sy = pumpkinGY(st, sx) - cam.y;
   if (sx - cam.x > -60 && sx - cam.x < W + 60) {
-    ctx.fillStyle = '#6b4630'; ctx.fillRect(sx - cam.x - 3, sy - 52, 6, 52);
-    ctx.fillStyle = gold ? C.gold : '#ffd36e'; ctx.strokeStyle = '#6b4630'; ctx.lineWidth = 3;
-    ctx.save(); ctx.translate(sx - cam.x, sy - 64); ctx.rotate(Math.PI / 4); rr(-15, -15, 30, 30, 4); ctx.fill(); ctx.stroke(); ctx.restore();
-    // a little turtle
-    ctx.fillStyle = '#3f7a3c'; ctx.beginPath(); ctx.ellipse(sx - cam.x, sy - 63, 8, 5.5, 0, Math.PI, 0); ctx.fill();
-    circle(sx - cam.x + 9, sy - 64, 3); ctx.fill(); ctx.fillRect(sx - cam.x - 7, sy - 63, 3, 4); ctx.fillRect(sx - cam.x + 4, sy - 63, 3, 4);
+    rkPut('ppSlow|' + (gold ? 1 : 0), sx - cam.x, sy, 50, 90, 25, 86, g => pumpkinPaintSlow(g, gold));
     text(gold === 3 ? 'HAY!' : gold ? 'GOLD' : 'SLOW', sx - cam.x, sy - 88, 13, '#ffe7a8', 'center', 'body');
   }
+}
+// the turtle sign: a post with grain, a diamond board with a frame, nails and a little shaded turtle
+function pumpkinPaintSlow(g, gold) {
+  rkShadow(g, 3, 1, 9, 2, 0.2);
+  rkBoard(g, -3, -52, 6, 52, '#6b4630', 9, { vert: true, nails: false, r: 1.2, lw: 1, grain: 2 });
+  const face = gold ? C.gold : '#ffd36e';
+  g.save(); g.translate(0, -64); g.rotate(Math.PI / 4);
+  g.fillStyle = 'rgba(20,10,30,0.25)'; rkRR(g, -13, -13, 30, 30, 4); g.fill();
+  g.fillStyle = face; rkRR(g, -15, -15, 30, 30, 4); g.fill();
+  rkBevel(g, -15, -15, 30, 30, 4, face, { foot: 0.8, side: 0.8, lit: 0.35 });
+  g.strokeStyle = '#6b4630'; g.lineWidth = 3; rkRR(g, -15, -15, 30, 30, 4); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 1; rkRR(g, -11.5, -11.5, 23, 23, 3); g.stroke();
+  rkNail(g, -11, -11, 1.1); rkNail(g, 11, 11, 1.1);
+  g.restore();
+  // the turtle: shell with plates, head and feet
+  g.fillStyle = '#2f6a2e'; g.beginPath(); g.ellipse(0, -63, 8.6, 6, 0, Math.PI, 0); g.fill();
+  g.fillStyle = '#3f7a3c'; g.beginPath(); g.ellipse(0, -63, 8, 5.5, 0, Math.PI, 0); g.fill();
+  g.strokeStyle = '#7fbf5c'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(-3, -63); g.lineTo(-2, -67); g.lineTo(2, -67); g.lineTo(3, -63); g.stroke();
+  g.fillStyle = '#3f7a3c'; g.beginPath(); g.arc(9, -64, 3, 0, Math.PI * 2); g.fill();
+  g.fillRect(-7, -63, 3, 4); g.fillRect(4, -63, 3, 4);
+  g.fillStyle = C.ink; g.fillRect(9.6, -65, 1, 1);
 }
 // the patch: vines, leaves and little pumpkins along the ground
 function pumpkinDrawPatch(st) {
@@ -1125,12 +1263,64 @@ function pumpkinDrawPatch(st) {
     if (v.kind === 'pump') pumpkinMini(sx + 6, y - 1, 9 + (v.h % 5), v.h % 2 ? '#ff9a3d' : '#f07a24');
   }
 }
-// a small pumpkin sitting on the ground (y = its bottom)
+// a small pumpkin sitting on the ground (y = its bottom): shaded lobes, a lit cheek, a curled stem and a leaf (cached)
+function pumpkinPaintMini(g, r, col) {
+  const cy = -r * 0.8;
+  rkShadow(g, 1, 0, r * 1.05, r * 0.22, 0.25);
+  g.fillStyle = col; g.beginPath(); g.ellipse(0, cy, r, r * 0.8, 0, 0, Math.PI * 2); g.fill();
+  g.save(); g.beginPath(); g.ellipse(0, cy, r, r * 0.8, 0, 0, Math.PI * 2); g.clip();
+  g.fillStyle = shade(col, 0.22); g.beginPath(); g.ellipse(r * 0.45, cy + r * 0.2, r * 0.8, r * 0.75, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = col; g.beginPath(); g.ellipse(-r * 0.1, cy - r * 0.05, r * 0.62, r * 0.62, 0, 0, Math.PI * 2); g.fill();
+  g.restore();
+  g.strokeStyle = 'rgba(160,60,10,0.6)'; g.lineWidth = 1.5;
+  for (const k of [-0.45, 0, 0.45]) { g.beginPath(); g.ellipse(k * r, cy, r * 0.35, r * 0.78, 0, 0, Math.PI * 2); g.stroke(); }
+  g.fillStyle = 'rgba(255,240,200,0.45)'; g.beginPath(); g.ellipse(-r * 0.42, cy - r * 0.38, r * 0.2, r * 0.12, -0.5, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = shade(col, 0.5); g.lineWidth = 1; g.beginPath(); g.ellipse(0, cy, r, r * 0.8, 0, 0, Math.PI * 2); g.stroke();
+  // stem, curl and leaf
+  g.fillStyle = '#3f5a1e'; g.fillRect(-1.5, -r * 1.75, 3.4, r * 0.4);
+  g.fillStyle = '#5b7a2a'; g.fillRect(-1.5, -r * 1.75, 3, r * 0.4);
+  g.fillStyle = '#8aa84a'; g.fillRect(-1.5, -r * 1.75, 1, r * 0.4);
+  g.strokeStyle = '#5b7a2a'; g.lineWidth = 1; g.beginPath(); g.arc(3.6, -r * 1.62, 2, Math.PI, Math.PI * 2.6); g.stroke();
+  g.fillStyle = '#4f8a44'; g.beginPath(); g.ellipse(-4.5, -r * 1.55, 3.6, 1.8, 0.5, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#2f6a2e'; g.lineWidth = 0.6; g.beginPath(); g.moveTo(-7.4, -r * 1.55 - 1.6); g.lineTo(-1.8, -r * 1.55 + 1.4); g.stroke();
+}
 function pumpkinMini(x, y, r, col) {
-  ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(x, y - r * 0.8, r, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = 'rgba(160,60,10,0.6)'; ctx.lineWidth = 1.5;
-  for (const k of [-0.45, 0, 0.45]) { ctx.beginPath(); ctx.ellipse(x + k * r, y - r * 0.8, r * 0.35, r * 0.78, 0, 0, Math.PI * 2); ctx.stroke(); }
-  ctx.fillStyle = '#5b7a2a'; ctx.fillRect(x - 1.5, y - r * 1.75, 3, r * 0.4);
+  rkPut('ppMini|' + r + '|' + col, x, y, r * 2 + 16, r * 2 + 8, r + 8, r * 2 + 4, g => pumpkinPaintMini(g, r, col));
+}
+// a hay bale (still, cached; origin = middle of its foot): straw texture in three tones, twine bands, loose wisps
+function pumpkinPaintBale(g) {
+  g.fillStyle = 'rgba(20,10,30,0.25)'; g.beginPath(); g.ellipse(4, 0, 34, 5, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#d9a63a'; rkRR(g, -26, -36, 52, 36, 7); g.fill();
+  g.save(); rkRR(g, -26, -36, 52, 36, 7); g.clip();
+  g.fillStyle = '#b9862a'; rkRR(g, 8, -36, 18, 36, 7); g.fill();
+  g.fillStyle = '#e8bd55'; rkRR(g, -26, -36, 52, 12, 7); g.fill();
+  g.fillStyle = 'rgba(90,50,10,0.18)'; g.fillRect(-26, -7, 52, 7);
+  // straw strands: short strokes in three tones
+  for (const [seed, col] of [[3, '#a8761e'], [5, '#f5d98a'], [7, '#c8922e']]) {
+    g.strokeStyle = col; g.lineWidth = 1; g.beginPath();
+    for (let k = 0; k < 46; k++) {
+      const h = hash(k, seed), x = -25 + (h % 50), y = -35 + ((h >>> 6) % 34), l = 3 + (h >>> 3) % 5, a = 1.2 + ((h >>> 9) % 8) / 10;
+      g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l * 0.5, y + Math.sin(a) * l);
+    }
+    g.stroke();
+  }
+  g.strokeStyle = 'rgba(255,240,190,0.45)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(-22, -35); g.lineTo(4, -35); g.stroke();
+  g.restore();
+  g.strokeStyle = '#8a5a1a'; g.lineWidth = 1.8; rkRR(g, -26, -36, 52, 36, 7); g.stroke();
+  g.strokeStyle = '#a8761e'; g.lineWidth = 1.5;
+  for (let k = -18; k <= 18; k += 6) { g.beginPath(); g.moveTo(k, -33); g.lineTo(k + 3, -4); g.stroke(); }
+  // twine bands: a dark cord with a twisted light stripe and a knot
+  for (const bx of [-14, 14]) {
+    g.strokeStyle = '#8a5a1a'; g.lineWidth = 3; g.beginPath(); g.moveTo(bx, -36); g.lineTo(bx, 0); g.stroke();
+    g.strokeStyle = '#c99a5a'; g.lineWidth = 1; g.beginPath();
+    for (let y = -35; y < -1; y += 4) { g.moveTo(bx - 1.2, y); g.lineTo(bx + 1.2, y + 2.4); }
+    g.stroke();
+    g.fillStyle = '#7a4c14'; g.beginPath(); g.ellipse(bx, -18, 2.4, 1.8, 0, 0, Math.PI * 2); g.fill();
+  }
+  // loose wisps poking out of the top and sides
+  g.strokeStyle = '#e8bd55'; g.lineWidth = 1; g.beginPath();
+  for (const [x, y, dx, dy] of [[-20, -36, -2, -4], [-8, -36, 1, -5], [6, -36, 3, -3], [19, -35, 4, -4], [-26, -20, -4, -1], [26, -14, 4, 1]]) { g.moveTo(x, y); g.lineTo(x + dx, y + dy); }
+  g.stroke();
 }
 // hay bales: the checkpoints, each with a little jack-o'-lantern that lights up when you pass
 function pumpkinDrawBales(st) {
@@ -1140,21 +1330,17 @@ function pumpkinDrawBales(st) {
     if (sx < -60 || sx > W + 60) return;
     const y = pumpkinGY(st, b.x) - cam.y + 3, a = Math.atan(pumpkinGSlope(st, b.x));
     ctx.save(); ctx.translate(sx, y); ctx.rotate(a);
-    ctx.fillStyle = 'rgba(20,10,30,0.25)'; ctx.beginPath(); ctx.ellipse(4, 0, 34, 5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#d9a63a'; rr(-26, -36, 52, 36, 7); ctx.fill();
-    ctx.fillStyle = '#b9862a'; rr(8, -36, 18, 36, 7); ctx.fill();
-    ctx.fillStyle = '#e8bd55'; rr(-26, -36, 52, 12, 7); ctx.fill();
-    ctx.strokeStyle = '#8a5a1a'; ctx.lineWidth = 1.8; rr(-26, -36, 52, 36, 7); ctx.stroke();
-    ctx.strokeStyle = '#a8761e'; ctx.lineWidth = 1.5;
-    for (let k = -18; k <= 18; k += 6) { ctx.beginPath(); ctx.moveTo(k, -33); ctx.lineTo(k + 3, -4); ctx.stroke(); }
-    ctx.strokeStyle = '#8a5a1a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-14, -36); ctx.lineTo(-14, 0); ctx.moveTo(14, -36); ctx.lineTo(14, 0); ctx.stroke();
+    rkPut('ppBale', 0, 0, 80, 50, 36, 44, pumpkinPaintBale);
     // its jack-o'-lantern
     const lit = b.lit, fl = lit ? 0.75 + 0.25 * Math.sin(t * 9 + i) : 0, pop = lit && b.litT < 0.4 ? 1 + 0.4 * Math.sin(b.litT / 0.4 * Math.PI) : 1;
     ctx.save(); ctx.translate(0, -46); ctx.scale(pop, pop);
     if (lit) { ctx.fillStyle = 'rgba(255,190,90,' + (0.25 * fl) + ')'; circle(0, 0, 24); ctx.fill(); }
     ctx.fillStyle = lit ? '#ff9a3d' : '#b9783c'; ctx.beginPath(); ctx.ellipse(0, 0, 13, 10.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(90,30,0,0.25)'; ctx.beginPath(); ctx.ellipse(4, 2, 9, 8, 0, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = lit ? '#c4581a' : '#8a5428'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(0, 0, 5, 10, 0, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#5b7a2a'; ctx.fillRect(-1.5, -14, 3, 5);
+    ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(0, 0, 13, 10.5, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,240,200,0.35)'; ctx.beginPath(); ctx.ellipse(-7, -5, 3, 1.6, -0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3f5a1e'; ctx.fillRect(-1.5, -14, 3.4, 5); ctx.fillStyle = '#5b7a2a'; ctx.fillRect(-1.5, -14, 3, 5);
     ctx.fillStyle = lit ? 'rgba(255,236,140,' + fl + ')' : '#6a3e1a';
     ctx.beginPath(); ctx.moveTo(-8, -2); ctx.lineTo(-5, -7); ctx.lineTo(-2, -2); ctx.fill();
     ctx.beginPath(); ctx.moveTo(2, -2); ctx.lineTo(5, -7); ctx.lineTo(8, -2); ctx.fill();
@@ -1163,17 +1349,34 @@ function pumpkinDrawBales(st) {
     ctx.restore();
   });
 }
+// a rock (still, cached per shape): a dome with facets, specks, a crack, a lit top and a tuft of moss
+function pumpkinPaintRock(g, v) {
+  const base = ['#7a7390', '#80778a', '#736d8c'][v], dk = '#4e4866';
+  g.fillStyle = 'rgba(20,10,30,0.25)'; g.beginPath(); g.ellipse(3, 0, 19, 4, 0, 0, Math.PI * 2); g.fill();
+  const dome = () => { g.beginPath(); g.ellipse(0, -6, 15, 10, 0, Math.PI, 0); g.lineTo(15, 0); g.lineTo(-15, 0); g.closePath(); };
+  g.fillStyle = base; dome(); g.fill();
+  g.save(); dome(); g.clip();
+  g.fillStyle = '#655e7e'; g.beginPath(); g.ellipse(7, -4, 7, 5, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(30,20,50,0.25)'; g.fillRect(-15, -3, 30, 3);
+  g.fillStyle = '#958eab'; g.beginPath(); g.ellipse(-4, -10, 7, 4, -0.3, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.ellipse(-6, -12, 3.5, 1.4, -0.3, 0, Math.PI * 2); g.fill();
+  // facet edges and specks
+  g.strokeStyle = 'rgba(40,30,70,0.35)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(-2, -16); g.lineTo(2, -8); g.lineTo(10, -6); g.moveTo(2, -8); g.lineTo(-6, -2); g.stroke();
+  for (let k = 0; k < 12; k++) { const h = hash(k, 80 + v); g.fillStyle = h % 3 ? 'rgba(30,20,50,0.3)' : 'rgba(255,255,255,0.35)'; g.fillRect(-13 + (h % 26), -14 + ((h >>> 5) % 13), 1, 1); }
+  g.restore();
+  if (v !== 1) { g.strokeStyle = 'rgba(30,20,50,0.55)'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(-9, -12); g.lineTo(-7, -7); g.lineTo(-9, -3); g.stroke(); }
+  g.strokeStyle = dk; g.lineWidth = 1.8; dome(); g.stroke();
+  g.fillStyle = '#5f9a4c'; g.beginPath(); g.ellipse(7, -13, 4, 2.4, 0.4, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#7fbf5c'; g.beginPath(); g.ellipse(6, -14, 2, 1, 0.4, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#4f8a44'; g.beginPath(); g.ellipse(-11, -2, 3, 1.6, -0.3, 0, Math.PI * 2); g.fill();
+}
 function pumpkinDrawRocks(st) {
   const cam = st.cam;
   for (const r of st.c.rocks) {
     const sx = r.x - cam.x;
     if (sx < -30 || sx > W + 30) continue;
-    const y = pumpkinGY(st, r.x) - cam.y + 2;
-    ctx.fillStyle = 'rgba(20,10,30,0.25)'; ctx.beginPath(); ctx.ellipse(sx + 3, y, 19, 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#7a7390'; ctx.strokeStyle = '#4e4866'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.ellipse(sx, y - 6, 15, 10, 0, Math.PI, 0); ctx.lineTo(sx + 15, y); ctx.lineTo(sx - 15, y); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#655e7e'; ctx.beginPath(); ctx.ellipse(sx + 7, y - 4, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#958eab'; ctx.beginPath(); ctx.ellipse(sx - 4, y - 10, 7, 4, -0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#5f9a4c'; ctx.beginPath(); ctx.ellipse(sx + 7, y - 13, 4, 2.4, 0.4, 0, Math.PI * 2); ctx.fill();
+    const y = pumpkinGY(st, r.x) - cam.y + 2, v = hash(r.x | 0, 5) % 3;
+    rkPut('ppRock|' + v, sx, y, 48, 30, 22, 24, g => pumpkinPaintRock(g, v));
   }
 }
 // scenery behind the track: signs, scarecrows, crows, the ghost, frogs, cattails, the willow, the swap gate, the wagon
@@ -1185,9 +1388,8 @@ function pumpkinDrawBack(st) {
     const y = pumpkinGY(st, s.x) - cam.y;
     ctx.font = '700 13px "Atkinson Hyperlegible", system-ui, sans-serif';
     const w = Math.max(70, ctx.measureText(s.text).width + 22);
-    ctx.fillStyle = '#6b4630'; ctx.fillRect(sx - 3, y - 58, 6, 58);
-    ctx.fillStyle = '#c98b5a'; rr(sx - w / 2, y - 84, w, 28, 5); ctx.fill();
-    ctx.strokeStyle = '#8a5833'; ctx.lineWidth = 2; rr(sx - w / 2, y - 84, w, 28, 5); ctx.stroke();
+    const wr = Math.round(w);
+    rkPut('ppSign|' + wr, sx, y, wr + 12, 96, wr / 2 + 6, 90, g => pumpkinPaintSign(g, wr));
     text(s.text, sx, y - 69.5, 13, '#3a2210', 'center', 'body');
   }
   for (const d of c.deco) {
@@ -1205,38 +1407,80 @@ function pumpkinDrawBack(st) {
   pumpkinDrawGate(st, false);
   if (c.wagon && st.pk.state !== 'finish') pumpkinDrawWagon(st, true);
 }
+// a wooden sign (still, cached; origin = foot of the post): a post with grain, a two-plank board with nails
+function pumpkinPaintSign(g, w) {
+  rkShadow(g, 2, 1, 9, 2, 0.22);
+  rkBoard(g, -3, -58, 6, 58, '#6b4630', 21, { vert: true, nails: false, r: 1.2, lw: 1, grain: 2 });
+  g.fillStyle = 'rgba(20,10,30,0.25)'; rkRR(g, -w / 2 + 2, -82, w, 28, 5); g.fill();
+  rkBoard(g, -w / 2, -84, w, 28, '#c98b5a', 17 + w, { vert: false, planks: 2, nails: true, r: 5, lw: 2, grain: 4, metal: '#b8a890' });
+}
+// the crows' fence (still, cached): a rail and three posts, all grained wood with nails
+function pumpkinPaintFence(g) {
+  rkShadow(g, 0, 1, 42, 2.5, 0.2);
+  rkBoard(g, -40, -34, 80, 5, '#6b4630', 31, { vert: false, nails: false, r: 1, lw: 1, grain: 1 });
+  for (const px of [-36, -2, 31]) {
+    rkBoard(g, px, -40, 5, 40, '#6b4630', 33 + px, { vert: true, nails: false, r: 1, lw: 1, grain: 2 });
+    rkNail(g, px + 2.5, -31.5, 1);
+    g.fillStyle = 'rgba(255,255,255,0.15)'; g.beginPath(); g.moveTo(px, -40); g.lineTo(px + 2.5, -42); g.lineTo(px + 5, -40); g.closePath(); g.fill();
+  }
+  rkTuft(g, -33, 0, 6, '#4f8a44', 3); rkTuft(g, 34, 0, 7, '#4f8a44', 5);
+}
 // a goofy scarecrow (gold when it is helping push)
 function pumpkinScarecrow(x, y, t, wave, gold) {
   const sw = Math.sin(t * (wave ? 6 : 1.5)) * (wave ? 0.35 : 0.08);
   ctx.save(); ctx.translate(x, y);
-  ctx.fillStyle = gold ? '#c9952a' : '#6b4630'; ctx.fillRect(-3, -96, 6, 96); ctx.fillRect(-34, -72, 68, 5);
+  const wood = gold ? '#c9952a' : '#6b4630';
+  ctx.fillStyle = 'rgba(20,10,30,0.22)'; ctx.beginPath(); ctx.ellipse(2, 0, 10, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = wood; ctx.fillRect(-3, -96, 6, 96); ctx.fillRect(-34, -72, 68, 5);
+  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(-3, -96, 1.5, 96); ctx.fillRect(-34, -72, 68, 1.2);
+  ctx.fillStyle = 'rgba(20,10,20,0.3)'; ctx.fillRect(1.5, -96, 1.5, 96); ctx.fillRect(-34, -68.2, 68, 1.2);
+  ctx.strokeStyle = 'rgba(20,10,20,0.25)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-0.5, -60); ctx.lineTo(0, -20); ctx.moveTo(-30, -70.4); ctx.lineTo(-20, -70); ctx.stroke();
   // shirt
   ctx.fillStyle = gold ? '#ffd75e' : '#5b8fc9'; ctx.beginPath(); ctx.moveTo(-18, -74); ctx.lineTo(18, -74); ctx.lineTo(14, -40); ctx.lineTo(-14, -40); ctx.closePath(); ctx.fill();
+  const shirt = gold ? '#ffd75e' : '#5b8fc9';
+  ctx.fillStyle = shade(shirt, 0.2); ctx.beginPath(); ctx.moveTo(6, -74); ctx.lineTo(18, -74); ctx.lineTo(14, -40); ctx.lineTo(4, -40); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(-14, -45, 28, 5);
+  ctx.strokeStyle = shade(shirt, 0.35); ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(-2, -74); ctx.lineTo(-1, -42); ctx.moveTo(-17, -72); ctx.lineTo(-13, -42); ctx.stroke();
+  ctx.fillStyle = '#ffffff'; for (const by of [-66, -56, -48]) { circle(-1.5, by, 1.3); ctx.fill(); }
   ctx.fillStyle = gold ? '#f5c242' : '#e86a5a'; ctx.fillRect(-8, -64, 8, 8);
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.8; ctx.setLineDash([1.4, 1.4]); ctx.strokeRect(-7.2, -63.2, 6.4, 6.4); ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(-8, -64, 8, 1.2);
+  ctx.strokeStyle = shade(shirt, 0.5); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-18, -74); ctx.lineTo(18, -74); ctx.lineTo(14, -40); ctx.lineTo(-14, -40); ctx.closePath(); ctx.stroke();
   // arms with straw hands (one waves)
   for (const s of [-1, 1]) {
     ctx.save(); ctx.translate(s * 16, -71); ctx.rotate(s < 0 ? -sw : 0);
     ctx.fillStyle = gold ? '#ffd75e' : '#5b8fc9'; ctx.fillRect(s < 0 ? -22 : 0, -4, 22, 9);
+    ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.fillRect(s < 0 ? -22 : 0, 2, 22, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(s < 0 ? -22 : 0, -4, 22, 1.2);
+    ctx.fillStyle = gold ? '#e0a82a' : '#3f6fa8'; ctx.fillRect(s < 0 ? -22 : 19, -4, 3, 9);
     ctx.strokeStyle = '#e8c36a'; ctx.lineWidth = 2;
     for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(s * 22, 0); ctx.lineTo(s * 30, k * 5); ctx.stroke(); }
     ctx.restore();
   }
   // head: a sack with button eyes and a stitched smile, a floppy hat
   ctx.fillStyle = '#e8d3a0'; circle(0, -86, 13); ctx.fill();
+  ctx.fillStyle = 'rgba(120,80,30,0.2)'; ctx.beginPath(); ctx.arc(0, -86, 13, -0.6, 1.9); ctx.fill();
+  ctx.strokeStyle = 'rgba(150,110,60,0.35)'; ctx.lineWidth = 0.7; ctx.beginPath(); for (let k = -2; k <= 2; k++) { ctx.moveTo(-11, -86 + k * 4); ctx.lineTo(11, -86 + k * 4 + 0.6); } ctx.stroke();
+  ctx.strokeStyle = '#a8865a'; ctx.lineWidth = 1; circle(0, -86, 13); ctx.stroke();
+  ctx.strokeStyle = '#e8c36a'; ctx.lineWidth = 1.4; ctx.beginPath(); for (const k of [-6, -2, 3, 7]) { ctx.moveTo(k, -74); ctx.lineTo(k * 1.3, -71); } ctx.stroke();
   ctx.fillStyle = '#3a2a40'; circle(-5, -88, 2.4); ctx.fill(); circle(5, -88, 2.4); ctx.fill();
   ctx.strokeStyle = '#3a2a40'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, -84, 6, 0.3, Math.PI - 0.3); ctx.stroke();
   for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(k * 2.6, -80); ctx.lineTo(k * 2.6, -77); ctx.stroke(); }
   ctx.fillStyle = 'rgba(255,120,120,0.5)'; circle(-8, -83, 2.5); ctx.fill(); circle(8, -83, 2.5); ctx.fill();
   ctx.fillStyle = gold ? '#e0a82a' : '#8a6a3a'; ctx.beginPath(); ctx.ellipse(0, -97, 22, 5, -0.08, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.moveTo(-11, -98); ctx.lineTo(-7, -114); ctx.lineTo(8, -113); ctx.lineTo(11, -98); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.moveTo(3, -98); ctx.lineTo(5, -113.2); ctx.lineTo(8, -113); ctx.lineTo(11, -98); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(-6, -98.5, 12, 1.6, -0.08, Math.PI, 0); ctx.fill();
   ctx.fillStyle = '#e86a5a'; ctx.fillRect(-10, -103, 21, 4);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(-10, -100, 21, 1);
+  ctx.strokeStyle = '#e8c36a'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-19, -96); ctx.lineTo(-23, -94); ctx.moveTo(-17, -95); ctx.lineTo(-19, -91); ctx.moveTo(18, -97); ctx.lineTo(22, -95); ctx.stroke();
   ctx.strokeStyle = '#e8c36a'; ctx.lineWidth = 2;
   for (const k of [-12, -6, 6, 12]) { ctx.beginPath(); ctx.moveTo(k * 0.8, -42); ctx.lineTo(k, -32); ctx.stroke(); }
   ctx.restore();
 }
 // crows on a fence: they flap off when the pumpkin rolls near
 function pumpkinCrows(st, d, x, y) {
-  ctx.fillStyle = '#6b4630'; ctx.fillRect(x - 40, y - 34, 80, 5); ctx.fillRect(x - 36, y - 40, 5, 40); ctx.fillRect(x + 31, y - 40, 5, 40); ctx.fillRect(x - 2, y - 40, 5, 40);
+  rkPut('ppFence', x, y, 92, 50, 46, 44, pumpkinPaintFence);
   for (let k = 0; k < 3; k++) {
     const u = d.seen ? Math.min(3, d.t * (1 + k * 0.3)) : 0, bx = x - 26 + k * 26 + u * 60 * (k - 0.6), by = y - 40 - u * 90 - (k % 2) * u * 30;
     if (by < -40) continue;
