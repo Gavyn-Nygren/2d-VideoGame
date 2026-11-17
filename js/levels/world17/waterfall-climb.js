@@ -844,15 +844,94 @@ function wfallDrawBack(st, t) {
     ctx.fillStyle = '#4fae5e'; for (let k2 = 0; k2 < 4; k2++) { ctx.beginPath(); ctx.ellipse(vx + (k2 % 2 ? 6 : -6), vy + 16 + k2 * len / 4, 7, 3.5, k2 % 2 ? 0.5 : -0.5, 0, Math.PI * 2); ctx.fill(); }
   }
 }
+// (rich props pass, Nov 2026) the still rock is painted once per band of 6 rows into a cached picture (with all the
+// new detail); only the drips on wet rock and the pools are drawn live
+let wfallRichN = 0;
+const WFALL_BAND = 6;
 function wfallDrawTiles(st, t) {
   const r0 = Math.max(0, Math.floor(st.camY / T) - 1), r1 = Math.min(st.N - 1, Math.floor((st.camY + H) / T) + 1);
+  const key = st.wfRich || (st.wfRich = 'wfb' + (++wfallRichN) + '|');
+  for (let b = Math.floor(r0 / WFALL_BAND); b * WFALL_BAND <= r1; b++) {
+    const ra = b * WFALL_BAND, rb = Math.min(st.N - 1, ra + WFALL_BAND - 1);
+    CK.pic(key + b, W, (rb - ra + 1) * T + 28, 0, 14, () => {
+      ctx.translate(0, -ra * T);
+      for (let r = ra; r <= rb; r++) for (let c = 0; c < COLS; c++) {
+        const ch = st.grid[r][c];
+        if (ch === '#' || ch === 's' || ch === 'g' || ch === 'm') { wfallDrawRock(st, ch, c, r, c * T, r * T, 0, true); wfallRockRich(st, ch, c, r, c * T, r * T); }
+      }
+    }, 0, ra * T);
+  }
   for (let r = r0; r <= r1; r++) for (let c = 0; c < COLS; c++) {
     const ch = st.grid[r][c], x = c * T, y = r * T;
-    if (ch === '#' || ch === 's' || ch === 'g' || ch === 'm') wfallDrawRock(st, ch, c, r, x, y, t);
+    if (ch === 's') { if (!reduceMotion) { const h = hash(c, r), d = ((t * 0.9 + h % 10 / 10) % 1); ctx.fillStyle = 'rgba(190,235,255,' + (0.7 * (1 - d)).toFixed(2) + ')'; circle(x + 8 + (h % 14), y + T + d * 14, 2); ctx.fill(); } }
     else if (ch === '~') wfallDrawPool(st, c, r, x, y, t);
   }
 }
-function wfallDrawRock(st, ch, c, r, x, y, t) {
+// the cliff's extra detail: layered strata with a lit lip, pits, pebbles set in the rock, roots and ferns hanging
+// from overhangs, blades and clover along grassy tops, a dark outline where rock meets air, and wet streaks on the
+// slippery stone
+function wfallRockRich(st, ch, c, r, x, y) {
+  const open = (dc, dr) => !wfallSolidAt(st, c + dc, r + dr), h = CK.r(c * 7, r + 3), h2 = CK.r(r * 3, c + 9);
+  const up = open(0, -1) && wfallCell(st, c, r - 1) !== '~', dn = open(0, 1), lf = c > 0 && open(-1, 0), rt = c < COLS - 1 && open(1, 0);
+  if (ch === 's') {
+    // wet stone: a bevel, wet streaks and a dark outline
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x + 1, y + 1, T - 2, 1.5); ctx.fillRect(x + 1, y + 1, 1.5, T - 2);
+    ctx.fillStyle = 'rgba(20,30,40,0.25)'; ctx.fillRect(x + 1, y + T - 2.5, T - 2, 1.5); ctx.fillRect(x + T - 2.5, y + 1, 1.5, T - 2);
+    ctx.fillStyle = 'rgba(190,235,255,0.25)'; for (let k = 0; k < 3; k++) ctx.fillRect(x + 5 + k * 9 + h * 3, y + 10, 1.5, 8 + (k * 5 + h * 10) % 10);
+    ctx.fillStyle = 'rgba(30,40,50,0.3)'; for (let k = 0; k < 3; k++) { circle(x + 6 + CK.r(k, c) * 18, y + 12 + CK.r(r, k) * 12, 1); ctx.fill(); }
+    ctx.strokeStyle = '#4a5860'; ctx.lineWidth = 1.2; ctx.strokeRect(x + 0.6, y + 0.6, T - 1.2, T - 1.2);
+    return;
+  }
+  // strata: a sedimentary layer line or two across the cliff face, lit just under it
+  for (let k = 0; k < 2; k++) {
+    const ly = y + 9 + k * 11 + Math.round(CK.r(Math.floor(c / 3), r * 2 + k) * 3);
+    if (up && ly < y + 10) continue;
+    ctx.fillStyle = 'rgba(20,24,10,0.18)'; ctx.fillRect(x, ly, T, 1.2);
+    ctx.fillStyle = 'rgba(255,250,220,0.09)'; ctx.fillRect(x, ly + 1.2, T, 1);
+  }
+  // pits
+  for (let k = 0; k < 3; k++) {
+    const px = x + 4 + CK.r(c + k, r * 5) * (T - 8), py = y + (up ? 11 : 4) + CK.r(r + k * 3, c) * (T - (up ? 15 : 8)), pr = 0.7 + CK.r(k, c + r) * 1.1;
+    ctx.fillStyle = 'rgba(20,24,10,0.3)'; circle(px, py, pr); ctx.fill();
+    ctx.fillStyle = 'rgba(255,250,220,0.14)'; ctx.fillRect(px - pr, py + pr - 0.3, pr * 2, 0.7);
+  }
+  // a pebble set in the rock
+  if (h < 0.3 && ch === '#') CK.pebble(x + 6 + h2 * 18, y + 16 + h * 20, 2.2 + h2 * 1.5, '#9a8f7a', c * 31 + r);
+  if (ch === 'g') {
+    // the geyser stone: cracks round the vent and mineral crust
+    ctx.strokeStyle = 'rgba(20,24,10,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 8, y + 7); ctx.lineTo(x + 5, y + 14); ctx.lineTo(x + 7, y + 20); ctx.moveTo(x + T - 8, y + 7); ctx.lineTo(x + T - 4, y + 13); ctx.stroke();
+    ctx.fillStyle = 'rgba(240,235,200,0.35)'; for (let k = 0; k < 4; k++) { circle(x + 6 + k * 6, y + 8 + (k % 2), 1.4); ctx.fill(); }
+  }
+  // the outline where rock meets the air
+  ctx.fillStyle = 'rgba(30,26,12,0.35)';
+  if (lf) ctx.fillRect(x, y, 1.2, T);
+  if (rt) ctx.fillRect(x + T - 1.2, y, 1.2, T);
+  if (dn) ctx.fillRect(x, y + T - 1.2, T, 1.2);
+  // roots and a fern under an overhang
+  if (dn && ch === '#') {
+    if (h > 0.74) {
+      ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 1.3; ctx.lineCap = 'round'; ctx.beginPath();
+      const rx = x + 6 + h2 * 16, rl = 6 + h * 10; ctx.moveTo(rx, y + T - 1); ctx.quadraticCurveTo(rx + 3, y + T + rl * 0.5, rx - 1, y + T + rl); ctx.moveTo(rx + 1, y + T + rl * 0.4); ctx.lineTo(rx + 5, y + T + rl * 0.7); ctx.stroke(); ctx.lineCap = 'butt';
+    } else if (h > 0.58) {
+      const fx = x + 8 + h2 * 14;
+      ctx.strokeStyle = '#3f9a3c'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(fx, y + T - 1); ctx.quadraticCurveTo(fx + 4, y + T + 6, fx + 2, y + T + 12); ctx.stroke();
+      ctx.fillStyle = '#5fbf4a'; for (let k = 0; k < 4; k++) { const fy = y + T + 2 + k * 2.6; ctx.beginPath(); ctx.ellipse(fx + 3 + k * 0.3, fy, 3.2 - k * 0.5, 1.2, 0.5, 0, Math.PI * 2); ctx.ellipse(fx - 1 + k * 0.6, fy + 0.5, 3 - k * 0.5, 1.1, -0.5, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
+  // blades, clover and a lit lip along a grassy top
+  if (up && ch === '#') {
+    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(x, y, T, 1.2);
+    ctx.fillStyle = 'rgba(20,40,10,0.22)'; ctx.fillRect(x, y + 8, T, 1.5);
+    ctx.fillStyle = WFALL_ROCK.topDark; for (let k = 0; k < 3; k++) { const bx = x + 3 + k * 10 + CK.r(k, c) * 4; ctx.beginPath(); ctx.moveTo(bx - 2, y + 1); ctx.lineTo(bx + 0.5, y - 4 - CK.r(c, k + r) * 3); ctx.lineTo(bx + 2, y + 1); ctx.fill(); }
+    ctx.fillStyle = WFALL_ROCK.top; for (let k = 0; k < 3; k++) { const bx = x + 8 + k * 9 + CK.r(k + 5, c) * 3; ctx.beginPath(); ctx.moveTo(bx - 1.5, y + 1); ctx.lineTo(bx + 1, y - 3 - CK.r(c + 2, k) * 2); ctx.lineTo(bx + 2, y + 1); ctx.fill(); }
+    if (h2 > 0.8) { const cx = x + 6 + h * 18; ctx.fillStyle = '#4faa3c'; for (let k = 0; k < 3; k++) { const a = k * 2.09 - 1.57; circle(cx + Math.cos(a) * 2, y - 1 + Math.sin(a) * 2, 1.8); ctx.fill(); } }
+  }
+  if (up && ch === 'm') {
+    ctx.fillStyle = 'rgba(30,90,30,0.3)'; ctx.fillRect(x, y + 6, T, 2);
+    ctx.fillStyle = '#ffffff'; for (let k = 0; k < 2; k++) { const sx = x + 6 + k * 14 + h * 4; ctx.fillRect(sx, y - 9, 0.8, 4); circle(sx + 0.4, y - 9.5, 1.1); ctx.fill(); }
+  }
+}
+function wfallDrawRock(st, ch, c, r, x, y, t, still) {
   const open = (dc, dr) => !wfallSolidAt(st, c + dc, r + dr);
   const edge = c === 0 || c === COLS - 1;
   ctx.fillStyle = ch === 's' ? '#6f7f8a' : edge ? C.stoneEdge : C.stone; ctx.fillRect(x - 0.5, y - 0.5, T + 1, T + 1);
@@ -868,7 +947,7 @@ function wfallDrawRock(st, ch, c, r, x, y, t) {
   if (ch === 's') {
     // wet slippery rock: blue-grey with a shine and drips
     ctx.fillStyle = 'rgba(190,235,255,0.35)'; rr(x + 3, y + 5, T - 10, 4, 2); ctx.fill();
-    if (!reduceMotion) { const d = ((t * 0.9 + h % 10 / 10) % 1); ctx.fillStyle = 'rgba(190,235,255,' + (0.7 * (1 - d)).toFixed(2) + ')'; circle(x + 8 + (h % 14), y + T + d * 14, 2); ctx.fill(); }
+    if (!reduceMotion && !still) { const d = ((t * 0.9 + h % 10 / 10) % 1); ctx.fillStyle = 'rgba(190,235,255,' + (0.7 * (1 - d)).toFixed(2) + ')'; circle(x + 8 + (h % 14), y + T + d * 14, 2); ctx.fill(); }
   } else if (h % 3 === 0) { ctx.fillStyle = C.stoneLight; rr(x + 4 + (h % 15), y + 10 + ((h >> 4) % 12), 7, 4, 2); ctx.fill(); }
   ctx.fillStyle = C.stoneEdge;
   if (open(-1, 0) && c > 0) { ctx.fillRect(x, y, 2, T); ctx.fillStyle = 'rgba(255,250,220,0.14)'; ctx.fillRect(x + 2, y, 2, T); ctx.fillStyle = C.stoneEdge; }
@@ -933,6 +1012,11 @@ function wfallDrawStream(st, s, t) {
   if (jam > 0.02) {
     ctx.save(); ctx.translate(lx, ly); ctx.rotate(reduceMotion ? 0 : (1 - jam) * 2);
     ctx.fillStyle = s.jam ? C.gold : '#8a5a32'; rr(-(x1 - x0) / 2 - 8, -9, x1 - x0 + 16, 18, 9); ctx.fill();
+    if (!s.jam) {
+      ctx.fillStyle = '#6a4424'; ctx.fillRect(-(x1 - x0) / 2, 3, x1 - x0, 4); ctx.fillStyle = 'rgba(255,225,180,0.3)'; ctx.fillRect(-(x1 - x0) / 2, -7, x1 - x0, 2.5);
+      ctx.strokeStyle = '#5e3a1e'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = -(x1 - x0) / 2 + 6; k < (x1 - x0) / 2 - 10; k += 14) { ctx.moveTo(k, -3); ctx.lineTo(k + 9, -3); ctx.moveTo(k + 5, 2); ctx.lineTo(k + 13, 2); } ctx.stroke();
+      ctx.strokeStyle = '#4a2e14'; ctx.lineWidth = 1.3; rr(-(x1 - x0) / 2 - 8, -9, x1 - x0 + 16, 18, 9); ctx.stroke();
+    }
     ctx.fillStyle = s.jam ? '#ffe9a0' : '#c08a4e'; circle((x1 - x0) / 2 + 2, 0, 8); ctx.fill();
     ctx.strokeStyle = s.jam ? C.goldDark : '#7a5228'; ctx.lineWidth = 1.5; circle((x1 - x0) / 2 + 2, 0, 4.5); ctx.stroke();
     ctx.restore();
@@ -948,10 +1032,12 @@ function wfallDrawSign(x, y, s, col, t) {
 function wfallDrawLog(st, ln, t) {
   const bob = reduceMotion ? 0 : Math.sin(ln.bob * 2.4) * 1.5, x = ln.x, y = ln.top + bob, w = ln.w;
   ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.beginPath(); ctx.ellipse(x + w / 2, ln.top + 14, w / 2, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = ln.gold ? C.gold : '#8a5a32'; rr(x, y, w, 15, 7); ctx.fill();
-  ctx.fillStyle = ln.gold ? '#ffe9a0' : '#a8743f'; ctx.fillRect(x + 6, y + 3, w - 12, 3);
-  ctx.fillStyle = ln.gold ? '#ffe9a0' : '#c08a4e'; circle(x + w - 4, y + 7.5, 6.5); ctx.fill();
-  ctx.strokeStyle = ln.gold ? C.goldDark : '#7a5228'; ctx.lineWidth = 1.2; circle(x + w - 4, y + 7.5, 3.5); ctx.stroke();
+  if (ln.gold) {
+    ctx.fillStyle = C.gold; rr(x, y, w, 15, 7); ctx.fill();
+    ctx.fillStyle = '#ffe9a0'; ctx.fillRect(x + 6, y + 3, w - 12, 3);
+    ctx.fillStyle = '#ffe9a0'; circle(x + w - 4, y + 7.5, 6.5); ctx.fill();
+    ctx.strokeStyle = C.goldDark; ctx.lineWidth = 1.2; circle(x + w - 4, y + 7.5, 3.5); ctx.stroke();
+  } else CK.pic('wflog' + Math.round(w), w + 6, 22, 2, 4, () => CK.log(0, 0, w, 15, { stub: false, seed: Math.round(w), right: true, moss: '#5fae4e', shadow: false }), x, y);
   // a little sprout and ripples
   ctx.fillStyle = '#4fae5e'; ctx.beginPath(); ctx.ellipse(x + 14, y - 3, 5, 2.5, -0.6, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5;
@@ -974,6 +1060,8 @@ function wfallDrawGeyser(st, gy, t) {
   // a mossy ring round the vent
   ctx.fillStyle = '#6a5a4a'; rr(gy.x0 - 4, gy.feet - 6, gy.x1 - gy.x0 + 8, 8, 4); ctx.fill();
   ctx.fillStyle = '#2a221d'; rr(gy.x0 + 6, gy.feet - 5, gy.x1 - gy.x0 - 12, 4, 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(gy.x0 - 2, gy.feet - 6, gy.x1 - gy.x0 + 4, 1.2);
+  for (let k = 0; k < 4; k++) { const sx = k < 2 ? gy.x0 - 2 + k * 5 : gy.x1 - 8 + (k - 2) * 5; ctx.fillStyle = '#7d6d5c'; ctx.beginPath(); ctx.ellipse(sx + 2, gy.feet - 4, 2.6, 2, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(sx + 0.8, gy.feet - 5.5, 2, 0.8); }
   if (st.goldMist) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(gy.x0 - 5, gy.feet - 7, gy.x1 - gy.x0 + 10, 10, 5); ctx.stroke(); }
 }
 function wfallDrawFrog(f, t) {
@@ -994,8 +1082,13 @@ function wfallDrawFrog(f, t) {
 }
 function wfallDrawPost(st, w, t) {
   const x = w.postX, y = w.topFeet, lit = w.flash;
+  ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.beginPath(); ctx.ellipse(x + 1, y, 9, 2.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#7a5228'; rr(x - 4, y - 34, 8, 34, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,225,180,0.3)'; ctx.fillRect(x - 3.5, y - 32, 1.5, 31); ctx.fillStyle = '#5a3a18'; ctx.fillRect(x + 2, y - 32, 1.8, 31);
+  ctx.strokeStyle = 'rgba(60,36,14,0.6)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x - 1, y - 30); ctx.lineTo(x - 0.5, y - 4); ctx.moveTo(x + 1, y - 26); ctx.lineTo(x + 1.2, y - 10); ctx.stroke();
   ctx.fillStyle = '#c08a4e'; rr(x - 6, y - 38, 12, 8, 3); ctx.fill();
+  ctx.strokeStyle = '#8a5a2c'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(x, y - 36.5, 3.5, 1.5, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = '#5a3a18'; ctx.lineWidth = 1.2; rr(x - 6, y - 38, 12, 8, 3); ctx.stroke();
   // the coil of vine on the post (it gets smaller as the vine unrolls)
   const coil = 1 - w.roll;
   if (coil > 0.05) { ctx.strokeStyle = '#4fae3c'; ctx.lineWidth = 3.5; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(x, y - 20 + i * 5, 9 * coil + 2, 3, 0, 0, Math.PI * 2); ctx.stroke(); } }
@@ -1029,12 +1122,16 @@ function wfallDrawLift(st, w, t) {
   ctx.beginPath(); ctx.moveTo(cx - 1, armY + 6); ctx.lineTo(L.x0 + 3, dy - 1); ctx.moveTo(cx + 1, armY + 6); ctx.lineTo(L.x1 - 3, dy - 1); ctx.stroke();
   // the deck: three canes lashed together
   for (let k = 0; k < 2; k++) { ctx.fillStyle = k ? cane : caneD; rr(L.x0 - 1, dy - 1 + k * 3, L.x1 - L.x0 + 2, 4, 2); ctx.fill(); }
-  ctx.strokeStyle = '#3f8f2c'; ctx.lineWidth = 1.5; for (const xx of [L.x0 + 5, L.x1 - 5]) { ctx.beginPath(); ctx.moveTo(xx, dy - 1); ctx.lineTo(xx, dy + 6); ctx.stroke(); }
+  ctx.strokeStyle = '#3f8f2c'; ctx.lineWidth = 1.5; for (const xx of [L.x0 + 5, L.x1 - 5]) { ctx.beginPath(); ctx.moveTo(xx, dy - 1); ctx.lineTo(xx, dy + 6); ctx.moveTo(xx + 2.5, dy - 1); ctx.lineTo(xx + 2.5, dy + 6); ctx.stroke(); }
+  ctx.fillStyle = knot; for (let xx = L.x0 + 14; xx < L.x1 - 10; xx += 16) ctx.fillRect(xx, dy - 1, 1.5, 7);
+  ctx.fillStyle = 'rgba(255,255,220,0.45)'; ctx.fillRect(L.x0 + 2, dy - 0.5, L.x1 - L.x0 - 4, 1);
   const live = !w.done && !w.up[0] && !w.up[1] && L.phase === 'down';
   if (live) { ctx.fillStyle = 'rgba(255,197,61,' + (0.18 + 0.12 * (reduceMotion ? 1 : Math.sin(t * 4))).toFixed(3) + ')'; rr(L.x0 - 2, w.baseFeet - 4, L.x1 - L.x0 + 4, 6, 3); ctx.fill(); }
   // the lever: a stone block with a bamboo handle that swings toward the wall when pulled
   const lx = L.leverX, lg = w.baseFeet, lean = (L.pullT > 0 ? 0.5 : -0.5) * w.side;
   ctx.fillStyle = '#8c8f86'; ctx.strokeStyle = '#4a4c45'; ctx.lineWidth = 1.5; rr(lx - 8, lg - 8, 16, 8, 3); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(lx - 6, lg - 7, 12, 1.2); ctx.fillStyle = 'rgba(40,40,30,0.3)'; ctx.fillRect(lx - 6, lg - 2.5, 12, 1.2);
+  ctx.fillStyle = '#6e7068'; ctx.beginPath(); ctx.moveTo(lx + 8, lg - 8); ctx.lineTo(lx + 4, lg - 8); ctx.lineTo(lx + 8, lg - 5); ctx.closePath(); ctx.fill();
   const hx = lx + Math.sin(lean) * 24, hy = lg - 6 - Math.cos(lean) * 24;
   ctx.strokeStyle = caneD; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(lx, lg - 6); ctx.lineTo(hx, hy); ctx.stroke();
   ctx.strokeStyle = cane; ctx.lineWidth = 3; ctx.stroke();

@@ -958,6 +958,7 @@ function conveyorPaintBack(c, st) {
   c.fillStyle = '#ffffff'; c.fillRect(0, C0.catwalkY, W, 3);
   c.strokeStyle = '#2f8a6c'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, C0.catwalkY - 34); c.lineTo(W, C0.catwalkY - 34); c.stroke();
   for (let x = 15; x < W; x += 60) { c.beginPath(); c.moveTo(x, C0.catwalkY - 34); c.lineTo(x, C0.catwalkY); c.stroke(); }
+  CK.on(c, () => conveyorCatwalkDetail(st));
   // a scalloped frosting trim under the catwalk
   c.fillStyle = '#fff4fa'; for (let x = 0; x < W; x += 20) { c.beginPath(); c.arc(x + 10, C0.ceilY, 10, 0, Math.PI); c.fill(); }
   // the factory floor: chocolate and cream checks, a candy-stripe edge
@@ -968,6 +969,7 @@ function conveyorPaintBack(c, st) {
     c.fillStyle = 'rgba(40,15,5,0.18)'; c.fillRect(x, y + 28, 30, 2); c.fillRect(x + 28, y, 2, 30);
     if (hash(x, y) % 4 === 0) { c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(x + 6, y + 6, 8, 2); }
   }
+  CK.on(c, () => conveyorFloorDetail(st));
   // a soft shadow along the foot of the wall
   { const fg = c.createLinearGradient(0, C0.floorY - 26, 0, C0.floorY); fg.addColorStop(0, 'rgba(160,60,110,0)'); fg.addColorStop(1, 'rgba(160,60,110,0.18)'); c.fillStyle = fg; c.fillRect(0, C0.floorY - 26, W, 26); }
   for (let x = 0; x < W; x += 24) { c.fillStyle = (x / 24) % 2 ? '#ff6fa8' : '#ffffff'; c.fillRect(x, C0.floorY, 24, 7); }
@@ -983,6 +985,7 @@ function conveyorPaintBack(c, st) {
     c.fillStyle = 'rgba(120,30,70,0.16)'; c.fillRect(s.x0 + 4, s.y + 30, s.x1 - s.x0 - 4, 8);
     // a little support post
     c.fillStyle = '#d96aa3'; c.fillRect(s.x1 - 22, s.y + 30, 10, C0.floorY - s.y - 30);
+    CK.on(c, () => conveyorShelfDetail(s));
   }
   // the lift shaft: candy-cane rails and a pulley
   const lf = st.lift;
@@ -992,6 +995,7 @@ function conveyorPaintBack(c, st) {
       c.fillStyle = '#ff4f86'; for (let y = lf.hi - 40; y < C0.floorY; y += 16) c.fillRect(x, y, 6, 8);
     }
     c.fillStyle = '#c9971a'; c.beginPath(); c.arc((lf.x0 + lf.x1) / 2, lf.hi - 46, 10, 0, Math.PI * 2); c.fill();
+    CK.on(c, () => conveyorShaftDetail(lf));
   }
   // the recycler mouth in the wall
   for (const b of st.belts) for (const side of [0, 1]) {
@@ -1014,6 +1018,79 @@ function conveyorPaintBack(c, st) {
   }
   void cw;
 }
+// (rich props pass, Nov 2026) extra detail painted once into the cached back
+// the factory floor: each check a chocolate block with a raised middle, a glossy lip, the odd bite, crack or sprinkle
+function conveyorFloorDetail(st) {
+  const C0 = CONVEYOR;
+  for (let y = C0.floorY; y < H; y += 30) for (let x = 0; x < W; x += 30) {
+    const dk = ((x + y) / 30) % 2, h = CK.r(x, y + 7), base = dk ? '#8f5a3e' : '#a46a4a';
+    // the raised middle: a pale lit lip top-left, a dark lip bottom-right
+    ctx.fillStyle = tint(base, 0.06); ctx.fillRect(x + 6, y + 6, 18, 18);
+    ctx.fillStyle = 'rgba(255,230,210,0.22)'; ctx.fillRect(x + 5, y + 5, 20, 1.5); ctx.fillRect(x + 5, y + 5, 1.5, 20);
+    ctx.fillStyle = 'rgba(50,20,8,0.28)'; ctx.fillRect(x + 5, y + 23.5, 20, 1.5); ctx.fillRect(x + 23.5, y + 5, 1.5, 20);
+    // a dark grout line between the blocks
+    ctx.fillStyle = 'rgba(40,15,5,0.35)'; ctx.fillRect(x, y, 30, 0.8); ctx.fillRect(x, y, 0.8, 30);
+    if (h < 0.08) {        // a bite out of a corner
+      ctx.fillStyle = shade(base, 0.3); ctx.beginPath(); ctx.arc(x + 30, y + 30, 7, Math.PI, Math.PI * 1.5); ctx.lineTo(x + 30, y + 30); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,230,210,0.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x + 30, y + 30, 7.5, Math.PI * 1.05, Math.PI * 1.45); ctx.stroke();
+    } else if (h < 0.18) {  // a hairline crack
+      ctx.strokeStyle = 'rgba(40,15,5,0.4)'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(x + 8, y + 9); ctx.lineTo(x + 13, y + 15); ctx.lineTo(x + 12, y + 20); ctx.lineTo(x + 18, y + 24); ctx.stroke();
+    } else if (h < 0.3) {   // a sprinkle that fell off a candy
+      ctx.save(); ctx.translate(x + 8 + h * 40, y + 10 + h * 30); ctx.rotate(h * 20);
+      ctx.fillStyle = ['#ff6fa8', '#7fd8ff', '#ffe066', '#9be37a'][(h * 40 | 0) % 4]; rr(-3, -1, 6, 2.2, 1); ctx.fill(); ctx.restore();
+    } else if (h > 0.86) {  // a cocoa smear
+      ctx.fillStyle = 'rgba(60,25,10,0.18)'; ctx.beginPath(); ctx.ellipse(x + 15, y + 17, 9, 3.5, -0.3, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // a glossy reflection streak along the floor
+  const rg = ctx.createLinearGradient(0, C0.floorY + 10, 0, C0.floorY + 40); rg.addColorStop(0, 'rgba(255,240,230,0.1)'); rg.addColorStop(1, 'rgba(255,240,230,0)');
+  ctx.fillStyle = rg; ctx.fillRect(0, C0.floorY + 10, W, 30);
+}
+// the catwalk: a kick plate with bolts, grating cross bars, rail posts with caps and a lit handrail
+function conveyorCatwalkDetail(st) {
+  const y = CONVEYOR.catwalkY;
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, y + 3, W, 1.5);
+  ctx.fillStyle = 'rgba(30,90,70,0.25)'; for (let x = 0; x < W; x += 48) ctx.fillRect(x, y + 4, 2, 20);
+  ctx.fillStyle = '#3f9878'; ctx.fillRect(0, y + 22, W, 2);
+  for (let x = 24; x < W; x += 48) { ctx.fillStyle = '#2f7a5f'; circle(x, y + 27, 1.8); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.45)'; circle(x - 0.5, y + 26.5, 0.8); ctx.fill(); }
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(0, y - 36, W, 1.3);
+  for (let x = 15; x < W; x += 60) {
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - 1.5, y - 33, 1, 33);
+    ctx.fillStyle = '#2f8a6c'; rr(x - 4, y - 38, 8, 6, 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 3, y - 37.5, 6, 1.2);
+    ctx.fillStyle = '#2f8a6c'; ctx.fillRect(x - 4, y - 4, 8, 4);
+  }
+  // a mid rail
+  ctx.strokeStyle = 'rgba(47,138,108,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, y - 16); ctx.lineTo(W, y - 16); ctx.stroke();
+}
+// a candy-cane shelf: a glossy round end, a bracket with bolts under it, stripes on its post
+function conveyorShelfDetail(s) {
+  const C0 = CONVEYOR, px = s.x1 - 22;
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; for (let x = s.x0 + 8; x < s.x1 - 8; x += 22) { ctx.beginPath(); ctx.ellipse(x + 6, s.y + 8, 4, 1.6, -0.5, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = 'rgba(120,30,70,0.2)'; ctx.fillRect(s.x0 + 2, s.y + 24, s.x1 - s.x0 - 4, 4);
+  // the bracket
+  ctx.fillStyle = '#b84d86'; ctx.beginPath(); ctx.moveTo(px - 14, s.y + 30); ctx.lineTo(px + 24, s.y + 30); ctx.lineTo(px + 10, s.y + 52); ctx.lineTo(px, s.y + 52); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(px - 12, s.y + 30, 34, 1.5);
+  ctx.fillStyle = '#ffd6ea'; for (const bx of [px - 8, px + 18]) { circle(bx, s.y + 34, 1.6); ctx.fill(); }
+  // the post: lit left edge, shaded right, cream stripes
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(px, s.y + 30, 2, C0.floorY - s.y - 30);
+  ctx.fillStyle = 'rgba(120,30,70,0.3)'; ctx.fillRect(px + 8, s.y + 30, 2, C0.floorY - s.y - 30);
+  ctx.fillStyle = 'rgba(255,240,248,0.5)'; for (let y = s.y + 60; y < C0.floorY - 8; y += 26) ctx.fillRect(px, y, 10, 5);
+  ctx.fillStyle = '#a8346a'; ctx.fillRect(px - 3, C0.floorY - 6, 16, 6);
+}
+// the lift shaft: lit rail edges and brackets, a pulley with spokes and an axle plate
+function conveyorShaftDetail(lf) {
+  const C0 = CONVEYOR, px = (lf.x0 + lf.x1) / 2, py = lf.hi - 46;
+  for (const x of [lf.x0 - 6, lf.x1]) {
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x, lf.hi - 40, 1.5, C0.floorY - lf.hi + 40);
+    ctx.fillStyle = 'rgba(120,30,70,0.3)'; ctx.fillRect(x + 4.5, lf.hi - 40, 1.5, C0.floorY - lf.hi + 40);
+    ctx.fillStyle = '#a8346a'; for (let y = lf.hi; y < C0.floorY - 10; y += 70) { ctx.fillRect(x - 2, y, 10, 4); }
+  }
+  ctx.fillStyle = '#8a6612'; ctx.fillRect(px - 16, py - 16, 32, 6);
+  ctx.fillStyle = '#ffd65c'; circle(px, py, 8); ctx.fill();
+  ctx.strokeStyle = '#8a6612'; ctx.lineWidth = 1.5; for (let k = 0; k < 3; k++) { const a = k * 2.09; ctx.beginPath(); ctx.moveTo(px - Math.cos(a) * 7, py - Math.sin(a) * 7); ctx.lineTo(px + Math.cos(a) * 7, py + Math.sin(a) * 7); ctx.stroke(); }
+  ctx.fillStyle = '#5a4210'; circle(px, py, 2.5); ctx.fill();
+  ctx.strokeStyle = '#8a6612'; ctx.lineWidth = 2; circle(px, py, 10); ctx.stroke();
+}
 function conveyorDrawBack(st) {
   const L = G.level, cw = canvas.width, ch = canvas.height;
   try {
@@ -1032,6 +1109,7 @@ function conveyorDrawGrates(st, t) {
   for (const gt of st.grates) {
     const x0 = gt.x0, w = gt.x1 - gt.x0, y = gt.y;
     ctx.fillStyle = '#3b2a4a'; rr(x0, y - 2, w, 12, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x0 + 3, y - 2, w - 6, 1.2);
     ctx.fillStyle = gt.flash > 0 ? 'rgba(160,255,200,' + (0.4 + 0.6 * gt.flash) + ')' : '#6a5a7e';
     for (let x = x0 + 5; x < x0 + w - 4; x += 8) ctx.fillRect(x, y, 4, 8);
     // a little recycle sign
@@ -1048,6 +1126,9 @@ function conveyorDrawStation(st, s, t) {
   // the console
   ctx.fillStyle = s.col[1]; rr(x - 22, y - 44, 44, 44, 7); ctx.fill();
   ctx.fillStyle = s.col[0]; rr(x - 19, y - 41, 38, 38, 5); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 17, y - 40, 34, 1.5);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(x - 17, y - 5, 34, 2);
+  ctx.fillStyle = s.col[1]; for (const [sx, sy] of [[-16, -38], [16, -38]]) { circle(x + sx, y + sy, 1.3); ctx.fill(); }
   if (near || s.flash > 0) { ctx.save(); ctx.globalAlpha = 0.5 + 0.5 * Math.max(s.flash, near ? 0.5 + 0.5 * Math.sin(t * 6) : 0); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; rr(x - 24, y - 46, 48, 48, 9); ctx.stroke(); ctx.restore(); }
   // the screen: what the thing is doing
   ctx.fillStyle = '#2a2140'; rr(x - 15, y - 37, 30, 17, 4); ctx.fill();
@@ -1080,7 +1161,9 @@ function conveyorDrawBelt(st, b, t) {
   const x0 = b.x0, x1 = b.x1, y = b.y, tp = b.trap;
   // the frame and the rubber
   ctx.fillStyle = '#4a3d5c'; rr(x0 - 4, y + 4, x1 - x0 + 8, 20, 9); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(x0, y + 7, x1 - x0, 1.5);
   ctx.fillStyle = '#2c2438'; ctx.fillRect(x0, y, x1 - x0, 7);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x0, y, x1 - x0, 1);
   // moving chevrons on the belt top (the speed and the direction)
   ctx.save(); ctx.beginPath(); ctx.rect(x0, y - 1, x1 - x0, 9);
   if (tp && tp.anim > 0.05) { ctx.rect(tp.x0, y - 1, tp.x1 - tp.x0, 9); }
@@ -1094,11 +1177,16 @@ function conveyorDrawBelt(st, b, t) {
   // rollers
   const spin = b.off / 9;
   for (let x = x0 + 10; x < x1 - 4; x += 30) {
+    ctx.fillStyle = '#9a8fb0'; circle(x + 5.5, y + 15.5, 6.5); ctx.fill();
     ctx.fillStyle = '#d9d0e6'; circle(x + 5, y + 15, 6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(x + 5, y + 15, 4.6, Math.PI * 1.05, Math.PI * 1.6); ctx.lineTo(x + 5, y + 15); ctx.fill();
     ctx.strokeStyle = '#6a5a7e'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + 5 + Math.cos(spin) * 5, y + 15 + Math.sin(spin) * 5); ctx.lineTo(x + 5 - Math.cos(spin) * 5, y + 15 - Math.sin(spin) * 5); ctx.stroke();
+    ctx.fillStyle = '#6a5a7e'; circle(x + 5, y + 15, 1.6); ctx.fill();
   }
   // coloured side rail with the belt's name
   ctx.fillStyle = b.col[0]; rr(x0 - 4, y + 19, x1 - x0 + 8, 7, 3.5); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x0, y + 19.5, x1 - x0, 1.3);
+  ctx.fillStyle = b.col[1]; for (let x = x0 + 25; x < x1 - 10; x += 60) { circle(x, y + 22.5, 1.5); ctx.fill(); }
   if (b.flash > 0) { ctx.save(); ctx.globalAlpha = b.flash * 0.6; ctx.fillStyle = '#ffffff'; rr(x0 - 4, y - 2, x1 - x0 + 8, 28, 9); ctx.fill(); ctx.restore(); }
   const big = conveyorBig(), fs = big ? 14 : 11;
   ctx.font = conveyorFont(fs);
@@ -1106,7 +1194,11 @@ function conveyorDrawBelt(st, b, t) {
   ctx.fillStyle = b.col[1]; rr(x0 + 6, y + 28, lw, fs + 6, (fs + 6) / 2); ctx.fill();
   text(b.name, x0 + 6 + lw / 2, y + 28 + (fs + 6) / 2 + 0.5, fs, '#ffffff', 'center', 'body');
   // end caps: a stopper at a wall end
-  for (const side of [0, 1]) if (b.ends[side] === 'wall') { const ex = side ? x1 : x0 - 10; ctx.fillStyle = '#ff6fa8'; rr(ex, y - 14, 10, 38, 4); ctx.fill(); }
+  for (const side of [0, 1]) if (b.ends[side] === 'wall') {
+    const ex = side ? x1 : x0 - 10; ctx.fillStyle = '#ff6fa8'; rr(ex, y - 14, 10, 38, 4); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(ex + 2, y - 12, 2, 34); ctx.fillStyle = 'rgba(140,30,70,0.35)'; ctx.fillRect(ex + 7, y - 12, 2, 34);
+    ctx.fillStyle = '#ffd6ea'; circle(ex + 5, y - 8, 1.4); ctx.fill(); circle(ex + 5, y + 18, 1.4); ctx.fill();
+  }
   // the trapdoor flaps
   if (tp) {
     const a = tp.anim, hw = (tp.x1 - tp.x0) / 2;
@@ -1129,6 +1221,9 @@ function conveyorDrawChute(st, ch, t) {
   ctx.save(); ctx.beginPath(); ctx.rect(x - 13, top, 26, ny - top); ctx.clip();
   ctx.fillStyle = '#ff6fa8'; for (let y = top - 30; y < ny; y += 18) { ctx.beginPath(); ctx.moveTo(x - 13, y); ctx.lineTo(x + 13, y + 12); ctx.lineTo(x + 13, y + 20); ctx.lineTo(x - 13, y + 8); ctx.closePath(); ctx.fill(); }
   ctx.restore();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x - 11, top, 3, ny - top - 26);
+  ctx.fillStyle = 'rgba(140,30,70,0.22)'; ctx.fillRect(x + 7, top, 6, ny - top - 26);
+  for (const fy of [top + 6, ny - 34]) { ctx.fillStyle = '#d96aa3'; rr(x - 16, fy - 3, 32, 7, 3); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 14, fy - 2.5, 28, 1.3); ctx.fillStyle = '#ffd6ea'; circle(x - 11, fy + 0.5, 1.2); ctx.fill(); circle(x + 11, fy + 0.5, 1.2); ctx.fill(); }
   // the nozzle with a little window showing the next candy
   const sq = ch.pop * 4;
   ctx.fillStyle = '#d96aa3'; ctx.beginPath(); ctx.moveTo(x - 22 - sq, ny - 26); ctx.lineTo(x + 22 + sq, ny - 26); ctx.lineTo(x + 13, ny + 4); ctx.lineTo(x - 13, ny + 4); ctx.closePath(); ctx.fill();
@@ -1151,6 +1246,9 @@ function conveyorDrawLift(st, t) {
   ctx.fillStyle = '#ffd65c'; rr(x0, y, w, 13, 4); ctx.fill();
   ctx.strokeStyle = '#c9971a'; ctx.lineWidth = 2; rr(x0, y, w, 13, 4); ctx.stroke();
   ctx.fillStyle = '#c9971a'; for (let x = x0 + 8; x < x0 + w - 6; x += 14) ctx.fillRect(x, y + 4, 7, 5);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x0 + 3, y + 1.5, w - 6, 1.3);
+  ctx.fillStyle = '#fff3c4'; for (let x = x0 + 8; x < x0 + w - 6; x += 14) { ctx.fillRect(x + 1, y + 4, 2, 1); }
+  ctx.fillStyle = '#8a6612'; circle(x0 + 4.5, y + 6.5, 1.4); ctx.fill(); circle(x0 + w - 4.5, y + 6.5, 1.4); ctx.fill();
   if (lf.blocked) { ctx.save(); ctx.globalAlpha = 0.7 + 0.3 * Math.sin(t * 10); text('!', x0 + w / 2, y - 14, 16, '#ff5c8a', 'center'); ctx.restore(); }
 }
 function conveyorDrawWrapper(st, t) {
@@ -1190,8 +1288,10 @@ function conveyorDrawBin(st, bn, t) {
   // a shine down the left side, a shade on the right
   ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.moveTo(-w / 2 + 3, -h + 4); ctx.lineTo(-w / 2 + 9, -h + 4); ctx.lineTo(-w / 2 + 12, -4); ctx.lineTo(-w / 2 + 8, -4); ctx.closePath(); ctx.fill();
   ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.beginPath(); ctx.moveTo(w / 2 - 8, -h + 4); ctx.lineTo(w / 2 - 2, -h + 4); ctx.lineTo(w / 2 - 7, -2); ctx.lineTo(w / 2 - 12, -2); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-w / 2 + 3, -10); ctx.lineTo(w / 2 - 3, -10); ctx.stroke();
   // the rim
   ctx.fillStyle = k.dark; rr(-w / 2 - 4, -h - 5, w + 8, 9, 4.5); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; for (let k2 = -2; k2 <= 2; k2++) { circle(k2 * (w / 5), -h - 0.5, 1.3); ctx.fill(); }
   ctx.fillStyle = 'rgba(255,255,255,0.3)'; rr(-w / 2 - 2, -h - 4, w + 4, 2.5, 1.2); ctx.fill();
   // a happy or a yucky face on the rim when something lands in it
   if (bn.blech > 0) { ctx.globalAlpha = bn.blech; text('blech', 0, -h - 15, 12, '#e8ffb0', 'center'); ctx.globalAlpha = 1; }

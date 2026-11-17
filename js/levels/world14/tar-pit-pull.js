@@ -949,6 +949,82 @@ function tarPaintBack(c, st, L) {
     }
     if (ty > 0 && tile(tx, ty - 1) === 't') { c.fillStyle = '#4a3a2a'; c.fillRect(x, y, T, 4); }
   }
+  CK.on(c, () => tarBankDetail(st, L));
+}
+// (rich props pass, Nov 2026) the banks' extra detail, painted once into the cached back: wavy sediment seams that run
+// across the tiles, shaded pebbles and buried rocks, roots under the turf, a fossil now and then, wet tar-stained pit
+// walls with drips, and blades and clover along the grass
+function tarBankDetail(st, L) {
+  const solid = (a, b) => a >= 0 && a < COLS && b >= 0 && b < ROWS && L.grid[b][a] === '#';
+  const top = (a, b) => b > 0 && !solid(a, b - 1) && tile(a, b - 1) !== 't';
+  ctx.lineCap = 'round';
+  // sediment seams: wavy dashes, dark with a lit line under them
+  ctx.strokeStyle = 'rgba(60,38,22,0.32)'; ctx.lineWidth = 1.8; ctx.beginPath();
+  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+    if (!solid(tx, ty)) continue;
+    for (const oy of [9, 21]) {
+      const x = tx * T, y = ty * T + oy;
+      if (CK.r(tx * 3 + oy, ty) < 0.25) continue;
+      ctx.moveTo(x + 1, y + Math.sin(x * 0.09 + ty) * 1.6);
+      for (let k = 6; k <= T - 1; k += 6) ctx.lineTo(x + k, y + Math.sin((x + k) * 0.09 + ty) * 1.6);
+    }
+  }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,230,190,0.12)'; ctx.lineWidth = 1.2; ctx.beginPath();
+  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+    if (!solid(tx, ty) || CK.r(tx, ty + 40) < 0.4) continue;
+    const x = tx * T, y = ty * T + 12;
+    ctx.moveTo(x + 2, y + Math.sin(x * 0.09 + ty) * 1.6); ctx.lineTo(x + T - 4, y + Math.sin((x + T) * 0.09 + ty) * 1.6);
+  }
+  ctx.stroke();
+  // grit
+  ctx.fillStyle = 'rgba(50,32,18,0.4)'; ctx.beginPath();
+  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+    if (!solid(tx, ty)) continue;
+    for (let k = 0; k < 4; k++) ctx.rect(tx * T + CK.r(tx * 7 + k, ty) * T, ty * T + CK.r(ty * 7 + k, tx) * T, 1.5, 1.5);
+  }
+  ctx.fill();
+  const PEB = ['#a8957e', '#8f7d6a', '#b8a58a', '#7e6c5a'];
+  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+    if (!solid(tx, ty)) continue;
+    const x = tx * T, y = ty * T, r = CK.r(tx, ty + 7);
+    // pebbles
+    if (r < 0.5) CK.pebble(x + 5 + CK.r(tx, ty + 8) * 20, y + 6 + CK.r(ty, tx + 9) * 18, 2.2 + r * 5, PEB[Math.floor(r * 8) % 4], tx * 31 + ty);
+    // a buried rock in deep ground
+    if (r > 0.86 && solid(tx, ty - 1) && solid(tx + 1, ty) && solid(tx - 1, ty)) CK.rock(x + 15, y + 15, 12 + (r - 0.86) * 40, 8, PEB[(tx + ty) % 4], tx * 13 + ty, { shadow: false, j: 0.2 });
+    // a fossil
+    if (r > 0.8 && r < 0.83 && solid(tx, ty - 1)) CK.fossil(x + 15, y + 16, tx + ty, '#efe0c4');
+    // roots under the turf
+    if (top(tx, ty) && r > 0.55 && r < 0.8) {
+      ctx.strokeStyle = 'rgba(70,45,25,0.6)'; ctx.lineWidth = 1.6; const rx = x + 6 + (r - 0.55) * 60;
+      ctx.beginPath(); ctx.moveTo(rx, y + 8); ctx.quadraticCurveTo(rx + 4, y + 14, rx + 1, y + 22); ctx.moveTo(rx + 2, y + 14); ctx.lineTo(rx + 8, y + 19); ctx.stroke();
+    }
+    // a pit wall: tar-stained and wet, with drips running down
+    for (const [nx, sx] of [[tx - 1, x], [tx + 1, x + T - 7]]) {
+      if (nx < 0 || nx >= COLS || solid(nx, ty)) continue;
+      if (!st.regions.some(rg => rg.x0 < x + T + 2 && rg.x1 > x - 2)) continue;
+      ctx.fillStyle = 'rgba(40,28,52,0.32)'; ctx.fillRect(sx, y, 7, T);
+      ctx.fillStyle = 'rgba(200,180,240,0.18)'; ctx.fillRect(sx + (nx < tx ? 1 : 5), y + 2, 1.2, T - 4);
+    }
+  }
+  // blades and clover along the turf
+  for (let ty = 1; ty < ROWS; ty++) {
+    let run = -1;
+    for (let tx = 0; tx <= COLS; tx++) {
+      const on = tx < COLS && solid(tx, ty) && top(tx, ty);
+      if (on && run < 0) run = tx;
+      if (!on && run >= 0) {
+        const y = ty * T;
+        CK.tufts(run * T + 2, tx * T - 2, () => y, '#4fa244', ty * 17, 5);
+        CK.tufts(run * T + 3, tx * T - 3, () => y, '#8edb5c', ty * 17 + 1, 7);
+        ctx.strokeStyle = 'rgba(40,100,40,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath();
+        for (let x = run * T; x < tx * T - 2; x += 10) { ctx.moveTo(x + 8.4, y + 7); ctx.arc(x + 5, y + 6, 3.4, 0.3, Math.PI - 0.3); }
+        ctx.stroke();
+        run = -1;
+      }
+    }
+  }
+  ctx.lineCap = 'butt';
 }
 function tarPaintDeco(c, d) {
   const x = d.x, y = d.y;
@@ -980,11 +1056,8 @@ function tarPaintDeco(c, d) {
   } else if (d.k === 'rock') {
     const rw = d.w || 26;
     c.fillStyle = 'rgba(30,20,10,0.2)'; c.beginPath(); c.ellipse(x + 3, y + 1, rw + 6, 4, 0, 0, Math.PI * 2); c.fill();
-    c.fillStyle = '#8f7a66'; c.beginPath(); c.ellipse(x, y, rw, 14, 0, Math.PI, 0); c.fill();
-    c.fillStyle = '#76634f'; c.beginPath(); c.ellipse(x + rw * 0.25, y, rw * 0.75, 8, 0, Math.PI, 0); c.fill();
-    c.strokeStyle = '#5e4c3c'; c.lineWidth = 2; c.beginPath(); c.ellipse(x, y, rw, 14, 0, Math.PI, 0); c.stroke();
-    c.fillStyle = 'rgba(255,255,255,0.22)'; c.beginPath(); c.ellipse(x - 6, y - 8, 8, 4, -0.3, 0, Math.PI * 2); c.fill();
-    c.fillStyle = '#6fbf4a'; c.beginPath(); c.ellipse(x - rw * 0.3, y - 11, 7, 3, -0.2, 0, Math.PI * 2); c.fill();
+    // (rich props pass) a chiselled boulder half sunk in the bank, with moss
+    CK.on(c, () => CK.rock(x, y - 1, rw, 15, '#8f7a66', Math.round(x), { shadow: false, flat: 0.06, moss: '#6fbf4a' }));
   } else if (d.k === 'reeds') {
     for (let k = 0; k < 5; k++) {
       const rx = x + k * 7 - 14, h = 40 + (hash(k, x) % 20);
@@ -1004,9 +1077,15 @@ function tarPaintDeco(c, d) {
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#3a2410';
     c.fillText(d.text || '', x, y - 50.5);
   } else if (d.k === 'bones') {   // a friendly old fossil, half buried in the bank
-    c.fillStyle = 'rgba(255,248,230,0.55)';
-    for (let k = 0; k < 4; k++) { tarRrc(c, x + k * 12 - 20, y - 4 - (k % 2) * 3, 9, 4, 2); c.fill(); }
-    c.beginPath(); c.ellipse(x + 30, y - 4, 7, 5, 0, 0, Math.PI * 2); c.fill();
+    // (rich props pass) a row of vertebrae with shading and an old skull, half buried
+    CK.on(c, () => {
+      for (let k = 0; k < 4; k++) { const bx = x + k * 12 - 20, by = y - 4 - (k % 2) * 3; ctx.fillStyle = '#f2e6cc'; rr(bx, by, 9, 5, 2); ctx.fill(); ctx.fillStyle = '#d6c4a0'; ctx.fillRect(bx + 1, by + 3, 7, 2); ctx.strokeStyle = '#a8946e'; ctx.lineWidth = 1; rr(bx, by, 9, 5, 2); ctx.stroke(); ctx.fillStyle = '#f2e6cc'; ctx.fillRect(bx + 3.5, by - 3, 2, 3); }
+      ctx.fillStyle = '#f2e6cc'; ctx.beginPath(); ctx.ellipse(x + 30, y - 4, 8, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#d6c4a0'; ctx.beginPath(); ctx.ellipse(x + 31, y - 2, 7, 3, 0, 0, Math.PI); ctx.fill();
+      ctx.strokeStyle = '#a8946e'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(x + 30, y - 4, 8, 6, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#7d6a4e'; ctx.beginPath(); ctx.ellipse(x + 32, y - 5.5, 1.8, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(80,55,35,0.35)'; ctx.fillRect(x - 22, y - 1, 60, 2);
+    });
   } else if (d.k === 'eggs') {
     c.fillStyle = '#c9a26a'; c.beginPath(); c.ellipse(x, y - 4, 30, 9, 0, 0, Math.PI * 2); c.fill();
     for (const [ox, col] of [[-12, '#f4f0dc'], [0, '#ffe6a8'], [12, '#e6f4dc']]) { c.fillStyle = col; c.beginPath(); c.ellipse(x + ox, y - 12, 7, 10, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(120,160,110,0.5)'; c.beginPath(); c.arc(x + ox - 2, y - 14, 1.6, 0, Math.PI * 2); c.fill(); }
@@ -1072,9 +1151,24 @@ function tarDrawVine(st, v, t) {
 }
 function tarDrawStump(st, s, t) {
   const x = s.x, y = s.y, v = st.cross[s.cross] && st.cross[s.cross].vine, busy = v && v.hk && v.hk.side === s.side;
-  ctx.fillStyle = '#7d5530'; rr(x - 13, y - 18, 26, 18, 4); ctx.fill();
-  ctx.fillStyle = '#c9925a'; ctx.beginPath(); ctx.ellipse(x, y - 18, 13, 4.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#8a5a30'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y - 18, 7, 2.4, 0, 0, Math.PI * 2); ctx.stroke();
+  // (rich props pass) a hook stump: ridged bark, little roots, a ringed cut top; painted once
+  CK.pic('tarstump', 48, 34, 24, 26, () => {
+    const bark = '#7d5530';
+    CK.shadow(1, 1, 18, 3, 0.22);
+    ctx.fillStyle = bark; for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(sd * 10, -8); ctx.quadraticCurveTo(sd * 14, -1, sd * 19, 0.5); ctx.lineTo(sd * 8, 0.5); ctx.closePath(); ctx.fill(); ctx.strokeStyle = shade(bark, 0.55); ctx.lineWidth = 1.3; ctx.stroke(); }
+    ctx.fillStyle = bark; rr(-13, -18, 26, 18, 4); ctx.fill();
+    ctx.save(); rr(-13, -18, 26, 18, 4); ctx.clip();
+    ctx.fillStyle = shade(bark, 0.22); ctx.fillRect(4, -18, 10, 18);
+    ctx.strokeStyle = shade(bark, 0.45); ctx.lineWidth = 1.3; ctx.beginPath();
+    for (const bx of [-9, -4, 1, 6, 10]) { ctx.moveTo(bx, -14); ctx.quadraticCurveTo(bx + 1.2, -8, bx, -2); }
+    ctx.stroke(); ctx.restore();
+    ctx.strokeStyle = shade(bark, 0.55); ctx.lineWidth = 1.6; rr(-13, -18, 26, 18, 4); ctx.stroke();
+    ctx.fillStyle = '#c9925a'; ctx.beginPath(); ctx.ellipse(0, -18, 13, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#8a5a30'; ctx.lineWidth = 0.9; for (const r of [3.5, 7, 10.5]) { ctx.beginPath(); ctx.ellipse(0, -18, r, r * 0.34, 0, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(1, -18); ctx.lineTo(9, -19.5); ctx.stroke();
+    ctx.strokeStyle = shade(bark, 0.55); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(0, -18, 13, 4.5, 0, 0, Math.PI * 2); ctx.stroke();
+    CK.moss(-6, -9, 5, 2, '#6fbf4a', 3);
+  }, x, y);
   if (!busy) {
     // the hook stick leans on it, glowing when its vine can be hooked
     const dir = s.side === 'N' ? 1 : -1;
@@ -1086,8 +1180,11 @@ function tarDrawStump(st, s, t) {
 }
 function tarDrawHorn(st, h, t) {
   const x = h.x, y = h.y, k = h.t;
-  ctx.fillStyle = '#8f7a66'; ctx.beginPath(); ctx.ellipse(x, y, 18, 9, 0, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = '#7d5530'; rr(x - 3, y - 34, 6, 28, 2); ctx.fill();
+  CK.pic('tarhornbase', 48, 48, 24, 38, () => {
+    CK.rock(0, -2, 18, 9, '#8f7a66', 17, { flat: 0.2, moss: '#6fbf4a' });
+    CK.planks(-3, -34, 6, 28, '#7d5530', { vert: true, board: 6, nails: false, lw: 1.2 });
+    ctx.strokeStyle = '#c9b27a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-3.5, -26); ctx.lineTo(3.5, -28); ctx.moveTo(-3.5, -23); ctx.lineTo(3.5, -25); ctx.stroke();
+  }, x, y);
   ctx.save(); ctx.translate(x, y - 40); ctx.rotate(-0.25 - k * 0.2); ctx.scale(1 + k * 0.12, 1 + k * 0.12);
   ctx.fillStyle = '#ffd9a0'; ctx.strokeStyle = '#b07a3a'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(-14, 6); ctx.quadraticCurveTo(-6, -10, 16, -12); ctx.lineTo(18, 8); ctx.quadraticCurveTo(0, 2, -14, 6); ctx.closePath(); ctx.fill(); ctx.stroke();
@@ -1103,14 +1200,9 @@ function tarDrawHorn(st, h, t) {
 }
 function tarDrawLog(st, lg, t) {
   const top = tarLogTop(lg), x0 = lg.x0 - 2, x1 = lg.x1 + 2, h = 22;
-  ctx.fillStyle = '#8a5a30'; rr(x0, top, x1 - x0, h, 10); ctx.fill();
-  ctx.fillStyle = '#a8703c'; rr(x0, top, x1 - x0, 8, 6); ctx.fill();
-  ctx.strokeStyle = 'rgba(60,35,15,0.5)'; ctx.lineWidth = 1.5;
-  for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(x0 + 12 + k * 14, top + 10); ctx.lineTo(x0 + 22 + k * 14, top + 12); ctx.stroke(); }
-  for (const ex of [x0 + 5, x1 - 5]) {
-    ctx.fillStyle = '#d9a86a'; ctx.beginPath(); ctx.ellipse(ex, top + h / 2, 5, h / 2, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#a0703c'; ctx.beginPath(); ctx.ellipse(ex, top + h / 2, 2.5, h / 4, 0, 0, Math.PI * 2); ctx.stroke();
-  }
+  // (rich props pass) a floating log: plated bark, knots, ringed ends both sides, moss; painted once per length
+  const lw = Math.round(x1 - x0);
+  CK.pic('tarlog' + lw, lw + 20, h + 20, 10, 10, () => CK.log(0, 0, lw, h, { bark: '#8a5a30', seed: 41, right: true, stub: false, shadow: false, moss: '#6fbf4a' }), x0, top);
   // a little mushroom friend on top
   ctx.fillStyle = '#ff7a6a'; ctx.beginPath(); ctx.ellipse(x1 - 16, top, 6, 5, 0, Math.PI, 0); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.fillRect(x1 - 17.5, top, 3, 3); circle(x1 - 18, top - 2.5, 1.1); ctx.fill();
@@ -1225,6 +1317,20 @@ function tarDrawTar(st, t) {
     ctx.beginPath();
     for (let x = x0 + 4; x <= x1 - 4; x += 6) { const y = s + 3 + (reduceMotion ? 0 : Math.sin(x * 0.07 + t * 1.6) * 1.2); if (x === x0 + 4) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
     ctx.stroke();
+    // (rich props pass) slow swirls deep in the goo, and twigs, a leaf and a feather half stuck on top
+    ctx.strokeStyle = 'rgba(120,96,160,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let k = 0; k < Math.floor((x1 - x0) / 50) + 1; k++) {
+      const sx = x0 + 14 + CK.r(x0, k) * (x1 - x0 - 40), sy = s + 26 + CK.r(k, x0) * Math.max(4, b - s - 50), sw = 10 + CK.r(x0 + k, 3) * 16;
+      ctx.moveTo(sx, sy); ctx.bezierCurveTo(sx + sw * 0.4, sy - 4, sx + sw * 0.7, sy + 4, sx + sw, sy);
+    }
+    ctx.stroke();
+    for (let k = 0; k < Math.floor((x1 - x0) / 90) + 1; k++) {
+      const fx = x0 + 18 + CK.r(x1, k) * (x1 - x0 - 36), fy = s + 1 + (reduceMotion ? 0 : Math.sin(fx * 0.07 + t * 1.6) * 1.2), kind = Math.floor(CK.r(k, x1) * 3);
+      if (kind === 0) { ctx.strokeStyle = '#6b4a2a'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(fx - 9, fy + 1); ctx.lineTo(fx + 9, fy - 1); ctx.moveTo(fx + 2, fy); ctx.lineTo(fx + 6, fy - 4); ctx.stroke(); ctx.lineCap = 'butt'; }
+      else if (kind === 1) { ctx.fillStyle = '#5f9a3c'; ctx.beginPath(); ctx.ellipse(fx, fy - 0.5, 6, 2.2, 0.15, Math.PI, 0); ctx.fill(); ctx.strokeStyle = '#3f6e2a'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(fx - 5, fy - 0.3); ctx.lineTo(fx + 5, fy - 1.4); ctx.stroke(); }
+      else { ctx.fillStyle = '#efe6d8'; ctx.beginPath(); ctx.ellipse(fx, fy - 1, 5, 1.6, -0.2, Math.PI, 0); ctx.fill(); }
+      ctx.fillStyle = 'rgba(36,26,50,0.8)'; ctx.fillRect(fx - 10, fy + 0.5, 20, 2.5);
+    }
     ctx.fillStyle = 'rgba(200,180,240,0.16)';
     for (let k = 0; k < Math.floor((x1 - x0) / 60) + 1; k++) { const hx = x0 + ((hash(k, x0) % 1000) / 1000) * (x1 - x0 - 20) + 10 + (reduceMotion ? 0 : Math.sin(t * 0.5 + k) * 6); ctx.beginPath(); ctx.ellipse(hx, s + 11 + (k % 2) * 6, 10, 2.5, 0, 0, Math.PI * 2); ctx.fill(); }
     // little bubbles that rise and pop

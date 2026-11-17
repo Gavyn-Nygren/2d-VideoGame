@@ -880,7 +880,13 @@ function gumballPaintBack(c, st, L) {
     for (let y = wy + 24; y < wy + 140; y += 14) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
     c.fillStyle = '#fff3f8'; c.fillRect(0, wy - 4, W, 12); c.fillStyle = 'rgba(200,90,140,0.25)'; c.fillRect(0, wy + 6, W, 3);
     c.fillStyle = 'rgba(255,255,255,0.8)'; c.fillRect(0, wy - 4, W, 2);
-    const sg = c.createLinearGradient(0, wy + 80, 0, wy + 140); sg.addColorStop(0, 'rgba(120,50,30,0)'); sg.addColorStop(1, 'rgba(120,50,30,0.18)'); c.fillStyle = sg; c.fillRect(0, wy + 80, W, 60); }
+    const sg = c.createLinearGradient(0, wy + 80, 0, wy + 140); sg.addColorStop(0, 'rgba(120,50,30,0)'); sg.addColorStop(1, 'rgba(120,50,30,0.18)'); c.fillStyle = sg; c.fillRect(0, wy + 80, W, 60);
+    // (rich props pass) each wafer cell gets a lit top-left lip, a sunken middle and a crumb now and then
+    for (let y = wy + 24; y < wy + 140; y += 14) for (let x = 0; x < W; x += 14) {
+      c.fillStyle = 'rgba(255,240,220,0.35)'; c.fillRect(x + 1, y + 1, 12, 1); c.fillRect(x + 1, y + 1, 1, 12);
+      c.fillStyle = 'rgba(160,90,40,0.12)'; c.fillRect(x + 3, y + 3, 9, 9);
+      if (CK.r(x, y) < 0.05) { c.fillStyle = 'rgba(170,100,50,0.5)'; c.beginPath(); c.arc(x + 7, y + 8, 1.6, 0, Math.PI * 2); c.fill(); }
+    } }
   // cotton candy clouds high up the wall
   for (const [x, y, s] of [[60, 56, 1], [880, 50, 0.9], [130, 150, 0.7], [840, 160, 0.8]]) {
     c.fillStyle = 'rgba(255,255,255,0.55)';
@@ -947,7 +953,65 @@ function gumballPaintBack(c, st, L) {
       if (r > 0 && g[r - 1][cc] !== '#') { c.fillStyle = C.grassDark; c.fillRect(x, y, T, 8); c.fillStyle = C.grass; c.fillRect(x, y, T, 5); c.fillStyle = ['#ff7eb6', '#7fd8ff', '#ffd23f', '#9cf2b8'][(cc * 7) % 4]; c.fillRect(x + 6 + (cc % 3) * 5, y + 1, 4, 2); }
     }
   }
+  CK.on(c, () => gumballBackDetail(st, L));
   // the head and the globe are drawn live (the crank turns, the gumballs show what is left)
+}
+// (rich props pass, Nov 2026) extra detail painted once into the cached back: wafer cells with a lit lip, the
+// machine frame's trim, panel seams and rivets, shaded candy-cane legs, waffle-textured ledges with cream oozing out
+// of the ends, and a chocolate floor of squares under a dripping frosting edge with sprinkles
+function gumballBackDetail(st, L) {
+  const g = L.grid, X0 = 180, X1 = 780;
+  // the frame: a chrome trim inside the red, a seam and a row of little rivets along the top and bottom
+  ctx.strokeStyle = 'rgba(255,220,226,0.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(X0 + 26, 140, X1 - X0 - 52, 302, 14) : ctx.rect(X0 + 26, 140, X1 - X0 - 52, 302); ctx.stroke();
+  ctx.strokeStyle = 'rgba(110,10,30,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(X0 + 4, 300); ctx.lineTo(X0 + 26, 300); ctx.moveTo(X1 - 26, 300); ctx.lineTo(X1 - 4, 300); ctx.stroke();
+  for (let x = X0 + 44; x < X1 - 40; x += 32) for (const y of [122, 449]) {
+    ctx.fillStyle = '#a81f35'; circle(x + 0.5, y + 0.6, 2); ctx.fill(); ctx.fillStyle = '#ff9aa8'; circle(x, y, 1.6); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(110,10,30,0.22)'; ctx.fillRect(X1 - 24, 130, 6, 310);
+  // the candy-cane legs: a lit left edge, a shaded right edge, a cap and a foot
+  for (const x of [X0 + 2, X1 - 30]) {
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x + 1, 452, 3, 58);
+    ctx.fillStyle = 'rgba(110,10,40,0.25)'; ctx.fillRect(x + 21, 452, 7, 58);
+    ctx.fillStyle = '#a81f35'; ctx.fillRect(x - 2, 452, 32, 5); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x - 2, 452, 32, 1.2);
+    ctx.fillStyle = '#c42a43'; rr(x - 3, 504, 34, 7, 3); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 1, 504.5, 30, 1.2);
+  }
+  // the cranker's tray rail posts and the board's glass edge
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(GUMBALL.boardX0 + 14, GUMBALL.boardY0 + 1.5); ctx.lineTo(GUMBALL.boardX1 - 14, GUMBALL.boardY0 + 1.5); ctx.stroke();
+  for (let r = 0; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) {
+    const ch = g[r][cc], x = cc * T, y = r * T;
+    if (ch === '=') {
+      // a waffle cross-hatch on the wafer halves, crumbs underneath
+      ctx.save(); ctx.beginPath(); ctx.rect(x, y, T, 4); ctx.rect(x, y + 7, T, 3); ctx.clip();
+      ctx.strokeStyle = 'rgba(140,80,30,0.3)'; ctx.lineWidth = 0.8; ctx.beginPath();
+      for (let k = -12; k < T + 12; k += 5) { ctx.moveTo(x + k, y); ctx.lineTo(x + k + 10, y + 11); ctx.moveTo(x + k + 10, y); ctx.lineTo(x + k, y + 11); }
+      ctx.stroke(); ctx.restore();
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x, y + 4, T, 1);
+      if (CK.r(cc, r) < 0.35) { ctx.fillStyle = 'rgba(200,140,80,0.6)'; circle(x + 8 + CK.r(r, cc) * 16, y + 14, 1.2); ctx.fill(); }
+      for (const [side, open] of [[0, g[r][cc - 1] !== '='], [1, g[r][cc + 1] !== '=']]) {
+        if (!open) continue;
+        // pink cream bulging out of the end
+        const ex = side ? x + T - 1 : x + 1;
+        ctx.fillStyle = '#ffd1ec'; ctx.beginPath(); ctx.ellipse(ex, y + 5.5, 3, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(ex - 1.5, y + 4, 2, 1);
+      }
+    } else if (ch === '#' && r >= ROWS - 1) {
+      // chocolate squares below a frosting edge
+      const top = r > 0 && g[r - 1][cc] !== '#', y0 = top ? y + 8 : y;
+      for (let sx = 0; sx < T; sx += T / 2) {
+        ctx.fillStyle = 'rgba(255,220,200,0.18)'; ctx.fillRect(x + sx + 2, y0 + 3, T / 2 - 4, 1.2); ctx.fillRect(x + sx + 2, y0 + 3, 1.2, T - (y0 - y) - 5);
+        ctx.fillStyle = 'rgba(30,10,5,0.25)'; ctx.fillRect(x + sx + 2, y + T - 3, T / 2 - 4, 1.2); ctx.fillRect(x + sx + T / 2 - 3, y0 + 3, 1.2, T - (y0 - y) - 5);
+      }
+      if (top) {
+        ctx.fillStyle = C.grass;
+        const d1 = 4 + CK.r(cc, 1) * 6, d2 = 3 + CK.r(cc, 2) * 5;
+        ctx.beginPath(); ctx.ellipse(x + 9, y + 7, 3.2, d1, 0, 0, Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x + 24, y + 7, 2.6, d2, 0, 0, Math.PI); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(x, y, T, 1.3);
+        const sp = ['#ff7eb6', '#7fd8ff', '#ffd23f', '#9cf2b8'];
+        for (let k = 0; k < 3; k++) { const h = CK.r(cc * 3 + k, r); ctx.save(); ctx.translate(x + 4 + h * (T - 8), y + 2.5 + (k % 2)); ctx.rotate(h * 6); ctx.fillStyle = sp[(cc + k) % 4]; ctx.fillRect(-2, -0.8, 4, 1.6); ctx.restore(); }
+      }
+    }
+  }
 }
 // a candy rail under a gumball's centre line
 function gumballRail(c, pts, cols) {
@@ -1207,8 +1271,13 @@ function gumballDrawCup(st, c, t) {
   // the glass
   ctx.strokeStyle = 'rgba(120,60,90,0.55)'; ctx.lineWidth = 2.5; rr(x0 + 4, y0, c.w - 8, y1 - y0, 10); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x0 + 10, y0 + 6, 4, y1 - y0 - 16);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(x0 + 16, y0 + 10, 1.5, y1 - y0 - 30);
+  ctx.fillStyle = 'rgba(120,60,90,0.18)'; ctx.fillRect(x0 + c.w - 14, y0 + 8, 3, y1 - y0 - 18);
+  ctx.fillStyle = 'rgba(200,220,255,0.35)'; rr(x0 + 8, y1 - 6, c.w - 16, 5, 2.5); ctx.fill();
   // the rim in the cup's colour, and a label with the pattern
   ctx.fillStyle = col.fill; rr(x0, y0 - 6, c.w, 10, 5); ctx.fill(); ctx.strokeStyle = col.dark; ctx.lineWidth = 2; rr(x0, y0 - 6, c.w, 10, 5); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; rr(x0 + 5, y0 - 4.5, c.w - 10, 2, 1); ctx.fill();
+  ctx.fillStyle = col.dark; for (let k = 1; k < 6; k++) { ctx.fillRect(x0 + k * c.w / 6 - 0.5, y0 - 1, 1, 3); }
   const lx = c.x, ly = y0 + 16;
   ctx.fillStyle = col.fill; circle(lx, ly, 11); ctx.fill(); ctx.strokeStyle = col.dark; ctx.lineWidth = 2; circle(lx, ly, 11); ctx.stroke();
   ctx.save(); circle(lx, ly, 10); ctx.clip(); ctx.translate(lx, ly); gumballPattern(col.pat, 11, 'rgba(255,255,255,0.95)'); ctx.restore();
@@ -1240,7 +1309,10 @@ function gumballDrawLever(st, lv, t) {
   const x = lv.x, y = lv.feet, kp = G.players[st.keep];
   ctx.fillStyle = '#4a2a3a'; rr(x - 12, y - 6, 24, 6, 3); ctx.fill();
   // a candy-cane lever on a little box
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x - 10, y - 6, 20, 1.2);
   ctx.fillStyle = '#ffe4f1'; rr(x - 9, y - 18, 18, 13, 4); ctx.fill(); ctx.strokeStyle = 'rgba(90,30,60,0.5)'; ctx.lineWidth = 1.5; rr(x - 9, y - 18, 18, 13, 4); ctx.stroke();
+  ctx.fillStyle = 'rgba(200,120,160,0.35)'; ctx.fillRect(x - 7, y - 9, 14, 2.5);
+  ctx.fillStyle = '#c995b3'; circle(x - 6, y - 14.5, 1.1); ctx.fill(); circle(x + 6, y - 14.5, 1.1); ctx.fill();
   const a = (-1 + 2 * lv.tilt) * 0.6;
   ctx.save(); ctx.translate(x, y - 14); ctx.rotate(a);
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -22); ctx.stroke();

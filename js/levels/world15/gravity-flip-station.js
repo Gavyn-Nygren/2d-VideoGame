@@ -570,6 +570,50 @@ function gravflipPaintBack(c, st, L) {
       c.restore();
     }
   }
+  CK.on(c, () => gravflipHullDetail(st, L));
+}
+// (rich props pass, Nov 2026) the hull's extra detail, painted once into the cached back: each block a bevelled
+// plate with screws, panel seams, the odd vent grille, hatch or warning label, scuffs, a walkway grating on every
+// floor and ceiling, and a dark outline where the hull meets the open room
+function gravflipHullDetail(st, L) {
+  const g = L.grid, solid = (cc, r) => cc >= 0 && cc < COLS && r >= 0 && r < ROWS && g[r][cc] === '#';
+  for (let r = 0; r < ROWS; r++) for (let cc = 0; cc < COLS; cc++) {
+    if (!solid(cc, r)) continue;
+    const x = cc * T, y = r * T, h = CK.r(cc, r + 3);
+    // a bevelled plate: lit top-left lip, dark bottom-right lip
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + 1, y + 1, T - 2, 1.5); ctx.fillRect(x + 1, y + 1, 1.5, T - 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + 1, y + T - 2.5, T - 2, 1.5); ctx.fillRect(x + T - 2.5, y + 1, 1.5, T - 2);
+    // screws with a slot
+    if ((cc + r) % 2 === 1) for (const [dx, dy] of [[5, 6], [T - 5, 6], [5, T - 6], [T - 5, T - 6]]) {
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.arc(x + dx + 0.4, y + dy + 0.5, 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.arc(x + dx, y + dy, 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(x + dx - 1, y + dy + 0.6); ctx.lineTo(x + dx + 1, y + dy - 0.6); ctx.stroke();
+    }
+    const inner = solid(cc - 1, r) && solid(cc + 1, r) && solid(cc, r - 1) && solid(cc, r + 1);
+    if (inner && h < 0.12) {   // a vent grille
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; for (let k = 0; k < 4; k++) ctx.fillRect(x + 7, y + 8 + k * 4, T - 14, 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (let k = 0; k < 4; k++) ctx.fillRect(x + 7, y + 10 + k * 4, T - 14, 0.8);
+    } else if (inner && h < 0.2) {   // a small hatch with a handle
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.2; ctx.strokeRect(x + 6, y + 6, T - 12, T - 12);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x + 11, y + 13, T - 22, 3);
+    } else if (h > 0.975 && inner) {   // a hazard label
+      ctx.fillStyle = 'rgba(255,210,63,0.55)'; ctx.fillRect(x + 8, y + 11, 14, 8);
+      ctx.fillStyle = 'rgba(42,36,64,0.7)'; ctx.beginPath(); ctx.moveTo(x + 15, y + 12); ctx.lineTo(x + 19, y + 18); ctx.lineTo(x + 11, y + 18); ctx.closePath(); ctx.fill();
+    }
+    // scuffs
+    if (h > 0.5 && h < 0.7) { ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 6 + h * 10, y + 15); ctx.lineTo(x + 14 + h * 10, y + 13); ctx.moveTo(x + 8, y + 22); ctx.lineTo(x + 13, y + 21); ctx.stroke(); }
+    // walkway grating dots on a floor (top open) or a ceiling (bottom open)
+    const openA = r > 0 && !solid(cc, r - 1), openB = r < ROWS - 1 && !solid(cc, r + 1);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    if (openA) for (let k = 0; k < 5; k++) ctx.fillRect(x + 3 + k * 6, y + 9, 3, 2);
+    if (openB) for (let k = 0; k < 5; k++) ctx.fillRect(x + 3 + k * 6, y + T - 11, 3, 2);
+    // an outline where the hull meets the room
+    ctx.fillStyle = 'rgba(10,8,30,0.45)';
+    if (cc > 0 && !solid(cc - 1, r)) ctx.fillRect(x, y, 1.5, T);
+    if (cc < COLS - 1 && !solid(cc + 1, r)) ctx.fillRect(x + T - 1.5, y, 1.5, T);
+    if (openA) ctx.fillRect(x, y, T, 1.2);
+    if (openB) ctx.fillRect(x, y + T - 1.2, T, 1.2);
+  }
 }
 function gravflipWindow(c, x, y, r, seed) {
   c.fillStyle = '#3a3f66'; c.beginPath(); c.arc(x, y, r + 7, 0, Math.PI * 2); c.fill();
@@ -602,10 +646,17 @@ function gravflipDeco(c, st) {
     // cargo crates and a parked shuttle silhouette
     for (const [x, w, h, col] of [[100, 50, 40, '#7a6a9a'], [700, 60, 46, '#5f7aa8'], [756, 40, 30, '#8a6a7a']]) {
       c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(x + w / 2 + 3, 480, w / 2 + 6, 4, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = col; c.fillRect(x, 480 - h, w, h);
-      c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x, 480 - h, w, 4); c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + w - 6, 480 - h + 4, 6, h - 4);
-      c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 2; c.strokeRect(x + 1, 480 - h + 1, w - 2, h - 2);
-      c.beginPath(); c.moveTo(x + 2, 480 - h + 2); c.lineTo(x + w - 2, 478); c.moveTo(x + w - 2, 480 - h + 2); c.lineTo(x + 2, 478); c.stroke();
+      // (rich props pass) a cargo crate: ribbed metal, corner guards with bolts, a stencilled code and a hazard strip
+      CK.on(c, () => {
+        CK.metal(x, 480 - h, w, h, col, { seam: 0, rivet: false, r: 2, seed: x });
+        ctx.fillStyle = shade(col, 0.2); for (let rx = x + 8; rx < x + w - 6; rx += 8) ctx.fillRect(rx, 480 - h + 6, 2.5, h - 12);
+        ctx.fillStyle = tint(col, 0.2); for (let rx = x + 8; rx < x + w - 6; rx += 8) ctx.fillRect(rx - 1, 480 - h + 6, 1, h - 12);
+        ctx.fillStyle = shade(col, 0.35);
+        for (const [gx, gy] of [[x, 480 - h], [x + w - 8, 480 - h], [x, 472], [x + w - 8, 472]]) { ctx.fillRect(gx, gy, 8, 8); ctx.fillStyle = tint(col, 0.45); ctx.beginPath(); ctx.arc(gx + 4, gy + 4, 1.4, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = shade(col, 0.35); }
+        ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '700 8px "Atkinson Hyperlegible", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(w > 55 ? 'C-12' : w > 45 ? 'K-7' : 'X3', x + w / 2, 480 - h / 2);
+        ctx.fillStyle = '#ffd23f'; ctx.fillRect(x + 10, 480 - h + 2, w - 20, 2.5);
+      });
     }
     c.fillStyle = 'rgba(255,215,120,0.18)'; c.font = '700 13px "Atkinson Hyperlegible", sans-serif'; c.textAlign = 'center'; c.fillText('DOCK 7', 560, 300);
   } else if (st.style === 'garden') {
@@ -675,7 +726,9 @@ function gravflipDrawSwitch(st, sw, t) {
   const col = PCOL[sw.owner], dark = PDARK[sw.owner], lit = Math.max(sw.near, sw.flash);
   ctx.save(); ctx.translate(sw.x, sw.surf); if (sw.ceil) ctx.scale(1, -1);
   ctx.fillStyle = '#2b2d50'; rr(-12, -6, 24, 6, 2); ctx.fill();
+  ctx.fillStyle = '#8f95bf'; ctx.beginPath(); ctx.arc(-8.5, -3, 1.3, 0, Math.PI * 2); ctx.arc(8.5, -3, 1.3, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#4a4e7e'; ctx.fillRect(-3, -20, 6, 15);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(-3, -20, 1.5, 15); ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(1.5, -20, 1.5, 15);
   ctx.fillStyle = dark; rr(-12, -34, 24, 16, 6); ctx.fill();
   ctx.fillStyle = col; rr(-10, -32, 20, 12, 5); ctx.fill();
   if (lit > 0) { ctx.globalAlpha = 0.5 * lit; ctx.fillStyle = '#fff'; rr(-10, -32, 20, 12, 5); ctx.fill(); ctx.globalAlpha = 1; }
@@ -690,6 +743,8 @@ function gravflipDrawSwitch(st, sw, t) {
 function gravflipDrawButton(b) {
   ctx.save(); ctx.translate(b.x, b.surf); if (b.ceil) ctx.scale(1, -1);
   ctx.fillStyle = '#2b2d50'; rr(-13, -5, 26, 5, 2); ctx.fill();
+  ctx.fillStyle = '#ffd23f'; for (let k = -12; k < 12; k += 6) ctx.fillRect(k, -2, 3, 2);
+  ctx.fillStyle = '#8f95bf'; ctx.beginPath(); ctx.arc(-11, -3.5, 1, 0, Math.PI * 2); ctx.arc(11, -3.5, 1, 0, Math.PI * 2); ctx.fill();
   const h = 7 - b.anim * 4;
   ctx.fillStyle = b.down ? '#bffaff' : '#5ef0ff'; rr(-10, -5 - h, 20, h + 1, 3); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(-7, -4 - h, 14, 1.5);

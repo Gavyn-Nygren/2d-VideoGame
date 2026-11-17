@@ -1086,9 +1086,23 @@ function raftDrawBanks(st) {
     ctx.strokeStyle = 'rgba(255,240,210,0.45)'; ctx.lineWidth = 2; ctx.beginPath(); for (const [x, y] of pts) ctx.lineTo(x, y + s * 4 - 4); ctx.stroke();
     ctx.strokeStyle = 'rgba(150,96,40,0.55)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); for (let i = 0; i < pts.length; i += 2) { const [x, y] = pts[i]; ctx.moveTo(x, y - 2 + s * 4); ctx.lineTo(x, y + 6 + s * 4); } ctx.stroke();
+    // (rich props pass) small waffle pockets in the wafer, and a dark shade where it meets the chocolate
+    ctx.fillStyle = 'rgba(150,96,40,0.4)';
+    for (let i = 1; i < pts.length; i += 2) { const [x, y] = pts[i]; ctx.fillRect(x - 3, y + s * 4 - 2.5, 6, 2); ctx.fillRect(x - 3, y + s * 4 + 2, 6, 2); }
+    ctx.strokeStyle = 'rgba(60,24,10,0.3)'; ctx.lineWidth = 2; ctx.beginPath(); for (const [x, y] of pts) ctx.lineTo(x, y - s * 5); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,248,236,0.9)'; ctx.lineWidth = 4; ctx.beginPath();
     for (const [x, y] of pts) ctx.lineTo(x, y - s * 3 + Math.sin(x / 13 + G.clock * 3) * 1.5);
     ctx.stroke();
+    // piped cream beads along the outer edge of the wafer and a drip of frosting down into the river now and then
+    for (let i = 0; i < pts.length; i++) {
+      const [x, y] = pts[i], gx = Math.round(x / 8);
+      if (gx % 2) continue;
+      const by = y + s * 12;
+      ctx.fillStyle = 'rgba(180,120,140,0.3)'; circle(x + 0.8, by + 1, 3.2); ctx.fill();
+      ctx.fillStyle = '#fff4fa'; circle(x, by, 3); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'; circle(x - 1, by - 1, 1); ctx.fill();
+      if (hash(gx, s + 40) % 7 === 0) { ctx.fillStyle = 'rgba(255,248,236,0.85)'; ctx.beginPath(); ctx.ellipse(x, y - s * 8, 2.2, 4.5, 0, 0, Math.PI * 2); ctx.fill(); }
+    }
   }
   const c = st.c, vil = c.dock && c.dock.village;
   for (let k = Math.floor((cam.x - 120) / 110); k * 110 < cam.x + W + 120; k++) for (const s of [-1, 1]) {
@@ -1128,34 +1142,82 @@ function raftDrawBanks(st) {
 }
 // one bank decoration: 0 lollipop tree, 1 candy cane, 2 gumdrop, 3 cupcake bush, 4 cotton-candy tree, 5 chocolate drop
 function raftDeco(x, y, kind, h) {
-  const cols = ['#ff5fa2', '#58c6ff', '#ffd23d', '#8be37a', '#c58cff', '#ff8a4a'], col = cols[(h >>> 3) % cols.length];
-  ctx.fillStyle = 'rgba(140,60,90,0.14)'; ctx.beginPath(); ctx.ellipse(x, y + 4, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
+  const ci = (h >>> 3) % 6, v = h % 5;
+  CK.pic('rfdeco' + kind + '|' + ci + '|' + v, 64, 80, 32, 68, () => raftDecoPaint(kind, ci, v), x, y);
+}
+// (rich props pass, Nov 2026) one bank decoration, drawn at (0, 0) with a shadow, shading, an outline in a dark
+// shade of its own colour and small sweet details
+function raftDecoPaint(kind, ci, v) {
+  const cols = ['#ff5fa2', '#58c6ff', '#ffd23d', '#8be37a', '#c58cff', '#ff8a4a'], col = cols[ci], dk = shade(col, 0.35), x = 0, y = 0;
+  ctx.fillStyle = 'rgba(140,60,90,0.16)'; ctx.beginPath(); ctx.ellipse(x + 2, y + 4, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.lineJoin = 'round';
   if (kind === 0) {
-    ctx.fillStyle = '#fff'; ctx.fillRect(x - 2.5, y - 34, 5, 38);
+    // a lollipop tree: a shaded stick, a ribbon bow, an outlined swirl disc with a shine
+    ctx.fillStyle = '#fff'; ctx.fillRect(x - 2.5, y - 34, 5, 38); ctx.fillStyle = '#d9cbd6'; ctx.fillRect(x + 0.8, y - 34, 1.7, 38);
     ctx.fillStyle = col; circle(x, y - 44, 17); ctx.fill();
-    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3.5; ctx.beginPath();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.beginPath();
     for (let i = 0; i <= 24; i++) { const a = i / 24 * Math.PI * 4, r = 2 + i * 0.6; ctx.lineTo(x + Math.cos(a) * r, y - 44 + Math.sin(a) * r); }
     ctx.stroke();
+    ctx.fillStyle = 'rgba(40,20,40,0.12)'; ctx.beginPath(); ctx.arc(x, y - 44, 17, -0.4, Math.PI * 0.85); ctx.arc(x - 3, y - 47, 15, Math.PI * 0.85, -0.4, true); ctx.fill();
+    ctx.strokeStyle = dk; ctx.lineWidth = 2; circle(x, y - 44, 17); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(x - 7, y - 52, 4.5, 2.5, -0.6, 0, Math.PI * 2); ctx.fill();
+    const bc = cols[(ci + 2) % 6];
+    ctx.fillStyle = bc; ctx.beginPath(); ctx.moveTo(x, y - 24); ctx.lineTo(x - 9, y - 29); ctx.lineTo(x - 9, y - 19); ctx.closePath(); ctx.moveTo(x, y - 24); ctx.lineTo(x + 9, y - 29); ctx.lineTo(x + 9, y - 19); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade(bc, 0.3); circle(x, y - 24, 2.4); ctx.fill();
   } else if (kind === 1) {
-    ctx.lineCap = 'round'; ctx.lineWidth = 7;
-    ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x, y - 34); ctx.arc(x + 9, y - 34, 9, Math.PI, 0); ctx.stroke();
-    ctx.strokeStyle = '#ff3d6e'; ctx.setLineDash([5, 6]); ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x, y - 34); ctx.arc(x + 9, y - 34, 9, Math.PI, 0); ctx.stroke(); ctx.setLineDash([]);
+    // a candy cane: an outline, the stripes, a lit line down it
+    ctx.lineCap = 'round';
+    const cane = () => { ctx.beginPath(); ctx.moveTo(x, y + 2); ctx.lineTo(x, y - 34); ctx.arc(x + 9, y - 34, 9, Math.PI, 0); };
+    ctx.lineWidth = 9.5; ctx.strokeStyle = '#a8233f'; cane(); ctx.stroke();
+    ctx.lineWidth = 7; ctx.strokeStyle = '#fff'; cane(); ctx.stroke();
+    ctx.strokeStyle = '#ff3d6e'; ctx.setLineDash([5, 6]); cane(); ctx.stroke(); ctx.setLineDash([]);
+    ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.moveTo(x - 2, y); ctx.lineTo(x - 2, y - 34); ctx.arc(x + 9, y - 34, 11, Math.PI, Math.PI * 1.5); ctx.stroke();
   } else if (kind === 2) {
-    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x - 15, y + 2); ctx.quadraticCurveTo(x - 16, y - 24, x, y - 24); ctx.quadraticCurveTo(x + 16, y - 24, x + 15, y + 2); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.55)'; for (let i = 0; i < 5; i++) ctx.fillRect(x - 9 + (h >>> i) % 16, y - 18 + ((h >>> (i + 4)) % 16), 2, 2);
+    // a gumdrop: shaded right side, a lit left edge, sugar crystals, an outline
+    const drop = () => { ctx.beginPath(); ctx.moveTo(x - 15, y + 2); ctx.quadraticCurveTo(x - 16, y - 24, x, y - 24); ctx.quadraticCurveTo(x + 16, y - 24, x + 15, y + 2); ctx.closePath(); };
+    ctx.fillStyle = col; drop(); ctx.fill();
+    ctx.save(); drop(); ctx.clip();
+    ctx.fillStyle = 'rgba(40,20,40,0.15)'; ctx.beginPath(); ctx.ellipse(x + 12, y - 4, 10, 22, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.ellipse(x - 8, y - 14, 4, 8, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)'; for (let i = 0; i < 9; i++) { const sx = x - 10 + CK.r(v * 9 + i, 3) * 20, sy = y - 18 + CK.r(i, v + 5) * 16; ctx.fillRect(sx, sy, 1.8, 1.8); }
+    ctx.strokeStyle = dk; ctx.lineWidth = 2; drop(); ctx.stroke();
   } else if (kind === 3) {
+    // a cupcake: a ribbed wrapper, a piped swirl of frosting with sprinkles, a cherry
     ctx.fillStyle = '#c98a45'; ctx.beginPath(); ctx.moveTo(x - 13, y - 12); ctx.lineTo(x + 13, y - 12); ctx.lineTo(x + 10, y + 3); ctx.lineTo(x - 10, y + 3); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = col; for (const [dx, dy, r] of [[-8, -16, 8], [8, -16, 8], [0, -22, 9]]) { circle(x + dx, y + dy, r); ctx.fill(); }
-    ctx.fillStyle = '#ff3d6e'; circle(x, y - 33, 4); ctx.fill();
+    ctx.strokeStyle = '#a06a2c'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = -9; k <= 9; k += 4.5) { ctx.moveTo(x + k * 1.25, y - 12); ctx.lineTo(x + k, y + 3); } ctx.stroke();
+    ctx.fillStyle = 'rgba(255,240,210,0.35)'; ctx.fillRect(x - 11, y - 11, 3, 13);
+    ctx.strokeStyle = '#8a5a24'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 13, y - 12); ctx.lineTo(x - 10, y + 3); ctx.lineTo(x + 10, y + 3); ctx.lineTo(x + 13, y - 12); ctx.stroke();
+    for (const [dx, dy, r] of [[-8, -16, 8], [8, -16, 8], [0, -22, 9]]) { ctx.fillStyle = col; circle(x + dx, y + dy, r); ctx.fill(); }
+    ctx.strokeStyle = dk; ctx.lineWidth = 1.6; for (const [dx, dy, r, a0, a1] of [[-8, -16, 8, 1.6, 3.9], [8, -16, 8, -0.8, 1.6], [0, -22, 9, 3.4, 6.0]]) { ctx.beginPath(); ctx.arc(x + dx, y + dy, r, a0, a1); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x - 1, y - 21, 5, 3.4, 5.2); ctx.stroke();
+    const sp = ['#ffffff', '#ffd23d', '#58c6ff', '#8be37a']; for (let i = 0; i < 6; i++) { ctx.fillStyle = sp[i % 4]; ctx.save(); ctx.translate(x - 11 + CK.r(i, v) * 22, y - 25 + CK.r(v, i + 9) * 14); ctx.rotate(i); ctx.fillRect(-1.6, -0.6, 3.2, 1.2); ctx.restore(); }
+    ctx.fillStyle = '#ff3d6e'; circle(x, y - 33, 4); ctx.fill(); ctx.strokeStyle = '#a8233f'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(x - 1.3, y - 34.3, 1.2); ctx.fill();
+    ctx.strokeStyle = '#5a8a2a'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x, y - 37); ctx.quadraticCurveTo(x + 2, y - 41, x + 4, y - 42); ctx.stroke();
   } else if (kind === 4) {
-    ctx.fillStyle = '#e8b06a'; ctx.fillRect(x - 2, y - 26, 4, 30);
-    ctx.fillStyle = (h & 1) ? '#ffb3e0' : '#b9e6ff';
-    for (const [dx, dy, r] of [[-10, -36, 12], [10, -36, 12], [0, -46, 13], [0, -30, 11]]) { circle(x + dx, y + dy, r); ctx.fill(); }
+    // a cotton-candy tree: a wafer stick, puffs shaded underneath, wisps on top
+    const pc = (v & 1) ? '#ffb3e0' : '#b9e6ff';
+    ctx.fillStyle = '#e8b06a'; ctx.fillRect(x - 2, y - 26, 4, 30); ctx.fillStyle = '#b07a38'; ctx.fillRect(x + 0.6, y - 26, 1.4, 30);
+    const puffs = [[-10, -36, 12], [10, -36, 12], [0, -46, 13], [0, -30, 11]];
+    ctx.fillStyle = shade(pc, 0.18); for (const [dx, dy, r] of puffs) { circle(x + dx + 1, y + dy + 2, r); ctx.fill(); }
+    ctx.fillStyle = pc; for (const [dx, dy, r] of puffs) { circle(x + dx, y + dy, r - 1); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; for (const [dx, dy, r] of puffs) { circle(x + dx - r * 0.3, y + dy - r * 0.35, r * 0.4); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x - 3, y - 48, 6, 3.5, 5); ctx.moveTo(x + 14, y - 40); ctx.arc(x + 10, y - 38, 5, 5.2, 6.2); ctx.stroke();
   } else {
-    ctx.fillStyle = '#5a2e18'; ctx.beginPath(); ctx.moveTo(x - 13, y + 2); ctx.quadraticCurveTo(x - 6, y - 8, x, y - 22); ctx.quadraticCurveTo(x + 6, y - 8, x + 13, y + 2); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x - 5, y - 10, 3, 8);
-    ctx.fillStyle = '#fff'; ctx.fillRect(x - 1, y - 30, 8, 3);
+    // a chocolate drop: an outline, ridges spiralling to the tip, a glossy shine and its paper flag
+    const drop = () => { ctx.beginPath(); ctx.moveTo(x - 13, y + 2); ctx.quadraticCurveTo(x - 6, y - 8, x, y - 22); ctx.quadraticCurveTo(x + 6, y - 8, x + 13, y + 2); ctx.closePath(); };
+    ctx.fillStyle = '#5a2e18'; drop(); ctx.fill();
+    ctx.save(); drop(); ctx.clip();
+    ctx.strokeStyle = '#7a4226'; ctx.lineWidth = 1.5; ctx.beginPath(); for (const yy of [-3, -9, -15]) { ctx.moveTo(x - 14, yy + 3); ctx.quadraticCurveTo(x, yy - 3, x + 14, yy + 1); } ctx.stroke();
+    ctx.fillStyle = 'rgba(30,10,5,0.3)'; ctx.fillRect(x + 4, y - 22, 12, 26);
+    ctx.restore();
+    ctx.strokeStyle = '#2e140a'; ctx.lineWidth = 1.6; drop(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x - 5, y - 10, 2.5, 8);
+    ctx.strokeStyle = '#d9cbd6'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y - 22); ctx.lineTo(x + 1, y - 30); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.fillRect(x + 1, y - 31, 9, 4); ctx.fillStyle = '#ff5fa2'; ctx.fillRect(x + 3, y - 30, 5, 1.2);
   }
+  ctx.lineCap = 'butt';
 }
 // things in the water: the ramp and falls, gates, jams, rocks, logs, bonbons, candy
 function raftDrawThings(st) {
@@ -1170,7 +1232,10 @@ function raftDrawThings(st) {
     ctx.fillStyle = 'rgba(60,24,10,0.35)'; ctx.beginPath(); ctx.ellipse(o.x + 4, o.y + 6, o.r * 1.05, o.r * 0.9, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#f0dde8'; ctx.beginPath(); ctx.ellipse(o.x, o.y + bob + 4, o.r * sq, o.r * 0.92 / sq, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(o.x, o.y + bob - 2, o.r * 0.92 * sq, o.r * 0.8 / sq, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#d8b9a4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(o.x, o.y + bob + 4, o.r * sq - 1, o.r * 0.92 / sq - 1, 0, 0.15, Math.PI - 0.15); ctx.stroke();
+    ctx.strokeStyle = '#d8c0d0'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(o.x, o.y + bob - 2, o.r * 0.92 * sq, o.r * 0.8 / sq, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = '#ffb3d6'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(o.x, o.y + bob - 2, o.r * 0.5, 0.3, 4.5); ctx.stroke();
+    ctx.fillStyle = 'rgba(230,200,220,0.9)'; for (let k = 0; k < 5; k++) { const a = k * 1.3 + o.ph, d = o.r * (0.3 + (k % 3) * 0.2); ctx.fillRect(o.x + Math.cos(a) * d, o.y + bob - 2 + Math.sin(a) * d * 0.8, 1.6, 1.6); }
     ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.ellipse(o.x - o.r * 0.35, o.y + bob - o.r * 0.4, o.r * 0.25, o.r * 0.14, -0.5, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = 'rgba(255,240,226,0.5)'; ctx.lineWidth = 2; circle(o.x, o.y + 4, o.r + 4 + Math.sin(t * 3 + o.ph) * 2); ctx.stroke();
     ctx.globalAlpha = 1;
@@ -1191,6 +1256,8 @@ function raftDrawThings(st) {
     ctx.globalAlpha = a;
     ctx.strokeStyle = 'rgba(255,240,226,0.45)'; ctx.lineWidth = 2; circle(o.x, y + 3, o.r + 4 + Math.sin(t * 4 + o.ph) * 2); ctx.stroke();
     ctx.fillStyle = '#3e1d0e'; circle(o.x, y + bob, o.r); ctx.fill();
+    ctx.fillStyle = '#5a2e18'; ctx.beginPath(); ctx.arc(o.x, y + bob, o.r - 1.5, Math.PI * 0.95, Math.PI * 1.75); ctx.arc(o.x + 2, y + bob + 2, o.r - 2, Math.PI * 1.75, Math.PI * 0.95, true); ctx.fill();
+    ctx.strokeStyle = '#1e0c05'; ctx.lineWidth = 1.5; circle(o.x, y + bob, o.r); ctx.stroke();
     ctx.strokeStyle = ['#ff8fc7', '#ffffff', '#ffd23d'][o.col]; ctx.lineWidth = 2.5; ctx.beginPath();
     for (let i = 0; i < 5; i++) { const xx = o.x - o.r * 0.7 + i * o.r * 0.35; ctx.lineTo(xx, y + bob - 4 + (i % 2 ? 5 : -2)); }
     ctx.stroke();
@@ -1204,13 +1271,33 @@ function raftDrawThings(st) {
   }
 }
 function raftWafer(x, y, w, h) {
-  ctx.fillStyle = '#e8b06a'; rr(x, y, w, h, 7); ctx.fill();
-  ctx.strokeStyle = '#b07a38'; ctx.lineWidth = 2; rr(x, y, w, h, 7); ctx.stroke();
-  ctx.strokeStyle = 'rgba(150,96,40,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath();
-  for (let i = 10; i < w - 4; i += 10) { ctx.moveTo(x + i, y + 3); ctx.lineTo(x + i, y + h - 3); }
-  for (let j = 8; j < h - 2; j += 8) { ctx.moveTo(x + 3, y + j); ctx.lineTo(x + w - 3, y + j); }
-  ctx.stroke();
-  ctx.fillStyle = '#f6efdf'; rr(x + 3, y + 2, w - 6, 3, 2); ctx.fill();
+  const W0 = Math.round(w), H0 = Math.round(h);
+  CK.pic('rfw' + W0 + '|' + H0, W0 + 4, H0 + 4, 2, 2, () => raftWaferPaint(W0, H0), x, y);
+}
+// (rich props pass, Nov 2026) a wafer biscuit: sunken waffle pockets with a lit lip, a cream layer, crumbs, a
+// chocolate-dipped end with a drip, a lit top edge and a darker outline
+function raftWaferPaint(w, h) {
+  const r = Math.min(7, h / 2 - 1);
+  ctx.fillStyle = '#e8b06a'; rr(0, 0, w, h, r); ctx.fill();
+  ctx.save(); rr(1, 1, w - 2, h - 2, r); ctx.clip();
+  const pw = w > 30 ? 7 : 5, ph = h > 20 ? 5 : 4;
+  for (let i = 4; i < w - 4; i += pw + 3) for (let j = 5; j < h - 4; j += ph + 3) {
+    ctx.fillStyle = '#cf914a'; ctx.fillRect(i, j, pw, ph);
+    ctx.fillStyle = 'rgba(120,70,20,0.35)'; ctx.fillRect(i, j, pw, 1);
+    ctx.fillStyle = 'rgba(255,236,200,0.55)'; ctx.fillRect(i, j + ph - 0.8, pw, 0.8);
+  }
+  if (h >= 20) { ctx.fillStyle = '#f6efdf'; ctx.fillRect(0, h / 2 - 1.5, w, 3); ctx.fillStyle = 'rgba(200,150,110,0.45)'; ctx.fillRect(0, h / 2 + 1.5, w, 0.8); }
+  ctx.fillStyle = 'rgba(120,70,20,0.28)'; ctx.fillRect(0, h - 4, w, 4);
+  if (w > 40) {
+    // a chocolate-dipped end
+    ctx.fillStyle = '#5a2e18'; ctx.fillRect(w - 13, 0, 13, h);
+    ctx.beginPath(); ctx.ellipse(w - 13, h * 0.35, 3, 4, 0, 0, Math.PI * 2); ctx.ellipse(w - 13, h * 0.75, 2.4, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,190,0.35)'; ctx.fillRect(w - 11, 2, 1.5, h - 5);
+  }
+  ctx.restore();
+  ctx.fillStyle = '#f6efdf'; rr(3, 2, w - 6 - (w > 40 ? 12 : 0), 2.5, 1.2); ctx.fill();
+  ctx.strokeStyle = '#a06a2c'; ctx.lineWidth = 2; rr(0, 0, w, h, r); ctx.stroke();
+  for (let k = 0; k < Math.floor(w / 30); k++) { ctx.fillStyle = 'rgba(150,96,40,0.7)'; ctx.fillRect(8 + CK.r(w + k, h) * (w - 30), 3 + CK.r(k, w) * (h - 8), 1.6, 1.4); }
 }
 function raftDrawCandy(cd, x, y, s, t) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
@@ -1247,7 +1334,13 @@ function raftDrawCandy(cd, x, y, s, t) {
 }
 function raftDrawGate(st, g) {
   const t = G.clock, top = raftCY(st, g.x) - raftHW(st, g.x), bot = raftCY(st, g.x) + raftHW(st, g.x), rp = raftRingPos(st, g);
-  for (const y of [top - 6, bot + 6]) { ctx.fillStyle = '#9a5a1e'; rr(g.x - 9, y - 9, 18, 18, 5); ctx.fill(); ctx.fillStyle = '#ffd23d'; circle(g.x, y, 4); ctx.fill(); }
+  for (const y of [top - 6, bot + 6]) {
+    ctx.fillStyle = 'rgba(60,24,10,0.3)'; rr(g.x - 8, y - 7, 18, 18, 5); ctx.fill();
+    ctx.fillStyle = '#9a5a1e'; rr(g.x - 9, y - 9, 18, 18, 5); ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,170,0.35)'; ctx.fillRect(g.x - 7, y - 8, 14, 1.6); ctx.fillStyle = 'rgba(40,15,5,0.3)'; ctx.fillRect(g.x - 7, y + 6.5, 14, 1.6);
+    ctx.strokeStyle = '#5e3410'; ctx.lineWidth = 1.2; rr(g.x - 9, y - 9, 18, 18, 5); ctx.stroke();
+    ctx.fillStyle = '#ffd23d'; circle(g.x, y, 4); ctx.fill(); ctx.fillStyle = '#c9971a'; circle(g.x + 0.8, y + 0.8, 2); ctx.fill();
+  }
   const pullU = g.open ? 0 : clamp(g.pull / (g.gold ? RAFT.ringPullGold : RAFT.ringPull), 0, 1);
   ctx.lineCap = 'round';
   if (!g.open) {
@@ -1268,6 +1361,7 @@ function raftDrawGate(st, g) {
   ctx.strokeStyle = 'rgba(217,138,38,0.7)'; ctx.lineWidth = 3; ctx.setLineDash([7, 6]);
   ctx.beginPath(); ctx.moveTo(rp.x, rp.y + g.side * 14); ctx.quadraticCurveTo((rp.x + g.x) / 2, rp.y + g.side * 34, g.x, g.side < 0 ? top - 6 : bot + 6); ctx.stroke(); ctx.setLineDash([]);
   ctx.fillStyle = '#9a5a1e'; ctx.fillRect(rp.x - 4, rp.y + (g.side < 0 ? -28 : 4), 8, 24);
+  ctx.fillStyle = 'rgba(255,220,170,0.4)'; ctx.fillRect(rp.x - 4, rp.y + (g.side < 0 ? -28 : 4), 2, 24); ctx.fillStyle = 'rgba(40,15,5,0.3)'; ctx.fillRect(rp.x + 2, rp.y + (g.side < 0 ? -28 : 4), 2, 24);
   const glow = !g.open ? 0.5 + 0.5 * Math.sin(t * 5) : 0, rad = g.gold ? 15 : 12, ry = rp.y + pullU * 10 * -g.side;
   if (!g.open) { ctx.fillStyle = g.gold ? 'rgba(255,197,61,' + (0.3 + glow * 0.3) + ')' : 'rgba(255,255,255,' + (0.2 + glow * 0.25) + ')'; circle(rp.x, rp.y, rad + 9); ctx.fill(); }
   ctx.lineWidth = 6; ctx.strokeStyle = g.gold ? C.gold : '#ffffff'; circle(rp.x, ry, rad); ctx.stroke();
@@ -1327,8 +1421,16 @@ function raftDrawDock(st) {
     const k = Math.floor((x - d.x) / 16) & 1;
     ctx.fillStyle = d.gold ? (k ? '#ffd76a' : C.gold) : (k ? '#e8b06a' : '#d99a50');
     rr(x, top - 14, 14, 46, 3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,240,210,0.4)'; ctx.fillRect(x + 1, top - 13, 1.5, 44);
+    ctx.fillStyle = 'rgba(120,70,20,0.3)'; ctx.fillRect(x + 11.5, top - 13, 1.5, 44);
+    ctx.fillStyle = 'rgba(150,96,40,0.35)'; for (let yy = top - 6; yy < top + 28; yy += 8) ctx.fillRect(x + 4, yy, 6, 3);
+    ctx.fillStyle = '#8a5a24'; circle(x + 7, top - 10, 1.2); ctx.fill(); circle(x + 7, top + 28, 1.2); ctx.fill();
   }
-  ctx.fillStyle = '#9a5a1e'; for (const x of [d.x - w - 6, d.x + w + 4]) { circle(x, top + 30, 6); ctx.fill(); }
+  for (const x of [d.x - w - 6, d.x + w + 4]) {
+    ctx.fillStyle = '#9a5a1e'; circle(x, top + 30, 6); ctx.fill();
+    ctx.strokeStyle = '#fff4fa'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, top + 30, 4, 0.4, 2.4); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,220,170,0.45)'; circle(x - 2, top + 28, 1.6); ctx.fill();
+  }
   ctx.fillStyle = 'rgba(92,44,24,0.92)'; rr(d.x - 42, top - 54, 84, 28, 10); ctx.fill();
   text(d.village ? 'HOME!' : 'DOCK', d.x, top - 39.5, 16, '#ffe7f3', 'center');
   // the licorice net past the pier
