@@ -389,15 +389,17 @@ function crDraw(st) {
   ctx.restore();
 }
 let crShadeCv = null;
-function crDrawLane(st, lane, look) {
-  const c = st.course, cam = st.cam.x, x0 = cam - 40, x1 = cam + W + 40, base = CR.lanes[lane], t = G.clock;
-  ctx.save(); ctx.translate(-cam, 0);
-  // the sand of this lane
-  const g = ctx.createLinearGradient(0, base - 40, 0, base + 100);
-  g.addColorStop(0, look.near[lane ? 0 : 1]); g.addColorStop(1, lane ? '#d8a860' : '#c99a58');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x0, H);
-  for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, crGround(c, lane, x));
-  ctx.lineTo(x1, H); ctx.fill();
+// The still sand of a lane on g, in world coordinates, from x0 to x1: its fill, the slope shading, wind ripples, pebbles,
+// scrub and half-buried stones, and the lit crest. Every point and detail sits on a world grid (x0 is snapped to it),
+// so any stretch of a lane paints the same sand wherever it starts.
+function crPaintLaneGround(g, c, lane, look, x0, x1) {
+  const base = CR.lanes[lane];
+  x0 = Math.floor(x0 / 8) * 8;
+  const sg = g.createLinearGradient(0, base - 40, 0, base + 100);
+  sg.addColorStop(0, look.near[lane ? 0 : 1]); sg.addColorStop(1, lane ? '#d8a860' : '#c99a58');
+  g.fillStyle = sg; g.beginPath(); g.moveTo(x0, H);
+  for (let x = x0; x <= x1; x += 8) g.lineTo(x, crGround(c, lane, x));
+  g.lineTo(x1, H); g.fill();
   { const step = 8, xs = Math.floor(x0 / step) * step, n = Math.ceil((x1 - xs) / step) + 1, ys = new Array(n);
     for (let i = 0; i < n; i++) ys[i] = crGround(c, lane, xs + i * step);
     // faces turned to the sun (rising to the right) catch light; the far sides fall into shade, deeper on steep faces
@@ -411,51 +413,82 @@ function crDrawLane(st, lane, look) {
         else { id.data[o] = 120; id.data[o + 1] = 70; id.data[o + 2] = 30; id.data[o + 3] = Math.round(255 * 0.24 * k); }
       }
       g2.putImageData(id, 0, 0);
-      const hg = ctx.createPattern(cv, 'repeat-y'); if (hg && hg.setTransform) hg.setTransform(new DOMMatrix([step, 0, 0, 1, xs - step / 2, 0]));
+      const hg = g.createPattern(cv, 'repeat-y'); if (hg && hg.setTransform) hg.setTransform(new DOMMatrix([step, 0, 0, 1, xs - step / 2, 0]));
       const yb = lane ? H : CR.lanes[1] + 40;
-      ctx.fillStyle = hg; ctx.beginPath(); ctx.moveTo(xs, yb);
-      for (let i = 0; i < n; i++) ctx.lineTo(xs + i * step, ys[i]);
-      ctx.lineTo(xs + (n - 1) * step, yb); ctx.closePath(); ctx.fill(); }
+      g.fillStyle = hg; g.beginPath(); g.moveTo(xs, yb);
+      for (let i = 0; i < n; i++) g.lineTo(xs + i * step, ys[i]);
+      g.lineTo(xs + (n - 1) * step, yb); g.closePath(); g.fill(); }
     // the front lane throws a soft shade on the sand behind it
-    if (lane === 1) { ctx.strokeStyle = 'rgba(110,64,26,0.16)'; ctx.lineWidth = 3; ctx.beginPath(); for (let i = 0; i < n; i += 2) { if (i) ctx.lineTo(xs + i * step, ys[i] - 3); else ctx.moveTo(xs, ys[0] - 3); } ctx.stroke(); }
+    if (lane === 1) { g.strokeStyle = 'rgba(110,64,26,0.16)'; g.lineWidth = 3; g.beginPath(); for (let i = (xs / step) & 1; i < n; i += 2) { if (i > 1) g.lineTo(xs + i * step, ys[i] - 3); else g.moveTo(xs + i * step, ys[i] - 3); } g.stroke(); }
     // wind ripples: little runs of parallel curves that follow the dune, a dark trough with a lit lip
     for (const [col, oy] of [['rgba(255,240,205,0.25)', -1.2], ['rgba(140,90,40,0.16)', 0]]) {
-      ctx.strokeStyle = col; ctx.lineWidth = 1.2; ctx.beginPath();
+      g.strokeStyle = col; g.lineWidth = 1.2; g.beginPath();
       for (let gx = Math.floor(x0 / 90) * 90; gx < x1; gx += 90) {
         const hv = hash(gx / 90 | 0, 31 + lane); if (hv % 3 === 0) continue;
         const rx = gx + hv % 40, d0 = 16 + (hv >>> 6) % 44, len = 46 + (hv >>> 3) % 40;
-        for (let k = 0; k < 2; k++) { const d = d0 + k * 8; for (let u = 0; u <= 6; u++) { const xx = rx + k * 10 + u * len / 6, yy = crGround(c, lane, xx) + d + oy + Math.sin(u * 1.1 + k * 2) * 2; if (u) ctx.lineTo(xx, yy); else ctx.moveTo(xx, yy); } }
+        for (let k = 0; k < 2; k++) { const d = d0 + k * 8; for (let u = 0; u <= 6; u++) { const xx = rx + k * 10 + u * len / 6, yy = crGround(c, lane, xx) + d + oy + Math.sin(u * 1.1 + k * 2) * 2; if (u) g.lineTo(xx, yy); else g.moveTo(xx, yy); } }
       }
-      ctx.stroke();
+      g.stroke();
     }
     // pebbles: a dark base, then a lit top
     const pb = [];
     for (let gx = Math.floor(x0 / 34) * 34; gx < x1; gx += 34) { const hv = hash(gx / 34 | 0, 57 + lane); if (hv % 3) continue; const px = gx + hv % 30; pb.push([px, crGround(c, lane, px) + 8 + (hv >>> 5) % 60, 1.3 + (hv >>> 9) % 3 * 0.7]); }
-    ctx.fillStyle = '#a07a48'; ctx.beginPath(); for (const [px, py, r] of pb) { ctx.moveTo(px + r, py); ctx.ellipse(px, py, r, r * 0.7, 0, 0, 7); } ctx.fill();
-    ctx.fillStyle = 'rgba(255,240,205,0.6)'; ctx.beginPath(); for (const [px, py, r] of pb) { ctx.moveTo(px, py - r * 0.3); ctx.arc(px - r * 0.3, py - r * 0.3, r * 0.4, 0, 7); } ctx.fill();
+    g.fillStyle = '#a07a48'; g.beginPath(); for (const [px, py, r] of pb) { g.moveTo(px + r, py); g.ellipse(px, py, r, r * 0.7, 0, 0, 7); } g.fill();
+    g.fillStyle = 'rgba(255,240,205,0.6)'; g.beginPath(); for (const [px, py, r] of pb) { g.moveTo(px, py - r * 0.3); g.arc(px - r * 0.3, py - r * 0.3, r * 0.4, 0, 7); } g.fill();
     // dry scrub and a half-buried carved stone now and then, sat on the crest line
     for (let gx = Math.floor(x0 / 230) * 230; gx < x1; gx += 230) {
       const hv = hash(gx / 230 | 0, 71 + lane); if (hv % 3 === 2) continue;
       const px = gx + 40 + hv % 150; if (c.zones.some(z => px > z.x0 - 20 && px < z.x1 + 50) || c.obs.some(o => Math.abs(o.x - px) < 40)) continue;
       const py = crGround(c, lane, px) + 3;
       if (hv % 3 === 0) {
-        ctx.strokeStyle = '#8a7040'; ctx.lineWidth = 1.4; ctx.beginPath();
-        for (let k = 0; k < 7; k++) { const a = -Math.PI / 2 + (k - 3) * 0.32, L = 9 + hash(k, hv) % 7; ctx.moveTo(px, py); ctx.quadraticCurveTo(px + Math.cos(a) * L * 0.4, py + Math.sin(a) * L * 0.6, px + Math.cos(a) * L, py + Math.sin(a) * L); }
-        ctx.stroke(); ctx.fillStyle = 'rgba(80,50,20,0.2)'; ctx.beginPath(); ctx.ellipse(px + 2, py, 9, 2, 0, 0, 7); ctx.fill();
+        g.strokeStyle = '#8a7040'; g.lineWidth = 1.4; g.beginPath();
+        for (let k = 0; k < 7; k++) { const a = -Math.PI / 2 + (k - 3) * 0.32, L = 9 + hash(k, hv) % 7; g.moveTo(px, py); g.quadraticCurveTo(px + Math.cos(a) * L * 0.4, py + Math.sin(a) * L * 0.6, px + Math.cos(a) * L, py + Math.sin(a) * L); }
+        g.stroke(); g.fillStyle = 'rgba(80,50,20,0.2)'; g.beginPath(); g.ellipse(px + 2, py, 9, 2, 0, 0, 7); g.fill();
       } else {
-        ctx.fillStyle = 'rgba(80,50,20,0.22)'; ctx.beginPath(); ctx.ellipse(px + 3, py, 15, 3, 0, 0, 7); ctx.fill();
-        ctx.fillStyle = '#c9a068'; ctx.beginPath(); ctx.moveTo(px - 12, py); ctx.lineTo(px - 10, py - 9); ctx.lineTo(px + 9, py - 11); ctx.lineTo(px + 12, py); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = 'rgba(120,70,30,0.3)'; ctx.beginPath(); ctx.moveTo(px + 6, py - 10.5); ctx.lineTo(px + 9, py - 11); ctx.lineTo(px + 12, py); ctx.lineTo(px + 7, py); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = 'rgba(255,240,205,0.5)'; ctx.fillRect(px - 10, py - 9.5, 17, 1.5);
-        ctx.strokeStyle = 'rgba(90,56,24,0.5)'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(px - 4, py - 3); ctx.lineTo(px, py - 8); ctx.lineTo(px + 4, py - 3); ctx.moveTo(px - 6, py - 5); ctx.lineTo(px - 6, py - 2); ctx.stroke();
-        ctx.strokeStyle = '#8a6036'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(px - 12, py); ctx.lineTo(px - 10, py - 9); ctx.lineTo(px + 9, py - 11); ctx.lineTo(px + 12, py); ctx.stroke();
-        ctx.fillStyle = look.near[lane ? 0 : 1]; ctx.beginPath(); ctx.ellipse(px, py + 1, 15, 3, 0, Math.PI, 0); ctx.fill();
+        g.fillStyle = 'rgba(80,50,20,0.22)'; g.beginPath(); g.ellipse(px + 3, py, 15, 3, 0, 0, 7); g.fill();
+        g.fillStyle = '#c9a068'; g.beginPath(); g.moveTo(px - 12, py); g.lineTo(px - 10, py - 9); g.lineTo(px + 9, py - 11); g.lineTo(px + 12, py); g.closePath(); g.fill();
+        g.fillStyle = 'rgba(120,70,30,0.3)'; g.beginPath(); g.moveTo(px + 6, py - 10.5); g.lineTo(px + 9, py - 11); g.lineTo(px + 12, py); g.lineTo(px + 7, py); g.closePath(); g.fill();
+        g.fillStyle = 'rgba(255,240,205,0.5)'; g.fillRect(px - 10, py - 9.5, 17, 1.5);
+        g.strokeStyle = 'rgba(90,56,24,0.5)'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(px - 4, py - 3); g.lineTo(px, py - 8); g.lineTo(px + 4, py - 3); g.moveTo(px - 6, py - 5); g.lineTo(px - 6, py - 2); g.stroke();
+        g.strokeStyle = '#8a6036'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(px - 12, py); g.lineTo(px - 10, py - 9); g.lineTo(px + 9, py - 11); g.lineTo(px + 12, py); g.stroke();
+        g.fillStyle = look.near[lane ? 0 : 1]; g.beginPath(); g.ellipse(px, py + 1, 15, 3, 0, Math.PI, 0); g.fill();
       }
     }
   }
-  ctx.strokeStyle = 'rgba(255,240,200,0.6)'; ctx.lineWidth = 2; ctx.beginPath();
-  for (let x = x0; x <= x1; x += 8) { const y = crGround(c, lane, x); if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
-  ctx.stroke();
+  g.strokeStyle = 'rgba(255,240,200,0.6)'; g.lineWidth = 2; g.beginPath();
+  for (let x = x0; x <= x1; x += 8) { const y = crGround(c, lane, x); if (x === x0) g.moveTo(x, y); else g.lineTo(x, y); }
+  g.stroke();
+}
+// The still sand depends only on the course, so it is painted once into strips of whole screen pixels (CR_STRIP wide,
+// a lane's top to the bottom of the screen) and copied each frame on whole pixels without smoothing; every strip of a
+// frame shares one rounding, so they meet without seams. Off (painted live) when the screen is rotated or zoomed.
+const CR_STRIP = 256, crGroundPics = new WeakMap();
+function crDrawLaneGround(c, lane, look, x0, x1) {
+  const m = ctx.getTransform(), sc = Math.max(1, Math.min(3, canvas.width / W));
+  if (m.b !== 0 || m.c !== 0 || Math.abs(m.a - sc) > 1e-6 || Math.abs(m.d - sc) > 1e-6) { crPaintLaneGround(ctx, c, lane, look, x0, x1); return; }
+  let P = crGroundPics.get(c);
+  if (!P || P.sc !== sc) { P = { sc, strips: new Map() }; crGroundPics.set(c, P); }
+  const top = Math.floor((CR.lanes[lane] - CR.amp * 1.1 - 24) * sc), bot = Math.ceil(H * sc), X0 = Math.round(m.e), Y0 = Math.round(m.f) + top;
+  const sm = ctx.imageSmoothingEnabled;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
+  for (let k = Math.floor(-X0 / CR_STRIP); X0 + k * CR_STRIP < canvas.width; k++) {
+    const id = lane + '|' + k; let cv = P.strips.get(id);
+    if (cv) P.strips.delete(id);
+    else {
+      if (P.strips.size >= 20) P.strips.delete(P.strips.keys().next().value); // the oldest
+      cv = document.createElement('canvas'); cv.width = CR_STRIP; cv.height = bot - top;
+      const g = cv.getContext('2d'); g.setTransform(sc, 0, 0, sc, -k * CR_STRIP, -top);
+      crPaintLaneGround(g, c, lane, look, k * CR_STRIP / sc - 40, (k + 1) * CR_STRIP / sc + 40);
+    }
+    P.strips.set(id, cv);
+    ctx.drawImage(cv, X0 + k * CR_STRIP, Y0);
+  }
+  ctx.setTransform(m); ctx.imageSmoothingEnabled = sm;
+}
+function crDrawLane(st, lane, look) {
+  const c = st.course, cam = st.cam.x, x0 = cam - 40, x1 = cam + W + 40, base = CR.lanes[lane], t = G.clock;
+  ctx.save(); ctx.translate(-cam, 0);
+  crDrawLaneGround(c, lane, look, x0, x1);
   // zones: quicksand and oasis puddles
   for (const z of c.zones) {
     if (z.x1 < x0 || z.x0 > x1) continue;
