@@ -321,13 +321,39 @@ function wizPoDraw(st) {
   for (const r of ph.solids) if (r.kind === 'ledge' || r.kind === 'floor') { const hh = r.kind === 'floor' ? 300 : 16;
     if (r.kind === 'ledge') { ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(r.x0 + 6, r.y0 + 16, r.x1 - r.x0 - 6, 7);
       ctx.fillStyle = '#4a3622'; for (const bx of [r.x0 + 24, r.x1 - 30]) { ctx.beginPath(); ctx.moveTo(bx, r.y0 + 16); ctx.lineTo(bx + 6, r.y0 + 16); ctx.lineTo(bx + 6, r.y0 + 40); ctx.closePath(); ctx.fill(); } }
-    ctx.fillStyle = '#7a5a3a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, hh);
-    ctx.fillStyle = 'rgba(255,226,170,0.35)'; ctx.fillRect(r.x0 + 2, r.y0 + 2, r.x1 - r.x0 - 4, 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(r.x0 + 2, r.y0 + 11, r.x1 - r.x0 - 4, 3);
-    ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, hh); ctx.fillStyle = '#e8c860'; for (let x = r.x0 + 10; x < r.x1 - 10; x += 60) { ctx.beginPath(); ctx.moveTo(x, r.y0); ctx.lineTo(x + 18, r.y0 - 6); ctx.lineTo(x + 36, r.y0); ctx.fill(); } }
+    // (art pass) clock-tower timber: a grained beam with joints, nails and iron straps (the floor is stacked boards
+    // fading into the dark), a worn lit top (cached per size)
+    RICH.pic('wizpoledge|' + (r.x1 - r.x0) + '|' + hh, r.x1 - r.x0, hh, (c, w, h) => {
+      if (h > 20) {
+        RICH.boards(c, 0, 14, w, h - 14, { col: '#6a4c30', bh: 20, len: 140, seed: 9 });
+        const fg = c.createLinearGradient(0, 14, 0, Math.min(h, 160)); fg.addColorStop(0, 'rgba(10,6,20,0)'); fg.addColorStop(1, 'rgba(10,6,20,0.55)'); c.fillStyle = fg; c.fillRect(0, 14, w, h - 14);
+        RICH.wood(c, 0, 0, w, 14, { col: '#7a5a3a', seam: 160, seed: 4, edge: false });
+      } else {
+        RICH.wood(c, 0, 0, w, h, { col: '#7a5a3a', seam: 90, seed: Math.round(w), edge: false });
+        for (let x = 34; x < w - 20; x += 110) { c.fillStyle = '#3e3a48'; c.fillRect(x, 0, 7, h); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(x, 0, 1.5, h); RICH.nail(c, x + 3.5, 4, 1.1); RICH.nail(c, x + 3.5, h - 4, 1.1); }
+      }
+      c.fillStyle = 'rgba(255,226,170,0.35)'; c.fillRect(2, 2, w - 4, 2);
+      c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(2, 11, w - 4, 3);
+    }, r.x0, r.y0);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+    ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, hh); for (let x = r.x0 + 10; x < r.x1 - 10; x += 60) {
+      // (art pass, 2nd look) brass cog-teeth plates along the beam: a lit left face, a shaded right face, a dark rim
+      ctx.fillStyle = '#f4dc8a'; ctx.beginPath(); ctx.moveTo(x, r.y0); ctx.lineTo(x + 18, r.y0 - 6); ctx.lineTo(x + 18, r.y0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#b8902e'; ctx.beginPath(); ctx.moveTo(x + 18, r.y0 - 6); ctx.lineTo(x + 36, r.y0); ctx.lineTo(x + 18, r.y0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#6a4e14'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, r.y0); ctx.lineTo(x + 18, r.y0 - 6); ctx.lineTo(x + 36, r.y0); ctx.stroke();
+      ctx.fillStyle = '#6a4e14'; circle(x + 18, r.y0 - 1.6, 1); ctx.fill();
+    } }
   // the clock hand
   if (sp.hand) { ctx.save(); ctx.globalAlpha = 0.35; ctx.strokeStyle = '#c8a040'; ctx.lineWidth = 6; circle(sp.hand.x, sp.hand.y, K.hand.len + 10); ctx.stroke(); ctx.fillStyle = '#c8a040'; for (let i = 0; i < 12; i++) { const q = i * Math.PI / 6; circle(sp.hand.x + Math.cos(q) * (K.hand.len - 8), sp.hand.y + Math.sin(q) * (K.hand.len - 8), i % 3 ? 5 : 9); ctx.fill(); } ctx.restore(); }
-  if (sp.hand) { const a = wizPoHandA(ph, sp.hand); ctx.strokeStyle = '#2a2018'; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(sp.hand.x, sp.hand.y); ctx.lineTo(sp.hand.x + Math.cos(a) * K.hand.len, sp.hand.y + Math.sin(a) * K.hand.len); ctx.stroke(); ctx.fillStyle = '#c8a040'; circle(sp.hand.x, sp.hand.y, 14); ctx.fill(); }
+  if (sp.hand) { const a = wizPoHandA(ph, sp.hand); ctx.strokeStyle = '#2a2018'; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(sp.hand.x, sp.hand.y); ctx.lineTo(sp.hand.x + Math.cos(a) * K.hand.len, sp.hand.y + Math.sin(a) * K.hand.len); ctx.stroke();
+    // (art pass, 2nd look) a wrought-iron hand: a lit ridge down its length, a pierced ring near the tip, a riveted brass boss
+    { const ca = Math.cos(a), sa = Math.sin(a), L = K.hand.len, nx = -sa, ny = ca;
+      ctx.strokeStyle = '#5a4a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sp.hand.x + nx * -2.5, sp.hand.y + ny * -2.5); ctx.lineTo(sp.hand.x + ca * (L - 4) + nx * -2.5, sp.hand.y + sa * (L - 4) + ny * -2.5); ctx.stroke();
+      ctx.strokeStyle = '#120c08'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(sp.hand.x + nx * 5, sp.hand.y + ny * 5); ctx.lineTo(sp.hand.x + ca * L + nx * 5, sp.hand.y + sa * L + ny * 5); ctx.stroke();
+      ctx.strokeStyle = '#c8a040'; ctx.lineWidth = 2; circle(sp.hand.x + ca * L * 0.72, sp.hand.y + sa * L * 0.72, 3.4); ctx.stroke(); }
+    { const hg = ctx.createRadialGradient(sp.hand.x - 5, sp.hand.y - 5, 2, sp.hand.x, sp.hand.y, 14); hg.addColorStop(0, '#f4dc8a'); hg.addColorStop(1, '#8a6420'); ctx.fillStyle = hg; }
+    circle(sp.hand.x, sp.hand.y, 14); ctx.fill(); ctx.strokeStyle = '#5a4010'; ctx.lineWidth = 1.5; ctx.stroke();
+    for (let i = 0; i < 6; i++) { const q = i * Math.PI / 3; RICH.rivet(ctx, sp.hand.x + Math.cos(q) * 9, sp.hand.y + Math.sin(q) * 9, 1.4, '#c8a040'); } }
   // the plates, the ring, the doors
   const selq = ph.ring;   // (worked out in the step: here the players are in screen space)
   for (const q of ph.plates) {

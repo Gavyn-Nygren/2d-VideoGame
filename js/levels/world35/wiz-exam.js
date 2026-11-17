@@ -171,15 +171,40 @@ const WIZEX_FF = {
     wizExDrawInk(o.x0, o.x1, F + 4, t);
     for (let i = 0; i < o.n; i++) if (o.ice[i] > 0) {
       const x0 = o.x0 + i * K.tile, crack = o.ice[i] < K.crack;
-      ctx.fillStyle = WIZFF_C.ice; ctx.strokeStyle = WIZFF_C.iceDk; ctx.lineWidth = 2; rr(x0 + 1, F, K.tile - 2, 16, 4); ctx.fill(); ctx.stroke();
+      { const C2 = WIZFF_C, x = x0; // (art pass) the same frozen tile as Frost and Flame (cached)
+        RICH.pic('wizice4|' + Math.round(K.tile - 2), K.tile - 2, 16, (c, w, h) => {
+          c.save(); RICH.rr(c, 0, 0, w, h, 4); c.clip();
+          const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#f2fbff'); g.addColorStop(0.45, C2.ice); g.addColorStop(1, '#b8e0f4'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+          c.fillStyle = 'rgba(255,255,255,0.75)'; c.beginPath(); c.moveTo(3, 3); c.lineTo(w * 0.45, 3); c.lineTo(w * 0.3, 7); c.lineTo(3, 7); c.closePath(); c.fill();
+          c.strokeStyle = 'rgba(120,180,220,0.55)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(w * 0.6, 2); c.lineTo(w * 0.7, 9); c.lineTo(w * 0.62, 14); c.moveTo(w * 0.7, 9); c.lineTo(w * 0.86, 11); c.stroke();
+          c.fillStyle = 'rgba(90,150,200,0.25)'; c.fillRect(0, h - 3, w, 3); c.restore();
+        }, x + 1, F);
+        ctx.strokeStyle = C2.iceDk; ctx.lineWidth = 2; rr(x + 1, F, K.tile - 2, 16, 4); ctx.stroke(); }
       if (crack) { ctx.strokeStyle = '#5a86a8'; ctx.beginPath(); ctx.moveTo(x0 + 8, F + 3); ctx.lineTo(x0 + 18, F + 10); ctx.lineTo(x0 + 26, F + 4); ctx.stroke(); }
     }
     const th = g.thorn;
     if (!th.off) {
       const k = clamp(th.burn / K.burn, 0, 1);
-      ctx.fillStyle = k > 0.3 ? '#5a4a2a' : WIZFF_C.thorn; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(th.x0, th.y0, th.x1 - th.x0, th.y1 - th.y0, 6); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = WIZFF_C.thornDk;
-      for (let y = th.y0 + 10; y < th.y1; y += 18) for (const d of [-1, 1]) { const bx = d < 0 ? th.x0 : th.x1; ctx.beginPath(); ctx.moveTo(bx, y); ctx.lineTo(bx + d * 10, y + 5); ctx.lineTo(bx, y + 10); ctx.fill(); }
+      // (art pass, 2nd look) a twisted bramble: three plaited stems with a lit side, leaf buds, sharp lit thorns
+      // (scorched brown while it burns); a cached picture per size and state
+      const tw = Math.round(th.x1 - th.x0), thh = Math.round(th.y1 - th.y0), burnt = k > 0.3;
+      RICH.pic('wizexthorn|' + tw + '|' + thh + '|' + burnt, tw, thh, (c, w, h) => {
+        const base = burnt ? '#5a4a2a' : WIZFF_C.thorn, dkc = burnt ? '#3a2a16' : WIZFF_C.thornDk;
+        RICH.rr(c, 0, 0, w, h, 6); c.fillStyle = dkc; c.fill(); c.save(); RICH.rr(c, 0, 0, w, h, 6); c.clip();
+        for (let q = 0; q < 3; q++) {
+          c.strokeStyle = q === 1 ? RICH.lit(base, 0.12) : base; c.lineWidth = w * 0.42; c.beginPath();
+          for (let y = -10; y <= h + 10; y += 6) { const x = w / 2 + Math.sin(y / 14 + q * 2.1) * w * 0.28; y === -10 ? c.moveTo(x, y) : c.lineTo(x, y); }
+          c.stroke();
+          c.strokeStyle = 'rgba(220,255,190,0.25)'; c.lineWidth = 1.5; c.beginPath();
+          for (let y = -10; y <= h + 10; y += 6) { const x = w / 2 + Math.sin(y / 14 + q * 2.1) * w * 0.28 - w * 0.16; y === -10 ? c.moveTo(x, y) : c.lineTo(x, y); }
+          c.stroke();
+        }
+        if (!burnt) for (let y = 14; y < h - 8; y += 26) { c.fillStyle = '#6aa84e'; c.beginPath(); c.ellipse(w * (0.3 + (y % 52 ? 0.4 : 0)), y, 4, 2.4, 0.6, 0, Math.PI * 2); c.fill(); }
+        c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(w - 5, 0, 5, h);
+        c.restore();
+      }, th.x0, th.y0);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(th.x0, th.y0, th.x1 - th.x0, th.y1 - th.y0, 6); ctx.stroke();
+      for (let y = th.y0 + 10; y < th.y1; y += 18) for (const d of [-1, 1]) { const bx = d < 0 ? th.x0 : th.x1; ctx.fillStyle = WIZFF_C.thornDk; ctx.beginPath(); ctx.moveTo(bx, y); ctx.lineTo(bx + d * 10, y + 5); ctx.lineTo(bx, y + 10); ctx.fill(); ctx.fillStyle = k > 0.3 ? 'rgba(255,200,120,0.4)' : 'rgba(210,250,170,0.55)'; ctx.beginPath(); ctx.moveTo(bx, y + 1); ctx.lineTo(bx + d * 9, y + 5); ctx.lineTo(bx, y + 4); ctx.fill(); }
       if (k > 0) { ctx.save(); ctx.globalAlpha = 0.6; ctx.fillStyle = '#ff9a3c'; for (let n = 0; n < 4; n++) { circle(th.x0 + 12 + Math.sin(t * 9 + n) * 8, th.y1 - 20 - n * 30 - (t * 60 % 30), 6 * k); ctx.fill(); } ctx.restore(); }
     } else { ctx.fillStyle = 'rgba(40,30,20,0.6)'; ctx.beginPath(); ctx.ellipse((th.x0 + th.x1) / 2, F - 3, 26, 5, 0, 0, Math.PI * 2); ctx.fill(); }
     // the flame jet (the flame player is in screen coords here)
@@ -1650,13 +1675,17 @@ function wizExDrawBack(st) {
     ctx.fillStyle = C2.ink; const d = (t * 40 + x) % 120; rr(x + 220, 40, 10, 20 + d * 0.3, 5); ctx.fill(); circle(x + 225, 60 + d * 1.2, 5); ctx.fill();
   }
   ctx.fillStyle = C2.wallDk; ctx.fillRect(cx - 40, 0, W + 80, 44);
-  for (const r of ph.solids) if ((r.kind === 'floor' || r.kind === undefined) && r.y0 === F && r.x1 > cx - 40 && r.x0 < cx + W + 40) { ctx.fillStyle = C2.floor; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, H - r.y0); ctx.fillStyle = '#8a7458'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 6);
-    ctx.fillStyle = 'rgba(255,235,190,0.25)'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 2);
-    const a = Math.max(r.x0, cx - 40), b = Math.min(r.x1, cx + W + 40);
-    ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath();
-    for (let x = Math.ceil(a / 64) * 64; x < b; x += 64) { ctx.moveTo(x, r.y0 + 6); ctx.lineTo(x, H); }
-    for (let y = r.y0 + 38; y < H; y += 32) { ctx.moveTo(a, y); ctx.lineTo(b, y); }
-    ctx.stroke(); }
+  for (const r of ph.solids) if ((r.kind === 'floor' || r.kind === undefined) && r.y0 === F && r.x1 > cx - 40 && r.x0 < cx + W + 40) {
+    // (art pass) the exam corridor floor: an oak sill with nicks over big sandstone flags with chips, cracks and specks,
+    // darker towards the front (a cached strip pinned to the world, clipped to this floor)
+    const a = Math.max(r.x0, cx - 40), b = Math.min(r.x1, cx + W + 40), fh = Math.ceil(H - r.y0);
+    ctx.save(); ctx.beginPath(); ctx.rect(a, r.y0, b - a, H - r.y0); ctx.clip();
+    RICH.strip('wizexfloor|' + fh, a, b, r.y0, fh, 256, (c, gx, w, h) => {
+      RICH.flags(c, 0, 8, w, h - 8, { col: C2.floor, course: 32, len: 70, seed: 21, gx, fade: 0.3 });
+      RICH.boards(c, 0, 0, w, 8, { col: '#8a7458', bh: 8, len: 180, seed: 3, gx, nails: false });
+      c.fillStyle = 'rgba(255,235,190,0.3)'; c.fillRect(0, 0, w, 2); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, 8, w, 2);
+    });
+    ctx.restore(); }
   if (ph.part === 2 || cx + W > wizExHallX() - 100) wizExDrawHallBack(st);
 }
 function wizExDrawHallBack(st) {

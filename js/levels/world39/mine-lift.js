@@ -646,6 +646,24 @@
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,' + (k === 0 ? 0.45 : 0.3) + ')');
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
   }
+  // a 256 px square of wall texture that tiles without seams (every mark is kept inside the tile); it is a cached
+  // picture (RICH.pic, painted at the screen's pixel scale), copied tile by tile: much cheaper than a scaled pattern fill
+  function wallTile(c, k) {
+    const col = k === 0 ? '#5a4634' : k === 1 ? '#4c5a66' : k === 2 ? '#38606a' : '#2e5660';
+    c.fillStyle = RICH.rgba(RICH.dk(col, 0.5), 0.45); for (let q = 0; q < 900; q++) c.fillRect(RICH.r(390 + k, q) * 255, RICH.r(391 + k, q) * 255, 1.4, 1.4);
+    c.fillStyle = RICH.rgba(RICH.lit(col, 0.4), 0.4); for (let q = 0; q < 420; q++) c.fillRect(RICH.r(392 + k, q) * 255, RICH.r(393 + k, q) * 255, 1, 1);
+    for (let q = 0; q < 9; q++) {
+      const fx = 20 + RICH.r(394 + k, q) * 200, fy = 16 + RICH.r(395 + k, q) * 190, fs = 10 + RICH.r(396 + k, q) * 18;
+      c.fillStyle = 'rgba(255,255,255,0.06)'; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + fs, fy - fs * 0.3); c.lineTo(fx + fs * 1.2, fy + fs * 0.5); c.lineTo(fx + fs * 0.2, fy + fs * 0.7); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(0,0,0,0.1)'; c.beginPath(); c.moveTo(fx + fs * 0.2, fy + fs * 0.7); c.lineTo(fx + fs * 1.2, fy + fs * 0.5); c.lineTo(fx + fs, fy + fs); c.closePath(); c.fill();
+    }
+    for (let q = 0; q < 7; q++) {
+      let px = 24 + RICH.r(397 + k, q) * 200, py = 14 + RICH.r(398 + k, q) * 170; const pts = [[px, py]];
+      for (let z = 0; z < 4; z++) { px += (RICH.r(399 + z, q + k * 9) - 0.5) * 20; py += 6 + RICH.r(400 + z, q + k * 9) * 8; pts.push([px, py]); }
+      c.lineWidth = 1.3; c.strokeStyle = 'rgba(0,0,0,0.35)'; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.stroke();
+      c.lineWidth = 1; c.strokeStyle = 'rgba(255,255,255,0.1)'; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0] + 1.2, p[1] + 1) : c.moveTo(p[0] + 1.2, p[1] + 1)); c.stroke();
+    }
+  }
   function drawWalls(st, camY, wallIn, t) {
     const k = st.k, Z = K.ZONES[ZONE[k]], step = 90;
     const y0 = Math.floor(camY / step) - 1;
@@ -656,6 +674,11 @@
       const rim = [];
       for (let n = y0; n <= y0 + H / step + 2; n++) { const y = n * step - camY, j = K.hash(n * 7 + (sd > 0 ? 3 : 0)) * 14; ctx.lineTo(edge - sd * j, y); rim.push([edge - sd * j, y]); }
       ctx.lineTo(sd < 0 ? 0 : W, H + 10); ctx.closePath(); ctx.fill();
+      // (art pass) the rock of the wall: specks, fractures with lit lips and flat facets from a seamless tile
+      { ctx.save(); ctx.clip(); ctx.translate(0, -Math.round(camY) % 256);
+        const xa = sd < 0 ? 0 : edge - 20, xb = sd < 0 ? edge + 20 : W;
+        for (let ty = -256; ty < H + 270; ty += 256) for (let tx = Math.floor(xa / 256) * 256; tx < xb; tx += 256) RICH.pic('w39walltile' + k, 256, 256, c => wallTile(c, k), tx, ty);
+        ctx.restore(); }
       // a lit rim along the wall face and a shadow cast into the shaft, so the walls read as walls
       const sh = ctx.createLinearGradient(edge, 0, edge - sd * 46, 0); sh.addColorStop(0, 'rgba(0,0,0,0.35)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = sh; ctx.fillRect(Math.min(edge, edge - sd * 46), 0, 46, H);
@@ -673,7 +696,7 @@
         if (k === 0) {
           // timber cribbing and an old lantern now and then
           K.timber(sd < 0 ? edge - 130 : edge, y, 130, 12, sd);
-          if (h > 0.7) { const lx = edge - sd * 26; const lg = ctx.createRadialGradient(lx, y + 26, 2, lx, y + 26, 60); lg.addColorStop(0, 'rgba(255,190,100,0.45)'); lg.addColorStop(1, 'rgba(255,190,100,0)'); ctx.fillStyle = lg; ctx.fillRect(lx - 60, y - 34, 120, 120); ctx.fillStyle = '#ffcf6a'; rr(lx - 4, y + 16, 8, 12, 3); ctx.fill(); }
+          if (h > 0.7) { const lx = edge - sd * 26; const lg = ctx.createRadialGradient(lx, y + 26, 2, lx, y + 26, 60); lg.addColorStop(0, 'rgba(255,190,100,0.45)'); lg.addColorStop(1, 'rgba(255,190,100,0)'); ctx.fillStyle = lg; ctx.fillRect(lx - 60, y - 34, 120, 120); lantern(lx, y + 16); }
         } else if (k === 1) {
           if (h > 0.5) { ctx.fillStyle = 'rgba(170,220,255,0.3)'; ctx.fillRect(edge - sd * (8 + h * 30), y, 2, 40 + h * 40); }
         } else {
@@ -684,24 +707,56 @@
     if (k >= 2) K.glowWorms(CX - wallIn + 20, CX + wallIn - 20, -((camY * 0.5) % 300) - 40, t, { seed: 3, n: 10 });
     void Z;
   }
-  K.timber = K.timber || ((x, y, w, h) => { ctx.fillStyle = K.COL.timber; ctx.fillRect(x, y, w, h); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, y, w, 3); });
+
+  // (second look) a miner's lantern (centre x, body top y = the old 8 x 12 lamp): a brass cap and ring, a wire cage over
+  // a glowing glass with a flame, a dark outline, a base; cached once
+  function lantern(x, y) {
+    RICH.pic('w39lantern', 16, 24, c => {
+      c.fillStyle = 'rgba(40,24,8,0.9)'; c.beginPath(); c.arc(8, 3, 2.6, Math.PI, 0); c.lineWidth = 1.2; c.strokeStyle = '#3a2a14'; c.stroke();
+      c.fillStyle = '#8a6a2a'; RICH.rr(c, 3, 4, 10, 3, 1.2); c.fill(); c.fillStyle = '#d8b060'; c.fillRect(4, 4.3, 8, 1);
+      const g = c.createRadialGradient(8, 12, 1, 8, 12, 6); g.addColorStop(0, '#fff6c8'); g.addColorStop(0.5, '#ffcf6a'); g.addColorStop(1, '#d88a2a');
+      c.fillStyle = g; RICH.rr(c, 4, 7, 8, 11, 3); c.fill();
+      c.fillStyle = '#ffffff'; c.beginPath(); c.moveTo(8, 9.5); c.quadraticCurveTo(10, 13, 8, 15); c.quadraticCurveTo(6, 13, 8, 9.5); c.fill();
+      c.strokeStyle = '#5a3a14'; c.lineWidth = 1; c.beginPath(); c.moveTo(6, 7); c.lineTo(6, 18); c.moveTo(10, 7); c.lineTo(10, 18); c.moveTo(4, 12.5); c.lineTo(12, 12.5); c.stroke();
+      c.strokeStyle = '#4a2c10'; c.lineWidth = 1.2; RICH.rr(c, 4, 7, 8, 11, 3); c.stroke();
+      c.fillStyle = '#8a6a2a'; RICH.rr(c, 3, 18, 10, 3, 1.2); c.fill(); c.strokeStyle = '#3a2a14'; c.lineWidth = 1; c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(5, 8.5, 1.2, 5);
+    }, x - 8, y - 7);
+  }
   function drawShelf(st, it, sy, t, wallIn) {
     const sd = it.side === 0 ? -1 : 1, edge = CX + sd * wallIn, tip = edge - sd * it.r;
     const x0 = Math.min(edge, tip) - (sd < 0 ? 40 : 0), x1 = Math.max(edge, tip) + (sd > 0 ? 40 : 0);
-    if (st.k === 0) { ctx.fillStyle = K.COL.timberDark; ctx.fillRect(x0, sy, x1 - x0, it.th); ctx.fillStyle = '#b07a44'; ctx.fillRect(x0, sy, x1 - x0, 9); ctx.strokeStyle = '#2a1a0c'; ctx.lineWidth = 2; ctx.strokeRect(x0, sy, x1 - x0, it.th); }
+    if (st.k === 0) {
+      const sw = Math.round(x1 - x0), sh = Math.round(it.th);
+      RICH.pic('w39shelf|' + sw + '|' + sh, sw, sh, c => {
+        // a timber staging: a planked top board, dark cribbing below with the ends of logs, iron dogs, a hard outline
+        c.fillStyle = K.COL.timberDark; c.fillRect(0, 0, sw, sh);
+        for (let lx = 6; lx < sw - 8; lx += 18) { c.fillStyle = '#6a4a26'; c.beginPath(); c.arc(lx + 6, sh * 0.6 + 2, Math.min(7, sh * 0.25), 0, TAU); c.fill(); c.strokeStyle = 'rgba(30,16,4,0.6)'; c.lineWidth = 0.8; c.beginPath(); c.arc(lx + 6, sh * 0.6 + 2, Math.min(4, sh * 0.15), 0, TAU); c.stroke(); }
+        RICH.wood(c, 0, 0, sw, 9, { col: '#b07a44', boards: 1, seam: 40, seed: sw, knots: 0.8, edge: false });
+        c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(0, 9, sw, 2);
+        c.strokeStyle = '#2a1a0c'; c.lineWidth = 2; c.strokeRect(1, 1, sw - 2, sh - 2);
+      }, x0, sy);
+    }
     else K.rock(x0, sy, x1 - x0, it.th + 6, { seed: it.d, col: '#6a747e' });
     // the tell: a lantern or a glow on the shelf, seen from well above
     const lx = tip + sd * 8, lg = ctx.createRadialGradient(lx, sy - 6, 2, lx, sy - 6, 46);
     const col = st.k >= 2 ? K.rgba(K.GLOW.rose, 0.55) : 'rgba(255,190,90,0.55)';
     lg.addColorStop(0, col); lg.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = lg; ctx.fillRect(lx - 46, sy - 52, 92, 92);
-    if (st.k >= 2) K.crystal(lx, sy, 18, 0, { col: K.GLOW.rose, t }); else { ctx.fillStyle = '#ffcf6a'; rr(lx - 4, sy - 13, 8, 12, 3); ctx.fill(); }
+    if (st.k >= 2) K.crystal(lx, sy, 18, 0, { col: K.GLOW.rose, t }); else lantern(lx, sy - 13);
   }
   function drawNarrow(st, it, sy, t, wallIn) {
     // the shaft pinches in: painted converging stripes at the top
     for (const sd of [-1, 1]) {
       const edge = CX + sd * wallIn;
-      ctx.fillStyle = st.k === 0 ? '#4a3a2a' : '#45525c';
-      ctx.fillRect(sd < 0 ? edge - 60 : edge - 4, sy, 64, it.len);
+      // (second look) the pinch is a built cheek: timber cribbing in the old shaft, dressed stone further down
+      const nl = Math.round(it.len), wood = st.k === 0;
+      RICH.pic('w39narrow|' + (wood ? 1 : 0) + '|' + nl + '|' + sd, 64, nl, (c, w, h) => {
+        if (wood) RICH.wood(c, 0, 0, w, h, { col: '#4a3a2a', boards: Math.max(1, Math.round(h / 16)), seam: 0, seed: nl, knots: 0.6, nails: true, edge: false });
+        else RICH.stone(c, 0, 0, w, h, { col: '#45525c', course: 18, len: 30, seed: nl, edge: false });
+        const g = c.createLinearGradient(sd < 0 ? w : 0, 0, sd < 0 ? 0 : w, 0); g.addColorStop(0, 'rgba(255,255,255,0.12)'); g.addColorStop(0.15, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(0,0,0,0.3)');
+        c.fillStyle = g; c.fillRect(0, 0, w, h);
+        c.strokeStyle = wood ? '#22180e' : '#1e2630'; c.lineWidth = 2; c.strokeRect(1, 1, w - 2, h - 2);
+      }, sd < 0 ? edge - 60 : edge - 4, sy);
       for (let k = 0; k < 5; k++) { ctx.fillStyle = k % 2 ? '#ffd25a' : '#2a2a2a'; ctx.beginPath(); const yy = sy - 70 + k * 14; ctx.moveTo(edge, yy); ctx.lineTo(edge - sd * 40, yy + 70 - k * 4); ctx.lineTo(edge - sd * 40, yy + 78 - k * 4); ctx.lineTo(edge, yy + 8); ctx.closePath(); ctx.fill(); }
     }
     text('NARROWS: KEEP LEVEL', CX, sy - 30, 13, '#ffd25a', 'center', 'body');
@@ -740,25 +795,60 @@
     // the platform: planks, a low rail, corner posts with the crank drums
     const ang = Math.atan2(yr - yl, xr - xl), len = Math.hypot(xr - xl, yr - yl);
     ctx.save(); ctx.translate(xl, yl); ctx.rotate(ang);
-    ctx.fillStyle = st.gold ? '#c8a03a' : '#7a5230'; ctx.fillRect(0, 0, len, 14);
-    ctx.fillStyle = 'rgba(0,0,0,0.25)'; for (let k = 1; k < 8; k++) ctx.fillRect(k * len / 8, 0, 2, 14);
-    ctx.fillStyle = '#5a3a1c'; ctx.fillRect(0, 12, len, 5);
-    ctx.fillStyle = '#5a3a1c'; ctx.fillRect(0, -40, 6, 52); ctx.fillRect(len - 6, -40, 6, 52);
-    ctx.fillStyle = '#6a4a2a'; ctx.fillRect(0, -18, len, 3);
+    // (art pass) a planked deck with grain, nails and board ends, a dark iron-strapped frame under it, timber corner
+    // posts with a lit edge, a rope rail (one picture for each length the deck shows)
+    { const L2 = Math.round(len), gold = st.gold ? 1 : 0;
+      RICH.pic('w39lift|' + L2 + '|' + gold, L2, 58, c => {
+        c.translate(0, 41);
+        c.fillStyle = '#6a4a2a'; c.fillRect(0, -18, L2, 3); c.fillStyle = 'rgba(255,230,190,0.3)'; c.fillRect(0, -18, L2, 1);
+        RICH.wood(c, 0, 0, L2, 14, { col: gold ? '#c8a03a' : '#7a5230', vert: true, bw: L2 / 8, seed: 39 + gold, knots: 0.8, edge: false });
+        for (let k = 1; k < 8; k++) { c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(k * L2 / 8, 0, 2, 14); RICH.nail(c, k * L2 / 8 - 4, 3.5, 1); RICH.nail(c, k * L2 / 8 + 5, 3.5, 1); }
+        c.fillStyle = 'rgba(255,230,190,0.3)'; c.fillRect(0, 0, L2, 1.2);
+        c.fillStyle = '#5a3a1c'; c.fillRect(0, 12, L2, 5); c.fillStyle = '#3a3a40'; for (let k = 0; k < L2; k += L2 / 4) c.fillRect(k + 6, 11, 6, 6);
+        for (const px of [0, L2 - 6]) { const g = c.createLinearGradient(px, 0, px + 6, 0); g.addColorStop(0, '#7a5230'); g.addColorStop(1, '#3a2410'); c.fillStyle = g; c.fillRect(px, -40, 6, 52); c.fillStyle = 'rgba(255,230,190,0.3)'; c.fillRect(px, -40, 1.2, 52); c.fillStyle = '#3a3a40'; c.fillRect(px - 0.5, -20, 7, 4); }
+        c.strokeStyle = '#2a1a0c'; c.lineWidth = 1; c.strokeRect(0.5, 0.5, L2 - 1, 16);
+      }, 0, -41); }
     // the crank drums with their handles (turning while the rope runs)
     for (const [dx, s] of [[3, 0], [len - 3, 1]]) {
-      ctx.fillStyle = st.gold ? C.gold : '#6a6a72'; circle(dx, -36, 9); ctx.fill(); ctx.strokeStyle = '#2a2a30'; ctx.lineWidth = 2; ctx.stroke();
-      const a = st.rat[s] * TAU * (st.v[s] < 0 ? -1 : 1);
-      ctx.strokeStyle = '#3a3a40'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(dx, -36); ctx.lineTo(dx + Math.cos(a) * 12, -36 + Math.sin(a) * 12); ctx.stroke();
+      // (second look) an iron drum with rope wound on it, flanges, bolts and a lit rim (cached), the handle live
+      const gd = st.gold ? 1 : 0;
+      RICH.pic('w39drum|' + gd, 22, 22, c => {
+        const col = gd ? C.gold : '#6a6a72';
+        const g = c.createRadialGradient(8, 8, 1, 11, 11, 10); g.addColorStop(0, RICH.lit(col, 0.35)); g.addColorStop(0.6, col); g.addColorStop(1, RICH.dk(col, 0.35));
+        c.fillStyle = g; c.beginPath(); c.arc(11, 11, 9, 0, TAU); c.fill();
+        c.strokeStyle = '#c8a46a'; c.lineWidth = 1.4; for (let r = 4.2; r < 8; r += 1.6) { c.beginPath(); c.arc(11, 11, r, 0, TAU); c.stroke(); }
+        c.strokeStyle = 'rgba(90,60,20,0.6)'; c.lineWidth = 0.6; for (let r = 4.9; r < 8; r += 1.6) { c.beginPath(); c.arc(11, 11, r, 0, TAU); c.stroke(); }
+        c.fillStyle = RICH.dk(col, 0.2); c.beginPath(); c.arc(11, 11, 3, 0, TAU); c.fill();
+        for (let k = 0; k < 4; k++) { const a = k * TAU / 4 + 0.4; RICH.rivet(c, 11 + Math.cos(a) * 8, 11 + Math.sin(a) * 8, 0.9, col); }
+        c.strokeStyle = 'rgba(255,255,255,0.45)'; c.lineWidth = 1.2; c.beginPath(); c.arc(11, 11, 8.3, Math.PI * 1.05, Math.PI * 1.6); c.stroke();
+        c.strokeStyle = '#2a2a30'; c.lineWidth = 2; c.beginPath(); c.arc(11, 11, 9, 0, TAU); c.stroke();
+      }, dx - 11, -47);
+      const a = st.rat[s] * TAU * (st.v[s] < 0 ? -1 : 1), hx = dx + Math.cos(a) * 12, hy = -36 + Math.sin(a) * 12;
+      ctx.strokeStyle = '#1e1e24'; ctx.lineWidth = 4.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(dx, -36); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.strokeStyle = '#5a5a62'; ctx.lineWidth = 2.5; ctx.stroke(); ctx.lineCap = 'butt';
+      ctx.fillStyle = '#8a5a2a'; circle(hx, hy, 3); ctx.fill(); ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#9a9aa4'; circle(dx, -36, 2); ctx.fill();
     }
     ctx.restore();
     // the crate of glow lamps
     if (st.crate.on && !(st.k === 3 && st.state === 'end' && st.endT > 1)) {
       const cx = platX(st, st.crate.u), cy = platY(st, st.crate.u);
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
-      ctx.fillStyle = '#a8784a'; ctx.fillRect(-16, -22, 32, 22); ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 2; ctx.strokeRect(-16, -22, 32, 22);
-      ctx.beginPath(); ctx.moveTo(-16, -22); ctx.lineTo(16, 0); ctx.stroke();
-      ctx.fillStyle = '#fff3d6'; ctx.fillRect(-13, -15, 26, 8); text('LAMPS', 0, -11, 8, '#5a3a1c', 'center', 'body');
+      // (second look) a nailed crate (cached): boards with grain, a lit top/left, a darker frame and a diagonal brace,
+      // lamp tops peeping over, a paper label; the word stays live on the label as before
+      RICH.pic('w39lampcrate', 36, 30, c => {
+        RICH.shadow(c, 18, 28, 16, 2, 0.22);
+        for (const lx of [9, 18, 27]) { c.fillStyle = '#8a6a2a'; c.fillRect(lx - 3, 4, 6, 4); c.fillStyle = '#ffd88a'; c.beginPath(); c.arc(lx, 4.5, 2.6, Math.PI, 0); c.fill(); c.strokeStyle = '#4a2c10'; c.lineWidth = 0.8; c.stroke(); }
+        RICH.wood(c, 2, 6, 32, 22, { col: '#a8784a', boards: 3, seam: 0, seed: 17, knots: 0.6, edge: false });
+        c.fillStyle = '#7a5230'; c.fillRect(2, 6, 32, 3); c.fillRect(2, 25, 32, 3); c.fillRect(2, 6, 3, 22); c.fillRect(31, 6, 3, 22);
+        c.strokeStyle = '#7a5230'; c.lineWidth = 3; c.beginPath(); c.moveTo(4, 8); c.lineTo(32, 26); c.stroke();
+        c.fillStyle = 'rgba(255,240,210,0.35)'; c.fillRect(2, 6, 32, 1.2); c.fillRect(2, 6, 1.2, 22);
+        c.fillStyle = 'rgba(40,20,6,0.25)'; c.fillRect(32, 6, 2, 22); c.fillRect(2, 26.5, 32, 1.5);
+        for (const [nx, ny] of [[3.5, 7.5], [32.5, 7.5], [3.5, 26.5], [32.5, 26.5]]) RICH.nail(c, nx, ny, 0.9);
+        c.fillStyle = '#fff3d6'; c.fillRect(5, 13, 26, 8); c.fillStyle = 'rgba(160,120,60,0.35)'; c.fillRect(5, 20, 26, 1);
+        c.strokeStyle = '#5a3a1c'; c.lineWidth = 2; c.strokeRect(3, 7, 30, 20);
+      }, -18, -28);
+      text('LAMPS', 0, -11, 8, '#5a3a1c', 'center', 'body');
       const lg = ctx.createRadialGradient(0, -24, 1, 0, -24, 16); lg.addColorStop(0, 'rgba(255,220,140,0.6)'); lg.addColorStop(1, 'rgba(255,220,140,0)'); ctx.fillStyle = lg; ctx.fillRect(-16, -40, 32, 32);
       ctx.restore();
     }

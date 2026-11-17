@@ -336,23 +336,45 @@ function wizMorphDrawBack(st) {
     if (r.kind === 'poolbed') { const g = ctx.createLinearGradient(0, F, 0, F + K.pool + 40); g.addColorStop(0, '#3a5a7a'); g.addColorStop(1, '#22384e'); ctx.fillStyle = g; ctx.fillRect(r.x0, F, r.x1 - r.x0, K.pool + 40); ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (let x = r.x0 + 12; x < r.x1 - 8; x += 26) { circle(x + hash(x, 2) % 10, F + K.pool - 6, 5); ctx.fill(); } }
   }
 }
+function wizMoRR(c, x, y, w, h, r) { RICH.rr(c, x, y, w, h, r); }
 function wizMorphDraw(st) {
   const ph = st.ph, K = WIZMORPH, C2 = WIZMORPH_C, cx = st.cam.x, t = G.clock, F = K.floor;
   ctx.lineJoin = 'round';
   // the walkway and its gates
-  ctx.fillStyle = C2.stone; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.fillRect(cx - 40, K.walk, W + 80, K.under - K.walk);
-  ctx.fillStyle = C2.stoneDk; for (let x = Math.floor(cx / 40) * 40; x < cx + W + 40; x += 40) ctx.fillRect(x, K.walk + 2, 3, K.under - K.walk - 4);
+  // (art pass) the walkway: a deck of dressed stone blocks pinned to the world with a lit coping and a shadowed foot
+  RICH.strip('wizmowalk|' + (K.under - K.walk), cx - 40, cx + W + 40, K.walk, K.under - K.walk, 256, (c, gx, w, h) => {
+    RICH.flags(c, 0, 0, w, h, { col: C2.stone, mortar: C2.stoneDk, course: h, len: 40, seed: 14, gx });
+    c.fillStyle = 'rgba(255,255,255,0.24)'; c.fillRect(0, 0, w, 2); c.fillStyle = RICH.rgba(RICH.dk(C2.stone, 0.6), 0.4); c.fillRect(0, h - 3, w, 3);
+  });
+  ctx.fillStyle = C2.stoneDk; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.moveTo(cx - 40, K.under); ctx.lineTo(cx + W + 40, K.under); ctx.stroke();
   for (const o of ph.obs) {
     if (o.sx > cx + W + 60 || o.x1 < cx - 60) continue;
     const g = o.gate;
-    if (!g.off) { ctx.fillStyle = C2.wood; ctx.fillRect(g.x0, K.walk - 80, g.x1 - g.x0, 80); ctx.strokeRect(g.x0, K.walk - 80, g.x1 - g.x0, 80); ctx.fillStyle = C2.woodDk; ctx.fillRect(g.x0 + 2, K.walk - 60, g.x1 - g.x0 - 4, 5); ctx.fillRect(g.x0 + 2, K.walk - 30, g.x1 - g.x0 - 4, 5); }
-    else { ctx.fillStyle = C2.wood; ctx.save(); ctx.translate(g.x0, K.walk); ctx.rotate(-1.3); ctx.fillRect(0, -6, 80, 10); ctx.restore(); }
-    // the plain pad and its rope
-    const py = o.pad.y;
-    ctx.fillStyle = '#d8d0e8'; ctx.beginPath(); ctx.ellipse((o.pad.x0 + o.pad.x1) / 2, py, 30, 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = C2.rope; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(o.rope, K.under); ctx.quadraticCurveTo(o.rope + 6, (K.under + py) / 2, o.rope, py - 34); ctx.stroke();
-    ctx.fillStyle = o.done ? '#9fe07f' : '#ff8fd0'; circle(o.rope, py - 34, 6); ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.stroke();
+    if (!g.off) { RICH.pic('wizmogate|' + (g.x1 - g.x0), g.x1 - g.x0, 80, (c, w, h) => {
+        RICH.wood(c, 0, 0, w, h, { col: C2.wood, vert: true, bw: Math.max(6, w / 3), seed: 6, edge: false });
+        for (const y of [20, 50]) { c.fillStyle = '#3e3a48'; c.fillRect(0, y - 2, w, 6); c.fillStyle = 'rgba(255,255,255,0.28)'; c.fillRect(0, y - 2, w, 1); for (let x = 4; x < w - 2; x += 8) RICH.rivet(c, x, y + 1, 1.1, '#5a5868'); }
+      }, g.x0, K.walk - 80); ctx.strokeRect(g.x0, K.walk - 80, g.x1 - g.x0, 80); }
+    else { ctx.save(); ctx.translate(g.x0, K.walk); ctx.rotate(-1.3); RICH.pic('wizmogateopen', 80, 10, c => { RICH.wood(c, 0, 0, 80, 10, { col: C2.wood, seed: 6, r: 2, lw: 1.2 }); c.fillStyle = '#3e3a48'; c.fillRect(18, 0, 5, 10); c.fillRect(54, 0, 5, 10); }, 0, -6); ctx.restore(); }
+    // (art pass, 2nd look) the plain pad: a carved moonstone disc with a lit rim, a rune ring and a shadow; the rope:
+    // a twisted bell-pull with a tassel knob
+    const py = o.pad.y, pcx = (o.pad.x0 + o.pad.x1) / 2;
+    ctx.fillStyle = 'rgba(20,10,40,0.3)'; ctx.beginPath(); ctx.ellipse(pcx + 2, py + 3, 31, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#9a90b8'; ctx.beginPath(); ctx.ellipse(pcx, py + 1.5, 30, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#d8d0e8'; ctx.beginPath(); ctx.ellipse(pcx, py, 30, 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(110,90,160,0.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(pcx, py, 21, 3.8, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(110,90,160,0.7)'; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + 0.2; ctx.fillRect(pcx + Math.cos(a) * 25.5 - 1, py + Math.sin(a) * 4.7 - 0.6, 2, 1.2); }
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.ellipse(pcx - 8, py - 2.5, 13, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    { const rx = o.rope, ry = py - 34;
+      ctx.strokeStyle = '#a89060'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(rx, K.under); ctx.quadraticCurveTo(rx + 6, (K.under + py) / 2, rx, ry); ctx.stroke();
+      ctx.strokeStyle = C2.rope; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(rx - 0.6, K.under); ctx.quadraticCurveTo(rx + 5.4, (K.under + py) / 2, rx - 0.6, ry); ctx.stroke();
+      ctx.strokeStyle = 'rgba(120,90,40,0.7)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let k = 0; k < 24; k++) { const u = k / 24, mx = (1 - u) * (1 - u) * rx + 2 * u * (1 - u) * (rx + 6) + u * u * rx, my = (1 - u) * (1 - u) * K.under + 2 * u * (1 - u) * ((K.under + py) / 2) + u * u * ry; ctx.moveTo(mx - 1.8, my - 1.4); ctx.lineTo(mx + 1.8, my + 1.4); }
+      ctx.stroke();
+      ctx.fillStyle = o.done ? '#9fe07f' : '#ff8fd0'; circle(rx, ry, 6); ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(rx - 2, ry - 2, 2); ctx.fill();
+      ctx.fillStyle = o.done ? '#5aa04a' : '#c85a9a'; ctx.fillRect(rx - 3, ry + 5, 6, 2.5);
+    }
     // the pools
     if (o.pool) { ctx.fillStyle = C2.water; ctx.fillRect(o.pool.x0, F, o.pool.x1 - o.pool.x0, K.pool); ctx.strokeStyle = C2.waterTop; ctx.lineWidth = 3; ctx.beginPath(); for (let x = o.pool.x0; x <= o.pool.x1; x += 10) { const y = F + 2 + Math.sin(t * 3 + x * 0.1) * 2; if (x === o.pool.x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke(); }
     // the "Now!" rings of the two-shape obstacles
@@ -365,16 +387,36 @@ function wizMorphDraw(st) {
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
     if (r.kind === 'hedge') {
       ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse((r.x0 + r.x1) / 2, r.y1 + 3, (r.x1 - r.x0) / 2 + 12, 5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = C2.hedge; rr(r.x0 - 6, r.y0, r.x1 - r.x0 + 12, r.y1 - r.y0 + 4, 14); ctx.fill(); ctx.stroke();
-      ctx.save(); rr(r.x0 - 6, r.y0, r.x1 - r.x0 + 12, r.y1 - r.y0 + 4, 14); ctx.clip();
-      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(r.x1 - 6, r.y0, 12, r.y1 - r.y0 + 4);
-      ctx.fillStyle = 'rgba(200,240,170,0.22)'; ctx.fillRect(r.x0 - 6, r.y0, 8, r.y1 - r.y0 + 4); ctx.restore();
-      ctx.fillStyle = C2.hedgeDk; for (let y = r.y0 + 14; y < r.y1; y += 24) { circle(r.x0 + 10, y, 6); ctx.fill(); circle(r.x1 - 10, y + 10, 6); ctx.fill(); }
-      ctx.fillStyle = 'rgba(200,240,170,0.35)'; for (let y = r.y0 + 10; y < r.y1; y += 24) { circle(r.x0 + 8, y - 2, 2.5); ctx.fill(); }
+      // (art pass, 2nd look) a clipped yew wall: hundreds of little leaf clusters in three greens, lit on the moonlit
+      // left, shaded right, a few white blossoms and darker hollows, the same rounded outline (a cached picture)
+      const hw = r.x1 - r.x0 + 12, hh = r.y1 - r.y0 + 4;
+      RICH.pic('wizmohedge|' + hw + '|' + hh, hw, hh, c => {
+        wizMoRR(c, 0, 0, hw, hh, 14); c.fillStyle = C2.hedge; c.fill(); c.save(); wizMoRR(c, 0, 0, hw, hh, 14); c.clip();
+        const n = Math.round(hw * hh / 22);
+        for (let k = 0; k < n; k++) {
+          const lx = RICH.r(hw + 3, k) * hw, ly = RICH.r(hh + 5, k) * hh, side = lx / hw, tn = RICH.r(7, k);
+          c.fillStyle = tn < 0.33 ? C2.hedgeDk : tn < 0.75 ? RICH.mix(C2.hedge, '#5aa860', 0.3 + (1 - side) * 0.3) : RICH.mix('#7ac874', C2.hedge, side * 0.6);
+          c.beginPath(); c.ellipse(lx, ly, 3.2, 2.2, RICH.r(9, k) * 3, 0, Math.PI * 2); c.fill();
+        }
+        for (let k = 0; k < hh / 20; k++) { c.fillStyle = 'rgba(20,50,25,0.35)'; c.beginPath(); c.ellipse(hw * (0.3 + RICH.r(11, k) * 0.5), 10 + RICH.r(12, k) * (hh - 20), 5, 4, 0, 0, Math.PI * 2); c.fill(); }
+        const g = c.createLinearGradient(0, 0, hw, 0); g.addColorStop(0, 'rgba(210,240,190,0.25)'); g.addColorStop(0.35, 'rgba(0,0,0,0)'); g.addColorStop(0.7, 'rgba(0,0,0,0.05)'); g.addColorStop(1, 'rgba(10,30,20,0.35)');
+        c.fillStyle = g; c.fillRect(0, 0, hw, hh);
+        c.fillStyle = 'rgba(220,250,200,0.35)'; c.fillRect(0, 0, hw, 3);
+        for (let k = 0; k < hh / 26; k++) { const fx = 6 + RICH.r(13, k) * (hw - 12), fy = 8 + RICH.r(14, k) * (hh - 16); c.fillStyle = '#f4f0ff'; for (let q = 0; q < 4; q++) { c.beginPath(); c.arc(fx + Math.cos(q * 1.57) * 1.6, fy + Math.sin(q * 1.57) * 1.6, 1.3, 0, Math.PI * 2); c.fill(); } c.fillStyle = '#ffd23f'; c.fillRect(fx - 0.7, fy - 0.7, 1.4, 1.4); }
+        c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, hh - 6, hw, 6);
+        c.restore();
+      }, r.x0 - 6, r.y0);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(r.x0 - 6, r.y0, r.x1 - r.x0 + 12, r.y1 - r.y0 + 4, 14); ctx.stroke();
     }
-    else if (r.kind === 'belfry' || r.kind === 'block') { ctx.fillStyle = C2.stone; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = C2.stoneDk; for (let y = r.y0 + 16; y < r.y1; y += 20) ctx.fillRect(r.x0 + 2, y, r.x1 - r.x0 - 4, 2); }
+    else if (r.kind === 'belfry' || r.kind === 'block') {
+      RICH.pic('wizmoblk|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => { RICH.stone(c, 0, 0, w, h, { col: C2.stone, mortar: C2.stoneDk, course: 20, len: Math.min(46, w), seed: w + 3, edge: false }); c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(w - 6, 0, 6, h); c.fillStyle = 'rgba(230,220,255,0.16)'; c.fillRect(0, 0, 3, h); }, r.x0, r.y0);
+      ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
     else if (r.kind === 'plug') { ctx.fillStyle = 'rgba(20,10,30,0.85)'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
-    else if (r.kind === 'fence' && !r.off) { ctx.fillStyle = C2.wood; for (let y = r.y0 + 4; y < r.y1; y += 18) ctx.fillRect(r.x0 - 3, y, r.x1 - r.x0 + 6, 12); ctx.fillStyle = C2.woodDk; ctx.fillRect(r.x0 + 1, r.y0, 4, r.y1 - r.y0); }
+    else if (r.kind === 'fence' && !r.off) { RICH.pic('wizmofence|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0 + 6, r.y1 - r.y0, (c, w, h) => {
+        for (let y = 4; y < h; y += 18) RICH.wood(c, 0, y, w, Math.min(12, h - y), { col: C2.wood, seed: y, r: 2, lw: 1.2 });
+        RICH.wood(c, 4, 0, 4, h, { col: C2.woodDk, vert: true, bw: 4, seed: 2, edge: false });
+        for (let y = 10; y < h; y += 18) RICH.nail(c, 6, y, 1);
+      }, r.x0 - 3, r.y0); }
     else if (r.kind === 'bank') { wizLawn(r.x0, r.y0, r.x1, r.y1, { top: C2.grass, body: C2.grassDk, noFlowers: true }); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
   }
 }

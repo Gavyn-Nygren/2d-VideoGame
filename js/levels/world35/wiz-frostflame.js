@@ -340,7 +340,15 @@ function wizFFDraw(st) {
     ctx.stroke();
     for (let i = 0; i < o.n; i++) if (o.ice[i] > 0) {
       const x = o.x0 + i * K.tile, crack = o.ice[i] <= K.crack;
-      ctx.fillStyle = C2.ice; ctx.strokeStyle = C2.iceDk; ctx.lineWidth = 2; ctx.fillRect(x + 1, F, K.tile - 2, 16); ctx.strokeRect(x + 1, F, K.tile - 2, 16);
+      // (art pass) a frozen tile: a cold gradient, a glint, frost veins and trapped bubbles (cached)
+      RICH.pic('wizice|' + Math.round(K.tile - 2), K.tile - 2, 16, (c, w, h) => {
+        const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#f2fbff'); g.addColorStop(0.45, C2.ice); g.addColorStop(1, '#b8e0f4'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+        c.fillStyle = 'rgba(255,255,255,0.75)'; c.beginPath(); c.moveTo(3, 3); c.lineTo(w * 0.45, 3); c.lineTo(w * 0.3, 7); c.lineTo(3, 7); c.closePath(); c.fill();
+        c.strokeStyle = 'rgba(120,180,220,0.55)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(w * 0.6, 2); c.lineTo(w * 0.7, 9); c.lineTo(w * 0.62, 14); c.moveTo(w * 0.7, 9); c.lineTo(w * 0.86, 11); c.stroke();
+        c.fillStyle = 'rgba(255,255,255,0.8)'; for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(4 + RICH.r(91, k) * (w - 8), 8 + RICH.r(92, k) * 6, 0.6 + RICH.r(93, k) * 0.9, 0, Math.PI * 2); c.fill(); }
+        c.fillStyle = 'rgba(90,150,200,0.25)'; c.fillRect(0, h - 3, w, 3);
+      }, x + 1, F);
+      ctx.strokeStyle = C2.iceDk; ctx.lineWidth = 2; ctx.strokeRect(x + 1, F, K.tile - 2, 16);
       if (crack) { ctx.strokeStyle = '#5a8aa8'; ctx.beginPath(); ctx.moveTo(x + 8, F + 2); ctx.lineTo(x + 18, F + 9); ctx.lineTo(x + 14, F + 15); ctx.moveTo(x + 18, F + 9); ctx.lineTo(x + 30, F + 6); ctx.stroke(); }
     }
   }
@@ -351,35 +359,74 @@ function wizFFDraw(st) {
       // (grass outside, stone in the ice house)
       const d = ph.doors[1], a0 = Math.min(r.x1, Math.max(r.x0, d));
       wizLawn(Math.max(r.x0, cx - 60), r.y0, Math.min(a0, cx + W + 60), r.y1, { top: '#5fae6a', body: '#3f6a4a' });
-      ctx.fillStyle = C2.stoneDk; ctx.fillRect(a0, r.y0, r.x1 - a0, r.y1 - r.y0); ctx.fillStyle = C2.stone; ctx.fillRect(a0, r.y0, r.x1 - a0, 8);
-      ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(a0, r.y0, r.x1 - a0, 2);
-      ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1.5; ctx.beginPath();
-      for (let x = Math.max(a0, Math.floor((cx - 60) / 48) * 48); x < Math.min(r.x1, cx + W + 60); x += 48) { ctx.moveTo(x, r.y0 + 8); ctx.lineTo(x, r.y0 + 30); ctx.moveTo(x + 24, r.y0 + 30); ctx.lineTo(x + 24, r.y0 + 54); }
-      ctx.moveTo(Math.max(a0, cx - 60), r.y0 + 30); ctx.lineTo(Math.min(r.x1, cx + W + 60), r.y0 + 30); ctx.stroke();
+      // (art pass) the ice house floor: a frosted kerb over cold flagstones pinned to the world (cached strip, clipped)
+      { const a = Math.max(a0, cx - 60), b = Math.min(r.x1, cx + W + 60), fh = Math.min(Math.ceil(r.y1 - r.y0), 200);
+        if (b > a) { ctx.save(); ctx.beginPath(); ctx.rect(a, r.y0, b - a, r.y1 - r.y0); ctx.clip();
+          RICH.strip('wizffstone|' + fh, a, b, r.y0, fh, 256, (c, gx, w, h) => {
+            RICH.flags(c, 0, 8, w, h - 8, { col: C2.stone, mortar: C2.stoneDk, course: 23, len: 48, seed: 33, gx, fade: 0.35 });
+            RICH.flags(c, 0, 0, w, 8, { col: RICH.lit(C2.stone, 0.12), course: 8, len: 70, seed: 34, gx });
+            c.fillStyle = 'rgba(230,248,255,0.6)'; for (let X = Math.ceil(gx / 9) * 9; X < gx + w; X += 9) c.fillRect(X - gx, 0, 4 + RICH.r(X, 3) * 5, 1.5 + RICH.r(X, 4) * 1.5);
+            c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(0, 8, w, 2);
+          });
+          if (r.y1 - r.y0 > fh) { ctx.fillStyle = C2.stoneDk; ctx.fillRect(a, r.y0 + fh, b - a, r.y1 - r.y0 - fh); }
+          ctx.restore(); } }
       ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
     }
-    else if (r.kind === 'raft') { ctx.fillStyle = '#9a6a3e'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 14); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, 14); }
-    else if (r.kind === 'ledge') { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(r.x0 + 6, r.y1, r.x1 - r.x0 - 6, 6); ctx.fillStyle = C2.stoneDk; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = C2.stone; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 8); ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(r.x0 + 2, r.y0 + 2, r.x1 - r.x0 - 4, 2); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
+    else if (r.kind === 'raft') { RICH.pic('wizffraft|' + (r.x1 - r.x0), r.x1 - r.x0, 14, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: '#9a6a3e', vert: true, bw: 12, seed: 4, edge: false }); for (const y of [3, 10]) { c.fillStyle = '#c8b080'; c.fillRect(0, y - 1, w, 2); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, y + 1, w, 1); } }, r.x0, r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, 14); }
+    else if (r.kind === 'ledge') { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(r.x0 + 6, r.y1, r.x1 - r.x0 - 6, 6);
+      RICH.pic('wizffledge|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => { RICH.stone(c, 0, 8, w, h - 8, { col: C2.stoneDk, course: 18, len: 40, seed: w, edge: false }); RICH.stone(c, 0, 0, w, 8, { col: C2.stone, course: 8, len: 34, seed: w + 1, edge: false }); c.fillStyle = 'rgba(230,248,255,0.55)'; for (let x = 2; x < w - 4; x += 7) c.fillRect(x, 0, 3 + RICH.r(w, x) * 3, 1.5); }, r.x0, r.y0);
+      ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
     else if (r.kind === 'thorn') {
       const k = 1 - r.burn / WIZFF.burn;
       ctx.strokeStyle = C2.thornDk; ctx.lineWidth = 6; ctx.beginPath();
       for (let y = r.y1; y > r.y0; y -= 14) { ctx.moveTo(r.x0 + 4, y); ctx.lineTo(r.x1 - 4, y - 14 * k); }
       ctx.stroke(); ctx.fillStyle = C2.thorn;
       for (let y = r.y1 - 6; y > r.y0; y -= 18) { ctx.beginPath(); ctx.moveTo(r.x0, y); ctx.lineTo(r.x0 - 8, y - 4); ctx.lineTo(r.x0, y - 8); ctx.fill(); ctx.beginPath(); ctx.moveTo(r.x1, y - 9); ctx.lineTo(r.x1 + 8, y - 13); ctx.lineTo(r.x1, y - 17); ctx.fill(); }
-    } else if (r.kind === 'icewall') { ctx.save(); ctx.globalAlpha = 1 - 0.6 * r.burn / WIZFF.burn; ctx.fillStyle = C2.ice; ctx.strokeStyle = C2.iceDk; ctx.lineWidth = 2.5; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.restore(); }
-    else if (r.kind === 'gdoor') { ctx.fillStyle = '#6a8a7a'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
+    } else if (r.kind === 'icewall') { ctx.save(); ctx.globalAlpha = 1 - 0.6 * r.burn / WIZFF.burn;
+      // (art pass) a wall of ice blocks: cold gradients, glints, frost veins, bubbles (cached per size)
+      RICH.pic('wizffwall|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => {
+        for (let y = 0, j = 0; y < h; y += 30, j++) {
+          const bh = Math.min(30, h - y), g = c.createLinearGradient(0, y, w, y + bh); g.addColorStop(0, '#f4fcff'); g.addColorStop(0.5, C2.ice); g.addColorStop(1, '#a8d4ec'); c.fillStyle = g; c.fillRect(0, y, w, bh);
+          c.fillStyle = 'rgba(255,255,255,0.7)'; c.fillRect(3, y + 3, w * 0.4, 2); c.fillRect(3, y + 3, 2, bh * 0.5);
+          c.fillStyle = 'rgba(80,140,190,0.35)'; c.fillRect(0, y + bh - 2, w, 2);
+          c.strokeStyle = 'rgba(110,170,215,0.5)'; c.lineWidth = 0.9; c.beginPath(); const vx = 6 + RICH.r(w + j, 1) * (w - 12); c.moveTo(vx, y + 2); c.lineTo(vx + 5, y + bh * 0.5); c.lineTo(vx + 1, y + bh - 3); c.stroke();
+          c.fillStyle = 'rgba(255,255,255,0.8)'; for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(4 + RICH.r(j + 70, k) * (w - 8), y + 6 + RICH.r(j + 71, k) * (bh - 10), 0.8 + RICH.r(j + 72, k), 0, Math.PI * 2); c.fill(); }
+        }
+      }, r.x0, r.y0);
+      ctx.strokeStyle = C2.iceDk; ctx.lineWidth = 2.5; ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.restore(); }
+    else if (r.kind === 'gdoor') {
+      // (art pass) the greenhouse door: painted planks with a glazed top light, iron hinges and a ring handle (cached)
+      RICH.pic('wizffgdoor|' + (r.x1 - r.x0) + '|' + (r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => {
+        RICH.wood(c, 0, 0, w, h, { col: '#6a8a7a', vert: true, bw: Math.max(6, w / 3), seed: 5, edge: false });
+        c.fillStyle = '#3a4a44'; c.fillRect(3, 6, w - 6, Math.min(40, h * 0.25)); c.fillStyle = 'rgba(160,220,200,0.35)'; c.fillRect(5, 8, w - 10, Math.min(36, h * 0.25 - 4)); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(6, 9, 2, Math.min(30, h * 0.2));
+        c.fillStyle = '#2e3436'; for (const y of [h * 0.35, h * 0.8]) { c.fillRect(0, y, w * 0.7, 4); RICH.rivet(c, 4, y + 2, 1.1, '#5a6068'); }
+        c.strokeStyle = '#c9a24a'; c.lineWidth = 1.6; c.beginPath(); c.arc(w - 6, h * 0.55, 3, 0, Math.PI * 2); c.stroke();
+      }, r.x0, r.y0);
+      ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
   }
   for (const pc of ph.pieces) {
     if (pc.plant) wizFFDrawPlant(pc.plant, t);
-    if (pc.fire) pc.fire.out.forEach((o, k) => { const x = pc.fire.x0 + k * K.tile; ctx.fillStyle = '#5a3a2a'; ctx.fillRect(x + 1, F - 4, K.tile - 2, 6); if (!o) { for (let j = 0; j < 3; j++) { const h = 16 + Math.sin(t * 12 + k * 3 + j) * 6; ctx.fillStyle = j === 1 ? '#ffd23f' : '#ff7a3a'; ctx.beginPath(); ctx.moveTo(x + 6 + j * 12, F - 2); ctx.quadraticCurveTo(x + 10 + j * 12, F - 2 - h, x + 14 + j * 12, F - 2); ctx.fill(); } } });
-    if (pc.lamp) { const l = pc.lamp; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(l.x, F); ctx.lineTo(l.x, l.y + 10); ctx.stroke(); ctx.fillStyle = '#b08a50'; ctx.beginPath(); ctx.ellipse(l.x, l.y + 6, 16, 8, 0, 0, Math.PI); ctx.fill(); ctx.stroke(); if (l.lit) { ctx.fillStyle = '#ffb040'; ctx.beginPath(); ctx.moveTo(l.x - 8, l.y + 4); ctx.quadraticCurveTo(l.x, l.y - 24 - Math.sin(t * 10) * 4, l.x + 8, l.y + 4); ctx.fill(); } }
+    if (pc.fire) pc.fire.out.forEach((o, k) => { const x = pc.fire.x0 + k * K.tile; RICH.pic('wizfflog|' + K.tile, K.tile - 2, 6, c => { RICH.wood(c, 0, 0, K.tile - 2, 6, { col: '#5a3a2a', seed: 3, r: 2, lw: 1 }); c.fillStyle = 'rgba(255,120,40,0.35)'; c.fillRect(2, 0, K.tile - 6, 1.2); c.fillStyle = 'rgba(20,10,5,0.5)'; for (let q = 4; q < K.tile - 4; q += 7) c.fillRect(q, 2, 3, 2); }, x + 1, F - 4); if (!o) { for (let j = 0; j < 3; j++) { const h = 16 + Math.sin(t * 12 + k * 3 + j) * 6; ctx.fillStyle = j === 1 ? '#ffd23f' : '#ff7a3a'; ctx.beginPath(); ctx.moveTo(x + 6 + j * 12, F - 2); ctx.quadraticCurveTo(x + 10 + j * 12, F - 2 - h, x + 14 + j * 12, F - 2); ctx.fill(); } } });
+    if (pc.lamp) { const l = pc.lamp; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(l.x, F); ctx.lineTo(l.x, l.y + 10); ctx.stroke(); ctx.strokeStyle = '#5a5668'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(l.x - 0.6, F - 2); ctx.lineTo(l.x - 0.6, l.y + 12); ctx.stroke(); ctx.fillStyle = '#3a3646'; ctx.fillRect(l.x - 6, F - 5, 12, 5); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; { const bg = ctx.createLinearGradient(l.x - 16, 0, l.x + 16, 0); bg.addColorStop(0, '#e8c888'); bg.addColorStop(0.4, '#b08a50'); bg.addColorStop(1, '#6a4e26'); ctx.fillStyle = bg; } ctx.beginPath(); ctx.ellipse(l.x, l.y + 6, 16, 8, 0, 0, Math.PI); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#6a4e26'; for (const dx of [-9, 0, 9]) { circle(l.x + dx, l.y + 9 + (dx ? 0 : 2), 1.1); ctx.fill(); } ctx.fillStyle = 'rgba(255,240,200,0.6)'; ctx.fillRect(l.x - 14, l.y + 6, 28, 1.2); if (l.lit) { ctx.fillStyle = '#ffb040'; ctx.beginPath(); ctx.moveTo(l.x - 8, l.y + 4); ctx.quadraticCurveTo(l.x, l.y - 24 - Math.sin(t * 10) * 4, l.x + 8, l.y + 4); ctx.fill(); } }
     if (pc.geyser) {
       const g = pc.geyser;
-      if (g.ice > 0) { ctx.fillStyle = WIZFF_C.ice; ctx.strokeStyle = WIZFF_C.iceDk; ctx.lineWidth = 2.5; ctx.fillRect(g.x - 22, g.y, 44, F - g.y); ctx.strokeRect(g.x - 22, g.y, 44, F - g.y); }
+      if (g.ice > 0) {
+        // (art pass, 2nd look) a frozen spout: clear blue ice with frost at the top, trapped bubbles, icicle ribs and a
+        // glint (cached per height)
+        RICH.pic('wizffspout|' + Math.round(F - g.y), 44, Math.round(F - g.y), (c, w, h) => {
+          const gg = c.createLinearGradient(0, 0, w, 0); gg.addColorStop(0, '#f2faff'); gg.addColorStop(0.45, WIZFF_C.ice); gg.addColorStop(1, '#a8d4ee'); c.fillStyle = gg; c.fillRect(0, 0, w, h);
+          c.fillStyle = 'rgba(120,180,220,0.35)'; for (let q = 0; q < 4; q++) c.fillRect(6 + q * 10, 6, 3, h - 10);
+          c.fillStyle = 'rgba(255,255,255,0.9)'; c.fillRect(0, 0, w, 4); for (let q = 2; q < w; q += 5) c.fillRect(q, 4, 2, 2 + RICH.r(q, 1) * 4);
+          c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1; for (let q = 0; q < h / 12; q++) { c.beginPath(); c.arc(8 + RICH.r(q, 2) * (w - 16), 10 + RICH.r(q, 3) * (h - 16), 1.2 + RICH.r(q, 4) * 1.6, 0, Math.PI * 2); c.stroke(); }
+          c.strokeStyle = 'rgba(90,150,200,0.6)'; c.beginPath(); c.moveTo(w * 0.6, 4); c.lineTo(w * 0.5, h * 0.4); c.lineTo(w * 0.66, h * 0.7); c.stroke();
+          c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(4, 6, 3, h - 12);
+        }, g.x - 22, g.y);
+        ctx.strokeStyle = WIZFF_C.iceDk; ctx.lineWidth = 2.5; ctx.strokeRect(g.x - 22, g.y, 44, F - g.y);
+      }
       else { const h = 60 + Math.sin(t * 9) * 16; ctx.fillStyle = 'rgba(170,220,255,0.75)'; ctx.beginPath(); ctx.moveTo(g.x - 12, F); ctx.quadraticCurveTo(g.x, F - h * 2, g.x + 12, F); ctx.fill(); }
-      ctx.fillStyle = '#4e5a70'; ctx.fillRect(g.x - 16, F - 6, 32, 8);
+      RICH.pic('wizffgeybase', 32, 8, c => { RICH.stone(c, 0, 0, 32, 8, { col: '#4e5a70', course: 8, len: 11, seed: 2, cracks: 0, edge: false }); c.fillStyle = '#1a2230'; c.fillRect(10, 0, 12, 2.5); c.fillStyle = 'rgba(160,220,255,0.5)'; c.fillRect(11, 0, 10, 1); }, g.x - 16, F - 6);
     }
-    if (pc.kind === 'door') { ctx.fillStyle = '#5a3a2a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(pc.x - 26, F - 90, 52, 90, 20); ctx.fill(); ctx.stroke(); }
+    if (pc.kind === 'door') { wizDoorArt(pc.x, F, 52, 90); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; rr(pc.x - 26, F - 90, 52, 90, 20); ctx.stroke(); }
     else wizDrawFlag(pc.flag, pc.kind === 'icewall' ? pc.y : F, ph.pieces.indexOf(pc) <= ph.pc);
   }
   // the flame jet

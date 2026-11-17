@@ -730,12 +730,22 @@
       for (let x = -((st.d) % 30) - 30; x < W + 30; x += 30) {
         const d = st.d + x + 15;
         if (st.items.some(it => it.kind === 'ramp' && it.gap && d > it.d + 10 && d < it.d + it.w)) continue;
-        ctx.fillStyle = (Math.floor(d / 30) % 2) ? '#a0683a' : '#8a5a32'; ctx.fillRect(x, R.gy, 29, 14);
-        ctx.fillStyle = 'rgba(255,220,170,0.25)'; ctx.fillRect(x, R.gy, 29, 2);
-        ctx.fillStyle = 'rgba(40,20,5,0.3)'; ctx.fillRect(x, R.gy + 11, 29, 3); ctx.fillRect(x + 6, R.gy + 6, 14, 1);
-        ctx.fillStyle = '#3a2a1a'; circ(x + 4, R.gy + 4, 1.2); ctx.fill(); circ(x + 25, R.gy + 4, 1.2); ctx.fill();
+        const v = ((Math.floor(d / 30) % 4) + 4) % 4;
+        RICH.pic('w37plank' + v, 29, 14, c => {
+          RICH.wood(c, 0, 0, 29, 14, { col: v % 2 ? '#a0683a' : '#8a5a32', vert: true, bw: 29, seed: 70 + v, knots: 1.6, edge: false });
+          c.fillStyle = 'rgba(255,220,170,0.3)'; c.fillRect(0, 0, 29, 1.5); c.fillStyle = 'rgba(40,20,5,0.35)'; c.fillRect(0, 11, 29, 3); c.fillRect(27.5, 0, 1.5, 14);
+          if (v === 3) { c.strokeStyle = 'rgba(40,20,5,0.6)'; c.lineWidth = 1; c.beginPath(); c.moveTo(18, 0); c.lineTo(15, 5); c.lineTo(17, 9); c.stroke(); }
+          RICH.nail(c, 4, 4, 1.3); RICH.nail(c, 25, 4, 1.3);
+        }, x, R.gy);
       }
-      for (let x = -((st.d) % 120) - 120; x < W + 120; x += 120) { ctx.fillStyle = '#5e3a1c'; ctx.fillRect(x, R.gy + 14, 10, 60); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 6, R.gy + 14, 4, 60); }
+      for (let x = -((st.d) % 120) - 120; x < W + 120; x += 120) {
+        RICH.pic('w37bridgepost', 40, 62, c => {
+          // a pile under the deck with a diagonal brace and an iron strap
+          c.strokeStyle = '#4a2c14'; c.lineWidth = 4; c.beginPath(); c.moveTo(10, 4); c.lineTo(36, 30); c.stroke(); c.strokeStyle = 'rgba(255,220,170,0.25)'; c.lineWidth = 1; c.beginPath(); c.moveTo(10, 2.5); c.lineTo(36, 28.5); c.stroke();
+          RICH.wood(c, 0, 0, 10, 60, { col: '#5e3a1c', vert: true, bw: 10, seed: 11, knots: 1, edge: false }); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(6, 0, 4, 60); c.fillStyle = 'rgba(255,220,170,0.25)'; c.fillRect(0, 0, 1.2, 60);
+          c.fillStyle = '#5a5a64'; c.fillRect(-1, 8, 12, 4); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(-1, 8, 12, 1); RICH.rivet(c, 5, 10, 1.2, '#8a8a96');
+        }, x, R.gy + 14);
+      }
       return;
     }
     const grass = night ? '#4a6a3a' : K.COL.grass;
@@ -750,32 +760,70 @@
     ctx.fillStyle = night ? '#8a7050' : K.COL.dirt; ctx.beginPath(); ctx.moveTo(0, H);
     for (let x = 0; x <= W; x += 20) ctx.lineTo(x, roadY(st, x) - 1);
     ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+    // (art pass) the road's dirt: grains, strata, pebbles, hoof prints and straw, scrolling with the road
+    ctx.save(); ctx.clip(); K.ground(st.d, R.gy - 40, H - R.gy + 40, { col: night ? '#8a7050' : K.COL.dirt, key: 'road' }); ctx.restore();
     ctx.strokeStyle = 'rgba(255,240,200,0.35)'; ctx.lineWidth = 1.5; ctx.beginPath();
     for (let x = 0; x <= W; x += 20) { const y = roadY(st, x); x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(120,90,50,0.3)'; ctx.lineWidth = 3;
-    for (const ry of [30, 70]) { ctx.beginPath(); for (let x = 0; x <= W; x += 20) { const y = roadY(st, x) + ry; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); }
-    ctx.fillStyle = 'rgba(120,90,50,0.35)';
-    for (let k = 0; k < 14; k++) { const x = ((k * 97 - st.d) % (W + 100) + W + 100) % (W + 100) - 50; ctx.fillRect(x, roadY(st, x) + 14 + (k % 3) * 18, 26, 3); }
-    for (let k = 0; k < 18; k++) {
-      const x = ((k * 61 - st.d) % (W + 80) + W + 80) % (W + 80) - 40, y = roadY(st, x) + 10 + (k * 37) % 100, r = 2 + (k % 3);
-      ctx.fillStyle = '#9a8a72'; ctx.beginPath(); ctx.ellipse(x, y, r * 1.4, r, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.ellipse(x - r * 0.4, y - r * 0.3, r * 0.6, r * 0.4, 0, 0, TAU); ctx.fill();
+    // two wheel ruts that follow the road: a dark groove with a lit lower lip
+    for (const ry of [30, 70]) {
+      for (const [dy, col, lw] of [[0, 'rgba(110,80,40,0.38)', 4], [-1.5, 'rgba(70,50,20,0.3)', 1.2], [2.6, 'rgba(255,240,200,0.35)', 1.2]]) {
+        ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); for (let x = 0; x <= W; x += 20) { const y = roadY(st, x) + ry + dy; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke();
+      }
     }
   }
   function drawGroundItem(st, it, sx, t) {
     const y = roadY(st, sx);
-    if (it.kind === 'bump' && !it.done) { ctx.fillStyle = '#8a7050'; ctx.beginPath(); ctx.ellipse(sx, y, 26, 8, 0, Math.PI, TAU); ctx.fill(); ctx.fillStyle = '#9a968c'; ctx.beginPath(); ctx.ellipse(sx + 4, y - 3, 9, 6, 0, 0, TAU); ctx.fill(); }
-    else if (it.kind === 'pothole' && !it.done) { ctx.fillStyle = '#4a3a2a'; ctx.beginPath(); ctx.ellipse(sx, y + 4, 28, 6, 0, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(120,160,200,0.5)'; ctx.beginPath(); ctx.ellipse(sx, y + 5, 20, 3, 0, 0, TAU); ctx.fill(); }
+    if (it.kind === 'bump' && !it.done) RICH.pic('w37bump', 60, 18, c => {
+      // a hump of packed earth with a stone poking out of it
+      c.translate(30, 14);
+      c.fillStyle = '#8a7050'; c.beginPath(); c.ellipse(0, 0, 26, 8, 0, Math.PI, TAU); c.fill();
+      c.fillStyle = 'rgba(255,240,200,0.3)'; c.beginPath(); c.ellipse(-4, -5, 16, 2.5, 0, Math.PI, TAU); c.fill();
+      c.fillStyle = 'rgba(80,60,30,0.5)'; for (let k = 0; k < 10; k++) c.fillRect(-20 + RICH.r(81, k) * 40, -6 + RICH.r(82, k) * 5, 1.3, 1.3);
+      RICH.pebble(c, 4, -3, 8, '#9a968c', 5); RICH.pebble(c, -12, -1.5, 3, '#a8a49a', 9);
+    }, sx - 30, y - 14);
+    else if (it.kind === 'pothole' && !it.done) RICH.pic('w37pothole', 66, 18, c => {
+      // a muddy pothole: a broken rim, dark mud, a puddle with the sky in it
+      c.translate(33, 6);
+      c.fillStyle = '#6a5034'; c.beginPath(); c.ellipse(0, 4, 31, 7.5, 0, 0, TAU); c.fill();
+      c.fillStyle = '#4a3a2a'; c.beginPath(); c.ellipse(0, 4, 28, 6, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(120,160,200,0.55)'; c.beginPath(); c.ellipse(0, 5, 20, 3, 0, 0, TAU); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(-10, 4, 8, 1); c.fillRect(4, 6, 5, 1);
+      c.fillStyle = 'rgba(255,240,200,0.4)'; c.beginPath(); c.ellipse(0, 9.5, 26, 1.5, 0, 0, Math.PI); c.fill();
+      for (let k = 0; k < 5; k++) RICH.pebble(c, -26 + k * 13, 9 + (k % 2) * 2 - 8 * (k === 2 ? 1 : 0) + (k === 2 ? 0 : 0), 2, '#9a8a72', k);
+    }, sx - 33, y - 2);
     else if (it.kind === 'ramp') {
       if (it.gap) {
         // the missing span: posts and a drop
-        ctx.fillStyle = '#5e3a1c'; ctx.fillRect(sx - 4, y, 8, 60); ctx.fillRect(sx + it.w - 4, y, 8, 60);
-        ctx.fillStyle = '#a0683a'; ctx.beginPath(); ctx.moveTo(sx - 60, y); ctx.lineTo(sx, y - 16); ctx.lineTo(sx, y); ctx.closePath(); ctx.fill();
+        for (const px of [sx - 4, sx + it.w - 4]) RICH.pic('w37gappost', 10, 60, c => { RICH.wood(c, 0, 0, 8, 60, { col: '#5e3a1c', vert: true, bw: 8, seed: 21, knots: 1, edge: false }); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(5, 0, 3, 60); c.fillStyle = '#c8b090'; c.beginPath(); c.moveTo(0, 0); c.lineTo(2, -0); c.lineTo(3, 3); c.lineTo(5, 0); c.lineTo(8, 0); c.lineTo(8, 4); c.lineTo(0, 4); c.closePath(); c.fill(); }, px, y);
+        RICH.pic('w37gapramp', 64, 20, c => {
+          // a kicker of loose boards nailed over a trestle, the last span missing
+          c.translate(62, 18);
+          c.beginPath(); c.moveTo(-60, 0); c.lineTo(0, -16); c.lineTo(0, 0); c.closePath(); c.save(); c.clip();
+          RICH.wood(c, -60, -16, 60, 16, { col: '#a0683a', vert: true, bw: 10, seed: 23, knots: 0.6, edge: false }); c.restore();
+          c.strokeStyle = '#5e3a1c'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(-58, -1); c.lineTo(0, -16.5); c.stroke();
+          c.strokeStyle = 'rgba(255,220,170,0.4)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-58, -2.5); c.lineTo(0, -18); c.stroke();
+          RICH.nail(c, -30, -8, 1.2); RICH.nail(c, -10, -13, 1.2);
+          c.strokeStyle = '#3a2010'; c.lineWidth = 1; c.beginPath(); c.moveTo(-60, 0); c.lineTo(0, -16); c.lineTo(0, 0); c.stroke();
+        }, sx - 62, y - 18);
         text('GAP', sx + it.w / 2, y + 30, 14, '#ffffff', 'center', 'body');
       } else {
         // a hay cart tipped up as a ramp
-        ctx.fillStyle = '#8a5a32'; ctx.beginPath(); ctx.moveTo(sx - 60, y); ctx.lineTo(sx + it.w - 40, y - 34); ctx.lineTo(sx + it.w - 40, y); ctx.closePath(); ctx.fill();
+        { const rw = Math.round(it.w + 20);
+          RICH.pic('w37hayramp|' + rw, rw + 6, 42, c => {
+            // the tipped hay cart: its plank bed as the slope, side boards with grain, an iron-tyred wheel at the high end
+            c.translate(3, 38);
+            c.beginPath(); c.moveTo(0, 0); c.lineTo(rw, -34); c.lineTo(rw, 0); c.closePath(); c.save(); c.clip();
+            RICH.wood(c, 0, -34, rw, 34, { col: '#8a5a32', boards: 3, seam: 40, seed: rw, knots: 0.6, edge: false });
+            c.fillStyle = 'rgba(30,15,5,0.3)'; c.fillRect(0, -4, rw, 4); c.restore();
+            c.save(); c.translate(0, 0); c.rotate(Math.atan2(-34, rw)); const L = Math.hypot(rw, 34);
+            RICH.wood(c, 0, -4, L, 5, { col: '#6e4420', boards: 1, seed: 3, knots: 0.4 }); c.restore();
+            c.fillStyle = 'rgba(242,207,90,0.7)'; for (let k = 0; k < 8; k++) c.fillRect(10 + RICH.r(91, k) * (rw - 20), -2 - RICH.r(92, k) * 22 * (RICH.r(91, k)), 4, 1);
+            c.fillStyle = '#3a2010'; c.beginPath(); c.arc(rw - 10, -6, 9, 0, TAU); c.fill(); c.fillStyle = '#c88a52'; c.beginPath(); c.arc(rw - 10, -6, 6, 0, TAU); c.fill();
+            c.strokeStyle = '#5e3a1c'; c.lineWidth = 1.5; c.beginPath(); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; c.moveTo(rw - 10, -6); c.lineTo(rw - 10 + Math.cos(a) * 6, -6 + Math.sin(a) * 6); } c.stroke();
+            c.fillStyle = '#ffd23a'; c.beginPath(); c.arc(rw - 10, -6, 2, 0, TAU); c.fill();
+            c.strokeStyle = '#3a2010'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(0, 0); c.lineTo(rw, -34); c.lineTo(rw, 0); c.stroke();
+          }, sx - 63, y - 38); }
         K.hay(sx + it.w - 20, y, 0.9);
       }
     } else if (it.kind === 'geese' || it.kind === 'sheep') {
@@ -788,18 +836,46 @@
     } else if (it.kind === 'ox' && !it.done) {
       const off = it.off || 0, oy = y - off * 60, ox = it.d - st.d;
       ctx.save(); ctx.translate(ox, oy); ctx.scale(1 - off * 0.25, 1 - off * 0.25);
-      ctx.fillStyle = '#8a5a32'; ctx.fillRect(-10, -50, 80, 34); ctx.fillStyle = '#f2cf5a'; ctx.fillRect(-8, -64, 76, 16);
-      ctx.fillStyle = '#5e3a1c'; circ(4, -14, 14); ctx.fill(); circ(56, -14, 14); ctx.fill();
-      ctx.fillStyle = '#7a5a3a'; ctx.beginPath(); ctx.ellipse(110, -40, 30, 18, 0, 0, TAU); ctx.fill(); ctx.fillRect(132, -52, 18, 18);
-      ctx.fillStyle = '#f2e6c8'; ctx.beginPath(); ctx.moveTo(140, -52); ctx.lineTo(150, -64); ctx.lineTo(146, -50); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#5a3a2a'; for (const lx of [90, 100, 120, 128]) ctx.fillRect(lx, -24, 5, 24);
+      RICH.pic('w37oxcart', 176, 82, c => {
+        c.translate(14, 74);
+        RICH.shadow(c, 70, 0, 80, 5, 0.2);
+        // the ox: legs, a shaded barrel body, a head with a muzzle, horns, an ear, an eye
+        c.fillStyle = '#4a2e1e'; for (const lx of [90, 120]) c.fillRect(lx, -24, 5, 24);
+        c.fillStyle = '#5a3a2a'; for (const lx of [100, 128]) c.fillRect(lx, -24, 5, 24);
+        c.fillStyle = '#2a1a10'; for (const lx of [90, 100, 120, 128]) c.fillRect(lx - 0.5, -3, 6, 3);
+        const og = c.createLinearGradient(0, -58, 0, -22); og.addColorStop(0, '#9a7650'); og.addColorStop(1, '#5e4028'); c.fillStyle = og; c.beginPath(); c.ellipse(110, -40, 30, 18, 0, 0, TAU); c.fill();
+        c.fillStyle = 'rgba(255,240,210,0.25)'; c.beginPath(); c.ellipse(104, -52, 18, 4, -0.1, 0, TAU); c.fill();
+        c.fillStyle = '#f2e6c8'; c.beginPath(); c.ellipse(112, -30, 10, 5, 0, 0, TAU); c.fill();
+        c.fillStyle = '#7a5a3a'; RICH.rr(c, 130, -54, 20, 20, 5); c.fill(); c.fillStyle = '#c8a088'; RICH.rr(c, 142, -44, 10, 10, 4); c.fill(); c.fillStyle = '#4a2a1a'; c.fillRect(147, -41, 2, 2);
+        c.fillStyle = '#f2e6c8'; c.beginPath(); c.moveTo(140, -52); c.lineTo(150, -64); c.lineTo(146, -50); c.closePath(); c.fill(); c.beginPath(); c.moveTo(134, -52); c.lineTo(128, -62); c.lineTo(137, -51); c.closePath(); c.fill();
+        c.fillStyle = '#5e4028'; c.beginPath(); c.ellipse(130, -50, 6, 3, -0.5, 0, TAU); c.fill(); c.fillStyle = '#1c1a20'; c.beginPath(); c.arc(143, -49, 1.6, 0, TAU); c.fill();
+        c.strokeStyle = '#3a2614'; c.lineWidth = 1.2; c.beginPath(); c.ellipse(110, -40, 30, 18, 0, 0, TAU); c.stroke();
+        c.strokeStyle = '#5e3a1c'; c.lineWidth = 3; c.beginPath(); c.moveTo(70, -34); c.lineTo(96, -38); c.stroke();
+        // the cart: planked sides with stakes, hay heaped with strands, two spoked wheels
+        c.fillStyle = '#f2cf5a'; c.beginPath(); c.moveTo(-8, -48); c.quadraticCurveTo(30, -74, 68, -48); c.closePath(); c.fill(); c.fillRect(-8, -64, 76, 16);
+        c.strokeStyle = 'rgba(184,144,46,0.7)'; c.lineWidth = 1; c.beginPath(); for (let k = 0; k < 18; k++) { const hx = -4 + k * 4.2; c.moveTo(hx, -50); c.lineTo(hx + 2 - (k % 3), -62 - (k % 4) * 2); } c.stroke();
+        c.fillStyle = 'rgba(255,250,210,0.45)'; c.fillRect(-6, -63, 40, 2);
+        RICH.wood(c, -10, -50, 80, 34, { col: '#8a5a32', boards: 3, seed: 31, knots: 0.6 });
+        for (const px of [-10, 30, 66]) { c.fillStyle = '#5e3a1c'; c.fillRect(px, -54, 4, 38); c.fillStyle = 'rgba(255,220,170,0.3)'; c.fillRect(px, -54, 1, 38); }
+        for (const wx of [4, 56]) { c.fillStyle = '#3a2010'; c.beginPath(); c.arc(wx, -14, 14, 0, TAU); c.fill(); c.fillStyle = '#7a5a3a'; c.beginPath(); c.arc(wx, -14, 11, 0, TAU); c.fill(); c.strokeStyle = '#3a2010'; c.lineWidth = 2; c.beginPath(); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; c.moveTo(wx, -14); c.lineTo(wx + Math.cos(a) * 11, -14 + Math.sin(a) * 11); } c.stroke(); c.fillStyle = '#8a8a96'; c.beginPath(); c.arc(wx, -14, 3, 0, TAU); c.fill(); c.strokeStyle = 'rgba(220,220,230,0.5)'; c.lineWidth = 1.2; c.beginPath(); c.arc(wx, -14, 13, Math.PI * 1.1, Math.PI * 1.6); c.stroke(); }
+      }, -14, -74);
       ctx.restore();
     } else if (it.kind === 'fork' && !it.done) {
       const px = it.d - st.d - 120;
       if (px > -80 && px < W + 80) {
-        ctx.fillStyle = '#5e3a1c'; ctx.fillRect(px - 3, y - 110, 6, 110);
-        ctx.fillStyle = '#c88a52'; ctx.beginPath(); ctx.moveTo(px - 30, y - 110); ctx.lineTo(px + 40, y - 110); ctx.lineTo(px + 52, y - 100); ctx.lineTo(px + 40, y - 90); ctx.lineTo(px - 30, y - 90); ctx.closePath(); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(px - 30, y - 84); ctx.lineTo(px + 40, y - 84); ctx.lineTo(px + 52, y - 74); ctx.lineTo(px + 40, y - 64); ctx.lineTo(px - 30, y - 64); ctx.closePath(); ctx.fill();
+        RICH.pic('w37forksign', 90, 116, c => {
+          // a signpost: a round-shaded post with a cap, two arrow boards with grain, nails and a dark edge
+          c.translate(34, 112);
+          RICH.shadow(c, 0, 0, 10, 2.5, 0.22);
+          const pg = c.createLinearGradient(-3, 0, 3, 0); pg.addColorStop(0, '#8a5a32'); pg.addColorStop(1, '#3e2410'); c.fillStyle = pg; c.fillRect(-3, -110, 6, 110);
+          c.fillStyle = '#7a4a24'; c.beginPath(); c.moveTo(-4.5, -110); c.lineTo(0, -114); c.lineTo(4.5, -110); c.closePath(); c.fill();
+          for (const by of [-110, -84]) {
+            const arrow = () => { c.beginPath(); c.moveTo(-30, by); c.lineTo(40, by); c.lineTo(52, by + 10); c.lineTo(40, by + 20); c.lineTo(-30, by + 20); c.closePath(); };
+            arrow(); c.save(); c.clip(); RICH.wood(c, -30, by, 82, 20, { col: '#c88a52', boards: 2, seed: by + 200, knots: 0.6, edge: false }); c.restore();
+            c.strokeStyle = '#6a3e1a'; c.lineWidth = 1.5; arrow(); c.stroke();
+            RICH.nail(c, -1, by + 5, 1.2); RICH.nail(c, -1, by + 15, 1.2);
+          }
+        }, px - 34, y - 112);
         text('▲ short, bumpy', px + 10, y - 100, 10, '#3a2010', 'center', 'body');
         text('▼ smooth', px + 10, y - 74, 10, '#3a2010', 'center', 'body');
       }
@@ -810,22 +886,34 @@
     if (it.what === 'arch') {
       // a gatehouse: two towers down to the road and a crenellated stone lintel over the roof
       const lt = bot - 70;
+      // (art pass) coursed stone towers with merlons, arrow slits and moss, an arch with voussoirs
       for (const tx of [sx - 92, sx + 64]) {
-        ctx.fillStyle = '#8e8c82'; ctx.fillRect(tx, lt - 30, 28, R.gy - lt + 30);
-        ctx.fillStyle = '#a8a69c'; for (let k = 0; k < 2; k++) ctx.fillRect(tx + k * 16, lt - 42, 12, 12);
-        ctx.fillStyle = '#5e5c56'; for (let yy = lt; yy < R.gy - 10; yy += 22) ctx.fillRect(tx, yy, 28, 2);
+        const th = Math.round(R.gy - lt + 30);
+        RICH.pic('w37gatetower|' + th, 30, th + 14, c => {
+          c.translate(1, 13);
+          RICH.stone(c, 0, 0, 28, th, { col: '#8e8c82', course: 22, len: 30, seed: 3, moss: '#6a8a4a' });
+          for (let k = 0; k < 2; k++) RICH.stone(c, k * 16, -12, 12, 12, { col: '#a8a69c', course: 12, len: 30, seed: 9 + k, cracks: 0 });
+          c.fillStyle = '#2a2830'; RICH.rr(c, 12, 36, 4, 16, 2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(11, 36, 1, 16);
+          c.fillStyle = 'rgba(30,28,24,0.25)'; c.fillRect(20, 0, 8, th);
+        }, tx - 1, lt - 43);
       }
-      ctx.fillStyle = '#a8a69c'; ctx.beginPath(); ctx.moveTo(sx - 64, lt); ctx.lineTo(sx + 64, lt); ctx.lineTo(sx + 64, bot - 4);
-      ctx.quadraticCurveTo(sx, bot - 34, sx - 64, bot - 4); ctx.closePath(); ctx.fill();
-      for (let k = 0; k < 5; k++) ctx.fillRect(sx - 60 + k * 26, lt - 12, 16, 12);
-      ctx.fillStyle = '#5e5c56'; ctx.fillRect(sx - 64, lt + 20, 128, 2);
+      { const aw = 128, ah = Math.round(bot - 4 - lt);
+        RICH.pic('w37gatearch|' + ah, aw + 2, ah + 14, c => {
+          c.translate(1, 13);
+          c.beginPath(); c.moveTo(0, 0); c.lineTo(aw, 0); c.lineTo(aw, ah); c.quadraticCurveTo(aw / 2, ah - 30, 0, ah); c.closePath();
+          c.save(); c.clip(); RICH.stone(c, 0, 0, aw, ah + 4, { col: '#a8a69c', course: 20, len: 34, seed: 5, edge: false }); c.restore();
+          c.strokeStyle = '#6e6c64'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(0, ah); c.quadraticCurveTo(aw / 2, ah - 30, aw, ah); c.stroke();
+          c.strokeStyle = 'rgba(60,58,52,0.6)'; c.lineWidth = 1; c.beginPath(); for (let k = 1; k < 8; k++) { const u = k / 8, ax = aw * u, ay = ah - 30 * 2 * u * (1 - u) * 1; c.moveTo(ax, ay - 0); c.lineTo(ax + (u - 0.5) * 8, ay - 10); } c.stroke();
+          for (let k = 0; k < 5; k++) RICH.stone(c, 4 + k * 26, -12, 16, 12, { col: '#a8a69c', course: 12, len: 40, seed: 20 + k, cracks: 0 });
+          c.fillStyle = '#5e5c56'; c.fillRect(0, 20, aw, 2);
+        }, sx - 65, lt - 13); }
       ctx.fillStyle = '#d8323a'; ctx.fillRect(sx - 30, lt + 4, 60, 12); ctx.fillStyle = '#ffd23a'; ctx.fillRect(sx - 30, lt + 2, 60, 3);
       K.heraldShield(sx, lt + 36, 12, { col: '#7a3aa8', charge: 'crown' });
     } else if (it.what === 'sign') {
-      ctx.fillStyle = '#5e3a1c'; ctx.fillRect(sx + 40, top + 20, 8, 340); ctx.fillRect(sx - 30, top + 20, 78, 6);
+      K.post(sx + 40, top + 360, 8, 340, { col: '#5e3a1c' }); K.timber(sx - 30, top + 20, 78, 6, { dark: true });
       ctx.save(); ctx.translate(sx, top + 26); ctx.rotate(Math.sin(t * 3) * 0.12);
       ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(-20, 20); ctx.moveTo(20, 0); ctx.lineTo(20, 20); ctx.stroke();
-      ctx.fillStyle = '#c88a52'; ctx.fillRect(-34, 20, 68, bot - top - 50); ctx.strokeRect(-34, 20, 68, bot - top - 50);
+      { const sh = Math.round(bot - top - 50); RICH.pic('w37innsign|' + sh, 70, sh + 2, c => { RICH.wood(c, 1, 1, 68, sh, { col: '#c88a52', boards: 3, seed: 44, knots: 0.6, edge: false }); c.strokeStyle = '#3a2010'; c.lineWidth = 2; c.strokeRect(1, 1, 68, sh); c.strokeStyle = '#ffd23a'; c.lineWidth = 1; c.strokeRect(5, 5, 60, sh - 8); }, -35, 19); }
       text('THE', 0, 40, 11, '#3a2010', 'center', 'body'); text('JOLLY', 0, 56, 13, '#3a2010', 'center', 'body'); text('LANCE', 0, 72, 13, '#3a2010', 'center', 'body');
       ctx.restore();
     } else if (it.what === 'washing') {
@@ -837,7 +925,7 @@
       ctx.fillStyle = '#2e5a32'; for (let k = 0; k < 6; k++) { circ(sx - 60 + k * 36, bot - 20 - k * 14 + Math.sin(t * 2 + k) * 2, 22); ctx.fill(); }
     } else if (it.what === 'beam') {
       K.timber(sx - 80, bot - 18, 160, 18, { dark: true });
-      ctx.fillStyle = '#5e3a1c'; ctx.fillRect(sx - 80, bot - 18, 8, 400); ctx.fillRect(sx + 72, bot - 18, 8, 400);
+      K.post(sx - 80, bot + 382, 8, 400, { col: '#5e3a1c' }); K.post(sx + 72, bot + 382, 8, 400, { col: '#5e3a1c' });
     }
   }
   function drawFav(st, it, sx, t) {
@@ -861,7 +949,15 @@
     const sx = st.stand - st.d;
     if (sx > W + 400 || sx < -500) return;
     K.crowd(sx - 60, sx + 340, R.gy - 40, t, { rows: 4, mood: st.state === 'end' ? 'cheer' : 'wave', roof: true, royal: true, seed: 7 });
-    ctx.fillStyle = '#d8323a'; ctx.fillRect(sx - 70, R.gy - 40, 420, 40);
+    RICH.pic('w37standdrape', 420, 42, c => {
+      // a red cloth drape on the stand front: folds, a gold fringe on top, scallops, shields at intervals
+      c.fillStyle = '#d8323a'; c.fillRect(0, 0, 420, 40);
+      for (let x = 0; x < 420; x += 14) { const g = c.createLinearGradient(x, 0, x + 14, 0); g.addColorStop(0, 'rgba(255,255,255,0.12)'); g.addColorStop(0.5, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(90,10,20,0.3)'); c.fillStyle = g; c.fillRect(x, 0, 14, 40); }
+      c.fillStyle = '#ffd23a'; c.fillRect(0, 0, 420, 4); c.fillStyle = '#b8902e'; for (let x = 2; x < 420; x += 5) c.fillRect(x, 4, 2, 4);
+      c.fillStyle = 'rgba(90,10,20,0.35)'; c.fillRect(0, 34, 420, 6);
+      c.strokeStyle = '#8a1a22'; c.lineWidth = 1; c.strokeRect(0.5, 0.5, 419, 39);
+    }, sx - 70, R.gy - 40);
+    for (let x = sx - 20; x < sx + 340; x += 90) K.heraldShield(x, R.gy - 18, 9, { col: '#2e6ad8', charge: 'crown', chargeCol: '#ffd23a' });
     text('STOP!', sx - 40, R.gy - 150, 22, C.gold, 'center', 'display');
   }
   function drawCart(st, t) {
@@ -883,7 +979,13 @@
     ctx.fillStyle = '#c88a52'; circ(x, y, r - 3); ctx.fill();
     ctx.fillStyle = 'rgba(90,50,20,0.35)'; ctx.beginPath(); ctx.arc(x, y, r - 3, -0.3, Math.PI * 0.8); ctx.lineTo(x, y); ctx.fill();
     ctx.strokeStyle = '#5e3a1c'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 6; k++) { const b = a + k * Math.PI / 3; ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(b) * (r - 3), y + Math.sin(b) * (r - 3)); } ctx.stroke();
-    ctx.fillStyle = '#ffd23a'; circ(x, y, 3); ctx.fill();
+    // (art pass) the felloe ring inside the iron tyre with its joints, tyre bolts, a lit spoke edge and a capped hub
+    ctx.strokeStyle = '#8a5a30'; ctx.lineWidth = 2.4; circ(x, y, r - 4.5); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,220,170,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(x, y, r - 5.2, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+    ctx.fillStyle = '#9aa0aa'; for (let k = 0; k < 6; k++) { const b = a + k * Math.PI / 3 + Math.PI / 6; circ(x + Math.cos(b) * (r - 1.6), y + Math.sin(b) * (r - 1.6), 0.9); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(30,14,4,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = 0; k < 6; k++) { const b = a + k * Math.PI / 3 + Math.PI / 6; ctx.moveTo(x + Math.cos(b) * (r - 6), y + Math.sin(b) * (r - 6)); ctx.lineTo(x + Math.cos(b) * (r - 3), y + Math.sin(b) * (r - 3)); } ctx.stroke();
+    ctx.fillStyle = '#5e3a1c'; circ(x, y, 4.5); ctx.fill();
+    ctx.fillStyle = '#ffd23a'; circ(x, y, 3); ctx.fill(); ctx.fillStyle = '#9a6a14'; circ(x + 0.6, y + 0.6, 1.2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.75)'; circ(x - 1, y - 1, 0.9); ctx.fill();
   }
   function drawRig(st, t) {
     const c = st.car, lift = c.airH, gy = R.gy - lift, ph = st.d / 140, sp = clamp(st.v / S.fast, 0, 1), gold = st.gold;
@@ -913,7 +1015,16 @@
     const wa = st.d / 26;
     ctx.fillStyle = 'rgba(40,30,10,' + (0.22 - Math.min(0.12, lift * 0.002)) + ')'; ctx.beginPath(); ctx.ellipse((L + Rr) / 2, R.gy + 1, (Rr - L) * 0.58, 7, 0, 0, TAU); ctx.fill();
     wheel(L + 30, gy - 24, 24, wa); wheel(Rr - 30, gy - 22, 22, wa);
+    // (art pass) the perch: a grained beam with iron straps, and gilded C-springs at both ends
     ctx.fillStyle = '#5e3a1c'; ctx.fillRect(L + 20, gy - 50, Rr - L - 40, 8);
+    ctx.fillStyle = 'rgba(255,220,170,0.3)'; ctx.fillRect(L + 20, gy - 50, Rr - L - 40, 1.5);
+    ctx.fillStyle = 'rgba(30,14,4,0.45)'; ctx.fillRect(L + 20, gy - 44, Rr - L - 40, 2);
+    ctx.strokeStyle = 'rgba(30,14,4,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let q = 0; q < 2; q++) { ctx.moveTo(L + 22, gy - 47.5 + q * 2.5); for (let s = L + 22; s < Rr - 20; s += 10) ctx.lineTo(s, gy - 47.5 + q * 2.5 + Math.sin(s / 9 + q) * 0.7); } ctx.stroke();
+    for (const sx of [L + 46, (L + Rr) / 2, Rr - 46]) { ctx.fillStyle = '#3a3a42'; ctx.fillRect(sx - 3, gy - 51, 6, 10); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(sx - 3, gy - 51, 1.2, 10); ctx.fillStyle = '#9aa0aa'; circ(sx, gy - 46, 1.3); ctx.fill(); }
+    for (const [sx, dir] of [[L + 22, -1], [Rr - 22, 1]]) {
+      ctx.strokeStyle = '#7a5010'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(sx + dir * 2, gy - 56, 8, dir > 0 ? -Math.PI / 2 : Math.PI / 2, dir > 0 ? Math.PI / 2 : Math.PI * 1.5); ctx.stroke();
+      ctx.strokeStyle = gold ? '#fff0a0' : '#ffd23a'; ctx.lineWidth = 2; ctx.stroke();
+    }
     // the body
     const bg = ctx.createLinearGradient(0, top, 0, gy - 44);
     bg.addColorStop(0, gold ? '#fff0a0' : '#ffe07a'); bg.addColorStop(1, gold ? '#e8a82a' : '#c8902a');
@@ -925,10 +1036,35 @@
     ctx.fillStyle = 'rgba(120,70,10,0.22)'; ctx.fillRect(Rr - 18, top, 30, gy - top);
     ctx.strokeStyle = 'rgba(122,80,16,0.55)'; ctx.lineWidth = 1.5;
     for (const px of [L + 18, Rr - 38]) { rr(px, top + 22, 20, gy - 48 - top - 34, 5); ctx.stroke(); }
+    // (art pass) gilt mouldings with a bead row, carved C-scrolls in the panels, a soft sheen and brass studs
+    { const mb = gy - 60, ph = gy - 48 - top - 34;
+      ctx.fillStyle = 'rgba(122,80,16,0.35)'; ctx.fillRect(L - 6, top + 14, Rr - L + 12, 5); ctx.fillRect(L - 6, mb, Rr - L + 12, 5);
+      ctx.fillStyle = 'rgba(255,250,210,0.55)'; ctx.fillRect(L - 6, top + 14, Rr - L + 12, 1.4); ctx.fillRect(L - 6, mb, Rr - L + 12, 1.4);
+      ctx.fillStyle = 'rgba(255,248,200,0.8)'; for (let bx = L + 4; bx < Rr; bx += 7) { circ(bx, top + 17.5, 1.1); ctx.fill(); circ(bx + 3.5, mb + 3.5, 1.1); ctx.fill(); }
+      ctx.strokeStyle = 'rgba(122,80,16,0.6)'; ctx.lineWidth = 1.6;
+      for (const px of [L + 28, Rr - 28]) {
+        const cy0 = top + 22 + ph * 0.3, cy1 = top + 22 + ph * 0.72;
+        ctx.beginPath(); ctx.arc(px, cy0, 5, Math.PI * 0.2, Math.PI * 1.7); ctx.stroke();
+        ctx.beginPath(); ctx.arc(px, cy1, 5, -Math.PI * 0.7, Math.PI * 0.8); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px, cy0 + 5); ctx.quadraticCurveTo(px + 4, (cy0 + cy1) / 2, px, cy1 - 5); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,250,210,0.7)'; circ(px - 1, cy0 - 1, 1.6); ctx.fill(); circ(px - 1, cy1 - 1, 1.6); ctx.fill();
+      }
+      const sh = ctx.createLinearGradient(L, 0, Rr, 0); sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.18, 'rgba(255,255,255,0.22)'); sh.addColorStop(0.26, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = sh; ctx.fillRect(L - 6, top, Rr - L + 12, gy - top);
+      ctx.fillStyle = 'rgba(120,70,10,0.25)'; ctx.fillRect(L - 6, gy - 58, Rr - L + 12, 10);
+      for (const [sx, sy] of [[L + 10, top + 24], [Rr - 10, top + 24], [L + 12, mb - 6], [Rr - 12, mb - 6]]) { ctx.fillStyle = '#9a6a14'; circ(sx + 0.5, sy + 0.6, 2); ctx.fill(); ctx.fillStyle = '#ffe9a0'; circ(sx, sy, 1.6); ctx.fill(); }
+    }
     ctx.restore();
     ctx.beginPath(); ctx.moveTo(L + 6, top + 12); ctx.lineTo(Rr - 6, top + 12); ctx.quadraticCurveTo(Rr + 6, gy - 70, Rr - 14, gy - 48); ctx.lineTo(L + 14, gy - 48); ctx.quadraticCurveTo(L - 6, gy - 70, L + 6, top + 12); ctx.closePath(); ctx.stroke();
     // the roof rail and luggage
     ctx.fillStyle = '#7a3aa8'; ctx.fillRect(L + 2, top + 4, Rr - L - 4, 9); ctx.fillStyle = '#ffd23a'; ctx.fillRect(L + 2, top + 2, Rr - L - 4, 3);
+    // (art pass) the roof rail: a velvet band with a lit fold, gold fringe and studs, gilt finials at the corners
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(L + 2, top + 5, Rr - L - 4, 1.5);
+    ctx.fillStyle = 'rgba(40,10,60,0.4)'; ctx.fillRect(L + 2, top + 11, Rr - L - 4, 2);
+    ctx.fillStyle = '#fff6c0'; ctx.fillRect(L + 2, top + 2, Rr - L - 4, 1);
+    ctx.fillStyle = gold ? '#fff0a0' : '#ffd23a'; for (let fx = L + 5; fx < Rr - 3; fx += 6) ctx.fillRect(fx, top + 13, 2, 3 + ((fx / 6) % 2));
+    ctx.fillStyle = '#ffe9a0'; for (let fx = L + 14; fx < Rr - 8; fx += 22) { circ(fx, top + 8.5, 1.5); ctx.fill(); }
+    for (const fx of [L + 3, Rr - 3]) { ctx.fillStyle = '#9a6a14'; ctx.fillRect(fx - 1.5, top - 3, 3, 6); ctx.fillStyle = gold ? '#fff0a0' : '#ffd23a'; circ(fx, top - 5, 3); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.7)'; circ(fx - 1, top - 6, 1); ctx.fill(); }
     for (let k = 0; k < st.bags; k++) { const bx = R.bag - 16 + (k % 3) * 12, by = top - 2 - Math.floor(k / 3) * 10; ctx.fillStyle = ['#8a4a2a', '#5a6a8a', '#7a5a3a'][k % 3]; ctx.fillRect(bx - 5, by - 8, 11, 9); ctx.fillStyle = '#ffd23a'; ctx.fillRect(bx - 1, by - 9, 3, 2); }
     // the window and the King
     const wx = R.window, wy = top + 30;

@@ -209,21 +209,33 @@ const CAVE = (() => {
       K.crystal(x + u * 7 * s, y, h, a, { col, t: o.t, glow: o.glow, seed: seed + k });
     }
   };
+  // (art pass) cave rock painted once per size, colour and seed (RICH.pic): the lumpy top, real rock texture inside it
+  // (strata, fractures with lit lips, specks, facets: World 35's RICH.rock), a darker foot, a lit rim, drips if wet
   K.rock = (x, y, w, h, o = {}) => {
-    const col = o.col || COL.rock, dark = o.dark || COL.rockDark, seed = o.seed || 0;
-    ctx.fillStyle = col; ctx.beginPath();
-    const n = Math.max(4, Math.round(w / 26));
-    ctx.moveTo(x, y + h);
-    for (let k = 0; k <= n; k++) ctx.lineTo(x + (k / n) * w, y + (H_(seed + k) * 0.35) * Math.min(18, h * 0.3));
-    ctx.lineTo(x + w, y + h); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = dark; ctx.fillRect(x, y + h * 0.72, w, h * 0.28);
-    ctx.save(); ctx.beginPath(); ctx.moveTo(x, y + h); for (let k = 0; k <= n; k++) ctx.lineTo(x + (k / n) * w, y + (H_(seed + k) * 0.35) * Math.min(18, h * 0.3)); ctx.lineTo(x + w, y + h); ctx.closePath(); ctx.clip();
-    ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let k = 0; k < n; k++) { const cx0 = x + (k + 0.5) * w / n; ctx.beginPath(); ctx.moveTo(cx0, y + h * 0.15); ctx.lineTo(cx0 + 6, y + h * 0.4); ctx.lineTo(cx0 + 2, y + h * 0.6); ctx.lineTo(cx0 - 2, y + h * 0.6); ctx.lineTo(cx0 + 2, y + h * 0.4); ctx.closePath(); ctx.fill(); }
-    ctx.restore();
-    ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k <= n; k++) { const yy = y + (H_(seed + k) * 0.35) * Math.min(18, h * 0.3) + 1.5; k ? ctx.lineTo(x + (k / n) * w, yy) : ctx.moveTo(x, yy); } ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    for (let k = 0; k < n; k++) { ctx.fillRect(x + (k + 0.2) * w / n, y + 6 + H_(seed + k * 5) * h * 0.4, w / n * 0.5, 2); }
-    if (o.wet) { ctx.fillStyle = 'rgba(160,210,240,0.25)'; for (let k = 0; k < n; k++) ctx.fillRect(x + (k + 0.5) * w / n, y + 4, 2, h * (0.3 + H_(seed + k * 9) * 0.5)); }
+    const col = o.col || COL.rock, dark = o.dark || COL.rockDark, seed = o.seed || 0, iw = Math.max(4, Math.round(w)), ih = Math.max(4, Math.round(h));
+    RICH.pic('w39rock|' + iw + '|' + ih + '|' + col + '|' + dark + '|' + Math.round(seed * 1000) + '|' + (o.wet ? 1 : 0), iw, ih, c => {
+      const n = Math.max(4, Math.round(iw / 26)), topY = k => (H_(seed + k) * 0.35) * Math.min(18, ih * 0.3);
+      const shape = () => { c.beginPath(); c.moveTo(0, ih); for (let k = 0; k <= n; k++) c.lineTo((k / n) * iw, topY(k)); c.lineTo(iw, ih); c.closePath(); };
+      shape(); c.save(); c.clip();
+      RICH.rock(c, 0, 0, iw, ih, { col, seed: Math.round(seed * 977) % 100000, gx: 0 });
+      const g = c.createLinearGradient(0, ih * 0.55, 0, ih); g.addColorStop(0, RICH.rgba(dark, 0)); g.addColorStop(0.35, RICH.rgba(dark, 0.85)); g.addColorStop(1, dark); c.fillStyle = g; c.fillRect(0, ih * 0.55, iw, ih * 0.45);
+      c.fillStyle = 'rgba(0,0,0,0.12)'; for (let k = 0; k < n; k++) { const cx0 = (k + 0.5) * iw / n; c.beginPath(); c.moveTo(cx0, ih * 0.15); c.lineTo(cx0 + 6, ih * 0.4); c.lineTo(cx0 + 2, ih * 0.6); c.lineTo(cx0 - 2, ih * 0.6); c.lineTo(cx0 + 2, ih * 0.4); c.closePath(); c.fill(); }
+      if (o.wet) { c.fillStyle = 'rgba(160,210,240,0.25)'; for (let k = 0; k < n; k++) c.fillRect((k + 0.5) * iw / n, 4, 2, ih * (0.3 + H_(seed + k * 9) * 0.5)); c.fillStyle = 'rgba(200,235,255,0.18)'; c.fillRect(0, 0, iw, ih * 0.25); }
+      c.restore();
+      c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 2; c.beginPath(); for (let k = 0; k <= n; k++) { const yy = topY(k) + 1.5; k ? c.lineTo((k / n) * iw, yy) : c.moveTo(0, yy); } c.stroke();
+      c.strokeStyle = RICH.dk(dark, 0.4); c.lineWidth = 1.2; c.beginPath(); for (let k = 0; k <= n; k++) { const yy = topY(k); k ? c.lineTo((k / n) * iw, yy) : c.moveTo(0, yy); } c.stroke();
+    }, x, y);
+  };
+  // (art pass) a squared mine timber, x, y the top-left: grain and knots, a lit top, an adzed end and iron dogs
+  K.timber = (x, y, w, h, sd) => {
+    const iw = Math.max(2, Math.round(w)), ih = Math.max(2, Math.round(h));
+    RICH.pic('w39timber|' + iw + '|' + ih + '|' + (sd || 0), iw, ih, c => {
+      RICH.wood(c, 0, 0, iw, ih, { col: COL.timber, boards: 1, seed: iw + ih * 3 + (sd > 0 ? 5 : 0), knots: 1.1, edge: false });
+      c.fillStyle = 'rgba(255,230,190,0.3)'; c.fillRect(0, 0, iw, 1.5); c.fillStyle = 'rgba(30,16,4,0.4)'; c.fillRect(0, ih - 2, iw, 2);
+      const ex = sd > 0 ? iw - 4 : 0; c.fillStyle = RICH.rgba(RICH.dk(COL.timber, 0.4), 0.6); c.fillRect(ex, 0, 4, ih);
+      for (const dx of [iw * 0.25, iw * 0.7]) { c.fillStyle = '#4a4440'; c.fillRect(dx, 1, 6, 2); c.fillRect(dx, 1, 1.5, ih - 2); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(dx, 1, 6, 0.6); }
+      c.strokeStyle = COL.timberDark; c.lineWidth = 1; c.strokeRect(0.5, 0.5, iw - 1, ih - 1);
+    }, x, y);
   };
   K.stalactites = (x0, x1, y, o = {}) => {
     const seed = o.seed || 0, len = o.len || 40, col = o.col || COL.rock, t = o.t || 0;
@@ -392,6 +404,16 @@ const CAVE = (() => {
     ctx.fillStyle = g;
     const c = Math.min(w, h) * 0.18;
     ctx.beginPath(); ctx.moveTo(x + c, y); ctx.lineTo(x + w - c, y); ctx.lineTo(x + w, y + c); ctx.lineTo(x + w, y + h - c); ctx.lineTo(x + w - c, y + h); ctx.lineTo(x + c, y + h); ctx.lineTo(x, y + h - c); ctx.lineTo(x, y + c); ctx.closePath(); ctx.fill();
+    // (art pass) chiselled stone in the block: fractures, specks and facets (cached per size and seed), a dark lower bevel
+    { const iw = Math.max(4, Math.round(w)), ih = Math.max(4, Math.round(h)), cc = c;
+      ctx.save(); ctx.clip();
+      RICH.pic('w39golemblk|' + iw + '|' + ih + '|' + (seed % 7), iw, ih, q => {
+        RICH.rock(q, 0, 0, iw, ih, { col: '#6a7484', seed: seed % 7 });
+        const g2 = q.createLinearGradient(0, 0, iw, ih); g2.addColorStop(0, 'rgba(255,255,255,0.12)'); g2.addColorStop(0.5, 'rgba(0,0,0,0)'); g2.addColorStop(1, 'rgba(10,14,24,0.35)'); q.fillStyle = g2; q.fillRect(0, 0, iw, ih);
+        q.fillStyle = 'rgba(0,0,0,0.25)'; q.fillRect(cc, ih - 5, iw - cc * 2, 5); q.fillRect(iw - 5, cc, 5, ih - cc * 2);
+        q.strokeStyle = 'rgba(30,34,44,0.5)'; q.lineWidth = 1; q.strokeRect(cc * 0.6, cc * 0.6, iw - cc * 1.2, ih - cc * 1.2);
+      }, x, y);
+      ctx.restore(); }
     ctx.strokeStyle = '#2a303a'; ctx.lineWidth = 3; ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + c, y + 3, w - c * 2, Math.min(8, h * 0.12));
     // little crystal studs

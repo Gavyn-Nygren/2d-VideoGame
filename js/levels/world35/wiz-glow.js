@@ -344,31 +344,59 @@ function wizGlowDrawBack(st) {
   const ph = st.ph, cx = st.cam.x, t = G.clock, C2 = WIZGLOW_C, F = WIZGLOW.floor;
   wizScreen(st, () => {
     ctx.fillStyle = C2.wall; ctx.fillRect(0, 0, W, H);
-    // stone blocks
-    const off = cx * 0.8;
-    for (let y = 0; y < F; y += 34) for (let x = -((off + (y / 34 % 2) * 30) % 60) - 60; x < W + 60; x += 60) { ctx.fillStyle = (Math.floor((x + off) / 60) + y) % 3 ? C2.wallLt : C2.wall; ctx.fillRect(x + 2, y + 2, 56, 30); }
+    // (art pass, 2nd look) the cellar wall: coursed blocks, each its own tone with a lit top, specks, chips and
+    // cracks, damp darkening low down (world-pinned chunks at the wall's own parallax)
+    const off = Math.round(cx * 0.8);
+    ctx.save(); ctx.translate(-off, 0);
+    RICH.strip('wizglwall', off - 10, off + W + 10, 0, F, 240, (c, gx, w, h) => {
+      RICH.flags(c, 0, 0, w, h, { col: C2.wallLt, mortar: '#1a1424', course: 34, len: 60, seed: 61, gx });
+      const g = c.createLinearGradient(0, h * 0.55, 0, h); g.addColorStop(0, 'rgba(10,6,16,0)'); g.addColorStop(1, 'rgba(10,6,16,0.45)'); c.fillStyle = g; c.fillRect(0, h * 0.55, w, h * 0.45);
+    });
+    ctx.restore();
   });
   // coal heaps, barrels of homework, crypt niches
   for (let k = 0; k < 3; k++) {
     const pt = WIZGLOW.parts[k];
     for (let x = pt.x0 + 160; x < pt.x1 - 100; x += 380) {
       if (x < cx - 100 || x > cx + W + 100) continue;
-      if (k === 0) { ctx.fillStyle = C2.coal; ctx.beginPath(); ctx.moveTo(x - 60, F); ctx.lineTo(x - 10, F - 50); ctx.lineTo(x + 50, F); ctx.closePath(); ctx.fill(); }
-      if (k === 1) { ctx.strokeStyle = '#5a4e6e'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(x, F - 10, 40, Math.PI, 0); ctx.stroke(); }
-      if (k === 2) { ctx.fillStyle = '#1e1828'; rr(x - 30, F - 120, 60, 90, 28); ctx.fill(); ctx.fillStyle = '#e8e0c8'; for (let n = 0; n < 4; n++) ctx.fillRect(x - 18 + n * 9, F - 70 + (n % 2) * 6, 7, 30); }
+      // (art pass, 2nd look) a coal heap of faceted lumps with glints; a stone arch; a crypt niche with old scrolls
+      if (k === 0) RICH.pic('wizglcoal', 110, 52, c => {
+        c.fillStyle = C2.coal; c.beginPath(); c.moveTo(0, 52); c.lineTo(50, 2); c.lineTo(110, 52); c.closePath(); c.fill();
+        for (let q = 0; q < 46; q++) { const u = RICH.r(71, q), v = RICH.r(72, q), px = 10 + u * 90, top = 52 - 50 * (1 - Math.abs(px - 50) / (px < 50 ? 50 : 60)), py = top + 4 + v * (52 - top - 4), r = 3 + RICH.r(73, q) * 4;
+          c.fillStyle = RICH.r(74, q) < 0.5 ? '#2a2434' : '#16121e'; c.beginPath(); c.moveTo(px - r, py); c.lineTo(px - r * 0.3, py - r * 0.8); c.lineTo(px + r, py - r * 0.3); c.lineTo(px + r * 0.6, py + r * 0.6); c.closePath(); c.fill();
+          c.fillStyle = 'rgba(200,190,230,0.3)'; c.fillRect(px - r * 0.3, py - r * 0.6, r * 0.6, 1); }
+      }, x - 60, F - 52);
+      if (k === 1) { ctx.strokeStyle = '#3a3048'; ctx.lineWidth = 9; ctx.beginPath(); ctx.arc(x, F - 10, 40, Math.PI, 0); ctx.stroke(); ctx.strokeStyle = '#5a4e6e'; ctx.lineWidth = 6; ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, F - 10, 42, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke(); ctx.strokeStyle = '#2a2238'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let n = 1; n < 6; n++) { const a = Math.PI + n * Math.PI / 6; ctx.moveTo(x + Math.cos(a) * 37, F - 10 + Math.sin(a) * 37); ctx.lineTo(x + Math.cos(a) * 43, F - 10 + Math.sin(a) * 43); } ctx.stroke(); }
+      if (k === 2) RICH.pic('wizglniche', 64, 94, c => {
+        c.fillStyle = '#4a4060'; RICH.rr(c, 0, 0, 64, 94, 30); c.fill(); c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(0, 30, 3, 60);
+        c.fillStyle = '#1e1828'; RICH.rr(c, 4, 4, 56, 86, 26); c.fill();
+        c.fillStyle = 'rgba(0,0,0,0.4)'; c.fillRect(4, 4, 56, 10);
+        for (let n = 0; n < 4; n++) { const sx = 14 + n * 9, sy = 52 + (n % 2) * 6; c.fillStyle = '#e8e0c8'; c.fillRect(sx, sy, 7, 30); c.fillStyle = '#b8ac90'; c.fillRect(sx + 5, sy, 2, 30); c.fillStyle = '#c84a4a'; c.fillRect(sx, sy + 12, 7, 2); c.fillStyle = '#f8f4e8'; c.beginPath(); c.ellipse(sx + 3.5, sy, 3.5, 1.6, 0, 0, Math.PI * 2); c.fill(); }
+        c.fillStyle = '#5a4e6e'; c.fillRect(2, 82, 60, 6); c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(2, 82, 60, 1.2);
+      }, x - 32, F - 122);
     }
     if (pt.room) {
       const [r0, r1] = pt.room;
       if (r1 > cx - 40 && r0 < cx + W + 40) {
         ctx.fillStyle = 'rgba(255,214,120,0.18)'; ctx.fillRect(r0, 0, r1 - r0, F);
-        for (const lx of [r0 + 40, r1 - 40]) { ctx.fillStyle = C2.brass; ctx.fillRect(lx - 8, 200, 16, 22); ctx.fillStyle = '#ffcf6a'; circle(lx, 196, 7 + Math.sin(t * 9 + lx) * 1); ctx.fill(); }
+        for (const lx of [r0 + 40, r1 - 40]) { ctx.fillStyle = '#3a3040'; ctx.fillRect(lx - 2, 222, 4, 14); ctx.fillStyle = C2.brass; ctx.fillRect(lx - 8, 200, 16, 22); ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(lx - 8, 200, 3, 22); ctx.fillStyle = 'rgba(90,60,10,0.4)'; ctx.fillRect(lx + 4, 200, 4, 22); ctx.fillRect(lx - 8, 210, 16, 1.5); ctx.fillStyle = '#ffcf6a'; circle(lx, 196, 7 + Math.sin(t * 9 + lx) * 1); ctx.fill(); ctx.fillStyle = '#fff4d0'; circle(lx, 197, 3); ctx.fill(); }
       }
     }
   }
   // the floor and pits
   for (const r of ph.solids) {
     if (r.x1 < cx - 40 || r.x0 > cx + W + 40) continue;
-    if (r.kind === 'floor') { ctx.fillStyle = C2.floor; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fillStyle = C2.floorLt; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, 5); }
+    if (r.kind === 'floor') {
+      // (art pass, 2nd look) cellar flagstones with a lit worn edge (world-pinned chunks, clipped to the floor)
+      const a = Math.max(r.x0, cx - 40), b = Math.min(r.x1, cx + W + 40), hh = Math.min(Math.ceil(r.y1 - r.y0), 160);
+      ctx.save(); ctx.beginPath(); ctx.rect(a, r.y0, b - a, r.y1 - r.y0); ctx.clip();
+      RICH.strip('wizglfloor|' + hh, a, b, r.y0, hh, 256, (c, gx, w, h) => {
+        RICH.flags(c, 0, 5, w, h - 5, { col: C2.floor, mortar: '#241c30', course: 26, len: 56, seed: 62, gx, fade: 0.5 });
+        c.fillStyle = C2.floorLt; c.fillRect(0, 0, w, 5); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(0, 0, w, 1.5); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, 5, w, 2);
+      });
+      if (r.y1 - r.y0 > hh) { ctx.fillStyle = '#241c30'; ctx.fillRect(a, r.y0 + hh, b - a, r.y1 - r.y0 - hh); }
+      ctx.restore();
+    }
   }
   for (const p of ph.pits) {
     if (p.x1 < cx - 40 || p.x0 > cx + W + 40) continue;
@@ -381,42 +409,61 @@ function wizGlowDraw(st) {
   for (const r of ph.solids) {
     if (r.off || r.x1 < cx - 40 || r.x0 > cx + W + 40) continue;
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2.2;
-    if (r.kind === 'ledge') { ctx.fillStyle = C2.wood; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 3); ctx.fill(); ctx.stroke(); ctx.fillStyle = C2.woodDk; ctx.fillRect(r.x0 + 6, r.y1, 5, F - r.y1); ctx.fillRect(r.x1 - 11, r.y1, 5, F - r.y1); }
-    if (r.kind === 'gate') { const gt = ph.gates.find(g => g.rect === r), up = gt && gt.rising > 0 ? (1 - gt.rising / WIZGLOW.gateRise) * 300 : 0; ctx.save(); ctx.translate(0, -up); ctx.fillStyle = '#3a3448'; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.strokeStyle = '#8a8098'; ctx.lineWidth = 3; for (let y = r.y0 + 10; y < r.y1; y += 22) { ctx.beginPath(); ctx.moveTo(r.x0, y); ctx.lineTo(r.x1, y); ctx.stroke(); } ctx.restore(); }
-    if (r.kind === 'bridge') { ctx.fillStyle = C2.wood; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
+    // (art pass, 2nd look) a work table: a grained top with nails on two posts; a riveted iron gate with cross bars;
+    // a plank bridge (all cached per size)
+    if (r.kind === 'ledge') {
+      for (const lx of [r.x0 + 6, r.x1 - 11]) RICH.pic('wizglleg|' + Math.round(F - r.y1), 5, F - r.y1, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: C2.woodDk, vert: true, bw: 5, seed: 7, edge: false, knots: 0 }); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(w - 1.5, 0, 1.5, h); }, lx, r.y1);
+      RICH.pic('wizglledge|' + Math.round(r.x1 - r.x0) + '|' + Math.round(r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: C2.wood, seam: 60, seed: w, r: 3, lw: 1 }); c.fillStyle = 'rgba(255,226,170,0.35)'; c.fillRect(3, 1, w - 6, 1.5); }, r.x0, r.y0);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2.2; rr(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 3); ctx.stroke();
+    }
+    if (r.kind === 'gate') { const gt = ph.gates.find(g => g.rect === r), up = gt && gt.rising > 0 ? (1 - gt.rising / WIZGLOW.gateRise) * 300 : 0; ctx.save(); ctx.translate(0, -up);
+      RICH.pic('wizglgate|' + Math.round(r.x1 - r.x0) + '|' + Math.round(r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => {
+        RICH.metal(c, 0, 0, w, h, { col: '#3a3448', seed: 9, scratch: true, edge: false });
+        for (let y = 10; y < h; y += 22) { c.fillStyle = '#8a8098'; c.fillRect(0, y - 1.5, w, 3); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, y - 1.5, w, 0.8); c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(0, y + 1.5, w, 1.5); for (let x = 4; x < w; x += 9) RICH.rivet(c, x, y, 1.1, '#8a8098'); }
+        c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(w - 3, 0, 3, h); c.fillStyle = 'rgba(255,255,255,0.15)'; c.fillRect(0, 0, 2, h);
+      }, r.x0, r.y0);
+      ctx.restore(); }
+    if (r.kind === 'bridge') { RICH.pic('wizglbridge|' + Math.round(r.x1 - r.x0) + '|' + Math.round(r.y1 - r.y0), r.x1 - r.x0, r.y1 - r.y0, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: C2.wood, vert: true, bw: 14, seed: 8, edge: false }); c.fillStyle = 'rgba(255,226,170,0.35)'; c.fillRect(0, 0, w, 1.5); for (let x = 7; x < w; x += 14) RICH.nail(c, x, h / 2, 1.1); }, r.x0, r.y0); ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
   }
   // raised gates (open): just the top bit
   for (const g of ph.gates) if (g.open && g.x > cx - 40 && g.x < cx + W + 40) { ctx.fillStyle = '#3a3448'; ctx.fillRect(g.x, 0, WIZGLOW.gate.w, F - 300); }
   // pits' hanging bridges (up)
-  for (const p of ph.pits) if (!p.down && p.x0 > cx - 100 && p.x0 < cx + W + 100) { ctx.strokeStyle = '#6e4622'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x1 + 4, F); ctx.lineTo(p.x1 + 4, F - 100); ctx.stroke(); ctx.fillStyle = C2.wood; ctx.fillRect(p.x1, F - 110, 8, 100); }
+  for (const p of ph.pits) if (!p.down && p.x0 > cx - 100 && p.x0 < cx + W + 100) { ctx.strokeStyle = '#6e4622'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x1 + 4, F); ctx.lineTo(p.x1 + 4, F - 100); ctx.stroke(); RICH.pic('wizglupbridge', 8, 100, (c, w, h) => { RICH.wood(c, 0, 0, w, h, { col: C2.wood, vert: true, bw: 8, seed: 5, edge: false }); for (let y = 10; y < h; y += 22) RICH.nail(c, 4, y, 1); }, p.x1, F - 110); }
   for (const lv of ph.levers) if (lv.x > cx - 40 && lv.x < cx + W + 40) wizGlowDrawLever(lv);
   for (const q of ph.posts) if (q.x > cx - 60 && q.x < cx + W + 60) wizGlowDrawPost(q.x, F, q.lit);
   // drips
   for (const d of ph.drips) {
     if (d.x < cx - 40 || d.x > cx + W + 40) continue;
-    ctx.fillStyle = '#5a5070'; ctx.fillRect(d.x - 10, 0, 20, 14);
+    ctx.fillStyle = '#5a5070'; ctx.fillRect(d.x - 10, 0, 20, 14); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(d.x - 10, 0, 3, 14); ctx.fillStyle = '#3a3448'; ctx.fillRect(d.x - 12, 10, 24, 4); ctx.fillStyle = '#2a2236'; ctx.fillRect(d.x - 3, 14, 6, 3);
     if (d.state === 'warn') { ctx.strokeStyle = 'rgba(190,224,255,0.8)'; ctx.lineWidth = 2; const u = (G.clock * 2) % 1; ctx.beginPath(); ctx.ellipse(d.x, F - 2, 10 + u * 22, 3 + u * 5, 0, 0, Math.PI * 2); ctx.stroke(); }
     if (d.state === 'drop') { ctx.fillStyle = '#bfe0ff'; circle(d.x, 20 + ((ph.t * 1200) % (F - 20)), 4); ctx.fill(); }
   }
   // the big shadow behind the grate at the end
   const ex = K.parts[2].end;
   if (ex > cx - 200 && ex < cx + W + 200) {
-    ctx.fillStyle = '#6a5040'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; rr(ex + 30, F - 110, 70, 110, 30); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#ffd23f'; circle(ex + 88, F - 52, 4); ctx.fill();
+    wizDoorArt(ex + 65, F, 70, 110, '#6a5040'); ctx.strokeStyle = C.ink; ctx.lineWidth = 3; rr(ex + 30, F - 110, 70, 110, 30); ctx.stroke();
     ctx.fillStyle = '#0a0610'; ctx.fillRect(ex + 120, F - 170, 120, 120);
     ctx.strokeStyle = '#8a8098'; ctx.lineWidth = 4; for (let x = ex + 128; x < ex + 240; x += 18) { ctx.beginPath(); ctx.moveTo(x, F - 170); ctx.lineTo(x, F - 50); ctx.stroke(); }
   }
 }
 function wizGlowDrawLever(lv) {
   const x = lv.x, y = lv.y;
-  ctx.fillStyle = '#5a5070'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(x - 10, y - 8, 20, 8, 2); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = WIZGLOW_C.brass; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x + (lv.pulled ? 14 : -14), y - 28); ctx.stroke();
+  // (art pass, 2nd look) an iron lever box with bolts, a brass handle with a lit edge
+  RICH.pic('wizgllever', 20, 8, c => { RICH.metal(c, 0, 0, 20, 8, { col: '#5a5070', r: 2, seed: 4, scratch: false, edge: false }); RICH.rivet(c, 3.5, 4, 1, '#5a5070'); RICH.rivet(c, 16.5, 4, 1, '#5a5070'); c.fillStyle = '#1a1424'; c.fillRect(7, 1, 6, 2); }, x - 10, y - 8);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(x - 10, y - 8, 20, 8, 2); ctx.stroke();
+  ctx.strokeStyle = '#6a4e14'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x + (lv.pulled ? 14 : -14), y - 28); ctx.stroke();
+  ctx.strokeStyle = WIZGLOW_C.brass; ctx.lineWidth = 3; ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,245,200,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 0.8, y - 7); ctx.lineTo(x + (lv.pulled ? 14 : -14) - 0.8, y - 28); ctx.stroke(); ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
   ctx.fillStyle = lv.pulled ? '#9fe07f' : '#ff5f6d'; circle(x + (lv.pulled ? 14 : -14), y - 30, 5); ctx.fill(); ctx.stroke();
 }
 function wizGlowDrawPost(x, F, lit) {
-  ctx.fillStyle = '#3a3040'; ctx.fillRect(x - 3, F - 70, 6, 70);
+  // (art pass, 2nd look) an iron lamp post with a lit edge and a foot, a brass lantern with glass panes and a cap
+  ctx.fillStyle = '#3a3040'; ctx.fillRect(x - 3, F - 70, 6, 70); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x - 3, F - 70, 1.5, 70); ctx.fillStyle = '#2a2232'; ctx.fillRect(x - 7, F - 6, 14, 6);
   ctx.fillStyle = WIZGLOW_C.brass; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(x - 9, F - 92, 18, 22, 4); ctx.fill(); ctx.stroke();
-  if (lit) { ctx.fillStyle = '#ffcf6a'; circle(x, F - 81, 5 + Math.sin(G.clock * 9 + x) * 0.8); ctx.fill(); }
+  ctx.fillStyle = lit ? 'rgba(255,230,160,0.55)' : 'rgba(40,30,50,0.75)'; ctx.fillRect(x - 6, F - 88, 5, 14); ctx.fillRect(x + 1, F - 88, 5, 14);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x - 5.5, F - 87, 1, 12);
+  ctx.fillStyle = '#8a6420'; ctx.beginPath(); ctx.moveTo(x - 10, F - 92); ctx.lineTo(x, F - 99); ctx.lineTo(x + 10, F - 92); ctx.closePath(); ctx.fill(); ctx.stroke();
+  if (lit) { ctx.fillStyle = '#ffcf6a'; circle(x, F - 81, 5 + Math.sin(G.clock * 9 + x) * 0.8); ctx.fill(); ctx.fillStyle = '#fff4d0'; circle(x, F - 81, 2); ctx.fill(); }
 }
 // the dark: everything outside the light circle (and the lantern rooms) under a near-black layer, with a soft edge
 function wizGlowDrawTop(st) {
