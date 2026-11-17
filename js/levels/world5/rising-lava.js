@@ -705,15 +705,58 @@ MODES.lava = {
     ctx.beginPath(); ctx.moveTo(0, H);
     for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 330 + drop + Math.sin(x * 0.007 + 1.3) * 34 + Math.sin(x * 0.019) * 12);
     ctx.lineTo(W, H); ctx.fill();
+    // (third polish pass) the far land has little smoking cones, the near land a lit rim, rock spires and burnt trees
+    if (330 + drop < H + 60) {
+      const fy = x => 330 + drop + Math.sin(x * 0.007 + 1.3) * 34 + Math.sin(x * 0.019) * 12, far = mixCol(C.hillFar, C.skyBot, 0.25);
+      for (let i = 0; i < 4; i++) {
+        const hh = hash(i, 541 + idx), x = 90 + i * 250 + (hh % 90), y = fy(x) + 6, w = 46 + (hh >>> 6) % 30, ht = 30 + (hh >>> 11) % 22;
+        ctx.fillStyle = far; ctx.beginPath(); ctx.moveTo(x - w, y); ctx.lineTo(x - 7, y - ht); ctx.lineTo(x + 7, y - ht); ctx.lineTo(x + w, y); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(60,30,50,0.08)'; ctx.beginPath(); ctx.moveTo(x + 1, y - ht); ctx.lineTo(x + 7, y - ht); ctx.lineTo(x + w, y); ctx.lineTo(x + w * 0.25, y); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,150,70,' + (0.55 + 0.2 * Math.sin(t * 2 + i * 1.7)) + ')'; ctx.beginPath(); ctx.ellipse(x, y - ht, 7, 2, 0, 0, Math.PI * 2); ctx.fill();
+        for (let j = 0; j < 3; j++) { const u = ((t * 0.12 + j / 3 + i * 0.37) % 1); ctx.fillStyle = 'rgba(120,90,110,' + (0.2 * (1 - u)) + ')'; circle(x + 4 + u * 16 + Math.sin(u * 5 + i) * 3, y - ht - 6 - u * 36, 4 + u * 9); ctx.fill(); }
+      }
+      ctx.fillStyle = C.hillFar; ctx.beginPath(); ctx.moveTo(0, H);
+      for (let x = 0; x <= W; x += 16) ctx.lineTo(x, fy(x) + 5);
+      ctx.lineTo(W, H); ctx.fill();
+      ctx.strokeStyle = tint(C.hillFar, 0.25); ctx.lineWidth = 2.5; ctx.beginPath();
+      for (let x = 0; x <= W; x += 16) x ? ctx.lineTo(x, fy(x) + 6) : ctx.moveTo(x, fy(x) + 6);
+      ctx.stroke();
+    }
     ctx.fillStyle = C.hillNear;
     ctx.beginPath(); ctx.moveTo(0, H);
     for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 400 + drop * 1.4 + Math.sin(x * 0.011 + 4) * 26 + Math.sin(x * 0.027 + 1) * 8);
     ctx.lineTo(W, H); ctx.fill();
+    if (400 + drop * 1.4 < H + 60) {
+      const ny = x => 400 + drop * 1.4 + Math.sin(x * 0.011 + 4) * 26 + Math.sin(x * 0.027 + 1) * 8, dk = shade(C.hillNear, 0.22);
+      ctx.strokeStyle = tint(C.hillNear, 0.28); ctx.lineWidth = 3; ctx.beginPath();
+      for (let x = 0; x <= W; x += 16) x ? ctx.lineTo(x, ny(x) + 1.5) : ctx.moveTo(x, ny(x) + 1.5);
+      ctx.stroke();
+      for (let i = 0; i < 9; i++) {
+        const hh = hash(i, 613 + idx), x = 30 + i * 108 + (hh % 60), y = ny(x) + 3;
+        if (hh & 1) {   // a rock spire
+          const w = 7 + (hh >>> 4) % 6, ht = 16 + (hh >>> 8) % 16;
+          ctx.fillStyle = dk; ctx.beginPath(); ctx.moveTo(x - w, y); ctx.lineTo(x - w * 0.3, y - ht * 0.7); ctx.lineTo(x + 1, y - ht); ctx.lineTo(x + w * 0.6, y - ht * 0.5); ctx.lineTo(x + w, y); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.moveTo(x - w, y); ctx.lineTo(x - w * 0.3, y - ht * 0.7); ctx.lineTo(x + 1, y - ht); ctx.lineTo(x - 1, y); ctx.closePath(); ctx.fill();
+        } else {        // a burnt tree
+          const ht = 20 + (hh >>> 8) % 12;
+          ctx.strokeStyle = dk; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.beginPath();
+          ctx.moveTo(x, y); ctx.lineTo(x + 1, y - ht); ctx.moveTo(x + 0.5, y - ht * 0.5); ctx.lineTo(x - 7, y - ht * 0.85); ctx.moveTo(x + 0.7, y - ht * 0.68); ctx.lineTo(x + 7, y - ht * 1.02); ctx.moveTo(x - 4, y - ht * 0.7); ctx.lineTo(x - 5, y - ht * 1.05);
+          ctx.stroke();
+        }
+      }
+      const ng = ctx.createLinearGradient(0, 400 + drop * 1.4, 0, H + 40);
+      ng.addColorStop(0, 'rgba(60,30,50,0)'); ng.addColorStop(1, 'rgba(60,30,50,0.22)');
+      ctx.fillStyle = ng; ctx.fillRect(0, Math.min(H, 380 + drop * 1.4), W, H);
+    }
     // the volcano's own dark walls rising beside the climb (a slow parallax band at each side)
     ctx.fillStyle = 'rgba(60,40,55,0.22)';
     for (const s of [0, 1]) {
       ctx.beginPath(); ctx.moveTo(s ? W : 0, 0);
       for (let y = 0; y <= H; y += 20) { const yy = y + st.camY * 0.5, w = 60 + Math.sin(yy * 0.013 + s * 2) * 18 + Math.sin(yy * 0.041) * 8; ctx.lineTo(s ? W - w : w, y); }
+      ctx.lineTo(s ? W : 0, H); ctx.closePath(); ctx.fill();
+      // (third polish pass) a nearer, darker lip of rock inside each wall with a few ledges
+      ctx.beginPath(); ctx.moveTo(s ? W : 0, 0);
+      for (let y = 0; y <= H; y += 20) { const yy = y + st.camY * 0.7, w = 26 + Math.sin(yy * 0.021 + s * 3) * 10 + Math.sin(yy * 0.067 + s) * 5; ctx.lineTo(s ? W - w : w, y); }
       ctx.lineTo(s ? W : 0, H); ctx.closePath(); ctx.fill();
     }
     if (idx === 3) {   // the crater's glow over the top of the last tower
