@@ -90,7 +90,7 @@ function rkBevel(g, x, y, w, h, r, col, o) {
 }
 function rkOutline(g, x, y, w, h, r, col, lw, t) { g.strokeStyle = shade(col, t || 0.55); g.lineWidth = lw || 2; rkRR(g, x + (lw || 2) / 2 - 0.5, y + (lw || 2) / 2 - 0.5, w - (lw || 2) + 1, h - (lw || 2) + 1, r); g.stroke(); }
 // wavy wood grain across a box (horizontal planks unless vert), with knots
-function rkGrain(g, x, y, w, h, col, seed, vert, n) {
+function rkGrain(g, x, y, w, h, col, seed, vert, n, noKnots) {
   g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
   g.strokeStyle = shade(col, 0.3); g.globalAlpha = 0.45; g.lineWidth = 0.9; g.beginPath();
   const L = vert ? h : w, S = vert ? w : h; n = n || Math.max(2, Math.round(S / 5));
@@ -100,7 +100,7 @@ function rkGrain(g, x, y, w, h, col, seed, vert, n) {
   }
   g.stroke(); g.globalAlpha = 1;
   // knots: a dark eye with a ring
-  const nk = Math.max(0, Math.round(L * S / 900) - 0) + (rkH(seed, 7) % 2);
+  const nk = noKnots ? 0 : Math.max(0, Math.round(L * S / 900) - 0) + (rkH(seed, 7) % 2); // (a board with words on it asks for no knots)
   for (let k = 0; k < nk; k++) {
     const a = 6 + rkF(seed, 100 + k) * (L - 12), b = 3 + rkF(seed, 120 + k) * (S - 6), kx = vert ? x + b : x + a, ky = vert ? y + a : y + b;
     // (on a thin board a ringed knot reads as an eye: there it is only a small dark pin knot along the grain)
@@ -125,7 +125,7 @@ function rkBoard(g, x, y, w, h, col, seed, o) {
     for (let i = 1; i < np; i++) { const a = Math.round(i * L / np) + 0.5; vert ? (g.moveTo(x + a, y), g.lineTo(x + a, y + h)) : (g.moveTo(x, y + a), g.lineTo(x + w, y + a)); }
     g.stroke(); g.restore();
   }
-  rkGrain(g, x + 1, y + 1, w - 2, h - 2, col, seed, vert, o.grain);
+  rkGrain(g, x + 1, y + 1, w - 2, h - 2, col, seed, vert, o.grain, o.knots === false);
   // end splits / butt joints
   if (o.joints) { g.strokeStyle = shade(col, 0.5); g.lineWidth = 1; g.beginPath(); for (const jx of o.joints) { g.moveTo(x + jx + 0.5, y + 1); g.lineTo(x + jx + 0.5, y + h - 1); } g.stroke(); }
   rkBevel(g, x, y, w, h, r, col, { foot: vert ? 0.86 : 0.68, side: vert ? 0.78 : 0.93, lit: o.lit || 0.3 });

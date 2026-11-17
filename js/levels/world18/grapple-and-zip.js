@@ -1455,7 +1455,16 @@ function grappleDrawDock(st, sh) {
   for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + d * 8, dk - 6); ctx.lineTo(cx + d * 14, dk - 13 + Math.sin(G.clock * 8) * 2); ctx.stroke(); circle(cx + d * 15, dk - 14 + Math.sin(G.clock * 8) * 2, 3); ctx.fillStyle = '#ff6b4a'; ctx.fill(); }
   ctx.fillStyle = '#fff'; circle(cx - 3, dk - 13, 2.4); ctx.fill(); circle(cx + 3, dk - 13, 2.4); ctx.fill();
   ctx.fillStyle = C.ink; circle(cx - 3, dk - 13, 1.1); ctx.fill(); circle(cx + 3, dk - 13, 1.1); ctx.fill();
-  // the welcome sign (its board is in the cached dock picture)
+  // the welcome sign: its own cached picture, in front of the ladder (as before the art pass); the grain is washed
+  // back under the words so they stay easy to read
+  dkPic('gzDockSign', 104, 76, 2, 70, c => {
+    dkPlank(c, 42, -48, 5, 48, '#6e4422', 408, { vert: true, r: 1 });
+    c.fillStyle = 'rgba(30,15,0,0.25)'; rrOn(c, 2, -63, 92, 24, 6); c.fill();
+    c.save(); rrOn(c, 0, -66, 92, 24, 6); c.clip(); dkBoards(c, 0, -66, 92, 24, '#f4e2b8', 409, { bw: 8, r: 0 });
+    c.fillStyle = 'rgba(244,226,184,0.72)'; rrOn(c, 9, -63, 74, 18, 5); c.fill(); c.restore();
+    c.strokeStyle = GRAPPLE_COL.woodDk; c.lineWidth = 2; rrOn(c, 0, -66, 92, 24, 6); c.stroke();
+    dkNail(c, 6, -54, 1.2); dkNail(c, 86, -54, 1.2);
+  }, x + 108, dk);
   text('Pirate Cove', x + 154, dk - 53.5, 13, '#4a2a10', 'center');
 }
 // the dock in dock px (x 0 = its left end, y 0 = the deck top, S = deck to sea)
@@ -1501,12 +1510,6 @@ function grapplePaintDock(c, sh, S) {
     c.strokeStyle = '#7a5a2a'; c.lineWidth = 3; c.beginPath(); c.ellipse(222, -3 - k * 2, 11 - k * 2.5, 3.6 - k * 0.6, 0, 0, Math.PI * 2); c.stroke();
     c.strokeStyle = '#e8cf98'; c.lineWidth = 1.8; c.stroke();
   }
-  // the welcome sign: a post and a board with a lit edge
-  dkPlank(c, 150, -48, 5, 48, '#6e4422', 408, { vert: true, r: 1 });
-  c.fillStyle = 'rgba(30,15,0,0.25)'; rrOn(c, 110, -63, 92, 24, 6); c.fill();
-  c.save(); rrOn(c, 108, -66, 92, 24, 6); c.clip(); dkBoards(c, 108, -66, 92, 24, '#f4e2b8', 409, { bw: 8, r: 0 }); c.restore();
-  c.strokeStyle = W0.woodDk; c.lineWidth = 2; rrOn(c, 108, -66, 92, 24, 6); c.stroke();
-  dkNail(c, 114, -54, 1.2); dkNail(c, 194, -54, 1.2);
 }
 // the line: a twisted rope from the crow's nest to the ring, the zip handle and the bosun's chair
 function grappleDrawRope(st, hop) {

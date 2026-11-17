@@ -1412,7 +1412,7 @@ function pumpkinPaintSign(g, w) {
   rkShadow(g, 2, 1, 9, 2, 0.22);
   rkBoard(g, -3, -58, 6, 58, '#6b4630', 21, { vert: true, nails: false, r: 1.2, lw: 1, grain: 2 });
   g.fillStyle = 'rgba(20,10,30,0.25)'; rkRR(g, -w / 2 + 2, -82, w, 28, 5); g.fill();
-  rkBoard(g, -w / 2, -84, w, 28, '#c98b5a', 17 + w, { vert: false, planks: 2, nails: true, r: 5, lw: 2, grain: 4, metal: '#b8a890' });
+  rkBoard(g, -w / 2, -84, w, 28, '#c98b5a', 17 + w, { vert: false, planks: 2, nails: true, r: 5, lw: 2, grain: 4, knots: false, metal: '#b8a890' });
 }
 // the crows' fence (still, cached): a rail and three posts, all grained wood with nails
 function pumpkinPaintFence(g) {
