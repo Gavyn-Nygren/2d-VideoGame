@@ -871,11 +871,14 @@ function glacierDrawTrack(st) {
     for (const [d, col, lw] of [[34, 'rgba(255,255,255,0.35)', 4], [92, 'rgba(110,185,230,0.55)', 6], [170, 'rgba(110,185,230,0.45)', 10]]) {
       ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(a - cam.x, glacierGY(st, 0, a) + d - cam.y); line(0, a, b, d, false); ctx.stroke();
     }
-    // snow on top
+    glacierIceDetail(st, 0, a, b, 0);
+    // snow on top: a blue shadow line under the lip, the snow, its lit crest, lumps and glints along it
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(70,140,200,0.35)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(a - cam.x, glacierGY(st, 0, a) + 12 - cam.y); line(0, a, b, 12, false); ctx.stroke();
     ctx.strokeStyle = '#d6eefb'; ctx.lineWidth = 14; ctx.beginPath(); ctx.moveTo(a - cam.x, glacierGY(st, 0, a) + 5 - cam.y); line(0, a, b, 5, false); ctx.stroke();
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(a - cam.x, glacierGY(st, 0, a) + 2 - cam.y); line(0, a, b, 2, false); ctx.stroke();
     ctx.lineCap = 'butt';
+    glacierSnowLumps(st, 0, a, b);
   }
   for (const g of holes) glacierDrawCrevasse(st, g, bottom, false);
   // the high road: a thick ice shelf with icicles under it
@@ -894,12 +897,61 @@ function glacierDrawTrack(st) {
         const y = glacierGY(st, 1, x) + t - cam.y, l = 8 + (hash(x, 5) % 9);
         ctx.beginPath(); ctx.moveTo(x - cam.x - 5, y - 1); ctx.lineTo(x - cam.x + 5, y - 1); ctx.lineTo(x - cam.x, y + l); ctx.closePath(); ctx.fill();
       }
+      glacierIceDetail(st, 1, a, b, fk);
       ctx.lineJoin = 'round'; ctx.lineCap = 'round';
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(a - cam.x, glacierGY(st, 1, a) + 2 - cam.y); line(1, a, b, 2, false); ctx.stroke();
       ctx.lineCap = 'butt';
+      glacierSnowLumps(st, 1, a, b);
     }
     for (const g of hs) glacierDrawCrevasse(st, g, 0, true);
   }
+}
+// (rich props) what is frozen in the ice, placed by world x so it scrolls with the track (hashed, never random):
+// air bubbles, hairline fractures, buried stones (shaded, outlined), a lit glaze band just under the snow. On the high
+// shelf (fk) everything stays inside its thickness.
+function glacierIceDetail(st, p, a, b, fk) {
+  const cam = st.cam, th = fk ? (x => Math.min(GLACIER.shelfTh, glacierForkOff(fk, x) * 0.55)) : null;
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.beginPath();
+  for (let x = Math.ceil(a / 40) * 40; x < b; x += 40) {
+    const gy = glacierGY(st, p, x) - cam.y, sl = glacierSlopeAt(st, p, x);
+    ctx.moveTo(x - cam.x, gy + 13); ctx.lineTo(x - cam.x + 40, gy + 13 + sl * 40); ctx.lineTo(x - cam.x + 40, gy + 17 + sl * 40); ctx.lineTo(x - cam.x, gy + 17);
+  }
+  ctx.fill();
+  const bub = new Path2D(), frac = new Path2D();
+  for (let x = Math.ceil(a / 26) * 26; x < b; x += 26) {
+    const h = hash(x, 4031 + p), gy = glacierGY(st, p, x), lim = th ? th(x) - 6 : 220, d = 22 + h % Math.max(1, lim - 22);
+    if (th && th(x) < 22) continue;
+    const bx = x - cam.x + (h >>> 8) % 20, by = gy + d - cam.y, br = 1.4 + (h >>> 12) % 3;
+    bub.moveTo(bx + br, by); bub.arc(bx, by, br, 0, Math.PI * 2);
+    if ((h >>> 14) % 3 === 0) { const b2 = br * 0.6; bub.moveTo(bx + 5 + b2, by - 4); bub.arc(bx + 5, by - 4, b2, 0, Math.PI * 2); }
+    if (!th && (h >>> 16) % 4 === 0) {
+      let fx = x - cam.x + (h >>> 18) % 26, fy = gy + 40 + (h >>> 20) % 90 - cam.y;
+      frac.moveTo(fx, fy); for (let k = 0; k < 3; k++) { fx += 5 + (hash(x + k, 4049) % 6); fy += ((hash(x + k, 4051) % 13) - 6); frac.lineTo(fx, fy); }
+    }
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.42)'; ctx.fill(bub);
+  ctx.strokeStyle = 'rgba(70,140,200,0.35)'; ctx.lineWidth = 1; ctx.stroke(bub);
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.2; ctx.stroke(frac);
+  if (!th) for (let x = Math.ceil(a / 150) * 150; x < b; x += 150) {
+    const h = hash(x, 4057 + p);
+    if (h % 3) continue;
+    const gy = glacierGY(st, p, x), px = x - cam.x + (h >>> 6) % 60, py = gy + 60 + (h >>> 12) % 100 - cam.y;
+    ctx.globalAlpha = 0.55; paPebble(ctx, px, py, 5 + (h >>> 18) % 5, 3.5 + (h >>> 22) % 3, ['#8a93a8', '#7d8aa0', '#9aa0b2'][(h >>> 24) % 3], ((h >>> 26) % 5 - 2) * 0.2); ctx.globalAlpha = 1;
+  }
+}
+// snow lumps and glints along the crest (hashed by world x)
+function glacierSnowLumps(st, p, a, b) {
+  const cam = st.cam, lumps = new Path2D(), glint = new Path2D();
+  for (let x = Math.ceil(a / 34) * 34; x < b; x += 34) {
+    const h = hash(x, 4061 + p), lx = x + (h % 20), gy = glacierGY(st, p, lx) - cam.y, r = 4 + (h >>> 6) % 4;
+    if ((h >>> 9) % 3 === 0) continue;
+    lumps.moveTo(lx - cam.x + r, gy - 1); lumps.ellipse(lx - cam.x, gy - 1, r, r * 0.6, 0, Math.PI, 0);
+    if ((h >>> 12) % 2) { glint.moveTo(lx - cam.x - 2, gy - 2); glint.arc(lx - cam.x - 2, gy - 2, 1, 0, Math.PI * 2); }
+  }
+  ctx.fillStyle = '#ffffff'; ctx.fill(lumps);
+  ctx.strokeStyle = 'rgba(120,180,225,0.45)'; ctx.lineWidth = 1; ctx.stroke(lumps);
+  ctx.fillStyle = 'rgba(160,220,255,0.9)'; ctx.fill(glint);
 }
 // a crevasse: a deep blue crack with jagged walls and snowy lips (a gap in the shelf is just a break in the ice)
 function glacierDrawCrevasse(st, g, bottom, shelf) {
@@ -972,11 +1024,28 @@ function glacierDrawSigns(st) {
     const x = s.x - cam.x;
     if (x < -150 || x > W + 150) continue;
     const y = glacierGY(st, s.path, s.x) - cam.y + 4;
-    ctx.fillStyle = '#8a5833'; ctx.fillRect(x - 3, y - 50, 6, 50);
+    // (rich props, cached) a grained post with a snow cap at its foot and a lit edge
+    paStamp('glpost', x - 3, y - 50, 6, 50, 4, g => {
+      paPlank(g, 0, 0, 6, 50, '#8a5833', 1101, { r: 1.5, lw: 1.2, vert: true });
+      g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(3, 48, 8, 3.5, 0, Math.PI, 0); g.fill();
+      g.strokeStyle = 'rgba(120,180,225,0.6)'; g.lineWidth = 0.8; g.stroke();
+    });
     if (s.icon) {
       const col = s.icon === 'slow' ? '#3d8fe0' : s.icon === 'fast' ? '#ff7a2e' : '#c98b5a', bw = big ? 104 : 84, bh = big ? 48 : 40;
-      ctx.fillStyle = col; rr(x - bw / 2, y - 50 - bh, bw, bh, 8); ctx.fill();
-      ctx.strokeStyle = 'rgba(28,26,54,0.35)'; ctx.lineWidth = 2; rr(x - bw / 2, y - 50 - bh, bw, bh, 8); ctx.stroke();
+      // (rich props, cached) an enamel plate: lit top band, shaded foot, a white inner rim, bolts, a cap of snow
+      paStamp('glplate|' + col, x - bw / 2, y - 50 - bh, bw, bh, 5, g => {
+        g.fillStyle = 'rgba(28,26,54,0.25)'; paRR(g, 2, 3, bw, bh, 8); g.fill();
+        g.fillStyle = col; paRR(g, 0, 0, bw, bh, 8); g.fill();
+        g.save(); paRR(g, 0, 0, bw, bh, 8); g.clip();
+        g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(0, 0, bw, bh * 0.35);
+        g.fillStyle = 'rgba(0,0,0,0.14)'; g.fillRect(0, bh * 0.72, bw, bh);
+        g.restore();
+        g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 1.2; paRR(g, 3.5, 3.5, bw - 7, bh - 7, 5); g.stroke();
+        g.strokeStyle = paDk(col, 0.5); g.lineWidth = 2; paRR(g, 0, 0, bw, bh, 8); g.stroke();
+        for (const bx of [7, bw - 7]) paStud(g, bx, bh / 2, 1.6, '#d9dbe8', { collar: false });
+        g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(6, 1); g.quadraticCurveTo(bw * 0.3, -6, bw * 0.55, -1); g.quadraticCurveTo(bw * 0.75, -5, bw - 6, 1); g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(120,180,225,0.6)'; g.lineWidth = 0.8; g.stroke();
+      });
       if (s.icon === 'fork') {
         text('▲ high', x, y - 50 - bh * 0.7, big ? 16 : 13, '#ffffff', 'center', 'body');
         text('▼ low', x, y - 50 - bh * 0.28, big ? 16 : 13, '#ffffff', 'center', 'body');
@@ -984,9 +1053,19 @@ function glacierDrawSigns(st) {
     } else {
       ctx.font = '700 ' + (big ? 16 : 13) + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
       const tw = ctx.measureText(s.text).width + 22, bh = big ? 32 : 26;
-      ctx.fillStyle = '#e2b07a'; rr(x - tw / 2, y - 50 - bh, tw, bh, 7); ctx.fill();
-      ctx.strokeStyle = '#8a5833'; ctx.lineWidth = 2.5; rr(x - tw / 2, y - 50 - bh, tw, bh, 7); ctx.stroke();
-      ctx.fillStyle = '#ffffff'; rr(x - tw / 2 + 3, y - 50 - bh - 3, tw - 6, 6, 3); ctx.fill();
+      // (rich props, cached per size) a board of two grained planks with nails, an outline, snow lying on top
+      paStamp('glboard', x - tw / 2, y - 50 - bh, tw, bh, 5, g => {
+        g.fillStyle = 'rgba(28,26,54,0.22)'; paRR(g, 2, 3, tw, bh, 7); g.fill();
+        g.save(); paRR(g, 0, 0, tw, bh, 7); g.clip();
+        paPlank(g, -2, 0, tw + 4, bh / 2, '#e2b07a', 1111, { r: 0, lw: 0.8, edge: 0.35 });
+        paPlank(g, -2, bh / 2, tw + 4, bh / 2, '#dca672', 1113, { r: 0, lw: 0.8, edge: 0.35 });
+        g.fillStyle = 'rgba(255,236,210,0.28)'; g.fillRect(8, 3, tw - 16, bh - 6);   // (keeps the words easy to read)
+        g.restore();
+        for (const nx of [5, tw - 5]) { paNail(g, nx, bh * 0.25, '#e2b07a', 1); paNail(g, nx, bh * 0.75, '#e2b07a', 1); }
+        g.strokeStyle = '#8a5833'; g.lineWidth = 2.5; paRR(g, 0, 0, tw, bh, 7); g.stroke();
+        g.fillStyle = '#ffffff'; paRR(g, 3, -3, tw - 6, 6, 3); g.fill();
+        g.strokeStyle = 'rgba(120,180,225,0.6)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(5, 3); g.lineTo(tw - 5, 3); g.stroke();
+      });
       text(s.text, x, y - 50 - bh / 2 + 1, big ? 16 : 13, '#5a3416', 'center', 'body');
     }
   }
@@ -999,15 +1078,24 @@ function glacierDrawArches(st, front) {
     const g0 = glacierGY(st, p, a.x0), g1 = glacierGY(st, p, a.x1), sh = a.shake > 0 && !reduceMotion ? Math.sin(a.shake * 60) * 2 : 0;
     const X0 = a.x0 - cam.x + sh, X1 = a.x1 - cam.x + sh, Y0 = g0 - cam.y, Y1 = g1 - cam.y;
     if (!front) {
-      ctx.fillStyle = '#a9dcf5';
-      ctx.beginPath(); ctx.moveTo(X0 - 16, Y0 + 3); ctx.lineTo(X0 - 6, Y0 - 70); ctx.lineTo(X0 + 8, Y0 - 70); ctx.lineTo(X0 + 4, Y0 + 3); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(X1 - 4, Y1 + 3); ctx.lineTo(X1 - 8, Y1 - 70); ctx.lineTo(X1 + 6, Y1 - 70); ctx.lineTo(X1 + 16, Y1 + 3); ctx.closePath(); ctx.fill();
+      // (rich props) faceted ice legs: a lit face, a shaded face, a crack, a snow drift at the foot, an outline
+      for (const [L0, Lt0, Lt1, L1, gy] of [[X0 - 16, X0 - 6, X0 + 8, X0 + 4, Y0], [X1 - 4, X1 - 8, X1 + 6, X1 + 16, Y1]]) {
+        const mx = (Lt0 + Lt1) / 2, mb = (L0 + L1) / 2;
+        ctx.fillStyle = '#a9dcf5'; ctx.beginPath(); ctx.moveTo(L0, gy + 3); ctx.lineTo(Lt0, gy - 70); ctx.lineTo(Lt1, gy - 70); ctx.lineTo(L1, gy + 3); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#d4f1ff'; ctx.beginPath(); ctx.moveTo(L0, gy + 3); ctx.lineTo(Lt0, gy - 70); ctx.lineTo(mx, gy - 70); ctx.lineTo(mb - 2, gy + 3); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(70,140,200,0.25)'; ctx.beginPath(); ctx.moveTo(mb + 3, gy + 3); ctx.lineTo(mx + 3, gy - 70); ctx.lineTo(Lt1, gy - 70); ctx.lineTo(L1, gy + 3); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(mx - 1, gy - 50); ctx.lineTo(mx + 2, gy - 38); ctx.lineTo(mx - 1, gy - 26); ctx.stroke();
+        ctx.strokeStyle = '#6fb8e2'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(L0, gy + 3); ctx.lineTo(Lt0, gy - 70); ctx.lineTo(Lt1, gy - 70); ctx.lineTo(L1, gy + 3); ctx.stroke();
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(mb, gy + 2, 14, 5, 0, Math.PI, 0); ctx.fill();
+      }
       continue;
     }
     // the top: a thick curved band of ice, snow on top
     ctx.fillStyle = '#c8eeff'; ctx.strokeStyle = '#5faedd'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(X0 - 20, Y0 - 64); ctx.quadraticCurveTo((X0 + X1) / 2, (Y0 + Y1) / 2 - 116, X1 + 20, Y1 - 64);
     ctx.lineTo(X1 + 20, Y1 - 58); ctx.lineTo(X0 - 20, Y0 - 58); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X0 - 14, Y0 - 63); ctx.quadraticCurveTo((X0 + X1) / 2, (Y0 + Y1) / 2 - 104, X1 + 14, Y1 - 63); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; for (const u of [0.22, 0.5, 0.78]) { const bx = X0 + (X1 - X0) * u, by = (Y0 + (Y1 - Y0) * u) - 62 - 52 * 4 * u * (1 - u) * 0.9; circle(bx, by + 3, 1.6); ctx.fill(); }
     ctx.fillStyle = '#ffffff';
     ctx.beginPath(); ctx.moveTo(X0 - 22, Y0 - 66); ctx.quadraticCurveTo((X0 + X1) / 2, (Y0 + Y1) / 2 - 120, X1 + 22, Y1 - 66); ctx.quadraticCurveTo((X0 + X1) / 2, (Y0 + Y1) / 2 - 104, X0 - 22, Y0 - 66); ctx.fill();
     // icicles down to the "duck" line (archClear above the ice); broken ones are stumps
@@ -1210,12 +1298,29 @@ function glacierDrawFinish(st) {
   text('FINISH', sx + 22, gy - 216, hudBig() ? 26 : 22, '#5a3416', 'center');
 }
 function glacierDrawFloeShape(w, h, dmg) {
-  ctx.fillStyle = '#7cc4ec'; rr(-w / 2, -h, w, h, 8); ctx.fill();
-  ctx.fillStyle = '#bfeaff'; rr(-w / 2, -h, w, h - 6, 8); ctx.fill();
-  ctx.fillStyle = '#ffffff'; rr(-w / 2 + 2, -h - 3, w - 4, 9, 5); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.7)'; rr(-w / 2 + 10, -h + 9, w * 0.3, 4, 2); ctx.fill();
-  ctx.fillStyle = 'rgba(79,159,214,0.25)'; for (const fx of [0.2, 0.55, 0.8]) { circle(-w / 2 + w * fx, -h + 15 + (fx * 10 % 4), 2); ctx.fill(); }   // (polish) bubbles in the ice
-  ctx.strokeStyle = '#4f9fd6'; ctx.lineWidth = 2.5; rr(-w / 2, -h, w, h, 8); ctx.stroke();
+  // (rich props, cached) a slab of sea ice: a darker underside, facets (lit left, shaded right), frozen bubbles, a
+  // fracture line, a snow cap with lumps and a glint, a lit sheen, an outline in deep ice blue
+  paStamp('glfloe', -w / 2, -h, w, h, 7, g => {
+    g.fillStyle = '#7cc4ec'; paRR(g, 0, 0, w, h, 8); g.fill();
+    g.fillStyle = '#bfeaff'; paRR(g, 0, 0, w, h - 6, 8); g.fill();
+    g.save(); paRR(g, 0, 0, w, h - 6, 8); g.clip();
+    g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.moveTo(0, 0); g.lineTo(w * 0.28, 0); g.lineTo(w * 0.18, h); g.lineTo(0, h); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(79,159,214,0.22)'; g.beginPath(); g.moveTo(w * 0.72, 0); g.lineTo(w, 0); g.lineTo(w, h); g.lineTo(w * 0.8, h); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(79,159,214,0.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(w * 0.28, 0); g.lineTo(w * 0.18, h); g.moveTo(w * 0.72, 0); g.lineTo(w * 0.8, h); g.stroke();
+    g.restore();
+    g.fillStyle = 'rgba(0,40,90,0.12)'; g.fillRect(4, h - 6, w - 8, 2);
+    for (const [fx, fy, fr] of [[0.2, 15, 2], [0.24, 12, 1.2], [0.55, 17, 2.2], [0.8, 14, 1.8], [0.84, 18, 1.1], [0.4, 20, 1.3]]) {
+      g.fillStyle = 'rgba(255,255,255,0.55)'; paCirc(g, w * fx, fy, fr); g.fill();
+      g.strokeStyle = 'rgba(79,159,214,0.5)'; g.lineWidth = 0.7; g.stroke();
+    }
+    g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 1; g.beginPath(); g.moveTo(w * 0.62, 6); g.lineTo(w * 0.66, 11); g.lineTo(w * 0.63, 16); g.lineTo(w * 0.68, h - 8); g.stroke();
+    g.fillStyle = '#ffffff'; paRR(g, 2, -3, w - 4, 9, 5); g.fill();
+    for (const [lx, lr] of [[0.15, 6], [0.45, 5], [0.78, 7]]) { g.beginPath(); g.ellipse(w * lx, -2, lr, 3.5, 0, Math.PI, 0); g.fill(); }
+    g.strokeStyle = 'rgba(120,180,225,0.6)'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(6, 6); g.lineTo(w - 6, 6); g.stroke();
+    g.fillStyle = 'rgba(160,220,255,0.9)'; paCirc(g, w * 0.3, 1, 1.1); g.fill(); paCirc(g, w * 0.66, 0, 1); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.7)'; paRR(g, 10, 9, w * 0.3, 4, 2); g.fill();
+    g.strokeStyle = '#4f9fd6'; g.lineWidth = 2.5; paRR(g, 0, 0, w, h, 8); g.stroke();
+  });
   if (dmg > 0) {
     ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 1.8;
     for (let k = 0; k < Math.min(3, dmg); k++) { const cx = -w / 2 + 24 + k * 36; ctx.beginPath(); ctx.moveTo(cx, -h + 3); ctx.lineTo(cx + 6, -h + 10); ctx.lineTo(cx + 1, -h + 16); ctx.stroke(); }

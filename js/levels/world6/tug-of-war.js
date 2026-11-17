@@ -458,8 +458,15 @@ MODES.tug = {
     // mud-edge stakes with a pennant in that side's colour: the "don't cross" lines
     for (const k of [0, 1]) {
       const sx = TUG.mid + (k === 0 ? -1 : 1) * m;
-      ctx.fillStyle = C.plankDark; rr(sx - 2.5, F - 25, 5, 27, 2); ctx.fill();
-      ctx.fillStyle = C.plank; rr(sx - 1.5, F - 24, 3, 24, 1.5); ctx.fill();
+      // a whittled stake: grained, a lit side, a split top, string lashing under the pennant, a little mound of soil
+      paStamp('tugstake|' + C.plank, sx - 3.5, F - 27, 7, 30, 3, g => {
+        g.fillStyle = paDk('#7a5537', 0.05); g.beginPath(); g.ellipse(3.5, 28, 6, 2.2, 0, 0, Math.PI * 2); g.fill();
+        paPlank(g, 0.5, 2, 6, 27, C.plank, 5, { vert: true, lw: 1.3, r: 1.2 });
+        g.fillStyle = paDk(C.plank, 0.15); g.beginPath(); g.moveTo(0.5, 3); g.lineTo(3.5, 0); g.lineTo(6.5, 3); g.closePath(); g.fill();
+        g.strokeStyle = paDk(C.plank, 0.5); g.lineWidth = 1.1; g.stroke();
+        g.strokeStyle = '#f1e2c2'; g.lineWidth = 1.2; g.beginPath(); for (let k = 0; k < 3; k++) { g.moveTo(0.5, 12 + k * 1.8); g.lineTo(6.5, 11 + k * 1.8); } g.stroke();
+        g.fillStyle = '#6a4120'; for (const [px, py] of [[-1, 28], [7.5, 28.4], [5, 29]]) { paCirc(g, px, py, 1.3); g.fill(); }
+      });
       ctx.fillStyle = PCOL[k]; ctx.beginPath();
       const d = k === 0 ? -1 : 1, wv = Math.sin(G.clock * 5 + k) * 2;
       ctx.moveTo(sx, F - 25); ctx.lineTo(sx + d * 13, F - 21 + wv * 0.5); ctx.lineTo(sx, F - 16); ctx.closePath(); ctx.fill();
@@ -578,10 +585,17 @@ MODES.tug = {
     const key = 'tuglawn|' + F + '|' + C.grass;
     const layer = paLayer(key, W, H - F, g => {
       const top = 12, hgt = H - F;
-      g.fillStyle = '#7a5537'; g.fillRect(30, 0, W - 60, top + 6);
-      g.fillStyle = '#5f4029'; for (let x = 36; x < W - 36; x += 22) { paCirc(g, x + (hash(x, 3) % 10), 8 + hash(x, 5) % 8, 2 + hash(x, 9) % 2); g.fill(); }
-      g.fillStyle = C.grass; g.fillRect(30, 0, W - 60, 4); g.fillStyle = C.grassDark; g.fillRect(30, 4, W - 60, 2);
       for (let i = 0; i < 16; i++) { g.fillStyle = i % 2 ? '#86c97c' : '#7bbd72'; g.fillRect(30 + i * (W - 60) / 16, top + 6, (W - 60) / 16 + 1, hgt); }
+      // the soil lip: layered earth with buried pebbles and roots under a grass edge that curls over it
+      paDirt(g, 30, 0, W - 60, top + 7, '#7a5537', 621, { pebbles: ['#a99e8e', '#8f8273', '#c2b6a1'], top: false });
+      g.fillStyle = 'rgba(30,20,10,0.25)'; g.fillRect(30, top + 5, W - 60, 2);
+      g.fillStyle = C.grassDark; g.fillRect(30, 0, W - 60, 6);
+      g.fillStyle = C.grass; g.fillRect(30, 0, W - 60, 4);
+      g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(30, 0, W - 60, 1);
+      g.fillStyle = C.grassDark; g.beginPath();
+      for (let x = 30; x < W - 30; x += 7) { const hh = hash(x, 615); g.moveTo(x, 5); g.lineTo(x + 3.5, 8 + hh % 4); g.lineTo(x + 7, 5); }
+      g.fill();
+      for (let i = 0; i < 70; i++) { const hh = hash(i, 617); paTuft(g, 34 + hh % (W - 68), 2, 0.45 + (hh >> 9) % 3 * 0.12, paLt(C.grass, 0.15), C.grassDark); }
       const sh = g.createLinearGradient(0, top + 6, 0, top + 30); sh.addColorStop(0, 'rgba(30,40,30,0.32)'); sh.addColorStop(1, 'rgba(30,40,30,0)');
       g.fillStyle = sh; g.fillRect(30, top + 6, W - 60, 24);
       for (let i = 0; i < 40; i++) {
@@ -599,11 +613,18 @@ MODES.tug = {
       const xs = TUG_FANS.filter(f => f[2] === side).map(f => f[0]);
       const bx0 = Math.min(...xs) - 38, bx1 = Math.max(...xs) + 38;
       paShadow((bx0 + bx1) / 2, by + 25, (bx1 - bx0) / 2 + 6, 6, 0.2);
-      paBox(bx0 + 10, by + 4, 6, 21, 1.5, C.plankDark, { lw: 1.5 }); paBox(bx1 - 16, by + 4, 6, 21, 1.5, C.plankDark, { lw: 1.5 });
-      paBox(bx0, by - 4, bx1 - bx0, 10, 4, C.plank, { foot: 0.6 });
-      ctx.strokeStyle = 'rgba(107,70,48,0.35)'; ctx.lineWidth = 1; ctx.beginPath();
-      for (let x = bx0 + 18; x < bx1 - 10; x += 34) { ctx.moveTo(x, by - 1); ctx.lineTo(x + 14, by - 1); }
-      ctx.stroke();
+      // a park bench: two grained seat boards with nails, an apron rail, splayed legs with a cross brace (cached)
+      const bw = bx1 - bx0;
+      paStamp('tugbench|' + side + '|' + C.plank, bx0, by - 4, bw, 29, 3, g => {
+        for (const lx of [10, bw - 16]) paPlank(g, lx, 7, 6, 22, C.plankDark, lx + side * 50, { vert: true, lw: 1.4, r: 1.2 });
+        g.strokeStyle = paDk(C.plankDark, 0.2); g.lineWidth = 3; g.beginPath(); g.moveTo(13, 22); g.lineTo(bw - 13, 22); g.stroke();
+        g.strokeStyle = paDk(C.plankDark, 0.55); g.lineWidth = 0.8; g.beginPath(); g.moveTo(13, 20.5); g.lineTo(bw - 13, 20.5); g.moveTo(13, 23.5); g.lineTo(bw - 13, 23.5); g.stroke();
+        paPlank(g, 4, 7, bw - 8, 4, paDk(C.plank, 0.12), 77 + side, { lw: 1.2, r: 1 });
+        paPlank(g, 0, 0, bw / 2, 6, C.plank, 70 + side * 3, { lw: 1.5, r: 2 }); paPlank(g, bw / 2, 0, bw / 2, 6, C.plank, 71 + side * 3, { lw: 1.5, r: 2 });
+        for (const nx of [4, bw / 2 - 4, bw / 2 + 4, bw - 4, 13, bw - 13]) paNail(g, nx, 3, C.plank, 0.95);
+        // grass at the feet
+        for (const lx of [10, bw - 16]) { paTuft(g, lx - 1, 29, 0.6, '#9ad38f', '#5ea35a'); paTuft(g, lx + 6, 29, 0.5, '#9ad38f', '#5ea35a'); }
+      });
     }
     TUG_FANS.forEach(([x, kind, side], i) => {
       const ch = st.fx.cheer[side], hop = ch > 0 ? Math.abs(Math.sin((ch * 9) + i)) * 8 : 0;
@@ -747,10 +768,14 @@ MODES.tug = {
       ctx.strokeStyle = '#c9c3df'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 6, cy); ctx.lineTo(x - 9, cy - 16); ctx.moveTo(x + 6, cy); ctx.lineTo(x + 9, cy - 16); ctx.stroke();
     }
     if (c.landed && c.inMud) { ctx.save(); ctx.beginPath(); ctx.rect(x - 20, y - 30, 40, F + 1 - (y - 30)); ctx.clip(); }
-    ctx.fillStyle = C.plank; ctx.strokeStyle = C.plankDark; ctx.lineWidth = 2;
-    rr(x - 12, y - 12, 24, 24, 4); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = 'rgba(138,88,51,0.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 9, y - 9); ctx.lineTo(x + 9, y + 9); ctx.stroke();
-    ctx.fillStyle = '#fff6e2'; circle(x, y, 8.5); ctx.fill();
+    // a slatted crate (boards, brace, frame, nails) with a round paper label; cached, so it costs one copy a frame
+    paStamp('tugcrate|' + C.plank, x - 12, y - 12, 24, 24, 3, g => {
+      paCrate(g, 0, 0, 24, 24, C.plank, 41, { lw: 1.8 });
+      g.fillStyle = 'rgba(40,20,10,0.25)'; paCirc(g, 12.6, 12.8, 8.8); g.fill();
+      g.fillStyle = '#fff6e2'; paCirc(g, 12, 12, 8.5); g.fill();
+      g.strokeStyle = paDk(C.plank, 0.35); g.lineWidth = 0.9; paCirc(g, 12, 12, 8.5); g.stroke();
+      g.strokeStyle = 'rgba(200,170,120,0.6)'; g.lineWidth = 0.7; paCirc(g, 12, 12, 7); g.stroke();
+    });
     if (c.type === 'spinach') {                                            // a green can with a leaf
       ctx.fillStyle = '#3fae4a'; ctx.strokeStyle = '#1f6e2a'; ctx.lineWidth = 1.2; rr(x - 4.5, y - 4, 9, 10, 2); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#9be08e'; ctx.fillRect(x - 4.5, y - 1, 9, 3);

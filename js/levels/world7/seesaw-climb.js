@@ -631,6 +631,20 @@ function seesawPaintBackdrop(g, st) {
     g.strokeStyle = 'rgba(255,255,255,0.08)'; g.lineWidth = 1; g.beginPath();
     for (let j = 0; j <= H / 15; j++) { g.moveTo(0, j * 15 + 1.5); g.lineTo(W, j * 15 + 1.5); }
     g.stroke();
+    // each wall stone: a lit left edge, a shaded foot and right side, a few specks, now and then a chip or a stain
+    const wl = new Path2D(), wd = new Path2D(), ws = new Path2D(), wsl = new Path2D(), wst = new Path2D();
+    for (let j = 0; j < H / 15; j++) for (let i = -1; i < W / 30 + 1; i++) {
+      const x = i * 30 + (j % 2) * 15, y = j * 15, hh = hash(i + 90, j + 31);
+      wl.rect(x + 1, y + 2, 1, 11); wd.rect(x + 1, y + 12.6, 28, 1.6); wd.rect(x + 27.6, y + 1, 1.4, 12);
+      for (let k = 0; k < 3; k++) { const h2 = hash(hh, k + 3); (k ? ws : wsl).rect(x + 3 + h2 % 24, y + 3 + (h2 >>> 8) % 9, 1.2, 1); }
+      if (hh % 9 === 0) { wd.moveTo(x + 29, y + 1); wd.lineTo(x + 25, y + 1); wd.lineTo(x + 29, y + 5); wd.closePath(); }
+      if (hh % 13 === 4) { wst.moveTo(x + 22, y + 12); wst.ellipse(x + 15, y + 12, 7, 2.2, 0, 0, Math.PI * 2); }
+    }
+    g.fillStyle = 'rgba(255,255,255,0.1)'; g.fill(wl);
+    g.fillStyle = 'rgba(40,30,70,0.1)'; g.fill(wd);
+    g.fillStyle = 'rgba(40,30,70,0.16)'; g.fill(ws);
+    g.fillStyle = 'rgba(255,255,255,0.16)'; g.fill(wsl);
+    g.fillStyle = 'rgba(40,30,70,0.06)'; g.fill(wst);
     // a soft shadow under the ceiling and along the floor
     const sh = g.createLinearGradient(0, 30, 0, 110); sh.addColorStop(0, 'rgba(30,24,58,0.28)'); sh.addColorStop(1, 'rgba(30,24,58,0)');
     g.fillStyle = sh; g.fillRect(0, 30, W, 80);
@@ -647,21 +661,62 @@ function seesawPaintBackdrop(g, st) {
     g.drawImage(paCastlesLayer(392, 5, 0.55), 0, 0, W, H);   // the shared World 7 far castle (shaded, with pennants)
     g.restore();
   }
-  // castle blocks: mortar courses on the stone tiles (below the cap of a top surface)
+  // castle blocks: dressed ashlar painted over the shared stone tiles (opaque below the turf, so the tile's rounded
+  // slabs don't show through the courses): each block has its own shade, a lit top and left edge, a shaded foot,
+  // speckles, and now and then a chipped corner, a hairline crack or moss in a joint; deep mortar between them, the
+  // castle's dark outline where the stone meets air, and the rock darkening a little the deeper it sits
   g.save();
-  g.strokeStyle = 'rgba(30,24,52,0.24)'; g.lineWidth = 1.5; g.beginPath();
-  const hi = new Path2D();
+  const isH = (c, r) => r >= 0 && (r >= ROWS || c < 0 || c >= COLS || grid[r][c] === '#');
+  const base = new Path2D(), edge = new Path2D(), litE = new Path2D(), dkE = new Path2D(), turf = new Path2D();
+  const deep = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
+  const faces = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
+  const lit = new Path2D(), dk = new Path2D(), spk = new Path2D(), spl = new Path2D(), cr = new Path2D(), crL = new Path2D(), moss = new Path2D(), mossL = new Path2D(), mort = new Path2D();
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     if (grid[r][c] !== '#') continue;
-    const x = c * T, y = r * T, top = r > 0 && !solid(c, r - 1) ? 9 : 0, odd = r % 2;
-    if (top < 15) { g.moveTo(x, y + 15); g.lineTo(x + T, y + 15); hi.rect(x, y + 16, T, 1); }
-    const v0 = odd ? 0 : 15, v1 = odd ? 15 : 0;
-    g.moveTo(x + v0, y + top); g.lineTo(x + v0, y + 15);
-    g.moveTo(x + v1, y + 15); g.lineTo(x + v1, y + 30);
-    if (top === 0 && r > 0 && grid[r - 1][c] === '#') { g.moveTo(x, y); g.lineTo(x + T, y); }
+    const x = c * T, y = r * T, top = r > 0 && !'#sw'.includes(grid[r - 1][c]), y0 = top ? y + 12 : y, odd = r % 2;
+    const L = !isH(c - 1, r), R = !isH(c + 1, r), B = r + 1 < ROWS && !'#s'.includes(grid[r + 1][c]);
+    let d = 0; for (let k = 1; k <= 3 && isH(c, r - k); k++) d++;
+    base.rect(x, y0, T + 0.5, y + T - y0 + 0.5);
+    if (top) turf.rect(x, y + 12, T, 2.5);
+    for (const [cy0, cy1, vx] of [[y0, y + 15, odd ? 0 : 15], [y + 15, y + 30, odd ? 15 : 0]]) {
+      if (cy1 - cy0 < 2.5) continue;
+      mort.rect(x, cy1 - 0.8, T, 1.6);
+      if (vx > 0) mort.rect(x + vx - 0.8, cy0, 1.6, cy1 - cy0);
+      for (const [bx0, bx1] of [[x, x + vx], [x + vx, x + T]]) {
+        if (bx1 - bx0 < 3) continue;
+        const hh = hash(bx0 * 3 + 7, cy0 * 5 + 1), fx0 = bx0 + 0.8, fy0 = cy0 + (cy0 === y0 && top ? 0 : 0.8), fw = bx1 - bx0 - 1.6, fh = cy1 - 0.8 - fy0;
+        if (fh < 1.5) continue;
+        faces[hh % 4].rect(fx0, fy0, fw, fh);
+        lit.rect(fx0, fy0, fw, 1.2); lit.rect(fx0, fy0, 1.2, fh);
+        dk.rect(fx0, fy0 + fh - 1.8, fw, 1.8); dk.rect(fx0 + fw - 1.5, fy0, 1.5, fh);
+        for (let k = 0; k < 4; k++) { const h2 = hash(hh, k), sx = fx0 + 2 + h2 % Math.max(1, fw - 4), sy = fy0 + 2 + (h2 >>> 8) % Math.max(1, fh - 4); (k ? spk : spl).rect(sx, sy, 1.2, 1); }
+        if (hh % 17 === 0 && fh > 8) { const cx = fx0 + 4 + hh % Math.max(1, fw - 8); for (const [pp, o] of [[cr, 0], [crL, 1]]) { pp.moveTo(cx + o, fy0 + 1); pp.lineTo(cx + 1.6 + o, fy0 + fh * 0.32); pp.lineTo(cx + 0.4 + o, fy0 + fh * 0.58); pp.lineTo(cx + 3 + o, fy0 + fh - 1.5); pp.moveTo(cx + 0.4 + o, fy0 + fh * 0.58); pp.lineTo(cx - 2.5 + o, fy0 + fh * 0.75); } }
+        if (hh % 7 === 1) { dk.moveTo(fx0 + fw, fy0); dk.lineTo(fx0 + fw - 4, fy0); dk.lineTo(fx0 + fw, fy0 + 4); dk.closePath(); }
+        if (hh % 11 === 2 && !top) { const mr = Math.min(6, fw / 2 - 1), mx = fx0 + fw / 2 + (hh >>> 6) % 5 - 2; moss.moveTo(mx + mr, cy1 - 0.5); moss.ellipse(mx, cy1 - 0.5, mr, 1.8, 0, 0, Math.PI * 2); mossL.moveTo(mx + mr * 0.5 - 1, cy1 - 1.3); mossL.ellipse(mx - 1, cy1 - 1.3, mr * 0.5, 0.8, 0, 0, Math.PI * 2); }
+      }
+    }
+    deep[Math.min(3, d)].rect(x, y0, T + 0.5, y + T - y0 + 0.5);
+    if (L) { edge.rect(x, y0, 2.5, y + T - y0); litE.rect(x + 2.5, y0, 1.5, y + T - y0); }
+    if (R) { edge.rect(x + T - 2.5, y0, 2.5, y + T - y0); dkE.rect(x + T - 5, y0, 2.5, y + T - y0); }
+    if (B) { edge.rect(x, y + T - 3.5, T, 3.5); dkE.rect(x, y + T - 6, T, 2.5); }
   }
-  g.stroke();
-  g.fillStyle = 'rgba(255,255,255,0.06)'; g.fill(hi);
+  g.fillStyle = shade(C.stone, 0.35); g.fill(base);
+  const fc = [C.stone, mixCol(C.stone, C.stoneLight, 0.32), shade(C.stone, 0.04), mixCol(C.stone, C.stoneLight, 0.16)];
+  for (let k = 0; k < 4; k++) { g.fillStyle = fc[k]; g.fill(faces[k]); }
+  g.fillStyle = 'rgba(20,16,40,0.32)'; g.fill(mort);
+  g.fillStyle = 'rgba(255,255,255,0.13)'; g.fill(lit);
+  g.fillStyle = 'rgba(20,16,40,0.2)'; g.fill(dk);
+  g.fillStyle = 'rgba(20,16,40,0.24)'; g.fill(spk);
+  g.fillStyle = 'rgba(255,255,255,0.18)'; g.fill(spl);
+  g.strokeStyle = 'rgba(255,255,255,0.1)'; g.lineWidth = 0.9; g.stroke(crL);
+  g.strokeStyle = 'rgba(20,16,40,0.34)'; g.stroke(cr);
+  g.fillStyle = 'rgba(96,150,82,0.6)'; g.fill(moss);
+  g.fillStyle = 'rgba(170,215,140,0.55)'; g.fill(mossL);
+  for (let k = 1; k < 4; k++) { g.fillStyle = 'rgba(10,10,30,' + (0.035 * k) + ')'; g.fill(deep[k]); }
+  g.fillStyle = 'rgba(0,0,0,0.16)'; g.fill(turf);
+  g.fillStyle = C.stoneEdge; g.fill(edge);
+  g.fillStyle = 'rgba(255,255,255,0.1)'; g.fill(litE);
+  g.fillStyle = 'rgba(0,0,0,0.1)'; g.fill(dkE);
   g.restore();
   if (st.saws.length && !st.indoor) seesawPaintCrenels(g, st, solid);
   for (const f of deco.flags || []) seesawPaintFlagPole(g, f[0], f[1]);
@@ -747,9 +802,7 @@ function seesawPaintCrenels(g, st, solid) {
     if (!(solid(c, r + 1) && solid(c, r + 2))) continue;
     if (st.saws.some(s => Math.abs(c * T + T / 2 - s.cx) <= SEESAW.half + 2 && r * T >= s.py && r * T <= s.py + 2 * T)) continue;
     const x = c * T, y = r * T;
-    g.fillStyle = C.stoneEdge; g.fillRect(x + 3, y - 15, 14, 15);
-    g.fillStyle = C.stoneLight; g.fillRect(x + 4, y - 14, 12, 14);
-    g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(x + 4, y - 14, 12, 3);
+    paStone(g, x + 3, y - 15, 14, 15, C.stoneLight, c * 7 + r, { lw: 1.2, r: 1.5, noCrack: true });
   }
   g.restore();
 }
@@ -809,11 +862,13 @@ function seesawDrawLift(st, l) {
   ctx.restore();
   // the slab: a 10 px plank with iron ends
   const x = l.x0, y = l.y, w = l.x1 - l.x0;
-  ctx.fillStyle = C.plankDark; rr(x - 1, y - 1, w + 2, 12, 3); ctx.fill();
-  ctx.fillStyle = locked ? '#8d6b4c' : C.plank; ctx.fillRect(x + 1, y, w - 2, 8);
-  ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x + 2, y + 1, w - 4, 2);
-  ctx.fillStyle = 'rgba(90,50,20,0.3)'; for (let k = 30; k < w; k += 30) ctx.fillRect(x + k - 1, y, 2, 8);
-  ctx.fillStyle = SEESAW_IRON; ctx.fillRect(x, y - 1, 5, 11); ctx.fillRect(x + w - 5, y - 1, 5, 11);
+  // the slab: grained boards on a dark frame, nails, iron end caps with rivets (cached per width and lock state)
+  paStamp('seesawlift|' + (locked ? 1 : 0) + C.plank, x - 1, y - 1, w + 2, 12, 2, g => {
+    g.fillStyle = C.plankDark; paRR(g, 0, 0, w + 2, 12, 3); g.fill();
+    const col = locked ? '#8d6b4c' : C.plank;
+    for (let k = 0, bx = 2; bx < w; k++, bx += 30) paPlank(g, bx, 1, Math.min(30, w - bx) - 0.6, 8, k % 2 ? paDk(col, 0.06) : col, k * 7 + w, { r: 1, lw: 1, nails: true });
+    for (const ex of [1, w - 4]) { paMetal(g, ex, 0, 5, 12, SEESAW_IRON, { r: 1, lw: 1, rivets: false }); paNail(g, ex + 2.5, 3, '#8f8ba6', 0.9); paNail(g, ex + 2.5, 9, '#8f8ba6', 0.9); }
+  });
   if (locked) seesawPadlock(x + w / 2, y + 5, 1);
 }
 function seesawPadlock(x, y, a) {
@@ -833,6 +888,9 @@ function seesawDrawBeam(st, s) {
   ctx.fillStyle = '#34304a'; ctx.beginPath(); ctx.moveTo(s.cx - 16, pitY + 1); ctx.lineTo(s.cx, s.py - 2); ctx.lineTo(s.cx + 16, pitY + 1); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#6e6a86'; ctx.beginPath(); ctx.moveTo(s.cx - 12, pitY); ctx.lineTo(s.cx, s.py + 3); ctx.lineTo(s.cx + 12, pitY); ctx.closePath(); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.beginPath(); ctx.moveTo(s.cx - 12, pitY); ctx.lineTo(s.cx, s.py + 3); ctx.lineTo(s.cx - 3, pitY); ctx.closePath(); ctx.fill();
+  // a foot plate and rivets on the iron
+  ctx.fillStyle = '#34304a'; rr(s.cx - 19, pitY - 3, 38, 4, 1.5); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(s.cx - 18, pitY - 3, 36, 1);
+  for (const [rx, ry] of [[s.cx - 15, pitY - 1], [s.cx + 15, pitY - 1], [s.cx - 6, pitY - 8], [s.cx + 6, pitY - 8]]) { ctx.fillStyle = '#25223a'; circle(rx, ry, 1.4); ctx.fill(); ctx.fillStyle = '#b8b5c9'; circle(rx - 0.4, ry - 0.4, 0.6); ctx.fill(); }
   // the spring gauge on the pivot
   const fill = st.cfg.spring ? st.spring / (st.bellsLow ? SEESAW.springLateMax : SEESAW.springMax) : s.aid / SEESAW.aidMax;
   if (fill > 0) {
@@ -850,12 +908,18 @@ function seesawDrawBeam(st, s) {
     ctx.fillStyle = '#34304a'; ctx.fillRect(hx - 2, -13, 4, 13); ctx.fillRect(hx - 6, -15, 12, 4);
     ctx.fillStyle = '#8f8ba6'; ctx.fillRect(hx - 5, -14, 10, 2);
   }
-  ctx.fillStyle = C.plankDark; rr(-len - 1, -1.5, 2 * len + 2, 11, 4); ctx.fill();
-  ctx.fillStyle = C.plank; ctx.fillRect(-len + 1, 0, 2 * len - 2, 7);
-  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(-len + 6, 0.5, 2 * len - 12, 2);
-  ctx.fillStyle = 'rgba(110,60,25,0.35)'; for (const gx of [-len * 0.62, -len * 0.18, len * 0.3, len * 0.7]) ctx.fillRect(gx, 3.5, 14, 1.2);
+  // the beam: a grained plank (knots, nails, a lit top) on a dark under-board, drawn once and stretched to the tilt's
+  // length (a few % at most); iron end caps with rivets
+  const L0 = SEESAW.half;
+  const bp = paSprite('seesawbeam|' + C.plank, 2 * L0 + 2, 11, 2, g => {
+    g.fillStyle = C.plankDark; paRR(g, 0, 0, 2 * L0 + 2, 11, 4); g.fill();
+    g.fillStyle = paDk(C.plankDark, 0.25); g.fillRect(2, 8, 2 * L0 - 2, 2.5);
+    paPlank(g, 2, 1.5, L0 - 1, 7, C.plank, 21, { r: 1.5, lw: 1, nails: true }); paPlank(g, L0 + 1, 1.5, L0 - 1, 7, C.plank, 22, { r: 1.5, lw: 1, nails: true });
+  });
+  ctx.drawImage(bp.c, -len - 1 - bp.pad, -1.5 - bp.pad, (2 * len + 2) + 2 * bp.pad, bp.c.height / bp.sc);
   ctx.fillStyle = SEESAW_IRON; ctx.fillRect(-len - 1, -2, 7, 12); ctx.fillRect(len - 6, -2, 7, 12);
   ctx.fillStyle = '#8f8ba6'; ctx.fillRect(-len, -1, 5, 2); ctx.fillRect(len - 5, -1, 5, 2);
+  ctx.fillStyle = '#25223a'; for (const ex of [-len + 2.5, len - 2.5]) { circle(ex, 3.5, 1.2); ctx.fill(); circle(ex, 7.5, 1.2); ctx.fill(); }
   ctx.fillStyle = '#34304a'; circle(0, 4, 3.2); ctx.fill(); ctx.fillStyle = '#b8b5c9'; circle(0, 4, 1.4); ctx.fill();
   if (s.kick) {   // the catapult: a painted arrow toward the throw, and a red pennant on the kick end
     const k = Math.sign(s.kick);
@@ -887,10 +951,13 @@ function seesawDrawBeam(st, s) {
 }
 function seesawDrawRail(x, fy, dir) {
   const px = x - dir * 4;
-  ctx.fillStyle = C.plankDark; rr(px - 3, fy - 21, 6, 21, 2); ctx.fill();
-  ctx.fillStyle = C.plank; rr(px - 2, fy - 20, 4, 19, 1.5); ctx.fill();
-  ctx.fillStyle = C.gold; circle(px, fy - 21, 3.2); ctx.fill();
-  ctx.fillStyle = C.plankDark; ctx.fillRect(dir > 0 ? px - 14 : px, fy - 16, 14, 3);
+  paStamp('seesawrail|' + dir + C.plank, px - 15, fy - 25, 30, 25, 2, g => {
+    paPlank(g, dir > 0 ? 1 : 15, 9, 14, 3.5, C.plankDark, 3, { r: 1, lw: 1 });
+    paPlank(g, 12, 4, 6, 21, C.plank, 5, { vert: true, r: 2, lw: 1.3 });
+    g.fillStyle = '#34304a'; g.fillRect(11.5, 8.5, 7, 2); g.fillRect(11.5, 19, 7, 2);
+    g.fillStyle = C.gold; paCirc(g, 15, 4, 3.2); g.fill(); g.strokeStyle = C.goldDark; g.lineWidth = 0.9; g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.65)'; paCirc(g, 14, 3, 1); g.fill();
+  });
 }
 function seesawDrawLever(lv) {
   const f = lv.pulled ? clamp(lv.pullT / 0.2, 0, 1) : 0, ease = 1 - Math.pow(1 - f, 3);
@@ -898,8 +965,11 @@ function seesawDrawLever(lv) {
     + (!lv.pulled && lv.pokeT > 0.9 ? Math.sin(lv.pokeT * 40) * 0.25 * (lv.pokeT - 0.9) / 0.6 : 0);   // poked from below: a wiggle, no pull
   const bx = lv.x, by = lv.y;
   paShadow(bx, by, 14, 2.5, 0.22);
-  ctx.fillStyle = '#34304a'; rr(bx - 10, by - 7, 20, 7, 2); ctx.fill();
-  ctx.fillStyle = '#6e6a86'; rr(bx - 8, by - 6, 16, 3, 1.5); ctx.fill();
+  paStamp('seesawleverbase', bx - 10, by - 7, 20, 7, 2, g => {
+    paMetal(g, 0, 0, 20, 7, '#4a4662', { r: 2, lw: 1.2, rivets: false });
+    g.fillStyle = '#25223a'; paRR(g, 6, 1.5, 8, 2.5, 1); g.fill();
+    paNail(g, 3, 4, '#8f8ba6', 0.9); paNail(g, 17, 4, '#8f8ba6', 0.9);
+  });
   const kx = bx + Math.sin(a) * 20, ky = by - 6 - Math.cos(a) * 20;
   ctx.strokeStyle = '#34304a'; ctx.lineWidth = 4.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(bx, by - 6); ctx.lineTo(kx, ky); ctx.stroke();
   ctx.fillStyle = '#2a2640'; circle(kx, ky, 6.2); ctx.fill();
@@ -961,9 +1031,13 @@ function seesawDrawBridge(st) {
   ctx.save(); ctx.translate(B.hx, B.hy); ctx.rotate(a);
   const rad = 3 + 10 * clamp(a / (Math.PI / 2), 0, 1);   // raised, its top end is rounded (no ledge to stand on: you slide off)
   ctx.fillStyle = C.plankDark; rr(-L, 0, L, T, rad); ctx.fill(); ctx.clip();
-  ctx.fillStyle = C.plank; ctx.fillRect(-L + 2, 2, L - 4, T - 5);
-  ctx.fillStyle = 'rgba(110,60,25,0.4)'; for (let k = 1; k < L / 15; k++) ctx.fillRect(-L + k * 15 - 1, 2, 2, T - 5);
-  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(-L + 2, 2, L - 4, 3);
+  // grained boards across the deck (cached once at the deck's longest, anchored at the hinge; the clip above crops it
+  // while it folds, so no new picture is made as it swings)
+  const Lr = Math.round(Math.max(B.len, B.upLen || B.len));
+  paStamp('seesawbridge|' + C.plank, -Lr + 2, 2, Lr - 4, T - 5, 0, g => {
+    for (let k = 0; k * 15 < Lr - 4; k++) { const x1 = Lr - 4 - k * 15, w = Math.min(15, x1); paPlank(g, x1 - w + 0.5, 0, w - 1, T - 5, k % 2 ? paDk(C.plank, 0.06) : C.plank, k * 5 + 3, { vert: true, r: 1, lw: 1 }); }
+  });
+  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(-L + 2, 2, L - 4, 2);
   ctx.fillStyle = SEESAW_IRON; ctx.fillRect(-L + 6, 0, 7, T); ctx.fillRect(-13, 0, 7, T);
   ctx.fillStyle = '#b8b5c9'; for (const bx of [-L + 9.5, -9.5]) for (const by of [6, 15, 24]) { circle(bx, by, 1.4); ctx.fill(); }
   ctx.restore();

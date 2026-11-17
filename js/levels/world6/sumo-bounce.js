@@ -524,17 +524,24 @@ function sumoDrawBackdrop() {
 function sumoDrawMat() {
   const st = G.mst, g = st.geo, P = st.P, R = g.R, ry = sumoRimY(), wy = st.waterY;
   const aFull = Math.asin(Math.min(1, P.hw / R)), a = Math.asin(Math.min(1, st.hw / R)), ct = P.capThick;
-  // pedestal: a stone stem standing in the pool
-  const top = ry + ct - 2;
-  ctx.fillStyle = C.stoneEdge; ctx.fillRect(g.cx - 40, top, 80, H - T - top);
-  ctx.fillStyle = C.stone; ctx.fillRect(g.cx - 32, top, 64, H - T - top);
-  ctx.fillStyle = C.stoneLight; ctx.fillRect(g.cx - 32, top, 10, H - T - top);
-  ctx.fillStyle = shade(C.stone, 0.25); ctx.fillRect(g.cx + 20, top, 12, H - T - top);
-  ctx.strokeStyle = C.stoneEdge; ctx.lineWidth = 1.5; ctx.beginPath();
-  for (let y = top + 22, k = 0; y < H - T; y += 22, k++) { ctx.moveTo(g.cx - 32, y); ctx.lineTo(g.cx + 32, y); const bx = g.cx + (k % 2 ? -10 : 12); ctx.moveTo(bx, y); ctx.lineTo(bx, y + 22); }
-  ctx.stroke();
-  ctx.fillStyle = C.stoneEdge; rr(g.cx - 52, top - 2, 104, 10, 4); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(g.cx - 48, top - 1, 96, 2);
+  // pedestal: a stone stem standing in the pool, built of bevelled, speckled blocks in staggered courses under a
+  // capstone. Cached at full height and anchored at the pool floor (the ring shrinks in a round, so the top moves):
+  // only the part below the cap is copied each frame
+  const top = ry + ct - 2, pH = Math.max(0, H - T - top);
+  const ps = paSprite('sumoped|' + C.stone + C.stoneEdge, 104, H, 2, q => {
+    q.fillStyle = C.stoneEdge; q.fillRect(12, 0, 80, H);
+    for (let y = H - T - 22, k = 0; y > -22; y -= 22, k++) {
+      const off = k % 2 ? -10 : 12, xs = [20, 52 + off, 84];
+      for (let i = 0; i < xs.length - 1; i++) paStone(q, xs[i] + 0.6, y + 0.6, xs[i + 1] - xs[i] - 1.2, 21, i ? C.stone : C.stoneLight, k * 7 + i, { lw: 1.2, r: 1.5 });
+    }
+    q.fillStyle = 'rgba(20,20,40,0.22)'; q.fillRect(72, 0, 12, H);
+  });
+  if (pH > 0) {
+    const sy = (H - T - pH + ps.pad) * ps.sc, sh = Math.min(ps.c.height - sy, pH * ps.sc);
+    if (sh > 0) ctx.drawImage(ps.c, 0, sy, ps.c.width, sh, g.cx - 52 - ps.pad, top, ps.c.width / ps.sc, sh / ps.sc);
+  }
+  ctx.fillStyle = 'rgba(20,20,40,0.22)'; ctx.fillRect(g.cx - 32, top + 8, 64, 5);
+  paStamp('sumocap|' + C.stone + C.stoneEdge, g.cx - 52, top - 2, 104, 10, 2, q => paStone(q, 0, 0, 104, 10, paMix(C.stoneEdge, C.stone, 0.4), 99, { lw: 1.6, r: 4, noCrack: true }));
   // ... the part under water looks under water
   ctx.fillStyle = 'rgba(70,150,220,0.62)'; ctx.fillRect(g.cx - 40, wy, 80, H - T - wy);
   ctx.fillStyle = 'rgba(190,230,255,0.9)'; ctx.beginPath(); ctx.moveTo(g.cx - 40, wy + 4);
@@ -549,8 +556,19 @@ function sumoDrawMat() {
   // side band (the clay drum), then the light clay top
   ctx.fillStyle = SUMO_SIDE; sumoArcCap(g.cx, st.cy + ct, R, a); ctx.fill(); ctx.fillRect(g.cx - st.hw, ry, st.hw * 2, ct);
   ctx.fillStyle = SUMO_SIDE_DK; ctx.fillRect(g.cx - st.hw, ry + ct - 4, st.hw * 2, 4);
-  // the drum's woven straw band and a darker line under the top edge
-  ctx.fillStyle = 'rgba(255,240,200,0.22)'; for (let x = g.cx - st.hw + 6; x < g.cx + st.hw - 6; x += 14) ctx.fillRect(x, ry + 3, 7, ct - 9);
+  // the drum's woven straw: twisted rope wraps (one path of strands), a lit lip, stitched bands, a darker line under
+  // the top edge
+  ctx.save(); ctx.beginPath(); ctx.rect(g.cx - st.hw, ry, st.hw * 2, ct - 4); ctx.clip();
+  ctx.strokeStyle = 'rgba(255,236,190,0.32)'; ctx.lineWidth = 2.2; ctx.beginPath();
+  for (let x = g.cx - st.hw - 12; x < g.cx + st.hw + 8; x += 6) { ctx.moveTo(x, ry + ct - 4); ctx.lineTo(x + 8, ry); }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(90,48,20,0.4)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = g.cx - st.hw - 12; x < g.cx + st.hw + 8; x += 6) { ctx.moveTo(x + 2.6, ry + ct - 4); ctx.lineTo(x + 10.6, ry); }
+  ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(g.cx - st.hw, ry, st.hw * 2, 1.5);
+  ctx.strokeStyle = 'rgba(255,240,205,0.55)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.beginPath();
+  ctx.moveTo(g.cx - st.hw + 3, ry + 3.5); ctx.lineTo(g.cx + st.hw - 3, ry + 3.5); ctx.moveTo(g.cx - st.hw + 3, ry + ct - 6.5); ctx.lineTo(g.cx + st.hw - 3, ry + ct - 6.5); ctx.stroke(); ctx.setLineDash([]);
   ctx.strokeStyle = SUMO_SIDE_DK; ctx.lineWidth = 2; ctx.strokeRect(g.cx - st.hw, ry, st.hw * 2, ct);
   ctx.fillStyle = SUMO_CLAY; sumoArcCap(g.cx, st.cy, R, a); ctx.fill();
   ctx.save(); sumoArcCap(g.cx, st.cy, R, a); ctx.clip();
@@ -559,10 +577,29 @@ function sumoDrawMat() {
   ctx.beginPath();
   for (let i = 0; i < 46; i++) { const h = hash(i, 41), x = g.cx - st.hw + (h % 1000) / 1000 * st.hw * 2, y = ry - 4 - ((h >> 10) % 60), r = 1 + (h >> 20) % 2; ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }
   ctx.fill();
+  // light sand grains, raked arcs that follow the dome, a darker packed band low on the dome
+  ctx.fillStyle = 'rgba(255,250,232,0.5)'; ctx.beginPath();
+  for (let i = 0; i < 40; i++) { const h = hash(i, 47), x = g.cx - st.hw + (h % 1000) / 1000 * st.hw * 2, y = ry - 2 - ((h >> 10) % 70); ctx.moveTo(x + 1, y); ctx.arc(x, y, 1, 0, Math.PI * 2); }
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(150,104,56,0.16)'; ctx.lineWidth = 1.2; ctx.beginPath();
+  for (const d of [16, 26, 36, 50]) ctx.arc(g.cx, st.cy, R - d, -Math.PI / 2 - a, -Math.PI / 2 + a);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,248,226,0.3)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (const d of [17.2, 27.2, 37.2, 51.2]) ctx.arc(g.cx, st.cy, R - d, -Math.PI / 2 - a, -Math.PI / 2 + a);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(150,100,50,0.12)'; ctx.fillRect(g.cx - st.hw, ry - 10, st.hw * 2, 12);
   ctx.fillStyle = SUMO_CLAY_HI; ctx.beginPath(); ctx.arc(g.cx, st.cy, R, -Math.PI / 2 - a, -Math.PI / 2 + a); ctx.arc(g.cx, st.cy, R - 7, -Math.PI / 2 + a, -Math.PI / 2 - a, true); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(g.cx, st.cy, R, -Math.PI / 2 - a, -Math.PI / 2 + a); ctx.arc(g.cx, st.cy, R - 2, -Math.PI / 2 + a, -Math.PI / 2 - a, true); ctx.fill();
   ctx.restore();
-  // the straw ring line (tawara) and the two starting lines (shikiri-sen)
-  ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(g.cx, st.cy, R - 4, -Math.PI / 2 - a * 0.92, -Math.PI / 2 + a * 0.92); ctx.stroke();
+  ctx.strokeStyle = 'rgba(141,83,41,0.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(g.cx, st.cy, R, -Math.PI / 2 - a, -Math.PI / 2 + a); ctx.stroke();
+  // the straw ring line (tawara): a twisted straw rope with a shaded underside and wrap marks, and the two starting
+  // lines (shikiri-sen)
+  const ta0 = -Math.PI / 2 - a * 0.92, ta1 = -Math.PI / 2 + a * 0.92;
+  ctx.strokeStyle = 'rgba(150,110,60,0.45)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(g.cx, st.cy + 1, R - 4, ta0, ta1); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,250,236,0.92)'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(g.cx, st.cy, R - 4, ta0, ta1); ctx.stroke();
+  ctx.strokeStyle = 'rgba(176,136,80,0.55)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let t = ta0 + 0.004; t < ta1; t += 0.012) { const c = Math.cos(t), sn = Math.sin(t), r0 = R - 5.8, r1 = R - 2.2; ctx.moveTo(g.cx + c * r0 - sn * 1.2, st.cy + sn * r0 + c * 1.2); ctx.lineTo(g.cx + c * r1 + sn * 1.2, st.cy + sn * r1 - c * 1.2); }
+  ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
   for (const s of [-1, 1]) { const x = g.cx + s * 40; if (Math.abs(x - g.cx) < st.hw - 6) ctx.fillRect(x - 1.5, sumoSurfY(x) + 7, 3, 8); }
   // crumbling edge while the squeeze runs
@@ -570,8 +607,16 @@ function sumoDrawMat() {
   // straw bales at the rim
   if (st.lip > 0.5) for (const s of [-1, 1]) {
     const x = g.cx + s * st.hw, r = st.lip;
-    ctx.fillStyle = C.rope; circle(x, ry, r); ctx.fill(); ctx.strokeStyle = C.ropeDark; ctx.lineWidth = 2; circle(x, ry, r); ctx.stroke();
-    ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - r * 0.55, ry - r * 0.45); ctx.lineTo(x + r * 0.55, ry - r * 0.15); ctx.moveTo(x - r * 0.55, ry + r * 0.15); ctx.lineTo(x + r * 0.55, ry + r * 0.45); ctx.stroke();
+    // a straw bale end: shaded body, cut straw ends in rings, two bindings, a lit rim
+    ctx.fillStyle = C.rope; circle(x, ry, r); ctx.fill();
+    ctx.save(); circle(x, ry, r); ctx.clip();
+    ctx.fillStyle = 'rgba(150,100,40,0.3)'; circle(x + r * 0.35, ry + r * 0.4, r); ctx.fill();
+    ctx.strokeStyle = 'rgba(170,120,60,0.6)'; ctx.lineWidth = 1; circle(x, ry, r * 0.62); ctx.stroke(); circle(x, ry, r * 0.3); ctx.stroke();
+    ctx.fillStyle = 'rgba(120,80,30,0.45)'; for (let k = 0; k < 7; k++) { const an = k * 0.9 + 0.3, rd = r * (0.2 + (k % 3) * 0.25); ctx.fillRect(x + Math.cos(an) * rd - 0.6, ry + Math.sin(an) * rd - 0.6, 1.3, 1.3); }
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; circle(x - r * 0.35, ry - r * 0.4, r * 0.35); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = C.ropeDark; ctx.lineWidth = 2; circle(x, ry, r); ctx.stroke();
+    ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(x - r * 0.55, ry - r * 0.45); ctx.lineTo(x + r * 0.55, ry - r * 0.15); ctx.moveTo(x - r * 0.55, ry + r * 0.15); ctx.lineTo(x + r * 0.55, ry + r * 0.45); ctx.stroke();
   }
 }
 // a soft shadow on the mat under a ball (shows where a jumping ball comes down)

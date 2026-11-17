@@ -850,33 +850,52 @@ function quakePaint(g, st) {
   }
   for (const hs of st.houses) quakePaintHouse(g, hs);
   // the stone wall under the upper street, with ivy
-  g.fillStyle = '#dcc7a2'; g.fillRect(0, bb, W, lo - bb);
-  g.strokeStyle = '#c3aa82'; g.lineWidth = 1.5;
+  // (rich props) dressed sandstone blocks: each one bevelled, speckled, now and then chipped or cracked, in a dark mortar
+  g.fillStyle = '#b39a74'; g.fillRect(0, bb, W, lo - bb);
   for (let y = bb, row = 0; y < lo; y += 20, row++) {
-    g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke();
-    for (let x = (row % 2) * 24; x < W; x += 48) { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 20); g.stroke(); }
+    for (let x = (row % 2) * 24 - 48; x < W; x += 48) {
+      const hh = hash(x + 97, y + st.roomIdx * 31), col = ['#dcc7a2', '#d6bf98', '#e2cfab', '#d9c29c'][hh % 4];
+      paStone(g, x + 1, y + 1, 46, 18, col, hh, { r: 1.5, lw: 1, edge: 0.32 });
+    }
   }
   gr = g.createLinearGradient(0, bb, 0, bb + 28);
   gr.addColorStop(0, 'rgba(40,30,60,0.35)'); gr.addColorStop(1, 'rgba(40,30,60,0)');
   g.fillStyle = gr; g.fillRect(0, bb, W, 28);
   for (let i = 0; i < 5; i++) {
     const ix = 60 + i * 190 + R() * 60;
-    g.fillStyle = i % 2 ? '#6fbf73' : '#5aa862';
-    for (let j = 0; j < 6; j++) { g.beginPath(); g.arc(ix + (R() - 0.5) * 26, bb + 6 + j * 7 + R() * 4, 6 + R() * 3, 0, Math.PI * 2); g.fill(); }
+    // (rich props) ivy: each clump a dark under-leaf, the leaf, a lit top-left and a vein, with a trailing stem
+    const ivy = [], base = i % 2 ? '#6fbf73' : '#5aa862';
+    for (let j = 0; j < 6; j++) ivy.push([ix + (R() - 0.5) * 26, bb + 6 + j * 7 + R() * 4, 6 + R() * 3]);
+    g.strokeStyle = '#3f7a45'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(ivy[0][0], bb); for (const [lx, ly] of ivy) g.lineTo(lx, ly); g.stroke();
+    for (const [lx, ly, lr] of ivy) {
+      g.fillStyle = paDk(base, 0.3); g.beginPath(); g.arc(lx + 1, ly + 1.2, lr, 0, Math.PI * 2); g.fill();
+      g.fillStyle = base; g.beginPath(); g.arc(lx, ly, lr, 0, Math.PI * 2); g.fill();
+      g.fillStyle = paLt(base, 0.3); g.beginPath(); g.arc(lx - lr * 0.3, ly - lr * 0.35, lr * 0.45, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = paDk(base, 0.25); g.lineWidth = 0.8; g.beginPath(); g.moveTo(lx - lr * 0.5, ly + lr * 0.4); g.lineTo(lx + lr * 0.4, ly - lr * 0.4); g.stroke();
+      g.strokeStyle = paDk(base, 0.45); g.lineWidth = 0.9; g.beginPath(); g.arc(lx, ly, lr, 0.2, Math.PI * 0.9); g.stroke();
+    }
   }
   for (const sh of st.shops) quakePaintShop(g, sh);
   // the streets: cobbles on top, earth below; the cable car rails on cable streets
   const rails = st.bridges.some(b => b.kind === 'car');
   for (const [y0, y1, ln] of [[up, bb, 0], [lo, H, 1]]) {
-    g.fillStyle = '#a49fb9'; g.fillRect(0, y0, W, 11);
-    g.fillStyle = '#8e88a8';
-    for (let x = (ln ? 6 : 0); x < W; x += 13) { quakeRRg(g, x + 1, y0 + 2 + ((x / 13) % 2) * 2, 10, 5, 2.5); g.fill(); }
-    g.fillStyle = '#6d6789'; g.fillRect(0, y0 + 10, W, 2.5);
+    // (rich props) earth under the street: strata, buried shaded stones, root threads and specks, darker toward the foot
+    paDirt(g, 0, y0 + 12, W, y1 - y0 - 12, ln ? '#9c6e48' : '#b0825a', 900 + ln * 50 + st.roomIdx * 7, { pebbles: ['#a49fb9', '#8e88a8', '#c2b6a1', '#b58a64'], rootCol: '#5e3d28' });
     gr = g.createLinearGradient(0, y0 + 12, 0, y1);
-    gr.addColorStop(0, ln ? '#9c6e48' : '#b0825a'); gr.addColorStop(1, ln ? '#6f4a30' : '#8a5c3b');
+    gr.addColorStop(0, 'rgba(60,30,20,0)'); gr.addColorStop(1, 'rgba(60,30,20,0.3)');
     g.fillStyle = gr; g.fillRect(0, y0 + 12, W, y1 - y0 - 12);
-    g.fillStyle = 'rgba(255,230,190,0.28)';
-    for (let i = 0; i < 26; i++) { g.beginPath(); g.ellipse(R() * W, y0 + 20 + R() * (y1 - y0 - 28), 3 + R() * 5, 2 + R() * 2.5, 0, 0, Math.PI * 2); g.fill(); }
+    for (let i = 0; i < 26; i++) { R(); R(); R(); R(); }   // (keeps the seeded sequence, so the cracks keep their shapes)
+    // cobbles: a dark bed, then each stone shaded (lit top, darker foot), with an outline in its own dark
+    g.fillStyle = '#6d6789'; g.fillRect(0, y0, W, 12.5);
+    for (let x = (ln ? 6 : 0) - 13; x < W; x += 13) {
+      const hh = hash(x + 211, y0), cy = y0 + 1.5 + ((x / 13) % 2 ? 2 : 0) + (hh % 2) * 0.5, col = ['#a49fb9', '#9a95b2', '#aea9c2', '#9690ad'][hh % 4];
+      g.fillStyle = col; quakeRRg(g, x + 1, cy, 11.5, 7, 3); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.35)'; quakeRRg(g, x + 2.5, cy + 0.6, 8, 2, 1); g.fill();
+      g.fillStyle = paDk(col, 0.2); g.fillRect(x + 2.5, cy + 5, 8.5, 1.5);
+      g.strokeStyle = paDk(col, 0.45); g.lineWidth = 0.9; quakeRRg(g, x + 1, cy, 11.5, 7, 3); g.stroke();
+    }
+    g.fillStyle = '#5a5474'; g.fillRect(0, y0 + 10, W, 2.5);
+    g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(0, y0, W, 1);
     if (!ln) { g.fillStyle = '#5e3d28'; g.fillRect(0, y1 - 3, W, 3); }
     if (ln && rails) { g.fillStyle = '#5d5872'; g.fillRect(0, y0 + 3, W, 2); g.fillRect(0, y0 + 7, W, 2); }
   }
@@ -991,7 +1010,40 @@ function quakePaintCrack(g, br, R) {
   const gr = g.createLinearGradient(0, top, 0, up ? QUAKE.bandBot + 20 : H);
   gr.addColorStop(0, '#4a3550'); gr.addColorStop(1, '#1c1a36');
   path(); g.fillStyle = gr; g.fill();
+  // inside the crack: the torn earth walls going down into the dark (layered soil with lit ledges and buried stones),
+  // roots hanging from the street, a few falling crumbs and rubble deep down
+  g.save(); path(); g.clip();
+  const sd = Math.round(br.x0 * 3 + br.cy);
+  for (const [side, d] of [[left, 1], [right, -1]]) {
+    g.beginPath(); g.moveTo(side[0][0], side[0][1]);
+    for (const q of side) g.lineTo(q[0], q[1]);
+    for (let i = n; i >= 0; i--) g.lineTo(side[i][0] + d * (10 + (hash(sd + i, 7) % 6)), side[i][1] + 4);
+    g.closePath();
+    const wg = g.createLinearGradient(0, top, 0, bot); wg.addColorStop(0, '#8e6040'); wg.addColorStop(0.5, '#5e3e44'); wg.addColorStop(1, 'rgba(40,30,60,0)');
+    g.fillStyle = wg; g.fill();
+    g.strokeStyle = 'rgba(255,214,160,0.3)'; g.lineWidth = 1; g.beginPath();
+    for (let i = 0; i < n; i++) { const y = side[i][1] + 5, x = side[i][0] + d * 2; g.moveTo(x, y); g.lineTo(x + d * (6 + hash(sd + i, 9) % 6), y + 1.5); }
+    g.stroke();
+    g.strokeStyle = 'rgba(30,16,26,0.45)'; g.beginPath();
+    for (let i = 0; i < n; i++) { const y = side[i][1] + 9, x = side[i][0] + d * 1.5; g.moveTo(x, y); g.lineTo(x + d * (5 + hash(sd + i, 11) % 7), y + 2); }
+    g.stroke();
+    for (let i = 0; i < 3; i++) { const hk = hash(sd + i, 13 + d), q = side[1 + i % (n - 1)]; paPebble(g, q[0] + d * (4 + hk % 5), q[1] + 2 + (hk >>> 5) % 8, 2 + (hk >>> 9) % 2, 1.6, i % 2 ? '#8f8273' : '#a99e8e', 0.3 * d); }
+  }
+  g.strokeStyle = '#6b4a30'; g.lineWidth = 1.3; g.lineCap = 'round'; g.beginPath();
+  for (let i = 0; i < 4; i++) { const hk = hash(sd + i, 17), rx = x0 + 10 + hk % Math.max(1, x1 - x0 - 20), len = 10 + (hk >>> 6) % 18; g.moveTo(rx, top + 2); g.quadraticCurveTo(rx + ((hk >>> 11) % 9) - 4, top + len * 0.6, rx + ((hk >>> 15) % 11) - 5, top + len); g.moveTo(rx + 1, top + len * 0.5); g.lineTo(rx + 4, top + len * 0.5 + 4); }
+  g.stroke();
+  g.fillStyle = 'rgba(255,230,190,0.35)';
+  for (let i = 0; i < 6; i++) { const hk = hash(sd + i, 19); g.fillRect(x0 + 8 + hk % Math.max(1, x1 - x0 - 16), top + 10 + (hk >>> 8) % Math.max(1, Math.min(60, bot - top - 12)), 1.2, 1.2); }
+  if (!up) for (let i = 0; i < 5; i++) { const hk = hash(sd + i, 23); paPebble(g, x0 + 12 + hk % Math.max(1, x1 - x0 - 24), Math.min(H - 6, top + 46 + (hk >>> 7) % 20), 3 + (hk >>> 12) % 3, 2.2, '#4e4258', ((hk >>> 4) % 5 - 2) * 0.2); }
+  g.restore();
   g.strokeStyle = '#5e3d28'; g.lineWidth = 2.5; path(); g.stroke();
+  // the broken earth at the crack's walls: a ragged lit lip and a few torn strata lines
+  g.strokeStyle = 'rgba(255,220,170,0.35)'; g.lineWidth = 1.2; g.beginPath();
+  for (const side of [left, right]) { g.moveTo(side[0][0], side[0][1] + 2); for (let i = 1; i <= 2; i++) g.lineTo(side[i][0], side[i][1]); }
+  g.stroke();
+  g.strokeStyle = 'rgba(40,20,30,0.45)'; g.lineWidth = 1; g.beginPath();
+  for (const [side, d] of [[left, 1], [right, -1]]) for (let i = 1; i < n; i++) { g.moveTo(side[i][0], side[i][1]); g.lineTo(side[i][0] + d * 7, side[i][1] + 3); }
+  g.stroke();
   // broken cobbles at the edges
   g.fillStyle = '#8e88a8';
   for (const [ex, dir] of [[x0, 1], [x1, -1]]) {
@@ -1087,10 +1139,27 @@ function quakeDrawCat(c, I, t) {   // a cat on a window sill: it puffs up and ho
 function quakeDrawLamp(lp, I, t) {
   const a = reduceMotion ? 0 : Math.sin(t * 7 + lp.ph) * 0.06 * I;
   ctx.save(); ctx.translate(lp.x, lp.y); ctx.rotate(a);
-  ctx.fillStyle = '#3b3550'; ctx.fillRect(-2, -66, 4, 62); rr(-6, -8, 12, 8, 2); ctx.fill();
-  rr(-8, -82, 16, 17, 3); ctx.fill();
-  ctx.fillStyle = '#fff2b0'; rr(-5.5, -79.5, 11, 12, 2); ctx.fill();
-  ctx.fillStyle = '#3b3550'; ctx.beginPath(); ctx.moveTo(-9, -82); ctx.lineTo(0, -90); ctx.lineTo(9, -82); ctx.closePath(); ctx.fill();
+  // (cached) a cast-iron lamp: a fluted post with a lit edge, a stepped foot, collars, a glowing glass box with bars, a cap
+  paStamp('quakelamp', -10, -92, 20, 92, 6, g => {
+    g.fillStyle = 'rgba(40,30,60,0.25)'; g.beginPath(); g.ellipse(10, 92, 12, 2.5, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(255,240,170,0.25)'; paCirc(g, 10, 18, 14); g.fill();
+    g.fillStyle = '#3b3550'; g.fillRect(8, 26, 4, 62);
+    g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(8, 26, 1.2, 62);
+    g.fillStyle = '#2a2540'; g.fillRect(11, 26, 1, 62);
+    for (const cy of [30, 56, 80]) { g.fillStyle = '#4c4566'; g.fillRect(7, cy, 6, 2.5); }
+    paMetal(g, 4, 84, 12, 8, '#3b3550', { r: 2, lw: 1, rivets: false });
+    paMetal(g, 6, 81, 8, 4, '#4c4566', { r: 1.5, lw: 0.8, rivets: false });
+    g.fillStyle = '#3b3550'; paRR(g, 2, 10, 16, 17, 3); g.fill();
+    const lg = g.createLinearGradient(0, 12.5, 0, 24.5); lg.addColorStop(0, '#fffbe0'); lg.addColorStop(1, '#ffd77a');
+    g.fillStyle = lg; paRR(g, 4.5, 12.5, 11, 12, 2); g.fill();
+    g.fillStyle = '#3b3550'; g.fillRect(9.4, 12.5, 1.2, 12);
+    g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(5.5, 13.5, 2, 6);
+    g.strokeStyle = '#1e1a2e'; g.lineWidth = 1; paRR(g, 2, 10, 16, 17, 3); g.stroke();
+    g.fillStyle = '#3b3550'; g.beginPath(); g.moveTo(1, 10); g.lineTo(10, 2); g.lineTo(19, 10); g.closePath(); g.fill();
+    g.strokeStyle = '#1e1a2e'; g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.moveTo(3, 9.5); g.lineTo(10, 3.2); g.lineTo(10, 5); g.lineTo(5, 9.5); g.closePath(); g.fill();
+    paStud(g, 10, 1.5, 1.6, '#c9a85a', { collar: false });
+  });
   ctx.restore();
 }
 // the drop gate at the end of the upper street: a bolted trapdoor until every crossing is done, then it swings open
@@ -1098,11 +1167,16 @@ function quakeDrawGate(st) {
   if (!st.gate.length) return;
   const x0 = Math.min(...st.gate.map(g => g.c)) * T, x1 = (Math.max(...st.gate.map(g => g.c)) + 1) * T, y0 = QUAKE.upY, y1 = QUAKE.bandBot, gw = x1 - x0;
   if (!st.gateOpen) {
-    ctx.fillStyle = '#9a6640'; ctx.fillRect(x0, y0, gw, y1 - y0);
-    ctx.fillStyle = '#7d5032'; for (let y = y0 + 22; y < y1; y += 13) ctx.fillRect(x0, y, gw, 2);
-    ctx.fillStyle = '#c98b5a'; ctx.fillRect(x0, y0, gw, 11);
-    ctx.fillStyle = '#8a5833'; for (let x = x0 + 15; x < x1; x += 15) ctx.fillRect(x, y0, 2, 11);
-    ctx.fillStyle = '#5d5872'; ctx.fillRect(x0 + 3, y0 + 3, 9, 4); ctx.fillRect(x1 - 12, y0 + 3, 9, 4);
+    // (cached) a bolted trapdoor: a deck of short boards on top, stacked shoring boards under it, iron straps and bolts
+    paStamp('quakegate', x0, y0, gw, y1 - y0, 2, g => {
+      const gh = y1 - y0;
+      g.fillStyle = '#5e3d28'; g.fillRect(0, 0, gw, gh);
+      for (let y = 11, i = 0; y < gh; y += 13, i++) paPlank(g, 0, y, gw, Math.min(13, gh - y), '#9a6640', 700 + i, { r: 1, lw: 1, nails: true });
+      for (let x = 0, i = 0; x < gw; x += 15, i++) paPlank(g, x, 0, Math.min(15, gw - x), 11, '#c98b5a', 720 + i, { r: 1, lw: 1, vert: true });
+      for (const sx of [3, gw - 12]) { paMetal(g, sx, 3, 9, 4, '#5d5872', { r: 1, lw: 0.8, rivets: false }); paNail(g, sx + 2, 5, '#8e88a8', 1); paNail(g, sx + 7, 5, '#8e88a8', 1); }
+      for (const sy of [gh * 0.45, gh * 0.8]) { paMetal(g, 2, sy, gw - 4, 4, '#5d5872', { r: 1, lw: 0.8, step: 10, ins: 2 }); }
+      g.strokeStyle = '#4a2e1c'; g.lineWidth = 1.4; g.strokeRect(0.7, 0.7, gw - 1.4, gh - 1.4);
+    });
     const lx = x0 + gw / 2, ly = y0 + 32;   // a little padlock
     ctx.strokeStyle = C.goldDark; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(lx, ly - 4, 4.5, Math.PI, 0); ctx.stroke();
     ctx.fillStyle = C.gold; rr(lx - 7, ly - 4, 14, 11, 2); ctx.fill();
@@ -1112,7 +1186,7 @@ function quakeDrawGate(st) {
     ctx.fillStyle = '#2a2140'; ctx.fillRect(x0, y0, gw, y1 - y0);
     for (const [hx, dir] of [[x0, 1], [x1, -1]]) {
       ctx.save(); ctx.translate(hx, y0); ctx.rotate(dir * f * 1.35);
-      ctx.fillStyle = '#c98b5a'; ctx.fillRect(dir > 0 ? 0 : -gw / 2, 0, gw / 2, 9);
+      paPlank(ctx, dir > 0 ? 0 : -gw / 2, 0, gw / 2, 9, '#c98b5a', dir > 0 ? 741 : 742, { r: 1.5, lw: 1, nails: true });
       ctx.fillStyle = '#8a5833'; ctx.fillRect(dir > 0 ? gw / 4 : -gw / 4, 0, 2, 9);
       ctx.restore();
     }
@@ -1138,35 +1212,69 @@ function quakeDrawCrank(st, br) {
         ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(x, bb + 9); ctx.lineTo(br.cx, pose.py - 2); ctx.stroke();
       }
     }
-    ctx.fillStyle = '#5d5872'; ctx.fillRect(x - 3, bb - 1, 6, 8);
-    ctx.fillStyle = '#8e88a8'; circle(x, bb + 9, 5.5); ctx.fill(); ctx.fillStyle = '#3b3550'; circle(x, bb + 9, 2); ctx.fill();
-    ctx.strokeStyle = '#6b4630'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(x - 13, y); ctx.lineTo(x - 5, y - 24); ctx.moveTo(x + 13, y); ctx.lineTo(x + 5, y - 24); ctx.stroke(); ctx.lineCap = 'butt';
-    ctx.fillStyle = '#8a5833'; rr(x - 10, y - 31, 20, 11, 4); ctx.fill();
-    ctx.fillStyle = C.rope; for (let k = -6; k <= 6; k += 4) ctx.fillRect(x + k - 1, y - 30, 2, 9);
+    // (cached) the pulley under the street and the winch: braced timber legs, a drum wrapped in rope, iron caps
+    paStamp('quakepulley', x - 7, bb - 1, 14, 16, 2, g => {
+      paMetal(g, 4, 0, 6, 8, '#5d5872', { r: 1, lw: 0.8, rivets: false });
+      paStud(g, 7, 10, 5.5, '#8e88a8', { collar: false });
+      g.strokeStyle = '#5d5872'; g.lineWidth = 0.8; paCirc(g, 7, 10, 3.6); g.stroke();
+      g.fillStyle = '#3b3550'; paCirc(g, 7, 10, 2); g.fill();
+    });
+    paStamp('quakewinch', x - 16, y - 32, 32, 32, 3, g => {
+      g.fillStyle = 'rgba(40,30,60,0.22)'; g.beginPath(); g.ellipse(16, 32, 17, 2.5, 0, 0, Math.PI * 2); g.fill();
+      g.lineCap = 'round';
+      for (const [ax, bx2] of [[3, 11], [29, 21]]) {
+        g.strokeStyle = '#4a2e1c'; g.lineWidth = 5.4; g.beginPath(); g.moveTo(ax, 32); g.lineTo(bx2, 8); g.stroke();
+        g.strokeStyle = '#6b4630'; g.lineWidth = 3.6; g.stroke();
+        g.strokeStyle = 'rgba(255,220,170,0.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(ax - 0.8, 31); g.lineTo(bx2 - 0.8, 9); g.stroke();
+      }
+      g.strokeStyle = '#4a2e1c'; g.lineWidth = 3; g.beginPath(); g.moveTo(7, 22); g.lineTo(25, 22); g.stroke();
+      g.strokeStyle = '#8a5833'; g.lineWidth = 1.8; g.stroke();
+      paNail(g, 8, 22, '#8a5833', 1); paNail(g, 24, 22, '#8a5833', 1);
+      paPlank(g, 6, 1, 20, 11, '#8a5833', 751, { r: 4, lw: 1.2 });
+      g.fillStyle = C.rope; for (let k = -6; k <= 6; k += 4) g.fillRect(16 + k - 1, 2, 2, 9);
+      g.fillStyle = C.ropeDark; for (let k = -6; k <= 6; k += 4) g.fillRect(16 + k + 0.6, 2, 0.6, 9);
+      for (const cx of [6, 26]) { paMetal(g, cx - 2, 0, 4, 13, '#5d5872', { r: 1.5, lw: 0.8, rivets: false }); }
+    });
     const a = br.up * Math.PI * 3 + (br.kind === 'car' ? br.s * 14 : br.b * 0.8);
     ctx.strokeStyle = '#3b3550'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x, y - 25.5); ctx.lineTo(x + Math.cos(a) * 11, y - 25.5 + Math.sin(a) * 11); ctx.stroke();
     ctx.fillStyle = C.gold; circle(x + Math.cos(a) * 11, y - 25.5 + Math.sin(a) * 11, 3); ctx.fill();
   } else {
     // the lower street: a jack with a prop pole up to the plank's middle
     const top = pose.py + QUAKE.plankTh + 1, px = br.cx;
-    ctx.fillStyle = '#8a5833'; ctx.fillRect(px - 4.5, top, 9, y - 5 - top);
-    ctx.fillStyle = '#b57a4a'; ctx.fillRect(px - 2.5, top, 4, y - 5 - top);
-    ctx.fillStyle = '#5d5872'; for (let yy = top + 30; yy < y - 30; yy += 46) ctx.fillRect(px - 5.5, yy, 11, 4);
-    ctx.fillRect(px - 9, top - 1, 18, 4);
-    rr(x - 13, y - 7, 26, 7, 2); ctx.fill();
-    ctx.fillStyle = '#e0b453'; rr(x - 11, y - 19, 22, 4, 2); ctx.fill();
+    // a timber prop pole with grain and iron bands, a cap plate, and a screw jack with a lit gold handle bar
+    const ph = y - 5 - top;
+    if (ph > 0) paPlank(ctx, px - 4.5, top, 9, ph, '#a06a40', 760 + Math.round(px), { r: 1.5, lw: 1.2, vert: true });
+    for (let yy = top + 30; yy < y - 30; yy += 46) { paMetal(ctx, px - 5.5, yy, 11, 4, '#5d5872', { r: 1, lw: 0.8, rivets: false }); paNail(ctx, px, yy + 2, '#8e88a8', 0.9); }
+    paMetal(ctx, px - 9, top - 1, 18, 4, '#5d5872', { r: 1, lw: 0.8, rivets: false });
+    paStamp('quakejack', x - 13, y - 20, 26, 20, 3, g => {
+      g.fillStyle = 'rgba(40,30,60,0.22)'; g.beginPath(); g.ellipse(13, 20, 15, 2.5, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#4c4566'; g.fillRect(10, 5, 6, 9);
+      g.strokeStyle = '#8e88a8'; g.lineWidth = 0.8; g.beginPath(); for (let yy = 6; yy < 14; yy += 2) { g.moveTo(10, yy); g.lineTo(16, yy + 1); } g.stroke();
+      paMetal(g, 0, 13, 26, 7, '#5d5872', { r: 2, lw: 1, step: 9, ins: 3.5 });
+      paRod(g, 2, 1, 22, 4, '#e0b453');
+    });
   }
 }
 function quakeDrawPlank(st, br) {
   const pose = quakePose(br), hl = br.hl, tk = QUAKE.plankTh;
   ctx.save(); ctx.translate(br.cx, pose.py); ctx.rotate(br.th);
-  ctx.fillStyle = C.plankDark; rr(-hl, 0, 2 * hl, tk, 3); ctx.fill();
-  ctx.fillStyle = C.plank; rr(-hl, 0, 2 * hl, tk - 3, 3); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(-hl + 3, 1, 2 * hl - 6, 1.5);
-  ctx.fillStyle = C.plankDark;
-  for (let x = -hl + 38; x < hl - 10; x += 38) ctx.fillRect(x, 0, 1.5, tk - 3);
-  for (let x = -hl + 6; x < hl; x += 38) { circle(x, tk / 2 - 1, 1.1); ctx.fill(); }
+  // (cached per length) butted boards with grain and knots, a lit top, a darker edge face, nails at each joint, outline
+  const ps = paSprite('quakeplank|' + C.plank, 2 * hl, tk, 3, g => {
+    g.fillStyle = C.plankDark; paRR(g, 0, 0, 2 * hl, tk, 3); g.fill();
+    for (let x = 0, i = 0; x < 2 * hl; x += 38, i++) {
+      const w = Math.min(38, 2 * hl - x);
+      g.save(); paRR(g, 0, 0, 2 * hl, tk - 3, 3); g.clip();
+      g.fillStyle = i % 2 ? paDk(C.plank, 0.05) : C.plank; g.fillRect(x, 0, w, tk - 3);
+      paGrain(g, x, 0, w, tk - 3, C.plank, 780 + i * 7);
+      g.restore();
+      if (x > 0) { g.fillStyle = C.plankDark; g.fillRect(x, 0, 1.5, tk - 3); }
+      paNail(g, x + 6, tk / 2 - 1, C.plank, 1.1);
+    }
+    g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(3, 0.8, 2 * hl - 6, 1.4);
+    g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(2, tk - 3, 2 * hl - 4, 1);
+    g.strokeStyle = paDk(C.plankDark, 0.35); g.lineWidth = 1.2; paRR(g, 0, 0, 2 * hl, tk, 3); g.stroke();
+  });
+  ctx.drawImage(ps.c, -hl - ps.pad, -ps.pad, ps.c.width / ps.sc, ps.c.height / ps.sc);
   // the fitting in the middle: a ring for the rope (lower streets), a bracket on the pole (upper streets)
   ctx.fillStyle = '#5d5872';
   if (br.lane === 1) { ctx.strokeStyle = '#5d5872'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, -2, 3, 0, Math.PI * 2); ctx.stroke(); }
@@ -1193,10 +1301,16 @@ function quakeCrateShape(c) {   // origin at the bottom middle
   const fruit = ['#ff9f1c', '#e8344e', '#7cc576'][Math.floor(c.wob) % 3];
   ctx.fillStyle = fruit;
   for (const fx of [-7, 0, 7]) { circle(fx, -h - 1 + (fx ? 1 : -1), 4.2); ctx.fill(); }
-  ctx.fillStyle = '#8a5833'; rr(-w / 2, -h, w, h, 3); ctx.fill();
-  ctx.fillStyle = '#d9a066'; rr(-w / 2 + 2.5, -h + 2.5, w - 5, h - 5, 2); ctx.fill();
-  ctx.strokeStyle = '#8a5833'; ctx.lineWidth = 2; ctx.beginPath();
-  ctx.moveTo(-w / 2 + 3, -h + 3); ctx.lineTo(w / 2 - 3, -3); ctx.moveTo(w / 2 - 3, -h + 3); ctx.lineTo(-w / 2 + 3, -3); ctx.stroke();
+  // (cached) a slatted fruit crate: frame boards, slats with grain, a cross brace, corner nails, outline; fruit with a glint
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; for (const fx of [-7, 0, 7]) { circle(fx - 1.4, -h - 2.4 + (fx ? 1 : -1), 1.3); ctx.fill(); }
+  ctx.strokeStyle = 'rgba(40,20,20,0.35)'; ctx.lineWidth = 0.8; for (const fx of [-7, 0, 7]) { circle(fx, -h - 1 + (fx ? 1 : -1), 4.2); ctx.stroke(); }
+  paStamp('quakecrate', -w / 2, -h, w, h, 2, g => {
+    paCrate(g, 0, 0, w, h, '#d9a066', 771, { noBrace: true, lw: 1.6 });
+    g.save(); g.beginPath(); g.rect(3, 3, w - 6, h - 6); g.clip();
+    g.strokeStyle = '#8a5833'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(3, 3); g.lineTo(w - 3, h - 3); g.moveTo(w - 3, 3); g.lineTo(3, h - 3); g.stroke();
+    g.strokeStyle = '#e8b47c'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(3, 2.4); g.lineTo(w - 3, h - 3.6); g.moveTo(w - 3, 2.4); g.lineTo(3, h - 3.6); g.stroke();
+    g.restore();
+  });
 }
 function quakeDrawCrate(br, c) {
   if (c.gone) {
@@ -1213,8 +1327,8 @@ function quakeDrawCrate(br, c) {
 // down to a wheel at the far end, then back along the rails to the car's grip
 function quakeDrawCarBack(st, br) {
   const X = br.carX, F = br.cy, cw = QUAKE.carW, cr = br.crank;
-  ctx.fillStyle = '#5d5872'; ctx.fillRect(br.x0 - 8, F + 3, br.x1 - br.x0 + 16, 2.5); ctx.fillRect(br.x0 - 8, F + 8, br.x1 - br.x0 + 16, 2.5);
-  ctx.fillStyle = '#4a4560'; for (let x = br.x0 + 6; x < br.x1 - 4; x += 22) ctx.fillRect(x, F + 3, 3, 8);
+  ctx.fillStyle = '#4a4560'; for (let x = br.x0 + 6; x < br.x1 - 4; x += 22) { ctx.fillRect(x, F + 2, 4, 10); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x, F + 2, 1, 10); ctx.fillStyle = '#4a4560'; }
+  for (const ry2 of [F + 3, F + 8]) paRod(ctx, br.x0 - 8, ry2, br.x1 - br.x0 + 16, 2.8, '#8e88a8');
   if (cr) {
     const fx = br.x1 + 16, fy = F + 6, gx = X + cw / 2;
     ctx.strokeStyle = '#3b3550'; ctx.lineWidth = 2;
@@ -1224,7 +1338,11 @@ function quakeDrawCarBack(st, br) {
   // the far wall of the car, the floor and the wheels
   ctx.fillStyle = '#f6e7c1'; ctx.fillRect(X + 3, F - 70, cw - 6, 44);
   ctx.fillStyle = '#9fd3ef'; for (let i = 0; i < 3; i++) { rr(X + 10 + i * 25, F - 64, 20, 24, 4); ctx.fill(); }
+  ctx.strokeStyle = '#c9b48a'; ctx.lineWidth = 1; for (let i = 0; i < 3; i++) { rr(X + 10 + i * 25, F - 64, 20, 24, 4); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; for (let i = 0; i < 3; i++) ctx.fillRect(X + 13 + i * 25, F - 61, 2.5, 12);
   ctx.fillStyle = '#c23a50'; ctx.fillRect(X + 3, F - 26, cw - 6, 26);
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(X + 3, F - 26, cw - 6, 2);
+  ctx.strokeStyle = '#7d1b2e'; ctx.lineWidth = 1; for (let px2 = X + 3 + (cw - 6) / 4; px2 < X + cw - 4; px2 += (cw - 6) / 4) { ctx.beginPath(); ctx.moveTo(px2, F - 24); ctx.lineTo(px2, F - 15); ctx.stroke(); }
   ctx.fillStyle = '#8a5833'; ctx.fillRect(X + 10, F - 13, cw - 20, 4);
   ctx.fillStyle = '#6b3b2a'; ctx.fillRect(X, F, cw, 5);
   ctx.fillStyle = '#3a2a3a'; ctx.fillRect(X + 8, F + 5, cw - 16, 4);
