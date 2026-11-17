@@ -528,12 +528,14 @@ function javDrawWorld() {
   ctx.fillStyle = 'rgba(20,60,20,0.18)'; ctx.fillRect(0, 300, W, 8);   // the stands' shadow on the grass
   const c = st.cam, xL = c.x0, xR = c.x0 + W / c.s;
   // mowing stripes every 5 m
+  // (dark and light bands like a mown pitch, each with a faint mower seam along its edge)
   for (let m = Math.floor(xL / 5) * 5; m < xR; m += 5) {
-    if (((m / 5) | 0) % 2 === 0) continue;
-    ctx.fillStyle = 'rgba(40,110,40,0.10)'; ctx.fillRect(javSX(m), 300, 5 * c.s + 0.5, H - 300);
+    const odd = ((m / 5) | 0) % 2 !== 0, sx = javSX(m);
+    ctx.fillStyle = odd ? 'rgba(40,110,40,0.15)' : 'rgba(255,255,230,0.07)'; ctx.fillRect(sx, 300, 5 * c.s + 0.5, H - 300);
+    ctx.fillStyle = odd ? 'rgba(30,90,30,0.14)' : 'rgba(255,255,230,0.12)'; ctx.fillRect(sx, 300, 1.2, H - 300);
   }
   // a dense layer of small blade pairs in two tones (one path each), moving with the field
-  for (const [tone, sk] of [['rgba(40,110,40,0.32)', 0], ['rgba(210,255,180,0.22)', 1]]) {
+  for (const [tone, sk] of [['rgba(40,110,40,0.42)', 0], ['rgba(210,255,180,0.3)', 1]]) {
     ctx.strokeStyle = tone; ctx.lineWidth = 1.1; ctx.beginPath();
     for (let m = Math.floor(xL); m < xR; m++) for (let j = 0; j < 3; j++) {
       const hh = hash(m * 3 + j + 5000, 11 + sk); if (hh % 2) continue;
@@ -586,6 +588,7 @@ function javDrawWorld() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (let m = 10; m < xR + 10; m += 10) {
     const x = javSX(m); if (x < -20 || x > W + 20) continue;
+    ctx.fillStyle = 'rgba(20,60,20,0.16)'; ctx.fillRect(x + 1, 312, 1.2, H - 312);
     ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(x - 1, 312, 2, H - 312);
     ctx.font = '700 ' + (big ? 15 : 11) + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
     const bw2 = Math.max(big ? 42 : 30, ctx.measureText(m + ' m').width + (big ? 14 : 12)), bh2 = big ? 20 : 15;
@@ -597,8 +600,16 @@ function javDrawWorld() {
   }
   // the foul line, across both lanes
   const fx = javSX(0);
+  // (a painted board: a soft shadow on the grass, chalky white with a lit left edge and a shaded right edge)
+  ctx.fillStyle = 'rgba(20,60,20,0.22)'; ctx.fillRect(fx + 3, 312, 2, H - 312);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(fx - 2, 312, 5, H - 312);
+  ctx.fillStyle = 'rgba(150,170,150,0.5)'; ctx.fillRect(fx + 2, 312, 1, H - 312);
   ctx.fillStyle = '#ff5a5a'; ctx.fillRect(fx - 2, JAV_GY[0] - 12, 5, 21); ctx.fillRect(fx - 2, JAV_GY[1] - 12, 5, 21);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(fx - 2, JAV_GY[0] - 12, 1.2, 21); ctx.fillRect(fx - 2, JAV_GY[1] - 12, 1.2, 21);
+  ctx.fillStyle = '#b8343a'; ctx.fillRect(fx + 2, JAV_GY[0] - 12, 1, 21); ctx.fillRect(fx + 2, JAV_GY[1] - 12, 1, 21);
+  // chalk dust scuffed along the line
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  for (let i = 0; i < 26; i++) { const hh = hash(i, 515), y = 316 + (hh % (H - 320)); ctx.fillRect(fx - 4 + (hh >>> 9) % 10, y, 1.3, 1.3); }
   // the line glows red in a lane whose athlete is close to it and still has the javelin
   for (const a of st.ath) {
     if (!(a.phase === 'run' || a.phase === 'aim') || a.x < -4) continue;

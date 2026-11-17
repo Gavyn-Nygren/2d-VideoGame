@@ -925,12 +925,41 @@ function tandemDrawCam(st) {
   const cx = x0 + w / 2 + 6, cy = y0 + h - 38, beta = ang(need) * (b.done ? 0.6 : 1);
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(beta);
   ctx.fillStyle = '#e4b273'; ctx.fillRect(-w, 0, w * 2, h);
-  ctx.fillStyle = '#c98b5a';
-  for (let i = 0; i < 6; i++) { const yy = 6 + ((i * 11 + b.d * 0.35) % 66); ctx.fillRect(-w, yy, w * 2, 1.3); }
+  // board by board as they rush past: each plank a little lighter or darker, a grain streak or two, a nail pair at
+  // its joint, and a shaded lower lip under every joint line (all keyed to the distance ridden, so they scroll as one)
+  const run2 = b.d * 0.35, pk = Math.floor(run2 / 11);
+  for (let i = -1; i < 7; i++) {
+    const yy = 6 + i * 11 - (run2 % 11) + 11, hb = hash(pk - i, 913);
+    if (yy > 80) continue;
+    ctx.fillStyle = hb % 3 === 0 ? 'rgba(255,240,205,0.22)' : hb % 3 === 1 ? 'rgba(150,90,40,0.13)' : 'rgba(255,240,205,0.06)';
+    ctx.fillRect(-w, yy - 11, w * 2, 11);
+    ctx.strokeStyle = 'rgba(150,95,45,0.35)'; ctx.lineWidth = 0.8; ctx.beginPath();
+    for (let j = 0; j < 4; j++) { const gx = -w + ((hb >>> (j * 4)) % 97) * (w * 2 / 97), gy = yy - 8 + j % 3 * 2.5; ctx.moveTo(gx, gy); ctx.lineTo(gx + 26 + (hb >>> j) % 30, gy + 0.6); }
+    ctx.stroke();
+    ctx.fillStyle = '#c98b5a'; ctx.fillRect(-w, yy, w * 2, 1.3);
+    ctx.fillStyle = 'rgba(255,245,220,0.45)'; ctx.fillRect(-w, yy + 1.3, w * 2, 0.8);
+    ctx.fillStyle = 'rgba(80,50,30,0.55)';
+    for (const nx of [-w * 0.5, -w * 0.18, w * 0.14]) { ctx.fillRect(nx + (hb % 9), yy - 2.6, 1.4, 1.4); ctx.fillRect(nx + 6 + (hb % 9), yy - 2.6, 1.4, 1.4); }
+  }
+  // the painted lines run away from us along the boards: stayer blue, sprinter red, the black measurement line
+  ctx.fillStyle = 'rgba(58,127,214,0.8)'; ctx.fillRect(-w * 0.2 - 1.5, 0, 3, h);
+  ctx.fillStyle = 'rgba(232,72,61,0.85)'; ctx.fillRect(w * 0.2 - 1.5, 0, 3, h);
+  ctx.fillStyle = 'rgba(38,36,63,0.85)'; ctx.fillRect(w * 0.42 - 9, 0, 3, h);
+  // the board surface: a lit lip where the light catches it, then deeper toward us
+  const sg = ctx.createLinearGradient(0, 0, 0, 60); sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(1, 'rgba(90,50,20,0.22)');
+  ctx.fillStyle = sg; ctx.fillRect(-w, 0, w * 2, 60);
+  ctx.fillStyle = 'rgba(255,250,230,0.55)'; ctx.fillRect(-w, 0, w * 1.42, 1.6);
   ctx.fillStyle = '#62b6ea'; ctx.fillRect(w * 0.42, 0, w, h);          // the blue apron, low on the right
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(w * 0.42, 0, w, 1.6);
+  ctx.fillStyle = 'rgba(30,80,140,0.18)'; for (let i = 0; i < 5; i++) { const yy = 8 + ((i * 13 + run2) % 64); ctx.fillRect(w * 0.42, yy, w, 1); }
   ctx.fillStyle = '#26243f'; ctx.fillRect(w * 0.42 - 3, 0, 3, h);
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(-w * 0.62, -26, 5, 26);       // the rail, high on the left
+  // the rail, high on the left: a white steel post and top rail with a shaded side, a lit edge and an outline
+  ctx.fillStyle = '#5a6788'; ctx.fillRect(-w * 0.62 - 1, -27, 7, 27); ctx.fillRect(-w, -29, w * 0.4 + 4, 6);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(-w * 0.62, -26, 5, 26);
   ctx.fillRect(-w, -28, w * 0.4 + 2, 4);
+  ctx.fillStyle = '#c9d2e4'; ctx.fillRect(-w * 0.62 + 3.4, -24, 1.6, 24); ctx.fillRect(-w, -25.6, w * 0.4 + 2, 1.6);
+  ctx.fillStyle = '#8e9bb4'; ctx.fillRect(-w * 0.62 - 3, -2, 11, 2.5);
+  ctx.fillStyle = 'rgba(30,30,60,0.18)'; ctx.beginPath(); ctx.ellipse(-w * 0.62 + 4, 1.5, 9, 2, 0, 0, Math.PI * 2); ctx.fill();
   // where the bike should point: square to the boards (dashed, gold when you are there)
   ctx.setLineDash([5, 5]); ctx.strokeStyle = ok ? '#8fe3b0' : C.gold; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -138); ctx.stroke(); ctx.setLineDash([]);

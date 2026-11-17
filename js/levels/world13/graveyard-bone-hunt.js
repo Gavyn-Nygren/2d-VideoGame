@@ -1488,27 +1488,75 @@ function bonehuntTree(x, s) {
   ctx.beginPath(); ctx.moveTo(4, -128); ctx.quadraticCurveTo(14, -150, 4, -162); ctx.quadraticCurveTo(-2, -168, 6, -172); ctx.stroke();
   ctx.lineCap = 'butt'; ctx.restore();
 }
+// a big headstone (still, cached per spot and tilt): a plinth, a moonlit rim and a shaded side, chisel marks,
+// weathering specks and lichen, a chipped shoulder, a crack, moss creeping up from the foot and a carved cross
+function bonehuntPaintGrave(g, x, tilt) {
+  const hh = hash(Math.round(x), 5), base = '#6f6790', dk = '#4f4870';
+  g.fillStyle = 'rgba(16,10,32,0.3)'; g.beginPath(); g.ellipse(8, 6, 50, 7, 0, 0, Math.PI * 2); g.fill();
+  g.rotate(tilt);
+  // the plinth it stands in: a low block with a lit top and a dark foot
+  g.fillStyle = '#5a5380'; g.fillRect(-42, -2, 84, 9);
+  g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(-42, -2, 84, 1.6);
+  g.fillStyle = 'rgba(20,12,40,0.3)'; g.fillRect(-42, 4, 84, 3); g.fillRect(30, -2, 12, 9);
+  g.strokeStyle = '#3a3258'; g.lineWidth = 1.4; g.strokeRect(-41.3, -1.3, 82.6, 7.6);
+  const stone = () => { g.beginPath(); g.moveTo(-36, 0); g.lineTo(-36, -50); g.arc(0, -50, 36, Math.PI, 0); g.lineTo(36, 0); g.closePath(); };
+  const sg = g.createLinearGradient(-36, 0, 36, 0); sg.addColorStop(0, '#827aa3'); sg.addColorStop(0.55, base); sg.addColorStop(1, '#5d5580');
+  g.fillStyle = sg; stone(); g.fill();
+  g.save(); stone(); g.clip();
+  // a shaded right side and a darker foot (damp)
+  g.fillStyle = dk; g.globalAlpha = 0.55; g.fillRect(24, -90, 14, 100); g.globalAlpha = 1;
+  const fg = g.createLinearGradient(0, -24, 0, 0); fg.addColorStop(0, 'rgba(30,20,50,0)'); fg.addColorStop(1, 'rgba(30,20,50,0.32)');
+  g.fillStyle = fg; g.fillRect(-36, -24, 72, 24);
+  // chisel marks: faint short strokes across the face
+  g.strokeStyle = 'rgba(255,255,255,0.07)'; g.lineWidth = 1; g.beginPath();
+  for (let i = 0; i < 18; i++) { const q = hash(hh, 40 + i), sx = -32 + (q % 60), sy = -82 + ((q >>> 8) % 80); g.moveTo(sx, sy); g.lineTo(sx + 5 + (q >>> 20) % 5, sy + 1.5); }
+  g.stroke();
+  g.strokeStyle = 'rgba(30,20,55,0.1)'; g.beginPath();
+  for (let i = 0; i < 14; i++) { const q = hash(hh, 70 + i), sx = -32 + (q % 60), sy = -82 + ((q >>> 8) % 80); g.moveTo(sx, sy + 1.4); g.lineTo(sx + 5 + (q >>> 20) % 5, sy + 2.9); }
+  g.stroke();
+  // weathering specks, and pale lichen rosettes
+  g.fillStyle = 'rgba(40,30,70,0.38)';
+  for (let i = 0; i < 16; i++) { const q = hash(hh, i); g.beginPath(); g.arc(-30 + (q % 60), -80 + ((q >>> 8) % 80), 0.7 + (q >>> 16) % 3 * 0.45, 0, Math.PI * 2); g.fill(); }
+  for (let i = 0; i < 4; i++) {
+    const q = hash(hh, 20 + i), lx = -28 + (q % 56), ly = -86 + ((q >>> 8) % 30) + (i > 1 ? 50 : 0);
+    g.fillStyle = 'rgba(190,204,140,0.3)'; for (let j = 0; j < 4; j++) { g.beginPath(); g.arc(lx + Math.cos(j * 1.7) * 1.4, ly + Math.sin(j * 1.7) * 1.1, 0.9 + (q >>> (16 + j)) % 2 * 0.4, 0, Math.PI * 2); g.fill(); }
+  }
+  // a hairline crack with a lit lip
+  const cx = hh % 2 ? 22 : -18;
+  g.strokeStyle = 'rgba(30,22,58,0.65)'; g.lineWidth = 1.1; g.beginPath(); g.moveTo(cx, -82); g.lineTo(cx - 6, -70); g.lineTo(cx - 2, -62); g.lineTo(cx - 8, -50); g.lineTo(cx - 5, -44); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(cx + 1, -81); g.lineTo(cx - 5, -69); g.lineTo(cx - 1, -61); g.stroke();
+  // moss creeping up from the foot on the shady side, in clumps with lit tops
+  // (hugging the shady edge and the foot, small clumps rather than one blob)
+  for (let i = 0; i < 12; i++) {
+    const q = hash(hh, 90 + i), side = hh % 2 ? 1 : -1, up = (q >>> 8) % 22, mx = side * (35 - (q % 5) - (up < 6 ? (q >>> 4) % 18 : 0)), my = -1 - up, r = 1.6 + (q >>> 16) % 3 * 0.7;
+    g.fillStyle = 'rgba(62,104,58,0.85)'; g.beginPath(); g.ellipse(mx, my, r * 1.3, r, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(120,168,96,0.7)'; g.beginPath(); g.ellipse(mx - 0.4, my - r * 0.4, r * 0.8, r * 0.4, 0, 0, Math.PI * 2); g.fill();
+  }
+  g.restore();
+  // a chipped shoulder: a notch out of the rim with a pale broken face
+  const sx = hh % 3 === 0 ? -1 : 1, ca = sx > 0 ? -0.28 * Math.PI : -0.72 * Math.PI, px = Math.cos(ca) * 36, py = -50 + Math.sin(ca) * 36;
+  g.fillStyle = '#9a93b8'; g.beginPath(); g.moveTo(px - 4 * sx, py - 3); g.lineTo(px - 1 * sx, py + 4); g.lineTo(px + 3 * sx, py + 5); g.closePath(); g.fill();
+  // the moonlit rim (left and over the top), then the outline in a dark shade of the stone
+  g.strokeStyle = 'rgba(255,255,255,0.3)'; g.lineWidth = 2; g.beginPath(); g.moveTo(-34, -2); g.lineTo(-34, -50); g.arc(0, -50, 34, Math.PI, Math.PI * 1.6); g.stroke();
+  g.strokeStyle = 'rgba(20,12,40,0.25)'; g.lineWidth = 2; g.beginPath(); g.arc(0, -50, 34, Math.PI * 1.75, Math.PI * 2); g.lineTo(34, -2); g.stroke();
+  g.strokeStyle = '#3f365e'; g.lineWidth = 2; stone(); g.stroke();
+  // a carved groove following the arch, just inside the rim
+  g.strokeStyle = 'rgba(42,33,69,0.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-31, -40); g.arc(0, -50, 31, Math.PI * 1.03, Math.PI * 1.97); g.lineTo(31, -40); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,0.16)'; g.beginPath(); g.moveTo(-30, -40); g.arc(0, -49, 30, Math.PI * 1.03, Math.PI * 1.97); g.lineTo(30, -40); g.stroke();
+}
 function bonehuntGrave(x, text, tilt) {
   const y = 470;
-  ctx.fillStyle = 'rgba(16,10,32,0.3)'; ctx.beginPath(); ctx.ellipse(x + 8, y + 6, 50, 7, 0, 0, Math.PI * 2); ctx.fill();
+  rkPut('bhGrave|' + Math.round(x) + '|' + tilt, x, y, 140, 124, 64, 104, g => bonehuntPaintGrave(g, x, tilt));
   ctx.save(); ctx.translate(x, y); ctx.rotate(tilt);
-  const stone = () => { ctx.beginPath(); ctx.moveTo(-36, 6); ctx.lineTo(-36, -50); ctx.arc(0, -50, 36, Math.PI, 0); ctx.lineTo(36, 6); ctx.closePath(); };
-  ctx.fillStyle = '#6f6790'; stone(); ctx.fill();
-  ctx.save(); stone(); ctx.clip();
-  // the shaded side, a bevelled rim, weathering specks, a hairline crack and a lick of moss
-  ctx.fillStyle = '#5c547c'; ctx.fillRect(18, -90, 20, 100);
-  ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-33, 6); ctx.lineTo(-33, -50); ctx.arc(0, -50, 33, Math.PI, Math.PI * 1.55); ctx.stroke();
-  const hh = hash(Math.round(x), 5);
-  ctx.fillStyle = 'rgba(40,30,70,0.35)';
-  for (let i = 0; i < 7; i++) { const q = hash(hh, i); circle(-28 + (q % 56), -76 + ((q >> 8) % 76), 0.8 + (q >> 16) % 2 * 0.6); ctx.fill(); }
-  ctx.strokeStyle = 'rgba(40,30,70,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(22, -78); ctx.lineTo(16, -66); ctx.lineTo(20, -58); ctx.lineTo(14, -48); ctx.stroke();
-  ctx.fillStyle = 'rgba(95,154,82,0.55)'; ctx.beginPath(); ctx.ellipse(-30, 2, 12, 9, 0, 0, Math.PI * 2); ctx.ellipse(-24, -6, 5, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-  ctx.strokeStyle = '#3f365e'; ctx.lineWidth = 2; stone(); ctx.stroke();
   // an inset panel for the words
-  ctx.strokeStyle = 'rgba(42,33,69,0.35)'; ctx.lineWidth = 1.2; rr(-30, -73, 60, 36, 7); ctx.stroke();
-  ctx.fillStyle = '#5f9a52'; ctx.beginPath(); ctx.ellipse(0, 6, 42, 6, 0, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = '#76b066'; for (let i = 0; i < 9; i++) { const gx = -38 + i * 9.5; ctx.beginPath(); ctx.moveTo(gx, 4); ctx.lineTo(gx + 2.5, -3 - (i % 3) * 1.5); ctx.lineTo(gx + 5, 4); ctx.fill(); }
+  // (a sunken panel: shadowed along the top and left, lit along the bottom and right)
+  ctx.fillStyle = 'rgba(42,33,69,0.12)'; rr(-30, -73, 60, 36, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(42,33,69,0.45)'; ctx.lineWidth = 1.2; rr(-30, -73, 60, 36, 7); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1; rr(-29, -72, 60, 36, 7); ctx.stroke();
+  // grass round the plinth's foot: a low bank and blades in two greens
+  ctx.fillStyle = '#5f9a52'; ctx.beginPath(); ctx.ellipse(0, 8, 46, 4, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#76b066'; for (let i = 0; i < 11; i++) { const gx = -44 + i * 8.4; ctx.beginPath(); ctx.moveTo(gx, 8); ctx.lineTo(gx + 2.5, 1 - (i % 3) * 1.5); ctx.lineTo(gx + 5, 8); ctx.fill(); }
+  ctx.fillStyle = '#4c8044'; for (let i = 0; i < 6; i++) { const gx = -40 + i * 15; ctx.beginPath(); ctx.moveTo(gx, 8); ctx.lineTo(gx + 1.5, 2.5); ctx.lineTo(gx + 3.5, 8); ctx.fill(); }
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   let fs = 11; ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif';
   while (fs > 8 && Math.max(...text.map(ln => ctx.measureText(ln).width)) > 54) { fs -= 0.5; ctx.font = '700 ' + fs + 'px "Atkinson Hyperlegible", system-ui, sans-serif'; }
@@ -1837,7 +1885,7 @@ function bonehuntDrawMound(st, m, t) {
   // the mound itself: lumpy clods with lit tops, crumbs, pebbles and roots (cached per size)
   const mw = Math.round(w * 2), mh = Math.max(3, Math.round(hgt));
   rkPut('bhMound|' + mw + '|' + mh + '|' + (m.c % 4), x, y, Math.ceil(mw * 1.32 + 12), mh + 14, Math.ceil(mw * 0.66 + 6), mh + 8,
-    g => rkMound(g, 0, 0, mw, mh, '#5a3f33', 17 + (m.c % 4) * 5, { stone: '#7d7699', grass: '#5f9a52' }));
+    g => rkMound(g, 0, 0, mw, mh, '#7a5440', 17 + (m.c % 4) * 5, { stone: '#b9ae9c', rim: 0.6, clods: 0.6 }));
   // sparkles say "dig here"
   for (let k = 0; k < (m.big ? 4 : 2); k++) {
     const ph = (t * 0.8 + k * 0.37 + m.i * 0.21) % 1, a = Math.sin(ph * Math.PI);

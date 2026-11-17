@@ -672,9 +672,22 @@ function mansionPaintBack(c, st, L) {
     }
     if (ty > 0 && open(tx, ty - 1)) {
       // floorboards: a dark lip, the board with grain, staggered seams, nail pairs, a lit edge and scuffs
+      const bc = ['#9b6a40', '#a8754a', '#8f6038'][g % 3];
       c.fillStyle = '#6b4127'; c.fillRect(x, y, T, 9);
-      c.fillStyle = '#9b6a40'; c.fillRect(x, y, T, 6);
-      rkGrain(c, x, y + 0.5, T, 5, '#9b6a40', g % 157, false, 2);
+      c.fillStyle = bc; c.fillRect(x, y, T, 6);
+      rkGrain(c, x, y + 0.5, T, 5, bc, g % 157, false, 2);
+      if (!edge) {
+        // the floor's front: a carved moulding bead under the boards, then a sunken panel (dark top-left, lit
+        // bottom-right) with a faint stain, so each floor reads as a solid beam of old wood
+        c.fillStyle = '#5a3a2a'; c.fillRect(x, y + 9, T, 3);
+        c.fillStyle = 'rgba(255,220,180,0.22)'; c.fillRect(x, y + 9, T, 1);
+        c.fillStyle = 'rgba(10,4,16,0.45)'; c.fillRect(x, y + 12, T, 1.2);
+        const px = x + 3.5, py = y + 15, pw = T - 7, ph = T - 19;
+        c.fillStyle = 'rgba(10,4,16,0.22)'; c.fillRect(px, py, pw, ph);
+        c.fillStyle = 'rgba(10,4,16,0.5)'; c.fillRect(px, py, pw, 1.2); c.fillRect(px, py, 1.2, ph);
+        c.fillStyle = 'rgba(255,220,180,0.16)'; c.fillRect(px, py + ph - 1, pw, 1); c.fillRect(px + pw - 1, py, 1, ph);
+        if (g % 6 === 1) { c.fillStyle = 'rgba(255,220,180,0.05)'; c.beginPath(); c.ellipse(px + pw / 2, py + ph / 2, pw * 0.3, ph * 0.3, 0, 0, Math.PI * 2); c.fill(); }
+      }
       c.fillStyle = 'rgba(60,30,15,0.5)'; c.fillRect(x + (g % 18) + 4, y + 1, 2, 5);
       c.fillStyle = 'rgba(255,230,180,0.25)'; c.fillRect(x, y, T, 1.5);
       c.fillStyle = 'rgba(40,20,10,0.55)'; c.fillRect(x + T - 1, y, 1, 6);   // board seams

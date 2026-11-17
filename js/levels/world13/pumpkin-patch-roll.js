@@ -1158,8 +1158,16 @@ function pumpkinPaintPost(g, gold) {
   g.fillStyle = 'rgba(0,0,0,0.15)'; g.beginPath(); g.arc(0, -31, 5, 0.1, Math.PI - 0.1); g.fill();
 }
 function pumpkinPaintPlank(g, w, col, gold, seed) {
-  rkBoard(g, 0, 0, w, 9, col, seed, { vert: false, nails: false, r: 2, lw: 1.1, grain: 2 });
-  rkNail(g, w / 2, 3.5, 1.2, gold ? '#e8c36a' : '#9a8a7a');
+  // a soft shadow on the rope stringers below, the plank with grain, a split at one end and a nail at each end
+  g.fillStyle = 'rgba(20,10,0,0.22)'; rkRR(g, 1, 3, w, 8, 2); g.fill();
+  rkBoard(g, 0, 0, w, 9, col, seed, { vert: false, nails: false, r: 2, lw: 1.1, grain: 3 });
+  g.fillStyle = 'rgba(255,240,210,0.16)'; g.fillRect(2, 2, w - 4, 1.2);
+  g.strokeStyle = shade(col, 0.45); g.lineWidth = 0.7; g.beginPath();
+  const sx = seed % 2 ? w - 2 : 2, sd = seed % 2 ? -1 : 1; g.moveTo(sx, 4); g.lineTo(sx + sd * (3 + seed % 4), 4.6); g.stroke();
+  for (const nx of [3.2, w - 3.2]) rkNail(g, nx, 4.4, 1, gold ? '#e8c36a' : '#9a8a7a');
+  // the rope lashing that ties it to the stringer, wrapped round the middle
+  g.strokeStyle = gold ? '#a77b15' : '#7a5c38'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(w / 2 - 2.2, -0.5); g.lineTo(w / 2 - 0.8, 9.5); g.moveTo(w / 2 + 0.8, -0.5); g.lineTo(w / 2 + 2.2, 9.5); g.stroke();
+  g.strokeStyle = gold ? '#ffe9a0' : '#d9bc8a'; g.lineWidth = 0.7; g.beginPath(); g.moveTo(w / 2 - 2.4, 0); g.lineTo(w / 2 - 1.4, 7); g.moveTo(w / 2 + 0.6, 0); g.lineTo(w / 2 + 1.6, 7); g.stroke();
   g.fillStyle = 'rgba(20,10,0,0.25)'; g.fillRect(1, 8, w - 2, 1);
 }
 function pumpkinDrawBridge(st, b) {

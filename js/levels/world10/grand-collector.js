@@ -103,6 +103,8 @@ function rkGrain(g, x, y, w, h, col, seed, vert, n) {
   const nk = Math.max(0, Math.round(L * S / 900) - 0) + (rkH(seed, 7) % 2);
   for (let k = 0; k < nk; k++) {
     const a = 6 + rkF(seed, 100 + k) * (L - 12), b = 3 + rkF(seed, 120 + k) * (S - 6), kx = vert ? x + b : x + a, ky = vert ? y + a : y + b;
+    // (on a thin board a ringed knot reads as an eye: there it is only a small dark pin knot along the grain)
+    if (S < 11) { g.fillStyle = shade(col, 0.36); g.beginPath(); g.ellipse(kx, ky, vert ? 0.8 : 1.8, vert ? 1.8 : 0.8, 0, 0, Math.PI * 2); g.fill(); continue; }
     g.fillStyle = shade(col, 0.42); g.beginPath(); g.ellipse(kx, ky, vert ? 1.4 : 2.4, vert ? 2.4 : 1.4, 0, 0, Math.PI * 2); g.fill();
     g.strokeStyle = shade(col, 0.3); g.lineWidth = 0.8; g.beginPath(); g.ellipse(kx, ky, vert ? 2.6 : 4.2, vert ? 4.2 : 2.6, 0, 0, Math.PI * 2); g.stroke();
   }
@@ -231,7 +233,7 @@ function rkMound(g, cx, by, w, h, col, seed, o) {
   g.fillStyle = shade(col, 0.2); g.beginPath(); g.ellipse(cx + w * 0.32, by, w * 0.4, h * 0.95, 0, 0, Math.PI * 2); g.fill();
   g.fillStyle = 'rgba(20,10,0,0.18)'; g.fillRect(cx - w / 2, by - h * 0.22, w, h);
   // clods: lumps with lit tops and dark undersides
-  const n = Math.max(5, Math.round(w / 6));
+  const n = Math.max(o.clods ? 3 : 5, Math.round(w / 6 * (o.clods || 1)));
   for (let k = 0; k < n; k++) {
     const fx = rkF(seed, k), fy = rkF(seed, k + 20), lx = cx - w * 0.42 + fx * w * 0.84, top = by - h * (1 - Math.pow(Math.abs(lx - cx) / (w / 2), 2) * 0.85);
     const ly = top + (by - top) * (0.15 + fy * 0.75), r = 2 + rkF(seed, k + 40) * Math.max(2, h * 0.16);
@@ -245,7 +247,7 @@ function rkMound(g, cx, by, w, h, col, seed, o) {
   g.stroke();
   g.restore();
   // lit rim along the top
-  g.strokeStyle = 'rgba(255,240,210,0.35)'; g.lineWidth = 1.5; g.beginPath();
+  g.strokeStyle = 'rgba(255,240,210,' + (o.rim || 0.35) + ')'; g.lineWidth = 1.5; g.beginPath();
   g.moveTo(cx - w * 0.36, by - h * 0.52); g.bezierCurveTo(cx - w * 0.24, by - h * 0.92, cx - w * 0.08, by - h * 0.99, cx + w * 0.08, by - h * 0.97); g.stroke();
   // outline
   g.strokeStyle = shade(col, 0.55); g.lineWidth = 1.6; g.beginPath(); g.moveTo(cx - w / 2, by);
@@ -3178,24 +3180,31 @@ function gc3DrawButton(ph, b) {
   const x = b.c * T, y = b.r * T, own = PCOL[b.owner], par = PCOL[1 - b.owner], t = G.clock, wig = b.wig > 0 ? Math.sin(b.wig * 60) * 1.5 : 0;
   const active = gc3BtnOn(ph, b);
   ctx.save(); if (!active) ctx.globalAlpha = 0.4;
+  // the steel housing it sits in: a low riveted plate with a lit top edge and a soft shadow (cached)
+  rkPut('gc3Base|' + (b.hold ? 1 : 0), x, y + T, T, 10, 0, 8, g => {
+    rkShadow(g, T / 2 + 1, 0.5, T * 0.5, 2, 0.22);
+    rkMetal(g, 1, -5, T - 2, 5, 1.5, '#7f86a3', b.hold ? 3 : 5, { rivets: false, lw: 1 });
+    for (const rx of [4, T - 4]) rkRivet(g, rx, -2.5, 1, '#a7aec6');
+  });
   if (b.hold) {   // a hold plate: flat, with two little feet marks
     const py = y + 24 + (b.down ? 2 : 0);
-    ctx.fillStyle = C.stoneEdge; rr(x + 1, y + 27, T - 2, 3, 1.5); ctx.fill();
     if (b.down) { ctx.shadowColor = own; ctx.shadowBlur = 8; }
     ctx.fillStyle = b.gr.state === 'fading' && Math.floor(t * 16) % 2 ? '#ffffff' : own; rr(x + 2 + wig, py, 26, 4, 2); ctx.fill();
     ctx.shadowBlur = 0; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; rr(x + 2 + wig, py, 26, 4, 2); ctx.stroke();
     ctx.fillStyle = par; ctx.fillRect(x + 13 + wig, py + 1, 4, 2);
     if (!b.down) { ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 10 + wig, y + 14, 3, 7); ctx.fillRect(x + 17 + wig, y + 14, 3, 7); }
   } else {
-    ctx.fillStyle = C.stoneEdge; rr(x + 2, y + 25, 26, 5, 2); ctx.fill();
     if (b.latched) {
       ctx.fillStyle = own; rr(x + 4 + wig, y + 23, 22, 3, 2); ctx.fill();
       ctx.fillStyle = par; circle(x + 15, y + 13, 3.5); ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.stroke();
     } else {
       const bob = active && !reduceMotion ? (Math.sin(t * Math.PI * 4) > 0 ? -1 : 0) : 0, cy = y + 15 + bob;
+      ctx.fillStyle = 'rgba(30,20,40,0.25)'; rr(x + 5 + wig, cy + 4, 22, 9, 4); ctx.fill();
       ctx.fillStyle = PDARK[b.owner]; rr(x + 4 + wig, cy + 2, 22, 9, 4); ctx.fill();
       ctx.fillStyle = own; rr(x + 4 + wig, cy, 22, 9, 4); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.14)'; rr(x + 4 + wig, cy + 5, 22, 4, 2); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x + 7 + wig, cy + 1, 16, 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(x + 7 + wig, cy + 1, 3, 1.4);
       ctx.fillStyle = par; rr(x + 9.5 + wig, cy + 2, 11, 6, 1.5); ctx.fill();   // a little block in the partner's colour
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.stroke();
     }
@@ -3207,9 +3216,20 @@ function gc3Draw(st) {
   const ph = st.ph, t = G.clock, z = hudBig() ? 1.3 : 1;
   // the stomp cracks in the ground floor, glowing
   if (ph.cracks > 0) for (const cx of ph.crackX.slice(0, ph.cracks + 1)) {
-    const y = ph.floors[0];
-    ctx.strokeStyle = 'rgba(255,140,60,0.6)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(cx - 26, y + 2); ctx.lineTo(cx - 10, y + 12); ctx.lineTo(cx + 4, y + 4); ctx.lineTo(cx + 22, y + 16); ctx.stroke();
-    ctx.strokeStyle = '#3a2430'; ctx.lineWidth = 2.5; ctx.stroke();
+    const y = ph.floors[0], gl = 0.75 + 0.25 * Math.sin(t * 4 + cx);
+    // a scorched patch, the main split with branches (a hot glow, the dark gap, a molten thread and a lit upper lip),
+    // chips knocked out of the turf and embers winking in it
+    ctx.fillStyle = 'rgba(60,30,20,0.25)'; ctx.beginPath(); ctx.ellipse(cx - 2, y + 9, 34, 8, 0, 0, Math.PI * 2); ctx.fill();
+    const main = () => { ctx.beginPath(); ctx.moveTo(cx - 26, y + 2); ctx.lineTo(cx - 10, y + 12); ctx.lineTo(cx + 4, y + 4); ctx.lineTo(cx + 22, y + 16); ctx.moveTo(cx - 10, y + 12); ctx.lineTo(cx - 14, y + 22); ctx.moveTo(cx + 4, y + 4); ctx.lineTo(cx + 10, y - 1); ctx.moveTo(cx + 13, y + 10); ctx.lineTo(cx + 16, y + 22); };
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(255,120,40,' + (0.32 * gl).toFixed(3) + ')'; ctx.lineWidth = 11; main(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,150,60,' + (0.6 * gl).toFixed(3) + ')'; ctx.lineWidth = 6; main(); ctx.stroke();
+    ctx.strokeStyle = '#3a2430'; ctx.lineWidth = 3; main(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,200,90,' + (0.85 * gl).toFixed(3) + ')'; ctx.lineWidth = 1; main(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx - 26, y); ctx.lineTo(cx - 10, y + 10); ctx.lineTo(cx + 4, y + 2); ctx.lineTo(cx + 22, y + 14); ctx.stroke();
+    ctx.lineJoin = 'miter'; ctx.lineCap = 'butt';
+    ctx.fillStyle = '#4a3a3e'; for (const [dx, dy] of [[-19, 5], [9, 6], [19, 11]]) { ctx.beginPath(); ctx.moveTo(cx + dx - 2, y + dy - 1); ctx.lineTo(cx + dx + 2, y + dy - 2); ctx.lineTo(cx + dx + 1, y + dy + 2); ctx.closePath(); ctx.fill(); }
+    for (let k = 0; k < 4; k++) { const e = (t * 0.9 + k * 0.29 + cx * 0.01) % 1; ctx.fillStyle = 'rgba(255,' + (180 + k * 15) + ',80,' + (1 - e).toFixed(3) + ')'; ctx.fillRect(cx - 16 + k * 11 + Math.sin(k * 3) * 3, y + 4 - e * 14, 2, 2); }
   }
   // cells an active button will build: dashed, in the colour of the player they hold
   ctx.lineWidth = 2; ctx.setLineDash([4, 4]);

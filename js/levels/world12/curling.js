@@ -789,16 +789,41 @@
     ctx.fillStyle = '#ffffff'; ctx.fillText('WINTER  GAMES', bx - 160, 151.5); ctx.fillText('CURLING', bx + 170, 151.5);
     for (let i = 0; i < 5; i++) cuFlake(bx - 50 + i * 25, 151, 7, flakeCols[i], 1.6);
     for (const x of [70, 200, 760, 890]) cuFlake(x, 151, 6, 'rgba(255,255,255,0.75)', 1.4);
-    // snow bank at the bottom
-    ctx.fillStyle = '#f4fbff'; ctx.fillRect(0, S.y1, W, H - S.y1);
-    ctx.fillStyle = '#ddeefa';
-    for (let x = -20; x < W + 40; x += 46) { circle(x, S.y1 + 34 + (hash(x, 9) % 12), 28); ctx.fill(); }
-    ctx.fillStyle = '#ffffff';
-    for (let x = 0; x < W + 40; x += 38) { circle(x, S.y1 + 48 + (hash(x, 4) % 14), 24); ctx.fill(); }
-    ctx.fillStyle = 'rgba(255,255,255,0.9)'; for (let x = 0; x < W + 40; x += 38) { circle(x - 8, S.y1 + 38 + (hash(x, 4) % 14), 8); ctx.fill(); }
-    const sh = ctx.createLinearGradient(0, S.y1, 0, S.y1 + 26); sh.addColorStop(0, 'rgba(90,130,180,0.3)'); sh.addColorStop(1, 'rgba(90,130,180,0)');
-    ctx.fillStyle = sh; ctx.fillRect(0, S.y1, W, 26);
-    ctx.fillStyle = 'rgba(200,225,245,0.9)'; for (let k = 0; k < 40; k++) { const h = hash(k, 61); circle(h % W, S.y1 + 30 + (h >> 10) % 40, 1.2); ctx.fill(); }
+    // snow bank at the bottom: one cached picture (rounded drifts with blue shade on their undersides, a lit crest,
+    // wind ripples, sparkles, a few footprints and pebbles poking through)
+    rkPut('cuBank', 0, S.y1, W, H - S.y1, 0, 0, g => {
+      const by = 0, hh = H - S.y1;
+      g.fillStyle = '#e8f3fc'; g.fillRect(0, by, W, hh);
+      const drift = (x, y, r, col, shadeCol) => {
+        g.fillStyle = shadeCol; g.beginPath(); g.arc(x + r * 0.12, y + r * 0.1, r, 0, Math.PI * 2); g.fill();
+        g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      };
+      for (let x = -20; x < W + 40; x += 46) drift(x, 34 + (hash(x, 9) % 12), 28, '#ddeefa', '#bcd6ee');
+      for (let x = 0; x < W + 40; x += 38) drift(x, 48 + (hash(x, 4) % 14), 24, '#ffffff', '#dfecf8');
+      // blue shade low on each front drift and a lit crest high on it
+      for (let x = 0; x < W + 40; x += 38) {
+        const y = 48 + (hash(x, 4) % 14);
+        g.save(); g.beginPath(); g.arc(x, y, 24, 0, Math.PI * 2); g.clip();
+        g.fillStyle = 'rgba(150,185,225,0.2)'; g.beginPath(); g.ellipse(x + 10, y + 16, 24, 14, 0, 0, Math.PI * 2); g.fill();
+        g.restore();
+        g.fillStyle = 'rgba(255,255,255,0.95)'; g.beginPath(); g.arc(x - 8, y - 10, 8, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = 'rgba(255,255,255,1)'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 22.5, Math.PI * 1.1, Math.PI * 1.55); g.stroke();
+        
+      }
+      // wind ripples in the snow
+      g.strokeStyle = 'rgba(150,185,225,0.35)'; g.lineWidth = 1.1; g.beginPath();
+      for (let k = 0; k < 26; k++) { const h = hash(k, 71), x = h % W, y = 30 + (h >>> 10) % 30, w = 12 + (h >>> 20) % 16; g.moveTo(x, y); g.quadraticCurveTo(x + w / 2, y - 3, x + w, y); }
+      g.stroke();
+      // footprints wandering along, and a pebble or two poking through
+      for (let k = 0; k < 14; k++) { const x = 30 + k * 66 + (hash(k, 72) % 20), y = 24 + (k % 2) * 6 + (hash(k, 73) % 6); g.fillStyle = 'rgba(140,175,215,0.4)'; g.beginPath(); g.ellipse(x, y, 3, 1.6, 0.2, 0, Math.PI * 2); g.fill(); g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(x - 2, y - 1.8, 4, 0.8); }
+      for (const [x, y] of [[330, 36], [612, 30], [905, 40]]) { rkPebble(g, x, y, 3.2, 2.2, '#8a96aa', 0.2); g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(x - 0.5, y - 1.8, 3, 1, 0, Math.PI, 0); g.fill(); }
+      // shadow of the sheet's boards on the bank, then sparkles
+      const sh = g.createLinearGradient(0, 0, 0, 26); sh.addColorStop(0, 'rgba(90,130,180,0.3)'); sh.addColorStop(1, 'rgba(90,130,180,0)');
+      g.fillStyle = sh; g.fillRect(0, 0, W, 26);
+      g.fillStyle = 'rgba(200,225,245,0.9)'; for (let k = 0; k < 40; k++) { const h = hash(k, 61); g.beginPath(); g.arc(h % W, 30 + (h >> 10) % 40, 1.2, 0, Math.PI * 2); g.fill(); }
+      g.fillStyle = '#ffffff';
+      for (let k = 0; k < 18; k++) { const h = hash(k, 62), x = h % W, y = 20 + (h >>> 10) % 60; g.fillRect(x - 2, y - 0.4, 4, 0.8); g.fillRect(x - 0.4, y - 2, 0.8, 4); }
+    });
     // cheering penguins and seals on the snow bank (away from the middle, where touch players look)
     const fans = [[70, 510, 0], [120, 520, 1], [250, 512, 0], [395, 522, 0], [560, 516, 1], [700, 520, 0], [840, 512, 1], [900, 522, 0]];
     fans.forEach(([x, y, k], i) => {

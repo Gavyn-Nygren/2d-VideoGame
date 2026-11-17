@@ -608,9 +608,30 @@
           const t0 = bands === 1 ? ths[0] : ths[b], t1 = bands === 1 ? ths[3] : ths[b + 1], p0 = prof(t0), p1 = prof(t1);
           quad(A(sd * p0.l, p0.h), A(sd * p1.l, p1.h), B(sd * p1.l, p1.h), B(sd * p0.l, p0.h), mix((sd < 0 ? COL.wall : COL.wallR)[bands === 1 ? 1 : b], fog));
         }
+        if (j < 24) {
+          // the wall's ice: a glazed sheen band high up, the lip's shadow just under it, frost streaks at the foot and
+          // a panel joint at every other segment (thin strips in depth, so they scroll with the track)
+          const sh = (ta, tb, col) => { const p0 = prof(ta * K.wallA), p1 = prof(tb * K.wallA); quad(A(sd * p0.l, p0.h + 0.002), A(sd * p1.l, p1.h + 0.002), B(sd * p1.l, p1.h + 0.002), B(sd * p0.l, p0.h + 0.002), mix(col, fog)); };
+          sh(0.6, 0.68, sd < 0 ? [236, 247, 255] : [210, 230, 248]);
+          sh(0.93, 1, sd < 0 ? [170, 202, 232] : [140, 180, 222]);
+          if (gi % 2 === 0) {
+            const e = Math.min(0.12, (db - da) * 0.06);
+            for (let q = 0; q < 3; q++) {
+              const p0 = prof(ths[q]), p1 = prof(ths[q + 1]);
+              const a0 = P(da, xa + sd * p0.l, ya + p0.h), a1 = P(da, xa + sd * p1.l, ya + p1.h), b1 = P(da + e, xa + sd * p1.l, ya + p1.h), b0 = P(da + e, xa + sd * p0.l, ya + p0.h);
+              quad(a0, a1, b1, b0, mix(sd < 0 ? [176, 206, 234] : [150, 186, 224], fog));
+            }
+          }
+        }
         const lc = (gi >> 1) % 2 ? COL.lipA : COL.lipB;
         quad(A(sd * lipL, lipH), A(sd * (lipL + 0.05), lipH + 0.14), B(sd * (lipL + 0.05), lipH + 0.14), B(sd * lipL, lipH), mix(lc, fog));
         quad(A(sd * (lipL + 0.05), lipH + 0.14), A(sd * (lipL + 0.35), lipH + 0.14), B(sd * (lipL + 0.35), lipH + 0.14), B(sd * (lipL + 0.05), lipH + 0.14), mix(COL.lipTop, fog));
+        if (j < 24) {
+          // the padded lip: a lit roll along its top edge and a darker seam where each coloured pad meets the next
+          quad(A(sd * (lipL + 0.012), lipH + 0.11), A(sd * (lipL + 0.03), lipH + 0.14), B(sd * (lipL + 0.03), lipH + 0.14), B(sd * (lipL + 0.012), lipH + 0.11), mix(lc.map(v => Math.min(255, v + 70)), fog));
+          quad(A(sd * (lipL + 0.05), lipH + 0.141), A(sd * (lipL + 0.09), lipH + 0.141), B(sd * (lipL + 0.09), lipH + 0.141), B(sd * (lipL + 0.05), lipH + 0.141), mix([206, 226, 244], fog));
+          if (gi % 2 === 0) { const e = Math.min(0.15, (db - da) * 0.06); quad(A(sd * lipL, lipH), A(sd * (lipL + 0.05), lipH + 0.14), P(da + e, xa + sd * (lipL + 0.05), ya + lipH + 0.14), P(da + e, xa + sd * lipL, ya + lipH), mix(lc.map(v => v * 0.6), fog)); }
+        }
       }
       let fc = gi % 2 ? COL.floorA : COL.floorB;
       const inTuck = c.tucks.some(t => zz >= t.z0 && zz < t.z1), inHop = zz >= -K.hopLen && zz < 0 && st.phase !== 'run';
@@ -628,6 +649,13 @@
         ctx.fillStyle = mix(COL.tuck, fog);
         const m0 = A(0, 0.001), l0 = A(-0.55, 0), r0 = A(0.55, 0), mB = P(da + (db - da) * 0.7, xa + (xb - xa) * 0.7, ya + 0.001);
         ctx.beginPath(); ctx.moveTo(l0.X, l0.Y); ctx.lineTo(mB.X, mB.Y); ctx.lineTo(r0.X, r0.Y); ctx.lineTo(m0.X, m0.Y); ctx.closePath(); ctx.fill();
+        // painted into the ice: a darker inner edge, a lit outer edge and a few frost scuffs over the paint
+        ctx.strokeStyle = mix(COL.tuck.map(v => v * 0.62), fog); ctx.lineWidth = Math.max(1, (l0.Y - mB.Y) * 0.08);
+        ctx.beginPath(); ctx.moveTo(l0.X, l0.Y); ctx.lineTo(m0.X, m0.Y); ctx.lineTo(r0.X, r0.Y); ctx.stroke();
+        ctx.strokeStyle = mix([235, 245, 255], fog); ctx.lineWidth = Math.max(0.8, (l0.Y - mB.Y) * 0.05);
+        ctx.beginPath(); ctx.moveTo(l0.X, l0.Y); ctx.lineTo(mB.X, mB.Y); ctx.lineTo(r0.X, r0.Y); ctx.stroke();
+        ctx.fillStyle = mix([240, 248, 255], fog);
+        for (let q = 0; q < 4; q++) { const fq = A(-0.4 + q * 0.27 + ((gi * 7 + q * 3) % 5) * 0.02, 0.002); ctx.fillRect(fq.X, fq.Y - 1, Math.max(1, (r0.X - l0.X) * 0.03), Math.max(1, (l0.Y - mB.Y) * 0.04)); }
       }
       if (zz <= 0 && zz + K.SEG > 0) quad(A(-K.floorW, 0), A(K.floorW, 0), P(da + 0.6, xa + K.floorW, ya), P(da + 0.6, xa - K.floorW, ya), mix([232, 67, 79], fog));
       if (zz <= c.finish && zz + K.SEG > c.finish) {
