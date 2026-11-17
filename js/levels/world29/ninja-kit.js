@@ -84,6 +84,8 @@
      K.noise(x, y, r, a, col)                 a noise ring (pebble "tik", gong) of radius r and strength a 0..1.
      K.hayCart(x, y, o)                       a hay cart, bottom middle at x, y. o: s, squash 0..1 (something just landed in it), face.
      K.gong(x, y, r, o)                       a gong, disc centre at x, y. o: hit 0..1 (just struck), t, noFrame, ground (y of the feet).
+     K.pat(key, tw, th, rep, paint)           a repeating picture tw x th painted once by paint(c, tw, th) at the screen's pixel
+                                              scale, as a CanvasPattern (rep 'repeat' | 'repeat-x'); cached by key and scale.
    Sounds (Sfx.play('ninjaWhoosh', pitch)): ninjaWhoosh (throw / swing), ninjaBonk (foam star bonk), ninjaTik (pebble),
      ninjaGong, ninjaShing (sword deflect), ninjaCheer, ninjaHelp (played by K.goldHelp), ninjaAlert ("!"), ninjaDizzy,
      ninjaPoof (smoke), ninjaClink (hook bites). Levels add their own as Sfx.extra.<mode>Name.
@@ -483,6 +485,19 @@ const NINJA = (() => {
     }
     ctx.fillStyle = o.col || '#211d48'; ctx.fillRect(0, y, W, H - y);
   };
+  // (Nov 2026 "richer props" pass) a repeating picture painted once at the screen's pixel scale and laid as a pattern;
+  // key names the look, tw x th its size in game px. Laid on the world grid (inside the camera transform it scrolls).
+  const pats = {};
+  K.pat = (key, tw, th, rep, paint) => {
+    const sc = Math.max(1, Math.min(3, canvas.width / W)), k = key + '|' + sc;
+    if (pats[k] !== undefined) return pats[k];
+    const cv = document.createElement('canvas'); cv.width = Math.round(tw * sc); cv.height = Math.round(th * sc);
+    const c = cv.getContext('2d'); c.scale(cv.width / tw, cv.height / th); paint(c, tw, th);
+    const pt = ctx.createPattern(cv, rep || 'repeat');
+    if (pt && pt.setTransform) pt.setTransform(new DOMMatrix([tw / cv.width, 0, 0, th / cv.height, 0, 0]));
+    return (pats[k] = pt);
+  };
+  const ihash = (a, b) => (typeof hash === 'function' ? hash(a, b) : Math.floor(K.hash(a * 7.13 + b * 3.7) * 4294967295)) >>> 0;
   // the tile slab with curled-up eaves: top surface from x to x + w at y
   const eave = (x, y, w, th, tip) => {
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y);
@@ -494,11 +509,28 @@ const NINJA = (() => {
   };
   const tiles = (x, y, w, th) => {
     ctx.fillStyle = COL.tile; ctx.strokeStyle = COL.tileEdge; ctx.lineWidth = 2; ctx.lineJoin = 'round';
-    eave(x, y, w, th, th); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = 'rgba(20,22,52,0.5)'; ctx.lineWidth = 2; ctx.beginPath();
-    for (let xi = x + 9; xi < x + w - 4; xi += 14) { ctx.moveTo(xi, y + 4); ctx.lineTo(xi, y + th - 2); }
-    ctx.stroke();
+    eave(x, y, w, th, th); ctx.fill();
+    // (no clip: everything below sits inside the slab's straight middle part)
+    ctx.fillStyle = 'rgba(12,12,36,0.28)'; ctx.fillRect(x + 6, y + th * 0.6, w - 12, th * 0.4 - 1);
+    ctx.fillStyle = 'rgba(12,12,36,0.45)'; ctx.beginPath();
+    for (let xi = x + 9; xi < x + w - 4; xi += 14) ctx.rect(xi + 1.5, y + 4, 2, th - 6);
+    ctx.fill();
+    ctx.fillStyle = '#56609a'; ctx.beginPath();
+    for (let xi = x + 9; xi < x + w - 4; xi += 14) ctx.rect(xi - 2.5, y + 4, 4, th - 7);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(160,176,230,0.45)'; ctx.beginPath();
+    for (let xi = x + 9; xi < x + w - 4; xi += 14) ctx.rect(xi - 2.5, y + 4, 1.2, th - 7);
+    ctx.fill();
+    // the round end tiles along the eave
+    ctx.fillStyle = '#5a64a0'; ctx.beginPath();
+    for (let xi = x + 9; xi < x + w - 4; xi += 14) { ctx.moveTo(xi + 3, y + th - 3.5); ctx.arc(xi, y + th - 3.5, 3, 0, TAU); }
+    ctx.fill();
+    ctx.strokeStyle = COL.tileEdge; ctx.lineWidth = 1; ctx.stroke();
+    ctx.strokeStyle = COL.tileEdge; ctx.lineWidth = 2; eave(x, y, w, th, th); ctx.stroke();
     ctx.strokeStyle = COL.tileHi; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x + 2, y + 1.6); ctx.lineTo(x + w - 2, y + 1.6); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x + 4, y + 0.6, w - 8, 0.8);
+    // ornaments on the curled tips
+    for (const ex of [x - th, x + w + th]) { ctx.fillStyle = COL.tileEdge; circle(ex, y - th * 0.55, 3.2); ctx.fill(); ctx.fillStyle = COL.tileHi; circle(ex - 0.6, y - th * 0.55 - 0.6, 1.4); ctx.fill(); }
   };
   // a tiled rooftop to stand on, with its house below
   K.roof = (x, y, w, o = {}) => {
@@ -508,7 +540,19 @@ const NINJA = (() => {
       ctx.fillStyle = COL.wallLit; ctx.fillRect(wx, wy, ww, bottom - wy);
       ctx.fillStyle = 'rgba(20,18,50,0.22)'; for (let px = wx + 34; px < wx + ww - 10; px += 34) ctx.fillRect(px, wy, 1.5, bottom - wy);
       ctx.fillStyle = 'rgba(255,255,255,0.04)'; for (let px = wx + 35.5; px < wx + ww - 10; px += 34) ctx.fillRect(px, wy, 1.5, bottom - wy);
+      // plaster: soft stains and fine grit, fixed to the world
+      ctx.fillStyle = 'rgba(20,18,50,0.13)'; ctx.beginPath();
+      for (let xi = Math.floor(wx / 70) * 70; xi < wx + ww; xi += 70) { const hv = ihash(xi / 70 | 0, 61); if (hv % 3) continue; const ex = xi + hv % 60, ey = wy + 40 + (hv >>> 7) % Math.max(1, (bottom - wy - 60) | 0); if (ex < wx + 12 || ex > wx + ww - 12) continue; ctx.moveTo(ex + 14, ey); ctx.ellipse(ex, ey, 14, 7, 0, 0, TAU); }
+      ctx.fill();
+      ctx.fillStyle = 'rgba(200,200,255,0.06)'; ctx.beginPath();
+      for (let k = 0; k < ww / 9; k++) { const hv = ihash(k + (Math.round(wx) | 0), 62); ctx.rect(wx + 8 + hv % Math.max(1, (ww - 16) | 0), wy + 16 + (hv >>> 9) % Math.max(1, (bottom - wy - 20) | 0), 1.5, 1.2); }
+      ctx.fill();
+      // timber bands between the floors, with a lit top edge
+      for (let by = wy + 92; by < bottom - 10; by += 96) { ctx.fillStyle = COL.wallDark; ctx.fillRect(wx, by, ww, 7); ctx.fillStyle = 'rgba(200,200,255,0.12)'; ctx.fillRect(wx, by, ww, 1.5); ctx.fillStyle = 'rgba(8,8,28,0.25)'; ctx.fillRect(wx, by + 7, ww, 3); }
       ctx.fillStyle = COL.wallDark; ctx.fillRect(wx, wy, ww, 14); ctx.fillRect(wx, wy, 7, bottom - wy); ctx.fillRect(wx + ww - 7, wy, 7, bottom - wy);
+      ctx.fillStyle = 'rgba(200,200,255,0.12)'; ctx.fillRect(wx + 7, wy + 14, 2, bottom - wy - 14); ctx.fillStyle = 'rgba(8,8,28,0.22)'; ctx.fillRect(wx + ww - 13, wy + 14, 6, bottom - wy - 14);
+      { const sg = ctx.createLinearGradient(0, wy + 14, 0, wy + 40); sg.addColorStop(0, 'rgba(8,8,28,0.35)'); sg.addColorStop(1, 'rgba(8,8,28,0)'); ctx.fillStyle = sg; ctx.fillRect(wx + 7, wy + 14, ww - 14, 26); }
+      ctx.strokeStyle = '#1c1a3c'; ctx.lineWidth = 1.5; ctx.strokeRect(wx + 0.75, wy, ww - 1.5, bottom - wy);
       if (!o.noWindows) for (let ex = wx + 22; ex + 30 < wx + ww - 14; ex += 78) {
         if (K.hash(Math.round(ex)) < 0.25) continue;
         for (let ey = wy + 30; ey + 40 < bottom; ey += 96) {
@@ -517,7 +561,8 @@ const NINJA = (() => {
           ctx.fillStyle = 'rgba(200,120,40,0.25)'; ctx.fillRect(ex, ey + 24, 30, 12);
           ctx.fillStyle = COL.woodDark; ctx.fillRect(ex + 14, ey, 2, 36); ctx.fillRect(ex, ey + 17, 30, 2);
           ctx.strokeStyle = COL.woodDark; ctx.lineWidth = 2; ctx.strokeRect(ex - 1, ey - 1, 32, 38);
-          ctx.fillStyle = COL.wood; ctx.fillRect(ex - 3, ey + 37, 36, 4);
+          ctx.fillStyle = 'rgba(255,250,220,0.35)'; ctx.fillRect(ex + 2, ey + 2, 11, 3);
+          ctx.fillStyle = COL.wood; ctx.fillRect(ex - 3, ey + 37, 36, 4); ctx.fillStyle = 'rgba(255,220,180,0.3)'; ctx.fillRect(ex - 3, ey + 37, 36, 1);
         }
       }
     }
@@ -560,6 +605,13 @@ const NINJA = (() => {
       // the woven rush: fine lines, mats alternating in tone, dark cloth borders with a lit edge
       for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) if (((x / 160) | 0) % 2) { ctx.fillStyle = 'rgba(255,250,200,0.07)'; ctx.fillRect(Math.max(x0, x), y + 5, 160, 39); }
       ctx.fillStyle = 'rgba(110,100,40,0.18)'; for (let yy = y + 8; yy < Math.min(b, y + 200); yy += 5) ctx.fillRect(x0, yy, w, 1);
+      { const weave = K.pat('tatami', 24, 10, 'repeat', (c) => {
+          c.fillStyle = 'rgba(120,108,40,0.22)'; for (let k = 0; k < 6; k++) c.fillRect(k * 4 + (k % 2), 0, 1, 5), c.fillRect(k * 4 + 2 + (k % 2), 5, 1, 5);
+          c.fillStyle = 'rgba(255,250,210,0.12)'; c.fillRect(0, 2, 24, 1); c.fillRect(0, 7, 24, 1);
+        });
+        if (weave) { ctx.fillStyle = weave; ctx.fillRect(x0, y + 5, w, b - y - 5); }
+        // soft wear in the middle of each mat, and the odd mat a touch greener (newer rush)
+        for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) { const hv = ihash(x / 160 | 0, 44); ctx.fillStyle = hv % 3 ? 'rgba(255,250,210,0.06)' : 'rgba(120,150,60,0.08)'; ctx.fillRect(Math.max(x0, x + 5), y + 5, 155, Math.min(39, b - y - 5)); } }
       ctx.fillStyle = '#d2cb8c'; ctx.fillRect(x0, y, w, 5);
       ctx.fillStyle = 'rgba(255,255,230,0.4)'; ctx.fillRect(x0, y, w, 1.5);
       ctx.fillStyle = '#4c5a3c';
@@ -567,6 +619,10 @@ const NINJA = (() => {
       ctx.fillRect(x0, y + 44, w, 4);
       ctx.fillStyle = '#6a7a52'; ctx.fillRect(x0, y + 44, w, 1.2);
       for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) if (x >= x0) ctx.fillRect(x, y, 1.2, b - y);
+      // a little woven motif along the cloth borders
+      ctx.fillStyle = 'rgba(210,220,160,0.35)'; for (let x = Math.floor(x0 / 12) * 12; x < x1; x += 12) ctx.fillRect(x + 4, y + 45.5, 3, 1.2);
+      ctx.fillStyle = 'rgba(20,24,10,0.35)'; ctx.fillRect(x0, y + 48, w, 2);
+      for (let x = Math.floor(x0 / 160) * 160; x < x1; x += 160) if (x >= x0) { ctx.fillStyle = 'rgba(20,24,10,0.3)'; ctx.fillRect(x + 5, y + 5, 2, b - y - 5); }
     } else if (kind === 'wood') {
       ctx.fillStyle = COL.wood; ctx.fillRect(x0, y, w, b - y);
       ctx.fillStyle = '#a8744c'; ctx.fillRect(x0, y, w, 4);
@@ -579,16 +635,24 @@ const NINJA = (() => {
       for (let x = Math.floor(x0 / 70) * 70; x < x1; x += 70) { const xx = x + K.hash(x) * 40; if (xx > x0 && xx < x1 - 14) ctx.fillRect(xx, y + 14 + K.hash(x + 1) * 20, 14, 4); }
     } else {
       ctx.fillStyle = '#3d3a64'; ctx.fillRect(x0, y, w, b - y);
-      for (let r = 0; r < 3; r++) { const yy = y + 5 + r * 20; if (yy > b) break; for (let x = Math.floor(x0 / 48) * 48 + (r % 2) * 24; x < x1; x += 48) { const hv = K.hash(x * 0.13 + r * 7); if (hv < 0.35) { ctx.fillStyle = hv < 0.15 ? 'rgba(255,255,255,0.05)' : 'rgba(10,8,30,0.12)'; ctx.fillRect(Math.max(x0, x), yy, 48, 20); } ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(Math.max(x0, x + 2), yy + 2, 44, 1.5); } }
+      const pat = K.pat('cobble', 480, 60, 'repeat-x', (c, tw) => {
+        c.fillStyle = '#1e1c40'; c.fillRect(0, 0, tw, 60);
+        const tones = ['#3d3a64', '#423f6c', '#38355e', '#46436f', '#3a3762'];
+        for (let r = 0; r < 3; r++) for (let i = -1; i <= 10; i++) {
+          const sx = i * 48 + (r % 2) * 24, sy = r * 20, hv = ihash(((i % 10) + 10) % 10, r + 5);
+          c.fillStyle = tones[hv % tones.length]; c.fillRect(sx + 1.5, sy + 1.5, 45, 17);
+          c.fillStyle = 'rgba(200,200,255,0.10)'; c.fillRect(sx + 1.5, sy + 1.5, 45, 2.5); c.fillRect(sx + 1.5, sy + 1.5, 2, 17);
+          c.fillStyle = 'rgba(8,8,28,0.25)'; c.fillRect(sx + 1.5, sy + 15.5, 45, 3); c.fillRect(sx + 43.5, sy + 1.5, 3, 17);
+          c.fillStyle = 'rgba(8,8,28,0.3)'; for (let k = 0; k < 4; k++) { const q = ihash(k + i * 5, r + 77); c.fillRect(sx + 5 + q % 36, sy + 5 + (q >>> 6) % 9, 1.5, 1.2); }
+          if (hv % 9 === 1) { const cx0 = sx + 10 + hv % 24; c.strokeStyle = 'rgba(8,8,28,0.32)'; c.lineWidth = 1; c.beginPath(); c.moveTo(cx0, sy + 2); c.lineTo(cx0 + 3, sy + 7); c.lineTo(cx0 + 1, sy + 11); c.lineTo(cx0 + 6, sy + 16); c.stroke(); }
+          if (hv % 5 === 2) { c.fillStyle = 'rgba(90,150,110,0.35)'; c.beginPath(); c.ellipse(sx + 2 + hv % 40, sy + 18.5, 6, 1.6, 0, 0, TAU); c.fill(); }
+        }
+      });
+      if (pat) { ctx.save(); ctx.translate(0, y + 5); ctx.fillStyle = pat; ctx.fillRect(x0, 0, w, Math.min(60, b - y - 5)); ctx.restore(); }
       ctx.fillStyle = '#6a6590'; ctx.fillRect(x0, y, w, 5);
       ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x0, y, w, 1.5);
-      ctx.strokeStyle = 'rgba(20,22,52,0.45)'; ctx.lineWidth = 2; ctx.beginPath();
-      for (let r = 0; r < 3; r++) {
-        const yy = y + 5 + r * 20; if (yy > b) break;
-        ctx.moveTo(x0, yy + 20); ctx.lineTo(x1, yy + 20);
-        for (let x = Math.floor(x0 / 48) * 48 + (r % 2) * 24; x < x1; x += 48) if (x > x0) { ctx.moveTo(x, yy); ctx.lineTo(x, yy + 20); }
-      }
-      ctx.stroke();
+      ctx.fillStyle = 'rgba(8,8,28,0.35)'; ctx.fillRect(x0, y + 5, w, 2);
+      ctx.fillStyle = '#2a2750'; for (let x = Math.floor(x0 / 60) * 60; x < x1; x += 60) { const hv = ihash(x / 60 | 0, 88); if (hv % 3) continue; const cx = x + hv % 50; ctx.beginPath(); ctx.moveTo(cx - 3, y); ctx.lineTo(cx + 3, y); ctx.lineTo(cx, y + 3); ctx.closePath(); ctx.fill(); }
     }
   };
   // a paper lantern hanging from (x, y)
@@ -640,17 +704,28 @@ const NINJA = (() => {
   // a market stall, bottom middle at (x, y)
   K.stall = (x, y, w, o = {}) => {
     const h = o.h || 96, cols = o.cols || ['#c8474a', '#f2e6c8'], goods = o.goods === undefined ? Math.floor(K.hash(Math.round(x)) * 4) : o.goods;
+    ctx.fillStyle = 'rgba(8,8,28,0.3)'; ctx.beginPath(); ctx.ellipse(x + 4, y, w / 2 + 8, 5, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = COL.woodDark; ctx.fillRect(x - w / 2 + 4, y - h, 5, h); ctx.fillRect(x + w / 2 - 9, y - h, 5, h);
+    ctx.fillStyle = 'rgba(255,220,180,0.25)'; ctx.fillRect(x - w / 2 + 4, y - h, 1.5, h); ctx.fillRect(x + w / 2 - 9, y - h, 1.5, h);
     ctx.fillStyle = '#231f44'; ctx.fillRect(x - w / 2 + 9, y - h + 16, w - 18, h - 50);
+    ctx.fillStyle = 'rgba(255,217,138,0.12)'; ctx.fillRect(x - w / 2 + 9, y - h + 16, w - 18, 10);
+    // shelves at the back with jars
+    ctx.fillStyle = COL.woodDark; ctx.fillRect(x - w / 2 + 9, y - h + 44, w - 18, 3);
+    for (let jx = x - w / 2 + 16; jx < x + w / 2 - 16; jx += 13) { const hv = ihash(Math.round(jx), 9); ctx.fillStyle = ['#8a6cc0', '#c86a4a', '#5a9a8a'][hv % 3]; rr(jx, y - h + 33, 8, 11, 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(jx + 1.5, y - h + 35, 1.5, 6); }
     // the counter and what it sells
     ctx.fillStyle = COL.wood; ctx.fillRect(x - w / 2, y - 36, w, 36);
     ctx.fillStyle = '#a8744c'; ctx.fillRect(x - w / 2, y - 36, w, 5);
     ctx.fillStyle = COL.woodDark; for (let xi = x - w / 2 + 18; xi < x + w / 2 - 4; xi += 22) ctx.fillRect(xi, y - 31, 2, 31);
+    ctx.strokeStyle = 'rgba(50,28,18,0.4)'; ctx.lineWidth = 0.9; ctx.beginPath(); for (let xi = x - w / 2 + 6; xi < x + w / 2 - 8; xi += 22) { ctx.moveTo(xi, y - 24); ctx.quadraticCurveTo(xi + 5, y - 22, xi + 10, y - 24); ctx.moveTo(xi + 4, y - 12); ctx.lineTo(xi + 12, y - 12); } ctx.stroke();
+    ctx.fillStyle = 'rgba(30,16,10,0.3)'; ctx.fillRect(x - w / 2, y - 5, w, 5);
+    ctx.strokeStyle = '#3a2416'; ctx.lineWidth = 1.5; ctx.strokeRect(x - w / 2 + 0.75, y - 36, w - 1.5, 36);
     const gc = [['#ff9a4a', '#ffc24a'], ['#8fd67a', '#d8f08a'], ['#ff8fa0', '#ffd0d8'], ['#b9a0ff', '#e0d4ff']][goods % 4];
     for (let i = 0, n = Math.floor((w - 24) / 15); i < n; i++) {
       const gx = x - w / 2 + 19 + i * 15;
       ctx.fillStyle = gc[i % 2]; circle(gx, y - 41, 6.5); ctx.fill();
-      if (i % 2 === 0 && i + 1 < n) { ctx.fillStyle = gc[1]; circle(gx + 7.5, y - 50, 6); ctx.fill(); }
+      ctx.fillStyle = 'rgba(30,16,30,0.2)'; ctx.beginPath(); ctx.arc(gx, y - 41, 6.5, 0.2, Math.PI * 0.9); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; circle(gx - 2, y - 43.5, 1.6); ctx.fill();
+      if (i % 2 === 0 && i + 1 < n) { ctx.fillStyle = gc[1]; circle(gx + 7.5, y - 50, 6); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.45)'; circle(gx + 5.5, y - 52.5, 1.4); ctx.fill(); }
     }
     // the striped awning
     const n = Math.max(4, Math.round(w / 22)), sw = (w + 20) / n;
@@ -660,6 +735,10 @@ const NINJA = (() => {
       ctx.beginPath(); ctx.moveTo(ax + 5, y - h - 6); ctx.lineTo(ax + sw + 5.5, y - h - 6); ctx.lineTo(ax + sw + 0.5, y - h + 18); ctx.arc(ax + sw / 2, y - h + 18, sw / 2, 0, Math.PI); ctx.closePath(); ctx.fill();
     }
     ctx.fillStyle = 'rgba(20,22,52,0.25)'; ctx.fillRect(x - w / 2 - 5, y - h - 6, w + 16, 3);
+    // the folds: each stripe shaded on its right, and a dark edge along the scallops
+    ctx.fillStyle = 'rgba(20,22,52,0.16)'; for (let i = 0; i < n; i++) { const ax = x - w / 2 - 10 + i * sw; ctx.fillRect(ax + sw * 0.62, y - h - 3, sw * 0.38, 20); }
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x - w / 2 - 5, y - h - 6, w + 16, 1.2);
+    ctx.strokeStyle = 'rgba(40,20,30,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let i = 0; i < n; i++) { const ax = x - w / 2 - 10 + i * sw; ctx.moveTo(ax + sw, y - h + 18); ctx.arc(ax + sw / 2, y - h + 18, sw / 2, 0, Math.PI); } ctx.stroke();
   };
   // inside the dojo: full screen, call with no transform
   // the hall never changes, so it is drawn once and copied each frame; only the hanging scrolls sway live
@@ -885,7 +964,9 @@ const NINJA = (() => {
   K.hayCart = (x, y, o = {}) => {
     const s = o.s || 1, q = clamp(o.squash || 0, 0, 1), f = o.face || 1;
     ctx.save(); ctx.translate(x, y); ctx.scale(s * f, s);
+    ctx.fillStyle = 'rgba(8,8,28,0.3)'; ctx.beginPath(); ctx.ellipse(4, 0, 58, 5, 0, 0, TAU); ctx.fill();
     ctx.strokeStyle = COL.woodDark; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(40, -24); ctx.lineTo(70, -12); ctx.stroke();
+    ctx.strokeStyle = '#a8744c'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(42, -25.5); ctx.lineTo(69, -14.5); ctx.stroke();
     // the hay
     const top = -70 + q * 14;
     ctx.fillStyle = '#e8c860'; ctx.strokeStyle = '#8a6a20'; ctx.lineWidth = 2;
@@ -896,15 +977,28 @@ const NINJA = (() => {
     ctx.strokeStyle = '#b8943a'; ctx.beginPath();
     for (let i = 0; i < 6; i++) { const hx = -28 + i * 11, hy = top + 24 + (i * 53 % 13); ctx.moveTo(hx, hy); ctx.lineTo(hx - 6, hy - 5); }
     ctx.stroke();
+    // the hay's shaded underside and right side, more strands, and a few stalks poking out
+    ctx.save(); ctx.beginPath(); ctx.moveTo(-44, -30); ctx.quadraticCurveTo(-50 - q * 6, top + 12, -18, top); ctx.quadraticCurveTo(4, top - 9 + q * 10, 22, top + 3); ctx.quadraticCurveTo(52 + q * 6, top + 14, 44, -30); ctx.closePath(); ctx.clip();
+    ctx.fillStyle = 'rgba(140,90,20,0.28)'; ctx.fillRect(-60, -42, 120, 14); ctx.fillRect(28, top - 10, 30, 60);
+    ctx.fillStyle = 'rgba(255,250,200,0.3)'; ctx.beginPath(); ctx.ellipse(-16, top + 8, 18, 5, -0.2, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(150,110,30,0.6)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 0; i < 12; i++) { const hx = -38 + i * 7, hy = top + 18 + (i * 29 % 23); ctx.moveTo(hx, hy); ctx.lineTo(hx + (i % 2 ? 5 : -5), hy - 4); }
+    ctx.stroke(); ctx.restore();
+    ctx.strokeStyle = '#d8b850'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-40, top + 22); ctx.lineTo(-52, top + 16); ctx.moveTo(40, top + 24); ctx.lineTo(53, top + 20); ctx.moveTo(-6, top - 4); ctx.lineTo(-10, top - 12); ctx.stroke();
     // the cart
     ctx.fillStyle = COL.wood; ctx.strokeStyle = COL.woodDark; ctx.lineWidth = 2;
-    rr(-46, -36, 92, 20, 4); ctx.fill(); ctx.stroke();
+    rr(-46, -36, 92, 20, 4); ctx.fill();
+    ctx.fillStyle = '#a8744c'; ctx.fillRect(-44, -36, 88, 3); ctx.fillStyle = 'rgba(30,16,10,0.3)'; ctx.fillRect(-44, -21, 88, 4);
+    ctx.strokeStyle = 'rgba(60,36,20,0.45)'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(-44, -29); ctx.lineTo(44, -29); for (const gx of [-36, -12, 14, 34]) { ctx.moveTo(gx, -33); ctx.quadraticCurveTo(gx + 4, -31, gx + 8, -33); } ctx.stroke();
+    ctx.strokeStyle = COL.woodDark; ctx.lineWidth = 2; rr(-46, -36, 92, 20, 4); ctx.stroke();
     ctx.fillStyle = COL.woodDark; for (const px of [-24, 0, 24]) ctx.fillRect(px - 1, -35, 2, 18);
+    ctx.fillStyle = '#5a5a7a'; for (const bx of [-46, 40]) { ctx.fillRect(bx, -36, 6, 20); } ctx.fillStyle = '#c8cce0'; for (const bx of [-43, 43]) { circle(bx, -32, 1.2); ctx.fill(); circle(bx, -20, 1.2); ctx.fill(); }
     for (const wx of [-28, 28]) {
       ctx.fillStyle = '#3c2634'; circle(wx, -13, 13); ctx.fill();
       ctx.fillStyle = COL.wood; circle(wx, -13, 9); ctx.fill();
-      ctx.strokeStyle = '#3c2634'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(wx - 9, -13); ctx.lineTo(wx + 9, -13); ctx.moveTo(wx, -22); ctx.lineTo(wx, -4); ctx.stroke();
-      ctx.fillStyle = '#e2a93b'; circle(wx, -13, 2.5); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,220,180,0.35)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(wx, -13, 11, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+      ctx.strokeStyle = '#3c2634'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 3; k++) { const a = k * Math.PI / 3; ctx.moveTo(wx - Math.cos(a) * 9, -13 - Math.sin(a) * 9); ctx.lineTo(wx + Math.cos(a) * 9, -13 + Math.sin(a) * 9); } ctx.stroke();
+      ctx.fillStyle = '#e2a93b'; circle(wx, -13, 2.5); ctx.fill(); ctx.fillStyle = '#fff0b0'; circle(wx - 0.8, -13.8, 0.9); ctx.fill();
     }
     ctx.restore();
   };
@@ -915,6 +1009,12 @@ const NINJA = (() => {
       ctx.fillStyle = COL.trim; ctx.fillRect(x - r - 16, y - r - 16, 7, gy - (y - r - 16)); ctx.fillRect(x + r + 9, y - r - 16, 7, gy - (y - r - 16));
       ctx.fillStyle = '#8a2c34'; rr(x - r - 26, y - r - 24, r * 2 + 52, 9, 4); ctx.fill();
       ctx.fillRect(x - r - 22, gy - 5, 19, 5); ctx.fillRect(x + r + 3, gy - 5, 19, 5);
+      // lit edges, a shaded side and a dark outline on the stand; upturned ends on the top beam; bronze caps
+      ctx.fillStyle = 'rgba(255,210,200,0.35)'; ctx.fillRect(x - r - 16, y - r - 15, 1.5, gy - (y - r - 15)); ctx.fillRect(x + r + 9, y - r - 15, 1.5, gy - (y - r - 15)); ctx.fillRect(x - r - 24, y - r - 24, r * 2 + 48, 1.5);
+      ctx.fillStyle = 'rgba(40,8,16,0.3)'; ctx.fillRect(x - r - 11, y - r - 15, 2, gy - (y - r - 15)); ctx.fillRect(x + r + 14, y - r - 15, 2, gy - (y - r - 15));
+      ctx.fillStyle = '#8a2c34'; for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + d * (r + 22), y - r - 24); ctx.quadraticCurveTo(x + d * (r + 30), y - r - 24, x + d * (r + 32), y - r - 30); ctx.lineTo(x + d * (r + 26), y - r - 21); ctx.closePath(); ctx.fill(); }
+      ctx.strokeStyle = '#4a141c'; ctx.lineWidth = 1.2; rr(x - r - 26, y - r - 24, r * 2 + 52, 9, 4); ctx.stroke(); ctx.strokeRect(x - r - 16, y - r - 15, 7, gy - (y - r - 15) - 5); ctx.strokeRect(x + r + 9, y - r - 15, 7, gy - (y - r - 15) - 5);
+      ctx.fillStyle = '#e2a93b'; for (const px of [x - r - 12.5, x + r + 12.5]) { ctx.fillRect(px - 4.5, y - r - 15, 9, 3); ctx.fillRect(px - 4.5, gy - 12, 9, 3); }
       ctx.strokeStyle = COL.paper; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - r * 0.5, y - r - 16); ctx.lineTo(x - r * 0.5, y - r * 0.8); ctx.moveTo(x + r * 0.5, y - r - 16); ctx.lineTo(x + r * 0.5, y - r * 0.8); ctx.stroke();
     }
     const dx = Math.sin(t * 46) * 3 * hit;

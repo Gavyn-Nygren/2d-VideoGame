@@ -639,20 +639,52 @@
     ctx.fillStyle = '#48446e'; ctx.beginPath(); edge(c, x0, x1, -50); edge(c, x0, x1, 52, true); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = '#7d77a6'; ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.beginPath(); edge(c, x0, x1, -48); ctx.stroke();
     ctx.strokeStyle = '#191634'; ctx.lineWidth = 7; ctx.beginPath(); edge(c, x0, x1, 53); ctx.stroke();
-    // the stone wall that holds the street up: courses of big blocks, with a few moss tufts
-    ctx.strokeStyle = 'rgba(120,112,170,0.22)'; ctx.lineWidth = 2; ctx.beginPath();
-    for (let r = 0; r < 6; r++) {
-      const off = 82 + r * 30;
-      edge(c, x0, x1, off); ctx.moveTo(x1, gy(c, x1) + off + 30);
-      for (let x = Math.floor(x0 / 64) * 64 + (r % 2) * 32; x < x1; x += 64) { ctx.moveTo(x, gy(c, x) + off); ctx.lineTo(x, gy(c, x) + off + 30); }
-      ctx.moveTo(x0, gy(c, x0) + off + 30);
-    }
-    ctx.stroke();
+    // the wall and the street are painted once as repeating pictures, then laid along the hill in 32 px strips,
+    // each strip's picture sheared to the slope there (rows follow the hill, joints stay upright)
+    const hill = (key, tw, th, off, paint) => {
+      const pat = K.pat(key, tw, th, 'repeat-x', paint); if (!pat || !pat.setTransform) return;
+      const sc = Math.max(1, Math.min(3, canvas.width / W)), kx = tw / Math.round(tw * sc), ky = th / Math.round(th * sc);
+      ctx.fillStyle = pat; const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+      for (let x = Math.floor(x0 / 32) * 32; x < x1; x += 32) {
+        const ya = gy(c, x), sl = (gy(c, x + 32) - ya) / 32;
+        pat.setTransform(new DOMMatrix([kx, sl * kx, 0, ky, 0, ya + off - sl * x]));
+        ctx.beginPath(); ctx.moveTo(x, ya + off); ctx.lineTo(x + 33, ya + off + sl * 33); ctx.lineTo(x + 33, ya + off + th + sl * 33); ctx.lineTo(x, ya + off + th); ctx.closePath(); ctx.fill();
+      }
+      ctx.imageSmoothingEnabled = sm;
+    };
+    // the stone wall that holds the street up: courses of big blocks, each its own tone with a lit lip and grit
+    hill('w29wall', 512, 180, 82, (g, tw) => {
+      for (let r = 0; r < 6; r++) for (let x = (r % 2) * 32 - 64; x < tw; x += 64) {
+        const y = r * 30, hv = hash(((Math.round(x / 32) % 16) + 16) % 16, r + 31);
+        if (hv % 3 === 0) { g.fillStyle = 'rgba(120,112,180,0.10)'; g.fillRect(x + 1, y + 1, 62, 28); }
+        else if (hv % 3 === 1) { g.fillStyle = 'rgba(8,6,26,0.22)'; g.fillRect(x + 1, y + 1, 62, 28); }
+        g.fillStyle = 'rgba(160,150,220,0.16)'; g.fillRect(x + 2, y + 1.5, 60, 2);
+        g.fillStyle = 'rgba(8,6,26,0.3)'; for (let k = 0; k < 3; k++) { const q = hash(k, hv + 7); g.fillRect(x + 6 + q % 52, y + 6 + (q >>> 8) % 18, 1.6, 1.4); }
+      }
+      g.strokeStyle = 'rgba(120,112,170,0.22)'; g.lineWidth = 2; g.beginPath();
+      for (let r = 0; r < 6; r++) { const y = r * 30; g.moveTo(0, y); g.lineTo(tw, y); for (let x = (r % 2) * 32; x <= tw; x += 64) { g.moveTo(x, y); g.lineTo(x, y + 30); } }
+      g.stroke();
+    });
     ctx.fillStyle = 'rgba(110,170,120,0.35)';
     for (let x = Math.floor(x0 / 150) * 150; x < x1; x += 150) { const h = K.hash(x * 0.37); if (h < 0.5) continue; const y = gy(c, x) + 60; ctx.beginPath(); ctx.ellipse(x + h * 40, y, 12, 5, 0, 0, TAU); ctx.fill(); }
-    // cobbles and the lane line
-    ctx.fillStyle = 'rgba(20,18,50,0.28)';
-    for (let x = Math.floor(x0 / 46) * 46; x < x1; x += 46) { const r = K.hash(x); ctx.fillRect(x + r * 20, gy(c, x) - 36 + K.hash(x + 7) * 76, 12 + r * 8, 3); }
+    // cobbles and the lane line: five courses of stones that follow the hill, each stone its own tone,
+    // joints with a pale lip, grit and the odd shine of moonlight on a worn stone
+    hill('w29street', 480, 104, -50, (g, tw) => {
+      const tones = ['rgba(150,144,200,0.12)', 'rgba(14,12,40,0.2)', 'rgba(110,104,160,0.07)', null];
+      for (let r = 0; r < 5; r++) for (let x = (r % 2) * 20 - 40; x < tw; x += 40) {
+        const y = 4 + r * 20, hv = hash(((Math.round(x / 20) % 24) + 24) % 24, r + 71), tn = tones[hv % 4];
+        if (tn) { g.fillStyle = tn; g.fillRect(x + 1.5, y + 1.5, 37, 17); }
+      }
+      g.strokeStyle = 'rgba(14,12,40,0.45)'; g.lineWidth = 1.6; g.beginPath();
+      for (let r = 0; r < 5; r++) { const y = 4 + r * 20; if (r) { g.moveTo(0, y); g.lineTo(tw, y); } for (let x = (r % 2) * 20; x <= tw; x += 40) { g.moveTo(x, y + 1); g.lineTo(x, y + 19); } }
+      g.stroke();
+      g.strokeStyle = 'rgba(170,164,220,0.16)'; g.lineWidth = 1.2; g.beginPath();
+      for (let r = 0; r < 5; r++) { const y = 4 + r * 20; if (r) { g.moveTo(0, y + 2); g.lineTo(tw, y + 2); } for (let x = (r % 2) * 20; x <= tw; x += 40) { g.moveTo(x + 2, y + 2); g.lineTo(x + 2, y + 18); } }
+      g.stroke();
+      g.fillStyle = 'rgba(14,12,40,0.35)'; for (let k = 0; k < 22; k++) { const hv = hash(k, 91); g.fillRect(hv % tw, 6 + (hv >>> 7) % 92, 1.6, 1.4); }
+      g.fillStyle = 'rgba(220,220,255,0.10)'; for (let k = 0; k < 2; k++) { const hv = hash(k, 93); g.beginPath(); g.ellipse(30 + k * 240 + hv % 150, 12 + (hv >>> 6) % 80, 10, 2.5, 0, 0, TAU); g.fill(); }
+      g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, 5.4, tw, 1.2);
+    });
     ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 3; ctx.beginPath();
     for (let x = Math.floor(x0 / 96) * 96; x < x1; x += 96) { ctx.moveTo(x, gy(c, x) - 1); ctx.lineTo(x + 44, gy(c, x + 44) - 1); }
     ctx.stroke();
@@ -739,20 +771,40 @@
     }
     ctx.fillStyle = 'rgba(14,12,40,0.3)'; ctx.beginPath(); ctx.ellipse(0, 1, ob.w * 0.6, 5, 0, 0, TAU); ctx.fill();
     if (o.kind === 'crate') {
-      ctx.fillStyle = '#a8744c'; ctx.strokeStyle = '#4a2c1a'; ctx.lineWidth = 2.5; rr(-17, -26, 34, 26, 3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#a8744c'; ctx.strokeStyle = '#4a2c1a'; ctx.lineWidth = 2.5; rr(-17, -26, 34, 26, 3); ctx.fill();
+      ctx.fillStyle = '#c08a5c'; ctx.fillRect(-15, -25, 30, 2.5); ctx.fillStyle = 'rgba(40,20,10,0.28)'; ctx.fillRect(10, -24, 6, 23); ctx.fillRect(-16, -4, 32, 3);
+      ctx.strokeStyle = 'rgba(70,40,20,0.45)'; ctx.lineWidth = 0.9; ctx.beginPath(); for (const gx of [-12, 0, 11]) { ctx.moveTo(gx, -22); ctx.quadraticCurveTo(gx + 2, -18, gx, -15); ctx.moveTo(gx - 1, -10); ctx.lineTo(gx + 1, -3); } ctx.stroke();
+      ctx.strokeStyle = '#4a2c1a'; ctx.lineWidth = 2.5; rr(-17, -26, 34, 26, 3); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(-17, -13); ctx.lineTo(17, -13); ctx.moveTo(-6, -26); ctx.lineTo(-6, 0); ctx.moveTo(6, -26); ctx.lineTo(6, 0); ctx.stroke();
+      ctx.fillStyle = '#5a5a7a'; for (const [bx, by] of [[-17, -26], [12, -26], [-17, -5], [12, -5]]) ctx.fillRect(bx, by, 5, 5);
+      ctx.fillStyle = '#c8cce0'; for (const [bx, by] of [[-14.5, -23.5], [14.5, -23.5], [-14.5, -2.5], [14.5, -2.5]]) { circle(bx, by, 0.9); ctx.fill(); }
       for (const [dx, col] of [[-9, '#ff6b5a'], [0, '#ff9a4a'], [9, '#ff6b5a']]) { ctx.fillStyle = col; circle(dx, -30, 6); ctx.fill(); }
     } else if (o.kind === 'barrel') {
-      ctx.fillStyle = '#8a5a3a'; ctx.strokeStyle = '#3c2416'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(0, -16, 15, 17, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = '#c9a46a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-14, -22); ctx.lineTo(14, -22); ctx.moveTo(-14, -9); ctx.lineTo(14, -9); ctx.stroke();
+      ctx.fillStyle = '#8a5a3a'; ctx.strokeStyle = '#3c2416'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(0, -16, 15, 17, 0, 0, TAU); ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.fillStyle = 'rgba(30,14,8,0.3)'; ctx.fillRect(6, -34, 10, 36);
+      ctx.fillStyle = 'rgba(255,220,180,0.22)'; ctx.fillRect(-10, -32, 4, 32);
+      ctx.strokeStyle = 'rgba(40,20,10,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); for (const sx of [-8, -2.5, 3, 8.5]) { ctx.moveTo(sx, -33); ctx.quadraticCurveTo(sx * 1.25, -16, sx, 1); } ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle = '#3c2416'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(0, -16, 15, 17, 0, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = '#7a6a5a'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(-14, -22); ctx.lineTo(14, -22); ctx.moveTo(-14, -9); ctx.lineTo(14, -9); ctx.stroke();
+      ctx.strokeStyle = '#c9c4d8'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-13, -23); ctx.lineTo(13, -23); ctx.moveTo(-13, -10); ctx.lineTo(13, -10); ctx.stroke();
       ctx.fillStyle = '#6fba8c'; ctx.beginPath(); ctx.ellipse(0, -32, 10, 4, 0, 0, TAU); ctx.fill();
     } else if (o.kind === 'hens') {
       for (let k = 0; k < 3; k++) hen((k - 1) * 14, k === 1 ? -1 : 2, t * 3 + k + o.seed, false);
     } else if (o.kind === 'cart') {
       ctx.strokeStyle = K.COL.woodDark; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-34, -30); ctx.lineTo(-52, -44); ctx.stroke();
       for (const [dx, dy, r, col] of [[-16, -44, 13, '#5fae6a'], [10, -44, 14, '#6fc27a'], [-3, -62, 12, '#5fae6a']]) { ctx.fillStyle = col; ctx.strokeStyle = '#255a34'; ctx.lineWidth = 2; circle(dx, dy, r); ctx.fill(); ctx.stroke(); ctx.strokeStyle = '#2f7a44'; ctx.beginPath(); ctx.arc(dx, dy, r * 0.6, -1.9, -1.2); ctx.stroke(); }
-      ctx.fillStyle = K.COL.wood; ctx.strokeStyle = K.COL.woodDark; ctx.lineWidth = 2.5; rr(-36, -38, 72, 22, 4); ctx.fill(); ctx.stroke();
-      for (const wx of [-20, 20]) { ctx.fillStyle = '#2c1c26'; circle(wx, -13, 13); ctx.fill(); ctx.fillStyle = '#a8744c'; circle(wx, -13, 8); ctx.fill(); ctx.fillStyle = '#2c1c26'; circle(wx, -13, 2.5); ctx.fill(); }
+      ctx.fillStyle = K.COL.wood; ctx.strokeStyle = K.COL.woodDark; ctx.lineWidth = 2.5; rr(-36, -38, 72, 22, 4); ctx.fill();
+      ctx.fillStyle = '#a8744c'; ctx.fillRect(-34, -38, 68, 3); ctx.fillStyle = 'rgba(30,16,10,0.3)'; ctx.fillRect(-34, -21, 68, 4);
+      ctx.strokeStyle = 'rgba(60,36,20,0.45)'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(-34, -28); ctx.lineTo(34, -28); for (const gx of [-26, -2, 20]) { ctx.moveTo(gx, -33); ctx.quadraticCurveTo(gx + 4, -31, gx + 8, -33); } ctx.stroke();
+      ctx.strokeStyle = K.COL.woodDark; ctx.lineWidth = 2.5; rr(-36, -38, 72, 22, 4); ctx.stroke();
+      for (const wx of [-20, 20]) {
+        ctx.fillStyle = '#2c1c26'; circle(wx, -13, 13); ctx.fill(); ctx.fillStyle = '#a8744c'; circle(wx, -13, 8); ctx.fill();
+        ctx.strokeStyle = '#2c1c26'; ctx.lineWidth = 1.8; ctx.beginPath(); for (let k = 0; k < 3; k++) { const a = k * Math.PI / 3; ctx.moveTo(wx - Math.cos(a) * 8, -13 - Math.sin(a) * 8); ctx.lineTo(wx + Math.cos(a) * 8, -13 + Math.sin(a) * 8); } ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,220,180,0.3)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(wx, -13, 11, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+        ctx.fillStyle = '#2c1c26'; circle(wx, -13, 2.5); ctx.fill();
+      }
     } else {
       // a noodle stall that pokes out into the lane
       ctx.fillStyle = K.COL.woodDark; ctx.fillRect(-30, -84, 5, 84); ctx.fillRect(25, -84, 5, 84);
@@ -778,7 +830,13 @@
     const x = rp.x, y = laneY(c, x, L);
     ctx.fillStyle = 'rgba(14,12,40,0.3)'; ctx.beginPath(); ctx.ellipse(x - 28, y + 2, 50, 5, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = '#a8744c'; ctx.strokeStyle = '#3c2416'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(x - 74, y + 1); ctx.lineTo(x + 12, y - 30); ctx.lineTo(x + 12, y + 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 74, y + 1); ctx.lineTo(x + 12, y - 30); ctx.lineTo(x + 12, y + 1); ctx.closePath(); ctx.fill();
+    ctx.save(); ctx.clip();
+    ctx.fillStyle = 'rgba(40,20,10,0.3)'; ctx.fillRect(x + 2, y - 32, 10, 34);
+    ctx.strokeStyle = 'rgba(60,36,20,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); for (const d of [8, 16, 24]) { ctx.moveTo(x - 74 + d * 2.6, y + 1); ctx.lineTo(x + 12, y - 30 + d); } ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,220,180,0.45)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 70, y - 1); ctx.lineTo(x + 10, y - 29.5); ctx.stroke();
+    ctx.strokeStyle = '#3c2416'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x - 74, y + 1); ctx.lineTo(x + 12, y - 30); ctx.lineTo(x + 12, y + 1); ctx.closePath(); ctx.stroke();
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath();
     for (const dx of [-40, -20, 0]) { ctx.moveTo(x + dx - 8, y - 4 - (dx + 60) * 0.3); ctx.lineTo(x + dx, y - 12 - (dx + 60) * 0.3); ctx.lineTo(x + dx - 2, y - 1 - (dx + 60) * 0.3); }
     ctx.stroke();
@@ -793,7 +851,14 @@
     for (let i = 0; i < 6; i++) { const yy = wy + 8 + i * 17, xx = cn.x + 10 + K.hash(i + cn.x) * (cn.w - 50) + Math.sin(t * 2 + i) * 6; ctx.moveTo(xx, yy); ctx.lineTo(xx + 22, yy); }
     ctx.stroke();
     // stone lips
-    ctx.fillStyle = '#7d77a6'; ctx.fillRect(cn.x - 7, gy(c, cn.x) - 52, 9, 106); ctx.fillRect(cn.x + cn.w - 2, gy(c, cn.x + cn.w) - 52, 9, 106);
+    { const wg = ctx.createLinearGradient(0, wy, 0, wy + 140); wg.addColorStop(0, 'rgba(120,150,230,0.25)'); wg.addColorStop(1, 'rgba(10,14,50,0.35)'); ctx.fillStyle = wg; ctx.fillRect(cn.x, wy, cn.w, bot - wy); }
+    for (const lx of [cn.x - 7, cn.x + cn.w - 2]) {
+      const ly = gy(c, lx + 4) - 52;
+      ctx.fillStyle = '#7d77a6'; ctx.fillRect(lx, ly, 9, 106);
+      ctx.fillStyle = 'rgba(220,220,255,0.3)'; ctx.fillRect(lx, ly, 2, 106); ctx.fillStyle = 'rgba(14,12,40,0.35)'; ctx.fillRect(lx + 6.5, ly, 2.5, 106);
+      ctx.fillStyle = '#2a2650'; for (let k = 1; k < 5; k++) ctx.fillRect(lx, ly + k * 21, 9, 1.5);
+      ctx.strokeStyle = '#191634'; ctx.lineWidth = 1.2; ctx.strokeRect(lx + 0.5, ly, 8, 106);
+    }
   }
   // a narrow bridge: water where the closed lane would be, a plank deck in the open lane (near = the rail in front)
   function drawBridge(st, b, t, near) {
@@ -810,6 +875,14 @@
       ctx.strokeStyle = '#5a3824'; ctx.lineWidth = 2; ctx.beginPath();
       for (let x = Math.ceil(x0 / 30) * 30; x < x1; x += 30) { ctx.moveTo(x, gy(c, x) + off - 20); ctx.lineTo(x, gy(c, x) + off + 24); }
       ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,220,180,0.25)'; ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let x = Math.ceil(x0 / 30) * 30; x < x1; x += 30) { ctx.moveTo(x + 2, gy(c, x) + off - 19); ctx.lineTo(x + 2, gy(c, x) + off + 23); }
+      ctx.moveTo(x0, gy(c, x0) + off - 19); for (let x = x0; x < x1; x += 32) ctx.lineTo(x, gy(c, x) + off - 19); ctx.stroke();
+      ctx.strokeStyle = 'rgba(60,36,20,0.4)'; ctx.lineWidth = 0.9; ctx.beginPath();
+      for (let x = Math.ceil(x0 / 30) * 30; x < x1; x += 30) { const hv = hash(Math.round(x / 30), 17); ctx.moveTo(x + 8, gy(c, x) + off - 12 + hv % 10); ctx.quadraticCurveTo(x + 14, gy(c, x) + off - 8 + hv % 10, x + 12, gy(c, x) + off + hv % 12); }
+      ctx.stroke();
+      ctx.fillStyle = '#2a1a12'; ctx.beginPath(); for (let x = Math.ceil(x0 / 30) * 30; x < x1; x += 30) for (const dy of [-15, 19]) { ctx.moveTo(x + 5, gy(c, x) + off + dy); ctx.arc(x + 4, gy(c, x) + off + dy, 1.1, 0, TAU); } ctx.fill();
+      ctx.fillStyle = 'rgba(14,12,40,0.3)'; ctx.beginPath(); ctx.moveTo(x0, gy(c, x0) + off + 18); for (let x = x0; x < x1; x += 32) ctx.lineTo(x, gy(c, x) + off + 18); ctx.lineTo(x1, gy(c, x1) + off + 18); ctx.lineTo(x1, gy(c, x1) + off + 24); for (let x = x1; x > x0; x -= 32) ctx.lineTo(x, gy(c, x) + off + 24); ctx.lineTo(x0, gy(c, x0) + off + 24); ctx.closePath(); ctx.fill();
     }
     // a rail: posts and a rope (far rail behind the rickshaw, near rail in front)
     const ry = near ? off + 24 : off - 20;

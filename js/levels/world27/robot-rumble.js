@@ -316,8 +316,20 @@ const RUMBLE = {
     ctx.fillStyle = '#5a6488'; ctx.beginPath(); ctx.moveTo(mid - 50, 150); ctx.lineTo(mid + 50, 150); ctx.lineTo(mid + 20, 220); ctx.lineTo(mid - 20, 220); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.beginPath(); ctx.moveTo(mid + 10, 150); ctx.lineTo(mid + 50, 150); ctx.lineTo(mid + 20, 220); ctx.lineTo(mid + 5, 220); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = '#3a4260'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(mid - 50, 150); ctx.lineTo(mid - 20, 220); ctx.lineTo(mid + 20, 220); ctx.lineTo(mid + 50, 150); ctx.stroke();
+    // the hopper's panel seams, rivet rows, a little window showing parts inside and a rolled rim
+    ctx.strokeStyle = 'rgba(10,10,30,0.3)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(mid - 17, 150); ctx.lineTo(mid - 7, 220); ctx.moveTo(mid + 17, 150); ctx.lineTo(mid + 7, 220); ctx.stroke();
+    ctx.fillStyle = '#2a2f4f'; for (let k = 0; k < 5; k++) { const u = k / 4, y = 158 + u * 54; for (const sd of [-1, 1]) { circle(mid + sd * (46 - u * 28), y, 1.4); ctx.fill(); } }
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.moveTo(mid - 48, 150); ctx.lineTo(mid - 44, 150); ctx.lineTo(mid - 16, 218); ctx.lineTo(mid - 19, 218); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#1c2038'; rr(mid - 14, 166, 28, 16, 4); ctx.fill();
+    ctx.fillStyle = '#ffc53d'; circle(mid - 6, 176, 3); ctx.fill(); ctx.fillStyle = '#9aa8c8'; ctx.fillRect(mid + 1, 172, 8, 6); ctx.fillStyle = '#ff7ab8'; circle(mid + 3, 180, 2.5); ctx.fill();
+    ctx.fillStyle = 'rgba(190,240,255,0.25)'; ctx.beginPath(); ctx.moveTo(mid - 12, 180); ctx.lineTo(mid - 4, 168); ctx.lineTo(mid, 168); ctx.lineTo(mid - 8, 180); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#3a4260'; ctx.lineWidth = 1.5; rr(mid - 14, 166, 28, 16, 4); ctx.stroke();
     rf27Stripes(mid - 50, 140, 100, 10);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(mid - 50, 140, 100, 1.5); ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(mid - 50, 148, 100, 2);
+    ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 1.5; ctx.strokeRect(mid - 50, 140, 100, 10);
     ctx.fillStyle = '#4a5270'; ctx.fillRect(mid - 6, 220, 12, R.beltY - 220);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(mid - 6, 220, 2.5, R.beltY - 220); ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(mid + 3, 220, 3, R.beltY - 220);
+    ctx.fillStyle = '#3a4262'; for (let y = 240; y < R.beltY - 8; y += 40) { ctx.fillRect(mid - 8, y, 16, 5); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(mid - 8, y, 16, 1); ctx.fillStyle = '#3a4262'; }
     ctx.fillStyle = 'rgba(10,10,30,0.2)'; ctx.beginPath(); ctx.ellipse(mid, R.floorY, (R.beltX1 - R.beltX0) / 2 + 10, 6, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2a2f4f'; rr(R.beltX0 - 10, R.beltY - 2, R.beltX1 - R.beltX0 + 20, 22, 10); ctx.fill();
     ctx.fillStyle = '#6a7296'; for (let x = R.beltX0; x <= R.beltX1; x += 24) { circle(x, R.beltY + 12, 6); ctx.fill(); }
@@ -328,7 +340,15 @@ const RUMBLE = {
     for (let x = mid; x < R.beltX1 + 30; x += 30) { ctx.beginPath(); ctx.moveTo(x + off, R.beltY - 2); ctx.lineTo(x + off + 5, R.beltY + 2); ctx.lineTo(x + off, R.beltY + 6); ctx.stroke(); }
     for (let x = mid; x > R.beltX0 - 30; x -= 30) { ctx.beginPath(); ctx.moveTo(x - off, R.beltY - 2); ctx.lineTo(x - off - 5, R.beltY + 2); ctx.lineTo(x - off, R.beltY + 6); ctx.stroke(); }
     ctx.restore();
-    ctx.fillStyle = '#4a5270'; ctx.fillRect(R.beltX0 + 20, R.beltY + 20, 10, R.floorY - R.beltY - 20); ctx.fillRect(R.beltX1 - 30, R.beltY + 20, 10, R.floorY - R.beltY - 20);
+    // the belt legs: steel posts with a lit edge, a cross brace, bolts and feet
+    for (const lx of [R.beltX0 + 20, R.beltX1 - 30]) {
+      ctx.fillStyle = '#4a5270'; ctx.fillRect(lx, R.beltY + 20, 10, R.floorY - R.beltY - 20);
+      ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(lx, R.beltY + 20, 2.5, R.floorY - R.beltY - 20);
+      ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(lx + 7.5, R.beltY + 20, 2.5, R.floorY - R.beltY - 20);
+      ctx.fillStyle = '#3a4262'; ctx.fillRect(lx - 5, R.floorY - 6, 20, 6); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(lx - 5, R.floorY - 6, 20, 1.2);
+      ctx.fillStyle = '#20243c'; circle(lx - 1.5, R.floorY - 3, 1.2); ctx.fill(); circle(lx + 11.5, R.floorY - 3, 1.2); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(74,82,112,0.8)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(R.beltX0 + 30, R.beltY + 30); ctx.lineTo(R.beltX1 - 30, R.floorY - 14); ctx.moveTo(R.beltX1 - 30, R.beltY + 30); ctx.lineTo(R.beltX0 + 30, R.floorY - 14); ctx.stroke();
     // pads and the robots being built
     for (const k of [0, 1]) {
       const pad = R.pads[k], cx = (pad[0] + pad[1]) / 2;
@@ -336,6 +356,9 @@ const RUMBLE = {
       ctx.fillStyle = PDARK[k]; rr(pad[0], R.floorY - 6, pad[1] - pad[0], 10, 5); ctx.fill();
       ctx.fillStyle = PCOL[k]; rr(pad[0], R.floorY - 8, pad[1] - pad[0], 10, 5); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(pad[0] + 6, R.floorY - 6, pad[1] - pad[0] - 12, 3);
+      // grip bars and bolts on the pad, and lit chevrons pointing in
+      ctx.fillStyle = 'rgba(10,10,30,0.25)'; for (let x = pad[0] + 14; x < pad[1] - 14; x += 10) ctx.fillRect(x, R.floorY - 3, 5, 2.5);
+      ctx.fillStyle = PDARK[k]; circle(pad[0] + 7, R.floorY - 3, 1.6); ctx.fill(); circle(pad[1] - 7, R.floorY - 3, 1.6); ctx.fill();
       drawRobot(cx, R.floorY - 8, st.robots[k].parts, k, 1, t, { ghost: true, face: k ? -1 : 1 });
       if (st.mega && st.mega[k]) { ctx.fillStyle = C.gold; circle(cx + (k ? 40 : -40), R.floorY - 30 + Math.sin(t * 4) * 3, 12); ctx.fill(); text('!', cx + (k ? 40 : -40), R.floorY - 30, 14, '#5a3a00', 'center'); }
       if (st.robots[k].done) text('READY!', cx, R.floorY - 150, 18, C.gold, 'center');
@@ -353,6 +376,8 @@ const RUMBLE = {
     ctx.fillStyle = '#4a5270'; ctx.fillRect((e0 + e1) / 2 - 40, R.AY + 20, 80, 80);
     ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect((e0 + e1) / 2 - 40, R.AY + 20, 6, 80);
     ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect((e0 + e1) / 2 + 28, R.AY + 20, 12, 80);
+    ctx.fillStyle = '#2a2f4f'; for (let y = R.AY + 44; y < R.AY + 96; y += 16) for (const dx of [-32, 32]) { circle((e0 + e1) / 2 + dx, y, 1.6); ctx.fill(); }
+    ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.fillRect((e0 + e1) / 2 - 2, R.AY + 40, 4, 60);
     rf27Stripes((e0 + e1) / 2 - 40, R.AY + 26, 80, 8);
     rf27Floor(e0, R.AY, e1 - e0, 26, 'test');
     ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(e0, R.AY + 26, e1 - e0, 6);

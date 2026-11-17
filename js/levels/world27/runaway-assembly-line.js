@@ -381,7 +381,7 @@ const BELT = {
     // catwalk poles and grates
     for (const g of st.grates) if (g.x1 > vx0 && g.x0 < vx1) drawGrate(g);
     // the floor under the belt
-    ctx.fillStyle = '#3c4468'; ctx.fillRect(vx0, B.BY + 40, vx1 - vx0, H - B.BY);
+    { const fx0 = Math.floor(vx0 / 60) * 60; rf27Floor(fx0, B.BY + 40, Math.ceil((vx1 - fx0) / 60) * 60, H - B.BY, 'night'); }
     ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(vx0, B.BY + 26, vx1 - vx0, 14);
     // the belt frame legs and floor plates under the line
     for (let x = Math.floor(vx0 / 130) * 130; x < vx1; x += 130) {
@@ -399,15 +399,32 @@ const BELT = {
     ctx.restore();
   }
   function drawGrate(g) {
-    for (let x = g.x0 + 30; x < g.x1; x += 160) { ctx.fillStyle = '#5a6488'; ctx.fillRect(x, g.y + 10, 8, B.BY - g.y - 10); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x, g.y + 10, 2, B.BY - g.y - 10); ctx.fillStyle = '#4a5270'; ctx.beginPath(); ctx.moveTo(x, g.y + 10); ctx.lineTo(x - 18, g.y + 10); ctx.lineTo(x, g.y + 28); ctx.fill(); ctx.beginPath(); ctx.moveTo(x + 8, g.y + 10); ctx.lineTo(x + 26, g.y + 10); ctx.lineTo(x + 8, g.y + 28); ctx.fill(); }
+    // poles with knee braces and rivets
+    for (let x = g.x0 + 30; x < g.x1; x += 160) {
+      ctx.fillStyle = '#5a6488'; ctx.fillRect(x, g.y + 10, 8, B.BY - g.y - 10);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x, g.y + 10, 2, B.BY - g.y - 10);
+      ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(x + 6, g.y + 10, 2, B.BY - g.y - 10);
+      ctx.fillStyle = '#2a2f4f'; for (let yy = g.y + 40; yy < B.BY - 6; yy += 36) { circle(x + 4, yy, 1.4); ctx.fill(); }
+      ctx.fillStyle = '#4a5270'; ctx.beginPath(); ctx.moveTo(x, g.y + 10); ctx.lineTo(x - 18, g.y + 10); ctx.lineTo(x, g.y + 28); ctx.fill(); ctx.beginPath(); ctx.moveTo(x + 8, g.y + 10); ctx.lineTo(x + 26, g.y + 10); ctx.lineTo(x + 8, g.y + 28); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x - 18, g.y + 10, 44, 1.2);
+      ctx.fillStyle = '#3a4262'; ctx.fillRect(x - 4, B.BY - 6, 16, 6); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x - 4, B.BY - 6, 16, 1.2);
+    }
     ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.fillRect(g.x0, g.y + 10, g.x1 - g.x0, 4);
+    // the grate: a steel frame with a mesh of slots (dark holes, lit lower lips), a toe board and a handrail
     ctx.fillStyle = '#8a96b4'; ctx.fillRect(g.x0, g.y, g.x1 - g.x0, 10);
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(g.x0, g.y, g.x1 - g.x0, 2);
-    ctx.fillStyle = 'rgba(28,26,54,0.35)'; for (let x = g.x0 + 6; x < g.x1 - 4; x += 12) ctx.fillRect(x, g.y + 2, 6, 6);
+    ctx.fillStyle = 'rgba(28,26,54,0.45)'; ctx.beginPath(); for (let x = g.x0 + 5; x < g.x1 - 5; x += 8) { ctx.rect(x, g.y + 2.5, 5, 2); ctx.rect(x + 4, g.y + 5.5, 5, 2); } ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); for (let x = g.x0 + 5; x < g.x1 - 5; x += 8) { ctx.rect(x, g.y + 4.5, 5, 0.7); ctx.rect(x + 4, g.y + 7.5, 5, 0.7); } ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(g.x0, g.y, g.x1 - g.x0, 1.5);
+    ctx.fillStyle = '#5a6488'; ctx.fillRect(g.x0, g.y + 8, g.x1 - g.x0, 3); ctx.fillStyle = 'rgba(10,10,30,0.35)'; ctx.fillRect(g.x0, g.y + 10, g.x1 - g.x0, 1);
+    ctx.strokeStyle = '#3a4262'; ctx.lineWidth = 1; ctx.strokeRect(g.x0 + 0.5, g.y + 0.5, g.x1 - g.x0 - 1, 10);
+    ctx.fillStyle = 'rgba(255,197,61,0.85)'; ctx.fillRect(g.x0, g.y - 4, 4, 4); ctx.fillRect(g.x1 - 4, g.y - 4, 4, 4);
+    // handrail tube (shadow, body, highlight), a mid rail and posts with collars
+    ctx.strokeStyle = 'rgba(10,10,30,0.3)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(g.x0 + 4, g.y - 24.5); ctx.lineTo(g.x1 - 4, g.y - 24.5); ctx.stroke();
     ctx.strokeStyle = '#c4cee6'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(g.x0 + 4, g.y - 26); ctx.lineTo(g.x1 - 4, g.y - 26); ctx.stroke();
-    ctx.lineWidth = 2; for (let x = g.x0 + 4; x <= g.x1 - 4; x += 40) { ctx.beginPath(); ctx.moveTo(x, g.y - 26); ctx.lineTo(x, g.y); ctx.stroke(); }
-    // the net under the grate (catches a falling fixer)
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(g.x0 + 4, g.y - 27); ctx.lineTo(g.x1 - 4, g.y - 27); ctx.stroke();
+    ctx.strokeStyle = 'rgba(196,206,230,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(g.x0 + 4, g.y - 13); ctx.lineTo(g.x1 - 4, g.y - 13); ctx.stroke();
+    ctx.strokeStyle = '#aab4d0'; ctx.lineWidth = 2; for (let x = g.x0 + 4; x <= g.x1 - 4; x += 40) { ctx.beginPath(); ctx.moveTo(x, g.y - 26); ctx.lineTo(x, g.y); ctx.stroke(); }
+    ctx.fillStyle = '#6a76a0'; for (let x = g.x0 + 4; x <= g.x1 - 4; x += 40) ctx.fillRect(x - 2, g.y - 3, 4, 3);
   }
   function drawBelt(st, x0, x1, t, gold) {
     const y = B.BY;
@@ -422,6 +439,13 @@ const BELT = {
     }
     ctx.fillStyle = gold ? C.gold : '#3c4060'; ctx.fillRect(x0 + 2, y, x1 - x0 - 4, 7);
     ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x0 + 2, y, x1 - x0 - 4, 1.5);
+    // the side channel the rollers sit in: lit lip, bolts, a darker underside
+    ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(x0 + 4, y + 22, x1 - x0 - 8, 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x0 + 4, y + 21, x1 - x0 - 8, 1);
+    // rubber belt joints and grip dimples that travel with the belt
+    ctx.save(); ctx.beginPath(); ctx.rect(x0 + 2, y, x1 - x0 - 4, 7); ctx.clip();
+    { const o2 = st.beltPhase % 20; ctx.fillStyle = 'rgba(10,10,30,0.35)'; ctx.beginPath(); for (let x = Math.floor(x0 / 20) * 20 + o2 - 20; x < x1 + 20; x += 20) { ctx.rect(x, y + 1.5, 1.2, 5.5); ctx.rect(x + 9, y + 4, 2, 1.5); } ctx.fill(); }
+    ctx.restore();
     // moving chevrons
     ctx.save(); ctx.beginPath(); ctx.rect(x0, y, x1 - x0, 7); ctx.clip();
     ctx.strokeStyle = gold ? '#fff0b0' : '#ffc53d'; ctx.lineWidth = 2;
@@ -462,8 +486,14 @@ const BELT = {
     ctx.fillStyle = 'rgba(10,10,30,0.2)'; rr(x - 18, y - 52, 36, 8, 4); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x - 14, y - 72, 28, 2);
     rr(x - 18, y - 74, 36, 30, 6); ctx.stroke();
+    // corner screws, a vent and a conduit down the post
+    ctx.fillStyle = '#7a5a10'; for (const [a, b] of [[-14, -70], [14, -70], [-14, -48], [14, -48]]) { circle(x + a, y + b, 1.3); ctx.fill(); }
+    ctx.fillStyle = 'rgba(10,10,30,0.35)'; for (let k = 0; k < 3; k++) ctx.fillRect(x + 6, y - 66 + k * 4, 8, 1.5);
+    ctx.strokeStyle = '#2a2f4f'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x + 6, y - 44); ctx.quadraticCurveTo(x + 8, y - 30, x + 4, y - 8); ctx.stroke();
+    ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 2.5;
     const on = !done && Math.sin(t * 7) > 0;
     ctx.fillStyle = done ? '#7aff9a' : on ? '#ff5a5a' : '#b03a3a'; circle(x, y - 59, 9); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; circle(x - 3, y - 62, 2.6); ctx.fill();
     // a dashed line down to its gap
     if (!done) {
       ctx.strokeStyle = gold ? 'rgba(255,197,61,0.6)' : 'rgba(255,255,255,0.25)'; ctx.setLineDash([6, 6]); ctx.lineWidth = 2;
@@ -475,6 +505,9 @@ const BELT = {
     ctx.fillStyle = '#5a6488'; ctx.fillRect(x - 10, 50, 20, y - 70);
     ctx.fillStyle = '#c4cee6'; ctx.fillRect(x - 6, 50, 4, y - 70);
     ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.fillRect(x + 5, 50, 5, y - 70);
+    ctx.fillStyle = 'rgba(10,10,30,0.3)'; for (let yy = 76; yy < y - 24; yy += 14) ctx.fillRect(x - 10, yy, 20, 2);
+    ctx.strokeStyle = '#2a2f4f'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 26, 70); ctx.bezierCurveTo(x + 40, 110, x + 22, Math.max(110, y - 70), x + B.headW / 2 - 8, y - 30); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + 25, 70); ctx.bezierCurveTo(x + 39, 110, x + 21, Math.max(110, y - 70), x + B.headW / 2 - 9, y - 30); ctx.stroke();
     ctx.fillStyle = '#4a5270'; rr(x - 40, 40, 80, 30, 6); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x - 36, 41, 72, 3);
     ctx.fillStyle = 'rgba(10,10,30,0.3)'; for (const dx of [-32, 32]) { circle(x + dx, 55, 2.5); ctx.fill(); }
@@ -485,6 +518,9 @@ const BELT = {
     ctx.fillStyle = 'rgba(10,10,30,0.18)'; ctx.fillRect(x + hw - 10, y - 28, 8, 20);
     rr(x - hw, y - 30, hw * 2, 30, 4); ctx.stroke();
     rf27Stripes(x - hw + 3, y - 8, hw * 2 - 6, 6);
+    ctx.fillStyle = '#2a2f4f'; for (const dx of [-hw + 7, hw - 7]) { circle(x + dx, y - 19, 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; for (const dx of [-hw + 7, hw - 7]) { circle(x + dx - 0.6, y - 19.6, 0.8); ctx.fill(); }
+    ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.fillRect(x - hw + 12, y - 22, hw * 2 - 24, 2);
     const warn = ss.ph === 'warn' && Math.sin(t * 22) > 0;
     ctx.fillStyle = s.gold ? '#fff0b0' : warn ? '#ff5a5a' : ss.danger ? '#ff8a5a' : '#3a5a3a'; circle(x, 56, 7); ctx.fill();
     if (s.gold) text('Zzz', x + 30, y - 46 + Math.sin(t * 2) * 4, 16, C.gold, 'center');
@@ -495,6 +531,10 @@ const BELT = {
     ctx.fillStyle = '#8e5a2e'; ctx.fillRect(x + 80, y - 140, 220, 140);
     ctx.fillStyle = '#d39a5c'; ctx.fillRect(x + 90, y - 130, 200, 120);
     ctx.fillStyle = 'rgba(90,50,20,0.15)'; for (let yy = y - 120; yy < y - 10; yy += 20) ctx.fillRect(x + 90, yy, 200, 2);
+    ctx.strokeStyle = 'rgba(110,64,28,0.3)'; ctx.lineWidth = 0.8; ctx.beginPath();
+    for (let yy = y - 126; yy < y - 12; yy += 20) for (let g = 0; g < 2; g++) { const gy = yy + 5 + g * 6; ctx.moveTo(x + 92, gy); ctx.bezierCurveTo(x + 150, gy + 2, x + 220, gy - 2, x + 288, gy + 1); }
+    ctx.stroke();
+    ctx.fillStyle = '#6a4220'; for (let yy = y - 120; yy < y - 10; yy += 20) for (const nx of [x + 96, x + 284]) { circle(nx, yy + 10, 1.3); ctx.fill(); }
     ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x + 90, y - 130, 200, 3);
     ctx.fillStyle = 'rgba(90,50,20,0.25)'; ctx.fillRect(x + 276, y - 130, 14, 120);
     ctx.fillStyle = '#5a3a1a'; for (const [a, b] of [[86, -134], [294, -134], [86, -6], [294, -6]]) { circle(x + a, y + b, 3); ctx.fill(); }

@@ -131,28 +131,106 @@ function pyrShake(amt) { if (!reduceMotion) G.shake = Math.max(G.shake, amt); }
 
 /* ---------- drawing helpers ---------- */
 const PYR_SAND = { lite: '#e9c98e', mid: '#d4a865', dark: '#a8783e', deep: '#6e4a26', ink: '#3a2614' };
-// a sandstone block wall (x, y, w, h), rows of blocks with a slight per-block tone; seed keeps it steady
+// a sandstone block wall (x, y, w, h), rows of blocks with a slight per-block tone; seed keeps it steady.
+// (Nov 2026 "richer props" pass) Every block is carved: its own tone, a lit top-left bevel and a shaded lower-right
+// edge, deep mortar joints, chisel marks, pits, the odd crack and a chipped corner. The blocks are painted once into a
+// repeating picture (8 blocks by 4 rows, per tone, size and seed) and laid with a pattern, aligned to the world grid.
+const pyrPat = {};
+const pyrHexMix = (a, b, t) => { const p = c => { const n = parseInt(String(c).slice(1, 7), 16) || 0; return [n >> 16, (n >> 8) & 255, n & 255]; }; const A = p(a), B = p(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+function pyrBlockTile(t, bw, bh, seed) {
+  const sc = Math.max(1, Math.min(3, canvas.width / W)), key = [t.lite, t.mid, t.dark, bw, bh, seed, sc].join('|');
+  if (pyrPat[key]) return pyrPat[key];
+  const cols = 8, rows = 4, tw = bw * cols, th = bh * rows;
+  const cv = document.createElement('canvas'); cv.width = Math.round(tw * sc); cv.height = Math.round(th * sc);
+  const c = cv.getContext('2d'); c.scale(cv.width / tw, cv.height / th);
+  const mortar = pyrHexMix(t.dark, '#2a1408', 0.45);
+  c.fillStyle = mortar; c.fillRect(0, 0, tw, th);
+  const tones = [t.mid, t.mid, t.lite, t.dark, pyrHexMix(t.mid, t.lite, 0.5), pyrHexMix(t.mid, t.dark, 0.5)];
+  const block = (bx, by, cc, r) => {
+    const hv = hash(cc + seed * 31, r + seed * 7), tone = tones[hv % tones.length], g = Math.max(1, Math.min(bw, bh) * 0.05);
+    const x0 = bx + g, y0 = by + g, w0 = bw - 2 * g, h0 = bh - 2 * g;
+    c.fillStyle = tone; c.fillRect(x0, y0, w0, h0);
+    // a soft sweep of light across the face
+    const gr = c.createLinearGradient(x0, y0, x0 + w0 * 0.4, y0 + h0); gr.addColorStop(0, 'rgba(255,240,205,0.16)'); gr.addColorStop(1, 'rgba(255,240,205,0)');
+    c.fillStyle = gr; c.fillRect(x0, y0, w0, h0);
+    // bevel: lit top and left, shaded bottom and right
+    c.fillStyle = 'rgba(255,240,200,0.32)'; c.fillRect(x0, y0, w0, Math.max(1.5, h0 * 0.07)); c.fillRect(x0, y0, Math.max(1.2, w0 * 0.025), h0);
+    c.fillStyle = 'rgba(70,40,15,0.30)'; c.fillRect(x0, y0 + h0 - Math.max(2, h0 * 0.1), w0, Math.max(2, h0 * 0.1)); c.fillRect(x0 + w0 - Math.max(2, w0 * 0.05), y0, Math.max(2, w0 * 0.05), h0);
+    // chisel marks: short parallel strokes
+    c.strokeStyle = 'rgba(80,46,18,0.22)'; c.lineWidth = 0.8; c.beginPath();
+    const n = 3 + hv % 4;
+    for (let k = 0; k < n; k++) { const q = hash(k + cc * 5, r * 3 + seed), sx = x0 + 4 + q % Math.max(1, w0 - 12), sy = y0 + 4 + (q >>> 7) % Math.max(1, h0 - 10); c.moveTo(sx, sy); c.lineTo(sx + 4, sy + 2.5); }
+    c.stroke();
+    // pits
+    c.fillStyle = 'rgba(70,40,15,0.28)';
+    for (let k = 0; k < 3; k++) { const q = hash(k + cc * 9, r + 77 + seed), px = x0 + 3 + q % Math.max(1, w0 - 6), py = y0 + 3 + (q >>> 8) % Math.max(1, h0 - 6); c.beginPath(); c.arc(px, py, 0.6 + (q % 3) * 0.4, 0, 7); c.fill(); }
+    c.fillStyle = 'rgba(255,240,200,0.25)';
+    for (let k = 0; k < 2; k++) { const q = hash(k + cc * 13, r + 91 + seed), px = x0 + 3 + q % Math.max(1, w0 - 6), py = y0 + 3 + (q >>> 8) % Math.max(1, h0 - 6); c.fillRect(px, py, 1.2, 1); }
+    // a crack now and then (dark line with a pale lip)
+    if (hv % 7 === 0) {
+      const sx = x0 + w0 * (0.2 + (hv >>> 4) % 40 / 100);
+      for (const [col, o] of [['rgba(255,236,190,0.3)', 0.8], ['rgba(50,26,10,0.5)', 0]]) { c.strokeStyle = col; c.lineWidth = 1; c.beginPath(); c.moveTo(sx + o, y0 + o); c.lineTo(sx + w0 * 0.12 + o, y0 + h0 * 0.45 + o); c.lineTo(sx + w0 * 0.06 + o, y0 + h0 * 0.8 + o); c.stroke(); }
+    }
+    // a chipped corner
+    if (hv % 5 === 2) { c.fillStyle = mortar; c.beginPath(); const cx = hv % 2 ? x0 + w0 : x0; c.moveTo(cx, y0); c.lineTo(cx + (hv % 2 ? -5 : 5), y0); c.lineTo(cx, y0 + 4); c.closePath(); c.fill(); }
+  };
+  for (let r = 0; r < rows; r++) {
+    const off = (r & 1) * bw / 2;
+    for (let cc = -1; cc <= cols; cc++) block(cc * bw + off, r * bh, ((cc % cols) + cols) % cols, r);
+  }
+  const pat = ctx.createPattern(cv, 'repeat');
+  if (pat && pat.setTransform) pat.setTransform(new DOMMatrix([tw / cv.width, 0, 0, th / cv.height, 0, 0]));
+  return (pyrPat[key] = pat);
+}
 function pyrBlocks(x, y, w, h, tone, bw = 60, bh = 30, seed = 0) {
   const t = tone || PYR_SAND;
+  if (w <= 0 || h <= 0) return;
+  const pat = pyrBlockTile(t, bw, bh, seed);
   ctx.fillStyle = t.mid; ctx.fillRect(x, y, w, h);
-  const r0 = Math.floor(y / bh), r1 = Math.ceil((y + h) / bh);
-  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-  const specks = [];
-  for (let r = r0; r < r1; r++) {
-    const off = (r & 1) * bw / 2, c0 = Math.floor((x - off) / bw) - 1, c1 = Math.ceil((x + w - off) / bw);
-    for (let c = c0; c <= c1; c++) {
-      const bx = c * bw + off, by = r * bh, hv = hash(c + seed, r);
-      // (a plain block is the base colour already, so only the light and dark ones are filled)
-      if (hv % 5 === 0 || hv % 7 === 0) { ctx.fillStyle = hv % 5 === 0 ? t.lite : t.dark; ctx.fillRect(bx + 1, by + 1, bw - 2, bh - 2); }
-      ctx.fillStyle = 'rgba(255,240,200,0.18)'; ctx.fillRect(bx + 2, by + 2, bw - 4, 3);
-      ctx.fillStyle = 'rgba(70,40,15,0.16)'; ctx.fillRect(bx + bw - 5, by + 4, 4, bh - 6);
-      if (hv % 4 === 1) { const px = bx + 8 + (hv >> 4) % (bw - 16), py = by + 8 + (hv >> 9) % Math.max(1, bh - 16); specks.push(px, py); }
-      if (hv % 11 === 0) { ctx.strokeStyle = 'rgba(60,36,16,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx + 10, by + 6); ctx.lineTo(bx + 18, by + 14); ctx.lineTo(bx + 15, by + 24); ctx.stroke(); }
+  if (!pat) return;
+  const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = pat; ctx.fillRect(x, y, w, h);
+  ctx.imageSmoothingEnabled = sm;
+}
+// the walking surface of a stone floor (x, y, w): a worn paving course with a lit lip, chips, footworn dips and little
+// drifts of sand along the top (a repeating picture per tone, laid with a pattern on the world grid)
+const pyrFloorPats = {};
+function pyrFloorTop(x, y, w, t) {
+  const sc = Math.max(1, Math.min(3, canvas.width / W)), key = [t.lite, t.mid, t.dark, sc].join('|');
+  let pat = pyrFloorPats[key];
+  if (!pat) {
+    const tw = 480, th = 16, cv = document.createElement('canvas'); cv.width = Math.round(tw * sc); cv.height = Math.round(th * sc);
+    const c = cv.getContext('2d'); c.scale(cv.width / tw, cv.height / th);
+    const deep = t.deep || pyrHexMix(t.dark, '#2a1408', 0.4);
+    for (let x = 0, i = 0; x < tw; i++) {
+      const L = [70, 50, 90, 60, 80, 70][i % 6], hv = hash(i, 404), tone = [t.lite, pyrHexMix(t.lite, t.mid, 0.4), pyrHexMix(t.lite, '#ffffff', 0.12)][hv % 3];
+      const x1 = Math.min(tw, x + L);
+      c.fillStyle = tone; c.fillRect(x, 0, x1 - x, 9);
+      c.fillStyle = 'rgba(255,248,225,0.55)'; c.fillRect(x, 0, x1 - x, 1.5);
+      c.fillStyle = 'rgba(70,40,15,0.25)'; c.fillRect(x, 7, x1 - x, 2);
+      c.fillStyle = deep; c.fillRect(x1 - 1, 0, 1.2, 9);
+      // a worn dip and a chip on the edge
+      c.fillStyle = 'rgba(70,40,15,0.14)'; c.beginPath(); c.ellipse(x + L * 0.5, 2.5, L * 0.25, 1.3, 0, 0, 7); c.fill();
+      if (hv % 3 === 0) { c.fillStyle = deep; c.beginPath(); const cx = x + 8 + hv % Math.max(1, L - 16); c.moveTo(cx - 3, 0); c.lineTo(cx + 3, 0); c.lineTo(cx, 3); c.closePath(); c.fill(); }
+      x = x1;
     }
-    ctx.fillStyle = 'rgba(70,40,15,0.13)'; ctx.fillRect(x, r * bh + bh - 5, w, 4);
+    // the shaded front of the course, and the shadow it throws on the blocks below
+    c.fillStyle = 'rgba(50,26,10,0.32)'; c.fillRect(0, 9, tw, 3);
+    c.fillStyle = 'rgba(50,26,10,0.14)'; c.fillRect(0, 12, tw, 4);
+    // sand drifts and grains along the top
+    for (let i = 0; i < 18; i++) {
+      const hv = hash(i, 505), sx = hv % tw, sw = 8 + hv % 18;
+      c.fillStyle = pyrHexMix(t.lite, '#f8e2b0', 0.5); c.beginPath(); c.ellipse(sx, 1.2, sw, 1.6, 0, Math.PI, 0); c.fill();
+      if (sx + sw > tw) { c.beginPath(); c.ellipse(sx - tw, 1.2, sw, 1.6, 0, Math.PI, 0); c.fill(); }
+    }
+    c.fillStyle = 'rgba(120,80,40,0.45)'; for (let i = 0; i < 60; i++) { const hv = hash(i, 606); c.fillRect(hv % tw, 1 + (hv >>> 9) % 7, 1, 1); }
+    pat = ctx.createPattern(cv, 'repeat-x');
+    if (pat && pat.setTransform) pat.setTransform(new DOMMatrix([tw / cv.width, 0, 0, th / cv.height, 0, 0]));
+    pyrFloorPats[key] = pat;
   }
-  // little pits in the stone, all in one path
-  if (specks.length) { ctx.fillStyle = 'rgba(70,40,15,0.22)'; ctx.beginPath(); for (let k = 0; k < specks.length; k += 2) { const px = specks[k], py = specks[k + 1]; ctx.moveTo(px + 1.3, py); ctx.arc(px, py, 1.3, 0, 7); ctx.moveTo(px + 5.9, py + 3); ctx.arc(px + 5, py + 3, 0.9, 0, 7); } ctx.fill(); }
+  if (!pat || w <= 0) return;
+  ctx.save(); ctx.translate(0, y); ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = pat; ctx.fillRect(x, 0, w, 16);
   ctx.restore();
 }
 // a hieroglyph (simple shapes, no writing): eye, bird, scarab, sun, snake, cat, reed, wave
@@ -222,17 +300,27 @@ function pyrTorchStick(x, y, len, ang) {
 }
 // a floor lever (pivot at x, y on the floor); a 0 (left, closed) .. 1 (right, pulled)
 function pyrLever(x, y, a, glow) {
-  ctx.fillStyle = 'rgba(40,20,8,0.25)'; ctx.beginPath(); ctx.ellipse(x + 2, y + 1, 18, 3.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#6e4a26'; rr(x - 13, y - 9, 26, 9, 3); ctx.fill();
-  ctx.strokeStyle = '#3a2614'; ctx.lineWidth = 1.2; rr(x - 13, y - 9, 26, 9, 3); ctx.stroke();
-  ctx.fillStyle = '#a8783e'; rr(x - 11, y - 8, 22, 3, 1.5); ctx.fill();
+  ctx.fillStyle = 'rgba(40,20,8,0.25)'; ctx.beginPath(); ctx.ellipse(x + 2, y + 1, 19, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  // the plinth: a stepped stone block with a lit top, a shaded right side, a carved sun and a bronze slot
+  ctx.fillStyle = '#5a3a1c'; rr(x - 15, y - 5, 30, 5, 1.5); ctx.fill();
+  ctx.fillStyle = '#6e4a26'; rr(x - 13, y - 11, 26, 8, 2.5); ctx.fill();
+  ctx.fillStyle = '#a8783e'; ctx.fillRect(x - 12, y - 11, 24, 2);
+  ctx.fillStyle = 'rgba(40,20,8,0.35)'; ctx.fillRect(x + 7, y - 9, 6, 6); ctx.fillRect(x + 9, y - 5, 6, 5);
+  ctx.fillStyle = 'rgba(255,230,180,0.25)'; ctx.fillRect(x - 15, y - 5, 30, 1);
+  ctx.strokeStyle = 'rgba(40,20,8,0.5)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(x - 7, y - 6.5, 2, 0, 7); for (let k = 0; k < 6; k++) { const q = k * Math.PI / 3; ctx.moveTo(x - 7 + Math.cos(q) * 2.8, y - 6.5 + Math.sin(q) * 2.8); ctx.lineTo(x - 7 + Math.cos(q) * 3.8, y - 6.5 + Math.sin(q) * 3.8); } ctx.stroke();
+  ctx.strokeStyle = '#3a2614'; ctx.lineWidth = 1.2; rr(x - 13, y - 11, 26, 8, 2.5); ctx.stroke(); rr(x - 15, y - 5, 30, 5, 1.5); ctx.stroke();
   const ang = pyrLerp(-0.7, 0.7, a), kx = x + Math.sin(ang) * 30, ky = y - 6 - Math.cos(ang) * 30;
   ctx.strokeStyle = '#3a2614'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(kx, ky); ctx.stroke();
-  ctx.strokeStyle = '#7a5a40'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(kx, ky); ctx.stroke();
+  ctx.strokeStyle = '#8a6440'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(kx, ky); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,230,190,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - Math.cos(ang) * 1.2, y - 6 - Math.sin(ang) * 1.2); ctx.lineTo(kx - Math.cos(ang) * 1.2, ky - Math.sin(ang) * 1.2); ctx.stroke();
+  // bronze collar at the pivot
+  ctx.fillStyle = '#b8862a'; circle(x, y - 7, 4); ctx.fill(); ctx.fillStyle = '#ffd68a'; circle(x - 1, y - 8, 1.4); ctx.fill();
+  ctx.strokeStyle = '#6a4210'; ctx.lineWidth = 1; circle(x, y - 7, 4); ctx.stroke();
   if (glow) { ctx.fillStyle = 'rgba(255,205,80,0.35)'; circle(kx, ky, 13); ctx.fill(); }
   ctx.fillStyle = a > 0.5 ? C.gold : '#d9573a'; circle(kx, ky, 6.5); ctx.fill();
+  ctx.fillStyle = 'rgba(60,20,10,0.25)'; ctx.beginPath(); ctx.arc(kx, ky, 6.5, -0.3, Math.PI * 0.8); ctx.fill();
   ctx.strokeStyle = 'rgba(40,20,10,0.6)'; ctx.lineWidth = 1.5; circle(kx, ky, 6.5); ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.55)'; circle(kx - 2, ky - 2, 1.8); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; circle(kx - 2, ky - 2, 1.8); ctx.fill();
   ctx.lineCap = 'butt';
 }
 // a small rounded HUD pill with text (screen coords); returns its width

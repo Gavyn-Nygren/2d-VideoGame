@@ -376,6 +376,8 @@ function crDraw(st) {
   ctx.fillStyle = look.mid; ctx.beginPath(); ctx.moveTo(0, H);
   for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 252 + Math.sin((x + cam * 0.3) * 0.006) * 16 + Math.sin((x + cam * 0.3) * 0.017) * 6);
   ctx.lineTo(W, H); ctx.fill();
+  { const my = x => 252 + Math.sin((x + cam * 0.3) * 0.006) * 16 + Math.sin((x + cam * 0.3) * 0.017) * 6;
+    ctx.strokeStyle = 'rgba(255,240,205,0.45)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let x = 0; x <= W; x += 16) { if (x) ctx.lineTo(x, my(x)); else ctx.moveTo(x, my(x)); } ctx.stroke(); }
   // the two lanes (back lane first), each with its dunes and things
   for (const lane of [0, 1]) crDrawLane(st, lane, look);
   // heat shimmer
@@ -386,6 +388,7 @@ function crDraw(st) {
   pyrFxDraw(st, false);
   ctx.restore();
 }
+let crShadeCv = null;
 function crDrawLane(st, lane, look) {
   const c = st.course, cam = st.cam.x, x0 = cam - 40, x1 = cam + W + 40, base = CR.lanes[lane], t = G.clock;
   ctx.save(); ctx.translate(-cam, 0);
@@ -395,12 +398,64 @@ function crDrawLane(st, lane, look) {
   ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x0, H);
   for (let x = x0; x <= x1; x += 8) ctx.lineTo(x, crGround(c, lane, x));
   ctx.lineTo(x1, H); ctx.fill();
+  { const step = 8, xs = Math.floor(x0 / step) * step, n = Math.ceil((x1 - xs) / step) + 1, ys = new Array(n);
+    for (let i = 0; i < n; i++) ys[i] = crGround(c, lane, xs + i * step);
+    // faces turned to the sun (rising to the right) catch light; the far sides fall into shade, deeper on steep faces
+    // one sideways gradient over the lane, its colour at each point set by the slope there, so faces blend smoothly
+    // (a one-pixel-tall strip, one pixel per 8 px of sand, stretched smoothly over the lane as a pattern)
+    { const cv = crShadeCv || (crShadeCv = document.createElement('canvas')); if (cv.width !== n) cv.width = n; cv.height = 1;
+      const g2 = cv.getContext('2d'), id = g2.createImageData(n, 1);
+      for (let i = 0; i < n; i++) {
+        const sl = (ys[Math.min(n - 1, i + 1)] - ys[Math.max(0, i - 1)]) / (2 * step), k = Math.min(1, Math.abs(sl) / 0.3), o = i * 4;
+        if (sl < 0) { id.data[o] = 255; id.data[o + 1] = 246; id.data[o + 2] = 220; id.data[o + 3] = Math.round(255 * 0.26 * k); }
+        else { id.data[o] = 120; id.data[o + 1] = 70; id.data[o + 2] = 30; id.data[o + 3] = Math.round(255 * 0.24 * k); }
+      }
+      g2.putImageData(id, 0, 0);
+      const hg = ctx.createPattern(cv, 'repeat-y'); if (hg && hg.setTransform) hg.setTransform(new DOMMatrix([step, 0, 0, 1, xs - step / 2, 0]));
+      const yb = lane ? H : CR.lanes[1] + 40;
+      ctx.fillStyle = hg; ctx.beginPath(); ctx.moveTo(xs, yb);
+      for (let i = 0; i < n; i++) ctx.lineTo(xs + i * step, ys[i]);
+      ctx.lineTo(xs + (n - 1) * step, yb); ctx.closePath(); ctx.fill(); }
+    // the front lane throws a soft shade on the sand behind it
+    if (lane === 1) { ctx.strokeStyle = 'rgba(110,64,26,0.16)'; ctx.lineWidth = 3; ctx.beginPath(); for (let i = 0; i < n; i += 2) { if (i) ctx.lineTo(xs + i * step, ys[i] - 3); else ctx.moveTo(xs, ys[0] - 3); } ctx.stroke(); }
+    // wind ripples: little runs of parallel curves that follow the dune, a dark trough with a lit lip
+    for (const [col, oy] of [['rgba(255,240,205,0.25)', -1.2], ['rgba(140,90,40,0.16)', 0]]) {
+      ctx.strokeStyle = col; ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let gx = Math.floor(x0 / 90) * 90; gx < x1; gx += 90) {
+        const hv = hash(gx / 90 | 0, 31 + lane); if (hv % 3 === 0) continue;
+        const rx = gx + hv % 40, d0 = 16 + (hv >>> 6) % 44, len = 46 + (hv >>> 3) % 40;
+        for (let k = 0; k < 2; k++) { const d = d0 + k * 8; for (let u = 0; u <= 6; u++) { const xx = rx + k * 10 + u * len / 6, yy = crGround(c, lane, xx) + d + oy + Math.sin(u * 1.1 + k * 2) * 2; if (u) ctx.lineTo(xx, yy); else ctx.moveTo(xx, yy); } }
+      }
+      ctx.stroke();
+    }
+    // pebbles: a dark base, then a lit top
+    const pb = [];
+    for (let gx = Math.floor(x0 / 34) * 34; gx < x1; gx += 34) { const hv = hash(gx / 34 | 0, 57 + lane); if (hv % 3) continue; const px = gx + hv % 30; pb.push([px, crGround(c, lane, px) + 8 + (hv >>> 5) % 60, 1.3 + (hv >>> 9) % 3 * 0.7]); }
+    ctx.fillStyle = '#a07a48'; ctx.beginPath(); for (const [px, py, r] of pb) { ctx.moveTo(px + r, py); ctx.ellipse(px, py, r, r * 0.7, 0, 0, 7); } ctx.fill();
+    ctx.fillStyle = 'rgba(255,240,205,0.6)'; ctx.beginPath(); for (const [px, py, r] of pb) { ctx.moveTo(px, py - r * 0.3); ctx.arc(px - r * 0.3, py - r * 0.3, r * 0.4, 0, 7); } ctx.fill();
+    // dry scrub and a half-buried carved stone now and then, sat on the crest line
+    for (let gx = Math.floor(x0 / 230) * 230; gx < x1; gx += 230) {
+      const hv = hash(gx / 230 | 0, 71 + lane); if (hv % 3 === 2) continue;
+      const px = gx + 40 + hv % 150; if (c.zones.some(z => px > z.x0 - 20 && px < z.x1 + 50) || c.obs.some(o => Math.abs(o.x - px) < 40)) continue;
+      const py = crGround(c, lane, px) + 3;
+      if (hv % 3 === 0) {
+        ctx.strokeStyle = '#8a7040'; ctx.lineWidth = 1.4; ctx.beginPath();
+        for (let k = 0; k < 7; k++) { const a = -Math.PI / 2 + (k - 3) * 0.32, L = 9 + hash(k, hv) % 7; ctx.moveTo(px, py); ctx.quadraticCurveTo(px + Math.cos(a) * L * 0.4, py + Math.sin(a) * L * 0.6, px + Math.cos(a) * L, py + Math.sin(a) * L); }
+        ctx.stroke(); ctx.fillStyle = 'rgba(80,50,20,0.2)'; ctx.beginPath(); ctx.ellipse(px + 2, py, 9, 2, 0, 0, 7); ctx.fill();
+      } else {
+        ctx.fillStyle = 'rgba(80,50,20,0.22)'; ctx.beginPath(); ctx.ellipse(px + 3, py, 15, 3, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = '#c9a068'; ctx.beginPath(); ctx.moveTo(px - 12, py); ctx.lineTo(px - 10, py - 9); ctx.lineTo(px + 9, py - 11); ctx.lineTo(px + 12, py); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(120,70,30,0.3)'; ctx.beginPath(); ctx.moveTo(px + 6, py - 10.5); ctx.lineTo(px + 9, py - 11); ctx.lineTo(px + 12, py); ctx.lineTo(px + 7, py); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,240,205,0.5)'; ctx.fillRect(px - 10, py - 9.5, 17, 1.5);
+        ctx.strokeStyle = 'rgba(90,56,24,0.5)'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(px - 4, py - 3); ctx.lineTo(px, py - 8); ctx.lineTo(px + 4, py - 3); ctx.moveTo(px - 6, py - 5); ctx.lineTo(px - 6, py - 2); ctx.stroke();
+        ctx.strokeStyle = '#8a6036'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(px - 12, py); ctx.lineTo(px - 10, py - 9); ctx.lineTo(px + 9, py - 11); ctx.lineTo(px + 12, py); ctx.stroke();
+        ctx.fillStyle = look.near[lane ? 0 : 1]; ctx.beginPath(); ctx.ellipse(px, py + 1, 15, 3, 0, Math.PI, 0); ctx.fill();
+      }
+    }
+  }
   ctx.strokeStyle = 'rgba(255,240,200,0.6)'; ctx.lineWidth = 2; ctx.beginPath();
   for (let x = x0; x <= x1; x += 8) { const y = crGround(c, lane, x); if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
   ctx.stroke();
-  // ripples in the sand
-  ctx.strokeStyle = 'rgba(150,100,50,0.18)'; ctx.lineWidth = 1.5;
-  for (let x = Math.floor(x0 / 70) * 70; x < x1; x += 70) { const y = crGround(c, lane, x) + 18 + (hash(x / 70 | 0, lane) % 30); ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 18, y - 4, x + 36, y); ctx.stroke(); }
   // zones: quicksand and oasis puddles
   for (const z of c.zones) {
     if (z.x1 < x0 || z.x0 > x1) continue;
@@ -410,19 +465,37 @@ function crDrawLane(st, lane, look) {
     ctx.closePath();
     if (z.k === 'sand') {
       // a soft, swirling pit: darker sand with rings that turn
-      ctx.fillStyle = '#a06a34'; ctx.fill();
+      { const zy = crGround(c, lane, (z.x0 + z.x1) / 2), qg = ctx.createLinearGradient(0, zy - 10, 0, zy + 22); qg.addColorStop(0, '#c89050'); qg.addColorStop(1, '#94602e'); ctx.fillStyle = qg; ctx.fill(); }
+      ctx.fillStyle = 'rgba(60,30,10,0.3)'; for (let k = 0; k < 8; k++) { const q = hash(k, z.x0 | 0), bx = z.x0 + 10 + q % Math.max(1, z.x1 - z.x0 - 20); circle(bx, crGround(c, lane, bx) + 6 + (q >>> 7) % 10, 1 + q % 2); ctx.fill(); }
+      if (!reduceMotion) { ctx.strokeStyle = 'rgba(255,230,180,0.45)'; ctx.lineWidth = 1; for (let k = 0; k < 3; k++) { const ph = (t * 0.6 + k / 3) % 1, bx = z.x0 + (z.x1 - z.x0) * (0.25 + k * 0.25); circle(bx, crGround(c, lane, bx) + 8, 1 + ph * 3); ctx.stroke(); } }
       ctx.strokeStyle = 'rgba(70,36,12,0.55)'; ctx.lineWidth = 2;
       ctx.beginPath(); for (let x = z.x0; x <= z.x1; x += 6) { const y = crGround(c, lane, x) + 2; if (x === z.x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
+      // the dry rim: a lit lip of sand where the pit starts and ends
+      for (const ex of [z.x0, z.x1]) { const ey = crGround(c, lane, ex); ctx.fillStyle = 'rgba(255,236,190,0.6)'; ctx.beginPath(); ctx.ellipse(ex, ey + 2, 12, 3, 0, Math.PI, 0); ctx.fill(); }
       const mx = (z.x0 + z.x1) / 2, my = crGround(c, lane, mx) + 10, rw = (z.x1 - z.x0) / 2 - 8;
       ctx.lineWidth = 1.6;
       for (let i = 0; i < 4; i++) { const k = ((t * 0.5 + i / 4) % 1); ctx.strokeStyle = 'rgba(60,30,10,' + (0.5 * (1 - k)).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(mx, my, 6 + rw * (1 - k), 2 + 5 * (1 - k), crSlope(c, mx), 0, Math.PI * 2); ctx.stroke(); }
     } else {
-      ctx.fillStyle = '#4fb8e0'; ctx.fill();
+      { const zy = crGround(c, lane, (z.x0 + z.x1) / 2), wg = ctx.createLinearGradient(0, zy - 6, 0, zy + 16); wg.addColorStop(0, '#6fcbe8'); wg.addColorStop(1, '#2f86b8'); ctx.fillStyle = wg; ctx.fill(); }
+      ctx.strokeStyle = 'rgba(120,80,40,0.45)'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); for (let x = z.x0 + 4; x <= z.x1 - 4; x += 6) { const y = crGround(c, lane, x) + 3; if (x === z.x0 + 4) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
+      // reeds and a couple of stones at the water's edges
+      for (const [ex, d] of [[z.x0, 1], [z.x1, -1]]) {
+        const ey = crGround(c, lane, ex);
+        ctx.strokeStyle = '#4a8a3a'; ctx.lineWidth = 1.8; ctx.beginPath(); for (let k = 0; k < 5; k++) { const rx = ex - d * (2 + k * 3); ctx.moveTo(rx, ey + 3); ctx.quadraticCurveTo(rx - d * 2, ey - 10, rx - d * (1 + k % 3), ey - 16 - (k % 3) * 5); } ctx.stroke();
+        ctx.fillStyle = '#8a5a30'; for (let k = 0; k < 2; k++) { ctx.beginPath(); ctx.ellipse(ex - d * (5 + k * 6), ey - 16 - k * 6, 1.6, 4, 0, 0, 7); ctx.fill(); }
+        ctx.fillStyle = '#9a8a76'; ctx.beginPath(); ctx.ellipse(ex + d * 6, ey + 3, 6, 4, 0, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(ex + d * 5, ey + 1.5, 3, 1.5, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = '#5a4a3a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(ex + d * 6, ey + 3, 6, 4, 0, 0, 7); ctx.stroke();
+      }
       ctx.fillStyle = 'rgba(255,255,255,0.5)'; for (let x = z.x0 + 10; x < z.x1 - 10; x += 26) ctx.fillRect(x + Math.sin(t * 2 + x) * 3, crGround(c, lane, x) + 5, 10, 2);
       // a little palm at the oasis edge
       const px = z.x1 + 20, py = crGround(c, lane, px);
-      ctx.strokeStyle = '#8a5a30'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(px, py); ctx.quadraticCurveTo(px + 6, py - 40, px + 14, py - 70); ctx.stroke();
-      ctx.fillStyle = '#3f9a4c'; for (let i = 0; i < 5; i++) { ctx.save(); ctx.translate(px + 14, py - 70); ctx.rotate(-Math.PI / 2 + (i - 2) * 0.6); ctx.beginPath(); ctx.ellipse(18, 0, 20, 5, 0.25, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+      ctx.fillStyle = 'rgba(80,50,20,0.22)'; ctx.beginPath(); ctx.ellipse(px + 4, py + 1, 14, 3, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(px, py); ctx.quadraticCurveTo(px + 6, py - 40, px + 14, py - 70); ctx.stroke();
+      ctx.strokeStyle = '#8a5a30'; ctx.lineWidth = 5; ctx.stroke();
+      ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = 1; k < 9; k++) { const u = k / 9, bx = (1 - u) * (1 - u) * px + 2 * u * (1 - u) * (px + 6) + u * u * (px + 14), by = (1 - u) * (1 - u) * py + 2 * u * (1 - u) * (py - 40) + u * u * (py - 70); ctx.moveTo(bx - 3, by + 1); ctx.lineTo(bx + 3, by - 1); } ctx.stroke();
+      ctx.fillStyle = '#3f9a4c'; for (let i = 0; i < 5; i++) { ctx.save(); ctx.translate(px + 14, py - 70); ctx.rotate(-Math.PI / 2 + (i - 2) * 0.6); ctx.beginPath(); ctx.ellipse(18, 0, 20, 5, 0.25, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#2f7a3a'; ctx.beginPath(); ctx.ellipse(18, 2, 18, 2.2, 0.25, 0, Math.PI); ctx.fill(); ctx.strokeStyle = '#26602e'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(2, 0); ctx.quadraticCurveTo(18, -2, 36, 4); ctx.stroke(); ctx.fillStyle = '#3f9a4c'; ctx.restore(); }
+      ctx.fillStyle = '#7a3a1a'; for (const [dx, dy] of [[10, -66], [15, -64], [12, -62]]) { circle(px + dx, py + dy, 2.6); ctx.fill(); }
     }
   }
   // the start rope and the finish arch
@@ -456,6 +529,11 @@ function crDrawLane(st, lane, look) {
 function crPost(x, y, fin) {
   ctx.fillStyle = 'rgba(80,50,20,0.25)'; ctx.beginPath(); ctx.ellipse(x + 2, y + 1, 9, 2.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#8a5a30'; ctx.fillRect(x - 3, y - 50, 6, 50); ctx.fillStyle = '#5a3a1a'; ctx.fillRect(x + 1, y - 50, 2, 50);
+  ctx.fillStyle = 'rgba(255,230,190,0.4)'; ctx.fillRect(x - 3, y - 50, 1.2, 50);
+  ctx.strokeStyle = 'rgba(60,36,14,0.4)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x - 1, y - 46); ctx.lineTo(x - 1, y - 30); ctx.moveTo(x, y - 24); ctx.lineTo(x, y - 6); ctx.stroke();
+  ctx.fillStyle = '#d8b880'; for (let k = 0; k < 3; k++) { ctx.fillRect(x - 4, y - 22 + k * 3, 8, 2); } ctx.fillStyle = 'rgba(90,56,24,0.5)'; for (let k = 0; k < 3; k++) ctx.fillRect(x - 4, y - 20.5 + k * 3, 8, 0.6);
+  ctx.fillStyle = '#5a3a1a'; ctx.fillRect(x - 4, y - 52, 8, 3);
+  ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 1; ctx.strokeRect(x - 3, y - 50, 6, 50);
   ctx.fillStyle = '#ff6b4a'; ctx.beginPath(); ctx.moveTo(x + 3, y - 50); ctx.lineTo(x + 24, y - 44); ctx.lineTo(x + 3, y - 38); ctx.fill();
 }
 function crArch(x, y, lane, t) {
@@ -463,9 +541,17 @@ function crArch(x, y, lane, t) {
   ctx.fillStyle = '#c49a5e'; ctx.strokeStyle = '#8f6436'; ctx.lineWidth = 3;
   ctx.fillRect(x - 10, y - 130, 18, 130);
   ctx.fillStyle = 'rgba(255,240,200,0.35)'; ctx.fillRect(x - 10, y - 130, 4, 130); ctx.fillStyle = 'rgba(90,50,20,0.25)'; ctx.fillRect(x + 3, y - 130, 5, 130);
-  ctx.strokeRect(x - 10, y - 130, 18, 130);
+  ctx.strokeStyle = 'rgba(110,70,30,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = 1; k < 6; k++) { ctx.moveTo(x - 10, y - 130 + k * 22); ctx.lineTo(x + 8, y - 130 + k * 22); } ctx.stroke();
+  ctx.fillStyle = 'rgba(110,70,30,0.3)'; for (let k = 0; k < 10; k++) { const q = hash(k, x | 0); ctx.fillRect(x - 8 + q % 14, y - 128 + (q >>> 5) % 126, 1.2, 1.2); }
+  ctx.strokeStyle = '#8f6436'; ctx.lineWidth = 3; ctx.strokeRect(x - 10, y - 130, 18, 130);
+  ctx.fillStyle = '#d8b07a'; ctx.fillRect(x - 14, y - 136, 26, 7); ctx.fillStyle = 'rgba(255,240,200,0.45)'; ctx.fillRect(x - 14, y - 136, 26, 1.5); ctx.lineWidth = 1.5; ctx.strokeRect(x - 14, y - 136, 26, 7);
+  ctx.fillStyle = '#b8905a'; ctx.fillRect(x - 14, y - 6, 26, 6); ctx.strokeRect(x - 14, y - 6, 26, 6); ctx.lineWidth = 3;
   if (lane === 0) {
-    ctx.beginPath(); ctx.moveTo(x - 60, y - 130); ctx.lineTo(x, y - 200); ctx.lineTo(x + 60, y - 130); ctx.closePath(); ctx.fillStyle = '#e0b878'; ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 60, y - 130); ctx.lineTo(x, y - 200); ctx.lineTo(x + 60, y - 130); ctx.closePath(); ctx.fillStyle = '#e0b878'; ctx.fill();
+    ctx.fillStyle = 'rgba(120,70,30,0.22)'; ctx.beginPath(); ctx.moveTo(x, y - 200); ctx.lineTo(x + 60, y - 130); ctx.lineTo(x + 8, y - 130); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,70,30,0.45)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x - 46, y - 136); ctx.lineTo(x, y - 189); ctx.lineTo(x + 46, y - 136); ctx.closePath(); ctx.stroke();
+    ctx.fillStyle = '#9a3a24'; ctx.fillRect(x - 58, y - 134, 116, 3); ctx.fillStyle = '#2f6a7a'; ctx.fillRect(x - 58, y - 131, 116, 2);
+    ctx.strokeStyle = '#8f6436'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 60, y - 130); ctx.lineTo(x, y - 200); ctx.lineTo(x + 60, y - 130); ctx.closePath(); ctx.stroke();
     pyrGlyph('sun', x, y - 155, 0.9, '#b8860b');
   }
   for (let k = 0; k < 6; k++) { ctx.fillStyle = k % 2 ? '#3a2614' : '#fff'; ctx.fillRect(x - 2, y - 120 + k * 18, 4, 18); }
@@ -478,7 +564,19 @@ function crCactus(h) {
   ctx.fillStyle = '#3f9a5a'; rr(-7, -h, 14, h, 7); ctx.stroke();
   rr(-18, -h * 0.7, 9, h * 0.35, 4.5); ctx.fill(); ctx.stroke(); rr(9, -h * 0.85, 9, h * 0.4, 4.5); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#3f9a5a'; ctx.fillRect(-11, -h * 0.42, 5, 5); ctx.fillRect(6, -h * 0.5, 5, 5);
-  ctx.fillStyle = '#ff8fc7'; circle(0, -h - 2, 3.5); ctx.fill();
+  // ribs down the trunk and arms
+  ctx.strokeStyle = 'rgba(30,90,50,0.55)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (const rx of [-3, 1.5]) { ctx.moveTo(rx, -h + 6); ctx.lineTo(rx, -3); }
+  ctx.moveTo(-13.5, -h * 0.7 + 4); ctx.lineTo(-13.5, -h * 0.4); ctx.moveTo(13.5, -h * 0.85 + 4); ctx.lineTo(13.5, -h * 0.5); ctx.stroke();
+  ctx.fillStyle = 'rgba(20,70,40,0.3)'; rr(-12, -h * 0.7 + 2, 3, h * 0.33, 1.5); ctx.fill(); rr(14, -h * 0.85 + 2, 3, h * 0.38, 1.5); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; rr(-17, -h * 0.7 + 3, 2, h * 0.25, 1); ctx.fill(); rr(10, -h * 0.85 + 3, 2, h * 0.3, 1); ctx.fill();
+  ctx.fillStyle = '#fff6d8'; for (let y = -h + 10; y < -6; y += 8) for (const rx of [-3, 1.5]) { ctx.fillRect(rx - 0.6, y, 1.2, 1.2); }
+  // sand heaped round the foot
+  ctx.fillStyle = '#e6c07a'; ctx.beginPath(); ctx.ellipse(1, 1, 13, 4, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = 'rgba(255,240,205,0.5)'; ctx.beginPath(); ctx.ellipse(-2, -1.5, 7, 1.5, 0, Math.PI, 0); ctx.fill();
+  // a pink flower with petals
+  ctx.fillStyle = '#ff8fc7'; for (let k = 0; k < 5; k++) { const a = k * Math.PI * 2 / 5 - Math.PI / 2; ctx.beginPath(); ctx.ellipse(Math.cos(a) * 3, -h - 2 + Math.sin(a) * 3, 2.6, 1.8, a, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#ffd34d'; circle(0, -h - 2, 1.6); ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1;
   for (let y = -h + 8; y < -4; y += 9) { ctx.beginPath(); ctx.moveTo(-7, y); ctx.lineTo(-10, y - 2); ctx.moveTo(7, y + 4); ctx.lineTo(10, y + 2); ctx.stroke(); }
 }
@@ -488,9 +586,28 @@ function crRocks(h, id) {
   ctx.beginPath(); ctx.moveTo(-24, 2); ctx.lineTo(-18, -h * 0.7); ctx.lineTo(-4, -h); ctx.lineTo(10, -h * 0.8); ctx.lineTo(22, 2); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#b8987a'; ctx.beginPath(); ctx.moveTo(-14, -h * 0.65); ctx.lineTo(-4, -h + 3); ctx.lineTo(4, -h * 0.75); ctx.closePath(); ctx.fill();
   ctx.fillStyle = 'rgba(60,36,20,0.25)'; ctx.beginPath(); ctx.moveTo(10, -h * 0.8); ctx.lineTo(22, 2); ctx.lineTo(4, 2); ctx.lineTo(4, -h * 0.5); ctx.closePath(); ctx.fill();
+  const hv = hash(id | 0, 13);
+  // a darker lower band, cracks with a pale lip, and speckle
+  ctx.fillStyle = 'rgba(60,36,20,0.18)'; ctx.beginPath(); ctx.moveTo(-24, 2); ctx.lineTo(-21, -h * 0.3); ctx.lineTo(16, -h * 0.3); ctx.lineTo(22, 2); ctx.closePath(); ctx.fill();
+  for (const [col, o] of [['rgba(255,236,200,0.35)', 0.8], ['rgba(50,30,15,0.6)', 0]]) { ctx.strokeStyle = col; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(-4 + o, -h + 2 + o); ctx.lineTo(-7 + o, -h * 0.6 + o); ctx.lineTo(-2 + o, -h * 0.3 + o); ctx.moveTo(-7 + o, -h * 0.6 + o); ctx.lineTo(-14 + o, -h * 0.45 + o); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(60,36,20,0.35)'; for (let k = 0; k < 8; k++) { const q = hash(k, hv); ctx.fillRect(-18 + q % 34, -h * 0.75 + (q >>> 6) % Math.max(1, h * 0.7 | 0), 1.4, 1.2); }
+  // a small stone leaning on it
+  ctx.fillStyle = '#8a6a4a'; ctx.beginPath(); ctx.moveTo(16, 2); ctx.lineTo(19, -9); ctx.lineTo(27, -7); ctx.lineTo(30, 2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,236,200,0.35)'; ctx.beginPath(); ctx.moveTo(19, -9); ctx.lineTo(27, -7); ctx.lineTo(24, -5); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#5a4030'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(16, 2); ctx.lineTo(19, -9); ctx.lineTo(27, -7); ctx.lineTo(30, 2); ctx.stroke();
+  // sand drifted against the foot
+  ctx.fillStyle = '#e6c07a'; ctx.beginPath(); ctx.ellipse(-16, 2, 12, 4, 0, Math.PI, 0); ctx.fill(); ctx.beginPath(); ctx.ellipse(8, 2, 10, 3, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = 'rgba(255,240,205,0.5)'; ctx.beginPath(); ctx.ellipse(-18, 0, 6, 1.4, 0, Math.PI, 0); ctx.fill();
 }
 function crPot(h, broke) {
-  if (broke) { ctx.fillStyle = '#c8643a'; ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-10, -9); ctx.lineTo(-2, -4); ctx.lineTo(4, -10); ctx.lineTo(12, 0); ctx.closePath(); ctx.fill(); return; }
+  if (broke) {
+    ctx.fillStyle = 'rgba(80,50,20,0.22)'; ctx.beginPath(); ctx.ellipse(1, 1, 16, 3, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#c8643a'; ctx.strokeStyle = '#7a3a1a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-10, -9); ctx.lineTo(-2, -4); ctx.lineTo(4, -10); ctx.lineTo(12, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#a8542a'; ctx.beginPath(); ctx.moveTo(4, -10); ctx.lineTo(12, 0); ctx.lineTo(5, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,230,190,0.4)'; ctx.fillRect(-11, -7, 2, 6);
+    ctx.fillStyle = '#c8643a'; for (const [sx, sy, a] of [[-20, -1, 0.4], [17, -1, -0.3], [22, -2, 0.9]]) { ctx.save(); ctx.translate(sx, sy); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(-3, 1); ctx.lineTo(0, -3); ctx.lineTo(4, 1); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+    return;
+  }
   ctx.fillStyle = 'rgba(80,50,20,0.25)'; ctx.beginPath(); ctx.ellipse(2, 1, 16, 3.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#d0703f'; ctx.strokeStyle = '#7a3a1a'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(-6, -h); ctx.quadraticCurveTo(-16, -h * 0.6, -10, 0); ctx.lineTo(10, 0); ctx.quadraticCurveTo(16, -h * 0.6, 6, -h); ctx.closePath(); ctx.fill();
@@ -498,6 +615,9 @@ function crPot(h, broke) {
   ctx.fillStyle = '#3a2614'; for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(k * 5 - 2, -h * 0.3); ctx.lineTo(k * 5, -h * 0.38); ctx.lineTo(k * 5 + 2, -h * 0.3); ctx.fill(); } ctx.restore();
   ctx.stroke();
   ctx.fillStyle = '#7a3a1a'; ctx.fillRect(-7, -h - 3, 14, 4);
+  ctx.fillStyle = '#e08a5a'; ctx.fillRect(-6, -h - 3, 12, 1.2);
+  ctx.strokeStyle = '#7a3a1a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(-9, -h * 0.72, 3.5, Math.PI * 0.6, Math.PI * 1.5); ctx.moveTo(9, -h * 0.72 - 3.5); ctx.arc(9, -h * 0.72, 3.5, -Math.PI * 0.5, Math.PI * 0.4); ctx.stroke();
+  ctx.fillStyle = '#e6c07a'; ctx.beginPath(); ctx.ellipse(0, 1, 12, 3, 0, Math.PI, 0); ctx.fill();
   ctx.strokeStyle = 'rgba(255,230,180,0.6)'; ctx.beginPath(); ctx.moveTo(-11, -h * 0.45); ctx.lineTo(11, -h * 0.45); ctx.stroke();
 }
 // a camel side-on, feet at (D.x, D.y); saddle in the rider's colour

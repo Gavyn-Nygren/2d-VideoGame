@@ -794,7 +794,18 @@
     const x0 = cx - 40, x1 = cx + W + 40, top = S.ramp, gy = S.ground, w = x1 - x0;
     ctx.fillStyle = '#3b3768'; ctx.fillRect(x0, top, w, gy - top);
     ctx.fillStyle = 'rgba(170,180,240,0.09)'; ctx.fillRect(x0, top + 17, w, 30);
+    { const pg = ctx.createLinearGradient(0, top + 17, 0, gy - 44); pg.addColorStop(0, 'rgba(8,6,26,0.25)'); pg.addColorStop(0.25, 'rgba(8,6,26,0)'); pg.addColorStop(0.7, 'rgba(8,6,26,0)'); pg.addColorStop(1, 'rgba(8,6,26,0.3)'); ctx.fillStyle = pg; ctx.fillRect(x0, top + 17, w, gy - 44 - top - 17); }
     ctx.fillStyle = '#2d2a54'; ctx.fillRect(x0, gy - 44, w, 44);
+    { const tones = ['rgba(150,140,220,0.10)', 'rgba(8,6,26,0.22)', 'rgba(110,100,180,0.06)', null];
+      for (let r = 0; r < 2; r++) for (let x = Math.floor(x0 / 56) * 56 - 56 + r * 28; x < x1; x += 56) {
+        const hv = hash(Math.round(x / 28), r + 41), y = gy - 44 + r * 22, tn = tones[hv % 4];
+        if (tn) { ctx.fillStyle = tn; ctx.fillRect(x + 1, y + 1, 54, 20); }
+        ctx.fillStyle = 'rgba(200,200,255,0.10)'; ctx.fillRect(x + 1, y + 1.5, 54, 2); ctx.fillRect(x + 1, y + 1, 2, 20);
+        ctx.fillStyle = 'rgba(8,6,26,0.25)'; ctx.fillRect(x + 51, y + 1, 4, 20);
+        if (hv % 5 === 1) { ctx.fillStyle = 'rgba(100,160,120,0.3)'; ctx.beginPath(); ctx.ellipse(x + 10 + hv % 30, y + 20, 8, 2, 0, 0, Math.PI * 2); ctx.fill(); }
+      }
+      ctx.fillStyle = 'rgba(200,200,255,0.05)';
+      for (let x = Math.floor(x0 / 17) * 17; x < x1; x += 17) { const hv = hash(Math.round(x / 17), 43); ctx.fillRect(x + hv % 15, top + 24 + (hv >>> 8) % Math.max(1, gy - top - 74), 1.5, 1.2); } }
     ctx.strokeStyle = 'rgba(16,16,44,0.55)'; ctx.lineWidth = 2; ctx.beginPath();
     ctx.moveTo(x0, gy - 44); ctx.lineTo(x1, gy - 44); ctx.moveTo(x0, gy - 22); ctx.lineTo(x1, gy - 22);
     for (let x = Math.floor(x0 / 56) * 56; x < x1; x += 56) { ctx.moveTo(x, gy - 44); ctx.lineTo(x, gy - 22); ctx.moveTo(x + 28, gy - 22); ctx.lineTo(x + 28, gy); }
@@ -820,7 +831,12 @@
     ctx.fillStyle = COL.tile; ctx.fillRect(x0, top, w, 10);
     ctx.fillStyle = COL.tileHi; ctx.fillRect(x0, top, w, 2.5);
     ctx.fillStyle = COL.tileEdge; for (let x = Math.floor(x0 / 16) * 16; x < x1; x += 16) ctx.fillRect(x, top + 3, 2, 8);
+    ctx.fillStyle = '#56609a'; for (let x = Math.floor(x0 / 16) * 16; x < x1; x += 16) ctx.fillRect(x + 6, top + 3, 4, 7);
+    ctx.fillStyle = 'rgba(160,176,230,0.45)'; for (let x = Math.floor(x0 / 16) * 16; x < x1; x += 16) ctx.fillRect(x + 6, top + 3, 1.2, 7);
+    ctx.fillStyle = '#5a64a0'; ctx.beginPath(); for (let x = Math.floor(x0 / 16) * 16; x < x1; x += 16) { ctx.moveTo(x + 10.5, top + 11); ctx.arc(x + 8, top + 11, 2.5, 0, Math.PI * 2); } ctx.fill();
+    ctx.strokeStyle = COL.tileEdge; ctx.lineWidth = 1; ctx.stroke();
     ctx.fillStyle = COL.trim; ctx.fillRect(x0, top + 14, w, 3);
+    ctx.fillStyle = 'rgba(255,200,190,0.3)'; ctx.fillRect(x0, top + 14, w, 1);
   }
   function drawGate(st, gx, openT, pulled, lit, seen) {
     const gy = S.ground, top = S.ramp;
@@ -828,7 +844,17 @@
     ctx.fillStyle = '#322e5c'; ctx.fillRect(gx - 100, top + 17, 226, 7);
     ctx.strokeStyle = 'rgba(12,12,36,0.6)'; ctx.lineWidth = 2; ctx.beginPath();
     for (let y = top + 52; y < gy - 110; y += 28) { ctx.moveTo(gx - 100, y); ctx.lineTo(gx + 126, y); }
+    for (let y = top + 52, r = 0; y < gy - 110; y += 28, r++) for (let x = gx - 100 + (r % 2) * 28; x < gx + 126; x += 56) { ctx.moveTo(x, y); ctx.lineTo(x, Math.min(y + 28, gy - 110)); }
     ctx.stroke();
+    ctx.fillStyle = 'rgba(200,200,255,0.07)'; for (let y = top + 52; y < gy - 110; y += 28) ctx.fillRect(gx - 100, y + 1.5, 226, 1.5);
+    ctx.fillStyle = 'rgba(200,200,255,0.12)'; ctx.fillRect(gx - 100, top + 17, 3, gy - top - 17); ctx.fillStyle = 'rgba(8,6,26,0.3)'; ctx.fillRect(gx + 120, top + 17, 6, gy - top - 17);
+    // the arch's ring of wedge stones, lit along the top
+    ctx.strokeStyle = '#3a3670'; ctx.lineWidth = 14; ctx.beginPath(); ctx.moveTo(gx - 88, gy); ctx.lineTo(gx - 88, gy - 76); ctx.quadraticCurveTo(gx - 88, gy - 112, gx - 52, gy - 112); ctx.lineTo(gx + 78, gy - 112); ctx.quadraticCurveTo(gx + 114, gy - 112, gx + 114, gy - 76); ctx.lineTo(gx + 114, gy); ctx.stroke();
+    ctx.strokeStyle = 'rgba(12,12,36,0.6)'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let y = gy - 20; y > gy - 80; y -= 22) { ctx.moveTo(gx - 95, y); ctx.lineTo(gx - 81, y); ctx.moveTo(gx + 107, y); ctx.lineTo(gx + 121, y); }
+    for (let x = gx - 40; x < gx + 70; x += 26) { ctx.moveTo(x, gy - 119); ctx.lineTo(x, gy - 105); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(200,200,255,0.18)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(gx - 95, gy); ctx.lineTo(gx - 95, gy - 76); ctx.quadraticCurveTo(gx - 95, gy - 119, gx - 52, gy - 119); ctx.lineTo(gx + 78, gy - 119); ctx.stroke();
     // the archway: deep shadow, always a safe place
     ctx.fillStyle = '#0d0c22'; ctx.beginPath(); ctx.moveTo(gx - 88, gy); ctx.lineTo(gx - 88, gy - 76); ctx.quadraticCurveTo(gx - 88, gy - 112, gx - 52, gy - 112);
     ctx.lineTo(gx + 78, gy - 112); ctx.quadraticCurveTo(gx + 114, gy - 112, gx + 114, gy - 76); ctx.lineTo(gx + 114, gy); ctx.closePath(); ctx.fill();
@@ -888,8 +914,16 @@
     if (sp.kind === 'B') {
       ctx.fillStyle = '#7a4e30'; ctx.strokeStyle = '#3a2416'; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.moveTo(x - 19, gy - 46); ctx.quadraticCurveTo(x - 27, gy - 23, x - 19, gy); ctx.lineTo(x + 19, gy); ctx.quadraticCurveTo(x + 27, gy - 23, x + 19, gy - 46); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(14,12,40,0.3)'; ctx.beginPath(); ctx.ellipse(x + 3, gy, 26, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.beginPath(); ctx.moveTo(x - 19, gy - 46); ctx.quadraticCurveTo(x - 27, gy - 23, x - 19, gy); ctx.lineTo(x + 19, gy); ctx.quadraticCurveTo(x + 27, gy - 23, x + 19, gy - 46); ctx.closePath(); ctx.clip();
+      ctx.fillStyle = 'rgba(20,10,8,0.3)'; ctx.fillRect(x + 10, gy - 48, 16, 50);
+      ctx.strokeStyle = 'rgba(40,20,10,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); for (const sx of [-14, -7, 0, 7, 14]) { ctx.moveTo(x + sx, gy - 46); ctx.quadraticCurveTo(x + sx * 1.3, gy - 23, x + sx, gy); } ctx.stroke();
+      ctx.restore();
       ctx.fillStyle = '#9a6a44'; ctx.fillRect(x - 13, gy - 44, 5, 42); ctx.fillRect(x + 2, gy - 44, 5, 42);
-      ctx.fillStyle = '#b9bedc'; ctx.fillRect(x - 23, gy - 36, 46, 4); ctx.fillRect(x - 23, gy - 13, 46, 4);
+      ctx.fillStyle = 'rgba(255,220,180,0.25)'; ctx.fillRect(x - 13, gy - 44, 1.5, 42);
+      ctx.fillStyle = '#7a7a9a'; ctx.fillRect(x - 23, gy - 36, 46, 4); ctx.fillRect(x - 23, gy - 13, 46, 4);
+      ctx.fillStyle = '#d9dcef'; ctx.fillRect(x - 22, gy - 36, 44, 1.3); ctx.fillRect(x - 22, gy - 13, 44, 1.3);
+      ctx.fillStyle = '#2a2742'; for (const dx of [-16, 0, 16]) { ctx.fillRect(x + dx, gy - 34.5, 1.5, 1.5); ctx.fillRect(x + dx, gy - 11.5, 1.5, 1.5); }
       ctx.fillStyle = '#2a1a12'; ctx.beginPath(); ctx.ellipse(x, gy - 46, 19, 4.5, 0, 0, TAU); ctx.fill(); ctx.stroke();
     } else if (sp.kind === 'H') K.hayCart(x, gy, { squash: squash ? 0.5 : 0 });
     else if (sp.kind === 'M') { K.bamboo(x - 20, gy, 132, t, sp.x); K.bamboo(x + 2, gy, 150, t, sp.x + 3); K.bamboo(x + 22, gy, 120, t, sp.x + 7); }
@@ -968,13 +1002,23 @@
       for (const b of q.boards) {
         const sq = b.t > 0 ? Math.sin(b.t * 30) * 2 : 0;
         ctx.fillStyle = '#9a6e48'; ctx.fillRect(b.x - S.boardW, gy - 1 + sq, S.boardW * 2, 9);
+        ctx.fillStyle = 'rgba(255,220,180,0.3)'; ctx.fillRect(b.x - S.boardW, gy - 1 + sq, S.boardW * 2, 1.2);
+        ctx.strokeStyle = 'rgba(60,36,20,0.5)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let i = -2; i <= 1; i++) { ctx.moveTo(b.x + i * 18 + 4, gy + 3 + sq); ctx.quadraticCurveTo(b.x + i * 18 + 9, gy + 1 + sq, b.x + i * 18 + 14, gy + 3 + sq); } ctx.stroke();
         ctx.fillStyle = '#5a3824'; for (let i = -1; i <= 1; i++) ctx.fillRect(b.x + i * 18 - 1, gy - 1 + sq, 2, 9);
+        ctx.strokeStyle = '#3a2416'; ctx.lineWidth = 1.2; ctx.strokeRect(b.x - S.boardW, gy - 1 + sq, S.boardW * 2, 9);
         ctx.fillStyle = '#d9dcef'; for (const dx of [-22, -4, 14]) { circle(b.x + dx, gy + 2 + sq, 1.4); ctx.fill(); }
         text('creaky', b.x, gy + 18, 10, 'rgba(255,231,168,0.85)', 'center', 'body');
       }
       for (const c of q.crates) {
-        ctx.fillStyle = '#8a5a3a'; ctx.strokeStyle = '#3a2416'; ctx.lineWidth = 2.5; rr(c.x - S.crateW, gy - S.crateH, S.crateW * 2, S.crateH, 3); ctx.fill(); ctx.stroke();
-        ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(c.x - S.crateW + 3, gy - S.crateH + 3); ctx.lineTo(c.x + S.crateW - 3, gy - 3); ctx.moveTo(c.x + S.crateW - 3, gy - S.crateH + 3); ctx.lineTo(c.x - S.crateW + 3, gy - 3); ctx.stroke();
+        const cw = S.crateW, ch = S.crateH;
+        ctx.fillStyle = 'rgba(14,12,40,0.3)'; ctx.beginPath(); ctx.ellipse(c.x + 3, gy, cw + 6, 4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#8a5a3a'; ctx.strokeStyle = '#3a2416'; ctx.lineWidth = 2.5; rr(c.x - cw, gy - ch, cw * 2, ch, 3); ctx.fill();
+        ctx.fillStyle = '#a8744c'; ctx.fillRect(c.x - cw + 2, gy - ch + 1.5, cw * 2 - 4, 3); ctx.fillStyle = 'rgba(30,16,10,0.3)'; ctx.fillRect(c.x + cw - 7, gy - ch + 2, 5, ch - 4); ctx.fillRect(c.x - cw + 2, gy - 5, cw * 2 - 4, 3);
+        ctx.strokeStyle = 'rgba(40,20,10,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = 1; k < 3; k++) { const py = gy - ch + k * ch / 3; ctx.moveTo(c.x - cw + 3, py); ctx.lineTo(c.x + cw - 3, py); } ctx.stroke();
+        ctx.strokeStyle = '#3a2416'; ctx.lineWidth = 2.5; rr(c.x - cw, gy - ch, cw * 2, ch, 3); ctx.stroke();
+        ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(c.x - cw + 3, gy - ch + 3); ctx.lineTo(c.x + cw - 3, gy - 3); ctx.moveTo(c.x + cw - 3, gy - ch + 3); ctx.lineTo(c.x - cw + 3, gy - 3); ctx.stroke();
+        ctx.fillStyle = '#5a5a7a'; for (const [bx, by] of [[c.x - cw, gy - ch], [c.x + cw - 6, gy - ch], [c.x - cw, gy - 6], [c.x + cw - 6, gy - 6]]) ctx.fillRect(bx, by, 6, 6);
+        ctx.fillStyle = '#c8cce0'; for (const [bx, by] of [[c.x - cw + 3, gy - ch + 3], [c.x + cw - 3, gy - ch + 3], [c.x - cw + 3, gy - 3], [c.x + cw - 3, gy - 3]]) { circle(bx, by, 1); ctx.fill(); }
       }
       for (const l of q.lights) drawLight(l, lightX(l, st.clock));
       for (const g of q.guards) if (AWAKE[g.state] || g.state === 'alert') drawCone(g, cone, g.state === 'alert' || g.notice > 0, st.gold.cloud);

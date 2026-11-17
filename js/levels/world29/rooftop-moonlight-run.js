@@ -656,6 +656,8 @@
     ctx.fillStyle = '#17153a'; ctx.fillRect(0, S.street - 8, W, H - S.street + 8);
     ctx.fillStyle = 'rgba(120,112,170,0.35)'; ctx.fillRect(0, S.street - 8, W, 3);
     ctx.save(); ctx.translate(-Math.round(cx * 10) / 10, 0);
+    K.ground(cx - 40, cx + W + 40, S.street - 8, 'stone', H);
+    ctx.fillStyle = 'rgba(12,10,36,0.55)'; ctx.fillRect(cx - 40, S.street - 8, W + 80, H - S.street + 8);
     const see = (x0, x1) => x1 > cx - 80 && x0 < cx + W + 80;
     // hook points behind the roofs
     for (const q of c.gaps) if (see(q.xL - 60, q.xR + 60)) drawHookPoint(st, q, t);
@@ -698,6 +700,13 @@
       ctx.strokeStyle = '#7a9a5a'; ctx.lineWidth = 5; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(R.x + 8, R.y + 12); ctx.lineTo(R.x + 8, S.street); ctx.moveTo(R.x + R.w - 8, R.y + 12); ctx.lineTo(R.x + R.w - 8, S.street);
       ctx.moveTo(R.x + 8, R.y + 60); ctx.lineTo(R.x + R.w - 8, R.y + 110); ctx.moveTo(R.x + R.w - 8, R.y + 60); ctx.lineTo(R.x + 8, R.y + 110); ctx.stroke();
+      ctx.strokeStyle = 'rgba(200,230,170,0.45)'; ctx.lineWidth = 1.2; ctx.lineCap = 'butt'; ctx.beginPath();
+      for (const px of [R.x + 7, R.x + R.w - 9]) { ctx.moveTo(px - 1, R.y + 14); ctx.lineTo(px - 1, S.street); }
+      ctx.stroke();
+      ctx.fillStyle = '#4a6a3a'; for (const px of [R.x + 8, R.x + R.w - 8]) for (let y = R.y + 40; y < S.street - 8; y += 34) ctx.fillRect(px - 3.5, y, 7, 2);
+      ctx.strokeStyle = '#d8c89a'; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (const [px, py] of [[R.x + 8, R.y + 60], [R.x + R.w - 8, R.y + 60], [R.x + 8, R.y + 110], [R.x + R.w - 8, R.y + 110]]) { ctx.moveTo(px - 4, py - 3); ctx.lineTo(px + 4, py + 1); ctx.moveTo(px - 4, py + 1); ctx.lineTo(px + 4, py + 5); }
+      ctx.stroke();
       ctx.save(); ctx.translate(sh, R.ct > 0 ? R.ct * 3 : 0);
       K.roof(R.x, R.y, R.w, { noWall: true, th: 13 });
       // cracks, so it reads as crumbly before anyone steps on it
@@ -725,12 +734,20 @@
     if (g.kind === 'post') {
       ctx.fillStyle = COL.woodDark; ctx.fillRect(g.hx - 5, g.hy + 6, 10, S.street - g.hy);
       ctx.fillStyle = COL.wood; ctx.fillRect(g.hx - 3, g.hy + 6, 4, S.street - g.hy);
+      ctx.fillStyle = 'rgba(255,220,180,0.35)'; ctx.fillRect(g.hx - 3, g.hy + 6, 1.2, S.street - g.hy);
+      ctx.strokeStyle = 'rgba(40,20,12,0.5)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let y = g.hy + 30; y < S.street - 20; y += 46) { ctx.moveTo(g.hx - 1, y); ctx.lineTo(g.hx - 1, y + 18); } ctx.stroke();
+      ctx.strokeStyle = '#2a1a12'; ctx.lineWidth = 1.2; ctx.strokeRect(g.hx - 5, g.hy + 6, 10, S.street - g.hy);
+      ctx.fillStyle = '#4a4668'; ctx.fillRect(g.hx - 11, S.street - 14, 22, 14); ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(g.hx - 11, S.street - 14, 22, 2);
       ctx.strokeStyle = COL.woodDark; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(g.hx - 34, g.hy + 16); ctx.lineTo(g.hx + 34, g.hy + 16); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,220,180,0.3)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(g.hx - 34, g.hy + 13.5); ctx.lineTo(g.hx + 34, g.hy + 13.5); ctx.stroke();
+      ctx.strokeStyle = COL.woodDark; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(g.hx - 14, g.hy + 18); ctx.lineTo(g.hx, g.hy + 32); ctx.lineTo(g.hx + 14, g.hy + 18); ctx.stroke();
       ctx.fillStyle = COL.trim; rr(g.hx - 12, g.hy - 2, 24, 8, 3); ctx.fill();
       K.lantern(g.hx - 30, g.hy + 16, t); K.lantern(g.hx + 30, g.hy + 16, t);
     } else if (g.kind === 'sway') {
       const x0 = g.xL - 26, x1 = g.xR + 26, y0 = g.hy - 26;
       ctx.strokeStyle = COL.woodDark; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(x0, g.yL); ctx.lineTo(x0, y0); ctx.moveTo(x1, g.yR); ctx.lineTo(x1, y0); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,220,180,0.3)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x0 - 2, g.yL); ctx.lineTo(x0 - 2, y0); ctx.moveTo(x1 - 2, g.yR); ctx.lineTo(x1 - 2, y0); ctx.stroke();
+      ctx.fillStyle = COL.trim; for (const px of [x0, x1]) { rr(px - 5, y0 - 4, 10, 6, 2); ctx.fill(); }
       ctx.strokeStyle = '#1c1a36'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(q.x, q.y - 6); ctx.lineTo(x1, y0); ctx.stroke();
       K.lantern(lerp(x0, q.x, 0.5), lerp(y0, q.y - 6, 0.5), t, { s: 0.8 }); K.lantern(lerp(x1, q.x, 0.5), lerp(y0, q.y - 6, 0.5), t, { s: 0.8 });
       K.lantern(q.x, q.y + 2, t, { s: 1.5, sway: 0.4 });
@@ -762,7 +779,10 @@
     K.roof(x + 76, y - 228, 90, { noWall: true, th: 14 });
     ctx.fillStyle = COL.trim; ctx.fillRect(x + 119, y - 252, 4, 26);
     ctx.fillStyle = COL.trim; ctx.strokeStyle = '#5a1c24'; ctx.lineWidth = 2;
-    for (const px of [x - 56, x + 44]) { rr(px, y - 118, 12, 118, 3); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle = COL.woodDark; for (const [wx, wy, ww, wh] of [[x + 88, y - 120, 24, 30], [x + 130, y - 120, 24, 30], [x + 110, y - 204, 22, 24]]) { ctx.fillRect(wx + ww / 2 - 1, wy, 2, wh); ctx.fillRect(wx, wy + wh / 2 - 1, ww, 2); }
+    ctx.fillStyle = 'rgba(200,200,255,0.1)'; ctx.fillRect(x + 66, y - 150, 3, 150);
+    ctx.fillStyle = COL.trim;
+    for (const px of [x - 56, x + 44]) { rr(px, y - 118, 12, 118, 3); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(255,200,190,0.35)'; ctx.fillRect(px + 2, y - 116, 2, 114); ctx.fillStyle = 'rgba(40,10,14,0.3)'; ctx.fillRect(px + 8, y - 116, 3, 114); ctx.fillStyle = '#2a1a22'; ctx.fillRect(px - 2, y - 10, 16, 10); ctx.fillStyle = COL.trim; }
     rr(x - 70, y - 104, 140, 10, 3); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x - 86, y - 132); ctx.quadraticCurveTo(x, y - 118, x + 86, y - 132); ctx.lineTo(x + 80, y - 118); ctx.quadraticCurveTo(x, y - 106, x - 80, y - 118); ctx.closePath(); ctx.fill(); ctx.stroke();
     K.lantern(x - 30, y - 96, t); K.lantern(x + 30, y - 96, t);

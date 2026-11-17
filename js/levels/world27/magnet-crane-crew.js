@@ -332,21 +332,36 @@ const CRANE = {
     const t = G.clock;
     rf27Backdrop(0, 0, st.look, t);
     // the rail
-    for (let x = 30; x < W; x += 120) { ctx.fillStyle = '#3c4468'; ctx.fillRect(x, 0, 10, K.railY - 8); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, 0, 2, K.railY - 8); }
+    for (let x = 30; x < W; x += 120) {
+      ctx.fillStyle = '#3c4468'; ctx.fillRect(x, 0, 10, K.railY - 8); ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(x, 0, 2, K.railY - 8);
+      ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(x + 8, 0, 2, K.railY - 8);
+      ctx.fillStyle = '#4a5270'; ctx.fillRect(x - 6, K.railY - 14, 22, 6); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x - 6, K.railY - 14, 22, 1);
+      ctx.fillStyle = '#20243c'; circle(x - 2, K.railY - 11, 1.2); ctx.fill(); circle(x + 12, K.railY - 11, 1.2); ctx.fill();
+    }
     ctx.fillStyle = '#4a5270'; ctx.fillRect(0, K.railY - 8, W, 16);
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, K.railY - 8, W, 2.5);
-    ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(0, K.railY + 5, W, 3);
-    ctx.fillStyle = 'rgba(10,10,30,0.4)'; for (let x = 15; x < W; x += 40) { circle(x, K.railY, 2); ctx.fill(); }
+    ctx.fillStyle = '#5a6488'; ctx.fillRect(0, K.railY - 8, W, 4); ctx.fillRect(0, K.railY + 2, W, 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(0, K.railY - 8, W, 1.5);
+    ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(0, K.railY - 4, W, 1.2); ctx.fillRect(0, K.railY + 5, W, 3);
+    ctx.fillStyle = 'rgba(10,10,30,0.45)'; ctx.beginPath(); for (let x = 15; x < W; x += 40) { ctx.moveTo(x + 2, K.railY); ctx.arc(x, K.railY, 2, 0, 7); } ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.beginPath(); for (let x = 15; x < W; x += 40) { ctx.moveTo(x, K.railY - 0.7); ctx.arc(x - 0.7, K.railY - 0.7, 0.8, 0, 7); } ctx.fill();
+    ctx.fillStyle = 'rgba(10,10,30,0.2)'; for (let x = 0; x < W; x += 160) ctx.fillRect(x, K.railY - 8, 1.5, 16);
     rf27Stripes(0, K.railY + 8, W, 6);
     // the chute at the top left
     ctx.fillStyle = '#5a6488'; ctx.fillRect(6, K.railY + 34, 48, 40); rf27Stripes(6, K.railY + 74, 48, 6);
     ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(6, K.railY + 34, 48, 2.5); ctx.fillStyle = 'rgba(10,10,30,0.25)'; ctx.fillRect(48, K.railY + 34, 6, 40);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(6, K.railY + 34, 2, 40);
+    ctx.fillStyle = '#2a2f4f'; for (const [a, b] of [[10, 39], [50, 39], [10, 69], [50, 69]]) { circle(a, K.railY + b, 1.5); ctx.fill(); }
+    ctx.fillStyle = '#3c4468'; ctx.fillRect(18, K.railY + 8, 24, 26); ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(18, K.railY + 8, 3, 26);
+    ctx.strokeStyle = '#2a2f4f'; ctx.lineWidth = 1.2; ctx.strokeRect(6.5, K.railY + 34.5, 47, 39);
     text('NEW', 30, K.railY + 56, 12, '#ffffff', 'center');
     for (let c = 0; c < K.cols; c++) {
       const x = c * CW, bt = baseTop(st, c);
       if (st.ground[c] === 'p') {
         ctx.fillStyle = '#1c1a36'; ctx.fillRect(x, K.GY, CW, H - K.GY);
         ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(x + 4, K.GY, 3, H - K.GY);
+        ctx.fillStyle = 'rgba(255,255,255,0.04)'; for (let yy = K.GY + 16; yy < H - 20; yy += 18) ctx.fillRect(x, yy, CW, 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + CW - 6, K.GY, 6, H - K.GY);
+        rf27Stripes(x, K.GY, CW, 5); ctx.fillStyle = 'rgba(10,10,30,0.4)'; ctx.fillRect(x, K.GY + 5, CW, 4);
         for (let k = 0; k < 4; k++) { const by = H - 6 + Math.sin(t * 3 + k + c) * 2; ctx.fillStyle = '#e07ab8'; circle(x + 8 + k * 15, by + 1.5, 9); ctx.fill(); ctx.fillStyle = '#ff9fd6'; circle(x + 8 + k * 15, by, 8); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.55)'; circle(x + 5 + k * 15, by - 3, 2.5); ctx.fill(); }
         if (st.planks[c]) { ctx.fillStyle = C.gold; ctx.strokeStyle = C.goldDark; ctx.lineWidth = 3; ctx.fillRect(x, K.GY, CW, 14); ctx.strokeRect(x, K.GY, CW, 14); }
       } else rf27Floor(x, bt, CW, H - bt, st.look);
@@ -354,8 +369,12 @@ const CRANE = {
     }
     // the START pad
     { const sx = st.start * CW, sy = colTop(st, st.start);
-      ctx.fillStyle = st.walked ? '#7aff9a' : '#4fb276'; rr(sx + 6, sy - 6, CW - 12, 8, 4); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.45)'; rr(sx + 9, sy - 5, CW - 18, 2, 1); ctx.fill();
+      ctx.fillStyle = 'rgba(122,255,154,0.16)'; ctx.beginPath(); ctx.ellipse(sx + CW / 2, sy - 2, CW / 2, 8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2f6a4a'; rr(sx + 5, sy - 7, CW - 10, 10, 4); ctx.fill();
+      ctx.fillStyle = st.walked ? '#7aff9a' : '#4fb276'; rr(sx + 6, sy - 6, CW - 12, 7, 3.5); ctx.fill();
+      ctx.fillStyle = 'rgba(20,60,40,0.35)'; for (let k = sx + 14; k < sx + CW - 12; k += 8) ctx.fillRect(k, sy - 4.5, 4, 3);
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; rr(sx + 9, sy - 5.5, CW - 18, 1.6, 0.8); ctx.fill();
+      ctx.fillStyle = '#1e3a2a'; circle(sx + 9.5, sy - 2.5, 1.3); ctx.fill(); circle(sx + CW - 9.5, sy - 2.5, 1.3); ctx.fill();
       ctx.font = '700 12px ' + RF27.FONT; const lw = ctx.measureText('START').width + 14;
       ctx.fillStyle = 'rgba(28,26,54,0.8)'; rr(sx + 30 - lw / 2, sy + 5, lw, 18, 9); ctx.fill();
       text('START', sx + 30, sy + 14.5, 12, '#ffffff', 'center', 'body'); }
@@ -363,9 +382,16 @@ const CRANE = {
     const ex = st.exit * CW, et = colTop(st, st.exit);
     ctx.fillStyle = 'rgba(122,255,154,0.12)'; ctx.beginPath(); ctx.ellipse(ex + 30, et - 40, 46, 60, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2a2f4f'; ctx.fillRect(ex + 4, et - 92, 52, 92);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(ex + 4, et - 92, 52, 2.5);
-    ctx.fillStyle = st.state === 'clear' ? '#ffe9a8' : '#7aff9a'; ctx.fillRect(ex + 10, et - 84, 40, 84);
-    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(ex + 12, et - 82, 6, 80);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(ex + 4, et - 92, 52, 2.5); ctx.fillRect(ex + 4, et - 92, 2, 92);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(ex + 53, et - 92, 3, 92);
+    ctx.fillStyle = '#6a7296'; for (const [a, b] of [[7, -80], [53, -80], [7, -46], [53, -46], [7, -12], [53, -12]]) { circle(ex + a, et + b, 1.4); ctx.fill(); }
+    { const lit = st.state === 'clear' ? '#ffe9a8' : '#7aff9a', g = ctx.createLinearGradient(ex + 10, 0, ex + 50, 0);
+      g.addColorStop(0, lit); g.addColorStop(0.5, '#e8fff0'); g.addColorStop(1, lit);
+      ctx.fillStyle = g; ctx.fillRect(ex + 10, et - 84, 40, 84); }
+    // the sliding door leaves pulled back to each side, ribbed
+    for (const dx of [10, 44]) { ctx.fillStyle = '#4a5270'; ctx.fillRect(ex + dx, et - 84, 6, 84); ctx.fillStyle = 'rgba(255,255,255,0.18)'; for (let yy = et - 80; yy < et; yy += 10) ctx.fillRect(ex + dx, yy, 6, 1.5); }
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(ex + 17, et - 82, 5, 80);
+    ctx.fillStyle = 'rgba(20,60,40,0.25)'; ctx.fillRect(ex + 16, et - 4, 28, 4);
     rf27Stripes(ex + 4, et - 92, 52, 6);
     text('EXIT', ex + 30, et - 104, 16, C.gold, 'center');
     // the gold ghosts (gold guide) and the drop ghost
@@ -386,7 +412,12 @@ const CRANE = {
     ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(m.x - 36, K.railY - 12, 72, 3);
     ctx.fillStyle = 'rgba(120,70,0,0.25)'; ctx.fillRect(m.x - 38, K.railY + 1, 76, 5);
     rr(m.x - 40, K.railY - 14, 80, 22, 6); ctx.stroke();
-    ctx.fillStyle = '#2a2f4f'; circle(m.x - 26, K.railY - 12, 6); ctx.fill(); circle(m.x + 26, K.railY - 12, 6); ctx.fill();
+    for (const wx of [m.x - 26, m.x + 26]) {
+      ctx.fillStyle = '#2a2f4f'; circle(wx, K.railY - 12, 6.5); ctx.fill();
+      ctx.strokeStyle = '#6a7296'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let k = 0; k < 3; k++) { const a = k * Math.PI / 3 + m.x * 0.08; ctx.moveTo(wx - Math.cos(a) * 4.5, K.railY - 12 - Math.sin(a) * 4.5); ctx.lineTo(wx + Math.cos(a) * 4.5, K.railY - 12 + Math.sin(a) * 4.5); } ctx.stroke();
+      ctx.fillStyle = '#c4cee6'; circle(wx, K.railY - 12, 1.6); ctx.fill();
+    }
+    ctx.fillStyle = '#8a5a10'; for (const dx of [-34, -12, 12, 34]) { circle(m.x + dx, K.railY + 1, 1.3); ctx.fill(); }
     ctx.fillStyle = PCOL[st.op]; rr(m.x - 24, K.railY + 4, 48, 34, 8); ctx.fill();
     ctx.fillStyle = PDARK[st.op]; rr(m.x + 12, K.railY + 6, 11, 30, 6); ctx.fill();
     rr(m.x - 24, K.railY + 4, 48, 34, 8); ctx.stroke();
@@ -396,11 +427,20 @@ const CRANE = {
     // the magnet (with a hanging crate)
     if (st.carry) rf27Crate(m.x - CW / 2, mb.y + K.magH, CW, CW, 'metal', t);
     ctx.fillStyle = '#e8574a'; ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 3; rr(mb.x, mb.y, mb.w, mb.h, 5); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(mb.x + 4, mb.y + 3, mb.w - 8, 3);
-    ctx.fillStyle = 'rgba(80,10,10,0.25)'; ctx.fillRect(mb.x + 3, mb.y + mb.h - 10, mb.w - 6, 4);
+    ctx.save(); rr(mb.x, mb.y, mb.w, mb.h, 5); ctx.clip();
+    ctx.fillStyle = '#9aa4c4'; ctx.fillRect(mb.x, mb.y, mb.w, mb.h * 0.32);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(mb.x, mb.y, mb.w, 1.6);
+    ctx.fillStyle = 'rgba(10,10,30,0.3)'; ctx.fillRect(mb.x, mb.y + mb.h * 0.32 - 1.5, mb.w, 1.5);
+    ctx.strokeStyle = 'rgba(200,110,40,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); for (let k = mb.x + 6; k < mb.x + mb.w - 4; k += 3) { ctx.moveTo(k, mb.y + mb.h * 0.36); ctx.lineTo(k + 1.5, mb.y + mb.h - 7); } ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(mb.x + 3, mb.y + mb.h * 0.36, mb.w - 6, 2);
+    ctx.fillStyle = 'rgba(80,10,10,0.3)'; ctx.fillRect(mb.x + 3, mb.y + mb.h - 10, mb.w - 6, 4); ctx.fillRect(mb.x + mb.w - 8, mb.y + mb.h * 0.32, 8, mb.h);
+    ctx.restore();
+    ctx.fillStyle = '#2a2f4f'; for (const dx of [6, mb.w - 6]) { circle(mb.x + dx, mb.y + mb.h * 0.16, 1.8); ctx.fill(); }
     ctx.fillStyle = '#2a2f4f'; rr(mb.x + mb.w / 2 - 8, mb.y - 5, 16, 7, 3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(mb.x + mb.w / 2 - 6, mb.y - 4.5, 12, 1.2);
     rr(mb.x, mb.y, mb.w, mb.h, 5); ctx.stroke();
     ctx.fillStyle = '#d9dbe8'; ctx.fillRect(mb.x + 4, mb.y + mb.h - 6, 12, 6); ctx.fillRect(mb.x + mb.w - 16, mb.y + mb.h - 6, 12, 6);
+    ctx.fillStyle = '#8a8ea8'; ctx.fillRect(mb.x + 4, mb.y + mb.h - 2, 12, 2); ctx.fillRect(mb.x + mb.w - 16, mb.y + mb.h - 2, 12, 2);
     if (st.carry || canGrab(st)) {
       ctx.strokeStyle = st.carry ? 'rgba(122,255,255,0.9)' : 'rgba(122,255,255,' + (0.4 + 0.4 * Math.sin(t * 10)) + ')'; ctx.lineWidth = 2;
       for (let k = 0; k < 3; k++) { const x = mb.x + 14 + k * 18; ctx.beginPath(); ctx.moveTo(x, mb.y + mb.h); ctx.lineTo(x + 4, mb.y + mb.h + 6); ctx.lineTo(x - 2, mb.y + mb.h + 10); ctx.stroke(); }
