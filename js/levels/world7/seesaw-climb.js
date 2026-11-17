@@ -631,6 +631,20 @@ function seesawPaintBackdrop(g, st) {
     g.strokeStyle = 'rgba(255,255,255,0.08)'; g.lineWidth = 1; g.beginPath();
     for (let j = 0; j <= H / 15; j++) { g.moveTo(0, j * 15 + 1.5); g.lineTo(W, j * 15 + 1.5); }
     g.stroke();
+    // each wall stone: a lit left edge, a shaded foot and right side, a few specks, now and then a chip or a stain
+    const wl = new Path2D(), wd = new Path2D(), ws = new Path2D(), wsl = new Path2D(), wst = new Path2D();
+    for (let j = 0; j < H / 15; j++) for (let i = -1; i < W / 30 + 1; i++) {
+      const x = i * 30 + (j % 2) * 15, y = j * 15, hh = hash(i + 90, j + 31);
+      wl.rect(x + 1, y + 2, 1, 11); wd.rect(x + 1, y + 12.6, 28, 1.6); wd.rect(x + 27.6, y + 1, 1.4, 12);
+      for (let k = 0; k < 3; k++) { const h2 = hash(hh, k + 3); (k ? ws : wsl).rect(x + 3 + h2 % 24, y + 3 + (h2 >>> 8) % 9, 1.2, 1); }
+      if (hh % 9 === 0) { wd.moveTo(x + 29, y + 1); wd.lineTo(x + 25, y + 1); wd.lineTo(x + 29, y + 5); wd.closePath(); }
+      if (hh % 13 === 4) { wst.moveTo(x + 22, y + 12); wst.ellipse(x + 15, y + 12, 7, 2.2, 0, 0, Math.PI * 2); }
+    }
+    g.fillStyle = 'rgba(255,255,255,0.1)'; g.fill(wl);
+    g.fillStyle = 'rgba(40,30,70,0.1)'; g.fill(wd);
+    g.fillStyle = 'rgba(40,30,70,0.16)'; g.fill(ws);
+    g.fillStyle = 'rgba(255,255,255,0.16)'; g.fill(wsl);
+    g.fillStyle = 'rgba(40,30,70,0.06)'; g.fill(wst);
     // a soft shadow under the ceiling and along the floor
     const sh = g.createLinearGradient(0, 30, 0, 110); sh.addColorStop(0, 'rgba(30,24,58,0.28)'); sh.addColorStop(1, 'rgba(30,24,58,0)');
     g.fillStyle = sh; g.fillRect(0, 30, W, 80);
@@ -647,46 +661,62 @@ function seesawPaintBackdrop(g, st) {
     g.drawImage(paCastlesLayer(392, 5, 0.55), 0, 0, W, H);   // the shared World 7 far castle (shaded, with pennants)
     g.restore();
   }
-  // castle blocks: mortar courses on the stone tiles (below the cap of a top surface)
+  // castle blocks: dressed ashlar painted over the shared stone tiles (opaque below the turf, so the tile's rounded
+  // slabs don't show through the courses): each block has its own shade, a lit top and left edge, a shaded foot,
+  // speckles, and now and then a chipped corner, a hairline crack or moss in a joint; deep mortar between them, the
+  // castle's dark outline where the stone meets air, and the rock darkening a little the deeper it sits
   g.save();
-  g.strokeStyle = 'rgba(30,24,52,0.24)'; g.lineWidth = 1.5; g.beginPath();
-  const hi = new Path2D();
+  const isH = (c, r) => r >= 0 && (r >= ROWS || c < 0 || c >= COLS || grid[r][c] === '#');
+  const base = new Path2D(), edge = new Path2D(), litE = new Path2D(), dkE = new Path2D(), turf = new Path2D();
+  const deep = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
+  const faces = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
+  const lit = new Path2D(), dk = new Path2D(), spk = new Path2D(), spl = new Path2D(), cr = new Path2D(), crL = new Path2D(), moss = new Path2D(), mossL = new Path2D(), mort = new Path2D();
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     if (grid[r][c] !== '#') continue;
-    const x = c * T, y = r * T, top = r > 0 && !solid(c, r - 1) ? 9 : 0, odd = r % 2;
-    if (top < 15) { g.moveTo(x, y + 15); g.lineTo(x + T, y + 15); hi.rect(x, y + 16, T, 1); }
-    const v0 = odd ? 0 : 15, v1 = odd ? 15 : 0;
-    g.moveTo(x + v0, y + top); g.lineTo(x + v0, y + 15);
-    g.moveTo(x + v1, y + 15); g.lineTo(x + v1, y + 30);
-    if (top === 0 && r > 0 && grid[r - 1][c] === '#') { g.moveTo(x, y); g.lineTo(x + T, y); }
-  }
-  g.stroke();
-  g.fillStyle = 'rgba(255,255,255,0.06)'; g.fill(hi);
-  // each dressed block gets a lit top and left edge, a shaded foot, speckles, and now and then a chip, a crack or moss
-  const lit = new Path2D(), dk = new Path2D(), spk = new Path2D(), spl = new Path2D(), cr = new Path2D(), moss = new Path2D();
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    if (grid[r][c] !== '#') continue;
-    const x = c * T, y = r * T, top = r > 0 && !solid(c, r - 1) ? 9 : 0, odd = r % 2;
-    for (const [cy0, cy1, vx] of [[y + top, y + 15, odd ? 0 : 15], [y + 15, y + 30, odd ? 15 : 0]]) {
-      if (cy1 - cy0 < 4) continue;
+    const x = c * T, y = r * T, top = r > 0 && !'#sw'.includes(grid[r - 1][c]), y0 = top ? y + 12 : y, odd = r % 2;
+    const L = !isH(c - 1, r), R = !isH(c + 1, r), B = r + 1 < ROWS && !'#s'.includes(grid[r + 1][c]);
+    let d = 0; for (let k = 1; k <= 3 && isH(c, r - k); k++) d++;
+    base.rect(x, y0, T + 0.5, y + T - y0 + 0.5);
+    if (top) turf.rect(x, y + 12, T, 2.5);
+    for (const [cy0, cy1, vx] of [[y0, y + 15, odd ? 0 : 15], [y + 15, y + 30, odd ? 15 : 0]]) {
+      if (cy1 - cy0 < 2.5) continue;
+      mort.rect(x, cy1 - 0.8, T, 1.6);
+      if (vx > 0) mort.rect(x + vx - 0.8, cy0, 1.6, cy1 - cy0);
       for (const [bx0, bx1] of [[x, x + vx], [x + vx, x + T]]) {
         if (bx1 - bx0 < 3) continue;
-        lit.rect(bx0 + 1, cy0 + 1, bx1 - bx0 - 2, 1.3); lit.rect(bx0 + 1, cy0 + 1, 1.2, cy1 - cy0 - 2);
-        dk.rect(bx0 + 1, cy1 - 2.5, bx1 - bx0 - 2, 1.8); dk.rect(bx1 - 2.2, cy0 + 1, 1.4, cy1 - cy0 - 2);
-        const hh = hash(bx0 * 3 + 7, cy0 * 5 + 1);
-        for (let k = 0; k < 3; k++) { const h2 = hash(hh, k), sx = bx0 + 2 + h2 % Math.max(1, bx1 - bx0 - 4), sy = cy0 + 2 + (h2 >>> 8) % Math.max(1, cy1 - cy0 - 4); (k ? spk : spl).rect(sx, sy, 1.2, 1); }
-        if (hh % 9 === 0) { cr.moveTo(bx0 + 3 + hh % 8, cy0 + 2); cr.lineTo(bx0 + 6 + hh % 6, cy0 + 7); cr.lineTo(bx0 + 4 + hh % 9, cy1 - 3); }
-        if (hh % 7 === 1) { dk.moveTo(bx1 - 1, cy0 + 1); dk.lineTo(bx1 - 4.5, cy0 + 1); dk.lineTo(bx1 - 1, cy0 + 4.5); dk.closePath(); }
-        if (hh % 13 === 2 && cy0 === y + top) { const mr = Math.min(6, (bx1 - bx0) / 2 - 1), mx = bx0 + (bx1 - bx0) / 2; moss.moveTo(mx + mr, cy1 - 1); moss.ellipse(mx, cy1 - 1, mr, 1.6, 0, 0, Math.PI * 2); }
+        const hh = hash(bx0 * 3 + 7, cy0 * 5 + 1), fx0 = bx0 + 0.8, fy0 = cy0 + (cy0 === y0 && top ? 0 : 0.8), fw = bx1 - bx0 - 1.6, fh = cy1 - 0.8 - fy0;
+        if (fh < 1.5) continue;
+        faces[hh % 4].rect(fx0, fy0, fw, fh);
+        lit.rect(fx0, fy0, fw, 1.2); lit.rect(fx0, fy0, 1.2, fh);
+        dk.rect(fx0, fy0 + fh - 1.8, fw, 1.8); dk.rect(fx0 + fw - 1.5, fy0, 1.5, fh);
+        for (let k = 0; k < 4; k++) { const h2 = hash(hh, k), sx = fx0 + 2 + h2 % Math.max(1, fw - 4), sy = fy0 + 2 + (h2 >>> 8) % Math.max(1, fh - 4); (k ? spk : spl).rect(sx, sy, 1.2, 1); }
+        if (hh % 17 === 0 && fh > 8) { const cx = fx0 + 4 + hh % Math.max(1, fw - 8); for (const [pp, o] of [[cr, 0], [crL, 1]]) { pp.moveTo(cx + o, fy0 + 1); pp.lineTo(cx + 1.6 + o, fy0 + fh * 0.32); pp.lineTo(cx + 0.4 + o, fy0 + fh * 0.58); pp.lineTo(cx + 3 + o, fy0 + fh - 1.5); pp.moveTo(cx + 0.4 + o, fy0 + fh * 0.58); pp.lineTo(cx - 2.5 + o, fy0 + fh * 0.75); } }
+        if (hh % 7 === 1) { dk.moveTo(fx0 + fw, fy0); dk.lineTo(fx0 + fw - 4, fy0); dk.lineTo(fx0 + fw, fy0 + 4); dk.closePath(); }
+        if (hh % 11 === 2 && !top) { const mr = Math.min(6, fw / 2 - 1), mx = fx0 + fw / 2 + (hh >>> 6) % 5 - 2; moss.moveTo(mx + mr, cy1 - 0.5); moss.ellipse(mx, cy1 - 0.5, mr, 1.8, 0, 0, Math.PI * 2); mossL.moveTo(mx + mr * 0.5 - 1, cy1 - 1.3); mossL.ellipse(mx - 1, cy1 - 1.3, mr * 0.5, 0.8, 0, 0, Math.PI * 2); }
       }
     }
+    deep[Math.min(3, d)].rect(x, y0, T + 0.5, y + T - y0 + 0.5);
+    if (L) { edge.rect(x, y0, 2.5, y + T - y0); litE.rect(x + 2.5, y0, 1.5, y + T - y0); }
+    if (R) { edge.rect(x + T - 2.5, y0, 2.5, y + T - y0); dkE.rect(x + T - 5, y0, 2.5, y + T - y0); }
+    if (B) { edge.rect(x, y + T - 3.5, T, 3.5); dkE.rect(x, y + T - 6, T, 2.5); }
   }
-  g.fillStyle = 'rgba(255,255,255,0.1)'; g.fill(lit);
-  g.fillStyle = 'rgba(20,16,40,0.16)'; g.fill(dk);
-  g.fillStyle = 'rgba(20,16,40,0.22)'; g.fill(spk);
-  g.fillStyle = 'rgba(255,255,255,0.16)'; g.fill(spl);
-  g.strokeStyle = 'rgba(20,16,40,0.3)'; g.lineWidth = 0.9; g.stroke(cr);
-  g.fillStyle = 'rgba(110,160,90,0.4)'; g.fill(moss);
+  g.fillStyle = shade(C.stone, 0.35); g.fill(base);
+  const fc = [C.stone, mixCol(C.stone, C.stoneLight, 0.32), shade(C.stone, 0.04), mixCol(C.stone, C.stoneLight, 0.16)];
+  for (let k = 0; k < 4; k++) { g.fillStyle = fc[k]; g.fill(faces[k]); }
+  g.fillStyle = 'rgba(20,16,40,0.32)'; g.fill(mort);
+  g.fillStyle = 'rgba(255,255,255,0.13)'; g.fill(lit);
+  g.fillStyle = 'rgba(20,16,40,0.2)'; g.fill(dk);
+  g.fillStyle = 'rgba(20,16,40,0.24)'; g.fill(spk);
+  g.fillStyle = 'rgba(255,255,255,0.18)'; g.fill(spl);
+  g.strokeStyle = 'rgba(255,255,255,0.1)'; g.lineWidth = 0.9; g.stroke(crL);
+  g.strokeStyle = 'rgba(20,16,40,0.34)'; g.stroke(cr);
+  g.fillStyle = 'rgba(96,150,82,0.6)'; g.fill(moss);
+  g.fillStyle = 'rgba(170,215,140,0.55)'; g.fill(mossL);
+  for (let k = 1; k < 4; k++) { g.fillStyle = 'rgba(10,10,30,' + (0.035 * k) + ')'; g.fill(deep[k]); }
+  g.fillStyle = 'rgba(0,0,0,0.16)'; g.fill(turf);
+  g.fillStyle = C.stoneEdge; g.fill(edge);
+  g.fillStyle = 'rgba(255,255,255,0.1)'; g.fill(litE);
+  g.fillStyle = 'rgba(0,0,0,0.1)'; g.fill(dkE);
   g.restore();
   if (st.saws.length && !st.indoor) seesawPaintCrenels(g, st, solid);
   for (const f of deco.flags || []) seesawPaintFlagPole(g, f[0], f[1]);

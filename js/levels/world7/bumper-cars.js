@@ -896,7 +896,7 @@ function bumperTile(g, tx, ty, jit, crackK, ice, fl) {
     if (h > 0.55) { g.fillStyle = h > 0.8 ? 'rgba(255,255,255,0.18)' : 'rgba(150,118,70,0.08)'; g.fillRect(x + 1, y + 1, T - 2, T - 2); }
     if (h < 0.3) { g.fillStyle = 'rgba(140,110,70,0.22)'; bumperCirc(g, x + 6 + h * 50, y + 8 + h * 30, 1.4); g.fill(); bumperCirc(g, x + 20 - h * 20, y + 21, 1.1); g.fill(); }
   } else if (h < 0.35) { g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + 6, y + 20); g.lineTo(x + 14, y + 10); g.moveTo(x + 13, y + 23); g.lineTo(x + 17, y + 18); g.stroke(); }
-  // (richer props) grit and pits in the stone, a worn smooth patch, a chipped corner and the odd hairline crack;
+  // (richer props) grit and pits in the stone, a worn smooth patch, a chipped corner and the odd pale vein;
   // ice gets frosty specks and a pale sheen instead
   { const hi = hash(tx * 7 + 3, ty * 13 + 5);
     g.fillStyle = ice ? 'rgba(255,255,255,0.55)' : 'rgba(120,92,55,0.32)';
@@ -906,7 +906,8 @@ function bumperTile(g, tx, ty, jit, crackK, ice, fl) {
     if (!ice && hi % 4 === 0) { g.fillStyle = 'rgba(255,248,230,0.16)'; g.beginPath(); g.ellipse(x + 10 + hi % 10, y + 11 + (hi >>> 5) % 8, 6, 4, 0.4, 0, Math.PI * 2); g.fill(); }
     if (hi % 5 === 1) { const cx2 = (hi >>> 3) % 2 ? x + T - 1 : x + 1, cy2 = (hi >>> 4) % 2 ? y + T - 1 : y + 1, sx2 = cx2 > x + 2 ? -1 : 1, sy2 = cy2 > y + 2 ? -1 : 1;
       g.fillStyle = ice ? 'rgba(80,130,180,0.3)' : 'rgba(110,80,40,0.35)'; g.beginPath(); g.moveTo(cx2, cy2); g.lineTo(cx2 + sx2 * 5, cy2); g.lineTo(cx2, cy2 + sy2 * 5); g.closePath(); g.fill(); }
-    if (!ice && hi % 7 === 2 && !(crackK > 0)) { g.strokeStyle = 'rgba(110,80,40,0.35)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(x + 4 + hi % 8, y + 3); g.lineTo(x + 9 + hi % 6, y + 12); g.lineTo(x + 7 + hi % 9, y + 20); g.stroke(); }
+    // (no random hairline cracks: on this floor a crack means the stone is about to fall; a soft vein instead)
+    if (!ice && hi % 6 === 2) { g.strokeStyle = 'rgba(255,250,235,0.35)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x + 3, y + 8 + hi % 12); g.quadraticCurveTo(x + 14, y + 4 + (hi >>> 6) % 18, x + T - 3, y + 10 + (hi >>> 9) % 12); g.stroke(); }
     if (ice) { g.fillStyle = 'rgba(255,255,255,0.22)'; g.beginPath(); g.moveTo(x + 4, y + T - 6); g.lineTo(x + T - 8, y + 4); g.lineTo(x + T - 4, y + 4); g.lineTo(x + 8, y + T - 6); g.closePath(); g.fill(); }
   }
   // (polish) each stone bevelled: lit top-left, shaded bottom-right
@@ -942,8 +943,18 @@ function bumperTyres(g, tx, ty, ws) {
     const cx = tx * T + T / 2 + ox * (T / 2 + 5), cy = ty * T + T / 2 + oy * (T / 2 + 5);
     for (const k of [-1, 0, 1]) {
       const x = cx + (oy ? k * 10 : 0), y = cy + (ox ? k * 10 : 0);
-      g.fillStyle = '#26243a'; bumperCirc(g, x, y, 6 * ws); g.fill(); g.strokeStyle = '#3d3a58'; g.lineWidth = 1.5; bumperCirc(g, x, y, 4.2 * ws); g.stroke();
+      // a rubber tyre: a soft shadow, tread notches round the rim, a lit upper-left arc, a sunk inner ring and a hub
+      g.fillStyle = 'rgba(20,20,40,0.18)'; bumperCirc(g, x + 1.2, y + 1.6, 6 * ws); g.fill();
+      g.fillStyle = '#26243a'; bumperCirc(g, x, y, 6 * ws); g.fill();
+      g.strokeStyle = '#3a3754'; g.lineWidth = 1; g.beginPath();
+      for (let a = 0; a < 12; a++) { const an = a * Math.PI / 6 + k; g.moveTo(x + Math.cos(an) * 4.6 * ws, y + Math.sin(an) * 4.6 * ws); g.lineTo(x + Math.cos(an) * 6 * ws, y + Math.sin(an) * 6 * ws); }
+      g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.22)'; g.lineWidth = 1.2; g.beginPath(); g.arc(x, y, 5.2 * ws, Math.PI * 1.05, Math.PI * 1.6); g.stroke();
+      g.strokeStyle = '#3d3a58'; g.lineWidth = 1.5; bumperCirc(g, x, y, 4.2 * ws); g.stroke();
+      g.fillStyle = '#141224'; bumperCirc(g, x, y, 3.4 * ws); g.fill();
       g.fillStyle = '#5a5678'; bumperCirc(g, x, y, 2.2); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.4)'; bumperCirc(g, x - 0.6, y - 0.6, 0.8); g.fill();
+      g.strokeStyle = '#121020'; g.lineWidth = 1; bumperCirc(g, x, y, 6 * ws); g.stroke();
     }
   }
 }

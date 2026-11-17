@@ -842,13 +842,13 @@ function cannonBlockPic(b, md) {
     const x = 0, y = 0, col = md.col, sd = b.id * 37 + 5;
     g.lineJoin = 'round'; g.lineCap = 'round';
     if (b.mat === 'stone') {
-      // dressed stone: courses of bevelled, speckled blocks with staggered joints, dark mortar between them, a chip or
-      // a hairline crack here and there, and moss in the bottom joint
+      // dressed stone: courses of bevelled, speckled blocks with staggered joints, dark mortar between them, a chip here
+      // and there, and moss in the bottom joint
       g.fillStyle = shade(col, 0.42); g.fillRect(x, y, b.w, b.h);
       for (let yy = 0, row = 0; yy < b.h - 0.5; yy += 15, row++) {
         const rh = Math.min(15, b.h - yy), vx = row % 2 ? b.w * 0.3 : b.w * 0.7;
         const cuts = b.w > 20 ? [0, vx, b.w] : [0, b.w];
-        for (let i = 0; i < cuts.length - 1; i++) paStone(g, x + cuts[i] + 0.5, y + yy + 0.5, cuts[i + 1] - cuts[i] - 1, rh - 1, i % 2 ? paMix(col, '#ffffff', 0.05) : col, sd + row * 5 + i, { lw: 1, r: 1.5 });
+        for (let i = 0; i < cuts.length - 1; i++) paStone(g, x + cuts[i] + 0.5, y + yy + 0.5, cuts[i + 1] - cuts[i] - 1, rh - 1, i % 2 ? paMix(col, '#ffffff', 0.05) : col, sd + row * 5 + i, { lw: 1, r: 1.5, noCrack: true });   // no random hairlines: cracks here mean damage
       }
       if (b.h >= 28) { g.fillStyle = 'rgba(90,150,80,0.55)'; for (let k = 0; k < 3; k++) { const hh = hash(sd, k + 40); g.beginPath(); g.ellipse(x + 4 + hh % Math.max(1, b.w - 8), y + b.h - 1.5, 3 + (hh >>> 8) % 3, 1.6, 0, 0, Math.PI * 2); g.fill(); } }
     } else if (b.shape === 'plank') {
@@ -877,21 +877,77 @@ function cannonDrawBlock(b) {
   const x = -b.w / 2, y = -b.h / 2;
   ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
   if (b.shape === 'roof') {
-    ctx.fillStyle = b.id % 2 ? '#ff6b6b' : '#5b95ff';
-    ctx.beginPath(); ctx.moveTo(x - 3, y + b.h); ctx.lineTo(0, y - 2); ctx.lineTo(x + b.w + 3, y + b.h); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.moveTo(x + 2, y + b.h - 3); ctx.lineTo(-1, y + 5); ctx.lineTo(1, y + 9); ctx.lineTo(x + 7, y + b.h - 3); ctx.closePath(); ctx.fill();
+    // a tiled cone roof (a cached picture): rows of scalloped shingles, a lit left slope and a shaded right one, a ridge
+    // cap and a finial knob, outlined in a dark shade of its own colour (same triangle as before)
+    const rc = b.id % 2 ? '#ff6b6b' : '#5b95ff', rw = b.w + 6, rh = b.h + 2;
+    paStamp('cnroof|' + rc + '|' + b.w + '|' + b.h, x - 3, y - 2, rw, rh, 3, g => {
+      const tri = () => { g.beginPath(); g.moveTo(0, rh); g.lineTo(rw / 2, 0); g.lineTo(rw, rh); g.closePath(); };
+      g.fillStyle = rc; tri(); g.fill();
+      g.save(); tri(); g.clip();
+      g.fillStyle = shade(rc, 0.2); g.beginPath(); g.moveTo(rw / 2, 0); g.lineTo(rw, rh); g.lineTo(rw * 0.56, rh); g.closePath(); g.fill();
+      for (let yy = 5, row = 0; yy < rh + 4; yy += 5, row++) {
+        const half = rw / 2 * yy / rh, x0 = rw / 2 - half - 2, x1 = rw / 2 + half + 2, sw = 5, off = row % 2 ? sw / 2 : 0;
+        g.strokeStyle = shade(rc, 0.42); g.lineWidth = 0.9; g.beginPath();
+        for (let sx = x0 - off; sx < x1; sx += sw) { g.moveTo(sx, yy - 1); g.quadraticCurveTo(sx + sw / 2, yy + 1.6, sx + sw, yy - 1); }
+        g.stroke();
+        g.strokeStyle = tint(rc, 0.3); g.lineWidth = 0.7; g.beginPath();
+        for (let sx = x0 - off; sx < x1; sx += sw) { g.moveTo(sx + 1, yy + 0.4); g.quadraticCurveTo(sx + sw / 2, yy + 2.6, sx + sw - 1, yy + 0.4); }
+        g.stroke();
+      }
+      g.fillStyle = 'rgba(255,255,255,0.3)'; g.beginPath(); g.moveTo(2, rh - 1); g.lineTo(rw / 2 - 1, 3); g.lineTo(rw / 2 + 0.5, 7); g.lineTo(6, rh - 1); g.closePath(); g.fill();
+      g.fillStyle = shade(rc, 0.35); g.fillRect(0, rh - 2.5, rw, 2.5);
+      g.restore();
+      g.strokeStyle = shade(rc, 0.6); g.lineWidth = 2; g.lineJoin = 'round'; tri(); g.stroke();
+      g.fillStyle = C.gold; g.strokeStyle = shade(C.gold, 0.5); g.lineWidth = 1; paCirc(g, rw / 2, 1, 2.2); g.fill(); g.stroke();
+    });
     if (b.hp < b.maxHp) { ctx.strokeStyle = 'rgba(28,26,54,0.7)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-2, y + 6); ctx.lineTo(3, y + 16); ctx.lineTo(-1, y + 24); ctx.stroke(); }
   } else if (b.shape === 'cat') {
     // a little cart with a throwing arm (holding a water balloon)
-    ctx.fillStyle = '#b07a48';
-    rr(x, y + b.h * 0.45, b.w, b.h * 0.55 - 4, 4); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(28,26,54,0.25)'; ctx.fillRect(x + 4, y + b.h * 0.72, b.w - 8, 2);
+    // (cached pictures) the cart: grained boards in a frame with iron corner plates and bolts; the A-frame upright and
+    // its cross bar; the arm: a grained beam with an iron band and a rope cup; wheels with spokes and iron tyres
+    const by = y + b.h * 0.45, bh = b.h * 0.55 - 4;
+    paStamp('cncart|' + b.w + '|' + b.h, x, by, b.w, bh, 3, g => {
+      const col = '#b07a48';
+      g.fillStyle = paDk(col, 0.2); paRR(g, 0, 0, b.w, bh, 4); g.fill();
+      g.save(); paRR(g, 0, 0, b.w, bh, 4); g.clip();
+      const nb = Math.max(2, Math.round(bh / 6)), hb = bh / nb;
+      for (let i = 0; i < nb; i++) paPlank(g, 1, i * hb, b.w - 2, hb, i % 2 ? paDk(col, 0.06) : col, b.id * 7 + i, { r: 1, lw: 0.9 });
+      g.fillStyle = 'rgba(28,26,54,0.22)'; g.fillRect(4, bh * 0.5, b.w - 8, 2);
+      g.restore();
+      for (const cx of [0, b.w - 7]) { paMetal(g, cx, 0, 7, bh, '#6d7290', { r: 1.5, lw: 1, rivets: false }); paNail(g, cx + 3.5, 3, '#6d7290', 1.2); paNail(g, cx + 3.5, bh - 3, '#6d7290', 1.2); }
+      g.strokeStyle = paDk(col, 0.6); g.lineWidth = 2; paRR(g, 0, 0, b.w, bh, 4); g.stroke();
+    });
     const arm = b.throwT > 0 ? -1.2 * Math.sin((1 - b.throwT / 0.5) * Math.PI) : 0.5;
-    ctx.save(); ctx.translate(x + b.w * 0.3, y + b.h * 0.5); ctx.rotate(-0.9 - arm);
-    ctx.fillStyle = '#8a5833'; rr(0, -3, 34, 6, 3); ctx.fill(); ctx.stroke();
-    if (!(b.throwT > 0.25)) { ctx.fillStyle = '#7ec8ff'; circle(36, 0, 6); ctx.fill(); ctx.lineWidth = 1.5; ctx.stroke(); }
+    // the upright that stops the arm, with its cross bar
+    const ux = x + b.w * 0.3;
+    ctx.fillStyle = '#7a4c2a'; ctx.strokeStyle = shade('#7a4c2a', 0.5); ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.moveTo(ux - 7, by + 1); ctx.lineTo(ux - 1.5, y + b.h * 0.5 - 2); ctx.lineTo(ux + 1.5, y + b.h * 0.5 - 2); ctx.lineTo(ux + 7, by + 1); ctx.lineTo(ux + 4, by + 1); ctx.lineTo(ux, y + b.h * 0.5 + 3); ctx.lineTo(ux - 4, by + 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.translate(ux, y + b.h * 0.5); ctx.rotate(-0.9 - arm);
+    paStamp('cnarm', 0, -3, 34, 6, 2, g => {
+      paPlank(g, 0, 0, 34, 6, '#8a5833', 77, { r: 3, lw: 1.4 });
+      paMetal(g, 22, -0.5, 4, 7, '#6d7290', { r: 0.8, lw: 0.8, rivets: false });
+      g.fillStyle = '#5a3a20'; paCirc(g, 3, 3, 1.8); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.35)'; paCirc(g, 2.5, 2.5, 0.7); g.fill();
+    });
+    if (!(b.throwT > 0.25)) {
+      // the water balloon: a shaded blue ball with a knot and a shine
+      paStamp('cnballoon', 30, -6, 12, 12, 3, g => {
+        const gr = g.createRadialGradient(4, 3.5, 0.5, 6, 6, 6.5); gr.addColorStop(0, '#d6f0ff'); gr.addColorStop(0.45, '#7ec8ff'); gr.addColorStop(1, '#3f8fcf');
+        g.fillStyle = gr; paCirc(g, 6, 6, 6); g.fill();
+        g.strokeStyle = '#2f6fa8'; g.lineWidth = 1.4; paCirc(g, 6, 6, 6); g.stroke();
+        g.fillStyle = '#3f8fcf'; g.beginPath(); g.moveTo(-0.5, 4.5); g.lineTo(-2.5, 6); g.lineTo(-0.5, 7.5); g.closePath(); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.8)'; g.beginPath(); g.ellipse(3.6, 3.4, 1.8, 1.1, -0.6, 0, Math.PI * 2); g.fill();
+      });
+    }
     ctx.restore();
-    ctx.fillStyle = '#5a3a20'; for (const wx of [x + 10, x + b.w - 10]) { circle(wx, y + b.h - 3, 6); ctx.fill(); ctx.stroke(); }
+    for (const wx of [x + 10, x + b.w - 10]) paStamp('cnwheel', wx - 6, y + b.h - 9, 12, 12, 2, g => {
+      g.fillStyle = '#5a3a20'; paCirc(g, 6, 6, 6); g.fill();
+      g.strokeStyle = '#8a5833'; g.lineWidth = 1.6; g.beginPath(); for (let k = 0; k < 3; k++) { const a = k * Math.PI / 3; g.moveTo(6 + Math.cos(a) * 4.5, 6 + Math.sin(a) * 4.5); g.lineTo(6 - Math.cos(a) * 4.5, 6 - Math.sin(a) * 4.5); } g.stroke();
+      g.strokeStyle = '#4a4f6a'; g.lineWidth = 1.8; paCirc(g, 6, 6, 5.1); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 0.8; g.beginPath(); g.arc(6, 6, 5.2, Math.PI * 1.05, Math.PI * 1.55); g.stroke();
+      g.fillStyle = '#9aa0c0'; paCirc(g, 6, 6, 1.8); g.fill();
+      g.strokeStyle = '#2a2a40'; g.lineWidth = 1.2; paCirc(g, 6, 6, 6); g.stroke();
+    });
     if (b.hp < b.maxHp) { ctx.strokeStyle = 'rgba(28,26,54,0.75)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + b.w * 0.5, y + b.h * 0.45); ctx.lineTo(x + b.w * 0.58, y + b.h * 0.7); ctx.stroke(); }
   } else {
     // the block's look (wood or stone, its grain and edges) is drawn once into a small picture and pasted after that
@@ -1122,7 +1178,14 @@ function cannonDraw() {
   for (const b of st.W.blocks) if (!b.dead) cannonDrawBlock(b);
   if (st.cat && !st.cat.dead && !st.catDown) {
     const c = st.cat, left = CANNON.balloon.ammo - st.throwN;
-    for (let k = 0; k < left; k++) { ctx.fillStyle = '#7ec8ff'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(c.x + c.w + 6 - (k % 3) * 9, c.y + c.h - 8 - (k / 3 | 0) * 10, 4.5, 5.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    for (let k = 0; k < left; k++) paStamp('cnammo', c.x + c.w + 6 - (k % 3) * 9 - 4.5, c.y + c.h - 8 - (k / 3 | 0) * 10 - 5.5, 9, 11, 2, g => {
+      // a spare water balloon: shaded rubber, a knot on top and a shine
+      const gr = g.createRadialGradient(3, 3.5, 0.4, 4.5, 5.5, 6); gr.addColorStop(0, '#d6f0ff'); gr.addColorStop(0.45, '#7ec8ff'); gr.addColorStop(1, '#3f8fcf');
+      g.fillStyle = gr; g.beginPath(); g.ellipse(4.5, 5.5, 4.5, 5.5, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#2f5f90'; g.lineWidth = 1.2; g.stroke();
+      g.fillStyle = '#3f8fcf'; g.beginPath(); g.moveTo(3.2, 0.3); g.lineTo(4.5, -1.6); g.lineTo(5.8, 0.3); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.75)'; g.beginPath(); g.ellipse(3, 3.4, 1.3, 0.9, -0.5, 0, Math.PI * 2); g.fill();
+    });
   }
   for (const f of st.W.flags) cannonDrawFlag(st, f);
   for (const it of st.items) { ctx.globalAlpha = it.age > CANNON.floorLife - 2 && (G.clock * 8 | 0) % 2 ? 0.4 : 1; cannonDrawItem(it.kind, it.x, it.y); ctx.globalAlpha = 1; }
@@ -1198,7 +1261,15 @@ function cannonDrawTop() {
     if (ball.y < -ball.r) { ctx.fillStyle = C.paper; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(ball.x, 4); ctx.lineTo(ball.x - 7, 16); ctx.lineTo(ball.x + 7, 16); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     else cannonDrawItem(ball.type, ball.x, ball.y);
   }
-  for (const b of st.balloons) { ctx.fillStyle = '#7ec8ff'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(b.x, b.y, 8, 9.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(b.x - 3, b.y - 4, 2.2); ctx.fill(); }
+  for (const b of st.balloons) paStamp('cnflyb', b.x - 8, b.y - 9.5, 16, 19, 3, g => {
+    // a flying water balloon: shaded rubber with a knot, a shine and a ripple of water inside
+    const gr = g.createRadialGradient(5, 5.5, 0.8, 8, 9.5, 10); gr.addColorStop(0, '#d6f0ff'); gr.addColorStop(0.45, '#7ec8ff'); gr.addColorStop(1, '#3f8fcf');
+    g.fillStyle = gr; g.beginPath(); g.ellipse(8, 9.5, 8, 9.5, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(40,110,170,0.45)'; g.lineWidth = 1; g.beginPath(); g.moveTo(3, 12.5); g.quadraticCurveTo(8, 10.5, 13, 12.5); g.stroke();
+    g.strokeStyle = '#2f5f90'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(8, 9.5, 8, 9.5, 0, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#3f8fcf'; g.strokeStyle = '#2f5f90'; g.lineWidth = 1; g.beginPath(); g.moveTo(6, 19.2); g.lineTo(8, 21.8); g.lineTo(10, 19.2); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.ellipse(5, 5, 2.4, 1.5, -0.6, 0, Math.PI * 2); g.fill();
+  });
   if (st.boomFx) { ctx.globalAlpha = 1 - st.boomFx.t / 0.35; ctx.fillStyle = '#ffe9a8'; circle(st.boomFx.x, st.boomFx.y, CANNON_PHYS.ball.boom.boomR * (0.4 + st.boomFx.t * 2)); ctx.fill(); ctx.globalAlpha = 1; }
   // what the loader carries (a keg on the head, a ball on top), and items flying into the funnel
   const both = st.carry.powder && st.carry.ball;

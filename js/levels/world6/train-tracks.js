@@ -1029,6 +1029,10 @@ function trainDrawGround(g, st) {
   const isW = (x, y) => { const c = trainCell(x, y); return !!c && c.water; };
   for (const c of st.cells) if (c.water) {
     g.fillStyle = '#5bb8e8'; g.fillRect(c.x * T, c.y * T, T, T);
+    // (richer props) deeper water away from the banks, with a few weed shadows on the bed
+    const deepN = ['N', 'S', 'E', 'W'].filter(d => { const [dx, dy] = TRAIN_DIRS[d]; return isW(c.x + dx, c.y + dy); }).length;
+    if (deepN >= 3) { g.fillStyle = 'rgba(30,90,160,' + (deepN === 4 ? 0.16 : 0.08) + ')'; g.fillRect(c.x * T, c.y * T, T, T); }
+    { const hw = hash(c.x * 7 + 3, c.y * 3 + 9); if (hw % 5 === 0) { g.strokeStyle = 'rgba(30,90,110,0.25)'; g.lineWidth = 1.6; g.beginPath(); const wx = c.x * T + 6 + hw % 18, wy = c.y * T + 26; g.moveTo(wx, wy); g.quadraticCurveTo(wx - 3, wy - 8, wx + 1, wy - 14); g.moveTo(wx + 3, wy); g.quadraticCurveTo(wx + 6, wy - 6, wx + 4, wy - 10); g.stroke(); } }
     const h = hash(c.x * 3 + 1, c.y * 5 + 2), x = c.x * T, y = c.y * T;
     g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + 5 + h % 8, y + 10 + (h >> 4) % 10); g.quadraticCurveTo(x + 11 + h % 8, y + 6 + (h >> 4) % 10, x + 17 + h % 8, y + 10 + (h >> 4) % 10); g.stroke();
     if (h % 3 === 0) { g.fillStyle = 'rgba(255,255,255,0.7)'; trainDisc(g, x + 22 - h % 6, y + 22 - (h >> 6) % 6, 1.3); g.fill(); }
@@ -1094,7 +1098,16 @@ function trainDrawGround(g, st) {
       trainDisc(g, x, y, 10); g.fill();
       g.fillStyle = hi[c.shade]; trainDisc(g, x - 3.5, y - 3.5, 7); g.fill(); trainDisc(g, x - 8, y + 1, 3.5); g.fill(); trainDisc(g, x + 1, y - 9, 3.5); g.fill();
       g.fillStyle = 'rgba(255,255,255,0.28)'; trainDisc(g, x - 5, y - 6, 2.4); g.fill();
-      if (hh % 4 === 0) { g.fillStyle = '#e5413a'; trainDisc(g, x + 5, y + 2, 2); g.fill(); trainDisc(g, x - 2, y + 7, 2); g.fill(); }   // apples
+      // (richer props) leaves: little dark leaves in the shade, light ones on the lit side, and a twig or two
+      for (let k = 0; k < 12; k++) {
+        const hk = hash(hh + k, 707), a = (hk % 628) / 100, r = 3 + (hk >>> 9) % 10, lx = x + Math.cos(a) * r, ly = y + Math.sin(a) * r, lit = lx + ly < x + y - 3;
+        g.fillStyle = lit ? 'rgba(170,230,160,0.55)' : 'rgba(20,70,40,0.45)'; g.beginPath(); g.ellipse(lx, ly, 2.4, 1.2, a + 1.2, 0, Math.PI * 2); g.fill();
+      }
+      g.strokeStyle = 'rgba(80,50,30,0.45)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + 2, y + 3); g.lineTo(x + 7, y + 7); g.moveTo(x - 1, y + 4); g.lineTo(x - 5, y + 9); g.stroke();
+      if (hh % 4 === 0) for (const [ax, ay] of [[x + 5, y + 2], [x - 2, y + 7]]) {   // apples: shaded, with a glint and a stalk
+        g.fillStyle = '#b8302a'; trainDisc(g, ax + 0.3, ay + 0.3, 2.2); g.fill(); g.fillStyle = '#e5413a'; trainDisc(g, ax, ay, 1.9); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.7)'; trainDisc(g, ax - 0.7, ay - 0.7, 0.6); g.fill();
+      }
       g.strokeStyle = '#21573a'; g.lineWidth = 1.5; trainDisc(g, x, y, 15.5); g.stroke();
     } else {
       // a hedge ball: dark rim and underside, bumpy leaves, a lit top-left
@@ -1104,6 +1117,15 @@ function trainDrawGround(g, st) {
       g.fillStyle = hi[c.shade]; trainDisc(g, x - 3, y - 3, 8.5); g.fill();
       g.fillStyle = 'rgba(255,255,255,0.18)'; trainDisc(g, x - 6, y - 6, 2.5); g.fill(); trainDisc(g, x + 2, y - 8, 1.6); g.fill();
       g.fillStyle = 'rgba(30,80,50,0.35)'; trainDisc(g, x + 5 + hh % 3, y + 4, 1.6); g.fill(); trainDisc(g, x - 4, y + 7, 1.4); g.fill();
+      // (richer props) clipped leaves all over the ball, a darker rim of leaf tips, and the odd white flower
+      for (let k = 0; k < 10; k++) {
+        const hk = hash(hh + k, 709), a = (hk % 628) / 100, r = 2 + (hk >>> 9) % 10, lx = x - 1 + Math.cos(a) * r, ly = y - 1 + Math.sin(a) * r, lit = lx + ly < x + y - 2;
+        g.fillStyle = lit ? 'rgba(180,235,170,0.5)' : 'rgba(20,70,40,0.4)'; g.beginPath(); g.ellipse(lx, ly, 2, 1.1, a, 0, Math.PI * 2); g.fill();
+      }
+      g.strokeStyle = shade(base[c.shade], 0.42); g.lineWidth = 1.2; g.beginPath();
+      for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2 + hh % 5 * 0.1; g.moveTo(x + Math.cos(a) * 13, y + Math.sin(a) * 13); g.lineTo(x + Math.cos(a + 0.12) * 14.6, y + Math.sin(a + 0.12) * 14.6); }
+      g.stroke();
+      if (hh % 7 === 3) { g.fillStyle = '#ffffff'; for (let k = 0; k < 5; k++) { trainDisc(g, x + 4 + Math.cos(k * 1.257) * 1.6, y - 4 + Math.sin(k * 1.257) * 1.6, 1.1); g.fill(); } g.fillStyle = '#ffcf3d'; trainDisc(g, x + 4, y - 4, 0.8); g.fill(); }
     }
   }
   // station huts and their badges

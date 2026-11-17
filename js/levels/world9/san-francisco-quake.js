@@ -1010,6 +1010,32 @@ function quakePaintCrack(g, br, R) {
   const gr = g.createLinearGradient(0, top, 0, up ? QUAKE.bandBot + 20 : H);
   gr.addColorStop(0, '#4a3550'); gr.addColorStop(1, '#1c1a36');
   path(); g.fillStyle = gr; g.fill();
+  // inside the crack: the torn earth walls going down into the dark (layered soil with lit ledges and buried stones),
+  // roots hanging from the street, a few falling crumbs and rubble deep down
+  g.save(); path(); g.clip();
+  const sd = Math.round(br.x0 * 3 + br.cy);
+  for (const [side, d] of [[left, 1], [right, -1]]) {
+    g.beginPath(); g.moveTo(side[0][0], side[0][1]);
+    for (const q of side) g.lineTo(q[0], q[1]);
+    for (let i = n; i >= 0; i--) g.lineTo(side[i][0] + d * (10 + (hash(sd + i, 7) % 6)), side[i][1] + 4);
+    g.closePath();
+    const wg = g.createLinearGradient(0, top, 0, bot); wg.addColorStop(0, '#8e6040'); wg.addColorStop(0.5, '#5e3e44'); wg.addColorStop(1, 'rgba(40,30,60,0)');
+    g.fillStyle = wg; g.fill();
+    g.strokeStyle = 'rgba(255,214,160,0.3)'; g.lineWidth = 1; g.beginPath();
+    for (let i = 0; i < n; i++) { const y = side[i][1] + 5, x = side[i][0] + d * 2; g.moveTo(x, y); g.lineTo(x + d * (6 + hash(sd + i, 9) % 6), y + 1.5); }
+    g.stroke();
+    g.strokeStyle = 'rgba(30,16,26,0.45)'; g.beginPath();
+    for (let i = 0; i < n; i++) { const y = side[i][1] + 9, x = side[i][0] + d * 1.5; g.moveTo(x, y); g.lineTo(x + d * (5 + hash(sd + i, 11) % 7), y + 2); }
+    g.stroke();
+    for (let i = 0; i < 3; i++) { const hk = hash(sd + i, 13 + d), q = side[1 + i % (n - 1)]; paPebble(g, q[0] + d * (4 + hk % 5), q[1] + 2 + (hk >>> 5) % 8, 2 + (hk >>> 9) % 2, 1.6, i % 2 ? '#8f8273' : '#a99e8e', 0.3 * d); }
+  }
+  g.strokeStyle = '#6b4a30'; g.lineWidth = 1.3; g.lineCap = 'round'; g.beginPath();
+  for (let i = 0; i < 4; i++) { const hk = hash(sd + i, 17), rx = x0 + 10 + hk % Math.max(1, x1 - x0 - 20), len = 10 + (hk >>> 6) % 18; g.moveTo(rx, top + 2); g.quadraticCurveTo(rx + ((hk >>> 11) % 9) - 4, top + len * 0.6, rx + ((hk >>> 15) % 11) - 5, top + len); g.moveTo(rx + 1, top + len * 0.5); g.lineTo(rx + 4, top + len * 0.5 + 4); }
+  g.stroke();
+  g.fillStyle = 'rgba(255,230,190,0.35)';
+  for (let i = 0; i < 6; i++) { const hk = hash(sd + i, 19); g.fillRect(x0 + 8 + hk % Math.max(1, x1 - x0 - 16), top + 10 + (hk >>> 8) % Math.max(1, Math.min(60, bot - top - 12)), 1.2, 1.2); }
+  if (!up) for (let i = 0; i < 5; i++) { const hk = hash(sd + i, 23); paPebble(g, x0 + 12 + hk % Math.max(1, x1 - x0 - 24), Math.min(H - 6, top + 46 + (hk >>> 7) % 20), 3 + (hk >>> 12) % 3, 2.2, '#4e4258', ((hk >>> 4) % 5 - 2) * 0.2); }
+  g.restore();
   g.strokeStyle = '#5e3d28'; g.lineWidth = 2.5; path(); g.stroke();
   // the broken earth at the crack's walls: a ragged lit lip and a few torn strata lines
   g.strokeStyle = 'rgba(255,220,170,0.35)'; g.lineWidth = 1.2; g.beginPath();

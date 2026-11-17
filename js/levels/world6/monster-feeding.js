@@ -125,9 +125,16 @@ function paSprite(key, w, h, pad, paint) {
   }
   return s;
 }
+// when the context is only scaled to the sprite's own pixel size (no turn, no zoom), the copy lands on whole screen
+// pixels with smoothing off: sharp, no seams, and several times cheaper on a computer that draws the canvas in software
 function paStamp(key, x, y, w, h, pad, paint, c) {
-  c = c || ctx; const s = paSprite(key, w, h, pad, paint);
-  c.drawImage(s.c, x - s.pad, y - s.pad, s.c.width / s.sc, s.c.height / s.sc);
+  c = c || ctx; const s = paSprite(key, w, h, pad, paint), m = c.getTransform();
+  if (m.b === 0 && m.c === 0 && Math.abs(m.a - s.sc) < 1e-6 && Math.abs(m.d - s.sc) < 1e-6) {
+    const X = Math.round(m.a * (x - s.pad) + m.e), Y = Math.round(m.d * (y - s.pad) + m.f), sm = c.imageSmoothingEnabled;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingEnabled = false;
+    c.drawImage(s.c, X, Y);
+    c.setTransform(m); c.imageSmoothingEnabled = sm;
+  } else c.drawImage(s.c, x - s.pad, y - s.pad, s.c.width / s.sc, s.c.height / s.sc);
 }
 // wood grain: wavy lines along a board, with a knot or two (call inside a clip or on a board you just filled)
 function paGrain(g, x, y, w, h, col, seed, vert) {
@@ -328,7 +335,7 @@ function paBackyard(groundY, seed) {
     g.lineJoin = 'round'; g.lineCap = 'round';
     // far trees: leaf clumps with a lit top and a shaded underside, trunks with bark
     for (let i = 0; i < 9; i++) {
-      const h = hash(i * 31 + seed, 7), x = i * 118 + (h % 60) - 20, r = 26 + (h >>> 6) % 16, y = groundY - 70 - (h >>> 10) % 30;
+      const h = hash(i * 31 + seed, 7), x = i * 118 + (h % 60) - 20, r = 26 + (h >> 6) % 16, y = groundY - 70 - (h >> 10) % 30;   // >> as before the polish: keeps the layout the hints were placed around
       const leaf = hz('#5f9e74', 0.58), bark = hz('#7a5a3e', 0.56);
       g.fillStyle = bark; g.fillRect(x - 4, y + r * 0.6, 8, groundY - y);
       g.fillStyle = hz('#5b4330', 0.56); g.fillRect(x + 1.5, y + r * 0.6, 2.5, groundY - y);
@@ -342,7 +349,7 @@ function paBackyard(groundY, seed) {
     // houses
     const roofs = ['#c8654f', '#5d7fb0', '#7c9a58', '#b9784a'], walls = ['#f2dcc0', '#e9e1cf', '#f5d9b5', '#dfe6ea'];
     for (let i = 0; i < 4; i++) {
-      const h = hash(i * 17 + seed, 3), w = 120 + h % 50, x = 40 + i * 240 + (h >>> 4) % 70, hh = 70 + (h >>> 8) % 30, y = groundY - 40 - hh;
+      const h = hash(i * 17 + seed, 3), w = 120 + h % 50, x = 40 + i * 240 + (h >> 4) % 70, hh = 70 + (h >> 8) % 30, y = groundY - 40 - hh;
       const wc = walls[(i + seed) % 4], rc = roofs[(i + seed) % 4], T1 = 0.45, T2 = 0.5;
       const wall = hz(wc, T1), roof = hz(rc, T2), wallD = hz(paDk(wc, 0.14), T1), wallE = hz(paDk(wc, 0.45), T1), roofD = hz(paDk(rc, 0.25), T2), roofE = hz(paDk(rc, 0.5), T2);
       const wh = hh + 40;
@@ -1215,12 +1222,37 @@ function monDrawShock(m) {
   else { const R = MONSTER.shockR * k; ctx.beginPath(); ctx.ellipse(m.kind === 'big' ? m.mx : m.ax, m.ay - 2, Math.max(1, R), Math.max(1, R * 0.12), 0, 0, Math.PI * 2); ctx.stroke(); }
   ctx.globalAlpha = 1;
 }
+// a burrow (cached pictures): behind the monster, a mound of dug earth with clods and the dark mouth going down (a
+// lit back wall inside); in front, the near lip of earth with shaded stones, crumbs and grass blades
 function monDrawHole(b, front) {
+  const soil = C.stone, lt = C.stoneLight;
   if (!front) {
-    ctx.fillStyle = '#2b2850'; ctx.beginPath(); ctx.ellipse(b.x, b.y + 1, 26, 6, 0, 0, Math.PI * 2); ctx.fill();
+    paStamp('monhole|' + soil + lt, b.x - 36, b.y - 9, 72, 18, 3, g => {
+      const X = 36, Y = 10;
+      g.fillStyle = 'rgba(20,20,40,0.16)'; g.beginPath(); g.ellipse(X + 1, Y + 2, 35, 8, 0, 0, Math.PI * 2); g.fill();
+      // the back mound of dug earth
+      g.fillStyle = paDk(soil, 0.1); g.beginPath(); g.ellipse(X, Y - 1, 33, 8, 0, Math.PI, 0); g.fill();
+      g.fillStyle = soil; g.beginPath(); g.ellipse(X - 1, Y - 1.5, 30, 6.5, 0, Math.PI, 0); g.fill();
+      g.fillStyle = lt; g.beginPath(); g.ellipse(X - 6, Y - 5, 16, 2.4, -0.05, 0, Math.PI * 2); g.fill();
+      for (let k = 0; k < 6; k++) { const hk = hash(k, 611); paPebble(g, X - 26 + k * 10 + hk % 4, Y - 4 - (hk >>> 4) % 3, 1.8 + (hk >>> 8) % 2, 1.3, k % 2 ? lt : paDk(soil, 0.05), 0); }
+      // the mouth: dark, a lit back wall, deeper dark at the front
+      const gr = g.createLinearGradient(0, Y - 6, 0, Y + 6); gr.addColorStop(0, '#4a3a52'); gr.addColorStop(0.45, '#2b2850'); gr.addColorStop(1, '#141228');
+      g.fillStyle = gr; g.beginPath(); g.ellipse(X, Y + 1, 26, 6, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = 'rgba(255,230,190,0.18)'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(X, Y + 1, 24, 4.6, 0, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+      g.strokeStyle = paDk(soil, 0.5); g.lineWidth = 1.4; g.beginPath(); g.ellipse(X, Y + 1, 26, 6, 0, 0, Math.PI * 2); g.stroke();
+    });
   } else {
-    ctx.strokeStyle = C.stoneLight; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(b.x, b.y + 1, 27, 7, 0, 0.05 * Math.PI, 0.95 * Math.PI); ctx.stroke();
-    ctx.fillStyle = C.stoneLight; circle(b.x - 30, b.y + 1, 3.5); ctx.fill(); circle(b.x + 30, b.y + 1, 3.5); ctx.fill();
+    paStamp('monlip|' + soil + lt + C.grass, b.x - 36, b.y - 4, 72, 14, 3, g => {
+      const X = 36, Y = 5;
+      // the near lip: a crescent of earth with a lit top, shaded stones at the ends, crumbs, and grass blades
+      g.fillStyle = paDk(soil, 0.15); g.beginPath(); g.ellipse(X, Y, 29, 9, 0, 0.02 * Math.PI, 0.98 * Math.PI); g.ellipse(X, Y + 1, 26, 6, 0, 0.96 * Math.PI, 0.04 * Math.PI, true); g.closePath(); g.fill();
+      g.strokeStyle = lt; g.lineWidth = 2.2; g.beginPath(); g.ellipse(X, Y + 1, 27, 7, 0, 0.08 * Math.PI, 0.92 * Math.PI); g.stroke();
+      g.strokeStyle = paDk(soil, 0.5); g.lineWidth = 1.2; g.beginPath(); g.ellipse(X, Y, 29, 9, 0, 0.04 * Math.PI, 0.96 * Math.PI); g.stroke();
+      paPebble(g, X - 30, Y + 1, 4.2, 3.2, lt, -0.2); paPebble(g, X + 30, Y + 1, 4, 3, lt, 0.25);
+      paPebble(g, X - 22, Y + 7, 2.4, 1.7, paLt(soil, 0.1), 0); paPebble(g, X + 18, Y + 8, 2.2, 1.6, paLt(soil, 0.1), 0.3);
+      g.fillStyle = paDk(soil, 0.3); for (let k = 0; k < 7; k++) { const hk = hash(k, 613); g.fillRect(X - 20 + hk % 40, Y + 5 + (hk >>> 6) % 4, 1.4, 1.2); }
+      paTuft(g, X - 35, Y + 4, 0.5, C.grass, C.grassDark); paTuft(g, X + 34, Y + 4, 0.45, C.grass, C.grassDark);
+    });
   }
 }
 function monDrawHead(st, m) {
@@ -1318,8 +1350,19 @@ function monDrawKitchen(st) {
     ctx.fillStyle = 'rgba(255,170,80,0.28)'; ctx.fillRect(p.x - 14, p.y - 9, 28, 6);   // firelight on the belly
     ctx.restore();
     ctx.fillStyle = 'rgba(255,255,255,0.22)'; circle(p.x - 5, p.y - 23, 3.5); ctx.fill(); circle(p.x - 8, p.y - 17, 1.6); ctx.fill();
+    // an iron band with rivets round the belly, and ring handles on the sides
+    ctx.save(); circle(p.x, p.y - 19, 13); ctx.clip();
+    ctx.fillStyle = '#2a2940'; ctx.fillRect(p.x - 14, p.y - 25, 28, 4); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(p.x - 14, p.y - 25, 28, 1);
+    ctx.restore();
+    for (const rx of [-8, 0, 8]) paNail(ctx, p.x + rx, p.y - 23, '#5a5878', 1.1);
+    ctx.strokeStyle = '#2a2940'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(p.x - 15, p.y - 22, 3.2, Math.PI * 0.5, Math.PI * 1.5); ctx.moveTo(p.x + 15, p.y - 25.2); ctx.arc(p.x + 15, p.y - 22, 3.2, -Math.PI * 0.5, Math.PI * 0.5); ctx.stroke();
+    ctx.strokeStyle = C.ink;
     ctx.fillStyle = '#9aa0c0'; rr(p.x - 15, p.y - 33, 30, 5, 2.5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(p.x - 13, p.y - 32.5, 24, 1.2);
     ctx.fillStyle = '#7be08a'; ctx.beginPath(); ctx.ellipse(p.x, p.y - 33, 11, 2, 0, 0, Math.PI * 2); ctx.fill();
+    // the brew bubbling: two bubbles that swell and pop in turn, and a lit swirl
+    ctx.fillStyle = '#b6f5bf'; ctx.beginPath(); ctx.ellipse(p.x - 3, p.y - 33.5, 5, 0.9, 0, 0, Math.PI * 2); ctx.fill();
+    for (let k = 0; k < 2; k++) { const ph = ((t * 1.4 + k * 0.5) % 1), br = 0.6 + ph * 2.2; if (ph < 0.9) { ctx.fillStyle = '#5cc56e'; circle(p.x - 5 + k * 9, p.y - 34 - br * 0.4, br); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.7)'; circle(p.x - 5.4 + k * 9, p.y - 34.4 - br * 0.6, br * 0.35); ctx.fill(); } }
   }
   // room 2: the crates; the craved one glows, and an arrow bounces over it while the chef holds something else
   for (const b of st.bins) {

@@ -682,26 +682,88 @@ function laserArch(x0, y0, w, h) {
 // the lookout's booth: a lit arched window in the ceiling stone (behind the lookout)
 function laserDrawBoothBack(st) {
   const bx = st.seat.x + PW / 2, x0 = bx - 62, y0 = 8, w = 124, h = 84;
-  ctx.fillStyle = '#2e2849'; rr(x0 - 8, y0 - 4, w + 16, h + 10, 14); ctx.fill();
-  const g = ctx.createLinearGradient(0, y0, 0, y0 + h); g.addColorStop(0, '#fff1c9'); g.addColorStop(1, '#f2b866');
-  ctx.fillStyle = g; laserArch(x0, y0, w, h); ctx.closePath(); ctx.fill();
-  // a vault map pinned on the wall (the lookout's job!) and a little picture
-  ctx.fillStyle = 'rgba(107,70,48,0.35)'; rr(x0 + 10, y0 + 22, 26, 20, 3); ctx.fill(); rr(x0 + w - 34, y0 + 26, 22, 26, 3); ctx.fill();
-  ctx.strokeStyle = 'rgba(220,60,80,0.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x0 + 13, y0 + 28); ctx.lineTo(x0 + 33, y0 + 36); ctx.moveTo(x0 + 13, y0 + 37); ctx.lineTo(x0 + 33, y0 + 29); ctx.stroke();
+  // (a cached picture) a stone surround of wedge blocks, the warm lit room behind the glass with a panelled dado,
+  // the vault map pinned on the wall (the lookout's job!) and a framed picture, the lookout's little bench
+  paStamp('lvbooth', x0 - 10, y0 - 6, w + 20, h + 14, 2, g => {
+    const ox = 10, oy = 6, arch = () => { g.beginPath(); g.moveTo(ox, oy + h); g.lineTo(ox, oy + 26); g.quadraticCurveTo(ox, oy, ox + 26, oy); g.lineTo(ox + w - 26, oy); g.quadraticCurveTo(ox + w, oy, ox + w, oy + 26); g.lineTo(ox + w, oy + h); g.closePath(); };
+    // the surround
+    g.fillStyle = '#2e2849'; paRR(g, 2, 2, w + 16, h + 10, 14); g.fill();
+    g.strokeStyle = '#3d3660'; g.lineWidth = 1.4; g.beginPath();
+    for (let k = 0; k <= 8; k++) { const a = Math.PI + k * Math.PI / 8, cx = ox + w / 2, cy = oy + 40; g.moveTo(cx + Math.cos(a) * (w / 2 - 2), cy + Math.sin(a) * 38); g.lineTo(cx + Math.cos(a) * (w / 2 + 8), cy + Math.sin(a) * 46); }
+    for (const yy of [oy + 52, oy + 70]) { g.moveTo(3, yy); g.lineTo(ox, yy); g.moveTo(ox + w, yy); g.lineTo(ox + w + 7, yy); }
+    g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.07)'; paRR(g, 2, 2, w + 16, 3, 2); g.fill();
+    g.strokeStyle = '#1e1a34'; g.lineWidth = 1.5; paRR(g, 2, 2, w + 16, h + 10, 14); g.stroke();
+    // the room inside
+    g.save(); arch(); g.clip();
+    const gr = g.createLinearGradient(0, oy, 0, oy + h); gr.addColorStop(0, '#fff1c9'); gr.addColorStop(1, '#f2b866');
+    g.fillStyle = gr; g.fillRect(ox, oy, w, h);
+    g.fillStyle = 'rgba(255,255,255,0.25)'; paCirc(g, ox + w * 0.35, oy + 20, 30); g.fill();
+    // a wood dado along the bottom with panels
+    g.fillStyle = '#c98b5a'; g.fillRect(ox, oy + h - 26, w, 26);
+    g.fillStyle = '#e0a874'; g.fillRect(ox, oy + h - 26, w, 2.5);
+    g.strokeStyle = 'rgba(107,70,48,0.45)'; g.lineWidth = 1;
+    for (let px = ox + 6; px < ox + w - 10; px += 24) g.strokeRect(px, oy + h - 21, 18, 14);
+    // the map: parchment with a torn edge, room squares, a red X, a pin
+    g.save(); g.translate(ox + 23, oy + 32); g.rotate(-0.06);
+    g.fillStyle = '#f6e3b4'; paRR(g, -14, -11, 28, 22, 2); g.fill();
+    g.strokeStyle = 'rgba(107,70,48,0.6)'; g.lineWidth = 0.8; g.strokeRect(-10, -7, 9, 7); g.strokeRect(1, -7, 9, 14); g.strokeRect(-10, 1, 9, 6);
+    g.strokeStyle = '#d23c50'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(3, -4); g.lineTo(8, 1); g.moveTo(3, 1); g.lineTo(8, -4); g.stroke();
+    g.strokeStyle = 'rgba(107,70,48,0.7)'; g.lineWidth = 1; paRR(g, -14, -11, 28, 22, 2); g.stroke();
+    g.fillStyle = '#d23c50'; paCirc(g, 0, -10, 1.8); g.fill();
+    g.restore();
+    // a framed picture (a crown) on the right
+    const fx = ox + w - 34, fy = oy + 24;
+    g.fillStyle = '#8a5833'; g.fillRect(fx - 2, fy - 2, 26, 30); g.fillStyle = '#fbe9c4'; g.fillRect(fx + 2, fy + 2, 18, 22);
+    g.fillStyle = '#ffc53d'; g.beginPath(); g.moveTo(fx + 5, fy + 18); g.lineTo(fx + 5, fy + 9); g.lineTo(fx + 8, fy + 13); g.lineTo(fx + 11, fy + 7); g.lineTo(fx + 14, fy + 13); g.lineTo(fx + 17, fy + 9); g.lineTo(fx + 17, fy + 18); g.closePath(); g.fill();
+    g.strokeStyle = '#6b4630'; g.lineWidth = 1; g.strokeRect(fx - 2, fy - 2, 26, 30);
+    g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(fx - 2, fy - 2, 26, 1.2);
+    g.restore();
+  });
   ctx.fillStyle = '#8a5833'; ctx.fillRect(bx - 12, y0 + h - 4, 24, 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(bx - 12, y0 + h - 4, 24, 1);
 }
 function laserDrawBoothFront(st) {
   const bx = st.seat.x + PW / 2, x0 = bx - 62, y0 = 8, w = 124, h = 84;
-  ctx.strokeStyle = '#6b4630'; ctx.lineWidth = 5; laserArch(x0, y0, w, h); ctx.stroke();
-  ctx.fillStyle = '#8a5833'; rr(x0 - 6, y0 + h - 2, w + 12, 9, 3); ctx.fill(); ctx.fillStyle = '#c98b5a'; ctx.fillRect(x0 - 6, y0 + h - 2, w + 12, 3);
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0 + 14, y0 + h - 14); ctx.lineTo(x0 + 30, y0 + 16); ctx.moveTo(x0 + 24, y0 + h - 10); ctx.lineTo(x0 + 38, y0 + 22); ctx.stroke();
-  // the lantern on its arm, aimed at the spot
+  // (cached) the window frame: a moulded wooden arch with a lit inner bead, glass glare, the sill on two brackets
+  paStamp('lvframe', x0 - 8, y0 - 4, w + 16, h + 22, 3, g => {
+    const ox = 8, oy = 4, arch = () => { g.beginPath(); g.moveTo(ox, oy + h); g.lineTo(ox, oy + 26); g.quadraticCurveTo(ox, oy, ox + 26, oy); g.lineTo(ox + w - 26, oy); g.quadraticCurveTo(ox + w, oy, ox + w, oy + 26); g.lineTo(ox + w, oy + h); };
+    g.strokeStyle = '#4e3222'; g.lineWidth = 7; arch(); g.stroke();
+    g.strokeStyle = '#6b4630'; g.lineWidth = 5; arch(); g.stroke();
+    g.strokeStyle = '#9a6a44'; g.lineWidth = 1.4; g.save(); g.translate(-1, -1); arch(); g.stroke(); g.restore();
+    g.strokeStyle = 'rgba(255,240,200,0.5)'; g.lineWidth = 1; g.save(); g.translate(2.5, 2.5); g.scale((w - 5) / w, 1); arch(); g.restore(); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 2; g.beginPath(); g.moveTo(ox + 14, oy + h - 14); g.lineTo(ox + 30, oy + 16); g.moveTo(ox + 24, oy + h - 10); g.lineTo(ox + 38, oy + 22); g.stroke();
+    // brackets under the sill, then the sill board with grain, nails and a lit nose
+    for (const kx of [ox + 6, ox + w - 14]) { g.fillStyle = '#6b4630'; g.beginPath(); g.moveTo(kx, oy + h + 5); g.lineTo(kx + 8, oy + h + 5); g.quadraticCurveTo(kx + 8, oy + h + 13, kx + 4, oy + h + 15); g.quadraticCurveTo(kx + 1, oy + h + 11, kx, oy + h + 5); g.fill(); g.strokeStyle = '#3d281b'; g.lineWidth = 1; g.stroke(); }
+    paPlank(g, ox - 6, oy + h - 2, w + 12, 9, '#8a5833', 51, { r: 3, lw: 1.4, nails: true });
+    g.fillStyle = 'rgba(255,220,170,0.45)'; g.fillRect(ox - 5, oy + h - 1.5, w + 10, 1.5);
+  });
+  // the lantern on its arm, aimed at the spot: a grained post with an iron band, a brass housing with ribs and rivets,
+  // a flared hood and a glowing lens
   const s = st.spot, lx = st.lamp.x, ly = st.lamp.y, a = Math.atan2(s.y - ly, s.x - lx);
-  ctx.fillStyle = '#6b4630'; ctx.fillRect(lx - 2.5, y0 + h + 6, 5, ly - (y0 + h + 6));
+  const py0 = y0 + h + 6;
+  if (ly - py0 > 1) paStamp('lvpost|' + Math.round(ly - py0), lx - 2.5, py0, 5, ly - py0, 2, g => {
+    paPlank(g, 0, 0, 5, ly - py0, '#6b4630', 13, { vert: true, r: 1, lw: 1 });
+    paMetal(g, -0.5, (ly - py0) * 0.45, 6, 3, '#7c8099', { r: 0.6, lw: 0.8, rivets: false });
+  });
   ctx.save(); ctx.translate(lx, ly); ctx.rotate(a);
-  ctx.fillStyle = '#8a5833'; rr(-10, -10, 18, 20, 5); ctx.fill();
-  ctx.fillStyle = '#d9a640'; ctx.beginPath(); ctx.moveTo(6, -9); ctx.lineTo(18, -13); ctx.lineTo(18, 13); ctx.lineTo(6, 9); ctx.closePath(); ctx.fill();
+  paStamp('lvlamp', -10, -13, 30, 26, 3, g => {
+    const X = 10, Y = 13;
+    // the body: a rounded brass can with ribs
+    const gb = g.createLinearGradient(0, Y - 10, 0, Y + 10); gb.addColorStop(0, '#b07a48'); gb.addColorStop(0.35, '#d49a5c'); gb.addColorStop(1, '#6b4630');
+    g.fillStyle = gb; paRR(g, X - 10, Y - 10, 18, 20, 5); g.fill();
+    g.strokeStyle = 'rgba(70,40,20,0.55)'; g.lineWidth = 1; g.beginPath(); g.moveTo(X - 4, Y - 10); g.lineTo(X - 4, Y + 10); g.moveTo(X + 2, Y - 10); g.lineTo(X + 2, Y + 10); g.stroke();
+    g.strokeStyle = '#4e3222'; g.lineWidth = 1.4; paRR(g, X - 10, Y - 10, 18, 20, 5); g.stroke();
+    for (const [nx, ny] of [[X - 7, Y - 7], [X - 7, Y + 7]]) paNail(g, nx, ny, '#d49a5c', 1);
+    // the hood: a flared brass cone
+    const gh = g.createLinearGradient(0, Y - 13, 0, Y + 13); gh.addColorStop(0, '#f2cf6a'); gh.addColorStop(0.4, '#d9a640'); gh.addColorStop(1, '#8a6420');
+    g.fillStyle = gh; g.beginPath(); g.moveTo(X + 6, Y - 9); g.lineTo(X + 18, Y - 13); g.lineTo(X + 18, Y + 13); g.lineTo(X + 6, Y + 9); g.closePath(); g.fill();
+    g.strokeStyle = '#7a5418'; g.lineWidth = 1.2; g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 1; g.beginPath(); g.moveTo(X + 7, Y - 8); g.lineTo(X + 17, Y - 11.5); g.stroke();
+    g.fillStyle = '#7a5418'; g.fillRect(X + 4.5, Y - 9.5, 3, 19);
+  });
   ctx.fillStyle = st.bright ? '#fff7b0' : '#fff4d6'; ctx.fillRect(16, -11, 3, 22);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(16.5, -9, 1.2, 7);
   ctx.restore();
 }
 function laserDraw() {

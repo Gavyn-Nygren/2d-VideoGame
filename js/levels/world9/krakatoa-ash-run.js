@@ -862,9 +862,22 @@ function ashCellPaint(g, style, v, crack, top, lft, rgt, bot) {
     g.strokeStyle = '#e3bf7c'; g.lineWidth = 1.2; g.beginPath();
     for (const ry of [13 + v % 3, 23 - v % 2]) { g.moveTo(0, ry); for (let sx = 0; sx <= T; sx += 5) g.lineTo(sx, ry + Math.sin(sx * 0.35 + v) * 1.4); }
     g.stroke();
-    for (let i = 0; i < 9; i++) { const k = q(i); g.fillStyle = (k >>> 8) % 3 ? '#d9b46e' : '#fff3d0'; g.fillRect(2 + k % 26, 7 + (k >>> 5) % 21, 1.4, 1.2); }
-    if (v === 2) paPebble(g, 20, 19, 2.6, 1.8, '#c2b6a1', 0.3);
-    if (v === 4) { g.fillStyle = '#fbe0d0'; g.beginPath(); g.arc(9, 20, 2.6, Math.PI, 0); g.closePath(); g.fill(); g.strokeStyle = '#d99a7a'; g.lineWidth = 0.7; g.stroke(); }
+    // a packed, slightly damp layer low in the block, and a pale wind-blown streak
+    g.fillStyle = 'rgba(190,140,70,0.16)'; g.beginPath(); g.moveTo(0, 22 + v % 3); for (let sx = 0; sx <= T; sx += 6) g.lineTo(sx, 22 + v % 3 + Math.sin(sx * 0.25 + v * 2) * 1.6); g.lineTo(T, T); g.lineTo(0, T); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,248,225,0.35)'; g.beginPath(); g.ellipse(8 + v * 3, 10 + v % 2 * 6, 7, 1.2, -0.1, 0, Math.PI * 2); g.fill();
+    for (let i = 0; i < 18; i++) { const k = q(i); g.fillStyle = (k >>> 8) % 3 ? '#d9b46e' : '#fff3d0'; g.fillRect(2 + k % 26, 7 + (k >>> 5) % 21, (k >>> 14) % 2 ? 1.4 : 1, 1.2); }
+    for (let i = 0; i < 2; i++) { const k = q(i + 40); g.fillStyle = (k >>> 3) % 2 ? '#c9a8a0' : '#9a8f86'; g.fillRect(3 + k % 24, 9 + (k >>> 6) % 18, 1.8, 1.4); }
+    if (v === 2 || v === 5) paPebble(g, v === 2 ? 20 : 8, v === 2 ? 19 : 24, 2.6, 1.8, v === 2 ? '#c2b6a1' : '#a99e8e', 0.3);
+    if (v === 4) {   // a little scallop shell: ribs, a lit edge and a hinge
+      g.fillStyle = '#fbe0d0'; g.beginPath(); g.arc(9, 20, 3, Math.PI, 0); g.closePath(); g.fill();
+      g.strokeStyle = '#d99a7a'; g.lineWidth = 0.6; g.beginPath(); for (let k = 0; k < 5; k++) { const a = Math.PI + (k + 0.5) * Math.PI / 5; g.moveTo(9, 20); g.lineTo(9 + Math.cos(a) * 3, 20 + Math.sin(a) * 3); } g.stroke();
+      g.lineWidth = 0.8; g.beginPath(); g.arc(9, 20, 3, Math.PI, 0); g.closePath(); g.stroke();
+      g.fillStyle = '#e8b49a'; g.fillRect(8, 20, 2, 1.2);
+    }
+    if (v === 1) {   // a starfish
+      g.fillStyle = '#f08a5d'; g.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 1.3 : 3.4; g.lineTo(21 + Math.cos(a) * r, 18 + Math.sin(a) * r); } g.closePath(); g.fill();
+      g.strokeStyle = '#c0603a'; g.lineWidth = 0.6; g.stroke(); g.fillStyle = '#ffd2b0'; g.fillRect(20.5, 17.5, 1, 1);
+    }
     if (lft) { g.fillStyle = '#d9b46e'; g.fillRect(0, 0, 2.5, T); g.fillStyle = '#b8904e'; g.fillRect(-0.5, 0, 1, T); }
     if (rgt) { g.fillStyle = '#d9b46e'; g.fillRect(T - 2.5, 0, 2.5, T); g.fillStyle = '#b8904e'; g.fillRect(T - 0.5, 0, 1, T); }
     if (bot) { g.fillStyle = '#d9b46e'; g.fillRect(0, T - 3, T, 3); }

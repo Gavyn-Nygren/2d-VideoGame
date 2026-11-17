@@ -1361,6 +1361,7 @@ function pompeiiLavaFill(x0, x1, top, bot, t, key) {
     const bx = x0 + ((k * 37 + t * 16) % Math.max(1, x1 - x0)), by = top + 10 + k * 8 + Math.sin(t * 2 + k) * 3;
     if (by < bot - 3) { circle(bx, by, 2.5 + (k % 2)); ctx.fill(); }
   }
+  if (bot - top > 22) pompeiiLavaDetail(x0 + 2, x1 - 2, top, bot, t, Math.max(2, Math.round((x1 - x0) / 60)));
 }
 function pompeiiDrawPools(st, t) {
   const pcs = st.poolCols;
@@ -1395,12 +1396,45 @@ function pompeiiDrawBand(st, t) {
   for (let x = 0; x <= nose; x += 8) { if (x === 0) ctx.moveTo(x, wave(x) + 1.5); else ctx.lineTo(x, wave(x) + 1.5); }
   ctx.quadraticCurveTo(fx + 5, y0 - 1, fx + 8, y0 + 14);
   ctx.stroke();
-  // dark crusty bits drifting along
-  ctx.fillStyle = 'rgba(140,40,20,0.45)';
-  for (let k = 0; k < 8; k++) {
-    const bx = (k * 131 + t * 9) % Math.max(40, fx - 10);
-    if (bx < fx - 14) { ctx.beginPath(); ctx.ellipse(bx, y0 + 22 + (k % 3) * 14, 14 + (k % 3) * 5, 3.5, 0, 0, Math.PI * 2); ctx.fill(); }
+  // glowing veins in the deep melt, then plates of cooled crust drifting along (dark rock with a hot orange rim and
+  // cracks), and bubbles that swell and pop
+  pompeiiLavaDetail(0, fx - 14, y0, H, t, 8);
+}
+// detail for a lava surface from x0 to x1 (top y0, bottom bot): veins, drifting crust plates, bubbles
+function pompeiiLavaDetail(x0, x1, y0, bot, t, n) {
+  const span = x1 - x0; if (span < 20) return;
+  ctx.save(); ctx.beginPath(); ctx.rect(x0, y0 + 4, span, bot - y0 - 4); ctx.clip();
+  ctx.strokeStyle = 'rgba(255,214,110,0.5)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath();
+  for (let k = 0; k < n; k++) {
+    const vx = x0 + (k * 97 + t * 6) % span, vy = y0 + 30 + (k * 37) % Math.max(10, bot - y0 - 40);
+    ctx.moveTo(vx, vy); ctx.quadraticCurveTo(vx + 12, vy - 5 + (k % 3) * 3, vx + 26, vy + 2); ctx.quadraticCurveTo(vx + 34, vy + 6, vx + 44, vy + 3);
   }
+  ctx.stroke();
+  // (all the plates go in one path per colour: one fill and a few strokes a frame, whatever their number)
+  const plate = new Path2D(), shine = new Path2D(), crk = new Path2D();
+  for (let k = 0; k < n; k++) {
+    const h = hash(k, 517), w = 14 + (k % 3) * 6, bx = x0 + (k * 131 + t * 9) % span, by = y0 + 18 + (k % 3) * 14 + (h % 5);
+    if (bx > x1 - 6 || by > bot - 4) continue;
+    for (let v = 0; v < 7; v++) { const a = v / 7 * Math.PI * 2, r = 0.75 + ((h >>> (v * 3)) % 6) / 20; const px = bx + Math.cos(a) * w * r, py = by + Math.sin(a) * w * 0.32 * r; v ? plate.lineTo(px, py) : plate.moveTo(px, py); }
+    plate.closePath();
+    shine.moveTo(bx - w * 0.2 + w * 0.4, by - w * 0.1); shine.ellipse(bx - w * 0.2, by - w * 0.1, w * 0.4, w * 0.08, 0, 0, Math.PI * 2);
+    crk.moveTo(bx - w * 0.4, by + 1); crk.lineTo(bx - w * 0.05, by - 1); crk.lineTo(bx + w * 0.35, by + 1.5);
+  }
+  ctx.fillStyle = '#7a2a18'; ctx.fill(plate);
+  ctx.strokeStyle = 'rgba(255,170,70,0.85)'; ctx.lineWidth = 1.6; ctx.stroke(plate);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill(shine);
+  ctx.strokeStyle = 'rgba(255,190,90,0.7)'; ctx.lineWidth = 1; ctx.stroke(crk);
+  const bub = new Path2D(), glint = new Path2D();
+  for (let k = 0; k < Math.ceil(n / 2); k++) {
+    const per = 1.6 + (k % 3) * 0.5, ph = ((t + k * 0.73) % per) / per, bx = x0 + (k * 173 + 40) % span, by = y0 + 10 + (k * 29) % 26;
+    if (by > bot - 6) continue;
+    const r = 1.5 + ph * 4.5;
+    if (ph < 0.85) { bub.moveTo(bx + r, by); bub.arc(bx, by, r, 0, Math.PI * 2); glint.moveTo(bx - r * 0.35 + r * 0.3, by - r * 0.35); glint.arc(bx - r * 0.35, by - r * 0.35, r * 0.3, 0, Math.PI * 2); }
+    else { ctx.strokeStyle = 'rgba(255,226,138,' + (1 - (ph - 0.85) / 0.15) + ')'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(bx, by, r + 3, (r + 3) * 0.4, 0, 0, Math.PI * 2); ctx.stroke(); }
+  }
+  ctx.fillStyle = '#ffb347'; ctx.fill(bub); ctx.strokeStyle = '#c8391c'; ctx.lineWidth = 1; ctx.stroke(bub);
+  ctx.fillStyle = 'rgba(255,245,200,0.8)'; ctx.fill(glint);
+  ctx.restore();
 }
 function pompeiiDraw(st) {
   if (!st.pl) return;

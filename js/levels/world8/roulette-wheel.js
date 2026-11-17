@@ -672,9 +672,22 @@
   function rouletteDrawWorld() {
     const st = G.mst, P = rouletteP(), K = ROULETTE_COLS, cx = st.cx, cy = st.cy, clk = G.clock;
     // the carnival tent: velvet with folds, a marquee of chasing bulbs, the green felt table
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, K.velvetDk); g.addColorStop(1, K.velvet);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    for (let x = 0; x < W; x += 40) { ctx.fillStyle = 'rgba(255,255,255,0.035)'; ctx.fillRect(x, 0, 18, H); ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.fillRect(x + 26, 0, 10, H); }
+    // (a cached picture) velvet curtain: the dark-to-light drop, then rounded folds, each lit on its left and shaded on its
+    // right with a soft sheen line down the crest, and a darker hem at the foot
+    const vel = paLayer('roulvelvet|' + K.velvet + K.velvetDk, W, H, g => {
+      const vg = g.createLinearGradient(0, 0, 0, H); vg.addColorStop(0, K.velvetDk); vg.addColorStop(1, K.velvet);
+      g.fillStyle = vg; g.fillRect(0, 0, W, H);
+      for (let x = 0; x < W; x += 40) {
+        const fg = g.createLinearGradient(x, 0, x + 40, 0);
+        fg.addColorStop(0, 'rgba(0,0,0,0.1)'); fg.addColorStop(0.3, 'rgba(255,255,255,0.06)'); fg.addColorStop(0.5, 'rgba(255,255,255,0.02)'); fg.addColorStop(0.8, 'rgba(0,0,0,0.12)'); fg.addColorStop(1, 'rgba(0,0,0,0.16)');
+        g.fillStyle = fg; g.fillRect(x, 0, 40, H);
+        g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(x + 11, 0, 1.5, H);
+      }
+      for (let i = 0; i < 260; i++) { const h = hash(i, 851); g.fillStyle = (h >>> 20) % 3 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.06)'; g.fillRect(h % W, (h >>> 10) % H, 1.2, 2.5); }
+      const hg = g.createLinearGradient(0, H - 70, 0, H); hg.addColorStop(0, 'rgba(0,0,0,0)'); hg.addColorStop(1, 'rgba(0,0,0,0.22)');
+      g.fillStyle = hg; g.fillRect(0, H - 70, W, 70);
+    });
+    { const sm = ctx.imageSmoothingEnabled, m = ctx.getTransform(); if (vel.width === canvas.width && m.a === vel.width / W && m.b === 0 && m.c === 0) ctx.imageSmoothingEnabled = false; ctx.drawImage(vel, 0, 0, W, H); ctx.imageSmoothingEnabled = sm; }
     ctx.fillStyle = '#c2304f'; ctx.fillRect(0, 0, W, 30); ctx.fillStyle = K.gold; ctx.fillRect(0, 28, W, 4);
     for (let x = 15, i = 0; x < W; x += 30, i++) {
       const on = (i + Math.floor(clk * 6)) % 3 === 0;
@@ -761,9 +774,33 @@
       ctx.strokeStyle = 'rgba(255,230,160,0.8)'; ctx.lineWidth = 2;
       for (let j = 1; j < 4; j++) { const a = a0 + j * Math.PI / 12; ctx.beginPath(); ctx.moveTo(Math.cos(a) * (P.pocketR - 16), Math.sin(a) * (P.pocketR - 16)); ctx.lineTo(Math.cos(a) * P.R, Math.sin(a) * P.R); ctx.stroke(); }
     }
-    // gold wedge borders and the pocket ring line
+    // (richer props) the lacquered floor: a soft sheen ring and a darker ring toward the pockets, the step down into the
+    // pockets (a shadow under the inner lip and a lit outer rim), a shadow beside every fret
+    // (the rings are round, so they don't turn: one cached picture, already squashed to the 3/4 view, copied flat)
+    ctx.save(); ctx.rotate(-st.th); ctx.scale(1, 1 / P.k);
+    paStamp('roulrings|' + P.k + '|' + P.R + '|' + P.pocketR + '|' + P.hubR, -P.R - 2, -(P.R + 2) * P.k, 2 * P.R + 4, Math.ceil(2 * (P.R + 2) * P.k), 2, g2 => {
+      g2.translate(P.R + 2, (P.R + 2) * P.k); g2.scale(1, P.k);
+      const ring = (r, w, col) => { g2.strokeStyle = col; g2.lineWidth = w; paCirc(g2, 0, 0, r); g2.stroke(); };
+      ring(P.hubR + (P.pocketR - 16 - P.hubR) * 0.45, 34, 'rgba(255,255,255,0.07)');
+      ring(P.hubR + (P.pocketR - 16 - P.hubR) * 0.45 - 4, 10, 'rgba(255,255,255,0.05)');
+      ring(P.pocketR - 24, 14, 'rgba(20,10,30,0.12)');
+      ring(P.pocketR - 13, 6, 'rgba(20,10,30,0.28)');
+      ring(P.R - 1.5, 2, 'rgba(255,255,255,0.22)');
+    });
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(20,10,30,0.3)'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let j = 0; j < 24; j++) { if (j % 4 === 0) continue; const a = -Math.PI / 6 + j * Math.PI / 12 + 0.012; ctx.moveTo(Math.cos(a) * (P.pocketR - 16), Math.sin(a) * (P.pocketR - 16)); ctx.lineTo(Math.cos(a) * P.R, Math.sin(a) * P.R); }
+    ctx.stroke();
+    // gold wedge borders (a dark bed, the gold bar, a lit line along it) and the pocket ring line
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = K.goldDk; ctx.lineWidth = 5.5;
+    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 - Math.PI / 6; ctx.beginPath(); ctx.moveTo(Math.cos(a) * P.hubR, Math.sin(a) * P.hubR); ctx.lineTo(Math.cos(a) * P.R, Math.sin(a) * P.R); ctx.stroke(); }
     ctx.strokeStyle = K.gold; ctx.lineWidth = 3;
     for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 - Math.PI / 6; ctx.beginPath(); ctx.moveTo(Math.cos(a) * P.hubR, Math.sin(a) * P.hubR); ctx.lineTo(Math.cos(a) * P.R, Math.sin(a) * P.R); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(255,250,220,0.6)'; ctx.lineWidth = 1;
+    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 - Math.PI / 6 - 0.006; ctx.beginPath(); ctx.moveTo(Math.cos(a) * P.hubR, Math.sin(a) * P.hubR); ctx.lineTo(Math.cos(a) * (P.R - 2), Math.sin(a) * (P.R - 2)); ctx.stroke(); }
+    ctx.lineCap = 'butt';
+    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 - Math.PI / 6; paStamp('roulstud', Math.cos(a) * (P.pocketR - 16) - 3.2, Math.sin(a) * (P.pocketR - 16) - 3.2, 6.4, 6.4, 1, g2 => paStud(g2, 3.2, 3.2, 3.2, '#ffd34a', { collar: false })); }
     ctx.strokeStyle = 'rgba(255,230,160,0.9)'; ctx.lineWidth = 2; circle(0, 0, P.pocketR - 16); ctx.stroke();
     // a fast wheel shows speed streaks
     if (st.w > 0.6) {
@@ -790,6 +827,9 @@
       if (on) sc = t < 0.4 ? 1 + 0.7 * Math.sin(Math.min(1, t / 0.4) * Math.PI) * (1 - t / 0.8) + 0.12 * (t / 0.4) : 1.12 + 0.06 * Math.sin(clk * 8);
       ctx.save(); ctx.translate(Math.cos(am) * 168, Math.sin(am) * 168); ctx.rotate(-st.th); ctx.scale(sc, sc * 1.15);
       ctx.globalAlpha = on ? 1 : anyLit ? 0.45 : 0.85;
+      // an inlaid symbol: a dark cut under it, the symbol, then a lit upper edge
+      ctx.save(); ctx.translate(1.5, 2); rouletteSymPath(w.sym, 34); ctx.fillStyle = 'rgba(20,10,30,0.28)'; ctx.fill(); ctx.restore();
+      ctx.save(); ctx.translate(-1, -1.3); rouletteSymPath(w.sym, 34); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fill(); ctx.restore();
       rouletteSym(w.sym, 34, w.ink, on ? '#ffffff' : null);
       ctx.restore();
     }
@@ -800,7 +840,7 @@
     ctx.strokeStyle = 'rgba(60,24,10,0.4)'; ctx.lineWidth = 1.2;
     for (const r of [P.hubR * 0.35, P.hubR * 0.6, P.hubR * 0.82]) { ctx.beginPath(); ctx.arc(0, 0, r, 0.3, 2.4); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, r + 2, 3.4, 5.6); ctx.stroke(); }
     ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, P.hubR - 2, Math.PI * 1.05, Math.PI * 1.85); ctx.stroke();
-    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + Math.PI / 8; paStud(ctx, Math.cos(a) * (P.hubR + 1.5), Math.sin(a) * (P.hubR + 1.5), 1.8, '#ffe08a', { collar: false }); }
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + Math.PI / 8; paStamp('roulhubstud', Math.cos(a) * (P.hubR + 1.5) - 1.8, Math.sin(a) * (P.hubR + 1.5) - 1.8, 3.6, 3.6, 1, g2 => paStud(g2, 1.8, 1.8, 1.8, '#ffe08a', { collar: false })); }
     ctx.strokeStyle = '#5a3a08'; ctx.lineWidth = 1.5; circle(0, 0, P.hubR + 4); ctx.stroke();
     ctx.restore();
     const big = rouletteBig();
@@ -838,7 +878,7 @@
     ctx.strokeStyle = '#5a3a08'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx - 30, cy); ctx.lineTo(cx - 7, cy - 44); ctx.lineTo(cx + 7, cy - 44); ctx.lineTo(cx + 30, cy); ctx.stroke();
     ctx.fillStyle = K.goldDk; ctx.beginPath(); ctx.ellipse(cx, cy, 30, 30 * P.k, 0, 0, Math.PI); ctx.fill();
     ctx.strokeStyle = '#5a3a08'; ctx.stroke();
-    for (let i = 0; i < 5; i++) { const a = 0.35 + i * 0.6; paStud(ctx, cx + Math.cos(a) * 25, cy + Math.sin(a) * 25 * P.k, 1.4, '#ffe08a', { collar: false }); }
+    for (let i = 0; i < 5; i++) { const a = 0.35 + i * 0.6; paStamp('roulturstud', cx + Math.cos(a) * 25 - 1.4, cy + Math.sin(a) * 25 * P.k - 1.4, 2.8, 2.8, 1, g2 => paStud(g2, 1.4, 1.4, 1.4, '#ffe08a', { collar: false })); }
     // the turning handle on top
     for (let i = 0; i < 4; i++) {
       const a = st.th + i * Math.PI / 2, ex = cx + Math.cos(a) * 34, ey = cy - 46 + Math.sin(a) * 34 * P.k;
