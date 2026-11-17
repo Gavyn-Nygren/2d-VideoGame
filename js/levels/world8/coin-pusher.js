@@ -751,22 +751,74 @@ function coinStaticLayer() {
     const g = c.getContext('2d', { alpha: false }); g.setTransform(c.width / W, 0, 0, c.height / h, 0, -ry * c.height / h);   // opaque: a plain copy
     g.fillStyle = '#2b1b52'; g.fillRect(0, ry, W, h);
     g.fillStyle = '#3b2670'; coinRR(g, 8, ry + 4, W - 16, h - 10, 14); g.fill();
+    // lacquered cabinet: a sheen down from the top, a darker foot, a lit rim, a dark outline, gold studs along the top
+    { const sg = g.createLinearGradient(0, ry + 4, 0, H - 6); sg.addColorStop(0, 'rgba(255,255,255,0.08)'); sg.addColorStop(0.35, 'rgba(255,255,255,0)'); sg.addColorStop(1, 'rgba(14,8,34,0.3)');
+      g.fillStyle = sg; coinRR(g, 8, ry + 4, W - 16, h - 10, 14); g.fill(); }
+    g.strokeStyle = 'rgba(255,255,255,0.14)'; g.lineWidth = 1.5; coinRR(g, 10, ry + 6, W - 20, h - 14, 12); g.stroke();
+    g.strokeStyle = '#1a1036'; g.lineWidth = 2; coinRR(g, 8, ry + 4, W - 16, h - 10, 14); g.stroke();
+    for (let sx = 112; sx <= W - 112; sx += 48) if (sx < COIN.edgeL - 12 || sx > COIN.edgeR + 12) paStud(g, sx, H - 9, 1.8, '#d9a32a', { collar: false });
     const gy0 = ry + 12, gy1 = COIN.bedY + 6, gr = g.createLinearGradient(0, gy0, 0, gy1);
     gr.addColorStop(0, '#1c2d5e'); gr.addColorStop(1, '#2c4f88');
     g.fillStyle = gr; coinRR(g, COIN.edgeL - 8, gy0, COIN.edgeR - COIN.edgeL + 16, gy1 - gy0, 8); g.fill();
+    // the window's inner bevel: dark at the top and left (it sits behind the cabinet face), lit at the bottom and right
+    g.fillStyle = 'rgba(8,10,30,0.35)'; g.fillRect(COIN.edgeL - 8, gy0, COIN.edgeR - COIN.edgeL + 16, 4); g.fillRect(COIN.edgeL - 8, gy0, 4, gy1 - gy0);
+    g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(COIN.edgeR + 4, gy0, 4, gy1 - gy0);
+    g.strokeStyle = '#141a3e'; g.lineWidth = 1.5; coinRR(g, COIN.edgeL - 8, gy0, COIN.edgeR - COIN.edgeL + 16, gy1 - gy0, 8); g.stroke();
+    g.strokeStyle = 'rgba(255,197,61,0.35)'; g.lineWidth = 1; coinRR(g, COIN.edgeL - 11, gy0 - 3, COIN.edgeR - COIN.edgeL + 22, gy1 - gy0 + 6, 10); g.stroke();
+    // a back wall of quilted velvet behind the bed
+    g.strokeStyle = 'rgba(255,255,255,0.035)'; g.lineWidth = 1; g.beginPath();
+    for (let k = COIN.edgeL - 200; k < COIN.edgeR; k += 26) { g.moveTo(k, gy1); g.lineTo(k + (gy1 - gy0), gy0); g.moveTo(k + (gy1 - gy0), gy1); g.lineTo(k, gy0); }
+    g.save(); coinRR(g, COIN.edgeL - 8, gy0, COIN.edgeR - COIN.edgeL + 16, gy1 - gy0, 8); g.clip(); g.stroke(); g.restore();
     g.fillStyle = 'rgba(255,255,255,0.05)';   // faint diagonal glass glints
     for (const [gx, gw] of [[COIN.edgeL + 40, 34], [COIN.edgeL + 86, 12], [COIN.edgeR - 150, 22]]) { g.beginPath(); g.moveTo(gx + 40, gy0 + 4); g.lineTo(gx + 40 + gw, gy0 + 4); g.lineTo(gx + gw, gy0 + 60); g.lineTo(gx, gy0 + 60); g.closePath(); g.fill(); }
-    g.fillStyle = '#2f8f62'; g.fillRect(COIN.edgeL, COIN.bedY, COIN.edgeR - COIN.edgeL, 8);
-    g.fillStyle = '#226b49'; g.fillRect(COIN.edgeL, COIN.bedY + 8, COIN.edgeR - COIN.edgeL, 6);
+    // the felt bed: a lit nap line on top, a speckled felt face, a shaded underside, a brass kick strip with rivets
+    { const bw = COIN.edgeR - COIN.edgeL;
+      g.fillStyle = '#2f8f62'; g.fillRect(COIN.edgeL, COIN.bedY, bw, 8);
+      g.fillStyle = '#226b49'; g.fillRect(COIN.edgeL, COIN.bedY + 8, bw, 6);
+      g.fillStyle = '#5cc28f'; g.fillRect(COIN.edgeL, COIN.bedY, bw, 1.5);
+      g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(COIN.edgeL, COIN.bedY + 1.5, bw, 1);
+      for (let i = 0; i < bw / 3; i++) { const hh = hash(i, 811); g.fillStyle = (hh >>> 8) % 3 ? 'rgba(20,70,45,0.55)' : 'rgba(150,230,180,0.35)'; g.fillRect(COIN.edgeL + hh % bw, COIN.bedY + 2.5 + (hh >>> 12) % 5, 1, 1); }
+      g.fillStyle = '#b8913f'; g.fillRect(COIN.edgeL, COIN.bedY + 10, bw, 4);
+      g.fillStyle = '#e8c46a'; g.fillRect(COIN.edgeL, COIN.bedY + 10, bw, 1);
+      g.fillStyle = '#6e5220'; g.fillRect(COIN.edgeL, COIN.bedY + 13.2, bw, 0.8);
+      for (let rx = COIN.edgeL + 10; rx < COIN.edgeR - 4; rx += 30) paStud(g, rx, COIN.bedY + 12, 1, '#e8c46a', { collar: false });
+      g.fillStyle = 'rgba(8,10,30,0.4)'; g.fillRect(COIN.edgeL, COIN.bedY + 14, bw, 3);
+      g.strokeStyle = '#14402b'; g.lineWidth = 1; g.strokeRect(COIN.edgeL + 0.5, COIN.bedY + 0.5, bw - 1, 9.5); }
     for (let row = 1; row >= 0; row--) for (let x = COIN.edgeL + 8 + row * 7; x < COIN.edgeR - 4; x += 15) {
       g.globalAlpha = row ? 0.45 : 0.6; coinDiscOn(g, x, COIN.bedY - 5 - row * 5, 7, 'tok', ((x * 7) % 5) * 0.25);
     }
     g.globalAlpha = 1;
-    g.fillStyle = PCOL[0]; g.fillRect(COIN.edgeL - 6, COIN.bedY, 6, 14);
-    g.fillStyle = PCOL[1]; g.fillRect(COIN.edgeR, COIN.bedY, 6, 14);
+    // the two edge lips: little shaded posts in each player's colour with a lit side, an outline and a brass cap
+    for (const [lx, col] of [[COIN.edgeL - 6, PCOL[0]], [COIN.edgeR, PCOL[1]]]) {
+      const lh = hexRgb(col) ? col : '#ff6b4a';
+      g.fillStyle = lh; g.fillRect(lx, COIN.bedY, 6, 14);
+      g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(lx, COIN.bedY, 1.5, 14);
+      g.fillStyle = 'rgba(20,10,40,0.3)'; g.fillRect(lx + 4, COIN.bedY, 2, 14); g.fillRect(lx, COIN.bedY + 10, 6, 4);
+      g.strokeStyle = paDk(lh, 0.5); g.lineWidth = 1; g.strokeRect(lx + 0.5, COIN.bedY + 0.5, 5, 13);
+      g.fillStyle = '#e8c46a'; g.fillRect(lx - 0.5, COIN.bedY - 1, 7, 2);
+    }
+    // the marquee panel: a raised plate with a lit top edge, a shaded foot, gold piping and corner screws
+    g.fillStyle = 'rgba(8,4,24,0.45)'; coinRR(g, 134, 473, W - 264, 58, 12); g.fill();
     g.fillStyle = '#211544'; coinRR(g, 132, 470, W - 264, 58, 12); g.fill();
-    g.fillStyle = 'rgba(255,255,255,0.10)';
-    for (const tx of [24, W - 114]) { coinRR(g, tx, ry + 16, 90, H - 14 - ry - 16, 12); g.fill(); }
+    { const pg = g.createLinearGradient(0, 470, 0, 528); pg.addColorStop(0, 'rgba(255,255,255,0.1)'); pg.addColorStop(0.3, 'rgba(255,255,255,0)'); pg.addColorStop(1, 'rgba(0,0,0,0.25)');
+      g.fillStyle = pg; coinRR(g, 132, 470, W - 264, 58, 12); g.fill(); }
+    g.strokeStyle = 'rgba(255,197,61,0.4)'; g.lineWidth = 1; coinRR(g, 138, 476, W - 276, 46, 8); g.stroke();
+    g.strokeStyle = '#120a2c'; g.lineWidth = 1.5; coinRR(g, 132, 470, W - 264, 58, 12); g.stroke();
+    for (const [sx, sy] of [[142, 480], [W - 142, 480], [142, 518], [W - 142, 518]]) paStud(g, sx, sy, 2, '#c9c4d8');
+    // score tubes: glass with a back tint, a curved shine, a darker far side, chrome caps top and bottom with screws
+    for (const tx of [24, W - 114]) {
+      const ty0 = ry + 16, th = H - 14 - ry - 16;
+      g.fillStyle = 'rgba(255,255,255,0.10)'; coinRR(g, tx, ty0, 90, th, 12); g.fill();
+      const tg = g.createLinearGradient(tx, 0, tx + 90, 0);
+      tg.addColorStop(0, 'rgba(255,255,255,0.06)'); tg.addColorStop(0.2, 'rgba(255,255,255,0)'); tg.addColorStop(0.8, 'rgba(10,6,30,0)'); tg.addColorStop(1, 'rgba(10,6,30,0.25)');
+      g.fillStyle = tg; coinRR(g, tx, ty0, 90, th, 12); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(tx + 76, ty0 + 14, 3, th - 28);
+      g.fillStyle = 'rgba(10,6,30,0.4)'; coinRR(g, tx + 6, ty0 + th - 10, 78, 8, 4); g.fill();
+      for (const [cy, ch] of [[ty0 - 4, 7], [ty0 + th - 3, 7]]) {
+        paMetal(g, tx + 8, cy, 74, ch, '#b9b6c8', { r: 3, lw: 1, rivets: false });
+        paStud(g, tx + 14, cy + ch / 2, 1.3, '#e6e4f0', { collar: false }); paStud(g, tx + 76, cy + ch / 2, 1.3, '#e6e4f0', { collar: false });
+      }
+    }
     coinSpr.stat = { c, ry, h };
   }
   const L = coinSpr.stat; ctx.drawImage(L.c, 0, L.ry, W, L.h);
@@ -831,6 +883,14 @@ function coinDraw() {
   ctx.fillStyle = 'rgba(255,107,74,0.28)'; ctx.fillRect(c - P.hw, ya, P.hw, P.ph + P.apexH);
   ctx.fillStyle = 'rgba(91,149,255,0.28)'; ctx.fillRect(c, ya, P.hw, P.ph + P.apexH);
   ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.fillRect(c - P.hw, P.bedY - 7, 2 * P.hw, 7);
+  // shape and trim: a soft lit band under the roof, the right side in shade, a brass skirt with rivets at the foot
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.moveTo(c - P.hw, ys); ctx.lineTo(c, ya); ctx.lineTo(c + P.hw, ys); ctx.lineTo(c + P.hw, ys + 5); ctx.lineTo(c, ya + 5); ctx.lineTo(c - P.hw, ys + 5); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(28,26,54,0.12)'; ctx.fillRect(c + P.hw - 14, ya, 14, P.ph + P.apexH);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(c - P.hw, ya, 3, P.ph + P.apexH);
+  ctx.fillStyle = '#b8913f'; ctx.fillRect(c - P.hw, P.bedY - 6, 2 * P.hw, 6);
+  ctx.fillStyle = '#e8c46a'; ctx.fillRect(c - P.hw, P.bedY - 6, 2 * P.hw, 1.2);
+  ctx.fillStyle = '#6e5220'; ctx.fillRect(c - P.hw, P.bedY - 1, 2 * P.hw, 1);
+  for (let rx = c - P.hw + 8; rx < c + P.hw - 4; rx += 20) paStud(ctx, rx, P.bedY - 3, 1, '#e8c46a', { collar: false });
   ctx.restore();
   ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.moveTo(c - P.hw, P.bedY); ctx.lineTo(c - P.hw, ys); ctx.lineTo(c, ya); ctx.lineTo(c + P.hw, ys); ctx.lineTo(c + P.hw, P.bedY); ctx.stroke();
@@ -857,7 +917,12 @@ function coinDraw() {
   ctx.save(); ctx.translate(c, ya - 6); ctx.scale(cs, cs); ctx.translate(-c, -(ya - 6));
   if (cupOpen) { ctx.globalAlpha = 0.35 + 0.25 * Math.sin(t * 6); ctx.fillStyle = C.gold; circle(c, ya - 8, 22); ctx.fill(); ctx.globalAlpha = 1; }
   ctx.fillStyle = cupOpen || st.cupFx > 0 ? C.gold : '#8a7a9a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(c - 13, ya - 14); ctx.lineTo(c + 13, ya - 14); ctx.lineTo(c + 9, ya + 2); ctx.lineTo(c - 9, ya + 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(c - 13, ya - 14); ctx.lineTo(c + 13, ya - 14); ctx.lineTo(c + 9, ya + 2); ctx.lineTo(c - 9, ya + 2); ctx.closePath(); ctx.fill();
+  // a shaded right side, a lit rim and a foot band on the cup
+  ctx.fillStyle = 'rgba(28,26,54,0.22)'; ctx.beginPath(); ctx.moveTo(c + 5, ya - 14); ctx.lineTo(c + 13, ya - 14); ctx.lineTo(c + 9, ya + 2); ctx.lineTo(c + 3, ya + 2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(c - 12, ya - 14, 24, 1.5);
+  ctx.fillStyle = 'rgba(28,26,54,0.25)'; ctx.fillRect(c - 9.5, ya - 2, 19, 3);
+  ctx.beginPath(); ctx.moveTo(c - 13, ya - 14); ctx.lineTo(c + 13, ya - 14); ctx.lineTo(c + 9, ya + 2); ctx.lineTo(c - 9, ya + 2); ctx.closePath(); ctx.stroke();
   if (cupOpen) { ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(c - 8, ya - 11, 3, 9); }
   else { ctx.fillStyle = '#5d4f6e'; ctx.fillRect(c - 15, ya - 17, 30, 4); // lid
     const f = 1 - clamp(st.cupT / st.cupEvery, 0, 1); ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c, ya - 6, 5, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); ctx.stroke(); }
@@ -922,11 +987,15 @@ function coinDraw() {
   // the fountain: a short pipe from a bracket under the clock (or a rail on Sprinkler rounds) to the spout
   const nz = coinNozzle(), py0 = big ? 97 : 78, sq = 1 + st.sprayFx * 1.4;
   if (st.twist === 'sprinkler') { ctx.fillStyle = C.goldDark; rr(st.nozzle.x - COIN.sprinkleA - 14, py0 - 4, 2 * COIN.sprinkleA + 28, 6, 3); ctx.fill(); }
-  ctx.fillStyle = C.goldDark; ctx.fillRect(nz.x - 9, py0, 18, nz.y - 6 - py0);
-  ctx.fillStyle = C.gold; ctx.fillRect(nz.x - 6, py0, 8, nz.y - 6 - py0);
-  ctx.fillStyle = C.goldDark; rr(nz.x - 15, py0 - 5, 30, 7, 3); ctx.fill();
+  // a polished brass pipe with collar rings, hung from a bolted bracket
+  paRod(ctx, nz.x - 9, py0, 18, nz.y - 6 - py0, '#e0a92e');
+  for (let cy = py0 + 10; cy < nz.y - 14; cy += 18) paRod(ctx, nz.x - 11, cy, 22, 4, '#c48a18');
+  paMetal(ctx, nz.x - 15, py0 - 5, 30, 7, C.goldDark, { r: 3, lw: 1.2, rivets: false });
+  paStud(ctx, nz.x - 10, py0 - 1.5, 1.4, '#ffe9a0', { collar: false }); paStud(ctx, nz.x + 10, py0 - 1.5, 1.4, '#ffe9a0', { collar: false });
   ctx.fillStyle = C.goldDark; rr(nz.x - 20 * sq, nz.y - 12, 40 * sq, 14, 6); ctx.fill();
+  ctx.strokeStyle = '#7a4a10'; ctx.lineWidth = 1.2; ctx.stroke();
   ctx.fillStyle = C.gold; rr(nz.x - 17 * sq, nz.y - 11, 34 * sq, 9, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; rr(nz.x - 15 * sq, nz.y - 10.5, 30 * sq, 2, 1); ctx.fill();
   coinStar(nz.x, nz.y - 6.5, 4.2, C.goldDark);                                              // (rev) a star token on the spout
   ctx.fillStyle = 'rgba(28,26,54,0.6)'; rr(nz.x - 9 * sq, nz.y - 1.5, 18 * sq, 3.5, 1.7); ctx.fill();   // and its mouth
 }

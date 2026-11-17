@@ -839,24 +839,32 @@ function cannonBlockPic(b, md) {
     if (_cannonPics.size > 400) _cannonPics.clear();
     const cv = document.createElement('canvas'); cv.width = Math.ceil((b.w + 4) * k); cv.height = Math.ceil((b.h + 4) * k);
     const g = cv.getContext('2d'); g.scale(k, k); g.translate(2, 2);
-    const x = 0, y = 0;
-    g.fillStyle = md.col; g.fillRect(x, y, b.w, b.h);
-    // depth: a shaded right side and foot, a lit top and left edge, and grain knots or stone specks
-    g.fillStyle = 'rgba(28,26,54,0.12)'; g.fillRect(x + b.w - 4, y, 4, b.h);
-    g.fillStyle = 'rgba(255,255,255,0.28)'; g.fillRect(x, y, b.w, 3); g.fillStyle = 'rgba(255,255,255,0.14)'; g.fillRect(x, y, 3, b.h);
-    g.fillStyle = 'rgba(28,26,54,0.22)'; g.fillRect(x, y + b.h - 3, b.w, 3);
-    { const h0 = hash(b.id * 7 + 3, 11);
-      if (b.mat === 'stone') { g.fillStyle = 'rgba(28,26,54,0.16)'; g.beginPath(); for (let k = 0; k < 4; k++) { const hh = hash(b.id, k), sx = x + 4 + hh % Math.max(1, b.w - 8), sy = y + 4 + (hh >> 8) % Math.max(1, b.h - 8); g.moveTo(sx + 1.2, sy); g.arc(sx, sy, 1.2, 0, Math.PI * 2); } g.fill(); }
-      else if (b.w > 14 && b.h > 14) { g.strokeStyle = 'rgba(110,60,25,0.35)'; g.lineWidth = 1; g.beginPath(); g.ellipse(x + 6 + h0 % Math.max(1, b.w - 12), y + 6 + (h0 >> 8) % Math.max(1, b.h - 12), 3, 1.8, 0, 0, Math.PI * 2); g.stroke(); } }
-    g.strokeStyle = 'rgba(28,26,54,0.2)'; g.lineWidth = 1; g.beginPath();
+    const x = 0, y = 0, col = md.col, sd = b.id * 37 + 5;
+    g.lineJoin = 'round'; g.lineCap = 'round';
     if (b.mat === 'stone') {
-      for (let yy = 15, row = 0; yy < b.h; yy += 15, row++) { g.moveTo(x, y + yy); g.lineTo(x + b.w, y + yy); }
-      for (let yy = 0, row = 0; yy < b.h; yy += 15, row++) { const vx = x + (row % 2 ? b.w * 0.3 : b.w * 0.7); g.moveTo(vx, y + yy); g.lineTo(vx, y + Math.min(b.h, yy + 15)); }
-    } else if (b.shape === 'plank') { g.moveTo(x + 4, y + b.h / 2); g.lineTo(x + b.w - 4, y + b.h / 2 + 1); }
-    else if (b.shape === 'pillar') { for (let k = 1; k < 3; k++) { g.moveTo(x + b.w * k / 3, y + 4); g.lineTo(x + b.w * k / 3 + 1, y + b.h - 4); } }
-    else { for (let k = 1; k < 3; k++) { g.moveTo(x + 4, y + b.h * k / 3); g.lineTo(x + b.w - 4, y + b.h * k / 3 + 1); } }
-    g.stroke();
-    g.strokeStyle = shade(md.col, 0.55); g.lineWidth = 1.8; g.strokeRect(x + 0.9, y + 0.9, b.w - 1.8, b.h - 1.8);
+      // dressed stone: courses of bevelled, speckled blocks with staggered joints, dark mortar between them, a chip or
+      // a hairline crack here and there, and moss in the bottom joint
+      g.fillStyle = shade(col, 0.42); g.fillRect(x, y, b.w, b.h);
+      for (let yy = 0, row = 0; yy < b.h - 0.5; yy += 15, row++) {
+        const rh = Math.min(15, b.h - yy), vx = row % 2 ? b.w * 0.3 : b.w * 0.7;
+        const cuts = b.w > 20 ? [0, vx, b.w] : [0, b.w];
+        for (let i = 0; i < cuts.length - 1; i++) paStone(g, x + cuts[i] + 0.5, y + yy + 0.5, cuts[i + 1] - cuts[i] - 1, rh - 1, i % 2 ? paMix(col, '#ffffff', 0.05) : col, sd + row * 5 + i, { lw: 1, r: 1.5 });
+      }
+      if (b.h >= 28) { g.fillStyle = 'rgba(90,150,80,0.55)'; for (let k = 0; k < 3; k++) { const hh = hash(sd, k + 40); g.beginPath(); g.ellipse(x + 4 + hh % Math.max(1, b.w - 8), y + b.h - 1.5, 3 + (hh >>> 8) % 3, 1.6, 0, 0, Math.PI * 2); g.fill(); } }
+    } else if (b.shape === 'plank') {
+      // a long beam: grained board, end nails, iron straps near each end
+      paPlank(g, x, y, b.w, b.h, col, sd, { r: 2, lw: 1.4, nails: true });
+      for (const sx of [x + 10, x + b.w - 14]) { g.fillStyle = '#6d7290'; g.fillRect(sx, y, 4, b.h); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(sx, y, 1, b.h); g.fillStyle = '#3c4260'; g.fillRect(sx + 3, y, 1, b.h); }
+    } else if (b.shape === 'pillar') {
+      // a post of three upright boards with grain, held by two iron bands with rivets
+      const n = Math.max(2, Math.round(b.w / 9)), bw = b.w / n;
+      for (let i = 0; i < n; i++) paPlank(g, x + i * bw, y, bw, b.h, i % 2 ? shade(col, 0.06) : col, sd + i * 3, { vert: true, r: 1.2, lw: 1 });
+      for (const by of [y + 6, y + b.h - 10]) { paMetal(g, x - 0.5, by, b.w + 1, 4, '#7c8099', { r: 0.8, lw: 1, step: Math.max(6, b.w / 2 - 2), ins: 2 }); }
+    } else {
+      // a box: a slatted crate with a brace and corner nails
+      paCrate(g, x, y, b.w, b.h, col, sd, { lw: 1.6 });
+    }
+    g.strokeStyle = shade(col, 0.55); g.lineWidth = 1.8; g.strokeRect(x + 0.9, y + 0.9, b.w - 1.8, b.h - 1.8);
     pic = { cv, k }; _cannonPics.set(key, pic);
   }
   return pic;
@@ -931,15 +939,37 @@ function cannonDrawCrown(cx, cy) {
 function cannonDrawItem(kind, x, y, s = 1) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
   if (kind === 'powder') {
-    ctx.fillStyle = '#9a6232'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; rr(-8, -9, 16, 18, 5); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(-5, -7, 3, 14);
-    ctx.fillStyle = '#2a2f4f'; ctx.fillRect(-8, -5, 16, 3); ctx.fillRect(-8, 2, 16, 3);
-    ctx.fillStyle = C.gold; circle(0, -10, 2.4); ctx.fill();
+    // a bulging powder keg: curved staves with grain, two iron hoops with rivets, a lit side, a gold fuse cap
+    paStamp('cannonkeg', -8, -12.5, 16, 21.5, 2, g => {
+      g.save(); g.translate(8, 12.5);
+      const keg = () => { g.beginPath(); g.moveTo(-6, -9); g.quadraticCurveTo(-9.5, 0, -6, 9); g.lineTo(6, 9); g.quadraticCurveTo(9.5, 0, 6, -9); g.closePath(); };
+      keg(); g.fillStyle = '#9a6232'; g.fill();
+      g.save(); keg(); g.clip();
+      g.strokeStyle = '#6e4220'; g.lineWidth = 0.9; g.beginPath(); for (const sx of [-4, 0, 4]) { g.moveTo(sx * 0.9, -9); g.quadraticCurveTo(sx * 1.35, 0, sx * 0.9, 9); } g.stroke();
+      g.strokeStyle = 'rgba(255,220,170,0.25)'; g.lineWidth = 0.7; g.beginPath(); for (const sx of [-2.6, 1.6]) { g.moveTo(sx * 0.9, -8); g.quadraticCurveTo(sx * 1.35, 0, sx * 0.9, 8); } g.stroke();
+      g.fillStyle = 'rgba(28,26,54,0.25)'; g.fillRect(3, -10, 8, 20);
+      g.fillStyle = 'rgba(255,255,255,0.28)'; g.fillRect(-6, -9, 2.4, 18);
+      g.restore();
+      for (const hy of [-5.5, 3.5]) { g.fillStyle = '#3c4260'; g.fillRect(-8.6, hy, 17.2, 2.6); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(-8.6, hy, 17.2, 0.8); g.fillStyle = '#c9cde0'; paCirc(g, -5, hy + 1.3, 0.6); g.fill(); paCirc(g, 5, hy + 1.3, 0.6); g.fill(); }
+      keg(); g.strokeStyle = C.ink; g.lineWidth = 1.5; g.stroke();
+      g.fillStyle = '#7a4a24'; g.beginPath(); g.ellipse(0, -9, 6, 1.6, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = C.ink; g.lineWidth = 1; g.stroke();
+      g.fillStyle = C.gold; paCirc(g, 0, -10, 2.4); g.fill(); g.strokeStyle = C.goldDark; g.lineWidth = 0.8; g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.6)'; paCirc(g, -0.7, -10.7, 0.8); g.fill();
+      g.restore();
+    });
   } else {
     const r = CANNON_PHYS.ball[kind] ? CANNON_PHYS.ball[kind].r : 9;
     ctx.fillStyle = kind === 'boom' ? '#1c1a36' : kind === 'big' ? '#4a4f6e' : '#3c4260'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5;
-    circle(0, 0, r); ctx.fill(); ctx.stroke();
+    circle(0, 0, r); ctx.fill();
+    // cast iron: a dark lower right, a soft lit top left, a casting seam, a sharp glint
+    ctx.save(); circle(0, 0, r); ctx.clip();
+    ctx.fillStyle = 'rgba(10,10,30,0.35)'; circle(r * 0.35, r * 0.4, r); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; circle(-r * 0.25, -r * 0.25, r * 0.7); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(0, 0, r * 0.98, r * 0.32, -0.5, 0, Math.PI); ctx.stroke();
+    ctx.restore();
+    ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.32)'; circle(-r * 0.35, -r * 0.35, r * 0.3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; circle(-r * 0.42, -r * 0.42, r * 0.11); ctx.fill();
     if (kind === 'boom') {
       ctx.fillStyle = '#ff6b4a'; ctx.fillRect(-r * 0.75, -1.5, r * 1.5, 3);
       ctx.strokeStyle = '#c98b5a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -r); ctx.quadraticCurveTo(4, -r - 6, 2, -r - 9); ctx.stroke();
@@ -955,8 +985,12 @@ function cannonDrawPile(p) {
   else if (p.kind === 'iron') { for (const [dx, dy] of [[10, -9], [w / 2, -9], [w - 10, -9], [w / 2 - 10, -24], [w / 2 + 10, -24], [w / 2, -39]]) cannonDrawItem('iron', x + dx, y + dy, s); }
   else if (p.kind === 'big') { for (const [dx, dy] of [[15, -13], [w - 15, -13], [w / 2, -36]]) cannonDrawItem('big', x + dx, y + dy, s); }
   else {
-    ctx.fillStyle = '#c98b5a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; rr(x + 2, y - 22, w - 4, 22, 3); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#ff6b4a'; ctx.fillRect(x + 4, y - 15, w - 8, 5);
+    paStamp('cannonboomcrate', x + 2, y - 22, w - 4, 22, 2, g => {
+      paCrate(g, 0, 0, w - 4, 22, '#c98b5a', 77, { noBrace: true, lw: 2 });
+      g.fillStyle = '#ff6b4a'; g.fillRect(2, 7, w - 8, 5); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(2, 7, w - 8, 1);
+      g.fillStyle = '#b8382a'; g.fillRect(2, 11, w - 8, 1);
+      g.fillStyle = '#fff3d8'; for (let k = 0; k < 3; k++) { const sx = (w - 4) / 2 - 8 + k * 8; g.beginPath(); g.moveTo(sx, 7.5); g.lineTo(sx + 1.6, 9.5); g.lineTo(sx, 11.5); g.lineTo(sx - 1.6, 9.5); g.closePath(); g.fill(); }
+    });
     cannonDrawItem('boom', x + w / 2, y - 32, s);
   }
 }
@@ -1005,6 +1039,12 @@ function cannonDrawCannon(st) {
   ctx.fillStyle = '#8a5833'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(x - 22, cn.floor - 6); ctx.lineTo(x - 6, y - 6); ctx.lineTo(x + 8, y - 2); ctx.lineTo(x + 18, cn.floor - 6); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.moveTo(x - 19, cn.floor - 8); ctx.lineTo(x - 6, y - 4); ctx.lineTo(x - 4, y - 2); ctx.lineTo(x - 16, cn.floor - 8); ctx.closePath(); ctx.fill();
+  // grain along the cheek, a shaded foot and iron bolts
+  ctx.strokeStyle = 'rgba(80,45,20,0.45)'; ctx.lineWidth = 0.9; ctx.beginPath();
+  ctx.moveTo(x - 14, cn.floor - 9); ctx.lineTo(x - 3, y - 3); ctx.moveTo(x - 6, cn.floor - 9); ctx.lineTo(x + 2, y - 1); ctx.moveTo(x + 4, cn.floor - 9); ctx.lineTo(x + 7, y + 1);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(28,26,54,0.25)'; ctx.fillRect(x - 21, cn.floor - 10, 38, 4);
+  for (const [bx, by] of [[x - 8, y + 2], [x + 6, y + 4], [x - 15, cn.floor - 12]]) { ctx.fillStyle = '#3c4260'; circle(bx, by, 1.6); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.5)'; circle(bx - 0.5, by - 0.5, 0.6); ctx.fill(); }
   for (const wx of [x - 12, x + 10]) {
     ctx.fillStyle = '#c98b5a'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2; circle(wx, cn.floor - 9, 9); ctx.fill(); ctx.stroke();
     ctx.strokeStyle = '#8a5833'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let k = 0; k < 3; k++) { const q = k * Math.PI / 3 + 0.3; ctx.moveTo(wx + Math.cos(q) * 7, cn.floor - 9 + Math.sin(q) * 7); ctx.lineTo(wx - Math.cos(q) * 7, cn.floor - 9 - Math.sin(q) * 7); } ctx.stroke();
@@ -1074,8 +1114,10 @@ function cannonDraw() {
     ctx.fillStyle = '#f6efdf'; ctx.strokeStyle = '#a7865c'; ctx.lineWidth = 1.2; rr(lb.x - pw / 2, lb.y - ph / 2, pw, ph, 4); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#4a3a2a'; ctx.fillText(lb.str, lb.x, lb.y + 0.5);
   }
-  ctx.fillStyle = '#8a5833'; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5;
-  rr(st.fence - 6, st.cannon.floor - 26, 5, 26, 2); ctx.fill(); ctx.stroke();
+  paStamp('cannonpost', st.fence - 6, st.cannon.floor - 26, 5, 26, 2, g => {
+    paPlank(g, 0, 0, 5, 26, '#8a5833', 13, { vert: true, r: 1.6, lw: 1.4 });
+    g.fillStyle = '#3c4260'; g.fillRect(-0.5, 4, 6, 2); g.fillRect(-0.5, 19, 6, 2);
+  });
   cannonDrawCannon(st);
   for (const b of st.W.blocks) if (!b.dead) cannonDrawBlock(b);
   if (st.cat && !st.cat.dead && !st.catDown) {

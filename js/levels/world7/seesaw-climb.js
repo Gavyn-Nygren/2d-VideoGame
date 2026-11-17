@@ -662,6 +662,31 @@ function seesawPaintBackdrop(g, st) {
   }
   g.stroke();
   g.fillStyle = 'rgba(255,255,255,0.06)'; g.fill(hi);
+  // each dressed block gets a lit top and left edge, a shaded foot, speckles, and now and then a chip, a crack or moss
+  const lit = new Path2D(), dk = new Path2D(), spk = new Path2D(), spl = new Path2D(), cr = new Path2D(), moss = new Path2D();
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (grid[r][c] !== '#') continue;
+    const x = c * T, y = r * T, top = r > 0 && !solid(c, r - 1) ? 9 : 0, odd = r % 2;
+    for (const [cy0, cy1, vx] of [[y + top, y + 15, odd ? 0 : 15], [y + 15, y + 30, odd ? 15 : 0]]) {
+      if (cy1 - cy0 < 4) continue;
+      for (const [bx0, bx1] of [[x, x + vx], [x + vx, x + T]]) {
+        if (bx1 - bx0 < 3) continue;
+        lit.rect(bx0 + 1, cy0 + 1, bx1 - bx0 - 2, 1.3); lit.rect(bx0 + 1, cy0 + 1, 1.2, cy1 - cy0 - 2);
+        dk.rect(bx0 + 1, cy1 - 2.5, bx1 - bx0 - 2, 1.8); dk.rect(bx1 - 2.2, cy0 + 1, 1.4, cy1 - cy0 - 2);
+        const hh = hash(bx0 * 3 + 7, cy0 * 5 + 1);
+        for (let k = 0; k < 3; k++) { const h2 = hash(hh, k), sx = bx0 + 2 + h2 % Math.max(1, bx1 - bx0 - 4), sy = cy0 + 2 + (h2 >>> 8) % Math.max(1, cy1 - cy0 - 4); (k ? spk : spl).rect(sx, sy, 1.2, 1); }
+        if (hh % 9 === 0) { cr.moveTo(bx0 + 3 + hh % 8, cy0 + 2); cr.lineTo(bx0 + 6 + hh % 6, cy0 + 7); cr.lineTo(bx0 + 4 + hh % 9, cy1 - 3); }
+        if (hh % 7 === 1) { dk.moveTo(bx1 - 1, cy0 + 1); dk.lineTo(bx1 - 4.5, cy0 + 1); dk.lineTo(bx1 - 1, cy0 + 4.5); dk.closePath(); }
+        if (hh % 13 === 2 && cy0 === y + top) { const mr = Math.min(6, (bx1 - bx0) / 2 - 1), mx = bx0 + (bx1 - bx0) / 2; moss.moveTo(mx + mr, cy1 - 1); moss.ellipse(mx, cy1 - 1, mr, 1.6, 0, 0, Math.PI * 2); }
+      }
+    }
+  }
+  g.fillStyle = 'rgba(255,255,255,0.1)'; g.fill(lit);
+  g.fillStyle = 'rgba(20,16,40,0.16)'; g.fill(dk);
+  g.fillStyle = 'rgba(20,16,40,0.22)'; g.fill(spk);
+  g.fillStyle = 'rgba(255,255,255,0.16)'; g.fill(spl);
+  g.strokeStyle = 'rgba(20,16,40,0.3)'; g.lineWidth = 0.9; g.stroke(cr);
+  g.fillStyle = 'rgba(110,160,90,0.4)'; g.fill(moss);
   g.restore();
   if (st.saws.length && !st.indoor) seesawPaintCrenels(g, st, solid);
   for (const f of deco.flags || []) seesawPaintFlagPole(g, f[0], f[1]);
@@ -747,9 +772,7 @@ function seesawPaintCrenels(g, st, solid) {
     if (!(solid(c, r + 1) && solid(c, r + 2))) continue;
     if (st.saws.some(s => Math.abs(c * T + T / 2 - s.cx) <= SEESAW.half + 2 && r * T >= s.py && r * T <= s.py + 2 * T)) continue;
     const x = c * T, y = r * T;
-    g.fillStyle = C.stoneEdge; g.fillRect(x + 3, y - 15, 14, 15);
-    g.fillStyle = C.stoneLight; g.fillRect(x + 4, y - 14, 12, 14);
-    g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(x + 4, y - 14, 12, 3);
+    paStone(g, x + 3, y - 15, 14, 15, C.stoneLight, c * 7 + r, { lw: 1.2, r: 1.5, noCrack: true });
   }
   g.restore();
 }
@@ -809,11 +832,13 @@ function seesawDrawLift(st, l) {
   ctx.restore();
   // the slab: a 10 px plank with iron ends
   const x = l.x0, y = l.y, w = l.x1 - l.x0;
-  ctx.fillStyle = C.plankDark; rr(x - 1, y - 1, w + 2, 12, 3); ctx.fill();
-  ctx.fillStyle = locked ? '#8d6b4c' : C.plank; ctx.fillRect(x + 1, y, w - 2, 8);
-  ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x + 2, y + 1, w - 4, 2);
-  ctx.fillStyle = 'rgba(90,50,20,0.3)'; for (let k = 30; k < w; k += 30) ctx.fillRect(x + k - 1, y, 2, 8);
-  ctx.fillStyle = SEESAW_IRON; ctx.fillRect(x, y - 1, 5, 11); ctx.fillRect(x + w - 5, y - 1, 5, 11);
+  // the slab: grained boards on a dark frame, nails, iron end caps with rivets (cached per width and lock state)
+  paStamp('seesawlift|' + (locked ? 1 : 0) + C.plank, x - 1, y - 1, w + 2, 12, 2, g => {
+    g.fillStyle = C.plankDark; paRR(g, 0, 0, w + 2, 12, 3); g.fill();
+    const col = locked ? '#8d6b4c' : C.plank;
+    for (let k = 0, bx = 2; bx < w; k++, bx += 30) paPlank(g, bx, 1, Math.min(30, w - bx) - 0.6, 8, k % 2 ? paDk(col, 0.06) : col, k * 7 + w, { r: 1, lw: 1, nails: true });
+    for (const ex of [1, w - 4]) { paMetal(g, ex, 0, 5, 12, SEESAW_IRON, { r: 1, lw: 1, rivets: false }); paNail(g, ex + 2.5, 3, '#8f8ba6', 0.9); paNail(g, ex + 2.5, 9, '#8f8ba6', 0.9); }
+  });
   if (locked) seesawPadlock(x + w / 2, y + 5, 1);
 }
 function seesawPadlock(x, y, a) {
@@ -833,6 +858,9 @@ function seesawDrawBeam(st, s) {
   ctx.fillStyle = '#34304a'; ctx.beginPath(); ctx.moveTo(s.cx - 16, pitY + 1); ctx.lineTo(s.cx, s.py - 2); ctx.lineTo(s.cx + 16, pitY + 1); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#6e6a86'; ctx.beginPath(); ctx.moveTo(s.cx - 12, pitY); ctx.lineTo(s.cx, s.py + 3); ctx.lineTo(s.cx + 12, pitY); ctx.closePath(); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.beginPath(); ctx.moveTo(s.cx - 12, pitY); ctx.lineTo(s.cx, s.py + 3); ctx.lineTo(s.cx - 3, pitY); ctx.closePath(); ctx.fill();
+  // a foot plate and rivets on the iron
+  ctx.fillStyle = '#34304a'; rr(s.cx - 19, pitY - 3, 38, 4, 1.5); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(s.cx - 18, pitY - 3, 36, 1);
+  for (const [rx, ry] of [[s.cx - 15, pitY - 1], [s.cx + 15, pitY - 1], [s.cx - 6, pitY - 8], [s.cx + 6, pitY - 8]]) { ctx.fillStyle = '#25223a'; circle(rx, ry, 1.4); ctx.fill(); ctx.fillStyle = '#b8b5c9'; circle(rx - 0.4, ry - 0.4, 0.6); ctx.fill(); }
   // the spring gauge on the pivot
   const fill = st.cfg.spring ? st.spring / (st.bellsLow ? SEESAW.springLateMax : SEESAW.springMax) : s.aid / SEESAW.aidMax;
   if (fill > 0) {
@@ -850,12 +878,18 @@ function seesawDrawBeam(st, s) {
     ctx.fillStyle = '#34304a'; ctx.fillRect(hx - 2, -13, 4, 13); ctx.fillRect(hx - 6, -15, 12, 4);
     ctx.fillStyle = '#8f8ba6'; ctx.fillRect(hx - 5, -14, 10, 2);
   }
-  ctx.fillStyle = C.plankDark; rr(-len - 1, -1.5, 2 * len + 2, 11, 4); ctx.fill();
-  ctx.fillStyle = C.plank; ctx.fillRect(-len + 1, 0, 2 * len - 2, 7);
-  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(-len + 6, 0.5, 2 * len - 12, 2);
-  ctx.fillStyle = 'rgba(110,60,25,0.35)'; for (const gx of [-len * 0.62, -len * 0.18, len * 0.3, len * 0.7]) ctx.fillRect(gx, 3.5, 14, 1.2);
+  // the beam: a grained plank (knots, nails, a lit top) on a dark under-board, drawn once and stretched to the tilt's
+  // length (a few % at most); iron end caps with rivets
+  const L0 = SEESAW.half;
+  const bp = paSprite('seesawbeam|' + C.plank, 2 * L0 + 2, 11, 2, g => {
+    g.fillStyle = C.plankDark; paRR(g, 0, 0, 2 * L0 + 2, 11, 4); g.fill();
+    g.fillStyle = paDk(C.plankDark, 0.25); g.fillRect(2, 8, 2 * L0 - 2, 2.5);
+    paPlank(g, 2, 1.5, L0 - 1, 7, C.plank, 21, { r: 1.5, lw: 1, nails: true }); paPlank(g, L0 + 1, 1.5, L0 - 1, 7, C.plank, 22, { r: 1.5, lw: 1, nails: true });
+  });
+  ctx.drawImage(bp.c, -len - 1 - bp.pad, -1.5 - bp.pad, (2 * len + 2) + 2 * bp.pad, bp.c.height / bp.sc);
   ctx.fillStyle = SEESAW_IRON; ctx.fillRect(-len - 1, -2, 7, 12); ctx.fillRect(len - 6, -2, 7, 12);
   ctx.fillStyle = '#8f8ba6'; ctx.fillRect(-len, -1, 5, 2); ctx.fillRect(len - 5, -1, 5, 2);
+  ctx.fillStyle = '#25223a'; for (const ex of [-len + 2.5, len - 2.5]) { circle(ex, 3.5, 1.2); ctx.fill(); circle(ex, 7.5, 1.2); ctx.fill(); }
   ctx.fillStyle = '#34304a'; circle(0, 4, 3.2); ctx.fill(); ctx.fillStyle = '#b8b5c9'; circle(0, 4, 1.4); ctx.fill();
   if (s.kick) {   // the catapult: a painted arrow toward the throw, and a red pennant on the kick end
     const k = Math.sign(s.kick);
@@ -887,10 +921,13 @@ function seesawDrawBeam(st, s) {
 }
 function seesawDrawRail(x, fy, dir) {
   const px = x - dir * 4;
-  ctx.fillStyle = C.plankDark; rr(px - 3, fy - 21, 6, 21, 2); ctx.fill();
-  ctx.fillStyle = C.plank; rr(px - 2, fy - 20, 4, 19, 1.5); ctx.fill();
-  ctx.fillStyle = C.gold; circle(px, fy - 21, 3.2); ctx.fill();
-  ctx.fillStyle = C.plankDark; ctx.fillRect(dir > 0 ? px - 14 : px, fy - 16, 14, 3);
+  paStamp('seesawrail|' + dir + C.plank, px - 15, fy - 25, 30, 25, 2, g => {
+    paPlank(g, dir > 0 ? 1 : 15, 9, 14, 3.5, C.plankDark, 3, { r: 1, lw: 1 });
+    paPlank(g, 12, 4, 6, 21, C.plank, 5, { vert: true, r: 2, lw: 1.3 });
+    g.fillStyle = '#34304a'; g.fillRect(11.5, 8.5, 7, 2); g.fillRect(11.5, 19, 7, 2);
+    g.fillStyle = C.gold; paCirc(g, 15, 4, 3.2); g.fill(); g.strokeStyle = C.goldDark; g.lineWidth = 0.9; g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.65)'; paCirc(g, 14, 3, 1); g.fill();
+  });
 }
 function seesawDrawLever(lv) {
   const f = lv.pulled ? clamp(lv.pullT / 0.2, 0, 1) : 0, ease = 1 - Math.pow(1 - f, 3);
@@ -898,8 +935,11 @@ function seesawDrawLever(lv) {
     + (!lv.pulled && lv.pokeT > 0.9 ? Math.sin(lv.pokeT * 40) * 0.25 * (lv.pokeT - 0.9) / 0.6 : 0);   // poked from below: a wiggle, no pull
   const bx = lv.x, by = lv.y;
   paShadow(bx, by, 14, 2.5, 0.22);
-  ctx.fillStyle = '#34304a'; rr(bx - 10, by - 7, 20, 7, 2); ctx.fill();
-  ctx.fillStyle = '#6e6a86'; rr(bx - 8, by - 6, 16, 3, 1.5); ctx.fill();
+  paStamp('seesawleverbase', bx - 10, by - 7, 20, 7, 2, g => {
+    paMetal(g, 0, 0, 20, 7, '#4a4662', { r: 2, lw: 1.2, rivets: false });
+    g.fillStyle = '#25223a'; paRR(g, 6, 1.5, 8, 2.5, 1); g.fill();
+    paNail(g, 3, 4, '#8f8ba6', 0.9); paNail(g, 17, 4, '#8f8ba6', 0.9);
+  });
   const kx = bx + Math.sin(a) * 20, ky = by - 6 - Math.cos(a) * 20;
   ctx.strokeStyle = '#34304a'; ctx.lineWidth = 4.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(bx, by - 6); ctx.lineTo(kx, ky); ctx.stroke();
   ctx.fillStyle = '#2a2640'; circle(kx, ky, 6.2); ctx.fill();
@@ -961,9 +1001,13 @@ function seesawDrawBridge(st) {
   ctx.save(); ctx.translate(B.hx, B.hy); ctx.rotate(a);
   const rad = 3 + 10 * clamp(a / (Math.PI / 2), 0, 1);   // raised, its top end is rounded (no ledge to stand on: you slide off)
   ctx.fillStyle = C.plankDark; rr(-L, 0, L, T, rad); ctx.fill(); ctx.clip();
-  ctx.fillStyle = C.plank; ctx.fillRect(-L + 2, 2, L - 4, T - 5);
-  ctx.fillStyle = 'rgba(110,60,25,0.4)'; for (let k = 1; k < L / 15; k++) ctx.fillRect(-L + k * 15 - 1, 2, 2, T - 5);
-  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(-L + 2, 2, L - 4, 3);
+  // grained boards across the deck (cached once at the deck's longest, anchored at the hinge; the clip above crops it
+  // while it folds, so no new picture is made as it swings)
+  const Lr = Math.round(Math.max(B.len, B.upLen || B.len));
+  paStamp('seesawbridge|' + C.plank, -Lr + 2, 2, Lr - 4, T - 5, 0, g => {
+    for (let k = 0; k * 15 < Lr - 4; k++) { const x1 = Lr - 4 - k * 15, w = Math.min(15, x1); paPlank(g, x1 - w + 0.5, 0, w - 1, T - 5, k % 2 ? paDk(C.plank, 0.06) : C.plank, k * 5 + 3, { vert: true, r: 1, lw: 1 }); }
+  });
+  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(-L + 2, 2, L - 4, 2);
   ctx.fillStyle = SEESAW_IRON; ctx.fillRect(-L + 6, 0, 7, T); ctx.fillRect(-13, 0, 7, T);
   ctx.fillStyle = '#b8b5c9'; for (const bx of [-L + 9.5, -9.5]) for (const by of [6, 15, 24]) { circle(bx, by, 1.4); ctx.fill(); }
   ctx.restore();

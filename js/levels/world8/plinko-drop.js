@@ -510,6 +510,27 @@
       g.fillStyle = '#a63c8f'; g.fillRect(0, 54, W, 6); g.fillRect(T - 6, 60, 6, 450); g.fillRect(W - T, 60, 6, 450);
       g.fillStyle = PL_GOLD; g.fillRect(0, 58, W, 3); g.fillRect(T - 2, 60, 3, 450); g.fillRect(W - T - 1, 60, 3, 450); g.fillRect(0, 509, W, 3);
       for (let x = 60; x < W - 40; x += 60) { g.fillStyle = '#5a1c50'; paCirc(g, x, 524, 2.6); g.fill(); g.fillStyle = '#ffd77a'; paCirc(g, x - 0.6, 523.4, 1.5); g.fill(); }
+      // lacquered cabinet: a soft sheen down the side columns, inset panels with a lit and a shaded bevel, gold piping
+      for (const sx of [0, W - T]) {
+        const sg = g.createLinearGradient(sx, 0, sx + T - 6, 0); sg.addColorStop(0, 'rgba(255,255,255,0.10)'); sg.addColorStop(0.45, 'rgba(255,255,255,0)'); sg.addColorStop(1, 'rgba(20,8,30,0.22)');
+        g.fillStyle = sg; g.fillRect(sx + (sx ? 6 : 0), 60, T - 6, 450);
+        for (let py = 68; py < 500; py += 72) {
+          const px = sx + (sx ? 10 : 4), pw = T - 14, ph = 62;
+          g.fillStyle = 'rgba(20,8,30,0.22)'; g.fillRect(px, py, pw, ph);
+          g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(px, py + ph - 1.5, pw, 1.5); g.fillRect(px + pw - 1.5, py, 1.5, ph);
+          g.fillStyle = 'rgba(20,8,30,0.3)'; g.fillRect(px, py, pw, 1.5); g.fillRect(px, py, 1.5, ph);
+          g.strokeStyle = 'rgba(255,197,61,0.35)'; g.lineWidth = 0.8; g.strokeRect(px + 3, py + 3, pw - 6, ph - 6);
+        }
+      }
+      // the top band: a raised header with a moulded lip and a row of small gold studs
+      g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(0, 6, W, 16);
+      g.fillStyle = 'rgba(20,8,30,0.2)'; g.fillRect(0, 22, W, 2); g.fillRect(0, 40, W, 2);
+      g.fillStyle = 'rgba(255,255,255,0.1)'; g.fillRect(0, 24, W, 1);
+      for (let x = 15; x < W; x += 30) paStud(g, x, 49, 1.8, '#d9a03a', { collar: false });
+      // the foot: a lit rail under the gold piping and a shaded kick plate
+      g.fillStyle = 'rgba(255,255,255,0.1)'; g.fillRect(0, 512, W, 2);
+      g.fillStyle = 'rgba(20,8,30,0.18)'; g.fillRect(0, 534, W, 6);
+      g.strokeStyle = 'rgba(20,8,30,0.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(T, 60); g.lineTo(T, 510); g.moveTo(W - T, 60); g.lineTo(W - T, 510); g.stroke();
     }), 0, 0, W, H);
     // the lanes (peg-free bands above each rail) get a soft stripe, so kids see "the paddle's lane"
     for (const r of B.rails) { ctx.fillStyle = 'rgba(255,255,255,0.04)'; ctx.fillRect(T, r.y - 75, W - 2 * T, 90); }
@@ -530,35 +551,60 @@
     plinkoCabinet(st);
     // chute: a rail the ball rolls along
     const ch = B.chute;
-    ctx.strokeStyle = 'rgba(28,26,54,0.6)'; ctx.lineWidth = 6; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(ch.x0 - 18, ch.y + P.r + 3); ctx.lineTo(ch.x1 + 18, ch.y + P.r + 3); ctx.stroke();
-    ctx.strokeStyle = PL_GOLD; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(ch.x0 - 18, ch.y + P.r + 2); ctx.lineTo(ch.x1 + 18, ch.y + P.r + 2); ctx.stroke();
-    for (const x of [ch.x0 - 18, ch.x1 + 18]) { ctx.fillStyle = PL_GOLD; circle(x, ch.y + P.r + 2, 4); ctx.fill(); }
+    // a brass rod on little brackets, with knobbed end caps (cached: it never moves)
+    paStamp('plinkochute', ch.x0 - 24, ch.y + P.r - 2, ch.x1 - ch.x0 + 48, 14, 3, g => {
+      const L = ch.x1 - ch.x0 + 48;
+      g.fillStyle = 'rgba(10,8,30,0.35)'; paRR(g, 6, 6, L - 10, 5, 2.5); g.fill();
+      for (let bx = 26; bx < L - 20; bx += 48) { g.fillStyle = '#7a5a20'; g.fillRect(bx - 1.5, 5, 3, 7); g.fillStyle = '#b8913f'; g.fillRect(bx - 1.5, 5, 1.2, 7); }
+      paRod(g, 6, 1.5, L - 12, 5, '#e2a92c');
+      for (const x of [6, L - 6]) paStud(g, x, 4, 4, PL_GOLD);
+    });
     if (st.phase === 'aim' || st.phase === 'swap') { ctx.fillStyle = 'rgba(255,197,61,0.12)'; rr(ch.x0 - 24, ch.y - 18, ch.x1 - ch.x0 + 48, 36, 18); ctx.fill(); }
     // rails
     for (const r of B.rails) {
-      ctx.strokeStyle = 'rgba(10,8,30,0.55)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(r.x0 + 6, r.y); ctx.lineTo(r.x1 - 6, r.y); ctx.stroke();
-      ctx.setLineDash([4, 6]); ctx.strokeStyle = 'rgba(255,214,140,0.45)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(r.x0 + 6, r.y); ctx.lineTo(r.x1 - 6, r.y); ctx.stroke(); ctx.setLineDash([]);
-      for (const x of [r.x0 + 5, r.x1 - 5]) { ctx.fillStyle = 'rgba(255,214,140,0.7)'; circle(x, r.y, 3.5); ctx.fill(); }
+      // a slotted track: a dark groove with brass lips, tie marks every few steps and bolted end blocks (cached)
+      const L = r.x1 - r.x0;
+      paStamp('plinkorail', r.x0, r.y - 5, L, 10, 3, g => {
+        g.fillStyle = 'rgba(10,8,30,0.6)'; paRR(g, 6, 2.5, L - 12, 5, 2.5); g.fill();
+        g.fillStyle = 'rgba(184,145,63,0.55)'; g.fillRect(6, 1.5, L - 12, 1.2);
+        g.fillStyle = 'rgba(255,214,140,0.35)'; g.fillRect(6, 7.3, L - 12, 1);
+        g.fillStyle = 'rgba(255,214,140,0.4)'; for (let tx = 12; tx < L - 10; tx += 10) g.fillRect(tx, 4, 4, 2);
+        for (const x of [0, L - 9]) { paMetal(g, x, 0, 9, 10, '#b8913f', { r: 2, lw: 1, rivets: false }); paStud(g, x + 4.5, 5, 1.6, '#e8c46a', { collar: false }); }
+      });
     }
     // pegs
     for (const pg of B.pegs) {
       const hit = pg.t > 0;
       // a brass stud: shadow, dark rim, shaded body, a bright glint
-      ctx.fillStyle = 'rgba(10,8,30,0.35)'; circle(pg.x + 1, pg.y + 2, P.pegR + 0.5); ctx.fill();
-      ctx.fillStyle = hit ? '#ffffff' : '#a8864a'; circle(pg.x, pg.y, P.pegR + (hit ? 1 : 0.6)); ctx.fill();
-      ctx.fillStyle = hit ? '#ffffff' : '#f3e2b0'; circle(pg.x - 0.5, pg.y - 0.5, P.pegR - 0.6 + (hit ? 1 : 0)); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.85)'; circle(pg.x - 1.5, pg.y - 1.5, 1.6); ctx.fill();
+      // (cached sprite) a soft shadow on the felt, a dark collar, a shaded dome and a glint
+      paStamp('plinkopeg', pg.x - P.pegR, pg.y - P.pegR, 2 * P.pegR, 2 * P.pegR, 4, g => {
+        g.fillStyle = 'rgba(10,8,30,0.35)'; paCirc(g, P.pegR + 1.2, P.pegR + 2.2, P.pegR + 0.8); g.fill();
+        paStud(g, P.pegR, P.pegR, P.pegR - 0.3, '#f0d894');
+      });
+      if (hit) { ctx.fillStyle = 'rgba(255,255,255,0.85)'; circle(pg.x, pg.y, P.pegR + 1); ctx.fill(); }
       if (hit) { ctx.strokeStyle = 'rgba(255,240,180,' + (pg.t / 0.18) + ')'; ctx.lineWidth = 2; circle(pg.x, pg.y, P.pegR + 5 * (1 - pg.t / 0.18) + 2); ctx.stroke(); }
     }
     // pop bumpers
     for (const bp of B.bumpers) {
       const s = 1 + (bp.t > 0 ? 0.15 * bp.t / 0.25 : 0), lit = bp.lit;
-      ctx.fillStyle = 'rgba(10,8,30,0.4)'; circle(bp.x + 2, bp.y + 3, P.bumperR * s); ctx.fill();
-      ctx.fillStyle = lit ? PL_PINK : '#8a4a9e'; circle(bp.x, bp.y, P.bumperR * s); ctx.fill();
-      ctx.strokeStyle = lit ? '#fff3b0' : '#c58fd8'; ctx.lineWidth = 3; circle(bp.x, bp.y, P.bumperR * s - 1.5); ctx.stroke();
-      ctx.fillStyle = lit ? '#fff3b0' : 'rgba(255,255,255,0.5)'; plinkoStar(bp.x, bp.y, 6.5 * s); ctx.fill();
+      // (cached per lit state, scaled on a hit) a chrome skirt with bolts, a shaded cap with a ring and a star
+      const R = P.bumperR, bs = paSprite('plinkobump|' + (lit ? 1 : 0), 2 * R, 2 * R, 5, g => {
+        const base = lit ? PL_PINK : '#8a4a9e';
+        g.fillStyle = 'rgba(10,8,30,0.4)'; paCirc(g, R + 2, R + 3, R); g.fill();
+        paStud(g, R, R, R, '#c9c4d8', { collar: false });
+        for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3 + 0.3; paStud(g, R + Math.cos(a) * (R - 2), R + Math.sin(a) * (R - 2), 1.1, '#8e88a3', { collar: false }); }
+        const gr = g.createRadialGradient(R - 3, R - 4, 1, R, R, R - 3.5);
+        gr.addColorStop(0, paLt(base, 0.4)); gr.addColorStop(0.6, base); gr.addColorStop(1, paDk(base, 0.3));
+        g.fillStyle = gr; paCirc(g, R, R, R - 3.5); g.fill();
+        g.strokeStyle = paDk(base, 0.5); g.lineWidth = 1.2; g.stroke();
+        g.strokeStyle = lit ? '#fff3b0' : '#c58fd8'; g.lineWidth = 1.8; paCirc(g, R, R, R - 6); g.stroke();
+        g.fillStyle = lit ? '#fff3b0' : 'rgba(255,255,255,0.55)'; g.beginPath();
+        for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r2 = k % 2 ? 6.5 * 0.45 : 6.5; g.lineTo(R + Math.cos(a) * r2, R + Math.sin(a) * r2); }
+        g.closePath(); g.fill(); g.strokeStyle = paDk(base, 0.35); g.lineWidth = 0.8; g.stroke();
+        g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.ellipse(R - 5, R - 6, 3.5, 2, -0.6, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = '#5c5670'; g.lineWidth = 1.2; paCirc(g, R, R, R); g.stroke();
+      });
+      { const w2 = bs.c.width / bs.sc * s, h2 = bs.c.height / bs.sc * s; ctx.drawImage(bs.c, bp.x - w2 / 2, bp.y - h2 / 2, w2, h2); }
       if (lit) { ctx.fillStyle = 'rgba(255,95,162,0.18)'; circle(bp.x, bp.y, P.bumperR * 1.9); ctx.fill(); }
     }
     // ticket stubs worth 10 tickets (lead review: the world's pink ticket, never a gold coin with a number)
@@ -567,9 +613,18 @@
       const bob = Math.sin(G.clock * 3 + c.x) * 2, y = c.y + bob;
       ctx.fillStyle = 'rgba(10,8,30,0.35)'; ctx.beginPath(); ctx.ellipse(c.x, c.y + 11, 10, 2.5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.save(); ctx.translate(c.x, y); ctx.rotate(-0.12);
-      ctx.fillStyle = '#ff8fc7'; rr(-13, -8, 26, 16, 3); ctx.fill();
-      ctx.fillStyle = PL_FELT; circle(-13, 0, 3.2); ctx.fill(); circle(13, 0, 3.2); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(-6, -6, 1.5, 12);
+      // (cached) a paper stub: lit top, shaded foot, notched ends, a perforated tear line and an outline
+      paStamp('plinkostub', -13, -8, 26, 16, 3, g => {
+        g.save(); paRR(g, 0, 0, 26, 16, 3); g.clip();
+        g.fillStyle = '#ff8fc7'; g.fillRect(0, 0, 26, 16);
+        g.fillStyle = '#ffb3d9'; g.fillRect(0, 0, 26, 3);
+        g.fillStyle = '#e6639f'; g.fillRect(0, 12, 26, 4);
+        g.strokeStyle = 'rgba(122,31,74,0.35)'; g.lineWidth = 0.7; g.strokeRect(3, 2.5, 20, 11);
+        g.restore();
+        g.globalCompositeOperation = 'destination-out'; paCirc(g, 0, 8, 3.2); g.fill(); paCirc(g, 26, 8, 3.2); g.fill(); g.globalCompositeOperation = 'source-over';
+        g.strokeStyle = '#a8326b'; g.lineWidth = 1.1; paRR(g, 0, 0, 26, 16, 3); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,0.85)'; for (let py = 2; py < 15; py += 3) g.fillRect(6.2, py, 1.5, 1.6);
+      });
       ctx.restore();
       text('10', c.x + 3, y + 0.5, 10, '#7a1f4a', 'center', 'body');
     }
@@ -603,8 +658,23 @@
     const ph = Math.floor(G.clock * 8);
     B.slots.forEach((sl, k) => {
       const jack = k === st.jp, v = plinkoValue(st, k), w = sl.x1 - sl.x0;
-      ctx.fillStyle = jack ? 'rgba(255,197,61,0.28)' : v >= 150 ? 'rgba(255,95,162,0.16)' : 'rgba(255,255,255,0.05)';
-      ctx.fillRect(sl.x0 + 4, B.slotTop, w - 8, B.slotBot - B.slotTop);
+      // (cached per kind and width) a recessed bin: tint, shaded inner walls, a dark mouth under the rim, a felt floor
+      // with a brass kick strip and a lit lip on the walls
+      const kind = jack ? 2 : v >= 150 ? 1 : 0, bh = B.slotBot - B.slotTop;
+      paStamp('plinkobin|' + kind, sl.x0 + 4, B.slotTop, w - 8, bh, 2, g => {
+        const bw = w - 8;
+        g.fillStyle = kind === 2 ? 'rgba(255,197,61,0.28)' : kind === 1 ? 'rgba(255,95,162,0.16)' : 'rgba(255,255,255,0.05)'; g.fillRect(0, 0, bw, bh);
+        const ig = g.createLinearGradient(0, 0, 0, 16); ig.addColorStop(0, 'rgba(10,8,30,0.4)'); ig.addColorStop(1, 'rgba(10,8,30,0)');
+        g.fillStyle = ig; g.fillRect(0, 0, bw, 16);
+        const lg = g.createLinearGradient(0, 0, 10, 0); lg.addColorStop(0, 'rgba(10,8,30,0.28)'); lg.addColorStop(1, 'rgba(10,8,30,0)');
+        g.fillStyle = lg; g.fillRect(0, 0, 10, bh);
+        const rg2 = g.createLinearGradient(bw - 8, 0, bw, 0); rg2.addColorStop(0, 'rgba(255,255,255,0)'); rg2.addColorStop(1, 'rgba(255,255,255,0.08)');
+        g.fillStyle = rg2; g.fillRect(bw - 8, 0, 8, bh);
+        g.strokeStyle = 'rgba(255,255,255,0.04)'; g.lineWidth = 1; g.beginPath();
+        for (let k = -bh; k < bw; k += 8) { g.moveTo(k, bh); g.lineTo(k + bh, 0); }
+        g.stroke();
+        paMetal(g, 0, bh - 7, bw, 7, kind === 2 ? '#e8b23a' : '#9c7c3c', { r: 1, lw: 1, step: 16, ins: 3.5 });
+      });
       if (sl.glow > 0) { ctx.fillStyle = 'rgba(255,255,255,' + (0.35 * sl.glow) + ')'; ctx.fillRect(sl.x0 + 4, B.slotTop, w - 8, B.slotBot - B.slotTop); }
       if (jack) {
         // a gold light column and chasing bulbs around the jackpot slot
@@ -618,11 +688,17 @@
     });
     // posts
     for (const po of B.posts) {
-      ctx.fillStyle = 'rgba(10,8,30,0.3)'; rr(po.x - 2, po.y0 + 3, 8, po.y1 - po.y0, 4); ctx.fill();
-      ctx.fillStyle = '#d9c38a'; rr(po.x - 4, po.y0, 8, po.y1 - po.y0, 4); ctx.fill();
-      ctx.fillStyle = '#b39a5c'; ctx.fillRect(po.x + 1, po.y0 + 4, 3, po.y1 - po.y0 - 6);
-      ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(po.x - 3, po.y0 + 4, 1.5, po.y1 - po.y0 - 8);
-      ctx.fillStyle = '#fff3b0'; circle(po.x, po.y0 + 1, 4.5); ctx.fill(); ctx.strokeStyle = '#b39a5c'; ctx.lineWidth = 1; ctx.stroke();
+      // (cached) a turned brass post: a shaded tube, collars at the foot and the middle, a ball finial with a glint
+      const ph2 = po.y1 - po.y0;
+      paStamp('plinkopost', po.x - 4, po.y0, 8, ph2, 6, g => {
+        g.fillStyle = 'rgba(10,8,30,0.3)'; paRR(g, 2, 3, 8, ph2, 4); g.fill();
+        paRod(g, 0, 0, 8, ph2, '#d9c38a');
+        for (const cy of [ph2 * 0.5, ph2 - 6]) { paRod(g, -1.5, cy - 2, 11, 4, '#c9a85a'); }
+        g.strokeStyle = 'rgba(122,92,32,0.45)'; g.lineWidth = 0.7; g.beginPath();
+        for (let yy = 10; yy < ph2 - 8; yy += 6) { if (Math.abs(yy - ph2 * 0.5) < 4) continue; g.moveTo(1.5, yy); g.lineTo(6.5, yy); }
+        g.stroke();
+        paStud(g, 4, 1, 4.6, '#f3d98a', { collar: false });
+      });
     }
     // the lucky light marker on a moving board: a little gold arrow over the lit slot
     if (st.light) {

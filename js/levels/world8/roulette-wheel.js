@@ -683,16 +683,53 @@
     }
     if (!st.pl) return;
     const lit = rouletteLit(), anyLit = lit.size > 0, litCol = anyLit ? ROULETTE_WEDGES[[...lit][0]].col : null;
-    ctx.save(); ctx.translate(cx, cy + 16); ctx.scale(1, P.k);
-    ctx.fillStyle = K.feltDk; circle(0, 18, 420); ctx.fill();
-    ctx.fillStyle = K.felt; circle(0, 0, 415); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,215,120,0.5)'; ctx.lineWidth = 3; circle(0, 0, 398); ctx.stroke();
-    ctx.restore();
+    // the felt table and the wooden bowl frame never move: one cached picture (felt nap, a padded rail, a lit rim, wood
+    // grain rings, a lit top bevel, a shaded foot, bulb sockets), the bulbs and the track drawn live on top
+    const tk = P.k, tw = 844, th = Math.ceil(30 + 870 * tk);
+    paStamp('roultable|' + tk + '|' + P.frameR + '|' + P.trackR, cx - 422, cy - 425 * tk, tw, th, 2, g2 => {
+      g2.translate(422, 425 * tk);
+      g2.save(); g2.translate(0, 16); g2.scale(1, tk);
+      g2.fillStyle = K.feltDk; paCirc(g2, 0, 18, 420); g2.fill();
+      g2.strokeStyle = '#0c3a26'; g2.lineWidth = 2; g2.stroke();
+      g2.fillStyle = K.felt; paCirc(g2, 0, 0, 415); g2.fill();
+      const fg = g2.createRadialGradient(-80, -120, 60, 0, 0, 415); fg.addColorStop(0, 'rgba(255,255,255,0.06)'); fg.addColorStop(0.7, 'rgba(0,0,0,0)'); fg.addColorStop(1, 'rgba(0,30,20,0.25)');
+      g2.fillStyle = fg; paCirc(g2, 0, 0, 415); g2.fill();
+      for (let i = 0; i < 700; i++) {
+        const hh = hash(i, 823), a = (hh % 6283) / 1000, r = 345 + (hh >>> 13) % 68;
+        g2.fillStyle = (hh >>> 26) % 3 ? 'rgba(10,60,40,0.55)' : 'rgba(120,210,160,0.35)'; g2.fillRect(Math.cos(a) * r, Math.sin(a) * r, 1.6, 1.6);
+      }
+      g2.strokeStyle = 'rgba(255,255,255,0.14)'; g2.lineWidth = 3; g2.beginPath(); g2.arc(0, 0, 412, Math.PI * 1.05, Math.PI * 1.95); g2.stroke();
+      g2.strokeStyle = 'rgba(255,215,120,0.5)'; g2.lineWidth = 3; paCirc(g2, 0, 0, 398); g2.stroke();
+      g2.strokeStyle = 'rgba(255,215,120,0.22)'; g2.lineWidth = 1.2; paCirc(g2, 0, 0, 392); g2.stroke();
+      g2.restore();
+      g2.save(); g2.scale(1, tk);
+      g2.fillStyle = K.woodDk; paCirc(g2, 0, 34, P.frameR); g2.fill();
+      g2.strokeStyle = '#3a1c0e'; g2.lineWidth = 2; g2.stroke();
+      // the bowl's side: vertical staves with a soft sheen
+      g2.save(); paCirc(g2, 0, 34, P.frameR); g2.clip();
+      g2.strokeStyle = 'rgba(0,0,0,0.18)'; g2.lineWidth = 1.5; g2.beginPath();
+      for (let i = 0; i < 36; i++) { const a = i * Math.PI / 36, x = Math.cos(a) * P.frameR; g2.moveTo(x, Math.sin(a) * P.frameR); g2.lineTo(x, Math.sin(a) * P.frameR + 34); }
+      g2.stroke(); g2.restore();
+      g2.fillStyle = K.wood; paCirc(g2, 0, 0, P.frameR); g2.fill();
+      // grain: broken rings of darker and lighter wood
+      for (let i = 0; i < 26; i++) {
+        const hh = hash(i, 829), r = P.trackR + 16 + hh % Math.max(1, P.frameR - P.trackR - 20), a0 = (hh >>> 8) % 628 / 100, len = 0.4 + (hh >>> 16) % 120 / 100;
+        g2.strokeStyle = (hh >>> 24) % 2 ? 'rgba(60,24,10,0.35)' : 'rgba(255,190,130,0.18)'; g2.lineWidth = 1 + (hh >>> 28) % 2;
+        g2.beginPath(); g2.arc(0, 0, r, a0, a0 + len); g2.stroke();
+      }
+      g2.strokeStyle = 'rgba(255,255,255,0.22)'; g2.lineWidth = 3; g2.beginPath(); g2.arc(0, 0, P.frameR - 2, Math.PI * 1.02, Math.PI * 1.98); g2.stroke();
+      g2.strokeStyle = 'rgba(40,14,4,0.35)'; g2.lineWidth = 3; g2.beginPath(); g2.arc(0, 0, P.frameR - 2, Math.PI * 0.05, Math.PI * 0.95); g2.stroke();
+      g2.strokeStyle = K.woodHi; g2.lineWidth = 4; paCirc(g2, 0, 0, P.frameR - 6); g2.stroke();
+      for (let i = 0; i < 24; i++) {
+        const a = i * ROULETTE_TAU / 24, x = Math.cos(a) * (P.frameR - 15), y = Math.sin(a) * (P.frameR - 15);
+        g2.fillStyle = '#3a1c0e'; paCirc(g2, x, y, 7.5); g2.fill();
+        g2.strokeStyle = K.goldDk; g2.lineWidth = 1.5; paCirc(g2, x, y, 7.5); g2.stroke();
+      }
+      g2.strokeStyle = '#3a1c0e'; g2.lineWidth = 2.5; paCirc(g2, 0, 0, P.frameR); g2.stroke();
+      g2.restore();
+    });
     // the bowl: side, wooden frame with bulbs, the ball track (none of these turn)
     ctx.save(); ctx.translate(cx, cy); ctx.scale(1, P.k);
-    ctx.fillStyle = K.woodDk; circle(0, 34, P.frameR); ctx.fill();
-    ctx.fillStyle = K.wood; circle(0, 0, P.frameR); ctx.fill();
-    ctx.strokeStyle = K.woodHi; ctx.lineWidth = 4; circle(0, 0, P.frameR - 6); ctx.stroke();
     // 24 frame bulbs: they chase round the way the ball rolls while it rolls, and flash in the lit color once it lands
     const rolling = (st.balls || []).some(b => b.state === 'roll');
     const chase = Math.floor(clk * (rolling ? 16 : 5)), blink = reduceMotion ? 0 : Math.floor(clk * 5) % 2;   // blinks at 2.5 Hz (steady with reduce motion)
@@ -758,7 +795,13 @@
     }
     // hub base
     ctx.fillStyle = K.goldDk; circle(0, 0, P.hubR + 4); ctx.fill();
+    ctx.fillStyle = K.gold; ctx.beginPath(); ctx.arc(0, 0, P.hubR + 2.5, Math.PI * 0.9, Math.PI * 1.9); ctx.arc(0, 0, P.hubR, Math.PI * 1.9, Math.PI * 0.9, true); ctx.fill();
     ctx.fillStyle = K.wood; circle(0, 0, P.hubR); ctx.fill();
+    ctx.strokeStyle = 'rgba(60,24,10,0.4)'; ctx.lineWidth = 1.2;
+    for (const r of [P.hubR * 0.35, P.hubR * 0.6, P.hubR * 0.82]) { ctx.beginPath(); ctx.arc(0, 0, r, 0.3, 2.4); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, r + 2, 3.4, 5.6); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, P.hubR - 2, Math.PI * 1.05, Math.PI * 1.85); ctx.stroke();
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + Math.PI / 8; paStud(ctx, Math.cos(a) * (P.hubR + 1.5), Math.sin(a) * (P.hubR + 1.5), 1.8, '#ffe08a', { collar: false }); }
+    ctx.strokeStyle = '#5a3a08'; ctx.lineWidth = 1.5; circle(0, 0, P.hubR + 4); ctx.stroke();
     ctx.restore();
     const big = rouletteBig();
     // the ball's landing shadow (Hoppy Ball: where it hops next)
@@ -791,7 +834,11 @@
     const st = G.mst, P = rouletteP(), K = ROULETTE_COLS, cx = st.cx, cy = st.cy;
     ctx.fillStyle = K.goldDk; ctx.beginPath(); ctx.moveTo(cx - 30, cy); ctx.lineTo(cx - 7, cy - 44); ctx.lineTo(cx + 7, cy - 44); ctx.lineTo(cx + 30, cy); ctx.closePath(); ctx.fill();
     ctx.fillStyle = K.gold; ctx.beginPath(); ctx.moveTo(cx - 22, cy - 2); ctx.lineTo(cx - 5, cy - 44); ctx.lineTo(cx + 2, cy - 44); ctx.lineTo(cx - 6, cy - 2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(90,58,8,0.35)'; ctx.beginPath(); ctx.moveTo(cx + 9, cy - 2); ctx.lineTo(cx + 3, cy - 44); ctx.lineTo(cx + 7, cy - 44); ctx.lineTo(cx + 30, cy); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#5a3a08'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx - 30, cy); ctx.lineTo(cx - 7, cy - 44); ctx.lineTo(cx + 7, cy - 44); ctx.lineTo(cx + 30, cy); ctx.stroke();
     ctx.fillStyle = K.goldDk; ctx.beginPath(); ctx.ellipse(cx, cy, 30, 30 * P.k, 0, 0, Math.PI); ctx.fill();
+    ctx.strokeStyle = '#5a3a08'; ctx.stroke();
+    for (let i = 0; i < 5; i++) { const a = 0.35 + i * 0.6; paStud(ctx, cx + Math.cos(a) * 25, cy + Math.sin(a) * 25 * P.k, 1.4, '#ffe08a', { collar: false }); }
     // the turning handle on top
     for (let i = 0; i < 4; i++) {
       const a = st.th + i * Math.PI / 2, ex = cx + Math.cos(a) * 34, ey = cy - 46 + Math.sin(a) * 34 * P.k;

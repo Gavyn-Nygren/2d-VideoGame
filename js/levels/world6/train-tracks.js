@@ -918,14 +918,29 @@ function trainDrawBand(g, c, a, b, alpha) {
   g.beginPath(); trainPath(g, c, a, b, 0);
   g.strokeStyle = '#a8743f'; g.lineWidth = 20; g.stroke();
   g.strokeStyle = '#d9a066'; g.lineWidth = 16; g.stroke();
+  // a lit edge on one side and a shaded edge on the other, so the band reads as a raised wooden piece
+  g.beginPath(); trainPath(g, c, a, b, -6.6); g.strokeStyle = 'rgba(255,240,210,0.55)'; g.lineWidth = 2; g.stroke();
+  g.beginPath(); trainPath(g, c, a, b, 6.6); g.strokeStyle = 'rgba(120,70,30,0.45)'; g.lineWidth = 2.2; g.stroke();
+  // wood grain running along the piece
+  g.beginPath(); trainPath(g, c, a, b, -1.6); trainPath(g, c, a, b, 1.4); trainPath(g, c, a, b, -7.4 + (c.x + c.y) % 2 * 0.6);
+  g.strokeStyle = 'rgba(150,96,48,0.32)'; g.lineWidth = 0.8; g.stroke();
+  // the two grooves: a dark cut with a lit lip on its far side
   g.beginPath(); trainPath(g, c, a, b, -4); trainPath(g, c, a, b, 4);
-  g.strokeStyle = '#8a5a2b'; g.lineWidth = 1.5; g.stroke();
+  g.strokeStyle = '#8a5a2b'; g.lineWidth = 2; g.stroke();
+  g.beginPath(); trainPath(g, c, a, b, -2.9); trainPath(g, c, a, b, 5.1);
+  g.strokeStyle = 'rgba(255,236,200,0.5)'; g.lineWidth = 0.8; g.stroke();
   g.beginPath();
   for (const s of [a, b]) {
     const d = TRAIN_DIRS[s], ex = c.x * T + 15 + d[0] * 14.5, ey = c.y * T + 15 + d[1] * 14.5;
     g.moveTo(ex - d[1] * 8, ey + d[0] * 8); g.lineTo(ex + d[1] * 8, ey - d[0] * 8);
   }
   g.strokeStyle = 'rgba(138,90,43,0.55)'; g.lineWidth = 1; g.stroke();
+  // the peg joint at each end: a small round connector cut into the wood
+  for (const s of [a, b]) {
+    const d = TRAIN_DIRS[s], ex = c.x * T + 15 + d[0] * 12.5, ey = c.y * T + 15 + d[1] * 12.5;
+    g.fillStyle = 'rgba(138,90,43,0.45)'; trainDisc(g, ex, ey, 1.8); g.fill();
+    g.fillStyle = 'rgba(255,236,200,0.5)'; trainDisc(g, ex - 0.5, ey - 0.5, 0.7); g.fill();
+  }
   g.restore();
 }
 function trainPiece(g, c) { for (const [a, b, al] of trainLegs(c)) trainDrawBand(g, c, a, b, al); }
@@ -933,21 +948,24 @@ function trainPiece(g, c) { for (const [a, b, al] of trainLegs(c)) trainDrawBand
 function trainDeck(g, c, rickety) {
   const cx = c.x * T + 15, cy = c.y * T + 15, ns = c.track.includes('N') && c.track.includes('S');
   g.save(); g.translate(cx, cy); if (!ns) g.rotate(Math.PI / 2);
-  g.fillStyle = rickety ? '#c9a77a' : C.plank; g.fillRect(-12, -15, 24, 30);
-  g.strokeStyle = C.plankDark; g.lineWidth = 1.5; g.strokeRect(-12, -15, 24, 30);
-  g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 1; g.beginPath();
-  for (let y = -9; y < 15; y += 6) { g.moveTo(-12, y); g.lineTo(12, y); }
-  g.stroke();
+  // the deck: five grained boards with nails (a rickety deck is grey-brown and weathered), on two side stringers
+  const dc = rickety ? '#c9a77a' : C.plank;
+  g.fillStyle = paDk(dc, 0.45); g.fillRect(-13, -15, 26, 30);
+  for (let k = 0; k < 5; k++) paPlank(g, -12, -15 + k * 6 + 0.3, 24, 5.4, k % 2 ? paDk(dc, 0.06) : dc, c.x * 31 + c.y * 7 + k, { r: 1, lw: 1, nails: true });
+  if (rickety) { g.fillStyle = 'rgba(80,70,60,0.25)'; g.fillRect(-12, -3, 24, 5.4); g.fillStyle = 'rgba(70,110,60,0.45)'; trainDisc(g, -9, 8, 1.6); g.fill(); trainDisc(g, -7.5, 9.5, 1.1); g.fill(); }
+  g.strokeStyle = paDk(dc, 0.5); g.lineWidth = 1.5; g.strokeRect(-12, -15, 24, 30);
   if (rickety) { g.strokeStyle = 'rgba(60,40,20,0.7)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(-9, -3); g.lineTo(-3, 1); g.lineTo(2, -2); g.lineTo(8, 4); g.stroke(); }
   g.restore();
   trainPosts(g, c);
 }
 function trainPosts(g, c) {
   const cx = c.x * T + 15, cy = c.y * T + 15, ns = c.track.includes('N') && c.track.includes('S');
-  g.fillStyle = '#8a5a2b';
   for (const s of [-1, 1]) for (const e of [-1, 1]) {
     const px = ns ? cx + s * 12 : cx + e * 13, py = ns ? cy + e * 13 : cy + s * 12;
-    g.fillRect(px - 2, py - 2, 4, 4);
+    g.fillStyle = 'rgba(28,26,54,0.22)'; trainDisc(g, px + 1.2, py + 1.5, 3); g.fill();
+    g.fillStyle = '#8a5a2b'; trainDisc(g, px, py, 2.8); g.fill();
+    g.strokeStyle = '#5e3a1a'; g.lineWidth = 1; trainDisc(g, px, py, 2.8); g.stroke();
+    g.strokeStyle = 'rgba(255,220,170,0.45)'; trainDisc(g, px, py, 1.4); g.stroke();
   }
 }
 
@@ -1023,9 +1041,19 @@ function trainDrawGround(g, st) {
       if (!n || isW(c.x + dx, c.y + dy)) continue;
       g.fillStyle = '#3f9fd0';
       if (d === 'N') g.fillRect(x, y, T, 3); else if (d === 'S') g.fillRect(x, y + T - 3, T, 3); else if (d === 'W') g.fillRect(x, y, 3, T); else g.fillRect(x + T - 3, y, 3, T);
+      // a darker wet line, a pale ripple of light, then a sandy lip with shaded pebbles on the bank
+      g.fillStyle = 'rgba(255,255,255,0.28)';
+      if (d === 'N') g.fillRect(x, y + 3, T, 1.2); else if (d === 'S') g.fillRect(x, y + T - 4.2, T, 1.2); else if (d === 'W') g.fillRect(x + 3, y, 1.2, T); else g.fillRect(x + T - 4.2, y, 1.2, T);
       if (!n.solid) {
         g.fillStyle = '#e9d8a6';
-        if (d === 'N') g.fillRect(x, y - 2, T, 2); else if (d === 'S') g.fillRect(x, y + T, T, 2); else if (d === 'W') g.fillRect(x - 2, y, 2, T); else g.fillRect(x + T, y, 2, T);
+        if (d === 'N') g.fillRect(x, y - 3, T, 3); else if (d === 'S') g.fillRect(x, y + T, T, 3); else if (d === 'W') g.fillRect(x - 3, y, 3, T); else g.fillRect(x + T, y, 3, T);
+        g.fillStyle = '#c9b282';
+        if (d === 'N') g.fillRect(x, y - 1, T, 1); else if (d === 'S') g.fillRect(x, y + T, T, 1); else if (d === 'W') g.fillRect(x - 1, y, 1, T); else g.fillRect(x + T, y, 1, T);
+        for (let k = 0; k < 3; k++) {
+          const hk = hash(c.x * 17 + k, c.y * 11 + d.charCodeAt(0)), t = 4 + hk % 22, o = 1.5 + (hk >>> 6) % 3, r = 1.4 + (hk >>> 9) % 3 * 0.5;
+          const px = d === 'N' || d === 'S' ? x + t : d === 'W' ? x - o : x + T + o, py = d === 'W' || d === 'E' ? y + t : d === 'N' ? y - o : y + T + o;
+          paPebble(g, px, py, r, r * 0.75, ['#b9b2a6', '#9d968b', '#d2ccc0'][k]);
+        }
       }
     }
   }
@@ -1034,16 +1062,21 @@ function trainDrawGround(g, st) {
     const x = c.x * T, y = c.y * T, vert = !isW(c.x, c.y - 1) || !isW(c.x, c.y + 1) || (up && up.foot) || (dn && dn.foot);
     g.save(); g.translate(x + 15, y + 15); if (!vert) g.rotate(Math.PI / 2);
     const ph = (T - 4) / 5;
-    for (let k = 0; k < 5; k++) { g.fillStyle = C.plank; g.fillRect(-11, -15 + k * (ph + 1), 22, ph); g.strokeStyle = C.plankDark; g.lineWidth = 1; g.strokeRect(-11, -15 + k * (ph + 1), 22, ph); }
-    g.strokeStyle = '#8a5a2b'; g.lineWidth = 2; g.beginPath(); g.moveTo(-12, -15); g.lineTo(-12, 15); g.moveTo(12, -15); g.lineTo(12, 15); g.stroke();
+    g.fillStyle = 'rgba(20,40,70,0.25)'; g.fillRect(-11, -15, 24, 31);   // its shadow on the water
+    for (let k = 0; k < 5; k++) paPlank(g, -11, -15 + k * (ph + 1), 22, ph, k % 2 ? paDk(C.plank, 0.06) : C.plank, c.x * 13 + c.y * 5 + k, { r: 1, lw: 1, nails: true });
+    for (const sx of [-12, 12]) { g.strokeStyle = '#5e3a1a'; g.lineWidth = 3; g.beginPath(); g.moveTo(sx, -15); g.lineTo(sx, 15); g.stroke(); g.strokeStyle = '#a8743f'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(sx - 0.4, -15); g.lineTo(sx - 0.4, 15); g.stroke(); }
     g.restore();
   }
   // station platforms (a light strip in the stop cell, beside the hut)
   for (const h of st.huts) if (h.face) {
     const s = st.stops[h.hut], x = s.x * T, y = s.y * T;
-    g.fillStyle = '#d8d4cc';
-    if (h.face === 'N') g.fillRect(x + 1, y + T - 6, T - 2, 6); else if (h.face === 'S') g.fillRect(x + 1, y, T - 2, 6);
-    else if (h.face === 'W') g.fillRect(x + T - 6, y + 1, 6, T - 2); else g.fillRect(x, y + 1, 6, T - 2);
+    // paving slabs with a lit edge, joints and a darker kerb
+    const r = h.face === 'N' ? [x + 1, y + T - 6, T - 2, 6] : h.face === 'S' ? [x + 1, y, T - 2, 6] : h.face === 'W' ? [x + T - 6, y + 1, 6, T - 2] : [x, y + 1, 6, T - 2];
+    paStone(g, r[0], r[1], r[2], r[3], '#d8d4cc', s.x * 9 + s.y, { r: 1, lw: 1, noCrack: true, noChip: true });
+    g.strokeStyle = 'rgba(120,112,100,0.6)'; g.lineWidth = 0.8; g.beginPath();
+    if (r[2] > r[3]) for (let k = 1; k < 3; k++) { g.moveTo(r[0] + r[2] * k / 3, r[1] + 1); g.lineTo(r[0] + r[2] * k / 3, r[1] + r[3] - 1); }
+    else for (let k = 1; k < 3; k++) { g.moveTo(r[0] + 1, r[1] + r[3] * k / 3); g.lineTo(r[0] + r[2] - 1, r[1] + r[3] * k / 3); }
+    g.stroke();
   }
   // finished track that isn't animating (junctions, laying pops, rickety bridges and dotted cells are drawn live)
   for (const c of st.cells) if (c.track && !c.ghost && c.bridge && !(rick) && !c.pop) trainDeck(g, c, false);
@@ -1087,9 +1120,23 @@ function trainDrawHut(g, h) {
   g.fillStyle = shade(s.col, 0.3); trainRR(g, x + 10, y + 18, 10, 12, 3.5); g.fill();
   g.fillStyle = s.col; trainRR(g, x + 11, y + 19, 8, 11, 3); g.fill();
   g.fillStyle = '#ffd77a'; trainDisc(g, x + 17, y + 25, 0.9); g.fill();             // door knob
+  // a small window with a sill and a flower box, and a step under the door
+  g.fillStyle = '#9fd0ec'; g.fillRect(x + 5, y + 17, 4.5, 5); g.strokeStyle = '#c4ad86'; g.lineWidth = 1; g.strokeRect(x + 5, y + 17, 4.5, 5);
+  g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(x + 5.5, y + 17.5, 1.5, 2);
+  g.fillStyle = '#e86a6a'; trainDisc(g, x + 5.8, y + 23, 0.9); g.fill(); g.fillStyle = '#ffd34a'; trainDisc(g, x + 8, y + 23, 0.9); g.fill();
+  g.fillStyle = '#c9c3b6'; g.fillRect(x + 9.5, y + 29, 11, 1.8);
+  // the chimney behind the roof
+  g.fillStyle = shade(s.col, 0.35); g.fillRect(x + 20, y + 2, 4, 7); g.fillStyle = shade(s.col, 0.5); g.fillRect(x + 19.5, y + 1.5, 5, 1.5);
   g.beginPath(); g.moveTo(x, y + 14); g.lineTo(x + 30, y + 14); g.lineTo(x + 15, y + 1); g.closePath();
   g.fillStyle = s.col; g.fill();
-  g.save(); g.clip(); g.fillStyle = 'rgba(28,26,54,0.2)'; g.fillRect(x + 15, y, 16, 15); g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(x, y + 12, 30, 2); g.restore();
+  g.save(); g.clip();
+  // shingle rows
+  g.strokeStyle = 'rgba(28,26,54,0.22)'; g.lineWidth = 0.8; g.beginPath();
+  for (let ry = y + 12, row = 0; ry > y + 2; ry -= 3, row++) { g.moveTo(x, ry); g.lineTo(x + 30, ry); for (let rx = x + (row % 2 ? 2 : 0); rx < x + 30; rx += 4) { g.moveTo(rx, ry); g.lineTo(rx, ry + 3); } }
+  g.stroke();
+  g.fillStyle = 'rgba(28,26,54,0.2)'; g.fillRect(x + 15, y, 16, 15); g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(x, y + 12, 30, 2);
+  g.fillStyle = 'rgba(255,255,255,0.22)'; g.beginPath(); g.moveTo(x, y + 14); g.lineTo(x + 15, y + 1); g.lineTo(x + 15, y + 4); g.lineTo(x + 3, y + 14); g.closePath(); g.fill();
+  g.restore();
   g.beginPath(); g.moveTo(x, y + 14); g.lineTo(x + 30, y + 14); g.lineTo(x + 15, y + 1); g.closePath();
   g.strokeStyle = shade(s.col, 0.5); g.lineWidth = 1.5; g.stroke();
   const b = trainBadgePos(h);
@@ -1267,7 +1314,13 @@ function trainDrawLevers(st) {
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(jx, jy); ctx.stroke(); ctx.restore();
     // base, handle, knob
     ctx.fillStyle = 'rgba(28,26,54,0.18)'; ctx.fillRect(cx - 6, cy + 7, 14, 4);
-    ctx.fillStyle = '#8a5a2b'; trainRR(ctx, cx - 7, cy + 4, 14, 7, 2); ctx.fill();
+    // a wooden lever box with a lit top, nails and a metal slot plate
+    paStamp('trainleverbox', cx - 7, cy + 4, 14, 7, 2, g => {
+      paPlank(g, 0, 0, 14, 7, '#8a5a2b', 3, { r: 2, lw: 1.2 });
+      paMetal(g, 4, 1.5, 6, 3, '#9aa0b4', { r: 1, lw: 0.8, rivets: false });
+      g.fillStyle = '#2a2838'; g.fillRect(5, 2.5, 4, 1);
+      paNail(g, 2, 3.5, '#8a5a2b', 0.8); paNail(g, 12, 3.5, '#8a5a2b', 0.8);
+    });
     const wig = j.wiggle > 0 ? Math.sin(G.clock * 50) * 4 * Math.PI / 180 : 0, a = (-25 + 50 * j.anim) * Math.PI / 180 + wig;
     const hx = cx + Math.sin(a) * 13, hy = cy + 6 - Math.cos(a) * 13;
     ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx, cy + 6); ctx.lineTo(hx, hy); ctx.stroke();

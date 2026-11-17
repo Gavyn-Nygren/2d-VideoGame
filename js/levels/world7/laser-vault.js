@@ -512,32 +512,83 @@ function laserPaintVault(c, L) {
   c.save(); c.clip(open);
   const rnd = k => hash(k * 13 + (G.room || 0) * 101, 7);
   for (let i = 0, x = V.x0 + 90; x < V.x1 - 60; i++, x += 180) {
-    // a pillar: shaded shaft, capital and base
-    const px = x - 14;
-    c.fillStyle = '#463e72'; c.fillRect(px, V.y0, 28, V.y1 - V.y0);
-    c.fillStyle = '#524a82'; c.fillRect(px, V.y0, 8, V.y1 - V.y0);
-    c.fillStyle = '#332c58'; c.fillRect(px + 20, V.y0, 8, V.y1 - V.y0);
-    c.fillStyle = '#5a528c'; c.fillRect(px - 5, V.y0 + 4, 38, 9); c.fillRect(px - 5, V.y1 - 14, 38, 10);
-    c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(px - 5, V.y0 + 4, 38, 2);
-    // the alcove to its right: dark arch, a little treasure inside
+    // a pillar: stone drums with fluting, lit and shaded sides, a moulded capital and a stepped base with chips
+    const px = x - 14, ph = V.y1 - V.y0;
+    c.fillStyle = '#463e72'; c.fillRect(px, V.y0, 28, ph);
+    c.fillStyle = '#524a82'; c.fillRect(px, V.y0, 8, ph);
+    c.fillStyle = '#332c58'; c.fillRect(px + 20, V.y0, 8, ph);
+    c.strokeStyle = 'rgba(20,16,44,0.4)'; c.lineWidth = 1; c.beginPath();
+    for (const fx of [px + 7, px + 12, px + 17, px + 22]) { c.moveTo(fx, V.y0 + 14); c.lineTo(fx, V.y1 - 14); }
+    c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.07)'; c.beginPath();
+    for (const fx of [px + 5, px + 10, px + 15]) { c.moveTo(fx, V.y0 + 14); c.lineTo(fx, V.y1 - 14); }
+    c.stroke();
+    for (let y = V.y0 + 14 + 46 + (i % 2) * 14; y < V.y1 - 20; y += 52) {   // drum joints with a chip now and then
+      c.fillStyle = 'rgba(20,16,44,0.45)'; c.fillRect(px, y, 28, 1.6); c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(px, y + 1.6, 28, 1);
+      if (hash(i, y) % 3 === 0) { c.fillStyle = '#2a2448'; c.beginPath(); c.moveTo(px + 28, y - 3); c.lineTo(px + 24, y + 1); c.lineTo(px + 28, y + 4); c.closePath(); c.fill(); }
+    }
+    for (const [yy, hh2, ww] of [[V.y0 + 4, 9, 38], [V.y0 + 13, 4, 32], [V.y1 - 18, 4, 32], [V.y1 - 14, 10, 38]]) {
+      const xx = px + 14 - ww / 2;
+      c.fillStyle = '#5a528c'; c.fillRect(xx, yy, ww, hh2);
+      c.fillStyle = 'rgba(255,255,255,0.1)'; c.fillRect(xx, yy, ww, 1.5);
+      c.fillStyle = 'rgba(20,16,44,0.35)'; c.fillRect(xx, yy + hh2 - 1.5, ww, 1.5); c.fillRect(xx + ww - 4, yy, 4, hh2);
+      c.strokeStyle = '#2a2448'; c.lineWidth = 1; c.strokeRect(xx + 0.5, yy + 0.5, ww - 1, hh2 - 1);
+    }
+    // the alcove to its right: dark arch with a ring of wedge stones and a keystone, a bevelled sill, treasure inside
     const ax = x + 46, aw = 70, ay = V.y0 + 70 + (rnd(i) % 3) * 16, ah = 76, kind = rnd(i + 9) % 4;
     if (ax + aw > V.x1 - 20) continue;
     c.fillStyle = '#251f43'; c.beginPath(); c.moveTo(ax, ay + ah); c.lineTo(ax, ay + aw / 2); c.arc(ax + aw / 2, ay + aw / 2, aw / 2, Math.PI, 0); c.lineTo(ax + aw, ay + ah); c.closePath(); c.fill();
-    c.strokeStyle = '#5a528c'; c.lineWidth = 3; c.stroke();
-    c.fillStyle = '#5a528c'; c.fillRect(ax - 4, ay + ah, aw + 8, 6);
+    c.save(); c.clip(); const ig = c.createLinearGradient(0, ay, 0, ay + ah); ig.addColorStop(0, 'rgba(10,8,26,0.5)'); ig.addColorStop(1, 'rgba(10,8,26,0)'); c.fillStyle = ig; c.fillRect(ax, ay, aw, ah); c.restore();
+    const acx = ax + aw / 2, acy = ay + aw / 2, ar = aw / 2 + 4;
+    for (let k = 0; k < 9; k++) {   // voussoirs
+      const a0 = Math.PI + k * Math.PI / 9 + 0.02, a1 = Math.PI + (k + 1) * Math.PI / 9 - 0.02, key = k === 4;
+      c.fillStyle = key ? '#6a62a0' : k % 2 ? '#5a528c' : '#544c86';
+      c.beginPath(); c.arc(acx, acy, ar + (key ? 9 : 6), a0, a1); c.arc(acx, acy, ar - 3, a1, a0, true); c.closePath(); c.fill();
+      c.strokeStyle = '#2a2448'; c.lineWidth = 1; c.stroke();
+    }
+    c.fillStyle = 'rgba(255,255,255,0.09)'; c.beginPath(); c.arc(acx, acy, ar + 5, Math.PI * 1.05, Math.PI * 1.45); c.arc(acx, acy, ar + 3, Math.PI * 1.45, Math.PI * 1.05, true); c.closePath(); c.fill();
+    for (const sx of [ax - 7, ax + aw]) { c.fillStyle = '#544c86'; c.fillRect(sx, ay + aw / 2, 7, ah - aw / 2); c.fillStyle = 'rgba(20,16,44,0.35)'; c.fillRect(sx + 5, ay + aw / 2, 2, ah - aw / 2); c.strokeStyle = '#2a2448'; c.strokeRect(sx + 0.5, ay + aw / 2, 6, ah - aw / 2); }
+    c.fillStyle = '#5a528c'; c.fillRect(ax - 8, ay + ah, aw + 16, 7);
+    c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(ax - 8, ay + ah, aw + 16, 1.5); c.fillStyle = 'rgba(20,16,44,0.4)'; c.fillRect(ax - 8, ay + ah + 5, aw + 16, 2);
+    c.strokeStyle = '#2a2448'; c.lineWidth = 1; c.strokeRect(ax - 7.5, ay + ah + 0.5, aw + 15, 6);
     const bx = ax + aw / 2, by = ay + ah;
-    if (kind === 0) { // a vase
-      c.fillStyle = '#7a5aa8'; c.beginPath(); c.moveTo(bx - 6, by); c.quadraticCurveTo(bx - 16, by - 18, bx - 6, by - 28); c.lineTo(bx + 6, by - 28); c.quadraticCurveTo(bx + 16, by - 18, bx + 6, by); c.closePath(); c.fill();
-      c.fillStyle = 'rgba(255,215,90,0.5)'; c.fillRect(bx - 12, by - 17, 24, 3);
-    } else if (kind === 1) { // a chest
-      c.fillStyle = '#6b4630'; c.fillRect(bx - 16, by - 18, 32, 18); c.fillStyle = '#8a5833'; c.beginPath(); c.moveTo(bx - 16, by - 18); c.quadraticCurveTo(bx, by - 30, bx + 16, by - 18); c.closePath(); c.fill();
-      c.fillStyle = 'rgba(217,166,64,0.7)'; c.fillRect(bx - 2, by - 22, 4, 9); c.fillRect(bx - 16, by - 12, 32, 2);
-    } else if (kind === 2) { // a coin heap
-      c.fillStyle = 'rgba(217,166,64,0.75)'; c.beginPath(); c.moveTo(bx - 22, by); c.quadraticCurveTo(bx, by - 26, bx + 22, by); c.closePath(); c.fill();
-      c.fillStyle = 'rgba(255,240,170,0.55)'; for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(bx - 10 + k * 5, by - 6 - (k % 2) * 6, 2, 0, Math.PI * 2); c.fill(); }
-    } else { // a knight's shield
-      c.fillStyle = '#4f5b92'; c.beginPath(); c.moveTo(bx - 13, by - 40); c.lineTo(bx + 13, by - 40); c.lineTo(bx + 13, by - 24); c.quadraticCurveTo(bx, by - 8, bx, by - 8); c.quadraticCurveTo(bx - 13, by - 18, bx - 13, by - 24); c.closePath(); c.fill();
-      c.fillStyle = 'rgba(217,166,64,0.7)'; c.fillRect(bx - 2, by - 38, 4, 26); c.fillRect(bx - 11, by - 30, 22, 4);
+    c.fillStyle = 'rgba(8,6,20,0.35)'; c.beginPath(); c.ellipse(bx, by - 1, 20, 3, 0, 0, Math.PI * 2); c.fill();
+    if (kind === 0) { // a painted vase: a lit side, a gold band with a zigzag, a rim and a foot
+      const vase = () => { c.beginPath(); c.moveTo(bx - 6, by); c.quadraticCurveTo(bx - 16, by - 18, bx - 6, by - 28); c.lineTo(bx + 6, by - 28); c.quadraticCurveTo(bx + 16, by - 18, bx + 6, by); c.closePath(); };
+      vase(); c.fillStyle = '#7a5aa8'; c.fill();
+      c.save(); vase(); c.clip();
+      c.fillStyle = 'rgba(20,10,40,0.35)'; c.fillRect(bx + 3, by - 30, 14, 32);
+      c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(bx - 9, by - 24, 3, 18);
+      c.fillStyle = 'rgba(255,215,90,0.55)'; c.fillRect(bx - 14, by - 18, 28, 4);
+      c.strokeStyle = 'rgba(255,215,90,0.45)'; c.lineWidth = 1; c.beginPath(); for (let k = -12; k < 12; k += 4) { c.moveTo(bx + k, by - 9); c.lineTo(bx + k + 2, by - 12); c.lineTo(bx + k + 4, by - 9); } c.stroke();
+      c.restore();
+      vase(); c.strokeStyle = '#3e2a5e'; c.lineWidth = 1.2; c.stroke();
+      c.fillStyle = '#8d6dbb'; c.fillRect(bx - 8, by - 30, 16, 3); c.fillStyle = '#5e4488'; c.fillRect(bx - 7, by - 2, 14, 2);
+    } else if (kind === 1) { // a chest: plank boards, iron bands with rivets, a gold lock plate
+      c.fillStyle = '#6b4630'; c.fillRect(bx - 16, by - 18, 32, 18);
+      c.strokeStyle = 'rgba(30,16,8,0.45)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(bx - 16, by - 12); c.lineTo(bx + 16, by - 12); c.moveTo(bx - 16, by - 6); c.lineTo(bx + 16, by - 6); c.stroke();
+      c.fillStyle = '#8a5833'; c.beginPath(); c.moveTo(bx - 16, by - 18); c.quadraticCurveTo(bx, by - 30, bx + 16, by - 18); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.12)'; c.beginPath(); c.moveTo(bx - 14, by - 19); c.quadraticCurveTo(bx - 4, by - 26, bx + 4, by - 26); c.lineTo(bx + 2, by - 24); c.quadraticCurveTo(bx - 4, by - 24, bx - 12, by - 19); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(30,16,8,0.35)'; c.fillRect(bx + 8, by - 18, 8, 18);
+      c.fillStyle = '#4a4466'; for (const sx of [bx - 12, bx + 9]) { c.fillRect(sx, by - 24 + (sx > bx ? 1 : 0), 3, 24); }
+      c.fillStyle = 'rgba(200,190,230,0.5)'; for (const sx of [bx - 10.5, bx + 10.5]) for (const sy of [by - 15, by - 5]) { c.beginPath(); c.arc(sx, sy, 0.8, 0, Math.PI * 2); c.fill(); }
+      c.fillStyle = 'rgba(217,166,64,0.85)'; c.fillRect(bx - 3.5, by - 22, 7, 9); c.fillStyle = '#2a1a10'; c.fillRect(bx - 0.8, by - 19, 1.6, 3);
+      c.strokeStyle = '#2a1a10'; c.lineWidth = 1.2; c.strokeRect(bx - 16, by - 18, 32, 18);
+    } else if (kind === 2) { // a coin heap: a shaded mound of overlapping coins with rims and a few glints
+      c.fillStyle = 'rgba(160,110,30,0.85)'; c.beginPath(); c.moveTo(bx - 22, by); c.quadraticCurveTo(bx, by - 26, bx + 22, by); c.closePath(); c.fill();
+      for (let k = 0; k < 16; k++) {
+        const hk = hash(i * 31 + k, 9), t = (hk % 100) / 100, cx = bx - 19 + t * 38, top = by - 13 * (1 - Math.pow(2 * t - 1, 2)) * 2 * 0.95, cy = top + 3 + (hk >>> 8) % Math.max(1, by - top - 4);
+        c.fillStyle = (hk >>> 12) % 3 ? 'rgba(217,166,64,0.95)' : 'rgba(240,196,90,0.95)'; c.beginPath(); c.ellipse(cx, cy, 3.2, 2, 0, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = 'rgba(120,80,20,0.8)'; c.lineWidth = 0.7; c.stroke();
+      }
+      c.fillStyle = 'rgba(255,240,170,0.7)'; for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(bx - 10 + k * 6, by - 7 - (k % 2) * 6, 1.1, 0, Math.PI * 2); c.fill(); }
+    } else { // a knight's shield: a rim, a quartered field, a gold cross with rivets, a lit edge
+      const sh = () => { c.beginPath(); c.moveTo(bx - 13, by - 40); c.lineTo(bx + 13, by - 40); c.lineTo(bx + 13, by - 24); c.quadraticCurveTo(bx + 12, by - 12, bx, by - 6); c.quadraticCurveTo(bx - 12, by - 12, bx - 13, by - 24); c.closePath(); };
+      sh(); c.fillStyle = '#4f5b92'; c.fill();
+      c.save(); sh(); c.clip(); c.fillStyle = '#7a3f5e'; c.fillRect(bx, by - 40, 14, 16); c.fillRect(bx - 14, by - 24, 14, 20); c.fillStyle = 'rgba(20,10,40,0.3)'; c.fillRect(bx + 6, by - 42, 10, 40); c.restore();
+      c.fillStyle = 'rgba(217,166,64,0.8)'; c.fillRect(bx - 2, by - 38, 4, 28); c.fillRect(bx - 11, by - 30, 22, 4);
+      sh(); c.strokeStyle = 'rgba(217,166,64,0.75)'; c.lineWidth = 2; c.stroke();
+      c.fillStyle = 'rgba(255,240,180,0.7)'; for (const [rx2, ry2] of [[bx - 10, by - 37], [bx + 10, by - 37], [bx, by - 10]]) { c.beginPath(); c.arc(rx2, ry2, 1, 0, Math.PI * 2); c.fill(); }
     }
     // a chain hanging from the ceiling between them
     c.strokeStyle = 'rgba(160,150,200,0.28)'; c.lineWidth = 2;
@@ -606,7 +657,13 @@ function laserDrawShape(shape, x, y, s) {
 function laserDrawPrize(st, gm) {
   const base = (gm.r + 1) * T, x = gm.x;
   paShadow(x, base, 16, 3, 0.3);
-  ctx.fillStyle = '#5d5484'; rr(x - 10, base - 14, 20, 14, 3); ctx.fill(); ctx.fillStyle = '#463e72'; ctx.fillRect(x + 4, base - 14, 6, 14); ctx.fillStyle = '#8a82b0'; ctx.fillRect(x - 13, base - 17, 26, 4); ctx.fillRect(x - 12, base - 3, 24, 3);
+  // a carved plinth: a stone column with a gold band, a moulded top and foot (cached)
+  paStamp('laserplinth', x - 13, base - 17, 26, 17, 2, g => {
+    paStone(g, 3, 3, 20, 12, '#5d5484', 5, { r: 2, lw: 1.2, noCrack: true });
+    g.fillStyle = 'rgba(217,166,64,0.85)'; g.fillRect(3.5, 7.5, 19, 2); g.fillStyle = 'rgba(255,240,170,0.6)'; g.fillRect(3.5, 7.5, 19, 0.7);
+    paStone(g, 0, 0, 26, 4, '#8a82b0', 7, { r: 1.5, lw: 1.1, noCrack: true, noChip: true });
+    paStone(g, 1, 14, 24, 3, '#8a82b0', 9, { r: 1, lw: 1.1, noCrack: true, noChip: true });
+  });
   if (gm.got) return;
   const bob = Math.sin(G.clock * 3) * 2, y = base - 31 + bob, kind = G.level.def.prize || 'gem';
   ctx.fillStyle = 'rgba(255,240,170,0.22)'; circle(x, y, 18 + Math.sin(G.clock * 5) * 2); ctx.fill();
@@ -677,6 +734,12 @@ function laserDraw() {
     const x = rg.c * T, y = (rg.r + 1) * T;
     ctx.fillStyle = rg.on ? '#3fbf7f' : '#5c4f86'; rr(x + 1, y - 5, T - 2, 5, 2); ctx.fill();
     ctx.fillStyle = rg.on ? 'rgba(124,240,176,0.9)' : 'rgba(255,255,255,0.25)'; ctx.fillRect(x + 4, y - 4, T - 8, 1.5);
+    // a woven border with a diamond pattern and a tassel fringe at each end
+    ctx.fillStyle = rg.on ? 'rgba(20,90,50,0.6)' : 'rgba(30,24,60,0.6)'; ctx.fillRect(x + 2, y - 1.5, T - 4, 1.5);
+    ctx.fillStyle = rg.on ? 'rgba(255,240,150,0.75)' : 'rgba(217,166,64,0.5)'; for (let k = 0; k < 4; k++) { const dx = x + 6 + k * 6; ctx.beginPath(); ctx.moveTo(dx, y - 4.2); ctx.lineTo(dx + 1.6, y - 2.6); ctx.lineTo(dx, y - 1); ctx.lineTo(dx - 1.6, y - 2.6); ctx.closePath(); ctx.fill(); }
+    ctx.strokeStyle = rg.on ? 'rgba(124,240,176,0.8)' : 'rgba(200,190,230,0.45)'; ctx.lineWidth = 0.8; ctx.beginPath();
+    for (const ex of [x + 1, x + T - 1]) for (let k = 0; k < 3; k++) { const fy = y - 4 + k * 1.6; ctx.moveTo(ex, fy); ctx.lineTo(ex + (ex < x + 15 ? -2.5 : 2.5), fy + 0.6); }
+    ctx.stroke();
     if (rg.on) { ctx.fillStyle = 'rgba(124,240,176,0.18)'; circle(x + 15, y - 6, 14); ctx.fill(); }
   }
   // fuse boxes
@@ -685,7 +748,13 @@ function laserDraw() {
     const sc = (1 + b.pop * 0.6) * (big ? 1.2 : 1);   // a bit bigger on phones
     ctx.save(); ctx.translate(b.x, b.y); ctx.scale(sc, sc);
     if (b.call > 0) { ctx.fillStyle = 'rgba(255,197,61,' + (0.18 + 0.12 * Math.sin(G.clock * 10)) + ')'; circle(0, 0, 22); ctx.fill(); }
-    ctx.fillStyle = '#2a2542'; rr(-11, -14, 22, 28, 4); ctx.fill();
+    // a riveted iron cabinet: a lit top edge, a darker foot, hinges on the left, vents at the bottom, coloured trim
+    paStamp('laserfuse', -11, -14, 22, 28, 2, g => {
+      paMetal(g, 0, 0, 22, 28, '#2e2948', { r: 4, lw: 1.2, rivets: false });
+      for (const [rx2, ry2] of [[3, 3], [19, 3], [3, 25], [19, 25]]) paNail(g, rx2, ry2, '#8a82b0', 0.9);
+      g.fillStyle = '#4a4466'; g.fillRect(-1, 6, 2.5, 4); g.fillRect(-1, 18, 2.5, 4);
+      g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = 0.8; g.beginPath(); for (let k = 0; k < 3; k++) { g.moveTo(7, 22 + k * 1.6); g.lineTo(15, 22 + k * 1.6); } g.stroke();
+    });
     ctx.strokeStyle = col; ctx.lineWidth = 2; rr(-11, -14, 22, 28, 4); ctx.stroke();
     ctx.fillStyle = off ? 'rgba(255,255,255,0.25)' : col; laserDrawShape(bk ? bk.shape : 'circle', 0, -4, 5); ctx.fill();
     ctx.strokeStyle = '#d9d3ef'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, 8); ctx.lineTo(off ? -6 : 6, 3); ctx.stroke();
@@ -710,8 +779,13 @@ function laserDraw() {
   // exit hatch (Crown Room): a dark door that swings open on the alarm
   for (const e of st.exits) {
     const open = st.phase === 'escape' || st.phase === 'won', x = e.x, y = e.y - T;
-    ctx.fillStyle = '#6b4630'; rr(x + 1, y + 2, T - 2, 2 * T - 2, 8); ctx.fill();
+    paStamp('laserhatch', x + 1, y + 2, T - 2, 2 * T - 2, 2, g => {
+      paPlank(g, 0, 0, T - 2, 2 * T - 2, '#6b4630', 15, { vert: true, r: 8, lw: 1.6 });
+      g.fillStyle = '#3c3655'; g.fillRect(0, 12, T - 2, 3); g.fillRect(0, 2 * T - 18, T - 2, 3);
+      for (const ry2 of [13.5, 2 * T - 16.5]) for (const rx2 of [3, T - 5]) paNail(g, rx2, ry2, '#8a82b0', 0.9);
+    });
     ctx.fillStyle = open ? '#ffe3a3' : '#2a2542'; rr(x + 5, y + 6, T - 10, 2 * T - 6, 6); ctx.fill();
+    if (!open) { ctx.strokeStyle = 'rgba(120,80,40,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); for (const vx of [x + 11, x + 17]) { ctx.moveTo(vx, y + 9); ctx.lineTo(vx, y + 2 * T - 2); } ctx.stroke(); }
     if (open) {
       ctx.fillStyle = 'rgba(255,215,120,0.25)'; circle(x + 15, y + 30, 30 + Math.sin(G.clock * 6) * 3); ctx.fill();
       text('EXIT', x + 17, y - 9, big ? 17 : 13, C.gold, 'center');
