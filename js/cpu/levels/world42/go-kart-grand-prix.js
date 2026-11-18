@@ -66,7 +66,7 @@ cpuBrain('parkkarts', {
     for (const r of st.robots.concat(TR.stones)) { const ds = PARKKARTS_PRIZES.sd(r.s, k.s), st0 = r.robot == null; if (ds > 0 && ds < look + 3 && Math.abs(r.lat - lineLat) < (st0 ? 2.0 : 1.7)) lineLat = r.lat + (r.lat > 0 ? -1 : 1) * (st0 ? 2.3 : 2.0); }
     // mistakes: now and then an exit run wide (more for Easy)
     b.mistakeT -= dt;
-    if (b.mistakeT <= 0) { b.mistakeT = 4 + Math.random() * 10 * (0.4 + sk); if (Math.random() < 0.8 - sk * 0.6) b.mistake = 0.8 + Math.random() * 0.8; }
+    if (b.mistakeT <= 0) { b.mistakeT = 4 + Math.random() * 10 * (0.4 + sk); if (Math.random() < (sk >= 0.95 ? 0.1 : sk >= 0.6 ? 0.55 : 0.75)) b.mistake = 0.8 + Math.random() * 0.8 * (1.6 - sk); }
     if (b.mistake > 0) { b.mistake -= dt; lineLat += Math.sign(turn || 1) * hw * 0.6; }
     lineLat = Math.max(-hw + 1.2, Math.min(hw - 1.2, lineLat + cut));
     let tx, tz;
@@ -81,11 +81,11 @@ cpuBrain('parkkarts', {
     let err = Math.atan2(Math.sin(want - k.yaw), Math.cos(want - k.yaw));
     let s = Math.max(-1, Math.min(1, -err * (1.7 + 0.8 * sk)));
     // drift into tight bends (the kart turns harder than it steers): hold through, let go out of it
-    const drifty = sk >= 0.95 ? 0.55 : sk >= 0.6 ? 0.85 : 1.6;
+    const drifty = sk >= 0.95 ? 0.85 : sk >= 0.6 ? 0.95 : 1.6;
     if (!b.drifting && tight > drifty && k.v > KK.S.DRIFT_V + 1 && Math.abs(err) > 0.05 && !useShort) { b.drifting = true; b.driftDir = -Math.sign(turn); }
     if (b.drifting) {
       const inside = -b.driftDir * k.lat, tooIn = inside > hw - 0.6 - (1 - sk) * 0.8;
-      const exitDone = tight < drifty * 0.45 || (k.spark === 2 && sk < 0.95 && tight < drifty) || k.skidT > 0 || (tooIn && k.spark > 0) || k.verge;
+      const exitDone = tight < drifty * 0.45 || (k.spark === 2 && tight < drifty * (sk >= 0.95 ? 1.4 : 1)) || k.skidT > 0 || (tooIn && k.spark > 0) || k.verge;
       if (exitDone || (k.drift === 0 && k.driftT === 0 && b.heldT > 0.4)) { b.drifting = false; b.heldT = 0; }
       else { out.jump = true; b.heldT = (b.heldT || 0) + dt; if (k.drift === 0) s = b.driftDir * Math.max(0.5, Math.abs(s)); }
     }
