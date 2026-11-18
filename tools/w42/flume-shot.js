@@ -58,6 +58,14 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
   const box = await page.evaluate(() => { const r = document.getElementById('stage').getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; });
   await page.evaluate(() => new Promise(r => requestAnimationFrame(() => { window.__pipbo.K3D.freeze = true; r(); })));
   await page.screenshot({ path: out, clip: box, animations: 'allow', caret: 'initial', timeout: 120000 });
+  if (opt('census', '')) console.log(await page.evaluate(() => {
+    // what is drawn: every visible mesh, points and sprite under the scene, grouped by kind (for draw-call hunting)
+    const K = window.__K, T = window.__pipbo.K3D.T, cam = K.camera, fr = new T.Frustum().setFromProjectionMatrix(new T.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)), n = {};
+    K.scene.traverseVisible(o => { if (!(o.isMesh || o.isPoints || o.isSprite)) return; if (o.frustumCulled && o.geometry && !o.isSprite) { o.geometry.boundingSphere || o.geometry.computeBoundingSphere(); const sp = o.geometry.boundingSphere.clone().applyMatrix4(o.matrixWorld); if (!fr.intersectsSphere(sp)) return; }
+      let lv = false; for (let q = o; q; q = q.parent) if (q.userData.live) lv = true; const why = lv ? ' live' : (o.material && o.material.transparent) ? ' transp' : o.children.some(c => !c.userData.ink) ? ' parent' : '';
+      const k = (o.isInstancedMesh ? 'inst' : o.isSprite ? 'sprite' : o.isPoints ? 'points' : o.userData.ink ? 'ink' : 'mesh') + why + ' ' + (o.material && o.material.type); n[k] = (n[k] || 0) + 1; });
+    return 'census ' + JSON.stringify(Object.entries(n).sort((a, b) => b[1] - a[1]));
+  }));
   console.log(out, JSON.stringify(r), JSON.stringify(info), errs.length ? '\nerrors: ' + errs.slice(0, 8).join('\n') : '');
   await browser.close();
 })().catch(e => { console.error(e); process.exit(1); });

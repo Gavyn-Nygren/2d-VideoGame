@@ -53,8 +53,10 @@
 
       /* ---- hold on for things right across the channel that will be there as the log passes ---- */
       for (const ob of L.obs) {
-        if (!ob.braceOk || ob.s < st.s - 4 || ob.s > st.s + 20) continue;
-        const across = ob.line || (ob.side && ob.side === s.arm[(L.islands.find(q => ob.s > q.s0 && ob.s < q.s1) || {}).s0]);
+        if (!ob.braceOk || ob.s < st.s - ob.r - S.HALF_W - S.HALF_LEN - 1 || ob.s > st.s + 20) continue;
+        // (a line right across; a curtain in the arm it took; a fountain it is heading into anyway)
+        const across = ob.line || (ob.side && ob.side === s.arm[(L.islands.find(q => ob.s > q.s0 && ob.s < q.s1) || {}).s0])
+          || (!ob.side && Math.abs(st.x + st.vx * 0.4 - ob.x) < ob.r + S.HALF_W + 0.4);
         if (!across) continue;
         const reach = ob.r + S.HALF_W + S.HALF_LEN + 0.4, ta0 = (ob.s - reach - st.s) / vs, ta1 = (ob.s + reach - st.s) / vs;
         if (ta1 < 0) continue;
@@ -112,23 +114,27 @@
       // target: the target becomes a point beside the thing
       for (const ob of L.obs) {
         if (ob.line || ob.kind === 'curtain' || ob.s < st.s - 2 || ob.s > Math.max(sT, st.s + (ob.soak ? 20 : 6)) + ob.r + S.HALF_LEN) continue;
-        // (a soaking thing that comes and goes is given a wide margin in time: the log's arrival is a guess)
-        const ta = t + Math.max(0, ob.s - st.s) / vs, span = ob.soak ? 14 : 6;
-        let on = false, q = null; for (let k = -span; k <= span; k++) { const qq = CO.obsAt(ob, ta + k * 0.1); if (qq.on) { on = true; if (!q || k === 0) q = qq; } }
-        if (!on) continue;
-        const room = ob.r + S.HALF_W + 0.6;
-        const u = clamp((q.s - st.s) / Math.max(0.5, sT - st.s), 0, 1), xi = st.x + (tx - st.x) * u;
-        if (Math.abs(xi - q.x) < room) {
-          const w = PR.w(q.s) - 1.0, l = q.x - room, r = q.x + room;
-          const isl = islOf(q.s), blocked = v => Math.abs(v) > w || (isl && isl.hw > 0.3 && Math.abs(v - isl.I.x) < isl.hw + 1.0);
-          const okL = !blocked(l), okR = !blocked(r);
-          const pickR = okR && (!okL || Math.abs(xi - r) < Math.abs(xi - l));
-          tx = pickR ? r : l; sT = Math.max(st.s + 3, q.s); why = 'avoid';
-        }
+        // everywhere it will be while the log goes by (a guess, so a soaking thing that comes and goes or moves across
+        // gets a wide margin in time): the ranges across the channel to keep out of
+        const ta = t + Math.max(0, ob.s - st.s) / vs, span = ob.soak ? 7 : 5, room = ob.r + S.HALF_W + 0.6, bad = [];
+        let qs = ob.s;
+        for (let k = -span; k <= span; k++) { const qq = CO.obsAt(ob, ta + k * 0.1); if (qq.on && (qq.soak !== false || !ob.soak)) { bad.push([qq.x - room, qq.x + room]); if (k === 0) qs = qq.s; } }
+        if (!bad.length) continue;
+        const u = clamp((qs - st.s) / Math.max(0.5, sT - st.s), 0, 1), xi = st.x + (tx - st.x) * u;
+        const inBad = v => bad.some(([l, r]) => v > l && v < r);
+        if (!inBad(xi)) continue;
+        const w = PR.w(qs) - 1.0, isl = islOf(qs);
+        const blocked = v => Math.abs(v) > w || (isl && isl.hw > 0.3 && Math.abs(v - isl.I.x) < isl.hw + 1.0) || inBad(v);
+        let best = null;
+        for (const [l, r] of bad) for (const v of [l - 0.05, r + 0.05]) if (!blocked(v) && (best == null || Math.abs(v - xi) < Math.abs(best - xi))) best = v;
+        if (best == null) continue; // nowhere clear: keep the line (it may yet be off by then)
+        tx = best; sT = Math.max(st.s + 3, qs); why = 'avoid';
+        break; // (the nearest thing in the way sets the line; the ones after it are dealt with as the log reaches them)
       }
       // inside the banks (and off the island)
       { const w = PR.w(sT) - 1.0; tx = clamp(tx, -w, w); const isl = islOf(sT); if (isl && isl.hw > 0.3) { const sd = s.arm[isl.I.s0] || (st.x >= isl.I.x ? 1 : -1); if (sd * (tx - isl.I.x) < isl.hw + 1.0) tx = isl.I.x + sd * (isl.hw + 1.0); } }
 
+      if (typeof window !== 'undefined' && window.__pfDbg && id === 0 && Math.round(t * 50) % 10 === 0) window.__pfDbg.push(`t=${t.toFixed(1)} s=${st.s.toFixed(1)} x=${st.x.toFixed(2)} tx=${tx.toFixed(2)} sT=${sT.toFixed(1)} ${why}`);
       /* ---- the turn it wants ---- */
       const xPred = st.x + st.vx * 0.5;
       const drive = Math.max(0.5, Math.max(0, st.u) + S.KEEL * c);

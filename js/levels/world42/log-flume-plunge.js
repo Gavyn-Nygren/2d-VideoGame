@@ -121,6 +121,8 @@ const PARKFLUME = (function () {
     st.phase = 'ride'; st.phaseT = 0;
     st.s = st.prevS = st.restart + 0.5; st.x = 0; st.psi = 0; st.om = 0; st.u = 0.6; st.speed = 0;
     if (st.sameArch >= 2 && st.gold <= 0) { st.gold = S.GOLD_ARCHES; st.maxWater = S.GOLD_WATER; st.goldMsgT = st.t; st.goldN++; }
+    // (sunk again from the same arch with the help on: the bucket robot bails even more, two more Soaks each time)
+    else if (st.sameArch >= 3 && st.gold > 0) { st.gold = S.GOLD_ARCHES; st.maxWater = Math.min(S.GOLD_WATER + 6, S.GOLD_WATER + 2 * (st.sameArch - 2)); st.goldMsgT = st.t; }
     st.water = 0; st.safe = 2.0; st.wet = Math.max(0.3, st.wet);
     st.pull = [-1, -1]; st.rest = [0, 0]; st.air = 0; st.airV = 0; st.sink = null;
     st.dropDone = {}; st.dropBraced = {}; st.whirl = null;
@@ -355,6 +357,8 @@ const PARKFLUME = (function () {
       return;
     }
     if (st.phase === 'ride') {
+      // the music: the tense climbing tune while a lift hauls the log up, the jig again once it has splashed down
+      { const up = L.lifts.some(lf => st.s > lf.s0 - 1 && st.s < lf.s1 + 6); if (up !== !!st.liftTune && typeof Music !== 'undefined' && Music.cue) { st.liftTune = up; Music.cue({ song: up ? 'parkflumeLift' : 'parkflume' }); } }
       paddles(st, dt);
       if (st.whirl) whirl(st, dt);
       else if (CO.liftAt(st.s)) belt(st, dt);
@@ -366,10 +370,14 @@ const PARKFLUME = (function () {
       events(st, st.prevS, st.s);
       // the finish: in the dock's ring slowly enough to stop
       const ring = PR.at.ring;
-      if (Math.abs(st.s - ring) < S.RING_R && Math.abs(st.x) < S.RING_R && st.vs < S.RING_V) { st.phase = 'dock'; st.phaseT = 0; st.dockFrom = { s: st.s, x: st.x, psi: st.psi }; Sfx.play('parkflumeDock'); }
-      else if (st.s > ring + S.RING_R) {
+      // (each time round, the dock's robots reach further out to catch the log: by the third time they catch it at any speed)
+      const vMax = S.RING_V * (st.laps >= 2 ? 99 : st.laps === 1 ? 1.6 : 1), rr = S.RING_R * (st.laps >= 2 ? 1.5 : 1);
+      if (Math.abs(st.s - ring) < rr && Math.abs(st.x) < rr && st.vs < vMax) { st.phase = 'dock'; st.phaseT = 0; st.dockFrom = { s: st.s, x: st.x, psi: st.psi }; Sfx.play('parkflumeDock'); }
+      else if (st.s > ring + rr) {
         // too fast: round the lagoon again (back to the splashdown's end of it), no penalty
-        st.laps++; st.s = st.prevS = PR.at.lagoon + 4; st.u = 0; st.says.push({ text: 'Round again! Both hold your paddles in to stop at the dock!', t: st.t });
+        // (the first time from the lagoon's far side; after that only from the last arch, a short way out)
+        st.laps++; st.s = st.prevS = st.laps === 1 ? PR.at.barges : PR.at.arch9 + 1; st.u = 0; st.x = 0; st.psi = 0; st.om = 0;
+        st.says.push({ text: st.laps === 1 ? 'Round again! Both hold your paddles in to stop at the dock!' : 'Round again! The dock robots will catch you this time!', t: st.t });
       }
       return;
     }
@@ -460,7 +468,7 @@ const PARKFLUME = (function () {
 
 /* ---------- MODES.parkflume ---------- */
 MODES.parkflume = {
-  medals: { bronze: 'Reach the dock', goals: [{ key: 'ducks', gold: 0.85, silver: 0.55, more: true, pct: true, word: 'the ducks' }, { key: 'soaks', gold: 3, silver: 9, word: 'soak' }] },
+  medals: { bronze: 'Reach the dock', goals: [{ key: 'ducks', gold: 0.8, silver: 0.5, more: true, pct: true, word: 'the ducks' }, { key: 'soaks', gold: 3, silver: 8, word: 'soak' }] },
   medalValues() { const st = G.mst; return { ducks: Math.min(1, st.ducks / PARKFLUME.ducksMax()), soaks: st.soaks }; },
   scene3dOpts: { bg: '#0d0d24', fov: 54, near: 0.2, far: 1600 },
   setup(st) { PARKFLUME.fresh(st); for (const p of G.players) p.alive = true; },
@@ -538,7 +546,7 @@ defineOutfit('parkflume', { pip: [['pfRainCape', {}], ['pfLifeRing', {}], ['pfSo
 
 /* ---------- the level ---------- */
 PARKFLUME.def = {
-  name: 'Log Flume Plunge', world: 41, kind: 'team', mode: 'parkflume', outfit: 'parkflume', music: 'parkmidnight', amb: 'parkmidnight',
+  name: 'Log Flume Plunge', world: 41, kind: 'team', mode: 'parkflume', outfit: 'parkflume', music: 'parkflume', amb: 'parkflume',
   view3d: true, ownStep: true, ownHUD: true, noFalls: true,
   legend: {
     pip: '<kbd>F</kbd> paddle <kbd>S</kbd> drag left <kbd>Space</kbd> hold on',

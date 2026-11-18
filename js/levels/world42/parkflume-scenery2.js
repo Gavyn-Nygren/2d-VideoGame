@@ -996,7 +996,7 @@ const PARKFLUME_SCENE2 = (function () {
       if (u < dt * 1.2 && sc.log && sc.log.spray) sc.log.spray.emit(c.bot, new T.Vector3(0, 0, 0), 60, 4, 5, 1.4);
     }
     for (const wh of S.band.wheels) wh.rotation.x -= dt * 9; S.band.bandTex.offset.y += dt * 6;
-    { const C = S.crane, q = PARKFLUME.obsAt(C.o, T0), f = R.at(q.s), top = R.local(q.s, q.x, 6.1, f), sway = Math.cos(T0 * 0.9) * 0.18; C.tro.position.set(...top); C.tro.rotation.y = f.yaw; const len = 6.1 - 0.75; C.cable.scale.y = len; C.claw.position.y = -len; C.claw.rotation.x = sway * 0.4; C.claw.rotation.z = -sway; }
+    { const C = S.crane, q = PARKFLUME.obsAt(C.o, T0), f = R.at(q.s), top = R.local(q.s, q.x, 6.1, f), sway = Math.cos(T0 * 0.6) * 0.18; C.tro.position.set(...top); C.tro.rotation.y = f.yaw; const len = 6.1 - 0.75; C.cable.scale.y = len; C.claw.position.y = -len; C.claw.rotation.x = sway * 0.4; C.claw.rotation.z = -sway; }
     for (const s of S.steam) {
       const u = cu(s.o, T0), [per, on] = s.o.cyc;
       s.needle.rotation.z = -1.2 + 2.4 * (u < on ? 1 : u / per);

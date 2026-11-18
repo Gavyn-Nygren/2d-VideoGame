@@ -41,7 +41,7 @@ const maxT = +opt('max', 400), from = opt('from', null), to = opt('to', null);
       P.CPU.errs.clear(); P.CPU.skillOf = [null, null]; P.CPU.filter = null;
       G.cpuOn = seat === 0 ? [false, true] : [true, false];
       delete G.results[i];
-      P.loadLevel(i);
+      P.loadLevel(i); window.__sinks = []; window.__sinkSeen = false;
       const st0 = G.mst;
       if (from != null) { st0.phase = 'ride'; st0.started = true; st0.s = st0.prevS = st0.restart = +from; st0.x = 0; }
       let rng = 99; const rnd = () => { rng = (rng * 16807) % 2147483647; return rng / 2147483647; };
@@ -63,12 +63,13 @@ const maxT = +opt('max', 400), from = opt('from', null), to = opt('to', null);
             if (want) { if (seat === 0) { if (n % 40 === 0) { person.pendingAct = true; inp.act = true; } } else inp.down = true; }
           }
           window.__inStep = true; P.step(P.DT); window.__inStep = false;
+          if (s.phase === 'sink' && !window.__sinkSeen) { window.__sinkSeen = true; (window.__sinks = window.__sinks || []).push(Math.round(s.s) + '/' + s.lastWhy); } else if (s.phase !== 'sink') window.__sinkSeen = false;
           if (s.phase === 'ride') {
             // pinned: held against a bank and not carried on (nearly stopped: under a third of the current's speed; scraping along a bank with the current is not pinned)
             scrape = s.bank[0] ? scrape + P.DT : 0; worstScrape = Math.max(worstScrape, scrape);
             pin = s.bank[0] && s.vs < 0.34 * PARKFLUME_ROUTE.R.at(s.s).v ? pin + P.DT : 0; if (pin > worstPin) { worstPin = pin; window.__pinAt = `s=${s.s.toFixed(1)} x=${s.x.toFixed(2)} psi=${s.psi.toFixed(2)} vs=${s.vs.toFixed(2)} u=${s.u.toFixed(2)} w=${PARKFLUME_ROUTE.w(s.s).toFixed(1)}`; }
             const d = s.psi - lastPsi; spin = (Math.sign(d) === Math.sign(spin) || !spin) ? spin + d : d; worstSpin = Math.max(worstSpin, Math.abs(spin)); lastPsi = s.psi;
-            stall = s.s - lastS < 0.002 ? stall + P.DT : 0; worstStall = Math.max(worstStall, stall); lastS = s.s;
+            stall = s.s - lastS < 0.002 && !s.whirl ? stall + P.DT : 0; if (stall > worstStall) { worstStall = stall; window.__stallAt = `s=${s.s.toFixed(1)} x=${s.x.toFixed(2)} t=${s.t.toFixed(1)}`; } lastS = s.s;
           }
           if (s.s >= end) { n = steps; break; }
         }
@@ -76,13 +77,14 @@ const maxT = +opt('max', 400), from = opt('from', null), to = opt('to', null);
       }
       const s = G.mst;
       return { simT: +(n * P.DT).toFixed(1), phase: s.phase, s: +s.s.toFixed(1), done: !!G.results[i] || s.s >= end, ducks: s.ducks, soaks: s.soaks, sinks: s.sinkings, gold: s.goldN, bumps: s.bumps,
-        pin: +worstPin.toFixed(2), scrape: +worstScrape.toFixed(1), spin: +worstSpin.toFixed(2), stall: +worstStall.toFixed(2), cpuErrs: [...P.CPU.errs], pinAt: window.__pinAt };
+        pin: +worstPin.toFixed(2), scrape: +worstScrape.toFixed(1), spin: +worstSpin.toFixed(2), stall: +worstStall.toFixed(2), cpuErrs: [...P.CPU.errs], pinAt: window.__pinAt, stallAt: window.__stallAt, sinks: window.__sinks || [] };
     }, { who, seat, maxT, from, to });
     const fails = [];
     if (!r.done) fails.push('did not get there');
     if (r.pin > 2) fails.push('pinned ' + r.pin + 's');
     if (r.spin > Math.PI * 2) fails.push('spun ' + r.spin);
-    if (r.stall > 2) fails.push('stalled ' + r.stall + 's');
+    if (r.sinks.length > 2) console.log('    sank at ' + r.sinks.join(' '));
+    if (r.stall > 2) fails.push('stalled ' + r.stall + 's at ' + r.stallAt);
     if (r.cpuErrs.length || errors.length) fails.push('errors');
     if (fails.length) bad++;
     console.log(`${fails.length ? 'FAIL' : 'ok  '} ${who.padEnd(8)} as ${['Pip', 'Bo '][seat]}: ${r.done ? 'through' : r.phase + ' s=' + r.s} in ${r.simT}s  ducks ${r.ducks}  soaks ${r.soaks}  sinkings ${r.sinks}  bumps ${r.bumps}  pin ${r.pin}s (along a bank ${r.scrape}s)  spin ${r.spin}${fails.length ? '  <- ' + fails.join(', ') + (r.pin > 2 ? ' at ' + r.pinAt : '') : ''}${r.cpuErrs.length ? '\n  CPU ERR ' + r.cpuErrs : ''}${errors.length ? '\n  PAGE ERR ' + errors.slice(0, 2).join(' | ').slice(0, 400) : ''}`);

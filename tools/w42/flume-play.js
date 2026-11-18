@@ -7,6 +7,8 @@
 //   kid     one seat is the computer a whole second late on every press
 //   clumsy  one seat is the computer half a second late, misses a stroke in four and sometimes strokes for nothing
 // --from puts the log at that place (an arch: a stretch's start), --to stops when the log gets there.
+// --t0 / --x0 set the rules' clock and the log's x at --from (to replay a moment of a full ride); --dbg=1 prints the
+// brain's target line every 0.2 s.
 // Prints ducks, Soaks (and why), Sinkings, bank bumps, the worst spin and pin, the medal, and the computer's zigzags.
 'use strict';
 const path = require('path');
@@ -14,6 +16,7 @@ const { chromium } = require('playwright');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); return a ? a.split('=')[1] : d; };
 const who = opt('who', 'pair'), maxT = +opt('max', 600), seeds = opt('seeds', '1').split(',').map(Number);
+const t0 = +opt('t0', 0), x0 = +opt('x0', 0), dbg = +opt('dbg', 0);
 const slow = +opt('slow', 0), trace = +opt('trace', 0), from = opt('from', null), to = opt('to', null);
 (async () => {
   const browser = await chromium.launch();
@@ -31,6 +34,7 @@ const slow = +opt('slow', 0), trace = +opt('trace', 0), from = opt('from', null)
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
   for (const seed of seeds) {
     errors.length = 0;
+    await page.evaluate(({ t0, x0, dbg }) => { window.__t0 = t0; window.__x0 = x0; window.__pfDbg = dbg ? [] : null; }, { t0, x0, dbg });
     const r = await page.evaluate(async ({ who, maxT, seed, slow, trace, from, to }) => {
       const P = window.__pipbo, G = P.G, K3D = P.K3D; window.__zlog = [];
       const i = P.LEVELS.findIndex(l => l.mode === 'parkflume');
@@ -58,7 +62,7 @@ const slow = +opt('slow', 0), trace = +opt('trace', 0), from = opt('from', null)
       delete G.results[i];
       P.loadLevel(i);
       const st0 = G.mst;
-      if (from != null) { st0.phase = 'ride'; st0.started = true; st0.s = st0.prevS = st0.restart = +from; st0.x = 0; }
+      if (from != null) { st0.phase = 'ride'; st0.started = true; st0.s = st0.prevS = st0.restart = +from; st0.x = +(window.__x0 || 0); if (window.__t0) st0.t = +window.__t0; }
       const steps = Math.round(maxT / P.DT), every = trace ? Math.round(trace / P.DT) : 0, lines = [], whys = [];
       const xAt = {}; let n = 0, lastSoak = 0, scrape = 0, worstScrape = 0, pin = 0, worstPin = 0, worstSpin = 0, spin = 0, lastPsi = 0;
       while (n < steps && G.mode === 'play') {
@@ -101,6 +105,7 @@ const slow = +opt('slow', 0), trace = +opt('trace', 0), from = opt('from', null)
         missed: PARKFLUME_ROUTE.lists.ducks.map((d, k) => (s.got[k] || d.s < a || d.s > Math.min(b, s.s) ? '' : `${d.s.toFixed(0)}:${d.x.toFixed(1)}${d.big ? 'B' : ''}/${xAt[Math.round(d.s)]}`)).filter(Boolean), zlog: window.__zlog, worstPin: +worstPin.toFixed(2), scrape: +worstScrape.toFixed(1), worstSpin: +worstSpin.toFixed(2), zig: zz.worst, whys, cpuErrs: [...P.CPU.errs], trace: lines };
     }, { who, maxT, seed, slow, trace, from, to });
     if (r.trace.length) console.log(r.trace.join('\n'));
+    if (dbg) console.log((await page.evaluate(() => window.__pfDbg || [])).join('\n'));
     console.log(`${who}${who !== 'pair' ? '(' + ['Pip', 'Bo'][slow] + ')' : ''} s${seed}: ${r.cleared ? 'FINISHED' : 'stopped (' + r.phase + ' at s=' + r.s.toFixed(1) + ')'} in ${r.simT}s  ducks ${r.ducks}/${r.avail} (${Math.round(r.ducks / Math.max(1, r.avail) * 100)}%)  soaks ${r.soaks}  sinkings ${r.sinks}  bumps ${r.bumps}  pairs ${r.pairs}  laps ${r.laps}  pin ${r.worstPin}s (along a bank ${r.scrape}s)  spin ${r.worstSpin}  zigzag/s ${r.zig}${r.medal ? '  medal ' + r.medal : ''}${process.env.ZLOG ? '\n  ' + r.zlog.join(' ') : ''}${process.env.MISSED ? '\n  missed (s:x/log x): ' + r.missed.join(' ') : ''}${r.whys.length ? '\n  soaks: ' + r.whys.join(' ') : ''}${r.cpuErrs.length ? '\n  CPU ERR ' + r.cpuErrs : ''}${errors.length ? '\n  PAGE ERR ' + errors.slice(0, 3).join(' | ').slice(0, 600) : ''}`);
   }
   await browser.close();
