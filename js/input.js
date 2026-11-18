@@ -23,7 +23,8 @@ const BIND = [
 // does the level on now use the second / third action? (then the pad and the shared keys narrow, see above)
 const multiAct = () => !!(G.level && (G.level.def.act2 || G.level.def.act3));
 // 3D levels only: the jump keys (the usual jump keys walk away from the viewer there)
-const K3D_JUMP = [['Space'], ['ShiftRight']];
+// (Bo's Enter jumps too: five quick Shift presses can open Windows' Sticky Keys prompt; in 3D Enter is not his action)
+const K3D_JUMP = [['Space'], ['ShiftRight', 'Enter', 'NumpadEnter']];
 const GAME_KEYS = new Set(['ShiftRight', 'KeyA', 'KeyD', 'KeyW', 'KeyS', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
   'KeyF', 'KeyE', 'Slash', 'Period', 'Comma', 'Enter', 'Numpad0', 'NumpadEnter', 'KeyQ', 'Numpad1', 'NumpadDecimal']);
 // Enter pressed on a menu card and still held when the level starts must not count as Bo's action button
@@ -303,7 +304,9 @@ function pollInput(dt = 1 / 60) {
     p.input.jump = j;
     // the action button: held state in p.input.act, a fresh press in p.pendingAct (the level's code clears it;
     // unused, it expires after ACT_BUFFER s)
-    const a = any('act');
+    const a = G.level && G.level.def.view3d
+      ? bind.act.some(c => !K3D_JUMP[1].includes(c) && (keys.has(c) || tapLive(keysTapped, c))) || !!ps.act || !!t.act || tapLive(touchTapped[i], 'act')
+      : any('act');
     if (a && !p.prevAct && G.mode === 'play' && G.level && G.level.def.act) { p.pendingAct = true; p.actAge = 0; }
     p.prevAct = a;
     p.input.act = a;

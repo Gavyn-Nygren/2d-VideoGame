@@ -43,7 +43,7 @@ const K3D = {
                          // state (the heading its camera is steered to), never from the camera's smoothed picture
   // the drawing kit, loaded in this order after three.js (classic scripts sharing the game's globals)
   files: ['js/3d/kit.js', 'js/3d/heroes.js', 'js/3d/outfits3d.js', 'js/3d/cameras.js', 'js/3d/proof.js',
-    'js/levels/world41/popup-kit.js', 'js/levels/world41/popup-outfits.js'],
+    'js/levels/world41/popup-kit.js', 'js/levels/world41/popup-outfits.js', 'js/levels/world41/popup-scenes.js'],
   lib: 'js/3d/vendor/three.min.js',
   _p: null,
   // a level, room or page asks for 3D

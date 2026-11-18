@@ -20,7 +20,8 @@
      POPUP.fountain(x, z, s)           tiered card fountain with blue tissue water
      POPUP.peacock(x, z, rot, s)       a cut-out paper peacock on a V-fold stand
      POPUP.bookmark(x, z, rot, col)    a silk ribbon bookmark stuck in the page (.userData.lit(t) lights it)
-     POPUP.dotted(points, done)        a dotted pencil line with a pencil icon at its start; .userData.set(n) inks dots
+     POPUP.dotted(points, { dots, y, done })   a dotted pencil line with a pencil icon at its start; .userData.set(n)
+                                       inks dots (dots: a level's own rule dots, drawn exactly)
      POPUP.pencil()                    the giant yellow pencil, 5 long, along +X (eraser at -X, point at +X)
      POPUP.tuft(rnd)                   a grass tuft card (hedges put them along their foot)
      POPUP.bench / sundial / fence / tulips / tulip / mushrooms / bunny / butterfly   the lawns' pop-ups
@@ -436,18 +437,28 @@ const POPUP = (function () {
     // the gate: two leaves of wrought-iron card (cut-out bars) with a big padlock
     const iron = new T.Shape(); iron.moveTo(0, 0); iron.lineTo(w / 2, 0); iron.lineTo(w / 2, 1.3); iron.quadraticCurveTo(w / 4, 1.55, 0, 1.45); iron.closePath();
     for (let i = 0; i < 6; i++) { const hx = 0.12 + i * (w / 2 - 0.2) / 6, hole = new T.Path(); hole.moveTo(hx, 0.15); hole.lineTo(hx + 0.13, 0.15); hole.lineTo(hx + 0.13, 1.15); hole.lineTo(hx, 1.15); hole.closePath(); iron.holes.push(hole); }
+    const hinges = [];
     for (const s2 of [-1, 1]) {
       const leaf = P.card(iron, { col: '#3a3f4a', depth: 0.04, edge: '#5a606c', inkW: 0.8 });
-      // one leaf each side of the middle: the shape runs from 0 to w / 2, and the second is turned round to run the other way
-      leaf.position.set(0, 0.05, 0);
+      // one leaf each side of the middle: the shape runs from 0 to w / 2, and the second is turned round to run the other
+      // way; each hangs on a hinge at its pillar (.userData.open(f) swings them open)
+      const hinge = new T.Group(); hinge.position.set(s2 * w / 2, 0.05, 0); g.add(hinge); hinges.push(hinge);
+      leaf.position.set(-s2 * w / 2, 0, 0);
       if (s2 < 0) leaf.rotation.y = Math.PI;
-      g.add(leaf);
+      hinge.add(leaf);
     }
     // the padlock goes right through the two leaves, so it shows from the path side and from beyond the gate
     const lock = K3D.mesh(K3D.roundBox(0.26, 0.24, 0.24, 0.6, 16).translate(0, 0.55, 0), K3D.mat('brass', () => K3D.toon('#d9a640')), { ink: '#5a3d14' });
     g.add(lock);
     const shackM = K3D.toon('#9a9aa8');
-    for (const s2 of [-1, 1]) { const shack = K3D.mesh(new T.TorusGeometry(0.08, 0.02, 6, 16, Math.PI).translate(0, 0.79, s2 * 0.075), shackM, { ink: '#3a3a48', inkW: 0.6 }); g.add(shack); }
+    const shacks = [];
+    for (const s2 of [-1, 1]) { const shack = K3D.mesh(new T.TorusGeometry(0.08, 0.02, 6, 16, Math.PI).translate(0, 0.79, s2 * 0.075), shackM, { ink: '#3a3a48', inkW: 0.6 }); g.add(shack); shacks.push(shack); }
+    // open: 0 shut .. 1 wide open (the padlock drops away first)
+    g.userData.open = f => {
+      hinges[0].rotation.y = f * 1.75; hinges[1].rotation.y = -f * 1.75;
+      const lf = Math.min(1, f * 3);
+      lock.position.y = -lf * 0.5; lock.visible = lf < 1; for (const sh of shacks) { sh.position.y = -lf * 0.5; sh.visible = lf < 1; }
+    };
     return g;
   };
   // a pull-tab sticking out of the page edge, printed with an arrow (paper engineering you can see)
@@ -605,11 +616,15 @@ const POPUP = (function () {
 
   // a dotted pencil line on the page, with a little pencil icon at its start. .userData.set(n) turns the first n dots
   // into a solid graphite stroke.
+  // o.dots: the exact dots to draw ([[x, z], ...], a level's rule dots, so the picture and the rules agree); o.y: the
+  // height of the surface it is printed on.
   P.dotted = function (pts, o = {}) {
-    const g = new T.Group();
-    const curve = new T.CatmullRomCurve3(pts.map(p => new T.Vector3(p[0], 0.008, p[1])));
+    const g = new T.Group(), Y = o.y || 0;
+    g.position.y = Y;
+    const src = o.dots || pts;
+    const curve = new T.CatmullRomCurve3(src.map(p => new T.Vector3(p[0], 0.008, p[1])));
     const len = curve.getLength(), n = Math.max(2, Math.round(len / (o.gap || 0.32)));
-    const dots = curve.getSpacedPoints(n);
+    const dots = o.dots ? o.dots.map(p => new T.Vector3(p[0], 0.008, p[1])) : curve.getSpacedPoints(n);
     const dotGeo = K3D.geo('dotGeo', () => new T.CircleGeometry(0.07, 12).rotateX(-Math.PI / 2));
     const dotM = K3D.mat('dotM', () => K3D.flat('#5a5560')), doneM = K3D.mat('dotDone', () => K3D.flat('#2f2c35'));
     const dm = new T.InstancedMesh(dotGeo, dotM, dots.length);

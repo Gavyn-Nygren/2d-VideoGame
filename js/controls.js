@@ -43,6 +43,11 @@ const isActW = m => m === 'act' || m === 'act2' || m === 'act3';
 const TOUCH_ACT = { act: '●', act2: '✦', act3: '⟳' };
 const PAD_ACT_GLYPH = { act2: 'rb', act3: 'x3' };
 const ARROWS = { left: '◀', right: '▶', jump: '▲', down: '▼', up: '▲' };
+// 3D levels (World 41 on): ▲ walks away, and jump has its own key (Space for Pip, Shift for Bo). A legend writes it as
+// <kbd>Space</kbd> or <kbd>Shift</kbd>, which mean 'hop': that player's own jump key, the controller's A, the touch jump.
+const HOP_CAPS = ['Space', 'Right Shift']; // (only the right Shift jumps: say so)
+const is3dLevel = () => !!(G.level && G.level.def && G.level.def.view3d);
+const capMeans = c => (c === 'Space' || c === 'Shift') && is3dLevel() ? 'hop' : c === 'E' && !multiAct() ? 'act' : KEY_MEANS[c] || null;
 
 // everything that changes what the prompts say; pollInput calls controlsWatch() every frame and a change redraws them
 function controlsWatch() {
@@ -63,6 +68,7 @@ function controlsRefresh() {
 function btnLabel(id, what) {
   const d = playerDevice(id);
   if (what === 'move') return d.kind === 'pad' ? 'stick' : btnLabel(id, 'left') + ' ' + btnLabel(id, 'right');
+  if (what === 'hop') return d.kind === 'kb' ? HOP_CAPS[keysetFor(id)] : d.kind === 'touch' ? '▲' : glyph('a', id);
   if (d.kind === 'kb') return KEYCAPS[keysetFor(id)][what] || '';
   if (d.kind === 'touch') return TOUCH_ACT[what] || ARROWS[what] || '';
   if (what === 'jump') return glyph('a', id);
@@ -77,6 +83,7 @@ const padGlyphHTML = (g, id) => `<span data-glyph="${esc(g)}" data-gp="${id}" cl
 function btnHTML(id, what) {
   const d = playerDevice(id);
   if (what === 'move') return d.kind === 'pad' ? '<kbd class="k-stick">stick</kbd>' : btnHTML(id, 'left') + btnHTML(id, 'right');
+  if (what === 'hop') return d.kind === 'kb' ? `<kbd>${HOP_CAPS[keysetFor(id)]}</kbd>` : d.kind === 'touch' ? '<kbd class="k-touch">▲</kbd>' : padGlyphHTML('a', id);
   if (d.kind === 'kb') return `<kbd>${esc(KEYCAPS[keysetFor(id)][what] || '')}</kbd>`;
   if (d.kind === 'touch') return isActW(what) ? `<kbd class="k-touch k-round">${TOUCH_ACT[what]}</kbd>` : `<kbd class="k-touch">${ARROWS[what] || ''}</kbd>`;
   if (what === 'jump') return padGlyphHTML('a', id);
@@ -93,15 +100,15 @@ function controlsLine(id, html) {
   let stickSaid = false;
   return String(html).replace(/(?:<kbd>[^<]*<\/kbd>)+/g, group => {
     const caps = group.match(/<kbd>[^<]*<\/kbd>/g).map(t => t.slice(5, -6));
-    const means = caps.map(c => KEY_MEANS[c] || null);
+    const means = caps.map(capMeans);
     if (d.kind === 'pad') {
-      const dirs = means.filter(m => m && !isActW(m));
+      const dirs = means.filter(m => m && !isActW(m) && m !== 'hop');
       // all four directions together is the whole stick; jump next to down is the stick's up
       if (dirs.length >= 4 && ['left', 'right', 'jump', 'down'].every(m => means.includes(m))) { stickSaid = true; return '<kbd class="k-stick">stick</kbd>'; }
       const vertical = means.includes('jump') && means.includes('down');
       return means.map((m, k) => {
         if (!m) return `<kbd>${caps[k]}</kbd>`;
-        if (isActW(m) || (m === 'jump' && !vertical)) return btnHTML(id, m);
+        if (isActW(m) || m === 'hop' || (m === 'jump' && !vertical)) return btnHTML(id, m);
         const said = stickSaid; stickSaid = true;
         return (said ? '' : '<span class="k-word">stick</span>') + `<kbd class="k-stick">${ARROWS[m]}</kbd>`;
       }).join('');
@@ -233,6 +240,7 @@ const PAD_COLS = {
 // drawBtn(1, 'act', x, y, { label: 'punch' }): Bo's action button as he has it (a keycap, a coloured controller
 // button, or a touch button), centred on x, y, with an optional word after it. Returns the width drawn.
 function drawBtn(id, what, x, y, o = {}) {
+  if (what === 'hop' && playerDevice(id).kind !== 'kb') what = 'jump'; // (3D: a controller's A, the touch jump)
   const d = playerDevice(id), s = o.size || 22, lab = btnLabel(id, what);
   const isBtn = d.kind === 'pad' && (what === 'jump' || isActW(what));
   ctx.save();
@@ -319,7 +327,7 @@ function controlRows(id, lg, act, job) {
   return { rows, note: note ? esc(note) : '' };
 }
 // the buttons a group of keycaps means ('<kbd>A</kbd><kbd>D</kbd>' -> ['left', 'right']), for drawing on the canvas
-const capsWhats = g => (g.match(/<kbd>[^<]*<\/kbd>/g) || []).map(t => KEY_MEANS[t.slice(5, -6)] || t.slice(5, -6));
+const capsWhats = g => (g.match(/<kbd>[^<]*<\/kbd>/g) || []).map(t => capMeans(t.slice(5, -6)) || t.slice(5, -6));
 // that player's controls as a two-column table (keys | what they do)
 function controlsTableHTML(id, lg, act, job) {
   const { rows, note } = controlRows(id, lg, act, job);
