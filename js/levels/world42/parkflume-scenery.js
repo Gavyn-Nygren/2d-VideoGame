@@ -790,8 +790,8 @@ const PARKFLUME_SCENE = (function () {
         while (u < U) {
           const r = rnd();
           let adv = 3;
-          if (r < 0.22) adv = 6 + rnd() * 9; // a stretch of open lawn
-          else if (r < 0.50) {
+          if (r < 0.16) adv = 5 + rnd() * 8; // a stretch of open lawn
+          else if (r < 0.42) {
             // a row of one to three game stalls, shoulder to shoulder
             const n = 1 + Math.floor(rnd() * 3); let k = 0;
             for (; k < n; k++) {
@@ -800,12 +800,12 @@ const PARKFLUME_SCENE = (function () {
               PARK.stall(K, Bu, { x: q.x, z: q.z, yaw: q.yaw, c: Math.floor(rnd() * 9) });
             }
             adv = k ? k * 6.7 + 1.5 : 3;
-          } else if (r < 0.74) {
+          } else if (r < 0.72) {
             // a bench, often with a bin at its end
             const q = spot(u + 1.3, 0.75);
             if (q && flat(q.x, q.z) && kindAt(q.x, q.z) === 'grass' && claim(q.x, q.z, 1.25)) {
               PARK.bench(K, q.x, q.z, q.yaw);
-              if (rnd() < 0.6) { const bx = q.x + q.tx * 1.75, bz = q.z + q.tz * 1.75; if (claim(bx, bz, 0.45)) PARK.bin(K, bx, bz); }
+              if (rnd() < 0.6) { const bx = q.x + q.tx * 2.1, bz = q.z + q.tz * 2.1; if (claim(bx, bz, 0.45)) PARK.bin(K, bx, bz); }
               adv = 5;
             }
           } else if (r < 0.90) {
@@ -813,7 +813,7 @@ const PARKFLUME_SCENE = (function () {
             const q = spot(u + 1.3, 0.95);
             if (q && flat(q.x, q.z) && kindAt(q.x, q.z) === 'grass' && claim(q.x, q.z, 1.3)) {
               PARK.cart(K, Bu, rnd() < 0.5 ? 'popcorn' : 'floss', { x: q.x, z: q.z, yaw: q.yaw });
-              if (rnd() < 0.6) { const bx = q.x + q.tx * 1.9, bz = q.z + q.tz * 1.9; if (claim(bx, bz, 0.6, true)) PARK.balloons(K, bx, 0, bz, 4 + Math.floor(rnd() * 4)); }
+              if (rnd() < 0.7) { const bx = q.x + q.tx * 2.3, bz = q.z + q.tz * 2.3; if (claim(bx, bz, 0.6, true)) PARK.balloons(K, bx, 0, bz, 4 + Math.floor(rnd() * 4)); }
               adv = 5.5;
             }
           } else {
@@ -830,7 +830,7 @@ const PARKFLUME_SCENE = (function () {
     // 3. the towpath (the garden stretch: the bank's own lamps already stand along it)
     furnish(A.jungle, s => { if (PR.kind(s) !== 'garden' || PARKFLUME.islandAt(s)) return null; const f = R.at(s), h = Math.hypot(f.t[0], f.t[2]) || 1; return [f.p[0], f.p[2], f.t[0] / h, f.t[2] / h]; }, s => PR.w(s) + 3.2, {});
     // 4. the lawns
-    const kinds = [['trees', 64], ['bed', 11], ['hedge', 10], ['tent', 7], ['lamp', 6]];
+    const kinds = [['trees', 64], ['bed', 13], ['hedge', 5], ['tent', 7], ['lamp', 6]];
     const tot = kinds.reduce((a, k) => a + k[1], 0);
     const pick = () => { let x = rnd() * tot; for (const [k, w] of kinds) { x -= w; if (x < 0) return k; } return 'trees'; };
     const place = (k, x, z, yaw, small) => {
@@ -980,6 +980,8 @@ const PARKFLUME_SCENE = (function () {
     const B = PARK.bulbs(K, 20000);
     const sc = { K, B, night };
     sc.ground = ground(K);
+    // (the same questions the park kit's own ground answers, for this level's ground)
+    K.groundAt = kindAt; K.groundAll = (x, z, r, kind) => { if (kindAt(x, z) !== kind) return false; for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; if (kindAt(x + Math.cos(a) * r, z + Math.sin(a) * r) !== kind) return false; } return true; };
     // the water: the whole channel; garden stretch calm and deep blue
     const rapids = L.drops.filter(d => d.kind === 'rapid');
     sc.water = PARK.water(K, { R, w: PR.w, over: 0.7, steep: s => (Math.abs(s - A.weir0 - 1) < 2.5 || Math.abs(s - A.weirJump - 1) < 2.5 ? 1 : 0) + (s > A.brink && s < A.splash + 6 ? 0.8 : 0) + (s > A.brink1 && s < A.splash1 + 4 ? 0.8 : 0)

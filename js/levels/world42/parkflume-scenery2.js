@@ -864,9 +864,9 @@ const PARKFLUME_SCENE2 = (function () {
         // a folded umbrella with a deck chair either side of it, facing the water
         if (!H.claim(p[0], p[2], 1.9)) continue;
         const g = new T.Group(); g.position.set(...p); g.rotation.y = f.yaw + (side > 0 ? Math.PI / 2 : -Math.PI / 2); K.add(g);
-        const pole = mesh(new T.CylinderGeometry(0.05, 0.05, 2.6, 6), tm('#f4ecd8')); pole.position.y = 1.3; g.add(pole);
-        const um = mesh(new T.ConeGeometry(0.35, 1.6, 8), K3D.toon('#ffffff', { map: PARK.stripes(['#e8483a', '#3fa0e8', '#ffd23a'][k % 3], '#f4ecd8', 8, { v: true }) })); um.position.y = 2.2; g.add(um);
-        for (const sx of [-1, 1]) { const ch = mesh(new T.BoxGeometry(0.7, 0.1, 1.6), K3D.toon('#ffffff', { map: PARK.stripes(['#3fa0e8', '#e8483a', '#3fa06a'][k % 3], '#f4ecd8', 6) })); ch.position.set(sx * 1.0, 0.4, 0); ch.rotation.x = -0.3; g.add(ch); }
+        const pole = mesh(K3D.geo('pf2-umPole', () => new T.CylinderGeometry(0.05, 0.05, 2.6, 6)), tm('#f4ecd8')); pole.position.y = 1.3; g.add(pole);
+        const um = mesh(K3D.geo('pf2-umCone', () => new T.ConeGeometry(0.35, 1.6, 8)), K3D.toon('#ffffff', { map: PARK.stripes(['#e8483a', '#3fa0e8', '#ffd23a'][k % 3], '#f4ecd8', 8, { v: true }) })); um.position.y = 2.2; g.add(um);
+        for (const sx of [-1, 1]) { const ch = mesh(K3D.geo('pf2-deckChair', () => new T.BoxGeometry(0.7, 0.1, 1.6)), K3D.toon('#ffffff', { map: PARK.stripes(['#3fa0e8', '#e8483a', '#3fa06a'][k % 3], '#f4ecd8', 6) })); ch.position.set(sx * 1.0, 0.4, 0); ch.rotation.x = -0.3; g.add(ch); }
       }
     }
     const trunkGeo = K3D.geo('pf2-palmTrunk', () => { const pts = []; for (let i = 0; i <= 10; i++) { const u = i / 10; pts.push(new T.Vector3(1.4 * u * u, u * 8, 0)); } return new T.TubeGeometry(new T.CatmullRomCurve3(pts), 16, 0.22, 8); });
