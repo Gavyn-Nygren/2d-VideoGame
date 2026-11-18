@@ -123,6 +123,10 @@ function paRestore(st, why) {
   for (const p of st.pickups) if (p.route && p.z < ck.z) p.live = true;
   st.pickups = st.pickups.filter(p => p.route);
   st.thin = why === 'rescue';
+  // a checkpoint inside a blockade (its event already passed, its wall still standing): the blockade starts again
+  PA_ROUTE.events.forEach((ev, i) => {
+    if (ev.block && i < st.evI && !st.wallDown[i] && !st.block) { st.block = { i, stop: ev.block.stop, wave: 0, waves: ev.block.waves }; st.blockAt = i; }
+  });
   G.players.forEach((p, k) => {
     MOVER3.spawn(p, k ? 2.2 : -2.2, 0, ck.z - 1.5); p.b3.heading = Math.PI;
     const h = st.h[k];
@@ -131,6 +135,7 @@ function paRestore(st, why) {
     h.shield = st.ck <= st.shieldTo ? 1 : 0;
   });
   paRebuildWorld(st);
+  if (st.block && st.blockAt != null) { paSpawnGroup(st, st.block.waves[0], st.block.i); st.blockAt = null; }
   paFx(st, 'restart', { why });
 }
 function paWipeout(st) {
@@ -341,6 +346,9 @@ function paFolderStep(st, a, dt, tgt) {
       // keep 8 to 12 units ahead of the nearest hero
       const want = tgt.b.z - 10;
       a.z += clamp(want - a.z, -1, 1) * PA_KINDS.folder.speed * dt;
+      // and drift across toward the hero's side, so it never hangs out of reach far off to one side
+      const dxw = tgt.b.x - a.x;
+      if (Math.abs(dxw) > 5) a.x += Math.sign(dxw) * PA_KINDS.folder.speed * 0.6 * dt;
       a.think -= dt;
       if (a.think <= 0 && a.fold <= 0.01 && tgt.d < 16) {
         a.st2 = 'fold'; a.ft = 0;

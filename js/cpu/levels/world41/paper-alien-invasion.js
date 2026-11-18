@@ -43,6 +43,9 @@
       // 2. where it wants to stand: beside the partner, a little ahead of the camera's line
       let wx = ob.x + s.side * 4, wz = Math.max(st.cz - 4, Math.min(ob.z + 1, st.cz - 2));
       if (st.block) wz = Math.max(wz, st.block.stop + 3);
+      // the end of the route (the camera stops there): walk on to it
+      if (!st.block && st.cz <= PA_ROUTE.end + 4.5) wz = PA_ROUTE.end - 2;
+      if (st.hatch) { wx = st.hatch.x + (k ? 0.6 : -0.6); wz = st.hatch.z; }
       if (Math.abs(wx) > 13) { s.side = -s.side; wx = ob.x + s.side * 4; }
       wx = clamp(wx, -13, 13);
       // a grenade lying near with nothing close
@@ -89,6 +92,12 @@
           tgt = bestA; s.tgt = bestA.id; s.tgtT = 0.4;
           if (Math.abs(ang(Math.atan2(bestA.x - b.x, bestA.z - b.z) - h.aim)) < 0.3) { out.act2 = 'tap'; s.throwT = 2.5; }
         }
+      }
+      // nothing in reach but aliens left (a blockade's last few, a Folder hanging back): go to the nearest
+      if (!tgt && live.length && (st.block || live.length)) {
+        let near = null, nd = 1e9;
+        for (const a of live) { const d = Math.hypot(a.x - b.x, a.z - b.z); if (d < nd) { nd = d; near = a; } }
+        if (near && nd > 10 && nd < 40) { wx = near.x; wz = Math.max(near.z + 8, st.cz - 10); }
       }
       // 6. move and aim
       let mx = wx - b.x, mz = wz - b.z;

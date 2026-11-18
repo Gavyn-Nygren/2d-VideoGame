@@ -466,11 +466,15 @@ const PAFX = (function () {
     conf.count = 0; conf.castShadow = false;
     const sparks = add(new T.InstancedMesh(K3D.geo('paSparkQ', () => new T.PlaneGeometry(1, 1)), K3D.flat('#ffffff', { map: star, transparent: true, add: true, depthWrite: false }), 120));
     sparks.count = 0;
-    // crossed beams: white twisted beams from both guns to the alien for a moment
+    // crossed beams: from each hero's gun to the alien for a moment, a thick beam in the hero's bolt colour round a white
+    // core, twisting (normal blending: an added glow would vanish on the bright page)
     const beams = [];
+    const beamGeo = K3D.geo('paBeam', () => new T.CylinderGeometry(1, 1, 1, 10, 1, true).translate(0, 0.5, 0).rotateX(Math.PI / 2));
     for (let i = 0; i < 8; i++) {
-      const b = add(new T.Mesh(K3D.geo('paBeam', () => new T.CylinderGeometry(1, 1, 1, 8, 1, true).translate(0, 0.5, 0).rotateX(Math.PI / 2)), K3D.flat('#ffffff', { transparent: true, opacity: 0.9, add: true, depthWrite: false })));
-      b.visible = false; beams.push({ m: b, t: 0 });
+      const outer = add(new T.Mesh(beamGeo, new T.MeshBasicMaterial({ color: BOLT_COL[i % 2], transparent: true, opacity: 0.85, depthWrite: false })));
+      const core = new T.Mesh(beamGeo, new T.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 1, depthWrite: false }));
+      core.scale.set(0.45, 0.45, 1); core.renderOrder = 1; outer.add(core);
+      outer.visible = false; beams.push({ m: outer, core, t: 0 });
     }
     const KCOL = { grunt: '#7fd35a', lesson: '#7fd35a', folder: '#6ab0f0', carrier: '#ffd447', edger: '#ff7fbf', shield: '#ff9a3c', crab: '#e8504a', stamper: '#a26ad9' };
     const CONF_COLS = ['#ff5a7a', '#ffd447', '#5fd0ff', '#7fd35a', '#b18aff', '#ff9a3c', '#ffffff'];
@@ -505,7 +509,7 @@ const PAFX = (function () {
           case 'burst': addConf(f.x, 0.2, f.z, 40, null, 1.4); for (let i = 0; i < 16; i++) { const an = i / 16 * Math.PI * 2; addSpark(f.x + Math.cos(an) * f.r * 0.6, 0.6 + R(), f.z + Math.sin(an) * f.r * 0.6, '#c8a8ff', 0.6, 1.0); } D.burst = { x: f.x, z: f.z, r: f.r, t: 0 }; break;
           case 'cross': {
             // a beam from each hero's gun to the alien
-            for (const g of guns) { const b = beams.find(q => q.t <= 0); if (!b) break; b.t = 0.2; b.from = g.clone(); b.to = new T.Vector3(a.x, a.y + 0.7, a.z); }
+            guns.forEach((g, gi) => { const b = beams.find(q => q.t <= 0); if (!b) return; b.t = 0.35; b.from = g.clone(); b.to = new T.Vector3(a.x, a.y + 0.7, a.z); b.m.material.color.set(BOLT_COL[gi]); });
             addSpark(a.x, a.y + 0.7, a.z, '#ffffff', 0.35, 1.4);
             break;
           }
@@ -613,8 +617,9 @@ const PAFX = (function () {
           if (b.t <= 0) { b.m.visible = false; continue; }
           b.t -= dt;
           const L = b.from.distanceTo(b.to);
-          b.m.position.copy(b.from); b.m.lookAt(b.to); b.m.scale.set(0.06 + Math.sin(t * 60) * 0.02, 0.06, L);
-          b.m.material.opacity = clamp(b.t / 0.2, 0, 1) * 0.95; b.m.visible = true;
+          const w = 0.13 + Math.sin(t * 60) * 0.03, k = clamp(b.t / 0.35, 0, 1);
+          b.m.position.copy(b.from); b.m.lookAt(b.to); b.m.rotateZ(t * 20); b.m.scale.set(w, w * 0.7, L);
+          b.m.material.opacity = Math.min(1, k * 2) * 0.85; b.core.material.opacity = Math.min(1, k * 2); b.m.visible = true;
         }
       },
     };
