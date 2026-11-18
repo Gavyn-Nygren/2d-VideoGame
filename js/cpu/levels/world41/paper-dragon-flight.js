@@ -10,7 +10,7 @@
    Nothing here clears the level alone: with a person who never steers, the dragon flies straight into the ink bottle. */
 'use strict';
 
-const POPDRAGON_CPU = { every: 0.12, horizon: 2.4, dt: 0.15, swoopAt: 2.6, margin: 0.25 };   // (margin: plans keep the wings this much clear)
+const POPDRAGON_CPU = { every: 0.12, horizon: 2.4, dt: 0.15, swoopAt: 2.6, margin: 0.25, pad: 0.2 };   // (margin: plans keep the wings this much clear; pad: every other point of the dragon)
 
 // the plan, worked out once per 0.12 s of game time. own: 'xy' when both seats are the computer (one shared plan), or
 // the computer's own axis ('x' for Pip, 'y' for Bo) with the person's axis taken as it is: they keep pushing what they push
@@ -35,10 +35,14 @@ function popdragonCpuPlan(st, own, person) {
       const wy = (own === 'x' ? person * K.VY : clamp((ty - y) / (K.VY * 0.25), -1, 1) * K.VY) * slow;
       vx += clamp(wx - vx, -K.VX / K.EASE * C.dt, K.VX / K.EASE * C.dt); vy += clamp(wy - vy, -K.VY / K.EASE * C.dt, K.VY / K.EASE * C.dt);
       const dr = R.drift ? R.drift(s) : [0, 0];
+      const x0 = x, y0 = y;
       x = clamp(x + (vx + dr[0]) * C.dt, -R.WX, R.WX); y = clamp(y + (vy + dr[1]) * C.dt, -R.WY, R.WY);
       const s0 = s;
       s += R.at(s).v * C.dt;
-      if (st.safe < t && popdragonHit(s, x, y, (tuckFor > 0 ? (t < tuckFor ? K.HW_TUCK : K.HW) : hw) + C.margin, burnt, st.clock + t + C.dt)) { cost += 1000 * (1 + horizon - t); hitT = Math.min(hitT, t); break; }
+      // (checked half way through the step too: a step is over a unit sideways and forward, wider than a pencil or the
+      // ink bottle's neck)
+      const hwNow = (tuckFor > 0 ? (t < tuckFor ? K.HW_TUCK : K.HW) : hw) + C.margin;
+      if (st.safe < t && (popdragonHit((s0 + s) / 2, (x0 + x) / 2, (y0 + y) / 2, hwNow, burnt, st.clock + t + C.dt / 2, C.pad) || popdragonHit(s, x, y, hwNow, burnt, st.clock + t + C.dt, C.pad))) { cost += 1000 * (1 + horizon - t); hitT = Math.min(hitT, t); break; }
       // the cat's paws strike a box of the window as the dragon gets there; moths and dust bunnies meet it at a spot
       for (const pw of R.paws) if (pw.s > s0 && pw.s <= s && st.burnt[pw.id] == null && x >= pw.ox[0] - 0.3 && x <= pw.ox[1] + 0.3 && y >= pw.oy[0] - 0.3 && y <= pw.oy[1] + 0.3) cost += 900 * (1 + horizon - t);
       for (const c of R.clingers) if (c.s > s0 && c.s <= s && Math.hypot(x - c.ox, y - c.oy) < R.CLING + 0.3) cost += 160;

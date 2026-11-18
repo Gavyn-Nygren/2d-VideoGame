@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 41-3 Paper Dragon Flight: bot runs that say WHERE things went wrong (cpu-test.js only says how a run ended).
 //
-//   node tools/w41/popdragon-play.js [--who=cpu,slow0,slow1,idle0,idle1,noisy0,notail1,nofire0] [--seed=1] [--max=420]
+//   node tools/w41/popdragon-play.js [--who=cpu,slow0,slow1,idle0,idle1,noisy0,notail1,nofire0] [--seed=1] [--max=600] [--trace=secs]
 //
 //   cpu      the computer flies both seats
 //   slowK    seat K (0 Pip, 1 Bo) is a slow kid: the computer's own choices, but a second late (and a little sloppy)
@@ -15,7 +15,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); return a ? a.split('=')[1] : d; };
-const whos = opt('who', 'cpu').split(','), seed = +opt('seed', 1), maxT = +opt('max', 420);
+const whos = opt('who', 'cpu').split(','), seed = +opt('seed', 1), maxT = +opt('max', 600), trace = +opt('trace', 0);
 
 (async () => {
   const browser = await chromium.launch();
@@ -34,22 +34,24 @@ const whos = opt('who', 'cpu').split(','), seed = +opt('seed', 1), maxT = +opt('
   for (const who of whos) {
     errors.length = 0;
     const t0 = Date.now();
-    const r = await page.evaluate(async ({ who, seed, maxT }) => {
+    const r = await page.evaluate(async ({ who, seed, maxT, trace }) => {
       const P = window.__pipbo, G = P.G, i = P.LEVELS.findIndex(l => l.mode === 'popdragon');
       window.__seed(seed * 7919); window.__inStep = true;
-      G.manual = true; P.CPU.errs.clear();
+      G.manual = true; K3D.noRender = true; P.CPU.errs.clear(); // drawing off: the level must play exactly the same
       const seat = +who.slice(-1), kind = who.replace(/\d$/, '');
       G.cpuOn = kind === 'idle' ? [seat !== 0, seat !== 1] : [true, true];
       const q = [], nz = { pause: 0, next: 3, wander: 0, wdir: 0, wnext: 7 };
       P.CPU.filter = (p, out, dt) => {
-        if (kind === 'notail' && p.id === 1) { const o = Object.assign({}, out); if (o.act) delete o.act; return o; }
-        if (kind === 'nofire' && p.id === 0) { const o = Object.assign({}, out); if (o.act) delete o.act; return o; }
+        if (kind === 'notail' && p.id === 1 && G.mst.phase !== 'catch') { const o = Object.assign({}, out); if (o.act) delete o.act; return o; }
+        if (kind === 'nofire' && p.id === 0 && G.mst.phase !== 'catch') { const o = Object.assign({}, out); if (o.act) delete o.act; return o; }
         if (p.id !== seat) return out;
         if (kind === 'slow') {
           // a second late, and it lets go a little early and pushes a little short
-          q.push({ t: G.mst.clock, o: Object.assign({}, out) });
-          while (q.length > 1 && G.mst.clock - q[1].t >= 1.0) q.shift();
-          const o = q.length && G.mst.clock - q[0].t >= 1.0 ? Object.assign({}, q[0].o) : {};
+          // (its own clock: the level's clock stands still on the cards before take-off)
+          nz.t = (nz.t || 0) + dt;
+          q.push({ t: nz.t, o: Object.assign({}, out) });
+          while (q.length > 1 && nz.t - q[1].t >= 1.0) q.shift();
+          const o = q.length && nz.t - q[0].t >= 1.0 ? Object.assign({}, q[0].o) : {};
           if (o.ax) o.ax *= 0.8; if (o.ay) o.ay *= 0.8;
           if (Math.random() < 0.5 * dt) return {};
           return o;
@@ -72,19 +74,23 @@ const whos = opt('who', 'cpu').split(','), seed = +opt('seed', 1), maxT = +opt('
         log.push({ s: Math.round(st.s), part: M.partAt(st.s), ox: +st.ox.toFixed(1), oy: +st.oy.toFixed(1), tuck: +st.tuck.toFixed(2), why });
         return crumple.call(this, st, hit);
       };
-      const steps = Math.round(maxT / P.DT);
+      const steps = Math.round(maxT / P.DT), tr = [];
       let n = 0;
       while (n < steps && G.mode === 'play') {
-        for (let k = 0; k < 600 && n < steps && G.mode === 'play'; k++, n++) { window.__inStep = true; P.step(P.DT); window.__inStep = false; }
+        for (let k = 0; k < 600 && n < steps && G.mode === 'play'; k++, n++) {
+          window.__inStep = true; P.step(P.DT); window.__inStep = false;
+          if (trace && n % Math.round(trace / P.DT) === 0) { const st = G.mst; tr.push(`t ${Math.round(n * P.DT)} s ${st.s.toFixed(0)} ${st.phase} ox ${st.ox.toFixed(1)} oy ${st.oy.toFixed(1)} spd ${(st.spd || 0).toFixed ? (+st.spd || 0).toFixed(1) : st.spd} hoop ${st.hoop}`); }
+        }
         await new Promise(r => setTimeout(r, 0));
       }
       M.crumple = crumple;
       const st = G.mst, res = G.results[i] || null;
       return { mode: G.mode, simT: Math.round(n * P.DT), s: Math.round(st.s), phase: st.phase, res: res && { time: Math.round(res.time), medal: res.medal && ['none', 'Bronze', 'Silver', 'Gold'][res.medal.tier], vals: res.medal && res.medal.vals },
-        stars: st.stars + '/' + POPDRAGON_ROUTE.stars.length, crumples: st.crumplesAll, refolds: st.refolds, bats: st.bats, mothBats: st.mothBats, pawHits: st.pawHits, log, cpuErrs: [...P.CPU.errs] };
-    }, { who, seed, maxT });
+        stars: st.stars + '/' + POPDRAGON_ROUTE.stars.length, crumples: st.crumplesAll, refolds: st.refolds, bats: st.bats, mothBats: st.mothBats, pawHits: st.pawHits, log, tr, cpuErrs: [...P.CPU.errs] };
+    }, { who, seed, maxT, trace });
     const end = r.res ? `CLEARED ${r.res.time}s ${r.res.medal} ${JSON.stringify(r.res.vals)}` : `not finished (s ${r.s}, ${r.phase})`;
     console.log(`${who.padEnd(8)} ${end}  stars ${r.stars} crumples ${r.crumples} refolds ${r.refolds} bats ${r.bats} moths-off ${r.mothBats} paw-hits ${r.pawHits}  [sim ${r.simT}s wall ${Math.round((Date.now() - t0) / 1000)}s]${r.cpuErrs.length ? ' CPU ERR ' + r.cpuErrs.join(',') : ''}${errors.length ? ' PAGE ERR ' + errors.slice(0, 3).join(' | ').slice(0, 300) : ''}`);
+    for (const l of r.tr) console.log('   ' + l);
     for (const c of r.log) console.log(`   crumple s ${c.s} (part ${c.part}) at ${c.ox},${c.oy} tuck ${c.tuck}: ${c.why}`);
   }
   await browser.close();

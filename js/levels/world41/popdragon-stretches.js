@@ -292,7 +292,7 @@
   art.curtain = { x0: 326, x1: 354, z: -39, rod: 60 };
   pl.tis1 = sNear(343, 6, -31, pl.climb, pl.climb + 60);
   pl.tis2 = sNear(339, 25, -10, pl.tis1, pl.tis1 + 80);
-  R.webs.push({ s: pl.tis1, r: 6.9, oy: 0.2, burn: 'tissue1', kind: 'tissue', col: '#f4a6b8' }, { s: pl.tis2, r: 6.9, oy: -0.2, burn: 'tissue2', kind: 'tissue', col: '#a6d8f0' });
+  R.webs.push({ s: pl.tis1, r: 7.6, oy: 0.2, burn: 'tissue1', kind: 'tissue', col: '#f4a6b8' }, { s: pl.tis2, r: 7.6, oy: -0.2, burn: 'tissue2', kind: 'tissue', col: '#a6d8f0' });
   art.cords = [];
   for (const [x, y, z, ox] of [[329, 14, -27, 2.6], [346, 29, -14, -2.6], [347, 35, -27, 2.4]]) {
     const s = sNear(x, y, z, pl.climb, pl.gap), c = R.local(s, ox, 0);

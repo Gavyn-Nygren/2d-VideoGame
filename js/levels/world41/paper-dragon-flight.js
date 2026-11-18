@@ -14,8 +14,12 @@
      Bo  (back seat) works the wings: ▲ ▼ move up/down.   Her button swishes the tail fan (bats moths, the cat's paw).
      Together is stronger: Bo pushing the same way as Pip's steering (or Pip pushing the same way as Bo's height) makes a
      SWOOP, half again as fast, with a deeper bank and a whoosh. A helper alone, or pushing the other way, does nothing.
-     Both hold jump: TUCK, the wings fold flat and the dragon narrows for a slot (at most 1.5 s, then 1 s open). One
-     alone gives a half fold (not enough) and a little head shake.
+     Both hold jump: TUCK, the wings fold flat and the dragon narrows for a slot (at most 3 s, then 1 s open). One
+     alone gives a half fold (not enough) and a little head shake. While tucked, a slot just ahead (POPDRAGON_ROUTE.slots:
+     the shelf gaps, the paperback tunnel, under the bed, the window gaps) draws the dragon gently to its middle, so a
+     tuck lined up roughly is enough.
+   PAPER. Cobwebs and the window's tissue sheers burn to a hole when Pip breathes fire on them within FIRE_REACH. An
+   unburnt cobweb is a Crumple; an unburnt tissue only tears (no Crumple: a wobble, a rip and a Bookworm line).
    Movement is eased (0.25 s to full speed) and holds still when let go.
    CRUMPLES. Hitting anything solid (POPDRAGON_ROUTE.solids, and paper that has not been burnt) is a Crumple: crunch,
    dented nose, a push back toward the middle, 1.5 s safe. Three before the next bookmark hoop is a Refold: the dragon
@@ -81,18 +85,19 @@ function popdragonIndex() {
 }
 // is a window spot (s, ox, oy) with this half width clear? (the brain and the fairness checks use it too)
 // clock: the moment to look at (things that move: books tipping on the beat, the mobile turning, the marble rolling)
-function popdragonHit(s, ox, oy, hw, burnt, clock) {
+// (pad: the computer's plans keep every point of the dragon this much clearer than the rules need)
+function popdragonHit(s, ox, oy, hw, burnt, clock, pad = 0) {
   const R = POPDRAGON_ROUTE, idx = popdragonIndex();
   const st = { s, ox, oy, hw };
   const pts = popdragonFootprint(st);
   for (const e of idx) {
     if (s + 1 < e.s0 || s - 3 > e.s1) continue;
     if (e.sd.burn && burnt && burnt[e.sd.burn] != null) continue;
-    for (const q of pts) if (popdragonDist(e.sd, q.p) < q.r) return e;
+    for (const q of pts) if (popdragonDist(e.sd, q.p) < q.r + pad) return e;
   }
   for (const m of R.movers || []) {
     if (s + 1 < m.s0 || s - 3 > m.s1) continue;
-    for (const sd of m.at(clock || 0, s)) for (const q of pts) if (popdragonDist(sd, q.p) < q.r) return { sd, mover: m };
+    for (const sd of m.at(clock || 0, s)) for (const q of pts) if (popdragonDist(sd, q.p) < q.r + pad) return { sd, mover: m };
   }
   // paper across the flight line (cobwebs, tissue): a disc in the window at its s
   for (const w of R.webs || []) {
@@ -111,7 +116,7 @@ function popdragonAxes(p) {
 }
 
 MODES.popdragon = {
-  medals: { bronze: 'Catch the page', goals: [{ key: 'stars', gold: 0.85, silver: 0.55, more: true, pct: true, word: 'the stars' }, { key: 'crumples', gold: 3, silver: 9, word: 'crumple' }] },
+  medals: { bronze: 'Catch the page', goals: [{ key: 'stars', gold: 0.8, silver: 0.35, more: true, pct: true, word: 'the stars' }, { key: 'crumples', gold: 3, silver: 10, word: 'crumple' }] },
   medalValues() { const st = G.mst; return { stars: st.stars / (POPDRAGON_ROUTE.stars.length || 1), crumples: st.crumplesAll }; },
   scene3dOpts: { bg: '#0e1220', fov: 52, near: 0.3, far: 900 },
   setup(st) {

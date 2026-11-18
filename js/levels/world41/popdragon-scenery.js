@@ -295,8 +295,14 @@ const POPDRAGON_ART = (function () {
     const starPos = R.stars.map(s => R.local(s.s, s.ox, s.oy));
     // a soft gold glow sprite behind every star (they must read in the dark stretches)
     const sparkTex = K3.paint('pdSpark', 128, 128, (c) => { const g = c.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, 'rgba(255,230,140,0.45)'); g.addColorStop(0.4, 'rgba(255,200,80,0.14)'); g.addColorStop(1, 'rgba(255,190,60,0)'); c.fillStyle = g; c.fillRect(0, 0, 128, 128); });
-    const glows = new T.Group(); live.add(glows);
-    const glowSprites = starPos.map(p => { const sp = new T.Sprite(new T.SpriteMaterial({ map: sparkTex, transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0.8 })); sp.position.set(...p); sp.scale.set(1.7, 1.7, 1); glows.add(sp); return sp; });
+    // (all of them one Points cloud, one draw: a point's size in world units is 1.7 / tan(fov / 2) at the level's fov)
+    const glowPos = new Float32Array(NST * 3);
+    starPos.forEach((p, i) => glowPos.set(p, i * 3));
+    const glowGeo = new T.BufferGeometry(); glowGeo.setAttribute('position', new T.BufferAttribute(glowPos, 3));
+    const glows = new T.Points(glowGeo, new T.PointsMaterial({ map: sparkTex, size: 1.7 / Math.tan(26 * Math.PI / 180), sizeAttenuation: true,
+      transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0.8 }));
+    glows.frustumCulled = false; live.add(glows);
+    const glowOn = starPos.map(() => true);
 
     /* ---------- bookmark hoops: red silk ribbon rings with a tasselled tail ---------- */
     const silk = K3.paint('pdHoopSilk', 256, 32, (c, w, h) => { c.fillStyle = '#c8243a'; c.fillRect(0, 0, w, h); for (let x = 0; x < w; x += 3) { c.fillStyle = x % 6 ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.12)'; c.fillRect(x, 0, 1.5, h); } c.fillStyle = '#e8c45a'; c.fillRect(0, 0, w, 3); c.fillRect(0, h - 3, w, 3); }, { repeat: true });
@@ -368,6 +374,10 @@ const POPDRAGON_ART = (function () {
     const windowArt = POPDRAGON_WINDOW.build(K, { always, window: zone.window, outside: zone.outside }, mood);
 
     /* ---------- bake what never moves ---------- */
+    // (first every plain-coloured paper piece takes its colour from one small palette picture instead of a material of
+    // its own, so the bake can merge them all: the same colours and outlines on screen, a fraction of the draw calls)
+    pdPalettize(K3, T, still, 'pdPalDesk');
+    for (const k in zone) pdPalettize(K3, T, zone[k].still, 'pdPal_' + k);
     const bakeInfo = K3.bake(still);
     for (const k in zone) { const b = K3.bake(zone[k].still); bakeInfo.merged += b.merged; bakeInfo.meshes += b.meshes; }
 
@@ -391,7 +401,7 @@ const POPDRAGON_ART = (function () {
         eul.set(0, t * 1.6 + i * 0.7, Math.sin(t + i) * 0.15); q.setFromEuler(eul);
         sc.setScalar(got ? 0 : 1); m4.compose(ps, q, sc); starsI.setMatrixAt(i, m4);
         sc.setScalar(got ? 0 : 1.13); m4.compose(ps, q, sc); starsInk.setMatrixAt(i, m4);
-        glowSprites[i].visible = !got;
+        if (glowOn[i] === !!got) { glowOn[i] = !got; glowPos[i * 3 + 1] = got ? -9999 : p[1]; glows.geometry.attributes.position.needsUpdate = true; }
       }
       starsI.instanceMatrix.needsUpdate = true; starsInk.instanceMatrix.needsUpdate = true;
       // steam rings breathe and drift; wisps rise off the tea
@@ -421,3 +431,39 @@ const POPDRAGON_ART = (function () {
   };
   return A;
 })();
+
+/* Plain-coloured toon pieces (no picture, solid, not glowing) under a still group get one shared material per kind
+   (side, depth write) whose picture is a palette of all their colours, each piece's texture coordinates pointing at its
+   own colour's cell. K3D.bake buckets by material, so dozens of single-colour buckets become a few. Done before the bake;
+   pieces the bake would leave whole (live, see-through, with things hanging on them) are left alone too. */
+function pdPalettize(K3, T, group, key) {
+  const liveUnder = o => { for (let q = o; q && q !== group; q = q.parent) if (q.userData.live) return true; return false; };
+  const list = [];
+  group.traverse(o => {
+    if (!o.isMesh || o.isInstancedMesh || o.userData.ink || o.userData.seeThrough || liveUnder(o)) return;
+    if (o.children.some(c => !c.userData.ink)) return;
+    const m = o.material;
+    if (Array.isArray(m) || !m.isMeshToonMaterial || m.map || m.transparent || m.alphaTest || m.polygonOffset || m.vertexColors) return;
+    if (m.emissive && m.emissive.getHex() && m.emissiveIntensity > 0) return;
+    if (!o.geometry.attributes.position) return;
+    list.push(o);
+  });
+  if (list.length < 2) return 0;
+  const cols = [...new Set(list.map(o => o.material.color.getHexString()))];
+  const N = 16, CELL = 4, rows = Math.ceil(cols.length / N), W = N * CELL, H = Math.max(1, rows) * CELL;
+  const tex = K3.paint(key + '_' + cols.length, W, H, c => cols.forEach((h, i) => { c.fillStyle = '#' + h; c.fillRect((i % N) * CELL, Math.floor(i / N) * CELL, CELL, CELL); }));
+  tex.minFilter = tex.magFilter = T.NearestFilter; tex.generateMipmaps = false; tex.needsUpdate = true;
+  const mats = new Map();
+  for (const o of list) {
+    const m = o.material, mk = m.side + '|' + m.depthWrite + '|' + m.opacity;
+    if (!mats.has(mk)) mats.set(mk, K3.toon('#ffffff', { map: tex, side: m.side, depthWrite: m.depthWrite }));
+    const i = cols.indexOf(m.color.getHexString());
+    // the cell's middle (a canvas picture's top row is v = 1)
+    const u = ((i % N) + 0.5) / N, v = 1 - (Math.floor(i / N) + 0.5) / Math.max(1, rows);
+    const g = o.geometry.clone(), n = g.attributes.position.count, uv = new Float32Array(n * 2);
+    for (let j = 0; j < n; j++) { uv[j * 2] = u; uv[j * 2 + 1] = v; }
+    g.setAttribute('uv', new T.BufferAttribute(uv, 2));
+    o.geometry = g; o.material = mats.get(mk);
+  }
+  return list.length;
+}
