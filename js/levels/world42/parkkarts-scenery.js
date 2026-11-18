@@ -578,7 +578,10 @@ const PARKKARTS_WORLD = (function () {
     const tot = kinds.reduce((a, k) => a + k[1], 0);
     const pick = () => { let x = rnd() * tot; for (const [k, w] of kinds) { x -= w; if (x < 0) return k; } return 'trees'; };
     const place = (k, x, z, yaw) => {
-      if (k === 'trees') { if (!free(x, z, 3.5) || paved(x, z, 4.5)) return false; FL.lawn(x, z, 3.5 + rnd() * 2.5, 2.8 + rnd() * 2, rnd() * 3); const n = 1 + Math.floor(rnd() * 3); for (let i = 0; i < n; i++) PARK.tree(K, x + (rnd() - 0.5) * 4, z + (rnd() - 0.5) * 3, 1.0 + rnd() * 0.7, B); mark(x, z, 4); }
+      if (k === 'trees') { if (!free(x, z, 3.5) || paved(x, z, 4.5)) return false; FL.lawn(x, z, 3.5 + rnd() * 2.5, 2.8 + rnd() * 2, rnd() * 3); const n = 1 + Math.floor(rnd() * 3), a0 = rnd() * 6.283;
+        // a grove of one to three, set round the lawn's middle so no two trunks grow through each other (at least 2.4 apart)
+        for (let i = 0; i < n; i++) { const a = a0 + i * 6.283 / n, r = n === 1 ? rnd() * 0.8 : 1.5 + rnd() * 0.45; PARK.tree(K, x + Math.sin(a) * r, z + Math.cos(a) * r * 0.85, 1.0 + rnd() * 0.7, B); }
+        mark(x, z, 4); }
       else if (k === 'bed') { if (!free(x, z, 2.4) || paved(x, z, 2)) return false; FL.bed(x, z, 1.2 + rnd() * 1.0); PARK.bench(K, x + Math.sin(yaw) * 3.2, z + Math.cos(yaw) * 3.2, yaw + Math.PI); mark(x, z, 3.5); }
       else if (k === 'lamp') { if (!free(x, z, 1.5)) return false; PARK.lamp(K, B, { x, z, moths: rnd() < 0.3 }); PARK.bin(K, x + 1, z + 0.6); const near = lampAt.find(l => Math.hypot(l[0] - x, l[1] - z) < 14 && Math.hypot(l[0] - x, l[1] - z) > 5); if (near) PARK.lanterns(K, B, [x, 3.9, z], [near[0], 3.9, near[1]], { sag: 0.8, c: Math.floor(x) }); lampAt.push([x, z]); mark(x, z, 1.8); }
       else if (k === 'stall') { if (!free(x, z, 4.5)) return false; PARK.stall(K, B, { x, z, yaw, c: Math.floor(rnd() * 9) }); mark(x, z, 4.5); }
