@@ -349,8 +349,8 @@ const PARKMANOR_SCENE = (function () {
     const g = new T.Group(); K.add(g);
     // the ground: a gravel path up to the porch, a gravel turning circle at the gate, paving under the porch steps
     PARK.ground(K, { x: 0, z: 0, size: 900, layout: {
-      paths: [{ pts: [[0, 40], [0.4, 30], [-0.3, 22], [0.2, 14], [0, 8.4]], w: 2.8, kind: 'gravel' }, { pts: [[0, 40], [0, 120]], w: 5, kind: 'pave' }, { pts: [[-30, 38], [30, 38]], w: 4, kind: 'pave' }],
-      discs: [{ x: 0, z: 22, r: 2.6, kind: 'gravel' }], rects: [{ x: 0, z: 7.6, w: 8, d: 2.2, kind: 'pave' }, { x: 19, z: -4.5, w: 22, d: 7, kind: 'gravel' }] } });
+      paths: [{ pts: [[0, 41], [0.4, 30], [-0.3, 22], [0.2, 14], [0, 8.4]], w: 2.8, kind: 'gravel' }, { pts: [[0, 41.5], [0, 120]], w: 5, kind: 'pave' }, { pts: [[-30, 42], [30, 42]], w: 4, kind: 'pave' }],
+      discs: [{ x: 0, z: 22, r: 2.6, kind: 'gravel' }], rects: [{ x: 0, z: 7.6, w: 8, d: 2.2, kind: 'pave' }, { x: 19.5, z: -9.6, w: 23, d: 2.6, kind: 'gravel' }] } });
     // under the house a dark plinth (the floors sit on it); the crawlspace lattice round the outside
     const plinth = mk(new T.BoxGeometry(16.6, 0.3, 16.6), M('plinth', () => K3D.toon('#2a2434')), { ink: INK, inkW: 0.6 }); plinth.position.set(0, -0.165, -2); g.add(plinth);
     // graves: plywood headstones on struts, mounds of earth, a skeleton hand, wilted wreaths
@@ -425,7 +425,7 @@ const PARKMANOR_SCENE = (function () {
     stageLamp(K, g, 9.5, 24.5, -2.3, '#7affc0', 0.55);
     stageLamp(K, g, -9.6, 9.0, 0.7, '#c890ff', 0.5);
     // signs: keep to the path; the gift shop; no flash photos
-    signBoard(K, g, -2.2, 33.2, 0.2, 'path', 1.6);
+    signBoard(K, g, -3.6, 33.6, 0.2, 'path', 1.6);
     signBoard(K, g, 2.6, 12.2, -0.3, 'flash', 1.5);
     signBoard(K, g, 12.6, 30.8, -1.1, 'gift', 1.7);
     // the grounds' edge: a high dark hedge and the park's iron fence beyond it
@@ -446,8 +446,9 @@ const PARKMANOR_SCENE = (function () {
     PARK.ride(K, B, 'drop', { x: 60, z: -50, h: 46 });
     PARK.ride(K, B, 'carousel', { x: -40, z: 70, r: 7 });
     PARK.ride(K, B, 'swings', { x: 48, z: 46, r: 7, h: 14 });
-    for (let i = 0; i < 6; i++) PARK.tree(K, -30 - rnd() * 20, -10 + i * 9, 1 + rnd() * 0.4, B);
-    for (let i = 0; i < 6; i++) PARK.tree(K, 28 + rnd() * 18, 6 + i * 8, 1 + rnd() * 0.4, B);
+    // two tidy rows of park trees on the lawns either side of the grounds (on grass, clear of the paving at z 42)
+    for (let i = 0; i < 6; i++) PARK.tree(K, -22, -6 + i * 8, 1.1 + (i % 2) * 0.15, B);
+    for (let i = 0; i < 6; i++) PARK.tree(K, 38, -6 + i * 8, 1.1 + ((i + 1) % 2) * 0.15, B);
     // a string of the park's bulbs along the outer fence (warm, chasing)
     B.line([-15, 3.2, 37.5], [15, 3.2, 37.5], 0.6, '#ffd890', { sag: 0.4, speed: 2 });
     return g;
@@ -508,7 +509,7 @@ const PARKMANOR_SCENE = (function () {
     const fenceT = M('fencePlank', () => K3D.toon('#ffffff', { map: PARK.wood('#4a3a3a') }));
     for (let x = 8.4; x < 33; x += 0.5) { const pk = mk(K3D.geo('pm-plank', () => new T.BoxGeometry(0.46, 2.6, 0.08).translate(0, 1.3, 0)), fenceT, { ink: INK, inkW: 0.4 }); pk.position.set(x, 0, -11.2); pk.rotation.z = (rnd() - 0.5) * 0.05; pk.scale.y = 0.9 + rnd() * 0.2; g.add(pk); }
     // dead trees and hedges on both sides, a lamp-post with a broken globe that sputters
-    for (const [x, z, s] of [[17.5, 2.0, 0.9], [27.0, 1.6, 1.1], [31.5, -9.0, 1.0]]) {
+    for (const [x, z, s] of [[17.5, 2.6, 0.9], [23.6, 2.8, 1.1], [29.4, 2.6, 0.95]]) {
       const tg = new T.Group(); tg.position.set(x, 0, z); tg.scale.setScalar(s); g.add(tg);
       const bark = M('bark', () => K3D.toon('#2a2230', { map: PARK.wood('#3a3040') }));
       const br = pts => tg.add(mk(new T.TubeGeometry(new T.CatmullRomCurve3(pts.map(p => V(...p))), 10, pts.length > 3 ? 0.2 : 0.07, 6), bark, { ink: INK, inkW: 0.6 }));
