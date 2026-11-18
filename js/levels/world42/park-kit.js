@@ -419,7 +419,8 @@ const PARK = (function () {
       c.globalCompositeOperation = 'source-over';
       const cv2 = document.createElement('canvas'); cv2.width = cv2.height = MS; const c2 = cv2.getContext('2d'); c2.filter = 'blur(1.2px)'; c2.drawImage(c.canvas, 0, 0); c.clearRect(0, 0, MS, MS); c.drawImage(cv2, 0, 0);
     });
-    mask.wrapS = mask.wrapT = T.ClampToEdgeWrapping;
+    // (row 0 of the canvas is the low-z edge: no flip, so a path drawn at +z lies at +z)
+    mask.wrapS = mask.wrapT = T.ClampToEdgeWrapping; mask.flipY = false; mask.needsUpdate = true;
     const mat = K3D.toon('#ffffff');
     const U = { uPave: { value: P.cobbles() }, uGrass: { value: P.lawnTex() }, uGravel: { value: P.gravelTex() }, uNoise: { value: P.noiseTex() }, uMask: { value: mask },
       uMaskO: { value: new T.Vector2(cx, cz) }, uMaskS: { value: size }, uMoonDir: { value: new T.Vector3(-0.1, 0.25, -0.96).normalize() }, uMoonCol: { value: new T.Color('#dfe6ff') }, uT: { value: 0 } };
@@ -497,6 +498,7 @@ const PARK = (function () {
     if (o.flicker !== false) K.tick(dt => { t += dt; if (t > next) { out = 0.25 + rnd() * 0.35; next = t + 4 + rnd() * 10; } if (out > 0) { out -= dt; mat.color.copy(hot('#ffffff', Math.sin(t * 90) > 0.2 ? base * 0.25 : base)); } else mat.color.copy(hot('#ffffff', base)); });
     if (o.x != null) g.position.set(o.x, o.y || 0, o.z || 0);
     if (o.yaw) g.rotation.y = o.yaw;
+    K.add(g); // in the scene by itself (a caller that adds it to its own group simply moves it there)
     g.userData.neonMat = mat;
     return g;
   };
