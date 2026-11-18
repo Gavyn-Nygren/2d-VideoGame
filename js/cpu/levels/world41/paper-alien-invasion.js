@@ -76,14 +76,18 @@
         }
         tgt = best; s.tgt = best ? best.id : null; s.tgtT = 0.6;
       }
-      // 5. grenade into a bunch
+      // 5. grenade into a bunch: turn to the middle of four or more, and throw once facing it
       if (h.gren > 0 && s.throwT <= 0) {
+        let bestA = null, bestN = 3;
         for (const a of live) {
           const d = Math.hypot(a.x - b.x, a.z - b.z);
-          if (d < 5 || d > 9) continue;
-          const n = live.filter(q => Math.hypot(q.x - a.x, q.z - a.z) < PA.burstR).length;
-          if (n >= 4 && Math.abs(ang(Math.atan2(a.x - b.x, a.z - b.z) - h.aim)) < 0.25) { out.act2 = 'tap'; s.throwT = 2.5; break; }
-          if (n >= 4 && !tgt) { tgt = a; s.tgt = a.id; }
+          if (d < 4.5 || d > 9.5) continue;
+          const n = live.filter(q => Math.hypot(q.x - a.x, q.z - a.z) < PA.burstR + 0.4).length;
+          if (n > bestN) { bestN = n; bestA = a; }
+        }
+        if (bestA) {
+          tgt = bestA; s.tgt = bestA.id; s.tgtT = 0.4;
+          if (Math.abs(ang(Math.atan2(bestA.x - b.x, bestA.z - b.z) - h.aim)) < 0.3) { out.act2 = 'tap'; s.throwT = 2.5; }
         }
       }
       // 6. move and aim

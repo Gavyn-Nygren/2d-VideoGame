@@ -239,12 +239,12 @@ const PASCENE = (function () {
   // a bookmark ribbon laid across the path: red silk with a forked end and a gold edge; it shines once saved
   function ribbon(z) {
     const tex = K3D.paint('paRibbon', 1024, 64, (c, w, h) => {
-      c.fillStyle = '#c8323e'; c.fillRect(0, 0, w, h);
+      c.fillStyle = '#a3263a'; c.fillRect(0, 0, w, h);
       for (let x = 0; x < w; x += 3) { c.fillStyle = x % 6 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'; c.fillRect(x, 0, 1, h); }
       c.fillStyle = '#e8c45a'; c.fillRect(0, 2, w, 4); c.fillRect(0, h - 6, w, 4);
       c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.moveTo(w, 0); c.lineTo(w - 40, h / 2); c.lineTo(w, h); c.fill();
     });
-    const m = new T.Mesh(new T.PlaneGeometry(36, 1.0, 36, 1).rotateX(-Math.PI / 2), K3D.toon('#ffffff', { map: tex, transparent: true, alphaTest: 0.5, polygonOffset: -2 }));
+    const m = new T.Mesh(new T.PlaneGeometry(36, 0.6, 36, 1).rotateX(-Math.PI / 2), K3D.toon('#ffffff', { map: tex, transparent: true, alphaTest: 0.5, polygonOffset: -2 }));
     // a gentle ripple, as silk lies on paper
     const a = m.geometry.attributes.position; for (let i = 0; i < a.count; i++) a.setY(i, 0.02 + Math.sin(a.getX(i) * 0.9) * 0.015);
     m.geometry.computeVertexNormals();
@@ -265,11 +265,32 @@ const PASCENE = (function () {
     g.position.set(x, 0, z); g.scale.setScalar(s); g.rotation.y = -0.5;
     return g;
   }
-  // a sky dome: the attic far above, warm lamplight to one side, dim rafters
+  // a sky dome: the reader's room at night seen from the page, all soft and huge: a warm lamp glowing to one side, the
+  // dark ceiling far above, and round the horizon a row of giant book spines on the desk, blurred by distance
   function sky(K) {
-    const tex = K3D.paint('paSky', 64, 512, (c, w, h) => {
-      const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#5a4a52'); g.addColorStop(0.45, '#a8907e'); g.addColorStop(0.62, '#e2cfae'); g.addColorStop(1, '#e8d8bc');
+    const tex = K3D.paint('paSky', 2048, 512, (c, w, h) => {
+      const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#2e2a3c'); g.addColorStop(0.3, '#5a4c56'); g.addColorStop(0.46, '#b49a82'); g.addColorStop(0.5, '#e6d4b4'); g.addColorStop(1, '#e8d8bc');
       c.fillStyle = g; c.fillRect(0, 0, w, h);
+      // the lamp: a big warm glow (about 40 degrees right of straight ahead) with a soft halo
+      const lx = w * 0.62, ly = h * 0.24;
+      for (const [r, a] of [[h * 0.5, 0.35], [h * 0.22, 0.6], [h * 0.07, 0.95]]) { const gg = c.createRadialGradient(lx, ly, 0, lx, ly, r); gg.addColorStop(0, 'rgba(255,236,180,' + a + ')'); gg.addColorStop(1, 'rgba(255,220,160,0)'); c.fillStyle = gg; c.fillRect(lx - r, ly - r, r * 2, r * 2); }
+      // the lamp's shade, a dark trapezoid round the bulb
+      c.fillStyle = 'rgba(60,40,40,0.55)'; c.beginPath(); c.moveTo(lx - 50, ly - 62); c.lineTo(lx + 50, ly - 62); c.lineTo(lx + 82, ly + 6); c.lineTo(lx - 82, ly + 6); c.closePath(); c.fill();
+      // book spines standing along the far edge of the desk, blurred
+      const r = P.rng(31), cols = ['#7b3b3b', '#2f5a6e', '#a07a2e', '#3f6a3a', '#6a4a7a', '#8a5a3a', '#c9b48a', '#355070'];
+      c.filter = 'blur(3px)';
+      let x = 0;
+      while (x < w) {
+        const bw = 10 + r() * 22, bh = h * (0.035 + r() * 0.05), top = h * 0.5 - bh;
+        if (r() < 0.12) { x += 30 + r() * 120; continue; }
+        c.fillStyle = cols[Math.floor(r() * cols.length)]; c.globalAlpha = 0.55; c.fillRect(x, top, bw - 2, bh);
+        c.fillStyle = 'rgba(255,230,180,0.35)'; c.fillRect(x + 3, top + bh * 0.2, bw - 8, 3); c.fillRect(x + 3, top + bh * 0.7, bw - 8, 3);
+        x += bw;
+      }
+      c.globalAlpha = 1; c.filter = 'none';
+      // the haze along the horizon over everything
+      const hz = c.createLinearGradient(0, h * 0.4, 0, h * 0.5); hz.addColorStop(0, 'rgba(230,214,186,0)'); hz.addColorStop(1, 'rgba(230,214,186,0.7)');
+      c.fillStyle = hz; c.fillRect(0, h * 0.4, w, h * 0.1);
     });
     const m = new T.Mesh(new T.SphereGeometry(480, 32, 16), new T.MeshBasicMaterial({ map: tex, side: T.BackSide, fog: false, depthWrite: false }));
     m.renderOrder = -10; m.userData.live = true;
@@ -441,12 +462,13 @@ const PASCENE = (function () {
     else { C.pos.lerp(want, 1 - Math.exp(-4 * dt)); C.at.lerp(at, 1 - Math.exp(-4 * dt)); }
     // (screenshot tools may hold the camera at a spot: V.camOverride = { pos: [x, y, z], at: [x, y, z] })
     const O = V.camOverride; if (O) { C.pos.set(...O.pos); C.at.set(...O.at); }
+    const focusAt = O && O.focus;
     K.camera.position.copy(C.pos);
     if (st.shake > 0 && !reduceMotion) K.camera.position.add(v((Math.random() - 0.5) * st.shake * 0.5, (Math.random() - 0.5) * st.shake * 0.3, 0));
     K.camera.lookAt(C.at);
     // keep sharp what the players look at: the pair
     const mz = (G.players[0].b3.z + G.players[1].b3.z) / 2, mx = (G.players[0].b3.x + G.players[1].b3.x) / 2;
-    if (O) K.focus.set(...O.at); else K.focus.set(mx, 0.4, mz);
+    if (focusAt) K.focus.set(...focusAt); else if (O) K.focus.set(...O.at); else K.focus.set(mx, 0.4, mz);
     K.sunAt(v(C.at.x, 0, C.at.z - 3), 24);
     // after a restart, jump the camera straight to its place
     if (V.lastCk !== st.fxN && st.fx.length && st.fx[st.fx.length - 1].kind === 'restart' && st.fx[st.fx.length - 1].n !== V.restartN) { V.restartN = st.fx[st.fx.length - 1].n; V.snap = true; }

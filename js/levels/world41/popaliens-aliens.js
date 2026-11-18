@@ -286,11 +286,24 @@ const PAALIEN = (function () {
     // Folders folded into paper planes (a second shape, used once a Folder is past its first fold)
     const planeGeo = K3D.geo('paPlaneGeo', () => {
       const g = new T.BufferGeometry();
-      // nose at +Z; two wings and a keel, each a pair of triangles
-      const p = [0, 0, 0.6, -0.55, 0.02, -0.4, 0, 0.02, -0.3, 0, 0, 0.6, 0, 0.02, -0.3, 0.55, 0.02, -0.4, 0, 0, 0.6, 0, -0.18, -0.35, 0, 0.02, -0.3];
-      g.setAttribute('position', new T.Float32BufferAttribute(p, 3)); g.computeVertexNormals(); return g;
+      // nose at +Z; two wings lifted a little at the tips (a dihedral) and a keel, each a triangle; UVs are a top-down
+      // map of the sheet (x -0.6..0.6 -> u, z -0.45..0.65 -> v) so the folded paper keeps its print
+      const p = [0, 0, 0.62, -0.58, 0.09, -0.42, 0, 0.02, -0.3, 0, 0, 0.62, 0, 0.02, -0.3, 0.58, 0.09, -0.42, 0, 0, 0.62, 0, -0.2, -0.36, 0, 0.02, -0.3];
+      const uv = [];
+      for (let i = 0; i < p.length; i += 3) uv.push(i >= 18 ? 0.5 + p[i + 1] : (p[i] + 0.6) / 1.2, (p[i + 2] + 0.45) / 1.1);
+      g.setAttribute('position', new T.Float32BufferAttribute(p, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.computeVertexNormals(); return g;
     });
-    const planes = new T.InstancedMesh(planeGeo, K3D.toon('#7dbdf4', { side: T.DoubleSide }), MAXN.folder);
+    // the plane's paper: the Folder's blue sheet with its dashed fold lines, a white edge, and its two worried eyes
+    // looking out from the top of the nose
+    const planeTex = K3D.paint('paPlaneTex', 256, 256, (c, w, h) => {
+      P.paper(c, w, h, '#7dbdf4', 77);
+      c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 10; c.strokeRect(0, 0, w, h);
+      c.strokeStyle = 'rgba(30,60,110,0.75)'; c.lineWidth = 3; c.setLineDash([10, 8]);
+      c.beginPath(); c.moveTo(w / 2, 0); c.lineTo(w / 2, h); c.moveTo(w / 2, h * 0.05); c.lineTo(w * 0.12, h); c.moveTo(w / 2, h * 0.05); c.lineTo(w * 0.88, h); c.stroke(); c.setLineDash([]);
+      for (const ex of [-1, 1]) { const x = w / 2 + ex * 26, y = h * 0.3; c.fillStyle = '#fff'; c.beginPath(); c.ellipse(x, y, 15, 19, 0, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#1c1a36'; c.lineWidth = 4; c.stroke(); c.fillStyle = '#1c1a36'; c.beginPath(); c.arc(x, y - 4, 7, 0, Math.PI * 2); c.fill(); }
+      c.strokeStyle = '#1c1a36'; c.lineWidth = 4; c.beginPath(); c.moveTo(w / 2 - 44, h * 0.16); c.lineTo(w / 2 - 14, h * 0.2); c.moveTo(w / 2 + 44, h * 0.16); c.lineTo(w / 2 + 14, h * 0.2); c.stroke();
+    });
+    const planes = new T.InstancedMesh(planeGeo, K3D.toon('#ffffff', { map: planeTex, side: T.DoubleSide }), MAXN.folder);
     planes.castShadow = true; planes.count = 0; planes.frustumCulled = false; K.add(planes);
     K3D.ink(planes, '#1f4a7a', 0.8);
     const planeInk = planes.children[0];
@@ -328,7 +341,7 @@ const PAALIEN = (function () {
             if (np < MAXN.folder) {
               const narrow = fold >= 2 ? 0.75 : 1, pitch = a.st2 === 'dive' ? 0.35 : a.st2 === 'stuck' ? 0.9 : -0.1;
               e.set(pitch, a.face, a.st2 === 'fold' ? Math.sin(t * 9) * 0.15 : 0); q.setFromEuler(e);
-              v.set(a.x, a.y + (a.st2 === 'stuck' ? 0.35 : 0.1), a.z); s.set(narrow * 1.1, 1.1, 1.25); m4.compose(v, q, s);
+              v.set(a.x, a.y + (a.st2 === 'stuck' ? 0.35 : 0.1), a.z); s.set(narrow * 1.45, 1.45, 1.6); m4.compose(v, q, s);
               planes.setMatrixAt(np++, m4);
             }
             continue;

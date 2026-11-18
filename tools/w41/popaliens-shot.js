@@ -52,7 +52,7 @@ function helpers() {
       Object.assign(a, o.set || {});
       st.aliens.push(a); return a;
     },
-    cam(pos, at) { P.G.mst.v3.camOverride = pos ? { pos, at } : null; },
+    cam(pos, at, focus) { P.G.mst.v3.camOverride = pos ? { pos, at, focus } : null; },
     hud(on) { document.getElementById('game').style.visibility = on ? '' : 'hidden'; },
     lastFx(kind, within) { const st = P.G.mst; return st.fx.some(f => f.kind === kind && P.G.time - f.t < within); },
   };
@@ -87,14 +87,17 @@ const SHOTS = {
     __pa.until(() => st.aliens.filter(a => a.st === 'live').length >= 3 && st.h.some(h => h.sinceShot < 0.05), 30); __pa.run(0.6, true); },
   'play-cross': () => { __pa.fresh(); const st = __pa.st();
     __pa.until(() => st.cz < -18 && __pa.lastFx('cross', 0.02), 60); __pa.run(0.05, true); },
-  'play-grenade': () => { const st = __pa.fresh(); st.h[0].gren = 3; st.h[1].gren = 3;
-    __pa.until(() => st.cz < -30 && __pa.lastFx('burst', 0.02), 80); __pa.run(0.12, true); },
+  'play-grenade': () => { const st = __pa.fresh({ cpu: false }); st.evI = 99; __pa.place(0, -1.6, -1, Math.PI + 0.05); __pa.place(1, 2.2, -1.4, Math.PI);
+    for (let i = 0; i < 9; i++) { const a = i * 2.4, d = 1.6 * Math.sqrt((i + 0.5) / 9); __pa.alien('grunt', -1.6 + Math.cos(a) * d, -8 + Math.sin(a) * d, (i % 3 - 1) * 0.3, { seed: i / 9 }); }
+    __pa.alien('grunt', 4, -9, -0.3); __pa.alien('carrier', -6, -10, 0.4);
+    st.h[0].gren = 2; paThrow(st, 0);
+    __pa.until(() => __pa.lastFx('burst', 0.05), 4); __pa.run(0.1, true); },
   'play-folders': () => { __pa.fresh(); const st = __pa.st();
     __pa.until(() => st.aliens.some(a => a.k === 'folder' && a.st2 === 'fold' && a.ft > 0.6), 120); __pa.run(0.2, true); },
   // how tiny they are: low behind the pair, looking up the page at the saucer
   'wide-saucer': () => { __pa.fresh({ cpu: false }); __pa.hud(false); __pa.place(0, -0.6, -2, Math.PI); __pa.place(1, 0.7, -2.4, Math.PI);
     __pa.alien('grunt', -2, -12, 0); __pa.alien('grunt', 1, -13, 0, { seed: 0.6 }); __pa.alien('grunt', 3.5, -12.5, -0.2, { seed: 0.9 });
-    __pa.frames(2); __pa.cam([-1.2, 1.0, 2.4], [1.5, 6, -60]); __pa.frames(14); },
+    __pa.frames(2); __pa.cam([-1.2, 1.0, 2.4], [1.5, 6, -60], [0, 0.5, -2.2]); __pa.frames(14); },
 };
 
 (async () => {
