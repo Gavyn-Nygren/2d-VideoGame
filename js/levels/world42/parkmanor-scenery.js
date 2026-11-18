@@ -273,39 +273,84 @@ const PARKMANOR_SCENE = (function () {
   const flatPlane = (w, h, mat) => new T.Mesh(new T.PlaneGeometry(w, h), mat);
 
   /* =============================== the house shell =============================== */
-  const ROOM = { hall: H.art.hall, corridor: H.art.corridor };
-  const roomOf = s => (s.id && s.id.startsWith('hall') ? 'hall' : 'corridor');
+  const ROOM = { hall: H.art.hall, corridor: H.art.corridor, passage: H.art.passage, dining: H.art.dining, kitchen: H.art.kitchen, gallery: H.art.gallery,
+    library: H.art.library, organ: H.art.organ, nursery: H.art.nursery, bedroom: H.art.bedroom, stairs: H.art.stairs, attic: H.art.attic, ballroom: H.art.ballroom };
+  // which far group a room belongs to (S1 the front: outside, the hall, the corridor; S2 behind; S3 upstairs; S4a the
+  // attic; S4b the ballroom): only the groups the zone lists are drawn
+  const REG = { hall: 'S1', corridor: 'S1', passage: 'S2', dining: 'S2', kitchen: 'S2', gallery: 'S3', library: 'S3', organ: 'S3', nursery: 'S3', bedroom: 'S3', stairs: 'S4a', attic: 'S4a', ballroom: 'S4b' };
+  const ZREG = { path: 'S1', hall: 'S1', corridor: 'S1', vest: 'S2', passage: 'S2', dining: 'S2', kitchen: 'S2', gallery: 'S3', library: 'S3', organ: 'S3', nursery: 'S3', bedroom: 'S3', stairs: 'S4a', attic: 'S4a', ballroom: 'S4b', exit: 'S4b' };
+  const regAt = (x, z) => { const zn = H.zoneAt(x, z); return zn ? ZREG[zn.id] : 'S1'; };
+  const showsOf = zn => zn.show.concat(['path', 'hall', 'corridor', 'vest', 'passage'].includes(zn.id) ? ['S1'] : []);
+  const roomsOf = s => s.rooms || [s.room || (s.id && s.id.startsWith('hall') ? 'hall' : 'corridor')];
   const CUT_H = 0.95;
+  // each room's wallpaper (full height, the dado at the bottom): a pattern over a base, a dado, damp and tears
+  const paperRoom = (rm) => {
+    const R = ROOM[rm], hh = R.h, fy = R.y || 0;
+    const P = {
+      passage: ['#2e3a2a', 'stripe', 'rgba(80,100,70,0.5)', '#2a1e14', 1.0], dining: ['#4a1420', 'damask', 'rgba(150,50,60,0.75)', '#2a140e', 1.2],
+      kitchen: ['#3a4a3a', 'tile', '#d8d4c4', '#3a3a34', 1.6], gallery: ['#1e3428', 'stripe', 'rgba(200,170,90,0.35)', '#20140e', 1.2],
+      library: ['#2a1a12', 'panel', '#4a2e1e', '#1e120c', 1.4], organ: ['#2a1a12', 'panel', '#4a2e1e', '#1e120c', 1.4],
+      nursery: ['#a89ab8', 'nursery', '#d8c8e0', '#6a5a7a', 1.0], bedroom: ['#243050', 'floral', 'rgba(150,170,220,0.5)', '#1a1420', 1.1],
+      stairs: ['#3a2a20', 'boards', '#2a1c14', '#1e140e', 0.6], attic: ['#3a2c22', 'boards', '#2a1c14', '#1e140e', 0.5],
+      ballroom: ['#e8dcc0', 'ball', '#c8a050', '#5a3a2a', 1.4],
+    }[rm];
+    if (!P) return null;
+    const [base, kind, col, dadoCol, dadoU] = P;
+    return K3D.paint('pm-paper|' + rm, 256, Math.round(128 * hh), (c, w, h) => {
+      const dado = h * (1 - (fy + dadoU) / hh);
+      c.fillStyle = base; c.fillRect(0, 0, w, h);
+      if (kind === 'stripe') for (let x = 0; x < w; x += 32) { c.fillStyle = col; c.fillRect(x, 0, 10, dado); c.fillRect(x + 16, 0, 2, dado); }
+      if (kind === 'damask') for (let y = 40, r = 0; y < dado - 20; y += 86, r++) for (let x = (r % 2) * 64; x < w + 64; x += 128) { damask(c, x, y, 1.0, col); damask(c, x, y - 2, 0.45, 'rgba(220,180,90,0.25)'); }
+      if (kind === 'floral') for (let y = 30, r = 0; y < dado; y += 50, r++) for (let x = (r % 2) * 32; x < w + 32; x += 64) { c.fillStyle = col; for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; c.beginPath(); c.ellipse(x + Math.cos(a) * 7, y + Math.sin(a) * 7, 6, 3.5, a, 0, Math.PI * 2); c.fill(); } c.fillStyle = 'rgba(230,200,120,0.5)'; c.beginPath(); c.arc(x, y, 3, 0, Math.PI * 2); c.fill(); }
+      if (kind === 'tile') { const ty = h * (1 - (fy + 2.2) / hh); c.fillStyle = col; c.fillRect(0, ty, w, dado - ty); c.strokeStyle = 'rgba(60,60,50,0.55)'; c.lineWidth = 2; for (let y = ty; y < dado; y += 24) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); } for (let x = 0; x < w; x += 24) { c.beginPath(); c.moveTo(x, ty); c.lineTo(x, dado); c.stroke(); } c.fillStyle = '#2a6a5a'; c.fillRect(0, ty, w, 8); for (let i = 0; i < 6; i++) { c.fillStyle = 'rgba(120,90,40,0.25)'; c.fillRect(rnd() * w, ty + rnd() * (dado - ty), 30, 50); } }
+      if (kind === 'panel') { for (let x = 0; x < w; x += 128) { c.fillStyle = col; c.fillRect(x + 10, 20, 108, dado - 40); c.strokeStyle = '#140a06'; c.lineWidth = 4; c.strokeRect(x + 10, 20, 108, dado - 40); c.strokeStyle = 'rgba(200,150,90,0.18)'; c.lineWidth = 2; c.strokeRect(x + 18, 28, 92, dado - 56); } }
+      if (kind === 'boards') { for (let x = 0; x < w; x += 28) { c.fillStyle = ['#3a2a20', '#33241a', '#40301f'][(x / 28) % 3]; c.fillRect(x, 0, 28, h); c.fillStyle = '#140c08'; c.fillRect(x, 0, 2, h); for (let k = 0; k < 3; k++) { c.strokeStyle = 'rgba(20,10,5,0.35)'; c.beginPath(); const xx = x + 5 + rnd() * 18; c.moveTo(xx, 0); c.bezierCurveTo(xx + 5, h * 0.3, xx - 5, h * 0.6, xx + 2, h); c.stroke(); } } }
+      if (kind === 'nursery') { for (let x = 0; x < w; x += 42) { c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(x, 0, 18, dado); } for (let y = 50, r = 0; y < dado - 30; y += 90, r++) for (let x = (r % 2) * 64 + 20; x < w; x += 128) { c.fillStyle = 'rgba(240,220,120,0.7)'; c.beginPath(); c.ellipse(x, y, 14, 9, 0, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(x + 12, y - 9, 7, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(230,140,60,0.8)'; c.beginPath(); c.moveTo(x + 18, y - 9); c.lineTo(x + 26, y - 7); c.lineTo(x + 18, y - 5); c.fill(); c.fillStyle = 'rgba(255,240,180,0.6)'; c.beginPath(); c.arc(x + 50, y + 40, 5, 0, Math.PI * 2); c.fill(); } }
+      if (kind === 'ball') { for (let x = 0; x < w; x += 128) { c.strokeStyle = col; c.lineWidth = 5; c.strokeRect(x + 16, h * 0.12, 96, dado - h * 0.16); c.lineWidth = 2; c.strokeRect(x + 24, h * 0.14, 80, dado - h * 0.2); c.fillStyle = 'rgba(200,160,80,0.4)'; c.beginPath(); c.arc(x + 64, h * 0.1, 18, Math.PI, 0); c.fill(); } c.fillStyle = col; c.fillRect(0, h * 0.06, w, 8); }
+      stains(c, w, dado, kind === 'ball' ? 5 : 6, kind === 'ball' ? 'rgba(90,70,40,0.35)' : 'rgba(40,30,15,0.4)');
+      if (kind !== 'boards' && kind !== 'panel' && kind !== 'tile') { tornEdge(c, 50, h * 0.3, 60, 90, '#7a6a5e'); tornEdge(c, 170, h * 0.55, 40, 70, '#6a5a50', 0.7); }
+      c.fillStyle = dadoCol; c.fillRect(0, dado, w, h - dado);
+      c.fillStyle = 'rgba(200,160,90,0.5)'; c.fillRect(0, dado - 3, w, 6);
+      if (kind !== 'boards') for (let x = 0; x < w; x += 64) { c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 3; c.strokeRect(x + 6, dado + 12, 52, h - dado - 28); }
+      c.fillStyle = '#0e0806'; c.fillRect(0, h - 10, w, 10);
+    }, { repeat: true });
+  };
   // every wall segment twice: full height (with its pictures, windows and sconces) and a cut-away stub
   function walls(K) {
     const byId = {};
     const capM = toonT('wallCap', '#ffffff', PARK.wood('#6a4a34'));
     const outM = toonT('clap', '#ffffff', clap());
+    const backM = M('backstageWall', () => K3D.toon('#24202c'));
     const inM = { hall: toonT('paperHall', '#ffffff', paperHall()), corridor: toonT('paperCor', '#ffffff', paperCor()) };
+    for (const rm in ROOM) if (!inM[rm]) { const tx = paperRoom(rm); if (tx) inM[rm] = toonT('paper' + rm, '#ffffff', tx); }
     for (const s of H.solids) {
       if (s.kind !== 'wall') continue;
-      const id = s.id, rm = roomOf(s), R = ROOM[rm];
+      const id = s.id, rms = roomsOf(s), rm = rms[0];
       if (!byId[id]) {
         const full = new T.Group(), cut = new T.Group(); full.userData.live = cut.userData.live = true; cut.visible = false;
-        K.add(full); K.add(cut); byId[id] = { full, cut };
+        K.add(full); K.add(cut); byId[id] = { full, cut, reg: REG[rm] || 'S1' };
       }
-      const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
-      // which face looks into the room: 0 +x, 1 -x, 4 +z, 5 -z
-      let inF = s.axis === 'x' ? (cz < s.z ? 5 : 4) : (cx < s.x ? 1 : 0);
-      if (id === 'alcove') inF = -1;
+      // which face looks into which room: 0 +x, 1 -x, 4 +z, 5 -z
+      // (found by which room lies just past each face)
+      const faceRm = {}, rmAt = (x, z) => { for (const r in ROOM) { const R = ROOM[r]; if (x > R.x0 && x < R.x1 && z > R.z0 && z < R.z1) return r; } return null; };
+      for (const [f, nx, nz] of [[0, 1, 0], [1, -1, 0], [4, 0, 1], [5, 0, -1]]) { const r = rmAt(s.x + nx * (s.w / 2 + 0.25), s.z + nz * (s.d / 2 + 0.25)); if (r && (rms.includes(r) || !REG[rm] || REG[r] === REG[rm])) faceRm[f] = r; }
+      const allIn = id === 'alcove';
+      // (walls behind the manor face the dark backstage outside, not the weatherboard)
+      const out = REG[rm] && REG[rm] !== 'S1' ? backM : outM;
+      const floorY = ROOM[rm].y || 0;
       for (const [cutting, grp] of [[false, byId[id].full], [true, byId[id].cut]]) {
-        const h = cutting ? CUT_H : s.y1 - s.y0;
+        const h = cutting ? floorY + CUT_H : s.y1 - s.y0;
         const geo = uvBox(s.w, h, s.d, (f, fw, fh) => {
           if (f === 2 || f === 3) return [fw, fh];
-          if (f === inF || inF < 0) return [fw / 2, cutting ? CUT_H / (s.y1 - s.y0) : 1];
+          if (faceRm[f] || allIn) return [fw / 2, cutting ? h / (s.y1 - s.y0) : 1];
           return [fw / 2, fh / 2];
         });
-        const mats = [0, 1, 2, 3, 4, 5].map(f => (f === 2 || f === 3) ? capM : (f === inF || (inF < 0)) ? inM[rm] : outM);
+        const mats = [0, 1, 2, 3, 4, 5].map(f => (f === 2 || f === 3) ? capM : allIn ? inM[rm] : faceRm[f] ? inM[faceRm[f]] : out);
         const m = mk(geo, mats, { ink: INK, inkW: 0.8 });
         m.position.set(s.x, s.y0 + h / 2, s.z); grp.add(m);
         if (cutting) { // the sawn top of a cut-away wall: a pale edge so it reads as a section
           const edge = new T.Mesh(new T.BoxGeometry(s.w + 0.02, 0.05, s.d + 0.02), M('cutEdge', () => K3D.toon('#d8c8a8')));
-          edge.position.set(s.x, CUT_H + 0.025, s.z); grp.add(edge);
+          edge.position.set(s.x, h + 0.025, s.z); grp.add(edge);
         }
       }
     }
@@ -575,7 +620,7 @@ const PARKMANOR_SCENE = (function () {
     for (let i = 0; i < 4; i++) { const l = new T.Mesh(new T.SphereGeometry(0.035, 6, 4), K3D.flat(hot(['#ff4a4a', '#4aff8a', '#ffd24a', '#4aff8a'][i], 2.4))); l.position.set(20.75 + i * 0.16, 1.5, -6.78); l.userData.live = true; g.add(l); SC.fuseLights.push(l); }
     const coil = mk(new T.TorusGeometry(0.35, 0.05, 6, 20), M('cable', () => K3D.toon('#14121a')), { ink: INK, inkW: 0.3 }); coil.rotation.x = Math.PI / 2; coil.position.set(21.0, 0.06, -7.6); g.add(coil);
     const fenceT = M('fencePlank', () => K3D.toon('#ffffff', { map: PARK.wood('#4a3a3a') }));
-    for (let x = 8.4; x < 33; x += 0.5) { const pk = mk(K3D.geo('pm-plank', () => new T.BoxGeometry(0.46, 2.6, 0.08).translate(0, 1.3, 0)), fenceT, { ink: INK, inkW: 0.4 }); pk.position.set(x, 0, -11.2); pk.rotation.z = (rnd() - 0.5) * 0.05; pk.scale.y = 0.9 + rnd() * 0.2; g.add(pk); }
+    for (let x = 8.4; x < 29.9; x += 0.5) { const pk = mk(K3D.geo('pm-plank', () => new T.BoxGeometry(0.46, 2.6, 0.08).translate(0, 1.3, 0)), fenceT, { ink: INK, inkW: 0.4 }); pk.position.set(x, 0, -11.2); pk.rotation.z = (rnd() - 0.5) * 0.05; pk.scale.y = 0.9 + rnd() * 0.2; g.add(pk); }
     // dead trees and hedges on both sides, a lamp-post with a broken globe that sputters
     for (const [x, z, s] of [[17.5, 2.6, 0.9], [23.6, 2.8, 1.1], [29.4, 2.6, 0.95]]) {
       const tg = new T.Group(); tg.position.set(x, 0, z); tg.scale.setScalar(s); g.add(tg);
@@ -585,8 +630,8 @@ const PARKMANOR_SCENE = (function () {
       for (let b = 0; b < 4; b++) { const a = b * 1.7 + rnd(), y = 2.2 + b * 0.4; br([[0, y, 0], [Math.cos(a) * 0.8, y + 0.5, Math.sin(a) * 0.8], [Math.cos(a) * 1.6, y + 1.0, Math.sin(a) * 1.6]]); }
     }
     const hedge = M('hedge', () => K3D.toon('#1e3a2e'));
-    for (let x = 15; x < 33; x += 1.5) { const b = mk(K3D.geo('pm-hedgeBall', () => new T.IcosahedronGeometry(1.1, 1)), hedge, { ink: '#0a1a12', inkW: 0.6 }); b.position.set(x, 0.8, 5.6 + rnd() * 0.4); b.scale.set(1, 1.2 + rnd() * 0.4, 1); g.add(b); }
-    for (let z = -10.5; z < 5; z += 1.5) { const b = mk(K3D.geo('pm-hedgeBall', () => new T.IcosahedronGeometry(1.1, 1)), hedge, { ink: '#0a1a12', inkW: 0.6 }); b.position.set(33.5, 0.8, z); b.scale.set(1, 1.2 + rnd() * 0.4, 1); g.add(b); }
+    for (let x = 15; x < 35.4; x += 1.5) { const b = mk(K3D.geo('pm-hedgeBall', () => new T.IcosahedronGeometry(1.1, 1)), hedge, { ink: '#0a1a12', inkW: 0.6 }); b.position.set(x, 0.8, 5.6 + rnd() * 0.4); b.scale.set(1, 1.2 + rnd() * 0.4, 1); g.add(b); }
+    for (let z = -10.5; z < 5; z += 1.5) { const b = mk(K3D.geo('pm-hedgeBall', () => new T.IcosahedronGeometry(1.1, 1)), hedge, { ink: '#0a1a12', inkW: 0.6 }); b.position.set(35.2, 0.8, z); b.scale.set(1, 1.2 + rnd() * 0.4, 1); g.add(b); }
     // pumpkins with carved faces along the wing's front (lit inside: the candle flickers)
     for (let i = 0; i < 5; i++) {
       const x = 11 + i * 4.1, z = -1.9, pg = new T.Group(); pg.position.set(x, 0, z); pg.rotation.y = Math.PI + (rnd() - 0.5) * 0.6; g.add(pg);
@@ -1109,11 +1154,6 @@ const PARKMANOR_SCENE = (function () {
     // the end of the corridor: the door on, a TOUR CONTINUES sign, a purple stage light leaking from the next room
     signBoard(K, deco('corEnd'), 29.76, -6.1, -Math.PI / 2, 'tour', 0.95, 2.5, true);
     stageLamp(K, g, 29.2, -2.9, -2.1, '#b070ff', 0.5);
-    // beyond the door: a glimpse of the dining room (a table end with a candle), dark and waiting
-    const dfl = mk(new T.PlaneGeometry(4, 6).rotateX(-Math.PI / 2), toonT('checker', '#ffffff', checker()), { ink: false }); dfl.position.set(32.2, 0.01, -4.5); g.add(dfl);
-    const dt2 = mk(new T.BoxGeometry(2, 0.1, 1.6), wood('#3a2218'), { ink: INK, inkW: 0.5 }); dt2.position.set(33, 0.9, -4.5); g.add(dt2);
-    const cloth = mk(new T.BoxGeometry(2.05, 0.4, 1.65), M('tablecloth', () => K3D.toon('#e8e2d8')), { ink: INK, inkW: 0.4 }); cloth.position.set(33, 0.76, -4.5); g.add(cloth);
-    candle(K, g, 32.6, 0.95, -4.5, 0.25, B);
     // cobwebs in the corridor corners; a rat hole; a mouse-trap with cheese
     for (const [x, z, dx, dz] of [[8.3, -6.38, 1, 1], [29.78, -6.38, -1, 1], [29.78, -2.62, -1, -1], [8.3, -2.62, 1, -1]]) web(K, g, x, 3.5, z, dx, dz, 1.2);
     const trap = mk(new T.BoxGeometry(0.3, 0.03, 0.14), wood('#8a6a44'), { ink: INK, inkW: 0.3 }); trap.position.set(21.0, 0.03, -2.85); g.add(trap);
@@ -1233,6 +1273,7 @@ const PARKMANOR_SCENE = (function () {
     K.maxBlur = 1.4; K.focusRange = 26;
     const B = PARK.bulbs(K, 4000);
     SC.night = night; SC.B = B;
+    const n0 = [...K.root.children];
     SC.walls = walls(K);
     SC.doors = doors(K);
     const og = outside(K, B), yg = yard(K, B);
@@ -1241,11 +1282,30 @@ const PARKMANOR_SCENE = (function () {
     frontDetail(K, B, SC.fac);
     hall(K, B, SC.walls);
     corridor(K, B, SC.walls);
+    // everything still of the front (outside, the hall, the corridor) in one group, so it can go when the pair are
+    // in the far rooms; then the far rooms, each floor its own group (parkmanor-rooms.js)
+    const s1 = new T.Group(); s1.userData.live = true;
+    for (const o of [...K.root.children]) if (o !== s1 && !o.userData.live && o.userData.pmKeep !== true && n0.indexOf(o) < 0) s1.add(o);
+    K.add(s1);
+    SC.regions = { S1: s1 };
+    SC.LIB = { T, INK, hot, M, mk, V, rnd: () => rnd(), toonT, wood, iron, glowM, sprite, uvBox, flatPlane, candle, candelabra, sconce, web, tallWindow, mirror, portrait, chandelier,
+      stageLamp, signBoard, boards, runner, checker, velvet, portraitTex, damask, stains, tornEdge, poolTex, shaftTex, crackTex, stoneTex, cobwebTex, ROOM, REG, regAt, FIG };
+    PARKMANOR_ROOMS.build(K, B, SC, st);
     // the clocks (restart points) and the porch hooks
-    SC.clockFigs = H.clocks.map(c => { if (c.art === false) return null; const f = FIG.clock(); f.position.set(c.x, 0, c.z); f.rotation.y = c.face; f.userData.live = true; K.add(f); return f; });
+    SC.clockFigs = H.clocks.map(c => { if (c.art === false) return null; const f = FIG.clock(); f.position.set(c.x, c.x > 53.5 && c.z < -35 && c.z > -63 ? 3 : 0, c.z); f.rotation.y = c.face; f.userData.live = true; f.userData.reg = regAt(c.x, c.z); K.add(f); return f; });
     // the spooks and the Butler
-    SC.spooks = st.spooks.map(sp => { const f = sp.kind === 'sheet' ? FIG.sheet() : FIG.armour({ live: true }); f.userData.live = true; K.add(f); return f; });
+    const pTex = [3, 0, 2, 1, 3, 0];
+    SC.spooks = st.spooks.map((sp, i) => {
+      const k = i % 4;
+      const f = sp.kind === 'sheet' ? FIG.sheet() : sp.kind === 'cook' ? FIG.cook() : sp.kind === 'doll' ? FIG.doll(+sp.id.slice(-1)) : sp.kind === 'dancer' ? FIG.dancer(+sp.id.slice(-1))
+        : sp.kind === 'portrait' ? FIG.portraitSpook(k, portraitTex(pTex[+sp.id.slice(-1) + (sp.id[0] === 'g' ? 3 : 0)])) : FIG.armour({ live: true });
+      f.userData.live = true; K.add(f); return f;
+    });
     SC.butler = FIG.butler(); SC.butler.userData.live = true; SC.butler.visible = false; K.add(SC.butler);
+    // Grimsby at the exit: the same figure, taller
+    SC.boss = FIG.butler(); SC.boss.userData.live = true; SC.boss.scale.setScalar(1.22); K.add(SC.boss);
+    // the dining chairs (they move with the rules' chairs)
+    SC.chairs = st.chairs.map(() => { const f = FIG.chair(); f.userData.live = true; K.add(f); return f; });
     // wisps: a glowing flame sprite each, with a soft halo
     SC.wisps = H.wisps.map(() => {
       const g = new T.Group(); g.userData.live = true; K.add(g);
@@ -1263,6 +1323,7 @@ const PARKMANOR_SCENE = (function () {
     // batch the still scenery: the walls' two versions each on their own (they switch), everything else at once
     for (const id in SC.walls) { K3D.bake(SC.walls[id].full); K3D.bake(SC.walls[id].cut); }
     K3D.bake(SC.fac.up); K3D.bake(SC.fac.corRoof); K3D.bake(SC.fac.porchTop);
+    for (const id in SC.regions) K3D.bake(SC.regions[id]);
     K3D.bake(K.root);
     SC.rig = K3D.cams.follow({ pitch: 34, heading: 0, fov: 34, min: 13, max: 20 });
     SC.rig.shadowReach = 20;
@@ -1282,9 +1343,11 @@ const PARKMANOR_SCENE = (function () {
     const ps = G.players, zn = H.zones.find(z => z.id === st.zone) || H.zones[0];
     const inside = st.zone !== 'path';
     // ---- what shows: cut-away walls for this zone, the roofs only from outside ----
+    const shows = showsOf(zn), shown = r => shows.includes(r);
+    for (const id in SC.regions) SC.regions[id].visible = shown(id);
     for (const id in SC.walls) {
-      const want = zn.cut.includes(id) && !st.hidden ? 1 : 0;
-      SC.walls[id].full.visible = !want; SC.walls[id].cut.visible = !!want;
+      const want = zn.cut.includes(id) && !st.hidden ? 1 : 0, on = shown(SC.walls[id].reg);
+      SC.walls[id].full.visible = on && !want; SC.walls[id].cut.visible = on && !!want;
     }
     SC.fac.up.visible = !inside; SC.fac.porchTop.visible = !inside;
     SC.fac.corRoof.visible = st.zone === 'path' || st.zone === 'hall';
@@ -1298,6 +1361,9 @@ const PARKMANOR_SCENE = (function () {
     if (st.fx.length < SC.fxN) SC.fxN = st.fx.length;
     // ---- heroes ----
     const HS = SC.H, lan = st.lan || PML.lantern(st), lampOff = !!PARKMANOR_SCENE.lampOff;
+    // riding between floors: up in the dumbwaiter, or down the trapdoor in a spin
+    const ride = st.ride ? H.rides[st.ride.id] : null, ru = ride ? Math.min(1, st.ride.t / ride.dur) : 0;
+    const rideY = !ride ? 0 : ride.kind === 'dumbwaiter' ? Math.max(0, ru - 0.25) / 0.75 * 3.4 : -Math.max(0, ru - 0.12) / 0.88 * 4.5;
     for (const k of [0, 1]) {
       const p = ps[k], b = p.b3, hh = HS.list[k], h = hh.h;
       if (!b) continue;
@@ -1311,7 +1377,7 @@ const PARKMANOR_SCENE = (function () {
         hands = [kp, busy ? kp.clone().add(tmpB.set(0.05, -0.05, 0)) : null];
       }
       const sp = Math.hypot(b.vx, b.vz) / (PHYS.maxRun / K3D.U);
-      K3D.heroPose(h, { x: b.x, y: b.y, z: b.z, heading: b.heading, speed: stiff ? 0 : Math.min(1, sp), vy: b.vy, land: b.land, hands: stiff ? null : hands, mood: !stiff && b.teeter > 0 ? 'whoa' : null }, dt);
+      K3D.heroPose(h, { x: b.x, y: b.y + rideY, z: b.z, heading: b.heading + (ride && ride.kind === 'slide' ? ru * ru * 18 : 0), speed: stiff ? 0 : Math.min(1, sp), vy: b.vy, land: b.land, hands: stiff ? null : hands, mood: !stiff && b.teeter > 0 ? 'whoa' : null }, dt);
       // stiff with Fright: chalk white, hair on end, toppled like a plank (and a shiver)
       hh.white = approachV(hh.white, stiff ? 1 : 0, Math.min(1, dt * 8));
       for (const m of hh.mats) { m.m.color.copy(m.col).lerp(CHALK, hh.white); if (m.em) { m.m.emissive.copy(m.em).lerp(CHALK_E, hh.white); } }
@@ -1415,15 +1481,19 @@ const PARKMANOR_SCENE = (function () {
       for (const lf of d.leaves) { lf.hinge.rotation.y = -lf.sx * d.swing * 1.75; lf.hinge.scale.y = cut ? 0.95 / 3.15 : 1; }
       if (d.fan) d.fan.visible = !cut;
       d.crackM.opacity = (1 - d.swing) * (0.45 + 0.15 * Math.sin(t * 3 + d.g.position.x));
+      d.g.visible = shown(d.reg || (d.reg = regAt(d.d.x, d.d.z)));
     }
     // ---- clocks: pendulums swing; the current restart clock's face glows ----
-    SC.clockFigs.forEach((f, i) => { if (f) f.userData.set(t, st.restart === i, Math.max(0, 1 - (st.t - st.clockT))); });
+    SC.clockFigs.forEach((f, i) => { if (f) { f.visible = shown(f.userData.reg); f.userData.set(t, st.restart === i, Math.max(0, 1 - (st.t - st.clockT))); } });
     // ---- the spooks ----
     st.spooks.forEach((sp, i) => {
       const f = SC.spooks[i];
-      // (on the stair a spook stands on the steps: the rules only keep its x and z)
-      const fy = MOVER3.floorAt(st.w, sp.x, sp.z, 4, 0);
-      f.position.set(sp.x, Math.max(sp.y || 0, fy > -5 ? fy : 0), sp.z); f.rotation.y = sp.face || 0;
+      f.visible = shown(regAt(sp.x, sp.z));
+      if (!f.visible) return;
+      // (on the stair a spook stands on the steps: the rules only keep its x and z; a portrait hangs on its wall)
+      const fy = MOVER3.floorAt(st.w, sp.x, sp.z, (sp.y || 0) + 1.2, 0);
+      if (sp.kind === 'portrait') { f.position.set(sp.def.wall[0], 0, sp.def.wall[1]); f.rotation.y = sp.def.face || 0; }
+      else { f.position.set(sp.x, Math.max(sp.y || 0, fy > -5 ? fy : 0), sp.z); f.rotation.y = sp.face || 0; }
       f.userData.set(sp, t, dt);
       // the "click" of a freeze: a little shudder; the bite: a jolt
       if (sp.state === 'frozen') f.rotation.z = Math.sin(t * 60) * 0.01 * Math.max(0, sp.thaw);
@@ -1433,6 +1503,22 @@ const PARKMANOR_SCENE = (function () {
     const Bt = st.butler, bf = SC.butler;
     bf.visible = Bt.state !== 'off' && Bt.state !== 'coming';
     if (bf.visible) { bf.position.set(Bt.x, Bt.y || 0, Bt.z); bf.rotation.y = Bt.face || 0; bf.userData.set(Bt, t, dt); }
+    // ---- Grimsby at the exit; the dining chairs; the far rooms' own moving parts ----
+    if (SC.boss && st.boss) {
+      const Bo = st.boss, bf2 = SC.boss;
+      bf2.visible = shown('S4b');
+      if (bf2.visible) {
+        bf2.position.set(Bo.x, 0, Bo.z); bf2.rotation.y = Bo.face;
+        bf2.userData.set({ state: Bo.state === 'fight' ? 'chase' : 'walk', lit: Bo.lit && Bo.state === 'fight', what: Bo.state === 'talk' ? 'picture' : '' }, t, Bo.state === 'down' || Bo.state === 'done' ? 0 : dt * (st.keyWhat === 'boss' ? 3 : 1));
+        const u = bf2.userData, bow = Bo.state === 'down' ? Math.min(1, Bo.t / 1.2) : Bo.state === 'done' ? 1 : 0;
+        u.body.rotation.x = bow * 0.75 + (Bo.state === 'shrug' ? Math.sin(Bo.t * 20) * 0.08 : 0);
+        u.head.rotation.x = bow * 0.3;
+        if (Bo.state === 'done') { u.body.rotation.z = 0.08; u.arms[1].sh.rotation.x = 0.2; }
+        if (st.keyWhat === 'boss') u.key.rotation.z -= dt * 6;
+      }
+    }
+    SC.chairs.forEach((f, i) => { const c = st.chairs[i]; f.visible = shown('S2'); if (!f.visible) return; f.position.x = c.s.x; f.position.z = c.s.z; f.rotation.y = c.def.face + (c.u > 0.02 ? Math.sin(i * 1.7) * 0.25 * c.u : 0); f.userData.set(c, t); });
+    PARKMANOR_ROOMS.update(K, st, dt, SC, { shown, lan, on, t, flash, regAt });
     // ---- the wardrobe: doors ajar while the pair hide in it, its frame pulsing while the Butler is about ----
     const hideCall = PARKMANOR_SPOOKS.butlerNear(st) && !st.hidden;
     SC.wardrobe.userData.set(st.hidden === 'wardrobe' ? 0.78 : 0, hideCall, t);
@@ -1479,8 +1565,11 @@ const PARKMANOR_SCENE = (function () {
     const rig = SC.rig;
     if (st.hidden) {
       const hd = H.hides.find(x => x.id === st.hidden);
-      const eye = V(hd.x + Math.sin(hd.face) * 0.42, 1.3, hd.z + Math.cos(hd.face) * 0.42), out = V(hd.x + Math.sin(hd.face) * 4, 1.25, hd.z + Math.cos(hd.face) * 4);
-      if (bf.visible) out.lerp(V(Bt.x, 1.7, Bt.z), 0.6);
+      // (low under the table or in the chest, peeking out; standing behind a curtain or in the wardrobe)
+      const low = hd.kind === 'table' || hd.kind === 'chest', ey = low ? 0.62 : 1.3, cx = hd.enter ? hd.enter[0] : hd.x, cz = hd.enter ? hd.enter[1] : hd.z;
+      const back = hd.kind === 'table' ? -0.9 : hd.kind === 'chest' ? -0.2 : 0.42;
+      const eye = V(cx + Math.sin(hd.face) * back, ey, cz + Math.cos(hd.face) * back), out = V(cx + Math.sin(hd.face) * 4, low ? 0.9 : 1.25, cz + Math.cos(hd.face) * 4);
+      if (bf.visible) out.lerp(V(Bt.x, low ? 1.1 : 1.7, Bt.z), 0.6);
       const cam = K.camera;
       if (!SC.hideCam) { SC.hideCam = { e: eye.clone(), a: out.clone() }; }
       SC.hideCam.e.lerp(eye, Math.min(1, dt * 5)); SC.hideCam.a.lerp(out, Math.min(1, dt * 3));

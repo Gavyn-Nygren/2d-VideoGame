@@ -4,7 +4,7 @@
 //        [--from=<clock index>]
 //   pair   the computer plays both                          must escape, with most wisps and few Frights
 //   noisy  one side (--clumsy, default Pip) is a distracted person: stops pressing now and then
-//   kid    one side is the computer a whole second late on every press
+//   kid    one side is the computer a whole second late on every press (and 0.3 s late steering)
 //   idle   Pip presses nothing: the level must not finish
 // Prints wisps, Frights, Scare Outs, spooks unwound, hides, the medal, and where every Fright happened.
 'use strict';
@@ -45,7 +45,10 @@ const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0), from = +opt('from', 
           if ((nz.next -= dt) <= 0) { nz.pause = 0.5 + Math.random() * 1.5; nz.next = 5 + Math.random() * 8; }
           return out;
         }
-        if (who === 'kid') { late.push(out); return late.length > 120 ? late.shift() : {}; }
+        // the kid: every button a whole second late, steering 0.3 s late (a person still sees where they walk; a 1 s
+        // steering lag in a closed loop just circles every corner, which is the test, not a player)
+        if (who === 'kid') { late.push(Object.assign({}, out)); const btn = late.length > 120 ? late[late.length - 121] : {}, mv = late.length > 36 ? late[late.length - 37] : {};
+          if (late.length > 130) late.shift(); const r = Object.assign({}, btn); r.ax = mv.ax || 0; r.ay = mv.ay || 0; return r; }
         return out;
       };
       delete G.results[i];

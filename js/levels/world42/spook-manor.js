@@ -509,7 +509,7 @@ PARKMANOR.drawTop = function (st) {
   if (st.keyHold > 0 && st.keyTgt) {
     const t = st.keyTgt, x = t.x != null ? t.x : t.def.x, z = t.z != null ? t.z : t.def.z;
     const s = scr(x, 2.2, z);
-    if (s.z < 1) ring(s.x, s.y, st.keyHold / (st.keyWhat === 'spook' ? PARKMANOR_SPOOKS.S.UNWIND : PARKMANOR.S.KEY_T), '#ffd24a');
+    if (s.z < 1) ring(s.x, s.y, st.keyHold / (st.keyWhat === 'spook' ? PARKMANOR_SPOOKS.unwindT(t) : st.keyWhat === 'boss' ? PARKMANOR_HOUSE.boss.hold : PARKMANOR.S.KEY_T), st.keyWhat === 'boss' ? '#ff8a5a' : '#ffd24a');
   }
   // a stiff hero: the partner stands beside them
   for (const k of [0, 1]) {
@@ -525,6 +525,28 @@ PARKMANOR.drawTop = function (st) {
     if (!st.hasLantern) { const s = scr(hk.lantern.x, hk.lantern.y + 0.7, hk.lantern.z); if (s.z < 1) text('Pip takes the lantern', s.x, s.y, 13, '#ffe9a8', 'center', 'body'); }
     if (!st.hasKey) { const s = scr(hk.key.x, hk.key.y + 0.7, hk.key.z); if (s.z < 1) text('Bo takes the key', s.x, s.y, 13, '#ffe9a8', 'center', 'body'); }
   }
+  // a ride ready: both step in; Grimsby: what each does
+  const HS = PARKMANOR_HOUSE;
+  for (const id in HS.rides) {
+    if (!st.rideReady[id] || st.ride || st.phase !== 'play') continue;
+    const R = HS.rides[id], s = scr(R.board.x, (id === 'slide' ? 3 : 0) + 2.4, R.board.z);
+    if (s.z < 1 && ps.some(p => Math.hypot(p.b3.x - R.board.x, p.b3.z - R.board.z) < 7)) text(id === 'slide' ? 'Both jump down the trapdoor!' : 'Both step into the lift!', s.x, s.y, 14, '#ffe9a8', 'center', 'body');
+  }
+  const bo = st.boss;
+  if (bo && bo.state === 'fight' && st.phase === 'play') {
+    const s = scr(bo.x, 3.4, bo.z);
+    if (s.z < 1) {
+      ring(s.x, s.y - 4, bo.turns / HS.boss.holds, '#ff8a5a');
+      if (!(cpuSolo() && cpuOn(0)) && !bo.lit) text('Pip: hold the light on him!', s.x, s.y - 30, 14, '#ffe9a8', 'center', 'body');
+      else if (!(cpuSolo() && cpuOn(1)) && st.keyWhat !== 'boss') text('Bo: turn the key in his back!', s.x, s.y - 30, 14, '#ffe9a8', 'center', 'body');
+    }
+  }
+  // riding between floors: the picture fades out and in
+  let fade = 0;
+  if (st.ride) { const R = HS.rides[st.ride.id]; fade = clamp((st.ride.t / R.dur - 0.55) / 0.35, 0, 1); }
+  const out = st.fx.length && [...st.fx].reverse().find(f => f.k === 'rideOut');
+  if (out && st.t - out.t < 0.7) fade = Math.max(fade, 1 - (st.t - out.t) / 0.7);
+  if (fade > 0) { ctx.save(); ctx.fillStyle = 'rgba(4,3,10,' + fade + ')'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
   // hidden: a peek through the crack
   if (st.hidden) {
     ctx.save(); ctx.fillStyle = 'rgba(6,5,12,0.62)';
@@ -647,7 +669,7 @@ LEVELS.push(PARKMANOR.def);
 
 // the 3D-only files: the park kit (shared by every World 42 level; loaded once even if listed twice), the outfits, the
 // spooks' models and the house's scenery
-for (const f of ['js/levels/world42/park-kit.js', 'js/levels/world42/parkmanor-outfits.js', 'js/levels/world42/parkmanor-figures.js', 'js/levels/world42/parkmanor-scenery.js'])
+for (const f of ['js/levels/world42/park-kit.js', 'js/levels/world42/parkmanor-outfits.js', 'js/levels/world42/parkmanor-figures.js', 'js/levels/world42/parkmanor-scenery.js', 'js/levels/world42/parkmanor-rooms.js'])
   if (!K3D.files.includes(f)) K3D.files.push(f);
 
 /* ---------- sounds (an old fairground dark ride: wood, tin, springs, clockwork, a crackly tour guide) ---------- */

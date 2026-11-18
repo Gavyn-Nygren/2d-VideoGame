@@ -242,7 +242,7 @@ const PARKMANOR_HOUSE = (function () {
   // the stairwell up from the ground floor (where the Butler comes from): a short well the pair cannot go down
   box(-2.6, -40.0, 0.2, -39.6, 0, 4, { kind: 'edge', id: 'well' }); box(-3.0, -42, -2.6, -39.6, 0, 4, { kind: 'wall', id: 'galS', room: 'gallery' }); box(0.2, -42, 0.6, -39.6, 0, 4, { kind: 'wall', id: 'galS', room: 'gallery' });
   H.art.gallery = { x0: -6, x1: 16, z0: -48, z1: -42, h: 4.0 };
-  for (const [x, i] of [[1, 0], [7, 1], [13.4, 2]]) H.spooks.push({ id: 'gport' + i, kind: 'portrait', x, z: -46.75, face: 0, wall: [x, -48], wake: 'galIn' });
+  for (const [x, i] of [[1, 0], [7, 1], [13.4, 2]]) H.spooks.push({ id: 'gport' + i, kind: 'portrait', x, z: -46.75, face: 0, wall: [x, -47.8], wake: 'galIn' });
   H.winders.push({ id: 'plamp1', x: 5.9, z: -47.2, face: 0, kind: 'lamp', dur: 16, light: { x: 4.4, z: -46.2, r: 3.6 }, at: [4.4, 3.2, -47.4] });
   H.winders.push({ id: 'plamp2', x: 11.9, z: -47.2, face: 0, kind: 'lamp', dur: 16, light: { x: 10.4, z: -46.2, r: 3.6 }, at: [10.4, 3.2, -47.4] });
   H.clocks.push({ x: -5.4, z: -42.7, face: Math.PI / 2, r: 2.4, name: 'the gallery' });
@@ -251,8 +251,8 @@ const PARKMANOR_HOUSE = (function () {
   const RL = { extra: { room: 'library' } };
   wall('libW', 'z', 16, -60.2, -35.8, 5.0, [[-46, -44], [-56, -54]], { extra: { rooms: ['library', 'gallery'] } });
   wall('libN', 'x', -60, 15.8, 34.2, 5.0, [], RL);
-  wall('libS', 'x', -36, 15.8, 48.2, 5.0, [], { extra: { rooms: ['library', 'bedroom'] } });
-  wall('libE', 'z', 34, -60.2, -35.8, 5.0, [[-56, -54]], { extra: { rooms: ['library', 'nursery'] } });
+  wall('libS', 'x', -36, 15.8, 34.2, 5.0, [], RL); wall('bedS', 'x', -36, 33.8, 48.2, 4.0, [], { extra: { room: 'bedroom' } });
+  wall('libE', 'z', 34, -60.2, -47.8, 5.0, [[-56, -54]], { extra: { rooms: ['library', 'nursery'] } }); wall('libE2', 'z', 34, -48.2, -35.8, 5.0, [], { extra: { rooms: ['library', 'bedroom'] } });
   H.art.library = { x0: 16, x1: 34, z0: -60, z1: -36, h: 5.0 };
   H.doors.push({ id: 'libDoor', x: 16, z: -45, w: 0.3, d: 2.0, lock: 'trig', trig: 'butlerGone3' });
   // a free-standing double shelf across the middle (the way goes round its east end), tall shelves on the walls
@@ -281,6 +281,8 @@ const PARKMANOR_HOUSE = (function () {
   box(36.2, -58.8, 37.8, -57.4, 0, 1.3, { kind: 'furn', id: 'horse', seeOver: true });
   box(39.6, -59.8, 44.4, -59.0, 0, 1.2, { kind: 'furn', id: 'toyshelf', seeOver: true });
   H.winders.push({ id: 'musicbox', x: 41.6, z: -58.2, face: 0, kind: 'musicbox', dur: 9, light: null, at: [41.6, 1.25, -59.3] });
+  // the cot and the dolls' house
+  box(45.4, -58.8, 47.8, -56.8, 0, 1.1, { kind: 'furn', id: 'cot', seeOver: true }); box(34.2, -52.6, 35.2, -50.4, 0, 1.3, { kind: 'furn', id: 'dollhouse', seeOver: true });
   H.hides.push({ id: 'chest', x: 46.9, z: -52.4, r: 1.0, kind: 'chest', face: -Math.PI / 2, door: [46, -52.4] });
   for (const [x, z, i] of [[36.4, -50.0, 0], [46.6, -58.6, 1], [38.6, -58.4, 2], [46.4, -49.4, 3]]) H.spooks.push({ id: 'doll' + i, kind: 'doll', x, z, face: 0, wake: 'nurIn' });
   // the bedroom: the four-poster (the lump sits up), the wardrobe that is a door to the attic stairs
@@ -308,6 +310,11 @@ const PARKMANOR_HOUSE = (function () {
   for (const [x0, z0, x1, z1, h] of [[56, -50, 58.4, -47.6, 1.4], [60.8, -42.4, 63.4, -40.2, 1.2], [66.2, -45.8, 68.4, -43.4, 1.6], [57.4, -58.6, 59.6, -56.4, 1.3], [69.6, -40.6, 72.4, -38.2, 1.1]])
     box(x0, z0, x1, z1, 3, 3 + h, { kind: 'furn', id: 'dust', seeOver: h < 1.36 });
   box(55, -61.8, 73, -60.4, 3, 6.6, { kind: 'furn', id: 'machinery' });
+  // the attic clutter along the walls: crates, hat boxes, frames and carpets, the costume rail, gramophone, trunks, books
+  for (const [x0, z0, x1, z1, h, see] of [[63.8, -37.6, 68.6, -36.2, 2.0, 0], [54.2, -56.0, 55.6, -53.2, 1.6, 0], [54.2, -60.6, 55.0, -57.8, 1.9, 0],
+    [54.2, -47.2, 55.8, -45.7, 0.5, 1], [72.4, -55.8, 73.8, -52.6, 1.9, 0], [72.1, -57.1, 73.1, -56.1, 1.1, 1], [59.6, -54.0, 60.8, -52.8, 1.4, 1],
+    [55.6, -58.2, 57.1, -57.4, 0.8, 1], [71.7, -45.4, 73.1, -44.6, 0.8, 1], [61.7, -37.6, 63.1, -36.8, 0.8, 1], [58.3, -37.4, 60.0, -36.2, 0.7, 1], [66.4, -59.3, 67.2, -58.7, 0.6, 1], [72.3, -52.7, 72.9, -51.7, 1.6, 0]])
+    box(x0, z0, x1, z1, 3, 3 + h, { kind: 'furn', id: 'attClutter', seeOver: !!see });
   for (const [x, z, i] of [[59.2, -45.2, 0], [64.6, -55.6, 1], [70.4, -48.8, 2]]) H.spooks.push({ id: 'asheet' + i, kind: 'sheet', x, z, face: 0, wake: 'atticIn' });
   H.winders.push({ id: 'greatClock', x: 70.6, z: -58.8, face: 0, kind: 'trap', dur: 9999, light: null, ride: 'slide', at: [70.6, 5.4, -60.6] });
   H.clocks.push({ x: 54.8, z: -44.8, face: Math.PI / 2, r: 3.0, name: 'the attic' });
@@ -325,6 +332,8 @@ const PARKMANOR_HOUSE = (function () {
   box(-5.0, -73.8, -4.2, -73.0, 0, 2.5, { kind: 'furn', id: 'clock8' });
   H.clocks.push({ x: 28.6, z: -96.4, face: -Math.PI / 2, r: 2.6, name: 'the last waltz' });
   box(28.2, -96.8, 29.0, -96.0, 0, 2.5, { kind: 'furn', id: 'clock9' });
+  // the bandstand in the far corner (clockwork musicians, still)
+  box(-6, -104, -0.6, -98.6, 0, 0.6, { kind: 'furn', id: 'bandstand', seeOver: true });
   // Grimsby at the end, in front of the exit (st.boss); then out into the park
   H.boss = { x: 12, z: -101.2, face: 0, wakeZ: -90.5, holds: 3, hold: 1.5 };
   box(-6, -118, 30, -117.6, 0, 3, { kind: 'edge' }); box(-6.4, -118, -6, -104, 0, 3, { kind: 'edge' }); box(30, -118, 30.4, -104, 0, 3, { kind: 'edge' });
@@ -401,7 +410,7 @@ const PARKMANOR_HOUSE = (function () {
   wisp(60.6, 4.6, -59.6, 'jar'); wisp(66.6, 4.0, -54.0); wisp(71.0, 4.0, -39.4, 'sheet'); wisp(72.4, 4.0, -50.6);
   // the ballroom: in the mirrors, the chandelier's fallen crystals, round the dancers
   wisp(-1.0, 1.0, -78.0); wisp(5.0, 1.2, -76.0); wisp(-4.0, 1.4, -88.0, 'mirror'); wisp(28.0, 1.4, -84.0, 'mirror'); wisp(8.6, 1.0, -86.0);
-  wisp(17.4, 1.0, -84.0); wisp(14.0, 1.0, -94.0); wisp(24.6, 1.0, -92.4); wisp(2.0, 1.0, -96.6, 'mirror'); wisp(21.0, 1.4, -102.4, 'mirror');
+  wisp(17.4, 1.0, -84.0); wisp(14.0, 1.0, -94.0); wisp(24.6, 1.0, -92.4); wisp(-5.3, 1.4, -93.6, 'mirror'); wisp(21.0, 1.4, -102.4, 'mirror');
 
   /* ---------- the zones (camera and place names) ---------- */
   // cam: the follow camera; cut: walls lowered to a stub while here; show: the far scenery groups drawn while here
@@ -419,8 +428,8 @@ const PARKMANOR_HOUSE = (function () {
   zone('library', 'upstairs', 2, 16, 34, -60.2, -35.8, CAM0, ['libS'], ['S3'], 'up');
   zone('organ', 'upstairs', 2, 11.8, 16, -58.2, -51.8, CAM0, ['libS', 'orgS'], ['S3'], 'up');
   zone('nursery', 'upstairs', 2, 34, 48.2, -60.2, -48, CAM0, ['nurBed'], ['S3'], 'up');
-  zone('bedroom', 'upstairs', 2, 34, 48.2, -48, -35.8, CAM0, ['libS'], ['S3', 'S4a'], 'up');
-  zone('stairs', 'upstairs', 2, 48, 54, -43.2, -38.8, { heading: -Math.PI / 2, pitch: 40, min: 12, max: 17, fov: 36, ahead: [1.6, 1.0, 0] }, ['stS', 'libS'], ['S3', 'S4a'], 'up');
+  zone('bedroom', 'upstairs', 2, 34, 48.2, -48, -35.8, CAM0, ['bedS'], ['S3', 'S4a'], 'up');
+  zone('stairs', 'upstairs', 2, 48, 54, -43.2, -38.8, { heading: -Math.PI / 2, pitch: 40, min: 12, max: 17, fov: 36, ahead: [1.6, 1.0, 0] }, ['stS', 'bedS'], ['S3', 'S4a'], 'up');
   zone('attic', 'upstairs', 2, 54, 74.2, -62.2, -35.8, { heading: 0, pitch: 50, min: 16, max: 22, fov: 34, ahead: [0, 0, -1.2] }, ['attS'], ['S4a'], 'up');
   zone('ballroom', 'the ballroom', 3, -6.2, 30.2, -104.2, -71.8, { heading: 0, pitch: 46, min: 18, max: 24, fov: 36, ahead: [0, 0, -1.6] }, ['balS'], ['S4b'], 'ball');
   zone('exit', 'the ballroom', 3, -6.2, 30.2, -118, -104.2, { heading: 0, pitch: 34, min: 14, max: 20, fov: 38, ahead: [0, 0.6, -2] }, ['balS', 'balN'], ['S4b'], 'ball');
