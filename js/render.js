@@ -1679,7 +1679,8 @@ function drawHUD() {
   } else if (G.golf) {
     drawGolfHUD();
   } else if (G.match) {
-    drawMatchHUD();
+    // (a level that draws its own score, like 42-4's flags, sets def.ownMatchHUD)
+    if (!L.def.ownMatchHUD) drawMatchHUD();
   } else if (L.def.kind === 'versus' && G.vs) {
     const vs = G.vs, bw = 150;
     pill(W / 2, 10, 440, 34, 'center');
