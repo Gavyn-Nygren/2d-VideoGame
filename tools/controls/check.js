@@ -124,8 +124,6 @@ const ok = (cond, what) => { if (!cond) { fails++; console.log('FAIL  ' + what);
     const P = window.__pipbo, G = P.G, out = [], rows = [];
     for (let i = 0; i < P.LEVELS.length; i++) {
       try {
-        // a 3D level's ready card waits for three.js (World 41 on): load it first, as a person's card would
-        if (P.LEVELS[i].view3d && K3D.state !== 'ready') { try { await K3D.need(); } catch (e) { /* the fail card is checked below */ } }
         P.startLevel(i);
         if (G.mode !== 'ready') { out.push(P.LEVELS[i].name + ': no ready card'); continue; }
         const card = document.querySelector('.ready-card');
@@ -143,6 +141,8 @@ const ok = (cond, what) => { if (!cond) { fails++; console.log('FAIL  ' + what);
           });
         });
         if (P.LEVELS[i].jobs && card.querySelectorAll('.rdy-duo .job-name').length !== 2) out.push(code + ': job names missing');
+        // (a 3D level's card waits for the 3D kit to load: let it)
+        if (P.LEVELS[i].view3d && !(await P.K3D.need())) { out.push(P.LEVELS[i].name + ': 3D did not load (' + P.K3D.why + ')'); continue; }
         P.Ready.armAt = 0; P.readyPress(0); P.readyPress(1);
         G.clock += 1; P.pollInput(0);
         if (G.mode !== 'play') { out.push(P.LEVELS[i].name + ': did not start'); continue; }

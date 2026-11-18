@@ -16,7 +16,8 @@ const BIND = [
   { left: ['ArrowLeft'], right: ['ArrowRight'], jump: ['ArrowUp'], down: ['ArrowDown'], act: ['Slash', 'Period', 'Comma', 'Enter', 'Numpad0', 'NumpadEnter'] },
 ];
 // 3D levels only: the jump keys (the usual jump keys walk away from the viewer there)
-const K3D_JUMP = [['Space'], ['ShiftRight']];
+// (Bo's Enter jumps too: five quick Shift presses can open Windows' Sticky Keys prompt; in 3D Enter is not his action)
+const K3D_JUMP = [['Space'], ['ShiftRight', 'Enter', 'NumpadEnter']];
 const GAME_KEYS = new Set(['ShiftRight', 'KeyA', 'KeyD', 'KeyW', 'KeyS', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
   'KeyF', 'KeyE', 'Slash', 'Period', 'Comma', 'Enter', 'Numpad0', 'NumpadEnter']);
 // Enter pressed on a menu card and still held when the level starts must not count as Bo's action button
@@ -271,7 +272,9 @@ function pollInput(dt = 1 / 60) {
     p.input.jump = j;
     // the action button: held state in p.input.act, a fresh press in p.pendingAct (the level's code clears it;
     // unused, it expires after ACT_BUFFER s)
-    const a = any('act');
+    const a = G.level && G.level.def.view3d
+      ? bind.act.some(c => !K3D_JUMP[1].includes(c) && (keys.has(c) || tapLive(keysTapped, c))) || !!ps.act || !!t.act || tapLive(touchTapped[i], 'act')
+      : any('act');
     if (a && !p.prevAct && G.mode === 'play' && G.level && G.level.def.act) { p.pendingAct = true; p.actAge = 0; }
     p.prevAct = a;
     p.input.act = a;
@@ -345,10 +348,8 @@ window.addEventListener('keydown', e => {
   if (G.mode === 'ready') {
     e.preventDefault();
     if (code === 'Enter' || code === 'NumpadEnter') menuHeld.add(code); // (Bo's action key: not a press once the level starts)
-    // (a 3D level's card asks for its own jump keys: Space for Pip, Right Shift for Bo, which are not in BIND)
-    const rset = set >= 0 ? set : G.level && G.level.def.view3d ? K3D_JUMP.findIndex(l => l.includes(code)) : -1;
-    if (e.repeat || rset < 0 || !(BIND[rset].jump.includes(code) || BIND[rset].act.includes(code) || K3D_JUMP[rset].includes(code))) return;
-    if (cpuSolo()) { Dev.last[cpuHuman()] = 'kb'; Dev.keyset = rset; readyPress(cpuHuman()); } else { Dev.last[rset] = 'kb'; readyPress(rset); }
+    if (e.repeat || set < 0 || !(BIND[set].jump.includes(code) || BIND[set].act.includes(code))) return;
+    if (cpuSolo()) { Dev.last[cpuHuman()] = 'kb'; Dev.keyset = set; readyPress(cpuHuman()); } else { Dev.last[set] = 'kb'; readyPress(set); }
     return;
   }
   if (code === 'KeyR' && !e.repeat && (G.mode === 'play' || G.mode === 'paused' || G.mode === 'result')) { loadLevel(G.levelIndex); return; }

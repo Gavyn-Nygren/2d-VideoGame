@@ -622,7 +622,7 @@
   /* ---------- the level ---------- */
   const legend = {
     pip: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>F</kbd> pull or hold a tab',
-    bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move <kbd>Right Shift</kbd> jump <kbd>/</kbd> pull or hold a tab',
+    bo: '<kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move <kbd>Shift</kbd> jump <kbd>/</kbd> pull or hold a tab',
   };
   PC.def = {
     name: 'Page Turner Chase', world: 40, kind: 'team', mode: 'popchase', outfit: 'popchase',
@@ -742,10 +742,6 @@
   // (written out as one literal push so tools/bundle.js finds them for the single-file demo)
   K3D.files.push('js/levels/world41/popchase-outfits.js', 'js/levels/world41/popchase-art.js', 'js/levels/world41/popchase-art2.js');
 
-  // register: World 41 (index 40). 41-1's js/levels/world41/world.js sets the world and adds 41-1 first; until it
-  // lands, this sets a stand-in world entry with the same name so 41-2 can be played.
-  if (!WORLDS[40]) WORLDS[40] = { name: 'Pop-Up Storybook', blurb: 'Tumble into a giant pop-up book where the pages fold up around you!',
-    theme: { skyTop: '#2e2840', skyBot: '#5a4a62', hillFar: '#3e3550', hillNear: '#2e2840', sun: 'rgba(255,220,150,0.9)', sunGlow: 'rgba(255,200,120,0.3)',
-      stone: '#8a6a52', stoneLight: '#a2826a', stoneEdge: '#4a3a30', grass: '#9cc77a', grassDark: '#5f8a4a', plank: '#c79a62', plankDark: '#8a6234', rope: '#e8d8b0', ropeDark: '#9a8460' } };
+  // register: World 41 (index 40). js/levels/world41/world.js (loaded earlier) sets the world and adds 41-1; 41-2 follows.
   LEVELS.push(PC.def);
 })();
