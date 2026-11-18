@@ -532,7 +532,7 @@ const PARKKARTS_WORLD = (function () {
     for (const r of W.rideAt) lay.discs.push({ x: r.x, z: r.z, r: (r.r || 8) + 7 });
     for (const [a, b] of [[[72, -136], [120, -158]], [[120, -158], [168, -140]], [[40, -118], [72, -136]], [[120, -158], [142, -196]]]) lay.paths.push({ pts: [a, b], w: 7 });
     PARK.ground(K, { x: 110, z: -120, size: 1500, layout: lay });
-    W.lay = lay;
+    W.lay = lay; W.groundAll = K.groundAll;   // the kit's ground mask: is a whole circle grass?
     W.rides = W.rideAt.map(r => PARK.ride(K, B, r.k, r));
     // the lamps along the walks between the rides
     for (const [a, b] of [[[72, -136], [120, -158]], [[120, -158], [168, -140]], [[40, -118], [72, -136]], [[120, -158], [142, -196]]]) {
@@ -549,6 +549,7 @@ const PARKKARTS_WORLD = (function () {
   // is a circle at (x, z) of radius r on any paving or gravel of the ground's layout? (gardens need grass)
   function paved(x, z, r) {
     const L = W.lay; if (!L) return false;
+    if (W.groundAll && !W.groundAll(x, z, r, 'grass')) return true;   // the mask itself (paths, plazas, gravel)
     const segD = (a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2)); return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t); };
     for (const p of L.paths) for (let i = 1; i < p.pts.length; i++) if (segD(p.pts[i - 1], p.pts[i]) < p.w / 2 + r) return true;
     for (const d of L.discs) if (Math.hypot(x - d.x, z - d.z) < d.r + r) return true;
