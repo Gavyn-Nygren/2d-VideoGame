@@ -388,8 +388,10 @@ window.addEventListener('keydown', e => {
   if (G.mode === 'ready') {
     e.preventDefault();
     if (code === 'Enter' || code === 'NumpadEnter') menuHeld.add(code); // (Bo's action key: not a press once the level starts)
-    if (e.repeat || set < 0 || !(BIND[set].jump.includes(code) || BIND[set].act.includes(code))) return;
-    if (cpuSolo()) { Dev.last[cpuHuman()] = 'kb'; Dev.keyset = set; readyPress(cpuHuman()); } else { Dev.last[set] = 'kb'; readyPress(set); }
+    // (a 3D level's card asks for its own jump keys: Space for Pip, Right Shift for Bo, which are not in BIND)
+    const rset = set >= 0 ? set : G.level && G.level.def.view3d ? K3D_JUMP.findIndex(l => l.includes(code)) : -1;
+    if (e.repeat || rset < 0 || !(BIND[rset].jump.includes(code) || BIND[rset].act.includes(code) || K3D_JUMP[rset].includes(code))) return;
+    if (cpuSolo()) { Dev.last[cpuHuman()] = 'kb'; Dev.keyset = rset; readyPress(cpuHuman()); } else { Dev.last[rset] = 'kb'; readyPress(rset); }
     return;
   }
   if (code === 'KeyR' && !e.repeat && (G.mode === 'play' || G.mode === 'paused' || G.mode === 'result')) { loadLevel(G.levelIndex); return; }
