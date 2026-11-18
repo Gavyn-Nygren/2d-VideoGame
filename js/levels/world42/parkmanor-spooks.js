@@ -226,7 +226,7 @@ const PARKMANOR_SPOOKS = (function () {
   }
   /* ---------- Grimsby at the exit (the finish) ----------
      idle until a hero comes down the ballroom (H.boss.wakeZ); a speech; then he comes for the nearest hero, fast in the
-     dark. Pip's light on him slows him almost to a stop and turns him toward the lantern; that shows his back, where
+     dark. Pip's light on him slows him almost to a stop (and the key in his back holds him still) and turns him toward the lantern; that shows his back, where
      the key is. Bo holds the key in his back for H.boss.hold s (from behind, in reach): one turn. He shrugs Bo off,
      swings round on Bo and comes for Bo until the light draws him again. Three turns: he winds down and bows. */
   function boss(st, dt, api) {
@@ -248,6 +248,8 @@ const PARKMANOR_SPOOKS = (function () {
     else if (B.aggro > 0 && hs.some(h => h.k === 1)) tgt = hs.find(h => h.k === 1);
     else { let bd = 1e9; for (const h of hs) { const d = hyp(h.b.x - B.x, h.b.z - B.z); if (d < bd) { bd = d; tgt = h; } } }
     B.target = tgt.k;
+    // Bo's key in his back holds him where he stands
+    if (st.keyWhat === 'boss') return;
     const dx = tgt.b.x - B.x, dz = tgt.b.z - B.z, d = hyp(dx, dz) || 1;
     let da = Math.atan2(dx, dz) - B.face; da = Math.atan2(Math.sin(da), Math.cos(da));
     const turn = (B.lit ? S.BOSS_TURN_LIT : S.BOSS_TURN) * dt;

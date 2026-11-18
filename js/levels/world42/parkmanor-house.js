@@ -14,7 +14,8 @@
                 camera looks through in this zone (the scenery lowers them to a cut-away section)
      doors      { id, x, z, w, d, lock: true (Bo's key opens it) | 'trig' (opens when its trigger fires) }
      winders    { id, x, z, kind: 'chandelier' | 'lamp', dur, light: { x, z, r } or { rect } }: Bo winds them
-     hides      hiding places for the Butler: { id, x, z, r, kind, face (radians the pair face inside) }
+     hides      hiding places for the Butler: { id, x, z, r, kind, face (the way out), enter (where to stand to get in,
+                when it is not the middle: under the table) }
      clocks     grandfather clocks, the restart points: { x, z, face, r (pass radius) }
      spooks     { id, kind, x, z, face, wake (a trigger id, or null: always awake), stepper (armour that walks) }
      wisps      { x, y, z, hide: null | 'vase' | 'curtain' | 'sheet' | 'jar' | 'painting' }
@@ -197,8 +198,8 @@ const PARKMANOR_HOUSE = (function () {
   for (const [bx, xs] of [[33.4, [35.6, 34.4, 33.2, 32.0, 30.8]], [26.4, [29.6, 28.4, 27.2, 26.0, 24.8]], [19.4, [23.6, 22.4, 21.2, 20.0, 18.8]]]) {
     xs.forEach((hx, i) => H.chairs.push({ id: 'ch' + H.chairs.length, home: [hx, -25.35], block: [bx + (i % 2 ? 0.18 : -0.18), -25.6 - i * 0.98], face: Math.PI }));
   }
-  H.hides.push({ id: 'table1', x: 22.4, z: -23.2, r: 1.1, kind: 'table', face: Math.PI, door: [22.4, -25.4], y: 0.32 });
-  H.hides.push({ id: 'table2', x: 30.6, z: -23.2, r: 1.1, kind: 'table', face: Math.PI, door: [30.6, -25.4], y: 0.32 });
+  H.hides.push({ id: 'table1', x: 22.4, z: -23.2, r: 1.1, kind: 'table', face: Math.PI, door: [22.4, -25.4], enter: [22.4, -25.5], y: 0.32 });
+  H.hides.push({ id: 'table2', x: 30.6, z: -23.2, r: 1.1, kind: 'table', face: Math.PI, door: [30.6, -25.4], enter: [30.6, -25.5], y: 0.32 });
   H.clocks.push({ x: 35.9, z: -16.5, face: Math.PI, r: 3.4, name: 'the dining room' });
   box(35.5, -16.8, 36.3, -16.2, 0, 2.5, { kind: 'furn', id: 'clock3' });
   // the portraits along the north wall: three of them have arms (spooks that grab at a passer-by in the dark)
@@ -267,8 +268,8 @@ const PARKMANOR_HOUSE = (function () {
   H.art.organ = { x0: 12, x1: 16, z0: -58, z1: -52, h: 5.0 };
   box(12.2, -57.4, 13.6, -52.6, 0, 1.4, { kind: 'furn', id: 'organ', seeOver: true });
   H.springs.push({ id: 'books', x: 25, z: -47, r: 3.2, kind: 'books', at: [25, 3.6, -59] });
-  H.clocks.push({ x: 16.8, z: -36.6, face: Math.PI / 2, r: 2.4, name: 'the library' });
-  box(16.4, -37.0, 17.2, -36.2, 0, 2.5, { kind: 'furn', id: 'clock6' });
+  H.clocks.push({ x: 16.8, z: -42.6, face: Math.PI / 2, r: 3.0, name: 'the library' });
+  box(16.4, -43.0, 17.2, -42.2, 0, 2.5, { kind: 'furn', id: 'clock6' });
   // the nursery
   const RN = { extra: { room: 'nursery' } };
   wall('nurN', 'x', -60, 33.8, 48.2, 4.0, [], RN);
@@ -309,8 +310,8 @@ const PARKMANOR_HOUSE = (function () {
   box(55, -61.8, 73, -60.4, 3, 6.6, { kind: 'furn', id: 'machinery' });
   for (const [x, z, i] of [[59.2, -45.2, 0], [64.6, -55.6, 1], [70.4, -48.8, 2]]) H.spooks.push({ id: 'asheet' + i, kind: 'sheet', x, z, face: 0, wake: 'atticIn' });
   H.winders.push({ id: 'greatClock', x: 70.6, z: -58.8, face: 0, kind: 'trap', dur: 9999, light: null, ride: 'slide', at: [70.6, 5.4, -60.6] });
-  H.clocks.push({ x: 55.2, z: -37.2, face: Math.PI / 2, r: 2.6, name: 'the attic' });
-  box(54.8, -37.6, 55.6, -36.8, 3, 5.5, { kind: 'furn', id: 'clock7' });
+  H.clocks.push({ x: 54.8, z: -44.8, face: Math.PI / 2, r: 3.0, name: 'the attic' });
+  box(54.4, -45.2, 55.2, -44.4, 3, 5.5, { kind: 'furn', id: 'clock7' });
   // the ballroom
   const RBa = { extra: { room: 'ballroom' } };
   wall('balS', 'x', -72, -6.2, 30.2, 7.0, [], RBa); wall('balN', 'x', -104, -6.2, 30.2, 7.0, [[10.6, 13.4]], RBa);
@@ -367,12 +368,14 @@ const PARKMANOR_HOUSE = (function () {
   H.says.push({ trig: 'bossTalk', text: 'I am afraid no one leaves the party.' });
   H.says.push({ trig: 'bossDone', text: 'Thank you for visiting Spook Manor. Do come again. We are always here.' });
   // 3: through the dining room with his tray while the pair are mid-room (under the table, both)
-  H.butler.push({ id: 'b2', trig: 'dinMid', kind: 'hunt', path: [[40.9, -27.4], [38.4, -27.5], [15.6, -27.5], [15.6, -30.9]], speed: 1.25, delay: 3.6, hide: ['table1', 'table2'], done: 'butlerGone2', tray: true });
-  // 4: up the stairs behind them into the gallery (behind the curtains)
-  H.butler.push({ id: 'b3', trig: 'galMid', kind: 'hunt', path: [[-1.2, -38.4], [-1.2, -45.0], [14.6, -45.0], [-1.2, -45.0], [-1.2, -38.4]], speed: 1.35, delay: 3.6, hide: ['alc1', 'alc2'], done: 'butlerGone3',
-    pause: { at: 2, secs: 2.0, what: 'picture' } });
-  // 5: already standing in the nursery doorway when the music box runs down (the toy chest)
-  H.butler.push({ id: 'b4', trig: 'musicDone', kind: 'hunt', path: [[32.6, -55], [35.4, -55], [44.6, -55.4], [44.6, -50.6], [36, -50.6], [33.0, -55], [30.4, -55]], speed: 1.2, delay: 3.6, hide: ['chest'], done: 'butlerGone4' });
+  H.butler.push({ id: 'b2', trig: 'dinMid', kind: 'hunt', path: [[40.9, -27.4], [38.4, -27.5], [15.6, -27.5], [15.6, -30.9]], speed: 1.75, delay: 3.6, hide: ['table1', 'table2'], done: 'butlerGone2', tray: true });
+  // 4: up the stairs behind them, along the gallery and on into the library (behind the curtains); the library door
+  // opens for him (and stays open)
+  H.butler.push({ id: 'b3', trig: 'galMid', kind: 'hunt', path: [[-1.2, -38.4], [-1.2, -45.0], [7.0, -45.0], [17.4, -45.0]], speed: 1.6, delay: 3.2, hide: ['alc1', 'alc2'], done: 'butlerGone3',
+    pause: { at: 2, secs: 1.8, what: 'picture' } });
+  // 5: in at the nursery door when the music box runs down, and out through the bedroom door (the toy chest)
+  H.butler.push({ id: 'b4', trig: 'musicDone', kind: 'hunt', path: [[32.6, -55], [36.0, -55], [40.4, -53.6], [44, -50.2], [44, -46.2]], speed: 1.3, delay: 3.4, hide: ['chest'], done: 'butlerGone4',
+    pause: { at: 2, secs: 1.6, what: 'toys' } });
 
   /* ---------- stretch 2 to 4 wisps ---------- */
   wisp(31.8, 1.0, -11.4); wisp(31.0, 1.2, -14.8, 'jar');

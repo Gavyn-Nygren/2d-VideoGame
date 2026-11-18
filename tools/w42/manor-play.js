@@ -54,7 +54,7 @@ const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0), from = +opt('from', 
       const st0 = G.mst;
       if (from > 0) { st0.hasLantern = st0.hasKey = true; st0.restart = from; for (const id in st0.doors) if (id !== 'front') P.MODES.parkmanor && PARKMANOR.openDoor(st0, id); PARKMANOR.restartAt(st0); }
       const steps = Math.round(maxT / P.DT), every = trace ? Math.round(trace / P.DT) : 0, lines = [], frights = [];
-      let n = 0, lastF = 0, lastS = 0;
+      let n = 0, lastF = 0, lastS = 0; const zt = {};
       while (n < steps && G.mode === 'play') {
         for (let k = 0; k < 600 && n < steps && G.mode === 'play'; k++, n++) {
           window.__inStep = true;
@@ -62,19 +62,20 @@ const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0), from = +opt('from', 
           P.step(P.DT);
           window.__inStep = false;
           const s = G.mst;
+          zt[s.zone] = (zt[s.zone] || 0) + P.DT;
           if (s.frights > lastF) { lastF = s.frights; const f = s.fx.filter(x => x.k === 'fright').pop(); frights.push((f ? ['P', 'B'][f.who] + ':' + (f.by || 'butler') : 'butler') + '@' + s.zone + '(' + G.players[0].b3.x.toFixed(0) + ',' + G.players[0].b3.z.toFixed(0) + ')'); }
           if (s.scareOuts > lastS) { lastS = s.scareOuts; frights.push('SCARE OUT ' + s.scareWhy); }
-          if (every && n % every === 0) { const a = G.players[0].b3, b = G.players[1].b3; lines.push(`${(n * P.DT).toFixed(1)}s ${s.phase} ${s.zone} P(${a.x.toFixed(1)},${a.z.toFixed(1)}) B(${b.x.toFixed(1)},${b.z.toFixed(1)}) beam ${s.beam ? 1 : 0} key ${s.keyWhat}${s.keyHold.toFixed(1)} wisps ${s.wisps} clock ${s.restart} hidden ${s.hidden || '-'} butler ${s.butler.state} spooks ${s.spooks.map(q => q.id + ':' + q.state[0]).join(' ')} ${P.CPU.bubbles.map(b => (b && b.t > 0 ? '"' + b.text + '"' : '')).join(' ')}`); }
+          if (every && n % every === 0) { const a = G.players[0].b3, b = G.players[1].b3; lines.push(`${(n * P.DT).toFixed(1)}s ${s.phase} ${s.zone} P(${a.x.toFixed(1)},${a.z.toFixed(1)}) B(${b.x.toFixed(1)},${b.z.toFixed(1)}) beam ${s.beam ? 1 : 0} key ${s.keyWhat}${s.keyHold.toFixed(1)} wisps ${s.wisps} clock ${s.restart} hidden ${s.hidden || '-'} butler ${s.butler.state}${s.boss && s.boss.state !== "idle" ? " BOSS " + s.boss.state + s.boss.turns + " (" + s.boss.x.toFixed(1) + "," + s.boss.z.toFixed(1) + ") f" + s.boss.face.toFixed(1) + (s.boss.lit ? " lit" : "") + " hold" + s.boss.holdT.toFixed(1) : ""} spooks ${s.spooks.map(q => q.id + ':' + q.state[0]).join(' ')} ${P.CPU.bubbles.map(b => (b && b.t > 0 ? '"' + b.text + '"' : '')).join(' ')}`); }
         }
         await new Promise(r => setTimeout(r, 0));
       }
       const s = G.mst, res = G.results[i];
       return { simT: +(n * P.DT).toFixed(1), cleared: !!res, medal: res && res.medal && res.medal.tier, zone: s.zone, phase: s.phase,
         wisps: s.wisps, max: PARKMANOR.wispsMax(), frights: s.frights, scare: s.scareOuts, unwound: s.unwound, hides: s.hideN || 0, caught: s.caughtN,
-        list: frights, cpuErrs: [...P.CPU.errs], trace: lines, at: G.players.map(p => p.b3.x.toFixed(1) + ',' + p.b3.z.toFixed(1)).join(' ') };
+        zt: Object.entries(zt).map(([k, v]) => k + ' ' + v.toFixed(0)).join(', '), list: frights, cpuErrs: [...P.CPU.errs], trace: lines, at: G.players.map(p => p.b3.x.toFixed(1) + ',' + p.b3.z.toFixed(1)).join(' ') };
     }, { who, maxT, seed, clumsy, trace, from });
     if (r.trace.length) console.log(r.trace.join('\n'));
-    console.log(`${who}${who === 'noisy' || who === 'kid' ? '(' + ['Pip', 'Bo'][clumsy] + ')' : ''} s${seed}: ${r.cleared ? 'ESCAPED' : 'NOT DONE (' + r.phase + ' in ' + r.zone + ' at ' + r.at + ')'} in ${r.simT}s  wisps ${r.wisps}/${r.max} (${Math.round(r.wisps / r.max * 100)}%)  frights ${r.frights}  scare outs ${r.scare}  unwound ${r.unwound}  hides ${r.hides}  caught ${r.caught}${r.medal != null ? '  medal ' + r.medal : ''}${r.list.length ? '\n  ' + r.list.join(' ') : ''}${r.cpuErrs.length ? '\n  CPU ERR ' + r.cpuErrs : ''}${errors.length ? '\n  PAGE ERR ' + errors.slice(0, 3).join(' | ').slice(0, 600) : ''}`);
+    console.log(`${who}${who === 'noisy' || who === 'kid' ? '(' + ['Pip', 'Bo'][clumsy] + ')' : ''} s${seed}: ${r.cleared ? 'ESCAPED' : 'NOT DONE (' + r.phase + ' in ' + r.zone + ' at ' + r.at + ')'} in ${r.simT}s  wisps ${r.wisps}/${r.max} (${Math.round(r.wisps / r.max * 100)}%)  frights ${r.frights}  scare outs ${r.scare}  unwound ${r.unwound}  hides ${r.hides}  caught ${r.caught}${r.medal != null ? '  medal ' + r.medal : ''}\n  time: ${r.zt}${r.list.length ? '\n  ' + r.list.join(' ') : ''}${r.cpuErrs.length ? '\n  CPU ERR ' + r.cpuErrs : ''}${errors.length ? '\n  PAGE ERR ' + errors.slice(0, 3).join(' | ').slice(0, 600) : ''}`);
   }
   await browser.close();
 })().catch(e => { console.error(e); process.exit(1); });

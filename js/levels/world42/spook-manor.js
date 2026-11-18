@@ -189,6 +189,8 @@ const PARKMANOR = (function () {
         if (st.gold > 0 && --st.gold === 0) st.fx.push({ k: 'goldEnd', t: st.t });
       }
     }
+    // a door the Butler's visit ends by opening opens for him as he reaches it
+    if (st.butler.state === 'walk' || st.butler.state === 'chase') { const v = H.butler[st.butler.visit]; for (const d of H.doors) if (v && v.done && d.trig === v.done && !st.doors[d.id].open && hyp(st.butler.x - d.x, st.butler.z - d.z) < 2.2) openDoor(st, d.id); }
     // the spooks and the Butler
     SP.step(st, dt, { fright: (k, by) => fright(st, k, by), caught: k => caught(st, k), fire: id => fire(st, id) });
     // the teaching Sheet unwound: the stair Sheets come on
@@ -298,7 +300,12 @@ const PARKMANOR = (function () {
         const out = st.hideOut[0] > S.HIDE_OUT ? 0 : 1;
         st.hidden = null; Sfx.play('parkmanorHide', 1);
         // step out through the door
-        for (const p of ps) { const b = p.b3; b.x += Math.sin(hd.face) * (p.id === out ? 1.0 : 0.7); b.z += Math.cos(hd.face) * (p.id === out ? 1.0 : 0.7); MOVER3.push(st.w, b); }
+        for (const p of ps) {
+          const b = p.b3, k = p.id === out ? 1.0 : 0.7;
+          if (hd.enter) { b.x = hd.enter[0] + (p.id ? 0.4 : -0.4) * Math.cos(hd.face) + Math.sin(hd.face) * (k - 0.6); b.z = hd.enter[1] - (p.id ? 0.4 : -0.4) * Math.sin(hd.face) + Math.cos(hd.face) * (k - 0.6); }
+          else { b.x += Math.sin(hd.face) * k; b.z += Math.cos(hd.face) * k; }
+          MOVER3.push(st.w, b);
+        }
         st.hideOut = [0, 0];
       }
       return;
@@ -306,7 +313,8 @@ const PARKMANOR = (function () {
     // (hiding places only open while the Butler is about: walking past a wardrobe never shuts anyone in)
     if (st.stiff[0] > 0 || st.stiff[1] > 0 || st.butler.state === 'off') return;
     for (const hd of H.hides) {
-      if (ps.every(p => hyp(p.b3.x - hd.x, p.b3.z - hd.z) < hd.r + 0.35)) { st.hidden = hd.id; st.hideT = 0; st.hideN = (st.hideN || 0) + 1; st.keyHold = 0; Sfx.play('parkmanorHide', 0); break; }
+      const cx = hd.enter ? hd.enter[0] : hd.x, cz = hd.enter ? hd.enter[1] : hd.z;
+      if (ps.every(p => hyp(p.b3.x - cx, p.b3.z - cz) < hd.r + 0.35)) { st.hidden = hd.id; st.hideT = 0; st.hideN = (st.hideN || 0) + 1; st.keyHold = 0; Sfx.play('parkmanorHide', 0); break; }
     }
   }
 
@@ -323,11 +331,12 @@ const PARKMANOR = (function () {
     if (!tgt) for (const d of H.doors) { const D = st.doors[d.id]; if (d.lock === true && !D.open && hyp(b.x - d.x, b.z - d.z) < S.KEY_R + 0.4) { tgt = D; what = 'door'; break; } }
     if (!tgt) for (const w of H.winders) if (hyp(b.x - w.x, b.z - w.z) < S.KEY_R) { tgt = w; what = 'winder'; break; }
     if (tgt !== st.keyTgt) { st.keyHold = 0; st.keyTgt = tgt; st.keyWhat = what; if (tgt && what !== 'spook' && what !== 'boss') Sfx.play('parkmanorWinder', 0); }
+    st.keyWhat = what;
     if (!tgt) return;
     if (what === 'boss') {
       if (st.keyHold === 0) Sfx.play('parkmanorUnwind');
       st.keyHold += dt; tgt.holdT = st.keyHold;
-      if (st.keyHold >= H.boss.hold) { SP.bossTurned(st); st.keyHold = 0; st.keyTgt = null; st.fx.push({ k: 'bossTurn', t: st.t, n: st.boss.turns }); }
+      if (st.keyHold >= H.boss.hold) { SP.bossTurned(st); st.keyHold = 0; st.keyTgt = null; st.keyWhat = ''; st.fx.push({ k: 'bossTurn', t: st.t, n: st.boss.turns }); }
       return;
     }
     if (what === 'spook') {
