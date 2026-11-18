@@ -252,6 +252,12 @@ const PARKKARTS_SCENE = (function () {
       if (inF && !m.inF) Sfx.play('parkkartsFord'); m.inF = inF;
     });
     if (st.fx) for (const e of st.fx) if (e.k === 'slip' && e.t > (S.slip || 0)) { S.slip = e.t; Sfx.play('parkkartsSlip'); }
+    // the race version of the park's song: quicker in the race, tenser near a breakaway, quickest at two flags each
+    if (typeof Music !== 'undefined' && Music.cue) {
+      const LIM = PARKKARTS.S.LIMIT, two = st.flags && st.flags[0] === 2 && st.flags[1] === 2;
+      const rate = st.phase === 'grid' ? 1 : two ? 1.22 : st.gap > LIM * 0.7 ? 1.16 : 1.1;
+      if (rate !== S.rate) { S.rate = rate; Music.cue({ rate }); }
+    }
     // engines ticking over on the grid
     if (st.phase === 'grid') { S.eng -= dt; if (S.eng <= 0) { S.eng = 0.32; Sfx.play('parkkartsEngine'); } }
     // the Comet thunders over (when it passes near the camera), the skeleton pops
