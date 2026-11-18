@@ -675,7 +675,7 @@ const PARKFLUME_SCENE = (function () {
     for (let s = s0; s < s1; s += 1.1) {
       if (L.arches.some(a => Math.abs(a - s) < 6) || Math.abs(s - A.weir0) < 8 || L.obs.some(o => Math.abs(o.s - s) < 4 && !o.move)) continue;
       const w = PR.w(s);
-      for (const side of [-1, 1]) { if (rnd() < 0.55) continue; const x = side * (w - 0.4 - rnd() * 1.4); const p = CW(s + rnd(), x); pads.push({ p, r: 0.35 + rnd() * 0.35, a: rnd() * 6 }); if (rnd() < 0.3) flowers.push({ p, a: rnd() * 6 }); }
+      for (const side of [-1, 1]) { if (rnd() < 0.55) continue; const x = side * (w - 0.4 - rnd() * 1.4), sp = s + rnd(); const p = CW(sp, x); pads.push({ p, s: sp, r: 0.35 + rnd() * 0.35, a: rnd() * 6 }); if (rnd() < 0.3) flowers.push({ p, s: sp, a: rnd() * 6 }); }
     }
     const pg = new T.CircleGeometry(1, 16, 0.3, Math.PI * 2 - 0.6).rotateX(-Math.PI / 2);
     const pim = new T.InstancedMesh(pg, K3D.toon('#3f8a4a'), pads.length);
@@ -704,7 +704,7 @@ const PARKFLUME_SCENE = (function () {
       fragmentShader: 'varying float vA; void main() { float d = length(gl_PointCoord - 0.5); gl_FragColor = vec4(vec3(1.4, 1.8, 0.6) * smoothstep(0.5, 0.0, d) * vA, 1.0); }' });
     const ff = new T.Points(fgg, fmat); ff.frustumCulled = false; K.add(ff);
     K.tick(dt => { fmat.uniforms.uT.value += dt; fmat.uniforms.uPx.value = K3D.R.domElement.height / 720; });
-    return { lan, lim, base, s0, s1 };
+    return { lan, lim, base, s0, s1, pads, flowers, pim, fim };
   }
 
   /* ---------- the park round the river ---------- */
@@ -984,7 +984,10 @@ const PARKFLUME_SCENE = (function () {
     K.groundAt = kindAt; K.groundAll = (x, z, r, kind) => { if (kindAt(x, z) !== kind) return false; for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; if (kindAt(x + Math.cos(a) * r, z + Math.sin(a) * r) !== kind) return false; } return true; };
     // the water: the whole channel; garden stretch calm and deep blue
     const rapids = L.drops.filter(d => d.kind === 'rapid');
-    sc.water = PARK.water(K, { R, w: PR.w, over: 0.7, steep: s => (Math.abs(s - A.weir0 - 1) < 2.5 || Math.abs(s - A.weirJump - 1) < 2.5 ? 1 : 0) + (s > A.brink && s < A.splash + 6 ? 0.8 : 0) + (s > A.brink1 && s < A.splash1 + 4 ? 0.8 : 0)
+    sc.water = PARK.water(K, { R, w: PR.w, over: 0.7,
+      // (still on the lifts' belts and round the whirlpool's painted funnel)
+      calm: s => (PARKFLUME.liftAt(s) || PARKFLUME.liftAt(s + 1.5) ? 0.12 : L.whirls.some(wl => Math.abs(s - wl.s) < wl.r + 2.5) ? 0.2 : 1),
+      steep: s => (Math.abs(s - A.weir0 - 1) < 2.5 || Math.abs(s - A.weirJump - 1) < 2.5 ? 1 : 0) + (s > A.brink && s < A.splash + 6 ? 0.8 : 0) + (s > A.brink1 && s < A.splash1 + 4 ? 0.8 : 0)
       + (rapids.some(d => s > d.s0 - 0.5 && s < d.s1 + 1.5) ? 0.7 : 0) + (s > A.rapids0 && s < A.rapids1 + 6 ? 0.25 : 0) + (Math.abs(s - A.whirl) < 6 ? 0.2 : 0) });
     const W = sc.water;
     // the stone kerbs of the gardens, the mill pond and the lagoon (the jungle's rock, the troughs and the mill's
@@ -1068,17 +1071,21 @@ const PARKFLUME_SCENE = (function () {
     const open = st.phase === 'board' ? sm(PARKFLUME.S.BOARD_T - 2.8, PARKFLUME.S.BOARD_T - 1.4, st.phaseT) : 1;
     for (const h of sc.dock.gate) h.rotation.y = h.userData.sx * open * 1.5;
     // ducks bob and turn; taken ones are gone (a big one is bigger)
+    const Wv = sc.water;
     const D = sc.dk, m4 = new T.Matrix4(), q = new T.Quaternion(), e = new T.Euler(), sz = new T.Vector3(), pv = new T.Vector3();
     for (let i = 0; i < D.pos.length; i++) {
       const d = D.pos[i], k = st.got[i] ? 0 : d.big ? 2.2 : 1;
-      e.set(Math.sin(t * 2 + i) * 0.12, d.yaw + Math.sin(t * 0.7 + i) * 0.5, Math.sin(t * 1.6 + i * 1.3) * 0.1); q.setFromEuler(e);
-      pv.set(d.p.x, d.p.y + Math.sin(t * 2.4 + i) * 0.05 - 0.04, d.p.z); sz.set(k, k, k);
+      // (each floats on the water under it: lifted by the swell and the rings, tipped by its slopes)
+      const dk = L.ducks[i], fl = !dk.hook && k > 0, h = fl ? Wv.hAt(dk.s, d.p.x, d.p.z) : 0;
+      const tx = fl ? (Wv.hAt(dk.s, d.p.x + 0.35, d.p.z) - h) / 0.35 : 0, tz = fl ? (Wv.hAt(dk.s, d.p.x, d.p.z + 0.35) - h) / 0.35 : 0;
+      e.set(tz * 1.6 + Math.sin(t * 2 + i) * 0.04, d.yaw + Math.sin(t * 0.7 + i) * 0.5, -tx * 1.6 + Math.sin(t * 1.6 + i * 1.3) * 0.04, 'YXZ'); q.setFromEuler(e);
+      pv.set(d.p.x, d.p.y + h - 0.04, d.p.z); sz.set(k, k, k);
       m4.compose(pv, q, sz); D.im.setMatrixAt(i, m4); D.bk.setMatrixAt(i, m4); D.eye.setMatrixAt(i, m4);
-      q.identity(); pv.y = d.p.y + 0.02; sz.set(k * 1.2, 1, k * 1.2); m4.compose(pv, q, sz); D.halo.setMatrixAt(i, m4);
+      q.identity(); pv.y = d.p.y + h + 0.03; sz.set(k * 1.2, 1, k * 1.2); m4.compose(pv, q, sz); D.halo.setMatrixAt(i, m4);
     }
     D.im.instanceMatrix.needsUpdate = D.bk.instanceMatrix.needsUpdate = D.eye.instanceMatrix.needsUpdate = D.halo.instanceMatrix.needsUpdate = true;
     // swans drift (where the rules have them), the water wheel turns, the fishing robots jig their rods
-    for (const sw of sc.swans) { const p = PARKFLUME.obsAt(sw.o, st.t), f = R.at(p.s), w = CW(p.s, p.x); sw.g.position.set(w[0], w[1] + Math.sin(t * 1.5 + p.x) * 0.05 - 0.1, w[2]); sw.g.rotation.y = f.yaw + Math.PI + Math.sin(st.t * 0.3 + p.x) * 0.5; }
+    for (const sw of sc.swans) { const p = PARKFLUME.obsAt(sw.o, st.t), f = R.at(p.s), w = CW(p.s, p.x); const h = Wv.hAt(p.s, w[0], w[2]); sw.g.position.set(w[0], w[1] + h - 0.1, w[2]); sw.g.rotation.set((Wv.hAt(p.s, w[0], w[2] + 0.6) - h) * 0.8, f.yaw + Math.PI + Math.sin(st.t * 0.3 + p.x) * 0.5, -(Wv.hAt(p.s, w[0] + 0.6, w[2]) - h) * 0.8, 'YXZ'); }
     sc.wheel.wheel.rotation.x = -wheelAngle(sc.wheel.o, st.t);
     for (const r of sc.bridge.robots) { r.rod.rotation.z = Math.sin(t * 1.3 + r.z) * 0.08; r.rb.userData.key.rotation.z += dt * 3; if (r.rod.userData.duck) r.rod.userData.duck.position.y = 0.2 + Math.sin(t * 2) * 0.15; }
     sc.island.drummer.userData.head.rotation.x = Math.sin(t * 8) * 0.12; sc.island.drummer.userData.key.rotation.z += dt * 4;
@@ -1090,10 +1097,15 @@ const PARKFLUME_SCENE = (function () {
       const l = F.lan[i]; l.s += R.at(l.s).v * 0.55 * dt; if (l.s > F.s1) l.s = F.s0 + 2;
       const w = PR.w(l.s), x = Math.max(-w + 0.8, Math.min(w - 0.8, l.x * w));
       const p = CW(l.s, x);
-      pv.set(p[0], p[1] + Math.sin(t * 2 + l.ph) * 0.04, p[2]); q.setFromAxisAngle(new T.Vector3(0, 1, 0), l.ph + t * 0.2); m4.compose(pv, q, sz.set(1, 1, 1));
+      pv.set(p[0], p[1] + Wv.hAt(l.s, p[0], p[2]), p[2]); q.setFromAxisAngle(new T.Vector3(0, 1, 0), l.ph + t * 0.2); m4.compose(pv, q, sz.set(1, 1, 1));
       F.lim.setMatrixAt(i, m4); F.base.setMatrixAt(i, m4);
     }
     F.lim.instanceMatrix.needsUpdate = F.base.instanceMatrix.needsUpdate = true;
+    // the lily pads and their flowers ride the water (only the ones near the log: the rest are too far to tell)
+    const up = new T.Vector3(0, 1, 0);
+    F.pads.forEach((pd, k) => { if (Math.abs(pd.s - st.s) > 45) return; q.setFromAxisAngle(up, pd.a); m4.compose(pv.set(pd.p[0], pd.p[1] + 0.03 + Wv.hAt(pd.s, pd.p[0], pd.p[2]), pd.p[2]), q, sz.set(pd.r, 1, pd.r)); F.pim.setMatrixAt(k, m4); });
+    F.flowers.forEach((fw, k) => { if (Math.abs(fw.s - st.s) > 45) return; q.setFromAxisAngle(up, fw.a); m4.compose(pv.set(fw.p[0], fw.p[1] + 0.05 + Wv.hAt(fw.s, fw.p[0], fw.p[2]), fw.p[2]), q, sz.set(1, 1, 1)); F.fim.setMatrixAt(k, m4); });
+    F.pim.instanceMatrix.needsUpdate = F.fim.instanceMatrix.needsUpdate = true;
     }
     PARKFLUME_SCENE2.update(K, sc, st, dt, t);
     // the Comet roars over the trestle every 14 s

@@ -43,6 +43,7 @@ const PARKFLUME = (function () {
     OM_DAMP: 1.8, ALIGN: 0.55, PSI_MAX: 1.05, FOLLOW: 0.78, SLIDE: 0.35,
     U_DAMP: 0.42, U_MAX: 2.3, U_MAX_SPEED: 2.0, BRAKE_ONE: -0.3, BRAKE_BOTH: -0.6, KEEL: 0.55,
     SPEED_PAIR: 0.3, SPEED_HOLD: 1.7, SPEED_FADE: 0.32,
+    FLOW_MID: 1.02, FLOW_EDGE: 0.12, GLIDE: 8, HEAVY: 0.05,
     HALF_LEN: 1.55, HALF_W: 0.72, BANK_PAD: 0.15,
     SAFE: 1.5, ONCE: 6, WATER: 3, GOLD_WATER: 5, GOLD_ARCHES: 2, BRACE_MEMO: 0.35,
     SINK: 1.6, BOB: 1.0, TUG: 2.0, DUCK_R: 0.95, BIG_R: 1.35, BIG_DUCKS: 5,
@@ -153,7 +154,7 @@ const PARKFLUME = (function () {
             st.paired[k] = st.paired[o] = true;
             st.om -= st.given[o]; st.given[o] = 0;
             st.pairs++; st.lastPair = st.t; st.speed = Math.min(1, st.speed + S.SPEED_PAIR);
-            st.u += S.PAIR_PUSH * (1 + 0.6 * st.speed);
+            st.u += S.PAIR_PUSH * (1 + 0.6 * st.speed) / CO.heavy(st);
             st.fx.push({ k: 'pair', t: st.t });
             Sfx.play('parkflumePair');
           } else Sfx.play('parkflumeStroke', k);
@@ -162,7 +163,7 @@ const PARKFLUME = (function () {
       if (st.pull[k] >= 0) {
         // the pull: push and (unless paired) turn, spread over S.PULL
         const f = Math.min(dt, S.PULL - st.pull[k]);
-        st.u += S.STROKE_PUSH / S.PULL * f;
+        st.u += S.STROKE_PUSH / S.PULL * f / CO.heavy(st);
         if (!st.paired[k]) { const a = st.pullDir[k] * S.STROKE_TURN / S.PULL * f; st.om += a; st.given[k] += a; }
         st.pull[k] += dt;
         if (st.pull[k] >= S.PULL) { st.pull[k] = -1; st.rest[k] = S.REST; }
@@ -180,12 +181,17 @@ const PARKFLUME = (function () {
   }
 
   /* ---------- the log on the water ---------- */
+  // THE WATER: the current runs fastest down the middle of the channel and slack along the banks (S.FLOW_MID in the
+  // middle, S.FLOW_EDGE less at the edge), as a real stream does: the middle is the quick line, the banks the slow one.
+  CO.flow = (s, x, f) => { const q = clamp(Math.abs(x) / Math.max(1, PR.w(s)), 0, 1); return Math.max(0.3, (f || R.at(s)).v) * (S.FLOW_MID - S.FLOW_EDGE * q * q); };
+  // water aboard is weight: each Soak's water makes the log a little slower to drive
+  CO.heavy = st => 1 + S.HEAVY * st.water;
   function move(st, dt) {
-    const f = R.at(st.s), c = Math.max(0.3, f.v);
+    const f = R.at(st.s), c = CO.flow(st.s, st.x, f);
     // speed through the water: eases back; a brake floor; a top speed that Speed raises
     st.u -= st.u * S.U_DAMP * dt;
     const floor = st.drag[0] && st.drag[1] ? S.BRAKE_BOTH * c : st.drag[0] || st.drag[1] ? S.BRAKE_ONE * c : -0.05;
-    st.u = clamp(st.u, floor, S.U_MAX + S.U_MAX_SPEED * st.speed);
+    st.u = clamp(st.u, floor, (S.U_MAX + S.U_MAX_SPEED * st.speed) / CO.heavy(st));
     // turning: weight (damping), the current straightening it, the channel's bend carrying it round late
     st.om -= st.om * S.OM_DAMP * dt;
     st.om -= st.psi * S.ALIGN * dt;
@@ -193,7 +199,9 @@ const PARKFLUME = (function () {
     st.psi += st.om * dt + f.turn * st.vs * (1 - S.FOLLOW) * dt;
     if (Math.abs(st.psi) > S.PSI_MAX) { st.psi = sgn(st.psi) * S.PSI_MAX; if (sgn(st.om) === sgn(st.psi)) st.om = 0; }
     // across: the heading carries it (the keel), and it slides to the outside of bends
-    st.vx = (Math.max(0, st.u) + S.KEEL * c) * Math.sin(st.psi) + f.turn * st.vs * st.vs * S.SLIDE;
+    // (the log has weight: its sideways drift eases toward where its heading and the bend send it, it glides on)
+    const wantVx = (Math.max(0, st.u) + S.KEEL * c) * Math.sin(st.psi) + f.turn * st.vs * st.vs * S.SLIDE;
+    st.vx += (wantVx - st.vx) * Math.min(1, dt * S.GLIDE);
     st.prevS = st.s;
     st.s += st.vs * dt; st.x += st.vx * dt;
     // the air off a weir jump or the plunge's lip (the look; the rules only remember it)

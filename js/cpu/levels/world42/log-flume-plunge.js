@@ -49,7 +49,7 @@
       const out = {}, st = info.mst;
       const PR = PARKFLUME_ROUTE, R = PR.R, L = PR.lists, CO = PARKFLUME, S = CO.S;
       const id = p.id, side = id === 0 ? -1 : 1, solo = !info.partnerCpu, t = st.t;
-      const f = R.at(st.s), c = Math.max(0.3, f.v), vs = Math.max(0.6, st.vs);
+      const f = R.at(st.s), c = CO.flow ? CO.flow(st.s, st.x, f) : Math.max(0.3, f.v), vs = Math.max(0.6, st.vs);
       const say = (k, text) => { if (solo && !s.said[k]) { s.said[k] = 1; cpuSay(p, text, 1.8); } };
 
       const pulling0 = st.pull[id] >= 0, ready0 = !pulling0 && st.rest[id] <= 0;

@@ -224,20 +224,39 @@ const PARKFLUME_LOG = (function () {
     log.t += dt;
     const t = log.t, pl = place(st), f = pl.f;
     // the pose: on the water, rocking on the ripples, wallowing after a Soak, sinking, nosing up off a lip
-    let sink = 0, bob = Math.sin(t * 1.9) * 0.035 + Math.sin(t * 3.3 + 1) * 0.015;
+    let sink = 0;
     if (st.phase === 'sink') sink = Math.min(1, st.phaseT / PARKFLUME.S.SINK) * 0.9;
     const wallow = st.safe > 0 && st.phase === 'ride' ? Math.max(0, st.safe - 0.5) / 1.0 : 0;
-    const roll = Math.sin(t * 1.4) * 0.03 + Math.sin(t * 2.7) * 0.015 + wallow * Math.sin(t * 9) * 0.08 + st.om * -0.05 + (st.drag[0] ? -0.04 : 0) + (st.drag[1] ? 0.04 : 0);
-    const nose = -st.air * 0.25 + Math.sin(t * 1.1) * 0.02 + (st.splash > 0.5 ? (st.splash - 0.5) * 0.3 : 0);
+    // IT FLOATS: the log rides the water under it. The water's height is read under the bow, the stern and both
+    // sides; the log is pulled toward that level and those slopes like a weight on springs (heave, pitch, roll), so it
+    // lifts to a wave, overshoots and settles; it lands heavy off a drop (digs in, bobs back up); it squats at the
+    // stern and lifts its nose when a stroke drives it, dips it on a brake; water aboard makes it sit lower and
+    // answer slower.
+    const Wv = K.pf && K.pf.water, B = log.buoy || (log.buoy = { y: 0, vy: 0, p: 0, vp: 0, r: 0, vr: 0, u: st.u, acc: 0, air: 0, peak: 0 });
+    const hw = (lx, lz) => (Wv ? Wv.hAt(st.s - lz, pl.p.x + pl.right.x * lx - pl.fwd.x * lz, pl.p.z + pl.right.z * lx - pl.fwd.z * lz) : 0);
+    const hB = hw(0, -LOG.len * 0.45), hS = hw(0, LOG.len * 0.45), hL = hw(-LOG.r * 0.9, 0), hR = hw(LOG.r * 0.9, 0);
+    const h = Math.min(dt, 0.033), heavy = 1 + 0.14 * st.water, flying = st.air > 0;
+    const a = Math.max(-8, Math.min(8, (st.u - B.u) / Math.max(1e-3, dt))); B.u = st.u; B.acc += (a - B.acc) * Math.min(1, dt * 7);
+    if (flying) B.peak = Math.max(B.peak, st.air);
+    else if (B.air > 0) { B.vy -= 0.9 + 2.4 * Math.min(1, B.peak / 0.7); B.vp += 1.2 * Math.min(1, B.peak / 0.7); B.peak = 0; } // (touchdown)
+    B.air = st.air;
+    const wantY = flying ? 0 : (hB + hS + hL + hR) / 4 - 0.03 * st.water;
+    const wantP = flying ? 0 : Math.atan2(hB - hS, LOG.len * 0.9) * 1.5 + B.acc * 0.03;
+    const wantR = flying ? 0 : Math.atan2(hR - hL, LOG.r * 1.8) * 1.4;
+    B.vy += ((wantY - B.y) * 55 / heavy - B.vy * 5.5) * h; B.y = Math.max(-0.45, Math.min(0.3, B.y + B.vy * h));
+    B.vp += ((wantP - B.p) * 42 / heavy - B.vp * 5) * h; B.p = Math.max(-0.3, Math.min(0.3, B.p + B.vp * h));
+    B.vr += ((wantR - B.r) * 48 / heavy - B.vr * 4.5) * h; B.r = Math.max(-0.3, Math.min(0.3, B.r + B.vr * h));
+    const roll = B.r + wallow * Math.sin(t * 9) * 0.08 + st.om * -0.05 + (st.drag[0] ? -0.04 : 0) + (st.drag[1] ? 0.04 : 0);
+    const nose = B.p - st.air * 0.25 + (st.splash > 0.5 ? (st.splash - 0.5) * 0.3 : 0);
     m4.makeBasis(pl.right, pl.up, pl.fwd.clone().negate());
     log.g.quaternion.setFromRotationMatrix(m4);
-    log.g.position.copy(pl.p).addScaledVector(pl.up, bob - sink + st.air * 0.9 - wallow * 0.08);
+    log.g.position.copy(pl.p).addScaledVector(pl.up, B.y - sink + st.air * 0.9 - wallow * 0.08);
     log.rock.rotation.set(nose, 0, roll);
     log.rock.visible = !(st.phase === 'sink' && st.phaseT > PARKFLUME.S.SINK + 0.2);
     log.g.updateMatrixWorld(true);
     // the lantern swings with the rocking; it glows brighter with Speed
     const lant = log.beaver.userData.lant;
-    lant.rotation.x = Math.sin(t * 2.2) * 0.12 - nose * 1.5 + st.u * 0.03; lant.rotation.z = Math.sin(t * 1.7) * 0.1 - roll;
+    lant.rotation.x = Math.sin(t * 2.2) * 0.06 - nose * 1.5 - B.vp * 0.25 + st.u * 0.03; lant.rotation.z = Math.sin(t * 1.7) * 0.05 - roll - B.vr * 0.25;
     const glowK = 2.2 + st.speed * 2.4;
     log.beaver.userData.glow.material.color.setRGB(1.0 * glowK, 0.85 * glowK, 0.56 * glowK);
     log.light.intensity = 2.2 + st.speed * 1.4 + Math.sin(t * 7) * 0.12;
@@ -308,6 +327,9 @@ const PARKFLUME_LOG = (function () {
       if (st.phase === 'ride' && !K3D.reduceSpray) {
         const bw = pd.localToWorld(new T.Vector3(0, -1.12, 0));
         const wy = pl.p.y;
+        // (the blade's bite and a dragged blade each send a ring across the water)
+        const pk2 = pd.userData; if (Wv && pull > 0.15 && !pk2.bit) Wv.ring(bw.x, bw.z, 0.035); pk2.bit = pull > 0.15;
+        if (Wv && drag && t - (pk2.dragT || 0) > 0.4) { pk2.dragT = t; Wv.ring(bw.x, bw.z, 0.022); }
         if (pull >= 0 && pull > 0.15 && pull < 0.6 && bw.y < wy + 0.25) { tmp.copy(pl.right).multiplyScalar(sx * 1.2).addScaledVector(pl.fwd, -1.5); log.spray.emit(new T.Vector3(bw.x, wy + 0.05, bw.z), tmp, 3, 0.8, 2.2, 0.8); }
         if (drag && Math.random() < 0.6) { tmp.copy(pl.right).multiplyScalar(sx * 0.8).addScaledVector(pl.fwd, -0.6); log.spray.emit(new T.Vector3(bw.x, wy + 0.05, bw.z), tmp, 1, 0.5, 1.4, 0.6); }
       }
@@ -327,6 +349,20 @@ const PARKFLUME_LOG = (function () {
       if (last.k === 'splash') { const n = last.big ? 160 : 60; for (const sx of [-1, 1]) { tmp.copy(pl.right).multiplyScalar(sx * (last.big ? 5 : 3)).addScaledVector(pl.fwd, 1); log.spray.emit(bow, tmp, n / 2, 3, last.big ? 9 : 5, last.big ? 2.4 : 1.4); } }
       if (last.k === 'soak') { tmp.set(0, 0, 0); log.spray.emit(wl(new T.Vector3(0, 0.6, 0)), tmp, 70, 4, 4.5, 1.6); }
       if (last.k === 'bump' || last.k === 'bonk') { tmp.copy(pl.right).multiplyScalar((last.side || 0) * 2); log.spray.emit(bow, tmp, 16, 2, 2, 0.9); }
+    }
+    // rings on the water from what just happened: a pair's surge, a splashdown, a Soak, a bump, a duck plucked out
+    if (Wv) {
+      if (log.fxT == null || log.fxT > st.t) log.fxT = st.t;
+      const since = log.fxT; log.fxT = st.t;
+      for (const e of st.fx) {
+        if (e.t <= since) continue;
+        if (e.k === 'pair') Wv.ring(bow.x, bow.z, 0.05);
+        else if (e.k === 'splash') { Wv.ring(bow.x, bow.z, e.big ? 0.5 : 0.24); Wv.ring(stern.x, stern.z, e.big ? 0.3 : 0.12); }
+        else if (e.k === 'soak') Wv.ring(pl.p.x, pl.p.z, 0.15);
+        else if (e.k === 'bump' || e.k === 'bonk') Wv.ring(bow.x, bow.z, 0.07);
+        else if (e.k === 'duck' && K.pf.dk && K.pf.dk.pos[e.i]) { const d = K.pf.dk.pos[e.i].p; Wv.ring(d.x, d.z, e.big ? 0.07 : 0.035); }
+        else if (e.k === 'sink') Wv.ring(pl.p.x, pl.p.z, 0.3);
+      }
     }
     const spd = st.vs || 0;
     if (st.phase === 'ride' && spd > 1.8 && Math.random() < 0.3 + st.speed * 0.6) for (const sx of [-1, 1]) { tmp.copy(pl.right).multiplyScalar(sx * (0.8 + st.speed)).addScaledVector(pl.fwd, spd * 0.3); log.spray.emit(new T.Vector3(bow.x + pl.right.x * sx * 0.4, pl.p.y + 0.05, bow.z + pl.right.z * sx * 0.4), tmp, 1, 0.4, 1 + st.speed * 1.5, 0.7); }
@@ -351,8 +387,10 @@ const PARKFLUME_LOG = (function () {
       const spread = sx * age * (0.9 + hst.sp * 0.35), wdt = sI === 2 ? 0.45 + age * 0.5 : 0.18 + age * 0.22;
       const c = tmp.copy(base).addScaledVector(hst.out, spread);
       const o = sI === 2 ? hst.out : hst.out;
-      P3[a * 3] = c.x - o.x * wdt; P3[a * 3 + 1] = hst.y; P3[a * 3 + 2] = c.z - o.z * wdt;
-      P3[a * 3 + 3] = c.x + o.x * wdt; P3[a * 3 + 4] = hst.y; P3[a * 3 + 5] = c.z + o.z * wdt;
+      // (the foam lies on the water as it heaves)
+      const wy2 = hst.y + (Wv && age < 4.5 ? Wv.h(c.x, c.z) : 0);
+      P3[a * 3] = c.x - o.x * wdt; P3[a * 3 + 1] = wy2; P3[a * 3 + 2] = c.z - o.z * wdt;
+      P3[a * 3 + 3] = c.x + o.x * wdt; P3[a * 3 + 4] = wy2; P3[a * 3 + 5] = c.z + o.z * wdt;
       const al = hst.on ? Math.max(0, 1 - age / (sI === 2 ? 3.2 : 4.2)) * Math.min(1, hst.sp / 2.5) * (i === 0 ? 0 : 1) : 0;
       A[a] = A[a + 1] = al;
     }

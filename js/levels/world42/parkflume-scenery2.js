@@ -960,7 +960,7 @@ const PARKFLUME_SCENE2 = (function () {
     }
     for (const c of S.crocs) {
       const q = PARKFLUME.obsAt(c.o, T0), u = q.u, f = R.at(q.s), p = R.local(q.s, q.x, 0, f);
-      c.g.position.set(p[0], p[1] - 0.12 + Math.sin(t * 1.3 + c.o.s) * 0.03, p[2]);
+      c.g.position.set(p[0], p[1] - 0.12 + W.hAt(q.s, p[0], p[2]), p[2]);
       const snap = u > 4.2 ? Math.sin((u - 4.2) / 0.8 * Math.PI) : 0;
       c.g.rotation.y = f.yaw + Math.PI + c.o.dir * snap * 0.7;
       c.jaw.rotation.x = -(snap * 0.7 + Math.max(0, Math.sin(t * 0.8 + c.o.s)) * 0.08);
@@ -978,7 +978,8 @@ const PARKFLUME_SCENE2 = (function () {
       else { const y = wp[1] + 5.6 * (1 - fall * fall); m.nut.visible = u < 1.6; m.nut.position.set(wp[0], Math.max(wp[1] - 0.15, y), wp[2]); }
       m.nut.rotation.x += dt * 8;
       const warn = u < 1.5 ? sm(0, 0.3, u) : u < 1.85 ? 1 - sm(1.5, 1.85, u) : 0;
-      m.ring.position.set(wp[0], wp[1] + 0.04, wp[2]); m.ring.material.opacity = warn * (0.6 + 0.4 * Math.sin(t * 14)); m.ring.scale.setScalar(1.2 - Math.min(1, u / 1.5) * 0.35);
+      m.ring.position.set(wp[0], wp[1] + 0.05 + W.hAt(m.o.s, wp[0], wp[2]), wp[2]); m.ring.material.opacity = warn * (0.6 + 0.4 * Math.sin(t * 14)); m.ring.scale.setScalar(1.2 - Math.min(1, u / 1.5) * 0.35);
+      if (u > 1.5 && u < 1.5 + dt * 1.5 && Math.abs(m.o.s - st.s) < 40) W.ring(wp[0], wp[2], 0.14); // (the coconut's ring on the water)
       if (u > 1.5 && u < 1.5 + dt * 1.5 && sc.log && sc.log.spray) sc.log.spray.emit(new T.Vector3(wp[0], wp[1], wp[2]), new T.Vector3(0, 0, 0), 30, 3, 3.5, 1.0);
     }
     for (const w of S.whirls) { w.disc.rotation.y -= dt * 0.9; w.disc2.rotation.y -= dt * 1.7; }
@@ -991,7 +992,7 @@ const PARKFLUME_SCENE2 = (function () {
     }
     S.curtain.tex.offset.y += dt * 1.6;
     // the mill
-    for (const fl of S.flogs) { const q = PARKFLUME.obsAt(fl.o, T0), f = R.at(q.s), p = R.local(q.s, q.x, 0, f); fl.g.position.set(p[0], p[1] + Math.sin(t * 1.4 + fl.o.s) * 0.04 - 0.1, p[2]); fl.g.rotation.set(0, f.yaw + 1.2 + Math.sin(T0 * 0.2 + fl.o.x) * 0.5, 0, 'YXZ'); fl.g.children[0].rotation.z = 0; if (fl.rb) { fl.rb.rotation.z = Math.sin(t * 5 + fl.o.s) * 0.15; fl.rb.userData.key.rotation.z += dt * 4; fl.rb.position.x = Math.sin(t * 2.5 + fl.o.s) * 0.5; } }
+    for (const fl of S.flogs) { const q = PARKFLUME.obsAt(fl.o, T0), f = R.at(q.s), p = R.local(q.s, q.x, 0, f); fl.g.position.set(p[0], p[1] + W.hAt(q.s, p[0], p[2]) - 0.1, p[2]); fl.g.rotation.set(0, f.yaw + 1.2 + Math.sin(T0 * 0.2 + fl.o.x) * 0.5, 0, 'YXZ'); fl.g.children[0].rotation.z = 0; if (fl.rb) { fl.rb.rotation.z = Math.sin(t * 5 + fl.o.s) * 0.15; fl.rb.userData.key.rotation.z += dt * 4; fl.rb.position.x = Math.sin(t * 2.5 + fl.o.s) * 0.5; } }
     if (S.smoke) { for (const p of S.smoke.puffs) { p.t += dt; const u = (p.t % 6) / 6; p.m.position.set(S.smoke.x + u * 4 + Math.sin(p.t) * 0.3, S.smoke.y + u * 8, S.smoke.z - u * 2); p.m.scale.setScalar(1.5 + u * 6); p.m.material.opacity = 0.35 * (1 - u) * sm(0, 0.1, u); } }
     S.oldWheel.rotation.x -= dt * 0.25;
     for (const c of S.conv) c.logs.forEach((lg, i) => { const len = c.s1 - c.s0, s = c.s0 + ((i / c.logs.length * len + t * 0.8) % len), f = R.at(s), p = R.local(s, c.side * (PR.w(s) + 1.9), 1.35, f); lg.position.set(...p); lg.rotation.set(0, f.yaw, 0); });
@@ -1029,7 +1030,7 @@ const PARKFLUME_SCENE2 = (function () {
       const u = cu(fo.o, T0), [per, on] = fo.o.cyc, h = u < on ? 7 * sm(0, 0.15, u) * (1 - sm(on - 0.1, on + 0.2, u)) : (u > per - 0.6 ? 0.4 * sm(per - 0.6, per, u) : 0);
       fo.col.scale.set(1, Math.max(0.01, h), 1); fo.cap.position.y = h; fo.cap.visible = h > 0.2; fo.glow.material.color.copy(hot('#ffffff', h > 0.2 ? 0.3 : 0)); fo.glow.position.y = fo.p[1] + h * 0.6;
     }
-    for (const b of S.barges) { b.g.position.y = wyAt(b.o.s) + Math.sin(t * 1.2 + b.o.s) * 0.05; b.g.rotation.z = Math.sin(t * 0.9 + b.o.s) * 0.04; b.rb.userData.head.rotation.y = Math.sin(t + b.o.s) * 0.6; if (st.s > A.splash - 10 && t > b.next && sc.fw) { b.next = t + 3 + rnd() * 4; const p = b.g.position; sc.fw.burst(p.x + (rnd() - 0.5) * 6, p.y + 22 + rnd() * 10, p.z + (rnd() - 0.5) * 6, ['#ff5a7a', '#ffd24a', '#7ae8ff', '#9aff8a', '#ff9ad6'][Math.floor(rnd() * 5)]); } }
+    for (const b of S.barges) { b.g.position.y = wyAt(b.o.s) + W.hAt(b.o.s, b.g.position.x, b.g.position.z) * 0.7; b.g.rotation.z = (W.hAt(b.o.s, b.g.position.x + 1, b.g.position.z) - W.hAt(b.o.s, b.g.position.x - 1, b.g.position.z)) * 0.35; b.rb.userData.head.rotation.y = Math.sin(t + b.o.s) * 0.6; if (st.s > A.splash - 10 && t > b.next && sc.fw) { b.next = t + 3 + rnd() * 4; const p = b.g.position; sc.fw.burst(p.x + (rnd() - 0.5) * 6, p.y + 22 + rnd() * 10, p.z + (rnd() - 0.5) * 6, ['#ff5a7a', '#ffd24a', '#7ae8ff', '#9aff8a', '#ff9ad6'][Math.floor(rnd() * 5)]); } }
     {
       const K2 = S.skier, q = PARKFLUME.obsAt(K2.o, T0), f = R.at(q.s), p = R.local(q.s, q.x, 0, f), dx = Math.cos(T0 * 0.7) * 0.7 * 5.0;
       K2.g.position.set(p[0], p[1], p[2]); K2.g.rotation.y = f.yaw + Math.PI / 2 * Math.sign(dx || 1) + Math.PI;
