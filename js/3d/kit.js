@@ -8,7 +8,8 @@
    Look:
      K3D.toon(color, { map, side, transparent, opacity, emissive, flat })    toon material, 3 flat steps
      K3D.mesh(geo, mat, { ink: '#2b2130' | false, inkW: 1, cast, receive })  a mesh with an ink outline
-     K3D.ink(mesh, color, w)                       adds an inverted-hull outline (smoothed normals) to any mesh
+     K3D.ink(mesh, color, w)                       adds an inverted-hull outline (smoothed normals) to any mesh (an
+                                                   InstancedMesh gets an outline on every instance)
      K3D.paint(key, w, h, c => ..., { repeat })   a texture painted by 2D canvas code, cached by key
      K3D.geo(key, () => geometry)                  cached geometry (shared, freed with the scene)
    Colours: sRGB output and no tone mapping. Lights add up to exactly 1 on a lit face (amb 0.42 + sun 0.58), so a
@@ -19,13 +20,16 @@
    Screen spots: K3D.toScreen(x, y, z) -> { x, y, z } in the 2D canvas's 960x540 coordinates (z > 1 behind the camera).
    The photo pass: the frame is drawn into a multisampled target and then through one pass that blurs by depth (the
    desk and the room beyond the book go softly out of focus, like a photo of a model), with a faint vignette.
-   Toggles (the look-proof page uses them): K3D.opt = { ink, shadows, seeThrough, dof }.
+   Bloom (World 42 on, off unless a scene asks): K.bloom = { strength, threshold, radius } makes anything brighter than
+   `threshold` (a colour over 1, e.g. K3D.flat(K3D.hot('#ffd890', 3)) for a bulb) glow softly, in the same photo pass.
+   K.bloom = null (the default) draws exactly as before.
+   Toggles (the look-proof page uses them): K3D.opt = { ink, shadows, seeThrough, dof, bloom }.
 */
 'use strict';
 
 (function () {
   const T = K3D.T;
-  const opt = K3D.opt = { ink: true, shadows: true, seeThrough: true, dof: true };
+  const opt = K3D.opt = { ink: true, shadows: true, seeThrough: true, dof: true, bloom: true };
   let R = null, cur = null; // the renderer, the current scene
   const owned = new Set(); // geometries, materials, textures the current scene owns
   const own = x => { if (x) owned.add(x); return x; };
@@ -132,8 +136,12 @@
       uniforms: { uPx: inkU.uPx, uScale: inkU.uScale, uW: { value: w }, uCol: { value: new T.Color(color) } },
       vertexShader: `attribute vec3 inkNormal; uniform float uPx, uScale, uW;
         void main() {
-          vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          vec3 n = normalize(normalMatrix * inkNormal);
+          vec4 p = vec4(position, 1.0); vec3 nn = inkNormal;
+          #ifdef USE_INSTANCING
+            p = instanceMatrix * p; nn = mat3(instanceMatrix) * nn;
+          #endif
+          vec4 mv = modelViewMatrix * p;
+          vec3 n = normalize(normalMatrix * nn);
           mv.xyz += n * uW * uScale * uPx * max(0.5, -mv.z);
           gl_Position = projectionMatrix * mv;
         }`,
@@ -145,7 +153,9 @@
   }
   K3D.ink = function (mesh, color = '#2b2130', w = 1) {
     smoothNormals(mesh.geometry);
-    const o = new T.Mesh(mesh.geometry, inkMat(color, w));
+    // an instanced mesh gets an instanced outline that shares its instances (and follows its count when drawn)
+    const o = mesh.isInstancedMesh ? new T.InstancedMesh(mesh.geometry, inkMat(color, w), mesh.instanceMatrix.count) : new T.Mesh(mesh.geometry, inkMat(color, w));
+    if (mesh.isInstancedMesh) { o.instanceMatrix = mesh.instanceMatrix; o.frustumCulled = false; o.onBeforeRender = () => { o.count = mesh.count; }; }
     o.castShadow = false; o.receiveShadow = false; o.userData.ink = true; o.renderOrder = mesh.renderOrder;
     o.raycast = () => {};
     mesh.add(o);
@@ -232,9 +242,9 @@
       if (this.mat) return;
       this.mat = new T.ShaderMaterial({
         uniforms: { tColor: { value: null }, tDepth: { value: null }, texel: { value: new T.Vector2() }, near: { value: 0.3 }, far: { value: 400 },
-          focus: { value: 20 }, range: { value: 5 }, maxR: { value: 6 }, vig: { value: 0.12 } },
+          focus: { value: 20 }, range: { value: 5 }, maxR: { value: 6 }, vig: { value: 0.12 }, tBloom: { value: null }, bloomK: { value: 0 } },
         vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-        fragmentShader: `varying vec2 vUv; uniform sampler2D tColor, tDepth; uniform vec2 texel; uniform float near, far, focus, range, maxR, vig;
+        fragmentShader: `varying vec2 vUv; uniform sampler2D tColor, tDepth, tBloom; uniform vec2 texel; uniform float near, far, focus, range, maxR, vig, bloomK;
           float lin(float z) { float n = z * 2.0 - 1.0; return 2.0 * near * far / (far + near - n * (far - near)); }
           float coc(float d) {
             float fa = clamp((d - focus - range) / (focus * 1.2), 0.0, 1.0);
@@ -256,6 +266,7 @@
               }
               col = acc / wsum;
             }
+            if (bloomK > 0.0) col += texture2D(tBloom, vUv).rgb * bloomK;
             vec2 q = vUv - 0.5; col *= 1.0 - vig * smoothstep(0.25, 0.75, length(q * vec2(1.0, 0.8)) * 1.25);
             gl_FragColor = vec4(col, 1.0);
             #include <colorspace_fragment>
@@ -272,6 +283,73 @@
     },
   };
   K3D.post = post;
+
+  /* ---------- bloom (opt-in: K.bloom = { strength, threshold, radius }) ----------
+     A bright pass at half size, then a chain of smaller pictures blurred down and added back up (soft, wide, cheap:
+     about ten small full-screen passes), added in the photo pass. Only colours over the threshold glow. */
+  const bloom = {
+    rts: [], mats: null, w: 0, h: 0, black: null,
+    size(w, h) {
+      if (this.w === w && this.h === h && this.rts.length) return;
+      this.w = w; this.h = h;
+      for (const r of this.rts) r.dispose();
+      this.rts = [];
+      let bw = Math.max(1, w >> 1), bh = Math.max(1, h >> 1);
+      for (let i = 0; i < 5; i++) { this.rts.push(new T.WebGLRenderTarget(bw, bh, { type: T.HalfFloatType, depthBuffer: false })); bw = Math.max(1, bw >> 1); bh = Math.max(1, bh >> 1); }
+    },
+    init() {
+      if (this.mats) return;
+      const vs = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+      const mk = (fs, u) => new T.ShaderMaterial({ uniforms: u, vertexShader: vs, fragmentShader: fs, depthTest: false, depthWrite: false });
+      this.mats = {
+        // the bright pass, with a 4-tap average so a one-pixel bulb still counts
+        bright: mk(`varying vec2 vUv; uniform sampler2D tSrc; uniform vec2 texel; uniform float thr;
+          vec3 b(vec2 o) { vec3 c = texture2D(tSrc, vUv + o * texel).rgb; float m = max(c.r, max(c.g, c.b)); return c * clamp((m - thr) / max(m, 1e-4), 0.0, 1.0) ; }
+          void main() { vec3 c = (b(vec2(-0.5, -0.5)) + b(vec2(0.5, -0.5)) + b(vec2(-0.5, 0.5)) + b(vec2(0.5, 0.5))) * 0.25; gl_FragColor = vec4(min(c, vec3(24.0)), 1.0); }`,
+          { tSrc: { value: null }, texel: { value: new T.Vector2() }, thr: { value: 1 } }),
+        // down: a 13-tap filter (no shimmer as things move)
+        down: mk(`varying vec2 vUv; uniform sampler2D tSrc; uniform vec2 texel;
+          void main() { vec2 t = texel;
+            vec3 c = texture2D(tSrc, vUv).rgb * 0.125;
+            c += (texture2D(tSrc, vUv + t * vec2(-1., -1.)).rgb + texture2D(tSrc, vUv + t * vec2(1., -1.)).rgb + texture2D(tSrc, vUv + t * vec2(-1., 1.)).rgb + texture2D(tSrc, vUv + t * vec2(1., 1.)).rgb) * 0.125;
+            c += (texture2D(tSrc, vUv + t * vec2(-2., 0.)).rgb + texture2D(tSrc, vUv + t * vec2(2., 0.)).rgb + texture2D(tSrc, vUv + t * vec2(0., -2.)).rgb + texture2D(tSrc, vUv + t * vec2(0., 2.)).rgb) * 0.0625;
+            c += (texture2D(tSrc, vUv + t * vec2(-2., -2.)).rgb + texture2D(tSrc, vUv + t * vec2(2., -2.)).rgb + texture2D(tSrc, vUv + t * vec2(-2., 2.)).rgb + texture2D(tSrc, vUv + t * vec2(2., 2.)).rgb) * 0.03125;
+            gl_FragColor = vec4(c, 1.0); }`, { tSrc: { value: null }, texel: { value: new T.Vector2() } }),
+        // up: a tent filter of the smaller picture added onto the next bigger one
+        up: mk(`varying vec2 vUv; uniform sampler2D tSrc, tBig; uniform vec2 texel; uniform float rad;
+          void main() { vec2 t = texel * rad;
+            vec3 c = texture2D(tSrc, vUv).rgb * 4.0;
+            c += (texture2D(tSrc, vUv + vec2(t.x, 0.)).rgb + texture2D(tSrc, vUv - vec2(t.x, 0.)).rgb + texture2D(tSrc, vUv + vec2(0., t.y)).rgb + texture2D(tSrc, vUv - vec2(0., t.y)).rgb) * 2.0;
+            c += texture2D(tSrc, vUv + t).rgb + texture2D(tSrc, vUv - t).rgb + texture2D(tSrc, vUv + vec2(t.x, -t.y)).rgb + texture2D(tSrc, vUv + vec2(-t.x, t.y)).rgb;
+            gl_FragColor = vec4(c / 16.0 + texture2D(tBig, vUv).rgb, 1.0); }`, { tSrc: { value: null }, tBig: { value: null }, texel: { value: new T.Vector2() }, rad: { value: 1 } }),
+      };
+      this.quad = new T.Mesh(new T.PlaneGeometry(2, 2), this.mats.bright); this.quad.frustumCulled = false;
+      this.qScene = new T.Scene(); this.qScene.add(this.quad);
+      this.black = new T.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); this.black.needsUpdate = true;
+    },
+    pass(mat, to) { this.quad.material = mat; R.setRenderTarget(to); R.render(this.qScene, post.qCam); },
+    // runs after the scene is in post.rt; returns the bloom picture (the biggest of the chain)
+    run(src, o) {
+      this.init(); this.size(post.w, post.h);
+      const M = this.mats, rts = this.rts;
+      M.bright.uniforms.tSrc.value = src; M.bright.uniforms.texel.value.set(1 / post.w, 1 / post.h); M.bright.uniforms.thr.value = o.threshold != null ? o.threshold : 1;
+      this.pass(M.bright, rts[0]);
+      for (let i = 1; i < rts.length; i++) { M.down.uniforms.tSrc.value = rts[i - 1].texture; M.down.uniforms.texel.value.set(1 / rts[i - 1].width, 1 / rts[i - 1].height); this.pass(M.down, rts[i]); }
+      // (adding up in place: each level's picture is read as tBig and written to a spare of the same size)
+      if (!this.spare || this.spare.length !== rts.length) { (this.spare || []).forEach(r => r.dispose()); this.spare = rts.map(r => new T.WebGLRenderTarget(r.width, r.height, { type: T.HalfFloatType, depthBuffer: false })); }
+      for (let i = 0; i < rts.length; i++) if (this.spare[i].width !== rts[i].width || this.spare[i].height !== rts[i].height) this.spare[i].setSize(rts[i].width, rts[i].height);
+      let small = rts[rts.length - 1].texture;
+      for (let i = rts.length - 2; i >= 0; i--) {
+        M.up.uniforms.tSrc.value = small; M.up.uniforms.tBig.value = rts[i].texture; M.up.uniforms.rad.value = o.radius || 1;
+        M.up.uniforms.texel.value.set(1 / rts[i + 1].width, 1 / rts[i + 1].height);
+        this.pass(M.up, this.spare[i]); small = this.spare[i].texture;
+      }
+      return small;
+    },
+  };
+  K3D.bloomPass = bloom;
+  // a colour brighter than white, for things that glow (bulbs, neon): K3D.flat(K3D.hot('#ffd890', 3))
+  K3D.hot = (hex, k) => new T.Color(hex).multiplyScalar(k);
 
   /* ---------- drawing ---------- */
   K3D.draw = function (dt) {
@@ -293,6 +371,9 @@
       u.focus.value = camera.position.distanceTo(cur.focus); u.range.value = cur.focusRange || u.focus.value * 0.28;
       u.maxR.value = (cur.maxBlur || 7) * cv.height / 1080;
       R.setRenderTarget(post.rt); R.render(scene, camera);
+      const bl = cur.bloom && opt.bloom ? cur.bloom : null;
+      u.bloomK.value = bl ? (bl.strength != null ? bl.strength : 0.8) : 0;
+      u.tBloom.value = bl ? bloom.run(post.rt.texture, bl) : (bloom.init(), bloom.black);
       R.setRenderTarget(null); R.render(post.qScene, post.qCam);
     } else { R.setRenderTarget(null); R.render(scene, camera); }
   };

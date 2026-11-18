@@ -15,6 +15,9 @@
        targets spread, from `min` to `max` distance. Change heading with rig.heading = ... (it turns smoothly).
    K3D.cams.rail({ path: [{ pos, at }, ...], fov })      travels a path by progress: rig.progress = 0..1
    K3D.cams.chase({ dist, height, fov })                 behind the players, looking along rig.dir ({ x, z })
+   K3D.cams.ride({ fov, k })                             a rail ride: rig.update(K, dt, null, shot) with shot =
+       { eye, at, up, fov } (plain arrays, e.g. RAIL3.shot in js/3d/rail.js); eases eye, aim and up (the view can roll and
+       go upside down in a coaster's loop)
    rig.snap() jumps straight to the wanted shot on the next update (a new page, a restart).
 */
 'use strict';
@@ -83,6 +86,23 @@
           const c = center(targets), d = v(this.dir.x, 0, this.dir.z).normalize();
           const pos = c.clone().addScaledVector(d, -this.dist).add(v(0, this.height, 0));
           aim(K, pos, c.clone().addScaledVector(d, 3).add(v(0, 0.6, 0)), this.fov, dt, this);
+        }, snap() { this._snap = true; } };
+      return rig;
+    },
+    ride(o = {}) {
+      const rig = { kind: 'ride', fov: o.fov || 50, k: o.k || 6, kUp: o.kUp || 5, _e: null, _a: null, _u: null,
+        update(K, dt, targets, sh) {
+          if (!sh) return;
+          const e = v(...sh.eye), a = v(...sh.at), u = v(...sh.up).normalize(), cam = K.camera;
+          if (this._snap || !this._e) { this._e = e; this._a = a; this._u = u; this._snap = false; }
+          else { ease(this._e, e, dt, this.k); ease(this._a, a, dt, this.k * 1.4); ease(this._u, u, dt, this.kUp); this._u.normalize(); }
+          cam.position.copy(this._e); cam.up.copy(this._u); cam.lookAt(this._a);
+          const fov = sh.fov || this.fov;
+          if (Math.abs(cam.fov - fov) > 0.01) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); if (this._snapF) cam.fov = fov; cam.updateProjectionMatrix(); }
+          K.focus.copy(this._a);
+          const d = this._a.clone().sub(this._e);
+          this.viewHeading = Math.atan2(-d.x, -d.z);
+          K.sunAt(this._a, this.shadowReach || 22);
         }, snap() { this._snap = true; } };
       return rig;
     },
