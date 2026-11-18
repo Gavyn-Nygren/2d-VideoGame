@@ -257,8 +257,13 @@ const PA_ROUTE = (() => {
     R.lines.push({ z, hd: 0.6, gaps, kind: 'fold', x0, x1 });
   };
   fold(-494, -20, 6.5); fold(-509, -6.5, 20); fold(-524, -20, 6.5); fold(-539, -6.5, 20);
-  R.walker = { start: { x: 0, z: -578 }, stop12: -561, stop3: -569, spots: [[-6, -572], [6, -575], [0, -578], [-8, -576], [8, -571]], hatch: { x: 0, z: -585, r: 2.2 } };
+  // the bunker on the hilltop, behind the hatch (a dome: walk round it, not into it)
+  R.bunker = { x: 0, z: -597, r: 5.2 };
+  R.solids.push({ kind: 'bunker', x: 0, z: -597, w: 9, d: 9.6, h: 5, rot: 0 });
+  R.walker = { start: { x: 0, z: -574 }, stop12: -559, stop3: -572, spots: [[-6, -568], [6, -571], [0, -574], [-8, -572], [8, -567]], hatch: { x: 0, z: -585, r: 2.2 } };
   R.lines.sort((a, b) => b.z - a.z);
+  // the scenery lays out more words the same way, out past the sides of the path
+  R.font = { FONT, TALL, LS, THICK, glyphBoxes: (ch, cx, cz, s) => { const n = R.letters.length, L = glyph(ch, cx, cz, s, 0, ''); R.letters.length = n; return L.boxes; } };
 
   // the blockade walls are solids too (the rules take them away when the blockade is beaten)
   R.events.forEach((ev, i) => {

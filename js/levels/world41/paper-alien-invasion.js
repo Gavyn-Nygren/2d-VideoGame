@@ -796,7 +796,7 @@ function paWalkerStart(st) {
   const ph = st.saved && st.saved.walkerPhase || 1;
   if (ph >= 4) { paHatchOpen(st); return; }
   const S = PA_ROUTE.walker.start, kept = st.saved && st.saved.walkerRub || 0;   // rubbed-off crayon stays rubbed off after a wipe-out
-  st.walker = { x: S.x, z: S.z, face: 0, phase: ph, rub: kept, total: (ph - 1) * PA_WALK.rubPhase + kept, state: 'stride', t: 0, spot: 0,
+  st.walker = { x: S.x, z: S.z, face: 0, phase: ph, rub: kept, total: (ph - 1) * PA_WALK.rubPhase + kept, state: ph >= 3 ? 'toHatch' : 'stride', t: 0, spot: 0,
     stampT: 2.5, stamp: null, stripT: 4, lineT: 5, line: null, hitT: [-9, -9], edgeBy: -1, edgeT: 0, relaxT: 0, rearT: 0, foldT: 0, carrierT: 3 };
   paFx(st, 'walker', { phase: ph });
   Sfx.play('popaliensWalkerStep');
@@ -963,6 +963,19 @@ function paDrawHUD() {
   ctx.fillStyle = '#5a4a3a'; ctx.fillRect(lx + lw + 6, ly - 1, 6, 4);
   // each player's corner: gun charge, grenades, flattened sticker with the peel ring
   for (const k of [0, 1]) paDrawCorner(st, k);
+  // the Scribble Walker: how much of it is rubbed out (three layers)
+  if (st.walker && st.walker.state !== 'gone') {
+    const Wk = st.walker, all = PA_WALK.rubPhase * 2 + PA_WALK.rubLast, f = Wk.state === 'fold' ? 1 : clamp(Wk.total / all, 0, 1);
+    const bw = 280, bx = W / 2 - bw / 2, by = H - 34;
+    ctx.save();
+    ctx.fillStyle = 'rgba(30,24,40,0.7)'; rr(bx - 6, by - 6, bw + 12, 30, 10); ctx.fill();
+    ctx.fillStyle = '#6a3fa0'; rr(bx, by + 8, bw, 10, 5); ctx.fill();
+    ctx.fillStyle = '#fbf3de'; rr(bx, by + 8, Math.max(10, bw * f), 10, 5); ctx.fill();
+    ctx.fillStyle = 'rgba(30,24,40,0.9)'; for (const k of [PA_WALK.rubPhase, PA_WALK.rubPhase * 2]) ctx.fillRect(bx + bw * k / all - 1, by + 7, 2, 12);
+    ctx.font = '700 11px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff8e8';
+    ctx.fillText(Wk.state === 'crouch' ? 'Scribble Walker: hiding! a grenade under it' : Wk.state === 'rear' ? 'Scribble Walker: shoot its soft middle!' : 'Scribble Walker: cross your beams on it', W / 2, by + 4);
+    ctx.restore();
+  }
   // banners and tips
   if (st.banner) paBanner(st.banner.text, 92, st.banner.gold, st.banner.t, st.banner.life);
   if (st.tip && !(st.banner)) paBanner(st.tip.text, 92, false, st.tip.t, st.tip.life);
@@ -1037,6 +1050,18 @@ function paDrawTop() {
       ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(s.x, s.y - 12, 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - h.reload / (h.reloadDur || 1))); ctx.stroke();
     }
   });
+  // the bunker hatch: a ring round it that fills while both stand on it holding Reload
+  if (st.hatch && st.phase === 'march') {
+    const s = K3D.toScreen(st.hatch.x, 0.1, st.hatch.z), f = clamp(st.hatch.fill, 0, 1);
+    if (s.z < 1) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 9; ctx.beginPath(); ctx.arc(s.x, s.y - 46, 20, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = C.gold; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(s.x, s.y - 46, 20, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * f); ctx.stroke();
+      ctx.font = '700 12px "Atkinson Hyperlegible", system-ui, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillText('both: hold Reload', s.x + 1, s.y - 12 + 1); ctx.fillStyle = '#fff8e8'; ctx.fillText('both: hold Reload', s.x, s.y - 12);
+      ctx.restore();
+    }
+  }
   if (st.atLimit > 0) {
     // a small arrow at each hero pointing to the partner
     G.players.forEach((p, k) => {
@@ -1227,7 +1252,7 @@ defineOutfit('popaliens', {
 });
 
 // the 3D files for this level, loaded with the kit when a 3D level first opens
-K3D.files.push('js/levels/world41/popaliens-outfits.js', 'js/levels/world41/popaliens-aliens.js', 'js/levels/world41/popaliens-room.js', 'js/levels/world41/popaliens-life.js', 'js/levels/world41/popaliens-scene.js');
+K3D.files.push('js/levels/world41/popaliens-outfits.js', 'js/levels/world41/popaliens-aliens.js', 'js/levels/world41/popaliens-room.js', 'js/levels/world41/popaliens-life.js', 'js/levels/world41/popaliens-lands.js', 'js/levels/world41/popaliens-scene.js');
 
 const POPALIENS_DEF = {
   name: 'Paper Alien Invasion', world: 40, kind: 'team', mode: 'popaliens', ownStep: true, ownHUD: true, noFalls: true,

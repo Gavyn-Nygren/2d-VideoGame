@@ -349,8 +349,9 @@ gl_Position = projectionMatrix * mvPosition;`;
       return g;
     });
   }
-  function meadow(K) {
-    const r = P.rng(4242), solids = PA_ROUTE.solids;
+  // o (the later stretches): { z0, z1, n, seed, ok(x, z, big) -> may it grow here, zone(x, z) -> 'path' | 'side' | 'far' }
+  function meadow(K, o = {}) {
+    const r = P.rng(o.seed || 4242), solids = PA_ROUTE.solids, N = o.n || 6400, z0 = o.z0 != null ? o.z0 : 20, z1 = o.z1 != null ? o.z1 : -172;
     const list = [];
     const blocked = (x, z, pad) => solids.some(s => Math.abs(x - s.x) < s.w / 2 + pad && Math.abs(z - s.z) < s.d / 2 + pad) || Math.abs(x + 27) < 2 && Math.abs(z + 88) < 9;
     const pick = (zone) => { const ks = DOODLE.filter(k => zone === 'path' ? KIND[k][2] === 'path' : zone === 'side' ? KIND[k][2] !== 'far' && KIND[k][2] !== 'bank' : true); return ks[Math.floor(r() * ks.length)]; };
@@ -360,9 +361,10 @@ gl_Position = projectionMatrix * mvPosition;`;
     };
     // grown in clumps (a few of a kind together), like a doodled garden
     let tries = 0;
-    while (list.length < 6400 && tries++ < 40000) {
-      const cx = -42 + r() * 72, cz = 20 - r() * 192, ax = Math.abs(cx);
-      const zone = ax < 10.5 ? 'path' : ax < 17 ? 'side' : 'far';
+    while (list.length < N && tries++ < N * 7) {
+      const cx = -42 + r() * 72, cz = z0 - r() * (z0 - z1), ax = Math.abs(cx);
+      const zone = o.zone ? o.zone(cx, cz) : ax < 10.5 ? 'path' : ax < 17 ? 'side' : 'far';
+      if (!zone) continue;
       // the path stays mostly open (short things, thinly), the sides grow thick
       if (zone === 'path' && r() < 0.55) continue;
       const ds = L.nearStream(cx, cz);
@@ -371,15 +373,17 @@ gl_Position = projectionMatrix * mvPosition;`;
       const n = kind === 'house' || kind === 'lolly' || kind === 'pine' ? 1 : zone === 'path' ? 1 + Math.floor(r() * 3) : 3 + Math.floor(r() * 6);
       for (let k = 0; k < n; k++) {
         const x = cx + (r() - 0.5) * (n > 1 ? 2.2 : 0), z = cz + (r() - 0.5) * (n > 1 ? 2.2 : 0);
-        if (blocked(x, z, kind === 'house' || kind === 'lolly' || kind === 'pine' ? 1.6 : 0.35)) continue;
+        const big = kind === 'house' || kind === 'lolly' || kind === 'pine';
+        if (blocked(x, z, big ? 1.6 : 0.35)) continue;
+        if (o.ok && !o.ok(x, z, big)) continue;
         if (Math.abs(x) > 29.5) continue;
         if (L.nearStream(x, z) < 1.7) continue;
         // in the middle of the path only small things, a little smaller still
-        add(Math.abs(x) < 10.5 && KIND[kind][2] !== 'path' ? 'grass' : kind, x, z, Math.abs(x) < 6 ? 0.8 : 1);
+        add((o.zone ? zone === 'path' : Math.abs(x) < 10.5) && KIND[kind][2] !== 'path' ? 'grass' : kind, x, z, Math.abs(x) < 6 ? 0.8 : 1);
       }
     }
     // fences along a few spots at the sides, houses in little villages
-    for (const [vx, vz] of [[-21, -22], [19, -96], [-23, -70], [24, -150], [-19, 4]]) {
+    for (const [vx, vz] of o.villages || (o.z0 != null ? [] : [[-21, -22], [19, -96], [-23, -70], [24, -150], [-19, 4]])) {
       for (let k = 0; k < 3; k++) { const x = vx + (k - 1) * 3.4 + (r() - 0.5), z = vz + (r() - 0.5) * 4; if (L.nearStream(x, z) > 2.4) add('house', x, z); }
       for (let k = 0; k < 4; k++) { const x = vx - 5 + k * 0.85 * 1.0, z = vz + 3.2; if (L.nearStream(x, z) > 2) list.push({ i: 15, x, z, h: 0.8, yaw: 0, flip: false }); }
     }
@@ -647,6 +651,7 @@ gl_Position = projectionMatrix * mvPosition;`;
   });
 
   /* ---------- build ---------- */
+  L.meadow = meadow;   // the later stretches grow their own patches (PALANDS)
   L.build = function (K, st) {
     const V = st.v3, Lf = V.life = {};
     Lf.meadow = meadow(K);
@@ -703,7 +708,12 @@ gl_Position = projectionMatrix * mvPosition;`;
     let k = 0;
     for (const p of F.p) {
       p.t += dt; p.cheer -= dt; p.duck -= dt; p.wander -= dt;
-      if (p.z > cz + 9 || p.z < cz - 70) { p.z = cz - 24 - Math.random() * 28; p.x = (Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 17); p.mode = 'idle'; }
+      if (p.z > cz + 9 || p.z < cz - 70) {
+        // a new spot ahead, on open paper (not in a letter, the ink or a fold of the hill)
+        for (let tr = 0; tr < 8; tr++) { p.z = cz - 24 - Math.random() * 28; p.x = (Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 17); if (PALANDS.free(p.x, p.z, 0.6)) break; }
+        p.hide = !PALANDS.free(p.x, p.z, 0.6); p.mode = 'idle';
+      }
+      if (p.hide) continue;
       let ad = 1e9, ax = 0, az = 0;
       for (const a of live) { const d = Math.hypot(a.x - p.x, a.z - p.z); if (d < ad) { ad = d; ax = a.x; az = a.z; } }
       let hd = 1e9; for (const h of pl) hd = Math.min(hd, Math.hypot(h.b3.x - p.x, h.b3.z - p.z));
@@ -719,7 +729,8 @@ gl_Position = projectionMatrix * mvPosition;`;
       }
       let pose = 'stand', hop = 0;
       if (p.mode === 'flee' || p.mode === 'walk') {
-        p.x = clamp(p.x + p.vx * dt, -27, 27); p.z += p.vz * dt;
+        const nx = clamp(p.x + p.vx * dt, -27, 27), nz = p.z + p.vz * dt;
+        if (PALANDS.free(nx, nz, 0.4)) { p.x = nx; p.z = nz; } else { p.vx = -p.vx; p.vz = -p.vz; }
         pose = Math.floor(p.t * (p.mode === 'flee' ? 9 : 4)) % 2 ? 'run1' : 'run2'; p.face = p.vx >= 0;
       } else if (p.mode === 'wave') { pose = Math.floor(p.t * 4) % 2 ? 'wave1' : 'wave2'; p.face = pl[0].b3.x > p.x; }
       else if (p.mode === 'cheer') { const j = Math.floor(p.t * 5) % 2; pose = j ? 'cheer' : 'jump'; hop = j ? 0 : 0.22; }
@@ -748,6 +759,7 @@ gl_Position = projectionMatrix * mvPosition;`;
     for (const g of Lf.glitP) {
       const z = g.z + Math.round((cz - g.z - 16) / 48) * 48;
       const tw = Math.pow(Math.max(0, Math.sin(t * g.rate + g.ph)), 6);
+      if (z < -318 && z > -482 && PA_ROUTE.inkAt(g.x + st.cx, z)) { gm.setMatrixAt(k, m4.makeScale(0, 0, 0)); k++; continue; }   // none on the wet ink
       pv.set(g.x + st.cx, 0.05, z); sv.setScalar(g.s * (0.25 + tw * 1.6)); m4.compose(pv, cam.quaternion, sv); gm.setMatrixAt(k, m4);
       col.copy(g.c).multiplyScalar(0.25 + tw); gm.setColorAt(k, col); k++;
     }

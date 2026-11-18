@@ -11,7 +11,7 @@
    The camera only moves forward (it follows st.cz, which the rules only ever move forward) and gently side to side.
    It looks forward and down at about 40 degrees, wide enough for both heroes and 20 units ahead; at a few wide moments
    (st.wideT) it eases back while play goes on.
-   Only Stretch 1, the Margin Fields, is dressed until Gavyn has seen the look (the spec's look gate).
+   Stretches 2-4 (Letter City, the Ink Crater, Bunker Hill), the Scribble Walker and the hatch are in popaliens-lands.js.
 */
 'use strict';
 
@@ -436,6 +436,7 @@ const PASCENE = (function () {
     st.v3.cam = { pos: null, at: null };
     PAROOM.build(K, st);
     PALIFE.build(K, st);
+    PALANDS.build(K, st);
     bigShadows(K);
     K.focusRange = 9;
   };
@@ -510,6 +511,10 @@ const PASCENE = (function () {
     V.wide = approach(V.wide || 0, ws, dt * 0.8);
     let dist = 15.5 + V.wide * 9, pitch = 33 * Math.PI / 180;
     let fx = st.cx, fz = st.cz - 2.5;
+    // the Scribble Walker: pull back and look further ahead, so the whole of it and the hatch are in the picture
+    const bossOn = !!(st.walker && st.walker.state !== 'gone' && st.walker.state !== 'fold');
+    V.bossK = approach(V.bossK || 0, bossOn ? 1 : 0, dt * 0.8);
+    dist += V.bossK * 8.5; fz -= V.bossK * 3.5; pitch -= V.bossK * 3 * Math.PI / 180;
     if (st.phase === 'shrink' || G.introT > 0) {
       // the shrink: close on the heroes, pulling back as they shrink
       const kk = G.introT > 0 ? 0 : clamp((st.shrinkT || 0) / PA.shrinkT, 0, 1);
@@ -531,6 +536,8 @@ const PASCENE = (function () {
     K.sunAt(v(C.at.x, 0, C.at.z - 3), 24);
     // after a restart, jump the camera straight to its place
     if (V.lastCk !== st.fxN && st.fx.length && st.fx[st.fx.length - 1].kind === 'restart' && st.fx[st.fx.length - 1].n !== V.restartN) { V.restartN = st.fx[st.fx.length - 1].n; V.snap = true; }
+    // the later stretches (it may move the saucer and the heroes at the finish, so it goes last)
+    PALANDS.update(K, st, dt, t);
   };
   return S;
 })();

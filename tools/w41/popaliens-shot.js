@@ -44,6 +44,16 @@ function helpers() {
       P.render(1 / 60);
       return st;
     },
+    // a fresh start at bookmark ck (blockades before it beaten, a grenade each), marching
+    at(ck, o = {}) {
+      const st = __pa.fresh(o);
+      st.ck = ck; st.saved = { i: ck, gren: [1, 1], walkerPhase: o.walkerPhase || 0 };
+      PA_ROUTE.events.forEach((ev, j) => { if (ev.block && ev.at > PA_ROUTE.checks[ck].cz) st.wallDown[j] = true; });
+      paRestore(st, 'wipe'); st.wipes = 0; st.marchT = 0;
+      if (o.cpu === false) st.h.forEach(h => { h.unpeel = 0; h.freeze = 0; h.flat = null; });
+      P.render(1 / 60); P.render(1 / 60);
+      return st;
+    },
     place(k, x, z, aim) { const b = P.G.players[k].b3; b.x = x; b.z = z; b.y = 0; b.vx = b.vz = 0; P.G.mst.h[k].aim = aim; b.heading = aim; },
     alien(k, x, z, face, o = {}) {
       const st = P.G.mst, a = { id: st.nextId++, k, x, z, y: 0, vx: 0, vz: 0, hp: 2, st: 'live', t: 9, face, hold: 0, lastHit: [-9, -9], scorch: o.scorch || 0,
@@ -94,6 +104,30 @@ const SHOTS = {
     __pa.until(() => __pa.lastFx('burst', 0.05), 4); __pa.run(0.1, true); },
   'play-folders': () => { __pa.fresh(); const st = __pa.st();
     __pa.until(() => st.aliens.some(a => a.k === 'folder' && a.st2 === 'fold' && a.ft > 0.6), 120); __pa.run(0.2, true); },
+  // stretches 2-4
+  'city-play': () => { const st = __pa.at(4); __pa.until(() => st.cz < -166 && st.aliens.filter(a => a.st === 'live').length >= 3 && st.h.some(h => h.sinceShot < 0.05), 40); __pa.run(0.5, true); },
+  'city-wide': () => { const st = __pa.at(5, { cpu: false }); __pa.hud(false); __pa.place(0, -2.4, -196, Math.PI); __pa.place(1, -1, -196.6, Math.PI);
+    __pa.frames(2); __pa.cam([6, 9, -186], [-2, 1, -214], [-1.5, 0.5, -200]); __pa.frames(14); },
+  'city-street': () => { const st = __pa.at(5, { cpu: false }); __pa.hud(false); __pa.place(0, -1.2, -197, Math.PI + 0.2); __pa.place(1, 0.4, -197.4, Math.PI - 0.1);
+    __pa.alien('grunt', -1, -201, 0); __pa.frames(2); __pa.cam([-0.4, 1.3, -192.5], [-0.8, 2.2, -205], [-0.4, 0.5, -197]); __pa.frames(14); },
+  'bang-up': () => { const st = __pa.at(6, { cpu: false }); __pa.hud(false); __pa.place(0, 4, -236, Math.PI); __pa.place(1, 6, -235, Math.PI);
+    __pa.frames(2); __pa.cam([-3, 7, -226], [6, 2, -242], [6, 1, -238]); __pa.frames(14); },
+  'bang-down': () => { const st = __pa.at(6, { cpu: false }); __pa.hud(false); paBangFall(st); __pa.place(0, 7, -241, Math.PI); __pa.place(1, 5.5, -237.5, Math.PI);
+    __pa.run(1.5, true); __pa.cam([-3, 7, -230], [6, 0, -244], [6.5, 0.4, -242]); __pa.frames(14); },
+  'crater-play': () => { const st = __pa.at(9); __pa.until(() => st.cone && st.cone.mode === 'rest' && st.aliens.filter(a => a.st === 'live').length >= 2 && st.cz < -336, 50); __pa.run(0.5, true); },
+  'crater-wide': () => { const st = __pa.at(10, { cpu: false }); __pa.hud(false); __pa.place(0, 0.5, -374, Math.PI); __pa.place(1, 2, -374.6, Math.PI);
+    __pa.run(4, true); __pa.cam([14, 14, -360], [0, 0, -400], [2, 0.4, -380]); __pa.frames(14); },
+  'hill-play': () => { const st = __pa.at(13); __pa.until(() => st.cz < -498 && st.aliens.filter(a => a.st === 'live').length >= 2, 50); __pa.run(0.5, true); },
+  'hill-wide': () => { const st = __pa.at(14, { cpu: false }); __pa.hud(false); __pa.place(0, -9, -520, Math.PI); __pa.place(1, -8, -521, Math.PI);
+    __pa.frames(2); __pa.cam([18, 16, -505], [0, 1, -560], [0, 0.5, -540]); __pa.frames(14); },
+  'walker-play': () => { const st = __pa.at(15); __pa.until(() => st.walker && st.walker.t > 3 && st.walker.stamp && st.walker.stamp.t > 0.6, 60); __pa.run(0.1, true); },
+  'walker-close': () => { const st = __pa.at(15, { cpu: false }); __pa.hud(false); __pa.place(0, -3, -559, Math.PI); __pa.place(1, 3, -559.5, Math.PI);
+    __pa.until(() => st.walker && st.walker.t > 2.5, 30); const W = st.walker; W.total = 5; __pa.run(0.3, true); __pa.cam([2, 2.2, -557.5], [W.x, 4.5, W.z], [W.x, 4, W.z]); __pa.frames(14); },
+  'walker-line': () => { const st = __pa.at(15, { walkerPhase: 2 }); __pa.until(() => st.walker && st.walker.line && st.walker.line.t > 1.3, 60); __pa.run(0.05, true); },
+  'walker-crouch': () => { const st = __pa.at(15, { walkerPhase: 3 }); __pa.until(() => st.walker && st.walker.state === 'crouch' && st.walker.t > 1, 60); __pa.run(0.2, true); },
+  'hatch': () => { const st = __pa.at(15, { cpu: false, walkerPhase: 4 }); if (!st.hatch) paHatchOpen(st); st.cz = -578; st.v3.snap = true; __pa.place(0, -0.8, -584.6, Math.PI); __pa.place(1, 0.8, -585.2, Math.PI); __pa.run(0.4, true); st.hatch.fill = 0.6; __pa.run(0.02, true); __pa.frames(20); },
+  'finish': () => { const st = __pa.at(15, { cpu: false, walkerPhase: 4 }); if (!st.hatch) paHatchOpen(st); st.cz = -578; st.v3.snap = true; __pa.hud(false); __pa.place(0, -0.8, -584.6, Math.PI); __pa.place(1, 0.8, -585.2, Math.PI); __pa.run(0.1); st.hatch.fill = 1.2; __pa.run(0.05);
+    __pa.until(() => st.doneT > 0.95, 3); __pa.frames(4); },
   // how tiny they are: low behind the pair, looking up the page at the saucer
   'wide-saucer': () => { __pa.fresh({ cpu: false }); __pa.hud(false); __pa.place(0, -0.6, -2, Math.PI); __pa.place(1, 0.7, -2.4, Math.PI);
     __pa.alien('grunt', -2, -12, 0); __pa.alien('grunt', 1, -13, 0, { seed: 0.6 }); __pa.alien('grunt', 3.5, -12.5, -0.2, { seed: 0.9 });

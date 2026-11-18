@@ -548,6 +548,7 @@ const PAFX = (function () {
         k = 0;
         for (const ho of st.holes) {
           if (k >= 140) break;
+          if (ho.fixed) continue;   // the "cut here" line is part of the scenery (popaliens-lands.js)
           const open = G.time >= ho.open;
           q.identity(); v.set((ho.x0 + ho.x1) / 2, 0.014, ho.z); s.set(ho.x1 - ho.x0 + 0.06, 1, open ? 0.62 : 0.2); m4.compose(v, q, s); slitD.setMatrixAt(k++, m4);
         }
