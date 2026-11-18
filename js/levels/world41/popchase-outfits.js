@@ -161,8 +161,11 @@
     const bladeTex = K3D.paint('pcAxeBlade', 128, 128, (c, w, h) => { c.fillStyle = '#b8bcc8'; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(w * 0.7, 0, w * 0.3, h); c.strokeStyle = 'rgba(40,40,60,0.4)'; c.lineWidth = 2; c.strokeRect(4, 4, w - 8, h - 8); });
     const blade = P.card(P.shapeFrom([[0, -0.07], [0.12, -0.11], [0.15, 0], [0.12, 0.11], [0, 0.07]]), { tex: bladeTex, depth: 0.02, ink: '#3a3a48', inkW: 0.7 });
     blade.position.set(0.015, 0.2, 0); g.add(blade);
-    // the strap
-    const strap = K3D.mesh(new T.BoxGeometry(0.03, 0.42, 0.012), K3D.toon('#6a4426'), { ink: false, cast: false }); strap.rotation.z = -0.9; strap.position.set(0, 0.02, 0.01); g.add(strap);
+    // two short dark leather straps across the handle, each with a brass buckle (they hold it on the back)
+    for (const y of [0.03, -0.15]) {
+      const strap = K3D.mesh(K3D.geo('pcAxeStrap', () => new T.BoxGeometry(0.2, 0.045, 0.014)), K3D.mat('pcAxeStrapM', () => K3D.toon('#3e2414')), { ink: false, cast: false }); strap.position.set(0, y, 0.022); g.add(strap);
+      const buckle = K3D.mesh(K3D.geo('pcAxeBuckle', () => new T.BoxGeometry(0.035, 0.055, 0.016)), K3D.mat('pcAxeBuckleM', () => K3D.toon('#d8b050')), { ink: false, cast: false }); buckle.position.set(0.06, y, 0.03); g.add(buckle);
+    }
     g.rotation.z = 0.75; g.position.set(0, 0.0, -0.04);
     void x;
     return g;

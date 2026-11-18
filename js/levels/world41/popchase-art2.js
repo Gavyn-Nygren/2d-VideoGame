@@ -263,6 +263,8 @@
       const k = r();
       if (front) { if (k < 0.6) vfold(fam.hedge, x, z, 0.7 + r() * 0.3); else if (k < 0.85) face(fam.knight, x, z, 0.8); else return false; return; }
       if (d < HALF + 1.4) { if (k < 0.45) face(fam.banner, x, z, 0.9 + r() * 0.2); else if (k < 0.75) face(fam.knight, x, z, 0.95); else vfold(fam.hedge, x, z, 0.8); return; }
+      // beside the dash the camera runs low behind the pair: only low hedges there, so no tower stands between it and them
+      if (L3.swing && x > L3.swing[0] - 2 && x < L3.swing[1] + 1 && d < HALF + 4.5) { vfold(fam.hedge, x, z, 0.8 + r() * 0.2); return; }
       if (k < 0.2) vfold(fam.tree, x, z, 0.8 + r() * 0.25);
       else if (k < 0.5) face(fam.tower, x, z, 0.9 + r() * 0.35);
       else if (k < 0.75) face(fam.wall, x, z, 0.85 + r() * 0.2);

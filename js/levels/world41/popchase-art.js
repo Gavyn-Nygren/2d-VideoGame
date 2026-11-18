@@ -668,7 +668,8 @@ void main() {
     const near = (x, z) => { for (const p of L3.pieces) for (const t of p.tabs) if (Math.hypot(x - t.x, z - t.z) < 1.6) return true; return false; };
     // the camera looks from the near edge (+z), turned a little to look along the route: anything nearer the camera
     // than the corridor (larger z) stays low, so the path is always in view
-    const nearSide = (x, z) => { const s = PC.progress(L3, x, z), p = PC.pointAt(L3, s); return z > p.z + 0.5 && Math.abs(p.dx) > 0.5; };
+    // (beside a stretch that runs toward the camera, +z, both sides count: the pair run down between them)
+    const nearSide = (x, z) => { const s = PC.progress(L3, x, z), p = PC.pointAt(L3, s); return Math.abs(p.dx) > 0.5 ? z > p.z + 0.5 : p.dz > 0.5 && routeD(x, z) < H + 4; };
     for (let n = 0, tries = 0; n < 520 && tries < 9000; tries++) {
       const x = (r() * 2 - 1) * (pw - 0.8), z = (r() - 0.5) * (pd - 1.2), d = routeD(x, z);
       if (d < H + 0.45 || inGap(x) || Math.abs(x) < 0.9 || near(x, z)) continue;
@@ -703,7 +704,8 @@ void main() {
       for (let x = L3.swing[0]; x < L3.swing[1]; x += 2.4) {
         const p = PC.pointAt(L3, PC.progress(L3, x, zDash));
         for (const [f, tx, tz, sz, d] of [[fam.birch, x, p.z - H - 1.0, 1.1, 0.05], [fam.pine, x + 1.2, p.z + H + 1.0, 0.75, 0.12]])
-          if (routeD(tx, tz) > H + 0.6) vfold(f, tx, tz, sz, { d });
+          // (and the near row stops short of the dash's end, where the pair turn toward the camera: a pine there hid them)
+          if (routeD(tx, tz) > H + 0.6 && !(tz > p.z && tx > L3.swing[1] - 4)) vfold(f, tx, tz, sz, { d });
       }
     }
     for (const f of Object.values(fam)) f.done();
