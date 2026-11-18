@@ -95,6 +95,9 @@ function loadLevel(i, mode = 'play', opts = {}) {
   }
   G.mode = mode;
   setActUI(!!(L.def.act && mode === 'play'));
+  // a 3D level: start loading three.js and the kit now (the ready card waits on it); touch players get a thumb stick
+  if (L.def.view3d && mode === 'play') K3D.need();
+  document.documentElement.classList.toggle('touch-stick', !!(L.def.touch === 'stick' && mode === 'play'));
   setLegend(mode === 'play' ? LEVELS[i].legend : null);
   if (G.match) G.match.phase = G.introT > 0 ? 'intro' : 'ready'; // what round 1 starts with (setup may read it)
   hook('setup', G.mst, L);
@@ -105,6 +108,8 @@ function loadLevel(i, mode = 'play', opts = {}) {
 
 function step(dt) {
   const L = G.level, ps = G.players;
+  // a 3D level waits (time and all) until its pictures can be drawn; the bot tests (K3D.noRender) never wait
+  if (L.def.view3d && K3D.state !== 'ready' && !K3D.noRender) return;
   G.time += dt; G.tickN = (G.tickN || 0) + 1; tapClock++;
   cpuTick(dt); // the computer player's presses for this step (1-player mode)
   if (G.introT > 0) G.introT -= dt;
@@ -482,7 +487,9 @@ window.__pipbo = { PONG, G, LEVELS, loadLevel, nextRoom, BUNGEE, CHAIN, GOLF, st
   Dev, Pads, playerDevice, btnLabel, btnHTML, drawBtn, controlsLine, startLevel, readyPress, Ready, readyGo, controlRows, jobFor, setJobs, Jobs,
   // settings
   BIND, PadBind, KEYCAPS, showSettings, readPads, glyph,
-  CPU, cpuBrain, cpuBrainKey, cpuSeek, cpuApplyCfg, cpuSetCfg, cpuNav, cpuNavReach, cpuNavCell, NAV };
+  CPU, cpuBrain, cpuBrainKey, cpuSeek, cpuApplyCfg, cpuSetCfg, cpuNav, cpuNavReach, cpuNavCell, NAV,
+  // 3D levels
+  K3D, MOVER3, cpuNav3, render, hook };
 window.__pipboMedals = { medalSpec, medalGoalText, medalResult, medalBest };
 
 fit();

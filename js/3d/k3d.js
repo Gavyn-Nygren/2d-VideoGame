@@ -8,8 +8,11 @@
    For a level:
      def.view3d = true            the level draws in 3D (canvas#game3d under canvas#game; see "Canvases" below)
      def.touch = 'stick'          touch players get a round thumb stick instead of the move bar
-     MODES.<mode>.scene3d(K)      builds the level's scene once (setup, and again per page if it likes: K3D.rebuild())
-     MODES.<mode>.draw3d(K, dt)   moves meshes to match the game state, every drawn frame
+     MODES.<mode>.scene3d(K)      fills a fresh scene K (K3D.scene()) once per G.level: again for each room, after a lost
+                                  context, or on the next frame after K3D.rebuild(). MODES.<mode>.scene3dOpts are its
+                                  K3D.scene() options ({ bg, fov, near, far })
+     MODES.<mode>.draw3d(K, dt)   moves meshes to match the game state, every drawn frame (not while paused)
+     MODES.<mode>.drawTop()       as in 2D, draws flat things over the 3D picture (K3D.toScreen gives screen spots)
    Game rules stay in step() and must never read the renderer, the camera's smoothed position or wall-clock time:
    with K3D.noRender = true (the bot tests) the level must play exactly the same.
 
@@ -36,7 +39,8 @@ const K3D = {
   state: 'none',         // none | loading | ready | failed
   why: '',               // why it failed (for the console and the tools)
   noRender: false,       // the bot tests: no drawing at all, the level must play identically
-  heading: 0,            // the camera's heading (radians about Y, 0 = looking toward -Z), set by the level's camera each frame
+  heading: 0,            // which way "up" walks: radians about Y, 0 = away is -Z. The level sets it in step() from game
+                         // state (the heading its camera is steered to), never from the camera's smoothed picture
   // the drawing kit, loaded in this order after three.js (classic scripts sharing the game's globals)
   files: ['js/3d/kit.js', 'js/3d/heroes.js', 'js/3d/outfits3d.js', 'js/3d/cameras.js', 'js/3d/proof.js',
     'js/levels/world41/popup-kit.js', 'js/levels/world41/popup-outfits.js'],
@@ -51,9 +55,8 @@ const K3D = {
     const fail = why => { this.state = 'failed'; this.why = why; console.warn('3D unavailable: ' + why); return false; };
     if (!this.glOk()) { this._p = Promise.resolve(fail('WebGL is switched off or not supported')); return this._p; }
     const add = src => new Promise((res, rej) => {
-      // the single-file build (tools/bundle.js) carries the files inline and already ran the kit files
+      // the single-file build (tools/bundle.js) carries three.js as text (run here from a blob)
       const inline = window.__k3dInline && window.__k3dInline[src];
-      if (inline === true) return res();
       const s = document.createElement('script');
       s.src = inline ? URL.createObjectURL(new Blob([inline], { type: 'text/javascript' })) : src;
       s.async = false;
@@ -65,7 +68,9 @@ const K3D = {
         if (!window.THREE) await add(this.lib);
         if (!window.THREE || !window.THREE.WebGLRenderer) return fail('three.js did not load');
         this.T = window.THREE;
-        for (const f of this.files) await add(f);
+        // the single-file build carries the kit inside the game's own script as K3D.kitInline (run once, here)
+        if (this.kitInline) { const k = this.kitInline; this.kitInline = null; k(); }
+        else for (const f of this.files) await add(f);
         if (!this.kitReady) return fail('the 3D kit did not load');
         this.state = 'ready';
         return true;
@@ -87,10 +92,48 @@ const K3D = {
   // is the level now on screen a 3D one?
   on() { return !!(G.level && G.level.def.view3d && G.mode !== 'title'); },
   fit() {},          // sizes canvas#game3d like canvas#game (js/3d/kit.js; fit() in js/main.js calls it)
+
+  /* ---------- a 3D level on screen (render() calls these; nothing here runs for a 2D level) ---------- */
+  _for: null,        // the G.level object the current scene was built for (a new room or a reload builds again)
+  dirty: false,      // the 3D canvas was resized or cleared and needs one more picture even while paused
+  // one drawn frame of a view3d level. Returns false while the kit is still loading (or failed), so render() can draw
+  // a plain page under the ready card instead.
+  frame(dt) {
+    const L = G.level;
+    if (this.noRender) return false;
+    if (this.state === 'none') this.need();
+    if (this.state !== 'ready') return false;
+    if (this._for !== L) this.enter(L);
+    if (!this.K) return false;
+    this.show(true);
+    if (this.lost) return true;
+    // paused: the 3D picture holds still (only a resize draws it once more, unmoved)
+    const still = G.mode === 'paused';
+    if (!still) hook('draw3d', this.K, dt);
+    if (!still || this.dirty) { this.draw(still ? 0 : dt); this.dirty = false; }
+    return true;
+  },
+  // builds the level's scene: a fresh K3D.scene (the last one is freed), then the mode's scene3d(K) fills it
+  enter(L) {
+    this._for = L;
+    const K = this.scene(Object.assign({}, G.lmode && G.lmode.scene3dOpts));
+    hook('scene3d', K);
+    this.dirty = true;
+  },
+  // back to a 2D level or the menus: free the scene and hide the 3D canvas (the renderer itself is kept for next time)
+  leave() {
+    if (!this._for && !this.K) return;
+    this._for = null;
+    if (this.free) this.free();
+    if (this.show) this.show(false);
+  },
+  // a lost WebGL context that comes back: the kit clears its caches, then the scene is built again on the next frame
+  rebuild() { this._for = null; },
   proofOn: false,    // the look-proof page (?k3dproof) is showing
   // the look-proof page: reachable only by the URL flag ?k3dproof (js/3d/proof.js)
   startProof() {
     this.proofOn = true; G.mode = 'k3dproof'; hideOverlay();
+    window.K3D = this; // the shot tool reaches the kit by name (the single-file build keeps the game's names private)
     document.documentElement.classList.add('k3d-proof');
     this.need().then(ok => { if (ok) this.proof.start(); });
   },

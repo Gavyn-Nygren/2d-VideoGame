@@ -161,6 +161,7 @@
     if (proof.rig.kind === 'chase') { const fx = (b.x - a.x) / L, fz = (b.z - a.z) / L; proof.rig.dir = { x: -fz, z: fx }; }
     if (proof.rig.kind === 'rail') { if (keys.has('KeyQ')) proof.rig.progress -= dt * 0.15; if (keys.has('KeyE')) proof.rig.progress += dt * 0.15; proof.rig.progress = clamp(proof.rig.progress, 0, 1); }
     proof.rig.update(s.K, dt, tg);
+    K3D.heading = proof.rig.viewHeading || 0; // (the proof page has no game rules: up walks the way the picture looks)
   };
   // the shot tool: K3D.proof.set({ cam: 'follow'|'diorama'|'rail'|'chase', preset, progress, dress, pos, head, opt })
   proof.set = function (o) {

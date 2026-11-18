@@ -65,6 +65,7 @@
     const w = g.width, h = g.height;
     if (c.width !== w || c.height !== h) { R.setPixelRatio(1); R.setSize(w, h, false); }
     if (cur) { cur.camera.aspect = w / h; cur.camera.updateProjectionMatrix(); post.size(w, h); }
+    K3D.dirty = true;
   };
   K3D.show = function (on) {
     const c = on ? canvas3d() : document.getElementById('game3d');

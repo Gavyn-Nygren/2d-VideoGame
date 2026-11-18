@@ -40,6 +40,7 @@ function bindApply() {
   // the game keys don't scroll the page or open the browser's quick find
   GAME_KEYS.clear();
   for (const set of [BIND_DEFAULT, BIND]) for (const b of set) for (const w of BIND_ACTIONS) b[w].forEach(c => GAME_KEYS.add(c));
+  for (const set of K3D_JUMP) set.forEach(c => GAME_KEYS.add(c)); // 3D levels' jump keys
   Dev.sig = '';
   try { controlsRefresh(); } catch (e) { /* the screens aren't up yet */ }
 }

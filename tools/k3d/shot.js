@@ -6,6 +6,7 @@
 //   secs: wall-clock seconds to let the page run before the shot (software WebGL is slow; 3 is plenty)
 //   --cam: a rig (follow, diorama, rail, chase) or a fixed preset (top, front, left, right, pip, bo, pair, wide)
 //   --size: the window, default 1280x720 (a phone: 844x390)
+//   --page: the page to open, default index.html (build/pip-and-bo.html checks the single-file build)
 'use strict';
 const path = require('path');
 const { chromium } = require('playwright');
@@ -22,7 +23,7 @@ const flag = k => args.includes('--' + k);
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errs.push(m.text()); });
   page.on('pageerror', e => errs.push(String(e)));
   if (scene !== 'proof') throw new Error('unknown scene ' + scene);
-  await page.goto('file://' + path.resolve(__dirname, '..', '..', 'index.html') + '?k3dproof');
+  await page.goto('file://' + path.resolve(__dirname, '..', '..', opt('page', 'index.html')) + '?k3dproof');
   await page.waitForFunction(() => typeof K3D !== 'undefined' && (K3D.state === 'failed' || (K3D.state === 'ready' && K3D.proof && K3D.proof.st)), null, { timeout: 120000 });
   const state = await page.evaluate(() => K3D.state + (K3D.why ? ': ' + K3D.why : ''));
   if (!state.startsWith('ready')) { console.log('3D failed: ' + state); }

@@ -380,8 +380,23 @@ function showReadyCard() {
       <p class="rdy-foot" data-ready-foot role="status" aria-live="polite"></p>
     </div>`);
   readyRender();
+  // a 3D level: the card says "Loading..." until three.js and the 3D kit are in (or turns into the plain card if they can't be)
+  if (def.view3d && K3D.state !== 'ready') K3D.need().then(() => { if (G.mode === 'ready' && G.levelIndex === i) readyRender(); });
 }
+// the one plain card for a device or browser with 3D switched off (World 41 on): no detail, just a way back
+function k3dFailCard() {
+  G.mode = 'ready';
+  showOverlay(`
+    <div class="card ready-card k3d-fail">
+      <p class="lede">This world needs 3D graphics, which this device or browser has switched off.</p>
+      <div class="actions-row"><button type="button" class="primary" data-act="ready-back" data-back data-primary>Back to the world map</button></div>
+    </div>`);
+  refreshGlyphs();
+}
+// is a 3D level still waiting for its pictures? (the ready buttons wait too)
+const k3dWaiting = () => !!(G.level && G.level.def.view3d && K3D.state !== 'ready');
 function readyRender() {
+  if (G.level && G.level.def.view3d && K3D.state === 'failed') { if (!overlay.querySelector('.k3d-fail')) k3dFailCard(); return; }
   const duo = overlay.querySelector('[data-ready-duo]');
   if (!duo) return;
   const l = LEVELS[G.levelIndex], lg = cardLegend(), act = G.level && G.level.def.act, def = G.level && G.level.def;
@@ -408,12 +423,12 @@ function readyRender() {
   const sw = overlay.querySelector('[data-ready-swap]');
   if (sw) { sw.textContent = jobPartsLine(l) || (def && def.jobs && def.jobSwap) || ''; sw.hidden = !sw.textContent; }
   const foot = overlay.querySelector('[data-ready-foot]'), people = [0, 1].filter(k => !isCpuPlayer(k)), left = people.filter(k => !Ready.ok[k]);
-  if (foot) foot.textContent = !left.length ? 'Here we go!' : people.length === 1 ? 'The level starts when you are ready.'
+  if (foot) foot.textContent = k3dWaiting() ? 'Loading\u2026' : !left.length ? 'Here we go!' : people.length === 1 ? 'The level starts when you are ready.'
     : left.length === 2 ? 'The level starts when you are both ready.' : `Waiting for ${NAMES[left[0]]}...`;
   refreshGlyphs();
 }
 function readyPress(k) {
-  if (G.mode !== 'ready' || isCpuPlayer(k) || Ready.ok[k] || Ready.goAt || performance.now() < Ready.armAt) return;
+  if (G.mode !== 'ready' || isCpuPlayer(k) || Ready.ok[k] || Ready.goAt || performance.now() < Ready.armAt || k3dWaiting()) return;
   Ready.ok[k] = true;
   rumble(k, 0.2, 0.4, 100);
   const all = [0, 1].every(q => isCpuPlayer(q) || Ready.ok[q]);
@@ -425,7 +440,7 @@ function readyPress(k) {
 function readyTick() { if (Ready.goAt && G.clock >= Ready.goAt) readyGo(); }
 function readyGo() {
   Ready.goAt = 0;
-  if (G.mode !== 'ready') return;
+  if (G.mode !== 'ready' || k3dWaiting()) return;
   G.mode = 'play';
   hideOverlay();
   // the card has said it all: a level without rooms skips its intro card and only shows the name tags for a moment

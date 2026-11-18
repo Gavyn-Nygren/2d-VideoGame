@@ -3,8 +3,10 @@
 
    Each rig is a small object the level feeds every drawn frame:  rig.update(K, dt, targets)
      targets = [{ x, y, z }, ...]  everything that must stay in frame (both players, both pencil ends...)
-   It moves K.camera smoothly, sets K.focus (what the photo pass keeps sharp) and K3D.heading (which way "up" walks).
-   Smoothing only ever affects the picture: game rules never read the camera.
+   It moves K.camera smoothly and sets K.focus (what the photo pass keeps sharp) and rig.viewHeading.
+   Smoothing only ever affects the picture: game rules never read the camera. Which way "up" walks is K3D.heading,
+   which the level sets in step() from game state (the heading its camera is steered to), so a level plays the same
+   with drawing switched off.
 
    K3D.cams.diorama({ pos, at })                         fixed, like a model on a shelf
    K3D.cams.follow({ pitch, heading, fov, min, max, ahead, lead })
@@ -36,7 +38,7 @@
     if (fov && Math.abs(cam.fov - fov) > 0.01) { cam.fov = fov; cam.updateProjectionMatrix(); }
     K.focus.copy(rig._at);
     const d = rig._at.clone().sub(rig._pos);
-    K3D.heading = Math.atan2(-d.x, -d.z);
+    rig.viewHeading = Math.atan2(-d.x, -d.z); // (the picture's heading; K3D.heading, which steers movement, is set by the level's step)
     K.sunAt(rig._at, rig.shadowReach || 16);
   }
   K3D.cams = {
