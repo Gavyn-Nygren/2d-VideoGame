@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // 41-4 Paper Alien Invasion: bot runs with drawing switched off (K3D.noRender), in headless Chromium.
-//   node tools/w41/popaliens-play.js [--only=pair,clumsy0,...] [--secs=700]
+//   node tools/w41/popaliens-play.js [--only=pair,clumsy0,...] [--secs=700] [--ck=N] (start from bookmark N, with a
+//   grenade each, the clock at the time a steady pair would have there)
 // Each run starts the level with two computer heroes; a person-like partner is a filter on one hero's presses
 // (CPU.filter). Every run must reach the results card (or, for the clock, a fair rescue loop) without an error,
 // a stuck hero or a locked camera. Prints time left, Wipe-outs, peels, crossed kills and how far the march got.
@@ -21,18 +22,19 @@ const RUNS = {
   nogrenade: { who: 0, f: 'nogrenade' },
   allgrenades: { who: 1, f: 'allgrenades' },
   nopeel: { who: 1, f: 'nopeel' },
-  runahead: { who: 0, f: 'runahead' },
+  runahead: { who: 0, f: 'runahead', loop: true },   // a person pressing up into a wall of print forever holds the march: a fair rescue loop
   hangback: { who: 1, f: 'hangback', loop: true },
   mash: { who: 0, f: 'mash', loop: true },            // random presses walk nowhere on average: the march waits for them
 };
 
-function pageRun({ run, secs }) {
+function pageRun({ run, secs, ck }) {
   const P = window.__pipbo, G = P.G, CPU = window.CPU || P.CPU;
   P.K3D.noRender = true;
   const i = P.LEVELS.findIndex(l => l.mode === 'popaliens');
   G.cpuOn = [true, true];
   P.loadLevel(i); G.introT = 0;
   const st = G.mst;
+  if (ck) { st.phase = 'march'; st.marchT = 0; st.ck = ck; st.saved = { i: ck, gren: [1, 1], walkerPhase: 0 }; PA_ROUTE.events.forEach((ev, j) => { if (ev.block && ev.at > PA_ROUTE.checks[ck].cz) st.wallDown[j] = true; }); st.clock = Math.max(150, 600 - ck * 26); paRestore(st, 'wipe'); st.wipes = 0; }
   let mem = { t: 0, q: [] };
   const R = Math.random; let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const filters = {
@@ -55,13 +57,13 @@ function pageRun({ run, secs }) {
     for (; k < n; k++) {
       if (G.mode !== 'play') break;
       P.step(P.DT);
-      if (st.cz < lastCz - 0.01 || st.block) { lastCz = st.cz; stuckT = 0; } else stuckT += P.DT;
+      if (st.cz < lastCz - 0.01 || st.block || (st.walker && st.walker.state !== 'gone') || st.hatch) { lastCz = st.cz; stuckT = 0; } else stuckT += P.DT;
       maxStill = Math.max(maxStill, stuckT);
     }
   } catch (e) { err = String(e.stack || e); }
   CPU.filter = null;
   return { mode: G.mode, phase: st.phase, t: +(k * P.DT).toFixed(1), clock: +st.clock.toFixed(1), cz: +st.cz.toFixed(1), wipes: st.wipes, rescues: st.rescues,
-    kills: st.kills, cross: st.crossKills, peels: st.peels, selfPeels: st.selfPeels, thrown: st.thrown, maxStill: +maxStill.toFixed(1), err };
+    ck: st.ck, walker: st.walker ? st.walker.phase + ':' + st.walker.state + ':' + st.walker.total.toFixed(1) : null, hatch: st.hatch ? +st.hatch.fill.toFixed(2) : null, kills: st.kills, cross: st.crossKills, peels: st.peels, selfPeels: st.selfPeels, thrown: st.thrown, maxStill: +maxStill.toFixed(1), err };
 }
 
 (async () => {
@@ -77,7 +79,7 @@ function pageRun({ run, secs }) {
     await page.goto('file://' + path.resolve(__dirname, '..', '..', 'index.html'));
     await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
     await page.evaluate(() => { window.__pipbo.G.manual = true; });
-    const r = await page.evaluate(pageRun, { run: RUNS[name], secs });
+    const r = await page.evaluate(pageRun, { run: RUNS[name], secs, ck: +opt('ck', 0) });
     const loop = RUNS[name] && RUNS[name].loop;
     const ok = !r.err && !errs.length && (loop ? r.rescues >= 1 : (r.mode !== 'play' || r.phase === 'done') && r.maxStill < 60);
     if (!ok) fails++;

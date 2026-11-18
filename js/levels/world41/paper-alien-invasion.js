@@ -80,6 +80,11 @@ function paSetup(st) {
   st.h = [0, 1].map(k => ({ k, aim: Math.PI, charge: PA.charge, reload: 0, reloadDur: 0, sinceShot: 9, gren: 0, flat: null,
     inv: 0, peel: 0, stillT: 0, holdAim: null, shield: 0, emptyShake: 0, freeze: 0, lastPress: 0 }));
   st.solids = PA_ROUTE.solids.map(s => Object.assign({}, s));
+  st.bang = { up: true, hits: 0, near: 0, fall: 0 };
+  st.cone = null; st.walker = null; st.hatch = null;
+  st.inkAt = PA_ROUTE.inkAt;
+  st.coverAt = (x, z) => paCoverAt(st, x, z);
+  paStaticHoles(st);
   paRebuildWorld(st);
   G.players.forEach((p, k) => { MOVER3.spawn(p, k ? 2.2 : -2.2, 0, 2.5); p.b3.heading = Math.PI; });
   paSave(st, 0);
@@ -87,9 +92,57 @@ function paSetup(st) {
 }
 // the mover's world: the page (one big floor) and the solids near the camera (rebuilt as it moves on)
 function paRebuildWorld(st) {
-  const near = st.solids.filter(s => !(s.block != null && st.wallDown[s.block]) && Math.abs(s.z - st.cz) < 40);
+  const near = st.solids.filter(s => !(s.block != null && st.wallDown[s.block]) && !(s.bang && !st.bang.up) && Math.abs(s.z - st.cz) < 40);
+  st.cover = near.filter(s => s.cover || s.bang).map(s => Object.assign({ c: Math.cos(s.rot || 0), s: Math.sin(s.rot || 0) }, s));
   st.w = MOVER3.world([{ x: 0, z: st.cz - 60, w: 80, d: 240, y0: -1, y1: 0 }].concat(near.map(s => ({ x: s.x, z: s.z, w: s.w, d: s.d, y0: 0, y1: s.h, rot: s.rot || 0, src: s }))));
   st.wAt = st.cz;
+}
+// letters, the folded-card steps and the standing "!" stop bolts and zaps
+function paCoverAt(st, x, z) {
+  for (const s of st.cover || []) {
+    if (Math.abs(z - s.z) > s.w / 2 + s.d / 2 + 0.1) continue;
+    const dx = x - s.x, dz = z - s.z, lx = dx * s.c - dz * s.s, lz = dx * s.s + dz * s.c;
+    if (Math.abs(lx) < s.w / 2 + 0.05 && Math.abs(lz) < s.d / 2 + 0.05) return s;
+  }
+  return null;
+}
+// is there cover between two spots? (a zap does not go through a letter)
+function paBlocked(st, x0, z0, x1, z1) {
+  const d = Math.hypot(x1 - x0, z1 - z0), n = Math.ceil(d / 0.3);
+  for (let i = 1; i < n; i++) if (paCoverAt(st, x0 + (x1 - x0) * i / n, z0 + (z1 - z0) * i / n)) return true;
+  return false;
+}
+// the way through the walls of print and card: if a line stands between (x, z) and (tx, tz), the spot to head for
+// first (just in front of the best gap, or straight through it when already lined up with it); else null
+function paGate(x, z, tx, tz) {
+  let best = null, bd = 1e9;
+  for (const L of PA_ROUTE.lines) {
+    const dz = z - L.z, tdz = tz - L.z, inBand = Math.abs(dz) < L.hd + 0.35;
+    if (Math.abs(dz) > 40) continue;
+    // a line lies between us and the target, or we are inside its band and the target is out the other side of it
+    if (!(dz * tdz < 0 && !(inBand && Math.abs(tdz) < L.hd + 0.35)) && !(inBand && Math.abs(tdz) >= L.hd + 0.35)) continue;
+    if (Math.abs(dz) < bd) { bd = Math.abs(dz); best = L; }
+  }
+  if (!best) return null;
+  const L = best, dir = Math.sign(tz - L.z) || -1;   // the way we want to go through it
+  let g = null, gs = 1e9;
+  for (const [g0, g1] of L.gaps) {
+    const gx = clamp((g0 + g1) / 2, -PA.sideX + 1, PA.sideX - 1), sc = Math.abs(gx - x) + Math.abs(gx - tx) * 0.5;
+    if (sc < gs) { gs = sc; g = [Math.max(g0, -PA.sideX + 0.4), Math.min(g1, PA.sideX - 0.4), gx]; }
+  }
+  if (!g) return null;
+  const inGap = x > g[0] + 0.4 && x < g[1] - 0.4, dz = z - L.z;
+  // lined up with the gap (and near it): straight through and out the other side
+  if (inGap && Math.abs(dz) < L.hd + 2.2) return { x: clamp(x, g[0] + 0.5, g[1] - 0.5), z: L.z + dir * (L.hd + 1.5) };
+  // otherwise to just in front of the gap, on our side of the line
+  return { x: g[2], z: L.z - dir * (L.hd + 1.1) };
+}
+// the line of holes before the "!" (it stays), split round the bridge once the "!" has fallen
+function paStaticHoles(st) {
+  st.holes = st.holes.filter(h => !h.fixed);
+  const B = PA_ROUTE.bang, br = B.bridge;
+  const spans = st.bang.up ? [[-17, 17]] : [[-17, br.x - br.w / 2], [br.x + br.w / 2, 17]];
+  for (const [x0, x1] of spans) st.holes.push({ x0, x1, z: B.holesZ, hw: B.holesHw, open: 0, gone: Infinity, id: 'bang' + x0, fixed: true });
 }
 function paFx(st, kind, o) {
   st.fxN++;
@@ -107,7 +160,8 @@ const paStretch = z => { const s = PA_ROUTE.stretches.find(q => z <= q.z0 && z >
 /* ---------- checkpoints, wipe-outs, the clock rescue ---------- */
 function paSave(st, i) {
   st.ck = i;
-  st.saved = { i, gren: st.h.map(h => h.gren) };
+  st.saved = { i, gren: st.h.map(h => h.gren), walkerPhase: st.saved && st.saved.i === i ? st.saved.walkerPhase : 0,
+    walkerRub: st.saved && st.saved.i === i ? st.saved.walkerRub || 0 : 0 };
   if (i > 0) { paFx(st, 'bookmark', { i }); Sfx.play('popaliensBookmark'); }
   // the Bookworm's thimbles (gold help) last three checkpoints after it was lent
   for (const h of st.h) h.shield = i <= st.shieldTo ? 1 : 0;
@@ -115,7 +169,8 @@ function paSave(st, i) {
 function paRestore(st, why) {
   const ck = PA_ROUTE.checks[st.ck];
   st.aliens = []; st.bolts = []; st.grens = []; st.holes = []; st.prints = []; st.drops = [];
-  st.block = null;
+  st.block = null; st.cone = null; st.walker = null; st.hatch = null;
+  paStaticHoles(st);
   st.cz = ck.cz; st.cx = 0;
   // the events ahead of this checkpoint come again; walls ahead of it stand again; grenades ahead lie there again
   st.evI = PA_ROUTE.events.findIndex(ev => ev.at < ck.cz - 1e-6); if (st.evI < 0) st.evI = PA_ROUTE.events.length;
@@ -187,9 +242,11 @@ function paUnflatten(st, k, self) {
 function paSpawn(st, sp, tag) {
   const K = PA_KINDS[sp.k];
   if (!K) return null;
-  let x = clamp(sp.x, -PA.sideX + 0.5, PA.sideX - 0.5), z = sp.z;
+  let x = clamp(sp.x, -PA.sideX + 0.5, PA.sideX - 0.5), z = sp.z, perch = 0;
+  // a Folder perched on top of a tall letter
+  if (sp.perch) { const L = PA_ROUTE.letters.find(q => q.tag === sp.perch); if (L) { x = L.x; z = L.z; perch = L.h; } }
   // never closer than 5 units to a hero, never behind the camera's back wall
-  for (let it = 0; it < 6; it++) {
+  for (let it = 0; it < 6 && !perch; it++) {
     const near = G.players.some(p => Math.hypot(p.b3.x - x, p.b3.z - z) < PA.minSpawnD);
     if (!near) break;
     z -= 2;
@@ -198,7 +255,7 @@ function paSpawn(st, sp, tag) {
   const a = { id: st.nextId++, k: sp.k, x, z, y: 0, vx: 0, vz: 0, hp: K.hp, st: 'pop', t: 0, face: 0, hold: sp.hold || 0,
     lastHit: [-9, -9], scorch: 0, zap: null, zapCd: 1 + st.rng() * 1.2, hopPh: st.rng() * 6, block: tag, cap: sp.k === 'shield',
     capA: 0, think: 1 + st.rng() * 2.5, seed: st.rng() };
-  if (a.k === 'folder') { a.fold = 0; a.st2 = 'back'; }
+  if (a.k === 'folder') { a.fold = 0; a.st2 = 'back'; a.perch = perch; a.y = perch; }
   if (a.k === 'crab') { a.dir = sp.dir || (x < 0 ? 1 : -1); a.cutAt = x; }
   st.aliens.push(a);
   Sfx.play('popaliensPopUp');
@@ -289,7 +346,7 @@ function paAlienStep(st, a, dt) {
       const R = K.zapR || PA.zapR;
       paFx(st, 'zap', { x: a.x, z: a.z, r: R });
       Sfx.play('popaliensZap');
-      let hit = G.players.map((p, k) => ({ k, d: Math.hypot(p.b3.x - a.x, p.b3.z - a.z) })).filter(q => q.d < R && !st.h[q.k].flat);
+      let hit = G.players.map((p, k) => ({ k, d: Math.hypot(p.b3.x - a.x, p.b3.z - a.z) })).filter(q => q.d < R && !st.h[q.k].flat && !paBlocked(st, a.x, a.z, G.players[q.k].b3.x, G.players[q.k].b3.z));
       if (K.one) hit = hit.sort((u, v) => u.d - v.d).slice(0, 1);
       for (const q of hit) paFlatten(st, q.k, a.k === 'lesson' ? 'lesson' : 'zap');
       a.zap = null; a.zapCd = PA.zapCd + st.rng() * 0.8;
@@ -307,9 +364,10 @@ function paAlienStep(st, a, dt) {
       const air = Math.sin(a.hopPh) > 0;
       a.y = air ? Math.sin(a.hopPh) * 0.22 : 0;
       if (air && tgt.d > 1.6) {
-        const dx = tgt.b.x - a.x, dz = tgt.b.z - a.z, l = Math.hypot(dx, dz) || 1;
-        // a row keeps its line: mostly straight down the page, a little toward the hero
-        const sx = dx / l * 0.45, sz = Math.max(0.55, dz / l) * Math.sign(dz || 1);
+        const gate = paGate(a.x, a.z, tgt.b.x, tgt.b.z), gx = gate ? gate.x : tgt.b.x, gz = gate ? gate.z : tgt.b.z;
+        const dx = gx - a.x, dz = gz - a.z, l = Math.hypot(dx, dz) || 1;
+        // a row keeps its line: mostly straight down the page, a little toward the hero (through a gap: straight at it)
+        const sx = dx / l * (gate ? 1 : 0.45), sz = gate ? dz / l : Math.max(0.55, Math.abs(dz / l)) * Math.sign(dz || 1);
         const m = Math.hypot(sx, sz) || 1;
         a.x += sx / m * K.speed * 2 * dt; a.z += sz / m * K.speed * 2 * dt;
       }
@@ -334,15 +392,26 @@ function paAlienStep(st, a, dt) {
   }
   a.x = clamp(a.x, -PA.sideX - 2, PA.sideX + 2);
   a.z = Math.min(a.z, st.cz + PA.backWall + 0.5);
+  // walk round letters and card walls, never through them
+  if (!(a.k === 'folder' && a.st2 !== 'back') && !(a.k === 'stamper' && a.jump) && !a.perch) MOVER3.push(st.w, a, K.r * 0.8, 0, 1.2);
 }
 // Folders stand at the back, fold into paper planes in three visible folds (the dive line shows the whole time), dive
 // straight along it, and if they miss stick nose-first in the page for 2 s
 function paFolderStep(st, a, dt, tgt) {
   a.ft = (a.ft || 0) + dt;
   if (a.st2 === 'back') {
-    a.fold = Math.max(0, a.fold - dt * 2); a.y = 0;
+    a.fold = Math.max(0, a.fold - dt * 2); a.y = a.perch || 0;
     a.hopPh += dt * 3;
-    if (tgt) {
+    if (tgt && a.perch) {
+      // perched on a letter: it waits for a hero to come near, then launches from up there
+      a.think -= dt;
+      if (a.think <= 0 && tgt.d < 13) {
+        a.st2 = 'fold'; a.ft = 0; a.from = { x: a.x, z: a.z };
+        const dx = tgt.b.x - a.x, dz = tgt.b.z - a.z, l = Math.hypot(dx, dz) || 1;
+        a.to = { x: tgt.b.x + dx / l * 2.5, z: tgt.b.z + dz / l * 2.5 }; a.face = Math.atan2(dx, dz);
+        Sfx.play('popaliensFold');
+      }
+    } else if (tgt) {
       // keep 8 to 12 units ahead of the nearest hero
       const want = tgt.b.z - 10;
       a.z += clamp(want - a.z, -1, 1) * PA_KINDS.folder.speed * dt;
@@ -362,14 +431,14 @@ function paFolderStep(st, a, dt, tgt) {
     }
   } else if (a.st2 === 'fold') {
     a.fold = Math.min(3, a.ft / 0.4);
-    a.y = Math.min(1.6, a.ft * 1.4);
+    a.y = (a.perch || 0) + Math.min(1.6, a.ft * 1.4);
     if (a.ft >= 1.2) { a.st2 = 'dive'; a.ft = 0; Sfx.play('popaliensDive'); }
   } else if (a.st2 === 'dive') {
     const L = Math.hypot(a.to.x - a.from.x, a.to.z - a.from.z) || 1, k = Math.min(1, a.ft * 15 / L);
     a.x = a.from.x + (a.to.x - a.from.x) * k; a.z = a.from.z + (a.to.z - a.from.z) * k;
-    a.y = 1.6 * (1 - k) + 0.25 * k;
+    a.y = ((a.perch || 0) + 1.6) * (1 - k) + 0.25 * k;
     G.players.forEach((p, n) => { if (Math.hypot(p.b3.x - a.x, p.b3.z - a.z) < 0.7 && p.b3.y < 1.2) paFlatten(st, n, 'dive'); });
-    if (k >= 1) { a.st2 = 'stuck'; a.ft = 0; a.y = 0; Sfx.play('popaliensStick'); }
+    if (k >= 1) { a.st2 = 'stuck'; a.ft = 0; a.y = 0; a.perch = 0; Sfx.play('popaliensStick'); }
   } else if (a.st2 === 'stuck') {
     if (a.ft >= 2) { a.st2 = 'back'; a.ft = 0; a.think = 1.5 + st.rng() * 2.5; }
   }
@@ -382,7 +451,7 @@ function paCrabStep(st, a, dt) {
     const x0 = Math.min(a.x, a.cutAt), x1 = Math.max(a.x, a.cutAt);
     st.holes.push({ x0, x1, z: a.z, hw: 0.28, open: G.time + 0.8, gone: G.time + 40, id: st.nextId++ });
     a.cutAt = a.x;
-    if (st.holes.length > 120) st.holes.shift();
+    if (st.holes.length > 120) { const i = st.holes.findIndex(h => !h.fixed); if (i >= 0) st.holes.splice(i, 1); }
     Sfx.play('popaliensSnip');
   }
   if (Math.abs(a.x) > PA.sideX + 1.5) { a.dir = -a.dir; a.z -= 3; a.cutAt = a.x; }
@@ -446,6 +515,7 @@ function paThrow(st, k) {
 function paBurst(st, g) {
   paFx(st, 'burst', { x: g.x, z: g.z, r: PA.burstR });
   Sfx.play('popaliensGrenadeBurst'); st.shake = Math.max(st.shake, 0.3);
+  if (st.walker) paWalkerBurst(st, g);
   for (const a of st.aliens) {
     if (!paLive(a) && a.st !== 'pop') continue;
     if (Math.hypot(a.x - g.x, a.z - g.z) > PA.burstR + PA_KINDS[a.k].r) continue;
@@ -547,6 +617,7 @@ function paMarch(st, dt) {
   // the camera moves on (never back) when the pair's middle passes a line a third of the way up the screen
   let want = Math.min(st.cz, mz + PA.line);
   if (st.block) want = Math.max(want, st.block.stop);
+  const Wk = st.walker; if (Wk && Wk.state !== 'gone') want = Math.max(want, Wk.phase < 3 ? PA_ROUTE.walker.stop12 : PA_ROUTE.walker.stop3);
   want = Math.max(want, PA_ROUTE.end + 4);
   st.cz = Math.max(want, st.cz - PHYS.maxRun / K3D.U * dt);
   st.cx += clamp(mx * 0.35 - st.cx, -2 * dt, 2 * dt);
@@ -560,7 +631,12 @@ function paMarch(st, dt) {
     if (ev.tip) paTip(st, ev.tip);
     if (ev.wide) st.wideT = ev.wide;
     if (ev.block && !st.wallDown[i]) { st.block = { i, stop: ev.block.stop, wave: 0, waves: ev.block.waves }; paSpawnGroup(st, ev.block.waves[0], i); }
+    if (ev.boss) paWalkerStart(st);
   }
+  paConeStep(st, dt);
+  paBangStep(st, dt);
+  if (st.walker) paWalkerStep(st, dt);
+  if (st.hatch) paHatchStep(st, dt);
   // a blockade: the next wave when this one is beaten; the wall springs open after the last
   if (st.block) {
     const B = st.block;
@@ -627,9 +703,16 @@ function paStep(dt) {
     for (let s = 0; s < n && !bo.done; s++) {
       bo.x += bo.dx * step / n; bo.z += bo.dz * step / n; bo.d += step / n;
       if (bo.d > PA.boltRange) { bo.done = true; paFx(st, 'fizzle', { x: bo.x, z: bo.z, k: bo.k }); break; }
-      if (st.coverAt && st.coverAt(bo.x, bo.z)) { bo.done = true; paFx(st, 'ping', { x: bo.x, z: bo.z }); break; }
+      const cv = st.coverAt && st.coverAt(bo.x, bo.z);
+      if (cv) {
+        bo.done = true; paFx(st, 'ping', { x: bo.x, z: bo.z });
+        if (cv.bang && st.bang.up) { st.bang.hits++; paFx(st, 'bangHit', {}); if (st.bang.hits >= 3) paBangFall(st); }
+        break;
+      }
+      if (st.walker && paWalkerHit(st, bo)) { bo.done = true; break; }
       for (const a of st.aliens) {
         if (!paLive(a) || a.hp <= 0) continue;
+        if (a.perch && a.st2 === 'back') continue;
         if (Math.hypot(a.x - bo.x, a.z - bo.z) > PA_KINDS[a.k].r) continue;
         if (!paCanHit(a, bo.dx, bo.dz)) continue;
         if (paHit(st, a, bo.k, bo.dx, bo.dz, false)) { bo.done = true; break; }
@@ -651,13 +734,194 @@ function paStep(dt) {
   st.grens = st.grens.filter(g => !g.done);
   st.aliens = st.aliens.filter(a => a.st !== 'dead');
   st.holes = st.holes.filter(h => G.time < h.gone);
-  // the end of the route (for now, until Stretch 4 is built: the far edge of the Margin Fields)
-  const mz = (G.players[0].b3.z + G.players[1].b3.z) / 2;
-  if (!st.block && mz < PA_ROUTE.end + 1 && !st.h[0].flat && !st.h[1].flat) { st.phase = 'done'; st.doneT = 0; }
 }
 function paFinishStep(st, dt) {
   st.doneT += dt;
-  if (st.doneT > 1.2 && G.mode === 'play') levelClear();
+  // the drop into the bunker as the saucer stamps the hill a moment too late
+  if (st.doneT > 0.9 && !st.stampedLate) { st.stampedLate = true; st.shake = 0.5; Sfx.play('popaliensSaucerLand'); }
+  if (st.doneT > 2.6 && G.mode === 'play') levelClear();
+}
+
+/* ---------- the "!" in Letter City ---------- */
+function paBangFall(st) {
+  if (!st.bang.up) return;
+  st.bang.up = false; st.bang.fall = 0;
+  paStaticHoles(st); paRebuildWorld(st);
+  paFx(st, 'bangFall', {}); Sfx.play('popaliensWallDown'); st.shake = Math.max(st.shake, 0.3);
+}
+function paBangStep(st, dt) {
+  const B = st.bang;
+  if (!B.up) { B.fall = Math.min(1, B.fall + dt * 1.4); return; }
+  // left a long time beside it, it topples by itself (nobody is stuck at the holes)
+  const near = G.players.some(p => Math.abs(p.b3.z - PA_ROUTE.bang.holesZ) < 12);
+  if (near) { B.near += dt; if (B.near > 25) paBangFall(st); }
+}
+
+/* ---------- the saucer's searchlight in the Ink Crater: aliens pop up where it rests ---------- */
+function paConeStep(st, dt) {
+  const C = PA_ROUTE.cone;
+  if (st.cz > C.z0 || st.cz < C.z1 || st.block) { st.cone = null; return; }
+  if (!st.cone) { const sp = C.spots[0]; st.cone = { i: 0, mode: 'rest', t: C.rest * 0.4, x: st.cx + sp[0], z: st.cz - sp[1], popped: true }; }
+  const c = st.cone;
+  c.t += dt;
+  if (c.mode === 'move') {
+    const k = Math.min(1, c.t / C.move), e = k * k * (3 - 2 * k);
+    c.x = c.fx + (c.tx - c.fx) * e; c.z = c.fz + (c.tz - c.fz) * e;
+    if (k >= 1) { c.mode = 'rest'; c.t = 0; c.popped = false; }
+  } else {
+    // keep up with the march while resting
+    c.z = Math.min(c.z, st.cz - 4);
+    if (!c.popped && c.t >= C.popAt) {
+      c.popped = true;
+      const live = st.aliens.filter(paLive).length;
+      if (live < 26) paSpawnGroup(st, [{ k: 'grunt', x: c.x - 0.9, z: c.z }, { k: 'grunt', x: c.x + 0.9, z: c.z - 0.4 }], null);
+    }
+    if (c.t >= C.rest) {
+      c.i = (c.i + 1) % C.spots.length; const sp = C.spots[c.i];
+      c.mode = 'move'; c.t = 0; c.fx = c.x; c.fz = c.z; c.tx = clamp(st.cx + sp[0], -13, 13); c.tz = st.cz - sp[1];
+    }
+  }
+}
+
+/* ---------- the Scribble Walker (the boss at the top of Bunker Hill) ----------
+   A flat crayon-scribble sheet on three folded legs. It turns edge-on to whoever shot it last, so their bolts slide
+   past: the pair stand on two sides. Ordinary bolts rub off a little, crossed beams rub off a whole patch.
+   1: it strides about and stamps (round shadows). 6 patches.
+   2: as 1, and it tears strips off itself that become Grunts, and sweeps a crayon line across the ground (jump it).
+   3: it crouches over the hatch behind its legs (bolts do nothing); a grenade under it makes it rear up for a few
+      seconds, and then bolts reach its soft middle. Carriers bring grenades from the edges so this cannot lock. */
+const PA_WALK = { half: 3.4, rubPhase: 8, rubLast: 3, boltRub: 0.12, rearRub: 0.25, crossWin: 0.6, crossCd: 1.6, speed: 2.2, stampEvery: 4.5,
+  stampWind: 1.4, stampR: 1.7, stripEvery: 7, lineEvery: 10, lineWind: 1.0, lineSpeed: 5, rearT: 3.6, burstR: 3.8, foldT: 2.6 };
+function paWalkerStart(st) {
+  const ph = st.saved && st.saved.walkerPhase || 1;
+  if (ph >= 4) { paHatchOpen(st); return; }
+  const S = PA_ROUTE.walker.start, kept = st.saved && st.saved.walkerRub || 0;   // rubbed-off crayon stays rubbed off after a wipe-out
+  st.walker = { x: S.x, z: S.z, face: 0, phase: ph, rub: kept, total: (ph - 1) * PA_WALK.rubPhase + kept, state: 'stride', t: 0, spot: 0,
+    stampT: 2.5, stamp: null, stripT: 4, lineT: 5, line: null, hitT: [-9, -9], edgeBy: -1, edgeT: 0, relaxT: 0, rearT: 0, foldT: 0, carrierT: 3 };
+  paFx(st, 'walker', { phase: ph });
+  Sfx.play('popaliensWalkerStep');
+}
+function paWalkerHit(st, bo) {
+  const W = st.walker;
+  if (W.state === 'fold' || W.state === 'gone') return false;
+  const nx = Math.sin(W.face), nz = Math.cos(W.face), dx = bo.x - W.x, dz = bo.z - W.z;
+  const along = dx * nz - dz * nx, across = dx * nx + dz * nz;
+  if (Math.abs(across) > 0.45 || Math.abs(along) > PA_WALK.half) return false;
+  // edge-on to this bolt: it slides past
+  if (Math.abs(bo.dx * nx + bo.dz * nz) < 0.42) return false;
+  const k = bo.k, now = G.time;
+  if (W.state === 'crouch' || W.state === 'toHatch') { paFx(st, 'ping', { x: bo.x, z: bo.z }); Sfx.play('popaliensPing'); return true; }
+  // crossed beams rub off a whole patch (one at a time: the crayon needs a moment to smudge again)
+  const crossed = now - W.hitT[1 - k] < PA_WALK.crossWin && now - (W.crossAt || -9) > PA_WALK.crossCd;
+  W.hitT[k] = now;
+  let rub = W.state === 'rear' ? PA_WALK.rearRub : PA_WALK.boltRub;
+  if (crossed) { rub = 1; W.hitT = [-9, -9]; W.crossAt = now; paFx(st, 'cross', { a: { id: -1, k: 'walker', x: bo.x, y: 2, z: bo.z, face: W.face, scorch: 0, fold: 0 } }); Sfx.play('popaliensCross'); }
+  W.rub += rub; W.total += rub;
+  if (st.saved) st.saved.walkerRub = W.rub;
+  if (W.edgeBy !== k) { W.edgeBy = k; W.edgeT = 0; }
+  paFx(st, 'rub', { x: bo.x, z: bo.z, big: crossed });
+  Sfx.play('popaliensWalkerRub');
+  const need = W.phase < 3 ? PA_WALK.rubPhase : PA_WALK.rubLast;
+  if (W.rub >= need) {
+    W.rub = 0; if (st.saved) st.saved.walkerRub = 0;
+    if (W.phase < 3) {
+      W.phase++; W.stamp = null; W.line = null;
+      if (st.saved) st.saved.walkerPhase = W.phase;
+      paFx(st, 'walkerPhase', { phase: W.phase }); Sfx.play('popaliensGold');
+      if (W.phase === 3) { W.state = 'toHatch'; paSay(st, 'It is hiding over the hatch! A grenade under it!'); }
+      else paSay(st, 'It is tearing bits off itself! Jump the crayon line!');
+    } else { W.state = 'fold'; W.foldT = 0; if (st.saved) st.saved.walkerPhase = 4; Sfx.play('popaliensWalkerFold'); paFx(st, 'walkerFold', {}); }
+  }
+  return true;
+}
+function paWalkerBurst(st, g) {
+  const W = st.walker;
+  if (Math.hypot(g.x - W.x, g.z - W.z) > PA_WALK.burstR) return;
+  if (W.state === 'crouch') { W.state = 'rear'; W.rearT = 0; paFx(st, 'walkerRear', {}); Sfx.play('popaliensWalkerStep'); }
+  else if (W.state === 'stride' || W.state === 'rear') { W.rub += 0.5; W.total += 0.5; if (st.saved) st.saved.walkerRub = W.rub; paFx(st, 'rub', { x: g.x, z: g.z, big: true }); }
+}
+function paWalkerStep(st, dt) {
+  const W = st.walker, A = PA_ROUTE.walker;
+  W.t += dt;
+  if (W.state === 'gone') return;
+  if (W.state === 'fold') { W.foldT += dt; if (W.foldT >= PA_WALK.foldT) { W.state = 'gone'; paHatchOpen(st); } return; }
+  // facing: edge-on to whoever hit it last; after 3 s edge-on it wobbles back face-on to them for a moment
+  const tgt = paNearestHero(st, W.x, W.z);
+  let want = W.face;
+  if (W.edgeBy >= 0 && !st.h[W.edgeBy].flat) {
+    const b = G.players[W.edgeBy].b3, to = Math.atan2(b.x - W.x, b.z - W.z);
+    if (W.relaxT > 0) { W.relaxT -= dt; want = to; }
+    else { W.edgeT += dt; want = Math.abs(paAng(to + Math.PI / 2 - W.face)) < Math.PI / 2 ? to + Math.PI / 2 : to - Math.PI / 2; if (W.edgeT > 3) { W.relaxT = 1.6; W.edgeT = 0; } }
+  } else if (tgt) want = Math.atan2(tgt.b.x - W.x, tgt.b.z - W.z);
+  if (W.state === 'crouch' || W.state === 'rear') { if (tgt) want = Math.atan2(tgt.b.x - W.x, tgt.b.z - W.z); }
+  W.face += clamp(paAng(want - W.face), -1.3 * dt, 1.3 * dt);
+  if (W.state === 'toHatch') {
+    const dx = A.hatch.x - W.x, dz = A.hatch.z - 0.5 - W.z, d = Math.hypot(dx, dz);
+    if (d < 0.2) { W.state = 'crouch'; W.t = 0; } else { W.x += dx / d * Math.min(d, PA_WALK.speed * dt); W.z += dz / d * Math.min(d, PA_WALK.speed * dt); }
+    return;
+  }
+  if (W.state === 'crouch' || W.state === 'rear') {
+    if (W.state === 'rear') { W.rearT += dt; if (W.rearT >= PA_WALK.rearT) { W.state = 'crouch'; W.t = 0; } }
+    // Carriers bring grenades from the edges while nobody has one to throw
+    W.carrierT -= dt;
+    const held = st.h[0].gren + st.h[1].gren, lying = st.pickups.some(p => p.live), carrying = st.aliens.some(a => a.k === 'carrier');
+    if (W.carrierT <= 0 && held === 0 && !lying && !carrying) {
+      W.carrierT = 6;
+      const sd = st.rng() < 0.5 ? -1 : 1;
+      paSpawn(st, { k: 'carrier', x: sd * 12, z: st.cz - 6 }, 'boss');
+    }
+    return;
+  }
+  // stride between its spots, stopping to stamp
+  if (W.stamp) {
+    W.stamp.t += dt;
+    if (W.stamp.t >= PA_WALK.stampWind) {
+      const S = W.stamp; W.stamp = null; W.stampT = PA_WALK.stampEvery;
+      st.prints.push({ x: S.x, z: S.z, r: 1.6, until: G.time + 8, id: st.nextId++ });
+      paFx(st, 'stamp', { x: S.x, z: S.z, walker: true }); Sfx.play('popaliensStamp'); st.shake = Math.max(st.shake, 0.4);
+      G.players.forEach((p, n) => { if (Math.hypot(p.b3.x - S.x, p.b3.z - S.z) < PA_WALK.stampR && p.b3.y < 0.6) paFlatten(st, n, 'stamp'); });
+    }
+  } else {
+    const sp = A.spots[W.spot], dx = sp[0] - W.x, dz = sp[1] - W.z, d = Math.hypot(dx, dz);
+    if (d < 0.3) W.spot = (W.spot + 1 + Math.floor(st.rng() * 2)) % A.spots.length;
+    else { W.x += dx / d * Math.min(d, PA_WALK.speed * dt); W.z += dz / d * Math.min(d, PA_WALK.speed * dt); }
+    W.stampT -= dt;
+    if (W.stampT <= 0 && tgt && tgt.d < 14) { W.stamp = { x: tgt.b.x, z: tgt.b.z, t: 0 }; paFx(st, 'stampAim', { x: tgt.b.x, z: tgt.b.z, walker: true }); }
+  }
+  if (W.phase >= 2) {
+    // strips torn off become Grunts
+    W.stripT -= dt;
+    if (W.stripT <= 0) {
+      W.stripT = PA_WALK.stripEvery;
+      if (st.aliens.filter(paLive).length < 12) { paSpawnGroup(st, [{ k: 'grunt', x: W.x - 2, z: W.z + 1 }, { k: 'grunt', x: W.x + 2, z: W.z + 1 }], 'boss'); paFx(st, 'strip', { x: W.x, z: W.z }); }
+    }
+    // the crayon line: drawn across the ground in front of it, then swept toward the heroes (jump it)
+    if (!W.line) { W.lineT -= dt; if (W.lineT <= 0) { W.line = { z: W.z + 1.5, z0: W.z + 1.5, t: 0 }; paFx(st, 'crayonLine', {}); Sfx.play('popaliensZapWind'); } }
+    else {
+      const L = W.line; L.t += dt;
+      if (L.t >= PA_WALK.lineWind) {
+        const was = L.z; L.z += PA_WALK.lineSpeed * dt;
+        G.players.forEach((p, n) => { const b = p.b3; if (b.y < 0.25 && b.z > was - 0.2 && b.z < L.z + 0.2) paFlatten(st, n, 'crayon'); });
+        if (L.z > st.cz + PA.backWall + 1) { W.line = null; W.lineT = PA_WALK.lineEvery; }
+      }
+    }
+  }
+}
+function paHatchOpen(st) {
+  const H = PA_ROUTE.walker.hatch;
+  st.hatch = { x: H.x, z: H.z, r: H.r, fill: 0 };
+  st.walker = st.walker || null;
+  paSay(st, 'The hatch! Both stand on it and hold reload!');
+}
+// the finish: both heroes on the hatch, holding reload (both: 1 s; one alone: 3 s, so a partner who never presses
+// cannot lock the level)
+function paHatchStep(st, dt) {
+  const H = st.hatch;
+  const on = [0, 1].filter(k => paOnHatch(st, k) && !st.h[k].flat);
+  const hold = on.filter(k => G.players[k].input.act3).length;
+  if (on.length === 2 && hold > 0) H.fill += dt * (hold === 2 ? 1 : 0.34);
+  else H.fill = Math.max(0, H.fill - dt * 0.5);
+  if (H.fill >= 1 && st.phase === 'march') { st.phase = 'done'; st.doneT = 0; Sfx.play('popaliensHatch'); paFx(st, 'hatch', {}); }
 }
 
 /* ---------- results and medals ---------- */
@@ -849,6 +1113,10 @@ Object.assign(Sfx.extra, {
   popaliensGold() { this.fanfare([523, 659, 784, 1047], 0.09, 0.14); },
   popaliensPing() { this.tone(2200, 0.05, 'triangle', 0.025, 1800); },
   popaliensCapOff() { this.tone(1400, 0.15, 'triangle', 0.04, 500); },
+  popaliensWalkerStep() { this.tone(70, 0.3, 'sine', 0.08, 45); this.noise(0.2, { type: 'bandpass', f: 400, vol: 0.05 }); },
+  popaliensWalkerRub() { this.noise(0.1, { type: 'bandpass', f: 2600, to: 1400, vol: 0.035 }); },
+  popaliensWalkerFold() { for (let k = 0; k < 6; k++) this.noise(0.09, { type: 'bandpass', f: 1200 + k * 300, vol: 0.04, delay: k * 0.35 }); },
+  popaliensHatch() { this.tone(300, 0.4, 'triangle', 0.05, 600); this.fanfare([523, 659, 784, 1047, 1319], 0.1, 0.16); },
   popaliensWallDown() { for (let k = 0; k < 5; k++) this.tone(1200 - k * 150, 0.06, 'square', 0.02, null, k * 0.05); },
 });
 
