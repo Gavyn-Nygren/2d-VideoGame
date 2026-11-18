@@ -14,7 +14,7 @@ const { chromium } = require('playwright');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); return a ? a.split('=')[1] : d; };
 const who = opt('who', 'pair'), maxT = +opt('max', 600), seeds = opt('seeds', '1').split(',').map(Number);
-const nobeat = !!+opt('nobeat', 0), slow = +opt('slow', 0), trace = +opt('trace', 0), from = opt('from', null), to = opt('to', null);
+const slow = +opt('slow', 0), trace = +opt('trace', 0), from = opt('from', null), to = opt('to', null);
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -31,8 +31,8 @@ const nobeat = !!+opt('nobeat', 0), slow = +opt('slow', 0), trace = +opt('trace'
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
   for (const seed of seeds) {
     errors.length = 0;
-    const r = await page.evaluate(async ({ who, maxT, seed, slow, trace, from, to, nobeat }) => {
-      const P = window.__pipbo, G = P.G, K3D = P.K3D; window.__noBeat = nobeat; window.__zlog = [];
+    const r = await page.evaluate(async ({ who, maxT, seed, slow, trace, from, to }) => {
+      const P = window.__pipbo, G = P.G, K3D = P.K3D; window.__zlog = [];
       const i = P.LEVELS.findIndex(l => l.mode === 'parkflume');
       window.__seed(seed * 7919);
       G.manual = true; K3D.noRender = true;
@@ -60,7 +60,7 @@ const nobeat = !!+opt('nobeat', 0), slow = +opt('slow', 0), trace = +opt('trace'
       const st0 = G.mst;
       if (from != null) { st0.phase = 'ride'; st0.started = true; st0.s = st0.prevS = st0.restart = +from; st0.x = 0; }
       const steps = Math.round(maxT / P.DT), every = trace ? Math.round(trace / P.DT) : 0, lines = [], whys = [];
-      const xAt = {}; let n = 0, lastSoak = 0, pin = 0, worstPin = 0, worstSpin = 0, spin = 0, lastPsi = 0;
+      const xAt = {}; let n = 0, lastSoak = 0, scrape = 0, worstScrape = 0, pin = 0, worstPin = 0, worstSpin = 0, spin = 0, lastPsi = 0;
       while (n < steps && G.mode === 'play') {
         for (let k = 0; k < 600 && n < steps && G.mode === 'play'; k++, n++) {
           window.__inStep = true;
@@ -72,7 +72,7 @@ const nobeat = !!+opt('nobeat', 0), slow = +opt('slow', 0), trace = +opt('trace'
             // the computer's turns (zigzag check): a drag taken up turns toward its side, an unpaired stroke away
             for (const k of [0, 1]) {
               const sd = k === 0 ? -1 : 1, turn = d => {
-                const z = zz.at[k]; if (zz.last[k] && d !== zz.last[k]) { z.push(s.t); window.__zlog.push(`${k}:${d}@${s.t.toFixed(2)} s=${s.s.toFixed(0)}`); while (z.length && s.t - z[0] > 1) z.shift(); zz.worst = Math.max(zz.worst, z.length); }
+                const z = zz.at[k]; if (zz.last[k] && d !== zz.last[k] && (who === 'pair' || k !== slow)) { z.push(s.t); window.__zlog.push(`${k}:${d}@${s.t.toFixed(2)} s=${s.s.toFixed(0)}`); while (z.length && s.t - z[0] > 1) z.shift(); zz.worst = Math.max(zz.worst, z.length); }
                 zz.last[k] = d;
               };
               if (s.drag[k] && !zz.dr[k]) turn(sd);
@@ -81,7 +81,9 @@ const nobeat = !!+opt('nobeat', 0), slow = +opt('slow', 0), trace = +opt('trace'
               if (zz.pend[k] != null && s.t - zz.pend[k] > 0.3) { if (!s.paired[k] || s.strokeAt[k] !== zz.sa[k]) turn(-sd); zz.pend[k] = null; }
             }
             xAt[Math.round(s.s)] = s.x.toFixed(1);
-            pin = s.bank[0] ? pin + P.DT : 0; worstPin = Math.max(worstPin, pin);
+            // pinned: held against a bank and not carried on (nearly stopped: under a third of the current's speed; scraping along a bank with the current is not pinned)
+            scrape = s.bank[0] ? scrape + P.DT : 0; worstScrape = Math.max(worstScrape, scrape);
+            pin = s.bank[0] && s.vs < 0.34 * PARKFLUME_ROUTE.R.at(s.s).v ? pin + P.DT : 0; worstPin = Math.max(worstPin, pin);
             // a spin: the heading's total change in one direction (it is capped near 60 degrees, so this stays small)
             const d = s.psi - lastPsi; spin = Math.sign(d) === Math.sign(spin) || !spin ? spin + d : d; worstSpin = Math.max(worstSpin, Math.abs(spin)); lastPsi = s.psi;
           }
@@ -96,10 +98,10 @@ const nobeat = !!+opt('nobeat', 0), slow = +opt('slow', 0), trace = +opt('trace'
       let avail = 0; PARKFLUME_ROUTE.lists.ducks.forEach(d => { if (d.s >= a && d.s <= b) avail += d.big ? PARKFLUME.S.BIG_DUCKS : 1; });
       return { mode: G.mode, simT: +(n * P.DT).toFixed(1), phase: s.phase, s: s.s, cleared: !!res, medal: res && res.medal && res.medal.tier,
         ducks: s.ducks, avail, soaks: s.soaks, sinks: s.sinkings, bumps: s.bumps, pairs: s.pairs, laps: s.laps, gold: s.goldN,
-        missed: PARKFLUME_ROUTE.lists.ducks.map((d, k) => (s.got[k] || d.s < a || d.s > Math.min(b, s.s) ? '' : `${d.s.toFixed(0)}:${d.x.toFixed(1)}${d.big ? 'B' : ''}/${xAt[Math.round(d.s)]}`)).filter(Boolean), zlog: window.__zlog, worstPin: +worstPin.toFixed(2), worstSpin: +worstSpin.toFixed(2), zig: zz.worst, whys, cpuErrs: [...P.CPU.errs], trace: lines };
-    }, { who, maxT, seed, slow, trace, from, to, nobeat });
+        missed: PARKFLUME_ROUTE.lists.ducks.map((d, k) => (s.got[k] || d.s < a || d.s > Math.min(b, s.s) ? '' : `${d.s.toFixed(0)}:${d.x.toFixed(1)}${d.big ? 'B' : ''}/${xAt[Math.round(d.s)]}`)).filter(Boolean), zlog: window.__zlog, worstPin: +worstPin.toFixed(2), scrape: +worstScrape.toFixed(1), worstSpin: +worstSpin.toFixed(2), zig: zz.worst, whys, cpuErrs: [...P.CPU.errs], trace: lines };
+    }, { who, maxT, seed, slow, trace, from, to });
     if (r.trace.length) console.log(r.trace.join('\n'));
-    console.log(`${who}${who !== 'pair' ? '(' + ['Pip', 'Bo'][slow] + ')' : ''} s${seed}: ${r.cleared ? 'FINISHED' : 'stopped (' + r.phase + ' at s=' + r.s.toFixed(1) + ')'} in ${r.simT}s  ducks ${r.ducks}/${r.avail} (${Math.round(r.ducks / Math.max(1, r.avail) * 100)}%)  soaks ${r.soaks}  sinkings ${r.sinks}  bumps ${r.bumps}  pairs ${r.pairs}  laps ${r.laps}  pin ${r.worstPin}s  spin ${r.worstSpin}  zigzag/s ${r.zig}${r.medal ? '  medal ' + r.medal : ''}${process.env.ZLOG ? '\n  ' + r.zlog.join(' ') : ''}${process.env.MISSED ? '\n  missed (s:x/log x): ' + r.missed.join(' ') : ''}${r.whys.length ? '\n  soaks: ' + r.whys.join(' ') : ''}${r.cpuErrs.length ? '\n  CPU ERR ' + r.cpuErrs : ''}${errors.length ? '\n  PAGE ERR ' + errors.slice(0, 3).join(' | ').slice(0, 600) : ''}`);
+    console.log(`${who}${who !== 'pair' ? '(' + ['Pip', 'Bo'][slow] + ')' : ''} s${seed}: ${r.cleared ? 'FINISHED' : 'stopped (' + r.phase + ' at s=' + r.s.toFixed(1) + ')'} in ${r.simT}s  ducks ${r.ducks}/${r.avail} (${Math.round(r.ducks / Math.max(1, r.avail) * 100)}%)  soaks ${r.soaks}  sinkings ${r.sinks}  bumps ${r.bumps}  pairs ${r.pairs}  laps ${r.laps}  pin ${r.worstPin}s (along a bank ${r.scrape}s)  spin ${r.worstSpin}  zigzag/s ${r.zig}${r.medal ? '  medal ' + r.medal : ''}${process.env.ZLOG ? '\n  ' + r.zlog.join(' ') : ''}${process.env.MISSED ? '\n  missed (s:x/log x): ' + r.missed.join(' ') : ''}${r.whys.length ? '\n  soaks: ' + r.whys.join(' ') : ''}${r.cpuErrs.length ? '\n  CPU ERR ' + r.cpuErrs : ''}${errors.length ? '\n  PAGE ERR ' + errors.slice(0, 3).join(' | ').slice(0, 600) : ''}`);
   }
   await browser.close();
 })().catch(e => { console.error(e); process.exit(1); });

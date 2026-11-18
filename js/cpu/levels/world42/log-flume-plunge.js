@@ -127,8 +127,10 @@
         return out;
       }
 
-      // two computers keep a beat on the straights (Pip leads, the other matches): pairs build Speed
-      if (!solo && !window.__noBeat && !want && id === 0 && ready && Math.abs(need) < 0.35 && t - s.lastStroke > 1.0 && why !== 'avoid') { out.act = 'tap'; s.lastStroke = t; }
+      // two computers keep a beat on the straights (Pip leads, the other matches): pairs build Speed. A beat stroke
+      // the partner did not match turns the log, so after two of those in a row it stops beating for a while.
+      if (s.beatAt != null && t - s.beatAt > 0.35) { s.beatMiss = st.paired[id] && st.strokeAt[id] >= s.beatAt ? 0 : (s.beatMiss || 0) + 1; s.beatAt = null; if (s.beatMiss >= 2) { s.beatOff = t + 8; s.beatMiss = 0; } }
+      if (!solo && !want && id === 0 && ready && Math.abs(need) < 0.35 && t - s.lastStroke > 1.0 && why !== 'avoid' && st.speed < 0.5 && t > (s.beatOff || 0)) { out.act = 'tap'; s.lastStroke = t; s.beatAt = t; }
       return out;
     },
   });
