@@ -6,7 +6,10 @@
      btnLabel(id, what)          -> plain text for a canvas hint: 'W', '↑', 'A', '✕', '▲', '●' ...
      btnHTML(id, what)           -> the same button as HTML for a card
      drawBtn(id, what, x, y, o)  -> draws the button on the game canvas (o: { size, label, alpha, align }); returns its width
-     what is 'left', 'right', 'jump', 'down', 'act' or 'move' (left + right)
+     what is 'left', 'right', 'jump', 'down', 'act', 'act2', 'act3' or 'move' (left + right)
+     (act2 / act3: the second and third actions of a level with def.act2 / def.act3; there a controller's act is the right
+     trigger, act2 the right bumper and act3 X. In a legend, Pip's <kbd>Q</kbd> and Bo's <kbd>,</kbd> mean act2,
+     <kbd>E</kbd> and <kbd>.</kbd> mean act3.)
    A level writes its controls once, as Pip's and Bo's keyboard lines (def.legend, see setLegend in js/ui.js);
    controlsLine() rewrites the line for whatever each player holds, so there is no second copy per device.
 
@@ -32,10 +35,13 @@ const isCpuPlayer = id => cpuSolo() && id !== cpuHuman();
 // which keys a keyboard player is shown: their own set, or (one person, who may use both) the set they last pressed
 const keysetFor = id => (cpuSolo() && Dev.keyset != null ? Dev.keyset : id);
 const KEYCAPS = [
-  { left: 'A', right: 'D', jump: 'W', down: 'S', act: 'F' },
-  { left: '←', right: '→', jump: '↑', down: '↓', act: '/' },
+  { left: 'A', right: 'D', jump: 'W', down: 'S', act: 'F', act2: 'Q', act3: 'E' },
+  { left: '←', right: '→', jump: '↑', down: '↓', act: '/', act2: ',', act3: '.' },
 ];
-const KEY_MEANS = { A: 'left', D: 'right', W: 'jump', S: 'down', F: 'act', E: 'act', Space: 'jump', '←': 'left', '→': 'right', '↑': 'jump', '↓': 'down', '/': 'act' };
+const KEY_MEANS = { A: 'left', D: 'right', W: 'jump', S: 'down', F: 'act', E: 'act3', Q: 'act2', Space: 'jump', '←': 'left', '→': 'right', '↑': 'jump', '↓': 'down', '/': 'act', ',': 'act2', '.': 'act3' };
+const isActW = m => m === 'act' || m === 'act2' || m === 'act3';
+const TOUCH_ACT = { act: '●', act2: '✦', act3: '⟳' };
+const PAD_ACT_GLYPH = { act2: 'rb', act3: 'x3' };
 const ARROWS = { left: '◀', right: '▶', jump: '▲', down: '▼', up: '▲' };
 
 // everything that changes what the prompts say; pollInput calls controlsWatch() every frame and a change redraws them
@@ -58,21 +64,24 @@ function btnLabel(id, what) {
   const d = playerDevice(id);
   if (what === 'move') return d.kind === 'pad' ? 'stick' : btnLabel(id, 'left') + ' ' + btnLabel(id, 'right');
   if (d.kind === 'kb') return KEYCAPS[keysetFor(id)][what] || '';
-  if (d.kind === 'touch') return what === 'act' ? '●' : ARROWS[what] || '';
+  if (d.kind === 'touch') return TOUCH_ACT[what] || ARROWS[what] || '';
   if (what === 'jump') return glyph('a', id);
   if (what === 'act') return glyph(padActGlyph(), id);
+  if (PAD_ACT_GLYPH[what]) return glyph(PAD_ACT_GLYPH[what], id);
   return ARROWS[what] || '';
 }
-// def.act.padGlyph names another controller button for the action (e.g. 'a' where A does it for a seated role)
-function padActGlyph() { const a = G.level && G.level.def.act; return (a && a.padGlyph) || 'act'; }
+// def.act.padGlyph names another controller button for the action (e.g. 'a' where A does it for a seated role); a
+// three-action level fires with the right trigger
+function padActGlyph() { const a = G.level && G.level.def.act; return (a && a.padGlyph) || (multiAct() ? 'rt' : 'act'); }
 const padGlyphHTML = (g, id) => `<span data-glyph="${esc(g)}" data-gp="${id}" class="${esc(glyphClass(g, id))}">${esc(glyph(g, id))}</span>`;
 function btnHTML(id, what) {
   const d = playerDevice(id);
   if (what === 'move') return d.kind === 'pad' ? '<kbd class="k-stick">stick</kbd>' : btnHTML(id, 'left') + btnHTML(id, 'right');
   if (d.kind === 'kb') return `<kbd>${esc(KEYCAPS[keysetFor(id)][what] || '')}</kbd>`;
-  if (d.kind === 'touch') return what === 'act' ? '<kbd class="k-touch k-round">●</kbd>' : `<kbd class="k-touch">${ARROWS[what] || ''}</kbd>`;
+  if (d.kind === 'touch') return isActW(what) ? `<kbd class="k-touch k-round">${TOUCH_ACT[what]}</kbd>` : `<kbd class="k-touch">${ARROWS[what] || ''}</kbd>`;
   if (what === 'jump') return padGlyphHTML('a', id);
   if (what === 'act') return padGlyphHTML(padActGlyph(), id);
+  if (PAD_ACT_GLYPH[what]) return padGlyphHTML(PAD_ACT_GLYPH[what], id);
   return `<kbd class="k-stick">${ARROWS[what] || ''}</kbd>`;
 }
 
@@ -86,13 +95,13 @@ function controlsLine(id, html) {
     const caps = group.match(/<kbd>[^<]*<\/kbd>/g).map(t => t.slice(5, -6));
     const means = caps.map(c => KEY_MEANS[c] || null);
     if (d.kind === 'pad') {
-      const dirs = means.filter(m => m && m !== 'act');
+      const dirs = means.filter(m => m && !isActW(m));
       // all four directions together is the whole stick; jump next to down is the stick's up
       if (dirs.length >= 4 && ['left', 'right', 'jump', 'down'].every(m => means.includes(m))) { stickSaid = true; return '<kbd class="k-stick">stick</kbd>'; }
       const vertical = means.includes('jump') && means.includes('down');
       return means.map((m, k) => {
         if (!m) return `<kbd>${caps[k]}</kbd>`;
-        if (m === 'act' || (m === 'jump' && !vertical)) return btnHTML(id, m);
+        if (isActW(m) || (m === 'jump' && !vertical)) return btnHTML(id, m);
         const said = stickSaid; stickSaid = true;
         return (said ? '' : '<span class="k-word">stick</span>') + `<kbd class="k-stick">${ARROWS[m]}</kbd>`;
       }).join('');
@@ -225,7 +234,7 @@ const PAD_COLS = {
 // button, or a touch button), centred on x, y, with an optional word after it. Returns the width drawn.
 function drawBtn(id, what, x, y, o = {}) {
   const d = playerDevice(id), s = o.size || 22, lab = btnLabel(id, what);
-  const isBtn = d.kind === 'pad' && (what === 'jump' || what === 'act');
+  const isBtn = d.kind === 'pad' && (what === 'jump' || isActW(what));
   ctx.save();
   if (o.alpha != null) ctx.globalAlpha *= o.alpha;
   ctx.font = `700 ${Math.round(s * 0.6)}px "Atkinson Hyperlegible", system-ui, sans-serif`;
@@ -234,14 +243,15 @@ function drawBtn(id, what, x, y, o = {}) {
   const lw = o.label ? Math.ceil(ctx.measureText(o.label).width) + s * 0.3 : 0, total = bw + lw;
   const x0 = o.align === 'left' ? x : o.align === 'right' ? x - total : x - total / 2;
   if (isBtn) {
-    const g0 = what === 'jump' ? 'a' : padActGlyph(), bw0 = PadBind[id] && bindWhat(g0);
-    const g = bw0 ? padBtnKey(PadBind[id][bw0][0]) : g0;
+    const g0 = what === 'jump' ? 'a' : what === 'act' ? padActGlyph() : PAD_ACT_GLYPH[what], bw0 = PadBind[id] && bindWhat(g0);
+    const bl = bw0 && (g0 === 'a' || g0 === 'act' ? PadBind[id][bw0] : padBindOf(id, bw0));
+    const g = bl ? padBtnKey(bl[0]) : g0 === 'x3' ? 'act' : g0;
     ctx.fillStyle = ((PAD_COLS[d.family] || PAD_COLS.generic)[g]) || '#4a4766';
     rr(x0, y - s / 2, bw, s, s / 2); ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5; rr(x0, y - s / 2, bw, s, s / 2); ctx.stroke();
   } else if (d.kind === 'touch') {
     ctx.fillStyle = id === 0 ? 'rgba(255,107,74,0.85)' : 'rgba(91,149,255,0.85)';
-    rr(x0, y - s / 2, bw, s, what === 'act' ? s / 2 : s * 0.28); ctx.fill();
+    rr(x0, y - s / 2, bw, s, isActW(what) ? s / 2 : s * 0.28); ctx.fill();
   } else {
     // a keycap (keyboard), or the stick's direction (controller)
     ctx.fillStyle = '#15132b'; rr(x0, y - s / 2 + 2, bw, s, s * 0.26); ctx.fill();

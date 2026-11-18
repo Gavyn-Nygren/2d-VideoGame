@@ -11,14 +11,21 @@ let tapClock = 0;
 const keysTapped = new Map(), touchTapped = [new Map(), new Map()];
 const tapLive = (m, c) => m.has(c) && tapClock - m.get(c) < TAP_STEPS;
 // act = the action button, used only by levels with def.act (punch, throw...)
+// act2 / act3 = a second and third action, read only by levels with def.act2 / def.act3 (41-4: grenade, reload). In
+// those levels a key that is also in act2 or act3 stops counting as act (Pip's E reloads there, Bo's . and , too), and a
+// controller narrows to: act = right trigger, act2 = right bumper, act3 = X (Gavyn, 2026-11-17). Every other level reads
+// exactly what it read before.
 const BIND = [
-  { left: ['KeyA'], right: ['KeyD'], jump: ['KeyW', 'Space'], down: ['KeyS'], act: ['KeyF', 'KeyE'] },
-  { left: ['ArrowLeft'], right: ['ArrowRight'], jump: ['ArrowUp'], down: ['ArrowDown'], act: ['Slash', 'Period', 'Comma', 'Enter', 'Numpad0', 'NumpadEnter'] },
+  { left: ['KeyA'], right: ['KeyD'], jump: ['KeyW', 'Space'], down: ['KeyS'], act: ['KeyF', 'KeyE'], act2: ['KeyQ'], act3: ['KeyE'] },
+  { left: ['ArrowLeft'], right: ['ArrowRight'], jump: ['ArrowUp'], down: ['ArrowDown'], act: ['Slash', 'Period', 'Comma', 'Enter', 'Numpad0', 'NumpadEnter'],
+    act2: ['Comma', 'Numpad1'], act3: ['Period', 'NumpadDecimal'] },
 ];
+// does the level on now use the second / third action? (then the pad and the shared keys narrow, see above)
+const multiAct = () => !!(G.level && (G.level.def.act2 || G.level.def.act3));
 // 3D levels only: the jump keys (the usual jump keys walk away from the viewer there)
 const K3D_JUMP = [['Space'], ['ShiftRight']];
 const GAME_KEYS = new Set(['ShiftRight', 'KeyA', 'KeyD', 'KeyW', 'KeyS', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-  'KeyF', 'KeyE', 'Slash', 'Period', 'Comma', 'Enter', 'Numpad0', 'NumpadEnter']);
+  'KeyF', 'KeyE', 'Slash', 'Period', 'Comma', 'Enter', 'Numpad0', 'NumpadEnter', 'KeyQ', 'Numpad1', 'NumpadDecimal']);
 // Enter pressed on a menu card and still held when the level starts must not count as Bo's action button
 const menuHeld = new Set();
 const touchState = [{}, {}];
@@ -48,8 +55,15 @@ const GLYPHS = {
   nintendo: { a: 'B', b: 'A', act: 'Y', start: '+', view: '−', name: 'Switch' },
   generic: { a: '1', b: '2', act: '3', start: 'Start', view: 'Select', name: 'Controller' },
 };
-// Controller buttons a player picked in Settings (js/settings.js): PadBind[k] = { jump: [n], act: [n, ...] }, button
-// numbers in the browser's standard layout, or null for the usual ones (A or B jump; X, Y, RB or RT act).
+// the three-action levels (def.act2 / def.act3) name these: rt = fire (right trigger), rb = act2 (right bumper),
+// x3 = act3 (the left face button, the one that is 'act' elsewhere)
+Object.assign(GLYPHS.xbox, { rt: 'RT', rb: 'RB', x3: 'X' });
+Object.assign(GLYPHS.ps, { rt: 'R2', rb: 'R1', x3: '□' });
+Object.assign(GLYPHS.nintendo, { rt: 'ZR', rb: 'R', x3: 'Y' });
+Object.assign(GLYPHS.generic, { rt: '8', rb: '6', x3: '3' });
+// Controller buttons a player picked in Settings (js/settings.js): PadBind[k] = { jump: [n], act: [n, ...], act2: [n],
+// act3: [n] } (act2 / act3 may be missing in saves from before they existed), button numbers in the browser's standard
+// layout, or null for the usual ones (A or B jump; X, Y, RB or RT act; RB act2; X act3).
 // readPads applies them, so every level that reads a pad's jump / act gets the player's own buttons.
 const PadBind = [null, null];
 const PAD_BTN_NAMES = {
@@ -61,14 +75,24 @@ const padBtnName = (fam, n) => (PAD_BTN_NAMES[fam] || [])[n] || String(n + 1);
 // which colour a button number gets in a prompt (css .g-xbox-a ...)
 const padBtnKey = n => ['a', 'b', 'act'][n] || 'x';
 // glyph 'a' is the jump button and 'act' the action button: their names on this player's controller when they rebound them
-const bindWhat = k => (k === 'a' ? 'jump' : k === 'act' ? 'act' : null);
+// (in a three-action level, rt is the action, rb the second and x3 the third)
+const bindWhat = k => (k === 'a' ? 'jump' : k === 'act' || k === 'rt' ? 'act' : k === 'rb' ? 'act2' : k === 'x3' ? 'act3' : null);
+// a player's own button for act / act2 / act3, or null for the usual ones (an act list of several buttons is what is
+// left of the usual X / Y / RB / RT after rebinding jump, not a pick: a three-action level keeps its narrow mapping)
+function padBindOf(id, w) {
+  const b = id == null ? null : PadBind[id];
+  if (!b || !b[w] || !b[w].length) return null;
+  if (w === 'act' && b.act.length > 1) return null;
+  return b[w];
+}
 function padBound(id, k) {
-  const b = id == null ? null : PadBind[id], w = bindWhat(k);
-  return b && w ? padBtnName(padFamilyFor(id), b[w][0]) : null;
+  const w = bindWhat(k), l = w && (k === 'act' || k === 'a' ? (id == null ? null : PadBind[id] && PadBind[id][w]) : padBindOf(id, w));
+  return l ? padBtnName(padFamilyFor(id), l[0]) : null;
 }
 function glyphClass(k, id) {
-  const fam = id == null ? Pads.family : padFamilyFor(id), b = id == null ? null : PadBind[id], w = bindWhat(k);
-  return 'glyph g-' + fam + '-' + (b && w ? padBtnKey(b[w][0]) : k);
+  const fam = id == null ? Pads.family : padFamilyFor(id), w = bindWhat(k);
+  const l = w && (k === 'act' || k === 'a' ? (id == null ? null : PadBind[id] && PadBind[id][w]) : padBindOf(id, w));
+  return 'glyph g-' + fam + '-' + (l ? padBtnKey(l[0]) : k === 'x3' ? 'act' : k);
 }
 // the family of the controller that plays this character (the last controller used when it has none)
 function padFamilyFor(id) {
@@ -88,7 +112,10 @@ function readPad(gp) {
   // action button (def.act levels): the left face button (Xbox X, PlayStation Square, Switch Y), also the top one,
   // the right bumper, and the right trigger pulled past halfway
   const rt = gp.buttons[7];
-  let act = b(2) || b(3) || b(5) || !!(rt && rt.value > 0.5);
+  let act = b(2) || b(3) || b(5) || !!(rt && rt.value > 0.5), act2 = false, act3 = false;
+  const multi = multiAct();
+  // three-action levels (def.act2 / act3): the right trigger fires, the right bumper is act2, X is act3
+  if (multi) { act = !!(rt && rt.value > 0.5) || b(7); act2 = b(5); act3 = b(2); }
   if (gp.mapping !== 'standard') {
     // hat-switch d-pad (often axis 9): -1 is up, then clockwise in steps of 2/7; anything above 1 is centered
     const hat = gp.axes[9];
@@ -104,6 +131,8 @@ function readPad(gp) {
     const actLevel = !!(G.level && G.level.def.act);
     if (!actLevel) jump = jump || b(2) || b(3);
     act = b(2) || b(3) || b(5) || (b(7) && gp.buttons.length > 10);
+    // three actions on an unknown pad: 8 (or 4 on a small pad) fires, 6 is act2, 3 is act3
+    if (multi) { act = gp.buttons.length > 10 ? b(7) : b(3); act2 = b(5); act3 = b(2); }
     ok = ok || b(2);
     start = start || b(7) && gp.buttons.length <= 10;
   }
@@ -112,7 +141,7 @@ function readPad(gp) {
     btns: gp.buttons.map((x, n) => b(n)),
     left: ax < -0.35 || dl, right: ax > 0.35 || dr, up: ay < -0.6 || du, down: ay > 0.6 || dd,
     ax, ay, // the stick itself (0, 0 inside the dead zone), for levels that steer with its angle (5-1)
-    jump, act, ok, back, start, view, active: anyBtn || ax !== 0 || ay !== 0 || dl || dr || du || dd,
+    jump, act, act2, act3, ok, back, start, view, active: anyBtn || ax !== 0 || ay !== 0 || dl || dr || du || dd,
   };
 }
 function readPads() {
@@ -144,7 +173,8 @@ function readPads() {
     const bd = PadBind[k], mine = bd && padFor(states, k);
     if (!mine) continue;
     mine.s.jump = bd.jump.some(n => mine.s.btns[n]);
-    mine.s.act = bd.act.some(n => mine.s.btns[n]);
+    if (!multiAct()) mine.s.act = bd.act.some(n => mine.s.btns[n]);
+    else for (const w of ['act', 'act2', 'act3']) { const l = padBindOf(k, w); if (l) mine.s[w] = l.some(n => mine.s.btns[n]); }
   }
   return states;
 }
@@ -250,8 +280,10 @@ function pollInput(dt = 1 / 60) {
   G.players.forEach((p, i) => {
     if (cpuOn(i)) return; // the computer's presses come from cpuTick (js/cpu/cpu-core.js)
     // 1-player mode: the person can use either player's keys
-    const bind = solo ? { left: BIND[0].left.concat(BIND[1].left), right: BIND[0].right.concat(BIND[1].right), jump: BIND[0].jump.concat(BIND[1].jump),
-      down: BIND[0].down.concat(BIND[1].down), act: BIND[0].act.concat(BIND[1].act) } : BIND[i];
+    let bind = solo ? { left: BIND[0].left.concat(BIND[1].left), right: BIND[0].right.concat(BIND[1].right), jump: BIND[0].jump.concat(BIND[1].jump),
+      down: BIND[0].down.concat(BIND[1].down), act: BIND[0].act.concat(BIND[1].act), act2: BIND[0].act2.concat(BIND[1].act2), act3: BIND[0].act3.concat(BIND[1].act3) } : BIND[i];
+    // three-action levels: a key that is act2 or act3 is not also act
+    if (multiAct()) { const other = new Set(bind.act2.concat(bind.act3)); bind = Object.assign({}, bind, { act: bind.act.filter(c => !other.has(c)) }); }
     const pad = padFor(pads, i), ps = pad ? pad.s : {}, t = touchState[i];
     const any = k => bind[k].some(c => keys.has(c) || tapLive(keysTapped, c)) || !!ps[k] || !!t[k] || tapLive(touchTapped[i], k);
     p.input.left = any('left'); p.input.right = any('right'); p.input.down = any('down'); p.input.up = !!ps.up;
@@ -275,6 +307,14 @@ function pollInput(dt = 1 / 60) {
     if (a && !p.prevAct && G.mode === 'play' && G.level && G.level.def.act) { p.pendingAct = true; p.actAge = 0; }
     p.prevAct = a;
     p.input.act = a;
+    // the second and third actions (def.act2 / def.act3 levels only): held in p.input.act2 / act3, a fresh press in
+    // p.pendingAct2 / pendingAct3 (the level clears them)
+    const def = G.level && G.level.def;
+    for (const [w, flag, pend, prev] of [['act2', 'act2', 'pendingAct2', 'prevAct2'], ['act3', 'act3', 'pendingAct3', 'prevAct3']]) {
+      const on = !!(def && def[flag]) && any(w);
+      if (on && !p[prev] && G.mode === 'play') p[pend] = true;
+      p[prev] = on; p.input[w] = on;
+    }
   });
   // forget expired taps (and every tap outside play, so a tap in a menu never reaches the next level)
   for (const m of [keysTapped, ...touchTapped]) for (const c of [...m.keys()]) if (G.mode !== 'play' || !tapLive(m, c)) m.delete(c);

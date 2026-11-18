@@ -9,10 +9,14 @@
    stick / A / B, so nobody can lock themselves out of the menus. */
 'use strict';
 
-const BIND_ACTIONS = ['left', 'right', 'jump', 'down', 'act'];
-const BIND_WORDS = { left: 'Move left', right: 'Move right', jump: 'Jump', down: 'Drop down', act: 'Action' };
+// act2 / act3: the second and third actions, used only by levels that have them (41-4: grenade and reload). Saves from
+// before they existed have no act2 / act3 and still load (those two keep their usual keys).
+const BIND_ACTIONS = ['left', 'right', 'jump', 'down', 'act', 'act2', 'act3'];
+const BIND_OLD = ['left', 'right', 'jump', 'down', 'act'];
+const BIND_WORDS = { left: 'Move left', right: 'Move right', jump: 'Jump', down: 'Drop down', act: 'Action', act2: 'Action 2', act3: 'Action 3' };
 const BIND_DEFAULT = JSON.parse(JSON.stringify(BIND));
-const PAD_DEFAULT = { jump: [0, 1], act: [2, 3, 5, 7] };
+const PAD_DEFAULT = { jump: [0, 1], act: [2, 3, 5, 7], act2: [5], act3: [2] };
+const PAD_WHATS = ['jump', 'act', 'act2', 'act3'];
 // keys a player can't take: they pause, restart, mute, or belong to the browser
 const KEY_RESERVED = new Set(['Escape', 'Tab', 'KeyR', 'KeyM', 'F5', 'F11', 'F12', 'MetaLeft', 'MetaRight', 'ContextMenu',
   'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'OSLeft', 'OSRight']);
@@ -53,11 +57,12 @@ function bindLoad() {
   const okList = (l, t) => Array.isArray(l) && l.length && l.every(x => typeof x === t);
   const kb = store.get('keyBind');
   if (Array.isArray(kb)) for (const p of [0, 1]) {
-    if (kb[p] && BIND_ACTIONS.every(w => okList(kb[p][w], 'string'))) for (const w of BIND_ACTIONS) BIND[p][w].splice(0, Infinity, ...kb[p][w]);
+    if (kb[p] && BIND_OLD.every(w => okList(kb[p][w], 'string'))) for (const w of BIND_ACTIONS) if (okList(kb[p][w], 'string')) BIND[p][w].splice(0, Infinity, ...kb[p][w]);
   }
   const pb = store.get('padBind');
   if (Array.isArray(pb)) for (const p of [0, 1]) {
     PadBind[p] = pb[p] && okList(pb[p].jump, 'number') && okList(pb[p].act, 'number') ? { jump: pb[p].jump, act: pb[p].act } : null;
+    if (PadBind[p]) for (const w of ['act2', 'act3']) if (okList(pb[p][w], 'number')) PadBind[p][w] = pb[p][w];
   }
   bindApply();
 }
@@ -76,13 +81,19 @@ function setKey(p, w, code) {
   bindApply(); bindSave();
   if (swapped) toast(`Swapped: ${NAMES[swapped.q]}'s ${BIND_WORDS[swapped.k].toLowerCase()} is now ${keyCap(old)}`);
 }
-// give player p's jump or action the controller button n; if the other one had it, it gets p's old button
+// give player p's jump or an action the controller button n; if another one had it, it gets p's old button
 function setPadBtn(p, w, n) {
-  const cur = PadBind[p] || JSON.parse(JSON.stringify(PAD_DEFAULT)), o = w === 'jump' ? 'act' : 'jump';
+  const cur = PadBind[p] || JSON.parse(JSON.stringify(PAD_DEFAULT));
+  for (const k of PAD_WHATS) if (!cur[k]) cur[k] = PAD_DEFAULT[k].slice();
   const old = cur[w][0];
   cur[w] = [n];
-  cur[o] = cur[o].filter(x => x !== n);
-  if (!cur[o].length) cur[o] = [old];
+  // jump stays apart from every action, and act2 from act3 (the action and act2 / act3 work in different levels)
+  const clash = (a, b) => a === 'jump' || b === 'jump' || (a !== 'act' && b !== 'act');
+  for (const o of PAD_WHATS) {
+    if (o === w || !clash(w, o)) continue;
+    cur[o] = cur[o].filter(x => x !== n);
+    if (!cur[o].length) cur[o] = [old];
+  }
   PadBind[p] = cur;
   Dev.sig = ''; controlsRefresh();
   bindSave();
@@ -143,12 +154,13 @@ function settingsRender() {
   box.innerHTML = [0, 1].map(p => {
     const cls = p === 0 ? 'pip' : 'bo', fam = bindFam(p), pb = PadBind[p] || PAD_DEFAULT;
     const keysRow = BIND_ACTIONS.map(w => btn(p, 'key', w, keyCap(BIND[p][w][0]))).join('');
-    const padRow = ['jump', 'act'].map(w => btn(p, 'pad', w, padBtnName(fam, pb[w][0]))).join('');
+    const padRow = PAD_WHATS.map(w => btn(p, 'pad', w, padBtnName(fam, (pb[w] || PAD_DEFAULT[w])[0]))).join('');
     const custom = keysCustom(p) || !!PadBind[p];
     return `<div class="pcard ${cls} set-p">
       <div class="rdy-head"><span class="nm nm-${cls}">${NAMES[p]}</span></div>
       <p class="set-k">Keyboard</p><div class="bind-grid">${keysRow}</div>
       <p class="set-k">Controller${fam === 'generic' ? '' : ' (' + esc(GLYPHS[fam].name) + ')'}</p><div class="bind-grid">${padRow}</div>
+      <p class="set-note">Action 2 and 3 are only used in a few levels (41-4: grenade, reload). There the controller fires with ${esc(padBtnName(fam, 7))} unless you picked an action button.</p>
       <button type="button" class="ghost set-reset" data-act="bind-reset" data-p="${p}" aria-disabled="${!custom}">Reset ${NAMES[p]}'s controls</button>
     </div>`;
   }).join('');

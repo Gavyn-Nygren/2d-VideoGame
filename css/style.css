@@ -87,6 +87,8 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .g-ps-a { background: #3d6fd6; } .g-ps-b { background: #d1425a; }
 .g-nintendo-a, .g-nintendo-b { background: #4b515d; }
 .g-xbox-act { background: #2f6fd6; } .g-ps-act { background: #b9559f; } .g-nintendo-act { background: #4b515d; }
+/* shoulder buttons (three-action levels, js/input.js): rounded rectangles, dark like the controller's own */
+.g-xbox-rt, .g-xbox-rb, .g-ps-rt, .g-ps-rb, .g-nintendo-rt, .g-nintendo-rb, .g-generic-rt, .g-generic-rb { border-radius: 6px; background: #3a3846; }
 /* the action button (punch, throw...) only shows in levels that use it (html.act-on) */
 .acth { display: none; font-style: normal; }
 .act-on .acth { display: inline; margin-left: 6px; }
@@ -277,6 +279,16 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
    .acols = in a third column on the inner side, only when the screen is too short for a third row */
 .tpad { --ta: 64px; }
 .tbtn-act { display: none; }
+.tbtn-act2, .tbtn-act3 { display: none; }
+/* three-action levels (html.act3-on: def.act2 / def.act3, 41-4): two smaller round buttons in a row above the pad, on
+   its inner side (toward the game screen): the second action (grenade) and the third (reload) */
+.act3-on .tbtn-act2, .act3-on .tbtn-act3 {
+  display: grid; position: absolute; top: calc(var(--tb) * -0.95 - 10px); width: calc(var(--tb) * 0.95); height: calc(var(--tb) * 0.95);
+  box-sizing: border-box; border-radius: 50%; border-width: 3px; padding: 0; font: 400 22px var(--font-display); line-height: 1;
+}
+.act3-on .tbtn-act2 { border-color: rgba(190, 160, 255, 0.95); } .act3-on .tbtn-act3 { border-color: rgba(255, 255, 255, 0.85); }
+.act3-on .tpad.pip .tbtn-act2 { right: 0; } .act3-on .tpad.pip .tbtn-act3 { right: calc(var(--tb) * 0.95 + 10px); }
+.act3-on .tpad.bo .tbtn-act2 { left: 0; } .act3-on .tpad.bo .tbtn-act3 { left: calc(var(--tb) * 0.95 + 10px); }
 .act-on .tbtn-act {
   display: grid; align-self: center; width: var(--ta); height: var(--ta); box-sizing: border-box;
   border-radius: 50%; border-color: rgba(255, 220, 140, 0.95); border-width: 3px; padding: 0; overflow: hidden; white-space: nowrap;
@@ -485,6 +497,7 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
 .set-binds { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
 .set-p { display: grid; gap: 8px; align-content: start; }
 .set-k { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.set-note { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
 .bind-grid { display: flex; flex-wrap: wrap; gap: 6px; }
 .seg.bind { display: inline-flex; align-items: center; gap: 8px; padding: 5px 6px 5px 12px; border-radius: 12px; }
 .seg.bind .bw { font-weight: 400; font-size: 13px; color: var(--muted); }
