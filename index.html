@@ -16,6 +16,8 @@
       <div class="tbtn tact" data-p="0" data-k="jump">▲</div>
       <div class="tbtn tact" data-p="0" data-k="down">▼</div>
       <div class="tbtn tact tbtn-act" data-p="0" data-k="act" data-actlabel>act</div>
+      <div class="tbtn tact tbtn-act2" data-p="0" data-k="act2" aria-label="second action">✦</div>
+      <div class="tbtn tact tbtn-act3" data-p="0" data-k="act3" aria-label="third action">⟳</div>
       <div class="tstick" data-p="0" aria-hidden="true"><div class="tknob"></div></div>
       <div class="tmove" data-p="0"><div class="tbtn" data-k="left">◀</div><div class="tbtn" data-k="right">▶</div></div>
     </div>
@@ -23,6 +25,8 @@
       <div class="tbtn tact" data-p="1" data-k="down">▼</div>
       <div class="tbtn tact" data-p="1" data-k="jump">▲</div>
       <div class="tbtn tact tbtn-act" data-p="1" data-k="act" data-actlabel>act</div>
+      <div class="tbtn tact tbtn-act2" data-p="1" data-k="act2" aria-label="second action">✦</div>
+      <div class="tbtn tact tbtn-act3" data-p="1" data-k="act3" aria-label="third action">⟳</div>
       <div class="tstick" data-p="1" aria-hidden="true"><div class="tknob"></div></div>
       <div class="tmove" data-p="1"><div class="tbtn" data-k="left">◀</div><div class="tbtn" data-k="right">▶</div></div>
     </div>
@@ -491,6 +495,12 @@
 <script src="js/cpu/levels/world41/paper-dragon-flight.js"></script>
 <!-- ===== end 41-3 ===== -->
 <script src="js/input.js"></script>
+<!-- 41-4 Paper Alien Invasion: its own block, here (after input.js, which it does not need at load time) so that it
+     is the last World 41 level whatever order the other World 41 levels' blocks land in, and so that adding it never
+     clashes with theirs. Its 3D files load on demand with the 3D kit (K3D.files). -->
+<script src="js/levels/world41/popaliens-route.js"></script>
+<script src="js/levels/world41/paper-alien-invasion.js"></script>
+<script src="js/cpu/levels/world41/paper-alien-invasion.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/controls.js"></script>
 <script src="js/medals.js"></script>
@@ -534,6 +544,7 @@
 <script src="js/previews/world39.js"></script>
 <script src="js/previews/world40.js"></script>
 <script src="js/previews/world41.js"></script>
+<script src="js/previews/world41-popaliens.js"></script>
 <script src="js/previews/world34.js"></script>
 <script src="js/previews/world32.js"></script>
 <script src="js/previews/world33.js"></script>
