@@ -95,6 +95,7 @@ function loadLevel(i, mode = 'play', opts = {}) {
   }
   G.mode = mode;
   setActUI(!!(L.def.act && mode === 'play'));
+  document.documentElement.classList.toggle('act3-on', !!((L.def.act2 || L.def.act3) && mode === 'play')); // (41-4's grenade and reload buttons)
   // a 3D level: start loading three.js and the kit now (the ready card waits on it); touch players get a thumb stick
   if (L.def.view3d && mode === 'play') K3D.need();
   document.documentElement.classList.toggle('touch-stick', !!(L.def.touch === 'stick' && mode === 'play'));

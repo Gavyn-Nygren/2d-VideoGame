@@ -419,7 +419,7 @@ const PARKCOASTER_SCENE = (function () {
 
   /* ---------- build ---------- */
   function build(K, st) {
-    rnd = PARK.rnd; PARK.resetGlints();
+    PARK.seed(); rnd = PARK.rnd; PARK.resetGlints();
     const night = PARK.night(K, { moon: PR.art.moon });
     const B = PARK.bulbs(K, 16000);
     const sc = { K, B, night };
@@ -502,7 +502,7 @@ const PARKCOASTER_SCENE = (function () {
     const o = { back: 7.2 - inF * 1.0 + wide * 8, height: 4.6 - inF * 1.5 + wide * 5 + nearCrest * 1.2, ahead: 10 + wide * 10, side: wide * 4.5, tipAhead: nearCrest * 6, roll: RM() ? 0.33 : 0.8, rollMax: RM() ? 5 : 15 };
     if (st.det >= 0) {
       const D = PR.dets[st.det]; const sh = RAIL3.shot(D, Math.max(0, st.ds), { back: 7.2, height: 4.6, ahead: 10 });
-      return Object.assign(sh, { fov: 58 });
+      return keepCar(Object.assign(sh, { fov: 58 }), f, st);
     }
     // the loop: follow round (upside down at the top), or with reduced motion watch from the side, level
     if (f.loop && RM()) { const c = R.at(PR.at.loop); return { eye: [c.p[0] + 28, c.p[1] - 6, c.p[2]], at: [c.p[0], c.p[1] - 7, c.p[2]], up: [0, 1, 0], fov: 50 }; }
@@ -520,6 +520,22 @@ const PARKCOASTER_SCENE = (function () {
       const up0 = sh.up || [0, 1, 0], up = up0.map((x, k) => x + (u[k] - x) * lk), ul = Math.hypot(...up) || 1;
       sh.up = up.map(x => x / ul);
     }
+    return keepCar(sh, f, st);
+  }
+  // Keep the front car in the picture. The shot looks from the rail behind to the rail ahead, so where the track
+  // kinks (the foot of a lift, the pull-out of a drop, a tight turn) the car slid to the bottom edge or a corner and
+  // was partly cut off. Here the aim is turned just enough to bring the car's middle back inside a safe box.
+  function keepCar(sh, f, st) {
+    const N = RAIL3.norm, X = RAIL3.cross, D = RAIL3.dot;
+    const car = [0, 1, 2].map(k => f.p[k] + f.bu[k] * (0.8 + (st.air || 0)));
+    const to = [0, 1, 2].map(k => sh.at[k] - sh.eye[k]), dist = Math.hypot(...to), fw = N(to);
+    const rt = N(X(fw, sh.up || [0, 1, 0])), up = X(rt, fw);
+    const c = [0, 1, 2].map(k => car[k] - sh.eye[k]), z = D(c, fw);
+    if (!(z > 0.5)) return sh;
+    const ty = Math.tan((sh.fov || 56) * Math.PI / 360), tx = ty * 16 / 9;
+    const x = D(c, rt) / z, y = D(c, up) / z;
+    const dx = x - Math.max(-0.56 * tx, Math.min(0.56 * tx, x)), dy = y - Math.max(-0.5 * ty, Math.min(0.42 * ty, y));
+    if (dx || dy) sh.at = [0, 1, 2].map(k => sh.eye[k] + (fw[k] + rt[k] * dx + up[k] * dy) * dist);
     return sh;
   }
   function update(K, st, dt) {
@@ -625,7 +641,13 @@ const PARKCOASTER_SCENE = (function () {
     }
     // prompts: "Jump together!" at the spring signs, a lever button by the rider whose lever it is, the brakes
     if (st.phase === 'ride') {
-      for (const h of L.hops) if (st.s > h.lead && st.s < h.s0) { const a = 0.75 + Math.sin(G.clock * 8) * 0.25; ctx.save(); ctx.globalAlpha = a; text('Jump together!', W / 2, H - 92, 22, '#ffd24a', 'center'); ctx.restore(); break; }
+      // (the words change at the moment to press: said early, "Jump together!" had people hopping a second too soon)
+      for (const h of L.hops) if (st.s > h.lead && st.s < h.s0) {
+        const now = ((h.s0 + h.s1) / 2 - st.s) / Math.max(2, st.v) <= 0.72;
+        ctx.save(); ctx.globalAlpha = now ? 1 : 0.8;
+        if (now) text('JUMP!', W / 2, H - 96, 34, '#ffd24a', 'center'); else text('Get ready to jump together...', W / 2, H - 92, 20, '#fff6dc', 'center');
+        ctx.restore(); break;
+      }
       for (const lv of L.levers) {
         const pre = PARKCOASTER.leverPre(lv, st.v);
         if (st.s < lv.s - pre - 6 || st.s > lv.s + 0.6) continue;

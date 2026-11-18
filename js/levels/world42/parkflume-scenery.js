@@ -974,7 +974,7 @@ const PARKFLUME_SCENE = (function () {
 
   /* ---------- build ---------- */
   function build(K, st) {
-    rnd = PARK.rnd; PARK.resetGlints(); OCC = { lo: new Set(), hi: new Set(), seen: new WeakSet() };
+    PARK.seed(); rnd = PARK.rnd; PARK.resetGlints(); OCC = { lo: new Set(), hi: new Set(), seen: new WeakSet() };
     const night = PARK.night(K, { moon: PR.art.moon, fogD: 0.0042, bloom: 0.95 });
     if (K.hemi) K.hemi.intensity *= 1.25; // moonlit lawns: the banks read beyond the lamp pools
     const B = PARK.bulbs(K, 20000);
