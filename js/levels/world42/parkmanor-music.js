@@ -23,7 +23,7 @@
     },
   };
   SONGS.parkmanorball = {
-    bpm: 132, beats: 3, vol: 0.34, root: 50, scale: 'harmonic', form: ['A', 'A2'],
+    bpm: 132, beats: 3, vol: 0.49, root: 50, scale: 'harmonic', form: ['A', 'A2'],
     inst: { lead: 'organ', lead2: 'musicbox', bass: 'tuba', comp: 'pizz', pad: 'strings' },
     bass: '0 . .', comp: '. x x', drums: { k: 'x . .', h: '. x x' },
     sec: {

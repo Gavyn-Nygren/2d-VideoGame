@@ -4,6 +4,7 @@
 //        [--from=<clock index>]
 //   pair   the computer plays both                          must escape, with most wisps and few Frights
 //   noisy  one side (--clumsy, default Pip) is a distracted person: stops pressing now and then
+//   wrong  one side (--clumsy) is a plain-rules person for the first 12 s in each room it reaches (--how=ahead|back|mash|freeze)
 //   kid    one side is the computer a whole second late on every press (and 0.3 s late steering)
 //   idle   Pip presses nothing: the level must not finish
 // Prints wisps, Frights, Scare Outs, spooks unwound, hides, the medal, and where every Fright happened.
@@ -12,7 +13,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); return a ? a.split('=')[1] : d; };
-const who = opt('who', 'pair'), maxT = +opt('max', 600), seeds = opt('seeds', '1').split(',').map(Number);
+const who = opt('who', 'pair'), how = opt('how', 'mash'), maxT = +opt('max', 600), seeds = opt('seeds', '1').split(',').map(Number);
 const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0), from = +opt('from', 0);
 (async () => {
   const browser = await chromium.launch();
@@ -30,7 +31,7 @@ const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0), from = +opt('from', 
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
   for (const seed of seeds) {
     errors.length = 0;
-    const r = await page.evaluate(async ({ who, maxT, seed, clumsy, trace, from }) => {
+    const r = await page.evaluate(async ({ who, how, maxT, seed, clumsy, trace, from }) => {
       const P = window.__pipbo, G = P.G, K3D = P.K3D;
       const i = P.LEVELS.findIndex(l => l.mode === 'parkmanor');
       window.__seed(seed * 7919);
@@ -47,6 +48,18 @@ const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0), from = +opt('from', 
         }
         // the kid: every button a whole second late, steering 0.3 s late (a person still sees where they walk; a 1 s
         // steering lag in a closed loop just circles every corner, which is the test, not a player)
+        // a person written as plain rules for the first 12 s of every room, then the computer again: runs ahead (away),
+        // runs back (towards the gate), mashes every button, or stands frozen. The pair must still get out.
+        if (who === 'wrong') {
+          const z = G.mst.zone; nz.seen = nz.seen || {}; if (z !== nz.zone) { nz.zone = z; nz.zt = nz.seen[z] ? 99 : 0; nz.seen[z] = 1; } nz.zt += dt;
+          if (nz.zt < 12) {
+            if (how === 'freeze') return {};
+            if (how === 'ahead') return { ax: Math.sin(nz.zt * 0.7) * 0.6, ay: -1 };
+            if (how === 'back') return { ax: Math.cos(nz.zt * 0.5) * 0.6, ay: 1 };
+            if (how === 'mash') { if ((nz.m = (nz.m || 0) - dt) <= 0) { nz.m = 0.3; nz.o = { ax: Math.random() * 2 - 1, ay: Math.random() * 2 - 1, act: Math.random() < 0.5 }; } return nz.o; }
+          }
+          return out;
+        }
         if (who === 'kid') { late.push(Object.assign({}, out)); const btn = late.length > 120 ? late[late.length - 121] : {}, mv = late.length > 36 ? late[late.length - 37] : {};
           if (late.length > 130) late.shift(); const r = Object.assign({}, btn); r.ax = mv.ax || 0; r.ay = mv.ay || 0; return r; }
         return out;
@@ -76,9 +89,9 @@ const clumsy = +opt('clumsy', 0), trace = +opt('trace', 0), from = +opt('from', 
       return { simT: +(n * P.DT).toFixed(1), cleared: !!res, medal: res && res.medal && res.medal.tier, zone: s.zone, phase: s.phase,
         wisps: s.wisps, max: PARKMANOR.wispsMax(), frights: s.frights, scare: s.scareOuts, unwound: s.unwound, hides: s.hideN || 0, caught: s.caughtN,
         zt: Object.entries(zt).map(([k, v]) => k + ' ' + v.toFixed(0)).join(', '), list: frights, cpuErrs: [...P.CPU.errs], trace: lines, at: G.players.map(p => p.b3.x.toFixed(1) + ',' + p.b3.z.toFixed(1)).join(' ') };
-    }, { who, maxT, seed, clumsy, trace, from });
+    }, { who, how, maxT, seed, clumsy, trace, from });
     if (r.trace.length) console.log(r.trace.join('\n'));
-    console.log(`${who}${who === 'noisy' || who === 'kid' ? '(' + ['Pip', 'Bo'][clumsy] + ')' : ''} s${seed}: ${r.cleared ? 'ESCAPED' : 'NOT DONE (' + r.phase + ' in ' + r.zone + ' at ' + r.at + ')'} in ${r.simT}s  wisps ${r.wisps}/${r.max} (${Math.round(r.wisps / r.max * 100)}%)  frights ${r.frights}  scare outs ${r.scare}  unwound ${r.unwound}  hides ${r.hides}  caught ${r.caught}${r.medal != null ? '  medal ' + r.medal : ''}\n  time: ${r.zt}${r.list.length ? '\n  ' + r.list.join(' ') : ''}${r.cpuErrs.length ? '\n  CPU ERR ' + r.cpuErrs : ''}${errors.length ? '\n  PAGE ERR ' + errors.slice(0, 3).join(' | ').slice(0, 600) : ''}`);
+    console.log(`${who}${who === 'noisy' || who === 'kid' || who === 'wrong' ? '(' + ['Pip', 'Bo'][clumsy] + (who === 'wrong' ? ' ' + how : '') + ')' : ''} s${seed}: ${r.cleared ? 'ESCAPED' : 'NOT DONE (' + r.phase + ' in ' + r.zone + ' at ' + r.at + ')'} in ${r.simT}s  wisps ${r.wisps}/${r.max} (${Math.round(r.wisps / r.max * 100)}%)  frights ${r.frights}  scare outs ${r.scare}  unwound ${r.unwound}  hides ${r.hides}  caught ${r.caught}${r.medal != null ? '  medal ' + r.medal : ''}\n  time: ${r.zt}${r.list.length ? '\n  ' + r.list.join(' ') : ''}${r.cpuErrs.length ? '\n  CPU ERR ' + r.cpuErrs : ''}${errors.length ? '\n  PAGE ERR ' + errors.slice(0, 3).join(' | ').slice(0, 600) : ''}`);
   }
   await browser.close();
 })().catch(e => { console.error(e); process.exit(1); });
