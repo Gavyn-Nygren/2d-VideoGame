@@ -33,21 +33,48 @@
     c.strokeStyle = 'rgba(0,0,0,0.16)'; c.lineWidth = 2; c.beginPath(); c.moveTo(w * 0.5, 0); c.lineTo(w * 0.46, h); c.stroke();
   }, { repeat: true });
 
+  // a sheet that follows the hero's rounded body (the same superellipsoid as K3D.roundBox): over the shoulders it hugs
+  // the curve, below the widest point it hangs straight down and flares a little, like cloth. Heights from the feet.
+  // aTop/aBot: the angle ranges [from, to] at the top and the hem (pi/2 is the face, so the back is pi..2pi).
+  const BP = 0.6;
+  function drape(yTop, yBot, aTop, aBot, gap, flare, rows = 18, seg = 40) {
+    const f = v => Math.sign(v) * Math.pow(Math.abs(v), BP);
+    const pos = [], uv = [], idx = [];
+    for (let j = 0; j <= rows; j++) {
+      const t = j / rows, y = yTop + (yBot - yTop) * t;
+      const v = Math.max(-1, Math.min(1, (y - BH / 2) / (BH / 2)));
+      const cth = Math.pow(Math.abs(v), 1 / BP), sc = y > BH / 2 ? Math.pow(Math.sqrt(Math.max(0, 1 - cth * cth)), BP) : 1;
+      const a0 = aTop[0] + (aBot[0] - aTop[0]) * t, a1 = aTop[1] + (aBot[1] - aTop[1]) * t, k = sc + gap + flare * t * t;
+      for (let i = 0; i <= seg; i++) {
+        const a = a0 + (a1 - a0) * i / seg;
+        // a soft fold every so often, so it reads as cloth and not a shell
+        const fold = 1 + Math.sin(i / seg * Math.PI * 6) * 0.025 * t;
+        pos.push(f(Math.cos(a)) * BW / 2 * k * fold + Math.cos(a) * 0.012, y, f(Math.sin(a)) * BD / 2 * k * fold + Math.sin(a) * 0.012);
+        uv.push(i / seg, 1 - t);
+        if (i < seg && j < rows) { const b = j * (seg + 1) + i; idx.push(b, b + 1, b + seg + 1, b + 1, b + seg + 2, b + seg + 1); }
+      }
+    }
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+    return g;
+  }
+
   /* ---------- Pip: Little Red Riding Hood ---------- */
   K3D.definePart3('pcCape', (o, x) => {
     const g = new T.Group();
-    const red = K3D.toon('#ffffff', { map: feltTex('pcRedFelt', '#c8302e', 701), side: T.DoubleSide });
-    // a short cape round the back and sides, flaring out from the shoulders, with a white cut edge along its hem
-    const cape = new T.Group(); g.add(cape);
-    // open at the front (angle pi/2 is +z, the face): round the back from 0.85pi to 2.15pi
-    const geo = wrap(-0.34, 0.02, 1.32, 1.06, Math.PI * 0.85, Math.PI * 2.15, 48);
-    const m = K3D.mesh(geo, red, { ink: '#6a1a18', inkW: 0.9 });
-    cape.add(m);
-    const hem = K3D.mesh(new T.TorusGeometry(1, 0.012, 4, 48, Math.PI * 1.3).rotateX(Math.PI / 2).rotateY(-Math.PI * 0.85), K3D.toon(P.EDGE), { ink: false, cast: false });
-    hem.scale.set(BW / 2 * 1.34, 1, BD / 2 * 1.34); hem.position.y = -0.34; cape.add(hem);
-    cape.position.set(0, BH * 0.62, 0);
-    g.userData.flutter = (sp, t) => { cape.rotation.x = -Math.min(0.5, sp * 0.45) - Math.sin(t * 14) * 0.05 * sp; cape.scale.y = 1 + Math.sin(t * 11) * 0.03 * sp; };
-    void x;
+    const red = K3D.toon('#ffffff', { map: feltTex('pcRedFelt', '#c8302e', 701), side: T.FrontSide });
+    const lining = K3D.toon('#8e1f22', { side: T.BackSide });
+    // the cape hangs from just under the hood's rim, over the shoulders, down the back to just above the feet.
+    // At the top it wraps a little round the front (to the tie at the chin); lower down it opens to the back.
+    const yTop = BH * 0.86, yBot = BH * 0.1, body = BH * 0.17;
+    const cape = new T.Group(); cape.position.set(0, yTop - body, 0); g.add(cape);
+    const geo = drape(yTop, yBot, [Math.PI * 0.74, Math.PI * 2.26], [Math.PI * 0.93, Math.PI * 2.07], 0.035, 0.12).translate(0, -yTop, 0);
+    cape.add(K3D.mesh(geo, red, { ink: '#6a1a18', inkW: 0.9 }));
+    cape.add(K3D.mesh(geo, lining, { ink: false, cast: false }));
+    // a white cut edge along the hem
+    const hem = drape(yBot + 0.035, yBot, [Math.PI * 0.925, Math.PI * 2.075], [Math.PI * 0.93, Math.PI * 2.07], 0.04, 0.125, 1).translate(0, -yTop, 0);
+    cape.add(K3D.mesh(hem, K3D.toon(P.EDGE, { side: T.DoubleSide }), { ink: false, cast: false }));
+    g.userData.flutter = (sp, t) => { cape.rotation.x = -Math.min(0.32, sp * 0.3) - Math.sin(t * 14) * 0.035 * sp; };
+    void x; void o;
     return g;
   });
   K3D.PARTS3.pcCape.at = 'body';

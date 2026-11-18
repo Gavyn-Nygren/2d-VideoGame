@@ -196,39 +196,149 @@ void main() {
   WOOD.bushShape = P.scallopShape(1.5, 0.75, 4, 0.3, P.rng(452));
 
   // the wood's page: dark forest-floor washes, moss, leaf litter, a pale earth path along the route, printed text
+  /* ---------- printed details (shared by the page painters) ---------- */
+  // a fallen leaf: a pointed oval with a midrib, a darker rim
+  function leafAt(c, x, y, len, wid, ang, col) {
+    c.save(); c.translate(x, y); c.rotate(ang);
+    c.beginPath(); c.moveTo(-len / 2, 0); c.quadraticCurveTo(0, -wid, len / 2, 0); c.quadraticCurveTo(0, wid, -len / 2, 0);
+    c.fillStyle = col; c.fill(); c.strokeStyle = 'rgba(40,25,15,0.35)'; c.lineWidth = 0.8; c.stroke();
+    c.beginPath(); c.moveTo(-len / 2 - len * 0.12, 0); c.lineTo(len * 0.4, 0); c.strokeStyle = 'rgba(40,25,15,0.4)'; c.stroke();
+    c.restore();
+  }
+  // a pebble: a rounded stone lit from the top left (the moon), shadowed below
+  function stoneAt(c, x, y, rx, ry, col) {
+    c.fillStyle = 'rgba(15,20,15,0.35)'; c.beginPath(); c.ellipse(x + rx * 0.25, y + ry * 0.35, rx, ry, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.ellipse(x - rx * 0.3, y - ry * 0.35, rx * 0.45, ry * 0.3, -0.4, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(30,25,30,0.45)'; c.lineWidth = 0.9; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); c.stroke();
+  }
+  // an ink-printed fern frond lying flat: a curved stem with paired leaflets
+  function frondAt(c, x, y, len, ang, col, r) {
+    c.save(); c.translate(x, y); c.rotate(ang); c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 1.2;
+    const bend = (r() - 0.5) * 0.5;
+    c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(len * 0.5, len * bend, len, len * bend * 0.4); c.stroke();
+    for (let k = 1; k < 9; k++) {
+      const t = k / 9, px = len * t, py = len * bend * (2 * t * (1 - t)) + len * bend * 0.4 * t * t, l = len * 0.22 * (1 - t * 0.7);
+      for (const sd of [-1, 1]) { c.beginPath(); c.ellipse(px + l * 0.35, py + sd * l * 0.45, l * 0.5, l * 0.16, sd * 0.9, 0, Math.PI * 2); c.fill(); }
+    }
+    c.restore();
+  }
+  // a paw print (the wolves came this way)
+  function pawAt(c, x, y, ang, sz, col) {
+    c.save(); c.translate(x, y); c.rotate(ang); c.fillStyle = col;
+    c.beginPath(); c.ellipse(0, sz * 0.25, sz * 0.42, sz * 0.34, 0, 0, Math.PI * 2); c.fill();
+    for (const [tx, ty] of [[-0.42, -0.25], [-0.15, -0.5], [0.15, -0.5], [0.42, -0.25]]) { c.beginPath(); c.ellipse(tx * sz, ty * sz, sz * 0.14, sz * 0.18, tx, 0, Math.PI * 2); c.fill(); }
+    c.restore();
+  }
+  // a little flower: white wood anemones and blue bells
+  function flowerAt(c, x, y, sz, r) {
+    if (r() < 0.6) {
+      c.fillStyle = 'rgba(244,244,255,0.9)';
+      for (let k = 0; k < 5; k++) { const a = k * 1.2566 + r() * 0.2; c.beginPath(); c.ellipse(x + Math.cos(a) * sz * 0.55, y + Math.sin(a) * sz * 0.55, sz * 0.42, sz * 0.28, a, 0, Math.PI * 2); c.fill(); }
+      c.fillStyle = '#f2c94c'; c.beginPath(); c.arc(x, y, sz * 0.25, 0, Math.PI * 2); c.fill();
+    } else {
+      c.strokeStyle = 'rgba(40,90,50,0.7)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y + sz * 1.6); c.quadraticCurveTo(x + sz * 0.6, y, x + sz * 1.2, y - sz * 0.2); c.stroke();
+      c.fillStyle = r() < 0.5 ? '#7d8fe0' : '#9a86d8';
+      for (let k = 0; k < 3; k++) { c.beginPath(); c.ellipse(x + sz * (0.3 + k * 0.4), y + sz * (0.1 + k * 0.25), sz * 0.22, sz * 0.32, 0.3, 0, Math.PI * 2); c.fill(); }
+    }
+  }
+
+  // the wood's printed page: a deep forest floor (moss, leaf litter, needles, ferns, clover, stones, flowers), a worn
+  // earth path along the route (soft worn middle, pebbles, grit, cracks, wolf tracks, grass spilling over its edges),
+  // muddy banks with reeds where the streams cut through, and the chapter's title in the margin
   function paintWood(L3, left) {
     return function (c, S, r, w, h) {
       const ox = left ? -L3.pw : 0, X = x => (x - ox) * S, Z = z => (z + L3.pd / 2) * S;
-      for (let i = 0; i < 900; i++) P.wash(c, r() * w, r() * h, S * (0.6 + r() * 1.8), ['#2f5444', '#3d6650', '#24443c', '#4a6a4e'][Math.floor(r() * 4)], 0.3, r, { noEdge: r() < 0.5 });
-      // moonlight pools
-      for (let i = 0; i < 18; i++) { const x = r() * w, y = r() * h, rad = S * (1.5 + r() * 2.5), g = c.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, 'rgba(210,225,255,0.16)'); g.addColorStop(1, 'rgba(210,225,255,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
-      // leaf litter and needles
-      for (let i = 0; i < 2600; i++) {
-        const x = r() * w, y = r() * h, a = r() * Math.PI;
-        c.fillStyle = ['rgba(150,110,50,0.4)', 'rgba(110,70,40,0.4)', 'rgba(90,130,80,0.35)', 'rgba(200,170,80,0.3)'][Math.floor(r() * 4)];
-        c.save(); c.translate(x, y); c.rotate(a); c.beginPath(); c.ellipse(0, 0, 4 + r() * 4, 1.5 + r() * 1.5, 0, 0, Math.PI * 2); c.fill(); c.restore();
+      const pts = L3.route, W = PC.HALF * 2 * S;
+      // the ground: night greens, darker toward the far edge
+      const bg = c.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, '#26463c'); bg.addColorStop(0.5, '#335a48'); bg.addColorStop(1, '#3c644c');
+      c.fillStyle = bg; c.fillRect(0, 0, w, h);
+      // soft value changes, big and then smaller, so it never reads as one flat colour
+      for (let i = 0; i < 120; i++) P.wash(c, r() * w, r() * h, S * (2.5 + r() * 3.5), ['#1d3a32', '#3a6250', '#2a4a3e', '#47684a'][Math.floor(r() * 4)], 0.16, r, { noEdge: true });
+      for (let i = 0; i < 520; i++) P.wash(c, r() * w, r() * h, S * (0.35 + r() * 0.9), ['#2f5444', '#3d6650', '#24443c', '#55784e', '#4a5e3a'][Math.floor(r() * 5)], 0.2, r, { noEdge: r() < 0.7 });
+      // moss: sponge-printed clumps of tiny dots
+      for (let i = 0; i < 300; i++) {
+        const cx = r() * w, cy = r() * h, rad = S * (0.4 + r() * 1.1), n = 90 + Math.floor(r() * 160);
+        const pal = r() < 0.5 ? ['#7aa65a', '#5c8a48', '#94bb68'] : ['#55834c', '#46744a', '#71985c'];
+        // a soft cushion under the dots, then the dots, lit from the top left
+        c.globalAlpha = 0.35; P.wash(c, cx, cy, rad * 0.9, pal[1], 0.5, r, { noEdge: true });
+        for (let k = 0; k < n; k++) { const a = r() * Math.PI * 2, d = Math.sqrt(r()) * rad, px = cx + Math.cos(a) * d, py = cy + Math.sin(a) * d * 0.8, up = (px - cx) + (py - cy) < 0; c.fillStyle = up ? pal[2] : pal[k % 2]; c.globalAlpha = 0.45 + r() * 0.4; c.beginPath(); c.arc(px, py, 1.2 + r() * 2.4, 0, Math.PI * 2); c.fill(); }
       }
-      // the earth path along the route
-      const pts = L3.route;
+      c.globalAlpha = 1;
+      // moonlight dappling through the canopy (soft and few)
+      for (let i = 0; i < 26; i++) { const x = r() * w, y = r() * h, rad = S * (1 + r() * 2), g = c.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, 'rgba(200,220,255,0.09)'); g.addColorStop(1, 'rgba(200,220,255,0)'); c.fillStyle = g; c.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
+      // pine needles
+      c.lineWidth = 1.1;
+      for (let i = 0; i < 2600; i++) { const x = r() * w, y = r() * h, a = r() * Math.PI, l = 5 + r() * 8; c.strokeStyle = r() < 0.6 ? 'rgba(120,85,45,0.45)' : 'rgba(170,135,70,0.4)'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
+      // printed ferns lying in the shade, clover patches
+      for (let i = 0; i < 90; i++) frondAt(c, r() * w, r() * h, S * (0.8 + r() * 0.8), r() * Math.PI * 2, r() < 0.5 ? 'rgba(25,55,35,0.6)' : 'rgba(96,146,80,0.6)', r);
+      for (let i = 0; i < 140; i++) { const cx = r() * w, cy = r() * h; for (let k = 0; k < 8; k++) { const x = cx + (r() - 0.5) * S * 0.8, y = cy + (r() - 0.5) * S * 0.5, sz = 3.5 + r() * 3; c.fillStyle = r() < 0.5 ? 'rgba(110,160,90,0.7)' : 'rgba(90,140,80,0.7)'; for (let q = 0; q < 3; q++) { const a = q * 2.09 + r() * 0.3; c.beginPath(); c.arc(x + Math.cos(a) * sz, y + Math.sin(a) * sz, sz, 0, Math.PI * 2); c.fill(); } } }
+      // fallen leaves: oak browns, birch yellows, a few red
+      for (let i = 0; i < 1100; i++) { const l = S * (0.16 + r() * 0.18); leafAt(c, r() * w, r() * h, l, l * 0.35, r() * Math.PI * 2, ['rgba(176,120,52,0.75)', 'rgba(140,90,40,0.7)', 'rgba(210,170,70,0.7)', 'rgba(170,70,45,0.7)', 'rgba(110,120,55,0.7)'][Math.floor(r() * 5)]); }
+      // stones, flowers
+      for (let i = 0; i < 160; i++) { const rx = 3 + r() * 6; stoneAt(c, r() * w, r() * h, rx, rx * (0.6 + r() * 0.3), ['#8a8f8c', '#9a958a', '#7a7f80', '#a8a296'][Math.floor(r() * 4)]); }
+      for (let i = 0; i < 320; i++) flowerAt(c, r() * w, r() * h, 4 + r() * 4, r);
+      // muddy banks with printed reeds where a stream cuts the page
+      for (const [g0, g1] of L3.def.gaps) for (const [bx, sd] of [[g0, -1], [g1, 1]]) {
+        const px = X(bx); if (px < -S * 2 || px > w + S * 2) continue;
+        const gr = c.createLinearGradient(px, 0, px + sd * S * 1.4, 0); gr.addColorStop(0, 'rgba(62,48,32,0.85)'); gr.addColorStop(0.45, 'rgba(70,62,40,0.5)'); gr.addColorStop(1, 'rgba(70,62,40,0)');
+        c.fillStyle = gr; c.fillRect(Math.min(px, px + sd * S * 1.4), 0, S * 1.4, h);
+        for (let i = 0; i < 160; i++) { const rx = 2 + r() * 5; stoneAt(c, px + sd * r() * S * 0.7, r() * h, rx, rx * 0.7, ['#8a8f8c', '#a8a296', '#6f6a60'][Math.floor(r() * 3)]); }
+        c.lineWidth = 1.6;
+        for (let i = 0; i < 260; i++) { const x = px + sd * (0.2 + r() * 1.1) * S, y = r() * h, l = 8 + r() * 14; c.strokeStyle = r() < 0.5 ? 'rgba(60,100,50,0.7)' : 'rgba(100,130,60,0.6)'; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + sd * 2, y - l * 0.6, x + sd * (1 + r() * 4), y - l); c.stroke(); }
+      }
+      // the path: sunk a touch into the ground, a worn darker border, a lighter trodden middle
+      const route = () => { c.beginPath(); pts.forEach(([x, z], i) => i ? c.lineTo(X(x), Z(z)) : c.moveTo(X(x), Z(z))); };
       c.lineCap = 'round'; c.lineJoin = 'round';
-      c.strokeStyle = '#c9b48a'; c.lineWidth = PC.HALF * 2 * S * 0.92; c.beginPath(); pts.forEach(([x, z], i) => i ? c.lineTo(X(x), Z(z)) : c.moveTo(X(x), Z(z))); c.stroke();
+      for (const [wd, col] of [[1.12, 'rgba(15,25,18,0.3)'], [1.07, 'rgba(15,25,18,0.3)'], [1.0, '#86704a'], [0.95, '#9a8054']]) { c.strokeStyle = col; c.lineWidth = W * wd; route(); c.stroke(); }
+      // the trodden middle: many thin layers, so it grades smoothly from the worn edges to the pale centre
+      for (let k = 0; k < 16; k++) { const t = k / 15; c.strokeStyle = 'rgba(' + Math.round(176 + 50 * t) + ',' + Math.round(150 + 54 * t) + ',' + Math.round(104 + 54 * t) + ',0.16)'; c.lineWidth = W * (0.92 - 0.72 * t); route(); c.stroke(); }
+      // the path's own texture, clipped to it: grit, pebbles, cracks, twigs, a few leaves, wolf tracks
+      c.save();
+      const inner = PC.offset(pts, PC.HALF * 0.9).concat(PC.offset(pts, -PC.HALF * 0.9).reverse());
+      c.beginPath(); inner.forEach(([x, z], i) => i ? c.lineTo(X(x), Z(z)) : c.moveTo(X(x), Z(z))); c.closePath(); c.clip();
       for (let i = 0; i < pts.length - 1; i++) {
-        const [x0, z0] = pts[i], [x1, z1] = pts[i + 1], n = Math.hypot(x1 - x0, z1 - z0) * 240;
-        for (let k = 0; k < n; k++) { const t = r(), ofs = (r() - 0.5) * PC.HALF * 1.8, nx = -(z1 - z0), nz = x1 - x0, l = Math.hypot(nx, nz); c.fillStyle = r() < 0.5 ? 'rgba(120,90,50,0.3)' : 'rgba(250,240,210,0.4)'; c.fillRect(X(x0 + (x1 - x0) * t + nx / l * ofs), Z(z0 + (z1 - z0) * t + nz / l * ofs), 2 + r() * 3, 2 + r() * 2); }
+        const [x0, z0] = pts[i], [x1, z1] = pts[i + 1], len = Math.hypot(x1 - x0, z1 - z0), nx = -(z1 - z0) / len, nz = (x1 - x0) / len;
+        const at = (t, o) => [X(x0 + (x1 - x0) * t + nx * o), Z(z0 + (z1 - z0) * t + nz * o)];
+        for (let k = 0; k < len * 420; k++) { const [x, y] = at(r(), (r() - 0.5) * PC.HALF * 2); c.fillStyle = r() < 0.5 ? 'rgba(96,74,44,0.35)' : 'rgba(245,232,200,0.4)'; c.beginPath(); c.arc(x, y, 0.7 + r() * 1.3, 0, Math.PI * 2); c.fill(); }
+        for (let k = 0; k < len * 22; k++) { const [x, y] = at(r(), (r() - 0.5) * PC.HALF * 2 * (r() < 0.6 ? 1 : 0.5)), rx = 1.8 + r() * 4.5; stoneAt(c, x, y, rx, rx * (0.6 + r() * 0.35), ['#b7aa92', '#9d9384', '#c9bca0', '#8c8478', '#a89a80'][Math.floor(r() * 5)]); }
+        c.lineWidth = 1;
+        for (let k = 0; k < len * 1.2; k++) { let [x, y] = at(r(), (r() - 0.5) * PC.HALF * 1.6); c.strokeStyle = 'rgba(70,52,30,0.35)'; c.beginPath(); c.moveTo(x, y); for (let q = 0; q < 3; q++) { x += (r() - 0.5) * 14; y += (r() - 0.5) * 14; c.lineTo(x, y); } c.stroke(); }
+        c.lineWidth = 2;
+        for (let k = 0; k < len * 0.8; k++) { const [x, y] = at(r(), (r() - 0.5) * PC.HALF * 1.6), a = r() * Math.PI, l = 10 + r() * 16; c.strokeStyle = 'rgba(92,62,36,0.6)'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.lineTo(x + Math.cos(a) * l + 4, y + Math.sin(a) * l - 3); c.stroke(); }
+        for (let k = 0; k < len * 1.6; k++) { const [x, y] = at(r(), (r() - 0.5) * PC.HALF * 1.8), l = S * (0.1 + r() * 0.1); leafAt(c, x, y, l, l * 0.35, r() * Math.PI * 2, ['rgba(176,120,52,0.8)', 'rgba(210,170,70,0.75)', 'rgba(170,70,45,0.75)'][Math.floor(r() * 3)]); }
+        // a wolf's trail, trotting the way the chase goes
+        const ang = Math.atan2(Z(z1) - Z(z0), X(x1) - X(x0)) + Math.PI / 2;
+        for (let d = 0.5; d < len - 0.5; d += 0.75) { const sd = (Math.round(d / 0.75) % 2) ? 1 : -1, [x, y] = at(d / len, sd * 0.28 + 0.5); pawAt(c, x, y, ang, S * 0.16, 'rgba(70,50,32,0.45)'); }
       }
-      for (let i = 0; i < 70; i++) P.wash(c, X(pts[0][0]) + r() * (w + 2 * L3.pw * S), r() * h, S * 0.6, '#a08a5a', 0.15, r, { noEdge: true });
-      // the path's inked edges, wobbly
-      c.strokeStyle = 'rgba(43,33,48,0.55)'; c.lineWidth = 2.2;
-      for (const sd of [-1, 1]) { c.beginPath(); PC.offset(pts, sd * PC.HALF * 0.92).forEach(([x, z], i) => { const px = X(x) + (r() - 0.5) * 2, pz = Z(z) + (r() - 0.5) * 2; i ? c.lineTo(px, pz) : c.moveTo(px, pz); }); c.stroke(); }
-      // fold lines and slots printed where the pop-ups will stand (a dashed valley fold beside the path)
-      c.setLineDash([10, 8]); c.strokeStyle = 'rgba(240,230,200,0.35)'; c.lineWidth = 2;
+      c.restore();
+      // grass spilling over the path's edges, and a broken printed outline
+      c.lineWidth = 1.5;
+      for (const sd of [-1, 1]) {
+        const edge = PC.offset(pts, sd * PC.HALF * 0.93);
+        for (let i = 0; i < edge.length - 1; i++) {
+          const [ax, az] = edge[i], [bx, bz] = edge[i + 1], len = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / len * sd, nz = (bx - ax) / len * sd;
+          for (let d = 0; d < len; d += 0.09) {
+            const t = d / len, x = X(ax + (bx - ax) * t + nx * 0.08), y = Z(az + (bz - az) * t + nz * 0.08), n = 2 + Math.floor(r() * 3);
+            for (let q = 0; q < n; q++) { const l = 6 + r() * 11, lean = (r() - 0.5) * 0.9; c.strokeStyle = ['rgba(60,110,55,0.85)', 'rgba(95,140,70,0.8)', 'rgba(40,80,45,0.85)'][Math.floor(r() * 3)]; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x - nx * l * 0.5 * S / S + lean * 4, y - nz * l * 0.5, x - nx * l + lean * l * 0.6, y - nz * l - l * 0.4); c.stroke(); }
+          }
+          c.strokeStyle = 'rgba(43,33,48,0.4)'; c.lineWidth = 1.8;
+          for (let d = 0; d < len; d += 0.6) { if (r() < 0.25) continue; const t0 = d / len, t1 = Math.min(1, (d + 0.4 + r() * 0.2) / len); c.beginPath(); c.moveTo(X(ax + (bx - ax) * t0) + (r() - 0.5) * 2, Z(az + (bz - az) * t0) + (r() - 0.5) * 2); c.lineTo(X(ax + (bx - ax) * t1) + (r() - 0.5) * 2, Z(az + (bz - az) * t1) + (r() - 0.5) * 2); c.stroke(); }
+          c.lineWidth = 1.5;
+        }
+      }
+      // fold lines printed where the pop-ups stand (a dashed valley fold beside the path)
+      c.setLineDash([10, 8]); c.strokeStyle = 'rgba(240,230,200,0.22)'; c.lineWidth = 2;
       for (const sd of [-1, 1]) { c.beginPath(); PC.offset(pts, sd * (PC.HALF + 0.7)).forEach(([x, z], i) => i ? c.lineTo(X(x), Z(z)) : c.moveTo(X(x), Z(z))); c.stroke(); }
       c.setLineDash([]);
-      // ink grass tufts and little white flowers
-      for (let i = 0; i < 1400; i++) { const x = r() * w, y = r() * h; c.strokeStyle = 'rgba(20,40,30,0.45)'; c.lineWidth = 1.3; c.beginPath(); c.moveTo(x - 3, y); c.lineTo(x - 2, y - 6); c.moveTo(x, y); c.lineTo(x + 1, y - 8); c.moveTo(x + 3, y); c.lineTo(x + 4, y - 5); c.stroke(); }
-      for (let i = 0; i < 160; i++) { const x = r() * w, y = r() * h; c.fillStyle = 'rgba(240,240,255,0.75)'; for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(x + Math.cos(k * 1.26) * 3, y + Math.sin(k * 1.26) * 3, 2.2, 0, Math.PI * 2); c.fill(); } }
+      // paper grain over everything, and a printed shadow round the page's outer edges
+      for (let i = 0; i < 5000; i++) { const x = r() * w, y = r() * h, a = r() * Math.PI, l = 3 + r() * 6; c.strokeStyle = r() < 0.5 ? 'rgba(255,250,235,0.06)' : 'rgba(0,0,0,0.06)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
+      const vg = (x0, y0, x1, y1) => { const g = c.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, 'rgba(10,15,20,0.35)'); g.addColorStop(1, 'rgba(10,15,20,0)'); c.fillStyle = g; };
+      vg(0, 0, 0, S * 2.5); c.fillRect(0, 0, w, S * 2.5);
+      vg(0, h, 0, h - S * 1.5); c.fillRect(0, h - S * 1.5, w, S * 1.5);
+      if (left) { vg(0, 0, S * 2, 0); c.fillRect(0, 0, S * 2, h); } else { vg(w, 0, w - S * 2, 0); c.fillRect(w - S * 2, 0, S * 2, h); }
       // the page's title and a printed line of the story, in the margins
-      c.fillStyle = 'rgba(240,232,210,0.8)'; c.font = 'italic ' + Math.round(S * 0.9) + 'px Georgia, "DejaVu Serif", serif';
+      c.fillStyle = 'rgba(240,232,210,0.85)'; c.font = 'italic ' + Math.round(S * 0.9) + 'px Georgia, "DejaVu Serif", serif';
       if (left) { c.textAlign = 'left'; c.fillText('Chapter Two: The Deep Dark Wood', X(-L3.pw + 1.6), Z(-L3.pd / 2 + 1.5)); }
       else { c.textAlign = 'right'; c.font = 'italic ' + Math.round(S * 0.6) + 'px Georgia, "DejaVu Serif", serif'; c.fillText('...and the wolves were not asleep at all.', X(L3.pw - 1.4), Z(L3.pd / 2 - 0.7)); }
     };
@@ -237,7 +347,7 @@ void main() {
   /* ---------- the spread's printed pages ---------- */
   function pageTex(L3, left) {
     const paint = { wood: paintWood }[L3.def.decor] || paintWood;
-    return P.pageTex('pc' + L3.k + (left ? 'L' : 'R'), L3.pw, L3.pd, paint(L3, left), { ppu: 72, text: false, num: String(L3.k * 2 + 3 + (left ? 0 : 1)), numAt: left ? [2, L3.pd - 0.6] : [L3.pw - 2, L3.pd - 0.6], gutter: left ? 'right' : 'left' });
+    return P.pageTex('pc' + L3.k + (left ? 'L' : 'R'), L3.pw, L3.pd, paint(L3, left), { ppu: 88, text: false, num: String(L3.k * 2 + 3 + (left ? 0 : 1)), numAt: left ? [2, L3.pd - 0.6] : [L3.pw - 2, L3.pd - 0.6], gutter: left ? 'right' : 'left' });
   }
 
   /* ---------- machinery and set pieces ---------- */
@@ -309,22 +419,64 @@ void main() {
     const edge = K3D.paint('pcCutEdge', 256, 128, (c, ww, h) => { const r = P.rng(481); c.fillStyle = '#efe4c8'; c.fillRect(0, 0, ww, h); for (let y = 0; y < h; y += 2) { c.fillStyle = r() < 0.5 ? 'rgba(120,95,60,0.2)' : 'rgba(255,255,255,0.25)'; c.fillRect(0, y, ww, 1); } }, { repeat: true });
     const wm = K3D.toon('#ffffff', { map: edge, side: T.DoubleSide });
     for (const sx of [x0, x1]) { const m = K3D.mesh(new T.PlaneGeometry(pd, 1.3).rotateY(Math.PI / 2), wm, { ink: false, cast: false }); m.position.set(sx, -0.65, 0); g.add(m); }
-    const floorM = K3D.toon('#3a5a78');
-    const fl = K3D.mesh(new T.PlaneGeometry(w, pd).rotateX(-Math.PI / 2), floorM, { ink: false, cast: false }); fl.position.set((x0 + x1) / 2, -1.28, 0); g.add(fl);
-    const water = new T.Mesh(new T.PlaneGeometry(w, pd, 1, 1).rotateX(-Math.PI / 2), P.tissueMat());
+    // a texture painted so it tiles: everything is drawn nine times, shifted by the tile's size
+    const tiled = (key, size, paint) => K3D.paint(key, size, size, (c, ww, hh) => {
+      const r = P.rng(key.length * 13 + 5), ops = [];
+      paint((fn) => ops.push(fn), c, ww, hh, r);
+      for (const fn of ops) for (const dx of [-ww, 0, ww]) for (const dy of [-hh, 0, hh]) { c.save(); c.translate(dx, dy); fn(c); c.restore(); }
+    }, { repeat: true });
+    const scaleUV = (geo, su, sv) => { const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv); return geo; };
+    // the stream bed: dark blue-green sand in ripples, pebbles, a little weed
+    const bedTex = tiled('pcBed', 512, (add, c, ww, hh, r) => {
+      c.fillStyle = '#2c5566'; c.fillRect(0, 0, ww, hh);
+      for (let i = 0; i < 40; i++) { const x = r() * ww, y = r() * hh, rad = 30 + r() * 70, col = ['#244a5a', '#386878', '#2f5a52'][Math.floor(r() * 3)]; add(c => P.wash(c, x, y, rad, col, 0.35, P.rng(i + 7), { noEdge: true })); }
+      for (let i = 0; i < 26; i++) { const y = r() * hh, a = r() * 6; add(c => { c.strokeStyle = 'rgba(150,190,190,0.18)'; c.lineWidth = 3; c.beginPath(); for (let x = -10; x <= ww + 10; x += 8) c.lineTo(x, y + Math.sin(x * 0.03 + a) * 6); c.stroke(); }); }
+      for (let i = 0; i < 140; i++) { const x = r() * ww, y = r() * hh, rx = 3 + r() * 9, ry = rx * (0.6 + r() * 0.3), col = ['#5f7a80', '#7a8a84', '#4a6670', '#8a8a78'][Math.floor(r() * 4)]; add(c => stoneAt(c, x, y, rx, ry, col)); }
+      for (let i = 0; i < 18; i++) { const x = r() * ww, y = r() * hh, l = 20 + r() * 30, b = (r() - 0.5) * 20; add(c => { c.strokeStyle = 'rgba(70,120,70,0.7)'; c.lineWidth = 2.5; for (let q = 0; q < 3; q++) { c.beginPath(); c.moveTo(x + q * 4, y); c.quadraticCurveTo(x + q * 4 + b, y - l * 0.5, x + q * 4 + b * 0.4, y - l); c.stroke(); } }); }
+    });
+    const fl = K3D.mesh(scaleUV(new T.PlaneGeometry(w, pd).rotateX(-Math.PI / 2), w / 3, pd / 3), K3D.mat('pcBedM', () => K3D.toon('#ffffff', { map: bedTex })), { ink: false, cast: false });
+    fl.position.set((x0 + x1) / 2, -1.28, 0); g.add(fl);
+    // the water: layered blue tissue with flowing highlight lines, see-through to the bed
+    const waterTex = tiled('pcWater', 512, (add, c, ww, hh, r) => {
+      c.fillStyle = '#4a96c8'; c.fillRect(0, 0, ww, hh);
+      for (let i = 0; i < 50; i++) { const x = r() * ww, y = r() * hh, rad = 30 + r() * 80, col = ['#3a80b8', '#5aa6d6', '#7cc0e6', '#2f70a8'][Math.floor(r() * 4)]; add(c => P.wash(c, x, y, rad, col, 0.28, P.rng(i + 31), { noEdge: true })); }
+      // flowing lines (the stream runs along the tile's height)
+      for (let i = 0; i < 90; i++) {
+        const x = r() * ww, y = r() * hh, l = 40 + r() * 120, ph = r() * 6, amp = 2 + r() * 5, light = r() < 0.7, lw = light ? 1.2 + r() * 2 : 2 + r() * 2, al = light ? 0.35 + r() * 0.35 : 0.25;
+        add(c => { c.strokeStyle = light ? 'rgba(235,248,255,' + al + ')' : 'rgba(30,85,140,' + al + ')'; c.lineWidth = lw; c.lineCap = 'round'; c.beginPath(); for (let k = 0; k <= l; k += 6) c.lineTo(x + Math.sin(k * 0.05 + ph) * amp, y + k); c.stroke(); });
+      }
+      // glints
+      for (let i = 0; i < 40; i++) { const x = r() * ww, y = r() * hh, l = 4 + r() * 8; add(c => { c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + l); c.stroke(); }); }
+    });
+    const waterM = K3D.mat('pcWaterM', () => K3D.toon('#ffffff', { map: waterTex, transparent: true, opacity: 0.74, side: T.DoubleSide, depthWrite: false }));
+    const water = new T.Mesh(scaleUV(new T.PlaneGeometry(w, pd, 1, 1).rotateX(-Math.PI / 2), w / 4, pd / 4), waterM);
     water.position.set((x0 + x1) / 2, -0.5, 0); water.renderOrder = 2; g.add(water);
+    // white paper foam frilled along both banks
+    const foamTex = tiled('pcFoam', 256, (add, c, ww, hh, r) => {
+      c.clearRect(0, 0, ww, hh);
+      for (let i = 0; i < 70; i++) { const y = r() * hh, x = r() * ww * 0.35, rad = 8 + r() * 18 * (1 - x / (ww * 0.35)); add(c => { c.fillStyle = 'rgba(250,252,255,0.92)'; c.beginPath(); c.arc(x, y, rad, 0, Math.PI * 2); c.fill(); }); }
+      for (let i = 0; i < 60; i++) { const y = r() * hh, x = ww * 0.3 + r() * ww * 0.5, rad = 1.5 + r() * 4; add(c => { c.strokeStyle = 'rgba(250,252,255,0.8)'; c.lineWidth = 1.5; c.beginPath(); c.arc(x, y, rad, 0, Math.PI * 2); c.stroke(); }); }
+      c.globalCompositeOperation = 'source-over';
+    });
+    const foamM = K3D.mat('pcFoamM', () => { const m = K3D.toon('#ffffff', { map: foamTex, transparent: true, side: T.DoubleSide, depthWrite: false }); return m; });
+    const foams = [];
+    for (const [bx, sd] of [[x0, 1], [x1, -1]]) {
+      const geo = scaleUV(new T.PlaneGeometry(0.9, pd).rotateX(-Math.PI / 2), 1, pd / 2.2);
+      if (sd < 0) { const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, 1 - uv.getX(i)); }
+      const f = new T.Mesh(geo, foamM); f.position.set(bx + sd * 0.45, -0.48, 0); f.renderOrder = 3; g.add(f); foams.push(f);
+    }
     // paper ripples standing on the water: little scalloped wave cards
     const r = P.rng(Math.round(x0 * 7));
-    const wave = K3D.paint('pcRipple', 256, 96, (c, ww, h) => { c.clearRect(0, 0, ww, h); c.fillStyle = '#5aa8d8'; c.fillRect(0, 0, ww, h); for (let i = 0; i < 20; i++) P.wash(c, r() * ww, r() * h, 20, '#8fd0f0', 0.4, r, { noEdge: true }); c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 3; c.beginPath(); for (let x = 0; x <= ww; x += 8) c.lineTo(x, 12 + Math.sin(x * 0.07) * 6); c.stroke(); });
+    const wave = K3D.paint('pcRipple2', 256, 96, (c, ww, h) => { const g2 = c.createLinearGradient(0, 0, 0, h); g2.addColorStop(0, '#f4fbff'); g2.addColorStop(0.35, '#bfe4f6'); g2.addColorStop(1, '#5aa6d6'); c.fillStyle = g2; c.fillRect(0, 0, ww, h); c.strokeStyle = 'rgba(60,130,190,0.6)'; c.lineWidth = 2; for (let k = 0; k < 3; k++) { c.beginPath(); for (let x = 0; x <= ww; x += 8) c.lineTo(x, 34 + k * 18 + Math.sin(x * 0.06 + k) * 4); c.stroke(); } });
     const ripples = [];
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 6; i++) {
       const m = P.card(P.scallopShape(1.4, 0.3, 4, 0.4, r), { tex: wave, depth: 0.02, inkW: 0.7, cast: false });
       m.position.set(x0 + 0.8 + r() * (w - 1.6), -0.5, -pd / 2 + 1 + r() * (pd - 2)); m.rotation.y = (r() - 0.5) * 0.4;
       g.add(m); ripples.push({ m, ph: r() * 6 });
     }
     const padTex = K3D.paint('pcLily', 128, 128, (c, ww, h) => { c.clearRect(0, 0, ww, h); c.fillStyle = '#4f8a46'; c.beginPath(); c.moveTo(64, 64); c.arc(64, 64, 60, 0.35, Math.PI * 2 - 0.1); c.closePath(); c.fill(); c.strokeStyle = 'rgba(30,60,30,0.7)'; c.lineWidth = 3; c.stroke(); c.strokeStyle = 'rgba(200,240,180,0.4)'; c.lineWidth = 2; for (let a = 0.6; a < 6; a += 0.7) { c.beginPath(); c.moveTo(64, 64); c.lineTo(64 + Math.cos(a) * 50, 64 + Math.sin(a) * 50); c.stroke(); } });
     for (let i = 0; i < 7; i++) { const lp = new T.Mesh(K3D.geo('pcLilyG', () => new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), K3D.mat('pcLilyM', () => K3D.toon('#ffffff', { map: padTex, transparent: true, alphaTest: 0.5 }))); const sz = 0.5 + r() * 0.5; lp.scale.set(sz, 1, sz); lp.position.set(x0 + 0.5 + r() * (w - 1), -0.48, -pd / 2 + 1 + r() * (pd - 2)); lp.rotation.y = r() * 6; g.add(lp); ripples.push({ m: lp, ph: r() * 6 }); }
-    g.userData.tick = t => { water.material.map.offset.set(t * 0.02, t * 0.013); for (const q of ripples) q.m.position.y = -0.52 + Math.sin(t * 1.6 + q.ph) * 0.04; };
+    g.userData.tick = t => { waterTex.offset.set(0, -t * 0.07); foamTex.offset.set(0, -t * 0.05); for (const q of ripples) q.m.position.y = -0.52 + Math.sin(t * 1.6 + q.ph) * 0.04; };
     void kind; void K;
     return g;
   }
