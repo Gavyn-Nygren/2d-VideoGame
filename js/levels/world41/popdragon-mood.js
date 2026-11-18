@@ -5,14 +5,14 @@
                     cool moonlight from the window, and the shadow light turned warm and low (it follows the dragon)
      the lamp beam  a soft glowing cone under the shade, with dust motes turning in it
      the moonbeam   motes drifting in the window's shaft and the window's cross of light on the floor
-     the window     rain running down the glass in two layers; now and then lightning lights the room (thunder follows),
-                    more often the further the flight has gone (cosy at the desk, stormy by the window)
+     the storm      now and then lightning lights the room (thunder follows), more often the further the flight has gone
+                    (cosy at the desk, stormy by the window); the rain on the glass is painted here, the window's panes
+                    and the storm outside are POPDRAGON_WINDOW's (popdragon-window.js)
      fairy lights   strings of tiny bulbs swagged along the back wall, the left wall and the beam (they twinkle)
      bunting        paper flags on strings across the room (they stir in the draught)
      drawings       a child's crayon pictures pinned and taped to the walls round the desk
-     the Reader     asleep in bed under the quilt (it rises and falls), a striped sleeve and hand over the edge, a teddy,
-                    and a toadstool night-light on the floor by the bed
-   Returns { tick(st, t, dt), flash(), hold } ; hold (0..1 or null) freezes the lightning for the screenshot tool.
+   Returns { tick(st, t, dt), flash(), hold, fl, moon, softTex, rainTex }; hold (0..1 or null) freezes the lightning for
+   the screenshot tool, fl is the flash right now (0..1), moon the moonlight (the bedroom dims it under the bed).
 */
 'use strict';
 
@@ -92,10 +92,6 @@ const POPDRAGON_MOOD = (function () {
       }
       for (let i = 0; i < 140; i++) { const x = r() * w, y = r() * h, s = 0.8 + r() * 2.4; c.fillStyle = 'rgba(220,235,255,0.55)'; c.beginPath(); c.arc(x, y, s, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,255,255,0.8)'; c.fillRect(x - s * 0.4, y - s * 0.5, s * 0.5, s * 0.5); }
     }, { repeat: true });
-    const rainA = rainTex, rainB = rainTex.clone(); rainB.needsUpdate = true; rainB.repeat.set(1.6, 1.2);
-    const rainLayers = [rainA, rainB].map((tx, i) => { const m = new T.Mesh(new T.CircleGeometry(23.2, 48), K3.flat('#ffffff', { map: tx, transparent: true, opacity: i ? 0.55 : 0.8, depthWrite: false, add: true })); m.position.set(WIN[0], WIN[1], WIN[2] + 0.25 + i * 0.1); live.add(m); return m; });
-    const winFlash = new T.Mesh(new T.CircleGeometry(23.2, 48), K3.flat('#e6eeff', { transparent: true, opacity: 0, depthWrite: false, add: true }));
-    winFlash.position.set(WIN[0], WIN[1], WIN[2] + 0.5); live.add(winFlash);
     // a cool glow round the window on the wall
     const winGlow = new T.Sprite(new T.SpriteMaterial({ map: softTex, color: '#7f98d8', transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0.28 }));
     winGlow.position.set(WIN[0], WIN[1], WIN[2] + 1); winGlow.scale.set(90, 90, 1); live.add(winGlow);
@@ -106,7 +102,7 @@ const POPDRAGON_MOOD = (function () {
       c.globalCompositeOperation = 'destination-out'; c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillRect(w / 2 - 5, 0, 10, h); c.fillRect(0, h / 2 - 5, w, 10); c.globalCompositeOperation = 'source-over';
     });
     const patch = new T.Mesh(new T.PlaneGeometry(50, 84).rotateX(-Math.PI / 2), K3.flat('#ffffff', { map: patchTex, transparent: true, opacity: 0.32, depthWrite: false, add: true }));
-    patch.position.set(304, F + 0.15, 66); live.add(patch);
+    patch.position.set(300, F + 0.15, 14); patch.scale.set(0.66, 1, 0.6); live.add(patch);   // (on the floor in front of the bed)
 
     /* ---------- fairy lights ---------- */
     // a hanging string between two nails: n points along a sagging curve
@@ -269,63 +265,8 @@ const POPDRAGON_MOOD = (function () {
       still.add(card);
     }
 
-    /* ---------- the Reader, asleep ---------- */
-    const BED = [215, F, 40];
-    const bedG = new T.Group(); bedG.position.set(...BED); still.add(bedG);
-    const sheetM = K3.mat('pdSheet', () => K3.toon('#f2ece0'));
-    bedG.add(K3.mesh(K3.roundBox(40, 6, 17, 0.35, 24).translate(0, 26, -44), sheetM, { ink: '#6a6050' }));            // the pillow
-    const skinM = K3.mat('pdSkin', () => K3.toon('#f0c4a0')), hairM = K3.mat('pdHair', () => K3.toon('#6a3e22'));
-    const head = new T.Group(); head.position.set(-4, 35.5, -41); head.rotation.set(-0.15, 0.3, 0.2); bedG.add(head);
-    head.add(K3.mesh(new T.SphereGeometry(5.6, 32, 24), skinM, { ink: '#6a3a28' }));
-    head.add(K3.mesh(new T.SphereGeometry(5.9, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.42).rotateX(-0.75), hairM, { ink: '#2a160a' }));
-    for (const [x, y, z, s] of [[-4.8, 2.2, -2.2, 1.7], [4.6, 2.6, -1.8, 1.6], [0.4, 5.0, -3.2, 2.0], [-2.4, 5.0, 0.4, 1.4], [2.6, 5.1, 0.8, 1.3]]) { const tuft = K3.mesh(K3.geo('pdTuft', () => new T.SphereGeometry(1, 16, 12)), hairM, { ink: '#2a160a' }); tuft.position.set(x, y, z); tuft.scale.setScalar(s); head.add(tuft); }
-    for (const sx of [-1, 1]) { const lid = K3.mesh(K3.geo('pdLid', () => new T.TorusGeometry(0.9, 0.2, 6, 14, Math.PI).rotateZ(Math.PI)), K3.mat('pdLash', () => K3.toon('#3a2218')), { ink: false }); lid.position.set(sx * 2.1, 0.3, 5.3); head.add(lid); }
-    { const nose = K3.mesh(new T.SphereGeometry(0.75, 12, 10), skinM, { ink: '#6a3a28', inkW: 0.6 }); nose.position.set(0, -0.8, 5.6); head.add(nose); }
-    for (const sx of [-1, 1]) { const ck = new T.Mesh(K3.geo('pdBlushG', () => new T.CircleGeometry(1.1, 16)), K3.mat('pdBlush', () => K3.toon('#f08a8a'))); ck.position.set(sx * 3.2, -1.4, 4.8); ck.rotation.y = sx * 0.55; head.add(ck); }
-    // the striped pyjama sleeve and the hand, hanging over the edge of the bed
-    const stripes = K3.paint('pdPyjama', 128, 64, (c, w, h) => { for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#f2ead6' : '#2f8a8a'; c.fillRect(i * w / 8, 0, w / 8, h); } }, { repeat: true });
-    stripes.repeat.set(1, 3);
-    const sleeveM = K3.toon('#ffffff', { map: stripes });
-    const limb = (a, b, r0, r1, mat) => { const A = new T.Vector3(...a), Bv = new T.Vector3(...b), d = Bv.clone().sub(A), len = d.length(); const m = K3.mesh(new T.CylinderGeometry(r1, r0, len, 20).translate(0, len / 2, 0), mat, { ink: '#1a4a4a' }); m.position.copy(A); m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d.normalize()); bedG.add(m); return m; };
-    limb([22, 29, -20], [39, 28.4, -14], 3.2, 2.9, sleeveM);
-    limb([39.5, 28.4, -14], [42.5, 12, -12], 2.9, 2.5, sleeveM);
-    { const cuff = K3.mesh(new T.TorusGeometry(2.55, 0.5, 8, 20), K3.mat('pdCuff', () => K3.toon('#2f8a8a')), { ink: '#1a4a4a' }); cuff.position.set(42.4, 12.4, -12); cuff.rotation.x = Math.PI / 2 + 0.2; bedG.add(cuff);
-      const hand = K3.mesh(K3.roundBox(4.2, 5.4, 2.4, 0.5, 20).translate(0, -5.4, 0), skinM, { ink: '#6a3a28' }); hand.position.set(42.6, 12, -12); hand.rotation.z = 0.12; bedG.add(hand);
-      for (let i = 0; i < 4; i++) { const fg2 = K3.mesh(K3.geo('pdFinger', () => new T.CapsuleGeometry(0.5, 2.6, 4, 10)), skinM, { ink: '#6a3a28', inkW: 0.6 }); fg2.position.set(41.2 + i * 0.95, 3.6 - Math.abs(i - 1.5) * 0.3, -12); bedG.add(fg2); } }
-    // the turned-down sheet at the chin
-    bedG.add(K3.mesh(new T.CapsuleGeometry(2.4, 62, 6, 16).rotateZ(Math.PI / 2).translate(0, 28.5, -31), sheetM, { ink: '#6a6050' }));
-    // a teddy bear tucked in by the pillow
-    { const ted = new T.Group(); ted.position.set(-24, 27, -37); ted.rotation.set(-0.3, 0.5, 0.15); bedG.add(ted);
-      const fur = K3.mat('pdTed', () => K3.toon('#a8784a')), pale = K3.mat('pdTedP', () => K3.toon('#e2c49a'));
-      const add = (geo, mat, x, y, z, s = 1) => { const m = K3.mesh(geo, mat, { ink: '#3a2414' }); m.position.set(x, y, z); m.scale.setScalar(s); ted.add(m); };
-      const ball = K3.geo('pdTedBall', () => new T.SphereGeometry(1, 20, 14));
-      add(ball, fur, 0, 3, 0, 3.6); add(ball, fur, 0, 8.6, 0.4, 2.8); add(ball, fur, -2.3, 10.8, 0, 1.1); add(ball, fur, 2.3, 10.8, 0, 1.1);
-      add(ball, pale, 0, 7.8, 2.8, 1.2); add(ball, pale, 0, 3.4, 3, 2); add(ball, K3.mat('pdTedN', () => K3.toon('#2b2130')), 0, 8.3, 3.9, 0.45);
-      for (const sx of [-1, 1]) { add(ball, K3.mat('pdTedN', () => K3.toon('#2b2130')), sx * 1.1, 9.4, 2.4, 0.32); add(ball, fur, sx * 3.6, 4, 0.6, 1.4); } }
-    // the quilt hill over the sleeper: breathes (live, so it is not baked)
-    const quiltTex = K3.paint('pdQuilt', 512, 512, () => {});   // the scenery painted this already (same key, cached)
-    // (the quilt draped over the bed: a sheet raised over the sleeper's body; the breath lifts only the body's hump)
-    const QW = 80, QD = 96, hump = (x, z) => 9.5 * Math.exp(-Math.pow((x - 2) / 15, 2) - Math.pow((z + 2) / 30, 4)) + 1.6 * Math.exp(-Math.pow((x - 2) / 22, 2));
-    const qGeo = new T.PlaneGeometry(QW, QD, 48, 48).rotateX(-Math.PI / 2);
-    const qBase = qGeo.attributes.position.array.slice();
-    const drape = (k) => { const a = qGeo.attributes.position; for (let i = 0; i < a.count; i++) { const x = qBase[i * 3], z = qBase[i * 3 + 2], edge = Math.max(Math.abs(x) / (QW / 2), Math.abs(z) / (QD / 2)); a.setY(i, hump(x, z) * k - Math.max(0, edge - 0.9) * 30); } a.needsUpdate = true; qGeo.computeVertexNormals(); };
-    drape(1);
-    const hill = K3.mesh(qGeo, K3.toon('#ffffff', { map: quiltTex, side: T.DoubleSide }), { ink: '#3a2030' });
-    hill.position.set(BED[0], BED[1] + 27.2, BED[2] + 8); live.add(hill);
-    // the toadstool night-light on the floor by the bed
-    const NL = [262, F, -30];
-    { const nl = new T.Group(); nl.position.set(...NL); still.add(nl);
-      nl.add(K3.mesh(new T.CylinderGeometry(1.6, 2.2, 4.5, 20).translate(0, 2.25, 0), K3.toon('#f4ead6'), { ink: '#6a5a40' }));
-      const cap = new T.Mesh(new T.SphereGeometry(4.2, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.75, 1).translate(0, 4.4, 0), K3.flat('#ffb07a'));
-      nl.add(cap); K3.ink(cap, '#7a3a20', 0.8);
-      for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28; const dot = new T.Mesh(K3.geo('pdNlDot', () => new T.SphereGeometry(0.55, 10, 8)), K3.flat('#fff6e0')); dot.position.set(Math.cos(a) * 2.8, 6.3, Math.sin(a) * 2.8); nl.add(dot); } }
-    const nlGlow = new T.Sprite(new T.SpriteMaterial({ map: softTex, color: '#ffb07a', transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0.55 }));
-    nlGlow.position.set(NL[0], NL[1] + 6, NL[2]); nlGlow.scale.set(30, 30, 1); live.add(nlGlow);
-    const nlPool = new T.Mesh(new T.CircleGeometry(26, 40).rotateX(-Math.PI / 2), K3.flat('#ff9a5a', { map: softTex, transparent: true, opacity: 0.35, depthWrite: false, add: true }));
-    nlPool.position.set(NL[0], NL[1] + 0.2, NL[2]); live.add(nlPool);
-
     /* ---------- every drawn frame ---------- */
-    const mood = { hold: null, next: 22 + rng() * 10, flashT: -9, thunder: null };
+    const mood = { hold: null, next: 22 + rng() * 10, flashT: -9, thunder: null, fl: 0, moon, softTex, rainTex, ambBase: L.ambI * PI };
     const ambBase = L.ambI * PI, moonBase = L.moonI * PI, ambCol = new T.Color(L.amb), flashCol = new T.Color('#c8d6ff');
     // lightning: a double flicker over about 0.7 s
     const flashAt = (u) => (u < 0 || u > 0.75 ? 0 : u < 0.08 ? u / 0.08 : u < 0.16 ? 1 - (u - 0.08) / 0.08 * 0.8 : u < 0.24 ? 0.2 + (u - 0.16) / 0.08 * 0.7 : 0.9 * Math.pow(1 - (u - 0.24) / 0.51, 2));
@@ -338,12 +279,11 @@ const POPDRAGON_MOOD = (function () {
       const fl = mood.hold != null ? mood.hold : flashAt(t - mood.flashT);
       K.amb.intensity = ambBase * (1 + fl * 2.6); K.amb.color.copy(ambCol).lerp(flashCol, fl * 0.8);
       moon.intensity = moonBase * (1 + fl * 9);
-      winFlash.material.opacity = fl * 0.85; winGlow.material.opacity = 0.28 + fl * 0.7; patch.material.opacity = 0.32 + fl * 0.6;
+      mood.fl = fl; winGlow.material.opacity = 0.28 + fl * 0.7; patch.material.opacity = 0.32 + fl * 0.6;
       // the lamp flickers a hair, like an old bulb
       lampL.intensity = L.lampI * PI * (1 + Math.sin(t * 13.1) * 0.012 + Math.sin(t * 5.3) * 0.01);
       // rain runs down the glass
-      rainA.offset.y = (rainA.offset.y + dt * 0.11) % 1; rainB.offset.y = (rainB.offset.y + dt * 0.19) % 1; rainB.offset.x = Math.sin(t * 0.3) * 0.02;
-      for (const m of rainLayers) m.material.opacity = (m === rainLayers[0] ? 0.8 : 0.55) + fl * 0.4;
+      rainTex.offset.y = (rainTex.offset.y + dt * 0.11) % 1;
       // motes drift and sparkle; the moonbeam's shine brighter in a flash
       for (const cl of clouds) {
         const { pos, colA, base, ph, bright, col, n } = cl, boost = cl === moonM ? 1 + fl * 2 : 1;
@@ -361,10 +301,6 @@ const POPDRAGON_MOOD = (function () {
       for (let i = 0; i < NB; i++) { const c = fairyBase[i], k = 0.62 + 0.38 * Math.sin(t * twPh[i][1] + twPh[i][0]); fairyCol[i * 3] = c.r * k; fairyCol[i * 3 + 1] = c.g * k; fairyCol[i * 3 + 2] = c.b * k; }
       fg.attributes.color.needsUpdate = true;
       placeFlags(t);
-      // the Reader breathes (slow, about one breath every 4.5 s), the night-light glows softly
-      const br = Math.sin(t * 1.4);
-      drape(1 + br * 0.06);
-      nlGlow.material.opacity = 0.5 + Math.sin(t * 0.7) * 0.06;
     };
     return mood;
   };

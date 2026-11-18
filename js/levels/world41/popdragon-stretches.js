@@ -82,7 +82,7 @@
   pl.tip2 = tipper(139, 21, 14, 5.0, 0.34, '#2f5a7a', 'MYTHS');
   pl.tip3 = tipper(154, 20.5, 14, 4.6, 0.67, '#5a6a2a', 'SAGAS');
   // the fat volumes: one pulled half out of the back row, one stood at the front edge; a slot between them (tuck!)
-  art.fat = [{ x: 176, hx: 3.4, z0: CS.z0 + 1, z1: -18.3, col: '#6a2a2a', title: 'DICTIONARY' }, { x: 176, hx: 3.4, z0: -15.7, z1: -6.6, col: '#2a3a5a', title: 'ENCYCLOPAEDIA' }];
+  art.fat = [{ x: 176, hx: 3.4, z0: CS.z0 + 1, z1: -18.55, col: '#6a2a2a', title: 'DICTIONARY' }, { x: 176, hx: 3.4, z0: -15.45, z1: -6.6, col: '#2a3a5a', title: 'ENCYCLOPAEDIA' }];
   for (const v of art.fat) S.push({ k: 'box', x: v.x, y: (CS.tops[0] + CS.tops[1] - CS.th) / 2, z: (v.z0 + v.z1) / 2, hx: v.hx, hy: (CS.tops[1] - CS.th - CS.tops[0]) / 2, hz: (v.z1 - v.z0) / 2, part: 2 });
   pl.slot1 = sNear(176, -18, -17, pl.shelf, pl.shelf + 160);
 
@@ -143,9 +143,9 @@
   S.push({ k: 'cap', a: [art.bottle.x1, art.bottle.y, art.bottle.z], b: [art.bottle.x1 + art.bottle.neck, art.bottle.y, art.bottle.z], r: 1.6, part: 2 });
   pl.bottle = sNear(146, 38, -17, pl.shelf3, pl.shelf3 + 60);
   // (12 apart: the dragon is about 3 long and a piece 4.4 across, so it needs that much room to change sides)
-  art.chess = [{ x: 161, z: -13.8, kind: 'knight', h: 18.5 }, { x: 173, z: -20.2, kind: 'bishop', h: 19.5 }, { x: 185, z: -13.8, kind: 'queen', h: 21 }];
-  for (const c of art.chess) S.push({ k: 'cyl', x: c.x, z: c.z, r: 2.2, y0: CS.tops[2], y1: CS.tops[2] + c.h, part: 2 });
-  pl.chess = sNear(173, 38, -17, pl.shelf3, pl.shelf3 + 90);
+  art.chess = [{ x: 156, z: -14.0, kind: 'knight', h: 18.5 }, { x: 168, z: -20.0, kind: 'bishop', h: 19.5 }, { x: 180, z: -14.0, kind: 'queen', h: 21 }];
+  for (const c of art.chess) S.push({ k: 'cyl', x: c.x, z: c.z, r: 1.8, y0: CS.tops[2], y1: CS.tops[2] + c.h, part: 2 });
+  pl.chess = sNear(168, 38, -17, pl.shelf3, pl.shelf3 + 90);
   // eyes in the dark at the back of the shelf above (they blink out when the candle is lit)
   art.shelfEyes = { x: 150, y: CS.tops[3] + 7, z: -35 };
   pl.spiral = sNear(200, 44, -10, pl.chess, pl.chess + 60);
@@ -242,8 +242,8 @@
   pl.bedHoop = sNear(294, -26, 150, pl.pounce, pl.pounce + 120);
   pl.under = sNear(311, -26, BD.z1, pl.bedHoop, pl.bedHoop + 60);
   const ux = (ox) => 311 + ox;
-  art.under = { slot1: [{ x0: ux(-15), x1: ux(-1.3), z: 103, hz: 3.4, kind: 'shoebox' }, { x0: ux(1.3), x1: ux(15), z: 103.5, hz: 1.0, kind: 'slat' }],
-    slot2: [{ x0: ux(-14), x1: ux(-1.3), z: 65, hz: 4.2, kind: 'games' }, { x0: ux(1.3), x1: ux(13), z: 65, hz: 4.0, kind: 'slipper' }] };
+  art.under = { slot1: [{ x0: ux(-15), x1: ux(-1.55), z: 103, hz: 3.4, kind: 'shoebox' }, { x0: ux(1.55), x1: ux(15), z: 103.5, hz: 1.0, kind: 'slat' }],
+    slot2: [{ x0: ux(-14), x1: ux(-1.55), z: 65, hz: 4.2, kind: 'games' }, { x0: ux(1.55), x1: ux(13), z: 65, hz: 4.0, kind: 'slipper' }] };
   for (const b of [...art.under.slot1, ...art.under.slot2]) S.push({ k: 'box', x: (b.x0 + b.x1) / 2, y: (F + BD.legTop) / 2, z: b.z, hx: (b.x1 - b.x0) / 2, hy: (BD.legTop - F) / 2, hz: b.hz, part: 3 });
   pl.slot2 = sNear(311, -26, 103, pl.under, pl.under + 40);
   pl.slot3 = sNear(311, -26, 65, pl.under, pl.under + 80);
@@ -282,12 +282,12 @@
   R.parts.push({ s: pl.window, name: 'the window' });
   R.cues.push({ s: pl.window, song: 'popdragonStorm' });
   // the round window: two casement halves, the right one stuck on its latch a crack open (a slot for a tucked dragon)
-  const WN = art.win = { x: 300, y: 30, z: -44, r: 24, gap: 1.3 };
+  const WN = art.win = { x: 300, y: 30, z: -44, r: 24, gap: 1.55 };
   for (const sd of [-1, 1]) S.push({ k: 'box', x: WN.x + sd * (WN.gap + (WN.r + 1 - WN.gap) / 2), y: WN.y, z: WN.z, hx: (WN.r + 1 - WN.gap) / 2, hy: WN.r, hz: 0.6, part: 4 });
   pl.climb = sNear(334, -8, -6, pl.window, pl.window + 60);
   pl.gap = sNear(300, 32, -44, pl.climb, pl.climb + 200);
   pl.gap2 = sNear(300, 31, -44, pl.gap + 40, pl.gap + 400);
-  art.latch = [WN.x + WN.gap + 0.6, WN.y - 1, WN.z + 0.9];
+  art.latch = [WN.x - WN.gap - 0.8, WN.y - 1, WN.z + 0.9];   // on the closed left half, by the crack
   // the curtain to the right of the window (the rod above, the cords hanging), two tissue-paper sheers across the climb
   art.curtain = { x0: 326, x1: 354, z: -39, rod: 60 };
   pl.tis1 = sNear(343, 6, -31, pl.climb, pl.climb + 60);
@@ -375,6 +375,9 @@
   R.cues.push({ s: pl.dive, song: 'popdragon' });
   line(pl.dive + 10, R.len - 50, 6, 0, 0.4, 0, -0.4);
   say(pl.dive + 2, 'There it goes! Dive for the desk!');
+
+  // the tuck slots: tucked in together near one, the dragon is drawn gently into its middle (a kind help for steering)
+  R.slots = [{ s: pl.slot1, ox: 0 }, { s: pl.tunnel, ox: 0, oy: -1.0 }, { s: pl.slot2, ox: 0 }, { s: pl.slot3, ox: 0 }, { s: pl.gap, ox: 0 }, { s: pl.gap2, ox: 0 }];
 
   // the scenery groups are drawn only when the dragon is near them (the speed-up pass); the rules never read these
   R.zones = [

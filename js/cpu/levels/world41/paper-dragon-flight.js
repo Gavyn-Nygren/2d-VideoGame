@@ -10,7 +10,7 @@
    Nothing here clears the level alone: with a person who never steers, the dragon flies straight into the ink bottle. */
 'use strict';
 
-const POPDRAGON_CPU = { every: 0.12, horizon: 2.4, dt: 0.15, swoopAt: 2.6 };
+const POPDRAGON_CPU = { every: 0.12, horizon: 2.4, dt: 0.15, swoopAt: 2.6, margin: 0.25 };   // (margin: plans keep the wings this much clear)
 
 // the plan, worked out once per 0.12 s of game time. own: 'xy' when both seats are the computer (one shared plan), or
 // the computer's own axis ('x' for Pip, 'y' for Bo) with the person's axis taken as it is: they keep pushing what they push
@@ -25,7 +25,7 @@ function popdragonCpuPlan(st, own, person) {
   for (const w of R.webs || []) burnt[w.burn] = burnt[w.burn] != null ? burnt[w.burn] : 0;
   const slow = 1 - 0.25 * Math.min(3, st.moths || 0);
   let lastHit = 9, hitT = 9;
-  const score = (tx, ty, hw, horizon) => {
+  const score = (tx, ty, hw, horizon, tuckFor = 0) => {
     let s = st.s, x = st.ox, y = st.oy, vx = st.vx, vy = st.vy, cost = 0, t = 0;
     const taken = new Set();
     lastHit = 9;
@@ -38,7 +38,7 @@ function popdragonCpuPlan(st, own, person) {
       x = clamp(x + (vx + dr[0]) * C.dt, -R.WX, R.WX); y = clamp(y + (vy + dr[1]) * C.dt, -R.WY, R.WY);
       const s0 = s;
       s += R.at(s).v * C.dt;
-      if (st.safe < t && popdragonHit(s, x, y, hw, burnt, st.clock + t + C.dt)) { cost += 1000 * (1 + horizon - t); hitT = Math.min(hitT, t); break; }
+      if (st.safe < t && popdragonHit(s, x, y, (tuckFor > 0 ? (t < tuckFor ? K.HW_TUCK : K.HW) : hw) + C.margin, burnt, st.clock + t + C.dt)) { cost += 1000 * (1 + horizon - t); hitT = Math.min(hitT, t); break; }
       // the cat's paws strike a box of the window as the dragon gets there; moths and dust bunnies meet it at a spot
       for (const pw of R.paws) if (pw.s > s0 && pw.s <= s && st.burnt[pw.id] == null && x >= pw.ox[0] - 0.3 && x <= pw.ox[1] + 0.3 && y >= pw.oy[0] - 0.3 && y <= pw.oy[1] + 0.3) cost += 900 * (1 + horizon - t);
       for (const c of R.clingers) if (c.s > s0 && c.s <= s && Math.hypot(x - c.ox, y - c.oy) < R.CLING + 0.3) cost += 160;
@@ -64,19 +64,24 @@ function popdragonCpuPlan(st, own, person) {
     const c = score(tx, ty, K.HW, C.horizon);
     if (!best || c < best.c) best = { c, tx, ty, hit: lastHit };
   }
-  // nowhere clear with open wings: a tucked dragon may slip through. The tuck lasts at most TUCK_MAX and then needs a
-  // rest, so it waits until the slot is close (or keeps a tuck it has already started)
+  // nowhere clear with open wings: a tucked dragon may slip through. The tuck lasts at most TUCK_MAX and then the wings
+  // open again (and need a rest), so a tuck is only worth starting once the tucked dragon is clear of the slot before
+  // they open: it folds as early as that allows (a person a moment late still gets through), or keeps one under way
   const keep = P.tuck && st.tuck > 0.3;
+  // (and never lets go while open wings would still catch on the slot: checked in fine steps, as the plan's steps are
+  // coarse next to a thin window pane)
+  const v0 = R.at(st.s).v || 1;
+  if (keep && st.tuckT < K.TUCK_MAX - 0.05 && [0, 0.04, 0.08, 0.12, 0.18, 0.24, 0.3].some(d => popdragonHit(st.s + v0 * d, st.ox, st.oy, K.HW, burnt, st.clock + d))) { P.tx = st.ox; P.ty = st.oy; return P; }
   P.tuck = false;
-  if (best.c >= 1000 && st.tuckRest <= 0 && (best.hit < 0.75 || keep)) {
+  if (best.c >= 1000 && st.tuckRest <= 0 && (best.hit < 2.0 || keep)) {
     let bt = null;
     for (const tx of xs) for (const ty of ys) {
       hitT = 9;
-      const c = score(tx, ty, K.HW_TUCK, Math.min(K.TUCK_MAX - st.tuckT, C.horizon));
+      const left = Math.max(0.01, K.TUCK_MAX - st.tuckT), c = score(tx, ty, K.HW_TUCK, Math.max(C.horizon, left + 0.9), left);
       if (!bt || c < bt.c) bt = { c, tx, ty };
     }
     if (bt.c < 1000) { best = bt; P.tuck = true; }
-  } else if (best.c >= 1000 && best.hit >= 0.75) {
+  } else if (best.c >= 1000 && best.hit >= 2.0) {
     // a slot ahead: line up for it now, with the wings tucked in the plan, but don't fold yet
     let bt = null;
     for (const tx of xs) for (const ty of ys) { hitT = 9; const c = score(tx, ty, K.HW_TUCK, C.horizon); if (!bt || c < bt.c) bt = { c, tx, ty }; }

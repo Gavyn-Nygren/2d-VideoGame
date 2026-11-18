@@ -30,7 +30,7 @@
 const POPDRAGON = {
   VX: 6.6, VY: 4.8, SWOOP: 1.5, EASE: 0.25, STOP: 0.16,
   HW: 1.9, HW_TUCK: 0.62, HW_HALF: 1.35, HH: 0.5,       // the dragon's half width (wing tips) and half height in the window
-  TUCK_MAX: 1.5, TUCK_REST: 1.0, FIRE: 0.6, FIRE_CD: 1.5, FIRE_REACH: 6, TAIL: 0.4, TAIL_CD: 0.8,
+  TUCK_MAX: 3.0, TUCK_REST: 1.0, FIRE: 0.6, FIRE_CD: 1.5, FIRE_REACH: 10, SLOT_PULL: 3.5, TAIL: 0.4, TAIL_CD: 0.8,
   SAFE: 1.5, CRUMPLES: 3, GOLD_CRUMPLES: 5, REFOLD: 2.0, STAR_R: 1.35,
   CATCH: 2.4, CATCH_OPEN: 0.3, BOUNCE: 1.1, LAND: 3.0,   // the ring closing on the page, when both holding counts, a miss's bounce, the landing
 };
@@ -159,6 +159,7 @@ MODES.popdragon = {
       st.landT -= dt;
       if (ps.some(p => p.pendingJump)) st.landT = 0;
       for (const p of ps) { p.pendingJump = false; p.pendingAct = false; }
+      if (!st.saidPeek && st.landT < K.LAND * 0.5) { st.saidPeek = true; st.says.push({ text: '...Shh. Lie flat. Somebody\'s watching.', t: st.clock }); }
       if (st.landT <= 0) { st.phase = 'done'; st.finished = true; levelClear(); }
       return;
     }
@@ -191,6 +192,8 @@ MODES.popdragon = {
     st.tuck = approach(st.tuck, both ? 1 : one && st.tuckRest <= 0 ? 0.45 : 0, dt * 8);
     st.shake = one && st.tuckRest <= 0 ? Math.min(1, st.shake + dt * 4) : Math.max(0, st.shake - dt * 3);
     st.hw = K.HW + (K.HW_TUCK - K.HW) * st.tuck;
+    // tucked in together close to a slot, the slot draws the dragon into its middle
+    if (st.tuck > 0.6) for (const sl of R.slots || []) { const d = sl.s - st.s; if (d > -3 && d < 10) { const k = K.SLOT_PULL * dt * st.tuck; st.ox = approach(st.ox, sl.ox, k); if (sl.oy != null) st.oy = approach(st.oy, sl.oy, k); } }
     // Pip's button: confetti fire; Bo's: the tail swish
     st.fireCd -= dt; st.tailCd -= dt; st.fire = Math.max(0, st.fire - dt); st.tail = Math.max(0, st.tail - dt);
     if (ps[0].pendingAct) { ps[0].pendingAct = false; if (st.fireCd <= 0) { st.fire = K.FIRE; st.fireCd = K.FIRE_CD; Sfx.play('popdragonFire'); } }
@@ -425,7 +428,10 @@ MODES.popdragon = {
     // the catch ring: a gold ring that closes round the page at the finish
     const ring = new T.Mesh(new T.TorusGeometry(1, 0.07, 10, 48), K3D.toon('#f2c14e', { emissive: '#7a5410', emissiveIntensity: 0.6 }));
     ring.visible = false; K.add(ring);
-    K.pd = { art, dragon, ring, cam: null, t: 0 };
+    // the dab of glue that holds the dragon back in its book at the end
+    const glue = new T.Mesh(new T.SphereGeometry(0.5, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), K3D.toon('#f6f4ee', { emissive: '#ffffff', emissiveIntensity: 0.12 }));
+    K3D.ink(glue, '#8a8678', 0.6); glue.visible = false; K.add(glue);
+    K.pd = { art, dragon, ring, glue, cam: null, t: 0 };
     K.focusRange = 9; K.maxBlur = 5;
   },
   draw3d(K, dt) {
@@ -452,9 +458,25 @@ MODES.popdragon = {
     const dropY = st.phase === 'refold' ? Math.min(6, (POPDRAGON.REFOLD - st.refoldT) * 5) : 0;
     const p3 = st.phase === 'refold' ? R.local(st.restart, 0, 0) : pos;
     if (st.phase === 'refold' && st.refoldT > 0.62) { p3[0] = pd.lastPos[0]; p3[1] = pd.lastPos[1] - dropY; p3[2] = pd.lastPos[2]; } else pd.lastPos = p3.slice();
+    // the landing: glide down onto the right-hand page, a dab of glue, and fold flat (the book's picture again)
+    let landFlat = 0;
+    if (st.phase === 'land' || st.phase === 'done') {
+      const u = st.phase === 'done' ? 1 : clamp(1 - st.landT / POPDRAGON.LAND, 0, 1);
+      if (!pd.landFrom) { pd.landFrom = p3.slice(); pd.landFwd = fwd.clone(); pd.landed = false; }
+      const k = u < 0.5 ? (u / 0.5) * (u / 0.5) * (3 - 2 * (u / 0.5)) : 1, T0 = R.art.landAt || [1, 2.45, 7.4];
+      for (let i = 0; i < 3; i++) p3[i] = pd.landFrom[i] + (T0[i] - pd.landFrom[i]) * k;
+      p3[1] += Math.sin(k * Math.PI) * 1.1;
+      const flatF = new T.Vector3(pd.landFwd.x, 0, pd.landFwd.z).normalize();
+      fwd.copy(pd.landFwd).lerp(flatF, k).normalize();
+      landFlat = clamp((u - 0.42) / 0.32, 0, 1);
+      if (u > 0.45 && !pd.landed) { pd.landed = true; Sfx.play('popdragonLand'); }
+      // the glue dab under the tail: a glossy drop that squishes flat as the dragon lies down
+      const gd = pd.glue; gd.visible = u > 0.38;
+      if (gd.visible) { const g = clamp((u - 0.38) / 0.2, 0, 1); gd.position.set(T0[0] - flatF.x * 1.4, T0[1] + 0.02, T0[2] - flatF.z * 1.4); gd.scale.set(0.5 + g * 0.7, (1 - landFlat * 0.75) * (0.4 + g * 0.6), 0.5 + g * 0.7); }
+    } else { pd.landFrom = null; if (pd.glue) pd.glue.visible = false; }
     const swishV = st.tail > 0 ? Math.sin((1 - st.tail / POPDRAGON.TAIL) * Math.PI) * (st.swishDir || 1) : 0;
     POPDRAGON_DRAGON.pose(pd.dragon, { pos: p3, fwd: fwd.toArray(), bank, climb, tuck: st.tuck, shake: st.shake, fire: st.fire > 0 ? Math.sin(Math.min(1, (POPDRAGON.FIRE - st.fire) / 0.15) * Math.PI / 2) : 0,
-      ready: st.fireCd <= 0 ? 1 : 0, swish: swishV, crumple: st.dent, ball, flat: pre, steer: st.steer, fly: st.fly, time: pd.t }, dt);
+      ready: st.fireCd <= 0 ? 1 : 0, swish: swishV, crumple: st.dent, ball, flat: Math.max(pre, landFlat), steer: st.steer, fly: st.fly, time: pd.t }, dt);
     // a soft paper beat on each down-stroke of the wings
     const beatN = Math.floor((pd.dragon.userData.beat || 0) / (Math.PI * 2));
     if (pd.beatN != null && beatN !== pd.beatN && st.phase === 'fly' && st.tuck < 0.5) Sfx.play('popdragonWing');
@@ -466,6 +488,13 @@ MODES.popdragon = {
     const shot = st.camShot;
     let eye, at, up = new T.Vector3(0, 1, 0), fov = 56;
     if (shot) ({ eye, at, fov } = popdragonShot(shot, pos, fwd, fr));
+    else if (st.phase === 'land' || st.phase === 'done') {
+      // the last shot: over the dragon's shoulder on the book, the cat's eyes over the desk's edge beyond it
+      const u = st.phase === 'done' ? 1 : clamp(1 - st.landT / POPDRAGON.LAND, 0, 1), T0 = R.art.landAt || [1, 2.45, 7.4];
+      const k = u * u * (3 - 2 * u);
+      eye = new T.Vector3(T0[0] + 9 - k * 3, T0[1] + 8.5 - k * 2.5, T0[2] - 12 + k * 2);
+      at = new T.Vector3(T0[0] - 1.5, T0[1] - 1.2, T0[2] + 14 + k * 6); fov = 46 - k * 6;
+    }
     else {
       // behind the dragon along the way the rail has just come (a chord, so curves never swing it out to the side)
       const back = R.at(Math.max(0, st.s - 10)), chord = new T.Vector3(...fr.p).sub(new T.Vector3(...back.p));
@@ -499,7 +528,7 @@ MODES.popdragon = {
     K.sunAt(new T.Vector3(...pos), 22);
     // scenery
     const page = popdragonPagePlace(st, pd.t);
-    pd.art.tick({ s: st.s, got: st.got, burnt: st.burnt, clock: st.clock, page }, pd.t, dt);
+    pd.art.tick(st, pd.t, dt, page);
     // the catch ring closing round the page (brighter while both riders hold on)
     pd.ring.visible = st.phase === 'catch' && st.bounce <= 0;
     if (pd.ring.visible) {
@@ -525,7 +554,16 @@ function popdragonPagePlace(st, t) {
   const lead = 13 + Math.sin(t * 0.37) * 4 + Math.sin(t * 0.91) * 1.5;
   const s = Math.min(R.len, st.s + lead);
   const p = R.local(s, Math.sin(t * 0.6) * 3.2, 1.4 + Math.sin(t * 0.83) * 1.6);
-  return { pos: p, rx: Math.sin(t * 1.3) * 0.7 - 0.6, ry: t * 0.9, rz: Math.sin(t * 0.7) * 0.8 };
+  const free = { pos: p, rx: Math.sin(t * 1.3) * 0.7 - 0.6, ry: t * 0.9, rz: Math.sin(t * 0.7) * 0.8 };
+  // up the curtain it is snagged on the window latch, flapping, and tugs free just before the dragon reaches the crack
+  const pl = R.place, L = R.art.latch;
+  if (L && pl.climb != null && st.s > pl.climb - 14 && st.s < pl.gap - 2) {
+    const snag = { pos: [L[0] - 0.2, L[1] - 1.9 + Math.sin(t * 7) * 0.1, L[2] + 0.5], rx: -0.1 + Math.sin(t * 9) * 0.25, ry: 0.15 + Math.sin(t * 6.3) * 0.2, rz: 0.25 + Math.sin(t * 5.1) * 0.15 };
+    const k = clamp((st.s - (pl.climb - 14)) / 10, 0, 1) * (1 - clamp((st.s - (pl.gap - 9)) / 7, 0, 1));
+    const e = k * k * (3 - 2 * k);
+    return { pos: free.pos.map((v, i) => v + (snag.pos[i] - v) * e), rx: free.rx + (snag.rx - free.rx) * e, ry: snag.ry + Math.atan2(Math.sin(free.ry - snag.ry), Math.cos(free.ry - snag.ry)) * (1 - e), rz: free.rz + (snag.rz - free.rz) * e };
+  }
+  return free;
 }
 // a fixed camera for the look shots (tools only: MODES.popdragon.camShot via st.camShot)
 function popdragonShot(shot, pos, fwd, fr) {
@@ -581,6 +619,19 @@ Object.assign(Sfx.extra, {
   popdragonWing() { this.noise(0.12, { type: 'lowpass', f: 900, vol: 0.025 }); },
   popdragonCatch() { this.noise(0.18, { type: 'bandpass', f: 1600, q: 1, vol: 0.06 }); [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.4, 'triangle', 0.03, null, 0.08 + i * 0.09)); },
   popdragonThunder() { this.noise(2.6, { type: 'lowpass', f: 160, vol: 0.08, a: 0.04 }); this.noise(1.4, { type: 'lowpass', f: 420, to: 120, vol: 0.05, a: 0.02, delay: 0.1 }); this.noise(3.2, { type: 'lowpass', f: 90, vol: 0.06, a: 0.5, delay: 0.4 }); },
+  // stretches 2 to 4
+  popdragonBat() { this.noise(0.08, { type: 'bandpass', f: 700, q: 1.4, vol: 0.08 }); this.tone(260, 0.12, 'triangle', 0.05, 150); this.noise(0.18, { type: 'bandpass', f: 1800, to: 900, q: 1, vol: 0.04, delay: 0.03 }); },
+  popdragonMoth() { for (let i = 0; i < 5; i++) this.noise(0.035, { type: 'bandpass', f: 2600 + (i % 2) * 500, q: 3, vol: 0.025, delay: i * 0.05 }); },
+  popdragonCreak() { this.tone(110, 0.55, 'sawtooth', 0.018, 82); this.noise(0.5, { type: 'bandpass', f: 420, to: 300, q: 9, vol: 0.05, a: 0.08 }); this.noise(0.3, { type: 'bandpass', f: 640, to: 520, q: 12, vol: 0.03, delay: 0.3 }); },
+  popdragonTrain() { [784, 988].forEach((f, i) => { this.tone(f, 0.22, 'square', 0.02, null, i * 0.28); this.tone(f * 1.26, 0.22, 'triangle', 0.016, null, i * 0.28); }); for (let i = 0; i < 4; i++) this.noise(0.07, { type: 'highpass', f: 1800, vol: 0.03, delay: 0.62 + i * 0.16 }); },
+  popdragonSnore() { this.noise(1.3, { type: 'lowpass', f: 220, to: 140, vol: 0.07, a: 0.5 }); this.tone(70, 1.1, 'sawtooth', 0.016, 60, 0.15); this.noise(0.9, { type: 'bandpass', f: 900, to: 500, q: 1, vol: 0.02, a: 0.4, delay: 1.45 }); },
+  popdragonCatEyes() { this.tone(1760, 0.5, 'sine', 0.014, 1900); this.tone(2637, 0.6, 'sine', 0.01, null, 0.08); this.tone(196, 0.8, 'triangle', 0.02, 185, 0.05); },
+  popdragonSwipe() { this.noise(0.24, { type: 'bandpass', f: 1200, to: 4200, q: 1.1, vol: 0.08, a: 0.05 }); for (let i = 0; i < 3; i++) this.noise(0.05, { type: 'highpass', f: 3600, vol: 0.05, delay: 0.14 + i * 0.03 }); },
+  popdragonMrrp() { this.tone(520, 0.1, 'triangle', 0.045, 820); this.tone(820, 0.16, 'triangle', 0.04, 640, 0.09); this.noise(0.18, { type: 'bandpass', f: 1300, q: 3, vol: 0.02 }); },
+  popdragonRain() { this.noise(0.9, { type: 'highpass', f: 3000, vol: 0.028, a: 0.15 }); for (let i = 0; i < 6; i++) this.noise(0.02, { type: 'highpass', f: 4200, vol: 0.03, delay: 0.1 + i * 0.12 }); },
+  popdragonGust() { this.noise(1.4, { type: 'bandpass', f: 380, to: 1200, q: 0.7, vol: 0.07, a: 0.35 }); this.noise(1.0, { type: 'bandpass', f: 1600, to: 700, q: 1.5, vol: 0.025, a: 0.3, delay: 0.3 }); },
+  popdragonLight() { this.noise(0.4, { type: 'lowpass', f: 600, to: 1600, vol: 0.06, a: 0.04 }); [659, 988, 1319].forEach((f, i) => this.tone(f, 0.5, 'sine', 0.02, null, 0.12 + i * 0.07)); },
+  popdragonLand() { this.noise(0.22, { type: 'lowpass', f: 700, vol: 0.07 }); this.tone(196, 0.18, 'triangle', 0.04, 150); [523, 784, 1047, 1568].forEach((f, i) => this.tone(f, 0.6, 'triangle', 0.024, null, 0.35 + i * 0.1)); },
   popdragonBounce() { this.noise(0.12, { type: 'bandpass', f: 900, q: 1.2, vol: 0.05 }); this.tone(392, 0.16, 'triangle', 0.03, 300); this.noise(0.08, { type: 'bandpass', f: 1100, q: 1.2, vol: 0.03, delay: 0.24 }); },
 });
 
@@ -598,6 +649,43 @@ SONGS.popdragon = {
       lead: ['4 - 5', '7 - -', '5 - 4', '3 - 1', '2 - 4', '6 - 8', '7 - -', '4 - .'] },
     B: { ch: [5, 5, 3, 3, 1, 1, 4, 4],
       lead: ['5 7 9', '11 - 9', '8 - 7', '5 - 3', '4 6 8', '9 - 8', '6 - 4', '7 - -'] },
+  },
+};
+// the bookshelf: a curious tiptoe through the shelves, wooden ticks for the clockwork and the train
+SONGS.popdragonShelf = {
+  bpm: 132, vol: 0.24, root: 60, scale: 'dorian', form: ['A', 'A', 'B', 'A'],
+  inst: { lead: 'flute', bass: 'upright', arp: 'marimba', comp: 'pizz' }, oct: { arp: 1 },
+  bass: '0 . 2 . 0 . 2 .', arp: '0 1 2 1 3 1 2 1', comp: '. x . x',
+  drums: { w: 'x..x..x.', z: '.x.x.x.x', k: 'x...x...' },
+  sec: {
+    A: { ch: [0, 0, 3, 3, 0, 0, 4, 4],
+      lead: ['4 . 4 5 4 2 0 .', '2 - 4 - 6 - 4 .', '3 . 3 5 7 5 3 .', '5 - - - 3 . . .', '4 . 4 5 4 2 0 .', '7 - 6 - 4 - 2 .', '1 . 2 4 6 4 1 .', '0 - - - . . . .'] },
+    B: { ch: [5, 5, 3, 3, 6, 6, 4, 4],
+      lead: ['7 . 9 . 7 5 4 .', '5 - 4 - 2 - 0 .', '3 5 7 5 3 5 7 .', '8 - - - 7 . . .', '6 . 6 7 6 4 2 .', '4 - 6 - 8 - 6 .', '4 5 6 5 4 2 1 .', '4 - - - . . . .'] },
+  },
+};
+// the bedroom: hush, the Reader is asleep (and so, for now, is the cat): a music box over soft pizzicato
+SONGS.popdragonHush = {
+  bpm: 88, vol: 0.22, beats: 3, root: 57, scale: 'minor', form: ['A', 'B', 'A', 'B'],
+  inst: { lead: 'musicbox', bass: 'pizz', arp: 'vibes', pad: 'softpad' },
+  bass: '0 . 2', arp: '. 2 1',
+  drums: { z: '.o.' },
+  sec: {
+    A: { ch: [0, 0, 5, 5, 3, 3, 4, 4], lead: ['4 - 2', '0 - .', '2 - 4', '5 - .', '3 - 5', '7 - 5', '4 - 6', '4 - .'] },
+    B: { ch: [3, 3, 0, 0, 5, 5, 4, 4], lead: ['5 - 7', '9 - .', '7 - 5', '4 - .', '5 - 4', '2 - 0', '1 - 2', '4 - .'] },
+  },
+};
+// the window and the storm outside: a racing fiddle over toms and timpani
+SONGS.popdragonStorm = {
+  bpm: 144, vol: 0.24, root: 62, scale: 'harmonic', form: ['A', 'A', 'B', 'A'],
+  inst: { lead: 'fiddle', bass: 'sawbass', arp: 'pluck', pad: 'strings' },
+  bass: '0 0 . 0 2 . 0 .', arp: '0 1 2 3 2 1 2 1',
+  drums: { k: 'x..x..x.', t: '....x...', h: 'x.x.x.x.', m: 'x.......' },
+  sec: {
+    A: { ch: [0, 0, 5, 5, 3, 3, 4, 4],
+      lead: ['0 . 2 3 4 . 3 2', '4 - - - 7 - 6 -', '5 . 4 3 2 . 3 4', '5 - - - . . . .', '3 . 4 5 6 . 5 4', '5 - 4 - 3 - 2 -', '4 . 3 2 1 . 2 3', '4 - - - . . . .'] },
+    B: { ch: [5, 5, 3, 3, 0, 0, 4, 4],
+      lead: ['7 - 9 - 10 - 9 -', '8 - 7 - 5 - 4 -', '5 - 7 - 8 - 7 -', '6 - 5 - 3 - 2 -', '4 . 5 6 7 . 9 7', '8 - - - 7 - - -', '6 . 5 4 3 . 2 1', '4 - - - . . . .'] },
   },
 };
 AMBIENCE.attic = {

@@ -31,14 +31,18 @@ const POPDRAGON_SHELF = (function () {
       // a moulded lip along each board's front edge
       const lip = K3.mesh(new T.CylinderGeometry(0.5, 0.5, W + 2, 8).rotateZ(PI / 2), woodDark, { ink: INKW, inkW: 0.7 }); lip.position.set(cx, y - 0.4, CS.z1 + 0.1); still.add(lip);
     }
-    // corner posts (square, with a turned knob on top) and a plinth
-    for (const [x, z] of [[CS.x0, CS.z1], [CS.x1, CS.z1], [CS.x0, CS.z0 + 1.4], [CS.x1, CS.z0 + 1.4]]) {
-      const post = K3.mesh(new T.BoxGeometry(2.8, CS.tops[4] + 2 - F, 2.8).translate(0, (CS.tops[4] + 2 + F) / 2, 0), woodDark, { ink: INKW }); post.position.set(x, 0, z); still.add(post);
-      const knob = K3.mesh(K3.geo('pdPostKnob', () => new T.SphereGeometry(1.8, 16, 12)), woodM, { ink: INKW }); knob.position.set(x, CS.tops[4] + 3.4, z); still.add(knob);
+    // the shelves hang on the wall: two uprights at the back with turned knobs, and a carved bracket under each board
+    // at each end and in the middle (nothing stands at the front, where the dragon swings round the ends)
+    for (const x of [CS.x0, CS.x1]) {
+      const post = K3.mesh(new T.BoxGeometry(2.8, CS.tops[4] + 2 - (CS.tops[0] - 8), 2.8).translate(0, (CS.tops[4] + 2 + CS.tops[0] - 8) / 2, 0), woodDark, { ink: INKW }); post.position.set(x, 0, CS.z0 + 1.4); still.add(post);
+      const knob = K3.mesh(K3.geo('pdPostKnob', () => new T.SphereGeometry(1.8, 16, 12)), woodM, { ink: INKW }); knob.position.set(x, CS.tops[4] + 3.4, CS.z0 + 1.4); still.add(knob);
+      const foot = K3.mesh(K3.geo('pdPostFoot', () => new T.ConeGeometry(1.6, 3, 12).rotateX(PI)), woodDark, { ink: INKW }); foot.position.set(x, CS.tops[0] - 9.5, CS.z0 + 1.4); still.add(foot);
     }
-    const plinth = K3.mesh(new T.BoxGeometry(W + 3, 3, D).translate(0, F + 1.5, 0), woodDark, { ink: INKW, cast: false }); plinth.position.set(cx, 0, cz); still.add(plinth);
+    const brShape = P.shapeFrom([[0, 0], [12, 0], [11, -1.2], [6, -2.6], [2.6, -5.4], [1.2, -8.6], [0, -9]]);
+    const brGeo = K3.geo('pdShelfBracket', () => new T.ExtrudeGeometry(brShape, { depth: 1.4, bevelEnabled: false }).translate(0, 0, -0.7).rotateY(-PI / 2));
+    for (const y of CS.tops) for (const x of [CS.x0 + 4, cx, CS.x1 - 4]) { const br = K3.mesh(brGeo, woodDark, { ink: INKW, inkW: 0.7 }); br.position.set(x, y - CS.th, CS.z0 + 0.6); still.add(br); }
     // the back panel (dark, so the books stand out), and a scalloped paper trim along each shelf's edge
-    const back = new T.Mesh(new T.PlaneGeometry(W, CS.tops[4] - F), K3.toon('#2a1c14')); back.position.set(cx, (CS.tops[4] + F) / 2, CS.z0 + 0.3); still.add(back);
+    const back = new T.Mesh(new T.PlaneGeometry(W, CS.tops[4] - CS.tops[0] + 8), K3.toon('#2a1c14')); back.position.set(cx, (CS.tops[4] + CS.tops[0] - 8) / 2, CS.z0 + 0.3); still.add(back);
     const trimTex = K3.paint('pdShelfTrim', 512, 64, (c, w, h) => {
       c.clearRect(0, 0, w, h);
       for (let x = 0; x < w; x += 32) { c.fillStyle = (x / 32) % 2 ? '#e8615e' : '#f2c14e'; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 32, 0); c.lineTo(x + 32, 24); c.arc(x + 16, 24, 16, 0, PI); c.closePath(); c.fill(); }

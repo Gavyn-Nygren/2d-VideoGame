@@ -8,7 +8,8 @@
    paper stars (one batched family), the bookmark hoops, the gold signs and the runaway page.
    Returns { tick(st, t, dt) } which moves the live things to match the game state (stars collected, the web burnt,
    the page, the steam) every drawn frame.
-   Stretches 2 to 4 (the bookshelf, the bedroom, the window) are only blocked in for now: the look gate comes first.
+   Stretches 2 to 4 are their own files: POPDRAGON_SHELF (popdragon-shelf.js), POPDRAGON_BEDROOM (popdragon-bedroom.js)
+   and POPDRAGON_WINDOW (popdragon-window.js), each built into its own groups and drawn only near the dragon (R.zones).
    The room's mood (the lights, the lamp's beam, motes, rain and lightning, fairy lights, bunting, the drawings on the
    walls and the sleeping Reader) is POPDRAGON_MOOD (popdragon-mood.js), built from here before the bake.
 */
@@ -56,7 +57,15 @@ const POPDRAGON_ART = (function () {
     const wallM = K3.toon('#ffffff', { map: boards });
     // the roof is one slope, high over the back wall and low at the front: y = roofY(z)
     const ROOF = { z0: -44, y0: F + 236, z1: 200, y1: F + 61 }, roofY = z => ROOF.y0 + (z - ROOF.z0) * (ROOF.y1 - ROOF.y0) / (ROOF.z1 - ROOF.z0);
-    const backWall = new T.Mesh(new T.PlaneGeometry(520, ROOF.y0 - F), wallM); backWall.position.set(110, (ROOF.y0 + F) / 2, -44); backWall.receiveShadow = true; still.add(backWall);
+    // the back wall, with the round window's hole in it (POPDRAGON_WINDOW draws the window and what is outside)
+    const backWall = (() => {
+      const WN = art.win, sh = new T.Shape(); sh.moveTo(-150, F); sh.lineTo(370, F); sh.lineTo(370, ROOF.y0); sh.lineTo(-150, ROOF.y0); sh.closePath();
+      const hole = new T.Path(); hole.absarc(WN.x, WN.y, WN.r + 0.2, 0, Math.PI * 2, true); sh.holes.push(hole);
+      const g = new T.ShapeGeometry(sh, 72), uv = g.attributes.uv, pa = g.attributes.position;
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, (pa.getX(i) + 150) / 520, (pa.getY(i) - F) / (ROOF.y0 - F));
+      const m = new T.Mesh(g, wallM); m.position.z = -44; m.receiveShadow = true; return m;
+    })();
+    still.add(backWall);
     const sideBoards = boards.clone(); sideBoards.needsUpdate = true; sideBoards.repeat.set(4, 3);
     const sideM = K3.toon('#ffffff', { map: sideBoards });
     // a side wall: a plane whose top edge follows the roof
@@ -79,40 +88,9 @@ const POPDRAGON_ART = (function () {
       raf.position.set(x, (ROOF.y0 + ROOF.y1) / 2 - 2.6, (ROOF.z0 + ROOF.z1) / 2 - 1.6); raf.rotation.x = slope; still.add(raf);
     }
     const beam = K3.mesh(new T.BoxGeometry(520, 5, 5), K3.mat('pdRafter', () => K3.toon('#3a281c')), { ink: '#120a06', cast: false }); beam.position.set(110, F + 136, -40); still.add(beam);
-    // the round attic window on the back wall: night sky, rain, the moon
-    const nightTex = K3.paint('pdNight', 512, 512, (c, w, h) => {
-      const r = P.rng(521);
-      const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#1a2440'); g.addColorStop(1, '#34466a'); c.fillStyle = g; c.fillRect(0, 0, w, h);
-      for (let i = 0; i < 6; i++) P.wash(c, r() * w, r() * h * 0.7, 60 + r() * 80, '#5a6a8a', 0.25, r, { noEdge: true });
-      const mg = c.createRadialGradient(w * 0.68, h * 0.3, 10, w * 0.68, h * 0.3, 120); mg.addColorStop(0, 'rgba(255,250,220,1)'); mg.addColorStop(0.25, 'rgba(255,245,210,0.95)'); mg.addColorStop(0.3, 'rgba(220,225,240,0.35)'); mg.addColorStop(1, 'rgba(200,210,240,0)'); c.fillStyle = mg; c.fillRect(0, 0, w, h);
-      for (let i = 0; i < 160; i++) { const x = r() * w, y = r() * h, s = 1 + r() * 3.5; c.fillStyle = 'rgba(220,235,250,0.5)'; c.beginPath(); c.ellipse(x, y, s * 0.7, s, 0, 0, Math.PI * 2); c.fill(); }
-      c.fillStyle = '#141a2a'; c.beginPath(); c.moveTo(0, h); c.lineTo(0, h * 0.8); for (let x = 0; x <= w; x += 40) c.lineTo(x, h * 0.8 - Math.abs(Math.sin(x * 0.03)) * 30 - (x > w * 0.4 && x < w * 0.5 ? 50 : 0)); c.lineTo(w, h); c.closePath(); c.fill();
-    });
-    const winG = new T.Group(); winG.position.set(300, F + 64, -43); still.add(winG);
-    winG.add(new T.Mesh(new T.CircleGeometry(24, 48), K3.flat('#ffffff', { map: nightTex })));
-    const frameM = K3.mat('pdWinFrame', () => K3.toon('#d9d0bd'));
-    winG.add(K3.mesh(new T.TorusGeometry(24.5, 1.6, 10, 64), frameM, { ink: '#3a3028' }));
-    for (const a of [0, Math.PI / 2]) { const bar = K3.mesh(new T.BoxGeometry(48, 1.2, 1), frameM, { ink: '#3a3028' }); bar.rotation.z = a; bar.position.z = 0.5; winG.add(bar); }
     // moonlight falling in: a soft see-through shaft
-    const shaft = new T.Mesh(new T.CylinderGeometry(36, 23, 110, 40, 1, true).rotateX(Math.PI / 2 + 0.5), POPDRAGON_MOOD.beam('#9ab0ea', 0.3, 1, 0.3));
+    const shaft = new T.Mesh(new T.CylinderGeometry(36, 23, 110, 40, 1, true).rotateX(Math.PI / 2 + 0.5), POPDRAGON_MOOD.beam('#9ab0ea', 0.16, 1, 0.2));
     shaft.position.set(300, F + 34, 6); live.add(shaft);
-    // the far stretches, blocked in for now (they get their scenery after the look gate): the bookcase, the bed
-    const caseM = K3.mat('pdCase', () => K3.toon('#5a3a24'));
-    const bc = new T.Group(); bc.position.set(118, F, -32); still.add(bc);
-    bc.add(K3.mesh(new T.BoxGeometry(56, 4, 22).translate(0, 98, 0), caseM, { ink: '#1a0e06' }));
-    for (const x of [-27, 27]) bc.add(K3.mesh(new T.BoxGeometry(3, 100, 22).translate(x, 50, 0), caseM, { ink: '#1a0e06' }));
-    for (let y = 0; y < 100; y += 24) bc.add(K3.mesh(new T.BoxGeometry(54, 2, 22).translate(0, y + 1, 0), caseM, { ink: '#1a0e06' }));
-    {
-      const r = P.rng(531), cols = ['#7a2f2f', '#2f4f7a', '#6b5a2a', '#3f6b4a', '#8a4a6a', '#c9973a', '#4a3a6a', '#a8443a', '#2f6a6a'];
-      for (let sh = 0; sh < 4; sh++) { let x = -25; while (x < 24) { const bw = 1.6 + r() * 2.2, bh = 12 + r() * 9; if (x + bw > 25) break; const b = K3.mesh(new T.BoxGeometry(bw, bh, 15), K3.mat('pdSpine' + (Math.floor(r() * 9)), () => K3.toon(cols[Math.floor(r() * 9)])), { ink: '#14100a', inkW: 0.8 }); b.position.set(x + bw / 2, sh * 24 + 2 + bh / 2, 2); if (r() < 0.12) b.rotation.z = 0.2; bc.add(b); x += bw + 0.15; } }
-    }
-    const bedM = K3.mat('pdBed', () => K3.toon('#6a4a8a')), quiltTex = K3.paint('pdQuilt', 512, 512, (c, w, h) => { const cols = ['#c46a7a', '#e8c46a', '#6aa48a', '#8aa4d4', '#d4a07a']; for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { c.fillStyle = cols[(x * 3 + y * 2) % 5]; c.fillRect(x * 64, y * 64, 64, 64); c.strokeStyle = 'rgba(255,255,255,0.6)'; c.setLineDash([4, 4]); c.lineWidth = 2; c.strokeRect(x * 64 + 4, y * 64 + 4, 56, 56); } });
-    const bed = new T.Group(); bed.position.set(215, F, 40); still.add(bed);
-    bed.add(K3.mesh(new T.BoxGeometry(80, 16, 110).translate(0, 8, 0), K3.mat('pdBedFrame', () => K3.toon('#6a4a30')), { ink: '#1a0e06' }));
-    bed.add(K3.mesh(K3.roundBox(78, 12, 106, 0.4, 32).translate(0, 15, 0), K3.toon('#ffffff', { map: quiltTex }), { ink: '#3a2030' }));
-    bed.add(K3.mesh(new T.BoxGeometry(80, 40, 4).translate(0, 20, -56), K3.mat('pdBedFrame', () => K3.toon('#6a4a30')), { ink: '#1a0e06' }));
-    void bedM;
-
     /* ---------- the desk ---------- */
     const DB = R.DESKBOX;
     const wood = K3.paint('pdDesk', 1024, 1024, (c, w, h) => {
@@ -377,19 +355,38 @@ const POPDRAGON_ART = (function () {
     K3.ink(page, '#8a7550', 0.6);
     const pageBase = pageGeo.attributes.position.array.slice();
 
-    /* ---------- the mood: lights, beams, motes, rain, fairy lights, bunting, drawings, the Reader ---------- */
+    /* ---------- the mood: lights, beams, motes, the storm, fairy lights, bunting, drawings ---------- */
     const mood = POPDRAGON_MOOD.build(K, still, live);
+
+    /* ---------- the stretches: each its own groups, drawn only while the dragon is near (R.zones) ---------- */
+    const zone = {};
+    for (const z of R.zones) { const zs = new T.Group(), zl = new T.Group(); K.add(zs); K.add(zl); zone[z.name] = { still: zs, live: zl, s0: z.s0, s1: z.s1 }; }
+    const always = { still, live };
+    const shelf = POPDRAGON_SHELF.build(K, zone.shelf.still, zone.shelf.live);
+    const bedroom = POPDRAGON_BEDROOM.build(K, zone.bed.still, zone.bed.live, mood);
+    live.add(bedroom.cat.root);   // (the cat follows the dragon all the way home: always drawn)
+    const windowArt = POPDRAGON_WINDOW.build(K, { always, window: zone.window, outside: zone.outside }, mood);
 
     /* ---------- bake what never moves ---------- */
     const bakeInfo = K3.bake(still);
+    for (const k in zone) { const b = K3.bake(zone[k].still); bakeInfo.merged += b.merged; bakeInfo.meshes += b.meshes; }
 
     /* ---------- every drawn frame ---------- */
     const m4 = new T.Matrix4(), q = new T.Quaternion(), sc = new T.Vector3(), ps = new T.Vector3(), eul = new T.Euler();
-    function tick(st, t, dt) {
+    let lastFlash = null;
+    function tick(st, t, dt, pg) {
+      // only the stretches near the dragon are drawn
+      const sNow = st.s || 0;
+      for (const k in zone) { const z = zone[k], on = sNow >= z.s0 && sNow <= z.s1; z.still.visible = on; z.live.visible = on; }
+      // a lightning flash where the course has one (the storm outside), besides the random ones
+      if (st.flashAt != null && st.flashAt !== lastFlash) { if (lastFlash !== null || st.flashAt > 0) mood.flash(t); lastFlash = st.flashAt; }
       mood.tick(st, t, dt);
+      if (zone.shelf.live.visible) shelf.tick(st, t, dt);
+      bedroom.tick(st, t, dt);
+      windowArt.tick(st, t, dt);
       // stars spin slowly and bob; collected ones are gone (they burst into sparkles in the 2D layer)
       for (let i = 0; i < NST; i++) {
-        const got = st.got && st.got[i], p = starPos[i];
+        const sr = R.stars[i], got = (st.got && st.got[i]) || (sr.need && !(st.burnt && st.burnt[sr.need] != null)), p = starPos[i];
         ps.set(p[0], p[1] + Math.sin(t * 2.2 + i) * 0.12, p[2]);
         eul.set(0, t * 1.6 + i * 0.7, Math.sin(t + i) * 0.15); q.setFromEuler(eul);
         sc.setScalar(got ? 0 : 1); m4.compose(ps, q, sc); starsI.setMatrixAt(i, m4);
@@ -411,7 +408,6 @@ const POPDRAGON_ART = (function () {
       hoops.forEach(h => { const pass = st.s - h.s; h.ring.scale.setScalar(pass > 0 && pass < 6 ? 1 + Math.sin(pass * 3) * 0.08 * (1 - pass / 6) : 1); h.ring.rotation.z = Math.sin(t * 0.9 + h.s) * 0.04; });
       signs.forEach((sg, i) => { sg.g.children[0].rotation.z = Math.sin(t * 2 + i) * 0.06; });
       // the page tumbles and glides ahead of the dragon on the draught
-      const pg = st.page;
       if (pg) {
         page.position.set(...pg.pos);
         page.rotation.set(pg.rx, pg.ry, pg.rz);
@@ -421,7 +417,7 @@ const POPDRAGON_ART = (function () {
         page.visible = true;
       } else page.visible = false;
     }
-    return { tick, bakeInfo, still, live, mood };
+    return { tick, bakeInfo, still, live, mood, zone, shelf, bedroom, windowArt };
   };
   return A;
 })();
