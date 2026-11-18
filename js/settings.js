@@ -59,10 +59,27 @@ function bindLoad() {
   if (Array.isArray(kb)) for (const p of [0, 1]) {
     if (kb[p] && BIND_OLD.every(w => okList(kb[p][w], 'string'))) for (const w of BIND_ACTIONS) if (okList(kb[p][w], 'string')) BIND[p][w].splice(0, Infinity, ...kb[p][w]);
   }
+  // keys saved before Action 2 / 3 existed may already use their usual keys for something else (say Q for Pip's
+  // action, which would leave the ray gun with no key in a three-action level): such an Action 2 / 3 moves to a free key
+  if (Array.isArray(kb)) for (const p of [0, 1]) for (const w of ['act2', 'act3']) {
+    if (kb[p] && okList(kb[p][w], 'string')) continue;
+    const taken = c => [0, 1].some(q => BIND_ACTIONS.some(k => !(q === p && k === w) && BIND[q][k].includes(c)
+      && !(q === p && k === 'act' && BIND[q].act.some(x => x !== c && !BIND[q].act2.includes(x) && !BIND[q].act3.includes(x))))) || K3D_JUMP.some(l => l.includes(c));
+    if (!BIND[p][w].some(taken)) continue;
+    const free = (p === 0 ? ['KeyQ', 'KeyE', 'KeyC', 'KeyV', 'KeyX', 'KeyZ', 'KeyG', 'KeyT'] : ['Comma', 'Period', 'KeyL', 'KeyK', 'KeyN', 'KeyB', 'Semicolon', 'Quote']).find(c => !taken(c) && !BIND[p][w === 'act2' ? 'act3' : 'act2'].includes(c));
+    if (free) BIND[p][w].splice(0, Infinity, free);
+  }
   const pb = store.get('padBind');
   if (Array.isArray(pb)) for (const p of [0, 1]) {
     PadBind[p] = pb[p] && okList(pb[p].jump, 'number') && okList(pb[p].act, 'number') ? { jump: pb[p].jump, act: pb[p].act } : null;
-    if (PadBind[p]) for (const w of ['act2', 'act3']) if (okList(pb[p][w], 'number')) PadBind[p][w] = pb[p][w];
+    if (!PadBind[p]) continue;
+    for (const w of ['act2', 'act3']) {
+      if (okList(pb[p][w], 'number')) { PadBind[p][w] = pb[p][w]; continue; }
+      // (saved before they existed: if the player's jump sits on the usual button, the action moves to a free one)
+      if (!PadBind[p].jump.includes(PAD_DEFAULT[w][0])) continue;
+      const free = [2, 3, 5, 4, 6].find(n => !PadBind[p].jump.includes(n) && n !== PAD_DEFAULT[w === 'act2' ? 'act3' : 'act2'][0] && !(PadBind[p].act2 || []).includes(n));
+      if (free != null) PadBind[p][w] = [free];
+    }
   }
   bindApply();
 }

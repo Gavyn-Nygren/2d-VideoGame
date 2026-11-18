@@ -39,6 +39,8 @@ const PA = {
   backWall: 6.5, topLimit: 12.5, sideX: 15, sepX: 14, sepZ: 9, line: 0.7,
   // aliens
   popShow: 1.0, popRise: 0.35, minSpawnD: 5, zapR: 3, zapWind: 0.8, zapStart: 2.6, zapCd: 2.6,
+  capPings: 12,                      // a Shield alien's bottle cap comes off after this many bolts ping on it
+  edgerHold: 2.6, edgerRelax: 1.3,   // an Edger holds edge-on this long, then wobbles face-on this long
 };
 // each alien kind: hit points, hit radius, height (for the picture), walking speed, does it zap
 const PA_KINDS = {
@@ -281,7 +283,12 @@ function paKill(st, a, how, by) {
   if (how === 'cross') st.crossKills++;
   paFx(st, how === 'grenade' ? 'confetti' : 'crumple', { a: paFxA(a), by });
   Sfx.play(how === 'grenade' ? 'popaliensConfetti' : 'popaliensCrumple');
-  if (a.k === 'carrier') { st.pickups.push({ id: 'd' + a.id, x: a.x, z: a.z, live: true, route: false, drop: true }); paFx(st, 'drop', { x: a.x, z: a.z }); }
+  if (a.k === 'carrier') {
+    // its grenade bounces to a spot both heroes can get to: not out at the page's edge (the two can only be 14 apart,
+    // so one standing at the far side would keep the other from ever reaching it) and not off the screen
+    const gx = clamp(a.x, -8, 8), gz = clamp(a.z, st.cz - PA.topLimit + 1.5, st.cz + PA.backWall - 1.5);
+    st.pickups.push({ id: 'd' + a.id, x: gx, z: gz, live: true, route: false, drop: true }); paFx(st, 'drop', { x: gx, z: gz });
+  }
 }
 const paFxA = a => ({ id: a.id, k: a.k, x: a.x, y: a.y, z: a.z, face: a.face, scorch: a.scorch, fold: a.fold || 0 });
 // a bolt (or a grenade) reaches an alien: returns true if it stopped the bolt
@@ -294,7 +301,13 @@ function paHit(st, a, owner, dirx, dirz, cross) {
     const cx = Math.sin(a.capA), cz = Math.cos(a.capA);
     if (-dirx * cx - dirz * cz > Math.cos(65 * Math.PI / 180)) {
       if (crossed) { a.cap = false; paFx(st, 'capOff', { a: paFxA(a) }); Sfx.play('popaliensCapOff'); paFx(st, 'cross', { a: paFxA(a) }); }
-      else { paFx(st, 'ping', { x: a.x - dirx * 0.4, z: a.z - dirz * 0.4 }); Sfx.play('popaliensPing'); }
+      else {
+        paFx(st, 'ping', { x: a.x - dirx * 0.4, z: a.z - dirz * 0.4 }); Sfx.play('popaliensPing');
+        // one hero alone can never get round it (the cap turns faster than they can run), so the cap is only so
+        // strong: a dozen pings and it is knocked off too. Crossed beams do it at once.
+        a.capPing = (a.capPing || 0) + 1;
+        if (a.capPing >= PA.capPings) { a.cap = false; paFx(st, 'capOff', { a: paFxA(a) }); Sfx.play('popaliensCapOff'); }
+      }
       return true;
     }
   }
@@ -324,17 +337,25 @@ function paAlienStep(st, a, dt) {
   if (tgt) {
     const want = Math.atan2(tgt.b.x - a.x, tgt.b.z - a.z);
     if (a.k === 'edger') {
-      // side-on to a hero who is aiming at it: that hero's bolts pass by
+      // side-on to a hero who is aiming at it: that hero's bolts pass by (the nearer one, if both aim). Nobody aiming:
+      // it faces the nearest hero like any other alien, so it is seen (and can be hit) before it turns.
       let aimer = null, ad = 1e9;
       G.players.forEach((p, k) => {
         const h = st.h[k]; if (h.flat) return;
         const to = Math.atan2(a.x - p.b3.x, a.z - p.b3.z), d = Math.hypot(a.x - p.b3.x, a.z - p.b3.z);
         if (d < PA.boltRange + 2 && Math.abs(paAng(to - h.aim)) < PA.aimCone && d < ad) { ad = d; aimer = p.b3; }
       });
-      const ref = aimer || tgt.b, side = Math.atan2(ref.x - a.x, ref.z - a.z) + Math.PI / 2;
-      // the nearer of the two side-on headings
-      const s2 = Math.abs(paAng(side - a.face)) < Math.PI / 2 ? side : side + Math.PI;
-      a.face += clamp(paAng(s2 - a.face), -4 * dt, 4 * dt);
+      // paper cannot hold a pose for ever: after 2.6 s edge-on it wobbles round to face the hero for 1.3 s, so one
+      // hero alone (or a pair who never split up) can still beat it, slowly. Two sides is the quick way.
+      if (a.relax > 0) { a.relax -= dt; a.edgeT = 0; }
+      else if (aimer) { a.edgeT = (a.edgeT || 0) + dt; if (a.edgeT > PA.edgerHold) { a.relax = PA.edgerRelax; paFx(st, 'wobble', { a: paFxA(a) }); } }
+      else a.edgeT = Math.max(0, (a.edgeT || 0) - dt);
+      if (aimer && !(a.relax > 0)) {
+        const side = Math.atan2(aimer.x - a.x, aimer.z - a.z) + Math.PI / 2;
+        // the nearer of the two side-on headings
+        const s2 = Math.abs(paAng(side - a.face)) < Math.PI / 2 ? side : side + Math.PI;
+        a.face += clamp(paAng(s2 - a.face), -4 * dt, 4 * dt);
+      } else a.face += clamp(paAng((aimer ? Math.atan2(aimer.x - a.x, aimer.z - a.z) : want) - a.face), -4 * dt, 4 * dt);
     } else a.face += clamp(paAng(want - a.face), -3 * dt, 3 * dt);
     if (a.cap) a.capA += clamp(paAng(want - a.capA), -2.6 * dt, 2.6 * dt);
   }
@@ -354,7 +375,10 @@ function paAlienStep(st, a, dt) {
     }
     return; // (it stands still while it winds up)
   }
-  if (K.zap && tgt && a.zapCd <= 0 && tgt.d < (K.zapStart || PA.zapStart)) { a.zap = { t: 0, r: K.zapR || PA.zapR, wind: K.zapWind || PA.zapWind }; Sfx.play('popaliensZapWind'); return; }
+  // a letter or a card between it and the hero (a hero pressed to the far side of a stroke): a zap would do nothing,
+  // so it does not stand there zapping the wall for ever; it keeps hopping until it can see them
+  const walled = !!tgt && tgt.d < 5.2 && paBlocked(st, a.x, a.z, tgt.b.x, tgt.b.z);
+  if (K.zap && tgt && a.zapCd <= 0 && tgt.d < (K.zapStart || PA.zapStart) && !walled) { a.zap = { t: 0, r: K.zapR || PA.zapR, wind: K.zapWind || PA.zapWind }; Sfx.play('popaliensZapWind'); return; }
   if (a.hold && tgt && tgt.d > a.hold) { a.hopPh += dt * 2; return; }
   switch (a.k) {
     case 'grunt': case 'lesson': case 'shield': case 'edger': {
@@ -363,7 +387,7 @@ function paAlienStep(st, a, dt) {
       a.hopPh += dt * (a.k === 'edger' ? 4.5 : 6);
       const air = Math.sin(a.hopPh) > 0;
       a.y = air ? Math.sin(a.hopPh) * 0.22 : 0;
-      if (air && tgt.d > 1.6) {
+      if (air && (tgt.d > 1.6 || (walled && tgt.d > 0.9))) {
         const gate = paGate(a.x, a.z, tgt.b.x, tgt.b.z), gx = gate ? gate.x : tgt.b.x, gz = gate ? gate.z : tgt.b.z;
         const dx = gx - a.x, dz = gz - a.z, l = Math.hypot(dx, dz) || 1;
         // a row keeps its line: mostly straight down the page, a little toward the hero (through a gap: straight at it)
@@ -382,6 +406,8 @@ function paAlienStep(st, a, dt) {
         let mx = dx / l, mz = dz / l;
         if (Math.abs(a.x) > PA.sideX - 2) mx = -Math.sign(a.x) * 0.7;
         if (a.z < st.cz - PA.topLimit - 3) mz = 0.4;
+        // (and never out past the bottom of the screen, where no bolt could follow it)
+        if (a.z > st.cz + PA.backWall - 1.5 && mz > 0) mz = 0;
         a.x += mx * K.speed * dt; a.z += mz * K.speed * dt;
       }
       break;
@@ -486,7 +512,9 @@ function paAimHelp(st, k, aim) {
     const d = Math.hypot(a.x - b.x, a.z - b.z);
     if (d > PA.boltRange) continue;
     const da = paAng(Math.atan2(a.x - b.x, a.z - b.z) - aim);
-    if (Math.abs(da) < PA.aimStraight) return aim;   // pointing straight at one: never pulled off it
+    // pointing straight at one (the bolt would really touch it): never pulled off it. Far away a few
+    // degrees is a clean miss, so "straight" is measured sideways at the alien, not as an angle
+    if (Math.abs(da) < PA.aimStraight && Math.abs(Math.sin(da)) * d < PA_KINDS[a.k].r * 0.8) return aim;
     if (Math.abs(da) < PA.aimCone && Math.abs(da) + d * 0.01 < bd) { bd = Math.abs(da) + d * 0.01; best = da; }
   }
   return best == null ? aim : aim + clamp(best, -PA.aimBend, PA.aimBend);
@@ -548,6 +576,8 @@ function paHeroStep(st, k, dt) {
     if (!besideFlat && !paOnHatch(st, k) && h.reload <= 0 && h.charge < PA.charge) { h.reload = PA.reloadT; h.reloadDur = PA.reloadT; Sfx.play('popaliensReload', k); }
   }
   if (h.reload > 0) { h.reload -= dt; if (h.reload <= 0) { h.reload = 0; h.charge = PA.charge; Sfx.play('popaliensReloaded', k); } }
+  // an empty gun always winds itself (a hero flattened in the middle of a reload gets up with the crank still to turn)
+  else if (h.charge <= 0) { h.reload = PA.autoReloadT; h.reloadDur = PA.autoReloadT; }
   // walking (wet ink and stamped prints slow you)
   const dir = K3D.moveDir(p);
   let speed = 1;
@@ -589,6 +619,8 @@ function paHeroStep(st, k, dt) {
     if (Math.abs(b.z - ho.z) < ho.hw && b.x > ho.x0 - 0.05 && b.x < ho.x1 + 0.05) { paFlatten(st, k, 'hole'); break; }
   }
 }
+// can the heroes still walk to this spot? (the camera never goes back)
+function paReach(st, q) { return q.z < st.cz + PA.backWall - 0.5 && q.z > st.cz - PA.topLimit + 0.2; }
 function paOnHatch(st, k) { return !!(st.hatch && Math.hypot(G.players[k].b3.x - st.hatch.x, G.players[k].b3.z - st.hatch.z) < st.hatch.r); }
 // after both heroes moved: the soft back wall, the top of the screen, the sides, and how far apart the pair may be
 function paConstrain(st) {
@@ -864,8 +896,13 @@ function paWalkerStep(st, dt) {
     if (W.state === 'rear') { W.rearT += dt; if (W.rearT >= PA_WALK.rearT) { W.state = 'crouch'; W.t = 0; } }
     // Carriers bring grenades from the edges while nobody has one to throw
     W.carrierT -= dt;
-    const held = st.h[0].gren + st.h[1].gren, lying = st.pickups.some(p => p.live), carrying = st.aliens.some(a => a.k === 'carrier');
-    if (W.carrierT <= 0 && held === 0 && !lying && !carrying) {
+    // (a grenade lying where the camera has left it behind does not count; and if the heroes hold grenades but none
+    // has gone off under it for 12 s, one more is brought for whoever has room, so a player who never finds the
+    // grenade button cannot hold the finish up)
+    W.quietT = W.state === 'rear' ? 0 : (W.quietT || 0) + dt;
+    const held = st.h[0].gren + st.h[1].gren, lying = st.pickups.some(p => p.live && paReach(st, p)), carrying = st.aliens.some(a => a.k === 'carrier');
+    const room = st.h.some(h => h.gren < PA.grenMax);
+    if (W.carrierT <= 0 && (held === 0 || (W.quietT > 12 && room)) && !lying && !carrying) {
       W.carrierT = 6;
       const sd = st.rng() < 0.5 ? -1 : 1;
       paSpawn(st, { k: 'carrier', x: sd * 12, z: st.cz - 6 }, 'boss');
