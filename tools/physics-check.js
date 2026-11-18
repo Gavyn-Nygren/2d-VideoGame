@@ -63,6 +63,9 @@ const seeds = opt('seeds', '1').split(',').map(Number);
       window.__inStep = true;
       G.manual = true;
       P.CPU.skillOf = ['normal', 'normal'];
+      // (a 3D level only steps once its 3D kit has loaded, unless drawing is off: without this the clock ran while it
+      // loaded and a computer pair looked 'unfinished')
+      if (P.K3D) P.K3D.noRender = true;
       P.CPU.errs.clear();
       G.cpuOn = [true, true];
       // random button mashing, with its own random numbers so it can't change the game's

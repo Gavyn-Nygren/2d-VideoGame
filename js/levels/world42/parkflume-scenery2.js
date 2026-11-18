@@ -196,8 +196,8 @@ const PARKFLUME_SCENE2 = (function () {
     for (let i = 0; i < b.n; i++) {
       const s = b.lf.s0 + i * 0.9 + b.off, f = R.at(s), w = PR.w(s);
       e.set(-f.pitch, f.yaw, 0, 'YXZ'); q.setFromEuler(e);
-      pv.set(...R.local(s, 0, -0.62, f)); m4.compose(pv, q, sc.set(w * 1.1, 1, 1)); b.im.setMatrixAt(i, m4);
-      for (let k = 0; k < 4; k++) { const ss = s + (k % 2) * 0.45, ff = R.at(ss); pv.set(...R.local(ss, (k < 2 ? -1 : 1) * w * 0.55, -0.6, ff)); e.set(-ff.pitch + (k % 2) * Math.PI / 2, ff.yaw, 0, 'YXZ'); q.setFromEuler(e); m4.compose(pv, q, sc.set(1, 1, 1)); b.ch.setMatrixAt(i * 4 + k, m4); }
+      pv.set(...R.local(s, 0, -0.02, f)); m4.compose(pv, q, sc.set(w * 1.1, 1, 1)); b.im.setMatrixAt(i, m4); // (the cleats' tops just break the thin sheet of water on the belt, so the belt is seen hauling the log up)
+      for (let k = 0; k < 4; k++) { const ss = s + (k % 2) * 0.45, ff = R.at(ss); pv.set(...R.local(ss, (k < 2 ? -1 : 1) * w * 0.55, 0.02, ff)); e.set(-ff.pitch + (k % 2) * Math.PI / 2, ff.yaw, 0, 'YXZ'); q.setFromEuler(e); m4.compose(pv, q, sc.set(1, 1, 1)); b.ch.setMatrixAt(i * 4 + k, m4); }
     }
     b.im.instanceMatrix.needsUpdate = b.ch.instanceMatrix.needsUpdate = true;
   }

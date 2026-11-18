@@ -830,7 +830,8 @@ const PARKFLUME_SCENE = (function () {
     // rises to show the drop below, then tips over with the log and follows it down
     const tops = [[A.lift1Foot, A.lift1Top0, A.brink1, 0.6], [A.liftFoot, A.top0, A.brink, 1]];
     for (const [f0, t0, br, big] of tops) {
-      const on = sm(f0 - 4, f0 + 2, s) * (1 - sm(br + 1, br + 8, s));
+      // (not while the eye is ducking under an arch: it must go under it, not through the robot on top)
+      const on = sm(f0 - 4, f0 + 2, s) * (1 - sm(br + 1, br + 8, s)) * (1 - duck);
       if (on <= 0) continue;
       o.level = on; o.height += on * (1.4 + big * 1.2); o.back += on * 1.5;
       const crest = sm(t0 - 6, t0, s) * (1 - sm(br - 1, br + 4, s));
@@ -959,7 +960,7 @@ const PARKFLUME_SCENE = (function () {
     if (st.phase === 'ride') {
       for (const d of L.drops) if (st.s > d.lead - 2 && st.s < d.s1) {
         const a = 0.75 + Math.sin(G.clock * 8) * 0.25; ctx.save(); ctx.globalAlpha = a; text('Hold on together!', W / 2, H - 92, 22, '#ffd24a', 'center'); ctx.restore();
-        for (const k of [0, 1]) if (!st.brace[k] && !isCpuPlayer(k)) drawBtn(k, 'jump', k === 0 ? W * 0.3 : W * 0.7, H - 120, { label: 'hold!', alpha: a });
+        for (const k of [0, 1]) if (!st.brace[k] && !isCpuPlayer(k)) drawBtn(k, 'hop', k === 0 ? W * 0.3 : W * 0.7, H - 120, { label: 'hold!', alpha: a }); // (3D: jump is Space / Right Shift, 'hop')
         break;
       }
     }

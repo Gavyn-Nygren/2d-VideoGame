@@ -44,7 +44,7 @@ const PARKFLUME = (function () {
     U_DAMP: 0.42, U_MAX: 2.3, U_MAX_SPEED: 2.0, BRAKE_ONE: -0.3, BRAKE_BOTH: -0.6, KEEL: 0.55,
     SPEED_PAIR: 0.3, SPEED_HOLD: 1.7, SPEED_FADE: 0.32,
     HALF_LEN: 1.55, HALF_W: 0.72, BANK_PAD: 0.15,
-    SAFE: 1.5, WATER: 3, GOLD_WATER: 5, GOLD_ARCHES: 2, BRACE_MEMO: 0.35,
+    SAFE: 1.5, ONCE: 6, WATER: 3, GOLD_WATER: 5, GOLD_ARCHES: 2, BRACE_MEMO: 0.35,
     SINK: 1.6, BOB: 1.0, TUG: 2.0, DUCK_R: 0.95, BIG_R: 1.35, BIG_DUCKS: 5,
     BOARD_T: 6.5, DOCK_T: 6.0, RING_R: 2.4, RING_V: 1.2,
   };
@@ -73,7 +73,7 @@ const PARKFLUME = (function () {
       restart: PR.START, sameArch: 0, lastSinkArch: -1, gold: 0, goldMsgT: -99, goldN: 0,
       ducks: 0, got: L.ducks.map(() => false), bank: [0, 0], bumpT: 0, bumps: 0, dropDone: {}, dropBraced: {},
       says: [], fx: [], air: 0, airV: 0, splash: 0, wet: 0, ringT: 0, laps: 0, finished: false, started: false,
-      plungeDry: false, plungeTaken: false, sink: null, whirl: null, whirlDone: L.whirls.map(() => false),
+      plungeDry: false, plungeTaken: false, hitBy: {}, sink: null, whirl: null, whirlDone: L.whirls.map(() => false),
     });
   }
   CO.fresh = fresh;
@@ -125,7 +125,7 @@ const PARKFLUME = (function () {
     else if (st.sameArch >= 3 && st.gold > 0) { st.gold = S.GOLD_ARCHES; st.maxWater = Math.min(S.GOLD_WATER + 6, S.GOLD_WATER + 2 * (st.sameArch - 2)); st.goldMsgT = st.t; }
     st.water = 0; st.safe = 2.0; st.wet = Math.max(0.3, st.wet);
     st.pull = [-1, -1]; st.rest = [0, 0]; st.air = 0; st.airV = 0; st.sink = null;
-    st.dropDone = {}; st.dropBraced = {}; st.whirl = null;
+    st.dropDone = {}; st.dropBraced = {}; st.whirl = null; st.hitBy = {};
     Sfx.play('parkflumeBail');
   }
 
@@ -240,24 +240,24 @@ const PARKFLUME = (function () {
       if (!q.on) continue;
       // a thing in one arm of a fork only reaches that arm
       if (o.side && sgn(st.x) !== o.side) continue;
-      const soaks = q.soak != null ? q.soak : o.soak;
+      // (one thing Soaks the log once as it goes by: not again while the log is still beside it)
+      const soaks = (q.soak != null ? q.soak : o.soak) && !(st.hitBy[o.id] > st.t);
       if (o.line) {
         // a line right across the channel (a jet, a wave, a wheel's blades): the log is under it or not
         if (Math.abs(q.s - st.s) > o.r + S.HALF_LEN) continue;
         if (o.braceOk && st.braced) { if (!st.lineT || st.t - st.lineT > 0.6) { st.lineT = st.t; st.fx.push({ k: 'shrug', t: st.t, id: o.id }); Sfx.play('parkflumeSplash'); } continue; }
-        if (soak(st, o.kind)) st.fx.push({ k: 'hit', t: st.t, id: o.id });
+        if (soaks && soak(st, o.kind)) { st.hitBy[o.id] = st.t + S.ONCE; st.fx.push({ k: 'hit', t: st.t, id: o.id }); }
         continue;
       }
       const sd = segDist(st, q.s, q.x), lim = o.r + S.HALF_W;
       if (sd.d >= lim) continue;
       if (o.braceOk && st.braced) { if (!st.lineT || st.t - st.lineT > 0.6) { st.lineT = st.t; st.fx.push({ k: 'shrug', t: st.t, id: o.id }); Sfx.play('parkflumeSplash'); } continue; }
-      if (o.kind === 'curtain') { if (soak(st, o.kind)) st.fx.push({ k: 'hit', t: st.t, id: o.id }); continue; } // (water, not a solid)
       const n = sd.d > 1e-4 ? 1 / sd.d : 0, over = lim - sd.d;
       // push the log out sideways mostly (the current keeps it going): never back upstream
       st.x += (n ? sd.nx * n : (st.x >= q.x ? 1 : -1)) * over;
       st.s += Math.max(0, (n ? sd.ns * n : 0) * over);
       st.om *= 0.7;
-      if (soaks) { if (soak(st, o.kind)) st.fx.push({ k: 'hit', t: st.t, id: o.id }); }
+      if (soaks) { if (soak(st, o.kind)) { st.hitBy[o.id] = st.t + S.ONCE; st.fx.push({ k: 'hit', t: st.t, id: o.id }); } }
       else if (!st.obT || st.t - st.obT > 0.7) { st.obT = st.t; st.u *= 0.75; Sfx.play('parkflumeBump'); st.fx.push({ k: 'bonk', t: st.t, id: o.id }); }
     }
   }
@@ -268,7 +268,7 @@ const PARKFLUME = (function () {
   function belt(st, dt) {
     const f = R.at(st.s);
     st.vs = Math.max(1.2, f.v); st.u = 0; st.speed = Math.max(0, st.speed - 0.2 * dt);
-    st.x += (0 - st.x) * Math.min(1, dt * 4); st.psi += (0 - st.psi) * Math.min(1, dt * 4); st.om = 0; st.vx = 0;
+    st.x += (0 - st.x) * Math.min(1, dt * 4); st.psi += (0 - st.psi) * Math.min(1, dt * 4); st.om = 0; st.vx = 0; st.bank[0] = 0;
     st.prevS = st.s; st.s += st.vs * dt;
     if (!st.clank || st.t - st.clank > 0.45) { st.clank = st.t; Sfx.play('parkflumeBelt'); }
   }

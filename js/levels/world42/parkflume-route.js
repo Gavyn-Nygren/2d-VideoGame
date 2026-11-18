@@ -68,7 +68,7 @@ const PARKFLUME_ROUTE = (function () {
     P(-186, -2.7, -80, 3.6, 4.6, 'rapids1'), P(-190, -2.85, -71, 2.8, 6.0),
     P(-197, -2.85, -63, 1.6, 8.5, 'whirl'), P(-200, -2.85, -53, 2.6, 6.0), P(-197, -2.9, -42, 2.8, 4.2, 'snake'),
     P(-192, -2.95, -33, 2.8, 3.0, 'arch5'), P(-186, -3.0, -24, 2.7, 7.5, 'fork2a'), P(-175, -3.0, -17, 2.7, 10.5),
-    P(-163, -3.1, -14, 2.7, 10.5), P(-152, -3.2, -13, 2.7, 7.0, 'fork2b'), P(-143, -3.4, -12.5, 2.4, 3.6),
+    P(-163, -3.1, -14, 2.7, 10.5), P(-152, -3.2, -13, 2.7, 7.0, 'fork2b'), P(-147.5, -3.3, -12.75, 2.5, 3.0, 'arch5b'), P(-143, -3.4, -12.5, 2.4, 3.4),
     // the first lift: a belt hauls the log up out of the jungle; a short flat top; a drop into the mill pond
     P(-137, -3.4, -12.2, 2.2, 2.4, 'lift1Foot'), P(-130, -0.6, -12, 2.0, 2.2, 'lift1'), P(-121, 3.3, -12, 2.0, 2.2),
     P(-115, 5.0, -12, 2.0, 2.2, 'lift1Top0'), P(-111, 5.2, -12, 1.8, 2.3, 'lift1Top'), P(-107.5, 5.1, -12, 2.6, 2.3, 'brink1'),
@@ -134,8 +134,10 @@ const PARKFLUME_ROUTE = (function () {
   const ISL = { s0: A.fork0 + 2, s1: A.fork1 - 2, hw: 4.2, x: 0 };
   L.islands.push(ISL);
   line(ISL.s0 + 6, ISL.s1 - 6, -6.8, -6.8, 3);
-  line(ISL.s0 + 3, ISL.s1 - 3, 6.6, 6.6, 7, true);
-  line(A.fork1 + 2, A.arch3 - 3, 0, 0, 3);
+  // (the first two lead out from the middle: a log coming off the weir cannot be right across by the island's nose)
+  duck(ISL.s0 + 1, 3.6); duck(ISL.s0 + 4.5, 5.2);
+  line(ISL.s0 + 8, ISL.s1 - 3, 6.6, 6.6, 6, true);
+  line(A.fork1 + 7, A.arch3 - 3, 0, 0, 3);
 
   // weirs and the plunge (the lead is where the "Hold on!" hand signs stand, about 2.5 s ahead)
   L.drops.push({ s0: A.weir0 - 0.5, s1: A.weir1 + 1.0, kind: 'weir', lead: A.weir0 - 8.5 });
@@ -151,9 +153,10 @@ const PARKFLUME_ROUTE = (function () {
   swan(A.swans + 2, -2.4, 1.4, 2.1, 0.27);
   swan(A.swans + 11, 1.4, 2.0, 4.0, 0.3);
   L.obs.push({ id: 'fountain', kind: 'fountain', s: A.fountain0 + 9, x: -4.4, r: 1.7, soak: false });
-  // the water wheel on the right branch: its paddles dip into the channel two seconds in every five (a Soak)
+  // the water wheel on the right branch: its paddles dip into the channel 1.8 s in every 5.5 (a Soak). (Up for 3.7 s:
+  // long enough for a log at the current's own pace to go right under it, if it sets off as the paddle lifts.)
   {
-    const s = (ISL.s0 + ISL.s1) / 2 + 3, x = 6.4, per = 5.0, down = 2.0;
+    const s = (ISL.s0 + ISL.s1) / 2 + 3, x = 6.4, per = 5.5, down = 1.8;
     L.obs.push({ id: 'wheel', kind: 'wheel', s, x, r: 1.5, soak: true, per, down,
       move: t => { const u = ((t % per) + per) % per; return { s, x, on: u < down }; } });
   }
@@ -164,7 +167,7 @@ const PARKFLUME_ROUTE = (function () {
   // hippos surfacing to yawn (up 3.6 s in every 6.5; the mouth open for the middle 1.4 s is a Soak, the back a bump)
   const hippo = (s, x, ph) => L.obs.push({ id: 'hippo' + L.obs.length, kind: 'hippo', s, x, r: 1.35, soak: false, ph,
     move: t => { const u = (((t - ph) % 6.5) + 6.5) % 6.5; return { s, x, on: u < 3.6, soak: u > 1.1 && u < 2.5, u }; } });
-  hippo(A.hippos + 4, -3.0, 0); hippo(A.hippos + 12, 2.6, 2.2); hippo(A.hippos + 20, -1.4, 4.1);
+  hippo(A.hippos + 4, -3.0, 0); hippo(A.hippos + 12, 2.6, 2.2); hippo(A.hippos + 20, 1.5, 4.1); // (off the ducks' line: they lead left of it)
   line(A.jungle + 4, A.hippos + 2, 0, 0.4, 3); line(A.hippos + 6, A.hippos + 22, 1.4, -3.4, 5);
   // the elephant on the right bank sprays a jet right across (1.3 s in every 4.5): time it, or hold on
   L.obs.push({ id: 'jet', kind: 'jet', s: A.elephant + 2, x: 0, r: 0.6, line: true, braceOk: true, soak: true, per: 4.5, cyc: [4.5, 1.3, 0.5],
@@ -172,13 +175,17 @@ const PARKFLUME_ROUTE = (function () {
   line(A.elephant - 6, A.elephant + 8, -2.0, -2.0, 5);
   // crocodiles drifting like logs, then snapping sideways toward the middle (their eyes light 0.8 s first)
   const croc = (s, x, dir, ph) => L.obs.push({ id: 'croc' + L.obs.length, kind: 'croc', s, x, r: 1.0, soak: true, dir, ph,
-    move: t => { const u = (((t - ph) % 5) + 5) % 5, k = u < 4.2 ? 0 : Math.sin((u - 4.2) / 0.8 * Math.PI); return { s: s + Math.sin(t * 0.3 + ph) * 1.2, x: x + dir * 2.2 * k, on: true, u }; } });
-  croc(A.crocs + 3, 3.0, -1, 0); croc(A.crocs + 11, -3.0, 1, 1.7);
+    move: t => { const u = (((t - ph) % 5) + 5) % 5, k = u < 4.2 ? 0 : Math.sin((u - 4.2) / 0.8 * Math.PI); return { s: s + Math.sin(t * 0.3 + ph) * 1.2, x: x + dir * 1.5 * k, on: true, u }; } });
+  // (out by the banks, and a snap reaches 1.5: the very middle is always clear, and 1.9 either side of it is clear
+  // whenever the nearer crocodile's eyes are dark)
+  croc(A.crocs + 3, 3.6, -1, 0); croc(A.crocs + 11, -3.6, 1, 1.7);
   line(A.crocs - 4, A.crocs + 22, 0, 0, 6);
   // monkeys in the vines throwing coconuts: a ring on the water 1.5 s before each splash (a Soak for 0.35 s)
   const coco = (s, x, ph) => L.obs.push({ id: 'coco' + L.obs.length, kind: 'coconut', s, x, r: 1.0, soak: true, ph,
     move: t => { const u = (((t - ph) % 3.6) + 3.6) % 3.6; return { s, x, on: u > 1.5 && u < 1.85, u }; } });
-  coco(A.arch4 - 13, -1.9, 0); coco(A.arch4 - 9, 2.0, 1.2); coco(A.arch4 - 5, -2.0, 2.4);
+  // (well out to the sides: the middle 1.7 units are a safe lane the whole way, gentle steering finds it)
+  // (and clear of the second crocodile's reach, so the two never ask for opposite sides at once)
+  coco(A.arch4 - 12, -2.6, 0); coco(A.arch4 - 8, 2.6, 1.2); coco(A.arch4 - 4.5, -2.3, 2.4);
   // the first rapids: white water between rocks and a row of small drops to hold on through
   for (const k of [0, 1, 2]) { const d0 = A.rapids0 + 4 + k * 9; L.drops.push({ s0: d0, s1: d0 + 2.2, kind: 'rapid', lead: d0 - 6 }); }
   for (const [ds, x] of [[6, 2.6], [12, -2.4], [16, 1.9], [24, -2.0]]) L.obs.push({ id: 'rock' + L.obs.length, kind: 'rock', s: A.rapids0 + ds, x, r: 0.9, soak: false });
@@ -192,10 +199,12 @@ const PARKFLUME_ROUTE = (function () {
   // the fork: left behind a waterfall curtain (hold on through it: ducks and a hidden temple), right through rapids
   const ISL2 = { s0: A.fork2a + 2, s1: A.fork2b - 2, hw: 4.4, x: 0 };
   L.islands.push(ISL2);
-  L.obs.push({ id: 'curtain', kind: 'curtain', s: (ISL2.s0 + ISL2.s1) / 2 - 4, x: -7.6, r: 2.4, side: -1, braceOk: true, soak: true });
-  line(ISL2.s0 + 4, ISL2.s1 - 4, -7.4, -7.4, 6, true);
+  // (a thin sheet right across that arm, as it is drawn: the log is under it or not, and it Soaks once)
+  L.obs.push({ id: 'curtain', kind: 'curtain', s: (ISL2.s0 + ISL2.s1) / 2 - 4, x: -7.6, r: 0.5, side: -1, line: true, braceOk: true, soak: true });
+  duck(ISL2.s0 + 1, -4.0); duck(ISL2.s0 + 4, -5.8);
+  line(ISL2.s0 + 7.5, ISL2.s1 - 4, -7.4, -7.4, 5, true);
   for (const k of [0, 1, 2]) { const d0 = ISL2.s0 + 8 + k * 7; L.drops.push({ s0: d0, s1: d0 + 2, kind: 'rapid', side: 1, lead: d0 - 5 }); }
-  line(ISL2.s0 + 4, ISL2.s1 - 4, 7.4, 7.4, 4);
+  line(ISL2.s0 + 6, ISL2.s1 - 4, 7.0, 7.0, 4);
   // the first lift: ducks on the belt's edges to hook with a stroke on your side
   L.lifts.push({ s0: A.lift1Foot, s1: A.lift1Top0 });
   for (const k of [0, 1, 2]) for (const sd of [-1, 1]) duck(A.lift1 + 2 + k * 5 + (sd > 0 ? 2.5 : 0), sd * 2.6, false, sd);
@@ -204,22 +213,24 @@ const PARKFLUME_ROUTE = (function () {
   /* stretch 3: the Sawmill */
   // the mill pond: floating logs to nudge through (lumberjack robots log-rolling on some)
   { const xs = [-4.5, 3.8, -1.2, 5.2, -5.6, 1.8, -3.0, 4.2]; xs.forEach((x, i) => { const s0 = A.mill - 4 + i * 4.2, ph = i * 1.3; L.obs.push({ id: 'flog' + i, kind: 'floatlog', s: s0, x, r: 1.1, soak: false, roller: i % 3 === 0, move: t => ({ s: s0 + Math.sin(t * 0.25 + ph) * 0.8, x: x + Math.sin(t * 0.4 + ph) * 0.9, on: true }) }); }); }
-  line(A.splash1 + 5, A.millDoor - 4, 0, -0.8, 6);
-  // saw blades rising through slots in the floor (up 1.4 s in every 3; a spinning lamp warns)
-  for (const [ds, x, ph] of [[3, -2.3, 0], [9, 2.3, 1.0], [15, -2.3, 2.0], [20, 2.3, 0.5]]) { const ss = A.saws + ds; L.obs.push({ id: 'saw' + L.obs.length, kind: 'saw', s: ss, x, r: 1.3, soak: true, ph, cyc: [3, 1.4, ph], move: t => ({ s: ss, x, on: cyc(t, 3, 1.4, ph) }) }); }
+  line(A.splash1 + 9, A.millDoor - 4, 0, -0.8, 6);
+  // saw blades rising through slots in the floor (up 1.4 s in every 3; a spinning lamp warns). A blade stands along
+  // the channel and is thin across it, so what Soaks is narrow: the middle 1.6 units are clear of both rows.
+  for (const [ds, x, ph] of [[3, -2.3, 0], [9, 2.3, 1.0], [15, -2.3, 2.0], [20, 2.3, 0.5]]) { const ss = A.saws + ds; L.obs.push({ id: 'saw' + L.obs.length, kind: 'saw', s: ss, x, r: 0.75, soak: true, ph, cyc: [3, 1.4, ph], move: t => ({ s: ss, x, on: cyc(t, 3, 1.4, ph) }) }); }
   line(A.saws + 1, A.saws + 22, 0.2, -0.2, 6);
   // chutes overhead tip logs in beside the boat: the wave (0.8 s in every 5) needs holding on (a shadow shows 1.5 s first)
   for (const [ds, ph] of [[3, 0], [8, 2.5]]) { const ss = A.chutes + ds; L.obs.push({ id: 'wave' + L.obs.length, kind: 'wave', s: ss, x: 0, r: 0.8, line: true, braceOk: true, soak: true, ph, cyc: [5, 0.8, ph], move: t => ({ s: ss, x: 0, on: cyc(t, 5, 0.8, ph) }) }); }
   // the band saw splits the channel: either side is fine, the right has the ducks
   const ISL3 = { s0: A.band0 + 1, s1: A.band1 - 1, hw: 3.6, x: 0, saw: true };
   L.islands.push(ISL3);
-  line(ISL3.s0 + 3, ISL3.s1 - 3, 6.0, 6.0, 5);
+  duck(ISL3.s0 + 2.5, 3.6); duck(ISL3.s0 + 5.5, 4.9);
+  line(ISL3.s0 + 8.5, ISL3.s1 - 3, 6.0, 6.0, 3);
   // the log grabber crane swinging a log across
   L.obs.push({ id: 'crane', kind: 'crane', s: A.band1 + 4, x: 0, r: 1.1, soak: true, move: t => ({ s: A.band1 + 4, x: Math.sin(t * 0.6) * 3.2, on: true }) });
   // the steam room: jets across on a count, then the big paddle wheel's blades coming down (hold on, or time them)
   for (const [ds, ph] of [[2, 0], [6, 1.8]]) { const ss = A.steam + ds; L.obs.push({ id: 'steam' + L.obs.length, kind: 'steam', s: ss, x: 0, r: 0.7, line: true, braceOk: true, soak: true, ph, cyc: [3.6, 1.0, ph], move: t => ({ s: ss, x: 0, on: cyc(t, 3.6, 1.0, ph) }) }); }
   L.obs.push({ id: 'pwheel', kind: 'pwheel', s: A.wheel2 + 2, x: 0, r: 0.9, line: true, braceOk: true, soak: true, cyc: [4, 1.4, 0.7], move: t => ({ s: A.wheel2 + 2, x: 0, on: cyc(t, 4, 1.4, 0.7) }) });
-  line(A.steam - 2, A.arch7 - 2, 0, 0, 5);
+  line(A.steam + 3, A.arch7 - 1.5, 0, 0, 5);
 
   /* stretch 4: Thunder Falls */
   L.lifts.push({ s0: A.liftFoot, s1: A.top0 });
@@ -238,7 +249,7 @@ const PARKFLUME_ROUTE = (function () {
   // signs on the bank
   L.signs.push({ s: A.fountain0 - 10, side: 1, kind: 'drag' });
   L.signs.push({ s: A.snake - 9, side: -1, kind: 'drag' });
-  for (const o of L.obs) if (o.line && o.braceOk) for (const side of [-1, 1]) L.signs.push({ s: o.s - 8, side, kind: 'brace' });
+  for (const o of L.obs) if (o.line && o.braceOk) for (const side of o.side ? [o.side] : [-1, 1]) L.signs.push({ s: o.s - 8, side, kind: 'brace' });
   for (const d of L.drops) for (const side of [-1, 1]) L.signs.push({ s: d.lead, side, kind: 'brace' });
   L.signs.sort((a, b) => a.s - b.s);
 
@@ -251,9 +262,12 @@ const PARKFLUME_ROUTE = (function () {
   L.says.push({ s: A.top, text: 'Riders may get slightly damp.' });
   L.says.push({ s: A.ring - 14, text: 'Thank you for riding Timber Falls. Towels are not provided.' });
 
-  // later arches: in the jungle (one between the hippos and the elephant, so a Sinking there is never far to go back), on the mill pond, on top of each lift (so a Sinking never repeats a lift), in the mill, after the
-  // splashdown and before the dock
-  L.arches.push(A.elephant - 9, A.arch4, A.arch5, A.lift1Top0 - 2, A.millDoor - 7, A.arch6, A.arch7, A.top0 - 2, A.splash + 7, A.arch9);
+  // later arches: in the jungle (one between the hippos and the elephant, so a Sinking there is never far to go back),
+  // before the first lift, on the mill pond, in the mill, after the splashdown and before the dock
+  // (No arch on top of a lift: the eye rides high behind the log over the crest to show the drop, and an arch there
+  // stood right in that view. One stands where the fork's arms join, before the first lift; the second lift has arch7 before
+  // it. Nothing between a lift's foot and the next arch can fill the log, so no Sinking ever repeats a lift.)
+  L.arches.push(A.elephant - 9, A.arch4, A.arch5, A.arch5b, A.millDoor - 7, A.arch6, A.arch7, A.splash + 7, A.arch9);
   for (const k of ['ducks', 'obs']) L[k].sort((a, b) => a.s - b.s);
   L.drops.sort((a, b) => a.s0 - b.s0);
   L.arches.sort((a, b) => a - b);
