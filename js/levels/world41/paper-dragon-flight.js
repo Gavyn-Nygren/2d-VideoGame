@@ -30,7 +30,7 @@
 const POPDRAGON = {
   VX: 6.6, VY: 4.8, SWOOP: 1.5, EASE: 0.25, STOP: 0.16,
   HW: 1.9, HW_TUCK: 0.62, HW_HALF: 1.35, HH: 0.5,       // the dragon's half width (wing tips) and half height in the window
-  TUCK_MAX: 3.0, TUCK_REST: 1.0, FIRE: 0.6, FIRE_CD: 1.5, FIRE_REACH: 10, SLOT_PULL: 3.5, TAIL: 0.4, TAIL_CD: 0.8,
+  TUCK_MAX: 3.0, TUCK_REST: 1.0, FIRE: 0.6, FIRE_CD: 1.5, FIRE_REACH: 10, SLOT_PULL: 6, TAIL: 0.4, TAIL_CD: 0.8,
   SAFE: 1.5, CRUMPLES: 3, GOLD_CRUMPLES: 5, REFOLD: 2.0, STAR_R: 1.35,
   CATCH: 2.4, CATCH_OPEN: 0.3, BOUNCE: 1.1, LAND: 3.0,   // the ring closing on the page, when both holding counts, a miss's bounce, the landing
 };
@@ -192,8 +192,13 @@ MODES.popdragon = {
     st.tuck = approach(st.tuck, both ? 1 : one && st.tuckRest <= 0 ? 0.45 : 0, dt * 8);
     st.shake = one && st.tuckRest <= 0 ? Math.min(1, st.shake + dt * 4) : Math.max(0, st.shake - dt * 3);
     st.hw = K.HW + (K.HW_TUCK - K.HW) * st.tuck;
-    // tucked in together close to a slot, the slot draws the dragon into its middle
-    if (st.tuck > 0.6) for (const sl of R.slots || []) { const d = sl.s - st.s; if (d > -3 && d < 10) { const k = K.SLOT_PULL * dt * st.tuck; st.ox = approach(st.ox, sl.ox, k); if (sl.oy != null) st.oy = approach(st.oy, sl.oy, k); } }
+    // tucked in together close to a slot, the slot draws the dragon into its middle (and the push across fades)
+    if (st.tuck > 0.6) for (const sl of R.slots || []) {
+      const d = sl.s - st.s; if (d < -3 || d > 10) continue;
+      const k = K.SLOT_PULL * dt * st.tuck, damp = Math.max(0, 1 - 8 * dt * st.tuck);
+      st.ox = approach(st.ox, sl.ox, k); st.vx *= damp;
+      if (sl.oy != null) { st.oy = approach(st.oy, sl.oy, k); st.vy *= damp; }
+    }
     // Pip's button: confetti fire; Bo's: the tail swish
     st.fireCd -= dt; st.tailCd -= dt; st.fire = Math.max(0, st.fire - dt); st.tail = Math.max(0, st.tail - dt);
     if (ps[0].pendingAct) { ps[0].pendingAct = false; if (st.fireCd <= 0) { st.fire = K.FIRE; st.fireCd = K.FIRE_CD; Sfx.play('popdragonFire'); } }
@@ -210,7 +215,9 @@ MODES.popdragon = {
     st.safe -= dt; st.dent = Math.max(0, st.dent - dt * 1.4);
     if (st.safe <= 0) {
       const hit = popdragonHit(st.s, st.ox, st.oy, st.hw, st.burnt, st.clock);
-      if (hit) this.crumple(st, hit);
+      // tissue paper only tears (a wobble and a Bookworm groan, no Crumple); everything else crumples the dragon
+      if (hit && hit.web && hit.web.kind === 'tissue') { st.burnt[hit.web.burn] = st.clock; st.tears = (st.tears || 0) + 1; st.dent = Math.max(st.dent, 0.5); Sfx.play('popdragonRip'); st.says.push({ text: 'Rrrip! Tissue up our nose! Pip, fire next time!', t: st.clock }); }
+      else if (hit) this.crumple(st, hit);
     }
     this.hazards(st, dt);
     // stars
@@ -492,8 +499,8 @@ MODES.popdragon = {
       // the last shot: over the dragon's shoulder on the book, the cat's eyes over the desk's edge beyond it
       const u = st.phase === 'done' ? 1 : clamp(1 - st.landT / POPDRAGON.LAND, 0, 1), T0 = R.art.landAt || [1, 2.45, 7.4];
       const k = u * u * (3 - 2 * u);
-      eye = new T.Vector3(T0[0] + 9 - k * 3, T0[1] + 8.5 - k * 2.5, T0[2] - 12 + k * 2);
-      at = new T.Vector3(T0[0] - 1.5, T0[1] - 1.2, T0[2] + 14 + k * 6); fov = 46 - k * 6;
+      eye = new T.Vector3(T0[0] - 8 + k * 2, T0[1] + 8.5 - k * 2.5, T0[2] - 13 + k * 3);
+      at = new T.Vector3(T0[0] + 6 + k * 2, T0[1] - 1.5, T0[2] + 16 + k * 6); fov = 46 - k * 6;
     }
     else {
       // behind the dragon along the way the rail has just come (a chord, so curves never swing it out to the side)
@@ -549,6 +556,12 @@ function popdragonPagePlace(st, t) {
     // right in front of the jaws; a miss bounces it up and away once; caught, it is held in the mouth
     const held = st.phase !== 'catch', up = st.bounce > 0 ? Math.sin((1 - st.bounce / POPDRAGON.BOUNCE) * Math.PI) * 1.6 : 0;
     const p = R.local(Math.min(R.len, st.s + (held ? 0.95 : 2.3)), st.ox, st.oy + (held ? -0.1 : 0.25) + up);
+    if (st.phase !== 'catch') {
+      // home: the page is laid back down on the book beside the dragon
+      const u = st.phase === 'done' ? 1 : clamp(1 - st.landT / POPDRAGON.LAND, 0, 1), k = clamp((u - 0.3) / 0.5, 0, 1), e = k * k * (3 - 2 * k);
+      const T0 = R.art.landAt || [1, 2.45, 7.4], to = [T0[0] - 1.6, T0[1] + 0.06, T0[2] + 3.4];
+      return { pos: p.map((v, i) => v + (to[i] - v) * e), rx: -0.2 + (-Math.PI / 2 + 0.2) * e, ry: 0.4 * e, rz: 0, near: true };
+    }
     return { pos: p, rx: held ? -0.2 : Math.sin(t * 2.1) * 0.25 - 0.3, ry: held ? 0 : Math.sin(t * 1.4) * 0.4, rz: held ? 0 : Math.sin(t * 1.7) * 0.2, near: true };
   }
   const lead = 13 + Math.sin(t * 0.37) * 4 + Math.sin(t * 0.91) * 1.5;
@@ -631,6 +644,7 @@ Object.assign(Sfx.extra, {
   popdragonRain() { this.noise(0.9, { type: 'highpass', f: 3000, vol: 0.028, a: 0.15 }); for (let i = 0; i < 6; i++) this.noise(0.02, { type: 'highpass', f: 4200, vol: 0.03, delay: 0.1 + i * 0.12 }); },
   popdragonGust() { this.noise(1.4, { type: 'bandpass', f: 380, to: 1200, q: 0.7, vol: 0.07, a: 0.35 }); this.noise(1.0, { type: 'bandpass', f: 1600, to: 700, q: 1.5, vol: 0.025, a: 0.3, delay: 0.3 }); },
   popdragonLight() { this.noise(0.4, { type: 'lowpass', f: 600, to: 1600, vol: 0.06, a: 0.04 }); [659, 988, 1319].forEach((f, i) => this.tone(f, 0.5, 'sine', 0.02, null, 0.12 + i * 0.07)); },
+  popdragonRip() { this.noise(0.32, { type: 'bandpass', f: 2400, to: 1200, q: 0.9, vol: 0.07 }); for (let i = 0; i < 5; i++) this.noise(0.03, { type: 'highpass', f: 3200, vol: 0.04, delay: 0.04 + i * 0.05 }); },
   popdragonLand() { this.noise(0.22, { type: 'lowpass', f: 700, vol: 0.07 }); this.tone(196, 0.18, 'triangle', 0.04, 150); [523, 784, 1047, 1568].forEach((f, i) => this.tone(f, 0.6, 'triangle', 0.024, null, 0.35 + i * 0.1)); },
   popdragonBounce() { this.noise(0.12, { type: 'bandpass', f: 900, q: 1.2, vol: 0.05 }); this.tone(392, 0.16, 'triangle', 0.03, 300); this.noise(0.08, { type: 'bandpass', f: 1100, q: 1.2, vol: 0.03, delay: 0.24 }); },
 });

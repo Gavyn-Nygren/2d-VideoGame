@@ -220,7 +220,7 @@ const POPDRAGON_BEDROOM = (function () {
       const s = st.s || 0, phase = st.phase;
       const dragon = v3(R.local(s, st.ox || 0, st.oy || 0));
       const o = { pos: bedSpot.clone(), face: dragon, mode: 'lie', eyes: 0, k: 0, reach: null, wiggle: 0, show: true };
-      if (phase === 'land' || phase === 'done') { o.mode = 'peek'; o.pos.set(-2, R.DESK - 7.5, R.DESKBOX.z1 + 2.2); o.face = v3(R.local(R.len, 0, 0)); o.eyes = 1; return o; }
+      if (phase === 'land' || phase === 'done') { o.mode = 'peek'; o.pos.set(14, R.DESK - 7.5, R.DESKBOX.z1 + 2.2); o.face = v3(R.local(R.len, 0, 0)); o.eyes = 1; return o; }
       if (s < pl.mobile) { o.show = s > pl.top - 20; o.eyes = 0; return o; }
       if (s < paws[0].s - paws[0].tel - 50) { o.mode = 'lie'; o.eyes = s > pl.snore ? 0.35 : 0; o.face = bedSpot.clone().add(new T.Vector3(10, 0, 8)); return o; }
       if (s < sw4 + 4) {
@@ -258,7 +258,7 @@ const POPDRAGON_BEDROOM = (function () {
       if (s < pl.window) { o.mode = 'peek'; o.pos.set(318, F, BD.z1 + 8); o.face = v3(R.local(s, 0, 0)); o.eyes = 1; o.k = 0; return o; }
       if (s < pl.gap) {
         // climbing the curtain after the dragon
-        const p = R.local(Math.max(pl.climb - 10, s - 15), 0, -5.5); o.pos.set(Math.max(324, Math.min(352, p[0])), Math.max(F, p[1] - 10), art.curtain.z + 3.5);
+        const p = R.local(Math.max(pl.climb - 10, s - 22), 0, -5.5); o.pos.set(Math.max(328, Math.min(352, p[0])), Math.max(F, p[1] - 12), art.curtain.z + 2.2);
         o.mode = 'climb'; o.eyes = 1; o.face = dragon;
         const pw = paws[5], u = (s - (pw.s - pw.tel)) / pw.tel;
         if (u > 0 && u < 1.6) { o.reach = { at: v3(R.local(pw.s, 0, -2)), u, batted: st.burnt && st.burnt[pw.id] != null }; o.eyes = u < 1 ? 0.5 : 1; }

@@ -37,9 +37,10 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
       if (o.eye) st.camShot = { eye: o.eye.split(',').map(Number), at: o.at.split(',').map(Number), fov: +(o.fov || 40) };
       else if (o.shot === 'play' || !o.shot) st.camShot = null; else st.camShot = o.shot;
       const hud = !(o.hide || '').includes('hud'); G.level.def.ownPills = !hud; st.noHud = !hud; const mb = document.getElementById('menuBtn'); if (mb) mb.style.visibility = hud ? '' : 'hidden';
+      if (K3D.K && K3D.K.pd) K3D.K.pd.cam = null;   // (the camera jumps straight to the new spot)
       if (o.evalJs) (0, eval)(o.evalJs);
       window.__shotFrames = 0;
-    }, { s: o('s'), ox: o('ox'), oy: o('oy'), vx: o('vx'), vy: o('vy'), shot: o('shot'), eye: o('eye'), at: o('at'), fov: o('fov'), phase: o('phase'), tuck: o('tuck'), fire: o('fire'), hide: o('hide'), evalJs: o('eval') });
+    }, { s: o('s'), ox: o('ox'), oy: o('oy'), vx: o('vx'), vy: o('vy'), shot: o('shot'), eye: o('eye'), at: o('at'), fov: o('fov'), phase: o('phase'), tuck: o('tuck'), fire: o('fire'), hide: o('hide'), evalJs: o('eval') || o('evalJs') });
     await page.waitForTimeout(+(o('wait') || 4) * 1000);
     const info = await page.evaluate((dbg) => {
       const r = K3D.R, o = r ? { calls: r.info.render.calls, tris: r.info.render.triangles } : {};
