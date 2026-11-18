@@ -8,7 +8,8 @@
    Look:
      K3D.toon(color, { map, side, transparent, opacity, emissive, flat })    toon material, 3 flat steps
      K3D.mesh(geo, mat, { ink: '#2b2130' | false, inkW: 1, cast, receive })  a mesh with an ink outline
-     K3D.ink(mesh, color, w)                       adds an inverted-hull outline (smoothed normals) to any mesh
+     K3D.ink(mesh, color, w)                       adds an inverted-hull outline (smoothed normals) to any mesh (an
+                                                   InstancedMesh gets an outline on every instance)
      K3D.paint(key, w, h, c => ..., { repeat })   a texture painted by 2D canvas code, cached by key
      K3D.geo(key, () => geometry)                  cached geometry (shared, freed with the scene)
    Colours: sRGB output and no tone mapping. Lights add up to exactly 1 on a lit face (amb 0.42 + sun 0.58), so a
@@ -132,8 +133,12 @@
       uniforms: { uPx: inkU.uPx, uScale: inkU.uScale, uW: { value: w }, uCol: { value: new T.Color(color) } },
       vertexShader: `attribute vec3 inkNormal; uniform float uPx, uScale, uW;
         void main() {
-          vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          vec3 n = normalize(normalMatrix * inkNormal);
+          vec4 p = vec4(position, 1.0); vec3 nn = inkNormal;
+          #ifdef USE_INSTANCING
+            p = instanceMatrix * p; nn = mat3(instanceMatrix) * nn;
+          #endif
+          vec4 mv = modelViewMatrix * p;
+          vec3 n = normalize(normalMatrix * nn);
           mv.xyz += n * uW * uScale * uPx * max(0.5, -mv.z);
           gl_Position = projectionMatrix * mv;
         }`,
@@ -145,7 +150,9 @@
   }
   K3D.ink = function (mesh, color = '#2b2130', w = 1) {
     smoothNormals(mesh.geometry);
-    const o = new T.Mesh(mesh.geometry, inkMat(color, w));
+    // an instanced mesh gets an instanced outline that shares its instances (and follows its count when drawn)
+    const o = mesh.isInstancedMesh ? new T.InstancedMesh(mesh.geometry, inkMat(color, w), mesh.instanceMatrix.count) : new T.Mesh(mesh.geometry, inkMat(color, w));
+    if (mesh.isInstancedMesh) { o.instanceMatrix = mesh.instanceMatrix; o.frustumCulled = false; o.onBeforeRender = () => { o.count = mesh.count; }; }
     o.castShadow = false; o.receiveShadow = false; o.userData.ink = true; o.renderOrder = mesh.renderOrder;
     o.raycast = () => {};
     mesh.add(o);
