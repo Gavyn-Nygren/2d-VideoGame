@@ -49,9 +49,9 @@
       if (Math.abs(wx) > 13) { s.side = -s.side; wx = ob.x + s.side * 4; }
       wx = clamp(wx, -13, 13);
       // a grenade lying near with nothing close
-      const near4 = live.some(a => Math.hypot(a.x - b.x, a.z - b.z) < 4);
+      const near4 = live.some(a => Math.hypot(a.x - b.x, a.z - b.z) < 4.5);
       if (h.gren < 3 && !near4) {
-        const g = st.pickups.find(q => q.live && Math.hypot(q.x - b.x, q.z - b.z) < 5);
+        const g = st.pickups.find(q => q.live && Math.hypot(q.x - b.x, q.z - b.z) < 9 && q.z < st.cz + 4);
         if (g) { wx = g.x; wz = g.z; }
       }
       // 3. dodge a Folder's dive line
@@ -84,13 +84,16 @@
         let bestA = null, bestN = 3;
         for (const a of live) {
           const d = Math.hypot(a.x - b.x, a.z - b.z);
-          if (d < 4.5 || d > 9.5) continue;
+          if (d < 4.5 || d > 16) continue;
           const n = live.filter(q => Math.hypot(q.x - a.x, q.z - a.z) < PA.burstR + 0.4).length;
           if (n > bestN) { bestN = n; bestA = a; }
         }
         if (bestA) {
           tgt = bestA; s.tgt = bestA.id; s.tgtT = 0.4;
-          if (Math.abs(ang(Math.atan2(bestA.x - b.x, bestA.z - b.z) - h.aim)) < 0.3) { out.act2 = 'tap'; s.throwT = 2.5; }
+          const dB = Math.hypot(bestA.x - b.x, bestA.z - b.z);
+          // too far for a throw (it flies about 7 units, 9 with the aim help): walk up to it first
+          if (dB > 9) { wx = bestA.x; wz = bestA.z + 7; }
+          else if (Math.abs(ang(Math.atan2(bestA.x - b.x, bestA.z - b.z) - h.aim)) < 0.3) { out.act2 = 'tap'; s.throwT = 2.5; }
         }
       }
       // nothing in reach but aliens left (a blockade's last few, a Folder hanging back): go to the nearest

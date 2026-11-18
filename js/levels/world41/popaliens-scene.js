@@ -17,7 +17,7 @@
 
 const PASCENE = (function () {
   const T = K3D.T, P = POPUP;
-  const S = {};
+  const S = { wind: { value: 0 } };
   const PAPER = '#f4ecd8';
   const v = (x, y, z) => new T.Vector3(x, y, z);
 
@@ -123,7 +123,14 @@ const PASCENE = (function () {
       for (let i = 0; i < a.count; i++) { const y = a.getY(i); a.setZ(i, y * y * 0.35); a.setX(i, a.getX(i) * (1 - y * 0.7)); }
       g.computeVertexNormals(); return g;
     });
-    const m = new T.InstancedMesh(geo, K3D.toon('#fbf6ea', { side: T.DoubleSide }), N);
+    const mat = K3D.toon('#fbf6ea', { side: T.DoubleSide });
+    // they sway in the draft (a gentle wave rolling across the page; the tips move, the roots stay)
+    mat.onBeforeCompile = sh => {
+      sh.uniforms.uWind = S.wind;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uWind;').replace('#include <begin_vertex>',
+        '#include <begin_vertex>\n#ifdef USE_INSTANCING\nfloat ph = instanceMatrix[3].x * 0.35 + instanceMatrix[3].z * 0.22;\ntransformed.z += (sin(uWind * 1.6 + ph) * 0.5 + sin(uWind * 2.9 + ph * 1.7) * 0.25) * 0.35 * position.y * position.y;\n#endif');
+    };
+    const m = new T.InstancedMesh(geo, mat, N);
     const m4 = new T.Matrix4(), q = new T.Quaternion(), e = new T.Euler(), col = new T.Color();
     // they grow in tufts (where the sheet's felt has lifted), thinner on the walked path so feet read cleanly
     let i = 0;
@@ -297,6 +304,43 @@ const PASCENE = (function () {
     K.add(m); return m;
   }
 
+  // a pencil shaving: a frilly wooden cone curl, pale wood inside, a band of yellow paint and a dark graphite tip
+  function shaving(x, z, sz, rot, seed) {
+    const r = P.rng(300 + seed), segs = 60, turns = 1.6;
+    const pos = [], col = [], idx = [];
+    const wood = new T.Color('#e8c99a'), paint = new T.Color(['#f2c23a', '#d24a4a', '#3b7bd0'][seed % 3]), dark = new T.Color('#3a3236');
+    for (let i = 0; i <= segs; i++) {
+      const u = i / segs, a = u * turns * Math.PI * 2, rad = 0.15 + u * 0.85, frill = 1 + Math.sin(u * 40) * 0.05;
+      for (let j = 0; j <= 1; j++) {
+        const h = j ? 0.5 + r() * 0.04 : 0;
+        pos.push(Math.cos(a) * rad * frill * (j ? 1 : 0.35), h + u * 0.1, Math.sin(a) * rad * frill * (j ? 1 : 0.35));
+        const c = j ? paint.clone().lerp(wood, u < 0.1 ? 1 : 0.15) : (u < 0.15 ? dark : wood); col.push(c.r, c.g, c.b);
+      }
+      if (i < segs) { const b = i * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+    }
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new T.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+    const mat = K3D.toon('#ffffff', { side: T.DoubleSide }); mat.vertexColors = true;
+    const m = K3D.mesh(g, mat, { ink: '#5a4030', inkW: 0.8 });
+    m.position.set(x, 0.02, z); m.rotation.set(-1.2 + r() * 0.3, rot, 0.2); m.scale.setScalar(sz);
+    return m;
+  }
+  // long soft shadows cast across the page by the giant things on the desk (the lamp is ahead and to the right)
+  function bigShadows(K) {
+    const tex = K3D.paint('paLongShadow', 256, 64, (c, w, h) => {
+      const g = c.createLinearGradient(0, 0, w, 0); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.15, 'rgba(0,0,0,1)'); g.addColorStop(0.75, 'rgba(0,0,0,0.8)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.fillRect(0, 0, w, h);
+      const gv = c.createLinearGradient(0, 0, 0, h); gv.addColorStop(0, 'rgba(255,255,255,1)'); gv.addColorStop(0.3, 'rgba(255,255,255,0)'); gv.addColorStop(0.7, 'rgba(255,255,255,0)'); gv.addColorStop(1, 'rgba(255,255,255,1)');
+      c.globalCompositeOperation = 'destination-out'; c.fillStyle = gv; c.fillRect(0, 0, w, h);
+    });
+    const mat = new T.MeshBasicMaterial({ map: tex, color: '#3a2418', transparent: true, opacity: 0.2, depthWrite: false });
+    mat.polygonOffset = true; mat.polygonOffsetFactor = -1; mat.polygonOffsetUnits = -1;
+    // [x, z, length, width, angle]: the mug's, the pencil tin's and two pencils' shadows reach over the margin
+    for (const [x, z, l, w, a] of [[8, -30, 70, 16, 0.5], [6, -98, 90, 10, 0.45], [4, -132, 70, 4, 0.52], [10, -60, 60, 3, 0.42]]) {
+      const m = new T.Mesh(K3D.geo('paShadowQ', () => new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), mat);
+      m.scale.set(l, 1, w); m.position.set(x, 0.01, z); m.rotation.y = a; m.renderOrder = 1; m.receiveShadow = false; K.add(m);
+    }
+  }
+
   /* ---------- the heroes ---------- */
   // a flattened hero: a sticker of themselves pressed into the page, surprised
   function stickerTex(id) {
@@ -333,8 +377,10 @@ const PASCENE = (function () {
   S.build = function (K, st) {
     const scene = K.scene;
     st.v3 = {};
-    scene.fog = new T.Fog('#d9c9ac', 38, 190);
-    scene.background = new T.Color('#d9c9ac');
+    scene.fog = new T.Fog('#c9ab86', 24, 360);   // the page fades into warm lamplit haze ahead (the room beyond keeps its own)
+    scene.background = new T.Color('#c9ab86');
+    // lamplight: warm from ahead and to the right (long shadows toward the viewer), a cooler fill from the night window
+    K.sunDir.set(0.55, 1, -0.5).normalize(); K.sun.color.set('#fff0d6'); K.amb.color.set('#eceeff');
     K.maxBlur = 6;
     sky(K);
     // the page: a vast sheet; the close-up weave repeats every 6 units
@@ -366,7 +412,11 @@ const PASCENE = (function () {
     deco.add(doodleFlower(-24, -18, 11, 0.4)); deco.add(doodleFlower(21, -128, 8, -0.6));
     // the fallen redwood: a pencil lying across the page to the left
     const pencil = P.pencil(); pencil.scale.setScalar(13); pencil.position.set(-27, 2.3, -88); pencil.rotation.y = 1.25; deco.add(pencil);
-    // pencil shavings curled beside it
+    // pencil shavings curled beside it and here and there off the path: wooden spirals with a painted rim
+    for (let i = 0; i < 14; i++) {
+      const sd = i % 2 ? 1 : -1, x = i < 4 ? -22 + i * 1.5 : sd * (14.5 + r() * 9), z = i < 4 ? -82 - i * 3 : 6 - r() * 160;
+      K.add(shaving(x, z, 0.8 + r() * 1.2, r() * 6, i));
+    }
     K3D.bake(deco);
     // the blockade walls
     st.v3.walls = {};
@@ -382,6 +432,8 @@ const PASCENE = (function () {
     st.v3.aliens = PAALIEN.make(K);
     st.v3.fx = PAFX.make(K);
     st.v3.cam = { pos: null, at: null };
+    PAROOM.build(K, st);
+    bigShadows(K);
     K.focusRange = 9;
   };
   const deskTex = () => K3D.paint('paDesk', 512, 512, (c, w, h) => {
@@ -394,6 +446,7 @@ const PASCENE = (function () {
   S.draw = function (K, st, dt) {
     const V = st.v3; if (!V || !V.H) return;
     const t = G.clock;
+    S.wind.value = t;
     // heroes
     const guns = [];
     G.players.forEach((p, k) => {
@@ -423,6 +476,8 @@ const PASCENE = (function () {
       R.h.traverse(o => { if (o.userData.flame) o.scale.y = 0.8 + Math.sin(t * 30 + o.id) * 0.25; if (o.userData.antenna) o.position.y = 0.44 + Math.sin(t * 6 + o.userData.antenna) * 0.02; });
       R.thimble.visible = h.shield > 0 && !flat; if (R.thimble.visible) R.thimble.position.set(b.x, b.y + 1.25 + Math.sin(t * 3) * 0.05, b.z);
     });
+    // the room and the living page
+    PAROOM.update(K, st, dt, t);
     // aliens and effects
     // beaten aliens crumple for a quarter of a second before the paper ball takes over (drawing only)
     V.crum = V.crum || []; V.crumN = V.crumN == null ? -1 : V.crumN;
@@ -449,7 +504,7 @@ const PASCENE = (function () {
     // the camera: above and behind the pair, looking forward and down; eases back at the wide moments
     const ws = st.wideT > 0 ? clamp(Math.min(st.wideT, 1), 0, 1) : 0;
     V.wide = approach(V.wide || 0, ws, dt * 0.8);
-    let dist = 15 + V.wide * 9, pitch = 37 * Math.PI / 180;
+    let dist = 15.5 + V.wide * 9, pitch = 33 * Math.PI / 180;
     let fx = st.cx, fz = st.cz - 2.5;
     if (st.phase === 'shrink' || G.introT > 0) {
       // the shrink: close on the heroes, pulling back as they shrink

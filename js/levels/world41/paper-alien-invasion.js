@@ -754,6 +754,12 @@ function paStar(x, y, r, fill, hi) {
 function paDrawTop() {
   const st = G.mst;
   if (!st || !st.h) return;
+  // lamplight: a warm dark vignette round the edges of the picture (the night room closing in on the lit page)
+  if (!K3D.noRender) {
+    const W = ctx.canvas.width, H = ctx.canvas.height, g = ctx.createRadialGradient(W / 2, H * 0.55, Math.min(W, H) * 0.35, W / 2, H * 0.55, Math.max(W, H) * 0.75);
+    g.addColorStop(0, 'rgba(40,22,12,0)'); g.addColorStop(1, 'rgba(40,22,12,0.52)');
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore();
+  }
   G.players.forEach((p, k) => {
     const b = p.b3, h = st.h[k];
     const s = K3D.toScreen(b.x, b.y + MOVER3.h, b.z);
@@ -857,7 +863,7 @@ MODES.popaliens = {
     // the clock rescue caps the run at Bronze: no time left counts
     return { timeLeft: st.rescued ? 0 : Math.floor(st.clock), wipeouts: st.wipes };
   },
-  scene3dOpts: { bg: '#cdbfa6', fov: 42, near: 0.3, far: 520 },
+  scene3dOpts: { bg: '#d4bf9c', fov: 46, near: 0.3, far: 1500 },
   setup(st) { paSetup(st); },
   step(dt) { paStep(dt); },
   scene3d(K) { if (typeof PASCENE !== 'undefined') PASCENE.build(K, G.mst); },
@@ -953,7 +959,7 @@ defineOutfit('popaliens', {
 });
 
 // the 3D files for this level, loaded with the kit when a 3D level first opens
-K3D.files.push('js/levels/world41/popaliens-outfits.js', 'js/levels/world41/popaliens-aliens.js', 'js/levels/world41/popaliens-scene.js');
+K3D.files.push('js/levels/world41/popaliens-outfits.js', 'js/levels/world41/popaliens-aliens.js', 'js/levels/world41/popaliens-room.js', 'js/levels/world41/popaliens-scene.js');
 
 const POPALIENS_DEF = {
   name: 'Paper Alien Invasion', world: 40, kind: 'team', mode: 'popaliens', ownStep: true, ownHUD: true, noFalls: true,
