@@ -558,7 +558,7 @@ PARKMANOR.drawTop = function (st) {
 
 /* ---------- MODES.parkmanor ---------- */
 MODES.parkmanor = {
-  medals: { bronze: 'Escape the manor', goals: [{ key: 'wisps', gold: 0.85, silver: 0.55, more: true, pct: true, word: 'the wisps' }, { key: 'frights', gold: 3, silver: 9, word: 'fright' }] },
+  medals: { bronze: 'Escape the manor', goals: [{ key: 'wisps', gold: 0.85, silver: 0.5, more: true, pct: true, word: 'the wisps' }, { key: 'frights', gold: 3, silver: 9, word: 'fright' }] },
   medalValues() { const st = G.mst; return { wisps: Math.min(1, st.wisps / PARKMANOR.wispsMax()), frights: st.frights }; },
   scene3dOpts: { bg: '#0b0a1c', fov: 34, near: 0.2, far: 1600 },
   setup(st) { PARKMANOR.fresh(st); for (const p of G.players) p.alive = true; },

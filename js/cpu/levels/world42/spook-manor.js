@@ -49,7 +49,7 @@
     { x: 14.8, z: -45, door: 'libDoor', wait: [13.6, -44.2] },
     { x: 17.8, z: -45 }, { x: 22, z: -45.6 }, { x: 28.8, z: -46.4 }, { x: 29.6, z: -52.2 }, { x: 31.2, z: -55 },
     { x: 32.4, z: -55, door: 'nurDoor', wait: [31, -53.8], key: [32.8, -55] },
-    { x: 35.8, z: -55 }, { x: 40.4, z: -56.4, wind: 'musicbox', key: [41.6, -57.2] },
+    { x: 35.8, z: -55 }, { x: 40.4, z: -56.4, wind: 'musicbox', key: [41.6, -57.5] },
     { x: 44, z: -50.6, door: 'bedDoor', wait: [43, -51.4] },
     { x: 44, z: -46.6 }, { x: 45.4, z: -41.2 },
     { x: 46.6, z: -41, door: 'wardDoor', wait: [45.2, -42.2], key: [47, -41] },
@@ -126,7 +126,7 @@
 
   cpuBrain('parkmanor', {
     idleStop: 30,
-    reset(s) { s.said = {}; s.aimAt = null; s.aimT = 0; s.r = 0; s.fetch = 0; s.hideWait = 0; s.aims = []; s.navs = null; s.path = null; },
+    reset(s) { s.ri = null; s.lowT = 0; s.said = {}; s.aimAt = null; s.aimT = 0; s.r = 0; s.fetch = 0; s.hideWait = 0; s.aims = []; s.navs = null; s.path = null; },
     think(s, p, o, dt, info) {
       const out = {}, st = info.mst;
       if (!st || st.phase !== 'play' || info.intro || st.ride) return out;
@@ -167,6 +167,10 @@
       const BO = st.boss, boss = bossOn(st) ? BO : null;
       // where the tour is: the furthest point either has reached, and the next job on it
       let ri = Math.min(routeAt(me.x, me.z), routeAt(pb.x, pb.z) + 1);
+      // (a step back by one only once it has held for 1.5 s: standing between two route points must not flip the
+      // target every step, which walked Pip east and west on the spot after Grimsby)
+      if (s.ri != null && ri === s.ri - 1 && (s.lowT = (s.lowT || 0) + dt) < 1.5) ri = s.ri; else if (ri >= (s.ri ?? -1)) s.lowT = 0;
+      s.ri = ri;
       if (ri < ROUTE.length - 1 && hyp(ROUTE[ri].x - me.x, ROUTE[ri].z - me.z) < 1.2 && jobDone(st, ROUTE[ri]) && ROUTE[ri + 1].reg === ROUTE[ri].reg) ri++;
       const r = ROUTE[Math.min(ri, ROUTE.length - 1)];
       // ---------- Pip: the lantern ----------
@@ -295,7 +299,7 @@
         if (!q.key || jobDone(st, q) || q.reg !== regOf(me.x, me.z)) continue;
         if (q.wind === 'musicbox' && st.zone !== 'nursery') continue;
         // the music box first, before the dolls are unwound
-        const tx = q.door ? H.doors.find(d => d.id === q.door) : winder(q.wind), reach = q.door ? 1.6 : 1.3;
+        const tx = q.door ? H.doors.find(d => d.id === q.door) : winder(q.wind), reach = q.door ? 1.6 : 1.33; // (the rules' reach is 1.35)
         if (hyp(tx.x - me.x, tx.z - me.z) < reach && hyp(q.key[0] - me.x, q.key[1] - me.z) < 0.9) { out.act = true; return out; }
         if (!st.spooks.some(sp => sp.state === 'frozen' && hyp(sp.x - me.x, sp.z - me.z) < 2.5) || q.wind === 'musicbox') { walkTo(s, p, st, q.key[0], q.key[1], out, dt); return out; }
       }

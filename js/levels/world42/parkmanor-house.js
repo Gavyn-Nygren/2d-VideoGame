@@ -281,10 +281,10 @@ const PARKMANOR_HOUSE = (function () {
   box(36.2, -58.8, 37.8, -57.4, 0, 1.3, { kind: 'furn', id: 'horse', seeOver: true });
   box(39.6, -59.8, 44.4, -59.0, 0, 1.2, { kind: 'furn', id: 'toyshelf', seeOver: true });
   H.winders.push({ id: 'musicbox', x: 41.6, z: -58.2, face: 0, kind: 'musicbox', dur: 9, light: null, at: [41.6, 1.25, -59.3] });
-  // the cot and the dolls' house
-  box(45.4, -58.8, 47.8, -56.8, 0, 1.1, { kind: 'furn', id: 'cot', seeOver: true }); box(34.2, -52.6, 35.2, -50.4, 0, 1.3, { kind: 'furn', id: 'dollhouse', seeOver: true });
+  // the cot and the dolls' house (the cot reaches the wall: a doll pushed behind it was out of reach)
+  box(45.4, -59.8, 47.8, -56.8, 0, 1.1, { kind: 'furn', id: 'cot', seeOver: true }); box(34.2, -52.6, 35.2, -50.4, 0, 1.3, { kind: 'furn', id: 'dollhouse', seeOver: true });
   H.hides.push({ id: 'chest', x: 46.9, z: -52.4, r: 1.0, kind: 'chest', face: -Math.PI / 2, door: [46, -52.4] });
-  for (const [x, z, i] of [[36.4, -50.0, 0], [46.6, -58.6, 1], [38.6, -58.4, 2], [46.4, -49.4, 3]]) H.spooks.push({ id: 'doll' + i, kind: 'doll', x, z, face: 0, wake: 'nurIn' });
+  for (const [x, z, i] of [[36.4, -50.0, 0], [46.6, -56.2, 1], [38.6, -58.4, 2], [46.4, -49.4, 3]]) H.spooks.push({ id: 'doll' + i, kind: 'doll', x, z, face: 0, wake: 'nurIn' });
   // the bedroom: the four-poster (the lump sits up), the wardrobe that is a door to the attic stairs
   const RB = { extra: { room: 'bedroom' } };
   wall('bedE', 'z', 48, -48.2, -35.8, 4.0, [[-42, -40]], RB);
