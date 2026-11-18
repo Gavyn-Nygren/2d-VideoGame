@@ -34,7 +34,15 @@ if (first < 0) throw new Error('no scripts found in index.html');
 // anything local the two patterns above did not recognise would be missing from the single file: stop instead
 const left = (html.match(/<link\b[^>]*\bstylesheet\b[^>]*>|<script\b[^>]*>/gi) || []).filter(t => !/https?:\/\//.test(t));
 if (left.length) throw new Error('not inlined (use exactly <link rel="stylesheet" href="..."> and <script src="..."></script>): ' + left.join(' '));
-const script = '<script>\n(() => {\n\'use strict\';\n' + parts.join('\n') + '\n})();\n</script>';
+// 3. the 3D kit (loaded on demand in the real game): its files go in as one function the loader runs after three.js,
+//    and three.js itself as text the loader runs from a blob only when a 3D level opens (js/3d/k3d.js)
+const k3d = read(path.join(root, 'js/3d/k3d.js'));
+const kitFiles = JSON.parse(k3d.match(/files: (\[[^\]]*\])/)[1].replace(/'/g, '"').replace(/\s+/g, ' '));
+const libSrc = k3d.match(/lib: '([^']+)'/)[1];
+const kitParts = kitFiles.map(f => { const c = read(path.join(root, f)).replace(/\n$/, ''); if (!STRICT.test(c)) throw new Error(f + ' must start with \'use strict\';'); return c.replace(STRICT, ''); });
+parts.push('K3D.kitInline = () => {\n' + kitParts.join('\n') + '\n};');
+const three = '<script>\nwindow.__k3dInline = { ' + JSON.stringify(libSrc) + ': ' + JSON.stringify(read(path.join(root, libSrc))).replace(/<\//g, '<\\/') + ' };\n</script>\n';
+const script = three + '<script>\n(() => {\n\'use strict\';\n' + parts.join('\n') + '\n})();\n</script>';
 html = html.replace('\u0000SCRIPT\u0000', () => script);
 
 fs.mkdirSync(path.dirname(out), { recursive: true });

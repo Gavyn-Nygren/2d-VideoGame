@@ -1963,7 +1963,10 @@ function drawIntroJobs(a, def) {
 }
 
 function render(dt) {
+  if (K3D.proofOn) { K3D.proofFrame(dt); return; } // the 3D look-proof page (?k3dproof)
   const L = G.level;
+  if (L && L.def.view3d && G.mode !== 'title') { render3d(dt); return; } // a 3D level (World 41 on)
+  K3D.leave(); // (does nothing unless a 3D scene was up)
   ctx.save();
   const s = canvas.width / W;
   ctx.setTransform(s, 0, 0, canvas.height / H, 0, 0);
@@ -2008,6 +2011,16 @@ function render(dt) {
   drawCrown();
   drawHook('drawTop');
   cpuDraw();
+  drawParticles();
+  ctx.restore();
+  // drifting motes and the soft light finish over the scene, under the HUD (js/scenery.js)
+  drawMotes(); drawFinish();
+  // a level's own printPage() over the whole scene, under the HUD (World 32's printed comic page; not 'finish', which 11-3 already uses)
+  if (G.mode !== 'title') drawHook('printPage');
+  if (G.mode !== 'title') { drawHUD(); drawMatchOverlay(); drawIntro(); }
+  ctx.restore();
+}
+function drawParticles() {
   for (const q of G.particles) {
     ctx.globalAlpha = clamp(q.life / q.max, 0, 1);
     ctx.fillStyle = q.col;
@@ -2015,12 +2028,23 @@ function render(dt) {
     else { circle(q.x, q.y, q.size * (0.5 + 0.5 * q.life / q.max)); ctx.fill(); }
   }
   ctx.globalAlpha = 1;
+}
+// a 3D level: the picture is canvas#game3d underneath (js/3d/k3d.js); this canvas is cleared to see-through and gets
+// only the flat things on top: the level's drawTop (name tags, bubbles, prompts at K3D.toScreen spots), the computer
+// partner's marks, 2D particles, the HUD, round banners and the intro card. No tiles, backdrop or 2D players.
+function render3d(dt) {
+  ctx.save();
+  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  // still loading (the ready card is up over this) or no 3D at all (the plain card explains): a calm empty page
+  if (!K3D.frame(dt)) { ctx.fillStyle = '#2e2228'; ctx.fillRect(0, 0, W, H); }
+  ctx.save();
+  if (G.shake > 0) { const m = G.shake * 14; ctx.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m); }
+  drawHook('drawTop');
+  cpuDraw();
+  drawParticles();
   ctx.restore();
-  // drifting motes and the soft light finish over the scene, under the HUD (js/scenery.js)
-  drawMotes(); drawFinish();
-  // a level's own printPage() over the whole scene, under the HUD (World 32's printed comic page; not 'finish', which 11-3 already uses)
-  if (G.mode !== 'title') drawHook('printPage');
-  if (G.mode !== 'title') { drawHUD(); drawMatchOverlay(); drawIntro(); }
+  drawHUD(); drawMatchOverlay(); drawIntro();
   ctx.restore();
 }
 

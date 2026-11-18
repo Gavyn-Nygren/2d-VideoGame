@@ -125,7 +125,7 @@ function cpuTick(dt) {
   for (const p of G.players) {
     if (cpuOn(p.id)) { CPU.idle[p.id] = 0; continue; }
     const i = p.input;
-    CPU.idle[p.id] = i.left || i.right || i.jump || i.down || i.up || i.act ? 0 : CPU.idle[p.id] + dt;
+    CPU.idle[p.id] = i.left || i.right || i.jump || i.down || i.up || i.act || i.ax || i.ay ? 0 : CPU.idle[p.id] + dt;
   }
   CPU.clock += dt;
   CPU.bubbles.forEach((b, k) => {
@@ -151,6 +151,8 @@ function cpuApply(p, out) {
   const j = want('jump'), a = want('act');
   p.input.left = !!out.left && !out.right; p.input.right = !!out.right && !out.left;
   p.input.down = !!out.down; p.input.up = !!out.up;
+  // a brain may steer like a stick (3D levels): ax, ay from -1 to 1 beside the buttons (K3D.moveDir reads them)
+  p.input.ax = out.ax || 0; p.input.ay = out.ay || 0;
   if (j && !p.prevJump && G.mode === 'play') p.pendingJump = true;
   p.prevJump = j; p.input.jump = j;
   if (a && !p.prevAct && G.mode === 'play' && G.level && G.level.def.act) { p.pendingAct = true; p.actAge = 0; }

@@ -64,9 +64,13 @@ kbd {
 .stage {
   position: absolute; left: 0; top: 0; overflow: hidden; background: var(--cabinet-2);
 }
-.stage::after { content: ""; position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.stage::after { content: ""; position: absolute; inset: 0; z-index: 2; background: var(--scrim); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .stage.dim::after { opacity: 1; }
 canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+/* 3D levels (js/3d/): canvas#game3d sits right under canvas#game, which stays on top for the HUD and cards
+   (the dimming scrim above is z-index 2 so it still covers canvas#game, under the touch pads at 3) */
+#game { position: relative; z-index: 1; }
+#game3d { position: absolute; inset: 0; }
 
 .overlay { position: absolute; inset: 0; z-index: 5; display: flex; padding: 16px; overflow: auto; overscroll-behavior: contain; }
 .overlay[hidden] { display: none; }
@@ -694,3 +698,15 @@ details.all-levels > summary:focus-visible { outline: 3px solid var(--gold); out
   .mnm { display: none; }
 }
 .card.fit-card:has(.medal-ladder) { width: min(780px, 100%); }
+
+/* 3D levels with def.touch = 'stick': a round thumb stick takes the move bar's place (js/input.js) */
+.tstick { display: none; }
+.touch-stick .tpad .tmove { display: none; }
+.touch-stick .tpad .tstick { display: block; position: relative; grid-column: 1 / span 2; width: calc(var(--tb) * 1.6); height: calc(var(--tb) * 1.6);
+  justify-self: center; align-self: end; border-radius: 50%; background: rgba(255,255,255,0.14); border: 2px solid rgba(255,255,255,0.35); touch-action: none; }
+.touch-stick .tpad .tstick .tknob { position: absolute; left: 50%; top: 50%; width: 46%; height: 46%; margin: -23% 0 0 -23%; border-radius: 50%;
+  background: rgba(255,255,255,0.5); box-shadow: 0 2px 6px rgba(0,0,0,0.3); pointer-events: none; }
+.touch-stick .tpad .tstick.on { background: rgba(255,255,255,0.22); }
+.touch-stick.act-on .tpad.arows .tstick { grid-column: 1 / span 2; grid-row: 3; }
+.touch-stick.act-on .tpad.pip.acols .tstick { grid-column: 1 / span 2; grid-row: 2; }
+.touch-stick.act-on .tpad.bo.acols .tstick { grid-column: 2 / span 2; grid-row: 2; }

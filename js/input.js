@@ -15,7 +15,9 @@ const BIND = [
   { left: ['KeyA'], right: ['KeyD'], jump: ['KeyW', 'Space'], down: ['KeyS'], act: ['KeyF', 'KeyE'] },
   { left: ['ArrowLeft'], right: ['ArrowRight'], jump: ['ArrowUp'], down: ['ArrowDown'], act: ['Slash', 'Period', 'Comma', 'Enter', 'Numpad0', 'NumpadEnter'] },
 ];
-const GAME_KEYS = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+// 3D levels only: the jump keys (the usual jump keys walk away from the viewer there)
+const K3D_JUMP = [['Space'], ['ShiftRight']];
+const GAME_KEYS = new Set(['ShiftRight', 'KeyA', 'KeyD', 'KeyW', 'KeyS', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
   'KeyF', 'KeyE', 'Slash', 'Period', 'Comma', 'Enter', 'Numpad0', 'NumpadEnter']);
 // Enter pressed on a menu card and still held when the level starts must not count as Bo's action button
 const menuHeld = new Set();
@@ -253,7 +255,17 @@ function pollInput(dt = 1 / 60) {
     const pad = padFor(pads, i), ps = pad ? pad.s : {}, t = touchState[i];
     const any = k => bind[k].some(c => keys.has(c) || tapLive(keysTapped, c)) || !!ps[k] || !!t[k] || tapLive(touchTapped[i], k);
     p.input.left = any('left'); p.input.right = any('right'); p.input.down = any('down'); p.input.up = !!ps.up;
-    const j = any('jump');
+    let j;
+    if (G.level && G.level.def.view3d) {
+      // 3D levels (js/3d/k3d.js): ▲ walks away from the viewer, so the jump keys (W, ↑ or what Settings set) walk up,
+      // and jump moves to Space (Pip) / Right Shift (Bo); a controller's A and the touch jump button still jump.
+      // The stick (or the touch thumb stick) also gives its true angle in ax / ay (K3D.moveDir reads them).
+      const j3 = solo ? K3D_JUMP[0].concat(K3D_JUMP[1]) : K3D_JUMP[i];
+      const upKeys = bind.jump.filter(c => !j3.includes(c));
+      p.input.up = !!ps.up || upKeys.some(c => keys.has(c) || tapLive(keysTapped, c)) || !!t.up;
+      j = j3.some(c => keys.has(c) || tapLive(keysTapped, c)) || !!ps.jump || !!t.jump || tapLive(touchTapped[i], 'jump');
+      p.input.ax = t.ax || ps.ax || 0; p.input.ay = t.ay || ps.ay || 0;
+    } else j = any('jump');
     if (j && !p.prevJump && G.mode === 'play') p.pendingJump = true;
     p.prevJump = j;
     p.input.jump = j;
@@ -395,6 +407,26 @@ document.querySelectorAll('.tmove').forEach(el => {
   el.addEventListener('pointerdown', e => { e.preventDefault(); Sfx.init(); try { el.setPointerCapture(e.pointerId); } catch (_) {} ptrs.set(e.pointerId, sideOf(e)); Dev.last[p] = 'touch'; update(); });
   el.addEventListener('pointermove', e => { if (ptrs.has(e.pointerId)) { ptrs.set(e.pointerId, sideOf(e)); update(); } });
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => el.addEventListener(ev, e => { ptrs.delete(e.pointerId); update(); }));
+  el.addEventListener('contextmenu', e => e.preventDefault());
+});
+// 3D levels with def.touch = 'stick' (html class touch-stick): a round thumb stick in place of the move bar. It gives
+// the true angle and strength (touchState[p].ax / ay, -1 to 1) like a controller stick; K3D.moveDir reads them.
+document.querySelectorAll('.tstick').forEach(el => {
+  const p = +el.dataset.p, knob = el.querySelector('.tknob');
+  let id = null;
+  const move = e => {
+    const r = el.getBoundingClientRect(), R = r.width / 2;
+    let dx = (e.clientX - (r.left + R)) / R, dy = (e.clientY - (r.top + R)) / R;
+    const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
+    const on = Math.hypot(dx, dy) > 0.18;
+    touchState[p].ax = on ? dx : 0; touchState[p].ay = on ? dy : 0;
+    knob.style.transform = 'translate(' + (dx * R * 0.55) + 'px,' + (dy * R * 0.55) + 'px)';
+    el.classList.toggle('on', on);
+  };
+  const end = () => { id = null; touchState[p].ax = 0; touchState[p].ay = 0; knob.style.transform = ''; el.classList.remove('on'); };
+  el.addEventListener('pointerdown', e => { e.preventDefault(); Sfx.init(); id = e.pointerId; try { el.setPointerCapture(id); } catch (_) {} Dev.last[p] = 'touch'; move(e); });
+  el.addEventListener('pointermove', e => { if (e.pointerId === id) move(e); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => el.addEventListener(ev, e => { if (e.pointerId === id) end(); }));
   el.addEventListener('contextmenu', e => e.preventDefault());
 });
 function enableTouch() {

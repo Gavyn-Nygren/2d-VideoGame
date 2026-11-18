@@ -16,12 +16,14 @@
       <div class="tbtn tact" data-p="0" data-k="jump">▲</div>
       <div class="tbtn tact" data-p="0" data-k="down">▼</div>
       <div class="tbtn tact tbtn-act" data-p="0" data-k="act" data-actlabel>act</div>
+      <div class="tstick" data-p="0" aria-hidden="true"><div class="tknob"></div></div>
       <div class="tmove" data-p="0"><div class="tbtn" data-k="left">◀</div><div class="tbtn" data-k="right">▶</div></div>
     </div>
     <div class="tpad bo" id="padBo" aria-hidden="true">
       <div class="tbtn tact" data-p="1" data-k="down">▼</div>
       <div class="tbtn tact" data-p="1" data-k="jump">▲</div>
       <div class="tbtn tact tbtn-act" data-p="1" data-k="act" data-actlabel>act</div>
+      <div class="tstick" data-p="1" aria-hidden="true"><div class="tknob"></div></div>
       <div class="tmove" data-p="1"><div class="tbtn" data-k="left">◀</div><div class="tbtn" data-k="right">▶</div></div>
     </div>
     <!-- the only page button while a level runs: opens the pause menu (settings, controls). Placed by fit(). -->
@@ -459,6 +461,10 @@
 <script src="js/cpu/levels/world35/wiz-beast.js"></script>
 <script src="js/cpu/levels/world35/wiz-exam.js"></script>
 <script src="js/cpu/levels/world35/wiz-duel.js"></script>
+<!-- 3D levels (World 41 on): only the small loader; three.js and the 3D drawing kit load when a 3D level first opens -->
+<script src="js/3d/k3d.js"></script>
+<script src="js/3d/mover.js"></script>
+<script src="js/3d/nav3.js"></script>
 <script src="js/input.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/controls.js"></script>
