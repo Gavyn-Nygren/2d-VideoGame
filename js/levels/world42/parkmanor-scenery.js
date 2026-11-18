@@ -1263,7 +1263,7 @@ const PARKMANOR_SCENE = (function () {
 
   /* =============================== build =============================== */
   function build(K, st) {
-    reseed(); PARK.resetGlints();
+    PARK.seed(); reseed(); PARK.resetGlints();
     for (const k of Object.keys(SC)) delete SC[k];
     SC.horns = [];
     const night = PARK.night(K, { moon: { x: -150, y: 200, z: -470, r: 46 }, fog: '#191838', fogD: 0.006, bloom: 0.85 });
