@@ -10,8 +10,9 @@
          higher, or over a gap of up to 4 cells, never over anything taller than the higher end) or a
          link's own name. links = [{ a: {x,y,z}, b: {x,y,z}, cost, open(t) -> bool, how }] are extra one-way moves
          (a moving platform: open only while it is docked at a). The path is straightened where a body fits.
-     cpuNav3.stick(dx, dz) -> { ax, ay }    a world direction as stick input for the current K3D.heading (the inverse
-         of K3D.moveDir), so a brain can steer like a stick instead of zig-zagging in 8 directions
+     cpuNav3.stick(dx, dz, p) -> { ax, ay } a world direction as stick input for the current K3D.heading (the inverse
+         of K3D.moveDir), so a brain can steer like a stick instead of zig-zagging in 8 directions; given the player p,
+         it also drops p's held heading (moveDir keeps a person's push on the heading it started with)
      cpuNav3.follow(p, path, out) -> out    steers p (its p.b3) along a path: drops reached points, adds ax / ay and
          jump (true: held from the take-off while rising) where the path says so. Returns out with .done at the end.
    Rebuild a nav when the world changes (a door, a pop-up appearing): it is cheap (a page is a few thousand cells).
@@ -168,7 +169,9 @@ const cpuNav3 = {
     if (st.length) { const last = st[st.length - 1]; if (Math.hypot(last.x - to.x, last.z - to.z) < n.cell * 1.5 && this.clear(n, last, { x: to.x, z: to.z, y: last.y })) st.push({ x: to.x, y: last.y, z: to.z, how: 'walk' }); }
     return st;
   },
-  stick(dx, dz) {
+  stick(dx, dz, p) {
+    // (a brain steers for the heading of this moment: K3D.moveDir's held heading is for people's thumbs)
+    if (p) p.mvHold = null;
     const l = Math.hypot(dx, dz);
     if (l < 1e-6) return { ax: 0, ay: 0 };
     const x = dx / l, z = dz / l, c = Math.cos(K3D.heading), s = Math.sin(K3D.heading);
@@ -184,7 +187,7 @@ const cpuNav3 = {
     // (the last point is only reached on the ground: a hop that ends the path lands before it says done)
     while (path && path.length && reached(path[0]) && (b.ground || path.length > 1)) path.shift();
     if (!path || !path.length) { out.done = true; return out; }
-    const t = path[0], st = this.stick(t.x - b.x, t.z - b.z), d = Math.hypot(t.x - b.x, t.z - b.z);
+    const t = path[0], st = this.stick(t.x - b.x, t.z - b.z, p), d = Math.hypot(t.x - b.x, t.z - b.z);
     // in the air it eases off as it nears the point (a full-height jump carries a long way: land on it, not past it)
     const k = b.ground ? 1 : clamp(d / 0.9, 0.25, 1);
     out.ax = st.ax * k; out.ay = st.ay * k;

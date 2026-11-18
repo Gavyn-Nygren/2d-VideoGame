@@ -10,7 +10,8 @@
    const w = MOVER3.world(solids)                 prepares a world (solids can be added later with MOVER3.add(w, s))
    MOVER3.spawn(p, x, y, z)                       puts a player's body (p.b3) there, standing
    MOVER3.step(p, w, dt, o)                       one fixed step for one player:
-       o = { speed: 1 (of a normal run), jump: true (may jump), teeter: true, dir: K3D.moveDir(p) }
+       o = { speed: 1 (of a normal run), jump: true (may jump), teeter: true, dir: K3D.moveDir(p),
+             guard: false (true: the teeter never tips over, the edge just holds them: a level's catch-up help) }
        reads only p.input, p.pendingJump (and clears it); writes p.b3:
        { x, y, z, vx, vy, vz, ground, on (the solid stood on), coyote, buf, teeter, whoa (true on the tick a teeter
          starts), land (true on the tick it lands), fell (true on the tick it walks or slides off a ledge), heading }
@@ -20,7 +21,8 @@
    Speeds come from PHYS (px) divided by K3D.U, so a jump feels like the 2D one: gravity, run speed, jump speed,
    coyote time, jump buffer and jump cut. It never tunnels: movement is split into pieces under half a radius.
    Edge teeter: walking off a ledge more than 0.3 deep hangs the player at the edge for 0.3 s ("Whoa!") while they
-   keep pushing out; pulling back (or letting go) saves it; still pushing after 0.3 s steps them off.
+   keep pushing out; pulling back (or letting go) saves it; still pushing after 0.3 s steps them off. A push mostly
+   along the edge (within 60 degrees) slides along it instead.
 */
 'use strict';
 
@@ -105,7 +107,9 @@ const MOVER3 = {
     }
     if (b.jumping && !i.jump && b.vy > 0) { b.vy *= PHYS.cut; b.jumping = false; }
     // move across in pieces under half a radius
-    const mx = b.vx * dt, mz = b.vz * dt, n = Math.max(1, Math.ceil(Math.hypot(mx, mz) / (this.r * 0.45)));
+    // (a speed that is not a finite number would never finish the pieces below: stop instead, and say so once)
+    if (!Number.isFinite(b.vx) || !Number.isFinite(b.vz)) { if (!this._warned) { this._warned = true; console.warn('MOVER3: speed was not a number', b.vx, b.vz); } b.vx = b.vz = 0; }
+    const mx = b.vx * dt, mz = b.vz * dt, n = Math.min(64, Math.max(1, Math.ceil(Math.hypot(mx, mz) / (this.r * 0.45))));
     for (let k = 0; k < n; k++) {
       const ox = b.x, oz = b.z;
       b.x += mx / n; b.z += mz / n;
@@ -114,9 +118,15 @@ const MOVER3 = {
       if (b.ground && o.teeter !== false) {
         const f = this.floorAt(w, b.x, b.z, b.y + this.stepUp);
         if (f < b.y - this.teeterDrop) {
-          if (b.teeter < this.teeterT) {
+          // pushing mostly along an edge (within 60 degrees of it) slides along it; more outward than that is a teeter
+          const sx = ox + mx / n, sz = oz + mz / n, ml = Math.hypot(mx, mz) * 0.5;
+          const ok = (x, z, m) => m >= ml && this.floorAt(w, x, z, b.y + this.stepUp) >= b.y - this.teeterDrop;
+          const xs = () => ok(sx, oz, Math.abs(mx)) ? [sx, oz] : null, zs = () => ok(ox, sz, Math.abs(mz)) ? [ox, sz] : null;
+          const along = Math.abs(mx) >= Math.abs(mz) ? xs() || zs() : zs() || xs();
+          if (along) { b.x = along[0]; b.z = along[1]; this.push(w, b); continue; }
+          if (b.teeter < this.teeterT || o.guard) {
             if (b.teeter === 0) b.whoa = true;
-            b.teeter += dt / n; b.x = ox; b.z = oz; b.vx = 0; b.vz = 0;
+            b.teeter = Math.min(this.teeterT, b.teeter + dt / n); b.x = ox; b.z = oz; b.vx = 0; b.vz = 0;
           }
         }
       }
@@ -125,7 +135,7 @@ const MOVER3 = {
       // still pushing out over the drop? (else saved)
       const f = this.floorAt(w, b.x + d.x * this.r * 0.9, b.z + d.z * this.r * 0.9, b.y + this.stepUp);
       if (!(d.s > 0.2 && f < b.y - this.teeterDrop)) b.teeter = 0;
-      else if (b.teeter >= this.teeterT) { b.x += d.x * this.r * 0.6; b.z += d.z * this.r * 0.6; b.teeter = 0; b.vx = d.x * 1.5; b.vz = d.z * 1.5; }
+      else if (b.teeter >= this.teeterT && !o.guard) { b.x += d.x * this.r * 0.6; b.z += d.z * this.r * 0.6; b.teeter = 0; b.vx = d.x * 1.5; b.vz = d.z * 1.5; }
     }
     // vertical
     const wasGround = b.ground;
