@@ -688,10 +688,15 @@ void main() {
       for (let z = -pd / 2 + 1; z < pd / 2 - 0.6; z += 0.7 + r() * 0.5) if (Math.abs(z - zc) > H + 0.4) vfold(fam.reed, bx + (r() - 0.5) * 0.3, z, 0.8 + r() * 0.5);
     }
     // the avenue on the dash: trees in neat rows both sides (the camera swings behind the pair here)
-    if (L3.swing) for (let x = L3.swing[0]; x < L3.swing[1]; x += 2.4) {
-      const p = PC.pointAt(L3, PC.progress(L3, x, 0));
-      vfold(fam.birch, x, p.z - H - 1.0, 1.1, { d: 0.05 });
-      vfold(fam.pine, x + 1.2, p.z + H + 1.0, 0.75, { d: 0.12 });
+    // (each row follows the dash's own line, found from where the dash starts, never a later bend of the route;
+    // and no tree is ever planted on the path, e.g. where the dash turns at its end)
+    if (L3.swing) {
+      const zDash = PC.pointAt(L3, PC.progress(L3, L3.swing[0], 0)).z;
+      for (let x = L3.swing[0]; x < L3.swing[1]; x += 2.4) {
+        const p = PC.pointAt(L3, PC.progress(L3, x, zDash));
+        for (const [f, tx, tz, sz, d] of [[fam.birch, x, p.z - H - 1.0, 1.1, 0.05], [fam.pine, x + 1.2, p.z + H + 1.0, 0.75, 0.12]])
+          if (routeD(tx, tz) > H + 0.6) vfold(f, tx, tz, sz, { d });
+      }
     }
     for (const f of Object.values(fam)) f.done();
     sc.fams.push(...Object.values(fam));
