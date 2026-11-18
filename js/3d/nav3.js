@@ -152,7 +152,11 @@ const cpuNav3 = {
   },
   follow(p, path, out = {}) {
     const b = p.b3;
-    while (path && path.length && Math.hypot(path[0].x - b.x, path[0].z - b.z) < 0.22 && Math.abs(path[0].y - b.y) < 0.6) path.shift();
+    // a point is reached within 0.22 across at its height, or in the air when passing over or beyond it (so a hop
+    // flies on to the next point instead of turning back over the gap)
+    const reached = q => { const dx = q.x - b.x, dz = q.z - b.z, d = Math.hypot(dx, dz);
+      return b.ground ? d < 0.22 && Math.abs(q.y - b.y) < 0.6 : d < 0.22 || (d < 0.8 && dx * b.vx + dz * b.vz < 0); };
+    while (path && path.length && reached(path[0])) path.shift();
     if (!path || !path.length) { out.done = true; return out; }
     const t = path[0], st = this.stick(t.x - b.x, t.z - b.z);
     out.ax = st.ax; out.ay = st.ay;
