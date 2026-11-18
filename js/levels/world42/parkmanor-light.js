@@ -33,7 +33,7 @@ const PARKMANOR_LIGHT = (function () {
   function firstHit(st, x0, z0, x1, z1) {
     let best = 1;
     for (const s of st.w.solids) {
-      if (s.ghost || s.y1 < S.TALL || s.y0 > 2 || s.kind === 'stair' || s.kind === 'landing' || s.kind === 'porch' || s.kind === 'edge') continue;
+      if (s.ghost || s.seeOver || s.y1 - s.y0 < S.TALL || s.kind === 'stair' || s.kind === 'landing' || s.kind === 'porch' || s.kind === 'edge' || s.kind === 'chair') continue;
       if (!hitsBox(s, x0, z0, x1, z1)) continue;
       // bisect for the entry point (cheap enough: a handful of blockers at most)
       let lo = 0, hi = best;
@@ -87,6 +87,7 @@ const PARKMANOR_LIGHT = (function () {
     if (!by) for (const w of st.wound) {
       if (w.t <= 0) continue;
       const def = w.def;
+      if (!def.light) continue;
       if (def.light.rect) { const [x0, x1, z0, z1] = def.light.rect; if (x >= x0 && x <= x1 && z >= z0 && z <= z1) { by = 'lamp'; break; } }
       else if (Math.hypot(x - def.light.x, z - def.light.z) <= def.light.r) { by = 'lamp'; break; }
     }

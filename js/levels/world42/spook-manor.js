@@ -40,9 +40,12 @@ const PARKMANOR = (function () {
       restart: 0, sameClock: 0, lastScareClock: -1, gold: 0, goldMsgT: -99, goldN: 0, clockT: -9,
       frights: 0, scareOuts: 0, caughtN: 0, unwound: 0, placeFrights: [0, 0, 0, 0], got: H.wisps.map(() => 0), wispAt: H.wisps.map(w => ({ x: w.x, y: w.y, z: w.z, shown: !w.hide, t: 0 })), wisps: 0,
       keyHold: 0, keyTgt: null, keyWhat: '', biteT: 0, doors: {}, fx: [], finished: false, zone: 'path', place: 0, caught: false, scareWhy: '',
+      ride: null, rideReady: {}, sprung: {}, cleaver: { t: 0, st: 'up' }, chairSfxT: 0,
     });
     st.solids = H.solids.map(s => Object.assign({}, s));
     for (const d of H.doors) { const s = { x: d.x, z: d.z, w: d.w, d: d.d, y0: 0, y1: 3.2, rot: 0, kind: 'door', id: d.id }; st.solids.push(s); st.doors[d.id] = { def: d, s, open: false, t: 0, hold: 0 }; }
+    // the dining chairs: each a small solid that slides from its place at the table across the lane (ghost while tucked in)
+    st.chairs = (H.chairs || []).map(c => { const sd = { x: c.home[0], z: c.home[1], w: 0.66, d: 0.7, y0: 0, y1: 1.25, rot: 0, kind: 'chair', ghost: true, id: c.id }; st.solids.push(sd); return { def: c, u: 0, s: sd, moving: false }; });
     st.w = MOVER3.world(st.solids);
     SP.init(st);
     G.players.forEach((p, k) => { const [x, z] = H.start[k]; MOVER3.spawn(p, x, 0, z); p.b3.heading = Math.PI; });
@@ -114,7 +117,7 @@ const PARKMANOR = (function () {
     st.t += dt; st.phaseT += dt;
     while (st.fx.length && st.t - st.fx[0].t > 4) st.fx.shift();
     st.flash = Math.max(0, st.flash - dt);
-    for (const w of st.wound) { const was = w.t; w.t -= dt; if (was > 3 && w.t <= 3) Sfx.play('parkmanorLampTick'); }
+    for (const w of st.wound) { const was = w.t; w.t -= dt; if (was > 3 && w.t <= 3 && w.def.light) Sfx.play('parkmanorLampTick'); if (w.def.kind === 'musicbox' && was > 0 && w.t <= 0) fire(st, 'musicDone'); }
     st.wound = st.wound.filter(w => w.t > 0);
     for (const id in st.doors) st.doors[id].t += dt;
     // the zone the pair is in: camera heading (game state, never the picture) and the place a Fright is counted in
@@ -136,6 +139,8 @@ const PARKMANOR = (function () {
     if (st.hasLantern && st.hasKey && !st.doors.front.open && !st.fired.frontShut) { openDoor(st, 'front'); if (!st.fired.doorSay) { st.fired.doorSay = true; say(st, 'Come in, come in. Do wipe your feet.'); } }
     // the front door shuts by itself behind them (once both are inside and past the hall clock)
     if (st.doors.front.open && !st.fired.frontShut && st.restart >= 1 && ps.every(p => p.b3.z < 4.6)) { st.fired.frontShut = true; closeDoor(st, 'front'); st.fx.push({ k: 'slam', t: st.t }); }
+    // riding the dumbwaiter or the slide: nothing else happens to the pair meanwhile
+    if (rideStep(st, dt)) { SP.step(st, dt, { fright: (k, by) => fright(st, k, by), caught: k => caught(st, k), fire: id => fire(st, id) }); return; }
     // hiding: both inside one hiding place (and not stiff)
     hideStep(st, dt);
     // Pip's beam
@@ -191,8 +196,89 @@ const PARKMANOR = (function () {
     if (teach && teach.state === 'done' && !st.fired.teachDone) fire(st, 'teachDone');
     // wisps
     wispStep(st, dt);
-    // the end of what is built: out through the corridor's far door (the look-gate build ends at stretch 1)
-    if (H.stretchEnd === 1 && st.doors.corEndDoor.open && ps.every(p => p.b3.x > 28.6) && !st.finished) { st.finished = true; st.phase = 'done'; Sfx.play('parkmanorBow'); levelClear(); }
+    // the dining chairs, the kitchen cleaver, the jack-o-springs
+    chairStep(st, dt);
+    cleaverStep(st, dt);
+    for (const sp of H.springs || []) if (!st.sprung[sp.id] && ps.some(p => hyp(p.b3.x - sp.x, p.b3.z - sp.z) < sp.r)) { st.sprung[sp.id] = st.t; Sfx.play('parkmanorSpring'); st.fx.push({ k: 'spring', id: sp.id, t: st.t }); }
+    // the dolls all unwound before the music box ever ran down: the Butler still comes to the nursery
+    if (!st.fired.musicDone && st.fired.nurIn && st.spooks.filter(sp => sp.kind === 'doll').every(sp => sp.state === 'done')) fire(st, 'musicDone');
+    // Bo's key in Grimsby's back (the finish)
+    // out through the exit into the park, Grimsby wound down
+    if (st.fired.bossDone && !st.finished && ps.every(p => p.b3.z < -106)) { st.finished = true; st.phase = 'done'; st.doneT = st.t; Sfx.play('parkmanorWisp'); levelClear(); }
+  }
+
+  /* ---------- the dining chairs: unlit, they shuffle across the lane; lit (or the Butler passing), they tuck back in ---------- */
+  function chairStep(st, dt) {
+    if (!st.chairs.length || !st.fired.dinIn) return;
+    const ps = G.players, B = st.butler;
+    let started = false;
+    for (const c of st.chairs) {
+      const was = c.u;
+      const back = PML.lit(st, c.s.x, c.s.z) || (B.state !== 'off' && hyp(B.x - c.s.x, B.z - c.s.z) < 2.4);
+      let nu = back ? Math.max(0, c.u - dt * 0.9) : Math.min(1, c.u + dt * 0.32);
+      const e = u => u * u * (3 - 2 * u);
+      const nx = c.def.home[0] + (c.def.block[0] - c.def.home[0]) * e(nu), nz = c.def.home[1] + (c.def.block[1] - c.def.home[1]) * e(nu);
+      // never onto anybody: it waits
+      if (nu > c.u && ps.some(p => hyp(p.b3.x - nx, p.b3.z - nz) < 0.78)) nu = c.u;
+      else { c.s.x = nx; c.s.z = nz; c.u = nu; }
+      c.s.ghost = c.u < 0.3;
+      c.moving = Math.abs(c.u - was) > 1e-4;
+      if (c.moving && was === 0) started = true;
+    }
+    st.chairSfxT -= dt;
+    if (started && st.chairSfxT <= 0) { Sfx.play('parkmanorChairs'); st.chairSfxT = 1.6; }
+  }
+
+  /* ---------- the cleaver on its block: up, a warning lift, then down across the north lane ---------- */
+  function cleaverStep(st, dt) {
+    const C = H.cleaver, cv = st.cleaver;
+    if (!C || !st.fired.kitIn) return;
+    cv.t += dt;
+    const per = C.up + C.warn + C.down, u = cv.t % per;
+    const was = cv.st;
+    cv.st = u < C.up ? 'up' : u < C.up + C.warn ? 'warn' : 'down';
+    if (cv.st === 'warn' && was === 'up') Sfx.play('parkmanorCreak');
+    if (cv.st === 'down' && was !== 'down') { Sfx.play('parkmanorLock', 2); st.fx.push({ k: 'chop', t: st.t }); }
+    if (cv.st !== 'down') return;
+    G.players.forEach((p, k) => {
+      const b = p.b3;
+      if (b.x > C.x - C.w / 2 && b.x < C.x + C.w / 2 && b.z > C.z0 && b.z < C.z1 && st.stiff[k] <= 0) {
+        fright(st, k, { kind: 'cleaver' });
+        // knocked clear of the block (a stiff hero is never left under it)
+        b.x = b.x < C.x ? C.x - C.w / 2 - 0.4 : C.x + C.w / 2 + 0.4; MOVER3.push(st.w, b);
+      }
+    });
+  }
+
+  /* ---------- the dumbwaiter and the slide: wound by Bo, both step in together, a short ride, out on the next floor ---------- */
+  function rideStep(st, dt) {
+    const ps = G.players;
+    if (st.ride) {
+      const R = H.rides[st.ride.id];
+      st.ride.t += dt;
+      for (const p of ps) { p.pendingJump = false; p.pendingAct = false; p.b3.vx = p.b3.vz = 0; }
+      if (st.ride.t >= R.dur) {
+        ps.forEach((p, k) => { const [x, z] = R.to[k]; MOVER3.spawn(p, x, MOVER3.floorAt(st.w, x, z, 8), z); p.b3.heading = R.face; });
+        // the next floor's clock counts as passed
+        for (let i = st.restart + 1; i < H.clocks.length; i++) if (hyp(H.clocks[i].x - R.to[0][0], H.clocks[i].z - R.to[0][1]) < 5) { st.restart = i; st.sameClock = 0; st.clockT = st.t; }
+        st.fx.push({ k: 'rideOut', id: st.ride.id, t: st.t });
+        st.ride = null; Sfx.play(R.kind === 'slide' ? 'parkmanorWake' : 'parkmanorDoor', 0);
+      }
+      return true;
+    }
+    if (st.stiff[0] > 0 || st.stiff[1] > 0 || st.butler.state !== 'off') return false;
+    for (const id in H.rides) {
+      const R = H.rides[id];
+      if (!st.rideReady[id]) continue;
+      if (ps.every(p => hyp(p.b3.x - R.board.x, p.b3.z - R.board.z) < R.board.r + 0.35)) {
+        st.ride = { id, t: 0 }; st.keyHold = 0; st.keyTgt = null; st.beam = false;
+        fire(st, id === 'dumb' ? 'rideDumb' : 'rideSlide');
+        Sfx.play(R.kind === 'slide' ? 'parkmanorSlide' : 'parkmanorWinder', 1);
+        st.fx.push({ k: 'rideIn', id, t: st.t });
+        return true;
+      }
+    }
+    return false;
   }
 
   /* ---------- hiding from the Butler ---------- */
@@ -229,14 +315,21 @@ const PARKMANOR = (function () {
     const p = G.players[1], b = p.b3;
     st.biteT = Math.max(0, st.biteT - dt);
     if (!st.hasKey || st.stiff[1] > 0 || st.hidden || !actHeld(p)) { st.keyHold = 0; st.keyTgt = null; st.keyWhat = ''; return; }
-    // what is in reach: a spook first, then a locked door, then a winder
+    // what is in reach: Grimsby's back, a spook, then a locked door, then a winder
     let tgt = null, what = '';
-    const sp = SP.keyTarget(st, b);
+    if (SP.bossBack(st, b)) { tgt = st.boss; what = 'boss'; }
+    const sp = !tgt && SP.keyTarget(st, b);
     if (sp) { tgt = sp; what = 'spook'; }
     if (!tgt) for (const d of H.doors) { const D = st.doors[d.id]; if (d.lock === true && !D.open && hyp(b.x - d.x, b.z - d.z) < S.KEY_R + 0.4) { tgt = D; what = 'door'; break; } }
     if (!tgt) for (const w of H.winders) if (hyp(b.x - w.x, b.z - w.z) < S.KEY_R) { tgt = w; what = 'winder'; break; }
-    if (tgt !== st.keyTgt) { st.keyHold = 0; st.keyTgt = tgt; st.keyWhat = what; if (tgt && what !== 'spook') Sfx.play('parkmanorWinder', 0); }
+    if (tgt !== st.keyTgt) { st.keyHold = 0; st.keyTgt = tgt; st.keyWhat = what; if (tgt && what !== 'spook' && what !== 'boss') Sfx.play('parkmanorWinder', 0); }
     if (!tgt) return;
+    if (what === 'boss') {
+      if (st.keyHold === 0) Sfx.play('parkmanorUnwind');
+      st.keyHold += dt; tgt.holdT = st.keyHold;
+      if (st.keyHold >= H.boss.hold) { SP.bossTurned(st); st.keyHold = 0; st.keyTgt = null; st.fx.push({ k: 'bossTurn', t: st.t, n: st.boss.turns }); }
+      return;
+    }
     if (what === 'spook') {
       if (tgt.state !== 'frozen') {
         // the key will not go in: it bites
@@ -244,14 +337,19 @@ const PARKMANOR = (function () {
         st.keyHold = 0; return;
       }
       if (st.keyHold === 0) Sfx.play('parkmanorUnwind');
-      st.keyHold += dt; tgt.unwind = st.keyHold / SP.S.UNWIND;
-      if (st.keyHold >= SP.S.UNWIND) { tgt.state = 'done'; tgt.unwind = 1; st.unwound++; st.keyHold = 0; st.keyTgt = null; Sfx.play('parkmanorSag'); st.fx.push({ k: 'unwound', t: st.t, id: tgt.id }); }
+      st.keyHold += dt; tgt.unwind = st.keyHold / SP.unwindT(tgt);
+      if (st.keyHold >= SP.unwindT(tgt)) { tgt.state = 'done'; tgt.unwind = 1; st.unwound++; st.keyHold = 0; st.keyTgt = null; Sfx.play('parkmanorSag'); st.fx.push({ k: 'unwound', t: st.t, id: tgt.id }); }
       return;
     }
     st.keyHold += dt;
     if (st.keyHold >= S.KEY_T) {
-      if (what === 'door') { openDoor(st, tgt.def.id); Sfx.play('parkmanorLock', 0); }
-      else { const ex = st.wound.find(x => x.def === tgt); if (ex) ex.t = tgt.dur; else st.wound.push({ def: tgt, t: tgt.dur }); Sfx.play('parkmanorWinder', 1); if (tgt.kind === 'chandelier') st.fx.push({ k: 'chand', t: st.t }); }
+      if (what === 'door') { openDoor(st, tgt.def.id); Sfx.play('parkmanorLock', 0); if (tgt.def.id === 'organDoor') Sfx.play('parkmanorOrgan'); }
+      else {
+        const ex = st.wound.find(x => x.def === tgt); if (ex) ex.t = tgt.dur; else st.wound.push({ def: tgt, t: tgt.dur });
+        Sfx.play(tgt.kind === 'musicbox' ? 'parkmanorMusicBox' : 'parkmanorWinder', 1);
+        if (tgt.kind === 'chandelier') st.fx.push({ k: 'chand', t: st.t });
+        if (tgt.ride && !st.rideReady[tgt.ride]) { st.rideReady[tgt.ride] = true; st.fx.push({ k: 'rideReady', id: tgt.ride, t: st.t }); if (tgt.kind === 'trap') Sfx.play('parkmanorOrgan'); }
+      }
       st.keyHold = 0; st.keyTgt = null; st.keyDone = st.t;
     }
   }
