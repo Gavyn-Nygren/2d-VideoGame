@@ -17,6 +17,9 @@
               x S.SLIP_K while it lasts. It only ever helps the one behind.
      CRANE    stopped, or facing the wrong way, for S.STUCK_T s: the wind-up crane lifts it (S.CRANE_T s) and sets it
               on the road facing the right way, rolling.
+     SEA      on the pier, hitting the outside railing hard (S.SEA_DN of the heading into it) where it has a gap
+              (TR.gaps): over the edge with a splash, and the crane fishes it out (S.SEA_T s more).
+     FORD     the low line under the Comet is shallow water: top speed x its branch's slow.
    PARKKARTS_KART.make(id, s, lat)   a fresh kart on the road
    PARKKARTS_KART.step(k, inp, dt, o)  one physics step. inp = { steer -1..1, brake, drift (held), }; o = { mul: extra
               top-speed factor (prizes), noSteer }
@@ -34,6 +37,7 @@ const PARKKARTS_KART = (function () {
     SLIP_T: 1.5, SLIP_K: 1.12, SLIP_D: 8, SLIP_W: 1.7, SLIP_HOLD: 0.8,
     R: 0.75, WALL_E: 0.3, WALL_LOSS: 0.5, WALL_LOSS_DRIFT: 0.18,
     STUCK_V: 1.5, STUCK_T: 2.0, WRONG: -0.25, CRANE_T: 1.4, CRANE_V: 7,
+    SEA_DN: 0.3, SEA_T: 0.7,
   };
   const KK = { S };
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -102,6 +106,7 @@ const PARKKARTS_KART = (function () {
     k.boostT = Math.max(0, k.boostT - dt);
     let vt = S.VMAX * (o.mul || 1);
     if (k.verge) vt *= S.VERGE;
+    if (k.where && k.where.branch && k.where.branch.slow) vt *= k.where.branch.slow;
     if (k.boostT > 0 || k.padT > 0) vt *= S.BOOST_K;
     if (k.slipOn > 0) vt *= S.SLIP_K;
     if (k.drift) vt *= S.DRIFT_SLOW;
@@ -141,11 +146,14 @@ const PARKKARTS_KART = (function () {
         k.yaw = Math.atan2(gx, gz);
         k.v *= 1 - (k.drift ? S.WALL_LOSS_DRIFT : S.WALL_LOSS) * dn;
         if (k.wallT <= 0) { k.walls++; k.wallHit = k.t; k.wallHard = dn; }
+        // the pier: through a gap in the railing and into the sea (the crane fishes it out: it takes longer)
+        if (wh.on < 0 && dn > S.SEA_DN && !k.lock && TR.gaps) for (const g of TR.gaps) if (g.side === side && wh.s > g.s0 && wh.s < g.s1) { k.splash = k.t; k.seas = (k.seas || 0) + 1; KK.craneStart(k, 'sea'); k.crane.t = -S.SEA_T; k.crane.x = k.x + nx * 1.5; k.crane.z = k.z + nz * 1.5; return; }
         k.wallT = 0.25;
       }
       const pn = k.px * nx + k.pz * nz; if (pn > 0) { k.px -= pn * nx * 1.3; k.pz -= pn * nz * 1.3; }
       wh = TR.where(k.x, k.z, k.s, wh.on);
     }
+    if (wh.on >= 0 && k.on !== wh.on) { k.took = k.took || {}; const nm = TR.branches[wh.on].kind; k.took[nm] = (k.took[nm] || 0) + 1; }
     k.on = wh.on; k.lat = wh.lat; k.bs = wh.bs; k.where = wh;
     track(k, wh.s);
   }

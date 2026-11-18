@@ -24,6 +24,14 @@
 
 const PARKKARTS_TRACK = (function () {
   const T = { STEP: 0.5, VERGE: 1.7 };
+  // the fountain on Spook Manor Lane: the road forks either side of it (the main road bulges east round it, the fork
+  // takes the west side)
+  const FORK = (function () {
+    const F = [24, -154], d = [-0.616, 0.788], n = [0.788, 0.616], at = (a, b) => [F[0] + d[0] * a + n[0] * b, F[1] + d[1] * a + n[1] * b];
+    return { F, C: at(0, -2), r: 3.6, main: [[...at(-16, 6), 5], [...at(0, 10), 5], [...at(16, 6), 5]],
+      branch: [at(-28, 0.6), at(-16, -5), at(-5, -10.4), at(5, -10.4), at(16, -5), at(28, 0.6)] };
+  })();
+  T.FORK = FORK;
   // control points [x, z, part, hw]
   const P = [
     [0, 0, 0, 4.6], [30, 0, 0], [54, -3, 0], [66, -14, 0], [68, -32, 0], [60, -46, 0], [46, -52, 0], [26, -52, 0, 4.4], [12, -58, 0, 4.6], [10, -72, 0], [22, -80, 0], [42, -80, 0, 4.8],
@@ -32,7 +40,7 @@ const PARKKARTS_TRACK = (function () {
     [202, -104, 2, 4.6], [206, -120, 2], [198, -134, 2], [206, -150, 2], [216, -166, 2],
     [222, -184, 3, 4.2], [224, -202, 3], [216, -218, 3], [196, -226, 3], [176, -224, 3], [160, -218, 3],
     [148, -232, 4, 4.2], [144, -256, 4], [144, -280, 4], [152, -300, 4], [142, -320, 4], [122, -322, 4], [110, -306, 4], [116, -282, 4], [120, -258, 4], [116, -238, 4],
-    [102, -218, 5, 4.6], [82, -206, 5], [62, -196, 5], [44, -176, 5], [24, -154, 5], [8, -130, 5], [-8, -104, 5], [-18, -76, 5], [-20, -48, 5], [-16, -22, 5], [-8, -6, 5],
+    [102, -218, 5, 4.6], [82, -206, 5], [62, -196, 5], [44, -176, 5], ...FORK.main, [8, -130, 5], [-8, -104, 5], [-18, -76, 5], [-20, -48, 5], [-16, -22, 5], [-8, -6, 5],
   ];
   T.PARTS = ['The Kart Track', 'The Midway', 'Under the Comet', 'The Funhouse', 'The Pier', 'Spook Manor Lane'];
 
@@ -124,12 +132,19 @@ const PARKKARTS_TRACK = (function () {
   }
   // the ring-toss shortcut: straight through the stall where the Midway bulges south (in one side and out the other)
   T.ringToss = branch('ring toss', [[92, -81], [104, -82.5], [118, -84], [130, -84], [142, -83.5], [154, -86]], 1.5, { stall: [124, -84], kind: 'ringtoss' });
+  // Under the Comet: the low line through the ford (the log flume's channel, shallow here), beside the ramp (slow: water)
+  T.ford = branch('ford', [[201, -127], [194, -133], [189.5, -142], [190, -151], [196, -159.5], [205, -165], [213, -164]], 2.0, { kind: 'ford', slow: 0.74 });
+  // Spook Manor Lane: the fork round the west side of the fountain (narrower, a little shorter)
+  T.fork = branch('fountain', FORK.branch, 2.4, { kind: 'fork' });
+  // the log flume's channel (it runs under the ramp and through the ford)
+  T.FLUME = [[262, -136], [236, -143], [212, -149], [190, -149], [172, -144], [160, -130], [156, -112]];
 
   // which road a point is on (prefers the main road), and the wall that holds it
   T.where = function (x, z, hint, on) {
     const m = nearOn(main, x, z, hint), Wm = m.f.hw + T.VERGE;
     const res = { on: -1, s: m.s, lat: m.lat, w: Wm, hw: m.f.hw, f: m.f, bs: 0 };
-    if (Math.abs(m.lat) <= Wm) return res;
+    // well inside the main road's walls: the main road (near its wall, a branch that leaves there may take over)
+    if (Math.abs(m.lat) <= Wm - 1.2) return res;
     // a branch that holds the point (or the nearest one, if it was on it last)
     let best = null;
     for (let i = 0; i < T.branches.length; i++) {
@@ -167,15 +182,30 @@ const PARKKARTS_TRACK = (function () {
     row(ps[0] + 128);                   // after the hairpin (out of the corner)
     row(ps[1] + 10, 5);                 // the Midway gate
     row(ps[1] + 90, 5);                 // the far end of the avenue
-    row(ps[2] + 30);
+    // Under the Comet: the ramp over the flume's channel (the row of boxes sits in the air over the jump; a pad on the
+    // run-up makes the high line the quick one)
+    T.ramp = (function () { let best = 0, bd = 1e9; for (let s = ps[2]; s < ps[3]; s += 0.5) { const f = T.at(s), d = Math.abs(f.z + 149 - (f.x - 205) * 0.05); if (d < bd) { bd = d; best = s; } } return { s: best, up: 11, gap: 7, down: 9, h: 2.4 }; })();
+    T.boxes.push({ s: T.ramp.s, lats: [-2.6, 0, 2.6], air: true });
+    T.pads.push({ s0: T.ramp.s - 20, s1: T.ramp.s - 16, lat: 0, w: 1.6 });
     row(ps[3] + 40);
     row(ps[4] + 20);
     row(ps[4] + 130);
-    row(ps[5] + 60);
+    row(ps[5] + 150);
     // the Midway's boost pads: a row down the middle of the avenue (and a second line on the last straight)
     for (let k = 0; k < 3; k++) T.pads.push({ s0: ps[1] + 28 + k * 9, s1: ps[1] + 32 + k * 9, lat: 0, w: 1.4 });
     for (let k = 0; k < 4; k++) T.pads.push({ s0: T.L - 70 + k * 12, s1: T.L - 66 + k * 12, lat: (k % 2 ? 1.6 : -1.6), w: 1.4 });
     T.say.push({ s: ps[1] + 2, text: 'Out onto the Midway!' });
+    T.say.push({ s: ps[3] + 2, text: 'Into the Funhouse!' });
+    T.say.push({ s: ps[4] + 6, text: 'Out along the pier!' });
+    // the pier: gaps in the railing on the outside of the long turn round the wheel. Going wide through one: splash.
+    T.gaps = [];
+    for (const s0 of [ps[4] + 66, ps[4] + 92, ps[4] + 118]) { const f = T.at(s0 + 3); T.gaps.push({ s0, s1: s0 + 6, side: f.turn >= 0 ? 1 : -1 }); }
+    // Spook Manor Lane: plywood headstones standing in the road as a chicane, before the fountain
+    T.stones = [];
+    [[ps[5] + 30, 2.3], [ps[5] + 42, -2.3], [ps[5] + 54, 2.3]].forEach(([s, lat]) => { const p = T.pos(s, lat); T.stones.push({ s, lat, x: p[0], z: p[1], r: 0.75, yaw: T.at(s).yaw }); });
+    // the coffin with the jack-o-spring skeleton (on the verge, harmless) and the neon ghost overhead
+    T.coffin = { s: ps[5] + 78, side: -1 };
+    T.ghost = { s: ps[5] + 20 };
   }
   setup();
   return T;

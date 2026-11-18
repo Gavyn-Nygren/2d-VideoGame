@@ -148,7 +148,8 @@ const PARKKARTS_KART3D = (function () {
     // the drift: the tail kicks out (the body turns into the bend past where it is going)
     const slipWant = k.drift ? -k.drift * 0.42 : (k.skidT > 0 ? Math.sin(k.skidT * 18) * 0.35 : 0);
     kt.slip = (kt.slip || 0) + (slipWant - (kt.slip || 0)) * Math.min(1, dt * 9);
-    g.rotation.set(0, k.yaw + kt.slip + (o.spin || 0), 0);
+    g.rotation.order = 'YXZ'; kt.slope = (kt.slope || 0) + (-Math.atan(o.slope || 0) - (kt.slope || 0)) * Math.min(1, dt * 10);
+    g.rotation.set(kt.slope, k.yaw + kt.slip + (o.spin || 0), 0);
     kt.roll += ((k.drift ? k.drift * 0.08 : k.steer * 0.05 * Math.min(1, k.v / 10)) - kt.roll) * Math.min(1, dt * 8);
     kt.pitch += ((k.braking ? 0.05 : k.boostT > 0 ? -0.04 : 0) - kt.pitch) * Math.min(1, dt * 6);
     kt.body.position.y = kt.bounce * 0.4;

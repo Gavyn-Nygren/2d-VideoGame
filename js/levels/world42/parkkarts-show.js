@@ -202,7 +202,11 @@ const PARKKARTS_SCENE = (function () {
     const fc = 0.62 + 0.24 * u, fl = 0.56 - 0.2 * u;
     const tc = Math.tan(th + Math.atan((2 * fc - 1) * tH)), tl = Math.tan(th + Math.atan((2 * fl - 1) * tH));
     let b = g * tl / (tc - tl); b = Math.max(b, 7.5 + 0.2 * g);
-    const h = b * tc;
+    let h = b * tc;
+    // indoors (the funhouse): lower and closer, under the lintel of the moon's mouth
+    const FH = PW.FUN, inF = sC > FH.mouth - 10 && sC < FH.door - 2 ? 1 : 0;
+    sc.inF = (sc.inF || 0) + (inF - (sc.inF || 0)) * Math.min(1, dt * 2.5);
+    if (sc.inF > 0.001) { b *= 1 - 0.3 * sc.inF; h = h * (1 - sc.inF) + Math.min(h * 0.7, 4.4) * sc.inF; }
     // the base: the kart behind's place on the road (the middle of the pair sideways, a little)
     const latM = (ks[0].lat + ks[1].lat) / 2 * 0.6, cs = far ? sC : Ck.s;
     const cf = TR.at(cs), cx = far ? cf.x + cf.rx * latM : Ck.x * 0.4 + (cf.x + cf.rx * latM) * 0.6, cz = far ? cf.z + cf.rz * latM : Ck.z * 0.4 + (cf.z + cf.rz * latM) * 0.6;
@@ -231,7 +235,7 @@ const PARKKARTS_SCENE = (function () {
     const ks = st.karts;
     // the karts and drivers
     ks.forEach((k, i) => {
-      const kt = sc.karts[i], o = { other: ks[1 - i], y: k.on >= 0 ? 0 : PW.Y(k.s) };
+      const kt = sc.karts[i], o = { other: ks[1 - i], y: PW.Yk(k) };
       // the crane: up and away, then down (the drop eases the kart down where it was set)
       let lift = 0;
       if (k.crane) { const u = k.crane.t / (st.phase === 'crane' && k.id !== st.lead ? PARKKARTS.S.CRANE_T : PARKKARTS_KART.S.CRANE_T); lift = smooth(0.2, 0.75, u); }
@@ -239,14 +243,26 @@ const PARKKARTS_SCENE = (function () {
       o.lift = kt.dl;
       if (st.phase === 'finish' || st.phase === 'done') { if (k.id === st.winner) o.cheer = st.phaseT > 0.4; else o.sad = st.phaseT > 1.2; }
       if (st.fx.some(e => e.k === 'flag' && e.who === k.id && st.t - e.t < 1.6)) o.cheer = true;
-      KK3.pose(kt, k, st, dt, o);
+      // the road's slope (the ramp, the funhouse floor, the slide, the pier's ramps): the kart pitches with it
+      if (k.on < 0) o.slope = (PW.Y(k.s + 0.7) - PW.Y(k.s - 0.7)) / 1.4;
+      // over the pier's edge into the sea: it falls, splashes, and the hook fishes it out where it went in
+      let kp = k;
+      if (k.crane && k.crane.why === 'sea') {
+        const SEA_T = PARKKARTS_KART.S.SEA_T, u = clamp(1 + k.crane.t / SEA_T, 0, 1);
+        o.y = PW.PIER.y * (1 - u * u) - 0.7 * u * u + Math.sin(sc.t * 4) * 0.08 * u;
+        kp = Object.assign({}, k, { x: k.crane.x, z: k.crane.z });
+        if (u >= 1 && kt.splashAt !== k.splash) { kt.splashAt = k.splash; for (let j = 0; j < 70; j++) sc.soft.add(k.crane.x, -0.3, k.crane.z, (Math.random() - 0.5) * 6, 3 + Math.random() * 6, (Math.random() - 0.5) * 6, ['#9ad8ff', '#e8f6ff', '#5ab8ff'][j % 3], 1.1, 0.2, { g: 11 }); Sfx.play('parkkartsSplash'); }
+      }
+      // through the ford: spray off the wheels
+      if (k.on >= 0 && TR.branches[k.on].kind === 'ford' && PW.fordAt != null && Math.abs(k.bs - PW.fordAt) < 5 && k.v > 3 && Math.random() < 0.8) for (let j = 0; j < 3; j++) sc.soft.add(k.x + (Math.random() - 0.5), 0.2, k.z + (Math.random() - 0.5), (Math.random() - 0.5) * 3, 1.5 + Math.random() * 2.5, (Math.random() - 0.5) * 3, j % 2 ? '#bfe4ff' : '#ffffff', 0.6, 0.12, { g: 9 });
+      KK3.pose(kt, kp, st, dt, o);
       // the hook
       const hk = sc.hooks[i];
       hk.g.visible = !!k.crane || kt.dl > 0.02;
       if (hk.g.visible) {
         const top = o.y + 16, ky = o.y + kt.dl * 3.2 + 1.6, down = k.crane ? smooth(0, 0.25, k.crane.t / PARKKARTS_KART.S.CRANE_T) : 1;
         const hy = top + (ky - top) * down;
-        hk.g.position.set(k.x, hy, k.z); hk.cable.scale.y = Math.max(0.1, top - hy); hk.jib.position.y = top - hy; hk.key.rotation.z += dt * 6; hk.lamp.visible = Math.floor(sc.t * 4) % 2 === 0;
+        hk.g.position.set(k.crane && k.crane.why === 'sea' ? k.crane.x : k.x, hy, k.crane && k.crane.why === 'sea' ? k.crane.z : k.z); hk.cable.scale.y = Math.max(0.1, top - hy); hk.jib.position.y = top - hy; hk.key.rotation.z += dt * 6; hk.lamp.visible = Math.floor(sc.t * 4) % 2 === 0;
       }
       effects(sc, st, k, kt, dt, o.y);
     });
@@ -296,7 +312,7 @@ const PARKKARTS_SCENE = (function () {
     if (sc.snapNext) { sc.cam.snap(); sc.snapNext = false; }
     sc.cam.update(K, dt, null, sh);
     // the screen positions of the karts (for name tags and bubbles)
-    for (const p of G.players) { const k = ks[p.id]; if (!k) continue; const q = K3D.toScreen(k.x, PW.Y(k.s) + 1.9, k.z); if (q.z < 1) { p.x = q.x; p.y = q.y; } }
+    for (const p of G.players) { const k = ks[p.id]; if (!k) continue; const q = K3D.toScreen(k.x, PW.Yk(k) + 1.9, k.z); if (q.z < 1) { p.x = q.x; p.y = q.y; } }
   }
 
   // a kart's own effects: drift sparks, boost flames, exhaust, skid marks, slipstream lines, popcorn, floss

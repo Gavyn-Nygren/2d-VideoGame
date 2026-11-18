@@ -91,7 +91,7 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 600), 
       }
       const st = G.mst;
       return { mode: G.mode, simT: +(n * P.DT).toFixed(1), raceT: +st.raceT.toFixed(1), flags: st.flags, winner: st.winner, log: st.log.map(l => `${['Pip', 'Bo'][l.w]} ${l.how} @${l.t.toFixed(0)}s ${l.part} gap ${l.gap}`),
-        k: st.karts.map(k => ({ cranes: k.cranes, walls: k.walls, drifts: k.drifts || 0, boosts: k.boosts, chain: k.bestChain, used: k.used || 0, boxes: k.boxes || 0, hits: k.hits || 0, slips: k.slips || 0, laps: (k.prog / PARKKARTS_TRACK.L).toFixed(1) })),
+        k: st.karts.map(k => ({ cranes: k.cranes, walls: k.walls, drifts: k.drifts || 0, boosts: k.boosts, chain: k.bestChain, used: k.used || 0, boxes: k.boxes || 0, hits: k.hits || 0, slips: k.slips || 0, seas: k.seas || 0, stones: 0, took: JSON.stringify(k.took || {}), laps: (k.prog / PARKKARTS_TRACK.L).toFixed(1) })),
         maxFlip, cpuErrs: [...P.CPU.errs], trace: lines.concat(window.__flipLog ? ['FLIPS'].concat(window.__flipLog) : []) };
     }, { skills, seed, who, side, maxT, trace });
     if (r.trace.length) console.log(r.trace.join('\n'));
@@ -99,7 +99,7 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 600), 
     if (r.winner >= 0) { tot.wins[r.winner]++; tot.len += r.raceT; tot.n++; }
     console.log(`s${seed} ${skills.join(' v ')}${who !== 'cpu' ? ' person=' + who + '@' + ['Pip', 'Bo'][side] : ''}: ${W} wins ${r.flags.join('-')} in ${r.raceT}s (${r.mode})  wobble ${r.maxFlip}/s`);
     console.log('   ' + r.log.join(' | '));
-    console.log('   ' + r.k.map((k, i) => `${['Pip', 'Bo'][i]} laps ${k.laps} cranes ${k.cranes} walls ${k.walls} drifts ${k.drifts} boosts ${k.boosts} chain ${k.chain} boxes ${k.boxes} used ${k.used} hits ${k.hits} slips ${k.slips}`).join('  ||  '));
+    console.log('   ' + r.k.map((k, i) => `${['Pip', 'Bo'][i]} laps ${k.laps} cranes ${k.cranes} walls ${k.walls} drifts ${k.drifts} boosts ${k.boosts} chain ${k.chain} boxes ${k.boxes} used ${k.used} hits ${k.hits} slips ${k.slips} sea ${k.seas} took ${k.took}`).join('  ||  '));
     if (r.cpuErrs.length) console.log('   CPU ERR ' + r.cpuErrs);
     if (errors.length) console.log('   PAGE ERR ' + errors.slice(0, 3).join(' | ').slice(0, 800));
   }

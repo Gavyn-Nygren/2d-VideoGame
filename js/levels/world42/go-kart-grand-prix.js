@@ -147,6 +147,11 @@ const PARKKARTS = (function () {
       const rel = KK.bump(ks[0], ks[1], { ringA: ks[0].ringT > 0, ringB: ks[1].ringT > 0 });
       if (rel) { if (!st.bumpT || st.t - st.bumpT > 0.3) { st.bumpT = st.t; st.fx.push({ k: 'bump', t: st.t, rel }); Sfx.play('parkkartsBump'); } for (const k of ks) KK.contain(k); }
     }
+    // the plywood headstones on Spook Manor Lane (they do not move: a bounce off one)
+    for (const k of ks) if (!k.crane) for (const h of TR.stones) {
+      const st0 = { x: h.x, z: h.z, yaw: h.yaw, v: 0, px: 0, pz: 0, r: h.r, fixed: true };
+      if (KK.bump(k, st0)) { KK.contain(k); if (!k.stoneT || st.t - k.stoneT > 0.4) { k.stoneT = st.t; st.fx.push({ k: 'stone', t: st.t, who: k.id, s: h.s }); Sfx.play('parkkartsBump'); } }
+    }
     for (const k of ks) if (!k.crane) for (const r of st.robots) {
       const rel = KK.bump(k, r);
       if (rel) { r.nudge += 0; KK.contain(k); if (!k.robotT || st.t - k.robotT > 0.4) { k.robotT = st.t; Sfx.play('parkkartsBump'); } }
@@ -437,7 +442,7 @@ PARKKARTS.def.map[16] = '.'.repeat(10) + '1' + '.'.repeat(10) + '2' + '.'.repeat
 LEVELS.push(PARKKARTS.def);
 
 // the 3D-only files: the park kit (42-1's), the drivers' outfits, the kart models and the scenery
-K3D.files.push('js/levels/world42/park-kit.js', 'js/levels/world42/parkkarts-outfits.js', 'js/levels/world42/parkkarts-kart3d.js', 'js/levels/world42/parkkarts-scenery.js', 'js/levels/world42/parkkarts-show.js');
+K3D.files.push('js/levels/world42/park-kit.js', 'js/levels/world42/parkkarts-outfits.js', 'js/levels/world42/parkkarts-kart3d.js', 'js/levels/world42/parkkarts-parts.js', 'js/levels/world42/parkkarts-scenery.js', 'js/levels/world42/parkkarts-show.js');
 
 /* ---------- sounds (rattling lawnmower engines, tyres on wet tarmac, a seaside fair at midnight) ---------- */
 (function () {

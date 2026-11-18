@@ -34,7 +34,28 @@ const PARKKARTS_WORLD = (function () {
       for (let d = 1; d <= steps; d++) if (on[(i + d) % N] || on[(i - d + N) % N]) { best = 1 - d / steps; break; }
       const u = best; yRow[i] = PIER.y * u * u * (3 - 2 * u);
     }
+    // the ramp under the Comet (a jump over the flume's channel) and the funhouse (up the black-light floor to the
+    // top floor, the mirror hall, then the slide down onto the pier)
+    const sm = u => { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); };
+    const RP = TR.ramp, g2 = RP.gap / 2, F0 = TR.partS[3];
+    let pier0 = F0; while (!on[Math.round(pier0 / TR.st) % N]) pier0 += TR.st;
+    const FH = W.FUN = { s0: F0, mouth: F0 + 3, barrel0: F0 + 8, barrel1: F0 + 30, up0: F0 + 34, up1: F0 + 60, mirror0: F0 + 62, mirror1: F0 + 84, door: F0 + 86, slide0: F0 + 87, slide1: pier0, h: 6.4 };
+    W.RAMP = Object.assign({ s0: RP.s - g2 - RP.up, lip: RP.s - g2, land: RP.s + g2, s1: RP.s + g2 + RP.down }, RP);
+    for (let i = 0; i < N; i++) {
+      const s = i * TR.st;
+      let d = s - RP.s; d -= Math.round(d / TR.L) * TR.L;
+      let y = 0;
+      if (d > -g2 - RP.up && d <= -g2) { const u = (d + g2 + RP.up) / RP.up; y = RP.h * (0.6 * u + 0.4 * u * u); }
+      else if (d > -g2 && d < g2) { const u = (d + g2) / RP.gap; y = RP.h + 4 * u * (1 - u) * 1.1 - 0.5 * u; }
+      else if (d >= g2 && d < g2 + RP.down) y = (RP.h - 0.5) * (1 - sm((d - g2) / RP.down));
+      if (s > FH.up0 && s <= FH.slide1) y = Math.max(y, s < FH.up1 ? FH.h * sm((s - FH.up0) / (FH.up1 - FH.up0)) : s < FH.slide0 ? FH.h : FH.h + (PIER.y - FH.h) * ((s - FH.slide0) / (FH.slide1 - FH.slide0)) ** 0.85);
+      yRow[i] = Math.max(yRow[i], y);
+    }
   })();
+  // a branch's height (all at ground level)
+  W.YB = () => 0;
+  // the height under a kart (on a branch or the main road)
+  W.Yk = k => (k.on >= 0 ? 0 : W.Y(k.s));
   W.Y = function (s) {
     s = TR.wrap(s); const f = s / TR.STEP, i = Math.floor(f) % N, u = f - Math.floor(f);
     return yRow[i] + (yRow[(i + 1) % N] - yRow[i]) * u;
@@ -126,13 +147,14 @@ const PARKKARTS_WORLD = (function () {
   /* ---------- the road ---------- */
   function road(K, B) {
     const tar = K3D.toon('#ffffff', { map: tarmacTex(), side: T.DoubleSide });
-    strip(K, tar, null, 0, TR.L, f => -f.hw, f => f.hw, { vLen: 24 });
+    // (the ramp's gap over the flume is open: nothing under the karts in the air)
+    strip(K, tar, null, 0, W.RAMP.lip, f => -f.hw, f => f.hw, { vLen: 24 }); strip(K, tar, null, W.RAMP.land, TR.L, f => -f.hw, f => f.hw, { vLen: 24, v0: W.RAMP.land / 24 });
     for (const Br of TR.branches) strip(K, tar, Br, 0, Br.len, -Br.hw - 0.2, Br.hw + 0.2, { vLen: 24, y: 0.035 });
     // kerbs (red and white) on both sides of every real bend
     const km = K3D.toon('#ffffff', { map: kerbTex(), side: T.DoubleSide });
     let run = null;
     const flush = (e) => { if (run && e - run > 3) { strip(K, km, null, run - 1, e + 1, f => f.hw - 0.15, f => f.hw + 0.75, { vLen: 2, y: 0.05, offset: 1 }); strip(K, km, null, run - 1, e + 1, f => -f.hw - 0.75, f => -f.hw + 0.15, { vLen: 2, y: 0.05, offset: 1 }); } run = null; };
-    for (let s = 0; s < TR.L; s += 1) { const tight = Math.abs(TR.at(s).turn) > 1 / 26 && TR.at(s).part !== 4; if (tight && run == null) run = s; if (!tight) flush(s); }
+    for (let s = 0; s < TR.L; s += 1) { const tight = Math.abs(TR.at(s).turn) > 1 / 26 && TR.at(s).part !== 4 && !(s > W.RAMP.s0 - 3 && s < W.RAMP.s1 + 3) && !(s > W.FUN.s0 && s < W.FUN.slide1 + 2); if (tight && run == null) run = s; if (!tight) flush(s); }
     flush(TR.L);
     // the start line (chequered) and the grid boxes, the Midway's boost pads, chalk arrows before the hairpin
     const f0 = TR.at(0); decal(K, chequer(16, 2), 0, 0, f0.hw * 2, 1.2, { k: 0.9 });
@@ -153,7 +175,7 @@ const PARKKARTS_WORLD = (function () {
     for (let i = 0; i < 4; i++) decal(K, chalk, 100 + i * 4, 0, 1.6, 1.6, { rot: Math.PI, k: 0.7 });
     // drains and puddles (they catch the moon and the bulbs)
     const puddle = K3D.paint('pkw-puddle', 128, 128, (c, w, h) => { const g = c.createRadialGradient(64, 64, 10, 64, 64, 60); g.addColorStop(0, 'rgba(120,130,200,0.55)'); g.addColorStop(0.7, 'rgba(80,90,170,0.3)'); g.addColorStop(1, 'rgba(60,60,120,0)'); c.fillStyle = g; c.beginPath(); c.ellipse(64, 64, 60, 44, 0.3, 0, 7); c.fill(); });
-    for (let s = 20; s < TR.L; s += 37 + rnd() * 30) if (TR.at(s).part !== 3) decal(K, puddle, s, (rnd() - 0.5) * 5, 2 + rnd() * 2, 2.5 + rnd() * 3, { k: 1.1 });
+    for (let s = 20; s < TR.L; s += 37 + rnd() * 30) if (TR.at(s).part !== 3 && Math.abs(W.Y(s + 3) - W.Y(s - 3)) < 0.02) decal(K, puddle, s, (rnd() - 0.5) * 5, 2 + rnd() * 2, 2.5 + rnd() * 3, { k: 1.1 });
   }
 
   /* ---------- the walls: tyre stacks, hay bales, the pier's railings ---------- */
@@ -166,6 +188,9 @@ const PARKKARTS_WORLD = (function () {
         const x = f.x + f.rx * w * sx, z = f.z + f.rz * w * sx;
         let skip = false;
         for (const Br of TR.branches) for (let bs = 0; bs <= Br.len && !skip; bs += 0.5) { const g = Br.at(bs); if (Math.hypot(g.x - x, g.z - z) < Br.hw + 1.4) skip = true; }
+        if (s > W.RAMP.s0 - 1 && s < W.RAMP.s1 + 1) skip = true;                    // the ramp has its own sides
+        if (s > W.FUN.s0 + 1 && s < W.FUN.slide1 + 1) skip = true;                  // the funhouse's walls, the slide's
+        if (TR.gaps.some(g => g.side === sx && s > g.s0 && s < g.s1)) skip = true;   // the pier's broken railing
         if (!skip) add(x, z, f.yaw, W.Y(s), f.part);
       }
     }
@@ -445,59 +470,6 @@ const PARKKARTS_WORLD = (function () {
     return { g, hoops };
   }
 
-  /* ---------- part 2: under the Comet ---------- */
-  function comet(K, B) {
-    const s0 = TR.partS[2] - 4, s1 = TR.partS[3] + 2, steel = toonM('#5a4f86'), rails = [[], []];
-    const legG = K3D.geo('pkw-cleg', () => new T.CylinderGeometry(0.22, 0.3, 1, 8).translate(0, 0.5, 0));
-    for (let s = s0; s <= s1; s += 3) {
-      const f = TR.at(s), w = f.hw + TR.VERGE + 2.2, h = 9 + Math.sin(s * 0.09) * 3.5;
-      for (const sx of [-1, 1]) {
-        const x = f.x + f.rx * w * sx, z = f.z + f.rz * w * sx;
-        rails[sx > 0 ? 1 : 0].push(new T.Vector3(x, h, z));
-        if (Math.round(s / 3) % 3) continue;
-        const l = mesh(legG, steel, { inkW: 0.7 }); l.position.set(x, 0, z); l.scale.y = h; K.add(l);
-      }
-      if (Math.round(s / 3) % 3 === 0) { const a = rails[0][rails[0].length - 1], b = rails[1][rails[1].length - 1]; const d = a.distanceTo(b); const cb = mesh(new T.BoxGeometry(0.3, 0.3, d), steel, { inkW: 0.6 }); cb.position.copy(a).add(b).multiplyScalar(0.5); cb.lookAt(b); K.add(cb); }
-    }
-    for (const pts of rails) {
-      const cur = new T.CatmullRomCurve3(pts);
-      for (const o of [-0.4, 0.4]) { const p2 = pts.map(p => p.clone().add(new T.Vector3(0, o * 0.5, 0))); K.add(mesh(new T.TubeGeometry(new T.CatmullRomCurve3(p2), pts.length * 3, 0.09, 6), toonM('#d8d0e8'), { inkW: 0.5 })); }
-      K.add(mesh(new T.TubeGeometry(cur, pts.length * 3, 0.2, 6), steel, { inkW: 0.7 }));
-      for (let i = 0; i < 120; i++) { const p = cur.getPoint(i / 120); B.add(p.x, p.y + 0.4, p.z, i % 4 ? '#ffe07a' : '#ff8ab0', { size: 0.09, speed: 4, phase: -i * 0.4 }); }
-    }
-    const sg = PARK.neon(K, 'THE COMET', { w: 8, h: 2, col: '#ffcf4a', col2: '#ff6ab0', k: 2.6 });
-    const f = TR.at(s0 + 10); sg.position.set(f.x, 13.5, f.z); sg.rotation.y = Math.atan2(-f.tx, -f.tz); K.add(sg);
-  }
-
-  /* ---------- part 3: the funhouse (its face over the way in) ---------- */
-  function funhouse(K, B) {
-    const s0 = TR.partS[3], s1 = TR.partS[4];
-    // the walls follow the road inside: tall striped panels with a roof that lifts away while the karts are in
-    const wallM = K3D.toon('#ffffff', { map: PARK.stripes('#5d3a9a', '#2f2a6a', 12, { v: true }) });
-    for (const sx of [-1, 1]) {
-      const a = f => sx * (f.hw + TR.VERGE + 1.2);
-      const pos = [], idx = [], uv = []; let k = 0;
-      for (let s = s0 + 4; s <= s1 - 8; s += 2, k++) { const f = TR.at(s), la = a(f), x = f.x + f.rx * la, z = f.z + f.rz * la; pos.push(x, 0, z, x, 7, z); uv.push(s / 6, 0, s / 6, 1); if (k) { const j = k * 2; idx.push(j - 2, j - 1, j, j - 1, j + 1, j); } }
-      const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
-      K.add(new T.Mesh(g, K3D.toon('#ffffff', { map: PARK.stripes('#5d3a9a', '#2f2a6a', 12, { v: true }), side: T.DoubleSide })));
-      for (let s = s0 + 6; s < s1 - 8; s += 3) { const f = TR.at(s), la = a(f) * 0.97; B.add(f.x + f.rx * la, 6.6, f.z + f.rz * la, ['#ff6ab0', '#7affd4', '#ffe07a'][Math.floor(s / 3) % 3], { size: 0.16, speed: 5, phase: s * 0.3 }); }
-    }
-    void wallM;
-    // the laughing moon face over the way in
-    const f = TR.at(s0 + 4), g = new T.Group(); g.position.set(f.x, 0, f.z); g.rotation.y = Math.atan2(-f.tx, -f.tz); K.add(g);
-    const wall = mesh(new T.BoxGeometry(30, 16, 1.2), K3D.toon('#ffffff', { map: PARK.stripes('#5d3a9a', '#2f2a6a', 12, { v: true }) }), { inkW: 1 }); wall.position.set(0, 8, 0); g.add(wall);
-    const face = new T.Group(); face.position.set(0, 9.5, 0.7); g.add(face);
-    const disc = mesh(new T.CylinderGeometry(11, 11, 1.2, 48).rotateX(Math.PI / 2), K3D.toon('#ffe27a', { emissive: '#8a6a10', emissiveIntensity: 0.45 }), { inkW: 1.4 }); face.add(disc);
-    for (const sx of [-1, 1]) { const eye = mesh(new T.SphereGeometry(1.8, 20, 14), toonM('#ffffff')); eye.scale.z = 0.4; eye.position.set(sx * 3.8, 3.4, 0.7); face.add(eye); const pu = new T.Mesh(new T.SphereGeometry(0.9, 14, 10), toonM('#2a2235')); pu.scale.z = 0.4; pu.position.set(sx * 3.8 + 0.3, 3.0, 1.3); face.add(pu); }
-    // the mouth is the doorway (black, the road goes into it)
-    const mouth = new T.Mesh(new T.PlaneGeometry(TR.at(s0 + 4).hw * 2 + 3.6, 7.4), K3D.flat('#0a0612')); mouth.position.set(0, 3.7, 1.35); g.add(mouth);
-    const lip = mesh(new T.TorusGeometry(6.4, 0.5, 8, 32, Math.PI), toonM('#c83a4a'), { inkW: 0.8 }); lip.rotation.z = Math.PI; lip.position.set(0, 7.2, 1.3); lip.scale.set(1, 0.9, 1); face.position.y = 9.5; g.add(lip);
-    const sg = PARK.neon(K, 'FUNHOUSE', { w: 14, h: 3, col: '#7affd4', col2: '#ff6ab0', k: 2.6 }); sg.position.set(0, 17.6, 0.8); g.add(sg);
-    g.updateMatrixWorld(true);
-    const w2 = (x, y, z) => { const q = new T.Vector3(x, y, z).applyMatrix4(face.matrixWorld); return [q.x, q.y, q.z]; };
-    for (let i = 0; i < 56; i++) { const a = i / 56 * Math.PI * 2; B.add(...w2(Math.cos(a) * 11.6, Math.sin(a) * 11.6, 0.8), i % 2 ? '#ffffff' : '#ffd24a', { size: 0.28, speed: 4, phase: i * 0.5 }); }
-  }
-
   /* ---------- part 4: the pier ---------- */
   function pier(K, B) {
     const sea = PARK.sea(K, B, { z: SEA.z, pier: PIER });
@@ -569,8 +541,8 @@ const PARKKARTS_WORLD = (function () {
     }
     PARK.fence(K, B, [-150, 120], [330, 120], { bulbs: true }); PARK.fence(K, B, [-150, SEA.z + 8], [-150, 120], { bulbs: true }); PARK.fence(K, B, [330, SEA.z + 8], [330, 120], { bulbs: true });
     // the promenade along the sea wall
-    for (let x = -140; x < 320; x += 12) { if (Math.abs(x - PIER.x) < PIER.w / 2 + 4) continue; PARK.lamp(K, B, { x, z: SEA.z + 9, moths: x % 36 === 0 }); }
-    for (let x = -140; x < 320; x += 4.5) { if (Math.abs(x - PIER.x) < PIER.w / 2 + 6) continue; PARK.flags(K, [x, 4.6, SEA.z + 9], [x + 4.5, 4.6, SEA.z + 9], { sag: 0.4, n: 6 }); }
+    for (let x = -140; x < 320; x += 12) { if (Math.abs(x - PIER.x) < PIER.w / 2 + 4 || !clear(x, SEA.z + 9, 1.5)) continue; PARK.lamp(K, B, { x, z: SEA.z + 9, moths: x % 36 === 0 }); }
+    for (let x = -140; x < 320; x += 4.5) { if (Math.abs(x - PIER.x) < PIER.w / 2 + 6 || !clear(x, SEA.z + 9, 2) || !clear(x + 4.5, SEA.z + 9, 2)) continue; PARK.flags(K, [x, 4.6, SEA.z + 9], [x + 4.5, 4.6, SEA.z + 9], { sag: 0.4, n: 6 }); }
   }
   // filling the gaps beside the road (Gavyn: never barren): lawns with trees, flower beds and benches, lamps with
   // lanterns, stalls, booths, carts, balloons, hedge animals, tents further out
@@ -650,10 +622,13 @@ const PARKKARTS_WORLD = (function () {
     walls(K, B);
     kartTrack(K, B);
     midway(K, B);
-    comet(K, B);
-    funhouse(K, B);
+    const ctx = { W, strip, decal, clear, room, take, paved, rnd, mesh, toonM, INK, PIER, SEA, boardTex, chequer, tarmacTex, kerbTex, strawTex, tyreTex };
+    PARKKARTS_PARTS.comet(K, B, ctx);
+    PARKKARTS_PARTS.funhouse(K, B, ctx);
     pier(K, B);
+    PARKKARTS_PARTS.pier(K, B, ctx);
     spook(K, B);
+    PARKKARTS_PARTS.spook(K, B, ctx);
     fill(K, B);
     W.fw = PARK.fireworks(K);
     return W;

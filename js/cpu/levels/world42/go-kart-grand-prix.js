@@ -8,7 +8,9 @@
              exit (for the boost). Hard drifts every bend worth it and holds for pink sparks; Normal drifts the big
              ones; Easy rarely drifts and brakes a little into the tightest bends instead.
      LINES   Hard and Normal cut to the inside; Easy keeps nearer the middle and wider. Hard and Normal take the ring-
-             toss shortcut (Hard always, Normal when the way in is clear); Easy never does.
+             toss shortcut (Hard always, Normal when the way in is clear); Easy never does. Easy takes the ford under
+             the Comet (safe and slow); Hard takes the fork round the fountain (Normal every other lap). It steers round
+             the headstones on Spook Manor Lane and keeps off the pier's railing gaps like any wall.
      PRIZES  boost (Popcorn) on a straight, drop the Teddy or the Candy Floss when the person is close behind in line,
              throw balloons or a rocket when the person is ahead and in line, a Magnet when well behind, a Bumper Ring
              when side by side. Easy uses them late.
@@ -42,15 +44,26 @@ cpuBrain('parkkarts', {
     let lineLat = -Math.sign(turn) * Math.min(1, tight / 1.2) * hw * (0.12 + 0.3 * sk);
     // aiming at a point round a bend cuts the corner by about look^2 / 8R: aim that much wider
     const cMid = TR.at(k.s + look * 0.5).turn, cut = Math.max(-2.5, Math.min(2.5, cMid * look * look / 8));
-    // the ring-toss shortcut
-    const B = TR.ringToss; let useShort = false;
-    if (sk >= 0.6) { const ds = PARKKARTS_PRIZES.sd(B.s0, k.s); if (ds > -1 && ds < 26 && (sk >= 0.95 || Math.abs(other.lat - (-hw)) > 2.5)) useShort = true; }
-    if (k.on >= 0) useShort = true;
+    // the shortcuts and choices: the ring toss (Hard always, Normal when the way in is clear), the ford under the
+    // Comet (the safe, slow low line: Easy's), the fork round the fountain (Hard, Normal every other lap)
+    let B = null;
+    if (k.on >= 0) B = TR.branches[k.on];
+    else for (const Bx of TR.branches) {
+      const ds = PARKKARTS_PRIZES.sd(Bx.s0, k.s); if (ds <= -14 || ds >= 26) continue;
+      // committed (past the way in, still steering onto it)
+      if (ds <= 0) { if (b.commit === Bx.name) { B = Bx; break; } continue; }
+      const take = Bx.kind === 'ringtoss' ? sk >= 0.6 && (sk >= 0.95 || Math.abs(other.lat - (-hw)) > 2.5)
+        : Bx.kind === 'ford' ? sk < 0.5
+        : Bx.kind === 'fork' ? sk >= 0.95 || (sk >= 0.6 && k.lap % 2 === 0) : false;
+      if (take) { B = Bx; b.commit = Bx.name; break; }
+    }
+    if (!B && k.on < 0) b.commit = null;
+    const useShort = !!B;
     // keep clear of the other kart when side by side (no ramming)
     const dsO = PARKKARTS_PRIZES.sd(other.s, k.s);
     if (Math.abs(dsO) < 2.5 && Math.abs(other.lat - lineLat) < 1.6) lineLat = other.lat + (other.lat > lineLat ? -1.8 : 1.8);
     // robots ahead in the line: go round them
-    for (const r of st.robots) { const ds = PARKKARTS_PRIZES.sd(r.s, k.s); if (ds > 0 && ds < look + 3 && Math.abs(r.lat - lineLat) < 1.7) lineLat = r.lat + (r.lat > 0 ? -2.0 : 2.0); }
+    for (const r of st.robots.concat(TR.stones)) { const ds = PARKKARTS_PRIZES.sd(r.s, k.s), st0 = r.robot == null; if (ds > 0 && ds < look + 3 && Math.abs(r.lat - lineLat) < (st0 ? 2.0 : 1.7)) lineLat = r.lat + (r.lat > 0 ? -1 : 1) * (st0 ? 2.3 : 2.0); }
     // mistakes: now and then an exit run wide (more for Easy)
     b.mistakeT -= dt;
     if (b.mistakeT <= 0) { b.mistakeT = 4 + Math.random() * 10 * (0.4 + sk); if (Math.random() < 0.8 - sk * 0.6) b.mistake = 0.8 + Math.random() * 0.8; }
