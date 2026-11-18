@@ -23,7 +23,8 @@
                                  'drop' (drop tower), 'teacups', 'flume' (log flume with splashes); each lit with bulbs
      PARK.sea(K, o)              the sea with moonlight glitter, the beach, the pier with its bulbs and a little wheel
      PARK.lake(K, o)             a boating lake (still water, swan boats, reflections)
-     PARK.ground(K, o)           the wet ground: paving that shines, light streaks under bright things (PARK.glint)
+     PARK.ground(K, o)           the ground: grass, cobbled paths and plazas (o.layout), gravel under tracks; wet
+                                 cobbles mirror the moon; light streaks under bright things (PARK.glint)
      PARK.fireworks(K)           bursts: f.burst(x, y, z, col, t), f.auto(on); bloom makes them glow
      PARK.gulls(K, list)         gulls asleep on roofs that take off when the train roars past (g.scare(x, z))
    Every animated piece adds its own ticker (K.tick), driven by the drawn frame's clock: scenery only, never rules.
@@ -95,9 +96,7 @@ const PARK = (function () {
     K.fogCol = fogCol;
     // lights: a cool moon (the one shadow), a blue-violet ambient, and a warm uplight from the park's own bulbs
     K.amb.color.set('#6c6fb8'); K.amb.intensity = 0.36 * Math.PI;
-    K.sun.color.set('#b9c4ff'); K.sun.intensity = 0.34 * Math.PI;
-    K.sunDir.set(0.35, 0.9, -0.6).normalize();
-    const hemi = new T.HemisphereLight('#3a3f8a', '#ffb070', 0.32 * Math.PI); K.scene.add(hemi); K.hemi = hemi;
+        const hemi = new T.HemisphereLight('#3a3f8a', '#ffb070', 0.32 * Math.PI); K.scene.add(hemi); K.hemi = hemi;
     K.bloom = { strength: o.bloom != null ? o.bloom : 0.9, threshold: 1.05, radius: 1.1 };
     K.maxBlur = 1.8; K.focusRange = 60;
     // the sky dome
@@ -133,35 +132,94 @@ const PARK = (function () {
       const stars = new T.Points(g, m); stars.frustumCulled = false; stars.renderOrder = -9; K.scene.add(stars);
       K.tick(dt => { m.uniforms.uT.value += dt; m.uniforms.uPx.value = Math.max(1, K3D.R.domElement.height / 720); stars.position.copy(K.camera.position); sky.position.copy(K.camera.position); });
     }
-    // the moon: a painted disc (craters), a halo, and its glitter path on the sea (PARK.sea)
-    const mo = o.moon || { x: -60, y: 120, z: -520, r: 34 };
-    const moonTex = K3D.paint('pk-moon', 256, 256, (c, w, h) => {
-      const g = c.createRadialGradient(110, 100, 10, 128, 128, 128); g.addColorStop(0, '#fffdf0'); g.addColorStop(0.8, '#f4ecd0'); g.addColorStop(1, '#e6d9b4');
-      c.fillStyle = g; c.beginPath(); c.arc(128, 128, 126, 0, Math.PI * 2); c.fill();
-      for (let i = 0; i < 18; i++) { const x = 40 + rnd() * 176, y = 40 + rnd() * 176, r = 6 + rnd() * 22; if (Math.hypot(x - 128, y - 128) + r > 122) continue; c.fillStyle = `rgba(170,160,130,${0.18 + rnd() * 0.18})`; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(255,255,240,0.25)'; c.beginPath(); c.arc(x - r * 0.2, y - r * 0.2, r * 0.7, 0, Math.PI * 2); c.fill(); }
+    // the moon (Gavyn 2026-11-18: the moonlight needs more work): a big full moon with seas and bright rayed craters,
+    // a hot core that blooms, a soft corona, a wide blue halo and a faint 22-degree ring; clouds with silver linings
+    // where they pass near it; pale shafts of moonlight slanting down through the gaps; and its light on the park is
+    // a cool key light from its side of the sky with crisp shadows (and its streak in the wet cobbles: PARK.ground)
+    const mo = o.moon || { x: -60, y: 200, z: -520, r: 34 };
+    K.moonDir = new T.Vector3(mo.x, mo.y, mo.z).normalize();
+    // its light: from the moon's side of the sky but higher (short, readable shadows falling toward the land)
+    { const hz = Math.hypot(mo.x, mo.z); K.sunDir.set(mo.x / hz * 0.62, 1.05, mo.z / hz * 0.62).normalize(); }
+    K.sun.color.set('#b8c6ff'); K.sun.intensity = 0.62 * Math.PI;
+    K.amb.intensity = 0.3 * Math.PI;
+    const moonTex = K3D.paint('pk-moon2', 512, 512, (c, w, h) => {
+      const R0 = 250, cx0 = 256, cy0 = 256;
+      c.save(); c.beginPath(); c.arc(cx0, cy0, R0, 0, Math.PI * 2); c.clip();
+      const g = c.createRadialGradient(cx0 - 40, cy0 - 50, 20, cx0, cy0, R0); g.addColorStop(0, '#fffef6'); g.addColorStop(0.75, '#f3edd8'); g.addColorStop(1, '#d9cfb2');
+      c.fillStyle = g; c.fillRect(0, 0, w, h);
+      // the seas (soft grey-blue blotches, as on the real moon's face)
+      const seas = [[200, 170, 70], [290, 150, 55], [330, 230, 60], [240, 250, 48], [190, 300, 40], [300, 320, 36], [150, 220, 34]];
+      for (const [x, y, r] of seas) for (let k = 0; k < 6; k++) { const xx = x + (rnd() - 0.5) * r * 0.6, yy = y + (rnd() - 0.5) * r * 0.6, rr = r * (0.5 + rnd() * 0.5); const sg = c.createRadialGradient(xx, yy, 0, xx, yy, rr); sg.addColorStop(0, 'rgba(120,124,150,0.22)'); sg.addColorStop(1, 'rgba(120,124,150,0)'); c.fillStyle = sg; c.fillRect(xx - rr, yy - rr, rr * 2, rr * 2); }
+      // craters: shaded bowls with a bright rim, a few big ones with rays
+      for (let i = 0; i < 60; i++) {
+        const x = 30 + rnd() * 452, y = 30 + rnd() * 452, r = 3 + Math.pow(rnd(), 2.2) * 26;
+        if (Math.hypot(x - cx0, y - cy0) + r > R0 - 4) continue;
+        c.fillStyle = 'rgba(150,140,120,0.32)'; c.beginPath(); c.arc(x + r * 0.12, y + r * 0.12, r, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = 'rgba(255,255,245,0.45)'; c.lineWidth = Math.max(1, r * 0.14); c.beginPath(); c.arc(x, y, r, Math.PI * 0.9, Math.PI * 1.9); c.stroke();
+      }
+      for (const [x, y] of [[300, 380], [180, 120]]) { c.strokeStyle = 'rgba(255,255,250,0.16)'; c.lineWidth = 2; for (let k = 0; k < 14; k++) { const a = rnd() * 6.28, l = 40 + rnd() * 90; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); } c.fillStyle = '#fffff4'; c.beginPath(); c.arc(x, y, 6, 0, Math.PI * 2); c.fill(); }
+      // limb darkening, then a soft bright edge
+      const lg = c.createRadialGradient(cx0, cy0, R0 * 0.6, cx0, cy0, R0); lg.addColorStop(0, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(90,80,70,0.22)'); c.fillStyle = lg; c.fillRect(0, 0, w, h);
+      c.restore();
+      c.strokeStyle = 'rgba(255,255,240,0.6)'; c.lineWidth = 3; c.beginPath(); c.arc(cx0, cy0, R0 - 1.5, 0, Math.PI * 2); c.stroke();
     });
-    const moon = new T.Group(); moon.position.set(mo.x, mo.y, mo.z); K.scene.add(moon);
-    const disc = new T.Mesh(new T.CircleGeometry(mo.r, 48), new T.MeshBasicMaterial({ map: moonTex, color: hot('#ffffff', 1.25), transparent: true, fog: false, toneMapped: false, depthWrite: false }));
-    moon.add(disc);
-    const halo = new T.Mesh(new T.PlaneGeometry(mo.r * 6, mo.r * 6), new T.MeshBasicMaterial({ map: P.glowTex(), color: new T.Color('#9aa4ff').multiplyScalar(0.45), transparent: true, fog: false, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false }));
-    halo.position.z = -1; moon.add(halo);
-    disc.renderOrder = -8; halo.renderOrder = -8.5;
-    // thin cloud, drifting across the moon now and then
-    const cloudTex = K3D.paint('pk-cloud', 512, 128, (c, w, h) => {
-      for (let i = 0; i < 70; i++) { const x = 40 + rnd() * (w - 80), y = h / 2 + (rnd() - 0.5) * h * 0.4, r = 14 + rnd() * 30; const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(190,190,240,0.18)'); g.addColorStop(1, 'rgba(190,190,240,0)'); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
+    const ringTex = K3D.paint('pk-moonRing', 256, 256, (c, w, h) => {
+      const g = c.createRadialGradient(128, 128, 96, 128, 128, 126);
+      g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.55, 'rgba(255,230,210,0.5)'); g.addColorStop(0.75, 'rgba(200,220,255,0.6)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      c.fillStyle = g; c.fillRect(0, 0, w, h);
     });
+    const moon = new T.Group(); K.scene.add(moon);
+    const add = (geo, col, k, o2 = {}) => { const m = new T.Mesh(geo, new T.MeshBasicMaterial(Object.assign({ color: new T.Color(col).multiplyScalar(k), transparent: true, fog: false, depthWrite: false, toneMapped: false }, o2))); moon.add(m); return m; };
+    const halo = add(new T.PlaneGeometry(mo.r * 11, mo.r * 11), '#7f8cff', 0.34, { map: P.glowTex(), blending: T.AdditiveBlending }); halo.position.z = -3;
+    const ring = add(new T.PlaneGeometry(mo.r * 15, mo.r * 15), '#c8d4ff', 0.11, { map: ringTex, blending: T.AdditiveBlending }); ring.position.z = -2.5;
+    const corona = add(new T.PlaneGeometry(mo.r * 3.6, mo.r * 3.6), '#fff4dc', 0.9, { map: P.glowTex(), blending: T.AdditiveBlending }); corona.position.z = -1;
+    const disc = add(new T.CircleGeometry(mo.r, 64), '#ffffff', 1.5, { map: moonTex });
+    halo.renderOrder = -8.7; ring.renderOrder = -8.6; corona.renderOrder = -8.5; disc.renderOrder = -8;
+    // clouds: billows with dark bellies whose edges turn silver near the moon (a shader per cloud: the angle to the moon)
+    const cloudTex = K3D.paint('pk-cloud3', 512, 192, (c, w, h) => {
+      for (let i = 0; i < 170; i++) { const x = 60 + rnd() * (w - 120), y = h * 0.55 + (rnd() - 0.5) * h * 0.3 - Math.sin((x / w) * Math.PI) * h * 0.14, r = 24 + rnd() * 40; const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(255,255,255,0.11)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
+    });
+    const cloudMat = (op) => new T.ShaderMaterial({ transparent: true, depthWrite: false, fog: false,
+      uniforms: { map: { value: cloudTex }, uMoon: { value: K.moonDir }, uOp: { value: op } },
+      vertexShader: 'varying vec2 vUv; varying vec3 vD; void main() { vUv = uv; vec4 w = modelMatrix * vec4(position, 1.0); vD = normalize(w.xyz - cameraPosition); gl_Position = projectionMatrix * viewMatrix * w; }',
+      fragmentShader: `uniform sampler2D map; uniform vec3 uMoon; uniform float uOp; varying vec2 vUv; varying vec3 vD;
+        void main() { float a = texture2D(map, vUv).a; if (a < 0.01) discard;
+          float near = pow(max(dot(normalize(vD), uMoon), 0.0), 18.0), wide = pow(max(dot(normalize(vD), uMoon), 0.0), 4.0);
+          float edge = smoothstep(0.02, 0.25, a) * (1.0 - smoothstep(0.25, 0.75, a));
+          vec3 belly = vec3(0.13, 0.13, 0.27), lit = vec3(0.55, 0.58, 0.8);
+          vec3 c = mix(belly, lit, 0.1 + wide * 0.5) + vec3(0.95, 0.95, 1.0) * edge * near * 0.9;
+          gl_FragColor = vec4(c, min(1.0, a * 1.8) * uOp * (0.5 + 0.5 * wide) * (1.0 - near * 0.35));
+          #include <colorspace_fragment>
+        }` });
     const clouds = [];
-    for (let i = 0; i < 9; i++) {
-      const cl = new T.Mesh(new T.PlaneGeometry(260 + rnd() * 200, 50 + rnd() * 30), new T.MeshBasicMaterial({ map: cloudTex, transparent: true, depthWrite: false, fog: false, opacity: 0.55 + rnd() * 0.4, toneMapped: false }));
-      const a = -Math.PI / 2 + (rnd() - 0.5) * 2.6, d = 560 + rnd() * 120;
-      cl.position.set(Math.cos(a) * d, 90 + rnd() * 120, Math.sin(a) * d); cl.lookAt(0, cl.position.y * 0.6, 0);
-      cl.renderOrder = -7; K.scene.add(cl); clouds.push({ m: cl, a, d, sp: 0.004 + rnd() * 0.006 });
+    for (let i = 0; i < 12; i++) {
+      const cl = new T.Mesh(new T.PlaneGeometry(240 + rnd() * 260, 70 + rnd() * 40), cloudMat(0.55 + rnd() * 0.4));
+      // a few drift close past the moon (their silver edges are the point), the rest round the sky
+      const a = i < 4 ? Math.atan2(mo.z, mo.x) + (rnd() - 0.5) * 0.5 : -Math.PI / 2 + (rnd() - 0.5) * 3.2, d = 560 + rnd() * 120;
+      const y = i < 4 ? mo.y * (d / Math.hypot(mo.x, mo.z)) * (0.75 + rnd() * 0.5) : 90 + rnd() * 130;
+      cl.position.set(Math.cos(a) * d, y, Math.sin(a) * d); cl.lookAt(0, cl.position.y * 0.6, 0);
+      cl.renderOrder = -7; K.scene.add(cl); clouds.push({ m: cl, a, d, sp: (0.004 + rnd() * 0.006) * (i < 4 ? 0.4 : 1) });
     }
+    // moonbeams: long pale shafts slanting down from the moon's side of the sky (additive, very faint, they sway)
+    const beamTex = K3D.paint('pk-beam', 64, 256, (c, w, h) => { const g = c.createLinearGradient(0, 0, w, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); const v = c.createLinearGradient(0, 0, 0, h); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(0.25, 'rgba(0,0,0,1)'); v.addColorStop(1, 'rgba(0,0,0,0)'); c.globalCompositeOperation = 'destination-in'; c.fillStyle = v; c.fillRect(0, 0, w, h); });
+    const beams = [];
+    for (let i = 0; i < 5; i++) {
+      const bm = new T.Mesh(new T.PlaneGeometry(26 + rnd() * 30, 420), new T.MeshBasicMaterial({ map: beamTex, color: new T.Color('#aebcff').multiplyScalar(0.05 + rnd() * 0.04), transparent: true, depthWrite: false, fog: false, blending: T.AdditiveBlending, side: T.DoubleSide, toneMapped: false }));
+      bm.renderOrder = -6; K.scene.add(bm); beams.push({ m: bm, off: (rnd() - 0.5) * 0.9, ph: rnd() * 6, tilt: 0.45 + rnd() * 0.25 });
+    }
+    let bt = 0;
     K.tick(dt => {
-      skyMat.uniforms.uT.value += dt;
+      skyMat.uniforms.uT.value += dt; bt += dt;
       const cp = K.camera.position;
-      moon.position.set(cp.x + mo.x, mo.y + cp.y * 0.2, cp.z + mo.z); moon.lookAt(cp);
+      moon.position.set(cp.x + mo.x, cp.y + mo.y, cp.z + mo.z); moon.lookAt(cp);
       for (const c of clouds) { c.a += c.sp * dt; c.m.position.set(cp.x + Math.cos(c.a) * c.d, c.m.position.y, cp.z + Math.sin(c.a) * c.d); c.m.lookAt(cp.x, c.m.position.y * 0.6, cp.z); }
+      const ma = Math.atan2(mo.z, mo.x);
+      for (const b of beams) {
+        const a = ma + b.off, d = 300;
+        b.m.position.set(cp.x + Math.cos(a) * d, cp.y + 90, cp.z + Math.sin(a) * d);
+        b.m.lookAt(cp.x, b.m.position.y, cp.z); b.m.rotateZ(b.off * -0.6 + Math.sin(bt * 0.07 + b.ph) * 0.05);
+        b.m.material.opacity = 0.7 + 0.3 * Math.sin(bt * 0.11 + b.ph);
+      }
     });
     return { sky, moon, hemi };
   };
@@ -269,14 +327,143 @@ const PARK = (function () {
   };
   P.resetGlints = () => { glints.length = 0; };
 
-  /* ---------- the ground ---------- */
+  /* ---------- the ground ----------
+     Gavyn (2026-11-18): the ground needs more work, in every outdoor World 42 level. One big plane, one shader:
+       grass (night blades, clover, leaves, a few daisies) wherever no path is laid; hand-laid cobbles on the paths and
+       plazas (with a stone kerb where they meet the grass); gravel under the tracks. Two sizes of slow noise break
+       the tiling (patches of lusher or drier grass, cleaner or mossier stones). The cobbles are wet: puddles mirror
+       the moon (a glittering streak on the ground toward it) and the whole paving has a faint moonlit sheen.
+     PARK.ground(K, { x, z, size, layout })   layout (optional; without it the whole ground is paving):
+       { paths: [{ pts: [[x, z], ...], w, kind }], discs: [{ x, z, r, kind }], rects: [{ x, z, w, d, yaw, kind }] }
+       kind 'pave' (default) or 'gravel'. Painted into a mask covering the plane (about 0.7 m a pixel, soft edges). */
+  const dataTex = (key, w, h, painter, o = {}) => { const t = K3D.paint(key, w, h, painter, o); t.colorSpace = T.NoColorSpace; return t; };
+  // smooth tiling noise (value noise on a wrapping lattice): R, G, B are three unrelated fields
+  P.noiseTex = () => dataTex('pk-noise', 256, 256, (c, w, h) => {
+    const img = c.createImageData(w, h), d = img.data;
+    const field = (cells, seed) => { const v = []; for (let i = 0; i < cells * cells; i++) v.push(rnd()); return (x, y) => {
+      const fx = x / w * cells, fy = y / h * cells, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+      const at = (a, b) => v[((b % cells + cells) % cells) * cells + ((a % cells + cells) % cells)], sm = k => k * k * (3 - 2 * k);
+      const a = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * sm(tx), b = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * sm(tx);
+      return a + (b - a) * sm(ty); }; };
+    const f = [[field(4), field(9), field(19)], [field(5), field(11), field(23)], [field(3), field(8), field(16)]];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) for (let k = 0; k < 3; k++) {
+      const v = f[k][0](x, y) * 0.55 + f[k][1](x, y) * 0.3 + f[k][2](x, y) * 0.15;
+      d[(y * w + x) * 4 + k] = Math.max(0, Math.min(255, v * 255));
+      d[(y * w + x) * 4 + 3] = 255;
+    }
+    c.putImageData(img, 0, 0);
+  }, { repeat: true });
+  // cobbles: irregular rounded stones in rows, dark mortar with moss in the joints, a few cracks and worn tops
+  P.cobbles = () => K3D.paint('pk-cobbles', 1024, 1024, (c, w, h) => {
+    c.fillStyle = '#1e1c2a'; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 900; i++) { c.fillStyle = `rgba(${40 + rnd() * 30},${70 + rnd() * 40},${50 + rnd() * 20},${0.25 + rnd() * 0.3})`; c.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 3, 1 + rnd() * 3); }
+    const rows = 16, rh = h / rows;
+    for (let r = 0; r < rows; r++) {
+      let x = (r % 2) * rh * 0.5 - rh;
+      while (x < w + rh) {
+        const sw = rh * (0.75 + rnd() * 0.5), cx = x + sw / 2, cy = r * rh + rh / 2 + (rnd() - 0.5) * 3;
+        const l = 30 + rnd() * 18, hue = 235 + rnd() * 30, sat = 6 + rnd() * 10;
+        const draw = (ox, oy) => {
+          c.save(); c.translate(cx + ox, cy + oy); c.rotate((rnd() - 0.5) * 0.12);
+          const ww = sw - 5, hh = rh - 5;
+          const g = c.createRadialGradient(-ww * 0.15, -hh * 0.2, 2, 0, 0, Math.max(ww, hh) * 0.7);
+          g.addColorStop(0, `hsl(${hue},${sat}%,${l + 10}%)`); g.addColorStop(1, `hsl(${hue},${sat}%,${l - 8}%)`);
+          c.fillStyle = g; c.beginPath();
+          const pts = 9; for (let k = 0; k <= pts; k++) { const a = k / pts * Math.PI * 2, rr = 1 + (rnd() - 0.5) * 0.12; const px = Math.cos(a) * ww / 2 * rr, py = Math.sin(a) * hh / 2 * rr; const sq = 0.7; const qx = Math.sign(px) * Math.pow(Math.abs(px) / (ww / 2), sq) * ww / 2, qy = Math.sign(py) * Math.pow(Math.abs(py) / (hh / 2), sq) * hh / 2; k ? c.lineTo(qx, qy) : c.moveTo(qx, qy); }
+          c.closePath(); c.fill();
+          c.strokeStyle = 'rgba(255,255,255,0.08)'; c.lineWidth = 1.5; c.stroke();
+          // speckle, a worn shine, now and then a crack
+          for (let k = 0; k < 14; k++) { c.fillStyle = `rgba(${rnd() < 0.5 ? '255,255,255' : '0,0,0'},${0.05 + rnd() * 0.07})`; c.fillRect((rnd() - 0.5) * ww * 0.8, (rnd() - 0.5) * hh * 0.8, 1.5, 1.5); }
+          c.fillStyle = 'rgba(220,225,255,0.07)'; c.beginPath(); c.ellipse(-ww * 0.12, -hh * 0.15, ww * 0.25, hh * 0.18, 0, 0, Math.PI * 2); c.fill();
+          if (rnd() < 0.12) { c.strokeStyle = 'rgba(10,8,20,0.5)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-ww * 0.3, -hh * 0.3); c.lineTo(rnd() * 6 - 3, rnd() * 6 - 3); c.lineTo(ww * 0.3, hh * 0.2); c.stroke(); }
+          c.restore();
+        };
+        draw(0, 0); if (cx + sw > w) draw(-w, 0); if (cx - sw < 0) draw(w, 0);
+        x += sw;
+      }
+    }
+  }, { repeat: true });
+  // night grass: a dark base, thousands of blades in blue-greens, clover, fallen leaves, a sprinkle of daisies
+  P.lawnTex = () => K3D.paint('pk-lawnTex', 512, 512, (c, w, h) => {
+    c.fillStyle = '#1d3a30'; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 260; i++) { const x = rnd() * w, y = rnd() * h, r = 8 + rnd() * 30; const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${rnd() < 0.5 ? '40,80,55' : '20,45,40'},0.35)`); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
+    for (let i = 0; i < 9000; i++) {
+      const x = rnd() * w, y = rnd() * h, len = 3 + rnd() * 7, lean = (rnd() - 0.5) * 4;
+      c.strokeStyle = `hsl(${135 + rnd() * 35},${25 + rnd() * 25}%,${14 + rnd() * 20}%)`; c.lineWidth = 0.8 + rnd() * 0.8;
+      c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + lean * 0.3, y - len * 0.6, x + lean, y - len); c.stroke();
+      if (x < 8 || x > w - 8 || y < 10 || y > h - 2) { for (const [ox, oy] of [[w, 0], [-w, 0], [0, h], [0, -h]]) { c.beginPath(); c.moveTo(x + ox, y + oy); c.quadraticCurveTo(x + ox + lean * 0.3, y + oy - len * 0.6, x + ox + lean, y + oy - len); c.stroke(); } }
+    }
+    for (let i = 0; i < 70; i++) { const x = 10 + rnd() * (w - 20), y = 10 + rnd() * (h - 20); c.fillStyle = `rgba(60,${110 + rnd() * 40},70,0.6)`; for (let k = 0; k < 3; k++) { const a = k * 2.1; c.beginPath(); c.arc(x + Math.cos(a) * 2.2, y + Math.sin(a) * 2.2, 2.2, 0, Math.PI * 2); c.fill(); } }
+    for (let i = 0; i < 40; i++) { const x = 6 + rnd() * (w - 12), y = 6 + rnd() * (h - 12); c.save(); c.translate(x, y); c.rotate(rnd() * 6); c.fillStyle = ['#5a3a2a', '#6a4a24', '#4a3a3a'][i % 3]; c.beginPath(); c.ellipse(0, 0, 4, 2, 0, 0, Math.PI * 2); c.fill(); c.restore(); }
+    for (let i = 0; i < 26; i++) { const x = 6 + rnd() * (w - 12), y = 6 + rnd() * (h - 12); c.fillStyle = 'rgba(235,235,250,0.85)'; for (let k = 0; k < 5; k++) { const a = k * 1.256; c.beginPath(); c.arc(x + Math.cos(a) * 1.6, y + Math.sin(a) * 1.6, 1.1, 0, Math.PI * 2); c.fill(); } c.fillStyle = '#f2d04e'; c.beginPath(); c.arc(x, y, 0.9, 0, Math.PI * 2); c.fill(); }
+  }, { repeat: true });
+  P.gravelTex = () => K3D.paint('pk-gravel', 512, 512, (c, w, h) => {
+    c.fillStyle = '#2c2833'; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 7000; i++) { const x = rnd() * w, y = rnd() * h, r = 1 + rnd() * 2.6, l = 22 + rnd() * 30; c.fillStyle = `hsl(${220 + rnd() * 50},${6 + rnd() * 10}%,${l}%)`; c.beginPath(); c.ellipse(x, y, r, r * (0.6 + rnd() * 0.4), rnd() * 3, 0, Math.PI * 2); c.fill(); }
+    for (let i = 0; i < 2500; i++) { c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(rnd() * w, rnd() * h, 1, 1); }
+  }, { repeat: true });
   P.ground = function (K, o = {}) {
     const g = new T.Group();
-    const size = o.size || 1400;
-    const pav = P.paving(); pav.repeat.set(size / 7, size / 7);
-    const ground = mesh(new T.PlaneGeometry(size, size).rotateX(-Math.PI / 2), K3D.toon('#ffffff', { map: pav }), { ink: false, cast: false });
-    ground.position.set(o.x || 120, 0, o.z || 20); g.add(ground);
+    const size = o.size || 1400, cx = o.x != null ? o.x : 120, cz = o.z != null ? o.z : 20, lay = o.layout;
+    // the layout mask: R paving, G gravel
+    const MS = 2048, toPx = (x, z) => [(x - cx) / size * MS + MS / 2, (z - cz) / size * MS + MS / 2], px = m => m / size * MS;
+    const mask = dataTex('pk-groundMask|' + (lay ? JSON.stringify(lay).length + '|' + cx + '|' + cz + '|' + size : 'all'), MS, MS, (c) => {
+      if (!lay) { c.fillStyle = '#ff0000'; c.fillRect(0, 0, MS, MS); return; }
+      c.fillStyle = '#000000'; c.fillRect(0, 0, MS, MS);
+      c.globalCompositeOperation = 'lighter';
+      const col = k => (k === 'gravel' ? '#00ff00' : '#ff0000');
+      for (const pth of lay.paths || []) { c.strokeStyle = col(pth.kind); c.lineWidth = Math.max(1.5, px(pth.w || 6)); c.lineCap = c.lineJoin = 'round'; c.beginPath(); pth.pts.forEach((q, i) => { const [x, y] = toPx(q[0], q[1]); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); }
+      for (const d of lay.discs || []) { c.fillStyle = col(d.kind); const [x, y] = toPx(d.x, d.z); c.beginPath(); c.arc(x, y, px(d.r), 0, Math.PI * 2); c.fill(); }
+      for (const r of lay.rects || []) { c.save(); c.fillStyle = col(r.kind); const [x, y] = toPx(r.x, r.z); c.translate(x, y); c.rotate(-(r.yaw || 0)); c.fillRect(-px(r.w) / 2, -px(r.d) / 2, px(r.w), px(r.d)); c.restore(); }
+      // clamp the sums (paths crossing) and soften the edges a touch
+      c.globalCompositeOperation = 'source-over';
+      const cv2 = document.createElement('canvas'); cv2.width = cv2.height = MS; const c2 = cv2.getContext('2d'); c2.filter = 'blur(1.2px)'; c2.drawImage(c.canvas, 0, 0); c.clearRect(0, 0, MS, MS); c.drawImage(cv2, 0, 0);
+    });
+    mask.wrapS = mask.wrapT = T.ClampToEdgeWrapping;
+    const mat = K3D.toon('#ffffff');
+    const U = { uPave: { value: P.cobbles() }, uGrass: { value: P.lawnTex() }, uGravel: { value: P.gravelTex() }, uNoise: { value: P.noiseTex() }, uMask: { value: mask },
+      uMaskO: { value: new T.Vector2(cx, cz) }, uMaskS: { value: size }, uMoonDir: { value: new T.Vector3(-0.1, 0.25, -0.96).normalize() }, uMoonCol: { value: new T.Color('#dfe6ff') }, uT: { value: 0 } };
+    mat.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, U);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvGW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+        varying vec3 vGW; uniform sampler2D uPave, uGrass, uGravel, uNoise, uMask; uniform vec2 uMaskO; uniform float uMaskS, uT; uniform vec3 uMoonDir, uMoonCol;
+        float gWet, gPave;`).replace('#include <map_fragment>', `
+        vec2 wp = vGW.xz;
+        vec4 mk = texture2D(uMask, (wp - uMaskO) / uMaskS + 0.5);
+        vec3 nz = texture2D(uNoise, wp / 190.0).rgb, nz2 = texture2D(uNoise, wp / 41.0 + 0.37).rgb;
+        // grass: lusher and drier patches, two scales of tint so the tiles never repeat
+        vec3 gr = texture2D(uGrass, wp / 5.5).rgb * mix(0.7, 1.25, nz.r) * mix(0.85, 1.12, nz2.r);
+        gr = mix(gr, gr * vec3(1.12, 1.0, 0.82), smoothstep(0.55, 0.8, nz.g) * 0.6);
+        // cobbles: cleaner or mossier stones, a little darker where wet
+        vec3 pv = texture2D(uPave, wp / 7.0).rgb * mix(0.8, 1.15, nz2.b);
+        pv = mix(pv, pv * vec3(0.8, 1.05, 0.85), smoothstep(0.6, 0.85, nz.b) * 0.5);
+        vec3 gv = texture2D(uGravel, wp / 3.5).rgb * mix(0.85, 1.1, nz2.g);
+        float p = smoothstep(0.3, 0.7, mk.r), gg = smoothstep(0.3, 0.7, mk.g) * (1.0 - p);
+        // a light stone kerb along every path edge
+        float kerb = smoothstep(0.14, 0.32, mk.r) * (1.0 - smoothstep(0.32, 0.5, mk.r));
+        gWet = p * smoothstep(0.62, 0.74, nz2.g * 0.7 + nz.g * 0.5); gPave = p;
+        vec3 col = mix(gr, pv, p); col = mix(col, gv, gg);
+        col = mix(col, vec3(0.42, 0.41, 0.5), kerb * 0.8);
+        col *= 1.0 - gWet * 0.35;
+        diffuseColor.rgb *= col;`).replace('#include <opaque_fragment>', `#include <opaque_fragment>
+        {
+          // the moon in the wet cobbles: a sharp glittering streak in the puddles, a soft sheen on all the paving
+          vec3 V = normalize(cameraPosition - vGW), Rf = reflect(-V, vec3(0.0, 1.0, 0.0));
+          float rm = max(dot(Rf, uMoonDir), 0.0);
+          float rip = texture2D(uNoise, wp / 2.3 + vec2(uT * 0.01, 0.0)).b;
+          float sharp = pow(rm, 700.0) * smoothstep(0.45, 0.8, rip) * 1.6, soft = pow(rm, 30.0);
+          gl_FragColor.rgb += uMoonCol * (gWet * (sharp * 2.2 + soft * 0.12) + gPave * soft * 0.035) * 1.0;
+          // puddles mirror the night sky a little
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.08, 0.09, 0.22), gWet * 0.25 * (1.0 - V.y));
+        }`);
+    };
+    mat.customProgramCacheKey = () => 'pk-ground';
+    const ground = mesh(new T.PlaneGeometry(size, size).rotateX(-Math.PI / 2), mat, { ink: false, cast: false });
+    ground.receiveShadow = true; ground.userData.live = true; // (its own shader: kept out of the bake)
+    ground.position.set(cx, 0, cz); g.add(ground);
     K.add(g);
+    K.tick(dt => { U.uT.value += dt; if (K.moonDir) U.uMoonDir.value.copy(K.moonDir); });
     return g;
   };
 
@@ -750,7 +937,7 @@ const PARK = (function () {
           float side = abs(rel.x * toM.y - rel.y * toM.x), along = dot(rel, toM);
           float path = exp(-side * side / (300.0 + along * 2.4)) * step(0.0, along);
           float rip = n(vW.xz * 0.35) + n(vW.xz * 1.1) * 0.5;
-          float gl = path * smoothstep(0.75, 1.3, rip) * 2.4 + path * 0.12;
+          float gl = path * smoothstep(0.7, 1.3, rip) * 3.2 + path * 0.2 + path * smoothstep(1.2, 1.45, rip) * 4.0;
           vec3 c = base + vec3(0.9, 0.92, 1.0) * gl + vec3(0.06, 0.06, 0.12) * smoothstep(0.9, 1.4, rip);
           float d = length(vW - uCam); c = mix(uFog * 0.7, c, exp(-d * 0.0012));
           gl_FragColor = vec4(c, 1.0);
@@ -758,7 +945,7 @@ const PARK = (function () {
         }`, fog: false });
     const sea = new T.Mesh(new T.PlaneGeometry(2400, 1200, 1, 1).rotateX(-Math.PI / 2), mat);
     sea.position.set(0, -0.6, z0 - 600); K.add(sea);
-    K.tick(dt => { mat.uniforms.uT.value += dt; mat.uniforms.uCam.value.copy(K.camera.position); mat.uniforms.uMoon.value.copy(K.camera.position).add(new T.Vector3(-60, 120, -520)); });
+    K.tick(dt => { mat.uniforms.uT.value += dt; mat.uniforms.uCam.value.copy(K.camera.position); mat.uniforms.uMoon.value.copy(K.camera.position).addScaledVector(K.moonDir || new T.Vector3(-0.1, 0.36, -0.93), 560); });
     // the beach and the sea wall with its railing and lamps
     const sand = mesh(new T.PlaneGeometry(2400, 26).rotateX(-Math.PI / 2), K3D.toon('#6a6080'), { ink: false, cast: false }); sand.position.set(0, -0.3, z0 - 10); K.add(sand);
     const wall = mesh(new T.BoxGeometry(2400, 2.2, 1.2), toonM('#4a4566'), { ink: false }); wall.position.set(0, -0.2, z0 + 3); K.add(wall);

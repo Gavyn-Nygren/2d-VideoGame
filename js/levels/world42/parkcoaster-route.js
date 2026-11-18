@@ -216,7 +216,7 @@ const PARKCOASTER_ROUTE = (function () {
   /* ---------- the park: where everything stands (for the scenery) ---------- */
   PR.art = {
     station: { x: 0, z: 84, w: 14, d: 22 }, clock: { x: -12, z: 78, h: 22 },
-    sea: { z: -150 }, pier: { x: 120, z0: -146, z1: -300, w: 12 }, moon: { x: -60, y: 120, z: -520, r: 34 },
+    sea: { z: -150 }, pier: { x: 120, z0: -146, z1: -300, w: 12 }, moon: { x: -60, y: 200, z: -520, r: 46 },
     lake: { x: 150, z: 112, rx: 74, rz: 46 },
     funhouse: { x: 272, z: 104, w: 70, d: 112, h: 34 },
     midway: { x0: 100, x1: 210, z: -103 },
