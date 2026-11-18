@@ -8,6 +8,7 @@
 //              never|grab|drop|back|finger|lazy|onetwinN: player N misbehaves for the first --naughty=15 s of every page
 //              (never touches a tab, grabs every tab first, lets go mid-crossing, runs back toward the Roll, stands
 //              under the finger, holds a wheel and never turns it, pulls one twin tab and walks off), then plays properly
+//   --draw=N   draw a frame every N steps (software WebGL, slow) instead of K3D.noRender: the run must come out the same
 //   --trace    also print both players every quarter second (--x=<js> adds a value to each line)
 //   Prints per page: time, Flats, Bumps, rewinds, the smallest lead over the Roll, and STUCK if nobody gained
 //   ground for 25 s. Exit code 1 if any run fails to finish.
@@ -18,7 +19,8 @@ const args = process.argv.slice(2);
 const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); return a ? a.slice(k.length + 3) : d; };
 
 (async () => {
-  const browser = await chromium.launch();
+  const draw = +opt('draw', 0);
+  const browser = await chromium.launch(draw ? { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } : {});
   const page = await browser.newPage();
   const errs = [];
   page.on('pageerror', e => errs.push(String(e)));
@@ -27,9 +29,9 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
   let bad = 0;
   for (const who of opt('who', 'cpu').split(',')) {
-    const res = await page.evaluate(({ who, naughtyT, trx: TRX, tr, pg, secs, seed, all }) => {
+    const res = await page.evaluate(async ({ draw, who, naughtyT, trx: TRX, tr, pg, secs, seed, all }) => {
       const P = window.__pipbo, G = P.G, K3D = P.K3D;
-      K3D.noRender = true; G.manual = true;
+      K3D.noRender = !draw; G.manual = true;
       const i = P.LEVELS.findIndex(l => l.mode === 'popchase');
       G.cpuOn = [true, true];
       let r = seed * 9301 + 49297; const rnd = () => ((r = (r * 9301 + 49297) % 233280) / 233280);
@@ -78,8 +80,9 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
       const kid = slow >= 0 ? slow : clumsy >= 0 ? clumsy : naughty, B = CPU.brains.popchase, think0 = B.think;
       if (kid >= 0) B.think = (s, p, o, dt, info) => think0.call(B, s, p, o, dt, p.id !== kid ? Object.assign({}, info, { partnerCpu: false }) : info);
       P.loadLevel(i);
+      if (draw) { const t0 = Date.now(); while (!['ready', 'failed'].includes(K3D.state) && Date.now() - t0 < 120000) await new Promise(r => setTimeout(r, 200)); }
       for (let k = 0; k < pg; k++) P.nextRoom();
-      const whys = [], pages = [], trace = tr ? [] : null;
+      const sig = [], whys = [], pages = [], trace = tr ? [] : null;
       let cur = null, steps = 0, stuck = null;
       const DT = P.DT, maxSteps = Math.round(secs / DT);
       const startPage = () => { cur = { page: G.mst.k, t0: G.time, flats0: G.mst.stats.flats, bumps0: G.mst.stats.bumps, rew0: G.mst.stats.rewinds, lead: 1e9, best: -1e9, bestT: G.time }; };
@@ -87,7 +90,9 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
       while (steps++ < maxSteps) {
         if (G.introT > 0) G.introT = 0;
         P.step(DT);
+        if (draw && steps % draw === 0) P.render(DT);
         const st = G.mst;
+        if (steps % 300 === 0) sig.push(G.players.map(p => p.b3 ? p.b3.x.toFixed(3) + ',' + p.b3.z.toFixed(3) : '').join(' ') + ' ' + st.rollX.toFixed(3));
         for (const p of G.players) { if (p.pc && p.pc.mode === 'flat' && p._wasRun) whys.push([G.mst.k, +G.time.toFixed(1), p.id, p.pc.why || 'rewind', +p.b3.x.toFixed(1), +p.b3.z.toFixed(1)]); p._wasRun = p.pc && p.pc.mode === 'run'; }
         if (trace && steps % 30 === 0) trace.push([+G.time.toFixed(2), TRX ? eval(TRX) : 0, ...G.players.map(p => p.b3 && [+p.b3.x.toFixed(2), +p.b3.z.toFixed(2), p.pc.mode, p.pc.hold ? p.pc.hold.pc.kind + p.pc.hold.t.side : '', p.input ? [+(p.input.ax||0).toFixed(2), +(p.input.ay||0).toFixed(2), p.input.act ? 1 : 0] : null])]);
         if (G.mode === 'clear' || st.finished) { cur.time = G.time - cur.t0; pages.push(cur); break; }
@@ -101,11 +106,11 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
       }
       const st = G.mst;
       const out = { who, clear: G.mode === 'clear', time: +G.time.toFixed(1), flats: st.stats.flats, bumps: st.stats.bumps, rewinds: st.stats.rewinds, closest: +st.stats.closest.toFixed(2),
-        trace, whys, pages: pages.map(c => ({ page: c.page, time: +(c.time || 0).toFixed(1), flats: st.stats.pageFlats[c.page], lead: +c.lead.toFixed(1) })), stuck,
+        sig: sig.join('|').split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(16), trace, whys, pages: pages.map(c => ({ page: c.page, time: +(c.time || 0).toFixed(1), flats: st.stats.pageFlats[c.page], lead: +c.lead.toFixed(1) })), stuck,
         end: { k: st.k, players: G.players.map(p => p.b3 && [p.b3.x.toFixed(1), p.b3.z.toFixed(1), p.pc.mode]) } };
       CPU.filter = null; K3D.noRender = false; B.think = think0;
       return out;
-    }, { who, naughtyT: +opt('naughty', 15), trx: opt('x', ''), tr: args.includes('--trace'), pg: +opt('page', 0), secs: +opt('secs', 600), seed: +opt("seed", 1), all: args.includes("--all") });
+    }, { draw, who, naughtyT: +opt('naughty', 15), trx: opt('x', ''), tr: args.includes('--trace'), pg: +opt('page', 0), secs: +opt('secs', 600), seed: +opt("seed", 1), all: args.includes("--all") });
     const tr = res.trace; delete res.trace;
     console.log(JSON.stringify(res));
     if (tr) for (const l of tr) console.log(JSON.stringify(l));
