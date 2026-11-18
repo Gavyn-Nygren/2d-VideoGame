@@ -13,7 +13,7 @@
             onto two wheels, screeches, a Rattle. On a straight a full tilt held S.TIP_T tips the car up onto one side's
             wheels, narrowing it past things leaning in from the other side (scaffolding, a hook). Leaning also reaches:
             tickets out to the left (Pip) or right (Bo) are taken by the rider on that side leaning out; the far ones
-            (lat 2) need the full tilt.
+            (lat 2) need the full tilt. A rider who is ducking cannot reach out.
      HOP    jump: both within S.HOP_WIN of each other and the train hops (S.HOP_AIR s of air) over missing track. One
             alone is a little bunny hop that is not enough (the nose dips, so it is clear the other is needed).
      DUCK   hold ▼: each rider ducks their own head under low boards, bunting, a tunnel lip.
@@ -29,7 +29,7 @@
    arches (on the track, about every 20 s) tighten every bolt back and set the restart point. Losing every bolt before
    the next arch is a BREAKDOWN: a wheel comes off, a wind-up mechanic whirrs up, and the train is winched back to the
    last arch (tickets kept). Two Breakdowns from the same arch: gold help, five bolts until two more arches are passed,
-   announced ("The mechanic added extra bolts"). Nothing can lock: the track always carries the train on.
+   announced ("The mechanic added extra bolts"), and two more for every Breakdown from that arch after that. Nothing can lock: the track always carries the train on.
    Only the boarding before control starts and the stop at the station are not played (jump skips them).
    One room in the game's sense; the four stretches are places along the rail (never cards).
    State lives in G.mst; the rules never read the renderer (K3D.noRender plays the same). Names are prefixed parkcoaster. */
@@ -38,9 +38,9 @@ const PARKCOASTER = (function () {
   const PR = PARKCOASTER_ROUTE, R = PR.R, L = PR.lists;
   const S = {
     EASE: 0.2, TIP_T: 0.18, TIP_FULL: 0.92, HALF: 0.42, BEND_WRONG: 0.75, BURST: 0.1, BURST_T: 1.0,
-    HOP_WIN: 0.3, HOP_AIR: 1.0, HOP_H: 1.5, BUNNY_AIR: 0.34, BUNNY_H: 0.28, GAP_CLEAR: 0.3,
+    HOP_WIN: 0.4, HOP_AIR: 1.0, HOP_H: 1.5, BUNNY_AIR: 0.34, BUNNY_H: 0.28, GAP_CLEAR: 0.3, GAP_GRACE: 0.08, HOP_BUFFER: 0.2,
     ARM_T: 0.35, LEVER_PRE: 1.4, LEVER_MIN: 6, LEVER_POST: 0.6, BRAKE_PRE: 1.2,
-    SAFE: 1.5, BOLTS: 3, GOLD_BOLTS: 5, GOLD_ARCHES: 2, BD_STOP: 1.0, BD_FIX: 2.0, BD_WINCH: 2.0,
+    SAFE: 1.5, BOLTS: 3, GOLD_BOLTS: 5, GOLD_MORE: 2, GOLD_ARCHES: 2, BD_STOP: 1.0, BD_FIX: 2.0, BD_WINCH: 2.0,
     CAM_QUIET: 1.0, PHOTO_TICKETS: 5, BELL_TICKETS: 3, TICKET_DS: 0.7,
     BOARD_T: 7.5, STOP_T: 5.5,
   };
@@ -68,9 +68,9 @@ const PARKCOASTER = (function () {
       phase: 'board', t: 0, phaseT: 0, s: 0, v: 0, det: -1, ds: 0, burst: 0, burstT: 0,
       lean: [0, 0], tilt: 0, tipT: 0, tipped: 0, duck: [false, false], arm: [0, 0], armUp: [0, 0],
       air: 0, airT: -1, airDur: 0, airH: 0, full: false, hopFirst: -1, hopWinT: 0, hops: 0, bunny: 0,
-      bolts: S.BOLTS, maxBolts: S.BOLTS, safe: 0, rattles: 0, rattleAt: [0, 0, 0, 0], breakdowns: 0, bd: null,
+      bolts: S.BOLTS, maxBolts: S.BOLTS, safe: 0, grace: 0, bdDue: false, rattles: 0, rattleAt: [0, 0, 0, 0], breakdowns: 0, bd: null,
       restart: PR.START, archI: 0, sameArch: 0, lastBdArch: -1, gold: 0, goldMsgT: -99, goldN: 0,
-      tickets: 0, got: L.tickets.map(() => false), photos: 0, camsSeen: 0, camWin: null, bells: 0, switches: 0, thrown: {},
+      tickets: 0, got: L.tickets.map(() => false), photos: 0, photoGot: {}, camsSeen: 0, camWin: null, bells: 0, switches: 0, thrown: {},
       bendState: {}, bendsGood: 0, says: [], fx: [], brake: [false, false], brakeLoops: 0, lastWhy: '',
       bonk: [0, 0], screech: 0, hug: 0, clack: 0, flash: 0, sparksT: 0, wheelOff: 0,
       prevS: 0, started: false, finished: false, gapHit: {},
@@ -79,19 +79,24 @@ const PARKCOASTER = (function () {
   // how far ahead of a lever its zone opens (a press inside it hits the lever): bells and targets set their own (short,
   // so a row of targets needs a press each), switches open about 1.4 s ahead, the brakes 1.2 s
   CO.leverPre = (lv, v) => (lv.pre != null ? lv.pre : lv.kind === 'brake' ? Math.max(4, v * S.BRAKE_PRE) : Math.max(S.LEVER_MIN, v * S.LEVER_PRE));
+  // the part of a gap that counts: its edges forgive a take-off or landing S.GAP_GRACE s late or early (at least a
+  // third of the gap always counts)
+  CO.gapSpan = (h, v) => { const m = Math.min(0.15 + v * S.GAP_GRACE, (h.s1 - h.s0) / 3); return [h.s0 + m, h.s1 - m]; };
   // the train's place: on the main line or a detour
   CO.frame = st => (st.det >= 0 ? PR.dets[st.det].at(st.ds) : R.at(st.s));
 
   /* ---------- Rattles and Breakdowns ---------- */
   function rattle(st, why, who) {
-    if (st.safe > 0 || st.phase !== 'ride') return false;
+    if (st.safe > 0 || st.grace > 0 || st.phase !== 'ride') return false;
     st.safe = S.SAFE; st.rattles++; st.bolts--; st.lastWhy = why;
     st.rattleAt[CO.partAt(st.s)]++;
     st.fx.push({ k: 'rattle', t: st.t, why, who });
     Sfx.play('parkcoasterRattle');
     G.shake = Math.max(G.shake || 0, 0.35);
     if (typeof rumble === 'function') { rumble(0, 0.5, 0.6, 180); rumble(1, 0.5, 0.6, 180); }
-    if (st.bolts <= 0) breakdown(st);
+    // (the last bolt lost on a detour: the Breakdown waits until the train is back on the main line, where the
+    // mechanic and the winch are)
+    if (st.bolts <= 0) { if (st.det >= 0) st.bdDue = true; else breakdown(st); }
     return true;
   }
   function breakdown(st) {
@@ -105,8 +110,14 @@ const PARKCOASTER = (function () {
   function restartAt(st) {
     st.phase = 'ride'; st.phaseT = 0; st.det = -1; st.ds = 0;
     st.s = st.restart; st.prevS = st.s; st.v = R.at(st.s).v;
-    if (st.sameArch >= 2 && st.gold <= 0) { st.gold = S.GOLD_ARCHES; st.maxBolts = S.GOLD_BOLTS; st.goldMsgT = st.t; st.goldN++; }
-    st.bolts = st.maxBolts; st.safe = 2.0; st.wheelOff = 0;
+    // gold help: two Breakdowns from one arch give five bolts; every Breakdown from that arch after that adds two more
+    // (announced again), so no pair can be sent round the same arch for ever
+    if (st.sameArch >= 2) {
+      const bolts = S.GOLD_BOLTS + (st.sameArch - 2) * S.GOLD_MORE;
+      if (st.gold <= 0 || bolts > st.maxBolts) { st.maxBolts = Math.max(st.maxBolts, bolts); st.goldMsgT = st.t; st.goldN++; }
+      st.gold = S.GOLD_ARCHES;
+    }
+    st.bolts = st.maxBolts; st.safe = 0; st.grace = 2.0; st.bdDue = false; st.wheelOff = 0;
     st.air = 0; st.airT = -1; st.full = false; st.hopFirst = -1; st.tilt = 0; st.tipT = 0; st.tipped = 0;
     st.camWin = null; st.bendState = {}; st.brake = [false, false]; st.gapHit = {};
     // levers between the arch and here come again (switches thrown stay thrown)
@@ -126,9 +137,12 @@ const PARKCOASTER = (function () {
     st.hopWinT -= dt;
     for (const p of ps) {
       if (!p.pendingJump) continue;
+      // in the air on a full hop: a press in its last moments is kept and counts as the train lands (so a row of gaps
+      // can be hopped on the beat); an earlier one is dropped
+      if (st.full && st.airT >= 0) { if (st.airDur - st.airT > S.HOP_BUFFER) p.pendingJump = false; continue; }
       p.pendingJump = false;
-      if (st.full && st.airT >= 0) continue;
-      if (st.hopFirst >= 0 && st.hopFirst !== p.id && st.hopWinT > 0) {
+      // the other rider pressed first and their window is open (or their little hop is still in the air): a full hop
+      if (st.hopFirst >= 0 && st.hopFirst !== p.id && (st.hopWinT > 0 || (st.airT >= 0 && !st.full))) {
         st.full = true; st.airT = 0; st.airDur = S.HOP_AIR; st.airH = S.HOP_H; st.hopFirst = -1; st.hops++;
         Sfx.play('parkcoasterHop');
       } else if (st.airT < 0) {
@@ -142,6 +156,7 @@ const PARKCOASTER = (function () {
       st.air = u >= 1 ? 0 : st.airH * 4 * u * (1 - u);
       if (u >= 1) { if (st.full) Sfx.play('parkcoasterLand'); st.airT = -1; st.full = false; st.air = 0; }
     }
+    if (st.hopWinT <= 0 && st.airT < 0) st.hopFirst = -1;
     st.bunny = Math.max(0, st.bunny - dt * 2.5);
     // arms (levers, bells, brakes): a fresh press swings the arm out on that rider's side
     for (const p of ps) { st.arm[p.id] = Math.max(0, st.arm[p.id] - dt); if (p.pendingAct) { p.pendingAct = false; st.arm[p.id] = S.ARM_T; Sfx.play('parkcoasterSwing'); } }
@@ -151,12 +166,12 @@ const PARKCOASTER = (function () {
     else { st.tipT = 0; st.tipped = 0; }
     // forward along the track
     st.burstT -= dt; if (st.burstT <= 0) st.burst = Math.max(0, st.burst - dt * 0.2);
-    st.safe -= dt;
+    st.safe -= dt; st.grace -= dt;
     if (st.det >= 0) {
       const D = PR.dets[st.det];
       st.v = D.at(st.ds).v; st.ds += st.v * dt;
       if (!st.detHit && st.ds > D.len * 0.45) { st.detHit = true; rattle(st, 'detour'); }
-      if (st.ds >= D.len) { st.det = -1; st.s = D.s1; st.prevS = st.s; }
+      if (st.ds >= D.len) { st.det = -1; st.s = D.s1; st.prevS = st.s; if (st.bdDue) { st.bdDue = false; breakdown(st); } }
       // a detour that loops back (the station loop) brings the brake levers round again
       return;
     }
@@ -205,8 +220,8 @@ const PARKCOASTER = (function () {
       else Sfx.play('parkcoasterWhoosh');
     }
     // missing track: in the air over the gap (a full hop)
-    for (let i = 0; i < L.hops.length; i++) { const h = L.hops[i]; if (!(b > h.s0 + 0.15 && a < h.s1 - 0.15)) continue;
-      if (!(st.full && st.air > S.GAP_CLEAR) && !st.gapHit[i]) { st.gapHit[i] = 1; rattle(st, 'gap'); st.air = 0.4; st.airT = 0; st.airDur = 0.3; st.airH = 0.4; Sfx.play('parkcoasterClunk'); }
+    for (let i = 0; i < L.hops.length; i++) { const h = L.hops[i], g = CO.gapSpan(h, st.v); if (!(b > g[0] && a < g[1])) continue;
+      if (!(st.full && st.air > S.GAP_CLEAR) && !st.gapHit[i]) { st.gapHit[i] = 1; rattle(st, 'gap'); st.hopFirst = -1; st.full = false; st.air = 0.4; st.airT = 0; st.airDur = 0.3; st.airH = 0.4; Sfx.play('parkcoasterClunk'); }
     }
     for (let i = 0; i < L.hops.length; i++) if (crossed(L.hops[i].s1 + 2, a, b)) st.gapHit[i] = 0;
     // levers: switches, bells and targets, the brakes; a rider's arm out inside the zone hits their own side's
@@ -247,12 +262,13 @@ const PARKCOASTER = (function () {
       else if (PR.stationLoop != null) { st.brakeLoops++; st.det = PR.stationLoop; st.ds = 0; st.detHit = true; st.brake = [false, false]; st.says.push({ text: 'Round again! Both pull your brake lever!', t: st.t }); }
     }
     // hands up: a camera sign before a big drop; press nothing for its first second
-    for (const cm of L.cams) if (crossed(cm.s, a, b)) { st.camWin = { t: 0, quiet: true, cm }; st.camsSeen++; }
+    for (let i = 0; i < L.cams.length; i++) if (crossed(L.cams[i].s, a, b)) { st.camWin = { t: 0, quiet: true, cm: L.cams[i], i }; st.camsSeen++; }
     if (st.camWin) {
       st.camWin.t += dt;
       if (ps.some(anyPress)) st.camWin.quiet = false;
       if (st.camWin.t >= S.CAM_QUIET) {
-        if (st.camWin.quiet) { st.photos++; st.tickets += S.PHOTO_TICKETS; st.flash = 1; st.armUp = [2.2, 2.2]; Sfx.play('parkcoasterFlash'); Sfx.play('parkcoasterWhee'); st.fx.push({ k: 'photo', t: st.t }); }
+        // (a drop ridden again after a Breakdown still flashes, but its photo and tickets are only given once)
+        if (st.camWin.quiet) { if (!st.photoGot[st.camWin.i]) { st.photoGot[st.camWin.i] = true; st.photos++; st.tickets += S.PHOTO_TICKETS; } st.flash = 1; st.armUp = [2.2, 2.2]; Sfx.play('parkcoasterFlash'); Sfx.play('parkcoasterWhee'); st.fx.push({ k: 'photo', t: st.t }); }
         st.camWin = null;
       }
     }
@@ -266,7 +282,7 @@ const PARKCOASTER = (function () {
       if (tk.lat === 0) ok = !tk.air || st.air > 0.6;
       else {
         const side = tk.lat < 0 ? 0 : 1, dir = sgn(tk.lat);
-        ok = Math.abs(tk.lat) >= 2 ? sgn(st.tilt) === dir && Math.abs(st.tilt) >= S.TIP_FULL : st.lean[side] === dir;
+        ok = !st.duck[side] && (Math.abs(tk.lat) >= 2 ? sgn(st.tilt) === dir && Math.abs(st.tilt) >= S.TIP_FULL : st.lean[side] === dir);
         if (tk.air) ok = ok && st.air > 0.6;
       }
       if (ok && Math.abs(tk.s - b) < S.TICKET_DS) { st.got[i] = true; st.tickets++; st.fx.push({ k: 'ticket', t: st.t, i }); Sfx.play('parkcoasterTicket'); }
@@ -347,9 +363,9 @@ const PARKCOASTER = (function () {
     const tw = ctx.measureText(tt).width + 52;
     pill(14, 46, tw, 30); hudTicket(34, 61, 1); text(tt, 52, 61.5, 15, C.paper, 'left', 'body');
     // the bolts (three, five in gold while the mechanic's extra bolts last)
-    const n = st.maxBolts, x0 = 14, y0 = 82;
-    pill(x0, y0, 16 + n * 22, 30);
-    for (let i = 0; i < n; i++) hudBolt(x0 + 19 + i * 22, y0 + 15, i < st.bolts, st.gold > 0);
+    const n = st.maxBolts, x0 = 14, y0 = 82, gap = n > 7 ? 154 / n : 22;   // (a long row of gold bolts closes up)
+    pill(x0, y0, 16 + n * gap, 30);
+    for (let i = 0; i < n; i++) hudBolt(x0 + 8 + gap / 2 + i * gap, y0 + 15, i < st.bolts, st.gold > 0);
     // the tilt gauge: a car that tips, ticks at half and full each way
     const gx = W / 2, gy = H - 34, cpu1 = cpuSolo();
     ctx.fillStyle = 'rgba(23,25,29,0.72)'; rr(gx - 92, gy - 22, 184, 44, 22); ctx.fill();
