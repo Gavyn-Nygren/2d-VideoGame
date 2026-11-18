@@ -73,7 +73,7 @@ const PARKFLUME = (function () {
       restart: PR.START, sameArch: 0, lastSinkArch: -1, gold: 0, goldMsgT: -99, goldN: 0,
       ducks: 0, got: L.ducks.map(() => false), bank: [0, 0], bumpT: 0, bumps: 0, dropDone: {}, dropBraced: {},
       says: [], fx: [], air: 0, airV: 0, splash: 0, wet: 0, ringT: 0, laps: 0, finished: false, started: false,
-      plungeDry: false, plungeTaken: false, sink: null,
+      plungeDry: false, plungeTaken: false, sink: null, whirl: null, whirlDone: L.whirls.map(() => false),
     });
   }
   CO.fresh = fresh;
@@ -123,7 +123,7 @@ const PARKFLUME = (function () {
     if (st.sameArch >= 2 && st.gold <= 0) { st.gold = S.GOLD_ARCHES; st.maxWater = S.GOLD_WATER; st.goldMsgT = st.t; st.goldN++; }
     st.water = 0; st.safe = 2.0; st.wet = Math.max(0.3, st.wet);
     st.pull = [-1, -1]; st.rest = [0, 0]; st.air = 0; st.airV = 0; st.sink = null;
-    st.dropDone = {}; st.dropBraced = {};
+    st.dropDone = {}; st.dropBraced = {}; st.whirl = null;
     Sfx.play('parkflumeBail');
   }
 
@@ -236,16 +236,51 @@ const PARKFLUME = (function () {
       if (Math.abs(o.s - st.s) > 8) continue;
       const q = CO.obsAt(o, st.t);
       if (!q.on) continue;
+      // a thing in one arm of a fork only reaches that arm
+      if (o.side && sgn(st.x) !== o.side) continue;
+      const soaks = q.soak != null ? q.soak : o.soak;
+      if (o.line) {
+        // a line right across the channel (a jet, a wave, a wheel's blades): the log is under it or not
+        if (Math.abs(q.s - st.s) > o.r + S.HALF_LEN) continue;
+        if (o.braceOk && st.braced) { if (!st.lineT || st.t - st.lineT > 0.6) { st.lineT = st.t; st.fx.push({ k: 'shrug', t: st.t, id: o.id }); Sfx.play('parkflumeSplash'); } continue; }
+        if (soak(st, o.kind)) st.fx.push({ k: 'hit', t: st.t, id: o.id });
+        continue;
+      }
       const sd = segDist(st, q.s, q.x), lim = o.r + S.HALF_W;
       if (sd.d >= lim) continue;
+      if (o.braceOk && st.braced) { if (!st.lineT || st.t - st.lineT > 0.6) { st.lineT = st.t; st.fx.push({ k: 'shrug', t: st.t, id: o.id }); Sfx.play('parkflumeSplash'); } continue; }
+      if (o.kind === 'curtain') { if (soak(st, o.kind)) st.fx.push({ k: 'hit', t: st.t, id: o.id }); continue; } // (water, not a solid)
       const n = sd.d > 1e-4 ? 1 / sd.d : 0, over = lim - sd.d;
       // push the log out sideways mostly (the current keeps it going): never back upstream
       st.x += (n ? sd.nx * n : (st.x >= q.x ? 1 : -1)) * over;
       st.s += Math.max(0, (n ? sd.ns * n : 0) * over);
       st.om *= 0.7;
-      if (o.soak) { if (soak(st, o.kind)) st.fx.push({ k: 'hit', t: st.t, id: o.id }); }
+      if (soaks) { if (soak(st, o.kind)) st.fx.push({ k: 'hit', t: st.t, id: o.id }); }
       else if (!st.obT || st.t - st.obT > 0.7) { st.obT = st.t; st.u *= 0.75; Sfx.play('parkflumeBump'); st.fx.push({ k: 'bonk', t: st.t, id: o.id }); }
     }
+  }
+
+  /* ---------- the lifts and the whirlpool ---------- */
+  CO.liftAt = s => L.lifts.find(l => s >= l.s0 && s < l.s1) || null;
+  // on a lift the belt has the log: straight up the middle at the belt's speed (paddles only hook the edge ducks)
+  function belt(st, dt) {
+    const f = R.at(st.s);
+    st.vs = Math.max(1.2, f.v); st.u = 0; st.speed = Math.max(0, st.speed - 0.2 * dt);
+    st.x += (0 - st.x) * Math.min(1, dt * 4); st.psi += (0 - st.psi) * Math.min(1, dt * 4); st.om = 0; st.vx = 0;
+    st.prevS = st.s; st.s += st.vs * dt;
+    if (!st.clank || st.t - st.clank > 0.45) { st.clank = st.t; Sfx.play('parkflumeBelt'); }
+  }
+  // the whirlpool: caught, the log goes round the pool until enough good pairs (or long enough) break it out
+  function whirl(st, dt) {
+    const w = st.whirl, W = L.whirls[w.i];
+    w.t += dt; w.a += dt * (1.15 + 0.25 * st.speed);
+    if (st.pairs > w.pairs0) { w.n += st.pairs - w.pairs0; w.pairs0 = st.pairs; }
+    st.prevS = st.s;
+    st.s = W.s + Math.sin(w.a) * W.r * 0.6; st.x = W.x + Math.cos(w.a) * W.r * 0.6;
+    st.psi = clamp(-Math.cos(w.a) * 0.9, -S.PSI_MAX, S.PSI_MAX); st.vs = 1.8; st.vx = 0; st.u = 0;
+    const out = (w.n >= W.need || w.t > 40) && Math.sin(w.a) > 0.85;
+    if (out) { st.whirl = null; st.whirlDone[w.i] = true; st.u = 2.0; st.psi = 0; st.om = 0; st.fx.push({ k: 'whirlOut', t: st.t }); Sfx.play('parkflumePair'); }
+    else if (!w.snd || st.t - w.snd > 2.2) { w.snd = st.t; Sfx.play('parkflumeWhirl'); }
   }
 
   /* ---------- what the log passes ---------- */
@@ -261,6 +296,7 @@ const PARKFLUME = (function () {
     // drops: braced from before the lip to the landing, or a Soak at the landing
     for (let i = 0; i < L.drops.length; i++) {
       const d = L.drops[i];
+      if (d.side && sgn(st.x) !== d.side) continue; // a drop in one arm of a fork
       if (b > d.s0 && a < d.s1 && st.braced) st.dropBraced[i] = true;
       if (crossed(d.s0, a, b) && !st.dropDone[i]) {
         // the lip: over it with a little air (more with Speed on a weir)
@@ -284,7 +320,9 @@ const PARKFLUME = (function () {
       const dk = L.ducks[i];
       if (dk.s > b + 3) break;
       if (st.got[i] || dk.s < a - 3) continue;
-      if (segDist(st, dk.s, dk.x).d < (dk.big ? S.BIG_R : S.DUCK_R)) {
+      // a duck on a lift's edge: hooked by a stroke on its side as the log passes it
+      const hooked = dk.hook && Math.abs(dk.s - st.s) < 2.4 && st.t - st.strokeAt[dk.hook < 0 ? 0 : 1] < 0.3;
+      if (hooked || (!dk.hook && segDist(st, dk.s, dk.x).d < (dk.big ? S.BIG_R : S.DUCK_R))) {
         st.got[i] = true; st.ducks += dk.big ? S.BIG_DUCKS : 1;
         st.fx.push({ k: 'duck', t: st.t, i, big: dk.big });
         Sfx.play(dk.big ? 'parkflumeBigDuck' : 'parkflumeDuck');
@@ -318,7 +356,12 @@ const PARKFLUME = (function () {
     }
     if (st.phase === 'ride') {
       paddles(st, dt);
-      move(st, dt);
+      if (st.whirl) whirl(st, dt);
+      else if (CO.liftAt(st.s)) belt(st, dt);
+      else {
+        move(st, dt);
+        for (let i = 0; i < L.whirls.length; i++) { const W = L.whirls[i]; if (!st.whirlDone[i] && st.s > W.s - W.r * 0.6 && st.s < W.s + W.r * 0.3) { st.whirl = { i, a: Math.atan2(st.s - W.s, st.x - W.x), n: 0, pairs0: st.pairs, t: 0 }; st.says.push({ text: 'Whirlpool! Paddle together to break out!', t: st.t }); } }
+      }
       st.wet = Math.max(0, st.wet - dt * 0.004);
       events(st, st.prevS, st.s);
       // the finish: in the dock's ring slowly enough to stop
@@ -540,4 +583,13 @@ K3D.files.push('js/levels/world42/park-water.js', 'js/levels/world42/parkflume-o
   X.parkflumeDock = function () { this.tone(120, 0.3, 'square', 0.04, 80); this.noise(0.3, { type: 'lowpass', f: 600, vol: 0.06 }); this.tone(660, 0.3, 'triangle', 0.02, 880, 0.3); };
   X.parkflumeTannoy = function () { [659, 523, 784].forEach((f, k) => { this.tone(f, 0.28, 'sine', 0.03, null, k * 0.26); this.tone(f * 2, 0.2, 'triangle', 0.006, null, k * 0.26); }); };
   X.parkflumeWheel = function () { this.noise(0.4, { type: 'bandpass', f: 400, q: 2, vol: 0.04 }); };
+  X.parkflumeBelt = function () { this.tone(95, 0.07, 'square', 0.018, 70); this.noise(0.06, { type: 'bandpass', f: 1800, q: 4, vol: 0.02 }); };
+  X.parkflumeWhirl = function () { this.noise(2.0, { type: 'bandpass', f: 300, to: 700, q: 2, vol: 0.05, a: 0.5 }); };
+  X.parkflumeHippo = function () { this.tone(70, 0.7, 'sawtooth', 0.04, 50, 0, 0.3); this.noise(0.5, { type: 'lowpass', f: 400, vol: 0.04, delay: 0.2 }); };
+  X.parkflumeElephant = function () { this.tone(330, 0.5, 'sawtooth', 0.03, 520); this.tone(520, 0.4, 'sawtooth', 0.025, 260, 0.45); };
+  X.parkflumeCroc = function () { this.tone(180, 0.05, 'square', 0.05, 90); this.tone(160, 0.05, 'square', 0.05, 80, 0.08); };
+  X.parkflumeCoconut = function () { this.tone(500, 0.06, 'triangle', 0.03, 300); this.noise(0.25, { type: 'lowpass', f: 1600, vol: 0.05, delay: 0.05 }); };
+  X.parkflumeSaw = function () { this.tone(1200, 0.5, 'sawtooth', 0.012, 1500, 0, 0.1); this.noise(0.4, { type: 'highpass', f: 3000, vol: 0.015 }); };
+  X.parkflumeChute = function () { this.tone(140, 0.4, 'triangle', 0.03, 60); this.noise(0.6, { type: 'lowpass', f: 1200, to: 300, vol: 0.08, delay: 0.35 }); };
+  X.parkflumeSteam = function () { this.noise(0.9, { type: 'highpass', f: 2500, to: 1200, vol: 0.05, a: 0.03 }); };
 })();

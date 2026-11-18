@@ -32,8 +32,41 @@
       const f = R.at(st.s), c = Math.max(0.3, f.v), vs = Math.max(0.6, st.vs);
       const say = (k, text) => { if (solo && !s.said[k]) { s.said[k] = 1; cpuSay(p, text, 1.8); } };
 
+      const pulling0 = st.pull[id] >= 0, ready0 = !pulling0 && st.rest[id] <= 0;
+      const oStart0 = st.pull[o.id] >= 0 && st.pull[o.id] < 0.12 && !st.paired[o.id];
+      /* ---- on a lift: the belt has the log; hook the edge ducks on its own side ---- */
+      if (CO.liftAt(st.s)) {
+        for (let i = 0; i < L.ducks.length; i++) { const dk = L.ducks[i]; if (dk.hook === side && !st.got[i] && dk.s - st.s > 0.4 && dk.s - st.s < 1.6 && ready0) { out.act = 'tap'; s.lastStroke = t; } }
+        return out;
+      }
+      /* ---- in the whirlpool: pairs break out, so match every stroke and keep a beat ---- */
+      if (st.whirl) {
+        const w = st.whirl, need = L.whirls[w.i].need;
+        if (solo && w.n > (s.counted || 0) && w.n <= need) { s.counted = w.n; cpuSay(p, ['One!', 'Two!', 'Three!', 'Four!'][w.n - 1] || 'Go!', 0.9); }
+        if (solo) say('whirl' + w.i, 'Paddle with me!');
+        if (oStart0 && ready0) { out.act = 'tap'; s.lastStroke = t; }
+        else if (!solo && id === 0 && ready0 && t - s.lastStroke > 0.9) { out.act = 'tap'; s.lastStroke = t; }
+        else if (solo && ready0 && t - s.lastStroke > 1.0 && t - (st.strokeAt[o.id] || -9) < 1.5) { out.act = 'tap'; s.lastStroke = t; }
+        return out;
+      }
+      s.counted = 0;
+
+      /* ---- hold on for things right across the channel that will be there as the log passes ---- */
+      for (const ob of L.obs) {
+        if (!ob.braceOk || ob.s < st.s - 4 || ob.s > st.s + 20) continue;
+        const across = ob.line || (ob.side && ob.side === s.arm[(L.islands.find(q => ob.s > q.s0 && ob.s < q.s1) || {}).s0]);
+        if (!across) continue;
+        const reach = ob.r + S.HALF_W + S.HALF_LEN + 0.4, ta0 = (ob.s - reach - st.s) / vs, ta1 = (ob.s + reach - st.s) / vs;
+        if (ta1 < 0) continue;
+        let hit = false; for (let k = Math.max(0, ta0) - 0.3; k <= ta1 + 0.3; k += 0.1) if (CO.obsAt(ob, t + k).on) { hit = true; break; }
+        if (!hit) continue;
+        if (ta0 < 2.2 && ta0 > 0.7) say('hold' + ob.id + Math.floor(t / 6), 'Hold on!');
+        if (ta0 < 0.7) { out.jump = true; return out; }
+      }
+
       /* ---- brace for the drops ---- */
       for (const d of L.drops) {
+        if (d.side) { const I = L.islands.find(q => d.s0 > q.s0 && d.s0 < q.s1); if (I && s.arm[I.s0] != null && s.arm[I.s0] !== d.side) continue; }
         const a0 = (d.s0 - st.s) / vs;
         if (a0 < 2.4 && a0 > 0.6) say('drop' + d.s0, 'Hold on!');
         if (a0 < 0.6 && st.s < d.s1 + 0.4) { out.jump = true; return out; }
@@ -78,7 +111,7 @@
       // keep wide of things in the water (where they will be when the log gets there) that lie on the way to the
       // target: the target becomes a point beside the thing
       for (const ob of L.obs) {
-        if (ob.s < st.s - 2 || ob.s > Math.max(sT, st.s + (ob.soak ? 20 : 6)) + ob.r + S.HALF_LEN) continue;
+        if (ob.line || ob.kind === 'curtain' || ob.s < st.s - 2 || ob.s > Math.max(sT, st.s + (ob.soak ? 20 : 6)) + ob.r + S.HALF_LEN) continue;
         // (a soaking thing that comes and goes is given a wide margin in time: the log's arrival is a guess)
         const ta = t + Math.max(0, ob.s - st.s) / vs, span = ob.soak ? 14 : 6;
         let on = false, q = null; for (let k = -span; k <= span; k++) { const qq = CO.obsAt(ob, ta + k * 0.1); if (qq.on) { on = true; if (!q || k === 0) q = qq; } }
