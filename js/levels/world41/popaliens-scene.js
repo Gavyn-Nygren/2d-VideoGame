@@ -49,6 +49,8 @@ const PASCENE = (function () {
       c.clearRect(0, 0, w, h);
       // (the canvas top is the far end of the plane: z1)
       const X = x => (x - BIG.x0) * BIGPPU, Z = z => (z - BIG.z1) * BIGPPU, r = P.rng(12);
+      // the colour first (meadows, highlighter, the ink stream's wet edge, doodles), under the printed words
+      PALIFE.paintBig(c, X, Z, BIGPPU);
       // the margin rule: a double pink line, slightly uneven like a printed rule seen huge
       c.fillStyle = 'rgba(226,96,120,0.75)'; c.fillRect(X(-16.6), 0, 0.5 * BIGPPU, h);
       c.fillStyle = 'rgba(226,96,120,0.45)'; c.fillRect(X(-17.6), 0, 0.22 * BIGPPU, h);
@@ -145,7 +147,7 @@ const PASCENE = (function () {
         e.set((r() - 0.5) * 0.7, r() * Math.PI * 2, (r() - 0.5) * 0.5); q.setFromEuler(e);
         m4.compose(v(x, 0, z), q, v(0.8 + r() * 1.2, h, 1)); m.setMatrixAt(i, m4);
         const p = r();
-        m.setColorAt(i, col.set(p < 0.3 ? '#dccdaa' : p < 0.5 ? '#fffaf0' : p < 0.6 ? '#c9bfae' : '#efe3c8'));
+        m.setColorAt(i, col.set(p < 0.25 ? '#fffaf0' : p < 0.4 ? '#f2ead8' : p < 0.5 ? '#dfeecf' : p < 0.58 ? '#f6dde4' : p < 0.66 ? '#dde8f4' : p < 0.74 ? '#f4ecc4' : '#efe6d2'));
       }
     }
     m.castShadow = false; m.receiveShadow = true;
@@ -408,7 +410,7 @@ const PASCENE = (function () {
     // more crumbs and notes off the path, for depth
     const r = P.rng(21);
     for (let i = 0; i < 26; i++) { const sd = r() < 0.5 ? -1 : 1, x = sd * (17 + r() * 16), z = 10 - r() * 170, sz = 0.6 + r() * 2.6; deco.add(crumb(x, z, sz, sz * 0.9, sz * 0.7, r() * 6, 100 + i)); }
-    for (let i = 0; i < 5; i++) deco.add(note(18 + r() * 6, -10 - i * 32 - r() * 10, 6 + r() * 6, (r() - 0.5) * 0.4, 200 + i));
+    for (let i = 0; i < 5; i++) { let x = 18 + r() * 6; const z = -10 - i * 32 - r() * 10; if (PALIFE.nearStream(x, z) < 5) x = x > 0 ? -x - 4 : x; deco.add(note(x, z, 6 + r() * 6, (r() - 0.5) * 0.4, 200 + i)); }
     deco.add(doodleFlower(-24, -18, 11, 0.4)); deco.add(doodleFlower(21, -128, 8, -0.6));
     // the fallen redwood: a pencil lying across the page to the left
     const pencil = P.pencil(); pencil.scale.setScalar(13); pencil.position.set(-27, 2.3, -88); pencil.rotation.y = 1.25; deco.add(pencil);
@@ -433,6 +435,7 @@ const PASCENE = (function () {
     st.v3.fx = PAFX.make(K);
     st.v3.cam = { pos: null, at: null };
     PAROOM.build(K, st);
+    PALIFE.build(K, st);
     bigShadows(K);
     K.focusRange = 9;
   };
@@ -478,6 +481,7 @@ const PASCENE = (function () {
     });
     // the room and the living page
     PAROOM.update(K, st, dt, t);
+    PALIFE.update(K, st, dt, t);
     // aliens and effects
     // beaten aliens crumple for a quarter of a second before the paper ball takes over (drawing only)
     V.crum = V.crum || []; V.crumN = V.crumN == null ? -1 : V.crumN;

@@ -959,7 +959,7 @@ defineOutfit('popaliens', {
 });
 
 // the 3D files for this level, loaded with the kit when a 3D level first opens
-K3D.files.push('js/levels/world41/popaliens-outfits.js', 'js/levels/world41/popaliens-aliens.js', 'js/levels/world41/popaliens-room.js', 'js/levels/world41/popaliens-scene.js');
+K3D.files.push('js/levels/world41/popaliens-outfits.js', 'js/levels/world41/popaliens-aliens.js', 'js/levels/world41/popaliens-room.js', 'js/levels/world41/popaliens-life.js', 'js/levels/world41/popaliens-scene.js');
 
 const POPALIENS_DEF = {
   name: 'Paper Alien Invasion', world: 40, kind: 'team', mode: 'popaliens', ownStep: true, ownHUD: true, noFalls: true,
