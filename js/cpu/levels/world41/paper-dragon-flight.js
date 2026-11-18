@@ -23,24 +23,35 @@ function popdragonCpuPlan(st, own, person) {
   // plan as if every cobweb burns (Pip breathes fire on them; flying into one only tears it)
   const burnt = Object.assign({}, st.burnt);
   for (const w of R.webs || []) burnt[w.burn] = burnt[w.burn] != null ? burnt[w.burn] : 0;
+  const slow = 1 - 0.25 * Math.min(3, st.moths || 0);
+  let lastHit = 9, hitT = 9;
   const score = (tx, ty, hw, horizon) => {
     let s = st.s, x = st.ox, y = st.oy, vx = st.vx, vy = st.vy, cost = 0, t = 0;
     const taken = new Set();
+    lastHit = 9;
     for (; t < horizon; t += C.dt) {
-      // eased toward the target at the seat speeds
+      // eased toward the target at the seat speeds (the wings slowed by any moths on them), pushed by the air
       const wx = own === 'y' ? person * K.VX : clamp((tx - x) / (K.VX * 0.25), -1, 1) * K.VX;
-      const wy = own === 'x' ? person * K.VY : clamp((ty - y) / (K.VY * 0.25), -1, 1) * K.VY;
+      const wy = (own === 'x' ? person * K.VY : clamp((ty - y) / (K.VY * 0.25), -1, 1) * K.VY) * slow;
       vx += clamp(wx - vx, -K.VX / K.EASE * C.dt, K.VX / K.EASE * C.dt); vy += clamp(wy - vy, -K.VY / K.EASE * C.dt, K.VY / K.EASE * C.dt);
-      x = clamp(x + vx * C.dt, -R.WX, R.WX); y = clamp(y + vy * C.dt, -R.WY, R.WY);
+      const dr = R.drift ? R.drift(s) : [0, 0];
+      x = clamp(x + (vx + dr[0]) * C.dt, -R.WX, R.WX); y = clamp(y + (vy + dr[1]) * C.dt, -R.WY, R.WY);
+      const s0 = s;
       s += R.at(s).v * C.dt;
-      if (st.safe < t && popdragonHit(s, x, y, hw, burnt)) { cost += 1000 * (1 + horizon - t); break; }
+      if (st.safe < t && popdragonHit(s, x, y, hw, burnt, st.clock + t + C.dt)) { cost += 1000 * (1 + horizon - t); hitT = Math.min(hitT, t); break; }
+      // the cat's paws strike a box of the window as the dragon gets there; moths and dust bunnies meet it at a spot
+      for (const pw of R.paws) if (pw.s > s0 && pw.s <= s && st.burnt[pw.id] == null && x >= pw.ox[0] - 0.3 && x <= pw.ox[1] + 0.3 && y >= pw.oy[0] - 0.3 && y <= pw.oy[1] + 0.3) cost += 900 * (1 + horizon - t);
+      for (const c of R.clingers) if (c.s > s0 && c.s <= s && Math.hypot(x - c.ox, y - c.oy) < R.CLING + 0.3) cost += 160;
+      // candles to light: worth flying near
+      for (const c of R.lights) if (c.s > s0 && c.s - 3 <= s && st.burnt[c.id] == null && Math.hypot(x - c.ox, y - c.oy) < c.r) cost -= 50;
       for (let i = 0; i < R.stars.length; i++) {
         const sr = R.stars[i];
         if (sr.s > s + 1.2) break;
-        if (st.got[i] || taken.has(i) || sr.s < s - 1.2) continue;
+        if (st.got[i] || taken.has(i) || sr.s < s - 1.2 || (sr.need && st.burnt[sr.need] == null)) continue;
         if (Math.hypot(sr.ox - x, sr.oy - y) < K.STAR_R * 0.85) { taken.add(i); cost -= 40 * (1 - t / (horizon * 2)); }
       }
     }
+    lastHit = hitT;
     return cost + Math.abs(tx) * 1.5 + Math.abs(ty - 0.4) * 1.5 + Math.hypot(tx - P.tx, ty - P.ty) * 3;
   };
   // the targets to try on each axis (only the computer's own axis when it shares the dragon with a person)
@@ -49,18 +60,27 @@ function popdragonCpuPlan(st, own, person) {
   if (own === 'x') ys.push(st.oy); else for (let y = -R.WY; y <= R.WY + 1e-6; y += 0.7) ys.push(y);
   let best = null;
   for (const tx of xs) for (const ty of ys) {
-    const c = score(tx, ty, st.tuck > 0.5 ? K.HW_TUCK : K.HW, C.horizon);
-    if (!best || c < best.c) best = { c, tx, ty };
+    hitT = 9;
+    const c = score(tx, ty, K.HW, C.horizon);
+    if (!best || c < best.c) best = { c, tx, ty, hit: lastHit };
   }
+  // nowhere clear with open wings: a tucked dragon may slip through. The tuck lasts at most TUCK_MAX and then needs a
+  // rest, so it waits until the slot is close (or keeps a tuck it has already started)
+  const keep = P.tuck && st.tuck > 0.3;
   P.tuck = false;
-  // nowhere clear with open wings: a tucked dragon may slip through (the tuck lasts at most TUCK_MAX)
-  if (best.c >= 1000 && st.tuckRest <= 0) {
+  if (best.c >= 1000 && st.tuckRest <= 0 && (best.hit < 0.75 || keep)) {
     let bt = null;
     for (const tx of xs) for (const ty of ys) {
-      const c = score(tx, ty, K.HW_TUCK, K.TUCK_MAX);
+      hitT = 9;
+      const c = score(tx, ty, K.HW_TUCK, Math.min(K.TUCK_MAX - st.tuckT, C.horizon));
       if (!bt || c < bt.c) bt = { c, tx, ty };
     }
     if (bt.c < 1000) { best = bt; P.tuck = true; }
+  } else if (best.c >= 1000 && best.hit >= 0.75) {
+    // a slot ahead: line up for it now, with the wings tucked in the plan, but don't fold yet
+    let bt = null;
+    for (const tx of xs) for (const ty of ys) { hitT = 9; const c = score(tx, ty, K.HW_TUCK, C.horizon); if (!bt || c < bt.c) bt = { c, tx, ty }; }
+    if (bt.c < best.c) best = bt;
   }
   P.tx = best.tx; P.ty = best.ty; P.c = best.c;
   return P;
@@ -88,11 +108,22 @@ cpuBrain('popdragon', {
       // helping Bo on a big climb or drop
       if (Math.abs(ey) > POPDRAGON_CPU.swoopAt * 0.7 && Math.sign(oa.y) === Math.sign(ey) && Math.abs(oa.y) > 0.3) { out.ay = -Math.sign(ey); cpuSay(p, ey > 0 ? 'Swoop up!' : 'Swoop down!'); }
       // fire on a cobweb just ahead (after a person's moment to see it)
-      const w = (R.webs || []).find(q => st.burnt[q.burn] == null && q.s - st.s > 0.5 && q.s - st.s < K.FIRE_REACH - 0.5 && Math.hypot(st.ox, st.oy - (q.oy || 0)) < q.r + 0.5);
+      const w = (R.webs || []).find(q => st.burnt[q.burn] == null && q.s - st.s > 0.5 && q.s - st.s < K.FIRE_REACH - 0.5 && Math.hypot(st.ox, st.oy - (q.oy || 0)) < q.r + 0.5)
+        || (R.lights || []).find(q => st.burnt[q.id] == null && q.s - st.s > 0 && q.s - st.s < K.FIRE_REACH - 0.5 && Math.hypot(st.ox - q.ox, st.oy - q.oy) < q.r + 0.6);
       if (w) { bst.seen = (bst.seen || 0) + dt; if (bst.seen > bst.fireWait && st.fireCd <= 0) out.act = 'tap'; } else bst.seen = 0;
     } else {
       out.ay = -push(ey, K.VY);
       if (Math.abs(out.ay) > 0 && Math.abs(out.ay) < 0.25) out.ay = Math.sign(out.ay) * 0.25;
+      // the tail: knock off clinging moths (after a moment to notice), bat a paw just as it strikes (bonus stars), and
+      // swish away a moth or dust bunny about to land
+      const v = R.at(st.s).v || 1, until = (q) => (q.s - st.s) / v;
+      const pn = R.paws.find(q => q.s > st.s), cn = R.clingers.find(q => q.s > st.s);
+      bst.mothT = st.moths > 0 ? (bst.mothT || 0) + dt : 0;
+      if (st.tailCd <= 0 && st.tail <= 0) {
+        if (bst.mothT > 0.35) out.act = 'tap';
+        else if (pn && until(pn) > 0.04 && until(pn) < 0.2) out.act = 'tap';
+        else if (cn && until(cn) > 0.03 && until(cn) < 0.18 && Math.hypot(st.ox - cn.ox, st.oy - cn.oy) < R.CLING + 0.6) out.act = 'tap';
+      }
       // helping Pip on a big swerve
       if (Math.abs(ex) > POPDRAGON_CPU.swoopAt && Math.sign(oa.x) === Math.sign(ex) && Math.abs(oa.x) > 0.3) { out.ax = Math.sign(ex); cpuSay(p, ex > 0 ? 'Swoop right!' : 'Swoop left!'); }
     }

@@ -61,9 +61,117 @@ const POPDRAGON_ROUTE = (function () {
     P(46, 6.6, 3, 6.2),
     P(58, 6.2, -6, 6.4),
     P(70, 4.0, -12, 6.8),    // the desk's far edge: the page slips off, the dragon dives after it
-    P(82, -6, -16, 7.6),
-    P(92, -16, -16, 8.0),
-    P(100, -20, -12, 8.0),
+    // Stretch 2: the bookshelf (an open shelving unit against the back wall, x 104..194): along the bottom shelf, up round
+    // its right end, back along the second, up round the left end, along the third, then a spiral up and over the top
+    P(84, -8, -15, 7.8),
+    P(96, -16, -17, 7.8),
+    P(112, -18, -17, 7.8),   // shelf 1 (+x): tipping books, the fat volumes' slot
+    P(132, -18, -17, 7.8),
+    P(152, -18, -17, 7.8),
+    P(172, -18, -17, 7.8),
+    P(188, -17, -16, 8),
+    P(202, -13, -8, 8.2),    // up round the right end
+    P(211, -5, 3, 8.2),
+    P(207, 3, 10, 8.2),
+    P(195, 7, 3, 8),
+    P(184, 8, -14, 7.8),
+    P(166, 8, -17, 7.8),     // shelf 2 (-x): the paper moths, the toy train, the paperback tunnel
+    P(146, 8, -17, 7.8),
+    P(126, 8, -17, 7.8),
+    P(110, 9, -16, 8),
+    P(97, 14, -8, 8.2),      // up round the left end
+    P(89, 21, 3, 8.2),
+    P(92, 29, 9, 8.2),
+    P(103, 35, 2, 8),
+    P(114, 38, -14, 7.8),
+    P(132, 38, -17, 7.8),    // shelf 3 (+x): the candle, the snow globe, the ship in a bottle, the chess pieces
+    P(152, 38, -17, 7.8),
+    P(172, 38, -17, 7.8),
+    P(186, 39, -16, 8),
+    P(200, 44, -10, 8.4),    // the page blows up: a spiral round the right end and over the top
+    P(212, 52, 2, 8.6),
+    P(214, 62, 18, 8.9),
+    P(202, 72, 24, 9.1),
+    P(188, 80, 14, 9.3),
+    P(184, 88, -2, 9.5),
+    P(176, 95, -14, 9.7),
+    P(156, 97, -19, 9.9),    // over the top (-x)
+    P(136, 97, -20, 10.2),
+    // Stretch 3: the bedroom (out into the big dark room)
+    P(116, 96, -8, 10.2),
+    P(108, 95, 14, 10.4),
+    P(122, 96, 34, 10.6),
+    P(150, 98, 46, 10.6),
+    P(182, 99, 50, 10.6),      // the planet mobile
+    P(212, 99, 50, 10.6),
+    P(240, 94, 56, 10.8),
+    P(262, 84, 72, 11),
+    P(268, 72, 96, 11),    // the ceiling lamp (swoop round it)
+    P(262, 66, 120, 11),
+    P(270, 58, 142, 11.2),
+    P(300, 46, 150, 11.2),
+    P(338, 32, 136, 11),
+    P(358, 22, 110, 10.6),     // down over the Reader's pillow (the snore)
+    P(350, 16, 86, 10.2),
+    P(334, 15, 80, 10),
+    P(314, 15, 80, 9.8),     // along the quilt toward the cat
+    P(296, 16, 80, 9.8),
+    P(280, 20, 82, 9.8),
+    P(264, 22, 86, 10),     // past the cat
+    P(246, 10, 96, 10.4),
+    P(240, -6, 112, 10.6),     // down after the cat: the rug, the pounce
+    P(238, -20, 130, 10.6),
+    P(246, -24, 146, 10.6),
+    P(266, -26, 156, 10.6),
+    P(294, -26, 150, 10.2),
+    P(309, -26, 134, 9.8),
+    P(311, -26, 118, 9.5),   // under the bed (dark, dust bunnies, the marble, the slots)
+    P(311, -26, 96, 9.5),
+    P(311, -26, 74, 9.5),
+    P(311, -26, 52, 9.5),
+    P(312, -24, 30, 9.8),
+    // Stretch 4: the window (up the curtain, out through the gap, round the rooftop in the rain, and home)
+    P(318, -16, 6, 10),
+    P(334, -8, -6, 10),
+    P(348, -1, -16, 9.8),     // up the curtain: one and a bit turns of a spiral in front of it (tissue sheers, the cords, the cat below)
+    P(349, 3, -24, 9.8),
+    P(343, 6, -31, 9.8),
+    P(335, 10, -32, 9.8),
+    P(329, 14, -27, 9.8),
+    P(327, 18, -19, 9.8),
+    P(331, 21, -12, 9.8),
+    P(339, 25, -10, 9.8),
+    P(346, 29, -14, 9.8),
+    P(349, 33, -22, 9.8),
+    P(346, 36, -29, 9.8),
+    P(338, 40, -32, 9.8),
+    P(322, 40, -31, 10),
+    P(309, 37, -29, 10.2),
+    P(301, 35, -34, 10.2),
+    P(300, 33, -39, 10.4),
+    P(300, 32, -44, 10.6),     // through the gap in the window
+    P(300, 30, -58, 11.1),
+    P(314, 32, -76, 11.7),     // outside: the rooftop in the rain
+    P(334, 36, -96, 11.7),     // the weather vane (swoop round it)
+    P(328, 38, -118, 11.7),
+    P(302, 38, -130, 11.7),
+    P(276, 35, -120, 11.7),
+    P(266, 33, -98, 11.7),     // round the chimney
+    P(280, 31, -74, 11.1),
+    P(297, 30, -58, 10.6),
+    P(300, 31, -44, 10.6),     // back in through the window
+    P(298, 30, -28, 12.7),
+    // the dive home: across the whole room to the lamp-lit desk
+    P(286, 28, -4, 15),
+    P(256, 26, 28, 17),
+    P(210, 24, 56, 18),
+    P(150, 20, 66, 18),
+    P(96, 15, 52, 17),
+    P(56, 12, 40, 14),
+    P(30, 9, 36, 11),
+    P(14, 6.4, 20, 8),
+    P(6, 4.4, 6, 5.5),       // the catch, over the right-hand page
+    P(1, 4.2, 4.5, 4.5),
   ];
   R.TAKEOFF = 9.5;           // s at which the players get control (the take-off run before it is not playing)
 

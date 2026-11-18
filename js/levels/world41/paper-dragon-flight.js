@@ -51,7 +51,10 @@ function popdragonDist(sd, p) {
   if (sd.k === 'sph') return Math.hypot(x - sd.x, y - sd.y, z - sd.z) - sd.r;
   if (sd.k === 'box') {
     const c = Math.cos(sd.yaw || 0), s = Math.sin(sd.yaw || 0), dx = x - sd.x, dz = z - sd.z;
-    const lx = dx * c - dz * s, lz = dx * s + dz * c, q = [Math.abs(lx) - sd.hx, Math.abs(y - sd.y) - sd.hy, Math.abs(lz) - sd.hz];
+    let lx = dx * c - dz * s, lz = dx * s + dz * c, ly = y - sd.y;
+    // a box tipped forward about its own x axis too (books tipping out, the paperback tunnel's leaning sides)
+    if (sd.rx) { const cr = Math.cos(sd.rx), sr = Math.sin(sd.rx), y2 = ly * cr + lz * sr; lz = -ly * sr + lz * cr; ly = y2; }
+    const q = [Math.abs(lx) - sd.hx, Math.abs(ly) - sd.hy, Math.abs(lz) - sd.hz];
     return Math.hypot(Math.max(q[0], 0), Math.max(q[1], 0), Math.max(q[2], 0)) + Math.min(Math.max(q[0], q[1], q[2]), 0);
   }
   if (sd.k === 'cap') {
@@ -77,7 +80,8 @@ function popdragonIndex() {
   return list;
 }
 // is a window spot (s, ox, oy) with this half width clear? (the brain and the fairness checks use it too)
-function popdragonHit(s, ox, oy, hw, burnt) {
+// clock: the moment to look at (things that move: books tipping on the beat, the mobile turning, the marble rolling)
+function popdragonHit(s, ox, oy, hw, burnt, clock) {
   const R = POPDRAGON_ROUTE, idx = popdragonIndex();
   const st = { s, ox, oy, hw };
   const pts = popdragonFootprint(st);
@@ -85,6 +89,10 @@ function popdragonHit(s, ox, oy, hw, burnt) {
     if (s + 1 < e.s0 || s - 3 > e.s1) continue;
     if (e.sd.burn && burnt && burnt[e.sd.burn] != null) continue;
     for (const q of pts) if (popdragonDist(e.sd, q.p) < q.r) return e;
+  }
+  for (const m of R.movers || []) {
+    if (s + 1 < m.s0 || s - 3 > m.s1) continue;
+    for (const sd of m.at(clock || 0, s)) for (const q of pts) if (popdragonDist(sd, q.p) < q.r) return { sd, mover: m };
   }
   // paper across the flight line (cobwebs, tissue): a disc in the window at its s
   for (const w of R.webs || []) {
@@ -116,6 +124,8 @@ MODES.popdragon = {
       gold: 0, goldMsg: 0, sameHoop: 0, restart: 0, hoopI: 0, nextSay: 0, says: [], stars: 0, got: R.stars.map(() => false),
       burnt: {}, crumpleAt: {}, place: 0, bat: 0, sparks: [], steer: 0, fly: 0, finished: false,
       catchT: 0, bounce: 0, misses: 0, landT: 0, held: [false, false],
+      pawI: 0, pawTel: -1, pawHits: 0, bats: 0, clingI: 0, cling: [], moths: 0, mothBats: 0, flashI: 0, flashAt: -9, song: null,
+      snored: false, gust: null, rainT: 0, trainT: -9, pawSeen: {}, lastClock: 0,
     });
     for (const p of G.players) p.alive = true;
   },
@@ -166,7 +176,9 @@ MODES.popdragon = {
     const swoop = (helpX && Math.abs(a0.x) > 0.3) || (helpY && Math.abs(a1.y) > 0.3);
     if (swoop && !st.swoopOn) { st.swoops++; Sfx.play('popdragonWhoosh'); }
     st.swoopOn = swoop;
-    st.ox += st.vx * dt; st.oy += st.vy * dt;
+    // the air: the snore's updraft, the gusts outside, the rain soaking the wings
+    const drift = R.drift ? R.drift(st.s) : [0, 0];
+    st.ox += (st.vx + drift[0]) * dt; st.oy += (st.vy + drift[1]) * dt;
     if (Math.abs(st.ox) > R.WX) { st.ox = Math.sign(st.ox) * R.WX; st.vx = 0; }
     if (Math.abs(st.oy) > R.WY) { st.oy = Math.sign(st.oy) * R.WY; st.vy = 0; }
     // the tuck: both hold jump (one alone: a half fold and a head shake)
@@ -182,23 +194,29 @@ MODES.popdragon = {
     // Pip's button: confetti fire; Bo's: the tail swish
     st.fireCd -= dt; st.tailCd -= dt; st.fire = Math.max(0, st.fire - dt); st.tail = Math.max(0, st.tail - dt);
     if (ps[0].pendingAct) { ps[0].pendingAct = false; if (st.fireCd <= 0) { st.fire = K.FIRE; st.fireCd = K.FIRE_CD; Sfx.play('popdragonFire'); } }
-    if (ps[1].pendingAct) { ps[1].pendingAct = false; if (st.tailCd <= 0) { st.tail = K.TAIL; st.tailCd = K.TAIL_CD; st.swishDir = st.swishDir === 1 ? -1 : 1; Sfx.play('popdragonTail'); } }
+    if (ps[1].pendingAct) { ps[1].pendingAct = false; if (st.tailCd <= 0) { st.tail = K.TAIL; st.tailCd = K.TAIL_CD; st.swishDir = st.swishDir === 1 ? -1 : 1; Sfx.play('popdragonTail');
+      // the swish knocks every moth and dust bunny off the wings
+      if (st.cling.length) { st.mothBats += st.cling.length; for (const c of st.cling) st.knocked = (st.knocked || []).concat([{ id: c.id, t: st.clock, kind: c.kind }]); st.cling = []; Sfx.play('popdragonBat'); } } }
     if (st.fire > 0) for (const w of R.webs || []) if (st.burnt[w.burn] == null && w.s - st.s > -0.5 && w.s - st.s < K.FIRE_REACH && Math.hypot(st.ox, st.oy - (w.oy || 0)) < w.r + 1) { st.burnt[w.burn] = st.clock; Sfx.play('popdragonBurn'); }
+    // candles: the fire lights them (and what they light shows up)
+    if (st.fire > 0) for (const c of R.lights || []) if (st.burnt[c.id] == null && c.s - st.s > -1 && c.s - st.s < K.FIRE_REACH && Math.hypot(st.ox - c.ox, st.oy - c.oy) < c.r + 1) { st.burnt[c.id] = st.clock; Sfx.play('popdragonLight'); st.says.push({ text: 'Light! ...Was that two eyes?', t: st.clock }); }
     // forward along the rail
     const fr = R.at(st.s);
     st.s += fr.v * dt;
     // crumples
     st.safe -= dt; st.dent = Math.max(0, st.dent - dt * 1.4);
     if (st.safe <= 0) {
-      const hit = popdragonHit(st.s, st.ox, st.oy, st.hw, st.burnt);
+      const hit = popdragonHit(st.s, st.ox, st.oy, st.hw, st.burnt, st.clock);
       if (hit) this.crumple(st, hit);
     }
+    this.hazards(st, dt);
     // stars
     for (let i = 0; i < R.stars.length; i++) {
       if (st.got[i]) continue;
       const sr = R.stars[i];
       if (sr.s > st.s + 1.5) break;
       if (sr.s < st.s - 3.5) continue;
+      if (sr.need && st.burnt[sr.need] == null) continue;
       if (Math.abs(sr.s - st.s) < 1.1 && Math.hypot(sr.ox - st.ox, sr.oy - st.oy) < K.STAR_R) { st.got[i] = true; st.stars++; Sfx.play('popdragonStar'); st.sparks.push({ i, t: st.clock }); }
     }
     this.events(st);
@@ -221,6 +239,55 @@ MODES.popdragon = {
     }
     if (st.catchT >= 1) { st.misses++; st.bounce = K.BOUNCE; st.catchT = 1; Sfx.play('popdragonBounce'); st.says.push({ text: 'Again! Hold on together!', t: st.clock }); }
   },
+  // the cat's paws, the moths and dust bunnies, the snore, the gusts and the rain, the tipping books' creaks
+  hazards(st, dt) {
+    const R = POPDRAGON_ROUTE, K = POPDRAGON;
+    // the cat: each paw winds up (eyes narrow, a paw shadow) for 1.2 s of flying, then strikes when the dragon gets there
+    while (st.pawI < R.paws.length && st.s >= R.paws[st.pawI].s) {
+      const pw = R.paws[st.pawI++];
+      const inBox = st.ox >= pw.ox[0] && st.ox <= pw.ox[1] && st.oy >= pw.oy[0] && st.oy <= pw.oy[1];
+      Sfx.play('popdragonSwipe');
+      if (st.tail > 0) {
+        // batted with the tail: "Mrrp!" and the bonus stars just ahead light up
+        st.burnt[pw.id] = st.clock; st.bats++; st.batAt = st.clock; Sfx.play('popdragonMrrp'); Sfx.play('popdragonBat');
+        st.says.push({ text: 'Mrrp!', t: st.clock, cat: true });
+      } else if (inBox && st.safe <= 0) { st.pawHits++; this.crumple(st, { paw: pw }); if (st.phase !== 'fly') return; }
+      st.pawStrike = { id: pw.id, t: st.clock };
+    }
+    const pn = R.paws[st.pawI];
+    if (pn && st.s >= pn.s - pn.tel && !st.pawSeen[pn.id]) { st.pawSeen[pn.id] = true; Sfx.play('popdragonCatEyes'); }
+    // moths and dust bunnies fly at the dragon; one that meets it (and is not swished away) clings to a wing
+    while (st.clingI < R.clingers.length && st.s >= R.clingers[st.clingI].s) {
+      const c = R.clingers[st.clingI++];
+      if (Math.hypot(st.ox - c.ox, st.oy - c.oy) >= R.CLING) continue;
+      if (st.tail > 0) { st.mothBats++; st.knocked = (st.knocked || []).concat([{ id: c.id, t: st.clock, kind: c.kind }]); Sfx.play('popdragonBat'); continue; }
+      st.cling.push({ id: c.id, t: st.clock, kind: c.kind, side: c.ox < st.ox ? -1 : 1 });
+      Sfx.play('popdragonMoth');
+      if (st.cling.length >= 3) { st.cling = []; if (st.safe <= 0) { this.crumple(st, { moths: true }); if (st.phase !== 'fly') return; } }
+    }
+    // they let go by themselves after a while
+    if (st.cling.length) st.cling = st.cling.filter(c => st.clock - c.t < 7);
+    st.moths = st.cling.length;
+    if (st.knocked) st.knocked = st.knocked.filter(k => st.clock - k.t < 1.2);
+    // the snore: a big breath out lifts the dragon
+    if (R.snore && !st.snored && st.s >= R.snore.s) { st.snored = true; Sfx.play('popdragonSnore'); }
+    if (R.snore && st.s < R.snore.s - 30) st.snored = false;
+    // gusts outside (a whoosh as each one starts) and the rain drumming on the wings
+    const g = R.gustAt ? R.gustAt(st.s) : null;
+    if (g && g !== st.gust) Sfx.play('popdragonGust');
+    st.gust = g;
+    if (R.rain && st.s > R.rain.s0 && st.s < R.rain.s1) { st.rainT -= dt; if (st.rainT <= 0) { st.rainT = 2.6; Sfx.play('popdragonRain'); } } else st.rainT = 0;
+    // the toy train sets off when the dragon reaches its shelf
+    const tm = (R.movers || []).find(m => m.id === 'train');
+    if (tm && st.s >= tm.s0 && st.s < tm.s0 + 40 && st.clock - st.trainT > 30) { st.trainT = st.clock; Sfx.play('popdragonTrain'); }
+    // a book about to tip creaks as it starts to wobble (only the ones just ahead)
+    for (const m of R.movers || []) {
+      if (!m.book || m.s0 - st.s > 34 || m.s1 < st.s) continue;
+      const b = m.book, u0 = ((st.lastClock / b.per + b.ph) % 1 + 1) % 1, u1 = ((st.clock / b.per + b.ph) % 1 + 1) % 1;
+      if (u0 < 0.22 && u1 >= 0.22) Sfx.play('popdragonCreak');
+    }
+    st.lastClock = st.clock;
+  },
   // hoops, the Bookworm's lines, the stretch names
   events(st) {
     const R = POPDRAGON_ROUTE, K = POPDRAGON;
@@ -231,6 +298,10 @@ MODES.popdragon = {
       if (st.phase === 'fly') Sfx.play('popdragonSmooth');
     }
     while (st.nextSay < R.says.length && st.s >= R.says[st.nextSay].s) { st.says.push({ text: R.says[st.nextSay].text, t: st.clock }); st.nextSay++; }
+    // lightning on cue (it shows the rooftop), the music changing with the stretch
+    while (st.flashI < (R.flashes || []).length && st.s >= R.flashes[st.flashI].s) { st.flashI++; st.flashAt = st.clock; }
+    let song = null; for (const c of R.cues || []) if (st.s >= c.s) song = c.song;
+    if (song !== st.song) { st.song = song; if (song && typeof Music !== 'undefined') Music.cue({ song }); }
   },
   crumple(st, hit) {
     const K = POPDRAGON;
@@ -251,6 +322,9 @@ MODES.popdragon = {
       // stars from here to the hoop come back? No: stars kept. The hoops between restart and here count again.
       const R = POPDRAGON_ROUTE; st.hoopI = R.hoops.findIndex(h => h.s > st.restart + 0.01); if (st.hoopI < 0) st.hoopI = R.hoops.length;
       st.nextSay = R.says.findIndex(sy => sy.s > st.restart + 0.01); if (st.nextSay < 0) st.nextSay = R.says.length;
+      st.pawI = R.paws.findIndex(pw => pw.s > st.restart + 0.01); if (st.pawI < 0) st.pawI = R.paws.length;
+      st.clingI = R.clingers.findIndex(c => c.s > st.restart + 0.01); if (st.clingI < 0) st.clingI = R.clingers.length;
+      st.cling = []; st.moths = 0; st.pawSeen = {};
       if (st.sameHoop >= 2 && st.gold <= 0) { st.gold = 2; st.maxCrumples = K.GOLD_CRUMPLES; st.goldMsg = st.clock; }
     }
   },
@@ -327,6 +401,10 @@ MODES.popdragon = {
     const lines = [];
     if (worst >= 0) lines.push('Most Crumples over ' + names[worst] + ' (' + wn + ')');
     else lines.push('Not a single Crumple: a perfect flight!');
+    if (st.s > (POPDRAGON_ROUTE.place.pounce || 1e9)) {
+      if (!st.pawHits) lines.push('The cat never laid a paw on you' + (st.bats ? ' (and you batted it ' + (st.bats === 1 ? 'once' : st.bats + ' times') + ': Mrrp!)' : ''));
+      else if (st.bats) lines.push('You batted the cat\'s paw ' + (st.bats === 1 ? 'once' : st.bats + ' times') + ': Mrrp!');
+    }
     return { tiles: [['Stars', st.stars + ' / ' + POPDRAGON_ROUTE.stars.length], ['Crumples', String(st.crumplesAll)], ['Refolds', String(st.refolds)], ['Swoops', String(st.swoops)]], lines };
   },
 
