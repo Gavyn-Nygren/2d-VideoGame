@@ -3,6 +3,7 @@
 //   node tools/w42/shot.js <simulated secs> <out.png> [--who=pair|idle] [--s=<metres along the track>] [--wait=4]
 //        [--cam=eye.x,eye.y,eye.z,at.x,at.y,at.z[,fov]] [--carcam=side|front|behind|wide] [--size=1280x720] [--dpr=1]
 //        [--eval="js run in the page before the shot"] [--page=build/pip-and-bo.html]
+//        [--audit]   also list scenery pieces whose footprints overlap a lot (the placement check)
 // Plays <simulated secs> of the ride (drawing off; the computer rides both seats, or nobody with --who=idle), or with --s
 // puts the train straight at that place on the track, riding. --cam holds the camera still; --carcam frames the front
 // car close up (the look shots). Prints draw calls, triangles and any page errors.
@@ -24,6 +25,7 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
   const ok = await page.evaluate(() => window.__pipbo.K3D.need());
   if (!ok) console.log('3D failed: ' + await page.evaluate(() => window.__pipbo.K3D.why));
+  if (args.includes('--audit')) await page.evaluate(() => { window.__w42audit = true; });
   const r = await page.evaluate(async ({ secs, who, s }) => {
     const P = window.__pipbo, G = P.G, K3D = P.K3D;
     const i = P.LEVELS.findIndex(l => l.mode === 'parkcoaster');
@@ -56,6 +58,7 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
   const box = await page.evaluate(() => { const r = document.getElementById('stage').getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; });
   await page.evaluate(() => new Promise(r => requestAnimationFrame(() => { window.__pipbo.K3D.freeze = true; r(); })));
   await page.screenshot({ path: out, clip: box, animations: 'allow', caret: 'initial', timeout: 120000 });
+  if (args.includes('--audit')) console.log('audit', JSON.stringify(await page.evaluate(() => window.__w42audit)));
   console.log(out, JSON.stringify(r), JSON.stringify(info), errs.length ? '\nerrors: ' + errs.slice(0, 8).join('\n') : '');
   await browser.close();
 })().catch(e => { console.error(e); process.exit(1); });
