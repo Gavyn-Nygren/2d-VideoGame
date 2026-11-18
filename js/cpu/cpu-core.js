@@ -21,7 +21,7 @@
                                    the golf ball, plinko, the car), so bubbles are drawn at bubblePos(p) anyway.
                                    bubblePos may return null to hide a bubble.
      think(st, p, o, dt, info)     every step while a level is playing (also during intro cards, countdowns and banners,
-                                   when presses are ignored anyway). Returns { left, right, jump, down, up, act }.
+                                   when presses are ignored anyway). Returns { left, right, jump, down, up, act } (and act2 / act3 in levels with def.act2 / def.act3).
                                    jump / act may be true (held), false, or 'tap' (a fresh press: pressed this step if it
                                    was up last step, otherwise let go, so asking for 'tap' every step presses every
                                    other step).
@@ -125,7 +125,7 @@ function cpuTick(dt) {
   for (const p of G.players) {
     if (cpuOn(p.id)) { CPU.idle[p.id] = 0; continue; }
     const i = p.input;
-    CPU.idle[p.id] = i.left || i.right || i.jump || i.down || i.up || i.act || i.ax || i.ay ? 0 : CPU.idle[p.id] + dt;
+    CPU.idle[p.id] = i.left || i.right || i.jump || i.down || i.up || i.act || i.act2 || i.act3 || i.ax || i.ay ? 0 : CPU.idle[p.id] + dt;
   }
   CPU.clock += dt;
   CPU.bubbles.forEach((b, k) => {
@@ -157,7 +157,12 @@ function cpuApply(p, out) {
   p.prevJump = j; p.input.jump = j;
   if (a && !p.prevAct && G.mode === 'play' && G.level && G.level.def.act) { p.pendingAct = true; p.actAge = 0; }
   p.prevAct = a; p.input.act = a;
-  CPU.last[p.id] = { left: p.input.left, right: p.input.right, jump: j, down: p.input.down, up: p.input.up, act: a };
+  // the second and third actions (def.act2 / def.act3 levels): out.act2 / out.act3, held or 'tap', like act
+  const def = G.level && G.level.def, a2 = !!(def && def.act2) && want('act2'), a3 = !!(def && def.act3) && want('act3');
+  if (a2 && !p.prevAct2 && G.mode === 'play') p.pendingAct2 = true;
+  if (a3 && !p.prevAct3 && G.mode === 'play') p.pendingAct3 = true;
+  p.prevAct2 = a2; p.input.act2 = a2; p.prevAct3 = a3; p.input.act3 = a3;
+  CPU.last[p.id] = { left: p.input.left, right: p.input.right, jump: j, down: p.input.down, up: p.input.up, act: a, act2: a2, act3: a3 };
 }
 
 /* ---------- small helpers for brains ---------- */
