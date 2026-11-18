@@ -1900,7 +1900,7 @@ function drawJobRows(id, x, y, w, job) {
     for (const wt of r.whats) {
       if (wt === '+') { text('+', bx + 4, yy, 13, C.paper, 'center', 'body'); bx += 10; continue; }
       if (wt === 'or') { text('or', bx + 9, yy + 0.5, 12, '#b9b3cf', 'center', 'body'); bx += 20; continue; }
-      if (!['left', 'right', 'jump', 'down', 'act'].includes(wt)) continue;
+      if (!['left', 'right', 'jump', 'down', 'act', 'hop'].includes(wt)) continue;
       const what = wt === 'jump' && vertical && d.kind !== 'kb' ? 'up' : wt;
       bx += drawBtn(id, what, bx, yy, { size: 20, align: 'left' }) + 3;
     }
