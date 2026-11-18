@@ -211,8 +211,31 @@ const PARKKARTS_SCENE = (function () {
     const latM = (ks[0].lat + ks[1].lat) / 2 * 0.6, cs = far ? sC : Ck.s;
     const cf = TR.at(cs), cx = far ? cf.x + cf.rx * latM : Ck.x * 0.4 + (cf.x + cf.rx * latM) * 0.6, cz = far ? cf.z + cf.rz * latM : Ck.z * 0.4 + (cf.z + cf.rz * latM) * 0.6;
     const y0 = PW.Y(cs);
-    const eye = [cx - F[0] * b, y0 + h + 0.6, cz - F[1] * b];
-    const at = [eye[0] + F[0] * Math.cos(th) * 20, eye[1] - Math.sin(th) * 20, eye[2] + F[1] * Math.cos(th) * 20];
+    // both karts in the picture sideways too: one in a shortcut (the ring toss, the ford, the fountain fork) is up to
+    // 16 units from one on the main road. The camera slides to the middle of the pair across the view and pulls back
+    // by how far apart they are (eased, so a kart turning in never jerks the picture).
+    const Rx = F[1], Rz = -F[0], seen = far ? [Lk] : [Lk, Ck];
+    const offs = seen.map(k => (k.x - cx) * Rx + (k.z - cz) * Rz);
+    const wantC = far ? 0 : (Math.min(...offs) + Math.max(...offs)) / 2;
+    if (sc.sideC == null || sc.snapNext) sc.sideC = wantC;
+    sc.sideC += (wantC - sc.sideC) * Math.min(1, dt * 5);
+    const bx = cx + Rx * sc.sideC, bz = cz + Rz * sc.sideC;
+    // how much further back the camera must be for each kart to be inside the view's width at its own depth (0.74:
+    // the half width of the view a unit away, less a margin)
+    let wantB = 0;
+    seen.forEach((k, i) => {
+      const depth = ((k.x - bx) * F[0] + (k.z - bz) * F[1] + b) * Math.cos(th) + (y0 + h + 0.6 - PW.Yk(k)) * Math.sin(th);
+      wantB = Math.max(wantB, ((Math.abs(offs[i] - sc.sideC) + 1.4) / 0.74 - depth) / Math.cos(th));
+    });
+    if (sc.sideB == null || sc.snapNext) sc.sideB = wantB;
+    sc.sideB += (wantB - sc.sideB) * Math.min(1, dt * (wantB > sc.sideB ? 8 : 2.5));
+    h += sc.sideB * (h / b); b += sc.sideB;
+    // the kart in front higher or lower than the one behind (the funhouse climb, the slide, the ramp): look up or
+    // down by that much, so it does not leave by the top edge
+    const dy = (PW.Yk(Lk) - y0) * (1 - 0.4 * u), th2 = th - Math.atan2(dy, g + b) * 0.9;
+    sc.th = sc.th == null || sc.snapNext ? th2 : sc.th + (th2 - sc.th) * Math.min(1, dt * 4);
+    const eye = [bx - F[0] * b, y0 + h + 0.6, bz - F[1] * b];
+    const at = [eye[0] + F[0] * Math.cos(sc.th) * 20, eye[1] - Math.sin(sc.th) * 20, eye[2] + F[1] * Math.cos(sc.th) * 20];
     // a little roll into the bend (none with reduced motion)
     const roll = RM() ? 0 : clamp(-f.turn * 2.4, -6, 6) * Math.PI / 180;
     sc.roll = (sc.roll || 0) + (roll - (sc.roll || 0)) * Math.min(1, dt * 2);
@@ -394,7 +417,7 @@ const PARKKARTS_SCENE = (function () {
   function items(sc, st, dt) {
     const used = { teddy: 0, floss: 0, balloon: 0, rocket: 0 };
     for (const it of st.items || []) {
-      const p = TR.pos(it.s, it.lat), y = PW.Y(it.s);
+      const p = it.x != null ? [it.x, it.z] : TR.pos(it.s, it.lat), y = it.x != null ? 0 : PW.Y(it.s);
       if (it.kind === 'teddy') {
         const td = sc.teddies[used.teddy++]; if (!td) continue;
         td.g.visible = td.blob.visible = true;

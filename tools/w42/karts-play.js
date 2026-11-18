@@ -9,7 +9,7 @@
 //                  stop (brakes to a stop at the line now and then) sea (steers for the outside every bend)
 //                  ringtoss (sits in the ring-toss shortcut) kid (the computer at Easy made a whole second late)
 // Prints: who won, each flag (how, where, when), race length, cranes, wall hits, drifts, boosts and the computer's
-// changes of steering direction a second (more than 2 is a wobble bug).
+// changes of steering direction a second on the road, outside its slides (more than 2 is a wobble bug).
 'use strict';
 const path = require('path');
 const { chromium } = require('playwright');
@@ -67,7 +67,7 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 600), 
       P.loadLevel(i);
       G.introT = 0;
       const steps = Math.round(maxT / P.DT), every = trace ? Math.round(trace / P.DT) : 0, lines = [];
-      const flips = [[], []], lastS = [0, 0];
+      const flips = [[], []], lastS = [0, 0], slideT = [-9, -9];
       window.__flipLog = trace ? [] : null;
       let n = 0, maxFlip = [0, 0];
       while (n < steps && G.mode === 'play') {
@@ -80,7 +80,9 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 600), 
           for (const id of [0, 1]) {
             if (who !== 'cpu' && id === side) continue;
             const ax = G.players[id].input.ax || 0, sg = ax > 0.05 ? 1 : ax < -0.05 ? -1 : 0;
-            if (sg && lastS[id] && sg !== lastS[id] && st.phase === 'race') { flips[id].push(n * P.DT); if (window.__flipLog && window.__flipLog.length < 400) { const k = st.karts[id]; window.__flipLog.push(`${(n * P.DT).toFixed(2)} ${['Pip', 'Bo'][id]} s${k.s.toFixed(0)} ${k.drift ? 'D' : ''}${k.on >= 0 ? 'R' : ''}${k.verge ? 'V' : ''} lat${k.lat.toFixed(1)} ax${ax.toFixed(2)}`); } }
+            if (st.karts[id].drift || G.players[id].input.jump) slideT[id] = n * P.DT;
+            // (a slide's flick in and counter-steer are the drift technique, not a wobble: only steering on the road counts)
+            if (sg && lastS[id] && sg !== lastS[id] && st.phase === 'race' && n * P.DT - slideT[id] > 0.35) { flips[id].push(n * P.DT); if (window.__flipLog && window.__flipLog.length < 400) { const k = st.karts[id]; window.__flipLog.push(`${(n * P.DT).toFixed(2)} ${['Pip', 'Bo'][id]} s${k.s.toFixed(0)} ${k.drift ? 'D' : ''}${k.on >= 0 ? 'R' : ''}${k.verge ? 'V' : ''} lat${k.lat.toFixed(1)} ax${ax.toFixed(2)}`); } }
             if (sg) lastS[id] = sg;
             while (flips[id].length && n * P.DT - flips[id][0] > 1) flips[id].shift();
             maxFlip[id] = Math.max(maxFlip[id], flips[id].length);

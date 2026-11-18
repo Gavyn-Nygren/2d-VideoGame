@@ -89,11 +89,13 @@ const PARKKARTS_PRIZES = (function () {
   PZ.use = function (st, k, other) {
     if (!k.prize || k.crane || k.lock) return false;
     const n = k.prize, f = TR.at(k.s), back = (d) => { const s = k.s - d; return { s, lat: k.lat }; };
+    // dropped in a shortcut (the ring toss, the ford, the fork): it lies where the kart is, not on the main road beside it
+    const here = d => (k.on >= 0 ? { x: k.x - Math.sin(k.yaw) * d, z: k.z - Math.cos(k.yaw) * d } : null);
     st.fx.push({ k: 'use', t: st.t, who: k.id, n });
     k.used = (k.used || 0) + 1;
     if (n === 'popcorn') { k.popT = S.POP_T; k.boostT = Math.max(k.boostT, S.POP_T); Sfx.play('parkkartsPopcorn'); }
-    else if (n === 'floss') { const b = back(2.4); st.items.push({ kind: 'floss', s: b.s, lat: b.lat, t: 0, life: S.FLOSS_LIFE, owner: k.id, r: S.FLOSS_R, hit: [] }); Sfx.play('parkkartsFloss'); }
-    else if (n === 'teddy') { const b = back(2.8); st.items.push({ kind: 'teddy', s: b.s, lat: Math.max(-f.hw + 1, Math.min(f.hw - 1, b.lat)), t: 0, life: S.TEDDY_LIFE, owner: k.id, r: S.TEDDY_R }); Sfx.play('parkkartsTeddy'); }
+    else if (n === 'floss') { const b = back(2.4); st.items.push(Object.assign({ kind: 'floss', s: b.s, lat: b.lat, t: 0, life: S.FLOSS_LIFE, owner: k.id, r: S.FLOSS_R, hit: [] }, here(2.4))); Sfx.play('parkkartsFloss'); }
+    else if (n === 'teddy') { const b = back(2.8); st.items.push(Object.assign({ kind: 'teddy', s: b.s, lat: Math.max(-f.hw + 1, Math.min(f.hw - 1, b.lat)), t: 0, life: S.TEDDY_LIFE, owner: k.id, r: S.TEDDY_R }, here(2.8))); Sfx.play('parkkartsTeddy'); }
     else if (n === 'balloons') { st.items.push({ kind: 'balloon', s: k.s + 1.4, lat: Math.max(-f.hw + 0.6, Math.min(f.hw - 0.6, k.lat)), v: k.v + S.BALL_V, t: 0, life: S.BALL_LIFE, owner: k.id, r: S.BALL_R }); Sfx.play('parkkartsBalloon'); }
     else if (n === 'ring') { k.ringT = S.RING_T; Sfx.play('parkkartsRing'); }
     else if (n === 'magnet') { k.magT = S.MAG_T; Sfx.play('parkkartsMagnet'); }
@@ -125,11 +127,12 @@ const PARKKARTS_PRIZES = (function () {
         const tg = karts[it.target];
         it.s = TR.wrap(it.s + S.ROCKET_V * dt);
         it.lat += (tg.lat - it.lat) * Math.min(1, dt * 5);
-        if (sd(tg.s, it.s) < 0.6 && !tg.crane) { if (hit(st, tg, 'rocket', it)) st.fx.push({ k: 'flash', t: st.t, who: tg.id, s: tg.s, lat: tg.lat }); it.t = it.life; }
+        const dsT = sd(tg.s, it.s);
+        if (dsT < 0.6 && dsT > -3 && !tg.crane) { if (hit(st, tg, 'rocket', it)) st.fx.push({ k: 'flash', t: st.t, who: tg.id, s: tg.s, lat: tg.lat }); it.t = it.life; }
         continue;
       }
       if (it.t >= it.life) continue;
-      const p = TR.pos(it.s, it.lat);
+      const p = it.x != null ? [it.x, it.z] : TR.pos(it.s, it.lat);
       for (const k of karts) {
         if (k.crane || k.lock) continue;
         if (it.kind === 'floss' && it.hit.includes(k.id)) continue;

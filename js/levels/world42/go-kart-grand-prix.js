@@ -36,7 +36,11 @@ const PARKKARTS = (function () {
   CO.input = function (p) {
     const i = p.input || {};
     let steer = Math.abs(i.ax || 0) > 0.12 ? clamp(i.ax, -1, 1) : (i.right ? 1 : 0) - (i.left ? 1 : 0);
-    return { steer, brake: !!(i.down || (i.ay || 0) > 0.55), drift: !!i.jump };
+    // the brake on a stick is a pull mostly straight back: a thumb holding left or right often sits a little low,
+    // and that must not brake (within about 40 degrees of straight back)
+    // (a controller reports "down" for any stick more than 0.6 low, so while a stick is held its angle decides)
+    const ax = i.ax || 0, ay = i.ay || 0, stick = Math.hypot(ax, ay) > 0.3, back = ay > 0.55 && ay > Math.abs(ax) * 1.2;
+    return { steer, brake: stick ? back : !!i.down, drift: !!i.jump };
   };
   CO.anyPress = p => { const i = p.input || {}; return !!(i.left || i.right || i.down || i.jump || i.act || i.up || Math.abs(i.ax || 0) > 0.3 || Math.abs(i.ay || 0) > 0.5); };
 
@@ -96,8 +100,23 @@ const PARKKARTS = (function () {
   const PLACE_WORDS = ['on the kart track', 'on the Midway', 'under the Comet', 'in the funhouse', 'on the pier', 'on Spook Manor Lane'];
 
   /* ---------- side by side (the crane and the rolling restart) ---------- */
-  function lockOn(k) { k.lock = { v: k.v }; k.drift = 0; k.spark = 0; k.px = k.pz = 0; }
+  function lockOn(k) { k.lock = { v: k.v, v0: k.v }; k.drift = 0; k.spark = 0; k.px = k.pz = 0; }
   function lockStep(k, inp, v, dt, slot) {
+    // still in a shortcut when the flag came (the ring toss, the ford, the fountain fork): it is carried on down the
+    // shortcut's middle at its own pace until it joins the road again, never snapped across to the main road
+    if (k.on >= 0) {
+      const B = TR.branches[k.on];
+      v = Math.max(v, Math.min(k.lock.v0 || v, KK.S.VMAX));
+      k.v = v; k.bs += v * dt; k.lat += clamp(-k.lat, -dt * 3, dt * 3);
+      if (k.bs < B.len - 0.6) {
+        const g = B.at(k.bs);
+        k.x = g.x + g.rx * k.lat; k.z = g.z + g.rz * k.lat; k.yaw = g.yaw; k.verge = false; k.steer = inp.steer;
+        KK.track(k, B.mainS(k.bs));
+        return;
+      }
+      const n = TR.near(k.x, k.z, TR.wrap(B.s1));
+      k.on = -1; k.bs = 0; k.lat = n.lat; KK.track(k, n.s);
+    }
     const f = TR.at(k.s);
     k.lock.v = v;
     k.v = v;
@@ -122,7 +141,7 @@ const PARKKARTS = (function () {
     while (st.fx.length && st.t - st.fx[0].t > 4) st.fx.shift();
     while (st.says.length > 4) st.says.shift();
     const inp = ps.map(p => CO.input(p));
-    K3D.heading = TR.at((ks[0].s + ks[1].s) / 2).yaw + Math.PI;
+    K3D.heading = TR.at((ks[0].prog + ks[1].prog) / 2).yaw + Math.PI;
     for (const k of ks) PZ.kart(st, k, dt);
     // robots go round
     for (const r of st.robots) {
@@ -212,8 +231,8 @@ const PARKKARTS = (function () {
       if (!st.roll) { const ins = insideSign(L.s + 20), chaserInside = st.restartN % 2 === 1; st.roll = { slots: [0, 0] }; st.roll.slots[C.id] = (chaserInside ? ins : -ins) * S.LANE; st.roll.slots[w] = -st.roll.slots[C.id]; }
       lockStep(L, inp[w], v, dt, st.roll.slots[w]);
       C.crane.t += dt;
-      if (st.phaseT >= S.CRANE_T) {
-        // set down level with the leader
+      if (st.phaseT >= S.CRANE_T && L.on < 0) {
+        // set down level with the leader (once the leader is out of any shortcut)
         C.crane = null;
         KK.place(C, L.s, st.roll.slots[C.id], S.ROLL_V);
         C.lap = L.lap; C.s = L.s; C.prog = L.prog;

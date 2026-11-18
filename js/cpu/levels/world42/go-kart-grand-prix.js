@@ -16,7 +16,7 @@
              when side by side. Easy uses them late.
      SKILL   (info.skill: 0.35 Easy, 0.7 Normal, 1 Hard) sets the line, the drifts, prize sense, reaction, and a rate of
              believable mistakes (an exit run wide for a second, a wall scraped), never a stop. Easy also eases off
-             when it is well ahead, so a young player who keeps the kart on the road can win.
+             when it is well ahead (down to a crawl near the breakaway), so a young player who keeps moving can win.
      NEVER   drives the wrong way (the crane fixes it), parks, or rams on purpose: it keeps a gap to the side when level.
    If the person presses nothing for 30 s (CPU.idleStop) it stops pressing too, as in every versus level.
    1-player bubbles, sparing: "Catch me!", "Nice drift!", "Hey!". */
@@ -81,24 +81,56 @@ cpuBrain('parkkarts', {
     let err = Math.atan2(Math.sin(want - k.yaw), Math.cos(want - k.yaw));
     let s = Math.max(-1, Math.min(1, -err * (1.7 + 0.8 * sk)));
     // drift into tight bends (the kart turns harder than it steers): hold through, let go out of it
-    const drifty = sk >= 0.95 ? 0.85 : sk >= 0.6 ? 0.95 : 1.6;
-    if (!b.drifting && tight > drifty && k.v > KK.S.DRIFT_V + 1 && Math.abs(err) > 0.05 && !useShort) { b.drifting = true; b.driftDir = -Math.sign(turn); }
+    const drifty = sk >= 0.95 ? 0.85 : sk >= 0.6 ? 1.25 : 1.6, NEAR = 0.25;
+    // (only once the bend itself is close: the road just ahead already turns that way. Starting on the 22-unit look
+    // alone threw the kart sideways 20 units early, into the inside wall of the hairpin and of the funhouse's last bend)
+    let nearTurn = 0; for (let d = 1; d < 10; d += 2) nearTurn += TR.at(k.s + d).turn * 2;
+    const bendHere = Math.sign(nearTurn) === Math.sign(turn) && Math.abs(nearTurn) > NEAR;
+    if (!b.drifting && tight > drifty && bendHere && k.v > KK.S.DRIFT_V + 1 && Math.abs(err) > 0.05 && !useShort) { b.drifting = true; b.driftDir = -Math.sign(turn); }
     if (b.drifting) {
       const inside = -b.driftDir * k.lat, tooIn = inside > hw - 0.6 - (1 - sk) * 0.8;
       const exitDone = tight < drifty * 0.45 || (k.spark === 2 && tight < drifty * (sk >= 0.95 ? 1.4 : 1)) || k.skidT > 0 || (tooIn && k.spark > 0) || k.verge;
       if (exitDone || (k.drift === 0 && k.driftT === 0 && b.heldT > 0.4)) { b.drifting = false; b.heldT = 0; }
-      else { out.jump = true; b.heldT = (b.heldT || 0) + dt; if (k.drift === 0) s = b.driftDir * Math.max(0.5, Math.abs(s)); }
+      else {
+        out.jump = true; b.heldT = (b.heldT || 0) + dt;
+        if (k.drift === 0) {
+          // the stick goes over first, then jump: a slide starts the way the stick points, and a stick still on the
+          // other side from the last slide's counter-steer started the next one the wrong way round (into the sea)
+          s = b.driftDir * Math.max(0.5, Math.abs(s)); b.inDrift = true;
+          out.jump = Math.sign(b.steer) === b.driftDir && Math.abs(b.steer) > 0.32;
+        } else if (k.drift !== b.driftDir) { b.drifting = false; b.heldT = 0; out.jump = false; }
+        else {
+          // in a drift the stick sets how tight the slide is (from S.DRIFT_MIN to DRIFT_MIN + DRIFT_RANGE): pick the
+          // turn rate that brings the nose round to the aim point, and hold the stick there
+          const wd = err * 3.2, toward = -k.drift * wd;                        // > 0: the slide turns the way it wants to go
+          const u = Math.max(0, Math.min(1, (toward - KK.S.DRIFT_MIN) / KK.S.DRIFT_RANGE));
+          s = k.drift * (2 * u - 1);
+          b.inDrift = true;
+        }
+      }
     }
     // Easy brakes a touch for the tightest bends
     if (sk < 0.5 && tight > 1.4 && k.v > 10) out.down = true;
     // Easy eases off when well ahead
-    if (sk < 0.5 && st.lead === p.id && st.gap > 14) out.down = k.v > 9;
+    // (and waits for a kart that is struggling: the further ahead, the slower, down to a crawl just short of the
+    // breakaway, so a young player who is still moving is not dropped off the screen three times in half a minute)
+    // (it waits like that for at most 8 s a flag, so a kart that has really stopped still loses the flag and no race drags)
+    if (b.waitN !== st.restartN) { b.waitN = st.restartN; b.waitT = 0; }
+    if (sk < 0.5 && st.lead === p.id && st.gap > 14) {
+      const patient = (b.waitT || 0) < 8;
+      if (st.gap > 18) b.waitT = (b.waitT || 0) + dt;
+      out.down = k.v > (!patient ? 9 : st.gap > 22 ? 2.6 : st.gap > 18 ? 5 : 9);
+    }
     // ease the stick (never wobbling: a dead zone and a rate limit)
     const rate = 4 + 4 * sk;
     // a hand on the wheel, not a twitch: a turn the other way waits until the last one has had half a second, and a
     // small one the other way waits until it is worth making
     b.sinceFlip = (b.sinceFlip || 0) + dt;
-    if (b.lastNZ && Math.sign(s) === -b.lastNZ && (b.sinceFlip < 0.56 || Math.abs(s) < (b.drifting ? 0.45 : 0.22))) s = 0;
+    // (not in a slide, where the stick is the throttle of the turn, and not when the nose is far off the aim point:
+    // waiting half a second there is a wall)
+    const free = b.inDrift || Math.abs(err) > 0.6;
+    b.inDrift = false;
+    if (!free && b.lastNZ && Math.sign(s) === -b.lastNZ && (b.sinceFlip < 0.56 || Math.abs(s) < (b.drifting ? 0.45 : 0.22))) s = 0;
     if (Math.abs(s) < 0.08 && !b.drifting) s = 0;
     b.steer += Math.max(-rate * dt, Math.min(rate * dt, s - b.steer));
     if (Math.abs(b.steer) > 0.05 && Math.sign(b.steer) !== b.lastNZ) { b.lastNZ = Math.sign(b.steer); b.sinceFlip = 0; }
