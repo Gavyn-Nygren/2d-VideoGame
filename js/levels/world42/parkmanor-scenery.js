@@ -348,11 +348,9 @@ const PARKMANOR_SCENE = (function () {
   function outside(K, B) {
     const g = new T.Group(); K.add(g);
     // the ground: a gravel path up to the porch, a gravel turning circle at the gate, paving under the porch steps
-    // (the kit's layout mask comes out mirrored in z, a canvas flip: the layout is given with z negated to land right)
-    const mz = pts => pts.map(([x, z]) => [x, -z]);
     PARK.ground(K, { x: 0, z: 0, size: 900, layout: {
-      paths: [{ pts: mz([[0, 40], [0.4, 30], [-0.3, 22], [0.2, 14], [0, 8.4]]), w: 2.8, kind: 'gravel' }, { pts: mz([[0, 40], [0, 120]]), w: 5, kind: 'pave' }, { pts: mz([[-30, 38], [30, 38]]), w: 4, kind: 'pave' }],
-      discs: [{ x: 0, z: -22, r: 2.6, kind: 'gravel' }], rects: [{ x: 0, z: -7.6, w: 8, d: 2.2, kind: 'pave' }, { x: 19, z: 4.5, w: 22, d: 7, kind: 'gravel' }] } });
+      paths: [{ pts: [[0, 40], [0.4, 30], [-0.3, 22], [0.2, 14], [0, 8.4]], w: 2.8, kind: 'gravel' }, { pts: [[0, 40], [0, 120]], w: 5, kind: 'pave' }, { pts: [[-30, 38], [30, 38]], w: 4, kind: 'pave' }],
+      discs: [{ x: 0, z: 22, r: 2.6, kind: 'gravel' }], rects: [{ x: 0, z: 7.6, w: 8, d: 2.2, kind: 'pave' }, { x: 19, z: -4.5, w: 22, d: 7, kind: 'gravel' }] } });
     // under the house a dark plinth (the floors sit on it); the crawlspace lattice round the outside
     const plinth = mk(new T.BoxGeometry(16.6, 0.3, 16.6), M('plinth', () => K3D.toon('#2a2434')), { ink: INK, inkW: 0.6 }); plinth.position.set(0, -0.165, -2); g.add(plinth);
     // graves: plywood headstones on struts, mounds of earth, a skeleton hand, wilted wreaths
