@@ -32,48 +32,156 @@ const PARKFLUME_SCENE = (function () {
     if (j > 0) y += j * (1.3 + 1.2 * Math.sin(x * 0.13 + 1.1) * Math.cos(z * 0.11) + 0.6 * Math.sin(x * 0.37 + z * 0.29));
     return y;
   };
+  /* ---------- the lay of the park: where the walks run, what the ground is, and who stands where ---------- */
+  // The cobbled walks are drawn on purpose: a promenade down each side of the first stretch that runs through the
+  // rides' plazas, links from the rides to the towpath (the gravel beside the water), to the dock's jetty and to both
+  // ends of the footbridge, an outer loop behind the rides, a walk south of the long reach, and one from the sawmill's
+  // yard to the lagoon's beach. Everything that stands in the park is placed against this plan (see gardens()).
+  const WALKS = [
+    // west: the jetty, the swings, the drop tower, down to the towpath of the long reach
+    [[-9, 3], [-22, -6], [-30, -34], [-38, -70], [-52, -100], [-66, -128], [-70, -150], [-70, -167]],
+    [[-30, -34], [-9, -34]], [[-38, -70], [-18, -71], [1, -70]],
+    [[-9, -156], [-22, -151], [-44, -140], [-66, -128]],
+    [[-38, -70], [-66, -66], [-90, -86], [-96, -112], [-86, -128], [-66, -128]],
+    // east: the carousel, the big wheel, the teacups, and the loop behind them
+    [[10, -8], [28, -6], [36, -38], [42, -78], [46, -118], [40, -146], [30, -168]],
+    [[36, -38], [10, -40]], [[46, -118], [26, -113], [8, -111]], [[30, -168], [20, -159], [8, -156.5]],
+    [[36, -38], [62, -44], [78, -80], [76, -125], [60, -158], [30, -168]],
+    // south of the long reach, with a way up to its towpath
+    [[30, -168], [22, -198], [-18, -214], [-70, -212], [-104, -204]], [[-70, -212], [-70, -197]],
+    // the sawmill's yard to the lagoon's beach
+    [[-42, 52], [-10, 60], [27, 56]],
+  ];
+  const HW = 1.7; // half a walk's width
+  // each ride stands on a cobbled plaza (the big wheel's is long, under the wheel)
+  const PLAZAS = [];
+  for (const r of PR.art.rides) {
+    if (r.k === 'wheel') { const c = Math.cos(r.yaw || 0), sn = Math.sin(r.yaw || 0); for (const d of [-9, 0, 9]) PLAZAS.push([r.x + c * d, r.z - sn * d, 8.5]); }
+    else PLAZAS.push([r.x, r.z, r.k === 'drop' ? 8 : (r.r || 8) + 3.2, r]);
+  }
+  let LAY = null;
+  function lay() {
+    if (LAY) return LAY;
+    const B = 6, key = (a, b) => a + ',' + b;
+    const grid = () => {
+      const m = new Map();
+      return {
+        add(x, z, v) { const k = key(Math.floor(x / B), Math.floor(z / B)); if (!m.has(k)) m.set(k, []); m.get(k).push(v); },
+        near(x, z, reach) {
+          let best = null, bd = 1e9;
+          const bx = Math.floor(x / B), bz = Math.floor(z / B);
+          for (let a = bx - reach; a <= bx + reach; a++) for (let b = bz - reach; b <= bz + reach; b++) {
+            const l = m.get(key(a, b)); if (!l) continue;
+            for (const q of l) { const d = (q[0] - x) ** 2 + (q[1] - z) ** 2; if (d < bd) { bd = d; best = q; } }
+          }
+          return best ? { q: best, d: Math.sqrt(bd) } : null;
+        },
+      };
+    };
+    // the channel's samples, and the walks' (a point every metre), in grids of buckets to find the nearest quickly
+    const ch = grid(), wk = grid(), lines = [];
+    for (let s = 0; s <= R.len; s += 0.5) { const f = R.at(s), p = f.p; ch.add(p[0], p[2], [p[0], p[2], p[1], PR.w(s), f.t[0], f.t[2], s]); }
+    for (const pts of WALKS) {
+      const cv = new T.CatmullRomCurve3(pts.map(q => new T.Vector3(q[0], 0, q[1])), false, 'centripetal'), n = Math.ceil(cv.getLength()), line = [];
+      for (let i = 0; i <= n; i++) { const q = cv.getPointAt(i / n), t = cv.getTangentAt(i / n); wk.add(q.x, q.z, [q.x, q.z]); line.push([q.x, q.z, t.x, t.z]); }
+      lines.push(line);
+    }
+    LAY = { nearest: (x, z, reach = 3) => ch.near(x, z, reach), walk: (x, z) => { const n = wk.near(x, z, 1); return n ? n.d : 99; }, lines };
+    return LAY;
+  }
+  const FX0 = -230, FX1 = 90, FZ0 = -240, FZ1 = 125; // the height field's edges
+  // what the ground is at a place: its height, and how much of it is cobbles, gravel, the channel's bed, jungle floor,
+  // lagoon sand and the mill's sawdust
+  function surfAt(x, z) {
+    const Lq = lay(), jun = jungleK(x, z);
+    let y = groundAt(x, z), pave = 0, grav = 0, bed = 0, sand = 0, dust = 0;
+    const n = Lq.nearest(x, z), far = Lq.nearest(x, z, 6);
+    const kd = far ? PR.kind(far.q[6]) : 'garden';
+    if (n && n.d < n.q[3] + 0.5 && n.q[2] < y - 0.05) { y = n.q[2] - 1.1; bed = 1; }
+    // inside the sawmill the walkways sit just above the water: the ground under the whole building drops to them
+    else if (n && PR.kind(n.q[6]) === 'mill' && n.d < Math.max(n.q[3] + 3.2, 7.2) + 0.2) { y = n.q[2] - 0.2; dust = 1; }
+    else if (n && n.d < n.q[3] + 3.2 && n.q[2] < y + 0.2) { if (kd === 'lagoon') sand = 1; else if (kd === 'mill' || kd === 'pond') dust = 1; else if (jun < 0.5) grav = 1; }
+    else if (jun < 0.5) {
+      if (far && (kd === 'lagoon') && far.d < far.q[3] + 9) sand = 1 - sm(far.q[3] + 6, far.q[3] + 9, far.d);
+      else if (far && (kd === 'mill' || kd === 'pond') && far.d < far.q[3] + 16) dust = 1 - sm(far.q[3] + 11, far.q[3] + 16, far.d);
+      // the cobbled walks and the rides' plazas (a soft edge, so the kerb line runs smooth across the field's squares)
+      if (!sand && dust < 0.5) {
+        let d = Lq.walk(x, z) - HW;
+        for (const q of PLAZAS) d = Math.min(d, Math.hypot(x - q[0], z - q[1]) - q[2]);
+        pave = 1 - sm(-0.55, 0.55, d);
+      }
+    }
+    return { y, pave, grav, bed, jun, sand, dust };
+  }
+  // one word for the ground at a place (beyond the height field it is all lawn)
+  const kindAt = (x, z) => {
+    if (x < FX0 || x > FX1 || z < FZ0 || z > FZ1) return 'grass';
+    const q = surfAt(x, z);
+    return q.bed ? 'water' : q.dust > 0.25 ? 'dust' : q.sand > 0.25 ? 'sand' : q.grav ? 'gravel' : q.pave > 0.2 ? 'pave' : q.jun >= 0.4 ? 'jungle' : 'grass';
+  };
+  // true where a round patch is lawn all over (nothing of a walk, the towpath, sand or sawdust under it)
+  const grassy = (x, z, r) => {
+    if (kindAt(x, z) !== 'grass') return false;
+    for (const k of r > 2 ? [1, 0.5] : [1]) for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283 + k; if (kindAt(x + Math.cos(a) * r * k, z + Math.sin(a) * r * k) !== 'grass') return false; }
+    return true;
+  };
+
+  // WHO STANDS WHERE: a fine grid of taken ground. Everything built is scanned into it (scan), and everything
+  // scattered asks for its patch first (claim), so nothing is planted through anything else. 'hi' is taken air (the
+  // coaster's track, the big wheel): nothing tall goes under it.
+  let OCC = { lo: new Set(), hi: new Set(), seen: new WeakSet() };
+  const CELL = 0.5, ck = (a, b) => (a + 4096) * 8192 + (b + 4096);
+  const cells = (x, z, r, f) => {
+    const a0 = Math.floor((x - r) / CELL), a1 = Math.floor((x + r) / CELL), b0 = Math.floor((z - r) / CELL), b1 = Math.floor((z + r) / CELL), r2 = (r + CELL * 0.4) ** 2;
+    for (let a = a0; a <= a1; a++) for (let b = b0; b <= b1; b++) { const dx = (a + 0.5) * CELL - x, dz = (b + 0.5) * CELL - z; if (dx * dx + dz * dz <= r2 && f(ck(a, b))) return true; }
+    return false;
+  };
+  const clear = (x, z, r, tall) => !cells(x, z, r, k => OCC.lo.has(k) || (!!tall && OCC.hi.has(k)));
+  const mark = (x, z, r, hi) => { const set = hi ? OCC.hi : OCC.lo; cells(x, z, r, k => { set.add(k); }); };
+  const claim = (x, z, r, tall) => clear(x, z, r, tall) && (mark(x, z, r), true);
+  // scan everything built so far that stands on the ground (not flat decals, not things overhead, not the long swept
+  // strips that follow the channel) into the grid
+  function scan(K) {
+    K.root.updateMatrixWorld(true);
+    const bx = new T.Box3(), m4 = new T.Matrix4();
+    const put = () => {
+      const sx = bx.max.x - bx.min.x, sz = bx.max.z - bx.min.z; if (sx > 30 || sz > 30 || bx.max.y - bx.min.y < 0.3) return;
+      const gy = groundAt((bx.min.x + bx.max.x) / 2, (bx.min.z + bx.max.z) / 2); if (bx.min.y > gy + 1.8 || bx.max.y < gy - 0.3) return;
+      for (let a = Math.floor((bx.min.x - 0.15) / CELL); a <= Math.floor((bx.max.x + 0.15) / CELL); a++) for (let b = Math.floor((bx.min.z - 0.15) / CELL); b <= Math.floor((bx.max.z + 0.15) / CELL); b++) OCC.lo.add(ck(a, b));
+    };
+    const walk = o => {
+      if (o.userData.big || o.userData.ink || o.isSprite || o.isPoints || o.isLine) return;
+      if (o.isMesh && o.geometry && !OCC.seen.has(o)) {
+        OCC.seen.add(o);
+        const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox();
+        if (o.isInstancedMesh) { for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, m4); m4.premultiply(o.matrixWorld); bx.copy(g.boundingBox).applyMatrix4(m4); put(); } }
+        else { bx.copy(g.boundingBox).applyMatrix4(o.matrixWorld); put(); }
+      }
+      for (const c of o.children) walk(c);
+    };
+    walk(K.root);
+  }
+  // a tree's bed: a round of grass and dark mulch inside a stone kerb (so a tree by the towpath stands in a bed of its
+  // own, never straight out of the gravel or the cobbles)
+  function planter(K, x, y, z, r) {
+    r = Math.round(r * 5) / 5;
+    const ring = K3D.mesh(K3D.geo('pf-planter|' + r, () => new T.TorusGeometry(r, 0.17, 6, 28).rotateX(Math.PI / 2)), K3D.toon('#9a92a8'), { ink: INK, inkW: 0.6 }); ring.position.set(x, y + 0.1, z); K.add(ring);
+    const turf = new T.Mesh(K3D.geo('pf-planterTurf|' + r, () => new T.CircleGeometry(r, 28).rotateX(-Math.PI / 2)), K3D.toon('#ffffff', { map: PARK.grass() })); turf.position.set(x, y + 0.07, z); turf.receiveShadow = true; K.add(turf);
+    const mulch = new T.Mesh(K3D.geo('pf-planterMulch|' + r, () => new T.CircleGeometry(r * 0.45, 20).rotateX(-Math.PI / 2)), K3D.toon('#2a1e22')); mulch.position.set(x, y + 0.09, z); mulch.receiveShadow = true; K.add(mulch);
+  }
+
   // the ground: the park kit's grass, gravel and cobbles (the same textures and moonlight as the rest of World 42) laid
   // over a height field with the channel cut into it; per vertex a mask says what it is (aM: cobbles, gravel, the
   // channel's bed, jungle floor; aK: lagoon sand, the mill's sawdust yard)
   function ground(K) {
-    const x0 = -230, x1 = 90, z0 = -240, z1 = 125, cs = 1.25;
+    const x0 = FX0, x1 = FX1, z0 = FZ0, z1 = FZ1, cs = 1.25;
     const nx = Math.round((x1 - x0) / cs), nz = Math.round((z1 - z0) / cs);
-    // the channel's samples in a grid of buckets, to find the nearest quickly
-    const B = 6, buckets = new Map(), key = (a, b) => a + ',' + b;
-    for (let s = 0; s <= R.len; s += 0.5) {
-      const f = R.at(s), w = PR.w(s), p = f.p;
-      const k = key(Math.floor(p[0] / B), Math.floor(p[2] / B));
-      if (!buckets.has(k)) buckets.set(k, []);
-      buckets.get(k).push([p[0], p[2], p[1], w, f.t[0], f.t[2], s]);
-    }
-    const nearest = (x, z, reach = 3) => {
-      let best = null, bd = 1e9;
-      const bx = Math.floor(x / B), bz = Math.floor(z / B);
-      for (let a = bx - reach; a <= bx + reach; a++) for (let b = bz - reach; b <= bz + reach; b++) {
-        const l = buckets.get(key(a, b)); if (!l) continue;
-        for (const q of l) { const d = (q[0] - x) ** 2 + (q[1] - z) ** 2; if (d < bd) { bd = d; best = q; } }
-      }
-      return best ? { q: best, d: Math.sqrt(bd) } : null;
-    };
     const N = (nx + 1) * (nz + 1);
     const pos = new Float32Array(N * 3), uv = new Float32Array(N * 2), aM = new Float32Array(N * 4), aK = new Float32Array(N * 2);
     let i = 0;
     for (let jz = 0; jz <= nz; jz++) for (let jx = 0; jx <= nx; jx++, i++) {
       const x = x0 + jx * cs, z = z0 + jz * cs;
-      let y = groundAt(x, z), pave = 0, grav = 0, bed = 0, jun = jungleK(x, z), sand = 0, dust = 0;
-      const n = nearest(x, z), far = nearest(x, z, 6);
-      const kd = far ? PR.kind(far.q[6]) : 'garden';
-      if (n && n.d < n.q[3] + 0.5 && n.q[2] < y - 0.05) { y = n.q[2] - 1.1; bed = 1; }
-      // inside the sawmill the walkways sit just above the water: the ground under the whole building drops to them
-      else if (n && PR.kind(n.q[6]) === 'mill' && n.d < Math.max(n.q[3] + 3.2, 7.2) + 0.2) { y = n.q[2] - 0.2; dust = 1; }
-      else if (n && n.d < n.q[3] + 3.2 && n.q[2] < y + 0.2) { if (kd === 'lagoon') sand = 1; else if (kd === 'mill' || kd === 'pond') dust = 1; else if (jun < 0.5) grav = 1; }
-      else if (jun < 0.5) {
-        if (far && (kd === 'lagoon') && far.d < far.q[3] + 9) sand = 1 - sm(far.q[3] + 6, far.q[3] + 9, far.d);
-        else if (far && (kd === 'mill' || kd === 'pond') && far.d < far.q[3] + 16) dust = 1 - sm(far.q[3] + 11, far.q[3] + 16, far.d);
-        // winding cobbled walks across the lawns (a loose grid)
-        const wx = Math.abs(((x + 10 * Math.sin(z * 0.043) + 1000) % 38) - 19), wz = Math.abs(((z + 9 * Math.sin(x * 0.051) + 1000) % 44) - 22);
-        if ((wx < 1.5 || wz < 1.5) && !sand && dust < 0.5) pave = 1;
-      }
+      const { y, pave, grav, bed, jun, sand, dust } = surfAt(x, z);
       pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
       uv[i * 2] = x / 5; uv[i * 2 + 1] = z / 5;
       aM[i * 4] = pave; aM[i * 4 + 1] = grav; aM[i * 4 + 2] = bed; aM[i * 4 + 3] = jun;
@@ -131,7 +239,7 @@ const PARKFLUME_SCENE = (function () {
       const p = new T.Mesh(geo, fm); p.position.set(cx, -0.02, cz); p.receiveShadow = true; far.add(p);
     }
     K.add(far);
-    return { nearest };
+    return { nearest: lay().nearest };
   }
 
   /* ---------- the banks: a stone kerb (a wall where the water runs in a cut), with bulbs and fenders ---------- */
@@ -492,6 +600,7 @@ const PARKFLUME_SCENE = (function () {
     for (let i = -10; i <= 10; i++) { const d = i * 7; const p = [c[0] + f.r[0] * d + f.t[0] * (d * d * 0.004), h + Math.abs(d) * 0.04 + Math.sin(i * 0.6) * 0.4, c[2] + f.r[2] * d + f.t[2] * (d * d * 0.004)]; pts.push(new T.Vector3(...p)); }
     const curve = new T.CatmullRomCurve3(pts);
     const steel = K3D.toon('#d8d0e8'), wood = K3D.toon('#ffffff', { map: PARK.wood('#7a5a44') });
+    for (let i = 0; i <= 140; i++) { const q = curve.getPointAt(i / 140); mark(q.x, q.z, 2.4, true); } // (nothing tall under the track)
     // rails and sleepers
     const N = 240, up = new T.Vector3(0, 1, 0);
     const rails = [[], []];
@@ -507,6 +616,7 @@ const PARKFLUME_SCENE = (function () {
       const u = i / 40, p = curve.getPointAt(u), t = curve.getTangentAt(u), r = new T.Vector3().crossVectors(t, up).normalize();
       const nl = R.toLocal(p.x, 0, p.z, Math.max(0, s - 30), s + 30);
       if (nl && Math.abs(nl.ox) < PR.w(nl.s) + 0.8) continue;
+      if (kindAt(p.x, p.z) === 'pave' || kindAt(p.x + r.x * 1.6, p.z + r.z * 1.6) === 'pave' || kindAt(p.x - r.x * 1.6, p.z - r.z * 1.6) === 'pave') continue; // (nor across a walk)
       const gy = groundAt(p.x, p.z);
       for (const sx of [-1, 1]) legs.push({ a: new T.Vector3(p.x + r.x * sx * 1.6, gy, p.z + r.z * sx * 1.6), b: new T.Vector3(p.x + r.x * sx * 0.7, p.y - 0.2, p.z + r.z * sx * 0.7) });
       for (let k = 1; k < 3; k++) braces.push({ a: new T.Vector3(p.x - r.x * 1.4, gy + (p.y - gy) * k / 3, p.z - r.z * 1.4), b: new T.Vector3(p.x + r.x * 1.4, gy + (p.y - gy) * (k + 0.6) / 3, p.z + r.z * 1.4) });
@@ -600,72 +710,167 @@ const PARKFLUME_SCENE = (function () {
   /* ---------- the park round the river ---------- */
   function park(K, Bu, W) {
     const rides = PR.art.rides.map(r => { const o = Object.assign({}, r); const rd = PARK.ride(K, Bu, r.k, o); return rd; });
-    // lamps along both banks (each reflected), with strings of paper lanterns across the water between them
+    // the big wheel's sweep is taken air (nothing tall under it)
+    for (const r of PR.art.rides) if (r.k === 'wheel') { const c = Math.cos(r.yaw || 0), sn = Math.sin(r.yaw || 0); for (let d = -r.r; d <= r.r; d += 2) { mark(r.x + c * d, r.z - sn * d, 3.4, true); mark(r.x + c * d, r.z - sn * d, 2.6); } }
+    // lamps along both banks on the towpath (each reflected), with strings of paper lanterns across the water from
+    // lamp top to lamp top; a lamp steps along a little if something already stands on its spot
     const lamps = [];
     for (let s = A.start + 4, k = 0; s < S1_END; s += 9, k++) {
       if (L.arches.some(a => Math.abs(a - s) < 5) || Math.abs(s - A.bridge) < 5 || Math.abs(s - A.weir0) < 4 || Math.abs(s - PR.art.trestle.s) < 6) continue;
-      const isl = PARKFLUME.islandAt(s);
-      const f = R.at(s), w = PR.w(s);
+      const isl = PARKFLUME.islandAt(s), pair = [];
       for (const side of [-1, 1]) {
-        const p = R.local(s + (side > 0 ? 4.5 : 0), side * (w + 1.9), 0), gy = groundAt(p[0], p[2]);
-        PARK.lamp(K, Bu, { x: p[0], z: p[2], h: 8.5, moths: k % 3 === 0 });
-        const rp = R.local(s + (side > 0 ? 4.5 : 0), side * (w - 0.6), 0);
-        if (W) W.reflect(rp[0], rp[1], rp[2], '#fff0c0', 5.5, 1.2, 0.45);
-        lamps.push({ s, side, p: [p[0], gy, p[2]] });
+        for (const ds of [0, 1.5, -1.5, 3, -3]) {
+          const sl = s + (side > 0 ? 4.5 : 0) + ds, w = PR.w(sl), p = R.local(sl, side * (w + 1.9), 0), gy = groundAt(p[0], p[2]);
+          if (!claim(p[0], p[2], 0.7)) continue;
+          PARK.lamp(K, Bu, { x: p[0], z: p[2], h: 8.5, moths: k % 3 === 0 });
+          const rp = R.local(sl, side * (w - 0.6), 0);
+          if (W) W.reflect(rp[0], rp[1], rp[2], '#fff0c0', 5.5, 1.2, 0.45);
+          lamps.push({ s: sl, side, p: [p[0], gy, p[2]] }); pair.push([p[0], gy + 8.2, p[2], sl, side * (w + 1.9)]);
+          break;
+        }
       }
       // a string of lanterns across (every other pair), sagging over the water
-      if (k % 2 === 0 && !isl) {
-        const a = R.local(s, -(w + 1.9), 0), b = R.local(s, w + 1.9, 0);
-        PARK.lanterns(K, Bu, [a[0], groundAt(a[0], a[2]) + 8.2, a[2]], [b[0], groundAt(b[0], b[2]) + 8.2, b[2]], { sag: 1.0, c: k });
-        if (W) for (let i = 1; i < 6; i++) { const u = i / 6, x = -(w + 1.9) + u * (w + 1.9) * 2; const rp = R.local(s, x, 0); W.reflect(rp[0], rp[1], rp[2], ['#ff6a5a', '#ffd24a', '#7ae0a0', '#ff9ad6', '#ffb050'][(i + k) % 5], 3.5, 0.6, 0.35); }
+      if (k % 2 === 0 && !isl && pair.length === 2) {
+        const [a, b] = pair;
+        PARK.lanterns(K, Bu, a.slice(0, 3), b.slice(0, 3), { sag: 1.0, c: k });
+        if (W) for (let i = 1; i < 6; i++) { const u = i / 6, rp = R.local(a[3] + (b[3] - a[3]) * u, a[4] + (b[4] - a[4]) * u, 0); W.reflect(rp[0], rp[1], rp[2], ['#ff6a5a', '#ffd24a', '#7ae0a0', '#ff9ad6', '#ffb050'][(i + k) % 5], 3.5, 0.6, 0.35); }
       }
     }
-    // willows on both banks, leaning over the water
+    // willows on both banks, leaning over the water: each in a kerbed bed of its own at the towpath's edge, clear of
+    // the lamps and everything else
     for (let s = A.start + 10; s < S1_END; s += 13 + rnd() * 6) {
       if (L.arches.some(a => Math.abs(a - s) < 6) || Math.abs(s - A.bridge) < 6 || Math.abs(s - PR.art.trestle.s) < 7) continue;
-      const side = rnd() < 0.5 ? -1 : 1, w = PR.w(s), p = R.local(s, side * (w + 3.5 + rnd() * 2), 0);
-      willow(K, Bu, p[0], p[2], 0.9 + rnd() * 0.35, W);
+      const first = rnd() < 0.5 ? -1 : 1, sc = 0.9 + rnd() * 0.35;
+      done: for (const side of [first, -first]) for (const ds of [0, 2.5, -2.5]) {
+        const w = PR.w(s + ds), p = R.local(s + ds, side * (w + 4.7 + rnd() * 1.2), 0);
+        if (!claim(p[0], p[2], 2.0 * sc, true)) continue;
+        planter(K, p[0], groundAt(p[0], p[2]), p[2], 1.75 * sc);
+        willow(K, Bu, p[0], p[2], sc, W);
+        break done;
+      }
     }
     return { rides, lamps };
   }
-  // the gardens beyond: lawns with trees and flower beds, game stalls, booths, tents, carts, hedge animals, balloons
-  function gardens(K, Bu, keep) {
-    const cell = 3, occ = new Set(), key = (a, b) => a + ',' + b;
-    const each = (x, z, r, f) => { for (let a = Math.floor((x - r) / cell); a <= Math.floor((x + r) / cell); a++) for (let b = Math.floor((z - r) / cell); b <= Math.floor((z + r) / cell); b++) if (f(key(a, b))) return true; return false; };
-    const mark = (x, z, r) => each(x, z, r, k => { occ.add(k); });
-    const free = (x, z, r) => !each(x, z, r, k => occ.has(k));
-    for (let s = 0; s < R.len; s += 1.5) { const p = R.at(s).p, k = PR.kind(s); mark(p[0], p[2], k === 'mill' ? Math.max(PR.w(s) + 3.2, 7.2) + 3 : k === 'tower' ? PR.w(s) + 6 : PR.w(s) + 3.5); }
-    for (const [x, z, r] of keep) mark(x, z, r);
-    for (const o of K.root.children) {
-      if (o.isInstancedMesh || o.isPoints || o.userData.big) continue;
-      const box = new T.Box3().setFromObject(o); if (box.isEmpty()) continue; const sz = new T.Vector3(); box.getSize(sz); if (sz.x > 60 || sz.z > 60) continue;
-      const c = new T.Vector3(); box.getCenter(c); mark(c.x, c.z, Math.max(sz.x, sz.z) / 2 + 0.5);
-    }
+  /* ---------- the gardens beyond ----------
+     Laid out on purpose, in this order:
+       1. each ride's plaza gets a ring of lamps and benches facing the ride;
+       2. the cobbled walks get lamps at even steps, and along their edges rows of game stalls, ticket booths, carts
+          (with balloons), and benches with bins, all facing the walk;
+       3. the towpath beside the water gets the same, facing the water;
+       4. the lawns between get trees (each group inside its own flower-bordered lawn), flower beds, hedge animals
+          and tents, only where the patch is lawn all over.
+     Everything asks for its patch first (claim), so nothing overlaps; nothing tall goes under the coaster. */
+  function gardens(K, Bu) {
     const FL = PARK.flowers(K, 16000);
-    const kinds = [['trees', 30], ['bed', 14], ['lamp', 8], ['stall', 12], ['booth', 4], ['hedge', 6], ['cart', 5], ['balloons', 6], ['bench', 7], ['tent', 6]];
+    // the channel (and its kerbs, walls and trestles) is taken; the towpath's outer edge is left for the furniture
+    for (let s = 0; s < R.len; s += 1) { const p = R.at(s).p, k = PR.kind(s); mark(p[0], p[2], k === 'mill' ? Math.max(PR.w(s) + 3.2, 7.2) + 2.5 : k === 'tower' ? PR.w(s) + 5.5 : k === 'garden' ? PR.w(s) + 2.6 : PR.w(s) + 3.3); }
+    for (const q of PLAZAS) if (q[3]) mark(q[0], q[1], q[2] - 2.2);
+    scan(K);
+    const flat = (x, z) => Math.abs(groundAt(x, z)) <= 0.05 && x >= -112;
+    const face = (fx, fz) => Math.atan2(fx, fz);
+    // 1. the plazas
+    for (const q of PLAZAS) {
+      if (!q[3]) continue;
+      const n = Math.max(6, Math.round(q[2] / 1.6)), rr = q[2] - 0.9;
+      for (let i = 0; i < n * 2; i++) {
+        const a = i / (n * 2) * 6.283 + 0.26, x = q[0] + Math.cos(a) * rr, z = q[1] + Math.sin(a) * rr;
+        // (not where a walk comes in)
+        if (kindAt(q[0] + Math.cos(a) * (q[2] + 1.6), q[1] + Math.sin(a) * (q[2] + 1.6)) === 'pave' || !flat(x, z)) continue;
+        if (i % 2 === 0) { if (claim(x, z, 0.6, true)) PARK.lamp(K, Bu, { x, z, moths: i % 4 === 0 }); }
+        else if (claim(x, z, 1.25)) PARK.bench(K, x, z, face(-Math.cos(a), -Math.sin(a)));
+      }
+    }
+    // furniture along one edge of a way: at(u) gives the way's middle and direction there (or null where it is not
+    // there), edge the distance from the middle to its edge; things stand just off the edge and face the way
+    const furnish = (U, at, edge, o) => {
+      for (const side of [-1, 1]) {
+        const spot = (u, d) => { const c = at(u); if (!c) return null; const e = edge(u) + d, nx = c[3] * side, nz = -c[2] * side; return { x: c[0] + nx * e, z: c[1] + nz * e, yaw: face(-nx, -nz), tx: c[2], tz: c[3] }; };
+        if (o.lamps) for (let u = side > 0 ? o.lamps / 2 : 0; u < U; u += o.lamps) { const q = spot(u + 1, 0.45); if (q && flat(q.x, q.z) && kindAt(q.x, q.z) === 'grass' && claim(q.x, q.z, 0.6, true)) PARK.lamp(K, Bu, { x: q.x, z: q.z, moths: rnd() < 0.3 }); }
+        let u = 2 + rnd() * 5;
+        while (u < U) {
+          const r = rnd();
+          let adv = 3;
+          if (r < 0.22) adv = 6 + rnd() * 9; // a stretch of open lawn
+          else if (r < 0.50) {
+            // a row of one to three game stalls, shoulder to shoulder
+            const n = 1 + Math.floor(rnd() * 3); let k = 0;
+            for (; k < n; k++) {
+              const q = spot(u + 3.3 + k * 6.7, 3.25), fr = spot(u + 3.3 + k * 6.7, 2.6);
+              if (!q || !flat(q.x, q.z) || !grassy(q.x, q.z, 1.9) || !claim(fr.x, fr.z, 3.15, true)) break;
+              PARK.stall(K, Bu, { x: q.x, z: q.z, yaw: q.yaw, c: Math.floor(rnd() * 9) });
+            }
+            adv = k ? k * 6.7 + 1.5 : 3;
+          } else if (r < 0.74) {
+            // a bench, often with a bin at its end
+            const q = spot(u + 1.3, 0.75);
+            if (q && flat(q.x, q.z) && kindAt(q.x, q.z) === 'grass' && claim(q.x, q.z, 1.25)) {
+              PARK.bench(K, q.x, q.z, q.yaw);
+              if (rnd() < 0.6) { const bx = q.x + q.tx * 1.75, bz = q.z + q.tz * 1.75; if (claim(bx, bz, 0.45)) PARK.bin(K, bx, bz); }
+              adv = 5;
+            }
+          } else if (r < 0.90) {
+            // a popcorn or candy-floss cart, often with a bunch of balloons tied beside it
+            const q = spot(u + 1.3, 0.95);
+            if (q && flat(q.x, q.z) && kindAt(q.x, q.z) === 'grass' && claim(q.x, q.z, 1.3)) {
+              PARK.cart(K, Bu, rnd() < 0.5 ? 'popcorn' : 'floss', { x: q.x, z: q.z, yaw: q.yaw });
+              if (rnd() < 0.6) { const bx = q.x + q.tx * 1.9, bz = q.z + q.tz * 1.9; if (claim(bx, bz, 0.6, true)) PARK.balloons(K, bx, 0, bz, 4 + Math.floor(rnd() * 4)); }
+              adv = 5.5;
+            }
+          } else {
+            // a ticket booth
+            const q = spot(u + 1.8, 1.75);
+            if (q && flat(q.x, q.z) && grassy(q.x, q.z, 1.3) && claim(q.x, q.z, 1.75, true)) { PARK.booth(K, Bu, { x: q.x, z: q.z, yaw: q.yaw }); adv = 5; }
+          }
+          u += adv;
+        }
+      }
+    };
+    // 2. the cobbled walks
+    for (const line of lay().lines) furnish(line.length - 1, u => { const c = line[Math.max(0, Math.min(line.length - 1, Math.round(u)))]; return kindAt(c[0], c[1]) === 'pave' ? c : null; }, () => HW, { lamps: 13 });
+    // 3. the towpath (the garden stretch: the bank's own lamps already stand along it)
+    furnish(A.jungle, s => { if (PR.kind(s) !== 'garden' || PARKFLUME.islandAt(s)) return null; const f = R.at(s), h = Math.hypot(f.t[0], f.t[2]) || 1; return [f.p[0], f.p[2], f.t[0] / h, f.t[2] / h]; }, s => PR.w(s) + 3.2, {});
+    // 4. the lawns
+    const kinds = [['trees', 64], ['bed', 11], ['hedge', 10], ['tent', 7], ['lamp', 6]];
     const tot = kinds.reduce((a, k) => a + k[1], 0);
     const pick = () => { let x = rnd() * tot; for (const [k, w] of kinds) { x -= w; if (x < 0) return k; } return 'trees'; };
-    const place = (k, x, z, yaw) => {
-      if (Math.abs(groundAt(x, z)) > 0.05 || x < -112) return false;
-      if (k === 'trees') { if (!free(x, z, 3.5)) return false; FL.lawn(x, z, 3.5 + rnd() * 2.5, 2.8 + rnd() * 2, rnd() * 3); const n = 1 + Math.floor(rnd() * 3); for (let i = 0; i < n; i++) PARK.tree(K, x + (rnd() - 0.5) * 4, z + (rnd() - 0.5) * 3, 1.0 + rnd() * 0.7, Bu); mark(x, z, 4); }
-      else if (k === 'bed') { if (!free(x, z, 2.4)) return false; FL.bed(x, z, 1.2 + rnd() * 1.0); PARK.bench(K, x + Math.sin(yaw) * 3.2, z + Math.cos(yaw) * 3.2, yaw + Math.PI); mark(x, z, 3.5); }
-      else if (k === 'lamp') { if (!free(x, z, 1.5)) return false; PARK.lamp(K, Bu, { x, z, moths: rnd() < 0.3 }); PARK.bin(K, x + 1, z + 0.6); mark(x, z, 1.8); }
-      else if (k === 'stall') { if (!free(x, z, 4.5)) return false; PARK.stall(K, Bu, { x, z, yaw, c: Math.floor(rnd() * 9) }); mark(x, z, 4.5); }
-      else if (k === 'booth') { if (!free(x, z, 2.5)) return false; PARK.booth(K, Bu, { x, z, yaw }); mark(x, z, 2.5); }
-      else if (k === 'hedge') { if (!free(x, z, 3)) return false; PARK.hedgeAnimal(K, x, z, ['rabbit', 'elephant', 'other'][Math.floor(rnd() * 3)], yaw); FL.bed(x + 2.6, z + 1.2, 1.0); mark(x, z, 3.5); }
-      else if (k === 'cart') { if (!free(x, z, 2)) return false; PARK.cart(K, Bu, rnd() < 0.5 ? 'popcorn' : 'floss', { x, z, yaw }); mark(x, z, 2.2); }
-      else if (k === 'balloons') { if (!free(x, z, 1.8)) return false; PARK.balloons(K, x, 0, z, 4 + Math.floor(rnd() * 4)); mark(x, z, 2); }
-      else if (k === 'bench') { if (!free(x, z, 2)) return false; PARK.bench(K, x, z, yaw); PARK.lamp(K, Bu, { x: x + 1.8, z: z + 0.4 }); mark(x, z, 2.4); }
-      else if (k === 'tent') { if (!free(x, z, 7)) return false; PARK.tent(K, Bu, { x, z, r: 4 + rnd() * 2.5, h: 5 + rnd() * 2, cols: [['#c83a4a', '#f4e8d0'], ['#3f8f6a', '#f4e8d0'], ['#5d4bb0', '#f2d06a'], ['#d860a8', '#f4e8d0']][Math.floor(rnd() * 4)], yaw }); mark(x, z, 9); }
+    const place = (k, x, z, yaw, small) => {
+      if (!flat(x, z)) return false;
+      if (k === 'trees') {
+        // one to three trees inside a flower-bordered lawn of their own
+        const n = small ? 1 : 1 + Math.floor(rnd() * 3), rx = (small ? 2.2 : 3.0) + n * 0.7 + rnd() * 1.4, rz = 2.6 + rnd() * 1.6, a = rnd() * 3, r = (rx + rz) / 2;
+        if (!grassy(x, z, rx + 0.4) || !claim(x, z, r, true)) return false;
+        FL.lawn(x, z, rx, rz, a);
+        const ca = Math.cos(a), sa = Math.sin(a);
+        for (let i = 0; i < n; i++) { const lx = n === 1 ? 0 : (i - (n - 1) / 2) * rx * 0.62, lz = n === 3 && i === 1 ? rz * 0.3 : n === 3 ? -rz * 0.15 : 0; PARK.tree(K, x + lx * ca + lz * sa, z - lx * sa + lz * ca, 1.0 + rnd() * 0.7, Bu); }
+      } else if (k === 'bed') {
+        // a round flower bed, a bench beside it looking at the flowers
+        const r = 1.2 + rnd() * 1.0; if (!grassy(x, z, r + 0.5) || !clear(x, z, r + 2.2)) return false; mark(x, z, r + 0.4); // (beds keep apart)
+        FL.bed(x, z, r);
+        const bx = x + Math.sin(yaw) * (r + 1.6), bz = z + Math.cos(yaw) * (r + 1.6);
+        if (kindAt(bx, bz) === 'grass' && claim(bx, bz, 1.25)) PARK.bench(K, bx, bz, yaw + Math.PI);
+      } else if (k === 'hedge') {
+        // a clipped hedge animal with a small flower bed at its feet
+        if (!grassy(x, z, 2.6) || !claim(x, z, 2.4, true)) return false;
+        PARK.hedgeAnimal(K, x, z, ['rabbit', 'elephant', 'other'][Math.floor(rnd() * 3)], yaw);
+        const bx = x + Math.sin(yaw) * 3.6, bz = z + Math.cos(yaw) * 3.6;
+        if (grassy(bx, bz, 1.4) && claim(bx, bz, 1.3)) FL.bed(bx, bz, 1.0);
+      } else if (k === 'tent') {
+        const r = 4 + rnd() * 2.5; if (!grassy(x, z, r + 1.5) || !claim(x, z, r + 1.5, true)) return false;
+        PARK.tent(K, Bu, { x, z, r, h: 5 + rnd() * 2, cols: [['#c83a4a', '#f4e8d0'], ['#3f8f6a', '#f4e8d0'], ['#5d4bb0', '#f2d06a'], ['#d860a8', '#f4e8d0']][Math.floor(rnd() * 4)], yaw });
+      } else {
+        // a lamp out on the lawn (beyond the height field, where no walks run)
+        if (x >= FX0 && x <= FX1 && z >= FZ0 && z <= FZ1) return false;
+        if (!claim(x, z, 0.8, true)) return false; PARK.lamp(K, Bu, { x, z, moths: rnd() < 0.3 });
+      }
       return true;
     };
-    for (const [d0, d1, st] of [[7, 12, 2.6], [12, 20, 3.2], [20, 32, 3.6], [32, 48, 4.2], [48, 75, 5.5], [75, 115, 7.5]]) {
+    for (const [d0, d1, st] of [[4.5, 9, 2.4], [9, 14, 2.8], [14, 22, 3.2], [22, 34, 3.6], [34, 50, 4.2], [50, 75, 5.5], [75, 115, 7.5]]) {
       for (let s = 0; s < R.len; s += st * (0.7 + rnd() * 0.6)) {
         const f = R.at(s), w = PR.w(s);
         for (const side of [-1, 1]) {
           const h = Math.hypot(f.t[0], f.t[2]) || 1, rx = -f.t[2] / h * side, rz = f.t[0] / h * side, d = w + d0 + rnd() * (d1 - d0);
           const x = f.p[0] + rx * d, z = f.p[2] + rz * d;
-          for (let t = 0; t < 4 && !place(t < 2 ? pick() : t === 2 ? 'trees' : rnd() < 0.5 ? 'bed' : 'bench', x, z, Math.atan2(-rx, -rz)); t++);
+          for (let t = 0; t < 4 && !place(t < 2 ? pick() : 'trees', x, z, Math.atan2(-rx, -rz), t === 3); t++);
         }
       }
     }
@@ -675,7 +880,10 @@ const PARKFLUME_SCENE = (function () {
   /* ---------- loudspeakers ---------- */
   function horns(K) {
     return L.says.map(sy => {
-      const s = Math.min(R.len - 1, sy.s + 8), f = R.at(s), p = R.local(s, -(PR.w(s) + 2.6), 0, f), gy = groundAt(p[0], p[2]), g = new T.Group(); g.position.set(p[0], gy, p[2]);
+      // (on its own clear spot at the towpath's edge: it steps along if something stands there)
+      let p = null;
+      for (const ds of [0, 2, -2, 4, -4, 6]) { const s = Math.min(R.len - 1, sy.s + 8 + ds), q = R.local(s, -(PR.w(s) + 2.6), 0); p = q; if (claim(q[0], q[2], 0.5)) break; }
+      const gy = groundAt(p[0], p[2]), g = new T.Group(); g.position.set(p[0], gy, p[2]);
       const pole = K3D.mesh(new T.CylinderGeometry(0.08, 0.1, 5.5, 8), PARK.toonM('#2a2438')); pole.position.y = 2.75; g.add(pole);
       for (const a of [0, 2.1, 4.2]) { const horn = K3D.mesh(K3D.geo('pf-horn', () => new T.ConeGeometry(0.4, 0.9, 12, 1, true).rotateX(-Math.PI / 2)), PARK.toonM('#d8d0e8', { side: T.DoubleSide })); horn.position.set(Math.sin(a) * 0.3, 5.2, Math.cos(a) * 0.3); horn.rotation.y = a; horn.rotation.x = 0.25; g.add(horn); }
       K.add(g); return [p[0], gy + 5.9, p[2]];
@@ -766,7 +974,7 @@ const PARKFLUME_SCENE = (function () {
 
   /* ---------- build ---------- */
   function build(K, st) {
-    rnd = PARK.rnd; PARK.resetGlints();
+    rnd = PARK.rnd; PARK.resetGlints(); OCC = { lo: new Set(), hi: new Set(), seen: new WeakSet() };
     const night = PARK.night(K, { moon: PR.art.moon, fogD: 0.0042, bloom: 0.95 });
     if (K.hemi) K.hemi.intensity *= 1.25; // moonlit lawns: the banks read beyond the lamp pools
     const B = PARK.bulbs(K, 20000);
@@ -790,10 +998,11 @@ const PARKFLUME_SCENE = (function () {
     sc.island = island(K, B, W, L.islands[0]);
     sc.wheel = waterWheel(K, B, W);
     sc.trestle = trestle(K, B, W);
+    scan(K); // (everything built so far is taken ground; from here on, what is scattered asks first)
     sc.park = park(K, B, W);
     sc.horns = horns(K);
-    sc.s2 = PARKFLUME_SCENE2.build(K, sc, { groundAt, stoneTex, nearest: sc.ground.nearest, INK });
-    gardens(K, B, PR.art.rides.map(r => [r.x, r.z, (r.r || 8) + 6]));
+    sc.s2 = PARKFLUME_SCENE2.build(K, sc, { groundAt, stoneTex, nearest: sc.ground.nearest, INK, claim, clear, mark, kindAt, scan: () => scan(K) });
+    gardens(K, B);
     strandsDone(K);
     sc.fl = [floaters(K, 0, S1_END), floaters(K, A.jungle - 6, A.lift1Foot - 4), floaters(K, A.splash + 10, A.ring - 2)];
     sc.dk = ducks(K);
@@ -968,5 +1177,5 @@ const PARKFLUME_SCENE = (function () {
     if (st.phase === 'board' && st.phaseT > 1.2 && st.phaseT < 4.2) { ctx.save(); ctx.globalAlpha = Math.min(1, (st.phaseT - 1.2) * 2, (4.2 - st.phaseT) * 2); text('The gate swings open all by itself...', W / 2, 120, 24, '#fff6dc', 'center'); ctx.restore(); }
   }
 
-  return { build: (K, st) => build(K, st), update, drawTop, camOverride: null, wheelAngle };
+  return { build: (K, st) => build(K, st), update, drawTop, camOverride: null, wheelAngle, kindAt };
 })();

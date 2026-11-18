@@ -268,6 +268,9 @@ const PARKFLUME_SCENE2 = (function () {
           const d = w + 1.0 + Math.pow(rnd(), 1.6) * 18 + (isl ? 0 : 0), p = R.local(s + rnd() * 1.5, side * d, 0, f);
           if (!dry(p[0], p[2], 1.2)) continue;
           const gy = H.groundAt(p[0], p[2]), r = rnd();
+          // (each thing asks for its patch: no trunk through a rock, no rock through a ruin; leaves may crowd round)
+          if (r < 0.62) { if (!H.clear(p[0], p[2], 0.45)) continue; }
+          else if (!H.claim(p[0], p[2], r < 0.71 ? 0.9 : r < 0.79 ? 1.7 : r < 0.88 ? 0.7 : r < 0.95 ? 0.9 : 2.0)) continue;
           if (r < 0.42) clump(p[0], gy, p[2], 5 + Math.floor(rnd() * 4), 1.4 + rnd() * 1.6 + (d > w + 6 ? 0.8 : 0));
           else if (r < 0.62) clump(p[0], gy, p[2], 7, 0.9 + rnd() * 0.4, true);
           else if (r < 0.71) palm(p[0], gy, p[2], 6 + rnd() * 4);
@@ -278,7 +281,7 @@ const PARKFLUME_SCENE2 = (function () {
         }
       }
       // tiki torches along the water's edge, every 11 or so, both sides turn about
-      if (Math.floor(s / 1.5) % 7 === 0) { const side = Math.floor(s / 10.5) % 2 ? 1 : -1, p = R.local(s, side * (w + 1.1), 0, f), gy = H.groundAt(p[0], p[2]); if (dry(p[0], p[2], 0.6)) torches.push([p[0], Math.max(gy, f.p[1] + 0.5), p[2], f.p[1]]); }
+      if (Math.floor(s / 1.5) % 7 === 0) { const side = Math.floor(s / 10.5) % 2 ? 1 : -1, p = R.local(s, side * (w + 1.1), 0, f), gy = H.groundAt(p[0], p[2]); if (dry(p[0], p[2], 0.6) && H.claim(p[0], p[2], 0.5)) torches.push([p[0], Math.max(gy, f.p[1] + 0.5), p[2], f.p[1]]); }
     }
     inst(K, leafGeo(1, 0.45, 0.32, 'broad'), leafM, leaves, { ink: false, cast: true });
     inst(K, leafGeo(1, 0.22, 0.42, 'frond'), frondM, fronds, { ink: false, cast: true });
@@ -314,8 +317,10 @@ const PARKFLUME_SCENE2 = (function () {
     for (let s = s0 + 6; s < s1 - 4; s += 12, vk++) {
       if (near(s) || L.arches.some(a => Math.abs(a - s) < 5)) continue;
       const f = R.at(s), w = PR.w(s), wy = f.p[1];
-      const a = R.local(s, -(w + 2.5), 0, f), b = R.local(s + 2, w + 2.5, 0, f);
-      a[1] = Math.max(H.groundAt(a[0], a[2]), wy) + 10.5 + rnd() * 2; b[1] = Math.max(H.groundAt(b[0], b[2]), wy) + 10.5 + rnd() * 2;
+      // (each end is tied round the trunk of a great tree standing on the bank)
+      const a = R.local(s, -(w + 3.6), 0, f), b = R.local(s + 2, w + 3.6, 0, f);
+      if (!dry(a[0], a[2], 1.6) || !dry(b[0], b[2], 1.6) || !H.clear(a[0], a[2], 1.2) || !H.clear(b[0], b[2], 1.2)) continue;
+      for (const e of [a, b]) { const gy = H.groundAt(e[0], e[2]); H.mark(e[0], e[2], 2.0); jtree(K, e[0], gy, e[2], 1.15 + rnd() * 0.25); e[1] = gy + 9.6 + rnd() * 1.2; }
       const pts = []; for (let i = 0; i <= 20; i++) { const u = i / 20; pts.push(new T.Vector3(a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u - Math.sin(u * Math.PI) * 2.2, a[2] + (b[2] - a[2]) * u)); }
       const cv = new T.CatmullRomCurve3(pts);
       K.add(mesh(new T.TubeGeometry(cv, 30, 0.07, 5), tm('#3a4a2a'), { ink: INK, inkW: 0.4 }));
@@ -545,17 +550,20 @@ const PARKFLUME_SCENE2 = (function () {
   function millPond(K, sc) {
     // the floating logs (and their log-rolling robots)
     sc.flogs = obs('floatlog').map(o => { const g = bigLog(3.2); g.userData.live = true; K.add(g); let rb = null; if (o.roller) { rb = PARK.robot(K, { col: '#3f8fd0' }); K.root.remove(rb); rb.position.y = 0.4; rb.scale.setScalar(0.75); rb.userData.broom.visible = false; g.add(rb); } return { o, g, rb }; });
-    // lumber stacks, a sawdust heap, lamps round the pond
+  }
+  // lamps round the pond, then lumber stacks, sawdust heaps and piles of planks in the yard (each on its own patch)
+  function millYard(K) {
     const s0 = A.splash1 + 4, s1 = A.millDoor - 2;
+    for (let s = s0 + 3, k = 0; s < s1; s += 10, k++) { const side = k % 2 ? 1 : -1; for (const ds of [0, 1.5, -1.5, 3]) { const p = onGround(s + ds, side * (PR.w(s + ds) + 1.8)); if (!H.claim(p[0], p[2], 0.6)) continue; PARK.lamp(K, B, { x: p[0], z: p[2], h: 4.6, moths: k % 2 === 0 }).position.y = p[1]; W.reflect(p[0], wyAt(s + ds), p[2], '#ffe2a0', 6, 1.2, 0.4); break; } }
     for (let s = s0; s < s1; s += 7) for (const side of [-1, 1]) {
       const f = R.at(s), w = PR.w(s), p = onGround(s, side * (w + 3 + rnd() * 3));
       if (!dry(p[0], p[2], 1)) continue;
       const r = rnd();
+      if (!H.claim(p[0], p[2], r < 0.5 ? 2.5 : r < 0.75 ? 2.0 : 1.8)) continue;
       if (r < 0.5) { const g = new T.Group(); g.position.set(...p); g.rotation.y = f.yaw + (rnd() - 0.5) * 0.4; K.add(g); for (let row = 0; row < 3; row++) for (let k = 0; k < 4 - row; k++) { const lg = bigLog(3.6); lg.position.set((k - (3 - row) / 2) * 0.86, 0.42 + row * 0.74, 0); g.add(lg); } }
       else if (r < 0.75) { const h = new T.Mesh(K3D.geo('pf2-dust', () => new T.ConeGeometry(1.8, 1.4, 14)), tm('#d8b880')); h.position.set(p[0], p[1] + 0.7, p[2]); K.add(h); }
       else { const pl = new T.Group(); pl.position.set(...p); pl.rotation.y = f.yaw; K.add(pl); for (let k = 0; k < 6; k++) { const bd = mesh(K3D.geo('pf2-plank', () => new T.BoxGeometry(0.9, 0.1, 3.2)), K3D.toon('#ffffff', { map: PARK.wood('#c89a64') })); bd.position.set((k % 2) * 0.1, 0.06 + k * 0.11, 0); bd.rotation.y = (k % 2) * 0.05; pl.add(bd); } }
     }
-    for (let s = s0 + 3, k = 0; s < s1; s += 10, k++) { const side = k % 2 ? 1 : -1, p = onGround(s, side * (PR.w(s) + 1.8)); PARK.lamp(K, B, { x: p[0], z: p[2], h: 4.6, moths: k % 2 === 0 }).position.y = p[1]; W.reflect(p[0], wyAt(s), p[2], '#ffe2a0', 6, 1.2, 0.4); }
   }
   // the mill's walls and roof, swept along the channel; the front with its great doors, the back with the lift's door
   const wallX = s => Math.max(PR.w(s) + 3.2, 7.2);
@@ -837,25 +845,34 @@ const PARKFLUME_SCENE2 = (function () {
     // beach umbrellas folded for the night, deck chairs, lamps with lanterns strung between, palms by the water
     const leafM = K3D.toon('#ffffff', { map: frondTex(), side: T.DoubleSide, alphaTest: 0.4 });
     const fronds = [], trunks = [];
-    for (let s = s0, k = 0; s < s1; s += 6, k++) for (const side of [-1, 1]) {
-      const f = R.at(s), w = PR.w(s), p = onGround(s, side * (w + 3.5 + rnd() * 5));
-      if (!dry(p[0], p[2], 1.5)) continue;
-      const r = rnd();
-      if (r < 0.35) { const yaw = rnd() * 6; trunks.push({ p, yaw, s: 0.8 + rnd() * 0.3 }); const top = new T.Vector3(1.4 * (trunks[trunks.length - 1].s), 8 * trunks[trunks.length - 1].s, 0).applyAxisAngle(UP, yaw); for (let i = 0; i < 9; i++) fronds.push({ p: [p[0] + top.x, p[1] + top.y, p[2] + top.z], yaw: i / 9 * 6.28, roll: rnd() * 0.4, s: 3.0 + rnd(), col: LEAFG[i % LEAFG.length] }); }
-      else if (r < 0.6) { const g = new T.Group(); g.position.set(...p); K.add(g); const pole = mesh(new T.CylinderGeometry(0.05, 0.05, 2.6, 6), tm('#f4ecd8')); pole.position.y = 1.3; g.add(pole); const um = mesh(new T.ConeGeometry(0.35, 1.6, 8), K3D.toon('#ffffff', { map: PARK.stripes(['#e8483a', '#3fa0e8', '#ffd23a'][k % 3], '#f4ecd8', 8, { v: true }) })); um.position.y = 2.2; g.add(um); }
-      else if (r < 0.8) { const ch = mesh(new T.BoxGeometry(0.7, 0.1, 1.6), K3D.toon('#ffffff', { map: PARK.stripes('#3fa0e8', '#f4ecd8', 6) })); ch.position.set(p[0], p[1] + 0.4, p[2]); ch.rotation.set(-0.3, f.yaw, 0); K.add(ch); }
-    }
-    const trunkGeo = K3D.geo('pf2-palmTrunk', () => { const pts = []; for (let i = 0; i <= 10; i++) { const u = i / 10; pts.push(new T.Vector3(1.4 * u * u, u * 8, 0)); } return new T.TubeGeometry(new T.CatmullRomCurve3(pts), 16, 0.22, 8); });
-    inst(K, trunkGeo, K3D.toon('#ffffff', { map: barkTex() }), trunks, { cast: true });
-    inst(K, leafGeo(1, 0.22, 0.42, 'frond'), leafM, fronds, { ink: false, cast: true });
     let last = null;
     for (let s = s0 + 2, k = 0; s < s1; s += 9, k++) {
-      const side = 1, p = onGround(s, side * (PR.w(s) + 2)); if (!dry(p[0], p[2], 0.8)) continue;
+      const side = 1, p = onGround(s, side * (PR.w(s) + 2)); if (!dry(p[0], p[2], 0.8) || !H.claim(p[0], p[2], 0.6)) continue;
       PARK.lamp(K, B, { x: p[0], z: p[2], h: 4.4, moths: k % 3 === 0 }).position.y = p[1];
       W.reflect(p[0], wyAt(s), p[2], '#ffe2a0', 6, 1.2, 0.4);
       if (last) PARK.lanterns(K, B, [last[0], last[1] + 4.0, last[2]], [p[0], p[1] + 4.0, p[2]], { sag: 0.8, c: k });
       last = p;
+      for (let s = s0, k = 0; s < s1; s += 6, k++) for (const side of [-1, 1]) {
+      const f = R.at(s), w = PR.w(s), p = onGround(s, side * (w + 3.5 + rnd() * 5));
+      if (!dry(p[0], p[2], 1.5)) continue;
+      const r = rnd();
+      if (r < 0.38) {
+        // a palm
+        if (!H.claim(p[0], p[2], 0.9)) continue;
+        const yaw = rnd() * 6; trunks.push({ p, yaw, s: 0.8 + rnd() * 0.3 }); const top = new T.Vector3(1.4 * (trunks[trunks.length - 1].s), 8 * trunks[trunks.length - 1].s, 0).applyAxisAngle(UP, yaw); for (let i = 0; i < 9; i++) fronds.push({ p: [p[0] + top.x, p[1] + top.y, p[2] + top.z], yaw: i / 9 * 6.28, roll: rnd() * 0.4, s: 3.0 + rnd(), col: LEAFG[i % LEAFG.length] });
+      } else if (r < 0.8) {
+        // a folded umbrella with a deck chair either side of it, facing the water
+        if (!H.claim(p[0], p[2], 1.9)) continue;
+        const g = new T.Group(); g.position.set(...p); g.rotation.y = f.yaw + (side > 0 ? Math.PI / 2 : -Math.PI / 2); K.add(g);
+        const pole = mesh(new T.CylinderGeometry(0.05, 0.05, 2.6, 6), tm('#f4ecd8')); pole.position.y = 1.3; g.add(pole);
+        const um = mesh(new T.ConeGeometry(0.35, 1.6, 8), K3D.toon('#ffffff', { map: PARK.stripes(['#e8483a', '#3fa0e8', '#ffd23a'][k % 3], '#f4ecd8', 8, { v: true }) })); um.position.y = 2.2; g.add(um);
+        for (const sx of [-1, 1]) { const ch = mesh(new T.BoxGeometry(0.7, 0.1, 1.6), K3D.toon('#ffffff', { map: PARK.stripes(['#3fa0e8', '#e8483a', '#3fa06a'][k % 3], '#f4ecd8', 6) })); ch.position.set(sx * 1.0, 0.4, 0); ch.rotation.x = -0.3; g.add(ch); }
+      }
     }
+    const trunkGeo = K3D.geo('pf2-palmTrunk', () => { const pts = []; for (let i = 0; i <= 10; i++) { const u = i / 10; pts.push(new T.Vector3(1.4 * u * u, u * 8, 0)); } return new T.TubeGeometry(new T.CatmullRomCurve3(pts), 16, 0.22, 8); });
+    inst(K, trunkGeo, K3D.toon('#ffffff', { map: barkTex() }), trunks, { cast: true });
+    inst(K, leafGeo(1, 0.22, 0.42, 'frond'), leafM, fronds, { ink: false, cast: true });
+  }
   }
 
   /* ---------- build ---------- */
@@ -872,7 +889,6 @@ const PARKFLUME_SCENE2 = (function () {
     S.tops = [liftTop(K, A.lift1Top0 + 1, false), liftTop(K, A.top0 + 1.5, true)];
     S.smile = smile(K, A.brink - 0.5);
     // the jungle
-    S.jungle = jungle(K, A.jungle - 8, A.lift1Foot - 1);
     ruins(K, A.jungle, A.fork2a);
     S.hippos = obs('hippo').map(o => ({ o, ...hippo(K) }));
     S.elephant = elephant(K, obs('jet')[0]);
@@ -907,6 +923,10 @@ const PARKFLUME_SCENE2 = (function () {
     S.jump = weirJump(K);
     S.light = lighthouse(K);
     S.zone = splashZone(K, A.splash + 3);
+    // the scattered things last, on ground that nothing built stands on
+    H.scan();
+    S.jungle = jungle(K, A.jungle - 8, A.lift1Foot - 1);
+    millYard(K);
     lagoonDecor(K, A.splash + 4, A.ring - 6);
     B.done();
     return S;

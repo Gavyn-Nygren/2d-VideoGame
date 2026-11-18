@@ -285,7 +285,7 @@ const PARKFLUME_ROUTE = (function () {
       { k: 'wheel', x: 46, z: -118, r: 17, hub: 21, yaw: 0.35 },
       { k: 'carousel', x: 36, z: -38, r: 7 },
       { k: 'swings', x: -38, z: -70, r: 8 },
-      { k: 'drop', x: -42, z: -132, h: 34 },
+      { k: 'drop', x: -66, z: -128, h: 34 } /* (clear of the coaster's trestle) */,
       { k: 'teacups', x: 30, z: -168, r: 8 },
     ],
     lagoon: { x: 26, z: 44, rx: 26, rz: 30 },
