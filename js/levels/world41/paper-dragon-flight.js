@@ -672,7 +672,7 @@ SONGS.popdragon = {
 };
 // the bookshelf: a curious tiptoe through the shelves, wooden ticks for the clockwork and the train
 SONGS.popdragonShelf = {
-  bpm: 132, vol: 0.24, root: 60, scale: 'dorian', form: ['A', 'A', 'B', 'A'],
+  bpm: 132, vol: 0.27, root: 60, scale: 'dorian', form: ['A', 'A', 'B', 'A'],
   inst: { lead: 'flute', bass: 'upright', arp: 'marimba', comp: 'pizz' }, oct: { arp: 1 },
   bass: '0 . 2 . 0 . 2 .', arp: '0 1 2 1 3 1 2 1', comp: '. x . x',
   drums: { w: 'x..x..x.', z: '.x.x.x.x', k: 'x...x...' },
@@ -685,7 +685,7 @@ SONGS.popdragonShelf = {
 };
 // the bedroom: hush, the Reader is asleep (and so, for now, is the cat): a music box over soft pizzicato
 SONGS.popdragonHush = {
-  bpm: 88, vol: 0.22, beats: 3, root: 57, scale: 'minor', form: ['A', 'B', 'A', 'B'],
+  bpm: 88, vol: 0.47, beats: 3, root: 57, scale: 'minor', form: ['A', 'B', 'A', 'B'],
   inst: { lead: 'musicbox', bass: 'pizz', arp: 'vibes', pad: 'softpad' },
   bass: '0 . 2', arp: '. 2 1',
   drums: { z: '.o.' },
@@ -696,7 +696,7 @@ SONGS.popdragonHush = {
 };
 // the window and the storm outside: a racing fiddle over toms and timpani
 SONGS.popdragonStorm = {
-  bpm: 144, vol: 0.24, root: 62, scale: 'harmonic', form: ['A', 'A', 'B', 'A'],
+  bpm: 144, vol: 0.41, root: 62, scale: 'harmonic', form: ['A', 'A', 'B', 'A'],
   inst: { lead: 'fiddle', bass: 'sawbass', arp: 'pluck', pad: 'strings' },
   bass: '0 0 . 0 2 . 0 .', arp: '0 1 2 3 2 1 2 1',
   drums: { k: 'x..x..x.', t: '....x...', h: 'x.x.x.x.', m: 'x.......' },
