@@ -18,11 +18,25 @@
      what can be stood on or run into is solid from the start). The state is st.chunkT: for each 1-unit strip of
      the spread, the spread clock when it was reached (and st.foldT when the Roll reached it), so a run with drawing
      off is identical.
-   MACHINERY (act = pull): a free player within 1 unit of a tab who holds the action button works it, standing still.
+   MACHINERY (act = pull): a free player within 1 unit of a tab who holds the action button works it, standing still
+     (the ship's long tab is walked). Every piece takes two, and nothing can lock: a player left behind is taken by the
+     Roll and set down beside the partner (one Flat).
      Bridge: slides out over a gap while a tab is held (0.5 s); 0.4 s after letting go it slides back (a player still
-     on it is carried to the nearer bank, never dropped).
+       on it is carried to the nearer bank, never dropped).
+     Flap: a tall flap across the route (portcullis, great wave, door); held open from a tab on either side; it never
+       shuts on anybody (they are eased out to the nearer side first).
+     Twin tabs: two tabs about 4 apart that work only when both are held together for 0.3 s; then the thing stays up
+       (a drawbridge, a stair over a wall, or on the last page The End's night sky, the finish).
+     Wheel: hold it and push right to turn it (1.4 s for a full turn) and a plank (the castle's turntable) or a beam of
+       paper light (the lighthouse) is laid over a gap; it stays while held and goes 0.4 s after letting go (anybody
+       on it carried off first). The far side has a plain tab (castle) or a second wheel (lighthouse).
+     Ship: a galleon on a slot over the sea. Holding the long tab at the page's edge and walking it back sails the
+       ship across (it goes twice as far as the walk, the walker slowed to a heave); empty and unheld it sails home;
+       a tab on the far rocks pulls it across from there.
    HAZARDS: sliders (paper figures on sticks sliding across the corridor on a beat; a hit is a Bump: knocked back 1.5,
-     sat down 0.5 s, counted on the results card only); gaps (a Flat).
+     sat down 0.5 s, counted on the results card only); gaps (a Flat); wave crests (stepping stones sliding across a
+     gap of sea); the reading finger (from page 2: a round shadow grows on printed text for 1.3 s with a hum, then the
+     fingertip presses for 0.7 s: under it when it lands is a Flat; never during a camera swing, one at a time).
    CAMERA: a rail along the pair, three-quarter view turned 20 degrees to look ahead; K3D.heading (which way up walks)
      is st.camH, set here from game state. One straight dash per spread swings it round behind (30 degrees a second
      at most; not with reduced motion).
@@ -36,13 +50,17 @@
     reveal: 14, unfold: 0.35, flatT: 1.2, pinT: 0.45, both: 1.2, rewindT: 1.6, back: 12, gutterStop: 1.5,
     leash: 9, bumpBack: 1.5, bumpT: 0.2, sitT: 0.5, bumpImmune: 1.0, gold: 0.75, turnT: 2.5, turnFade: 0.8, dogR: 1.55, dogHold: 0.3,
     bridgeV: 2, letGo: 0.4, carryV: 4.5, fallY: -0.8, ahead: 2, swingRate: Math.PI / 6,
+    flapV: 3, twinT: 0.3, turnFull: 1.4, wheelDrop: 0.8, heave: 0.3, shipBack: 0.6, shipPull: 0.6,
+    fingerShadow: 1.3, fingerPress: 0.7, fingerLift: 0.5, fingerR: 1.45, endT: 3.4,
   };
   PC.S = S;
   const H34 = -20 * Math.PI / 180, HCHASE = -Math.PI / 2;  // the camera's two headings
   PC.H34 = H34; PC.HCHASE = HCHASE;
-  const TITLES = ['The Deep Dark Wood'];
   const WORM = [
     'Bookworm: "Somebody\'s reading us! Run, and don\'t let the page catch you!"',
+    'Bookworm: "A castle! Two tabs, two of you. Pull together!"',
+    'Bookworm: "All hands! The sea won\'t hold still, and neither will the reader."',
+    'Bookworm: "Last page! If we reach The End, they\'ll have to go to sleep!"',
   ];
 
   // the spread clock (seconds since this spread started; game state, never wall-clock time)
@@ -58,8 +76,13 @@
     st.revealX = -1e9; st.chunkT = new Float32Array(Math.ceil(L3.pw * 2) + 4).fill(-1); st.foldT = new Float32Array(st.chunkT.length).fill(-1);
     st.mark = 0; L3.marks[0].on = true;
     st.turn = null; st.dogT = 0; st.msg = null; st.hinted = {};
-    st.camH = H34; st.swingOn = false;
+    st.camH = (L3.swing && !reduceMotion && L3.start.x > L3.swing[0]) ? HCHASE : H34; st.swingOn = false; K3D.heading = st.camH;
     st.fwip = { n: 0, t: -9 };
+    st.finger = null; st.fingerN = 0; st.fingerWait = L3.def.fingerEvery ? L3.def.fingerEvery[0] : 0;
+    st.ending = null; st.alone = {};
+    // the finger's fingertip, while it presses, is a solid post (no running through it)
+    st.fingerSol = MOVER3.add(L3.world, { x: 0, z: 0, w: 1.6, d: 1.6, y0: -0.2, y1: PC.WALL_TOP, ghost: true, finger: true });
+    crestsStep(st, 0);
     const m = L3.start;
     G.players.forEach((p, id) => {
       MOVER3.spawn(p, m.x + 0.6, 0, m.z + (id ? 1.1 : -0.3));
@@ -91,7 +114,7 @@
   /* ---------- the Roll ---------- */
   function rollSpeed(st) { return PC.RUN * st.L3.def.roll.speed * (st.gold ? S.gold : 1); }
   function rollStep(st, dt) {
-    if (st.turn || st.finished) return;
+    if (st.turn || st.finished || st.ending) return;
     if (st.rollWait > 0) { st.rollWait -= dt; return; }
     if (!st.gutter && st.rollX >= -0.1) { st.gutter = true; st.gutterT = S.gutterStop; Sfx.play('popchaseKnuckle'); }
     if (st.gutterT > 0) { st.gutterT -= dt; return; }
@@ -99,12 +122,21 @@
     if (!st.gutter) nx = Math.min(nx, 0);
     // never past the dog-ear's corner (the turn waits for both)
     st.rollX = Math.min(nx, st.L3.pw - 0.8);
+    // its paper rumble, louder as it nears the rear player
+    if ((st.rumbleT = (st.rumbleT || 0) - dt) <= 0) {
+      st.rumbleT = 0.6;
+      const xs = G.players.filter(live).map(p => p.b3.x);
+      if (xs.length) Sfx.play('popchaseRoll', clamp(1 - (Math.min(...xs) - st.rollX) / 16, 0, 1));
+    }
   }
 
   /* ---------- tabs ---------- */
   // the tab a free, standing player is working (holding the action within reach), or null
   function tabFor(st, p) {
     const b = p.b3;
+    // the ship's long tab: the walker keeps hold of it as long as they stay along it
+    const was = p.pc.hold;
+    if (was && was.t.strip && live(p) && p.input.act && Math.abs(b.z - was.t.z) < PC.TAB_R && b.x > was.pc.sx1 - PC.TAB_R && b.x < was.pc.sx0 + PC.TAB_R) return was;
     if (!live(p) || !p.input.act || !b.ground || p.pc.bumpT > 0 || p.pc.sitT > 0) return null;
     let best = null, bd = PC.TAB_R;
     for (const pc of st.L3.pieces) for (const t of pc.tabs) {
@@ -142,7 +174,138 @@
       if ((was === 0) !== (pc.e === 0) || (was < 1 && pc.e === 1)) Sfx.play('popchaseSlide');
       const w = pc.len * pc.e + 0.4;
       pc.sol.ghost = pc.e < 0.02; pc.sol.w = w; pc.sol.x = pc.x0 - 0.4 + w / 2;
+    } else if (pc.kind === 'flap') flapStep(st, pc, held, dt);
+    else if (pc.kind === 'twin') twinStep(st, pc, dt);
+    else if (pc.kind === 'wheel') wheelStep(st, pc, dt);
+    else if (pc.kind === 'ship') shipStep(st, pc, dt);
+  }
+  const holders = pc => G.players.filter(p => p.pc.hold && p.pc.hold.pc === pc);
+  // a flap: open while held; shuts 0.4 s after letting go, but never on anybody (they are eased out first)
+  function flapStep(st, pc, held, dt) {
+    const was = pc.e;
+    if (held) { pc.wait = S.letGo; pc.e = Math.min(1, pc.e + S.flapV * dt); }
+    else if (pc.wait > 0) pc.wait -= dt;
+    else {
+      const inside = G.players.filter(p => live(p) && Math.abs(p.b3.x - pc.x) < 0.25 + MOVER3.r + 0.1 && Math.abs(p.b3.z - pc.z) < PC.HALF + 0.3);
+      if (inside.length) for (const p of inside) { p.b3.x += (p.b3.x < pc.x ? -1 : 1) * S.carryV * dt; MOVER3.push(st.L3.world, p.b3); }
+      else pc.e = Math.max(0, pc.e - S.flapV * dt);
     }
+    if (was < 0.5 && pc.e >= 0.5) Sfx.play('popchaseFlap');
+    pc.sol.ghost = pc.e > 0.8;
+  }
+  // twin tabs: both held at once for 0.3 s and the thing pops up and stays
+  function twinStep(st, pc, dt) {
+    if (pc.popped) { pc.e = Math.min(1, pc.e + dt * 2.5); return; }
+    const hs = holders(pc), both = hs.length === 2 && hs[0].pc.hold.t !== hs[1].pc.hold.t;
+    pc.both = both ? pc.both + dt : 0;
+    pc.e = both ? Math.min(0.2, pc.both) : Math.max(0, pc.e - dt);
+    // one pulling alone for a while: the Bookworm says how
+    if (hs.length === 1 && !both) { pc.lone = (pc.lone || 0) + dt; if (pc.lone > 1.5 && !pc.loneSaid) { pc.loneSaid = true; say(st, 'Bookworm: "Both tabs at once!"', 3); } }
+    else pc.lone = 0;
+    if (pc.both >= S.twinT) {
+      pc.popped = true; Sfx.play('popchaseTwin');
+      if (pc.does === 'drawbridge') pc.sol.ghost = false;
+      else if (pc.does === 'stair') { pc.wall.ghost = true; for (const q of pc.stair) q.ghost = false; for (const p of G.players) if (live(p)) MOVER3.push(st.L3.world, p.b3); }
+      else if (pc.does === 'end') startEnding(st);
+    }
+  }
+  // the wheel: turned by pushing right while holding it (a plain tab raises it by itself); laid at a full turn
+  function wheelStep(st, pc, dt) {
+    const L3 = st.L3, hs = holders(pc), was = pc.e;
+    if (hs.length) {
+      pc.wait = S.letGo;
+      for (const p of hs) {
+        if (p.pc.hold.t.wheel) { const d = p.pc.push || { x: 0, z: 0, s: 0 }, q = PC.pointAt(L3, p.pc.hold.t.s), fwd = (d.x * q.dx + d.z * q.dz) * d.s; pc.e = clamp(pc.e + fwd * dt / S.turnFull, 0, 1); pc.turning = Math.abs(fwd) > 0.2; }
+        else pc.e = Math.min(1, pc.e + dt / 1.0);
+      }
+    } else {
+      pc.turning = false;
+      const riders = G.players.filter(p => live(p) && (onSol(p.b3, pc.sol) || (!p.b3.ground && p.b3.x > pc.x0 - 0.2 && p.b3.x < pc.x1 + 0.2 && p.b3.y > -0.5 && Math.abs(p.b3.z - pc.z) < PC.HALF)));
+      if (pc.wait > 0) pc.wait -= dt;
+      else if (riders.length && pc.e >= 1) {
+        for (const p of riders) if (p.b3.ground) { const dir = p.b3.x < pc.x0 + pc.len / 2 ? -1 : 1; p.b3.x += dir * S.carryV * dt; MOVER3.push(L3.world, p.b3); }
+      } else pc.e = Math.max(0, pc.e - S.wheelDrop * dt);
+    }
+    if (pc.turning && Math.floor(pc.e * 8) !== Math.floor(was * 8)) Sfx.play('popchaseWheel');
+    if (was < 1 && pc.e >= 1) Sfx.play('popchaseSlide');
+    pc.sol.ghost = pc.e < 0.999;
+  }
+  // the ship: walked across from the long tab, pulled across from the far tab, sails home when empty and unheld
+  function shipStep(st, pc, dt) {
+    const L3 = st.L3, hs = holders(pc), strip = hs.find(p => p.pc.hold.t.strip), far = hs.find(p => !p.pc.hold.t.strip);
+    const riders = G.players.filter(p => live(p) && onSol(p.b3, pc.sol));
+    let u = pc.u;
+    // (the first 0.4 of the walk takes up the slack, so a hand resting on the tab does not nudge the ship)
+    if (strip) u = clamp((pc.sx0 - 0.4 - strip.b3.x) / (pc.sx0 - 0.4 - pc.sx1), 0, 1);
+    else if (far) u = Math.min(1, u + S.shipPull * dt);
+    else if (!riders.length && !G.players.some(p => live(p) && !p.b3.ground && Math.abs(p.b3.x - pc.sol.x) < pc.half + 0.3 && Math.abs(p.b3.z - pc.z) < PC.HALF)) u = Math.max(0, u - S.shipBack * dt);
+    if (u !== pc.u) {
+      const nx = pc.home + (pc.far - pc.home) * u;
+      MOVER3.movePlat(L3.world, pc.sol, nx - pc.sol.x, 0, 0, G.players.filter(p => live(p)).map(p => p.b3));
+      if (Math.floor(u * 6) !== Math.floor(pc.u * 6)) Sfx.play('popchaseWheel');
+      pc.u = u;
+    }
+    pc.e = u;
+    if (!strip) pc.tabs[0].x = u > 0 ? pc.sx0 - 0.4 - u * (pc.sx0 - 0.4 - pc.sx1) : pc.sx0;
+    else pc.tabs[0].x = clamp(strip.b3.x, pc.sx1, pc.sx0);
+  }
+  // wave crests: stepping stones sliding across the corridor, carrying whoever stands on them
+  function crestsStep(st) {
+    const L3 = st.L3;
+    for (const c of L3.crests) {
+      const z = c.zc + c.amp * Math.sin((st.T + c.phase) * Math.PI * 2 / c.period);
+      if (z !== c.sol.z) MOVER3.movePlat(L3.world, c.sol, 0, 0, z - c.sol.z, G.players.filter(p => live(p)).map(p => p.b3));
+    }
+  }
+  PC.crestZ = (c, T) => c.zc + c.amp * Math.sin((T + c.phase) * Math.PI * 2 / c.period);
+
+  /* ---------- the reading finger ---------- */
+  // a seeded 0..1 from the spread's own count (game state)
+  const hash = n => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+  function fingerStep(st, dt) {
+    const L3 = st.L3, every = L3.def.fingerEvery;
+    if (!every || !L3.fingerSpots.length) return;
+    const f = st.finger;
+    if (!f) {
+      if (st.swingOn || st.rewindT > 0 || st.turn || st.ending) return;
+      if ((st.fingerWait -= dt) > 0) return;
+      const xs = G.players.filter(live).map(p => p.b3.x);
+      if (!xs.length) return;
+      const rear = Math.min(...xs), front = Math.max(...xs), aim = front + 3;
+      const tabs = L3.pieces.flatMap(pc => pc.tabs), ok = L3.fingerSpots.filter(q => q.x > rear - 1 && q.x < front + 9 && q.x > st.rollX + 3
+        && !tabs.some(t => Math.hypot(t.x - q.x, t.z - q.z) < 1.6) && !L3.marks.some(m => Math.hypot(m.x - q.x, m.z - q.z) < 1.6));
+      if (!ok.length) { st.fingerWait = 1; return; }
+      ok.sort((a, b) => Math.abs(a.x - aim) - Math.abs(b.x - aim));
+      const q = ok[0];
+      st.finger = { x: q.x, z: q.z, t: 0, ph: 'shadow' };
+      Sfx.play('popchaseHum');
+      if (!st.fingerSaid) { st.fingerSaid = true; say(st, 'Bookworm: "Mind the finger!"', 3); }
+      return;
+    }
+    f.t += dt;
+    if (f.ph === 'shadow' && f.t >= S.fingerShadow) {
+      f.ph = 'press'; f.t = 0; Sfx.play('popchasePress');
+      for (const p of G.players) if (live(p) && p.b3.y < 1.2 && Math.hypot(p.b3.x - f.x, p.b3.z - f.z) < S.fingerR) flatten(st, p, 'finger');
+      Object.assign(st.fingerSol, { x: f.x, z: f.z, ghost: false });
+      for (const p of G.players) if (live(p)) MOVER3.push(L3.world, p.b3);
+    } else if (f.ph === 'press' && f.t >= S.fingerPress) { f.ph = 'lift'; f.t = 0; st.fingerSol.ghost = true; }
+    else if (f.ph === 'lift' && f.t >= S.fingerLift) {
+      st.finger = null; st.fingerN++;
+      st.fingerWait = every[0] + hash(st.fingerN + st.k * 31) * (every[1] - every[0]);
+    }
+  }
+
+  /* ---------- the finish (the last page's twin tabs under The End) ---------- */
+  function startEnding(st) {
+    st.ending = { t: 0 }; st.stats.pageT[st.k] = st.T;
+    say(st, 'The End!', 3.4, true);
+    Sfx.play('popchaseTheEnd'); Sfx.play('popchaseYawn');
+  }
+  function endingStep(st, dt) {
+    const e = st.ending;
+    e.t += dt;
+    for (const p of G.players) { p.pendingJump = false; if (live(p)) MOVER3.step(p, st.L3.world, dt, { dir: { x: 0, z: 0, s: 0 }, jump: false }); }
+    if (e.t >= S.endT && !st.finished) { st.finished = true; levelClear(); }
   }
 
   /* ---------- sliders ---------- */
@@ -224,7 +387,15 @@
     // the pop-ups between the bookmark and the players stand up again; the pieces after it are put back
     const c0 = Math.max(0, chunkOf(st, st.rollX + 1.2));
     for (let c = c0; c < st.foldT.length; c++) st.foldT[c] = -1;
-    for (const pc of L3.pieces) if (pc.tabs[0].x > m.x) { pc.e = 0; pc.wait = 0; if (pc.sol) { pc.sol.ghost = true; } }
+    for (const pc of L3.pieces) {
+      if (pc.tabs[0].x <= m.x && !(pc.kind === 'ship' && pc.x0 > m.x)) continue;
+      pc.e = 0; pc.wait = 0;
+      if (pc.kind === 'ship') { MOVER3.movePlat(L3.world, pc.sol, pc.home - pc.sol.x, 0, 0, []); pc.u = 0; pc.tabs[0].x = pc.sx0; }
+      else if (pc.kind === 'flap') pc.sol.ghost = false;
+      else if (pc.kind === 'twin') { if (pc.does === 'end') continue; pc.popped = false; pc.both = 0; if (pc.sol) pc.sol.ghost = true; if (pc.wall) { pc.wall.ghost = false; for (const q of pc.stair) q.ghost = true; } }
+      else if (pc.sol) pc.sol.ghost = true;
+    }
+    if (st.finger) { st.finger = null; st.fingerSol.ghost = true; st.fingerWait = 3; }
     Sfx.play('popchaseRewind');
     if (st.rewinds >= 2 && !st.gold) {
       st.gold = true; st.goldT = 4; st.stats.gold++;
@@ -270,11 +441,17 @@
     if (st.msg && (st.msg.t -= dt) <= 0) st.msg = null;
     if (st.fx) { for (const f of st.fx) f.t += dt; st.fx = st.fx.filter(f => f.t < 1.2); }
     if (st.turn) { turnStep(st, dt); return; }
+    if (st.ending) { endingStep(st, dt); return; }
     if (st.rewindT > 0) st.rewindT -= dt;
     else rollStep(st, dt);
     const L3 = st.L3, ps = G.players;
     // who is working a tab (decided before anyone moves)
-    for (const p of ps) p.pc.hold = live(p) ? tabFor(st, p) : null;
+    for (const p of ps) {
+      const h = live(p) ? tabFor(st, p) : null;
+      if (h && (!p.pc.hold || p.pc.hold.t !== h.t)) Sfx.play('popchaseTab', p.id);
+      p.pc.hold = h;
+    }
+    crestsStep(st);
     // the soft leash: the leader is slowed when 9 ahead along the route, the rear player never dragged
     const prog = ps.map(p => (live(p) ? PC.progress(L3, p.b3.x, p.b3.z) : null));
     for (const p of ps) {
@@ -290,19 +467,24 @@
       }
       if (pc.sitT > 0) { pc.sitT -= dt; p.pendingJump = false; MOVER3.step(p, L3.world, dt, { dir: { x: 0, z: 0, s: 0 }, jump: false }); continue; }
       let dir = K3D.moveDir(p), speed = 1;
-      if (pc.hold) { dir = { x: 0, z: 0, s: 0 }; p.pendingJump = false; }
+      pc.push = dir;
+      // holding a tab: standing still (a wheel is turned by the push), except the ship's long tab, walked at a heave
+      if (pc.hold && pc.hold.t.strip) { speed = S.heave; p.pendingJump = false; }
+      else if (pc.hold) { dir = { x: 0, z: 0, s: 0 }; p.pendingJump = false; }
       const o = ps[1 - p.id], me = prog[p.id], them = prog[o.id];
-      if (them != null && me - them > S.leash - 1.2 && dir.s > 0) {
+      // (not while the one behind is working a tab for them or riding the ship: the rider must be able to step off and pull)
+      if (them != null && !o.pc.hold && !(o.b3.ground && o.b3.on && o.b3.on.ship) && me - them > S.leash - 1.2 && dir.s > 0) {
         const q = PC.pointAt(L3, me), fwd = dir.x * q.dx + dir.z * q.dz;
         if (fwd > 0) speed = clamp((S.leash + 0.3 - (me - them)) / 1.5, 0.05, 1);
       }
-      MOVER3.step(p, L3.world, dt, { dir, speed });
+      MOVER3.step(p, L3.world, dt, { dir, speed, jump: !(pc.hold && pc.hold.t.strip) });
       if (p.b3.whoa) Sfx.play('popchaseWhoa', p.id);
       if (p.b3.land) Sfx.play('land');
     }
     if (live(ps[0]) && live(ps[1])) MOVER3.separate(ps[0].b3, ps[1].b3);
     for (const pc of L3.pieces) pieceStep(st, pc, dt);
     slidersStep(st, dt);
+    fingerStep(st, dt);
     // the Roll and gaps
     for (const p of ps) {
       if (!live(p)) continue;
@@ -355,7 +537,7 @@
     for (const p of G.players) { p.pendingJump = false; p.pendingAct = false; }
     if (tr.t >= tr.dur || skip) {
       if (st.k < PC.pages.length - 1) nextRoom();
-      else { st.finished = true; levelClear(); }
+      else if (!st.finished) { st.finished = true; levelClear(); }
     }
   }
 
@@ -435,7 +617,6 @@
     map: Array.from({ length: 18 }, (_, y) => (y === 16 ? '.'.repeat(10) + '1' + '.'.repeat(10) + '2' + '.'.repeat(10) : '.'.repeat(32))),
     rooms: PC.pages.map((p, k) => ({ title: p.title, tip: WORM[k] || p.title })),
   };
-  void TITLES;
 
   /* ---------- sounds (paper, the Reader) ---------- */
   const X = Sfx.extra;
@@ -455,6 +636,14 @@
   X.popchaseMark = function () { this.tone(990, 0.2, 'sine', 0.04); this.tone(1480, 0.3, 'sine', 0.02, null, 0.06); };
   X.popchaseRewind = function () { this.noise(0.8, { type: 'bandpass', f: 700, to: 2400, q: 1, vol: 0.06 }); };
   X.popchaseWhoa = function (pitch) { this.tone(520 * pitch, 0.16, 'triangle', 0.03, 700 * pitch); };
+  X.popchaseFlap = function () { this.noise(0.22, { type: 'lowpass', f: 1400, to: 500, vol: 0.06 }); this.tone(160, 0.18, 'sine', 0.04, 110); };
+  X.popchaseTwin = function () { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.16, 'triangle', 0.035, null, i * 0.06)); this.noise(0.3, { type: 'bandpass', f: 1500, to: 3000, q: 1, vol: 0.04 }); };
+  X.popchaseWheel = function () { this.noise(0.04, { type: 'bandpass', f: 2200, q: 3, vol: 0.035 }); this.tone(240, 0.04, 'square', 0.012); };
+  X.popchaseHum = function () { this.tone(70, 1.3, 'sine', 0.05, 90); this.tone(140, 1.3, 'triangle', 0.015, 180); };
+  X.popchasePress = function () { this.tone(90, 0.3, 'sine', 0.08, 50); this.noise(0.2, { type: 'lowpass', f: 600, to: 120, vol: 0.08 }); };
+  X.popchaseThunder = function () { this.noise(1.6, { type: 'lowpass', f: 900, to: 90, vol: 0.09 }); this.tone(55, 1.2, 'sine', 0.05, 40, 0.1); };
+  X.popchaseTheEnd = function () { [392, 494, 587, 784, 988].forEach((f, i) => this.tone(f, 0.5, 'sine', 0.035, null, i * 0.14)); };
+  X.popchaseRoll = function (pitch, near) { const k = clamp(near || 0, 0, 1); this.noise(0.5, { type: 'lowpass', f: 300 + k * 500, to: 200 + k * 300, vol: 0.012 + k * 0.05 }); };
 
   PC.files = ['js/levels/world41/popchase-outfits.js', 'js/levels/world41/popchase-art.js'];
   for (const f of PC.files) if (!K3D.files.includes(f)) K3D.files.push(f);
