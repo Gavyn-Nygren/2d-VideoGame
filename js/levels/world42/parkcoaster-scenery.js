@@ -83,6 +83,15 @@ const PARKCOASTER_SCENE = (function () {
     im.count = k; K3D.ink(im, INK, 0.6); K.add(im);
     return im;
   }
+  // a loose piece of track (rails, spine, sleepers in one group): the trapdoors that drop
+  function trapPiece(s0, s1) {
+    const g = new T.Group(), n = Math.max(2, Math.ceil((s1 - s0) / 0.5)), rp = [[], []], sp = [];
+    for (let i = 0; i <= n; i++) { const s = s0 + (s1 - s0) * i / n, f = R.at(s); for (const k of [0, 1]) rp[k].push(v3(R.bankLocal(s, k ? 0.6 : -0.6, 0, f))); sp.push(v3(R.bankLocal(s, 0, -0.32, f))); }
+    for (const k of [0, 1]) g.add(K3D.mesh(new T.TubeGeometry(new T.CatmullRomCurve3(rp[k]), n * 2, 0.075, 6), PARK.toonM('#d8d0e8'), { ink: INK, inkW: 0.6 }));
+    g.add(K3D.mesh(new T.TubeGeometry(new T.CatmullRomCurve3(sp), n * 2, 0.16, 6), PARK.toonM('#5a4f86'), { ink: INK, inkW: 0.8 }));
+    for (let s = s0 + 0.4; s < s1; s += 0.8) { const f = R.at(s), sl = K3D.mesh(K3D.geo('pc-sleeper', () => new T.BoxGeometry(1.56, 0.1, 0.24)), K3D.toon('#ffffff', { map: PARK.stripes('#ffd23a', '#2a2235', 8) }), { ink: INK, inkW: 0.5 }); sl.position.set(...R.bankLocal(s, 0, -0.1, f)); sl.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(v3(f.br), v3(f.bu), new T.Vector3(-f.t[0], -f.t[1], -f.t[2]))); g.add(sl); }
+    return g;
+  }
   // the lift hill's chain: a dark strip between the rails whose links scroll up
   function chain(K, a, b) {
     const n = Math.ceil((b - a) / 1), pos = [], uv = [], idx = [];
@@ -116,6 +125,7 @@ const PARKCOASTER_SCENE = (function () {
       c.font = '900 26px "DejaVu Sans", sans-serif'; c.textAlign = 'center'; c.fillStyle = '#ffffff'; c.fillText('SMILE!', 128, 222);
     }
     else if (kind === 'mindhead') { for (let i = -8; i < 16; i++) { c.fillStyle = i % 2 ? '#ffd23a' : '#1a1626'; c.fillRect(i * 32, 0, 32, h); } c.fillStyle = '#ffffff'; c.fillRect(20, 70, w - 40, 116); c.fillStyle = '#1a1626'; c.font = '900 38px "DejaVu Sans", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('MIND YOUR', w / 2, 104); c.fillText('HEAD!', w / 2, 152); }
+    else if (kind === 'closed') { for (let i = -8; i < 16; i++) { c.fillStyle = i % 2 ? '#e8483a' : '#ffffff'; c.fillRect(i * 32, 0, 32, h); } c.fillStyle = '#ffffff'; c.fillRect(20, 70, w - 40, 116); c.fillStyle = '#1a1626'; c.font = '900 50px "DejaVu Sans", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('CLOSED', w / 2, 130); }
     else if (kind === 'repairs') { c.fillStyle = '#ffffff'; c.fillRect(0, 0, w, h); for (let i = -8; i < 16; i++) { c.fillStyle = i % 2 ? '#e8483a' : '#ffffff'; c.beginPath(); c.moveTo(i * 40, 0); c.lineTo(i * 40 + 40, 0); c.lineTo(i * 40 + 40 + 80, 80); c.lineTo(i * 40 + 80, 80); c.fill(); } c.fillStyle = '#1a1626'; c.font = '900 40px "DejaVu Sans", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('TRACK', w / 2, 140); c.fillText('REPAIRS', w / 2, 190); }
   });
   // a board on a post beside the track at s, on side (-1 left, 1 right), facing the oncoming train
@@ -139,7 +149,7 @@ const PARKCOASTER_SCENE = (function () {
   function lowBoard(K, B, s, kind, h) {
     const f = R.at(s), g = new T.Group(), p = R.bankLocal(s, 0, 0, f);
     g.position.set(...p); g.lookAt(p[0] - f.t[0], p[1] - f.t[1], p[2] - f.t[2]);
-    const tex = signTex(kind === 'mindhead' ? 'mindhead' : 'hazard');
+    const tex = signTex(kind === 'mindhead' ? 'mindhead' : kind === 'closed' ? 'closed' : 'hazard');
     const bd = K3D.mesh(new T.BoxGeometry(3.4, 0.62, 0.12), K3D.toon('#ffffff', { map: tex, emissive: '#ffffff', emissiveIntensity: 0.15 }), { ink: INK }); bd.position.y = h + 0.31; g.add(bd);
     for (const sx of [-1, 1]) { const po = K3D.mesh(new T.BoxGeometry(0.18, h + 3, 0.18), PARK.toonM('#2a2438'), { ink: INK, inkW: 0.6 }); po.position.set(sx * 1.75, (h + 3) / 2 - 2.4, 0); g.add(po); }
     // tassels hanging just before it that brush the riders' heads
@@ -158,7 +168,7 @@ const PARKCOASTER_SCENE = (function () {
     const pts = []; for (let i = 0; i <= 24; i++) { const a = Math.PI * i / 24; pts.push(new T.Vector3(Math.cos(a) * 2.5, Math.sin(a) * 1.4 + 2.6, 0)); }
     const top = K3D.mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 48, 0.18, 8), PARK.toonM('#c83a6a'), { ink: INK }); g.add(top);
     for (const sx of [-1, 1]) { const po = K3D.mesh(new T.CylinderGeometry(0.16, 0.2, 2.6 + p[1], 10), PARK.toonM('#c83a6a'), { ink: INK }); po.position.set(sx * 2.5, (2.6 - p[1]) / 2, 0); g.add(po); }
-    const cam = new T.Group(); cam.position.set(0, 4.3, 0); g.add(cam);
+    const cam = new T.Group(); cam.position.set(1.6, 4.1, 0); g.add(cam);   // (off the middle, clear of the chase camera)
     const body = K3D.mesh(K3D.roundBox(1.1, 0.7, 0.7, 0.5, 18), PARK.toonM('#2a2438'), { ink: INK }); cam.add(body);
     const lens = K3D.mesh(new T.CylinderGeometry(0.22, 0.26, 0.3, 14).rotateX(Math.PI / 2), PARK.toonM('#5a5470'), { ink: INK }); lens.position.set(0, 0.35, 0.45); cam.add(lens);
     const flash = new T.Mesh(new T.BoxGeometry(0.5, 0.25, 0.08), K3D.flat(new T.Color('#ffffff').multiplyScalar(0.6))); flash.position.set(0.25, 0.85, 0.2); cam.add(flash);
@@ -229,7 +239,7 @@ const PARKCOASTER_SCENE = (function () {
     lay.rects.push({ x: 100, z: A.sea.z + 10, w: 560, d: 18 });                                         // the promenade
     lay.rects.push({ x: (A.midway.x0 + A.midway.x1) / 2, z: A.midway.z, w: A.midway.x1 - A.midway.x0 + 16, d: 30 }); // the midway
     for (const r of A.rides) lay.discs.push({ x: r.x, z: r.z, r: (r.r || 8) + 7 });
-    for (const [a, b] of walks) lay.paths.push({ pts: [a, b], w: 7 });
+    for (const [a, b] of walks) lay.paths.push({ pts: [a, b], w: 7, own: true }); // (their lamps and benches: below)
     lay.paths.push({ pts: [[-6, 60], [-14, 30], [-30, 0], [-40, -40], [-46, -70], [-60, -110], [-60, A.sea.z + 10]], w: 8 });   // the west avenue
     lay.paths.push({ pts: [[14, 64], [40, 40], [60, 30], [100, 0], [140, -30], [160, -80], [160, -103]], w: 8 });              // the east avenue
     lay.paths.push({ pts: [[200, -76], [200, -30], [200, 14], [190, 40], [150, 60], [96, 64], [60, 90], [20, 100]], w: 6 });  // past the wheel to the lake
@@ -237,58 +247,45 @@ const PARKCOASTER_SCENE = (function () {
     { const F = A.funhouse; lay.rects.push({ x: F.x - F.w / 2 - 12, z: F.z - F.d / 2 + 20, w: 26, d: 44 }); }
     { let run = []; for (let s = 0; s <= R.len; s += 3) { const q = R.at(s).p; if (q[1] < 6) run.push([q[0], q[2]]); else if (run.length) { if (run.length > 1) lay.paths.push({ pts: run, w: 5, kind: 'gravel' }); run = []; } } if (run.length > 1) lay.paths.push({ pts: run, w: 5, kind: 'gravel' }); }
     PARK.ground(K, { x: 120, z: 20, size: 1500, layout: lay });
+    park.lay = lay;
     PARK.sea(K, B, { z: A.sea.z, pier: A.pier });
     PARK.lake(K, B, A.lake);
-    const rides = A.rides.map(r => PARK.ride(K, B, r.k, r));
+    // (the big wheel's turn is steered so a spoke crosses the track as the train passes: PARKCOASTER_SET.wheelClock)
+    const rides = A.rides.map((r, i) => PARK.ride(K, B, r.k, i === 0 ? Object.assign({}, r, { clock: PARKCOASTER_SET.wheelClock() }) : r));
     // the midway along the seafront: stalls both sides of the low track, lanterns across, tents behind
+    // (not where the awning stalls and the ring-toss stall stand by the track)
+    const special = [[PR.at.awnL, -1], [PR.at.awnR, 1], [PR.at.ringToss + 2, 1]].map(([s0, sd]) => { const q = R.at(s0).p; return [q[0], sd]; });
+    const clearOf = (x, sd) => !special.some(([x0, s2]) => s2 === sd && Math.abs(x - x0) < 7);
     for (let x = A.midway.x0; x < A.midway.x1; x += 7.5) {
       const zN = A.midway.z - 9 - (Math.floor(x / 7.5) % 2) * 0.6, zS = A.midway.z + 9 + (Math.floor(x / 7.5) % 3) * 0.5;
-      PARK.stall(K, B, { x, z: zN, yaw: 0, c: Math.floor(x / 7.5) });
-      PARK.stall(K, B, { x: x + 3.6, z: zS, yaw: Math.PI, c: Math.floor(x / 7.5) + 3 });
-      if (Math.floor(x / 7.5) % 2) PARK.lanterns(K, B, [x, 6.2, zN + 2], [x + 3.6, 6.2, zS - 2], { sag: 1.0, c: Math.floor(x) });
+      if (clearOf(x, -1)) PARK.stall(K, B, { x, z: zN, yaw: 0, c: Math.floor(x / 7.5) });
+      if (clearOf(x + 3.6, 1)) PARK.stall(K, B, { x: x + 3.6, z: zS, yaw: Math.PI, c: Math.floor(x / 7.5) + 3 });
+      if (Math.floor(x / 7.5) % 2) PARK.lanterns(K, B, [x, 9.6, zN + 2], [x + 3.6, 9.6, zS - 2], { sag: 1.0, c: Math.floor(x) });   // (high over the low track: above the camera)
     }
     for (let x = A.midway.x0 + 4; x < A.midway.x1; x += 22) PARK.tent(K, B, { x, z: A.midway.z - 24, r: 5 + (x % 3), h: 6 + (x % 4), cols: [['#c83a4a', '#f4e8d0'], ['#3f8f6a', '#f4e8d0'], ['#5d4bb0', '#f2d06a']][Math.floor(x / 22) % 3] });
     // the promenade between the midway and the sea wall: lamps, benches, bins, balloons, carts
     for (let x = -160; x < 380; x += 12) { PARK.lamp(K, B, { x, z: A.sea.z + 9, moths: x % 36 === 0 }); if (x % 24 === 0) PARK.bench(K, x + 4, A.sea.z + 9.5, Math.PI); if (x % 36 === 12) PARK.bin(K, x + 6, A.sea.z + 10); }
     for (let x = -150; x < 360; x += 4.5) PARK.flags(K, [x, 4.6, A.sea.z + 9], [x + 4.5, 4.6, A.sea.z + 9], { sag: 0.4, n: 6 });
     PARK.cart(K, B, 'popcorn', { x: 96, z: -118, yaw: 0.3 }); PARK.cart(K, B, 'floss', { x: 214, z: -116, yaw: -0.4 });
-    PARK.balloons(K, 104, 0, -96); PARK.balloons(K, 180, 0, -116); PARK.balloons(K, 30, 0, 30); PARK.balloons(K, -8, 0, 64);
+    PARK.balloons(K, 104, 0, -94); PARK.balloons(K, 180, 0, -112);
     // gardens and paths in the middle of the park: lamps along walks, hedge animals, trees, more stalls and booths
     for (const [a, b] of walks) {
       const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.round(d / 11);
       for (let i = 0; i <= n; i++) { const t = i / n, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t, nx = -(b[1] - a[1]) / d, nz = (b[0] - a[0]) / d; PARK.lamp(K, B, { x: x + nx * 3, z: z + nz * 3, moths: i % 4 === 0 }); if (i % 3 === 1) PARK.bench(K, x - nx * 3, z - nz * 3, Math.atan2(nx, nz)); if (i % 2) PARK.lanterns(K, B, [x + nx * 3, 3.8, z + nz * 3], [x + nx * 3 + (b[0] - a[0]) / n, 3.8, z + nz * 3 + (b[1] - a[1]) / n], { sag: 0.7, n: 5, c: i }); }
     }
     const hedges = [[-24, 40, 'rabbit'], [-36, 10, 'elephant'], [70, 42, 'rabbit'], [130, 24, 'other'], [86, -40, 'elephant'], [-60, -36, 'rabbit'], [20, -40, 'other'], [-10, 110, 'elephant'], [56, 108, 'rabbit']];
-    hedges.forEach(([x, z, k], i) => PARK.hedgeAnimal(K, x, z, k, i * 1.3));
-    for (let i = 0; i < 70; i++) { const x = -150 + rnd() * 520, z = -130 + rnd() * 290; if (Math.abs(x - 42) < 9 && z < 30 && z > -110) continue; if (Math.hypot(x - A.lake.x, z - A.lake.z) < 80) continue; if (x > 236 && x < 312 && z > 40 && z < 166) continue; PARK.tree(K, x, z, 0.9 + rnd() * 0.6); }
-    const tents = [[-70, 20, 7, ['#c83a4a', '#f4e8d0']], [-120, 60, 9, ['#5d4bb0', '#f2d06a']], [150, -36, 7, ['#3f8f6a', '#f4e8d0']], [60, 0, 6, ['#d860a8', '#f4e8d0']], [-40, -110, 6, ['#2f7fa8', '#f4e8d0']], [340, 120, 9, ['#c83a4a', '#f2d06a']]];
-    for (const [x, z, r, cols] of tents) PARK.tent(K, B, { x, z, r, h: r * 1.1, cols, yaw: x * 0.1 });
-    const booths = [[-8, 50], [56, 20], [120, 0], [-50, -10], [24, -70]];
-    for (const [x, z] of booths) PARK.booth(K, B, { x, z, yaw: x * 0.05 });
-    for (const [x, z, yaw] of [[14, 30, 0.4], [-22, -4, -1.2], [70, -20, 2.4], [-60, 72, 0.9], [140, 54, -0.6], [30, 120, 3.1]]) PARK.stall(K, B, { x, z, yaw, c: Math.floor(Math.abs(x)) });
-    for (const [x, z, w] of [[-20, 46, ['Comet', 'Sea Front']], [64, 12, ['Big Wheel', 'Funhouse']], [-48, 4, ['Teacups', 'Log Flume']], [100, -48, ['Pier', 'Carousel']]]) PARK.signpost(K, x, z, w, x * 0.07);
-    PARK.cart(K, B, 'floss', { x: -16, z: 20, yaw: 1 }); PARK.cart(K, B, 'popcorn', { x: 48, z: -10, yaw: -0.7 }); PARK.cart(K, B, 'popcorn', { x: -40, z: 54 });
+    hedges.forEach(([x, z, k], i) => { if (K.groundAll(x, z, 2.2, 'grass')) PARK.hedgeAnimal(K, x, z, k, i * 1.3); });
+    // (the trees are planted by fill(), only on grass and clear of everything else)
+    const tents = [[-70, 20, 7, ['#c83a4a', '#f4e8d0']], [-120, 60, 9, ['#5d4bb0', '#f2d06a']], [60, 0, 6, ['#d860a8', '#f4e8d0']], [-40, -110, 6, ['#2f7fa8', '#f4e8d0']], [340, 120, 9, ['#c83a4a', '#f2d06a']]];
+    // big tents only where they stand wholly on grass; the stalls, booths and carts are set along the paths by fill()
+    for (const [x, z, r, cols] of tents) if (K.groundAll(x, z, r + 1, 'grass')) PARK.tent(K, B, { x, z, r, h: r * 1.1, cols, yaw: x * 0.1 });
+    // signposts where walks cross (at the edge of the paving)
+    for (const [x, z, w] of [[-26, 4, ['Comet', 'Sea Front']], [104, 34, ['Big Wheel', 'Funhouse']], [-34, -4, ['Teacups', 'Log Flume']], [104, -56, ['Pier', 'Carousel']]]) PARK.signpost(K, x, z, w, x * 0.07);
     // the fence round the park (with the gap they slipped through by the station)
     PARK.fence(K, B, [-170, 170], [370, 170], { bulbs: true }); PARK.fence(K, B, [-170, -140], [-170, 170], { bulbs: true }); PARK.fence(K, B, [370, -140], [370, 170], { bulbs: true });
-    // the funhouse: a giant laughing moon face (its inside comes later; the track goes in at the mouth)
-    funhouse(K, B);
+    // (the funhouse, the laughing moon with the track in at its mouth and out of its eye: PARKCOASTER_SET)
     return rides;
   }
-  function funhouse(K, B) {
-    const F = PR.art.funhouse, g = new T.Group(); g.position.set(F.x, 0, F.z); K.add(g);
-    const wall = K3D.mesh(new T.BoxGeometry(F.w, F.h, F.d), K3D.toon('#ffffff', { map: PARK.stripes('#5d3a9a', '#2f2a6a', 12, { v: true }) })); wall.position.y = F.h / 2; g.add(wall);
-    const roof = K3D.mesh(new T.BoxGeometry(F.w + 2, 1.2, F.d + 2), PARK.toonM('#f2c14e')); roof.position.y = F.h + 0.6; g.add(roof);
-    // the moon face on the front (toward the midway, -x): a huge round yellow face with a grin the track enters
-    const face = new T.Group(); face.position.set(-F.w / 2 - 0.5, F.h * 0.55, -F.d / 2 + 20); face.rotation.y = -Math.PI / 2; g.add(face);
-    const disc = K3D.mesh(new T.CylinderGeometry(15, 15, 1.4, 48).rotateX(Math.PI / 2), K3D.toon('#ffe27a', { emissive: '#8a6a10', emissiveIntensity: 0.45 }), { inkW: 1.4 }); face.add(disc);
-    for (const sx of [-1, 1]) { const eye = K3D.mesh(new T.SphereGeometry(2.4, 20, 14), PARK.toonM('#ffffff')); eye.scale.z = 0.4; eye.position.set(sx * 5, 4, 0.8); face.add(eye); const pu = new T.Mesh(new T.SphereGeometry(1.2, 14, 10), PARK.toonM('#2a2235')); pu.scale.z = 0.4; pu.position.set(sx * 5 + 0.4, 3.6, 1.6); face.add(pu); }
-    const mouth = K3D.mesh(new T.CylinderGeometry(8, 8, 1.6, 32, 1, false, Math.PI * 0.08, Math.PI * 0.84).rotateX(Math.PI / 2).rotateZ(Math.PI), PARK.toonM('#3a1a3a')); mouth.position.set(0, -2, 0.4); face.add(mouth);
-    const sg = PARK.neon(K, 'FUNHOUSE', { w: 16, h: 3.6, col: '#7affd4', col2: '#ff6ab0', k: 2.6 }); sg.position.set(-F.w / 2 - 1.2, F.h + 3, -F.d / 2 + 20); sg.rotation.y = -Math.PI / 2; g.add(sg);
-    g.updateMatrixWorld(true);
-    if (B) { const w2 = (x, y, z) => { const q = new T.Vector3(x, y, z).applyMatrix4(face.matrixWorld); return [q.x, q.y, q.z]; }; for (let i = 0; i < 64; i++) { const a = i / 64 * Math.PI * 2; B.add(...w2(Math.cos(a) * 15.6, Math.sin(a) * 15.6, 0.9), i % 2 ? '#ffffff' : '#ffd24a', { size: 0.35, speed: 4, phase: i * 0.5 }); }
-      for (const x of [-F.w / 2, F.w / 2]) for (const z of [-F.d / 2, F.d / 2]) { const q = new T.Vector3(x, 0, z).applyMatrix4(g.matrixWorld); B.line([q.x, 0.5, q.z], [q.x, F.h, q.z], 1.2, ['#ff6ab0', '#7affd4'], { speed: 5, step: -0.6, size: 0.3 }); } }
-  }
-
   /* ---------- tickets ---------- */
   function tickets(K) {
     const n = L.tickets.length;
@@ -307,7 +304,7 @@ const PARKCOASTER_SCENE = (function () {
      Walks the whole circuit and, wherever the ground beside it is still empty, sets down a little bit of park: lawns
      with trees, flower beds and benches, lamps with lantern strings, game stalls, booths, carts, balloons, hedge
      animals, tents further out. A coarse grid keeps them off the track, the lake, the sea, the funhouse and each other. */
-  function fill(K, B, keep) {
+  function fill(K, B, keep, lay) {
     const A = PR.art, cell = 3, occ = new Set(), key = (a, b) => a + ',' + b;
     const each = (x, z, r, f) => { for (let a = Math.floor((x - r) / cell); a <= Math.floor((x + r) / cell); a++) for (let b = Math.floor((z - r) / cell); b <= Math.floor((z + r) / cell); b++) if (f(key(a, b))) return true; return false; };
     const mark = (x, z, r) => each(x, z, r, k => { occ.add(k); });
@@ -327,35 +324,97 @@ const PARKCOASTER_SCENE = (function () {
       box.getCenter(c); mark(c.x, c.z, Math.max(sz.x, sz.z) / 2 + 0.5);
     }
     const FL = PARK.flowers(K, 20000);
-    const lampAt = [];
-    const kinds = [['trees', 30], ['bed', 12], ['lamp', 8], ['stall', 12], ['booth', 5], ['hedge', 5], ['cart', 5], ['balloons', 6], ['bench', 7], ['games', 6]];
+    const G = K.groundAt || (() => 'grass'), all = K.groundAll || (() => true);
+    const grassy = (x, z, r) => all(x, z, r, 'grass');
+    const face = (fx, fz) => Math.atan2(fx, fz); // a yaw whose front (+z) looks along (fx, fz)
+    /* 1. along the paths, on purpose: lamps in a steady rhythm at the path's edge (alternate sides) with lantern
+          strings across, a bench and a bin by every third lamp facing the path, and stalls on the grass just
+          outside the edge facing the path (now and then a cart beside one). The garden walks already have their
+          lamps and benches (park()); this does the avenues, the lake walk and the like. */
+    for (const pth of (lay ? lay.paths : [])) {
+      if (pth.kind === 'gravel' || pth.own) continue;
+      const pts = pth.pts, hw = (pth.w || 6) / 2;
+      let along = 0, next = 6, nextStall = 14 + rnd() * 10, side = 1, n = 0, last = null;
+      for (let i = 1; i < pts.length; i++) {
+        const ax = pts[i - 1][0], az = pts[i - 1][1], dx = pts[i][0] - ax, dz = pts[i][1] - az, l = Math.hypot(dx, dz) || 1, tx = dx / l, tz = dz / l, nx = -tz, nz = tx;
+        for (let d = 0; d < l; d += 1) {
+          along += 1; const x = ax + tx * d, z = az + tz * d;
+          if (along >= next) {
+            next = along + 13;
+            const lx = x + nx * side * (hw - 0.6), lz = z + nz * side * (hw - 0.6);
+            if (free(lx, lz, 1.2)) {
+              PARK.lamp(K, B, { x: lx, z: lz, moths: n % 4 === 0 }); mark(lx, lz, 1.4);
+              if (last) PARK.lanterns(K, B, [last[0], 3.9, last[1]], [lx, 3.9, lz], { sag: 0.9, c: n });
+              last = [lx, lz];
+              if (n % 3 === 1) { const bx = x - nx * side * (hw - 0.8) + tx * 2, bz = z - nz * side * (hw - 0.8) + tz * 2; if (free(bx, bz, 1.4)) { PARK.bench(K, bx, bz, face(nx * side, nz * side)); PARK.bin(K, bx + tx * 1.7, bz + tz * 1.7); mark(bx, bz, 1.8); } }
+              n++; side = -side;
+            } else last = null;
+          }
+          if (along >= nextStall) {
+            nextStall = along + 22 + rnd() * 14;
+            const ss = rnd() < 0.5 ? 1 : -1, sx = x + nx * ss * (hw + 3.4), sz = z + nz * ss * (hw + 3.4);
+            if (free(sx, sz, 3.6) && G(sx, sz) === 'grass') {
+              PARK.stall(K, B, { x: sx, z: sz, yaw: face(-nx * ss, -nz * ss), c: Math.floor(rnd() * 9) }); mark(sx, sz, 3.8);
+              const cx = sx + tx * 4.6, cz = sz + tz * 4.6;
+              if (rnd() < 0.35 && free(cx, cz, 1.5)) { PARK.cart(K, B, rnd() < 0.5 ? 'popcorn' : 'floss', { x: cx, z: cz, yaw: face(-nx * ss, -nz * ss) }); PARK.balloons(K, cx + tx * 1.4, 0, cz + tz * 1.4, 5); mark(cx, cz, 2.2); }
+            }
+          }
+        }
+      }
+    }
+    /* 2. the grass between: groves of trees (every trunk on grass, never in the cobbles), flower beds with a bench
+          looking at them from a path when one is near, hedge animals with their own little bed, game tents. Things
+          that belong on paving (stalls, carts, lamps) only come from the paths above. */
+    const kinds = [['trees', 60], ['bed', 7], ['hedge', 8], ['games', 7]];
     const tot = kinds.reduce((a, k) => a + k[1], 0);
     const pick = () => { let x = rnd() * tot; for (const [k, w] of kinds) { x -= w; if (x < 0) return k; } return 'trees'; };
     const place = (k, x, z, yaw) => {
-      if (k === 'trees') { if (!free(x, z, 3.5)) return false; FL.lawn(x, z, 3.5 + rnd() * 2.5, 2.8 + rnd() * 2, rnd() * 3); const n = 1 + Math.floor(rnd() * 3); for (let i = 0; i < n; i++) PARK.tree(K, x + (rnd() - 0.5) * 4, z + (rnd() - 0.5) * 3, 1.0 + rnd() * 0.7, B); mark(x, z, 4); }
-      else if (k === 'bed') { if (!free(x, z, 2.4)) return false; FL.bed(x, z, 1.2 + rnd() * 1.0); PARK.bench(K, x + Math.sin(yaw) * 3.2, z + Math.cos(yaw) * 3.2, yaw + Math.PI); mark(x, z, 3.5); }
-      else if (k === 'lamp') { if (!free(x, z, 1.5)) return false; PARK.lamp(K, B, { x, z, moths: rnd() < 0.3 }); PARK.bin(K, x + 1, z + 0.6); const near = lampAt.find(l => Math.hypot(l[0] - x, l[1] - z) < 14 && Math.hypot(l[0] - x, l[1] - z) > 5); if (near) PARK.lanterns(K, B, [x, 3.9, z], [near[0], 3.9, near[1]], { sag: 0.8, c: Math.floor(x) }); lampAt.push([x, z]); mark(x, z, 1.8); }
-      else if (k === 'stall') { if (!free(x, z, 4.5)) return false; PARK.stall(K, B, { x, z, yaw, c: Math.floor(rnd() * 9) }); mark(x, z, 4.5); }
-      else if (k === 'booth') { if (!free(x, z, 2.5)) return false; PARK.booth(K, B, { x, z, yaw }); mark(x, z, 2.5); }
-      else if (k === 'hedge') { if (!free(x, z, 3)) return false; PARK.hedgeAnimal(K, x, z, ['rabbit', 'elephant', 'other'][Math.floor(rnd() * 3)], yaw); FL.bed(x + 2.6, z + 1.2, 1.0); mark(x, z, 3.5); }
-      else if (k === 'cart') { if (!free(x, z, 2)) return false; PARK.cart(K, B, rnd() < 0.5 ? 'popcorn' : 'floss', { x, z, yaw }); mark(x, z, 2.2); }
-      else if (k === 'balloons') { if (!free(x, z, 1.8)) return false; PARK.balloons(K, x, 0, z, 4 + Math.floor(rnd() * 4)); mark(x, z, 2); }
-      else if (k === 'bench') { if (!free(x, z, 2)) return false; PARK.bench(K, x, z, yaw); PARK.lamp(K, B, { x: x + 1.8, z: z + 0.4 }); mark(x, z, 2.4); }
-      else if (k === 'games') { if (!free(x, z, 7)) return false; PARK.tent(K, B, { x, z, r: 4 + rnd() * 2.5, h: 5 + rnd() * 2, cols: [['#c83a4a', '#f4e8d0'], ['#3f8f6a', '#f4e8d0'], ['#5d4bb0', '#f2d06a'], ['#d860a8', '#f4e8d0']][Math.floor(rnd() * 4)], yaw }); mark(x, z, 9); }
+      if (k === 'trees') {
+        if (!free(x, z, 3.2) || !grassy(x, z, 3.2)) return false;
+        const n = 2 + Math.floor(rnd() * 3);
+        const a0 = rnd() * 6.28; for (let i = 0; i < n; i++) { const a = a0 + i / n * 6.28 + (rnd() - 0.5) * 0.4, rr = n === 1 ? 0 : 2.3 + rnd() * 0.7, tx = x + Math.cos(a) * rr, tz = z + Math.sin(a) * rr; if (G(tx, tz) === 'grass') PARK.tree(K, tx, tz, 1.0 + rnd() * 0.7, B); }
+        mark(x, z, 4.2);
+      } else if (k === 'bed') {
+        if (!free(x, z, 3.6) || !grassy(x, z, 2.8)) return false;
+        FL.bed(x, z, 1.2 + rnd() * 1.0); mark(x, z, 3);
+      } else if (k === 'hedge') {
+        if (!free(x, z, 3.2) || !grassy(x, z, 3.4)) return false;
+        PARK.hedgeAnimal(K, x, z, ['rabbit', 'elephant', 'other'][Math.floor(rnd() * 3)], yaw); FL.bed(x + 2.6, z + 1.2, 1.0); mark(x, z, 3.8);
+      } else if (k === 'games') {
+        if (!free(x, z, 7) || !grassy(x, z, 7)) return false;
+        PARK.tent(K, B, { x, z, r: 4 + rnd() * 2.5, h: 5 + rnd() * 2, cols: [['#c83a4a', '#f4e8d0'], ['#3f8f6a', '#f4e8d0'], ['#5d4bb0', '#f2d06a'], ['#d860a8', '#f4e8d0']][Math.floor(rnd() * 4)], yaw }); mark(x, z, 8.5);
+      }
       return true;
     };
-    // near the track (seen up close), then a band further out (seen across the park)
-    for (const [d0, d1, step] of [[6, 11, 2.6], [11, 19, 3.2], [19, 30, 4], [30, 46, 5.5], [46, 70, 8]]) {
+    for (const [d0, d1, step] of [[7, 12, 2.8], [12, 20, 3.4], [20, 31, 4.2], [31, 46, 5.5], [46, 70, 8]]) {
       for (let s = 0; s < R.len; s += step * (0.7 + rnd() * 0.6)) {
         const f = R.at(s);
         for (const side of [-1, 1]) {
           const h = Math.hypot(f.t[0], f.t[2]) || 1, rx = -f.t[2] / h * side, rz = f.t[0] / h * side, d = d0 + rnd() * (d1 - d0);
           const x = f.p[0] + rx * d, z = f.p[2] + rz * d;
-          for (let t = 0; t < 4 && !place(t < 2 ? pick() : t === 2 ? 'trees' : rnd() < 0.5 ? 'bed' : 'bench', x, z, Math.atan2(-rx, -rz)); t++);
+          for (let t = 0; t < 3 && !place(t < 2 ? pick() : 'trees', x, z, Math.atan2(-rx, -rz)); t++);
         }
       }
     }
     FL.done();
+    // the overlap audit (tools/w42/shot.js --audit): pairs of things whose footprints overlap a lot, trees and hedges
+    // not on grass, things on the track
+    if (window.__w42audit) {
+      const bx = [], b3 = new T.Box3(), sz3 = new T.Vector3();
+      for (const o of K.root.children) {
+        if (o.isInstancedMesh || o.isPoints || o === K.glintIM) continue;
+        b3.setFromObject(o); if (b3.isEmpty()) continue; b3.getSize(sz3);
+        if (sz3.x > 30 || sz3.z > 30 || sz3.x * sz3.z < 1.2 || b3.max.y < 0.5 || b3.min.y > 2) continue; // (lantern strings and arches overhead don't sit on the ground)
+        bx.push({ x0: b3.min.x, x1: b3.max.x, z0: b3.min.z, z1: b3.max.z, a: sz3.x * sz3.z, n: o.name || (o.type + o.children.length + ':' + o.children.slice(0, 4).map(c => (c.geometry ? c.geometry.type.replace('Geometry', '') : c.type) + (c.material && c.material.color ? c.material.color.getHexString() : '')).join(',')), p: o.position });
+      }
+      const bad = [];
+      for (let i = 0; i < bx.length; i++) for (let j = i + 1; j < bx.length; j++) {
+        const A1 = bx[i], B1 = bx[j], ix = Math.min(A1.x1, B1.x1) - Math.max(A1.x0, B1.x0), iz = Math.min(A1.z1, B1.z1) - Math.max(A1.z0, B1.z0);
+        if (A1.n === 'tree' && B1.n === 'tree' && Math.hypot(A1.p.x - B1.p.x, A1.p.z - B1.p.z) > 2.2) continue; // (a grove: crowns touch)
+        if (ix > 0 && iz > 0 && ix * iz > 0.4 * Math.min(A1.a, B1.a)) bad.push([A1.n, Math.round((A1.x0 + A1.x1) / 2), Math.round((A1.z0 + A1.z1) / 2), Math.round(A1.x1 - A1.x0), Math.round(A1.z1 - A1.z0), B1.n, Math.round((B1.x0 + B1.x1) / 2), Math.round((B1.z0 + B1.z1) / 2), Math.round(B1.x1 - B1.x0), Math.round(B1.z1 - B1.z0)]);
+      }
+      window.__w42audit = { n: bx.length, overlaps: bad };
+    }
   }
 
   /* ---------- build ---------- */
@@ -364,21 +423,28 @@ const PARKCOASTER_SCENE = (function () {
     const night = PARK.night(K, { moon: PR.art.moon });
     const B = PARK.bulbs(K, 16000);
     const sc = { K, B, night };
-    sc.rides = park(K, B);
+    sc.rides = park(K, B); sc.lay = park.lay;
     sc.station = station(K, B);
     // the track: the main circuit (broken at the gaps), the detours and the station loop
-    const gaps = L.hops.map(h => [h.s0, h.s1]);
+    const gaps = L.hops.filter(h => h.kind !== 'broom').map(h => [h.s0, h.s1]);   // (the broom lies on whole rails)
     const warn = L.hops.map(h => [h.s0 - 7, h.s0]);
     let a = 0;
-    for (const [g0, g1] of gaps.concat([[R.len, R.len]])) { if (g0 - a > 0.5) trackPiece(K, B, R, a, g0, { warn }); a = g1; }
-    supports(K, R, 0, R.len, { skip: (p) => Math.hypot(p[0] - PR.art.station.x, p[2] - PR.art.station.z) < 12 });
+    // (the old trestle, from the second lift to the corkscrew, is timber under steel rails)
+    const woodA = PR.lifts[1][0] - 2, woodB = PR.at.cork, woodO = { warn, spine: '#6a4a30', sleeper: '#8a6440' };
+    const piece = (s0, s1) => {
+      for (const [x0, x1, o] of [[s0, Math.min(s1, woodA), { warn }], [Math.max(s0, woodA), Math.min(s1, woodB), woodO], [Math.max(s0, woodB), s1, { warn }]]) if (x1 - x0 > 0.5) trackPiece(K, B, R, x0, x1, o);
+    };
+    for (const [g0, g1] of gaps.concat([[R.len, R.len]])) { if (g0 - a > 0.5) piece(a, g0); a = g1; }
+    const W0 = PR.art.rides[0];
+    supports(K, R, 0, R.len, { skip: (p, s) => Math.hypot(p[0] - PR.art.station.x, p[2] - PR.art.station.z) < 12 || (s > woodA && s < woodB) || (Math.abs(p[2] - W0.z) < 5 && Math.abs(p[0] - W0.x) < 22) });
     for (const D of PR.dets) { trackPiece(K, B, D, 0, D.len, { rail: '#b8a8b8', spine: '#6a5a6a', sleeper: '#5a4a4a', bulbGap: 3, bulbCols: ['#ff7a5a', '#ffd27a'] }); supports(K, D, 0, D.len, { gap: 7 }); }
     sc.chainTex = PR.lifts.map(([s0, s1]) => chain(K, s0, s1));
     // on the track: arrow boards, low boards, hops, cameras, arches, switches, loudspeakers
     for (const bd of L.bends) board(K, B, bd.lead, -bd.dir, bd.need === 2 ? 'bend2' : 'bend1', { flip: bd.dir < 0, bulb: bd.need === 2 ? '#ffd24a' : '#ffffff' });
-    sc.lows = L.ducks.map(d => lowBoard(K, B, d.s, d.kind, d.h + 0.25));
+    sc.lows = L.ducks.filter(d => d.kind === 'mindhead' || d.kind === 'closed').map(d => lowBoard(K, B, d.s, d.kind, d.h + 0.25));
     for (const h of L.hops) {
       for (const side of [-1, 1]) board(K, B, h.lead, side, 'spring', { size: 1.3, h: 2.0, bulb: '#ffd24a' });
+      if (h.kind !== 'repairs') continue;   // (the other gaps' set pieces: PARKCOASTER_SET)
       // the barrier and cones at the gap, and a work lamp blinking
       const f = R.at((h.s0 + h.s1) / 2);
       for (const side of [-1, 1]) {
@@ -392,20 +458,22 @@ const PARKCOASTER_SCENE = (function () {
     sc.arches = L.arches.map(s => arch(K, B, s));
     // loudspeakers on poles by the track (the announcer's lines come from the nearest)
     sc.horns = L.says.map(sy => {
-      const f = R.at(sy.s + 10), p = R.local(sy.s + 10, 3.2, 0, f), g = new T.Group(); g.position.set(p[0], 0, p[2]);
+      const f = R.at(sy.s + 10), nearSt = Math.hypot(f.p[0] - PR.art.station.x, f.p[2] - PR.art.station.z) < 16, p = R.local(sy.s + 10, nearSt ? 6.2 : 5.2, 0, f), g = new T.Group(); g.position.set(p[0], 0, p[2]);
       const pole = K3D.mesh(new T.CylinderGeometry(0.08, 0.1, p[1] + 5.5, 8), PARK.toonM('#2a2438')); pole.position.y = (p[1] + 5.5) / 2; g.add(pole);
       for (const a of [0, 2.1, 4.2]) { const horn = K3D.mesh(K3D.geo('pc-horn', () => new T.ConeGeometry(0.4, 0.9, 12, 1, true).rotateX(-Math.PI / 2)), PARK.toonM('#d8d0e8', { side: T.DoubleSide })); horn.position.set(Math.sin(a) * 0.3, p[1] + 5.2, Math.cos(a) * 0.3); horn.rotation.y = a; horn.rotation.x = 0.25; g.add(horn); }
       K.add(g); return [p[0], p[1] + 5.9, p[2]];
     });
+    // the set pieces of stretches 2 to 4 and every low thing, leaning thing, lever and gap (parkcoaster-set.js)
+    PARKCOASTER_SET.build(K, B, sc, trapPiece);
     // fill the empty ground beside the track (the robots' sweeping circles kept clear)
-    fill(K, B, [[22, 58, 4], [30, 34, 5], [-8, 40, 6], [54, 6, 7]]);
+    fill(K, B, [[-16, 64, 3.5], [-18, 104, 4], [14, 106, 4.5], [-20, 84, 5]], sc.lay);
     // the train and riders
     sc.car = PARKCOASTER_CAR.build(K);
     sc.car.train.userData.live = true;
     sc.tk = tickets(K);
     // wind-up sweeper robots by the station yard; gulls on the station roof and one on the crest's rail
     sc.robots = [];
-    for (let i = 0; i < 4; i++) { const r = PARK.robot(K, { col: ['#e85a4a', '#3f9a8a', '#f2c14e', '#7a6ad0'][i] }); sc.robots.push({ r, c: [[22, 58], [30, 34], [-8, 40], [54, 6]][i], ph: i * 1.7, rr: 3 + i }); }
+    for (let i = 0; i < 4; i++) { const r = PARK.robot(K, { col: ['#e85a4a', '#3f9a8a', '#f2c14e', '#7a6ad0'][i] }); sc.robots.push({ r, c: [[-16, 64], [-18, 104], [14, 106], [-20, 84]][i], ph: i * 1.7, rr: 2.4 + i * 0.4 }); }
     sc.mechanic = PARK.robot(K, { col: '#f2c14e' }); sc.mechanic.visible = false;
     const crest = R.at(PR.at.crest);
     sc.gulls = PARK.gulls(K, [[-3, 8.6, 78], [-1, 8.6, 88], [-5, 8.6, 84], [crest.p[0] - 2.6, crest.p[1] - 0.3, crest.p[2] - 3], [136, 3.6, -150], [150, 3.6, -150]]);
@@ -426,9 +494,12 @@ const PARKCOASTER_SCENE = (function () {
     const s = st.s, f = PARKCOASTER.frame(st);
     // the lift hills: ease back and wide to show the park (the postcard), while play goes on
     let wide = 0;
-    for (const [a, b] of PR.lifts) wide = Math.max(wide, smooth(a - 4, a + 10, s) * (1 - smooth(b - 6, b + 2, s)));
+    // (the second lift starts right out of the funhouse's eye: it opens out only once the camera is clear of the wall)
+    PR.lifts.forEach(([a, b], i) => { const a0 = i ? a + 12 : a - 4; wide = Math.max(wide, smooth(a0, a0 + 14, s) * (1 - smooth(b - 6, b + 2, s))); });
     const nearCrest = Math.max(...[PR.at.crest, PR.at.crest2].map(c => 1 - smooth(4, 12, Math.abs(s - c))));
-    const o = { back: 7.2 + wide * 8, height: 4.6 + wide * 5 + nearCrest * 1.2, ahead: 10 + wide * 10, side: wide * 4.5, tipAhead: nearCrest * 6, roll: RM() ? 0.33 : 0.8, rollMax: RM() ? 5 : 15 };
+    // inside the funhouse the camera rides lower and closer (through the mouth and out through the eye)
+    const inF = smooth(PR.at.funhouse - 14, PR.at.funhouse - 4, s) * (1 - smooth(PR.at.eye + 4, PR.at.eye + 14, s));
+    const o = { back: 7.2 - inF * 1.0 + wide * 8, height: 4.6 - inF * 1.5 + wide * 5 + nearCrest * 1.2, ahead: 10 + wide * 10, side: wide * 4.5, tipAhead: nearCrest * 6, roll: RM() ? 0.33 : 0.8, rollMax: RM() ? 5 : 15 };
     if (st.det >= 0) {
       const D = PR.dets[st.det]; const sh = RAIL3.shot(D, Math.max(0, st.ds), { back: 7.2, height: 4.6, ahead: 10 });
       return Object.assign(sh, { fov: 58 });
@@ -439,6 +510,16 @@ const PARKCOASTER_SCENE = (function () {
     // on a steep drop, look out across the park as well as down the track (not straight at the ground)
     if (f.pitch < -0.15) sh.at[1] += (sh.eye[1] - 3 - sh.at[1]) * smooth(0.15, 0.5, -f.pitch) * 0.45;
     sh.fov = 56 + wide * 8;
+    // round the loop: a close chase in the car's own frame (behind and above its seats, up = the car's up), so the
+    // whole car stays on screen and the world turns over at the top
+    const lk = smooth(PR.at.loopIn - 6, PR.at.loopIn + 2, s) * (1 - smooth(PR.at.loopOut - 2, PR.at.loopOut + 6, s));
+    if (lk > 0 && !RM()) {
+      const p = f.p, t = f.t, u = f.bu;
+      const eye = [0, 1, 2].map(k => p[k] - t[k] * 5 + u[k] * 5.2), at = [0, 1, 2].map(k => p[k] + t[k] * 2.5 + u[k] * 0.7);   // (behind the car is outside the loop's circle: lift well up toward its middle)
+      sh.eye = sh.eye.map((x, k) => x + (eye[k] - x) * lk); sh.at = sh.at.map((x, k) => x + (at[k] - x) * lk);
+      const up0 = sh.up || [0, 1, 0], up = up0.map((x, k) => x + (u[k] - x) * lk), ul = Math.hypot(...up) || 1;
+      sh.up = up.map(x => x / ul);
+    }
     return sh;
   }
   function update(K, st, dt) {
@@ -453,6 +534,7 @@ const PARKCOASTER_SCENE = (function () {
     } else if (!sc.lit) { sc.lit = true; PARK.wave(K, 0, 0, 1e5); }
     for (const h of sc.station.hands) { h.hh.rotation.z = 0; h.mh.rotation.z = st.phase === 'board' ? Math.max(0, (T0 - st.phaseT) / T0) * 0.4 : 0; }
     PARKCOASTER_CAR.pose(K, car, st, dt);
+    PARKCOASTER_SET.update(K, st, dt, sc);
     for (const tx of sc.chainTex) tx.offset.y = -(sc.chainT = (sc.chainT || 0) + dt * 2.8 / 0.5 * 0.5) % 1;
     // tickets flutter; taken ones are gone
     const im = sc.tk.im, m4 = new T.Matrix4(), q = new T.Quaternion(), e = new T.Euler(), sz = new T.Vector3(), t = (sc.t = (sc.t || 0) + dt);
@@ -525,7 +607,8 @@ const PARKCOASTER_SCENE = (function () {
     const word = (txt, col, age, size = 34) => { ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, (1.2 - age) * 3)); text(txt, W / 2, 150 - Math.min(0.3, age) * 30, size, col, 'center'); ctx.restore(); };
     if (last) {
       const age = st.t - last.t;
-      if (last.k === 'rattle' && age < 1.2) word({ bend: 'Two wheels! Rattle!', bonk: 'Bonk! Rattle!', gap: 'Clunk! Rattle!', tip: 'Scrape! Rattle!', detour: 'Bumpy! Rattle!' }[last.why] || 'Rattle!', '#ffb36a', age);
+      if (last.k === 'rattle' && age < 1.2) word({ bend: 'Two wheels! Rattle!', bonk: 'Bonk! Rattle!', gap: 'Clunk! Rattle!', tip: 'Scrape! Rattle!', detour: 'Bumpy! Rattle!', rocket: 'Fizz-BANG! Rattle!' }[last.why] || 'Rattle!', '#ffb36a', age);
+      if (last.k === 'rocketOff' && age < 1.4) word('Up the siding! Whoosh!', '#9affd4', age, 26);
       if (last.k === 'photo' && age < 1.4) word('Say cheese! +' + PARKCOASTER.S.PHOTO_TICKETS, '#ffd24a', age);
       if (last.k === 'bell' && age < 1.2) word('Ding! +' + PARKCOASTER.S.BELL_TICKETS, '#ffd24a', age, 26);
       if (last.k === 'detour' && age < 1.6) word('Wrong way!', '#ffb36a', age);
@@ -544,13 +627,13 @@ const PARKCOASTER_SCENE = (function () {
     if (st.phase === 'ride') {
       for (const h of L.hops) if (st.s > h.lead && st.s < h.s0) { const a = 0.75 + Math.sin(G.clock * 8) * 0.25; ctx.save(); ctx.globalAlpha = a; text('Jump together!', W / 2, H - 92, 22, '#ffd24a', 'center'); ctx.restore(); break; }
       for (const lv of L.levers) {
-        const pre = Math.max(PARKCOASTER.S.LEVER_MIN, st.v * PARKCOASTER.S.LEVER_PRE);
+        const pre = PARKCOASTER.leverPre(lv, st.v);
         if (st.s < lv.s - pre - 6 || st.s > lv.s + 0.6) continue;
         if (lv.kind !== 'brake' && st.thrown[L.levers.indexOf(lv)]) continue;
         if (lv.kind === 'brake' && st.brake[lv.side]) continue;
         if (isCpuPlayer(lv.side)) continue;
         const x = lv.side === 0 ? W * 0.28 : W * 0.72;
-        drawBtn(lv.side, 'act', x, H - 120, { label: lv.kind === 'brake' ? 'brake!' : lv.kind === 'switch' ? 'lever!' : 'ding!', alpha: 0.75 + Math.sin(G.clock * 9) * 0.25 });
+        drawBtn(lv.side, 'act', x, H - 120, { label: lv.kind === 'brake' ? 'brake!' : lv.kind === 'switch' || lv.kind === 'rocket' ? 'lever!' : 'ding!', alpha: 0.75 + Math.sin(G.clock * 9) * 0.25 });
       }
     }
     // the photo flash

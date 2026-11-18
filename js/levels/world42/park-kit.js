@@ -24,7 +24,8 @@
      PARK.sea(K, o)              the sea with moonlight glitter, the beach, the pier with its bulbs and a little wheel
      PARK.lake(K, o)             a boating lake (still water, swan boats, reflections)
      PARK.ground(K, o)           the ground: grass, cobbled paths and plazas (o.layout), gravel under tracks; wet
-                                 cobbles mirror the moon; light streaks under bright things (PARK.glint)
+                                 cobbles mirror the moon; light streaks under bright things (PARK.glint).
+                                 Sets K.groundAt(x, z) -> 'pave'|'gravel'|'grass' and K.groundAll(x, z, r, kind)
      PARK.fireworks(K)           bursts: f.burst(x, y, z, col, t), f.auto(on); bloom makes them glow
      PARK.gulls(K, list)         gulls asleep on roofs that take off when the train roars past (g.scare(x, z))
    Every animated piece adds its own ticker (K.tick), driven by the drawn frame's clock: scenery only, never rules.
@@ -421,6 +422,11 @@ const PARK = (function () {
     });
     // (row 0 of the canvas is the low-z edge: no flip, so a path drawn at +z lies at +z)
     mask.wrapS = mask.wrapT = T.ClampToEdgeWrapping; mask.flipY = false; mask.needsUpdate = true;
+    // what the ground is at (x, z): 'pave', 'gravel' or 'grass' (the same mask, read once), for placing things on purpose
+    { const cv = mask.image, d = cv.getContext('2d').getImageData(0, 0, MS, MS).data;
+      K.groundAt = g.kindAt = (x, z) => { const [u, v] = toPx(x, z), i = (Math.max(0, Math.min(MS - 1, Math.round(v))) * MS + Math.max(0, Math.min(MS - 1, Math.round(u)))) * 4; return d[i] > 110 ? 'pave' : d[i + 1] > 110 ? 'gravel' : 'grass'; };
+      // true when the whole circle (x, z, r) is that kind
+      K.groundAll = g.allAt = (x, z, r, kind) => { if (g.kindAt(x, z) !== kind) return false; for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; if (g.kindAt(x + Math.cos(a) * r, z + Math.sin(a) * r) !== kind) return false; } return true; }; }
     const mat = K3D.toon('#ffffff');
     const U = { uPave: { value: P.cobbles() }, uGrass: { value: P.lawnTex() }, uGravel: { value: P.gravelTex() }, uNoise: { value: P.noiseTex() }, uMask: { value: mask },
       uMaskO: { value: new T.Vector2(cx, cz) }, uMaskS: { value: size }, uMoonDir: { value: new T.Vector3(-0.1, 0.25, -0.96).normalize() }, uMoonCol: { value: new T.Color('#dfe6ff') }, uT: { value: 0 } };
@@ -506,7 +512,7 @@ const PARK = (function () {
   /* ---------- stalls, tents, booths, carts ---------- */
   const STALL_COLS = [['#d84a4a', '#f4ecd8'], ['#3f8f6a', '#f4ecd8'], ['#e9b23c', '#7a2f5a'], ['#5d4bb0', '#f2d06a'], ['#2f7fa8', '#f4ecd8'], ['#c4386e', '#f6d46a']];
   P.stall = function (K, B, o = {}) {
-    const g = new T.Group(), w = o.w || 5, d = o.d || 3.4, hgt = 3.2, cols = STALL_COLS[(o.c != null ? o.c : Math.floor(rnd() * STALL_COLS.length)) % STALL_COLS.length];
+    const g = new T.Group(), _nm = (g.name = 'stall'), w = o.w || 5, d = o.d || 3.4, hgt = 3.2, cols = STALL_COLS[(o.c != null ? o.c : Math.floor(rnd() * STALL_COLS.length)) % STALL_COLS.length];
     const wood = toonM('#7a4d30', { map: P.wood('#7a4d30') });
     // the box: back wall, sides, a counter at the front with a painted skirt
     const back = mesh(new T.BoxGeometry(w, hgt, 0.2), wood); back.position.set(0, hgt / 2, -d / 2); g.add(back);
@@ -546,7 +552,7 @@ const PARK = (function () {
     return g;
   };
   P.tent = function (K, B, o = {}) {
-    const g = new T.Group(), r = o.r || 6, h = o.h || 6, cols = o.cols || ['#c83a4a', '#f4e8d0'];
+    const g = new T.Group(), _nm = (g.name = 'tent'), r = o.r || 6, h = o.h || 6, cols = o.cols || ['#c83a4a', '#f4e8d0'];
     const tex = P.stripes(cols[0], cols[1], 16);
     const wall = mesh(new T.CylinderGeometry(r, r, h * 0.45, 32, 1, true), K3D.toon('#ffffff', { map: tex, side: T.DoubleSide })); wall.position.y = h * 0.225; g.add(wall);
     const roof = mesh(new T.ConeGeometry(r * 1.12, h * 0.65, 32, 1, true), K3D.toon('#ffffff', { map: tex, side: T.DoubleSide })); roof.position.y = h * 0.45 + h * 0.325; g.add(roof);
@@ -573,7 +579,7 @@ const PARK = (function () {
     return g;
   };
   P.booth = function (K, B, o = {}) {
-    const g = new T.Group();
+    const g = new T.Group(); g.name = 'booth';
     const base = mesh(new T.CylinderGeometry(1.2, 1.3, 2.4, 8), K3D.toon('#ffffff', { map: P.stripes('#2f7fa8', '#f4ecd8', 8) })); base.position.y = 1.2; g.add(base);
     const win = new T.Mesh(new T.PlaneGeometry(1.0, 0.8), P.flatM('#ffd89a', 1.1)); win.position.set(0, 1.7, 1.22); g.add(win);
     const roof = mesh(new T.ConeGeometry(1.7, 1.4, 8), toonM('#c83a4a')); roof.position.y = 3.1; g.add(roof);
@@ -584,7 +590,7 @@ const PARK = (function () {
     return g;
   };
   P.cart = function (K, B, kind = 'popcorn', o = {}) {
-    const g = new T.Group(), red = kind === 'popcorn';
+    const g = new T.Group(), _nm = (g.name = 'cart'), red = kind === 'popcorn';
     const box = mesh(new T.BoxGeometry(1.8, 1.1, 1.0), K3D.toon('#ffffff', { map: P.stripes(red ? '#d8483a' : '#e86aa8', '#f8f0dc', 6) })); box.position.y = 0.95; g.add(box);
     const glass = mesh(new T.BoxGeometry(1.5, 0.9, 0.8), K3D.toon(red ? '#fff2b0' : '#ffd0ec', { transparent: true, opacity: 0.75 }), { inkW: 0.6 }); glass.position.y = 1.95; g.add(glass);
     const fill = new T.Mesh(new T.BoxGeometry(1.4, 0.4, 0.7), P.flatM(red ? '#fff0a0' : '#ffb6e6', 1.05)); fill.position.y = 1.7; g.add(fill);
@@ -603,7 +609,7 @@ const PARK = (function () {
 
   /* ---------- lamps, lanterns, bunting, balloons ---------- */
   P.lamp = function (K, B, o = {}) {
-    const g = new T.Group(), h = o.h || 4.2;
+    const g = new T.Group(), _nm = (g.name = 'lamp'), h = o.h || 4.2;
     const iron = toonM('#24223a');
     const post = mesh(K3D.geo('pk-lampPost', () => new T.CylinderGeometry(0.08, 0.14, h, 10)), iron); post.position.y = h / 2; g.add(post);
     const foot = mesh(K3D.geo('pk-lampFoot', () => new T.CylinderGeometry(0.28, 0.34, 0.4, 10)), iron); foot.position.y = 0.2; g.add(foot);
@@ -680,7 +686,7 @@ const PARK = (function () {
 
   /* ---------- small furniture ---------- */
   P.bench = function (K, x, z, yaw = 0) {
-    const g = new T.Group(), w = toonM('#7a4d30', { map: P.wood('#7a4d30') }), ir = toonM('#24223a');
+    const g = new T.Group(), _nm = (g.name = 'bench'), w = toonM('#7a4d30', { map: P.wood('#7a4d30') }), ir = toonM('#24223a');
     for (let i = 0; i < 3; i++) { const sl = mesh(K3D.geo('pk-slat', () => new T.BoxGeometry(2.2, 0.08, 0.18)), w, { inkW: 0.6 }); sl.position.set(0, 0.55, -0.25 + i * 0.22); g.add(sl); }
     for (let i = 0; i < 2; i++) { const bk = mesh(K3D.geo('pk-slat', () => new T.BoxGeometry(2.2, 0.08, 0.18)), w, { inkW: 0.6 }); bk.position.set(0, 0.8 + i * 0.26, -0.42); bk.rotation.x = -1.3; g.add(bk); }
     for (const sx of [-1, 1]) { const lg = mesh(K3D.geo('pk-benchLeg', () => new T.BoxGeometry(0.1, 0.6, 0.6)), ir, { inkW: 0.6 }); lg.position.set(sx * 0.95, 0.3, -0.05); g.add(lg); }
@@ -692,7 +698,7 @@ const PARK = (function () {
     const lid = mesh(K3D.geo('pk-binLid', () => new T.CylinderGeometry(0.4, 0.4, 0.1, 12)), toonM('#24223a'), { inkW: 0.6 }); lid.position.set(x, 1.04, z); K.add(lid);
   };
   P.signpost = function (K, x, z, words, yaw = 0) {
-    const g = new T.Group();
+    const g = new T.Group(); g.name = 'signpost';
     const post = mesh(K3D.geo('pk-signPost', () => new T.CylinderGeometry(0.08, 0.1, 3.4, 8)), toonM('#7a4d30')); post.position.y = 1.7; g.add(post);
     words.forEach((wd, i) => {
       const tex = K3D.paint('pk-sp|' + wd, 256, 64, (c, w, h) => { c.fillStyle = ['#f2c14e', '#7ad0c0', '#ff9a8a'][i % 3]; c.fillRect(0, 0, w, h); c.fillStyle = '#2a2035'; c.font = '700 34px "Atkinson Hyperlegible", "DejaVu Sans", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(wd, w / 2 - 10, h / 2); c.beginPath(); c.moveTo(w - 18, 12); c.lineTo(w - 4, h / 2); c.lineTo(w - 18, h - 12); c.fill(); });
@@ -701,7 +707,7 @@ const PARK = (function () {
     g.position.set(x, 0, z); g.rotation.y = yaw; K.add(g); return g;
   };
   P.hedgeAnimal = function (K, x, z, kind = 'rabbit', yaw = 0) {
-    const g = new T.Group(), m = toonM('#2f6b45'), mk = (geo, px, py, pz, s) => { const o = mesh(geo, m, { ink: '#14301f' }); o.position.set(px, py, pz); if (s) o.scale.set(...s); g.add(o); };
+    const g = new T.Group(), _nm = (g.name = 'hedge'), m = toonM('#2f6b45'), mk = (geo, px, py, pz, s) => { const o = mesh(geo, m, { ink: '#14301f' }); o.position.set(px, py, pz); if (s) o.scale.set(...s); g.add(o); };
     const box = mesh(new T.BoxGeometry(2.4, 1, 1.4), toonM('#5a4a3a')); box.position.y = 0.5; g.add(box);
     const ball = K3D.geo('pk-hedgeBall', () => { const s = new T.IcosahedronGeometry(1, 2); const a = s.attributes.position; for (let i = 0; i < a.count; i++) { const k = 1 + Math.sin(a.getX(i) * 9) * 0.05 + Math.cos(a.getY(i) * 11) * 0.05; a.setXYZ(i, a.getX(i) * k, a.getY(i) * k, a.getZ(i) * k); } s.computeVertexNormals(); return s; });
     if (kind === 'rabbit') { mk(ball, 0, 1.9, 0, [1, 0.9, 0.8]); mk(ball, 0.2, 3, 0.3, [0.6, 0.6, 0.6]); mk(ball, 0.05, 3.9, 0.2, [0.18, 0.6, 0.15]); mk(ball, 0.45, 3.9, 0.3, [0.18, 0.6, 0.15]); }
@@ -716,9 +722,14 @@ const PARK = (function () {
     const tr = mesh(K3D.geo('pk-trunk', () => new T.CylinderGeometry(0.2, 0.32, 3, 8)), toonM('#3a2a2a')); tr.position.y = 1.5; g.add(tr);
     const leaf = toonM(LEAVES[Math.floor(rnd() * LEAVES.length)]);
     for (let i = 0; i < 4; i++) { const b = mesh(K3D.geo('pk-crown', () => new T.IcosahedronGeometry(1.4, 1)), leaf, { ink: '#0e2420' }); b.position.set((i % 2 - 0.5) * 1.1, 3.4 + i * 0.5, (i > 1 ? 0.6 : -0.5)); g.add(b); }
-    g.position.set(x, 0, z); g.scale.setScalar(s); K.add(g);
+    g.position.set(x, 0, z); g.scale.setScalar(s); g.name = 'tree'; K.add(g);
     if (B && rnd() < 0.35) { const c = ['#ffe0a0', '#ff9ad6', '#9ae0ff'][Math.floor(rnd() * 3)]; for (let i = 0; i < 26; i++) { const a = i * 0.9, y = 2.6 + i * 0.11, r = 1.9 - i * 0.03; B.add(x + Math.cos(a) * r * s, y * s, z + Math.sin(a) * r * s, i % 3 ? c : '#ffffff', { size: 0.07, speed: 2, phase: i * 0.4 }); } }
     return g;
+  };
+  // a tree bed for a tree standing in paving: a low stone ring round a disc of grass with a few flowers' worth of soil
+  P.treeBed = function (K, x, z, r = 2.2) {
+    const ring = mesh(K3D.geo('pk-treeRing|' + r, () => new T.TorusGeometry(r, 0.18, 6, 32).rotateX(Math.PI / 2)), toonM('#7a7488'), { inkW: 0.6 }); ring.position.set(x, 0.14, z); K.add(ring);
+    const turf = new T.Mesh(K3D.geo('pk-treeTurf|' + r, () => new T.CircleGeometry(r, 28).rotateX(-Math.PI / 2)), K3D.toon('#ffffff', { map: P.lawnTex() })); turf.position.set(x, 0.06, z); turf.receiveShadow = true; K.add(turf);
   };
   P.fence = function (K, B, a, b, o = {}) {
     // white picket fence with a bulb on every other post
@@ -796,7 +807,7 @@ const PARK = (function () {
       let t = rnd() * 10;
       const sp = o.speed || (o.small ? 0.12 : 0.08);
       const step = dt => {
-        t += dt; wheel.rotation.z = t * sp;
+        t = o.clock ? o.clock(t, dt) : t + dt; wheel.rotation.z = t * sp;   // (o.clock: a level can steer the wheel's turn)
         for (const gg of gon) { const a = gg.userData.a + t * sp; gg.position.set(Math.cos(a) * r, hub + Math.sin(a) * r, 0); gg.rotation.z = Math.sin(t * 1.3 + gg.userData.a * 3) * 0.06; }
       };
       K.tick(step); step(0);
@@ -982,17 +993,24 @@ const PARK = (function () {
   P.lake = function (K, B, o) {
     const g = new T.Group(); g.position.set(o.x, 0, o.z); K.add(g);
     const shape = new T.Shape(); for (let i = 0; i <= 64; i++) { const a = i / 64 * Math.PI * 2, k = 1 + Math.sin(a * 3) * 0.05 + Math.cos(a * 5) * 0.04; const px = Math.cos(a) * o.rx * k, pz = Math.sin(a) * o.rz * k; if (i === 0) shape.moveTo(px, pz); else shape.lineTo(px, pz); }
-    const mat = new T.ShaderMaterial({ uniforms: { uT: { value: 0 }, uFog: { value: K.fogCol } },
+    const mat = new T.ShaderMaterial({ uniforms: { uT: { value: 0 }, uFog: { value: K.fogCol }, uMoon: { value: new T.Vector3(-0.1, 0.36, -0.93) } },
       vertexShader: 'varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
-      fragmentShader: `varying vec3 vW; uniform float uT;
+      fragmentShader: `varying vec3 vW; uniform float uT; uniform vec3 uMoon;
         void main() { float r = sin(vW.x * 0.6 + uT) * sin(vW.z * 0.8 - uT * 0.7) + 0.5 * sin((vW.x + vW.z) * 1.7 + uT * 1.4);
-          vec3 c = vec3(0.05, 0.08, 0.2) + vec3(0.25, 0.22, 0.45) * smoothstep(0.9, 1.4, r);
+          float d = clamp(length(vW.xz - cameraPosition.xz) / 140.0, 0.0, 1.0);   // (darker near, a touch of sky far away)
+          vec3 c = mix(vec3(0.006, 0.014, 0.05), vec3(0.025, 0.035, 0.09), d) + vec3(0.03, 0.05, 0.12) * smoothstep(0.8, 1.4, r);
+          float w = sin(vW.z * 1.9 + sin(vW.x * 0.23 + uT * 0.6) * 2.2 + uT * 1.1) * sin(vW.x * 0.35 - uT * 0.4);
+          c += vec3(0.16, 0.2, 0.38) * pow(max(w, 0.0), 14.0);   // (long thin ripple lines catching the sky)
+          vec3 n = normalize(vec3(cos(vW.x * 0.6 + uT) * 0.12 + cos((vW.x + vW.z) * 1.7 + uT * 1.4) * 0.1, 1.0, cos(vW.z * 0.8 - uT * 0.7) * 0.12));
+          vec3 v = normalize(cameraPosition - vW), h = normalize(v + normalize(uMoon));
+          c += vec3(0.55, 0.62, 0.85) * pow(max(dot(n, h), 0.0), 90.0) + vec3(0.05, 0.06, 0.12) * pow(1.0 - max(v.y, 0.0), 4.0);   // (moon glints; sky sheen at a low angle)
           gl_FragColor = vec4(c, 1.0);
           #include <colorspace_fragment>
         }` });
-    const water = new T.Mesh(new T.ShapeGeometry(shape, 64).rotateX(Math.PI / 2), mat); water.position.y = 0.06; g.add(water);
+    const water = new T.Mesh(new T.ShapeGeometry(shape, 64).rotateX(-Math.PI / 2), mat);   // (face up; the rim and bulbs use the same -y mirror)
+    water.position.y = 0.06; water.userData.live = true; g.add(water);   // (a shader surface: never baked)
     const rim = mesh(new T.TubeGeometry(new T.CatmullRomCurve3(shape.getPoints(64).map(p => new T.Vector3(p.x, 0.25, -p.y)), true), 128, 0.4, 6, true), toonM('#6a6080')); g.add(rim);
-    K.tick(dt => { mat.uniforms.uT.value += dt; });
+    K.tick(dt => { mat.uniforms.uT.value += dt; if (K.moonDir) mat.uniforms.uMoon.value.copy(K.moonDir); });
     // swan boats bobbing at a jetty and drifting
     const swans = [];
     for (let k = 0; k < 7; k++) {
