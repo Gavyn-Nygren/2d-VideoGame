@@ -11,7 +11,7 @@
        and never lets go while the person is on the bridge, under the flap or on the plank; a person standing at the
        near tab for 2 s without pulling has the computer take it. A wheel is turned by pushing right while holding.
        Once across it holds the far tab until the person is across too. Left behind with nobody pulling for it, it says
-       "Pull the tab for me!" once and waits (the Roll will carry it over).
+       "Pull the tab for me!" (again every few seconds) and waits (the Roll will carry it over).
      Twin tabs: it takes the free tab (Pip the first, Bo the second when both are free) and holds until both pull.
      The ship: if the person boards, it walks the long tab back; if the person takes the long tab, it boards and stands
        still in the middle; across, it holds the far tab until the person has sailed over too.
@@ -84,9 +84,11 @@
 
       // ---------- what to do ----------
       let goal = null; // { x, z } to stand on, or null to run on along the route
+      let job = false; // the goal is a place the machinery needs me at: a tab, the ship's deck (the "3 ahead of the person" rule
+      // does not hold me back from it: held back, it once stood in the gateway a person held open, and walked off the ship's stern)
       if (cur && myS < exitS(L3, cur) + 3) {
         const r = pieceGoal(s, p, o, cur, { L3, st, P, myS, theirS, oLive, solo, me, dt, info });
-        if (r) { goal = r.at || null; act = !!r.act; push = r.push || null; if (r.limit != null) limit = r.limit; if (r.say && solo) cpuSay(p, r.say, 1.6); if (r.jump) jump = true; if (r.hold) s.held = r.hold; }
+        if (r) { goal = r.at || null; job = !!r.at; act = !!r.act; push = r.push || null; if (r.limit != null) limit = r.limit; if (r.say && solo) cpuSay(p, r.say, 1.6); if (r.jump) jump = true; if (r.hold) s.held = r.hold; }
       }
       // the dog-ear at the end of the spread: stand on it and wait
       const de = L3.dogEar;
@@ -94,7 +96,7 @@
 
       // ---------- hazards while moving (also on the way to a goal further along the route) ----------
       const farGoal = () => goal && P.progress(L3, goal.x, goal.z) > myS + 1.5;
-      if (farGoal()) { limit = P.progress(L3, goal.x, goal.z); if (solo && oLive) limit = Math.min(limit, theirS + 3); goal = null; }
+      if (farGoal()) { limit = P.progress(L3, goal.x, goal.z); if (solo && oLive && !job) limit = Math.min(limit, theirS + 3); goal = null; }
       const f = st.finger;
       if (f && f.ph !== 'lift') {
         const d = dist(me, f), R = P.S.fingerR + 0.55;
@@ -123,7 +125,7 @@
         if (danger) limit = Math.min(limit, ss - 1.25);
       }
       // wave crests
-      if (!goal) { const r = crestGoal(s, p, o, { L3, st, P, myS, me }); if (r) { if (r.at) goal = r.at; if (r.jump) jump = true; if (r.limit != null) limit = Math.min(limit, r.limit); } }
+      if (!goal) { const r = crestGoal(s, p, o, { L3, st, P, myS, me, hold: solo && oLive && theirS < myS - 3 }); if (r) { if (r.at) { goal = r.at; job = true; } if (r.jump) jump = true; if (r.limit != null) limit = Math.min(limit, r.limit); } }
 
       // ---------- move ----------
       // logs: hop them (either way along the route)
@@ -132,6 +134,7 @@
         // a far goal is reached along the corridor (round its bends), a near one straight
         const gS = P.progress(L3, goal.x, goal.z);
         if (gS > myS + 1.5) { runTo(Math.min(gS, myS + 2.2)); hopLogs(1); }
+        else if (gS < myS - 1.5 && p.pc.hold && p.pc.hold.t.strip) goTo(goal.x, goal.z, 0.2); // (walking the ship's long tab back: straight along it, or the hand slips off)
         else if (gS < myS - 1.5) { const a = onRoute(Math.max(gS, myS - 2.2)); goTo(a.x, a.z, 0.2); hopLogs(-1); }
         else goTo(goal.x, goal.z, act ? 0.25 : 0.15);
       } else {
@@ -152,7 +155,9 @@
   // where to stand and what to press for the current piece
   function pieceGoal(s, p, o, pc, c) {
     const { L3, st, P, myS, theirS, oLive, solo, me } = c, id = p.id;
-    const mePast = myS > exitS(L3, pc), themPast = oLive ? theirS > exitS(L3, pc) : mePast;
+    // (standing on the far bank or just through the flap counts as across: never turn back onto a piece that is closing)
+    const over = b => b.ground && b.on !== pc.sol && (pc.kind === 'flap' ? b.x > pc.x + 0.75 : pc.x1 != null && b.x > pc.x1 - 0.05);
+    const mePast = myS > exitS(L3, pc) || over(me), themPast = oLive ? theirS > exitS(L3, pc) || over(o.b3) : mePast;
     const mine = h => h && h.pc === pc;
     const iHold = mine(p.pc.hold), theyHold = oLive && mine(o.pc.hold);
     const holdTab = t => { const at = { x: t.x, z: t.z }; const there = dist(me, t) < P.TAB_R * 0.7; return { at, act: there, push: there && t.wheel ? fwdAt(P, L3, t) : null, hold: t }; };
@@ -192,12 +197,13 @@
         s.waitF = theyF ? 0 : (s.waitF || 0) + c.dt;
         if (!theyF && (s.waitF < 3 || !solo)) return holdTab(N);
       }
-      if (open) return { limit: exitS(L3, pc) + 1.5 };
+      // (only while the partner holds it: one let go of is closing, and carries anybody on it back)
+      if (open && theyHold) return { at: { x: F.x, z: F.z }, limit: exitS(L3, pc) + 1.5 };
       s.lone += c.dt;
-      if (solo && s.lone > 3 && !s.saidPull[pc.i]) { s.saidPull[pc.i] = true; return { at: nearBank(), say: 'Pull the tab for me!' }; }
+      if (solo && s.lone > 3 && !(s.saidPull[pc.i] > c.st.T)) { s.saidPull[pc.i] = c.st.T + 7; return { at: nearBank(), say: 'Pull the tab for me!' }; }
       return { at: nearBank() };
     }
-    s.lone = 0;
+    s.lone = 0; s.waitF = 0;
     // both before it: who holds?
     let holder;
     if (theyHold && o.pc.hold.t === N) holder = false;
@@ -224,7 +230,7 @@
       return r;
     }
     // the crosser: wait at the bank until it is open, then go straight to the far tab
-    if (open) return { at: myS > exitS(L3, pc) - 0.8 ? { x: F.x, z: F.z } : null, limit: exitS(L3, pc) + 1.5 };
+    if (open) return { at: { x: F.x, z: F.z }, limit: exitS(L3, pc) + 1.5 };
     return { at: nearBank() };
   }
   // the way that turns a wheel: forward along the route at the tab
@@ -301,7 +307,8 @@
       if (me.x > gx0) return null; // in the air over the sea: steer by the jump below
       // on the near bank: stand at the edge in line with the first crest's middle
       // (lined up for a while, so a jump a moment late still lands)
-      const r = rows[0], ready = Math.abs(zAt(r, 0.42) - me.z) < 0.32 && Math.abs(zAt(r, 0.62) - me.z) < 0.55 && !partnerOn(r) && Math.abs(me.x - (gx0 - 0.45)) < 0.35;
+      // (c.hold: the person is still well behind: wait on the bank, never out on the stones)
+      const r = rows[0], ready = !c.hold && Math.abs(zAt(r, 0.42) - me.z) < 0.32 && Math.abs(zAt(r, 0.62) - me.z) < 0.55 && !partnerOn(r) && Math.abs(me.x - (gx0 - 0.45)) < 0.35;
       const at = { x: gx0 - 0.45, z: clamp(zAt(r, 0.5), r.zc - r.amp + 0.1, r.zc + r.amp - 0.1) };
       if (ready) { s.crestJump = { to: r }; return { jump: true, at: { x: r.x, z: zAt(r, 0.4) } }; }
       return { at };

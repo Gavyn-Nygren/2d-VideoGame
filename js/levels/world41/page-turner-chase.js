@@ -24,7 +24,7 @@
      Bridge: slides out over a gap while a tab is held (0.5 s); 0.4 s after letting go it slides back (a player still
        on it is carried to the nearer bank, never dropped).
      Flap: a tall flap across the route (portcullis, great wave, door); held open from a tab on either side; it never
-       shuts on anybody (they are eased out to the nearer side first).
+       shuts on anybody (they are eased out to the nearer side first, faster than a run).
      Twin tabs: two tabs about 4 apart that work only when both are held together for 0.3 s; then the thing stays up
        (a drawbridge, a stair over a wall, or on the last page The End's night sky, the finish).
      Wheel: hold it and push right to turn it (1.4 s for a full turn) and a plank (the castle's turntable) or a beam of
@@ -50,7 +50,7 @@
   const S = {
     reveal: 14, unfold: 0.35, flatT: 1.2, pinT: 0.45, both: 1.2, rewindT: 1.6, back: 12, gutterStop: 1.5,
     leash: 9, bumpBack: 1.5, bumpT: 0.2, sitT: 0.5, bumpImmune: 1.0, gold: 0.75, turnT: 2.5, turnFade: 0.8, dogR: 1.55, dogHold: 0.3,
-    bridgeV: 2, letGo: 0.4, carryV: 4.5, fallY: -0.8, ahead: 2, swingRate: Math.PI / 6,
+    bridgeV: 2, letGo: 0.4, carryV: PC.RUN * 1.3, fallY: -0.8, ahead: 2, swingRate: Math.PI / 6,
     flapV: 3, twinT: 0.3, turnFull: 1.4, wheelDrop: 0.8, heave: 0.3, shipBack: 0.6, shipPull: 0.6,
     fingerShadow: 1.3, fingerPress: 0.7, fingerLift: 0.5, fingerR: 1.45, endT: 3.4,
   };
@@ -164,9 +164,10 @@
       const was = pc.e;
       if (held) pc.e = Math.min(1, pc.e + S.bridgeV * dt);
       else if (pc.wait <= 0) {
-        if (riders.length) {
-          // carried to the nearer bank, never dropped
-          for (const p of riders) if (p.b3.ground) {
+        if (riders.length && pc.e > 0.02) {
+          // carried to the nearer bank, never dropped (faster than a run and in the air too, so nobody can pull a
+          // tab, let go and dash over alone: every piece takes two)
+          for (const p of riders) {
             const mid = pc.x0 + pc.len / 2, dir = p.b3.x < mid ? -1 : 1;
             p.b3.x += dir * S.carryV * dt; MOVER3.push(st.L3.world, p.b3);
           }
@@ -185,8 +186,8 @@
   function flapStep(st, pc, held, dt) {
     const was = pc.e;
     if (held) { pc.wait = S.letGo; pc.e = Math.min(1, pc.e + S.flapV * dt); }
-    else if (pc.wait > 0) pc.wait -= dt;
     else {
+      // (no wait before it shuts unless somebody is in the doorway: a dash from the tab must not get through alone)
       const inside = G.players.filter(p => live(p) && Math.abs(p.b3.x - pc.x) < 0.25 + MOVER3.r + 0.1 && Math.abs(p.b3.z - pc.z) < PC.HALF + 0.3);
       if (inside.length) for (const p of inside) { p.b3.x += (p.b3.x < pc.x ? -1 : 1) * S.carryV * dt; MOVER3.push(st.L3.world, p.b3); }
       else pc.e = Math.max(0, pc.e - S.flapV * dt);
@@ -224,7 +225,7 @@
       const riders = G.players.filter(p => live(p) && (onSol(p.b3, pc.sol) || (!p.b3.ground && p.b3.x > pc.x0 - 0.2 && p.b3.x < pc.x1 + 0.2 && p.b3.y > -0.5 && Math.abs(p.b3.z - pc.z) < PC.HALF)));
       if (pc.wait > 0) pc.wait -= dt;
       else if (riders.length && pc.e >= 1) {
-        for (const p of riders) if (p.b3.ground) { const dir = p.b3.x < pc.x0 + pc.len / 2 ? -1 : 1; p.b3.x += dir * S.carryV * dt; MOVER3.push(L3.world, p.b3); }
+        for (const p of riders) { const dir = p.b3.x < pc.x0 + pc.len / 2 ? -1 : 1; p.b3.x += dir * S.carryV * dt; MOVER3.push(L3.world, p.b3); }
       } else pc.e = Math.max(0, pc.e - S.wheelDrop * dt);
     }
     if (pc.turning && Math.floor(pc.e * 8) !== Math.floor(was * 8)) Sfx.play('popchaseWheel');
@@ -425,6 +426,9 @@
       return;
     }
     if (pc.mode === 'fly') {
+      // (the landing follows the partner as they run on: a spot fixed at the Flat could be under the Roll by now, a
+      // second Flat for one mishap)
+      if (!pc.rewind && o.pc.mode === 'run') pc.to = landSpot(st, o);
       const end = pc.rewind ? S.rewindT : S.flatT;
       if (pc.t >= end) {
         const q = pc.to;
@@ -487,7 +491,8 @@
       else if (pc.hold) { dir = { x: 0, z: 0, s: 0 }; p.pendingJump = false; }
       const o = ps[1 - p.id], me = prog[p.id], them = prog[o.id];
       // (not while the one behind is working a tab for them or riding the ship: the rider must be able to step off and pull)
-      if (them != null && !o.pc.hold && !(o.b3.ground && o.b3.on && o.b3.on.ship) && me - them > S.leash - 1.2 && dir.s > 0) {
+      // (and never in the air or out on a wave crest: slowed there, a jump falls short into the sea)
+      if (them != null && !o.pc.hold && !(o.b3.ground && o.b3.on && o.b3.on.ship) && p.b3.ground && !(p.b3.on && p.b3.on.crest) && me - them > S.leash - 1.2 && dir.s > 0) {
         const q = PC.pointAt(L3, me), fwd = dir.x * q.dx + dir.z * q.dz;
         if (fwd > 0) speed = clamp((S.leash + 0.3 - (me - them)) / 1.5, 0.05, 1);
       }
@@ -742,8 +747,8 @@
   // (written out as one literal push so tools/bundle.js finds them for the single-file demo)
   K3D.files.push('js/levels/world41/popchase-outfits.js', 'js/levels/world41/popchase-art.js', 'js/levels/world41/popchase-art2.js');
 
-  // register: World 41 (index 40). 41-1's js/levels/world41/world.js sets the world and adds 41-1 first; until it
-  // lands, this sets a stand-in world entry with the same name so 41-2 can be played.
+  // register: World 41 (index 40). 41-1's js/levels/world41/world.js sets the world and adds 41-1 first (the world
+  // entry below is only used if this file is ever loaded without it).
   if (!WORLDS[40]) WORLDS[40] = { name: 'Pop-Up Storybook', blurb: 'Tumble into a giant pop-up book where the pages fold up around you!',
     theme: { skyTop: '#2e2840', skyBot: '#5a4a62', hillFar: '#3e3550', hillNear: '#2e2840', sun: 'rgba(255,220,150,0.9)', sunGlow: 'rgba(255,200,120,0.3)',
       stone: '#8a6a52', stoneLight: '#a2826a', stoneEdge: '#4a3a30', grass: '#9cc77a', grassDark: '#5f8a4a', plank: '#c79a62', plankDark: '#8a6234', rope: '#e8d8b0', ropeDark: '#9a8460' } };

@@ -961,7 +961,8 @@ void main() {
       else if (f.kind === 'bump') text('Bump!', sp.x, sp.y, 18, '#ffd0b0', 'center');
       ctx.restore();
     }
-    // the page turn (a stand-in until 41-1's POPUP.pageTurn lands: a sweep of paper across the screen)
+    // the page turn: a sweep of paper across the screen (41-1's POPUP.pageTurn leaf was tried in review: this level's
+    // camera sits close on the pair at the dog-ear, so the leaf lifts through the camera and is never seen)
     if (st.turn) {
       const k = clamp(st.turn.t / st.turn.dur, 0, 1);
       if (reduceMotion) { ctx.fillStyle = 'rgba(246,239,223,' + Math.sin(k * Math.PI) + ')'; ctx.fillRect(0, 0, W, H); }
