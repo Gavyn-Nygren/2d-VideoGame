@@ -682,6 +682,88 @@ const PARKFLUME_SCENE = (function () {
     });
   }
 
+  /* ---------- every still glow sprite (lamp halos, bulbs' glows) drawn as one batch, looking exactly the same ---------- */
+  function batchHalos(K) {
+    const glow = PARK.glowTex(), list = [];
+    const liveUnder = o => { for (let q = o; q; q = q.parent) if (q.userData.live) return true; return false; };
+    K.root.traverse(o => { if (o.isSprite && o.material.map === glow && o.material.blending === T.AdditiveBlending && !liveUnder(o)) list.push(o); });
+    if (!list.length) return;
+    const n = list.length, im = new T.InstancedMesh(new T.PlaneGeometry(1, 1), null, n), aCol = new Float32Array(n * 4), m4 = new T.Matrix4(), p = new T.Vector3(), q = new T.Quaternion(), sc = new T.Vector3();
+    list.forEach((o, k) => {
+      o.updateWorldMatrix(true, false); o.matrixWorld.decompose(p, q, sc);
+      m4.compose(p, new T.Quaternion(), sc.set(sc.x, sc.y, 1)); im.setMatrixAt(k, m4);
+      const c = o.material.color; aCol[k * 4] = c.r; aCol[k * 4 + 1] = c.g; aCol[k * 4 + 2] = c.b; aCol[k * 4 + 3] = o.material.opacity;
+      o.parent.remove(o);
+    });
+    im.geometry.setAttribute('aCol', new T.InstancedBufferAttribute(aCol, 4));
+    const fog = K.scene.fog;
+    im.material = new T.ShaderMaterial({ transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false,
+      uniforms: { map: { value: glow }, uFog: { value: fog ? fog.color : new T.Color(0) }, uFogD: { value: fog && fog.density ? fog.density : 0 } },
+      vertexShader: `attribute vec4 aCol; varying vec4 vC; varying vec2 vUv; varying float vF; uniform float uFogD;
+        void main() { vC = aCol; vUv = uv; vec3 c = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz; vec2 sz = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz));
+          vec4 mv = modelViewMatrix * vec4(c, 1.0); mv.xy += position.xy * sz; float d = -mv.z; vF = 1.0 - exp(-uFogD * uFogD * d * d); gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `uniform sampler2D map; uniform vec3 uFog; varying vec4 vC; varying vec2 vUv; varying float vF;
+        void main() { vec4 t = texture2D(map, vUv); vec3 col = mix(vC.rgb * t.rgb, uFog, vF); gl_FragColor = vec4(col, t.a * vC.a); }` });
+    im.frustumCulled = false; im.userData.live = true; K.add(im);
+  }
+
+  /* ---------- many small moving things of one shape (moths round the lamps, balloons on their strings) drawn as one
+     batch each: the kit's own tickers still move each one; every frame their places are copied into the batch ---------- */
+  function batchMovers(K) {
+    const groups = new Map();
+    for (const o of K.root.children) {
+      if (!o.isMesh || o.isInstancedMesh || !o.userData.live || o.children.some(c => !c.userData.ink)) continue;
+      const m = o.material; if (!m || Array.isArray(m) || !(m.isMeshToonMaterial || m.isMeshBasicMaterial) || m.transparent || m.map) continue;
+      const key = o.geometry.uuid + '|' + m.type + '|' + m.side + '|' + (o.children.length ? 'ink' : '');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(o);
+    }
+    const batches = [];
+    for (const list of groups.values()) {
+      if (list.length < 6) continue;
+      const m0 = list[0].material, mat = m0.clone(); mat.color = new T.Color('#ffffff');
+      if (mat.emissive) { mat.emissive = new T.Color('#000000'); mat.emissiveIntensity = 0; }
+      const im = new T.InstancedMesh(list[0].geometry, mat, list.length), c = new T.Color();
+      list.forEach((o, k) => { const em = o.material.emissive && o.material.emissiveIntensity ? 1 + o.material.emissiveIntensity * 0.8 : 1; im.setColorAt(k, c.copy(o.material.color).multiplyScalar(em)); K.root.remove(o); });
+      im.instanceColor.needsUpdate = true; im.frustumCulled = false; im.castShadow = list[0].castShadow; im.userData.live = true;
+      if (list[0].children.length) K3D.ink(im, INK, 0.7);
+      K.add(im); batches.push({ im, list });
+    }
+    const zero = new T.Matrix4().makeScale(0, 0, 0);
+    K.tick(() => { for (const b of batches) { b.list.forEach((o, k) => { if (o.visible) { o.updateMatrix(); b.im.setMatrixAt(k, o.matrix); } else b.im.setMatrixAt(k, zero); }); b.im.instanceMatrix.needsUpdate = true; } });
+  }
+
+  // the park's wind-up robots (dozens of them, each a dozen parts that turn: key, head, broom) drawn part by part as
+  // one batch per part: the robots stay in the scene as they are, only hidden, and each frame every part's place is
+  // copied into its batch
+  function batchRobots(K) {
+    const robots = []; K.root.traverse(o => { if (o.userData.key && o.userData.broom && o.userData.head) robots.push(o); });
+    const groups = new Map();
+    for (const r of robots) r.traverse(o => {
+      if (!o.isMesh || o.userData.ink || o.isInstancedMesh) return;
+      const m = o.material; if (Array.isArray(m) || m.transparent || m.map || !(m.isMeshToonMaterial || m.isMeshBasicMaterial)) return;
+      const key = o.geometry.uuid + '|' + m.type + '|' + (o.children.length ? 'ink' : '');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ o, r });
+    });
+    const batches = [];
+    for (const list of groups.values()) {
+      const m0 = list[0].o.material, mat = m0.clone(); mat.color = new T.Color('#ffffff');
+      const im = new T.InstancedMesh(list[0].o.geometry, mat, list.length), c = new T.Color();
+      list.forEach((it, k) => { im.setColorAt(k, c.copy(it.o.material.color)); it.o.visible = false; });
+      im.instanceColor.needsUpdate = true; im.frustumCulled = false; im.castShadow = true; im.userData.live = true;
+      if (list[0].o.children.length) K3D.ink(im, INK, 0.7);
+      K.add(im); batches.push({ im, list });
+    }
+    const zero = new T.Matrix4().makeScale(0, 0, 0);
+    // (shown when the part, its robot and everything above them are shown; a part's own flag is ours now)
+    const shown = it => { if (!it.r.parent) return false; for (let q = it.o.parent; q; q = q.parent) if (!q.visible) return false; return true; };
+    K.tick(() => {
+      for (const r of robots) r.updateMatrixWorld(true);
+      for (const b of batches) { b.list.forEach((it, k) => b.im.setMatrixAt(k, shown(it) ? it.o.matrixWorld : zero)); b.im.instanceMatrix.needsUpdate = true; }
+    });
+  }
+
   /* ---------- build ---------- */
   function build(K, st) {
     rnd = PARK.rnd; PARK.resetGlints();
@@ -720,8 +802,11 @@ const PARKFLUME_SCENE = (function () {
     // gulls asleep on the dock's roof
     const dp = R.local(2.5, 0, 0);
     sc.gulls = PARK.gulls(K, [[dp[0] - 3, 6.4, dp[2] - 2], [dp[0] + 2, 6.4, dp[2] + 1], [dp[0] - 6, 6.0, dp[2] + 3]]);
+    batchHalos(K);
     // batch everything that never moves (the moving parts are marked live)
     K3D.bake(K.root);
+    batchMovers(K);
+    batchRobots(K);
     K.pf = sc;
     sc.cam = K3D.cams.ride({ fov: 54, k: 4 });
     sc.cam.snap();

@@ -58,7 +58,8 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
   const box = await page.evaluate(() => { const r = document.getElementById('stage').getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; });
   await page.evaluate(() => new Promise(r => requestAnimationFrame(() => { window.__pipbo.K3D.freeze = true; r(); })));
   await page.screenshot({ path: out, clip: box, animations: 'allow', caret: 'initial', timeout: 120000 });
-  if (opt('census', '')) console.log(await page.evaluate(() => {
+  if (opt('census', '') === 'live') { await page.evaluate(require('fs').readFileSync(opt('censusjs', ''), 'utf8')); console.log('live ' + await page.evaluate(() => window.__lc)); }
+  else if (opt('census', '')) console.log(await page.evaluate(() => {
     // what is drawn: every visible mesh, points and sprite under the scene, grouped by kind (for draw-call hunting)
     const K = window.__K, T = window.__pipbo.K3D.T, cam = K.camera, fr = new T.Frustum().setFromProjectionMatrix(new T.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)), n = {};
     K.scene.traverseVisible(o => { if (!(o.isMesh || o.isPoints || o.isSprite)) return; if (o.frustumCulled && o.geometry && !o.isSprite) { o.geometry.boundingSphere || o.geometry.computeBoundingSphere(); const sp = o.geometry.boundingSphere.clone().applyMatrix4(o.matrixWorld); if (!fr.intersectsSphere(sp)) return; }

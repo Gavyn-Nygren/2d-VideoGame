@@ -212,7 +212,7 @@ const PARKFLUME_SCENE2 = (function () {
   }
   function liftTop(K, s, big) {
     // the motor house beside the top of the lift: a shed with a lit window, the gears turning on its wall
-    const f = R.at(s), w = PR.w(s), g = new T.Group(); place(g, s, -(w + 2.6), 0); K.add(g); g.userData.live = true;
+    const f = R.at(s), w = PR.w(s), g = new T.Group(); place(g, s, -(w + 2.6), 0); K.add(g);
     const wood = K3D.toon('#ffffff', { map: plankTex('#5a7a8a', 'h') });
     const house = mesh(new T.BoxGeometry(3.2, 2.8, 3.6), wood); house.position.set(-0.6, 0.9, 0); g.add(house);
     const roof = mesh(new T.ConeGeometry(2.8, 1.4, 4).rotateY(Math.PI / 4), tm('#3a3448')); roof.position.set(-0.6, 3.0, 0); g.add(roof);
@@ -228,7 +228,7 @@ const PARKFLUME_SCENE2 = (function () {
   }
   function smile(K, s) {
     // the photo camera on a gantry over the brink of the big drop, and its sign
-    const f = R.at(s), w = PR.w(s), g = new T.Group(); place(g, s, 0, 0); K.add(g); g.userData.live = true;
+    const f = R.at(s), w = PR.w(s), g = new T.Group(); place(g, s, 0, 0); K.add(g);
     const steel = tm('#d8d0e8');
     for (const sx of [-1, 1]) { const po = mesh(new T.CylinderGeometry(0.12, 0.14, 5.2, 8), steel); po.position.set(sx * (w + 0.6), 1.8, 0); g.add(po); }
     const bar = mesh(new T.BoxGeometry(2 * w + 1.6, 0.3, 0.3), steel); bar.position.set(0, 4.3, 0); g.add(bar);
@@ -236,7 +236,7 @@ const PARKFLUME_SCENE2 = (function () {
     // facing up the lift: the camera box hangs off the bar looking back at the riders
     const cam = mesh(K3D.roundBox(0.8, 0.55, 0.6, 0.12, 6), tm('#2a2438')); cam.position.set(w * 0.5, 3.75, 0); g.add(cam);
     const lens = mesh(new T.CylinderGeometry(0.18, 0.2, 0.3, 14).rotateX(Math.PI / 2), tm('#1a1a22')); lens.position.set(w * 0.5, 3.75, 0.4); g.add(lens);
-    const flash = new T.Mesh(new T.PlaneGeometry(0.5, 0.25), fm('#ffffff', 1)); flash.position.set(w * 0.5, 4.15, 0.31); g.add(flash);
+    const flash = new T.Mesh(new T.PlaneGeometry(0.5, 0.25), K3D.flat('#ffffff')); flash.userData.live = true; flash.position.set(w * 0.5, 4.15, 0.31); g.add(flash);
     // (place() turns local +Z upstream: the sign and the lens face the riders coming up)
     return { g, flash };
   }
@@ -383,7 +383,7 @@ const PARKFLUME_SCENE2 = (function () {
     const st = streamTex().clone(); st.needsUpdate = true; st.wrapS = st.wrapT = T.RepeatWrapping; st.repeat.set(3, 2);
     const jet = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 40, 0.32, 8), new T.MeshBasicMaterial({ map: st, color: hot('#cfeeff', 1.3), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false, side: T.DoubleSide }));
     jet.userData.live = true; jet.visible = false; K.add(jet);
-    const halo = PARK.halo(K, b[0], b[1] + 0.4, b[2], 4, '#cfeeff', 0);
+    const halo = PARK.halo(K, b[0], b[1] + 0.4, b[2], 4, '#cfeeff', 0); halo.userData.live = true;
     return { o, g, ears, segs, jet, tex: st, halo, foot: b };
   }
   function croc(K) {
@@ -654,10 +654,10 @@ const PARKFLUME_SCENE2 = (function () {
       const hub = mesh(new T.CylinderGeometry(0.22, 0.22, 0.14, 12).rotateZ(Math.PI / 2), tm('#e8483a')); blade.add(hub);
       // the slot in the floor: a hazard-striped plate, just under the water, and the lamp on its post at the bank
       const plate = new T.Mesh(new T.PlaneGeometry(0.5, 3.2).rotateX(-Math.PI / 2), K3D.toon('#ffffff', { map: hazTex() })); plate.position.y = -0.05; g.add(plate);
-      const side = o.x < 0 ? -1 : 1, lp = new T.Group(); place(lp, o.s, side * (PR.w(o.s) + 0.8), 0.35); K.add(lp); lp.userData.live = true;
+      const side = o.x < 0 ? -1 : 1, lp = new T.Group(); place(lp, o.s, side * (PR.w(o.s) + 0.8), 0.35); K.add(lp);
       const post = mesh(new T.CylinderGeometry(0.06, 0.06, 1.6, 6), tm('#2a2438')); post.position.y = 0.8; lp.add(post);
-      const lamp = new T.Mesh(K3D.geo('pf2-beacon', () => new T.SphereGeometry(0.22, 12, 8)), K3D.flat(hot('#ff3a2a', 1))); lamp.position.y = 1.7; lp.add(lamp);
-      const halo = PARK.halo(K, 0, 0, 0, 2.6, '#ff3a2a', 0); lp.add(halo); halo.position.y = 1.7;
+      const lamp = new T.Mesh(K3D.geo('pf2-beacon', () => new T.SphereGeometry(0.22, 12, 8)), K3D.flat(hot('#ff3a2a', 1))); lamp.position.y = 1.7; lamp.userData.live = true; lp.add(lamp);
+      const halo = PARK.halo(K, 0, 0, 0, 2.6, '#ff3a2a', 0); lp.add(halo); halo.position.y = 1.7; halo.userData.live = true;
       return { o, g, blade, lamp, halo };
     });
   }
@@ -757,7 +757,7 @@ const PARKFLUME_SCENE2 = (function () {
       const cap = new T.Mesh(K3D.geo('pf2-jetCap', () => new T.SphereGeometry(0.9, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2)), mat); cap.userData.live = true; g.add(cap);
       const cc = ['#ff6ab0', '#7ae8ff', '#ffd24a', '#9aff8a'][i % 4];
       const bl = PARK.bulbs(K, 16); g.add(bl.mesh); for (let k = 0; k < 12; k++) { const a = k / 12 * 6.28; bl.add(Math.cos(a) * 1.0, 0.18, Math.sin(a) * 1.0, cc, { size: 0.08, speed: 4, phase: k }); } bl.done();
-      const glow = PARK.halo(K, p[0], p[1] + 2, p[2], 4, cc, 0);
+      const glow = PARK.halo(K, p[0], p[1] + 2, p[2], 4, cc, 0); glow.userData.live = true;
       return { o, col, cap, glow, p };
     });
     return { list, tex: st };
@@ -831,7 +831,6 @@ const PARKFLUME_SCENE2 = (function () {
     for (const sx of [-1, 1]) { const po = mesh(new T.CylinderGeometry(0.08, 0.08, 3.2, 6), tm('#2a2438')); po.position.set(sx * 2, 2.2, -1.4); g.add(po); }
     const fans = [];
     for (let k = 0; k < 4; k++) { const rb = PARK.robot(K, { col: ['#e85a4a', '#3f9a8a', '#f2c14e', '#5d4bb0'][k] }); K.root.remove(rb); rb.position.set(-2.4 + k * 1.6, 0.8, 0.4); rb.scale.setScalar(0.8); rb.userData.broom.visible = false; g.add(rb); fans.push(rb); }
-    g.userData.live = true;
     return { fans, s };
   }
   function lagoonDecor(K, s0, s1) {
