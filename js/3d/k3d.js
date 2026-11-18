@@ -49,18 +49,20 @@ const K3D = {
   // a level, room or page asks for 3D
   wants(def) { return !!(def && def.view3d); },
   // start loading (once); returns a promise that resolves to true when ready, false when it failed
+  // (a download that failed is tried again the next time a 3D level is opened; WebGL being off is not asked twice)
   need() {
-    if (this._p) return this._p;
-    this.state = 'loading';
+    if (this._p && (this.state !== 'failed' || this._gl === false)) return this._p;
+    this.state = 'loading'; this.why = '';
+    const got = this._got || (this._got = new Set()); // files already in (a second try only fetches what is missing)
     const fail = why => { this.state = 'failed'; this.why = why; console.warn('3D unavailable: ' + why); return false; };
     if (!this.glOk()) { this._p = Promise.resolve(fail('WebGL is switched off or not supported')); return this._p; }
-    const add = src => new Promise((res, rej) => {
+    const add = src => got.has(src) ? Promise.resolve() : new Promise((res, rej) => {
       // the single-file build (tools/bundle.js) carries three.js as text (run here from a blob)
       const inline = window.__k3dInline && window.__k3dInline[src];
       const s = document.createElement('script');
       s.src = inline ? URL.createObjectURL(new Blob([inline], { type: 'text/javascript' })) : src;
       s.async = false;
-      s.onload = () => res(); s.onerror = () => rej(new Error('could not load ' + src));
+      s.onload = () => { got.add(src); res(); }; s.onerror = () => { s.remove(); rej(new Error('could not load ' + src)); };
       document.head.appendChild(s);
     });
     this._p = (async () => {
@@ -92,6 +94,11 @@ const K3D = {
   // is the level now on screen a 3D one?
   on() { return !!(G.level && G.level.def.view3d && G.mode !== 'title'); },
   fit() {},          // sizes canvas#game3d like canvas#game (js/3d/kit.js; fit() in js/main.js calls it)
+  // screen spots before the kit is in (the ready card is still loading it) or with drawing off (the bot tests): a
+  // level's drawTop may ask at any time, and gets "behind the camera" (z > 1), so it draws nothing there. js/3d/kit.js
+  // replaces both with the real thing.
+  toScreen() { return { x: 0, y: 0, z: 2 }; },
+  pxPerUnit() { return 0; },
 
   /* ---------- a 3D level on screen (render() calls these; nothing here runs for a 2D level) ---------- */
   _for: null,        // the G.level object the current scene was built for (a new room or a reload builds again)

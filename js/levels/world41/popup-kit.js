@@ -438,13 +438,16 @@ const POPUP = (function () {
     for (let i = 0; i < 6; i++) { const hx = 0.12 + i * (w / 2 - 0.2) / 6, hole = new T.Path(); hole.moveTo(hx, 0.15); hole.lineTo(hx + 0.13, 0.15); hole.lineTo(hx + 0.13, 1.15); hole.lineTo(hx, 1.15); hole.closePath(); iron.holes.push(hole); }
     for (const s2 of [-1, 1]) {
       const leaf = P.card(iron, { col: '#3a3f4a', depth: 0.04, edge: '#5a606c', inkW: 0.8 });
-      leaf.position.set(0, 0.05, 0); leaf.scale.x = -s2; leaf.position.x = 0; leaf.rotation.y = 0; leaf.position.x = s2 > 0 ? 0 : 0;
+      // one leaf each side of the middle: the shape runs from 0 to w / 2, and the second is turned round to run the other way
+      leaf.position.set(0, 0.05, 0);
       if (s2 < 0) leaf.rotation.y = Math.PI;
       g.add(leaf);
     }
-    const lock = K3D.mesh(K3D.roundBox(0.26, 0.24, 0.1, 0.6, 16).translate(0, 0.55, 0.05), K3D.mat('brass', () => K3D.toon('#d9a640')), { ink: '#5a3d14' });
+    // the padlock goes right through the two leaves, so it shows from the path side and from beyond the gate
+    const lock = K3D.mesh(K3D.roundBox(0.26, 0.24, 0.24, 0.6, 16).translate(0, 0.55, 0), K3D.mat('brass', () => K3D.toon('#d9a640')), { ink: '#5a3d14' });
     g.add(lock);
-    const shack = K3D.mesh(new T.TorusGeometry(0.08, 0.02, 6, 16, Math.PI).translate(0, 0.79, 0.05), K3D.toon('#9a9aa8'), { ink: '#3a3a48', inkW: 0.6 }); g.add(shack);
+    const shackM = K3D.toon('#9a9aa8');
+    for (const s2 of [-1, 1]) { const shack = K3D.mesh(new T.TorusGeometry(0.08, 0.02, 6, 16, Math.PI).translate(0, 0.79, s2 * 0.075), shackM, { ink: '#3a3a48', inkW: 0.6 }); g.add(shack); }
     return g;
   };
   // a pull-tab sticking out of the page edge, printed with an arrow (paper engineering you can see)

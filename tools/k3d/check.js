@@ -11,7 +11,9 @@
 //   lost        a lost WebGL context that comes back rebuilds the scene
 //   norender    K3D.noRender = true plays exactly the same (same positions every step) as with drawing on
 //   mover       the 3D mover: step up, wall slide, no tunnelling, jump height like the 2D jump, edge teeter
-//   nav         path finding: walks round a wall, jumps a gap, steers a body to the goal with stick input
+//   nav         path finding: walks round a wall, jumps a gap, steers a body to the goal with stick input; a wide gap
+//               (jumped from the take-off, never walked into) and a drop off a tall ledge, from four grid offsets
+//   dim         the scrim that dims the game behind a card still sits above canvas#game (and under the touch pads)
 //   fail        WebGL switched off: the plain card ("This world needs 3D graphics...") with a way back to the map
 //   bundle      (--bundle) the same lazy/play checks on build/pip-and-bo.html (run node tools/bundle.js first)
 // Usage (from the repo folder): node tools/k3d/check.js [--only=lazy,memory] [--bundle]
@@ -113,6 +115,11 @@ const waitReady = page => page.waitForFunction(() => ['ready', 'failed'].include
       const r = await page.evaluate(() => ({ state: window.__pipbo.K3D.state, canvas: !!document.getElementById('game3d'), three: !!window.THREE, gl: window.__glMade }));
       const got = fetched.some(u => /three\.min\.js|js\/3d\/kit\.js/.test(u));
       report('lazy' + tag, r.state === 'none' && !r.canvas && !r.three && r.gl === 0 && !got, JSON.stringify(r) + (got ? ' (fetched three)' : ''));
+    }
+    if (want('dim') && !tag) {
+      // canvas#game got a z-index for the 3D canvas under it: the scrim that dims the game behind a card must stay above it
+      const r = await page.evaluate(() => { const st = document.getElementById('stage'); return { scrim: +getComputedStyle(st, '::after').zIndex, game: +getComputedStyle(document.getElementById('game')).zIndex, pads: +getComputedStyle(document.getElementById('padPip')).zIndex }; });
+      report('dim', r.scrim > r.game && r.scrim < r.pads, JSON.stringify(r));
     }
 
     // the 3D level from the menus: the ready card loads the kit
@@ -267,10 +274,33 @@ const waitReady = page => page.waitForFunction(() => ['ready', 'failed'].include
         }
         out.secs = +(k * DT).toFixed(1); out.end = [p.b3.x, p.b3.y, p.b3.z].map(v => +v.toFixed(2));
         out.arrived = Math.hypot(p.b3.x - 3, p.b3.z + 10) < 0.6 && Math.abs(p.b3.y - 0.6) < 0.05;
+        // a wide gap (1.5 units: the jump has to come at the take-off, before the lip) and then a drop off a 3-unit
+        // ledge, from several places against the cell grid: the body must arrive every time and never fall in the gap
+        const drive = (w2, from, to) => {
+          const n2 = nav3.build(w2, { x0: -4, z0: -14, x1: 4, z1: 12 }), path2 = nav3.path(n2, from, to);
+          if (!path2) return 'no path';
+          const hows = path2.map(q => q.how).join(','), q = {}; MOVER3.spawn(q, from.x, from.y, from.z);
+          let pj = false, low = 0;
+          for (let s = 0; s < 120 * 15; s++) {
+            const o = nav3.follow(q, path2, {}); if (o.done && q.b3.ground) break;
+            const j = !o.done && !!o.jump; q.input = o.done ? {} : { ax: o.ax, ay: o.ay, jump: j };
+            if (j && !pj) q.pendingJump = true; pj = j;
+            MOVER3.step(q, w2, DT); low = Math.min(low, q.b3.y);
+          }
+          return Math.hypot(q.b3.x - to.x, q.b3.z - to.z) < 0.7 && Math.abs(q.b3.y - to.y) < 0.1 && low > to.y - 0.5 ? '' : 'ended at ' + [q.b3.x, q.b3.y, q.b3.z].map(v => v.toFixed(2)) + ' (' + hows + ')';
+        };
+        out.wide = []; out.drop = [];
+        for (const off of [0, 0.13, 0.25, 0.37]) {
+          const pit = { x: 0, z: 0, w: 40, d: 40, y0: -9, y1: -8 };
+          const gapW = MOVER3.world([{ x: 0, z: 5 + off, w: 6, d: 10, y0: -1, y1: 0 }, { x: 0, z: -6.5 + off, w: 6, d: 10, y0: -1, y1: 0 }, pit]);
+          const e1 = drive(gapW, { x: 0.3, y: 0, z: 4 }, { x: -1, y: 0, z: -5 }); if (e1) out.wide.push(off + ': ' + e1);
+          const dropW = MOVER3.world([{ x: 0, z: 5 + off, w: 6, d: 10, y0: -4, y1: 0 }, { x: 0, z: -4, w: 8, d: 16, y0: -4, y1: -3 }]);
+          const e2 = drive(dropW, { x: 0, y: 0, z: 5 }, { x: 2, y: -3, z: -8 }); if (e2) out.drop.push(off + ': ' + e2);
+        }
         K3D.heading = 0;
         return out;
       });
-      report('nav', r.found && /jump/.test(r.hows) && r.arrived, JSON.stringify(r));
+      report('nav', r.found && /jump/.test(r.hows) && r.arrived && !r.wide.length && !r.drop.length, JSON.stringify(r));
     }
     report('errors', !errs.length, errs.slice(0, 4).join(' | '));
     await page.close();

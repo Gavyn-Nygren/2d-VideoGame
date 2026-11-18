@@ -284,7 +284,9 @@
     scene.traverse(o => { if (o.userData.ink) o.visible = opt.ink; if (o.userData.seeThrough) o.visible = opt.seeThrough; });
     R.shadowMap.enabled = opt.shadows; cur.sun.castShadow = opt.shadows;
     R.info.reset();
-    if (opt.dof && cur.post) {
+    // (the photo pass draws into a half-float picture; a device that cannot draws straight to the screen, unblurred)
+    if (post.can == null) post.can = R.extensions.has('EXT_color_buffer_float') || R.extensions.has('EXT_color_buffer_half_float');
+    if (opt.dof && cur.post && post.can) {
       post.init(); post.size(cv.width, cv.height);
       const u = post.mat.uniforms;
       u.near.value = camera.near; u.far.value = camera.far;
@@ -371,7 +373,7 @@
         const key = mat.uuid + '|' + (ink ? ink.material.uuid : '-') + '|' + o.castShadow + '|' + o.receiveShadow + '|' + o.renderOrder;
         let b = buckets.get(key);
         if (!b) buckets.set(key, b = { mat, ink: ink && ink.material, cast: o.castShadow, receive: o.receiveShadow, order: o.renderOrder, parts: [] });
-        b.parts.push({ geo, gr, m4, nm });
+        b.parts.push({ geo, gr, m4, nm, flip: m4.determinant() < 0 });
       }
       victims.push(o);
     });
@@ -387,7 +389,9 @@
       for (const p of b.parts) {
         const A = p.geo.attributes, ix = p.geo.index;
         for (let i = p.gr.start; i < p.gr.start + p.gr.count; i++, k++) {
-          const j = ix ? ix.getX(i) : i;
+          // (a mirrored mesh, scale -1, keeps facing out: its triangles are wound the other way round)
+          const i2 = p.flip ? p.gr.start + (i - p.gr.start) - (i - p.gr.start) % 3 + (2 - (i - p.gr.start) % 3) : i;
+          const j = ix ? ix.getX(i2) : i2;
           v.fromBufferAttribute(A.position, j).applyMatrix4(p.m4); pos[k * 3] = v.x; pos[k * 3 + 1] = v.y; pos[k * 3 + 2] = v.z;
           if (A.normal) { v.fromBufferAttribute(A.normal, j).applyMatrix3(p.nm).normalize(); nor[k * 3] = v.x; nor[k * 3 + 1] = v.y; nor[k * 3 + 2] = v.z; }
           if (A.uv) { uv[k * 2] = A.uv.getX(j); uv[k * 2 + 1] = A.uv.getY(j); }

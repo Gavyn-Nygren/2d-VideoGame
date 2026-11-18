@@ -5,7 +5,8 @@
      const nav = cpuNav3.build(world, { x0, z0, x1, z1, cell: 0.5, r: MOVER3.r, yMax: 30 })
          samples every cell's floor (the highest top a body fits on) and which neighbours it can walk to
      cpuNav3.path(nav, from, to, { links, t, noJump }) -> [{ x, y, z, how }] or null
-         from / to are { x, y, z }; how is 'walk', 'drop' (step off a ledge), 'jump' (a hop up onto a block up to 1.1
+         from / to are { x, y, z }; how is 'walk', 'drop' (step off a ledge up to 4 high: the body teeters 0.3 s at
+         the lip first, unless the level turned the teeter off), 'jump' (a hop up onto a block up to 1.1
          higher, or over a gap of up to 4 cells, never over anything taller than the higher end) or a
          link's own name. links = [{ a: {x,y,z}, b: {x,y,z}, cost, open(t) -> bool, how }] are extra one-way moves
          (a moving platform: open only while it is docked at a). The path is straightened where a body fits.
@@ -75,6 +76,16 @@ const cpuNav3 = {
     }
     return true;
   },
+  // is the way from cell (i, j) down to (ii, jj) a plain step off a ledge: first the ledge itself (top y), then only
+  // the floor being dropped to (lo), with no pit and nothing sticking up in between?
+  dropClear(n, i, j, ii, jj, y, lo) {
+    const a = this.center(n, i, j), b = this.center(n, ii, jj), k = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / (n.cell * 0.25));
+    for (let s = 1; s < k; s++) {
+      const f = MOVER3.floorAt(n.w, a.x + (b.x - a.x) * s / k, a.z + (b.z - a.z) * s / k, 1e9, 0);
+      if (f > y + MOVER3.stepUp || f < lo - MOVER3.stepUp) return false;
+    }
+    return true;
+  },
   path(n, from, to, o = {}) {
     const s = this.nearest(n, from.x, from.z, from.y), g = this.nearest(n, to.x, to.z, to.y);
     if (s < 0 || g < 0) return null;
@@ -116,7 +127,18 @@ const cpuNav3 = {
       // hops: 2 to 4 cells straight across a gap, or up onto a block whose rim a body cannot stand on (a box's top up
       // to 1.1 higher). Nothing on the way may stick up above the higher end (a hop never goes over a wall).
       if (!o.noJump) for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const i1 = i + di, j1 = j + dj; if (i1 < 0 || j1 < 0 || i1 >= n.nx || j1 >= n.nz) continue; // (the grid's edge: nothing to hop to)
         if (n.ok[(j + dj) * n.nx + (i + di)] && Math.abs(n.fy[(j + dj) * n.nx + (i + di)] - y) <= MOVER3.stepUp) continue; // no gap
+        // a drop off an ordinary ledge: the floor right below a ledge's face is too close to that face for a body to
+        // stand on, so the landing cell is the first free one, 2 or 3 cells out (nothing but the lower floor between)
+        for (let t = 2; t <= 3; t++) {
+          const ii = i + di * t, jj = j + dj * t; if (ii < 0 || jj < 0 || ii >= n.nx || jj >= n.nz) break;
+          const m = jj * n.nx + ii;
+          if (!n.ok[m]) continue;
+          const dy = n.fy[m] - y;
+          if (dy < -MOVER3.stepUp && dy > -4 && this.dropClear(n, i, j, ii, jj, y, n.fy[m])) relax(m, t * n.cell + 0.5 - dy * 0.2, 'drop');
+          break;
+        }
         for (let t = 2; t <= 4; t++) {
           const ii = i + di * t, jj = j + dj * t; if (ii < 0 || jj < 0 || ii >= n.nx || jj >= n.nz) break;
           const m = jj * n.nx + ii;
@@ -129,7 +151,10 @@ const cpuNav3 = {
     }
     if (!found) return null;
     const out = [];
-    for (let k = g; k !== s && k >= 0; k = came[k]) { const c = this.center(n, k % n.nx, Math.floor(k / n.nx)); c.how = how[k]; out.push(c); }
+    for (let k = g; k !== s && k >= 0; k = came[k]) { const c = this.center(n, k % n.nx, Math.floor(k / n.nx)); c.how = how[k];
+      // a jump leg remembers where it takes off from (follow() jumps there, before the edge)
+      if (c.how === 'jump' && came[k] >= 0) { const f = this.center(n, came[k] % n.nx, Math.floor(came[k] / n.nx)); c.from = { x: f.x, z: f.z }; }
+      out.push(c); }
     out.reverse();
     // straighten: skip walking points while a body can go straight to a later one
     const st = [], start = { x: from.x, z: from.z, y: n.fy[s] };
@@ -156,12 +181,19 @@ const cpuNav3 = {
     // flies on to the next point instead of turning back over the gap)
     const reached = q => { const dx = q.x - b.x, dz = q.z - b.z, d = Math.hypot(dx, dz);
       return b.ground ? d < 0.22 && Math.abs(q.y - b.y) < 0.6 : d < 0.22 || (d < 0.8 && dx * b.vx + dz * b.vz < 0); };
-    while (path && path.length && reached(path[0])) path.shift();
+    // (the last point is only reached on the ground: a hop that ends the path lands before it says done)
+    while (path && path.length && reached(path[0]) && (b.ground || path.length > 1)) path.shift();
     if (!path || !path.length) { out.done = true; return out; }
-    const t = path[0], st = this.stick(t.x - b.x, t.z - b.z);
-    out.ax = st.ax; out.ay = st.ay;
-    // a jump leg: press near the take-off and keep holding while rising (letting go early cuts the jump short)
-    out.jump = t.how === 'jump' && (b.ground ? Math.hypot(t.x - b.x, t.z - b.z) < 1.4 : b.vy > 0);
+    const t = path[0], st = this.stick(t.x - b.x, t.z - b.z), d = Math.hypot(t.x - b.x, t.z - b.z);
+    // in the air it eases off as it nears the point (a full-height jump carries a long way: land on it, not past it)
+    const k = b.ground ? 1 : clamp(d / 0.9, 0.25, 1);
+    out.ax = st.ax * k; out.ay = st.ay * k;
+    // a jump leg: press at the take-off (the path's point before the gap or the block, so always before the edge: a
+    // body that walked on to the lip would teeter and then step off) and keep holding while rising (letting go early
+    // cuts the jump short). Once it has landed past half way it walks the rest.
+    let go = d < 1.4;
+    if (t.from) { const fx = t.x - t.from.x, fz = t.z - t.from.z; go = (b.x - t.from.x) * fx + (b.z - t.from.z) * fz < 0.5 * (fx * fx + fz * fz); }
+    out.jump = t.how === 'jump' && (b.ground ? go : b.vy > 0);
     return out;
   },
 };
