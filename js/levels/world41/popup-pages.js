@@ -145,7 +145,9 @@ const POPCARRY = (function () {
       marks: [0, 40, 85],
       lines: [
         { id: 'stile', what: 'a stile over the fold', pts: [[-4.5, 8.45], [-3.7, 7.75], [-2.8, 7.65], [-1.9, 8.15], [-1.1, 8.35]], done: { off: ['ridge'], on: ['stileA', 'stileT', 'stileB'] } },
-        { id: 'arch', what: 'the garden gate', pts: [[25.9, -16.4], [25.2, -15.7], [25, -15], [25.2, -14.3], [25.9, -13.6]], done: { off: ['gate'], on: [] } },
+        // (a shallow bow across the path right at the gate, curved the way the point swings when its holder steps
+        // sideways: a pair pushed up against the gate can still draw it, with nobody having to back up)
+        { id: 'arch', what: 'the garden gate', pts: [[26.0, -16.0], [26.25, -15.5], [26.35, -15], [26.25, -14.5], [26.0, -14.0]], done: { off: ['gate'], on: [] } },
       ],
       exit: { x: 29.4, z: -15, r: 1.4 },
       water: [],
@@ -181,7 +183,11 @@ const POPCARRY = (function () {
       start: { pencil: [-28, 0.6, 0], players: [[-31.4, 1.3], [-24.6, 1.3]] },
       marks: [0, 18.5, 62],
       lines: [
-        { id: 'bridge', what: 'the broken bridge', pts: [[-4.5, -13.2], [-2.5, -14.6], [-0.5, -15.8], [1.5, -16.2], [3.0, -15.6]], y: B,
+        // (a gentle wave along the middle of the way to the gap, never further from it than the point may be from
+        // a dot: a pair that came round the corner too wide and walked past it only has to back straight up and walk
+        // on again, with no turning. A line that started back by the bridge and curved in could not be reached by the
+        // point once the one behind had walked on along the path.)
+        { id: 'bridge', what: 'the broken bridge', pts: [[-4.5, -15.5], [-2.6, -15.25], [-0.7, -15.5], [1.2, -15.75], [3.0, -15.5]], y: B,
           done: { off: [], on: ['plank0', 'plank1', 'plank2', 'plank3', 'plank4', 'plank5'], stagger: 0.1 } },
       ],
       seesaw: { id: 'seesaw', x: 15, z: -1, half: 5.1, axis: 'z', y: B, calm: 1.5, tip: 1.0 },
@@ -251,7 +257,8 @@ const POPCARRY = (function () {
       marks: [0, 20, 58],
       lines: [],
       doors, doorT: { open: 3.0, tick: 0.6, shut: 1.6 }, train, tower: TOWER,
-      exit: { x: TOWER.at(1.06)[0], z: TOWER.at(1.06)[1], r: 1.8, y: TOWER.rise - 0.5 },
+      // (r: the leader standing at the end of the landing is enough; nobody has to squeeze on past the route's end)
+      exit: { x: TOWER.at(1.06)[0], z: TOWER.at(1.06)[1], r: 3.2, y: TOWER.rise - 0.5 },
       fallY: -0.5, fallH: 0.9,
       art: { STREET, HALF3, SH, walls },
     };

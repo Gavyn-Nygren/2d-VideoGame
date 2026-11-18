@@ -14,7 +14,10 @@
      the bodies are pushed out of the walls and the length fixed again, a few times a step. It slides, never jitters,
      never flings anyone. A new contact is a Bump (a wooden knock, at most one every 0.4 s, costs nothing).
    DROPS (counted on the HUD and in the medals): a holder falls off an edge; a door, the train or the ink hits the
-     pencil or a holder; the pencil itself goes over an edge. A hit knocks the pencil down where it is and both sit for
+     pencil or a holder; the pencil itself goes over an edge. One mishap is one drop: a holder's fall that takes the
+     pencil with it counts once, and a door that knocked the pencil down stays open until its next turn. A partner who
+     lets go on a bridge or the tower's ramp leaves the pencil resting in the other's hand; it only slips off a bridge
+     when it is dragged on along it (after S.dragGrace). A hit knocks the pencil down where it is and both sit for
      S.sitT; a fall sends whoever fell back to the last bookmark, fluttering down like a leaf S.flutT later; when the
      pencil itself goes over, it and both players go back. The Last Page's ink sends both and the pencil back.
    BOOKMARKS: route distances in the page plan (marks). Passing one with the pencil (both holding) lights it.
@@ -25,6 +28,8 @@
      the pencil pot finish). Carrying the pencil's middle to a page's exit turns the page.
    GOLD HELP (counted, announced on a gold banner, named on the end screen): after two Splats on the Last Page the ink
    slows by a quarter; after S.guardAfter falls on any page, its edges hold you at the lip for the rest of that page.
+   Carried eraser first while a line is still to draw, a paper note says "point first"; stood like that at the line
+   for S.spinAfter seconds, the pencil spins round in their hands (gold help too).
    The plans are js/levels/world41/popup-pages.js (POPCARRY); the scenery is js/levels/world41/popup-scenes.js (loaded
    with the 3D kit). Rules never read the renderer: with K3D.noRender the level plays exactly the same.
    MODES.popcarry.plan(st) gives the computer partner the route facts (js/cpu/levels/world41/carry-it-together.js). */
@@ -33,7 +38,7 @@
   const S = {
     carry: 0.8, drag: 0.35, gap: 6.0, endIn: 0.5, half: 2.5, r: 0.18, grab: 0.8, hand: 0.5, fixStep: 0.08,
     sitT: 0.6, flutT: 0.8, leafT: 0.9, knockT: 0.4, lineNear: 0.5, dotNear: 0.45, leash: 9, turnT: 1.2, finT: 4.2,
-    doorBack: 1.0, goldT: 255, silverT: 400, guardAfter: 3,
+    doorBack: 1.0, goldT: 255, silverT: 400, guardAfter: 3, spinAfter: 6, dragGrace: 0.6,
   };
   const TITLES = PC.pages.map(p => p.name);
   const hyp = Math.hypot;
@@ -68,7 +73,7 @@
     st.see = pg.seesaw ? { tilt: 0 } : null;
     st.ink = pg.ink ? { s: pg.ink.from, t: 0, splats: 0, slow: false } : null;
     st.towerS = pg.tower ? st.R.cum[3] : Infinity;
-    st.pageT = 0; st.dropsHere = 0; st.fallsHere = 0; st.guard = false;
+    st.pageT = 0; st.dropsHere = 0; st.fallsHere = 0; st.guard = false; st.fellT = 0; st.splatT = 0; st.backT = 0; st.spinT = 0; st.spun = 0;
     // the start: the pencil on the page along the route, a player by each end
     const [px, pz, pa] = pg.start.pencil;
     const fy = floorY(st, px, pz);
@@ -94,6 +99,9 @@
     }
   }
 
+  // where a dotted line starts along the route
+  const lineS = (st, l) => (l.s0 != null ? l.s0 : (l.s0 = st.R.project(l.dots[0][0], l.dots[0][1])));
+
   /* ---------- drops ---------- */
   function countDrop(st, why) {
     st.stats.drops++; st.dropsHere++; st.stats.pageDrops[st.k]++; st.stats.why.push(st.k + 1 + ':' + why);
@@ -113,7 +121,7 @@
   // a player fell (off a bridge, the ramp, a rise, into the hole)
   function playerFell(st, k) {
     const held = st.hold[k] >= 0;
-    if (held) countDrop(st, 'fell');
+    if (held) { countDrop(st, 'fell'); st.fellT = 1.5; }
     st.hold[k] = -1; st.fallT[k] = S.flutT;
     // gold help: after S.guardAfter falls on a page its edges fold up a paper lip (the rest of the page, nobody
     // walks off an edge: the teeter just holds them there)
@@ -121,7 +129,9 @@
     if (st.pg.splash) { Sfx.play('popcarrySplash'); st.splashAt = { x: G.players[k].b3.x, z: G.players[k].b3.z, t: 1.2 }; }
   }
   function pencilFell(st) {
-    countDrop(st, 'pencil fell'); releaseAll(st); st.penFall = S.flutT; st.pen.vis = 0;
+    // (a holder's fall that takes the pencil with it is one drop, not two)
+    if (!(st.fellT > 0)) countDrop(st, 'pencil fell');
+    releaseAll(st); st.penFall = S.flutT; st.pen.vis = 0;
     if (st.pg.splash) Sfx.play('popcarrySplash');
     // the page whisks both back to the bookmark with it (nobody walks back down a tower or across a river for it)
     for (const k of [0, 1]) if (st.fallT[k] < 0 && !st.leaf[k]) st.fallT[k] = S.flutT;
@@ -129,7 +139,7 @@
   // the Last Page's ink: both and the pencil back to the bookmark, the ink pulled back
   function splat(st) {
     countDrop(st, 'ink'); releaseAll(st);
-    st.ink.splats++; Sfx.play('popcarrySplat'); G.shake = Math.max(G.shake, 0.3);
+    st.ink.splats++; st.splatT = 0.9; Sfx.play('popcarrySplat'); G.shake = Math.max(G.shake, 0.3);
     st.fallT = [S.flutT, S.flutT]; st.penFall = S.flutT; st.pen.vis = 0;
     st.ink.s = Math.min(st.ink.s, st.marks[st.mark] - st.pg.ink.back);
     if (!st.ink.slow && st.ink.splats >= st.pg.ink.slowAfter) {
@@ -270,6 +280,9 @@
     st.t += dt; st.pageT += dt;
     if (st.goldT > 0) st.goldT -= dt;
     if (st.hitT > 0) st.hitT -= dt;
+    if (st.fellT > 0) st.fellT -= dt;
+    if (st.splatT > 0) st.splatT -= dt;
+    if (st.spun > 0) st.spun -= dt;
     if (st.splashAt && (st.splashAt.t -= dt) <= 0) st.splashAt = null;
     for (const pp of st.pops) pp.t += dt;
     // the page turning, the finish: nobody moves
@@ -335,7 +348,7 @@
     // the hands-free leash: two free players are kept within S.leash of each other (softly)
     if (n === 0 && !st.leaf[0] && !st.leaf[1] && st.fallT[0] < 0 && st.fallT[1] < 0) {
       const a = ps[0].b3, c = ps[1].b3, d = hyp(c.x - a.x, c.z - a.z);
-      if (d > S.leash) { const f = (d - S.leash) * 0.08 / d; a.x += (c.x - a.x) * f; a.z += (c.z - a.z) * f; c.x -= (c.x - a.x) * f; c.z -= (c.z - a.z) * f; MOVER3.push(st.w, a); MOVER3.push(st.w, c); }
+      if (d > S.leash) { const f = (d - S.leash) * 0.08 / d, mx = (c.x - a.x) * f, mz = (c.z - a.z) * f; a.x += mx; a.z += mz; c.x -= mx; c.z -= mz; MOVER3.push(st.w, a); MOVER3.push(st.w, c); }
     }
     if (n < 2) MOVER3.separate(ps[0].b3, ps[1].b3);
     // the pencil
@@ -363,16 +376,38 @@
     }
     // the pencil over an edge: not carried, and nothing under its middle and both ends (a dragged pencil also slips
     // off a bridge or a plank)
+    if (n !== 1) st.dragT = 0;
     if (n < 2 && st.penFall < 0 && !st.penLeaf && st.pen.vis) {
       // (measured from the holder's feet while dragged, else from where the pencil lies)
       const E = ends(st.pen), y = n === 1 ? G.players[st.hold[0] >= 0 ? 0 : 1].b3.y : Math.min(st.pen.ye, st.pen.yp) - S.r;
-      const under = q => { const f = floorY(st, q.x, q.z, y + 0.4); return f > y - 0.9 && !(n === 1 && MOVER3._on && /bridge|plank|seesaw/.test(MOVER3._on.kind)); };
-      const sup = [under({ x: st.pen.x, z: st.pen.z }), under(E[0]), under(E[1])];
+      // (only while it is being dragged along: a partner who lets go on a bridge leaves it resting in the other's
+      // hand, to be picked up again, as it rests when both let go)
+      // (and the one left holding has a moment to stop: S.dragGrace of walking on with it before it slips)
+      const hb = n === 1 ? G.players[st.hold[0] >= 0 ? 0 : 1].b3 : null;
+      st.dragT = hb ? (st.dragT || 0) + (hyp(hb.vx, hb.vz) > 0.3 ? dt : 0) : 0;
+      const dragging = st.dragT > S.dragGrace;
+      // (the free end of a pencil held by one may lie a little lower than their feet: down the tower's ramp, where
+      // letting go must leave it resting, not send both back to the foot of the tower)
+      const free = n === 1 ? 1 - (st.hold[0] >= 0 ? st.hold[0] : st.hold[1]) : -1;
+      const under = (q, drop = 0.9) => { const f = floorY(st, q.x, q.z, y + 0.4); return f > y - drop && !(dragging && MOVER3._on && /bridge|plank|seesaw/.test(MOVER3._on.kind)); };
+      const sup = [under({ x: st.pen.x, z: st.pen.z }), under(E[0], free === 0 ? 1.25 : 0.9), under(E[1], free === 1 ? 1.25 : 0.9)];
       if (sup.filter(Boolean).length < 2 || (n === 1 && !sup[2 - (st.hold[0] >= 0 ? st.hold[0] : st.hold[1])])) pencilFell(st);
     }
     // where the pencil (and each player) is along the route
     st.s = st.R.project(st.pen.x, st.pen.z, st.s, 6);
     ps.forEach((p, k) => { st.ps[k] = st.R.project(p.b3.x, p.b3.z, st.ps[k], 8); });
+    // carried eraser first with a line still to draw on this page: a paper note says so (only the point draws, and
+    // a hedge path is too narrow to turn the pencil round in later)
+    if (both(st) && st.lines.some(l => !l.done) && st.ps[holderOf(st, 0)] > st.ps[holderOf(st, 1)] + 2) st.backT = (st.backT || 0) + dt; else st.backT = 0;
+    // gold help: stood eraser first at a line that is waiting to be drawn (or past it) for S.spinAfter seconds, the
+    // pencil spins itself round in their hands, so whoever is in front has the point (a hedge path, a bridge or a
+    // narrow bank has no room to turn a pencil this long; nobody should have to walk back a whole page)
+    if (st.backT > 0 && st.lines.some(l => !l.done && st.s > lineS(st, l) - 3.5)) {
+      if ((st.spinT = (st.spinT || 0) + dt) >= S.spinAfter) {
+        st.spinT = 0; st.backT = 0; st.hold = st.hold.map(e => 1 - e); poseFromHolders(st); st.spun = 0.6;
+        goldHelp(st, 'The pencil spins round: point first!', 'spin');
+      }
+    } else st.spinT = 0;
     // bookmarks light as the carried pencil passes them
     if (both(st)) for (let i = st.mark + 1; i < st.marks.length; i++) if (st.s >= st.marks[i] - 0.5 && st.s < st.marks[i] + 6) { st.mark = i; st.lit[i] = true; Sfx.play('popcarryTick'); }
     // dotted lines
@@ -462,7 +497,9 @@
             D.hold = S.doorBack;
             const holderIn = ps.some(p => st.hold[p.id] >= 0 && overlapsBox(s, p.b3.x, p.b3.z, MOVER3.r));
             // (a pencil only waiting in the doorway, held by one or nobody, just keeps the door open: not a drop)
-            if ((inPen && both(st)) || holderIn) hitDrop(st, 'door');
+            // (after a drop it stays open until its next turn to open: picking the pencil straight up again in the
+            // doorway is never a second drop from the same shutting)
+            if ((inPen && both(st)) || holderIn) { hitDrop(st, 'door'); D.hold = cyc - t + 0.05; }
             Sfx.play('popcarryDoorCreak');
             continue;
           }
@@ -601,8 +638,13 @@
     const flash = (txt, col, t) => { ctx.save(); ctx.globalAlpha = Math.min(1, t * 3); text(txt, W / 2, 128, 34, col, 'center'); ctx.restore(); };
     if (st.splashAt) flash('Splash!', '#7fc4ea', st.splashAt.t);
     if (st.hitT > 0) flash(st.hitWhy === 'train' ? 'Toot toot! Drop!' : 'Bump! Drop!', C.paper, st.hitT);
-    if (st.ink && st.ink.splats && st.fallT[0] >= 0) flash('Splat!', '#9aa6d8', 0.5);
+    if (st.splatT > 0) flash('Splat!', '#9aa6d8', st.splatT);
     if (st.drew) { ctx.save(); ctx.globalAlpha = Math.min(1, st.drew.t * 2); text('You drew ' + st.drew.what + '!', W / 2, 128, 24, C.gold, 'center'); ctx.restore(); }
+    if (st.backT > 1.5 && !(st.goldT > 0)) {
+      ctx.save(); ctx.globalAlpha = Math.min(1, (st.backT - 1.5) * 2);
+      ctx.font = '700 15px "Atkinson Hyperlegible", system-ui, sans-serif'; const s = 'Only the point draws. Carry the pencil point first!', w = ctx.measureText(s).width + 36;
+      ctx.fillStyle = 'rgba(246,239,223,0.96)'; rr(W / 2 - w / 2, 92, w, 30, 15); ctx.fill(); text(s, W / 2, 107.5, 15, '#3b3040', 'center', 'body'); ctx.restore();
+    }
     if (st.goldT > 0) {
       ctx.save(); ctx.globalAlpha = Math.min(1, st.goldT * 2);
       ctx.font = '700 15px "Atkinson Hyperlegible", system-ui, sans-serif'; const s = st.goldMsg || '', w = ctx.measureText(s).width + 36;
@@ -671,7 +713,7 @@
       ];
       const most = s.pageDrops.indexOf(Math.max(...s.pageDrops));
       out.push(s.drops ? 'Most drops: Page ' + (most + 1) + ', ' + TITLES[most] + '.' : 'Not one drop. A very careful pair!');
-      if (s.helps) out.push('Gold help: ' + [...new Set(s.helpWhat)].map(h => h === 'ink' ? 'the ink slowed down' : 'paper edges stopped the falls').join(', ') + '.');
+      if (s.helps) out.push('Gold help: ' + [...new Set(s.helpWhat)].map(h => h === 'ink' ? 'the ink slowed down' : h === 'spin' ? 'the pencil spun round' : 'paper edges stopped the falls').join(', ') + '.');
       return out;
     },
   };

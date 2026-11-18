@@ -982,9 +982,11 @@
       const sx = st.pen.x + (pot.x - st.pen.x) * e, sz = st.pen.z + (pot.z - st.pen.z) * e, sy = (ye + yp) / 2 + Math.sin(e * Math.PI) * 2.2 + (pot.y + 1.9 - (ye + yp) / 2) * e;
       pen.position.set(sx, sy, sz); pen.rotation.set(0, -st.pen.a, -e * Math.PI / 2);
     } else {
-      pen.position.set(st.pen.x, (ye + yp) / 2, st.pen.z);
+      // (the gold spin: it hops up and whirls half a turn in their hands)
+      const spin = st.spun > 0 ? st.spun / 0.6 : 0;
+      pen.position.set(st.pen.x, (ye + yp) / 2 + Math.sin(spin * Math.PI) * 0.7, st.pen.z);
       let wob = 0; if (st.penLeaf) wob = Math.sin(G.clock * 9) * 0.25 * (1 - Math.min(1, st.penLeaf.t / 0.9));
-      pen.rotation.set(wob, -st.pen.a, Math.atan2(yp - ye, len));
+      pen.rotation.set(wob, -st.pen.a + spin * spin * (3 - 2 * spin) * Math.PI, Math.atan2(yp - ye, len));
     }
     const fy = MOVER3.floorAt(st.w, st.pen.x, st.pen.z, Math.max(ye, yp) + 0.2, 0);
     K3D.placeBlob(v.pBlob, st.pen.x, fy > -5 ? fy : 0, st.pen.z, Math.max(0, (ye + yp) / 2 - (fy > -5 ? fy : 0)));

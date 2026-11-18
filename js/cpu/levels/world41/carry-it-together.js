@@ -15,6 +15,14 @@
        stays behind). A person who goes another way is followed; after 6 s off the route it says where to go.
      LINES: holding the point, it runs the point over the next dots of the line ahead (its body one hand ahead of them).
        Holding the eraser, it just keeps to the route, which keeps its end out of the point's way.
+       A line the pair has walked past undrawn stays its job (nothing beyond it can be reached). With a person who
+       keeps walking on, it cannot pull the pencil back out of their hands: pushed from the side it keeps leading (so
+       they never swing round in front with the eraser), pushed from straight behind it leans back along the pencil
+       (holding its ground without turning it), says "Back up to the dots!", and goes back for the line as soon as
+       they ease off. With the person holding the point at an undrawn line: "Run the point along the dots!".
+     RAMPS AND STAIRS: leading, it waits on them while the partner is beside the foot instead of in line ("Onto the
+       ramp behind me!"); a partner standing held up off the route for 2 s is fetched (not one who is walking in);
+       neither role steers into a ramp's high side (back along the route to a point it can walk straight to).
      DOORS AND THE TRAIN: it works out how long the pair needs to be fully through (from where the back holder is, at
        carrying speed) and stops short ("Wait…") unless the door stays open (or the train stays away) that long;
        then "Now!". THE SEESAW needs nothing: carried at the pencil's length, the follower steps on while the leader is
@@ -91,6 +99,8 @@
     const c = Math.cos(K3D.heading), sn = Math.sin(K3D.heading), nx = ax / l, ny = ay / l;
     return { x: nx * c + ny * sn, z: -nx * sn + ny * c, s: Math.min(1, l) };
   }
+  // where a dotted line starts along the route (kept on the line)
+  const lineS = (R, l) => (l._s != null ? l._s : (l._s = R.project(l.dots[0][0], l.dots[0][1])));
   const steer = (out, b, x, z, sp = 1) => { const st = cpuNav3.stick(x - b.x, z - b.z); out.ax = st.ax * sp; out.ay = st.ay * sp; };
   // a door or the train: may the pair start through it now? (t: seconds the way stays clear from now on)
   function clearFor(pl, gate) {
@@ -182,16 +192,40 @@
       // a dotted line ahead and I have the point: run it over the dots
       if (mine === 1) {
         const next = l => l.dots[Math.min(l.n, l.dots.length - 1)];
-        const L = pl.lines.find(l => !l.done && hyp(next(l)[0] - E[1].x, next(l)[1] - E[1].z) < 8 && Math.abs(R.project(next(l)[0], next(l)[1], sMe, 12) - sMe) < 9);
+        // (the line ahead, or one the pair has walked past without drawing: a person who just keeps pushing on must
+        // not make it forget the line, since nothing beyond it can be reached until it is drawn)
+        const L = pl.lines.find(l => !l.done && ((hyp(next(l)[0] - E[1].x, next(l)[1] - E[1].z) < 8 && Math.abs(R.project(next(l)[0], next(l)[1], sMe, 12) - sMe) < 9) || pl.s > lineS(R, l) - 2.5));
         if (L && lead && !(pl.pg.single && narrowO)) {
           // put the point on the next dot but one: my hand is half a unit past the point, along the pencil
           const d = L.dots[Math.min(L.n + 1, L.dots.length - 1)], ux = Math.cos(pl.pen.a), uz = Math.sin(pl.pen.a);
-          tg = { x: d[0] + ux * pl.endIn, z: d[1] + uz * pl.endIn };
-          s.tracing = true;
-          // (drawing carefully: slower near the dot, so even slow hands stay on the line)
-          sp = Math.max(0.22, Math.min(1, hyp(tg.x - b.x, tg.z - b.z) / 5));
-          if (solo && L.n === 0) cpuSay(p, 'I\'ll draw it!', 1.6);
+          const tt = { x: d[0] + ux * pl.endIn, z: d[1] + uz * pl.endIn };
+          // the partner is walking on and the dots are back the other way: the pencil cannot be pulled out of their
+          // hands, and hanging back lets them swing round past and end up in front with the eraser. So it keeps
+          // leading for now, asks them (1-player; at most every 5 s), and goes back for the line when they ease off.
+          const od = pushOf(o), dl = hyp(tt.x - b.x, tt.z - b.z) || 1;
+          const against = info.partnerCpu ? false : od.s > 0.3 && dl > 0.8 && (od.x * (tt.x - b.x) + od.z * (tt.z - b.z)) / dl < -0.3;
+          if (against) {
+            s.tracing = false; s.pushT = (s.pushT || 0) + dt;
+            if (solo && s.pushT > 1.2 && !(s.askT > s.t)) { cpuSay(p, 'Back up to the dots!', 2); s.askT = s.t + 5; }
+            // (pushed from straight behind: it leans back along the pencil, which holds the ground it has made
+            // without turning the pencil; pushed from the side it walks on in front, as above)
+            const ax = (ob.x - b.x) / (dist || 1), az = (ob.z - b.z) / (dist || 1);
+            if (-(od.x * ax + od.z * az) > 0.8) { tg = { x: b.x + ax * 2, z: b.z + az * 2 }; sp = 1; s.tracing = true; }
+          } else {
+            tg = tt; s.tracing = true; s.pushT = 0;
+            // (drawing carefully: slower near the dot, so even slow hands stay on the line; but never dawdling in
+            // front of a partner who is walking on)
+            sp = Math.max(solo && od.s > 0.3 ? 0.8 : 0.22, Math.min(1, dl / 5));
+            if (solo && L.n === 0) cpuSay(p, 'I\'ll draw it!', 1.6);
+          }
         } else s.tracing = false;
+      } else s.tracing = false;
+      // the person has the point and the pair is standing at an undrawn line (or has walked past it): say what the
+      // point is for (1-player; after 5 s with no new dot, at most every 8 s)
+      if (solo && mine === 0 && !lead) {
+        const L = pl.lines.find(l => !l.done && pl.s > lineS(R, l) - 3.5);
+        if (L && s.dotN === L.id + L.n) s.dotT = (s.dotT || 0) + dt; else { s.dotT = 0; s.dotN = L ? L.id + L.n : ''; }
+        if (L && s.dotT > 5 && !(s.askT > s.t)) { cpuSay(p, 'Run the point along the dots!', 2.2); s.askT = s.t + 8; }
       }
       // single file (bridges with open edges): at a bend the leader walks on straight past it, as far as the floor
       // goes, until the follower has come off the bridge behind; then turns
@@ -216,10 +250,23 @@
       if (lead) {
         // never tow: a pencil pulled long means the partner is not keeping up
         if (dist > pl.gap + 0.14) sp = 0;
+        // a ramp or stairs the partner has to come up behind me: while they are beside its foot instead of in line
+        // with it, wait (a body beside a ramp cannot step up its side further along; towing them on would wedge them)
+        for (const r of st.solids) {
+          if (r.ghost || (r.kind !== 'deskramp' && r.kind !== 'stairs')) continue;
+          const foot = r.x - r.w / 2, top = r.x + r.w / 2;
+          const side = Math.abs(ob.z - r.z) - r.d / 2;
+          if (b.x > foot - 0.3 && ob.on !== r && ob.x > foot - 1.2 && ob.x < top && side > -0.4 && side < 2.5) {
+            sp = 0; if (solo) cpuSay(p, r.kind === 'stairs' ? 'Up the stairs behind me!' : 'Onto the ramp behind me!', 1.6);
+          }
+        }
         // the partner held up 2 s behind me off the route (caught beside a ramp, on the wrong side of a rise): come back down the
         // route toward them for a moment, so they have room to go round
         const oOff = (() => { const q = R.at(sO); return hyp(q.x - ob.x, q.z - ob.z); })();
-        if (s.oS == null || sO > s.oS + 0.3 || oOff < 1.3 || s.waited) { s.oS = sO; s.oT = 0; } else s.oT += dt;
+        // (held up means standing: a partner walking in off the route, say straight at a ramp's foot from beyond the
+        // bend before it, is on their way and must not be pushed back out)
+        const oMoved = s.oP ? hyp(ob.x - s.oP.x, ob.z - s.oP.z) > 0.5 : true;
+        if (s.oS == null || sO > s.oS + 0.3 || oOff < 1.3 || s.waited || oMoved) { s.oS = sO; s.oT = 0; s.oP = { x: ob.x, z: ob.z }; } else s.oT += dt;
         if (s.oT > 2 && !s.tracing && !onTower) { s.backUp = s.t + 2; s.oT = 0; }
         if (s.backUp > s.t && !onTower) { tg = target(R, Math.max(0, sO + pl.gap * 0.6), wide, st.w); sp = 0.7; }
         // doors and the train
@@ -258,7 +305,8 @@
       if (solo && !onTower) for (const c of corners(R)) if (c.k > 0.8 && sMe > c.s - 5 && sMe < c.s - 3 && !s.said[c.s]) { s.said[c.s] = 1; cpuSay(p, lead ? 'I\'ll swing wide!' : 'Swing wide!', 1.5); }
       // the follower: never steer into the high side of a ramp or rise (back along the route to a point it can walk
       // straight to)
-      if (!lead && !onTower && sp > 0 && !walkLine(st.w, b, tg.x, tg.z)) {
+      // (the leader too, when it has come back down for a partner and stepped off a ramp's side: back to the foot)
+      if ((!lead || !s.tracing) && !onTower && sp > 0 && hyp(tg.x - b.x, tg.z - b.z) > 0.3 && !walkLine(st.w, b, tg.x, tg.z)) {
         let found = false;
         for (let k = 1.0; k >= -3; k -= 0.25) { const q = R.at(Math.max(0, sMe + k)); if (walkLine(st.w, b, q.x, q.z)) { tg = q; found = true; break; } }
         // (none: a floor-grid path round to the route ahead)
@@ -271,7 +319,8 @@
       s.wedgeT = sp > 0.3 && !moving && !s.tracing && !(lead && s.backUp > s.t) ? (s.wedgeT || 0) + dt : 0;
       if (s.wedgeT > 0.7) { s.unwedge = s.t + 1.6; s.wedgeT = 0; s.path = null; }
       if (s.unwedge > s.t && !onTower && !(lead && s.backUp > s.t)) { const q = R.at(sMe + 1.3); this.walkTo(s, p, st, q.x, q.z, out, dt); return out; }
-      if (sp > 0) steer(out, b, tg.x, tg.z, sp);
+      // (already standing on the point it steers for, held there by the pencil: a push would flip every tick)
+      if (sp > 0 && hyp(tg.x - b.x, tg.z - b.z) > 0.12) steer(out, b, tg.x, tg.z, sp);
       return out;
     },
     // walking somewhere hands-free: straight when clear, else a cpuNav3 path (rebuilt when the page changes shape; a

@@ -39,7 +39,7 @@ const KEY_MEANS = { A: 'left', D: 'right', W: 'jump', S: 'down', F: 'act', E: 'a
 const ARROWS = { left: '◀', right: '▶', jump: '▲', down: '▼', up: '▲' };
 // 3D levels (World 41 on): ▲ walks away, and jump has its own key (Space for Pip, Shift for Bo). A legend writes it as
 // <kbd>Space</kbd> or <kbd>Shift</kbd>, which mean 'hop': that player's own jump key, the controller's A, the touch jump.
-const HOP_CAPS = ['Space', 'Shift'];
+const HOP_CAPS = ['Space', 'Right Shift']; // (only the right Shift jumps: say so)
 const is3dLevel = () => !!(G.level && G.level.def && G.level.def.view3d);
 const capMeans = c => (c === 'Space' || c === 'Shift') && is3dLevel() ? 'hop' : KEY_MEANS[c] || null;
 
