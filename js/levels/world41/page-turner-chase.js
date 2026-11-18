@@ -559,7 +559,7 @@
   /* ---------- the mode ---------- */
   MODES.popchase = {
     S, scene3dOpts: { bg: '#241a22', fov: 26, far: 700 },
-    medals: { bronze: 'Reach The End', goals: [{ key: 'time', gold: 250, silver: 380 }, { key: 'flats', gold: 1, silver: 5, word: 'flat' }] },
+    medals: { bronze: 'Reach The End', goals: [{ key: 'time', gold: 145, silver: 225 }, { key: 'flats', gold: 1, silver: 8, word: 'flat' }] },
     medalValues() { const st = G.mst; return { flats: st.stats ? st.stats.flats : 0 }; },
     // a song per page, busier each page, and the lullaby once The End's tabs are pulled (popchase-music.js)
     music() { const st = G.mst; if (!st || st.k == null) return null; return { song: st.ending ? 'popchaseLullaby' : 'popchase' + clamp(st.k | 0, 0, 3) }; },

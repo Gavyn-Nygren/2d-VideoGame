@@ -12,7 +12,7 @@
     A2: ['7 . 6 . 4 . 6 7', '8 . 7 . 5 . . .', '6 . 5 . 3 . 5 6', '4 - - . 1 . 4 .'],
     B: ['5 . 7 . 9 . 7 5', '3 . 5 . 7 . 5 3', '4 . 6 . 7 . 9 .', '8 . 7 . 6 . 4 .'],
   };
-  const TICKS = ['w.......w.......', 'w...w...w...w...', 'w.w.w.w.w.w.w.w.', 'w.wwwwwww.wwwwww'];
+  const TICKS = ['x.......x.......', 'x...x...x...x...', 'x.x.x.x.x.x.x.x.', 'X.xxxxxxX.xxxxxx'];
   const chase = (k, vol) => ({
     bpm: 132 + k * 8, vol, root: 57 + [0, 0, 2, 3][k], scale: 'minor', form: ['A', 'A2', 'B', 'A2'],
     inst: { lead: 'musicbox', lead2: 'bell', bass: 'upright', comp: 'pizz', pad: 'softpad' }, oct: { lead: 1, lead2: 1 },
@@ -25,9 +25,9 @@
       B: { ch: [5, 3, 0, 4], lead: TUNE.B },
     },
   });
-  SONGS.popchase0 = chase(0, 0.3); SONGS.popchase1 = chase(1, 0.3); SONGS.popchase2 = chase(2, 0.3); SONGS.popchase3 = chase(3, 0.3);
+  SONGS.popchase0 = chase(0, 0.27); SONGS.popchase1 = chase(1, 0.27); SONGS.popchase2 = chase(2, 0.25); SONGS.popchase3 = chase(3, 0.26);
   SONGS.popchaseLullaby = {
-    bpm: 72, vol: 0.3, root: 60, scale: 'major', form: ['A', 'A2'],
+    bpm: 72, vol: 0.35, root: 60, scale: 'major', form: ['A', 'A2'],
     inst: { lead: 'musicbox', bass: 'bass', pad: 'softpad' }, oct: { lead: 1 },
     bass: '0 . . . 4 . . .',
     sec: { A: { ch: [0, 5, 3, 4], lead: TUNE.A }, A2: { ch: [0, 5, 3, 0], lead: TUNE.A2 } },
