@@ -396,7 +396,7 @@ const POPDRAGON_SHELF = (function () {
       tick(st, t, dt) {
         const clock = st.clock || 0, s = st.s || 0;
         // the tipping books (the same angle the rules use)
-        for (const tp of tippers) tp.pivot.rotation.x = R.tipAngle(((clock / tp.b.per + tp.b.ph) % 1 + 1) % 1, tp.b.max);
+        for (const tp of tippers) tp.pivot.rotation.x = R.tipNow(tp.b, clock, st.s);
         // the train: where the rules put it; wheels turn with the distance, the key unwinds, steam puffs
         const fx = art.trainX(s);
         train.position.x = fx;

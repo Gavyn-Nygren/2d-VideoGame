@@ -430,7 +430,9 @@ const POPDRAGON_BEDROOM = (function () {
       // the eyes: open, narrowed, closed; the glow follows how open they are
       const open = clamp(o.eyes, 0, 1);
       lids.forEach(l => { l.up.rotation.x = -PI / 2 * (1 - open) * 0.95 - 0.12; l.low.rotation.x = PI / 2 * (1 - open) * 0.5 + 0.1; });
-      eyes.forEach(e => { e.userData.glow.material.opacity = 0.15 + 0.5 * open; e.scale.y = 0.4 + 0.6 * open; });
+      // (the glow is for eyes across the room: right beside the camera, as when the cat peers under the bed after the
+      // dragon, it would wash a third of the picture green, so it fades out as the camera comes close)
+      eyes.forEach(e => { e.getWorldPosition(look); const near = clamp((look.distanceTo(K.camera.position) - 16) / 22, 0, 1); e.userData.glow.material.opacity = (0.15 + 0.5 * open) * near; e.scale.y = 0.4 + 0.6 * open; });
     }
     return { root, pose };
   };

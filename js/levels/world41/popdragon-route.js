@@ -263,11 +263,31 @@ const POPDRAGON_ROUTE = (function () {
   art.pot = { x: -26, z: 24, r: 7.5, h: 6.5 };
   art.potSticks = [];
   {
-    // trunks standing above the pot's rim, placed against the rail so the line weaves left, right, left
-    const sticks = [[-31.5, 20.5, 0.42, 16, '#d8483a'], [-29, 25.8, 0.42, 15, '#3b7fc4'], [-26.5, 20.8, 0.42, 17, '#f2c14e'], [-24.4, 27.2, 0.5, 15.5, 'brush'],
-      [-22.2, 21.6, 0.42, 16.5, '#5aa04a'], [-20.6, 27.9, 0.42, 14.5, '#7a4fa8'], [-28.4, 29.5, 0.42, 13.5, '#f08a3c'], [-32.6, 27.6, 0.42, 12.5, '#e86a9a'],
-      [-19.4, 23.8, 0.42, 13.8, '#2f9a8a'], [-30.8, 23.4, 0.42, 9.5, '#c9973a']];
-    for (const [x, z, r, h, col] of sticks) { art.potSticks.push({ x, z, r, h, col }); S.push({ k: 'cyl', x, z, r: r + 0.08, y0: 0, y1: h + 1.4, part: 1 }); }
+    // Three tall trunks stand in the pot, placed against the rail so the good line weaves round them (right of the
+    // first, left of the second, right of the third) and a straight flight down the middle just squeezes by. The rest
+    // of the pot's pencils lean out over the rim to either side like a bunch of flowers, clear of the flying window
+    // except its low outside corners (where the pot itself already is). Each is { x, z, r, h, col } standing at (x, z),
+    // or leaning: base [x, y, z] and dir (a unit vector along the pencil).
+    const sp = R.toLocal(art.pot.x, 9, art.pot.z, 60, 160).s, fr = R.at(sp), rt = fr.r, al = [fr.t[0], 0, fr.t[2]], an = Math.hypot(al[0], al[2]) || 1;
+    al[0] /= an; al[2] /= an;
+    art.potWeave = [];
+    for (const [ds, ox, r, h, col] of [[-5, -3.4, 0.42, 16, '#d8483a'], [0, 4.2, 0.5, 15.5, 'brush'], [5, -3.4, 0.42, 17, '#f2c14e']]) {
+      const c = R.local(sp + ds, ox, 0);
+      art.potSticks.push({ x: c[0], z: c[2], r, h, col }); art.potWeave.push({ s: sp + ds, ox });
+      S.push({ k: 'cyl', x: c[0], z: c[2], r: r + 0.08, y0: 0, y1: h + 1.4, part: 1 });
+    }
+    // the leaners: each rests on the rim at angle phi round the pot (0 is straight out to the right of the flight, PI
+    // to the left) and leans outward by `lean` from upright
+    const rimR = art.pot.r - 0.9;
+    for (const [phi, lean, r, h, col] of [[0.18, 0.92, 0.42, 16, '#3b7fc4'], [-0.36, 0.98, 0.42, 14.5, '#7a4fa8'], [0.5, 1.02, 0.42, 13.5, '#f08a3c'],
+      [Math.PI - 0.2, 1.0, 0.42, 16.5, '#5aa04a'], [Math.PI + 0.3, 1.04, 0.42, 15, '#e86a9a'], [Math.PI - 0.52, 1.06, 0.42, 13.8, '#2f9a8a'], [Math.PI + 0.06, 0.86, 0.42, 12.5, '#c9973a']]) {
+      const out = [rt[0] * Math.cos(phi) + al[0] * Math.sin(phi), 0, rt[2] * Math.cos(phi) + al[2] * Math.sin(phi)];
+      const dir = [out[0] * Math.sin(lean), Math.cos(lean), out[2] * Math.sin(lean)];
+      const rim = [art.pot.x + out[0] * rimR, art.pot.h, art.pot.z + out[2] * rimR], k = (art.pot.h - 0.6) / dir[1];
+      const base = [rim[0] - dir[0] * k, 0.6, rim[2] - dir[2] * k], tip = base.map((v, i) => v + dir[i] * (h + 1.4));
+      art.potSticks.push({ x: base[0], z: base[2], r, h, col, base, dir });
+      S.push({ k: 'cap', a: base, b: tip, r: r + 0.08, part: 1 });
+    }
   }
   S.push({ k: 'cyl', x: art.pot.x, z: art.pot.z, r: art.pot.r, y0: 0, y1: art.pot.h, part: 1 });
   // a stack of old books to hop over
@@ -314,8 +334,9 @@ const POPDRAGON_ROUTE = (function () {
   arc(R.place.lamp - 10, R.place.lamp + 8, 7, -1, 0.5, 1, 0.5, -3, 'x');
   // through each steam ring (three stars in each)
   for (const r of art.steam) line(r.s - 1, r.s + 1, 3, r.ox, r.oy);
-  // the pencil forest: stars on the weave
-  R.weave = [];
+  // the pencil forest: stars on the weave (round the far side of each trunk)
+  for (const w of art.potWeave) star(w.s, w.ox < 0 ? 2.0 : -1.2, 0.6);
+  star(art.potWeave[0].s - 5, 1.0, 0.6); star(art.potWeave[2].s + 5, 0.8, 0.2);
   R.webs = [{ s: R.place.web, r: 7.6, oy: 0.4, burn: 'web1' }];
   // over the book stack: a high arc (height)
   arc(R.place.stack - 9, R.place.stack + 7, 7, 0, -0.5, 0, -1.5, 3.4, 'y');
@@ -327,8 +348,9 @@ const POPDRAGON_ROUTE = (function () {
   line(R.place.web + 1, R.place.web + 9, 5, 0, 0);
   // the dive off the desk edge
   line(R.place.edge + 2, R.place.edge + 24, 7, 0, 0.8, 0, -0.6);
-  // the bookmark hoop: one at the start of the flight, one at the desk's end
-  R.hoops.push({ s: R.TAKEOFF + 12 }, { s: R.place.web + 16 });
+  // the bookmark hoops: one at the start of the flight, one before the pencil pot, one after the stack of books and one
+  // at the desk's end (the first things to learn each get their own restart)
+  R.hoops.push({ s: R.TAKEOFF + 12 }, { s: R.place.pot - 19 }, { s: R.place.stack + 11 }, { s: R.place.web + 16 });
   // the Bookworm
   R.says.push({ s: R.TAKEOFF + 1, who: 'worm', text: 'After that page! One of you steer, one of you fly!' });
   R.says.push({ s: R.place.ink - 28, who: 'worm', text: 'Both lean left together to swoop!' });

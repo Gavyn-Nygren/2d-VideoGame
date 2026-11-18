@@ -24,8 +24,10 @@
    CRUMPLES. Hitting anything solid (POPDRAGON_ROUTE.solids, and paper that has not been burnt) is a Crumple: crunch,
    dented nose, a push back toward the middle, 1.5 s safe. Three before the next bookmark hoop is a Refold: the dragon
    scrunches up, "Smooth it out!", and the pair start again at the last hoop (stars kept). Two Refolds from one hoop:
-   gold help, five Crumples until two more hoops are passed ("The Bookworm added extra paper"). Nothing can lock: the
-   rail always carries on, and anything that needs both riders costs a Crumple at most.
+   gold help, five Crumples until two more hoops are passed ("The Bookworm added extra paper"), and two more for each
+   further Refold from that hoop, so no stretch can send a pair round for ever. A Crumple bounces the dragon off the
+   thing it hit (the riders get their grip back over RECOIL). Nothing can lock: the rail always carries on, and
+   anything that needs both riders costs a Crumple at most.
    One room in the game's sense; the stretches (the desk, the bookshelf, the bedroom, the window) are places along the
    rail (POPDRAGON_ROUTE.parts), never cards. Only the take-off before control and the landing after the catch are
    non-playing (jump skips them).
@@ -35,7 +37,7 @@ const POPDRAGON = {
   VX: 6.6, VY: 4.8, SWOOP: 1.5, EASE: 0.25, STOP: 0.16,
   HW: 1.9, HW_TUCK: 0.62, HW_HALF: 1.35, HH: 0.5,       // the dragon's half width (wing tips) and half height in the window
   TUCK_MAX: 3.0, TUCK_REST: 1.0, FIRE: 0.6, FIRE_CD: 1.5, FIRE_REACH: 10, SLOT_PULL: 6, TAIL: 0.4, TAIL_CD: 0.8,
-  SAFE: 1.5, CRUMPLES: 3, GOLD_CRUMPLES: 5, REFOLD: 2.0, STAR_R: 1.35,
+  SAFE: 1.5, CRUMPLES: 3, GOLD_CRUMPLES: 5, GOLD_MORE: 2, RECOIL: 0.3, REFOLD: 2.0, STAR_R: 1.35,
   CATCH: 2.4, CATCH_OPEN: 0.3, BOUNCE: 1.1, LAND: 3.0,   // the ring closing on the page, when both holding counts, a miss's bounce, the landing
 };
 
@@ -68,6 +70,12 @@ function popdragonDist(sd, p) {
   }
   return 1e9;
 }
+// how deep the dragon at (s, ox, oy) is in one solid: the least of (distance - size) over its points (negative: inside)
+function popdragonDepth(sd, s, ox, oy, hw) {
+  let d = 1e9;
+  for (const q of popdragonFootprint({ s, ox, oy, hw })) d = Math.min(d, popdragonDist(sd, q.p) - q.r);
+  return d;
+}
 // solids sorted by where they are along the rail (for a quick look-up near s)
 function popdragonIndex() {
   const R = POPDRAGON_ROUTE;
@@ -93,11 +101,11 @@ function popdragonHit(s, ox, oy, hw, burnt, clock, pad = 0) {
   for (const e of idx) {
     if (s + 1 < e.s0 || s - 3 > e.s1) continue;
     if (e.sd.burn && burnt && burnt[e.sd.burn] != null) continue;
-    for (const q of pts) if (popdragonDist(e.sd, q.p) < q.r + pad) return e;
+    for (const q of pts) if (popdragonDist(e.sd, q.p) < q.r + pad) return { i: e.i, sd: e.sd, q };
   }
   for (const m of R.movers || []) {
     if (s + 1 < m.s0 || s - 3 > m.s1) continue;
-    for (const sd of m.at(clock || 0, s)) for (const q of pts) if (popdragonDist(sd, q.p) < q.r + pad) return { sd, mover: m };
+    for (const sd of m.at(clock || 0, s)) for (const q of pts) if (popdragonDist(sd, q.p) < q.r + pad) return { sd, mover: m, q };
   }
   // paper across the flight line (cobwebs, tissue): a disc in the window at its s
   for (const w of R.webs || []) {
@@ -116,7 +124,7 @@ function popdragonAxes(p) {
 }
 
 MODES.popdragon = {
-  medals: { bronze: 'Catch the page', goals: [{ key: 'stars', gold: 0.8, silver: 0.35, more: true, pct: true, word: 'the stars' }, { key: 'crumples', gold: 3, silver: 10, word: 'crumple' }] },
+  medals: { bronze: 'Catch the page', goals: [{ key: 'stars', gold: 0.78, silver: 0.35, more: true, pct: true, word: 'the stars' }, { key: 'crumples', gold: 3, silver: 10, word: 'crumple' }] },
   medalValues() { const st = G.mst; return { stars: st.stars / (POPDRAGON_ROUTE.stars.length || 1), crumples: st.crumplesAll }; },
   scene3dOpts: { bg: '#0e1220', fov: 52, near: 0.3, far: 900 },
   setup(st) {
@@ -125,7 +133,7 @@ MODES.popdragon = {
       phase: 'takeoff', s: 0, ox: 0, oy: 0, vx: 0, vy: 0, clock: 0, hw: POPDRAGON.HW,
       tuck: 0, tuckT: 0, tuckRest: 0, half: 0, shake: 0,
       fire: 0, fireCd: 0, tail: 0, tailCd: 0, swish: 0,
-      crumples: 0, maxCrumples: POPDRAGON.CRUMPLES, crumplesAll: 0, safe: 0, dent: 0, refolds: 0, refoldT: 0, swoops: 0, swoopOn: false,
+      crumples: 0, maxCrumples: POPDRAGON.CRUMPLES, crumplesAll: 0, safe: 0, dent: 0, recoil: 0, refolds: 0, refoldT: 0, swoops: 0, swoopOn: false,
       gold: 0, goldMsg: 0, sameHoop: 0, restart: 0, hoopI: 0, nextSay: 0, says: [], stars: 0, got: R.stars.map(() => false),
       burnt: {}, crumpleAt: {}, place: 0, bat: 0, sparks: [], steer: 0, fly: 0, finished: false,
       catchT: 0, bounce: 0, misses: 0, landT: 0, held: [false, false],
@@ -154,7 +162,7 @@ MODES.popdragon = {
       st.refoldT -= dt;
       for (const p of ps) { p.pendingJump = false; p.pendingAct = false; }
       if (st.refoldT <= 0) {
-        st.phase = 'fly'; st.s = st.restart; st.ox = 0; st.oy = 0; st.vx = 0; st.vy = 0; st.crumples = 0; st.safe = K.SAFE; st.dent = 0;
+        st.phase = 'fly'; st.s = st.restart; st.ox = 0; st.oy = 0; st.vx = 0; st.vy = 0; st.crumples = 0; st.safe = K.SAFE; st.dent = 0; st.recoil = 0;
         st.unfold = 1; Sfx.play('popdragonUnfold');
       }
       return;
@@ -176,15 +184,40 @@ MODES.popdragon = {
     const helpX = a0.x && Math.sign(a1.x) === Math.sign(a0.x) && Math.abs(a1.x) > 0.3;
     const helpY = a1.y && Math.sign(a0.y) === Math.sign(a1.y) && Math.abs(a0.y) > 0.3;
     const mothSlow = 1 - 0.25 * Math.min(3, st.moths || 0);
-    const wantX = a0.x * K.VX * (helpX ? K.SWOOP : 1), wantY = a1.y * K.VY * (helpY ? K.SWOOP : 1) * mothSlow;
+    // (just after a Crumple the dragon is bouncing off what it hit: the riders get their grip back over RECOIL)
+    st.recoil = Math.max(0, st.recoil - dt);
+    const grip = 1 - st.recoil / K.RECOIL;
+    const wantX = st.recoil > 0 ? st.vx : a0.x * K.VX * (helpX ? K.SWOOP : 1), wantY = st.recoil > 0 ? st.vy : a1.y * K.VY * (helpY ? K.SWOOP : 1) * mothSlow;
     const ease = (v, want, full) => { const acc = (want === 0 ? full / K.STOP : full / K.EASE) * dt; return v + clamp(want - v, -acc, acc); };
     st.vx = ease(st.vx, wantX, K.VX * K.SWOOP); st.vy = ease(st.vy, wantY, K.VY * K.SWOOP);
+    if (st.recoil > 0) { st.vx *= 1 - 2.2 * dt * grip; st.vy *= 1 - 2.2 * dt * grip; }
     const swoop = (helpX && Math.abs(a0.x) > 0.3) || (helpY && Math.abs(a1.y) > 0.3);
     if (swoop && !st.swoopOn) { st.swoops++; Sfx.play('popdragonWhoosh'); }
     st.swoopOn = swoop;
     // the air: the snore's updraft, the gusts outside, the rain soaking the wings
     const drift = R.drift ? R.drift(st.s) : [0, 0];
+    const ox0 = st.ox, oy0 = st.oy;
     st.ox += (st.vx + drift[0]) * dt; st.oy += (st.vy + drift[1]) * dt;
+    // still safe after a Crumple: the dragon slides along what it hit, it does not sink further into it (a rider
+    // holding hard into a shelf or a pot rubs along it instead of flying through the wood)
+    if (st.safe > 0 && st.rub && (st.ox !== ox0 || st.oy !== oy0)) {
+      const was = popdragonDepth(st.rub, st.s, ox0, oy0, st.hw), now = popdragonDepth(st.rub, st.s, st.ox, st.oy, st.hw);
+      if (now < 0 && now < was - 1e-6) {
+        // (one axis at a time, so it can still slide along the other)
+        if (popdragonDepth(st.rub, st.s, st.ox, oy0, st.hw) >= was - 1e-6) { st.oy = oy0; st.vy = 0; }
+        else if (popdragonDepth(st.rub, st.s, ox0, st.oy, st.hw) >= was - 1e-6) { st.ox = ox0; st.vx = 0; }
+        else { st.ox = ox0; st.oy = oy0; st.vx = 0; st.vy = 0; }
+      }
+    }
+    // (and where the rail itself is carrying it into the thing, it is eased out over the nearest side: up over a rim,
+    // round a corner. A wall right across the way has no side to slide to, and the dragon just bursts through)
+    if (st.safe > 0 && st.rub) {
+      const dp = (x, y) => popdragonDepth(st.rub, st.s, x, y, st.hw), d0 = dp(st.ox, st.oy);
+      if (d0 < 0) {
+        const gx = dp(st.ox + 0.3, st.oy) - dp(st.ox - 0.3, st.oy), gy = dp(st.ox, st.oy + 0.3) - dp(st.ox, st.oy - 0.3), g = Math.hypot(gx, gy);
+        if (g > 0.2) { const k = Math.min(-d0 + 0.02, 9 * dt) / g; st.ox = clamp(st.ox + gx * k, -R.WX, R.WX); st.oy = clamp(st.oy + gy * k, -R.WY, R.WY); }
+      }
+    }
     if (Math.abs(st.ox) > R.WX) { st.ox = Math.sign(st.ox) * R.WX; st.vx = 0; }
     if (Math.abs(st.oy) > R.WY) { st.oy = Math.sign(st.oy) * R.WY; st.vy = 0; }
     // the tuck: both hold jump (one alone: a half fold and a head shake)
@@ -325,8 +358,20 @@ MODES.popdragon = {
     // a web you fly into tears (so it is never a wall)
     if (hit.web) st.burnt[hit.web.burn] = st.clock;
     if (hit.sd && hit.sd.burn) st.burnt[hit.sd.burn] = st.clock;
-    // pushed back toward the middle
-    st.vx = -Math.sign(st.ox || 1) * K.VX * 0.9; st.vy = -Math.sign(st.oy || 1) * K.VY * 0.6;
+    // bounced off: away from the thing it hit when that has a side to it (a pencil, a planet, a book's corner), else
+    // back toward the middle of the window (a wall across the way, a paw, moths)
+    let bx = -Math.sign(st.ox || 1), by = -Math.sign(st.oy || 1) * 0.6;
+    if (hit.sd && hit.q) {
+      const R = POPDRAGON_ROUTE, q = hit.q, d = (ox, oy) => popdragonDist(hit.sd, R.local(q.s, ox, oy));
+      const gx = d(q.ox + 0.4, q.oy) - d(q.ox - 0.4, q.oy), gy = d(q.ox, q.oy + 0.4) - d(q.ox, q.oy - 0.4), g = Math.hypot(gx, gy);
+      if (g > 0.25) { bx = gx / g; by = gy / g * 0.8; }
+    }
+    // (never bounced out of the window: at an edge it slides back in)
+    if (Math.abs(st.ox + bx * 1.2) > POPDRAGON_ROUTE.WX) bx = -Math.sign(st.ox) * Math.abs(bx);
+    if (Math.abs(st.oy + by * 1.2) > POPDRAGON_ROUTE.WY) by = -Math.sign(st.oy) * Math.abs(by);
+    st.vx = bx * K.VX * 0.9; st.vy = by * K.VY * 0.9; st.recoil = K.RECOIL;
+    // (what it rubs along while safe: a still thing with sides, not paper and not a thing that moves)
+    st.rub = hit.sd && !hit.mover && !hit.sd.burn ? hit.sd : null;
     Sfx.play('popdragonCrumple'); G.shake = Math.max(G.shake, 0.25);
     rumble(0, 0.4, 0.5, 160); rumble(1, 0.4, 0.5, 160);
     if (st.crumples >= st.maxCrumples) {
@@ -340,7 +385,10 @@ MODES.popdragon = {
       st.pawI = R.paws.findIndex(pw => pw.s > st.restart + 0.01); if (st.pawI < 0) st.pawI = R.paws.length;
       st.clingI = R.clingers.findIndex(c => c.s > st.restart + 0.01); if (st.clingI < 0) st.clingI = R.clingers.length;
       st.cling = []; st.moths = 0; st.pawSeen = {};
-      if (st.sameHoop >= 2 && st.gold <= 0) { st.gold = 2; st.maxCrumples = K.GOLD_CRUMPLES; st.goldMsg = st.clock; }
+      // gold help: five Crumples after two Refolds from one hoop, and two more for every Refold from it after that
+      // (so the same stretch can never send a pair round for ever)
+      const more = K.GOLD_CRUMPLES + K.GOLD_MORE * (st.sameHoop - 2);
+      if (st.sameHoop >= 2 && (st.gold <= 0 || more > st.maxCrumples)) { st.gold = 2; st.maxCrumples = more; st.goldMsg = st.clock; }
     }
   },
   hud() {
@@ -355,8 +403,10 @@ MODES.popdragon = {
     text(sText, 46, 61.5, 15, C.paper, 'left', 'body');
     // the paper dragons: one creased per Crumple (five in gold while the Bookworm's extra paper lasts)
     const n = st.maxCrumples, x0 = 14, y0 = 82;
-    pill(x0, y0, 18 + n * 34, 30);
-    for (let i = 0; i < n; i++) popdragonHudDragon(x0 + 26 + i * 34, y0 + 15, i < n - st.crumples, st.gold > 0);
+    // (more than seven, with a lot of extra paper, sit closer together)
+    const gap = Math.min(34, 238 / n);
+    pill(x0, y0, 18 + n * gap, 30);
+    for (let i = n - 1; i >= 0; i--) popdragonHudDragon(x0 + 9 + gap / 2 + i * gap, y0 + 15, i < n - st.crumples, st.gold > 0);
     // the seat badges by each player's corner: Pip ◀▶ (bottom left), Bo ▲▼ (bottom right)
     for (const k of [0, 1]) {
       const x = k === 0 ? 70 : W - 70, y = H - 30;

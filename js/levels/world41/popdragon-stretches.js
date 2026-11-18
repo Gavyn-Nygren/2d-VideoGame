@@ -66,14 +66,20 @@
     if (u < 0.88) { const k = (u - 0.75) / 0.13; return max * (1 - k * k * (3 - 2 * k)); }
     return 0;
   };
+  // how far a book is tipped at a moment, for a dragon at rail position `at`: once the dragon is past it the book
+  // settles back and stays put (so it never swings through the camera that follows a moment behind)
+  R.tipNow = (b, clock, at) => {
+    const a = R.tipAngle(((clock / b.per + b.ph) % 1 + 1) % 1, b.max);
+    return at == null || at < b.s + 6 ? a : a * Math.max(0, 1 - (at - b.s - 6) / 4.5);
+  };
   art.tippers = [];
   const tipper = (x, h, d, th, ph, col, title) => {
     const b = { x, y: CS.tops[0], z: CS.back, h, d, th, ph, per: TIP_PER, max: 0.6, col, title };
     art.tippers.push(b);
-    const s = sNear(x, -18, -17, pl.shelf, pl.shelf + 160);
+    const s = b.s = sNear(x, -18, -17, pl.shelf, pl.shelf + 160);
     R.movers.push({ id: 'tip' + art.tippers.length, part: 2, s0: s - 6, s1: s + 6, book: b,
-      at(clock) {
-        const a = R.tipAngle(((clock / b.per + b.ph) % 1 + 1) % 1, b.max), c = Math.cos(a), sn = Math.sin(a);
+      at(clock, at) {
+        const a = R.tipNow(b, clock, at), c = Math.cos(a), sn = Math.sin(a);
         return [{ k: 'box', x: b.x, y: b.y + h / 2 * c + d / 2 * sn, z: b.z + h / 2 * sn - d / 2 * c, hx: th / 2, hy: h / 2, hz: d / 2, rx: a, yaw: 0 }];
       } });
     return s;
@@ -166,7 +172,7 @@
   star(pl.chess - 12, -2.4, 1.2); star(pl.chess, 2.4, 1.2); star(pl.chess + 12, -2.4, 1.2);   // the slalom
   line(pl.spiral + 10, pl.top - 20, 3, 0, 0.5, 0, 0.5);                      // the spiral up and over
   star(pl.top + 12, 0, 0);
-  hoop(pl.shelf2 + 4); hoop(pl.shelf3 + 2);
+  hoop(pl.slot1 + 26); hoop(pl.shelf2 + 4); hoop(pl.shelf3 + 2); hoop(pl.chess + 56);
   say(pl.tip1 - 30, 'Books! Watch them wobble, then tip!');
   sign(pl.slot1 - 24, 'tuck', 'ahead', -3.2, 1.8);
   say(pl.slot1 - 26, 'Tuck your wings for the tight bits. Both of you!');
@@ -267,7 +273,7 @@
   star(pl.slot2, 0, 0);
   line(pl.marble - 2, pl.marble + 2, 2, 0, 2.2);
   star(pl.slot3, 0, 0);
-  hoop(pl.bedroom + 30); hoop(pl.catHoop); hoop(pl.bedHoop);
+  hoop(pl.bedroom + 30); hoop(pl.clamp + 29); hoop(pl.catHoop); hoop(pl.bedHoop);
   say(pl.mobile - 30, 'The planet mobile! Slip between them!');
   say(pl.snore - 50, "Shh! Don't wake the Reader. And whatever you do, don't wake the...");
   say(pl.sw1 - 26, '...cat. Oh no. Dodge the paws! Bo, bat it with the tail!');

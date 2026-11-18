@@ -219,7 +219,12 @@ const POPDRAGON_ART = (function () {
       p.add(K3.mesh(new T.CylinderGeometry(r0 + 0.01, r0 + 0.01, 0.3, 6).translate(0, len * 0.2, 0), K3.mat('pdBand', () => K3.toon('#e2c05a')), { ink: false, cast: false }));
       return p;
     };
-    for (const st of art.potSticks) { const p = pencil(st.col, st.h, st.r); p.position.set(st.x, 0, st.z); still.add(p); }
+    for (const st of art.potSticks) {
+      const p = pencil(st.col, st.h, st.r);
+      // (a leaner lies along its own direction from its foot inside the pot, out over the rim)
+      if (st.dir) { p.position.set(...st.base); p.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), new T.Vector3(...st.dir)); } else p.position.set(st.x, 0, st.z);
+      still.add(p);
+    }
 
     /* ---------- the stack of books ---------- */
     for (const b of art.stack) {
