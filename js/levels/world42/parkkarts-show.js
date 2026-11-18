@@ -228,6 +228,37 @@ const PARKKARTS_SCENE = (function () {
     return chase(sc, st, dt);
   }
 
+  /* ---------- the driving sounds and the set pieces' (display side: the rules play the prizes' and flags') ---------- */
+  function sounds(sc, st, dt) {
+    const S = sc.snd || (sc.snd = { k: [{}, {}], eng: 0, coaster: 0, coffin: 0 });
+    st.karts.forEach((k, i) => {
+      const m = S.k[i];
+      if (k.hopT > 0 && !(m.hop > 0)) { Sfx.play('parkkartsHop'); if (k.drift) Sfx.play('parkkartsDrift'); }
+      m.hop = k.hopT;
+      if (k.spark && k.spark !== m.spark) Sfx.play('parkkartsSparks', k.spark);
+      m.spark = k.spark;
+      if (k.boostedAt && k.boostedAt !== m.boost) { m.boost = k.boostedAt; Sfx.play('parkkartsBoost', k.boost); }
+      if (k.padHit && k.padHit !== m.pad) { m.pad = k.padHit; Sfx.play('parkkartsPad'); }
+      if (k.wallHit && k.wallHit !== m.wall) {
+        m.wall = k.wallHit;
+        const ft = PW.falseTurn;
+        if (ft && k.on < 0 && k.s > ft.s0 && k.s < ft.s1 && Math.sign(k.lat) === ft.side) Sfx.play('parkkartsBoing');
+        else if ((k.wallHard || 0) > 0.3) Sfx.play('parkkartsTyres');
+      }
+      // into the barrel, through the ford
+      const inB = k.on < 0 && k.s > PW.FUN.barrel0 - 2 && k.s < PW.FUN.barrel0;
+      if (inB && !m.inB) Sfx.play('parkkartsBarrel'); m.inB = inB;
+      const inF = k.on >= 0 && TR.branches[k.on].kind === 'ford' && PW.fordAt != null && Math.abs(k.bs - PW.fordAt) < 4;
+      if (inF && !m.inF) Sfx.play('parkkartsFord'); m.inF = inF;
+    });
+    if (st.fx) for (const e of st.fx) if (e.k === 'slip' && e.t > (S.slip || 0)) { S.slip = e.t; Sfx.play('parkkartsSlip'); }
+    // engines ticking over on the grid
+    if (st.phase === 'grid') { S.eng -= dt; if (S.eng <= 0) { S.eng = 0.32; Sfx.play('parkkartsEngine'); } }
+    // the Comet thunders over (when it passes near the camera), the skeleton pops
+    S.coaster -= dt; if (PW.comet && PW.comet.near < 20 && S.coaster <= 0) { S.coaster = 5; Sfx.play('parkkartsCoaster'); }
+    if (PW.coffin && PW.coffin.pop !== S.coffin) { S.coffin = PW.coffin.pop; if (S.coffin) Sfx.play('parkkartsBoo'); }
+  }
+
   /* ---------- every frame ---------- */
   function update(K, st, dt) {
     const sc = K.pk; if (!sc || !st || !st.karts) return;
@@ -268,6 +299,7 @@ const PARKKARTS_SCENE = (function () {
     });
     // the robots
     (st.robots || []).forEach((r, i) => { const rk = sc.robots[i]; if (!rk) return; KK3.poseRobot(rk, r, dt); rk.g.position.y += PW.Y(r.s); rk.blob.position.y = PW.Y(r.s) + 0.012; });
+    sounds(sc, st, dt);
     poseBoxes(sc, st, dt);
     items(sc, st, dt);
     events(sc, st);

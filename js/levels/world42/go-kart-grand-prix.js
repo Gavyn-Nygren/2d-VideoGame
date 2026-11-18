@@ -449,8 +449,8 @@ K3D.files.push('js/levels/world42/park-kit.js', 'js/levels/world42/parkkarts-out
   const X = Sfx.extra;
   X.parkkartsHop = function () { this.tone(260, 0.1, 'triangle', 0.03, 420); this.noise(0.08, { type: 'lowpass', f: 900, vol: 0.03, delay: 0.12 }); };
   X.parkkartsDrift = function () { this.noise(0.5, { type: 'bandpass', f: 1800, to: 1200, q: 3, vol: 0.025, a: 0.05 }); };
-  X.parkkartsSparks = function (lvl) { for (let k = 0; k < 3; k++) this.tone(lvl > 1 ? 2600 : 1900, 0.04, 'square', 0.008, lvl > 1 ? 3400 : 2400, k * 0.05); };
-  X.parkkartsBoost = function (lvl) { this.noise(0.6, { type: 'bandpass', f: 500, to: 2400, q: 0.8, vol: 0.06, a: 0.02 }); this.tone(lvl > 1 ? 220 : 180, 0.5, 'sawtooth', 0.02, lvl > 1 ? 520 : 400); };
+  X.parkkartsSparks = function (_, lvl) { for (let k = 0; k < 3; k++) this.tone(lvl > 1 ? 2600 : 1900, 0.04, 'square', 0.008, lvl > 1 ? 3400 : 2400, k * 0.05); };
+  X.parkkartsBoost = function (_, lvl) { this.noise(0.6, { type: 'bandpass', f: 500, to: 2400, q: 0.8, vol: 0.06, a: 0.02 }); this.tone(lvl > 1 ? 220 : 180, 0.5, 'sawtooth', 0.02, lvl > 1 ? 520 : 400); };
   X.parkkartsPad = function () { [880, 1175, 1568].forEach((f, k) => this.tone(f, 0.08, 'triangle', 0.02, null, k * 0.04)); this.noise(0.4, { type: 'bandpass', f: 800, to: 2400, q: 1, vol: 0.04 }); };
   X.parkkartsBump = function () { this.tone(140, 0.12, 'square', 0.05, 80); this.noise(0.12, { type: 'lowpass', f: 1200, vol: 0.05 }); this.tone(600, 0.08, 'triangle', 0.015, 420, 0.03); };
   X.parkkartsTyres = function () { this.noise(0.25, { type: 'lowpass', f: 700, to: 300, vol: 0.06 }); this.tone(90, 0.18, 'sine', 0.05, 60); };
@@ -465,12 +465,15 @@ K3D.files.push('js/levels/world42/park-kit.js', 'js/levels/world42/parkkarts-out
   X.parkkartsRing = function () { this.tone(220, 0.5, 'sine', 0.04, 440); this.noise(0.5, { type: 'bandpass', f: 1200, q: 1, vol: 0.02, a: 0.1 }); };
   X.parkkartsMagnet = function () { this.tone(110, 0.8, 'sawtooth', 0.015, 140); this.tone(220, 0.8, 'sine', 0.02, 260); };
   X.parkkartsRocket = function () { this.noise(1.0, { type: 'bandpass', f: 1500, to: 4000, q: 1, vol: 0.05, a: 0.05 }); this.tone(500, 0.8, 'sawtooth', 0.01, 1600); };
-  X.parkkartsWarn = function (n) { this.tone(n > 1 ? 1320 : 990, 0.07, 'square', 0.02); };
+  X.parkkartsWarn = function (_, n) { this.tone(n > 1 ? 1320 : 990, 0.07, 'square', 0.02); };
   X.parkkartsFlag = function () { [523, 659, 784, 1047].forEach((f, k) => { this.tone(f, 0.22, 'triangle', 0.04, null, k * 0.1); this.tone(f * 1.5, 0.16, 'square', 0.008, null, k * 0.1); }); this.noise(0.8, { type: 'highpass', f: 3000, vol: 0.02, delay: 0.3 }); };
   X.parkkartsCrane = function () { for (let k = 0; k < 5; k++) this.tone(600 + (k % 2) * 200, 0.05, 'square', 0.012, null, k * 0.07); this.tone(90, 0.8, 'sawtooth', 0.015, 120, 0.3); };
   X.parkkartsCount = function () { this.tone(660, 0.18, 'square', 0.03); };
   X.parkkartsGo = function () { this.tone(1320, 0.4, 'square', 0.035); this.tone(660, 0.4, 'triangle', 0.03); this.noise(0.5, { type: 'bandpass', f: 400, to: 1600, q: 0.8, vol: 0.04 }); };
   X.parkkartsSplash = function () { this.noise(0.9, { type: 'lowpass', f: 2400, to: 300, vol: 0.1 }); this.tone(120, 0.4, 'sine', 0.05, 60); };
+  X.parkkartsBoing = function () { this.tone(180, 0.35, 'sine', 0.05, 520); this.tone(360, 0.3, 'triangle', 0.02, 900, 0.05); };
+  X.parkkartsFord = function () { this.noise(0.5, { type: 'bandpass', f: 1400, to: 600, q: 0.8, vol: 0.05 }); this.noise(0.3, { type: 'highpass', f: 3000, vol: 0.02, delay: 0.1 }); };
+  X.parkkartsBoo = function () { this.tone(140, 0.25, 'sine', 0.05, 520); for (let k = 0; k < 6; k++) this.noise(0.03, { type: 'bandpass', f: 2200 + k * 300, q: 6, vol: 0.04, delay: 0.15 + k * 0.05 }); this.tone(420, 0.5, 'triangle', 0.02, 300, 0.2); };
   X.parkkartsBarrel = function () { this.noise(1.2, { type: 'bandpass', f: 300, q: 2, vol: 0.04, a: 0.2 }); };
   X.parkkartsCoaster = function () { this.noise(2.0, { type: 'lowpass', f: 500, to: 200, vol: 0.08, a: 0.5 }); for (let k = 0; k < 10; k++) this.tone(110, 0.04, 'square', 0.02, 80, 0.2 + k * 0.14); };
   X.parkkartsCrowd = function () { this.noise(1.2, { type: 'bandpass', f: 1100, q: 0.7, vol: 0.04, a: 0.25 }); };
