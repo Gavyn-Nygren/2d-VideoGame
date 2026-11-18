@@ -221,7 +221,22 @@ const PARKCOASTER_SCENE = (function () {
   /* ---------- the park around the ride ---------- */
   function park(K, B) {
     const A = PR.art;
-    PARK.ground(K, { x: 120, z: 20, size: 1500 });
+    // the ground's layout: cobbled plazas and paths (the station, the promenade, the midway, round every ride, the
+    // garden walks and avenues between them), gravel under the track where it runs low; grass everywhere else
+    const walks = [[[-30, 60], [-30, -100]], [[60, 30], [180, 30]], [[-100, 0], [30, 0]], [[60, -60], [180, -60]], [[100, -30], [100, 60]], [[-60, 100], [60, 100]]];
+    const lay = { paths: [], discs: [], rects: [] };
+    lay.rects.push({ x: A.station.x - 4, z: A.station.z + 2, w: 44, d: 52 });                         // the station plaza
+    lay.rects.push({ x: 100, z: A.sea.z + 10, w: 560, d: 18 });                                         // the promenade
+    lay.rects.push({ x: (A.midway.x0 + A.midway.x1) / 2, z: A.midway.z, w: A.midway.x1 - A.midway.x0 + 16, d: 30 }); // the midway
+    for (const r of A.rides) lay.discs.push({ x: r.x, z: r.z, r: (r.r || 8) + 7 });
+    for (const [a, b] of walks) lay.paths.push({ pts: [a, b], w: 7 });
+    lay.paths.push({ pts: [[-6, 60], [-14, 30], [-30, 0], [-40, -40], [-46, -70], [-60, -110], [-60, A.sea.z + 10]], w: 8 });   // the west avenue
+    lay.paths.push({ pts: [[14, 64], [40, 40], [60, 30], [100, 0], [140, -30], [160, -80], [160, -103]], w: 8 });              // the east avenue
+    lay.paths.push({ pts: [[200, -76], [200, -30], [200, 14], [190, 40], [150, 60], [96, 64], [60, 90], [20, 100]], w: 6 });  // past the wheel to the lake
+    { const L0 = A.lake, pts = []; for (let i = 0; i <= 40; i++) { const a = i / 40 * Math.PI * 2; pts.push([L0.x + Math.cos(a) * (L0.rx + 6), L0.z + Math.sin(a) * (L0.rz + 6)]); } lay.paths.push({ pts, w: 6 }); }
+    { const F = A.funhouse; lay.rects.push({ x: F.x - F.w / 2 - 12, z: F.z - F.d / 2 + 20, w: 26, d: 44 }); }
+    { let run = []; for (let s = 0; s <= R.len; s += 3) { const q = R.at(s).p; if (q[1] < 6) run.push([q[0], q[2]]); else if (run.length) { if (run.length > 1) lay.paths.push({ pts: run, w: 5, kind: 'gravel' }); run = []; } } if (run.length > 1) lay.paths.push({ pts: run, w: 5, kind: 'gravel' }); }
+    PARK.ground(K, { x: 120, z: 20, size: 1500, layout: lay });
     PARK.sea(K, B, { z: A.sea.z, pier: A.pier });
     PARK.lake(K, B, A.lake);
     const rides = A.rides.map(r => PARK.ride(K, B, r.k, r));
@@ -239,7 +254,6 @@ const PARKCOASTER_SCENE = (function () {
     PARK.cart(K, B, 'popcorn', { x: 96, z: -118, yaw: 0.3 }); PARK.cart(K, B, 'floss', { x: 214, z: -116, yaw: -0.4 });
     PARK.balloons(K, 104, 0, -96); PARK.balloons(K, 180, 0, -116); PARK.balloons(K, 30, 0, 30); PARK.balloons(K, -8, 0, 64);
     // gardens and paths in the middle of the park: lamps along walks, hedge animals, trees, more stalls and booths
-    const walks = [[[-30, 60], [-30, -100]], [[60, 30], [180, 30]], [[-100, 0], [30, 0]], [[60, -60], [180, -60]], [[100, -30], [100, 60]], [[-60, 100], [60, 100]]];
     for (const [a, b] of walks) {
       const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.round(d / 11);
       for (let i = 0; i <= n; i++) { const t = i / n, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t, nx = -(b[1] - a[1]) / d, nz = (b[0] - a[0]) / d; PARK.lamp(K, B, { x: x + nx * 3, z: z + nz * 3, moths: i % 4 === 0 }); if (i % 3 === 1) PARK.bench(K, x - nx * 3, z - nz * 3, Math.atan2(nx, nz)); if (i % 2) PARK.lanterns(K, B, [x + nx * 3, 3.8, z + nz * 3], [x + nx * 3 + (b[0] - a[0]) / n, 3.8, z + nz * 3 + (b[1] - a[1]) / n], { sag: 0.7, n: 5, c: i }); }
