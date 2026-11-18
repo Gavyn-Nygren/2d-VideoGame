@@ -118,6 +118,10 @@ const PARKKARTS_WORLD = (function () {
     return true;
   }
   W.clear = clear;
+  // the set pieces placed so far (circles): nothing is set down on top of another
+  const taken = [];
+  const room = (x, z, r) => clear(x, z, r) && !taken.some(t => Math.hypot(t[0] - x, t[1] - z) < t[2] + r);
+  const take = (x, z, r) => { taken.push([x, z, r]); return true; };
 
   /* ---------- the road ---------- */
   function road(K, B) {
@@ -340,7 +344,7 @@ const PARKKARTS_WORLD = (function () {
       for (let i = 0; i < n; i++) {
         const t0 = i / n, t1 = (i + 1) / n, x0 = a[0] + (b[0] - a[0]) * t0, z0 = a[1] + (b[1] - a[1]) * t0, x1 = a[0] + (b[0] - a[0]) * t1, z1 = a[1] + (b[1] - a[1]) * t1;
         if (!clear((x0 + x1) / 2, (z0 + z1) / 2, 1.5)) { brk.push([(x0 + x1) / 2, (z0 + z1) / 2, Math.atan2(x1 - x0, z1 - z0)]); continue; }
-        const p = mesh(postG, postM, { inkW: 0.4 }); p.position.set(x0, 0, z0); K.add(p);
+        const p = mesh(postG, postM, { inkW: 0.4 }); p.position.set(x0, 0, z0); K.add(p); take((x0 + x1) / 2, (z0 + z1) / 2, 1.6);
         const panel = new T.Mesh(K3D.geo('pkw-panel', () => new T.PlaneGeometry(3, 2.2).translate(0, 1.15, 0)), linkM); panel.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2); panel.rotation.y = Math.atan2(x1 - x0, z1 - z0) + Math.PI / 2; panel.rotation.z = (rnd() - 0.5) * 0.04; K.add(panel);
         if (i % 4 === 0) B.add(x0, 2.45, z0, '#ffe0a0', { size: 0.07 });
       }
@@ -362,7 +366,7 @@ const PARKKARTS_WORLD = (function () {
     // hoardings round the outside of the bends (invented brands)
     const hd = [[78, -26, -Math.PI / 2, 'MOONPOP FIZZ', '#2f7fa8', '#ffd24a', 'THE MIDNIGHT DRINK'], [-2, -72, Math.PI / 2, 'COMET CRISPS', '#c83a4a', '#ffd24a', 'CRUNCH AT LIGHT SPEED'],
       [44, 14, Math.PI, 'STARLIGHT TYRES', '#1a1626', '#ff5a9a', 'GRIP ALL NIGHT'], [24, -64, 0, 'BUMPER BURGERS', '#3f8f6a', '#f2c14e', 'OPEN TILL 1'], [62, 16, Math.PI, 'ZOOM OIL', '#5d4bb0', '#7ae8ff', '']];
-    for (const h of hd) if (clear(h[0], h[1], 2)) hoarding(K, B, ...h);
+    for (const h of hd) if (room(h[0], h[1], 3.6) && take(h[0], h[1], 3.6)) hoarding(K, B, ...h);
   }
 
   /* ---------- part 1: the Midway ---------- */
@@ -384,9 +388,10 @@ const PARKKARTS_WORLD = (function () {
       const f = TR.at(s);
       for (const sx of [-1, 1]) {
         const d = f.hw + TR.VERGE + 3.6, x = f.x + f.rx * d * sx, z = f.z + f.rz * d * sx;
-        if (!clear(x, z, 2.6)) continue;
+        if (!room(x, z, 2.8)) continue;
+        take(x, z, 2.8);
         PARK.stall(K, B, { x, z, yaw: Math.atan2(-f.rx * sx, -f.rz * sx), c: c++ });
-        const lx = x - f.tx * 3.8, lz = z - f.tz * 3.8; if (clear(lx, lz, 0.5)) PARK.lamp(K, B, { x: lx, z: lz, moths: c % 3 === 0 });
+        const lx = x - f.tx * 3.8, lz = z - f.tz * 3.8; if (room(lx, lz, 0.6) && take(lx, lz, 0.6)) PARK.lamp(K, B, { x: lx, z: lz, moths: c % 3 === 0 });
       }
     }
     for (let s = s0 + 12; s < s1 - 6; s += 11) {
@@ -397,8 +402,8 @@ const PARKKARTS_WORLD = (function () {
       else PARK.lanterns(K, B, a, b, { sag: 1.1, c: Math.round(s) });
     }
     // popcorn carts, floss carts and balloons beside the road; tents behind the stalls
-    for (let s = s0 + 15; s < s1 - 6; s += 23) for (const sx of [-1, 1]) { const f = TR.at(s), d = f.hw + TR.VERGE + 2.3, x = f.x + f.rx * d * sx, z = f.z + f.rz * d * sx; if (clear(x, z, 1.2)) PARK.cart(K, B, sx < 0 ? 'popcorn' : 'floss', { x, z, yaw: Math.atan2(-f.rx * sx, -f.rz * sx) }); }
-    for (let s = s0 + 20; s < s1 - 10; s += 26) for (const sx of [-1, 1]) { const f = TR.at(s), d = f.hw + TR.VERGE + 14, x = f.x + f.rx * d * sx, z = f.z + f.rz * d * sx; if (clear(x, z, 6)) PARK.tent(K, B, { x, z, r: 4.5 + rnd() * 2, h: 5.5 + rnd() * 2, cols: [['#c83a4a', '#f4e8d0'], ['#3f8f6a', '#f4e8d0'], ['#5d4bb0', '#f2d06a'], ['#d860a8', '#f4e8d0']][Math.floor(rnd() * 4)], yaw: rnd() * 6 }); }
+    for (let s = s0 + 15; s < s1 - 6; s += 23) for (const sx of [-1, 1]) { const f = TR.at(s), d = f.hw + TR.VERGE + 2.3, x = f.x + f.rx * d * sx, z = f.z + f.rz * d * sx; if (room(x, z, 1.4) && take(x, z, 1.4)) PARK.cart(K, B, sx < 0 ? 'popcorn' : 'floss', { x, z, yaw: Math.atan2(-f.rx * sx, -f.rz * sx) }); }
+    for (let s = s0 + 20; s < s1 - 10; s += 26) for (const sx of [-1, 1]) { const f = TR.at(s), d = f.hw + TR.VERGE + 14, x = f.x + f.rx * d * sx, z = f.z + f.rz * d * sx; if (room(x, z, 7) && take(x, z, 7)) PARK.tent(K, B, { x, z, r: 4.5 + rnd() * 2, h: 5.5 + rnd() * 2, cols: [['#c83a4a', '#f4e8d0'], ['#3f8f6a', '#f4e8d0'], ['#5d4bb0', '#f2d06a'], ['#d860a8', '#f4e8d0']][Math.floor(rnd() * 4)], yaw: rnd() * 6 }); }
     W.ringToss = ringToss(K, B);
   }
   function ringToss(K, B) {
@@ -555,6 +560,7 @@ const PARKKARTS_WORLD = (function () {
     for (const r of W.rideAt) lay.discs.push({ x: r.x, z: r.z, r: (r.r || 8) + 7 });
     for (const [a, b] of [[[72, -136], [120, -158]], [[120, -158], [168, -140]], [[40, -118], [72, -136]], [[120, -158], [142, -196]]]) lay.paths.push({ pts: [a, b], w: 7 });
     PARK.ground(K, { x: 110, z: -120, size: 1500, layout: lay });
+    W.lay = lay;
     W.rides = W.rideAt.map(r => PARK.ride(K, B, r.k, r));
     // the lamps along the walks between the rides
     for (const [a, b] of [[[72, -136], [120, -158]], [[120, -158], [168, -140]], [[40, -118], [72, -136]], [[120, -158], [142, -196]]]) {
@@ -568,6 +574,15 @@ const PARKKARTS_WORLD = (function () {
   }
   // filling the gaps beside the road (Gavyn: never barren): lawns with trees, flower beds and benches, lamps with
   // lanterns, stalls, booths, carts, balloons, hedge animals, tents further out
+  // is a circle at (x, z) of radius r on any paving or gravel of the ground's layout? (gardens need grass)
+  function paved(x, z, r) {
+    const L = W.lay; if (!L) return false;
+    const segD = (a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2)); return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t); };
+    for (const p of L.paths) for (let i = 1; i < p.pts.length; i++) if (segD(p.pts[i - 1], p.pts[i]) < p.w / 2 + r) return true;
+    for (const d of L.discs) if (Math.hypot(x - d.x, z - d.z) < d.r + r) return true;
+    for (const q of L.rects) if (Math.abs(x - q.x) < q.w / 2 + r && Math.abs(z - q.z) < q.d / 2 + r) return true;
+    return false;
+  }
   function fill(K, B) {
     const cell = 3, occ = new Set(), key = (a, b) => a + ',' + b;
     const each = (x, z, r, f) => { for (let a = Math.floor((x - r) / cell); a <= Math.floor((x + r) / cell); a++) for (let b = Math.floor((z - r) / cell); b <= Math.floor((z + r) / cell); b++) if (f(key(a, b))) return true; return false; };
@@ -590,14 +605,14 @@ const PARKKARTS_WORLD = (function () {
     const tot = kinds.reduce((a, k) => a + k[1], 0);
     const pick = () => { let x = rnd() * tot; for (const [k, w] of kinds) { x -= w; if (x < 0) return k; } return 'trees'; };
     const place = (k, x, z, yaw) => {
-      if (k === 'trees') { if (!free(x, z, 3.5)) return false; FL.lawn(x, z, 3.5 + rnd() * 2.5, 2.8 + rnd() * 2, rnd() * 3); const n = 1 + Math.floor(rnd() * 3); for (let i = 0; i < n; i++) PARK.tree(K, x + (rnd() - 0.5) * 4, z + (rnd() - 0.5) * 3, 1.0 + rnd() * 0.7, B); mark(x, z, 4); }
-      else if (k === 'bed') { if (!free(x, z, 2.4)) return false; FL.bed(x, z, 1.2 + rnd() * 1.0); PARK.bench(K, x + Math.sin(yaw) * 3.2, z + Math.cos(yaw) * 3.2, yaw + Math.PI); mark(x, z, 3.5); }
+      if (k === 'trees') { if (!free(x, z, 3.5) || paved(x, z, 4.5)) return false; FL.lawn(x, z, 3.5 + rnd() * 2.5, 2.8 + rnd() * 2, rnd() * 3); const n = 1 + Math.floor(rnd() * 3); for (let i = 0; i < n; i++) PARK.tree(K, x + (rnd() - 0.5) * 4, z + (rnd() - 0.5) * 3, 1.0 + rnd() * 0.7, B); mark(x, z, 4); }
+      else if (k === 'bed') { if (!free(x, z, 2.4) || paved(x, z, 2)) return false; FL.bed(x, z, 1.2 + rnd() * 1.0); PARK.bench(K, x + Math.sin(yaw) * 3.2, z + Math.cos(yaw) * 3.2, yaw + Math.PI); mark(x, z, 3.5); }
       else if (k === 'lamp') { if (!free(x, z, 1.5)) return false; PARK.lamp(K, B, { x, z, moths: rnd() < 0.3 }); PARK.bin(K, x + 1, z + 0.6); const near = lampAt.find(l => Math.hypot(l[0] - x, l[1] - z) < 14 && Math.hypot(l[0] - x, l[1] - z) > 5); if (near) PARK.lanterns(K, B, [x, 3.9, z], [near[0], 3.9, near[1]], { sag: 0.8, c: Math.floor(x) }); lampAt.push([x, z]); mark(x, z, 1.8); }
       else if (k === 'stall') { if (!free(x, z, 4.5)) return false; PARK.stall(K, B, { x, z, yaw, c: Math.floor(rnd() * 9) }); mark(x, z, 4.5); }
       else if (k === 'booth') { if (!free(x, z, 2.5)) return false; PARK.booth(K, B, { x, z, yaw }); mark(x, z, 2.5); }
-      else if (k === 'hedge') { if (!free(x, z, 3)) return false; PARK.hedgeAnimal(K, x, z, ['rabbit', 'elephant', 'other'][Math.floor(rnd() * 3)], yaw); FL.bed(x + 2.6, z + 1.2, 1.0); mark(x, z, 3.5); }
+      else if (k === 'hedge') { if (!free(x, z, 3) || paved(x, z, 3)) return false; PARK.hedgeAnimal(K, x, z, ['rabbit', 'elephant', 'other'][Math.floor(rnd() * 3)], yaw); FL.bed(x + 2.6, z + 1.2, 1.0); mark(x, z, 3.5); }
       else if (k === 'cart') { if (!free(x, z, 2)) return false; PARK.cart(K, B, rnd() < 0.5 ? 'popcorn' : 'floss', { x, z, yaw }); mark(x, z, 2.2); }
-      else if (k === 'balloons') { if (!free(x, z, 1.8)) return false; PARK.balloons(K, x, 0, z, 4 + Math.floor(rnd() * 4)); mark(x, z, 2); }
+      else if (k === 'balloons') { if (!free(x, z, 1.8) || paved(x, z, 0.5)) return false; PARK.balloons(K, x, 0, z, 4 + Math.floor(rnd() * 4)); mark(x, z, 2); }
       else if (k === 'bench') { if (!free(x, z, 2)) return false; PARK.bench(K, x, z, yaw); PARK.lamp(K, B, { x: x + 1.8, z: z + 0.4 }); mark(x, z, 2.4); }
       else if (k === 'games') { if (!free(x, z, 7)) return false; PARK.tent(K, B, { x, z, r: 4 + rnd() * 2.5, h: 5 + rnd() * 2, cols: [['#c83a4a', '#f4e8d0'], ['#3f8f6a', '#f4e8d0'], ['#5d4bb0', '#f2d06a'], ['#d860a8', '#f4e8d0']][Math.floor(rnd() * 4)], yaw }); mark(x, z, 9); }
       return true;
@@ -616,8 +631,10 @@ const PARKKARTS_WORLD = (function () {
     }
     // then the rest of the park, wherever it is still empty (a jittered grid)
     for (let x = -136; x < 318; x += 11) for (let z = SEA.z + 14; z < 110; z += 11) {
-      const px = x + (rnd() - 0.5) * 6, pz = z + (rnd() - 0.5) * 6, yaw = rnd() * 6.28;
-      { const n = TR.near(px, pz, null); if (TR.at(n.s).part === 5 && Math.abs(n.lat) < 24) continue; }
+      const px = x + (rnd() - 0.5) * 6, pz = z + (rnd() - 0.5) * 6;
+      const n = TR.near(px, pz, null); if (TR.at(n.s).part === 5 && Math.abs(n.lat) < 24) continue;
+      // face the nearest bit of road (stalls, booths and benches look toward where people walk)
+      const rp = TR.pos(n.s, 0), yaw = Math.atan2(rp[0] - px, rp[1] - pz);
       for (let t = 0; t < 3 && !place(t < 2 ? pick() : 'trees', px, pz, yaw); t++);
     }
     FL.done();
