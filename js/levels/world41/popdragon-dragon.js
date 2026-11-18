@@ -93,22 +93,31 @@ const POPDRAGON_DRAGON = (function () {
     const edgeM = K3.mat('edge|' + P.EDGE, () => K3.toon(P.EDGE));
     const card = (shape, mat, depth = 0.03, ink = INK, inkW = 0.8) => P.card(shape, { mat, depth, ink, inkW });
 
-    /* ----- the body: 12 pleated segments, each with a gold crest card and white cut edge on its fold ----- */
+    // a family of identical parts drawn in one go (an InstancedMesh with its own outline); the pose sets each one's matrix
+    const family = (proto, n, ink, inkW, parent = root) => {
+      const m = new T.InstancedMesh(proto.geometry, proto.material, n);
+      m.castShadow = proto.castShadow; m.receiveShadow = proto.receiveShadow; m.frustumCulled = false;
+      m.instanceMatrix.setUsage(T.DynamicDrawUsage);
+      if (ink) K3.ink(m, ink, inkW);
+      parent.add(m); return m;
+    };
+    /* ----- the body: 12 pleated segments, each with a gold crest card and white cut edge on its fold -----
+       (one family each for the drums, the white rims and the red and gold crests: a handful of draws for the whole body) */
     const segs = [];
+    const bodyF = family(K3.mesh(K3.geo('pdSegU', () => segGeo(T, 1, 0.94, SEGL)), bodyM, { ink: false }), SEG, '#1f4a2c', 1.1);
+    const rimF = family(K3.mesh(K3.geo('pdRimU', () => new T.TorusGeometry(1, 0.075, 4, 16).scale(1, 0.92, 1)), edgeM, { ink: false, cast: false }), SEG);
+    const crestShape = P.shapeFrom([[-0.16, 0], [0.16, 0], [0.05, 0.34 * 0.55], [0.0, 0.34], [-0.07, 0.34 * 0.5]]);
+    const crestF = [redM, goldM].map(m => family(card(crestShape, m, 0.025, false), SEG / 2, '#5a3d14', 0.7));
     for (let i = 0; i < SEG; i++) {
-      const k = i / (SEG - 1), r0 = 0.44 - k * 0.24, r1 = 0.44 - Math.min(1, (i + 1) / (SEG - 1)) * 0.24;
-      const g = new T.Group();
-      const m = K3.mesh(K3.geo('pdSeg' + i, () => segGeo(T, r0, Math.max(0.17, r1), SEGL)), bodyM, { ink: '#1f4a2c', inkW: 1.1 });
-      g.add(m);
+      const k = i / (SEG - 1), r0 = 0.44 - k * 0.24, r1 = Math.max(0.17, 0.44 - Math.min(1, (i + 1) / (SEG - 1)) * 0.24);
+      const g = new T.Group(); root.add(g);   // (an empty mover: the pose places it, the families follow it)
+      const rr = (r0 + r1) / 2, ch = 0.34 - k * 0.18;
+      const lBody = new T.Matrix4().makeScale(r0, r0, 1);
       // the white cut edge on the fold ridge (a thin paper band)
-      const rr = (r0 + Math.max(0.17, r1)) / 2;
-      const rim = K3.mesh(K3.geo('pdRim' + i, () => new T.TorusGeometry(rr * 0.96, 0.022, 4, 16).scale(1, 0.92, 1)), edgeM, { ink: false, cast: false });
-      rim.position.z = -SEGL * 0.5; g.add(rim);
-      // the crest: a gold flame-shaped card standing on the back
-      const ch = 0.34 - k * 0.18;
-      const crest = card(P.shapeFrom([[-0.16, 0], [0.16, 0], [0.05, ch * 0.55], [0.0, ch], [-0.07, ch * 0.5]]), i % 2 ? goldM : redM, 0.025, '#5a3d14', 0.7);
-      crest.rotation.y = Math.PI / 2; crest.position.set(0, rr * 0.9, -SEGL * 0.5); crest.rotation.x = -0.35; g.add(crest);
-      root.add(g); segs.push({ g, r: rr });
+      const lRim = new T.Matrix4().compose(new T.Vector3(0, 0, -SEGL * 0.5), new T.Quaternion(), new T.Vector3(rr * 0.96, rr * 0.96, rr * 0.96));
+      // the crest: a flame-shaped card standing on the back (red and gold in turn)
+      const lCrest = new T.Matrix4().compose(new T.Vector3(0, rr * 0.9, -SEGL * 0.5), new T.Quaternion().setFromEuler(new T.Euler(-0.35, Math.PI / 2, 0)), new T.Vector3(1, ch / 0.34, 1));
+      segs.push({ g, r: rr, lBody, lRim, lCrest, crest: crestF[i % 2], ci: i >> 1 });
     }
     /* ----- the head ----- */
     const head = new T.Group(); root.add(head);
@@ -166,7 +175,7 @@ const POPDRAGON_DRAGON = (function () {
     for (const sx of [-1, 1]) for (const k of [0, 1]) {
       const pts = []; for (let i = 0; i <= 16; i++) { const t = i / 16; pts.push(new T.Vector3(sx * (0.1 + t * 0.9), -0.05 - t * 0.25 + Math.sin(t * 9 + k) * 0.06 * t, -t * 0.5 + Math.cos(t * 9 + k) * 0.06 * t)); }
       const wsk = K3.mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 24, 0.028, 5), k ? goldM : creamM, { ink: '#5a3d14', inkW: 0.6 });
-      const piv = new T.Group(); piv.position.set(sx * 0.36, -0.06 - k * 0.08, 1.2); piv.add(wsk); skull.add(piv); whiskers.push({ piv, sx, k });
+      const piv = new T.Group(); piv.userData.live = true; piv.position.set(sx * 0.36, -0.06 - k * 0.08, 1.2); piv.add(wsk); skull.add(piv); whiskers.push({ piv, sx, k });
     }
     // the lower jaw, hinged under the brow: a gold-lined card box with a zigzag row of white paper teeth
     const jawPiv = new T.Group(); jawPiv.position.set(0, -0.3, 0.36); head.add(jawPiv);
@@ -179,9 +188,9 @@ const POPDRAGON_DRAGON = (function () {
     { const t = card(teethShape, edgeM, 0.02, '#8a7550', 0.6); t.rotation.z = Math.PI; t.position.set(0, -0.34, 1.3); skull.add(t); }
     // the cheeks: gold paper puffs that fill when the fire is ready
     const cheeks = [];
-    for (const sx of [-1, 1]) { const ck = K3.mesh(K3.geo('pdCheek', () => new T.SphereGeometry(0.17, 16, 10)), goldM, { ink: '#5a3d14', inkW: 0.8 }); ck.position.set(sx * 0.42, -0.26, 0.8); skull.add(ck); cheeks.push(ck); }
+    for (const sx of [-1, 1]) { const ck = K3.mesh(K3.geo('pdCheek', () => new T.SphereGeometry(0.17, 16, 10)), goldM, { ink: '#5a3d14', inkW: 0.8 }); ck.position.set(sx * 0.42, -0.26, 0.8); ck.userData.live = true; skull.add(ck); cheeks.push(ck); }
     // the Bookworm, riding in the dragon's mouth like a pilot: a green worm with round glasses and a little paper cap
-    const worm = new T.Group(); worm.position.set(0, 0.02, 0.62); jawPiv.add(worm);
+    const worm = new T.Group(); worm.userData.live = true; worm.position.set(0, 0.02, 0.62); jawPiv.add(worm);
     const wormM = K3.mat('pdWormM', () => K3.toon('#9ccf5a'));
     [[0, 0, 0, 0.12], [0, 0.08, 0.12, 0.13], [0, 0.2, 0.2, 0.14]].forEach(([x, y, z, r]) => { const b = K3.mesh(K3.geo('pdWormB' + r, () => new T.SphereGeometry(r, 16, 12)), wormM, { ink: '#3a5a18', inkW: 0.8 }); b.position.set(x, y, z); worm.add(b); });
     for (const sx of [-1, 1]) { const gl = K3.mesh(K3.geo('pdWormGl', () => new T.TorusGeometry(0.05, 0.012, 6, 14)), K3.mat('pdBlack', () => K3.toon('#2b2130')), { ink: false }); gl.position.set(sx * 0.055, 0.24, 0.33); worm.add(gl); const ey = new T.Mesh(K3.geo('pdWormEy', () => new T.SphereGeometry(0.02, 8, 6)), K3.mat('pdBlack', () => K3.toon('#2b2130'))); ey.position.set(sx * 0.055, 0.24, 0.335); worm.add(ey); }
@@ -202,33 +211,31 @@ const POPDRAGON_DRAGON = (function () {
       const root2 = new T.Group(); root.add(root2);        // placed on segment 3 each frame
       const flap = new T.Group(); root2.add(flap);         // the beat (about the body's long axis)
       const fan = new T.Group(); flap.add(fan); fan.position.x = sx * 0.12;
-      const pleats = [];
-      for (let i = 0; i < PLEATS; i++) {
-        const half = Math.PI / PLEATS * 0.5;
-        const sh = new T.Shape(); sh.moveTo(0, 0); sh.lineTo(Math.cos(-half) * WR, Math.sin(-half) * WR); sh.quadraticCurveTo(WR * 1.06, 0, Math.cos(half) * WR, Math.sin(half) * WR); sh.closePath();
-        const pl = card(sh, wingM, 0.012, '#2f5a30', 0.6);
-        const pv = new T.Group(); pv.add(pl); fan.add(pv);
-        pl.rotation.x = (i % 2 ? 1 : -1) * 0.32; // the zigzag of the pleats
-        pleats.push(pv);
-      }
+      // the pleats: one family per wing, each pleat turned about the fastener and tilted for the zigzag
+      const half = Math.PI / PLEATS * 0.5;
+      const sh = new T.Shape(); sh.moveTo(0, 0); sh.lineTo(Math.cos(-half) * WR, Math.sin(-half) * WR); sh.quadraticCurveTo(WR * 1.06, 0, Math.cos(half) * WR, Math.sin(half) * WR); sh.closePath();
+      const pleatF = family(card(sh, wingM, 0.012, false), PLEATS, '#2f5a30', 0.6, fan);
+      const pleats = Array.from({ length: PLEATS }, (_, i) => new T.Matrix4().makeRotationX((i % 2 ? 1 : -1) * 0.32));
       const fas = P.fastener(0.1); fas.rotation.y = sx * Math.PI / 2; fas.position.x = sx * 0.13; flap.add(fas);
-      wings.push({ root: root2, flap, fan, pleats, sx });
+      wings.push({ root: root2, flap, fan, pleats, pleatF, sx });
     }
     /* ----- legs: four small folded zigzag legs tucked up ----- */
-    const legs = [];
-    for (const [segI, sx] of [[2, -1], [2, 1], [8, -1], [8, 1]]) {
-      const lg = new T.Group(); root.add(lg);
-      const pts = [[0, 0], [0.12, -0.18], [0.0, -0.3], [0.16, -0.44]];
-      for (let i = 0; i < 3; i++) {
-        const a = pts[i], b = pts[i + 1], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-        const bar = card(P.shapeFrom([[-0.045, 0], [0.045, 0], [0.045, len], [-0.045, len]]), i % 2 ? goldM : greenM, 0.04, '#1f4a2c', 0.7);
-        bar.position.set(0, a[1], a[0]); bar.rotation.set(Math.atan2(b[0] - a[0], -(b[1] - a[1])) + Math.PI, Math.PI / 2, 0); lg.add(bar);
-      }
-      // a little three-toed paper foot
-      const ft = card(P.shapeFrom([[-0.09, 0], [0.09, 0], [0.12, 0.1], [0.04, 0.06], [0, 0.12], [-0.04, 0.06], [-0.12, 0.1]]), goldM, 0.03, '#5a3d14', 0.7);
-      ft.rotation.x = -Math.PI / 2 + 0.6; ft.position.set(0, -0.44, 0.16); lg.add(ft);
-      legs.push({ g: lg, seg: segI, sx });
+    // (each part of a leg is a family of four, one per leg: the pose moves an empty mover per leg and the parts follow)
+    const legs = [], legParts = [];
+    const lpts = [[0, 0], [0.12, -0.18], [0.0, -0.3], [0.16, -0.44]];
+    for (let i = 0; i < 3; i++) {
+      const a = lpts[i], b = lpts[i + 1], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const f = family(card(P.shapeFrom([[-0.045, 0], [0.045, 0], [0.045, len], [-0.045, len]]), i % 2 ? goldM : greenM, 0.04, false), 4, '#1f4a2c', 0.7);
+      const o = new T.Object3D(); o.position.set(0, a[1], a[0]); o.rotation.set(Math.atan2(b[0] - a[0], -(b[1] - a[1])) + Math.PI, Math.PI / 2, 0); o.updateMatrix();
+      legParts.push({ f, l: o.matrix.clone() });
     }
+    {
+      // a little three-toed paper foot
+      const f = family(card(P.shapeFrom([[-0.09, 0], [0.09, 0], [0.12, 0.1], [0.04, 0.06], [0, 0.12], [-0.04, 0.06], [-0.12, 0.1]]), goldM, 0.03, false), 4, '#5a3d14', 0.7);
+      const o = new T.Object3D(); o.rotation.x = -Math.PI / 2 + 0.6; o.position.set(0, -0.44, 0.16); o.updateMatrix();
+      legParts.push({ f, l: o.matrix.clone() });
+    }
+    for (const [segI, sx] of [[2, -1], [2, 1], [8, -1], [8, 1]]) { const lg = new T.Group(); root.add(lg); legs.push({ g: lg, seg: segI, sx }); }
     /* ----- the tail fan ----- */
     const tail = new T.Group(); root.add(tail);
     const tailFan = new T.Group(); tail.add(tailFan);
@@ -260,7 +267,9 @@ const POPDRAGON_DRAGON = (function () {
     // reins: red silk ribbons from the head to Pip's hands, and from Pip's saddle to Bo's
     const reinM = K3.mat('pdReinM', () => K3.toon(RED, { side: T.DoubleSide }));
     const reins = [0, 1].map(() => { const m = new T.Mesh(new T.CylinderGeometry(0.018, 0.018, 1, 6, 1, true).translate(0, 0.5, 0), reinM); root.add(m); return m; });
-    root.userData = { segs, head, skull, jawPiv, cheeks, eyes, whiskers, fringe, wings, legs, tail, tailFan, saddles, heroes, reins, worm, trail: [], t: 0 };
+    // the parts that only move as a whole are merged by material (the head, the jaw, the ruff, the tail fan, the saddles)
+    for (const g of [skull, jawPiv, fringe, tailFan, ...saddles.map(sd => sd.g)]) K3.bake(g);
+    root.userData = { legParts, segs, bodyF, rimF, crestF, head, skull, jawPiv, cheeks, eyes, whiskers, fringe, wings, legs, tail, tailFan, saddles, heroes, reins, worm, trail: [], t: 0 };
     return root;
   };
 
@@ -268,7 +277,7 @@ const POPDRAGON_DRAGON = (function () {
 
   /* ---------- posing, every drawn frame ---------- */
   D.pose = function (Dg, s, dt) {
-    const T = K3D.T, u = Dg.userData;
+    const T = K3D.T, u = Dg.userData, M4 = u.m4 || (u.m4 = new T.Matrix4());
     const fwd = new T.Vector3(...s.fwd).normalize(), pos = new T.Vector3(...s.pos);
     // the trail of head positions, newest first, one point per 0.05 units travelled
     const tr = u.trail;
@@ -327,8 +336,13 @@ const POPDRAGON_DRAGON = (function () {
       // a concertina breathes: the folds open a little in a climb and squeeze in a dive
       sg.scale.set(SC * (1 - ball * 0.5), SC * (1 - ball * 0.5), SC * (1 + (s.climb || 0) * 0.05));
       segPos.push({ a, dir, q: sg.quaternion.clone() });
+      sg.updateMatrix();
+      const sgi = u.segs[i];
+      u.bodyF.setMatrixAt(i, M4.multiplyMatrices(sg.matrix, sgi.lBody)); u.rimF.setMatrixAt(i, M4.multiplyMatrices(sg.matrix, sgi.lRim));
+      sgi.crest.setMatrixAt(sgi.ci, M4.multiplyMatrices(sg.matrix, sgi.lCrest));
       d += SEGL * SC * (1 + (s.climb || 0) * 0.04);
     }
+    u.bodyF.instanceMatrix.needsUpdate = true; u.rimF.instanceMatrix.needsUpdate = true; for (const f of u.crestF) f.instanceMatrix.needsUpdate = true;
     // the tail fan at the end, swishing
     const last = segPos[SEG - 1];
     u.tail.position.copy(last.a).addScaledVector(last.dir, -SEGL * SC); u.tail.scale.setScalar(SC);
@@ -346,20 +360,25 @@ const POPDRAGON_DRAGON = (function () {
       // flap about the body's long axis (z): + lifts the right wing
       w.flap.rotation.set(0, 0, w.sx * (Math.sin(u.beat) * beatA + 0.22 - (s.tuck || 0) * 0.3));
       const spread = 1.6 * open + 0.16, sweep = 0.3 + 0.75 * (1 - open);
-      w.pleats.forEach((pv, i) => {
+      w.pleats.forEach((lm, i) => {
         const a = (i / (w.pleats.length - 1) - 0.5) * spread + sweep;
-        pv.rotation.set(0, 0, w.sx > 0 ? a : Math.PI - a);
+        w.pleatF.setMatrixAt(i, M4.makeRotationZ(w.sx > 0 ? a : Math.PI - a).multiply(lm));
       });
+      w.pleatF.instanceMatrix.needsUpdate = true;
       w.fan.rotation.set(-Math.PI / 2, 0, 0);
       w.fan.scale.setScalar(1 - ball * 0.8);
     }
     // legs tucked up under their segments
+    let li = 0;
     for (const lg of u.legs) {
       const sp = segPos[lg.seg];
       lg.g.position.copy(sp.a).add(new T.Vector3(lg.sx * u.segs[lg.seg].r * 0.7 * SC, -u.segs[lg.seg].r * 0.5 * SC, 0).applyQuaternion(sp.q)); lg.g.scale.setScalar(SC);
       lg.g.quaternion.copy(sp.q).multiply(new T.Quaternion().setFromEuler(new T.Euler(0.9 + Math.sin(t * 4 + lg.seg) * 0.12 - (s.flat || 0) * 0.9, 0, lg.sx * 0.3)));
-      lg.g.visible = ball < 0.6;
+      lg.g.updateMatrix();
+      for (const lp of u.legParts) lp.f.setMatrixAt(li, M4.multiplyMatrices(lg.g.matrix, lp.l));
+      li++;
     }
+    for (const lp of u.legParts) { lp.f.count = ball < 0.6 ? 4 : 0; lp.f.instanceMatrix.needsUpdate = true; }
     // saddles and riders
     const hp = [];
     u.saddles.forEach((sd, k) => {

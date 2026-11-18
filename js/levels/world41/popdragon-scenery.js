@@ -401,7 +401,7 @@ const POPDRAGON_ART = (function () {
         page.visible = true;
       } else page.visible = false;
     }
-    return { tick, bakeInfo };
+    return { tick, bakeInfo, still, live };
   };
   return A;
 })();
