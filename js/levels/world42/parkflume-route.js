@@ -22,7 +22,8 @@
                                        width at the middle (a lens, pointed at both ends), x its middle
      obs      [{ id, kind, s, x, r, soak, move }]   things in the water: `soak` ones Soak the log, the rest only bump it.
                                        move(t) -> { s, x, on } for a thing that moves (`on` false: it is out of the
-                                       water now, e.g. a water wheel's paddle up)
+                                       water now, e.g. a water wheel's paddle up); cyc [per, on, ph] for
+                                       a timed one (on for `on` s of every `per`, from `ph`: the art reads it)
      signs    [{ s, side, kind }]      boards on the bank ('drag' a paddle held in the water, 'brace' the hand signs)
      says     [{ s, text }]            the park loudspeaker's lines
      parts    [{ s, name }]            the four stretches (for the stats line; never shown as cards)
@@ -166,7 +167,7 @@ const PARKFLUME_ROUTE = (function () {
   hippo(A.hippos + 4, -3.0, 0); hippo(A.hippos + 12, 2.6, 2.2); hippo(A.hippos + 20, -1.4, 4.1);
   line(A.jungle + 4, A.hippos + 2, 0, 0.4, 3); line(A.hippos + 6, A.hippos + 22, 1.4, -3.4, 5);
   // the elephant on the right bank sprays a jet right across (1.3 s in every 4.5): time it, or hold on
-  L.obs.push({ id: 'jet', kind: 'jet', s: A.elephant + 2, x: 0, r: 0.6, line: true, braceOk: true, soak: true, per: 4.5,
+  L.obs.push({ id: 'jet', kind: 'jet', s: A.elephant + 2, x: 0, r: 0.6, line: true, braceOk: true, soak: true, per: 4.5, cyc: [4.5, 1.3, 0.5],
     move: t => ({ s: A.elephant + 2, x: 0, on: cyc(t, 4.5, 1.3, 0.5) }) });
   line(A.elephant - 6, A.elephant + 8, -2.0, -2.0, 5);
   // crocodiles drifting like logs, then snapping sideways toward the middle (their eyes light 0.8 s first)
@@ -186,7 +187,7 @@ const PARKFLUME_ROUTE = (function () {
   L.whirls.push({ s: A.whirl, x: 0, r: 5.2, need: 3 });
   for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; duck(A.whirl + Math.sin(a) * 3.6, Math.cos(a) * 3.6); }
   // the snake arched over the channel: its tail flicks down in the middle (1.5 s in every 4): drag to wait
-  L.obs.push({ id: 'tail', kind: 'tail', s: A.snake + 2, x: 0.4, r: 1.5, soak: true, move: t => ({ s: A.snake + 2, x: 0.4, on: cyc(t, 4, 1.5, 0.3) }) });
+  L.obs.push({ id: 'tail', kind: 'tail', s: A.snake + 2, x: 0.4, r: 1.5, soak: true, cyc: [4, 1.5, 0.3], move: t => ({ s: A.snake + 2, x: 0.4, on: cyc(t, 4, 1.5, 0.3) }) });
   line(A.snake - 4, A.snake + 6, -2.3, -2.3, 3);
   // the fork: left behind a waterfall curtain (hold on through it: ducks and a hidden temple), right through rapids
   const ISL2 = { s0: A.fork2a + 2, s1: A.fork2b - 2, hw: 4.4, x: 0 };
@@ -205,10 +206,10 @@ const PARKFLUME_ROUTE = (function () {
   { const xs = [-4.5, 3.8, -1.2, 5.2, -5.6, 1.8, -3.0, 4.2]; xs.forEach((x, i) => { const s0 = A.mill - 4 + i * 4.2, ph = i * 1.3; L.obs.push({ id: 'flog' + i, kind: 'floatlog', s: s0, x, r: 1.1, soak: false, roller: i % 3 === 0, move: t => ({ s: s0 + Math.sin(t * 0.25 + ph) * 0.8, x: x + Math.sin(t * 0.4 + ph) * 0.9, on: true }) }); }); }
   line(A.splash1 + 5, A.millDoor - 4, 0, -0.8, 6);
   // saw blades rising through slots in the floor (up 1.4 s in every 3; a spinning lamp warns)
-  for (const [ds, x, ph] of [[3, -1.8, 0], [9, 1.8, 1.0], [15, -0.6, 2.0], [20, 2.1, 0.5]]) { const ss = A.saws + ds; L.obs.push({ id: 'saw' + L.obs.length, kind: 'saw', s: ss, x, r: 1.3, soak: true, ph, move: t => ({ s: ss, x, on: cyc(t, 3, 1.4, ph) }) }); }
+  for (const [ds, x, ph] of [[3, -1.8, 0], [9, 1.8, 1.0], [15, -0.6, 2.0], [20, 2.1, 0.5]]) { const ss = A.saws + ds; L.obs.push({ id: 'saw' + L.obs.length, kind: 'saw', s: ss, x, r: 1.3, soak: true, ph, cyc: [3, 1.4, ph], move: t => ({ s: ss, x, on: cyc(t, 3, 1.4, ph) }) }); }
   line(A.saws + 1, A.saws + 22, 0.3, -0.3, 6);
   // chutes overhead tip logs in beside the boat: the wave (0.8 s in every 5) needs holding on (a shadow shows 1.5 s first)
-  for (const [ds, ph] of [[3, 0], [8, 2.5]]) { const ss = A.chutes + ds; L.obs.push({ id: 'wave' + L.obs.length, kind: 'wave', s: ss, x: 0, r: 0.8, line: true, braceOk: true, soak: true, ph, move: t => ({ s: ss, x: 0, on: cyc(t, 5, 0.8, ph) }) }); }
+  for (const [ds, ph] of [[3, 0], [8, 2.5]]) { const ss = A.chutes + ds; L.obs.push({ id: 'wave' + L.obs.length, kind: 'wave', s: ss, x: 0, r: 0.8, line: true, braceOk: true, soak: true, ph, cyc: [5, 0.8, ph], move: t => ({ s: ss, x: 0, on: cyc(t, 5, 0.8, ph) }) }); }
   // the band saw splits the channel: either side is fine, the right has the ducks
   const ISL3 = { s0: A.band0 + 1, s1: A.band1 - 1, hw: 3.6, x: 0, saw: true };
   L.islands.push(ISL3);
@@ -216,15 +217,15 @@ const PARKFLUME_ROUTE = (function () {
   // the log grabber crane swinging a log across
   L.obs.push({ id: 'crane', kind: 'crane', s: A.band1 + 4, x: 0, r: 1.2, soak: true, move: t => ({ s: A.band1 + 4, x: Math.sin(t * 0.9) * 3.4, on: true }) });
   // the steam room: jets across on a count, then the big paddle wheel's blades coming down (hold on, or time them)
-  for (const [ds, ph] of [[2, 0], [6, 1.8]]) { const ss = A.steam + ds; L.obs.push({ id: 'steam' + L.obs.length, kind: 'steam', s: ss, x: 0, r: 0.7, line: true, braceOk: true, soak: true, ph, move: t => ({ s: ss, x: 0, on: cyc(t, 3.6, 1.0, ph) }) }); }
-  L.obs.push({ id: 'pwheel', kind: 'pwheel', s: A.wheel2 + 2, x: 0, r: 0.9, line: true, braceOk: true, soak: true, move: t => ({ s: A.wheel2 + 2, x: 0, on: cyc(t, 4, 1.4, 0.7) }) });
+  for (const [ds, ph] of [[2, 0], [6, 1.8]]) { const ss = A.steam + ds; L.obs.push({ id: 'steam' + L.obs.length, kind: 'steam', s: ss, x: 0, r: 0.7, line: true, braceOk: true, soak: true, ph, cyc: [3.6, 1.0, ph], move: t => ({ s: ss, x: 0, on: cyc(t, 3.6, 1.0, ph) }) }); }
+  L.obs.push({ id: 'pwheel', kind: 'pwheel', s: A.wheel2 + 2, x: 0, r: 0.9, line: true, braceOk: true, soak: true, cyc: [4, 1.4, 0.7], move: t => ({ s: A.wheel2 + 2, x: 0, on: cyc(t, 4, 1.4, 0.7) }) });
   line(A.steam - 2, A.arch7 - 2, 0, 0, 5);
 
   /* stretch 4: Thunder Falls */
   L.lifts.push({ s0: A.liftFoot, s1: A.top0 });
   for (const k of [0, 1, 2, 3]) for (const sd of [-1, 1]) duck(A.lift + 3 + k * 6.5 + (sd > 0 ? 3 : 0), sd * 2.8, k === 3, sd);
   // the lagoon: fountains firing one after another, swan boats again, fireworks barges, a water-skiing robot
-  [[6, -4.0], [11, 3.4], [16, -2.0], [21, 4.2]].forEach(([ds, x], i) => { const ss = A.lagoon + ds; L.obs.push({ id: 'ftn' + i, kind: 'jetFountain', s: ss, x, r: 1.4, soak: true, braceOk: true, move: t => ({ s: ss, x, on: cyc(t, 4, 1.0, i) }) }); });
+  [[6, -4.0], [11, 3.4], [16, -2.0], [21, 4.2]].forEach(([ds, x], i) => { const ss = A.lagoon + ds; L.obs.push({ id: 'ftn' + i, kind: 'jetFountain', s: ss, x, r: 1.4, soak: true, braceOk: true, cyc: [4, 1.0, i], move: t => ({ s: ss, x, on: cyc(t, 4, 1.0, i) }) }); });
   line(A.lagoon + 4, A.lagoon + 24, 1.0, -1.0, 6);
   swan(A.lagoon + 28, 3.0, 2.0, 1.0, 0.3); swan(A.lagoon + 31, -3.6, 1.8, 3.0, 0.28);
   [[3, 4.0], [8, -4.0], [13, 4.0], [18, -4.0], [23, 3.6]].forEach(([ds, x], i) => L.obs.push({ id: 'barge' + i, kind: 'barge', s: A.barges + ds, x, r: 1.5, soak: false }));
@@ -260,7 +261,7 @@ const PARKFLUME_ROUTE = (function () {
   /* ---------- the park round the ride (for the scenery and the wide shots) ---------- */
   PR.art = {
     dock: { x: 0, z: 4, yaw: 0 },
-    moon: { x: 140, y: 130, z: -560, r: 36 },
+    moon: { x: 140, y: 200, z: -540, r: 46 },
     // the Comet's trestle crossing over the river just before the weir (a train of empty cars goes by now and then)
     trestle: { s: A.trestle + 1, h: 7.5 },
     fountain: { s: A.fountain0 + 9, x: -4.4 },

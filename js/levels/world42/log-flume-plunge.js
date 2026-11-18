@@ -558,7 +558,7 @@ PARKFLUME.def.map[16] = '.'.repeat(10) + '1' + '.'.repeat(10) + '2' + '.'.repeat
 LEVELS.push(PARKFLUME.def);
 
 // the 3D-only files: the water (a park kit addition), the riders' outfits, the log and the scenery
-K3D.files.push('js/levels/world42/park-water.js', 'js/levels/world42/parkflume-outfits.js', 'js/levels/world42/parkflume-log.js', 'js/levels/world42/parkflume-scenery.js');
+K3D.files.push('js/levels/world42/park-water.js', 'js/levels/world42/parkflume-outfits.js', 'js/levels/world42/parkflume-log.js', 'js/levels/world42/parkflume-scenery2.js', 'js/levels/world42/parkflume-scenery.js');
 
 /* ---------- sounds (a wooden log on a night river: paddles, slaps, splashes, squeaky ducks) ---------- */
 (function () {

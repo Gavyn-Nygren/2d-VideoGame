@@ -24,9 +24,19 @@ const PARKFLUME_SCENE = (function () {
   const S1_END = A.arch3 + 12; // the end of stretch 1 (the look gate builds everything up to here)
 
   /* ---------- the ground: a height field with the channel cut into it ---------- */
-  const groundAt = (x, z) => -2.2 * sm(-112, -140, x) * (z < 30 ? 1 : 1);
+  // the jungle: everything west of the gardens and north of the lift (rolling ground, high banks of rock)
+  const jungleK = (x, z) => sm(-118, -134, x) * sm(-2, -16, z);
+  const groundAt = (x, z) => {
+    let y = -2.2 * sm(-112, -140, x);
+    const j = jungleK(x, z);
+    if (j > 0) y += j * (1.3 + 1.2 * Math.sin(x * 0.13 + 1.1) * Math.cos(z * 0.11) + 0.6 * Math.sin(x * 0.37 + z * 0.29));
+    return y;
+  };
+  // the ground: the park kit's grass, gravel and cobbles (the same textures and moonlight as the rest of World 42) laid
+  // over a height field with the channel cut into it; per vertex a mask says what it is (aM: cobbles, gravel, the
+  // channel's bed, jungle floor; aK: lagoon sand, the mill's sawdust yard)
   function ground(K) {
-    const x0 = -230, x1 = 90, z0 = -240, z1 = 115, cs = 1.25;
+    const x0 = -230, x1 = 90, z0 = -240, z1 = 125, cs = 1.25;
     const nx = Math.round((x1 - x0) / cs), nz = Math.round((z1 - z0) / cs);
     // the channel's samples in a grid of buckets, to find the nearest quickly
     const B = 6, buckets = new Map(), key = (a, b) => a + ',' + b;
@@ -36,50 +46,89 @@ const PARKFLUME_SCENE = (function () {
       if (!buckets.has(k)) buckets.set(k, []);
       buckets.get(k).push([p[0], p[2], p[1], w, f.t[0], f.t[2], s]);
     }
-    const nearest = (x, z) => {
+    const nearest = (x, z, reach = 3) => {
       let best = null, bd = 1e9;
       const bx = Math.floor(x / B), bz = Math.floor(z / B);
-      for (let a = bx - 3; a <= bx + 3; a++) for (let b = bz - 3; b <= bz + 3; b++) {
+      for (let a = bx - reach; a <= bx + reach; a++) for (let b = bz - reach; b <= bz + reach; b++) {
         const l = buckets.get(key(a, b)); if (!l) continue;
         for (const q of l) { const d = (q[0] - x) ** 2 + (q[1] - z) ** 2; if (d < bd) { bd = d; best = q; } }
       }
       return best ? { q: best, d: Math.sqrt(bd) } : null;
     };
-    const pos = new Float32Array((nx + 1) * (nz + 1) * 3), uv = new Float32Array((nx + 1) * (nz + 1) * 2), col = new Float32Array((nx + 1) * (nz + 1) * 3);
-    const cGrass = new T.Color('#5a9a68'), cPath = new T.Color('#9a90a8'), cBed = new T.Color('#2a3a4a'), tc = new T.Color();
+    const N = (nx + 1) * (nz + 1);
+    const pos = new Float32Array(N * 3), uv = new Float32Array(N * 2), aM = new Float32Array(N * 4), aK = new Float32Array(N * 2);
     let i = 0;
     for (let jz = 0; jz <= nz; jz++) for (let jx = 0; jx <= nx; jx++, i++) {
       const x = x0 + jx * cs, z = z0 + jz * cs;
-      let y = groundAt(x, z), c = cGrass;
-      const n = nearest(x, z);
-      if (n && n.d < n.q[3] + 0.5 && n.q[2] < y - 0.05) { y = n.q[2] - 1.1; c = cBed; }
-      // a gravel walk along both banks
-      else if (n && n.d < n.q[3] + 3.2 && n.q[2] < y + 0.2) c = cPath;
-      else {
-        // winding walks across the lawns (a loose grid), and mown stripes and darker patches in the grass
+      let y = groundAt(x, z), pave = 0, grav = 0, bed = 0, jun = jungleK(x, z), sand = 0, dust = 0;
+      const n = nearest(x, z), far = nearest(x, z, 6);
+      const kd = far ? PR.kind(far.q[6]) : 'garden';
+      if (n && n.d < n.q[3] + 0.5 && n.q[2] < y - 0.05) { y = n.q[2] - 1.1; bed = 1; }
+      // inside the sawmill the walkways sit just above the water: the ground under the whole building drops to them
+      else if (n && PR.kind(n.q[6]) === 'mill' && n.d < Math.max(n.q[3] + 3.2, 7.2) + 0.2) { y = n.q[2] - 0.2; dust = 1; }
+      else if (n && n.d < n.q[3] + 3.2 && n.q[2] < y + 0.2) { if (kd === 'lagoon') sand = 1; else if (kd === 'mill' || kd === 'pond') dust = 1; else if (jun < 0.5) grav = 1; }
+      else if (jun < 0.5) {
+        if (far && (kd === 'lagoon') && far.d < far.q[3] + 9) sand = 1 - sm(far.q[3] + 6, far.q[3] + 9, far.d);
+        else if (far && (kd === 'mill' || kd === 'pond') && far.d < far.q[3] + 16) dust = 1 - sm(far.q[3] + 11, far.q[3] + 16, far.d);
+        // winding cobbled walks across the lawns (a loose grid)
         const wx = Math.abs(((x + 10 * Math.sin(z * 0.043) + 1000) % 38) - 19), wz = Math.abs(((z + 9 * Math.sin(x * 0.051) + 1000) % 44) - 22);
-        if (wx < 1.3 || wz < 1.3) c = cPath;
-        else { const k = 0.86 + 0.1 * (Math.floor((x * 0.7 + z * 0.7) / 4) % 2) + 0.12 * Math.sin(x * 0.11) * Math.sin(z * 0.09); tc.copy(cGrass).multiplyScalar(k); c = tc; }
+        if ((wx < 1.5 || wz < 1.5) && !sand && dust < 0.5) pave = 1;
       }
       pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
       uv[i * 2] = x / 5; uv[i * 2 + 1] = z / 5;
-      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+      aM[i * 4] = pave; aM[i * 4 + 1] = grav; aM[i * 4 + 2] = bed; aM[i * 4 + 3] = jun;
+      aK[i * 2] = sand; aK[i * 2 + 1] = dust;
     }
     const idx = [];
     for (let jz = 0; jz < nz; jz++) for (let jx = 0; jx < nx; jx++) { const a = jz * (nx + 1) + jx, b = a + nx + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
-    const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('uv', new T.BufferAttribute(uv, 2)); g.setAttribute('color', new T.BufferAttribute(col, 3));
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('uv', new T.BufferAttribute(uv, 2));
+    g.setAttribute('aM', new T.BufferAttribute(aM, 4)); g.setAttribute('aK', new T.BufferAttribute(aK, 2));
     g.setIndex(idx); g.computeVertexNormals();
-    const tex = K3D.paint('pf-groundTex', 256, 256, (c, w, h) => {
-      c.fillStyle = '#ffffff'; c.fillRect(0, 0, w, h);
-      for (let k = 0; k < 2600; k++) { const l = 0.7 + Math.random() * 0.45; c.fillStyle = `rgba(${Math.round(255 * l)},${Math.round(255 * l)},${Math.round(255 * l)},0.5)`; c.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 2 + Math.random() * 4); }
-    }, { repeat: true });
-    const mat = K3D.toon('#ffffff', { map: tex }); mat.vertexColors = true;
-    const m = new T.Mesh(g, mat); m.receiveShadow = true; m.userData.live = true; K.add(m); // (live: the bake would drop its vertex colours)
+    const U = { uPave: { value: PARK.cobbles() }, uGrass: { value: PARK.lawnTex() }, uGravel: { value: PARK.gravelTex() }, uNoise: { value: PARK.noiseTex() },
+      uMoonDir: { value: new T.Vector3(0.25, 0.35, -0.9).normalize() }, uMoonCol: { value: new T.Color('#dfe6ff') } };
+    const mat = K3D.toon('#ffffff');
+    mat.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, U);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aM; attribute vec2 aK; varying vec4 vM; varying vec2 vK; varying vec3 vGW;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvM = aM; vK = aK; vGW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+        varying vec4 vM; varying vec2 vK; varying vec3 vGW; uniform sampler2D uPave, uGrass, uGravel, uNoise; uniform vec3 uMoonDir, uMoonCol; float gWet;`).replace('#include <map_fragment>', `
+        vec2 wp = vGW.xz;
+        vec3 nz = texture2D(uNoise, wp / 190.0).rgb, nz2 = texture2D(uNoise, wp / 41.0 + 0.37).rgb, nz3 = texture2D(uNoise, wp / 9.0 + 0.71).rgb;
+        vec3 gr = texture2D(uGrass, wp / 5.5).rgb * mix(0.7, 1.25, nz.r) * mix(0.85, 1.12, nz2.r);
+        gr = mix(gr, gr * vec3(1.12, 1.0, 0.82), smoothstep(0.55, 0.8, nz.g) * 0.6);
+        // the jungle floor: deep moss, leaf litter and dark earth
+        vec3 jf = texture2D(uGrass, wp / 3.0).rgb * vec3(0.62, 0.86, 0.62) * mix(0.55, 1.05, nz2.g);
+        jf = mix(jf, vec3(0.30, 0.22, 0.14) * mix(0.7, 1.2, nz3.r), smoothstep(0.5, 0.75, nz3.g) * 0.7);
+        gr = mix(gr, jf, smoothstep(0.2, 0.8, vM.w));
+        vec3 pv = texture2D(uPave, wp / 7.0).rgb * mix(0.8, 1.15, nz2.b);
+        pv = mix(pv, pv * vec3(0.8, 1.05, 0.85), smoothstep(0.6, 0.85, nz.b) * 0.5);
+        vec3 gv = texture2D(uGravel, wp / 3.5).rgb * mix(0.85, 1.1, nz2.g);
+        vec3 sd = texture2D(uGravel, wp / 6.0).rgb * vec3(1.45, 1.25, 0.95) * mix(0.9, 1.08, nz3.b);
+        vec3 du = texture2D(uGravel, wp / 2.5).rgb * vec3(1.35, 1.05, 0.72) * mix(0.8, 1.1, nz3.r);
+        float p = smoothstep(0.3, 0.7, vM.x);
+        vec3 col = mix(gr, pv, p); col = mix(col, gv, smoothstep(0.3, 0.7, vM.y));
+        col = mix(col, sd, smoothstep(0.1, 0.7, vK.x)); col = mix(col, du, smoothstep(0.1, 0.7, vK.y));
+        col = mix(col, vec3(0.42, 0.41, 0.5), smoothstep(0.1, 0.3, vM.x) * (1.0 - smoothstep(0.3, 0.5, vM.x)) * 0.8);
+        col = mix(col, vec3(0.16, 0.2, 0.26) * mix(0.8, 1.2, nz3.g), smoothstep(0.2, 0.8, vM.z));
+        gWet = p * smoothstep(0.62, 0.74, nz2.g * 0.7 + nz.g * 0.5);
+        col *= 1.0 - gWet * 0.35;
+        diffuseColor.rgb *= col;`).replace('#include <opaque_fragment>', `#include <opaque_fragment>
+        {
+          vec3 V = normalize(cameraPosition - vGW), Rf = reflect(-V, vec3(0.0, 1.0, 0.0));
+          float rm = max(dot(Rf, uMoonDir), 0.0);
+          gl_FragColor.rgb += uMoonCol * (gWet * pow(rm, 40.0) * 0.5 + smoothstep(0.3, 0.7, vM.x) * pow(rm, 30.0) * 0.035);
+        }`);
+    };
+    mat.customProgramCacheKey = () => 'pf-ground';
+    K.tick(() => { if (K.moonDir) U.uMoonDir.value.copy(K.moonDir); });
+    const m = new T.Mesh(g, mat); m.receiveShadow = true; m.userData.live = true; K.add(m); // (live: its own shader, kept out of the bake)
     // beyond the height field: flat lawn all round (a frame with a hole where the field is)
     const far = new T.Group(); far.userData.big = true;
-    const fm = K3D.toon('#2c4a3a');
+    const fm = K3D.toon('#ffffff', { map: PARK.lawnTex() });
     for (const [cx, cz, w, d] of [[(x0 + x1) / 2, z0 - 400, 1800, 800], [(x0 + x1) / 2, z1 + 400, 1800, 800], [x0 - 400, (z0 + z1) / 2, 800, z1 - z0], [x1 + 400, (z0 + z1) / 2, 800, z1 - z0]]) {
-      const p = new T.Mesh(new T.PlaneGeometry(w, d).rotateX(-Math.PI / 2), fm); p.position.set(cx, -0.02, cz); p.receiveShadow = true; far.add(p);
+      const geo = new T.PlaneGeometry(w, d).rotateX(-Math.PI / 2); const uvs = geo.attributes.uv; for (let k = 0; k < uvs.count; k++) uvs.setXY(k, uvs.getX(k) * w / 5.5, uvs.getY(k) * d / 5.5);
+      const p = new T.Mesh(geo, fm); p.position.set(cx, -0.02, cz); p.receiveShadow = true; far.add(p);
     }
     K.add(far);
     return { nearest };
@@ -115,10 +164,10 @@ const PARKFLUME_SCENE = (function () {
         if (i) { const A0 = (i - 1) * 2; if (side > 0) idx.push(A0, A0 + 1, A0 + 2, A0 + 1, A0 + 3, A0 + 2); else idx.push(A0, A0 + 2, A0 + 1, A0 + 1, A0 + 2, A0 + 3);
           const C0 = (i - 1) * 3; for (const [p, q] of [[0, 1], [1, 2]]) { if (side > 0) cidx.push(C0 + p, C0 + q, C0 + p + 3, C0 + q, C0 + q + 3, C0 + p + 3); else cidx.push(C0 + p, C0 + p + 3, C0 + q, C0 + q, C0 + p + 3, C0 + q + 3); } }
         // bulbs on the kerb's edge (every 2.5), each with its reflection on the water
-        if (Bu && i % 3 === 0 && s < S1_END) { const bp = R.local(s, side * (w + 0.25), top - wy + 0.12, f); const col = (Math.floor(s / 3) % 3 === 0) ? '#ff9ad0' : '#ffe08a'; Bu.add(bp[0], bp[1], bp[2], col, { size: 0.07, speed: 1.6, phase: s * 0.4 }); if (W) { const rp = R.local(s, side * (w - 0.35), 0, f); W.reflect(rp[0], wy, rp[2], col, 2.6, 0.32, 0.45); } }
+        if (Bu && i % 3 === 0) { const bp = R.local(s, side * (w + 0.25), top - wy + 0.12, f); const col = (Math.floor(s / 3) % 3 === 0) ? '#ff9ad0' : '#ffe08a'; Bu.add(bp[0], bp[1], bp[2], col, { size: 0.07, speed: 1.6, phase: s * 0.4 }); if (W) { const rp = R.local(s, side * (w - 0.35), 0, f); W.reflect(rp[0], wy, rp[2], col, 2.6, 0.32, 0.45); } }
         // fenders at the waterline: tyres, and here and there a lashed log
-        if (i % 4 === 2 && s < S1_END) tyres.push({ p: R.local(s, side * (w + 0.02), -0.02, f), yaw: f.yaw, side });
-        if (i % 11 === 6 && s < S1_END) logs.push({ p: R.local(s, side * (w + 0.12), 0.1, f), yaw: f.yaw });
+        if (i % 4 === 2) tyres.push({ p: R.local(s, side * (w + 0.02), -0.02, f), yaw: f.yaw, side });
+        if (i % 11 === 6) logs.push({ p: R.local(s, side * (w + 0.12), 0.1, f), yaw: f.yaw });
       }
       const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
       const wall = new T.Mesh(g, stone); wall.receiveShadow = true; wall.userData.big = true; K.add(wall);
@@ -495,7 +544,8 @@ const PARKFLUME_SCENE = (function () {
     const im = new T.InstancedMesh(merged, yel, n); im.frustumCulled = false; K3D.ink(im, '#7a4a10', 0.7); K.add(im);
     const bk = new T.InstancedMesh(new T.ConeGeometry(0.08, 0.18, 6).rotateZ(Math.PI / 2).translate(-0.46, 0.4, 0), K3D.toon('#ff8a2a'), n); bk.frustumCulled = false; K.add(bk);
     const eye = new T.InstancedMesh(new T.SphereGeometry(0.035, 6, 4).translate(-0.33, 0.5, 0.11), K3D.flat('#1a1210'), n * 1); eye.frustumCulled = false; K.add(eye);
-    const pos = L.ducks.map(dk => { const f = R.at(dk.s); return { p: v3(R.local(dk.s, dk.x, 0, f)), yaw: f.yaw + Math.PI / 2, big: dk.big }; });
+    // (a lift's ducks sit up on the trough's rim, to hook with a stroke on that side)
+    const pos = L.ducks.map(dk => { const f = R.at(dk.s); return { p: v3(dk.hook ? R.local(dk.s, dk.hook * (PR.w(dk.s) + 0.16), 0.95, f) : R.local(dk.s, dk.x, 0, f)), yaw: f.yaw + Math.PI / 2, big: dk.big }; });
     // a soft gold glow under each (so they read at phone size, and on dark water)
     const halo = new T.InstancedMesh(new T.PlaneGeometry(1.4, 1.4).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ map: PARK.glowTex(), color: hot('#ffc040', 0.5), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false }), n);
     halo.frustumCulled = false; halo.renderOrder = 2; K.add(halo);
@@ -584,7 +634,7 @@ const PARKFLUME_SCENE = (function () {
     const each = (x, z, r, f) => { for (let a = Math.floor((x - r) / cell); a <= Math.floor((x + r) / cell); a++) for (let b = Math.floor((z - r) / cell); b <= Math.floor((z + r) / cell); b++) if (f(key(a, b))) return true; return false; };
     const mark = (x, z, r) => each(x, z, r, k => { occ.add(k); });
     const free = (x, z, r) => !each(x, z, r, k => occ.has(k));
-    for (let s = 0; s < R.len; s += 1.5) { const p = R.at(s).p; mark(p[0], p[2], PR.w(s) + 3.5); }
+    for (let s = 0; s < R.len; s += 1.5) { const p = R.at(s).p, k = PR.kind(s); mark(p[0], p[2], k === 'mill' ? Math.max(PR.w(s) + 3.2, 7.2) + 3 : k === 'tower' ? PR.w(s) + 6 : PR.w(s) + 3.5); }
     for (const [x, z, r] of keep) mark(x, z, r);
     for (const o of K.root.children) {
       if (o.isInstancedMesh || o.isPoints || o.userData.big) continue;
@@ -596,7 +646,7 @@ const PARKFLUME_SCENE = (function () {
     const tot = kinds.reduce((a, k) => a + k[1], 0);
     const pick = () => { let x = rnd() * tot; for (const [k, w] of kinds) { x -= w; if (x < 0) return k; } return 'trees'; };
     const place = (k, x, z, yaw) => {
-      if (Math.abs(groundAt(x, z)) > 0.05) return false;
+      if (Math.abs(groundAt(x, z)) > 0.05 || x < -112) return false;
       if (k === 'trees') { if (!free(x, z, 3.5)) return false; FL.lawn(x, z, 3.5 + rnd() * 2.5, 2.8 + rnd() * 2, rnd() * 3); const n = 1 + Math.floor(rnd() * 3); for (let i = 0; i < n; i++) PARK.tree(K, x + (rnd() - 0.5) * 4, z + (rnd() - 0.5) * 3, 1.0 + rnd() * 0.7, Bu); mark(x, z, 4); }
       else if (k === 'bed') { if (!free(x, z, 2.4)) return false; FL.bed(x, z, 1.2 + rnd() * 1.0); PARK.bench(K, x + Math.sin(yaw) * 3.2, z + Math.cos(yaw) * 3.2, yaw + Math.PI); mark(x, z, 3.5); }
       else if (k === 'lamp') { if (!free(x, z, 1.5)) return false; PARK.lamp(K, Bu, { x, z, moths: rnd() < 0.3 }); PARK.bin(K, x + 1, z + 0.6); mark(x, z, 1.8); }
@@ -610,7 +660,7 @@ const PARKFLUME_SCENE = (function () {
       return true;
     };
     for (const [d0, d1, st] of [[7, 12, 2.6], [12, 20, 3.2], [20, 32, 3.6], [32, 48, 4.2], [48, 75, 5.5], [75, 115, 7.5]]) {
-      for (let s = 0; s < S1_END + 20; s += st * (0.7 + rnd() * 0.6)) {
+      for (let s = 0; s < R.len; s += st * (0.7 + rnd() * 0.6)) {
         const f = R.at(s), w = PR.w(s);
         for (const side of [-1, 1]) {
           const h = Math.hypot(f.t[0], f.t[2]) || 1, rx = -f.t[2] / h * side, rz = f.t[0] / h * side, d = w + d0 + rnd() * (d1 - d0);
@@ -620,26 +670,6 @@ const PARKFLUME_SCENE = (function () {
       }
     }
     FL.done();
-  }
-
-  /* ---------- stretches 2 to 4 (laid out for now: banks of rock, a few trees, the lift tower's frame) ---------- */
-  function later(K, Bu) {
-    for (let s = S1_END; s < R.len; s += 9) {
-      const f = R.at(s), w = PR.w(s);
-      if (f.p[1] > 0.5) continue;
-      for (const side of [-1, 1]) { const p = R.local(s, side * (w + 3 + rnd() * 4), 0, f); const gy = groundAt(p[0], p[2]); if (Math.abs(p[1] - gy) > 6) continue; PARK.tree(K, p[0], p[2], 1 + rnd() * 0.8, Bu); K.root.children[K.root.children.length - 1].position.y = gy; }
-    }
-    // the lift tower and the trough of the drop: wooden trestle legs under every elevated stretch of the channel
-    const legs = [];
-    for (let s = A.liftFoot; s < A.splash; s += 2.5) {
-      const f = R.at(s), gy = groundAt(f.p[0], f.p[2]);
-      if (f.p[1] < gy + 0.8) continue;
-      for (const side of [-1, 1]) { const p = R.local(s, side * (PR.w(s) + 0.4), -0.4, f); legs.push({ a: new T.Vector3(p[0], gy, p[2]), b: new T.Vector3(p[0], p[1], p[2]) }); }
-    }
-    const up = new T.Vector3(0, 1, 0), m4 = new T.Matrix4(), q = new T.Quaternion();
-    const im = new T.InstancedMesh(K3D.geo('pf-beam', () => new T.BoxGeometry(0.22, 1, 0.22).translate(0, 0.5, 0)), K3D.toon('#ffffff', { map: PARK.wood('#7a5a44') }), legs.length);
-    legs.forEach((l, k) => { const d = l.b.clone().sub(l.a), len = d.length(); q.setFromUnitVectors(up, d.normalize()); m4.compose(l.a, q, new T.Vector3(1.6, len, 1.6)); im.setMatrixAt(k, m4); });
-    K3D.ink(im, INK, 0.5); K.add(im);
   }
 
   /* ---------- loudspeakers ---------- */
@@ -661,9 +691,13 @@ const PARKFLUME_SCENE = (function () {
     const sc = { K, B, night };
     sc.ground = ground(K);
     // the water: the whole channel; garden stretch calm and deep blue
-    sc.water = PARK.water(K, { R, w: PR.w, over: 0.7, steep: s => (Math.abs(s - A.weir0 - 1) < 2.5 ? 1 : 0) + (s > A.brink && s < A.splash + 6 ? 0.8 : 0) });
+    const rapids = L.drops.filter(d => d.kind === 'rapid');
+    sc.water = PARK.water(K, { R, w: PR.w, over: 0.7, steep: s => (Math.abs(s - A.weir0 - 1) < 2.5 || Math.abs(s - A.weirJump - 1) < 2.5 ? 1 : 0) + (s > A.brink && s < A.splash + 6 ? 0.8 : 0) + (s > A.brink1 && s < A.splash1 + 4 ? 0.8 : 0)
+      + (rapids.some(d => s > d.s0 - 0.5 && s < d.s1 + 1.5) ? 0.7 : 0) + (s > A.rapids0 && s < A.rapids1 + 6 ? 0.25 : 0) + (Math.abs(s - A.whirl) < 6 ? 0.2 : 0) });
     const W = sc.water;
-    banks(K, B, W, 0, R.len);
+    // the stone kerbs of the gardens, the mill pond and the lagoon (the jungle's rock, the troughs and the mill's
+    // walkways are the stretches 2 to 4 scenery's own)
+    for (let i = 0; i < PR.kinds.length; i++) { const [a, k] = PR.kinds[i], b = i + 1 < PR.kinds.length ? PR.kinds[i + 1][0] : R.len; if (k === 'garden' || k === 'pond' || k === 'lagoon') banks(K, B, W, a, b); }
     sc.dock = dock(K, B, W, 2.5);
     sc.arches = L.arches.map(s => arch(K, B, W, s));
     for (const sg of L.signs) sign(K, B, sg.s, sg.side, sg.kind);
@@ -676,10 +710,10 @@ const PARKFLUME_SCENE = (function () {
     sc.trestle = trestle(K, B, W);
     sc.park = park(K, B, W);
     sc.horns = horns(K);
-    later(K, B);
+    sc.s2 = PARKFLUME_SCENE2.build(K, sc, { groundAt, stoneTex, nearest: sc.ground.nearest, INK });
     gardens(K, B, PR.art.rides.map(r => [r.x, r.z, (r.r || 8) + 6]));
     strandsDone(K);
-    sc.fl = floaters(K, 0, S1_END);
+    sc.fl = [floaters(K, 0, S1_END), floaters(K, A.jungle - 6, A.lift1Foot - 4), floaters(K, A.splash + 10, A.ring - 2)];
     sc.dk = ducks(K);
     sc.log = PARKFLUME_LOG.build(K, W);
     sc.fw = PARK.fireworks(K);
@@ -707,6 +741,16 @@ const PARKFLUME_SCENE = (function () {
     o.height -= duck * 2.1;
     // and rising over the mill's water wheel as it goes by
     for (const ob of L.obs) if (ob.kind === 'wheel') o.height += 2.4 * (1 - sm(3, 8, Math.abs(s - o.back - ob.s)));
+    // up a lift: the eye stays level behind the log (not down the slope below it), a little higher; over the top it
+    // rises to show the drop below, then tips over with the log and follows it down
+    const tops = [[A.lift1Foot, A.lift1Top0, A.brink1, 0.6], [A.liftFoot, A.top0, A.brink, 1]];
+    for (const [f0, t0, br, big] of tops) {
+      const on = sm(f0 - 4, f0 + 2, s) * (1 - sm(br + 1, br + 8, s));
+      if (on <= 0) continue;
+      o.level = on; o.height += on * (1.4 + big * 1.2); o.back += on * 1.5;
+      const crest = sm(t0 - 6, t0, s) * (1 - sm(br - 1, br + 4, s));
+      o.height += crest * (2.5 + big * 3); o.back += crest * 2; o.ahead += crest * 10;
+    }
     const sh = RAIL3.shot(R, s, o);
     // round an island the camera follows the log down its own arm of the fork
     // round an island the camera goes down the log's own arm of the fork (the middle of that arm where it is over it)
@@ -744,7 +788,7 @@ const PARKFLUME_SCENE = (function () {
     // the arches' bucket robots tip their bucket over the log as it passes
     for (const a of sc.arches) { const d = st.s - a.s; a.bucket.rotation.z = d > -3 && d < 2 ? -sm(-3, -0.5, d) * 2.0 : 0; a.robot.userData.key.rotation.z += dt * 3; }
     // floating lanterns drift down the river
-    const F = sc.fl;
+    for (const F of sc.fl) {
     for (let i = 0; i < F.lan.length; i++) {
       const l = F.lan[i]; l.s += R.at(l.s).v * 0.55 * dt; if (l.s > F.s1) l.s = F.s0 + 2;
       const w = PR.w(l.s), x = Math.max(-w + 0.8, Math.min(w - 0.8, l.x * w));
@@ -753,6 +797,8 @@ const PARKFLUME_SCENE = (function () {
       F.lim.setMatrixAt(i, m4); F.base.setMatrixAt(i, m4);
     }
     F.lim.instanceMatrix.needsUpdate = F.base.instanceMatrix.needsUpdate = true;
+    }
+    PARKFLUME_SCENE2.update(K, sc, st, dt, t);
     // the Comet roars over the trestle every 14 s
     const Tr = sc.trestle, per = 14, u = ((t + 4) % per) / 5.5;
     Tr.train.visible = u < 1;
