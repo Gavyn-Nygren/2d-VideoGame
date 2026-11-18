@@ -57,12 +57,13 @@ const PARKMANOR_HOUSE = (function () {
   // headstones (plywood, with joke names), crooked; and the dead trees
   H.art.stones = [
     [-3.4, 19, 0.2, 'R.I.P. Van Winkle'], [-5.6, 17.6, -0.15, 'Ima Goner'], [-8.2, 19.4, 0.1, 'Barry D. Alive'], [-4.4, 14.8, 0.3, 'Hugh Mungus Bones'],
-    [-7.4, 13.2, -0.2, 'Paul Tergeist'], [-10.6, 15.6, 0.15, 'Phil T. Sheets'], [-9.6, 11.2, -0.1, 'Here lies a pun'],
+    [-7.4, 13.2, -0.2, 'Paul Tergeist'], [-9.2, 16.3, 0.15, 'Phil T. Sheets'], [-9.6, 11.2, -0.1, 'Here lies a pun'],
     [3.6, 18.6, -0.2, 'Doug Graves'], [6.0, 19.6, 0.25, 'Ann Tique'], [8.8, 17.4, -0.1, 'Rusty Hinges'], [4.6, 14.2, 0.1, 'Will Haunt'],
     [7.6, 12.6, -0.25, 'Dee Ceased'], [10.6, 14.4, 0.2, 'Count Backwards'], [10.2, 10.6, 0.05, 'Gone Fishin\''],
   ];
   for (const [x, z, r] of H.art.stones) box(x - 0.55, z - 0.14, x + 0.55, z + 0.14, 0, 1.0, { kind: 'stone', rot: r });
   H.art.trees = [[-6.4, 25.5, 1.2], [7.2, 26.5, 1.35], [-11.6, 19.2, 1.0], [11.8, 19.4, 1.1], [-2.8, 11.6, 0.8], [12.2, 9.6, 0.9]];
+  box(-13.4, 12.0, -11.4, 14.0, 0, 2.6, { kind: 'crypt', rot: 0.5 }); // the Grimsby family crypt
   for (const [x, z, s] of H.art.trees) box(x - 0.35 * s, z - 0.35 * s, x + 0.35 * s, z + 0.35 * s, 0, 5, { kind: 'tree' });
   // the porch: a low wooden deck with two posts and steps
   box(-3.6, 6.0, 3.6, 8.6, 0, 0.18, { kind: 'porch' });

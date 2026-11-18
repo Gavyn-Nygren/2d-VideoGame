@@ -139,6 +139,27 @@ const PARKMANOR_SCENE = (function () {
     for (let i = 0; i < 70; i++) { const x = rnd() * w, y = rnd() * h, l = 10 + rnd() * 30; c.strokeStyle = `rgba(210,220,255,${0.25 + rnd() * 0.4})`; c.lineWidth = 1 + rnd(); c.beginPath(); c.moveTo(x, y); c.lineTo(x + 2, y + l); c.stroke(); }
     for (let i = 0; i < 26; i++) { const x = rnd() * w, y = rnd() * h; c.fillStyle = 'rgba(220,230,255,0.5)'; c.beginPath(); c.arc(x, y, 1.5 + rnd() * 2, 0, Math.PI * 2); c.fill(); }
   }, { repeat: true });
+  // painted fish-scale shingles for the front gable: rows of round-bottomed scales, every other row offset, some
+  // scales a different shade, and a peeling streak or two
+  const fishScale = () => { const tx = K3D.paint('pm-fishScale', 256, 256, (c, w, h) => {
+    c.fillStyle = '#4a3a5a'; c.fillRect(0, 0, w, h);
+    const sw = 32, sh = 26;
+    for (let r = -1; r < h / sh + 1; r++) for (let i = -1; i < w / sw + 1; i++) {
+      const x = i * sw + (r % 2 ? sw / 2 : 0), y = r * sh, k = rnd();
+      c.fillStyle = k < 0.15 ? '#6a4a6a' : k < 0.3 ? '#3e3250' : '#584468';
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + sw, y); c.lineTo(x + sw, y + sh * 0.55); c.arc(x + sw / 2, y + sh * 0.55, sw / 2, 0, Math.PI); c.closePath(); c.fill();
+      c.strokeStyle = '#2a2034'; c.lineWidth = 2; c.stroke();
+      c.strokeStyle = 'rgba(200,170,220,0.25)'; c.lineWidth = 1.5; c.beginPath(); c.arc(x + sw / 2, y + sh * 0.55, sw / 2 - 3, 0.3, Math.PI - 0.3); c.stroke();
+    }
+    c.fillStyle = 'rgba(20,14,26,0.35)'; for (let i = 0; i < 3; i++) c.fillRect(rnd() * w, 0, 3 + rnd() * 4, h);
+  }); tx.wrapS = tx.wrapT = T.RepeatWrapping; return tx; };
+  // louvred shutters (painted, chipped)
+  const shutterTex = (col) => K3D.paint('pm-shutter|' + col, 64, 160, (c, w, h) => {
+    c.fillStyle = col; c.fillRect(0, 0, w, h);
+    c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 3; c.strokeRect(4, 4, w - 8, h - 8);
+    for (let y = 14; y < h - 10; y += 8) { c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(8, y, w - 16, 3); c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(8, y - 2, w - 16, 2); }
+    c.fillStyle = 'rgba(140,120,100,0.6)'; for (let i = 0; i < 6; i++) c.fillRect(rnd() * w, rnd() * h, 3 + rnd() * 8, 2 + rnd() * 5);
+  });
   const velvet = (col) => K3D.paint('pm-velvet|' + col, 128, 256, (c, w, h) => {
     c.fillStyle = col; c.fillRect(0, 0, w, h);
     for (let x = 0; x < w; x += 16) { const g = c.createLinearGradient(x, 0, x + 16, 0); g.addColorStop(0, 'rgba(0,0,0,0.45)'); g.addColorStop(0.5, 'rgba(255,220,240,0.12)'); g.addColorStop(1, 'rgba(0,0,0,0.45)'); c.fillStyle = g; c.fillRect(x, 0, 16, h); }
@@ -356,6 +377,32 @@ const PARKMANOR_SCENE = (function () {
     // graves: plywood headstones on struts, mounds of earth, a skeleton hand, wilted wreaths
     H.art.stones.forEach(([x, z, r, name], i) => {
       const sg = new T.Group(); sg.position.set(x, 0, z); sg.rotation.y = r + Math.PI; g.add(sg);
+      // a few graves are not plywood boards: a stone cross, an obelisk, a weeping angel (all props, a little chipped)
+      const kind = i === 12 ? 'angel' : i % 4 === 3 ? 'cross' : i % 6 === 4 ? 'obelisk' : 'board';
+      const grey = M('graveStone', () => K3D.toon('#8a8496')), moss = M('moss', () => K3D.toon('#3a5a34'));
+      if (kind !== 'board') {
+        const base = mk(new T.BoxGeometry(0.9, 0.22, 0.5), grey, { ink: INK, inkW: 0.5 }); base.position.y = 0.11; sg.add(base);
+        if (kind === 'cross') {
+          const up = mk(new T.BoxGeometry(0.18, 1.3, 0.16), grey, { ink: INK, inkW: 0.5 }); up.position.y = 0.87; up.rotation.z = (rnd() - 0.5) * 0.1; sg.add(up);
+          const arm = mk(new T.BoxGeometry(0.7, 0.16, 0.16), grey, { ink: INK, inkW: 0.5 }); arm.position.y = 1.15; sg.add(arm);
+          const ring = mk(new T.TorusGeometry(0.22, 0.035, 5, 16), grey, { ink: INK, inkW: 0.4 }); ring.position.y = 1.15; sg.add(ring);
+        } else if (kind === 'obelisk') {
+          const ob = mk(new T.CylinderGeometry(0.1, 0.24, 1.9, 4, 1).rotateY(Math.PI / 4), grey, { ink: INK, inkW: 0.5 }); ob.position.y = 1.17; sg.add(ob);
+          const tip = mk(new T.ConeGeometry(0.14, 0.26, 4).rotateY(Math.PI / 4), grey, { ink: INK, inkW: 0.4 }); tip.position.y = 2.25; sg.add(tip);
+          const urn = mk(new T.SphereGeometry(0.12, 8, 6), grey, { ink: INK, inkW: 0.3 }); urn.position.set(0.32, 0.32, 0.1); sg.add(urn);
+        } else { // the weeping angel: hands over her face, wings folded, on a plinth
+          const pl = mk(new T.BoxGeometry(0.6, 0.6, 0.5), grey, { ink: INK, inkW: 0.5 }); pl.position.y = 0.52; sg.add(pl);
+          const robe = mk(new T.CylinderGeometry(0.14, 0.3, 1.0, 10), grey, { ink: INK, inkW: 0.5 }); robe.position.y = 1.32; sg.add(robe);
+          const head = mk(new T.SphereGeometry(0.14, 10, 8), grey, { ink: INK, inkW: 0.5 }); head.position.set(0, 1.92, -0.03); head.rotation.x = 0.4; sg.add(head);
+          for (const hx of [-1, 1]) {
+            const arm = mk(new T.CylinderGeometry(0.04, 0.045, 0.42, 6), grey, { ink: INK, inkW: 0.3 }); arm.position.set(hx * 0.1, 1.72, -0.15); arm.rotation.set(1.0, 0, -hx * 0.35); sg.add(arm);
+            const wing = mk(new T.SphereGeometry(0.32, 8, 6), grey, { ink: INK, inkW: 0.4 }); wing.scale.set(0.25, 1.3, 0.6); wing.position.set(hx * 0.2, 1.6, 0.2); wing.rotation.z = hx * 0.25; sg.add(wing);
+          }
+        }
+        const mp = mk(new T.SphereGeometry(0.18, 8, 6), moss, { ink: false }); mp.scale.set(1.4, 0.35, 1); mp.position.set(-0.3, 0.22, 0.15); sg.add(mp);
+        const mound = mk(new T.SphereGeometry(0.6, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), M('earth', () => K3D.toon('#2e2620')), { ink: INK, inkW: 0.4 }); mound.scale.set(0.9, 0.22, 1.6); mound.position.set(0, 0, -1.0); sg.add(mound);
+        return;
+      }
       const face = new T.Mesh(new T.PlaneGeometry(1.1, 1.1), K3D.toon('#ffffff', { map: stoneTex(name, i), alphaTest: 0.5, side: T.DoubleSide }));
       face.position.set(0, 0.55, 0); face.rotation.z = (rnd() - 0.5) * 0.12; face.castShadow = true; sg.add(face);
       const ply = mk(new T.BoxGeometry(0.9, 0.62, 0.05), wood('#8a6a44'), { ink: INK, inkW: 0.5 }); ply.position.set(0, 0.31, 0.04); sg.add(ply);
@@ -369,6 +416,27 @@ const PARKMANOR_SCENE = (function () {
       }
       if (i % 5 === 2) { const wr = mk(new T.TorusGeometry(0.18, 0.05, 6, 14), M('wreath', () => K3D.toon('#3a4a2a')), { ink: INK, inkW: 0.4 }); wr.position.set(0, 0.42, 0.1); sg.add(wr); }
     });
+    // a little family crypt in the back corner: stone walls, a pediment, iron doors ajar with a green glow inside
+    { const cg = new T.Group(); cg.position.set(-12.4, 0, 13.0); cg.rotation.y = 0.5; g.add(cg);
+      const cs = M('cryptStone', () => K3D.toon('#ffffff', { map: K3D.paint('pm-crypt', 128, 128, (c, w, h) => { c.fillStyle = '#6a6474'; c.fillRect(0, 0, w, h); for (let r = 0; r < 8; r++) for (let i = 0; i < 4; i++) { c.fillStyle = ['#726c7c', '#5e5868', '#686272'][Math.floor(rnd() * 3)]; c.fillRect(i * 32 + (r % 2 ? 16 : 0) + 1, r * 16 + 1, 30, 14); } c.fillStyle = 'rgba(50,80,50,0.55)'; for (let i = 0; i < 10; i++) c.fillRect(rnd() * w, h - 20 + rnd() * 20, 10, 6); }) }));
+      const body = mk(new T.BoxGeometry(1.9, 2.0, 2.0), cs, { ink: INK, inkW: 0.7 }); body.position.y = 1.0; cg.add(body);
+      const ped = new T.Shape(); ped.moveTo(-1.1, 0); ped.lineTo(0, 0.6); ped.lineTo(1.1, 0); ped.closePath();
+      const pd = mk(new T.ExtrudeGeometry(ped, { depth: 2.2, bevelEnabled: false }).translate(0, 0, -1.1), cs, { ink: INK, inkW: 0.6 }); pd.position.y = 2.0; cg.add(pd);
+      for (const sx of [-1, 1]) { const col = mk(new T.CylinderGeometry(0.1, 0.12, 2.0, 8), cs, { ink: INK, inkW: 0.4 }); col.position.set(sx * 0.8, 1.0, 1.05); cg.add(col); }
+      const glow = new T.Mesh(new T.PlaneGeometry(0.9, 1.5), K3D.flat(hot('#5affb0', 0.9))); glow.position.set(0, 0.75, 1.005); cg.add(glow);
+      for (const sx of [-1, 1]) { const dr = mk(new T.BoxGeometry(0.46, 1.5, 0.05), iron(), { ink: INK, inkW: 0.4 }); dr.position.set(sx * 0.45 + sx * 0.12, 0.75, 1.1 + 0.12); dr.rotation.y = sx * 0.55; cg.add(dr); }
+      const plq = new T.Mesh(new T.PlaneGeometry(1.2, 0.3), K3D.toon('#ffffff', { map: K3D.paint('pm-cryptName', 256, 64, (c, w, h) => { c.fillStyle = '#4a4452'; c.fillRect(0, 0, w, h); c.fillStyle = '#d8d0c0'; c.font = '700 30px "DejaVu Serif", serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('THE GRIMSBYS', w / 2, h / 2 + 2); }) }));
+      plq.position.set(0, 1.78, 1.01); cg.add(plq);
+      sprite(K, cg, 0, 0.8, 1.5, 2.6, '#5affb0', 0.35);
+      const urnL = mk(new T.CylinderGeometry(0.12, 0.08, 0.3, 8), cs, { ink: INK, inkW: 0.3 }); urnL.position.set(0.7, 2.25, 0.9); cg.add(urnL); }
+    // little lanterns on hooked iron posts along the graveyard path, each with a candle
+    for (const z of [11.2, 15.0, 18.8]) for (const sx of [-1, 1]) {
+      const x = sx * 1.75 + (z === 15.0 ? sx * 0.1 : 0);
+      const post = mk(K3D.geo('pm-lpost', () => new T.CylinderGeometry(0.035, 0.05, 1.3, 6).translate(0, 0.65, 0)), iron(), { ink: INK, inkW: 0.3 }); post.position.set(x, 0, z); g.add(post);
+      const hook = mk(K3D.geo('pm-lhook', () => new T.TorusGeometry(0.14, 0.02, 4, 10, Math.PI)), iron(), { ink: false }); hook.position.set(x - sx * 0.14, 1.3, z); g.add(hook);
+      const ln = FIG.lantern(); ln.scale.setScalar(0.55); ln.position.set(x - sx * 0.28, 0.98, z); g.add(ln);
+      sprite(K, g, x - sx * 0.28, 1.12, z, 1.2, '#ffb050', 0.45);
+    }
     // the cemetery fence: iron railings with spikes, a brick pier each side of the crooked gate (left swung open)
     const railings = (x0, x1, z) => {
       const n = Math.round(Math.abs(x1 - x0) / 0.28), im = new T.InstancedMesh(K3D.geo('pm-rail', () => new T.CylinderGeometry(0.025, 0.025, 1.6, 5).translate(0, 0.8, 0)), iron(), n);
@@ -400,7 +468,7 @@ const PARKMANOR_SCENE = (function () {
     hangBat(0, 4.1, 22, 0.9);
     // dead trees: twisted trunks and bare branches (tubes), paper bats hanging off them
     for (const [x, z, s] of H.art.trees) {
-      const tg = new T.Group(); tg.position.set(x, 0, z); tg.scale.setScalar(s); tg.rotation.y = rnd() * 6; g.add(tg);
+      const tg = new T.Group(); tg.name = 'deadTree'; tg.position.set(x, 0, z); tg.scale.setScalar(s); tg.rotation.y = rnd() * 6; g.add(tg);
       const bark = M('bark', () => K3D.toon('#2a2230', { map: PARK.wood('#3a3040') }));
       const branch = (pts, r) => { const tb = mk(new T.TubeGeometry(new T.CatmullRomCurve3(pts.map(p => V(...p))), 12, r, 6), bark, { ink: INK, inkW: 0.6 }); tg.add(tb); };
       branch([[0, 0, 0], [0.2, 1.2, 0.1], [-0.1, 2.4, -0.1], [0.15, 3.4, 0]], 0.22);
@@ -421,7 +489,7 @@ const PARKMANOR_SCENE = (function () {
     const horn = (x, y, z, yaw, parent) => { const hg = new T.Group(); hg.position.set(x, y, z); hg.rotation.y = yaw; (parent || g).add(hg); const cone = mk(K3D.geo('pm-horn', () => new T.ConeGeometry(0.28, 0.6, 14, 1, true).rotateX(-Math.PI / 2)), M('hornM', () => K3D.toon('#b9c2b0', { side: T.DoubleSide })), { ink: INK, inkW: 0.5 }); cone.rotation.x = 0.25; hg.add(cone); SC.horns.push(hg); return hg; };
     const pole = mk(new T.CylinderGeometry(0.06, 0.08, 4.4, 8), iron(), { ink: INK, inkW: 0.4 }); pole.position.set(5.6, 2.2, 20.4); g.add(pole);
     horn(5.6, 4.2, 20.6, -0.4); horn(5.6, 4.2, 20.2, Math.PI);
-    SC.fogMachines = [[-2.6, 9.6], [4.4, 21.2], [-11, 26]].map(([x, z]) => { const fm = mk(new T.BoxGeometry(0.5, 0.3, 0.7), iron(), { ink: INK, inkW: 0.5 }); fm.position.set(x, 0.15, z); g.add(fm); return [x, z]; });
+    SC.fogMachines = [[-4.0, 9.0], [4.4, 21.2], [-11, 26]].map(([x, z]) => { const fm = mk(new T.BoxGeometry(0.5, 0.3, 0.7), iron(), { ink: INK, inkW: 0.5 }); fm.position.set(x, 0.15, z); g.add(fm); return [x, z]; });
     stageLamp(K, g, 9.5, 24.5, -2.3, '#7affc0', 0.55);
     stageLamp(K, g, -9.6, 9.0, 0.7, '#c890ff', 0.5);
     // signs: keep to the path; the gift shop; no flash photos
@@ -540,7 +608,9 @@ const PARKMANOR_SCENE = (function () {
     K.root.updateMatrixWorld(true);
     for (const o of items) {
       if (o.isInstancedMesh || o.isPoints || o.userData.live || o.name === 'stageLamp') continue; // (a stage lamp's haze cone hangs in the air)
-      b3.setFromObject(o); if (b3.isEmpty()) continue; b3.getSize(sz3); b3.getCenter(c3);
+      if (o.name === 'deadTree') { const r = 0.45 * o.scale.x; b3.set(V(o.position.x - r, 0, o.position.z - r), V(o.position.x + r, 2, o.position.z + r)); } // (its trunk and roots: the bare branches spread overhead)
+      else b3.setFromObject(o);
+      if (b3.isEmpty()) continue; b3.getSize(sz3); b3.getCenter(c3);
       if (sz3.x > 30 || sz3.z > 30 || sz3.x * sz3.z < 0.15 || b3.max.y < 0.3 || b3.min.y > 1.5) continue;
       const geo = o.geometry ? o.geometry.type : 'group' + o.children.length;
       const name = o.name || (geo.includes('Icosahedron') ? 'hedge' : geo);
@@ -555,6 +625,146 @@ const PARKMANOR_SCENE = (function () {
     }
     for (const b of bx) if ((b.n === 'tree' || b.n === 'hedge') && K.groundAll && !K.groundAll(b.x, b.z, 0.6, 'grass')) off.push(`${b.n}@${b.x.toFixed(1)},${b.z.toFixed(1)} on ${K.groundAt(b.x, b.z)}`);
     window.__w42audit = { n: bx.length, overlaps: bad, offGrass: off };
+  }
+
+  /* =============================== more on the manor's front: shutters, ivy, gutters, a balcony, gargoyles,
+     window boxes, a stone footing, rose beds and porch clutter. What stands against the front wall goes in
+     fac.porchTop (hidden while the camera looks into the hall); what is upstairs goes in fac.up. =============================== */
+  function frontDetail(K, B, fac) {
+    const low = new T.Group(); K.add(low); // knee-high things that never block the hall view
+    const wallF = fac.porchTop, upF = fac.up, Z = 6.2; // (the front wall's face)
+    const trim = M('trim', () => K3D.toon('#2a2232'));
+    // ---- shutters beside every front window; a couple hang crooked off one hinge ----
+    const shut = (parent, x, y, w, h, z, col, crooked) => {
+      for (const sx of [-1, 1]) {
+        const p = mk(new T.BoxGeometry(w * 0.5, h, 0.06), toonT('shut' + col, '#ffffff', shutterTex(col)), { ink: INK, inkW: 0.5 });
+        p.position.set(x + sx * (w * 0.5 + 0.18), y, z);
+        if (crooked && sx > 0) { p.rotation.z = -0.32; p.position.x += 0.12; p.position.y -= 0.18; }
+        parent.add(p);
+        for (const hy of [-h * 0.35, h * 0.35]) { const hg = mk(new T.BoxGeometry(0.14, 0.04, 0.03), iron(), { ink: false }); hg.position.set(x + sx * (w * 0.5 + 0.05), y + hy, z + 0.04); parent.add(hg); }
+      }
+    };
+    shut(wallF, -5.2, 2.8, 1.4, 2.2, Z + 0.2, '#2e5a4e', false); shut(wallF, 5.2, 2.8, 1.4, 2.2, Z + 0.2, '#2e5a4e', true);
+    shut(upF, -5, 8.6, 1.3, 1.9, 6.45, '#5a2e3e', true); shut(upF, 5, 8.6, 1.3, 1.9, 6.45, '#5a2e3e', false);
+    // ---- window boxes under the ground-floor windows: dead flowers, a cobweb, a tiny pumpkin ----
+    for (const [x, kind] of [[-5.2, 0], [5.2, 1]]) {
+      const bx = mk(new T.BoxGeometry(1.5, 0.3, 0.36), wood('#4a3020'), { ink: INK, inkW: 0.5 }); bx.position.set(x, 1.38, Z + 0.42); wallF.add(bx);
+      const soil = new T.Mesh(new T.BoxGeometry(1.4, 0.04, 0.28), K3D.toon('#241a14')); soil.position.set(x, 1.53, Z + 0.42); wallF.add(soil);
+      for (let i = 0; i < 7; i++) {
+        const sx = x - 0.6 + i * 0.2, ht = 0.25 + rnd() * 0.3, droop = 0.4 + rnd() * 0.8;
+        const stem = mk(new T.CylinderGeometry(0.012, 0.012, ht, 4).translate(0, ht / 2, 0), M('deadStem', () => K3D.toon('#4a4a2a')), { ink: false });
+        stem.position.set(sx, 1.53, Z + 0.42 + (rnd() - 0.5) * 0.15); stem.rotation.z = (rnd() - 0.5) * droop; wallF.add(stem);
+        const head = mk(new T.SphereGeometry(0.05, 6, 4), M(kind ? 'deadRose' : 'deadDaisy', () => K3D.toon(kind ? '#5a1a2a' : '#8a7a4a')), { ink: INK, inkW: 0.3 });
+        head.position.set(sx - Math.sin(stem.rotation.z) * ht, 1.53 + Math.cos(stem.rotation.z) * ht, stem.position.z); head.scale.y = 0.6; wallF.add(head);
+      }
+      const pk = mk(new T.SphereGeometry(0.11, 10, 8), M('pumpkin', () => K3D.toon('#d0661a')), { ink: INK, inkW: 0.4 }); pk.scale.y = 0.75; pk.position.set(x + 0.55, 1.6, Z + 0.45); wallF.add(pk);
+    }
+    // ---- a stone footing along the front with crawlspace vents, and a weathered house number ----
+    const stoneM = M('footing', () => K3D.toon('#ffffff', { map: K3D.paint('pm-footing', 256, 64, (c, w, h) => { c.fillStyle = '#4a4450'; c.fillRect(0, 0, w, h); for (let r = 0; r < 2; r++) for (let i = 0; i < 9; i++) { const x = i * 30 + (r ? 15 : 0) + rnd() * 4; c.fillStyle = ['#5a5462', '#433e4a', '#55505e'][Math.floor(rnd() * 3)]; c.fillRect(x + 2, r * 32 + 2, 26, 28); } c.fillStyle = 'rgba(60,80,50,0.5)'; for (let i = 0; i < 14; i++) c.fillRect(rnd() * w, h - 10 + rnd() * 10, 6 + rnd() * 12, 4); }) }));
+    for (const [x0, x1] of [[-8.2, -3.7], [3.7, 8.2]]) {
+      const ft = mk(new T.BoxGeometry(x1 - x0, 0.6, 0.18), stoneM, { ink: INK, inkW: 0.5 }); ft.position.set((x0 + x1) / 2, 0.3, Z + 0.1); low.add(ft);
+      const vent = mk(new T.BoxGeometry(0.6, 0.26, 0.04), iron(), { ink: INK, inkW: 0.3 }); vent.position.set((x0 + x1) / 2, 0.3, Z + 0.2); low.add(vent);
+      for (let i = 0; i < 5; i++) { const b = new T.Mesh(new T.BoxGeometry(0.03, 0.22, 0.02), K3D.flat('#0a0810')); b.position.set((x0 + x1) / 2 - 0.24 + i * 0.12, 0.3, Z + 0.225); low.add(b); }
+    }
+    const num = mk(new T.BoxGeometry(0.5, 0.3, 0.04), FIG.brass(), { ink: INK, inkW: 0.4 }); num.position.set(1.7, 2.9, Z + 0.1); wallF.add(num);
+    const numT = new T.Mesh(new T.PlaneGeometry(0.44, 0.24), K3D.flat('#ffffff', { transparent: true, map: K3D.paint('pm-num13', 128, 64, (c, w, h) => { c.fillStyle = '#2a1e10'; c.font = '700 44px "DejaVu Serif", serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('13', w / 2, h / 2 + 2); }) }));
+    numT.position.set(1.7, 2.9, Z + 0.125); wallF.add(numT);
+    // ---- ivy: a vine climbing the left of the front and round the tower, thick with dark leaves ----
+    const leafGeo = K3D.geo('pm-ivyLeaf', () => { const sh = new T.Shape(); sh.moveTo(0, 0); sh.quadraticCurveTo(0.12, 0.05, 0.1, 0.16); sh.lineTo(0, 0.22); sh.lineTo(-0.1, 0.16); sh.quadraticCurveTo(-0.12, 0.05, 0, 0); return new T.ShapeGeometry(sh); });
+    const ivy = (parent, pts, n, wall) => {
+      const curve = new T.CatmullRomCurve3(pts.map(p => V(...p)));
+      parent.add(mk(new T.TubeGeometry(curve, 40, 0.035, 5), M('vine', () => K3D.toon('#3a3020')), { ink: false }));
+      const im = new T.InstancedMesh(leafGeo, M('ivyLeaf', () => K3D.toon('#2c5a34', { side: T.DoubleSide })), n), m4 = new T.Matrix4(), q = new T.Quaternion(), e = new T.Euler();
+      const cols = ['#2c5a34', '#3a6a2a', '#24482c', '#4a5a24'], col = new T.Color();
+      for (let i = 0; i < n; i++) {
+        const t = i / n, p = curve.getPoint(t);
+        const off = V((rnd() - 0.5) * 0.7, (rnd() - 0.5) * 0.5, 0);
+        if (wall === 'tower') { const a = Math.atan2(p.x + 8.6, p.z - 5.2); off.set(Math.cos(a) * (rnd() - 0.5) * 0.7, (rnd() - 0.5) * 0.5, -Math.sin(a) * (rnd() - 0.5) * 0.7); e.set(0, a, rnd() * 6); }
+        else e.set(0, 0, rnd() * 6);
+        const sc = 0.8 + rnd() * 0.8;
+        m4.compose(p.clone().add(off).add(V(0, 0, wall === 'tower' ? 0 : 0.03)), q.setFromEuler(e), V(sc, sc, sc)); im.setMatrixAt(i, m4); im.setColorAt(i, col.set(cols[i % 4]));
+      }
+      K3D.ink(im, '#0a1a0e', 0.3); parent.add(im);
+    };
+    ivy(wallF, [[-7.6, 0.2, Z + 0.06], [-7.2, 1.6, Z + 0.06], [-7.8, 3.2, Z + 0.06], [-6.6, 4.6, Z + 0.06], [-7.4, 5.9, Z + 0.06], [-6.2, 6.2, Z + 0.1]], 120);
+    ivy(wallF, [[7.9, 0.2, Z + 0.06], [7.6, 1.2, Z + 0.06], [7.9, 2.2, Z + 0.06]], 40);
+    const tw = []; for (let i = 0; i <= 10; i++) { const a = 0.2 + i * 0.32, y = i * 0.75; tw.push([-8.6 + Math.sin(a) * 2.04, y, 5.2 + Math.cos(a) * 2.04]); }
+    ivy(upF, tw, 160, 'tower');
+    // ---- gutters along the upper eaves and a downpipe into a rain barrel at the corner ----
+    const gut = mk(new T.CylinderGeometry(0.1, 0.1, 17.2, 8, 1, true, 0, Math.PI).rotateZ(Math.PI / 2), M('gutter', () => K3D.toon('#3a3c48', { side: T.DoubleSide })), { ink: INK, inkW: 0.4 }); gut.position.set(0, 10.55, 6.6); upF.add(gut);
+    const pipe = mk(new T.CylinderGeometry(0.07, 0.07, 10.4, 8), M('gutter', () => K3D.toon('#3a3c48', { side: T.DoubleSide })), { ink: INK, inkW: 0.4 }); pipe.position.set(8.25, 5.35, 6.5); upF.add(pipe);
+    for (let y = 1; y < 10; y += 2.2) { const br = mk(new T.BoxGeometry(0.2, 0.05, 0.2), iron(), { ink: false }); br.position.set(8.25, y, 6.42); upF.add(br); }
+    const barrel = mk(new T.CylinderGeometry(0.38, 0.34, 0.85, 14), wood('#5a3a22'), { ink: INK, inkW: 0.5 }); barrel.position.set(8.9, 0.43, 6.9); low.add(barrel);
+    for (const y of [0.15, 0.7]) { const hoop = mk(new T.TorusGeometry(0.37, 0.025, 4, 18), iron(), { ink: false }); hoop.rotation.x = Math.PI / 2; hoop.position.set(8.9, y, 6.9); low.add(hoop); }
+    const water = new T.Mesh(new T.CircleGeometry(0.33, 16), K3D.toon('#20304a', { emissive: '#1a2a4a', emissiveIntensity: 0.6 })); water.rotation.x = -Math.PI / 2; water.position.set(8.9, 0.8, 6.9); low.add(water);
+    // ---- a little iron balcony at the middle upstairs window, a cornice of brackets under the eaves ----
+    const bal = mk(new T.BoxGeometry(2.0, 0.1, 0.8), trim, { ink: INK, inkW: 0.5 }); bal.position.set(0, 7.55, 6.8); upF.add(bal);
+    for (let i = 0; i <= 12; i++) { const b = mk(K3D.geo('pm-balRail', () => new T.CylinderGeometry(0.018, 0.018, 0.75, 4)), iron(), { ink: false }); b.position.set(-0.95 + i * (1.9 / 12), 7.97, 7.18); upF.add(b); }
+    for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) { const b = mk(K3D.geo('pm-balRail', () => new T.CylinderGeometry(0.018, 0.018, 0.75, 4)), iron(), { ink: false }); b.position.set(sx * 0.97, 7.97, 6.5 + i * 0.3); upF.add(b); }
+    const rail = mk(new T.BoxGeometry(2.0, 0.05, 0.05), iron(), { ink: INK, inkW: 0.3 }); rail.position.set(0, 8.35, 7.18); upF.add(rail);
+    for (const sx of [-1, 1]) { const br = mk(new T.BoxGeometry(0.1, 0.5, 0.6), trim, { ink: INK, inkW: 0.4 }); br.position.set(sx * 0.8, 7.25, 6.7); upF.add(br); }
+    for (let i = 0; i < 17; i++) { const cb = mk(K3D.geo('pm-corbel', () => new T.BoxGeometry(0.16, 0.26, 0.26)), trim, { ink: INK, inkW: 0.3 }); cb.position.set(-8.0 + i * 1.0, 10.42, 6.5); upF.add(cb); }
+    // ---- gargoyles on the corners of the band between the storeys, eyes glowing faintly ----
+    const stoneG = M('gargoyle', () => K3D.toon('#6a6474'));
+    for (const sx of [-1, 1]) {
+      const gg = new T.Group(); gg.position.set(sx * 8.2, 6.6, 6.5); gg.rotation.y = sx * 0.5; upF.add(gg);
+      const body = mk(new T.SphereGeometry(0.32, 12, 8), stoneG, { ink: INK, inkW: 0.5 }); body.scale.set(1, 0.9, 1.2); body.position.y = 0.3; gg.add(body);
+      const hd = mk(new T.SphereGeometry(0.2, 10, 8), stoneG, { ink: INK, inkW: 0.5 }); hd.position.set(0, 0.55, 0.32); gg.add(hd);
+      for (const hx of [-1, 1]) { const horn = mk(new T.ConeGeometry(0.05, 0.22, 5), stoneG, { ink: INK, inkW: 0.3 }); horn.position.set(hx * 0.1, 0.75, 0.28); horn.rotation.z = -hx * 0.4; gg.add(horn);
+        const wing = mk(new T.BoxGeometry(0.04, 0.4, 0.34), stoneG, { ink: INK, inkW: 0.3 }); wing.position.set(hx * 0.3, 0.5, -0.05); wing.rotation.z = -hx * 0.6; gg.add(wing);
+        const eye = new T.Mesh(new T.SphereGeometry(0.03, 6, 4), K3D.flat(hot('#ff5040', 2.2))); eye.position.set(hx * 0.07, 0.58, 0.5); gg.add(eye); }
+      const jaw = mk(new T.BoxGeometry(0.2, 0.06, 0.16), stoneG, { ink: INK, inkW: 0.3 }); jaw.position.set(0, 0.42, 0.44); jaw.rotation.x = 0.4; gg.add(jaw);
+    }
+    // ---- the porch: railings each side of the steps, a rocking chair, a doormat, a wreath, pumpkins on the steps ----
+    const pr = (x0, x1, z) => {
+      const bar = mk(new T.BoxGeometry(Math.abs(x1 - x0), 0.07, 0.08), wood('#3a2a22'), { ink: INK, inkW: 0.4 }); bar.position.set((x0 + x1) / 2, 1.0, z); wallF.add(bar);
+      const n = Math.round(Math.abs(x1 - x0) / 0.22);
+      for (let i = 0; i <= n; i++) { const b = mk(K3D.geo('pm-baluster', () => new T.CylinderGeometry(0.03, 0.04, 0.82, 6)), wood('#3a2a22'), { ink: false }); b.position.set(x0 + (x1 - x0) * i / n, 0.6, z); if (i === 3 && x0 < 0) { b.rotation.z = 0.5; b.position.y = 0.45; } wallF.add(b); }
+    };
+    pr(-3.3, -1.3, 8.45); pr(1.3, 3.3, 8.45);
+    const mat = new T.Mesh(new T.PlaneGeometry(1.2, 0.6), K3D.toon('#ffffff', { map: K3D.paint('pm-mat', 192, 96, (c, w, h) => { c.fillStyle = '#6a4a2a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#3a2412'; c.lineWidth = 6; c.strokeRect(6, 6, w - 12, h - 12); c.fillStyle = '#2a180c'; c.font = '700 30px "DejaVu Sans", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('GO AWAY', w / 2, h / 2); }) }));
+    mat.rotation.x = -Math.PI / 2; mat.position.set(0, 0.19, 6.75); low.add(mat);
+    const wreath = mk(new T.TorusGeometry(0.28, 0.07, 6, 18), M('twigs', () => K3D.toon('#3a2a1e')), { ink: INK, inkW: 0.4 }); wreath.position.set(0.55, 2.2, Z + 0.17); wallF.add(wreath);
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, tw2 = mk(K3D.geo('pm-twig', () => new T.CylinderGeometry(0.01, 0.01, 0.2, 3)), M('twigs', () => K3D.toon('#3a2a1e')), { ink: false }); tw2.position.set(0.55 + Math.cos(a) * 0.3, 2.2 + Math.sin(a) * 0.3, Z + 0.2); tw2.rotation.z = a + 0.6; wallF.add(tw2); }
+    const bow = mk(new T.SphereGeometry(0.06, 6, 4), M('ribbon', () => K3D.toon('#6a1a2a')), { ink: INK, inkW: 0.3 }); bow.scale.set(2, 1, 0.5); bow.position.set(0.55, 1.9, Z + 0.22); wallF.add(bow);
+    // a rocking chair (it rocks on its own; see SC.porchChair) and a side table with a candle
+    const ch = new T.Group(); ch.position.set(2.7, 0.18, 7.3); ch.rotation.order = 'YXZ'; ch.rotation.y = -0.5; wallF.add(ch); ch.userData.live = true; SC.porchChair = ch;
+    const cw = wood('#4a2a1a');
+    for (const sx of [-1, 1]) { const rk = mk(new T.TorusGeometry(0.7, 0.03, 4, 16, 1.1), cw, { ink: INK, inkW: 0.3 }); rk.rotation.set(0, Math.PI / 2, Math.PI * 1.5 - 0.55); rk.position.set(sx * 0.24, 0.72, 0); ch.add(rk);
+      const leg = mk(new T.BoxGeometry(0.04, 0.5, 0.04), cw, { ink: false }); leg.position.set(sx * 0.24, 0.27, 0.15); ch.add(leg); const leg2 = leg.clone(); leg2.position.z = -0.18; ch.add(leg2);
+      const back = mk(new T.BoxGeometry(0.04, 0.8, 0.04), cw, { ink: false }); back.position.set(sx * 0.24, 0.85, -0.22); back.rotation.x = -0.15; ch.add(back); }
+    const seat = mk(new T.BoxGeometry(0.52, 0.05, 0.42), cw, { ink: INK, inkW: 0.3 }); seat.position.set(0, 0.5, 0); ch.add(seat);
+    for (let i = 0; i < 4; i++) { const sl = mk(new T.BoxGeometry(0.06, 0.66, 0.02), cw, { ink: false }); sl.position.set(-0.15 + i * 0.1, 0.88, -0.24); sl.rotation.x = -0.15; ch.add(sl); }
+    const shawl = mk(new T.BoxGeometry(0.5, 0.4, 0.03), M('shawl', () => K3D.toon('#7a5a8a')), { ink: INK, inkW: 0.3 }); shawl.position.set(0, 0.95, -0.2); shawl.rotation.x = -0.15; ch.add(shawl);
+    const tbl = mk(new T.CylinderGeometry(0.22, 0.22, 0.05, 12), cw, { ink: INK, inkW: 0.3 }); tbl.position.set(2.0, 0.78, 6.55); wallF.add(tbl);
+    const tleg = mk(new T.CylinderGeometry(0.03, 0.06, 0.6, 6), cw, { ink: false }); tleg.position.set(2.0, 0.48, 6.55); wallF.add(tleg);
+    const cnd = mk(new T.CylinderGeometry(0.03, 0.035, 0.18, 6), M('wax', () => K3D.toon('#efe6cf')), { ink: false }); cnd.position.set(2.0, 0.9, 6.55); wallF.add(cnd);
+    sprite(K, wallF, 2.0, 1.04, 6.55, 0.5, '#ffb050', 0.7);
+    // pumpkins up the steps (carved, glowing), gourds on the porch corner
+    for (const [x, z, y, s, lit] of [[-1.5, 8.75, 0.09, 0.26, true], [1.45, 9.03, 0.05, 0.22, true], [-3.0, 7.0, 0.18, 0.2, false], [-2.75, 6.7, 0.18, 0.14, false], [3.1, 6.55, 0.18, 0.16, false]]) {
+      const pk = mk(K3D.geo('pm-pk|' + s, () => new T.SphereGeometry(s, 12, 8)), M('pumpkin', () => K3D.toon('#d0661a')), { ink: INK, inkW: 0.4 }); pk.scale.y = 0.78; pk.position.set(x, y + s * 0.7, z); low.add(pk);
+      const stalk = mk(new T.CylinderGeometry(0.02, 0.03, 0.08, 5), M('stalk', () => K3D.toon('#3a4a1a')), { ink: false }); stalk.position.set(x, y + s * 1.45, z); low.add(stalk);
+      if (lit) { const f = new T.Mesh(new T.PlaneGeometry(s * 1.2, s * 0.9), M('jackFace', () => K3D.flat(hot('#ffb030', 2.2), { transparent: true }))); f.position.set(x, y + s * 0.75, z + s * 0.98); low.add(f); sprite(K, low, x, y + s * 0.8, z + 0.2, 0.9, '#ff9a30', 0.35); }
+    }
+    // cobwebs in the porch roof's corners
+    web(K, wallF, -3.25, 3.25, 8.3, 0.4, -0.6, 0.9); web(K, wallF, 3.25, 3.2, 8.3, -0.4, -0.6, 0.8);
+    // ---- dead rose beds along the front either side of the porch, edged in stone, with a sundial on one ----
+    const bed = (x0, x1) => {
+      const cx = (x0 + x1) / 2, w = x1 - x0;
+      const soil = new T.Mesh(new T.BoxGeometry(w, 0.12, 1.1), K3D.toon('#2a1e18')); soil.position.set(cx, 0.06, Z + 0.95); low.add(soil);
+      for (const [dx, dz, ww, dd] of [[0, 0.56, w + 0.1, 0.1], [0, -0.56, w + 0.1, 0.1], [-w / 2, 0, 0.1, 1.2], [w / 2, 0, 0.1, 1.2]]) { const e = mk(new T.BoxGeometry(ww, 0.18, dd), stoneM, { ink: INK, inkW: 0.3 }); e.position.set(cx + dx, 0.09, Z + 0.95 + dz); low.add(e); }
+      for (let i = 0; i < Math.round(w * 2.2); i++) {
+        const x = x0 + 0.25 + rnd() * (w - 0.5), z = Z + 0.55 + rnd() * 0.8, ht = 0.35 + rnd() * 0.45;
+        const bush = mk(new T.CylinderGeometry(0.012, 0.016, ht, 4).translate(0, ht / 2, 0), M('thorn', () => K3D.toon('#2e2a1a')), { ink: false }); bush.position.set(x, 0.1, z); bush.rotation.set((rnd() - 0.5) * 0.6, 0, (rnd() - 0.5) * 0.6); low.add(bush);
+        if (rnd() < 0.6) { const r = mk(K3D.geo('pm-rose', () => new T.DodecahedronGeometry(0.06, 0)), M('blackRose', () => K3D.toon(['#6a0a1e', '#3a0a14'][0])), { ink: INK, inkW: 0.3 }); r.position.set(x + Math.sin(bush.rotation.z) * -ht, 0.1 + ht, z + Math.sin(bush.rotation.x) * ht); low.add(r); }
+      }
+    };
+    bed(-6.4, -4.1); bed(4.1, 7.6);
+    const dial = new T.Group(); dial.position.set(5.85, 0, Z + 0.95); low.add(dial);
+    const dped = mk(new T.CylinderGeometry(0.12, 0.18, 0.7, 8), stoneG, { ink: INK, inkW: 0.4 }); dped.position.y = 0.35; dial.add(dped);
+    const dtop = mk(new T.CylinderGeometry(0.26, 0.26, 0.05, 16), FIG.brass(), { ink: INK, inkW: 0.4 }); dtop.position.y = 0.72; dial.add(dtop);
+    const gn = mk(new T.BoxGeometry(0.02, 0.18, 0.2), FIG.brass(), { ink: false }); gn.position.y = 0.82; gn.rotation.x = 0.5; dial.add(gn);
+    return low;
   }
 
   /* =============================== the manor's front, upper floor and roofs =============================== */
@@ -597,7 +807,13 @@ const PARKMANOR_SCENE = (function () {
     const pitch = 0.62, half = 8.6, slope = half / Math.cos(pitch);
     for (const sx of [-1, 1]) { const sl = mk(uvBox(slope + 0.6, 0.2, 17.6, (f, fw, fh) => [fw / 2, fh / 2]), shM, { ink: INK, inkW: 0.9 }); sl.position.set(sx * half / 2, Math.tan(pitch) * half / 2, 0); sl.rotation.z = -sx * pitch; roof.add(sl); }
     const gableS = new T.Shape(); gableS.moveTo(-half, 0); gableS.lineTo(0, Math.tan(pitch) * half); gableS.lineTo(half, 0); gableS.closePath();
-    for (const sz of [-1, 1]) { const gb = mk(new T.ShapeGeometry(gableS), M('gable', () => K3D.toon('#3a3450', { side: T.DoubleSide })), { ink: INK, inkW: 0.6 }); gb.position.z = sz * 8.4; roof.add(gb); }
+    // the gables: the front one in painted fish-scale shingles (dusky mauve with a pale trim), the back one plain
+    const fishM = M('fishGable', () => { const tx = fishScale(); tx.repeat.set(0.2, 0.26); return K3D.toon('#ffffff', { map: tx, side: T.DoubleSide }); });
+    for (const sz of [-1, 1]) { const gb = mk(new T.ShapeGeometry(gableS), sz > 0 ? fishM : M('gable', () => K3D.toon('#3a3450', { side: T.DoubleSide })), { ink: INK, inkW: 0.6 }); gb.position.z = sz * 8.4 + (sz > 0 ? 0.02 : 0); roof.add(gb); }
+    // a fretwork bargeboard along the front gable's eaves, with a finial at the peak
+    for (const sx of [-1, 1]) { const bb = mk(new T.BoxGeometry(slope + 0.4, 0.22, 0.08), trim, { ink: INK, inkW: 0.5 }); bb.position.set(sx * half / 2, Math.tan(pitch) * half / 2 - 0.12, 8.5); bb.rotation.z = -sx * pitch; roof.add(bb);
+      for (let i = 1; i < 9; i++) { const t = i / 9, dr = mk(K3D.geo('pm-drip', () => new T.ConeGeometry(0.07, 0.26, 4)), trim, { ink: false }); dr.rotation.z = Math.PI; dr.position.set(sx * half * (1 - t), Math.tan(pitch) * half * t - 0.36, 8.5); roof.add(dr); } }
+    const fin = mk(new T.ConeGeometry(0.1, 0.9, 6), iron(), { ink: INK, inkW: 0.4 }); fin.position.set(0, Math.tan(pitch) * half + 0.4, 8.5); roof.add(fin);
     const att = new T.Mesh(new T.CircleGeometry(0.7, 24), K3D.flat(hot('#7affc0', 0.55))); att.position.set(0, 2.2, 8.42); roof.add(att);
     const attF = mk(new T.TorusGeometry(0.72, 0.09, 6, 24), trim, { ink: INK, inkW: 0.5 }); attF.position.set(0, 2.2, 8.43); roof.add(attF);
     SC.atticEye = new T.Mesh(new T.CircleGeometry(0.28, 20), K3D.flat('#1a0a14')); SC.atticEye.position.set(0, 2.2, 8.45); roof.add(SC.atticEye); SC.atticEye.userData.live = true;
@@ -725,7 +941,7 @@ const PARKMANOR_SCENE = (function () {
     for (const sx of [-1, 1]) { const e = new T.Mesh(new T.SphereGeometry(0.04, 6, 4), K3D.flat('#0a0a0a')); e.position.set(sx * 0.14, -0.2, 0.62); moose.add(e); }
     for (const [id, x, z, yaw] of [['hallLeft', -7.75, -1.6, Math.PI / 2], ['hallLeft', -7.75, 2.6, Math.PI / 2], ['hallBack', -1.8, -9.75, 0], ['hallBack', 1.8, -9.75, 0], ['hallRight', 7.75, -0.6, -Math.PI / 2], ['hallRight', 7.75, 3.2, -Math.PI / 2], ['hallFront', -3, 5.75, Math.PI], ['hallFront', 3, 5.75, Math.PI]]) sconce(K, deco(id), x, 2.6, z, yaw, B);
     // cobwebs in the corners and on the chandelier; bats asleep along the wall tops
-    SC.webs = [];
+    SC.webs = SC.webs || [];
     for (const [x, y, z, dx, dz] of [[-7.78, 6.3, -9.78, 1, 1], [7.78, 6.3, -9.78, -1, 1], [-7.78, 6.3, 5.78, 1, -1], [7.78, 6.3, 5.78, -1, -1], [-7.78, 2.95, -9.0, 1, 1], [7.78, 2.95, -9.4, -1, 1]]) web(K, g, x, y, z, dx, dz, 1.6);
     for (let i = 0; i < 7; i++) { const b = new T.Mesh(batGeoTuck(), M('batTuck', () => K3D.toon('#14101c'))); b.position.set(-7.6 + rnd() * 0.2, 6.25, -9 + i * 2.0); b.rotation.y = Math.PI / 2; b.scale.setScalar(0.9); g.add(b); }
     // the chandelier (Bo's winder lights it) and its winder box on the left wall
@@ -767,7 +983,7 @@ const PARKMANOR_SCENE = (function () {
     const w = new T.Mesh(new T.PlaneGeometry(s, s), M('webM', () => K3D.flat('#ffffff', { map: cobwebTex(), transparent: true, depthWrite: false, side: T.DoubleSide })));
     const p = new T.Group(); p.position.set(x, y, z); p.rotation.y = Math.atan2(-dz, dx); g.add(p); p.userData.live = true;
     w.position.set(s / 2 * 0.95, -s / 2 * 0.95, 0); p.add(w);
-    SC.webs.push({ w: p, ph: rnd() * 6 });
+    (SC.webs || (SC.webs = [])).push({ w: p, ph: rnd() * 6 });
   }
   function tallWindow(K, parent, x, z, yaw, w, h, y0, B) {
     const wg = new T.Group(); wg.position.set(x, y0 + h / 2, z); wg.rotation.y = yaw; parent.add(wg);
@@ -1022,6 +1238,7 @@ const PARKMANOR_SCENE = (function () {
     const og = outside(K, B), yg = yard(K, B);
     if (window.__w42audit) audit(K, [og, yg]);
     SC.fac = facade(K, B);
+    frontDetail(K, B, SC.fac);
     hall(K, B, SC.walls);
     corridor(K, B, SC.walls);
     // the clocks (restart points) and the porch hooks
@@ -1045,7 +1262,7 @@ const PARKMANOR_SCENE = (function () {
     B.done();
     // batch the still scenery: the walls' two versions each on their own (they switch), everything else at once
     for (const id in SC.walls) { K3D.bake(SC.walls[id].full); K3D.bake(SC.walls[id].cut); }
-    K3D.bake(SC.fac.up); K3D.bake(SC.fac.corRoof);
+    K3D.bake(SC.fac.up); K3D.bake(SC.fac.corRoof); K3D.bake(SC.fac.porchTop);
     K3D.bake(K.root);
     SC.rig = K3D.cams.follow({ pitch: 34, heading: 0, fov: 34, min: 13, max: 20 });
     SC.rig.shadowReach = 20;
@@ -1184,6 +1401,7 @@ const PARKMANOR_SCENE = (function () {
     for (const b of SC.bats || []) b.p.rotation.z = Math.sin(t * b.sp + b.ph) * 0.18;
     // the rocking chair rocks by itself; the attic eye opens now and then; the mirror shows someone
     SC.rock.rotation.x = Math.sin(t * 1.6) * 0.12 * (0.5 + 0.5 * Math.sin(t * 0.13));
+    if (SC.porchChair) SC.porchChair.rotation.x = Math.sin(t * 1.1 + 2) * 0.1 * (0.4 + 0.6 * Math.abs(Math.sin(t * 0.21)));
     if (SC.atticEye) SC.atticEye.scale.y = Math.sin(t * 0.25) > 0.6 ? 1 : 0.08;
     { const mp = ps[0].b3, near = mp ? Math.hypot(mp.x - 7, mp.z - 1.2) : 99; SC.mirror.ghost.material.opacity = approachV(SC.mirror.ghost.material.opacity, near < 4.5 ? 0.6 + 0.2 * Math.sin(t * 2) : 0, Math.min(1, dt * 1.5)); }
     if (SC.curtainHand) SC.curtainHand.visible = Math.sin(t * 0.31 + 2) > 0.92;
