@@ -68,6 +68,7 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 600), 
       G.introT = 0;
       const steps = Math.round(maxT / P.DT), every = trace ? Math.round(trace / P.DT) : 0, lines = [];
       const flips = [[], []], lastS = [0, 0];
+      window.__flipLog = trace ? [] : null;
       let n = 0, maxFlip = [0, 0];
       while (n < steps && G.mode === 'play') {
         for (let k = 0; k < 600 && n < steps && G.mode === 'play'; k++, n++) {
@@ -79,19 +80,19 @@ const who = opt('who', 'cpu'), side = +opt('side', 0), maxT = +opt('max', 600), 
           for (const id of [0, 1]) {
             if (who !== 'cpu' && id === side) continue;
             const ax = G.players[id].input.ax || 0, sg = ax > 0.05 ? 1 : ax < -0.05 ? -1 : 0;
-            if (sg && lastS[id] && sg !== lastS[id] && st.phase === 'race') flips[id].push(n * P.DT);
+            if (sg && lastS[id] && sg !== lastS[id] && st.phase === 'race') { flips[id].push(n * P.DT); if (window.__flipLog && window.__flipLog.length < 400) { const k = st.karts[id]; window.__flipLog.push(`${(n * P.DT).toFixed(2)} ${['Pip', 'Bo'][id]} s${k.s.toFixed(0)} ${k.drift ? 'D' : ''}${k.on >= 0 ? 'R' : ''}${k.verge ? 'V' : ''} lat${k.lat.toFixed(1)} ax${ax.toFixed(2)}`); } }
             if (sg) lastS[id] = sg;
             while (flips[id].length && n * P.DT - flips[id][0] > 1) flips[id].shift();
             maxFlip[id] = Math.max(maxFlip[id], flips[id].length);
           }
-          if (every && n % every === 0 && st.karts) lines.push(`${(n * P.DT).toFixed(1)}s ${st.phase} prog ${st.karts.map(x => x.prog.toFixed(0) + (x.drift ? 'D' : '') + (x.on >= 0 ? 'R' : '') + ' v' + x.v.toFixed(1) + ' lat' + x.lat.toFixed(1)).join(' | ')} gap ${st.gap.toFixed(1)} flags ${st.flags}`);
+          if (every && n % every === 0 && st.karts) lines.push(`${(n * P.DT).toFixed(1)}s ${st.phase} prog ${st.karts.map(x => x.prog.toFixed(0) + (x.drift ? 'D' : '') + (x.on >= 0 ? 'R' : '') + ' v' + x.v.toFixed(1) + ' lat' + x.lat.toFixed(1)).join(' | ')} gap ${st.gap.toFixed(1)} flags ${st.flags} ax ${G.players.map(p => (p.input.ax || 0).toFixed(2) + (p.input.jump ? 'J' : '') + (p.input.down ? 'B' : '')).join(',')} yaw ${st.karts.map(k => (k.yaw - PARKKARTS_TRACK.at(k.s).yaw).toFixed(2)).join(',')}`);
         }
         await new Promise(r => setTimeout(r, 0));
       }
       const st = G.mst;
       return { mode: G.mode, simT: +(n * P.DT).toFixed(1), raceT: +st.raceT.toFixed(1), flags: st.flags, winner: st.winner, log: st.log.map(l => `${['Pip', 'Bo'][l.w]} ${l.how} @${l.t.toFixed(0)}s ${l.part} gap ${l.gap}`),
         k: st.karts.map(k => ({ cranes: k.cranes, walls: k.walls, drifts: k.drifts || 0, boosts: k.boosts, chain: k.bestChain, used: k.used || 0, boxes: k.boxes || 0, hits: k.hits || 0, slips: k.slips || 0, laps: (k.prog / PARKKARTS_TRACK.L).toFixed(1) })),
-        maxFlip, cpuErrs: [...P.CPU.errs], trace: lines };
+        maxFlip, cpuErrs: [...P.CPU.errs], trace: lines.concat(window.__flipLog ? ['FLIPS'].concat(window.__flipLog) : []) };
     }, { skills, seed, who, side, maxT, trace });
     if (r.trace.length) console.log(r.trace.join('\n'));
     const W = r.winner >= 0 ? ['Pip', 'Bo'][r.winner] : 'nobody';

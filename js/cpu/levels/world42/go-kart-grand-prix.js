@@ -55,7 +55,7 @@ cpuBrain('parkkarts', {
     b.mistakeT -= dt;
     if (b.mistakeT <= 0) { b.mistakeT = 4 + Math.random() * 10 * (0.4 + sk); if (Math.random() < 0.8 - sk * 0.6) b.mistake = 0.8 + Math.random() * 0.8; }
     if (b.mistake > 0) { b.mistake -= dt; lineLat += Math.sign(turn || 1) * hw * 0.6; }
-    lineLat = Math.max(-hw + 1.1, Math.min(hw - 1.1, lineLat)) + cut;
+    lineLat = Math.max(-hw + 1.2, Math.min(hw - 1.2, lineLat + cut));
     let tx, tz;
     if (useShort) {
       // aim along the shortcut's own middle
@@ -66,7 +66,7 @@ cpuBrain('parkkarts', {
     // steer at it
     const want = Math.atan2(tx - k.x, tz - k.z);
     let err = Math.atan2(Math.sin(want - k.yaw), Math.cos(want - k.yaw));
-    let s = Math.max(-1, Math.min(1, -err * (2.2 + sk)));
+    let s = Math.max(-1, Math.min(1, -err * (1.7 + 0.8 * sk)));
     // drift into tight bends (the kart turns harder than it steers): hold through, let go out of it
     const drifty = sk >= 0.95 ? 0.55 : sk >= 0.6 ? 0.85 : 1.6;
     if (!b.drifting && tight > drifty && k.v > KK.S.DRIFT_V + 1 && Math.abs(err) > 0.05 && !useShort) { b.drifting = true; b.driftDir = -Math.sign(turn); }
@@ -82,8 +82,13 @@ cpuBrain('parkkarts', {
     if (sk < 0.5 && st.lead === p.id && st.gap > 14) out.down = k.v > 9;
     // ease the stick (never wobbling: a dead zone and a rate limit)
     const rate = 4 + 4 * sk;
+    // a hand on the wheel, not a twitch: a turn the other way waits until the last one has had half a second, and a
+    // small one the other way waits until it is worth making
+    b.sinceFlip = (b.sinceFlip || 0) + dt;
+    if (b.lastNZ && Math.sign(s) === -b.lastNZ && (b.sinceFlip < 0.56 || Math.abs(s) < (b.drifting ? 0.45 : 0.22))) s = 0;
+    if (Math.abs(s) < 0.08 && !b.drifting) s = 0;
     b.steer += Math.max(-rate * dt, Math.min(rate * dt, s - b.steer));
-    if (Math.abs(b.steer) < 0.06 && !b.drifting) b.steer = 0;
+    if (Math.abs(b.steer) > 0.05 && Math.sign(b.steer) !== b.lastNZ) { b.lastNZ = Math.sign(b.steer); b.sinceFlip = 0; }
     out.ax = b.steer;
     // prizes
     if (k.prize) {
