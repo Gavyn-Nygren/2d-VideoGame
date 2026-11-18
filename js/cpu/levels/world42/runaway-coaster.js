@@ -9,8 +9,11 @@
                  chevron needs only one rider, but it leans anyway (a full tilt counts too).
        TIPS      leans the other way from the thing leaning in, early enough to be tipped up when it passes.
        DUCKS     holds down for a low board that crosses its own head (or both heads).
-       HOPS      jumps so the middle of the 1 s of air is over the gap; if the partner jumped first, it jumps at once
-                 (inside the 0.3 s window), and it never jumps again while the train is in the air.
+       HOPS      counts the person in ("Ready..." then "Jump!") and jumps a little early (0.6 s before the gap's
+                 middle), so a person who answers its little hop late still gets the train over. If the person jumps
+                 first it joins them at once, as long as that hop would clear the gap ahead or land well before it; a
+                 press too early or too late it leaves alone (its nose-dip shows one alone is not enough) and it jumps
+                 at its own moment. It never jumps again while the train is in the air.
        LEVERS    taps the action in the zone of a switch, the rocket's points, a bell or target on its own side (not
                  if already thrown; PARKCOASTER.leverPre gives each zone), and taps its brake lever at the brake house.
                  It cannot reach the person's side: it says "Your lever!" a second before their switch's zone.
@@ -23,7 +26,7 @@
   const sgn = x => (x > 0 ? 1 : x < 0 ? -1 : 0);
   cpuBrain('parkcoaster', {
     idleStop: 30,
-    reset(s) { s.said = {}; s.lastJump = -9; s.lastAct = -9; },
+    reset(s) { s.said = {}; s.lastJump = -9; s.lastAct = -9; s.lastHopT = null; s.hopN = 0; },
     think(s, p, o, dt, info) {
       const out = {}, st = info.mst;
       if (!st || st.phase !== 'ride' || info.intro || st.det >= 0) return out;
@@ -59,11 +62,20 @@
       // hops
       const inAir = st.airT >= 0 && st.full;
       if (!inAir) {
-        if (st.hopFirst === o.id && st.hopWinT > 0.03 && st.t - s.lastJump > 0.4) { out.jump = 'tap'; s.lastJump = st.t; }
-        else for (const h of L.hops) {
-          const mid = ahead((h.s0 + h.s1) / 2), a0 = ahead(h.s0);
-          if (a0 > 0 && a0 < 2.4) say('hop' + h.s0, 'Jump with me!');
-          if (mid <= S.HOP_AIR / 2 + 0.02 && mid > 0.15 && st.t - s.lastJump > 1.2) { out.jump = 'tap'; s.lastJump = st.t; }
+        // the gap ahead, and whether a full hop begun this moment would be in the air over all of it
+        const u0 = (1 - Math.sqrt(1 - S.GAP_CLEAR / S.HOP_H)) / 2, up = S.HOP_AIR * u0 + 0.02, down = S.HOP_AIR * (1 - u0) - 0.02;
+        const next = L.hops.find(h => PARKCOASTER.gapSpan(h, v)[1] > at);
+        const span = next && PARKCOASTER.gapSpan(next, v), g0 = next ? ahead(span[0]) : 99, g1 = next ? ahead(span[1]) : 99;
+        const clears = g0 >= up && g1 <= down, harmless = g0 > S.HOP_AIR + 0.5;
+        if (st.hopFirst === o.id && (st.hopWinT > 0.03 || st.airT >= 0) && st.t - s.lastJump > 0.1) {
+          if (clears || harmless) { out.jump = 'tap'; s.lastJump = st.t; }
+        } else if (next) {
+          const mid = ahead((next.s0 + next.s1) / 2), again = s.lastHopT != null && st.t - s.lastHopT < 2.5;
+          if (mid > 0.6 && mid < 1.5 && !again) say('ready' + next.s0, 'Ready...');
+          if (mid <= 0.6 && clears && st.t - s.lastJump > 0.9) {
+            out.jump = 'tap'; s.lastJump = st.t; s.lastHopT = st.t;
+            if (solo && !s.said['hop' + next.s0]) { s.said['hop' + next.s0] = 1; s.hopN = again ? (s.hopN || 0) + 1 : 0; cpuSay(p, ['Jump!', 'Again!', 'And again!'][Math.min(2, s.hopN)], 0.9); }
+          }
         }
       }
       // levers on its own side (switches, the rocket's points, bells, targets, its brake); the person's switches get

@@ -614,6 +614,7 @@ const PARKKARTS_WORLD = (function () {
   }
 
   W.build = function (K) {
+    PARK.seed();   // the scenery's dice start again, so the park is the same on every build and replay
     rnd = PARK.rnd; PARK.resetGlints();
     W.night = PARK.night(K, { moon: { x: -60, y: 200, z: -520, r: 46 } });
     const B = PARK.bulbs(K, 22000);

@@ -36,9 +36,13 @@ const PARK = (function () {
   const T = K3D.T;
   const P = {};
   const hot = (hex, k) => new T.Color(hex).multiplyScalar(k);
-  const rnd = (() => { let s = 4242; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; })();
+  // the scenery's dice (scenery only, never rules). PARK.seed() starts the sequence again: every level calls it first
+  // thing in its scene build, so the park stands exactly the same every time the level is opened, restarted or
+  // replayed (without it each rebuild rolled on from where the last one stopped, and trees, stalls and lamps moved)
+  let seedS = 4242;
+  const rnd = () => { seedS = (seedS * 16807) % 2147483647; return seedS / 2147483647; };
   P.rnd = rnd;
-  P.seed = n => { /* rnd is a fixed sequence per load: scenery only */ void n; };
+  P.seed = (n = 4242) => { seedS = n; };
   const M = (key, make) => K3D.mat('park|' + key, make);
   P.toonM = (col, o) => M('t|' + col + (o ? JSON.stringify(o) : ''), () => K3D.toon(col, o));
   P.flatM = (col, k = 1, o) => M('f|' + col + '|' + k + (o ? JSON.stringify(o) : ''), () => K3D.flat(hot(col, k), o));
@@ -1035,7 +1039,7 @@ const PARK = (function () {
       fragmentShader: 'varying vec3 vC; varying float vA; void main() { float d = length(gl_PointCoord - 0.5); if (vA <= 0.0) discard; gl_FragColor = vec4(vC * smoothstep(0.5, 0.0, d) * vA * 3.0, 1.0); }' });
     const pts = new T.Points(g, m); pts.frustumCulled = false; K.add(pts);
     let head = 0, auto = false, next = 0, t = 0;
-    const flashes = [];
+    const flashes = [], fwDir = new T.Vector3();
     const f = {
       burst(x, y, z, c) {
         const cc = new T.Color(c), n = 160;
@@ -1054,7 +1058,14 @@ const PARK = (function () {
     const cols = ['#ff5a7a', '#ffd24a', '#7ae8ff', '#9aff8a', '#ff9ad6', '#ffffff', '#b48aff'];
     K.tick(dt => {
       t += dt; m.uniforms.uPx.value = K3D.R.domElement.height / 720;
-      if (auto && t > next) { next = t + 0.5 + rnd() * 1.1; const cp = K.camera.position, a = rnd() * Math.PI * 2; f.burst(cp.x + Math.cos(a) * (50 + rnd() * 60), 40 + rnd() * 40, cp.z + Math.sin(a) * (50 + rnd() * 60), cols[Math.floor(rnd() * cols.length)]); }
+      // auto: bursts go up in the sky AHEAD of the camera, spread a little wider than the picture and low enough to be
+      // in it (placed all round the camera and 40 to 80 up, three in four were behind it and most of the rest were
+      // above the top of the screen, so the show was hardly seen)
+      if (auto && t > next) {
+        next = t + 0.5 + rnd() * 1.1;
+        const cp = K.camera.position, dir = K.camera.getWorldDirection(fwDir), a = Math.atan2(dir.z, dir.x) + (rnd() - 0.5) * 1.9, d = 70 + rnd() * 80;
+        f.burst(cp.x + Math.cos(a) * d, Math.max(26, cp.y + d * (0.06 + rnd() * 0.3)), cp.z + Math.sin(a) * d, cols[Math.floor(rnd() * cols.length)]);
+      }
       for (let k = 0; k < N; k++) {
         if (life[k * 2] <= 0) continue;
         vel[k * 3 + 1] -= 6 * dt; vel[k * 3] *= 1 - 1.6 * dt; vel[k * 3 + 1] *= 1 - 1.6 * dt; vel[k * 3 + 2] *= 1 - 1.6 * dt;
