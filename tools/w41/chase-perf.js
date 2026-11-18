@@ -21,16 +21,17 @@ const opt = (k, d) => { const a = args.find(x => x.startsWith('--' + k + '=')); 
   await page.waitForFunction(() => ['ready', 'failed'].includes(window.__pipbo.K3D.state), null, { timeout: 120000 });
   const rows = await page.evaluate(async ({ every, top }) => {
     const P = window.__pipbo, G = P.G, DT = P.DT, R = P.K3D.R, out = [];
-    let next = 0.5;
+    let next = 0.5, lastK = -1;
     for (let n = 0; n < 200 / DT && G.mode !== 'clear' && G.mode !== 'result'; n++) {
       const t0 = performance.now(); P.step(DT); const ts = performance.now() - t0;
+      if (G.mst && G.mst.k !== lastK) { lastK = G.mst.k; next = 0.5; }
       if (G.mst && G.mst.T >= next && G.mode === 'play') {
         next = G.mst.T + every;
         const t1 = performance.now(); P.render(DT); const tr = performance.now() - t1;
         const row = { k: G.mst.k, T: +G.mst.T.toFixed(1), calls: R.info.render.calls, tris: R.info.render.triangles, tex: R.info.memory.textures, geo: R.info.memory.geometries, stepMs: +ts.toFixed(2), drawMs: +tr.toFixed(1) };
         if (top) {
           const by = {}, scene = P.K3D.K.scene;
-          scene.traverseVisible(o => { if (!o.isMesh && !o.isInstancedMesh && !o.isSprite && !o.isLine && !o.isPoints) return; let p = o; while (p.parent && p.parent !== scene) p = p.parent; const key = p.name || p.type; by[key] = (by[key] || 0) + 1; });
+          scene.traverseVisible(o => { if (!o.isMesh && !o.isInstancedMesh && !o.isSprite && !o.isLine && !o.isPoints) return; const chain = []; let p = o; while (p && p !== scene) { chain.unshift(p); p = p.parent; } const nm = q => q ? (q.name || (q.userData && (q.userData.kind || q.userData.tag)) || q.type) : ''; const key = chain.slice(0, 3).map(nm).join('/'); by[key] = (by[key] || 0) + 1; });
           row.top = Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => k + ':' + v).join(' ');
         }
         out.push(row);

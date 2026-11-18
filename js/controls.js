@@ -37,6 +37,16 @@ const KEYCAPS = [
 ];
 const KEY_MEANS = { A: 'left', D: 'right', W: 'jump', S: 'down', F: 'act', E: 'act', Space: 'jump', '←': 'left', '→': 'right', '↑': 'jump', '↓': 'down', '/': 'act' };
 const ARROWS = { left: '◀', right: '▶', jump: '▲', down: '▼', up: '▲' };
+// a keyboard player's key for one move. In a 3D level (def.view3d, see pollInput) the jump keys (W, ↑) walk or fly up
+// ('up') and jump is Space (Pip) / Right Shift (Bo), so a legend's W and Space are shown as those keys.
+const ctl3D = () => !!(G.level && G.level.def && G.level.def.view3d);
+function ctlCap(id, what) {
+  const ks = keysetFor(id);
+  if (what === 'up') return KEYCAPS[ks].jump || '';
+  if (what === 'jump' && ctl3D()) return ks === 0 ? 'Space' : 'Right Shift';
+  return KEYCAPS[ks][what] || '';
+}
+const ctlMeans = c => (ctl3D() && { W: 'up', '↑': 'up', 'Right Shift': 'jump' }[c]) || KEY_MEANS[c] || null;
 
 // everything that changes what the prompts say; pollInput calls controlsWatch() every frame and a change redraws them
 function controlsWatch() {
@@ -57,7 +67,7 @@ function controlsRefresh() {
 function btnLabel(id, what) {
   const d = playerDevice(id);
   if (what === 'move') return d.kind === 'pad' ? 'stick' : btnLabel(id, 'left') + ' ' + btnLabel(id, 'right');
-  if (d.kind === 'kb') return KEYCAPS[keysetFor(id)][what] || '';
+  if (d.kind === 'kb') return ctlCap(id, what);
   if (d.kind === 'touch') return what === 'act' ? '●' : ARROWS[what] || '';
   if (what === 'jump') return glyph('a', id);
   if (what === 'act') return glyph(padActGlyph(), id);
@@ -69,7 +79,7 @@ const padGlyphHTML = (g, id) => `<span data-glyph="${esc(g)}" data-gp="${id}" cl
 function btnHTML(id, what) {
   const d = playerDevice(id);
   if (what === 'move') return d.kind === 'pad' ? '<kbd class="k-stick">stick</kbd>' : btnHTML(id, 'left') + btnHTML(id, 'right');
-  if (d.kind === 'kb') return `<kbd>${esc(KEYCAPS[keysetFor(id)][what] || '')}</kbd>`;
+  if (d.kind === 'kb') return `<kbd>${esc(ctlCap(id, what))}</kbd>`;
   if (d.kind === 'touch') return what === 'act' ? '<kbd class="k-touch k-round">●</kbd>' : `<kbd class="k-touch">${ARROWS[what] || ''}</kbd>`;
   if (what === 'jump') return padGlyphHTML('a', id);
   if (what === 'act') return padGlyphHTML(padActGlyph(), id);
@@ -84,15 +94,15 @@ function controlsLine(id, html) {
   let stickSaid = false;
   return String(html).replace(/(?:<kbd>[^<]*<\/kbd>)+/g, group => {
     const caps = group.match(/<kbd>[^<]*<\/kbd>/g).map(t => t.slice(5, -6));
-    const means = caps.map(c => KEY_MEANS[c] || null);
+    const means = caps.map(ctlMeans), k3 = ctl3D(), upM = k3 ? 'up' : 'jump';
     if (d.kind === 'pad') {
-      const dirs = means.filter(m => m && m !== 'act');
-      // all four directions together is the whole stick; jump next to down is the stick's up
-      if (dirs.length >= 4 && ['left', 'right', 'jump', 'down'].every(m => means.includes(m))) { stickSaid = true; return '<kbd class="k-stick">stick</kbd>'; }
-      const vertical = means.includes('jump') && means.includes('down');
+      const dirs = means.filter(m => m && m !== 'act' && !(k3 && m === 'jump'));
+      // all four directions together is the whole stick; jump next to down is the stick's up (in 3D, 'up' is)
+      if (dirs.length >= 4 && ['left', 'right', upM, 'down'].every(m => means.includes(m))) { stickSaid = true; return '<kbd class="k-stick">stick</kbd>'; }
+      const vertical = means.includes(upM) && means.includes('down');
       return means.map((m, k) => {
         if (!m) return `<kbd>${caps[k]}</kbd>`;
-        if (m === 'act' || (m === 'jump' && !vertical)) return btnHTML(id, m);
+        if (m === 'act' || (m === 'jump' && (k3 || !vertical))) return btnHTML(id, m);
         const said = stickSaid; stickSaid = true;
         return (said ? '' : '<span class="k-word">stick</span>') + `<kbd class="k-stick">${ARROWS[m]}</kbd>`;
       }).join('');

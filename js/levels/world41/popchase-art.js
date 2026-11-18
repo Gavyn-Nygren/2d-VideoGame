@@ -829,6 +829,7 @@ void main() {
       u.tongue.rotation.z = approach(u.tongue.rotation.z, held ? 1.1 : 0.5, dt * 6);
       u.tongue.position.x = approach(u.tongue.position.x, held ? 0.6 : 0.8, dt * 3);
       u.glow.material.opacity = near && !held ? 0.45 + Math.sin(G.clock * 6) * 0.2 : held ? 0.7 : 0;
+      u.glow.visible = u.glow.material.opacity > 0.01; // (no draw call for an unlit ring)
       tb.m.position.x = tb.t.x; // (the ship's tabs travel)
       tb.m.visible = tb.t.x > st.rollX;
     }
@@ -841,6 +842,7 @@ void main() {
       s.m.userData.fig.rotation.y = yaw + (a.dir > 0 ? -0.35 : 0.35);
       s.m.userData.fig.position.y = a.moving ? Math.abs(Math.sin(G.clock * 18)) * 0.08 : 0;
       s.m.userData.glow.material.opacity = a.tell * 0.6 + (a.moving ? 0.25 : 0);
+      s.m.userData.glow.visible = s.m.userData.glow.material.opacity > 0.01;
       s.m.visible = st.chunkT[clamp(PC.chunkOf(st, sl.x), 0, st.chunkT.length - 1)] >= 0 && sl.x > st.rollX;
     }
     sc.marks.forEach((b, i) => { b.userData.lit(L3.marks[i].on ? 0.6 + Math.sin(G.clock * 3) * 0.3 : 0); b.visible = L3.marks[i].x > st.rollX; });
