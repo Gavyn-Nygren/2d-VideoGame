@@ -124,6 +124,8 @@ const ok = (cond, what) => { if (!cond) { fails++; console.log('FAIL  ' + what);
     const P = window.__pipbo, G = P.G, out = [], rows = [];
     for (let i = 0; i < P.LEVELS.length; i++) {
       try {
+        // a 3D level's ready card waits for three.js (World 41 on): load it first, as a person's card would
+        if (P.LEVELS[i].view3d && K3D.state !== 'ready') { try { await K3D.need(); } catch (e) { /* the fail card is checked below */ } }
         P.startLevel(i);
         if (G.mode !== 'ready') { out.push(P.LEVELS[i].name + ': no ready card'); continue; }
         const card = document.querySelector('.ready-card');
