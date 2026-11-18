@@ -807,7 +807,7 @@ const PARK = (function () {
       let t = rnd() * 10;
       const sp = o.speed || (o.small ? 0.12 : 0.08);
       const step = dt => {
-        t += dt; wheel.rotation.z = t * sp;
+        t = o.clock ? o.clock(t, dt) : t + dt; wheel.rotation.z = t * sp;   // (o.clock: a level can steer the wheel's turn)
         for (const gg of gon) { const a = gg.userData.a + t * sp; gg.position.set(Math.cos(a) * r, hub + Math.sin(a) * r, 0); gg.rotation.z = Math.sin(t * 1.3 + gg.userData.a * 3) * 0.06; }
       };
       K.tick(step); step(0);
@@ -993,17 +993,24 @@ const PARK = (function () {
   P.lake = function (K, B, o) {
     const g = new T.Group(); g.position.set(o.x, 0, o.z); K.add(g);
     const shape = new T.Shape(); for (let i = 0; i <= 64; i++) { const a = i / 64 * Math.PI * 2, k = 1 + Math.sin(a * 3) * 0.05 + Math.cos(a * 5) * 0.04; const px = Math.cos(a) * o.rx * k, pz = Math.sin(a) * o.rz * k; if (i === 0) shape.moveTo(px, pz); else shape.lineTo(px, pz); }
-    const mat = new T.ShaderMaterial({ uniforms: { uT: { value: 0 }, uFog: { value: K.fogCol } },
+    const mat = new T.ShaderMaterial({ uniforms: { uT: { value: 0 }, uFog: { value: K.fogCol }, uMoon: { value: new T.Vector3(-0.1, 0.36, -0.93) } },
       vertexShader: 'varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
-      fragmentShader: `varying vec3 vW; uniform float uT;
+      fragmentShader: `varying vec3 vW; uniform float uT; uniform vec3 uMoon;
         void main() { float r = sin(vW.x * 0.6 + uT) * sin(vW.z * 0.8 - uT * 0.7) + 0.5 * sin((vW.x + vW.z) * 1.7 + uT * 1.4);
-          vec3 c = vec3(0.05, 0.08, 0.2) + vec3(0.25, 0.22, 0.45) * smoothstep(0.9, 1.4, r);
+          float d = clamp(length(vW.xz - cameraPosition.xz) / 140.0, 0.0, 1.0);   // (darker near, a touch of sky far away)
+          vec3 c = mix(vec3(0.006, 0.014, 0.05), vec3(0.025, 0.035, 0.09), d) + vec3(0.03, 0.05, 0.12) * smoothstep(0.8, 1.4, r);
+          float w = sin(vW.z * 1.9 + sin(vW.x * 0.23 + uT * 0.6) * 2.2 + uT * 1.1) * sin(vW.x * 0.35 - uT * 0.4);
+          c += vec3(0.16, 0.2, 0.38) * pow(max(w, 0.0), 14.0);   // (long thin ripple lines catching the sky)
+          vec3 n = normalize(vec3(cos(vW.x * 0.6 + uT) * 0.12 + cos((vW.x + vW.z) * 1.7 + uT * 1.4) * 0.1, 1.0, cos(vW.z * 0.8 - uT * 0.7) * 0.12));
+          vec3 v = normalize(cameraPosition - vW), h = normalize(v + normalize(uMoon));
+          c += vec3(0.55, 0.62, 0.85) * pow(max(dot(n, h), 0.0), 90.0) + vec3(0.05, 0.06, 0.12) * pow(1.0 - max(v.y, 0.0), 4.0);   // (moon glints; sky sheen at a low angle)
           gl_FragColor = vec4(c, 1.0);
           #include <colorspace_fragment>
         }` });
-    const water = new T.Mesh(new T.ShapeGeometry(shape, 64).rotateX(Math.PI / 2), mat); water.position.y = 0.06; g.add(water);
+    const water = new T.Mesh(new T.ShapeGeometry(shape, 64).rotateX(-Math.PI / 2), mat);   // (face up; the rim and bulbs use the same -y mirror)
+    water.position.y = 0.06; water.userData.live = true; g.add(water);   // (a shader surface: never baked)
     const rim = mesh(new T.TubeGeometry(new T.CatmullRomCurve3(shape.getPoints(64).map(p => new T.Vector3(p.x, 0.25, -p.y)), true), 128, 0.4, 6, true), toonM('#6a6080')); g.add(rim);
-    K.tick(dt => { mat.uniforms.uT.value += dt; });
+    K.tick(dt => { mat.uniforms.uT.value += dt; if (K.moonDir) mat.uniforms.uMoon.value.copy(K.moonDir); });
     // swan boats bobbing at a jetty and drifting
     const swans = [];
     for (let k = 0; k < 7; k++) {
