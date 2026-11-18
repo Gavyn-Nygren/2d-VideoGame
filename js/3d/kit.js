@@ -358,7 +358,8 @@
     group.traverse(o => {
       if (!o.isMesh || o.isInstancedMesh || o.userData.ink || o.userData.seeThrough || liveUnder(o)) return;
       const mats = [].concat(o.material);
-      if (mats.some(m => m.transparent || !(m.isMeshToonMaterial || m.isMeshBasicMaterial))) return;
+      // (see-through things are left whole so they sort, except flat decals lying on the page: m.userData.flatDecal)
+      if (mats.some(m => (m.transparent && !m.userData.flatDecal) || !(m.isMeshToonMaterial || m.isMeshBasicMaterial))) return;
       const ink = o.children.find(c => c.userData.ink);
       if (o.children.some(c => !c.userData.ink)) return; // something hangs on it: leave it whole
       const geo = o.geometry.index ? o.geometry : o.geometry; // (indexed or not, both work below)

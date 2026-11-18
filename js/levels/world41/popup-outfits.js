@@ -97,16 +97,20 @@
   });
   // Bo's white paper ruff collar: an accordion-pleated ring round the body
   K3D.definePart3('popRuff', (o, x) => {
-    // one ring of even accordion pleats: each pleat is two faces, up and down, so the folds catch the light
-    const N = 60, pos = [], idx = [];
-    for (let i = 0; i <= N; i++) {
-      const a = i / N * Math.PI * 2, [ix, iz] = ringPt(a, 1.02), [ox, oz] = ringPt(a, 1.34), up = i % 2 ? 0.045 : -0.005;
-      pos.push(ix, 0.02, iz, ox, up, oz);
-      if (i < N) idx.push(i * 2, i * 2 + 2, i * 2 + 1, i * 2 + 1, i * 2 + 2, i * 2 + 3);
+    // a soft starched ring of round pleats: a tube round the neck whose width and thickness swell and pinch 30 times,
+    // so it reads as neat even folds from any side (smooth normals, a light grey ink line)
+    const NA = 240, NB = 14, PL = 30, pos = [], idx = [];
+    for (let i = 0; i <= NA; i++) {
+      const a = i / NA * Math.PI * 2, w = Math.cos(a * PL), [cx, cz] = ringPt(a, 1.17 + 0.045 * w), l = Math.hypot(cx, cz) || 1, nx = cx / l, nz = cz / l;
+      const rt = 0.105 * (1 + 0.32 * w);
+      for (let j = 0; j <= NB; j++) {
+        const b2 = j / NB * Math.PI * 2;
+        pos.push(cx + nx * rt * Math.cos(b2) * 1.25, 0.05 + rt * Math.sin(b2) * 0.62, cz + nz * rt * Math.cos(b2) * 1.25);
+        if (i < NA && j < NB) { const k = i * (NB + 1) + j; idx.push(k, k + 1, k + NB + 1, k + 1, k + NB + 2, k + NB + 1); }
+      }
     }
-    const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); geo.setIndex(idx);
-    const g2 = geo.toNonIndexed(); g2.computeVertexNormals(); // non-indexed: every pleat face keeps its own flat normal
-    const ruff = K3D.mesh(g2, K3D.toon('#fbf8f0', { side: T.DoubleSide }), { ink: '#6a6478', inkW: 0.7 });
+    const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+    const ruff = K3D.mesh(geo, K3D.toon('#fbf8f0'), { ink: '#8a8498', inkW: 0.6 });
     const g = new T.Group(); g.add(ruff);
     // the white cut edge: a thin band at the outer rim, and a fastener holding it at the back
     const f = P.fastener(0.03); const [bx, bz] = ringPt(-Math.PI / 2, 1.04); f.position.set(bx, 0.03, bz); f.rotation.y = Math.PI; g.add(f);

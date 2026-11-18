@@ -14,14 +14,19 @@
      POPUP.card(shape, { tex, depth, edge, ink, back })        an extruded card with a printed face and a white cut edge
      POPUP.book({ pw, pd })            the open book: covers, page block, two pages; .pages[0|1] are the page meshes
      POPUP.pageTex(key, pw, pd, paint)   a page's texture: cream paper, faint printed text, page number, + paint(c, s)
-     POPUP.hedge(points, { h, t })     a box-fold paper hedge along a line
+     POPUP.hedge(points, { h, t, flowers, posts, tufts })   a box-fold paper hedge along a line: leafy print (some
+                                       runs in flower), posts with topiary balls at corners and ends, grass tufts
      POPUP.roseBush(x, z, rot, s)      a V-fold rose bush with layered paper roses
      POPUP.fountain(x, z, s)           tiered card fountain with blue tissue water
      POPUP.peacock(x, z, rot, s)       a cut-out paper peacock on a V-fold stand
      POPUP.bookmark(x, z, rot, col)    a silk ribbon bookmark stuck in the page (.userData.lit(t) lights it)
      POPUP.dotted(points, done)        a dotted pencil line with a pencil icon at its start; .userData.set(n) inks dots
      POPUP.pencil()                    the giant yellow pencil, 5 long, along +X (eraser at -X, point at +X)
+     POPUP.tuft(rnd)                   a grass tuft card (hedges put them along their foot)
+     POPUP.bench / sundial / fence / tulips / tulip / mushrooms / bunny / butterfly   the lawns' pop-ups
      POPUP.room(o)                     beyond the book: the desk, teacup, brass lamp, rainy window, attic, dust motes
+     POPUP.desk(o)                     the desk's clutter: coloured pencils, eraser, ruler, scissors, clips, crumpled
+                                       paper, spectacles, a pencil pot, a fern and the Bookworm's sketch of the page
 */
 'use strict';
 
@@ -127,7 +132,8 @@ const POPUP = (function () {
   // a card: printed faces (tex or colour), a white cut edge, an ink outline
   P.card = function (shape, o = {}) {
     const geo = o.geo || P.cardGeo(shape, o.depth || 0.035, o.seg || 12);
-    const face = o.mat || K3D.toon(o.col || '#ffffff', { map: o.tex || null, side: T.DoubleSide });
+    // (one material per colour and print, shared, so K3D.bake can merge every card that looks alike)
+    const face = o.mat || K3D.mat('card|' + (o.col || '#ffffff') + '|' + (o.tex ? o.tex.uuid : ''), () => K3D.toon(o.col || '#ffffff', { map: o.tex || null, side: T.DoubleSide }));
     const edge = K3D.mat('edge|' + (o.edge || EDGE), () => K3D.toon(o.edge || EDGE));
     const m = K3D.mesh(geo, [face, edge], { ink: o.ink === false ? false : (o.ink || INK), inkW: o.inkW || 0.9, cast: o.cast !== false });
     return m;
@@ -158,7 +164,7 @@ const POPUP = (function () {
       c.strokeStyle = rgba(INK, 0.35); c.lineWidth = 2; c.stroke();
       c.setLineDash([6, 5]); c.strokeStyle = rgba(INK, 0.4); c.beginPath(); c.moveTo(10, H2 - 2); c.lineTo(W2 - 10, H2 - 2); c.stroke();
     });
-    const m = new T.Mesh(K3D.geo('tabGeo', () => new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), K3D.mat('tabM|' + col, () => K3D.toon('#ffffff', { map: tex, transparent: true, polygonOffset: -1, depthWrite: false })));
+    const m = new T.Mesh(K3D.geo('tabGeo', () => new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), K3D.mat('tabM|' + col, () => { const m = K3D.toon('#ffffff', { map: tex, transparent: true, polygonOffset: -1, depthWrite: false }); m.userData.flatDecal = true; return m; }));
     m.scale.set(w, 1, d); m.receiveShadow = true;
     return m;
   };
@@ -270,39 +276,85 @@ const POPUP = (function () {
   // glue tabs on the page
   P.hedge = function (pts, o = {}) {
     const h = o.h || 1.1, t = o.t || 0.62, g = new T.Group(), seed = o.seed || 1;
-    const tex = K3D.paint('hedgeLeaves', 1024, 512, (c, w, hh) => {
-      P.leaves(c, w, hh, '#4f8a43', 11, { clump: 30 });
+    const shade = (c, w, hh) => {
       // the shaded foot of the hedge and a lit top band
       const gg = c.createLinearGradient(0, 0, 0, hh); gg.addColorStop(0, 'rgba(255,250,200,0.18)'); gg.addColorStop(0.25, 'rgba(0,0,0,0)'); gg.addColorStop(1, 'rgba(10,30,10,0.35)');
       c.fillStyle = gg; c.fillRect(0, 0, w, hh);
+    };
+    const tex = K3D.paint('hedgeLeaves', 1024, 512, (c, w, hh) => { P.leaves(c, w, hh, '#4f8a43', 11, { clump: 30 }); shade(c, w, hh); }, { repeat: true });
+    // a second print: a little lighter, in flower (white and pink blossom), so long runs never repeat one look
+    const texB = K3D.paint('hedgeLeavesB', 1024, 512, (c, w, hh) => {
+      P.leaves(c, w, hh, '#5a9448', 13, { clump: 28 });
+      const r = P.rng(14);
+      for (let i = 0; i < 70; i++) {
+        const x = r() * w, y = 30 + r() * (hh - 90), col = r() < 0.55 ? '#fbf3f0' : r() < 0.6 ? '#f2a6bc' : '#f6d36a', rad = 5 + r() * 3;
+        for (let k = 0; k < 5; k++) { c.fillStyle = col; c.beginPath(); c.ellipse(x + Math.cos(k * 1.257) * rad, y + Math.sin(k * 1.257) * rad, rad * 0.75, rad * 0.5, k * 1.257, 0, Math.PI * 2); c.fill(); }
+        c.fillStyle = '#e8a83a'; c.beginPath(); c.arc(x, y, rad * 0.45, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = rgba(INK, 0.45); c.lineWidth = 1.2; c.beginPath(); c.arc(x, y, rad * 1.5, 0.3, 2.6); c.stroke();
+      }
+      shade(c, w, hh);
     }, { repeat: true });
     const topTex = K3D.paint('hedgeTop', 512, 512, (c, w, hh) => P.leaves(c, w, hh, '#5d9a4d', 12, { clump: 28 }), { repeat: true });
     const wallM = K3D.mat('hedgeWall', () => K3D.toon('#ffffff', { map: tex, side: T.DoubleSide }));
+    const wallMB = K3D.mat('hedgeWallB', () => K3D.toon('#ffffff', { map: texB, side: T.DoubleSide }));
     const topM = K3D.mat('hedgeTopM', () => K3D.toon('#ffffff', { map: topTex, side: T.DoubleSide }));
+    const edgeM = K3D.mat('edge|' + EDGE, () => K3D.toon(EDGE));
+    // topiary: clipped leafy balls and square posts at the corners and ends
+    const ballTex = K3D.paint('topiaryBall', 512, 256, (c, w, hh) => { P.leaves(c, w, hh, '#4a8640', 15, { clump: 22 }); }, { repeat: true });
+    const ballM = K3D.mat('topiaryBallM', () => K3D.toon('#ffffff', { map: ballTex }));
     const r = P.rng(seed);
+    const flowers = o.flowers == null ? 0.4 : o.flowers;
     for (let i = 0; i < pts.length - 1; i++) {
       const [x0, z0] = pts[i], [x1, z1] = pts[i + 1], len = Math.hypot(x1 - x0, z1 - z0), ang = Math.atan2(z1 - z0, x1 - x0);
       const seg = new T.Group(); seg.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2); seg.rotation.y = -ang; g.add(seg);
-      const bumps = Math.max(2, Math.round(len / 0.55));
+      const bumps = Math.max(2, Math.round(len / 0.55)), wm = r() < flowers ? wallMB : wallM;
       for (const s of [-1, 1]) {
-        const shape = P.scallopShape(len + (i === 0 ? 0 : t) * 0, h, bumps, 0.2, r);
+        const shape = P.scallopShape(len, h, bumps, 0.2, r);
         const geo = P.cardGeo(shape, 0.03, 8);
         // texture repeats along the hedge: UVs are 0..1 over the bounding box, so scale u by length
-        const uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setX(k, uv.getX(k) * len / 2.2);
-        const wall = K3D.mesh(geo, [wallM, K3D.mat('edge|' + EDGE, () => K3D.toon(EDGE))], { ink: INK, inkW: 0.9 });
+        const uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setX(k, uv.getX(k) * len / 2.2 + r() * 0);
+        const wall = K3D.mesh(geo, [wm, edgeM], { ink: INK, inkW: 0.9 });
         wall.position.z = s * t / 2; seg.add(wall);
       }
       const top = K3D.mesh(new T.BoxGeometry(len, 0.02, t).translate(0, h * 0.84, 0), topM, { ink: INK, inkW: 0.7 });
       const tuv = top.geometry.attributes.uv; for (let k = 0; k < tuv.count; k++) tuv.setX(k, tuv.getX(k) * len / 2);
       seg.add(top);
       for (const s of [-1, 1]) { const tb = P.tab(len, 0.2); tb.position.set(0, 0.004, s * (t / 2 + 0.1)); seg.add(tb); }
+      // grass tufts along the foot, both sides
+      if (o.tufts !== false) for (const s of [-1, 1]) for (let d = -len / 2 + 0.3 + r() * 0.5; d < len / 2 - 0.3; d += 0.7 + r() * 0.9) {
+        const tf = P.tuft(r); tf.position.set(d, 0, s * (t / 2 + 0.05)); tf.rotation.y = s > 0 ? 0 : Math.PI; seg.add(tf);
+      }
       // end caps on the first and last segment
       for (const e of [i === 0 ? -1 : 0, i === pts.length - 2 ? 1 : 0]) if (e) {
-        const cap = K3D.mesh(P.cardGeo(P.scallopShape(t, h, 1, 0.25, r), 0.03, 8), [wallM, K3D.mat('edge|' + EDGE, () => K3D.toon(EDGE))], { ink: INK, inkW: 0.9 });
+        const cap = K3D.mesh(P.cardGeo(P.scallopShape(t, h, 1, 0.25, r), 0.03, 8), [wm, edgeM], { ink: INK, inkW: 0.9 });
         cap.rotation.y = Math.PI / 2; cap.position.x = e * len / 2; seg.add(cap);
       }
     }
+    // posts with a ball on top at every corner and both ends of a tall hedge; a small ball on the ends of a low one
+    if (o.posts !== false) pts.forEach(([x, z], i) => {
+      const end = i === 0 || i === pts.length - 1;
+      if (h < 0.8 && !end) return;
+      const pw = t + 0.16, ph = h < 0.8 ? h + 0.1 : h * 1.14, br = h < 0.8 ? t * 0.42 : t * 0.56;
+      const post = K3D.mesh(K3D.geo('hedgePost|' + pw + '|' + ph, () => new T.BoxGeometry(pw, ph, pw).translate(0, ph / 2, 0)), wallM, { ink: INK, inkW: 0.9 });
+      post.position.set(x, 0, z); g.add(post);
+      const ball = K3D.mesh(K3D.geo('topiary|' + br, () => new T.SphereGeometry(br, 20, 14)), ballM, { ink: INK, inkW: 0.8 });
+      ball.position.set(x, ph + br * 0.85, z); ball.rotation.y = r() * 6; g.add(ball);
+    });
     return g;
+  };
+  // a little grass tuft card (pointed blades), standing at the foot of hedges and things
+  P.tuft = function (r = Math.random) {
+    const v = Math.floor(r() * 3);
+    const geo = K3D.geo('tuft|' + v, () => {
+      const rr = P.rng(171 + v), pts = [[-0.16, 0]];
+      const n = 4 + v;
+      for (let k = 0; k < n; k++) { const x = -0.16 + (k + 0.5) * 0.32 / n; pts.push([x - 0.02, 0.05], [x + (rr() - 0.5) * 0.06, 0.16 + rr() * 0.14]); }
+      pts.push([0.16, 0]);
+      return P.cardGeo(P.shapeFrom(pts), 0.012, 4);
+    });
+    const m = K3D.mesh(geo, [K3D.mat('tuftM', () => K3D.toon('#6aa54f', { side: T.DoubleSide })), K3D.mat('tuftE', () => K3D.toon('#9ccc78'))], { ink: INK, inkW: 0.6, cast: false });
+    m.scale.setScalar(0.8 + r() * 0.5);
+    return m;
   };
 
   // a layered paper rose: three scalloped discs and a curl, tilted to face out
@@ -622,6 +674,225 @@ const POPUP = (function () {
   };
 
   /* ---------- beyond the book ---------- */
+  /* ---------- garden pieces (the lawns between the hedges) ---------- */
+  // a garden bench: card slats on box-folded card legs, with a curly cut-out back
+  P.bench = function (x, z, rot = 0) {
+    const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = rot;
+    const wood = K3D.paint('benchWood', 256, 64, (c, w, h) => { c.fillStyle = '#b7834f'; c.fillRect(0, 0, w, h); const r = P.rng(181); for (let i = 0; i < 30; i++) { c.strokeStyle = 'rgba(70,40,15,0.3)'; c.lineWidth = 1 + r(); const y = r() * h; c.beginPath(); c.moveTo(0, y); c.bezierCurveTo(w * 0.3, y + 4, w * 0.6, y - 4, w, y); c.stroke(); } c.strokeStyle = rgba(INK, 0.6); c.lineWidth = 3; c.strokeRect(1, 1, w - 2, h - 2); });
+    const wm = K3D.mat('benchM', () => K3D.toon('#ffffff', { map: wood })), iron = K3D.mat('benchIron', () => K3D.toon('#3d4a3f'));
+    for (let k = 0; k < 3; k++) { const sl = K3D.mesh(new T.BoxGeometry(1.8, 0.05, 0.16), wm, { ink: INK, inkW: 0.7 }); sl.position.set(0, 0.42, -0.2 + k * 0.2); g.add(sl); }
+    for (let k = 0; k < 2; k++) { const sl = K3D.mesh(new T.BoxGeometry(1.8, 0.16, 0.05), wm, { ink: INK, inkW: 0.7 }); sl.position.set(0, 0.62 + k * 0.22, -0.34); sl.rotation.x = -0.12; g.add(sl); }
+    const leg = new T.Shape(); leg.moveTo(-0.28, 0); leg.quadraticCurveTo(-0.2, 0.2, -0.24, 0.42); leg.lineTo(-0.3, 0.98); leg.lineTo(-0.22, 0.98); leg.lineTo(-0.16, 0.44); leg.lineTo(0.22, 0.44); leg.quadraticCurveTo(0.18, 0.2, 0.28, 0); leg.lineTo(0.2, 0); leg.quadraticCurveTo(0.1, 0.2, 0.14, 0.38); leg.lineTo(-0.14, 0.38); leg.quadraticCurveTo(-0.1, 0.2, -0.2, 0); leg.closePath();
+    for (const sx of [-0.78, 0.78]) { const l = P.card(leg, { mat: iron, depth: 0.04, inkW: 0.7 }); l.rotation.y = Math.PI / 2; l.position.set(sx, 0, 0); g.add(l); }
+    return g;
+  };
+  // a stone sundial on a turned pedestal, with a brass dial and a card gnomon
+  P.sundial = function (x, z, s = 1) {
+    const g = new T.Group(); g.position.set(x, 0, z); g.scale.setScalar(s);
+    const stone = K3D.mat('stoneM', () => K3D.toon('#cfc6b4'));
+    const ped = K3D.mesh(new T.LatheGeometry([[0, 0], [0.5, 0], [0.5, 0.12], [0.36, 0.2], [0.22, 0.3], [0.2, 0.8], [0.32, 0.9], [0.46, 0.96], [0.46, 1.02], [0, 1.02]].map(p => new T.Vector2(p[0], p[1])), 24), stone, { ink: INK });
+    g.add(ped);
+    const face = K3D.paint('sundialFace', 256, 256, (c, w, h) => {
+      c.fillStyle = '#d9a640'; c.beginPath(); c.arc(128, 128, 126, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = '#6b4a14'; c.lineWidth = 3; c.beginPath(); c.arc(128, 128, 110, 0, Math.PI * 2); c.stroke();
+      c.fillStyle = '#5a3d10'; c.font = 'bold 22px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      ['XII', 'III', 'VI', 'IX'].forEach((t, i) => { const a = -Math.PI / 2 + i * Math.PI / 2; c.fillText(t, 128 + Math.cos(a) * 90, 128 + Math.sin(a) * 90); });
+      for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; c.beginPath(); c.moveTo(128 + Math.cos(a) * 100, 128 + Math.sin(a) * 100); c.lineTo(128 + Math.cos(a) * 110, 128 + Math.sin(a) * 110); c.stroke(); }
+    });
+    const disc = K3D.mesh(new T.CylinderGeometry(0.42, 0.42, 0.04, 32), [K3D.toon('#c9973a'), K3D.toon('#ffffff', { map: face }), K3D.toon('#c9973a')], { ink: '#4a3410' });
+    disc.position.y = 1.04; g.add(disc);
+    const gn = P.card(P.shapeFrom([[-0.3, 0], [0.3, 0], [-0.3, 0.34]]), { col: '#8a6a2a', depth: 0.03, inkW: 0.7 }); gn.position.y = 1.06; g.add(gn);
+    return g;
+  };
+  // a white picket fence along a polyline (one cut card per run)
+  P.fence = function (pts, o = {}) {
+    const g = new T.Group(), h = o.h || 0.7;
+    const paint = K3D.mat('fenceM', () => K3D.toon('#f4efe2', { side: T.DoubleSide }));
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x0, z0] = pts[i], [x1, z1] = pts[i + 1], len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(2, Math.round(len / 0.32));
+      const sh = new T.Shape(); sh.moveTo(-len / 2, 0);
+      for (let k = 0; k < n; k++) {
+        const a = -len / 2 + k * len / n, b = a + len / n * 0.62, m = (a + b) / 2;
+        sh.lineTo(a, h * 0.86); sh.lineTo(m, h); sh.lineTo(b, h * 0.86); sh.lineTo(b, h * 0.62); sh.lineTo(a + len / n, h * 0.62);
+      }
+      sh.lineTo(len / 2, 0); sh.closePath();
+      // the gap under the top rail: cut between the pickets
+      for (let k = 0; k < n; k++) { const a = -len / 2 + k * len / n + len / n * 0.62, b = -len / 2 + (k + 1) * len / n; if (b - a < 0.02) continue; const hole = new T.Path(); hole.moveTo(a, 0.12); hole.lineTo(b, 0.12); hole.lineTo(b, h * 0.5); hole.lineTo(a, h * 0.5); hole.closePath(); sh.holes.push(hole); }
+      const c = P.card(sh, { mat: paint, depth: 0.03, inkW: 0.7 });
+      c.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2); c.rotation.y = -Math.atan2(z1 - z0, x1 - x0); g.add(c);
+    }
+    return g;
+  };
+  // a tulip bed: a low scalloped card border round an oval, tulip cards inside
+  P.tulips = function (x, z, rx = 1.2, rz = 0.7, seed = 5) {
+    const g = new T.Group(); g.position.set(x, 0, z);
+    const r = P.rng(seed), cols = ['#e0507a', '#f2c14e', '#f08a3c', '#ffffff', '#d8486a'];
+    const n = Math.round(rx * rz * 9);
+    for (let k = 0; k < n; k++) {
+      const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 0.85, col = cols[Math.floor(r() * cols.length)];
+      const tl = P.tulip(col); tl.position.set(Math.cos(a) * rx * d, 0, Math.sin(a) * rz * d); tl.rotation.y = r() * 6; tl.scale.setScalar(0.8 + r() * 0.4); g.add(tl);
+    }
+    const ring = []; for (let i = 0; i <= 24; i++) { const a = i / 24 * Math.PI * 2; ring.push([Math.cos(a) * (rx + 0.15), Math.sin(a) * (rz + 0.15)]); }
+    const bm = K3D.mat('bedEdge', () => K3D.toon('#c98a5a', { side: T.DoubleSide }));
+    for (let i = 0; i < ring.length - 1; i++) {
+      const [x0, z0] = ring[i], [x1, z1] = ring[i + 1], len = Math.hypot(x1 - x0, z1 - z0);
+      const e = K3D.mesh(K3D.geo('bedSeg|' + len.toFixed(2), () => P.cardGeo(P.scallopShape(len + 0.02, 0.14, 1, 0.3, () => 0.5), 0.02, 4)), bm, { ink: INK, inkW: 0.6, cast: false });
+      e.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2); e.rotation.y = -Math.atan2(z1 - z0, x1 - x0); g.add(e);
+    }
+    return g;
+  };
+  // one tulip: two crossed cards (stem, two leaves, a cup head), printed
+  P.tulip = function (col) {
+    const g = new T.Group();
+    const geo = K3D.geo('tulipCard', () => {
+      const s = new T.Shape(); s.moveTo(-0.02, 0); s.lineTo(-0.02, 0.2); s.quadraticCurveTo(-0.16, 0.12, -0.14, 0.02); s.quadraticCurveTo(-0.08, 0.16, -0.02, 0.28); s.lineTo(-0.02, 0.4);
+      s.lineTo(-0.09, 0.42); s.lineTo(-0.1, 0.56); s.lineTo(-0.05, 0.5); s.lineTo(0, 0.58); s.lineTo(0.05, 0.5); s.lineTo(0.1, 0.56); s.lineTo(0.09, 0.42); s.lineTo(0.02, 0.4);
+      s.lineTo(0.02, 0.26); s.quadraticCurveTo(0.12, 0.2, 0.15, 0.08); s.quadraticCurveTo(0.08, 0.14, 0.02, 0.18); s.lineTo(0.02, 0); s.closePath();
+      return P.cardGeo(s, 0.012, 6);
+    });
+    const tex = K3D.paint('tulip|' + col, 64, 128, (c, w, h) => { c.fillStyle = '#4f8a43'; c.fillRect(0, 0, w, h); c.fillStyle = col; c.fillRect(0, 0, w, h * 0.32); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(w * 0.3, h * 0.03, w * 0.12, h * 0.22); });
+    const m = K3D.mat('tulipM|' + col, () => K3D.toon('#ffffff', { map: tex, side: T.DoubleSide }));
+    for (const ry of [0, Math.PI / 2]) { const c = K3D.mesh(geo, [m, K3D.mat('edge|' + EDGE, () => K3D.toon(EDGE))], { ink: INK, inkW: 0.5, cast: false }); c.rotation.y = ry; g.add(c); }
+    return g;
+  };
+  // a ring of toadstools: red caps with white spots
+  P.mushrooms = function (x, z, seed = 9) {
+    const g = new T.Group(); g.position.set(x, 0, z);
+    const r = P.rng(seed);
+    const capTex = K3D.paint('toadCap', 256, 128, (c, w, h) => { c.fillStyle = '#d6453a'; c.fillRect(0, 0, w, h); const rr = P.rng(191); c.fillStyle = '#fff6e6'; for (let i = 0; i < 22; i++) { c.beginPath(); c.arc(rr() * w, rr() * h * 0.8, 5 + rr() * 7, 0, Math.PI * 2); c.fill(); } });
+    const capM = K3D.mat('toadCapM', () => K3D.toon('#ffffff', { map: capTex })), stemM = K3D.mat('toadStem', () => K3D.toon('#f3ead2'));
+    const capG = K3D.geo('toadCapG', () => new T.SphereGeometry(0.2, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2)), stemG = K3D.geo('toadStemG', () => new T.CylinderGeometry(0.06, 0.08, 0.24, 10).translate(0, 0.12, 0));
+    const n = 3 + Math.floor(r() * 3);
+    for (let k = 0; k < n; k++) {
+      const a = k / n * Math.PI * 2 + r(), d = 0.15 + r() * 0.3, sc = 0.6 + r() * 0.7;
+      const st = K3D.mesh(stemG, stemM, { ink: INK, inkW: 0.5 }); st.position.set(Math.cos(a) * d, 0, Math.sin(a) * d); st.scale.setScalar(sc); g.add(st);
+      const cp = K3D.mesh(capG, capM, { ink: INK, inkW: 0.6 }); cp.position.set(Math.cos(a) * d, 0.22 * sc, Math.sin(a) * d); cp.scale.set(sc, sc * 0.8, sc); g.add(cp);
+    }
+    return g;
+  };
+  // a cut-out paper bunny on a V-fold, sitting up
+  P.bunny = function (x, z, rot = 0, s = 1) {
+    const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = rot; g.scale.setScalar(s);
+    const tex = K3D.paint('bunnyCard', 256, 256, (c, w, h) => {
+      c.clearRect(0, 0, w, h);
+      c.fillStyle = '#e9e1d4'; c.strokeStyle = INK; c.lineWidth = 5;
+      const body = () => { c.beginPath(); c.ellipse(118, 180, 62, 58, 0, 0, Math.PI * 2); c.ellipse(170, 116, 40, 34, 0.2, 0, Math.PI * 2); c.ellipse(152, 50, 13, 44, -0.15, 0, Math.PI * 2); c.ellipse(184, 52, 13, 44, 0.25, 0, Math.PI * 2); c.ellipse(58, 196, 18, 16, 0, 0, Math.PI * 2); };
+      body(); c.fill(); body(); c.stroke(); body(); c.fill();
+      c.fillStyle = '#f2b3c0'; c.beginPath(); c.ellipse(152, 52, 6, 30, -0.15, 0, Math.PI * 2); c.ellipse(184, 54, 6, 30, 0.25, 0, Math.PI * 2); c.fill();
+      c.fillStyle = INK; c.beginPath(); c.arc(184, 110, 6, 0, Math.PI * 2); c.fill(); c.fillStyle = '#e88a9a'; c.beginPath(); c.arc(207, 122, 5, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(43,33,48,0.4)'; c.lineWidth = 2; c.beginPath(); c.moveTo(100, 160); c.quadraticCurveTo(120, 200, 150, 210); c.stroke();
+    });
+    const card = new T.Mesh(K3D.geo('bunnyG', () => new T.PlaneGeometry(0.9, 0.9).translate(0, 0.45, 0)), K3D.mat('bunnyM', () => K3D.toon('#ffffff', { map: tex, side: T.DoubleSide, alphaTest: 0.5 })));
+    card.castShadow = true; g.add(card);
+    const vf = P.card(P.shapeFrom([[0, 0], [0.3, 0], [0, 0.4]]), { col: '#e9dfc4', depth: 0.02, inkW: 0.5 }); vf.rotation.y = -Math.PI / 2; vf.position.z = -0.02; g.add(vf);
+    return g;
+  };
+  // a paper butterfly on a coiled wire spring: flaps and bobs (keep it out of K3D.bake: .userData.live)
+  P.butterfly = function (x, z, col = '#f2c14e', seed = 3) {
+    const g = new T.Group(); g.position.set(x, 0, z); g.userData.live = true;
+    const r = P.rng(seed), hgt = 1.4 + r() * 0.8, ph = r() * 6;
+    const wire = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(Array.from({ length: 40 }, (_, i) => new T.Vector3(Math.cos(i * 0.9) * 0.04, i / 39 * hgt, Math.sin(i * 0.9) * 0.04))), 80, 0.008, 4), K3D.mat('wireM', () => K3D.toon('#6a6a74')));
+    g.add(wire);
+    const tex = K3D.paint('wing|' + col, 128, 128, (c, w, h) => { c.fillStyle = col; c.beginPath(); c.ellipse(64, 50, 56, 44, -0.3, 0, Math.PI * 2); c.fill(); c.beginPath(); c.ellipse(52, 98, 34, 26, 0.4, 0, Math.PI * 2); c.fill(); c.fillStyle = '#2b2130'; for (const [a, b, rr] of [[86, 30, 9], [60, 60, 6], [40, 100, 5]]) { c.beginPath(); c.arc(a, b, rr, 0, Math.PI * 2); c.fill(); } c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.arc(86, 30, 4, 0, Math.PI * 2); c.fill(); });
+    const wm = K3D.toon('#ffffff', { map: tex, side: T.DoubleSide, transparent: true, alphaTest: 0.4 });
+    const body = new T.Group(); body.position.y = hgt; g.add(body);
+    const wings = [];
+    for (const s of [-1, 1]) {
+      const piv = new T.Group(); body.add(piv);
+      const wg = new T.Mesh(K3D.geo('wingG', () => new T.PlaneGeometry(0.34, 0.34).translate(0.17, 0, 0).rotateX(-Math.PI / 2)), wm);
+      wg.scale.x = s; piv.add(wg); wings.push(piv);
+    }
+    const tor = K3D.mesh(K3D.geo('bflyBody', () => new T.CapsuleGeometry(0.025, 0.2, 4, 8).rotateX(Math.PI / 2)), K3D.mat('bflyBodyM', () => K3D.toon('#2b2130')), { ink: false }); body.add(tor);
+    g.userData.tick = t => { const f = Math.sin(t * 9 + ph) * 0.7; wings[0].rotation.z = -f; wings[1].rotation.z = f; body.position.y = hgt + Math.sin(t * 1.3 + ph) * 0.08; body.rotation.y = Math.sin(t * 0.4 + ph) * 0.6; };
+    return g;
+  };
+
+  /* ---------- the writer's desk (beyond the book) ---------- */
+  // coloured pencils, an eraser, a ruler, scissors, paper clips, crumpled paper, spectacles, a pencil pot, a fern,
+  // and the Bookworm's own sketch of the page. o: { dy, route (polylines for the sketch), at: { name: [x, z, rot] } }
+  P.desk = function (o = {}) {
+    const g = new T.Group(), dy = o.dy != null ? o.dy : -1.62, at = o.at || {};
+    const put = (m, k, y = 0) => { const a = at[k] || [0, 0, 0], sc = a[3] || 1; m.position.set(a[0], dy + y * sc, a[1]); m.rotation.y = a[2] || 0; m.scale.multiplyScalar(sc); g.add(m); return m; };
+    const pencil = (col, len = 9, sharp = true) => {
+      const p = new T.Group();
+      const body = K3D.mesh(new T.CylinderGeometry(0.42, 0.42, len, 6).rotateZ(Math.PI / 2), K3D.mat('cp|' + col, () => K3D.toon(col)), { ink: dk(col, 0.6) }); p.add(body);
+      const wood = K3D.mesh(new T.ConeGeometry(0.42, 1.4, 6).rotateZ(-Math.PI / 2).translate(len / 2 + 0.7, 0, 0), K3D.mat('cpWood', () => K3D.toon('#e2b47c')), { ink: '#6b4a24' }); p.add(wood);
+      if (sharp) { const tip = K3D.mesh(new T.ConeGeometry(0.14, 0.46, 6).rotateZ(-Math.PI / 2).translate(len / 2 + 1.17, 0, 0), K3D.mat('cpTip|' + col, () => K3D.toon(dk(col, 0.25))), { ink: false }); p.add(tip); }
+      p.position.y = 0.42; return p;
+    };
+    // a fan of coloured pencils
+    const cols = ['#d8483a', '#f08a3c', '#f2c14e', '#5aa04a', '#3b7fc4', '#7a4fa8'];
+    const fan = new T.Group(); cols.forEach((c, i) => { const pc = pencil(c, 8 + (i % 3)); pc.position.set(i * 0.95, 0.42, i * 0.35); pc.rotation.y = 0.05 * i; fan.add(pc); }); put(fan, 'pencils');
+    // a pink eraser in a paper sleeve
+    const er = new T.Group();
+    er.add(K3D.mesh(K3D.roundBox(4, 1.3, 2.2, 0.35, 20), K3D.toon('#f2a6b4'), { ink: '#7a3a48' }));
+    const sleeveTex = K3D.paint('eraserSleeve', 256, 128, (c, w, h) => { c.fillStyle = '#3b6fb4'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = 'bold 44px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('RUB', w / 2, h / 2); c.strokeStyle = '#f2c14e'; c.lineWidth = 6; c.strokeRect(8, 8, w - 16, h - 16); });
+    const sl = K3D.mesh(new T.BoxGeometry(2.2, 1.36, 2.26).translate(0.6, 0.66, 0), K3D.toon('#ffffff', { map: sleeveTex }), { ink: '#1c2a44' }); er.add(sl);
+    put(er, 'eraser');
+    // a wooden ruler with printed marks
+    const rulerTex = K3D.paint('ruler', 1024, 64, (c, w, h) => { c.fillStyle = '#e8c88a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#3a2a18'; c.fillStyle = '#3a2a18'; c.font = '14px Georgia, serif'; for (let i = 0; i <= 100; i++) { const x = 6 + i * (w - 12) / 100, l = i % 10 ? (i % 5 ? 10 : 18) : 26; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, 0); c.lineTo(x, l); c.stroke(); if (i % 10 === 0 && i < 100) c.fillText(String(i / 10), x + 2, 44); } });
+    put(K3D.mesh(new T.BoxGeometry(30, 0.3, 2.6).translate(0, 0.15, 0), [K3D.toon('#d4b070'), K3D.toon('#d4b070'), K3D.toon('#ffffff', { map: rulerTex }), K3D.toon('#d4b070'), K3D.toon('#d4b070'), K3D.toon('#d4b070')], { ink: '#5a4020' }), 'ruler');
+    // scissors: two steel blades and red loop handles
+    const sc = new T.Group(), steel = K3D.toon('#c8ccd4'), red = K3D.toon('#d8483a');
+    for (const s of [-1, 1]) {
+      const bl = P.card(P.shapeFrom([[0, -0.3], [7, -0.05], [7.2, 0.05], [0, 0.3]]), { mat: steel, depth: 0.12, edge: '#e8ecf2', ink: '#3a3e48' });
+      bl.rotation.x = -Math.PI / 2; bl.rotation.z = s * 0.12; bl.position.y = 0.1 + (s > 0 ? 0.12 : 0); sc.add(bl);
+      const hd = K3D.mesh(new T.TorusGeometry(1.1, 0.28, 8, 20).scale(1.3, 1, 1).rotateX(Math.PI / 2), red, { ink: '#5a1a14' }); hd.position.set(-1.5, 0.28, s * 1.3); sc.add(hd);
+    }
+    const pin = K3D.mesh(new T.CylinderGeometry(0.22, 0.22, 0.5, 12), steel, { ink: '#3a3e48' }); pin.position.y = 0.25; sc.add(pin);
+    put(sc, 'scissors');
+    // paper clips
+    const clipPath = new T.CatmullRomCurve3([[0, 0, 0], [3, 0, 0], [3.4, 0, 0.45], [3, 0, 0.9], [0.3, 0, 0.9], [-0.1, 0, 0.6], [0.3, 0, 0.3], [2.6, 0, 0.3], [2.8, 0, 0.6]].map(p => new T.Vector3(...p)));
+    const clipG = K3D.geo('clipG', () => new T.TubeGeometry(clipPath, 60, 0.07, 6));
+    const clips = new T.Group();
+    for (let k = 0; k < 3; k++) { const cl = K3D.mesh(clipG, K3D.mat('clipM', () => K3D.toon('#b8c0cc')), { ink: '#4a505c', inkW: 0.6 }); cl.position.set(k * 1.6, 0.08, k * 1.1); cl.rotation.y = k * 0.7; clips.add(cl); }
+    if (at.clips) put(clips, 'clips');
+    // crumpled paper balls (a draft that went wrong)
+    const crumple = seed => { const geo = new T.IcosahedronGeometry(2, 2), a = geo.attributes.position, rr = P.rng(seed); for (let i = 0; i < a.count; i++) { const v = new T.Vector3().fromBufferAttribute(a, i), k = 0.75 + rr() * 0.4; a.setXYZ(i, v.x * k, v.y * k * 0.9, v.z * k); } geo.computeVertexNormals(); return geo; };
+    for (const [k, seed] of [['ball1', 201], ['ball2', 202]]) if (at[k]) put(K3D.mesh(crumple(seed), K3D.mat('crumpleM', () => K3D.toon('#f3ead2')), { ink: '#6b5536', inkW: 0.8 }), k, 1.7);
+    // spectacles
+    const sp = new T.Group(), rim = K3D.mat('specRim', () => K3D.toon('#3a2a20'));
+    for (const s of [-1, 1]) { const lens = K3D.mesh(new T.TorusGeometry(1.1, 0.12, 8, 28).rotateX(Math.PI / 2), rim, { ink: false }); lens.position.set(s * 1.35, 0.15, 0); sp.add(lens); const arm = K3D.mesh(new T.BoxGeometry(0.12, 0.12, 4.4).translate(0, 0, -2.2), rim, { ink: false }); arm.position.set(s * 2.4, 0.15, 0); arm.rotation.y = -s * 0.15; sp.add(arm); }
+    const br = K3D.mesh(new T.TorusGeometry(0.35, 0.1, 6, 12, Math.PI), rim, { ink: false }); br.position.set(0, 0.2, 0); sp.add(br);
+    if (at.glasses) put(sp, 'glasses');
+    // a pencil pot full of pencils and a paintbrush
+    if (at.pot) {
+      const pot = new T.Group();
+      const potTex = K3D.paint('potLabel', 512, 128, (c, w, h) => { c.fillStyle = '#2f5a48'; c.fillRect(0, 0, w, h); c.fillStyle = '#c9a24a'; for (let x = 0; x < w; x += 32) { c.beginPath(); c.arc(x + 16, h / 2, 8, 0, Math.PI * 2); c.fill(); } });
+      pot.add(K3D.mesh(new T.CylinderGeometry(2.6, 2.4, 6, 32, 1, true).translate(0, 3, 0), K3D.toon('#ffffff', { map: potTex, side: T.DoubleSide }), { ink: '#14241c' }));
+      pot.add(new T.Mesh(new T.CircleGeometry(2.5, 24).rotateX(-Math.PI / 2).translate(0, 4.6, 0), K3D.toon('#1a2a22')));
+      ['#d8483a', '#3b7fc4', '#f2c14e', '#5aa04a', '#f08a3c'].forEach((c, i) => { const pc = pencil(c, 10); pc.rotation.z = Math.PI / 2 - 0.12 + (i - 2) * 0.08; pc.rotation.y = i * 1.3; pc.position.set(Math.cos(i * 1.3) * 1.1, 5.5, Math.sin(i * 1.3) * 1.1); pot.add(pc); });
+      put(pot, 'pot');
+    }
+    // a fern in a terracotta pot
+    if (at.fern) {
+      const fern = new T.Group();
+      fern.add(K3D.mesh(new T.LatheGeometry([[0, 0], [2.4, 0], [3, 4], [3.4, 4.2], [3.4, 5], [0, 5]].map(p => new T.Vector2(p[0], p[1])), 32), K3D.toon('#c8693e'), { ink: '#5a2a14' }));
+      const frondTex = K3D.paint('frond', 128, 512, (c, w, h) => { c.clearRect(0, 0, w, h); c.strokeStyle = '#2f6a30'; c.lineWidth = 6; c.beginPath(); c.moveTo(w / 2, h); c.lineTo(w / 2, 6); c.stroke(); c.fillStyle = '#4f9a44'; for (let y = 20; y < h - 10; y += 22) { const l = (1 - y / h) * 0.3 + 0.2 + (y / h) * 0.25; for (const s of [-1, 1]) { c.beginPath(); c.ellipse(w / 2 + s * w * l * 0.5, y, w * l * 0.5, 7, s * 0.3, 0, Math.PI * 2); c.fill(); } } });
+      const fm = K3D.mat('frondM', () => K3D.toon('#ffffff', { map: frondTex, side: T.DoubleSide, alphaTest: 0.5 }));
+      for (let k = 0; k < 9; k++) { const fr = new T.Mesh(K3D.geo('frondG', () => new T.PlaneGeometry(3, 12, 1, 6).translate(0, 6, 0)), fm); const a = k / 9 * Math.PI * 2; fr.position.set(Math.cos(a) * 0.8, 4.6, Math.sin(a) * 0.8); fr.rotation.set(0, -a + Math.PI / 2, 0); fr.rotateX(0.6 + (k % 3) * 0.2); fern.add(fr); }
+      put(fern, 'fern');
+    }
+    // the Bookworm's pencil sketch of this page's maze on a loose sheet
+    if (at.sketch && o.route) {
+      const tex = K3D.paint('sketchSheet', 768, 1024, (c, w, h) => {
+        P.paper(c, w, h, '#f6f0e0', 211);
+        c.strokeStyle = 'rgba(120,150,190,0.35)'; c.lineWidth = 1.5; for (let y = 60; y < h; y += 34) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+        c.strokeStyle = 'rgba(200,90,100,0.4)'; c.beginPath(); c.moveTo(70, 0); c.lineTo(70, h); c.stroke();
+        const rr = P.rng(212), b = o.route.bounds, sx = (w - 160) / (b[2] - b[0]), sz = (h - 260) / (b[3] - b[1]), k = Math.min(sx, sz);
+        const X = x => 110 + (x - b[0]) * k, Z = z => 200 + (z - b[1]) * k;
+        c.strokeStyle = 'rgba(58,55,66,0.75)'; c.lineCap = 'round'; c.lineJoin = 'round';
+        for (const line of o.route.lines) for (let pass = 0; pass < 2; pass++) { c.lineWidth = 2 + rr(); c.beginPath(); line.forEach(([x, z], i) => { const px = X(x) + (rr() - 0.5) * 3, pz = Z(z) + (rr() - 0.5) * 3; i ? c.lineTo(px, pz) : c.moveTo(px, pz); }); c.stroke(); }
+        c.fillStyle = 'rgba(58,55,66,0.8)'; c.font = 'italic 34px Georgia, serif'; c.fillText('Hedge Garden: try 3', 100, 110);
+        c.font = 'italic 24px Georgia, serif'; c.fillText('start', X(o.route.start[0]) - 30, Z(o.route.start[1]) + 40); c.fillText('gate!', X(o.route.end[0]) - 20, Z(o.route.end[1]) - 20);
+        c.strokeStyle = 'rgba(200,60,60,0.6)'; c.lineWidth = 3; c.beginPath(); c.arc(X(o.route.end[0]), Z(o.route.end[1]), 26, 0, Math.PI * 2); c.stroke();
+      });
+      const sheet = K3D.mesh(new T.BoxGeometry(16, 0.04, 21).translate(0, 0.02, 0), [K3D.toon(EDGE), K3D.toon(EDGE), K3D.toon('#ffffff', { map: tex }), K3D.toon(EDGE), K3D.toon(EDGE), K3D.toon(EDGE)], { ink: '#8a7550', inkW: 0.6, cast: false });
+      put(sheet, 'sketch');
+    }
+    return g;
+  };
+
   P.room = function (o = {}) {
     const g = new T.Group(), dy = o.deskY != null ? o.deskY : -1.62;
     // the desk: old waxed planks
@@ -679,8 +950,8 @@ const POPUP = (function () {
       b.position.set((o.books ? o.books[0] : 36) + i * 0.6, by + hh / 2, (o.books ? o.books[1] : -8) + i * 0.8); b.rotation.y = 0.15 * (i - 1); g.add(b); by += hh;
     });
     const ink = K3D.mesh(new T.LatheGeometry([[0, 0], [2.4, 0], [2.6, 0.3], [2.4, 2.2], [1.0, 2.8], [0.9, 3.6], [1.2, 3.8], [0, 3.8]].map(p => new T.Vector2(p[0], p[1])), 32), K3D.toon('#26324a'), { ink: '#0c0f18' });
-    ink.position.set(26, dy, -26); g.add(ink);
-    const quill = K3D.mesh(new T.ConeGeometry(0.7, 14, 8).translate(0, 7, 0), K3D.toon('#f2ede2'), { ink: '#4a4030' }); quill.position.set(26, dy + 3.4, -26); quill.rotation.set(0.2, 0, -0.5); g.add(quill);
+    const ip = o.ink || [26, -26]; ink.position.set(ip[0], dy, ip[1]); g.add(ink);
+    const quill = K3D.mesh(new T.ConeGeometry(0.7, 14, 8).translate(0, 7, 0), K3D.toon('#f2ede2'), { ink: '#4a4030' }); quill.position.set(ip[0], dy + 3.4, ip[1]); quill.rotation.set(0.2, 0, -0.5); g.add(quill);
     // the attic: a sloping plank wall, a rainy window glowing grey-blue, rafters
     const wallTex = K3D.paint('atticWall', 1024, 1024, (c, w, h) => {
       const r = P.rng(101);
