@@ -480,7 +480,21 @@
 <script src="js/levels/world41/page-turner-chase.js"></script>
 <script src="js/levels/world41/popchase-music.js"></script>
 <script src="js/cpu/levels/world41/page-turner-chase.js"></script>
-<!-- 41-4 Paper Alien Invasion (World 41, after the other World 41 levels' blocks): its own block. Its 3D files load
+<!-- ===== 41-3 Paper Dragon Flight (World 41, 3D; its own block. Levels are numbered in load order, so this block must stay AFTER 41-2 Page Turner Chase's block and BEFORE 41-4's). The scenery, dragon and outfit files
+     only define functions at load time; they build with three.js when the level's scene is made. ===== -->
+<script src="js/levels/world41/popdragon-route.js"></script>
+<script src="js/levels/world41/popdragon-stretches.js"></script>
+<script src="js/levels/world41/popdragon-dragon.js"></script>
+<script src="js/levels/world41/popdragon-mood.js"></script>
+<script src="js/levels/world41/popdragon-shelf.js"></script>
+<script src="js/levels/world41/popdragon-bedroom.js"></script>
+<script src="js/levels/world41/popdragon-window.js"></script>
+<script src="js/levels/world41/popdragon-scenery.js"></script>
+<script src="js/levels/world41/popdragon-outfits.js"></script>
+<script src="js/levels/world41/paper-dragon-flight.js"></script>
+<script src="js/cpu/levels/world41/paper-dragon-flight.js"></script>
+<!-- ===== end 41-3 ===== -->
+<!-- 41-4 Paper Alien Invasion (World 41; levels are numbered in load order, so this block stays AFTER 41-3's): its own block. Its 3D files load
      on demand with the 3D kit (K3D.files). -->
 <script src="js/levels/world41/popaliens-route.js"></script>
 <script src="js/levels/world41/paper-alien-invasion.js"></script>
@@ -535,6 +549,8 @@
 <script src="js/previews/world33.js"></script>
 <script src="js/previews/world35.js"></script>
 <script src="js/previews/world36.js"></script>
+<!-- 41-3 Paper Dragon Flight preview (its own file, so the other World 41 previews never clash with it) -->
+<script src="js/previews/world41-popdragon.js"></script>
 <script src="js/home.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/main.js"></script>
