@@ -38,6 +38,8 @@ if (left.length) throw new Error('not inlined (use exactly <link rel="stylesheet
 //    and three.js itself as text the loader runs from a blob only when a 3D level opens (js/3d/k3d.js)
 const k3d = read(path.join(root, 'js/3d/k3d.js'));
 const kitFiles = JSON.parse(k3d.match(/files: (\[[^\]]*\])/)[1].replace(/'/g, '"').replace(/\s+/g, ' '));
+// (a level's own 3D files, added from its rules file with K3D.files.push('a.js', 'b.js'), come after the kit's)
+for (const part of parts) for (const m of part.matchAll(/K3D\.files\.push\(([^)]*)\)/g)) for (const f of m[1].match(/'[^']+'/g) || []) { const n = f.slice(1, -1); if (!kitFiles.includes(n)) kitFiles.push(n); }
 const libSrc = k3d.match(/lib: '([^']+)'/)[1];
 const kitParts = kitFiles.map(f => { const c = read(path.join(root, f)).replace(/\n$/, ''); if (!STRICT.test(c)) throw new Error(f + ' must start with \'use strict\';'); return c.replace(STRICT, ''); });
 parts.push('K3D.kitInline = () => {\n' + kitParts.join('\n') + '\n};');
