@@ -2,6 +2,7 @@
 // 42-3 Spook Manor: a screenshot from headless Chromium with software WebGL (SwiftShader).
 //   node tools/w42/manor-shot.js <simulated secs> <out.png> [--who=pair|idle] [--from=<clock index>] [--wait=3]
 //        [--cam=eye.x,eye.y,eye.z,at.x,at.y,at.z[,fov]] [--lampoff] [--size=1280x720] [--dpr=1]
+//        [--audit] list overlapping ground pieces and trees or hedges off the grass
 //        [--eval="js run in the page (G, st = G.mst, P = __pipbo) before the shot"] [--page=build/pip-and-bo.html]
 // Plays <simulated secs> of the level with drawing off (the computer plays both, or nobody with --who=idle), then draws.
 // --cam holds the camera still; --lampoff switches the lantern's light off (the comparison shot). Prints draw calls,
@@ -21,6 +22,7 @@ const opt = (k, d) => { const a = args.find(x => x === '--' + k || x.startsWith(
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errs.push(m.text()); });
   page.on('pageerror', e => errs.push(String(e.stack || e)));
   await page.addInitScript(() => { window.__k3dKeep = true; });
+  if (args.includes('--audit')) await page.addInitScript(() => { window.__w42audit = true; });
   await page.goto('file://' + path.resolve(__dirname, '..', '..', opt('page', 'index.html')));
   await page.waitForFunction(() => window.__pipbo && window.__pipbo.G);
   const ok = await page.evaluate(() => window.__pipbo.K3D.need());
@@ -55,6 +57,7 @@ const opt = (k, d) => { const a = args.find(x => x === '--' + k || x.startsWith(
   const box = await page.evaluate(() => { const r = document.getElementById('stage').getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; });
   await page.evaluate(() => new Promise(r => requestAnimationFrame(() => { window.__pipbo.K3D.freeze = true; r(); })));
   await page.screenshot({ path: out, clip: box, animations: 'allow', caret: 'initial', timeout: 180000 });
+  if (args.includes('--audit')) console.log('audit', JSON.stringify(await page.evaluate(() => window.__w42audit), null, 1));
   console.log(out, JSON.stringify(r), JSON.stringify(info), errs.length ? '\nerrors: ' + errs.slice(0, 8).join('\n') : '');
   await browser.close();
 })().catch(e => { console.error(e); process.exit(1); });

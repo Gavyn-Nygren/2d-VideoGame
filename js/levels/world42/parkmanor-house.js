@@ -62,7 +62,7 @@ const PARKMANOR_HOUSE = (function () {
     [7.6, 12.6, -0.25, 'Dee Ceased'], [10.6, 14.4, 0.2, 'Count Backwards'], [10.2, 10.6, 0.05, 'Gone Fishin\''],
   ];
   for (const [x, z, r] of H.art.stones) box(x - 0.55, z - 0.14, x + 0.55, z + 0.14, 0, 1.0, { kind: 'stone', rot: r });
-  H.art.trees = [[-6.4, 25.5, 1.2], [7.2, 26.5, 1.35], [-11.5, 20.5, 1.0], [11.6, 21.5, 1.1], [-2.8, 11.6, 0.8], [12.2, 9.6, 0.9]];
+  H.art.trees = [[-6.4, 25.5, 1.2], [7.2, 26.5, 1.35], [-11.6, 19.2, 1.0], [11.8, 19.4, 1.1], [-2.8, 11.6, 0.8], [12.2, 9.6, 0.9]];
   for (const [x, z, s] of H.art.trees) box(x - 0.35 * s, z - 0.35 * s, x + 0.35 * s, z + 0.35 * s, 0, 5, { kind: 'tree' });
   // the porch: a low wooden deck with two posts and steps
   box(-3.6, 6.0, 3.6, 8.6, 0, 0.18, { kind: 'porch' });

@@ -383,7 +383,7 @@ const PARKMANOR_SCENE = (function () {
       const pier = mk(new T.BoxGeometry(0.5, 2.2, 0.5), M('pier', () => K3D.toon('#4a3a40')), { ink: INK, inkW: 0.7 }); pier.position.set(sx * 1.95, 1.1, 22); g.add(pier);
       const ball = mk(new T.SphereGeometry(0.24, 12, 8), M('pier', () => K3D.toon('#4a3a40')), { ink: INK, inkW: 0.6 }); ball.position.set(sx * 1.95, 2.45, 22); g.add(ball);
       // the gate leaves: one swung wide, one hanging off a hinge
-      const gate = new T.Group(); gate.position.set(sx * 1.7, 0, 22); gate.rotation.y = sx < 0 ? -1.9 : 1.2; g.add(gate);
+      const gate = new T.Group(); gate.position.set(sx * 1.7, 0, 22); gate.rotation.y = sx < 0 ? -1.45 : 1.2; g.add(gate);
       for (let i = 0; i < 6; i++) { const b = mk(new T.CylinderGeometry(0.022, 0.022, 1.5, 5), iron(), { ink: INK, inkW: 0.3 }); b.position.set(-sx * (0.1 + i * 0.28), 0.85 + Math.sin(i * 0.5) * 0.1, 0); gate.add(b); }
       const top = mk(new T.TorusGeometry(0.8, 0.03, 5, 16, Math.PI), iron(), { ink: INK, inkW: 0.3 }); top.position.set(-sx * 0.8, 1.3, 0); gate.add(top);
       if (sx > 0) gate.rotation.z = 0.18;
@@ -455,7 +455,7 @@ const PARKMANOR_SCENE = (function () {
   }
   // a theatre spotlight on a stand (it lights a coloured cone of haze; its light is faked)
   function stageLamp(K, g, x, z, yaw, col, k) {
-    const sg = new T.Group(); sg.position.set(x, 0, z); sg.rotation.y = yaw; g.add(sg);
+    const sg = new T.Group(); sg.name = 'stageLamp'; sg.position.set(x, 0, z); sg.rotation.y = yaw; g.add(sg);
     for (let i = 0; i < 3; i++) { const lg = mk(new T.CylinderGeometry(0.025, 0.025, 1.7, 5), iron(), { ink: INK, inkW: 0.3 }); const a = i / 3 * Math.PI * 2; lg.position.set(Math.cos(a) * 0.3, 0.8, Math.sin(a) * 0.3); lg.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35); sg.add(lg); }
     const can = mk(new T.CylinderGeometry(0.22, 0.28, 0.6, 12).rotateX(Math.PI / 2), iron(), { ink: INK, inkW: 0.5 }); can.position.set(0, 1.7, 0); can.rotation.x = 0.45; sg.add(can);
     const lens = new T.Mesh(new T.CircleGeometry(0.2, 16), K3D.flat(hot(col, 2.2))); lens.position.set(0, 1.62, 0.27); lens.rotation.x = 0.45; sg.add(lens);
@@ -529,6 +529,32 @@ const PARKMANOR_SCENE = (function () {
       sprite(K, pg, 0, 0.3, 0.45, 1.3, '#ff9020', 0.3);
     }
     return g;
+  }
+
+  // the placement audit (tools/w42/manor-shot.js --audit): ground pieces whose footprints overlap a lot, and trees
+  // and hedges that are not standing on grass
+  function audit(K, groups) {
+    const bx = [], b3 = new T.Box3(), sz3 = new T.Vector3(), c3 = new T.Vector3(), items = [];
+    for (const g of groups) for (const o of g.children) items.push(o);
+    for (const o of K.root.children) if (o.name === 'tree') items.push(o);
+    K.root.updateMatrixWorld(true);
+    for (const o of items) {
+      if (o.isInstancedMesh || o.isPoints || o.userData.live || o.name === 'stageLamp') continue; // (a stage lamp's haze cone hangs in the air)
+      b3.setFromObject(o); if (b3.isEmpty()) continue; b3.getSize(sz3); b3.getCenter(c3);
+      if (sz3.x > 30 || sz3.z > 30 || sz3.x * sz3.z < 0.15 || b3.max.y < 0.3 || b3.min.y > 1.5) continue;
+      const geo = o.geometry ? o.geometry.type : 'group' + o.children.length;
+      const name = o.name || (geo.includes('Icosahedron') ? 'hedge' : geo);
+      bx.push({ x0: b3.min.x, x1: b3.max.x, z0: b3.min.z, z1: b3.max.z, a: sz3.x * sz3.z, n: name, x: c3.x, z: c3.z });
+    }
+    const bad = [], off = [];
+    for (let i = 0; i < bx.length; i++) for (let j = i + 1; j < bx.length; j++) {
+      const A = bx[i], Bb = bx[j];
+      if (A.n === Bb.n && (A.n === 'hedge' || A.n === 'tree')) continue; // (hedge balls and grove crowns touch on purpose)
+      const ix = Math.min(A.x1, Bb.x1) - Math.max(A.x0, Bb.x0), iz = Math.min(A.z1, Bb.z1) - Math.max(A.z0, Bb.z0);
+      if (ix > 0 && iz > 0 && ix * iz > 0.4 * Math.min(A.a, Bb.a)) bad.push(`${A.n}@${A.x.toFixed(1)},${A.z.toFixed(1)} x ${Bb.n}@${Bb.x.toFixed(1)},${Bb.z.toFixed(1)}`);
+    }
+    for (const b of bx) if ((b.n === 'tree' || b.n === 'hedge') && K.groundAll && !K.groundAll(b.x, b.z, 0.6, 'grass')) off.push(`${b.n}@${b.x.toFixed(1)},${b.z.toFixed(1)} on ${K.groundAt(b.x, b.z)}`);
+    window.__w42audit = { n: bx.length, overlaps: bad, offGrass: off };
   }
 
   /* =============================== the manor's front, upper floor and roofs =============================== */
@@ -993,8 +1019,8 @@ const PARKMANOR_SCENE = (function () {
     SC.night = night; SC.B = B;
     SC.walls = walls(K);
     SC.doors = doors(K);
-    outside(K, B);
-    yard(K, B);
+    const og = outside(K, B), yg = yard(K, B);
+    if (window.__w42audit) audit(K, [og, yg]);
     SC.fac = facade(K, B);
     hall(K, B, SC.walls);
     corridor(K, B, SC.walls);
