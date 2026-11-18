@@ -252,7 +252,7 @@
     }
     // camera
     const tg = [v.set(a.x, 0.5, a.z).clone(), new T.Vector3(b.x, 0.5, b.z), ends[0], ends[1]];
-    if (proof.rig.kind === 'chase') { const fx = (b.x - a.x) / L, fz = (b.z - a.z) / L; proof.rig.dir = { x: -fz, z: fx }; }
+    if (proof.rig.kind === 'chase') { const fx = (b.x - a.x) / L, fz = (b.z - a.z) / L; proof.rig.dir = { x: fz, z: -fx }; } // (looking up the path, away from the viewer)
     if (proof.rig.kind === 'rail') { if (keys.has('KeyQ')) proof.rig.progress -= dt * 0.15; if (keys.has('KeyE')) proof.rig.progress += dt * 0.15; proof.rig.progress = clamp(proof.rig.progress, 0, 1); }
     proof.rig.update(s.K, dt, tg);
     K3D.heading = proof.rig.viewHeading || 0; // (the proof page has no game rules: up walks the way the picture looks)
